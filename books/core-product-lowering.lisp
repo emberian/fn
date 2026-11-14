@@ -28,20 +28,50 @@
  (if (atom entries) nil
   (cons (cons (fn2-product-writer (caar entries)) (fn2-core-child-property (car entries) :stobj))
         (fn2-product-writers (cdr entries)))))
-(defun fn2-product-entries (entries calls)
+(defun fn2-product-calls-childp (child calls property world)
+ (declare (xargs :verify-guards nil))
+ (if (atom calls) nil
+  (or (member-eq child
+        (fn2-decl-get property (cdr (assoc-eq (car calls) (table-alist 'fn2-core-lowered world)))))
+      (fn2-product-calls-childp child (cdr calls) property world))))
+(defun fn2-product-callee-properties (calls property world)
+ (declare (xargs :verify-guards nil))
+ (if (atom calls) nil
+  (let ((row (cdr (assoc-eq (car calls) (table-alist 'fn2-core-lowered world)))))
+   (append (and (fn2-decl-get :shape-reverse row) (fn2-decl-get property row)
+                (list (fn2-decl-get property row)))
+           (fn2-product-callee-properties (cdr calls) property world)))))
+ ; Guard checks may open the registered mutable dependency chain to recover
+; its primitive invariant facts. Execution refinement keeps those calls opaque.
+(defun fn2-product-mutable-children (rows)
+ (declare (xargs :verify-guards nil))
+ (if (atom rows) nil
+  (append (and (fn2-decl-get :shape-reverse (cdar rows))
+               (list (fn2-decl-get :child (cdar rows))))
+          (fn2-product-mutable-children (cdr rows)))))
+(defun fn2-product-guard-callees (calls world)
+ (declare (xargs :verify-guards nil))
+ (fn2-lower-guard-openings
+  (fn2-product-callee-properties calls :child world)
+  (fn2-product-mutable-children (table-alist 'fn2-core-lowered world)) nil world 10000))
+(defun fn2-product-entries (entries calls world)
  (declare (xargs :verify-guards nil))
  (if (atom entries) nil
   (append (and (or (member-eq (caar entries) calls)
-                   (member-eq (fn2-product-writer (caar entries)) calls)) (list (car entries)))
-          (fn2-product-entries (cdr entries) calls))))
+                   (member-eq (fn2-product-writer (caar entries)) calls)
+                   (fn2-product-calls-childp (fn2-core-child-property (car entries) :stobj) calls :children world))
+               (list (car entries)))
+          (fn2-product-entries (cdr entries) calls world))))
 ; Reading a child must not make it an output. Writing an unchanged projection
 ; back into a malformed logical core can extend its shape, so reconstruction
 ; follows actual core update sites even though inputs include every read.
-(defun fn2-product-written-entries (entries calls)
+(defun fn2-product-written-entries (entries calls world)
  (declare (xargs :verify-guards nil))
  (if (atom entries) nil
-  (append (and (member-eq (fn2-product-writer (caar entries)) calls) (list (car entries)))
-          (fn2-product-written-entries (cdr entries) calls))))
+  (append (and (or (member-eq (fn2-product-writer (caar entries)) calls)
+                  (fn2-product-calls-childp (fn2-core-child-property (car entries) :stobj) calls :written world))
+              (list (car entries)))
+          (fn2-product-written-entries (cdr entries) calls world))))
 (mutual-recursion
  (defun fn2-product-expr (ir)
   (declare (xargs :verify-guards nil))
@@ -106,6 +136,37 @@
    (let ((v (or (car outs) (fn2-product-name counter))))
     (mv (cons v vars) (cons (if (car outs) (fn2-product-child v) (fn2-product-value v)) irs) next)))))
 
+ ; A retained mutable boundary returns scalars plus only its declared written
+; children. The core carrier stays in the compiler IR, never a runtime tuple.
+(defun fn2-product-callee (fn irs world counter)
+ (declare (xargs :verify-guards nil))
+ (let* ((row (cdr (assoc-eq fn (table-alist 'fn2-core-lowered world))))
+        (child (fn2-decl-get :child row))
+        (inputs (fn2-decl-get :children row))
+        (written (fn2-decl-get :written row))
+        (ins (getpropc fn 'stobjs-in nil world))
+        (outs (getpropc fn 'stobjs-out nil world))
+        (child-outs (getpropc child 'stobjs-out nil world)))
+  (if (not (and (fn2-decl-get :shape-reverse row)
+                (getpropc (fn2-decl-get :shape-reverse row) 'theorem nil world)
+                (getpropc (fn2-decl-get :shape-preserved row) 'theorem nil world)
+                (function-symbolp child world)
+                (eq (symbol-class child world) :common-lisp-compliant)
+                (equal (len irs) (len ins))
+                (equal (car (last irs)) '(:core))
+                (equal (remove-eq nil ins) '(fn2-core))
+                (eq (car (last ins)) 'fn2-core)
+                (equal (remove-eq nil outs) '(fn2-core))
+                (eq (car (last outs)) 'fn2-core)
+                (equal (getpropc child 'stobjs-in nil world)
+                       (append (remove-eq 'fn2-core ins) inputs))
+                (equal child-outs (append (remove-eq 'fn2-core outs) written))))
+      (mv :mutable-callee-shape nil nil counter)
+   (mv-let (bad args) (fn2-product-exprs (butlast irs 1))
+    (mv-let (vars vals next) (fn2-product-outs child-outs counter)
+     (mv bad (list (list vars (cons child (append args inputs))))
+         (if (equal (len outs) 1) '(:core)
+          (list :tuple (append (take (1- (len outs)) vals) '((:core))))) next))))))
 ; Returns error, ordered binding stages, typed result, fresh-name counter.
 ; IF compiles two bounded code blocks; its product is bound once. Lambda
 ; arguments are evaluated once and mapped to typed values, never substituted.
@@ -166,7 +227,9 @@
         (let ((i (cadr (cadar irs))) (parts (cadadr irs)))
          (if (< i (len parts)) (mv nil stages (nth i parts) next)
           (mv :tuple-index nil nil next))))
-       ((member-eq 'fn2-core (getpropc fn 'stobjs-in nil world)) (mv :core-callee nil nil next))
+       ((member-eq 'fn2-core (getpropc fn 'stobjs-in nil world))
+        (mv-let (bad more ir final) (fn2-product-callee fn irs world next)
+         (mv bad (append stages more) ir final)))
        (t
         (mv-let (bad args) (fn2-product-exprs irs)
          (let ((outs (getpropc fn 'stobjs-out nil world)))
@@ -344,9 +407,9 @@
         (formals (getpropc fn 'formals nil world))
         (ins (getpropc fn 'stobjs-in nil world))
         (outs (getpropc fn 'stobjs-out nil world))
-        (entries (and (pseudo-termp body) (fn2-product-entries (fn2-core-child-registry world) (all-fnnames body))))
+        (entries (and (pseudo-termp body) (fn2-product-entries (fn2-core-child-registry world) (all-fnnames body) world)))
         (children (fn2-core-child-types entries))
-        (written (fn2-core-child-types (fn2-product-written-entries entries (all-fnnames body))))
+        (written (fn2-core-child-types (fn2-product-written-entries entries (all-fnnames body) world)))
         (args (append (remove-eq 'fn2-core formals) children))
         (face (fn2-columns-sym child "-CORE-FACE"))
         (execution (fn2-columns-sym child "-EXEC-CORE-FACE"))
@@ -385,15 +448,16 @@
         `(make-event (er soft 'defcore-product-child "Cannot lower ~x0: ~x1." ',fn ',(or problem err err2)))
      `(progn
        ,@(fn2-product-core-shape-events world)
-       ,@(fn2-product-spine-facts (fn2-product-written-entries entries (all-fnnames body)) world)
-       ,@(fn2-product-shadow-facts (fn2-product-written-entries entries (all-fnnames body)) world)
-       ,@(fn2-product-writeback-facts (fn2-product-written-entries entries (all-fnnames body))
-                                     (fn2-product-written-entries entries (all-fnnames body)) world)
+       ,@(fn2-product-spine-facts (fn2-product-written-entries entries (all-fnnames body) world) world)
+       ,@(fn2-product-shadow-facts (fn2-product-written-entries entries (all-fnnames body) world) world)
+       ,@(fn2-product-writeback-facts (fn2-product-written-entries entries (all-fnnames body) world)
+                                     (fn2-product-written-entries entries (all-fnnames body) world) world)
        (defun ,child ,args
         (declare (ignorable ,@args)
                  (xargs :stobjs ,children :guard ,guard :verify-guards t
                         :guard-hints (("Goal" :in-theory
-                           (enable ,@(fn2-lower-guard-theory guard body world))))))
+                           (enable ,@(fn2-lower-guard-theory guard body world)
+                             ,@(fn2-product-guard-callees (all-fnnames body) world))))))
         ,(fn2-product-block stages tail))
        (assert-event
         (and (equal (getpropc ',child 'stobjs-in nil (w state)) ',(append (remove-eq 'fn2-core ins) children))
@@ -408,9 +472,12 @@
                  (equal (,execution ,@formals) (,fn ,@formals)))
         :hints (("Goal" :in-theory
           (e/d (,execution ,child ,fn ,@opened
+                ,@(fn2-product-callee-properties (all-fnnames body) :shape-reverse world)
+                ,@(fn2-product-callee-properties (all-fnnames body) :execution world)
                 ,@(fn2-lower-leaf-properties (table-alist 'fn2-core-lowered world)
                                              (all-fnnames body) :reverse))
                (fn2-corep
+                ,@(fn2-product-callee-properties (all-fnnames body) :shape-refinement world)
                 ,@(fn2-product-proof-leaves (all-fnnames body) opened
                      (append (strip-cars entries) (strip-cars (fn2-product-writers entries))) world)
                 ,@(fn2-lower-leaf-properties (table-alist 'fn2-core-lowered world)
@@ -477,18 +544,27 @@
 (defmacro defcore-product-child (fn child &key teeth)
  `(make-event (value (fn2-product-events ',fn ',child ',teeth (w state)))))
 
-; Derive reader boundaries through the mutable core closure before compiling
-; its state carrier. Mutable callees stay in the shared typed expansion pass.
+ ; Derive both reader and mutable boundaries bottom-up. A mutable callee is
+; subsequently compiled as one child call using its proved spine contract.
+(defun fn2-product-family-events (order root child teeth world)
+ (declare (xargs :verify-guards nil))
+ (if (atom order) nil
+  (let* ((fn (car order))
+         (name (if (eq fn root) child (fn2-columns-sym fn "-LOWERED-CHILD")))
+         (macro (if (member-eq 'fn2-core (getpropc fn 'stobjs-out nil world))
+                    'defcore-product-child 'defcore-readonly-child)))
+   (cons `(,macro ,fn ,name ,@(and (eq fn root) teeth `(:teeth ,teeth)))
+         (fn2-product-family-events (cdr order) root child teeth world)))))
 (defmacro defcore-product-closure (fn child &key teeth)
  `(make-event
    (mv-let (problem order seen)
     (fn2-lower-reader-plan ',fn
      (append (strip-cars (fn2-core-child-registry (w state)))
              (strip-cars (fn2-product-writers (fn2-core-child-registry (w state)))))
-     (w state) nil nil 10000 t)
+     (w state) nil nil 10000 :all)
     (declare (ignore seen))
-    (if problem
-        (er soft 'defcore-product-closure "Cannot plan ~x0: ~x1." ',fn problem)
+    (if (or problem (not (member-eq ',fn order)))
+        (er soft 'defcore-product-closure "Cannot plan ~x0: ~x1." ',fn
+            (or problem :root-already-lowered))
       (value (cons 'progn
-               (append (fn2-lower-reader-family-events order nil nil nil)
-                       (list '(defcore-product-child ,fn ,child ,@(and teeth `(:teeth ,teeth)))))))))))
+        (fn2-product-family-events order ',fn ',child ',teeth (w state))))))))

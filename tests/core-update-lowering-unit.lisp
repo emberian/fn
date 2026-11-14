@@ -182,8 +182,10 @@
               '(:bounds (((42 38) 2) ((91) 1))))))
  :rule-classes nil)
 (assert-event
- (equal (fn2-update-call-count 'fn2-update-config-set-value
-          (getpropc 'fn2-update-composed-child 'unnormalized-body nil (w state))) 2))
+ (and (equal (fn2-update-call-count 'fn2-update-child
+               (getpropc 'fn2-update-composed-child 'unnormalized-body nil (w state))) 2)
+      (equal (fn2-update-call-count 'fn2-update-config-set-value
+               (getpropc 'fn2-update-composed-child 'unnormalized-body nil (w state))) 0)))
 (defun fn2-update-composed-init (fn2-core)
  (declare (xargs :stobjs fn2-core :verify-guards nil))
  (let ((fn2-core (fn2-update-fixture-init fn2-core)))
@@ -271,8 +273,10 @@
                 (:executable-counterpart fn2-update-read)))))
  :rule-classes nil)
 (assert-event
- (equal (fn2-update-call-count 'fn2-update-config-set-value
-          (getpropc 'fn2-update-read-after-child 'unnormalized-body nil (w state))) 1))
+ (and (equal (fn2-update-call-count 'fn2-update-child
+               (getpropc 'fn2-update-read-after-child 'unnormalized-body nil (w state))) 1)
+      (equal (fn2-update-call-count 'fn2-update-config-set-value
+               (getpropc 'fn2-update-read-after-child 'unnormalized-body nil (w state))) 0)))
 ;; Mutating evaluation order keeps the same effects but returns stale data.
 (defun fn2-update-read-before-mutant (i value fn2-core)
  (declare (xargs :stobjs fn2-core :guard (and (natp i) (unsigned-byte-p 8 value) (fn2-core-wfp fn2-core))))
@@ -573,6 +577,10 @@
    (mv first second fn2-core))))
 (encapsulate ()
  ; These are the corresponding rows of production core's read-over-write matrix.
+ (local (defthm fn2-update-config-read-after-config-write
+          (equal (fn2-core-config (update-fn2-core-config value core)) value)))
+ (local (defthm fn2-update-sibling-read-after-sibling-write
+          (equal (fn2-core-sibling (update-fn2-core-sibling value core)) value)))
  (local (defthm fn2-update-config-read-after-sibling-write
           (equal (fn2-core-config (update-fn2-core-sibling value core))
                  (fn2-core-config core))))
@@ -636,3 +644,65 @@
        (eq (fn2-decl-get :shape-preserved row) 'fn2-update-child-core-spine-preserved)
        (equal (fn2-update-call-count 'fn2-product-spinep
                (getpropc 'fn2-update-child-exec-core-face 'unnormalized-body nil (w state))) 0))))
+
+; Reusing a mutable boundary must preserve its full ABI and verified guard.
+(must-fail
+ (encapsulate ()
+  (local
+   (make-event
+    (value `(table fn2-core-lowered 'fn2-update-branch-children
+             ',(append '(:written (fn2-update-config))
+                (cdr (assoc-eq 'fn2-update-branch-children
+                       (table-alist 'fn2-core-lowered (w state)))))))))
+  (defcore-product-child fn2-update-reverse-order fn2-update-refused-abi)))
+(defun fn2-update-unverified-callee (flag i value fn2-update-config fn2-update-sibling)
+ (declare (ignore flag i value)
+          (xargs :stobjs (fn2-update-config fn2-update-sibling) :verify-guards nil))
+ (mv :opaque fn2-update-config fn2-update-sibling))
+(must-fail
+ (encapsulate ()
+  (local
+   (make-event
+    (value `(table fn2-core-lowered 'fn2-update-branch-children
+             ',(append '(:child fn2-update-unverified-callee)
+                (cdr (assoc-eq 'fn2-update-branch-children
+                       (table-alist 'fn2-core-lowered (w state)))))))))
+  (defcore-product-child fn2-update-reverse-order fn2-update-refused-guard)))
+(assert-event
+ (and (not (function-symbolp 'fn2-update-refused-abi (w state)))
+      (not (function-symbolp 'fn2-update-refused-guard (w state)))))
+
+; The intermediate mutable boundary is deliberately undeclared: the closure
+; must derive it before the caller, then retain one call per source occurrence.
+(defun fn2-update-auto-inner (i value fn2-core)
+ (declare (xargs :stobjs fn2-core
+                 :guard (and (natp i) (unsigned-byte-p 8 value) (fn2-core-wfp fn2-core))))
+ (fn2-update-source i value fn2-core))
+(defun fn2-update-auto-outer (i value fn2-core)
+ (declare (xargs :stobjs fn2-core
+                 :guard (and (natp i) (unsigned-byte-p 8 value) (fn2-core-wfp fn2-core))))
+ (mv-let (first fn2-core) (fn2-update-auto-inner i value fn2-core)
+  (mv-let (second fn2-core) (fn2-update-auto-inner i 43 fn2-core)
+   (mv first second fn2-core))))
+(defcore-product-closure fn2-update-auto-outer fn2-update-auto-outer-child)
+(assert-event
+ (and (equal (fn2-update-call-count 'fn2-update-auto-inner-lowered-child
+               (getpropc 'fn2-update-auto-outer-child 'unnormalized-body nil (w state))) 2)
+      (equal (fn2-update-call-count 'fn2-update-child
+               (getpropc 'fn2-update-auto-inner-lowered-child 'unnormalized-body nil (w state))) 1)
+      (equal (fn2-update-call-count 'fn2-update-config-set-value
+               (getpropc 'fn2-update-auto-outer-child 'unnormalized-body nil (w state))) 0)))
+(defthm fn2-update-auto-outer-positive
+ (and (fn2-corep '(((37) 1) ((91) 1)))
+      (fn2-core-wfp '(((37) 1) ((91) 1)))
+      (natp 0) (unsigned-byte-p 8 42)
+      (equal (fn2-update-auto-outer-child-core-face 0 42 '(((37) 1) ((91) 1)))
+             '(:ok :ok (((43) 1) ((91) 1)))))
+ :rule-classes nil)
+(defthm fn2-update-auto-outer-refusal
+ (and (fn2-corep '(((37) 1) ((91) 1)))
+      (fn2-core-wfp '(((37) 1) ((91) 1)))
+      (natp 9) (unsigned-byte-p 8 42)
+      (equal (fn2-update-auto-outer-child-core-face 9 42 '(((37) 1) ((91) 1)))
+             '(:bounds :bounds (((37) 1) ((91) 1)))))
+ :rule-classes nil)

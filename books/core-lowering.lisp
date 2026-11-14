@@ -77,7 +77,7 @@
             (fn2-lower-without-core-args (cdr formals) (cdr args)))))
 ; A certified reader boundary is a modular leaf. Keep its verified guard
 ; and refinement instead of duplicating the transitive machine dispatch tree.
-; Product lowering still expands state-returning boundaries through its IR.
+; Mutable boundaries with spine refinements are retained for the product IR.
 (defun fn2-lower-reader-leaf (term world)
  (declare (xargs :verify-guards nil))
  (let* ((fn (car term))
@@ -127,6 +127,13 @@
       (mv-let (problem args opened)
        (fn2-lower-expand-list (cdr call) fields world stack (1- fuel) readonlyp)
        (mv problem (cons (car call) args) opened)))))
+   ((and (not readonlyp)
+         (fn2-decl-get :shape-reverse
+           (cdr (assoc-eq (car term) (table-alist 'fn2-core-lowered world))))
+         (member-eq 'fn2-core (getpropc (car term) 'stobjs-out nil world)))
+    (mv-let (problem args opened)
+     (fn2-lower-expand-list (cdr term) fields world stack (1- fuel) readonlyp)
+     (mv problem (cons (car term) args) opened)))
    ((and (not (member-eq (car term) fields))
          (not (member-eq (car term) '(fn2-corep fn2-core-wfp)))
          (member-eq 'fn2-core (getpropc (car term) 'stobjs-in nil world)))
@@ -382,7 +389,8 @@
 (defmacro defcore-readonly-child (fn child &key teeth)
   `(make-event (value (fn2-lower-readonly-events ',fn ',child ',teeth (w state)))))
 
-; Plan the nonrecursive reader dependency DAG before emitting any events.
+; Plan the nonrecursive dependency DAG before emitting any events. NIL is
+; reader-only, T traverses writers for reader leaves, :ALL also emits writers.
 ; A refusal leaves no partially generated family in the world.
 (mutual-recursion
  (defun fn2-lower-reader-plan (fn fields world seen stack fuel through-writes)
@@ -393,7 +401,10 @@
         (not (member-eq 'fn2-core (getpropc fn 'stobjs-in nil world)))
         (member-eq fn seen)
         (and (not (fn2-arms-stobjs-of (getpropc fn 'stobjs-out nil world)))
-             (assoc-eq fn (table-alist 'fn2-core-lowered world))))
+             (assoc-eq fn (table-alist 'fn2-core-lowered world)))
+        (and (eq through-writes :all)
+             (fn2-decl-get :shape-reverse
+               (cdr (assoc-eq fn (table-alist 'fn2-core-lowered world))))))
     (mv nil nil seen))
    ((or (member-eq fn stack) (getpropc fn 'recursivep nil world))
     (mv :recursive-callee nil seen))
@@ -411,7 +422,8 @@
                             '(fn2-corep fn2-core-wfp))) fields world seen
                                    (cons fn stack) (1- fuel) through-writes)
        (mv problem (append order
-                      (and (not (fn2-arms-stobjs-of (getpropc fn 'stobjs-out nil world))) (list fn)))
+                      (and (or (eq through-writes :all)
+                               (not (fn2-arms-stobjs-of (getpropc fn 'stobjs-out nil world)))) (list fn)))
            (cons fn seen))))))))
  (defun fn2-lower-reader-plan-list (fns fields world seen stack fuel through-writes)
   (declare (xargs :verify-guards nil :measure (nfix fuel)))
