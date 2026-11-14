@@ -325,3 +325,21 @@ JSON as evidence would bypass that obligation. Ten focused inventory controls
 cover these boundaries, including altered constructor subjects/fields and forged
 completion flags; the existing 25 checker controls also pass. No new current-world
 packet or semantic proof is claimed by this tooling change.
+PoolCompare's current Lean source now checks without Mathlib or the aggregate
+Fuel import. The template proves the exact NFIX scalar identity privately and
+uses explicit finite branch cases. Its public theorem statements and generated
+function bodies are unchanged. The world-body generator's opt-in `public; scan`
+mode supplies only the selected public names and their bodies; ordinary private
+body imports retain their previous behavior. This removes an accidental reliance
+on Fuel re-exporting the entire world.
+
+The bounded Forge diagnosis distinguished three stages: imports passed,
+definitions/private scalar lemmas passed, and the old repeated-splitting decrease
+proof exited 137. Finite branch proofs then passed for decreases, emitted-loop
+agreement and the body equation, followed by the full PoolCompare module at
+`/tmp/stride-pool-final.log` (PID 530557, exit 0, 2Gi, `lean -j1`). Both the
+adequacy certificate and canonical-body theorem census contain only `propext`,
+`Classical.choice` and `Quot.sound`. Thirty-two public declaration statements were
+compared unchanged against the integrated source. These are Lean author checks
+on the current committed generated source, not a fresh ACL2 packet qualification
+or an increase in served semantic coverage.
