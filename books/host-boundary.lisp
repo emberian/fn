@@ -118,12 +118,15 @@
 
 (defun fn2-host-compress-settings (profile)
  (declare (xargs :guard t))
- (cond ((not (fn2-compress-profilep profile)) (mv :compress-profile 0 0 0 0))
-       ((not (fn2-profile-get :compress-enabled profile)) (mv :off 0 0 0 0))
-       (t (mv :ok (fn2-profile-get :compress-input-quantum profile)
-                  (fn2-profile-get :compress-output-quantum profile)
-                  (fn2-profile-get :compress-expansion-ratio profile)
-                  (fn2-profile-get :compress-expansion-burst profile)))))
+ (let ((capacity (fn2-codec-seed-capacity profile)))
+  (cond ((not (fn2-compress-profilep profile)) (mv :compress-profile 0 0 0 0 0))
+        ((not (fn2-profile-get :compress-enabled profile)) (mv :off 0 0 0 0 0))
+        ((not (and (posp capacity) (unsigned-byte-p 32 capacity)))
+         (mv :compress-profile 0 0 0 0 0))
+        (t (mv :ok (fn2-profile-get :compress-input-quantum profile)
+                   (fn2-profile-get :compress-output-quantum profile)
+                   (fn2-profile-get :compress-expansion-ratio profile)
+                   (fn2-profile-get :compress-expansion-burst profile) capacity)))))
 
 ; The sticky stop (fn2-core-stopped-p): the adapter's test before it touches
 ; a core it did not just turn.
