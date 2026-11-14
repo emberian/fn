@@ -39,6 +39,9 @@ def check(source):
     for op in ['fn2-checkpoint-root1-consume-op','fn2-checkpoint-events-consume',
                'fn2-checkpoint-map-consume-page-op','fn2-checkpoint-build-consume-op']:
         assert any(x and x[0] == op for x in walk(consume))
+    for phase in [':allocation-wait', ':installation-wait']:
+        assert ['and', ['equal','batch','row-batch'], ['equal','event','row-event']] in list(walk(arms[phase])), 'settlement must match the actual retained admission'
+    assert any(x and x[0] == 'fn2-checkpoint-master-ready-op' for x in walk(arms[':installation-begin']))
     assert [':read-result',[':wake']] in form[form.index(':observes')+1]
     return True
 if __name__ == '__main__':
@@ -46,7 +49,9 @@ if __name__ == '__main__':
     check(source)
     mutations = [source.replace('(< 0 budget)','(<= 0 budget)',1),
                  source.replace('(:wake-row target)','(:wake-row id)',1),
-                 source.replace('fn2-checkpoint-build-consume-op','fn2-checkpoint-build-ready-op',1)]
+                 source.replace('fn2-checkpoint-build-consume-op','fn2-checkpoint-build-ready-op',1),
+                 source.replace('(equal event row-event)','(equal event event)',1),
+                 source.replace('fn2-checkpoint-master-ready-op','fn2-checkpoint-build-ready-op',1)]
     for bad in mutations:
         try:
             check(bad)
@@ -54,4 +59,4 @@ if __name__ == '__main__':
             pass
         else:
             raise AssertionError('mutation escaped dispatch contract')
-    print('checkpoint master source controls: 3 rejected mutations; no runtime claim')
+    print('checkpoint master source controls: 5 rejected mutations; no runtime claim')
