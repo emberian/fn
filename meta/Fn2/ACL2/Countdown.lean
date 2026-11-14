@@ -1,6 +1,6 @@
 module
 
-public import Fn2.ACL2.Fuel
+public import Init
 import all Init.Data.String.Basic
 import all Init.Data.String.Slice
 import all Init.Data.String.TakeDrop

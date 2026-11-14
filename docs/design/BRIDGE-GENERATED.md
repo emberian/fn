@@ -226,3 +226,28 @@ fuel lemmas and body-emitter helpers; family work supplies declarations/template
 Then extend to the guarded arithmetic families and recursive components. This
 sequence does not reduce the destination: all served roots and their executable
 dependencies remain required.
+
+## Recursive closed-evaluation pilot
+
+`Fn2.ACL2.MemberExecEvaluation.closed_adequate_emitted` connects the actual
+`MEMBER-EQ-EXEC` emitted function to a finite canonical body derivation, with
+symbol keys and proper lists. Its logical closure contains `NOT`, `ATOM`, `ENDP`,
+and `EQ`; no recursive call is answered by an arbitrary dispatch oracle. Every
+recursive transition preserves the domain and strictly decreases `ACL2-COUNT`
+of the list. For every fuel greater than this measure, the transition evaluator
+returns the same successful result. This strengthens fuel stability to success.
+
+The positive witness searches past a nonmatching element. Controls exhibit
+insufficient fuel and a mutated transition that keeps its input forever. The
+module and all nine theorem censuses passed the bounded forge Lean author check
+using only `propext`, `Classical.choice`, and `Quot.sound` (2026-11-14). The generic
+`Countdown` module now imports only `Init`; its statements and proofs do not need
+the former whole-world `Fuel` dependency. Two emitted leaf modules were compiled
+from the frozen `6e07e62f3` source for this check.
+
+`tests/member-exec-domain-unit` checks the live ACL2 logical bodies, formals,
+guard, admitted measure, decrease, domain preservation, and positive witness.
+Its qualified probe and record certification remain pending. This pilot does not
+establish fresh served-packet coverage, complete guard reflection, or canonical
+object/primitive and symbol-package correspondence. Those remain separate bridge
+obligations.
