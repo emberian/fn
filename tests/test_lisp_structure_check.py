@@ -27,6 +27,11 @@ class LispStructureCheck(unittest.TestCase):
     def test_quoted_data_and_lexical_parentheses_are_ignored(self):
         self.assertEqual(check_source("'(if a b) ; (if bad\n (f #\\( \"(if bad)\")"), [])
 
+    def test_literal_macro_event_emitter_is_checked(self):
+        self.assertTrue(check_source("(defmacro events () '(progn (defun f (x) (if x t))))"))
+        self.assertEqual(check_source("(defmacro events () '(progn (defun f (x) (if x t nil))))"), [])
+        self.assertEqual(check_source("(defconst *data* '(progn (if x t))) (defun data () '(progn (if x t)))"), [])
+
     def test_real_cond_sibling_nesting_is_rejected(self):
         self.assertTrue(check_source("(cond (first (if a b c) (second d)) (t e))"))
 
