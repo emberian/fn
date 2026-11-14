@@ -404,10 +404,7 @@
 (defun-nx fn2-bc-release-condp (cell j q)
   (let ((ev (mv-nth 2 (fn2-op-cell cell j q))) (aux0 (mv-nth 6 (fn2-op-cell cell j q)))
         (rp (mv-nth 0 (fn2-op-cell 1 j q))) (rh (mv-nth 1 (fn2-op-cell 1 j q))))
-    (or (equal ev *fn2-event-borrow-released*)
-        (and (equal rh 0) (equal rp 0)
-             (or (equal ev *fn2-event-write-result*)
-                 (and (equal ev *fn2-event-send-result*) (equal aux0 0)))))))
+    (fn2-terminal-releases-borrow-p (fn2-ops-kind j q) ev aux0 rp rh)))
 (defthm fn2-bc-input-not-release
   (implies (fn2-bc-input-condp cell j q) (not (fn2-bc-release-condp cell j q))))
 (in-theory (disable fn2-bc-input-condp fn2-bc-release-condp))
@@ -419,10 +416,7 @@
   (fn2-borrow-valsp (nth 0 v) (nth 1 v) (nth 3 v) (nth 4 v) (nth 5 v) (nth 6 v)))
 (defun fn2-bc-vals-release (cell v)
   (let ((ev (if (equal cell 0) (nth 7 v) (nth 8 v))) (aux (if (equal cell 0) (nth 6 v) (nth 9 v))))
-    (or (equal ev *fn2-event-borrow-released*)
-        (and (equal (nth 5 v) 0) (equal (nth 4 v) 0)
-             (or (equal ev *fn2-event-write-result*)
-                 (and (equal ev *fn2-event-send-result*) (equal aux 0)))))))
+    (fn2-terminal-releases-borrow-p (nth 0 v) ev aux (nth 4 v) (nth 5 v))))
 (defun fn2-bc-vals-after (cell v)
   (let* ((h0 (if (equal cell 0) 1 (nth 3 v))) (h1 (if (equal cell 1) 1 (nth 5 v))))
     (list (nth 0 v) (fn2-harvest-phase-of h0 h1 (nth 4 v) (nth 0 v) (nth 6 v)) (nth 2 v) h0

@@ -1,6 +1,7 @@
 (in-package "ACL2")
 (include-book "../books/borrow-faces")
 (include-book "../books/assembly-init")
+(include-book "../books/terminal-values")
 (include-book "std/util/bstar" :dir :system)
 
 ; Teeth for FN2-CORE-BORROW-CONSERVATION. Both runs lease one write borrow
@@ -68,6 +69,10 @@
        (op (fn2-borrow-test-free-head fn2-core))
        (kind (if tls :tls-start :write))
        (event (if tls *fn2-event-tls-result* *fn2-event-write-result*))
+       ((mv outcome reason terminal-count a0 a1)
+        (fn2-sim-terminal-values (if tls *fn2-action-tls-start* *fn2-action-write*)
+          (cond ((eq tls :failed) :failed) ((eq tls :cancelled) :cancelled) (t :ok))
+          (if tls 0 1) 0 1 nil (eq tls :cancelled)))
        (a (if tls (list 0 1 slot gen 0 1 1 0 1 0) (list 0 slot gen 0 1 0 1 0 1 0)))
        ((unless (fn2-core-borrow-all-hyps kind fn2-core)) (mv :issue-hyps fn2-core))
        (fn2-core (fn2-core-borrow-all-step kind a fn2-core))
@@ -80,7 +85,7 @@
             (b* (((mv r fn2-core) (fn2-borrow-test-step :outbox-ack (list 1) fn2-core))
                  ((unless (eq r t)) (mv r fn2-core)))
               (fn2-borrow-test-step :post-result
-                (list 0 op og event *fn2-outcome-done* *fn2-reason-none* 1 0 0) fn2-core))
+                (list 0 op og event outcome reason terminal-count a0 a1) fn2-core))
           (let ((fn2-core (fn2-borrow-test-ack-post 1 nil og fn2-core))) (mv t fn2-core))))
        ((unless (eq r t)) (mv r fn2-core))
        (fn2-core (if positive fn2-core
@@ -97,6 +102,25 @@
                      (equal (fn2-core-borrows-accounted-check fn2-core) positive)))
         (mv :harvest-conclusion fn2-core))
        ((unless positive) (mv t fn2-core))
+       ;; A stale duplicate terminal cannot release the now-unborrowed row.
+       (stray-before (stobj-let ((fn2-ops (fn2-core-ops fn2-core))) (n)
+                       (fn2-ops-stray fn2-ops) n))
+       ((mv r fn2-core)
+        (if tls
+            (fn2-borrow-test-step :post-result
+              (list 0 op og event outcome reason terminal-count a0 a1) fn2-core)
+          (mv t fn2-core)))
+       ((unless (eq r t)) (mv r fn2-core))
+       (fn2-core (if tls (fn2-core-borrow-all-step :harvest nil fn2-core) fn2-core))
+       ((unless (and (equal (fn2-borrow-test-out-count slot fn2-core) 0)
+                     (fn2-core-borrows-accounted-check fn2-core)
+                     (not (fn2-core-stopped-p fn2-core))))
+        (mv :duplicate-terminal fn2-core))
+       ((unless (or (not tls)
+                    (equal (stobj-let ((fn2-ops (fn2-core-ops fn2-core))) (n)
+                             (fn2-ops-stray fn2-ops) n)
+                           (+ 1 stray-before))))
+        (mv :duplicate-not-stray fn2-core))
        ;; the released row is a workspace again: a pool write and its release
        ((mv r fn2-core) (fn2-borrow-test-step :pool-write (list slot gen 1 7 1 0 1) fn2-core))
        ((unless (eq r t)) (mv r fn2-core)))
@@ -118,3 +142,10 @@
 (assert-event (equal (fn2-tls-borrow-test-teeth t) t))
 (assert-event (equal (fn2-tls-borrow-test-teeth nil) t))
 (fn2-assert-owed-teeth fn2-core-borrow-conservation)
+
+(defun fn2-tls-terminal-borrow-control (status)
+ (declare (xargs :verify-guards nil))
+ (with-local-stobj fn2-core
+  (mv-let (result fn2-core) (fn2-borrow-test-run t status fn2-core) result)))
+(assert-event (equal (fn2-tls-terminal-borrow-control :failed) t))
+(assert-event (equal (fn2-tls-terminal-borrow-control :cancelled) t))
