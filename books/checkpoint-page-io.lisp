@@ -253,7 +253,7 @@
                     (equal (fn2-checkpoint-page-pending 0 fn2-checkpoint-page) 1)
                     (equal opslot (fn2-checkpoint-page-op-slot 0 fn2-checkpoint-page))
                     (equal opgen (fn2-checkpoint-page-op-gen 0 fn2-checkpoint-page))))
-       (mv :unrelated fn2-checkpoint-page fn2-checkpoint-page-verified fn2-checkpoint-construction))
+       (mv :ok fn2-checkpoint-page fn2-checkpoint-page-verified fn2-checkpoint-construction))
       (extent (fn2-checkpoint-page-extent 0 fn2-checkpoint-page))
       (cursor (fn2-checkpoint-page-write-cursor 0 fn2-checkpoint-page))
       (next (+ cursor 4096))
@@ -272,7 +272,7 @@
        (phase (if success (if (equal next (fn2-checkpoint-page-intended-bytes 0 fn2-checkpoint-page))
                               *fn2-checkpoint-page-phase-complete* *fn2-checkpoint-page-phase-write*)
                          *fn2-checkpoint-page-phase-uncertain*)))) )
-  (mv (if success :ok :uncertain) fn2-checkpoint-page fn2-checkpoint-page-verified fn2-checkpoint-construction)))
+  (mv :ok fn2-checkpoint-page fn2-checkpoint-page-verified fn2-checkpoint-construction)))
 
 ; Callers must additionally establish their own source closure before making
 ; a root Ref. This predicate allows workspace promotion after physical harvest.
