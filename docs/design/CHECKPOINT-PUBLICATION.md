@@ -501,8 +501,9 @@ the minimum profile admission bound does not reserve enough space against later
 growth. Both upload and ordinary journal allocation must respect that policy,
 while checkpoint maintenance consumes its already reserved tickets. FREE remains
 disabled until this chain is implemented and qualified.
-`checkpoint-metadata-resources.lisp` reserves root1's fixed working windows
-before acquisition of the C cut. Its two builders, twelve writers, cursor and
+`checkpoint-metadata-resources.lisp` atomically tries the complete working
+bundle only after the C cut is held. A refusal that acquired no bundle releases
+that exact cut immediately; it never waits for pool room while holding C. Its two builders, twelve writers, cursor and
 field stripe are distinct from the resident sealer, which may be frozen in
 mid-build. The stable nonwriter windows remain owned through later root and
 descriptor production. `checkpoint-metadata-driver.lisp` composes the actual
@@ -554,19 +555,20 @@ runs it. Its source activation constant remains NIL: recovery selection,
 ordered semantic/physical replay and combined maintenance headroom are still
 qualification requirements. Registering these bodies does not enable FREE.
 
-The maintenance owner admits the nineteen-window source bundle before acquiring
-the C cut, then drives the existing metadata, authenticated event, reservation
-closure, map/arena and descriptor callbacks. All producers bind once and use
+The maintenance owner closes and drains C before atomically trying the protected
+27-window bundle. It then drives the existing metadata, authenticated event,
+reservation closure, map/arena and descriptor callbacks. All producers bind once and use
 one generated page worker's destination-derived HAND/ACCEPT and completion
 handback. READ is a separate budgeted issue arm. The B lifecycle owns bounded
 construction/source retention, the only copy-to-install transition and thaw;
 B's actual journal owns allocation members and final installation. Publication
-uses its separate three windows. C rearm and snapshot release follow actual
+borrows its three dedicated future leases. C rearm and snapshot release follow actual
 bank completion, source-window release and B thaw; uncertainty retains state.
 
-The pressure source uses actual blocked retirement progress and cached source
-working-room availability. It does not guarantee journal directory, physical
-construction or publication-window headroom. Source arity, dispatch and gate
+The pressure source uses actual blocked retirement progress, cached complete
+working-bundle room and the derived resident-directory budget as hints. The
+held-cut admission rechecks permission. This does not guarantee physical
+construction headroom or maintenance liveness. Source arity, dispatch and gate
 controls are static checks; these actor books have not been admitted or run.
 
 The subsequent 20-book map roundtrip probe at `60d49ddff` refused at
@@ -582,7 +584,7 @@ probe used 108.16 seconds; recorded PIDs 121267/121292/121293 were absent after
 cleanup, and its allocation was released.
 
 Working-memory admission now reserves root19 plus future8 as actual leases in
-one per-class preflight/acquisition before the C cut. The future bundle contains
+one atomic per-class TRY at the exact held C cut. The future bundle contains
 one maximum-sized staging window, four serialized journal windows, and three
 anchor windows. The anchor writer waits for journal handback, borrows its exact
 three leases and returns them after its covering fence. Central cleanup frees
@@ -606,3 +608,12 @@ no-loan bundle. It cannot cancel allocations or release persistent edges, and
 cannot authorize cleanup after descriptor BEGIN. Normal publication and this
 abort share the physical release loop with separate permission guards.
 These actor guards and controls remain source-only and unadmitted.
+
+
+The resource order avoids stranding an existing STAGED transaction: the served
+transaction can park after C staging when B cannot admit its journal workspace.
+Capturing maintenance leases before closing C could exhaust the journal class
+and then wait for that same transaction. The master now drains first without
+holding working leases, and never parks on a pool wait while C is held.
+Retirement debt is captured at HELD and marked seen only after successful
+publication; a transient failed TRY therefore remains eligible when room returns.

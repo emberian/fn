@@ -54,6 +54,17 @@ def check(source):
     assert accept_do[2] == ['fn2-checkpoint-page-accept-return','*fn2-checkpoint-master-kind*','id','row-generation']
     assert accept_do[accept_do.index(':effects')+1] == [[':acquire',[':storage-window']]]
     holds = {x[0]:x[1:] for x in state[state.index(':holds')+1]}
+    for phase in [':snapshot-begin',':snapshot-poll',':reserve',':abort-empty']:
+        assert holds.get(phase,[]) == [], 'closing/drain and unsuccessful TRY own no working bundle'
+    assert [':next',':snapshot-begin'] in list(walk(arms[':catalog']))
+    assert [':next',':reserve'] in list(walk(arms[':snapshot-poll']))
+    assert [':next',':directory'] in list(walk(arms[':workspaces']))
+    assert ['fn2-checkpoint-root1-reserve-op','row-candidate','row-token','*fn2-checkpoint-master-kind*','id','row-generation'] in list(walk(arms[':reserve']))
+    assert ['fn2-checkpoint-master-abort-empty-ready-op'] in list(walk(arms[':abort-empty']))
+    assert any(x and x[0] == 'fn2-csnapshot-release' for x in walk(arms[':abort-empty']))
+    assert not any(x and x[0] in (':park',':wait',':yield') for x in walk(arms[':abort-empty']))
+    debt_updates = [(tag,pair) for tag,arm in arms.items() for node in walk(arm) if node and node[0] == ':set' for pair in node[1:] if pair[0] == 'retirement-seen']
+    assert debt_updates == [(':done',['retirement-seen','row-attempt-retirement'])]
     for phase in [':page-wait',':page-accept-return',':loan-uncertain']:
         assert holds[phase] == [':storage-window']
     for phase in [':page-take',':page-consume',':uncertain',':release-complete']:
@@ -96,7 +107,9 @@ if __name__ == '__main__':
                  source.replace('(:wake-row target)','(:wake-row id)',1),
                  source.replace('fn2-checkpoint-build-consume-op','fn2-checkpoint-build-ready-op',1),
                  source.replace('(equal event row-event)','(equal event event)',1),
-                 source.replace('fn2-checkpoint-master-ready-op','fn2-checkpoint-build-ready-op',1)]
+                 source.replace('fn2-checkpoint-master-ready-op','fn2-checkpoint-build-ready-op',1),
+                 source.replace('(:next :snapshot-begin)','(:next :reserve)',1),
+                 source.replace('(retirement-seen row-attempt-retirement)','(retirement-seen 0)',1)]
     for bad in mutations:
         try:
             check(bad)
@@ -104,4 +117,4 @@ if __name__ == '__main__':
             pass
         else:
             raise AssertionError('mutation escaped dispatch contract')
-    print('checkpoint master source controls: 7 rejected mutations; no runtime claim')
+    print('checkpoint master source controls: 9 rejected mutations; no runtime claim')
