@@ -140,29 +140,36 @@
 
  ; A retained mutable boundary returns scalars plus only its declared written
 ; children. The core carrier stays in the compiler IR, never a runtime tuple.
-(defun fn2-product-callee (fn irs world counter)
+(defun fn2-product-callee (fn irs world counter self)
  (declare (xargs :verify-guards nil))
- (let* ((row (cdr (assoc-eq fn (table-alist 'fn2-core-lowered world))))
+ (let* ((selfp (and self (eq fn (fn2-decl-get :source self))
+                         (equal (getpropc fn 'recursivep nil world) (list fn))))
+        (row (if selfp self (cdr (assoc-eq fn (table-alist 'fn2-core-lowered world)))))
         (child (fn2-decl-get :child row))
         (inputs (fn2-decl-get :children row))
         (written (fn2-decl-get :written row))
         (ins (getpropc fn 'stobjs-in nil world))
         (outs (getpropc fn 'stobjs-out nil world))
-        (child-outs (getpropc child 'stobjs-out nil world)))
-  (if (not (and (fn2-decl-get :shape-reverse row)
-                (getpropc (fn2-decl-get :shape-reverse row) 'theorem nil world)
-                (getpropc (fn2-decl-get :shape-preserved row) 'theorem nil world)
-                (function-symbolp child world)
-                (eq (symbol-class child world) :common-lisp-compliant)
+        (child-outs (if selfp (append (remove-eq 'fn2-core outs) written)
+                      (getpropc child 'stobjs-out nil world))))
+  (if (not (and
+                (if selfp
+                    (and (symbolp child) child (not (function-symbolp child world)))
+                  (and (fn2-decl-get :shape-reverse row)
+                       (getpropc (fn2-decl-get :shape-reverse row) 'theorem nil world)
+                       (getpropc (fn2-decl-get :shape-preserved row) 'theorem nil world)
+                       (function-symbolp child world)
+                       (eq (symbol-class child world) :common-lisp-compliant)))
                 (equal (len irs) (len ins))
                 (equal (car (last irs)) '(:core))
                 (equal (remove-eq nil ins) '(fn2-core))
                 (eq (car (last ins)) 'fn2-core)
                 (equal (remove-eq nil outs) '(fn2-core))
                 (eq (car (last outs)) 'fn2-core)
-                (equal (getpropc child 'stobjs-in nil world)
-                       (append (remove-eq 'fn2-core ins) inputs))
-                (equal child-outs (append (remove-eq 'fn2-core outs) written))))
+                (or selfp
+                    (and (equal (getpropc child 'stobjs-in nil world)
+                                (append (remove-eq 'fn2-core ins) inputs))
+                         (equal child-outs (append (remove-eq 'fn2-core outs) written))))))
       (mv :mutable-callee-shape nil nil counter)
    (mv-let (bad args) (fn2-product-exprs (butlast irs 1))
     (mv-let (vars vals next) (fn2-product-outs child-outs counter)
@@ -173,7 +180,7 @@
 ; IF compiles two bounded code blocks; its product is bound once. Lambda
 ; arguments are evaluated once and mapped to typed values, never substituted.
 (mutual-recursion
- (defun fn2-product-compile (term env entries children world counter fuel)
+ (defun fn2-product-compile (term env entries children world counter fuel self)
   (declare (xargs :verify-guards nil :measure (nfix fuel)))
   (cond
    ((zp fuel) (mv :compilation-budget nil nil counter))
@@ -182,16 +189,16 @@
                   (mv :unbound-variable nil nil counter))))
    ((eq (car term) 'quote) (mv nil nil (fn2-product-value term) counter))
    ((consp (car term))
-    (mv-let (err stages irs next) (fn2-product-compile-list (cdr term) env entries children world counter (1- fuel))
+    (mv-let (err stages irs next) (fn2-product-compile-list (cdr term) env entries children world counter (1- fuel) self)
      (if err (mv err nil nil next)
       (mv-let (err2 more ir final)
         (fn2-product-compile (caddar term) (append (pairlis$ (cadar term) irs) env)
-                             entries children world next (1- fuel))
+                             entries children world next (1- fuel) self)
         (mv err2 (append stages more) ir final)))))
    ((eq (car term) 'if)
-    (mv-let (err stages condition next) (fn2-product-compile (cadr term) env entries children world counter (1- fuel))
-     (mv-let (err2 left lir next2) (fn2-product-compile (caddr term) env entries children world next (1- fuel))
-      (mv-let (err3 right rir next3) (fn2-product-compile (cadddr term) env entries children world next2 (1- fuel))
+    (mv-let (err stages condition next) (fn2-product-compile (cadr term) env entries children world counter (1- fuel) self)
+     (mv-let (err2 left lir next2) (fn2-product-compile (caddr term) env entries children world next (1- fuel) self)
+      (mv-let (err3 right rir next3) (fn2-product-compile (cadddr term) env entries children world next2 (1- fuel) self)
        (mv-let (err4 test) (fn2-product-expr condition)
         (mv-let (err5 ltail) (fn2-product-return lir children)
          (mv-let (err6 rtail) (fn2-product-return rir children)
@@ -205,7 +212,7 @@
                  (append stages (list (list vars `(if ,test ,(fn2-product-block left ltail)
                                                          ,(fn2-product-block right rtail))))) ir final)))))))))))
    (t
-    (mv-let (err stages irs next) (fn2-product-compile-list (cdr term) env entries children world counter (1- fuel))
+    (mv-let (err stages irs next) (fn2-product-compile-list (cdr term) env entries children world counter (1- fuel) self)
      (let* ((fn (car term)) (entry (assoc-eq fn entries))
             (writer (assoc-eq fn (fn2-product-writers entries))))
       (cond
@@ -230,7 +237,7 @@
          (if (< i (len parts)) (mv nil stages (nth i parts) next)
           (mv :tuple-index nil nil next))))
        ((member-eq 'fn2-core (getpropc fn 'stobjs-in nil world))
-        (mv-let (bad more ir final) (fn2-product-callee fn irs world next)
+        (mv-let (bad more ir final) (fn2-product-callee fn irs world next self)
          (mv bad (append stages more) ir final)))
        (t
         (mv-let (bad args) (fn2-product-exprs irs)
@@ -239,12 +246,12 @@
            (mv-let (vars vals final) (fn2-product-outs outs next)
             (mv nil (append stages (list (list vars (cons fn args))))
                 (if (equal (len vals) 1) (car vals) (list :tuple vals)) final))))))))))))
- (defun fn2-product-compile-list (terms env entries children world counter fuel)
+ (defun fn2-product-compile-list (terms env entries children world counter fuel self)
   (declare (xargs :verify-guards nil :measure (nfix fuel)))
   (cond ((atom terms) (mv nil nil nil counter))
         ((zp fuel) (mv :compilation-budget nil nil counter))
-        (t (mv-let (err stages ir next) (fn2-product-compile (car terms) env entries children world counter (1- fuel))
-             (mv-let (err2 more rest final) (fn2-product-compile-list (cdr terms) env entries children world next (1- fuel))
+        (t (mv-let (err stages ir next) (fn2-product-compile (car terms) env entries children world counter (1- fuel) self)
+             (mv-let (err2 more rest final) (fn2-product-compile-list (cdr terms) env entries children world next (1- fuel) self)
               (mv (or err err2) (append stages more) (cons ir rest) final)))))))
 (defun fn2-product-env (formals)
  (declare (xargs :verify-guards nil))
@@ -457,7 +464,7 @@
  (if (atom events) nil
   (append (and (eq (caar events) 'defthm) (list (cadar events)))
           (fn2-product-invariant-theorems (cdr events)))))
-(defun fn2-product-events (fn child teeth world)
+(defun fn2-product-events-mode (fn child teeth world recursive)
  (declare (xargs :verify-guards nil))
  (mv-let (expansion-problem body opened)
   (fn2-lower-expand (getpropc fn 'unnormalized-body nil world)
@@ -465,6 +472,7 @@
             (strip-cars (fn2-product-writers (fn2-core-child-registry world))))
     world (list fn) 10000 nil)
  (let* ((body body)
+        (measure (and recursive (fn2-lower-scalar-measure fn world)))
         (formals (getpropc fn 'formals nil world))
         (ins (getpropc fn 'stobjs-in nil world))
         (outs (getpropc fn 'stobjs-out nil world))
@@ -507,11 +515,13 @@
                ((not (and (equal (remove-eq nil outs) '(fn2-core))
                           (eq (car (last outs)) 'fn2-core))) :output-shape)
                ((and (null written) (equal (len outs) 1)) :empty-result)
-               ((getpropc fn 'recursivep nil world) :recursive)
+               ((and (getpropc fn 'recursivep nil world) (not measure)) :recursive)
+               ((and recursive (not measure)) :unsupported-recursive-measure)
                ((or (function-symbolp child world) (function-symbolp face world)) :already-defined)
                ((member-eq 'fn2-core (fn2-lower-vars guard)) :unlowered-guard)
                (t nil))))
-  (mv-let (err stages ir next) (fn2-product-compile body (fn2-product-env formals) entries written world 0 10000)
+  (mv-let (err stages ir next) (fn2-product-compile body (fn2-product-env formals) entries written world 0 10000
+      (and measure (list :source fn :child child :children children :written written)))
    (declare (ignore next))
    (mv-let (err2 tail) (fn2-product-return ir written)
     (if (or problem err err2)
@@ -526,14 +536,21 @@
                                      (fn2-product-written-entries entries (all-fnnames body) world) world)
        (defun ,child ,args
         (declare (ignorable ,@args)
-                 (xargs :stobjs ,children :guard ,guard :verify-guards t
+                 (xargs :stobjs ,children :guard ,guard :verify-guards ,(not measure)
+                        ,@(and measure `(:measure ,measure :ruler-extenders :all))
                         :guard-hints (("Goal" :in-theory
                            (enable ,@(fn2-lower-guard-theory guard body world)
                              ,@(fn2-product-guard-callees (all-fnnames body) world))))))
         ,(fn2-product-block stages tail))
        ,@invariants
+       ,@(and measure
+           `((verify-guards ,child
+              :hints (("Goal" :in-theory
+                (enable ,@(fn2-lower-guard-theory guard body world)
+                        ,@(fn2-product-guard-callees (all-fnnames body) world)))))))
        (assert-event
-        (and (equal (getpropc ',child 'stobjs-in nil (w state)) ',(append (remove-eq 'fn2-core ins) children))
+        (and (eq (symbol-class ',child (w state)) :common-lisp-compliant)
+             (equal (getpropc ',child 'stobjs-in nil (w state)) ',(append (remove-eq 'fn2-core ins) children))
              (equal (getpropc ',child 'stobjs-out nil (w state)) ',(append (remove-eq 'fn2-core outs) written))))
        ,(fn2-product-wrapper fn child execution entries written world)
        (assert-event (and (equal (getpropc ',execution 'stobjs-in nil (w state)) ',ins)
@@ -543,7 +560,7 @@
        (defthm ,shaped
         (implies (fn2-product-spinep ,count fn2-core)
                  (equal (,execution ,@formals) (,fn ,@formals)))
-        :hints (("Goal" :in-theory
+        :hints (("Goal" ,@(and measure `(:induct (,fn ,@formals))) :in-theory
           (e/d (,execution ,child ,fn ,@opened
                 ,@(strip-cadrs (fn2-product-read-events entries
                       (fn2-product-written-entries entries (all-fnnames body) world)))
@@ -553,8 +570,8 @@
                                              (all-fnnames body) :reverse))
                (fn2-corep ,@(strip-cars entries) ,@(strip-cars (fn2-product-writers entries))
                 ,@(fn2-product-callee-properties (all-fnnames body) :shape-refinement world)
-                ,@(fn2-product-proof-leaves (all-fnnames body) opened
-                     (append (strip-cars entries) (strip-cars (fn2-product-writers entries))) world)
+                ,@(remove-eq fn (fn2-product-proof-leaves (all-fnnames body) opened
+                     (append (strip-cars entries) (strip-cars (fn2-product-writers entries))) world))
                 ,@(fn2-lower-leaf-properties (table-alist 'fn2-core-lowered world)
                                              (all-fnnames body) :source)
                 ,@(fn2-lower-leaf-properties (table-alist 'fn2-core-lowered world)
@@ -617,6 +634,12 @@
           :children ,children :written ,written :child-invariants ,(fn2-product-invariant-theorems invariants)
           :obligation ,refinement
           :execution-obligation ,guarded)))))))))
+(defun fn2-product-events (fn child teeth world)
+ (declare (xargs :verify-guards nil))
+ (fn2-product-events-mode fn child teeth world nil))
+; Staged entry point: not selected by production closure planning yet.
+(defmacro defcore-recursive-product-child (fn child &key teeth)
+ `(make-event (value (fn2-product-events-mode ',fn ',child ',teeth (w state) t))))
 (defmacro defcore-product-child (fn child &key teeth)
  `(make-event (value (fn2-product-events ',fn ',child ',teeth (w state)))))
 

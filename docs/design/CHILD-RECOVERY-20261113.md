@@ -344,3 +344,20 @@ retain a recursive child call, prove its termination, guards and output
 invariants, and prove whole-core reconstruction by induction before registry
 admission. Mutual recursion and state-dependent measures should refuse until
 explicitly supported. No handwritten recursive child twin is planned.
+
+The staged `defcore-recursive-product-child` now emits a recursive child only
+for a singleton source clique with an admitted `(nfix scalar-formal)` measure.
+A private self ABI descriptor is compiler input, never a provisional registry
+row. ACL2 independently proves child termination, output invariants, guards,
+exact ABI and the whole-spine equality by source induction before registration.
+The existing unconditional totalized face and guarded executable contracts
+remain unchanged. Generated bindings use ruler extenders so the actual branch
+condition participates in termination analysis; self is excluded from opaque
+callee proof leaves. Production closure planning still refuses recursion.
+
+The warm pre-B fixture world passed all prior 135 forms (4.82s), plus the
+recursive package (0.37s), complete two-child one/two-step and bounds controls,
+a malformed-spine counterexample, and mutual/state-dependent measure refusals
+without partial registration. Actual stobj execution compares source and child
+outputs and complete fixture snapshots, and detects a one-iteration mutant.
+This is a staged generator source gate, not current production certification.

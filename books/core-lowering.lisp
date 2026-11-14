@@ -100,6 +100,20 @@
       (mv t nil (cons child
                   (append (fn2-lower-without-core-args formals (cdr term))
                           (strip-cadrs bindings)))))))))
+; Singleton recursion is admitted only with a scalar, source-owned measure.
+; The generated child must independently prove termination with that measure.
+(defun fn2-lower-scalar-measure (fn world)
+ (declare (xargs :verify-guards nil))
+ (let* ((justification (getpropc fn 'justification nil world))
+        (measure (and justification (access justification justification :measure)))
+        (formal (cadr measure)))
+  (and (equal (getpropc fn 'recursivep nil world) (list fn))
+       (equal measure (list 'nfix formal))
+       (symbolp formal) formal
+       (member-eq formal (getpropc fn 'formals nil world))
+       (not (nth (position-eq formal (getpropc fn 'formals nil world))
+                 (getpropc fn 'stobjs-in nil world)))
+       measure)))
 (mutual-recursion
  (defun fn2-lower-expand (term fields world stack fuel readonlyp)
   (declare (xargs :verify-guards nil :measure (nfix fuel)))
@@ -127,6 +141,11 @@
       (mv-let (problem args opened)
        (fn2-lower-expand-list (cdr call) fields world stack (1- fuel) readonlyp)
        (mv problem (cons (car call) args) opened)))))
+   ((and (not readonlyp) (eq (car term) (car (last stack)))
+         (fn2-lower-scalar-measure (car term) world))
+    (mv-let (problem args opened)
+     (fn2-lower-expand-list (cdr term) fields world stack (1- fuel) readonlyp)
+     (mv problem (cons (car term) args) opened)))
    ((and (not readonlyp)
          (fn2-decl-get :shape-reverse
            (cdr (assoc-eq (car term) (table-alist 'fn2-core-lowered world))))
