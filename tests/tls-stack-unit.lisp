@@ -22,21 +22,20 @@
       ((mv span private-channel private-offset private-count)
        (fn2-compress-tls-span 7 17 3 9 serial action offset count
         fn2-compress-transport fn2-tls-transport fn2-tls-record))
-      ((mv stale-nonce a b c)
+      ((mv stale-nonce & & &)
        (fn2-compress-tls-span 7 18 3 9 serial action offset count
         fn2-compress-transport fn2-tls-transport fn2-tls-record))
-      ((mv wrong-offset d e f)
+      ((mv wrong-offset & & &)
        (fn2-compress-tls-span 7 17 3 9 serial action (+ 1 offset) count
         fn2-compress-transport fn2-tls-transport fn2-tls-record))
       (fn2-compress-transport (fn2-compress-transport-put 0 (serial 12)))
-      ((mv replaced g h i)
+      ((mv replaced & & &)
        (fn2-compress-tls-span 7 17 3 9 serial action offset count
         fn2-compress-transport fn2-tls-transport fn2-tls-record))
       (fn2-compress-transport (fn2-compress-transport-put 0 (serial 11) (pending 0)))
-      ((mv retired j k l)
+      ((mv retired & & &)
        (fn2-compress-tls-span 7 17 3 9 serial action offset count
         fn2-compress-transport fn2-tls-transport fn2-tls-record)))
-  (declare (ignore a b c d e f g h i j k l))
   (mv (and (eq parent :ok) (= channel (if writep 3 2)) (= base (if writep 2 0))
            (eq bound :ok) (eq selected :act) (= action (if writep 13 12))
            (eq span :ok) (= private-channel channel) (= private-offset base) (= private-count 4)

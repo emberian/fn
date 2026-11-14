@@ -37,9 +37,8 @@
        (fn2-tls-record-next 8 0 fn2-tls-transport fn2-tls-record))
       ((mv r6 fn2-tls-transport fn2-tls-record)
        (fn2-tls-record-step-observe s6 2 0 0 fn2-tls-transport fn2-tls-record))
-      ((mv done action offset count serial fn2-tls-transport fn2-tls-record)
+      ((mv done & & count & fn2-tls-transport fn2-tls-record)
        (fn2-tls-record-next 8 0 fn2-tls-transport fn2-tls-record)))
-  (declare (ignore action offset serial))
   (mv (and (eq bound :ok) (eq stale :stale) unchanged
            (equal (list a1 k1 o1 n1 a2 k2 o2 n2 a3 k3 o3 n3)
                   '(:act 13 0 4 :act 13 4 4 :act 13 6 4))
