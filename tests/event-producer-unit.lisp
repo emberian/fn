@@ -40,6 +40,34 @@
       ((mv fn2-core fn2-sim fn2-own) (fn2-epv-physical fn2-core fn2-sim fn2-own)))
   (fn2-epp-drive (- fuel 1) fn2-event-build fn2-checkpoints fn2-checkpoint-refs fn2-checkpoint-bytes fn2-checkpoint-construction fn2-checkpoint-page-verified fn2-core fn2-sim fn2-own)))
 
+; Missing successful publication must not reset a real bound source job.
+(defun fn2-epp-rearm-control-body (fn2-event-build fn2-checkpoints fn2-checkpoint-refs fn2-checkpoint-publication fn2-checkpoint-lifecycle fn2-core)
+ (declare (xargs :stobjs (fn2-event-build fn2-checkpoints fn2-checkpoint-refs fn2-checkpoint-publication fn2-checkpoint-lifecycle fn2-core) :verify-guards nil))
+ (b* ((phase (fn2-event-build-phase 0 fn2-event-build))
+      (token (fn2-event-build-token 0 fn2-event-build))
+      (fn2-checkpoint-publication (fn2-checkpoint-publication-init 1 fn2-checkpoint-publication))
+      (fn2-checkpoint-lifecycle (fn2-checkpoint-lifecycle-init 1 fn2-checkpoint-lifecycle)))
+  (stobj-let ((fn2-event-read (fn2-core-event-read fn2-core)) (fn2-journal-members (fn2-core-journal-members fn2-core))
+              (fn2-csnapshot (fn2-core-csnapshot fn2-core)) (fn2-extents (fn2-core-extents fn2-core))
+              (fn2-mk (fn2-core-mk fn2-core)) (fn2-fc (fn2-core-fc fn2-core)) (fn2-digests (fn2-core-digests fn2-core)))
+   (code fn2-event-build fn2-event-read fn2-journal-members)
+   (fn2-event-producer-rearm fn2-event-build fn2-event-read fn2-journal-members fn2-csnapshot fn2-checkpoints fn2-checkpoint-refs
+    fn2-checkpoint-publication fn2-checkpoint-lifecycle fn2-extents fn2-mk fn2-fc fn2-digests)
+   (mv (and (eq code :retained) (= phase (fn2-event-build-phase 0 fn2-event-build))
+            (= token (fn2-event-build-token 0 fn2-event-build))
+            (= (fn2-event-read-phase 0 fn2-event-read) *fn2-event-read-phase-complete*)
+            (= (fn2-journal-members-phase 0 fn2-journal-members) *fn2-journal-members-phase-done*))
+       fn2-event-build fn2-checkpoint-publication fn2-checkpoint-lifecycle fn2-core))))
+(defun fn2-epp-rearm-control (fn2-event-build fn2-checkpoints fn2-checkpoint-refs fn2-core)
+ (declare (xargs :stobjs (fn2-event-build fn2-checkpoints fn2-checkpoint-refs fn2-core) :verify-guards nil))
+ (with-local-stobj fn2-checkpoint-publication
+  (mv-let (answer fn2-event-build fn2-checkpoint-publication fn2-core)
+   (with-local-stobj fn2-checkpoint-lifecycle
+    (mv-let (answer fn2-event-build fn2-checkpoint-publication fn2-checkpoint-lifecycle fn2-core)
+     (fn2-epp-rearm-control-body fn2-event-build fn2-checkpoints fn2-checkpoint-refs fn2-checkpoint-publication fn2-checkpoint-lifecycle fn2-core)
+     (mv answer fn2-event-build fn2-checkpoint-publication fn2-core)))
+   (mv answer fn2-event-build fn2-core))))
+
 (defun fn2-epp-body (pressure fn2-event-build fn2-checkpoint-build fn2-checkpoints fn2-checkpoint-refs fn2-checkpoint-bytes
                      fn2-checkpoint-construction fn2-checkpoint-page fn2-checkpoint-page-verified fn2-core fn2-sim fn2-own)
  (declare (xargs :stobjs (fn2-event-build fn2-checkpoint-build fn2-checkpoints fn2-checkpoint-refs fn2-checkpoint-bytes
@@ -148,9 +176,11 @@
         (fn2-event-build-consume-page fn2-event-build fn2-event-read fn2-csnapshot fn2-checkpoints fn2-checkpoint-refs fn2-checkpoint-bytes
           fn2-checkpoint-page fn2-checkpoint-page-verified fn2-checkpoint-construction fn2-extents fn2-mk fn2-fc fn2-digests fn2-pool)
         (mv code fn2-event-build fn2-checkpoint-refs fn2-checkpoint-bytes)))
+      ((mv rearm-retained fn2-event-build fn2-core)
+       (fn2-epp-rearm-control fn2-event-build fn2-checkpoints fn2-checkpoint-refs fn2-core))
       (unchanged (stobj-let ((fn2-pool (fn2-core-pool fn2-core))) (p)
                    (equal before (fn2-pool-logical-octets 4096 (fn2-pool-base ps fn2-pool) fn2-pool)) p)))
-  (mv (and prefix (eq prepared :page) decoded (eq bound :ok) (eq waited :wait) (eq consumed :pending) unchanged
+  (mv (and prefix (eq prepared :page) decoded (eq bound :ok) (eq waited :wait) (eq consumed :pending) unchanged rearm-retained
            (= (fn2-event-build-phase 0 fn2-event-build) *fn2-event-build-phase-bound*)
            (= (fn2-event-build-directory-completed 0 fn2-event-build) 0)
            (= (fn2-checkpoint-refs-root-source-complete 3 fn2-checkpoint-refs) 0))
