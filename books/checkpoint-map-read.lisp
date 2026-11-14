@@ -26,7 +26,8 @@
  (extent base token okind oslot ogen fn2-extents fn2-fields) :position 1)
 
 ; The caller advances one extent per step. :skip is explicit and cannot count
-; as a ticket. A retained ticket whose exact identity changed is a conflict.
+; as a ticket. Other ordinals are skipped: physical free-list order need not
+; match journal order. A requested ticket with changed identity is a conflict.
 (defun fn2-checkpoint-frozen-arena-entry (extent ordinal base token okind oslot ogen
                                         fn2-checkpoint-construction fn2-extents fn2-fields)
  (declare (xargs :stobjs (fn2-checkpoint-construction fn2-extents fn2-fields)
@@ -39,14 +40,14 @@
        (mv :bounds fn2-fields))
       ((unless (and (equal (fn2-checkpoint-construction-live extent fn2-checkpoint-construction) 1)
                      (equal (fn2-checkpoint-construction-token extent fn2-checkpoint-construction) token)
-                     (equal (fn2-checkpoint-construction-role extent fn2-checkpoint-construction) 6)))
+                     (equal (fn2-checkpoint-construction-role extent fn2-checkpoint-construction) 6)
+                     (equal (fn2-checkpoint-construction-ordinal extent fn2-checkpoint-construction) ordinal)))
        (mv :skip fn2-fields))
       (epoch (fn2-checkpoint-construction-epoch extent fn2-checkpoint-construction))
       (counter (fn2-checkpoint-construction-counter extent fn2-checkpoint-construction))
       ((unless (and (equal (fn2-checkpoint-construction-owner-kind extent fn2-checkpoint-construction) okind)
                      (equal (fn2-checkpoint-construction-owner-slot extent fn2-checkpoint-construction) oslot)
                      (equal (fn2-checkpoint-construction-owner-gen extent fn2-checkpoint-construction) ogen)
-                     (equal (fn2-checkpoint-construction-ordinal extent fn2-checkpoint-construction) ordinal)
                      (eq (fn2-alloc-handle-code extent epoch counter fn2-extents) :ok)
                      (equal (fn2-extents-state extent fn2-extents) *fn2-extent-state-reserved*)))
        (mv :conflict fn2-fields))
