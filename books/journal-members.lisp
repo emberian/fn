@@ -5,12 +5,7 @@
 (include-book "journal-record-body")
 (fn2-book-layer :b)
 
-(defcolumns fn2-journal-members
- ((phase (:enum fn2-journal-members-phase (:idle :scanning :leaf :done :invalid)))
-  (next-event :u60) (end-event :u60) (event :u60)
-  (off :u32) (end :u32) (start :u32) (leaf-end :u32)
-  (slot :u32) (gen :u60) (owner-kind :u8) (owner-slot :u32) (owner-gen :u60)
-  (hash-phase :u8)))
+(include-book "journal-members-state")
 
 (defun fn2-journal-members-begin (first members off end slot gen okind oslot ogen fn2-journal-members)
  (declare (xargs :stobjs fn2-journal-members :guard (fn2-journal-members-wfp fn2-journal-members)))
