@@ -55,9 +55,11 @@ No count of books, witnesses, or generated candidates substitutes for this chain
    cut mapping incomplete. Physical I/O return and ACL2 completion posting need
    distinct crash states, including short/error outcomes. Owner: durability and
    native lanes. A legal trace prefix ending after Accept may refute the current
-   equality with a complete canonical run: this is an UNEXECUTED counterexample
-   candidate. Test it; if confirmed, prove prefix refinement and equality under
-   a genuine completion condition instead.
+   equality with a complete canonical run. This counterexample is now executed
+   and record-certified (`c18a79e64`, run `certify-20261114T002126Z-3432086`):
+   every premise holds, but the prefix has no emitted bytes while the canonical
+   run has emitted its greeting. Prove prefix refinement and equality under a
+   genuine completion condition instead.
 
 4. **Lean model proofs do not yet establish ACL2 execution equivalence.**
    The checker explicitly excludes closure-wide exported-body evaluation and

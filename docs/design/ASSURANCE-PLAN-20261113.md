@@ -49,9 +49,11 @@ qualified baseline REPL evidence is in
 `forge:/build/lanes/stride-owed-integrated/build/proof-repl/stride-turn-inductive/log`.
 The control is record-certified in `certify-20261114T001317Z-3423328`.
 
-Other suspected counterexamples remain unexecuted: zero-budget issue, obsolete
-4129 turn bound, and native Accept-prefix equality. Their status must not be
-upgraded from source inspection alone.
+The native Accept-prefix equality counterexample is also record-certified
+(`c18a79e64`, run `certify-20261114T002126Z-3432086`). A real zero-budget issue
+was observed with a queued Close descriptor in the assurance-budget lane; its
+fix and record gate remain in progress. The obsolete 4129 bound still needs an
+executed witness; source inspection alone is not a counterexample.
 
 ## Shared foundations to freeze
 
