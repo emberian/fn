@@ -128,3 +128,49 @@
   :hints (("Goal" :in-theory '(fn2-env-lent-ok)
            :use ((:instance fn2-env-reach-init-no-lent
                     (u (fn2-env-lent-ok-witness (fn2-init-executor profile mode scribe-p c))))))))
+
+; Actual admission preserves the coupled history and row coverage.
+; A stopped result still carries the global durability observation.
+(defthm fn2-env-reach-admit-ops-frame
+  (equal (fn2-core-ops (fn2-env-admit members mode c)) (fn2-core-ops c))
+  :hints (("Goal" :in-theory '(fn2-env-ok fn2-core-ops)
+           :use ((:instance fn2-env-admit-ok (fn2-core c) (c0 c))))))
+
+(defthm fn2-env-reach-history-admit
+  (implies (and (fn2-env-reach-active-inv profile acked log c)
+                (equal (fn2-env-tag action) :admit))
+           (mv-let (entry after) (fn2-env-step action nil image rlog c)
+             (fn2-env-reach-history profile
+               (fn2-env-observe (fn2-env-commit-ids profile) acked after)
+               (append log (if entry (list entry) nil)) after)))
+  :hints (("Goal" :in-theory '(fn2-env-reach-active-inv fn2-env-reach-structure
+                               fn2-env-reach-history fn2-env-fl
+                               fn2-env-observe-true-listp true-listp-append)
+           :use ((:instance fn2-env-dur-inv-admit-step (fn2-core c) (ids (fn2-env-commit-ids profile)))
+                 (:instance fn2-env-j5-rows-admit-step (ids (fn2-env-commit-ids profile)))
+                 (:instance fn2-env-j5e-rows-admit-step (ids (fn2-env-commit-ids profile)))
+                 (:instance fn2-env-fresh-lent-admit-step)))))
+
+(defthm fn2-env-reach-admit-step
+  (implies (and (fn2-env-reach-active-inv profile acked log c)
+                (equal (fn2-env-tag action) :admit))
+           (mv-let (entry after) (fn2-env-step action nil image rlog c)
+             (fn2-env-reach-inv profile
+               (fn2-env-observe (fn2-env-commit-ids profile) acked after)
+               (append log (if entry (list entry) nil)) after)))
+  :hints (("Goal" :in-theory '(fn2-env-reach-active-inv fn2-env-reach-structure
+                               fn2-env-reach-history fn2-env-reach-inv fn2-env-dur-inv
+                               fn2-env-reach-admit-ops-frame
+                               fn2-env-observe-true-listp true-listp-append
+                               fn2-env-step-preserves-type fn2-env-step-preserves-wfp
+                               fn2-env-admit-preserves-type fn2-env-admit-preserves-wfp
+                               (:e zp) (:e binary-+) (:e unary--)
+                               car-cons cdr-cons mv-nth (:e mv-nth) (:e equal) (:e car) (:e cdr))
+           :use ((:instance fn2-env-reach-history-admit)
+                 (:instance fn2-env-step-admit-unfolds (fn2-core c))
+                 (:instance fn2-env-admit-semanticp (members (fn2-env-arg 1 action)) (mode (fn2-env-arg 2 action)))
+                 (:instance fn2-env-commit-slots-p-step-but-turn (p profile) (fn2-core c))
+                 (:instance fn2-env-commit-dir-canonical-p-step-but-turn (p profile))
+                 (:instance fn2-env-f-step-but-turn)
+                 (:instance fn2-env-x-step-but-turn)
+                 (:instance fn2-env-q-step-but-turn)))))
