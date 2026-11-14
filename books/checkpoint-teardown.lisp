@@ -100,7 +100,7 @@
                (fn2-alloc-edge-matchesp edge checkpoint e epoch counter :selectable-checkpoint fn2-alloc-edges)) 1 0)
       (fn2-checkpoint-teardown-root-count (+ 1 role) c e epoch counter checkpoint fn2-extents fn2-ops fn2-alloc-edges)))))
 
-(defun fn2-checkpoint-teardown-eligiblep (c e fn2-checkpoints fn2-checkpoint-construction fn2-extents fn2-ops fn2-alloc-edges)
+(defun fn2-checkpoint-teardown-ownedp (c e fn2-checkpoints fn2-checkpoint-construction fn2-extents fn2-ops fn2-alloc-edges)
  (declare (xargs :stobjs (fn2-checkpoints fn2-checkpoint-construction fn2-extents fn2-ops fn2-alloc-edges)
   :guard (and (fn2-checkpoints-wfp fn2-checkpoints) (fn2-checkpoint-construction-wfp fn2-checkpoint-construction)
               (fn2-extents-wfp fn2-extents) (fn2-ops-wfp fn2-ops) (fn2-alloc-edges-wfp fn2-alloc-edges))))
@@ -116,8 +116,13 @@
       (equal (fn2-extents-owner-kind e fn2-extents) (fn2-checkpoints-builder-owner-kind c fn2-checkpoints))
       (equal (fn2-extents-owner-id e fn2-extents) (fn2-checkpoints-builder-token c fn2-checkpoints))
       (equal (fn2-extents-epoch e fn2-extents) (fn2-checkpoint-construction-epoch e fn2-checkpoint-construction))
-      (equal (fn2-extents-counter e fn2-extents) (fn2-checkpoint-construction-counter e fn2-checkpoint-construction))
-      (equal (fn2-extents-state e fn2-extents) *fn2-extent-state-allocated*)
+      (equal (fn2-extents-counter e fn2-extents) (fn2-checkpoint-construction-counter e fn2-checkpoint-construction))))
+
+(defun fn2-checkpoint-teardown-unsharedp (c e fn2-checkpoints fn2-checkpoint-construction fn2-extents fn2-ops fn2-alloc-edges)
+ (declare (xargs :stobjs (fn2-checkpoints fn2-checkpoint-construction fn2-extents fn2-ops fn2-alloc-edges)
+  :guard (and (fn2-checkpoints-wfp fn2-checkpoints) (fn2-checkpoint-construction-wfp fn2-checkpoint-construction)
+              (fn2-extents-wfp fn2-extents) (fn2-ops-wfp fn2-ops) (fn2-alloc-edges-wfp fn2-alloc-edges))))
+ (and (fn2-checkpoint-teardown-ownedp c e fn2-checkpoints fn2-checkpoint-construction fn2-extents fn2-ops fn2-alloc-edges)
       (equal (fn2-extents-release-pending e fn2-extents) 0)
       (equal (fn2-extents-installed-root e fn2-extents) 0)
       (equal (fn2-extents-recovery-base e fn2-extents) 0)
@@ -133,8 +138,16 @@
             (equal (fn2-extents-selectable-checkpoint e fn2-extents)
                    (+ 1 (fn2-checkpoint-teardown-root-count 0 c e epoch counter checkpoint fn2-extents fn2-ops fn2-alloc-edges)))))))
 
-; One physical row per call. Eligibility is a decision, not permission to
-; submit: ordinary retirement must first gain its async durable-edge barrier.
+(defun fn2-checkpoint-teardown-eligiblep (c e fn2-checkpoints fn2-checkpoint-construction fn2-extents fn2-ops fn2-alloc-edges)
+ (declare (xargs :stobjs (fn2-checkpoints fn2-checkpoint-construction fn2-extents fn2-ops fn2-alloc-edges)
+  :guard (and (fn2-checkpoints-wfp fn2-checkpoints) (fn2-checkpoint-construction-wfp fn2-checkpoint-construction)
+              (fn2-extents-wfp fn2-extents) (fn2-ops-wfp fn2-ops) (fn2-alloc-edges-wfp fn2-alloc-edges))))
+ (and (fn2-checkpoint-teardown-ownedp c e fn2-checkpoints fn2-checkpoint-construction fn2-extents fn2-ops fn2-alloc-edges)
+      (equal (fn2-extents-state e fn2-extents) *fn2-extent-state-allocated*)
+      (fn2-checkpoint-teardown-unsharedp c e fn2-checkpoints fn2-checkpoint-construction fn2-extents fn2-ops fn2-alloc-edges)))
+
+; One physical row per call. Eligibility is rechecked by the core submit
+; wrapper before the ordinary producer installs its actual async intent.
 ; All nonvictim and borrowed source edges remain unchanged here.
 (defun fn2-checkpoint-teardown-inspect-children (token kind slot gen cursor fn2-checkpoint-lifecycle fn2-csnapshot fn2-checkpoint-publication fn2-checkpoints fn2-checkpoint-refs fn2-checkpoint-bytes fn2-checkpoint-construction fn2-extents fn2-ops fn2-alloc-edges)
  (declare (xargs :stobjs (fn2-checkpoint-lifecycle fn2-csnapshot fn2-checkpoint-publication fn2-checkpoints fn2-checkpoint-refs fn2-checkpoint-bytes fn2-checkpoint-construction fn2-extents fn2-ops fn2-alloc-edges)
@@ -160,3 +173,85 @@
           fn2-core-checkpoint-refs fn2-core-checkpoint-bytes fn2-core-checkpoint-construction fn2-core-extents
           fn2-core-ops fn2-core-alloc-edges)
  :doc "Inspect one exact displaced-candidate extent after C release; no retirement or edge removal without the ordinary retirement intent barrier.")
+
+; Settlement is not a supplied boolean: this checks the exact persisted
+; retirement row/commit, then drops only the victim's individually owned edge.
+; Six root edges, other candidates, borrowed sources and physical pins remain.
+(defun fn2-checkpoint-teardown-drop-children (token kind slot gen cursor epoch counter batch fn2-checkpoint-lifecycle fn2-csnapshot fn2-checkpoint-publication fn2-checkpoints fn2-checkpoint-refs fn2-checkpoint-bytes fn2-checkpoint-construction fn2-extents fn2-ops fn2-alloc-edges)
+ (declare (xargs :stobjs (fn2-checkpoint-lifecycle fn2-csnapshot fn2-checkpoint-publication fn2-checkpoints fn2-checkpoint-refs fn2-checkpoint-bytes fn2-checkpoint-construction fn2-extents fn2-ops fn2-alloc-edges)
+  :guard (and (fn2-checkpoint-lifecycle-wfp fn2-checkpoint-lifecycle) (fn2-csnapshot-wfp fn2-csnapshot)
+              (fn2-checkpoint-publication-wfp fn2-checkpoint-publication) (fn2-checkpoints-wfp fn2-checkpoints)
+              (fn2-checkpoint-refs-wfp fn2-checkpoint-refs) (fn2-checkpoint-bytes-wfp fn2-checkpoint-bytes)
+              (fn2-checkpoint-construction-wfp fn2-checkpoint-construction) (fn2-extents-wfp fn2-extents)
+              (fn2-ops-wfp fn2-ops) (fn2-alloc-edges-wfp fn2-alloc-edges))))
+ (b* (((unless (and (unsigned-byte-p 32 cursor) (unsigned-byte-p 32 (+ 1 cursor))
+                    (posp batch) (unsigned-byte-p 60 batch)
+                    (fn2-checkpoint-teardown-ownerp token kind slot gen fn2-checkpoint-lifecycle fn2-csnapshot fn2-checkpoint-publication fn2-checkpoints fn2-checkpoint-refs fn2-checkpoint-bytes fn2-extents)))
+       (mv :state cursor fn2-extents fn2-alloc-edges))
+      (c (fn2-checkpoint-publication-debt-candidate 0 fn2-checkpoint-publication))
+      ((unless (and (fn2-checkpoint-teardown-unsharedp c cursor fn2-checkpoints fn2-checkpoint-construction fn2-extents fn2-ops fn2-alloc-edges)
+                    (equal epoch (fn2-extents-epoch cursor fn2-extents))
+                    (equal counter (fn2-extents-counter cursor fn2-extents))
+                    (equal (fn2-extents-state cursor fn2-extents) *fn2-extent-state-retire-pending*)
+                    (equal (fn2-extents-retirement cursor fn2-extents) batch)))
+       (mv :retained cursor fn2-extents fn2-alloc-edges))
+      (edge (fn2-checkpoint-source-edge c cursor fn2-extents fn2-ops fn2-checkpoints))
+      ((mv code fn2-extents fn2-alloc-edges)
+       (fn2-alloc-edge-drop edge (fn2-checkpoints-checkpoint c fn2-checkpoints)
+        cursor epoch counter :selectable-checkpoint fn2-extents fn2-alloc-edges)))
+  (mv code (if (eq code :ok) (+ 1 cursor) cursor) fn2-extents fn2-alloc-edges)))
+(fn2-extents-preserves fn2-checkpoint-teardown-drop-children
+ (token kind slot gen cursor epoch counter batch fn2-checkpoint-lifecycle fn2-csnapshot fn2-checkpoint-publication fn2-checkpoints fn2-checkpoint-refs fn2-checkpoint-bytes fn2-checkpoint-construction fn2-extents fn2-ops fn2-alloc-edges)
+ :hyps ((fn2-extentsp fn2-extents) (fn2-extents-wfp fn2-extents)
+        (fn2-alloc-edgesp fn2-alloc-edges) (fn2-alloc-edges-wfp fn2-alloc-edges))
+ :specs (("-EXTENTS-TYPE" fn2-extentsp 2) ("-EXTENTS-WFP" fn2-extents-wfp 2)
+         ("-EXTENTS-ROWS" fn2-extents-rows 2 :frame fn2-extents)
+         ("-EDGES-TYPE" fn2-alloc-edgesp 3) ("-EDGES-WFP" fn2-alloc-edges-wfp 3)
+         ("-EDGES-ROWS" fn2-alloc-edges-rows 3 :frame fn2-alloc-edges)))
+(defcost fn2-checkpoint-teardown-drop-op :child fn2-checkpoint-teardown-drop-children :answers t
+ :tables (fn2-core-checkpoint-lifecycle fn2-core-csnapshot fn2-core-checkpoint-publication fn2-core-checkpoints
+          fn2-core-checkpoint-refs fn2-core-checkpoint-bytes fn2-core-checkpoint-construction fn2-core-extents fn2-core-ops fn2-core-alloc-edges)
+ :doc "After exact persisted retirement, drop only the exact victim source edge; retain all roots, other holders and catalog debt.")
+
+; Core permission wrappers only compose the existing ordinary producer/poll.
+; Normalization records whether its one staging lease was acquired/released,
+; including uncertain acquisition, for the generated owner's resource path.
+(defmacro fn2-checkpoint-teardown-events ()
+ '(progn
+   (defun fn2-checkpoint-teardown-submit (token kind slot gen cursor epoch counter fn2-core)
+    (declare (xargs :stobjs fn2-core :guard (fn2-core-wfp fn2-core)))
+    (b* ((eligible
+          (stobj-let ((fn2-checkpoint-lifecycle (fn2-core-checkpoint-lifecycle fn2-core))
+                      (fn2-csnapshot (fn2-core-csnapshot fn2-core))
+                      (fn2-checkpoint-publication (fn2-core-checkpoint-publication fn2-core))
+                      (fn2-checkpoints (fn2-core-checkpoints fn2-core))
+                      (fn2-checkpoint-refs (fn2-core-checkpoint-refs fn2-core))
+                      (fn2-checkpoint-bytes (fn2-core-checkpoint-bytes fn2-core))
+                      (fn2-checkpoint-construction (fn2-core-checkpoint-construction fn2-core))
+                      (fn2-extents (fn2-core-extents fn2-core))
+                      (fn2-ops (fn2-core-ops fn2-core))
+                      (fn2-alloc-edges (fn2-core-alloc-edges fn2-core))) (eligible)
+           (and (fn2-checkpoint-teardown-ownerp token kind slot gen fn2-checkpoint-lifecycle fn2-csnapshot fn2-checkpoint-publication fn2-checkpoints fn2-checkpoint-refs fn2-checkpoint-bytes fn2-extents)
+                (fn2-checkpoint-teardown-eligiblep (fn2-checkpoint-publication-debt-candidate 0 fn2-checkpoint-publication) cursor fn2-checkpoints fn2-checkpoint-construction fn2-extents fn2-ops fn2-alloc-edges)
+                (equal epoch (fn2-extents-epoch cursor fn2-extents))
+                (equal counter (fn2-extents-counter cursor fn2-extents))) eligible))
+         ((unless eligible) (mv :retained :retained 0 0 fn2-core))
+         ; The ordinary producer binds its real planner batch and installs the
+         ; allocator intent before admission, with no scheduling gap here.
+         ((mv code batch event fn2-core)
+          (fn2-retirement-submit cursor epoch counter kind slot gen fn2-core)))
+     (mv (if (member-eq code '(:ok :uncertain)) :ok code) code batch event fn2-core)))
+   (defun fn2-checkpoint-teardown-poll (kind slot gen fn2-core)
+    (declare (xargs :stobjs fn2-core :guard (fn2-core-wfp fn2-core)))
+    (mv-let (outcome batch event fn2-core) (fn2-retirement-poll kind slot gen fn2-core)
+     (mv (if (member-eq outcome '(:accepted :refused)) :ok outcome) outcome batch event fn2-core)))))
+(defconst *fn2-checkpoint-teardown-member-bytes*
+ (+ *fn2-format-txn-record-max-size* *fn2-format-retirement-max-size*))
+(defcost fn2-checkpoint-teardown-submit :answers t :effects :per-use :bytes *fn2-checkpoint-teardown-member-bytes*
+ :tables (fn2-core-checkpoint-lifecycle fn2-core-csnapshot fn2-core-checkpoint-publication fn2-core-checkpoints
+          fn2-core-checkpoint-refs fn2-core-checkpoint-bytes fn2-core-checkpoint-construction fn2-core-extents fn2-core-ops fn2-core-alloc-edges
+          fn2-core-retirement-control fn2-core-commit-io fn2-core-commit-root fn2-core-commit-members fn2-core-commit-settled fn2-core-machines fn2-core-fields fn2-core-pool fn2-core-control)
+ :doc "Atomically recheck actual displaced-owner eligibility then call the ordinary intent-bound journal producer; retain uncertain staging ownership.")
+(defcost fn2-checkpoint-teardown-poll :answers t :effects :per-use
+ :tables (fn2-core-retirement-control fn2-core-checkpoint-future fn2-core-checkpoint-future-windows fn2-core-extents fn2-core-commit-settled fn2-core-pool fn2-core-control)
+ :doc "Normalize exact ordinary accepted/refused settlement only after actual staging release; uncertainty retains the lease.")
