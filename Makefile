@@ -265,6 +265,7 @@ ACL2_BOOKS = \
   tests/core-update-lowering-unit \
   tests/core-snapshot-support \
   tests/txn-child-extraction-unit \
+  tests/txn-child-profile-evidence \
   tests/core-unit \
   tests/crash-model-differential \
   tests/crash-model-unit \

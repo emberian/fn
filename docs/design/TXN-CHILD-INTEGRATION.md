@@ -83,3 +83,12 @@ result/effect evidence; the final resulting ledger is the authority for the
 complete count. Generated reclaim/link operations and table-effect consistency
 must also pass the actual child-arm callback gate. The frontier is not closed
 by the presence of declarations or by the old generator fixture records.
+
+`tests/txn-child-profile-evidence.lisp` adds the real groups-limit reader as a
+second root pilot. It uses the same posting-enabled constructed core, checks
+the configured positive limit, source/child equality and unchanged complete
+state, and binds the live equality to a same-ABI zero-result mutant. Its runtime
+functions use the actual generated row's default tooth names. This third root
+evidence pair is also unrun; it does not reduce the outstanding qualification
+claim. The existing callback and wake-book contents stay frozen for the first
+gate while this separate reader root is prepared.

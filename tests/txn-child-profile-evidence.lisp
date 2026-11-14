@@ -1,0 +1,40 @@
+; A second production root: the configured cross-post bound read by txn arms.
+(in-package "ACL2")
+(include-book "txn-child-extraction-unit")
+(defun fn2-txn-child-groups-zero (fn2-txn-config)
+ (declare (xargs :stobjs fn2-txn-config :guard (fn2-txn-config-wfp fn2-txn-config)))
+ (declare (ignore fn2-txn-config))
+ 0)
+(defun fn2-txn-child-profile-observations ()
+ (declare (xargs :verify-guards nil))
+ (with-local-stobj fn2-core
+  (mv-let (answer fn2-core)
+   (let* ((fn2-core (fn2-txn-child-wake-setup fn2-core))
+          (pre (and (fn2-corep fn2-core) (fn2-core-wfp fn2-core)))
+          (before (fn2-test-core-snapshot fn2-core))
+          (source (fn2-txn-groups-limit fn2-core))
+          (child (stobj-let ((fn2-txn-config (fn2-core-txn-config fn2-core)))
+                   (value) (fn2-txn-groups-limit-child fn2-txn-config) value))
+          (mutant (stobj-let ((fn2-txn-config (fn2-core-txn-config fn2-core)))
+                    (value) (fn2-txn-child-groups-zero fn2-txn-config) value)))
+    (mv (list (and pre (posp source) (equal source *fn2-txn-groups-max*)
+                   (equal source child) (equal before (fn2-test-core-snapshot fn2-core)))
+              (and pre (posp source) (equal mutant 0) (not (equal mutant source))))
+        fn2-core))
+   answer)))
+; These are the actual default tooth names in the generated production row.
+(defun fn2-txn-groups-limit-child-refines-core-positive ()
+ (declare (xargs :verify-guards nil))
+ (car (fn2-txn-child-profile-observations)))
+(defun fn2-txn-groups-limit-child-refines-core-negative ()
+ (declare (xargs :verify-guards nil))
+ (cadr (fn2-txn-child-profile-observations)))
+(assert-event (equal (fn2-txn-child-profile-observations) '(t t)))
+(make-event
+ (let* ((bindings
+          (list (list 'fn2-core (list 'quote (cadddr *fn2-txn-child-wake-input*)))))
+        (negative (list :kind :mutation :at 'fn2-txn-groups-limit-child
+                        :replace 'fn2-txn-child-groups-zero :bindings bindings)))
+  (value (fn2-square-evidence-events 'fn2-txn-groups-limit-child-refines-core
+                                    bindings negative nil (w state)))))
+(fn2-assert-square-evidence fn2-txn-groups-limit-child-refines-core)
