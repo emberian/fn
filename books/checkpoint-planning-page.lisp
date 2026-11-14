@@ -61,3 +61,24 @@
 (fn2-checkpoint-planning-preserves fn2-checkpoint-planning-seal
  (c token kind owner gen b level fn2-checkpoint-planning fn2-checkpoint-recipe fn2-checkpoint-metadata fn2-csnapshot fn2-extents fn2-run-builds fn2-run-writers fn2-digests)
  :carriers ((fn2-checkpoint-planning 1 :prefix "-PLANNING") (fn2-checkpoint-recipe 2 :prefix "-RECIPE")))
+
+; Private preview root eligibility. It deliberately does not assert B physical
+; completion; only the preview manifest/promotion may use this predicate.
+(defun fn2-checkpoint-planning-sealedp (b level fn2-checkpoint-planning fn2-checkpoint-recipe fn2-checkpoint-metadata fn2-csnapshot fn2-extents fn2-run-builds fn2-run-writers)
+ (declare (xargs :stobjs (fn2-checkpoint-planning fn2-checkpoint-recipe fn2-checkpoint-metadata fn2-csnapshot fn2-extents fn2-run-builds fn2-run-writers)
+  :guard (and (fn2-checkpoint-planning-wfp fn2-checkpoint-planning) (fn2-checkpoint-recipe-wfp fn2-checkpoint-recipe)
+              (fn2-checkpoint-metadata-wfp fn2-checkpoint-metadata) (fn2-csnapshot-wfp fn2-csnapshot) (fn2-extents-wfp fn2-extents)
+              (fn2-run-builds-wfp fn2-run-builds) (fn2-run-writers-wfp fn2-run-writers))))
+ (and (< 0 (fn2-checkpoint-metadata-rows fn2-checkpoint-metadata))
+      (fn2-checkpoint-planning-previewp (fn2-checkpoint-metadata-token 0 fn2-checkpoint-metadata)
+       (fn2-checkpoint-metadata-owner-kind 0 fn2-checkpoint-metadata) (fn2-checkpoint-metadata-owner-slot 0 fn2-checkpoint-metadata)
+       (fn2-checkpoint-metadata-owner-gen 0 fn2-checkpoint-metadata) fn2-checkpoint-planning fn2-csnapshot fn2-extents)
+      (fn2-checkpoint-metadata-writerp b level fn2-checkpoint-metadata fn2-csnapshot fn2-run-builds fn2-run-writers)
+      (let* ((w (fn2-run-level-writer b level)) (e (floor (fn2-run-writers-unit w fn2-run-writers) *fn2-storage-extent-units*)))
+       (and (< e (fn2-checkpoint-recipe-rows fn2-checkpoint-recipe))
+            (equal (fn2-checkpoint-recipe-used e fn2-checkpoint-recipe) 1)
+            (equal (fn2-checkpoint-recipe-sealed e fn2-checkpoint-recipe) 1)
+            (equal (fn2-checkpoint-recipe-epoch e fn2-checkpoint-recipe) (fn2-run-writers-epoch w fn2-run-writers))
+            (equal (fn2-checkpoint-recipe-allocation e fn2-checkpoint-recipe) (fn2-run-writers-counter w fn2-run-writers))
+            (equal (fn2-checkpoint-recipe-kind e fn2-checkpoint-recipe) (fn2-run-writers-page-kind w fn2-run-writers))
+            (equal (fn2-checkpoint-recipe-level e fn2-checkpoint-recipe) level)))))

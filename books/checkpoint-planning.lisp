@@ -196,3 +196,20 @@
       (equal (fn2-checkpoint-planning-position 0 fn2-checkpoint-planning) (fn2-checkpoint-planning-count 0 fn2-checkpoint-planning))
       (equal (fn2-checkpoint-planning-sealed 0 fn2-checkpoint-planning) (fn2-checkpoint-planning-count 0 fn2-checkpoint-planning))
       (equal (fn2-checkpoint-planning-reserved 0 fn2-checkpoint-planning) (fn2-checkpoint-planning-count 0 fn2-checkpoint-planning))))
+
+(defun fn2-checkpoint-planning-previewp (token kind owner gen fn2-checkpoint-planning fn2-csnapshot fn2-extents)
+ (declare (xargs :stobjs (fn2-checkpoint-planning fn2-csnapshot fn2-extents)
+  :guard (and (fn2-checkpoint-planning-wfp fn2-checkpoint-planning) (fn2-csnapshot-wfp fn2-csnapshot) (fn2-extents-wfp fn2-extents))))
+ (and (< 0 (fn2-checkpoint-planning-rows fn2-checkpoint-planning))
+      (equal (fn2-checkpoint-planning-phase 0 fn2-checkpoint-planning) *fn2-checkpoint-planning-phase-preview*)
+      (fn2-checkpoint-planning-ownerp (fn2-checkpoint-planning-candidate 0 fn2-checkpoint-planning)
+       token kind owner gen fn2-checkpoint-planning fn2-csnapshot fn2-extents)))
+
+(defun fn2-checkpoint-recipe-word (e i fn2-checkpoint-recipe)
+ (declare (xargs :stobjs fn2-checkpoint-recipe
+  :guard (and (fn2-checkpoint-recipe-wfp fn2-checkpoint-recipe) (natp e) (< e (fn2-checkpoint-recipe-rows fn2-checkpoint-recipe)) (natp i) (< i 8))))
+ (case i
+  (0 (fn2-checkpoint-recipe-word0 e fn2-checkpoint-recipe)) (1 (fn2-checkpoint-recipe-word1 e fn2-checkpoint-recipe))
+  (2 (fn2-checkpoint-recipe-word2 e fn2-checkpoint-recipe)) (3 (fn2-checkpoint-recipe-word3 e fn2-checkpoint-recipe))
+  (4 (fn2-checkpoint-recipe-word4 e fn2-checkpoint-recipe)) (5 (fn2-checkpoint-recipe-word5 e fn2-checkpoint-recipe))
+  (6 (fn2-checkpoint-recipe-word6 e fn2-checkpoint-recipe)) (otherwise (fn2-checkpoint-recipe-word7 e fn2-checkpoint-recipe))))
