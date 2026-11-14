@@ -495,7 +495,7 @@ Logs and state are `/tmp/reclamation-format-union-78*` on Forge.
 The remaining implementation work is the real C master/source actor, arena and
 installation evidence intake, selected-base allocator reconstruction, ordered
 allocation/retirement/release replay, and journaled writer exclusion. Anchor
-previous-checkpoint batch hash must not be substituted for the immediate
+previous-checkpoint descriptor identity must not be substituted for the immediate
 predecessor seal. Dynamic foreground maintenance headroom also remains open:
 the minimum profile admission bound does not reserve enough space against later
 growth. Both upload and ordinary journal allocation must respect that policy,
@@ -524,3 +524,16 @@ extension to the semantic/payload lower job. The actor observer only wakes the
 source continuation: its smaller ABI cannot reconstruct operation identity.
 The public READ maps only the lower queued `:issued` result to the issue DSL's
 `:ok`; all refusal and uncertain outcomes pass through unchanged.
+
+
+The B lifecycle now consumes actual physical construction entries one per step,
+retaining every constructed page and reserved journal ticket before changing
+copy phase 1 to installation phase 2. It retains the six root edges separately.
+After the actual installed member, it traverses the candidate's dedicated source
+edges and atomically changes prepared protection to selectable protection. The
+publisher start operation checks that actual lifecycle state. Thaw requires the
+same candidate's completed bank publication and released writer bundle; it
+changes only the physical freeze phase, retaining the C owner token for normal
+snapshot release. It does not advance checkpoint coverage or permit FREE.
+These source operations and their shape obligations remain unadmitted; the
+master is connecting them and primitive controls are being prepared.
