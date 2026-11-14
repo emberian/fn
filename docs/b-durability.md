@@ -696,8 +696,17 @@ BLAKE3-256 as the declared fn2 hash profile. Leaves are `H(0x00 || canonical sem
 record bytes)`; internal nodes are `H(0x01 || left || right)`; the empty root is
 `H(empty)`. There is no additional leaf domain string. This retains the standard
 prefix rules while selecting BLAKE3 explicitly; SHA-256 interoperability is later work.
-Physical pool location is not hashed into a leaf. Callers supply canonical semantic
-encodings; this primitive does not validate their semantic schema.
+The served B-S2 leaf is one **semantic member**: the entire ordered sequence of
+canonical record headers and bodies carrying that member's event ID. A transaction
+may emit several records with the same event; they form one leaf, not several
+events. Keyed and lifecycle members normally contain one record. Members must
+cover the batch's declared consecutive event range exactly, with no gaps,
+reordering or return to an earlier event. Record-stream zero padding is excluded.
+Physical frame/page headers, trailers and seals are excluded from the leaf and
+retained separately as archive evidence. The pool's memory location is not hashed.
+Physical Refs encoded inside record bodies remain part of those canonical bytes;
+this is not a claim that relocating an application Ref preserves the leaf.
+The Merkle primitive alone does not validate this semantic-member convention.
 
 `fn2-mk-table-init(n, log)` allocates a profile-sized `defcolumns` table. Each row
 carries u60 size and proof continuation columns. Its 60 frontier digests and proof

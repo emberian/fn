@@ -297,6 +297,7 @@ ACL2_BOOKS = \
   tests/groups-unit \
   tests/c-snapshot-unit \
   tests/c-snapshot-materialization-unit \
+  tests/journal-members-unit \
   tests/host-unit \
   tests/identity-core-unit \
   tests/layout-roundtrip \
