@@ -65,3 +65,33 @@ pilot; the executed result above concerns the original counterexample only.
 Q1 continuation already omits work-room capacity and is not claimed here to
 be an exact characterization of the concrete stop predicate. Completing that
 composition contract remains separate from this policy correction.
+
+## Executed repaired-A gates
+
+The conditional progress theorem passed in a fresh qualified-A source world
+with the repaired executor loaded from source. Main theorem: 2,813 prover
+steps; visit monotonicity: 36,289; transition visitation: 414. This is source
+proof admission, not current-closure record certification.
+
+A full repaired host-boundary source load exceeded its 2 GiB scope while
+re-admitting assembly attachments (systemd recorded a 2 GiB OOM). Instead,
+execution-only controls used the unchanged qualified-A host-boundary cache
+and structurally extracted the exact repaired stop body into raw Lisp.
+`tests/executor-progress-pilot.py` emits that driver from committed source;
+no logical theorems are proved in the raw-patched world.
+
+All five committed assertions passed: initialized H=1 with clock now returns
+eight visits and one action; H=2/no-clock controls are unchanged; the actual
+post-clock boundary satisfies the entire conditional antecedent and gains a
+visit; zero fuel retains the other premises and makes no visit. Restoring
+the old observation-stop disjunct reproduces eight zero-visit turns and
+fails the progress oracle; restoring the repair passes again. Both process
+exit and explicit success markers were checked.
+
+Evidence is on forge: `/tmp/assurance-progress-repair-pilot.log` (source
+proof), `/tmp/assurance-progress-raw-pilot.log` and
+`/tmp/assurance-progress-raw-acl2.log` (runtime control), all successful jobs
+exited 0. The failed full source runtime load is
+`/tmp/assurance-progress-runtime-pilot.log` (143, OOM). Independent TRACE and
+record certification remain pending; cached reference plus attachments has
+also exceeded 2 GiB in the Q1 lane and needs a larger named gate slot.
