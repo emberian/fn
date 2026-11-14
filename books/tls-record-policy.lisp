@@ -52,6 +52,7 @@
     ((and (= raw 0) (< 0 count))
      (mv :ok (if (and writep (< next extent)) 0 3) next))
     ((and (member-equal raw '(1 2)) (= count 0)) (mv :ok raw progress))
+    ((and (= raw -1) (= count 0)) (mv :ok 5 progress))
     ((and (= raw 3) (= count 0)) (mv :ok (if writep 5 4) progress))
     (t (mv :contract 5 next))))))
 

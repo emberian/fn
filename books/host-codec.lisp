@@ -1,7 +1,7 @@
 ; Codec records use the submitted, unposted incarnation of the actual loan.
 (in-package "ACL2")
 (include-book "host-loan")
-(include-book "tls-transport-reservation")
+(include-book "tls-record")
 (local (in-theory (enable fn2-core-wfp)))
 (local
  (in-theory
@@ -32,29 +32,23 @@
     (if (eq code :ok) (mv :ok kind cap nonce address length)
       (mv code 0 0 0 0 0))))))
 
-(defun fn2-host-tls-record-select (op gen fn2-tls-transport fn2-core)
- (declare (xargs :stobjs (fn2-tls-transport fn2-core) :verify-guards nil
-  :guard (and (fn2-core-wfp fn2-core)
-              (fn2-tls-transport-wfp fn2-tls-transport)
-              (= (fn2-tls-transport-rows fn2-tls-transport) 1))))
- (mv-let (code kind cap nonce address length) (fn2-host-codec-op op gen fn2-core)
-  (cond
-   ((not (eq code :ok)) (mv code 0 0 0 0 fn2-tls-transport))
-   ((not (and (natp address) (unsigned-byte-p 32 length)))
-    (mv :bounds 0 0 0 0 fn2-tls-transport))
-   (t
-    (let* ((writep (equal kind *fn2-action-send*))
-           (count (min length (fn2-tls-transport-quantum 0 fn2-tls-transport)))
-           (action (if writep 13 12)))
-     (mv-let (code serial fn2-tls-transport)
-      (fn2-tls-transport-select cap nonce op gen action
-       (if writep 4 0) 0 (if writep count 0) (if writep length 0)
-       (if writep 0 5) 0 (if writep 0 count) (if writep 0 length)
-       fn2-tls-transport)
-      (if (eq code :ok) (mv :ok action address count serial fn2-tls-transport)
-       (mv code 0 0 0 0 fn2-tls-transport))))))))
 
-(verify-guards fn2-host-tls-record-select
- :hints (("Goal" :in-theory
-  (set-difference-theories (disable fn2-host-codec-op fn2-tls-transport-select)
-                          (theory 'fn2-tls-transport-readers)))))
+
+
+
+; External application loan entry. Child/private windows use the stack bridge.
+(defun fn2-host-tls-record-next (op gen room pending fn2-tls-transport fn2-tls-record fn2-core)
+ (declare (xargs :stobjs (fn2-tls-transport fn2-tls-record fn2-core) :verify-guards nil
+  :guard (and (fn2-core-wfp fn2-core) (fn2-tls-transport-wfp fn2-tls-transport)
+              (= (fn2-tls-transport-rows fn2-tls-transport) 1) (fn2-tls-record-wfp fn2-tls-record))))
+ (mv-let (code kind cap nonce address length) (fn2-host-codec-op op gen fn2-core)
+  (if (not (and (eq code :ok) (natp address) (unsigned-byte-p 32 length)))
+      (mv (if (eq code :ok) :bounds code) 0 0 0 0 0 fn2-tls-transport fn2-tls-record)
+   (mv-let (bound fn2-tls-record)
+    (fn2-tls-record-start cap nonce op gen length 0 (equal kind *fn2-action-send*) fn2-tls-record)
+    (if (not (eq bound :ok)) (mv bound 0 0 0 0 0 fn2-tls-transport fn2-tls-record)
+     (mv-let (status action offset count serial fn2-tls-transport fn2-tls-record)
+      (fn2-tls-record-next room pending fn2-tls-transport fn2-tls-record)
+      (mv status action
+          (if (and (eq status :act) (member-equal action '(12 13))) (+ address offset) address)
+          offset count serial fn2-tls-transport fn2-tls-record)))))))
