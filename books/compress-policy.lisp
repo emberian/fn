@@ -4,6 +4,7 @@
 ; not a bound on an article or on the lifetime of a compressed connection.
 (in-package "ACL2")
 (include-book "profile")
+(include-book "owed")
 (fn2-book-layer :a)
 
 (defun fn2-compress-profilep (profile)
