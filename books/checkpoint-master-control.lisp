@@ -3,6 +3,7 @@
 (in-package "ACL2")
 (include-book "checkpoint-master-state")
 (include-book "retirement")
+(include-book "checkpoint-metadata-resources")
 (fn2-book-layer :c)
 
 (defun fn2-checkpoint-catalog-step (scan highest candidate found fn2-checkpoints)
@@ -89,3 +90,22 @@
 (defcost fn2-checkpoint-master-allocation-count-op :child fn2-checkpoint-master-allocation-count-children
  :answers (:ok :state) :tables (fn2-core-retirement-control fn2-core-extents)
  :doc "Read exact owner/token staged allocation count; only an actual empty scan may bypass allocation admission.")
+
+(defun fn2-checkpoint-master-pressure-children (seen fn2-checkpoint-root1 fn2-csnapshot fn2-extents fn2-pool)
+ (declare (xargs :stobjs (fn2-checkpoint-root1 fn2-csnapshot fn2-extents fn2-pool)
+  :guard (and (fn2-checkpoint-root1-wfp fn2-checkpoint-root1) (fn2-csnapshot-wfp fn2-csnapshot)
+              (fn2-extents-wfp fn2-extents) (fn2-pool-wfp fn2-pool) (unsigned-byte-p 60 seen))))
+ (mv :ok
+  (and (< 0 (fn2-checkpoint-root1-rows fn2-checkpoint-root1))
+       (< 0 (fn2-csnapshot-rows fn2-csnapshot))
+       (equal (fn2-checkpoint-root1-phase 0 fn2-checkpoint-root1) *fn2-checkpoint-root1-phase-idle*)
+       (equal (fn2-csnapshot-phase 0 fn2-csnapshot) *fn2-csnapshot-phase-idle*)
+       (equal (fn2-alloc-freeze-phase fn2-extents) 0)
+       (equal (fn2-alloc-freeze-token fn2-extents) 0)
+       (< 0 (fn2-alloc-blocked fn2-extents))
+       (< seen (fn2-alloc-last-retirement fn2-extents))
+       (fn2-checkpoint-window-roomp 0 fn2-pool))
+  (fn2-alloc-last-retirement fn2-extents)))
+(defcost fn2-checkpoint-master-pressure-op :child fn2-checkpoint-master-pressure-children :answers (:ok)
+ :tables (fn2-core-checkpoint-root1 fn2-core-csnapshot fn2-core-extents fn2-core-pool)
+ :doc "Use actual blocked retirement progress and complete cached pre-cut working-room availability, with no guessed free-space threshold.")
