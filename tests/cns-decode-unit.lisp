@@ -4,7 +4,7 @@
 (include-book "layout-unit")
 
 (defconst *fn2-cdu-cursor*
-  (fn2-fncu-encode '(:cursor 0 (0) (0) (1) (2) (1) 1 1 1 5)))
+  (fn2-fncu-encode '(:cursor 0 (1) (1) (1) (2) (1) 1 1 1 5)))
 
 (defun fn2-cdu-check (word max-items)
   (declare (xargs :verify-guards nil))
@@ -21,8 +21,8 @@
                (fn2-pool (fn2-layout-test-write payload 0 0 fn2-pool))
                ((mv reason verb & & & lim & wait-ms & & & & fn2-fields)
                 (if (eq word :wait)
-                    (fn2-cns-dec-wait 0 0 (len payload) 2 0 1 1 0 1 fn2-fields fn2-pool)
-                  (fn2-cns-dec-read 0 0 (len payload) 2 0 1 1 0 1 fn2-fields fn2-pool))))
+                    (fn2-cns-dec-wait 1 1 0 0 (len payload) 2 0 1 1 0 1 fn2-fields fn2-pool)
+                  (fn2-cns-dec-read 1 1 0 0 (len payload) 2 0 1 1 0 1 fn2-fields fn2-pool))))
             (mv (list reason lim wait-ms verb) fn2-fields fn2-pool))
           (mv ok fn2-fields)))
       ok)))
