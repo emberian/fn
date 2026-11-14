@@ -97,3 +97,22 @@ and recovery machinery for the first byte-effect gate. The combined
 (178 books). The first source overlay is only `sim/sim-adapter-base`, `sim/sim`
 and the physical test; the combined gate additionally loads the three commit/
 recovery consumers. Both require compatible cached dependencies and a named slot.
+
+## Held completion through commit timeout (source candidate)
+
+`sim/commit-proof-step` now accepts `:stage-fence` and `:post-fence` commands.
+The `:auto-lost-fence` schedule stages the actual successful fence, retains the
+saved raw return, and uses the existing `:timeout` command to post the clock,
+run the mailbox and dispatch the commit machine. `:auto-staged-fence` posts the
+same saved return as a control. No physical operation is repeated at post.
+
+`fn2-see-held-commit` first accepts two batches, then starts a third. The lost
+completion branch expects two reply records and uncertainty; the delivered
+branch expects three reply records without uncertainty. Both explicitly expect
+three recovered batches, since the third fence physically succeeded. These
+assertions have not yet executed and are not current assurance evidence.
+
+The TLS simulator patch `02400e95e` dispatches TlsStart before generic transfer.
+Its OWN observation remains separate from the Write-only hidden-error branch
+and Fence branch changed here. The patches are source-compatible; combined
+execution awaits the frozen root gate and pending borrow repair.
