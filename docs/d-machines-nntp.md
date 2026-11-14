@@ -2117,7 +2117,7 @@ re-reading all scalars. The lease retains the copied vector as a prefix across
 unit reads. `fn2-block-read-commitment` checks the exact completion length and
 BLAKE3 against that prefix before manifest decoding or raw article output.
 Manifest-referenced data blocks retain their existing hash/CV checks. The
-shared checker accepts explicit data/digest offsets for checkpoint consumers;
+shared checker accepts explicit data/digest slots and offsets for checkpoint consumers;
 the caller must establish the expected digest's trusted provenance and keep
 its span separate from device input.
 
