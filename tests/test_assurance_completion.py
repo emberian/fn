@@ -198,6 +198,24 @@ class LiveWorldControls(unittest.TestCase):
 (assert (problems (row :depends :malformed)))
 (assert (problems (row :depends '(helper)) *body*
                   (list (cons 'helper (row :proof '(:owed))))))
+; Rechecks schedule the root and every diamond dependency. A repeated leaf
+; may be rechecked twice; it must never disappear behind a shared branch.
+(let* ((w (world (row :depends '(left right)) *body*
+            (list (cons 'left (row :depends '(leaf)))
+                  (cons 'right (row :depends '(leaf)))
+                  (cons 'leaf (row)))))
+       (events (fn2-assurance-evidence-events '(claim) nil 100 w)))
+ (assert (equal events '((fn2-assert-square-evidence claim)
+                         (fn2-assert-square-evidence left)
+                         (fn2-assert-square-evidence leaf)
+                         (fn2-assert-square-evidence right)
+                         (fn2-assert-square-evidence leaf)))))
+; Absent child scheduling cannot silently drop a requested evidence event;
+; the required-problems phase refuses it before this schedule is executed.
+(assert (equal (fn2-assurance-evidence-events '(missing) nil 10 (world (row)))
+               '((fn2-assert-square-evidence missing))))
+(assert (equal (caar (fn2-assurance-evidence-events '(claim) nil 0 (world (row))))
+               'make-event))
 ; A requirement without a statement cannot obtain completion from controls.
 (assert (problems (list :schema :invariant :proof '(:owed))))
 (format t "LIVE-WORLD-REFUSAL-CONTROLS PASS~%")
