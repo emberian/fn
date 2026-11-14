@@ -118,4 +118,21 @@
 (verify-guards fn2-envelope-write-loan)
 (verify-guards fn2-envelope-input)
 
+(defthm fn2-envelope-write-loan-data-length
+  (implies (natp (fn2-pool-base slot fn2-pool))
+   (equal (fn2-pool-data-length
+           (mv-nth 1 (fn2-envelope-write-loan k octets slot gen op opgen fn2-pool)))
+         (fn2-pool-data-length fn2-pool)))
+  :hints (("Goal" :induct (fn2-envelope-write-loan k octets slot gen op opgen fn2-pool)
+           :in-theory (e/d (fn2-envelope-write-loan fn2-pool-adapter-write)
+                            (fn2-pool-base fn2-pool-data-length update-fn2-pool-datai)))))
+
+(defthm fn2-envelope-input-data-length
+  (implies (natp (fn2-pool-base slot fn2-pool))
+   (equal (fn2-pool-data-length
+           (mv-nth 1 (fn2-envelope-input kind outcome count octets k slot gen op opgen fn2-pool)))
+         (fn2-pool-data-length fn2-pool)))
+  :hints (("Goal" :in-theory (e/d (fn2-envelope-input)
+                                 (fn2-envelope-write-loan fn2-pool-data-length)))))
+
 (in-theory (disable fn2-envelope-write-loan fn2-envelope-input fn2-envelope-prefix-byte))
