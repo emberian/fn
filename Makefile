@@ -286,6 +286,7 @@ ACL2_BOOKS = \
   tests/groups-unit \
   tests/host-unit \
   tests/identity-core-unit \
+  tests/identity-served-unit \
   tests/layout-roundtrip \
   tests/layout-teeth-unit \
   tests/layout-unit \
@@ -316,6 +317,7 @@ ACL2_BOOKS = \
   tests/owed-unit \
   tests/parser-boundary-unit \
   tests/peer-witnesses \
+  tests/peer-replay-unit \
   tests/pointwise-contracts-unit \
   tests/pool-ranges-unit \
   tests/pool-unit \
