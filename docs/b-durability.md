@@ -708,6 +708,34 @@ Physical Refs encoded inside record bodies remain part of those canonical bytes;
 this is not a claim that relocating an application Ref preserves the leaf.
 The Merkle primitive alone does not validate this semantic-member convention.
 
+The first-checkpoint retained-event representation uses linked `:manifest` pages
+with body kind `:event-proof-directory`. Fixed slots enumerate every installed
+commit from 1 through the held cut, carrying `(commit, event-first, members,
+extent, writer-epoch, allocation, semantic-seal)`. The semantic seal is an anchor
+for authenticating the original journal seal and records frames; it is **not**
+a full-frame physical Ref hash. Original journal allocations remain retained.
+Before any installed-chain root edge is dropped, every retained directory tuple
+must acquire selectable-checkpoint/recovery-base protection. Six direct
+checkpoint page edges do not protect these journal descendants.
+
+`event-proof-source.lisp` packs an entry from the actual held C cut, committed
+allocator identity and exact installed-chain edge `7 + 2*extent`, held by its
+commit. `event-read-source.lisp` binds that identity in the same step and issues
+real operation-pinned reads. `event-read-verify.lisp` composes the existing frame
+and seal verifier against the installed seal directory, then authenticates the
+records commitment before scanning or hashing semantic members. Its terminal
+requires exact commit/event coverage. The separate `:merkle-node` frontier body
+is tagged `:semantic-member-frontier`, binds the directory Ref and cut, and has
+60 digest slots with occupancy determined by the u60 leaf count; unused slots
+are zero. Keeping it outside the keyed mutation's dependency page avoids a
+record-hash/frontier/dependency-hash cycle.
+
+These source constructors remain unqualified: shared page construction,
+producer terminal promotion, restore and actual-entry positive physical-read
+qualification must be connected before checkpoint admission. Packed bytes,
+physical write completion and a caller-selected count alone do not establish
+event-source completion or checkpoint durability.
+
 `fn2-mk-table-init(n, log)` allocates a profile-sized `defcolumns` table. Each row
 carries u60 size and proof continuation columns. Its 60 frontier digests and proof
 workspace occupy the named digest-table regions described in §8. `fn2-mk-init(row, log)` resets the frontier and proof continuation.
