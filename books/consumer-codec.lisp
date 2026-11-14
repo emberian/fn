@@ -7,9 +7,10 @@
 ; cursor, kind 4's request codes 0-10 with fn1's payloads, and the kind 5, 6
 ; and 9 replies (books/native-control.lisp, consumer-position.lisp,
 ; consumer-local-control.lisp, consumer-wait-codec.lisp). Codes 11-18 carry
-; the port's own payloads and are answered in reply kind 28. Which verb each
-; code is, and how L translates fn1's codes, is data (section 5) checked
-; against the port's declaration.
+; the port's own payloads; code 19 carries standalone raw evidence export.
+; They are answered in reply kind 28. Which verb each code is, and how L
+; translates fn1's codes, is data (section 5) checked against the port's
+; declaration.
 (in-package "ACL2")
 (include-book "layout")
 (include-book "blake3-spec")
@@ -131,7 +132,13 @@
     (15 :read ((cursor (:octets16 366)) (max-items :u32be) (max-octets :u32be)) nil)
     (16 :wait-cursor ((cursor (:octets16 366)) (max-items :u32be) (max-octets :u32be) (seconds :u32be)) nil)
     (17 :unregister-cursor ((cursor (:octets16 366))) nil)
-    (18 :status-wide ((consumer (:octets 64))) nil)))
+    (18 :status-wide ((consumer (:octets 64))) nil)
+    ; Raw local identity observations, key-ordered; not the ordered catch-up
+    ; stream of e-surface 13.4. The served decision binds CUT to the current
+    ; published cut: zero plus empty RESUME starts; nonempty RESUME requires
+    ; that exact cut. RESUME is the original identity-evidence-entry encoding
+    ; (nine key fields plus two values), never a new hash or observation name.
+    (19 :evidence-page ((cut :u64be) (resume (:octets16 400)) (max-items :u16be)) nil)))
 (defconst *fn2-fnct-bound-codes* '(7 8 10))
 (defun fn2-fnct-codes-ok (rows seen)
   (declare (xargs :verify-guards nil))
@@ -286,6 +293,25 @@
 (deflayout fn2-fnct-result-page (cadr (assoc-eq 'read *fn2-fnct-results*)))
 (deflayout fn2-fnct-result-append (cadr (assoc-eq 'append *fn2-fnct-results*)))
 
+; Bounded raw identity-evidence export. Coverage 0 describes only the local
+; observations exported; scan-end is not a completeness claim. Entries are
+; key-ordered, not commit-ordered. ENTRIES concatenates two-octet lengths and
+; original identity-evidence-entry encodings, preserving all typed fields.
+; This intermediate surface does not implement e-surface 13.4's history,
+; chain, view, dependencies or coverage claim.
+(defconst *fn2-peer-export-version* 1)
+(defconst *fn2-peer-export-interpretation* 1)
+(defconst *fn2-peer-export-coverage-local* 0)
+(defconst *fn2-peer-export-stop-scan-end* 0)
+(defconst *fn2-peer-export-stop-page-bound* 1)
+(defconst *fn2-peer-export-result-layout*
+  '((version :u8) (interpretation :u8) (coverage :u8) (cut :u64be)
+    (stop :u8) (next (:octets16 400)) (count :u16be)
+    (entries (:octets16 4096))))
+(defconst *fn2-peer-export-length-layout* '((length :u16be)))
+(deflayout fn2-peer-export-result *fn2-peer-export-result-layout*)
+(deflayout fn2-peer-export-length *fn2-peer-export-length-layout*)
+
 ;; ---------------------------------------------------------------------------
 ;; 5. What each code is. A port code names its verb; fn1's codes name the verb
 ;; L translates them to: fn1's poll and wait read from POSITION's cursor with
@@ -313,7 +339,9 @@
     (:read read :port ())
     (:wait-cursor wait :port ())
     (:unregister-cursor unregister :port ())
-    (:status-wide status :port ())))
+    (:status-wide status :port ())
+    ; Standalone raw export, not a consumer-port verb.
+    (:evidence-page nil :port ())))
 (defun fn2-fnct-code-verbs-ok (rows)
   (declare (xargs :verify-guards nil))
   (if (atom rows) t
