@@ -69,7 +69,8 @@ The executable controls are:
   and 17 after Fence. This stronger raw-host fixture remains unexecuted.
 - `tests/native-fence-correspondence.lisp`: independently replay the actual native
   Write segment, issue Fence, then replay strict Take/Ack/four-field Return/Post.
-  Missing return, changed raw result, generation or terminal outcome must fail.
+  Missing or duplicate return, changed raw result, generation or terminal outcome
+  must fail.
   Feed that same real event to the shared scheduled model; compare descriptor and
   raw-result fields plus the decoder, while native schedule/time coordinates are
   explicitly neutral. Check durable byte 17 and unposted phase, then model crash
@@ -112,6 +113,12 @@ witness formula is unchanged; the new hints have not executed yet. The
 hypothesis-removal witness was not reached in the earlier world. Its deliberate
 active=0 mutation tests the theorem's pending-flight premise; it contributes no
 evidence that this branch is reachable in the composed scheduler.
+
+The real-fd readback establishes current OS-visible byte contents. It is not a
+power-loss durability witness. Relating a successful native Fence to preserved
+crash images still relies on the existing `FN2-A-FENCE-PERSISTS` environment
+assumption in `books/assumptions-device.lisp`; packet agreement does not establish
+that assumption.
 
 Remaining obligations include the complete keystone witness package,
 initialized incarnation and effect/crash preservation,

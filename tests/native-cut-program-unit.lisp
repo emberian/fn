@@ -130,7 +130,7 @@
     ; Evaluate the declared concrete fixture while the admitted storage
     ; equality rewrites its two executions. Keep implementation bodies opaque.
     :in-theory
-    (e/d (fn2-native-cut-atomic-witness
+    (e/d ((:definition fn2-native-cut-atomic-witness)
           (:executable-counterpart fn2-native-cut-fixture)
           (:executable-counterpart create-fn2-core)
           (:executable-counterpart create-fn2-sim)
@@ -142,11 +142,11 @@
   (fn2-native-cut-atomic-witness t)
   :rule-classes nil
   :hints (("Goal"
-    ; The deliberate active=0 mutation is a hypothesis control, not evidence
-    ; of reachability in composition. Evaluate its concrete two executions;
+    ; unreachable-in-composition: the deliberate active=0/submitted mutation
+    ; is only a hypothesis-removal control. Evaluate its concrete two executions;
     ; the storage equality is unavailable once its pending premise is removed.
     :in-theory
-    (e/d (fn2-native-cut-atomic-witness
+    (e/d ((:definition fn2-native-cut-atomic-witness)
           (:executable-counterpart fn2-native-cut-fixture)
           (:executable-counterpart create-fn2-core)
           (:executable-counterpart create-fn2-sim)

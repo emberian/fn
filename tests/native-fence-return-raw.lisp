@@ -4,7 +4,7 @@
 
 (defun fn2-native-fence-read-byte (device)
   (let* ((bytes (make-array 1 :element-type '(unsigned-byte 8) :initial-element 0))
-         (job (make-fn2-device-job :kind :read :bytes bytes :length 1 :offset 0)))
+         (job (make-fn2-device-job :kind :read :bytes bytes :address 0 :length 1 :offset 0)))
     (fn2-device-perform device job)
     (assert (= (fn2-device-job-result job) 1))
     (assert (zerop (fn2-device-job-errno job)))
@@ -16,6 +16,7 @@
          (core (create-fn2-core)) (sim (create-fn2-sim)) (own (create-fn2-own))
          (device nil) (fd -1) (host nil) (phase :write) (fence-op nil)
          (worker-cut nil) (executor-cut nil) (writes nil)
+         (initial-byte nil) (written-byte nil) (fenced-byte nil)
          (ready (sb-thread:make-semaphore :count 0)))
     (unwind-protect
       (progn
@@ -25,7 +26,8 @@
           (setf fd opened)
           ;; The relation covers offset zero's initial and written bytes, not
           ;; an unobserved claim about every byte of the new file.
-          (assert (zerop (fn2-native-fence-read-byte (%make-fn2-device :fd fd))))
+          (setf initial-byte (fn2-native-fence-read-byte (%make-fn2-device :fd fd)))
+          (assert (zerop initial-byte))
           (let* ((n (fn2-profile-o *fn2-profile-tiny*))
                  (ops (make-array n)))
             (dotimes (i n) (setf (aref ops i) (make-fn2-nop)))
@@ -41,7 +43,8 @@
                 ;; precedes the executor's four-field observation event.
                 (assert (zerop (fn2-nhost-pending host)))
                 (assert (= (fn2-nop-state (aref (fn2-nhost-ops host) fence-op)) +fn2-n-waiting+))
-                (assert (= (fn2-native-fence-read-byte device) 17))
+                (setf fenced-byte (fn2-native-fence-read-byte device))
+                (assert (= fenced-byte 17))
                 (setf worker-cut (nthcdr (length writes) (fn2-n-trace-list host)))
                 (assert (equal (mapcar #'car worker-cut) '(:take :ack))))
               (when (and (eq phase :fence) (equal label "device-return"))
@@ -63,8 +66,9 @@
           (assert (sb-thread:wait-on-semaphore ready :timeout 5))
           (fn2-n-storage-completions host)
           (fn2-n-post-completions host)
-          (setf writes (fn2-n-trace-list host))
-          (assert (= (fn2-native-fence-read-byte device) 17))
+          (setf writes (fn2-n-trace-list host)
+                written-byte (fn2-native-fence-read-byte device))
+          (assert (= written-byte 17))
           (multiple-value-bind (code op gen c) (fn2-issue-fence 1 0 1 0 core)
             (declare (ignore gen c)) (assert (eq code :ok)) (setf fence-op op))
           (setf phase :fence)
@@ -84,6 +88,8 @@
             ;; Strict presence and actual syscall/result correlation matter.
             (assert (not (fn2-native-fence-replay-check writes
                            (append (take 2 fence) (nthcdr 3 fence)))))
+            (assert (not (fn2-native-fence-replay-check writes
+                           (append (take 3 fence) (nthcdr 2 fence)))))
             (setf (nth 2 (nth 2 changed)) -1)
             (assert (not (fn2-native-fence-replay-check writes changed)))
             (assert (not (fn2-native-fence-model-check (nth 2 changed) nil)))
@@ -94,9 +100,19 @@
             (setf (nth 5 (nth 3 changed)) *fn2-outcome-failed*)
             (assert (not (fn2-native-fence-replay-check writes changed)))
             (with-open-file (out (concatenate 'string path ".trace") :direction :output :if-exists :error)
-              (write (list :write writes :fence fence :worker-cut worker-cut :executor-cut executor-cut)
+              (write (list :write writes :fence fence
+                           :footprint (list :visibility :os-visible :offset 0 :initial initial-byte
+                                            :after-write written-byte :after-fence fenced-byte)
+                           :worker-cut (list :label "device-syscall-return"
+                                             :phase :physical-return-unpublished :trace worker-cut)
+                           :executor-cut (list :label "device-return"
+                                               :phase :raw-return-unposted :trace executor-cut)
+                           :persistence-assumption 'fn2-a-fence-persists
+                           :physical-subject 'fn2-device-perform
+                           :model-subject 'fn2-sim-advance
+                           :model-physical-subject 'fn2-sim-native-stage)
                      :stream out :readably t))
-            (format t "NATIVE FENCE RETURN PASS image=~a trace=~a.trace: actual issued write17/fence, worker and executor unposted cuts, four-field replay/model projection and four mutations~%" path path))
+            (format t "NATIVE FENCE RETURN PASS image=~a trace=~a.trace: actual issued write17/fence, worker and executor unposted cuts, four-field replay/model projection and five mutations~%" path path))
           t))
       (setf (symbol-function 'fn2-n-boundary) original-boundary)
       (if device
