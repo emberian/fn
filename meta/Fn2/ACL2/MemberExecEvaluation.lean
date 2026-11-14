@@ -262,18 +262,26 @@ theorem too_small_fuel :
     Countdown.run step 1 (.sym ":OK", Val.ofList [.sym ":MORE", .sym ":OK"]) = .error () := by
   simp [Countdown.run, step, Val.ofList, «ENDP», «ATOM», «NOT», «EQ», Prim.consp, Prim.equal, Val.isCons, Val.car, Val.cdr, Val.ofBool, Val.truthy, Val.nil, Val.t]
 
-def unchangedTail : State → Sum Val State := Sum.inr
+/-- Mutate only the recursive tail argument; successful and empty branches
+remain the actual emitted branches. -/
+def unchangedTail : State → Sum Val State
+  | (x, lst) => if («ENDP» lst).truthy then .inl Val.nil
+    else if («EQ» x lst.car).truthy then .inl lst else .inr (x, lst)
+def stalledInput : State := (.sym ":OK", Val.ofList [.sym ":MORE", .sym ":OK"])
+theorem mutated_transition_stalls : unchangedTail stalledInput = .inr stalledInput := by
+  simp [unchangedTail, stalledInput, Val.ofList, «ENDP», «ATOM», «NOT», «EQ»,
+    Prim.consp, Prim.equal, Val.isCons, Val.car, Val.ofBool, Val.truthy, Val.nil, Val.t]
 
 theorem broken_decrease : ¬ (∀ a b, unchangedTail a = .inr b → measure b < measure a) := by
   intro claimed
-  have := claimed (Val.nil, Val.nil) (Val.nil, Val.nil) rfl
+  have := claimed stalledInput stalledInput mutated_transition_stalls
   omega
 
-theorem broken_recursion_never_succeeds (fuel : Nat) (a : State) :
-    Countdown.run unchangedTail fuel a = .error () := by
+theorem broken_recursion_never_succeeds (fuel : Nat) :
+    Countdown.run unchangedTail fuel stalledInput = .error () := by
   induction fuel with
   | zero => rfl
-  | succ fuel ih => exact ih
+  | succ fuel ih => simpa only [Countdown.run, mutated_transition_stalls] using ih
 
 #print axioms closed_evaluation
 #print axioms decreases

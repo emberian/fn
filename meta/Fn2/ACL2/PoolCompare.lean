@@ -2,6 +2,7 @@
 module
 
 public import Fn2.ACL2.Countdown
+public import Fn2.ACL2.Fuel
 public import Fn2.ACL2.Translation
 public import Mathlib.Tactic
 import all Init.Data.String.Basic

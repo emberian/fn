@@ -1,5 +1,6 @@
 -- Generated from the canonical admitted loop; proof schema lives in pool_compare.lean.in.
 import Fn2.ACL2.Countdown
+import Fn2.ACL2.Fuel
 import Fn2.ACL2.Translation
 import Mathlib.Tactic
 
