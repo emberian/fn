@@ -116,16 +116,76 @@ def owner_contract(source, worker_source):
     assert all(arg.startswith("fn2-") for arg in take[2]), "TAKE must derive destination from actual carriers"
     assert ["fn2-machines-kind-basesi", "*fn2-checkpoint-page-worker-kind*", "fn2-machines"] in list(walk(take))
     assert ["fn2-checkpoint-page-worker-generation", "0", "fn2-checkpoint-page-worker"] in list(walk(take))
-    assert ["transferred", ["if", ["eq", "code", ":ok"], "1", "0"]] in list(walk(take))
+    assert ["transferred", "0"] in list(walk(take))
+    assert ["handoff", "*fn2-checkpoint-page-handoff-to-worker*"] in list(walk(take))
+    assert not any(node and node[0] == "fn2-pool-accept-hand" for node in walk(take)), "sender cannot accept for recipient"
+    assert ["phase", "*fn2-checkpoint-page-worker-state-accept*"] in list(walk(take))
+    accept = nested("fn2-checkpoint-page-accept-children")
+    accepted_return = nested("fn2-checkpoint-page-accept-return-children")
+    assert accepted_return[2][:3] == ["okind", "oslot", "ogen"]
+    for operation in (accept, accepted_return):
+        assert any(node and node[0] == "fn2-pool-accept-hand" for node in walk(operation))
+        assert any(node and node[0] == "fn2-checkpoint-page-handedp" for node in walk(operation))
+        assert any(node and node[0] == "fn2-checkpoint-page-worker-routep" for node in walk(operation))
+    assert ["transferred", "1"] in list(walk(accept))
+    assert ["handoff", "*fn2-checkpoint-page-handoff-worker*"] in list(walk(accept))
+    assert ["transferred", "0"] in list(walk(accepted_return))
+    assert ["handoff", "*fn2-checkpoint-page-handoff-source*"] in list(walk(accepted_return))
+    assert any(node and node[0] == "fn2-checkpoint-page-complete-p" for node in walk(accepted_return))
     returned = nested("fn2-checkpoint-page-return-children")
     assert any(node and node[0] == "fn2-checkpoint-page-complete-p" for node in walk(returned))
     assert ["equal", ["fn2-checkpoint-page-worker-pending", "0", "fn2-checkpoint-page-worker"], "0"] in list(walk(returned))
+    assert ["fn2-checkpoint-page-set-handoff", "0", "*fn2-checkpoint-page-handoff-to-source*", "fn2-checkpoint-page"] in list(walk(returned))
+    assert not any(node and node[0] == "fn2-pool-accept-hand" for node in walk(returned)), "worker cannot accept for source"
+    assert not any(node and node[0].startswith("fn2-checkpoint-page-worker-set-") for node in walk(returned) if isinstance(node[0], str))
+    take_cost = next(form for form in parsed if form[:2] == ["defcost", "fn2-checkpoint-page-take"])
+    assert take_cost[take_cost.index(":target") + 1] == ["fn2-checkpoint-page-worker", ":free", ":accept"]
+    assert take_cost[take_cost.index(":effects") + 1] == ":per-use"
+    machine = next(form for form in parsed if form[:2] == ["defmachine", "fn2-checkpoint-page-worker"])
+    holds = machine[machine.index(":holds") + 1]
+    assert not any(hold[0] in (":free", ":accept") for hold in holds), "foreign target cannot enter a held phase"
     for callee in ("fn2-pool-hand", "fn2-pool-accept-hand"):
         target = definition((ROOT / "books/pool.lisp").read_text(), callee)
         calls = [node for node in all_nodes if node and node[0] == callee]
         assert len(calls) == 2 and all(len(call) - 1 == len(target[2]) for call in calls)
     arms = next(form for form in parsed if form[:3] == ["defmachine-arms", "fn2-checkpoint-page-worker", ":declare"])
     arms = arms[arms.index(":arms") + 1]
+    accept_arm = next(arm for arm in arms if arm[0] == ":accept")
+    assert [":acquire", [":storage-window"]] in list(walk(accept_arm))
+    assert [":next", ":context"] in list(walk(accept_arm))
+    return_arm = next(arm for arm in arms if arm[0] == ":return")
+    assert [":release", [":storage-window"]] in list(walk(return_arm))
+    assert [":next", ":free"] in list(walk(return_arm))
+    for suffix, outputs in (("take", [("fn2-checkpoint-page-worker", "3"), ("fn2-checkpoint-page", "4"), ("fn2-pool", "5")]),
+                            ("accept", [("fn2-checkpoint-page", "1"), ("fn2-pool", "2")]),
+                            ("return", [("fn2-checkpoint-page", "2"), ("fn2-pool", "3")]),
+                            ("accept-return", [("fn2-checkpoint-page", "1"), ("fn2-pool", "2")])):
+        name = "fn2-checkpoint-page-" + suffix + "-children"
+        operation = nested(name)
+        proof = next(node for node in all_nodes if node[:2] == ["fn2-checkpoint-page-preserves", name])
+        assert proof[2] == operation[2]
+        declaration = operation[3][1]
+        inputs = declaration[declaration.index(":stobjs") + 1]
+        hyps = proof[proof.index(":hyps") + 1]
+        specs = proof[proof.index(":specs") + 1]
+        assert all([obj + "p", obj] in hyps and [obj + "-wfp", obj] in hyps for obj in inputs)
+        for obj, pos in outputs:
+            assert [obj + "p", pos] in specs and [obj + "-wfp", pos] in specs and [obj + "-rows", pos, ":frame", obj] in specs
+        def result_exits(tree):
+            if not isinstance(tree, list) or not tree:
+                return
+            if tree[0] == "b*":
+                for _, value in tree[1]:
+                    yield from result_exits(value)
+                yield from result_exits(tree[2])
+            else:
+                if tree[0] == "mv":
+                    yield tree
+                for child in tree[1:]:
+                    yield from result_exits(child)
+        returned_objects = [obj for obj, _ in outputs]
+        for result in result_exits(operation[-1]):
+            assert result[-len(returned_objects):] == returned_objects, "actual handoff child result projection mismatch"
     allowed = {"fn2-checkpoint-page-context-op", "fn2-checkpoint-page-format-op", "fn2-checkpoint-page-issue-op", "fn2-checkpoint-page-phase-op"}
     for arm in arms:
         if arm[0] in (":context", ":format", ":issue", ":wait"):
@@ -173,6 +233,9 @@ def main():
         worker_source.replace("(fn2-checkpoint-page-phase-op))", "(fn2-checkpoint-page-return))", 1),
         worker_source.replace("(fn2-checkpoint-page-issue-op budget)", "(fn2-checkpoint-page-issue-op 1)", 1),
         worker_source.replace("(:if (and (natp budget) (< 0 budget))", "(:if t", 1),
+        worker_source.replace("(phase *fn2-checkpoint-page-worker-state-accept*)", "(phase *fn2-checkpoint-page-worker-state-context*)", 1),
+        worker_source.replace("(:acquire (:storage-window))", "(:acquire (:operation))", 1),
+        worker_source.replace("(:release (:storage-window))", "(:release (:operation))", 1),
     ):
         assert changed != worker_source
         try:
@@ -180,7 +243,7 @@ def main():
         except AssertionError:
             continue
         raise AssertionError("source contract accepted a premature ownership return")
-    print("checkpoint page source contracts: harvest + 5 return/frame contracts + captured guards + 6 actual callee arities + generated owner handoff/physical arm isolation; 8 rejection controls pass (no ACL2 execution)")
+    print("checkpoint page source contracts: harvest + 5 return/frame contracts + captured guards + 6 actual callee arities + generated owner handoff/physical arm isolation; 11 rejection controls pass (no ACL2 execution)")
 
 
 if __name__ == "__main__":
