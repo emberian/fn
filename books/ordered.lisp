@@ -15,11 +15,15 @@
 ; reference in the format's shape, LOCATION-UNIT the physical unit it starts
 ; at, LOCATION-EPOCH and LOCATION-ALLOCATION the allocation handle that must
 ; still name its extent, LOCATION-KIND what the reference names (the raw
-; source, or a source manifest). The reference's encoded length is BYTES and
-; its expected hash SOURCE (the stored octets are the source the identity
-; digests); its storage domain is the node's one domain. Written by the
-; transaction at :prepare from its upload's payload extent; read by
-; ARTICLE/HEAD/BODY before fn2-block-read.
+; source, or a source manifest). BYTES counts the stored article, including
+; any injected Message-ID. SOURCE identifies the incoming subject;
+; STORED-SOURCE commits the complete stored article. LOCATION-HASHES is the
+; ordered, length-delimited vector of hashes for the location's written
+; units: exact raw-source unit lengths (including the final short unit), or
+; complete padded manifest units. Its bound follows the supported article
+; location write span, not every sector reserved by the physical allocator.
+; All fields publish in the same article row; the cursor copies the vector
+; while that row is current and verifies a location unit before consuming it.
 (make-event
  `(defrunschema fn2-article :id 2
  :key ((article (:id article)))

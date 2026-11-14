@@ -1404,7 +1404,7 @@
                                           0 *fn2-article-location-hashes-max* row-lslot row-lgen 0)
       :accept (:ok :stale) :why ":stale: restart location and commitment together")
      (:do (rc) (fn2-read-release (+ 1 (* 2 row-slot))) :accept (:ok))
-     (:cond ((eq hc :stale) (:set (step 21)) (:charge :bytes 256 :steps *fn2-work-transition* :runnable t))
+     (:cond ((eq hc :stale) (:set (step 20)) (:charge :bytes 256 :steps *fn2-work-transition* :runnable t))
             ((and (equal left 0) (posp copied) (equal (mod copied 32) 0)
                   (<= copied *fn2-article-location-hashes-max*)
                   (or (equal row-mkind 1) (equal copied (* 32 (ceiling row-alen *fn2-commit-unit-bytes*)))))

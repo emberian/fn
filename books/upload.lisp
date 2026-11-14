@@ -22,7 +22,7 @@
 ;; *fn2-upload-page-manifest* (its units, written in order to the manifest's
 ;; extent). Its size is derived from the stored octets (fn2-upload-page-bytes).
 ;; The full stored digest stays before the stage, after the generated field.
-;; Raw uploads therefore retain the existing one-unit storage workspace.
+;; The location vector follows it; raw uploads also stage one complete unit.
 (defconst *fn2-upload-page-stored-source* (* 64 (ceiling *fn2-upload-mid-line-max* 64)))
 (defconst *fn2-upload-page-location-hashes* (+ *fn2-upload-page-stored-source* 64))
 (defconst *fn2-upload-page-stage*
