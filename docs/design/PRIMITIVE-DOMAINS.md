@@ -32,4 +32,10 @@ The three primitive modules passed a bounded Lean 4.30.0 author probe on forge
 (`/tmp/assurance-primitive-probe5.log`), with six axiom censuses containing only
 `propext`, `Classical.choice`, and `Quot.sound`. This is not an ACL2 record
 certificate or current-world served-closure certification. The paired ACL2 book
-and the shared rational-library import change still need their respective gates.
+subsequently passed record certification `certify-20261114T020826Z-3549697`: one
+book, no local dependencies, 566 prover steps, 0.116 seconds. Its current closure
+key is `fe690b3072a01c0113ae5d17a508c4cc2764a730a7b36671ff6aec4233d9ab2b`,
+with an authenticated published record-toolchain cache entry on forge. Sol
+independent source review found no domain or vacuity blocker. The full Mathlib
+consumer of the moved theorem has not been recompiled because its cached
+dependencies are unavailable; the existing rational theorem remains unchanged.
