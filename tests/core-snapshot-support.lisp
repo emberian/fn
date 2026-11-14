@@ -73,9 +73,11 @@
  (let ((events (fn2-test-core-snapshot-events *fn2-core-children* (w state)))
        (runes (fn2-test-core-snapshot-runes *fn2-core-children* (w state))))
    (value `(progn
+             (local (deftheory fn2-test-snapshot-base-theory (current-theory :here)))
              (encapsulate ()
                (local (in-theory nil))
                ,@events)
+             (local (in-theory (theory 'fn2-test-snapshot-base-theory)))
              (in-theory (disable ,@runes))))))
 (make-event
  (value `(defun fn2-test-core-snapshot (fn2-core)
