@@ -57,6 +57,75 @@ class CoverageControls(unittest.TestCase):
                 (root/'tool/lib/lean/libleanshared.so').write_text('different runtime')
                 self.assertNotEqual(b,c.toolchain_fingerprint(root))
 
+    def test_external_import_mutation_invalidates_same_source_cache(self):
+        with tempfile.TemporaryDirectory() as td:
+            root=Path(td); lib=root/'lib'; ext=root/'external'
+            (root/'meta/Fn2').mkdir(parents=True); (root/'tool/bin').mkdir(parents=True)
+            (root/'tool/lib/lean').mkdir(parents=True); (ext/'Other').mkdir(parents=True)
+            for name in ['meta/lean-toolchain','meta/lake-manifest.json','proxy','tool/bin/lean']:
+                (root/name).write_text(name)
+            (root/'meta/Fn2/A.lean').write_text('import Other.Top\ndef a := 1')
+            (ext/'Other/Top.olean').write_text('imports Other.Transitive')
+            artifact=ext/'Other/Transitive.olean'; artifact.write_text('original')
+            calls=[]; cache={}
+            def query(args, **kwargs):
+                return str(root/'tool') if args[-1]=='--print-prefix' else 'Lean 4.30.0'
+            def compile_fake(source, lib, seconds, logname, **kwargs):
+                calls.append(source); (lib/'Fn2').mkdir(parents=True,exist_ok=True)
+                (lib/'Fn2/A.olean').write_text('checked')
+                (root/'log').write_text('checked'); return 0,'checked','log'
+            with mock.patch.dict(c.os.environ,{'LEAN_PATH':'../external'}), \
+                 mock.patch.object(c.shutil,'which',return_value=str(root/'proxy')), \
+                 mock.patch.object(c.subprocess,'check_output',side_effect=query), \
+                 mock.patch.object(c,'compile_one',side_effect=compile_fake):
+                def check():
+                    c.compile_closure(['Fn2.A'],lib,5,1,root=root,cache=cache)
+                check(); calls.clear(); check(); self.assertEqual(calls,[])
+                for changed in [artifact,Path(str(artifact)+'.private'),
+                                Path(str(artifact)+'.server'),artifact.with_suffix('.ir'),
+                                root/'tool/lib/lean/Init.olean']:
+                    with self.subTest(changed=changed.name):
+                        calls.clear(); changed.write_text('changed external bytes')
+                        check(); self.assertEqual(calls,['meta/Fn2/A.lean'])
+                        calls.clear(); check(); self.assertEqual(calls,[])
+
+    def test_external_search_order_shadowing_and_symlink_target_are_bound(self):
+        with tempfile.TemporaryDirectory() as td:
+            root=Path(td); a=root/'a'; b=root/'b'; a.mkdir(); b.mkdir()
+            (b/'Other').mkdir(); (b/'Other/A.olean').write_text('external')
+            original=c.external_library_fingerprint([a,b])
+            self.assertNotEqual(original,c.external_library_fingerprint([b,a]))
+            (a/'Other').mkdir()  # Empty prefix shadows b/Other in Lean.
+            self.assertNotEqual(original,c.external_library_fingerprint([a,b]))
+            link=root/'link'; link.symlink_to(b,target_is_directory=True)
+            before=c.external_library_fingerprint([link])
+            (b/'Other/A.olean').write_text('different')
+            self.assertNotEqual(before,c.external_library_fingerprint([link]))
+
+    def test_only_checked_local_outputs_are_excluded_from_external_inventory(self):
+        with tempfile.TemporaryDirectory() as td:
+            lib=Path(td); (lib/'Fn2').mkdir()
+            checked=lib/'Fn2/Checked.olean'; checked.write_text('checked')
+            other=lib/'Fn2/ExternalDependency.olean'; other.write_text('old')
+            def fingerprint():
+                return c.external_library_fingerprint([lib],lib,{'Fn2.Checked'})
+            before=fingerprint(); checked.write_text('rebuilt')
+            self.assertEqual(before,fingerprint())
+            other.write_text('changed')
+            self.assertNotEqual(before,fingerprint())
+
+    def test_external_change_during_gate_discards_mixed_cache(self):
+        with tempfile.TemporaryDirectory() as td:
+            root=Path(td); lib=root/'lib'
+            def gate(*args):
+                args[7]['mixed']={'key':'old-tool'}
+            with mock.patch.object(c,'gate_plan',return_value=([],set())), \
+                 mock.patch.object(c,'toolchain_fingerprint',side_effect=['old','new']), \
+                 mock.patch.object(c,'lean_gates_locked',side_effect=gate):
+                with self.assertRaisesRegex(RuntimeError,'external libraries changed'):
+                    c.lean_gates({},lib,5,1,root=root)
+            self.assertEqual(json.loads((root/'build/served-lean-cache.json').read_text()),{})
+
     def test_dependency_rebuild_artifact_invalidates_downstream(self):
         with tempfile.TemporaryDirectory() as td:
             root=Path(td); (root/'meta/Fn2').mkdir(parents=True)
@@ -74,6 +143,10 @@ class CoverageControls(unittest.TestCase):
                 c.compile_closure(['Fn2.B'],lib,5,1,root=root,cache=cache,tool='tool')
                 calls.clear(); revision[0]=1
                 (lib/'Fn2/A.olean').write_text('damaged artifact')
+                c.compile_closure(['Fn2.B'],lib,5,1,root=root,cache=cache,tool='tool')
+                self.assertEqual(calls,['meta/Fn2/A.lean','meta/Fn2/B.lean'])
+                calls.clear()
+                (lib/'Fn2/A.olean.private').write_text('changed private declarations')
                 c.compile_closure(['Fn2.B'],lib,5,1,root=root,cache=cache,tool='tool')
                 self.assertEqual(calls,['meta/Fn2/A.lean','meta/Fn2/B.lean'])
 

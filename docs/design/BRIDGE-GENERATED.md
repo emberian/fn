@@ -85,8 +85,13 @@ The earlier body/loop certificates remain documented in `BRIDGE-CORE.md` and
 `BRIDGE-LOOPS.md`; this report does not inflate their scope to the entire closure.
 
 The checker rebuilds the whole local Lean import graph. Its reusable cache binds
-source, local dependencies, compiler, toolchain/manifest and actual olean hash.
-Copied warm artifacts alone are not evidence. Coverage is invalidated by a change
+source, local dependencies, selected compiler/runtime, toolchain/manifest and
+actual import artifacts (including private/server sidecars and IR). It also binds
+the ordered effective Lean search path and a conservative inventory of external
+library artifacts, including transitive imports and directory shadowing. A
+changed external inventory during a gate discards its cache and rejects the run.
+This intentionally invalidates earlier cache keys; copied warm artifacts alone
+are not evidence. Coverage is invalidated by a change
 to the canonical packet or any recorded input. A whole root is counted only after
 both its Lean proof/census and the current ACL2 record-cache gate pass.
 
@@ -134,3 +139,64 @@ python3 meta/emit/check_served_certificate.py --lean --acl2 /tank/fn/toolchains/
 
 Use a timeout and recorded PID/DONE wrapper for detached jobs. Keep the generated
 packet and source book synchronized before the box helper's full rsync.
+
+## Open assurance work owned by the Lean recovery lane
+
+Owner: `recover_lean` / `lane/stride-lean-reflect`. These are implementation and
+proof obligations, not conclusions supplied by the 57-root historical snapshot
+or the later recovered-package 58-candidate Lean-only regression. The current
+checker has no closure-wide canonical-body-evaluation or primitive-domain gate.
+`Translation.BodyCorrect` defines an interface; defining it does not instantiate
+it for the served closure. The echo FREE certificate is a scoped precedent.
+
+1. **Current package and closure.** Once integration supplies a coherent source
+   revision, regenerate registry, canonical packet and LayerA bodies from the
+   same current ACL2 world. Qualify `reference`, `translation-validation` and
+   `meta-probe` prerequisites with current record-cache keys, then certify the
+   generated served-export book. Derive required functions from the complete
+   served call graph, retaining recursion, guards, measures and selected
+   attachments. No root is end-to-end qualified from a recovered packet.
+2. **Canonical body evaluation.** Extend the shared body generator used by the
+   echo certificate to emit, for each required function, the ACL2 equation
+   between evaluation of its exported logical body and its admitted function,
+   plus Lean decoding and `canonical_body`/`BodyCorrect` evidence against the
+   emitted function. Compose callee evidence by dependency order. Recursive
+   components need measure induction and a proved evaluation-fuel bound; a
+   fixed fuel constant or assumed callee equation is not a replacement. A
+   constrained function's selected attachment needs its own named refinement
+   obligation; preserve the logical body and the exact attachment pair.
+3. **Representable domain and primitive correspondence.** Introduce named
+   per-root input-domain predicates derived from the actual served guards and
+   representation invariants, and prove initialization, external admission,
+   callee arguments and returned state preserve them. Preserve the existing
+   unconditional interpreter equalities: the new domain predicates qualify the
+   additional ACL2-to-Lean semantic claim. Relate canonical integers, supported
+   package-qualified symbols, byte characters/strings and recursive cons values
+   to `Val`; prove the relation is unambiguous on the admitted domain. Inventory
+   every reachable primitive call and discharge its domain and correspondence
+   obligations. Check attachments and executable `:logic`/`:exec` agreement too.
+4. **First arithmetic slice.** Start with served `EXPT` sites: literal natural
+   exponents, `NFIX` exponents, the integer/nonnegative branch of `UNSIGNED-BYTE-P`,
+   the `0 < LEFT < 4` branch of `B3-BLOCK-WORD`, and non-`ZP` `N` in
+   `CODEC-EMIT-BE` before computing `N-1`. Prove these conditions at each actual
+   call, then compose `expt_nonnegative` under the root domain. If a served call
+   admits negative/rational exponents, extend the semantic representation there;
+   do not silently lower rational results to integers. Connect the existing
+   rational floor/ceiling and negative-ASH contracts to their actual call sites,
+   and include `PrimitiveContracts` in the checked import closure before counting
+   them. The twelve sites observed in the old packet are leads; recompute the
+   inventory from the current packet.
+5. **Gate and controls.** Add separate machine-readable denominators for canonical
+   record identity, ACL2 body equations, Lean body evaluation, reachable primitive
+   obligations and whole-arm interpretation. Join them by exact function/record
+   and root dependency closure, never by a successful global count. A root's new
+   semantic status requires all its dependency obligations and its named input
+   domain; missing obligations remain failures. Controls must reject a changed
+   valid body, wrong callee/attachment, missing dependency, a removed domain
+   premise admitting `2^-1`, and negative division/ASH truncation. Include a
+   reachable positive input satisfying the whole new domain and conclusion.
+
+The next reviewable semantic slice is one current echo FREE closure with all
+five evidence dimensions joined, followed by the guarded arithmetic families
+and recursive components. This sequence does not reduce the destination: all
+served roots and their executable dependencies remain required.
