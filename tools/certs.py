@@ -158,6 +158,10 @@ import cert_images  # noqa: E402
 import acl2_projects  # noqa: E402
 
 BOOK_DIRECTORIES = ("books", "tests/acl2")
+# Repository-local roots the certifier accepts. Manifest-driven collection and
+# publication must accept the same roots without accepting paths outside them.
+# host/native contains raw Lisp, never certifiable books.
+BOOK_NAME = re.compile(r"(?:books|tests|sim|meta/emit|host(?!/native/))/(?:[A-Za-z0-9_-]+/)*[A-Za-z0-9_-]+$")
 DEFAULT_CACHE = "~/.cache/fn-certs"
 # Where a farm box keeps its copy.  `--remote host:path` overrides.
 REMOTE_CACHES = {"hbox": "/tank/fn/certcache", "persvati": "~/fn-certcache"}
@@ -2799,6 +2803,14 @@ def publish(root: Path, cache: Path, manifests: list[dict] | None = None,
     loaded = load_manifests(root) if manifests is None else list(manifests)
     report.manifests = len(loaded)
     records = certified_books(loaded, origin or str(root.resolve()))
+    if names is None:
+        # Keep the ordinary scan's diagnostics, and include explicit roots
+        # outside those directories (the promoted tests/, sim/ and meta/emit/
+        # books, and certified host books). A manifest only selects candidates;
+        # all source, certificate, closure and toolchain checks below still run.
+        names = sorted({book_name(root, source) for source in book_sources(root)}
+                       | {name for name in records
+                          if isinstance(name, str) and BOOK_NAME.fullmatch(name)})
     cache.mkdir(parents=True, exist_ok=True)
     for source in book_sources(root, names):
         if not source.is_file():

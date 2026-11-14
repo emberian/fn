@@ -5,7 +5,10 @@ ACL2_BOOKS = \
   books/accounts-core \
   books/alloc \
   books/arm-children \
+  books/arm-issue-effects \
+  books/executor-reservation \
   books/arms \
+  books/run-budget \
   books/article-manifest \
   books/assembly \
   books/assembly-access \
@@ -83,6 +86,7 @@ ACL2_BOOKS = \
   books/core-children \
   books/core-children-a \
   books/core-lowering \
+  books/core-product-lowering \
   books/core-walk \
   books/crash-model \
   books/cursor \
@@ -159,6 +163,7 @@ ACL2_BOOKS = \
   books/owed-host \
   books/owed-native \
   books/owed-peer \
+  books/owed-report \
   books/owed-txn \
   books/peer-model \
   books/pointwise-contracts \
@@ -189,6 +194,7 @@ ACL2_BOOKS = \
   books/sched \
   books/sched-timers \
   books/sealer \
+  books/square-evidence \
   books/squares \
   books/stobj-scope \
   books/stop-boundary \
@@ -255,12 +261,14 @@ ACL2_BOOKS = \
   tests/core-child-registration \
   tests/core-child-unit \
   tests/core-lowering-unit \
+  tests/core-update-lowering-unit \
   tests/core-unit \
   tests/crash-model-differential \
   tests/crash-model-unit \
   tests/cursor-unit \
   tests/death-unit \
   tests/declare-unit \
+  tests/dur-turn-counterexample \
   tests/executor-contracts-unit \
   tests/executor-timers-unit \
   tests/executor-unit \
@@ -283,13 +291,24 @@ ACL2_BOOKS = \
   tests/layout-unit \
   tests/log-model-unit \
   tests/m2-cuts \
+  tests/machine-arms-probe-fixture \
   tests/machine-arms-unit \
   tests/machine-issue-bind-unit \
   tests/tls-profile-unit \
+  tests/machine-budget-unit \
+  tests/machine-budget-core-fixture \
+  tests/core-init-profile-context-unit \
+  tests/machine-success-charge-context-unit \
+  tests/issue-history-context-unit \
   tests/machine-child-tables-unit \
   tests/machines-a-unit \
+  tests/shape-one-unit \
   tests/merkle-random \
   tests/merkle-unit \
+  tests/native-boot-refusal-unit \
+  tests/native-envelope-prefix-unit \
+  tests/envelope-input-unit \
+  tests/envelope-prefix-unit \
   tests/native-unit \
   tests/network-backpressure-unit \
   tests/ops-semantic-steps-unit \
@@ -336,8 +355,11 @@ ACL2_BOOKS = \
   tests/sim-layer-e \
   tests/sim-replay-controls \
   tests/squares-unit \
+  tests/square-evidence-unit \
   tests/staging-unit \
   tests/stop-boundary-unit \
+  tests/storage-fault-policy-unit \
+  tests/translation-domain-unit \
   tests/translation-inventory-unit \
   tests/translation-validation-unit \
   tests/txn-unit \

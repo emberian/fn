@@ -15,6 +15,7 @@
 ;   (:post cell op gen event outcome reason count aux0 aux1 family (port w0 w1 w2 w3) octets)
 (in-package "ACL2")
 (include-book "../books/host-boundary")
+(include-book "envelope-input")
 
 ; ------------------------------------------------------------------------
 ; The allowed relation: the cell words an adapter may post for an op of
@@ -52,12 +53,6 @@
 ; rx and tx newest first and cuts the Receive counts, newest first.
 (defun fn2-envelope-get (k alist) (declare (xargs :verify-guards nil)) (cdr (assoc-equal k alist)))
 
-(defun fn2-envelope-write-loan (k octets slot gen op opgen fn2-pool)
-  (declare (xargs :stobjs fn2-pool :verify-guards nil :measure (len octets)))
-  (if (atom octets) (mv :ok fn2-pool)
-    (mv-let (code fn2-pool) (fn2-pool-adapter-write slot gen op opgen k (car octets) fn2-pool)
-      (if (not (eq code :ok)) (mv code fn2-pool)
-        (fn2-envelope-write-loan (+ 1 (nfix k)) (cdr octets) slot gen op opgen fn2-pool)))))
 (defun fn2-envelope-read-range (k n slot fn2-pool)
   (declare (xargs :stobjs fn2-pool :verify-guards nil :measure (nfix (- (nfix n) (nfix k)))))
   (if (>= (nfix k) (nfix n)) nil
@@ -119,15 +114,13 @@
         (mv :post-after-close taken caps fn2-core))
        (stray (stobj-let ((fn2-ops (fn2-core-ops fn2-core))) (n) (fn2-ops-stray fn2-ops) n))
        ; Receive and a storage Read: the recorded octets (what the peer sent,
-       ; what the device held) are written under the replay's loan first, so
-       ; the replay's pool holds what the host's did.
+       ; what the device held) are written under the replay's loan first.
+       ; A short Read also wrote its returned prefix before normalization;
+       ; its non-done status must not discard that physical memory effect.
        ((mv wcode fn2-core)
-        (if (and (or (equal kind *fn2-action-receive*) (equal kind *fn2-action-read*))
-                 (equal outcome *fn2-outcome-done*))
-            (if (not (equal (len octets) count)) (mv :receive-count fn2-core)
-              (stobj-let ((fn2-pool (fn2-core-pool fn2-core))) (code fn2-pool)
-                (fn2-envelope-write-loan off octets rslot rgen slot gen fn2-pool) (mv code fn2-core)))
-          (mv :ok fn2-core)))
+        (stobj-let ((fn2-pool (fn2-core-pool fn2-core))) (code fn2-pool)
+          (fn2-envelope-input kind outcome count octets off rslot rgen slot gen fn2-pool)
+          (mv code fn2-core)))
        ((unless (eq wcode :ok)) (mv :receive-loan taken caps fn2-core))
        ; Send: what the replay's borrowed range holds, before the post releases it.
        (sent (if (and (equal kind *fn2-action-send*) (not (equal outcome *fn2-outcome-cancelled*)))
@@ -165,15 +158,11 @@
               (t caps))))
     (mv nil taken caps fn2-core)))
 
-; The whole trace. Result (mv verdict caps fn2-core): :pass, or (FAILURE STEP).
-(defun fn2-envelope-steps (trace i bytes-p taken caps fn2-core)
-  ;; the measure's goal is proved before clausify splits the rulers' case tests (D26: 56 s -> 1.7 s)
-  (declare (xargs :stobjs fn2-core :verify-guards nil :measure (len trace)
-                  :hints (("Goal" :do-not '(preprocess)))))
-  (if (atom trace) (mv :pass caps fn2-core)
-    (b* ((e (car trace)) (tag (and (consp e) (car e)))
-         ((mv failure taken caps fn2-core)
-          (case tag
+; One recorded event, retaining the complete continuation state.
+(defun fn2-envelope-step (e bytes-p taken caps fn2-core)
+  (declare (xargs :stobjs fn2-core :verify-guards nil))
+  (let ((tag (and (consp e) (car e))))
+    (case tag
             (:clock (let ((fn2-core (fn2-host-post-clock (nth 1 e) (nth 2 e) (nth 3 e) fn2-core))) (mv nil taken caps fn2-core)))
             (:signal (let ((fn2-core (fn2-host-post-signal (nth 1 e) fn2-core))) (mv nil taken caps fn2-core)))
             (:turn (mv-let (status nobs nvisits nactions fn2-core) (fn2-turn fn2-core)
@@ -200,8 +189,26 @@
                        (mv (if (eq code :ok) nil :finish-refused) taken caps fn2-core)))
             (:post (fn2-envelope-post e bytes-p taken caps fn2-core))
             (otherwise (mv :unknown-entry taken caps fn2-core)))))
-      (if failure (mv (list failure i) caps fn2-core)
-        (fn2-envelope-steps (cdr trace) (+ 1 i) bytes-p taken caps fn2-core)))))
+(in-theory (disable fn2-envelope-step))
+
+; A finite prefix returns its whole continuation: outstanding descriptors,
+; capability transcripts, and core. :pass means legal so far, not completed.
+(defun fn2-envelope-prefix (trace i bytes-p taken caps fn2-core)
+  (declare (xargs :stobjs fn2-core :verify-guards nil :measure (len trace)))
+  (if (atom trace) (mv :pass taken caps fn2-core)
+    (mv-let (failure taken caps fn2-core)
+      (fn2-envelope-step (car trace) bytes-p taken caps fn2-core)
+      (if failure (mv (list failure i) taken caps fn2-core)
+        (fn2-envelope-prefix (cdr trace) (+ 1 i) bytes-p taken caps fn2-core)))))
+
+; Existing clients observe only verdict and capability transcripts. The
+; resumable prefix interpreter retains the outstanding operations as well.
+(defun fn2-envelope-steps (trace i bytes-p taken caps fn2-core)
+  (declare (xargs :stobjs fn2-core :verify-guards nil))
+  (mv-let (verdict taken caps fn2-core)
+    (fn2-envelope-prefix trace i bytes-p taken caps fn2-core)
+    (declare (ignore taken))
+    (mv verdict caps fn2-core)))
 
 (defun fn2-envelope-replay (trace profile bytes-p)
   (declare (xargs :verify-guards nil))

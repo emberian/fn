@@ -1,6 +1,9 @@
 # fn
 
-`fn` is an ACL2-verified persistent event log, NNTP server, and durable stream engine paired with a Lean 4 metatheory and two-kernel translation-validation bridge.
+`fn` is a persistent event log, NNTP server, and durable stream engine built with ACL2-verified components, a Lean 4 metatheory, and a translation-validation bridge under development. End-to-end assurance remains incomplete; the [assurance audit](docs/design/ASSURANCE-AUDIT-20261113.md) identifies the missing proof and implementation links.
+
+Current integration evidence and unfinished implementation/proof work are tracked in
+[`docs/design/FINISH-20261113.md`](docs/design/FINISH-20261113.md).
 
 Every protocol, framing, storage, accounting, and authorization decision is owned by guard-verified `:logic`-mode ACL2 functions operating over a single-threaded nested stobj (`fn2-core`). A minimal SBCL + C host adapter (`host/`, ~1.9 KLOC) performs only non-blocking socket and file I/O (`epoll`/`kqueue`, `pread`/`pwrite`, `fsync`/`F_FULLFSYNC`, Unix peer credentials, and BLAKE3 FFI) and feeds bounded completion batches into `fn2-turn`.
 
@@ -10,7 +13,7 @@ Every protocol, framing, storage, accounting, and authorization decision is owne
 
 - **ACL2 owns every decision (`books/`, 201 books, ~91 KLOC):** Wire framing, non-Lisp-reader protocol parsing, capability/generation pool slices, fair calendar scheduling, BLAKE3-authenticated epoch-fenced journal commits, LSM ordered-run indexing and bounded compaction, durable principals and grants, and exact wire reply bytes are computed exclusively inside ACL2. Neither the Common Lisp host nor the Python CLI recomputes or overrides values decided by `fn2-core`.
 - **Zero axiomatic shortcuts:** The book closure contains **zero `skip-proofs`**, **zero `defaxiom`**, **zero trust tags (`defttag`)**, and **zero `:program`-mode runtime functions**. External assumptions (such as cryptographic collision resistance) are isolated as `encapsulate` specifications with explicit local witnesses.
-- **Obligations with teeth (`books/owed.lisp`, [`docs/OWED.md`](docs/OWED.md)):** Top-level claims are registered in the guarded world table `fn2-squares` via `defthm-owed` and discharged via `fn2-owed-discharge`. Every obligation requires executable **positive witnesses** (ruling out vacuous antecedents) and **negative / hypothesis-removal teeth** (`fn2-assert-owed-teeth`) demonstrating that weakening a hypothesis or mutating a shared handler falsifies the conclusion. Unproved keystones remain explicitly `:owed` in [`docs/OWED.md`](docs/OWED.md) rather than weakened or elided.
+- **Recorded obligations (`books/owed.lisp`, [`docs/OWED.md`](docs/OWED.md)):** Top-level claims are registered in the guarded world table `fn2-squares` via `defthm-owed` and discharged via `fn2-owed-discharge`. Registration is not proof. Named executable witnesses are checked by `fn2-assert-owed-teeth`; the current machinery does not itself establish that they witness the full antecedent or a meaningful hypothesis removal. Unproved keystones remain `:owed`. The generated ledger needs a fresh export from the converged certified world.
 
 ---
 
@@ -128,7 +131,7 @@ cd meta && lake build && lake env lean AxiomCensus.lean
 
 ### Operating a Live Node (`./fn`)
 
-After certifying `books/node-profile.lisp`:
+After certifying `books/node-profile.lisp` and `books/merkle.lisp`:
 
 ```sh
 # 1. Initialize a preallocated store image (O_EXCL; never truncates an existing file)
@@ -159,6 +162,15 @@ After certifying `books/node-profile.lisp`:
 ./fn post ops.alerts --subject "Notice" --from "op@fn2.invalid" --body "line 1" --port 1119
 ./fn article ops.alerts 1 --port 1119
 ```
+
+Recovery defaults to the `broad` storage fault model with honest persistence
+fences. An unexplained dirty tail can therefore leave recovery uncertain and
+prevent startup. For a deployment whose fault model additionally excludes later
+corruption of previously required data, select `--storage-fault-model crash-only`
+on `init` and every `serve`, or set `FN2_STORAGE_FAULT_MODEL=crash-only`.
+The selection is a startup contract, not an on-disk setting, and supplies no
+independent witness. Startup reports `STORAGE-FAULT-MODEL broad` or
+`STORAGE-FAULT-MODEL crash-only` after ACL2 validates the selection.
 
 The `principal`, `grant`, `stream`, `groups`, `post`, and `article` client commands support `--json` (plus `$FN_CONTROL_SOCK`, `$FN_PORT`, `$FN_HOST` environment defaults) and preserve outcome classes at the process exit boundary:
 - `0` — `accepted`

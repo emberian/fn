@@ -2,6 +2,8 @@
 (in-package "ACL2")
 (set-ld-error-action '(:exit 2) state)
 (include-book "books/node-profile" :uncertified-okp nil)
+; The qualified native attachment also replaces the Merkle compression entry.
+(include-book "books/merkle" :uncertified-okp nil)
 (set-inhibit-output-lst '(proof-tree prove event summary observation warning))
 :q
 ; Qualify native crypto before opening a store or binding a listener.

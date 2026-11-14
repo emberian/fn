@@ -161,7 +161,7 @@
 (defun fn2-q1-teeth-run (label fn2-core fn2-ref-core)
   (declare (xargs :stobjs (fn2-core fn2-ref-core) :verify-guards nil))
   (b* (((mv lists fn2-core fn2-ref-core) (fn2-q1-teeth-fixture label fn2-core fn2-ref-core))
-       (named (fn2-q1-label lists fn2-core))
+       (named (fn2-q1-label t lists fn2-core))
        (h (fn2-exec-h fn2-core)) (k (fn2-exec-k fn2-core)) (a (fn2-exec-aturn fn2-core))
        (fn2-core (fn2-exec-set-turn-bytes 0 fn2-core))
        (fn2-core (fn2-exec-set-turn-steps 0 fn2-core))

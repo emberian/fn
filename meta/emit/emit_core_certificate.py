@@ -60,18 +60,33 @@ def lambda_certificates(body, defined, prefix, fuel=512):
     walk(body,fuel)
     return names,lines
 
-def main(src):
-    p=fields(read_canonical(open(src,newline='').read())[1:])
+def inspect_core_certificate(src):
+    """Read and select the existing core body closure without writing artifacts.
+
+    Only the separately proved MEMBER-EQ-EXEC self recursion is admitted.
+    Other direct or mutual recursion needs its own adequacy certificate.
+    Returns packet, selected function rows, all function rows by name, selected
+    names, and decoded kind, in the same order used by emission.
+    """
+    with open(src,newline='') as source:
+        p=fields(read_canonical(source.read())[1:])
     if as_list(p[':REFUSED']):raise ValueError('unresolved export roots')
     allfs=[fn_of(r) for r in p[':FUNCTIONS']]; allf={f.name:(f,d) for f,d in allfs}
-    want=set()
+    want=set();active=[]
     def visit(n):
-        if n in NATIVE or n in SPECIAL or n in want:return
+        if n in NATIVE or n in SPECIAL:return
+        if n in active:raise ValueError('mutually recursive core callees '+ ' -> '.join(active+[n]))
+        if n in want:return
+        if n not in allf:raise ValueError('missing core callee '+n)
         want.add(n);f,d=allf[n]
         if decode(d[':ATTACHMENT'])!=Atom('NIL'):raise ValueError('attached core callee '+n)
         cs=calls_of(f.body,set())
         if n in cs and n!='MEMBER-EQ-EXEC':raise ValueError('recursive core callee '+n)
-        for c in cs:visit(c)
+        active.append(n)
+        for c in sorted(cs):
+            if c==n and n=='MEMBER-EQ-EXEC':continue
+            visit(c)
+        active.pop()
     for r in ROOTS:visit(r)
     for op in decode(p[':OPERATIONS']):
         child=plist(op[1:])[':CALLEE']
@@ -82,6 +97,10 @@ def main(src):
         visit(pre+'-'+c);visit(pre+'-SET-'+c)
     for r in ['FN2-CNS-ROWS','FN2-MACHINES-ROWS','FN2-MACHINE-SLOT','FN2-CONTROL-RECORD-STOP']:visit(r)
     fs=[(f,d)for f,d in allfs if f.name in want]
+    return p,fs,allf,want,kd
+
+def main(src):
+    p,fs,allf,want,kd=inspect_core_certificate(src)
     out=Path('meta/Fn2/Instances')
     L=['-- Canonical certificates use the actual emitted world and its checked dispatch equations.',
        'import Fn2.ACL2.Fuel','import Fn2.ACL2.Translation',
@@ -189,4 +208,17 @@ def main(src):
     write_identity(src,out/'core-identity.json',p,fs,allf,want,'CNS DRAINING and READ-RESULT body closure; MEMBER-EQ-EXEC measure adequacy; whole-core certificates separately checked')
     print('CORE CERTIFICATE PROPOSAL',len(fs),'functions; layout',len(tuple_))
 
-if __name__=='__main__':main(sys.argv[1])
+def cli(argv=None):
+    import argparse
+    parser=argparse.ArgumentParser(description=__doc__)
+    parser.add_argument('--inspect', action='store_true', help='inspect the selected closure without writing artifacts')
+    parser.add_argument('source', help='canonical export packet')
+    args=parser.parse_args(argv)
+    if args.inspect:
+        _,fs,_,_,_=inspect_core_certificate(args.source)
+        print('CORE CERTIFICATE INSPECTION',len(fs),'functions (selection only; no kernel gates run)')
+        for f,_ in fs:print(f.name)
+    else:
+        main(args.source)
+
+if __name__=='__main__':cli()

@@ -21,6 +21,7 @@
 (defun fn2-host-listener-bind (profile) (declare (ignore profile)) (values :ok 0 0))
 (defun fn2-core-profilep (profile) (declare (ignore profile)) t)
 (defun fn2-image-profile (profile) profile)
+(defun fn2-profile-storage-fault-model (profile) (declare (ignore profile)) "broad")
 (defun fn2-n-make-host (profile &rest options)
   (declare (ignore profile)) (setf *opened* options) :host)
 (defun fn2-n-destroy (host) (assert (eq host :host)) (setf *destroyed* t))

@@ -2,7 +2,8 @@
 
 fn is an ACL2-verified NNTP node: ACL2 books own every decision; the SBCL host does I/O and
 calls them. Read docs/design/README.md, docs/design/FN2-ORIENTATION.md and
-docs/design/STATE-20261104.md before substantial changes, then the spec you touch. Proposals and
+docs/design/FINISH-20261113.md before substantial changes, then the spec you touch. The November 4
+STATE document is historical; verify its diagnoses against the current tree. Proposals and
 open questions are not requirements.
 
 ## The engineering laws

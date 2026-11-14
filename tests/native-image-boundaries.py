@@ -4,6 +4,8 @@
 Each case starts from the same accepted baseline image, interrupts a second
 POST, and checks exact recovered public bytes. This is a bounded campaign;
 the JSON report records its specific cuts and whether POST returned 240.
+The injected fault domain explicitly selects crash-only with honest fences;
+the separate broad control retains refusal on the same dirty image.
 """
 import argparse
 import importlib.util
@@ -23,9 +25,10 @@ SPEC.loader.exec_module(restart)
 ROOT = restart.ROOT
 
 
-def environment(cut=None):
+def environment(cut=None, fault_model="crash-only"):
     env = dict(os.environ)
     env.pop("FN2_KILL_AT", None)
+    env["FN2_STORAGE_FAULT_MODEL"] = fault_model
     if cut is not None:
         env["FN2_KILL_AT"] = str(cut)
     return env
@@ -89,13 +92,74 @@ def verify(port, articles, acknowledged):
         sock.close()
 
 
+def ready_boundary(directory, baseline, articles):
+    """Observe the recovery prefix once; this calibration is not a death case."""
+    image = directory / "calibration.img"
+    shutil.copyfile(baseline, image)
+    node = restart.Node(directory, image, "serve", "calibration",
+                        env=environment((1 << 60) - 1))
+    try:
+        ready = int(node.marker(b"BOUNDARY-READY ").split()[1])
+        port = int(node.marker(b"LISTENING ").split()[1])
+        present, transcript = verify(port, articles, False)
+        assert not present, "baseline already contains the candidate"
+        (directory / "calibration.wire").write_bytes(transcript)
+        node.kill()
+        (directory / "calibration.json").write_text(
+            json.dumps(dict(ready_boundary=ready, source_image=str(baseline))) + "\n")
+        print(f"CALIBRATED ready boundary {ready}", flush=True)
+        return ready
+    finally:
+        node.close()
+
+
+def fault_contract_controls(directory, source, articles):
+    """Use identical image copies under the two explicitly selected contracts."""
+    broad = directory / "broad-refusal.img"
+    shutil.copyfile(source, broad)
+    node = restart.Node(directory, broad, "serve", "broad-refusal",
+                        env=environment(fault_model="broad"))
+    try:
+        diagnosis = node.marker(b"BOOT-REFUSAL ")
+        assert diagnosis.split()[1] == b":BROAD-DIRTY-TAIL-UNKNOWN", diagnosis
+        refusal = node.marker(b"REFUSED ")
+        assert refusal.startswith(b"REFUSED fn2 image boot stopped:"), refusal
+        assert node.proc.wait(timeout=30) == 2
+    finally:
+        node.close()
+    assert "STORAGE-FAULT-MODEL broad" in (directory / "broad-refusal.log").read_text()
+    crash = directory / "crash-only-recovery.img"
+    shutil.copyfile(source, crash)
+    node = restart.Node(directory, crash, "serve", "crash-only-recovery", env=environment())
+    try:
+        port = int(node.marker(b"LISTENING ").split()[1])
+        present, transcript = verify(port, articles, False)
+        (directory / "crash-only-recovery.wire").write_bytes(transcript)
+        node.kill()
+    finally:
+        node.close()
+    assert "STORAGE-FAULT-MODEL crash-only" in (directory / "crash-only-recovery.log").read_text()
+    (directory / "fault-contract-controls.json").write_text(json.dumps(dict(
+        source_image=str(source), broad_refusal=refusal.decode(),
+        broad_diagnosis=diagnosis.decode(),
+        crash_only_recovered=True, candidate_recovered=present,
+        original_candidate_acknowledgment="not recorded by the original failing pilot"), indent=2) + "\n")
+    print("FAULT CONTRACT CONTROLS PASS: same image refuses broad and recovers crash-only", flush=True)
+
+
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--directory", type=Path)
-    parser.add_argument("--cuts", required=True,
-                        help="comma-separated positive boundary indexes")
+    selected = parser.add_mutually_exclusive_group(required=True)
+    selected.add_argument("--cuts", help="comma-separated positive boundary indexes")
+    selected.add_argument("--relative-cuts",
+                          help="positive offsets from an observed ready boundary")
+    parser.add_argument("--baseline", type=Path,
+                        help="reuse a prior campaign's accepted baseline image")
+    parser.add_argument("--broad-refusal-image", type=Path,
+                        help="dirty image to check broad refusal and crash-only recovery")
     args = parser.parse_args()
-    cuts = [int(value) for value in args.cuts.split(",")]
+    cuts = [int(value) for value in (args.cuts or args.relative_cuts).split(",")]
     assert cuts and all(cut > 0 for cut in cuts) and len(set(cuts)) == len(cuts)
     directory = (args.directory or ROOT / "build" / f"image-boundaries-{time.time_ns()}").resolve()
     directory.mkdir(parents=True, exist_ok=False)
@@ -105,33 +169,41 @@ def main():
                         (b"<candidate@example.invalid>", 250)):
         head, whole = restart.article(mid, length)
         articles.append((mid, head, whole))
-    node = restart.Node(directory, baseline, "init", "init", env=environment())
-    try:
-        node.marker(b"INITIALIZED")
-        assert node.proc.wait(timeout=30) == 0
-    finally:
-        node.close()
-    ctl = Path(f"/tmp/fn2-boundaries-{os.getpid()}.sock")
-    node = restart.Node(directory, baseline, "serve", "baseline", control_sock=ctl,
-                        env=environment())
-    try:
-        port = int(node.marker(b"LISTENING ").split()[1])
-        node.marker(b"LISTENING-LOCAL ")
-        subprocess.run([str(ROOT / "fn"), "grant", "set", "anonymous", "append",
-                        "local.test", "--control-sock", str(ctl)],
-                       cwd=ROOT, check=True, timeout=60, env=environment())
-        sock, stream = restart.connect(port)
+    if args.broad_refusal_image:
+        fault_contract_controls(directory, args.broad_refusal_image.resolve(), articles)
+    if args.baseline:
+        shutil.copyfile(args.baseline.resolve(), baseline)
+    else:
+        node = restart.Node(directory, baseline, "init", "init", env=environment())
         try:
-            assert post(sock, stream, articles[0][2]) == b"240 article received OK\r\n"
-            node.kill()
+            node.marker(b"INITIALIZED")
+            assert node.proc.wait(timeout=30) == 0
         finally:
-            stream.close()
-            sock.close()
-    finally:
-        node.close()
-        for path in (ctl, Path(f"{ctl}.groups")):
-            if path.exists():
-                path.unlink()
+            node.close()
+        ctl = Path(f"/tmp/fn2-boundaries-{os.getpid()}.sock")
+        node = restart.Node(directory, baseline, "serve", "baseline", control_sock=ctl,
+                            env=environment())
+        try:
+            port = int(node.marker(b"LISTENING ").split()[1])
+            node.marker(b"LISTENING-LOCAL ")
+            subprocess.run([str(ROOT / "fn"), "grant", "set", "anonymous", "append",
+                            "local.test", "--control-sock", str(ctl)],
+                           cwd=ROOT, check=True, timeout=60, env=environment())
+            sock, stream = restart.connect(port)
+            try:
+                assert post(sock, stream, articles[0][2]) == b"240 article received OK\r\n"
+                node.kill()
+            finally:
+                stream.close()
+                sock.close()
+        finally:
+            node.close()
+            for path in (ctl, Path(f"{ctl}.groups")):
+                if path.exists():
+                    path.unlink()
+    if args.relative_cuts:
+        ready = ready_boundary(directory, baseline, articles)
+        cuts = [ready + offset for offset in cuts]
     results = []
     for cut in cuts:
         image = directory / f"cut-{cut}.img"
@@ -177,17 +249,28 @@ def main():
         log = (directory / f"cut-{cut}.log").read_text(errors="replace")
         matches = re.findall(r"FN2 KILL boundary=(\d+) label=([^\s]+)", log)
         assert len(matches) == 1 and int(matches[0][0]) == cut, matches
+        assert "STORAGE-FAULT-MODEL crash-only" in log
+        attempt = dict(cut=cut, label=matches[0][1], phase=phase,
+                       acknowledged=acknowledged, diagnostic=diagnostic,
+                       recovery_status="pending")
+        attempt_path = directory / f"cut-{cut}.json"
+        attempt_path.write_text(json.dumps(attempt, indent=2) + "\n")
         node = restart.Node(directory, image, "serve", f"recover-{cut}", env=environment())
         try:
             port = int(node.marker(b"LISTENING ").split()[1])
             present, transcript = verify(port, articles, acknowledged)
             (directory / f"recover-{cut}.wire").write_bytes(transcript)
             node.kill()
+        except BaseException as error:
+            attempt.update(recovery_status="failed", recovery_error=str(error))
+            attempt_path.write_text(json.dumps(attempt, indent=2) + "\n")
+            raise
         finally:
             node.close()
-        results.append(dict(cut=cut, label=matches[0][1], phase=phase,
-                            acknowledged=acknowledged, candidate_recovered=present,
-                            diagnostic=diagnostic))
+        assert "STORAGE-FAULT-MODEL crash-only" in (directory / f"recover-{cut}.log").read_text()
+        attempt.update(recovery_status="passed", candidate_recovered=present)
+        attempt_path.write_text(json.dumps(attempt, indent=2) + "\n")
+        results.append(attempt)
         (directory / "results.json").write_text(json.dumps(results, indent=2) + "\n")
         print(json.dumps(results[-1]), flush=True)
     assert any(row["phase"] == "candidate-post" and not row["acknowledged"]
