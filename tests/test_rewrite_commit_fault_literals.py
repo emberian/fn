@@ -20,6 +20,13 @@ class RewriteCommitFaults(unittest.TestCase):
         self.assertIn("(equal fault *fn2-fault-lying-flush*)", result)
         self.assertIn("(fn2-sim-clock tick *fn2-fault-none* sim)", result)
 
+    def test_force_and_count_use_explicit_real_fault_domain(self):
+        text = "(list (and (natp fault) (< fault *fn2-fault-none*)) (< forced *fn2-fault-none*) (< unrelated 26))"
+        result, count = rewrite(text)
+        self.assertEqual(count, 2)
+        self.assertEqual(result, "(list (fn2-sim-real-faultp fault) (fn2-sim-real-faultp forced) (< unrelated 26))")
+        self.assertEqual(rewrite(result), (result, 0))
+
     def test_unknown_and_strings_remain(self):
         text = '(list ":auto 26" \'(:auto 99) (equal other 26))'
         self.assertEqual(rewrite(text), (text, 0))

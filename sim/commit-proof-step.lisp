@@ -34,7 +34,7 @@
 ; These epochs exclude later at-rest corruption and forged delivery events.
 (defun fn2-commit-proof-faultp (fault profile)
  (declare (xargs :verify-guards nil))
- (or (member-equal fault (list *fn2-fault-tear* *fn2-fault-no-space* *fn2-fault-fail-slow* *fn2-fault-flush-io* *fn2-fault-short-write* *fn2-fault-none*))
+ (or (member-equal fault (list *fn2-fault-tear* *fn2-fault-no-space* *fn2-fault-write-io* *fn2-fault-fail-slow* *fn2-fault-flush-io* *fn2-fault-short-write* *fn2-fault-none*))
      (and (equal fault *fn2-fault-lying-flush*) (not (fn2-cm-persistence-fence profile)))))
 (defun fn2-commit-proof-auto (command turn ids fn2-core fn2-sim)
  (declare (xargs :stobjs (fn2-core fn2-sim) :verify-guards nil))

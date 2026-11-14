@@ -7,13 +7,13 @@
 ; The same effectful error then traverses the actual issued commit writes,
 ; completion normalization, harvester and generated commit decision. Two
 ; earlier accepted batches must still recover after the later uncertainty.
-(defun fn2-see-commit ()
+(defun fn2-see-commit (fault)
  (declare (xargs :verify-guards nil))
  (let* ((p (fn2-cm-profile :crash-only t t nil 0 0))
         (r (fn2-commit-proof-run
             (append (make-list 600 :initial-element (list :auto *fn2-fault-none*))
                     '((:start 0 2 5 0) (:start 1 2 7 0))
-                    (make-list 600 :initial-element (list :auto *fn2-fault-no-space*))) p 0 2 1))
+                    (make-list 600 :initial-element (list :auto fault))) p 0 2 1))
         (replies (fn2-commit-proof-replies r)))
   (and (fn2-commit-proof-admitted r) (fn2-commit-proof-saw-uncertain r)
        (fn2-commit-proof-stable r) (fn2-commit-ack-evidencep r)
@@ -22,7 +22,8 @@
        (equal (cdr (assoc-equal 2 replies)) 2)
        (equal (len (fn2-commit-proof-recovered r)) 2))))
 
-(assert-event (fn2-see-commit))
+(assert-event (and (fn2-see-commit *fn2-fault-no-space*)
+                   (fn2-see-commit *fn2-fault-write-io*)))
 
 ; A successfully performed fence is held before its terminal, then the actual
 ; clock/mailbox/commit timeout path runs. The matching control posts that same

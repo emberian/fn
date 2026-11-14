@@ -133,3 +133,26 @@ visible image must equal it, and the earlier fenced byte remains 91. The existin
 zero-start wrapper and prior accepted commit controls remain part of the gate.
 This changes the storage dependency and therefore needs a newly computed source
 overlay; it is not covered by the earlier frozen 803 physical inventory.
+
+## Separate write-I/O fault family (source candidate)
+
+The extraction commit moves only the `fn2-fault` data family into `sim/faults`,
+using the existing enum/constant producers under `fn2-sim-faults`. It does not
+invoke the action producer or add served action IDs. A copied-tree source control
+shows a subsequent fault edit changes the simulator key but not `assembly-init`.
+The initial removal from `books/operations` still requires one served ancestor
+requalification and must be batched deliberately.
+
+Write EIO is a new class 27; read EIO remains 6, ENOSPC remains 12 and the none
+sentinel remains 26. The indexed domain has size 28. `fn2-sim-real-faultp`
+explicitly excludes none from forcing, probabilistic selection, initialization
+and effect counting. Thus an old numeric none does not become a write error.
+Result range facts now bound the indexed domain by count, rather than incorrectly
+using none as its upper limit. The full named-fault control skips the sentinel.
+
+The new Write EIO path uses the same selected physical prefix as ENOSPC, then
+returns `:io` with zero known progress. Tests cover zero/two/four-byte effects,
+partial/full failed-fence persistence, held successful completion, and the actual
+commit/recovery scenario after prior acceptance. A separate domain control forces
+class 27 and checks exactly one effect count with none's probability/count zero.
+All these ACL2 controls remain unexecuted source candidates.
