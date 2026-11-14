@@ -113,6 +113,34 @@
 (fn2-core-preserves fn2-transition (allow-observation action-budget fn2-core) :position 5 :rows nil
   :hints (("Goal" :in-theory (disable fn2-exec-observation-p fn2-core-posted-p fn2-exec-eligible-p))))
 
+; The residual contract follows actual callback reports through each selector
+; branch. It is unconditional on stop/success and accepts every input budget.
+(defun fn2-exec-descriptor-result-events (entries)
+ (declare (xargs :verify-guards nil))
+ (if (atom entries) nil
+  (let* ((fn (caar entries)) (args (cadar entries)) (budget (caddar entries))
+         (call (cons fn args)) (count `(mv-nth 2 ,call))
+         (hyps '(and (fn2-corep fn2-core) (fn2-core-wfp fn2-core)))
+         (opaque (remove1-eq fn
+          '(fn2-machine-run fn2-exec-arm fn2-exec-harvest fn2-exec-mailbox
+            fn2-exec-principal fn2-exec-service fn2-transition fn2-exec-visit fn2-exec-pop
+            fn2-exec-record fn2-exec-charge-run fn2-exec-wake fn2-machine-take-wake
+            fn2-corep fn2-core-wfp fn2-exec-observation-p fn2-core-posted-p
+            fn2-exec-eligible-p fn2-exec-grant-p fn2-exec-run-services))))
+   (cons `(defthm ,(fn2-columns-sym fn "-DESCRIPTORS-WITHIN-RESIDUAL")
+     (implies ,hyps (and (natp ,count) (<= ,count (nfix ,budget))))
+     :rule-classes (:rewrite
+       (:type-prescription :corollary (implies ,hyps (natp ,count)))
+       (:linear :corollary (implies ,hyps (<= ,count (nfix ,budget)))))
+     :hints (("Goal" :in-theory (e/d (,fn) ,opaque))))
+    (fn2-exec-descriptor-result-events (cdr entries))))))
+(make-event (value (cons 'progn (fn2-exec-descriptor-result-events
+ '((fn2-exec-harvest (fn2-core) 0)
+   (fn2-exec-mailbox (fn2-core) 0)
+   (fn2-exec-principal (principal position budget fn2-core) budget)
+   (fn2-exec-service (service position budget fn2-core) budget)
+   (fn2-transition (allow-observation action-budget fn2-core) action-budget))))))
+
 (defun fn2-exec-account-work (bytes steps fn2-core)
   (declare (xargs :stobjs fn2-core :guard (fn2-core-wfp fn2-core)))
   (let ((b (+ (nfix bytes) (fn2-exec-turn-bytes fn2-core)))
@@ -166,6 +194,16 @@
                            (+ nvisits (nfix visits)) (+ nactions (nfix actions)) fn2-core)))))
 (fn2-core-preserves fn2-concrete-loop (fuel h k a nobs nvisits nactions fn2-core) :position 4 :rows nil)
 
+(defthm fn2-concrete-loop-actions-within-limit
+ (implies (and (fn2-corep fn2-core) (fn2-core-wfp fn2-core)
+               (natp a) (natp nactions) (<= nactions a))
+  (and (natp (mv-nth 3 (fn2-concrete-loop fuel h k a nobs nvisits nactions fn2-core)))
+       (<= (mv-nth 3 (fn2-concrete-loop fuel h k a nobs nvisits nactions fn2-core)) a)))
+ :hints (("Goal" :induct (fn2-concrete-loop fuel h k a nobs nvisits nactions fn2-core)
+   :in-theory (e/d (fn2-concrete-loop fn2-concrete-loop-stop-p)
+     (fn2-transition fn2-exec-account-work fn2-corep fn2-core-wfp fn2-turn-work-room-p
+      fn2-turn-descriptor-room-p fn2-turn-status fn2-exec-eligible-p fn2-exec-observation-p)))))
+
 ; Stopping before selection retains the calendar cursor, every queued row,
 ; and every continuation. A later turn starts with a fresh descriptor quantum.
 (defthm fn2-concrete-loop-short-residual-preserves-core
@@ -182,11 +220,24 @@
          (fn2-core (fn2-exec-set-turn-steps 0 fn2-core)))
     (fn2-concrete-loop (+ h k) h k a 0 0 0 fn2-core)))
 (fn2-core-preserves fn2-concrete-turn (fn2-core) :position 4 :rows nil)
+(defthm fn2-concrete-turn-actions-within-limit
+ (implies (and (fn2-corep fn2-core) (fn2-core-wfp fn2-core))
+  (and (natp (mv-nth 3 (fn2-concrete-turn fn2-core)))
+       (<= (mv-nth 3 (fn2-concrete-turn fn2-core)) (fn2-exec-aturn fn2-core))))
+ :hints (("Goal" :in-theory (e/d (fn2-concrete-turn)
+   (fn2-concrete-loop fn2-corep fn2-core-wfp fn2-exec-aturn)))))
+
 
 (defun fn2-turn (fn2-core)
   (declare (xargs :stobjs fn2-core :guard (fn2-core-wfp fn2-core)))
   (fn2-concrete-turn fn2-core))
 (fn2-core-preserves fn2-turn (fn2-core) :position 4 :rows nil)
+(defthm fn2-turn-actions-within-limit
+ (implies (and (fn2-corep fn2-core) (fn2-core-wfp fn2-core))
+  (and (natp (mv-nth 3 (fn2-turn fn2-core)))
+       (<= (mv-nth 3 (fn2-turn fn2-core)) (fn2-exec-aturn fn2-core))))
+ :hints (("Goal" :in-theory (e/d (fn2-turn) (fn2-concrete-turn fn2-exec-aturn)))))
+
 
 ;; Genesis (MACHINE-FORM G3, C gap 5): each kind's :genesis arm runs once on
 ;; each of its rows at init, from the row's initial phase, so a row's first

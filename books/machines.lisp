@@ -4125,6 +4125,47 @@
            (fn (if (function-symbolp run world) run (fn2-columns-sym (car names) "-RUN-STUB"))))
       (cons `(,tag (,fn id budget fn2-core))
             (fn2-machine-run-arms (cdr names) (+ 1 (nfix tag)) world)))))
+(defun fn2-machine-registry-quantity-max (names workp world)
+ (declare (xargs :verify-guards nil))
+ (if (atom names) 0
+  (max (if workp (fn2-machine-work-ceiling (car names) world)
+         (nfix (fn2-arm-get :descriptors (fn2-machine-property (car names) :budget world))))
+       (fn2-machine-registry-quantity-max (cdr names) workp world))))
+
+; Both concrete dispatch compositions consume the same per-kind contracts.
+; Bad ids, stopped rows and unknown kinds remain inside the result bound.
+(defun fn2-machine-dispatch-result-events (world)
+ (declare (xargs :verify-guards nil))
+ (let* ((names (fn2-machine-names world))
+        (work (max 1 (fn2-machine-registry-quantity-max names t world)))
+        (descriptors (fn2-machine-registry-quantity-max names nil world))
+        (call '(fn2-machine-run id budget fn2-core))
+        (hyps '((fn2-corep fn2-core) (fn2-core-wfp fn2-core)))
+        (terms (fn2-run-quantity-terms call 'budget work descriptors))
+        (enabled '(fn2-machine-run fn2-machine-stopped-read-code fn2-machine-idp
+                   fn2-machine-refuse-phase fn2-machine-idle fn2-machine-finish
+                   fn2-machine-charge fn2-machine-charge-kindp fn2-machine-refuse-charge
+                   fn2-machine-refuse-write fn2-core-stop))
+        (disabled '(fn2-corep fn2-core-wfp fn2-core-ops fn2-ops-rows
+                    fn2-ops-issued-count fn2-op-issued-weight nfix nth)))
+  `((defthm fn2-machine-run-quantities
+     (implies (and ,@hyps)
+      (and (fn2-run-quantitiesp (car ,call) (mv-nth 1 ,call) (mv-nth 2 ,call) budget ,work)
+           (<= (mv-nth 2 ,call) ,descriptors)))
+     :rule-classes ,(fn2-run-quantity-rules hyps terms)
+     :hints (("Goal" :in-theory (e/d (fn2-run-quantitiesp ,@enabled) ,disabled))))
+    (defthm fn2-machine-run-descriptor-effect
+     (implies (and ,@hyps)
+      (equal (nth *fn2-ops-queued* (fn2-core-ops (mv-nth 4 ,call)))
+             (+ (nth *fn2-ops-queued* (fn2-core-ops fn2-core)) (mv-nth 2 ,call))))
+     :hints (("Goal" :use (:instance fn2-ops-queued-natural (fn2-ops (fn2-core-ops fn2-core)))
+                    :in-theory (e/d ,enabled ,disabled))))
+    (defthm fn2-machine-run-issued-effect
+     (implies (and ,@hyps)
+      ,(fn2-run-issued-claim `(mv-nth 2 ,call) '(fn2-core-ops fn2-core)
+                             `(fn2-core-ops (mv-nth 4 ,call))))
+     :hints (("Goal" :in-theory (e/d ,enabled ,disabled)))))))
+
 (defun fn2-machine-arm-certificate-arms (names tag boundp world)
   (declare (xargs :verify-guards nil))
   (if (atom names) nil

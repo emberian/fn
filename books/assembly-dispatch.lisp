@@ -100,6 +100,7 @@
                ,@(fn2-machine-run-arms (fn2-machine-names (w state)) 0 (w state))
                (otherwise (fn2-machine-refuse-phase id fn2-core))))))))
 (fn2-core-preserves fn2-machine-run (id budget fn2-core) :position 4 :rows nil)
+(make-event (value (cons 'progn (fn2-machine-dispatch-result-events (w state)))))
 (assert-event
  (fn2-assert-compliant-p
   '(fn2-machine-observe fn2-machine-run fn2-machine-take-wake

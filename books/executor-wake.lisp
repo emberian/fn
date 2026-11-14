@@ -32,11 +32,11 @@
           (mv 0 fn2-core))))))
 (fn2-core-preserves fn2-exec-arm (fn2-core) :position 1 :rows nil)
 (defthm fn2-exec-arm-count-natp
-  (natp (mv-nth 0 (fn2-exec-arm fn2-core)))
+  (natp (car (fn2-exec-arm fn2-core)))
   :rule-classes :type-prescription
   :hints (("Goal" :in-theory (enable fn2-exec-arm))))
 (defthm fn2-exec-arm-count-bound
-  (<= (mv-nth 0 (fn2-exec-arm fn2-core)) 1)
+  (<= (car (fn2-exec-arm fn2-core)) 1)
   :rule-classes :linear
   :hints (("Goal" :in-theory (enable fn2-exec-arm))))
 (in-theory (disable fn2-exec-arm))

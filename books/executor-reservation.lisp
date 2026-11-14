@@ -3,17 +3,10 @@
 (in-package "ACL2")
 (include-book "assembly-core")
 
-(defun fn2-exec-kinds-descriptor-max (names world)
-  (declare (xargs :verify-guards nil))
-  (if (atom names) 0
-    (max (nfix (fn2-arm-get :descriptors
-                (fn2-machine-property (car names) :budget world)))
-         (fn2-exec-kinds-descriptor-max (cdr names) world))))
-
 (make-event
  `(defconst *fn2-exec-descriptor-reserve*
     ,(max 1 ; protected grant service can enqueue one arm-wake descriptor
-          (fn2-exec-kinds-descriptor-max (fn2-machine-names (w state)) (w state)))))
+          (fn2-machine-registry-quantity-max (fn2-machine-names (w state)) nil (w state)))))
 
 (defun fn2-execution-profilep (profile)
   (declare (xargs :guard t))
