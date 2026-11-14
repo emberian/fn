@@ -249,3 +249,38 @@ rewriter. Fixtures check comments/strings, unchanged commit-resource indices and
 byte-work budgets, exact geometry probes, malformed input refusal and idempotence.
 Run its narrow controls directly with `python3 tests/test_checkpoint_geometry_rewrite.py`;
 the package discovery hook loads unrelated surface tests despite a filename filter.
+
+## Descriptor construction carrier
+
+`checkpoint-build-state.lisp`, `checkpoint-descriptor.lisp` and
+`checkpoint-build.lisp` now hold the concrete descriptor job. BEGIN checks the
+actual held C owner/token and completed source traversal, requires all five
+root constructor carriers for that same token, checks the owned page/scratch
+leases, and calls the real shared storage reservation operation before any
+codec sees its physical identity. The job stores that exact extent/epoch/
+allocation, workspace handles, cut from C, private checker stripe and write
+completion cursor. No caller supplies a cut, reservation identity or readiness
+boolean to this admission.
+
+The generated descriptor/page-header codecs produce a padded 4 KiB descriptor
+inside its 64 KiB allocation. Actual page sealing supplies its expected hash;
+verification compares the decoded checkpoint/cut and all five complete root
+references against the built carriers without replacing their provenance.
+Only then can the real pinned block-write issue, and descriptor budget zero
+returns `:yield` before any effect. The pre-finish harvest callback requires the
+exact issued slot/generation, full 4 KiB completion, same held C cut and unchanged
+root/reference identities. It records physical completion and exposes READY;
+it does not commit the allocation, release the C snapshot or assert durability.
+
+The existing B lifecycle producer must consume READY with exact owner/token,
+record allocation and checkpoint installation through its actual batch/fence,
+and own durable installation. Selected-base restoration and retained descendant
+closure still precede promotion and allocator-cut advancement.
+
+The five root carriers now have construction token, source-complete and intended/
+completed-byte fields. Their real metadata/map/proof/frontier/arena constructors
+remain required; no generic setter authorizes those flags. Until those producers
+connect, production BEGIN refuses `:roots-pending`. A decoded descriptor clears
+construction provenance, so a read candidate cannot inherit prior readiness.
+This is source implementation and shape-contract work, not admission, completed
+root construction, certification or a served reclaim path.

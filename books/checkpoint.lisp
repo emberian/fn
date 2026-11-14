@@ -19,8 +19,22 @@
 (defcolumns fn2-checkpoint-refs
  ((storage-domain :u60) (physical-unit :u60) (writer-epoch :u60)
   (allocation :u60) (page-kind :u60) (encoded-length :u60)
-  (edge :u32) (retained :bool)))
+  (edge :u32) (retained :bool)
+  ; Only actual object constructors/completions write these. Descriptor reads
+  ; leave the provenance empty and cannot authorize production installation.
+  (root-build-token :u60) (root-source-complete :bool)
+  (root-intended-bytes :u60) (root-completed-bytes :u60)))
 (defcolumns fn2-checkpoint-bytes ((value :u8)))
+
+(defun fn2-checkpoint-ref-clear-build (r fn2-checkpoint-refs)
+ (declare (xargs :stobjs fn2-checkpoint-refs
+  :guard (and (fn2-checkpoint-refs-wfp fn2-checkpoint-refs) (natp r) (< r (fn2-checkpoint-refs-rows fn2-checkpoint-refs)))))
+ (let* ((fn2-checkpoint-refs (fn2-checkpoint-refs-set-root-build-token r 0 fn2-checkpoint-refs))
+        (fn2-checkpoint-refs (fn2-checkpoint-refs-set-root-source-complete r 0 fn2-checkpoint-refs))
+        (fn2-checkpoint-refs (fn2-checkpoint-refs-set-root-intended-bytes r 0 fn2-checkpoint-refs))
+        (fn2-checkpoint-refs (fn2-checkpoint-refs-set-root-completed-bytes r 0 fn2-checkpoint-refs))) fn2-checkpoint-refs))
+(fn2-checkpoint-refs-preserves fn2-checkpoint-ref-clear-build (r fn2-checkpoint-refs))
+(in-theory (disable fn2-checkpoint-ref-clear-build))
 
 (defun fn2-checkpoint-slotp (c fn2-checkpoints fn2-checkpoint-refs fn2-checkpoint-bytes)
  (declare (xargs :stobjs (fn2-checkpoints fn2-checkpoint-refs fn2-checkpoint-bytes) :guard t))
@@ -166,7 +180,8 @@
              (fn2-checkpoint-refs (fn2-checkpoint-refs-set-writer-epoch r (fn2-fields-value (+ f 2) fn2-fields) fn2-checkpoint-refs))
              (fn2-checkpoint-refs (fn2-checkpoint-refs-set-allocation r (fn2-fields-value (+ f 3) fn2-fields) fn2-checkpoint-refs))
              (fn2-checkpoint-refs (fn2-checkpoint-refs-set-page-kind r (fn2-fields-value (+ f 4) fn2-fields) fn2-checkpoint-refs))
-             (fn2-checkpoint-refs (fn2-checkpoint-refs-set-encoded-length r (fn2-fields-value (+ f 5) fn2-fields) fn2-checkpoint-refs)))
+             (fn2-checkpoint-refs (fn2-checkpoint-refs-set-encoded-length r (fn2-fields-value (+ f 5) fn2-fields) fn2-checkpoint-refs))
+             (fn2-checkpoint-refs (fn2-checkpoint-ref-clear-build r fn2-checkpoint-refs)))
        (mv :ok fn2-checkpoint-refs fn2-checkpoint-bytes))))))))
 
 ; Called immediately after the descriptor's physical page checker succeeds,
@@ -226,6 +241,7 @@
          (fn2-checkpoint-refs (fn2-checkpoint-refs-set-allocation r allocation fn2-checkpoint-refs))
          (fn2-checkpoint-refs (fn2-checkpoint-refs-set-page-kind r kind fn2-checkpoint-refs))
          (fn2-checkpoint-refs (fn2-checkpoint-refs-set-encoded-length r len fn2-checkpoint-refs))
+         (fn2-checkpoint-refs (fn2-checkpoint-ref-clear-build r fn2-checkpoint-refs))
          (fn2-checkpoints (fn2-checkpoints-set-checkpoint c checkpoint fn2-checkpoints))
          (fn2-checkpoints (fn2-checkpoints-set-history c history fn2-checkpoints))
          (fn2-checkpoints (fn2-checkpoints-set-incarnation c incarnation fn2-checkpoints))
