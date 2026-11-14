@@ -2254,6 +2254,11 @@
 
 ; Prove the emitted function's actual result, using its narrowed signature.
 ; Static cost metadata supplies a bound, never a substitute for this proof.
+(defun fn2-arms-quantity-readers (children world)
+  (declare (xargs :verify-guards nil))
+  (if (atom children) nil
+    (append (fn2-arms-column-readers (car children) (fn2-view-layout (car children) world))
+            (fn2-arms-quantity-readers (cdr children) world))))
 (defun fn2-arms-child-quantities-event (name work-limit world)
   (declare (xargs :verify-guards nil))
   (let* ((ins (car (fn2-arms-sig name world)))
@@ -2272,7 +2277,8 @@
        :rule-classes ,(fn2-arms-child-corollaries hyps terms)
        :hints (("Goal" :in-theory (e/d (,name fn2-run-quantitiesp)
                        (natp nfix nth ,@(fn2-arms-shape-fns ins)
-                        ,@(fn2-arms-rows-fns ins))))))))
+                        ,@(fn2-arms-rows-fns ins)
+                        ,@(fn2-arms-quantity-readers ins world))))))))
 ; This is an actual effect proof, distinct from the numeric report bound.
 ; Arms without an operation child must report zero; issuing arms prove the
 ; exact append count. A body that dequeues or underreports cannot satisfy it.
