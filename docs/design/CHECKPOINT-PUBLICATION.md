@@ -207,3 +207,35 @@ overlap-safe copy moves the complete member down before fill shrinks. It neither
 chooses a containing batch nor authorizes a checkpoint. Production admission
 must require actual builder-produced evidence tied to the frozen C root and
 materialization generation; a merely checked/read descriptor cannot substitute.
+
+## Generated packet worker
+
+`books/checkpoint-writer.lisp` declares one generated writer kind. Its arm
+language owns an atomic three-window pool bundle, derives the real installed
+seal and checked boot geometry, builds/seals/checks both private packets, then
+uses the existing operation-tracked Write/Write/Fence protocol. It never returns
+to PACK or context mutation after verification. Only actual final fence completion
+and zero pending physical operations allow the bundle's release; uncertainty
+retains ownership and stops for recovery. The private checker context operation
+refuses live continuations, uses the final reserved stripe, and derives its
+geometry from actual checked boot state.
+
+Pool reservation preflights cached class counts for both 4 KiB outputs plus the
+160-byte scratch window in one atomic operation. It does not hold one window
+while waiting for another of the same D0 rank. Ordinary exhaustion changes
+nothing; an invariant failure returns every allocated prefix handle for retained
+uncertainty. Actual pool accounting still charges each concrete slot.
+
+This worker is **unreachable-in-composition** until the actual frozen C root,
+materialization generation, persisted metadata/allocation/arena builder and B
+checkpoint-installation producer activate it. No generic activation API from a
+caller's checked descriptor exists. The registry include and callback event
+materialization remain held for coherent qualification. No theorem about an
+unreachable worker is claimed. I/O completion still does not promote a checkpoint,
+drop recovery roots, advance the allocator cut or release an extent.
+
+The C snapshot seam must expose logical entries or owned resident source windows.
+Current generated C run pages are 64 KiB, while B extents have three 4 KiB units;
+no adapter may treat one resident unit identity or one extent identity as owning
+that entire spanning page. A real generated page profile or an owned fragment
+manifest/reconstruction boundary is required before building durable root refs.
