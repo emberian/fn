@@ -85,6 +85,34 @@ def CanonicalExportEval (program : CanonicalProgram) (domain primitiveDomain : C
     readTerm definition.syntaxFuel definition.body = some body ∧
     CanonicalEval program domain primitiveDomain (definition.formals.zip values) body v
 
+/-- A separately exported guard, kept distinct from the logical body. The
+packet emitter must bind both records to the same canonical function subject. -/
+structure CanonicalGuard where
+  formals : List String
+  guard : Object
+  syntaxFuel : Nat
+
+abbrev CanonicalGuards := String → Option CanonicalGuard
+
+/-- Guard admission uses a finite canonical derivation, including every reached
+callee and primitive domain. An emitted dispatch equation cannot answer a guard.
+This is a domain layer, not ACL2 primitive or executable correspondence. -/
+def CanonicalGuardEval (program : CanonicalProgram) (guards : CanonicalGuards)
+    (domain primitiveDomain : CallDomain) (name : String) (values : List Val) : Prop :=
+  ∃ definition guard term result,
+    program name = some definition ∧ guards name = some guard ∧
+    guard.formals = definition.formals ∧ values.length = definition.formals.length ∧
+    readTerm guard.syntaxFuel guard.guard = some term ∧
+    CanonicalEval program domain primitiveDomain (guard.formals.zip values) term result ∧
+    result.truthy = true
+
+/-- Every admitted call satisfies its exact canonical guard. Nonempty root
+admission and invariant preservation remain separate obligations. -/
+def DomainRespectsGuards (program : CanonicalProgram) (guards : CanonicalGuards)
+    (domain primitiveDomain : CallDomain) : Prop :=
+  ∀ name values, domain name values →
+    CanonicalGuardEval program guards domain primitiveDomain name values
+
 /-- Reuse a callee's body evaluation, not merely its emitted dispatch equation. -/
 theorem canonical_call_of_export {program domain primitiveDomain env name actuals values v}
     (notIf : name ≠ "IF") (notReturnLast : name ≠ "RETURN-LAST")
