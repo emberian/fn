@@ -45,12 +45,28 @@
    (request-in-channel :u8) (request-in-offset :u32) (request-in-count :u32) (request-in-extent :u32)
    (request-out-channel :u8) (request-out-offset :u32) (request-out-count :u32) (request-out-extent :u32)))
 
-(defmacro defcodec-transport (name policy-columns &key (rows-bound '2)
-                                          (input-quantum-field 'quantum) (output-quantum-field 'quantum))
+(defmacro defcodec-transport (name policy-columns &key (rows-bound '2))
  (let ((wfp (fn2-columns-sym name "-WFP"))
+       (rows (fn2-columns-sym name "-ROWS"))
+       (match (fn2-columns-sym name "-MATCH-P")))
+  `(progn
+(defcolumns ,name ,(append *fn2-codec-transport-columns* policy-columns)
+      :rows-bound ,rows-bound)
+(defun ,match (cap nonce slot generation serial ,name)
+     (declare (xargs :stobjs ,name :guard (and (,wfp ,name) (= (,rows ,name) 1))))
+     (and (equal cap (,(fn2-columns-sym name "-CAP") 0 ,name))
+          (equal nonce (,(fn2-columns-sym name "-NONCE") 0 ,name))
+          (equal slot (,(fn2-columns-sym name "-SLOT") 0 ,name))
+          (equal generation (,(fn2-columns-sym name "-GENERATION") 0 ,name))
+          (equal serial (,(fn2-columns-sym name "-SERIAL") 0 ,name))
+          (< 0 (,(fn2-columns-sym name "-PENDING") 0 ,name)))))))
+
+(defun fn2-codec-transport-operation-events (name input-quantum-field output-quantum-field world)
+ (declare (xargs :verify-guards nil))
+(let ((wfp (fn2-columns-sym name "-WFP"))
        (recognizer (fn2-columns-sym name "P"))
        (readers (cons (fn2-columns-sym name "-ROWS")
-                     (fn2-columns-projection-readers name (append *fn2-codec-transport-columns* policy-columns))))
+                     (fn2-columns-projection-readers name (fn2-decl-get :columns (fn2-decl-row (list :columns name) world)))))
        (rows (fn2-columns-sym name "-ROWS"))
        (match (fn2-columns-sym name "-MATCH-P"))
        (select (fn2-columns-sym name "-SELECT"))
@@ -59,19 +75,7 @@
        (iq (fn2-columns-sym name (concatenate 'string "-" (symbol-name input-quantum-field))))
        (oq (fn2-columns-sym name (concatenate 'string "-" (symbol-name output-quantum-field)))))
   `(progn
-    (defcolumns ,name ,(append *fn2-codec-transport-columns* policy-columns)
-      :rows-bound ,rows-bound)
-    (defun ,match (cap nonce slot generation serial ,name)
-     (declare (xargs :stobjs ,name :guard (and (,wfp ,name) (= (,rows ,name) 1))))
-     (and (equal cap (,(fn2-columns-sym name "-CAP") 0 ,name))
-          (equal nonce (,(fn2-columns-sym name "-NONCE") 0 ,name))
-          (equal slot (,(fn2-columns-sym name "-SLOT") 0 ,name))
-          (equal generation (,(fn2-columns-sym name "-GENERATION") 0 ,name))
-          (equal serial (,(fn2-columns-sym name "-SERIAL") 0 ,name))
-          (< 0 (,(fn2-columns-sym name "-PENDING") 0 ,name))))
-    ; A record policy proposes work; this shared gate reserves its exact spans.
-    ; Allocation/free retain their separate lifecycle policy and credit.
-    (defun ,select (cap nonce slot generation action
+(defun ,select (cap nonce slot generation action
                    in-channel in-offset in-count in-extent
                    out-channel out-offset out-count out-extent ,name)
      (declare (xargs :stobjs ,name :verify-guards nil
@@ -107,7 +111,7 @@
                        (request-out-channel out-channel) (request-out-offset out-offset)
                        (request-out-count out-count) (request-out-extent out-extent))))
         (mv :ok serial ,name)))))
-    (defun ,observe (cap nonce slot generation serial raw-code used made errno ,name)
+(defun ,observe (cap nonce slot generation serial raw-code used made errno ,name)
      (declare (xargs :stobjs ,name :verify-guards nil
                     :guard (and (,wfp ,name) (= (,rows ,name) 1))))
      (if (not (and (,match cap nonce slot generation serial ,name)
@@ -140,15 +144,79 @@
                         (3 (,put 0 (output-length (+ out-offset made)) (output-offset 0)))
                         (otherwise ,name))))
          (mv :ok ,name))))))
-    (verify-guards ,select :hints (("Goal" :in-theory (disable ,@readers))))
-    (verify-guards ,observe :hints (("Goal" :in-theory (disable ,@readers))))
-    (defthm ,(fn2-columns-sym name "-SELECT-WFP")
+(verify-guards ,select :hints (("Goal" :in-theory (disable ,@readers))))
+(verify-guards ,observe :hints (("Goal" :in-theory (disable ,@readers))))
+(defthm ,(fn2-columns-sym name "-SELECT-WFP")
      (implies (and (,recognizer ,name) (,wfp ,name) (= (,rows ,name) 1))
       (,wfp (mv-nth 2 (,select cap nonce slot generation action
                    in-channel in-offset in-count in-extent
                    out-channel out-offset out-count out-extent ,name))))
      :hints (("Goal" :in-theory (disable ,@readers))))
-    (defthm ,(fn2-columns-sym name "-OBSERVE-SPANS-WFP")
+(defthm ,(fn2-columns-sym name "-OBSERVE-SPANS-WFP")
      (implies (and (,recognizer ,name) (,wfp ,name) (= (,rows ,name) 1))
       (,wfp (mv-nth 1 (,observe cap nonce slot generation serial raw-code used made errno ,name))))
      :hints (("Goal" :in-theory (disable ,@readers)))))))
+
+(defmacro defcodec-transport-operations (name &key (input-quantum-field 'quantum)
+                                                (output-quantum-field 'quantum))
+ `(make-event
+   (value (fn2-codec-transport-operation-events ',name ',input-quantum-field ',output-quantum-field (w state)))))
+
+; Lifecycle bodies are shared with the existing TLS caller; codec policy remains separate.
+(defun fn2-codec-transport-lifecycle-events (name world)
+ (declare (xargs :verify-guards nil))
+ (let ((readers (cons (fn2-columns-sym name "-ROWS")
+                 (fn2-columns-projection-readers name
+                  (fn2-decl-get :columns (fn2-decl-row (list :columns name) world))))))
+  `(progn
+(defun ,(fn2-columns-sym name "-RETIRE") (cap nonce ,name)
+ (declare (xargs :stobjs ,name :verify-guards nil
+                 :guard (,(fn2-columns-sym name "-WFP") ,name)))
+ (cond
+  ((= (,(fn2-columns-sym name "-ROWS") ,name) 0) (mv :done ,name))
+  ((or (not (equal cap (,(fn2-columns-sym name "-CAP") 0 ,name)))
+       (not (equal nonce (,(fn2-columns-sym name "-NONCE") 0 ,name))))
+   (mv :stale ,name))
+  ((not (= (,(fn2-columns-sym name "-PENDING") 0 ,name) 0))
+   (mv :pending ,name))
+  (t
+   (let* ((alive (,(fn2-columns-sym name "-ALIVE") 0 ,name))
+          (,name (,(fn2-columns-sym name "-PUT") 0 (terminal 4))))
+    (mv (if (= alive 0) :done :closing) ,name)))))
+(defun ,(fn2-columns-sym name "-HANDLE") (,name)
+ (declare (xargs :stobjs ,name :verify-guards nil
+                 :guard (,(fn2-columns-sym name "-WFP") ,name)))
+ (if (= (,(fn2-columns-sym name "-ROWS") ,name) 0) 0
+   (,(fn2-columns-sym name "-HANDLE-ID") 0 ,name)))
+(defun ,(fn2-columns-sym name "-SELECTED-P") (cap nonce ,name)
+ (declare (xargs :stobjs ,name :verify-guards nil
+                 :guard (,(fn2-columns-sym name "-WFP") ,name)))
+ (and (= (,(fn2-columns-sym name "-ROWS") ,name) 1)
+      (equal cap (,(fn2-columns-sym name "-CAP") 0 ,name))
+      (equal nonce (,(fn2-columns-sym name "-NONCE") 0 ,name))))
+(defun ,(fn2-columns-sym name "-HANDOFF") (cap nonce slot generation ,name)
+ (declare (xargs :stobjs ,name
+  :guard (and (,(fn2-columns-sym name "-WFP") ,name) (= (,(fn2-columns-sym name "-ROWS") ,name) 1))))
+ (if (and (equal cap (,(fn2-columns-sym name "-CAP") 0 ,name))
+          (equal nonce (,(fn2-columns-sym name "-NONCE") 0 ,name))
+          (equal slot (,(fn2-columns-sym name "-SLOT") 0 ,name))
+          (equal generation (,(fn2-columns-sym name "-GENERATION") 0 ,name))
+          (= (,(fn2-columns-sym name "-TERMINAL") 0 ,name) 1)
+          (= (,(fn2-columns-sym name "-ALIVE") 0 ,name) 1)
+          (= (,(fn2-columns-sym name "-PENDING") 0 ,name) 0)
+          (= (,(fn2-columns-sym name "-COPIED") 0 ,name) (,(fn2-columns-sym name "-SEED-TOTAL") 0 ,name))
+          (= (,(fn2-columns-sym name "-OUTPUT-OFFSET") 0 ,name) (,(fn2-columns-sym name "-OUTPUT-LENGTH") 0 ,name)))
+  (let* ((copied (,(fn2-columns-sym name "-COPIED") 0 ,name))
+         (fed (,(fn2-columns-sym name "-FED") 0 ,name))
+         (il (,(fn2-columns-sym name "-INPUT-LENGTH") 0 ,name))
+         (io (,(fn2-columns-sym name "-INPUT-OFFSET") 0 ,name))
+         (ol (,(fn2-columns-sym name "-OUTPUT-LENGTH") 0 ,name))
+         (oo (,(fn2-columns-sym name "-OUTPUT-OFFSET") 0 ,name))
+         (,name (,(fn2-columns-sym name "-PUT") 0 (terminal 3))))
+   (mv :ok copied fed il io ol oo ,name))
+  (mv :stale 0 0 0 0 0 0 ,name)))
+    (verify-guards ,(fn2-columns-sym name "-RETIRE") :hints (("Goal" :in-theory (disable ,@readers))))
+    (verify-guards ,(fn2-columns-sym name "-HANDLE") :hints (("Goal" :in-theory (disable ,@readers))))
+    (verify-guards ,(fn2-columns-sym name "-SELECTED-P") :hints (("Goal" :in-theory (disable ,@readers)))))))
+(defmacro defcodec-transport-lifecycle (name)
+ `(make-event (value (fn2-codec-transport-lifecycle-events ',name (w state)))))

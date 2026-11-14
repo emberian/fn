@@ -1,7 +1,8 @@
 ; Guarded decisions called by the native TLS adapter; no raw I/O here.
 (in-package "ACL2")
-(include-book "tls-transport-state")
+(include-book "tls-transport-lifecycle")
 (fn2-book-layer :d)
+(defcodec-transport-operations fn2-tls-transport)
 
 (defun fn2-tls-transport-start (cap nonce slot generation total capacity quantum budget window fn2-tls-transport)
  (declare (xargs :stobjs fn2-tls-transport :verify-guards nil
@@ -187,33 +188,11 @@
     (t (let ((fn2-tls-transport (fn2-tls-transport-put 0 (terminal 2))))
  (mv :closing t fn2-tls-transport)))))))
 
-(defun fn2-tls-transport-retire (cap nonce fn2-tls-transport)
- (declare (xargs :stobjs fn2-tls-transport :verify-guards nil
-                 :guard (fn2-tls-transport-wfp fn2-tls-transport)))
- (cond
-  ((= (fn2-tls-transport-rows fn2-tls-transport) 0) (mv :done fn2-tls-transport))
-  ((or (not (equal cap (fn2-tls-transport-cap 0 fn2-tls-transport)))
-       (not (equal nonce (fn2-tls-transport-nonce 0 fn2-tls-transport))))
-   (mv :stale fn2-tls-transport))
-  ((not (= (fn2-tls-transport-pending 0 fn2-tls-transport) 0))
-   (mv :pending fn2-tls-transport))
-  (t
-   (let* ((alive (fn2-tls-transport-alive 0 fn2-tls-transport))
-          (fn2-tls-transport (fn2-tls-transport-put 0 (terminal 4))))
-    (mv (if (= alive 0) :done :closing) fn2-tls-transport)))))
 
-(defun fn2-tls-transport-handle (fn2-tls-transport)
- (declare (xargs :stobjs fn2-tls-transport :verify-guards nil
-                 :guard (fn2-tls-transport-wfp fn2-tls-transport)))
- (if (= (fn2-tls-transport-rows fn2-tls-transport) 0) 0
-   (fn2-tls-transport-handle-id 0 fn2-tls-transport)))
 
-(defun fn2-tls-transport-selected-p (cap nonce fn2-tls-transport)
- (declare (xargs :stobjs fn2-tls-transport :verify-guards nil
-                 :guard (fn2-tls-transport-wfp fn2-tls-transport)))
- (and (= (fn2-tls-transport-rows fn2-tls-transport) 1)
-      (equal cap (fn2-tls-transport-cap 0 fn2-tls-transport))
-      (equal nonce (fn2-tls-transport-nonce 0 fn2-tls-transport))))
+
+
+
 
 (defun fn2-tls-transport-status-kick (status)
  (declare (xargs :guard t))
@@ -266,27 +245,7 @@
    (mv-nth 2 (fn2-tls-transport-observe cap nonce slot generation serial code count errno fn2-tls-transport))))
  :hints (("Goal" :in-theory (disable fn2-tls-transport-rows))))
 
-(defun fn2-tls-transport-handoff (cap nonce slot generation fn2-tls-transport)
- (declare (xargs :stobjs fn2-tls-transport
-  :guard (and (fn2-tls-transport-wfp fn2-tls-transport) (= (fn2-tls-transport-rows fn2-tls-transport) 1))))
- (if (and (equal cap (fn2-tls-transport-cap 0 fn2-tls-transport))
-          (equal nonce (fn2-tls-transport-nonce 0 fn2-tls-transport))
-          (equal slot (fn2-tls-transport-slot 0 fn2-tls-transport))
-          (equal generation (fn2-tls-transport-generation 0 fn2-tls-transport))
-          (= (fn2-tls-transport-terminal 0 fn2-tls-transport) 1)
-          (= (fn2-tls-transport-alive 0 fn2-tls-transport) 1)
-          (= (fn2-tls-transport-pending 0 fn2-tls-transport) 0)
-          (= (fn2-tls-transport-copied 0 fn2-tls-transport) (fn2-tls-transport-seed-total 0 fn2-tls-transport))
-          (= (fn2-tls-transport-output-offset 0 fn2-tls-transport) (fn2-tls-transport-output-length 0 fn2-tls-transport)))
-  (let* ((copied (fn2-tls-transport-copied 0 fn2-tls-transport))
-         (fed (fn2-tls-transport-fed 0 fn2-tls-transport))
-         (il (fn2-tls-transport-input-length 0 fn2-tls-transport))
-         (io (fn2-tls-transport-input-offset 0 fn2-tls-transport))
-         (ol (fn2-tls-transport-output-length 0 fn2-tls-transport))
-         (oo (fn2-tls-transport-output-offset 0 fn2-tls-transport))
-         (fn2-tls-transport (fn2-tls-transport-put 0 (terminal 3))))
-   (mv :ok copied fed il io ol oo fn2-tls-transport))
-  (mv :stale 0 0 0 0 0 0 fn2-tls-transport)))
+
 
 (assert-event
  (fn2-assert-compliant-p
