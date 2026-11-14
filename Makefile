@@ -297,6 +297,14 @@ ACL2_BOOKS = \
   tests/grammar-gen \
   tests/grammar-unit \
   tests/groups-unit \
+  tests/cns-fetch-integrity-unit \
+  tests/cursor-location-integrity-unit \
+  tests/location-commitment-unit \
+  tests/manifest-binding-served-unit \
+  tests/manifest-publication-unit \
+  tests/recovery-manifest-binding-unit \
+  tests/upload-location-hashes-unit \
+  tests/upload-stored-source-unit \
   tests/host-unit \
   tests/identity-core-unit \
   tests/identity-served-unit \
