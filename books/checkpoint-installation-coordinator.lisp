@@ -172,5 +172,5 @@
  :tables (fn2-core-retirement-control fn2-core-checkpoint-future fn2-core-checkpoint-future-windows fn2-core-checkpoint-construction fn2-core-extents fn2-core-checkpoints fn2-core-checkpoint-refs fn2-core-checkpoint-bytes fn2-core-fields fn2-core-pool)
  :doc "Check one exact installed allocation or journal identity, then pack the descriptor member from actual candidate refs and hash.")
 (defcost fn2-checkpoint-installation-submit :answers t
- :tables (fn2-core-retirement-control fn2-core-checkpoints fn2-core-checkpoint-construction fn2-core-extents fn2-core-commit-io fn2-core-commit-root fn2-core-commit-members fn2-core-machines fn2-core-pool fn2-core-control)
+ :tables (fn2-core-retirement-control fn2-core-checkpoint-future fn2-core-checkpoint-future-windows fn2-core-checkpoints fn2-core-checkpoint-construction fn2-core-extents fn2-core-commit-io fn2-core-commit-root fn2-core-commit-members fn2-core-machines fn2-core-pool fn2-core-control)
  :doc "Open the final pre-reserved role6 ticket using the actual B planner and retain its exact member identity.")

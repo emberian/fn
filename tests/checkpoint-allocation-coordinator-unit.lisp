@@ -2,6 +2,7 @@
 ; no persisted acceptance or admission/certification result is claimed here.
 (in-package "ACL2")
 (include-book "std/util/bstar" :dir :system)
+(include-book "std/util/bstar" :dir :system)
 (include-book "../sim/commit-proof-step")
 (defun fn2-cac-seed (complete fn2-core)
  (declare (xargs :stobjs fn2-core :verify-guards nil))

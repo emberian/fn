@@ -2,6 +2,7 @@
 ; control and future borrowed marker record its one-flight logical loan; no
 ; maintenance path frees this lease.
 (in-package "ACL2")
+(include-book "std/util/bstar" :dir :system)
 (include-book "checkpoint-future-resources")
 (fn2-book-layer :b)
 (defmacro fn2-checkpoint-maintenance-staging-events ()

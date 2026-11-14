@@ -191,7 +191,7 @@
  :tables (fn2-core-retirement-control fn2-core-checkpoint-future fn2-core-checkpoint-future-windows fn2-core-checkpoint-construction fn2-core-extents fn2-core-fields fn2-core-pool)
  :doc "Inspect one construction and append at most one framed allocation record.")
 (defcost fn2-checkpoint-allocation-submit :answers t
- :tables (fn2-core-retirement-control fn2-core-extents fn2-core-checkpoint-construction fn2-core-commit-io fn2-core-commit-root fn2-core-commit-members fn2-core-machines fn2-core-pool fn2-core-control)
+ :tables (fn2-core-retirement-control fn2-core-checkpoint-future fn2-core-checkpoint-future-windows fn2-core-extents fn2-core-checkpoint-construction fn2-core-commit-io fn2-core-commit-root fn2-core-commit-members fn2-core-machines fn2-core-pool fn2-core-control)
  :doc "Select the real B planner and submit the retained allocation member.")
 (defcost fn2-checkpoint-allocation-finish-empty :answers t
  :tables (fn2-core-retirement-control fn2-core-checkpoint-future fn2-core-checkpoint-future-windows fn2-core-extents fn2-core-pool fn2-core-control)
