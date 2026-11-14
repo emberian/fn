@@ -2,7 +2,11 @@
 ; directory initializer. No initialization or profile decision is copied.
 (in-package "ACL2")
 (include-book "machine-reservations")
-(include-book "assembly-index")
+(include-book "assembly-init")
+(include-book "core-init-projections")
+
+(make-event
+ (value (cons 'progn (fn2-core-init-projection-events 'fn2-core-machines (w state)))))
 
 (defthm fn2-machines-init-bases-reservation-frame
   (equal
@@ -75,3 +79,14 @@
                              (update-fn2-machines-accept-count (fn2-profile-accept-credits profile)
                                (fn2-machines-init-bases 256 profile
                                  (fn2-machines-columns-init (fn2-machine-index-count profile) machines)))))))))
+
+(defthm fn2-core-init-partition-reservation-entry
+  (implies (and (natp ord) (< ord (len *fn2-machine-partitioned*)))
+    (fn2-machines-partition-reservedp ord
+      (fn2-core-machines (fn2-core-init profile core))))
+  :rule-classes nil
+  :hints (("Goal"
+           :use ((:instance fn2-machines-init-reservation-entry
+                            (machines (fn2-core-machines core))))
+           :in-theory (disable fn2-core-init fn2-machines-init
+                               fn2-core-machines fn2-machines-partition-reservedp))))

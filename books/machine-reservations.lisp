@@ -15,6 +15,19 @@
   (declare (xargs :stobjs fn2-machines :verify-guards nil))
   (and (natp ord) (< ord *fn2-machine-admitted-max*)
        (fn2-machines-reservation-valuesp (fn2-machines-reservation-view ord fn2-machines))))
+(defthm fn2-machines-partition-reserved-forward
+  (implies (fn2-machines-partition-reservedp ord machines)
+    (and (natp ord) (< ord *fn2-machine-admitted-max*)
+         (natp (fn2-machines-active-counti ord machines))
+         (natp (fn2-machines-admission-creditsi ord machines))
+         (natp (fn2-machines-connection-counti ord machines))
+         (<= (+ (fn2-machines-active-counti ord machines)
+                (fn2-machines-admission-creditsi ord machines))
+             (fn2-machines-connection-counti ord machines))))
+  :rule-classes :forward-chaining
+  :hints (("Goal" :in-theory
+           (enable fn2-machines-partition-reservedp fn2-machines-reservation-valuesp
+                   fn2-machines-reservation-view))))
 
 ; Pure list effects. Constants identify schema positions only; neither
 ; expected function invokes checked writers, installers or reclamation.
@@ -42,6 +55,26 @@
                                                     ord (- credits 1) machines)
                      machines)))
     (list (update-nth *fn2-machines-wake-id* target machines) control)))
+
+(defthm fn2-machines-wait-reason-reservation-frame
+  (equal
+   (fn2-machines-partition-reservedp ord (fn2-machines-set-wait-reason id reason machines))
+   (fn2-machines-partition-reservedp ord machines))
+  :hints (("Goal" :in-theory
+           (enable fn2-machines-partition-reservedp fn2-machines-reservation-valuesp
+             fn2-machines-reservation-view fn2-machines-active-counti
+             fn2-machines-admission-creditsi fn2-machines-connection-counti))))
+(defthm fn2-machines-park-taken-reservation-frame
+  (equal
+   (fn2-machines-partition-reservedp query
+     (car (fn2-machines-park-taken waiter ord reason machines control)))
+   (fn2-machines-partition-reservedp query machines))
+  :hints (("Goal" :in-theory
+           (e/d (fn2-machines-park-taken fn2-machines-park-admission fn2-machines-stop-write
+                 fn2-machines-partition-reservedp fn2-machines-reservation-valuesp
+                 fn2-machines-reservation-view fn2-machines-active-counti
+                 fn2-machines-admission-creditsi fn2-machines-connection-counti)
+                (fn2-control-record-stop)))))
 
 (defthm fn2-machines-reserved-reclaim-independent
   (implies (and (fn2-machinesp machines) (fn2-machines-wfp machines)
@@ -88,7 +121,7 @@
                 (unsigned-byte-p 32 id))
     (fn2-machines-partition-reservedp ord
       (car (fn2-machines-reclaim id ord retire machines control))))
-  :rule-classes nil
+  :rule-classes :rewrite
   :hints (("Goal" :use fn2-machines-reserved-reclaim-independent
            :in-theory
            (e/d (fn2-machines-partition-reservedp fn2-machines-reclaim-list-expected
@@ -103,7 +136,7 @@
                 (unsigned-byte-p 32 target) (unsigned-byte-p 32 next))
     (fn2-machines-partition-reservedp ord
       (car (fn2-machines-partition-install ord target next t machines control))))
-  :rule-classes nil
+  :rule-classes :rewrite
   :hints (("Goal" :use fn2-machines-reserved-take-install-independent
            :in-theory
            (e/d (fn2-machines-partition-reservedp fn2-machines-install-list-expected

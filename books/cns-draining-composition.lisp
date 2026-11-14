@@ -3,17 +3,37 @@
 (in-package "ACL2")
 (include-book "cns-pool-refinement")
 (include-book "core-product-lowering")
+(include-book "machine-reservations-entry")
 
-; Consume the shared reconstruction laws for the two actual written core
+; Consume the shared reconstruction laws for the actual written core
 ; children. No duplicate core shape or writeback implementation is needed.
 (make-event
  (let* ((world (w state))
         (selected (fn2-product-entries (fn2-core-child-registry world)
-                                      '(fn2-core-pool fn2-core-control) world)))
+                                      '(fn2-core-pool fn2-core-control fn2-core-machines) world)))
    (value (cons 'progn
      (append (fn2-product-core-shape-events world)
              (fn2-product-writeback-facts selected selected world)
              (fn2-product-spine-facts selected world))))))
+
+(defthm fn2-cns-reservation-native-by-definition
+  (equal (fn2-cns-draining-reservedp core)
+         (fn2-machines-partition-reservedp *fn2-cns-admission-ordinal*
+                                         (fn2-core-machines core)))
+  :hints (("Goal" :in-theory
+           (enable fn2-cns-draining-reservedp fn2-cns-drain-child
+             fn2-cns-drain-child-index fn2-cns-drain-cell fn2-cns-drain-get
+             fn2-cns-drain-index fn2-machines-partition-reservedp
+             fn2-machines-reservation-valuesp fn2-machines-reservation-view
+             fn2-machines-active-counti fn2-machines-admission-creditsi
+             fn2-machines-connection-counti fn2-core-machines))))
+(defthm fn2-cns-core-init-reservation-entry
+  (fn2-cns-draining-reservedp (fn2-core-init profile core))
+  :rule-classes nil
+  :hints (("Goal" :use ((:instance fn2-core-init-partition-reservation-entry
+                                   (ord *fn2-cns-admission-ordinal*)))
+           :in-theory (disable fn2-core-init fn2-cns-draining-reservedp
+                               fn2-machines-partition-reservedp))))
 
 (defthm fn2-cns-owned-release-admission-by-definition
   (implies (and (fn2-poolp pool) (fn2-pool-wfp pool)
@@ -54,15 +74,88 @@
                (fn2-cns-drain-child 'fn2-pool before))))
     (list (car out) (fn2-cns-drain-put-child 'fn2-pool (cadr out) before))))
 
-(defthm fn2-cns-pool-child-by-definition
-  (equal (fn2-cns-drain-child 'fn2-pool core) (fn2-core-pool core))
+(defun fn2-cns-core-model-projection-events (entries)
+  (declare (xargs :verify-guards nil))
+  (if (atom entries) nil
+    (let* ((field (caar entries))
+           (child (fn2-core-child-property (car entries) :stobj))
+           (writer (fn2-product-writer field)))
+      (append
+       `((defthm ,(fn2-columns-sym field "-CNS-MODEL-BY-DEFINITION")
+           (equal (fn2-cns-drain-child ',child core) (,field core))
+           :hints (("Goal" :in-theory
+                    (enable fn2-cns-drain-child fn2-cns-drain-child-index ,field))))
+         (defthm ,(fn2-columns-sym writer "-CNS-MODEL-BY-DEFINITION")
+           (equal (fn2-cns-drain-put-child ',child value core) (,writer value core))
+           :hints (("Goal" :in-theory
+                    (enable fn2-cns-drain-put-child fn2-cns-drain-child-index ,writer)))))
+       (fn2-cns-core-model-projection-events (cdr entries))))))
+(make-event
+ (value (cons 'progn
+   (fn2-cns-core-model-projection-events
+     (fn2-product-entries (fn2-core-child-registry (w state))
+       '(fn2-core-pool fn2-core-control fn2-core-machines fn2-core-sched fn2-cns-table) (w state))))))
+
+(defthm fn2-cns-draining-domain-snapshot-by-definition
+  (implies (and (fn2-corep core) (fn2-core-wfp core)
+                (fn2-cns-draining-domainp id core))
+           (equal (fn2-cns-snapshot-read-code id core) :ok))
+  :rule-classes :rewrite
   :hints (("Goal" :in-theory
-           (enable fn2-cns-drain-child fn2-cns-drain-child-index fn2-core-pool))))
-(defthm fn2-cns-pool-put-child-by-definition
-  (equal (fn2-cns-drain-put-child 'fn2-pool pool core)
-         (update-fn2-core-pool pool core))
-  :hints (("Goal" :in-theory
-           (enable fn2-cns-drain-put-child fn2-cns-drain-child-index update-fn2-core-pool))))
+           (e/d (fn2-cns-draining-domainp fn2-cns-snapshot-read-code
+                 fn2-machine-phase-read-code fn2-machine-idp
+                 fn2-machine-kind fn2-machine-kind-read-code
+                 fn2-machine-slot fn2-machine-slot-read-code
+                 fn2-machines-kind fn2-machines-slot fn2-machines-rows fn2-cns-rows
+                 fn2-cns-drain-cell fn2-cns-drain-get fn2-cns-drain-index)
+                (fn2-cns-drain-releasablep fn2-core-machines fn2-cns-table
+                 fn2-core-pool fn2-core-control fn2-core-sched fn2-corep fn2-core-wfp)))))
+
+(defun fn2-cns-core-reclaim-expected (id ord retire before)
+  (fn2-cns-drain-put-child 'fn2-machines
+    (car (fn2-machines-reclaim-list-expected id ord retire
+           (fn2-cns-drain-child 'fn2-machines before) nil)) before))
+(defthm fn2-cns-core-reclaim-independent
+  (implies (and (fn2-corep core) (fn2-core-wfp core)
+                (fn2-machines-partition-reservedp ord (fn2-core-machines core))
+                (< 0 (fn2-machines-active-counti ord (fn2-core-machines core)))
+                (unsigned-byte-p 32 id))
+    (equal (fn2-cns-reclaim id ord retire core)
+           (fn2-cns-core-reclaim-expected id ord retire core)))
+  :rule-classes nil
+  :hints (("Goal"
+           :use ((:instance fn2-machines-reserved-reclaim-independent
+                            (machines (fn2-core-machines core))
+                            (control (fn2-core-control core)))
+                 (:instance fn2-product-core-shape (fn2-core core)))
+           :in-theory
+           (e/d (fn2-cns-reclaim fn2-cns-core-reclaim-expected fn2-machines-reclaim-list-expected)
+                (fn2-machines-reclaim fn2-machines-reservation-put
+                 fn2-core-machines fn2-core-control update-fn2-core-machines update-fn2-core-control
+                 fn2-corep fn2-core-wfp fn2-machines-partition-reservedp)))))
+
+(defthm fn2-cns-core-reclaim-reservation-preserved
+  (implies (and (fn2-corep core) (fn2-core-wfp core)
+                (fn2-cns-draining-reservedp core)
+                (< 0 (fn2-machines-active-counti *fn2-cns-admission-ordinal*
+                                                (fn2-core-machines core)))
+                (unsigned-byte-p 32 id))
+    (fn2-cns-draining-reservedp
+      (fn2-cns-reclaim id *fn2-cns-admission-ordinal* retire core)))
+  :rule-classes nil
+  :hints (("Goal"
+           :use ((:instance fn2-cns-core-reclaim-independent (ord *fn2-cns-admission-ordinal*))
+                 (:instance fn2-machines-reserved-reclaim-preserved
+                            (ord *fn2-cns-admission-ordinal*)
+                            (machines (fn2-core-machines core)) (control (fn2-core-control core)))
+                 (:instance fn2-machines-reserved-reclaim-independent
+                            (ord *fn2-cns-admission-ordinal*)
+                            (machines (fn2-core-machines core)) (control (fn2-core-control core))))
+           :in-theory
+           (e/d (fn2-cns-core-reclaim-expected fn2-machines-reclaim-list-expected)
+                (fn2-cns-reclaim fn2-machines-reclaim fn2-machines-reservation-put
+                 fn2-cns-draining-reservedp fn2-machines-partition-reservedp
+                 fn2-core-machines fn2-core-control)))))
 
 (defthm fn2-cns-core-release-independent
   (implies (and (fn2-corep core) (fn2-core-wfp core)
@@ -173,3 +266,53 @@
                             (pool (fn2-core-pool core))))
            :in-theory (disable fn2-core-release fn2-pool-release
                                fn2-cns-drain-releasablep fn2-cns-drain-released-pool))))
+
+; Preserve the exact public take operation's live guard and scalar ABI.
+; Registry child facts compose through the actual core face; no synthetic
+; take or initializer substitutes for the served operation.
+(defun fn2-cns-take-reservation-events (world)
+  (declare (xargs :verify-guards nil))
+  (let* ((child 'fn2-machine-take-fn2-cns-children)
+         (face 'fn2-machine-take-fn2-cns)
+         (child-call (cons child (getpropc child 'formals nil world)))
+         (face-call (cons face (getpropc face 'formals nil world))))
+    (if (or (not (getpropc child 'unnormalized-body nil world))
+            (not (getpropc face 'unnormalized-body nil world))
+            (not (equal (getpropc child 'stobjs-out nil world)
+                        '(nil nil nil fn2-cns fn2-machines fn2-pool fn2-control)))
+            (not (equal (getpropc face 'stobjs-out nil world) '(nil nil nil fn2-core))))
+        '((make-event (er soft 'fn2-cns-take-reservation-events
+            "Actual CNS take child/core bodies or full result ABI are unavailable.")))
+      `((defthm fn2-cns-take-children-reservation-preserved
+          (implies
+           (and ,@(fn2-lower-predicates
+                    (remove-eq nil (getpropc child 'stobjs-in nil world)) "P")
+                ,(getpropc child 'guard t world)
+                (fn2-machines-partition-reservedp ordinal fn2-machines))
+           (fn2-machines-partition-reservedp ordinal (mv-nth 4 ,child-call)))
+          :rule-classes nil
+          :hints (("Goal" :in-theory
+                   (e/d (,child fn2-machines-free-head-of)
+                        (fn2-machines-partition-reservedp fn2-machines-partition-install
+                         fn2-machines-park-taken fn2-pool-reserve fn2-core-release-children
+                         fn2-machines-free-headi fn2-cns-next-free
+                         fn2-cnsp fn2-cns-wfp fn2-machinesp fn2-machines-wfp
+                         fn2-poolp fn2-pool-wfp fn2-controlp fn2-control-wfp)))))
+        (defthm fn2-cns-take-core-reservation-preserved
+          (implies (and (fn2-corep fn2-core) ,(getpropc face 'guard t world)
+                        (fn2-cns-draining-reservedp fn2-core))
+                   (fn2-cns-draining-reservedp (mv-nth 3 ,face-call)))
+          :rule-classes nil
+          :hints (("Goal"
+                   :use ((:instance fn2-cns-take-children-reservation-preserved
+                            (fn2-cns (fn2-cns-table fn2-core))
+                            (fn2-machines (fn2-core-machines fn2-core))
+                            (fn2-pool (fn2-core-pool fn2-core))
+                            (fn2-control (fn2-core-control fn2-core))
+                            (ordinal *fn2-cns-admission-ordinal*) (kind *fn2-cns-kind*)))
+                   :in-theory
+                   (e/d (,face)
+                        (,child fn2-cns-draining-reservedp fn2-machines-partition-reservedp
+                         fn2-cns-table fn2-core-machines fn2-core-pool fn2-core-control
+                         fn2-corep fn2-core-wfp)))))))))
+(make-event (value (cons 'progn (fn2-cns-take-reservation-events (w state)))))
