@@ -100,6 +100,7 @@ ACL2_BOOKS = \
   books/cursor-kind \
   books/declare \
   books/device-boundary \
+  books/digest-store \
   books/digests \
   books/dispatch-fresh \
   books/dispatch-heads \
@@ -151,6 +152,8 @@ ACL2_BOOKS = \
   books/machines-c-successor \
   books/machines-directory \
   books/merkle \
+  books/native-b3-correspondence \
+  books/native-b3-evidence \
   books/nntp-grammar \
   books/node-profile \
   books/operations \
@@ -297,6 +300,14 @@ ACL2_BOOKS = \
   tests/grammar-gen \
   tests/grammar-unit \
   tests/groups-unit \
+  tests/cns-fetch-integrity-unit \
+  tests/cursor-location-integrity-unit \
+  tests/location-commitment-unit \
+  tests/manifest-binding-served-unit \
+  tests/manifest-publication-unit \
+  tests/recovery-manifest-binding-unit \
+  tests/upload-location-hashes-unit \
+  tests/upload-stored-source-unit \
   tests/host-unit \
   tests/identity-core-unit \
   tests/identity-served-unit \
@@ -318,6 +329,7 @@ ACL2_BOOKS = \
   tests/machine-success-charge-context-unit \
   tests/issue-history-context-unit \
   tests/issue-wrapper-boundary-unit \
+  tests/machine-issue-domain-unit \
   tests/machine-child-tables-unit \
   tests/machines-a-unit \
   tests/shape-one-unit \
@@ -391,6 +403,7 @@ ACL2_BOOKS = \
   tests/staging-unit \
   tests/stop-boundary-unit \
   tests/storage-fault-policy-unit \
+  tests/storage-fence-suffix-unit \
   tests/storage-effectful-physical \
   tests/storage-effectful-error \
   tests/translation-domain-unit \

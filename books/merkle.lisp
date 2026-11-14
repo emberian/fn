@@ -169,9 +169,12 @@
  (fn2-mk (fn2-mk-set-ps row (mod (floor (nfix s) 2) 1152921504606846976) fn2-mk))
  (fn2-mk (fn2-mk-set-next row (+ 1 i) fn2-mk)))
  (if (equal (+ i 1) count) (fn2-mk-proof-end row fn2-digests fn2-mk) (mv :more fn2-digests fn2-mk))))
+; Scalar normalization and parity choose a path; the child contracts carry
+; the shapes. Do not split those scalar definitions again for each claim.
 (defthm fn2-mk-proof-step-shape
  (implies (and (fn2-mk-ready row fn2-mk fn2-digests) (fn2-digestsp fn2-digests) (fn2-mkp fn2-mk))
-  (and (fn2-digestsp (mv-nth 1 (fn2-mk-proof-step row fn2-digests fn2-mk))) (fn2-digests-wfp (mv-nth 1 (fn2-mk-proof-step row fn2-digests fn2-mk))) (equal (fn2-digests-rows (mv-nth 1 (fn2-mk-proof-step row fn2-digests fn2-mk))) (fn2-digests-rows fn2-digests)) (fn2-mkp (mv-nth 2 (fn2-mk-proof-step row fn2-digests fn2-mk))) (fn2-mk-wfp (mv-nth 2 (fn2-mk-proof-step row fn2-digests fn2-mk))) (equal (fn2-mk-rows (mv-nth 2 (fn2-mk-proof-step row fn2-digests fn2-mk))) (fn2-mk-rows fn2-mk)))))
+  (and (fn2-digestsp (mv-nth 1 (fn2-mk-proof-step row fn2-digests fn2-mk))) (fn2-digests-wfp (mv-nth 1 (fn2-mk-proof-step row fn2-digests fn2-mk))) (equal (fn2-digests-rows (mv-nth 1 (fn2-mk-proof-step row fn2-digests fn2-mk))) (fn2-digests-rows fn2-digests)) (fn2-mkp (mv-nth 2 (fn2-mk-proof-step row fn2-digests fn2-mk))) (fn2-mk-wfp (mv-nth 2 (fn2-mk-proof-step row fn2-digests fn2-mk))) (equal (fn2-mk-rows (mv-nth 2 (fn2-mk-proof-step row fn2-digests fn2-mk))) (fn2-mk-rows fn2-mk))))
+ :hints (("Goal" :in-theory (disable nfix oddp))))
 (verify-guards fn2-mk-proof-step)
 (in-theory (disable fn2-mk-proof-step))
 (defun fn2-mk-proof-setup (row phase base count old new index f s old-root new-root leaf fn2-digests fn2-mk)
@@ -234,8 +237,10 @@
 (defthm fn2-mk-verify-consistency-shape
  (implies (and (and (fn2-mk-ready row fn2-mk fn2-digests) (fn2-digest-rowp old-root fn2-digests) (fn2-digest-rowp new-root fn2-digests) (unsigned-byte-p 60 old) (unsigned-byte-p 60 new) (unsigned-byte-p 32 base) (unsigned-byte-p 32 count)
  (<= (* *fn2-digest-stride* (fn2-mk-rows fn2-mk)) old-root) (<= (* *fn2-digest-stride* (fn2-mk-rows fn2-mk)) new-root)) (fn2-digestsp fn2-digests) (fn2-mkp fn2-mk))
-  (and (fn2-digestsp (mv-nth 1 (fn2-mk-verify-consistency row old new base count old-root new-root fn2-digests fn2-mk))) (fn2-digests-wfp (mv-nth 1 (fn2-mk-verify-consistency row old new base count old-root new-root fn2-digests fn2-mk))) (equal (fn2-digests-rows (mv-nth 1 (fn2-mk-verify-consistency row old new base count old-root new-root fn2-digests fn2-mk))) (fn2-digests-rows fn2-digests)) (fn2-mkp (mv-nth 2 (fn2-mk-verify-consistency row old new base count old-root new-root fn2-digests fn2-mk))) (fn2-mk-wfp (mv-nth 2 (fn2-mk-verify-consistency row old new base count old-root new-root fn2-digests fn2-mk))) (equal (fn2-mk-rows (mv-nth 2 (fn2-mk-verify-consistency row old new base count old-root new-root fn2-digests fn2-mk))) (fn2-mk-rows fn2-mk)))))
-(verify-guards fn2-mk-verify-consistency)
+  (and (fn2-digestsp (mv-nth 1 (fn2-mk-verify-consistency row old new base count old-root new-root fn2-digests fn2-mk))) (fn2-digests-wfp (mv-nth 1 (fn2-mk-verify-consistency row old new base count old-root new-root fn2-digests fn2-mk))) (equal (fn2-digests-rows (mv-nth 1 (fn2-mk-verify-consistency row old new base count old-root new-root fn2-digests fn2-mk))) (fn2-digests-rows fn2-digests)) (fn2-mkp (mv-nth 2 (fn2-mk-verify-consistency row old new base count old-root new-root fn2-digests fn2-mk))) (fn2-mk-wfp (mv-nth 2 (fn2-mk-verify-consistency row old new base count old-root new-root fn2-digests fn2-mk))) (equal (fn2-mk-rows (mv-nth 2 (fn2-mk-verify-consistency row old new base count old-root new-root fn2-digests fn2-mk))) (fn2-mk-rows fn2-mk))))
+ :hints (("Goal" :in-theory (disable nfix))))
+(verify-guards fn2-mk-verify-consistency
+ :hints (("Goal" :in-theory (disable nfix))))
 (in-theory (disable fn2-mk-verify-consistency))
 (defconst *fn2-mk-leaf-prefix* (coerce (list (code-char 0)) 'string))
 (defun fn2-mk-leaf-start (row fn2-digests fn2-b3)

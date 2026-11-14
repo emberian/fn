@@ -1366,6 +1366,22 @@ digest field with B's `fn2-digest-store` (C's seam 1, landed 810a4c376). Injecti
 Path, Injection-Info, generated Message-ID/Date/Injection-Date) changes the **stored** octets, not the
 source; it is the transaction's `prepare` (14.4) and the stored length is its field.
 
+**Stored representation commitment.** Schema 2 `fn2-article` has a separate
+`stored-source :digest`, BLAKE3 of the exact stored representation. `source` remains the
+authored-source identity. The served upload saves `source` before reusing its hasher;
+after forming the generated Message-ID prefix it enters `:stored-hash`. Each turn
+absorbs one span of at most 4,096 octets selected by `fn2-upload-store-span`, the same
+selector used by raw writes and manifest staging. `stored-hashed` resumes the pass
+through the prefix and both chunks. The final digest stays in the owned store page,
+before the block stage, while later block hashes reuse the hasher. Every upload
+reserves this storage window through normal pool admission; raw uploads use one
+4 KiB unit, including explicit-Message-ID uploads that previously needed no page.
+`fn2-txn-put-post-for` carries that page range to `fn2-article-put`; the generated
+schema codec emits and replays it with the article semantic record. Source-only
+implementation and authored `tests/upload-stored-source-unit.lisp` controls await
+composed ACL2 certification and runtime execution; this paragraph claims no
+certified payload-authentication or reclamation theorem.
+
 ### 14.4 The transaction machine `fn2-txn` (`books/txn.lisp`, D5)
 
 ROUND2 §B.2 row 4. Capacity `:t`. Phases:
@@ -2075,3 +2091,57 @@ and `fn2-run-cursors` by `X` read rows (and `8X` source cursors) so the one look
 is the same generalization by allocation, with no copy of the code. Deferred with reasons: the
 identity read with membership visibility and LIST's per-group metadata (D6 2/n, C-S4's second
 half), `:miss` with page identity (C1c's runs).
+
+### 15.10 Location-unit integrity
+
+Schema 2 publishes three different commitments with the article location:
+`source` is the authored input identity, `stored-source` hashes the complete
+stored representation including an injected Message-ID, and `location-hashes`
+is the ordered vector of hashes of the location's written units. For raw
+source, each unit hashes its actual article bytes, including the short final
+unit. For a source manifest, each unit hashes all 4096 bytes, including zero
+padding. Manifest block references and their hashes/CVs are therefore covered
+by a commitment outside the manifest itself.
+
+The vector's maximum length is derived from the supported location write span
+(`32 * *fn2-commit-write-resources*`, currently 96 bytes). This is distinct from
+the physical allocator extent size: unused reserved sectors are not vector
+members. The writer computes one unit per bounded step. The article entry,
+its generated journal codec and replay carry the vector with the location
+unit/epoch/allocation and stored length; no compatibility layout is retained.
+
+The cursor acquires its read lease before retaining the C article lookup.
+`art-bind` copies the vector from that still-current row and releases the row;
+a stale publication restarts at `art-key`, rebuilding the numeric key and
+re-reading all scalars. The lease retains the copied vector as a prefix across
+unit reads. `fn2-block-read-commitment` checks the exact completion length and
+BLAKE3 against that prefix before manifest decoding or raw article output.
+Manifest-referenced data blocks retain their existing hash/CV checks. The
+shared checker accepts explicit data/digest slots and offsets for checkpoint consumers;
+the caller must establish the expected digest's trusted provenance and keep
+its span separate from device input.
+
+Recovery snapshots the journal-decoded location reference in the decoding
+step, then copies the vector from its still-owned records window into a
+separate workspace. Each manifest unit must match that retained vector before
+its entries can contribute child allocation claims. The exact vector count
+also bounds traversal. This payload ownership pass does not newly read or
+hash raw article bodies; stored-stream checkpoint verification remains a
+separate consumer. `tests/recovery-manifest-binding-unit.lisp` cold-recovers
+the actual POST store and requires ambiguity after the same coherent foreign
+manifest substitution; the clean store must recover intact.
+
+Qualification is outstanding for this change. The prepared controls are
+`tests/location-commitment-unit.lisp` (child-only literal vector and short-read
+control), `tests/upload-location-hashes-unit.lisp` (stored-prefix/tail hashing),
+`tests/cursor-location-integrity-unit.lisp` (substitution, reordered vector,
+missing unit and padding), `tests/manifest-binding-served-unit.lisp` (two real
+POSTs and coherent foreign manifest entries), and
+`tests/manifest-publication-unit.lisp` (publication between scalar read and
+vector copy). The last fixture deliberately publishes a replacement through C
+to test read coherence; it does not establish that replacing an article's
+identity is an authorized production operation. These finite controls do not
+prove collision resistance, the general codec refinement, or power-loss
+persistence. Current-source admission, certification and composed execution
+must precede a qualified served-integrity claim; checkpoint integration remains
+with the reclamation lane.
