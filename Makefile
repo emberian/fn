@@ -311,6 +311,7 @@ ACL2_BOOKS = \
   tests/tls-profile-unit \
   tests/tls-transport-unit \
   tests/tls-sim-upgrade-unit \
+  tests/tls-envelope-unit \
   tests/machine-budget-unit \
   tests/machine-budget-core-fixture \
   tests/core-init-profile-context-unit \

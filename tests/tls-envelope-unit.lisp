@@ -57,3 +57,5 @@
 (assert-event (fn2-tls-envelope-control :success :old-zero))
 (assert-event (fn2-tls-envelope-control :success :short))
 (assert-event (fn2-tls-envelope-control :success :excess))
+(assert-event (fn2-tls-envelope-control :native-failed :short))
+(assert-event (fn2-tls-envelope-control :cancelled :short))
