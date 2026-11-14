@@ -301,6 +301,7 @@ ACL2_BOOKS = \
   tests/journal-members-unit \
   tests/event-frontier-unit \
   tests/event-proof-format-unit \
+  tests/event-proof-source-unit \
   tests/host-unit \
   tests/identity-core-unit \
   tests/layout-roundtrip \
