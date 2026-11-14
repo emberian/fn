@@ -51,12 +51,18 @@
      fn2-boot-config))))
 (defthm fn2-boot-config-prepare-type
  (implies (fn2-boot-configp fn2-boot-config)
-          (fn2-boot-configp (fn2-boot-config-prepare profile fn2-boot-config))))
-(defthm fn2-boot-config-prepare-wfp (fn2-boot-config-wfp (fn2-boot-config-prepare profile fn2-boot-config)))
+          (fn2-boot-configp (fn2-boot-config-prepare profile fn2-boot-config)))
+ :hints (("Goal" :in-theory (disable fn2-profile-recovery-assumptions fn2-profile-get
+                                    fn2-profile-path-identity unsigned-byte-p posp nfix))))
+(defthm fn2-boot-config-prepare-wfp (fn2-boot-config-wfp (fn2-boot-config-prepare profile fn2-boot-config))
+ :hints (("Goal" :in-theory (disable fn2-profile-recovery-assumptions fn2-profile-get
+                                    fn2-profile-path-identity unsigned-byte-p posp nfix))))
 (defthm fn2-boot-config-prepare-recovery-assumptions
  (implies (fn2-profile-get :image-boot profile)
   (equal (fn2-boot-config-recovery-assumptions (fn2-boot-config-prepare profile fn2-boot-config))
-         (fn2-profile-recovery-assumptions profile))))
+         (fn2-profile-recovery-assumptions profile)))
+ :hints (("Goal" :in-theory (disable fn2-profile-recovery-assumptions fn2-profile-get
+                                    fn2-profile-path-identity unsigned-byte-p posp nfix))))
 (in-theory (disable fn2-boot-config-prepare))
 (defcorechild fn2-core-boot-config fn2-boot-config
  :init (fn2-boot-config-prepare profile fn2-boot-config)
