@@ -61,7 +61,8 @@
 ; 4+w .. 3+w+c E's control connections (fn2-ctl row S decodes FNCT into its
 ; slot's 128-row field stripe and hashes the BLAKE3 trailer in its b3 row,
 ; both at fn2-b-ctl-slot), then row 4+w+c for event construction,
-; row 5+w+c for block reads and final row 6+w+c for checkpoint writing. The block read's check
+; source-retention rows 4+w+c and 5+w+c, event row 6+w+c,
+; block-read row 7+w+c and final checkpoint row 8+w+c. The block read's check
 ; (fn2-block-read-done-children hashes a block read through a source
 ; manifest there, within one call, so one row serves every cursor row;
 ; b-durability.md S9a); the count is derived, so every profile has every
@@ -79,16 +80,30 @@
  (+ 4 (fn2-b-upload-windows profile) (nfix s)))
 (defun fn2-b-format-floor (profile)
  (declare (xargs :guard t))
- (+ 7 (fn2-b-upload-windows profile) (fn2-b-ctl-rows profile)))
+ (+ 9 (fn2-b-upload-windows profile) (fn2-b-ctl-rows profile)))
 (defun fn2-b-format-slots (profile)
  (declare (xargs :guard t))
  (fn2-b-capacity :format-slots (fn2-b-format-floor profile) profile))
+; Two actual source-retention stripes precede event/block/checkpoint work.
+; They survive physical read yields and are not loaned to the page worker.
+(defun fn2-b-semantic-retention-row (rows)
+ (declare (xargs :guard t))
+ (nfix (- (nfix rows) 5)))
+(defun fn2-b-payload-retention-row (rows)
+ (declare (xargs :guard t))
+ (nfix (- (nfix rows) 4)))
+(defun fn2-b-semantic-retention-field-base (rows)
+ (declare (xargs :guard t))
+ (* 128 (fn2-b-semantic-retention-row rows)))
+(defun fn2-b-payload-retention-field-base (rows)
+ (declare (xargs :guard t))
+ (* 128 (fn2-b-payload-retention-row rows)))
 (defun fn2-b-event-row (rows)
  (declare (xargs :guard t))
  (nfix (- (nfix rows) 3)))
 (defun fn2-b-ctl-runtime-row (s connections rows)
  (declare (xargs :guard t))
- (+ (nfix (- (nfix rows) (nfix connections) 3)) (nfix s)))
+ (+ (nfix (- (nfix rows) (nfix connections) 5)) (nfix s)))
 (defun fn2-b-block-read-row (rows)
  (declare (xargs :guard t))
  (nfix (- (nfix rows) 2)))
@@ -200,7 +215,8 @@
 (defcorechild fn2-core-fields fn2-fields
  :init (fn2-fields-init (fn2-b-capacity :format-field-slots (fn2-b-field-rows profile) profile) fn2-fields)
  :profilep (and (unsigned-byte-p 32 (fn2-b-capacity :format-field-slots (fn2-b-field-rows profile) profile))
-                (<= 384 (fn2-b-capacity :format-field-slots (fn2-b-field-rows profile) profile)))
+                (<= (fn2-b-field-rows profile)
+                    (fn2-b-capacity :format-field-slots (fn2-b-field-rows profile) profile)))
  :why "Commit work survives scheduler yields.")
 (defcorechild fn2-core-rec-cand fn2-rec-cand
  :init (fn2-rec-cand-init (fn2-b-capacity :extent-slots 16 profile) fn2-rec-cand)
@@ -664,6 +680,24 @@
                                       (* 4 (nfix block)) fn2-digests fn2-pool))
       ((mv same fn2-digests) (fn2-block-digest-at cv want proof-slot proof-gen cvoff okind oslot ogen fn2-digests fn2-pool)))
   (mv (if same :ok :hash) fn2-b3 fn2-digests)))
+(defthm fn2-block-read-done-from-children-shape
+ (implies (and (fn2-digestsp fn2-digests) (fn2-digests-wfp fn2-digests) (fn2-b3p fn2-b3) (fn2-b3-wfp fn2-b3)
+               (fn2-poolp fn2-pool) (fn2-pool-wfp fn2-pool))
+  (b* (((mv & b d) (fn2-block-read-done-from-children bytes len verify lslot lgen boff proof-slot proof-gen hoff cvoff block okind oslot ogen
+                                                 fn2-b3 fn2-digests fn2-pool)))
+   (and (fn2-digestsp d) (fn2-digests-wfp d) (equal (fn2-digests-rows d) (fn2-digests-rows fn2-digests))
+        (fn2-b3p b) (fn2-b3-wfp b) (equal (fn2-b3-rows b) (fn2-b3-rows fn2-b3))
+        (equal (len (nth *fn2-b3-wordsi* b)) (len (nth *fn2-b3-wordsi* fn2-b3))))))
+ :hints (("Goal" :in-theory (disable fn2-digestsp fn2-digests-wfp fn2-digests-rows
+                                    fn2-b3p fn2-b3-wfp fn2-b3-rows fn2-digest-rowp))))
+(fn2-b3-preserves fn2-block-read-done-from-children
+ (bytes len verify lslot lgen boff proof-slot proof-gen hoff cvoff block okind oslot ogen fn2-b3 fn2-digests fn2-pool)
+ :hyps ((fn2-digestsp fn2-digests) (fn2-digests-wfp fn2-digests) (fn2-b3p fn2-b3) (fn2-b3-wfp fn2-b3)
+        (fn2-poolp fn2-pool) (fn2-pool-wfp fn2-pool))
+ :carriers ((fn2-b3 1 :prefix "-B3") (fn2-digests 2 :prefix "-DIGESTS"))
+ :hints (("Goal" :use fn2-block-read-done-from-children-shape
+          :in-theory (disable fn2-block-read-done-from-children fn2-digestsp fn2-digests-wfp fn2-digests-rows fn2-b3p fn2-b3-wfp fn2-b3-rows))))
+
 ; Existing cursors carry proof and block bytes in one lease. The checkpoint
 ; source walker uses separate stable windows through the same implementation.
 (defun fn2-block-read-done-children (bytes len verify lslot lgen boff hoff cvoff block okind oslot ogen fn2-b3 fn2-digests fn2-pool)
@@ -678,8 +712,8 @@
    (and (fn2-digestsp d) (fn2-digests-wfp d) (equal (fn2-digests-rows d) (fn2-digests-rows fn2-digests))
         (fn2-b3p b) (fn2-b3-wfp b) (equal (fn2-b3-rows b) (fn2-b3-rows fn2-b3))
         (equal (len (nth *fn2-b3-wordsi* b)) (len (nth *fn2-b3-wordsi* fn2-b3))))))
- :hints (("Goal" :in-theory (disable fn2-digestsp fn2-digests-wfp fn2-digests-rows
-                                    fn2-b3p fn2-b3-wfp fn2-b3-rows fn2-digest-rowp))))
+ :hints (("Goal" :use ((:instance fn2-block-read-done-from-children-shape (proof-slot lslot) (proof-gen lgen)))
+          :in-theory (enable fn2-block-read-done-children))))
 (in-theory (disable fn2-block-read-done-children))
 (defcost fn2-block-read-done :child fn2-block-read-done-children :answers (:ok :io :hash :bounds) :bytes 8192
  :tables (fn2-core-b3 fn2-core-digests fn2-core-pool)
