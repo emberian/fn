@@ -37,6 +37,12 @@ def rewrite(text):
             quoted = found.node.items[2]
             value = "(list " + " ".join(constant(n) for n in codes.items) + ")"
             edits.append((quoted.start, quoted.end, value))
+    for found in match("(and (natp ?fault) (< ?fault *fn2-fault-none*))", parsed.forms):
+        node = found.captures["fault"]
+        edits.append((found.start, found.end,
+                      "(fn2-sim-real-faultp " + parsed.text[node.start:node.end] + ")"))
+    for found in match("(< forced *fn2-fault-none*)", parsed.forms):
+        edits.append((found.start, found.end, "(fn2-sim-real-faultp forced)"))
     return write(parsed.text, edits), len(edits)
 
 
