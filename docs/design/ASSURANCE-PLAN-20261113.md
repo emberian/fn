@@ -259,3 +259,32 @@ leaf defect must be checked through its actual callers: for example, a principal
 check preceding an admin check on the same unchanged core can rule out an apparent
 local bypass. Reports distinguish confirmed defects, coverage gaps and withdrawn
 suspicions. Remote proof work still requires named capacity within the 26 GiB cap.
+
+## Distributed, temporal and completion coverage — 2026-11-14
+
+A further six independent lanes start source-first from the same semantic B base.
+They add no remote compute reservations; current jobs and capacity remain under
+convergence coordination.
+
+| Owner / lane | Assurance subject | Required useful result |
+|---|---|---|
+| peer_assurance / assurance-peer-contracts | Inbound transfer decisions, replay/identity, catch-up and custody coverage | A connected inbound contract/control, plus honest separation of actual served behavior from outbound/catch-up models and interim commands. |
+| revocation_assurance / assurance-revocation | Authority changes during selection, page assembly and handoff | An independent two-head schedule and stated authorization linearization contract; no silent retroactive-rescission requirement. Coordinate, but do not duplicate, membership and permission decisions. |
+| reclamation_assurance / assurance-reclamation | Persistent extent/article lifetime versus readers, pins and checkpoints | A connected lifetime invariant or exact served-entry coverage refusal; allocator model proofs alone cannot establish a served collector. |
+| sol_crash_cut_assurance / assurance-crash-cut-map | Physical effect/return cuts before modeled completion | One source-connected cut-family mapping witness and omitted/misattributed-cut controls; preserve the incomplete global mapping verdict. |
+| identity_codec_assurance / assurance-identity-codecs | Actual wire, stored and retrieved article identity representations | A served correspondence with independent octet expectations and meaningful normalization/identity mutation; cryptographic collision resistance stays an explicit assumption. |
+| sol_claim_completion / assurance-claim-completion | Required product claims through their live proof dependencies | Qualified live-world checks over existing square rows and named product scope; refuse owed, missing, stale, witness-only or unreachable-only coverage. Reuse the bridge inventory rather than create a second claim ledger. |
+
+Initial traces found no served collector calling the allocator reclaim/checkpoint
+primitives, and outbound peer/catch-up paths remain model/design coverage. These
+are implementation/coverage gaps, not demonstrated premature-reclamation or peer
+safety defects. A suspected uncertain peer reply issue is being checked through
+actual transaction composition rather than inferred from a defensive answer branch.
+The device-syscall-return cut occurs after physical effects and before completion;
+a simulator step that combines effects and posting is not by itself its mapping.
+
+Authorization remains release-blocking: original B delivered exact article bytes
+with required grants disabled. The defensive repair worker was stopped twice by
+automatic content review for possible cybersecurity risk; source changes remain
+preserved, but its fixed-callback qualification is incomplete. Do not relabel the
+passing baseline native recovery tests as permission correctness or release approval.
