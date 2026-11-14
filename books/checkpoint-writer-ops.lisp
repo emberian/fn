@@ -2,6 +2,7 @@
 ; decoder, hash checker, allocator or host-side geometry decisions.
 (in-package "ACL2")
 (include-book "checkpoint-installed")
+(include-book "checkpoint-production")
 (fn2-book-layer :b)
 
 (defun fn2-checkpoint-writer-phase-children (fn2-checkpoint-publication)
@@ -15,9 +16,9 @@
    (if (and (unsigned-byte-p 32 row) (unsigned-byte-p 32 base)) (mv :ok row base) (mv :bounds 0 0)))
   (mv :bounds 0 0)))
 
-; Current boot has proved all four slots empty; the predecessor checkpoint
-; digest is therefore the zero genesis value. A second/selected checkpoint
-; requires the real selected-anchor source, never a caller-provided digest.
+; Genesis has no published predecessor. Later same-process publications use
+; the exact retained descriptor identity from the last successful bank fence.
+; Startup selected-base binding remains absent until authenticated full restore.
 (defun fn2-checkpoint-writer-begin-children (c slot0 gen0 slot1 gen1 scratch sgen kind owner generation
                                           fn2-checkpoints fn2-commit-root fn2-fc fn2-boot-config
                                           fn2-checkpoint-publication fn2-checkpoint-bytes fn2-digests)
@@ -27,7 +28,8 @@
               (fn2-fc-wfp fn2-fc) (fn2-boot-config-wfp fn2-boot-config)
               (fn2-checkpoint-publication-wfp fn2-checkpoint-publication)
               (fn2-checkpoint-bytes-wfp fn2-checkpoint-bytes) (fn2-digests-wfp fn2-digests))))
- (b* (((unless (and (unsigned-byte-p 32 scratch) (unsigned-byte-p 60 sgen)
+ (b* (((unless (and (< 0 (fn2-checkpoint-publication-rows fn2-checkpoint-publication))
+                     (unsigned-byte-p 32 scratch) (unsigned-byte-p 60 sgen)
                      (not (equal scratch slot0)) (not (equal scratch slot1))))
        (mv :bounds fn2-checkpoint-publication fn2-checkpoint-bytes fn2-digests))
       ((mv code batch-hash) (fn2-checkpoint-installation-seal-row c fn2-checkpoints fn2-commit-root fn2-fc fn2-digests))
@@ -44,7 +46,7 @@
       ((unless (eq code :ok)) (mv code fn2-checkpoint-publication fn2-checkpoint-bytes fn2-digests))
       ((mv code fn2-digests) (fn2-checkpoint-boot-geometry-load geometry fn2-boot-config fn2-digests))
       ((unless (eq code :ok)) (mv code fn2-checkpoint-publication fn2-checkpoint-bytes fn2-digests))
-      (fn2-digests (fn2-rec-zero-digest previous fn2-digests))
+      (fn2-digests (fn2-checkpoint-publication-previous-load 0 previous fn2-checkpoint-publication fn2-digests))
       ((mv code fn2-checkpoint-publication fn2-checkpoint-bytes)
        (fn2-checkpoint-publication-begin c (fn2-boot-config-image-size fn2-boot-config)
         (fn2-boot-config-extents fn2-boot-config) (fn2-boot-config-count fn2-boot-config)
@@ -54,10 +56,17 @@
        (fn2-checkpoint-publication-put 0 (scratch scratch) (scratch-gen sgen)) fn2-checkpoint-publication)))
   (mv code fn2-checkpoint-publication fn2-checkpoint-bytes fn2-digests)))
 (fn2-checkpoint-publication-preserves fn2-checkpoint-writer-begin-children
- (c slot0 gen0 slot1 gen1 scratch sgen kind owner generation fn2-checkpoints fn2-commit-root fn2-fc fn2-boot-config
-    fn2-checkpoint-publication fn2-checkpoint-bytes fn2-digests)
- :carriers ((fn2-checkpoint-publication 1 :prefix "-PUBLICATION")
-            (fn2-checkpoint-bytes 2 :prefix "-BYTES") (fn2-digests 3 :prefix "-DIGESTS")))
+ (c slot0 gen0 slot1 gen1 scratch sgen kind owner generation fn2-checkpoints fn2-commit-root fn2-fc fn2-boot-config fn2-checkpoint-publication fn2-checkpoint-bytes fn2-digests)
+ :hyps ((fn2-checkpointsp fn2-checkpoints) (fn2-commit-rootp fn2-commit-root) (fn2-fcp fn2-fc) (fn2-boot-configp fn2-boot-config) (fn2-checkpoint-publicationp fn2-checkpoint-publication) (fn2-checkpoint-bytesp fn2-checkpoint-bytes) (fn2-digestsp fn2-digests) (fn2-checkpoints-wfp fn2-checkpoints) (fn2-commit-root-wfp fn2-commit-root) (fn2-fc-wfp fn2-fc) (fn2-boot-config-wfp fn2-boot-config) (fn2-checkpoint-publication-wfp fn2-checkpoint-publication) (fn2-checkpoint-bytes-wfp fn2-checkpoint-bytes) (fn2-digests-wfp fn2-digests))
+ :specs (("-CHECKPOINT-PUBLICATION-TYPE" fn2-checkpoint-publicationp 1)
+         ("-CHECKPOINT-PUBLICATION-WFP" fn2-checkpoint-publication-wfp 1)
+         ("-CHECKPOINT-PUBLICATION-ROWS" fn2-checkpoint-publication-rows 1 :frame fn2-checkpoint-publication)
+         ("-CHECKPOINT-BYTES-TYPE" fn2-checkpoint-bytesp 2)
+         ("-CHECKPOINT-BYTES-WFP" fn2-checkpoint-bytes-wfp 2)
+         ("-CHECKPOINT-BYTES-ROWS" fn2-checkpoint-bytes-rows 2 :frame fn2-checkpoint-bytes)
+         ("-DIGESTS-TYPE" fn2-digestsp 3)
+         ("-DIGESTS-WFP" fn2-digests-wfp 3)
+         ("-DIGESTS-ROWS" fn2-digests-rows 3 :frame fn2-digests)))
 
 ; The generated worker is the only publisher of this private checker stripe.
 ; It cannot change context while a seal/check continuation is live.
@@ -99,7 +108,13 @@
   (mv :ok fn2-fc-context fn2-digests)))
 (fn2-fc-context-preserves fn2-checkpoint-writer-context-children
  (which fn2-checkpoints fn2-checkpoint-publication fn2-boot-config fn2-fc fn2-b3 fn2-fc-context fn2-digests)
- :carriers ((fn2-fc-context 1 :prefix "-CONTEXT") (fn2-digests 2 :prefix "-DIGESTS")))
+ :hyps ((fn2-checkpointsp fn2-checkpoints) (fn2-checkpoint-publicationp fn2-checkpoint-publication) (fn2-boot-configp fn2-boot-config) (fn2-fcp fn2-fc) (fn2-b3p fn2-b3) (fn2-fc-contextp fn2-fc-context) (fn2-digestsp fn2-digests) (fn2-checkpoints-wfp fn2-checkpoints) (fn2-checkpoint-publication-wfp fn2-checkpoint-publication) (fn2-boot-config-wfp fn2-boot-config) (fn2-fc-wfp fn2-fc) (fn2-b3-wfp fn2-b3) (fn2-fc-context-wfp fn2-fc-context) (fn2-digests-wfp fn2-digests))
+ :specs (("-FC-CONTEXT-TYPE" fn2-fc-contextp 1)
+         ("-FC-CONTEXT-WFP" fn2-fc-context-wfp 1)
+         ("-FC-CONTEXT-ROWS" fn2-fc-context-rows 1 :frame fn2-fc-context)
+         ("-DIGESTS-TYPE" fn2-digestsp 2)
+         ("-DIGESTS-WFP" fn2-digests-wfp 2)
+         ("-DIGESTS-ROWS" fn2-digests-rows 2 :frame fn2-digests)))
 
 ; One atomic pool bundle. Do not hold one storage window while waiting for a
 ; second window of the same D0 rank. Cached class counts preflight all three;
@@ -126,7 +141,13 @@
   (mv (if (eq code :ok) :ok :partial) s0 g0 s1 g1 ss gs fn2-pool fn2-control)))
 (fn2-pool-preserves fn2-checkpoint-writer-reserve-children
  (kind owner generation fn2-pool fn2-control)
- :carriers ((fn2-pool 7 :prefix "-POOL") (fn2-control 8 :prefix "-CONTROL")))
+ :hyps ((fn2-poolp fn2-pool) (fn2-controlp fn2-control) (fn2-pool-wfp fn2-pool) (fn2-control-wfp fn2-control))
+ :specs (("-POOL-TYPE" fn2-poolp 7)
+         ("-POOL-WFP" fn2-pool-wfp 7)
+         ("-POOL-ROWS" fn2-pool-rows 7 :frame fn2-pool)
+         ("-CONTROL-TYPE" fn2-controlp 8)
+         ("-CONTROL-WFP" fn2-control-wfp 8)
+         ("-CONTROL-ROWS" fn2-control-rows 8 :frame fn2-control)))
 
 (defun fn2-checkpoint-writer-release-children (s0 g0 s1 g1 ss gs kind owner generation pending
                                              fn2-checkpoint-publication fn2-pool fn2-control)

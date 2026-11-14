@@ -468,6 +468,27 @@ persistence) is owed.
 Allocation owner-kind is an opaque u8 machine/object category; owner is a typed `owner` ID
 matching the allocator’s owner-kind/owner-id fields.
 
+### CHECKPOINT-PUBLICATION-DESCRIPTOR-IDENTITY
+
+Engineering choice, 2026-11-14: an anchor's `previous-checkpoint` digest is the
+expected hash of the descriptor Ref from the prior successfully published
+checkpoint. The format previously named only an opaque digest. It is distinct
+from the installation batch seal and either slot's anchor hash. Genesis uses
+32 zero bytes. `fn2-checkpoint-publication-begin` snapshots the actual installed
+candidate's descriptor hash and identity into owned attempt columns; only the
+matching successful covering bank fence copies them into owned base columns.
+The next publication checks increasing checkpoint identity in the same lineage,
+loads that retained hash, and writes the opposite bank. This records physical
+publication; it grants no allocator cut, promotion, FREE or reclamation authority.
+
+The generated writer accepts only an actual installed production claim under its
+phase-2 frozen owner and retained references. Completion notification follows
+exact physical completion and release of all three private windows, and checks
+the requester's current generation. Startup must seed a predecessor only after
+authenticated anchor selection and full selected-base restore; the current
+nonempty-startup refusal remains in force. Map/FIFO investigation bits cannot
+seed publication lineage. Source preparation is not proof or runtime qualification.
+
 ## 7. Allocator
 
 `books/alloc.lisp` declares profile-sized extent and edge tables through `defcolumns`.
