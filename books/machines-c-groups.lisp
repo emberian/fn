@@ -592,7 +592,7 @@
 (defcost fn2-identity-decide-start :answers (:bounds :ok :state)
  :tables (fn2-core-succ-txns fn2-core-id-decides fn2-core-fields)
  :doc "Start a transaction's identity decision: its query (five rows) written, its lookup idle.")
-(defcost fn2-identity-decide :answers (:bad-magic :bounds :conflict :done :duplicate :end :entry :evidence :format :invariant :length
+(defcost fn2-identity-decide :child fn2-identity-decide-child :answers (:bad-magic :bounds :conflict :done :duplicate :end :entry :evidence :format :invariant :length
   :lost :miss :more :noncanonical :owner :part :payload :schema :stale :state :stored :truncated :unknown-tag :wide)
  :bytes 4096
  :tables (fn2-core-succ-txns fn2-core-id-decides fn2-core-run-cursors fn2-core-run-paths fn2-core-fields)

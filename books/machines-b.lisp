@@ -358,7 +358,7 @@
  :doc "Decode a chained commit's records frame header: the record stream's start and end in its unit.")
 (defcost fn2-recovery-adopt :answers t :tables (fn2-core-extents fn2-core-alloc-edges)
  :doc "Adopt one arena position into the allocator with its recorded identity.")
-(defcost fn2-commit-admit-txn :answers (:ok :exhausted :admission) :bytes 4096
+(defcost fn2-commit-admit-txn :child fn2-commit-admit-txn-child :answers (:ok :exhausted :admission) :bytes 4096
  :tables (fn2-core-commit-members fn2-core-commit-settled fn2-core-commit-root fn2-core-fields fn2-core-pool)
  :doc "B-S2: admit a transaction member's workspace to a commit batch; (mv code batch event).")
 (defcost fn2-commit-take :child fn2-cs-take :answers (:ok :pending :none) :tables (fn2-core-commit-settled)
