@@ -146,10 +146,10 @@
     (let ((n (len (fnc-frame-extent octets))))
       (cons (fnc-reply (car verbs) octets)
             (if (< 0 n) (fnc-replies (cdr verbs) (nthcdr n octets)) nil)))))
-; The cursor a node issues under e-surface.md 14 item 8's interim rule: history
-; and incarnation one 0 octet each, the consumer id, the principal's slot and
-; query 1, each in its fewest big-endian octets. A fixture's expectation, never
-; a client's input to the node it judges.
+; Cursor bytes for served fixtures using the default profile's physical
+; history 1 and incarnation 1, consumer id, principal and query 1. Each id
+; uses its shortest big-endian encoding. Scripted requests and expected
+; replies share this helper; custom physical histories need explicit ids.
 (defun fnc-issued (cid principal version epoch position)
   (declare (xargs :verify-guards nil))
-  (fn2-fncu-encode (list :cursor 0 '(0) '(0) (fnc-be cid) (fnc-be principal) '(1) version version epoch position)))
+  (fn2-fncu-encode (list :cursor 0 '(1) '(1) (fnc-be cid) (fnc-be principal) '(1) version version epoch position)))
