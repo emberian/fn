@@ -214,7 +214,7 @@ mutable operation frontiers; a successful plan is not a compilation proof:
 | put-evidence-for | 1 | Plan passes; not compiled yet |
 | prebind | 20 | Plan passes; not compiled yet |
 | authority-allows | 3 | Plan passes; not compiled yet |
-| authority-depend | 0 | Plan passes; not compiled yet |
+| authority-depend | 0 | Baseline full source proof passes |
 | group-of | 0 | Plan passes; not compiled yet |
 | wake-upload | 9 | Baseline full source proof passes |
 
@@ -257,3 +257,21 @@ Parent owns integration and exact forge reservations (aggregate <= 26 Gi).
 Served-names owns authority lookup; durability owns frame/keystone proofs;
 composed-build owns timer/CNS integration. No machine-mode switch until the
 entire operation frontier has guards and output/effect refinements.
+
+## Modular mutable family checkpoint
+
+Commits c2046f070 and 812c7020e retain verified mutable child calls rather than
+expanding their implementations. The dependency walker derives both reader and
+mutable prerequisites in order. Each composed call must have verified guards,
+matching concrete input/output ABI, spine refinement and preservation metadata;
+its scalar and written-child outputs are bound once. Shared core-lenses generates
+the same read-over-write equations for production core and selected fixture fields.
+The substantive execution proof keeps core readers and writers opaque.
+
+The 113-form warm fixture passed in 3.85 seconds / 142,660 prover steps, including
+an automatically derived two-level mutable family, full-result success/refusal
+controls, and rejected forged output ABI/unverified children. Exact record
+`certify-20261114T025914Z-3602764` passed its 22-book reader/product closure
+(17 reused, five built, no book over ten seconds) on the authenticated pre-B
+74f29 substrate. The production core.lisp adoption of the shared generator and
+current B callback consumers are outside that gate. No served mode is enabled.
