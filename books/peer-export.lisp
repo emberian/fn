@@ -2,8 +2,6 @@
 (in-package "ACL2")
 (include-book "machines-c-read")
 (include-book "fnct-pool")
-(include-book "cns-kind")
-(include-book "cursor")
 (fn2-book-layer :e)
 ; Fail at admission if the schema grows: the exporter must then grow with
 ; its producer, rather than silently omit fields or impose a stored-data cap.
@@ -82,6 +80,8 @@
   (coverage *fn2-peer-export-coverage-local*) (cut cut) (stop more)
   (next :ref nextoff nextlen) (count count) (entries :ref ioff ilen)))
 
+; The CNS assembly invokes these wrappers after loading its cursor padding
+; and concrete core. The leaf helpers do not depend on either machine kind.
 (defmacro fn2-peer-export-core-events ()
  '(progn
    ; Reserve the bounded workspace once, before the first scan or resume.
