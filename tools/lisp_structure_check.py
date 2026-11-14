@@ -3,7 +3,8 @@
 
 This is a source preflight, not an ACL2 reader, macroexpander or admission gate.
 It checks B*, IF, COND, LET and LET* shapes, including quasiquoted templates;
-ordinary quoted data is skipped. It deliberately makes no arity/guard claims.
+ordinary quoted data is skipped. A direct quoted PROGN returned by a
+DEFMACRO is checked as emitted code. No arity/guard claims are made.
 Usage: python3 tools/lisp_structure_check.py FILE...
 """
 from __future__ import annotations
@@ -23,7 +24,16 @@ def check_tree(tree: object, where: str = "form") -> list[str]:
             return
         if head in {"defun", "defmacro"}:
             for i, child in enumerate(node[3:], 3):
-                visit(child, f"{path}/{head}[{i}]")
+                # ACL2 event emitters often return a literal quoted PROGN.
+                # Only the direct result position has this code context; a
+                # quoted list inside a function/constant remains ordinary data.
+                if (head == "defmacro" and i == len(node) - 1
+                        and isinstance(child, list) and len(child) == 2
+                        and child[0] == "quote" and isinstance(child[1], list)
+                        and child[1] and child[1][0] == "progn"):
+                    visit(child[1], f"{path}/{head}-emitted-progn")
+                else:
+                    visit(child, f"{path}/{head}[{i}]")
             return
         if head == "if" and len(node) != 4:
             errors.append(f"{path}: IF needs test, then and else; got {len(node) - 1} arguments")
