@@ -1055,6 +1055,7 @@
 ; Derive operation boundaries after all original definitions are available.
 ; Shared B/C/upload operations are selected by the same actual txn arms.
 ; Their owning declarations name these children before any section consumes them.
+(defcore-product-operation fn2-machine-reclaim-fn2-txn fn2-machine-reclaim-fn2-txn-child)
 (defcore-product-operation fn2-commit-admit-txn fn2-commit-admit-txn-child)
 (defcore-product-operation fn2-identity-decide fn2-identity-decide-child)
 (defcore-product-operation fn2-successor-bind fn2-successor-bind-child)
