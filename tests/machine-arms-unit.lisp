@@ -6,6 +6,17 @@
 (include-book "std/testing/must-fail" :dir :system)
 
 (defmachine-arms fn2-arms-probe :children)
+; Both no-ops effects retain their complete identical public formula; only
+; the second proof is reused. A carrier-bearing arm is not covered by this.
+(assert-event
+ (let* ((name 'fn2-arms-probe-run-free-children)
+        (descriptor (fn2-arms-child-effects-event name (w state)))
+        (issued (fn2-arms-child-issued-event name (w state))))
+  (and (not (member-eq 'fn2-ops (car (fn2-arms-sig name (w state)))))
+       (equal (caddr descriptor) (caddr issued))
+       (equal (cadr (member-eq :hints (cdddr issued)))
+              '(("Goal" :by fn2-arms-probe-run-free-children-descriptor-effect))))))
+
 
 (assert-event (equal (fn2-machine-declared 'fn2-arms-probe :stops (w state)) '(:probe-overflow :probe-refused)))
 (assert-event (fn2-assert-compliant-p '(fn2-arms-probe-run-work-children fn2-arms-probe-sub-close-children

@@ -45,6 +45,14 @@ core rejects a present value that is not a u32; it never falls back to uid 0."
          (tls-window (sb-ext:posix-getenv "FN2_TLS_WINDOW"))
          (tls-turns (sb-ext:posix-getenv "FN2_TLS_HANDSHAKE_TURNS"))
          (tls-timeout (sb-ext:posix-getenv "FN2_TLS_HANDSHAKE_MS")))
+    ;; The raw host passes text only. ACL2 bounds, parses and admits names.
+    ;; Missing values overwrite fixture defaults and fail profile admission.
+    (setf profile (fn2-origin-profile-from-text profile
+                    (sb-ext:posix-getenv "FN2_ORIGIN_LINEAGE")
+                    (sb-ext:posix-getenv "FN2_ORIGIN_DOMAIN")
+                    (sb-ext:posix-getenv "FN2_ORIGIN_INCARNATION")
+                    (sb-ext:posix-getenv "FN2_HISTORY_ID")
+                    (sb-ext:posix-getenv "FN2_HISTORY_INCARNATION")))
     (when tls-cert (setf profile (put-assoc-equal :tls-certificate tls-cert profile)))
     (when tls-key (setf profile (put-assoc-equal :tls-key tls-key profile)))
     (when tls-slots

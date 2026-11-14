@@ -23,4 +23,8 @@
  (local (defun fn2-a-crypto-native (reference native) (equal reference native)))
  (defthm fn2-a-crypto-native-correspondence
   (implies (fn2-a-crypto-native reference native) (equal reference native))
-  :rule-classes nil))
+  :rule-classes nil)
+ ; Observations that are actually equal provide a positive witness. This
+ ; does not assert that any C call produces the reference observation.
+ (defthm fn2-a-crypto-native-identical-observation
+  (fn2-a-crypto-native reference reference)))

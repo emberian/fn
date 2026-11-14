@@ -280,3 +280,66 @@ negative controls. Its guard primitive domain is deliberately separate from the
 arithmetic body fixture, so these controls do not claim a composed semantic root
 or primitive correspondence. Production emitters must bind guard and body tables
 to the same freshly qualified canonical records before using these predicates.
+
+## Recursive closed-evaluation pilot
+
+`Fn2.ACL2.MemberExecEvaluation.closed_adequate_emitted` connects the actual
+`MEMBER-EQ-EXEC` emitted function to a finite canonical body derivation, with
+symbol keys and proper lists. Its logical closure contains `NOT`, `ATOM`, `ENDP`,
+and `EQ`; no recursive call is answered by an arbitrary dispatch oracle. Every
+recursive transition preserves the domain and strictly decreases `ACL2-COUNT`
+of the list. For every fuel greater than this measure, the transition evaluator
+returns the same successful result. This strengthens fuel stability to success.
+
+The positive witness searches past a nonmatching element. Controls exhibit
+insufficient fuel and a mutated transition that keeps its input forever. The
+module and all nine theorem censuses passed the bounded forge Lean author check
+using only `propext`, `Classical.choice`, and `Quot.sound` (2026-11-14). The generic
+`Countdown` module now imports only `Init`; its statements and proofs do not need
+the former whole-world `Fuel` dependency. Two emitted leaf modules were compiled
+from the frozen `6e07e62f3` source for this check.
+
+`tests/member-exec-domain-unit` checks the live ACL2 logical bodies, formals,
+guard, admitted measure, decrease, domain preservation, and positive witness.
+Its qualified source probe admitted all six forms (242 steps). Single-book record
+`certify-20261114T020835Z-3549888` passed in 0.115 seconds with a qualified published
+cache entry at closure key
+`74a7e7f4d487615f9893005e30de487577504aea47b4cbf2345bc0168fef9d35`.
+This pilot does not
+establish fresh served-packet coverage, complete guard reflection, or canonical
+object/primitive and symbol-package correspondence. Those remain separate bridge
+obligations.
+
+## Required semantic inventory
+
+The generated served report now contains a `semantic_inventory` of required
+obligations, always marked pending. It binds raw canonical records and fields,
+walks logical bodies, guards and selected attachments, and names primitive sites
+separately. Recursive components require termination evidence; an undecoded
+justification remains a frontier, even when its known function symbols supply
+conservative dependency hints. Missing metadata and unresolved callees remain
+frontiers. This inventory accepts no proof-status flags and does not increase any
+validated denominator. A strict checker must regenerate it from the canonical
+packet and check typed Lean wrappers and current ACL2 body records; consuming the
+JSON as evidence would bypass that obligation. Ten focused inventory controls
+cover these boundaries, including altered constructor subjects/fields and forged
+completion flags; the existing 25 checker controls also pass. No new current-world
+packet or semantic proof is claimed by this tooling change.
+PoolCompare's current Lean source now checks without Mathlib or the aggregate
+Fuel import. The template proves the exact NFIX scalar identity privately and
+uses explicit finite branch cases. Its public theorem statements and generated
+function bodies are unchanged. The world-body generator's opt-in `public; scan`
+mode supplies only the selected public names and their bodies; ordinary private
+body imports retain their previous behavior. This removes an accidental reliance
+on Fuel re-exporting the entire world.
+
+The bounded Forge diagnosis distinguished three stages: imports passed,
+definitions/private scalar lemmas passed, and the old repeated-splitting decrease
+proof exited 137. Finite branch proofs then passed for decreases, emitted-loop
+agreement and the body equation, followed by the full PoolCompare module at
+`/tmp/stride-pool-final.log` (PID 530557, exit 0, 2Gi, `lean -j1`). Both the
+adequacy certificate and canonical-body theorem census contain only `propext`,
+`Classical.choice` and `Quot.sound`. Thirty-two public declaration statements were
+compared unchanged against the integrated source. These are Lean author checks
+on the current committed generated source, not a fresh ACL2 packet qualification
+or an increase in served semantic coverage.

@@ -47,6 +47,8 @@ ACL2_BOOKS = \
   books/assumptions-device \
   books/assumptions-integrity \
   books/assumptions-native-span \
+  books/assurance-completion \
+  books/assurance-resource-join \
   books/authority \
   books/authority-codec \
   books/authority-kind \
@@ -57,6 +59,8 @@ ACL2_BOOKS = \
   books/blake3-spec \
   books/boot \
   books/boot-kind \
+  books/boot-format \
+  books/boot-pack \
   books/borrow-accounting \
   books/borrow-conservation \
   books/borrow-faces \
@@ -68,6 +72,7 @@ ACL2_BOOKS = \
   books/codec-profile \
   books/codec-transport \
   books/columns \
+  books/compress-policy \
   books/commit \
   books/commit-alloc \
   books/commit-arms \
@@ -155,6 +160,8 @@ ACL2_BOOKS = \
   books/ordered \
   books/outcome-class \
   books/overlay \
+  books/origin \
+  books/owed-reclamation \
   books/owed \
   books/owed-accounts \
   books/owed-authority \
@@ -224,6 +231,7 @@ ACL2_BOOKS = \
   tests/blake3-vectors \
   tests/boot-unit \
   tests/borrow-conservation-unit \
+  tests/borrow-release-unit \
   tests/callbacks-unit \
   tests/check-history-unit \
   tests/check-own-unit \
@@ -236,6 +244,7 @@ ACL2_BOOKS = \
   tests/columns-unit \
   tests/codec-profile-unit \
   tests/codec-transport-unit \
+  tests/compress-policy-unit \
   tests/commit-ceiling-unit \
   tests/commit-durable-all-unit \
   tests/commit-executor-contracts-unit \
@@ -300,26 +309,39 @@ ACL2_BOOKS = \
   tests/machine-arms-unit \
   tests/machine-issue-bind-unit \
   tests/tls-profile-unit \
+  tests/tls-transport-unit \
+  tests/tls-sim-upgrade-unit \
+  tests/tls-envelope-unit \
   tests/machine-budget-unit \
   tests/machine-budget-core-fixture \
   tests/core-init-profile-context-unit \
   tests/machine-success-charge-context-unit \
   tests/issue-history-context-unit \
+  tests/issue-wrapper-boundary-unit \
   tests/machine-child-tables-unit \
   tests/machines-a-unit \
   tests/shape-one-unit \
   tests/merkle-random \
   tests/merkle-unit \
+  tests/member-exec-domain-unit \
   tests/native-boot-refusal-unit \
+  tests/native-cut-state-unit \
+  tests/native-cut-program-unit \
+  tests/storage-cancel-unit \
+  tests/native-cut-binding-unit \
   tests/native-envelope-prefix-unit \
   tests/envelope-input-unit \
   tests/envelope-prefix-unit \
   tests/native-unit \
   tests/network-backpressure-unit \
   tests/ops-semantic-steps-unit \
+  tests/origin-unit \
+  tests/origin-format-unit \
+  tests/origin-boot-unit \
   tests/owed-authority-unit \
   tests/owed-d-coverage \
   tests/owed-d-unit \
+  tests/owed-reclamation-unit \
   tests/owed-unit \
   tests/parser-boundary-unit \
   tests/peer-witnesses \
@@ -328,6 +350,8 @@ ACL2_BOOKS = \
   tests/pool-ranges-unit \
   tests/pool-unit \
   tests/port-unit \
+  tests/primitive-list-domain-unit \
+  tests/primitive-power-domain-unit \
   tests/q1-contracts \
   tests/q1-contracts-b \
   tests/q1-contracts-c \
@@ -363,9 +387,12 @@ ACL2_BOOKS = \
   tests/sim-replay-controls \
   tests/squares-unit \
   tests/square-evidence-unit \
+  tests/square-evidence-correspondence-unit \
   tests/staging-unit \
   tests/stop-boundary-unit \
   tests/storage-fault-policy-unit \
+  tests/storage-effectful-physical \
+  tests/storage-effectful-error \
   tests/translation-domain-unit \
   tests/translation-inventory-unit \
   tests/translation-validation-unit \

@@ -1,0 +1,1040 @@
+{
+  "base": "dd7af355cee7bed3c2ddbe132d6a6fd7933836a5",
+  "control_prefix": {
+    "canonical_forms_sha256": [
+      "8a1ab84c27bf75caa08c586451b1f67c9821afeba1bf9debe3e7b56a30eb3f52",
+      "5c92ebe737b4d1dc0bcbc31effb3cec5d60b4da367ccf283c24a9a5215d2675a",
+      "8560392c9288a2b5b3d9625f7f21f2c783e9e8813470c9256c04c110dc416c81",
+      "e6a8e0e894aa884cd4a31f066aca57bbf95484a0b4e23b889627b149b4d42472",
+      "939367f9250d7516509327aad539eb4746cde33fdabda0b95037c22ab7a92954",
+      "fe496cd7aeb54392c0e31832ee4bcdb41f6c76f2745b4097cb0d39c850631885",
+      "a29fb817923ca13f8c25c2759d1718163379bfe47f408d8b97245899f215db0d",
+      "dfa9ebfd8b98614e7fc6419952fa383f6af4824ad3c1b32ac6270b2048d93da7",
+      "290d246ae1a58a45f18a9b0e856219fffe95ca5218c10f2db2c060488259118a",
+      "bfc04a41f3290daa03778ef5d749b7b120789c7eaf5547bfd9caa4232fcbde5f"
+    ],
+    "path": "tests/native-cut-program-unit.lisp",
+    "scope": "exact original ten-form prefix: package/includes, six functions and nine-way assert; no immutable witness",
+    "source_sha256": "79be4160edd7c76fadeb32c57efe084c997003f86028ca204ae59e13091c8d76"
+  },
+  "donor": "e0dbbfee99bae45cac10329f5e7112404ad05984",
+  "exact_files": {
+    "sim/check-core.lisp": "47a9dc89dea9040dbea1713f07962eddb622f052bf1c3036f3375376964f56a7",
+    "sim/check-own.lisp": "3f177ef61927911dfcf6b996fbdd15c04561eebf9f7f53b0809f3d4e7c171bf3",
+    "sim/check.lisp": "de880d84503bbbf1b4f7ec864295c82085cc1142785ab06405236743cf915318",
+    "sim/native-cut-program.lisp": "112db996daa9b16c0486f031d61e0b66eca3707fee642351967cec1644698fc1",
+    "sim/native-cut-state.lisp": "31addb6c7a136cb2064b4e9c1d926fc9c75b4d4d0eff434c6a507c64edc3d456",
+    "sim/sim-adapter-base.lisp": "76316425b97c28bb03186541681d21f312bef03d7795ef335efb974784572d36",
+    "sim/sim-state-data.lisp": "7d43306235ec3e454285fd1ce39ef8fe22fdde57467fe77591df34380d3d2aff",
+    "sim/sim-state.lisp": "866db0a7c6e47d8243cb858ed3b5d4663f31b2589b5f2aecb8abb7b4b8e36b08",
+    "sim/sim-transfer.lisp": "b45fcda8b067041d905a77a011171447ff2f33605a0fdecbe00af7f0f4c82600",
+    "sim/sim.lisp": "9019baca4f97bb616b411d25e3ed41b828f9530755c75ccf458e3081a4434632",
+    "tests/native-cut-state-unit.lisp": "37a5a9f05cbf8490e3109e1cdbb6c67dabf3a73abeb2b90d34183e64afdda0d6"
+  },
+  "moved_root_wrappers": {
+    "fn2-check-own": "canonical AST identical to root original",
+    "fn2-own-observe-core-write": "canonical AST identical to root original",
+    "fn2-own-observe-issue": "canonical AST identical to root original",
+    "fn2-own-observe-output": "canonical AST identical to root original",
+    "fn2-own-observe-read": "canonical AST identical to root original",
+    "fn2-own-record-input-byte": "canonical AST identical to root original"
+  },
+  "preserved_definitions": {
+    "sim/check-core.lisp": {
+      "fn2-check-own": {
+        "canonical_full_form_sha256": "ce940affff8d4547c8a675fe0a3a1deb2c7d9d6ce95c6bc1dc467b843e9225b2",
+        "kind": "defun"
+      },
+      "fn2-own-observe-core-write": {
+        "canonical_full_form_sha256": "60e60256d5501a66fa0583eb245a8af857ce44d3e044d4aa08aa98f81529c39b",
+        "kind": "defun"
+      },
+      "fn2-own-observe-issue": {
+        "canonical_full_form_sha256": "4e9b5bc27c7c8d36736132ab0951cebbfd2bb6bdb3d3aecc7209478147adaad0",
+        "kind": "defun"
+      },
+      "fn2-own-observe-output": {
+        "canonical_full_form_sha256": "c346b3510bb1d87679390668da0b95c294cacbe5bfcb3478ee23878e28116505",
+        "kind": "defun"
+      },
+      "fn2-own-observe-read": {
+        "canonical_full_form_sha256": "0844f78fbc398da34d13d31d45dc703e6d611ab85667cd1e7e749ebccf79bcdf",
+        "kind": "defun"
+      },
+      "fn2-own-record-input-byte": {
+        "canonical_full_form_sha256": "9e4a75c2b5b3b607c07024c73c6b7831292d1a098e820230acc96de6284cdb55",
+        "kind": "defun"
+      }
+    },
+    "sim/check-own.lisp": {
+      "fn2-check-own-parts": {
+        "canonical_full_form_sha256": "4473f48c619c7dc69e563f1742047c1b115b093fecab47c0d659555b8bb3972f",
+        "kind": "defun"
+      },
+      "fn2-own-clear-input": {
+        "canonical_full_form_sha256": "685cb346c34a3fbb06c52ce2b5a0b0938326612ae4944f23496a62fbe42c643b",
+        "kind": "defun"
+      },
+      "fn2-own-clear-input-type": {
+        "canonical_full_form_sha256": "38b46349600fe3adc05c9544fd36dd10ad7922634001c9a4d3781c94ebceb695",
+        "canonical_statement_sha256": "dc1e7348380af31013b81e748eedec976d5b9dc1c9f6057168910b0766e74a8f",
+        "kind": "defthm"
+      },
+      "fn2-own-clear-input-wfp": {
+        "canonical_full_form_sha256": "8a2a548d070877acfe4335dd1e69f2a878cc4ec4b6076ff67b35d025fefd1a81",
+        "canonical_statement_sha256": "80e440f912060e1ba8c62594e6e909d137d93919db237c0120107abc06550e58",
+        "kind": "defthm"
+      },
+      "fn2-own-clear-ops": {
+        "canonical_full_form_sha256": "f7ba7870f699be4493b96c97d75c9dc32267f186b0ac383d42e1e7d086c7fa5b",
+        "kind": "defun"
+      },
+      "fn2-own-clear-ops-type": {
+        "canonical_full_form_sha256": "c7422be49192a57b8131a807860867d96b925b70536f0c71564a410ec911c030",
+        "canonical_statement_sha256": "b5fbf0bddc7cb6b371db36fa141ec4bac66bcd6e31f043513612aaf7d12fc6da",
+        "kind": "defthm"
+      },
+      "fn2-own-clear-ops-wfp": {
+        "canonical_full_form_sha256": "d3318b578057d8d9775c687352fbd47ec34c6d674b098b15538f0479702bf8e1",
+        "canonical_statement_sha256": "0e5fc701b800568c06c6ddb041cb6e578de329e4844320c26038417149a05145",
+        "kind": "defthm"
+      },
+      "fn2-own-copy-ops": {
+        "canonical_full_form_sha256": "17b401b2523235bbdae02ea39d35650efb2229d796849fb49d08ba87f1bdab23",
+        "kind": "defun"
+      },
+      "fn2-own-fail": {
+        "canonical_full_form_sha256": "3e1e429965645706a0c2f8dcc346d287233ce308008c782f35aa7dc23f302a0e",
+        "kind": "defun"
+      },
+      "fn2-own-fail-type": {
+        "canonical_full_form_sha256": "b3900dd0295147e654840d05618f48f55653df75468a9178754fc75f71d54ec7",
+        "canonical_statement_sha256": "afeadd8e495db137508d368f0cf019062077ddd0a51401d2a7318ecd823973cc",
+        "kind": "defthm"
+      },
+      "fn2-own-fail-wfp": {
+        "canonical_full_form_sha256": "6684ed0ce20608a272a57e0474b083c48ab033a3dbe468c3521dcc9049dc00f2",
+        "canonical_statement_sha256": "4a60de99704b9bd6a83259c609ccae279ed4d08234aae0f9a7514c27f43947b0",
+        "kind": "defthm"
+      },
+      "fn2-own-init": {
+        "canonical_full_form_sha256": "85b8bdeb768c17c60344b92317d9551d0028d752b25a31409cac6eebf98e7752",
+        "kind": "defun"
+      },
+      "fn2-own-live-outputp": {
+        "canonical_full_form_sha256": "54af9feb57662047560c3c54389f1d0bb46e6e9c53048c8f8f1d5fbce3e5b049",
+        "kind": "defun"
+      },
+      "fn2-own-mark-input": {
+        "canonical_full_form_sha256": "7d7bdc3b7784cd367cdc19e5fc36ee92744850302543ebe06b86c77db8a97ec7",
+        "kind": "defun"
+      },
+      "fn2-own-observe-core-write-parts": {
+        "canonical_full_form_sha256": "0d5fcd555d3def109f3163cc8a04b141bb3c93fd621bdb6219fbe58e05f64a37",
+        "kind": "defun"
+      },
+      "fn2-own-observe-issue-parts": {
+        "canonical_full_form_sha256": "a0c5c8b801b717b1e12001988d534ae878a50fcb5ee47b9669b4db98ee47b649",
+        "kind": "defun"
+      },
+      "fn2-own-observe-output-parts": {
+        "canonical_full_form_sha256": "d0e15a804e0f59d66db55dd4ef2809879e3a525cb2b025d5c5c0258157899de7",
+        "kind": "defun"
+      },
+      "fn2-own-observe-output-range-parts": {
+        "canonical_full_form_sha256": "dbbdc0b17d432ed2b132766533b9bc19491bc522e6b454504aaceecf2677d53a",
+        "kind": "defun"
+      },
+      "fn2-own-observe-read-parts": {
+        "canonical_full_form_sha256": "b3f170e08fff6c325bae1cf6ef03c3be3772788b81b17adf53478977bd617404",
+        "kind": "defun"
+      },
+      "fn2-own-ops-word": {
+        "canonical_full_form_sha256": "bbde757254d5875df8b6a28dfcca278f3e3cad944f0eb51ed909b1fc6ddcde41",
+        "kind": "defun"
+      },
+      "fn2-own-ops-word-count": {
+        "canonical_full_form_sha256": "1ab7ae7346d613dc81a101502c054a2c7e58202845b5b0ae922477b28649393d",
+        "kind": "defun"
+      },
+      "fn2-own-ops-word-count-natp": {
+        "canonical_full_form_sha256": "672021eda20dbc97fef58102ca66397eef5ae1d65a5789441fe0c1bb370b6aeb",
+        "canonical_statement_sha256": "94c72f259ad7a6328a0e6874f3c58d51ae6a886e3aa7fc25cd2afd232d75d41a",
+        "kind": "defthm"
+      },
+      "fn2-own-output-count": {
+        "canonical_full_form_sha256": "0f66fed7791a06f805b3be5fe5bff5582559ad3a6bc71118b496e6fee97b92ce",
+        "kind": "defun"
+      },
+      "fn2-own-output-digests-p": {
+        "canonical_full_form_sha256": "6104db0a8765b2655126eaaacb1c2bf14abe2cba9843601317046ac90a0b2c3f",
+        "kind": "defun"
+      },
+      "fn2-own-pool-digest": {
+        "canonical_full_form_sha256": "c2e49d8bf90cf3e7ff5cdc5f247f3f30c133aa37be3f76dab50fd304d9281aee",
+        "kind": "defun"
+      },
+      "fn2-own-pool-digest-u32": {
+        "canonical_full_form_sha256": "6a438b8f2e85a1153d61e195acffd87c2344384cd8c6147f9fade98b454deae9",
+        "canonical_statement_sha256": "5ecc65130f3c8b251c78aee9aab9f0f659e4ad48faf933af33660023fafeb1ac",
+        "kind": "defthm"
+      },
+      "fn2-own-post-result": {
+        "canonical_full_form_sha256": "9bd1253608be696ce35c92a91942d85c0dd27883b6b242aac1edb3e529f6dd59",
+        "kind": "defun"
+      },
+      "fn2-own-post-result-preserves-ops-type": {
+        "canonical_full_form_sha256": "fef0b96b3c6a74c0426626c741da1a231e7fa228ceb414c70312c4d6ce777145",
+        "canonical_statement_sha256": "b324fcc3a81c2b0532994e2410e6bbc92690b1fe4610d231a2acf05fc1351903",
+        "kind": "defthm"
+      },
+      "fn2-own-post-result-preserves-ops-wfp": {
+        "canonical_full_form_sha256": "a72f888db7feb320322dde3351543bbe980341551654112975b05f002b83c48b",
+        "canonical_statement_sha256": "19222cc17e4f743aac02442bf31ea9f0a6a4dd7aa88dc55766750fb864aa4574",
+        "kind": "defthm"
+      },
+      "fn2-own-ranges-p": {
+        "canonical_full_form_sha256": "8dc70d0af5d0ab21e12d2b2bc8b971cd21101e502cd197356ab09865c3fbade9",
+        "kind": "defun"
+      },
+      "fn2-own-record-input-byte-parts": {
+        "canonical_full_form_sha256": "760d7395623d1f4340f0aab40706322932d4711f332e96b9a5f1ca38ba77268d",
+        "kind": "defun"
+      },
+      "fn2-own-restart": {
+        "canonical_full_form_sha256": "7380d131ce839240de9465e89f094965c6ea60d4bd0445946fbd67e8befbae03",
+        "kind": "defun"
+      },
+      "fn2-own-same-ops-p": {
+        "canonical_full_form_sha256": "8e3a4727bd72ee9641e75ce6c1bd0505d1758a377d5cf4a1e660ee1174969705",
+        "kind": "defun"
+      },
+      "fn2-own-status": {
+        "canonical_full_form_sha256": "3b48f9bea78013c9d499593dfb9ba0f7bc7b14a1fe9f777215d4ada386053c2e",
+        "kind": "defun"
+      }
+    },
+    "sim/check.lisp": {
+      "fn2-check": {
+        "canonical_full_form_sha256": "8d5ba5a31b916b0d40ed1c4b8e4aa9f57ab17b0fc93748d3827b3bcc2b901c3f",
+        "kind": "defun"
+      },
+      "fn2-check-resultp": {
+        "canonical_full_form_sha256": "36490583c0d08024c19cbd3d91218ad985b032dd12efec63eabfb7b5d81127a0",
+        "kind": "defun"
+      },
+      "fn2-checker-namep": {
+        "canonical_full_form_sha256": "a6a0c4be062e442a0c3a60b16df8bc13cd48b383ae3db61beed7e902f0d49171",
+        "kind": "defun"
+      }
+    },
+    "sim/native-cut-program.lisp": {
+      "fn2-sim-find-write-does-not-replay-returned": {
+        "canonical_full_form_sha256": "aabf80c929daed9adaf50118672b6c63ffc433267b270e7f83aba69892d7f7ef",
+        "canonical_statement_sha256": "a92e499a8cfe13c59d56fe3e6e35dd36a758aaa470b4629e24a4bcab723f5937",
+        "kind": "defthm"
+      },
+      "fn2-sim-find-write-is-pending": {
+        "canonical_full_form_sha256": "2a7080860cba18ccdba57bfc07e125801799d9a4bfcb0031375f7e4c952af5fc",
+        "canonical_statement_sha256": "555f2ca76bda730ada63a8e2988dae204d0458f90936344099c52450557be7ec",
+        "kind": "defthm"
+      },
+      "fn2-sim-native-cut": {
+        "canonical_full_form_sha256": "4eaf5eeda7fe2493075f60d2521cdb24fc6143959acd186db43692e531d31de3",
+        "kind": "defun"
+      },
+      "fn2-sim-native-finish-is-atomic": {
+        "canonical_full_form_sha256": "9a78adf45992a61144a870edc3625277f2cd028298f817476b6dcca51eb2625d",
+        "canonical_statement_sha256": "5982be31414f1fcbb1ef0928b278abb23a1a1fe8aa268ce06bfc21f5b9e7738f",
+        "kind": "defthm"
+      },
+      "fn2-sim-native-take-cut": {
+        "canonical_full_form_sha256": "dd85cc83d3b3d2998545cf7ffe1c73af1608e1c069709c5966d2a7238df5f4e6",
+        "kind": "defun"
+      },
+      "fn2-sim-physical-keeps-active": {
+        "canonical_full_form_sha256": "aeac8b3c3ee4c96cc3bbb64abf208a82ba6c54d6f8a1bd84098cba6cae00d37f",
+        "canonical_statement_sha256": "c80443c3ce7a56164b500ca479e916c0b2b226b2c3780739c8cce1f5b4aafa18",
+        "kind": "defthm"
+      },
+      "fn2-sim-returned-completion-does-not-reissue": {
+        "canonical_full_form_sha256": "26aa1679874847624bf0a5f4ed3197ddfc1fa4feb30f46c13a6ce6dd3948a444",
+        "canonical_statement_sha256": "3227bf44ea9e2a1f74a5dbe0c6401fea947594439dcc3c86e9b060a057b5bddf",
+        "kind": "defthm"
+      }
+    },
+    "sim/native-cut-state.lisp": {
+      "fn2-native-eleven-list-unfolds": {
+        "canonical_full_form_sha256": "8f47ca83f1a513f12c94f3a7440c33ab2e7cd80bfa2d45ef695a5582aee0d227",
+        "canonical_statement_sha256": "81903cfbfc08cfd128372c24929591bcba76d7c2c7ec43c90ad6c877dfa326a8",
+        "kind": "defthm"
+      },
+      "fn2-sim-native-active-roundtrip": {
+        "canonical_full_form_sha256": "04c20f6176fd406a3db97c99fbba1c0c9cfa4c3c926c0a57ab704b363f706d6f",
+        "canonical_statement_sha256": "45bdf50ef98e133908d71fe0d297f2d4d33256ce1684ef4065ff3688cec9f644",
+        "kind": "defthm"
+      },
+      "fn2-sim-native-fault-not-injected": {
+        "canonical_full_form_sha256": "37d93f46a785dc0a3f87be00111c0d6585ca15509d4b21a6f4a1ede985d77c78",
+        "canonical_statement_sha256": "82f0fddec9b3226bdc3c5462b819a7e24eaefd7a9c9fab4ad567cb56cf3d57a2",
+        "kind": "defthm"
+      },
+      "fn2-sim-native-fault-type": {
+        "canonical_full_form_sha256": "fbf8a1b1a6d0ab896f5034b85be1eaf20fff9860da88922d815bb1048a744cb9",
+        "canonical_statement_sha256": "7dc60156e9023f4883bd460517f0c11b420c172d1fc0f58bbc80450091aedcda",
+        "kind": "defthm"
+      },
+      "fn2-sim-native-faultp": {
+        "canonical_full_form_sha256": "13bd170c36093f1f5c07c3fc645659a7d0fb0767ca7890f3f7ea2dba064395cc",
+        "kind": "defun"
+      },
+      "fn2-sim-native-flightp": {
+        "canonical_full_form_sha256": "a34f3f87f97ac0f3927f1783cec0d2c2cab97958b66388b77644af8ee40d5c9a",
+        "kind": "defun"
+      },
+      "fn2-sim-native-packetp": {
+        "canonical_full_form_sha256": "5a8af68038b21f4483cf362cfddad02bd939a78db6aa8e5f23252b16b0c492f3",
+        "kind": "defun"
+      },
+      "fn2-sim-native-returned-active": {
+        "canonical_full_form_sha256": "f20a4d64df0d8249bd8746ba16dbfdd3d221d7f18bddb30e7c16b1040c26d84a",
+        "canonical_statement_sha256": "3c31f752f4976e24879bfeb74c934bc53786e70b59c3eb945b848efecbe9e391",
+        "kind": "defthm"
+      },
+      "fn2-sim-native-returned-ready": {
+        "canonical_full_form_sha256": "4faff3c679670c19d35b75bf55b84deaf253fa50552038df6fea190ee51ef500",
+        "canonical_statement_sha256": "09c569a30383987fcae96809ebe298d9075c4893771410b6633197b93319ebe2",
+        "kind": "defthm"
+      },
+      "fn2-sim-native-storagep": {
+        "canonical_full_form_sha256": "ea1751154e2af286ca99467f772972b93f2e4682d8c741ef193dde36e4c53941",
+        "kind": "defun"
+      },
+      "fn2-sim-return-code-roundtrip": {
+        "canonical_full_form_sha256": "30bc565f2e5eec48df1a4b7d23aa424edf96a358c41edebc4e8c9d743f602866",
+        "canonical_statement_sha256": "2642eda4322ad07e3d9974d821419a8d432422b55ec9869520cbfb34a2f8cdba",
+        "kind": "defthm"
+      }
+    },
+    "sim/sim-adapter-base.lisp": {
+      "fn2-sim-amount": {
+        "canonical_full_form_sha256": "4c698e14788f5a6718e1aa2e71f96a339a6c42f5a6ae4a3b59b69bf4dd304f63",
+        "kind": "defun"
+      },
+      "fn2-sim-amount-natural": {
+        "canonical_full_form_sha256": "e62fad14a7ba98ae2dd5fa6611102de5b32cc0d9008f11885180456fcf848882",
+        "canonical_statement_sha256": "03cf9d05f38d121b07fc7969b263cceb797e53d45ee2c4687b3eb61840bc44ed",
+        "kind": "defthm"
+      },
+      "fn2-sim-cancel-target": {
+        "canonical_full_form_sha256": "1208c019d1fb391d3ae0c14a237a5e75ae53fa4facff2c35c3f0eddcbcd16743",
+        "kind": "defun"
+      },
+      "fn2-sim-cap-u32-type": {
+        "canonical_full_form_sha256": "9c741b957eb12f60bbaf1ae2d54cad8df77d60adc23656391ddb655abc65b71d",
+        "canonical_statement_sha256": "2e123b3e37e92a3c7388a019234130f96e64fb4cdae4aeb2f84c224dff4271f7",
+        "kind": "defthm"
+      },
+      "fn2-sim-cap-u60-type": {
+        "canonical_full_form_sha256": "a3571af0034ba29a0f1b7a4d3caa5602b79d5da509adbea036234d59ad72c2b3",
+        "canonical_statement_sha256": "0d65df79fbcf9aa95089d5742728b6bfb597e14537b1d33f7aecaf3f5aaa52d4",
+        "kind": "defthm"
+      },
+      "fn2-sim-choose-fault-rows": {
+        "canonical_full_form_sha256": "3d1394dd4ec2a4099bffcb255247781de68a623924f77817a9aa78e62759c2e5",
+        "canonical_statement_sha256": "b534ebdc7e6b2348384b2934d645d9bd340946794f1a69008edf5fc7c1c48a25",
+        "kind": "defthm"
+      },
+      "fn2-sim-choose-flight-fault": {
+        "canonical_full_form_sha256": "f0e98b91ddeebc2a3c5ae142d2f51fb65f3e96bd1d1313f9e0c5f01145be005e",
+        "kind": "defun"
+      },
+      "fn2-sim-choose-flight-fault-result": {
+        "canonical_full_form_sha256": "41be7fc761452c9898bbf5ce185158969f448f2378180e70f1b678707c8994d4",
+        "canonical_statement_sha256": "2f0cc4f100457dcd814865acb1be27aadde0048b93b3c55e1e790d93392ab681",
+        "kind": "defthm"
+      },
+      "fn2-sim-choose-flight-fault-rows": {
+        "canonical_full_form_sha256": "3c6f203ed2027c134d0ba3081bfbff39b1d74d2bc1f67dc1d2cd847ed024412d",
+        "canonical_statement_sha256": "46a5a28010d82696bf67ec77df3f92cb313cc770c54b46c63b68c30c2b982864",
+        "kind": "defthm"
+      },
+      "fn2-sim-client-feed": {
+        "canonical_full_form_sha256": "4eddbf29fbbdd76eefc1ec590940d2737fca136049be99005357dd614f01a831",
+        "kind": "defun"
+      },
+      "fn2-sim-clock-rows": {
+        "canonical_full_form_sha256": "ea8c3141081eab32ffc03c28fcb587685c7db73627790868b929f86f7538aa38",
+        "canonical_statement_sha256": "e71a85c92629f6de3be65f4f72efc133d007292f1f8575b1896fb01c549944ea",
+        "kind": "defthm"
+      },
+      "fn2-sim-core-ops-type-forward": {
+        "canonical_full_form_sha256": "a64e046af494b7d2b60189dd9b1417365cfc349d1e437983fbde4a20ad226323",
+        "canonical_statement_sha256": "8ed0f310b83c051cf532e8cd32e828fa30038ec023a8a81637b08e8181e10a9b",
+        "kind": "defthm"
+      },
+      "fn2-sim-core-pool-type-forward": {
+        "canonical_full_form_sha256": "69d153cd65a5b807b6276f8949b93a97c98fe2db261d9e295a77b028009d4018",
+        "canonical_statement_sha256": "033cb15a485b56111b638fa16fd432c3c5e9f0a3dede4e1f1adf08deeefc79d5",
+        "kind": "defthm"
+      },
+      "fn2-sim-crash-units": {
+        "canonical_full_form_sha256": "8a448e78278c11a72f7d80cae93300f5ad7e24c7c2501d02834a719254728073",
+        "kind": "defun"
+      },
+      "fn2-sim-environment": {
+        "canonical_full_form_sha256": "bd86dfe9324807d9ac9a74662b6d684a52ced61fed2f5cd74ee4520bc678b074",
+        "kind": "defun"
+      },
+      "fn2-sim-environment-landed-p": {
+        "canonical_full_form_sha256": "3cd559e444f54739edc354b4378ff485311e10a72ea76ff62ab3a39274602ca4",
+        "kind": "defun"
+      },
+      "fn2-sim-environment-rows": {
+        "canonical_full_form_sha256": "a7cb65e4d0463baee740b516233fb23dbf237d098e9a506b2441bcc2e6a5fe39",
+        "canonical_statement_sha256": "1a70ec9ae41e6fd389f06f2fd4a4900b37edd41236ae6a0228721e9c8e80f253",
+        "kind": "defthm"
+      },
+      "fn2-sim-fence-dirty-p": {
+        "canonical_full_form_sha256": "dce60454601c5e6a4b0e3525245ba64875f286102b654cc9f8646fae442ac064",
+        "kind": "defun"
+      },
+      "fn2-sim-find-write": {
+        "canonical_full_form_sha256": "f0c4385959c901b983fc93cdc026d90eb552aeaec8e2370fbc489743fc68984b",
+        "kind": "defun"
+      },
+      "fn2-sim-flight-candidate": {
+        "canonical_full_form_sha256": "948d35f9653f6f34946cae990dd1569ef052a03e470dbe352fa254be640921ac",
+        "kind": "defun"
+      },
+      "fn2-sim-flight-candidate-bound": {
+        "canonical_full_form_sha256": "e9e3ab8ba95b0ce2b145623801076861b81a94b4b47dd06a8810b65fc0529ccd",
+        "canonical_statement_sha256": "8d877f767a7c6efb334aa265448f44c3add9e12021876bbd125d1a4fc3d334fa",
+        "kind": "defthm"
+      },
+      "fn2-sim-flight-classes": {
+        "canonical_full_form_sha256": "3e8080484c1639f441389d2e12aad2125b316960f5e7c88821df910f4db08f3b",
+        "kind": "defun"
+      },
+      "fn2-sim-inject": {
+        "canonical_full_form_sha256": "19b54868b3f4228f4918ad41ae4f0f1b1f89919c999296112cd8ba2c067254b8",
+        "kind": "defun"
+      },
+      "fn2-sim-land-raw-rows": {
+        "canonical_full_form_sha256": "d6b53aeaf7b400ecb2397a24453dbca92e996dd3a5541acc0f812120cb9ccd3d",
+        "canonical_statement_sha256": "3715b054f7192d42a96544ce756db74045a266d5d57e880a9c5c157a7aeb05b6",
+        "kind": "defthm"
+      },
+      "fn2-sim-next-flight-slot-bound": {
+        "canonical_full_form_sha256": "dabbf96f131be42c04bdca4ec96fdbf01f29e88c197805bcf8656242a0ef6d96",
+        "canonical_statement_sha256": "38cb651722692374a52be28b2a6211d82475954a869b483cef802cf92ea41be5",
+        "kind": "defthm"
+      },
+      "fn2-sim-next-flight-slot-natural": {
+        "canonical_full_form_sha256": "3f76b4884caa7a54cfbbbe552ba3bec9de31f1219c0e839332d9cfa1949bb6d1",
+        "canonical_statement_sha256": "c51a71f4a6f9c2bbb1d8ab2f5116383d7f2e9b0aa94ef251f3aeb35aa7dfe1e5",
+        "kind": "defthm"
+      },
+      "fn2-sim-physical": {
+        "canonical_full_form_sha256": "30026e01aa968814d66471bce3716d741be5eb114b6733b4725e32d776fc6ed0",
+        "kind": "defun"
+      },
+      "fn2-sim-physical-act": {
+        "canonical_full_form_sha256": "82c963413f588564ac43b509c171e24ffc1a87c8035598caf7355f50c915f997",
+        "kind": "defun"
+      },
+      "fn2-sim-physical-child-shapes": {
+        "canonical_full_form_sha256": "5baa4423458e3d8fb239d18fff419186523806c753cb52de32865651f9aab75f",
+        "canonical_statement_sha256": "fe60e82bf47517c75d406fa01054e3774cdca4e411b2ce4e7f3eed4375ca2eb6",
+        "kind": "defthm"
+      },
+      "fn2-sim-physical-landed-p": {
+        "canonical_full_form_sha256": "5fdf1607ee4171adf3aad57bc1e355fb8fbfd30fc628bf2ae041890b2344a7b1",
+        "kind": "defun"
+      },
+      "fn2-sim-physical-rows": {
+        "canonical_full_form_sha256": "29c1ae5354fc3999a989e40301364edf47324cd54020c9426a4e99d4189f8f5f",
+        "canonical_statement_sha256": "fb8531c693c244b84fd147adb980308ba29a8a6ba196b266d884f484c6f73600",
+        "kind": "defthm"
+      },
+      "fn2-sim-post": {
+        "canonical_full_form_sha256": "da1515c28cd407c58d6cccca978cd412d41c49f6b1fe1972e1004c9c3eea8848",
+        "kind": "defun"
+      },
+      "fn2-sim-probability-candidate-type": {
+        "canonical_full_form_sha256": "5222ddb6ba2e77d6afd201a1c4345cca09edacc8a6150d177a4cda4dc62cd69a",
+        "canonical_statement_sha256": "47f617d7c2acde840671f753b981329e7488e974cfd87e6453c8c18314789a4c",
+        "kind": "defthm"
+      },
+      "fn2-sim-random-rows": {
+        "canonical_full_form_sha256": "ff22a69cf90723e3fa8e5da509bb920daeb9933a99aa2a5ad57894f298a17fe6",
+        "canonical_statement_sha256": "1ab8381788c46ccc3498b80663a6e9eeb9a6d4e796427ccb958880cc6cca95c3",
+        "kind": "defthm"
+      },
+      "fn2-sim-ready-network-projection": {
+        "canonical_full_form_sha256": "28a5eb8b975a814e54c21c079ef99d9d0cd2f2458acdd91d201be815807b307e",
+        "canonical_statement_sha256": "b12ecd9bcc16bcc9913c59397c4584eae00d644c0a3b9a69f94166e7636d0575",
+        "kind": "defthm"
+      },
+      "fn2-sim-ready-root-projection": {
+        "canonical_full_form_sha256": "d8b9267f948bb0441af1be24e9dd1a53b0acd29a7a23111e9eff8016c074f122",
+        "canonical_statement_sha256": "91e00b7d70011f992dd18bd943a91e158d219aa8ff2ccf5289fb0f759cde53bf",
+        "kind": "defthm"
+      },
+      "fn2-sim-ready-storage-projection": {
+        "canonical_full_form_sha256": "c50de7442c4b9c09641f1d100a40bfd4e37f0f209cc94f0794cc866201680fa4",
+        "canonical_statement_sha256": "a1a6ec108938bcaad195714dff93d03951952bc252d8dc56c9e5b4b2193d1f35",
+        "kind": "defthm"
+      },
+      "fn2-sim-ready-update-net": {
+        "canonical_full_form_sha256": "4dee068e7b863cc99a343e577cd908d81f6c2875d3f276428e1f37c5135fef05",
+        "canonical_statement_sha256": "8ba7b783d3f86d585067015a317c5cecc0f1fa6107bd8d41ac90fa5714dcf40e",
+        "kind": "defthm"
+      },
+      "fn2-sim-record-rows": {
+        "canonical_full_form_sha256": "77444d44643d8e49d363d26e3167e454fb19695ad411b885ffdb033a3179f66a",
+        "canonical_statement_sha256": "57bb95306488af12fb3b6a2d706a39e6ea0834cab3f4c165334d07dbdb2abfad",
+        "kind": "defthm"
+      },
+      "fn2-sim-redirect": {
+        "canonical_full_form_sha256": "9123d000e00ff890ff5b198fda6596e1d97a2bcd8964161f0d4809ef53f73c74",
+        "kind": "defun"
+      },
+      "fn2-sim-redirect-natural": {
+        "canonical_full_form_sha256": "7be51374deb898c8a22da549214e46edeaf1e647e12f64ce7a4ede4bdd78d0de",
+        "canonical_statement_sha256": "20d3ca2e9a42de46d8379c4d947017e3429c05e6402793f8b14eab9ee1a28a93",
+        "kind": "defthm"
+      },
+      "fn2-sim-register": {
+        "canonical_full_form_sha256": "5c6333c03e675ca93197b6eb4e70041de45bf7fc02c27d093545532b27663089",
+        "kind": "defun"
+      },
+      "fn2-sim-register-ready": {
+        "canonical_full_form_sha256": "2c3510d1afe2dca7ef7e1c00e1a01151b2a307080c4688fc8a2eb2347d54083a",
+        "canonical_statement_sha256": "1ed85c3d1bece1f7c508b918069cebaef2fc0702d9c2ec1b0b57e89a1f638e24",
+        "kind": "defthm"
+      },
+      "fn2-sim-register-type": {
+        "canonical_full_form_sha256": "b6883e94e9d60f26e77c0daacf407787c5d2fbe3ed31f05c2c047a9c48af8b83",
+        "canonical_statement_sha256": "9ae797ea44248b39e8e5672b2646ebda73a1f2461a5e9b2f2105552cd42acf68",
+        "kind": "defthm"
+      },
+      "fn2-sim-take": {
+        "canonical_full_form_sha256": "8785a348a8a744fbe55ffc571c64381874cd6ac8e7ceedef03798e4986d4dcbb",
+        "kind": "defun"
+      },
+      "fn2-sim-take-one": {
+        "canonical_full_form_sha256": "6fe479534a6869e27801ab8e4795dd362f246fbe838b79ece96dec034f030f46",
+        "kind": "defun"
+      },
+      "fn2-sim-take-prefix": {
+        "canonical_full_form_sha256": "adc44701b38e068f3d94f9a09347ec342805fd847236b02ef6299c8711314bdc",
+        "kind": "defun"
+      },
+      "fn2-sim-tear-changes-p": {
+        "canonical_full_form_sha256": "0b82d82869770e09bda7cb01cf51579fce1e824297f1a6e3abb61213a26ee2cb",
+        "kind": "defun"
+      },
+      "fn2-sim-transfer-count-natural": {
+        "canonical_full_form_sha256": "589f8bb0d79ac8c103be39779279ea4f113e46aa2d5d6b9cafc11f988d68a0cc",
+        "canonical_statement_sha256": "735d2e25df01a9eedfde9ceb48dc54adadc349ead495ed664630106b1edb85e4",
+        "kind": "defthm"
+      },
+      "fn2-sim-unused-op": {
+        "canonical_full_form_sha256": "0e88d8a6138e294c797e6d1225db7e22c88604876bc60526f2ccc0c72568aabf",
+        "kind": "defun"
+      }
+    },
+    "sim/sim-state-data.lisp": {
+      "fn2-sim-disk-type": {
+        "canonical_full_form_sha256": "008fdff23ce9e27cbc4fbc143f2ae3112d499de8554ee87dc7fe8a5d76336a87",
+        "canonical_statement_sha256": "b8a65feb11e2f2627e6230a2c54b6193b5a564b2cd2c6f76b5af657b7c8712ec",
+        "kind": "defthm"
+      },
+      "fn2-sim-net-type": {
+        "canonical_full_form_sha256": "6b52b3cdfeef99cd92c61f806cef752799b615bf237125c50f42237249cfc3cf",
+        "canonical_statement_sha256": "7b1abe7ad5f6c9045ea0669ce1873a9675bc6b400853d51ad82cf44a9eaeb652",
+        "kind": "defthm"
+      },
+      "fn2-sim-parent-consp": {
+        "canonical_full_form_sha256": "84faa06514fe027fcc45f73ddddb389307b32a2a46a8c7e69c71a0756f7e51f4",
+        "canonical_statement_sha256": "46bc5a0fc0d6c3338baa5a7b6bab001184d59ef3188ccfc435ae36ed9021d28d",
+        "kind": "defthm"
+      },
+      "fn2-sim-ready": {
+        "canonical_full_form_sha256": "68c60e29c83d939ec91bce9c453f4553efe93b714623be25a3e1cc7356aea0fa",
+        "kind": "defun"
+      },
+      "fn2-sim-update-disk-type": {
+        "canonical_full_form_sha256": "14629646a4583d2fbe10f6ac6e31bc38e7911c4b091abbd38b192f3966b5ae77",
+        "canonical_statement_sha256": "23317019bb20ab55f0efc64c0ea98ffc5a5fd2082f549898b7d811a2b838b8eb",
+        "kind": "defthm"
+      },
+      "fn2-sim-update-disk-wfp": {
+        "canonical_full_form_sha256": "20c44aaed8386a715388a8ff09fd7189685dd43e0c181632a30e6d4a98f2c2ce",
+        "canonical_statement_sha256": "75297559043df66d33281f3b0c91f950fa0ca7c2a77779570f90586f14d2b502",
+        "kind": "defthm"
+      },
+      "fn2-sim-update-net-type": {
+        "canonical_full_form_sha256": "96af4386e0fb400f1e1d033072133d54a7c6f968095d34da5a91dc2bcf2bdee0",
+        "canonical_statement_sha256": "349d77f34001f6a962428c6d523dafef13f3392edd89c6a0bbf195cb4157ad5a",
+        "kind": "defthm"
+      },
+      "fn2-sim-update-net-wfp": {
+        "canonical_full_form_sha256": "5358f434cda299035cfb82938b14fe4c899ab4c9f08aef3d155491455148983f",
+        "canonical_statement_sha256": "064257fa86af9d52712873ecf81968e4d7ffab6d7a51114a017ee96b188e48b6",
+        "kind": "defthm"
+      }
+    },
+    "sim/sim-state.lisp": {
+      "fn2-sim-arm-wake": {
+        "canonical_full_form_sha256": "eaf31d9540700d0439e0281da4f914db1581967c0d850403bb6f356e5d7fb4e8",
+        "kind": "defun"
+      },
+      "fn2-sim-arm-wake-rows": {
+        "canonical_full_form_sha256": "9918ff3e2746cf83ed104ccc55c8d0b0c865e725eac8531e37a1fa5f2740c108",
+        "canonical_statement_sha256": "07815e84a07dfcd226420b11c8db2b5b2bcc3e9b94486b8ab7a6fa808e492329",
+        "kind": "defthm"
+      },
+      "fn2-sim-cap": {
+        "canonical_full_form_sha256": "139da68af4dc597a32cdf341c9ee03262fce385be62f12079536ae15ada2fd59",
+        "kind": "defun"
+      },
+      "fn2-sim-cap-type": {
+        "canonical_full_form_sha256": "251470cf42a3d9d3fd8d6e563fd30be0e14919c5da970a57ee1ac347ac94504a",
+        "canonical_statement_sha256": "327470591d9b983947f842a97457b1c6de1b4b10e699373883493038f3f11c26",
+        "kind": "defthm"
+      },
+      "fn2-sim-choose-fault": {
+        "canonical_full_form_sha256": "a195e120b3236ed6352ce3e98163c836919ea83d492067816e7f97a91e89861d",
+        "kind": "defun"
+      },
+      "fn2-sim-choose-fault-result": {
+        "canonical_full_form_sha256": "70ca1ae6cb8e4005ebdc402c7d7b850cf22f92e99f20cf14137dc4b50212ec65",
+        "canonical_statement_sha256": "4e60ec35cf5a3c4e28722481ceaea3c709400da1f3502adf1f0102b7feb62004",
+        "kind": "defthm"
+      },
+      "fn2-sim-clear-flights": {
+        "canonical_full_form_sha256": "287fea645857882af89caf5d2e51ec288eca2b46aa40bb70391d2aac679f09c3",
+        "kind": "defun"
+      },
+      "fn2-sim-client-seed": {
+        "canonical_full_form_sha256": "e8a6b5a04326d11906afda04b1b9b683bc1138627ede753dc99a39ef085335d7",
+        "kind": "defun"
+      },
+      "fn2-sim-client-seed-type": {
+        "canonical_full_form_sha256": "72ee45566996b6ff82020fa5eb91515f8ed07af1322cc3f821d000e3da2d5da4",
+        "canonical_statement_sha256": "ba9f51d4506f75dc4e45f8536ee6092de920229f3d48ee1906e9e3e2a4229ce9",
+        "kind": "defthm"
+      },
+      "fn2-sim-client-seed-wfp": {
+        "canonical_full_form_sha256": "58d3f76b7fa735de896d44b5296e70a8564fa409e60acc06738828c446cac97c",
+        "canonical_statement_sha256": "8b3de9944963e59182dc69c240b8dd20ceaf997eaae8d09dd2f1d364d5872bc8",
+        "kind": "defthm"
+      },
+      "fn2-sim-clock": {
+        "canonical_full_form_sha256": "a76808568cb41c3ffe9eafd8a02bb5ff49a360ca23d2c75d4f9d73a6219dcda0",
+        "kind": "defun"
+      },
+      "fn2-sim-configp": {
+        "canonical_full_form_sha256": "21d44901cd5a9df0ddc299ef1b7b94e335d8098cc2cf157db2b4c34efe1ff2b1",
+        "kind": "defun"
+      },
+      "fn2-sim-disk-nth-type-forward": {
+        "canonical_full_form_sha256": "6c0232d5006eed06b0ff89beac31a76e1de53b258440cdc8a003f3fc51b05eb9",
+        "canonical_statement_sha256": "cf04b04bb50281119c81aaee7bef5b14a3ac733c4912b8134b80afdc93ffa2a7",
+        "kind": "defthm"
+      },
+      "fn2-sim-earliest": {
+        "canonical_full_form_sha256": "1f414ab84bff0ad4367b258ee2af4df5595eb7ee607470e60ff2373c66e28e80",
+        "kind": "defun"
+      },
+      "fn2-sim-earliest-boolean": {
+        "canonical_full_form_sha256": "0db91e55a8613b0c8e7b8df7325a3d803b3c878e89f0a07b5765897424b2bec8",
+        "canonical_statement_sha256": "c555fd78214ae79f7051c8176a9abfcb5434d8d638165c392cd1a4855542d642",
+        "kind": "defthm"
+      },
+      "fn2-sim-earliest-result": {
+        "canonical_full_form_sha256": "b8e9e9088fa67003f23efcf20a34960d195b925dcbd995cd5b0c1b8658e71a6d",
+        "canonical_statement_sha256": "2159b8c6202cf0b557795eeb21181bba8dd99c113b26b1fde3024cc1cb5f4595",
+        "kind": "defthm"
+      },
+      "fn2-sim-fault-mod-bound": {
+        "canonical_full_form_sha256": "422416d37f4b8221f9b1257c0f40e3a0968ad3368db4e39d09be424cd46238dc",
+        "canonical_statement_sha256": "6192041ba31f89e155aceaed541391fe8af93b71bc396c8d8283e705a7b79614",
+        "kind": "defthm"
+      },
+      "fn2-sim-fault-mod-natp": {
+        "canonical_full_form_sha256": "4027c1fa7f9fc9127f4e87fe6b8afbb95eed22d0b1e4a1ee05a73d135ea2cd09",
+        "canonical_statement_sha256": "7682b9dd0816b1d7946830cd6bbccba4d16084694198a9d3565854fea31c4c4a",
+        "kind": "defthm"
+      },
+      "fn2-sim-fold": {
+        "canonical_full_form_sha256": "2b0bc93cfcc4577ed6337e755e237c49482a7cd11a09b8f9c821d49de7df5a76",
+        "kind": "defun"
+      },
+      "fn2-sim-fold-type": {
+        "canonical_full_form_sha256": "405c4cf50284bfa32dc51addfbba6fd81c45ed5d0122829c2f0ee53ed73bc883",
+        "canonical_statement_sha256": "06767cb753f0c92b2da930e904ae65de3da6e8601a6e1efa5141cf2695e4798c",
+        "kind": "defthm"
+      },
+      "fn2-sim-force-fault": {
+        "canonical_full_form_sha256": "437dd2272216eaab1f57719358747319639b136828412fe9e4a1e36c69a5c3b2",
+        "kind": "defun"
+      },
+      "fn2-sim-hits-word-type": {
+        "canonical_full_form_sha256": "5c833fcd0f86230d576eef19c78dfbcabc52e6020b634e651dc9bca0442a84b6",
+        "canonical_statement_sha256": "9ceadd136af24f4e886a08416a5192668be6f415b2a4c95d7aae0a65290f13ae",
+        "kind": "defthm"
+      },
+      "fn2-sim-init": {
+        "canonical_full_form_sha256": "6235233d21afa8877c5dc72bf4849ee4364aca96a973707327f32a6db0ec2a58",
+        "kind": "defun"
+      },
+      "fn2-sim-init-counters": {
+        "canonical_full_form_sha256": "a95c6b27db5c244abdbd55086e2a54c58de9e84ca3007a0e7778b583d7db699e",
+        "kind": "defun"
+      },
+      "fn2-sim-init-faults": {
+        "canonical_full_form_sha256": "bfd72bac841a7c5b50727be3ac198785e5d0e1802db1bd78d6232411b05fb4f0",
+        "kind": "defun"
+      },
+      "fn2-sim-init-ready": {
+        "canonical_full_form_sha256": "8300c80ee23169839c1a87a5ca69c7c788f817392b8dc934e80dd13640d97105",
+        "canonical_statement_sha256": "9e241c9f676ae46b82d2c21b5bd1e704e7819fc4a4a9dd96dc26e1e4f76dd285",
+        "kind": "defthm"
+      },
+      "fn2-sim-init-type": {
+        "canonical_full_form_sha256": "323f489a4302d1bd3c2cec4faed3b1878a4362c17190e5ccf23d89e3ac52b7ea",
+        "canonical_statement_sha256": "9dc3ad30efd19856ed49405d0bcf0e5a0b2249d89bb9594a7e586ed92413c53c",
+        "kind": "defthm"
+      },
+      "fn2-sim-land": {
+        "canonical_full_form_sha256": "afd84fa4afa87afda60aed705d7ba4ce094b14d24a1c636d8a4edee6b72d40e2",
+        "kind": "defun"
+      },
+      "fn2-sim-land-rows": {
+        "canonical_full_form_sha256": "8b5e3e045660a5427e65b9ad3465c3f27f3683814b0a3dc8fce1608fdfee8b99",
+        "canonical_statement_sha256": "c2fd138bc3f074326a3c66844ed9136c959017e3b2eec63e8536004753da9202",
+        "kind": "defthm"
+      },
+      "fn2-sim-metadata-raw": {
+        "canonical_full_form_sha256": "9bfc624e3c6dfcc044c1584ba2fa38cf590e5536b531498c3b2ebcf8ebc26922",
+        "kind": "defmacro"
+      },
+      "fn2-sim-net-nth-type-forward": {
+        "canonical_full_form_sha256": "3b6870907fed801b8d8622a77c05fd8ee4521affc7f622a21c0ec13f2d8da8bf",
+        "canonical_statement_sha256": "f3358ade6ba2bc8f9a2c17a9dff0670f1bd758462a5fe9f073f3b28a140c369e",
+        "kind": "defthm"
+      },
+      "fn2-sim-next-flight": {
+        "canonical_full_form_sha256": "1fc081b51136cc16bd8d4853993c5235ad8b31380735aa6113cc86985c352f34",
+        "kind": "defun"
+      },
+      "fn2-sim-next-flight-types": {
+        "canonical_full_form_sha256": "c6a20de21c7543fa9a5f856a3c73ff26be2deba0e9b0648ab9c6b1db6d927b07",
+        "canonical_statement_sha256": "a54440153f15381af6305cfc1de3d871b2f254b6b8f2aeefedc527a349d21c61",
+        "kind": "defthm"
+      },
+      "fn2-sim-probability-word-type": {
+        "canonical_full_form_sha256": "0514756c35af5923b38259c4a26b6c4bf19529124d3e9d3ef8a0e1f3e070f96b",
+        "canonical_statement_sha256": "c46fd4b1c7c0fa71a23063c03bdf9efcffb7ce44b85e0c27086858b20d3d5a61",
+        "kind": "defthm"
+      },
+      "fn2-sim-random": {
+        "canonical_full_form_sha256": "95dc020e3dc6883b681fd1b0cb078b8d0288a29bb4ebb6abaa9bc97d7959231d",
+        "kind": "defun"
+      },
+      "fn2-sim-random-frame": {
+        "canonical_full_form_sha256": "605b701459558b7fa65aa347d6c246ce8d61fbc98a275cfdb955f9737eab86a9",
+        "canonical_statement_sha256": "b883ca310f959144a26a520b9dce5707b797c59b9cdd2cb95de5e6562bfb3aee",
+        "kind": "defthm"
+      },
+      "fn2-sim-random-state-type": {
+        "canonical_full_form_sha256": "004cb28d59f973c9f72fed39b9bb731b74d7bd7395f3dae1c51833177c2a1833",
+        "canonical_statement_sha256": "5c62a3ca5b310995af17cf365c14bd2fab833008b446910502f22958d92c54e3",
+        "kind": "defthm"
+      },
+      "fn2-sim-random-word-type": {
+        "canonical_full_form_sha256": "175fb8c88e4df32fe6dca5e5215496d1a09f928888e0baaf54f8d4adb623dd59",
+        "canonical_statement_sha256": "cffc7fe0cad531565c69e264fdea5e27727661aa6ee7bd91ad0f35dc68865cb7",
+        "kind": "defthm"
+      },
+      "fn2-sim-record": {
+        "canonical_full_form_sha256": "52c8e648aab7731c9313a58e96ba131c73fbcf6866562997adeb84bbb8617026",
+        "kind": "defun"
+      },
+      "fn2-sim-sectors": {
+        "canonical_full_form_sha256": "1c41ddb9cd691239557e513d8c90a3a8765156f82db680fc957f1b3ce338a651",
+        "kind": "defun"
+      },
+      "update-fn2-sim-disk-raw-nth": {
+        "canonical_full_form_sha256": "f988c9c55e5b0d21a018b67e7d2d1ce71feb2924be11b60a1e1e6b209b4b38d1",
+        "canonical_statement_sha256": "6e292257f3b7a0eafe2526c8c89871f1133682ee1cc4c4b8e1d0e192deec066f",
+        "kind": "defthm"
+      },
+      "update-fn2-sim-net-raw-nth": {
+        "canonical_full_form_sha256": "b7683290e9e6d2ef2a02407ff2ac87eba62fe486c45218c830cd3d28bee8f7ea",
+        "canonical_statement_sha256": "1ccc66da32fc750211a1762510305a8cdcce9fdd3cdd134342af5e23dd625014",
+        "kind": "defthm"
+      }
+    },
+    "sim/sim-transfer.lisp": {
+      "fn2-sim-pool-read-byte-bound": {
+        "canonical_full_form_sha256": "610195d56c6c8abaa7dace62a3b3b065cf8e387edffe799217b18a32ab956d53",
+        "canonical_statement_sha256": "9165bdb038b1995c4f207b8e9faafd8449aa637b3e2119d39c20d88593ce11d0",
+        "kind": "defthm"
+      },
+      "fn2-sim-pool-read-byte-natural": {
+        "canonical_full_form_sha256": "2558a6cf9155d706e37e93a66f958ed8bb29816c946685c0a1eee3c6cb631c25",
+        "canonical_statement_sha256": "2be694602acb805f106caf44b655f456bbda6de11fb543b1112177487bc3b6cd",
+        "kind": "defthm"
+      },
+      "fn2-sim-pool-read-byte-u8": {
+        "canonical_full_form_sha256": "6d93393f2caea8ee081dff63e5c49b3c9c36fdd0bee4353aa4cd24ed3ab16a10",
+        "canonical_statement_sha256": "97ecf1912394d270c53a5441d730f7e9b47fe3c13a04e2a34d5417383f2f980c",
+        "kind": "defthm"
+      },
+      "fn2-sim-storage-read-byte-bound": {
+        "canonical_full_form_sha256": "45bce96c2fc6ff6b36d98fb805f5691310f9cc105d1df4aee61e143426ebe722",
+        "canonical_statement_sha256": "bd4b40075956512d49617731801d566c13c999cd5c05877ff5d8d1bbd2d54506",
+        "kind": "defthm"
+      },
+      "fn2-sim-storage-read-byte-natural": {
+        "canonical_full_form_sha256": "3301ffb53defce469a4fbf69e26e82849e4eb85d210dcf9104d452439d8d401e",
+        "canonical_statement_sha256": "7ea5de70612d9dff2b33cf966666ec544806aab55ea54a3977c6f120ac97a1f0",
+        "kind": "defthm"
+      },
+      "fn2-sim-transfer": {
+        "canonical_full_form_sha256": "26214a61bc703d15aa8b35c2a2cd4e730a928700cbae4a4dbcf42535142511c4",
+        "kind": "defun"
+      }
+    },
+    "sim/sim.lisp": {
+      "fn2-sim-advance": {
+        "canonical_full_form_sha256": "e339ccae47e750978ddfd21e5096f7c9672183428e90479fe403a763648dd762",
+        "kind": "defun"
+      },
+      "fn2-sim-advance-flight": {
+        "canonical_full_form_sha256": "9affe44a92d0b276924ecb13d969e23024cb121aeecf86b0664331fcf16de339",
+        "kind": "defun"
+      },
+      "fn2-sim-advance-selected": {
+        "canonical_full_form_sha256": "4edcb462cd3a79ca9ce363f3225f9b80239536323111bb61b99ed1e416a70906",
+        "kind": "defun"
+      },
+      "fn2-sim-advance-with-clients": {
+        "canonical_full_form_sha256": "ef35b540fbc199e863d0c14d1de88bb7d4a11957cdb0ab1609546b18413fc7d7",
+        "kind": "defun"
+      },
+      "fn2-sim-client-drain": {
+        "canonical_full_form_sha256": "c91d3eb0a0fa89a979151da4095c46d88a5c065ac43a5f31999d615cfc3f724c",
+        "kind": "defun"
+      },
+      "fn2-sim-complete": {
+        "canonical_full_form_sha256": "9102bbb1ab0cd851f3be64ff5b3be5c3aa2476207d8ae15962e80a2c80064dd5",
+        "kind": "defun"
+      },
+      "fn2-sim-complete-result": {
+        "canonical_full_form_sha256": "445874437e3b23a5e5b38ccf765a445af36174e73fa602964f3fd7d277a4828a",
+        "kind": "defun"
+      },
+      "fn2-sim-complete-result-of-return-save": {
+        "canonical_full_form_sha256": "64b65f676571e08726facbfa716c9140be172a47a364cc145b34c097615660af",
+        "canonical_statement_sha256": "1668532cae03a33f8005203c34519b5715d0515f2799e221677752b4501d00ce",
+        "kind": "defthm"
+      },
+      "fn2-sim-crash": {
+        "canonical_full_form_sha256": "3a4c6e871d9650e417fb9f0df8eabfb72d227e79f2f2ef49271e1b60a1b890ad",
+        "kind": "defun"
+      },
+      "fn2-sim-crash-core-car-shape": {
+        "canonical_full_form_sha256": "8d254c8c173766988b321364ba8c842c488aa671a1617f3fe4e04afdf4d4b4d0",
+        "canonical_statement_sha256": "062815a6d27f741589e5cb5a2505998eb39c2e0da897f2db98b7da247e4f7139",
+        "kind": "defthm"
+      },
+      "fn2-sim-crash-flight-one": {
+        "canonical_full_form_sha256": "e784e0a5a195b7a190ee97b3b05041dccaf99cd5c1b64daf711284dd39988d56",
+        "kind": "defun"
+      },
+      "fn2-sim-crash-flight-writes": {
+        "canonical_full_form_sha256": "b92575fb12a60336f40e4204b01776f499d701fc26f879e770445a93a898ec0c",
+        "kind": "defun"
+      },
+      "fn2-sim-crash-flight-writes-core-car-type": {
+        "canonical_full_form_sha256": "791db0f92c8dedd62e91198965dd1192d15f00af18cdda92156c4ba9ce2024ec",
+        "canonical_statement_sha256": "6b389a3f525db4a0e0da52714788744166a86f7e2b4b0e8332b9ac15bf3c01ad",
+        "kind": "defthm"
+      },
+      "fn2-sim-crash-state": {
+        "canonical_full_form_sha256": "a3fbc2c99c0f7176f258bf7d731eac3db43347d476008b1153896341f1a0ac9d",
+        "kind": "defun"
+      },
+      "fn2-sim-delay-flight": {
+        "canonical_full_form_sha256": "c2192e7d524d396ea003803ebe80b7afdf5cd7789d9be53574f383de6316f472",
+        "kind": "defun"
+      },
+      "fn2-sim-echo-accept": {
+        "canonical_full_form_sha256": "b15ca421f1ef13f9eeedf8ec9e2bdb4f44d6ec474d2adaba3c6d2be61808590d",
+        "kind": "defun"
+      },
+      "fn2-sim-native-post": {
+        "canonical_full_form_sha256": "8e66ca79f69767a443a23a726613e5e2431292d517e9165f99c16c19029b7fc8",
+        "kind": "defun"
+      },
+      "fn2-sim-native-stage": {
+        "canonical_full_form_sha256": "dec45e09239a38cd3531fa00ba2f7b2bf0d49da3a68b4037a2018c17e914952b",
+        "kind": "defun"
+      },
+      "fn2-sim-packetp-of-active": {
+        "canonical_full_form_sha256": "c5b42e05cc90917dffd6b2fe3dcdf3d2b1fcdc8a08376b491faf5c7944592d23",
+        "canonical_statement_sha256": "9a06a10834bc514db25d27b3daa32ea5bfc6ce5204f0f409249c9668aca697ee",
+        "kind": "defthm"
+      },
+      "fn2-sim-packetp-of-save-return": {
+        "canonical_full_form_sha256": "7081134273b86a0a5d4b2700b4a38c20862b1e31c9e03ed5f81e776fd9d2230c",
+        "canonical_statement_sha256": "f31d72e10b979f5614348c85bd91db795ea15f8ef78b1c1ea0a7bdcd83fe2f95",
+        "kind": "defthm"
+      },
+      "fn2-sim-physical-fence-code-tag": {
+        "canonical_full_form_sha256": "363e93f8ee361f47bca39e24f51387ca0e5dbcabf0768590cbdad117e9c0b21e",
+        "canonical_statement_sha256": "5e595347e738df9d7d941c2ffbbc0e25b2cf39d27eeac9d265c17102024ced72",
+        "kind": "defthm"
+      },
+      "fn2-sim-physical-fence-packet-domain": {
+        "canonical_full_form_sha256": "43487981ee25bc3a22ab8095b8fca73556ba01d6b3eee533c0c59c4d89cf5746",
+        "canonical_statement_sha256": "db9a078be0b257789ce40d2cb8b4aa4a04df4e1ecc61eca7e6e3387066369533",
+        "kind": "defthm"
+      },
+      "fn2-sim-physical-fence-raw-result": {
+        "canonical_full_form_sha256": "cf47f179fb74c9426846d09c3f8272a70071c651908d098cd8de9557e3b7f2d4",
+        "canonical_statement_sha256": "3406dcf19dd0108fbe472fae4440a7cf292069b79666e54a17010eabef9894bd",
+        "kind": "defthm"
+      },
+      "fn2-sim-physical-fence-save-roundtrip": {
+        "canonical_full_form_sha256": "9344950faf2fa56e8b8902a4ddf6733bfb9bbe21af4699844b4fad3db8857339",
+        "canonical_statement_sha256": "cff160238b2cb87aa3e95465c9b7dcd4b4c0e94a7768db26da257b3387d95d5a",
+        "kind": "defthm"
+      },
+      "fn2-sim-physical-keeps-incarnation": {
+        "canonical_full_form_sha256": "f2b2d4d66ad82a38fb9a5a5bfdadb42c2bf54363d9d89181597723c6ae7d2c3e",
+        "canonical_statement_sha256": "d9a5c2cecbb993856bbd1f7779f6cf2581e15bb9703c5a36a9a703ed72caa64d",
+        "kind": "defthm"
+      },
+      "fn2-sim-post-clock": {
+        "canonical_full_form_sha256": "921a8a88b2309e92f63104ebfc476016bcea5b3885acb0b0972c4442e1ffa0af",
+        "kind": "defun"
+      },
+      "fn2-sim-post-clock-type": {
+        "canonical_full_form_sha256": "2d321e8524e0cd134117fd52a5b09d0111beb3dc9618a6c66cc80efd3d6cf4d0",
+        "canonical_statement_sha256": "ccf20da4b791e4dd7873e937f4e7dc7f3d1c17d3444bc2642c1d22c085733ef8",
+        "kind": "defthm"
+      },
+      "fn2-sim-post-clock-wfp": {
+        "canonical_full_form_sha256": "290418d4de3ad03da5ba3a53498c9afb4f459f930331537d441bc251dcc8d544",
+        "canonical_statement_sha256": "7038773b516dd90372a718e85061b00c6c647b178b2d1af8139445ffadfab987",
+        "kind": "defthm"
+      },
+      "fn2-sim-ready-disk-projection": {
+        "canonical_full_form_sha256": "282478cdd0cd9e10608cb68f56922a52d2273eca3d0250c07a8af8b06dc44305",
+        "canonical_statement_sha256": "a1a6ec108938bcaad195714dff93d03951952bc252d8dc56c9e5b4b2193d1f35",
+        "kind": "defthm"
+      },
+      "fn2-sim-ready-has-row-shape": {
+        "canonical_full_form_sha256": "7b33dcd8390e8eee573556e77e4bfa867e6aad5da55c8429cf99184322a6811d",
+        "canonical_statement_sha256": "91e00b7d70011f992dd18bd943a91e158d219aa8ff2ccf5289fb0f759cde53bf",
+        "kind": "defthm"
+      },
+      "fn2-sim-ready-update-deaths": {
+        "canonical_full_form_sha256": "15b9652eedfc1937480d2569e5b1bbc34935a42df3a390cefd10d160f89e0a58",
+        "canonical_statement_sha256": "937f6eb7414d1f39586f149be9304744e44a556081cacbfa0e191362ec9f146b",
+        "kind": "defthm"
+      },
+      "fn2-sim-ready-update-disk": {
+        "canonical_full_form_sha256": "2de9cfbccda8d5e02a7eda4832ea145cab9ba22f0e01ea81d7ecfd1117bc0425",
+        "canonical_statement_sha256": "de74b7b3da0da70ed40da042fa527ce0b8bb04145bb7905884ef17f4069d5b4b",
+        "kind": "defthm"
+      },
+      "fn2-sim-ready-update-wake-deadline": {
+        "canonical_full_form_sha256": "c5615862436513d8ba0911f4cc11665dcd53268778400e58cdb30c00666cc408",
+        "canonical_statement_sha256": "9db562cc8c5d39516b7ab60cadec2ed886640973e2c3a9b73c371a8114ed4172",
+        "kind": "defthm"
+      },
+      "fn2-sim-ready-update-wake-observation-gen": {
+        "canonical_full_form_sha256": "4f60ec187d962fdc1dc78bfac8e41387ef5d01e96753f9682945e412906a71b8",
+        "canonical_statement_sha256": "3880af1f8f7d8faa554ef205b015fbe01283d5425dd1e5353049a29e738a299b",
+        "kind": "defthm"
+      },
+      "fn2-sim-ready-update-wake-pending": {
+        "canonical_full_form_sha256": "e724da76a0bdf07ccf826f7f66950d1e58e2c51efa34f17e46bd6a4b5ab09785",
+        "canonical_statement_sha256": "3b9b3cbda43711188be66981c06455c659ee2b534c434538543895278dcfbb8c",
+        "kind": "defthm"
+      },
+      "fn2-sim-save-return": {
+        "canonical_full_form_sha256": "435fb36202a23f4835e110457eb74c81dec9274f2c01369bf9cf7c2ed83de7ef",
+        "kind": "defun"
+      },
+      "fn2-sim-save-return-idempotent": {
+        "canonical_full_form_sha256": "309c7ac72a06c826da95d31c3745b92363c72ceb4dc84f2a534ace9570d01577",
+        "canonical_statement_sha256": "5583723d85ffbe4a8d0b1bcfb9f88af555de96e8eb884675af96edd5bcc24bae",
+        "kind": "defthm"
+      },
+      "fn2-sim-save-return-keeps-incarnation": {
+        "canonical_full_form_sha256": "cd3dba00e3dcf589f822078a7098e1018d705d58bd73fb8b25d7512b5e25b7c7",
+        "canonical_statement_sha256": "58c8344e91cdc0bd213d7ea41fc318a83e739a7e8332cffefed50d79dab92b3a",
+        "kind": "defthm"
+      },
+      "fn2-sim-save-return-roundtrip": {
+        "canonical_full_form_sha256": "338ee596d6ed7a6252beedb6dfb2f223b5872cb46cdfb8ce14a0bd3f0392bbad",
+        "canonical_statement_sha256": "ecb0cff79714e4aca54e3ace0cca3b7d876e810548628c9b48f2cb1f6487481a",
+        "kind": "defthm"
+      },
+      "fn2-sim-save-terminal": {
+        "canonical_full_form_sha256": "9d80eb62c9a551a7dc2102a9c23ec739ec073a7eac8795d2603a6a656e288735",
+        "kind": "defun"
+      },
+      "fn2-sim-saved-return": {
+        "canonical_full_form_sha256": "a05bfed31d0d28ac6df36d2da34bb7f2655186fb7fdd0d560987ed65613e3122",
+        "kind": "defun"
+      },
+      "fn2-sim-saved-return-of-active": {
+        "canonical_full_form_sha256": "c176e96b76711cfc1bca69839c0b68a4ab35aec6661457022930d7968d90c43e",
+        "canonical_statement_sha256": "56037fc287d000ef1221474ae6dc451caadef0c6c5ee929328b3b10773b1aa0f",
+        "kind": "defthm"
+      },
+      "fn2-sim-set-active-ready": {
+        "canonical_full_form_sha256": "95feea536ffd3d2f17fc9b92c59732785951068ee6e0fa137b03448c6a83aa4a",
+        "canonical_statement_sha256": "11168671dca1e4c50b544b874e06ce7f8705075e332ebd6c18e521197cf882d9",
+        "kind": "defthm"
+      },
+      "fn2-sim-set-due-ready": {
+        "canonical_full_form_sha256": "bdbae24fbeb53bf168851e1924fb0c36e98b48d6539729e8da1f9061403a0b59",
+        "canonical_statement_sha256": "5c1f9f5b1116e455c4dcbc4a7792f5bee86b4e1ffc23658b6d74c2cc4d142a84",
+        "kind": "defthm"
+      },
+      "fn2-sim-set-fua-ready": {
+        "canonical_full_form_sha256": "633d9b888dc8b5cf56b1d3c18e8e1edfdd6bbd06bc247467dd5567c3b904ad41",
+        "canonical_statement_sha256": "7638fec98446f0c6a533044b244e4718495d2e21b65fcefd4ec3952ebc24e3b2",
+        "kind": "defthm"
+      },
+      "fn2-sim-set-last-gen-ready": {
+        "canonical_full_form_sha256": "db1a1dbb6c4e1a36ed8a8f172683b7c61407492a574533b7a1608643b946f730",
+        "canonical_statement_sha256": "d1949086d87413a69ec44eb48fdf557d91358ad620ce7844918472df86362cbb",
+        "kind": "defthm"
+      },
+      "fn2-sim-step-completion": {
+        "canonical_full_form_sha256": "16d17d8cbc4551d2b6c06f090c06e962269c52a5072f008d1a2612ba6f72e9e0",
+        "kind": "defun"
+      },
+      "fn2-sim-terminal-post": {
+        "canonical_full_form_sha256": "3700390e85f557f899bd00292f0819b2001e7ea57ac47c13ef48ffa76a572fbe",
+        "kind": "defun"
+      },
+      "fn2-sim-wake-first-p": {
+        "canonical_full_form_sha256": "b7862a71c65ff147186877ee40e8930c20f220313276c46d55fb24fe89f903ed",
+        "kind": "defun"
+      }
+    }
+  },
+  "scope": "copy integrity only; not current-root qualification"
+}

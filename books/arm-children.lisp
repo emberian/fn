@@ -119,7 +119,8 @@
                            ,may-release ,target-slot ,target-gen okind oslot ogen principal
                            fn2-pool fn2-ops fn2-control))
      (fn2-pool-preserves ,name (,@args okind oslot ogen principal fn2-pool fn2-ops fn2-control)
-       :carriers ((fn2-pool 3 :prefix "-POOL") (fn2-ops 4 :prefix "-OPS") (fn2-control 5 :prefix "-CONTROL")))))
+       :carriers ((fn2-pool 3 :prefix "-POOL") (fn2-ops 4 :prefix "-OPS") (fn2-control 5 :prefix "-CONTROL")))
+     (table fn2-issue-child-wrappers ',name t)))
 (fn2-issue-children-wrapper fn2-issue-receive-children (cap-index cap-nonce slot gen len)
   *fn2-action-receive* cap-index cap-nonce 0 0 slot gen 0 len 0 0 0)
 (fn2-issue-children-wrapper fn2-issue-send-children (cap-index cap-nonce slot gen off len may-release)
