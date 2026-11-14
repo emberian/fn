@@ -12,6 +12,7 @@
 (in-package "ACL2")
 (include-book "executor")
 (include-book "assembly-attach")
+(include-book "terminal-values")
 (fn2-book-layer :d)
 
 (make-event (value (fn2-declare '(:operation-set fn2-conn-wire) nil nil nil)))
@@ -42,6 +43,15 @@
   (stobj-let ((fn2-ops (fn2-core-ops fn2-core)))
     (fn2-ops) (fn2-post-result cell op opgen event outcome *fn2-reason-none* count aux0 aux1 fn2-ops)
     fn2-core))
+; Use the same normalization as fn2-host-result for an explicit physical EOF.
+; This is a harness event, never an inference from a temporarily empty client.
+(defun fn2-cw-post-eof (op opgen len fn2-core)
+  (declare (xargs :stobjs fn2-core :verify-guards nil))
+  (mv-let (outcome reason count aux0 aux1)
+    (fn2-sim-terminal-values *fn2-action-receive* :eof 0 0 (nfix len) nil nil)
+    (stobj-let ((fn2-ops (fn2-core-ops fn2-core))) (fn2-ops)
+      (fn2-post-result 0 op opgen *fn2-event-receive-result* outcome reason count aux0 aux1 fn2-ops)
+      fn2-core)))
 (defun fn2-cw-post-failed (op opgen event reason fn2-core)
   (declare (xargs :stobjs fn2-core :verify-guards nil))
   (stobj-let ((fn2-ops (fn2-core-ops fn2-core)))
@@ -85,7 +95,9 @@
 ; Complete the outbox head: (mv took accepted clients fn2-core). Accepts
 ; are completed in client order (capability index = client index, nonce
 ; 77) and left pending once every client is connected; a Receive is given the client's next chunk, or stays pending once the
-; client has sent everything; a Send's bytes go on the client's wire and its
+; client has sent everything. A final :eof in its chunk schedule explicitly
+; reports peer EOF once no input remains; an absent marker retains the old
+; open-but-idle behavior. A Send's bytes go on the client's wire and its
 ; terminal and release are posted; a Close marks the client closed.
 (defun fn2-cw-adapter-one (accepted clients store fn2-core)
   (declare (xargs :stobjs fn2-core :verify-guards nil))
@@ -115,7 +127,13 @@
              (fn2-core (fn2-cw-post-accept op opgen accepted 77 (nth 4 ac) fn2-core)))
         (mv t (+ 1 accepted) clients store fn2-core)))
      ((equal kind *fn2-action-receive*)
-      (if (atom input) (mv t accepted clients store fn2-core)
+      (if (atom input)
+          (if (eq (car sizes) :eof)
+              (let ((fn2-core (fn2-cw-post-eof op opgen rlen fn2-core)))
+                (mv t accepted
+                    (fn2-cw-set cap (list input (cdr sizes) wire (nth 3 c) peer) clients)
+                    store fn2-core))
+            (mv t accepted clients store fn2-core))
         (b* ((want (if (and (consp sizes) (posp (car sizes))) (car sizes) (len input)))
              (n (min want (min rlen (len input))))
              (fn2-core (stobj-let ((fn2-pool (fn2-core-pool fn2-core))) (fn2-pool)
@@ -223,7 +241,9 @@
        (equal (nth 2 view) (nth 5 view)) (equal (nth 3 view) (nth 6 view))))
 
 ; TRANSCRIPTS is a list of (octets sizes), one per client (at most the
-; profile's C connections). Result: (status ((wire closed) ...) stop-reason
+; profile's C connections). Positive sizes choose arrivals; a final :eof
+; after the sizes that exhaust OCTETS closes the peer write side. Omitting
+; that marker leaves future Receive pending as before. Result: (status ((wire closed) ...) stop-reason
 ; ledger-view).
 (defun fn2-cw-arrivals (transcripts)
   (declare (xargs :verify-guards nil))
