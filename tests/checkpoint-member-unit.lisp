@@ -1,4 +1,5 @@
 (in-package "ACL2")
+(include-book "std/util/bstar" :dir :system)
 (include-book "../books/checkpoint-member")
 
 (defun fn2-checkpoint-member-test-hash (i fn2-checkpoint-bytes)

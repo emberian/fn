@@ -215,12 +215,17 @@ ACL2_BOOKS = \
   tests/alloc-freeze-unit \
   tests/checkpoint-unit \
   tests/checkpoint-member-unit \
+  tests/checkpoint-tickets-unit \
+  tests/checkpoint-provenance-unit \
+  tests/checkpoint-build-budget-unit \
   tests/checkpoint-publication-unit \
   tests/checkpoint-geometry-unit \
   tests/retirement-unit \
   tests/retirement-replay-unit \
+  tests/retirement-live-unit \
   tests/read-pins-unit \
   tests/storage-write-pins-unit \
+  tests/storage-geometry-unit \
   tests/owed-reclamation-unit \
   tests/authority-client \
   tests/authority-served \
@@ -294,6 +299,13 @@ ACL2_BOOKS = \
   tests/groups-unit \
   tests/c-snapshot-unit \
   tests/c-snapshot-materialization-unit \
+  tests/journal-members-unit \
+  tests/event-frontier-unit \
+  tests/event-proof-format-unit \
+  tests/event-proof-source-unit \
+  tests/event-read-verified-unit \
+  tests/event-build-unit \
+  tests/checkpoint-page-header-unit \
   tests/host-unit \
   tests/identity-core-unit \
   tests/layout-roundtrip \
@@ -305,6 +317,7 @@ ACL2_BOOKS = \
   tests/machine-arms-unit \
   tests/machine-budget-unit \
   tests/machine-budget-core-fixture \
+  tests/core-init-profile-context-unit \
   tests/machine-success-charge-context-unit \
   tests/machine-child-tables-unit \
   tests/machines-a-unit \

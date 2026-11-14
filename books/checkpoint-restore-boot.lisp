@@ -1,0 +1,109 @@
+; Boot's actual allocation-map investigation driver operations. The machine
+; declaration includes this after its kind constants exist. No base selection
+; or live allocator mutation is performed by these operations.
+(in-package "ACL2")
+(include-book "std/util/bstar" :dir :system)
+(include-book "checkpoint-restore-map")
+(include-book "machine-arms")
+(fn2-book-layer :b)
+
+(defun fn2-boot-checkpoint-root-state-children (fn2-checkpoint-restore-reader)
+ (declare (xargs :stobjs fn2-checkpoint-restore-reader :guard (fn2-checkpoint-restore-reader-wfp fn2-checkpoint-restore-reader)))
+ (if (zp (fn2-checkpoint-restore-reader-rows fn2-checkpoint-restore-reader)) :state
+  (let ((phase (fn2-checkpoint-restore-reader-phase 0 fn2-checkpoint-restore-reader)))
+   (cond ((equal phase *fn2-checkpoint-restore-reader-phase-entries*) :entries)
+         ((equal phase *fn2-checkpoint-restore-reader-phase-padding*) :padding)
+         ((equal phase *fn2-checkpoint-restore-reader-phase-advance*) :advance)
+         ((equal phase *fn2-checkpoint-restore-reader-phase-done*) :done)
+         (t :state)))))
+(defcost fn2-boot-checkpoint-root-state :child fn2-boot-checkpoint-root-state-children :answers t)
+(defcost fn2-boot-checkpoint-root-sector :child fn2-checkpoint-restore-reader-sector :answers t)
+(defcost fn2-boot-checkpoint-root-page-check :child fn2-checkpoint-restore-reader-page-step :answers t :bytes 4096
+ :tables (fn2-core-checkpoint-restore-reader fn2-core-fc fn2-core-fc-context fn2-core-b3 fn2-core-fields fn2-core-pool fn2-core-digests))
+(defcost fn2-boot-checkpoint-root-padding :child fn2-checkpoint-restore-reader-padding-step :answers t :bytes 4096
+ :tables (fn2-core-checkpoint-restore-reader))
+(defcost fn2-boot-checkpoint-root-next :child fn2-checkpoint-restore-reader-next-page :answers t :bytes 32
+ :tables (fn2-core-checkpoint-restore-reader fn2-core-pool))
+(defcost fn2-boot-checkpoint-root-candidate :answers (:ok :skip :bounds))
+(defcost fn2-boot-checkpoint-root-reserve :answers t
+ :tables (fn2-core-pool fn2-core-control) :effects ((:acquire (:storage-window))))
+(defcost fn2-boot-checkpoint-root-begin :answers t :bytes 512
+ :tables (fn2-core-checkpoint-restore-reader fn2-core-checkpoint-restore-map-control fn2-core-fc fn2-core-pool))
+(defcost fn2-boot-checkpoint-root-mark :answers (:ok :state)
+ :tables (fn2-core-boot-config))
+
+; Explicitly use the shared declared-child face generator. These declarations
+; live in B leaf books rather than the machine declaration book, so the
+; book-local implicit defcost-faces sweep cannot discover them.
+(defmacro fn2-boot-checkpoint-root-faces ()
+ `(make-event
+   (value (cons 'progn
+    (append
+     (fn2-arms-op-face-events 'fn2-boot-checkpoint-root-state 'fn2-boot-checkpoint-root-state-children (w state))
+     (fn2-arms-op-face-events 'fn2-boot-checkpoint-root-sector 'fn2-checkpoint-restore-reader-sector (w state))
+     (fn2-arms-op-face-events 'fn2-boot-checkpoint-root-page-check 'fn2-checkpoint-restore-reader-page-step (w state))
+     (fn2-arms-op-face-events 'fn2-boot-checkpoint-root-padding 'fn2-checkpoint-restore-reader-padding-step (w state))
+     (fn2-arms-op-face-events 'fn2-boot-checkpoint-root-next 'fn2-checkpoint-restore-reader-next-page (w state))
+     (fn2-arms-op-face-events 'fn2-boot-checkpoint-map-consume 'fn2-checkpoint-restore-map-consume (w state))
+     (fn2-arms-op-face-events 'fn2-boot-checkpoint-map-finish 'fn2-checkpoint-restore-map-finish (w state))
+     (fn2-arms-op-face-events 'fn2-boot-checkpoint-map-check 'fn2-checkpoint-restore-map-check (w state)))))))
+
+(defmacro fn2-boot-checkpoint-root-operations ()
+ '(progn
+  (fn2-boot-checkpoint-root-faces)
+  (defun fn2-boot-checkpoint-root-candidate (c fn2-core)
+   (declare (xargs :stobjs fn2-core :guard (fn2-core-wfp fn2-core)))
+   (stobj-let ((fn2-checkpoints (fn2-core-checkpoints fn2-core))) (code)
+    (if (not (and (natp c) (< c 4) (< c (fn2-checkpoints-rows fn2-checkpoints)))) :bounds
+     (if (and (equal (fn2-checkpoints-state c fn2-checkpoints) *fn2-checkpoint-state-checked*)
+              (posp (fn2-checkpoints-anchor-mask c fn2-checkpoints))
+              (equal (fn2-checkpoints-builder-token c fn2-checkpoints) 0)) :ok :skip)) code))
+  (defun fn2-boot-checkpoint-root-reserve (id ogen fn2-core)
+   (declare (xargs :stobjs fn2-core :guard (fn2-core-wfp fn2-core)))
+   (let ((class (stobj-let ((fn2-pool (fn2-core-pool fn2-core))) (class)
+                 (fn2-pool-class-for *fn2-format-page-size* fn2-pool) class)))
+    (if (not class) (mv :profile 0 0 fn2-core)
+     (fn2-core-reserve class *fn2-boot-kind* id ogen fn2-core))))
+  (fn2-core-preserves fn2-boot-checkpoint-root-reserve (id ogen fn2-core) :position 3 :rows nil)
+  (defun fn2-boot-checkpoint-root-begin (c slot gen id ogen fn2-core)
+   (declare (xargs :stobjs fn2-core :guard (fn2-core-wfp fn2-core)))
+   (if (not (and (eq (fn2-boot-snapshot-read-code id fn2-core) :ok)
+                  (equal (fn2-machine-phase id fn2-core) *fn2-boot-state-checkpoint-root-begin*)
+                  (equal (fn2-machine-checkpoint-index id fn2-core) c)
+                  (equal (fn2-machine-root-slot id fn2-core) slot) (equal (fn2-machine-root-gen id fn2-core) gen)
+                  (equal (fn2-machine-generation id fn2-core) ogen))) (mv :state fn2-core)
+    (stobj-let ((fn2-checkpoints (fn2-core-checkpoints fn2-core))
+                (fn2-checkpoint-refs (fn2-core-checkpoint-refs fn2-core)) (fn2-checkpoint-bytes (fn2-core-checkpoint-bytes fn2-core))
+                (fn2-extents (fn2-core-extents fn2-core)) (fn2-pool (fn2-core-pool fn2-core))
+                (fn2-checkpoint-restore-reader (fn2-core-checkpoint-restore-reader fn2-core))
+                (fn2-checkpoint-restore-map-control (fn2-core-checkpoint-restore-map-control fn2-core)) (fn2-fc (fn2-core-fc fn2-core)))
+     (code fn2-checkpoint-restore-reader fn2-checkpoint-restore-map-control fn2-fc fn2-pool)
+     (b* (((unless (and (< 2 (fn2-fc-rows fn2-fc))
+                        (eq (fn2-pool-workspace-code slot gen *fn2-boot-kind* id ogen fn2-pool) :ok)))
+           (mv :bounds fn2-checkpoint-restore-reader fn2-checkpoint-restore-map-control fn2-fc fn2-pool))
+          ; Singleton resets are bounded. The extent ledger is NOT cleared:
+          ; exact intake overwrites every row before this candidate can close.
+          (fn2-checkpoint-restore-reader (fn2-checkpoint-restore-reader-init 1 fn2-checkpoint-restore-reader))
+          (fn2-checkpoint-restore-map-control (fn2-checkpoint-restore-map-control-init 1 fn2-checkpoint-restore-map-control))
+          (fn2-fc (fn2-fc-reset 2 fn2-fc))
+          ((mv code fn2-pool) (fn2-pool-reset slot gen *fn2-boot-kind* id ogen fn2-pool))
+          ((unless (eq code :ok)) (mv code fn2-checkpoint-restore-reader fn2-checkpoint-restore-map-control fn2-fc fn2-pool))
+          ((mv code fn2-checkpoint-restore-reader)
+           (fn2-checkpoint-restore-reader-begin c 2 slot gen 2 256 *fn2-boot-kind* id ogen
+             fn2-checkpoints fn2-checkpoint-refs fn2-checkpoint-bytes fn2-extents fn2-pool fn2-checkpoint-restore-reader)))
+      (mv code fn2-checkpoint-restore-reader fn2-checkpoint-restore-map-control fn2-fc fn2-pool))
+     (mv code fn2-core))))
+  (fn2-core-preserves fn2-boot-checkpoint-root-begin (c slot gen id ogen fn2-core) :position 1 :rows nil)
+  (defun fn2-boot-checkpoint-root-mark (c id fn2-core)
+   (declare (xargs :stobjs fn2-core :guard (fn2-core-wfp fn2-core)))
+   (if (not (and (eq (fn2-boot-snapshot-read-code id fn2-core) :ok)
+                  (equal (fn2-machine-phase id fn2-core) *fn2-boot-state-checkpoint-root-fifo*)
+                  (equal (fn2-machine-checkpoint-index id fn2-core) c) (natp c) (< c 4))) (mv :state fn2-core)
+    (stobj-let ((fn2-boot-config (fn2-core-boot-config fn2-core))
+                (fn2-checkpoint-restore-map-control (fn2-core-checkpoint-restore-map-control fn2-core))) (code fn2-boot-config)
+     (if (not (and (< 0 (fn2-checkpoint-restore-map-control-rows fn2-checkpoint-restore-map-control))
+                    (equal (fn2-checkpoint-restore-map-control-phase 0 fn2-checkpoint-restore-map-control) *fn2-checkpoint-restore-map-phase-validated*)
+                    (equal (fn2-checkpoint-restore-map-control-candidate 0 fn2-checkpoint-restore-map-control) c))) (mv :state fn2-boot-config)
+      (mv :ok (update-fn2-boot-config-map-fifo-mask (logior (fn2-boot-config-map-fifo-mask fn2-boot-config) (ash 1 c)) fn2-boot-config)))
+     (mv code fn2-core))))
+  (fn2-core-preserves fn2-boot-checkpoint-root-mark (c id fn2-core) :position 1 :rows nil)))

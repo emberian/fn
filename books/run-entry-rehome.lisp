@@ -1,0 +1,48 @@
+; Bounded ownership crossing for decoded served run entries. The source
+; capability is used only for reads; destination workspaces keep their owner.
+(in-package "ACL2")
+(include-book "runs-served")
+(fn2-book-layer :c)
+
+(defun fn2-run-entry-copy-owned (n src sgen soff sk ss sg dst dgen doff dk ds dg fn2-pool)
+ (declare (xargs :stobjs fn2-pool :measure (nfix n)
+  :guard (and (fn2-pool-wfp fn2-pool) (natp n) (natp soff) (natp doff)) ))
+ (if (zp n) (mv :ok fn2-pool)
+  (b* (((mv code byte) (fn2-pool-read src sgen soff sk ss sg fn2-pool))
+       ((unless (eq code :ok)) (mv code fn2-pool))
+       ((mv code fn2-pool) (fn2-pool-write dst dgen doff byte dk ds dg fn2-pool))
+       ((unless (eq code :ok)) (mv code fn2-pool)))
+   (fn2-run-entry-copy-owned (- n 1) src sgen (+ soff 1) sk ss sg dst dgen (+ doff 1) dk ds dg fn2-pool))))
+
+; FIELD is the next decoded field, COPIED its retained partial byte count,
+; and END the end of already rehomed fields. The scratch slot is dedicated
+; until the caller consumes the entry. No partial field reference is exposed.
+; A retry after failure rewrites the same prefix; END changes only on :more.
+(defun fn2-run-entry-rehome-step (sid base field copied end dst dgen sk ss sg dk ds dg budget fn2-fields fn2-pool)
+ (declare (xargs :stobjs (fn2-fields fn2-pool)
+  :guard (and (fn2-fields-wfp fn2-fields) (fn2-pool-wfp fn2-pool))))
+ (b* (((unless (and (natp base) (natp field) (natp copied) (natp end)
+                     (posp (fn2-run-layout-fields sid 0))
+                     (<= field (fn2-run-layout-fields sid 0))
+                     (<= (+ base (fn2-run-layout-fields sid 0)) (fn2-fields-rows fn2-fields))))
+       (mv :bounds field copied end fn2-fields fn2-pool))
+      ((when (equal field (fn2-run-layout-fields sid 0)))
+       (mv :done field copied end fn2-fields fn2-pool))
+      ((unless (and (natp budget) (< 0 budget))) (mv :yield field copied end fn2-fields fn2-pool))
+      ((unless (fn2-run-layout-octets-max sid field))
+       (mv :more (+ field 1) 0 end fn2-fields fn2-pool))
+      (r (+ base field)) (len (fn2-fields-ref-len r fn2-fields))
+      (src (fn2-fields-ref-slot r fn2-fields)) (sgen (fn2-fields-ref-gen r fn2-fields))
+      (off (fn2-fields-ref-off r fn2-fields))
+      ((unless (and (<= copied len) (not (equal src dst))
+                     (unsigned-byte-p 32 (+ end len))
+                     (eq (fn2-layout-range-code src sgen off (+ off len) nil sk ss sg fn2-pool) :ok)
+                     (eq (fn2-layout-range-code dst dgen (+ end copied) (+ end len) t dk ds dg fn2-pool) :ok)))
+       (mv :range field copied end fn2-fields fn2-pool))
+      (n (min budget 4096 (- len copied)))
+      ((mv code fn2-pool) (fn2-run-entry-copy-owned n src sgen (+ off copied) sk ss sg dst dgen (+ end copied) dk ds dg fn2-pool))
+      ((unless (eq code :ok)) (mv code field copied end fn2-fields fn2-pool))
+      (next (+ copied n))
+      ((unless (equal next len)) (mv :more field next end fn2-fields fn2-pool))
+      (fn2-fields (fn2-fields-put r (ref-slot dst) (ref-gen dgen) (ref-off end))))
+  (mv :more (+ field 1) 0 (+ end len) fn2-fields fn2-pool)))

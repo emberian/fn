@@ -104,8 +104,10 @@ Two dependencies prevent enabling final FREE now. First, the source physical
 pin integration needs admission and executable qualification. Second, although
 `fn2-format-retirement` and `fn2-format-release-allocation` already encode the
 lifecycle records (including checkpoint and physical release evidence), the
-live transaction admission does not yet accept lifecycle records. Ordered
-recovery has a source retirement branch, but no release branch.
+internal retirement producer now joins the existing batch planner and writer,
+but has not been admitted or executed. General transaction admission remains
+closed to lifecycle input. Ordered recovery has a source retirement branch,
+but no release branch.
 The release coordinator must join the actual journal persistence and
 recovery path, including checkpoint-root protection, before any call to FREE.
 
@@ -147,8 +149,16 @@ exact-batch install operation. Recovery passes its verified containing commit
 to `fn2-recovery-replay-record`, flushes any pending C workspace, and applies
 retirement after adoption. Wrong-batch, stale and conflicting records fail.
 Codec/truncation and actual replay-entry fixtures are in the unit catalog;
-admission and execution remain pending. Live admission stays disabled until
-the batch planner, producer and bounded post-durability installation compose.
+admission and execution remain pending. `fn2-retirement-submit` now selects
+the actual collector, derives its batch, encodes one member, and joins it in
+one operation. A singleton retains the workspace through uncertain outcomes.
+The publish phase visits one member/frame per step after log/fence durability
+and root installation; retirement must match that singleton's physical handle,
+workspace, owner and containing batch before the shared installer runs.
+`fn2-retirement-poll` consumes only its exact batch/event settlement, preserving
+other outcomes from the same owner. `tests/retirement-live-unit.lisp` drives
+these entries through `fn2-turn` and the simulated adapter, with early-install
+refusal and ambiguous-write controls. These source fixtures remain unexecuted.
 
 Before reuse, recovery's historical-location adoption must become checkpoint
 aware: old and reused identities cannot be adopted as simultaneously live.
@@ -219,3 +229,67 @@ rows would omit durable data. The builder must account for these exact published
 owners or reconstruct their identities from the retained semantic roots before
 persisting an allocation map. Unrelated in-progress uploads must not become
 checkpoint-durable merely because their reservations exist at the same time.
+
+The actual C cut now waits for PUBLISHED successor owners as well as STAGED and
+BOUND rows. Transaction settlement materializes accepted payload allocations
+before releasing its C successor; the snapshot refuses acquisition on a stopped
+core. `c-snapshot-materialization-unit` retains a real accepted writer outcome,
+checks that the cut stays pending, then follows materialization/release and
+checks the exact held cut. This composed source fixture remains unexecuted.
+
+Descriptor construction now obtains its own B reservation, binds the real held
+C token/cut and owned workspace, uses the existing header/descriptor codecs and
+sealing/checking path, and issues pinned physical writes under descriptor budget.
+Only its exact physical completion marks construction ready. External descriptor
+capture clears construction provenance even for identical bytes. Construction
+ready is not durable installation. Production remains `:roots-pending` until
+actual same-cut root constructors complete: the current served tree has no
+allocation-map/recovery-arena writer or event-proof-directory/frontier producer.
+Standalone Merkle machinery and synthetic root metadata cannot supply them.
+
+At source `76be97bd488cad4327944c5e8bb1244b4ce71093`, after merging the authentic
+`4400cb995db8709967f543340d71f62df4fee028` column proof bridge, the isolated
+`books/format-base` source admission passed: 19 forms in 1.60 seconds and 258,194
+prover steps. Seven byte-identical foundation dependencies were cached and
+compatible under toolchain `8aeb1bea18968c6cd33ac633a80ebf67e4924504db112fd27eb11f16a27b2a8c`.
+The root closure was `1ac328a0bef3b08fb6cb691d7371e4f33c1acecb2a77eb5e6fe69cfec3e8481c`.
+This checks the shared 16-unit geometry and unchanged Ref layout assertion,
+not runtime storage composition or certification. The session was stopped and
+its 2 GiB compute reservation released.
+
+Physical map construction now has a passive allocator gate in source: it retains
+an exact owner/token, refuses lifecycle mutations, and permits transient physical
+pins/completions. Upload reservation and cleanup yield while held. Seven literal
+mutation-frame statements are named `-by-definition`; their admission and the
+new primitive controls remain pending. The served path does not activate this
+gate until actual construction closure and journal ticket planning are connected.
+
+The existing B commit start/install path now has a reserved-ticket branch. It
+scans one construction-ledger row per attempt, consumes planned role-6 tickets
+in ordinal order, and binds their exact epoch/allocation to the ordinary three
+journal I/O roles. Installation accepts only the ticket's claimed batch/identity
+and restores the retained gate atomically. The ticket branch is currently
+`unreachable-in-composition` until the construction coordinator authorizes frozen
+installation. It does not establish that a checkpoint is durable. Ticket packing
+capacity derives from the actual commit count/byte budgets; a journal ticket's
+own allocation is installed by its commit rather than requiring a recursive
+allocation member for itself.
+
+C metadata construction is rebuilding overlay and resident-run entries through
+the existing run codecs with real B reservations; copying old cache-addressed
+index pages would be incorrect. A shared bounded rehome operation separately
+checks source and destination owners before replacing a decoded octet reference.
+The event producer groups all canonical records of one actual member/event into
+one leaf and composes the existing Merkle primitive. Its lossless directory
+retains original journal identity/seal tuples under actual installed-root edges;
+it must transfer those dependencies before any future installed-chain edge drop.
+The dependency-page frontier shortcut was rejected because an existing semantic
+record references that page's hash, which would create a hash cycle.
+
+Shared page construction now seals/checks existing codecs, retains verified
+identities, and uses pinned sector writes. Review corrected its pre-finish
+harvest ABI: unrelated notifications and consumed I/O failure return `:ok` to
+the hook chain, while failures retain the job's uncertain state. An `:unrelated`
+return would have stopped the actual core harvest dispatcher. None of these
+composed paths has been admitted or executed; root completion, lifecycle record
+installation and selected-base ordered recovery remain integration work.

@@ -385,8 +385,8 @@ workspace, and advances to the previous ordinal. Only completion of ordinal 0
 captures a role-2/5 root and its actual hash/source-complete carrier. No caller
 supplies completion. These are concrete source/callback declarations, not a
 registered coordinator, admitted ownership proof, authenticated selected-base
-restoration or allocator reclamation. Candidate builder claims and root0 shared
-worker integration are the next required ownership connection.
+restoration or allocator reclamation. Candidate builder claims now bind the reservation to its nonselectable candidate;
+root0 shared worker integration remains the next required ownership connection.
 
 ## Candidate construction ownership
 
@@ -402,6 +402,39 @@ expected-hash preparation body, preserving its tuple. A decoded recovery
 candidate clears builder provenance and cannot acquire a construction claim.
 The local claim fixture controls ownership/refusal only, not actual cut or
 physical construction. The composed claim invariant remains unqualified.
+
+
+## Allocator freeze leaf qualification
+
+At source `802da825c8e7b94e684294d20ea622a349b1b043`, the actual allocator
+and `books/alloc-freeze.lisp` loaded under the record ACL2 executable with five
+compatible cached dependencies. The nine target forms include seven literal
+unchanged-stobj frames for begin-epoch, reserve, adopt, allocation commit,
+retirement, cancellation and checkpoint drain while frozen. The source load
+used 8.76 ACL2 seconds and 938,035 prover steps. This is source admission,
+not a certificate-cache record, executed freeze control fixture, or checkpoint
+composition proof. The prior `b6a907eeb` attempt refused allocator declaration
+metadata before submitting the frame book; correcting the ownership rationale
+strings preserved that ratchet.
+
+The isolated actual allocator controls passed at `b911d26d4c66ae24fc760e87a65e22cd144bd20a`:
+eight frozen lifecycle refusals preserve the observed state and epoch; a stale
+owner generation refuses; actual physical pins can acquire and release with
+ownership intact; removing the freeze permits reservation/cancellation and changes
+the state. Both assertions executed in a six-form target load (8.85 ACL2 seconds,
+938,035 prover steps including allocator/frame source). The phase-1 token is a
+synthetic premise, so this tests the primitive gate rather than C-cut acquisition.
+The first isolated attempt lacked its direct B* import and refused before these
+assertions; adding the system dependency fixed the fixture without changing it.
+
+The next installation connection is a bounded producer that packs the actual
+completed construction ledger into the existing commit planner's allocation
+record capacity. It must keep one member's workspace, batch and event until the
+persisted installer consumes that exact member. A separate allocation per ticket
+would violate the planner's reserved ticket count. Allocation installation does
+not establish selectable checkpoint publication or authorize FREE.
+
+## Shared linked page encoding
 
 `checkpoint-linked-header.lisp` now owns the single linked BODY encoder used
 by roles 2, 3 and 5. It derives the tag and terminal bit, checks the current

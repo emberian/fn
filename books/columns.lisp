@@ -385,6 +385,42 @@
   (declare (xargs :guard t :verify-guards nil))
   (if (zp index) `(car ,name) `(nth ,index ,name)))
 
+; Public accessor-level shape fact: clients need not unfold storage to use a
+; fixed-cardinality primitive's guard or numeric result theorem.
+(defun fn2-columns-fixed-length-bridge (name field)
+ (declare (xargs :verify-guards nil))
+ (let ((length (fn2-columns-sym (car field) "-LENGTH")))
+  `(defthm ,(fn2-columns-sym length "-FIXED")
+    (implies (,(fn2-columns-sym name "P") ,name)
+             (equal (,length ,name)
+                    ,(car (caddr (fn2-columns-field-spec field)))))
+    :rule-classes (:rewrite :forward-chaining)
+    :hints (("Goal" :in-theory (enable ,length))))))
+; Fixed cardinalities are rewritten into client guards. Export indexed facts
+; with the same bounds, keeping the concrete accessor opaque.
+(defun fn2-columns-fixed-index-facts (name field)
+ (declare (xargs :verify-guards nil))
+ (let* ((p (fn2-columns-sym name "P"))
+        (read (fn2-columns-sym (car field) "I"))
+        (length (fn2-columns-sym (car field) "-LENGTH"))
+        (size (car (caddr (fn2-columns-field-spec field))))
+        (limit (fn2-columns-type-limit (fn2-columns-field-type field)))
+        (premise `(and (,p ,name) (natp i) (< i ,size))))
+  `((defthm ,(fn2-columns-sym read "-FIXED-NATP")
+      (implies ,premise (natp (,read i ,name)))
+      :rule-classes :type-prescription
+      :hints (("Goal"
+               :in-theory (disable ,read ,length ,(fn2-columns-sym read "-NATP"))
+               :use (,(fn2-columns-sym read "-NATP")
+                     ,(fn2-columns-sym length "-FIXED")))))
+    ,@(and limit
+       `((defthm ,(fn2-columns-sym read "-FIXED-BOUND")
+           (implies ,premise (< (,read i ,name) ,limit))
+           :rule-classes :linear
+           :hints (("Goal"
+                    :in-theory (disable ,read ,length ,(fn2-columns-sym read "-BOUND"))
+                    :use (,(fn2-columns-sym read "-BOUND")
+                          ,(fn2-columns-sym length "-FIXED"))))))))))
 (defun fn2-columns-field-facts (name field index localp)
   (declare (xargs :guard t :verify-guards nil))
   (let* ((p (fn2-columns-sym name "P")) (f (car field))
@@ -411,7 +447,8 @@
                            (equal (len (nth ,index ,name))
                                   ,(car (caddr (fn2-columns-field-spec field)))))
                   :rule-classes (:rewrite :forward-chaining)
-                  :hints (("Goal" :in-theory (enable ,p))))))
+                  :hints (("Goal" :in-theory (enable ,p))))
+                ,(fn2-columns-fixed-length-bridge name field)))
           `((defthm ,(fn2-columns-sym f "-NTH-NATP")
               (implies (,p ,name) (natp (nth ,index ,name)))
               :rule-classes :type-prescription
@@ -444,6 +481,8 @@
             `((defthm ,(fn2-columns-sym read "-BOUND")
                 (implies (and (,p ,name) ,@bounds) (< ,readcall ,limit))
                 :rule-classes :linear)) nil)
+      ,@(and arrayp (not (cadr (member-eq :resizable field)))
+             (fn2-columns-fixed-index-facts name field))
       (defthm ,(fn2-columns-sym write "-NTH")
         (equal (nth k ,writecall)
                (if (equal (nfix k) ,index)

@@ -536,7 +536,8 @@
   ;; ENTRIES: the core-child registry, for each child's :profilep. Its init's
   ;; guard is proved from that child's profile facts alone with the profile
   ;; predicate closed (0.1 s against 12-24 s with fn2-profilep open); a child
-  ;; whose init needs the open predicate falls back to it (make-event :or).
+  ;; whose init needs base-profile details opens only that base predicate;
+  ;; the assembled core profile stays closed in both attempts (make-event :or).
   (if (or (atom children) (atom inits)) nil
     (let* ((c (car children)) (name (fn2-core-init-child-name (car c))) (stobj (cadr c))
            (prof (fn2-columns-sym name "-PROFILE"))
@@ -548,23 +549,25 @@
              `(make-event
                '(:or (defun ,name (profile fn2-core)
                        (declare (xargs :stobjs fn2-core :guard (fn2-core-profilep profile)
-                                       :guard-hints (("Goal" :use ,prof :in-theory (disable fn2-core-profilep fn2-profilep))))
+                                       :guard-hints (("Goal" :use (,prof fn2-profile-trace-boolean) :in-theory (disable fn2-core-profilep fn2-profilep))))
                                 (ignorable profile))
                        ,body)
                      (defun ,name (profile fn2-core)
                        (declare (xargs :stobjs fn2-core :guard (fn2-core-profilep profile)
-                                       :guard-hints (("Goal" :in-theory (enable fn2-core-profilep fn2-machines-profilep fn2-profilep))))
+                                       :guard-hints (("Goal" :use (,prof fn2-profile-trace-boolean) :in-theory
+                                        (e/d (fn2-machines-profilep fn2-profilep) (fn2-core-profilep)))))
                                 (ignorable profile))
                        ,body)))
              `(make-event
                '(:or (defthm ,(fn2-columns-sym name "-TYPE")
                        (implies (and (fn2-corep fn2-core) (fn2-core-profilep profile))
                                 (fn2-corep (,name profile fn2-core)))
-                       :hints (("Goal" :use ,prof :in-theory (disable fn2-core-profilep fn2-profilep))))
+                       :hints (("Goal" :use (,prof fn2-profile-trace-boolean) :in-theory (disable fn2-core-profilep fn2-profilep))))
                      (defthm ,(fn2-columns-sym name "-TYPE")
                        (implies (and (fn2-corep fn2-core) (fn2-core-profilep profile))
                                 (fn2-corep (,name profile fn2-core)))
-                       :hints (("Goal" :in-theory (enable fn2-core-profilep fn2-machines-profilep))))))
+                       :hints (("Goal" :use (,prof fn2-profile-trace-boolean) :in-theory
+                                (e/d (fn2-machines-profilep) (fn2-core-profilep)))))))
              (fn2-core-init-child-events (cdr children) (cdr inits) entries)))))
 (defun fn2-core-init-child-names (children)
   (if (atom children) nil

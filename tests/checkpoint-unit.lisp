@@ -1,4 +1,5 @@
 (in-package "ACL2")
+(include-book "std/util/bstar" :dir :system)
 (include-book "../books/checkpoint")
 
 ; Local frontier control only: exercise physical reuse through the allocator,

@@ -288,3 +288,24 @@ with required grants disabled. The defensive repair worker was stopped twice by
 automatic content review for possible cybersecurity risk; source changes remain
 preserved, but its fixed-callback qualification is incomplete. Do not relabel the
 passing baseline native recovery tests as permission correctness or release approval.
+
+## Active implementation priorities — 2026-11-14
+
+Root candidate e4f74c279 contains budget admission, H1 progress, operation-phase
+refusal and reference adaptations. The 21e actual-turn record and old-stop
+mutation passed; e4f generated charge-context regression is current-key certified.
+Production TRACE/Q1 remains pending. Broad baseline exports stay stopped.
+
+Six resumed implementation lanes advance distinct remaining product obligations:
+
+- recover_children: bring reviewed shared compiler prerequisites and actual xref/transaction consumers onto the current candidate; connect live-formula production evidence.
+- reclamation_assurance: integrate physical pins/hooks, journal/replay lifecycle serialization and the release-pending protection barrier before enabling durable FREE.
+- recover_lean: connect canonical body/domain/recursive evidence to the actual CNS consumer, coordinating the existing evidence API.
+- sol_q1_semantics: complete actual CNS output/effect composition and reservation invariant initialization/preservation from independent pool effects.
+- composed_build: repair initializer proof-cost at the shared generator and compose actual turn issuance history, including reclamation hook frames.
+- sol_crash_cut_assurance: finish atomic equality witnesses and connect actual native raw-return cuts and real-file-descriptor tests to the model.
+
+Root owns timely integration and targeted composition gates. Source implementation
+proceeds concurrently; expensive proof jobs require named allocations. No lane
+may replace a missing served feature with a model-only completion claim. The
+authorization review block remains explicit and is not reassigned around review.

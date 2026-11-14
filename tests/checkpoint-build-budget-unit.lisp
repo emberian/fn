@@ -1,6 +1,7 @@
 ; Real BEGIN/pack/bind budget controls with synthetic eligible root carriers.
 ; This isolates source binding, not a real C cut/root or generated IO witness.
 (in-package "ACL2")
+(include-book "std/util/bstar" :dir :system)
 (include-book "../books/checkpoint-build")
 (defun fn2-checkpoint-budget-roots (role fn2-checkpoint-refs)
  (declare (xargs :stobjs fn2-checkpoint-refs :verify-guards nil :measure (nfix (- 6 (nfix role)))))
