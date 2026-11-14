@@ -568,3 +568,21 @@ The pressure source uses actual blocked retirement progress and cached source
 working-room availability. It does not guarantee journal directory, physical
 construction or publication-window headroom. Source arity, dispatch and gate
 controls are static checks; these actor books have not been admitted or run.
+
+The pre-construction directory check runs only at the settled held C cut,
+before descriptor BEGIN. Its resident commit budget is derived as one final
+installation plus the ceiling of actual extent rows divided by the actual
+allocation-record capacity per batch. This covers any physically feasible
+construction's allocation records, but can conservatively refuse a smaller
+snapshot near directory exhaustion; it is not physical free-space headroom.
+The same hint in the pressure source prevents immediate abort/retry churn.
+Startup's actual completed-fence layout binding is required before admission.
+
+A refused pre-construction directory check releases the exact C snapshot token
+first, then calls the sole shared working-release body over future8 and root19,
+one actual owned lease per step. Its authority comes from the actual master
+abort phase, FREE candidate, IDLE descriptor builder and untouched zero-token,
+no-loan bundle. It cannot cancel allocations or release persistent edges, and
+cannot authorize cleanup after descriptor BEGIN. Normal publication and this
+abort share the physical release loop with separate permission guards.
+These actor guards and controls remain source-only and unadmitted.
