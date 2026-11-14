@@ -3,6 +3,7 @@
 (include-book "machines-c-read")
 (include-book "fnct-pool")
 (include-book "cns-kind")
+(include-book "cursor")
 (fn2-book-layer :e)
 (local (in-theory (disable fn2-fields-rows fn2-reads-rows fn2-pool-rows
  fn2-fieldsp fn2-fields-wfp fn2-poolp fn2-pool-wfp)))
@@ -12,13 +13,17 @@
 (defun fn2-peer-export-resume (x fcrows base slot gen off len sk ss sg lease lgen ok os og
  fn2-reads fn2-id-decides fn2-fields fn2-pool)
  (declare (xargs :stobjs (fn2-reads fn2-id-decides fn2-fields fn2-pool)
- :guard (and (fn2-reads-wfp fn2-reads) (fn2-fields-wfp fn2-fields) (fn2-pool-wfp fn2-pool))))
+ :guard (and (fn2-reads-wfp fn2-reads) (fn2-id-decides-wfp fn2-id-decides) (fn2-fields-wfp fn2-fields) (fn2-pool-wfp fn2-pool))))
  (b* (((unless (and (natp base) (<= (+ base *fn2-identity-evidence-entry-num-fields*) (fn2-fields-rows fn2-fields))
                     (natp off) (natp len) (<= len 400)
                     (unsigned-byte-p 8 ok) (unsigned-byte-p 32 os) (unsigned-byte-p 60 og)))
        (mv :bounds fn2-reads fn2-fields fn2-pool))
       ((mv code b0) (fn2-read-stripe x fcrows fn2-reads fn2-id-decides fn2-fields))
       ((unless (and (eq code :ok) (natp x) (< x (fn2-reads-rows fn2-reads))))
+       (mv :bounds fn2-reads fn2-fields fn2-pool))
+      ; Decoding and copying cannot overwrite fields still to be read.
+      ((unless (or (<= (+ base *fn2-identity-evidence-entry-num-fields*) (+ b0 *fn2-read-lo*))
+                   (<= (+ b0 *fn2-read-lo* 9) base)))
        (mv :bounds fn2-reads fn2-fields fn2-pool))
       ((mv code next fn2-fields)
        (fn2-identity-evidence-entry-decode base slot gen off (+ off len) sk ss sg fn2-fields fn2-pool))
@@ -45,6 +50,8 @@
        (mv :bounds 0 0 fn2-fields fn2-pool))
       ((mv code eb) (fn2-rd-entry-row x 0 fn2-reads fn2-run-installed fn2-fields))
       ((unless (eq code :ok)) (mv code 0 0 fn2-fields fn2-pool))
+      ((unless (or (<= (+ base 12) eb) (<= (+ eb 11) base)))
+       (mv :bounds 0 0 fn2-fields fn2-pool))
       ((mv code fn2-fields fn2-pool)
        (fn2-rd-key-save 0 11 1 eb (fn2-reads-ek x fn2-reads) (fn2-reads-es x fn2-reads)
         (fn2-reads-eg x fn2-reads) base 512 slot gen ok os og fn2-fields fn2-pool))
@@ -73,6 +80,16 @@
 
 (defmacro fn2-peer-export-core-events ()
  '(progn
+   ; Reserve the bounded workspace once, before the first scan or resume.
+   (defun fn2-peer-export-pad-core (slot gen ok os og fn2-core)
+    (declare (xargs :stobjs fn2-core :guard (fn2-core-wfp fn2-core)))
+    (stobj-let ((fn2-pool (fn2-core-pool fn2-core)))
+     (code fn2-pool)
+     (fn2-cursor-pool-pad 1024 slot gen ok os og fn2-pool)
+     (mv code fn2-core)))
+   (fn2-core-preserves fn2-peer-export-pad-core
+    (slot gen ok os og fn2-core) :position 1 :rows nil
+    :hints (("Goal" :in-theory (enable fn2-core-wfp))))
    (defun fn2-peer-export-resume-core (x base slot gen off len sk ss sg lease lgen ok os og fn2-core)
     (declare (xargs :stobjs fn2-core :guard (fn2-core-wfp fn2-core)))
     (stobj-let ((fn2-reads (fn2-core-reads fn2-core)) (fn2-id-decides (fn2-core-id-decides fn2-core))
@@ -95,4 +112,4 @@
    (fn2-core-preserves fn2-peer-export-entry-core
     (x base slot gen ok os og fn2-core) :position 3 :rows nil
     :hints (("Goal" :in-theory (enable fn2-core-wfp))))
-   (in-theory (disable fn2-peer-export-resume-core fn2-peer-export-entry-core))))
+   (in-theory (disable fn2-peer-export-pad-core fn2-peer-export-resume-core fn2-peer-export-entry-core))))
