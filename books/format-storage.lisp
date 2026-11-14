@@ -47,9 +47,9 @@
 (assert-event (equal (fn2-layout-max-size *fn2-format-source-manifest-entry*) 130))
 
 (deflayout fn2-format-allocation-map-entry
-  `((extent (:id extent)) (state (:enum allocation-state (:free :reserved :allocated :retire-pending))) (owner-kind :u8) (owner (:id owner)) (writer-epoch (:id writer-epoch)) (allocation (:id allocation)) (retirement-commit (:id commit))))
+  `((extent (:id extent)) (state (:enum allocation-state (:free :reserved :allocated :retire-pending))) (owner-kind :u8) (owner (:id owner)) (writer-epoch (:id writer-epoch)) (allocation (:id allocation)) (retirement-commit (:id commit)) (next-retired (:id extent))))
 (assert-event (fn2-layoutp *fn2-format-allocation-map-entry*))
-(assert-event (equal (fn2-layout-max-size *fn2-format-allocation-map-entry*) 47))
+(assert-event (equal (fn2-layout-max-size *fn2-format-allocation-map-entry*) 56))
 
 (deflayout fn2-format-checkpoint-descriptor
   (append

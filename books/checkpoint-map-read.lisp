@@ -20,7 +20,10 @@
       (fn2-fields (fn2-fields-set-value (+ base *fn2-format-allocation-map-entry-field-owner*) (fn2-extents-owner-id extent fn2-extents) fn2-fields))
       (fn2-fields (fn2-fields-set-value (+ base *fn2-format-allocation-map-entry-field-writer-epoch*) (fn2-extents-epoch extent fn2-extents) fn2-fields))
       (fn2-fields (fn2-fields-set-value (+ base *fn2-format-allocation-map-entry-field-allocation*) (fn2-extents-counter extent fn2-extents) fn2-fields))
-      (fn2-fields (fn2-fields-set-value (+ base *fn2-format-allocation-map-entry-field-retirement-commit*) (fn2-extents-retirement extent fn2-extents) fn2-fields)))
+      (fn2-fields (fn2-fields-set-value (+ base *fn2-format-allocation-map-entry-field-retirement-commit*) (fn2-extents-retirement extent fn2-extents) fn2-fields))
+      (fn2-fields (fn2-fields-set-value (+ base *fn2-format-allocation-map-entry-field-next-retired*)
+        (if (equal (fn2-extents-state extent fn2-extents) *fn2-extent-state-retire-pending*)
+            (fn2-extents-next-retired extent fn2-extents) *fn2-alloc-none*) fn2-fields)))
   (mv :entry fn2-fields)))
 (fn2-fields-preserves fn2-checkpoint-frozen-map-entry
  (extent base token okind oslot ogen fn2-extents fn2-fields) :position 1)

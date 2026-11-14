@@ -8,7 +8,8 @@
   '((kind (:enum checkpoint-map-body-kind (:allocation-map :recovery-arena :event-proof-directory)))
     (version :u8) (cut-commit (:id commit)) (cut-event (:id event))
     (total-entries :varint) (page-ordinal :varint) (first-ordinal :varint)
-    (entry-count :varint) (has-next :u8))
+    (entry-count :varint) (has-next :u8)
+    (retired-head (:id extent)) (retired-count :varint))
   (fn2-format-prefix "NEXT-" *fn2-format-ref*)))
 
 (defconst *fn2-checkpoint-map-body-start*
