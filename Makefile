@@ -226,6 +226,9 @@ ACL2_BOOKS = \
   tests/alloc-freeze-unit \
   tests/checkpoint-unit \
   tests/alloc-planning-unit \
+  tests/alloc-lifecycle-unit \
+  tests/retirement-intent-allocator-unit \
+  tests/retirement-intent-leaf-unit \
   tests/block-workspace-interleaving-unit \
   tests/checkpoint-aggregate-unit \
   tests/checkpoint-allocation-coordinator-unit \
