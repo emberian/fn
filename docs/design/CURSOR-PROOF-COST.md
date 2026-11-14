@@ -44,7 +44,35 @@ quantities, 88.37 for shape, and 73.31 for function admission. These disjoint
 categories exclude aggregate MAKE-EVENT summaries. Only the four rows above
 were reproved with the new hint. RUN-SEEK descriptor (23.87 seconds) and
 RENDER-SINGLE descriptor (21.47 seconds) are further consumers to check in the
-next coherent record. HSCAN-LOOP admission alone takes 27.99 seconds and
-2,721,556 steps: its guard proof unfolds HSCAN-STEP into 25-way branches even
-though the loop fixes its returned state/index and guards writes. A separate
-opaque-callee guard proof is the next narrow candidate; it has not been run.
+next coherent record. HSCAN-LOOP admission alone took 27.99 seconds and
+2,721,556 steps. Its separate author probe now passes in 2.11 seconds and
+233,458 steps, using only termination and guard hints. Both keep HSCAN-STEP
+and GRAM-UPCASE opaque; termination also closes POOL-SLOT-CAPACITY, while the
+guard leaves that accessor open to establish its numeric result type.
+
+The first guard-only attempt exhausted the unchanged two-million-step cap
+before reaching the guard proof: termination was also expanding the step
+branches. The second attempt closed all three callees in both phases and
+reached the missing numeric capacity fact in 1.54 seconds. The final attempt
+keeps capacity open only for guard verification. No theorem or guard was
+weakened and the measure and body remain identical.
+
+The fresh recursive clone was compared byte-for-byte to b2 after removing
+only the added hints and replacing its self-name. Admission began with the
+three callees explicitly enabled, avoiding reliance on cursor's later
+closed theory. Live assertions independently checked the original guard,
+input/output stobj ABI, and complete unnormalized body modulo self-name.
+Final batch: 2.15 seconds, 233,458 steps; cached include 10.10 seconds and zero
+steps. It reused the same qualified 94-book artifact set above. Final outer
+PID 567193, server 567218, ACL2 group 567222; stop returned zero and all were
+confirmed absent. The final probe SHA256 is
+`fda1cf058fa8572642429d423f54d96531d83c63d320c971f1bd7faf93770675`.
+Payload/receipt: `/tmp/finish-hscan-cost/`; final Forge log:
+`/tmp/finish-hscan-cost-third.log`. Scope remained 2 GiB, no source fallback,
+45-second/two-million-step attempts. This is an author probe, not a new book
+certificate.
+
+The other recursive cursor helpers were reviewed before extending the fix:
+STUFF-LOOP admits in 0.73 seconds, MOVE-LOOP in 1.00, SPAN-EQ-P in 0.03, and
+MID-SEEN-P in 0.09. They do not show this costly callee-branch expansion, so
+no blanket change was made. Shared shape and quantities costs remain open.
