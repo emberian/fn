@@ -2,7 +2,7 @@
 ; Physical root completion remains the shared worker's responsibility.
 (in-package "ACL2")
 (include-book "event-build-unit")
-(include-book "../books/event-producer")
+(include-book "../books/event-rearm")
 
 (defun fn2-epp-begin (token slot gen scratch sgen read-slot read-gen fn2-event-build fn2-checkpoint-build fn2-checkpoints fn2-core)
  (declare (xargs :stobjs (fn2-event-build fn2-checkpoint-build fn2-checkpoints fn2-core) :verify-guards nil))
@@ -49,10 +49,11 @@
       (fn2-checkpoint-lifecycle (fn2-checkpoint-lifecycle-init 1 fn2-checkpoint-lifecycle)))
   (stobj-let ((fn2-event-read (fn2-core-event-read fn2-core)) (fn2-journal-members (fn2-core-journal-members fn2-core))
               (fn2-csnapshot (fn2-core-csnapshot fn2-core)) (fn2-extents (fn2-core-extents fn2-core))
-              (fn2-mk (fn2-core-mk fn2-core)) (fn2-fc (fn2-core-fc fn2-core)) (fn2-digests (fn2-core-digests fn2-core)))
+              (fn2-mk (fn2-core-mk fn2-core)) (fn2-fc (fn2-core-fc fn2-core)) (fn2-digests (fn2-core-digests fn2-core))
+              (fn2-checkpoint-writer (fn2-checkpoint-writer-table fn2-core)) (fn2-machines (fn2-core-machines fn2-core)))
    (code fn2-event-build fn2-event-read fn2-journal-members)
    (fn2-event-producer-rearm fn2-event-build fn2-event-read fn2-journal-members fn2-csnapshot fn2-checkpoints fn2-checkpoint-refs
-    fn2-checkpoint-publication fn2-checkpoint-lifecycle fn2-extents fn2-mk fn2-fc fn2-digests)
+    fn2-checkpoint-publication fn2-checkpoint-lifecycle fn2-extents fn2-mk fn2-fc fn2-digests fn2-checkpoint-writer fn2-machines)
    (mv (and (eq code :retained) (= phase (fn2-event-build-phase 0 fn2-event-build))
             (= token (fn2-event-build-token 0 fn2-event-build))
             (= (fn2-event-read-phase 0 fn2-event-read) *fn2-event-read-phase-complete*)
