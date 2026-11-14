@@ -72,7 +72,7 @@
 (defcost fn2-upload-conn-live-p :doc "Whether the connection still feeds this upload.")
 (defcost fn2-upload-txn-live-p :doc "Whether the upload's transaction still names it.")
 (defcost fn2-upload-wake :tables (fn2-core-machines) :doc "Wake the upload's transaction.")
-(defcost fn2-upload-payload-reserve :answers (:ok :no-space :fault) :faults (:fault) :tables (fn2-core-extents fn2-core-control)
+(defcost fn2-upload-payload-reserve :answers (:ok :no-space :frozen :fault) :faults (:fault) :tables (fn2-core-extents fn2-core-control)
   :doc "Reserve the extent the source is stored in (B's allocator): (mv code extent epoch counter).")
 (defcost fn2-upload-payload-settle :answers (:ok :fault) :faults (:fault) :tables (fn2-core-extents)
   :doc "At the drain: a payload extent no transaction committed has its reservation cancelled.")

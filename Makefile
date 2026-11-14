@@ -212,6 +212,7 @@ ACL2_BOOKS = \
   tests/accounts-unit \
   tests/alloc-random \
   tests/alloc-unit \
+  tests/alloc-freeze-unit \
   tests/checkpoint-unit \
   tests/checkpoint-member-unit \
   tests/checkpoint-provenance-unit \
