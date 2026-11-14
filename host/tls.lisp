@@ -106,7 +106,7 @@
     (incf (fn2-native-tls-input-offset tls) fed)
     (if (plusp fed) :progress :blocked)))))
 
-(defun fn2-native-tls-handshake-step (tls fd host bytes address nonce slot generation)
+(defun fn2-native-tls-handshake-step (tls fd host bytes address cap-index nonce slot generation)
  "Execute exactly the action selected by the concrete ACL2 transport ledger."
  (let ((ledger (fn2-native-tls-transport tls))
        (handle (fn2-native-tls-handle tls))
@@ -135,6 +135,6 @@
             (values (fn2-tls-%handshake handle) 0))
          (otherwise (error "fn2 TLS: unknown logical physical action"))))
     (multiple-value-bind (observed kick updated)
-        (fn2-tls-transport-observe nonce slot generation serial raw 0 errno ledger)
+        (fn2-tls-transport-observe cap-index nonce slot generation serial raw 0 errno ledger)
      (setf (fn2-native-tls-transport tls) updated)
      (values observed kick (fn2-tls-transport-action-interest action)))))))

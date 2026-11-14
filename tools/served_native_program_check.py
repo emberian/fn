@@ -20,7 +20,9 @@ MODEL_PATHS = ['sim/sim.lisp', 'sim/sim-adapter-base.lisp', 'sim/check-own.lisp'
 # Values name the surrounding model transition, not a native syscall guarantee.
 CUTS = {
     ('fn2-n-tls-ready', 'tls-start'): 'fn2-sim-physical',
-    ('fn2-n-tls-ready', 'tls-handshake'): 'fn2-sim-physical',
+    ('fn2-native-tls-handshake-step', 'tls-handshake'): 'fn2-sim-physical',
+    ('fn2-native-tls-handshake-step', 'tls-send'): 'fn2-sim-physical',
+    ('fn2-native-tls-handshake-step', 'tls-receive'): 'fn2-sim-physical',
     ('fn2-n-tls-ready', 'tls-record'): 'fn2-sim-physical',
     ('fn2-native-tls-flush', 'tls-send'): 'fn2-sim-physical',
     ('fn2-native-tls-fill', 'tls-receive'): 'fn2-sim-physical',
@@ -35,7 +37,8 @@ CUTS = {
     ('fn2-device-worker', 'device-syscall-return'): 'fn2-sim-complete-result',
 }
 ORDERS = {
-    'fn2-n-tls-ready': ['fn2-host-tls-next-turn', 'fn2-native-tls-flush', '@tls-handshake', '@tls-record'],
+    'fn2-n-tls-ready': ['fn2-n-tls-handshake-ready', 'fn2-native-tls-flush', '@tls-record'],
+    'fn2-native-tls-handshake-step': ['fn2-tls-transport-next', '@tls-send', '@tls-receive', '@tls-handshake', 'fn2-tls-transport-observe'],
     'fn2-native-tls-flush': ['fn2-tls-%drain', '@tls-send', 'fn2-native-send'],
     'fn2-native-tls-fill': ['@tls-receive', 'fn2-native-recv', 'fn2-tls-%feed'],
     'fn2-n-take': ['fn2-host-outbox-peek', 'fn2-host-action', 'fn2-host-op-span',
@@ -66,15 +69,24 @@ CONTRACTS = {
     'fn2-native-tls-fill': [
         '(room (fn2-native-tls-span (length buffer) 0 (fn2-tls-%input-room (fn2-native-tls-handle tls)) (length buffer)))',
         '(fn2-native-recv fd (sb-sys:vector-sap buffer) room)',
-        '(= n (fn2-tls-%feed (fn2-native-tls-handle tls) (sb-sys:vector-sap buffer) n))'],
+        '(= (fn2-native-tls-input-offset tls) (fn2-native-tls-input-length tls))',
+        '(incf (fn2-native-tls-input-offset tls) fed)'],
     'fn2-n-tls-ready': [
-        '(fn2-host-tls-next-turn (fn2-native-tls-turns-left tls))',
-        '(setf (fn2-native-tls-turns-left tls) remaining)',
-        '(unless (eq code :ok) (fn2-n-complete host slot :failed 0) (return-from fn2-n-tls-ready nil))',
+        '(return-from fn2-n-tls-ready (fn2-n-tls-handshake-ready host slot cap))',
         '(fn2-native-tls-open (fn2-nhost-tls-config host) (fn2-nhost-tls-window host) (fn2-nhost-tls-quantum host) (fn2-nhost-tls-seed-capacity host) (fn2-nhost-tls-turns host))',
-        '(and (fn2-nop-tls-finished op) (fn2-native-tls-output-empty-p tls) (or (not handshake) (= (fn2-nop-tls-seed-offset op) (fn2-nop-len op))))',
-        '(incf (fn2-nop-tls-seed-offset op) n)',
+        '(and (fn2-nop-tls-finished op) (fn2-native-tls-output-empty-p tls))',
         '(incf (fn2-native-tls-seed-offset tls) fed)'],
+    'fn2-native-tls-handshake-step': [
+        '(fn2-tls-transport-next (fn2-tls-%input-room handle) (fn2-tls-%output-pending handle) ledger)',
+        '(fn2-tls-transport-observe cap-index nonce slot generation serial raw 0 errno ledger)',
+        '(replace seed bytes :start1 offset :end1 (+ offset count) :start2 (+ address offset) :end2 (+ address offset count))',
+        '(fn2-native-send fd (sb-sys:sap+ (sb-sys:vector-sap output) offset) count)',
+        '(fn2-native-recv fd (sb-sys:vector-sap input) count)',
+        '(setf (fn2-native-tls-transport tls) updated)'],
+    'fn2-n-tls-handshake-ready': [
+        '(fn2-tls-transport-start (fn2-nop-cap op) (fn2-ncap-nonce cap) slot (fn2-nop-gen op) (fn2-nop-len op) (fn2-nhost-tls-seed-capacity host) (fn2-nhost-tls-quantum host) (fn2-nhost-tls-turns host) (create-fn2-tls-transport))',
+        '(fn2-tls-transport-handoff (fn2-nop-cap op) (fn2-ncap-nonce cap) slot (fn2-nop-gen op) (fn2-native-tls-transport tls))',
+        '(setf (fn2-native-tls-seed-length tls) copied (fn2-native-tls-seed-offset tls) fed (fn2-native-tls-input-length tls) il (fn2-native-tls-input-offset tls) io (fn2-native-tls-output-length tls) ol (fn2-native-tls-output-offset tls) oo)'],
     'fn2-n-take': [
         '(fn2-host-outbox-ack 1 core)',
         '(make-fn2-nop :state +fn2-n-waiting+ :gen gen :kind kind :cap cap :nonce nonce '
@@ -231,7 +243,7 @@ def check(root=ROOT):
                     if isinstance(c, list) and len(c) == 2}
         if observed != expected_branches or len(branches[0][2:]) != 3:
             findings.append(f'device primitive mapping changed: {observed!r}')
-    for name in ('fn2-native-tls-fill', 'fn2-native-tls-flush', 'fn2-n-tls-ready'):
+    for name in ('fn2-native-tls-fill', 'fn2-native-tls-flush', 'fn2-n-tls-ready', 'fn2-native-tls-handshake-step'):
         if ledger.calls(defs.get(name, [])) & {'loop', 'do', 'dotimes', 'dolist', name}:
             findings.append(f'{name}: TLS transport turn contains an unbounded retry/iteration')
     advance_calls = ledger.calls(defs.get('fn2-sim-advance-with-clients', []))

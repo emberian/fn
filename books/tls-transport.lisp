@@ -5,7 +5,7 @@
 (include-book "tls-kind")
 
 (defcolumns fn2-tls-transport
- ((nonce :u60) (slot :u32) (generation :u60)
+ ((cap :u32) (nonce :u60) (slot :u32) (generation :u60)
   (seed-total :u32) (seed-capacity :u32) (quantum :u32)
   (budget :u32) (serial :u32) (copied :u32) (fed :u32)
   (input-length :u32) (input-offset :u32)
@@ -20,16 +20,16 @@
   (raw-negative :bool) (raw-code :u32) (raw-count :u32) (raw-errno :u32))
  :rows-bound 2)
 
-(defun fn2-tls-transport-start (nonce slot generation total capacity quantum budget fn2-tls-transport)
+(defun fn2-tls-transport-start (cap nonce slot generation total capacity quantum budget fn2-tls-transport)
  (declare (xargs :stobjs fn2-tls-transport :guard t :verify-guards nil))
- (if (not (and (unsigned-byte-p 60 nonce) (unsigned-byte-p 32 slot)
+ (if (not (and (unsigned-byte-p 32 cap) (unsigned-byte-p 60 nonce) (unsigned-byte-p 32 slot)
                (unsigned-byte-p 60 generation) (unsigned-byte-p 32 total)
                (unsigned-byte-p 32 capacity) (<= total capacity)
                (posp quantum) (unsigned-byte-p 32 quantum)
                (posp budget) (unsigned-byte-p 32 budget)))
      (mv :bounds fn2-tls-transport)
   (let ((fn2-tls-transport (fn2-tls-transport-init 1 fn2-tls-transport)))
-   (let ((fn2-tls-transport (fn2-tls-transport-put 0 (nonce nonce) (slot slot)
+   (let ((fn2-tls-transport (fn2-tls-transport-put 0 (cap cap) (nonce nonce) (slot slot)
      (generation generation) (seed-total total) (seed-capacity capacity)
      (quantum quantum) (budget budget) (ssl-status 5))))
  (mv :ok fn2-tls-transport)))))
@@ -100,11 +100,12 @@
  (mv :act action offset count serial
         fn2-tls-transport)))))))))
 
-(defun fn2-tls-transport-observe (nonce slot generation serial code count errno fn2-tls-transport)
+(defun fn2-tls-transport-observe (cap nonce slot generation serial code count errno fn2-tls-transport)
  (declare (xargs :stobjs fn2-tls-transport :verify-guards nil
   :guard (and (fn2-tls-transport-wfp fn2-tls-transport) (= (fn2-tls-transport-rows fn2-tls-transport) 1))))
  ;; Malformed/stale returns change neither the pending action nor its ledger.
- (if (not (and (equal nonce (fn2-tls-transport-nonce 0 fn2-tls-transport))
+ (if (not (and (equal cap (fn2-tls-transport-cap 0 fn2-tls-transport))
+          (equal nonce (fn2-tls-transport-nonce 0 fn2-tls-transport))
                (equal slot (fn2-tls-transport-slot 0 fn2-tls-transport))
                (equal generation (fn2-tls-transport-generation 0 fn2-tls-transport))
                (equal serial (fn2-tls-transport-serial 0 fn2-tls-transport))
@@ -178,21 +179,27 @@
 (verify-guards fn2-tls-transport-start)
 (verify-guards fn2-tls-transport-next
  :hints (("Goal" :in-theory (disable fn2-tls-transport-rows fn2-tls-transport-plan
-  fn2-tls-transport-nonce fn2-tls-transport-slot fn2-tls-transport-generation fn2-tls-transport-seed-total fn2-tls-transport-seed-capacity fn2-tls-transport-quantum fn2-tls-transport-budget fn2-tls-transport-serial fn2-tls-transport-copied fn2-tls-transport-fed fn2-tls-transport-input-length fn2-tls-transport-input-offset fn2-tls-transport-output-length fn2-tls-transport-output-offset fn2-tls-transport-ssl-status fn2-tls-transport-terminal fn2-tls-transport-pending fn2-tls-transport-offset fn2-tls-transport-requested fn2-tls-transport-raw-negative fn2-tls-transport-raw-code fn2-tls-transport-raw-count fn2-tls-transport-raw-errno))))
+  fn2-tls-transport-cap fn2-tls-transport-nonce fn2-tls-transport-slot fn2-tls-transport-generation fn2-tls-transport-seed-total fn2-tls-transport-seed-capacity fn2-tls-transport-quantum fn2-tls-transport-budget fn2-tls-transport-serial fn2-tls-transport-copied fn2-tls-transport-fed fn2-tls-transport-input-length fn2-tls-transport-input-offset fn2-tls-transport-output-length fn2-tls-transport-output-offset fn2-tls-transport-ssl-status fn2-tls-transport-terminal fn2-tls-transport-pending fn2-tls-transport-offset fn2-tls-transport-requested fn2-tls-transport-raw-negative fn2-tls-transport-raw-code fn2-tls-transport-raw-count fn2-tls-transport-raw-errno))))
 (verify-guards fn2-tls-transport-observe
- :hints (("Goal" :in-theory (disable fn2-tls-transport-rows fn2-tls-transport-nonce fn2-tls-transport-slot fn2-tls-transport-generation fn2-tls-transport-seed-total fn2-tls-transport-seed-capacity fn2-tls-transport-quantum fn2-tls-transport-budget fn2-tls-transport-serial fn2-tls-transport-copied fn2-tls-transport-fed fn2-tls-transport-input-length fn2-tls-transport-input-offset fn2-tls-transport-output-length fn2-tls-transport-output-offset fn2-tls-transport-ssl-status fn2-tls-transport-terminal fn2-tls-transport-pending fn2-tls-transport-offset fn2-tls-transport-requested fn2-tls-transport-raw-negative fn2-tls-transport-raw-code fn2-tls-transport-raw-count fn2-tls-transport-raw-errno))))
+ :hints (("Goal" :in-theory (disable fn2-tls-transport-rows fn2-tls-transport-cap fn2-tls-transport-nonce fn2-tls-transport-slot fn2-tls-transport-generation fn2-tls-transport-seed-total fn2-tls-transport-seed-capacity fn2-tls-transport-quantum fn2-tls-transport-budget fn2-tls-transport-serial fn2-tls-transport-copied fn2-tls-transport-fed fn2-tls-transport-input-length fn2-tls-transport-input-offset fn2-tls-transport-output-length fn2-tls-transport-output-offset fn2-tls-transport-ssl-status fn2-tls-transport-terminal fn2-tls-transport-pending fn2-tls-transport-offset fn2-tls-transport-requested fn2-tls-transport-raw-negative fn2-tls-transport-raw-code fn2-tls-transport-raw-count fn2-tls-transport-raw-errno))))
+
+; Keep generated accessor contracts intact instead of expanding array reads.
+(local (in-theory (disable fn2-tls-transport-plan fn2-tls-transport-rows
+ fn2-tls-transport-cap fn2-tls-transport-nonce fn2-tls-transport-slot fn2-tls-transport-generation fn2-tls-transport-seed-total fn2-tls-transport-seed-capacity fn2-tls-transport-quantum fn2-tls-transport-budget fn2-tls-transport-serial fn2-tls-transport-copied fn2-tls-transport-fed fn2-tls-transport-input-length fn2-tls-transport-input-offset fn2-tls-transport-output-length fn2-tls-transport-output-offset fn2-tls-transport-ssl-status fn2-tls-transport-terminal fn2-tls-transport-pending fn2-tls-transport-offset fn2-tls-transport-requested fn2-tls-transport-raw-negative fn2-tls-transport-raw-code fn2-tls-transport-raw-count fn2-tls-transport-raw-errno)))
 
 (defthm fn2-tls-transport-next-wfp
  (implies (and (fn2-tls-transportp fn2-tls-transport)
                (= (fn2-tls-transport-rows fn2-tls-transport) 1)
                (fn2-tls-transport-wfp fn2-tls-transport))
-  (fn2-tls-transport-wfp (mv-nth 5 (fn2-tls-transport-next room pending fn2-tls-transport)))))
+  (fn2-tls-transport-wfp (mv-nth 5 (fn2-tls-transport-next room pending fn2-tls-transport))))
+ :hints (("Goal" :in-theory (disable fn2-tls-transport-plan fn2-tls-transport-rows))))
 (defthm fn2-tls-transport-observe-wfp
  (implies (and (fn2-tls-transportp fn2-tls-transport)
                (= (fn2-tls-transport-rows fn2-tls-transport) 1)
                (fn2-tls-transport-wfp fn2-tls-transport))
   (fn2-tls-transport-wfp
-   (mv-nth 2 (fn2-tls-transport-observe nonce slot generation serial code count errno fn2-tls-transport)))))
+   (mv-nth 2 (fn2-tls-transport-observe cap nonce slot generation serial code count errno fn2-tls-transport))))
+ :hints (("Goal" :in-theory (disable fn2-tls-transport-rows))))
 
 (defun fn2-tls-transport-pending-valid-p (action offset requested total copied fed il io ol oo quantum)
  (declare (xargs :guard t))
@@ -227,10 +234,11 @@
        (fn2-tls-transport-output-length 0 fn2-tls-transport) (fn2-tls-transport-output-offset 0 fn2-tls-transport)
        (fn2-tls-transport-quantum 0 fn2-tls-transport))))
 
-(defun fn2-tls-transport-handoff (nonce slot generation fn2-tls-transport)
+(defun fn2-tls-transport-handoff (cap nonce slot generation fn2-tls-transport)
  (declare (xargs :stobjs fn2-tls-transport
   :guard (and (fn2-tls-transport-wfp fn2-tls-transport) (= (fn2-tls-transport-rows fn2-tls-transport) 1))))
- (if (and (equal nonce (fn2-tls-transport-nonce 0 fn2-tls-transport))
+ (if (and (equal cap (fn2-tls-transport-cap 0 fn2-tls-transport))
+          (equal nonce (fn2-tls-transport-nonce 0 fn2-tls-transport))
           (equal slot (fn2-tls-transport-slot 0 fn2-tls-transport))
           (equal generation (fn2-tls-transport-generation 0 fn2-tls-transport))
           (= (fn2-tls-transport-terminal 0 fn2-tls-transport) 1)
@@ -246,3 +254,142 @@
          (fn2-tls-transport (fn2-tls-transport-put 0 (terminal 3))))
    (mv :ok copied fed il io ol oo fn2-tls-transport))
   (mv :stale 0 0 0 0 0 0 fn2-tls-transport)))
+
+(defthm fn2-tls-transport-stale-observation-frame-by-definition
+ (implies (or (not (equal cap (fn2-tls-transport-cap 0 fn2-tls-transport)))
+              (not (equal nonce (fn2-tls-transport-nonce 0 fn2-tls-transport)))
+              (not (equal slot (fn2-tls-transport-slot 0 fn2-tls-transport)))
+              (not (equal generation (fn2-tls-transport-generation 0 fn2-tls-transport)))
+              (not (equal serial (fn2-tls-transport-serial 0 fn2-tls-transport)))
+              (equal (fn2-tls-transport-pending 0 fn2-tls-transport) 0))
+  (equal (mv-nth 2 (fn2-tls-transport-observe cap nonce slot generation serial code count errno fn2-tls-transport))
+         fn2-tls-transport)))
+
+(defthm fn2-tls-transport-handoff-refusal-frame-by-definition
+ (implies (not (equal (mv-nth 0 (fn2-tls-transport-handoff cap nonce slot generation fn2-tls-transport)) :ok))
+  (equal (mv-nth 7 (fn2-tls-transport-handoff cap nonce slot generation fn2-tls-transport)) fn2-tls-transport)))
+
+(defthm fn2-tls-transport-handoff-loan-copied-by-definition
+ (implies (equal (mv-nth 0 (fn2-tls-transport-handoff cap nonce slot generation fn2-tls-transport)) :ok)
+  (and (equal cap (fn2-tls-transport-cap 0 fn2-tls-transport))
+          (equal nonce (fn2-tls-transport-nonce 0 fn2-tls-transport))
+       (equal slot (fn2-tls-transport-slot 0 fn2-tls-transport))
+       (equal generation (fn2-tls-transport-generation 0 fn2-tls-transport))
+       (equal (fn2-tls-transport-pending 0 fn2-tls-transport) 0)
+       (equal (mv-nth 1 (fn2-tls-transport-handoff cap nonce slot generation fn2-tls-transport))
+              (fn2-tls-transport-seed-total 0 fn2-tls-transport))
+       (equal (mv-nth 2 (fn2-tls-transport-handoff cap nonce slot generation fn2-tls-transport))
+              (fn2-tls-transport-fed 0 fn2-tls-transport))
+       (equal (mv-nth 3 (fn2-tls-transport-handoff cap nonce slot generation fn2-tls-transport))
+              (fn2-tls-transport-input-length 0 fn2-tls-transport))
+       (equal (mv-nth 4 (fn2-tls-transport-handoff cap nonce slot generation fn2-tls-transport))
+              (fn2-tls-transport-input-offset 0 fn2-tls-transport))
+       (equal (mv-nth 5 (fn2-tls-transport-handoff cap nonce slot generation fn2-tls-transport))
+              (mv-nth 6 (fn2-tls-transport-handoff cap nonce slot generation fn2-tls-transport)))))
+ :rule-classes nil)
+
+(defthm fn2-tls-transport-observe-preserves-invariant
+ (implies (and (fn2-tls-transportp fn2-tls-transport)
+               (fn2-tls-transport-wfp fn2-tls-transport)
+               (= (fn2-tls-transport-rows fn2-tls-transport) 1)
+               (fn2-tls-transport-invariant fn2-tls-transport))
+  (fn2-tls-transport-invariant
+   (mv-nth 2 (fn2-tls-transport-observe cap nonce slot generation serial code count errno fn2-tls-transport))))
+ :hints (("Goal" :in-theory
+            (disable fn2-tls-transport-invariant fn2-tls-transport-pending-valid-p))
+         (and stable-under-simplificationp
+              '(:in-theory (e/d (fn2-tls-transport-invariant fn2-tls-transport-pending-valid-p
+                  fn2-tls-transport-rows fn2-tls-transport-cap fn2-tls-transport-nonce fn2-tls-transport-slot fn2-tls-transport-generation fn2-tls-transport-seed-total fn2-tls-transport-seed-capacity fn2-tls-transport-quantum fn2-tls-transport-budget fn2-tls-transport-serial fn2-tls-transport-copied fn2-tls-transport-fed fn2-tls-transport-input-length fn2-tls-transport-input-offset fn2-tls-transport-output-length fn2-tls-transport-output-offset fn2-tls-transport-ssl-status fn2-tls-transport-terminal fn2-tls-transport-pending fn2-tls-transport-offset fn2-tls-transport-requested fn2-tls-transport-raw-negative fn2-tls-transport-raw-code fn2-tls-transport-raw-count fn2-tls-transport-raw-errno) (nth update-nth))))))
+
+(defthm fn2-tls-transport-plan-pending-valid
+ (implies (equal (mv-nth 0 (fn2-tls-transport-plan total copied fed il io ol oo ssl room pending quantum)) :act)
+  (fn2-tls-transport-pending-valid-p
+   (mv-nth 1 (fn2-tls-transport-plan total copied fed il io ol oo ssl room pending quantum))
+   (mv-nth 2 (fn2-tls-transport-plan total copied fed il io ol oo ssl room pending quantum))
+   (mv-nth 3 (fn2-tls-transport-plan total copied fed il io ol oo ssl room pending quantum))
+   total copied fed il io ol oo quantum))
+ :hints (("Goal" :in-theory (enable fn2-tls-transport-plan))))
+
+(defthm fn2-tls-transport-next-preserves-invariant
+ (implies (and (fn2-tls-transportp fn2-tls-transport)
+               (fn2-tls-transport-wfp fn2-tls-transport)
+               (= (fn2-tls-transport-rows fn2-tls-transport) 1)
+               (fn2-tls-transport-invariant fn2-tls-transport))
+  (fn2-tls-transport-invariant
+   (mv-nth 5 (fn2-tls-transport-next room pending fn2-tls-transport))))
+ :hints (("Goal" :in-theory
+            (disable fn2-tls-transport-invariant fn2-tls-transport-pending-valid-p))
+         (and stable-under-simplificationp
+              '(:in-theory (e/d (fn2-tls-transport-invariant
+                  fn2-tls-transport-rows fn2-tls-transport-cap fn2-tls-transport-nonce fn2-tls-transport-slot fn2-tls-transport-generation fn2-tls-transport-seed-total fn2-tls-transport-seed-capacity fn2-tls-transport-quantum fn2-tls-transport-budget fn2-tls-transport-serial fn2-tls-transport-copied fn2-tls-transport-fed fn2-tls-transport-input-length fn2-tls-transport-input-offset fn2-tls-transport-output-length fn2-tls-transport-output-offset fn2-tls-transport-ssl-status fn2-tls-transport-terminal fn2-tls-transport-pending fn2-tls-transport-offset fn2-tls-transport-requested fn2-tls-transport-raw-negative fn2-tls-transport-raw-code fn2-tls-transport-raw-count fn2-tls-transport-raw-errno)
+                  (nth update-nth fn2-tls-transport-pending-valid-p))))))
+
+(defthm-owed fn2-tls-transport-observe-preserves-invariant (cap nonce slot generation serial code count errno fn2-tls-transport)
+ (implies (and (fn2-tls-transportp fn2-tls-transport)
+               (fn2-tls-transport-wfp fn2-tls-transport)
+               (= (fn2-tls-transport-rows fn2-tls-transport) 1)
+               (fn2-tls-transport-invariant fn2-tls-transport))
+  (fn2-tls-transport-invariant
+   (mv-nth 2 (fn2-tls-transport-observe cap nonce slot generation serial code count errno fn2-tls-transport))))
+ :schema :invariant
+ :teeth (fn2-tls-transport-invariant-positive fn2-tls-transport-observe-invariant-negative)
+ :doc "The host-called observe preserves staged-seed conservation, bounded input/output buffers, unsent prefixes and the pending action span. Physical byte-prefix correspondence remains a separate primitive boundary obligation.")
+(fn2-owed-discharge fn2-tls-transport-observe-preserves-invariant fn2-tls-transport-observe-preserves-invariant)
+
+(defthm-owed fn2-tls-transport-next-preserves-invariant (room pending fn2-tls-transport)
+ (implies (and (fn2-tls-transportp fn2-tls-transport)
+               (fn2-tls-transport-wfp fn2-tls-transport)
+               (= (fn2-tls-transport-rows fn2-tls-transport) 1)
+               (fn2-tls-transport-invariant fn2-tls-transport))
+  (fn2-tls-transport-invariant
+   (mv-nth 5 (fn2-tls-transport-next room pending fn2-tls-transport))))
+ :schema :invariant
+ :teeth (fn2-tls-transport-invariant-positive fn2-tls-transport-next-invariant-negative)
+ :doc "The host-called next preserves staged-seed conservation, bounded input/output buffers, unsent prefixes and the pending action span. Physical byte-prefix correspondence remains a separate primitive boundary obligation.")
+(fn2-owed-discharge fn2-tls-transport-next-preserves-invariant fn2-tls-transport-next-preserves-invariant)
+
+(defthm fn2-tls-transport-start-establishes-invariant
+ (implies (and (fn2-tls-transportp fn2-tls-transport)
+               (equal (mv-nth 0 (fn2-tls-transport-start cap nonce slot generation total capacity quantum budget fn2-tls-transport)) :ok))
+  (fn2-tls-transport-invariant
+   (mv-nth 1 (fn2-tls-transport-start cap nonce slot generation total capacity quantum budget fn2-tls-transport))))
+ :hints (("Goal" :in-theory
+            (disable fn2-tls-transport-invariant fn2-tls-transport-pending-valid-p fn2-tls-transport-init))
+         (and stable-under-simplificationp
+              '(:in-theory (e/d (fn2-tls-transport-invariant fn2-tls-transport-pending-valid-p
+                  fn2-tls-transport-rows fn2-tls-transport-cap fn2-tls-transport-nonce fn2-tls-transport-slot fn2-tls-transport-generation fn2-tls-transport-seed-total fn2-tls-transport-seed-capacity fn2-tls-transport-quantum fn2-tls-transport-budget fn2-tls-transport-serial fn2-tls-transport-copied fn2-tls-transport-fed fn2-tls-transport-input-length fn2-tls-transport-input-offset fn2-tls-transport-output-length fn2-tls-transport-output-offset fn2-tls-transport-ssl-status fn2-tls-transport-terminal fn2-tls-transport-pending fn2-tls-transport-offset fn2-tls-transport-requested fn2-tls-transport-raw-negative fn2-tls-transport-raw-code fn2-tls-transport-raw-count fn2-tls-transport-raw-errno)
+                  (nth update-nth fn2-tls-transport-init))))))
+
+(defthm fn2-tls-transport-next-spends-one-action
+ (implies (and (fn2-tls-transportp fn2-tls-transport)
+               (fn2-tls-transport-wfp fn2-tls-transport)
+               (= (fn2-tls-transport-rows fn2-tls-transport) 1)
+               (equal (mv-nth 0 (fn2-tls-transport-next room pending fn2-tls-transport)) :act))
+  (and (equal (fn2-tls-transport-budget 0 (mv-nth 5 (fn2-tls-transport-next room pending fn2-tls-transport)))
+              (- (fn2-tls-transport-budget 0 fn2-tls-transport) 1))
+       (equal (fn2-tls-transport-serial 0 (mv-nth 5 (fn2-tls-transport-next room pending fn2-tls-transport)))
+              (+ (fn2-tls-transport-serial 0 fn2-tls-transport) 1))
+       (< 0 (fn2-tls-transport-budget 0 fn2-tls-transport))))
+ :hints (("Goal" :in-theory
+  (e/d (fn2-tls-transport-budget fn2-tls-transport-serial fn2-tls-transport-rows)
+       (nth update-nth)))))
+
+(assert-event
+ (fn2-assert-compliant-p
+  '(fn2-tls-transport-start fn2-tls-transport-next fn2-tls-transport-observe
+    fn2-tls-transport-handoff fn2-tls-transport-action-interest) (w state)))
+
+(defthm-owed fn2-tls-transport-next-spends-one-action (room pending fn2-tls-transport)
+ (implies (and (fn2-tls-transportp fn2-tls-transport)
+               (fn2-tls-transport-wfp fn2-tls-transport)
+               (= (fn2-tls-transport-rows fn2-tls-transport) 1)
+               (equal (mv-nth 0 (fn2-tls-transport-next room pending fn2-tls-transport)) :act))
+  (and (equal (fn2-tls-transport-budget 0 (mv-nth 5 (fn2-tls-transport-next room pending fn2-tls-transport)))
+              (- (fn2-tls-transport-budget 0 fn2-tls-transport) 1))
+       (equal (fn2-tls-transport-serial 0 (mv-nth 5 (fn2-tls-transport-next room pending fn2-tls-transport)))
+              (+ (fn2-tls-transport-serial 0 fn2-tls-transport) 1))
+       (< 0 (fn2-tls-transport-budget 0 fn2-tls-transport))))
+ :schema :invariant
+ :teeth (fn2-tls-transport-invariant-positive fn2-tls-transport-check-budget)
+ :doc "Every action selected for the native handshake spends exactly one admitted budget unit and advances its serial without wrap; exhausted attempts select no physical work.")
+(fn2-owed-discharge fn2-tls-transport-next-spends-one-action fn2-tls-transport-next-spends-one-action)
