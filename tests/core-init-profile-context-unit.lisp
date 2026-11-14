@@ -17,7 +17,7 @@
  (implies (fn2-core-profilep profile)
   (and (unsigned-byte-p 32 (fn2-profile-trace-capacity profile))
        (booleanp (fn2-profile-trace profile))))
- :hints (("Goal" :use init-fn2-core-trace-profile
+ :hints (("Goal" :use (init-fn2-core-trace-profile fn2-profile-trace-boolean)
           :in-theory (e/d (fn2-profile-trace-boolean)
                           (fn2-core-profilep fn2-profilep)))))
 

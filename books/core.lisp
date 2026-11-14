@@ -540,12 +540,12 @@
              `(make-event
                '(:or (defun ,name (profile fn2-core)
                        (declare (xargs :stobjs fn2-core :guard (fn2-core-profilep profile)
-                                       :guard-hints (("Goal" :use ,prof :in-theory (disable fn2-core-profilep fn2-profilep))))
+                                       :guard-hints (("Goal" :use (,prof fn2-profile-trace-boolean) :in-theory (disable fn2-core-profilep fn2-profilep))))
                                 (ignorable profile))
                        ,body)
                      (defun ,name (profile fn2-core)
                        (declare (xargs :stobjs fn2-core :guard (fn2-core-profilep profile)
-                                       :guard-hints (("Goal" :use ,prof :in-theory
+                                       :guard-hints (("Goal" :use (,prof fn2-profile-trace-boolean) :in-theory
                                         (e/d (fn2-machines-profilep fn2-profilep) (fn2-core-profilep)))))
                                 (ignorable profile))
                        ,body)))
@@ -553,11 +553,11 @@
                '(:or (defthm ,(fn2-columns-sym name "-TYPE")
                        (implies (and (fn2-corep fn2-core) (fn2-core-profilep profile))
                                 (fn2-corep (,name profile fn2-core)))
-                       :hints (("Goal" :use ,prof :in-theory (disable fn2-core-profilep fn2-profilep))))
+                       :hints (("Goal" :use (,prof fn2-profile-trace-boolean) :in-theory (disable fn2-core-profilep fn2-profilep))))
                      (defthm ,(fn2-columns-sym name "-TYPE")
                        (implies (and (fn2-corep fn2-core) (fn2-core-profilep profile))
                                 (fn2-corep (,name profile fn2-core)))
-                       :hints (("Goal" :use ,prof :in-theory
+                       :hints (("Goal" :use (,prof fn2-profile-trace-boolean) :in-theory
                                 (e/d (fn2-machines-profilep) (fn2-core-profilep)))))))
              (fn2-core-init-child-events (cdr children) (cdr inits) entries)))))
 (defun fn2-core-init-child-names (children)
