@@ -70,6 +70,30 @@ class LispStructureCheck(unittest.TestCase):
         self.assertEqual(len(forms[1].items[2].items), 29)
         self.assertEqual(check_source(source), [])
 
+    def test_actual_repaired_root1_declared_output_shapes(self):
+        path = Path(__file__).parent / "fixtures/lisp_structure/root1-mv-declared-subsets.lisp"
+        source = path.read_text()
+        forms = lisp_source.read_all(source, strict=True)
+        self.assertEqual(len(forms[0].items[2].items), 37)
+        declarations = {row.items[0].text: [child.text for child in row.items[1:]]
+                        for row in forms[1].items[2].items}
+        expected = {"begin": 8, "select": 8, "bind": 2, "consume": 3,
+                    "work": 19, "payload-start": 9, "retention": 6,
+                    "closure": 21, "step": 28, "read": 17}
+        self.assertEqual(len(declarations), len(expected))
+        self.assertEqual({form.items[1].text.removesuffix("-count-control")
+                          for form in forms[2:]}, set(declarations))
+        for form in forms[2:]:
+            name = form.items[1].text.removesuffix("-count-control")
+            operation = name.removeprefix("fn2-checkpoint-root1-")
+            scalar_count = 3 if operation == "read" else 1
+            body = form.items[3]
+            self.assertEqual(body.marks, ("`",))
+            self.assertEqual([node.text for node in body.items[scalar_count + 1:]],
+                             declarations[name])
+            self.assertEqual(len(body.items) - 1, expected[operation])
+        self.assertEqual(check_source(source), [])
+
     def test_known_list_splices_and_lexical_aliases(self):
         children = " ".join(f"s{i}" for i in range(30))
         source = f"(defconst *outputs* '({children}))"
@@ -88,12 +112,23 @@ class LispStructureCheck(unittest.TestCase):
                               " ,@outputs))")
         self.assertTrue(any("returns at least 33 values" in error for error in errors))
 
+    def test_parametric_project_helpers_are_not_executed(self):
+        errors = check_source("""
+        (defconst *outputs* '((f a b)))
+        (defmacro operation (name)
+          (let ((outputs (cdr (assoc-eq name *outputs*))))
+            `(mv code ,@outputs)))
+        """)
+        self.assertTrue(any("output count unresolved" in error for error in errors))
+        self.assertFalse(any("MV returns" in error for error in errors))
+
     def test_shadowed_lists_do_not_invent_known_macro_outputs(self):
         prefix = "(defconst outputs '(" + " ".join(["x"] * 37) + "))"
         for expression in (
             "(defmacro m (outputs) `(mv code ,@outputs))",
             "(defmacro m () (let ((outputs (unknown))) `(mv code ,@outputs)))",
             "(defmacro m () (mv-let (outputs) (unknown) `(mv code ,@outputs)))",
+            "(defmacro m () (B* (((MV outputs) (unknown))) `(mv code ,@outputs)))",
             "(defmacro m () (lambda (outputs) `(mv code ,@outputs)))",
         ):
             with self.subTest(expression=expression):
