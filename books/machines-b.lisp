@@ -160,6 +160,9 @@
 ;; rows and its merge's read region (C5: the query key and eight sources'
 ;; reader rows, at most one read stride).
 (defconst *fn2-b-seal-field-rows* (+ 1280 *fn2-b-read-stride-rows*))
+;; Two private checkpoint builders and their entry/reader regions. The
+;; resident sealer may be frozen mid-build, so its stripe cannot be reused.
+(defconst *fn2-b-checkpoint-field-rows* (* 2 *fn2-b-seal-field-rows*))
 ;; Layer C's read rows (C-S4, machines-c-read.lisp), each with a stripe of
 ;; *fn2-b-read-stride* rows below the sealer's (C asserts its
 ;; *fn2-read-stride* fits). Rows [0, 2X) are layer D's query cursors', two a
@@ -194,7 +197,7 @@
 (in-theory (disable fn2-b-cursor-rows fn2-b-cns-rows fn2-b-auth-rows fn2-b-read-rows))
 (defun fn2-b-field-rows (profile)
  (declare (xargs :guard t))
- (+ (* 128 (nfix (fn2-b-format-slots profile))) (* *fn2-b-txn-field-rows* (nfix (fn2-profile-t profile))) *fn2-b-seal-field-rows*
+ (+ (* 128 (nfix (fn2-b-format-slots profile))) (* *fn2-b-txn-field-rows* (nfix (fn2-profile-t profile))) *fn2-b-seal-field-rows* *fn2-b-checkpoint-field-rows*
     (* *fn2-b-read-stride* (fn2-b-read-rows profile))))
 (in-theory (disable fn2-b-field-rows))
 (defcorechild fn2-core-fields fn2-fields
