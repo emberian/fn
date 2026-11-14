@@ -28,7 +28,7 @@
  :fields ((pending :u32) (stopped :bool) (token :u60)
           (scan :u32) (highest :u60) (candidate :u32) (candidate-found :bool) (checkpoint :u60)
           (page-slot :u32) (page-gen :u60) (scratch-slot :u32) (scratch-gen :u60) (read-slot :u32) (read-gen :u60)
-          (source :u8) (map-role :u8) (target :u32) (target-gen :u60)
+          (source :u8) (field-base :u32) (map-role :u8) (target :u32) (target-gen :u60)
           (batch :u60) (event :u60) (covered :u60) (retirement-seen :u60))
  :holds ((:workspaces :storage-window) (:snapshot-begin :storage-window) (:snapshot-poll :storage-window)
          (:descriptor-begin :storage-window) (:root1-begin :storage-window) (:root1-source :storage-window)
