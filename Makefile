@@ -372,4 +372,3 @@ ACL2_BOOKS = \
 .PHONY: certify
 certify:
 	python3 tools/certify_books.py $(BOOKS)
-
