@@ -401,7 +401,7 @@
 (defun fn2-codec-transport-upgrade-events (name plan quantum-field status-field world)
  (declare (xargs :verify-guards nil))
  (let ((quantum (fn2-columns-sym name (concatenate 'string "-" (symbol-name quantum-field))))
-       (status (fn2-columns-sym name (concatenate 'string "-" (symbol-name status-field))))
+       (status (and status-field (fn2-columns-sym name (concatenate 'string "-" (symbol-name status-field)))))
        (readers (cons (fn2-columns-sym name "-ROWS")
                  (fn2-columns-projection-readers name
                   (fn2-decl-get :columns (fn2-decl-row (list :columns name) world))))))
@@ -434,7 +434,7 @@
       (,(fn2-columns-sym name "-COPIED") 0 ,name) (,(fn2-columns-sym name "-FED") 0 ,name)
       (,(fn2-columns-sym name "-INPUT-LENGTH") 0 ,name) (,(fn2-columns-sym name "-INPUT-OFFSET") 0 ,name)
       (,(fn2-columns-sym name "-OUTPUT-LENGTH") 0 ,name) (,(fn2-columns-sym name "-OUTPUT-OFFSET") 0 ,name)
-      (,status 0 ,name) room pending
+      ,(if status `(,status 0 ,name) 0) room pending
       (,quantum 0 ,name)))
     (cond
      ((eq code :done)
