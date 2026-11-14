@@ -7,6 +7,7 @@
 (include-book "commit-alloc")
 (include-book "read-pins")
 (include-book "retirement-coordinator")
+(include-book "checkpoint-tickets")
 (include-book "format-check")
 (include-book "recovery")
 (include-book "commit-members")
@@ -27,6 +28,11 @@
  :init (fn2-alloc-init (fn2-b-capacity :extent-slots 16 profile) fn2-extents)
  :profilep (unsigned-byte-p 32 (fn2-b-capacity :extent-slots 16 profile))
  :why "Commit work survives scheduler yields.")
+(defcorechild fn2-core-checkpoint-construction fn2-checkpoint-construction
+ :init (fn2-checkpoint-construction-init (fn2-b-capacity :extent-slots 16 profile) fn2-checkpoint-construction)
+ :profilep (unsigned-byte-p 32 (fn2-b-capacity :extent-slots 16 profile))
+ :why "Retained exact construction identities for every checkpoint page and pre-reserved journal ticket.")
+
 (defcorechild fn2-core-retirement-control fn2-retirement-control
  :init (fn2-retirement-control-init 1 fn2-retirement-control) :profilep t
  :why "One lifecycle producer, retained workspace and exact settlement identity across yields.")

@@ -2,6 +2,23 @@
 (in-package "ACL2")
 (include-book "format-check")
 (fn2-book-layer :b)
+; B-S2 (§11b S1-S2): a transaction member's workspace holds at most this many
+; record frames; the records frame's payload bounds a batch's records, each
+; counted at its largest sealed size (header 83 octets plus its body).
+(defconst *fn2-commit-txn-records-max* 25)
+(defconst *fn2-commit-records-room* 3900)
+(defconst *fn2-commit-txn-header-room* 83)
+ ; The checkpoint producer packs one allocation-only member per journal
+; ticket. Derive its maximum from the same record-count and sealed byte budget
+; used by actual commit admission, including each canonical record header.
+(defconst *fn2-checkpoint-allocation-records-per-ticket*
+ (min *fn2-commit-txn-records-max*
+      (floor *fn2-commit-records-room*
+             (+ *fn2-format-record-header-max-size* *fn2-format-allocation-max-size*))))
+(assert-event (posp *fn2-checkpoint-allocation-records-per-ticket*))
+(assert-event (<= (* *fn2-checkpoint-allocation-records-per-ticket*
+                     (+ *fn2-format-record-header-max-size* *fn2-format-allocation-max-size*))
+                  *fn2-commit-records-room*))
 ; One geometry shared by packing, issuing, and the resource model.
 (defconst *fn2-commit-unit-bytes* *fn2-format-sector-size*)
 (defconst *fn2-commit-write-resources* 3)

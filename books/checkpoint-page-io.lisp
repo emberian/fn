@@ -1,7 +1,8 @@
 ; Shared bounded page seal/check/physical-write leaves for actual C producers.
-; No worker/core registration is supplied here: the generated owner must freeze
-; SLOT/GEN and checker/field/digest stripes from begin through complete. These
-; leaves check retained identities but cannot exclude a foreign pool mutator.
+; The generated worker accepts a real pool ownership handoff before context.
+; Construction ownership stays with the frozen C cut; the separate IO tuple
+; names the actual worker row that owns the bytes through physical completion.
+; Checker/field/B3/digest stripe exclusion still requires composed frames.
 ; No source-complete, root-ready, journal-install or allocation-commit setter.
 (in-package "ACL2")
 (include-book "checkpoint-page-state")
@@ -28,7 +29,8 @@
   :guard (and (fn2-checkpoint-page-wfp fn2-checkpoint-page) (fn2-checkpoint-page-verified-wfp fn2-checkpoint-page-verified) (fn2-checkpoint-construction-wfp fn2-checkpoint-construction) (fn2-csnapshot-wfp fn2-csnapshot) (fn2-extents-wfp fn2-extents) (fn2-pool-wfp fn2-pool) (fn2-fc-wfp fn2-fc) (fn2-fields-wfp fn2-fields))))
  (b* (((unless (and (< 0 (fn2-checkpoint-page-rows fn2-checkpoint-page))
                     (member-equal (fn2-checkpoint-page-phase 0 fn2-checkpoint-page)
-                     (list *fn2-checkpoint-page-phase-idle* *fn2-checkpoint-page-phase-complete*))))
+                     (list *fn2-checkpoint-page-phase-idle* *fn2-checkpoint-page-phase-complete*))
+                    (equal (fn2-checkpoint-page-transferred 0 fn2-checkpoint-page) 0)))
        (mv :busy fn2-checkpoint-page))
       ((unless (and (fn2-csnapshot-ownerp token okind oslot ogen fn2-csnapshot)
                     (equal (fn2-csnapshot-phase 0 fn2-csnapshot) *fn2-csnapshot-phase-held*)
@@ -59,6 +61,7 @@
        (extent extent)
        (epoch epoch)
        (allocation allocation)
+       (io-owner-kind okind) (io-owner-slot oslot) (io-owner-gen ogen) (transferred 0)
        (slot slot) (gen gen) (page-kind page-kind) (history history) (incarnation incarnation)
        (encoded-length encoded-length) (intended-bytes encoded-length) (write-cursor 0)
        (checker-row row) (field-base base) (started 0) (pending 0))))
@@ -68,7 +71,8 @@
  (declare (xargs :stobjs (fn2-checkpoint-page fn2-csnapshot fn2-checkpoint-construction fn2-extents fn2-boot-config fn2-fc fn2-b3 fn2-fc-context fn2-digests)
   :guard (and (fn2-checkpoint-page-wfp fn2-checkpoint-page) (fn2-csnapshot-wfp fn2-csnapshot) (fn2-checkpoint-construction-wfp fn2-checkpoint-construction) (fn2-extents-wfp fn2-extents) (fn2-boot-config-wfp fn2-boot-config) (fn2-fc-wfp fn2-fc) (fn2-b3-wfp fn2-b3) (fn2-fc-context-wfp fn2-fc-context) (fn2-digests-wfp fn2-digests))))
  (b* (((unless (and (fn2-checkpoint-page-live-p fn2-checkpoint-page fn2-csnapshot fn2-checkpoint-construction fn2-extents)
-                    (equal (fn2-checkpoint-page-phase 0 fn2-checkpoint-page) *fn2-checkpoint-page-phase-context*)))
+                    (equal (fn2-checkpoint-page-phase 0 fn2-checkpoint-page) *fn2-checkpoint-page-phase-context*)
+                    (equal (fn2-checkpoint-page-transferred 0 fn2-checkpoint-page) 1)))
        (mv :identity fn2-checkpoint-page fn2-fc-context fn2-digests))
       (row (fn2-checkpoint-page-checker-row 0 fn2-checkpoint-page))
       ((unless (and (< row (fn2-fc-rows fn2-fc)) (< row (fn2-fc-context-rows fn2-fc-context))
@@ -108,11 +112,12 @@
       (base (fn2-checkpoint-page-field-base 0 fn2-checkpoint-page)) (off 0)
       (len (fn2-checkpoint-page-encoded-length 0 fn2-checkpoint-page))
       (slot (fn2-checkpoint-page-slot 0 fn2-checkpoint-page)) (gen (fn2-checkpoint-page-gen 0 fn2-checkpoint-page))
-      (kind (fn2-checkpoint-page-owner-kind 0 fn2-checkpoint-page))
-      (owner (fn2-checkpoint-page-owner-slot 0 fn2-checkpoint-page))
-      (generation (fn2-checkpoint-page-owner-gen 0 fn2-checkpoint-page))
+      (kind (fn2-checkpoint-page-io-owner-kind 0 fn2-checkpoint-page))
+      (owner (fn2-checkpoint-page-io-owner-slot 0 fn2-checkpoint-page))
+      (generation (fn2-checkpoint-page-io-owner-gen 0 fn2-checkpoint-page))
       (extent (fn2-checkpoint-page-extent 0 fn2-checkpoint-page))
       ((unless (and (or sealp (equal phase *fn2-checkpoint-page-phase-verify*))
+                    (equal (fn2-checkpoint-page-transferred 0 fn2-checkpoint-page) 1)
                     (fn2-fc-guard) (< extent (fn2-checkpoint-page-verified-rows fn2-checkpoint-page-verified))
                     (eq (fn2-pool-workspace-code slot gen kind owner generation fn2-pool) :ok)
                     (<= len (fn2-pool-cap slot fn2-pool))
@@ -221,6 +226,7 @@
                     (fn2-checkpoint-page-verified-p fn2-checkpoint-page fn2-checkpoint-page-verified)
                     (equal (fn2-checkpoint-page-phase 0 fn2-checkpoint-page) *fn2-checkpoint-page-phase-write*)
                     (equal (fn2-checkpoint-page-pending 0 fn2-checkpoint-page) 0)
+                    (equal (fn2-checkpoint-page-transferred 0 fn2-checkpoint-page) 1)
                     (< (fn2-checkpoint-page-write-cursor 0 fn2-checkpoint-page) (fn2-checkpoint-page-intended-bytes 0 fn2-checkpoint-page))
                     (<= (fn2-checkpoint-page-intended-bytes 0 fn2-checkpoint-page) 65536)
                     (equal (mod (fn2-checkpoint-page-write-cursor 0 fn2-checkpoint-page) 4096) 0)))
@@ -231,8 +237,8 @@
         (+ (* (fn2-checkpoint-page-extent 0 fn2-checkpoint-page) *fn2-storage-extent-units*) (floor cursor 4096))
         (fn2-checkpoint-page-epoch 0 fn2-checkpoint-page) (fn2-checkpoint-page-allocation 0 fn2-checkpoint-page)
         0 4096 (fn2-checkpoint-page-slot 0 fn2-checkpoint-page) (fn2-checkpoint-page-gen 0 fn2-checkpoint-page)
-        cursor (fn2-checkpoint-page-owner-kind 0 fn2-checkpoint-page)
-        (fn2-checkpoint-page-owner-slot 0 fn2-checkpoint-page) (fn2-checkpoint-page-owner-gen 0 fn2-checkpoint-page)
+        cursor (fn2-checkpoint-page-io-owner-kind 0 fn2-checkpoint-page)
+        (fn2-checkpoint-page-io-owner-slot 0 fn2-checkpoint-page) (fn2-checkpoint-page-io-owner-gen 0 fn2-checkpoint-page)
         0 fn2-extents fn2-alloc-edges fn2-pool fn2-ops fn2-control))
       ((when (eq code :exhausted)) (mv code fn2-checkpoint-page fn2-pool fn2-ops fn2-control fn2-extents fn2-alloc-edges))
       (fn2-checkpoint-page (fn2-checkpoint-page-put 0 (op-slot opslot) (op-gen opgen)
@@ -253,7 +259,7 @@
                     (equal (fn2-checkpoint-page-pending 0 fn2-checkpoint-page) 1)
                     (equal opslot (fn2-checkpoint-page-op-slot 0 fn2-checkpoint-page))
                     (equal opgen (fn2-checkpoint-page-op-gen 0 fn2-checkpoint-page))))
-       (mv :unrelated fn2-checkpoint-page fn2-checkpoint-page-verified fn2-checkpoint-construction))
+       (mv :ok fn2-checkpoint-page fn2-checkpoint-page-verified fn2-checkpoint-construction))
       (extent (fn2-checkpoint-page-extent 0 fn2-checkpoint-page))
       (cursor (fn2-checkpoint-page-write-cursor 0 fn2-checkpoint-page))
       (next (+ cursor 4096))
@@ -272,7 +278,7 @@
        (phase (if success (if (equal next (fn2-checkpoint-page-intended-bytes 0 fn2-checkpoint-page))
                               *fn2-checkpoint-page-phase-complete* *fn2-checkpoint-page-phase-write*)
                          *fn2-checkpoint-page-phase-uncertain*)))) )
-  (mv (if success :ok :uncertain) fn2-checkpoint-page fn2-checkpoint-page-verified fn2-checkpoint-construction)))
+  (mv :ok fn2-checkpoint-page fn2-checkpoint-page-verified fn2-checkpoint-construction)))
 
 ; Callers must additionally establish their own source closure before making
 ; a root Ref. This predicate allows workspace promotion after physical harvest.
@@ -297,20 +303,108 @@
 
 (fn2-checkpoint-page-preserves fn2-checkpoint-page-begin
  (token okind oslot ogen role ordinal extent epoch allocation slot gen page-kind history incarnation encoded-length fn2-checkpoint-page fn2-checkpoint-page-verified fn2-checkpoint-construction fn2-csnapshot fn2-extents fn2-pool fn2-fc fn2-fields)
- :carriers ((fn2-checkpoint-page 1 :prefix "-CHECKPOINT-PAGE")))
+ :hyps ((fn2-checkpoint-pagep fn2-checkpoint-page) (fn2-checkpoint-page-verifiedp fn2-checkpoint-page-verified) (fn2-checkpoint-constructionp fn2-checkpoint-construction) (fn2-csnapshotp fn2-csnapshot) (fn2-extentsp fn2-extents) (fn2-poolp fn2-pool) (fn2-fcp fn2-fc) (fn2-fieldsp fn2-fields) (fn2-checkpoint-page-wfp fn2-checkpoint-page) (fn2-checkpoint-page-verified-wfp fn2-checkpoint-page-verified) (fn2-checkpoint-construction-wfp fn2-checkpoint-construction) (fn2-csnapshot-wfp fn2-csnapshot) (fn2-extents-wfp fn2-extents) (fn2-pool-wfp fn2-pool) (fn2-fc-wfp fn2-fc) (fn2-fields-wfp fn2-fields))
+ :specs (
+  ("-CHECKPOINT-PAGE-TYPE" fn2-checkpoint-pagep 1)
+  ("-CHECKPOINT-PAGE-WFP" fn2-checkpoint-page-wfp 1)
+  ("-CHECKPOINT-PAGE-ROWS" fn2-checkpoint-page-rows 1 :frame fn2-checkpoint-page)))
 
 (fn2-checkpoint-page-preserves fn2-checkpoint-page-context
  (fn2-checkpoint-page fn2-csnapshot fn2-checkpoint-construction fn2-extents fn2-boot-config fn2-fc fn2-b3 fn2-fc-context fn2-digests)
- :carriers ((fn2-checkpoint-page 1 :prefix "-CHECKPOINT-PAGE") (fn2-fc-context 2 :prefix "-FC-CONTEXT") (fn2-digests 3 :prefix "-DIGESTS")))
+ :hyps ((fn2-checkpoint-pagep fn2-checkpoint-page) (fn2-csnapshotp fn2-csnapshot) (fn2-checkpoint-constructionp fn2-checkpoint-construction) (fn2-extentsp fn2-extents) (fn2-boot-configp fn2-boot-config) (fn2-fcp fn2-fc) (fn2-b3p fn2-b3) (fn2-fc-contextp fn2-fc-context) (fn2-digestsp fn2-digests) (fn2-checkpoint-page-wfp fn2-checkpoint-page) (fn2-csnapshot-wfp fn2-csnapshot) (fn2-checkpoint-construction-wfp fn2-checkpoint-construction) (fn2-extents-wfp fn2-extents) (fn2-boot-config-wfp fn2-boot-config) (fn2-fc-wfp fn2-fc) (fn2-b3-wfp fn2-b3) (fn2-fc-context-wfp fn2-fc-context) (fn2-digests-wfp fn2-digests))
+ :specs (
+  ("-CHECKPOINT-PAGE-TYPE" fn2-checkpoint-pagep 1)
+  ("-CHECKPOINT-PAGE-WFP" fn2-checkpoint-page-wfp 1)
+  ("-CHECKPOINT-PAGE-ROWS" fn2-checkpoint-page-rows 1 :frame fn2-checkpoint-page)
+  ("-FC-CONTEXT-TYPE" fn2-fc-contextp 2)
+  ("-FC-CONTEXT-WFP" fn2-fc-context-wfp 2)
+  ("-FC-CONTEXT-ROWS" fn2-fc-context-rows 2 :frame fn2-fc-context)
+  ("-DIGESTS-TYPE" fn2-digestsp 3)
+  ("-DIGESTS-WFP" fn2-digests-wfp 3)
+  ("-DIGESTS-ROWS" fn2-digests-rows 3 :frame fn2-digests)))
 
 (fn2-checkpoint-page-preserves fn2-checkpoint-page-format-step
  (budget fn2-checkpoint-page fn2-csnapshot fn2-checkpoint-construction fn2-extents fn2-checkpoint-page-verified fn2-fc fn2-fc-context fn2-b3 fn2-fields fn2-pool fn2-digests)
- :carriers ((fn2-checkpoint-page 1 :prefix "-CHECKPOINT-PAGE") (fn2-checkpoint-page-verified 2 :prefix "-CHECKPOINT-PAGE-VERIFIED") (fn2-fc 3 :prefix "-FC") (fn2-b3 4 :prefix "-B3") (fn2-fields 5 :prefix "-FIELDS") (fn2-pool 6 :prefix "-POOL") (fn2-digests 7 :prefix "-DIGESTS")))
+ :hyps ((fn2-checkpoint-pagep fn2-checkpoint-page) (fn2-csnapshotp fn2-csnapshot) (fn2-checkpoint-constructionp fn2-checkpoint-construction) (fn2-extentsp fn2-extents) (fn2-checkpoint-page-verifiedp fn2-checkpoint-page-verified) (fn2-fcp fn2-fc) (fn2-fc-contextp fn2-fc-context) (fn2-b3p fn2-b3) (fn2-fieldsp fn2-fields) (fn2-poolp fn2-pool) (fn2-digestsp fn2-digests) (fn2-checkpoint-page-wfp fn2-checkpoint-page) (fn2-csnapshot-wfp fn2-csnapshot) (fn2-checkpoint-construction-wfp fn2-checkpoint-construction) (fn2-extents-wfp fn2-extents) (fn2-checkpoint-page-verified-wfp fn2-checkpoint-page-verified) (fn2-fc-wfp fn2-fc) (fn2-fc-context-wfp fn2-fc-context) (fn2-b3-wfp fn2-b3) (fn2-fields-wfp fn2-fields) (fn2-pool-wfp fn2-pool) (fn2-digests-wfp fn2-digests))
+ :specs (
+  ("-CHECKPOINT-PAGE-TYPE" fn2-checkpoint-pagep 1)
+  ("-CHECKPOINT-PAGE-WFP" fn2-checkpoint-page-wfp 1)
+  ("-CHECKPOINT-PAGE-ROWS" fn2-checkpoint-page-rows 1 :frame fn2-checkpoint-page)
+  ("-CHECKPOINT-PAGE-VERIFIED-TYPE" fn2-checkpoint-page-verifiedp 2)
+  ("-CHECKPOINT-PAGE-VERIFIED-WFP" fn2-checkpoint-page-verified-wfp 2)
+  ("-CHECKPOINT-PAGE-VERIFIED-ROWS" fn2-checkpoint-page-verified-rows 2 :frame fn2-checkpoint-page-verified)
+  ("-FC-TYPE" fn2-fcp 3)
+  ("-FC-WFP" fn2-fc-wfp 3)
+  ("-FC-ROWS" fn2-fc-rows 3 :frame fn2-fc)
+  ("-B3-TYPE" fn2-b3p 4)
+  ("-B3-WFP" fn2-b3-wfp 4)
+  ("-B3-ROWS" fn2-b3-rows 4 :frame fn2-b3)
+  ("-FIELDS-TYPE" fn2-fieldsp 5)
+  ("-FIELDS-WFP" fn2-fields-wfp 5)
+  ("-FIELDS-ROWS" fn2-fields-rows 5 :frame fn2-fields)
+  ("-POOL-TYPE" fn2-poolp 6)
+  ("-POOL-WFP" fn2-pool-wfp 6)
+  ("-POOL-ROWS" fn2-pool-rows 6 :frame fn2-pool)
+  ("-DIGESTS-TYPE" fn2-digestsp 7)
+  ("-DIGESTS-WFP" fn2-digests-wfp 7)
+  ("-DIGESTS-ROWS" fn2-digests-rows 7 :frame fn2-digests)))
 
 (fn2-checkpoint-page-preserves fn2-checkpoint-page-issue
  (budget fn2-checkpoint-page fn2-csnapshot fn2-checkpoint-construction fn2-extents fn2-checkpoint-page-verified fn2-alloc-edges fn2-pool fn2-ops fn2-control)
- :carriers ((fn2-checkpoint-page 1 :prefix "-CHECKPOINT-PAGE") (fn2-pool 2 :prefix "-POOL") (fn2-ops 3 :prefix "-OPS") (fn2-control 4 :prefix "-CONTROL") (fn2-extents 5 :prefix "-EXTENTS") (fn2-alloc-edges 6 :prefix "-ALLOC-EDGES")))
+ :hyps ((fn2-checkpoint-pagep fn2-checkpoint-page) (fn2-csnapshotp fn2-csnapshot) (fn2-checkpoint-constructionp fn2-checkpoint-construction) (fn2-extentsp fn2-extents) (fn2-checkpoint-page-verifiedp fn2-checkpoint-page-verified) (fn2-alloc-edgesp fn2-alloc-edges) (fn2-poolp fn2-pool) (fn2-opsp fn2-ops) (fn2-controlp fn2-control) (fn2-checkpoint-page-wfp fn2-checkpoint-page) (fn2-csnapshot-wfp fn2-csnapshot) (fn2-checkpoint-construction-wfp fn2-checkpoint-construction) (fn2-extents-wfp fn2-extents) (fn2-checkpoint-page-verified-wfp fn2-checkpoint-page-verified) (fn2-alloc-edges-wfp fn2-alloc-edges) (fn2-pool-wfp fn2-pool) (fn2-ops-wfp fn2-ops) (fn2-control-wfp fn2-control))
+ :specs (
+  ("-CHECKPOINT-PAGE-TYPE" fn2-checkpoint-pagep 1)
+  ("-CHECKPOINT-PAGE-WFP" fn2-checkpoint-page-wfp 1)
+  ("-CHECKPOINT-PAGE-ROWS" fn2-checkpoint-page-rows 1 :frame fn2-checkpoint-page)
+  ("-POOL-TYPE" fn2-poolp 2)
+  ("-POOL-WFP" fn2-pool-wfp 2)
+  ("-POOL-ROWS" fn2-pool-rows 2 :frame fn2-pool)
+  ("-OPS-TYPE" fn2-opsp 3)
+  ("-OPS-WFP" fn2-ops-wfp 3)
+  ("-OPS-ROWS" fn2-ops-rows 3 :frame fn2-ops)
+  ("-CONTROL-TYPE" fn2-controlp 4)
+  ("-CONTROL-WFP" fn2-control-wfp 4)
+  ("-CONTROL-ROWS" fn2-control-rows 4 :frame fn2-control)
+  ("-EXTENTS-TYPE" fn2-extentsp 5)
+  ("-EXTENTS-WFP" fn2-extents-wfp 5)
+  ("-EXTENTS-ROWS" fn2-extents-rows 5 :frame fn2-extents)
+  ("-ALLOC-EDGES-TYPE" fn2-alloc-edgesp 6)
+  ("-ALLOC-EDGES-WFP" fn2-alloc-edges-wfp 6)
+  ("-ALLOC-EDGES-ROWS" fn2-alloc-edges-rows 6 :frame fn2-alloc-edges)))
 
 (fn2-checkpoint-page-preserves fn2-checkpoint-page-harvest
  (opslot opgen cell evkind outcome reason count aux0 aux1 fn2-checkpoint-page fn2-csnapshot fn2-checkpoint-construction fn2-extents fn2-checkpoint-page-verified)
- :carriers ((fn2-checkpoint-page 1 :prefix "-CHECKPOINT-PAGE") (fn2-checkpoint-page-verified 2 :prefix "-CHECKPOINT-PAGE-VERIFIED") (fn2-checkpoint-construction 3 :prefix "-CHECKPOINT-CONSTRUCTION")))
+ :hyps ((fn2-checkpoint-pagep fn2-checkpoint-page) (fn2-csnapshotp fn2-csnapshot) (fn2-checkpoint-constructionp fn2-checkpoint-construction) (fn2-extentsp fn2-extents) (fn2-checkpoint-page-verifiedp fn2-checkpoint-page-verified) (fn2-checkpoint-page-wfp fn2-checkpoint-page) (fn2-csnapshot-wfp fn2-csnapshot) (fn2-checkpoint-construction-wfp fn2-checkpoint-construction) (fn2-extents-wfp fn2-extents) (fn2-checkpoint-page-verified-wfp fn2-checkpoint-page-verified))
+ :specs (
+  ("-CHECKPOINT-PAGE-TYPE" fn2-checkpoint-pagep 1)
+  ("-CHECKPOINT-PAGE-WFP" fn2-checkpoint-page-wfp 1)
+  ("-CHECKPOINT-PAGE-ROWS" fn2-checkpoint-page-rows 1 :frame fn2-checkpoint-page)
+  ("-CHECKPOINT-PAGE-VERIFIED-TYPE" fn2-checkpoint-page-verifiedp 2)
+  ("-CHECKPOINT-PAGE-VERIFIED-WFP" fn2-checkpoint-page-verified-wfp 2)
+  ("-CHECKPOINT-PAGE-VERIFIED-ROWS" fn2-checkpoint-page-verified-rows 2 :frame fn2-checkpoint-page-verified)
+  ("-CHECKPOINT-CONSTRUCTION-TYPE" fn2-checkpoint-constructionp 3)
+  ("-CHECKPOINT-CONSTRUCTION-WFP" fn2-checkpoint-construction-wfp 3)
+  ("-CHECKPOINT-CONSTRUCTION-ROWS" fn2-checkpoint-construction-rows 3 :frame fn2-checkpoint-construction)))
+
+; B3 readiness also depends on its custom word-array length, beyond generated
+; column rows. Preserve that exact storage shape across the actual format leaf.
+(defthm fn2-checkpoint-page-format-step-b3-words-length
+ (implies
+  (and (fn2-checkpoint-pagep fn2-checkpoint-page) (fn2-checkpoint-page-wfp fn2-checkpoint-page)
+       (fn2-csnapshotp fn2-csnapshot) (fn2-csnapshot-wfp fn2-csnapshot)
+       (fn2-checkpoint-constructionp fn2-checkpoint-construction) (fn2-checkpoint-construction-wfp fn2-checkpoint-construction)
+       (fn2-extentsp fn2-extents) (fn2-extents-wfp fn2-extents)
+       (fn2-checkpoint-page-verifiedp fn2-checkpoint-page-verified) (fn2-checkpoint-page-verified-wfp fn2-checkpoint-page-verified)
+       (fn2-fcp fn2-fc) (fn2-fc-wfp fn2-fc)
+       (fn2-fc-contextp fn2-fc-context) (fn2-fc-context-wfp fn2-fc-context)
+       (fn2-b3p fn2-b3) (fn2-b3-wfp fn2-b3)
+       (fn2-fieldsp fn2-fields) (fn2-fields-wfp fn2-fields)
+       (fn2-poolp fn2-pool) (fn2-pool-wfp fn2-pool)
+       (fn2-digestsp fn2-digests) (fn2-digests-wfp fn2-digests))
+  (equal
+   (len (nth *fn2-b3-wordsi*
+         (mv-nth 4 (fn2-checkpoint-page-format-step budget fn2-checkpoint-page fn2-csnapshot
+                    fn2-checkpoint-construction fn2-extents fn2-checkpoint-page-verified
+                    fn2-fc fn2-fc-context fn2-b3 fn2-fields fn2-pool fn2-digests))))
+   (len (nth *fn2-b3-wordsi* fn2-b3))))
+ :hints (("Goal" :in-theory (enable fn2-checkpoint-page-format-step))))

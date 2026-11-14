@@ -256,3 +256,40 @@ The root closure was `1ac328a0bef3b08fb6cb691d7371e4f33c1acecb2a77eb5e6fe69cfec3
 This checks the shared 16-unit geometry and unchanged Ref layout assertion,
 not runtime storage composition or certification. The session was stopped and
 its 2 GiB compute reservation released.
+
+Physical map construction now has a passive allocator gate in source: it retains
+an exact owner/token, refuses lifecycle mutations, and permits transient physical
+pins/completions. Upload reservation and cleanup yield while held. Seven literal
+mutation-frame statements are named `-by-definition`; their admission and the
+new primitive controls remain pending. The served path does not activate this
+gate until actual construction closure and journal ticket planning are connected.
+
+The existing B commit start/install path now has a reserved-ticket branch. It
+scans one construction-ledger row per attempt, consumes planned role-6 tickets
+in ordinal order, and binds their exact epoch/allocation to the ordinary three
+journal I/O roles. Installation accepts only the ticket's claimed batch/identity
+and restores the retained gate atomically. The ticket branch is currently
+`unreachable-in-composition` until the construction coordinator authorizes frozen
+installation. It does not establish that a checkpoint is durable. Ticket packing
+capacity derives from the actual commit count/byte budgets; a journal ticket's
+own allocation is installed by its commit rather than requiring a recursive
+allocation member for itself.
+
+C metadata construction is rebuilding overlay and resident-run entries through
+the existing run codecs with real B reservations; copying old cache-addressed
+index pages would be incorrect. A shared bounded rehome operation separately
+checks source and destination owners before replacing a decoded octet reference.
+The event producer groups all canonical records of one actual member/event into
+one leaf and composes the existing Merkle primitive. Its lossless directory
+retains original journal identity/seal tuples under actual installed-root edges;
+it must transfer those dependencies before any future installed-chain edge drop.
+The dependency-page frontier shortcut was rejected because an existing semantic
+record references that page's hash, which would create a hash cycle.
+
+Shared page construction now seals/checks existing codecs, retains verified
+identities, and uses pinned sector writes. Review corrected its pre-finish
+harvest ABI: unrelated notifications and consumed I/O failure return `:ok` to
+the hook chain, while failures retain the job's uncertain state. An `:unrelated`
+return would have stopped the actual core harvest dispatcher. None of these
+composed paths has been admitted or executed; root completion, lifecycle record
+installation and selected-base ordered recovery remain integration work.
