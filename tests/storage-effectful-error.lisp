@@ -11,9 +11,9 @@
  (declare (xargs :verify-guards nil))
  (let* ((p (fn2-cm-profile :crash-only t t nil 0 0))
         (r (fn2-commit-proof-run
-            (append (make-list 600 :initial-element '(:auto 26))
+            (append (make-list 600 :initial-element (list :auto *fn2-fault-none*))
                     '((:start 0 2 5 0) (:start 1 2 7 0))
-                    (make-list 600 :initial-element '(:auto 12))) p 0 2 1))
+                    (make-list 600 :initial-element (list :auto *fn2-fault-no-space*))) p 0 2 1))
         (replies (fn2-commit-proof-replies r)))
   (and (fn2-commit-proof-admitted r) (fn2-commit-proof-saw-uncertain r)
        (fn2-commit-proof-stable r) (fn2-commit-ack-evidencep r)
@@ -31,7 +31,7 @@
  (declare (xargs :verify-guards nil))
  (let* ((p (fn2-cm-profile :crash-only t t nil 0 0))
         (r (fn2-commit-proof-run
-            (append (make-list 600 :initial-element '(:auto 26))
+            (append (make-list 600 :initial-element (list :auto *fn2-fault-none*))
                     '((:start 0 2 5 0))
                     (make-list 600 :initial-element
                       (if hold '(:auto-lost-fence) '(:auto-staged-fence)))) p 0 2 1))
