@@ -1,6 +1,5 @@
 ; Guarded decisions called by the native TLS adapter; no raw I/O here.
 (in-package "ACL2")
-(include-book "tls-kind")
 (include-book "tls-transport-state")
 (fn2-book-layer :d)
 
