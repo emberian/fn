@@ -111,6 +111,40 @@
                 (fn2-cns-drain-releasablep fn2-core-machines fn2-cns-table
                  fn2-core-pool fn2-core-control fn2-core-sched fn2-corep fn2-core-wfp)))))
 
+; Normalize only the row readers the actual public run/draining bodies
+; call. Other arms and their columns stay outside the proof's open theory.
+(defun fn2-cns-draining-row-projection-events (columns calls readers)
+  (declare (xargs :verify-guards nil))
+  (if (atom columns)
+      `((deftheory fn2-cns-draining-native-readers ',(reverse readers)))
+    (let* ((field (caar columns)) (reader (fn2-machine-row-reader 'fn2-cns field))
+           (directoryp (fn2-machine-directory-fieldp field))
+           (native (fn2-columns-col-name (if directoryp 'fn2-machines 'fn2-cns) field))
+           (table (if directoryp 'fn2-core-machines 'fn2-cns-table))
+           (index (if directoryp 'id '(fn2-machine-slot id fn2-core))))
+      (if (not (member-eq reader calls))
+          (fn2-cns-draining-row-projection-events (cdr columns) calls readers)
+        (cons
+         `(defthm ,(fn2-columns-sym reader "-BY-DEFINITION")
+            (implies (and (fn2-corep fn2-core) (fn2-core-wfp fn2-core)
+                          (equal (fn2-cns-snapshot-read-code id fn2-core) :ok))
+                     (equal (,reader id fn2-core) (,native ,index (,table fn2-core))))
+            :hints (("Goal" :use fn2-cns-row-access-valid
+                     :in-theory
+                     (e/d (,reader)
+                          (fn2-cns-snapshot-read-code fn2-machine-slot ,native ,table
+                           fn2-machines-rows fn2-corep fn2-core-wfp)))))
+         (fn2-cns-draining-row-projection-events (cdr columns) calls (cons native readers)))))))
+(make-event
+ (let* ((world (w state))
+        (run (getpropc 'fn2-cns-run 'unnormalized-body nil world))
+        (drain (getpropc 'fn2-cns-run-draining 'unnormalized-body nil world)))
+   (if (or (not run) (not drain))
+       (er soft 'fn2-cns-draining-row-projection-events "Actual CNS run bodies are missing.")
+     (value (cons 'progn
+       (fn2-cns-draining-row-projection-events (fn2-machine-property 'fn2-cns :columns world)
+         (union-eq (all-fnnames run) (all-fnnames drain)) nil))))))
+
 (defun fn2-cns-core-reclaim-expected (id ord retire before)
   (fn2-cns-drain-put-child 'fn2-machines
     (car (fn2-machines-reclaim-list-expected id ord retire
@@ -175,6 +209,16 @@
                  update-fn2-core-pool update-fn2-core-control
                  fn2-cns-drain-releasablep fn2-cns-owned-pool-release-expected
                  fn2-corep fn2-core-wfp)))))
+
+(defthm fn2-cns-core-release-protected-children
+  (let ((after (mv-nth 1 (fn2-core-release slot gen kind id ogen core))))
+    (and (equal (fn2-core-machines after) (fn2-core-machines core))
+         (equal (fn2-cns-table after) (fn2-cns-table core))
+         (equal (fn2-core-sched after) (fn2-core-sched core))))
+  :hints (("Goal" :in-theory
+           (e/d (fn2-core-release)
+                (fn2-core-release-children fn2-core-machines fn2-cns-table fn2-core-sched
+                 fn2-core-pool fn2-core-control update-fn2-core-pool update-fn2-core-control)))))
 
 (defthm fn2-cns-release-ns-independent-by-definition
   (implies (and (fn2-corep core) (fn2-core-wfp core)
@@ -321,3 +365,28 @@
                          fn2-cns-table fn2-core-machines fn2-core-pool fn2-core-control
                          fn2-corep fn2-core-wfp)))))))))
 (make-event (value (cons 'progn (fn2-cns-take-reservation-events (w state)))))
+
+; The target is the original live obligation's exact H/C, including its
+; defensive held-lease inputs. No discharge is registered until this
+; actual public-function proof and its complete evidence have passed.
+(defthm fn2-cns-draining-counted-independent-composed
+  (implies (and (fn2-corep core) (fn2-core-wfp core)
+                (natp budget) (fn2-cns-draining-domainp id core)
+                (fn2-cns-draining-reservedp core)
+                (fn2-pool-semanticp (fn2-core-pool core)))
+    (mv-let (b s d r after) (fn2-cns-run id budget core)
+      (fn2-cns-draining-resultp id core b s d r after)))
+  :rule-classes nil
+  :hints (("Goal" :do-not-induct t
+           :cases ((equal (fn2-cns-row-lease id core) *fn2-cns-lease-held*))
+           :in-theory
+           (union-theories
+            (theory 'fn2-cns-draining-native-readers)
+            (e/d (fn2-cns-run fn2-cns-run-draining fn2-machine-contract-check fn2-cns-arm-ok-p
+                  fn2-cns-draining-domainp fn2-cns-draining-resultp fn2-cns-draining-expected
+                  fn2-cns-drain-cell fn2-cns-drain-get fn2-cns-drain-index
+                  fn2-cns-drain-child fn2-cns-drain-child-index fn2-cns-drain-put-child
+                  fn2-cns-drain-put-cells fn2-cns-drain-put-cell fn2-cns-drain-put)
+                 (fn2-corep fn2-core-wfp fn2-pool-semanticp fn2-pool-release
+                  fn2-cns-drain-releasablep fn2-cns-draining-reservedp
+                  fn2-core-release fn2-cns-release-ns fn2-cns-lease-release fn2-cns-reclaim))))))
