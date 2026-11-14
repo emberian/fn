@@ -370,6 +370,10 @@
 (fn2-pool-preserves fn2-block-read-children (pu epoch alloc off len lslot lgen okind oslot ogen principal
                                              fn2-extents fn2-pool fn2-ops fn2-control)
   :carriers ((fn2-pool 3 :prefix "-POOL") (fn2-ops 4 :prefix "-OPS") (fn2-control 5 :prefix "-CONTROL")))
+(make-event
+ (value (cons 'progn
+   (append (fn2-issue-wrapper-effect-events '(fn2-block-read-children) (w state))
+           (fn2-issued-wrapper-events '(fn2-block-read-children) (w state))))))
 (defcost fn2-block-read :child fn2-block-read-children :answers (:ok :exhausted :stale :bounds)
  :tables (fn2-core-extents fn2-core-pool fn2-core-ops fn2-core-control)
  :descriptors 1 :doc "B-S2 S10: read a stored reference's range into the caller's lease (D6 3/n).")

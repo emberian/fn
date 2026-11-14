@@ -2335,16 +2335,27 @@
  (let* ((sig (fn2-arms-sig name world)) (ins (car sig)) (outs (cadr sig))
         (call (cons name (getpropc name 'formals nil world)))
         (pos (position-eq 'fn2-ops outs))
-        (after (if pos `(mv-nth ,(+ 4 pos) ,call) 'fn2-ops)))
-  `(defthm ,(fn2-columns-sym name "-ISSUED-EFFECT")
-    (implies (and ,@(fn2-arms-child-shape-hyps ins)
-                  ,(getpropc name 'guard t world))
-     ,(if (member-eq 'fn2-ops ins)
-          (fn2-run-issued-claim `(mv-nth 2 ,call) 'fn2-ops after)
-        `(equal (mv-nth 2 ,call) 0)))
-    :hints (("Goal" :in-theory (e/d (,name)
-       (natp nfix nth fn2-ops-issued-count fn2-op-issued-weight
-        ,@(fn2-arms-shape-fns ins) ,@(fn2-arms-rows-fns ins))))))))
+        (after (if pos `(mv-nth ,(+ 4 pos) ,call) 'fn2-ops))
+        (ops (member-eq 'fn2-ops ins))
+        (formula
+         `(implies (and ,@(fn2-arms-child-shape-hyps ins)
+                        ,(getpropc name 'guard t world))
+           ,(if ops (fn2-run-issued-claim `(mv-nth 2 ,call) 'fn2-ops after)
+              `(equal (mv-nth 2 ,call) 0)))))
+  ; Without an operation carrier these two public statements are identical.
+  ; Check that identity before reusing the first proof; never infer history
+  ; preservation from queue length when an operation carrier is present.
+  (if (and (not ops)
+           (not (equal formula (caddr (fn2-arms-child-effects-event name world)))))
+      `(make-event (er soft 'fn2-arms-child-issued-event
+          "Non-issuing effect statements disagree for ~x0." ',name))
+    `(defthm ,(fn2-columns-sym name "-ISSUED-EFFECT")
+       ,formula
+       :hints ,(if ops
+                   `(("Goal" :in-theory (e/d (,name)
+                      (natp nfix nth fn2-ops-issued-count fn2-op-issued-weight
+                       ,@(fn2-arms-shape-fns ins) ,@(fn2-arms-rows-fns ins)))))
+                 `(("Goal" :by ,(fn2-columns-sym name "-DESCRIPTOR-EFFECT"))))))))
 (defun fn2-arms-child-fn-events (name kind observe acc body world)
   (declare (xargs :verify-guards nil))
   (let* ((tuple (fn2-arms-kind-tuple kind world))

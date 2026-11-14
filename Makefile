@@ -301,6 +301,7 @@ ACL2_BOOKS = \
   tests/core-init-profile-context-unit \
   tests/machine-success-charge-context-unit \
   tests/issue-history-context-unit \
+  tests/issue-wrapper-boundary-unit \
   tests/machine-child-tables-unit \
   tests/machines-a-unit \
   tests/shape-one-unit \
