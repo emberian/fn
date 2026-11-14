@@ -50,3 +50,37 @@
 (assert-event (fn2-crsu-test :epoch))
 (assert-event (fn2-crsu-test :allocation))
 (assert-event (fn2-crsu-test :candidate))
+
+; Replace BOTH current descriptor and complete map at the same slot after
+; successful begin. Current-map-p remains true; the in-flight source must refuse.
+(defun fn2-crsu-replacement-body (fn2-checkpoints fn2-checkpoint-refs fn2-checkpoint-bytes fn2-checkpoint-restore-reader
+ fn2-checkpoint-restore-map fn2-checkpoint-restore-map-control fn2-fields fn2-pool fn2-checkpoint-restore-semantic
+ fn2-fc fn2-fc-context fn2-b3 fn2-digests)
+ (declare (xargs :stobjs (fn2-checkpoints fn2-checkpoint-refs fn2-checkpoint-bytes fn2-checkpoint-restore-reader
+ fn2-checkpoint-restore-map fn2-checkpoint-restore-map-control fn2-fields fn2-pool fn2-checkpoint-restore-semantic
+ fn2-fc fn2-fc-context fn2-b3 fn2-digests) :verify-guards nil))
+ (b* (((mv begun fn2-checkpoints fn2-checkpoint-refs fn2-checkpoint-bytes fn2-checkpoint-restore-reader
+        fn2-checkpoint-restore-map fn2-checkpoint-restore-map-control fn2-fields fn2-pool fn2-checkpoint-restore-semantic)
+       (fn2-crsu-body nil fn2-checkpoints fn2-checkpoint-refs fn2-checkpoint-bytes fn2-checkpoint-restore-reader
+        fn2-checkpoint-restore-map fn2-checkpoint-restore-map-control fn2-fields fn2-pool fn2-checkpoint-restore-semantic))
+      (fn2-checkpoint-bytes (fn2-checkpoint-bytes-set-value 0 1 fn2-checkpoint-bytes))
+      (fn2-checkpoint-restore-map-control (update-fn2-checkpoint-restore-map-control-descriptori 0 1 fn2-checkpoint-restore-map-control))
+      (current (fn2-checkpoint-restore-map-current-p fn2-checkpoints fn2-checkpoint-refs fn2-checkpoint-bytes fn2-checkpoint-restore-map fn2-checkpoint-restore-map-control))
+      (old (list (fn2-checkpoint-restore-semantic-phase 0 fn2-checkpoint-restore-semantic)
+                 (fn2-checkpoint-restore-semantic-unit 0 fn2-checkpoint-restore-semantic)
+                 (fn2-checkpoint-restore-semantic-hashi 32 fn2-checkpoint-restore-semantic)))
+      ((mv code fn2-checkpoint-restore-semantic fn2-fc fn2-fc-context fn2-b3 fn2-fields fn2-pool fn2-digests)
+       (fn2-checkpoint-restore-semantic-page 4096 0 0 fn2-checkpoints fn2-checkpoint-refs fn2-checkpoint-bytes
+        fn2-checkpoint-restore-map fn2-checkpoint-restore-map-control fn2-checkpoint-restore-semantic fn2-fc fn2-fc-context fn2-b3 fn2-fields fn2-pool fn2-digests)))
+  (mv (and begun current (eq code :source) (equal old (list (fn2-checkpoint-restore-semantic-phase 0 fn2-checkpoint-restore-semantic)
+                     (fn2-checkpoint-restore-semantic-unit 0 fn2-checkpoint-restore-semantic)
+                     (fn2-checkpoint-restore-semantic-hashi 32 fn2-checkpoint-restore-semantic))))
+   fn2-checkpoints fn2-checkpoint-refs fn2-checkpoint-bytes fn2-checkpoint-restore-reader fn2-checkpoint-restore-map fn2-checkpoint-restore-map-control
+   fn2-fields fn2-pool fn2-checkpoint-restore-semantic fn2-fc fn2-fc-context fn2-b3 fn2-digests)))
+(defun fn2-crsu-replacement-test ()
+ (declare (xargs :verify-guards nil))
+ (fn2-run-with-local (fn2-checkpoints fn2-checkpoint-refs fn2-checkpoint-bytes fn2-checkpoint-restore-reader fn2-checkpoint-restore-map fn2-checkpoint-restore-map-control
+ fn2-fields fn2-pool fn2-checkpoint-restore-semantic fn2-fc fn2-fc-context fn2-b3 fn2-digests)
+  (fn2-crsu-replacement-body fn2-checkpoints fn2-checkpoint-refs fn2-checkpoint-bytes fn2-checkpoint-restore-reader fn2-checkpoint-restore-map fn2-checkpoint-restore-map-control
+   fn2-fields fn2-pool fn2-checkpoint-restore-semantic fn2-fc fn2-fc-context fn2-b3 fn2-digests)))
+(assert-event (fn2-crsu-replacement-test))
