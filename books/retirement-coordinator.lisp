@@ -14,7 +14,7 @@
                      (unsigned-byte-p 32 oslot) (unsigned-byte-p 60 ogen)
                      (not (fn2-core-stopped-p fn2-core))))
         (mv :admission 0 0 fn2-core))
-       ((when (fn2-storage-frozen fn2-core)) (mv :exhausted 0 0 fn2-core))
+       ((when (fn2-storage-checkpoint-active fn2-core)) (mv :exhausted 0 0 fn2-core))
        ((mv pick id partner) (fn2-commit-pick fn2-core))
        ((when (or (eq pick :exhausted) (not (fn2-commit-settled-room 1 fn2-core))))
         (mv :exhausted 0 0 fn2-core))

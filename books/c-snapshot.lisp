@@ -12,7 +12,7 @@
 
 (defcost fn2-csnapshot-state :tables (fn2-core-csnapshot)
  :doc "Read resident snapshot exclusion state.")
-(defcost fn2-csnapshot-begin :answers (:ok :busy :bounds :exhausted :stopped) :tables (fn2-core-csnapshot)
+(defcost fn2-csnapshot-begin :answers (:ok :busy :bounds :exhausted :stopped) :tables (fn2-core-csnapshot fn2-core-extents)
  :doc "Close new C staging while admitted work drains.")
 (defcost fn2-csnapshot-poll :answers (:owner :bounds :more :held :stopped) :tables (fn2-core-csnapshot)
  :doc "Inspect one draining transaction, then retain the actual settled commit/event cut.")
@@ -24,7 +24,7 @@
  :doc "Return one held resident run page range; its identity is not a physical reference.")
 (defcost fn2-csnapshot-run-info :answers (:owner :bounds :ok)
  :doc "Read a held run's resident root and page interval for codec-based rebuilding.")
-(defcost fn2-csnapshot-release :answers (:owner :ok) :tables (fn2-core-csnapshot)
+(defcost fn2-csnapshot-release :answers (:owner :frozen :ok) :tables (fn2-core-csnapshot fn2-core-extents)
  :doc "Release an exact owner/token resident cut; ambiguous persistence must retain it.")
 
 (defun fn2-csnapshot-ownerp (token okind oslot ogen fn2-csnapshot)
@@ -54,23 +54,23 @@
 
  (fn2-csnapshot-op fn2-csnapshot-begin (okind oslot ogen) 2
   (if (fn2-core-stopped-p fn2-core) (mv :stopped 0 fn2-core)
-  (stobj-let ((fn2-csnapshot (fn2-core-csnapshot fn2-core)))
-   (code token fn2-csnapshot)
-   (cond ((not (and (< 0 (fn2-csnapshot-rows fn2-csnapshot))
-                    (unsigned-byte-p 8 okind) (unsigned-byte-p 32 oslot) (unsigned-byte-p 60 ogen)))
-          (mv :bounds 0 fn2-csnapshot))
-         ((not (= (fn2-csnapshot-phase 0 fn2-csnapshot) *fn2-csnapshot-phase-idle*))
-          (mv :busy 0 fn2-csnapshot))
-         ((not (unsigned-byte-p 60 (+ 1 (fn2-csnapshot-token 0 fn2-csnapshot))))
-          (mv :exhausted 0 fn2-csnapshot))
-         (t (let* ((token (+ 1 (fn2-csnapshot-token 0 fn2-csnapshot)))
-                   (fn2-csnapshot (fn2-csnapshot-put 0 (phase *fn2-csnapshot-phase-closing*)
-                      (token token) (owner-kind okind) (owner-slot oslot) (owner-gen ogen)
-                      (scan 0) (blocked 0) (source 0) (row 0) (complete 0))))
-              (mv :ok token fn2-csnapshot))))
+  (stobj-let ((fn2-csnapshot (fn2-core-csnapshot fn2-core))
+              (fn2-extents (fn2-core-extents fn2-core)))
+   (code token fn2-csnapshot fn2-extents)
+   (b* (((unless (and (< 0 (fn2-csnapshot-rows fn2-csnapshot))
+                      (unsigned-byte-p 8 okind) (unsigned-byte-p 32 oslot) (unsigned-byte-p 60 ogen)))
+         (mv :bounds 0 fn2-csnapshot fn2-extents))
+        ((unless (= (fn2-csnapshot-phase 0 fn2-csnapshot) *fn2-csnapshot-phase-idle*))
+         (mv :busy 0 fn2-csnapshot fn2-extents))
+        (token (+ 1 (fn2-csnapshot-token 0 fn2-csnapshot)))
+        ((unless (unsigned-byte-p 60 token)) (mv :exhausted 0 fn2-csnapshot fn2-extents))
+        ((mv code fn2-extents) (fn2-alloc-snapshot-prepare token okind oslot ogen fn2-extents))
+        ((unless (eq code :ok)) (mv code 0 fn2-csnapshot fn2-extents))
+        (fn2-csnapshot (fn2-csnapshot-put 0 (phase *fn2-csnapshot-phase-closing*)
+         (token token) (owner-kind okind) (owner-slot oslot) (owner-gen ogen)
+         (scan 0) (blocked 0) (source 0) (row 0) (complete 0))))
+    (mv :ok token fn2-csnapshot fn2-extents))
    (mv code token fn2-core))))
-
-
 
  ; One transaction per poll. No new OPEN transaction may stage after BEGIN;
  ; STAGED/BOUND ones still finish through the ordinary B writer. PUBLISHED
@@ -218,10 +218,12 @@
  ; Release never implies persistence or checkpoint completion. The coordinator
  ; must retain this ownership on an ambiguous write/install outcome.
  (fn2-csnapshot-op fn2-csnapshot-release (token okind oslot ogen) 1
-  (stobj-let ((fn2-csnapshot (fn2-core-csnapshot fn2-core))) (code fn2-csnapshot)
+  (stobj-let ((fn2-csnapshot (fn2-core-csnapshot fn2-core))
+              (fn2-extents (fn2-core-extents fn2-core))) (code fn2-csnapshot fn2-extents)
    (if (not (fn2-csnapshot-ownerp token okind oslot ogen fn2-csnapshot))
-       (mv :owner fn2-csnapshot)
-     (let ((fn2-csnapshot (fn2-csnapshot-set-phase 0 *fn2-csnapshot-phase-idle* fn2-csnapshot)))
-      (mv :ok fn2-csnapshot)))
-   (mv code fn2-core)))
- ))
+       (mv :owner fn2-csnapshot fn2-extents)
+     (mv-let (code fn2-extents) (fn2-alloc-snapshot-release token okind oslot ogen fn2-extents)
+      (let ((fn2-csnapshot (if (eq code :ok)
+             (fn2-csnapshot-set-phase 0 *fn2-csnapshot-phase-idle* fn2-csnapshot) fn2-csnapshot)))
+       (mv code fn2-csnapshot fn2-extents))))
+   (mv code fn2-core)))))
