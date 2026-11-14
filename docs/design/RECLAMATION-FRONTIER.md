@@ -16,9 +16,11 @@ feeds `sim/check-reclaim.lisp`, an independent event interpreter. Those are
 useful allocator tests, not a served reclamation trace. The generic
 `sim/check.lisp` dispatcher still answers `:not-yet` for reclamation.
 
-The current non-proof books do not call `fn2-alloc-retire`,
-`fn2-alloc-release`, `fn2-alloc-checkpoint-advance` or `fn2-alloc-relocate`
-outside their definitions. `books/commit.lisp` does reserve extents and
+The source recovery replay now calls `fn2-retirement-install`, which applies
+`fn2-alloc-retire` only for the containing batch and matching allocation.
+The live writer has no lifecycle producer yet. Persistent release, checkpoint
+advance and relocation remain unconnected to served reclamation.
+`books/commit.lisp` does reserve extents and
 maintain installed-root, prepared-successor and outstanding-I/O edges.
 Cancelling an uncommitted reservation is distinct from retiring live data.
 `fn2-rd-release` in `books/machines-c-read.lisp` releases query/range/read
@@ -98,13 +100,13 @@ owner. Outbox acknowledgement cannot release this pin. Pin attachment must
 complete before the issued descriptor becomes visible to the adapter, and
 failure must not leave a descriptor without protection.
 
-Two dependencies prevent enabling final FREE now. First, allocator edge
-capacity and generated core carriers must reserve and carry the per-operation
-physical pin through issue and physical completion. Second, although
+Two dependencies prevent enabling final FREE now. First, the source physical
+pin integration needs admission and executable qualification. Second, although
 `fn2-format-retirement` and `fn2-format-release-allocation` already encode the
 lifecycle records (including checkpoint and physical release evidence), the
-current transaction record allowlist and `fn2-rp-body` do not accept/replay
-them. The release coordinator must join the actual journal persistence and
+live transaction admission does not yet accept lifecycle records. Ordered
+recovery has a source retirement branch, but no release branch.
+The release coordinator must join the actual journal persistence and
 recovery path, including checkpoint-root protection, before any call to FREE.
 
 The persistence interval also needs an admission rule: a successful preflight
@@ -132,3 +134,23 @@ completion; its removal control drops the acquired pin while that same read
 is outstanding. These fixtures do not implement checkpoint publication or
 journal replay, and source presence is not certification. No served FREE path
 is enabled by this change.
+
+The explicit `release-pending` allocator marker now closes durable edge
+admission after successful `fn2-alloc-release-prepare`. Ordinary retirement
+still accepts protections. Transient pins remain possible and continue to
+block release; no generic abort clears ambiguous intent. The marker itself
+is not durability evidence. Source fixtures inspect it directly, including
+reset on reuse; the allocator's display view does not carry it.
+
+`books/retirement.lisp` shares the existing member framing/body codec and one
+exact-batch install operation. Recovery passes its verified containing commit
+to `fn2-recovery-replay-record`, flushes any pending C workspace, and applies
+retirement after adoption. Wrong-batch, stale and conflicting records fail.
+Codec/truncation and actual replay-entry fixtures are in the unit catalog;
+admission and execution remain pending. Live admission stays disabled until
+the batch planner, producer and bounded post-durability installation compose.
+
+Before reuse, recovery's historical-location adoption must become checkpoint
+aware: old and reused identities cannot be adopted as simultaneously live.
+Checkpoint publication/root selection and a journaled writer-epoch transition
+remain prerequisites. A release record decoder alone cannot close these gaps.
