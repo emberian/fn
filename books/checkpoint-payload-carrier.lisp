@@ -1,6 +1,6 @@
 ; Shared concrete payload continuation, independent of live source authority.
 (in-package "ACL2")
-(include-book "machines-b")
+(include-book "payload-workspace")
 (include-book "source-manifest-codec")
 (fn2-book-layer :b)
 (defcolumns fn2-checkpoint-payload
