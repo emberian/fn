@@ -276,3 +276,43 @@ caller first checks `fn2-cns-principal` against the same core. Authentication an
 kernel owner-UID trust remain outside the structural theorem. The authorization
 lane owns a named 2 GiB allocation transferred from the finished parser lane;
 all probes are sequential and use qualified prefixes, with no cold app closure.
+
+## Original article membership source lane
+
+`assurance-article-membership` supplies schema 20, keyed by immutable
+`(article, ordinal)` with a stream identifier value, and appends
+`membership-count` to article metadata. `fn2-txn-add-group` declares each
+membership and advances the private article count in the same successor as the
+existing overview and article. The served group loop starts at zero and only
+increments after successful declaration; any partial failure follows its existing
+refusal path, never acceptance. Recovery's event mask substitutes the committed
+article identifier in membership keys. This source relationship is not yet a
+certified count/contiguity or crash theorem.
+
+Successor capacity grows from 24 to 32 slots. Per-group geometry grows from two
+to three slots, skips authority dependency slot 20, and preserves the existing
+seven-group supported admission. The unchanged 2048-row transaction field stripe
+is checked by its existing computed-fit assertion. No stored reader is capped at
+seven: count and ordinal use the persisted unsigned 60-bit domain.
+
+`fn2-article-membership-count-step(article, step, x, budget, core)` returns
+`(code, count, next-step, core)`. `fn2-article-membership-step(article, ordinal,
+count, step, x, budget, core)` returns `(code, next-ordinal, stream, next-step,
+core)`. Start with step zero; `:more` preserves the ordinal and returns step one.
+`:ok` advances one ordinal; `:end` requires exact equality with the persisted
+count on a fresh step. Missing rows below count and mismatched returned article
+or ordinal keys are `:fault`, never silent truncation. Exact lookups yield through
+C's existing budgeted reader. The owning controller must retain the same read
+row/arguments while resuming and obtain count from article metadata.
+
+The parent authorization lane owns CNS integration: include
+`books/article-membership.lisp` and expand `fn2-article-membership-events` after
+`fn2-auth-read-events`, before `fn2-cns-events`; then integrate the bounded
+any-own-stream grant walk and coherent final handoff validation. The standalone
+served fixture currently expands the macro itself; remove that one expansion
+when the assembly owns it. Its actual cross-post producer checks both original
+stream IDs and persisted count, plus explicit missing-member refusal. Geometry,
+SID20 replay-mask and beyond-current-profile count controls are separate.
+
+Strict source parsing, secrets and diff checks pass. No ACL2 admission, executed
+fixture, certification or remote build was run in this source-only lane.

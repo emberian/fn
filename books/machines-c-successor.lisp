@@ -82,7 +82,7 @@
 ; position once bound,
 ; resolve's progress (slot RI, run bound RBOUND), and an exact lookup's
 ; (machines-c-groups.lisp: LPHASE, LBOUND, LROW, LVER). A slot row (row
-; T * 24 + I): schema, kind (:insert, or one of the folds' event
+; T * *fn2-succ-slots* + I): schema, kind (:insert, or one of the folds' event
 ; kinds), the masks of args given (SET), given :event (EVENTS) and given
 ; :out (OUTS), what resolve found (FOUND, the schema's run version VRUN), the
 ; staged entry's SIZE, the owner its octet args are read under, the args

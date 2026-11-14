@@ -1,0 +1,60 @@
+; Actual cross-post producer and persisted membership reads. Source draft;
+; no executed/certified claim. Remove the expansion below when the consumer
+; assembly owns it (it must run after auth-read-events, before cns-events).
+(in-package "ACL2")
+(include-book "authority-served")
+(include-book "../books/article-membership")
+(fn2-article-membership-events)
+
+(defun fn2-membership-count-drive (fuel article step fn2-core)
+  (declare (xargs :stobjs fn2-core :verify-guards nil :measure (nfix fuel)))
+  (if (zp fuel) (mv :fuel 0 fn2-core)
+    (mv-let (code count next fn2-core)
+      (fn2-article-membership-count-step article step 0 4096 fn2-core)
+      (if (eq code :more)
+          (fn2-membership-count-drive (- fuel 1) article next fn2-core)
+        (mv code count fn2-core)))))
+(defun fn2-membership-item-drive (fuel article ordinal count step fn2-core)
+  (declare (xargs :stobjs fn2-core :verify-guards nil :measure (nfix fuel)))
+  (if (zp fuel) (mv :fuel 0 0 fn2-core)
+    (mv-let (code next stream next-step fn2-core)
+      (fn2-article-membership-step article ordinal count step 0 4096 fn2-core)
+      (if (eq code :more)
+          (fn2-membership-item-drive (- fuel 1) article ordinal count next-step fn2-core)
+        (mv code next stream fn2-core)))))
+(defun fn2-membership-served-run ()
+  (declare (xargs :verify-guards nil))
+  (with-local-stobj fn2-core
+    (mv-let (answer fn2-core)
+      (b* ((fn2-core (fn2-init-executor *fn2-as-append-profile* :echo nil fn2-core))
+           ((mv & fn2-core)
+            (stobj-let ((fn2-extents (fn2-core-extents fn2-core))) (code fn2-extents)
+              (fn2-alloc-begin-epoch 1 fn2-extents) (mv code fn2-core)))
+           ((mv first fn2-core) (fn2-as-group "dregg.fn.e1" fn2-core))
+           ((mv second fn2-core) (fn2-as-group "dregg.fn.e1.reply" fn2-core))
+           ((unless (and (posp first) (posp second) (not (equal first second))))
+            (mv (list :groups first second) fn2-core))
+           (article (fn2-cw-crlf-octets '("From: owner@example.invalid" "Subject: membership"
+                       "Newsgroups: dregg.fn.e1,dregg.fn.e1.reply"
+                       "Message-ID: <membership@example.invalid>" "" "body")))
+           ((mv status wire & store fn2-core)
+            (fn2-as-round-stored 0 (list (fnc-append 101 article)) nil nil fn2-core))
+           (reply (fnc-reply 'append wire))
+           (id (car (nth 2 reply)))
+           ((unless (and (eq status :quiet) (eq (car reply) :accepted) (posp id) (consp store)))
+            (mv (list :append status reply) fn2-core))
+           ((mv cc count fn2-core) (fn2-membership-count-drive 32 id 0 fn2-core))
+           ((mv c0 n0 s0 fn2-core) (fn2-membership-item-drive 32 id 0 count 0 fn2-core))
+           ((mv c1 n1 s1 fn2-core) (fn2-membership-item-drive 32 id n0 count 0 fn2-core))
+           ((mv ce ne se fn2-core) (fn2-membership-item-drive 32 id n1 count 0 fn2-core))
+           ; Deliberately remove count provenance: claiming another member
+           ; must expose the missing row as fault, not quietly stop at count2.
+           ((mv cf & & fn2-core) (fn2-membership-item-drive 32 id 2 3 0 fn2-core)))
+        (mv (list (and (fn2-corep fn2-core) (fn2-core-wfp fn2-core))
+                  cc count c0 n0 c1 n1 ce ne se cf
+                  (equal (list s0 s1) (list first second))
+                  (fn2-core-stop-reason fn2-core)) fn2-core))
+      answer)))
+(assert-event
+ (equal (fn2-membership-served-run)
+        '(t :ok 2 :ok 1 :ok 2 :end 2 0 :fault t 0)))

@@ -24,8 +24,18 @@
          (source :digest) (bytes :varint) (lines :varint)
          (location-unit (:id physical-unit)) (location-epoch (:id writer-epoch))
          (location-allocation (:id allocation))
-         (location-kind (:enum fn2-article-location-kind (:raw-source :source-manifest))))
+          (location-kind (:enum fn2-article-location-kind (:raw-source :source-manifest)))
+          (membership-count :varint))
  :merge :latest)
+
+; Original admitted stream identifiers, independent of later group-directory
+; renumbering. The article row's persisted count owns exactly ordinals [0,count).
+; One successor transaction publishes the article, every membership and count.
+; A reader must treat a missing ordinal below count as a fault, not end-of-list.
+(defrunschema fn2-article-membership :id 20
+ :key ((article (:id article)) (ordinal (:id membership-ordinal)))
+ :value ((stream (:id stream)))
+ :merge :unique)
 
 ; Overview, keyed (group, number) from first materialization; the stored
 ; overview line (subject, from, date, message-id, references, bytes,

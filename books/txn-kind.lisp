@@ -22,13 +22,18 @@
 ;; Successor write-slot geometry in C-S3 (*fn2-succ-slots*):
 ;; 0..7 are fixed per-POST slots, *fn2-txn-slot-depend* (20) holds the authority
 ;; head read dependency (matching authority.lisp's *fn2-auth-depend-slot*), and
-;; every remaining pair of slots carries one group's count accept + overview entry.
+;; every remaining triple carries count accept + overview + original membership.
+;; 32 successor slots preserve the existing seven-group supported admission.
 (defconst *fn2-txn-slot-accepts* 8)
 (defconst *fn2-txn-slot-depend* 20)
+(defconst *fn2-txn-group-slots* 3)
 (defconst *fn2-txn-groups-max*
-  (floor (- *fn2-succ-slots* (+ 1 *fn2-txn-slot-accepts*)) 2))
+  (floor (- *fn2-succ-slots* (+ 1 *fn2-txn-slot-accepts*)) *fn2-txn-group-slots*))
 (assert-event (and (posp *fn2-txn-groups-max*)
-                   (< *fn2-txn-slot-depend* *fn2-succ-slots*)))
+                   (< *fn2-txn-slot-depend* *fn2-succ-slots*)
+                   (equal (mod (- *fn2-txn-slot-depend* *fn2-txn-slot-accepts*)
+                               *fn2-txn-group-slots*) 0)
+                   (equal *fn2-txn-groups-max* 7)))
 
 ;; Profile-configured cross-post group limit (:max-groups-per-article, D27):
 ;; a D core child read by fn2-txn instead of a compile-time literal.

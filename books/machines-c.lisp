@@ -14,14 +14,14 @@
 ; (commit.lisp: base = 128 * row); transaction T's stripe is the
 ; *fn2-b-txn-field-rows*-row stripe ending (transactions - T) stripes before
 ; the table's end. machines-b sizes the table for both (fn2-b-field-rows). In
-; a stripe (C-STRIPE): the successor's 24 write slots from +0, one 48-row
+; a stripe (C-STRIPE): the successor's 32 write slots from +0, one 48-row
 ; block each (C-S3, machines-c-successor.lisp), then the exact lookup's area
-; from +1152: its query at +4 (the identity decision's key: namespace, name,
+; from +1536: its query at +4 (the identity decision's key: namespace, name,
 ; profile, algorithm, digest), the run reader at +84 (its rows also take the
 ; entry a bind writes).
 (defconst *fn2-idc-stride* *fn2-b-txn-field-rows*)
 (defconst *fn2-idc-b-stripe* 128)
-(defconst *fn2-succ-slots* 24)
+(defconst *fn2-succ-slots* 32)
 (defconst *fn2-succ-block* 48)
 (defconst *fn2-idc-ident* (* *fn2-succ-slots* *fn2-succ-block*))
 (defconst *fn2-idc-eb* (+ *fn2-idc-ident* 4))

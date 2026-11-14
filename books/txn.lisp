@@ -28,7 +28,7 @@
 ;; slots (C-S3): the identity admission (C §4a: the evidence, the history
 ;; entry, the summary's and the candidate's :admit, the article index), the
 ;; article row, the operation outcome, then one group-count accept and
-;; overview row per carried group up to the profile's :max-groups-per-article
+;; overview and original-stream membership per carried group up to the profile's :max-groups-per-article
 ;; (fn2-txn-groups-limit, bounded by *fn2-txn-groups-max* in txn-kind.lisp),
 ;; skipping *fn2-txn-slot-depend* (authority.lisp's read-dependency slot).
 (defconst *fn2-txn-slot-evidence* 0)
@@ -42,7 +42,7 @@
 
 (defun fn2-txn-group-slot (k)
   (declare (xargs :guard (natp k)))
-  (let ((s (+ *fn2-txn-slot-accepts* (* 2 (nfix k)))))
+  (let ((s (+ *fn2-txn-slot-accepts* (* *fn2-txn-group-slots* (nfix k)))))
     (if (< s *fn2-txn-slot-depend*) s (+ 1 s))))
 (defthm fn2-txn-group-slot-natp
   (natp (fn2-txn-group-slot k))
@@ -277,7 +277,7 @@
 (defcost fn2-txn-next-name :child fn2-txn-next-name-pool :answers (:name :end :run :fault) :faults (:fault) :bytes *fn2-txn-scan-bytes*
   :doc "Scan chunk 0 for the next group name of Newsgroups.")
 (defcost fn2-txn-add-group :answers t :tables (fn2-core-succ-txns fn2-core-succ-slots fn2-core-fields fn2-core-pool) :bytes 512
-  :doc "Declare the group's count accept, overview row (its line late), and addressing entry; keep its name for the Xref field.")
+  :doc "Declare count accept, overview and original membership; advance the article's private membership count, address its first stream, and keep the name for Xref.")
 (defcost fn2-txn-xref :answers t :tables (fn2-core-succ-txns fn2-core-succ-slots fn2-core-fields fn2-core-pool fn2-core-control)
   :bytes *fn2-txn-xref-bytes*
   :doc "Append the Xref field (the path identity, each group's name and staged number) to the overview line and give it to every overview slot.")
@@ -794,6 +794,9 @@
           ;; one extent's octets are its raw source; longer ones are named
           ;; through their source manifest (article-manifest.lisp)
           (location-kind (if (fn2-am-manifestp bytes) *fn2-txn-location-source-manifest* *fn2-txn-location-raw-source*))
+          ;; Private declaration: each successful add-group advances this count
+          ;; with its new membership. No zero-group article reaches acceptance.
+          (membership-count 0)
           :owner (okind oslot ogen) fn2-core))
        ((unless (eq c :ok)) (mv c fn2-core)))
     ;; the operation is the append's identity (e-surface.md 3.3) when it
@@ -824,7 +827,7 @@
 (in-theory (disable fn2-txn-put-post))
 
 (defun fn2-txn-add-group (tx k group principal c0 g0 c1 g1 noff nlen okind oslot ogen fn2-core)
-  ;; Group K's count accept, overview row (its line given late, after stage,
+  ;; Group K's count accept, original membership and overview row (its line given late, after stage,
   ;; when the Xref field's numbers exist) and, for the first, the addressing
   ;; entry; its name (NLEN octets at NOFF of chunk 0's Newsgroups field) is
   ;; appended to chunk 1 as one length octet and the name, for the Xref field.
@@ -833,6 +836,7 @@
   (declare (xargs :stobjs fn2-core :guard (and (fn2-core-wfp fn2-core) (natp k))))
   (b* ((ac (fn2-txn-group-slot k))
        (ov (+ 1 ac))
+       (membership (+ 2 ac))
        ((unless (and (natp noff) (posp nlen) (< nlen 256))) (mv :bounds fn2-core))
        ((mv c fn2-core)
         (stobj-let ((fn2-pool (fn2-core-pool fn2-core)))
@@ -853,6 +857,14 @@
        ((unless (eq c :ok)) (mv c fn2-core))
        ((mv c fn2-core)
         (fn2-successor-arg-octets-late tx ov *fn2-overview-entry-field-line* *fn2-overview-octets-max* fn2-core))
+       ((unless (eq c :ok)) (mv c fn2-core))
+       ((mv c fn2-core)
+        (fn2-article-membership-put tx membership
+          (article :event 0) (ordinal k) (stream group) fn2-core))
+       ((unless (eq c :ok)) (mv c fn2-core))
+       ((mv c fn2-core)
+        (fn2-successor-arg tx *fn2-txn-slot-article* *fn2-article-entry-field-membership-count*
+                           :value (+ 1 k) fn2-core))
        ((unless (eq c :ok)) (mv c fn2-core)))
     (if (equal (nfix k) 0)
         (fn2-addr-put tx *fn2-txn-slot-addr*
