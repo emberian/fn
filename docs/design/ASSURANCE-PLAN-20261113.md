@@ -235,3 +235,27 @@ bridge reviews timed out and received no clearance. An absent response is not a
 clean review, and no finding is attributed to Kimi without an actual response.
 Validate alleged defects against source before assigning fixes, retain rejected
 suspicions, and distinguish known unfinished work from newly discovered defects.
+
+## Additional independent assurance lanes — 2026-11-14
+
+These lanes expand beyond the existing durability, extraction, TLS, scheduler
+resource and ACL2–Lean work. Each starts from semantic freeze `6e07e62f3` with
+planning commit `06b1785df`; newer lane results require explicit integration.
+Source investigation and bounded local controls do not allocate remote build slots.
+
+| Owner / lane | Actual assurance subject | Required useful result |
+|---|---|---|
+| authorization_assurance / assurance-authorization | Served principal, authority and incarnation binding | Connected stale-principal/grant refusal contract; actual admitted-row witness and meaningful removal/mutation control. First trace targets CNS→control generation binding and propagation into transaction authority. |
+| parser_assurance / assurance-parser-boundaries | Receive-to-command framing and consumption | Actual split/coalesced/EOF/limit boundary behavior checked against an independent expectation, with a shared fix or a proved boundary contract. |
+| storage_fault_assurance / assurance-storage-faults | Short/torn/error/fence and ambiguous persistence effects | One faithful deterministic fault control or normalization repair beyond SIGKILL, preserving accepted/refused/uncertain distinctions and explicit device assumptions. |
+| sol_artifact_assurance / assurance-artifact-binding | Certified source through loaded image and qualification receipt | Fail-closed binding plus stale/replaced/omitted artifact controls; no change to certification eligibility or historical identity. |
+| sol_assumption_assurance / assurance-assumption-boundaries | Reachable assumptions, attachments, raw substitutions and guard boundaries | A concrete escape from existing inventories/gates repaired with a reachable-edge mutation, or a precise audited coverage result. Inventory alone is not a semantic proof. |
+| progress_assurance / assurance-progress | Actual selection, runnable/wait/timer transitions and fairness | Conditional progress tied to the served scheduler, with explicit environment/quantum assumptions and an adversarial schedule or missing-assumption control. |
+
+Existing owners retain shared generators, quantitative run interfaces, TLS state,
+canonical bridge APIs and certification infrastructure. New lanes initially own
+separate contracts/fixtures or narrowly coordinated tooling changes. A suspected
+leaf defect must be checked through its actual callers: for example, a principal
+check preceding an admin check on the same unchanged core can rule out an apparent
+local bypass. Reports distinguish confirmed defects, coverage gaps and withdrawn
+suspicions. Remote proof work still requires named capacity within the 26 GiB cap.
