@@ -131,7 +131,7 @@ cd meta && lake build && lake env lean AxiomCensus.lean
 
 ### Operating a Live Node (`./fn`)
 
-After certifying `books/node-profile.lisp`:
+After certifying `books/node-profile.lisp` and `books/merkle.lisp`:
 
 ```sh
 # 1. Initialize a preallocated store image (O_EXCL; never truncates an existing file)
@@ -162,6 +162,15 @@ After certifying `books/node-profile.lisp`:
 ./fn post ops.alerts --subject "Notice" --from "op@fn2.invalid" --body "line 1" --port 1119
 ./fn article ops.alerts 1 --port 1119
 ```
+
+Recovery defaults to the `broad` storage fault model with honest persistence
+fences. An unexplained dirty tail can therefore leave recovery uncertain and
+prevent startup. For a deployment whose fault model additionally excludes later
+corruption of previously required data, select `--storage-fault-model crash-only`
+on `init` and every `serve`, or set `FN2_STORAGE_FAULT_MODEL=crash-only`.
+The selection is a startup contract, not an on-disk setting, and supplies no
+independent witness. Startup reports `STORAGE-FAULT-MODEL broad` or
+`STORAGE-FAULT-MODEL crash-only` after ACL2 validates the selection.
 
 The `principal`, `grant`, `stream`, `groups`, `post`, and `article` client commands support `--json` (plus `$FN_CONTROL_SOCK`, `$FN_PORT`, `$FN_HOST` environment defaults) and preserve outcome classes at the process exit boundary:
 - `0` — `accepted`
