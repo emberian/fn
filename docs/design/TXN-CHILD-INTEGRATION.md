@@ -94,3 +94,19 @@ functions use the actual generated row's default tooth names. This third root
 evidence pair is also unrun; it does not reduce the outstanding qualification
 claim. The existing callback and wake-book contents stay frozen for the first
 gate while this separate reader root is prepared.
+
+## Shared prefix guard repair
+
+The first current prerequisite record stopped at `fn2-machine-pool-has-p`:
+`LENGTH-FIXED` normalized the available index bound to 16 while the public
+numeric reader fact still required the length call. The columns generator now
+exports `-FIXED-NATP` and `-FIXED-BOUND` for fixed arrays, proved from the existing
+numeric facts and fixed length, with the reader opaque. No guard or body changed.
+
+The exact `21e584af1` cached 34-book contrast reproduced the original guard
+refusal, admitted the generated facts, and admitted the identical function body
+and guard (including an assertion equating its live guard to the original).
+It passed in 1.73 seconds / 2,782 prover steps and stopped its REPL. This is a
+focused proof-interface control, not certification of the changed source closure.
+The minimal prerequisite source is `4400cb995`; current-prefix qualification
+and production callback admission remain pending.
