@@ -572,6 +572,8 @@
 (defun fn2-commit-admit-keyed (n mode okind oslot ogen fn2-core)
  (declare (xargs :stobjs fn2-core :guard (fn2-core-wfp fn2-core)))
  (b* (((when (fn2-core-stopped-p fn2-core)) (mv :stopped 0 0 0 fn2-core))
+      ;; Maintenance tickets belong only to validated lifecycle producers.
+      ((when (fn2-storage-frozen fn2-core)) (mv :exhausted 0 0 0 fn2-core))
       ((mv pick id partner) (fn2-commit-pick fn2-core))
       ((unless (eq pick :open)) (mv :exhausted 0 0 0 fn2-core))
       ((unless (and (posp n) (<= n *fn2-commit-members-per-batch*))) (mv :admission 0 0 0 fn2-core))
@@ -809,7 +811,8 @@
 ; does not decode; nothing changed).
 (defun fn2-commit-admit-txn (slot gen len okind oslot ogen fn2-core)
  (declare (xargs :stobjs fn2-core :guard (fn2-core-wfp fn2-core)))
- (b* (((unless (and (posp len) (<= len *fn2-commit-records-room*) (unsigned-byte-p 32 slot)
+ (b* (((when (fn2-storage-frozen fn2-core)) (mv :exhausted 0 0 fn2-core))
+      ((unless (and (posp len) (<= len *fn2-commit-records-room*) (unsigned-byte-p 32 slot)
                     (unsigned-byte-p 60 gen) (posp okind) (unsigned-byte-p 8 okind)
                     (unsigned-byte-p 32 oslot) (unsigned-byte-p 60 ogen)))
        (mv :admission 0 0 fn2-core))
