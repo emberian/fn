@@ -227,6 +227,7 @@ ACL2_BOOKS = \
   tests/columns-cost-unit-10 \
   tests/columns-cost-unit-20 \
   tests/columns-unit \
+  tests/columns-fixed-array-unit \
   tests/commit-ceiling-unit \
   tests/commit-durable-all-unit \
   tests/commit-executor-contracts-unit \
