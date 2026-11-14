@@ -103,8 +103,8 @@
           ((or (equal row-hashed 0) (not (fn2-am-fits most)))
            (:set (word *fn2-upload-word-unaffordable*)) (:next :sealed)
            (:charge :steps *fn2-work-transition* :runnable t))
-          ;; the store page first, for the generated field or the manifest
-          ((and (or inject (fn2-am-manifestp most)) (not (equal row-lease *fn2-upload-lease-held*)))
+          ;; Reserve the digest lifetime, generated field and manifest workspace.
+          ((not (equal row-lease *fn2-upload-lease-held*))
            (:let class (fn2-upload-lease-class most))
            (:if (null class)
                 ((:set (word *fn2-upload-word-unaffordable*)) (:next :sealed)
@@ -122,13 +122,28 @@
                            ((:do (mcode mlen) (fn2-upload-put-mid row-lslot row-lgen ep al row-op row-principal-slot) :accept (:ok))
                             (:set (pext e) (pepoch ep) (palloc al) (pdone 0) (sready 0) (ilen mlen) (mfill 0) (munit 0)
                                   (cfree 0) (mstep 0) (mdrain 0))
-                            (:next :store-write) (:charge :bytes 264 :steps *fn2-work-transition* :runnable t))
+                            (:next :stored-hash) (:charge :bytes 264 :steps *fn2-work-transition* :runnable t))
                            ((:set (pext e) (pepoch ep) (palloc al) (pdone 0) (sready 0) (ilen 0) (mfill 0) (munit 0)
                                   (cfree 0) (mstep 0) (mdrain 0))
-                            (:next :store-write) (:charge :steps *fn2-work-transition* :runnable t))))
+                            (:next :stored-hash) (:charge :steps *fn2-work-transition* :runnable t))))
                      ((:frozen) (:yield))
                      ((:no-space) (:set (word *fn2-upload-word-unaffordable*)) (:next :sealed)
                       (:charge :steps *fn2-work-transition* :runnable t)))))))
+  ;; The same bounded span selector drives this hash, raw writes, and
+  ;; manifest staging. Hash prefix+source before block hashing reuses B3.
+  (:stored-hash :on-refusal ((:stop :machine-phase))
+   (:let total (+ row-ilen row-hashed))
+   (:if (not (and (natp budget) (< 0 budget))) ((:yield))
+        ((:let hrow (fn2-upload-hasher id))
+         (:do (slot gen off len) (fn2-upload-store-span row-lslot row-lgen row-ilen
+                                                        row-c0-slot row-c0-gen row-c1-slot row-c1-gen
+                                                        row-stored-hashed row-hashed))
+         (:let done (+ row-stored-hashed len))
+         (:do (hcode) (fn2-upload-stored-hash hrow slot gen off row-stored-hashed len (equal done total)
+                                               row-lslot row-lgen) :accept (:ok))
+         (:set (stored-hashed done))
+         (:next (:if (equal done total) :store-write :stored-hash))
+         (:charge :bytes *fn2-commit-unit-bytes* :steps *fn2-work-transition* :runnable t))))
   ;; :store-write: the next write (a piece of one extent's octets, a block,
   ;; or a manifest unit); a manifest's header goes into the store page first
   ;; (the page zeroed to it a unit per step, MSTEP 0, then the header), and a
