@@ -1,4 +1,5 @@
-; Physical read pins are owned by operation identity, not machine identity.
+; Physical storage pins are owned by operation identity, not machine identity.
+; Read and reserved-page write entries share this same reserved edge region.
 (in-package "ACL2")
 (include-book "commit-alloc")
 (include-book "vocab")
@@ -34,7 +35,8 @@
                  :guard (and (fn2-extents-wfp fn2-extents)
                              (fn2-alloc-edges-wfp fn2-alloc-edges)))
           (ignore outcome reason count aux0 aux1))
- (if (and (equal cell 0) (equal evkind *fn2-event-read-result*))
+ (if (and (equal cell 0)
+          (or (equal evkind *fn2-event-read-result*) (equal evkind *fn2-event-write-result*)))
      (fn2-b-read-pin-drop opslot opgen fn2-extents fn2-alloc-edges)
    (mv :ok fn2-extents fn2-alloc-edges)))
 (fn2-extents-preserves fn2-b-read-pin-harvest

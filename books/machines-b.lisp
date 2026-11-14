@@ -381,19 +381,25 @@
 ; name the unit's extent (:stale otherwise); the read is one storage job, and
 ; its result arrives as the caller's :read-result. (mv code slot gen ...),
 ; as fn2-issue-read's.
-(defun fn2-block-read-children (pu epoch alloc off len lslot lgen okind oslot ogen principal
+(defun fn2-pinned-block-io-children (writep pu epoch alloc off len lslot lgen okind oslot ogen principal
                                    fn2-extents fn2-alloc-edges fn2-pool fn2-ops fn2-control)
  (declare (xargs :stobjs (fn2-extents fn2-alloc-edges fn2-pool fn2-ops fn2-control)
                  :guard (and (fn2-extents-wfp fn2-extents) (fn2-alloc-edges-wfp fn2-alloc-edges)
                              (fn2-pool-wfp fn2-pool) (fn2-ops-wfp fn2-ops)
                              (fn2-control-wfp fn2-control))))
- (b* (((unless (and (natp pu) (natp off) (posp len) (<= (+ off len) *fn2-commit-unit-bytes*)
+ (b* (((unless (and (booleanp writep) (natp pu) (natp off) (posp len) (<= (+ off len) *fn2-commit-unit-bytes*)
                     (unsigned-byte-p 60 epoch) (unsigned-byte-p 60 alloc)))
        (mv :bounds 0 0 fn2-pool fn2-ops fn2-control fn2-extents fn2-alloc-edges))
       (extent (floor pu *fn2-commit-write-resources*))
       (code (fn2-alloc-handle-code extent epoch alloc fn2-extents))
       ((unless (eq code :ok))
        (mv (if (eq code :bounds) :bounds :stale) 0 0 fn2-pool fn2-ops fn2-control fn2-extents fn2-alloc-edges))
+      ; Published allocations are immutable. This entry constructs one full
+      ; physical unit in a reserved allocation; publication uses the journal.
+      ((when (and writep
+                  (not (and (= off 0) (= len *fn2-commit-unit-bytes*)
+                            (= (fn2-extents-state extent fn2-extents) *fn2-extent-state-reserved*)))))
+       (mv :bounds 0 0 fn2-pool fn2-ops fn2-control fn2-extents fn2-alloc-edges))
       ; OP-RESERVE takes this head without interleaving. Acquire its pin before
       ; ISSUE can publish a descriptor; a normal refused issue drops the pin.
       (candidate (fn2-ops-free-head fn2-ops))
@@ -407,8 +413,11 @@
        (let ((fn2-control (fn2-control-record-stop *fn2-stop-reason-issue-storage* fn2-control)))
         (mv :bounds 0 0 fn2-pool fn2-ops fn2-control fn2-extents fn2-alloc-edges)))
       ((mv code slot gen fn2-pool fn2-ops fn2-control)
-       (fn2-issue-read-children (+ (* pu *fn2-commit-unit-bytes*) off) lslot lgen len okind oslot ogen principal
-                                fn2-pool fn2-ops fn2-control))
+       (if writep
+           (fn2-issue-write-children (* pu *fn2-commit-unit-bytes*) lslot lgen 0 len 0
+                                    okind oslot ogen principal fn2-pool fn2-ops fn2-control)
+         (fn2-issue-read-children (+ (* pu *fn2-commit-unit-bytes*) off) lslot lgen len okind oslot ogen principal
+                                  fn2-pool fn2-ops fn2-control)))
       ((when (eq code :ok))
        (if (and (equal slot candidate) (equal gen generation))
            (mv :ok slot gen fn2-pool fn2-ops fn2-control fn2-extents fn2-alloc-edges)
@@ -424,13 +433,44 @@
                      (fn2-control-record-stop *fn2-stop-reason-issue-storage* fn2-control))))
   (mv (if (eq code :exhausted) :exhausted :bounds) slot gen
       fn2-pool fn2-ops fn2-control fn2-extents fn2-alloc-edges)))
+(fn2-pool-preserves fn2-pinned-block-io-children (writep pu epoch alloc off len lslot lgen okind oslot ogen principal
+                                             fn2-extents fn2-alloc-edges fn2-pool fn2-ops fn2-control)
+  :carriers ((fn2-pool 3 :prefix "-POOL") (fn2-ops 4 :prefix "-OPS") (fn2-control 5 :prefix "-CONTROL")
+             (fn2-extents 6 :prefix "-EXTENTS") (fn2-alloc-edges 7 :prefix "-EDGES")))
+(in-theory (disable fn2-pinned-block-io-children))
+
+(defun fn2-block-read-children (pu epoch alloc off len lslot lgen okind oslot ogen principal
+                                   fn2-extents fn2-alloc-edges fn2-pool fn2-ops fn2-control)
+ (declare (xargs :stobjs (fn2-extents fn2-alloc-edges fn2-pool fn2-ops fn2-control)
+                 :guard (and (fn2-extents-wfp fn2-extents) (fn2-alloc-edges-wfp fn2-alloc-edges)
+                             (fn2-pool-wfp fn2-pool) (fn2-ops-wfp fn2-ops)
+                             (fn2-control-wfp fn2-control))))
+ (fn2-pinned-block-io-children nil pu epoch alloc off len lslot lgen okind oslot ogen principal
+                              fn2-extents fn2-alloc-edges fn2-pool fn2-ops fn2-control))
 (fn2-pool-preserves fn2-block-read-children (pu epoch alloc off len lslot lgen okind oslot ogen principal
                                              fn2-extents fn2-alloc-edges fn2-pool fn2-ops fn2-control)
   :carriers ((fn2-pool 3 :prefix "-POOL") (fn2-ops 4 :prefix "-OPS") (fn2-control 5 :prefix "-CONTROL")
              (fn2-extents 6 :prefix "-EXTENTS") (fn2-alloc-edges 7 :prefix "-EDGES")))
+
+(defun fn2-block-write-children (pu epoch alloc off len lslot lgen okind oslot ogen principal
+                                   fn2-extents fn2-alloc-edges fn2-pool fn2-ops fn2-control)
+ (declare (xargs :stobjs (fn2-extents fn2-alloc-edges fn2-pool fn2-ops fn2-control)
+                 :guard (and (fn2-extents-wfp fn2-extents) (fn2-alloc-edges-wfp fn2-alloc-edges)
+                             (fn2-pool-wfp fn2-pool) (fn2-ops-wfp fn2-ops)
+                             (fn2-control-wfp fn2-control))))
+ (fn2-pinned-block-io-children t pu epoch alloc off len lslot lgen okind oslot ogen principal
+                              fn2-extents fn2-alloc-edges fn2-pool fn2-ops fn2-control))
+(fn2-pool-preserves fn2-block-write-children (pu epoch alloc off len lslot lgen okind oslot ogen principal
+                                             fn2-extents fn2-alloc-edges fn2-pool fn2-ops fn2-control)
+  :carriers ((fn2-pool 3 :prefix "-POOL") (fn2-ops 4 :prefix "-OPS") (fn2-control 5 :prefix "-CONTROL")
+             (fn2-extents 6 :prefix "-EXTENTS") (fn2-alloc-edges 7 :prefix "-EDGES")))
+
 (defcost fn2-block-read :child fn2-block-read-children :answers (:ok :exhausted :stale :bounds)
  :tables (fn2-core-extents fn2-core-alloc-edges fn2-core-pool fn2-core-ops fn2-core-control)
  :descriptors 1 :doc "Pin a stored reference through physical completion and read it into the caller's lease.")
+(defcost fn2-block-write :child fn2-block-write-children :answers (:ok :exhausted :stale :bounds)
+ :tables (fn2-core-extents fn2-core-alloc-edges fn2-core-pool fn2-core-ops fn2-core-control)
+ :descriptors 1 :doc "Pin a reserved physical-unit construction through physical write completion; journal/fence publication remains separate.")
 
 (defcost fn2-commit-posture :answers (:serving :draining) :tables (fn2-core-machines)
  :doc "B-S2 S11: :draining while a commit row is :uncertain (computed from the rows' phases), else :serving.")
