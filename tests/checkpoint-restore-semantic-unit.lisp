@@ -10,7 +10,7 @@
  (declare (xargs :stobjs (fn2-checkpoints fn2-checkpoint-refs fn2-checkpoint-bytes fn2-checkpoint-restore-reader
  fn2-checkpoint-restore-map fn2-checkpoint-restore-map-control fn2-fields fn2-pool fn2-checkpoint-restore-semantic) :verify-guards nil))
  (b* (((mv intake fn2-checkpoint-restore-reader fn2-checkpoint-restore-map fn2-checkpoint-restore-map-control fn2-fields fn2-pool)
-       (fn2-cru-map-body nil fn2-checkpoint-restore-reader fn2-checkpoint-restore-map fn2-checkpoint-restore-map-control fn2-fields fn2-pool))
+       (fn2-cru-map-body (if (eq mode :children) :children nil) fn2-checkpoint-restore-reader fn2-checkpoint-restore-map fn2-checkpoint-restore-map-control fn2-fields fn2-pool))
       (fn2-checkpoints (fn2-checkpoints-init 2 fn2-checkpoints))
       (fn2-checkpoint-refs (fn2-checkpoint-refs-init 12 fn2-checkpoint-refs))
       (fn2-checkpoint-bytes (fn2-checkpoint-bytes-init 384 fn2-checkpoint-bytes))
@@ -31,7 +31,7 @@
        (fn2-checkpoint-restore-semantic-begin slot gen 7 0 1 fn2-checkpoints fn2-checkpoint-refs fn2-checkpoint-bytes
         fn2-checkpoint-restore-map fn2-checkpoint-restore-map-control fn2-pool fn2-checkpoint-restore-semantic)))
   (mv (and intake
-       (if mode
+       (if (and mode (not (eq mode :children)))
         (and (not (eq code :read))
              (equal (fn2-checkpoint-restore-semantic-phase 0 fn2-checkpoint-restore-semantic) *fn2-checkpoint-restore-semantic-phase-idle*)
              (equal (fn2-checkpoint-restore-semantic-unit 0 fn2-checkpoint-restore-semantic) 0))

@@ -854,10 +854,21 @@
            ((:entries) (:next :checkpoint-semantic-entries) (:charge :bytes 4096 :steps *fn2-work-stage* :runnable t))
            (:otherwise (:stop :checkpoint)))))
   (:checkpoint-semantic-entries :on-refusal ((:stop :checkpoint))
-   (:do (code) (fn2-boot-checkpoint-semantic-entry 256) :accept (:entry :page-end))
-   ; Entry bytes remain retained here until the typed child/payload consumer
-   ; is connected. Decoding alone does not authorize selection or serving.
-   (:stop :checkpoint))
+   (:do (code) (fn2-boot-checkpoint-semantic-consume 256) :accept ()
+    :case (((:more) (:next :checkpoint-semantic-entries) (:charge :bytes 512 :steps *fn2-work-stage* :runnable t))
+           ((:find) (:next :checkpoint-semantic-find) (:charge :steps *fn2-work-stage* :runnable t))
+           ; A payload leaf stays retained until its actual physical closure
+           ; consumer completes; it cannot be counted or skipped here.
+           (:otherwise (:stop :checkpoint)))))
+  (:checkpoint-semantic-find :on-refusal ((:stop :checkpoint))
+   (:do (code) (fn2-boot-checkpoint-semantic-find) :accept ()
+    :case (((:more) (:next :checkpoint-semantic-find) (:charge :steps *fn2-work-stage* :runnable t))
+           ((:read) (:set (root-cursor 0)) (:next :checkpoint-semantic-load) (:charge :bytes 32 :steps *fn2-work-stage* :runnable t))
+           ((:tree-ready) (:if (< row-checkpoint-index 3)
+                     ((:set (checkpoint-index (+ 1 row-checkpoint-index))) (:next :checkpoint-root-candidate)
+                      (:charge :steps *fn2-work-stage* :runnable t))
+                     ((:next :checkpoint-census) (:charge :steps *fn2-work-small* :runnable t))))
+           (:otherwise (:stop :checkpoint)))))
   (:checkpoint-census
    (:do (code) (fn2-boot-checkpoint-census id row-generation) :accept ()
     :case (((:more) (:next :checkpoint-census) (:charge :bytes 512 :steps *fn2-work-stage* :runnable t))
