@@ -8,6 +8,7 @@
         '((fn2-core-extents :stobj fn2-extents)))
       (not (fn2-core-harvest-bindingsp
         '((fn2-core-ops fn2-ops)) '((fn2-core-ops :stobj fn2-ops))))
+      (not (fn2-core-harvest-bindingsp '((missing nil)) nil))
       (not (fn2-core-harvest-bindingsp
         '((fn2-core-extents fn2-extents) (fn2-core-extents fn2-extents))
         '((fn2-core-extents :stobj fn2-extents))))))
