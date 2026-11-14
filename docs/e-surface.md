@@ -578,6 +578,47 @@ observation and evidence does not circulate as new around a ring (B: yes).
   entries say; served choices agree when policy agrees; eventual coverage is a separate claim under
   connectivity, authority and funding.
 
+### 13.4.1 Bounded raw evidence export (intermediate FNCT surface)
+FNCT kind 4 code 19, `evidence-page`, exports the existing identity-evidence
+schema through the owner control connection. It is an intermediate building
+block for §13.4, not the remote XFNC carrier or a commit-ordered catch-up stream.
+Admission uses the live request/connection generation and the existing owner
+administration flag; a connection bound to an ordinary principal is refused.
+No new peer grant or exception to a principal's read grants is implied.
+
+The request is `cut:u64be`, `resume:octets16[400]`, `max-items:u16be` after code 19.
+An empty resume and zero cut start at the actual C published frontier. A supplied
+nonzero cut must equal that frontier. A nonempty resume requires a nonzero cut
+and exactly one generated `identity-evidence-entry` encoding. Its nine key
+fields determine the exclusive continuation; no evidence identity is minted.
+The server bounds each scan step and yields. Page capacity and the requested
+item count bound each reply; neither bounds stored history.
+
+A successful kind 28 result contains version 1, interpretation 1, coverage 0,
+cut, stop, next, count and entries. Coverage 0 means **local observations only**;
+it never attests complete peer evidence. Stop 0 means this schema scan ended;
+stop 1 means a page bound stopped it. Entries are two-byte lengths followed by
+full original schema entries: namespace, exact name, subject profile, algorithm,
+digest, lineage, domain, incarnation, occurrence, evidence kind and issuer.
+The next token is the last emitted entry, without its length prefix. Entries
+are in schema-key order, not commit order. A page that stops at its item limit
+may need an empty following page to observe the scan's end.
+
+Every machine visit rechecks owner admission and the actual publication cut.
+A changed cut refuses the page with `cursor-version`; source-copy failures refuse
+with `unavailable`. Only a fully successful result exposes the page. Read sources
+are validated by C and copied within the same operation; the read row is released
+before its workspace. This is not a durable snapshot or retention promise. A
+later request can be refused after publication advances, and its token does not
+pin bodies, records or archived prefixes.
+
+The remaining interfaces for full catch-up are the authenticated XFNC carrier
+and evidence-stream grant, a commit-ordered producer/index, a retained history
+identity and chain at the cut, dependency/coverage representation, and an importer
+that preserves original evidence/receipt identities without selecting foreign
+acceptances locally. The checkpoint directory work supplies no perpetual-history
+API yet; resident batch rows must not be treated as one.
+
 ### 13.5 Control across peers (RFC 5537 §5)
 Control articles relay as articles; every receiver decides again under its own authority (ruling 10).
 - **The withdrawal** (C's `fn2-withdrawals`, id 15, answered): written by the cancel's acceptance on NNTP
