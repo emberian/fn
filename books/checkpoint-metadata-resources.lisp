@@ -158,3 +158,11 @@
 (fn2-sealer-child fn2-core-checkpoint-semantic-work fn2-checkpoint-semantic-work
  (fn2-checkpoint-semantic-work-init (fn2-b-capacity :extent-slots 16 profile) fn2-checkpoint-semantic-work)
  "One exact semantic traversal row per allocator extent, with no arbitrary data cap.")
+
+(defcost fn2-checkpoint-root1-reserve-op :child fn2-checkpoint-root1-reserve :answers t
+ :tables (fn2-core-checkpoint-root1 fn2-core-checkpoint-windows fn2-core-csnapshot fn2-core-pool)
+ :effects :per-use
+ :doc "Atomically admit the complete fixed root1 working bundle before closing the C cut.")
+(defcost fn2-checkpoint-root1-workspaces-op :child fn2-checkpoint-root1-workspaces :answers t
+ :tables (fn2-core-checkpoint-root1 fn2-core-checkpoint-windows fn2-core-pool)
+ :doc "Derive the stable descriptor/page/scratch/read tuple from actual admitted root1 ownership.")
