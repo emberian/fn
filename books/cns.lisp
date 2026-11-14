@@ -1394,6 +1394,10 @@
          (:set (ioff (if (equal row-count 0) at row-ioff)) (ilen (+ row-ilen len))
                (count (+ 1 row-count)) (cpos (+ at 2)) (version (- len 2)))
          (:charge :bytes 8192 :steps *fn2-work-transition* :runnable t))
+        ((and (eq sc :full) (equal row-count 0))
+         ;; No progress is an explicit refusal, never an empty complete page
+         ;; or an endlessly repeatable continuation at the same key.
+         (:set (wstep 3) (reason *fn2-cns-reason-unavailable*)) (:goto evidence-fail))
         ((or (eq sc :end) (eq sc :full))
          (:set (wstep 2) (more (if (eq sc :full) 1 0))) (:goto evidence-end))
         (t (:set (wstep 3) (reason *fn2-cns-reason-unavailable*)) (:goto evidence-fail))))))))
@@ -2069,7 +2073,9 @@
             ((mv at cap) (fn2-cns-fill-cap tx-slot fn2-core))
             ;; The 400-octet resume token is copied into the result and again
             ;; into its FNCT envelope. Reserve both copies plus fixed framing.
-            ((unless (fn2-cns-item-fits-with-reserve at cap ilen len 1024)) (mv :full 0 0 fn2-core))
+            ((unless (and (<= (+ (nfix ilen) len) 4096)
+                          (fn2-cns-item-fits-with-reserve at (min (nfix cap) *fn2-ctl-io-bytes*) ilen len 1024)))
+             (mv :full 0 0 fn2-core))
             ((mv cc fn2-core)
              (fn2-cns-core-copy len lease lgen off *fn2-cns-kind* id gen
                                 tx-slot tx-gen at *fn2-ctl-kind* ctl ctl-gen fn2-core)))
