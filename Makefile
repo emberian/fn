@@ -293,6 +293,8 @@ ACL2_BOOKS = \
   tests/merkle-unit \
   tests/native-boot-refusal-unit \
   tests/native-envelope-prefix-unit \
+  tests/native-cut-program-unit \
+  tests/scheduled-fence-cut-unit \
   tests/envelope-input-unit \
   tests/envelope-prefix-unit \
   tests/native-unit \

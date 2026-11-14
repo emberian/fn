@@ -1,6 +1,6 @@
-; Explicit physical microsteps for native death cuts.  The seeded simulator's
-; atomic completion schedule is unchanged.  This driver exposes the interval
-; after physical I/O and before its terminal post, retaining the raw result.
+; Native death cuts over the shared staged physical implementation. Fence
+; scheduling in sim.lisp exposes the same returned interval; this driver also
+; exercises explicit cuts for the remaining supported storage operations.
 ; Completion uses the native release=nil subset. Atomic-equivalence below is
 ; deliberately stated for storage; generic send early-release remains separate.
 (in-package "ACL2")
