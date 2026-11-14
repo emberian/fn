@@ -66,3 +66,18 @@
    ,(fn2-run-issued-claim 0 'fn2-ops '(mv-nth 1 (fn2-op-finish slot gen fn2-ops))))
   :hints (("Goal" :in-theory (e/d (fn2-op-finish)
     (fn2-op-recycle fn2-op-phase-code fn2-ops-issued-count fn2-ops-rows fn2-opsp fn2-ops-wfp)))))))
+
+; Moving an already issued incarnation between active phases cannot issue
+; it again. The CAR bridge stays local to this footprint proof.
+(encapsulate ()
+(local (defthm fn2-issued-car-as-nth-rewrite (equal (car x) (nth 0 x))))
+(defthm fn2-ops-set-phase-issued-count
+ (implies (and (natp slot)
+               (not (member-equal phase (list *fn2-op-phase-free* *fn2-op-phase-reserved*)))
+               (not (member-equal (fn2-ops-phase slot fn2-ops) (list *fn2-op-phase-free* *fn2-op-phase-reserved*))))
+  (equal (fn2-ops-issued-count n (fn2-ops-set-phase slot phase fn2-ops))
+         (fn2-ops-issued-count n fn2-ops)))
+ :hints (("Goal" :induct (fn2-ops-issued-count n fn2-ops)
+   :in-theory (e/d (fn2-ops-issued-count fn2-op-issued-weight fn2-ops-gen fn2-ops-phase)
+    (fn2-ops-set-phase nth)))))
+)
