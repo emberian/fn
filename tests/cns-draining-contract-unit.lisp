@@ -71,6 +71,38 @@
                    (equal (take 2 final) '(t t))) fn2-core))) ok)))
 (assert-event (fn2-cns-drain-positive))
 
+; Full-H/C runtime controls for the actual timer operation. The bounds
+; removal keeps core type, well-formedness and natural id, while the real
+; operation refuses without changing the complete image.
+(defun fn2-cns-clear-law-run (bounded fn2-core)
+  (declare (xargs :stobjs fn2-core :verify-guards nil))
+  (b* (((mv setup id & fn2-core) (fn2-cns-drain-setup nil fn2-core))
+       (before (fn2-test-core-snapshot fn2-core))
+       (sched (fn2-cns-drain-child 'fn2-sched before))
+       (rows (fn2-cns-drain-get 'fn2-sched-rows sched))
+       (target (if bounded id rows))
+       (base (and setup (fn2-corep fn2-core) (fn2-core-wfp fn2-core)
+                  (natp target)))
+       (bound (< target rows))
+       ((mv code fn2-core) (fn2-cns-clear-wait-timer target fn2-core))
+       (after (fn2-test-core-snapshot fn2-core))
+       (conclusion
+        (equal (list code after)
+               (list :ok (fn2-cns-drain-put-child 'fn2-sched
+                           (fn2-cns-drain-cleared-sched target sched) before)))))
+    (mv (and base (if bounded (and bound conclusion)
+                    (and (not bound) (not conclusion) (eq code :bounds)
+                         (equal before after)))) fn2-core)))
+(defun fn2-cns-clear-positive ()
+  (declare (xargs :verify-guards nil))
+  (with-local-stobj fn2-core
+    (mv-let (ok fn2-core) (fn2-cns-clear-law-run t fn2-core) ok)))
+(defun fn2-cns-clear-without-bound ()
+  (declare (xargs :verify-guards nil))
+  (with-local-stobj fn2-core
+    (mv-let (ok fn2-core) (fn2-cns-clear-law-run nil fn2-core) ok)))
+(assert-event (and (fn2-cns-clear-positive) (fn2-cns-clear-without-bound)))
+
 ; A supported profile whose first generation is also its last exercises
 ; retirement through actual admission, without forging row ownership.
 (defun fn2-cns-drain-retirement-run (fn2-core)

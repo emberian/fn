@@ -1,4 +1,4 @@
-; Ephemeral raw-Lisp adversary, loaded only inside a proof-repl progn!.
+; Ephemeral raw-Lisp adversary, loaded after :q in a tools/acl2 batch.
 ; The production function is restored even if a control signals.
 (in-package "ACL2")
 (let* ((clear (symbol-function 'fn2-cns-clear-wait-timer))

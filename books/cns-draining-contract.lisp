@@ -188,6 +188,21 @@
   (equal (list bytes steps descriptors runnable after)
          (fn2-cns-draining-expected id before)))
 
+; Logical evidence can name the complete actual five-value result. This
+; view does not replace or weaken the application predicate below.
+(defun-nx fn2-cns-draining-observed (id budget core)
+  (mv-let (b s d r after) (fn2-cns-run id budget core)
+    (list b s d r after)))
+(defthm fn2-cns-draining-resultp-unfolds
+  (equal
+   (mv-let (b s d r after) (fn2-cns-run id budget core)
+     (fn2-cns-draining-resultp id core b s d r after))
+   (equal (fn2-cns-draining-observed id budget core)
+          (fn2-cns-draining-expected id core)))
+  :rule-classes nil
+  :hints (("Goal" :in-theory (enable fn2-cns-draining-resultp
+                                     fn2-cns-draining-observed))))
+
 ; Cleanup is sequential. A failure of NS preserves the already completed
 ; WS release. No row reclamation or timer clear precedes either refusal.
 (defun fn2-cns-draining-refusal-resultp (id before stage bytes steps descriptors runnable after)
@@ -210,8 +225,8 @@
 ; Complete scheduler output/effect refinement, including all sibling rows.
 (defthm fn2-cns-drain-clear-scheduler-by-definition
   (implies (and (natp id) (< id (fn2-sched-rows sched)))
-    (equal (mv-nth 1 (fn2-sched-clear-deadline id sched))
-           (fn2-cns-drain-cleared-sched id sched)))
+    (equal (fn2-sched-clear-deadline id sched)
+           (list :ok (fn2-cns-drain-cleared-sched id sched))))
   :rule-classes nil
   :hints (("Goal" :in-theory
     (enable fn2-sched-clear-deadline fn2-sched-rows
@@ -222,6 +237,24 @@
       fn2-cns-drain-cleared-sched fn2-cns-drain-put-cell
       fn2-cns-drain-put fn2-cns-drain-cell fn2-cns-drain-get
       fn2-cns-drain-index))))
+
+; This is the actual core operation called by final draining and answer.
+; Equality frames every other child and all protected scheduler siblings.
+(defthm fn2-cns-clear-wait-timer-independent
+  (implies (and (fn2-corep core) (fn2-core-wfp core)
+                (natp id) (< id (fn2-sched-rows (fn2-core-sched core))))
+    (equal (fn2-cns-clear-wait-timer id core)
+           (list :ok
+             (fn2-cns-drain-put-child 'fn2-sched
+               (fn2-cns-drain-cleared-sched id (fn2-core-sched core)) core))))
+  :rule-classes nil
+  :hints (("Goal"
+           :use ((:instance fn2-cns-drain-clear-scheduler-by-definition
+                            (sched (fn2-core-sched core))))
+           :in-theory
+           (e/d (fn2-cns-clear-wait-timer fn2-core-sched update-fn2-core-sched
+                 fn2-cns-drain-put-child fn2-cns-drain-child-index)
+                (fn2-sched-clear-deadline fn2-cns-drain-cleared-sched)))))
 ; Even a failed held-lease release cannot alter any timer/queue. The lease
 ; premise is necessary: the final draining step clears its own timer.
 (defthm fn2-cns-draining-held-keeps-timer
