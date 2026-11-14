@@ -7,25 +7,15 @@
 (defun fn2-tls-transport-start (cap nonce slot generation total capacity quantum budget window fn2-tls-transport)
  (declare (xargs :stobjs fn2-tls-transport :verify-guards nil
                  :guard (fn2-tls-transport-wfp fn2-tls-transport)))
- (cond
-  ((not (and (unsigned-byte-p 32 cap) (unsigned-byte-p 60 nonce) (unsigned-byte-p 32 slot)
-             (unsigned-byte-p 60 generation) (unsigned-byte-p 32 total)
-             (unsigned-byte-p 32 capacity) (<= total capacity)
-             (posp quantum) (unsigned-byte-p 32 quantum)
-             (posp budget) (unsigned-byte-p 32 budget)
-             (posp window) (unsigned-byte-p 31 window)))
-   (mv :bounds fn2-tls-transport))
-  ((and (= (fn2-tls-transport-rows fn2-tls-transport) 1)
-        (or (= (fn2-tls-transport-alive 0 fn2-tls-transport) 1)
-            (and (equal cap (fn2-tls-transport-cap 0 fn2-tls-transport))
-                 (equal nonce (fn2-tls-transport-nonce 0 fn2-tls-transport)))))
-   (mv :state fn2-tls-transport))
-  (t
-   (let* ((fn2-tls-transport (fn2-tls-transport-init 1 fn2-tls-transport))
-          (fn2-tls-transport (fn2-tls-transport-put 0 (cap cap) (nonce nonce) (slot slot)
-            (generation generation) (seed-total total) (seed-capacity capacity)
-            (quantum quantum) (budget budget) (window window) (cleanup-credit 1) (ssl-status 5))))
-    (mv :ok fn2-tls-transport)))))
+ ; TLS retains its explicit profile work bound; generic finite-copy codecs may need 33 bits.
+ (if (not (and (unsigned-byte-p 32 budget) (posp window) (unsigned-byte-p 31 window)))
+     (mv :bounds fn2-tls-transport)
+  (mv-let (code fn2-tls-transport)
+   (fn2-tls-transport-begin cap nonce slot generation total capacity quantum quantum window budget fn2-tls-transport)
+   (if (eq code :ok)
+       (let ((fn2-tls-transport (fn2-tls-transport-put 0 (ssl-status 5))))
+        (mv :ok fn2-tls-transport))
+     (mv code fn2-tls-transport)))))
 
 (defun fn2-tls-transport-plan
  (total copied fed input-length input-offset output-length output-offset ssl room pending quantum)

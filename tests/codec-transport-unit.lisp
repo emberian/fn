@@ -14,6 +14,7 @@
 
 (defcodec-transport fn2-codec-probe ((mode :u8) (quantum :u32)))
 (defcodec-transport-operations fn2-codec-probe)
+(defcodec-transport-lifecycle fn2-codec-probe)
 (defun fn2-codec-probe-control (fn2-codec-probe)
  (declare (xargs :stobjs fn2-codec-probe :verify-guards nil))
  (let* ((fn2-codec-probe (fn2-codec-probe-init 1 fn2-codec-probe))
@@ -65,3 +66,22 @@
  (with-local-stobj fn2-codec-probe
   (mv-let (ok fn2-codec-probe) (fn2-codec-probe-transfer fn2-codec-probe) ok)))
 (assert-event (fn2-codec-probe-transfer-check))
+
+(defun fn2-codec-probe-begin-control (fn2-codec-probe)
+ (declare (xargs :stobjs fn2-codec-probe :verify-guards nil))
+ (mv-let (begun fn2-codec-probe)
+  (fn2-codec-probe-begin 7 17 3 9 #xffffffff #xffffffff 1 1 512 4294967297 fn2-codec-probe)
+  (let* ((admitted (and (eq begun :ok) (= (fn2-codec-probe-budget 0 fn2-codec-probe) 4294967297)
+                        (= (fn2-codec-probe-seed-total 0 fn2-codec-probe) #xffffffff)))
+         (fn2-codec-probe (fn2-codec-probe-put 0 (pending 8))))
+   (mv-let (rebound fn2-codec-probe)
+    (fn2-codec-probe-begin 7 18 4 10 0 8 1 1 512 2 fn2-codec-probe)
+    (mv (and admitted (eq rebound :state)
+             (= (fn2-codec-probe-pending 0 fn2-codec-probe) 8)
+             (= (fn2-codec-probe-nonce 0 fn2-codec-probe) 17)
+             (= (fn2-codec-probe-alive 0 fn2-codec-probe) 0)) fn2-codec-probe)))))
+(defun fn2-codec-probe-begin-check ()
+ (declare (xargs :verify-guards nil))
+ (with-local-stobj fn2-codec-probe
+  (mv-let (ok fn2-codec-probe) (fn2-codec-probe-begin-control fn2-codec-probe) ok)))
+(assert-event (fn2-codec-probe-begin-check))
