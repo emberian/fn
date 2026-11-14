@@ -3,6 +3,9 @@
 (include-book "format-check")
 (include-book "alloc")
 (fn2-book-layer :b)
+; Current native backend routes one image. Domain0 is the format writer's
+; declared domain; foreign references must never alias this allocator.
+(defconst *fn2-checkpoint-served-storage-domain* 0)
 
 ; Six references per candidate: descriptor, metadata, allocation state, proof
 ; directory, event frontier and recovery arena. Hash bytes live in a disjoint
@@ -46,12 +49,16 @@
          (epoch (fn2-checkpoint-refs-writer-epoch r fn2-checkpoint-refs))
          (allocation (fn2-checkpoint-refs-allocation r fn2-checkpoint-refs))
          (holder (fn2-checkpoints-checkpoint c fn2-checkpoints)))
-   (if (equal (fn2-checkpoint-refs-retained r fn2-checkpoint-refs) 1)
+   (cond ((not (equal (fn2-checkpoint-refs-storage-domain r fn2-checkpoint-refs)
+                       *fn2-checkpoint-served-storage-domain*))
+          (mv :storage-domain fn2-checkpoint-refs fn2-extents fn2-alloc-edges))
+         ((equal (fn2-checkpoint-refs-retained r fn2-checkpoint-refs) 1)
        (mv (if (and (equal edge (fn2-checkpoint-refs-edge r fn2-checkpoint-refs))
                      (fn2-alloc-edge-slotp edge fn2-alloc-edges)
                      (fn2-alloc-edge-matchesp edge holder (floor unit 3) epoch allocation
                                              :selectable-checkpoint fn2-alloc-edges)) :ok :edge-holder)
-           fn2-checkpoint-refs fn2-extents fn2-alloc-edges)
+           fn2-checkpoint-refs fn2-extents fn2-alloc-edges))
+         (t
     ; This physical profile stores three units per allocator extent.
     ; Descriptor unit addresses must therefore identify their containing extent.
     (mv-let (code fn2-extents fn2-alloc-edges)
@@ -61,7 +68,7 @@
               (fn2-checkpoint-refs-set-edge r edge fn2-checkpoint-refs) fn2-checkpoint-refs))
             (fn2-checkpoint-refs (if (eq code :ok)
               (fn2-checkpoint-refs-set-retained r 1 fn2-checkpoint-refs) fn2-checkpoint-refs)))
-      (mv code fn2-checkpoint-refs fn2-extents fn2-alloc-edges)))))))
+      (mv code fn2-checkpoint-refs fn2-extents fn2-alloc-edges)))))))))
 
 ; Check six owned edges, not the extent table. Cached flags alone never grant
 ; permission; the named concrete edges must still match at publication.
@@ -74,7 +81,9 @@
               (<= (* 6 (+ 1 c)) (fn2-checkpoint-refs-rows fn2-checkpoint-refs)))))
  (if (or (not (natp role)) (>= role 6)) t
   (let ((r (+ (* 6 c) role)))
-   (and (equal (fn2-checkpoint-refs-retained r fn2-checkpoint-refs) 1)
+   (and (equal (fn2-checkpoint-refs-storage-domain r fn2-checkpoint-refs)
+               *fn2-checkpoint-served-storage-domain*)
+        (equal (fn2-checkpoint-refs-retained r fn2-checkpoint-refs) 1)
         (fn2-alloc-edge-slotp (fn2-checkpoint-refs-edge r fn2-checkpoint-refs) fn2-alloc-edges)
         (fn2-alloc-edge-matchesp (fn2-checkpoint-refs-edge r fn2-checkpoint-refs)
           (fn2-checkpoints-checkpoint c fn2-checkpoints)
@@ -192,7 +201,7 @@
                (equal (fn2-checkpoints-state c fn2-checkpoints) *fn2-checkpoint-state-free*)
                (posp checkpoint) (unsigned-byte-p 60 checkpoint)
                (unsigned-byte-p 60 history) (unsigned-byte-p 60 incarnation)
-               (unsigned-byte-p 60 domain) (unsigned-byte-p 60 unit)
+               (equal domain *fn2-checkpoint-served-storage-domain*) (unsigned-byte-p 60 unit)
                (unsigned-byte-p 60 epoch) (unsigned-byte-p 60 allocation)
                (equal kind *page-kind-checkpoint-descriptor*) (posp len) (unsigned-byte-p 60 len)
                (fn2-digest-rowp hash fn2-digests)))
@@ -313,6 +322,9 @@
       ((unless (member-equal (fn2-checkpoints-state c fn2-checkpoints)
                              (list *fn2-checkpoint-state-checked* *fn2-checkpoint-state-installed*)))
        (mv :state fn2-checkpoints))
+      ((when (and (equal (fn2-checkpoints-state c fn2-checkpoints) *fn2-checkpoint-state-installed*)
+                   (not (equal (fn2-checkpoints-installation-commit c fn2-checkpoints) install-commit))))
+       (mv :installation-conflict fn2-checkpoints))
       ((unless (< (fn2-checkpoints-cut-commit c fn2-checkpoints) install-commit))
        (mv :commit fn2-checkpoints))
       (r (* 6 c))
