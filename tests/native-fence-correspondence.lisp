@@ -15,6 +15,7 @@
 (defun fn2-native-fence-observation (native model)
   (declare (xargs :verify-guards nil))
   (and (true-listp native) (= (len native) 4) (eq (car native) :physical-return)
+       (integerp (nth 2 native)) (integerp (nth 3 native))
        (true-listp (nth 1 native)) (= (len (nth 1 native)) 11)
        (equal (take 8 (nth 1 native)) (take 8 model))
        (equal (nth 8 (nth 1 native)) 0) (equal (nth 9 (nth 1 native)) 0)

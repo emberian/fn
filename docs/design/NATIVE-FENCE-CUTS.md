@@ -114,14 +114,13 @@ hypothesis-removal witness was not reached in the earlier world. Its deliberate
 active=0 mutation tests the theorem's pending-flight premise; it contributes no
 evidence that this branch is reachable in the composed scheduler.
 
-Current qualification is blocked before the Fence tests: the shared constructor
-fixture's `FN2-MACHINE-POOL-HAS-P` guard cannot infer the fixed array element's
-numeric type after `LENGTH-FIXED` rewrites its index bound to literal 16. The
-generated accessor's public type fact still uses the dynamic length; the pool's
-literal-bound fact is local. The foundation owners are repairing the generated
-fixed-array type API while retaining the original guard. This is a proof
-admission failure, not a demonstrated native I/O failure. No current Fence
-witness, four-field replay or real-fd result is inferred while it remains open.
+The shared fixed-array type repair `4400cb995` passes the actual 35-book
+constructor record gate, including the unchanged `FN2-MACHINE-POOL-HAS-P` guard
+and initializer context. The generator now exports literal-cardinality indexed
+numeric facts without weakening the guard. Qualification is proceeding to the
+103-book common core; this lane's current Fence witness, four-field replay and
+real-fd controls have not run yet. The earlier obstruction was proof admission,
+not a demonstrated native I/O failure.
 
 The real-fd readback establishes current OS-visible byte contents. It is not a
 power-loss durability witness. Relating a successful native Fence to preserved
