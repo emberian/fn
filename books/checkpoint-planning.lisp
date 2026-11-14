@@ -184,3 +184,15 @@
  (c token kind owner gen fn2-checkpoint-planning fn2-csnapshot fn2-extents) :position 1)
 (fn2-checkpoint-planning-preserves fn2-checkpoint-planning-note-reserved
  (c token kind owner gen e epoch allocation fn2-checkpoint-planning fn2-checkpoint-recipe fn2-checkpoint-recipe-order fn2-checkpoint-construction fn2-csnapshot fn2-extents) :position 1)
+
+; Limited root1 closure predicate. This does not account for the other roots,
+; map, arena or journal tickets, and is not sufficient aggregate headroom.
+(defun fn2-checkpoint-planning-root1-consumedp (c token kind owner gen fn2-checkpoint-planning fn2-csnapshot fn2-extents)
+ (declare (xargs :stobjs (fn2-checkpoint-planning fn2-csnapshot fn2-extents)
+  :guard (and (fn2-checkpoint-planning-wfp fn2-checkpoint-planning) (fn2-csnapshot-wfp fn2-csnapshot) (fn2-extents-wfp fn2-extents))))
+ (and (fn2-checkpoint-planning-ownerp c token kind owner gen fn2-checkpoint-planning fn2-csnapshot fn2-extents)
+      (equal (fn2-checkpoint-planning-phase 0 fn2-checkpoint-planning) *fn2-checkpoint-planning-phase-materialize*)
+      (posp (fn2-checkpoint-planning-count 0 fn2-checkpoint-planning))
+      (equal (fn2-checkpoint-planning-position 0 fn2-checkpoint-planning) (fn2-checkpoint-planning-count 0 fn2-checkpoint-planning))
+      (equal (fn2-checkpoint-planning-sealed 0 fn2-checkpoint-planning) (fn2-checkpoint-planning-count 0 fn2-checkpoint-planning))
+      (equal (fn2-checkpoint-planning-reserved 0 fn2-checkpoint-planning) (fn2-checkpoint-planning-count 0 fn2-checkpoint-planning))))
