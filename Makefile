@@ -57,6 +57,8 @@ ACL2_BOOKS = \
   books/blake3-spec \
   books/boot \
   books/boot-kind \
+  books/boot-format \
+  books/boot-pack \
   books/borrow-accounting \
   books/borrow-conservation \
   books/borrow-faces \
@@ -312,6 +314,8 @@ ACL2_BOOKS = \
   tests/network-backpressure-unit \
   tests/ops-semantic-steps-unit \
   tests/origin-unit \
+  tests/origin-format-unit \
+  tests/origin-boot-unit \
   tests/owed-authority-unit \
   tests/owed-d-coverage \
   tests/owed-d-unit \
