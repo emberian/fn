@@ -1,8 +1,8 @@
 """Bounded source witness for a successful storage fence's unposted return.
 
 Coordinates are executable AST paths and value-flow contracts, not line hashes.
-This deliberately reports an internal model prefix, not a reachable simulator
-transition: SIM-COMPLETE cannot yield between PHYSICAL and COMPLETE-RESULT.
+The scheduled Fence stage retains raw results before posting. Execution and
+preservation proof qualification remain separate from this source witness.
 No OS/FFI correspondence, model execution or ACL2 admission is inferred here.
 """
 import copy
@@ -25,19 +25,32 @@ CONTEXT_PATHS = {'physical call between callbacks, before completion publication
  'actual action-to-device-kind dispatch': [3],
  'fence branch uses the device fd': [3, 1, 1, 1, 2, 2, 4],
  'raw return and errno retained before return callback': [3, 2],
- 'same incarnation, before normalization and completion enqueue': [3, 2, 3, 3],
+ 'same incarnation and raw return recorded before death cut and terminal normalization': [3,
+                                                                                          2,
+                                                                                          3,
+                                                                                          3],
  'physical dispatcher threads actual effect and raw result back to completion': [4, 3, 2],
  'fence effect returns storage before any terminal post': [4, 4],
  'physical failure includes sticky device death': [4, 2, 3, 1, 0],
  'successful physical result returns effected storage': [4, 2, 3, 2],
  'successful nonlying fence commits its captured snapshot': [4, 2, 3, 1, 1, 1],
  'captured bytes become durable in commit traversal': [4, 3, 1, 1, 1, 2, 2, 1, 0, 1],
- 'selected noncancelled physical result binding': [4, 3, 2, 3, 1, 1, 1],
- 'normalization/post consumes the same physical return': [4, 3, 2, 3, 1, 1, 3],
- 'successful physical-to-terminal interval cannot yield in composed simulator': [4, 3, 2, 3, 1],
+ 'selected noncancelled physical result binding': [4, 3, 2, 4, 1, 1, 1],
+ 'normalization/post consumes the same physical return': [4, 3, 2, 4, 1, 1, 3],
+ 'atomic comparison helper physical-to-terminal suffix': [4, 3, 2, 4, 1],
  'storage fence cannot enter send borrow-release phases': [4, 3, 1, 7],
  'release-only active phases': [4, 3, 1, 5],
- 'early release requires send release': [4, 1, 2]}
+ 'early release requires send release': [4, 1, 4],
+ 'actual scheduled caller selects split completion': [4, 2],
+ 'scheduled Fence returns with retained raw packet and no terminal post': [4, 3],
+ 'later scheduled step consumes retained raw return without physical reissue': [4, 2],
+ 'staged path uses the shared physical effect': [4, 3, 1, 5],
+ 'packet retains actual raw result and original fault coordinate': [4, 3, 1, 7],
+ 'every shared Fence stage retains the same raw packet': [4, 3, 1, 8],
+ 'returned stage excludes crash-flight write replay': [4, 3, 1, 9],
+ 'all raw result and scheduling scalars stored without normalization': [4],
+ 'same incarnation and retained raw scalars reconstructed for post': [4],
+ 'retained raw result reaches shared terminal normalization exactly': [4, 3]}
 
 
 def ast(source):
@@ -106,14 +119,21 @@ def check(defs, mappings=None):
     require('fn2-n-storage-completions', '''
       (let ((op (aref (fn2-nhost-ops host) (fn2-device-job-slot job))))
         (assert (= (fn2-nop-gen op) (fn2-device-job-gen job)))
-        (fn2-n-boundary host "device-return")
         (multiple-value-bind (code count)
             (fn2-device-io-observation (fn2-device-job-result job) (fn2-device-job-errno job))
+          (when (eq (fn2-device-job-kind job) :fence)
+            (fn2-n-record host
+              (list :physical-return
+                (list (fn2-device-job-slot job) (fn2-device-job-gen job)
+                  (fn2-nop-kind op) (fn2-terminal-event (fn2-nop-kind op)) (fn2-nop-len op)
+                  code count 0 0 0 *fn2-fault-none*)
+                (fn2-device-job-result job) (fn2-device-job-errno job))))
+          (fn2-n-boundary host "device-return")
           (fn2-n-complete host (fn2-device-job-slot job) code count 0 nil
             (and (eq (fn2-device-job-kind job) :read)
                  (fn2-n-octets host (fn2-device-job-address job) count))))
         (decf (fn2-nhost-storage-pending host)))''',
-        'same incarnation, before normalization and completion enqueue')
+        'same incarnation and raw return recorded before death cut and terminal normalization')
 
     # Derive the observed phase at each callback by executing this checked
     # straight-line block's effect projection. This does not execute foreign I/O.
@@ -172,9 +192,8 @@ def check(defs, mappings=None):
         (fn2-sim-complete-result slot gen kind event len code physical-count aux
           fault word now release fn2-core fn2-sim fn2-own))''',
         'normalization/post consumes the same physical return')
-    # A fence's successful return cannot use WOULD-BLOCK's yielding arm. There
-    # is no b* escape/call between the physical binding and COMPLETE-RESULT other
-    # than that checked arm. Check the whole suffix, not lexical call ordering.
+    # Atomic comparison helper remains unchanged. It is no longer the actual
+    # scheduled Fence path in this domain; the stage below is the real subject.
     require('fn2-sim-complete', '''
       (b* (((mv & fn2-core fn2-sim fn2-own)
               (fn2-sim-inject slot fault fn2-core fn2-sim fn2-own))
@@ -190,7 +209,7 @@ def check(defs, mappings=None):
               (fn2-sim-complete-result slot gen kind event len code physical-count aux
                 fault word now release fn2-core fn2-sim fn2-own)))
         (mv found fn2-core fn2-sim fn2-own))''',
-        'successful physical-to-terminal interval cannot yield in composed simulator')
+        'atomic comparison helper physical-to-terminal suffix')
     require('fn2-sim-complete', '''
       (release (and (equal kind *fn2-action-send*) (= (fn2-sim-may-release slot fn2-sim) 1)))''',
         'storage fence cannot enter send borrow-release phases')
@@ -201,6 +220,61 @@ def check(defs, mappings=None):
             '(early (and release (equal fault *fn2-fault-release-order*)))',
             'early release requires send release')
 
+    require('fn2-sim-advance-flight', """
+      (if (and (not automatic) (equal (fn2-sim-active slot fn2-sim) 1)
+               (equal (fn2-sim-kind slot fn2-sim) *fn2-action-accept*))
+          (fn2-sim-echo-accept slot fault word allow-accept fn2-core fn2-sim fn2-own)
+        (fn2-sim-step-completion slot fault word fn2-core fn2-sim fn2-own))""",
+        'actual scheduled caller selects split completion')
+    require('fn2-sim-step-completion', """
+      ((and (fn2-sim-native-storagep slot fn2-sim)
+            (= (fn2-sim-kind slot fn2-sim) *fn2-action-fence*)
+            (fn2-sim-native-faultp fault))
+       (b* (((mv status packet fn2-core fn2-sim fn2-own)
+             (fn2-sim-native-stage slot fault word fn2-core fn2-sim fn2-own))
+            (- packet))
+         (mv (if (member-eq status '(:returned :waiting)) t nil) fn2-core fn2-sim fn2-own)))""",
+        'scheduled Fence returns with retained raw packet and no terminal post')
+    require('fn2-sim-step-completion', """
+      ((= (fn2-sim-active slot fn2-sim) *fn2-sim-native-returned*)
+       (if (= (fn2-sim-kind slot fn2-sim) *fn2-action-fence*)
+           (fn2-sim-native-post (fn2-sim-saved-return slot fn2-sim) fn2-core fn2-sim fn2-own)
+         (mv nil fn2-core fn2-sim fn2-own)))""",
+        'later scheduled step consumes retained raw return without physical reissue')
+    require('fn2-sim-native-stage', """
+      ((mv code count aux fn2-core fn2-sim fn2-own)
+        (fn2-sim-physical slot fault word fn2-core fn2-sim fn2-own))""",
+        'staged path uses the shared physical effect')
+    require('fn2-sim-native-stage',
+            '(packet (list slot gen kind event len code count aux word now fault))',
+            'packet retains actual raw result and original fault coordinate')
+    require('fn2-sim-native-stage',
+            '(fn2-sim (if (equal kind *fn2-action-fence*) (fn2-sim-save-return packet fn2-sim) fn2-sim))',
+            'every shared Fence stage retains the same raw packet')
+    require('fn2-sim-native-stage',
+            '(fn2-sim (fn2-sim-set-active slot *fn2-sim-native-returned* fn2-sim))',
+            'returned stage excludes crash-flight write replay')
+    require('fn2-sim-save-return', """
+      (fn2-sim-put (nth 0 packet)
+        (return-code (fn2-sim-return-code-keyword->code (nth 5 packet)))
+        (return-count (nth 6 packet)) (return-aux (nth 7 packet))
+        (return-word (nth 8 packet)) (return-time (nth 9 packet)) (return-fault (nth 10 packet)))""",
+        'all raw result and scheduling scalars stored without normalization')
+    require('fn2-sim-saved-return', """
+      (list slot (fn2-sim-gen slot fn2-sim) (fn2-sim-kind slot fn2-sim)
+        (fn2-terminal-event (fn2-sim-kind slot fn2-sim)) (fn2-sim-range-len slot fn2-sim)
+        (fn2-sim-return-code-code->keyword (fn2-sim-return-code slot fn2-sim))
+        (fn2-sim-return-count slot fn2-sim) (fn2-sim-return-aux slot fn2-sim)
+        (fn2-sim-return-word slot fn2-sim) (fn2-sim-return-time slot fn2-sim)
+        (fn2-sim-return-fault slot fn2-sim))""",
+        'same incarnation and retained raw scalars reconstructed for post')
+    require('fn2-sim-native-post', """
+      (let ((fn2-sim (fn2-sim-set-active (nth 0 packet) 1 fn2-sim)))
+       (fn2-sim-complete-result (nth 0 packet) (nth 1 packet) (nth 2 packet)
+         (nth 3 packet) (nth 4 packet) (nth 5 packet) (nth 6 packet) (nth 7 packet)
+         (nth 10 packet) (nth 8 packet) (nth 9 packet) nil fn2-core fn2-sim fn2-own))""",
+        'retained raw result reaches shared terminal normalization exactly')
+
     # The outer check also validates crash ordering and exact shared terminal
     # ABI. Do not invent an outer crash point here merely because these internal
     # functions can be called separately in a fixture.
@@ -209,16 +283,16 @@ def check(defs, mappings=None):
             'domain': ['submitted fresh fence with active=1 and captured snapshot', 'matching slot/generation',
                        'not cancelled', 'physical return :ok', 'fault none; lying nil'],
             'cuts': [{'host_function': site[0], 'label': site[1], 'phase': phase,
-                      'model_function': 'fn2-sim-complete',
+                      'model_function': 'fn2-sim-step-completion',
                       'model_prefix': 'before fn2-sim-physical' if phase == 'before-physical'
-                                      else 'after fn2-sim-physical, before fn2-sim-complete-result',
+                                      else 'after fn2-sim-native-stage, before fn2-sim-native-post',
                       'terminal_posted': False} for site, phase in sorted(observed.items())],
             'evidence': copy.deepcopy(evidence),
-            'model_composition': 'unreachable-in-composition: successful physical return cannot yield before terminal post',
+            'model_composition': 'scheduled-source-present; execution and preservation qualification pending',
             'excluded_branches': [{'branch': 'fn2-sim-complete active=2 or active=3',
                                    'status': 'unreachable-in-composition for fresh fence: release and early require Send'}],
             'mapping_complete': False,
-            'remaining': ['split physical return from terminal posting in the model schedule',
+            'remaining': ['qualify scheduled physical-return/post split and raw packet roundtrip',
                           'prove initialized operation-incarnation/effect relation and crash preservation',
                           'bind native fence/FFI/OS contract and model snapshot coverage',
                           'read/write/error/cancel/concurrent-worker cut families',

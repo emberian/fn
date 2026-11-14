@@ -1,9 +1,9 @@
-; Storage-return state used only by the explicit native cut program.
+; Raw physical-return state shared by native cuts and scheduled Fence completion.
 (in-package "ACL2")
 (include-book "sim-state")
 
 ; Active 3 is the existing early borrow-release continuation.  Active 4 is
-; private to this cut program: physical I/O finished, terminal post not sent.
+; physical I/O finished, terminal post not sent.
 ; FN2-SIM-FIND-WRITE selects only active 1, so a crash cannot replay this write.
 
 (defun fn2-sim-native-flightp (slot fn2-sim)
@@ -43,6 +43,10 @@
   (and (true-listp packet) (= (len packet) 11)
        (natp (nth 0 packet)) (< (nth 0 packet) (fn2-sim-rows fn2-sim))
        (unsigned-byte-p 60 (nth 1 packet)) (natp (nth 4 packet))
+       (equal (nth 1 packet) (fn2-sim-gen (nth 0 packet) fn2-sim))
+       (equal (nth 2 packet) (fn2-sim-kind (nth 0 packet) fn2-sim))
+       (equal (nth 3 packet) (fn2-terminal-event (nth 2 packet)))
+       (equal (nth 4 packet) (fn2-sim-range-len (nth 0 packet) fn2-sim))
        (unsigned-byte-p 32 (nth 8 packet)) (unsigned-byte-p 60 (nth 9 packet))
        (fn2-sim-native-faultp (nth 10 packet))))
 

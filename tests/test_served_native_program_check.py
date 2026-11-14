@@ -106,11 +106,11 @@ class ServedNativeProgramTests(unittest.TestCase):
         family = report['storage_return_cut_family']
         self.assertTrue(family['source_ok'], family)
         self.assertFalse(family['mapping_complete'])
-        self.assertIn('unreachable-in-composition', family['model_composition'])
+        self.assertIn('scheduled-source-present', family['model_composition'])
         cuts = {cut['label']: cut for cut in family['cuts']}
         self.assertEqual(cuts['device-syscall-return']['phase'], 'physical-returned-unposted')
         self.assertFalse(cuts['device-syscall-return']['terminal_posted'])
-        self.assertIn('before fn2-sim-complete-result', cuts['device-return']['model_prefix'])
+        self.assertIn('before fn2-sim-native-post', cuts['device-return']['model_prefix'])
         self.assertTrue(all(e['ast_path'] and e['contract'] for e in family['evidence']))
 
     def test_reachable_fence_return_cannot_be_omitted(self):
@@ -157,6 +157,26 @@ class ServedNativeProgramTests(unittest.TestCase):
         self.change('sim/sim.lisp',
                     '((when (and (eq code :would-block) (equal physical-count 0)))',
                     '((when (or (eq code :ok) (and (eq code :would-block) (equal physical-count 0))))')
+        self.assertFalse(checker.check(self.root)['storage_return_cut_family']['source_ok'])
+
+    def test_real_scheduler_cannot_bypass_split_stage(self):
+        self.change('sim/sim.lisp',
+                    '(fn2-sim-step-completion slot fault word fn2-core fn2-sim fn2-own)',
+                    '(fn2-sim-complete slot fault word fn2-core fn2-sim fn2-own)')
+        self.assertFalse(checker.check(self.root)['storage_return_cut_family']['source_ok'])
+
+    def test_retained_raw_count_cannot_be_fabricated(self):
+        self.change('sim/sim.lisp', '(return-count (nth 6 packet))', '(return-count 0)')
+        self.assertFalse(checker.check(self.root)['storage_return_cut_family']['source_ok'])
+
+    def test_retained_raw_fault_cannot_be_discarded(self):
+        self.change('sim/sim.lisp', '(return-fault (nth 10 packet))', '(return-fault *fn2-fault-none*)')
+        self.assertFalse(checker.check(self.root)['storage_return_cut_family']['source_ok'])
+
+    def test_native_trace_must_retain_actual_syscall_result(self):
+        self.change('host/adapter.lisp',
+                    '(fn2-device-job-result job) (fn2-device-job-errno job))))',
+                    '0 (fn2-device-job-errno job))))')
         self.assertFalse(checker.check(self.root)['storage_return_cut_family']['source_ok'])
 
     def test_cli_cannot_count_source_audit_as_complete_cut_mapping(self):

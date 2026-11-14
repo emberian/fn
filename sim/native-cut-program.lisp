@@ -32,50 +32,6 @@
                   (mv nil fn2-core fn2-sim fn2-own)))
   :hints (("Goal" :in-theory (enable fn2-sim-complete))))
 
-(defun fn2-sim-native-stage (slot fault word fn2-core fn2-sim fn2-own)
-  (declare (xargs :stobjs (fn2-core fn2-sim fn2-own) :verify-guards nil
-                  :guard (and (fn2-core-wfp fn2-core) (fn2-sim-ready fn2-sim)
-                              (fn2-own-wfp fn2-own) (unsigned-byte-p 32 word))))
-  (if (not (and (fn2-sim-native-flightp slot fn2-sim) (fn2-sim-native-faultp fault)))
-      (mv :unsupported nil fn2-core fn2-sim fn2-own)
-    (b* ((gen (fn2-sim-gen slot fn2-sim)) (kind (fn2-sim-kind slot fn2-sim))
-         (event (fn2-terminal-event kind)) (len (fn2-sim-range-len slot fn2-sim))
-         (now (fn2-sim-now fn2-sim))
-         ((mv code count aux fn2-core fn2-sim fn2-own)
-          (fn2-sim-physical slot fault word fn2-core fn2-sim fn2-own))
-         ((when (and (eq code :would-block) (equal count 0)))
-          (let ((fn2-sim (fn2-sim-set-due slot (min *fn2-u60-max* (+ 100 now)) fn2-sim)))
-            (mv :waiting nil fn2-core fn2-sim fn2-own)))
-         (packet (list slot gen kind event len code count aux word now fault))
-         (fn2-sim (fn2-sim-set-active slot *fn2-sim-native-returned* fn2-sim)))
-      (mv :returned packet fn2-core fn2-sim fn2-own))))
-
-(fn2-sim-preserves fn2-sim-native-stage (slot fault word fn2-core fn2-sim fn2-own) :part nil
-  :carriers ((fn2-core 2 :prefix "-CORE")
-             (fn2-sim 3 :invariant fn2-sim-ready :prefix "-SIM" :suffix "-READY")
-             (fn2-own 4 :prefix "-OWN")))
-(verify-guards fn2-sim-native-stage
-  :hints (("Goal" :in-theory (enable fn2-sim-native-flightp))))
-
-(defun fn2-sim-native-post (packet fn2-core fn2-sim fn2-own)
-  (declare (xargs :stobjs (fn2-core fn2-sim fn2-own) :verify-guards nil
-                  :guard (and (fn2-core-wfp fn2-core) (fn2-sim-ready fn2-sim)
-                              (fn2-own-wfp fn2-own))))
-  (if (not (and (fn2-sim-native-packetp packet fn2-sim)
-                (= (fn2-sim-active (nth 0 packet) fn2-sim) *fn2-sim-native-returned*)))
-      (mv nil fn2-core fn2-sim fn2-own)
-    (let ((fn2-sim (fn2-sim-set-active (nth 0 packet) 1 fn2-sim)))
-      (fn2-sim-complete-result (nth 0 packet) (nth 1 packet) (nth 2 packet)
-        (nth 3 packet) (nth 4 packet) (nth 5 packet) (nth 6 packet) (nth 7 packet)
-        (nth 10 packet) (nth 8 packet) (nth 9 packet) nil fn2-core fn2-sim fn2-own))))
-
-(fn2-sim-preserves fn2-sim-native-post (packet fn2-core fn2-sim fn2-own) :part nil
-  :carriers ((fn2-core 1 :prefix "-CORE")
-             (fn2-sim 2 :invariant fn2-sim-ready :prefix "-SIM" :suffix "-READY")
-             (fn2-own 3 :prefix "-OWN")))
-(verify-guards fn2-sim-native-post
-  :hints (("Goal" :in-theory (enable fn2-sim-native-packetp))))
-
 (defun fn2-sim-native-cut (cut slot fault word fn2-core fn2-sim fn2-own)
   (declare (xargs :stobjs (fn2-core fn2-sim fn2-own) :verify-guards nil
                   :guard (and (fn2-core-wfp fn2-core) (fn2-sim-ready fn2-sim)

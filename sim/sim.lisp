@@ -2,6 +2,7 @@
 (in-package "ACL2")
 (include-book "sim-adapter-base")
 (include-book "../books/terminal-values")
+(include-book "native-cut-state")
 
 (in-theory (disable fn2-core-wfp fn2-sim-ready))
 
@@ -232,6 +233,39 @@
 (fn2-sim-preserves fn2-sim-terminal-post (slot gen event outcome reason count aux0 aux1 fault word now release early fn2-core fn2-sim fn2-own) :part nil
   :carriers ((fn2-core 1 :prefix "-CORE") (fn2-sim 2 :invariant fn2-sim-ready :prefix "-SIM" :suffix "-READY") (fn2-own 3 :prefix "-OWN")))
 
+; Generated row columns retain every scalar of the raw physical packet.
+; Kind/generation/length are immutable while active=4; byte effects already ran.
+(defun fn2-sim-save-return (packet fn2-sim)
+  (declare (xargs :stobjs fn2-sim :verify-guards nil
+                  :guard (and (fn2-sim-ready fn2-sim)
+                              (fn2-sim-native-packetp packet fn2-sim)
+                              (unsigned-byte-p 32 (nth 6 packet))
+                              (unsigned-byte-p 32 (nth 7 packet))
+                              (natp (fn2-sim-return-code-keyword->code (nth 5 packet))))))
+  (fn2-sim-put (nth 0 packet)
+    (return-code (fn2-sim-return-code-keyword->code (nth 5 packet)))
+    (return-count (nth 6 packet)) (return-aux (nth 7 packet))
+    (return-word (nth 8 packet)) (return-time (nth 9 packet)) (return-fault (nth 10 packet))))
+(fn2-sim-preserves fn2-sim-save-return (packet fn2-sim) :forward t
+  :hyps ((fn2-simp fn2-sim) (fn2-sim-ready fn2-sim)
+         (fn2-sim-native-packetp packet fn2-sim)
+         (unsigned-byte-p 32 (nth 6 packet)) (unsigned-byte-p 32 (nth 7 packet))
+         (natp (fn2-sim-return-code-keyword->code (nth 5 packet))))
+  :specs (("-TYPE" fn2-simp nil) ("-READY" fn2-sim-ready nil) ("-WFP" fn2-sim-wfp nil)))
+(verify-guards fn2-sim-save-return
+ :hints (("Goal" :in-theory (enable fn2-sim-native-packetp fn2-sim-return-code-keyword->code))))
+
+(defun fn2-sim-saved-return (slot fn2-sim)
+  (declare (xargs :stobjs fn2-sim :verify-guards nil
+                  :guard (and (fn2-sim-ready fn2-sim) (natp slot) (< slot (fn2-sim-rows fn2-sim)))))
+  (list slot (fn2-sim-gen slot fn2-sim) (fn2-sim-kind slot fn2-sim)
+    (fn2-terminal-event (fn2-sim-kind slot fn2-sim)) (fn2-sim-range-len slot fn2-sim)
+    (fn2-sim-return-code-code->keyword (fn2-sim-return-code slot fn2-sim))
+    (fn2-sim-return-count slot fn2-sim) (fn2-sim-return-aux slot fn2-sim)
+    (fn2-sim-return-word slot fn2-sim) (fn2-sim-return-time slot fn2-sim)
+    (fn2-sim-return-fault slot fn2-sim)))
+(verify-guards fn2-sim-saved-return)
+
 ; Interpret one physical result after the byte effects have completed.
 (defun fn2-sim-complete-result
   (slot gen kind event len code physical-count aux fault word now release
@@ -243,7 +277,17 @@
                               (unsigned-byte-p 60 gen) (unsigned-byte-p 60 now)
                               (unsigned-byte-p 32 word) (natp len))
                   :guard-hints (("Goal" :in-theory (disable unsigned-byte-p)))))
-  (b* (((mv cancelled fn2-sim)
+  (b* ((packet (list slot gen kind event len code physical-count aux word now fault))
+       ; Atomic and staged completions retain identical raw evidence. This is
+       ; still before terminal normalization; malformed/out-of-domain calls do
+       ; not fabricate a stored raw result.
+       (fn2-sim
+        (if (and (equal kind *fn2-action-fence*)
+                 (fn2-sim-native-packetp packet fn2-sim)
+                 (unsigned-byte-p 32 physical-count) (unsigned-byte-p 32 aux)
+                 (natp (fn2-sim-return-code-keyword->code code)))
+            (fn2-sim-save-return packet fn2-sim) fn2-sim))
+       ((mv cancelled fn2-sim)
         (if (and (equal kind *fn2-action-cancel*) (not (eq code :cancelled)))
             (fn2-sim-cancel-target slot fn2-sim) (mv nil fn2-sim)))
        ((mv outcome reason count aux0 aux1)
@@ -253,6 +297,72 @@
       fault word now release early fn2-core fn2-sim fn2-own)))
 (fn2-sim-preserves fn2-sim-complete-result (slot gen kind event len code physical-count aux fault word now release fn2-core fn2-sim fn2-own) :part nil
   :carriers ((fn2-core 1 :prefix "-CORE") (fn2-sim 2 :invariant fn2-sim-ready :prefix "-SIM" :suffix "-READY") (fn2-own 3 :prefix "-OWN")))
+
+; Scalar effect-domain facts for the actual Fence branch, not an assumed
+; syscall result. They connect the bounded stored raw packet to PHYSICAL.
+(defthm fn2-sim-physical-fence-raw-result
+  (implies (and (fn2-core-wfp fn2-core) (fn2-sim-ready fn2-sim) (fn2-own-wfp fn2-own)
+                (natp slot) (< slot (fn2-sim-rows fn2-sim))
+                (equal (fn2-sim-kind slot fn2-sim) *fn2-action-fence*)
+                (unsigned-byte-p 32 word) (natp fault))
+           (and (member-eq (mv-nth 0 (fn2-sim-physical slot fault word fn2-core fn2-sim fn2-own)) '(:ok :io :bounds))
+                (equal (mv-nth 1 (fn2-sim-physical slot fault word fn2-core fn2-sim fn2-own)) 0)
+                (equal (mv-nth 2 (fn2-sim-physical slot fault word fn2-core fn2-sim fn2-own)) 0)))
+  :hints (("Goal" :in-theory (enable fn2-sim-physical fn2-sim-physical-act
+                                    fn2-storage-fence-complete fn2-op-input-kindp fn2-op-output-kindp))))
+
+(defthm fn2-sim-physical-keeps-incarnation
+  (let ((after (mv-nth 4 (fn2-sim-physical slot fault word fn2-core fn2-sim fn2-own))))
+    (and (equal (fn2-sim-gen i after) (fn2-sim-gen i fn2-sim))
+         (equal (fn2-sim-kind i after) (fn2-sim-kind i fn2-sim))
+         (equal (fn2-sim-range-len i after) (fn2-sim-range-len i fn2-sim))))
+  :hints (("Goal" :in-theory (e/d (fn2-sim-physical fn2-sim-land fn2-sim-gen fn2-sim-kind fn2-sim-range-len)
+                                  (fn2-sim-physical-act)))))
+
+(defun fn2-sim-native-stage (slot fault word fn2-core fn2-sim fn2-own)
+  (declare (xargs :stobjs (fn2-core fn2-sim fn2-own) :verify-guards nil
+                  :guard (and (fn2-core-wfp fn2-core) (fn2-sim-ready fn2-sim)
+                              (fn2-own-wfp fn2-own) (unsigned-byte-p 32 word))))
+  (if (not (and (fn2-sim-native-flightp slot fn2-sim) (fn2-sim-native-faultp fault)))
+      (mv :unsupported nil fn2-core fn2-sim fn2-own)
+    (b* ((gen (fn2-sim-gen slot fn2-sim)) (kind (fn2-sim-kind slot fn2-sim))
+         (event (fn2-terminal-event kind)) (len (fn2-sim-range-len slot fn2-sim))
+         (now (fn2-sim-now fn2-sim))
+         ((mv code count aux fn2-core fn2-sim fn2-own)
+          (fn2-sim-physical slot fault word fn2-core fn2-sim fn2-own))
+         ((when (and (eq code :would-block) (equal count 0)))
+          (let ((fn2-sim (fn2-sim-set-due slot (min *fn2-u60-max* (+ 100 now)) fn2-sim)))
+            (mv :waiting nil fn2-core fn2-sim fn2-own)))
+         (packet (list slot gen kind event len code count aux word now fault))
+         (fn2-sim (if (equal kind *fn2-action-fence*) (fn2-sim-save-return packet fn2-sim) fn2-sim))
+         (fn2-sim (fn2-sim-set-active slot *fn2-sim-native-returned* fn2-sim)))
+      (mv :returned packet fn2-core fn2-sim fn2-own))))
+
+(fn2-sim-preserves fn2-sim-native-stage (slot fault word fn2-core fn2-sim fn2-own) :part nil
+  :carriers ((fn2-core 2 :prefix "-CORE")
+             (fn2-sim 3 :invariant fn2-sim-ready :prefix "-SIM" :suffix "-READY")
+             (fn2-own 4 :prefix "-OWN")))
+(verify-guards fn2-sim-native-stage
+  :hints (("Goal" :in-theory (enable fn2-sim-native-flightp fn2-sim-native-faultp))))
+
+(defun fn2-sim-native-post (packet fn2-core fn2-sim fn2-own)
+  (declare (xargs :stobjs (fn2-core fn2-sim fn2-own) :verify-guards nil
+                  :guard (and (fn2-core-wfp fn2-core) (fn2-sim-ready fn2-sim)
+                              (fn2-own-wfp fn2-own))))
+  (if (not (and (fn2-sim-native-packetp packet fn2-sim)
+                (= (fn2-sim-active (nth 0 packet) fn2-sim) *fn2-sim-native-returned*)))
+      (mv nil fn2-core fn2-sim fn2-own)
+    (let ((fn2-sim (fn2-sim-set-active (nth 0 packet) 1 fn2-sim)))
+      (fn2-sim-complete-result (nth 0 packet) (nth 1 packet) (nth 2 packet)
+        (nth 3 packet) (nth 4 packet) (nth 5 packet) (nth 6 packet) (nth 7 packet)
+        (nth 10 packet) (nth 8 packet) (nth 9 packet) nil fn2-core fn2-sim fn2-own))))
+
+(fn2-sim-preserves fn2-sim-native-post (packet fn2-core fn2-sim fn2-own) :part nil
+  :carriers ((fn2-core 1 :prefix "-CORE")
+             (fn2-sim 2 :invariant fn2-sim-ready :prefix "-SIM" :suffix "-READY")
+             (fn2-own 3 :prefix "-OWN")))
+(verify-guards fn2-sim-native-post
+  :hints (("Goal" :in-theory (enable fn2-sim-native-packetp))))
 
 (defun fn2-sim-complete (slot fault word fn2-core fn2-sim fn2-own)
   (declare (xargs :stobjs (fn2-core fn2-sim fn2-own)
@@ -318,6 +428,33 @@
   :carriers ((fn2-core 1 :prefix "-CORE") (fn2-sim 2 :invariant fn2-sim-ready :prefix "-SIM" :suffix "-READY") (fn2-own 3 :prefix "-OWN")))
 (fn2-sim-preserves fn2-sim-complete (slot fault word fn2-core fn2-sim fn2-own) :part 7
   :carriers ((fn2-core 1 :prefix "-CORE") (fn2-sim 2 :invariant fn2-sim-ready :prefix "-SIM" :suffix "-READY") (fn2-own 3 :prefix "-OWN")))
+
+; This scheduled stage is bounded to the Fence pilot. Other operations retain
+; their existing atomic completion schedule until their split relation is closed.
+(defun fn2-sim-step-completion (slot fault word fn2-core fn2-sim fn2-own)
+  (declare (xargs :stobjs (fn2-core fn2-sim fn2-own) :verify-guards nil
+                  :guard (and (fn2-core-wfp fn2-core) (fn2-sim-ready fn2-sim)
+                              (fn2-own-wfp fn2-own))))
+  (cond
+   ((not (and (unsigned-byte-p 32 word) (natp slot) (< slot (fn2-sim-rows fn2-sim))))
+    (mv nil fn2-core fn2-sim fn2-own))
+   ((= (fn2-sim-active slot fn2-sim) *fn2-sim-native-returned*)
+    (if (= (fn2-sim-kind slot fn2-sim) *fn2-action-fence*)
+        (fn2-sim-native-post (fn2-sim-saved-return slot fn2-sim) fn2-core fn2-sim fn2-own)
+      (mv nil fn2-core fn2-sim fn2-own)))
+   ((and (fn2-sim-native-storagep slot fn2-sim)
+         (= (fn2-sim-kind slot fn2-sim) *fn2-action-fence*)
+         (fn2-sim-native-faultp fault))
+    (b* (((mv status packet fn2-core fn2-sim fn2-own)
+          (fn2-sim-native-stage slot fault word fn2-core fn2-sim fn2-own))
+         (- packet))
+      (mv (if (member-eq status '(:returned :waiting)) t nil) fn2-core fn2-sim fn2-own)))
+   (t (fn2-sim-complete slot fault word fn2-core fn2-sim fn2-own))))
+(fn2-sim-preserves fn2-sim-step-completion (slot fault word fn2-core fn2-sim fn2-own) :part nil
+  :carriers ((fn2-core 1 :prefix "-CORE")
+             (fn2-sim 2 :invariant fn2-sim-ready :prefix "-SIM" :suffix "-READY")
+             (fn2-own 3 :prefix "-OWN")))
+(verify-guards fn2-sim-step-completion)
 
 (defun fn2-sim-client-drain (left cap nonce fn2-sim)
   (declare (xargs :stobjs fn2-sim :measure (nfix left)
@@ -454,7 +591,7 @@
     (if (and (not automatic) (equal (fn2-sim-active slot fn2-sim) 1)
              (equal (fn2-sim-kind slot fn2-sim) *fn2-action-accept*))
         (fn2-sim-echo-accept slot fault word allow-accept fn2-core fn2-sim fn2-own)
-      (fn2-sim-complete slot fault word fn2-core fn2-sim fn2-own))))
+      (fn2-sim-step-completion slot fault word fn2-core fn2-sim fn2-own))))
 (fn2-sim-preserves fn2-sim-advance-flight (automatic allow-accept found slot fault word fn2-core fn2-sim fn2-own) :part nil
   :carriers ((fn2-core 1 :prefix "-CORE") (fn2-sim 2 :invariant fn2-sim-ready :prefix "-SIM" :suffix "-READY") (fn2-own 3 :prefix "-OWN")))
 
@@ -519,6 +656,7 @@
     fn2-sim-crash-flight-one fn2-sim-crash-state fn2-sim-save-terminal
     fn2-sim-terminal-values fn2-sim-terminal-post fn2-sim-complete-result fn2-sim-delay-flight fn2-sim-post-clock
     fn2-sim-result-outcome fn2-sim-result-reason fn2-sim-complete fn2-sim-wake-first-p
-    fn2-sim-echo-accept fn2-sim-advance-flight fn2-sim-advance-selected
+    fn2-sim-native-stage fn2-sim-native-post fn2-sim-save-return fn2-sim-saved-return
+    fn2-sim-step-completion fn2-sim-echo-accept fn2-sim-advance-flight fn2-sim-advance-selected
     fn2-sim-advance-with-clients fn2-sim-advance)
   (w state)))

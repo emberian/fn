@@ -299,6 +299,8 @@
                   :measure (nfix (- (nfix (fn2-sim-rows fn2-sim)) (nfix slot)))))
   (if (or (not (natp slot)) (>= slot (nfix (fn2-sim-rows fn2-sim)))) fn2-sim
     (let* (
+           (fn2-sim (fn2-sim-put slot (return-code 0) (return-count 0) (return-aux 0)
+                                  (return-word 0) (return-time 0) (return-fault 0)))
            (fn2-sim (fn2-sim-set-active slot 0 fn2-sim))
            (fn2-sim (fn2-sim-set-gen slot 0 fn2-sim))
            (fn2-sim (fn2-sim-set-kind slot 0 fn2-sim))

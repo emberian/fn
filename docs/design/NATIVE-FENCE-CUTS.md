@@ -1,55 +1,73 @@
 # Successful fence return cuts
 
-`tools/native_program_check.py --source-only --json` now carries a bounded
-source witness for a fresh storage Fence with a captured snapshot, matching
-slot/generation, no cancellation, a successful physical return and no lying
-flush. It does not establish native/model refinement or execute a model proof.
-The default gate still refuses incomplete cut mapping.
+The source now connects a successful storage Fence's physical return to an
+unposted simulator continuation and a native trace/replay event. Qualification
+of the changed model and the new executable fixtures is pending. The default
+`tools/native_program_check.py` still refuses incomplete cut mapping;
+`--source-only --json` reports the bounded source contracts separately.
 
 The actual worker calls `fn2-device-perform device job` between
-`device-syscall` and `device-syscall-return`. The second cut precedes insertion
+`device-syscall` and `device-syscall-return`. Its return cut precedes insertion
 into the device completion queue. `fn2-n-storage-completions` checks the same
-operation generation, then exposes `device-return` before decoding the raw
-result and calling `fn2-n-complete`. Both return cuts therefore precede
-normalization and terminal posting. They are not coordinates at
-`fn2-sim-complete-result`, which immediately normalizes and posts.
+operation generation, decodes the syscall result through
+`fn2-device-io-observation`, records Fence `(:physical-return PACKET N ERRNO)`,
+then exposes `device-return` before `fn2-n-complete` normalizes a terminal.
+The four-field event retains the actual syscall return and errno. Native
+schedule word/time/fault coordinates are explicitly neutral (0/0/no-fault);
+the checker claims no correspondence of those environmental coordinates.
 
-`tools/served_storage_cut_check.py` checks complete worker/harvest blocks,
-fixed enclosing AST positions, and argument/result flow. Its evidence records
-actual function, AST path, contract and semantic role; it uses no line hashes.
-The relation table must account for each callback and its derived physical
-phase. Missing or terminal-post-attributed physical return cuts fail the source
-audit. Disconnected or dead-branch copies cannot satisfy the checked positions.
-This is a deliberately restrictive source slice; changing its control structure
-requires reviewing the slice, not regenerating an acceptance hash.
+The real `fn2-sim-advance-flight` calls `fn2-sim-step-completion`. For the Fence
+pilot, it invokes the existing `fn2-sim-native-stage`, which uses the same
+`fn2-sim-physical` → `fn2-sim-physical-act` → `fn2-storage-fence-complete`
+implementation as atomic completion. The stage retains the raw 11-field packet
+in generated per-row columns and sets active=4. It sends no terminal. The next
+scheduled step resumes through `fn2-sim-native-post` and the existing
+`fn2-sim-complete-result`, without another physical operation. Raw code/count/
+auxiliary result, original schedule word/time/fault, and slot/generation/kind/
+event/length remain distinct from normalized terminal fields. Atomic completion
+captures the same raw fields so the existing whole-state staged/atomic equality
+obligation remains meaningful; it is not weakened to ignore those columns.
 
-The connected model slice is `fn2-sim-complete` → `fn2-sim-physical` →
-`fn2-sim-physical-act` → `fn2-storage-fence-complete`, whose nonfailed/nonlying
-branch commits the captured snapshot before returning storage and a raw code.
-The corresponding unposted prefix ends before `fn2-sim-complete-result`.
-Its source evidence includes that actual physical dispatcher, the snapshot
-commit flag, durable-byte setter, raw result threading and the whole physical
-to terminal suffix. Existing outer audit contracts retain the shared terminal
-normalizer, posting ABI and crash-before-restart ordering.
+`fn2-sim-native-packetp` binds posting to the current operation incarnation.
+`fn2-sim-find-write` selects active=1, so a returned active=4 write cannot be
+reissued by crash. Active=2/3 retain their Send release meanings and are
+unreachable for the fresh Fence incarnation in this domain. Other storage
+operations retain their atomic scheduler path; their external cut-driver
+packets must not be mistaken for scheduler-owned Fence continuations.
 
-That prefix is **unreachable-in-composition as an outer simulator scheduling
-point**: successful `:ok` cannot take `:would-block`'s yielding branch, so
-`fn2-sim-complete` continues directly to normalization and posting. Separately,
-active=2/3 are Send release phases and are unreachable for the fresh Fence
-incarnation under this domain. These facts do not make the host return cuts
-unreachable. Calling internal simulator functions separately is not evidence
-that the composed simulator can schedule a crash there.
+`fn2-envelope-prefix` accepts raw Fence returns while preserving TAKEN in its
+continuation. It checks descriptor identity, acknowledgement, absence of a
+prior return/post, and—on native four-field events—the actual ACL2 decoder.
+Later posting must agree with the shared `fn2-host-result` normalization and
+consumes the retained packet once. Legacy traces without physical-return events
+remain regression inputs and contribute no physical-return evidence. The
+success pilot uses shared `:ok`; simulator `:io` versus native `:failed` error
+abstraction remains outside this slice.
 
-Remaining work is explicit in the JSON: split physical return from posting in
-the model schedule; establish initialization, operation incarnation, exact
-effects and crash preservation; connect captured-snapshot coverage to the
-native FIFO fence; qualify the FFI/OS contract; extend to reads, writes,
-errors, cancellation and concurrent workers; and carry physical returns into
-the trace/replay relation. Existing native SIGKILL controls do not discharge
-those obligations or power-loss persistence assumptions.
+The source checker binds exact worker/harvest/scheduler blocks, enclosing AST
+positions, argument/result flow, raw field storage/reconstruction, and actual
+model snapshot commit. Its evidence records function, AST path, contract and
+semantic role rather than line hashes. Missing or terminal-post-attributed
+physical cuts, dead branches, scheduler bypass, discarded raw scalars and
+changed native raw returns fail the source audit. This evidence is not proof
+admission, execution or native/model refinement.
 
-Validation: `python3 -m unittest tests.test_served_native_program_check -q`
-passes 23 focused controls, including omission, wrong phase, dead branch,
-premature posting, disabled snapshot commit, Fence entering Send release and
-model-yield mutations. The original source-only gate stays green; the default
-completion gate stays red. No ACL2 certification or native campaign was run.
+The pending executable controls are:
+
+- `tests/scheduled-fence-cut-unit.lisp`: drive the real advance, observe durable
+  byte 17 with no Fence post, crash or resume without another physical stamp,
+  and replay the packet produced by that advance; reject changed generation or
+  terminal outcome.
+- `tests/native-fence-return-unit.lsp`: one real fd Fence through the actual
+  performer/harvest; inspect the actual death boundary before normalization.
+- `tests/envelope-prefix-unit.lisp`: issued Fence, raw-return prefix/resume,
+  duplicate/stale incarnation/wrong post/raw-syscall mutations.
+
+Source validation passes 27 focused Python controls, strict source reading,
+secrets and diff checks. ACL2 admission/certification, raw-host load and the new
+model/native controls have not run on this source. Remaining obligations include
+raw packet roundtrip/shape/guard proofs, whole-state atomic/staged equality,
+initialized incarnation and effect/crash preservation, native FIFO snapshot
+coverage, FFI/OS contracts, reads/writes/errors/cancellation/concurrent workers,
+and universal trace correspondence. Native SIGKILL controls do not establish
+power-loss persistence assumptions.
