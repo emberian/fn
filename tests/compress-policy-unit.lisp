@@ -17,8 +17,8 @@
  (put-assoc-equal :compress-output-quantum 1025 *fn2-compress-profile-probe*))))
 (assert-event (not (fn2-compress-profilep
  (put-assoc-equal :compress-expansion-ratio 0 *fn2-compress-profile-probe*))))
-(assert-event (equal (mv-nth 0 (fn2-compress-plan 128 256 128 256 0)) :limit))
-(assert-event (equal (mv-nth 2 (fn2-compress-plan 128 256 128 256 11)) 11))
+(assert-event (equal (mv-let (status input output) (fn2-compress-plan 128 256 128 256 0) (declare (ignore input output)) status) :limit))
+(assert-event (equal (mv-let (status input output) (fn2-compress-plan 128 256 128 256 11) (declare (ignore status input)) output) 11))
 ; Positive witness includes the entire successful observation and conclusion.
 (defun fn2-compress-credit-positive ()
  (declare (xargs :guard t))
@@ -35,10 +35,10 @@
        (not (<= (+ next 21) (+ 20 (* 8 0)))))))
 (assert-event (fn2-compress-credit-positive))
 (assert-event (fn2-compress-credit-negative))
-(assert-event (equal (mv-nth 0 (fn2-compress-observe 1 2 0 2 8 20 8 1024)) :final))
-(assert-event (equal (mv-nth 0 (fn2-compress-observe -1 1 0 2 8 20 8 1024)) :failed))
-(assert-event (equal (mv-nth 0 (fn2-compress-observe 0 0 0 2 8 20 8 1024)) :need-input))
-(assert-event (equal (mv-nth 1 (fn2-compress-observe 0 128 1 128 8 20 8 1024)) 1024))
+(assert-event (equal (mv-let (status credit) (fn2-compress-observe 1 2 0 2 8 20 8 1024) (declare (ignore credit)) status) :final))
+(assert-event (equal (mv-let (status credit) (fn2-compress-observe -1 1 0 2 8 20 8 1024) (declare (ignore credit)) status) :failed))
+(assert-event (equal (mv-let (status credit) (fn2-compress-observe 0 0 0 2 8 20 8 1024) (declare (ignore credit)) status) :need-input))
+(assert-event (equal (mv-let (status credit) (fn2-compress-observe 0 128 1 128 8 20 8 1024) (declare (ignore status)) credit) 1024))
 
 (defun fn2-compress-plan-positive ()
  (declare (xargs :guard t))
@@ -54,5 +54,5 @@
 ; Exact exhaustion cannot spin waiting for a zero-capacity primitive call.
 (assert-event (mv-let (status credit) (fn2-compress-observe 0 0 20 8 20 20 8 1024)
  (and (equal status :need-output) (equal credit 0)
-      (equal (mv-nth 0 (fn2-compress-plan 8 256 128 256 credit)) :limit))))
+      (equal (mv-let (status input output) (fn2-compress-plan 8 256 128 256 credit) (declare (ignore input output)) status) :limit))))
 (fn2-assert-owed-teeth fn2-compress-plan-bounded fn2-compress-observe-credit-bounded)
