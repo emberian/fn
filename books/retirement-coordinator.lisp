@@ -1,12 +1,14 @@
 (in-package "ACL2")
 (include-book "checkpoint-allocation-coordinator")
 (include-book "checkpoint-installation-coordinator")
+(include-book "checkpoint-maintenance-staging")
 
 ; Materialized after B's existing planner and member-admission operations.
 ; No general transaction decoder is opened to lifecycle input: this producer
 ; constructs the sole record after selecting its actual containing batch.
 (defmacro fn2-retirement-coordinator-events ()
  '(progn
+ (fn2-checkpoint-maintenance-staging-events)
  (defun fn2-retirement-admit (extent epoch allocation slot gen okind oslot ogen fn2-core)
   (declare (xargs :stobjs fn2-core :guard (fn2-core-wfp fn2-core)))
   (b* (((unless (and (unsigned-byte-p 32 extent) (unsigned-byte-p 60 epoch)
@@ -157,7 +159,7 @@
            fn2-retirement-control)
          (let ((fn2-core (fn2-core-stop *fn2-stop-reason-commit-settle* fn2-core)))
           (mv :uncertain batch event fn2-core))))
-       ((mv released fn2-core) (fn2-core-release slot gen okind oslot ogen fn2-core))
+       ((mv released fn2-core) (fn2-checkpoint-lifecycle-release slot gen okind oslot ogen fn2-core))
        ((unless (member-eq released '(:ok :retired)))
         (let ((fn2-core (fn2-core-stop *fn2-stop-reason-commit-pool* fn2-core)))
          (mv :uncertain batch event fn2-core))))
@@ -308,6 +310,8 @@
         (fn2-commit-txn-frame base slot gen off len okind oslot ogen fn2-core))
        ((unless (and (eq framed :ok) (< off next) (<= (+ next bytes) len)))
         (mv :invalid 0 0 fn2-core))
+       ((unless (or (not (member-equal rkind (list *record-kind-allocation* *record-kind-checkpoint-installation*)))
+                    (fn2-checkpoint-staging-match-p slot gen okind oslot ogen fn2-core))) (mv :invalid 0 0 fn2-core))
        ((mv code fn2-core)
         (if (= rkind *record-kind-checkpoint-installation*)
             (fn2-checkpoint-installation-install-member base slot gen off next bytes len batch event okind oslot ogen fn2-core)

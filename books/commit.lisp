@@ -2,6 +2,7 @@
 (in-package "ACL2")
 (include-book "machines-a-access")
 (include-book "commit-format")
+(include-book "checkpoint-commit-leases")
 (fn2-book-layer :b)
 ; Named stops (review ruling 3): a commit helper that finds a state its callers
 ; rule out stops the core with a named reason instead of absorbing it
@@ -354,12 +355,20 @@
        (let ((fn2-commit-io (fn2-commit-io-set-ready r 1 fn2-commit-io))) (mv t fn2-commit-io))) (mv nil fn2-commit-io))
   (fn2-commit-require ok *fn2-stop-reason-commit-pool*)))))
 (fn2-core-preserves fn2-commit-save-pool (id role slot gen fn2-core) :rows nil :prefix "")
- ; Admission is bounded by four pool reservations. On refusal unwind only
-; the newly acquired workspaces; no sequence/root or storage effect exists yet.
+ ; Foreground admission reserves four pool ranges; checkpoint admission borrows
+; the pre-cut four-range bundle. Refusal returns only these volatile resources
+; before a sequence/root or storage effect exists.
+(fn2-checkpoint-commit-loan-events)
 (defun fn2-commit-release-pool (id role owner-gen fn2-core)
  (declare (xargs :stobjs fn2-core :guard (fn2-core-wfp fn2-core)))
  (fn2-commit-checked id (mv :bounds fn2-core)
- (b* ((scratch (equal role 3))
+ (b* ((loan (fn2-checkpoint-commit-loan-state id owner-gen fn2-core))
+      ((when (eq loan :broken))
+       (let ((fn2-core (fn2-core-stop *fn2-stop-reason-commit-pool* fn2-core))) (mv :uncertain fn2-core)))
+      ((when (eq loan :borrowed))
+       (if (not (and (natp role) (< role 4))) (mv :bounds fn2-core)
+        (if (= role 3) (fn2-checkpoint-commit-return-pools id owner-gen fn2-core) (mv :ok fn2-core))))
+      (scratch (equal role 3))
       ((mv & & & slot gen) (fn2-commit-resource id (if scratch 0 role) fn2-core))
       (r (+ (* 3 (fn2-commit-row id fn2-core)) (nfix role)))
       ((mv code fn2-core)
@@ -384,6 +393,7 @@
  (if (and (natp role) (< role 3)) (fn2-commit-save-pool id role slot gen fn2-core)
   (fn2-commit-put-core id (pool-slot slot) (pool-gen gen))))
 (fn2-core-preserves fn2-commit-keep-pool (id role slot gen fn2-core) :rows nil :prefix "")
+(fn2-checkpoint-commit-reserve-events)
 (defun fn2-commit-unwind-pool (id role owner-gen fn2-core)
  (declare (xargs :stobjs fn2-core :guard (fn2-core-wfp fn2-core)))
  (mv-let (released fn2-core) (fn2-commit-release-pool id role owner-gen fn2-core)
@@ -493,14 +503,22 @@
           ((unless (and (< batch capacity) (or (not again) (< gen (fn2-machine-gen-limit fn2-core)))))
            (mv :exhausted fn2-core))
           (owner-gen (if again (+ 1 gen) gen))
-          ((mv code fn2-core) (fn2-commit-reserve-pools 4 id owner-gen fn2-core))
+          (maintenance (fn2-storage-frozen fn2-core))
+          ((mv code fn2-core)
+           (if maintenance (fn2-checkpoint-commit-reserve-pools id owner-gen fn2-core)
+             (fn2-commit-reserve-pools 4 id owner-gen fn2-core)))
           ((unless (eq code :ok)) (mv code fn2-core))
           ((mv code fn2-core)
-           (if (fn2-storage-frozen fn2-core)
+           (if maintenance
                (fn2-commit-reserve-ticket id batch fn2-core)
              (fn2-commit-reserve-extent id fn2-core)))
           ((unless (eq code :ok))
-           (let ((fn2-core (fn2-commit-release-pools 4 id owner-gen fn2-core))) (mv code fn2-core)))
+           (if maintenance
+               (mv-let (returned fn2-core) (fn2-checkpoint-commit-return-pools id owner-gen fn2-core)
+                (let ((fn2-core (if (eq returned :ok) fn2-core
+                                 (fn2-core-stop *fn2-stop-reason-commit-pool* fn2-core))))
+                 (mv (if (eq returned :ok) code :uncertain) fn2-core)))
+             (let ((fn2-core (fn2-commit-release-pools 4 id owner-gen fn2-core))) (mv code fn2-core))))
           (fn2-core (fn2-commit-put-core id (phase *fn2-commit-state-collect*)
             (member-count members) (first-key first-key) (cb-mode mode)
             (batch-no batch) (partner partner) (principal-slot 0) (stopped 0) (generation owner-gen)
