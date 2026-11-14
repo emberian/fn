@@ -2,7 +2,7 @@
 ; These do not establish the external library's cryptographic or byte-effect truth.
 (in-package "ACL2")
 (include-book "tls-transport-ops")
-(include-book "owed")
+(include-book "owed-discharge")
 (fn2-book-layer :d)
 
 (local (in-theory
