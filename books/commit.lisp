@@ -813,6 +813,19 @@
   (mv code slot gen fn2-core)))
 (fn2-core-preserves fn2-block-read (pu epoch alloc off len lslot lgen okind oslot ogen principal fn2-core)
  :position 3 :rows nil :hints (("Goal" :in-theory (enable fn2-core-wfp))))
+; Physical-unit construction over the same pin/issue primitive. A write
+; completion alone grants no journal publication or durability claim.
+(defun fn2-block-write (pu epoch alloc off len lslot lgen okind oslot ogen principal fn2-core)
+ (declare (xargs :stobjs fn2-core :guard (fn2-core-wfp fn2-core)
+                 :guard-hints (("Goal" :in-theory (enable fn2-core-wfp)))))
+ (stobj-let ((fn2-extents (fn2-core-extents fn2-core)) (fn2-alloc-edges (fn2-core-alloc-edges fn2-core)) (fn2-pool (fn2-core-pool fn2-core))
+             (fn2-ops (fn2-core-ops fn2-core)) (fn2-control (fn2-core-control fn2-core)))
+  (code slot gen fn2-pool fn2-ops fn2-control fn2-extents fn2-alloc-edges)
+  (fn2-block-write-children pu epoch alloc off len lslot lgen okind oslot ogen principal
+                           fn2-extents fn2-alloc-edges fn2-pool fn2-ops fn2-control)
+  (mv code slot gen fn2-core)))
+(fn2-core-preserves fn2-block-write (pu epoch alloc off len lslot lgen okind oslot ogen principal fn2-core)
+ :position 3 :rows nil :hints (("Goal" :in-theory (enable fn2-core-wfp))))
 ; B-S2 S10: the read's completion's core face over its child,
 ; fn2-block-read-done-children (machines-b.lisp; S9a).
 (defun fn2-block-read-done (bytes len verify lslot lgen boff hoff cvoff block okind oslot ogen fn2-core)
