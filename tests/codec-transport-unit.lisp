@@ -18,10 +18,15 @@
  (let* ((fn2-codec-probe (fn2-codec-probe-init 1 fn2-codec-probe))
         (fn2-codec-probe (fn2-codec-probe-put 0
           (cap 7) (nonce 17) (slot 3) (generation 9) (serial 11) (pending 2))))
-  (mv (and (fn2-codec-probe-match-p 7 17 3 9 11 fn2-codec-probe)
-           (not (fn2-codec-probe-match-p 7 18 3 9 11 fn2-codec-probe))
-           (not (fn2-codec-probe-match-p 7 17 3 10 11 fn2-codec-probe))
-           (not (fn2-codec-probe-match-p 7 17 3 9 10 fn2-codec-probe))) fn2-codec-probe)))
+  (let* ((matched (and (fn2-codec-probe-match-p 7 17 3 9 11 fn2-codec-probe)
+                       (not (fn2-codec-probe-match-p 8 17 3 9 11 fn2-codec-probe))
+                       (not (fn2-codec-probe-match-p 7 18 3 9 11 fn2-codec-probe))
+                       (not (fn2-codec-probe-match-p 7 17 4 9 11 fn2-codec-probe))
+                       (not (fn2-codec-probe-match-p 7 17 3 10 11 fn2-codec-probe))
+                       (not (fn2-codec-probe-match-p 7 17 3 9 10 fn2-codec-probe))))
+         (fn2-codec-probe (fn2-codec-probe-put 0 (pending 0))))
+   (mv (and matched (not (fn2-codec-probe-match-p 7 17 3 9 11 fn2-codec-probe))) fn2-codec-probe))))
+
 (defun fn2-codec-probe-check ()
  (declare (xargs :verify-guards nil))
  (with-local-stobj fn2-codec-probe

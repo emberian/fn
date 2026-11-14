@@ -65,6 +65,7 @@ ACL2_BOOKS = \
   books/cns-edges \
   books/cns-kind \
   books/column-contracts \
+  books/codec-transport \
   books/columns \
   books/commit \
   books/commit-alloc \
@@ -232,6 +233,7 @@ ACL2_BOOKS = \
   tests/columns-cost-unit-10 \
   tests/columns-cost-unit-20 \
   tests/columns-unit \
+  tests/codec-transport-unit \
   tests/commit-ceiling-unit \
   tests/commit-durable-all-unit \
   tests/commit-executor-contracts-unit \
