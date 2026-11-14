@@ -3,6 +3,7 @@
 (in-package "ACL2")
 (include-book "ordered")
 (include-book "arms")
+(fn2-book-layer :e)
 
 (defun fn2-article-membership-position-code (ordinal count step)
   (declare (xargs :guard t))
