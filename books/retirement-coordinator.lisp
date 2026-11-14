@@ -118,7 +118,7 @@
        ((when (or (= phase *fn2-retirement-state-uncertain*) (fn2-core-stopped-p fn2-core)))
         (mv :uncertain batch event fn2-core))
        ((mv code settled-batch settled-event outcome fn2-core)
-        (fn2-commit-take okind oslot ogen fn2-core))
+        (fn2-commit-take-exact okind oslot ogen batch event fn2-core))
        ((when (eq code :pending)) (mv :pending batch event fn2-core))
        (certain (and (eq code :ok) (equal settled-batch batch) (equal settled-event event)
                      (member-equal outcome (list *fn2-commit-outcome-accepted* *fn2-commit-outcome-refused*))))

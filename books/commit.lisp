@@ -555,6 +555,14 @@
   (code batch event outcome fn2-commit-settled) (fn2-cs-take okind oslot ogen fn2-commit-settled)
   (mv code batch event outcome fn2-core)))
 (fn2-core-preserves fn2-commit-take (okind oslot ogen fn2-core) :position 4 :rows nil)
+(defun fn2-commit-take-exact (okind oslot ogen batch event fn2-core)
+ (declare (xargs :stobjs fn2-core :guard (fn2-core-wfp fn2-core)))
+ (stobj-let ((fn2-commit-settled (fn2-core-commit-settled fn2-core)))
+  (code actual-batch actual-event outcome fn2-commit-settled)
+  (fn2-cs-take-exact okind oslot ogen batch event fn2-commit-settled)
+  (mv code actual-batch actual-event outcome fn2-core)))
+(fn2-core-preserves fn2-commit-take-exact
+ (okind oslot ogen batch event fn2-core) :position 4 :rows nil)
 ; B-S2 S11 (Argon 9.7): the node's serving posture, computed from the two
 ; commit rows' phases and never stored: :draining while either row is
 ; :uncertain (its batch holds rows, windows, reservations and claims until

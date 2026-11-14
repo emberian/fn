@@ -104,8 +104,10 @@ Two dependencies prevent enabling final FREE now. First, the source physical
 pin integration needs admission and executable qualification. Second, although
 `fn2-format-retirement` and `fn2-format-release-allocation` already encode the
 lifecycle records (including checkpoint and physical release evidence), the
-live transaction admission does not yet accept lifecycle records. Ordered
-recovery has a source retirement branch, but no release branch.
+internal retirement producer now joins the existing batch planner and writer,
+but has not been admitted or executed. General transaction admission remains
+closed to lifecycle input. Ordered recovery has a source retirement branch,
+but no release branch.
 The release coordinator must join the actual journal persistence and
 recovery path, including checkpoint-root protection, before any call to FREE.
 
@@ -147,8 +149,16 @@ exact-batch install operation. Recovery passes its verified containing commit
 to `fn2-recovery-replay-record`, flushes any pending C workspace, and applies
 retirement after adoption. Wrong-batch, stale and conflicting records fail.
 Codec/truncation and actual replay-entry fixtures are in the unit catalog;
-admission and execution remain pending. Live admission stays disabled until
-the batch planner, producer and bounded post-durability installation compose.
+admission and execution remain pending. `fn2-retirement-submit` now selects
+the actual collector, derives its batch, encodes one member, and joins it in
+one operation. A singleton retains the workspace through uncertain outcomes.
+The publish phase visits one member/frame per step after log/fence durability
+and root installation; retirement must match that singleton's physical handle,
+workspace, owner and containing batch before the shared installer runs.
+`fn2-retirement-poll` consumes only its exact batch/event settlement, preserving
+other outcomes from the same owner. `tests/retirement-live-unit.lisp` drives
+these entries through `fn2-turn` and the simulated adapter, with early-install
+refusal and ambiguous-write controls. These source fixtures remain unexecuted.
 
 Before reuse, recovery's historical-location adoption must become checkpoint
 aware: old and reused identities cannot be adopted as simultaneously live.
