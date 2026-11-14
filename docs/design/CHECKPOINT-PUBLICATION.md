@@ -501,3 +501,15 @@ the minimum profile admission bound does not reserve enough space against later
 growth. Both upload and ordinary journal allocation must respect that policy,
 while checkpoint maintenance consumes its already reserved tickets. FREE remains
 disabled until this chain is implemented and qualified.
+`checkpoint-metadata-resources.lisp` reserves root1's fixed working windows
+before acquisition of the C cut. Its two builders, twelve writers, cursor and
+field stripe are distinct from the resident sealer, which may be frozen in
+mid-build. The stable nonwriter windows remain owned through later root and
+descriptor production. `checkpoint-metadata-driver.lisp` composes the actual
+ordered selector, existing run assembler, authenticated semantic/payload
+walkers and manifest scan. PAGE stops source mutation until the generated
+physical worker returns the exact workspace. READ is a separate per-use,
+one-descriptor operation; its actual retained operation tuple drives harvest.
+Only the completed manifest/ledger scan sets the snapshot COMPLETE field.
+These source declarations and boundary controls are not ACL2 admission,
+runtime checkpoint qualification, recovery installation, or activation.

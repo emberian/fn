@@ -37,7 +37,7 @@
                                               fn2-checkpoint-metadata-manifest fn2-checkpoint-metadata fn2-checkpoint-source
                                               fn2-checkpoint-build fn2-csnapshot fn2-checkpoints fn2-run-builds fn2-run-writers fn2-fields fn2-pool)
  (declare (xargs :stobjs (fn2-checkpoint-metadata-manifest fn2-checkpoint-metadata fn2-checkpoint-source fn2-checkpoint-build
-                          fn2-csnapshot fn2-run-builds fn2-run-writers fn2-fields fn2-pool)
+                          fn2-csnapshot fn2-checkpoints fn2-run-builds fn2-run-writers fn2-fields fn2-pool)
   :guard (and (fn2-checkpoint-metadata-manifest-wfp fn2-checkpoint-metadata-manifest) (fn2-checkpoint-metadata-wfp fn2-checkpoint-metadata)
               (fn2-checkpoint-source-wfp fn2-checkpoint-source) (fn2-checkpoint-build-wfp fn2-checkpoint-build)
               (fn2-csnapshot-wfp fn2-csnapshot) (fn2-checkpoints-wfp fn2-checkpoints) (fn2-run-builds-wfp fn2-run-builds) (fn2-run-writers-wfp fn2-run-writers)

@@ -5,6 +5,7 @@
 (include-book "checkpoint-build")
 (include-book "checkpoint-plan")
 (include-book "checkpoint-map-build")
+(include-book "checkpoint-metadata-driver")
 (fn2-book-layer :c)
 
 (defcorechild fn2-core-checkpoint-build fn2-checkpoint-build

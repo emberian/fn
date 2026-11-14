@@ -44,7 +44,7 @@
 (defcolumns fn2-checkpoint-root1
  ((phase (:enum fn2-checkpoint-root1-phase (:idle :reserved :select :source :retention :semantic :payload :format :page :manifest :finish :scan :complete :uncertain)))
   (owner-kind :u8) (owner-slot :u32) (owner-gen :u60) (token :u60)
-  (reserved :u8) (build :u32) (level :u8) (read-kind :u8)))
+  (reserved :u8) (build :u32) (level :u8) (read-kind :u8) (resume-phase :u8)))
 
 (defun fn2-checkpoint-window-class-demand (i class fn2-pool)
  (declare (xargs :stobjs fn2-pool :guard (and (natp i) (<= i *fn2-checkpoint-window-count*))
