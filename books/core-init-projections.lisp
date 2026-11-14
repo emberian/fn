@@ -23,7 +23,7 @@
                            (symbol-name (fn2-product-writer field)))))
            (name (fn2-core-init-projection-name target initializer)))
       (append
-       (if (or (not (function-symbolp initializer world))
+       (if (or (not (getpropc initializer 'unnormalized-body nil world))
                (not (getpropc reader-law 'theorem nil world)))
            `((make-event (er soft 'fn2-core-init-projection-events
                "Missing actual initializer ~x0 or read/write law ~x1."
@@ -46,7 +46,7 @@
   (let* ((entries (fn2-core-child-registry world))
          (entry (assoc-eq target entries))
          (name (fn2-core-init-projection-name target 'fn2-core-init)))
-    (if (or (not entry) (not (function-symbolp 'fn2-core-init world)))
+    (if (or (not entry) (not (getpropc 'fn2-core-init 'unnormalized-body nil world)))
         `((make-event (er soft 'fn2-core-init-projection-events
             "Unknown core target ~x0 or actual core initializer missing." ',target)))
       (append
