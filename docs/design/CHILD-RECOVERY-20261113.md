@@ -44,7 +44,7 @@ verified guards and unconditional equality of the whole scalar/core result.
 The two-child fixture includes a complete-state positive and bounds refusal,
 live state, one setter evaluation, and a mutation that retains the scalar and
 touched child while clobbering the unrelated sibling. Nonrecursive core-call
-composition and recursive state carriers remain unsupported in this slice.
+composition now uses the shared expander; recursive state carriers remain unsupported.
 
 Commit cfa65caeb connects both generators to promoted fn2-squares, with compiler
 claim/source/concrete sides, the exact admitted proof and positive/mutation
@@ -54,14 +54,29 @@ record certification passed at `certify-20261113T234947Z-3398538` for the exact
 cfa65caeb + ea9538828 source: 17 cached and 4 built books, no book over 10 s.
 The paired/distinct evidence and missing-body hardening passed the warm gate.
 
-A separate unvalidated continuation shares core-call expansion with the typed
-product pass, retaining the carrier in product mode. Its fixture composes two
-updates and checks that a second-step refusal preserves the first legitimate
-update, plus full-state runtime teeth. This source has only parsed so far.
-The next production probe uses a private copy of the qualified 74f29a868
-callback baseline; copying and reading it did not mutate the active runtime
-lane. Three new reader derivations there will be probe evidence, not current
-consumer-tree certification.
+Commit 5dc0ed7dd shares core-call expansion with the typed product pass,
+retaining the carrier in product mode. Its fixture composes two updates and
+checks that a second-step refusal preserves the first legitimate update,
+plus full-state runtime teeth. Record `certify-20261114T000100Z-3410214`
+passed the exact source (17 reused, 4 built, 21-book fixture union).
+
+The qualified 74f29a868 callback baseline admitted generated txn-groups-limit
+and txn-count-next. Txn-principal instead expanded machine snapshot validation
+across all kinds; guard preprocessing hit its 60-second limit (65 seconds,
+mostly tau). This is a generator expansion defect, not a counterexample.
+A private snapshot was used; the active native tree was not mutated.
+These two admissions are baseline probe evidence, not current consumer-tree
+certification or completed production evidence packages.
+
+The modular-reader continuation retains a previously proved child boundary
+as a call, checks input/output ABI and core actual, and leaves core projection
+symbols closed during refinement so the earlier equality applies. Its fixture
+checks single/multiple-result call retention, real values, full equality and
+teeth. Warm forge 2 Gi source loading passed all 40 reader forms and 40 product
+control forms; record certification is still pending. Multi-result leaf
+shape is an explicit fixture fact, not inferred from output metadata alone.
+Production principal requires bottom-up generated intermediate boundaries;
+no machine-mode switch is implied by the fixture.
 
 Txn has 14 declared operations without child faces in the baseline. Three
 (txn-principal, authority-allows, authority-depend) have handwritten bodies

@@ -37,17 +37,31 @@
 ;; The mv-let must preserve the single evaluation of its producer.
 (defun fn2-lower-pair-values (value)
  (declare (xargs :guard (natp value))) (mv value (+ 1 value)))
+(defthm fn2-lower-pair-values-result-shape
+ (equal (list (car (fn2-lower-pair-values value))
+              (nth 1 (fn2-lower-pair-values value)))
+        (fn2-lower-pair-values value)))
 (in-theory (disable fn2-lower-pair-values))
 (defun fn2-lower-read-pair (limit fn2-core)
  (declare (xargs :stobjs fn2-core :guard (and (natp limit) (fn2-core-wfp fn2-core))))
  (let ((value (fn2-lower-read limit fn2-core))) (fn2-lower-pair-values (nfix value))))
 (in-theory (disable fn2-lower-read fn2-lower-read-pair))
+(defcore-readonly-child fn2-lower-read-pair fn2-lower-read-pair-child)
+(assert-event
+ (member-eq 'fn2-lower-read-child
+  (all-fnnames (getpropc 'fn2-lower-read-pair-child 'unnormalized-body nil (w state)))))
 (defun fn2-lower-read-composed (limit fn2-core)
  (declare (xargs :stobjs fn2-core :guard (and (natp limit) (fn2-core-wfp fn2-core))))
  (mv-let (first second) (fn2-lower-read-pair limit fn2-core)
    (mv (+ 2 (nfix first)) (+ 3 (nfix second)))))
 (defcore-readonly-child fn2-lower-read-composed fn2-lower-read-composed-child)
 (assert-event (equal (getpropc 'fn2-lower-read-composed-child 'stobjs-out nil (w state)) '(nil nil)))
+;; The proved intermediate boundary remains a call, not an expanded scan.
+(assert-event
+ (let ((calls (all-fnnames (getpropc 'fn2-lower-read-composed-child 'unnormalized-body nil (w state)))))
+  (and (member-eq 'fn2-lower-read-pair-child calls)
+       (not (member-eq 'fn2-lower-config-value calls)))))
+
 (defun fn2-lower-composed-witness ()
  (declare (xargs :verify-guards nil))
  (with-local-stobj fn2-lower-config
@@ -67,7 +81,7 @@
 (must-fail (defcore-readonly-child fn2-lower-recursive fn2-lower-recursive-child))
 (assert-event (not (assoc-eq 'fn2-lower-recursive (table-alist 'fn2-core-lowered (w state)))))
 ;; A formal proof is not a substitute for the promoted evaluating teeth.
-(must-fail (fn2-check-lowering-teeth fn2-lower-read fn2-lower-read-composed))
+(must-fail (fn2-check-lowering-teeth fn2-lower-read fn2-lower-read-pair fn2-lower-read-composed))
 (defmacro fn2-lowering-fixture-teeth (source child outputs expected)
  (let* ((base (fn2-columns-sym child "-REFINES-CORE"))
         (witness (fn2-columns-sym base "-WITNESS"))
@@ -101,8 +115,9 @@
     (defun ,(fn2-columns-sym base "-POSITIVE") () (declare (xargs :verify-guards nil)) (,witness nil))
     (defun ,(fn2-columns-sym base "-NEGATIVE") () (declare (xargs :verify-guards nil)) (,witness t)))))
 (fn2-lowering-fixture-teeth fn2-lower-read fn2-lower-read-child 1 (37))
+(fn2-lowering-fixture-teeth fn2-lower-read-pair fn2-lower-read-pair-child 2 (37 38))
 (fn2-lowering-fixture-teeth fn2-lower-read-composed fn2-lower-read-composed-child 2 (39 41))
-(fn2-check-lowering-teeth fn2-lower-read fn2-lower-read-composed)
+(fn2-check-lowering-teeth fn2-lower-read fn2-lower-read-pair fn2-lower-read-composed)
 (assert-event
  (let ((row (fn2-decl-row '(:square fn2-lower-read-composed-child-refines-core) (w state))))
   (and (eq (fn2-decl-get :claim row) :compiler)
