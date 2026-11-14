@@ -3324,13 +3324,41 @@
       (fn2-core-preserves ,handler (id event outcome reason count aux0 aux1 fn2-core) :position 1 :rows nil))))
 ; Lift child result contracts through the actual core face, keeping the
 ; child read/write matrix opaque. Invalid rows and sticky stops are included.
+(defun fn2-machine-ops-frame-event (fn kind world)
+ (declare (xargs :verify-guards nil))
+ (let* ((d (fn2-dc-entry fn kind world))
+        (k (fn2-arm-frame-child-index 'fn2-core-ops world))
+        (name (fn2-columns-sym fn "-OPS-CHILD-FRAME"))
+        (out (fn2-arm-frame-out-term fn (cons fn (formals fn world)) world)))
+  (if (or (not d) (fn2-arm-frame-child-updater fn world)
+          (member-equal k (car d))
+          (getpropc (fn2-columns-sym fn "-DESCRIPTOR-EFFECT") 'theorem nil world)
+          (getpropc name 'theorem nil world))
+      '(value-triple :no-new-ops-frame)
+   `(defthm ,name
+      (equal (fn2-core-ops ,out) (fn2-core-ops fn2-core))
+      :hints (("Goal" :do-not-induct t
+        :in-theory (union-theories '(fn2-core-ops) (theory 'fn2-arm-frame-base))
+        :use ((:instance ,(cdr d) (fn2-arm-free ',(car d)) (fn2-arm-c0 fn2-core))
+              (:instance fn2-arm-kids-refl (i 0) (free ',(car d)) (a fn2-core))
+              (:instance fn2-arm-kids-nth (i 0) (k ,k) (free ',(car d)) (a fn2-core) (b ,out)))))))))
+(defun fn2-machine-ops-frame-events (fns kind)
+ (declare (xargs :verify-guards nil))
+ (if (atom fns) nil
+  (cons `(make-event (value (fn2-machine-ops-frame-event ',(car fns) ',kind (w state))))
+        (fn2-machine-ops-frame-events (cdr fns) kind))))
 (defun fn2-machine-core-result-events (fn kind work-limit world)
   (declare (xargs :verify-guards nil))
   (let* ((call `(,fn id budget fn2-core))
          (hyps (list '(fn2-corep fn2-core) (getpropc fn 'guard t world)))
          (limit (nfix (fn2-arm-get :descriptors (fn2-machine-property kind :budget world))))
          (terms (fn2-run-quantity-terms call 'budget work-limit limit)))
-    `((defthm ,(fn2-columns-sym fn "-QUANTITIES")
+    (append
+     `((make-event (value (cons 'progn
+          (fn2-dc-forms (fn2-dc-todo '(,fn) ',kind (w state) nil 64) ',kind)))))
+     (fn2-machine-ops-frame-events
+       (fn2-arm-frame-body-callees fn world) kind)
+     `((defthm ,(fn2-columns-sym fn "-QUANTITIES")
         (implies (and ,@hyps)
           (and (fn2-run-quantitiesp (car ,call) (mv-nth 1 ,call) (mv-nth 2 ,call) budget ,work-limit)
                (<= (mv-nth 2 ,call) ,limit)))
@@ -3349,7 +3377,7 @@
                                              fn2-machine-refuse-phase fn2-machine-idle fn2-machine-finish
                                            fn2-machine-charge fn2-machine-charge-kindp fn2-machine-refuse-charge
                                            fn2-machine-refuse-write ,(fn2-columns-sym kind "-CHARGE"))
-                                        (fn2-core-ops fn2-corep fn2-core-wfp nfix nth))))))))
+                                        (fn2-core-ops fn2-corep fn2-core-wfp nfix nth)))))))))
 (defun fn2-machine-success-charge-event (fn charge guard enabled)
   (declare (xargs :verify-guards nil))
   (let ((call `(,fn id budget fn2-core)))
