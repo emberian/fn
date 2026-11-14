@@ -10,7 +10,8 @@
 (make-event
  (let* ((world (w state))
         (selected (fn2-product-entries (fn2-core-child-registry world)
-                                      '(fn2-core-pool fn2-core-control fn2-core-machines) world)))
+                                      '(fn2-core-pool fn2-core-control fn2-core-machines
+                                        fn2-core-sched fn2-cns-table) world)))
    (value (cons 'progn
      (append (fn2-product-core-shape-events world)
              (fn2-product-writeback-facts selected selected world)
