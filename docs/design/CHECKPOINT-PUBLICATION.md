@@ -463,3 +463,16 @@ run without evaluating ACL2 decisions. The descriptor budget fixture now checks
 actual BEGIN/pack/bind zero-versus-positive control with explicitly synthetic
 eligible root carriers; it does not witness actual cut/source construction or
 replace the generated worker's IO budget assurance.
+
+`checkpoint-metadata-resources.lisp` reserves root1's fixed working windows
+before acquisition of the C cut. Its two builders, twelve writers, cursor and
+field stripe are distinct from the resident sealer, which may be frozen in
+mid-build. The stable nonwriter windows remain owned through later root and
+descriptor production. `checkpoint-metadata-driver.lisp` composes the actual
+ordered selector, existing run assembler, authenticated semantic/payload
+walkers and manifest scan. PAGE stops source mutation until the generated
+physical worker returns the exact workspace. READ is a separate per-use,
+one-descriptor operation; its actual retained operation tuple drives harvest.
+Only the completed manifest/ledger scan sets the snapshot COMPLETE field.
+These source declarations and boundary controls are not ACL2 admission,
+runtime checkpoint qualification, recovery installation, or activation.
