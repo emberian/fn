@@ -105,10 +105,10 @@
 (defmachine-registry fn2-ctl)
 
 (defmachine fn2-cns
- :phases (:free :decode :check :lookup :read :page :fetch :park :commit :committed :append :draining :retired)
+ :phases (:free :decode :check :lookup :read :page :fetch :park :commit :committed :append :evidence :draining :retired)
  :fields ((ctl :link) (ctl-gen :u60) (request :u32) (fpos :u32) (flen :u32) (fkind :u8)
           (verb (:enum fn2-cns-verb (:none :register :read :wait :ack :position :status :append :fetch
-                                     :rebase :unregister)))
+                                     :rebase :unregister :evidence-page)))
           (consumer :u60) (epoch :u32) (op :u60) (to :u60) (cstart :u60) (page-limit :u16) (wait-ms :u32)
           (cpos :u60) (version :u60) (pub-frontier :u60) (count :u32) (more :bool)
           (outcome (:enum fn2-cns-outcome (:none :accepted :refused :uncertain))) (reason :u8)
@@ -158,6 +158,7 @@
  :holds ((:decode :tx-range :wait-row (:storage-window :while (lease :held))) (:check :tx-range :wait-row (:storage-window :while (lease :held))) (:lookup :tx-range :wait-row (:storage-window :while (lease :held)))
          (:read :tx-range :wait-row (:storage-window :while (lease :held))) (:page :tx-range :wait-row (:storage-window :while (lease :held)))
          (:fetch :tx-range :wait-row (:storage-window :while (lease :held))) (:park :tx-range :wait-row (:storage-window :while (lease :held)))
+         (:evidence :tx-range :wait-row (:storage-window :while (lease :held)))
          (:commit :tx-range :wait-row (:storage-window :while (lease :held)))
          (:committed :tx-range :wait-row :batch-membership (:storage-window :while (lease :held))) (:append :tx-range :wait-row (:storage-window :while (lease :held))) (:draining :tx-range :wait-row (:storage-window :while (lease :held))))
  ;; :commit's submitting run stages, emits, admits and binds (24,576 bytes, as fn2-txn's :ready)
@@ -172,7 +173,7 @@
  :initial ((generation fn2-machine-initial-generation) (ready-prev *fn2-none*) (ready-next *fn2-none*)
            (ctl *fn2-none*) (edge *fn2-none*) (txn *fn2-none*) (tx-slot *fn2-none*) (upload *fn2-none*)
            (lslot *fn2-none*) (ws-slot *fn2-none*) (ns-slot *fn2-none*) (next-free fn2-machine-initial-next-free))
- :arms ((:free) (:decode) (:check) (:lookup) (:read) (:page) (:fetch) (:park) (:commit) (:committed) (:append) (:draining) (:retired))
+ :arms ((:free) (:decode) (:check) (:lookup) (:read) (:page) (:fetch) (:park) (:commit) (:committed) (:append) (:evidence) (:draining) (:retired))
  :observes ((:read-result)))
 
 (defmachine-registry fn2-cns)
