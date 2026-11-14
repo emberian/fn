@@ -273,6 +273,10 @@
 (in-theory (disable fn2-commit-now))
 ; Shared reservation for payload and checkpoint construction. Physical writes
 ; require this exact reserved identity; reservation alone is not durability.
+(defun fn2-storage-checkpoint-active (fn2-core)
+ (declare (xargs :stobjs fn2-core :guard (fn2-core-wfp fn2-core)))
+ (stobj-let ((fn2-extents (fn2-core-extents fn2-core))) (active)
+  (fn2-alloc-snapshot-activep fn2-extents) active))
 (defun fn2-storage-frozen (fn2-core)
  (declare (xargs :stobjs fn2-core :guard (fn2-core-wfp fn2-core)))
  (stobj-let ((fn2-extents (fn2-core-extents fn2-core))) (frozen)
