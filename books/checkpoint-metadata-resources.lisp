@@ -1,6 +1,6 @@
 ; Root1 owns private bounded working resources, not a second resident store.
-; Admission precedes the C cut: an actor must never hold the cut while waiting
-; for windows retained by an earlier resident sealer continuation.
+; Drain the C cut before atomic admission, so reservation cannot strand staged
+; transactions needing journal windows. Refusal must release the cut, never wait.
 (in-package "ACL2")
 (include-book "checkpoint-metadata-manifest")
 (include-book "checkpoint-payload")
@@ -94,7 +94,7 @@
                (fn2-checkpoint-future-class-demand 0 class fn2-pool)) (fn2-pool-free-count class fn2-pool))
         (fn2-checkpoint-admission-roomp (+ i 1) fn2-pool)))))
 
-(defun fn2-checkpoint-root1-reserve (c kind owner generation fn2-checkpoint-root1 fn2-checkpoint-windows fn2-checkpoint-future fn2-checkpoint-future-windows fn2-csnapshot fn2-pool)
+(defun fn2-checkpoint-root1-reserve (c token kind owner generation fn2-checkpoint-root1 fn2-checkpoint-windows fn2-checkpoint-future fn2-checkpoint-future-windows fn2-csnapshot fn2-pool)
  (declare (xargs :stobjs (fn2-checkpoint-root1 fn2-checkpoint-windows fn2-checkpoint-future fn2-checkpoint-future-windows fn2-csnapshot fn2-pool)
   :guard (and (fn2-checkpoint-root1-wfp fn2-checkpoint-root1) (fn2-checkpoint-windows-wfp fn2-checkpoint-windows)
               (fn2-checkpoint-future-wfp fn2-checkpoint-future) (fn2-checkpoint-future-windows-wfp fn2-checkpoint-future-windows)
@@ -102,7 +102,9 @@
  (b* (((unless (and (unsigned-byte-p 32 c) (< 0 (fn2-checkpoint-root1-rows fn2-checkpoint-root1))
                     (<= *fn2-checkpoint-window-count* (fn2-checkpoint-windows-rows fn2-checkpoint-windows))
                     (< 0 (fn2-csnapshot-rows fn2-csnapshot))
-                    (equal (fn2-csnapshot-phase 0 fn2-csnapshot) *fn2-csnapshot-phase-idle*)
+                    (equal (fn2-csnapshot-phase 0 fn2-csnapshot) *fn2-csnapshot-phase-held*)
+                    (posp token)
+                    (fn2-csnapshot-ownerp token kind owner generation fn2-csnapshot)
                     (equal (fn2-checkpoint-root1-phase 0 fn2-checkpoint-root1) *fn2-checkpoint-root1-phase-idle*)
                     (equal (fn2-checkpoint-root1-reserved 0 fn2-checkpoint-root1) 0)
                     (< 0 (fn2-checkpoint-future-rows fn2-checkpoint-future))
@@ -150,7 +152,7 @@
   (mv :ok page pgen scratch sgen read rgen)))
 
 (fn2-checkpoint-root1-preserves fn2-checkpoint-root1-reserve
- (c kind owner generation fn2-checkpoint-root1 fn2-checkpoint-windows fn2-checkpoint-future fn2-checkpoint-future-windows fn2-csnapshot fn2-pool)
+ (c token kind owner generation fn2-checkpoint-root1 fn2-checkpoint-windows fn2-checkpoint-future fn2-checkpoint-future-windows fn2-csnapshot fn2-pool)
  :hyps ((fn2-checkpoint-root1p fn2-checkpoint-root1) (fn2-checkpoint-root1-wfp fn2-checkpoint-root1) (fn2-checkpoint-windowsp fn2-checkpoint-windows) (fn2-checkpoint-windows-wfp fn2-checkpoint-windows) (fn2-checkpoint-futurep fn2-checkpoint-future) (fn2-checkpoint-future-wfp fn2-checkpoint-future) (fn2-checkpoint-future-windowsp fn2-checkpoint-future-windows) (fn2-checkpoint-future-windows-wfp fn2-checkpoint-future-windows) (fn2-poolp fn2-pool) (fn2-pool-wfp fn2-pool) (fn2-csnapshotp fn2-csnapshot) (fn2-csnapshot-wfp fn2-csnapshot))
  :specs (
   ("-CHECKPOINT-ROOT1-TYPE" fn2-checkpoint-root1p 1) ("-CHECKPOINT-ROOT1-WFP" fn2-checkpoint-root1-wfp 1) ("-CHECKPOINT-ROOT1-ROWS" fn2-checkpoint-root1-rows 1 :frame fn2-checkpoint-root1)
@@ -188,7 +190,7 @@
 (defcost fn2-checkpoint-root1-reserve-op :child fn2-checkpoint-root1-reserve :answers t
  :tables (fn2-core-checkpoint-root1 fn2-core-checkpoint-windows fn2-core-checkpoint-future fn2-core-checkpoint-future-windows fn2-core-csnapshot fn2-core-pool)
  :effects :per-use
- :doc "Atomically admit all27 root, staging, journal and anchor leases before closing the C cut.")
+ :doc "Try all27 root, staging, journal and anchor leases atomically for the exact HELD cut; refusal requires immediate cut release.")
 (defcost fn2-checkpoint-root1-workspaces-op :child fn2-checkpoint-root1-workspaces :answers t
  :tables (fn2-core-checkpoint-root1 fn2-core-checkpoint-windows fn2-core-pool)
  :doc "Derive the stable descriptor/page/scratch/read tuple from actual admitted root1 ownership.")
