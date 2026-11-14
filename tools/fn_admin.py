@@ -782,6 +782,19 @@ def prepare_native_crypto(root: Path) -> None:
         raise OSError("native BLAKE3 build failed; node was not started") from exc
 
 
+def prepare_native_tls(root: Path, env: dict[str, str]) -> None:
+    """Prepare the native dependency whenever startup receives TLS settings."""
+    if "FN2_TLS_CERTIFICATE" not in env and "FN2_TLS_KEY" not in env:
+        return
+    try:
+        subprocess.run(
+            ["sh", str(root / "host" / "build-tls.sh"), str(root / "build" / "lib")],
+            cwd=root, check=True, timeout=120,
+        )
+    except (subprocess.CalledProcessError, subprocess.TimeoutExpired) as exc:
+        raise OSError("native TLS build failed; node was not started") from exc
+
+
 def cmd_init(args: argparse.Namespace, root: Path) -> int:
     image = args.image.resolve()
     if image.exists():
@@ -810,6 +823,7 @@ def cmd_init(args: argparse.Namespace, root: Path) -> int:
     if groups:
         env["FN2_GROUPS"] = "\n".join(groups)
 
+    prepare_native_tls(root, env)
     with open(root / "tools" / "image-node.lsp", "rb") as script:
         rc = subprocess.call([str(root / "tools" / "acl2")], cwd=root, stdin=script, env=env)
     if rc == 0:
@@ -875,12 +889,7 @@ def cmd_serve(args: argparse.Namespace, root: Path) -> int:
                              (args.tls_handshake_ms, "FN2_TLS_HANDSHAKE_MS")):
         if option is not None:
             env[variable] = str(option)
-    if "FN2_TLS_CERTIFICATE" in env or "FN2_TLS_KEY" in env:
-        try:
-            subprocess.run(["sh", str(root / "host" / "build-tls.sh"), str(root / "build" / "lib")],
-                           cwd=root, check=True, timeout=120)
-        except (subprocess.CalledProcessError, subprocess.TimeoutExpired) as exc:
-            raise OSError("native TLS build failed; node was not started") from exc
+    prepare_native_tls(root, env)
     if args.peering:
         env["FN2_PEERING"] = "1"
 
