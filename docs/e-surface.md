@@ -646,7 +646,12 @@ core through the simulated adapter. Its observations are literal reply bytes,
 under the accepted Message-ID must leave the original article intact. A distinct
 Message-ID control must admit the second body and advance the count/high-water;
 fragmented input repeats the same-ID case. The fixture also requires quiescence
-without a core stop. Adding this fixture is not a certification record.
+without a core stop. On semantic base `6e07e62f3`, the three assertions passed
+in the composed core, and the exact test book was certified under qualified
+launcher identity `8aeb1bea18968c6cd33ac633a80ebf67e4924504db112fd27eb11f16a27b2a8c`,
+closure key `764873415608d4de215934accbcc1794c9f8f57e3af0cda7ee907a6b42623741`
+(156 books). The record is `certify-20261114T053011Z-3756097`; this is finite
+regression evidence, not discharge of K-P1 or K-P6 over arbitrary traces.
 
 This scope is one live connection on one node with successful simulated durable
 I/O and the explicit `:peering-interim` profile. It does not establish lost-reply
