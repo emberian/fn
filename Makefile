@@ -342,6 +342,8 @@ ACL2_BOOKS = \
   tests/squares-unit \
   tests/staging-unit \
   tests/stop-boundary-unit \
+  tests/storage-fault-policy-unit \
+  tests/translation-domain-unit \
   tests/translation-inventory-unit \
   tests/translation-validation-unit \
   tests/txn-unit \
