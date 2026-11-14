@@ -121,6 +121,45 @@
   :hints (("Goal" :in-theory (enable fn2-rp-location))))
 (in-theory (disable fn2-rp-location))
 
+;; Retain the journal-authenticated location vector before its window is
+;; reused for manifest reads. The workspace prefix is never populated from
+;; those reads; its exact length determines the number of manifest units.
+(defun fn2-recovery-retain-location (wslot wgen id ogen fn2-core)
+ (declare (xargs :stobjs fn2-core :guard (fn2-core-wfp fn2-core)))
+ (stobj-let ((fn2-fields (fn2-core-fields fn2-core)) (fn2-pool (fn2-core-pool fn2-core)))
+  (code hashes fn2-pool)
+  (b* (((unless (fn2-rp-roomp)) (mv :bounds 0 fn2-pool))
+       (r (+ *fn2-rec-field-base* *fn2-article-entry-field-location-hashes*))
+       (n (nfix (fn2-fields-ref-len r fn2-fields)))
+       ((unless (and (posp n) (<= n *fn2-article-location-hashes-max*) (equal (mod n 32) 0)))
+        (mv :invalid 0 fn2-pool))
+       ((mv c fn2-pool) (fn2-pool-reset wslot wgen *fn2-recovery-machine-kind* id ogen fn2-pool))
+       ((unless (eq c :ok)) (mv :bounds 0 fn2-pool))
+       ((mv c fn2-pool)
+        (fn2-pool-copy-range (fn2-fields-ref-slot r fn2-fields) (fn2-fields-ref-gen r fn2-fields)
+                            (fn2-fields-ref-off r fn2-fields) wslot wgen 0 n
+                            *fn2-recovery-machine-kind* id ogen fn2-pool)))
+   (mv (if (eq c :ok) :ok :bounds) n fn2-pool))
+  (mv code hashes fn2-core)))
+(fn2-core-preserves fn2-recovery-retain-location (wslot wgen id ogen fn2-core) :position 2 :rows nil)
+(defthm fn2-recovery-retain-location-natp
+ (natp (mv-nth 1 (fn2-recovery-retain-location wslot wgen id ogen fn2-core)))
+ :rule-classes :type-prescription
+ :hints (("Goal" :in-theory (disable fn2-pool-copy-range fn2-pool-reset))))
+(in-theory (disable fn2-recovery-retain-location))
+
+;; Hash and decode each have their own 4096-byte step. Expected bytes
+;; remain in the journal-derived workspace; read bytes stay in the window.
+(defun fn2-recovery-manifest-check (hashes index slot gen wslot wgen id ogen fn2-core)
+ (declare (xargs :stobjs fn2-core :guard (fn2-core-wfp fn2-core)))
+ (if (not (and (posp hashes) (<= hashes *fn2-article-location-hashes-max*)
+               (equal (mod hashes 32) 0) (natp index) (< index (floor hashes 32))))
+     (mv :bounds fn2-core)
+   (fn2-block-read-commitment *fn2-commit-unit-bytes* *fn2-commit-unit-bytes*
+                             slot gen 0 wslot wgen (* 32 index) *fn2-recovery-machine-kind* id ogen fn2-core)))
+(fn2-core-preserves fn2-recovery-manifest-check (hashes index slot gen wslot wgen id ogen fn2-core) :position 1 :rows nil)
+(in-theory (disable fn2-recovery-manifest-check))
+
 ;; One record of a chained commit's stream at ROFF; the window holds the
 ;; commit's records unit and the stream is [ROFF, REND), ended early by the
 ;; frame's zero padding (a record's schema version is never 0):
@@ -329,3 +368,10 @@
 (defcost fn2-recovery-replay-record :answers (:end :appended :boundary :skip :invalid :bounds) :bytes 4096
   :tables (fn2-core-pool fn2-core-fields)
   :doc "M7's replay: one record of a chained commit's stream rebuilt into its member's workspace as admission took it.")
+
+(defcost fn2-recovery-retain-location :answers (:ok :invalid :bounds) :bytes *fn2-article-location-hashes-max*
+ :tables (fn2-core-fields fn2-core-pool)
+ :doc "Retain the authenticated article location vector before recovery reuses the journal window.")
+(defcost fn2-recovery-manifest-check :answers (:ok :io :hash :bounds) :bytes 4096
+ :tables (fn2-core-pool fn2-core-b3 fn2-core-digests)
+ :doc "Bind one recovery manifest unit to its journal-authenticated expected digest before claiming entries.")
