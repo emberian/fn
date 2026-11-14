@@ -145,6 +145,41 @@
        thereis (and (= (fn2-nop-state op) +fn2-n-waiting+)
                     (fn2-n-tls-kick-p op (fn2-n-cap host op)))))
 
+(defun fn2-n-tls-handshake-ready (host slot cap)
+ (let* ((op (aref (fn2-nhost-ops host) slot)) (tls (fn2-ncap-tls cap)))
+  (unless (fn2-nop-tls-started op)
+   (multiple-value-bind (code ledger)
+       (fn2-tls-transport-start (fn2-ncap-nonce cap) slot (fn2-nop-gen op)
+         (fn2-nop-len op) (fn2-nhost-tls-seed-capacity host)
+         (fn2-nhost-tls-quantum host) (fn2-nhost-tls-turns host)
+         (create-fn2-tls-transport))
+    (unless (eq code :ok)
+     (fn2-n-complete host slot :failed 0)
+     (return-from fn2-n-tls-handshake-ready nil))
+    (setf (fn2-native-tls-transport tls) ledger (fn2-nop-tls-started op) t)))
+  (multiple-value-bind (status kick interest)
+      (fn2-native-tls-handshake-step tls (fn2-ncap-fd cap) host
+        (fn2-nhost-bytes host) (fn2-nop-address op) (fn2-ncap-nonce cap) slot (fn2-nop-gen op))
+   (setf (fn2-native-tls-kick tls) kick (fn2-native-tls-interest tls) interest)
+   (case status
+    (:done
+     ;; The ledger's completion predicate releases the original RX loan only
+     ;; after copying its entire span. Owned staging survives for records.
+     (multiple-value-bind (code copied fed il io ol oo ledger)
+         (fn2-tls-transport-handoff (fn2-ncap-nonce cap) slot (fn2-nop-gen op)
+                                    (fn2-native-tls-transport tls))
+      (setf (fn2-native-tls-transport tls) ledger)
+      (if (eq code :ok)
+          (progn
+           (setf (fn2-native-tls-seed-length tls) copied
+                 (fn2-native-tls-seed-offset tls) fed
+                 (fn2-native-tls-input-length tls) il (fn2-native-tls-input-offset tls) io
+                 (fn2-native-tls-output-length tls) ol (fn2-native-tls-output-offset tls) oo)
+           (fn2-n-complete host slot :ok (fn2-nop-len op)))
+        (fn2-n-complete host slot :failed 0))))
+    ((:ok :blocked) nil)
+    (otherwise (fn2-n-complete host slot :failed 0))))))
+
 (defun fn2-n-tls-ready (host slot cap)
  "One bounded transport turn: at most one feed, drain/send, and SSL call."
  (let* ((op (aref (fn2-nhost-ops host) slot)) (kind (fn2-nop-kind op))
@@ -160,6 +195,8 @@
    (unless (fn2-ncap-tls cap)
     (fn2-n-complete host slot :failed 0)
     (return-from fn2-n-tls-ready nil)))
+  (when handshake
+   (return-from fn2-n-tls-ready (fn2-n-tls-handshake-ready host slot cap)))
   (let* ((tls (fn2-ncap-tls cap)) (handle (fn2-native-tls-handle tls))
          (fd (fn2-ncap-fd cap)) (bytes (fn2-nhost-bytes host)) (fed-seed nil))
    (setf (fn2-nop-tls-started op) t (fn2-native-tls-kick tls) nil)

@@ -1,6 +1,7 @@
 ;; STARTTLS token lifecycle and connection helpers, materialized after the core.
 (in-package "ACL2")
 (include-book "tls-kind")
+(include-book "tls-transport")
 (include-book "conn-answer")
 
 (defcost fn2-tls-render-handoff :bytes 512 :answers (:ok :bounds) :tables (fn2-core-pool)
