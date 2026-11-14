@@ -268,7 +268,7 @@
 (defcost fn2-claim-release-core :answers (:ok :bounds :state) :tables (fn2-core-claims fn2-core-machines)
   :effects ((:release (:identity-reservation)))
   :doc "Release a held claim and hand it to its FIFO's head, waking that transaction.")
-(defcost fn2-txn-offer :answers (:ok :bounds :state)
+(defcost fn2-txn-offer :child fn2-txn-offer-child :answers (:ok :bounds :state)
   :tables (fn2-core-succ-txns fn2-core-id-decides fn2-core-fields)
   :doc "Start the identity decision for the upload's Message-ID and content digest.")
 (defcost fn2-txn-count :child fn2-txn-count-loop :answers (:ok :bounds) :bytes *fn2-txn-count-bytes*
@@ -702,6 +702,7 @@
     (fn2-identity-decide-start tx ms mg mo ml (if in1 c1 c0) (if in1 g1 g0) doff okind oslot ogen fn2-core)))
 (fn2-core-preserves fn2-txn-offer (tx ms mg mo ml c0 g0 c1 g1 hashed okind oslot ogen fn2-core) :position 1 :rows nil)
 (in-theory (disable fn2-txn-offer))
+(defcore-product-closure fn2-txn-offer fn2-txn-offer-child)
 
 ;; One counting run over [from, to) of the source (chunk 0 then chunk 1):
 ;; (mv code counted lines).

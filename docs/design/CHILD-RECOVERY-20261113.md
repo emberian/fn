@@ -169,6 +169,41 @@ probe, not current-tree production certification. The lane now wires this child
 and declares both actual written tables (machines and control); current B callback
 certification and formula-bound production evidence remain pending. No mode switch.
 
+
+The next real boundary, `fn2-txn-offer`, admitted its complete generated execution
+and logical-face package in 3.45 seconds / 33,462 prover steps in the same qualified
+74f callback world. Its different source/product write orders exposed a missing
+commutation boundary. The generator now derives one directed law per selected
+field pair; a two-child reverse-order fixture checks distinct values and scalar
+results, including whole-state refusal. Reusing the proved core-spine boundary
+also reduced claim-release's lens prerequisites from about 56 seconds / 1.39M
+steps to 1.79 seconds / 14,638 steps. Claim release then reached a real guard gap:
+the fixed machine-kind array's accessor-level length/type facts are insufficient
+with its definitions opaque. No consumer-specific assumption was added.
+
+Current B-merged 21-book fixture preflight for 81ac4cdd9 has seven reusable entries
+and fourteen misses (profile, pool, pool-ranges, vocab, arm-children, core-children,
+exec-state, machines, machines-directory, machine-arms, the two lowerers and their
+two fixtures). No cold certification was launched. The prior 1d15696da record
+remains scoped to its recorded closure, not B. Wake and offer wiring remain WIP.
+
+Read-only dependency planning in the qualified callback world found these
+mutable operation frontiers; a successful plan is not a compilation proof:
+
+| Operation | Reader dependencies | Current result |
+| --- | ---: | --- |
+| claim-release | 8 | Fixed-array guard boundary remains |
+| offer | 1 | Baseline full source proof passes |
+| add-group | 0 | Plan passes; not compiled yet |
+| xref | — | Core recursive callee refuses |
+| put-post-for | 1 | Plan passes; not compiled yet |
+| put-evidence-for | 1 | Plan passes; not compiled yet |
+| prebind | 20 | Plan passes; not compiled yet |
+| authority-allows | 3 | Plan passes; not compiled yet |
+| authority-depend | 0 | Plan passes; not compiled yet |
+| group-of | 0 | Plan passes; not compiled yet |
+| wake-upload | 9 | Baseline full source proof passes |
+
 Txn has 14 declared operations without child faces in the baseline. Three
 (txn-principal, authority-allows, authority-depend) have handwritten bodies
 in the inherited checkpoint, but lack validated faces/refinement.
