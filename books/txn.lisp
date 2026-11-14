@@ -285,7 +285,7 @@
   :doc "Append the Xref field (the path identity, each group's name and staged number) to the overview line and give it to every overview slot.")
 (defcost fn2-txn-put-post-for :answers t :tables (fn2-core-succ-txns fn2-core-succ-slots fn2-core-fields fn2-core-pool)
   :doc "Declare the article's identity, article and outcome slots and synthesize the overview line's first seven fields in chunk 0.")
-(defcost fn2-txn-put-evidence-for :answers t :tables (fn2-core-succ-txns fn2-core-succ-slots fn2-core-fields)
+(defcost fn2-txn-put-evidence-for :child fn2-txn-put-evidence-for-child :answers t :tables (fn2-core-succ-txns fn2-core-succ-slots fn2-core-fields)
   :doc "Declare the competing binding's evidence slots in the private successor (ruling 6).")
 (defcost fn2-txn-prebind :answers (:ok) :tables (fn2-core-fields)
   :doc "Pre-fill prospective event numbers into staged insert slots before emitting journal records.")
@@ -998,6 +998,7 @@
 (fn2-core-preserves fn2-txn-put-evidence-for (tx ms mg mo ml c0 g0 c1 g1 hashed h principal okind oslot ogen fn2-core)
   :position 1 :rows nil)
 (in-theory (disable fn2-txn-put-post-for fn2-txn-put-evidence-for))
+(defcore-product-closure fn2-txn-put-evidence-for fn2-txn-put-evidence-for-child)
 
 (defun fn2-txn-prebind-slots (k i tx b0 event fn2-succ-slots fn2-fields)
   (declare (xargs :stobjs (fn2-succ-slots fn2-fields) :measure (nfix k)

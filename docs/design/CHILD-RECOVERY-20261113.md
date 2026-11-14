@@ -211,7 +211,7 @@ mutable operation frontiers; a successful plan is not a compilation proof:
 | add-group | 0 | Plan passes; not compiled yet |
 | xref | — | Core recursive callee refuses |
 | put-post-for | 1 | Plan passes; not compiled yet |
-| put-evidence-for | 1 | Plan passes; not compiled yet |
+| put-evidence-for | 1 | Baseline complete25-node family source proof passes |
 | prebind | 20 | Plan passes; not compiled yet |
 | authority-allows | 3 | Plan passes; not compiled yet |
 | authority-depend | 0 | Baseline full source proof passes |
@@ -293,3 +293,11 @@ while reopening its already-proved callees (878,524 steps). A source prototype
 with independently proved output summaries completed its whole extraction
 package in 1.34 seconds / 15,582 steps. This motivates the committed boundary;
 the entire production dependency family still requires its own composed run.
+
+The committed invariant implementation subsequently passed the complete actual
+put-evidence-for family: all 25 planned nodes admitted individually within the
+existing ten-second bound in the qualified callback world. The final root took
+2.08 seconds / 25,028 steps. This used the committed generator, not the earlier
+prototype helpers. The corresponding txn child declaration is now wired in a
+consumer checkpoint; current B callback certification and production evidence
+remain pending.
