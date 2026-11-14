@@ -7,7 +7,7 @@
 (in-package "ACL2")
 (include-book "core-children")
 ; defmachine-registry's code calls the directory's partition operations
-(include-book "arm-children")
+(include-book "arm-issue-effects")
 
 ; ----------------------------------------------------------------------
 ; Environments and accumulators are plists. ENV: :kind :tag :observe
@@ -2173,6 +2173,16 @@
 (defun fn2-arms-max-dim (charges i)
   (declare (xargs :verify-guards nil))
   (if (atom charges) 0 (max (nfix (nth i (car charges))) (fn2-arms-max-dim (cdr charges) i))))
+
+(defun fn2-arms-budget-admission (body descriptors tuple)
+  ;; Reserve the whole path's inferred descriptor maximum before any effects.
+  ;; A short residual budget preserves the continuation and all children; the
+  ;; runnable result retries it with the next turn's replenished budget.
+  (declare (xargs :verify-guards nil))
+  (if (zp descriptors) body
+    `(if (< (nfix budget) ,descriptors)
+         (mv 0 *fn2-work-empty* 0 t ,@tuple)
+       ,body)))
 (defun fn2-arms-fn-name (kind infix tag)
   (declare (xargs :verify-guards nil))
   (fn2-arms-sym kind (concatenate 'string infix (symbol-name tag))))
@@ -2189,9 +2199,17 @@
   (declare (xargs :verify-guards nil) (ignorable world))
   (let* ((charges (fn2-arm-get :charges acc))
          (cost (if observe '(:steps *fn2-work-transition*)
-                 (list :bytes (fn2-arms-max-dim charges 0) :steps (fn2-arms-max-dim charges 1)
+                 (list :bytes (fn2-arms-max-dim charges 0)
+                       :steps (max (fn2-arms-max-dim charges 1)
+                                   (if (< 0 (fn2-arms-max-dim charges 2)) *fn2-work-empty* 0))
                        :descriptors (fn2-arms-max-dim charges 2))))
-         (paths (remove-duplicates-equal (fn2-arm-get :paths acc)))
+         ;; Admission can yield before the arm takes any path. Its zero-effect
+         ;; staying path belongs in both the resource trace and next-phase
+         ;; certificate, or the outer run would reject the preserved phase.
+         (paths (remove-duplicates-equal
+                 (append (and (not observe) (< 0 (fn2-arms-max-dim charges 2))
+                              (list (list (if tag (list tag) :any) :stay nil nil nil nil)))
+                         (fn2-arm-get :paths acc))))
          ;; an arm's or handler's phases are its paths' (G3, D F11); a
          ;; sub-arm's own contract keeps every leaf
          (next (cond (tag (fn2-arms-path-ends paths (and (not observe) tag)))
@@ -2217,32 +2235,114 @@
                          (mv *fn2-none* fn2-core))
                     '(let ((fn2-core (fn2-core-stop *fn2-stop-reason-machine-phase* fn2-core)))
                        (mv 0 *fn2-work-empty* 0 nil fn2-core))))
+         (admitted (if observe body
+                     (fn2-arms-budget-admission body (fn2-arms-max-dim (fn2-arm-get :charges acc) 2) '(fn2-core))))
          (wrapped `(if (eq (,(fn2-arms-sym kind "-SNAPSHOT-READ-CODE") id fn2-core) :ok)
-                       ,(if bindings `(let ,bindings (declare (ignorable ,@reads)) ,body) body)
+                       ,(if bindings `(let ,bindings (declare (ignorable ,@reads)) ,admitted) admitted)
                      ,refused)))
     (append writes (list (fn2-operation-events (list :machine kind) name 'fn2-core args
             (append (make-list pos :initial-element :value) '(fn2-core)) nil :callbacks
             `(declare (xargs :stobjs fn2-core :guard (fn2-core-wfp fn2-core)) (ignorable ,@args))
             (list wrapped)
-            (list (fn2-arms-core-preserves name (append args '(fn2-core)) pos wrapped world))
+            (append (list (fn2-arms-core-preserves name (append args '(fn2-core)) pos wrapped world))
+                    (and (not observe)
+                         `((make-event (value (cons 'progn
+                             (fn2-machine-core-result-events ',name ',kind
+                               ,(max *fn2-work-empty* (+ (car (fn2-cost-values (fn2-arm-get :cost contract) world))
+                                                         (cadr (fn2-cost-values (fn2-arm-get :cost contract) world))))
+                               (w state))))))))
             (list :writes (fn2-arm-get :writes contract) :cost (fn2-arm-get :cost contract)
                   :refusal nil :contract contract
                   :cost-values (fn2-cost-values (fn2-arm-get :cost contract) world))))))))
 
+; Prove the emitted function's actual result, using its narrowed signature.
+; Static cost metadata supplies a bound, never a substitute for this proof.
+(defun fn2-arms-quantity-readers (children world)
+  (declare (xargs :verify-guards nil))
+  (if (atom children) nil
+    (append (fn2-arms-column-readers (car children) (fn2-view-layout (car children) world))
+            (fn2-arms-quantity-readers (cdr children) world))))
+(defun fn2-arms-child-quantities-event (name work-limit world)
+  (declare (xargs :verify-guards nil))
+  (let* ((ins (car (fn2-arms-sig name world)))
+         (formals (getpropc name 'formals nil world))
+         (call (cons name formals))
+         (hyps (append (fn2-arms-child-shape-hyps ins)
+                       (list (getpropc name 'guard t world))))
+         (terms (fn2-run-quantity-terms call 'budget work-limit
+                   (nfix (fn2-arm-get :descriptors (fn2-machine-property (car ins) :budget world))))))
+    `(defthm ,(fn2-columns-sym name "-QUANTITIES")
+       (implies (and ,@hyps)
+                (and (fn2-run-quantitiesp (car ,call) (mv-nth 1 ,call)
+                                     (mv-nth 2 ,call) budget ,work-limit)
+                     ,(nth 5 terms)))
+       :rule-classes ,(fn2-run-quantity-rules hyps terms)
+       :hints (("Goal" :in-theory (e/d (,name fn2-run-quantitiesp)
+                       (nfix nth ,@(fn2-arms-shape-fns ins)
+                        ,@(fn2-arms-rows-fns ins)
+                        ,@(fn2-arms-quantity-readers ins world))))))))
+; This is an actual effect proof, distinct from the numeric report bound.
+; Arms without an operation child must report zero; issuing arms prove the
+; exact append count. A body that dequeues or underreports cannot satisfy it.
+(defun fn2-arms-child-effects-event (name world)
+ (declare (xargs :verify-guards nil))
+ (let* ((sig (fn2-arms-sig name world)) (ins (car sig)) (outs (cadr sig))
+        (call (cons name (getpropc name 'formals nil world)))
+        (pos (position-eq 'fn2-ops outs))
+        (before '(nth *fn2-ops-queued* fn2-ops))
+        (after (if pos `(nth *fn2-ops-queued* (mv-nth ,(+ 4 pos) ,call)) before)))
+  `(defthm ,(fn2-columns-sym name "-DESCRIPTOR-EFFECT")
+    (implies (and ,@(fn2-arms-child-shape-hyps ins)
+                  ,(getpropc name 'guard t world))
+     ,(if (member-eq 'fn2-ops ins)
+          `(equal ,after (+ ,before (mv-nth 2 ,call)))
+        `(equal (mv-nth 2 ,call) 0)))
+    :hints (("Goal" :in-theory (e/d (,name)
+       (natp nfix nth ,@(fn2-arms-shape-fns ins) ,@(fn2-arms-rows-fns ins))))))))
+(defun fn2-arms-child-issued-event (name world)
+ (declare (xargs :verify-guards nil))
+ (let* ((sig (fn2-arms-sig name world)) (ins (car sig)) (outs (cadr sig))
+        (call (cons name (getpropc name 'formals nil world)))
+        (pos (position-eq 'fn2-ops outs))
+        (after (if pos `(mv-nth ,(+ 4 pos) ,call) 'fn2-ops)))
+  `(defthm ,(fn2-columns-sym name "-ISSUED-EFFECT")
+    (implies (and ,@(fn2-arms-child-shape-hyps ins)
+                  ,(getpropc name 'guard t world))
+     ,(if (member-eq 'fn2-ops ins)
+          (fn2-run-issued-claim `(mv-nth 2 ,call) 'fn2-ops after)
+        `(equal (mv-nth 2 ,call) 0)))
+    :hints (("Goal" :in-theory (e/d (,name)
+       (natp nfix nth fn2-ops-issued-count fn2-op-issued-weight
+        ,@(fn2-arms-shape-fns ins) ,@(fn2-arms-rows-fns ins))))))))
 (defun fn2-arms-child-fn-events (name kind observe acc body world)
   (declare (xargs :verify-guards nil))
   (let* ((tuple (fn2-arms-kind-tuple kind world))
          (reads (fn2-arm-get :reads acc))
-         (bindings (fn2-arms-child-bindings kind reads (fn2-machine-property kind :columns world))))
+         (bindings (fn2-arms-child-bindings kind reads (fn2-machine-property kind :columns world)))
+         (admitted (if observe body
+                     (fn2-arms-budget-admission body (fn2-arms-max-dim (fn2-arm-get :charges acc) 2) tuple))))
     `((fn2-arms-child-emit ,(fn2-arms-child-name name)
         (id slot kind ordinal ,@(if observe (cdr *fn2-arms-observe-args*) '(budget)))
         ,(if observe 1 4) ,kind ,tuple
-        ,(if bindings `(let ,bindings (declare (ignorable ,@reads)) ,body) body)
+        ,(if bindings `(let ,bindings (declare (ignorable ,@reads)) ,admitted) admitted)
         nil nil
         ,(append (fn2-arm-get :chain-callees acc) (fn2-arms-child-callees (fn2-arm-get :uses acc) world))
         ,(append (fn2-arms-column-readers kind (fn2-machine-property kind :table world))
                  (fn2-arms-column-readers 'fn2-machines *fn2-machine-directory-fields*))
-        nil))))
+        nil)
+      ,@(and (not observe)
+             `((make-event
+                (value (fn2-arms-child-quantities-event
+                        ',(fn2-arms-child-name name)
+                        ,(+ (fn2-arms-max-dim (fn2-arm-get :charges acc) 0)
+                            (max *fn2-work-empty* (fn2-arms-max-dim (fn2-arm-get :charges acc) 1)))
+                        (w state))))
+               (make-event
+                (value (fn2-arms-child-effects-event
+                        ',(fn2-arms-child-name name) (w state))))
+               (make-event
+                (value (fn2-arms-child-issued-event
+                        ',(fn2-arms-child-name name) (w state)))))))))
 (defun fn2-arms-extra-lets (extras)
   (declare (xargs :verify-guards nil))
   (if (atom extras) nil
@@ -2308,7 +2408,13 @@
             (append (make-list pos :initial-element :value) '(fn2-core)) nil :callbacks
             `(declare (xargs :stobjs fn2-core :guard (fn2-core-wfp fn2-core)) (ignorable ,@args))
             (list body)
-            `((fn2-core-preserves ,name (,@args fn2-core) :position ,pos :rows nil))
+            `((fn2-core-preserves ,name (,@args fn2-core) :position ,pos :rows nil)
+              ,@(and (not observe)
+                     `((make-event (value (cons 'progn
+                         (fn2-machine-core-result-events ',name ',kind
+                           ,(max *fn2-work-empty* (+ (car (fn2-cost-values (fn2-arm-get :cost contract) world))
+                                                     (cadr (fn2-cost-values (fn2-arm-get :cost contract) world))))
+                           (w state))))))))
             (list :writes (fn2-arm-get :writes contract) :cost (fn2-arm-get :cost contract)
                   :refusal nil :contract contract
                   :cost-values (fn2-cost-values (fn2-arm-get :cost contract) world))))))
