@@ -23,7 +23,7 @@
           :map-begin :map-source :descriptor-source
           :barrier-begin :barrier-source :allocation-begin :allocation-source :allocation-submit :allocation-wait :allocation-empty
           :installation-begin :installation-source :installation-submit :installation-wait
-          :retention-begin :retention-source :publish-start :publish-wait :release :thaw :snapshot-release :done
+          :retention-begin :retention-source :publish-start :publish-wait :release :thaw :event-rearm :rearm :snapshot-release :done
           :admission-refused :refused :uncertain)
  :fields ((pending :u32) (stopped :bool) (token :u60)
           (scan :u32) (highest :u60) (candidate :u32) (candidate-found :bool) (checkpoint :u60)
@@ -55,6 +55,6 @@
         (:map-begin) (:map-source) (:descriptor-source)
         (:barrier-begin) (:barrier-source) (:allocation-begin) (:allocation-source) (:allocation-submit) (:allocation-wait) (:allocation-empty)
         (:installation-begin) (:installation-source) (:installation-submit) (:installation-wait)
-        (:retention-begin) (:retention-source) (:publish-start) (:publish-wait) (:release) (:thaw) (:snapshot-release) (:done)
+        (:retention-begin) (:retention-source) (:publish-start) (:publish-wait) (:release) (:thaw) (:event-rearm) (:rearm) (:snapshot-release) (:done)
         (:admission-refused) (:refused) (:uncertain))
  :observes ((:read-result)))
