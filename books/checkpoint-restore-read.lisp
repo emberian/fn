@@ -1,6 +1,7 @@
 ; Concrete linked checkpoint readers. These decode bytes, never allocator
 ; authority: the composing restore transition authenticates the page first.
 (in-package "ACL2")
+(include-book "std/util/bstar" :dir :system)
 (include-book "checkpoint-map-format")
 (include-book "alloc")
 (fn2-book-layer :b)
