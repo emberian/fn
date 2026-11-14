@@ -88,6 +88,7 @@ def generated_book(root, package, declaration):
     lines = ['(in-package "ACL2")']
     for book in ['books/assurance-completion', 'books/translation-validation', *world_books(root, declaration)]:
         lines.append('(include-book "../../' + book + '")')
+    lines.extend(['(fn2-resolve :coverage)', '(fn2-seal :evidence :coverage :square)'])
     # Literal identities are forms in this book, hence part of its closure key.
     lines.append('(defconst *fn2-assurance-scope-identity* ' + json.dumps(sha(json.dumps(declaration, sort_keys=True).encode())) + ')')
     lines.append('(defconst *fn2-assurance-package-identity* ' + json.dumps(sha(package.read_bytes())) + ')')

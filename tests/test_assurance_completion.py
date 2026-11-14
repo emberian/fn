@@ -17,6 +17,33 @@ import lisp_source
 
 
 class CompletionScope(unittest.TestCase):
+    def test_proposed_book_binds_scope_packet_and_actual_world_assembly(self):
+        from emit_served_certificate import Atom, List
+        declaration = gate.scope()
+        nil = List([Atom(':SYMBOL'), List([Atom(str(ord(c))) for c in 'ACL2']),
+                    List([Atom(str(ord(c))) for c in 'NIL'])])
+        h = {':MANIFEST': List([]), ':ARM-INVENTORY': nil, ':REFUSED': List([])}
+        with tempfile.TemporaryDirectory() as td:
+            root = Path(td)
+            packet = root / 'packet'
+            packet.write_text('first canonical packet')
+            with mock.patch.object(gate, 'canonical', return_value=(h, [('SERVED', List([]), {})], ['SERVED'], [])), \
+                 mock.patch.object(gate, 'world_books', return_value=['tests/owed-unit']), \
+                 mock.patch('emit_served_certificate.metadata_checks', return_value='(value-triple :metadata-check)'):
+                first = gate.generated_book(root, packet, declaration)
+                packet.write_text('changed canonical packet')
+                changed_packet = gate.generated_book(root, packet, declaration)
+                changed_scope = copy.deepcopy(declaration)
+                changed_scope['profile'] = 'a differently scoped profile'
+                changed = gate.generated_book(root, packet, changed_scope)
+            forms = lisp_source.forms(first)
+            self.assertIn('(fn2-resolve :coverage)', forms)
+            self.assertIn('(fn2-seal :evidence :coverage :square)', forms)
+            self.assertIn('(include-book "../../tests/owed-unit")', forms)
+            self.assertNotEqual(first, changed_packet)
+            self.assertNotEqual(changed_packet, changed)
+            self.assertTrue(any(f.startswith('(fn2-assert-assurance-complete ') for f in forms))
+
     def test_product_scope_cannot_omit_a_feature_or_served_subject(self):
         original = gate.scope()
         for mutant in ('feature', 'entry', 'duplicate'):
