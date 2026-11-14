@@ -70,13 +70,18 @@
 ;; blocks, 380,928 octets) and the profile's article bound, with the
 ;; generated Message-ID field, stays within it (fn2-input-config-profilep).
 (defconst *fn2-am-block-bytes* *fn2-commit-unit-bytes*)
+; Preserve the current three-block payload/manifest packing independently of
+; the sixteen-unit physical stride. The unused thirteen units remain owned
+; by that allocation; a later packing change need not change its identity.
+(defconst *fn2-upload-payload-units* 3)
+(defconst *fn2-upload-payload-bytes* (* *fn2-upload-payload-units* *fn2-commit-unit-bytes*))
 (defconst *fn2-am-header-max* (fn2-layout-max-size *fn2-format-source-manifest-header*))
 (defconst *fn2-am-entry-max* (fn2-layout-max-size *fn2-format-source-manifest-entry*))
 ;; entries of the largest size one unit holds (the first holds the header too)
 (defconst *fn2-am-entries-per-unit*
   (floor (- *fn2-commit-unit-bytes* *fn2-am-header-max*) *fn2-am-entry-max*))
 (defconst *fn2-am-stored-max*
-  (* *fn2-am-block-bytes* *fn2-am-entries-per-unit* *fn2-commit-write-resources*))
+  (* *fn2-am-block-bytes* *fn2-am-entries-per-unit* *fn2-upload-payload-units*))
 (assert-event (equal *fn2-am-stored-max* 380928))
 (assert-event (<= (+ *fn2-upload-article-max* *fn2-upload-mid-line-max*) *fn2-am-stored-max*))
 

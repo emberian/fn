@@ -47,7 +47,7 @@
       ((mv filled fn2-core) (fn2-write-pin-test-fill 4096 0 slot gen fn2-core))
       ((unless (eq filled :ok)) (mv nil fn2-core))
       ((mv issued op og fn2-core)
-       (fn2-block-write (* extent *fn2-commit-write-resources*) epoch allocation 0 4096 slot gen 1 0 1 0 fn2-core))
+       (fn2-block-write (* extent *fn2-storage-extent-units*) epoch allocation 0 4096 slot gen 1 0 1 0 fn2-core))
       ((when allocatedp)
        (mv (and (eq issued :bounds) (not (fn2-core-stopped-p fn2-core))
                 (equal (fn2-b-outbox fn2-core) nil)) fn2-core))

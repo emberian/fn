@@ -377,7 +377,7 @@
 ; choose the fault profile, the post-death faults and the device size.
 (defun fn2-b-case (profile seed cut scenario mode members post fn2-core fn2-sim fn2-own)
   (declare (xargs :stobjs (fn2-core fn2-sim fn2-own) :verify-guards nil))
-  (b* ((profile (fn2-b-test-profile (put-assoc-equal :sim-sectors (if post (nth 2 post) 8) profile) mode))
+  (b* ((profile (fn2-b-test-profile (put-assoc-equal :sim-sectors (if post (nth 2 post) (* 2 *fn2-storage-extent-units*)) profile) mode))
        (fn2-core (fn2-init-executor profile :null nil fn2-core))
        ; Recovery fixture: the preceding writer epoch fence has completed.
        ; B3 does not implement or claim this bootstrap protocol.

@@ -1089,7 +1089,7 @@
            (unsigned-byte-p 32 (fn2-digest-slot row *fn2-fc-geometry*)))
    (let* ((fn2-fc-context (fn2-fc-context-set-hash row (fn2-digest-slot row *fn2-fc-hash*) fn2-fc-context))
           (fn2-fc-context (fn2-fc-context-set-geometry row (fn2-digest-slot row *fn2-fc-geometry*) fn2-fc-context))
-          (fn2-fc-context (fn2-fc-context-set-location row (+ (* 3 e) role) fn2-fc-context))
+          (fn2-fc-context (fn2-fc-context-set-location row (+ (* *fn2-storage-extent-units* e) role) fn2-fc-context))
           (fn2-fc-context (fn2-fc-context-set-history row 1 fn2-fc-context))
           (fn2-fc-context (fn2-fc-context-set-incarnation row 1 fn2-fc-context))
           (fn2-fc-context (fn2-fc-context-set-extent row e fn2-fc-context))

@@ -360,7 +360,7 @@
          (want (list :ok :quiet 0 (fn2-tu-text expect) t))
          (r (fn2-tu-run *fn2-tu-big-profile* nil (list (list octets (fn2-tu-sizes (len octets) k)))))
          (got (list (car r) (nth 1 r) (nth 3 r) (car (car (nth 2 r))) (cadr (car (nth 2 r))))))
-    (and (< *fn2-commit-extent-bytes* (len (fn2-tu-text *fn2-tu-big*)))
+    (and (< *fn2-upload-payload-bytes* (len (fn2-tu-text *fn2-tu-big*)))
          (< (len (fn2-tu-text *fn2-tu-big*)) *fn2-upload-article-max*)
          (or (equal got want) (cw "big ~x0 ~x1~%want ~x2~%" k got want)))))
 (assert-event (and (fn2-txn-test-big 4096) (fn2-txn-test-big 7)))

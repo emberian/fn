@@ -385,7 +385,7 @@
  (b* (((unless (and (booleanp writep) (natp pu) (natp off) (posp len) (<= (+ off len) *fn2-commit-unit-bytes*)
                     (unsigned-byte-p 60 epoch) (unsigned-byte-p 60 alloc)))
        (mv :bounds 0 0 fn2-pool fn2-ops fn2-control fn2-extents fn2-alloc-edges))
-      (extent (floor pu *fn2-commit-write-resources*))
+      (extent (floor pu *fn2-storage-extent-units*))
       (code (fn2-alloc-handle-code extent epoch alloc fn2-extents))
       ((unless (eq code :ok))
        (mv (if (eq code :bounds) :bounds :stale) 0 0 fn2-pool fn2-ops fn2-control fn2-extents fn2-alloc-edges))
