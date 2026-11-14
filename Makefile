@@ -306,6 +306,7 @@ ACL2_BOOKS = \
   tests/shape-one-unit \
   tests/merkle-random \
   tests/merkle-unit \
+  tests/member-exec-domain-unit \
   tests/native-boot-refusal-unit \
   tests/native-envelope-prefix-unit \
   tests/envelope-input-unit \
