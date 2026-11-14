@@ -1,6 +1,6 @@
 ; The host-called next/observe pair, including short I/O and stale epochs.
 (in-package "ACL2")
-(include-book "../books/tls-transport")
+(include-book "../books/tls-transport-reservation")
 
 (defun fn2-tls-transport-unit-open (total capacity quantum budget fn2-tls-transport)
  (declare (xargs :stobjs fn2-tls-transport :verify-guards nil))
@@ -317,3 +317,37 @@
   (mv-let (ok fn2-tls-transport) (fn2-tls-transport-retire-owner-negative-run fn2-tls-transport) ok)))
 
 (fn2-assert-owed-teeth fn2-tls-transport-next-preserves-handle-ownership fn2-tls-transport-observe-preserves-handle-ownership fn2-tls-transport-retire-preserves-handle-ownership)
+
+(defun fn2-tls-transport-reservation-run (negative fn2-tls-transport)
+ (declare (xargs :stobjs fn2-tls-transport :verify-guards nil))
+ (mv-let (opened fn2-tls-transport) (fn2-tls-transport-unit-open 8 8 4 1 fn2-tls-transport)
+  (mv-let (closing fn2-tls-transport) (fn2-tls-transport-retire 7 17 fn2-tls-transport)
+   (let* ((fn2-tls-transport (if negative
+             (fn2-tls-transport-put 0 (serial #xfffffffffffffff)) fn2-tls-transport))
+          (antecedent (and (eq opened :ok) (eq closing :closing)
+                       (fn2-tls-transport-owner-hyps fn2-tls-transport)
+                       (fn2-tls-transport-handle-invariant fn2-tls-transport)
+                       (= (fn2-tls-transport-pending 0 fn2-tls-transport) 0)
+                       (= (fn2-tls-transport-alive 0 fn2-tls-transport) 1)
+                       (member-equal (fn2-tls-transport-terminal 0 fn2-tls-transport) '(2 4))
+                       (= (fn2-tls-transport-budget 0 fn2-tls-transport) 0)))
+          (reservation (fn2-tls-transport-reservation fn2-tls-transport)))
+    (mv-let (status action offset count serial fn2-tls-transport)
+     (fn2-tls-transport-next 0 0 fn2-tls-transport)
+     (declare (ignore offset count serial))
+     (mv (and antecedent (if negative
+               (and (not reservation) (eq status :state) (= action 0)
+                    (= (fn2-tls-transport-alive 0 fn2-tls-transport) 1))
+              (and reservation (eq status :cleanup) (= action 9)
+                   (= (fn2-tls-transport-cleanup-credit 0 fn2-tls-transport) 0)
+                   (= (fn2-tls-transport-budget 0 fn2-tls-transport) 0)
+                   (fn2-tls-transport-reservation fn2-tls-transport)))) fn2-tls-transport))))))
+(defun fn2-tls-transport-reservation-positive ()
+ (declare (xargs :verify-guards nil))
+ (with-local-stobj fn2-tls-transport
+  (mv-let (ok fn2-tls-transport) (fn2-tls-transport-reservation-run nil fn2-tls-transport) ok)))
+(defun fn2-tls-transport-reservation-negative ()
+ (declare (xargs :verify-guards nil))
+ (with-local-stobj fn2-tls-transport
+  (mv-let (ok fn2-tls-transport) (fn2-tls-transport-reservation-run t fn2-tls-transport) ok)))
+(fn2-assert-owed-teeth fn2-tls-transport-closing-selects-reserved-free)
