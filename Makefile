@@ -47,6 +47,8 @@ ACL2_BOOKS = \
   books/assumptions-device \
   books/assumptions-integrity \
   books/assumptions-native-span \
+  books/assurance-completion \
+  books/assurance-resource-join \
   books/authority \
   books/authority-codec \
   books/authority-kind \
@@ -155,6 +157,7 @@ ACL2_BOOKS = \
   books/ordered \
   books/outcome-class \
   books/overlay \
+  books/owed-reclamation \
   books/owed \
   books/owed-accounts \
   books/owed-authority \
@@ -322,6 +325,7 @@ ACL2_BOOKS = \
   tests/owed-authority-unit \
   tests/owed-d-coverage \
   tests/owed-d-unit \
+  tests/owed-reclamation-unit \
   tests/owed-unit \
   tests/parser-boundary-unit \
   tests/peer-witnesses \
