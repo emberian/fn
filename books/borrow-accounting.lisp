@@ -6,6 +6,7 @@
 (in-package "ACL2")
 (include-book "arm-children")
 (include-book "ops-conservation")
+(include-book "borrow-release")
 
 
 (defun fn2-borrow-valsp (kind phase h0 p1 h1 aux0)

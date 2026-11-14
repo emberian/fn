@@ -2,6 +2,7 @@
 (in-package "ACL2")
 (include-book "pool-ranges")
 (include-book "vocab")
+(include-book "borrow-release")
 (include-book "std/util/bstar" :dir :system)
 
 (include-book "sched")
