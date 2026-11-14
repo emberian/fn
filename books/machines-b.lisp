@@ -555,8 +555,9 @@
  :hints (("Goal" :in-theory (disable fn2-digestsp fn2-digests-wfp fn2-digests-rows
                                     fn2-b3p fn2-b3-wfp fn2-b3-rows fn2-digest-rowp))))
 (in-theory (disable fn2-block-read-done-children))
+;; One unit hash, unlike READ-DONE's hash plus subtree-CV pass.
 (defcost fn2-block-read-commitment :child fn2-block-read-commitment-children :answers (:ok :io :hash :bounds)
- :bytes 8192 :tables (fn2-core-b3 fn2-core-digests)
+ :bytes *fn2-commit-unit-bytes* :tables (fn2-core-b3 fn2-core-digests)
  :doc "Check a returned location unit against its retained published commitment at explicit workspace offsets.")
 (defcost fn2-block-read-done :child fn2-block-read-done-children :answers (:ok :io :hash :bounds) :bytes 8192
  :tables (fn2-core-b3 fn2-core-digests fn2-core-pool)
