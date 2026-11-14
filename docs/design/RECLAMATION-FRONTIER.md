@@ -114,3 +114,21 @@ can make the final runtime recheck retain the extent, but this alone does not
 justify replaying release in the presence of a newly durable protector.
 Retirement/publication serialization must prohibit that durable reference
 race; recovery must establish backend exclusion for pre-crash physical I/O.
+
+The physical pin seam now has a source implementation awaiting admission:
+`fn2-block-read-children` acquires the next operation identity's dedicated edge
+before issuing, rolls it back on ordinary refusal, and retains it when issuance
+stops uncertainly. The profile reserves one edge per operation after the six
+commit-I/O edges and the two-per-extent root edges. `defcorechild :harvest`
+generates completion extensions; `fn2-harvest-one` calls them after validated
+harvest and pool settlement, before operation finish/recycle. B's callback
+releases only the matching read-result generation. Generated extension bindings
+exclude operation, pool and control children, with an unconditional operation
+table frame theorem for the lifecycle proof consumer.
+
+`tests/read-pins-unit.lisp` drives the actual block-read and harvest entries,
+interleaving retirement/checkpoint, ACK, stale completion and real physical
+completion; its removal control drops the acquired pin while that same read
+is outstanding. These fixtures do not implement checkpoint publication or
+journal replay, and source presence is not certification. No served FREE path
+is enabled by this change.

@@ -142,7 +142,7 @@
 (fn2-oss-child fn2-issue-cancel-children (target-slot target-gen okind oslot ogen principal fn2-pool fn2-ops fn2-control) 4)
 (fn2-oss-child fn2-issue-entropy-children (slot gen len okind oslot ogen principal fn2-pool fn2-ops fn2-control) 4)
 (fn2-oss-child fn2-block-read-children
-  (pu epoch alloc off len lslot lgen okind oslot ogen principal fn2-extents fn2-pool fn2-ops fn2-control) 4)
+  (pu epoch alloc off len lslot lgen okind oslot ogen principal fn2-extents fn2-alloc-edges fn2-pool fn2-ops fn2-control) 4)
 (fn2-oss-child fn2-echo-run-command-children
   (id slot kind ordinal budget fn2-echo fn2-machines fn2-pool fn2-ops fn2-control) 7)
 (fn2-oss-child fn2-echo-run-reply-children

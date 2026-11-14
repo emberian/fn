@@ -10,6 +10,7 @@
 (include-book "arm-children")
 
 (include-book "core-children-a")
+(include-book "core-harvest")
 (defmacro fn2-core-events ()
  '(progn
 (make-event
@@ -71,10 +72,6 @@
   (if (atom children) nil
     (cons (fn2-columns-pre "UPDATE-" (caar children))
           (fn2-core-child-writers (cdr children)))))
-(defun fn2-core-child-bindings (children)
-  (if (atom children) nil
-    (cons `(,(cadar children) (,(caar children) fn2-core))
-          (fn2-core-child-bindings (cdr children)))))
 (defun fn2-core-child-wfps (children)
   (if (atom children) nil
     (cons `(,(fn2-columns-sym (cadar children) "-WFP") ,(cadar children))
@@ -317,6 +314,7 @@
     (fn2-ops-next-owner fn2-ops)
     (mv found okind oslot ogen principal)))
 
+(fn2-core-harvest-events)
 (fn2-defoperation (:operation-set fn2-core-harvest) :core :infer
 (defun fn2-harvest-one (fn2-core)
   (declare (xargs :stobjs fn2-core :guard (fn2-core-wfp fn2-core)))
@@ -351,17 +349,28 @@
                 (t (mv :ok fn2-pool))))
          ((unless (eq code :ok))
           (mv (if inputp *fn2-stop-reason-harvest-input* *fn2-stop-reason-harvest-output*)
-              nil opslot opgen cell evkind outcome reason count aux0 aux1 fn2-pool fn2-ops))
-         ((mv code fn2-ops)
-          (if (equal (fn2-op-phase opslot fn2-ops) *fn2-op-phase-done*)
-              (fn2-op-finish opslot opgen fn2-ops) (mv :ok fn2-ops))))
-      (mv (if (or (eq code :ok) (eq code :retired))
-              *fn2-stop-reason-none* *fn2-stop-reason-harvest-finish*)
-          (and (or (eq code :ok) (eq code :retired)) found)
+              nil opslot opgen cell evkind outcome reason count aux0 aux1 fn2-pool fn2-ops)))
+      (mv *fn2-stop-reason-none* found
           opslot opgen cell evkind outcome reason count aux0 aux1 fn2-pool fn2-ops))
-    (let ((fn2-core (if (= stop-reason *fn2-stop-reason-none*) fn2-core
-                     (fn2-core-stop stop-reason fn2-core))))
-      (mv found opslot opgen cell evkind outcome reason count aux0 aux1 fn2-core)))))
+    (b* ((fn2-core (if (= stop-reason *fn2-stop-reason-none*) fn2-core
+                      (fn2-core-stop stop-reason fn2-core)))
+         ((unless found)
+          (mv nil opslot opgen cell evkind outcome reason count aux0 aux1 fn2-core))
+         ; Extensions see the validated generation before FINISH clears it.
+         ((mv code fn2-core)
+          (fn2-core-harvest-hooks opslot opgen cell evkind outcome reason count aux0 aux1 fn2-core))
+         ((unless (eq code :ok))
+          (let ((fn2-core (fn2-core-stop *fn2-stop-reason-harvest-finish* fn2-core)))
+           (mv nil opslot opgen cell evkind outcome reason count aux0 aux1 fn2-core))))
+     (stobj-let ((fn2-ops (fn2-core-ops fn2-core)))
+      (code fn2-ops)
+      (if (and (fn2-op-slotp opslot fn2-ops)
+               (equal (fn2-op-phase opslot fn2-ops) *fn2-op-phase-done*))
+          (fn2-op-finish opslot opgen fn2-ops) (mv :ok fn2-ops))
+      (let* ((ok (or (eq code :ok) (eq code :retired)))
+             (fn2-core (if ok fn2-core
+                         (fn2-core-stop *fn2-stop-reason-harvest-finish* fn2-core))))
+       (mv (and ok found) opslot opgen cell evkind outcome reason count aux0 aux1 fn2-core)))))))
 (fn2-core-preserves fn2-harvest-one (fn2-core) :position 10 :rows nil)
 
 (assert-event

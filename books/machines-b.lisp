@@ -5,6 +5,7 @@
 (include-book "profile")
 (include-book "sched")
 (include-book "commit-alloc")
+(include-book "read-pins")
 (include-book "format-check")
 (include-book "recovery")
 (include-book "commit-members")
@@ -22,13 +23,18 @@
  :init (fn2-alloc-init (fn2-b-capacity :extent-slots 16 profile) fn2-extents)
  :profilep (unsigned-byte-p 32 (fn2-b-capacity :extent-slots 16 profile))
  :why "Commit work survives scheduler yields.")
+(defun fn2-b-alloc-edge-floor (profile)
+ (declare (xargs :guard t))
+ (+ 6 (* 2 (nfix (fn2-b-capacity :extent-slots 16 profile))) (nfix (fn2-profile-o profile))))
 (defcorechild fn2-core-alloc-edges fn2-alloc-edges
- :init (fn2-alloc-edges-init (fn2-b-capacity :alloc-edge-slots (+ 6 (* 2 (nfix (fn2-b-capacity :extent-slots 16 profile)))) profile) fn2-alloc-edges)
+ :init (fn2-alloc-edges-init (fn2-b-capacity :alloc-edge-slots (fn2-b-alloc-edge-floor profile) profile) fn2-alloc-edges)
  :profilep (and
-  (unsigned-byte-p 32 (fn2-b-capacity :alloc-edge-slots (+ 6 (* 2 (nfix (fn2-b-capacity :extent-slots 16 profile)))) profile))
-  (<= (+ 6 (* 2 (nfix (fn2-b-capacity :extent-slots 16 profile))))
-      (fn2-b-capacity :alloc-edge-slots (+ 6 (* 2 (nfix (fn2-b-capacity :extent-slots 16 profile)))) profile)))
- :why "Commit work survives scheduler yields.")
+  (unsigned-byte-p 32 (fn2-b-capacity :alloc-edge-slots (fn2-b-alloc-edge-floor profile) profile))
+  (<= (fn2-b-alloc-edge-floor profile)
+      (fn2-b-capacity :alloc-edge-slots (fn2-b-alloc-edge-floor profile) profile)))
+ :harvest (fn2-b-read-pin-harvest
+           ((fn2-core-extents fn2-extents) (fn2-core-alloc-edges fn2-alloc-edges)))
+ :why "Commit edges and one physical read pin per operation survive yields.")
 ; Format checker rows (b-durability.md §11): 0-1 the commit kind's, 2
 ; recovery's, 3 .. 2+w D's large-upload windows, 3+w C's sealer, then
 ; 4+w .. 3+w+c E's control connections (fn2-ctl row S decodes FNCT into its
@@ -355,24 +361,56 @@
 ; its result arrives as the caller's :read-result. (mv code slot gen ...),
 ; as fn2-issue-read's.
 (defun fn2-block-read-children (pu epoch alloc off len lslot lgen okind oslot ogen principal
-                                   fn2-extents fn2-pool fn2-ops fn2-control)
- (declare (xargs :stobjs (fn2-extents fn2-pool fn2-ops fn2-control)
-                 :guard (and (fn2-extents-wfp fn2-extents) (fn2-pool-wfp fn2-pool) (fn2-ops-wfp fn2-ops)
+                                   fn2-extents fn2-alloc-edges fn2-pool fn2-ops fn2-control)
+ (declare (xargs :stobjs (fn2-extents fn2-alloc-edges fn2-pool fn2-ops fn2-control)
+                 :guard (and (fn2-extents-wfp fn2-extents) (fn2-alloc-edges-wfp fn2-alloc-edges)
+                             (fn2-pool-wfp fn2-pool) (fn2-ops-wfp fn2-ops)
                              (fn2-control-wfp fn2-control))))
- (b* (((unless (and (natp pu) (natp off) (posp len) (<= (+ off len) *fn2-commit-unit-bytes*)))
-       (mv :bounds 0 0 fn2-pool fn2-ops fn2-control))
-      (code (fn2-alloc-handle-code (floor pu *fn2-commit-write-resources*) epoch alloc fn2-extents))
-      ((unless (eq code :ok)) (mv (if (eq code :bounds) :bounds :stale) 0 0 fn2-pool fn2-ops fn2-control))
+ (b* (((unless (and (natp pu) (natp off) (posp len) (<= (+ off len) *fn2-commit-unit-bytes*)
+                    (unsigned-byte-p 60 epoch) (unsigned-byte-p 60 alloc)))
+       (mv :bounds 0 0 fn2-pool fn2-ops fn2-control fn2-extents fn2-alloc-edges))
+      (extent (floor pu *fn2-commit-write-resources*))
+      (code (fn2-alloc-handle-code extent epoch alloc fn2-extents))
+      ((unless (eq code :ok))
+       (mv (if (eq code :bounds) :bounds :stale) 0 0 fn2-pool fn2-ops fn2-control fn2-extents fn2-alloc-edges))
+      ; OP-RESERVE takes this head without interleaving. Acquire its pin before
+      ; ISSUE can publish a descriptor; a normal refused issue drops the pin.
+      (candidate (fn2-ops-free-head fn2-ops))
+      ((unless (fn2-op-slotp candidate fn2-ops))
+       (mv :exhausted 0 0 fn2-pool fn2-ops fn2-control fn2-extents fn2-alloc-edges))
+      (generation (fn2-ops-gen candidate fn2-ops))
+      ((mv pin fn2-extents fn2-alloc-edges)
+       (fn2-alloc-edge-add (fn2-b-read-pin-edge candidate fn2-extents) generation
+         extent epoch alloc :outstanding-io fn2-extents fn2-alloc-edges))
+      ((unless (eq pin :ok))
+       (let ((fn2-control (fn2-control-record-stop *fn2-stop-reason-issue-storage* fn2-control)))
+        (mv :bounds 0 0 fn2-pool fn2-ops fn2-control fn2-extents fn2-alloc-edges)))
       ((mv code slot gen fn2-pool fn2-ops fn2-control)
        (fn2-issue-read-children (+ (* pu *fn2-commit-unit-bytes*) off) lslot lgen len okind oslot ogen principal
-                                fn2-pool fn2-ops fn2-control)))
-  (mv (cond ((eq code :ok) :ok) ((eq code :exhausted) :exhausted) (t :bounds)) slot gen fn2-pool fn2-ops fn2-control)))
+                                fn2-pool fn2-ops fn2-control))
+      ((when (eq code :ok))
+       (if (and (equal slot candidate) (equal gen generation))
+           (mv :ok slot gen fn2-pool fn2-ops fn2-control fn2-extents fn2-alloc-edges)
+         (let ((fn2-control (fn2-control-record-stop *fn2-stop-reason-issue-storage* fn2-control)))
+          (mv :bounds slot gen fn2-pool fn2-ops fn2-control fn2-extents fn2-alloc-edges))))
+      ; An uncertain/partially issued operation keeps its protection for
+      ; recovery. Only an ordinary refusal before publication rolls it back.
+      ((when (= (fn2-control-stop fn2-control) 1))
+       (mv :bounds slot gen fn2-pool fn2-ops fn2-control fn2-extents fn2-alloc-edges))
+      ((mv drop fn2-extents fn2-alloc-edges)
+       (fn2-b-read-pin-drop candidate generation fn2-extents fn2-alloc-edges))
+      (fn2-control (if (eq drop :ok) fn2-control
+                     (fn2-control-record-stop *fn2-stop-reason-issue-storage* fn2-control))))
+  (mv (if (eq code :exhausted) :exhausted :bounds) slot gen
+      fn2-pool fn2-ops fn2-control fn2-extents fn2-alloc-edges)))
 (fn2-pool-preserves fn2-block-read-children (pu epoch alloc off len lslot lgen okind oslot ogen principal
-                                             fn2-extents fn2-pool fn2-ops fn2-control)
-  :carriers ((fn2-pool 3 :prefix "-POOL") (fn2-ops 4 :prefix "-OPS") (fn2-control 5 :prefix "-CONTROL")))
+                                             fn2-extents fn2-alloc-edges fn2-pool fn2-ops fn2-control)
+  :carriers ((fn2-pool 3 :prefix "-POOL") (fn2-ops 4 :prefix "-OPS") (fn2-control 5 :prefix "-CONTROL")
+             (fn2-extents 6 :prefix "-EXTENTS") (fn2-alloc-edges 7 :prefix "-EDGES")))
 (defcost fn2-block-read :child fn2-block-read-children :answers (:ok :exhausted :stale :bounds)
- :tables (fn2-core-extents fn2-core-pool fn2-core-ops fn2-core-control)
- :descriptors 1 :doc "B-S2 S10: read a stored reference's range into the caller's lease (D6 3/n).")
+ :tables (fn2-core-extents fn2-core-alloc-edges fn2-core-pool fn2-core-ops fn2-core-control)
+ :descriptors 1 :doc "Pin a stored reference through physical completion and read it into the caller's lease.")
+
 (defcost fn2-commit-posture :answers (:serving :draining) :tables (fn2-core-machines)
  :doc "B-S2 S11: :draining while a commit row is :uncertain (computed from the rows' phases), else :serving.")
 ;; LEFT octets from OFF of the lease SLOT GEN (owner OKIND OSLOT OGEN) into
