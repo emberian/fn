@@ -156,3 +156,33 @@ partial/full failed-fence persistence, held successful completion, and the actua
 commit/recovery scenario after prior acceptance. A separate domain control forces
 class 27 and checks exactly one effect count with none's probability/count zero.
 All these ACL2 controls remain unexecuted source candidates.
+
+## Qualified suffix helper and codec closure — 2026-11-14
+
+The combined eight-book record passed under toolchain
+`8aeb1bea18968c6cd33ac633a80ebf67e4924504db112fd27eb11f16a27b2a8c`:
+`books/{declare,operations,columns,profile,codec-transport}`, `sim/storage`,
+`tests/storage-fence-suffix-unit` and `tests/codec-transport-unit`.
+The eight source files match root `966ef5c01` byte for byte, and their manifest
+hashes are unchanged before/after certification. Only `declare` was reused;
+the other seven books were newly certified and published to the qualified cache.
+
+Farm run `run-20261114T232015Z-8f84`, record
+`certify-20261114T232037Z-550845`, completed in 16.176 seconds at one job under
+2 GiB. `sim/storage` took 2.074 seconds and the suffix fixture 0.567 seconds;
+the codec fixture took 11.004 seconds. The record is on forge under
+`/build/lanes/assurance-storage-codec-5ca/build/acl2/` and copied to the same
+`build/acl2/` record directory in `assurance-storage-qualification`.
+
+The five suffix cases execute the ordinary full wrapper, start-two suffix,
+empty suffix, failed no-op and newer-fence anti-rollback, with literal byte
+expectations, an earlier fenced byte and crash-reset visibility. This qualifies
+those helper cases, not arbitrary persistence subsets, native power-loss behavior,
+the whole simulator, or protocol acceptance. Physical adapter and commit/recovery
+fixtures still require a matching composed prefix.
+
+The preliminary source gate exposed a missing B* fixture include; `5f22529ae`
+adds the explicit system-book dependency. Its corrected run passed in 3.14 seconds.
+The farm collector later stalled in read-only progress reporting; only that
+collector was stopped, and the named record was fetched directly. The certification
+status is zero, its recorded process group is empty, and the allocation is released.
