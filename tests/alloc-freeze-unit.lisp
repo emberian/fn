@@ -1,12 +1,13 @@
 ; Primitive freeze controls. Fixture installation of the token is NOT evidence
 ; that the production construction set was closed or a C cut was established.
 (in-package "ACL2")
-(include-book "alloc-unit")
 (include-book "../books/alloc-freeze")
 (defun fn2-alloc-freeze-control (freeze fn2-extents fn2-alloc-edges)
  (declare (xargs :stobjs (fn2-extents fn2-alloc-edges) :verify-guards nil))
  (b* ((fn2-extents (fn2-alloc-init 4 fn2-extents))
-      (fn2-alloc-edges (fn2-alloc-test-edges-init 2 fn2-alloc-edges))
+      (fn2-alloc-edges (fn2-alloc-edges-init 2 fn2-alloc-edges))
+      (fn2-alloc-edges (fn2-alloc-edges-set-state 0 *fn2-alloc-edge-state-free* fn2-alloc-edges))
+      (fn2-alloc-edges (fn2-alloc-edges-set-state 1 *fn2-alloc-edge-state-free* fn2-alloc-edges))
       ((mv epoch-code fn2-extents) (fn2-alloc-begin-epoch 1 fn2-extents))
       ((mv reserved & e ep al fn2-extents) (fn2-alloc-reserve fn2-extents))
       ((unless (and (eq epoch-code :ok) (eq reserved :ok))) (mv nil fn2-extents fn2-alloc-edges))
