@@ -152,7 +152,7 @@
                                               fn2-fields fn2-pool fn2-digests)
  (declare (xargs :stobjs (fn2-checkpoints fn2-checkpoint-refs fn2-checkpoint-bytes
                           fn2-checkpoint-publication fn2-fc fn2-fc-context fn2-b3 fn2-fields fn2-pool fn2-digests)
-  :guard (and (fn2-fc-guard) (fn2-checkpoints-wfp fn2-checkpoints)
+  :guard (and (let ((off 0) (len encoded-length)) (fn2-fc-guard)) (fn2-checkpoints-wfp fn2-checkpoints)
               (fn2-checkpoint-refs-wfp fn2-checkpoint-refs) (fn2-checkpoint-bytes-wfp fn2-checkpoint-bytes)
               (fn2-checkpoint-publication-wfp fn2-checkpoint-publication))))
  (b* (((unless (and (< 0 (fn2-checkpoint-publication-rows fn2-checkpoint-publication))
