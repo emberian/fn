@@ -123,7 +123,25 @@
                     *fn2-storage-extent-units*) 0))) (mv :identity fn2-fields)))
   (mv :entry fn2-fields)))
 
+; Pool is a readonly source of these decoders and belongs to their actual
+; type/guard domain. No runtime whole-pool validation is added. The broader
+; destination-shape claims and unconditional row effects remain available.
 (fn2-fields-preserves fn2-checkpoint-restore-header
- (role cut-commit cut-event total ordinal base slot gen okind oslot ogen fn2-fields fn2-pool) :position 1)
+ (role cut-commit
+      cut-event
+      total
+      ordinal
+      base
+      slot
+      gen
+      okind
+      oslot
+      ogen
+      fn2-fields
+      fn2-pool)
+ :hyps ((fn2-fieldsp fn2-fields) (fn2-poolp fn2-pool) (fn2-fields-wfp fn2-fields) (fn2-pool-wfp fn2-pool))
+ :specs (("-GUARD-DOMAIN-TYPE" fn2-fieldsp 1) ("-GUARD-DOMAIN-WFP" fn2-fields-wfp 1) ("-PRESERVES-WFP" fn2-fields-wfp 1 :hyps ((fn2-fieldsp fn2-fields) (fn2-fields-wfp fn2-fields))) ("-PRESERVES-ROWS" fn2-fields-rows 1 :frame fn2-fields)))
 (fn2-fields-preserves fn2-checkpoint-restore-entry
- (role ordinal base slot gen okind oslot ogen fn2-fields fn2-pool) :position 1)
+ (role ordinal base slot gen okind oslot ogen fn2-fields fn2-pool)
+ :hyps ((fn2-fieldsp fn2-fields) (fn2-poolp fn2-pool) (fn2-fields-wfp fn2-fields) (fn2-pool-wfp fn2-pool))
+ :specs (("-GUARD-DOMAIN-TYPE" fn2-fieldsp 1) ("-GUARD-DOMAIN-WFP" fn2-fields-wfp 1) ("-PRESERVES-WFP" fn2-fields-wfp 1 :hyps ((fn2-fieldsp fn2-fields) (fn2-fields-wfp fn2-fields))) ("-PRESERVES-ROWS" fn2-fields-rows 1 :frame fn2-fields)))

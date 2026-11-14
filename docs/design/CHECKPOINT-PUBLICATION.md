@@ -495,7 +495,7 @@ Logs and state are `/tmp/reclamation-format-union-78*` on Forge.
 The remaining implementation work is the real C master/source actor, arena and
 installation evidence intake, selected-base allocator reconstruction, ordered
 allocation/retirement/release replay, and journaled writer exclusion. Anchor
-previous-checkpoint batch hash must not be substituted for the immediate
+previous-checkpoint descriptor identity must not be substituted for the immediate
 predecessor seal. Dynamic foreground maintenance headroom also remains open:
 the minimum profile admission bound does not reserve enough space against later
 growth. Both upload and ordinary journal allocation must respect that policy,
@@ -525,6 +525,26 @@ source continuation: its smaller ABI cannot reconstruct operation identity.
 The public READ maps only the lower queued `:issued` result to the issue DSL's
 `:ok`; all refusal and uncertain outcomes pass through unchanged.
 
+
+The B lifecycle now consumes actual physical construction entries one per step,
+retaining every constructed page and reserved journal ticket before changing
+copy phase 1 to installation phase 2. It retains the six root edges separately.
+After the actual installed member, it traverses the candidate's dedicated source
+edges and atomically changes prepared protection to selectable protection. The
+publisher start operation checks that actual lifecycle state. Thaw requires the
+same candidate's completed bank publication and released writer bundle; it
+changes only the physical freeze phase, retaining the C owner token for normal
+snapshot release. It does not advance checkpoint coverage or permit FREE.
+These source operations and their shape obligations remain unadmitted; the
+master is connecting them and primitive controls are being prepared.
+Root1 callbacks retain all required child inputs but return only each operation's
+assigned and nested-callee result carriers. The largest result is STEP's code
+plus 27 carriers (28 values); READ returns its three scalars plus 14 carriers
+(17 values). The declaration drives body projection and positional shape
+contracts together. A source control compares that declaration with actual
+assignments and family calls, including a removed-manifest-result mutation.
+This stays below ACL2's 32-value limit without treating readonly inputs as
+outputs; it is a source check, not admission of the generated callbacks.
 ## Maintenance actor source integration
 
 `checkpoint-master-kind` registers the actual singleton C maintenance owner,
@@ -548,11 +568,3 @@ The pressure source uses actual blocked retirement progress and cached source
 working-room availability. It does not guarantee journal directory, physical
 construction or publication-window headroom. Source arity, dispatch and gate
 controls are static checks; these actor books have not been admitted or run.
-Root1 callbacks retain all required child inputs but return only each operation's
-assigned and nested-callee result carriers. The largest result is STEP's code
-plus 27 carriers (28 values); READ returns its three scalars plus 14 carriers
-(17 values). The declaration drives body projection and positional shape
-contracts together. A source control compares that declaration with actual
-assignments and family calls, including a removed-manifest-result mutation.
-This stays below ACL2's 32-value limit without treating readonly inputs as
-outputs; it is a source check, not admission of the generated callbacks.
