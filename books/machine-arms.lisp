@@ -2274,9 +2274,15 @@
        (implies (and ,@hyps)
                 (fn2-run-quantitiesp (car ,call) (mv-nth 1 ,call)
                                      (mv-nth 2 ,call) budget ,work-limit))
-       :rule-classes ,(fn2-arms-child-corollaries hyps terms)
+       ; Linear corollaries let a caller use a callee's tighter bound.
+       :rule-classes ,(append (fn2-arms-child-corollaries hyps terms)
+                       (list `(:type-prescription :corollary (implies (and ,@hyps) ,(nth 0 terms)))
+                             `(:type-prescription :corollary (implies (and ,@hyps) ,(nth 1 terms)))
+                             `(:type-prescription :corollary (implies (and ,@hyps) ,(nth 2 terms)))
+                             `(:linear :corollary (implies (and ,@hyps) ,(nth 3 terms)))
+                             `(:linear :corollary (implies (and ,@hyps) ,(nth 4 terms)))))
        :hints (("Goal" :in-theory (e/d (,name fn2-run-quantitiesp)
-                       (natp nfix nth ,@(fn2-arms-shape-fns ins)
+                       (nfix nth ,@(fn2-arms-shape-fns ins)
                         ,@(fn2-arms-rows-fns ins)
                         ,@(fn2-arms-quantity-readers ins world))))))))
 ; This is an actual effect proof, distinct from the numeric report bound.
