@@ -208,14 +208,14 @@ mutable operation frontiers; a successful plan is not a compilation proof:
 | --- | ---: | --- |
 | claim-release | 8 | Baseline full source proof passes with generated array bridge |
 | offer | 1 | Baseline full source proof passes |
-| add-group | 0 | Plan passes; not compiled yet |
+| add-group | 0 | Baseline full source prototype passes2.84s |
 | xref | — | Core recursive callee refuses |
-| put-post-for | 1 | Plan passes; not compiled yet |
+| put-post-for | 1 | Baseline full source prototype passes9.05s |
 | put-evidence-for | 1 | Baseline complete25-node family source proof passes |
-| prebind | 20 | Plan passes; not compiled yet |
-| authority-allows | 3 | Plan passes; not compiled yet |
+| prebind | 20 | Baseline full source prototype passes1.83s after shared reader fixes |
+| authority-allows | 3 | Baseline full source aggregate prototype passes4.65s |
 | authority-depend | 0 | Baseline full source proof passes |
-| group-of | 0 | Plan passes; not compiled yet |
+| group-of | 0 | Baseline full source proof passes3.39s |
 | wake-upload | 9 | Baseline full source proof passes |
 
 Txn has 14 declared operations without child faces in the baseline. Three
@@ -308,3 +308,39 @@ Commit 2dab7a891 fixes that projection and adds a real core-only source, compose
 caller, full-state witness, and concrete wrong-projection countermodel. Exact
 record `certify-20261114T031709Z-3622383` passed the same 22-book pre-B fixture
 closure (20 reused, two built; no book over ten seconds).
+
+## Current shared compiler checkpoint
+
+The remaining nonrecursive frontiers exposed reusable proof-boundary fixes,
+now in cf74785c3 and 1ba2a1e3e. Translated lexical aliases become LET bindings
+with explicit IGNORABLE declarations; multiple-result data producers remain
+opaque while scalar predicates establish their consumers' guards. This makes
+actual commit-pick and prospective-event packages pass in 2.47 and 0.86 seconds,
+then prebind in 1.83 seconds. The baseline also needed the already-certified
+columns fixed-length bridge, instantiated from its actual machine schema.
+
+Output invariants now use one proof-only predicate over the finite declared
+result product, followed by cheap projection corollaries. The served function
+and its ABI do not change. Authority's independent aggregate proof took
+2.47 seconds / 96,786 steps with old projection corollaries explicitly disabled,
+instead of repeating about eight seconds / 289,742 steps per output. Complete
+source prototypes passed add-group in 2.84 seconds and authority-allows in
+4.65 seconds; put-post-for passed in 9.05 seconds with opaque helper leaves.
+These are extraction-equivalence results, not claims that the source's
+authorization policy is sufficient.
+
+The current source fixtures passed 71 reader forms in 1.57 seconds and
+135 product forms in 4.90 seconds. Record
+`certify-20261114T034636Z-3653564` passed the authenticated pre-B 22-book
+closure (18 reused, four built, none over ten seconds). Six further txn
+operation declarations now name their generated child faces in a separate
+consumer checkpoint. Current B callback certification and production
+formula-bound evidence remain pending; the served mode is unchanged.
+
+The only remaining unsupported extraction class in this operation frontier
+is xref's recursive core loops. Its xref-pairs source has a singleton recursive
+clique and admitted scalar measure `(nfix k)`. The next shared extension must
+retain a recursive child call, prove its termination, guards and output
+invariants, and prove whole-core reconstruction by induction before registry
+admission. Mutual recursion and state-dependent measures should refuse until
+explicitly supported. No handwritten recursive child twin is planned.

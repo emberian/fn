@@ -278,27 +278,27 @@
   :doc "Count LF octets in up to 2,048 octets of the upload's body.")
 (defcost fn2-txn-next-name :child fn2-txn-next-name-pool :answers (:name :end :run :fault) :faults (:fault) :bytes *fn2-txn-scan-bytes*
   :doc "Scan chunk 0 for the next group name of Newsgroups.")
-(defcost fn2-txn-add-group :answers t :tables (fn2-core-succ-txns fn2-core-succ-slots fn2-core-fields fn2-core-pool) :bytes 512
+(defcost fn2-txn-add-group :child fn2-txn-add-group-child :answers t :tables (fn2-core-succ-txns fn2-core-succ-slots fn2-core-fields fn2-core-pool) :bytes 512
   :doc "Declare the group's count accept, overview row (its line late), and addressing entry; keep its name for the Xref field.")
 (defcost fn2-txn-xref :answers t :tables (fn2-core-succ-txns fn2-core-succ-slots fn2-core-fields fn2-core-pool fn2-core-control)
   :bytes *fn2-txn-xref-bytes*
   :doc "Append the Xref field (the path identity, each group's name and staged number) to the overview line and give it to every overview slot.")
-(defcost fn2-txn-put-post-for :answers t :tables (fn2-core-succ-txns fn2-core-succ-slots fn2-core-fields fn2-core-pool)
+(defcost fn2-txn-put-post-for :child fn2-txn-put-post-for-child :answers t :tables (fn2-core-succ-txns fn2-core-succ-slots fn2-core-fields fn2-core-pool)
   :doc "Declare the article's identity, article and outcome slots and synthesize the overview line's first seven fields in chunk 0.")
 (defcost fn2-txn-put-evidence-for :child fn2-txn-put-evidence-for-child :answers t :tables (fn2-core-succ-txns fn2-core-succ-slots fn2-core-fields)
   :doc "Declare the competing binding's evidence slots in the private successor (ruling 6).")
-(defcost fn2-txn-prebind :answers (:ok) :tables (fn2-core-fields)
+(defcost fn2-txn-prebind :child fn2-txn-prebind-child :answers (:ok) :tables (fn2-core-fields)
   :doc "Pre-fill prospective event numbers into staged insert slots before emitting journal records.")
 (defconst *fn2-authority-right-append* 2)
-(defcost fn2-authority-allows :answers (:ok :access :more :state) :faults (:state) :bytes 4096
+(defcost fn2-authority-allows :child fn2-authority-allows-child :answers (:ok :access :more :state) :faults (:state) :bytes 4096
   :tables (fn2-core-succ-txns fn2-core-run-cursors fn2-core-run-paths fn2-core-fields)
   :doc "One bounded step of the append check (books/authority.lisp, AUTHORITY-20261105 section 4): (fn2-authority-allows tx principal-slot right target step head grant budget) -> (mv code step head grant), one exact lookup source per call (the head, the current grant, the grant row).")
 (defcost fn2-txn-principal :child fn2-txn-principal-child :answers (:ok :state)
   :doc "The transaction's effective durable principal: a consumer request's control connection's (its owner or the principal it bound), else the account slot's (D7's id).")
-(defcost fn2-authority-depend :answers (:ok :state) :faults (:state)
+(defcost fn2-authority-depend :child fn2-authority-depend-child :answers (:ok :state) :faults (:state)
   :tables (fn2-core-succ-txns fn2-core-succ-slots fn2-core-fields)
   :doc "Declare the transaction's read dependency on the principal's authority head it decided under (once; nothing when no grant governed).")
-(defcost fn2-txn-group-of :answers (:absent :bad-magic :bounds :done :end :entry :format :invariant :length :lost :miss :more
+(defcost fn2-txn-group-of :child fn2-txn-group-of-child :answers (:absent :bad-magic :bounds :done :end :entry :format :invariant :length :lost :miss :more
   :noncanonical :ok :owner :part :payload :schema :stale :state :truncated :unknown-tag :wide)
   :bytes 4096
   :tables (fn2-core-succ-txns fn2-core-run-cursors fn2-core-run-paths fn2-core-fields)
@@ -1051,6 +1051,13 @@
 ;; The transaction's continuations (materialized after the upload's).
 (defmacro fn2-txn-events ()
  '(progn
+; Derive operation boundaries after all original definitions are available.
+(defcore-product-closure fn2-txn-group-of fn2-txn-group-of-child)
+(defcore-product-closure fn2-txn-add-group fn2-txn-add-group-child)
+(defcore-product-closure fn2-txn-put-post-for fn2-txn-put-post-for-child)
+(defcore-product-closure fn2-txn-prebind fn2-txn-prebind-child)
+(defcore-product-closure fn2-authority-allows fn2-authority-allows-child)
+(defcore-product-closure fn2-authority-depend fn2-authority-depend-child)
 (defcore-readonly-closure fn2-txn-principal fn2-txn-principal-child)
 (defmachine-arms fn2-txn)
 (defmachine-run fn2-txn)
