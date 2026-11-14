@@ -98,6 +98,9 @@
       ((mv oversized fn2-codec-op-probe) (fn2-codec-op-probe-observe 1 5 0 fn2-codec-op-probe))
       ((mv observed fn2-codec-op-probe) (fn2-codec-op-probe-observe 1 3 0 fn2-codec-op-probe))
       ((mv duplicate fn2-codec-op-probe) (fn2-codec-op-probe-observe 1 3 0 fn2-codec-op-probe))
+      ; Immediate duplicate refusal is insufficient: an old serial must not
+      ; reserve a fresh request after the first request has been observed.
+      ((mv replay-request fn2-codec-op-probe) (fn2-codec-op-probe-request 1 13 4 0 fn2-codec-op-probe))
       ((mv rebound fn2-codec-op-probe) (fn2-codec-op-probe-bind 7 17 3 9 10 fn2-codec-op-probe))
       (retained (= (fn2-codec-op-probe-source-progress 0 fn2-codec-op-probe) 3))
       ((mv next fn2-codec-op-probe) (fn2-codec-op-probe-request 2 13 4 0 fn2-codec-op-probe))
@@ -106,7 +109,7 @@
       ((mv wrong-generation fn2-codec-op-probe) (fn2-codec-op-probe-bind 7 17 3 10 10 fn2-codec-op-probe)))
   (mv (and (eq bind :ok) (eq selected :ok) (eq stale :bounds) unchanged
            (eq oversized :bounds) (eq observed :ok) (eq duplicate :bounds)
-           (eq rebound :ok) retained (eq next :ok) (eq finish :ok)
+           (eq replay-request :bounds) (eq rebound :ok) retained (eq next :ok) (eq finish :ok)
            (eq overflow :bounds) (eq wrong-generation :stale)
            (= (fn2-codec-op-probe-source-progress 0 fn2-codec-op-probe) 7)
            (= (fn2-codec-op-probe-sink-progress 0 fn2-codec-op-probe) 0)
