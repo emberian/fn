@@ -37,11 +37,14 @@
                    "205 closing connection")))
         t))
 
-(defun fn2-peer-replay-check (fresh sizes)
+(defun fn2-peer-replay-check (fresh chunk)
   (declare (xargs :verify-guards nil))
-  (let* ((r (fn2-cursor-wire-run
+  (let* ((bytes (fn2-cw-crlf-octets (fn2-peer-replay-lines fresh)))
+         (sizes (and (posp chunk)
+                     (make-list (+ 1 (floor (len bytes) chunk)) :initial-element chunk)))
+         (r (fn2-cursor-wire-run
               (put-assoc-equal :peering-interim t *fn2-cursor-profile*) nil
-              (list (list (fn2-cw-crlf-octets (fn2-peer-replay-lines fresh)) sizes t))))
+              (list (list bytes sizes t))))
          (want (fn2-peer-replay-expected fresh)))
     (and (equal (nth 0 r) :ok)
          (equal (nth 1 r) :quiet)
@@ -52,7 +55,7 @@
 ; Positive: both duplicate and conflicting identity leave body/count/high intact.
 (assert-event (fn2-peer-replay-check nil nil))
 ; Exercise framing across short reads, including command/header delimiters.
-(assert-event (fn2-peer-replay-check nil '(11 3 1)))
+(assert-event (fn2-peer-replay-check nil 7))
 ; Independent control: changing the conflicting transfer's Message-ID admits
 ; it and increases the number/high-water. An implementation rejecting all
 ; follow-up transfers cannot satisfy this same wire/count observation.
