@@ -237,6 +237,7 @@ ACL2_BOOKS = \
   tests/codec-profile-unit \
   tests/codec-transport-unit \
   tests/host-codec-unit \
+  tests/tls-record-policy-unit \
   tests/commit-ceiling-unit \
   tests/commit-durable-all-unit \
   tests/commit-executor-contracts-unit \
