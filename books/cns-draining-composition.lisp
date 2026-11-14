@@ -3,7 +3,7 @@
 (in-package "ACL2")
 (include-book "cns-pool-refinement")
 (include-book "core-product-lowering")
-(include-book "machine-reservations-entry")
+(include-book "cns-accounting-entry")
 
 ; Consume the shared reconstruction laws for the actual written core
 ; children. No duplicate core shape or writeback implementation is needed.
