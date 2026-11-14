@@ -48,6 +48,16 @@ def check(source):
     assert ['fn2-checkpoint-lifecycle-step'] in list(walk(arms[':retention-source']))
     assert ['fn2-checkpoint-lifecycle-thaw'] in list(walk(arms[':thaw']))
     assert ['fn2-checkpoint-events-rearm'] in list(walk(arms[':event-rearm']))
+    take_do = next(x for x in walk(arms[':page-take']) if x and x[0] == ':do')
+    assert take_do[take_do.index(':effects')+1] == [[':release',[':storage-window']]]
+    accept_do = next(x for x in walk(arms[':page-accept-return']) if x and x[0] == ':do')
+    assert accept_do[2] == ['fn2-checkpoint-page-accept-return','*fn2-checkpoint-master-kind*','id','row-generation']
+    assert accept_do[accept_do.index(':effects')+1] == [[':acquire',[':storage-window']]]
+    holds = {x[0]:x[1:] for x in state[state.index(':holds')+1]}
+    for phase in [':page-wait',':page-accept-return',':loan-uncertain']:
+        assert holds[phase] == [':storage-window']
+    for phase in [':page-take',':page-consume',':uncertain',':release-complete']:
+        assert holds[phase] == [':storage-window',':storage-window']
     parked = {tag for tag,arm in arms.items() if arm[1:] == [[':idle']]}
     assert parked == {':disabled', ':admission-refused'}, 'no productive phase may be a parked placeholder'
     assert ['fn2-checkpoint-master-release-complete-op','row-token','*fn2-checkpoint-master-kind*','id','row-generation'] in list(walk(arms[':release-complete']))

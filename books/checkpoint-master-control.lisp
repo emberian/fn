@@ -144,5 +144,5 @@
  :answers (:ok :state)
  :tables (fn2-core-checkpoint-root1 fn2-core-checkpoint-plan fn2-core-checkpoint-build fn2-core-csnapshot fn2-core-checkpoints
           fn2-core-checkpoint-refs fn2-core-checkpoint-publication fn2-core-extents)
- :effects ((:release (:storage-window)))
+ :effects ((:release (:storage-window :storage-window)))
  :doc "End the abstract working-bundle hold only from actual terminal lease release and same-owner completed publication.")

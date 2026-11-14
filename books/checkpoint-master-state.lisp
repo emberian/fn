@@ -18,30 +18,30 @@
 (defmachine fn2-checkpoint-master
  :states (:idle :disabled :catalog :reserve :workspaces :snapshot-begin :snapshot-poll :descriptor-begin
           :root1-begin :root1-source :root1-read :events-begin :events-source :events-read
-          :page-bind :page-take :page-wait :page-consume
+          :page-bind :page-take :page-wait :page-accept-return :page-consume
           :plan-begin :plan-count :plan-size :plan-reserve :plan-validate :freeze
           :map-begin :map-source :descriptor-source
           :barrier-begin :barrier-source :allocation-begin :allocation-source :allocation-submit :allocation-wait :allocation-empty
           :installation-begin :installation-source :installation-submit :installation-wait
           :retention-begin :retention-source :publish-start :publish-wait :release :release-complete :thaw :event-rearm :rearm :snapshot-release :done
-          :admission-refused :refused :uncertain)
+          :admission-refused :refused :uncertain :loan-uncertain)
  :fields ((pending :u32) (stopped :bool) (token :u60)
           (scan :u32) (highest :u60) (candidate :u32) (candidate-found :bool) (checkpoint :u60)
           (page-slot :u32) (page-gen :u60) (scratch-slot :u32) (scratch-gen :u60) (read-slot :u32) (read-gen :u60)
           (source :u8) (field-base :u32) (map-role :u8) (target :u32) (target-gen :u60)
           (batch :u60) (event :u60) (covered :u60) (retirement-seen :u60))
- :holds ((:workspaces :storage-window) (:snapshot-begin :storage-window) (:snapshot-poll :storage-window)
-         (:descriptor-begin :storage-window) (:root1-begin :storage-window) (:root1-source :storage-window)
-         (:root1-read :storage-window) (:events-begin :storage-window) (:events-source :storage-window) (:events-read :storage-window)
-         (:page-bind :storage-window) (:page-take :storage-window) (:page-wait :storage-window) (:page-consume :storage-window)
-         (:plan-begin :storage-window) (:plan-count :storage-window) (:plan-size :storage-window)
-         (:plan-reserve :storage-window) (:plan-validate :storage-window) (:freeze :storage-window)
-         (:map-begin :storage-window) (:map-source :storage-window) (:descriptor-source :storage-window)
-         (:barrier-begin :storage-window) (:barrier-source :storage-window) (:allocation-begin :storage-window)
-         (:allocation-source :storage-window) (:allocation-submit :storage-window) (:allocation-wait :storage-window) (:allocation-empty :storage-window)
-         (:installation-begin :storage-window) (:installation-source :storage-window) (:installation-submit :storage-window) (:installation-wait :storage-window)
-         (:retention-begin :storage-window) (:retention-source :storage-window) (:publish-start :storage-window)
-         (:publish-wait :storage-window) (:release :storage-window) (:release-complete :storage-window) (:refused :storage-window) (:uncertain :storage-window))
+ :holds ((:workspaces :storage-window :storage-window) (:snapshot-begin :storage-window :storage-window) (:snapshot-poll :storage-window :storage-window)
+         (:descriptor-begin :storage-window :storage-window) (:root1-begin :storage-window :storage-window) (:root1-source :storage-window :storage-window)
+         (:root1-read :storage-window :storage-window) (:events-begin :storage-window :storage-window) (:events-source :storage-window :storage-window) (:events-read :storage-window :storage-window)
+         (:page-bind :storage-window :storage-window) (:page-take :storage-window :storage-window) (:page-wait :storage-window) (:page-accept-return :storage-window) (:page-consume :storage-window :storage-window)
+         (:plan-begin :storage-window :storage-window) (:plan-count :storage-window :storage-window) (:plan-size :storage-window :storage-window)
+         (:plan-reserve :storage-window :storage-window) (:plan-validate :storage-window :storage-window) (:freeze :storage-window :storage-window)
+         (:map-begin :storage-window :storage-window) (:map-source :storage-window :storage-window) (:descriptor-source :storage-window :storage-window)
+         (:barrier-begin :storage-window :storage-window) (:barrier-source :storage-window :storage-window) (:allocation-begin :storage-window :storage-window)
+         (:allocation-source :storage-window :storage-window) (:allocation-submit :storage-window :storage-window) (:allocation-wait :storage-window :storage-window) (:allocation-empty :storage-window :storage-window)
+         (:installation-begin :storage-window :storage-window) (:installation-source :storage-window :storage-window) (:installation-submit :storage-window :storage-window) (:installation-wait :storage-window :storage-window)
+         (:retention-begin :storage-window :storage-window) (:retention-source :storage-window :storage-window) (:publish-start :storage-window :storage-window)
+         (:publish-wait :storage-window :storage-window) (:release :storage-window :storage-window) (:release-complete :storage-window :storage-window) (:refused :storage-window :storage-window) (:uncertain :storage-window :storage-window) (:loan-uncertain :storage-window))
  :budget (:bytes 16384 :steps 32 :descriptors 4)
  :stops (:checkpoint :pool :bounds)
  :capacity (if (posp (fn2-b-checkpoint-capacity profile)) 1 0)
@@ -50,11 +50,11 @@
  :genesis ((:charge :steps *fn2-work-small* :runnable t))
  :arms ((:idle) (:disabled) (:catalog) (:reserve) (:workspaces) (:snapshot-begin) (:snapshot-poll) (:descriptor-begin)
         (:root1-begin) (:root1-source) (:root1-read) (:events-begin) (:events-source) (:events-read)
-        (:page-bind) (:page-take) (:page-wait) (:page-consume)
+        (:page-bind) (:page-take) (:page-wait) (:page-accept-return) (:page-consume)
         (:plan-begin) (:plan-count) (:plan-size) (:plan-reserve) (:plan-validate) (:freeze)
         (:map-begin) (:map-source) (:descriptor-source)
         (:barrier-begin) (:barrier-source) (:allocation-begin) (:allocation-source) (:allocation-submit) (:allocation-wait) (:allocation-empty)
         (:installation-begin) (:installation-source) (:installation-submit) (:installation-wait)
         (:retention-begin) (:retention-source) (:publish-start) (:publish-wait) (:release) (:release-complete) (:thaw) (:event-rearm) (:rearm) (:snapshot-release) (:done)
-        (:admission-refused) (:refused) (:uncertain))
+        (:admission-refused) (:refused) (:uncertain) (:loan-uncertain))
  :observes ((:read-result)))
