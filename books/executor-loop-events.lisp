@@ -239,4 +239,16 @@
 
 
 
+(defthm-owed fn2-arm-residual-budget (id budget core)
+  (implies (and (fn2-corep core) (fn2-core-wfp core) (natp budget))
+           (<= (mv-nth 2 (fn2-machine-run id budget core)) budget))
+  :schema :bound :from (:operation fn2-turn)
+  :teeth (fn2-arm-residual-positive fn2-arm-residual-negative)
+  :doc "A machine run handed the turn's residual descriptor budget spends at most that budget; an exhausted budget admits no descriptor.")
+(defthm fn2-arm-residual-budget-statement
+ (fn2-arm-residual-budget$owed id budget core)
+ :hints (("Goal" :in-theory (e/d (fn2-arm-residual-budget$owed)
+   (fn2-machine-run fn2-corep fn2-core-wfp)))))
+(fn2-owed-discharge fn2-arm-residual-budget fn2-arm-residual-budget-statement)
+
 ))

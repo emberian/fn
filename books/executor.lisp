@@ -202,12 +202,7 @@
   :schema :bound :from (:operation fn2-turn)
   :teeth (fn2-arm-composition-positive fn2-arm-composition-negative)
   :doc "Runs charged within their arm certificates compose: the word's bytes and steps are at most the sum of its arms' declared bounds.")
-(defthm-owed fn2-arm-residual-budget (id budget core)
-  (implies (and (fn2-corep core) (fn2-core-wfp core) (natp budget))
-           (<= (mv-nth 2 (fn2-machine-run id budget core)) budget))
-  :schema :bound :from (:operation fn2-turn)
-  :teeth (fn2-arm-residual-positive fn2-arm-residual-negative)
-  :doc "A machine run handed the turn's residual descriptor budget spends at most that budget; an exhausted budget admits no descriptor.")
+
 
 (assert-event
  (fn2-assert-compliant-p

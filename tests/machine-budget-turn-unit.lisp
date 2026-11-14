@@ -2,6 +2,7 @@
 (in-package "ACL2")
 (include-book "machine-budget-turn-fixture")
 (include-book "../books/reference-state")
+(include-book "executor-residual-controls")
 
 ; Whole-state copies are confined to this test. No served path scans them.
 (fn2-reference-children-events)
@@ -48,3 +49,22 @@
 (assert-event (equal (fn2-budget-turn-witness nil) '(t t :idle 0 1 1 8 t 1 1 t)))
 ; Same whole antecedent, plus refusal-frame equality, then fresh-turn progress.
 (assert-event (equal (fn2-budget-turn-witness t) '(t t :idle 0 1 1 8 t 1 1 t)))
+
+; Removing the loop's initial-count premise admits an already overspent
+; accumulator even on a well-formed core. No transition can repair the past.
+(defun fn2-budget-initial-count-control-run (fn2-core)
+ (declare (xargs :stobjs fn2-core :verify-guards nil))
+ (b* ((fn2-core (fn2-core-init *fn2-profile-tiny* fn2-core))
+      (a (fn2-exec-aturn fn2-core)) (used (+ 1 a))
+      (other-hyps (and (fn2-corep fn2-core) (fn2-core-wfp fn2-core) (natp a) (natp used)))
+      ((mv ?status ?obs ?visits actions fn2-core)
+       (fn2-concrete-loop 0 0 0 a 0 0 used fn2-core)))
+  (mv (and other-hyps (not (<= used a)) (equal actions used) (not (<= actions a))) fn2-core)))
+(defun fn2-budget-initial-count-control ()
+ (declare (xargs :verify-guards nil))
+ (with-local-stobj fn2-core (mv-let (answer fn2-core)
+  (fn2-budget-initial-count-control-run fn2-core) answer)))
+(assert-event (fn2-budget-initial-count-control))
+
+(fn2-arm-residual-teeth-events)
+(fn2-assert-owed-teeth fn2-arm-residual-budget)
