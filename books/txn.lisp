@@ -16,6 +16,7 @@
 (in-package "ACL2")
 (include-book "txn-kind")
 (include-book "upload")
+(include-book "core-product-lowering")
 (fn2-book-layer :d)
 
 ;; The claim walk's chain steps per run: each step compares at most one
@@ -264,46 +265,48 @@
   :tables (fn2-core-claims)
   :effects ((:acquire (:identity-reservation)))
   :doc "Walk the claim's bucket at most 16 chain steps (one Message-ID compared per step on an equal hash): claimed, waiting in the holder's FIFO, or more.")
-(defcost fn2-claim-release-core :answers (:ok :bounds :state) :tables (fn2-core-claims fn2-core-machines)
+(defcost fn2-claim-release-core :child fn2-claim-release-core-child
+ :answers (:ok :bounds :state) :tables (fn2-core-claims fn2-core-machines fn2-core-control)
   :effects ((:release (:identity-reservation)))
   :doc "Release a held claim and hand it to its FIFO's head, waking that transaction.")
-(defcost fn2-txn-offer :answers (:ok :bounds :state)
+(defcost fn2-txn-offer :child fn2-txn-offer-child :answers (:ok :bounds :state)
   :tables (fn2-core-succ-txns fn2-core-id-decides fn2-core-fields)
   :doc "Start the identity decision for the upload's Message-ID and content digest.")
 (defcost fn2-txn-count :child fn2-txn-count-loop :answers (:ok :bounds) :bytes *fn2-txn-count-bytes*
   :doc "Count LF octets in up to 2,048 octets of a pool slot.")
-(defcost fn2-txn-count-next :answers (:ok :bounds) :bytes *fn2-txn-count-bytes*
+(defcost fn2-txn-count-next :child fn2-txn-count-next-child :answers (:ok :bounds) :bytes *fn2-txn-count-bytes*
   :doc "Count LF octets in up to 2,048 octets of the upload's body.")
 (defcost fn2-txn-next-name :child fn2-txn-next-name-pool :answers (:name :end :run :fault) :faults (:fault) :bytes *fn2-txn-scan-bytes*
   :doc "Scan chunk 0 for the next group name of Newsgroups.")
-(defcost fn2-txn-add-group :answers t :tables (fn2-core-succ-txns fn2-core-succ-slots fn2-core-fields fn2-core-pool) :bytes 512
+(defcost fn2-txn-add-group :child fn2-txn-add-group-child :answers t :tables (fn2-core-succ-txns fn2-core-succ-slots fn2-core-fields fn2-core-pool) :bytes 512
   :doc "Declare the group's count accept, overview row (its line late), and addressing entry; keep its name for the Xref field.")
-(defcost fn2-txn-xref :answers t :tables (fn2-core-succ-txns fn2-core-succ-slots fn2-core-fields fn2-core-pool fn2-core-control)
+(defcost fn2-txn-xref :child fn2-txn-xref-child :answers t :tables (fn2-core-succ-txns fn2-core-succ-slots fn2-core-fields fn2-core-pool fn2-core-control)
   :bytes *fn2-txn-xref-bytes*
   :doc "Append the Xref field (the path identity, each group's name and staged number) to the overview line and give it to every overview slot.")
-(defcost fn2-txn-put-post-for :answers t :tables (fn2-core-succ-txns fn2-core-succ-slots fn2-core-fields fn2-core-pool)
+(defcost fn2-txn-put-post-for :child fn2-txn-put-post-for-child :answers t :tables (fn2-core-succ-txns fn2-core-succ-slots fn2-core-fields fn2-core-pool)
   :doc "Declare the article's identity, article and outcome slots and synthesize the overview line's first seven fields in chunk 0.")
-(defcost fn2-txn-put-evidence-for :answers t :tables (fn2-core-succ-txns fn2-core-succ-slots fn2-core-fields)
+(defcost fn2-txn-put-evidence-for :child fn2-txn-put-evidence-for-child :answers t :tables (fn2-core-succ-txns fn2-core-succ-slots fn2-core-fields)
   :doc "Declare the competing binding's evidence slots in the private successor (ruling 6).")
-(defcost fn2-txn-prebind :answers (:ok) :tables (fn2-core-fields)
+(defcost fn2-txn-prebind :child fn2-txn-prebind-child :answers (:ok) :tables (fn2-core-fields)
   :doc "Pre-fill prospective event numbers into staged insert slots before emitting journal records.")
 (defconst *fn2-authority-right-append* 2)
-(defcost fn2-authority-allows :answers (:ok :access :more :state) :faults (:state) :bytes 4096
+(defcost fn2-authority-allows :child fn2-authority-allows-child :answers (:ok :access :more :state) :faults (:state) :bytes 4096
   :tables (fn2-core-succ-txns fn2-core-run-cursors fn2-core-run-paths fn2-core-fields)
   :doc "One bounded step of the append check (books/authority.lisp, AUTHORITY-20261105 section 4): (fn2-authority-allows tx principal-slot right target step head grant budget) -> (mv code step head grant), one exact lookup source per call (the head, the current grant, the grant row).")
-(defcost fn2-txn-principal :answers (:ok :state)
+(defcost fn2-txn-principal :child fn2-txn-principal-child :answers (:ok :state)
   :doc "The transaction's effective durable principal: a consumer request's control connection's (its owner or the principal it bound), else the account slot's (D7's id).")
-(defcost fn2-authority-depend :answers (:ok :state) :faults (:state)
+(defcost fn2-authority-depend :child fn2-authority-depend-child :answers (:ok :state) :faults (:state)
   :tables (fn2-core-succ-txns fn2-core-succ-slots fn2-core-fields)
   :doc "Declare the transaction's read dependency on the principal's authority head it decided under (once; nothing when no grant governed).")
-(defcost fn2-txn-group-of :answers (:absent :bad-magic :bounds :done :end :entry :format :invariant :length :lost :miss :more
+(defcost fn2-txn-group-of :child fn2-txn-group-of-child :answers (:absent :bad-magic :bounds :done :end :entry :format :invariant :length :lost :miss :more
   :noncanonical :ok :owner :part :payload :schema :stale :state :truncated :unknown-tag :wide)
   :bytes 4096
   :tables (fn2-core-succ-txns fn2-core-run-cursors fn2-core-run-paths fn2-core-fields)
   :doc "The group at the scan's name: the one the append check in progress holds (XSTEP > 0), else one source of its name lookup.")
-(defcost fn2-txn-wake-upload :tables (fn2-core-machines)
+(defcost fn2-txn-wake-upload :child fn2-txn-wake-upload-child
+ :tables (fn2-core-machines fn2-core-control)
   :doc "Wake the upload this transaction held, if it still names it, so it drains.")
-(defcost fn2-txn-groups-limit
+(defcost fn2-txn-groups-limit :child fn2-txn-groups-limit-child
   :doc "Profile-configured cross-post group limit (:max-groups-per-article, D27).")
 
 (defmachine-arms fn2-txn :declare
@@ -638,6 +641,7 @@
   (<= (fn2-txn-groups-limit fn2-core) *fn2-txn-groups-max*)
   :rule-classes :linear)
 (in-theory (disable fn2-txn-groups-limit))
+(defcore-readonly-child fn2-txn-groups-limit fn2-txn-groups-limit-child)
 (defthm fn2-txn-hash-type
   (unsigned-byte-p 32 (mv-nth 1 (fn2-txn-hash n slot gen off okind oslot ogen fn2-core)))
   :hints (("Goal" :in-theory (e/d (fn2-txn-hash) (unsigned-byte-p)))))
@@ -678,6 +682,7 @@
 (fn2-core-preserves fn2-claim-release-core (c fn2-core) :position 1 :rows nil
   :hints (("Goal" :in-theory (disable fn2-txn-snapshot-read-code nfix))))
 (in-theory (disable fn2-commit-admit-txn fn2-claim-release-core))
+(defcore-product-closure fn2-claim-release-core fn2-claim-release-core-child)
 
 
 ;; At the drain: wake the upload U if it still names this row (ID of
@@ -691,6 +696,8 @@
 (fn2-core-preserves fn2-txn-wake-upload (u id gen fn2-core) :rows nil
   :hints (("Goal" :in-theory (disable fn2-upload-snapshot-read-code))))
 (in-theory (disable fn2-txn-wake-upload))
+(defcore-product-closure fn2-txn-wake-upload fn2-txn-wake-upload-child
+ :teeth (fn2-txn-child-wake-positive fn2-txn-child-wake-negative))
 
 (defun fn2-txn-offer (tx ms mg mo ml c0 g0 c1 g1 hashed okind oslot ogen fn2-core)
   (declare (xargs :stobjs fn2-core :guard (and (fn2-core-wfp fn2-core) (natp hashed))))
@@ -698,6 +705,7 @@
     (fn2-identity-decide-start tx ms mg mo ml (if in1 c1 c0) (if in1 g1 g0) doff okind oslot ogen fn2-core)))
 (fn2-core-preserves fn2-txn-offer (tx ms mg mo ml c0 g0 c1 g1 hashed okind oslot ogen fn2-core) :position 1 :rows nil)
 (in-theory (disable fn2-txn-offer))
+(defcore-product-closure fn2-txn-offer fn2-txn-offer-child)
 
 ;; One counting run over [from, to) of the source (chunk 0 then chunk 1):
 ;; (mv code counted lines).
@@ -723,6 +731,7 @@
   (declare (xargs :stobjs fn2-core :guard (and (fn2-core-wfp fn2-core) (natp counted) (natp to) (natp lines))))
   (fn2-txn-count-run counted to lines c0 g0 c1 g1 (fn2-upload-chunk-cap c0 fn2-core) okind oslot ogen fn2-core))
 (in-theory (disable fn2-txn-count-next))
+(defcore-readonly-child fn2-txn-count-next fn2-txn-count-next-child)
 
 ;; The write slots of an accepted POST (C-S3): the identity admission (C
 ;; §4a; fn2-txn-put-identity), the article row, and the operation outcome,
@@ -990,6 +999,7 @@
 (fn2-core-preserves fn2-txn-put-evidence-for (tx ms mg mo ml c0 g0 c1 g1 hashed h principal okind oslot ogen fn2-core)
   :position 1 :rows nil)
 (in-theory (disable fn2-txn-put-post-for fn2-txn-put-evidence-for))
+(defcore-product-closure fn2-txn-put-evidence-for fn2-txn-put-evidence-for-child)
 
 (defun fn2-txn-prebind-slots (k i tx b0 event fn2-succ-slots fn2-fields)
   (declare (xargs :stobjs (fn2-succ-slots fn2-fields) :measure (nfix k)
@@ -1040,8 +1050,30 @@
 
 ;; ------------------------------------------------------------------------
 ;; The transaction's continuations (materialized after the upload's).
+(defmacro fn2-txn-child-operation-events ()
+ '(progn
+; Derive operation boundaries after all original definitions are available.
+(defcore-product-closure fn2-txn-group-of fn2-txn-group-of-child)
+(defcore-product-closure fn2-txn-add-group fn2-txn-add-group-child)
+(defcore-product-closure fn2-txn-put-post-for fn2-txn-put-post-for-child)
+(defcore-product-closure fn2-txn-prebind fn2-txn-prebind-child)
+(defcore-product-closure fn2-authority-allows fn2-authority-allows-child)
+(defcore-product-closure fn2-authority-depend fn2-authority-depend-child)
+(defcore-product-closure fn2-txn-xref fn2-txn-xref-child)
+(defcore-readonly-closure fn2-txn-principal fn2-txn-principal-child)))
+
 (defmacro fn2-txn-events ()
  '(progn
-(defmachine-arms fn2-txn)
-(defmachine-run fn2-txn)
-))
+   (fn2-txn-child-operation-events)
+   (defmachine-arms fn2-txn)
+   (defmachine-run fn2-txn)))
+
+; Production callback candidate: same arm declarations and run contract, with
+; child operations selected by the actual arm compiler. Qualify this complete
+; callback world before replacing the main core-arm instantiation above.
+(defmacro fn2-txn-child-events ()
+ '(progn
+   (fn2-txn-child-operation-events)
+   (defmachine-arms fn2-txn :children)
+   (defmachine-arms fn2-txn :wrappers)
+   (defmachine-run fn2-txn)))

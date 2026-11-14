@@ -193,3 +193,25 @@
   (and (member-eq 'validation-reader names)
        (not (member-eq 'data-reader names))
        (not (member-eq 'unrelated-reader names)))))
+
+; Unused MV aliases survive translated bodies as HIDE terms. Lowered source
+; must declare those lexical aliases ignorable, retaining one producer call.
+(defun fn2-lower-ignored-result (limit fn2-core)
+ (declare (xargs :stobjs fn2-core :guard (and (natp limit) (fn2-core-wfp fn2-core))))
+ (mv-let (first second) (fn2-lower-read-pair limit fn2-core)
+  (declare (ignore second)) first))
+(defcore-readonly-child fn2-lower-ignored-result fn2-lower-ignored-result-child)
+(fn2-lowering-fixture-teeth fn2-lower-ignored-result fn2-lower-ignored-result-child 1 (37))
+(fn2-check-lowering-teeth fn2-lower-ignored-result)
+(assert-event
+ (equal (fn2-lower-source-form '((lambda (x ignored) x) (producer n) '0))
+        '(let ((x (producer n)) (ignored '0)) (declare (ignorable x ignored)) x)))
+
+(assert-event
+ (and
+  (not (member-eq 'fn2-lower-read-pair-child
+   (fn2-lower-guard-theory 't
+    '(if (equal (mv-nth '0 (fn2-lower-read-pair-child limit fn2-lower-config)) '37) '1 '0)
+    (w state))))
+  (member-eq 'fn2-lower-indexp-lowered-child
+   (fn2-lower-guard-theory '(fn2-lower-indexp-lowered-child i fn2-lower-config) '0 (w state)))))

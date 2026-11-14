@@ -104,6 +104,15 @@
 (defun fn2-update-collision (fn2-product-value-0 fn2-core)
  (declare (xargs :stobjs fn2-core)) (mv fn2-product-value-0 fn2-core))
 (must-fail (defcore-product-child fn2-update-collision fn2-update-collision-child))
+(must-fail (defcore-product-closure fn2-update-unsupported fn2-update-unsupported-family))
+(defun fn2-update-recursive (n fn2-core)
+ (declare (xargs :stobjs fn2-core :measure (nfix n)
+                 :guard (and (natp n) (fn2-core-wfp fn2-core))))
+ (if (zp n) fn2-core (fn2-update-recursive (1- n) fn2-core)))
+(must-fail (defcore-product-closure fn2-update-recursive fn2-update-recursive-family))
+(assert-event
+ (and (not (function-symbolp 'fn2-update-unsupported-family (w state)))
+      (not (function-symbolp 'fn2-update-recursive-family (w state)))))
 ;; Mutation control: retaining the answer and changed child is insufficient.
 ;; This deliberately broken reconstruction also clobbers the unrelated child.
 (defun fn2-update-mutant-core-face (i value fn2-core)
@@ -154,7 +163,11 @@
                  :guard-hints (("Goal" :in-theory (enable fn2-update-source)))))
  (mv-let (code fn2-core) (fn2-update-source i value fn2-core)
   (if (eq code :ok) (fn2-update-source second 43 fn2-core) (mv code fn2-core))))
-(defcore-product-child fn2-update-composed fn2-update-composed-child)
+(encapsulate ()
+ ; Shared core lenses support opaque representation definitions.
+
+ (local (in-theory (disable fn2-corep fn2-core-config update-fn2-core-config)))
+ (defcore-product-child fn2-update-composed fn2-update-composed-child))
 (defthm fn2-update-composed-positive-witness
  (let ((core '(((37 38) 2) ((91) 1))))
   (and (fn2-corep core) (fn2-core-wfp core) (natp 0) (natp 1) (unsigned-byte-p 8 42)
@@ -168,8 +181,10 @@
               '(:bounds (((42 38) 2) ((91) 1))))))
  :rule-classes nil)
 (assert-event
- (equal (fn2-update-call-count 'fn2-update-config-set-value
-          (getpropc 'fn2-update-composed-child 'unnormalized-body nil (w state))) 2))
+ (and (equal (fn2-update-call-count 'fn2-update-child
+               (getpropc 'fn2-update-composed-child 'unnormalized-body nil (w state))) 2)
+      (equal (fn2-update-call-count 'fn2-update-config-set-value
+               (getpropc 'fn2-update-composed-child 'unnormalized-body nil (w state))) 0)))
 (defun fn2-update-composed-init (fn2-core)
  (declare (xargs :stobjs fn2-core :verify-guards nil))
  (let ((fn2-core (fn2-update-fixture-init fn2-core)))
@@ -223,16 +238,16 @@
   (if (< i (fn2-update-config-rows fn2-update-config))
       (nfix (fn2-update-config-value i fn2-update-config)) 0) answer))
 (in-theory (disable fn2-update-read))
-(defcore-readonly-child fn2-update-read fn2-update-read-child)
+
 (defun fn2-update-read-after (i value fn2-core)
  (declare (xargs :stobjs fn2-core :guard (and (natp i) (unsigned-byte-p 8 value) (fn2-core-wfp fn2-core))))
  (mv-let (code fn2-core) (fn2-update-source i value fn2-core)
   (declare (ignore code))
   (mv (fn2-update-read i fn2-core) fn2-core)))
 (in-theory (disable fn2-update-read-after))
-(defcore-product-child fn2-update-read-after fn2-update-read-after-child)
+(defcore-product-closure fn2-update-read-after fn2-update-read-after-child)
 (assert-event
- (equal (fn2-update-call-count 'fn2-update-read-child
+ (equal (fn2-update-call-count 'fn2-update-read-lowered-child
           (getpropc 'fn2-update-read-after-child 'unnormalized-body nil (w state))) 1))
 (defthm fn2-update-read-after-positive
  (and (fn2-corep '(((37) 1) ((91) 1)))
@@ -257,8 +272,10 @@
                 (:executable-counterpart fn2-update-read)))))
  :rule-classes nil)
 (assert-event
- (equal (fn2-update-call-count 'fn2-update-config-set-value
-          (getpropc 'fn2-update-read-after-child 'unnormalized-body nil (w state))) 1))
+ (and (equal (fn2-update-call-count 'fn2-update-child
+               (getpropc 'fn2-update-read-after-child 'unnormalized-body nil (w state))) 1)
+      (equal (fn2-update-call-count 'fn2-update-config-set-value
+               (getpropc 'fn2-update-read-after-child 'unnormalized-body nil (w state))) 0)))
 ;; Mutating evaluation order keeps the same effects but returns stale data.
 (defun fn2-update-read-before-mutant (i value fn2-core)
  (declare (xargs :stobjs fn2-core :guard (and (natp i) (unsigned-byte-p 8 value) (fn2-core-wfp fn2-core))))
@@ -287,14 +304,14 @@
           (pre (and (fn2-corep fn2-core) (fn2-core-wfp fn2-core) (natp 0)))
           (source (fn2-update-read 0 fn2-core)))
     (stobj-let ((fn2-update-config (fn2-core-config fn2-core))) (answer)
-     (let ((child (fn2-update-read-child 0 fn2-update-config)))
+     (let ((child (fn2-update-read-lowered-child 0 fn2-update-config)))
       (and pre (equal source 37) (equal source child)
            (if mutant (not (equal source (+ 1 child))) t)))
      (mv answer fn2-core)))
    answer)))
-(defun fn2-update-read-child-refines-core-positive ()
+(defun fn2-update-read-lowered-child-refines-core-positive ()
  (declare (xargs :verify-guards nil)) (fn2-update-reader-live nil))
-(defun fn2-update-read-child-refines-core-negative ()
+(defun fn2-update-read-lowered-child-refines-core-negative ()
  (declare (xargs :verify-guards nil)) (fn2-update-reader-live t))
 (defun fn2-update-read-after-live (mutant)
  (declare (xargs :verify-guards nil))
@@ -507,3 +524,369 @@
  (declare (xargs :verify-guards nil))
  (and (fn2-conditional-live nil t) (fn2-conditional-live t t)))
 (fn2-check-lowering-teeth fn2-conditional-source)
+
+; Production core fields are opaque. A branch may write only one of the
+; declared output children; reconstruction must not disturb the other one.
+(defun fn2-update-branch-children (flag i value fn2-core)
+ (declare (xargs :stobjs fn2-core
+                 :guard (and (natp i) (unsigned-byte-p 8 value) (fn2-core-wfp fn2-core))))
+ (if flag (fn2-update-source i value fn2-core)
+  (stobj-let ((fn2-update-sibling (fn2-core-sibling fn2-core))) (code fn2-update-sibling)
+   (if (< i (fn2-update-sibling-rows fn2-update-sibling))
+       (let ((fn2-update-sibling (fn2-update-sibling-set-value i value fn2-update-sibling)))
+         (mv :sibling fn2-update-sibling))
+     (mv :bounds fn2-update-sibling))
+   (mv code fn2-core))))
+(encapsulate ()
+ (local (in-theory (disable fn2-corep fn2-core-config fn2-core-sibling
+                            update-fn2-core-config update-fn2-core-sibling)))
+ (defcore-product-closure fn2-update-branch-children fn2-update-branch-children-child))
+(defthm fn2-update-branch-children-positive
+ (and (fn2-corep '(((37) 1) ((91) 1)))
+      (fn2-core-wfp '(((37) 1) ((91) 1)))
+      (natp 0) (unsigned-byte-p 8 42)
+      (equal (fn2-update-branch-children-child-exec-core-face t 0 42 '(((37) 1) ((91) 1)))
+             '(:ok (((42) 1) ((91) 1))))
+      (equal (fn2-update-branch-children-child-exec-core-face nil 0 42 '(((37) 1) ((91) 1)))
+             '(:sibling (((37) 1) ((42) 1)))))
+ :hints (("Goal" :in-theory
+   (e/d (fn2-update-branch-children-child-exec-core-face fn2-update-branch-children-child)
+        ((:executable-counterpart fn2-update-branch-children-child-exec-core-face)))))
+ :rule-classes nil)
+(defthm fn2-update-branch-children-refusal
+ (and (fn2-corep '(((37) 1) ((91) 1)))
+      (fn2-core-wfp '(((37) 1) ((91) 1)))
+      (natp 9) (unsigned-byte-p 8 42)
+      (equal (fn2-update-branch-children-child-exec-core-face t 9 42 '(((37) 1) ((91) 1)))
+             '(:bounds (((37) 1) ((91) 1))))
+      (equal (fn2-update-branch-children-child-exec-core-face nil 9 42 '(((37) 1) ((91) 1)))
+             '(:bounds (((37) 1) ((91) 1)))))
+ :hints (("Goal" :in-theory
+   (e/d (fn2-update-branch-children-child-exec-core-face fn2-update-branch-children-child)
+        ((:executable-counterpart fn2-update-branch-children-child-exec-core-face)))))
+ :rule-classes nil)
+
+; The source writes in the opposite order from the declared child product.
+; Both results and distinct new values must survive reconstruction.
+(defun fn2-update-reverse-order (i value fn2-core)
+ (declare (xargs :stobjs fn2-core
+                 :guard (and (natp i) (unsigned-byte-p 8 value) (fn2-core-wfp fn2-core))))
+ (mv-let (first fn2-core) (fn2-update-branch-children nil i 43 fn2-core)
+  (mv-let (second fn2-core) (fn2-update-source i value fn2-core)
+   (mv first second fn2-core))))
+(encapsulate ()
+ ; Shared core lenses generate the corresponding read-over-write matrix.
+
+
+
+
+ (local (in-theory (disable fn2-corep fn2-core-config fn2-core-sibling
+                            update-fn2-core-config update-fn2-core-sibling)))
+ (defcore-product-closure fn2-update-reverse-order fn2-update-reverse-order-child))
+(defthm fn2-update-reverse-order-positive
+ (and (fn2-corep '(((37) 1) ((91) 1)))
+      (fn2-core-wfp '(((37) 1) ((91) 1)))
+      (natp 0) (unsigned-byte-p 8 42)
+      (equal (fn2-update-reverse-order-child-exec-core-face 0 42 '(((37) 1) ((91) 1)))
+             '(:sibling :ok (((42) 1) ((43) 1)))))
+ :hints (("Goal" :in-theory
+   (e/d (fn2-update-reverse-order-child-exec-core-face fn2-update-reverse-order-child)
+        ((:executable-counterpart fn2-update-reverse-order-child-exec-core-face)))))
+ :rule-classes nil)
+(defthm fn2-update-reverse-order-refusal
+ (and (fn2-corep '(((37) 1) ((91) 1)))
+      (fn2-core-wfp '(((37) 1) ((91) 1)))
+      (natp 9) (unsigned-byte-p 8 42)
+      (equal (fn2-update-reverse-order-child-exec-core-face 9 42 '(((37) 1) ((91) 1)))
+             '(:bounds :bounds (((37) 1) ((91) 1)))))
+ :hints (("Goal" :in-theory
+   (e/d (fn2-update-reverse-order-child-exec-core-face fn2-update-reverse-order-child)
+        ((:executable-counterpart fn2-update-reverse-order-child-exec-core-face)))))
+ :rule-classes nil)
+
+; The compositional lemma covers a proper core spine even when a child's
+; logical contents violate its type. This is not an executable guard claim.
+(defthm fn2-update-spine-with-invalid-child-control
+ (let ((core '(((999) 1) ((91) 1))))
+  (and (fn2-product-spinep 2 core)
+       (not (fn2-corep core))
+       (equal (fn2-update-source 0 42 core) '(:ok (((42) 1) ((91) 1))))
+       (equal (fn2-update-child-exec-core-face 0 42 core)
+              (fn2-update-source 0 42 core))))
+ :hints (("Goal" :in-theory
+    (e/d (fn2-product-spinep fn2-update-source fn2-update-child-exec-core-face fn2-update-child
+          fn2-update-config-set-value update-fn2-update-config-value$ai)
+         ((:executable-counterpart fn2-update-child-exec-core-face)
+          (:executable-counterpart fn2-update-config-set-value)
+          (:executable-counterpart update-fn2-update-config-value$ai)))))
+ :rule-classes nil)
+(defthm fn2-update-spine-hypothesis-removal-control
+ (and (not (fn2-product-spinep 2 nil))
+      (equal (fn2-conditional-source nil 0 42 nil) '(:off nil))
+      (equal (fn2-conditional-child-exec-core-face nil 0 42 nil) '(:off (nil)))
+      (not (equal (fn2-conditional-source nil 0 42 nil)
+                  (fn2-conditional-child-exec-core-face nil 0 42 nil))))
+ :hints (("Goal" :in-theory
+    (e/d (fn2-product-spinep fn2-conditional-source fn2-conditional-child-exec-core-face fn2-conditional-child)
+         ((:executable-counterpart fn2-conditional-child-exec-core-face)))))
+ :rule-classes nil)
+(assert-event
+ (let ((row (cdr (assoc-eq 'fn2-update-source (table-alist 'fn2-core-lowered (w state))))))
+  (and (eq (fn2-decl-get :shape-refinement row) 'fn2-update-child-spine-execution-refines-core)
+       (eq (fn2-decl-get :shape-reverse row) 'fn2-update-child-core-to-execution)
+       (eq (fn2-decl-get :shape-preserved row) 'fn2-update-child-core-spine-preserved)
+       (equal (fn2-update-call-count 'fn2-product-spinep
+               (getpropc 'fn2-update-child-exec-core-face 'unnormalized-body nil (w state))) 0))))
+
+; Reusing a mutable boundary must preserve its full ABI and verified guard.
+(must-fail
+ (encapsulate ()
+  (local
+   (make-event
+    (value `(table fn2-core-lowered 'fn2-update-branch-children
+             ',(append '(:written (fn2-update-config))
+                (cdr (assoc-eq 'fn2-update-branch-children
+                       (table-alist 'fn2-core-lowered (w state)))))))))
+  (defcore-product-child fn2-update-reverse-order fn2-update-refused-abi)))
+(defun fn2-update-unverified-callee (flag i value fn2-update-config fn2-update-sibling)
+ (declare (ignore flag i value)
+          (xargs :stobjs (fn2-update-config fn2-update-sibling) :verify-guards nil))
+ (mv :opaque fn2-update-config fn2-update-sibling))
+(must-fail
+ (encapsulate ()
+  (local
+   (make-event
+    (value `(table fn2-core-lowered 'fn2-update-branch-children
+             ',(append '(:child fn2-update-unverified-callee)
+                (cdr (assoc-eq 'fn2-update-branch-children
+                       (table-alist 'fn2-core-lowered (w state)))))))))
+  (defcore-product-child fn2-update-reverse-order fn2-update-refused-guard)))
+(assert-event
+ (and (not (function-symbolp 'fn2-update-refused-abi (w state)))
+      (not (function-symbolp 'fn2-update-refused-guard (w state)))))
+
+; The intermediate mutable boundary is deliberately undeclared: the closure
+; must derive it before the caller, then retain one call per source occurrence.
+(defun fn2-update-auto-inner (i value fn2-core)
+ (declare (xargs :stobjs fn2-core
+                 :guard (and (natp i) (unsigned-byte-p 8 value) (fn2-core-wfp fn2-core))))
+ (fn2-update-source i value fn2-core))
+(defun fn2-update-auto-outer (i value fn2-core)
+ (declare (xargs :stobjs fn2-core
+                 :guard (and (natp i) (unsigned-byte-p 8 value) (fn2-core-wfp fn2-core))))
+ (mv-let (first fn2-core) (fn2-update-auto-inner i value fn2-core)
+  (mv-let (second fn2-core) (fn2-update-auto-inner i 43 fn2-core)
+   (mv first second fn2-core))))
+(defcore-product-closure fn2-update-auto-outer fn2-update-auto-outer-child)
+(assert-event
+ (and (equal (fn2-update-call-count 'fn2-update-auto-inner-lowered-child
+               (getpropc 'fn2-update-auto-outer-child 'unnormalized-body nil (w state))) 2)
+      (equal (fn2-update-call-count 'fn2-update-child
+               (getpropc 'fn2-update-auto-inner-lowered-child 'unnormalized-body nil (w state))) 1)
+      (equal (fn2-update-call-count 'fn2-update-config-set-value
+               (getpropc 'fn2-update-auto-outer-child 'unnormalized-body nil (w state))) 0)))
+(defthm fn2-update-auto-outer-positive
+ (and (fn2-corep '(((37) 1) ((91) 1)))
+      (fn2-core-wfp '(((37) 1) ((91) 1)))
+      (natp 0) (unsigned-byte-p 8 42)
+      (equal (fn2-update-auto-outer-child-core-face 0 42 '(((37) 1) ((91) 1)))
+             '(:ok :ok (((43) 1) ((91) 1)))))
+ :rule-classes nil)
+(defthm fn2-update-auto-outer-refusal
+ (and (fn2-corep '(((37) 1) ((91) 1)))
+      (fn2-core-wfp '(((37) 1) ((91) 1)))
+      (natp 9) (unsigned-byte-p 8 42)
+      (equal (fn2-update-auto-outer-child-core-face 9 42 '(((37) 1) ((91) 1)))
+             '(:bounds :bounds (((37) 1) ((91) 1)))))
+ :rule-classes nil)
+
+; Original preservation contracts select optional summaries. The child facts
+; are proved independently, and caller guards must use them without unfolding.
+(defun fn2-update-invariant-source (fn2-core)
+ (declare (xargs :stobjs fn2-core :guard (fn2-core-wfp fn2-core)))
+ (fn2-update-source 0 42 fn2-core))
+(defthm fn2-update-invariant-source-preserves-type
+ (implies (and (fn2-corep fn2-core) (fn2-core-wfp fn2-core))
+          (fn2-corep (mv-nth 1 (fn2-update-invariant-source fn2-core)))))
+(defthm fn2-update-invariant-source-preserves-wfp
+ (implies (and (fn2-corep fn2-core) (fn2-core-wfp fn2-core))
+          (fn2-core-wfp (mv-nth 1 (fn2-update-invariant-source fn2-core)))))
+(defcore-product-child fn2-update-invariant-source fn2-update-invariant-child)
+(assert-event
+ (let ((row (cdr (assoc-eq 'fn2-update-invariant-source (table-alist 'fn2-core-lowered (w state))))))
+  (and (equal (fn2-decl-get :child-invariants row)
+               '(fn2-update-invariant-child-outputs-preserved
+                 fn2-update-invariant-child-output-fn2-update-config-invariants))
+       (equal (fn2-product-guard-callees '(fn2-update-invariant-source) (w state)) nil))))
+(defun fn2-update-invariant-caller (fn2-core)
+ (declare (xargs :stobjs fn2-core :guard (fn2-core-wfp fn2-core)))
+ (mv-let (first fn2-core) (fn2-update-invariant-source fn2-core)
+  (mv-let (second fn2-core) (fn2-update-invariant-source fn2-core)
+   (mv first second fn2-core))))
+; Names alone must not select summaries: these formulas are unrelated.
+(defthm fn2-update-invariant-caller-preserves-type t :rule-classes nil)
+(defthm fn2-update-invariant-caller-preserves-wfp t :rule-classes nil)
+(assert-event
+ (not (fn2-product-source-invariantp 'fn2-update-invariant-caller
+         'fn2-corep "-PRESERVES-TYPE" (w state))))
+(defcore-product-child fn2-update-invariant-caller fn2-update-invariant-caller-child)
+(defthm fn2-update-invariant-caller-positive
+ (and (fn2-corep '(((37) 1) ((91) 1)))
+      (fn2-core-wfp '(((37) 1) ((91) 1)))
+      (equal (fn2-update-invariant-caller-child-core-face '(((37) 1) ((91) 1)))
+             '(:ok :ok (((42) 1) ((91) 1)))))
+ :rule-classes nil)
+
+(defthm fn2-update-invariant-guard-removal
+ (and (not (fn2-update-config-wfp '((37) 2)))
+      (not (fn2-update-config-wfp
+             (mv-nth 1 (fn2-update-invariant-child '((37) 2)))))))
+(assert-event
+ (not (fn2-decl-get :child-invariants
+        (cdr (assoc-eq 'fn2-update-invariant-caller (table-alist 'fn2-core-lowered (w state)))))))
+
+; A one-child, no-scalar product returns that stobj directly, not an MV tuple.
+(defun fn2-update-single-source (fn2-core)
+ (declare (xargs :stobjs fn2-core :guard (fn2-core-wfp fn2-core)))
+ (mv-let (code fn2-core) (fn2-update-invariant-source fn2-core)
+  (declare (ignore code)) fn2-core))
+(defthm fn2-update-single-source-preserves-type
+ (implies (and (fn2-corep fn2-core) (fn2-core-wfp fn2-core))
+          (fn2-corep (fn2-update-single-source fn2-core))))
+(defthm fn2-update-single-source-preserves-wfp
+ (implies (and (fn2-corep fn2-core) (fn2-core-wfp fn2-core))
+          (fn2-core-wfp (fn2-update-single-source fn2-core))))
+(defcore-product-child fn2-update-single-source fn2-update-single-child)
+(assert-event
+ (and (equal (getpropc 'fn2-update-single-child 'stobjs-out nil (w state)) '(fn2-update-config))
+      (consp (fn2-decl-get :child-invariants
+        (cdr (assoc-eq 'fn2-update-single-source (table-alist 'fn2-core-lowered (w state))))))))
+(defthm fn2-update-single-positive-and-wrong-projection-control
+ (and (fn2-update-configp '((37) 1))
+      (fn2-update-config-wfp '((37) 1))
+      (equal (fn2-update-single-child '((37) 1)) '((42) 1))
+      (fn2-update-configp (fn2-update-single-child '((37) 1)))
+      (fn2-update-config-wfp (fn2-update-single-child '((37) 1)))
+      (not (fn2-update-configp (mv-nth 0 (fn2-update-single-child '((37) 1))))))
+ :rule-classes nil)
+(defun fn2-update-single-caller (fn2-core)
+ (declare (xargs :stobjs fn2-core :guard (fn2-core-wfp fn2-core)))
+ (let ((fn2-core (fn2-update-single-source fn2-core)))
+  (fn2-update-single-source fn2-core)))
+(defcore-product-child fn2-update-single-caller fn2-update-single-caller-child)
+(defthm fn2-update-single-whole-core-positive
+ (and (fn2-corep '(((37) 1) ((91) 1)))
+      (fn2-core-wfp '(((37) 1) ((91) 1)))
+      (equal (fn2-update-single-caller-child-core-face '(((37) 1) ((91) 1)))
+             '(((42) 1) ((91) 1))))
+ :rule-classes nil)
+
+; Singleton scalar recursion reuses the same product emitter and proof contract.
+(defun fn2-update-toggle (fn2-core)
+ (declare (xargs :stobjs fn2-core :guard (fn2-core-wfp fn2-core)))
+ (stobj-let ((fn2-update-config (fn2-core-config fn2-core))) (code fn2-update-config)
+  (if (< 0 (fn2-update-config-rows fn2-update-config))
+      (let* ((old (fn2-update-config-value 0 fn2-update-config))
+             (fn2-update-config (fn2-update-config-set-value 0 (if (equal old 37) 42 37) fn2-update-config)))
+        (mv :ok fn2-update-config))
+    (mv :bounds fn2-update-config))
+  (mv code fn2-core)))
+(defthm fn2-update-toggle-preserves-type
+ (implies (and (fn2-corep fn2-core) (fn2-core-wfp fn2-core))
+          (fn2-corep (mv-nth 1 (fn2-update-toggle fn2-core)))))
+(defthm fn2-update-toggle-preserves-wfp
+ (implies (and (fn2-corep fn2-core) (fn2-core-wfp fn2-core))
+          (fn2-core-wfp (mv-nth 1 (fn2-update-toggle fn2-core)))))
+(defun fn2-update-repeat (n count fn2-core)
+ (declare (xargs :stobjs fn2-core :measure (nfix n)
+                 :guard (and (natp n) (natp count) (fn2-core-wfp fn2-core))))
+ (if (zp n) (mv :ok count fn2-core)
+  (mv-let (code fn2-core) (fn2-update-toggle fn2-core)
+   (if (eq code :ok) (fn2-update-repeat (- n 1) (+ count 1) fn2-core)
+    (mv code count fn2-core)))))
+(defthm fn2-update-repeat-preserves-type
+ (implies (and (fn2-corep fn2-core) (fn2-core-wfp fn2-core))
+          (fn2-corep (mv-nth 2 (fn2-update-repeat n count fn2-core)))))
+(defthm fn2-update-repeat-preserves-wfp
+ (implies (and (fn2-corep fn2-core) (fn2-core-wfp fn2-core))
+          (fn2-core-wfp (mv-nth 2 (fn2-update-repeat n count fn2-core)))))
+(defcore-product-closure fn2-update-repeat fn2-update-repeat-child)
+
+(defthm fn2-update-repeat-whole-result-controls
+ (and (fn2-corep '(((37) 1) ((91) 1)))
+      (fn2-core-wfp '(((37) 1) ((91) 1)))
+      (natp 2) (natp 10)
+      (equal (fn2-update-repeat-child-core-face 1 10 '(((37) 1) ((91) 1)))
+             '(:ok 11 (((42) 1) ((91) 1))))
+      (equal (fn2-update-repeat-child-core-face 2 10 '(((37) 1) ((91) 1)))
+             '(:ok 12 (((37) 1) ((91) 1))))
+      (equal (fn2-update-repeat-child-core-face 2 10 '((nil 0) ((91) 1)))
+             '(:bounds 10 ((nil 0) ((91) 1))))
+      (equal (fn2-update-repeat-child-core-face 2 10 '(((37) 1) ((91) 1)))
+             (fn2-update-repeat 2 10 '(((37) 1) ((91) 1)))))
+ :hints (("Goal" :expand ((:free (n count fn2-core) (fn2-update-repeat n count fn2-core))) :in-theory (e/d (fn2-update-repeat fn2-update-toggle)
+   ((:executable-counterpart fn2-update-repeat) (:executable-counterpart fn2-update-toggle)))))
+ :rule-classes nil)
+(defthm fn2-update-repeat-spine-removal-control
+ (and (not (fn2-product-spinep 2 nil))
+      (equal (fn2-update-repeat-child-core-face 0 10 nil)
+             (fn2-update-repeat 0 10 nil))
+      (not (equal (fn2-update-repeat-child-exec-core-face 0 10 nil)
+                  (fn2-update-repeat 0 10 nil))))
+ :hints (("Goal" :expand ((fn2-update-repeat-child 0 10 nil))
+   :in-theory (e/d (fn2-update-repeat-child-exec-core-face fn2-update-repeat-child)
+    ((:executable-counterpart fn2-update-repeat-child-exec-core-face)
+     (:executable-counterpart fn2-update-repeat-child)))))
+ :rule-classes nil)
+(assert-event
+ (and (equal (fn2-update-call-count 'fn2-update-repeat-child
+               (getpropc 'fn2-update-repeat-child 'unnormalized-body nil (w state))) 1)
+      (equal (fn2-update-call-count 'fn2-update-toggle-lowered-child
+               (getpropc 'fn2-update-repeat-child 'unnormalized-body nil (w state))) 1)
+      (equal (getpropc 'fn2-update-repeat-child 'stobjs-out nil (w state))
+             '(nil nil fn2-update-config))
+      (eq (symbol-class 'fn2-update-repeat-child (w state)) :common-lisp-compliant)))
+(defun fn2-update-state-measure (n fn2-core)
+ (declare (xargs :stobjs fn2-core :guard (natp n) :measure (+ (nfix n) (acl2-count fn2-core))))
+ (if (zp n) (mv :ok fn2-core)
+  (fn2-update-state-measure (- n 1) fn2-core)))
+(must-fail (defcore-recursive-product-child fn2-update-state-measure fn2-update-state-measure-child))
+(mutual-recursion
+ (defun fn2-update-mutual-a (n fn2-core)
+  (declare (xargs :stobjs fn2-core :guard (natp n) :measure (nfix n)))
+  (if (zp n) (mv :ok fn2-core) (fn2-update-mutual-b (- n 1) fn2-core)))
+ (defun fn2-update-mutual-b (n fn2-core)
+  (declare (xargs :stobjs fn2-core :guard (natp n) :measure (nfix n)))
+  (if (zp n) (mv :ok fn2-core) (fn2-update-mutual-a (- n 1) fn2-core))))
+(must-fail (defcore-recursive-product-child fn2-update-mutual-a fn2-update-mutual-child))
+(assert-event
+ (and (not (assoc-eq 'fn2-update-state-measure (table-alist 'fn2-core-lowered (w state))))
+      (not (assoc-eq 'fn2-update-mutual-a (table-alist 'fn2-core-lowered (w state))))
+      (not (function-symbolp 'fn2-update-state-measure-child (w state)))
+      (not (function-symbolp 'fn2-update-mutual-child (w state)))))
+
+(defun fn2-update-repeat-runtime-witness ()
+ (declare (xargs :verify-guards nil))
+ (with-local-stobj fn2-core
+  (mv-let (answer fn2-core)
+   (let* ((fn2-core (fn2-update-fixture-init fn2-core))
+          (pre (and (fn2-corep fn2-core) (fn2-core-wfp fn2-core) (natp 2) (natp 10))))
+    (mv-let (source-code source-count fn2-core) (fn2-update-repeat 2 10 fn2-core)
+     (let* ((source-after (fn2-update-fixture-snapshot fn2-core))
+            (fn2-core (fn2-update-fixture-init fn2-core)))
+      (mv-let (code count fn2-core) (fn2-update-repeat-child-core-face 2 10 fn2-core)
+       (let* ((after (fn2-update-fixture-snapshot fn2-core))
+              (fn2-core (fn2-update-fixture-init fn2-core)))
+        (mv-let (mutant-code mutant-count fn2-core) (fn2-update-repeat-child-core-face 1 10 fn2-core)
+         (mv (and pre (eq source-code code) (eq code :ok) (equal source-count count)
+                  (equal count 12) (equal source-after after) (equal after '(1 37 1 91))
+                  (eq mutant-code :ok) (equal mutant-count 11)
+                  (not (equal mutant-count count))
+                  (equal (fn2-update-fixture-snapshot fn2-core) '(1 42 1 91))) fn2-core)))))))
+   answer)))
+(assert-event (fn2-update-repeat-runtime-witness))
+(must-fail (defcore-product-closure fn2-update-state-measure fn2-update-state-measure-closure))
+(must-fail (defcore-product-closure fn2-update-mutual-a fn2-update-mutual-closure))
+(assert-event
+ (and (not (function-symbolp 'fn2-update-state-measure-closure (w state)))
+      (not (function-symbolp 'fn2-update-mutual-closure (w state)))))

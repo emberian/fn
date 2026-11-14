@@ -26,6 +26,7 @@ ACL2_BOOKS = \
   books/assembly-callbacks-d-conn \
   books/assembly-callbacks-d-cursor \
   books/assembly-callbacks-d-txn \
+  books/assembly-callbacks-d-txn-children \
   books/assembly-callbacks-d-upload \
   books/assembly-callbacks-e-auth \
   books/assembly-callbacks-e-cns \
@@ -86,6 +87,7 @@ ACL2_BOOKS = \
   books/core-children \
   books/core-children-a \
   books/core-lowering \
+  books/core-lenses \
   books/core-product-lowering \
   books/core-walk \
   books/crash-model \
@@ -366,3 +368,5 @@ ACL2_BOOKS = \
 .PHONY: certify
 certify:
 	python3 tools/certify_books.py $(BOOKS)
+
+ACL2_BOOKS += books/square-evidence tests/core-snapshot-support tests/txn-child-extraction-unit
