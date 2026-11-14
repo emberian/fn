@@ -198,3 +198,12 @@ Candidate preparation/retention/check/install and publication begin/pack/seal/
 check/issue now declare exact multi-child WFP/row preservation contracts for
 core composition. These source contracts are shape statements, not admitted
 proofs or lifetime/durability guarantees.
+
+`books/checkpoint-member.lisp` supplies pure checkpoint-installation member
+serialization to the existing B singleton planner. Its capacity includes 32
+staging bytes plus both codec maxima. The descriptor hash is staged in that
+same owned workspace, the generated frame/body encode after it, and the shared
+overlap-safe copy moves the complete member down before fill shrinks. It neither
+chooses a containing batch nor authorizes a checkpoint. Production admission
+must require actual builder-produced evidence tied to the frozen C root and
+materialization generation; a merely checked/read descriptor cannot substitute.
