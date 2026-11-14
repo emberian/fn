@@ -1,0 +1,62 @@
+; Helper-level evidence only: copied published commitments versus device units.
+; These controls invoke the actual cursor checker, not the served machine.
+; Source-authored; no claim of certification or execution accompanies this file.
+(in-package "ACL2")
+(include-book "upload-stored-source-unit")
+
+(defun fn2-cli-check (bytes len hashes index slot gen fn2-core)
+  (declare (xargs :stobjs fn2-core :verify-guards nil))
+  (stobj-let ((fn2-b3 (fn2-core-b3 fn2-core))
+              (fn2-digests (fn2-core-digests fn2-core))
+              (fn2-pool (fn2-core-pool fn2-core)))
+    (code fn2-b3 fn2-digests)
+    (fn2-cursor-location-check-of bytes len hashes index slot gen *fn2-upload-kind* 0 1
+                                  fn2-b3 fn2-digests fn2-pool)
+    (mv code fn2-core)))
+(defun fn2-cli-case (expected device count len hashes index answer fn2-core)
+  (declare (xargs :stobjs fn2-core :verify-guards nil))
+  (b* ((fn2-core (fn2-core-init *fn2-txn-posting-profile* fn2-core))
+       ((mv c slot gen fn2-core) (fn2-core-reserve 2 *fn2-upload-kind* 0 1 fn2-core))
+       ((unless (eq c :ok)) (mv nil fn2-core))
+       ;; The expected vector is independent of the bytes supplied as device data.
+       (prefix (append expected (make-list (nfix (- *fn2-article-location-hashes-max* (len expected)))
+                                          :initial-element 0)))
+       ((mv c fn2-core) (fn2-uss-write (append prefix device) slot gen 0 fn2-core))
+       ((unless (eq c :ok)) (mv nil fn2-core))
+       ((mv code fn2-core) (fn2-cli-check count len hashes index slot gen fn2-core)))
+    (mv (eq code answer) fn2-core)))
+(defun fn2-cli-old-count-gate (count len)
+  (declare (xargs :guard t))
+  (and (natp count) (natp len) (equal count len)))
+(defun fn2-cli-controls ()
+  (declare (xargs :verify-guards nil))
+  (with-local-stobj fn2-core
+    (mv-let (answer fn2-core)
+      (b* ((short '(65 13 10 66 13 10))
+           (payload (make-list 4032 :initial-element 65))
+           (alternate-payload (make-list 4032 :initial-element 66))
+           ;; Each unit carries two internally consistent digest fields plus
+           ;; its payload. This models coherent substitution without claiming
+           ;; that these bytes decode as a source-manifest entry.
+           (unit (append (fn-blake3 payload) (fn-blake3 payload) payload))
+           (alternate (append (fn-blake3 alternate-payload) (fn-blake3 alternate-payload) alternate-payload))
+           (hash (fn-blake3 unit))
+           (other-hash (fn-blake3 alternate))
+           (padded (append short (make-list (- 4096 (len short)) :initial-element 0)))
+           (changed-padding (update-nth 4095 1 padded))
+           ((mv a fn2-core) (fn2-cli-case (fn-blake3 short) short (len short) (len short) 32 0 :ok fn2-core))
+           ((mv b fn2-core) (fn2-cli-case hash unit 4096 4096 32 0 :ok fn2-core))
+           ((mv c fn2-core) (fn2-cli-case hash alternate 4096 4096 32 0 :hash fn2-core))
+           ((mv d fn2-core) (fn2-cli-case (append other-hash hash) unit 4096 4096 64 0 :hash fn2-core))
+           ((mv e fn2-core) (fn2-cli-case hash unit 4095 4096 32 0 :io fn2-core))
+           ((mv f fn2-core) (fn2-cli-case nil unit 4096 4096 0 0 :bounds fn2-core))
+           ((mv g fn2-core) (fn2-cli-case hash unit 4096 4096 32 1 :bounds fn2-core))
+           ((mv h fn2-core) (fn2-cli-case (fn-blake3 padded) padded 4096 4096 32 0 :ok fn2-core))
+           ((mv i fn2-core) (fn2-cli-case (fn-blake3 padded) changed-padding 4096 4096 32 0 :hash fn2-core))
+           ((mv j fn2-core) (fn2-cli-case (append hash other-hash) alternate 4096 4096 64 1 :ok fn2-core)))
+        (mv (and a b c d e f g h i j
+                 (not (equal hash other-hash))
+                 (fn2-cli-old-count-gate (len alternate) (len unit))
+                 (fn2-cli-old-count-gate (len changed-padding) (len padded))) fn2-core))
+      answer)))
+(assert-event (fn2-cli-controls))

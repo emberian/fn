@@ -5,6 +5,8 @@
 ; read over one stream stops exactly at a position (range.lisp).
 (in-package "ACL2")
 (include-book "runs-schema")
+(include-book "commit-format")
+(defconst *fn2-article-location-hashes-max* (* 32 *fn2-commit-write-resources*))
 (fn2-book-layer :c)
 
 ; Article metadata, latest-only: the article's birth event, its state, the
@@ -18,7 +20,8 @@
 ; digests); its storage domain is the node's one domain. Written by the
 ; transaction at :prepare from its upload's payload extent; read by
 ; ARTICLE/HEAD/BODY before fn2-block-read.
-(defrunschema fn2-article :id 2
+(make-event
+ `(defrunschema fn2-article :id 2
  :key ((article (:id article)))
  :value ((birth (:id event)) (state (:enum fn2-article-state (:live :withdrawn))) (version (:id version))
          (source :digest) (bytes :varint) (lines :varint)
@@ -26,8 +29,9 @@
          (location-allocation (:id allocation))
          (location-kind (:enum fn2-article-location-kind (:raw-source :source-manifest)))
          ;; BLAKE3 of actual stored bytes, including an injected Message-ID.
-         (stored-source :digest))
- :merge :latest)
+         (stored-source :digest)
+         (location-hashes (:octets ,*fn2-article-location-hashes-max*)))
+ :merge :latest))
 
 ; Overview, keyed (group, number) from first materialization; the stored
 ; overview line (subject, from, date, message-id, references, bytes,

@@ -141,8 +141,35 @@
          (:do (hcode) (fn2-upload-stored-hash hrow slot gen off row-stored-hashed len (equal done total)
                                                row-lslot row-lgen) :accept (:ok))
          (:set (stored-hashed done))
-         (:next (:if (equal done total) :store-write :stored-hash))
+         (:next (:if (equal done total) :location-hash :stored-hash))
          (:charge :bytes *fn2-commit-unit-bytes* :steps *fn2-work-transition* :runnable t))))
+  (:location-hash :on-refusal ((:stop :machine-phase))
+   (:let total (+ row-ilen row-hashed))
+   (:cond ((fn2-am-manifestp total) (:next :store-write)
+           (:charge :steps *fn2-work-transition* :runnable t))
+          ((not (and (natp budget) (< 0 budget))) (:yield))
+          ((equal row-mstep 0)
+           (:do (zcode) (fn2-upload-page-zero-to *fn2-upload-page-stage* row-lslot row-lgen)
+            :accept ()
+            :case (((:ok) (:set (mstep 1))
+                    (:charge :bytes *fn2-commit-unit-bytes* :steps *fn2-work-transition* :runnable t))
+                   ((:more) (:charge :bytes *fn2-commit-unit-bytes* :steps *fn2-work-transition* :runnable t)))))
+          ((equal row-mstep 1)
+           (:do (gcode glen) (fn2-upload-stage row-lslot row-lgen row-ilen
+                              row-c0-slot row-c0-gen row-c1-slot row-c1-gen
+                              (* row-location-hashed *fn2-commit-unit-bytes*) row-hashed) :accept (:ok))
+           (:set (mstep 2))
+           (:charge :bytes *fn2-commit-unit-bytes* :steps *fn2-work-transition* :runnable t))
+          (t
+           (:let glen (min *fn2-commit-unit-bytes*
+                        (nfix (- total (* row-location-hashed *fn2-commit-unit-bytes*)))))
+           (:let hrow (fn2-upload-hasher id))
+           (:do (hcode) (fn2-upload-location-hash hrow row-lslot row-lgen
+                          *fn2-upload-page-stage* glen row-location-hashed) :accept (:ok))
+           (:let units (+ 1 row-location-hashed))
+           (:set (location-hashed units) (mstep 1))
+           (:next (:if (< (* units *fn2-commit-unit-bytes*) total) :location-hash :store-write))
+           (:charge :bytes *fn2-commit-unit-bytes* :steps *fn2-work-transition* :runnable t))))
   ;; :store-write: the next write (a piece of one extent's octets, a block,
   ;; or a manifest unit); a manifest's header goes into the store page first
   ;; (the page zeroed to it a unit per step, MSTEP 0, then the header), and a
@@ -192,10 +219,16 @@
            (:do (zcode) (fn2-upload-page-zero-to (+ at *fn2-commit-unit-bytes*) row-lslot row-lgen)
             :accept ()
             :case (((:ok)
-                    (:issue (fn2-issue-write (+ (* *fn2-commit-extent-bytes* row-pext) (* *fn2-commit-unit-bytes* row-munit))
+                    (:if (equal row-mstep 3)
+                         ((:issue (fn2-issue-write (+ (* *fn2-commit-extent-bytes* row-pext) (* *fn2-commit-unit-bytes* row-munit))
                                              row-lslot row-lgen at *fn2-commit-unit-bytes* 0
                                              :principal row-principal-slot)
-                     :ok ((:set (sready 0)) (:next :store-wrote) (:wait :completion :bytes 4096 :steps *fn2-work-small*))))
+                      :ok ((:set (sready 0)) (:next :store-wrote) (:wait :completion :bytes 4096 :steps *fn2-work-small*))))
+                         ((:let hrow (fn2-upload-hasher id))
+                          (:do (hcode) (fn2-upload-location-hash hrow row-lslot row-lgen at
+                                         *fn2-commit-unit-bytes* row-munit) :accept (:ok))
+                          (:set (mstep 3) (location-hashed (+ 1 row-munit)))
+                          (:charge :bytes *fn2-commit-unit-bytes* :steps *fn2-work-transition* :runnable t))))
                    ((:more) (:charge :bytes *fn2-commit-unit-bytes* :steps *fn2-work-transition* :runnable t)))))))))
   (:store-wrote :on-refusal ((:stop :machine-phase))
    (:let total (+ row-ilen row-hashed))
@@ -235,7 +268,7 @@
           ;; a manifest unit stored: the next, or the fence after the last
           ((and (fn2-am-manifestp total) (<= total row-pdone) (equal row-scount *fn2-commit-unit-bytes*))
            (:let u2 (+ 1 row-munit))
-           (:set (munit u2) (sready 0))
+           (:set (munit u2) (sready 0) (mstep 0))
            (:next (:if (< (* *fn2-commit-unit-bytes* u2) row-mfill) :store-write :store-fence))
            (:charge :steps *fn2-work-transition* :runnable t))
           (t (:set (word *fn2-upload-word-not-stored*) (sready 0)) (:next :sealed)
