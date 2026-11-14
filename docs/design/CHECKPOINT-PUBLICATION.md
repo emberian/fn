@@ -254,13 +254,15 @@ the package discovery hook loads unrelated surface tests despite a filename filt
 
 `checkpoint-build-state.lisp`, `checkpoint-descriptor.lisp` and
 `checkpoint-build.lisp` now hold the concrete descriptor job. BEGIN checks the
-actual held C owner/token and completed source traversal, requires all five
-root constructor carriers for that same token, checks the owned page/scratch
-leases, and calls the real shared storage reservation operation before any
+actual held C owner/token, checks the owned page/scratch leases, and calls
+the real shared storage reservation operation before any
 codec sees its physical identity. The job stores that exact extent/epoch/
 allocation, workspace handles, cut from C, private checker stripe and write
 completion cursor. No caller supplies a cut, reservation identity or readiness
-boolean to this admission.
+boolean to this admission. BEGIN enters `:await-roots`: the descriptor identity
+is available before the allocation map seals its construction set. The separate
+ROOTS-READY transition requires completed actual C traversal and all five
+physically completed same-token root carriers before entering `:pack`.
 
 The generated descriptor/page-header codecs produce a padded 4 KiB descriptor
 inside its 64 KiB allocation. Actual page sealing supplies its expected hash;
@@ -280,7 +282,41 @@ closure still precede promotion and allocator-cut advancement.
 The five root carriers now have construction token, source-complete and intended/
 completed-byte fields. Their real metadata/map/proof/frontier/arena constructors
 remain required; no generic setter authorizes those flags. Until those producers
-connect, production BEGIN refuses `:roots-pending`. A decoded descriptor clears
+connect, ROOTS-READY refuses `:roots-pending`. A decoded descriptor clears
 construction provenance, so a read candidate cannot inherit prior readiness.
 This is source implementation and shape-contract work, not admission, completed
 root construction, certification or a served reclaim path.
+
+## Physical construction ledger
+
+`checkpoint-construction.lisp` retains one record per actual allocator extent.
+Its reservation operation verifies the held C owner/token and atomically calls
+the shared B allocator, then stores the returned epoch/counter, root role, page
+ordinal and intended physical byte count. Descriptor BEGIN uses this operation.
+Roles 0 through 5 identify descriptor/root descendants; role 6 identifies a
+pre-reserved journal-arena ticket. There is no caller-supplied handle registration
+or completion setter. Uncertain reservation identity is retained by the job.
+
+This ledger permits bounded extent-by-extent map construction without keeping
+an arbitrary-length resident handle list. It does not yet seal the construction
+set, freeze foreign allocator mutations, project reservations into durable map
+ownership, issue arena tickets to B, or reclaim ledger rows. Those lifecycle
+steps and actual write-harvest completion precede root2/root5 readiness.
+
+The physical construction columns remain in B and include only the allocator.
+The C-aware reservation admission is in `checkpoint-construction-owner.lisp`;
+descriptor state/codec/job and their construction registration are C-layer
+orchestration over B leaf APIs. `checkpoint-kind-b.lisp` registers physical
+B children without including C. This preserves the C-to-B dependency direction
+and passes the actual C carrier rather than a caller-supplied ownership flag.
+
+`checkpoint-map-format.lisp` declares the generated linked-page body header
+for allocation maps, recovery arenas and retained event directories. The body
+carries its type/version, exact C cut, total entry count, page/entry ordinals,
+entry count, terminal bit and next full Ref. Header storage is padded to a
+32-byte boundary after the page header. Allocation-map slots are 47 bytes and
+arena slots 27 bytes, their existing codec maxima; entries and unused page
+bytes require zero padding. Page counts include one terminal page for an empty
+sequence. Actual readers must check the exact calculated count/continuity/link
+shape, decode every slot and verify padding, then authenticate the linked child.
+These format and local shape controls do not replace that reader or restoration.
