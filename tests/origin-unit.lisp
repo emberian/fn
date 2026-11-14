@@ -12,18 +12,20 @@
       (not (fn2-origin-decimal nil))))
 (assert-event
  (and (fn2-origin-profilep
-        (fn2-origin-profile-from-text *fn2-profile-tiny* "17" "23" "5"))
+        (fn2-origin-profile-from-text *fn2-profile-tiny* "17" "23" "5" "101" "7"))
       (not (fn2-origin-profilep
-             (fn2-origin-profile-from-text *fn2-profile-tiny* nil "23" "5")))
+             (fn2-origin-profile-from-text *fn2-profile-tiny* nil "23" "5" "101" "7")))
       (not (fn2-origin-profilep
-             (fn2-origin-profile-from-text *fn2-profile-tiny* "17" "bad" "5")))))
+             (fn2-origin-profile-from-text *fn2-profile-tiny* "17" "bad" "5" "101" "7")))))
 (defun fn2-origin-unit-run (fn2-origin)
  (declare (xargs :stobjs fn2-origin :verify-guards nil))
- (let* ((profile (fn2-origin-profile-from-text *fn2-profile-tiny* "17" "23" "5"))
+ (let* ((profile (fn2-origin-profile-from-text *fn2-profile-tiny* "17" "23" "5" "101" "7"))
         (fn2-origin (fn2-origin-prepare profile fn2-origin)))
   (mv (and (= (fn2-origin-lineage fn2-origin) 17)
            (= (fn2-origin-domain fn2-origin) 23)
-           (= (fn2-origin-incarnation fn2-origin) 5)) fn2-origin)))
+           (= (fn2-origin-incarnation fn2-origin) 5)
+           (= (fn2-origin-history fn2-origin) 101)
+           (= (fn2-origin-history-incarnation fn2-origin) 7)) fn2-origin)))
 (defun fn2-origin-unit-check ()
  (declare (xargs :verify-guards nil))
  (with-local-stobj fn2-origin

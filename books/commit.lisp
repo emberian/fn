@@ -1063,7 +1063,7 @@
   (code end fn2-fields fn2-pool)
   (fn2-commit-pack kind index base slot gen off scratch sg e epoch counter batch first members
                     *fn2-commit-kind* id ogen (fn2-origin-lineage fn2-origin) (fn2-origin-domain fn2-origin)
-                    (fn2-origin-incarnation fn2-origin) fn2-fields fn2-pool)
+                    (fn2-origin-incarnation fn2-origin) (fn2-origin-history fn2-origin) (fn2-origin-history-incarnation fn2-origin) fn2-fields fn2-pool)
   (mv code end fn2-core)))))
 (fn2-core-preserves fn2-commit-pack-core (id kind role index off fn2-core) :position 2 :rows nil)
 (defun fn2-commit-context (id role fn2-core)
@@ -1071,7 +1071,7 @@
  (fn2-commit-checked id fn2-core
  (b* (((mv e epoch counter & &) (fn2-commit-resource id role fn2-core))
       (row (fn2-commit-row id fn2-core)) (batch (fn2-machine-batch-no id fn2-core)))
- (stobj-let ((fn2-fc-context (fn2-core-fc-context fn2-core))) (ok fn2-fc-context)
+ (stobj-let ((fn2-origin (fn2-core-origin fn2-core)) (fn2-fc-context (fn2-core-fc-context fn2-core))) (ok fn2-fc-context)
   (if (and (natp row) (< row (fn2-fc-context-rows fn2-fc-context))
            (unsigned-byte-p 32 e) (natp role) (< role 3)
            (unsigned-byte-p 60 epoch) (unsigned-byte-p 60 counter)
@@ -1079,8 +1079,8 @@
    (let* ((fn2-fc-context (fn2-fc-context-set-hash row (fn2-digest-slot row *fn2-fc-hash*) fn2-fc-context))
           (fn2-fc-context (fn2-fc-context-set-geometry row (fn2-digest-slot row *fn2-fc-geometry*) fn2-fc-context))
           (fn2-fc-context (fn2-fc-context-set-location row (+ (* 3 e) role) fn2-fc-context))
-          (fn2-fc-context (fn2-fc-context-set-history row 1 fn2-fc-context))
-          (fn2-fc-context (fn2-fc-context-set-incarnation row 1 fn2-fc-context))
+          (fn2-fc-context (fn2-fc-context-set-history row (fn2-origin-history fn2-origin) fn2-fc-context))
+          (fn2-fc-context (fn2-fc-context-set-incarnation row (fn2-origin-history-incarnation fn2-origin) fn2-fc-context))
           (fn2-fc-context (fn2-fc-context-set-extent row e fn2-fc-context))
           (fn2-fc-context (fn2-fc-context-set-writer-epoch row epoch fn2-fc-context))
           (fn2-fc-context (fn2-fc-context-set-extent-writer-epoch row epoch fn2-fc-context))
