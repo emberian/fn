@@ -429,4 +429,3 @@ record capacity. It must keep one member's workspace, batch and event until the
 persisted installer consumes that exact member. A separate allocation per ticket
 would violate the planner's reserved ticket count. Allocation installation does
 not establish selectable checkpoint publication or authorize FREE.
-
