@@ -328,3 +328,91 @@
           ("Subgoal *1/3" :use ((:instance fn2-pool-initial-row-model-class-bounds
              (classes (cdr classes)) (class (+ 1 class)) (slot (+ slot (caar classes)))
              (base (+ base (* (caar classes) (cdar classes)))))))))
+
+; Initialized row geometry covers each allocated byte exactly once.
+(defthm fn2-pool-profile-zero-slots-zero-bytes
+ (implies (and (fn2-profile-classes-p classes) (equal (fn2-profile-pool-slots classes) 0))
+          (equal (fn2-profile-pool-bytes classes) 0))
+ :hints (("Goal" :induct (fn2-profile-classes-p classes)
+          :in-theory (enable fn2-profile-classes-p fn2-profile-pool-slots fn2-profile-pool-bytes))))
+(defthm fn2-pool-initial-row-model-first-base
+ (implies (and (fn2-profile-classes-p classes) (natp slot) (natp base)
+               (< 0 (fn2-profile-pool-slots classes)))
+          (equal (fn2-pool-record-base (fn2-pool-initial-row-model classes class slot base gen slot)) base))
+ :hints (("Goal" :induct (fn2-pool-initial-row-model classes class slot base gen slot)
+          :in-theory (enable fn2-pool-initial-row-model fn2-pool-record-base fn2-profile-classes-p fn2-profile-pool-slots))))
+(defthm fn2-pool-initial-row-model-last-end
+ (implies (and (fn2-profile-classes-p classes) (natp slot) (natp base)
+               (< 0 (fn2-profile-pool-slots classes)))
+  (let ((row (fn2-pool-initial-row-model classes class slot base gen
+               (+ slot (fn2-profile-pool-slots classes) -1))))
+   (equal (+ (fn2-pool-record-base row) (fn2-pool-record-cap row))
+          (+ base (fn2-profile-pool-bytes classes)))))
+ :hints (("Goal" :induct (fn2-pool-initial-row-model classes class slot base gen
+                            (+ slot (fn2-profile-pool-slots classes) -1))
+          :in-theory (enable fn2-pool-initial-row-model fn2-pool-record-base fn2-pool-record-cap
+                             fn2-profile-classes-p fn2-profile-pool-slots fn2-profile-pool-bytes))))
+(defthm fn2-pool-initial-row-model-adjacent
+ (implies (and (fn2-profile-classes-p classes) (natp slot) (natp base) (natp r)
+               (< slot r) (< r (+ slot (fn2-profile-pool-slots classes))))
+  (equal (fn2-pool-record-base (fn2-pool-initial-row-model classes class slot base gen r))
+         (+ (fn2-pool-record-base (fn2-pool-initial-row-model classes class slot base gen (- r 1)))
+            (fn2-pool-record-cap (fn2-pool-initial-row-model classes class slot base gen (- r 1))))))
+ :hints (("Goal" :induct (fn2-pool-initial-row-model classes class slot base gen r)
+          :in-theory (enable fn2-pool-initial-row-model fn2-pool-record-base fn2-pool-record-cap
+                             fn2-profile-classes-p fn2-profile-pool-slots))
+          ("Subgoal *1/3" :use ((:instance fn2-pool-initial-row-model-first-base
+              (classes (cdr classes)) (class (+ 1 class)) (slot (+ slot (caar classes)))
+              (base (+ base (* (caar classes) (cdar classes)))))))))
+
+(defthm fn2-pool-initial-row-model-types
+ (implies (and (fn2-profile-classes-p classes) (natp slot) (natp class) (natp base) (natp r)
+               (<= slot r) (< r (+ slot (fn2-profile-pool-slots classes))))
+  (let ((row (fn2-pool-initial-row-model classes class slot base gen r)))
+   (and (natp (fn2-pool-record-class row)) (natp (fn2-pool-record-base row))
+        (posp (fn2-pool-record-cap row)))))
+ :hints (("Goal" :induct (fn2-pool-initial-row-model classes class slot base gen r)
+          :nonlinearp t
+          :in-theory (enable fn2-pool-initial-row-model fn2-pool-record-class fn2-pool-record-base fn2-pool-record-cap
+                             fn2-profile-classes-p fn2-profile-pool-slots))))
+(defthm fn2-pool-init-class-size
+ (implies (and (fn2-pool-profilep classes) (natp j) (< j (len classes)))
+  (equal (fn2-pool-class-sizesi j (fn2-pool-init classes gen-start gen-limit p))
+         (nth 2 (fn2-pool-initial-class-model classes 0 0 j))))
+ :hints (("Goal" :use fn2-pool-init-class-snapshot
+          :in-theory (e/d (fn2-pool-class-snapshot)
+                          (fn2-pool-init-class-snapshot fn2-pool-init fn2-pool-initial-class-model fn2-pool-class-sizesi
+                           fn2-pool-class-headsi fn2-pool-class-countsi)))))
+(defthm fn2-pool-initial-row-model-cap-positive
+ (implies (and (fn2-profile-classes-p classes) (natp slot) (natp class) (natp base) (natp r)
+               (<= slot r) (< r (+ slot (fn2-profile-pool-slots classes))))
+  (< 0 (fn2-pool-record-cap (fn2-pool-initial-row-model classes class slot base gen r))))
+ :rule-classes :linear
+ :hints (("Goal" :use fn2-pool-initial-row-model-types
+          :in-theory (e/d (posp) (fn2-pool-initial-row-model-types fn2-pool-record-cap fn2-pool-initial-row-model)))))
+(defthm fn2-pool-init-row-invariant
+ (implies (and (fn2-pool-profilep classes) (natp n) (<= n (fn2-profile-pool-slots classes))
+               (natp gen-start) (natp gen-limit) (<= gen-start gen-limit))
+          (fn2-pool-row-invariantp n (fn2-pool-init classes gen-start gen-limit p)))
+ :hints (("Goal" :induct (fn2-pool-row-invariantp n (fn2-pool-init classes gen-start gen-limit p))
+          :in-theory (e/d (fn2-pool-row-invariantp fn2-pool-profilep)
+                          (fn2-pool-init fn2-pool-initial-row-model fn2-pool-initial-class-model
+                           fn2-pool-state fn2-pool-base fn2-pool-cap fn2-pool-class fn2-pool-fill fn2-pool-gen
+                           fn2-pool-out-count fn2-pool-lease-off fn2-pool-lease-len fn2-pool-class-sizesi
+                           fn2-pool-nclasses fn2-pool-gen-limit fn2-pool-capacity-bytes
+                           fn2-pool-record-state fn2-pool-record-base fn2-pool-record-cap fn2-pool-record-class
+                           fn2-pool-record-fill fn2-pool-record-gen fn2-pool-record-out-count
+                           fn2-pool-record-lease-off fn2-pool-record-lease-len)))))
+(defthm fn2-pool-init-byte-account
+ (implies (fn2-pool-profilep classes)
+  (let ((after (fn2-pool-init classes gen-start gen-limit p)))
+   (equal (fn2-pool-capacity-bytes after)
+          (if (zp (fn2-pool-nslots after)) 0
+            (+ (fn2-pool-base (- (fn2-pool-nslots after) 1) after)
+               (fn2-pool-cap (- (fn2-pool-nslots after) 1) after))))))
+ :rule-classes nil
+ :hints (("Goal" :use ((:instance fn2-pool-initial-row-model-last-end (class 0) (slot 0) (base 0) (gen gen-start)))
+          :in-theory (e/d (fn2-pool-profilep)
+            (fn2-pool-init fn2-pool-capacity-bytes fn2-pool-nslots fn2-pool-base fn2-pool-cap
+             fn2-pool-initial-row-model fn2-pool-record-base fn2-pool-record-cap
+             fn2-pool-initial-row-model-adjacent)))))
