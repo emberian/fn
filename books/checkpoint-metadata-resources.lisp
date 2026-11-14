@@ -165,7 +165,7 @@
 (fn2-sealer-child fn2-core-checkpoint-root1 fn2-checkpoint-root1 (fn2-checkpoint-root1-init 1 fn2-checkpoint-root1)
  "The actual root1 source continuation and admitted window ownership survive yields.")
 (fn2-sealer-child fn2-core-checkpoint-windows fn2-checkpoint-windows (fn2-checkpoint-windows-init *fn2-checkpoint-window-count* fn2-checkpoint-windows)
- "Fixed working windows are admitted before the held C cut; no stored-data ceiling.")
+ "Fixed working windows are tried atomically at the exact held cut; refusal retains no bundle.")
 (fn2-sealer-child fn2-core-checkpoint-metadata fn2-checkpoint-metadata (fn2-checkpoint-metadata-init 1 fn2-checkpoint-metadata)
  "The held source's actual entry and run assembly continuation.")
 (fn2-sealer-child fn2-core-checkpoint-source fn2-checkpoint-source (fn2-checkpoint-source-init 1 fn2-checkpoint-source)

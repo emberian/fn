@@ -110,7 +110,7 @@
   (fn2-alloc-last-retirement fn2-extents)))
 (defcost fn2-checkpoint-master-pressure-op :child fn2-checkpoint-master-pressure-children :answers (:ok)
  :tables (fn2-core-checkpoint-root1 fn2-core-csnapshot fn2-core-extents fn2-core-pool fn2-core-commit-root fn2-core-boot-config)
- :doc "Use actual blocked retirement progress and complete cached pre-cut working-room availability, with no guessed free-space threshold.")
+ :doc "Report actual retirement debt with cached bundle and directory hints; permission is rechecked only at the held cut.")
 
 ; The lower release cursor resets root1 to IDLE only after all nineteen
 ; actual lease releases succeed. This observation ends the abstract bundle
@@ -148,3 +148,10 @@
           fn2-core-checkpoint-refs fn2-core-checkpoint-publication fn2-core-extents)
  :effects ((:release (:storage-window :storage-window)))
  :doc "End the abstract working-bundle hold only from actual terminal lease release and same-owner completed publication.")
+
+(defun fn2-checkpoint-retirement-frontier-children (fn2-extents)
+ (declare (xargs :stobjs fn2-extents :guard (fn2-extents-wfp fn2-extents)))
+ (fn2-alloc-last-retirement fn2-extents))
+(defcost fn2-checkpoint-retirement-frontier-op :child fn2-checkpoint-retirement-frontier-children
+ :tables (fn2-core-extents)
+ :doc "Capture actual retirement debt after C/B drain; only successful publication advances the actor's seen frontier.")

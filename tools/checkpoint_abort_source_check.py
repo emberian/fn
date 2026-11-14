@@ -32,6 +32,14 @@ def check(source):
     complete=list(walk(definition(source,'fn2-checkpoint-master-abort-complete-children')))
     for carrier in ['fn2-checkpoint-root1','fn2-checkpoint-future']:
         assert ['equal',[carrier+'-reserved','0',carrier],'0'] in complete
+    empty=list(walk(definition(source,'fn2-checkpoint-master-abort-empty-ready-children')))
+    for carrier in ['fn2-checkpoint-root1','fn2-checkpoint-future']:
+        assert ['equal',[carrier+'-phase','0',carrier],'*'+carrier+'-phase-idle*'] in empty
+        assert ['equal',[carrier+'-reserved','0',carrier],'0'] in empty
+    assert ['equal',['fn2-checkpoint-master-phase','0','fn2-checkpoint-master'],'*fn2-checkpoint-master-state-abort-empty*'] in empty
+    assert ['equal',['fn2-csnapshot-phase','0','fn2-csnapshot'],'*fn2-csnapshot-phase-held*'] in empty
+    assert ['fn2-csnapshot-ownerp','token','*fn2-checkpoint-master-kind*','id','gen','fn2-csnapshot'] in empty
+    assert not any(x and x[0] == 'fn2-checkpoint-working-release-step' for x in empty)
     budget=definition(source,'fn2-checkpoint-directory-budget')
     assert budget[-1]==['+','1',['ceiling',['nfix','extents'],'*fn2-checkpoint-allocation-records-per-ticket*']]
     return True
@@ -44,9 +52,12 @@ if __name__=='__main__':
       source.replace('(fn2-checkpoint-future-token 0 fn2-checkpoint-future) 0','(fn2-checkpoint-future-token 0 fn2-checkpoint-future) 1'),
       source.replace('(fn2-csnapshot-phase 0 fn2-csnapshot) *fn2-csnapshot-phase-idle*','(fn2-csnapshot-phase 0 fn2-csnapshot) *fn2-csnapshot-phase-held*'),
       source.replace('fn2-checkpoint-working-release-step budget','fn2-alloc-cancel budget'),
-      source.replace('*fn2-checkpoint-allocation-records-per-ticket*','25')]
+      source.replace('*fn2-checkpoint-allocation-records-per-ticket*','25'),
+      source.replace('*fn2-checkpoint-root1-phase-idle*','*fn2-checkpoint-root1-phase-reserved*'),
+      source.replace('*fn2-csnapshot-phase-held*','*fn2-csnapshot-phase-idle*'),
+      source.replace('(fn2-csnapshot-ownerp token *fn2-checkpoint-master-kind* id gen fn2-csnapshot)', '(fn2-checkpoint-working-release-step token *fn2-checkpoint-master-kind* id gen fn2-csnapshot)')]
     for bad in mutations:
         try:check(bad)
         except AssertionError:pass
         else:raise AssertionError('abort mutation escaped source authority check')
-    print('abort source authority controls: 7 rejected mutations; no execution claim')
+    print('abort source authority controls: 10 rejected mutations; no execution claim')
