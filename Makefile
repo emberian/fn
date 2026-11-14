@@ -286,6 +286,7 @@ ACL2_BOOKS = \
   tests/machine-arms-probe-fixture \
   tests/machine-arms-unit \
   tests/machine-budget-unit \
+  tests/machine-budget-core-fixture \
   tests/machines-a-unit \
   tests/merkle-random \
   tests/merkle-unit \
