@@ -207,8 +207,9 @@
       (cond ((= kind *fn2-action-receive*) (incf (fn2-ncap-rx cap) count))
             ((= kind *fn2-action-send*) (incf (fn2-ncap-tx cap) count)))
       (fn2-n-complete host slot :ok count 0 nil (fn2-n-octets host address count)))
-     (:eof (setf (fn2-ncap-eof cap) t) (fn2-n-complete host slot :eof count))
-     (:failed (fn2-n-complete host slot :failed count))
+     (:eof (setf (fn2-ncap-eof cap) t)
+           (fn2-n-complete host slot :eof count 0 nil (fn2-n-octets host address count)))
+     (:failed (fn2-n-complete host slot :failed count 0 nil (fn2-n-octets host address count)))
      (:progress nil)
      (otherwise (error "fn2 TLS: record authorization/controller refused: ~S" status)))))))
 

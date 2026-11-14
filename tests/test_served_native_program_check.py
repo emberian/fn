@@ -97,6 +97,12 @@ class ServedNativeProgramTests(unittest.TestCase):
                     '(fn2-n-sap host (fn2-nop-address op)) (fn2-nop-len op))')
         self.assertFalse(checker.check(self.root)['audit_ok'])
 
+    def test_tls_failure_preserves_observed_payload(self):
+        self.change('host/adapter.lisp',
+                    '(fn2-n-complete host slot :failed count 0 nil (fn2-n-octets host address count))',
+                    '(fn2-n-complete host slot :failed count)')
+        self.assertFalse(checker.check(self.root)['audit_ok'])
+
     def test_tls_child_requires_live_core_and_upper_pending(self):
         self.change('host/tls.lisp', '(fn2-host-tls-child-next slot',
                     '(unvalidated-child-select slot')

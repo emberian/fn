@@ -87,7 +87,9 @@ CONTRACTS = {
     'fn2-n-tls-ready': [
         '(return-from fn2-n-tls-ready (fn2-n-tls-handshake-ready host slot cap))',
         '(fn2-native-tls-open (fn2-nhost-tls-quantum host) (fn2-nhost-tls-seed-capacity host))',
-        '(fn2-native-tls-record-step host slot tls (fn2-ncap-fd cap))'],
+        '(fn2-native-tls-record-step host slot tls (fn2-ncap-fd cap))',
+        '(fn2-n-complete host slot :failed count 0 nil (fn2-n-octets host address count))',
+        '(fn2-n-complete host slot :eof count 0 nil (fn2-n-octets host address count))'],
     'fn2-native-tls-handle': [
         '(sb-sys:int-sap (fn2-tls-transport-handle (fn2-native-tls-transport tls)))'],
     'fn2-native-tls-close': [
