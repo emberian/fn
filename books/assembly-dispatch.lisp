@@ -56,7 +56,10 @@
              (defattach (,run-stub ,run)
                         (,obs-stub ,obs)
                         (,(fn2-columns-sym name "-ARM-CHARGE-OK-P-STUB") ,(fn2-columns-sym name "-ARM-CHARGE-OK-P"))
-                        (,(fn2-columns-sym name "-ARM-BOUND-STUB") ,(fn2-columns-sym name "-ARM-BOUND")))
+                        (,(fn2-columns-sym name "-ARM-BOUND-STUB") ,(fn2-columns-sym name "-ARM-BOUND"))
+                        :hints (("Goal" :use (,(fn2-columns-sym run "-SUCCESS-CHARGE")
+                                              ,(fn2-columns-sym run "-ISSUED-EFFECT"))
+                                  :in-theory (disable fn2-ops-rows fn2-ops-issued-count))))
              (in-theory (disable ,(fn2-columns-sym run "-DISPATCH-KIDS") ,(fn2-columns-sym obs "-DISPATCH-KIDS")
                                  ,(fn2-columns-sym obs "-DISPATCH-OPS-POOL") ,(fn2-columns-sym obs "-KEEPS-UNITS")
                                  ,@(and held (list (fn2-columns-sym run "-DISPATCH-HELD")))
@@ -97,6 +100,7 @@
                ,@(fn2-machine-run-arms (fn2-machine-names (w state)) 0 (w state))
                (otherwise (fn2-machine-refuse-phase id fn2-core))))))))
 (fn2-core-preserves fn2-machine-run (id budget fn2-core) :position 4 :rows nil)
+(make-event (value (cons 'progn (fn2-machine-dispatch-result-events (w state)))))
 (assert-event
  (fn2-assert-compliant-p
   '(fn2-machine-observe fn2-machine-run fn2-machine-take-wake

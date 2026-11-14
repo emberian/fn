@@ -5,7 +5,10 @@ ACL2_BOOKS = \
   books/accounts-core \
   books/alloc \
   books/arm-children \
+  books/arm-issue-effects \
+  books/executor-reservation \
   books/arms \
+  books/run-budget \
   books/article-manifest \
   books/assembly \
   books/assembly-access \
@@ -291,7 +294,11 @@ ACL2_BOOKS = \
   tests/layout-unit \
   tests/log-model-unit \
   tests/m2-cuts \
+  tests/machine-arms-probe-fixture \
   tests/machine-arms-unit \
+  tests/machine-budget-unit \
+  tests/machine-budget-core-fixture \
+  tests/machine-success-charge-context-unit \
   tests/machine-child-tables-unit \
   tests/machines-a-unit \
   tests/merkle-random \

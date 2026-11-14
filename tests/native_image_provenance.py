@@ -1,11 +1,12 @@
 """Source coordinates for a composed fixture using published or stamped native images.
 
-The runner verifies image_set SHA256SUMS before invoking the fixture.  This
-check binds each selected launcher to the MANIFEST.json and TREE_SHA beside
+This check binds each selected launcher and recorded payload to the
+MANIFEST.json and TREE_SHA beside
 it -- a published set's, or the ones `tools/image_set.py stamp` writes into a
 run tree's own build from the images' `commit SHA` records (a convergence
 batch tests images it does not publish) -- and compares source coordinates;
-it does not certify images or rehash their large cores per case.
+it does not certify images. Payloads are rehashed at use: a runner's earlier
+SHA256SUMS check cannot cover a later replacement of a core or shared library.
 """
 
 import hashlib
@@ -35,9 +36,25 @@ def _published_source(image):
     core = directory / core_name
     if not core.is_file() or core.resolve().parent != directory:
         raise ValueError(f"{launcher}: published core missing or outside set")
-    digest = hashlib.sha256(launcher.read_bytes()).hexdigest()
-    if manifest.get("files", {}).get(launcher.name) != digest:
-        raise ValueError(f"{launcher}: launcher differs from published manifest")
+    hashes = manifest.get("files")
+    if not isinstance(hashes, dict):
+        raise ValueError(f"{manifest_path}: missing published payload hashes")
+    for name in (launcher.name, core_name):
+        if name not in hashes:
+            raise ValueError(f"{manifest_path}: published input not bound: {name}")
+    for name, expected in hashes.items():
+        # Names in a receipt are relative to its set. Reject escapes even if
+        # the external file has the expected digest; it is not this set's
+        # immutable payload. Nested runtime/library directories are allowed.
+        if (not isinstance(name, str) or not name or Path(name).is_absolute()
+                or ".." in Path(name).parts):
+            raise ValueError(f"{manifest_path}: invalid published payload path: {name!r}")
+        payload = directory / name
+        if (not payload.resolve(strict=True).is_relative_to(directory)
+                or not isinstance(expected, str)
+                or not re.fullmatch(r"[0-9a-f]{64}", expected)
+                or _digest(payload) != expected):
+            raise ValueError(f"{payload}: payload differs from published manifest")
     return source
 
 

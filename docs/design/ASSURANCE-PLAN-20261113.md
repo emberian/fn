@@ -172,3 +172,119 @@ No bb2 writes, no production/service changes, no cache deletion. Use bounded REP
 spikes, narrow record gates, then one batched convergence. A lane is READY with
 named commits, exact proof/test scopes and any remaining red, not a narrative of
 completion. The integrator alone changes shared dev.
+
+## Whole-path completion targets — 2026-11-14
+
+The destination remains the persistent NNTP/storage/consumer system, including its
+network consumers. Increase the depth of each completion claim, not the count of
+isolated certified fixtures. A helper package is an intermediate deliverable until
+its actual served caller consumes the contract in a qualified composed world.
+
+1. **Accepted data through recovery.** Durability and native owners connect actual
+   initialization (including nonempty group/principal genesis), admission, collect,
+   seal, persisted acceptance and reopen. Preserve the declared broad/crash-only
+   fault distinction. The same preserved image must exhibit the specific broad
+   uncertainty diagnosis and exact prior accepted article recovery under crash-only.
+   This runtime control supplements the general ACK/recovery proof; SIGKILL does
+   not discharge power-loss, persistence-fence or arbitrary-corruption assumptions.
+2. **Independent CNS effects.** The Q1 semantics owner defines before/after effects
+   without invoking production release/reclaim/timer handlers on the checking side.
+   Exercise the actual draining run, with held lease, reusable/retired rows, a live
+   sibling timer/range, and both early and late refusals. A late name-range refusal
+   may follow successful workspace release; unchanged-core rollback is not its spec.
+   Corrupting the sibling on both Q1 executions must be detected independently even
+   if their shared-handler comparison agrees. Bridge ownership then connects the
+   same served root to canonical evaluation, guards/domains and primitive contracts.
+3. **Actual turn resource guarantees.** The scheduler owner connects a supported
+   assembled profile through actual admission, dispatch and turn execution. Prove
+   numeric and residual bounds even for stopped structural states. Keep net queue
+   delta separate from issued-incarnation history; issue/ack/reuse must not erase
+   the latter's accounting. Insufficient residual must preserve core and selection
+   cursor, with a separate fresh-quantum retry witness. Scheduler fairness, available
+   credits and actual instruction/allocation cost are separate obligations.
+4. **Full-duplex TLS ownership and bytes.** The transport owner connects allocation,
+   handshake, concurrent record operations, cancellation and exactly-once cleanup
+   through the same capability ledger and logical per-operation state. A blocked
+   receive must not prevent a send needed for progress. Retained seed, fragmented
+   BIO input, short writes, stale returns and exhaustion must reach native controls.
+   Logical handle/staging proofs do not establish OpenSSL behavior or byte effects.
+
+The existing core emitter already aliases `CoreWorld.fns` to `LayerAWorld.fns`
+and names actual served functions in dispatch equations. A suspected namespace
+mismatch was withdrawn after tracing those definitions. Preserve that connection;
+close remaining guard/domain and MBE logical/executable obligations explicitly.
+The MEMBER-EQ-EXEC pilot alone is not a proof of every MEMBER-EQUAL logical path.
+
+External review is advisory. Three bounded, tool-disabled `claude-kimi` reviews
+were requested over secret-scanned packets: system ambition, bridge/evidence,
+and runtime/durability/TLS. Large packets timed out without responses. A smaller
+system-status review returned and recommended one matrix from top claim through
+live obligation, served entrypoint, frozen artifact, fault model and independent
+scenario. Adopt that as the completion measure; counts remain build progress only.
+That status-only review blurred prover-job memory exhaustion with runtime node
+resource behavior. Reject that inference: the observed 2 GiB OOM was certification,
+not node execution. The targeted evidence-code review returned no new defect in
+the live-statement witness/recheck machinery and rejected the obsolete raw-formula
+attack; source locators and controls were independently checked. This is only the
+evidence slice, not the larger Lean bridge or universal/runtime correctness. The
+final small TLS handoff review also returned no supported defect: identity,
+lifecycle, copied-seed and output-consumption checks match the caller, and the
+unfed seed suffix is deliberately retained for later records. Physical copy,
+record migration and socket behavior are outside that result. Larger runtime and
+bridge reviews timed out and received no clearance. An absent response is not a
+clean review, and no finding is attributed to Kimi without an actual response.
+Validate alleged defects against source before assigning fixes, retain rejected
+suspicions, and distinguish known unfinished work from newly discovered defects.
+
+## Additional independent assurance lanes — 2026-11-14
+
+These lanes expand beyond the existing durability, extraction, TLS, scheduler
+resource and ACL2–Lean work. Each starts from semantic freeze `6e07e62f3` with
+planning commit `06b1785df`; newer lane results require explicit integration.
+Source investigation and bounded local controls do not allocate remote build slots.
+
+| Owner / lane | Actual assurance subject | Required useful result |
+|---|---|---|
+| authorization_assurance / assurance-authorization | Served principal, authority and incarnation binding | Connected stale-principal/grant refusal contract; actual admitted-row witness and meaningful removal/mutation control. First trace targets CNS→control generation binding and propagation into transaction authority. |
+| parser_assurance / assurance-parser-boundaries | Receive-to-command framing and consumption | Actual split/coalesced/EOF/limit boundary behavior checked against an independent expectation, with a shared fix or a proved boundary contract. |
+| storage_fault_assurance / assurance-storage-faults | Short/torn/error/fence and ambiguous persistence effects | One faithful deterministic fault control or normalization repair beyond SIGKILL, preserving accepted/refused/uncertain distinctions and explicit device assumptions. |
+| sol_artifact_assurance / assurance-artifact-binding | Certified source through loaded image and qualification receipt | Fail-closed binding plus stale/replaced/omitted artifact controls; no change to certification eligibility or historical identity. |
+| sol_assumption_assurance / assurance-assumption-boundaries | Reachable assumptions, attachments, raw substitutions and guard boundaries | A concrete escape from existing inventories/gates repaired with a reachable-edge mutation, or a precise audited coverage result. Inventory alone is not a semantic proof. |
+| progress_assurance / assurance-progress | Actual selection, runnable/wait/timer transitions and fairness | Conditional progress tied to the served scheduler, with explicit environment/quantum assumptions and an adversarial schedule or missing-assumption control. |
+
+Existing owners retain shared generators, quantitative run interfaces, TLS state,
+canonical bridge APIs and certification infrastructure. New lanes initially own
+separate contracts/fixtures or narrowly coordinated tooling changes. A suspected
+leaf defect must be checked through its actual callers: for example, a principal
+check preceding an admin check on the same unchanged core can rule out an apparent
+local bypass. Reports distinguish confirmed defects, coverage gaps and withdrawn
+suspicions. Remote proof work still requires named capacity within the 26 GiB cap.
+
+## Distributed, temporal and completion coverage — 2026-11-14
+
+A further six independent lanes start source-first from the same semantic B base.
+They add no remote compute reservations; current jobs and capacity remain under
+convergence coordination.
+
+| Owner / lane | Assurance subject | Required useful result |
+|---|---|---|
+| peer_assurance / assurance-peer-contracts | Inbound transfer decisions, replay/identity, catch-up and custody coverage | A connected inbound contract/control, plus honest separation of actual served behavior from outbound/catch-up models and interim commands. |
+| revocation_assurance / assurance-revocation | Authority changes during selection, page assembly and handoff | An independent two-head schedule and stated authorization linearization contract; no silent retroactive-rescission requirement. Coordinate, but do not duplicate, membership and permission decisions. |
+| reclamation_assurance / assurance-reclamation | Persistent extent/article lifetime versus readers, pins and checkpoints | A connected lifetime invariant or exact served-entry coverage refusal; allocator model proofs alone cannot establish a served collector. |
+| sol_crash_cut_assurance / assurance-crash-cut-map | Physical effect/return cuts before modeled completion | One source-connected cut-family mapping witness and omitted/misattributed-cut controls; preserve the incomplete global mapping verdict. |
+| identity_codec_assurance / assurance-identity-codecs | Actual wire, stored and retrieved article identity representations | A served correspondence with independent octet expectations and meaningful normalization/identity mutation; cryptographic collision resistance stays an explicit assumption. |
+| sol_claim_completion / assurance-claim-completion | Required product claims through their live proof dependencies | Qualified live-world checks over existing square rows and named product scope; refuse owed, missing, stale, witness-only or unreachable-only coverage. Reuse the bridge inventory rather than create a second claim ledger. |
+
+Initial traces found no served collector calling the allocator reclaim/checkpoint
+primitives, and outbound peer/catch-up paths remain model/design coverage. These
+are implementation/coverage gaps, not demonstrated premature-reclamation or peer
+safety defects. A suspected uncertain peer reply issue is being checked through
+actual transaction composition rather than inferred from a defensive answer branch.
+The device-syscall-return cut occurs after physical effects and before completion;
+a simulator step that combines effects and posting is not by itself its mapping.
+
+Authorization remains release-blocking: original B delivered exact article bytes
+with required grants disabled. The defensive repair worker was stopped twice by
+automatic content review for possible cybersecurity risk; source changes remain
+preserved, but its fixed-callback qualification is incomplete. Do not relabel the
+passing baseline native recovery tests as permission correctness or release approval.
