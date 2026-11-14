@@ -1,0 +1,21 @@
+{
+  "schema": 1,
+  "name": "served-product",
+  "profile": "supported operator profiles; no silent exclusion of advertised features",
+  "assumptions": ["qualified ACL2 and Lean kernels/encodings", "declared crypto/native replacements", "runtime/compiler/FFI", "filesystem/device fence contract", "explicit environment fairness for progress"],
+  "world_books": ["books/owed-reclamation"],
+  "requirements": [
+    ["durable-acceptance", "FN2-COMMIT-ACK-IMPLIES-RECOVERABLE", ["FN2-TURN"]],
+    ["uncertainty", "FN2-CNS-UNCERTAIN-SETTLES", ["FN2-TURN"]],
+    ["recovery", "FN2-RECOVERY-CHAIN-COMPLETE", ["FN2-TURN"]],
+    ["authorization", "FN2-AUTHORITY-SERVED-ENFORCED", ["FN2-TURN"]],
+    ["identity", "FN2-READ-IDENTITY-TYPED-EXACT", ["FN2-TURN"]],
+    ["framing-parsing", "FN2-GRAM-FRAME-TOTAL-LINEAR", ["FN2-GRAM-FRAME"]],
+    ["ownership", "FN2-NATIVE-ENVELOPE-REFINES", ["FN2-TURN"]],
+    ["persistent-reclamation", "FN2-PERSISTENT-RECLAMATION-LIFETIME", ["FN2-TURN"]],
+    ["resource-bounds", "FN2-TURN-BOUNDS", ["FN2-TURN"]],
+    ["progress", "FN2-SERVED-PROGRESS", ["FN2-TURN"]],
+    ["consumer", "FN2-CNS-SERVED-REFINES", ["FN2-TURN"]],
+    ["peer-delivery", "FN2-PM-FEED-SAFETY", ["FN2-TURN"]]
+  ]
+}
