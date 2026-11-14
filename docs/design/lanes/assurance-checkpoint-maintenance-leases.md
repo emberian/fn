@@ -42,3 +42,46 @@ before commit. No ACL2 admission, guard/preservation proof, certification, simul
 native or remote computation was run. Composed real writer/drain, mutation and
 resource-exhaustion controls remain pending qualification. This change activates
 no checkpoint phase2, publication, serving, FREE or allocator reconstruction.
+
+## Source followup: generation, phase and operation dependencies
+
+For a reused FREE commit row with generation g, `fn2-commit-start` computes
+`owner-gen = g+1` before acquiring any lease. The future journal borrower is
+exactly `(commit-kind, id, g+1)`. `fn2-checkpoint-commit-bind-pools` reads that
+explicit borrower tuple and stores its pool handles; neither it nor
+`fn2-commit-resource` compares borrower generation with machine generation.
+`fn2-commit-bind-extent` later changes only extent/epoch/counter, retaining those
+pool bindings.
+
+A ticket scan yield changes only the construction scan cursor and returns
+:exhausted while the machine remains FREE/g. The direct unwind passes g+1 to
+`fn2-checkpoint-commit-return-pools`; its FREE case intentionally accepts that
+exact loan generation. All four leases return to the retained master, pool
+bindings clear, and machine generation/batch stay unchanged. Retrying therefore
+uses the same would-be g+1, not another increment. The new actual COMMIT-START
+fixture exercises this source path with an explicit synthetic prior-batch marker.
+It has not been executed.
+
+On ticket success, commit-start writes COLLECT and generation=owner-gen together.
+Accepted NOTIFY exhausts ACKs then moves to DRAINING; refused DROPPING likewise
+moves to DRAINING after settlement. The drain passes the actual row generation,
+which now equals the borrower generation. Its pending/fence tests precede the
+four release stages. UNCERTAIN never hands back the bundle. No generation/phase
+mismatch was found in this source trace; no runtime qualification is implied.
+
+The footprint review found and repaired missing future/future-windows tables on
+both maintenance submit operations, whose shared planner seam can bind/borrow the
+future bundle. The public `fn2-commit-admit-txn` declaration now includes those
+read dependencies because ordinary failure cleanup consults the loan cookie;
+its frozen gate still excludes future mutations. Begin, step, empty completion,
+poll, lifecycle dispatch and release-pool already declared them. Internal
+commit-start/reserve helpers are not separately registered defcost operations;
+the two submit operations are their maintenance arm entrypoints. The existing
+seal operation's `(:layers :b)` declaration already includes the registered
+future children. C master arms invoke these B operations directly, so this
+followup adds no hidden C carrier or wrapper state.
+
+All four isolated coordinator/recovery fixtures and both new consumer macro
+books now import B* directly. The existing structural rewrite tool's four text
+fixtures pass, and its six-file explicit-import check reports zero missing
+imports. These are Python source-tool controls, not ACL2/runtime execution.

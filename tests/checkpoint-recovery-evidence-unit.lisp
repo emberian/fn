@@ -1,6 +1,7 @@
 ; Prepared source controls for actual recovery entry boundaries. These are not
 ; a positive cold-storage or physical-verification witness; execution is pending.
 (in-package "ACL2")
+(include-book "std/util/bstar" :dir :system)
 (include-book "../books/assembly")
 (defun fn2-cre-body (fn2-core)
  (declare (xargs :stobjs fn2-core :verify-guards nil))

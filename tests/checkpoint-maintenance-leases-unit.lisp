@@ -1,6 +1,7 @@
 ; Source-prepared ownership controls. The freeze premises are synthetic;
 ; these are not journal durability or ACK-ordering witnesses. No execution claim.
 (in-package "ACL2")
+(include-book "std/util/bstar" :dir :system)
 (include-book "checkpoint-allocation-coordinator-unit")
 (defun fn2-cml-free-count (fn2-core)
  (declare (xargs :stobjs fn2-core :verify-guards nil))
@@ -71,3 +72,38 @@
  (declare (xargs :verify-guards nil))
  (with-local-stobj fn2-core (mv-let (ok fn2-core) (fn2-cml-body fn2-core) ok)))
 (assert-event (fn2-cml-run))
+
+; Actual COMMIT-START retry on a reused free row: its would-be borrower is
+; generation g+1 while the machine remains generation g. With no role6 at the
+; first physical scan row, ticket admission yields and must hand back g+1.
+(defun fn2-cml-start-unwind-body (fn2-core)
+ (declare (xargs :stobjs fn2-core :verify-guards nil))
+ (b* ((fn2-core (fn2-core-init (fn2-b-test-profile *fn2-profile-tiny* 0) fn2-core))
+      ((mv future fn2-core) (fn2-cac-future fn2-core))
+      (id (fn2-machine-kind-base *fn2-commit-kind* fn2-core))
+      (partner (+ 1 id)) (gen (fn2-machine-generation id fn2-core))
+      ; Synthetic earlier-batch marker isolates the reused-row branch, not
+      ; a claim that this fixture persisted an earlier batch.
+      (fn2-core (fn2-commit-put-core id (batch-no 1)))
+      (fn2-core (stobj-let ((fn2-extents (fn2-core-extents fn2-core))) (fn2-extents)
+        (let* ((fn2-extents (update-fn2-alloc-freeze-phase 2 fn2-extents))
+               (fn2-extents (update-fn2-alloc-freeze-token 7 fn2-extents))
+               (fn2-extents (update-fn2-alloc-freeze-owner-kind 1 fn2-extents))
+               (fn2-extents (update-fn2-alloc-freeze-owner-slot 2 fn2-extents)))
+         (update-fn2-alloc-freeze-owner-gen 3 fn2-extents)) fn2-core))
+      (before (fn2-cml-free-count fn2-core))
+      ((mv & first & mode) (fn2-commit-frontier fn2-core))
+      ((mv code fn2-core) (fn2-commit-start id 1 first mode partner fn2-core))
+      (scan (stobj-let ((fn2-checkpoint-construction (fn2-core-checkpoint-construction fn2-core))) (scan)
+        (and (= (fn2-construction-ticket-scan fn2-checkpoint-construction) 1)
+             (= (fn2-construction-next-ticket fn2-checkpoint-construction) 0)) scan)))
+  (mv (and (eq future :ok) (eq code :exhausted) scan
+           (= (fn2-machine-generation id fn2-core) gen)
+           (= (fn2-machine-phase id fn2-core) *fn2-commit-state-free*)
+           (eq (fn2-checkpoint-commit-loan-state id (+ 1 gen) fn2-core) :none)
+           (fn2-cml-returned-p 1 fn2-core) (= before (fn2-cml-free-count fn2-core))
+           (not (fn2-core-stopped-p fn2-core))) fn2-core)))
+(defun fn2-cml-start-unwind-run ()
+ (declare (xargs :verify-guards nil))
+ (with-local-stobj fn2-core (mv-let (ok fn2-core) (fn2-cml-start-unwind-body fn2-core) ok)))
+(assert-event (fn2-cml-start-unwind-run))

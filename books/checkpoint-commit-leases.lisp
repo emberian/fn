@@ -2,6 +2,7 @@
 ; Foreground reservations never enter these helpers. The ordinary drain calls
 ; release-pool four times; maintenance retains all four until its last call.
 (in-package "ACL2")
+(include-book "std/util/bstar" :dir :system)
 (include-book "checkpoint-future-resources")
 (fn2-book-layer :b)
 (defun fn2-checkpoint-journal-borrower-seen-p (i kind id gen fn2-checkpoint-future-windows)
@@ -62,6 +63,9 @@
      (fn2-checkpoint-commit-clear-pools (- left 1) id fn2-core)))))
  (fn2-core-preserves fn2-checkpoint-commit-clear-pools (left id fn2-core) :rows nil :prefix "")
 
+ ; GEN is the exact pool borrower generation. During admission unwind the
+ ; FREE machine deliberately still has its previous generation; commit-start
+ ; assigns the new generation only after reserve-ticket succeeds.
  (defun fn2-checkpoint-commit-return-pools (id gen fn2-core)
   (declare (xargs :stobjs fn2-core :guard (fn2-core-wfp fn2-core)))
   (b* (((unless (and (fn2-commit-idp id fn2-core)

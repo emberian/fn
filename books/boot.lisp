@@ -5,6 +5,7 @@
 (include-book "checkpoint-restore")
 (include-book "checkpoint-boot")
 (include-book "checkpoint-recovery-evidence-boot")
+(include-book "checkpoint-recovery-census")
 (include-book "machines-a-access")
 (fn2-book-layer :b)
 
@@ -228,7 +229,7 @@
 
 ; Invoked only while boot owns both startup windows after bootstrap match.
 ; The expected geometry bytes come from boot's own configuration-bound hash.
-(defun fn2-boot-scan-checkpoint-pool (anchor length slot gen id ogen
+(defun fn2-boot-scan-checkpoint-pool-inner (anchor length slot gen id ogen
                                     fn2-boot-config fn2-checkpoints fn2-checkpoint-refs fn2-checkpoint-bytes
                                     fn2-fc fn2-fc-context fn2-b3 fn2-fields fn2-pool fn2-digests)
  (declare (xargs :stobjs (fn2-boot-config fn2-checkpoints fn2-checkpoint-refs fn2-checkpoint-bytes
@@ -276,6 +277,29 @@
       (fn2-checkpoints (if (eq evidence :ok) fn2-checkpoints
         (fn2-checkpoints-set-state anchor *fn2-checkpoint-state-uncertain* fn2-checkpoints))))
   (mv (if (eq evidence :ok) code evidence) len fn2-boot-config fn2-checkpoints fn2-checkpoint-refs fn2-checkpoint-bytes fn2-fc fn2-fc-context fn2-b3 fn2-fields fn2-pool fn2-digests)))
+
+(defun fn2-boot-scan-checkpoint-pool (anchor length slot gen id ogen
+                                    fn2-boot-config fn2-checkpoints fn2-checkpoint-refs fn2-checkpoint-bytes
+                                    fn2-fc fn2-fc-context fn2-b3 fn2-fields fn2-pool fn2-digests)
+ (declare (xargs :stobjs (fn2-boot-config fn2-checkpoints fn2-checkpoint-refs fn2-checkpoint-bytes
+                          fn2-fc fn2-fc-context fn2-b3 fn2-fields fn2-pool fn2-digests)
+  :guard (and (fn2-boot-config-wfp fn2-boot-config) (fn2-checkpoints-wfp fn2-checkpoints)
+              (fn2-checkpoint-refs-wfp fn2-checkpoint-refs) (fn2-checkpoint-bytes-wfp fn2-checkpoint-bytes)
+              (fn2-fc-wfp fn2-fc) (fn2-fc-context-wfp fn2-fc-context) (fn2-b3-wfp fn2-b3)
+              (fn2-fields-wfp fn2-fields) (fn2-pool-wfp fn2-pool) (fn2-digests-wfp fn2-digests))))
+ (b* (((mv raw len fn2-boot-config fn2-checkpoints fn2-checkpoint-refs fn2-checkpoint-bytes fn2-fc fn2-fc-context fn2-b3 fn2-fields fn2-pool fn2-digests)
+       (fn2-boot-scan-checkpoint-pool-inner anchor length slot gen id ogen fn2-boot-config fn2-checkpoints fn2-checkpoint-refs fn2-checkpoint-bytes
+         fn2-fc fn2-fc-context fn2-b3 fn2-fields fn2-pool fn2-digests))
+      (code (if (member-eq raw '(:empty :more :candidate)) raw :invalid))
+      (bit (fn2-checkpoint-recovery-census-bit anchor))
+      ; The result is consumed in the same transition as the actual checker.
+      ; OR retains contradictory repeated observations instead of erasing them.
+      (fn2-boot-config (cond
+        ((or (eq code :more) (not (fn2-checkpoint-recovery-census-slotp anchor))) fn2-boot-config)
+        ((eq code :empty) (update-fn2-boot-config-anchor-empty-mask (logior bit (fn2-boot-config-anchor-empty-mask fn2-boot-config)) fn2-boot-config))
+        ((eq code :candidate) (update-fn2-boot-config-anchor-checked-mask (logior bit (fn2-boot-config-anchor-checked-mask fn2-boot-config)) fn2-boot-config))
+        (t (update-fn2-boot-config-anchor-invalid-mask (logior bit (fn2-boot-config-anchor-invalid-mask fn2-boot-config)) fn2-boot-config)))))
+  (mv code len fn2-boot-config fn2-checkpoints fn2-checkpoint-refs fn2-checkpoint-bytes fn2-fc fn2-fc-context fn2-b3 fn2-fields fn2-pool fn2-digests)))
 
 (defun fn2-boot-checkpoint-descriptor-pool (c slot gen id ogen
                                           fn2-checkpoints fn2-checkpoint-refs fn2-checkpoint-bytes
@@ -357,6 +381,7 @@
  '(progn
  (fn2-boot-checkpoint-root-operations)
  (fn2-boot-checkpoint-evidence-operations)
+ (fn2-boot-checkpoint-census-operations)
  (defun fn2-boot-pack (kind index size epoch slot gen scratch sgen id ogen fn2-core)
   (declare (xargs :stobjs fn2-core :guard (fn2-core-wfp fn2-core)))
   (stobj-let ((fn2-boot-config (fn2-core-boot-config fn2-core))
@@ -708,7 +733,7 @@
            ((:skip) (:if (< row-checkpoint-index 3)
                      ((:set (checkpoint-index (+ 1 row-checkpoint-index))) (:next :checkpoint-root-candidate)
                       (:charge :steps *fn2-work-small* :runnable t))
-                     ((:stop :checkpoint))))
+                     ((:next :checkpoint-census) (:charge :steps *fn2-work-small* :runnable t))))
            (:otherwise (:stop :checkpoint)))))
   (:checkpoint-root-reserve
    (:do (code slot gen) (fn2-boot-checkpoint-root-reserve id row-generation) :accept ()
@@ -782,7 +807,7 @@
            ((:done) (:if (< row-checkpoint-index 3)
                      ((:set (checkpoint-index (+ 1 row-checkpoint-index))) (:next :checkpoint-root-candidate)
                       (:charge :steps *fn2-work-stage* :runnable t))
-                     ((:stop :checkpoint))))
+                     ((:next :checkpoint-census) (:charge :steps *fn2-work-small* :runnable t))))
            (:otherwise (:stop :checkpoint)))))
   (:checkpoint-evidence-load :on-refusal ((:stop :checkpoint))
    (:do (code offset) (fn2-boot-checkpoint-evidence-sector row-root-cursor id row-generation) :accept (:read))
@@ -808,6 +833,10 @@
   (:checkpoint-evidence-next :on-refusal ((:stop :checkpoint))
    (:do (code) (fn2-boot-checkpoint-evidence-next id row-generation) :accept (:ok))
    (:next :checkpoint-evidence-target) (:charge :steps *fn2-work-small* :runnable t))
+  (:checkpoint-census
+   (:do (code) (fn2-boot-checkpoint-census id row-generation) :accept ()
+    :case (((:more) (:next :checkpoint-census) (:charge :bytes 512 :steps *fn2-work-stage* :runnable t))
+           (:otherwise (:stop :checkpoint)))))
   (:anchor :on-refusal ((:stop :bounds))
    (:set (offset (+ (- row-image-size 8192) (* 4096 row-anchor-slot))))
    (:if (equal row-create 1)
