@@ -364,3 +364,24 @@ into its calculated fixed-width page slot and zeroes its bounded slot padding;
 page jobs still must initialize the whole page and authenticate headers/links.
 Arena ordinal lookup scans physical extents because free-list order is independent
 of ticket order; only the requested ordinal can produce an entry.
+
+## Frozen map and arena source jobs
+
+`checkpoint-map-build.lisp` builds role-2 and role-5 linked pages backwards from
+the actual closed plan. It finds each pre-reserved page by exact role/ordinal,
+zeros at most one sector per source step, and serializes one actual allocation
+row or exact journal ticket per entry step. Every page carries the calculated
+coverage header and a full next Ref copied only from a physically completed
+child's retained verified hash. The common reservation-checked physical header
+codec preserves the body. The source state then binds the page once and enters
+`:bound`, where it has no packing/reset transition while the shared worker owns
+the bytes. The composed source actor still must call TAKE and wake its actual
+worker target, then wait for its ownership handback.
+
+Consumption requires the exact retained completed extent plus the returned source
+workspace, and advances to the previous ordinal. Only completion of ordinal 0
+captures a role-2/5 root and its actual hash/source-complete carrier. No caller
+supplies completion. These are concrete source/callback declarations, not a
+registered coordinator, admitted ownership proof, authenticated selected-base
+restoration or allocator reclamation. Candidate builder claims and root0 shared
+worker integration are the next required ownership connection.

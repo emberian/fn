@@ -5,7 +5,7 @@
 (fn2-book-layer :b)
 (defun fn2-checkpoint-map-zero (left at slot gen okind oslot ogen fn2-pool)
  (declare (xargs :stobjs fn2-pool :measure (nfix left)
-  :guard (and (fn2-pool-wfp fn2-pool) (natp left) (<= left 47) (natp at))))
+  :guard (and (fn2-pool-wfp fn2-pool) (natp left) (<= left *fn2-format-sector-size*) (natp at))))
  (if (zp left) (mv :ok fn2-pool)
   (mv-let (code fn2-pool) (fn2-pool-write slot gen at 0 okind oslot ogen fn2-pool)
    (if (eq code :ok)
