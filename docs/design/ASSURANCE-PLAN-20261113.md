@@ -162,6 +162,17 @@ Every remaining trusted edge is named in the resulting public claim, never hidde
 behind a generic green status. Independent review traces a representative guarantee
 from wire input through persistence and recovery to the wire response.
 
+The [completion gate](ASSURANCE-COMPLETION-GATE.md) now selects required product
+claims from the live `fn2-squares` world, proposes a packet-bound checker with its
+own qualified current closure, and reconstructs the existing semantic requirement
+inventory. Seven local source/tempfile controls pass. New ACL2 checker admission
+and current-closure certification remain pending; the typed semantic discharge join
+is unimplemented. The command therefore reports incomplete, including when build
+or generated-candidate regression passes. Its catalogue retains the unbound
+persistent-reclamation and missing served-progress requirements. These diagnostics
+do not implement those capabilities or establish actual caller-to-specification
+refinement.
+
 ## Coordination
 
 Keep existing native, TLS, compiler and timer work moving; do not discard useful
