@@ -257,22 +257,24 @@ the package discovery hook loads unrelated surface tests despite a filename filt
 actual held C owner/token, checks the owned page/scratch leases, and calls
 the real shared storage reservation operation before any
 codec sees its physical identity. The job stores that exact extent/epoch/
-allocation, workspace handles, cut from C, private checker stripe and write
-completion cursor. No caller supplies a cut, reservation identity or readiness
+allocation, workspace handles, cut from C, private checker stripe and aggregate
+completion evidence. The shared worker owns the physical write cursor. No caller supplies a cut, reservation identity or readiness
 boolean to this admission. BEGIN enters `:await-roots`: the descriptor identity
 is available before the allocation map seals its construction set. The separate
 ROOTS-READY transition requires completed actual C traversal and all five
 physically completed same-token root carriers before entering `:pack`.
 
-The generated descriptor/page-header codecs produce a padded 4 KiB descriptor
-inside its 64 KiB allocation. Actual page sealing supplies its expected hash;
-verification compares the decoded checkpoint/cut and all five complete root
-references against the built carriers without replacing their provenance.
-Only then can the real pinned block-write issue, and descriptor budget zero
-returns `:yield` before any effect. The pre-finish harvest callback requires the
-exact issued slot/generation, full 4 KiB completion, same held C cut and unchanged
-root/reference identities. It records physical completion and exposes READY;
-it does not commit the allocation, release the C snapshot or assert durability.
+The generated descriptor and common reservation-checked physical-header codecs
+produce a padded 4 KiB descriptor inside its 64 KiB allocation. The source binds
+that actual page once, then the same generated page worker used by every root
+owns sealing, verification, physical issuance and exact harvest. After actual
+completion and ownership handback, descriptor consumption decodes and compares
+the complete checkpoint/cut and five root references against the held source
+job, loads the retained verified hash, and performs owned preparation followed
+by CHECKED/root0 READY in one transition. The old descriptor-only physical
+issue/harvest/checker path is deleted; ledger completion comes from the common
+worker. Source bind/consume budget zero yields unchanged. None of these steps
+commits the allocation, releases C or asserts durability.
 
 The existing B lifecycle producer must consume READY with exact owner/token,
 record allocation and checkpoint installation through its actual batch/fence,
@@ -400,3 +402,31 @@ expected-hash preparation body, preserving its tuple. A decoded recovery
 candidate clears builder provenance and cannot acquire a construction claim.
 The local claim fixture controls ownership/refusal only, not actual cut or
 physical construction. The composed claim invariant remains unqualified.
+
+`checkpoint-linked-header.lisp` now owns the single linked BODY encoder used
+by roles 2, 3 and 5. It derives the tag and terminal bit, checks the current
+actual reservation, and copies a next Ref only from the same-role next ordinal's
+completed verified extent with matching namespace. Terminal Ref fields and digest
+are canonical zero. Producers supply their actual cut and calculated sequence
+counts; this serialization helper cannot stamp coverage or source completion.
+The map job now delegates to it, avoiding separate field-setter implementations.
+
+## Retirement FIFO reconstruction
+
+Allocation-map entries now carry `next-retired` (maximum entry width 56 bytes).
+For RETIRE-PENDING rows the source copies the actual frozen FIFO successor;
+other states serialize canonical NONE. The linked body header carries the
+actual allocator retired head and total-retired count on role 2, and canonical
+NONE/0 on other roles. No host or caller supplies the chain. Authenticated
+restore must walk/mark this chain, require every target retired, nondecreasing
+retirement commits, no cycles and exact coverage/count before rebuilding the
+FIFO through the same allocator retire operation. This preserves real queue
+order without an independent sort. Widths/page counts derive from new codecs.
+
+C and B consumers now use the single B `fn2-checkpoint-production-roots-p`
+body, moved unchanged from the construction state book. The scoped structural
+rewrite preserves comments/strings and is idempotent; its two Python fixtures
+run without evaluating ACL2 decisions. The descriptor budget fixture now checks
+actual BEGIN/pack/bind zero-versus-positive control with explicitly synthetic
+eligible root carriers; it does not witness actual cut/source construction or
+replace the generated worker's IO budget assurance.
