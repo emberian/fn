@@ -263,3 +263,13 @@ setup replies and actual payload evidence, then connect current per-item read
 admission and final carrier-handoff validation in the CNS generator. No stale
 admin bypass was found: `fn2-cns-admin-p` lacks generation checks by itself, but
 its only caller checks `fn2-cns-principal` first against the same core.
+
+The same source trace finds `:check` routing `fetch` directly to `:read` before
+the consume check. The diagnostic now shares setup for read and fetch: the fetch
+quartet varies consume/read grant enabled bits independently, checks both current
+grants through actual `grant-get` replies, verifies both principal-bind replies,
+and fetches the position returned by its accepted append. It is callable but has
+no passing assertion or executed result yet. This tests admission with static
+grants, not a revoke-between-selection-and-handoff race. Named remote compute
+was requested but not granted before the coordinator turn ended; no cold closure
+or unauthorized build was launched.
