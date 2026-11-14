@@ -65,3 +65,28 @@
   (5 (fn2-checkpoint-page-verified-hash-5 extent fn2-checkpoint-page-verified))
   (6 (fn2-checkpoint-page-verified-hash-6 extent fn2-checkpoint-page-verified))
   (otherwise (fn2-checkpoint-page-verified-hash-7 extent fn2-checkpoint-page-verified))))
+
+; Retained page evidence can be consumed after the singleton moves to a later
+; extent. This observes actual verified bytes and exact physical completion;
+; it deliberately says nothing about the producer's semantic source closure.
+(defun fn2-checkpoint-page-completed-extent-p (token okind oslot ogen role ordinal extent
+                                            fn2-checkpoint-page-verified fn2-checkpoint-construction fn2-extents)
+ (declare (xargs :stobjs (fn2-checkpoint-page-verified fn2-checkpoint-construction fn2-extents)
+  :guard (and (fn2-checkpoint-page-verified-wfp fn2-checkpoint-page-verified)
+              (fn2-checkpoint-construction-wfp fn2-checkpoint-construction) (fn2-extents-wfp fn2-extents))))
+ (and (natp extent) (< extent (fn2-checkpoint-page-verified-rows fn2-checkpoint-page-verified))
+      (equal (fn2-checkpoint-page-verified-live extent fn2-checkpoint-page-verified) 1)
+      (equal (fn2-checkpoint-page-verified-token extent fn2-checkpoint-page-verified) token)
+      (equal (fn2-checkpoint-page-verified-owner-kind extent fn2-checkpoint-page-verified) okind)
+      (equal (fn2-checkpoint-page-verified-owner-slot extent fn2-checkpoint-page-verified) oslot)
+      (equal (fn2-checkpoint-page-verified-owner-gen extent fn2-checkpoint-page-verified) ogen)
+      (equal (fn2-checkpoint-page-verified-role extent fn2-checkpoint-page-verified) role)
+      (equal (fn2-checkpoint-page-verified-ordinal extent fn2-checkpoint-page-verified) ordinal)
+      (let ((intended (fn2-checkpoint-page-verified-intended-bytes extent fn2-checkpoint-page-verified)))
+       (and (posp intended) (<= intended 65536) (equal (mod intended 4096) 0)
+            (equal (fn2-checkpoint-page-verified-encoded-length extent fn2-checkpoint-page-verified) intended)
+            (equal (fn2-checkpoint-page-verified-completed-bytes extent fn2-checkpoint-page-verified) intended)
+            (fn2-checkpoint-page-ledger-p token okind oslot ogen role ordinal extent
+             (fn2-checkpoint-page-verified-epoch extent fn2-checkpoint-page-verified)
+             (fn2-checkpoint-page-verified-allocation extent fn2-checkpoint-page-verified)
+             intended intended fn2-checkpoint-construction fn2-extents)))))
