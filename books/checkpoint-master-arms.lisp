@@ -157,11 +157,17 @@
     (((:more) (:charge :bytes 4096 :steps *fn2-work-stage* :runnable t)) ((:yield) (:yield))
      ((:page) (:set (source 0)) (:next :page-bind) (:charge :steps *fn2-work-small* :runnable t))
      (:otherwise (:next :uncertain) (:charge :steps *fn2-work-small* :runnable t)))))
-  ; The phase-2 barrier and durable allocation/publication continuation are
-  ; materialized with the B owner's exact retained completion/retention seam.
-  ; These arms cannot manufacture that transition from a C caller flag.
-  (:barrier-begin (:idle))
-  (:barrier-source (:idle))
+  ; B owns the only phase1→2 boundary, every descendant/source protection
+  ; transition and final thaw. C supplies actual READY/closed-plan identity.
+  (:barrier-begin :on-refusal ((:next :uncertain) (:charge :steps *fn2-work-small* :runnable t))
+   (:do (code candidate) (fn2-checkpoint-master-ready-op row-token *fn2-checkpoint-master-kind* id row-generation) :accept (:ready))
+   (:do (code) (fn2-checkpoint-lifecycle-begin candidate row-token *fn2-checkpoint-master-kind* id row-generation) :accept (:more))
+   (:next :barrier-source) (:charge :steps *fn2-work-stage* :runnable t))
+  (:barrier-source :on-refusal ((:next :uncertain) (:charge :steps *fn2-work-small* :runnable t))
+   (:do (code) (fn2-checkpoint-lifecycle-step) :accept () :case
+    (((:more) (:charge :steps *fn2-work-stage* :runnable t))
+     ((:install) (:next :allocation-begin) (:charge :steps *fn2-work-stage* :runnable t))
+     (:otherwise (:next :uncertain) (:charge :steps *fn2-work-small* :runnable t)))))
   (:allocation-begin :on-refusal ((:next :uncertain) (:charge :steps *fn2-work-small* :runnable t))
    (:do (code) (fn2-checkpoint-allocation-begin *fn2-checkpoint-master-kind* id row-generation) :accept () :case
     (((:ok) (:next :allocation-source) (:charge :steps *fn2-work-stage* :runnable t))
@@ -217,8 +223,13 @@
        ((:next :uncertain) (:charge :steps *fn2-work-small* :runnable t))))
      ((:refused) (:next :refused) (:charge :steps *fn2-work-small* :runnable t))
      (:otherwise (:next :uncertain) (:charge :steps *fn2-work-small* :runnable t)))))
-  (:retention-begin (:idle))
-  (:retention-source (:idle))
+  (:retention-begin (:next :retention-source) (:charge :steps *fn2-work-small* :runnable t))
+  (:retention-source :on-refusal ((:next :uncertain) (:charge :steps *fn2-work-small* :runnable t))
+   (:do (code) (fn2-checkpoint-lifecycle-step) :accept () :case
+    (((:more) (:charge :steps *fn2-work-stage* :runnable t))
+     ((:pending) (:yield))
+     ((:publish) (:next :publish-start) (:charge :steps *fn2-work-stage* :runnable t))
+     (:otherwise (:next :uncertain) (:charge :steps *fn2-work-small* :runnable t)))))
   (:publish-start :on-refusal ((:next :uncertain) (:charge :steps *fn2-work-small* :runnable t))
    (:do (code target generation) (fn2-checkpoint-writer-start row-candidate))
    (:set (target target) (target-gen generation)) (:next :publish-wait)
@@ -236,7 +247,9 @@
     (((:more) (:charge :steps *fn2-work-stage* :runnable t)) ((:yield) (:yield))
      ((:done) (:next :thaw) (:charge :steps *fn2-work-stage* :runnable t))
      (:otherwise (:next :uncertain) (:charge :steps *fn2-work-small* :runnable t)))))
-  (:thaw (:idle))
+  (:thaw :on-refusal ((:next :uncertain) (:charge :steps *fn2-work-small* :runnable t))
+   (:do (code) (fn2-checkpoint-lifecycle-thaw) :accept (:complete))
+   (:next :event-rearm) (:charge :steps *fn2-work-stage* :runnable t))
   (:event-rearm (:idle))
   (:rearm :on-refusal ((:next :uncertain) (:charge :steps *fn2-work-small* :runnable t))
    (:do (code) (fn2-checkpoint-master-rearm-op row-token *fn2-checkpoint-master-kind* id row-generation))
