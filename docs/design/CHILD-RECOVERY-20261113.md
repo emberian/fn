@@ -74,11 +74,14 @@ symbols closed during refinement so the earlier equality applies. Its fixture
 checks single/multiple-result call retention, real values, full equality and
 teeth. Warm forge 2 Gi source loading passed all 40 reader forms and 40 product
 control forms. Record `certify-20261114T001322Z-3423416` passed the exact
-21-book reader/product fixture union (17 reused, four built), with no book over
+0c9d1a8a8 source (17 reused, 4 built, 21 books), with no book over
 10 seconds. Multi-result leaf
 shape is an explicit fixture fact, not inferred from output metadata alone.
-Production principal requires bottom-up generated intermediate boundaries;
-no machine-mode switch is implied by the fixture.
+`defcore-readonly-closure` now plans the nonrecursive core-reader dependency
+DAG before emitting any events, then derives intermediate boundaries bottom-up.
+Its warm fixture passes 50 forms, including actual call retention, full source/child
+comparisons and recursive refusal; family record certification remains pending.
+Production principal validation is next; no machine-mode switch is implied.
 
 Txn has 14 declared operations without child faces in the baseline. Three
 (txn-principal, authority-allows, authority-depend) have handwritten bodies
