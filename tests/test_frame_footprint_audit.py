@@ -46,6 +46,37 @@ class FrameAuditTests(unittest.TestCase):
         log = "FRAMEAUDIT (OP (implies t (subsetp-equal '(57) ch)))\nFRAMEAUDIT-DONE"
         self.assertEqual(audit.check(rows, audit.world(log))[0]['status'], 'unresolved')
 
+    def test_nested_conjunction_requirements(self):
+        rows = audit.instances("(:instance op (ch '(5)))")
+        log = ("FRAMEAUDIT (OP (implies (and p (and (subsetp-equal '(5) ch) "
+               "(and q (subsetp-equal '(57) ch)))) t))\nFRAMEAUDIT-DONE")
+        result = audit.check(rows, audit.world(log))[0]
+        self.assertEqual(result['status'], 'mismatch')
+        self.assertEqual(result['missing'], [57])
+        rows[0]['value'] = "'(5 57)"
+        self.assertEqual(audit.check(rows, audit.world(log))[0]['status'], 'checked-subset')
+
+    def test_disjunction_requirement_is_unresolved(self):
+        rows = audit.instances("(:instance op (ch '(5)))")
+        log = ("FRAMEAUDIT (OP (implies (and p (or q (and r "
+               "(subsetp-equal '(57) ch)))) t))\nFRAMEAUDIT-DONE")
+        self.assertEqual(audit.check(rows, audit.world(log))[0]['status'], 'unresolved')
+
+    def test_negated_requirement_is_unresolved(self):
+        rows = audit.instances("(:instance op (ch '(5)))")
+        log = ("FRAMEAUDIT (OP (implies (and p (not (and q "
+               "(subsetp-equal '(57) ch)))) t))\nFRAMEAUDIT-DONE")
+        self.assertEqual(audit.check(rows, audit.world(log))[0]['status'], 'unresolved')
+
+    def test_conditional_requirements_are_unresolved(self):
+        rows = audit.instances("(:instance op (ch '(5)))")
+        for conditional in ("(if (subsetp-equal '(57) ch) p q)",
+                            "(if p (and q (subsetp-equal '(57) ch)) r)",
+                            "(if p q (and r (subsetp-equal '(57) ch)))"):
+            with self.subTest(conditional=conditional):
+                log = f"FRAMEAUDIT (OP (implies (and p {conditional}) t))\nFRAMEAUDIT-DONE"
+                self.assertEqual(audit.check(rows, audit.world(log))[0]['status'], 'unresolved')
+
     def test_incomplete_world_refused(self):
         with self.assertRaises(ValueError):
             audit.world('FRAMEAUDIT (OP NIL)')
