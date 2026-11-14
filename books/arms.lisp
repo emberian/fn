@@ -5,6 +5,7 @@
 ; their work and resource effects with defcost. This book is a library of
 ; expansion-time functions; defmachine and defmachine-callback use it.
 (in-package "ACL2")
+(include-book "run-budget")
 (include-book "resources")
 (include-book "operations")
 (include-book "columns")

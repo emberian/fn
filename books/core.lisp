@@ -7,7 +7,7 @@
 (include-book "sched")
 (include-book "trace")
 (include-book "exec-state")
-(include-book "arm-children")
+(include-book "arm-issue-effects")
 
 (include-book "core-children-a")
 (include-book "core-harvest")
@@ -186,6 +186,19 @@
     (v) (fn2-control-stop fn2-control) (equal v 1)))
 (in-theory (disable fn2-core-stopped-p))
 
+; A successful return has neither a stop flag nor a recorded failure. WFP is
+; structural and alone does not equate those two fields on arbitrary inputs.
+(defun fn2-core-success-p (fn2-core)
+  (declare (xargs :stobjs fn2-core :guard (fn2-core-wfp fn2-core)))
+  (and (not (fn2-core-stopped-p fn2-core))
+       (equal (fn2-core-stop-reason fn2-core) *fn2-stop-reason-none*)))
+(defthm fn2-core-stop-not-success
+  (not (fn2-core-success-p (fn2-core-stop reason fn2-core)))
+  :hints (("Goal" :in-theory (enable fn2-core-success-p fn2-core-stopped-p
+                                    fn2-core-stop fn2-control-record-stop fn2-control-stop
+                                    update-fn2-control-stop update-fn2-control-stop-reason))))
+(in-theory (disable fn2-core-success-p))
+
 ; DSL for bounded pool operations through the parent. Lists exist only at
 ; macro expansion, never in the emitted runtime paths.
 (defmacro fn2-core-pool-wrapper (name target args results position)
@@ -261,7 +274,9 @@
         (code slot gen fn2-pool fn2-ops fn2-control)
         (,(fn2-columns-sym name "-CHILDREN") ,@args okind oslot ogen principal fn2-pool fn2-ops fn2-control)
         (mv code slot gen fn2-core)))
-    `((fn2-core-preserves ,name (,@args okind oslot ogen principal fn2-core) :position 3 :rows nil))
+    `((fn2-core-preserves ,name (,@args okind oslot ogen principal fn2-core) :position 3 :rows nil)
+      ,(fn2-issue-core-effect-event name (append args '(okind oslot ogen principal fn2-core)))
+      ,(fn2-issue-core-issued-event name (append args '(okind oslot ogen principal fn2-core))))
     (list :refusal (list :square (fn2-columns-sym name "-REFUSAL")))))
 (fn2-core-issue-wrapper fn2-issue-receive (cap-index cap-nonce slot gen len))
 (fn2-core-issue-wrapper fn2-issue-send (cap-index cap-nonce slot gen off len may-release))
