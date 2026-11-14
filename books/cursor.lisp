@@ -388,7 +388,7 @@
        (natp (mv-nth 3 (fn2-cursor-pool-hscan from to st k a0 b0 rslot rgen lslot lgen tslot tgen tk ts tg okind oslot ogen fn2-pool))))
   :hints (("Goal" :in-theory (enable fn2-cursor-pool-hscan))))
 (in-theory (disable fn2-cursor-hscan-step fn2-cursor-hscan-loop fn2-cursor-pool-hscan))
-;; The lease's pool class: the smallest that holds two storage units (a
+;; The lease's pool class: the trusted digest prefix plus two storage units (a
 ;; block named through a source manifest is read at the lease's fill, after
 ;; the manifest unit that names it, and checked against that entry there).
 (defun fn2-cursor-lease-class-of (fn2-pool)
@@ -1422,7 +1422,7 @@
   ;; one extent's octets are read unit by unit from LUNIT; octets named
   ;; through a source manifest read the manifest's unit holding the next
   ;; block's entry (art-entry decodes it), then the block, with no reset
-  ;; between: the block lands at the lease's fill, [4096, 4096+BLEN), beside
+  ;; between: the block lands after the trusted prefix and manifest unit, beside
   ;; the entry it is checked against (:fetch)
   (art-read :on-refusal ((:stop :machine-phase))
      (:let pos row-apos)

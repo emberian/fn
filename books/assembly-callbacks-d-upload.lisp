@@ -132,17 +132,22 @@
   ;; manifest staging. Hash prefix+source before block hashing reuses B3.
   (:stored-hash :on-refusal ((:stop :machine-phase))
    (:let total (+ row-ilen row-hashed))
-   (:if (not (and (natp budget) (< 0 budget))) ((:yield))
-        ((:let hrow (fn2-upload-hasher id))
-         (:do (slot gen off len) (fn2-upload-store-span row-lslot row-lgen row-ilen
-                                                        row-c0-slot row-c0-gen row-c1-slot row-c1-gen
-                                                        row-stored-hashed row-hashed))
-         (:let done (+ row-stored-hashed len))
-         (:do (hcode) (fn2-upload-stored-hash hrow slot gen off row-stored-hashed len (equal done total)
+   (:cond ((not (and (natp budget) (< 0 budget))) (:yield))
+          ;; Pool writes may extend at fill, never across an unfilled gap.
+          ;; Reserve the digest prefix in its own bounded transition.
+          ((equal row-mstep 0)
+           (:do (zcode) (fn2-upload-page-zero-to *fn2-upload-page-stored-source* row-lslot row-lgen)
+            :accept (:ok))
+           (:set (mstep 1)) (:charge :bytes *fn2-commit-unit-bytes* :steps *fn2-work-transition* :runnable t))
+          (t (:let hrow (fn2-upload-hasher id))
+             (:do (slot gen off len) (fn2-upload-store-span row-lslot row-lgen row-ilen
+                                    row-c0-slot row-c0-gen row-c1-slot row-c1-gen row-stored-hashed row-hashed))
+             (:let done (+ row-stored-hashed len))
+             (:do (hcode) (fn2-upload-stored-hash hrow slot gen off row-stored-hashed len (equal done total)
                                                row-lslot row-lgen) :accept (:ok))
-         (:set (stored-hashed done))
-         (:next (:if (equal done total) :location-hash :stored-hash))
-         (:charge :bytes *fn2-commit-unit-bytes* :steps *fn2-work-transition* :runnable t))))
+             (:set (stored-hashed done) (mstep (if (equal done total) 0 1)))
+             (:next (:if (equal done total) :location-hash :stored-hash))
+             (:charge :bytes *fn2-commit-unit-bytes* :steps *fn2-work-transition* :runnable t))))
   (:location-hash :on-refusal ((:stop :machine-phase))
    (:let total (+ row-ilen row-hashed))
    (:cond ((fn2-am-manifestp total) (:next :store-write)

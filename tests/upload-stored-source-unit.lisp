@@ -37,6 +37,8 @@
        ((mv b fn2-core) (fn2-uss-write (take (min cap (len source)) source) c0 g0 0 fn2-core))
        ((mv c fn2-core) (fn2-uss-write (nthcdr cap source) c1 g1 0 fn2-core))
        ((unless (and (eq a :ok) (eq b :ok) (eq c :ok))) (mv :write fn2-core))
+       ((mv z fn2-core) (fn2-upload-page-zero-to *fn2-upload-page-stored-source* ls lg *fn2-upload-kind* 0 1 fn2-core))
+       ((unless (eq z :ok)) (mv :pad fn2-core))
        ((mv code fn2-core) (fn2-uss-drive 8 0 (+ (len prefix) (len source)) ls lg (len prefix)
                                             c0 g0 c1 g1 (len source) fn2-core))
        (got (fn2-uss-read 32 ls lg *fn2-upload-page-stored-source* fn2-core)))
