@@ -136,6 +136,18 @@ an outstanding proof-cost defect. Its synthetic count=3/aux=5 receipt deliberate
 distinguishes columns and is unreachable for an actual physical Fence; this
 control carries no physical-cut qualification.
 
+The later shared current-world batch restored the captured core103 plus model
+theory and checked compiled prerequisite presence. `books/terminal-values` then
+admitted from source in 0.867 s. The next book, `sim/check-own`, hit its 60 s
+encapsulate limit: 50.60 s was spent proving `FN2-OWN-INIT`'s guard while opening
+the full profile schema. No physical-stage or equality proof was reached.
+`836110e42` keeps the initializer body and guard unchanged, projects only the
+needed pool fields locally, and uses the existing operation/QA field bounds.
+The changed-leaf probe could not execute because the shared session had expired.
+This is a setup failure, and that guard repair remains untested. The shared
+prototype is explicitly base `99e30d184` plus the named `sim/check-own.lisp`
+override; it is not an untouched `99e30d184` world or current-dev qualification.
+
 The real-fd readback establishes current OS-visible byte contents. It is not a
 power-loss durability witness. Relating a successful native Fence to preserved
 crash images still relies on the existing `FN2-A-FENCE-PERSISTS` environment
