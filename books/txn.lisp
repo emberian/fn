@@ -1045,7 +1045,7 @@
 ;; The transaction's continuations (materialized after the upload's).
 (defmacro fn2-txn-events ()
  '(progn
-(defcore-readonly-child fn2-txn-principal fn2-txn-principal-child)
+(defcore-readonly-closure fn2-txn-principal fn2-txn-principal-child)
 (defmachine-arms fn2-txn)
 (defmachine-run fn2-txn)
 ))
