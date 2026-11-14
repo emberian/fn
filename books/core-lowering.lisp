@@ -294,6 +294,14 @@
                    (cdr pending))
            children (cons (car pending) seen) world (1- fuel)))))
 
+(defun fn2-lower-guard-theory (guard body world)
+ (declare (xargs :verify-guards nil))
+ (fn2-lower-guard-openings
+  (union-eq (fn2-lower-call-names guard)
+   (union-eq (fn2-lower-predicate-names body nil t 10000)
+             (fn2-lower-call-guard-names (fn2-lower-call-names body) world)))
+  (fn2-lower-registered-children (table-alist 'fn2-core-lowered world))
+  nil world 10000))
 (defun fn2-lower-leaf-properties (rows calls property)
  (declare (xargs :verify-guards nil))
  (if (atom rows) nil
@@ -348,13 +356,7 @@
            (declare (ignorable ,@args)
                     (xargs :stobjs ,children :guard ,guard :verify-guards t
                      :guard-hints (("Goal" :in-theory
-                        (enable ,@(fn2-lower-guard-openings
-                                    (union-eq (fn2-lower-call-names guard)
-                                     (union-eq (fn2-lower-predicate-names lowered nil t 10000)
-                                      (fn2-lower-call-guard-names (fn2-lower-call-names lowered) world)))
-                                    (fn2-lower-registered-children
-                                      (table-alist 'fn2-core-lowered world))
-                                    nil world 10000))))))
+                        (enable ,@(fn2-lower-guard-theory guard lowered world))))))
            ,(fn2-lower-result-body lowered (len outs)))
          (assert-event
           (and (equal (getpropc ',child 'stobjs-out nil (w state)) ',outs)
@@ -383,19 +385,20 @@
 ; Plan the nonrecursive reader dependency DAG before emitting any events.
 ; A refusal leaves no partially generated family in the world.
 (mutual-recursion
- (defun fn2-lower-reader-plan (fn fields world seen stack fuel)
+ (defun fn2-lower-reader-plan (fn fields world seen stack fuel through-writes)
   (declare (xargs :verify-guards nil :measure (nfix fuel)))
   (cond
    ((zp fuel) (mv :expansion-budget nil seen))
    ((or (member-eq fn fields)
         (not (member-eq 'fn2-core (getpropc fn 'stobjs-in nil world)))
         (member-eq fn seen)
-        (assoc-eq fn (table-alist 'fn2-core-lowered world)))
+        (and (not (fn2-arms-stobjs-of (getpropc fn 'stobjs-out nil world)))
+             (assoc-eq fn (table-alist 'fn2-core-lowered world))))
     (mv nil nil seen))
    ((or (member-eq fn stack) (getpropc fn 'recursivep nil world))
     (mv :recursive-callee nil seen))
    ((member-eq fn '(fn2-corep fn2-core-wfp)) (mv :unlowered-core nil seen))
-   ((fn2-arms-stobjs-of (getpropc fn 'stobjs-out nil world))
+   ((and (not through-writes) (fn2-arms-stobjs-of (getpropc fn 'stobjs-out nil world)))
     (mv :callee-writes-state nil seen))
    (t
     (let ((body (getpropc fn 'unnormalized-body nil world)))
@@ -406,18 +409,20 @@
         (union-eq (all-fnnames body)
           (set-difference-eq (all-fnnames (getpropc fn 'guard t world))
                             '(fn2-corep fn2-core-wfp))) fields world seen
-                                   (cons fn stack) (1- fuel))
-       (mv problem (append order (list fn)) (cons fn seen))))))))
- (defun fn2-lower-reader-plan-list (fns fields world seen stack fuel)
+                                   (cons fn stack) (1- fuel) through-writes)
+       (mv problem (append order
+                      (and (not (fn2-arms-stobjs-of (getpropc fn 'stobjs-out nil world))) (list fn)))
+           (cons fn seen))))))))
+ (defun fn2-lower-reader-plan-list (fns fields world seen stack fuel through-writes)
   (declare (xargs :verify-guards nil :measure (nfix fuel)))
   (cond ((atom fns) (mv nil nil seen))
         ((zp fuel) (mv :expansion-budget nil seen))
         (t
          (mv-let (problem first seen)
-          (fn2-lower-reader-plan (car fns) fields world seen stack (1- fuel))
+          (fn2-lower-reader-plan (car fns) fields world seen stack (1- fuel) through-writes)
           (if problem (mv problem nil seen)
            (mv-let (problem rest seen)
-            (fn2-lower-reader-plan-list (cdr fns) fields world seen stack (1- fuel))
+            (fn2-lower-reader-plan-list (cdr fns) fields world seen stack (1- fuel) through-writes)
             (mv problem (append first rest) seen))))))))
 (defun fn2-lower-reader-family-events (order root child teeth)
  (declare (xargs :verify-guards nil))
@@ -431,7 +436,7 @@
  `(make-event
    (mv-let (problem order seen)
     (fn2-lower-reader-plan ',fn (strip-cars (fn2-core-child-registry (w state)))
-                           (w state) nil nil 10000)
+                           (w state) nil nil 10000 nil)
     (declare (ignore seen))
     (if (or problem (not (member-eq ',fn order)))
         (er soft 'defcore-readonly-closure "Cannot plan ~x0: ~x1." ',fn

@@ -104,6 +104,15 @@
 (defun fn2-update-collision (fn2-product-value-0 fn2-core)
  (declare (xargs :stobjs fn2-core)) (mv fn2-product-value-0 fn2-core))
 (must-fail (defcore-product-child fn2-update-collision fn2-update-collision-child))
+(must-fail (defcore-product-closure fn2-update-unsupported fn2-update-unsupported-family))
+(defun fn2-update-recursive (n fn2-core)
+ (declare (xargs :stobjs fn2-core :measure (nfix n)
+                 :guard (and (natp n) (fn2-core-wfp fn2-core))))
+ (if (zp n) fn2-core (fn2-update-recursive (1- n) fn2-core)))
+(must-fail (defcore-product-closure fn2-update-recursive fn2-update-recursive-family))
+(assert-event
+ (and (not (function-symbolp 'fn2-update-unsupported-family (w state)))
+      (not (function-symbolp 'fn2-update-recursive-family (w state)))))
 ;; Mutation control: retaining the answer and changed child is insufficient.
 ;; This deliberately broken reconstruction also clobbers the unrelated child.
 (defun fn2-update-mutant-core-face (i value fn2-core)
@@ -223,16 +232,16 @@
   (if (< i (fn2-update-config-rows fn2-update-config))
       (nfix (fn2-update-config-value i fn2-update-config)) 0) answer))
 (in-theory (disable fn2-update-read))
-(defcore-readonly-child fn2-update-read fn2-update-read-child)
+
 (defun fn2-update-read-after (i value fn2-core)
  (declare (xargs :stobjs fn2-core :guard (and (natp i) (unsigned-byte-p 8 value) (fn2-core-wfp fn2-core))))
  (mv-let (code fn2-core) (fn2-update-source i value fn2-core)
   (declare (ignore code))
   (mv (fn2-update-read i fn2-core) fn2-core)))
 (in-theory (disable fn2-update-read-after))
-(defcore-product-child fn2-update-read-after fn2-update-read-after-child)
+(defcore-product-closure fn2-update-read-after fn2-update-read-after-child)
 (assert-event
- (equal (fn2-update-call-count 'fn2-update-read-child
+ (equal (fn2-update-call-count 'fn2-update-read-lowered-child
           (getpropc 'fn2-update-read-after-child 'unnormalized-body nil (w state))) 1))
 (defthm fn2-update-read-after-positive
  (and (fn2-corep '(((37) 1) ((91) 1)))
@@ -287,14 +296,14 @@
           (pre (and (fn2-corep fn2-core) (fn2-core-wfp fn2-core) (natp 0)))
           (source (fn2-update-read 0 fn2-core)))
     (stobj-let ((fn2-update-config (fn2-core-config fn2-core))) (answer)
-     (let ((child (fn2-update-read-child 0 fn2-update-config)))
+     (let ((child (fn2-update-read-lowered-child 0 fn2-update-config)))
       (and pre (equal source 37) (equal source child)
            (if mutant (not (equal source (+ 1 child))) t)))
      (mv answer fn2-core)))
    answer)))
-(defun fn2-update-read-child-refines-core-positive ()
+(defun fn2-update-read-lowered-child-refines-core-positive ()
  (declare (xargs :verify-guards nil)) (fn2-update-reader-live nil))
-(defun fn2-update-read-child-refines-core-negative ()
+(defun fn2-update-read-lowered-child-refines-core-negative ()
  (declare (xargs :verify-guards nil)) (fn2-update-reader-live t))
 (defun fn2-update-read-after-live (mutant)
  (declare (xargs :verify-guards nil))

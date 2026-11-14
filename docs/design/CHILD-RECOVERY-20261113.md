@@ -143,7 +143,18 @@ regression passed 65 forms. Live typed-state tests compare source, actual exec
 and totalized face on both conditional branches, and reject a flipped-condition
 mutation. Ground controls distinguish the malformed-core logical face from the
 unsupported malformed input to the executable reconstruction. This totalization
-continuation still needs its own record gate; it is separate from 081dcad4c.
+continuation passed its separate record gate at 9f48f6336:
+`certify-20261114T010423Z-3480091`, 17 reused and 4 built books, no book over
+10 seconds. It is separate from 081dcad4c.
+
+The next product-family extension shares the reader dependency walk through
+mutable callees, emits reader boundaries bottom-up, then lowers the mutable
+root. Mutable callees remain in the typed expansion pass; recursive and raw-core
+uses refuse. The existing read-after-write fixture now uses this automatic
+family instead of a hand-listed reader derivation, with the same full effects,
+one-evaluation and runtime mutation controls. Warm product92/readers65 forms
+pass. Actual wake-upload is the next production source probe; this extension
+has not yet received its record gate or a current callback certification.
 
 Txn has 14 declared operations without child faces in the baseline. Three
 (txn-principal, authority-allows, authority-depend) have handwritten bodies

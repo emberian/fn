@@ -239,7 +239,10 @@
         `(make-event (er soft 'defcore-product-child "Cannot lower ~x0: ~x1." ',fn ',(or problem err err2)))
      `(progn
        (defun ,child ,args
-        (declare (ignorable ,@args) (xargs :stobjs ,children :guard ,guard :verify-guards t))
+        (declare (ignorable ,@args)
+                 (xargs :stobjs ,children :guard ,guard :verify-guards t
+                        :guard-hints (("Goal" :in-theory
+                           (enable ,@(fn2-lower-guard-theory guard body world))))))
         ,(fn2-product-block stages tail))
        (assert-event
         (and (equal (getpropc ',child 'stobjs-in nil (w state)) ',(append (remove-eq 'fn2-core ins) children))
@@ -298,3 +301,19 @@
           :execution-obligation ,guarded)))))))))
 (defmacro defcore-product-child (fn child &key teeth)
  `(make-event (value (fn2-product-events ',fn ',child ',teeth (w state)))))
+
+; Derive reader boundaries through the mutable core closure before compiling
+; its state carrier. Mutable callees stay in the shared typed expansion pass.
+(defmacro defcore-product-closure (fn child &key teeth)
+ `(make-event
+   (mv-let (problem order seen)
+    (fn2-lower-reader-plan ',fn
+     (append (strip-cars (fn2-core-child-registry (w state)))
+             (strip-cars (fn2-product-writers (fn2-core-child-registry (w state)))))
+     (w state) nil nil 10000 t)
+    (declare (ignore seen))
+    (if problem
+        (er soft 'defcore-product-closure "Cannot plan ~x0: ~x1." ',fn problem)
+      (value (cons 'progn
+               (append (fn2-lower-reader-family-events order nil nil nil)
+                       (list '(defcore-product-child ,fn ,child ,@(and teeth `(:teeth ,teeth)))))))))))
