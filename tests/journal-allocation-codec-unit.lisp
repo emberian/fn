@@ -26,7 +26,7 @@
                          (= (fn2-fields-value (+ base *fn2-format-allocation-field-owner-kind*) fn2-fields) 5)
                          (= (fn2-fields-value (+ base *fn2-format-allocation-field-owner*) fn2-fields) 17)))
              ((mv truncated & fn2-fields) (fn2-journal-body-decode *record-kind-allocation* base slot gen 0 (- end 1) 1 0 1 fn2-fields fn2-pool))
-             ((mv unknown & fn2-fields) (fn2-journal-body-decode (+ 1 *record-kind-authority-head*) base slot gen 0 end 1 0 1 fn2-fields fn2-pool)))
+             ((mv unknown & fn2-fields) (fn2-journal-body-decode (len (caddr *fn2-format-record-kind*)) base slot gen 0 end 1 0 1 fn2-fields fn2-pool)))
          (mv (and (eq reserved :ok) exact (not (eq truncated :ok)) (eq unknown :kind)) fn2-fields fn2-pool))
         (mv answer fn2-core))))
   (mv answer fn2-core)))
