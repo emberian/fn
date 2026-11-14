@@ -86,9 +86,18 @@ The compiler now discovers these dependencies and opens only generated
 predicate dependencies for guard proofs, following lambda-bound tests while
 leaving data-only calls opaque. The 60-form warm fixture passes, including
 actual indexed-column guard verification and predicate-slice exclusions.
-The latest production refusal was CNS snapshot validation before this slice;
-the updated actual-family probe and record gate are pending. No machine-mode
-switch is implied.
+The qualified 74f29a868 callback baseline now admits the principal family:
+16 automatically generated boundaries, plus groups-limit and count-next,
+all with verified guards, exact ABI and unconditional full-result equality.
+The final principal has two scalar results. The compiler proves finite result
+shape from the child tuple construction and the admitted refinement, so opaque
+multi-value tail returns compose without assuming logical shape from metadata.
+Warm fixture passes 65 forms. Baseline source probe `stride-principal-result-shape`
+passed all five target forms with 126 exact cached prerequisites; aggregate
+source admission was 31.73 seconds / 174,452 steps (principal 115,113 steps,
+count-next 36,127). This is not current-tree production certification or a
+completed formula-bound evidence package. Record fixture gate is pending;
+no machine-mode switch has occurred.
 
 Txn has 14 declared operations without child faces in the baseline. Three
 (txn-principal, authority-allows, authority-depend) have handwritten bodies

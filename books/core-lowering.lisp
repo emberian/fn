@@ -163,6 +163,35 @@
       `(let ((fn2-lower-result ,body)) (mv ,@(fn2-lower-result-parts count 0)))
     body))
 
+; Result arity is proved, not inferred as a logical fact from ABI metadata.
+(defun fn2-lower-shape-parts (call left index)
+ (declare (xargs :verify-guards nil :measure (nfix left)))
+ (if (zp left) nil
+  (cons (if (zp index) (list 'car call) (list 'nth index call))
+        (fn2-lower-shape-parts call (1- left) (1+ index)))))
+(defun fn2-lower-instance-bindings (vars terms)
+ (declare (xargs :verify-guards nil))
+ (if (atom vars) nil
+  (cons (list (car vars) (car terms))
+        (fn2-lower-instance-bindings (cdr vars) (cdr terms)))))
+(defun fn2-lower-shape-events (fn child formals args entries count)
+ (declare (xargs :verify-guards nil))
+ (if (< count 2) nil
+  (let* ((child-call (cons child args)) (source-call (cons fn formals))
+         (child-shape (fn2-columns-sym child "-RESULT-SHAPE"))
+         (source-shape (fn2-columns-sym child "-CORE-RESULT-SHAPE"))
+         (refinement (fn2-columns-sym child "-REFINES-CORE")))
+   `((defthm ,child-shape
+       (equal (list ,@(fn2-lower-shape-parts child-call count 0)) ,child-call)
+       :hints (("Goal" :in-theory (enable ,child))))
+     (defthm ,source-shape
+       (equal (list ,@(fn2-lower-shape-parts source-call count 0)) ,source-call)
+       :hints (("Goal"
+                :use ((:instance ,refinement)
+                      (:instance ,child-shape
+                        ,@(fn2-lower-instance-bindings args (fn2-lower-core-args args entries))))
+                :in-theory (disable ,fn ,child ,refinement ,child-shape))))))))
+
 ; Refinement is compiler evidence, not an independent behavioural contract.
 ; Keep its proof and evaluating teeth in the promoted obligation store.
 (defun fn2-lower-teeth-problem (teeth)
@@ -321,6 +350,7 @@
          (defthm ,(fn2-columns-sym child "-REFINES-CORE")
            (equal (,child ,@(fn2-lower-core-args args entries)) (,fn ,@formals))
            :hints (("Goal" :in-theory (e/d (,fn ,child ,@opened) (,@(strip-cars entries))))))
+         ,@(fn2-lower-shape-events fn child formals args entries (len outs))
          ,@(fn2-lower-obligation-events fn child child formals
              `(equal (,child ,@(fn2-lower-core-args args entries)) (,fn ,@formals))
              (fn2-columns-sym child "-REFINES-CORE") teeth)

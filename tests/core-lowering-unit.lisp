@@ -129,6 +129,15 @@
 (must-fail (defcore-readonly-child fn2-lower-read fn2-lower-duplicate-teeth
              :teeth (fn2-lower-read-child-refines-core-positive fn2-lower-read-child-refines-core-positive)))
 
+;; An opaque multi-result tail uses the proved result-shape corollary.
+(defun fn2-lower-pair-tail (limit fn2-core)
+ (declare (xargs :stobjs fn2-core :guard (and (natp limit) (fn2-core-wfp fn2-core))))
+ (fn2-lower-read-pair limit fn2-core))
+(in-theory (disable fn2-lower-pair-tail))
+(defcore-readonly-child fn2-lower-pair-tail fn2-lower-pair-tail-child)
+(fn2-lowering-fixture-teeth fn2-lower-pair-tail fn2-lower-pair-tail-child 2 (37 38))
+(fn2-check-lowering-teeth fn2-lower-pair-tail)
+
 ;; Bottom-up derivation discovers intermediate boundaries, without a hand list.
 (defun fn2-lower-auto-base (limit fn2-core)
  (declare (xargs :stobjs fn2-core :guard (and (natp limit) (fn2-core-wfp fn2-core))))
