@@ -126,8 +126,34 @@
 (defthm fn2-native-cut-atomic-positive-witness
   (fn2-native-cut-atomic-witness nil)
   :rule-classes nil
-  :hints (("Goal" :in-theory (union-theories (current-theory :here) (function-theory :here)))))
+  :hints (("Goal"
+    ; Evaluate the declared concrete fixture while the admitted storage
+    ; equality rewrites its two executions. Keep implementation bodies opaque.
+    :in-theory
+    (e/d (fn2-native-cut-atomic-witness
+          (:executable-counterpart fn2-native-cut-fixture)
+          (:executable-counterpart create-fn2-core)
+          (:executable-counterpart create-fn2-sim)
+          (:executable-counterpart create-fn2-own))
+         ((:definition fn2-native-cut-fixture)
+          fn2-sim-native-cut fn2-sim-native-stage fn2-sim-native-post
+          fn2-sim-physical fn2-sim-complete fn2-sim-complete-result)))))
 (defthm fn2-native-cut-atomic-pending-hypothesis-removal
   (fn2-native-cut-atomic-witness t)
   :rule-classes nil
-  :hints (("Goal" :in-theory (union-theories (current-theory :here) (function-theory :here)))))
+  :hints (("Goal"
+    ; The deliberate active=0 mutation is a hypothesis control, not evidence
+    ; of reachability in composition. Evaluate its concrete two executions;
+    ; the storage equality is unavailable once its pending premise is removed.
+    :in-theory
+    (e/d (fn2-native-cut-atomic-witness
+          (:executable-counterpart fn2-native-cut-fixture)
+          (:executable-counterpart create-fn2-core)
+          (:executable-counterpart create-fn2-sim)
+          (:executable-counterpart create-fn2-own)
+          (:executable-counterpart fn2-sim-native-cut)
+          (:executable-counterpart fn2-sim-complete))
+         ((:definition fn2-native-cut-fixture)
+          (:definition fn2-sim-native-cut) (:definition fn2-sim-native-stage)
+          (:definition fn2-sim-native-post) (:definition fn2-sim-physical)
+          (:definition fn2-sim-complete) (:definition fn2-sim-complete-result))))))

@@ -1,8 +1,10 @@
 # Successful fence return cuts
 
 The source now connects a successful storage Fence's physical return to an
-unposted simulator continuation and a native trace/replay event. The actual scheduled Fence cut/replay controls pass in a Forge proof REPL;
-record certification and the complete native/model relation remain pending. The default
+unposted simulator continuation and a native trace/replay event. The earlier `30aa953a7` source passed scheduled Fence cut/replay controls in a
+Forge proof REPL. The lane now reconciles integration source `e4f74c279`; those
+earlier admissions do not qualify the combined source. Record certification and
+the complete native/model relation remain pending. The default
 `tools/native_program_check.py` still refuses incomplete cut mapping;
 `--source-only --json` reports the bounded source contracts separately.
 
@@ -60,15 +62,26 @@ The executable controls are:
   terminal outcome or raw retained packet. All five controls executed and
   returned true in the same model world. The nine operation-level cut controls
   also returned true.
-- `tests/native-fence-return-unit.lsp`: one real fd Fence through the actual
-  performer/harvest; inspect the actual death boundary before normalization.
-  This raw-host fixture remains unexecuted.
+- `tests/native-fence-return-unit.lsp` / `native-fence-return-raw.lisp`: an actual
+  issued Write17 followed by Fence through native take, worker, harvest and post.
+  Capture the worker return before a trace event exists, then the executor return
+  after the four-field event and before normalization. Observe byte zero initially
+  and 17 after Fence. This stronger raw-host fixture remains unexecuted.
+- `tests/native-fence-correspondence.lisp`: independently replay the actual native
+  Write segment, issue Fence, then replay strict Take/Ack/four-field Return/Post.
+  Missing return, changed raw result, generation or terminal outcome must fail.
+  Feed that same real event to the shared scheduled model; compare descriptor and
+  raw-result fields plus the decoder, while native schedule/time coordinates are
+  explicitly neutral. Check durable byte 17 and unposted phase, then model crash
+  or resume without reissue. The control compares an explicit byte/observation
+  projection; it does not claim identical native/model full states. It is written
+  and unexecuted on the combined source.
 - `tests/envelope-prefix-unit.lisp`: issued Fence, raw-return prefix/resume,
   duplicate/stale incarnation/wrong post/raw-syscall mutations. The separate
   four-field native controls remain unexecuted.
 
 Source validation passes 28 focused Python controls, strict source reading,
-secrets and diff checks. Forge REPL admissions cover the generated schema,
+secrets and diff checks. On the earlier `30aa953a7` source, Forge REPL admissions cover the generated schema,
 physical adapter, retained raw helpers, stage/post/completion guards, and their
 original carrier-preservation statements. The actual four scheduler advance
 functions are guard-verified in that world. The stage preservation package takes
@@ -90,10 +103,13 @@ OWN projections moved to `check-core`. The narrowed transfer leaf admits in
 159.53 s/5,760,590 steps, an outstanding proof-cost defect. The retained world
 then loaded exact cached host-boundary dependencies for actual packet replay.
 
-The existing positive whole-formula witness's all-function-theory hint did not
+The earlier positive whole-formula witness's all-function-theory hint did not
 finish within the proof tool's 45.1 s hard sentinel limit; the tool killed its
 own retained session. This is a proof-cost failure, not a counterexample or an
-OOM result. The hypothesis-removal witness was not reached. Its deliberate
+OOM result. That broad hint has now been replaced with explicit concrete-fixture
+executable counterparts and opaque admitted implementation abstractions. The
+witness formula is unchanged; the new hints have not executed yet. The
+hypothesis-removal witness was not reached in the earlier world. Its deliberate
 active=0 mutation tests the theorem's pending-flight premise; it contributes no
 evidence that this branch is reachable in the composed scheduler.
 

@@ -302,6 +302,7 @@ ACL2_BOOKS = \
   tests/native-envelope-prefix-unit \
   tests/native-cut-program-unit \
   tests/scheduled-fence-cut-unit \
+  tests/native-fence-correspondence \
   tests/envelope-input-unit \
   tests/envelope-prefix-unit \
   tests/native-unit \

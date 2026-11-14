@@ -1,48 +1,15 @@
-; One real fd Fence through the actual raw performer and completion harvest.
-; Load on a source-matched qualified HOST-BOUNDARY prefix. No server starts.
+; Standalone real-fd correspondence test. No listener or service starts.
+; Qualification may load these exact source books into one retained world and
+; run the raw half there, avoiding a second dependency load.
 (in-package "ACL2")
-(include-book "books/host-boundary" :uncertified-okp nil)
+(include-book "tests/native-fence-correspondence" :uncertified-okp nil)
 :q
 (load "host/ffi.lisp")
 (load "host/adapter.lisp")
+(load "tests/native-fence-return-raw.lisp")
 (handler-case
- (let* ((path (format nil "build/fence-return-~d-~d.img" (get-universal-time) (random 1000000)))
-        (original-boundary (symbol-function 'fn2-n-boundary))
-        (at-cut nil))
-  (multiple-value-bind (fd size backend) (fn2-device-open path :create-size 1048576)
-   (declare (ignore size backend))
-   (unwind-protect
-    (let* ((job (make-fn2-device-job :slot 0 :gen 7 :kind :fence
-                                    :bytes (make-array 0 :element-type '(unsigned-byte 8)) :address 0))
-           (device (%make-fn2-device :fd fd :done (vector job) :completed 1))
-           (op (make-fn2-nop :state +fn2-n-waiting+ :gen 7 :kind *fn2-action-fence* :len 0))
-           (host (make-fn2-nhost :storage device :storage-pending 1 :ops (vector op)
-                                :completions (make-array 1 :initial-element nil)
-                                :trace (make-array 8 :initial-element nil))))
-      (fn2-device-perform device job)
-      (assert (zerop (fn2-device-job-result job)))
-      (assert (zerop (fn2-device-job-errno job)))
-      (setf (symbol-function 'fn2-n-boundary)
-       (lambda (h label)
-        (assert (eq h host))
-        (assert (equal label "device-return"))
-        (assert (zerop (fn2-nhost-pending host)))
-        (assert (= (fn2-nop-state op) +fn2-n-waiting+))
-        (setf at-cut (fn2-n-trace-list host))
-        (assert (equal at-cut
-          (list (list :physical-return
-             (list 0 7 *fn2-action-fence* *fn2-event-fence-result* 0 :ok 0 0 0 0 *fn2-fault-none*) 0 0))))
-        (funcall original-boundary h label)))
-      (fn2-n-storage-completions host)
-      (assert at-cut)
-      (assert (= (fn2-nhost-boundaries host) 1))
-      (assert (= (fn2-nhost-pending host) 1))
-      (assert (= (fn2-nop-state op) +fn2-n-completed+))
-      (assert (= (fn2-nop-outcome op) *fn2-outcome-done*))
-      (assert (zerop (fn2-nhost-storage-pending host))))
-    (setf (symbol-function 'fn2-n-boundary) original-boundary)
-    (fn2-native-close fd)))
-  (format t "NATIVE FENCE RETURN PASS: real physical result recorded before death cut and terminal normalization~%")
+ (progn
+  (assert (fn2-native-fence-return-control))
   (sb-ext:exit :code 0))
  (error (condition)
   (format *error-output* "NATIVE FENCE RETURN FAIL: ~a~%" condition)

@@ -1,0 +1,110 @@
+; Test-only bridge from a real worker/harvest trace to the shared model and
+; ENVELOPE. No disk implementation or terminal normalizer is duplicated here.
+(in-package "ACL2")
+(include-book "native-cut-program-unit")
+(include-book "../sim/envelope-prefix")
+
+(defun fn2-native-fence-unposted (slot fn2-core)
+  (declare (xargs :stobjs fn2-core :verify-guards nil))
+  (stobj-let ((fn2-ops (fn2-core-ops fn2-core)))
+    (yes) (= (fn2-ops-c0-posted slot fn2-ops) 0) yes))
+
+; The native event retains actual N/ERRNO, with neutral schedule/time fields.
+; Only that explicitly declared observation projection equals the simulator's
+; seeded schedule packet. Each side still retains its full original packet.
+(defun fn2-native-fence-observation (native model)
+  (declare (xargs :verify-guards nil))
+  (and (true-listp native) (= (len native) 4) (eq (car native) :physical-return)
+       (true-listp (nth 1 native)) (= (len (nth 1 native)) 11)
+       (equal (take 8 (nth 1 native)) (take 8 model))
+       (equal (nth 8 (nth 1 native)) 0) (equal (nth 9 (nth 1 native)) 0)
+       (equal (nth 10 (nth 1 native)) *fn2-fault-none*)
+       (equal (nth 10 model) *fn2-fault-none*)
+       (mv-let (code count) (fn2-device-io-observation (nth 2 native) (nth 3 native))
+         (and (equal code (nth 5 model)) (equal count (nth 6 model))))))
+
+(defun fn2-native-fence-model-run (native crashp fn2-core fn2-sim fn2-own)
+  (declare (xargs :stobjs (fn2-core fn2-sim fn2-own) :verify-guards nil))
+  (b* (((mv ready fn2-core fn2-sim fn2-own)
+        (fn2-native-cut-write-control :finish fn2-core fn2-sim fn2-own))
+       ((mv code op gen fn2-core) (fn2-issue-fence 1 0 1 0 fn2-core))
+       (fn2-own (fn2-own-observe-issue op fn2-core fn2-own))
+       ((mv taken fn2-core fn2-sim fn2-own) (fn2-sim-take-prefix 1 0 fn2-core fn2-sim fn2-own))
+       (fn2-sim (update-fn2-sim-fault-budget 0 fn2-sim))
+       ((mv advanced fn2-core fn2-sim fn2-own) (fn2-sim-advance fn2-core fn2-sim fn2-own))
+       (packet (fn2-sim-saved-return op fn2-sim))
+       (durable (stobj-let ((fn2-sim-storage (fn2-sim-disk fn2-sim)))
+                  (byte) (fn2-sim-storage-durable 0 fn2-sim-storage) byte))
+       (stage-ok (and ready (eq code :ok) (= taken 1) advanced
+                      (equal (take 5 packet) (list op gen *fn2-action-fence* *fn2-event-fence-result* 0))
+                      (fn2-native-fence-observation native packet)
+                      (fn2-native-fence-unposted op fn2-core) (= durable 17)
+                      (= (fn2-sim-active op fn2-sim) *fn2-sim-native-returned*)))
+       (stamp (fn2-sim-stamp fn2-sim))
+       (fn2-sim (if crashp (update-fn2-sim-fault-budget 1 fn2-sim) fn2-sim))
+       (fn2-sim (if crashp (fn2-sim-force-fault *fn2-fault-crash* fn2-sim) fn2-sim))
+       ((mv resumed fn2-core fn2-sim fn2-own) (fn2-sim-advance fn2-core fn2-sim fn2-own))
+       (durable-after (stobj-let ((fn2-sim-storage (fn2-sim-disk fn2-sim)))
+                        (byte) (fn2-sim-storage-durable 0 fn2-sim-storage) byte)))
+    (mv (and stage-ok resumed (= stamp (fn2-sim-stamp fn2-sim)) (= durable-after 17)
+             (= (fn2-sim-active op fn2-sim) 0)
+             (= (fn2-sim-deaths fn2-sim) (if crashp 1 0)))
+        fn2-core fn2-sim fn2-own)))
+
+(defun fn2-native-fence-model-check (native crashp)
+  (declare (xargs :verify-guards nil))
+  (with-local-stobj fn2-core
+    (mv-let (ok fn2-core)
+      (with-local-stobj fn2-sim
+        (mv-let (ok fn2-core fn2-sim)
+          (with-local-stobj fn2-own
+            (mv-let (ok fn2-core fn2-sim fn2-own)
+              (fn2-native-fence-model-run native crashp fn2-core fn2-sim fn2-own)
+              (mv ok fn2-core fn2-sim)))
+          (mv ok fn2-core)))
+      ok)))
+
+; Replay starts independently from the same logical issue program. It neither
+; copies the native core nor assumes TURN would issue this fixture's operations.
+; Exact event shapes make omission of the raw return fail this strict pilot.
+(defun fn2-native-fence-replay-run (writes fence fn2-core fn2-sim fn2-own)
+  (declare (xargs :stobjs (fn2-core fn2-sim fn2-own) :verify-guards nil))
+  (b* (((mv ready write fn2-core fn2-sim fn2-own)
+        (fn2-native-cut-fixture nil fn2-core fn2-sim fn2-own))
+       ((unless (and ready (= (len writes) 3) (= (len fence) 4)
+                     (equal (strip-cars writes) '(:take :ack :post))
+                     (equal (strip-cars fence) '(:take :ack :physical-return :post))
+                     (= (len (nth 2 fence)) 4)))
+        (mv nil fn2-core fn2-sim fn2-own))
+       ((mv verdict taken caps fn2-core) (fn2-envelope-prefix writes 0 t nil nil fn2-core))
+       ((unless (and (eq verdict :pass) (nth 10 (fn2-envelope-get write taken))))
+        (mv nil fn2-core fn2-sim fn2-own))
+       ((mv code op gen fn2-core) (fn2-issue-fence 1 0 1 0 fn2-core))
+       ((unless (eq code :ok)) (mv nil fn2-core fn2-sim fn2-own))
+       ((mv verdict taken caps fn2-core)
+        (fn2-envelope-prefix (take 3 fence) 3 t taken caps fn2-core))
+       ((unless (and (eq verdict :pass)
+                     (equal (take 2 (nth 1 (nth 2 fence))) (list op gen))
+                     (equal (nth 13 (fn2-envelope-get op taken)) (nth 1 (nth 2 fence)))
+                     (not (nth 10 (fn2-envelope-get op taken)))
+                     (fn2-native-fence-unposted op fn2-core)))
+        (mv nil fn2-core fn2-sim fn2-own))
+       ((mv verdict taken caps fn2-core)
+        (fn2-envelope-prefix (nthcdr 3 fence) 6 t taken caps fn2-core))
+       (- caps))
+    (mv (and (eq verdict :pass) (nth 10 (fn2-envelope-get op taken))
+             (not (nth 13 (fn2-envelope-get op taken))))
+        fn2-core fn2-sim fn2-own)))
+
+(defun fn2-native-fence-replay-check (writes fence)
+  (declare (xargs :verify-guards nil))
+  (with-local-stobj fn2-core
+    (mv-let (ok fn2-core)
+      (with-local-stobj fn2-sim
+        (mv-let (ok fn2-core fn2-sim)
+          (with-local-stobj fn2-own
+            (mv-let (ok fn2-core fn2-sim fn2-own)
+              (fn2-native-fence-replay-run writes fence fn2-core fn2-sim fn2-own)
+              (mv ok fn2-core fn2-sim)))
+          (mv ok fn2-core)))
+      ok)))
