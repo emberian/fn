@@ -1053,6 +1053,16 @@
 (defmacro fn2-txn-child-operation-events ()
  '(progn
 ; Derive operation boundaries after all original definitions are available.
+; Shared B/C/upload operations are selected by the same actual txn arms.
+; Their owning declarations name these children before any section consumes them.
+(defcore-product-operation fn2-commit-admit-txn fn2-commit-admit-txn-child)
+(defcore-product-operation fn2-identity-decide fn2-identity-decide-child)
+(defcore-product-operation fn2-successor-bind fn2-successor-bind-child)
+(defcore-product-operation fn2-successor-release fn2-successor-release-child)
+(defcore-product-operation fn2-successor-resolve fn2-successor-resolve-child)
+(defcore-product-operation fn2-successor-stage fn2-successor-stage-child)
+(defcore-product-operation fn2-upload-extents-of fn2-upload-extents-of-child)
+(defcore-product-operation fn2-upload-post-owner fn2-upload-post-owner-child)
 (defcore-product-closure fn2-txn-group-of fn2-txn-group-of-child)
 (defcore-product-closure fn2-txn-add-group fn2-txn-add-group-child)
 (defcore-product-closure fn2-txn-put-post-for fn2-txn-put-post-for-child)

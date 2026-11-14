@@ -641,7 +641,10 @@
  (declare (xargs :verify-guards nil))
  (if (atom order) nil
   (let* ((fn (car order))
-         (name (if (eq fn root) child (fn2-columns-sym fn "-LOWERED-CHILD")))
+         (declared (fn2-decl-get :child (fn2-decl-row (list :cost fn) world)))
+         (name (if (eq fn root) child
+                  (if (and declared (not (function-symbolp declared world))) declared
+                    (fn2-columns-sym fn "-LOWERED-CHILD"))))
          (macro (if (member-eq 'fn2-core (getpropc fn 'stobjs-out nil world))
                     (if (getpropc fn 'recursivep nil world)
                         'defcore-recursive-product-child 'defcore-product-child)
@@ -661,3 +664,18 @@
             (or problem :root-already-lowered))
       (value (cons 'progn
         (fn2-product-family-events order ',fn ',child ',teeth (w state))))))))
+
+; Reuse a dependency already generated under its declared child name. Cost
+; declarations remain immutable: no late update bypasses declaration sealing.
+(defmacro defcore-product-operation (fn child &key teeth)
+ `(make-event
+   (let* ((row (cdr (assoc-eq ',fn (table-alist 'fn2-core-lowered (w state)))))
+          (existing (fn2-decl-get :child row)))
+    (if existing
+        (if (and (eq existing ',child)
+                 (eq (symbol-class existing (w state)) :common-lisp-compliant)
+                 (getpropc (fn2-decl-get :refinement row) 'theorem nil (w state))
+                 (getpropc (fn2-decl-get :guarded-refinement row) 'theorem nil (w state)))
+            (value '(value-triple :already-derived))
+          (er soft 'defcore-product-operation "Incompatible derived boundary for ~x0." ',fn))
+      (value '(defcore-product-closure ,fn ,child ,@(and teeth `(:teeth ,teeth))))))))

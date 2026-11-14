@@ -60,7 +60,7 @@
   :doc "Post an outcome word to the connection that awaits it (generation and request checked); wake it.")
 (defcost fn2-cns-post-outcome :answers (:ok :dropped) :tables (fn2-cns-table fn2-core-machines)
   :doc "Post an append's outcome (its word and commit position) to the consumer request that awaits it (generation, request and phase checked); wake it.")
-(defcost fn2-upload-post-owner :answers (:ok :dropped) :tables (fn2-conn-table fn2-cns-table fn2-core-machines)
+(defcost fn2-upload-post-owner :child fn2-upload-post-owner-child :answers (:ok :dropped) :tables (fn2-conn-table fn2-cns-table fn2-core-machines)
   :doc "Post an outcome to the upload's owner: a consumer request (fn2-cns-post-outcome) or a connection (fn2-conn-post-word).")
 (defcost fn2-upload-advance :bytes *fn2-upload-run-bytes* :steps *fn2-work-transition*
   :answers (:run :idle :identity :receiving :sealed :discard :draining :stop)
@@ -97,7 +97,7 @@
 (defcost fn2-upload-page-zero-to :answers (:ok :more :fault) :faults (:fault) :bytes *fn2-commit-unit-bytes*
   :tables (fn2-core-pool)
   :doc "Zero the store page from its fill toward an offset, one unit at most (:more: not yet there).")
-(defcost fn2-upload-extents-of :answers (:ok :fault) :faults (:fault) :bytes *fn2-commit-extent-bytes*
+(defcost fn2-upload-extents-of :child fn2-upload-extents-of-child :answers (:ok :fault) :faults (:fault) :bytes *fn2-commit-extent-bytes*
   :tables (fn2-core-extents fn2-core-pool fn2-core-fields)
   :doc "Commit (to the article) or settle every extent stored octets occupy: the manifest's and each block's.")
 (defcost fn2-upload-settle-unit :answers (:ok :fault) :faults (:fault) :bytes *fn2-commit-unit-bytes*

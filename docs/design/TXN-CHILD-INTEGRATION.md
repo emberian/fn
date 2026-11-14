@@ -62,3 +62,22 @@ No remote compute was started for this candidate. The local static control
 compares every original txn defun byte-for-byte with the integrated base,
 checks current core.lisp is unchanged, and checks the child callback route.
 Named-file secrets scan and diff whitespace checks pass.
+
+## Shared operation frontier discovered from actual arms
+
+A structural walk of every txn `:do` identifies eight further dependencies
+without child mappings in the integrated base: commit-admit-txn,
+identity-decide, successor-bind/release/resolve/stage, upload-extents-of and
+upload-post-owner. These are now named in their original `defcost` declarations
+and derived through the same product family before child arms are emitted.
+No consumed cost row is mutated: declaration sealing remains authoritative.
+The family planner uses declared names for new boundaries and reuses an
+already-proved matching boundary when a previous dependency generated it.
+All original definitions in the four owning books remain unchanged.
+
+The earlier 25-square count covers only the fourteen local operations, not
+this additional shared frontier. These eight operations need their own actual
+result/effect evidence; the final resulting ledger is the authority for the
+complete count. Generated reclaim/link operations and table-effect consistency
+must also pass the actual child-arm callback gate. The frontier is not closed
+by the presence of declarations or by the old generator fixture records.
