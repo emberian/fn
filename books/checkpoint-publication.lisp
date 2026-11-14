@@ -397,3 +397,30 @@
       (fn2-checkpoint-publication (fn2-checkpoint-publication-set-checker-live 0
                                   (if (eq code :more) 1 0) fn2-checkpoint-publication)))
   (mv code fn2-checkpoint-publication fn2-fc fn2-b3 fn2-fields fn2-pool fn2-digests)))
+
+; Exact child shapes for core/worker composition, without re-expanding the
+; physical codec or BLAKE3 in every assembled callback proof.
+(fn2-checkpoint-publication-preserves fn2-checkpoint-publication-begin
+ (c size extents groups owner-kind owner-slot owner-gen slot0 gen0 slot1 gen1 batch-hash previous-hash geometry-hash
+    fn2-checkpoints fn2-checkpoint-publication fn2-checkpoint-bytes fn2-digests)
+ :carriers ((fn2-checkpoint-publication 1 :prefix "-PUBLICATION") (fn2-checkpoint-bytes 2 :prefix "-BYTES")))
+(fn2-checkpoint-publication-preserves fn2-checkpoint-publication-step
+ (fn2-checkpoint-publication fn2-pool fn2-ops fn2-control)
+ :carriers ((fn2-checkpoint-publication 1 :prefix "-PUBLICATION") (fn2-pool 2 :prefix "-POOL")
+            (fn2-ops 3 :prefix "-OPS") (fn2-control 4 :prefix "-CONTROL")))
+(fn2-checkpoint-publication-preserves fn2-checkpoint-publication-pack
+ (which base scratch sgen fn2-checkpoints fn2-checkpoint-refs fn2-checkpoint-bytes fn2-checkpoint-publication fn2-fields fn2-pool)
+ :carriers ((fn2-checkpoint-publication 2 :prefix "-PUBLICATION")
+            (fn2-fields 3 :prefix "-FIELDS") (fn2-pool 4 :prefix "-POOL")))
+(fn2-checkpoint-publication-preserves fn2-checkpoint-publication-check-packet
+ (which row base encoded-length budget fn2-checkpoints fn2-checkpoint-refs fn2-checkpoint-bytes fn2-checkpoint-publication
+    fn2-fc fn2-fc-context fn2-b3 fn2-fields fn2-pool fn2-digests)
+ :carriers ((fn2-checkpoint-publication 1 :prefix "-PUBLICATION") (fn2-fc 2 :prefix "-CHECKER")
+            (fn2-b3 3 :prefix "-HASHER") (fn2-fields 4 :prefix "-FIELDS")
+            (fn2-pool 5 :prefix "-POOL") (fn2-digests 6 :prefix "-DIGESTS")))
+(fn2-checkpoint-publication-preserves fn2-checkpoint-publication-seal-step
+ (which row base budget fn2-checkpoints fn2-checkpoint-bytes fn2-checkpoint-publication
+    fn2-fc fn2-fc-context fn2-b3 fn2-fields fn2-pool fn2-digests)
+ :carriers ((fn2-checkpoint-publication 1 :prefix "-PUBLICATION") (fn2-fc 2 :prefix "-CHECKER")
+            (fn2-b3 3 :prefix "-HASHER") (fn2-fields 4 :prefix "-FIELDS")
+            (fn2-pool 5 :prefix "-POOL") (fn2-digests 6 :prefix "-DIGESTS")))

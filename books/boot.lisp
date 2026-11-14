@@ -40,8 +40,8 @@
       (*fn2-checkpoint-geometry-record-field-anchor-1* (fn2-checkpoint-anchor-unit 1 extents groups))
       (*fn2-checkpoint-geometry-record-field-anchor-2* (fn2-checkpoint-anchor-unit 2 extents groups))
       (*fn2-checkpoint-geometry-record-field-anchor-3* (fn2-checkpoint-anchor-unit 3 extents groups))
-      (*fn2-checkpoint-geometry-record-field-epoch-0* (- (/ size 4096) 2))
-      (*fn2-checkpoint-geometry-record-field-epoch-1* (- (/ size 4096) 1))
+      (*fn2-checkpoint-geometry-record-field-epoch-0* (- (floor size 4096) 2))
+      (*fn2-checkpoint-geometry-record-field-epoch-1* (- (floor size 4096) 1))
       (*fn2-checkpoint-geometry-record-field-storage-domain* 0))) fn2-fields))))
 
 (defun fn2-boot-pack-geometry (size extents groups slot gen id ogen fn2-fields fn2-digests fn2-b3 fn2-pool)

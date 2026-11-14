@@ -1,7 +1,7 @@
 ; Checkpoint scratch capacity is an admission profile, not a stored-data cap.
 (in-package "ACL2")
 (include-book "machines-b")
-(include-book "checkpoint-publication")
+(include-book "checkpoint-boot")
 (fn2-book-layer :b)
 (defun fn2-checkpoint-capacity (profile)
  (declare (xargs :guard t))
