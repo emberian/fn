@@ -37,7 +37,7 @@
   (cond ((zp credit) (mv :limit 0 0))
         ((zp output-room) (mv :need-output 0 0))
         (t (mv :transform (min input-room input-quantum)
-                   (min output-room output-quantum credit))))))
+                   (min output-room (min output-quantum credit)))))))
 
 (defun fn2-compress-observe (raw used made requested-input requested-output credit ratio burst)
  (declare (xargs :guard t))
