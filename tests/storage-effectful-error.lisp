@@ -10,7 +10,7 @@
           (fn2-sim-storage-pending address fn2-sim-storage))
         (fn2-see-bytes (- n 1) (+ 1 (nfix address)) durable fn2-sim-storage))))
 
-(defun fn2-see-physical (prefix persist fn2-core fn2-sim fn2-own)
+(defun fn2-see-physical (prefix persist hold fn2-core fn2-sim fn2-own)
  (declare (xargs :stobjs (fn2-core fn2-sim fn2-own) :verify-guards nil))
  (b* ((fn2-core (fn2-core-init *fn2-profile-tiny* fn2-core))
       (fn2-own (fn2-own-init *fn2-profile-tiny* fn2-own))
@@ -49,8 +49,28 @@
       ((mv fc fence & fn2-core) (fn2-issue-fence 1 0 1 0 fn2-core))
       (fn2-own (fn2-own-observe-issue fence fn2-core fn2-own))
       ((mv ft fn2-core fn2-sim fn2-own) (fn2-sim-take-prefix 1 0 fn2-core fn2-sim fn2-own))
-      ((mv & fn2-core fn2-sim fn2-own)
-       (fn2-sim-complete fence *fn2-fault-flush-io* (if persist 1 0) fn2-core fn2-sim fn2-own))
+      (before (fn2-b-posted-results fn2-core))
+      ; Execute the real Fence once; retain its actual raw return, not a
+      ; fabricated terminal. The held success must already have persisted.
+      ((mv stage packet fn2-core fn2-sim fn2-own)
+       (fn2-sim-native-stage fence (if hold *fn2-fault-none* *fn2-fault-flush-io*)
+                             (if persist 1 0) fn2-core fn2-sim fn2-own))
+      (staged (and (eq stage :returned)
+                   (equal (nth 5 packet) (if hold :ok :io))
+                   (equal (nth 6 packet) 0)
+                   (equal (fn2-sim-active fence fn2-sim) *fn2-sim-native-returned*)
+                   (equal packet (fn2-sim-saved-return fence fn2-sim))
+                   (equal before (fn2-b-posted-results fn2-core))))
+      ((mv posted fn2-core fn2-sim fn2-own)
+       (if hold (mv nil fn2-core fn2-sim fn2-own)
+         (fn2-sim-native-post packet fn2-core fn2-sim fn2-own)))
+      (delivery (if hold
+                    (and (not posted) (equal before (fn2-b-posted-results fn2-core))
+                         (equal (fn2-sim-active fence fn2-sim) *fn2-sim-native-returned*))
+                  (and posted
+                       (equal (fn2-sim-terminal-outcome fence fn2-sim) *fn2-outcome-failed*)
+                       (equal (fn2-sim-terminal-reason fence fn2-sim) *fn2-reason-io*)
+                       (equal (fn2-sim-terminal-count fence fn2-sim) 0))))
       ((mv landed fn2-sim)
        (stobj-let ((fn2-sim-storage (fn2-sim-disk fn2-sim))) (ok fn2-sim-storage)
         (let* ((fn2-sim-storage (fn2-storage-crash-reset fn2-sim-storage))
@@ -62,13 +82,10 @@
                   (equal (fn2-see-bytes 1 4096 t fn2-sim-storage) '(91))) fn2-sim-storage))
         (mv ok fn2-sim))))
   (mv (and (equal (list rc w0 w1 w2 w3 ic fc) '(:ok :ok :ok :ok :ok :ok :ok))
-           prior (equal taken 1) physical terminal (equal ft 1) landed
-           (equal (fn2-sim-terminal-outcome fence fn2-sim) *fn2-outcome-failed*)
-           (equal (fn2-sim-terminal-reason fence fn2-sim) *fn2-reason-io*)
-           (equal (fn2-sim-terminal-count fence fn2-sim) 0))
+           prior (equal taken 1) physical terminal (equal ft 1) staged delivery landed)
       fn2-core fn2-sim fn2-own)))
 
-(defun fn2-see-prefix (prefix persist)
+(defun fn2-see-prefix (prefix persist hold)
  (declare (xargs :verify-guards nil))
  (with-local-stobj fn2-core
   (mv-let (ok fn2-core)
@@ -76,7 +93,7 @@
     (mv-let (ok fn2-core fn2-sim)
      (with-local-stobj fn2-own
       (mv-let (ok fn2-core fn2-sim fn2-own)
-       (fn2-see-physical prefix persist fn2-core fn2-sim fn2-own)
+       (fn2-see-physical prefix persist hold fn2-core fn2-sim fn2-own)
        (mv ok fn2-core fn2-sim)))
      (mv ok fn2-core))) ok)))
 
@@ -98,6 +115,7 @@
        (equal (cdr (assoc-equal 2 replies)) 2)
        (equal (len (fn2-commit-proof-recovered r)) 2))))
 
-(assert-event (and (fn2-see-prefix 0 nil) (fn2-see-prefix 2 nil) (fn2-see-prefix 4 nil)
-                   (fn2-see-prefix 0 t) (fn2-see-prefix 2 t) (fn2-see-prefix 4 t)))
+(assert-event (and (fn2-see-prefix 0 nil nil) (fn2-see-prefix 2 nil nil) (fn2-see-prefix 4 nil nil)
+                   (fn2-see-prefix 0 t nil) (fn2-see-prefix 2 t nil) (fn2-see-prefix 4 t nil)
+                   (fn2-see-prefix 0 t t) (fn2-see-prefix 2 t t) (fn2-see-prefix 4 t t)))
 (assert-event (fn2-see-commit))

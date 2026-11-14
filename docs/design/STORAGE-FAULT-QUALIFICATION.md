@@ -81,3 +81,11 @@ changed `sim/sim-adapter-base` and its dependents in `proof_repl`, then execute
 prefixes and an error-as-success mutant. Only after that passes, certify the
 affected simulator closure. Effectful write EIO, partial/torn failed-fence persistence and withheld completion
 still need controls. The two failed-fence endpoints here do not close those gaps.
+
+The staged replay is based on integration root `36ac58cfd`. The byte control now
+uses `fn2-sim-native-stage` and `fn2-sim-native-post` for its actual issued fence.
+Three additional cases retain a physically successful fence's real raw packet,
+assert no new posted result and active state 4, then check persisted bytes after
+crash reset. They exercise withheld adapter completion, not the commit timeout
+path; the commit uncertainty control remains the ENOSPC scenario above. No
+staged state field or OWN proof hint was replaced by the fault patch.
