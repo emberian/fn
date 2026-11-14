@@ -309,3 +309,94 @@ descriptor state/codec/job and their construction registration are C-layer
 orchestration over B leaf APIs. `checkpoint-kind-b.lisp` registers physical
 B children without including C. This preserves the C-to-B dependency direction
 and passes the actual C carrier rather than a caller-supplied ownership flag.
+
+`checkpoint-map-format.lisp` declares the generated linked-page body header
+for allocation maps, recovery arenas and retained event directories. The body
+carries its type/version, exact C cut, total entry count, page/entry ordinals,
+entry count, terminal bit and next full Ref. Header storage is padded to a
+32-byte boundary after the page header. Allocation-map slots are 47 bytes and
+arena slots 27 bytes, their existing codec maxima; entries and unused page
+bytes require zero padding. Page counts include one terminal page for an empty
+sequence. Actual readers must check the exact calculated count/continuity/link
+shape, decode every slot and verify padding, then authenticate the linked child.
+These format and local shape controls do not replace that reader or restoration.
+
+`checkpoint-map-read.lisp` reads one actual extent per call behind the allocator's
+exact retained `fn2-alloc-copy-ownerp` authority. Allocation entries copy every
+persistent field, including foreign RESERVED rows. Arena entries come only from
+same-token/owner role-6 construction rows whose ordinal and current Reserved
+identity match. Non-ticket and nonrequested-ordinal rows return `:skip`; changed requested
+ticket identities return
+`:conflict`. The arena page builder must count only `:entry`, preserve ordinal
+continuity, and compare its final count to the closed reservation plan.
+The passive allocator gate alone does not establish that closure.
+
+## Reservation closure before map copy
+
+`checkpoint-plan.lisp` admits only the actual held descriptor job after roots
+1, 3 and 4 have physically completed with matching construction identities.
+It counts one ledger extent per step, including every completed descendant
+and the already reserved descriptor. It calculates map pages from the actual
+allocator row count. Arena/ticket demand reaches a monotone fixed point using
+the actual commit allocation-record packing capacity; the arena pages themselves
+need allocation records, while journal tickets allocate themselves through the
+existing commit installer. Checkpoint installation gets its separate final ticket.
+Each size step yields; insufficient actual free space retains the job as uncertain.
+
+The planner then reserves every map page, arena page and journal ticket through
+the same actual owner-checked adapter, one extent per step. A second bounded
+scan checks exact Reserved identities, completed prior sources, role counts and
+per-role ordinal uniqueness. Its extent-sized mark table detects duplicates.
+It exposes reservation-closed state only after the complete scan. BEGIN resets
+the actual journal-ticket scan/next controls, and reservation clears ticket claims.
+No caller supplies counts, an identity list or a closure flag. The actual allocator
+copy gate remains disabled until its coordinator consumes that state; closure
+is distinct from physical completion of map, arena and descriptor or installation.
+Whole lifecycle/closure assurance and actual generated composition remain owed.
+
+The concrete freeze child now checks reservation closure, the unchanged held
+descriptor owner, the B token retained at phase 0, and exact proposed/installed/
+published commit and event equality with C's cut before entering phase 1. It
+refuses a stopped core and never enters install or thaws. Its generated operation
+is declared but has no production caller while source-root construction remains
+incomplete. `checkpoint-map-pack.lisp` serializes one exact frozen source entry
+into its calculated fixed-width page slot and zeroes its bounded slot padding;
+page jobs still must initialize the whole page and authenticate headers/links.
+Arena ordinal lookup scans physical extents because free-list order is independent
+of ticket order; only the requested ordinal can produce an entry.
+
+## Frozen map and arena source jobs
+
+`checkpoint-map-build.lisp` builds role-2 and role-5 linked pages backwards from
+the actual closed plan. It finds each pre-reserved page by exact role/ordinal,
+zeros at most one sector per source step, and serializes one actual allocation
+row or exact journal ticket per entry step. Every page carries the calculated
+coverage header and a full next Ref copied only from a physically completed
+child's retained verified hash. The common reservation-checked physical header
+codec preserves the body. The source state then binds the page once and enters
+`:bound`, where it has no packing/reset transition while the shared worker owns
+the bytes. The composed source actor still must call TAKE and wake its actual
+worker target, then wait for its ownership handback.
+
+Consumption requires the exact retained completed extent plus the returned source
+workspace, and advances to the previous ordinal. Only completion of ordinal 0
+captures a role-2/5 root and its actual hash/source-complete carrier. No caller
+supplies completion. These are concrete source/callback declarations, not a
+registered coordinator, admitted ownership proof, authenticated selected-base
+restoration or allocator reclamation. Candidate builder claims and root0 shared
+worker integration are the next required ownership connection.
+
+## Candidate construction ownership
+
+Actual descriptor BEGIN now atomically claims its candidate as nonselectable
+`:building` immediately after successful physical reservation, retaining C's
+builder token/owner tuple. Refusal or uncertainty never releases that claim.
+`fn2-checkpoint-builder-ownerp` requires the exact tuple and BUILDING state;
+`fn2-checkpoint-builder-claimp` recognizes the retained tuple across later
+non-FREE states and confers no durability. Source root captures and map freeze
+check actual candidate ownership. Ordinary recovery prepare remains FREE-only.
+Owned preparation requires the exact claim and uses the same serialization/
+expected-hash preparation body, preserving its tuple. A decoded recovery
+candidate clears builder provenance and cannot acquire a construction claim.
+The local claim fixture controls ownership/refusal only, not actual cut or
+physical construction. The composed claim invariant remains unqualified.
