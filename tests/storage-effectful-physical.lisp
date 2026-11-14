@@ -59,7 +59,7 @@
       ; fabricated terminal. The held success must already have persisted.
       ((mv stage packet fn2-core fn2-sim fn2-own)
        (fn2-sim-native-stage fence (if hold *fn2-fault-none* *fn2-fault-flush-io*)
-                             (if persist 1 0) fn2-core fn2-sim fn2-own))
+                             (if (eq persist :partial) 3 (if persist 1 0)) fn2-core fn2-sim fn2-own))
       (staged (and (eq stage :returned)
                    (equal (nth 5 packet) (if hold :ok :io))
                    (equal (nth 6 packet) 0)
@@ -79,9 +79,10 @@
       ((mv landed fn2-sim)
        (stobj-let ((fn2-sim-storage (fn2-sim-disk fn2-sim))) (ok fn2-sim-storage)
         (let* ((fn2-sim-storage (fn2-storage-crash-reset fn2-sim-storage))
-               (want (if persist
-                         (append (take prefix '(21 22 23 24)) (make-list (- 4 prefix) :initial-element 0))
-                       '(0 0 0 0))))
+               (written (append (take prefix '(21 22 23 24))
+                                (make-list (- 4 prefix) :initial-element 0)))
+               (want (cond ((eq persist :partial) (append '(0 0) (nthcdr 2 written)))
+                           (persist written) (t '(0 0 0 0)))))
          (mv (and (equal (fn2-see-bytes 4 0 t fn2-sim-storage) want)
                   (equal (fn2-see-bytes 4 0 nil fn2-sim-storage) want)
                   (equal (fn2-see-bytes 1 4096 t fn2-sim-storage) '(91))) fn2-sim-storage))
@@ -104,4 +105,6 @@
 
 (assert-event (and (fn2-see-prefix 0 nil nil) (fn2-see-prefix 2 nil nil) (fn2-see-prefix 4 nil nil)
                    (fn2-see-prefix 0 t nil) (fn2-see-prefix 2 t nil) (fn2-see-prefix 4 t nil)
-                   (fn2-see-prefix 0 t t) (fn2-see-prefix 2 t t) (fn2-see-prefix 4 t t)))
+                   (fn2-see-prefix 0 t t) (fn2-see-prefix 2 t t) (fn2-see-prefix 4 t t)
+                   (fn2-see-prefix 0 :partial nil) (fn2-see-prefix 2 :partial nil)
+                   (fn2-see-prefix 4 :partial nil)))
