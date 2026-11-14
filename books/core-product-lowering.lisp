@@ -637,7 +637,7 @@
 (defun fn2-product-events (fn child teeth world)
  (declare (xargs :verify-guards nil))
  (fn2-product-events-mode fn child teeth world nil))
-; Staged entry point: not selected by production closure planning yet.
+; Scalar recursive members use the same emitter, with independent proof obligations.
 (defmacro defcore-recursive-product-child (fn child &key teeth)
  `(make-event (value (fn2-product-events-mode ',fn ',child ',teeth (w state) t))))
 (defmacro defcore-product-child (fn child &key teeth)
@@ -651,7 +651,9 @@
   (let* ((fn (car order))
          (name (if (eq fn root) child (fn2-columns-sym fn "-LOWERED-CHILD")))
          (macro (if (member-eq 'fn2-core (getpropc fn 'stobjs-out nil world))
-                    'defcore-product-child 'defcore-readonly-child)))
+                    (if (getpropc fn 'recursivep nil world)
+                        'defcore-recursive-product-child 'defcore-product-child)
+                  'defcore-readonly-child)))
    (cons `(,macro ,fn ,name ,@(and (eq fn root) teeth `(:teeth ,teeth)))
          (fn2-product-family-events (cdr order) root child teeth world)))))
 (defmacro defcore-product-closure (fn child &key teeth)

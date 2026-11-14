@@ -353,7 +353,9 @@ exact ABI and the whole-spine equality by source induction before registration.
 The existing unconditional totalized face and guarded executable contracts
 remain unchanged. Generated bindings use ruler extenders so the actual branch
 condition participates in termination analysis; self is excluded from opaque
-callee proof leaves. Production closure planning still refuses recursion.
+callee proof leaves. Automatic mutable closure planning now removes only the qualified singleton self edge,
+derives its real callees bottom-up, and selects the same recursive emitter.
+Reader-only closures, mutual recursion and non-scalar measures still refuse.
 
 The warm pre-B fixture world passed all prior 135 forms (4.82s), plus the
 recursive package (0.37s), complete two-child one/two-step and bounds controls,
@@ -361,3 +363,11 @@ a malformed-spine counterexample, and mutual/state-dependent measure refusals
 without partial registration. Actual stobj execution compares source and child
 outputs and complete fixture snapshots, and detects a one-iteration mutant.
 This is a staged generator source gate, not current production certification.
+
+The staged recursive generator record passed `certify-20261114T041821Z-3686609`:
+22 pre-B fixture books,18 reused and4 certified; the largest book was7.445s.
+All4 newly certified pairs were verified in the forge cache at frozen sources.
+The automatic family follow-up passed all155 fixture forms in7.29s, discovering
+the toggle child from the recursive source without a manual child declaration.
+Its exact record gate is pending. Production mode remains disabled; actual
+xref callback extraction and formula-bound production evidence remain ahead.

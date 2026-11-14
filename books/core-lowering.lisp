@@ -451,7 +451,11 @@
              (fn2-decl-get :shape-reverse
                (cdr (assoc-eq fn (table-alist 'fn2-core-lowered world))))))
     (mv nil nil seen))
-   ((or (member-eq fn stack) (getpropc fn 'recursivep nil world))
+   ((or (member-eq fn stack)
+        (and (getpropc fn 'recursivep nil world)
+             (not (and (eq through-writes :all)
+                       (member-eq 'fn2-core (getpropc fn 'stobjs-out nil world))
+                       (fn2-lower-scalar-measure fn world)))))
     (mv :recursive-callee nil seen))
    ((member-eq fn '(fn2-corep fn2-core-wfp)) (mv :unlowered-core nil seen))
    ((and (not through-writes) (fn2-arms-stobjs-of (getpropc fn 'stobjs-out nil world)))
@@ -462,9 +466,10 @@
          (mv :missing-body nil seen)
       (mv-let (problem order seen)
        (fn2-lower-reader-plan-list
-        (union-eq (all-fnnames body)
+        (remove-eq fn
+         (union-eq (all-fnnames body)
           (set-difference-eq (all-fnnames (getpropc fn 'guard t world))
-                            '(fn2-corep fn2-core-wfp))) fields world seen
+                            '(fn2-corep fn2-core-wfp)))) fields world seen
                                    (cons fn stack) (1- fuel) through-writes)
        (mv problem (append order
                       (and (or (eq through-writes :all)

@@ -797,7 +797,6 @@
 (defthm fn2-update-toggle-preserves-wfp
  (implies (and (fn2-corep fn2-core) (fn2-core-wfp fn2-core))
           (fn2-core-wfp (mv-nth 1 (fn2-update-toggle fn2-core)))))
-(defcore-product-child fn2-update-toggle fn2-update-toggle-child)
 (defun fn2-update-repeat (n count fn2-core)
  (declare (xargs :stobjs fn2-core :measure (nfix n)
                  :guard (and (natp n) (natp count) (fn2-core-wfp fn2-core))))
@@ -811,7 +810,7 @@
 (defthm fn2-update-repeat-preserves-wfp
  (implies (and (fn2-corep fn2-core) (fn2-core-wfp fn2-core))
           (fn2-core-wfp (mv-nth 2 (fn2-update-repeat n count fn2-core)))))
-(defcore-recursive-product-child fn2-update-repeat fn2-update-repeat-child)
+(defcore-product-closure fn2-update-repeat fn2-update-repeat-child)
 
 (defthm fn2-update-repeat-whole-result-controls
  (and (fn2-corep '(((37) 1) ((91) 1)))
@@ -842,7 +841,7 @@
 (assert-event
  (and (equal (fn2-update-call-count 'fn2-update-repeat-child
                (getpropc 'fn2-update-repeat-child 'unnormalized-body nil (w state))) 1)
-      (equal (fn2-update-call-count 'fn2-update-toggle-child
+      (equal (fn2-update-call-count 'fn2-update-toggle-lowered-child
                (getpropc 'fn2-update-repeat-child 'unnormalized-body nil (w state))) 1)
       (equal (getpropc 'fn2-update-repeat-child 'stobjs-out nil (w state))
              '(nil nil fn2-update-config))
@@ -886,3 +885,8 @@
                   (equal (fn2-update-fixture-snapshot fn2-core) '(1 42 1 91))) fn2-core)))))))
    answer)))
 (assert-event (fn2-update-repeat-runtime-witness))
+(must-fail (defcore-product-closure fn2-update-state-measure fn2-update-state-measure-closure))
+(must-fail (defcore-product-closure fn2-update-mutual-a fn2-update-mutual-closure))
+(assert-event
+ (and (not (function-symbolp 'fn2-update-state-measure-closure (w state)))
+      (not (function-symbolp 'fn2-update-mutual-closure (w state)))))
