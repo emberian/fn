@@ -17,7 +17,8 @@
 (defcolumns fn2-extents
   ((state (:enum fn2-extent-state (:free :reserved :allocated :retire-pending)))
    (owner-kind :u8) (owner-id :u60) (epoch :u60) (counter :u60)
-   (retirement :u60) (next-free :u32) (next-retired :u32) (prev-retired :u32) (covered :bool)
+   (retirement :u60) (release-pending :bool)
+   (next-free :u32) (next-retired :u32) (prev-retired :u32) (covered :bool)
    (installed-root :u32) (selectable-checkpoint :u32) (recovery-base :u32) (prepared-successor :u32) (reservation :u32) (obligation :u32) (promised-read :u32) (borrow :u32) (outstanding-io :u32) (recovery-candidate :u32))
   :init-name fn2-alloc-columns-init
   :extra-fields
@@ -193,6 +194,7 @@
            (fn2-extents (fn2-extents-set-epoch i 0 fn2-extents))
            (fn2-extents (fn2-extents-set-counter i 0 fn2-extents))
            (fn2-extents (fn2-extents-set-retirement i 0 fn2-extents))
+           (fn2-extents (fn2-extents-set-release-pending i 0 fn2-extents))
            (fn2-extents (fn2-extents-set-installed-root i 0 fn2-extents))
            (fn2-extents (fn2-extents-set-selectable-checkpoint i 0 fn2-extents))
            (fn2-extents (fn2-extents-set-recovery-base i 0 fn2-extents))
@@ -308,6 +310,13 @@
        (equal counter (fn2-alloc-edges-counter edge fn2-alloc-edges))
        (equal (fn2-alloc-edge-kind-keyword->code kind)
               (fn2-alloc-edges-kind edge fn2-alloc-edges))))
+; A release intent closes durable publication, not ordinary retirement.
+; Physical loans may still finish (or acquire a transient pin) while the
+; recorded release waits; recovery must exclude pre-crash physical activity.
+(defun fn2-alloc-durable-edgep (kind)
+ (declare (xargs :guard t))
+ (if (member-eq kind '(:installed-root :selectable-checkpoint :recovery-base
+                      :prepared-successor :obligation :recovery-candidate)) t nil))
 (defun fn2-alloc-edge-add (edge holder i epoch counter kind fn2-extents fn2-alloc-edges)
   (declare (xargs :stobjs (fn2-extents fn2-alloc-edges)
     :guard (and (fn2-extents-wfp fn2-extents) (fn2-alloc-edges-wfp fn2-alloc-edges)
@@ -317,6 +326,9 @@
     (cond ((not (eq code :ok)) (mv code fn2-extents fn2-alloc-edges))
           ((not (member-eq kind *fn2-alloc-edges*)) (mv :edge-kind fn2-extents fn2-alloc-edges))
           ((eq kind :reservation) (mv :reservation-owned fn2-extents fn2-alloc-edges))
+          ((and (= (fn2-extents-release-pending i fn2-extents) 1)
+                (fn2-alloc-durable-edgep kind))
+           (mv :release-pending fn2-extents fn2-alloc-edges))
           ((not (fn2-alloc-edge-slotp edge fn2-alloc-edges)) (mv :edge-bounds fn2-extents fn2-alloc-edges))
           ((not (equal (fn2-alloc-edges-state edge fn2-alloc-edges) *fn2-alloc-edge-state-free*))
            (mv :edge-live fn2-extents fn2-alloc-edges))
@@ -334,6 +346,15 @@
                     (fn2-extents (fn2-alloc-set-edge i kind (+ (fn2-alloc-edge-count i kind fn2-extents) 1) fn2-extents))
                     (fn2-extents (fn2-alloc-account i s r fn2-extents)))
                (mv :ok fn2-extents fn2-alloc-edges))))))
+(defthm fn2-alloc-release-pending-refusal-by-definition
+ (implies (and (fn2-extents-wfp p) (fn2-alloc-edges-wfp edges)
+               (fn2-alloc-slotp i p)
+               (equal (fn2-alloc-handle-code i epoch counter p) :ok)
+               (equal (fn2-extents-release-pending i p) 1)
+               (fn2-alloc-durable-edgep kind))
+          (equal (fn2-alloc-edge-add edge holder i epoch counter kind p edges)
+                 (mv :release-pending p edges)))
+ :hints (("Goal" :in-theory (enable fn2-alloc-edge-add fn2-alloc-durable-edgep))))
 (defun fn2-alloc-edge-drop (edge holder i epoch counter kind fn2-extents fn2-alloc-edges)
   (declare (xargs :stobjs (fn2-extents fn2-alloc-edges)
     :guard (and (fn2-extents-wfp fn2-extents) (fn2-alloc-edges-wfp fn2-alloc-edges))))
@@ -426,6 +447,7 @@
          (fn2-extents (fn2-extents-set-epoch i 0 fn2-extents))
          (fn2-extents (fn2-extents-set-counter i 0 fn2-extents))
          (fn2-extents (fn2-extents-set-retirement i 0 fn2-extents))
+         (fn2-extents (fn2-extents-set-release-pending i 0 fn2-extents))
          (fn2-extents (fn2-extents-set-reservation i 0 fn2-extents))
          (fn2-extents (fn2-extents-set-next-free i (fn2-alloc-free-head fn2-extents) fn2-extents))
          (fn2-extents (update-fn2-alloc-free-head i fn2-extents))
@@ -460,6 +482,18 @@
     (if (eq code :ok)
         (let ((fn2-extents (fn2-alloc-free i fn2-extents))) (mv :ok fn2-extents))
       (mv code fn2-extents))))
+; Freeze durable publication before admitting RELEASE_ALLOCATION to the
+; journal. This marker is NOT durability evidence and does not free anything.
+; There is deliberately no generic abort: an ambiguous append must retain the
+; barrier until recovery decides the record. Repeated preparation revalidates
+; the same generation and current pins; it cannot retarget a reused slot.
+(defun fn2-alloc-release-prepare (i epoch counter fn2-extents)
+ (declare (xargs :stobjs fn2-extents :guard (fn2-extents-wfp fn2-extents)))
+ (let ((code (fn2-alloc-release-code i epoch counter fn2-extents)))
+  (if (eq code :ok)
+      (let ((fn2-extents (fn2-extents-set-release-pending i 1 fn2-extents)))
+       (mv :ok fn2-extents))
+    (mv code fn2-extents))))
 ; One FIFO visit, with no mutation or search. The caller retains NEXT across
 ; scheduler turns; a changed/non-retired cursor is refused and must restart
 ; from the live retired head. Returned identity is the one to put in a release
@@ -585,6 +619,14 @@
       (and (member-equal s (list *fn2-extent-state-free* *fn2-extent-state-reserved*
                               *fn2-extent-state-allocated* *fn2-extent-state-retire-pending*))
            (equal (fn2-extents-reservation i fn2-extents) (if (= s *fn2-extent-state-reserved*) 1 0))
+           (implies (= (fn2-extents-release-pending i fn2-extents) 1)
+             (and (= s *fn2-extent-state-retire-pending*)
+                  (= (+ (fn2-extents-installed-root i fn2-extents)
+                        (fn2-extents-selectable-checkpoint i fn2-extents)
+                        (fn2-extents-recovery-base i fn2-extents)
+                        (fn2-extents-prepared-successor i fn2-extents)
+                        (fn2-extents-obligation i fn2-extents)
+                        (fn2-extents-recovery-candidate i fn2-extents)) 0)))
            (implies (= s *fn2-extent-state-free*) (not (fn2-alloc-protector i nil fn2-extents)))
            (implies (not (= s *fn2-extent-state-free*))
              (and (<= (fn2-extents-epoch i fn2-extents) (fn2-alloc-current-epoch fn2-extents))
