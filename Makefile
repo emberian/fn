@@ -298,6 +298,7 @@ ACL2_BOOKS = \
   tests/issue-history-context-unit \
   tests/machine-child-tables-unit \
   tests/machines-a-unit \
+  tests/shape-one-unit \
   tests/merkle-random \
   tests/merkle-unit \
   tests/native-boot-refusal-unit \
