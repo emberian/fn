@@ -267,3 +267,16 @@ selection currently requires inspection mode, preventing accidental default arm
 emission. A raw-printer fixture checks both the smaller root set and retained
 guard/measure dependencies, while six inspection controls preserve refusal and
 no-write behavior. These source controls are not evidence from a live ACL2 world.
+
+`CanonicalGuardEval` now names the separate canonical guard record, requires its
+formals to match the logical definition, and proves a finite closed evaluation to
+a truthy value. `DomainRespectsGuards` requires this for every admitted function
+call. These predicates use no emitted-function oracle; guard callees and primitives
+carry the same explicit domain obligations as body evaluation. Root admission must
+still have a reachable witness, and domain preservation remains separate. The
+INTEGERP fixture uses the exact COMMON-LISP symbol and ACL2 X formal from the
+qualified two-function ACL2 fixture; wrong formals and a changed false guard are
+negative controls. Its guard primitive domain is deliberately separate from the
+arithmetic body fixture, so these controls do not claim a composed semantic root
+or primitive correspondence. Production emitters must bind guard and body tables
+to the same freshly qualified canonical records before using these predicates.
