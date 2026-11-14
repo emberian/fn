@@ -61,8 +61,9 @@ Controls:
   leave the signal pending, and never label it as consumed.
 
 The repair source proof and runtime controls have now passed their qualified
-pilots below, including the full B independent TRACE composition. Record
-certification of this theorem and the full reference closure remains pending.
+pilots below, including the full B independent TRACE composition. The actual
+repaired executor and theorem now have qualified records; the full reference
+closure still needs its composed record gate.
 Q1 continuation already omits work-room capacity and is not claimed here to
 be an exact characterization of the concrete stop predicate. Completing that
 composition contract remains separate from this policy correction.
@@ -127,7 +128,36 @@ prover steps. The shared 4 GiB slot was released to the CNS Q1 lane.
 The budget lane separately carried the policy into the single shared loop
 emitter (`e0cede4b0`) and record-certified its integrated descriptor-reserve,
 actual-turn and H=1 issued-action fixture (44-book closure, 41 reused, 3 new;
-`run033917Z-82cc`, `cert033953Z-3646662`). That does not certify this lane's
-conditional theorem or full independent reference/TRACE closure. Those
-record gates remain outstanding for convergence; no duplicate executor
+`run033917Z-82cc`, `cert033953Z-3646662`). That record is distinct from this lane's conditional theorem record below
+and does not certify the full independent reference/TRACE closure. The latter
+record gate remains outstanding for convergence; no duplicate executor
 implementation should survive integration.
+
+## Qualified actual-executor progress record
+
+The actual repaired executor and `books/executor-progress` passed the named
+record gate `run-20261114T054516Z-1710`, certification
+`certify-20261114T054550Z-3771811`. Its 137-book closure reused 135 qualified
+parents and built only those two books. Triage reported zero failures;
+source hashes were unchanged and qualified cache entries were verified at
+the current closure keys:
+
+- Executor: `72d429c8fb2b1dc7a679efc3a036d18ee2e1007671520db0a306f9e79c06db09`.
+- Progress: `a0b105d50d94f74be1ea3c051f48e8a93ce91a48cfd062ade2f31820de1b1ecd`.
+
+Both entries use record toolchain
+`8aeb1bea18968c6cd33ac633a80ebf67e4924504db112fd27eb11f16a27b2a8c`,
+origin suffix `04d2cec868ec1cca`. This certifies the actual loop called by
+`fn2-turn` in this patched B source, not a separate policy model. It does not
+certify the later descriptor-reservation/emitter integration automatically.
+
+Named local evidence is under `build/assurance-progress-record/`, including
+the manifest, logs, current-key audit, exact task-local farm wrapper and its
+generated commands. Preflight and runner used sequential 4 GiB scopes,
+images off, one worker, per-book timeout 900 and outer timeout 1800. The run
+exited 0, its lock was free, and the named slot was explicitly released.
+
+Total certification wall time was 72.788 seconds. Executor wall time was
+44.828 seconds; progress wall time 27.913 seconds, with its costliest proof
+0.31 seconds/36,289 steps. Whole-book load cost still exceeds the D26 target;
+this gate does not close that performance obligation.
