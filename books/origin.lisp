@@ -16,6 +16,14 @@
  (fn2-origin-tuplep (fn2-profile-get :origin-lineage profile)
                     (fn2-profile-get :origin-domain profile)
                     (fn2-profile-get :origin-incarnation profile)))
+(defun fn2-origin-physicalp (history history-incarnation)
+ (declare (xargs :guard t))
+ (and (posp history) (unsigned-byte-p 60 history)
+      (posp history-incarnation) (unsigned-byte-p 60 history-incarnation)))
+(defun fn2-origin-physical-profilep (profile)
+ (declare (xargs :guard t))
+ (fn2-origin-physicalp (fn2-profile-get :history-id profile)
+                      (fn2-profile-get :history-incarnation profile)))
 
 ; At most nineteen decimal digits can represent a u60 name. Bound the input
 ; before traversal; never use the Lisp reader or a host arithmetic decision.
@@ -33,12 +41,14 @@
  (declare (xargs :guard t))
  (if (and (stringp text) (< 0 (length text)) (<= (length text) 19))
      (fn2-origin-decimal-aux text 0 0) nil))
-(defun fn2-origin-profile-from-text (profile lineage domain incarnation)
+(defun fn2-origin-profile-from-text (profile lineage domain incarnation history history-incarnation)
  (declare (xargs :guard t))
  (put-assoc-equal :origin-lineage (fn2-origin-decimal lineage)
   (put-assoc-equal :origin-domain (fn2-origin-decimal domain)
    (put-assoc-equal :origin-incarnation (fn2-origin-decimal incarnation)
-    (if (alistp profile) profile nil)))))
+    (put-assoc-equal :history-id (fn2-origin-decimal history)
+     (put-assoc-equal :history-incarnation (fn2-origin-decimal history-incarnation)
+      (if (alistp profile) profile nil)))))))
 
 ; Immutable after construction. Boot binds the exact tuple to the persisted
 ; canonical genesis record before any listener or writer is released.
@@ -48,13 +58,19 @@
    :why "Configured lineage; checked against canonical persisted genesis.")
   (fn2-origin-domain :type (unsigned-byte 60) :initially 0
    :why "Configured single commit domain, distinct from a name namespace.")
+  (fn2-origin-history :type (unsigned-byte 60) :initially 0
+   :why "Persisted physical history identity, distinct from acceptance origin.")
+  (fn2-origin-history-incarnation :type (unsigned-byte 60) :initially 0
+   :why "Persisted physical history incarnation; unchanged by a clean restart.")
   (fn2-origin-incarnation :type (unsigned-byte 60) :initially 0
    :why "Configured history incarnation, distinct from allocator writer epoch.")))
 (defun fn2-origin-prepare (profile fn2-origin)
  (declare (xargs :stobjs fn2-origin :guard t))
  (let ((fn2-origin (fn2-origin-empty 0 fn2-origin)))
-  (if (not (fn2-origin-profilep profile)) fn2-origin
-   (let* ((fn2-origin (update-fn2-origin-lineage (fn2-profile-get :origin-lineage profile) fn2-origin))
+  (if (not (and (fn2-origin-profilep profile) (fn2-origin-physical-profilep profile))) fn2-origin
+   (let* ((fn2-origin (update-fn2-origin-history (fn2-profile-get :history-id profile) fn2-origin))
+          (fn2-origin (update-fn2-origin-history-incarnation (fn2-profile-get :history-incarnation profile) fn2-origin))
+          (fn2-origin (update-fn2-origin-lineage (fn2-profile-get :origin-lineage profile) fn2-origin))
           (fn2-origin (update-fn2-origin-domain (fn2-profile-get :origin-domain profile) fn2-origin)))
     (update-fn2-origin-incarnation (fn2-profile-get :origin-incarnation profile) fn2-origin)))))
 (defthm fn2-origin-prepare-type

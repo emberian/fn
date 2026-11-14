@@ -21,7 +21,7 @@
  (fn2-b-capacity :commit-barrier-mode 0 profile))
 (defcorechild fn2-core-origin fn2-origin
  :init (fn2-origin-prepare profile fn2-origin)
- :profilep (fn2-origin-profilep profile)
+ :profilep (and (fn2-origin-profilep profile) (fn2-origin-physical-profilep profile))
  :why "Local receipt and envelope origin is bound by persisted genesis before serving.")
 (defcorechild fn2-core-extents fn2-extents
  :init (fn2-alloc-init (fn2-b-capacity :extent-slots 16 profile) fn2-extents)
