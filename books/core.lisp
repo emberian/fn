@@ -10,6 +10,7 @@
 (include-book "arm-children")
 
 (include-book "core-children-a")
+(include-book "core-lenses")
 (defmacro fn2-core-events ()
  '(progn
 (make-event
@@ -30,15 +31,7 @@
 
 ; Generate the rectangular read-over-write matrix once: adding a child does
 ; not require hand-maintaining every old child's frame facts.
-(defun fn2-core-child-read-facts (reader children)
-  (if (endp children) nil
-    (let* ((writer (caar children))
-           (update (fn2-columns-pre "UPDATE-" writer)))
-      (cons `(defthm ,(fn2-columns-sym reader
-                       (concatenate 'string "-OF-" (symbol-name update)))
-               (equal (,reader (,update p c))
-                      ,(if (eq reader writer) 'p `(,reader c))))
-            (fn2-core-child-read-facts reader (cdr children))))))
+
 (defun fn2-core-child-facts (children all)
   (if (endp children) nil
     (let* ((field (caar children)) (type (cadar children))
@@ -53,19 +46,21 @@
            ; Symbolic positions: without it the child at position 0 splits
            ; one case per child and costs seconds per registered kind.
            :hints (("Goal" :in-theory (disable nth update-nth)))))
-       (fn2-core-child-read-facts field all)
+       (fn2-core-lens-read-events field all)
        (fn2-core-child-facts (cdr children) all)))))
 (defmacro fn2-core-children-facts (&rest children)
   `(progn ,@(fn2-core-child-facts children children)))
 ; Expansion fixture catches wrong same-child and cross-child equations.
 (assert-event
- (equal (fn2-core-child-read-facts 'fn2-core-pool
+ (equal (fn2-core-lens-read-events 'fn2-core-pool
           '((fn2-core-pool fn2-pool) (fn2-core-ops fn2-ops)))
         '((defthm fn2-core-pool-of-update-fn2-core-pool
-            (equal (fn2-core-pool (update-fn2-core-pool p c)) p))
+            (equal (fn2-core-pool (update-fn2-core-pool p c)) p)
+            :hints (("Goal" :in-theory (enable fn2-core-pool update-fn2-core-pool))))
           (defthm fn2-core-pool-of-update-fn2-core-ops
             (equal (fn2-core-pool (update-fn2-core-ops p c))
-                   (fn2-core-pool c))))))
+                   (fn2-core-pool c))
+            :hints (("Goal" :in-theory (enable fn2-core-pool update-fn2-core-ops)))))))
 (make-event (value (cons 'fn2-core-children-facts *fn2-core-children*)))
 (defun fn2-core-child-writers (children)
   (if (atom children) nil

@@ -164,9 +164,8 @@
  (mv-let (code fn2-core) (fn2-update-source i value fn2-core)
   (if (eq code :ok) (fn2-update-source second 43 fn2-core) (mv code fn2-core))))
 (encapsulate ()
- ; Match production's projection law while keeping representation definitions opaque.
- (local (defthm fn2-update-config-read-after-write
-          (equal (fn2-core-config (update-fn2-core-config value core)) value)))
+ ; Shared core lenses support opaque representation definitions.
+
  (local (in-theory (disable fn2-corep fn2-core-config update-fn2-core-config)))
  (defcore-product-child fn2-update-composed fn2-update-composed-child))
 (defthm fn2-update-composed-positive-witness
@@ -576,17 +575,11 @@
   (mv-let (second fn2-core) (fn2-update-source i value fn2-core)
    (mv first second fn2-core))))
 (encapsulate ()
- ; These are the corresponding rows of production core's read-over-write matrix.
- (local (defthm fn2-update-config-read-after-config-write
-          (equal (fn2-core-config (update-fn2-core-config value core)) value)))
- (local (defthm fn2-update-sibling-read-after-sibling-write
-          (equal (fn2-core-sibling (update-fn2-core-sibling value core)) value)))
- (local (defthm fn2-update-config-read-after-sibling-write
-          (equal (fn2-core-config (update-fn2-core-sibling value core))
-                 (fn2-core-config core))))
- (local (defthm fn2-update-sibling-read-after-config-write
-          (equal (fn2-core-sibling (update-fn2-core-config value core))
-                 (fn2-core-sibling core))))
+ ; Shared core lenses generate the corresponding read-over-write matrix.
+
+
+
+
  (local (in-theory (disable fn2-corep fn2-core-config fn2-core-sibling
                             update-fn2-core-config update-fn2-core-sibling)))
  (defcore-product-closure fn2-update-reverse-order fn2-update-reverse-order-child))

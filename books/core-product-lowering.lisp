@@ -2,6 +2,7 @@
 ; only in the generator: emitted code passes concrete child stobjs directly.
 (in-package "ACL2")
 (include-book "core-lowering")
+(include-book "core-lenses")
  ; Logical reconstruction domain; never tested on the executable path.
 (defun fn2-product-spinep (n x) (and (true-listp x) (equal (len x) n)))
 (defthm fn2-product-update-nth-true-listp
@@ -396,6 +397,11 @@
         :hints (("Goal" :in-theory
           (e/d (,writer) (fn2-product-spinep nth update-nth)))))))
     (fn2-product-spine-facts (cdr entries) world)))))
+(defun fn2-product-read-events (entries written)
+ (declare (xargs :verify-guards nil))
+ (if (atom entries) nil
+  (append (fn2-core-lens-read-events (caar entries) written)
+          (fn2-product-read-events (cdr entries) written))))
 (defun fn2-product-events (fn child teeth world)
  (declare (xargs :verify-guards nil))
  (mv-let (expansion-problem body opened)
@@ -448,6 +454,8 @@
         `(make-event (er soft 'defcore-product-child "Cannot lower ~x0: ~x1." ',fn ',(or problem err err2)))
      `(progn
        ,@(fn2-product-core-shape-events world)
+       ,@(fn2-core-lens-missing-events
+           (fn2-product-read-events entries (fn2-product-written-entries entries (all-fnnames body) world)) world)
        ,@(fn2-product-spine-facts (fn2-product-written-entries entries (all-fnnames body) world) world)
        ,@(fn2-product-shadow-facts (fn2-product-written-entries entries (all-fnnames body) world) world)
        ,@(fn2-product-writeback-facts (fn2-product-written-entries entries (all-fnnames body) world)
@@ -472,11 +480,13 @@
                  (equal (,execution ,@formals) (,fn ,@formals)))
         :hints (("Goal" :in-theory
           (e/d (,execution ,child ,fn ,@opened
+                ,@(strip-cadrs (fn2-product-read-events entries
+                      (fn2-product-written-entries entries (all-fnnames body) world)))
                 ,@(fn2-product-callee-properties (all-fnnames body) :shape-reverse world)
                 ,@(fn2-product-callee-properties (all-fnnames body) :execution world)
                 ,@(fn2-lower-leaf-properties (table-alist 'fn2-core-lowered world)
                                              (all-fnnames body) :reverse))
-               (fn2-corep
+               (fn2-corep ,@(strip-cars entries) ,@(strip-cars (fn2-product-writers entries))
                 ,@(fn2-product-callee-properties (all-fnnames body) :shape-refinement world)
                 ,@(fn2-product-proof-leaves (all-fnnames body) opened
                      (append (strip-cars entries) (strip-cars (fn2-product-writers entries))) world)

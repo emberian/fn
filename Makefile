@@ -83,6 +83,7 @@ ACL2_BOOKS = \
   books/core-children \
   books/core-children-a \
   books/core-lowering \
+  books/core-lenses \
   books/core-product-lowering \
   books/core-walk \
   books/crash-model \
