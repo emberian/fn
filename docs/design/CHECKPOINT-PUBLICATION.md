@@ -449,3 +449,8 @@ commit. It releases one still-owned window per turn through the existing pool
 release operation. The publisher must return borrowed windows without releasing
 them separately. Only the final successful release resets directory state for
 another construction; uncertain writes and ownership failures retain resources.
+Root1 read completion is delivered once by the core's exact prefinish harvest
+extension to the semantic/payload lower job. The actor observer only wakes the
+source continuation: its smaller ABI cannot reconstruct operation identity.
+The public READ maps only the lower queued `:issued` result to the issue DSL's
+`:ok`; all refusal and uncertain outcomes pass through unchanged.

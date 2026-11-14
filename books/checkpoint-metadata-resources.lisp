@@ -152,9 +152,14 @@
 (fn2-sealer-child fn2-core-checkpoint-retained-entry fn2-checkpoint-retained-entry (fn2-checkpoint-retained-entry-init 1 fn2-checkpoint-retained-entry)
  "One protected authenticated entry passes between semantic and payload walkers.")
 (fn2-sealer-child fn2-core-checkpoint-payload fn2-checkpoint-payload (fn2-checkpoint-payload-init 1 fn2-checkpoint-payload)
- "Actual raw/manifest payload reads and the persisted stored-source digest stream.")
+ "Actual raw/manifest payload reads and the persisted stored-source digest stream."
+ :harvest (fn2-checkpoint-payload-harvest-children
+  ((fn2-core-checkpoint-payload fn2-checkpoint-payload)
+   (fn2-core-checkpoint-retained-entry fn2-checkpoint-retained-entry)
+   (fn2-core-csnapshot fn2-csnapshot) (fn2-core-checkpoints fn2-checkpoints) (fn2-core-fields fn2-fields))))
 (fn2-sealer-child fn2-core-checkpoint-semantic fn2-checkpoint-semantic (fn2-checkpoint-semantic-init 1 fn2-checkpoint-semantic)
- "Authenticated semantic tree traversal retains its actual page and entry origin.")
+ "Authenticated semantic tree traversal retains its actual page and entry origin."
+ :harvest (fn2-checkpoint-semantic-harvest ((fn2-core-checkpoint-semantic fn2-checkpoint-semantic))))
 (fn2-sealer-child fn2-core-checkpoint-semantic-work fn2-checkpoint-semantic-work
  (fn2-checkpoint-semantic-work-init (fn2-b-capacity :extent-slots 16 profile) fn2-checkpoint-semantic-work)
  "One exact semantic traversal row per allocator extent, with no arbitrary data cap.")
