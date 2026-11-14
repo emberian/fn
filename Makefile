@@ -280,7 +280,9 @@ ACL2_BOOKS = \
   tests/layout-unit \
   tests/log-model-unit \
   tests/m2-cuts \
+  tests/machine-arms-probe-fixture \
   tests/machine-arms-unit \
+  tests/machine-budget-unit \
   tests/machines-a-unit \
   tests/merkle-random \
   tests/merkle-unit \
