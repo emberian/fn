@@ -2252,6 +2252,27 @@
                   :refusal nil :contract contract
                   :cost-values (fn2-cost-values (fn2-arm-get :cost contract) world))))))))
 
+; Prove the emitted function's actual result, using its narrowed signature.
+; Static cost metadata supplies a bound, never a substitute for this proof.
+(defun fn2-arms-child-quantities-event (name work-limit world)
+  (declare (xargs :verify-guards nil))
+  (let* ((ins (car (fn2-arms-sig name world)))
+         (formals (getpropc name 'formals nil world))
+         (call (cons name formals))
+         (hyps (append (fn2-arms-child-shape-hyps ins)
+                       (list (getpropc name 'guard t world))))
+         (terms `((natp (car ,call)) (natp (mv-nth 1 ,call))
+                  (natp (mv-nth 2 ,call))
+                  (<= (+ (car ,call) (mv-nth 1 ,call)) ,work-limit)
+                  (<= (mv-nth 2 ,call) (nfix budget)))))
+    `(defthm ,(fn2-columns-sym name "-QUANTITIES")
+       (implies (and ,@hyps)
+                (fn2-run-quantitiesp (car ,call) (mv-nth 1 ,call)
+                                     (mv-nth 2 ,call) budget ,work-limit))
+       :rule-classes ,(fn2-arms-child-corollaries hyps terms)
+       :hints (("Goal" :in-theory (e/d (,name fn2-run-quantitiesp)
+                       (natp nfix nth ,@(fn2-arms-shape-fns ins)
+                        ,@(fn2-arms-rows-fns ins))))))))
 (defun fn2-arms-child-fn-events (name kind observe acc body world)
   (declare (xargs :verify-guards nil))
   (let* ((tuple (fn2-arms-kind-tuple kind world))
@@ -2267,7 +2288,14 @@
         ,(append (fn2-arm-get :chain-callees acc) (fn2-arms-child-callees (fn2-arm-get :uses acc) world))
         ,(append (fn2-arms-column-readers kind (fn2-machine-property kind :table world))
                  (fn2-arms-column-readers 'fn2-machines *fn2-machine-directory-fields*))
-        nil))))
+        nil)
+      ,@(and (not observe)
+             `((make-event
+                (value (fn2-arms-child-quantities-event
+                        ',(fn2-arms-child-name name)
+                        ,(+ (fn2-arms-max-dim (fn2-arm-get :charges acc) 0)
+                            (max *fn2-work-empty* (fn2-arms-max-dim (fn2-arm-get :charges acc) 1)))
+                        (w state)))))))))
 (defun fn2-arms-extra-lets (extras)
   (declare (xargs :verify-guards nil))
   (if (atom extras) nil

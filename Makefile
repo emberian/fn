@@ -6,6 +6,7 @@ ACL2_BOOKS = \
   books/alloc \
   books/arm-children \
   books/arms \
+  books/run-budget \
   books/article-manifest \
   books/assembly \
   books/assembly-access \
