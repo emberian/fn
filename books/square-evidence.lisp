@@ -126,7 +126,9 @@
   (if (fn2-evidence-occurs lhs original) (mv nil lhs)
    (mv-let (problem count subject)
      (fn2-evidence-tuple-projection (fn2-evidence-beta body) 0 nil)
-    (if (and (not problem) (posp count) (fn2-evidence-callp subject world)
+    ; One output is an ordinary value, NOT a singleton MV tuple. Wrapping
+    ; its CAR in a list would lose the rest of that value.
+    (if (and (not problem) (< 1 count) (fn2-evidence-callp subject world)
              (equal count (len (getpropc (car subject) 'stobjs-out nil world)))
              (fn2-evidence-occurs subject original))
         (mv nil subject)

@@ -226,3 +226,13 @@
    :negative (:kind :mutation :at fn2-evidence-domain-clamp
               :replace fn2-evidence-domain-plus-one :bindings ((x '3))))))
 (assert-event (not (fn2-decl-row '(:square fn2-evidence-dead-producer) (w state))))
+
+; One ordinary result is not a singleton MV tuple: preserve its whole value.
+(defun fn2-evidence-lossy-single-view (x)
+ (list (mv-nth 0 (fn2-evidence-domain-identity x))))
+(assert-event
+ (mv-let (problem subject)
+   (fn2-evidence-projection-subject '(fn2-evidence-lossy-single-view x)
+                                  '(equal (fn2-evidence-domain-identity x) x) (w state))
+  (declare (ignore subject))
+  (equal problem :unbound-result-projection)))
