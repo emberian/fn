@@ -1050,9 +1050,6 @@
            (:charge :steps *fn2-work-transition* :runnable t))
           ((equal row-verb *fn2-cns-verb-append*)
            (:next :append) (:charge :steps *fn2-work-transition* :runnable t))
-          ;; fetch carries no cursor: the frontier, then the walk to its position
-          ((equal row-verb *fn2-cns-verb-fetch*)
-           (:next :read) (:charge :steps *fn2-work-transition* :runnable t))
           ((or (equal row-verb *fn2-cns-verb-rebase*)
                (equal row-verb *fn2-cns-verb-unregister*))
            (:set (reason *fn2-cns-reason-unavailable*)) (:goto refuse))
@@ -1067,9 +1064,15 @@
                               (:charge :bytes 4096 :steps *fn2-work-transition* :runnable t))
                      ((:access) (:set (reason *fn2-cns-reason-access*)) (:goto refuse))
                      ((:state) (:goto cancel))))
-             (:if (equal row-verb *fn2-cns-verb-register*)
-                  ((:next :commit) (:charge :bytes 4096 :steps *fn2-work-transition* :runnable t))
-                  ((:next :lookup) (:charge :bytes 4096 :steps *fn2-work-transition* :runnable t))))))
+             ;; A completed decision must not leave a resumable grant lookup
+             ;; behind. Fetch lacks a cursor, but is still a consumer operation.
+             (:set (xstep 0) (xhead ahead) (xgrant agrant))
+             (:cond
+              ((equal row-verb *fn2-cns-verb-fetch*)
+               (:next :read) (:charge :bytes 4096 :steps *fn2-work-transition* :runnable t))
+              ((equal row-verb *fn2-cns-verb-register*)
+               (:next :commit) (:charge :bytes 4096 :steps *fn2-work-transition* :runnable t))
+              (t (:next :lookup) (:charge :bytes 4096 :steps *fn2-work-transition* :runnable t)))))))
   (:lookup :on-refusal ((:stop :machine-phase))
    (:if (equal row-lease *fn2-cns-lease-held*)
         ((:do (lc) (fn2-cns-lease-release row-lslot row-lgen) :effects ((:release (:storage-window))) :accept (:ok :retired)

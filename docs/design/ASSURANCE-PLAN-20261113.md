@@ -236,40 +236,43 @@ clean review, and no finding is attributed to Kimi without an actual response.
 Validate alleged defects against source before assigning fixes, retain rejected
 suspicions, and distinguish known unfinished work from newly discovered defects.
 
-## Authorization lane: live principal binding and delivered-item admission
+## Authorization lane: principal binding and delivered-item admission
 
-`assurance-authorization` owns a narrow structural-state claim at the actual
-`fn2-cns-authority-allows` operation: with authority served, a stale request
-generation or stale linked control generation refuses before administrator bypass
-and leaves the complete core unchanged. `books/authority-incarnation.lisp` and
-`tests/authority-incarnation-unit.lisp` are unqualified drafts until a cached-prefix
-probe and record-toolchain certification admit them. The fixture admits actual
-control/request rows, mutates references explicitly, and compares complete ordinary
-snapshots; it does not establish a reachable close/reopen history. Authentication
-and kernel owner-UID trust remain outside this structural claim.
+`assurance-authorization` admitted the actual `fn2-cns-authority-allows` stale
+request/control incarnation refusal and complete-core frame theorem against both
+qualified A and B e-cns prefixes. The theorem takes 203 prover steps; this is REPL
+admission, not record certification. Complete-state controls await the smaller
+shared snapshot generator. No reachable close/reopen history is claimed.
 
-The higher-impact open target is K7's delivered-item admission. Source tracing
-finds current consume checks at CNS `:check`, but `:page` calls
-`fn2-cns-item-next` without a read-grant check before fetching/putting the item.
-The adopted authority design requires an article's own stream to authorize each
-item; a principal's `addr` entry selects it and does not authorize it. Existing
-`owed-authority` explicitly excludes delivered read/wait items, and K7 remains
-owed. This is an identified coverage/implementation gap, not yet an executed
-unauthorized-delivery witness. `tests/authority-read-control.lisp` constructs
-consume and append grants plus an explicitly disabled read grant, then uses an
-actual issued cursor on a fresh bound connection; its enabled-read twin is the
-control. Next: execute both under an authentic qualified assembly, require all
-setup replies and actual payload evidence, then connect current per-item read
-admission and final carrier-handoff validation in the CNS generator. No stale
-admin bypass was found: `fn2-cns-admin-p` lacks generation checks by itself, but
-its only caller checks `fn2-cns-principal` first against the same core.
+Actual served A diagnostics now confirm two authorization failures. A bound
+principal with an explicitly disabled read grant receives a `read` RECORD; a
+bound principal with both consume and read disabled receives `fetch` acceptance.
+Each delivers the exact submitted 122-byte article. Setup checks actual principal
+creation, both bindings, and both current grant replies; every run satisfies the
+core domain, ends quiet and has stop reason zero. Six control cases independently
+vary the relevant enabled bits. Evidence and fixture digests are recorded in
+`docs/evidence/authorization-baseline-A-20261113.json`. This is a static-grant
+counterexample under owner-delegated local principal binding, not a cryptographic
+authentication or revoke/handoff proof.
 
-The same source trace finds `:check` routing `fetch` directly to `:read` before
-the consume check. The diagnostic now shares setup for read and fetch: the fetch
-quartet varies consume/read grant enabled bits independently, checks both current
-grants through actual `grant-get` replies, verifies both principal-bind replies,
-and fetches the position returned by its accepted append. It is callable but has
-no passing assertion or executed result yet. This tests admission with static
-grants, not a revoke-between-selection-and-handoff race. Named remote compute
-was requested but not granted before the coordinator turn ended; no cold closure
-or unauthorized build was launched.
+The existing `fn2-as-round` fixture discarded simulated disk writes between rounds,
+so its first readback attempt returned zero-filled payloads. The shared
+`fn2-as-round-stored` helper now threads the real simulated device through each
+round, and the diagnostic confirms byte-for-byte article equality. Existing
+admission-only fixtures retain their previous wrapper behavior.
+
+Root cause: CNS `:check` routes fetch before the consume branch; CNS `:page` has
+no per-item read authorization. The first source fix routes fetch through current
+consume admission before `:read`; qualification is underway. Full K7 read
+assurance remains open. `addr.stream` records only the first admitted group;
+article metadata has no membership list and overview is keyed by group/number.
+A correct any-own-stream decision needs persisted stream IDs, written atomically
+with append and traversed in bounded steps, plus current-view and whole-page
+final authority-head validation. Resolving historical header names through a
+renumberable current directory does not establish original membership.
+
+The standalone admin predicate is not itself an incarnation bypass: its sole
+caller first checks `fn2-cns-principal` against the same core. Authentication and
+kernel owner-UID trust remain outside the structural theorem. The authorization
+lane owns a named 2 GiB allocation transferred from the finished parser lane;
+all probes are sequential and use qualified prefixes, with no cold app closure.

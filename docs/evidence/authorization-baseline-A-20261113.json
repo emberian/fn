@@ -1,0 +1,75 @@
+{
+  "status": "executed-counterexample-not-a-universal-proof",
+  "application_source": "a5212f4c2fca5a3c1a01ac5e5a5313c6470331fb",
+  "qualified_toolchain": "8aeb1bea18968c6cd33ac633a80ebf67e4924504db112fd27eb11f16a27b2a8c",
+  "application_changes": [],
+  "fixture_sha256": {
+    "tests/authority-served.lisp": "ebc8fd5c587b84855d53312309402081684183b7f823475e12e20cacfe541438",
+    "tests/authority-read-control.lisp": "6ad6d5932d867a12f6e572d42090182cb3fac96388c5c58d1b2f223be95922c5"
+  },
+  "method": "Actual fn2-turn / FNCT wire path; stored device octets threaded across rounds. Exact create, bound identity and current-grant replies checked before accepting any result.",
+  "article": "From: mini@example.invalid\r\nSubject: read-control\r\nNewsgroups: dregg.fn.e1\r\nMessage-ID: <read@authority.invalid>\r\n\r\nbody\r\n",
+  "cases": [
+    {
+      "fetch": "nil",
+      "consume": "t",
+      "read": "nil",
+      "core": "t",
+      "accepted": ":accepted",
+      "octets": 122,
+      "exact_article": true,
+      "sha256": "f7f2533535bb91c1c41a2b0334770f7c3df42d37fbe26a782fcae4605f716dfa"
+    },
+    {
+      "fetch": "nil",
+      "consume": "t",
+      "read": "t",
+      "core": "t",
+      "accepted": ":accepted",
+      "octets": 122,
+      "exact_article": true,
+      "sha256": "f7f2533535bb91c1c41a2b0334770f7c3df42d37fbe26a782fcae4605f716dfa"
+    },
+    {
+      "fetch": "t",
+      "consume": "nil",
+      "read": "nil",
+      "core": "t",
+      "accepted": ":accepted",
+      "octets": 122,
+      "exact_article": true,
+      "sha256": "f7f2533535bb91c1c41a2b0334770f7c3df42d37fbe26a782fcae4605f716dfa"
+    },
+    {
+      "fetch": "t",
+      "consume": "t",
+      "read": "nil",
+      "core": "t",
+      "accepted": ":accepted",
+      "octets": 122,
+      "exact_article": true,
+      "sha256": "f7f2533535bb91c1c41a2b0334770f7c3df42d37fbe26a782fcae4605f716dfa"
+    },
+    {
+      "fetch": "t",
+      "consume": "nil",
+      "read": "t",
+      "core": "t",
+      "accepted": ":accepted",
+      "octets": 122,
+      "exact_article": true,
+      "sha256": "f7f2533535bb91c1c41a2b0334770f7c3df42d37fbe26a782fcae4605f716dfa"
+    },
+    {
+      "fetch": "t",
+      "consume": "t",
+      "read": "t",
+      "core": "t",
+      "accepted": ":accepted",
+      "octets": 122,
+      "exact_article": true,
+      "sha256": "f7f2533535bb91c1c41a2b0334770f7c3df42d37fbe26a782fcae4605f716dfa"
+    }
+  ],
+  "scope": "Static grants; owner-delegated local principal binding, no cryptographic authentication or revoke/handoff proof."
+}
