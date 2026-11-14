@@ -1,0 +1,30 @@
+; Shared two-span envelope controls, separate from codec-specific status policy.
+(in-package "ACL2")
+(include-book "../books/codec-transport")
+(include-book "std/testing/must-fail" :dir :system)
+
+(assert-event (fn2-codec-span-p 7 3 10 4))
+(assert-event (not (fn2-codec-span-p 7 4 10 4)))
+(assert-event (not (fn2-codec-span-p 0 5 10 4)))
+(assert-event (not (fn2-codec-span-p #xffffffff 1 #xffffffff 4)))
+(assert-event (fn2-codec-transfer-counts-p 3 7 4 8))
+(assert-event (not (fn2-codec-transfer-counts-p 5 7 4 8)))
+(assert-event (not (fn2-codec-transfer-counts-p 3 9 4 8)))
+(assert-event (not (fn2-codec-transfer-counts-p -1 0 4 8)))
+
+(defcodec-transport fn2-codec-probe ((mode :u8)))
+(defun fn2-codec-probe-control (fn2-codec-probe)
+ (declare (xargs :stobjs fn2-codec-probe :verify-guards nil))
+ (let* ((fn2-codec-probe (fn2-codec-probe-init 1 fn2-codec-probe))
+        (fn2-codec-probe (fn2-codec-probe-put 0
+          (cap 7) (nonce 17) (slot 3) (generation 9) (serial 11) (pending 2))))
+  (mv (and (fn2-codec-probe-match-p 7 17 3 9 11 fn2-codec-probe)
+           (not (fn2-codec-probe-match-p 7 18 3 9 11 fn2-codec-probe))
+           (not (fn2-codec-probe-match-p 7 17 3 10 11 fn2-codec-probe))
+           (not (fn2-codec-probe-match-p 7 17 3 9 10 fn2-codec-probe))) fn2-codec-probe)))
+(defun fn2-codec-probe-check ()
+ (declare (xargs :verify-guards nil))
+ (with-local-stobj fn2-codec-probe
+  (mv-let (ok fn2-codec-probe) (fn2-codec-probe-control fn2-codec-probe) ok)))
+(assert-event (fn2-codec-probe-check))
+(must-fail (defcodec-transport fn2-codec-bad ((cap :u32))))
