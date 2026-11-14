@@ -113,6 +113,18 @@
  (local (must-fail (fn2-assert-square-evidence fn2-evidence-opaque-write))))
 (fn2-assert-square-evidence fn2-evidence-opaque-write)
 
+; Derived fields are checked rather than treated as authoritative metadata.
+(assert-event
+ (let* ((row (fn2-decl-row '(:square fn2-evidence-opaque-write) (w state)))
+        (e (fn2-decl-get :evidence row)))
+  (mv-let (hyp conclusion)
+    (fn2-evidence-parts (fn2-decl-statement-body (fn2-decl-get :statement row) (w state)))
+   (declare (ignore hyp))
+   (and (not (fn2-evidence-normalization-currentp
+               (fn2-decl-set :normalization-domain ''nil e) conclusion (w state)))
+        (not (fn2-evidence-normalization-currentp
+               (fn2-decl-set :normalized-conclusion ''t e) conclusion (w state)))))))
+
 ; A correspondence valid only inside the removed premise cannot establish a
 ; sensitivity control outside that domain, even if its positive domain holds.
 (defun fn2-evidence-domain-clamp (x) (if (natp x) x 0))
@@ -128,10 +140,20 @@
   (equal (fn2-evidence-domain-resultp x)
          (equal (fn2-evidence-domain-clamp x) (fn2-evidence-domain-identity x))))
  :rule-classes nil)
+(defthm fn2-evidence-domain-extra-variable-unfolds
+ (implies (natp extra)
+  (equal (fn2-evidence-domain-resultp x)
+         (equal (fn2-evidence-domain-clamp x) (fn2-evidence-domain-identity x))))
+ :rule-classes nil)
 (defthm-owed fn2-evidence-opaque-domain (x)
  (implies (natp x) (fn2-evidence-domain-resultp x))
  :sides (:concrete fn2-evidence-domain-clamp :reference fn2-evidence-domain-identity)
  :teeth (fn2-evidence-correspondence-runtime-control))
+(must-fail
+ (defsquare-evidence fn2-evidence-opaque-domain
+  :correspondence fn2-evidence-domain-extra-variable-unfolds
+  :positive ((x '3))
+  :negative (:kind :hypothesis-removal :remove (natp x) :bindings ((x '-1)))))
 (must-fail
  (defsquare-evidence fn2-evidence-opaque-domain
   :correspondence fn2-evidence-domain-only-unfolds
