@@ -29,6 +29,12 @@
           *fn2-fault-tear* *fn2-fault-fail-slow* *fn2-fault-fragment*
           *fn2-fault-short-send* *fn2-fault-reset* *fn2-fault-half-open* *fn2-fault-nonreading*)))
 
+(defthm fn2-sim-native-fault-type
+  (implies (fn2-sim-native-faultp fault)
+           (unsigned-byte-p 8 fault))
+  :rule-classes (:rewrite :forward-chaining)
+  :hints (("Goal" :in-theory (enable fn2-sim-native-faultp))))
+
 (defthm fn2-sim-native-fault-not-injected
   (implies (fn2-sim-native-faultp fault)
            (not (member-equal fault

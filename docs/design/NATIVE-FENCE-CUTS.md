@@ -1,8 +1,8 @@
 # Successful fence return cuts
 
 The source now connects a successful storage Fence's physical return to an
-unposted simulator continuation and a native trace/replay event. Qualification
-of the changed model and the new executable fixtures is pending. The default
+unposted simulator continuation and a native trace/replay event. The actual scheduled Fence cut/replay controls pass in a Forge proof REPL;
+record certification and the complete native/model relation remain pending. The default
 `tools/native_program_check.py` still refuses incomplete cut mapping;
 `--source-only --json` reports the bounded source contracts separately.
 
@@ -52,34 +52,44 @@ physical cuts, dead branches, scheduler bypass, discarded raw scalars and
 changed native raw returns fail the source audit. This evidence is not proof
 admission, execution or native/model refinement.
 
-The pending executable controls are:
+The executable controls are:
 
 - `tests/scheduled-fence-cut-unit.lisp`: drive the real advance, observe durable
   byte 17 with no Fence post, crash or resume without another physical stamp,
   and replay the packet produced by that advance; reject changed generation or
-  terminal outcome.
+  terminal outcome or raw retained packet. All five controls executed and
+  returned true in the same model world. The nine operation-level cut controls
+  also returned true.
 - `tests/native-fence-return-unit.lsp`: one real fd Fence through the actual
   performer/harvest; inspect the actual death boundary before normalization.
+  This raw-host fixture remains unexecuted.
 - `tests/envelope-prefix-unit.lisp`: issued Fence, raw-return prefix/resume,
-  duplicate/stale incarnation/wrong post/raw-syscall mutations.
+  duplicate/stale incarnation/wrong post/raw-syscall mutations. The separate
+  four-field native controls remain unexecuted.
 
 Source validation passes 28 focused Python controls, strict source reading,
-secrets and diff checks. ACL2 admission/certification, raw-host load and the new
-model/native controls have not run on this source. Remaining obligations include
-raw packet roundtrip/shape/guard proofs, whole-state atomic/staged equality,
-initialized incarnation and effect/crash preservation, native FIFO snapshot
-coverage, FFI/OS contracts, reads/writes/errors/cancellation/concurrent workers,
-and universal trace correspondence. Native SIGKILL controls do not establish
-power-loss persistence assumptions.
+secrets and diff checks. Forge REPL admissions cover the generated schema,
+physical adapter, retained raw helpers, stage/post/completion guards, and their
+original carrier-preservation statements. The actual four scheduler advance
+functions are guard-verified in that world. The stage preservation package takes
+7.24 s/133,497 steps; post/atomic-complete/scheduled-completion carrier packages
+take 27.33 s/562,554 steps in aggregate. These admissions are not record
+certification. The replay checker retains its pre-existing unverified-guard
+status; ACL2 reports recursive guard inhibition while executing that checker.
 
+The first world hit the shared 2 GiB cap while loading the old physical leaf's
+whole assembled checker dependency. That is prover-world loading, not node
+resource behavior. The physical leaf now names its actual pool/OWN dependencies;
+the adapter still includes the same served `assembly-init`. Six unchanged core
+OWN projections moved to `check-core`. The narrowed transfer leaf admits in
+4.90 s/1,165,525 steps; the physical adapter block takes
+159.53 s/5,760,590 steps, an outstanding proof-cost defect. The retained world
+then loaded exact cached host-boundary dependencies for actual packet replay.
 
-Qualification has begun on Forge under the shared 2 GiB cap. The generated
-schema, state operations and strengthened packet predicate admitted against
-qualified cached dependencies. Loading the old physical dependency on the whole
-assembled checker hit the cap (MemoryPeak 2 GiB, OOM kill); this is prover-world
-loading, not node resource behavior. The physical leaf now names only its actual
-pool/OWN dependencies, with the same served `assembly-init` in the adapter. Six
-unchanged core OWN projections moved to `check-core`; the full checker imports
-that book. The transfer leaf admits in 4.90 s/1,165,525 steps; subsequent adapter
-and raw-stage qualification is still in progress. No record certification or
-executable cut-control success is inferred from those admitted leaves.
+Remaining obligations include unchanged whole-state atomic/staged equality,
+raw packet roundtrip, initialized incarnation and effect/crash preservation,
+record certification of changed closures, raw-host load/real-fd control, native
+FIFO snapshot coverage, FFI/OS contracts, reads/writes/errors/cancellation/
+concurrent workers, and universal trace correspondence. Native SIGKILL controls
+do not establish power-loss persistence assumptions. The default cut-mapping
+gate remains incomplete and fails closed.

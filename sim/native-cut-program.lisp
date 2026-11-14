@@ -23,7 +23,9 @@
 (defthm fn2-sim-physical-keeps-active
   (equal (fn2-sim-active i (mv-nth 4 (fn2-sim-physical slot fault word fn2-core fn2-sim fn2-own)))
          (fn2-sim-active i fn2-sim))
-  :hints (("Goal" :in-theory (e/d (fn2-sim-physical fn2-sim-active fn2-sim-land)
+  :hints (("Goal" :in-theory (e/d (fn2-sim-physical fn2-sim-active fn2-sim-land
+                                    update-fn2-sim-net update-fn2-sim-disk
+                                    update-fn2-sim-stamp update-fn2-sim-hitsi)
                                   (fn2-sim-physical-act)))))
 
 (defthm fn2-sim-returned-completion-does-not-reissue
