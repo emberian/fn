@@ -616,8 +616,13 @@ The remaining interfaces for full catch-up are the authenticated XFNC carrier
 and evidence-stream grant, a commit-ordered producer/index, a retained history
 identity and chain at the cut, dependency/coverage representation, and an importer
 that preserves original evidence/receipt identities without selecting foreign
-acceptances locally. The checkpoint directory work supplies no perpetual-history
-API yet; resident batch rows must not be treated as one.
+acceptances locally. The current producer also uses lineage/domain/incarnation
+`0/0/1` in both `identity.lisp` and `commit-format.lisp`. Export preserves those
+values; it does not make independent nodes' identical local positions globally
+distinct. Cross-node import requires a durable origin allocation and its bootstrap
+and recovery binding before those receipt identities can be compared across nodes.
+The checkpoint directory work supplies no perpetual-history API yet; resident
+batch rows must not be treated as one.
 
 ### 13.5 Control across peers (RFC 5537 §5)
 Control articles relay as articles; every receiver decides again under its own authority (ruling 10).
