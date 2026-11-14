@@ -1652,7 +1652,17 @@
                  (fn2-arms-child-callees (fn2-arm-get :uses cacc) world))
         ,(append (fn2-arms-column-readers kind (fn2-machine-property kind :table world))
                  (fn2-arms-column-readers 'fn2-machines *fn2-machine-directory-fields*))
-        nil))))
+        nil)
+      ,@(and (not observe)
+        `((make-event
+            (value (fn2-arms-child-quantities-event-with-residual
+                    ',helper
+                    ,(+ (fn2-arms-max-dim (fn2-arm-get :charges cacc) 0)
+                        (max *fn2-work-empty* (fn2-arms-max-dim (fn2-arm-get :charges cacc) 1)))
+                    ,(fn2-arms-max-dim (fn2-arm-get :charges cacc) 2)
+                    (w state))))
+          (make-event (value (fn2-arms-child-effects-event ',helper (w state))))
+          (make-event (value (fn2-arms-child-issued-event ',helper (w state)))))))))
 (defun fn2-arms-bool-expr-p (e)
   (declare (xargs :verify-guards nil))
   (or (booleanp e)
@@ -2262,25 +2272,31 @@
   (if (atom children) nil
     (append (fn2-arms-column-readers (car children) (fn2-view-layout (car children) world))
             (fn2-arms-quantity-readers (cdr children) world))))
-(defun fn2-arms-child-quantities-event (name work-limit world)
+(defun fn2-arms-child-quantities-event-with-residual (name work-limit residual world)
   (declare (xargs :verify-guards nil))
   (let* ((ins (car (fn2-arms-sig name world)))
          (formals (getpropc name 'formals nil world))
          (call (cons name formals))
          (hyps (append (fn2-arms-child-shape-hyps ins)
                        (list (getpropc name 'guard t world))))
-         (terms (fn2-run-quantity-terms call 'budget work-limit
+         (terms (fn2-run-quantity-terms call residual work-limit
                    (nfix (fn2-arm-get :descriptors (fn2-machine-property (car ins) :budget world))))))
     `(defthm ,(fn2-columns-sym name "-QUANTITIES")
        (implies (and ,@hyps)
                 (and (fn2-run-quantitiesp (car ,call) (mv-nth 1 ,call)
-                                     (mv-nth 2 ,call) budget ,work-limit)
+                                     (mv-nth 2 ,call) ,residual ,work-limit)
                      ,(nth 5 terms)))
        :rule-classes ,(fn2-run-quantity-rules hyps terms)
        :hints (("Goal" :in-theory (e/d (,name fn2-run-quantitiesp)
                        (nfix nth ,@(fn2-arms-shape-fns ins)
                         ,@(fn2-arms-rows-fns ins)
                         ,@(fn2-arms-quantity-readers ins world))))))))
+; Public arms account against the caller budget. Internal chain suffixes
+; account against their static descriptor bound; the outer admission relates
+; that bound to the budget before any effects run.
+(defun fn2-arms-child-quantities-event (name work-limit world)
+  (declare (xargs :verify-guards nil))
+  (fn2-arms-child-quantities-event-with-residual name work-limit 'budget world))
 ; This is an actual effect proof, distinct from the numeric report bound.
 ; Arms without an operation child must report zero; issuing arms prove the
 ; exact append count. A body that dequeues or underreports cannot satisfy it.
