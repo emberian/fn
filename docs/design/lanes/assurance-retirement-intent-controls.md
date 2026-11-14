@@ -1,0 +1,56 @@
+# Ordinary retirement intent controls — source only
+
+The isolated `tests/retirement-intent-unit.lisp` depends on primitive/coordinator
+changes 060bb71b6, completion-mode repair 0036c2769, and relocation repair
+06337e461. It invokes the actual functions and observes their concrete tables;
+there is no alternate retirement model. Nothing in this file has been executed
+in ACL2 or through the physical writer.
+
+The leaf control reserves/commits exact allocations, retains an existing target
+obligation, begins retirement intent, and interleaves new installed-root refusal
+with successful transient read pins and unrelated durable publication. Wrong
+batch/epoch cancellation leaves the exact intent and allocation view unchanged.
+Exact cancellation permits durable publication again. A second intent refuses a
+wrong containing-batch install; exact install retires and clears its intent while
+RETIRE_PENDING still blocks new durable edges. Existing protectors and unrelated
+allocation/edge tuples remain unchanged.
+
+Relocation controls use actual same-owner allocations and an installed-root edge,
+so removing the intent check would move it onto the pending target. Refusal keeps
+its source holder/counts intact; unrelated destination relocation and handback
+work outside freeze. A separate frozen-state refusal keeps the same source.
+
+The core control calls actual `fn2-retirement-submit`, then attempts durable-edge
+publication and relocation onto that exact submitted handle before any turn.
+It also acquires a transient pin and publishes/moves an unrelated placement.
+Actual `fn2-retirement-poll` first returns pending. A clearly synthetic exact
+refusal settlement then exercises cancellation and workspace release. A synthetic
+accepted settlement without the target retirement must instead become uncertain,
+retaining intent/workspace. A stopped-core variant retains pending intent and
+workspace without converting ambiguity to refusal. These are prepared component
+controls, not a claim that a real disk/fence/refusal/acceptance sequence ran.
+
+Source review found an accepted-poll hole: ordinary first-use count/offset zeros
+could pass the maintenance fallback without RETIRE_PENDING. Parent repaired it
+in 0036c2769 by requiring maintenance mode on that branch; the contradictory
+accepted-settlement control exercises that exact condition after real submit.
+
+The no-I/O admission cancellation ordering is visible in the actual source:
+
+- `fn2-commit-txn-join` returns :exhausted/0/0 at the size/member preflight before
+  `fn2-commit-put-txn-member`. After a failed member mutation it stops the core.
+- `fn2-commit-txn-open` maps commit-start pre-admission failures to
+  :admission/:exhausted with 0/0 before member installation. Commit-start may
+  reserve/unwind volatile pool/extent state, but invokes no issue/write/fence.
+- After successful start, member/identity failures stop the core. The coordinator
+  therefore retains intent on those paths; it does not treat 0/0 alone as proof.
+- Ordinary admit starts intent only after exact planner batch and record packing;
+  no scheduling boundary occurs between that binding and open/join. An unexpected
+  result or successful mismatched batch stops with intent retained.
+- Poll pending/wrong owner/stopped/uncertain paths return before cancellation.
+  Exact settled refusal checks the actual allocation tuple before cancellation;
+  accepted poll requires exact RETIRE_PENDING/batch and does not cancel.
+
+This is a source-order audit, not an admitted causal/physical-I/O theorem. The
+bounded physical writer, recovery and actual composed interleaving gates remain
+pending the parent's narrow qualification. No production files were edited here.
