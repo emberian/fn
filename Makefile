@@ -302,6 +302,7 @@ ACL2_BOOKS = \
   tests/owed-d-coverage \
   tests/owed-d-unit \
   tests/owed-unit \
+  tests/parser-boundary-unit \
   tests/peer-witnesses \
   tests/pointwise-contracts-unit \
   tests/pool-ranges-unit \
