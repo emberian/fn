@@ -7,7 +7,7 @@
   (declare (xargs :verify-guards nil))
   (with-local-stobj fn2-sim
     (mv-let (ok fn2-sim)
-      (b* ((fn2-sim (fn2-sim-init 7 :friendly "raw-state-unit" *fn2-profile-tiny* fn2-sim))
+      (let* ((fn2-sim (fn2-sim-init 7 :friendly "raw-state-unit" *fn2-profile-tiny* fn2-sim))
            (fn2-sim (fn2-sim-put 0 (active 1) (gen 1) (kind *fn2-action-fence*) (range-len 0)
                       (return-code (fn2-sim-return-code-keyword->code :ok))
                       (return-count 3) (return-aux 5) (return-word 7) (return-time 9)

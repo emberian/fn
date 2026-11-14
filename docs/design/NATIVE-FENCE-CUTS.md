@@ -117,10 +117,21 @@ evidence that this branch is reachable in the composed scheduler.
 The shared fixed-array type repair `4400cb995` passes the actual 35-book
 constructor record gate, including the unchanged `FN2-MACHINE-POOL-HAS-P` guard
 and initializer context. The generator now exports literal-cardinality indexed
-numeric facts without weakening the guard. Qualification is proceeding to the
-103-book common core; this lane's current Fence witness, four-field replay and
-real-fd controls have not run yet. The earlier obstruction was proof admission,
+numeric facts without weakening the guard. The same authentic `4400cb995` source then passed the 103-book common core
+record gate (37 artifacts reused, 66 certified). This lane's current Fence witness,
+four-field replay and real-fd controls have not run yet. The earlier obstruction was proof admission,
 not a demonstrated native I/O failure.
+
+A separate 15-book raw-state dependency record run on `8ed5513da` reused eight
+qualified artifacts and certified all six missing implementation books, including
+the new receipt schema, simulator state and `sim/native-cut-state`. The new
+`tests/native-cut-state-unit` stopped at translation because its isolated include
+set lacked `b*`; its assertions did not execute. The test now uses ordinary
+`let*` with the same bindings, but that correction remains unrun. Triage reports
+one source error and no cascade, limit or kill. `sim/sim-state` took 34.17 s,
+an outstanding proof-cost defect. Its synthetic count=3/aux=5 receipt deliberately
+distinguishes columns and is unreachable for an actual physical Fence; this
+control carries no physical-cut qualification.
 
 The real-fd readback establishes current OS-visible byte contents. It is not a
 power-loss durability witness. Relating a successful native Fence to preserved
