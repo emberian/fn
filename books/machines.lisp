@@ -3927,14 +3927,9 @@
                                              fn2-machine-finish fn2-machine-charge fn2-machine-charge-kindp
                                              fn2-machine-refuse-charge fn2-machine-refuse-write
                                              ,(fn2-columns-sym name "-CHARGE")) (fn2-core-ops))))))))
-(defun fn2-machine-stub-events (names world)
+(defun fn2-machine-stub-one-events (name world)
   (declare (xargs :verify-guards nil))
-  (if (atom names) nil
-    (let* ((name (car names))
-           (run (fn2-columns-sym name "-RUN")))
-      (if (function-symbolp run world)
-          (fn2-machine-stub-events (cdr names) world)
-        (let* ((run-stub (fn2-columns-sym name "-RUN-STUB"))
+  (let* ((run-stub (fn2-columns-sym name "-RUN-STUB"))
                (run-def (fn2-columns-sym name "-RUN-DEFAULT"))
                (obs-stub (fn2-columns-col-name 'fn2-machine-observe (fn2-columns-sym name "-STUB")))
                (obs-def (fn2-columns-col-name 'fn2-machine-observe (fn2-columns-sym name "-DEFAULT")))
@@ -4077,7 +4072,15 @@
                                  ,(fn2-columns-sym obs-def "-OPS-POOL")
                                  ,@(and (fn2-arm-frame-child-index 'fn2-core-commit-io world)
                                         (list (fn2-columns-sym obs-def "-KEEPS-UNITS"))))))
-           (fn2-machine-stub-events (cdr names) world)))))))
+           nil)))
+
+(defun fn2-machine-stub-events (names world)
+  (declare (xargs :verify-guards nil))
+  (if (atom names) nil
+    (append
+      (and (not (function-symbolp (fn2-columns-sym (car names) "-RUN") world))
+           (fn2-machine-stub-one-events (car names) world))
+      (fn2-machine-stub-events (cdr names) world))))
 
 ;; The stubs and their frames, after the default bodies' contracts and the
 ;; directory relation: one generator for every dispatch (assembly-dispatch,
