@@ -185,14 +185,28 @@ Current B-merged 21-book fixture preflight for 81ac4cdd9 has seven reusable entr
 and fourteen misses (profile, pool, pool-ranges, vocab, arm-children, core-children,
 exec-state, machines, machines-directory, machine-arms, the two lowerers and their
 two fixtures). No cold certification was launched. The prior 1d15696da record
-remains scoped to its recorded closure, not B. Wake and offer wiring remain WIP.
+remains scoped to its recorded closure, not B. A separate authenticated pre-B
+record now covers 81ac4cdd9: `certify-20261114T021120Z-3553219`, 19 reused and two
+new books in the exact 21-book reader/product fixture closure, no book over ten
+seconds. Wake, offer and claim-release wiring remain WIP.
+
+The columns generator now emits the public accessor-level fixed-length bridge
+from the same field schema. Its focused fixture requires the bridge to verify an
+opaque accessor's numeric guard, rejects an index past the fixed boundary and
+checks live values at both ends. Current-lane record
+`certify-20261114T021509Z-3557519` passed the exact five-book columns/fixture closure
+at ca401a99a (two reused, three built; no book over ten seconds). Instantiating
+that same generated bridge from the actual machine schema lets the qualified
+baseline claim-release full extraction package pass in 6.91 seconds / 37,090
+steps. This is source evidence against that baseline, not current callback
+certification; no runtime revalidation or consumer-specific assumption was added.
 
 Read-only dependency planning in the qualified callback world found these
 mutable operation frontiers; a successful plan is not a compilation proof:
 
 | Operation | Reader dependencies | Current result |
 | --- | ---: | --- |
-| claim-release | 8 | Fixed-array guard boundary remains |
+| claim-release | 8 | Baseline full source proof passes with generated array bridge |
 | offer | 1 | Baseline full source proof passes |
 | add-group | 0 | Plan passes; not compiled yet |
 | xref | — | Core recursive callee refuses |

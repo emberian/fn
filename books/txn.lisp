@@ -265,7 +265,8 @@
   :tables (fn2-core-claims)
   :effects ((:acquire (:identity-reservation)))
   :doc "Walk the claim's bucket at most 16 chain steps (one Message-ID compared per step on an equal hash): claimed, waiting in the holder's FIFO, or more.")
-(defcost fn2-claim-release-core :answers (:ok :bounds :state) :tables (fn2-core-claims fn2-core-machines)
+(defcost fn2-claim-release-core :child fn2-claim-release-core-child
+ :answers (:ok :bounds :state) :tables (fn2-core-claims fn2-core-machines fn2-core-control)
   :effects ((:release (:identity-reservation)))
   :doc "Release a held claim and hand it to its FIFO's head, waking that transaction.")
 (defcost fn2-txn-offer :child fn2-txn-offer-child :answers (:ok :bounds :state)
@@ -681,6 +682,7 @@
 (fn2-core-preserves fn2-claim-release-core (c fn2-core) :position 1 :rows nil
   :hints (("Goal" :in-theory (disable fn2-txn-snapshot-read-code nfix))))
 (in-theory (disable fn2-commit-admit-txn fn2-claim-release-core))
+(defcore-product-closure fn2-claim-release-core fn2-claim-release-core-child)
 
 
 ;; At the drain: wake the upload U if it still names this row (ID of
