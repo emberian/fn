@@ -2,6 +2,7 @@
 (in-package "ACL2")
 (include-book "../books/codec-transport")
 (include-book "std/testing/must-fail" :dir :system)
+(include-book "std/util/bstar" :dir :system)
 
 (assert-event (fn2-codec-span-p 7 3 10 4))
 (assert-event (not (fn2-codec-span-p 7 4 10 4)))
