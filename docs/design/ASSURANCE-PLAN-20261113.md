@@ -309,3 +309,29 @@ Root owns timely integration and targeted composition gates. Source implementati
 proceeds concurrently; expensive proof jobs require named allocations. No lane
 may replace a missing served feature with a model-only completion claim. The
 authorization review block remains explicit and is not reassigned around review.
+
+## Integrated consumer follow-through — 2026-11-14
+
+Root 0be7f6d51 integrates the fixed-array numeric contracts, actual child
+declarations, chain-helper quantity/effect contracts and issuance-index bridge.
+Both callback proof refusals were repaired against unchanged runtime bodies and
+public contracts. Exact canonical callback record qualification is in progress;
+prior core103 qualification belongs to source4400cb995, not this new closure.
+
+Root efe958a82 integrates canonical call/lambda composition. The author's Lean
+controls passed; the current CNS timer-clear instantiation and guard/body packet
+connection remain assigned to recover_lean. No served semantic promotion follows
+from integrating this generic rule.
+
+Root e892441f7 integrates actual raw-startup function binding checks. All29 focused
+host/native-program tests pass on the integrated tree; source audit finds0 issues
+in5 raw sources. The composed qualified --load check remains assigned to
+sol_assumption_assurance with convergence coordinating the necessary artifacts.
+
+Reclamation remains on its own implementation branch. Its actual allocator and
+reservation controls do not qualify the larger checkpoint/boot/upload changes.
+Current priorities are drain-before-working-reservation composition, repaired
+map roundtrip admission, authenticated selected-base restoration, ordered suffix
+replay, dynamic maintenance headroom, and commit-directory/candidate lifetime.
+FREE and checkpoint activation remain disabled until their connected prerequisites
+are implemented and verified. Authorization remains an independent release blocker.
