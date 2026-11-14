@@ -30,7 +30,8 @@
                           fn2-mk fn2-fc fn2-digests fn2-pool) :verify-guards nil
   :guard (and (fn2-event-build-wfp fn2-event-build) (fn2-event-read-wfp fn2-event-read) (fn2-csnapshot-wfp fn2-csnapshot) (fn2-checkpoints-wfp fn2-checkpoints) (fn2-checkpoint-refs-wfp fn2-checkpoint-refs) (fn2-checkpoint-bytes-wfp fn2-checkpoint-bytes) (fn2-mk-wfp fn2-mk) (fn2-fc-wfp fn2-fc) (fn2-digests-wfp fn2-digests) (fn2-pool-wfp fn2-pool))))
  (b* (((unless (and (< 0 (fn2-event-build-rows fn2-event-build))
-                     (equal (fn2-event-build-phase 0 fn2-event-build) *fn2-event-build-phase-idle*)
+                     (member-equal (fn2-event-build-phase 0 fn2-event-build)
+                      (list *fn2-event-build-phase-idle* *fn2-event-build-phase-auth-ready*))
                      (fn2-checkpoint-slotp c fn2-checkpoints fn2-checkpoint-refs fn2-checkpoint-bytes)
                      (fn2-checkpoint-builder-ownerp c token okind oslot ogen fn2-checkpoints)
                      (fn2-event-frontier-source-p token okind oslot ogen fn2-event-read fn2-csnapshot fn2-mk fn2-fc fn2-digests)))
