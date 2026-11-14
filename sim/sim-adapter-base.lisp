@@ -12,6 +12,10 @@
 (defun fn2-sim-flight-classes (kind active release)
   (declare (xargs :guard t))
   (cond ((not (equal active 1)) `(,*fn2-fault-delay* ,*fn2-fault-crash* ,*fn2-fault-monotonic-jump* ,*fn2-fault-realtime-back*))
+        ((equal kind *fn2-action-tls-start*)
+         `(,*fn2-fault-delay* ,*fn2-fault-crash* ,*fn2-fault-monotonic-jump* ,*fn2-fault-realtime-back*
+           ,*fn2-fault-duplicate* ,*fn2-fault-stale* ,*fn2-fault-forged* ,*fn2-fault-overcount*
+           ,*fn2-fault-malformed* ,*fn2-fault-reset*))
         ((equal kind *fn2-action-receive*) `(,*fn2-fault-delay* ,*fn2-fault-crash* ,*fn2-fault-monotonic-jump* ,*fn2-fault-realtime-back* ,*fn2-fault-duplicate* ,*fn2-fault-stale* ,*fn2-fault-forged* ,*fn2-fault-overcount* ,*fn2-fault-malformed* ,*fn2-fault-fragment* ,*fn2-fault-reset* ,*fn2-fault-half-open*))
         ((equal kind *fn2-action-send*)
          (if (equal release 1) `(,*fn2-fault-delay* ,*fn2-fault-crash* ,*fn2-fault-monotonic-jump* ,*fn2-fault-realtime-back* ,*fn2-fault-duplicate* ,*fn2-fault-stale* ,*fn2-fault-forged* ,*fn2-fault-overcount* ,*fn2-fault-malformed* ,*fn2-fault-short-send* ,*fn2-fault-reset* ,*fn2-fault-nonreading* ,*fn2-fault-release-order*) `(,*fn2-fault-delay* ,*fn2-fault-crash* ,*fn2-fault-monotonic-jump* ,*fn2-fault-realtime-back* ,*fn2-fault-duplicate* ,*fn2-fault-stale* ,*fn2-fault-forged* ,*fn2-fault-overcount* ,*fn2-fault-malformed* ,*fn2-fault-short-send* ,*fn2-fault-reset* ,*fn2-fault-nonreading*)))
@@ -409,6 +413,16 @@
                               (unsigned-byte-p 32 word))
                   :guard-hints (("Goal" :in-theory (enable fn2-core-wfp)))))
   (cond
+   ;; TLS borrows a seed range for negotiation, never for a disk write.
+   ;; Observe the exact loan before the generic byte-transfer classification.
+   ((equal kind *fn2-action-tls-start*)
+    (stobj-let ((fn2-pool (fn2-core-pool fn2-core))
+                (fn2-ops (fn2-core-ops fn2-core)))
+      (fn2-own)
+      (fn2-own-observe-output-range-parts slot gen rslot rgen off len
+                                        fn2-pool fn2-ops fn2-own)
+      (mv (if (equal fault *fn2-fault-reset*) :handshake :ok)
+          0 0 fn2-core fn2-sim-network fn2-sim-storage fn2-own)))
    ((or (fn2-op-input-kindp kind) (fn2-op-output-kindp kind))
     (let* ((nbytes (fn2-sim-storage-rows fn2-sim-storage))
            (redirect (fn2-sim-redirect offset nbytes kind fault)))
@@ -442,8 +456,6 @@
     (mv-let (code fn2-sim-storage)
       (fn2-storage-fence-complete slot (equal fault *fn2-fault-flush-io*) lying fn2-sim-storage)
       (mv code 0 0 fn2-core fn2-sim-network fn2-sim-storage fn2-own)))
-   ((and (equal kind *fn2-action-tls-start*) (equal fault *fn2-fault-reset*))
-    (mv :handshake 0 0 fn2-core fn2-sim-network fn2-sim-storage fn2-own))
    (t (mv :ok 0 0 fn2-core fn2-sim-network fn2-sim-storage fn2-own))))
 
 
