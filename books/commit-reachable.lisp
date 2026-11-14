@@ -2,6 +2,7 @@
 ; This book does not discharge the final ACK claim by adding premises to it.
 (in-package "ACL2")
 (include-book "commit-durable-all")
+(include-book "pool-initialization")
 
 (defun-nx fn2-env-reach-structure (profile c)
   (and (fn2-core-profilep profile) (fn2-corep c) (fn2-core-wfp c)
@@ -275,3 +276,34 @@
 (defthm fn2-env-reach-initial-data-nonstopped
   (implies (fn2-env-reach-initial-data-p profile c) (not (fn2-core-stopped-p c)))
   :hints (("Goal" :in-theory '(fn2-env-reach-initial-data-p))))
+
+; The profile-derived pool initializer establishes its whole semantic invariant.
+(make-event
+ (let* ((entry (assoc-eq 'fn2-core-pool (fn2-core-child-registry (w state))))
+        (init (fn2-core-child-property entry :init)))
+  (value
+   `(defthm fn2-env-reach-core-init-pool
+     (equal (fn2-core-pool (fn2-core-init profile c))
+            ,(subst '(fn2-core-pool c) 'fn2-pool init))
+     :hints (("Goal" :in-theory (union-theories
+               '(fn2-core-init nth-update-nth (:e equal) (:e nfix)
+                 ,@(fn2-core-init-child-names *fn2-core-children*)
+                 ,@(fn2-env-updater-names (strip-cars *fn2-core-children*))
+                 ,@(strip-cars *fn2-core-children*))
+               (theory 'minimal-theory))))))))
+(defthm fn2-env-reach-core-pool-type
+ (implies (fn2-corep c) (fn2-poolp (fn2-core-pool c)))
+ :hints (("Goal" :in-theory (enable fn2-corep fn2-core-pool))))
+(make-event
+ (value
+  `(defthm fn2-env-reach-core-init-pool-semantic
+    (implies (and (fn2-corep c) (fn2-core-profilep profile))
+             (fn2-core-pool-semanticp (fn2-core-init profile c)))
+    :hints (("Goal"
+      :use (,(fn2-columns-sym (fn2-core-init-child-name 'fn2-core-pool) "-PROFILE")
+            (:instance fn2-pool-init-semantic
+              (p (fn2-core-pool c)) (classes (fn2-profile-pool-classes profile))
+              (gen-start (fn2-profile-generation-start profile))
+              (gen-limit (fn2-profile-generation-limit profile))))
+      :in-theory (e/d (fn2-core-pool-semanticp)
+        (fn2-core-init fn2-pool-init fn2-pool-semanticp fn2-core-profilep fn2-profilep)))))))
