@@ -41,8 +41,13 @@
  (declare (xargs :guard t))
  (if (and (stringp text) (< 0 (length text)) (<= (length text) 19))
      (fn2-origin-decimal-aux text 0 0) nil))
+(local (defthm fn2-origin-put-assoc-preserves-alist
+ (implies (alistp profile)
+          (alistp (put-assoc-equal key value profile)))
+ :hints (("Goal" :induct (put-assoc-equal key value profile)))))
 (defun fn2-origin-profile-from-text (profile lineage domain incarnation history history-incarnation)
- (declare (xargs :guard t))
+ (declare (xargs :guard t
+  :guard-hints (("Goal" :in-theory (disable fn2-origin-decimal put-assoc-equal)))))
  (put-assoc-equal :origin-lineage (fn2-origin-decimal lineage)
   (put-assoc-equal :origin-domain (fn2-origin-decimal domain)
    (put-assoc-equal :origin-incarnation (fn2-origin-decimal incarnation)
