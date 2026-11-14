@@ -37,3 +37,8 @@
    (fn2-row-semantic-pending-phase fn2-ops-row-semanticp fn2-completion-phasep fn2-opsp fn2-ops-wfp
     fn2-ops-rows fn2-ops-phase fn2-ops-post-head fn2-ops-post-count fn2-ops-posted-fifo-length fn2-ops-posted-fifoi
     fn2-ops-c0-posted fn2-ops-c0-harvested fn2-ops-c1-posted fn2-ops-c1-harvested)))))
+
+(defthm fn2-harvest-next-refusal-frame
+ (implies (not (equal (car (fn2-ops-peek-posted fn2-ops)) t))
+          (equal (mv-nth 4 (fn2-harvest-next fn2-ops)) fn2-ops))
+ :hints (("Goal" :in-theory (e/d (fn2-harvest-next) (fn2-ops-peek-posted)))))

@@ -763,6 +763,7 @@
         (let* ((index (fn2-ops-posted-fifoi head fn2-ops))
                (slot (floor index 2)) (cell (mod index 2)))
           (if (and (unsigned-byte-p 1 cell) (fn2-op-slotp slot fn2-ops)
+                   (fn2-completion-phasep cell (fn2-ops-phase slot fn2-ops))
                    (if (= cell 0)
                        (and (= (fn2-ops-c0-posted slot fn2-ops) 1) (= (fn2-ops-c0-harvested slot fn2-ops) 0))
                      (and (= (fn2-ops-c1-posted slot fn2-ops) 1) (= (fn2-ops-c1-harvested slot fn2-ops) 0))))
