@@ -146,3 +146,41 @@
 (fn2-check-lowering-teeth fn2-lower-auto-base fn2-lower-auto-top)
 (must-fail (defcore-readonly-closure fn2-lower-recursive fn2-lower-recursive-family))
 (assert-event (not (function-symbolp 'fn2-lower-recursive-family (w state))))
+
+;; A guard-only core reader is part of the same dependency DAG and child ABI.
+(defun fn2-lower-guard-p (limit fn2-core)
+ (declare (xargs :stobjs fn2-core :guard (and (natp limit) (fn2-core-wfp fn2-core))))
+ (natp (fn2-lower-read limit fn2-core)))
+(defun fn2-lower-guard-only (limit fn2-core)
+ (declare (ignorable limit fn2-core) (xargs :stobjs fn2-core :guard (and (natp limit) (fn2-core-wfp fn2-core)
+                                           (fn2-lower-guard-p limit fn2-core))))
+ 7)
+(in-theory (disable fn2-lower-guard-p fn2-lower-guard-only))
+(defcore-readonly-closure fn2-lower-guard-only fn2-lower-guard-only-child)
+(assert-event
+ (and (equal (getpropc 'fn2-lower-guard-only-child 'stobjs-in nil (w state))
+             '(nil fn2-lower-config))
+      (member-eq 'fn2-lower-guard-p-lowered-child
+       (all-fnnames (getpropc 'fn2-lower-guard-only-child 'guard nil (w state))))))
+
+;; Primitive-access guard facts may come from a modular core predicate.
+(defun fn2-lower-indexp (i fn2-core)
+ (declare (xargs :stobjs fn2-core :guard (fn2-core-wfp fn2-core)))
+ (stobj-let ((fn2-lower-config (fn2-core-config fn2-core))) (answer)
+  (and (natp i) (< i (fn2-lower-config-rows fn2-lower-config))) answer))
+(defun fn2-lower-index-read (i fn2-core)
+ (declare (xargs :stobjs fn2-core
+                 :guard (and (fn2-core-wfp fn2-core) (fn2-lower-indexp i fn2-core))
+                 :guard-hints (("Goal" :in-theory (enable fn2-lower-indexp)))))
+ (stobj-let ((fn2-lower-config (fn2-core-config fn2-core))) (answer)
+  (fn2-lower-config-value i fn2-lower-config) answer))
+(in-theory (disable fn2-lower-indexp fn2-lower-index-read))
+(defcore-readonly-closure fn2-lower-index-read fn2-lower-index-read-child)
+;; The predicate slice follows a bound result but excludes a data-only call.
+(assert-event
+ (let ((names (fn2-lower-predicate-names
+              '((lambda (code x) (if (equal code ':ok) (data-reader x) '0))
+                (validation-reader i) (unrelated-reader j)) nil t 100)))
+  (and (member-eq 'validation-reader names)
+       (not (member-eq 'data-reader names))
+       (not (member-eq 'unrelated-reader names)))))

@@ -81,7 +81,15 @@ shape is an explicit fixture fact, not inferred from output metadata alone.
 DAG before emitting any events, then derives intermediate boundaries bottom-up.
 Its warm fixture passes 50 forms, including actual call retention, full source/child
 comparisons and recursive refusal; family record certification remains pending.
-Production principal validation is next; no machine-mode switch is implied.
+Production principal validation exposed core-reader calls in source guards,
+guard-only child arguments, and implications supplied by branch predicates.
+The compiler now discovers these dependencies and opens only generated
+predicate dependencies for guard proofs, following lambda-bound tests while
+leaving data-only calls opaque. The 60-form warm fixture passes, including
+actual indexed-column guard verification and predicate-slice exclusions.
+The latest production refusal was CNS snapshot validation before this slice;
+the updated actual-family probe and record gate are pending. No machine-mode
+switch is implied.
 
 Txn has 14 declared operations without child faces in the baseline. Three
 (txn-principal, authority-allows, authority-depend) have handwritten bodies

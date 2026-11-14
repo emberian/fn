@@ -190,28 +190,104 @@
 (defmacro fn2-check-lowering-teeth (&rest functions)
  `(make-event (value (cons 'fn2-assert-owed-teeth (fn2-lower-obligations ',functions (w state))))))
 
+; Guard predicates carry the facts needed by primitive column accesses.
+; Open only the generated reader closure reachable from the guard, leaving
+; ordinary data-producing body calls behind their verified contracts.
+(defun fn2-lower-registered-children (rows)
+ (declare (xargs :verify-guards nil))
+ (if (atom rows) nil
+  (cons (fn2-decl-get :child (cdar rows))
+        (fn2-lower-registered-children (cdr rows)))))
+; Emitted mv-list forms contain a literal arity, so they are source forms,
+; not translated pseudo-terms accepted by ACL2's all-fnnames.
+(mutual-recursion
+ (defun fn2-lower-call-names (term)
+  (declare (xargs :verify-guards nil))
+  (cond ((atom term) nil)
+        ((eq (car term) 'quote) nil)
+        ((consp (car term))
+         (union-eq (fn2-lower-call-names (caddar term))
+                   (fn2-lower-call-names-list (cdr term))))
+        (t (cons (car term) (fn2-lower-call-names-list (cdr term))))))
+ (defun fn2-lower-call-names-list (terms)
+  (declare (xargs :verify-guards nil))
+  (if (atom terms) nil
+   (union-eq (fn2-lower-call-names (car terms))
+             (fn2-lower-call-names-list (cdr terms))))))
+; Slice branch predicates through lambda bindings. The environment maps
+; variables to dependency names, never runtime values; data calls outside
+; the predicate slice stay opaque during guard verification.
+(mutual-recursion
+ (defun fn2-lower-predicate-names (term env tests-only fuel)
+  (declare (xargs :verify-guards nil :measure (nfix fuel)))
+  (cond ((zp fuel) nil)
+        ((atom term) (and (not tests-only) (cdr (assoc-eq term env))))
+        ((eq (car term) 'quote) nil)
+        ((consp (car term))
+         (union-eq
+          (fn2-lower-predicate-names
+           (caddar term)
+           (append (fn2-lower-name-bindings (cadar term) (cdr term) env (1- fuel)) env)
+           tests-only (1- fuel))
+          (and tests-only (fn2-lower-predicate-names-list (cdr term) env t (1- fuel)))))
+        ((and tests-only (eq (car term) 'if))
+         (union-eq (fn2-lower-predicate-names (cadr term) env nil (1- fuel))
+                   (fn2-lower-predicate-names-list (cdr term) env t (1- fuel))))
+        (t (union-eq (and (not tests-only) (list (car term)))
+                      (fn2-lower-predicate-names-list (cdr term) env tests-only (1- fuel))))))
+ (defun fn2-lower-predicate-names-list (terms env tests-only fuel)
+  (declare (xargs :verify-guards nil :measure (nfix fuel)))
+  (if (or (zp fuel) (atom terms)) nil
+   (union-eq (fn2-lower-predicate-names (car terms) env tests-only (1- fuel))
+             (fn2-lower-predicate-names-list (cdr terms) env tests-only (1- fuel)))))
+ (defun fn2-lower-name-bindings (formals args env fuel)
+  (declare (xargs :verify-guards nil :measure (nfix fuel)))
+  (if (or (zp fuel) (atom formals)) nil
+   (cons (cons (car formals) (fn2-lower-predicate-names (car args) env nil (1- fuel)))
+         (fn2-lower-name-bindings (cdr formals) (cdr args) env (1- fuel))))))
+(defun fn2-lower-call-guard-names (fns world)
+ (declare (xargs :verify-guards nil))
+ (if (atom fns) nil
+  (union-eq (all-fnnames (getpropc (car fns) 'guard nil world))
+            (fn2-lower-call-guard-names (cdr fns) world))))
+(defun fn2-lower-guard-openings (pending children seen world fuel)
+ (declare (xargs :verify-guards nil :measure (nfix fuel)))
+ (cond ((or (atom pending) (zp fuel)) seen)
+       ((or (not (member-eq (car pending) children)) (member-eq (car pending) seen))
+        (fn2-lower-guard-openings (cdr pending) children seen world (1- fuel)))
+       (t (fn2-lower-guard-openings
+           (append (all-fnnames (getpropc (car pending) 'unnormalized-body nil world))
+                   (cdr pending))
+           children (cons (car pending) seen) world (1- fuel)))))
+
 (defun fn2-lower-readonly-events (fn child teeth world)
   (declare (xargs :verify-guards nil))
   (mv-let (expansion-problem body opened)
     (fn2-lower-expand (getpropc fn 'unnormalized-body nil world)
                       (strip-cars (fn2-core-child-registry world)) world (list fn) 10000 t)
+  (mv-let (guard-problem expanded-guard guard-opened)
+   (fn2-lower-expand (getpropc fn 'guard t world)
+                    (strip-cars (fn2-core-child-registry world)) world (list fn) 10000 t)
+   (declare (ignore guard-opened))
   (let* ((body body)
          (ins (getpropc fn 'stobjs-in nil world))
          (outs (getpropc fn 'stobjs-out nil world))
          (formals (getpropc fn 'formals nil world))
          (entries (and (pseudo-termp body)
-                       (fn2-lower-used-entries (fn2-core-child-registry world) body)))
+                       (fn2-lower-used-entries (fn2-core-child-registry world)
+                         (list 'if expanded-guard body ''nil))))
          (children (fn2-core-child-types entries))
          (replacement (fn2-lower-projections entries))
          (lowered (fn2-lower-substitute body replacement world))
          (guard (fn2-lower-substitute
-                 (getpropc fn 'guard t world)
+                 expanded-guard
                  (acons '(fn2-core-wfp fn2-core) (cons 'and (fn2-lower-predicates children "-WFP"))
                         (acons '(fn2-corep fn2-core) (cons 'and (fn2-lower-predicates children "P")) replacement)) world))
          (args (append (remove-eq 'fn2-core formals) children))
          (problem
           (cond ((fn2-lower-teeth-problem teeth) :evidence-pair)
                 (expansion-problem expansion-problem)
+                (guard-problem guard-problem)
                 ((or (null body) (not (pseudo-termp body))) :missing-body)
                 ((not (and (equal (remove-eq nil ins) '(fn2-core))
                            (member-eq 'fn2-core formals)
@@ -227,7 +303,16 @@
         `(make-event (er soft 'defcore-readonly-child "Cannot lower ~x0: ~x1." ',fn ',problem))
       `(progn
          (defun ,child ,args
-           (declare (xargs :stobjs ,children :guard ,guard :verify-guards t))
+           (declare (ignorable ,@args)
+                    (xargs :stobjs ,children :guard ,guard :verify-guards t
+                     :guard-hints (("Goal" :in-theory
+                        (enable ,@(fn2-lower-guard-openings
+                                    (union-eq (fn2-lower-call-names guard)
+                                     (union-eq (fn2-lower-predicate-names lowered nil t 10000)
+                                      (fn2-lower-call-guard-names (fn2-lower-call-names lowered) world)))
+                                    (fn2-lower-registered-children
+                                      (table-alist 'fn2-core-lowered world))
+                                    nil world 10000))))))
            ,(fn2-lower-result-body lowered (len outs)))
          (assert-event
           (and (equal (getpropc ',child 'stobjs-out nil (w state)) ',outs)
@@ -242,7 +327,7 @@
          (in-theory (disable ,child))
          (table fn2-core-lowered ',fn
                 '(:child ,child :refinement ,(fn2-columns-sym child "-REFINES-CORE")
-                  :children ,children :obligation ,(fn2-columns-sym child "-REFINES-CORE"))))))))
+                  :children ,children :obligation ,(fn2-columns-sym child "-REFINES-CORE")))))))))
 (defmacro defcore-readonly-child (fn child &key teeth)
   `(make-event (value (fn2-lower-readonly-events ',fn ',child ',teeth (w state)))))
 
@@ -268,7 +353,10 @@
      (if (or (null body) (not (pseudo-termp body)))
          (mv :missing-body nil seen)
       (mv-let (problem order seen)
-       (fn2-lower-reader-plan-list (all-fnnames body) fields world seen
+       (fn2-lower-reader-plan-list
+        (union-eq (all-fnnames body)
+          (set-difference-eq (all-fnnames (getpropc fn 'guard t world))
+                            '(fn2-corep fn2-core-wfp))) fields world seen
                                    (cons fn stack) (1- fuel))
        (mv problem (append order (list fn)) (cons fn seen))))))))
  (defun fn2-lower-reader-plan-list (fns fields world seen stack fuel)
