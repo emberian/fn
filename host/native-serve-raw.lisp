@@ -106,6 +106,8 @@ core rejects a present value that is not a u32; it never falls back to uid 0."
 
 (defun fn2-nserve-run-host (host)
   "Announce the initialized listener, serve, report the stop, and close I/O."
+  (when (plusp (fn2-nhost-kill-at host))
+    (format t "~%BOUNDARY-READY ~d~%" (fn2-nhost-boundaries host)))
   (format t "~%LISTENING ~d~%" (fn2-nhost-listen-port host))
   (when (fn2-nhost-local-path host)
     (format t "LISTENING-LOCAL ~a~%" (fn2-nhost-local-path host)))

@@ -89,13 +89,38 @@ def verify(port, articles, acknowledged):
         sock.close()
 
 
+def ready_boundary(directory, baseline, articles):
+    """Observe the recovery prefix once; this calibration is not a death case."""
+    image = directory / "calibration.img"
+    shutil.copyfile(baseline, image)
+    node = restart.Node(directory, image, "serve", "calibration",
+                        env=environment((1 << 60) - 1))
+    try:
+        ready = int(node.marker(b"BOUNDARY-READY ").split()[1])
+        port = int(node.marker(b"LISTENING ").split()[1])
+        present, transcript = verify(port, articles, False)
+        assert not present, "baseline already contains the candidate"
+        (directory / "calibration.wire").write_bytes(transcript)
+        node.kill()
+        (directory / "calibration.json").write_text(
+            json.dumps(dict(ready_boundary=ready, source_image=str(baseline))) + "\n")
+        print(f"CALIBRATED ready boundary {ready}", flush=True)
+        return ready
+    finally:
+        node.close()
+
+
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--directory", type=Path)
-    parser.add_argument("--cuts", required=True,
-                        help="comma-separated positive boundary indexes")
+    selected = parser.add_mutually_exclusive_group(required=True)
+    selected.add_argument("--cuts", help="comma-separated positive boundary indexes")
+    selected.add_argument("--relative-cuts",
+                          help="positive offsets from an observed ready boundary")
+    parser.add_argument("--baseline", type=Path,
+                        help="reuse a prior campaign's accepted baseline image")
     args = parser.parse_args()
-    cuts = [int(value) for value in args.cuts.split(",")]
+    cuts = [int(value) for value in (args.cuts or args.relative_cuts).split(",")]
     assert cuts and all(cut > 0 for cut in cuts) and len(set(cuts)) == len(cuts)
     directory = (args.directory or ROOT / "build" / f"image-boundaries-{time.time_ns()}").resolve()
     directory.mkdir(parents=True, exist_ok=False)
@@ -105,33 +130,39 @@ def main():
                         (b"<candidate@example.invalid>", 250)):
         head, whole = restart.article(mid, length)
         articles.append((mid, head, whole))
-    node = restart.Node(directory, baseline, "init", "init", env=environment())
-    try:
-        node.marker(b"INITIALIZED")
-        assert node.proc.wait(timeout=30) == 0
-    finally:
-        node.close()
-    ctl = Path(f"/tmp/fn2-boundaries-{os.getpid()}.sock")
-    node = restart.Node(directory, baseline, "serve", "baseline", control_sock=ctl,
-                        env=environment())
-    try:
-        port = int(node.marker(b"LISTENING ").split()[1])
-        node.marker(b"LISTENING-LOCAL ")
-        subprocess.run([str(ROOT / "fn"), "grant", "set", "anonymous", "append",
-                        "local.test", "--control-sock", str(ctl)],
-                       cwd=ROOT, check=True, timeout=60, env=environment())
-        sock, stream = restart.connect(port)
+    if args.baseline:
+        shutil.copyfile(args.baseline.resolve(), baseline)
+    else:
+        node = restart.Node(directory, baseline, "init", "init", env=environment())
         try:
-            assert post(sock, stream, articles[0][2]) == b"240 article received OK\r\n"
-            node.kill()
+            node.marker(b"INITIALIZED")
+            assert node.proc.wait(timeout=30) == 0
         finally:
-            stream.close()
-            sock.close()
-    finally:
-        node.close()
-        for path in (ctl, Path(f"{ctl}.groups")):
-            if path.exists():
-                path.unlink()
+            node.close()
+        ctl = Path(f"/tmp/fn2-boundaries-{os.getpid()}.sock")
+        node = restart.Node(directory, baseline, "serve", "baseline", control_sock=ctl,
+                            env=environment())
+        try:
+            port = int(node.marker(b"LISTENING ").split()[1])
+            node.marker(b"LISTENING-LOCAL ")
+            subprocess.run([str(ROOT / "fn"), "grant", "set", "anonymous", "append",
+                            "local.test", "--control-sock", str(ctl)],
+                           cwd=ROOT, check=True, timeout=60, env=environment())
+            sock, stream = restart.connect(port)
+            try:
+                assert post(sock, stream, articles[0][2]) == b"240 article received OK\r\n"
+                node.kill()
+            finally:
+                stream.close()
+                sock.close()
+        finally:
+            node.close()
+            for path in (ctl, Path(f"{ctl}.groups")):
+                if path.exists():
+                    path.unlink()
+    if args.relative_cuts:
+        ready = ready_boundary(directory, baseline, articles)
+        cuts = [ready + offset for offset in cuts]
     results = []
     for cut in cuts:
         image = directory / f"cut-{cut}.img"
