@@ -4,6 +4,7 @@
 (include-book "std/util/bstar" :dir :system)
 (include-book "checkpoint-payload-carrier")
 (include-book "checkpoint-payload-format")
+(include-book "block-integrity")
 (fn2-book-layer :b)
 (defun fn2-checkpoint-payload-location-check (fn2-checkpoint-payload fn2-b3 fn2-digests fn2-pool)
  (declare (xargs :stobjs (fn2-checkpoint-payload fn2-b3 fn2-digests fn2-pool)
