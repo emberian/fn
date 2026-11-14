@@ -385,6 +385,17 @@
   (declare (xargs :guard t :verify-guards nil))
   (if (zp index) `(car ,name) `(nth ,index ,name)))
 
+; Public accessor-level shape fact: clients need not unfold storage to use a
+; fixed-cardinality primitive's guard or numeric result theorem.
+(defun fn2-columns-fixed-length-bridge (name field)
+ (declare (xargs :verify-guards nil))
+ (let ((length (fn2-columns-sym (car field) "-LENGTH")))
+  `(defthm ,(fn2-columns-sym length "-FIXED")
+    (implies (,(fn2-columns-sym name "P") ,name)
+             (equal (,length ,name)
+                    ,(car (caddr (fn2-columns-field-spec field)))))
+    :rule-classes (:rewrite :forward-chaining)
+    :hints (("Goal" :in-theory (enable ,length))))))
 (defun fn2-columns-field-facts (name field index localp)
   (declare (xargs :guard t :verify-guards nil))
   (let* ((p (fn2-columns-sym name "P")) (f (car field))
@@ -411,7 +422,8 @@
                            (equal (len (nth ,index ,name))
                                   ,(car (caddr (fn2-columns-field-spec field)))))
                   :rule-classes (:rewrite :forward-chaining)
-                  :hints (("Goal" :in-theory (enable ,p))))))
+                  :hints (("Goal" :in-theory (enable ,p))))
+                ,(fn2-columns-fixed-length-bridge name field)))
           `((defthm ,(fn2-columns-sym f "-NTH-NATP")
               (implies (,p ,name) (natp (nth ,index ,name)))
               :rule-classes :type-prescription
