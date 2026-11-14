@@ -2,6 +2,7 @@
 (in-package "ACL2")
 (include-book "format-check")
 (include-book "alloc")
+(include-book "vocab")
 (fn2-book-layer :b)
 ; Current native backend routes one image. Domain0 is the format writer's
 ; declared domain; foreign references must never alias this allocator.
@@ -30,18 +31,27 @@
       (<= (* 6 (+ 1 c)) (fn2-checkpoint-refs-rows fn2-checkpoint-refs))
       (<= (* 192 (+ 1 c)) (fn2-checkpoint-bytes-rows fn2-checkpoint-bytes))))
 
+ ; Checkpoint slots follow commit IO, two root edges per extent, and every
+; operation's dedicated physical-read pin. No caller chooses another holder's
+; currently free reserved edge.
+(defun fn2-checkpoint-edge (c role fn2-extents fn2-ops)
+ (declare (xargs :stobjs (fn2-extents fn2-ops)
+  :guard (and (fn2-extents-wfp fn2-extents) (fn2-ops-wfp fn2-ops) (natp c) (natp role))))
+ (+ 6 (* 2 (fn2-extents-rows fn2-extents)) (fn2-ops-rows fn2-ops) (* 6 c) role))
+
 ; One exact holder's protection per step. Refusing halfway leaves the prior
 ; edges held. The coordinator must resume or discharge each one by its tuple.
 (defun fn2-checkpoint-retain (c role edge fn2-checkpoints fn2-checkpoint-refs
-                            fn2-checkpoint-bytes fn2-extents fn2-alloc-edges)
+                            fn2-checkpoint-bytes fn2-extents fn2-alloc-edges fn2-ops)
  (declare (xargs :stobjs (fn2-checkpoints fn2-checkpoint-refs fn2-checkpoint-bytes
-                          fn2-extents fn2-alloc-edges)
-  :guard (and (fn2-extents-wfp fn2-extents) (fn2-alloc-edges-wfp fn2-alloc-edges)
+                          fn2-extents fn2-alloc-edges fn2-ops)
+  :guard (and (fn2-extents-wfp fn2-extents) (fn2-alloc-edges-wfp fn2-alloc-edges) (fn2-ops-wfp fn2-ops)
               (fn2-checkpoints-wfp fn2-checkpoints)
               (fn2-checkpoint-refs-wfp fn2-checkpoint-refs)
               (fn2-checkpoint-bytes-wfp fn2-checkpoint-bytes))))
  (if (not (and (fn2-checkpoint-slotp c fn2-checkpoints fn2-checkpoint-refs fn2-checkpoint-bytes)
                (natp role) (< role 6) (unsigned-byte-p 32 edge)
+               (equal edge (fn2-checkpoint-edge c role fn2-extents fn2-ops))
                (equal (fn2-checkpoints-state c fn2-checkpoints) *fn2-checkpoint-state-checked*)))
      (mv :state fn2-checkpoint-refs fn2-extents fn2-alloc-edges)
   (let* ((r (+ (* 6 c) role))
@@ -72,11 +82,12 @@
 
 ; Check six owned edges, not the extent table. Cached flags alone never grant
 ; permission; the named concrete edges must still match at publication.
-(defun fn2-checkpoint-retainedp (role c fn2-checkpoints fn2-checkpoint-refs fn2-alloc-edges)
- (declare (xargs :stobjs (fn2-checkpoints fn2-checkpoint-refs fn2-alloc-edges)
+(defun fn2-checkpoint-retainedp (role c fn2-checkpoints fn2-checkpoint-refs fn2-alloc-edges fn2-extents fn2-ops)
+ (declare (xargs :stobjs (fn2-checkpoints fn2-checkpoint-refs fn2-alloc-edges fn2-extents fn2-ops)
   :measure (nfix (- 6 (nfix role)))
   :guard (and (fn2-checkpoints-wfp fn2-checkpoints)
               (fn2-checkpoint-refs-wfp fn2-checkpoint-refs) (fn2-alloc-edges-wfp fn2-alloc-edges)
+              (fn2-extents-wfp fn2-extents) (fn2-ops-wfp fn2-ops)
               (natp role) (<= role 6) (natp c) (< c (fn2-checkpoints-rows fn2-checkpoints))
               (<= (* 6 (+ 1 c)) (fn2-checkpoint-refs-rows fn2-checkpoint-refs)))))
  (if (or (not (natp role)) (>= role 6)) t
@@ -84,6 +95,7 @@
    (and (equal (fn2-checkpoint-refs-storage-domain r fn2-checkpoint-refs)
                *fn2-checkpoint-served-storage-domain*)
         (equal (fn2-checkpoint-refs-retained r fn2-checkpoint-refs) 1)
+        (equal (fn2-checkpoint-refs-edge r fn2-checkpoint-refs) (fn2-checkpoint-edge c role fn2-extents fn2-ops))
         (fn2-alloc-edge-slotp (fn2-checkpoint-refs-edge r fn2-checkpoint-refs) fn2-alloc-edges)
         (fn2-alloc-edge-matchesp (fn2-checkpoint-refs-edge r fn2-checkpoint-refs)
           (fn2-checkpoints-checkpoint c fn2-checkpoints)
@@ -91,7 +103,7 @@
           (fn2-checkpoint-refs-writer-epoch r fn2-checkpoint-refs)
           (fn2-checkpoint-refs-allocation r fn2-checkpoint-refs)
           :selectable-checkpoint fn2-alloc-edges)
-        (fn2-checkpoint-retainedp (+ 1 role) c fn2-checkpoints fn2-checkpoint-refs fn2-alloc-edges)))))
+        (fn2-checkpoint-retainedp (+ 1 role) c fn2-checkpoints fn2-checkpoint-refs fn2-alloc-edges fn2-extents fn2-ops)))))
 
 ; A historical location is not a new allocation claim. The checkpoint map
 ; and ordered suffix transitions determine which identity currently owns it.
@@ -309,12 +321,13 @@
 ; remains separate and no allocator cut is advanced here.
 (defun fn2-checkpoint-install (c install-commit base slot gen okind oslot ogen
                               fn2-checkpoints fn2-checkpoint-refs fn2-checkpoint-bytes
-                              fn2-fields fn2-pool fn2-alloc-edges)
+                              fn2-fields fn2-pool fn2-alloc-edges fn2-extents fn2-ops)
  (declare (xargs :stobjs (fn2-checkpoints fn2-checkpoint-refs fn2-checkpoint-bytes
-                          fn2-fields fn2-pool fn2-alloc-edges)
+                          fn2-fields fn2-pool fn2-alloc-edges fn2-extents fn2-ops)
   :guard (and (fn2-checkpoints-wfp fn2-checkpoints) (fn2-checkpoint-refs-wfp fn2-checkpoint-refs)
               (fn2-checkpoint-bytes-wfp fn2-checkpoint-bytes) (fn2-fields-wfp fn2-fields)
-              (fn2-pool-wfp fn2-pool) (fn2-alloc-edges-wfp fn2-alloc-edges))))
+              (fn2-pool-wfp fn2-pool) (fn2-alloc-edges-wfp fn2-alloc-edges)
+              (fn2-extents-wfp fn2-extents) (fn2-ops-wfp fn2-ops))))
  (b* (((unless (and (fn2-checkpoint-slotp c fn2-checkpoints fn2-checkpoint-refs fn2-checkpoint-bytes)
                      (posp install-commit) (unsigned-byte-p 60 install-commit)
                      (natp base) (<= (+ base *fn2-format-checkpoint-installation-num-fields*) (fn2-fields-rows fn2-fields))))
@@ -340,7 +353,7 @@
                      (fn2-checkpoint-pool-hash-matchesp 32 (* 32 r)
                        (fn2-fields-ref-off (+ f 6) fn2-fields) slot gen okind oslot ogen fn2-pool fn2-checkpoint-bytes)))
        (mv :descriptor fn2-checkpoints))
-      ((unless (fn2-checkpoint-retainedp 0 c fn2-checkpoints fn2-checkpoint-refs fn2-alloc-edges))
+      ((unless (fn2-checkpoint-retainedp 0 c fn2-checkpoints fn2-checkpoint-refs fn2-alloc-edges fn2-extents fn2-ops))
        (mv :unprotected fn2-checkpoints))
       (fn2-checkpoints (fn2-checkpoints-set-installation-commit c install-commit fn2-checkpoints))
       (fn2-checkpoints (fn2-checkpoints-set-state c *fn2-checkpoint-state-installed* fn2-checkpoints)))

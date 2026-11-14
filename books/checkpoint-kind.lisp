@@ -5,7 +5,7 @@
 (fn2-book-layer :b)
 (defun fn2-checkpoint-capacity (profile)
  (declare (xargs :guard t))
- (nfix (fn2-b-capacity :checkpoint-candidates 4 profile)))
+ (fn2-b-checkpoint-capacity profile))
 (defcorechild fn2-core-checkpoints fn2-checkpoints
  :init (fn2-checkpoints-init (fn2-checkpoint-capacity profile) fn2-checkpoints)
  :profilep (unsigned-byte-p 32 (+ 96 (* 192 (fn2-checkpoint-capacity profile))))
