@@ -9,12 +9,6 @@
 ; *fn2-commit-no-extent* is the resource reader's not-u32 extent, which every
 ; caller's u32 check turns into its own stop.
 (defconst *fn2-commit-no-extent* 4294967296)
-; B-S2 (§11b S1-S2): a transaction member's workspace holds at most this many
-; record frames; the records frame's payload bounds a batch's records, each
-; counted at its largest sealed size (header 83 octets plus its body).
-(defconst *fn2-commit-txn-records-max* 25)
-(defconst *fn2-commit-records-room* 3900)
-(defconst *fn2-commit-txn-header-room* 83)
 (defmacro fn2-commit-require (ok reason)
  `(if ,ok fn2-core (fn2-core-stop ,reason fn2-core)))
 (defmacro fn2-commit-stop-arm (reason)
