@@ -3,7 +3,9 @@
 
 This checks readable source, literal repository-contained LOADs, absence of
 Lisp-reader/evaluator calls, and that the actual startup prefix loads without
-starting the server. It does not prove that raw host code makes no decisions.
+starting the server. The load gate also checks actual ACL2 function bindings
+across raw startup; only the declared native replacements may change. This is
+an assumption census, not a proof of the native implementations' behavior.
 The fn1 definterface/DTN registry is not an interface for this runtime.
 """
 from __future__ import annotations
@@ -21,6 +23,19 @@ import lisp_source
 ROOT = Path(__file__).resolve().parents[1]
 BANNED = {'read', 'read-preserving-whitespace', 'read-from-string', 'eval',
           'read-delimited-list', 'read-eval'}
+# Deliberately independent of the mutable host's *fn2-b3-native-entries*.
+# These implementations remain trusted (fn2-a-crypto-native/fn2-a-native-span);
+# checking their function identities does not establish output/effect refinement.
+NATIVE_REPLACEMENTS = (
+    ('fn2-b3-fragment-into', 'fn2-b3-native-fragment'),
+    ('fn2-fc-zero-prefix', 'fn2-b3-native-zero-prefix'),
+    ('fn2-b3-subtree-cv-into', 'fn2-b3-native-subtree'),
+    ('fn2-b3-chunk-output-into', 'fn2-b3-native-chunk'),
+    ('fn2-b3-parent-cv', 'fn2-b3-native-parent-cv'),
+    ('fn2-b3-parent-root', 'fn2-b3-native-parent-root'),
+    ('fn2-b3-output', 'fn2-b3-native-output'),
+    ('fn2-mk-node', 'fn2-b3-native-node'),
+)
 
 
 def walk(form):
@@ -192,16 +207,32 @@ def entry_names(root, order):
     return sorted(calls - structures), sorted(helpers)
 
 
-def load_program(prefix, calls, helpers):
+def load_program(prefix, calls, helpers, replacements=()):
     logical, raw = prefix.split(':q', 1)
     names = ' '.join(calls)
     local = ' '.join(helpers)
+    replacement_map = ' '.join(f'({name} . {native})' for name, native in replacements)
     # Capture and validate the ACL2 status BEFORE native BLAKE3 replacements
     # are installed. Raw helpers are exactly the definitions in the load graph.
     return logical + f"""
 :q
 (handler-case
- (progn
+ (let ((bindings nil) (seen (make-hash-table :test #'eq))
+       (replacements '({replacement_map})))
+  ;; Snapshot the live world's function objects, including transitive callees
+  ;; absent from the raw source call inventory. Do not infer identity from guards.
+  (do-all-symbols (name)
+   (unless (gethash name seen)
+    (setf (gethash name seen) t)
+    (unless (or (special-operator-p name)
+                (eq (getpropc name 'symbol-class :missing (w *the-live-state*)) :missing))
+     (push (cons name (if (fboundp name) (fdefinition name) :unbound)) bindings))))
+  (dolist (pair replacements)
+   (unless (and (assoc (car pair) bindings)
+                (not (eq (cdr (assoc (car pair) bindings)) :unbound))
+                (eq (getpropc (car pair) 'symbol-class :missing (w *the-live-state*))
+                    :common-lisp-compliant))
+    (error "Declared native target ~s lacks a guarded ACL2 binding" (car pair))))
   (dolist (name '({names}))
    (let* ((world (w *the-live-state*))
           (class (getpropc name 'symbol-class :missing world)))
@@ -211,9 +242,21 @@ def load_program(prefix, calls, helpers):
           ((not (member name '({local})))
            (error "Undeclared served callee ~s" name)))))
   {raw}
+  (dolist (pair bindings)
+   (let* ((name (car pair)) (replacement (assoc name replacements)))
+    (unless (if (and (not replacement) (eq (cdr pair) :unbound))
+                (not (fboundp name))
+                (and (fboundp name)
+                     (if replacement
+                         (and (fboundp (cdr replacement))
+                              (eq (fdefinition name) (fdefinition (cdr replacement))))
+                         (eq (fdefinition name) (cdr pair)))))
+     (error "Undeclared or mismatched raw replacement of ACL2 function ~s" name))))
   (dolist (name '({names}))
    (unless (fboundp name)
     (error "Served callee ~s is not bound" name)))
+  (format t "~%FN_SERVED_HOST_BINDINGS_OK ~d unchanged-or-declared, ~d native assumptions~%"
+          (length bindings) (length replacements))
   (format t "~%FN_SERVED_HOST_LOAD_OK~%")
   (sb-ext:exit :code 0))
  (error (condition)
@@ -224,7 +267,7 @@ def load_program(prefix, calls, helpers):
 
 def load_prefix(prefix, root, order, timeout):
     calls, helpers = entry_names(root, order)
-    program = load_program(prefix, calls, helpers)
+    program = load_program(prefix, calls, helpers, NATIVE_REPLACEMENTS)
     with tempfile.TemporaryFile(mode='w+') as log:
         try:
             result = subprocess.run([str(root / 'tools/acl2'), '--timeout', str(timeout)],
@@ -237,7 +280,8 @@ def load_prefix(prefix, root, order, timeout):
     if result.returncode or 'FN_SERVED_HOST_LOAD_OK' not in output.splitlines():
         return 1, '\n'.join(output.splitlines()[-60:])
     return 0, (f'certified node prefix and {len(calls)} guarded/host callees loaded; '
-               'no listener started')
+               f'ACL2 bindings preserved except {len(NATIVE_REPLACEMENTS)} declared '
+               'native replacements (fn2-a-crypto-native/fn2-a-native-span); no listener started')
 
 
 def main(argv=None):
