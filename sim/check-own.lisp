@@ -145,9 +145,22 @@
 (fn2-own-preserves fn2-own-restart (fn2-own) :position nil :rows nil
   :hyps ((fn2-ownp fn2-own) (fn2-own-wfp fn2-own) ))
 
+; Expose only the pool fields the initializer calls. Opening the whole
+; profile schema in its nested resize guard repeats unrelated validation.
+(local (defthm fn2-own-init-profile-pool-unfolds
+  (implies (fn2-profilep profile)
+           (and (fn2-profile-classes-p (fn2-profile-pool-classes profile))
+                (unsigned-byte-p 60
+                  (fn2-profile-pool-bytes (fn2-profile-pool-classes profile)))))
+  :rule-classes (:rewrite :forward-chaining)
+  :hints (("Goal" :in-theory
+           (union-theories '(fn2-profilep) (theory 'minimal-theory))))))
+
 (defun fn2-own-init (profile fn2-own)
   (declare (xargs :stobjs fn2-own :guard (fn2-profilep profile)
-                  :guard-hints (("Goal" :in-theory (enable fn2-profilep fn2-profile-o fn2-profile-qa)))))
+                  :guard-hints (("Goal" :in-theory
+                    (disable fn2-profilep fn2-profile-o fn2-profile-qa
+                             fn2-profile-pool-classes)))))
   (let* ((bytes (fn2-profile-pool-bytes (fn2-profile-pool-classes profile)))
          (ops (fn2-profile-o profile)) (qa (fn2-profile-qa profile))
          (fn2-own (fn2-own-columns-init ops fn2-own))
