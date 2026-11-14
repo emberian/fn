@@ -154,3 +154,68 @@ Before reuse, recovery's historical-location adoption must become checkpoint
 aware: old and reused identities cannot be adopted as simultaneously live.
 Checkpoint publication/root selection and a journaled writer-epoch transition
 remain prerequisites. A release record decoder alone cannot close these gaps.
+
+The first narrow allocator admission passed on the record toolchain at source
+`a237c839d62e9b6b98558dfa28680acb63d11906`: all 84 forms of `books/alloc`,
+including the new column guards and release-intent operations, loaded from
+source in 7.78 seconds (885,173 prover steps). All five dependencies came from
+the exact compatible cache; no core world was loaded. The allocator closure
+key was `406d09970bb5cfbe71fa442f7814aa75b2af038fdb3642981ece0ab9da986634`.
+This is source admission, not a certificate or an executed integration fixture.
+Checkpoint selection/restoration, lifecycle replay through reuse, and physical
+completion composition remain prerequisites for enabling FREE.
+
+The first checkpoint also requires a durable C metadata snapshot that the
+current sealer does not produce. `fn2-successor-publish` advances a logical
+published frontier; data may remain in frozen overlays. `fn2-seal-step` builds
+resident run pages, and `fn2-seal-page` gives their cache identity to the page
+builder. The sealer has no B allocation/write/fence children. `fn2-run-installed`
+and `fn2-run-version` therefore do not identify a retained durable directory
+snapshot; compaction may replace their rows across a traversal yield.
+
+The production builder must bind an exact cut to both overlays and installed
+runs, incrementally materialize pages with real B allocation identities,
+persist their contents and manifest, and return a retained manifest reference.
+Recovery must restore that semantic root before suffix replay. A coordinated
+publication/materialization freeze is a possible first implementation, but it
+must permit B/C progress needed to persist the frozen snapshot. Merely observing
+an idle sealer or an event number cannot authorize checkpoint installation.
+Direct protection of the descriptor and five root pages is insufficient for
+reclaiming any reachable descendant; the retained closure must be established.
+
+Even a correctly restored checkpoint map does not justify preclaiming every
+article location in the suffix before replay: release followed by reuse may
+name two generations of one location. Allocation/lifecycle reconstruction must
+follow journal order before payload adoption. A numerical `commit <= cut`
+classification is usable only under authenticated selected-base restoration,
+never as an independent license to ignore a physical identity conflict.
+
+The allocator controls also executed at source
+`0bb1f61be5d739b3a69f4260cbb5dfe752e50310`: `tests/alloc-unit` loaded
+65 forms after source-loading `books/alloc`, in 8.12 seconds and 885,276
+steps. The actual release-intent/protector interleavings passed. The root
+closure was `82ec9fac376d3814242d7b78195fbc71f89b2cb15f4d7334f6a7931a3f86a8da`;
+six unchanged dependencies were exact cached artifacts. This is executed
+allocator control evidence, not certification or composed storage execution.
+Both narrow Forge sessions were stopped and their 2 GiB reservations released.
+
+The source integration now separates physical allocation geometry (64 KiB,
+16 physical units) from journal resources (three writes). This gives an existing
+64 KiB C page one allocation identity, without changing schema limits or
+silently spilling a page into another allocation. Upload payload packing still
+uses three units per allocation; the resulting space overhead is explicit.
+`fn2-block-write` pins the reserved identity before issuing a 4 KiB window from
+an owned workspace, including a source BOFF. Only validated physical completion
+releases that pin; ACK and stale completion do not. `storage-geometry-unit`
+exercises extent 1, unit 31, source BOFF 61440, and independent read/write pins.
+These composed controls are source fixtures, not yet executed. The shared
+`fn2-storage-reserve` now supplies the same allocator operation used by upload
+before checkpoint bytes bind their physical identity; it does not publish them.
+
+A held C snapshot alone does not identify durable allocator rows: an accepted
+article's payload can remain RESERVED until its transaction consumes the
+published settlement and calls `fn2-upload-extents-of`. Filtering all RESERVED
+rows would omit durable data. The builder must account for these exact published
+owners or reconstruct their identities from the retained semantic roots before
+persisting an allocation map. Unrelated in-progress uploads must not become
+checkpoint-durable merely because their reservations exist at the same time.

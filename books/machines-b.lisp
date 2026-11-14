@@ -460,6 +460,10 @@
   :carriers ((fn2-pool 3 :prefix "-POOL") (fn2-ops 4 :prefix "-OPS") (fn2-control 5 :prefix "-CONTROL")
              (fn2-extents 6 :prefix "-EXTENTS") (fn2-alloc-edges 7 :prefix "-EDGES")))
 
+(defcost fn2-storage-reserve :answers (:ok :no-space :fault) :faults (:fault)
+ :tables (fn2-core-extents fn2-core-control)
+ :doc "Reserve a physical construction identity before encoding its location-bound bytes; no publication or durability claim.")
+
 (defcost fn2-block-read :child fn2-block-read-children :answers (:ok :exhausted :stale :bounds)
  :tables (fn2-core-extents fn2-core-alloc-edges fn2-core-pool fn2-core-ops fn2-core-control)
  :descriptors 1 :doc "Pin a stored reference through physical completion and read it into the caller's lease.")
