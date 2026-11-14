@@ -1,7 +1,7 @@
 # Served scheduler progress
 
 The native host posts a clock before every `fn2-turn` (`host/adapter.lisp`).
-The supported profile accepts H=1, while `fn2-concrete-loop-stop-p` stops as
+The original supported profile accepts H=1, while its `fn2-concrete-loop-stop-p` stops as
 soon as observations reach H. This can leave already runnable work untouched
 on every host iteration. This is distinct from `fn2-sched-starvation`, whose
 owed statement counts actual calendar visits rather than turns.
@@ -60,8 +60,8 @@ Prepared controls:
   independent reference/TRACE must agree on calendar visitation after H,
   leave the signal pending, and never label it as consumed.
 
-These repair proofs and controls are prepared source, pending their qualified
-pilot; the executed result above concerns the original counterexample only.
+The repair source proof and runtime controls have now passed their qualified
+pilots below; independent TRACE and record certification remain pending.
 Q1 continuation already omits work-room capacity and is not claimed here to
 be an exact characterization of the concrete stop predicate. Completing that
 composition contract remains separate from this policy correction.

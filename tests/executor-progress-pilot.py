@@ -11,14 +11,17 @@ import sys
 sys.path.insert(0,'tools')
 import lisp_rewrite as l
 unit=l.parse(Path('tests/executor-progress-unit.lisp'))
-stop=l.parse(Path('books/executor.lisp'))
+stop_path = Path('books/executor-loop-events.lisp')
+if not stop_path.exists():
+ stop_path = Path('books/executor.lisp')
+stop=l.parse(stop_path)
 control=Path('tests/executor-progress-control.lsp').read_text()
 helpers=[]; assertions=[]
 for f in unit.forms:
  if isinstance(f,l.Lst) and isinstance(f.items[0],l.Atom):
   if f.items[0].low=='defun': helpers.append(unit.text[f.start:f.end])
   elif f.items[0].low=='assert-event': assertions.append('(assert '+unit.text[f.items[1].start:f.items[1].end]+')')
-m=l.match('(defun fn2-concrete-loop-stop-p ?args ?*body)',stop.forms,deep=False)
+m=l.match('(defun fn2-concrete-loop-stop-p ?args ?*body)',stop.forms,deep=True)
 assert len(m)==1
 f=m[0].node
 args=stop.text[f.items[2].start:f.items[2].end]
