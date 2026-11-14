@@ -1,6 +1,6 @@
 (in-package "ACL2")
 (include-book "event-proof-source-unit")
-(include-book "../books/event-read-verify")
+(include-book "../books/event-frontier-source")
 
 ; Projection-only test wrappers call the same actual leaves; no alternate
 ; record parser, read adapter, verifier or event/frontier producer is defined.
@@ -38,6 +38,13 @@
   (fn2-pool (fn2-core-pool fn2-core)) (fn2-digests (fn2-core-digests fn2-core)))
  (code fn2-event-read fn2-journal-members fn2-mk fn2-b3 fn2-fields fn2-digests)
  (fn2-event-read-member-step fn2-event-read fn2-csnapshot fn2-journal-members fn2-mk fn2-b3 fn2-fields fn2-pool fn2-digests))
+
+(fn2-epv-wrapper fn2-epv-peak (token level slot gen)
+ ((fn2-event-read (fn2-core-event-read fn2-core)) (fn2-csnapshot (fn2-core-csnapshot fn2-core))
+  (fn2-mk (fn2-core-mk fn2-core)) (fn2-fc (fn2-core-fc fn2-core))
+  (fn2-digests (fn2-core-digests fn2-core)) (fn2-pool (fn2-core-pool fn2-core)))
+ (code fn2-pool)
+ (fn2-event-frontier-pack-peak token level slot gen 7 0 1 fn2-event-read fn2-csnapshot fn2-mk fn2-fc fn2-digests fn2-pool))
 
 (defun fn2-epv-physical (fn2-core fn2-sim fn2-own)
  (declare (xargs :stobjs (fn2-core fn2-sim fn2-own) :verify-guards nil))
@@ -111,6 +118,19 @@
        (mv nil fn2-core fn2-sim fn2-own))
       ((mv opened fn2-core) (fn2-epv-open token slot gen dslot dgen scratch sgen fn2-core))
       ((mv phase records fn2-core fn2-sim fn2-own) (fn2-epv-drive 200 fault nil nil fn2-core fn2-sim fn2-own))
+      ((mv seed fn2-core) (fn2-core-write dslot dgen (+ *fn2-event-frontier-peaks-start* 32) 123 7 0 1 fn2-core))
+      ((mv peak0 fn2-core) (fn2-epv-peak token 0 dslot dgen fn2-core))
+      ((mv peak1 fn2-core) (fn2-epv-peak token 1 dslot dgen fn2-core))
+      ((mv invalid-level fn2-core) (fn2-epv-peak token 60 dslot dgen fn2-core))
+      ((mv stale-source fn2-core) (fn2-epv-peak (+ token 1) 0 dslot dgen fn2-core))
+      (peaks (stobj-let ((fn2-pool (fn2-core-pool fn2-core))) (p)
+               (if fault (and (eq peak0 :source) (eq peak1 :source))
+                 (and (eq seed :ok) (eq peak0 :ok) (eq peak1 :ok) (eq invalid-level :bounds)
+                      (eq stale-source :source)
+                      (equal (fn2-pool-logical-octets 32 (+ (fn2-pool-base dslot fn2-pool) *fn2-event-frontier-peaks-start*) fn2-pool)
+                             (fn2-mk-mth records))
+                      (equal (fn2-pool-logical-octets 32 (+ (fn2-pool-base dslot fn2-pool) *fn2-event-frontier-peaks-start* 32) fn2-pool)
+                             (make-list 32 :initial-element 0)))) p))
       ((mv good fn2-core)
        (stobj-let ((fn2-event-read (fn2-core-event-read fn2-core)) (fn2-mk (fn2-core-mk fn2-core))
                    (fn2-digests (fn2-core-digests fn2-core))) (good fn2-digests)
@@ -122,7 +142,7 @@
                   (= (len records) 1) (consp (car records))
                   (equal (fn2-digest-list root fn2-digests) (fn-b3-words 8 (fn2-mk-mth records)))) fn2-digests))
         (mv good fn2-core))))
-  (mv (and (eq opened :ok) good (not (fn2-core-stopped-p fn2-core))) fn2-core fn2-sim fn2-own)))
+  (mv (and (eq opened :ok) good peaks (not (fn2-core-stopped-p fn2-core))) fn2-core fn2-sim fn2-own)))
 (defun fn2-epv-test (fault)
  (declare (xargs :verify-guards nil))
  (with-local-stobj fn2-core
