@@ -4,7 +4,7 @@
 ; not a bound on an article or on the lifetime of a compressed connection.
 (in-package "ACL2")
 (include-book "profile")
-(include-book "owed")
+(include-book "owed-discharge")
 (fn2-book-layer :a)
 
 (defun fn2-compress-profilep (profile)
@@ -93,5 +93,5 @@
  (implies (equal (mv-nth 0 (fn2-compress-observe raw used made ri ro credit ratio burst)) :bounds)
   (equal (mv-nth 1 (fn2-compress-observe raw used made ri ro credit ratio burst)) credit)))
 
-; The composed machine book registers these proved obligations; the generic
-; discharge helper currently lives at the pool layer, above this pure policy.
+(fn2-owed-discharge fn2-compress-plan-bounded fn2-compress-plan-bounded)
+(fn2-owed-discharge fn2-compress-observe-credit-bounded fn2-compress-observe-credit-bounded)
