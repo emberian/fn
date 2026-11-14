@@ -224,5 +224,5 @@
    :correspondence fn2-evidence-dead-producer-equivalence
    :positive ((x '3))
    :negative (:kind :mutation :at fn2-evidence-domain-clamp
-              :replace fn2-evidence-domain-plus-one :bindings ((x '3)))))))
+              :replace fn2-evidence-domain-plus-one :bindings ((x '3))))))
 (assert-event (not (fn2-decl-row '(:square fn2-evidence-dead-producer) (w state))))
