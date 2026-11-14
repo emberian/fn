@@ -57,6 +57,24 @@ class CoverageControls(unittest.TestCase):
                 (root/'tool/lib/lean/libleanshared.so').write_text('different runtime')
                 self.assertNotEqual(b,c.toolchain_fingerprint(root))
 
+    def test_local_view_exposes_only_declared_transitive_dependencies(self):
+        with tempfile.TemporaryDirectory() as td:
+            lib=Path(td); (lib/'Fn2').mkdir()
+            for name in ['A.olean','A.olean.private','B.olean','Hidden.olean']:
+                (lib/'Fn2'/name).write_text(name)
+            graph={'Fn2.A':['Fn2.B'],'Fn2.B':[]}
+            declared=c.transitive_dependencies(['Fn2.A'],graph)
+            with c.local_dependency_view(lib,declared) as view:
+                self.assertEqual((view/'Fn2/A.olean').read_text(),'A.olean')
+                self.assertEqual((view/'Fn2/A.olean.private').read_text(),'A.olean.private')
+                self.assertTrue((view/'Fn2/B.olean').is_file())
+                self.assertFalse((view/'Fn2/Hidden.olean').exists())
+            with c.local_dependency_view(lib,[]) as view:
+                self.assertTrue((view/'Fn2').is_dir())
+                self.assertEqual(list((view/'Fn2').iterdir()),[])
+            with self.assertRaisesRegex(ValueError,'unqualified local import'):
+                c.transitive_dependencies(['Fn2.Hidden'],graph)
+
     def test_external_import_mutation_invalidates_same_source_cache(self):
         with tempfile.TemporaryDirectory() as td:
             root=Path(td); lib=root/'lib'; ext=root/'external'
@@ -124,6 +142,20 @@ class CoverageControls(unittest.TestCase):
                  mock.patch.object(c,'lean_gates_locked',side_effect=gate):
                 with self.assertRaisesRegex(RuntimeError,'external libraries changed'):
                     c.lean_gates({},lib,5,1,root=root)
+            self.assertEqual(json.loads((root/'build/served-lean-cache.json').read_text()),{})
+
+    def test_standalone_closure_rechecks_external_world(self):
+        with tempfile.TemporaryDirectory() as td:
+            root=Path(td); (root/'meta/Fn2').mkdir(parents=True)
+            (root/'meta/Fn2/A.lean').write_text('def a := 1')
+            lib=root/'lib'
+            def compile_fake(source, lib, *args, **kwargs):
+                (lib/'Fn2').mkdir(); (lib/'Fn2/A.olean').write_text('checked')
+                (root/'log').write_text('checked'); return 0,'checked','log'
+            with mock.patch.object(c,'toolchain_fingerprint',side_effect=['old','changed']), \
+                 mock.patch.object(c,'compile_one',side_effect=compile_fake):
+                with self.assertRaisesRegex(RuntimeError,'external libraries changed'):
+                    c.compile_closure(['Fn2.A'],lib,5,1,root=root)
             self.assertEqual(json.loads((root/'build/served-lean-cache.json').read_text()),{})
 
     def test_dependency_rebuild_artifact_invalidates_downstream(self):
@@ -233,7 +265,7 @@ class CoverageControls(unittest.TestCase):
                  mock.patch.object(c.subprocess,'run',return_value=result) as run:
                 c.compile_one('meta/F.lean',lib,5,'test.log',root=root)
                 args,kwargs=run.call_args
-                self.assertEqual(kwargs['env']['LEAN_PATH'],str(lib.resolve())+c.os.pathsep+'/other/old-lib')
+                self.assertTrue(kwargs['env']['LEAN_PATH'].endswith(c.os.pathsep+str(lib.resolve())+c.os.pathsep+'/other/old-lib'))
                 self.assertEqual(kwargs['cwd'],root/'meta')
                 self.assertIn(str(lib/'F.olean'),args[0])
 
@@ -347,7 +379,7 @@ class CoverageControls(unittest.TestCase):
 
             calls=[]
             fail_root=set()
-            def fake_compile_one(source, lib, seconds, logname, root=root, write_olean=True):
+            def fake_compile_one(source, lib, seconds, logname, root=root, write_olean=True, allowed_modules=()):
                 src_p=Path(source) if Path(source).is_absolute() else (root/source)
                 calls.append((src_p.name, write_olean))
                 txt=src_p.read_text()

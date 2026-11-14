@@ -90,8 +90,12 @@ actual import artifacts (including private/server sidecars and IR). It also bind
 the ordered effective Lean search path and a conservative inventory of external
 library artifacts, including transitive imports and directory shadowing. A
 changed external inventory during a gate discards its cache and rejects the run.
-This intentionally invalidates earlier cache keys; copied warm artifacts alone
-are not evidence. Coverage is invalidated by a change
+Each compilation exposes only its declared transitive local imports through a
+private `Fn2` search root. An external package cannot silently import another
+stale local artifact; that missing dependency is refused. Standalone closure
+checks use the same final external-world recheck as complete gates. Cache keys
+also bind the checking-policy version. This intentionally invalidates earlier
+cache keys; copied warm artifacts alone are not evidence. Coverage is invalidated by a change
 to the canonical packet or any recorded input. A whole root is counted only after
 both its Lean proof/census and the current ACL2 record-cache gate pass.
 
