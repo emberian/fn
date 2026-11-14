@@ -125,7 +125,7 @@
 (assert-event (fn2-codec-op-progress-check))
 
 ; A no-handshake codec uses the SAME generated allocation/copy/free machine.
-(defcodec-transport-upgrade fn2-codec-probe fn2-codec-copy-plan :status-field mode)
+(defcodec-transport-upgrade fn2-codec-probe fn2-codec-copy-plan :status-field nil)
 (defun fn2-codec-upgrade-control (fn2-codec-probe)
  (declare (xargs :stobjs fn2-codec-probe :verify-guards nil))
  (b* (((mv bind fn2-codec-probe) (fn2-codec-probe-begin 7 17 3 9 5 5 4 4 512 3 fn2-codec-probe))
