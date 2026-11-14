@@ -415,6 +415,16 @@ composition proof. The prior `b6a907eeb` attempt refused allocator declaration
 metadata before submitting the frame book; correcting the ownership rationale
 strings preserved that ratchet.
 
+The isolated actual allocator controls passed at `b911d26d4c66ae24fc760e87a65e22cd144bd20a`:
+eight frozen lifecycle refusals preserve the observed state and epoch; a stale
+owner generation refuses; actual physical pins can acquire and release with
+ownership intact; removing the freeze permits reservation/cancellation and changes
+the state. Both assertions executed in a six-form target load (8.85 ACL2 seconds,
+938,035 prover steps including allocator/frame source). The phase-1 token is a
+synthetic premise, so this tests the primitive gate rather than C-cut acquisition.
+The first isolated attempt lacked its direct B* import and refused before these
+assertions; adding the system dependency fixed the fixture without changing it.
+
 The next installation connection is a bounded producer that packs the actual
 completed construction ledger into the existing commit planner's allocation
 record capacity. It must keep one member's workspace, batch and event until the
