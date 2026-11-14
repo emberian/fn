@@ -14,7 +14,7 @@
   (owner-kind :u8) (owner-slot :u32) (owner-gen :u60)
   (extent :u32) (epoch :u60) (allocation :u60)
   (slot :u32) (gen :u60) (batch :u60) (event :u60)
-  (allocation-member :bool) (scan :u32) (count :u32) (bytes :u32) (installed :u32) (install-offset :u32)))
+  (allocation-member :bool) (token :u60) (scan :u32) (count :u32) (bytes :u32) (installed :u32) (install-offset :u32)))
 
 (fn2-extents-preserves fn2-alloc-retire (i epoch counter commit fn2-extents)
  :position 1
