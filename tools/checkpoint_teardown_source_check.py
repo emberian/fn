@@ -34,6 +34,13 @@ def check(source,arms,state):
     assert ['mv',':eligible','cursor','cursor',['fn2-extents-epoch','cursor','fn2-extents'],['fn2-extents-counter','cursor','fn2-extents']] in scan
     assert ['mv',':more',['+','1','cursor'],'0','0','0'] in scan
     assert not any(n and isinstance(n[0],str) and (n[0].startswith('fn2-alloc-edge-drop') or n[0]=='fn2-retirement-submit') for n in walk(definition(source,'fn2-checkpoint-teardown-inspect-children')))
+    allnodes=[n for text in forms(source) for n in walk(read_sexp(text))]
+    for name,args in [('fn2-checkpoint-teardown-submit',['token','kind','slot','gen','cursor','epoch','counter','fn2-core']),
+                      ('fn2-checkpoint-teardown-poll',['kind','slot','gen','fn2-core'])]:
+        assert ['fn2-core-preserves',name,args,':position','4',':rows','nil'] in allnodes
+        cost=next(n for n in allnodes if n[:2]==['defcost',name])
+        tables=cost[cost.index(':tables')+1]
+        assert 'fn2-core-checkpoint-future' in tables and 'fn2-core-checkpoint-future-windows' in tables
     submit=definition(source,'fn2-checkpoint-teardown-submit')[-1]
     bindings=submit[1]
     assert bindings[1] == [['unless','eligible'],['mv',':retained',':retained','0','0','fn2-core']]
@@ -86,8 +93,12 @@ if __name__=='__main__':
         try:check(x,y,state)
         except (AssertionError,ValueError):pass
         else:raise AssertionError('mutation survived')
+    missing= p.replace('fn2-core-retirement-control fn2-core-checkpoint-future fn2-core-checkpoint-future-windows fn2-core-commit-io','fn2-core-retirement-control fn2-core-commit-io',1)
+    try:check(missing,a,state)
+    except (AssertionError,ValueError):pass
+    else:raise AssertionError('missing nested future footprint survived')
     damaged=state.replace('(:teardown-wait :storage-window)','(:teardown-wait)',1)
     try:check(p,a,damaged)
     except (AssertionError,ValueError):pass
     else:raise AssertionError('missing staging hold survived')
-    print(f'checkpoint teardown source controls: {len(mutations)+1} rejected mutations; no runtime claim')
+    print(f'checkpoint teardown source controls: {len(mutations)+2} rejected mutations; no runtime claim')

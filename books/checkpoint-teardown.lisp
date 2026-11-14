@@ -241,16 +241,20 @@
          ((mv code batch event fn2-core)
           (fn2-retirement-submit cursor epoch counter kind slot gen fn2-core)))
      (mv (if (member-eq code '(:ok :uncertain)) :ok code) code batch event fn2-core)))
+   (fn2-core-preserves fn2-checkpoint-teardown-submit
+    (token kind slot gen cursor epoch counter fn2-core) :position 4 :rows nil)
    (defun fn2-checkpoint-teardown-poll (kind slot gen fn2-core)
     (declare (xargs :stobjs fn2-core :guard (fn2-core-wfp fn2-core)))
     (mv-let (outcome batch event fn2-core) (fn2-retirement-poll kind slot gen fn2-core)
-     (mv (if (member-eq outcome '(:accepted :refused)) :ok outcome) outcome batch event fn2-core)))))
+     (mv (if (member-eq outcome '(:accepted :refused)) :ok outcome) outcome batch event fn2-core)))
+   (fn2-core-preserves fn2-checkpoint-teardown-poll
+    (kind slot gen fn2-core) :position 4 :rows nil)))
 (defconst *fn2-checkpoint-teardown-member-bytes*
  (+ *fn2-format-txn-record-max-size* *fn2-format-retirement-max-size*))
 (defcost fn2-checkpoint-teardown-submit :answers t :effects :per-use :bytes *fn2-checkpoint-teardown-member-bytes*
  :tables (fn2-core-checkpoint-lifecycle fn2-core-csnapshot fn2-core-checkpoint-publication fn2-core-checkpoints
           fn2-core-checkpoint-refs fn2-core-checkpoint-bytes fn2-core-checkpoint-construction fn2-core-extents fn2-core-ops fn2-core-alloc-edges
-          fn2-core-retirement-control fn2-core-commit-io fn2-core-commit-root fn2-core-commit-members fn2-core-commit-settled fn2-core-machines fn2-core-fields fn2-core-pool fn2-core-control)
+          fn2-core-retirement-control fn2-core-checkpoint-future fn2-core-checkpoint-future-windows fn2-core-commit-io fn2-core-commit-root fn2-core-commit-members fn2-core-commit-settled fn2-core-machines fn2-core-fields fn2-core-pool fn2-core-control)
  :doc "Atomically recheck actual displaced-owner eligibility then call the ordinary intent-bound journal producer; retain uncertain staging ownership.")
 (defcost fn2-checkpoint-teardown-poll :answers t :effects :per-use
  :tables (fn2-core-retirement-control fn2-core-checkpoint-future fn2-core-checkpoint-future-windows fn2-core-extents fn2-core-commit-settled fn2-core-pool fn2-core-control)
