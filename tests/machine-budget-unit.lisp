@@ -70,9 +70,20 @@
  (defthm fn2-budget-run-hook-quantities (implies (and (fn2-arms-probep fn2-arms-probe) (fn2-machinesp fn2-machines) (fn2-poolp fn2-pool) (fn2-opsp fn2-ops) (fn2-controlp fn2-control) (and (fn2-arms-probe-wfp fn2-arms-probe) (fn2-machines-wfp fn2-machines) (fn2-pool-wfp fn2-pool) (fn2-ops-wfp fn2-ops) (fn2-control-wfp fn2-control) (natp slot) (< slot (fn2-arms-probe-rows fn2-arms-probe)) (natp id) (< id (fn2-machines-rows fn2-machines))))
  (and (natp (mv-nth 0 (fn2-budget-run-hook id slot kind ordinal budget fn2-arms-probe fn2-machines fn2-pool fn2-ops fn2-control))) (natp (mv-nth 1 (fn2-budget-run-hook id slot kind ordinal budget fn2-arms-probe fn2-machines fn2-pool fn2-ops fn2-control))) (natp (mv-nth 2 (fn2-budget-run-hook id slot kind ordinal budget fn2-arms-probe fn2-machines fn2-pool fn2-ops fn2-control)))
       (<= (mv-nth 0 (fn2-budget-run-hook id slot kind ordinal budget fn2-arms-probe fn2-machines fn2-pool fn2-ops fn2-control)) 4096) (<= (mv-nth 1 (fn2-budget-run-hook id slot kind ordinal budget fn2-arms-probe fn2-machines fn2-pool fn2-ops fn2-control)) 32)
-      (<= (mv-nth 2 (fn2-budget-run-hook id slot kind ordinal budget fn2-arms-probe fn2-machines fn2-pool fn2-ops fn2-control)) (nfix budget))))))
+      (<= (mv-nth 2 (fn2-budget-run-hook id slot kind ordinal budget fn2-arms-probe fn2-machines fn2-pool fn2-ops fn2-control)) (nfix budget)))))
+ (defthm fn2-budget-run-hook-effect
+  (implies (and (fn2-arms-probep fn2-arms-probe) (fn2-machinesp fn2-machines)
+                (fn2-poolp fn2-pool) (fn2-opsp fn2-ops) (fn2-controlp fn2-control)
+                (fn2-arms-probe-wfp fn2-arms-probe) (fn2-machines-wfp fn2-machines)
+                (fn2-pool-wfp fn2-pool) (fn2-ops-wfp fn2-ops) (fn2-control-wfp fn2-control)
+                (natp slot) (< slot (fn2-arms-probe-rows fn2-arms-probe))
+                (natp id) (< id (fn2-machines-rows fn2-machines)))
+   (equal
+    (nth *fn2-ops-queued* (mv-nth 7 (fn2-budget-run-hook id slot kind ordinal budget fn2-arms-probe fn2-machines fn2-pool fn2-ops fn2-control)))
+    (+ (nth *fn2-ops-queued* fn2-ops)
+       (mv-nth 2 (fn2-budget-run-hook id slot kind ordinal budget fn2-arms-probe fn2-machines fn2-pool fn2-ops fn2-control)))))))
 
-(defattach (fn2-budget-run-hook fn2-arms-probe-run-work-children) :hints (("Goal" :use fn2-budget-generated-quantities :in-theory (theory 'minimal-theory))))
+(defattach (fn2-budget-run-hook fn2-arms-probe-run-work-children) :hints (("Goal" :use (fn2-budget-generated-quantities fn2-arms-probe-run-work-children-descriptor-effect) :in-theory (theory 'minimal-theory))))
 
 (defun fn2-budget-malicious (id slot kind ordinal budget fn2-arms-probe fn2-machines fn2-pool fn2-ops fn2-control) (declare (xargs :stobjs (fn2-arms-probe fn2-machines fn2-pool fn2-ops fn2-control) :guard (and (fn2-arms-probe-wfp fn2-arms-probe) (fn2-machines-wfp fn2-machines) (fn2-pool-wfp fn2-pool) (fn2-ops-wfp fn2-ops) (fn2-control-wfp fn2-control) (natp slot) (< slot (fn2-arms-probe-rows fn2-arms-probe)) (natp id) (< id (fn2-machines-rows fn2-machines)))) (ignore id slot kind ordinal)) (mv 0 1 (+ 1 (nfix budget)) nil fn2-arms-probe fn2-machines fn2-pool fn2-ops fn2-control))
 
@@ -105,3 +116,12 @@
               (member-equal '((:work) :stay nil nil nil nil) (fn2-arm-get :paths contract)))
          (value '(value-triple :admission-retry-path))
        (er soft 'machine-budget-unit "Missing admission retry contract: ~x0" contract)))))))
+
+; Numeric accounting alone accepts zero-reporting; the effect constraint refuses it.
+(defun fn2-budget-underreport (id slot kind ordinal budget fn2-arms-probe fn2-machines fn2-pool fn2-ops fn2-control) (declare (xargs :stobjs (fn2-arms-probe fn2-machines fn2-pool fn2-ops fn2-control) :guard (and (fn2-arms-probe-wfp fn2-arms-probe) (fn2-machines-wfp fn2-machines) (fn2-pool-wfp fn2-pool) (fn2-ops-wfp fn2-ops) (fn2-control-wfp fn2-control) (natp slot) (< slot (fn2-arms-probe-rows fn2-arms-probe)) (natp id) (< id (fn2-machines-rows fn2-machines)))) (ignorable id slot kind ordinal))
+ (mv-let (bytes steps descriptors runnable fn2-arms-probe fn2-machines fn2-pool fn2-ops fn2-control)
+  (fn2-arms-probe-run-work-children id slot kind ordinal budget fn2-arms-probe fn2-machines fn2-pool fn2-ops fn2-control)
+  (declare (ignore descriptors))
+  (mv bytes steps 0 runnable fn2-arms-probe fn2-machines fn2-pool fn2-ops fn2-control)))
+
+(must-fail (defattach (fn2-budget-run-hook fn2-budget-underreport)))

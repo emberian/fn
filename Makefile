@@ -5,6 +5,7 @@ ACL2_BOOKS = \
   books/accounts-core \
   books/alloc \
   books/arm-children \
+  books/arm-issue-effects \
   books/arms \
   books/run-budget \
   books/article-manifest \

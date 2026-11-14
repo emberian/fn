@@ -7,7 +7,7 @@
 (in-package "ACL2")
 (include-book "core-children")
 ; defmachine-registry's code calls the directory's partition operations
-(include-book "arm-children")
+(include-book "arm-issue-effects")
 
 ; ----------------------------------------------------------------------
 ; Environments and accumulators are plists. ENV: :kind :tag :observe
@@ -2273,6 +2273,24 @@
        :hints (("Goal" :in-theory (e/d (,name fn2-run-quantitiesp)
                        (natp nfix nth ,@(fn2-arms-shape-fns ins)
                         ,@(fn2-arms-rows-fns ins))))))))
+; This is an actual effect proof, distinct from the numeric report bound.
+; Arms without an operation child must report zero; issuing arms prove the
+; exact append count. A body that dequeues or underreports cannot satisfy it.
+(defun fn2-arms-child-effects-event (name world)
+ (declare (xargs :verify-guards nil))
+ (let* ((sig (fn2-arms-sig name world)) (ins (car sig)) (outs (cadr sig))
+        (call (cons name (getpropc name 'formals nil world)))
+        (pos (position-eq 'fn2-ops outs))
+        (before '(nth *fn2-ops-queued* fn2-ops))
+        (after (if pos `(nth *fn2-ops-queued* (mv-nth ,(+ 4 pos) ,call)) before)))
+  `(defthm ,(fn2-columns-sym name "-DESCRIPTOR-EFFECT")
+    (implies (and ,@(fn2-arms-child-shape-hyps ins)
+                  ,(getpropc name 'guard t world))
+     ,(if (member-eq 'fn2-ops ins)
+          `(equal ,after (+ ,before (mv-nth 2 ,call)))
+        `(equal (mv-nth 2 ,call) 0)))
+    :hints (("Goal" :in-theory (e/d (,name)
+       (natp nfix nth ,@(fn2-arms-shape-fns ins) ,@(fn2-arms-rows-fns ins))))))))
 (defun fn2-arms-child-fn-events (name kind observe acc body world)
   (declare (xargs :verify-guards nil))
   (let* ((tuple (fn2-arms-kind-tuple kind world))
@@ -2295,7 +2313,10 @@
                         ',(fn2-arms-child-name name)
                         ,(+ (fn2-arms-max-dim (fn2-arm-get :charges acc) 0)
                             (max *fn2-work-empty* (fn2-arms-max-dim (fn2-arm-get :charges acc) 1)))
-                        (w state)))))))))
+                        (w state))))
+               (make-event
+                (value (fn2-arms-child-effects-event
+                        ',(fn2-arms-child-name name) (w state)))))))))
 (defun fn2-arms-extra-lets (extras)
   (declare (xargs :verify-guards nil))
   (if (atom extras) nil
