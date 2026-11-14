@@ -37,3 +37,8 @@
             (fn2-core-checkpoint-refs fn2-checkpoint-refs)
             (fn2-core-csnapshot fn2-csnapshot) (fn2-core-checkpoints fn2-checkpoints)))
  :why "One frozen-cut descriptor construction job retains exact reservation and physical completion identity.")
+
+(defcorechild fn2-core-checkpoint-construction fn2-checkpoint-construction
+ :init (fn2-checkpoint-construction-init (fn2-b-capacity :extent-slots 16 profile) fn2-checkpoint-construction)
+ :profilep (unsigned-byte-p 32 (fn2-b-capacity :extent-slots 16 profile))
+ :why "Retained exact construction identities for every checkpoint page and pre-reserved journal ticket.")
