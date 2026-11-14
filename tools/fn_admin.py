@@ -782,6 +782,31 @@ def prepare_native_crypto(root: Path) -> None:
         raise OSError("native BLAKE3 build failed; node was not started") from exc
 
 
+def prepare_native_tls(root: Path, env: dict[str, str]) -> None:
+    """Prepare the native dependency whenever startup receives TLS settings."""
+    if "FN2_TLS_CERTIFICATE" not in env and "FN2_TLS_KEY" not in env:
+        return
+    try:
+        subprocess.run(
+            ["sh", str(root / "host" / "build-tls.sh"), str(root / "build" / "lib")],
+            cwd=root, check=True, timeout=120,
+        )
+    except (subprocess.CalledProcessError, subprocess.TimeoutExpired) as exc:
+        raise OSError("native TLS build failed; node was not started") from exc
+
+
+def apply_origin_options(args: argparse.Namespace, env: dict[str, str]) -> None:
+    """Carry explicit deployment names verbatim to the ACL2 startup parser."""
+    for option, variable in (("origin_lineage", "FN2_ORIGIN_LINEAGE"),
+                             ("origin_domain", "FN2_ORIGIN_DOMAIN"),
+                             ("origin_incarnation", "FN2_ORIGIN_INCARNATION"),
+                             ("history_id", "FN2_HISTORY_ID"),
+                             ("history_incarnation", "FN2_HISTORY_INCARNATION")):
+        value = getattr(args, option, None)
+        if value is not None:
+            env[variable] = value
+
+
 def cmd_init(args: argparse.Namespace, root: Path) -> int:
     image = args.image.resolve()
     if image.exists():
@@ -805,11 +830,13 @@ def cmd_init(args: argparse.Namespace, root: Path) -> int:
         FN2_IMAGE_BYTES=size_bytes,
         FN2_OWNER_UID=env.get("FN2_OWNER_UID", str(os.getuid())),
     )
+    apply_origin_options(args, env)
     if args.storage_fault_model is not None:
         env["FN2_STORAGE_FAULT_MODEL"] = args.storage_fault_model
     if groups:
         env["FN2_GROUPS"] = "\n".join(groups)
 
+    prepare_native_tls(root, env)
     with open(root / "tools" / "image-node.lsp", "rb") as script:
         rc = subprocess.call([str(root / "tools" / "acl2")], cwd=root, stdin=script, env=env)
     if rc == 0:
@@ -861,6 +888,7 @@ def cmd_serve(args: argparse.Namespace, root: Path) -> int:
         FN2_LISTENER_PORT=str(args.port),
         FN2_OWNER_UID=env.get("FN2_OWNER_UID", str(os.getuid())),
     )
+    apply_origin_options(args, env)
     if args.storage_fault_model is not None:
         env["FN2_STORAGE_FAULT_MODEL"] = args.storage_fault_model
     if args.host:
@@ -875,12 +903,7 @@ def cmd_serve(args: argparse.Namespace, root: Path) -> int:
                              (args.tls_handshake_ms, "FN2_TLS_HANDSHAKE_MS")):
         if option is not None:
             env[variable] = str(option)
-    if "FN2_TLS_CERTIFICATE" in env or "FN2_TLS_KEY" in env:
-        try:
-            subprocess.run(["sh", str(root / "host" / "build-tls.sh"), str(root / "build" / "lib")],
-                           cwd=root, check=True, timeout=120)
-        except (subprocess.CalledProcessError, subprocess.TimeoutExpired) as exc:
-            raise OSError("native TLS build failed; node was not started") from exc
+    prepare_native_tls(root, env)
     if args.peering:
         env["FN2_PEERING"] = "1"
 
@@ -1320,6 +1343,17 @@ def build_parser() -> argparse.ArgumentParser:
     p_serve.add_argument("--group", action="append", help="expected genesis group list (default: loaded from <image>.groups)")
     p_serve.add_argument("--storage-fault-model", metavar="MODEL",
                          help="recovery contract: broad (default) or crash-only")
+
+    for origin_parser in (p_init, p_serve):
+        origin_parser.add_argument("--origin-lineage", metavar="ID",
+                                   help="assigned lineage name (required here or FN2_ORIGIN_LINEAGE)")
+        origin_parser.add_argument("--origin-domain", metavar="ID",
+                                   help="assigned commit-domain name (required here or FN2_ORIGIN_DOMAIN)")
+        origin_parser.add_argument("--origin-incarnation", metavar="ID",
+                                   help="history incarnation; must match persisted genesis on restart")
+
+        origin_parser.add_argument("--history-id", metavar="ID", help="persisted physical history name")
+        origin_parser.add_argument("--history-incarnation", metavar="ID", help="persisted physical history incarnation")
 
     p_princ = sub.add_parser("principal", help="manage durable principals over --control-sock")
     princ_sub = p_princ.add_subparsers(dest="principal_cmd", required=True)
