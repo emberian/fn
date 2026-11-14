@@ -17,5 +17,5 @@
        (equal a0 0) (equal a1 0)
        (fn2-event-statusp *fn2-event-compress-result* outcome reason))))
 (assert-event (fn2-compress-action-normalizer-control :ok *fn2-outcome-done* *fn2-reason-none* 3 3))
-(assert-event (fn2-compress-action-normalizer-control :failed *fn2-outcome-failed* *fn2-reason-io* 0 0))
+(assert-event (fn2-compress-action-normalizer-control :io *fn2-outcome-failed* *fn2-reason-io* 0 0))
 (assert-event (fn2-compress-action-normalizer-control :cancelled *fn2-outcome-cancelled* *fn2-reason-none* 0 0))
