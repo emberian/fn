@@ -163,11 +163,14 @@ behind a generic green status. Independent review traces a representative guaran
 from wire input through persistence and recovery to the wire response.
 
 The [completion gate](ASSURANCE-COMPLETION-GATE.md) now selects required product
-claims from the live `fn2-squares` world, proposes a packet-bound checker with its
-own qualified current closure, and reconstructs the existing semantic requirement
-inventory. Seven local source/tempfile controls pass. New ACL2 checker admission
-and current-closure certification remain pending; the typed semantic discharge join
-is unimplemented. The command therefore reports incomplete, including when build
+claims from the live `fn2-squares` world, proposes packet-bound checkers with their
+own qualified current closures, and reconstructs the existing semantic requirement
+inventory. The first independent typed descriptor specification now joins actual
+`fn2-machine-run` and public `fn2-turn` proofs by exact formula/domain/ABI checks
+and proof replay, rejecting coherent weakening of claim and proof. Nine local
+source/tempfile controls pass. New ACL2 checker/join admission and current-closure
+certification remain pending; complete semantic discharge and extracted actual
+theorem/constraint dependency closure remain unimplemented. The command reports incomplete, including when build
 or generated-candidate regression passes. Its catalogue retains the unbound
 persistent-reclamation and missing served-progress requirements. These diagnostics
 do not implement those capabilities or establish actual caller-to-specification
