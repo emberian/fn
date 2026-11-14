@@ -271,6 +271,17 @@
  (implies (fn2-corep fn2-core) (natp (fn2-commit-now fn2-core)))
  :rule-classes :type-prescription)
 (in-theory (disable fn2-commit-now))
+; Shared reservation for payload and checkpoint construction. Physical writes
+; require this exact reserved identity; reservation alone is not durability.
+(defun fn2-storage-reserve (fn2-core)
+ (declare (xargs :stobjs fn2-core :guard (fn2-core-wfp fn2-core)
+                 :guard-hints (("Goal" :in-theory (enable fn2-core-wfp)))))
+ (stobj-let ((fn2-extents (fn2-core-extents fn2-core))
+             (fn2-control (fn2-core-control fn2-core)))
+  (code extent epoch counter fn2-extents fn2-control)
+  (fn2-storage-reserve-children fn2-extents fn2-control)
+  (mv code extent epoch counter fn2-core)))
+(fn2-core-preserves fn2-storage-reserve (fn2-core) :position 4 :rows nil)
 ; Reserve the extent before preparing any effects; all three writes share it.
 (defun fn2-commit-reserve-extent (id fn2-core)
  (declare (xargs :stobjs fn2-core :guard (fn2-core-wfp fn2-core)))

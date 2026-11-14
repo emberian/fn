@@ -71,8 +71,8 @@
       (length (- end 32))
       ((mv code fn2-pool) (fn2-pool-copy-range slot gen 32 slot gen 0 length okind oslot ogen fn2-pool))
       ((unless (eq code :ok)) (mv code 0 fn2-fields fn2-pool))
-      (fn2-pool (fn2-pool-set-fill slot length fn2-pool)))
-  (mv :ok length fn2-fields fn2-pool)))
+      ((mv code fn2-pool) (fn2-pool-truncate slot gen length okind oslot ogen fn2-pool)))
+  (mv code (if (eq code :ok) length 0) fn2-fields fn2-pool)))
 (fn2-pool-preserves fn2-checkpoint-installation-pack-member
  (c base slot gen okind oslot ogen fn2-checkpoints fn2-checkpoint-refs fn2-checkpoint-bytes fn2-fields fn2-pool)
  :carriers ((fn2-fields 2 :prefix "-FIELDS") (fn2-pool 3 :prefix "-POOL")))

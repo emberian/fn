@@ -26,7 +26,7 @@ the current native backend serves domain 0, matching B's format writers. The cur
 cached flags alone do not establish protection. These six root-page edges
 are only the direct roots. Their complete dependency closures must be retained
 before promotion; six protected pages do not imply protected descendants.
-The physical profile uses three units per extent, as the existing B readers do.
+The physical profile uses the shared 64 KiB storage extent (16 physical units), independently of the three journal I/O resources.
 
 `fn2-checkpoint-install` consumes the existing decoded checkpoint-installation
 record and the verified containing commit supplied by the journal installer.
@@ -84,9 +84,9 @@ only two epoch slots at `image-size - 8192` and `image-size - 4096`. These use
 checkpoint slots.
 
 `books/checkpoint-geometry.lisp` defines the new shared layout in physical units:
-`[3*extents arena][genesis + groups][bootstrap][four checkpoint anchors]`
+`[storage-extent-units*extents arena][genesis + groups][bootstrap][four checkpoint anchors]`
 `[optional slack][two epoch records]`. Its minimum is
-`4096 * (3*extents + groups + 8)`. Bootstrap is unit `3*extents + groups + 1`;
+`4096 * (16*extents + groups + 8)`. Bootstrap is unit `16*extents + groups + 1`;
 anchors are the next four units. The helper refuses the old minimum and states
 nonoverlap/distinctness theorems. These are source statements, not admitted facts.
 Boot init/read, image admission and recovery must adopt this geometry together;
@@ -165,7 +165,7 @@ Geometry hash v1 is BLAKE3 of the exact 21 ASCII bytes
 `fn2/image-geometry/v1` followed immediately by the generated
 `fn2-checkpoint-geometry-record` encoding. No newline, NUL, padding, Lisp
 printing or host serialization enters the preimage. That record names version,
-image byte size, 4096-byte sector/page sizes, three-unit extents, extent/group
+image byte size, 4096-byte sectors, 65536-byte pages, sixteen-unit extents, extent/group
 counts, bootstrap and four anchor unit addresses, the final two epoch unit
 addresses and storage domain 0. All integer encodings come from the generated
 codec. This is a specified geometry frame, not the genesis record checksum.
@@ -207,3 +207,80 @@ overlap-safe copy moves the complete member down before fill shrinks. It neither
 chooses a containing batch nor authorizes a checkpoint. Production admission
 must require actual builder-produced evidence tied to the frozen C root and
 materialization generation; a merely checked/read descriptor cannot substitute.
+
+## Generated packet worker
+
+`books/checkpoint-writer.lisp` declares one generated writer kind. Its arm
+language owns an atomic three-window pool bundle, derives the real installed
+seal and checked boot geometry, builds/seals/checks both private packets, then
+uses the existing operation-tracked Write/Write/Fence protocol. It never returns
+to PACK or context mutation after verification. Only actual final fence completion
+and zero pending physical operations allow the bundle's release; uncertainty
+retains ownership and stops for recovery. The private checker context operation
+refuses live continuations, uses the final reserved stripe, and derives its
+geometry from actual checked boot state.
+
+Pool reservation preflights cached class counts for both 4 KiB outputs plus the
+160-byte scratch window in one atomic operation. It does not hold one window
+while waiting for another of the same D0 rank. Ordinary exhaustion changes
+nothing; an invariant failure returns every allocated prefix handle for retained
+uncertainty. Actual pool accounting still charges each concrete slot.
+
+This worker is **unreachable-in-composition** until the actual frozen C root,
+materialization generation, persisted metadata/allocation/arena builder and B
+checkpoint-installation producer activate it. No generic activation API from a
+caller's checked descriptor exists. The registry include and callback event
+materialization remain held for coherent qualification. No theorem about an
+unreachable worker is claimed. I/O completion still does not promote a checkpoint,
+drop recovery roots, advance the allocator cut or release an extent.
+
+The C snapshot seam must expose logical entries or owned resident source windows.
+Physical storage extents now align with existing 64 KiB C run pages: one
+allocation identity owns all sixteen physical units. The bounded adapter still
+transfers at most 4 KiB per operation. Journal batches retain three I/O resources;
+the initial unused journal extent space is an explicit efficiency cost. No
+fragmentation/indirection format or smaller metadata-record ceiling is introduced.
+Resident cache identities still cannot substitute for actual physical references;
+page headers and child Refs must be built with the allocator-provided identity.
+
+The checkpoint/boot physical-stride class was changed with
+`tools/rewrite_checkpoint_storage_geometry.py`, using the shared structural Lisp
+rewriter. Fixtures check comments/strings, unchanged commit-resource indices and
+byte-work budgets, exact geometry probes, malformed input refusal and idempotence.
+Run its narrow controls directly with `python3 tests/test_checkpoint_geometry_rewrite.py`;
+the package discovery hook loads unrelated surface tests despite a filename filter.
+
+## Descriptor construction carrier
+
+`checkpoint-build-state.lisp`, `checkpoint-descriptor.lisp` and
+`checkpoint-build.lisp` now hold the concrete descriptor job. BEGIN checks the
+actual held C owner/token and completed source traversal, requires all five
+root constructor carriers for that same token, checks the owned page/scratch
+leases, and calls the real shared storage reservation operation before any
+codec sees its physical identity. The job stores that exact extent/epoch/
+allocation, workspace handles, cut from C, private checker stripe and write
+completion cursor. No caller supplies a cut, reservation identity or readiness
+boolean to this admission.
+
+The generated descriptor/page-header codecs produce a padded 4 KiB descriptor
+inside its 64 KiB allocation. Actual page sealing supplies its expected hash;
+verification compares the decoded checkpoint/cut and all five complete root
+references against the built carriers without replacing their provenance.
+Only then can the real pinned block-write issue, and descriptor budget zero
+returns `:yield` before any effect. The pre-finish harvest callback requires the
+exact issued slot/generation, full 4 KiB completion, same held C cut and unchanged
+root/reference identities. It records physical completion and exposes READY;
+it does not commit the allocation, release the C snapshot or assert durability.
+
+The existing B lifecycle producer must consume READY with exact owner/token,
+record allocation and checkpoint installation through its actual batch/fence,
+and own durable installation. Selected-base restoration and retained descendant
+closure still precede promotion and allocator-cut advancement.
+
+The five root carriers now have construction token, source-complete and intended/
+completed-byte fields. Their real metadata/map/proof/frontier/arena constructors
+remain required; no generic setter authorizes those flags. Until those producers
+connect, production BEGIN refuses `:roots-pending`. A decoded descriptor clears
+construction provenance, so a read candidate cannot inherit prior readiness.
+This is source implementation and shape-contract work, not admission, completed
+root construction, certification or a served reclaim path.

@@ -15,7 +15,7 @@
       (fn2-pool (fn2-pool-init '((1 . 512)) 1 100 fn2-pool))
       ((mv reserved slot gen fn2-pool) (fn2-pool-reserve 0 1 0 1 fn2-pool))
       ((unless (eq reserved :ok)) (mv nil fn2-fields fn2-pool))
-      (fn2-fields (fn2-boot-geometry-fields (* 4096 12) 1 1 fn2-fields))
+      (fn2-fields (fn2-boot-geometry-fields (* 4096 25) 1 1 fn2-fields))
       ((mv encoded end fn2-pool)
        (fn2-checkpoint-geometry-record-encode 256 slot gen 0 1 0 1 fn2-fields fn2-pool))
       ((unless (eq encoded :ok)) (mv nil fn2-fields fn2-pool))
