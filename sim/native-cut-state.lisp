@@ -42,6 +42,52 @@
                         *fn2-fault-overcount* *fn2-fault-malformed*)))))
 (in-theory (disable fn2-sim-native-faultp))
 
+; The raw continuation uses a fixed 11-field list; this structural bridge
+; does not replace any descriptor/effect predicate.
+(defthm fn2-sim-return-code-roundtrip
+  (implies (natp (fn2-sim-return-code-keyword->code code))
+           (equal (fn2-sim-return-code-code->keyword (fn2-sim-return-code-keyword->code code)) code))
+  :hints (("Goal"
+           :in-theory
+           (enable fn2-sim-return-code-keyword->code fn2-sim-return-code-code->keyword))))
+
+(local (defthm fn2-native-take-length-unfolds
+         (implies (true-listp packet) (equal (take (len packet) packet) packet))
+         :hints (("Goal" :induct (true-listp packet) :in-theory (enable take len)))))
+
+(defthm fn2-native-eleven-list-unfolds
+  (implies (and (true-listp packet) (equal (len packet) 11))
+           (equal (list (nth 0 packet)
+                        (nth 1 packet)
+                        (nth 2 packet)
+                        (nth 3 packet)
+                        (nth 4 packet)
+                        (nth 5 packet)
+                        (nth 6 packet)
+                        (nth 7 packet)
+                        (nth 8 packet)
+                        (nth 9 packet)
+                        (nth 10 packet))
+                  packet))
+  :hints (("Goal"
+           :use
+           fn2-native-take-length-unfolds
+           :expand
+           ((take 11 packet)
+            (take 10 (cdr packet))
+            (take 9 (cdr (cdr packet)))
+            (take 8 (cdr (cdr (cdr packet))))
+            (take 7 (cdr (cdr (cdr (cdr packet)))))
+            (take 6 (cdr (cdr (cdr (cdr (cdr packet))))))
+            (take 5 (cdr (cdr (cdr (cdr (cdr (cdr packet)))))))
+            (take 4 (cdr (cdr (cdr (cdr (cdr (cdr (cdr packet))))))))
+            (take 3 (cdr (cdr (cdr (cdr (cdr (cdr (cdr (cdr packet)))))))))
+            (take 2 (cdr (cdr (cdr (cdr (cdr (cdr (cdr (cdr (cdr packet))))))))))
+            (take 1 (cdr (cdr (cdr (cdr (cdr (cdr (cdr (cdr (cdr (cdr packet)))))))))))
+            (take 0 (cdr (cdr (cdr (cdr (cdr (cdr (cdr (cdr (cdr (cdr (cdr packet)))))))))))))
+           :in-theory
+           (e/d (take nth) (fn2-native-take-length-unfolds)))))
+
 ; Packet fields: slot, generation, kind, event, length, raw code, raw count,
 ; raw auxiliary result, schedule word, the original completion time, and the physical fault.
 (defun fn2-sim-native-packetp (packet fn2-sim)

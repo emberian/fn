@@ -67,15 +67,57 @@
 ; supported storage path, exposing and then closing the interval must preserve
 ; every output of the ordinary atomic completion, including core and OWN.
 (defthm fn2-sim-native-finish-is-atomic
-  (implies (and (fn2-corep fn2-core) (fn2-simp fn2-sim) (fn2-ownp fn2-own)
-                (fn2-core-wfp fn2-core) (fn2-sim-ready fn2-sim)
-                (fn2-own-wfp fn2-own) (unsigned-byte-p 32 word)
-                (fn2-sim-native-storagep slot fn2-sim) (fn2-sim-native-faultp fault))
+  (implies (and (fn2-corep fn2-core)
+                (fn2-simp fn2-sim)
+                (fn2-ownp fn2-own)
+                (fn2-core-wfp fn2-core)
+                (fn2-sim-ready fn2-sim)
+                (fn2-own-wfp fn2-own)
+                (unsigned-byte-p 32 word)
+                (fn2-sim-native-storagep slot fn2-sim)
+                (fn2-sim-native-faultp fault))
            (equal (fn2-sim-native-cut :finish slot fault word fn2-core fn2-sim fn2-own)
                   (fn2-sim-complete slot fault word fn2-core fn2-sim fn2-own)))
-  :hints (("Goal" :do-not-induct t
-           :in-theory (e/d (fn2-sim-native-cut fn2-sim-native-stage fn2-sim-native-post fn2-sim-native-packetp fn2-sim-native-storagep fn2-sim-native-flightp fn2-sim-complete fn2-sim-inject)
-                            (fn2-sim-physical fn2-sim-complete-result fn2-sim-crash)))))
+  :hints (("Goal"
+           :do-not-induct
+           t
+           :use
+           (fn2-sim-physical-fence-save-roundtrip fn2-sim-ready-has-row-shape
+                                                  (:instance fn2-sim-gen-natp (i slot))
+                                                  (:instance fn2-sim-gen-bound (i slot))
+                                                  (:instance fn2-sim-range-len-natp (i slot))
+                                                  (:instance fn2-sim-physical-keeps-incarnation
+                                                             (i slot))
+                                                  (:instance fn2-sim-physical-keeps-active (i slot))
+                                                  fn2-sim-physical-fence-packet-domain
+                                                  fn2-sim-physical-fence-code-tag)
+           :in-theory
+           (e/d (fn2-sim-native-cut fn2-sim-native-stage
+                                    fn2-sim-native-post
+                                    fn2-sim-native-packetp
+                                    fn2-sim-native-storagep
+                                    fn2-sim-native-flightp
+                                    fn2-sim-complete
+                                    fn2-sim-inject)
+                (fn2-sim-physical-fence-save-roundtrip fn2-sim-physical-keeps-incarnation
+                                                       fn2-sim-physical-keeps-active
+                                                       fn2-sim-physical-fence-packet-domain
+                                                       fn2-sim-physical-fence-code-tag
+                                                       fn2-sim-ready-has-row-shape
+                                                       fn2-sim-physical
+                                                       fn2-sim-complete-result
+                                                       fn2-sim-crash
+                                                       fn2-sim-save-return
+                                                       fn2-sim-saved-return
+                                                       fn2-sim-set-active
+                                                       fn2-sim-gen
+                                                       fn2-sim-kind
+                                                       fn2-sim-range-len
+                                                       fn2-sim-active
+                                                       fn2-sim-return-code-keyword->code
+                                                       fn2-sim-ready
+                                                       fn2-core-wfp
+                                                       fn2-own-wfp)))))
 
 ; The native "take" cut is before acknowledgement: the copied descriptor is
 ; volatile and the common ops table still owns its queued head.  "ack" is

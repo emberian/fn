@@ -233,6 +233,11 @@
 (fn2-sim-preserves fn2-sim-terminal-post (slot gen event outcome reason count aux0 aux1 fault word now release early fn2-core fn2-sim fn2-own) :part nil
   :carriers ((fn2-core 1 :prefix "-CORE") (fn2-sim 2 :invariant fn2-sim-ready :prefix "-SIM" :suffix "-READY") (fn2-own 3 :prefix "-OWN")))
 
+(defthm fn2-sim-ready-has-row-shape
+  (implies (fn2-sim-ready fn2-sim) (fn2-sim-wfp fn2-sim))
+  :rule-classes (:rewrite :forward-chaining)
+  :hints (("Goal" :in-theory (enable fn2-sim-ready))))
+
 ; Generated row columns retain every scalar of the raw physical packet.
 ; Kind/generation/length are immutable while active=4; byte effects already ran.
 (defun fn2-sim-save-return (packet fn2-sim)
@@ -270,6 +275,92 @@
     (fn2-sim-return-fault slot fn2-sim)))
 (verify-guards fn2-sim-saved-return)
 
+(defthm fn2-sim-save-return-keeps-incarnation
+  (let ((after (fn2-sim-save-return packet fn2-sim)))
+    (and (equal (fn2-sim-gen i after) (fn2-sim-gen i fn2-sim))
+         (equal (fn2-sim-kind i after) (fn2-sim-kind i fn2-sim))
+         (equal (fn2-sim-range-len i after) (fn2-sim-range-len i fn2-sim))
+         (equal (fn2-sim-active i after) (fn2-sim-active i fn2-sim))))
+  :hints (("Goal"
+           :in-theory
+           (enable fn2-sim-save-return
+                   fn2-sim-gen
+                   fn2-sim-kind
+                   fn2-sim-range-len
+                   fn2-sim-active
+                   fn2-sim-set-return-code
+                   fn2-sim-set-return-count
+                   fn2-sim-set-return-aux
+                   fn2-sim-set-return-word
+                   fn2-sim-set-return-time
+                   fn2-sim-set-return-fault
+                   update-fn2-sim-return-code$ai
+                   update-fn2-sim-return-count$ai
+                   update-fn2-sim-return-aux$ai
+                   update-fn2-sim-return-word$ai
+                   update-fn2-sim-return-time$ai
+                   update-fn2-sim-return-fault$ai))))
+
+(defthm fn2-sim-save-return-roundtrip
+  (implies (and (fn2-sim-ready fn2-sim)
+                (fn2-sim-native-packetp packet fn2-sim)
+                (natp (fn2-sim-return-code-keyword->code (nth 5 packet))))
+           (equal (fn2-sim-saved-return (nth 0 packet) (fn2-sim-save-return packet fn2-sim)) packet))
+  :hints (("Goal"
+           :use
+           fn2-native-eleven-list-unfolds
+           :in-theory
+           (e/d (fn2-sim-save-return fn2-sim-saved-return fn2-sim-native-packetp)
+                (fn2-native-eleven-list-unfolds)))))
+
+(defthm fn2-sim-saved-return-of-active
+  (equal (fn2-sim-saved-return i (fn2-sim-set-active slot active fn2-sim))
+         (fn2-sim-saved-return i fn2-sim))
+  :hints (("Goal"
+           :in-theory
+           (enable fn2-sim-saved-return fn2-sim-set-active update-fn2-sim-active$ai))))
+
+(defthm fn2-sim-packetp-of-active
+  (equal (fn2-sim-native-packetp packet (fn2-sim-set-active slot active fn2-sim))
+         (fn2-sim-native-packetp packet fn2-sim))
+  :hints (("Goal"
+           :in-theory
+           (enable fn2-sim-native-packetp fn2-sim-set-active update-fn2-sim-active$ai))))
+
+(defthm fn2-sim-packetp-of-save-return
+  (equal (fn2-sim-native-packetp packet (fn2-sim-save-return saved fn2-sim))
+         (fn2-sim-native-packetp packet fn2-sim))
+  :hints (("Goal" :in-theory (enable fn2-sim-native-packetp))))
+
+(local (defthm fn2-native-update-overwrite
+         (equal (update-nth i a (update-nth i b xs)) (update-nth i a xs))
+         :hints (("Goal" :induct (update-nth i a xs)))))
+
+(local (defthm fn2-native-update-ascending-ordered
+         (implies (and (natp i) (natp j) (< i j))
+                  (equal (update-nth i a (update-nth j b xs)) (update-nth j b (update-nth i a xs))))
+         :rule-classes ((:rewrite :loop-stopper nil))
+         :hints (("Goal" :induct (list (update-nth i a xs) (update-nth j b xs))))))
+
+(defthm fn2-sim-save-return-idempotent
+  (equal (fn2-sim-save-return packet (fn2-sim-save-return packet fn2-sim))
+         (fn2-sim-save-return packet fn2-sim))
+  :hints (("Goal"
+           :in-theory
+           (e/d (fn2-sim-save-return fn2-sim-set-return-code
+                                     fn2-sim-set-return-count
+                                     fn2-sim-set-return-aux
+                                     fn2-sim-set-return-word
+                                     fn2-sim-set-return-time
+                                     fn2-sim-set-return-fault
+                                     update-fn2-sim-return-code$ai
+                                     update-fn2-sim-return-count$ai
+                                     update-fn2-sim-return-aux$ai
+                                     update-fn2-sim-return-word$ai
+                                     update-fn2-sim-return-time$ai
+                                     update-fn2-sim-return-fault$ai)
+                (fn2-sim-return-code-keyword->code update-nth nth)))))
+
 ; Interpret one physical result after the byte effects have completed.
 (defun fn2-sim-complete-result
   (slot gen kind event len code physical-count aux fault word now release
@@ -305,6 +396,51 @@
             (e/d (fn2-sim-complete-result)
                  (fn2-sim-save-return fn2-sim-native-packetp fn2-sim-return-code-keyword->code
                   fn2-sim-terminal-values fn2-sim-terminal-post)))))
+
+(defthm fn2-sim-complete-result-of-return-save
+  (let ((packet (list slot gen kind event len code physical-count aux word now fault)))
+    (implies (and (equal kind *fn2-action-fence*)
+                  (fn2-sim-native-packetp packet fn2-sim)
+                  (unsigned-byte-p 32 physical-count)
+                  (unsigned-byte-p 32 aux)
+                  (natp (fn2-sim-return-code-keyword->code code)))
+             (equal (fn2-sim-complete-result slot
+                                             gen
+                                             kind
+                                             event
+                                             len
+                                             code
+                                             physical-count
+                                             aux
+                                             fault
+                                             word
+                                             now
+                                             release
+                                             fn2-core
+                                             (fn2-sim-save-return packet fn2-sim)
+                                             fn2-own)
+                    (fn2-sim-complete-result slot
+                                             gen
+                                             kind
+                                             event
+                                             len
+                                             code
+                                             physical-count
+                                             aux
+                                             fault
+                                             word
+                                             now
+                                             release
+                                             fn2-core
+                                             fn2-sim
+                                             fn2-own))))
+  :hints (("Goal"
+           :in-theory
+           (e/d (fn2-sim-complete-result)
+                (fn2-sim-save-return fn2-sim-native-packetp
+                                     fn2-sim-return-code-keyword->code
+                                     fn2-sim-terminal-values
+                                     fn2-sim-terminal-post)))))
 
 ; Scalar effect-domain facts for the actual Fence branch, not an assumed
 ; syscall result. They connect the bounded stored raw packet to PHYSICAL.
@@ -354,6 +490,83 @@
                (mv-nth 4 physical))))
   :hints (("Goal" :use ((:instance fn2-sim-physical-keeps-incarnation (i slot)))
            :in-theory (enable fn2-sim-native-packetp))))
+
+(defthm fn2-sim-physical-fence-save-roundtrip
+  (implies (and (fn2-corep fn2-core)
+                (fn2-core-wfp fn2-core)
+                (fn2-simp fn2-sim)
+                (fn2-sim-ready fn2-sim)
+                (fn2-ownp fn2-own)
+                (fn2-own-wfp fn2-own)
+                (natp slot)
+                (< slot (fn2-sim-rows fn2-sim))
+                (equal (fn2-sim-kind slot fn2-sim) *fn2-action-fence*)
+                (unsigned-byte-p 32 word)
+                (fn2-sim-native-faultp fault))
+           (let* ((physical (fn2-sim-physical slot fault word fn2-core fn2-sim fn2-own))
+                  (packet (list slot
+                                (fn2-sim-gen slot fn2-sim)
+                                *fn2-action-fence*
+                                *fn2-event-fence-result*
+                                (fn2-sim-range-len slot fn2-sim)
+                                (mv-nth 0 physical)
+                                (mv-nth 1 physical)
+                                (mv-nth 2 physical)
+                                word
+                                (fn2-sim-now fn2-sim)
+                                fault)))
+             (equal (fn2-sim-saved-return slot (fn2-sim-save-return packet (mv-nth 4 physical)))
+                    packet)))
+  :hints (("Goal"
+           :use
+           (fn2-sim-physical-fence-packet-domain fn2-sim-physical-fence-code-tag
+                                                 (:instance fn2-sim-save-return-roundtrip
+                                                            (fn2-sim (mv-nth 4
+                                                                             (fn2-sim-physical slot
+                                                                                               fault
+                                                                                               word
+                                                                                               fn2-core
+                                                                                               fn2-sim
+                                                                                               fn2-own)))
+                                                            (packet (list slot
+                                                                          (fn2-sim-gen slot fn2-sim)
+                                                                          *fn2-action-fence*
+                                                                          *fn2-event-fence-result*
+                                                                          (fn2-sim-range-len slot
+                                                                                             fn2-sim)
+                                                                          (mv-nth 0
+                                                                                  (fn2-sim-physical slot
+                                                                                                    fault
+                                                                                                    word
+                                                                                                    fn2-core
+                                                                                                    fn2-sim
+                                                                                                    fn2-own))
+                                                                          (mv-nth 1
+                                                                                  (fn2-sim-physical slot
+                                                                                                    fault
+                                                                                                    word
+                                                                                                    fn2-core
+                                                                                                    fn2-sim
+                                                                                                    fn2-own))
+                                                                          (mv-nth 2
+                                                                                  (fn2-sim-physical slot
+                                                                                                    fault
+                                                                                                    word
+                                                                                                    fn2-core
+                                                                                                    fn2-sim
+                                                                                                    fn2-own))
+                                                                          word
+                                                                          (fn2-sim-now fn2-sim)
+                                                                          fault))))
+           :in-theory
+           (disable fn2-sim-physical-fence-packet-domain
+                    fn2-sim-physical-fence-code-tag
+                    fn2-sim-save-return-roundtrip
+                    fn2-sim-native-packetp
+                    fn2-sim-save-return
+                    fn2-sim-saved-return
+                    fn2-sim-return-code-keyword->code
+                    fn2-sim-physical))))
 
 (defun fn2-sim-native-stage (slot fault word fn2-core fn2-sim fn2-own)
   (declare (xargs :stobjs (fn2-core fn2-sim fn2-own) :verify-guards nil

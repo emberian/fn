@@ -73,8 +73,12 @@ physical adapter, retained raw helpers, stage/post/completion guards, and their
 original carrier-preservation statements. The actual four scheduler advance
 functions are guard-verified in that world. The stage preservation package takes
 7.24 s/133,497 steps; post/atomic-complete/scheduled-completion carrier packages
-take 27.33 s/562,554 steps in aggregate. These admissions are not record
-certification. The replay checker retains its pre-existing unverified-guard
+take 27.33 s/562,554 steps in aggregate. The original whole-state
+`fn2-sim-native-finish-is-atomic` theorem also admits in 4.04 s/138,626 steps,
+with its supported-storage antecedent and every output/raw column unchanged.
+Its saved raw-packet roundtrip admits in 0.94 s; the physical Fence specialization
+in 0.30 s; save idempotence in 0.12 s; and complete-result absorption in 0.10 s.
+These admissions are not record certification. The replay checker retains its pre-existing unverified-guard
 status; ACL2 reports recursive guard inhibition while executing that checker.
 
 The first world hit the shared 2 GiB cap while loading the old physical leaf's
@@ -86,8 +90,15 @@ OWN projections moved to `check-core`. The narrowed transfer leaf admits in
 159.53 s/5,760,590 steps, an outstanding proof-cost defect. The retained world
 then loaded exact cached host-boundary dependencies for actual packet replay.
 
-Remaining obligations include unchanged whole-state atomic/staged equality,
-raw packet roundtrip, initialized incarnation and effect/crash preservation,
+The existing positive whole-formula witness's all-function-theory hint did not
+finish within the proof tool's 45.1 s hard sentinel limit; the tool killed its
+own retained session. This is a proof-cost failure, not a counterexample or an
+OOM result. The hypothesis-removal witness was not reached. Its deliberate
+active=0 mutation tests the theorem's pending-flight premise; it contributes no
+evidence that this branch is reachable in the composed scheduler.
+
+Remaining obligations include the complete keystone witness package,
+initialized incarnation and effect/crash preservation,
 record certification of changed closures, raw-host load/real-fd control, native
 FIFO snapshot coverage, FFI/OS contracts, reads/writes/errors/cancellation/
 concurrent workers, and universal trace correspondence. Native SIGKILL controls
