@@ -39,3 +39,45 @@
   (mv (if (and (eq code :ok)
                (fn2-checkpoint-semantic-page-header-p base schema run level fn2-fields))
           :ok :source-header) fn2-fields)))
+
+; Operation-domain frames: the decoder changes field contents, never the
+; carrier's type, dimensions, or the caller's reader stripe admission.
+(fn2-fields-preserves fn2-checkpoint-semantic-page-read-header
+ (slot gen base schema run level kind owner generation fn2-fields fn2-pool)
+ :position 1
+ :hyps ((fn2-fieldsp fn2-fields) (fn2-run-readerp base fn2-fields)))
+
+(defthm fn2-checkpoint-semantic-page-read-header-reader-context
+ (implies (and (fn2-fieldsp fn2-fields) (fn2-run-readerp base fn2-fields))
+  (fn2-run-readerp base
+   (mv-nth 1 (fn2-checkpoint-semantic-page-read-header
+    slot gen base schema run level kind owner generation fn2-fields fn2-pool))))
+ :hints (("Goal" :in-theory (e/d (fn2-run-readerp)
+                                (fn2-checkpoint-semantic-page-read-header)))))
+
+; Observations refine the actual generated decoder. All raw decoder errors
+; and semantic header mismatches normalize to SOURCE-HEADER; field output is
+; exactly the decoder's output even on refusal.
+(defthm fn2-checkpoint-semantic-page-read-header-fields-refinement
+ (equal
+  (mv-nth 1 (fn2-checkpoint-semantic-page-read-header
+   slot gen base schema run level kind owner generation fn2-fields fn2-pool))
+  (mv-nth 1 (fn2-run-read-header slot gen base kind owner generation fn2-fields fn2-pool)))
+ :hints (("Goal" :in-theory (enable fn2-checkpoint-semantic-page-read-header))))
+
+(defthm fn2-checkpoint-semantic-page-read-header-code-refinement
+ (equal
+  (mv-nth 0 (fn2-checkpoint-semantic-page-read-header
+   slot gen base schema run level kind owner generation fn2-fields fn2-pool))
+  (if (and (eq (mv-nth 0 (fn2-run-read-header slot gen base kind owner generation fn2-fields fn2-pool)) :ok)
+           (fn2-checkpoint-semantic-page-header-p base schema run level
+            (mv-nth 1 (fn2-run-read-header slot gen base kind owner generation fn2-fields fn2-pool))))
+      :ok :source-header))
+ :hints (("Goal" :in-theory (enable fn2-checkpoint-semantic-page-read-header))))
+
+; The entry branch additionally compares the retained u32 entry count. This
+; implies the shared header's count bound, so extraction does not add refusal.
+(defthm fn2-checkpoint-semantic-page-entry-count-bound
+ (implies (and (unsigned-byte-p 32 expected)
+               (equal (fn2-run-hdr base entries) expected))
+          (unsigned-byte-p 32 (fn2-run-hdr base entries))))
