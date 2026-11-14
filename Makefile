@@ -67,6 +67,7 @@ ACL2_BOOKS = \
   books/column-contracts \
   books/codec-transport \
   books/columns \
+  books/compress-policy \
   books/commit \
   books/commit-alloc \
   books/commit-arms \
@@ -234,6 +235,7 @@ ACL2_BOOKS = \
   tests/columns-cost-unit-20 \
   tests/columns-unit \
   tests/codec-transport-unit \
+  tests/compress-policy-unit \
   tests/commit-ceiling-unit \
   tests/commit-durable-all-unit \
   tests/commit-executor-contracts-unit \
