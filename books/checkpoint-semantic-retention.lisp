@@ -276,6 +276,45 @@
                  *fn2-checkpoint-semantic-phase-copy* *fn2-checkpoint-semantic-phase-uncertain*)))))
    (mv :ok fn2-checkpoint-semantic))))
 
+; The master invokes this only from its explicit :issue arm. Actual
+; operation identity remains in the retained semantic row for the common
+; read-result harvest hook; an exhausted issue leaves that row resumable.
+(defun fn2-checkpoint-semantic-issue (budget fn2-checkpoint-semantic fn2-checkpoint-semantic-work fn2-checkpoint-metadata fn2-checkpoint-build fn2-csnapshot fn2-run-builds fn2-run-writers fn2-boot-config fn2-extents fn2-alloc-edges fn2-ops fn2-checkpoints fn2-control fn2-fc fn2-fc-context fn2-b3 fn2-fields fn2-pool fn2-digests)
+ (declare (xargs :stobjs (fn2-checkpoint-semantic fn2-checkpoint-semantic-work fn2-checkpoint-metadata fn2-checkpoint-build fn2-csnapshot fn2-run-builds fn2-run-writers fn2-boot-config fn2-extents fn2-alloc-edges fn2-ops fn2-checkpoints fn2-control fn2-fc fn2-fc-context fn2-b3 fn2-fields fn2-pool fn2-digests) :guard (fn2-checkpoint-semantic-guard)))
+ (b* (((unless (and (posp budget) (<= budget 4096))) (fn2-checkpoint-semantic-mv :yield))
+      ((unless (fn2-checkpoint-semantic-sourcep fn2-checkpoint-semantic fn2-checkpoint-metadata fn2-checkpoint-build fn2-csnapshot fn2-run-builds fn2-run-writers fn2-fields))
+       (fn2-checkpoint-semantic-mv :source))
+      ((unless (and (equal (fn2-checkpoint-semantic-phase 0 fn2-checkpoint-semantic) *fn2-checkpoint-semantic-phase-read*)
+                     (equal (fn2-checkpoint-semantic-pending 0 fn2-checkpoint-semantic) 0)))
+       (fn2-checkpoint-semantic-mv :state))
+      (e (fn2-checkpoint-semantic-current 0 fn2-checkpoint-semantic))
+      ((unless (and (equal (fn2-checkpoint-semantic-work-rows fn2-checkpoint-semantic-work) (fn2-extents-rows fn2-extents))
+                     (< e (fn2-checkpoint-semantic-work-rows fn2-checkpoint-semantic-work))
+                     (equal (fn2-checkpoint-semantic-work-state e fn2-checkpoint-semantic-work) *fn2-checkpoint-semantic-work-state-pending*)
+                     (fn2-checkpoint-source-claimedp (fn2-checkpoint-semantic-candidate 0 fn2-checkpoint-semantic)
+                      (fn2-checkpoint-semantic-checkpoint 0 fn2-checkpoint-semantic) e
+                      (fn2-checkpoint-semantic-work-epoch e fn2-checkpoint-semantic-work)
+                      (fn2-checkpoint-semantic-work-allocation e fn2-checkpoint-semantic-work)
+                      fn2-extents fn2-alloc-edges fn2-ops fn2-checkpoints)))
+       (fn2-checkpoint-semantic-fail :reference))
+      (kind (fn2-checkpoint-semantic-owner-kind 0 fn2-checkpoint-semantic))
+      (owner (fn2-checkpoint-semantic-owner-slot 0 fn2-checkpoint-semantic))
+      (generation (fn2-checkpoint-semantic-owner-gen 0 fn2-checkpoint-semantic))
+      (rslot (fn2-checkpoint-semantic-read-slot 0 fn2-checkpoint-semantic))
+      (rgen (fn2-checkpoint-semantic-read-gen 0 fn2-checkpoint-semantic))
+      (at (fn2-checkpoint-semantic-read-cursor 0 fn2-checkpoint-semantic))
+      ((unless (and (< at *fn2-run-page-size*) (equal (mod at *fn2-commit-unit-bytes*) 0)
+                     (equal (fn2-checkpoint-semantic-copy-cursor 0 fn2-checkpoint-semantic) 0)))
+       (fn2-checkpoint-semantic-fail :bounds))
+      ((mv code op og fn2-pool fn2-ops fn2-control fn2-extents fn2-alloc-edges)
+       (fn2-block-read-children (+ (fn2-checkpoint-semantic-work-unit e fn2-checkpoint-semantic-work) (floor at *fn2-commit-unit-bytes*))
+        (fn2-checkpoint-semantic-work-epoch e fn2-checkpoint-semantic-work) (fn2-checkpoint-semantic-work-allocation e fn2-checkpoint-semantic-work)
+        0 *fn2-commit-unit-bytes* rslot rgen kind owner generation 0 fn2-extents fn2-alloc-edges fn2-pool fn2-ops fn2-control))
+      ((when (eq code :exhausted)) (fn2-checkpoint-semantic-mv :exhausted))
+      ((unless (eq code :ok)) (fn2-checkpoint-semantic-fail code))
+      (fn2-checkpoint-semantic (fn2-checkpoint-semantic-put 0 (phase *fn2-checkpoint-semantic-phase-wait*) (pending 1) (op-slot op) (op-gen og))))
+  (fn2-checkpoint-semantic-mv :issued)))
+
 (defun fn2-checkpoint-semantic-step (budget fn2-checkpoint-semantic fn2-checkpoint-semantic-work fn2-checkpoint-metadata fn2-checkpoint-build fn2-csnapshot fn2-run-builds fn2-run-writers fn2-boot-config fn2-extents fn2-alloc-edges fn2-ops fn2-checkpoints fn2-control fn2-fc fn2-fc-context fn2-b3 fn2-fields fn2-pool fn2-digests)
  (declare (xargs :stobjs (fn2-checkpoint-semantic fn2-checkpoint-semantic-work fn2-checkpoint-metadata fn2-checkpoint-build fn2-csnapshot fn2-run-builds fn2-run-writers fn2-boot-config fn2-extents fn2-alloc-edges fn2-ops fn2-checkpoints fn2-control fn2-fc fn2-fc-context fn2-b3 fn2-fields fn2-pool fn2-digests) :guard (fn2-checkpoint-semantic-guard)))
  (b* (((unless (and (posp budget) (<= budget 4096))) (fn2-checkpoint-semantic-mv :yield))
@@ -369,18 +408,8 @@
                fn2-extents fn2-alloc-edges fn2-ops fn2-checkpoints)))
     (fn2-checkpoint-semantic-fail :reference))
    ((equal phase *fn2-checkpoint-semantic-phase-read*)
-    (b* ((at (fn2-checkpoint-semantic-read-cursor 0 fn2-checkpoint-semantic))
-         ((unless (and (< at len) (equal (mod at *fn2-commit-unit-bytes*) 0)
-                        (equal (fn2-checkpoint-semantic-pending 0 fn2-checkpoint-semantic) 0)))
-          (fn2-checkpoint-semantic-fail :bounds))
-         ((mv code op og fn2-pool fn2-ops fn2-control fn2-extents fn2-alloc-edges)
-          (fn2-block-read-children (+ (fn2-checkpoint-semantic-work-unit e fn2-checkpoint-semantic-work) (floor at *fn2-commit-unit-bytes*))
-           (fn2-checkpoint-semantic-work-epoch e fn2-checkpoint-semantic-work) (fn2-checkpoint-semantic-work-allocation e fn2-checkpoint-semantic-work)
-           0 *fn2-commit-unit-bytes* rslot rgen kind owner generation 0 fn2-extents fn2-alloc-edges fn2-pool fn2-ops fn2-control))
-         ((when (eq code :exhausted)) (fn2-checkpoint-semantic-mv :exhausted))
-         ((unless (eq code :ok)) (fn2-checkpoint-semantic-fail code))
-         (fn2-checkpoint-semantic (fn2-checkpoint-semantic-put 0 (phase *fn2-checkpoint-semantic-phase-wait*) (pending 1) (op-slot op) (op-gen og))))
-     (fn2-checkpoint-semantic-mv :issued)))
+    ; Descriptor publication belongs to the master's explicit :issue arm.
+    (fn2-checkpoint-semantic-mv :need-read))
    ((equal phase *fn2-checkpoint-semantic-phase-copy*)
     (b* ((at (fn2-checkpoint-semantic-read-cursor 0 fn2-checkpoint-semantic))
          (copied (fn2-checkpoint-semantic-copy-cursor 0 fn2-checkpoint-semantic))
@@ -565,6 +594,11 @@
 
 (fn2-fc-shape fn2-checkpoint-semantic-step-shape
  (fn2-checkpoint-semantic-step budget fn2-checkpoint-semantic fn2-checkpoint-semantic-work fn2-checkpoint-metadata fn2-checkpoint-build fn2-csnapshot fn2-run-builds fn2-run-writers fn2-boot-config fn2-extents fn2-alloc-edges fn2-ops fn2-checkpoints fn2-control fn2-fc fn2-fc-context fn2-b3 fn2-fields fn2-pool fn2-digests)
+ (and (fn2-checkpoint-semantic-guard) (fn2-checkpoint-semanticp fn2-checkpoint-semantic) (fn2-checkpoint-semantic-workp fn2-checkpoint-semantic-work) (fn2-checkpoint-metadatap fn2-checkpoint-metadata) (fn2-checkpoint-buildp fn2-checkpoint-build) (fn2-csnapshotp fn2-csnapshot) (fn2-run-buildsp fn2-run-builds) (fn2-run-writersp fn2-run-writers) (fn2-boot-configp fn2-boot-config) (fn2-extentsp fn2-extents) (fn2-alloc-edgesp fn2-alloc-edges) (fn2-opsp fn2-ops) (fn2-checkpointsp fn2-checkpoints) (fn2-controlp fn2-control) (fn2-fcp fn2-fc) (fn2-fc-contextp fn2-fc-context) (fn2-b3p fn2-b3) (fn2-fieldsp fn2-fields) (fn2-poolp fn2-pool) (fn2-digestsp fn2-digests))
+ ((fn2-checkpoint-semantic 1) (fn2-checkpoint-semantic-work 2) (fn2-checkpoint-metadata 3) (fn2-extents 4) (fn2-alloc-edges 5) (fn2-ops 6) (fn2-control 7) (fn2-fc 8) (fn2-fc-context 9) (fn2-b3 10) (fn2-fields 11) (fn2-pool 12) (fn2-digests 13)))
+
+(fn2-fc-shape fn2-checkpoint-semantic-issue-shape
+ (fn2-checkpoint-semantic-issue budget fn2-checkpoint-semantic fn2-checkpoint-semantic-work fn2-checkpoint-metadata fn2-checkpoint-build fn2-csnapshot fn2-run-builds fn2-run-writers fn2-boot-config fn2-extents fn2-alloc-edges fn2-ops fn2-checkpoints fn2-control fn2-fc fn2-fc-context fn2-b3 fn2-fields fn2-pool fn2-digests)
  (and (fn2-checkpoint-semantic-guard) (fn2-checkpoint-semanticp fn2-checkpoint-semantic) (fn2-checkpoint-semantic-workp fn2-checkpoint-semantic-work) (fn2-checkpoint-metadatap fn2-checkpoint-metadata) (fn2-checkpoint-buildp fn2-checkpoint-build) (fn2-csnapshotp fn2-csnapshot) (fn2-run-buildsp fn2-run-builds) (fn2-run-writersp fn2-run-writers) (fn2-boot-configp fn2-boot-config) (fn2-extentsp fn2-extents) (fn2-alloc-edgesp fn2-alloc-edges) (fn2-opsp fn2-ops) (fn2-checkpointsp fn2-checkpoints) (fn2-controlp fn2-control) (fn2-fcp fn2-fc) (fn2-fc-contextp fn2-fc-context) (fn2-b3p fn2-b3) (fn2-fieldsp fn2-fields) (fn2-poolp fn2-pool) (fn2-digestsp fn2-digests))
  ((fn2-checkpoint-semantic 1) (fn2-checkpoint-semantic-work 2) (fn2-checkpoint-metadata 3) (fn2-extents 4) (fn2-alloc-edges 5) (fn2-ops 6) (fn2-control 7) (fn2-fc 8) (fn2-fc-context 9) (fn2-b3 10) (fn2-fields 11) (fn2-pool 12) (fn2-digests 13)))
 
