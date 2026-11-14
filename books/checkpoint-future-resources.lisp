@@ -136,7 +136,7 @@
    (declare (xargs :stobjs (fn2-checkpoint-future fn2-checkpoint-future-windows fn2-pool)
     :guard (and (fn2-checkpoint-future-wfp fn2-checkpoint-future) (fn2-checkpoint-future-windows-wfp fn2-checkpoint-future-windows) (fn2-pool-wfp fn2-pool))))
    (if (and (fn2-checkpoint-future-ownerp kind owner gen fn2-checkpoint-future)
-            (fn2-pool-mrefp bkind borrower bgen) (posp token)
+            (fn2-pool-mrefp kind owner gen) (fn2-pool-mrefp bkind borrower bgen) (posp token)
             (equal token (fn2-checkpoint-future-token 0 fn2-checkpoint-future))
             (<= ,end (fn2-checkpoint-future-windows-rows fn2-checkpoint-future-windows))
             (fn2-checkpoint-future-transfer-readyp ,first ,end ,returning token kind owner gen bkind borrower bgen
