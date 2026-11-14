@@ -163,6 +163,7 @@ ACL2_BOOKS = \
   books/owed-host \
   books/owed-native \
   books/owed-peer \
+  books/owed-report \
   books/owed-txn \
   books/peer-model \
   books/pointwise-contracts \

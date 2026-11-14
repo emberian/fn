@@ -6,7 +6,11 @@
 same square row under `:evidence`; this is not a second obligation ledger.
 
 The initial author form supports an equality between two admitted function
-calls, optionally beneath an explicit `implies`:
+calls, optionally beneath `implies`. Decomposition uses only the live statement
+function's canonical translated body: `IMPLIES(H,C)` or `IF(H,C,'T)` for implication and
+`IF(H,REST,'NIL)` for conjunction. The row's raw `:formula` author metadata is
+not trusted, even when a direct table update replaces it. Hypothesis selectors
+must match the actual translated clauses; unsupported macro spellings fail.
 
 ```lisp
 (defsquare-evidence name
@@ -49,3 +53,8 @@ the full result preserves an unrelated sibling, while a mutant clobbering
 that sibling is detected. Refusal controls cover vacuous positive premises,
 wrong endpoints/ABI, ineffective mutation, incorrect removed hypotheses,
 stale formula metadata, omitted function bindings and an unrelated proof.
+The independent redirected-formula control keeps the original statement and
+its translation while replacing author metadata with a different hypothesis
+and shifted reference call. False redirected witnesses are refused; genuine
+original witnesses remain bound to the original statement. The OWED renderer
+uses the same live claim lookup, with its implementation in `owed-report.lisp`.

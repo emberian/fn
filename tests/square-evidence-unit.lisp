@@ -1,6 +1,8 @@
 (in-package "ACL2")
 (include-book "../books/square-evidence")
+(include-book "../books/owed-report")
 (include-book "core-update-lowering-unit")
+(include-book "std/io/read-file-bytes" :dir :system)
 (defun fn2-evidence-wrong-abi (i value core)
  (declare (ignore i value core)) nil)
 
@@ -107,6 +109,64 @@
  :negative (:kind :hypothesis-removal :remove (natp x) :bindings ((x '-1))))
 (fn2-assert-square-evidence fn2-evidence-conditional)
 (fn2-assert-owed-teeth fn2-evidence-conditional)
+
+; Independent review's redirect: the table guard binds :translated, but the
+; author :formula is freely mutable.  Its altered H/C must never drive evidence.
+(defthm-owed fn2-evidence-source-binding-probe (x)
+ (implies (natp x) (equal (fn2-evidence-clamp x) (fn2-evidence-identity x)))
+ :sides (:concrete fn2-evidence-clamp :reference fn2-evidence-identity)
+ :teeth (fn2-evidence-conditional-control))
+(make-event
+ (value (list 'table 'fn2-squares ''fn2-evidence-source-binding-probe
+  (list 'quote
+   (fn2-decl-set :formula
+    '(implies (integerp x)
+              (equal (fn2-evidence-clamp x) (fn2-evidence-identity (+ 1 x))))
+    (fn2-decl-row '(:square fn2-evidence-source-binding-probe) (w state)))))))
+(must-fail
+ (defsquare-evidence fn2-evidence-source-binding-probe :positive ((x '-1))
+  :negative (:kind :hypothesis-removal :remove (integerp x) :bindings ((x '1/2)))))
+; Genuine original witnesses still bind even if optional display text lies.
+(defsquare-evidence fn2-evidence-source-binding-probe :positive ((x '3))
+ :negative (:kind :hypothesis-removal :remove (natp x) :bindings ((x '-1))))
+(fn2-assert-square-evidence fn2-evidence-source-binding-probe)
+(assert-event
+ (equal (fn2-decl-get :formula
+          (fn2-decl-get :evidence (fn2-decl-row '(:square fn2-evidence-source-binding-probe) (w state))))
+        (fn2-decl-statement-body 'fn2-evidence-source-binding-probe$owed (w state))))
+(assert-event
+ (let ((row (fn2-decl-row '(:square fn2-evidence-source-binding-probe) (w state))))
+  (and (equal (fn2-owed-claim-term row (w state))
+              (fn2-decl-statement-body 'fn2-evidence-source-binding-probe$owed (w state)))
+       (not (equal (fn2-owed-claim-term row (w state)) (fn2-decl-get :formula row))))))
+(defun fn2-evidence-octet-characters (bytes)
+ (declare (xargs :verify-guards nil))
+ (if (atom bytes) nil
+  (cons (code-char (car bytes)) (fn2-evidence-octet-characters (cdr bytes)))))
+; Exercise the actual report writer and read its output, not a copied printer.
+(make-event
+ (let* ((path (concatenate 'string (cbd) "../build/square-evidence-export.md"))
+        (row (fn2-decl-row '(:square fn2-evidence-source-binding-probe) (w state))))
+  (pprogn
+   (fn2-owed-export path (list (cons 'fn2-evidence-source-binding-probe row)) state)
+   (mv-let (bytes state) (read-file-bytes path state)
+    (if (stringp bytes) (er soft 'square-evidence-export "~s0" bytes)
+     (let ((text (coerce (fn2-evidence-octet-characters bytes) 'string)))
+      (if (and (search "NATP" text) (not (search "INTEGERP" text)))
+          (value '(value-triple :live-statement-exported))
+        (er soft 'square-evidence-export "Export followed redirected author metadata."))))))))
+; Canonical conjunction decomposition retains every actual antecedent clause.
+(defthm-owed fn2-evidence-conjunction (x)
+ (implies (and (integerp x) (<= 0 x))
+          (equal (fn2-evidence-clamp x) (fn2-evidence-identity x)))
+ :sides (:concrete fn2-evidence-clamp :reference fn2-evidence-identity)
+ :teeth (fn2-evidence-conditional-control))
+(must-fail
+ (defsquare-evidence fn2-evidence-conjunction :positive ((x '3))
+  :negative (:kind :hypothesis-removal :remove (integerp x) :bindings ((x '-1)))))
+(defsquare-evidence fn2-evidence-conjunction :positive ((x '3))
+ :negative (:kind :hypothesis-removal :remove (integerp x) :bindings ((x '1/2))))
+(fn2-assert-square-evidence fn2-evidence-conjunction)
 
 (defthm-owed fn2-evidence-placeholder (x) (equal x x)
  :teeth (fn2-evidence-conditional-control))

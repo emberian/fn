@@ -34,22 +34,31 @@
  (declare (xargs :verify-guards nil))
  (intern-in-package-of-symbol (concatenate 'string (symbol-name name) suffix) name))
 
-; Initial scope: literal equality of two admitted function calls, optionally
-; under an explicit IMPLIES.  Unsupported formulas are refused, not guessed.
+; Read only the live translated statement, never the author/display :formula.
+; ACL2 retains the IMPLIES function and translates AND to IF(H,REST,'NIL).
+; Explicit IF(H,C,'T) is also supported. These structural decompositions
+; preserve the actual whole antecedent without logical rewriting.
 (defun fn2-evidence-parts (formula)
  (declare (xargs :verify-guards nil))
- (if (and (consp formula) (eq (car formula) 'implies) (equal (len formula) 3))
-     (mv (cadr formula) (caddr formula))
-   (mv t formula)))
+ (cond ((and (consp formula) (eq (car formula) 'implies) (equal (len formula) 3))
+        (mv (cadr formula) (caddr formula)))
+       ((and (consp formula) (eq (car formula) 'if) (equal (len formula) 4)
+             (equal (cadddr formula) ''t))
+        (mv (cadr formula) (caddr formula)))
+       (t (mv ''t formula))))
 (defun fn2-evidence-hypotheses (hyp)
  (declare (xargs :verify-guards nil))
- (if (eq hyp t) nil
-  (if (and (consp hyp) (eq (car hyp) 'and)) (cdr hyp) (list hyp))))
+ (if (equal hyp ''t) nil
+  (if (and (consp hyp) (eq (car hyp) 'if) (equal (len hyp) 4)
+           (equal (cadddr hyp) ''nil))
+      (cons (cadr hyp) (fn2-evidence-hypotheses (caddr hyp)))
+    (list hyp))))
 
 (defun fn2-square-evidence-events (name positive negative recheck world)
  (declare (xargs :verify-guards nil))
  (let* ((row (fn2-decl-row (list :square name) world))
-        (vars (fn2-decl-get :vars row)) (formula (fn2-decl-get :formula row))
+        (vars (fn2-decl-get :vars row))
+        (formula (fn2-decl-statement-body (fn2-decl-get :statement row) world))
         (pos-name (fn2-evidence-name name "$BOUND-POSITIVE"))
         (neg-name (fn2-evidence-name name "$BOUND-NEGATIVE"))
         (mode (fn2-decl-get :kind negative))
@@ -75,6 +84,7 @@
           (problem
            (cond
             ((not (and row (fn2-decl-get :statement row))) :unknown-statement)
+            ((not (equal formula (fn2-decl-get :translated row))) :stale-statement)
             ((and (not recheck) (fn2-decl-get :evidence row)) :already-bound)
             ((not (and (symbol-listp vars) (no-duplicatesp-eq vars)
                        (fn2-evidence-bindingsp positive vars)
@@ -97,7 +107,8 @@
                  nil :removed-hypothesis))
             (t :negative-kind))))
      (if problem
-         `(make-event (er soft 'defsquare-evidence "Cannot bind ~x0: ~x1." ',name ',problem))
+         `(make-event (er soft 'defsquare-evidence "Cannot bind ~x0: ~x1. Live statement: ~x2."
+                          ',name ',problem ',formula))
        (if recheck
            `(progn (thm ,pos-body) (thm ,neg-body))
         `(progn
@@ -140,7 +151,8 @@
           (pos-name (fn2-evidence-name ',name "$BOUND-POSITIVE"))
           (neg-name (fn2-evidence-name ',name "$BOUND-NEGATIVE")))
     (if (not (and (eq (fn2-decl-get :kind e) :formula-ground-proofs)
-                  (equal (fn2-decl-get :formula e) (fn2-decl-get :formula row))
+                  (equal (fn2-decl-get :formula e)
+                         (fn2-decl-statement-body (fn2-decl-get :statement row) (w state)))
                   (equal (fn2-decl-get :translated e) (fn2-decl-get :translated row))
                   (equal (fn2-decl-get :positive e) pos-name)
                   (equal (fn2-decl-get :negative e) neg-name)
