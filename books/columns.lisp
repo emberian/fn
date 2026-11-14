@@ -183,6 +183,11 @@
       (append `((,(concatenate 'string prefix "-TYPE") ,(fn2-columns-sym table "P") ,pos)
                 (,(concatenate 'string prefix suffix) ,inv ,pos
                  :hints ,(fn2-decl-get :hints options)))
+              ; Carrier row frames are opt-in; existing callers keep exactly
+              ; their former TYPE/WFP output unless they request :rows t.
+              (and (fn2-decl-get :rows options)
+                   `((,(concatenate 'string prefix "-ROWS")
+                      ,(fn2-columns-sym table "-ROWS") ,pos :frame ,table)))
               (fn2-columns-carrier-specs (cdr carriers))))))
 (defun fn2-columns-forward-facts (facts call)
   (declare (xargs :verify-guards nil))
