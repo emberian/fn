@@ -172,3 +172,66 @@ No bb2 writes, no production/service changes, no cache deletion. Use bounded REP
 spikes, narrow record gates, then one batched convergence. A lane is READY with
 named commits, exact proof/test scopes and any remaining red, not a narrative of
 completion. The integrator alone changes shared dev.
+
+## Whole-path completion targets — 2026-11-14
+
+The destination remains the persistent NNTP/storage/consumer system, including its
+network consumers. Increase the depth of each completion claim, not the count of
+isolated certified fixtures. A helper package is an intermediate deliverable until
+its actual served caller consumes the contract in a qualified composed world.
+
+1. **Accepted data through recovery.** Durability and native owners connect actual
+   initialization (including nonempty group/principal genesis), admission, collect,
+   seal, persisted acceptance and reopen. Preserve the declared broad/crash-only
+   fault distinction. The same preserved image must exhibit the specific broad
+   uncertainty diagnosis and exact prior accepted article recovery under crash-only.
+   This runtime control supplements the general ACK/recovery proof; SIGKILL does
+   not discharge power-loss, persistence-fence or arbitrary-corruption assumptions.
+2. **Independent CNS effects.** The Q1 semantics owner defines before/after effects
+   without invoking production release/reclaim/timer handlers on the checking side.
+   Exercise the actual draining run, with held lease, reusable/retired rows, a live
+   sibling timer/range, and both early and late refusals. A late name-range refusal
+   may follow successful workspace release; unchanged-core rollback is not its spec.
+   Corrupting the sibling on both Q1 executions must be detected independently even
+   if their shared-handler comparison agrees. Bridge ownership then connects the
+   same served root to canonical evaluation, guards/domains and primitive contracts.
+3. **Actual turn resource guarantees.** The scheduler owner connects a supported
+   assembled profile through actual admission, dispatch and turn execution. Prove
+   numeric and residual bounds even for stopped structural states. Keep net queue
+   delta separate from issued-incarnation history; issue/ack/reuse must not erase
+   the latter's accounting. Insufficient residual must preserve core and selection
+   cursor, with a separate fresh-quantum retry witness. Scheduler fairness, available
+   credits and actual instruction/allocation cost are separate obligations.
+4. **Full-duplex TLS ownership and bytes.** The transport owner connects allocation,
+   handshake, concurrent record operations, cancellation and exactly-once cleanup
+   through the same capability ledger and logical per-operation state. A blocked
+   receive must not prevent a send needed for progress. Retained seed, fragmented
+   BIO input, short writes, stale returns and exhaustion must reach native controls.
+   Logical handle/staging proofs do not establish OpenSSL behavior or byte effects.
+
+The existing core emitter already aliases `CoreWorld.fns` to `LayerAWorld.fns`
+and names actual served functions in dispatch equations. A suspected namespace
+mismatch was withdrawn after tracing those definitions. Preserve that connection;
+close remaining guard/domain and MBE logical/executable obligations explicitly.
+The MEMBER-EQ-EXEC pilot alone is not a proof of every MEMBER-EQUAL logical path.
+
+External review is advisory. Three bounded, tool-disabled `claude-kimi` reviews
+were requested over secret-scanned packets: system ambition, bridge/evidence,
+and runtime/durability/TLS. Large packets timed out without responses. A smaller
+system-status review returned and recommended one matrix from top claim through
+live obligation, served entrypoint, frozen artifact, fault model and independent
+scenario. Adopt that as the completion measure; counts remain build progress only.
+That status-only review blurred prover-job memory exhaustion with runtime node
+resource behavior. Reject that inference: the observed 2 GiB OOM was certification,
+not node execution. The targeted evidence-code review returned no new defect in
+the live-statement witness/recheck machinery and rejected the obsolete raw-formula
+attack; source locators and controls were independently checked. This is only the
+evidence slice, not the larger Lean bridge or universal/runtime correctness. The
+final small TLS handoff review also returned no supported defect: identity,
+lifecycle, copied-seed and output-consumption checks match the caller, and the
+unfed seed suffix is deliberately retained for later records. Physical copy,
+record migration and socket behavior are outside that result. Larger runtime and
+bridge reviews timed out and received no clearance. An absent response is not a
+clean review, and no finding is attributed to Kimi without an actual response.
+Validate alleged defects against source before assigning fixes, retain rejected
+suspicions, and distinguish known unfinished work from newly discovered defects.
