@@ -158,6 +158,23 @@
              (mv-let (problem2 rest opened2) (fn2-lower-expand-list (cdr terms) fields world stack (1- fuel) readonlyp)
                (mv (or problem problem2) (cons term rest) (union-eq opened opened2))))))))
 
+; Preserve lexical bindings and evaluation count while making unused aliases
+; explicitly ignorable in executable syntax. Translated lambda terms have no
+; declarations, including the aliases introduced for ignored MV components.
+(mutual-recursion
+ (defun fn2-lower-source-form (term)
+  (declare (xargs :verify-guards nil))
+  (cond ((atom term) term) ((eq (car term) 'quote) term)
+        ((consp (car term))
+         `(let ,(pairlis$ (cadar term) (pairlis$ (fn2-lower-source-forms (cdr term)) nil))
+            (declare (ignorable ,@(cadar term)))
+            ,(fn2-lower-source-form (caddar term))))
+        (t (cons (car term) (fn2-lower-source-forms (cdr term))))))
+ (defun fn2-lower-source-forms (terms)
+  (declare (xargs :verify-guards nil))
+  (if (atom terms) nil
+   (cons (fn2-lower-source-form (car terms)) (fn2-lower-source-forms (cdr terms))))))
+
 ; Logical translated bodies represent multiple values as a fixed-arity list.
 ; Materialize that small result tuple once, never repeat the producer per
 ; component; restore the executable multiple-value ABI at the boundary.
@@ -301,13 +318,22 @@
                    (cdr pending))
            children (cons (car pending) seen) world (1- fuel)))))
 
+; A multiple-result producer is a data boundary, even when one component
+; feeds a branch test. Keep that producer opaque while opening scalar
+; predicates on its outputs; expanding it would duplicate every data case.
+(defun fn2-lower-predicate-children (rows world)
+ (declare (xargs :verify-guards nil))
+ (if (atom rows) nil
+  (let ((child (fn2-decl-get :child (cdar rows))))
+   (append (and (equal (getpropc child 'stobjs-out nil world) '(nil)) (list child))
+           (fn2-lower-predicate-children (cdr rows) world)))))
 (defun fn2-lower-guard-theory (guard body world)
  (declare (xargs :verify-guards nil))
  (fn2-lower-guard-openings
   (union-eq (fn2-lower-call-names guard)
    (union-eq (fn2-lower-predicate-names body nil t 10000)
              (fn2-lower-call-guard-names (fn2-lower-call-names body) world)))
-  (fn2-lower-registered-children (table-alist 'fn2-core-lowered world))
+  (fn2-lower-predicate-children (table-alist 'fn2-core-lowered world) world)
   nil world 10000))
 (defun fn2-lower-leaf-properties (rows calls property)
  (declare (xargs :verify-guards nil))
@@ -364,7 +390,7 @@
                     (xargs :stobjs ,children :guard ,guard :verify-guards t
                      :guard-hints (("Goal" :in-theory
                         (enable ,@(fn2-lower-guard-theory guard lowered world))))))
-           ,(fn2-lower-result-body lowered (len outs)))
+           ,(fn2-lower-result-body (fn2-lower-source-form lowered) (len outs)))
          (assert-event
           (and (equal (getpropc ',child 'stobjs-out nil (w state)) ',outs)
                (equal (getpropc ',child 'stobjs-in nil (w state))
