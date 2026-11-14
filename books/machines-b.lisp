@@ -607,7 +607,7 @@
 ; so one row serves every cursor row; either digest unequal answers :hash.
 ; :bounds: the row or the lease range is not there (the core contradicts
 ; its own layout). (mv code fn2-b3 fn2-digests).
-(defun fn2-block-read-done-children (bytes len verify lslot lgen boff hoff cvoff block okind oslot ogen
+(defun fn2-block-read-done-from-children (bytes len verify lslot lgen boff proof-slot proof-gen hoff cvoff block okind oslot ogen
                                            fn2-b3 fn2-digests fn2-pool)
  (declare (xargs :stobjs (fn2-b3 fn2-digests fn2-pool) :guard (fn2-pool-wfp fn2-pool)))
  (b* (((unless (and (natp bytes) (natp len) (equal bytes len))) (mv :io fn2-b3 fn2-digests))
@@ -624,12 +624,18 @@
       ((unless (and (eq code :ok) (fn2-digest-rowp got fn2-digests) (fn2-digest-rowp want fn2-digests)
                     (fn2-digest-rowp cv fn2-digests)))
        (mv :bounds fn2-b3 fn2-digests))
-      ((mv same fn2-digests) (fn2-block-digest-at got want lslot lgen hoff okind oslot ogen fn2-digests fn2-pool))
+      ((mv same fn2-digests) (fn2-block-digest-at got want proof-slot proof-gen hoff okind oslot ogen fn2-digests fn2-pool))
       ((unless same) (mv :hash fn2-b3 fn2-digests))
       (fn2-digests (fn2-block-cv-into cv got (+ (nfix (fn2-pool-slot-base lslot fn2-pool)) boff) len
                                       (* 4 (nfix block)) fn2-digests fn2-pool))
-      ((mv same fn2-digests) (fn2-block-digest-at cv want lslot lgen cvoff okind oslot ogen fn2-digests fn2-pool)))
+      ((mv same fn2-digests) (fn2-block-digest-at cv want proof-slot proof-gen cvoff okind oslot ogen fn2-digests fn2-pool)))
   (mv (if same :ok :hash) fn2-b3 fn2-digests)))
+; Existing cursors carry proof and block bytes in one lease. The checkpoint
+; source walker uses separate stable windows through the same implementation.
+(defun fn2-block-read-done-children (bytes len verify lslot lgen boff hoff cvoff block okind oslot ogen fn2-b3 fn2-digests fn2-pool)
+ (declare (xargs :stobjs (fn2-b3 fn2-digests fn2-pool) :guard (fn2-pool-wfp fn2-pool)))
+ (fn2-block-read-done-from-children bytes len verify lslot lgen boff lslot lgen hoff cvoff block okind oslot ogen fn2-b3 fn2-digests fn2-pool))
+
 (defthm fn2-block-read-done-children-shape
  (implies (and (fn2-digestsp fn2-digests) (fn2-digests-wfp fn2-digests) (fn2-b3p fn2-b3) (fn2-b3-wfp fn2-b3)
                (fn2-poolp fn2-pool) (fn2-pool-wfp fn2-pool))
