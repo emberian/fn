@@ -47,7 +47,7 @@
       ((mv r0 & e0 ep0 a0 fn2-extents) (fn2-alloc-reserve fn2-extents))
       ((mv r1 & e1 ep1 a1 fn2-extents) (fn2-alloc-reserve fn2-extents))
       ((mv r2 & e2 ep2 a2 fn2-extents) (fn2-alloc-reserve fn2-extents))
-      ((mv r3 & e3 ep3 a3 fn2-extents) (fn2-alloc-reserve fn2-extents))
+      ((mv r3 & e3 & & fn2-extents) (fn2-alloc-reserve fn2-extents))
       ((mv r4 & e4 ep4 a4 fn2-extents) (fn2-alloc-reserve fn2-extents))
       ((mv c0 fn2-extents) (fn2-alloc-commit-allocation e0 ep0 a0 4 101 fn2-extents))
       ((mv c1 fn2-extents) (fn2-alloc-commit-allocation e1 ep1 a1 5 102 fn2-extents))
