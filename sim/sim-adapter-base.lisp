@@ -406,7 +406,7 @@
       (fn2-own-observe-output-range-parts slot gen rslot rgen off len
                                         fn2-pool fn2-ops fn2-own)
       (mv (if (equal fault *fn2-fault-reset*) :handshake :ok)
-          0 0 fn2-core fn2-sim-network fn2-sim-storage fn2-own)))
+          (if (equal fault *fn2-fault-reset*) 0 len) 0 fn2-core fn2-sim-network fn2-sim-storage fn2-own)))
    ((or (fn2-op-input-kindp kind) (fn2-op-output-kindp kind))
     (let* ((nbytes (fn2-sim-storage-rows fn2-sim-storage))
            (redirect (fn2-sim-redirect offset nbytes kind fault)))
