@@ -80,7 +80,7 @@
        ((mv o v a b s fn2-core) (fn2-transition t budget fn2-core))
        (fn2-core (fn2-exec-account-work b s fn2-core))
        ((mv ro rv ra rbytes rsteps lists fn2-ref-core)
-        (fn2-ref-transition budget lists fn2-ref-core))
+        (fn2-ref-transition t budget lists fn2-ref-core))
        (rb (+ (nfix rb) (nfix rbytes))) (rs (+ (nfix rs) (nfix rsteps)))
        (fn2-ref-core (fn2-exec-set-turn-bytes rb fn2-ref-core))
        (fn2-ref-core (fn2-exec-set-turn-steps rs fn2-ref-core))
