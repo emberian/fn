@@ -196,7 +196,12 @@ it for the served closure. The echo FREE certificate is a scoped precedent.
    premise admitting `2^-1`, and negative division/ASH truncation. Include a
    reachable positive input satisfying the whole new domain and conclusion.
 
-The next reviewable semantic slice is one current echo FREE closure with all
-five evidence dimensions joined, followed by the guarded arithmetic families
-and recursive components. This sequence does not reduce the destination: all
-served roots and their executable dependencies remain required.
+The next served semantic slice is `FN2-CNS-RUN-DRAINING` on the fresh composed
+source, with all five evidence dimensions joined. Recompute its closure, including
+new timer-clear behavior; do not inherit the old package's closure count. Use echo
+FREE as a small reference/control and reuse the core body/lambda generator rather
+than create a second emitter. The shared foundation owns `Translation`, recursion
+fuel lemmas and body-emitter helpers; family work supplies declarations/templates.
+Then extend to the guarded arithmetic families and recursive components. This
+sequence does not reduce the destination: all served roots and their executable
+dependencies remain required.
