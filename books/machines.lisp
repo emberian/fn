@@ -920,6 +920,11 @@
                    (or (equal next from)
                        (member-equal next ',(fn2-machine-phase-indices (fn2-arm-get :next c) states)))))
             (fn2-machine-observe-next-cases (cdr observes) states)))))
+(defun fn2-machine-work-ceiling (name world)
+  (declare (xargs :verify-guards nil))
+  (let ((budget (fn2-machine-property name :budget world)))
+    (max *fn2-work-empty*
+         (+ (nfix (fn2-arm-get :bytes budget)) (nfix (fn2-arm-get :steps budget))))))
 (defun fn2-machine-certificate-events (name world)
   (declare (xargs :verify-guards nil))
   (let ((arms (fn2-machine-property name :continuations world))
@@ -932,6 +937,20 @@
       (defun ,(fn2-columns-sym name "-ARM-BOUND") (phase)
         (declare (xargs :guard t))
         (case phase ,@(fn2-machine-bound-cases arms states 0 world) (otherwise 0)))
+      (defthm ,(fn2-columns-sym name "-ARM-BOUND-NATP")
+        (natp (,(fn2-columns-sym name "-ARM-BOUND") phase))
+        :rule-classes :type-prescription)
+      (defthm ,(fn2-columns-sym name "-ARM-CHARGE-WITHIN-BOUND")
+        (implies (,(fn2-columns-sym name "-ARM-CHARGE-OK-P") phase bytes steps descriptors)
+                 (<= (+ bytes steps) (,(fn2-columns-sym name "-ARM-BOUND") phase)))
+        :rule-classes (:rewrite :linear))
+      (defthm ,(fn2-columns-sym name "-ARM-CHARGE-DESCRIPTORS")
+        (implies (,(fn2-columns-sym name "-ARM-CHARGE-OK-P") phase bytes steps descriptors)
+                 (<= descriptors ,(nfix (fn2-arm-get :descriptors (fn2-machine-property name :budget world)))))
+        :rule-classes :rewrite)
+      (defthm ,(fn2-columns-sym name "-ARM-BOUND-WITHIN-KIND")
+        (<= (,(fn2-columns-sym name "-ARM-BOUND") phase) ,(fn2-machine-work-ceiling name world))
+        :rule-classes (:rewrite :linear))
       (defun ,(fn2-columns-sym name "-ARM-NEXT-OK-P") (phase next)
         (declare (xargs :guard t))
         (case phase ,@(fn2-machine-next-cases arms states 0 states) (otherwise nil)))
@@ -3303,6 +3322,46 @@
              (,(fn2-columns-sym name "-OBSERVE-OK-P") id event row-phase fn2-core)
              wake fn2-core)))) name 1))
       (fn2-core-preserves ,handler (id event outcome reason count aux0 aux1 fn2-core) :position 1 :rows nil))))
+; Lift child result contracts through the actual core face, keeping the
+; child read/write matrix opaque. Invalid rows and sticky stops are included.
+(defun fn2-machine-core-result-events (fn kind work-limit world)
+  (declare (xargs :verify-guards nil))
+  (let* ((call `(,fn id budget fn2-core))
+         (hyps (list '(fn2-corep fn2-core) (getpropc fn 'guard t world)))
+         (limit (nfix (fn2-arm-get :descriptors (fn2-machine-property kind :budget world))))
+         (terms (fn2-run-quantity-terms call 'budget work-limit limit)))
+    `((defthm ,(fn2-columns-sym fn "-QUANTITIES")
+        (implies (and ,@hyps)
+          (and (fn2-run-quantitiesp (car ,call) (mv-nth 1 ,call) (mv-nth 2 ,call) budget ,work-limit)
+               (<= (mv-nth 2 ,call) ,limit)))
+        :rule-classes ,(fn2-run-quantity-rules hyps terms)
+        :hints (("Goal" :in-theory (e/d (,fn fn2-run-quantitiesp fn2-machine-contract-check
+                                           fn2-machine-refuse-phase fn2-machine-idle fn2-machine-finish
+                                           fn2-machine-charge fn2-machine-charge-kindp fn2-machine-refuse-charge
+                                           fn2-machine-refuse-write ,(fn2-columns-sym kind "-CHARGE"))
+                                        (fn2-corep fn2-core-wfp nfix nth)))))
+      (defthm ,(fn2-columns-sym fn "-DESCRIPTOR-EFFECT")
+        (implies (and ,@hyps)
+          (equal (nth *fn2-ops-queued* (fn2-core-ops (mv-nth 4 ,call)))
+                 (+ (nth *fn2-ops-queued* (fn2-core-ops fn2-core)) (mv-nth 2 ,call))))
+        :hints (("Goal" :use (:instance fn2-ops-queued-natural (fn2-ops (fn2-core-ops fn2-core)))
+                        :in-theory (e/d (,fn fn2-core-stop fn2-machine-contract-check
+                                             fn2-machine-refuse-phase fn2-machine-idle fn2-machine-finish
+                                           fn2-machine-charge fn2-machine-charge-kindp fn2-machine-refuse-charge
+                                           fn2-machine-refuse-write ,(fn2-columns-sym kind "-CHARGE"))
+                                        (fn2-core-ops fn2-corep fn2-core-wfp nfix nth))))))))
+(defun fn2-machine-success-charge-event (fn charge guard enabled)
+  (declare (xargs :verify-guards nil))
+  (let ((call `(,fn id budget fn2-core)))
+    `(defthm ,(fn2-columns-sym fn "-SUCCESS-CHARGE")
+       (implies (and (fn2-corep fn2-core) ,guard
+                     (fn2-core-success-p (mv-nth 4 ,call)))
+                (,charge (fn2-machine-phase id fn2-core)
+                         (car ,call) (mv-nth 1 ,call) (mv-nth 2 ,call)))
+       :hints (("Goal" :in-theory (enable ,fn ,@enabled fn2-core-success-p
+                                          fn2-core-stopped-p fn2-core-stop-reason fn2-core-stop
+                                          fn2-control-record-stop fn2-control-stop
+                                          update-fn2-control-stop update-fn2-control-stop-reason))))))
 (defun fn2-machine-run-event (name world)
   (declare (xargs :verify-guards nil))
   (let* ((run (fn2-columns-sym name "-RUN"))
@@ -3338,7 +3397,17 @@
              (fn2-machine-contract-check
               (,(fn2-columns-sym name "-ARM-OK-P") id row-phase bytes steps descriptors fn2-core)
               bytes steps descriptors runnable fn2-core)))) name 4)
-      `((fn2-core-preserves ,run (id budget fn2-core) :position 4 :rows nil)) nil)
+      `((fn2-core-preserves ,run (id budget fn2-core) :position 4 :rows nil)
+        (make-event (value (cons 'progn (fn2-machine-core-result-events
+                                        ',run ',name ,(fn2-machine-work-ceiling name world) (w state)))))
+        (make-event (value (fn2-machine-success-charge-event
+          ',run ',(fn2-columns-sym name "-ARM-CHARGE-OK-P")
+          (getpropc ',run 'guard t (w state))
+          '(fn2-machine-contract-check fn2-machine-refuse-phase fn2-machine-idle
+            fn2-machine-finish fn2-machine-charge fn2-machine-charge-kindp
+            fn2-machine-refuse-charge fn2-machine-refuse-write fn2-machine-phase
+            ,(fn2-columns-sym name "-ARM-OK-P") ,(fn2-machine-row-reader name 'phase)
+            ,(fn2-columns-sym name "-CHARGE")))))) nil)
        ,@(and leafp (fn2-machine-observe-handler-events 'fn2-machine-observe name world))
        ,@(fn2-machine-teeth-events name world)
        ,@(fn2-machine-arm-rows name (fn2-machine-property name :continuations world) world)
@@ -3799,6 +3868,35 @@
                     (fn2-dh-owners-ok *fn2-commit-kind* (mv-nth ,pos (,g ,@formals))))
            :hints (("Goal" :in-theory (union-theories '(,g ,(fn2-columns-sym body-fn "-DISPATCH-OWNERS"))
                                                       (theory 'minimal-theory))))))))
+; Run results and physical descriptor effects are constrained together with
+; the callback, independently of whether it stopped. A certificate predicate
+; alone does not constrain an attached implementation's returned quantities.
+(defun fn2-machine-run-quantitative-claims (fn name guard world)
+  (declare (xargs :verify-guards nil))
+  (let* ((call `(,fn id budget fn2-core))
+         (hyps `((fn2-corep fn2-core) ,guard))
+         (terms (fn2-run-quantity-terms call 'budget (fn2-machine-work-ceiling name world)
+                  (nfix (fn2-arm-get :descriptors (fn2-machine-property name :budget world))))))
+    `((defthm ,(fn2-columns-sym fn "-QUANTITIES")
+        (implies (and (fn2-corep fn2-core) ,guard)
+                 (and (fn2-run-quantitiesp (car ,call) (mv-nth 1 ,call) (mv-nth 2 ,call)
+                                           budget ,(fn2-machine-work-ceiling name world))
+                      (<= (mv-nth 2 ,call)
+                          ,(nfix (fn2-arm-get :descriptors (fn2-machine-property name :budget world))))))
+        :rule-classes ,(fn2-run-quantity-rules hyps terms)
+        :hints (("Goal" :in-theory (enable ,fn fn2-machine-refuse-phase fn2-run-quantitiesp
+                                             fn2-machine-finish fn2-machine-charge fn2-machine-charge-kindp
+                                             fn2-machine-refuse-charge fn2-machine-refuse-write
+                                             ,(fn2-columns-sym name "-CHARGE")))))
+      (defthm ,(fn2-columns-sym fn "-DESCRIPTOR-EFFECT")
+        (implies (and (fn2-corep fn2-core) ,guard)
+                 (equal (nth *fn2-ops-queued* (fn2-core-ops (mv-nth 4 ,call)))
+                        (+ (nth *fn2-ops-queued* (fn2-core-ops fn2-core)) (mv-nth 2 ,call))))
+        :hints (("Goal" :use (:instance fn2-ops-queued-natural (fn2-ops (fn2-core-ops fn2-core)))
+                        :in-theory (e/d (,fn fn2-machine-refuse-phase fn2-core-stop
+                                             fn2-machine-finish fn2-machine-charge fn2-machine-charge-kindp
+                                             fn2-machine-refuse-charge fn2-machine-refuse-write
+                                             ,(fn2-columns-sym name "-CHARGE")) (fn2-core-ops))))))))
 (defun fn2-machine-stub-events (names world)
   (declare (xargs :verify-guards nil))
   (if (atom names) nil
@@ -3850,6 +3948,23 @@
               (local (defun ,bound-stub (phase)
                        (declare (xargs :guard t) (ignore phase))
                        0))
+              ,@(fn2-machine-run-quantitative-claims run-stub name run-guard world)
+              (defthm ,(fn2-columns-sym bound-stub "-NATP")
+                (natp (,bound-stub phase)) :rule-classes :type-prescription)
+              (defthm ,(fn2-columns-sym bound-stub "-WITHIN-KIND")
+                (<= (,bound-stub phase) ,(fn2-machine-work-ceiling name world))
+                :rule-classes (:rewrite :linear))
+              (defthm ,(fn2-columns-sym charge-stub "-WITHIN-BOUND")
+                (implies (,charge-stub phase bytes steps descriptors)
+                         (and (natp bytes) (natp steps) (natp descriptors)
+                              (<= (+ bytes steps) (,bound-stub phase))
+                              (<= descriptors ,(nfix (fn2-arm-get :descriptors
+                                                       (fn2-machine-property name :budget world))))))
+                :rule-classes :rewrite)
+              ,(fn2-machine-success-charge-event run-stub charge-stub run-guard
+                  (list 'fn2-machine-refuse-phase 'fn2-machine-finish 'fn2-machine-charge
+                        'fn2-machine-charge-kindp 'fn2-machine-refuse-charge 'fn2-machine-refuse-write
+                        (fn2-columns-sym name "-CHARGE")))
               (defthm ,(fn2-columns-sym run-stub "-CONSP")
                 (and (consp (,run-stub id budget fn2-core))
                      (true-listp (,run-stub id budget fn2-core)))
@@ -3913,6 +4028,11 @@
              (defun ,bound-def (phase)
                (declare (xargs :guard t) (ignore phase))
                0)
+             ,@(fn2-machine-run-quantitative-claims run-def name run-guard world)
+             ,(fn2-machine-success-charge-event run-def charge-def run-guard
+                 (list 'fn2-machine-refuse-phase 'fn2-machine-finish 'fn2-machine-charge
+                       'fn2-machine-charge-kindp 'fn2-machine-refuse-charge 'fn2-machine-refuse-write
+                       (fn2-columns-sym name "-CHARGE")))
              (defattach (,run-stub ,run-def)
                         (,obs-stub ,obs-def)
                         (,charge-stub ,charge-def)

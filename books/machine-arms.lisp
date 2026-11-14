@@ -2247,7 +2247,13 @@
             (append (make-list pos :initial-element :value) '(fn2-core)) nil :callbacks
             `(declare (xargs :stobjs fn2-core :guard (fn2-core-wfp fn2-core)) (ignorable ,@args))
             (list wrapped)
-            (list (fn2-arms-core-preserves name (append args '(fn2-core)) pos wrapped world))
+            (append (list (fn2-arms-core-preserves name (append args '(fn2-core)) pos wrapped world))
+                    (and (not observe)
+                         `((make-event (value (cons 'progn
+                             (fn2-machine-core-result-events ',name ',kind
+                               ,(max *fn2-work-empty* (+ (car (fn2-cost-values (fn2-arm-get :cost contract) world))
+                                                         (cadr (fn2-cost-values (fn2-arm-get :cost contract) world))))
+                               (w state))))))))
             (list :writes (fn2-arm-get :writes contract) :cost (fn2-arm-get :cost contract)
                   :refusal nil :contract contract
                   :cost-values (fn2-cost-values (fn2-arm-get :cost contract) world))))))))
@@ -2266,21 +2272,14 @@
          (call (cons name formals))
          (hyps (append (fn2-arms-child-shape-hyps ins)
                        (list (getpropc name 'guard t world))))
-         (terms `((natp (car ,call)) (natp (mv-nth 1 ,call))
-                  (natp (mv-nth 2 ,call))
-                  (<= (+ (car ,call) (mv-nth 1 ,call)) ,work-limit)
-                  (<= (mv-nth 2 ,call) (nfix budget)))))
+         (terms (fn2-run-quantity-terms call 'budget work-limit
+                   (nfix (fn2-arm-get :descriptors (fn2-machine-property (car ins) :budget world))))))
     `(defthm ,(fn2-columns-sym name "-QUANTITIES")
        (implies (and ,@hyps)
-                (fn2-run-quantitiesp (car ,call) (mv-nth 1 ,call)
-                                     (mv-nth 2 ,call) budget ,work-limit))
-       ; Linear corollaries let a caller use a callee's tighter bound.
-       :rule-classes ,(append (fn2-arms-child-corollaries hyps terms)
-                       (list `(:type-prescription :corollary (implies (and ,@hyps) ,(nth 0 terms)))
-                             `(:type-prescription :corollary (implies (and ,@hyps) ,(nth 1 terms)))
-                             `(:type-prescription :corollary (implies (and ,@hyps) ,(nth 2 terms)))
-                             `(:linear :corollary (implies (and ,@hyps) ,(nth 3 terms)))
-                             `(:linear :corollary (implies (and ,@hyps) ,(nth 4 terms)))))
+                (and (fn2-run-quantitiesp (car ,call) (mv-nth 1 ,call)
+                                     (mv-nth 2 ,call) budget ,work-limit)
+                     ,(nth 5 terms)))
+       :rule-classes ,(fn2-run-quantity-rules hyps terms)
        :hints (("Goal" :in-theory (e/d (,name fn2-run-quantitiesp)
                        (nfix nth ,@(fn2-arms-shape-fns ins)
                         ,@(fn2-arms-rows-fns ins)
@@ -2394,7 +2393,13 @@
             (append (make-list pos :initial-element :value) '(fn2-core)) nil :callbacks
             `(declare (xargs :stobjs fn2-core :guard (fn2-core-wfp fn2-core)) (ignorable ,@args))
             (list body)
-            `((fn2-core-preserves ,name (,@args fn2-core) :position ,pos :rows nil))
+            `((fn2-core-preserves ,name (,@args fn2-core) :position ,pos :rows nil)
+              ,@(and (not observe)
+                     `((make-event (value (cons 'progn
+                         (fn2-machine-core-result-events ',name ',kind
+                           ,(max *fn2-work-empty* (+ (car (fn2-cost-values (fn2-arm-get :cost contract) world))
+                                                     (cadr (fn2-cost-values (fn2-arm-get :cost contract) world))))
+                           (w state))))))))
             (list :writes (fn2-arm-get :writes contract) :cost (fn2-arm-get :cost contract)
                   :refusal nil :contract contract
                   :cost-values (fn2-cost-values (fn2-arm-get :cost contract) world))))))

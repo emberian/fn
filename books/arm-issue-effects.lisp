@@ -4,6 +4,12 @@
 (in-package "ACL2")
 (include-book "arm-children")
 
+(defthm fn2-ops-queued-natural
+  (implies (fn2-opsp fn2-ops)
+           (natp (nth *fn2-ops-queued* fn2-ops)))
+  :rule-classes :type-prescription
+  :hints (("Goal" :in-theory (enable fn2-opsp))))
+
 (defun fn2-issue-queue-frame-events (entries world)
  (declare (xargs :verify-guards nil))
  (if (atom entries) nil
@@ -49,3 +55,16 @@
     fn2-issue-write-children fn2-issue-fence-children fn2-issue-accept-children
     fn2-issue-close-children fn2-issue-cancel-children fn2-issue-entropy-children)
   (w state)))))
+
+; The core face uses the same append relation, through the generated child
+; read/write matrix. This constructor is also used by focused core fixtures.
+(defun fn2-issue-core-effect-event (name formals)
+  (declare (xargs :verify-guards nil))
+  (let ((call (cons name formals)))
+    `(defthm ,(fn2-columns-sym name "-QUEUED-EFFECT")
+       (implies (and (fn2-corep fn2-core) (fn2-core-wfp fn2-core))
+         (equal (nth *fn2-ops-queued* (fn2-core-ops (mv-nth 3 ,call)))
+                (+ (nth *fn2-ops-queued* (fn2-core-ops fn2-core))
+                   (if (eq (car ,call) :ok) 1 0))))
+       :hints (("Goal" :use (:instance fn2-ops-queued-natural (fn2-ops (fn2-core-ops fn2-core)))
+                       :in-theory (e/d (,name) (fn2-core-ops fn2-corep fn2-core-wfp nfix nth)))))))
