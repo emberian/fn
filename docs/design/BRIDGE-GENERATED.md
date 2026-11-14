@@ -91,8 +91,10 @@ the ordered effective Lean search path and a conservative inventory of external
 library artifacts, including transitive imports and directory shadowing. A
 changed external inventory during a gate discards its cache and rejects the run.
 Each compilation exposes only its declared transitive local imports through a
-private `Fn2` search root. An external package cannot silently import another
-stale local artifact; that missing dependency is refused. Standalone closure
+private `Fn2` search root. Batches contain only proofs with identical transitive
+local import scopes, so a sibling cannot lend an undeclared dependency to another
+proof. An external package cannot silently import another stale local artifact;
+that missing dependency is refused. Standalone closure
 checks use the same final external-world recheck as complete gates. Cache keys
 also bind the checking-policy version. This intentionally invalidates earlier
 cache keys; copied warm artifacts alone are not evidence. Coverage is invalidated by a change

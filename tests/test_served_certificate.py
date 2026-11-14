@@ -392,7 +392,8 @@ class CoverageControls(unittest.TestCase):
                 for ri in range(3):
                     ns=f'Fn2.Arms.Served.Root{ri}Proof'
                     if f'namespace {ns}' in txt:
-                        if ri in fail_root:
+                        hidden = ri == 0 and 'external-needs-M' in txt and 'Fn2.M' not in allowed_modules
+                        if ri in fail_root or hidden:
                             rc=1
                             ln=next(idx+1 for idx,l in enumerate(txt.splitlines()) if f'namespace {ns}' in l)
                             lines.append(f'{src_p.name}:{ln}:0: error: tactic failed')
@@ -445,5 +446,23 @@ class CoverageControls(unittest.TestCase):
                 c.lean_gates(rep3,lib,30,2,root=root,batch_size=4)
                 self.assertEqual([r['status'] for r in rep3['roots']],['validated','unvalidated','validated'])
                 self.assertIn('Lean rejected proof/census',rep3['roots'][1]['reason'])
+
+                # A has a hidden external->M import; B declares M explicitly.
+                # Their union would wrongly lend M to A during batch checking.
+                fail_root.clear()
+                (root/'meta/Fn2/M.lean').write_text('def m := 1')
+                p0=root/'meta/Fn2/Instances/ServedCertificates/Root0Proof.lean'
+                p0.write_text(p0.read_text()+'\n-- external-needs-M\n')
+                p1=root/'meta/Fn2/Instances/ServedCertificates/Root1Proof.lean'
+                p1.write_text(p1.read_text().replace('public import ', 'public import Fn2.M\npublic import ',1))
+                calls.clear(); rep4=make_report()
+                c.lean_gates(rep4,lib,30,2,root=root,batch_size=4)
+                self.assertEqual([r['status'] for r in rep4['roots']],['unvalidated','validated','validated'])
+                self.assertNotIn('proof:0',json.loads((root/'build/served-lean-cache.json').read_text()))
+                (root/'meta/Fn2/M.lean').write_text('def m := 2')
+                calls.clear(); rep5=make_report()
+                c.lean_gates(rep5,lib,30,2,root=root,batch_size=4)
+                self.assertEqual([r['status'] for r in rep5['roots']],['unvalidated','validated','validated'])
+                self.assertNotIn('proof:0',json.loads((root/'build/served-lean-cache.json').read_text()))
 
 if __name__=='__main__':unittest.main()
