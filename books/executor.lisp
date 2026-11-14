@@ -112,9 +112,7 @@
 
 (defun fn2-image-sizep (size extents groups)
  (declare (xargs :guard t))
- (and (unsigned-byte-p 60 size) (equal (mod size 4096) 0)
-      (unsigned-byte-p 32 extents) (posp extents) (unsigned-byte-p 32 groups)
-      (<= (+ (* 12288 extents) (* 4096 (+ groups 3))) size)))
+ (fn2-checkpoint-image-sizep size extents groups))
 
 (defun fn2-image-create-request (size profile)
  (declare (xargs :guard t))

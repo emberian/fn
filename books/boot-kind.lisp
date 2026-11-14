@@ -3,6 +3,7 @@
 (in-package "ACL2")
 (include-book "machines-b")
 (include-book "machine-arms")
+(include-book "checkpoint-geometry")
 (fn2-book-layer :b)
 
 (deflayout fn2-boot-record
@@ -24,7 +25,10 @@
 (defconst *fn2-boot-group-entry-bytes* (+ 250 8))
 (defcolumns fn2-boot-config nil :init-name fn2-boot-config-empty
  :extra-fields
- ((fn2-boot-config-groups :type t :initially nil :why "Unconsumed trusted startup group configuration; one group per boot visit."
+ ((fn2-boot-config-checkpoint-layout-ready :type (unsigned-byte 1) :initially 0 :why "Set only after checked bootstrap/empty anchor scan and the final startup fence.")
+  (fn2-boot-config-image-size :type (unsigned-byte 60) :initially 0 :why "Actual image size checked by ACL2 startup geometry.")
+  (fn2-boot-config-geometry :type (array (unsigned-byte 8) (32)) :initially 0 :why "Owned bootstrap geometry hash; not checker scratch.")
+  (fn2-boot-config-groups :type t :initially nil :why "Unconsumed trusted startup group configuration; one group per boot visit."
    :resident (* *fn2-boot-group-entry-bytes* (fn2-boot-config-count fn2-boot-config)))
   (fn2-boot-config-path :type t :initially nil :why "Trusted startup path identity, checked against the immutable image record."
    :resident *fn2-profile-path-identity-max*)
@@ -71,21 +75,23 @@
 
 (defmachine fn2-boot
  :states (:free :prepare :write :write-result :read :read-result :verify :advance
-          :anchor :recover :recover-wait :epoch :epoch-fence :epoch-result :release :ready :failed)
+          :anchor :bootstrap :bootstrap-verify :checkpoint-anchor :checkpoint-check :recover :recover-wait :epoch :epoch-fence :epoch-result :release :ready :failed)
  :fields ((pending :u32) (stopped :bool) (pool-slot :u32) (pool-gen :u60)
           (rx-slot :u32) (rx-gen :u60) (create :bool) (image-size :u60)
           (base :u60) (total :u32) (index :u32) (stage :u8) (offset :u60)
-          (epoch0 :u60) (epoch1 :u60) (next-epoch :u60) (anchor-slot :bool)
+          (checkpoint-index :u8) (epoch0 :u60) (epoch1 :u60) (next-epoch :u60) (anchor-slot :bool)
           (event-ready :bool) (outcome :u8) (count :u32) (release-index :u32))
  :holds ((:prepare :storage-window) (:write :storage-window) (:write-result :storage-window)
          (:read :storage-window) (:read-result :storage-window) (:verify :storage-window)
-         (:advance :storage-window) (:anchor :storage-window) (:recover :storage-window)
+         (:advance :storage-window) (:anchor :storage-window)
+         (:bootstrap :storage-window) (:bootstrap-verify :storage-window)
+         (:checkpoint-anchor :storage-window) (:checkpoint-check :storage-window) (:recover :storage-window)
          (:recover-wait :storage-window) (:epoch :storage-window) (:epoch-fence :storage-window)
          (:epoch-result :storage-window))
  :budget (:bytes 32768 :steps 32 :descriptors 4)
- :stops (:geometry :configuration :io :anchor :recovery :epoch :bounds)
+ :stops (:geometry :configuration :io :anchor :checkpoint :recovery :epoch :bounds)
  :capacity (if (fn2-profile-get :image-boot profile) 1 0)
  :initial ((generation fn2-commit-initial-generation) (ready-prev *fn2-none*) (ready-next *fn2-none*))
  :arms ((:free) (:prepare) (:write) (:write-result) (:read) (:read-result) (:verify) (:advance)
-        (:anchor) (:recover) (:recover-wait) (:epoch) (:epoch-fence) (:epoch-result) (:release) (:ready) (:failed))
+        (:anchor) (:bootstrap) (:bootstrap-verify) (:checkpoint-anchor) (:checkpoint-check) (:recover) (:recover-wait) (:epoch) (:epoch-fence) (:epoch-result) (:release) (:ready) (:failed))
  :observes ((:read-result) (:write-result) (:fence-result)))

@@ -158,3 +158,29 @@ checkpoint hash must come from the selected retained anchor, and its geometry
 hash must come from the checked bootstrap/profile binding. Those two sources
 are still absent in current genesis-only boot. No caller-provided matching
 hashes can close those dependencies.
+
+## Geometry hash frame and served boot source
+
+Geometry hash v1 is BLAKE3 of the exact 21 ASCII bytes
+`fn2/image-geometry/v1` followed immediately by the generated
+`fn2-checkpoint-geometry-record` encoding. No newline, NUL, padding, Lisp
+printing or host serialization enters the preimage. That record names version,
+image byte size, 4096-byte sector/page sizes, three-unit extents, extent/group
+counts, bootstrap and four anchor unit addresses, the final two epoch unit
+addresses and storage domain 0. All integer encodings come from the generated
+codec. This is a specified geometry frame, not the genesis record checksum.
+
+The source boot path now uses the shared geometry for image admission, writes
+this generated bootstrap during init, and compares it byte-for-byte against
+its canonical configured encoding on reopen. It writes/scans all four distinct
+checkpoint units before the two existing epoch records. Until full candidate
+selection and physical plus semantic restoration exist, a nonempty checkpoint
+unit refuses startup with `:checkpoint`; it never silently recovers genesis.
+The empty-anchor path binds checked geometry in boot-config only after the
+actual final startup fence succeeds. The bootstrap hash is copied into an
+owned 32-byte boot-config array before scratch buffers can be reused.
+
+These boot/executor changes are source only and await qualification together.
+No existing image is read, rewritten, migrated or deployed by this work.
+`tests/checkpoint-geometry-unit.lisp` supplies an exact all-fields generated-codec
+roundtrip and truncation control, awaiting admission/execution.
