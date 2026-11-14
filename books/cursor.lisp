@@ -403,7 +403,7 @@
  (if (not (and (natp hashes) (<= hashes *fn2-article-location-hashes-max*)
                (equal (mod hashes 32) 0) (natp index) (< index (floor hashes 32))))
      (mv :bounds fn2-b3 fn2-digests)
-   (fn2-block-read-commitment-children bytes len lslot lgen *fn2-article-location-hashes-max* (* 32 index)
+   (fn2-block-read-commitment-children bytes len lslot lgen *fn2-article-location-hashes-max* lslot lgen (* 32 index)
                                      okind oslot ogen fn2-b3 fn2-digests fn2-pool)))
 (defthm fn2-cursor-location-check-of-shape
  (implies (and (fn2-digestsp fn2-digests) (fn2-digests-wfp fn2-digests) (fn2-b3p fn2-b3) (fn2-b3-wfp fn2-b3)
