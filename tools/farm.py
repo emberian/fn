@@ -140,7 +140,7 @@ HOSTS = {
 # each a byte-identical copy of hbox's toolchain (tools/box_table.py).
 import box_table
 HOSTS.update(box_table.farm_rows(HOSTS))
-EXCLUDES = ("build/", ".git/", "__pycache__/", ".venv/", "*.pyc")
+EXCLUDES = ("build/", ".git", "__pycache__/", ".venv/", "*.pyc")
 POLL_SECONDS = 30
 DEFAULT_WAIT_SECONDS = 6 * 60 * 60
 EVIDENCE = re.compile(r"Certification evidence: (build/acl2/[A-Za-z0-9._-]+)")
