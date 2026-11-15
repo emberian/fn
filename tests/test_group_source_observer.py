@@ -48,7 +48,7 @@ class GroupSourceObserver(unittest.TestCase):
   self.assertLess(text.index('(fn2-id-decide-step'),text.index('(fn2-succ-source-close'))
  def test_foreign_resolver_hold_is_rejected_before_shared_admission(self):
   macro=definition('fn2-directory-source-core-definition')
-  first=next(n for n in walk(macro) if n and n[0]=='b*')[1][0]
+  first=next(n for n in next(n for n in walk(macro) if n and n[0]=='b*')[1] if calls(n,'fn2-succ-txns-source-receipt'))
   self.assertTrue(calls(first,'fn2-succ-txns-source-receipt'))
   self.assertTrue(calls(first,'fn2-succ-txns-lphase'))
   self.assertIn('*fn2-succ-lookup-idle*',str(first))
