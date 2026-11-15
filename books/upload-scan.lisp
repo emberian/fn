@@ -253,7 +253,7 @@
 ; ------------------------------------------------------------------------
 ; Message-ID syntax as the stored-article check reads it (H's model,
 ; stored_msgid): "<" dot-atom "@" (dot-atom / "[" dtext* "]") ">", at most
-; 250 octets; atext is RFC 5322's.
+; *fn2-format-message-id-max* octets; atext is RFC 5322's.
 (defun fn2-upload-atextp (b)
   (declare (xargs :guard (natp b)))
   (or (and (<= 65 b) (<= b 90)) (and (<= 97 b) (<= b 122)) (and (<= 48 b) (<= b 57))
@@ -278,7 +278,7 @@
            (fn2-upload-dtext (- left 1) (+ 1 i) slot gen okind oslot ogen fn2-pool)))))
 (defun fn2-upload-msgid-p (s l slot gen okind oslot ogen fn2-pool)
   (declare (xargs :stobjs fn2-pool :guard (and (fn2-pool-wfp fn2-pool) (natp s) (natp l))))
-  (b* (((unless (and (<= 5 l) (<= l 250))) nil)
+  (b* (((unless (and (<= 5 l) (<= l *fn2-format-message-id-max*))) nil)
        ((mv ok1 lt) (fn2-gram-read slot gen s okind oslot ogen fn2-pool))
        ((mv ok2 gt) (fn2-gram-read slot gen (+ s l -1) okind oslot ogen fn2-pool))
        ((unless (and ok1 ok2 (= lt 60) (= gt 62))) nil)
@@ -363,8 +363,9 @@
         (t (fn2-upload-posted-naive-spec (- (nfix left) 1) (+ 1 (nfix i))
                                          slot gen okind oslot ogen fn2-pool))))
 (defthm fn2-upload-posted-refines-naive-spec
-  (equal (fn2-upload-posted left i slot gen okind oslot ogen fn2-pool)
-         (fn2-upload-posted-naive-spec left i slot gen okind oslot ogen fn2-pool))
+  (implies (and (fn2-pool-wfp fn2-pool) (natp left) (natp i))
+           (equal (fn2-upload-posted left i slot gen okind oslot ogen fn2-pool)
+                  (fn2-upload-posted-naive-spec left i slot gen okind oslot ogen fn2-pool)))
   :rule-classes nil)
 (in-theory (disable fn2-upload-posted-naive-spec fn2-upload-posted-run fn2-upload-posted-next))
 (defun fn2-upload-path-ok (s l slot gen okind oslot ogen fn2-pool)
