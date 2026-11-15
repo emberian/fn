@@ -13,10 +13,10 @@
         (fn2-retirement-control-copy fn2-retirement-control)
         (fn2-alloc-edges-copy fn2-alloc-edges)) snapshot))
 
-(defun fn2-riud-body (removed fn2-core)
+(defun fn2-riud-body-kind (removed owner-kind fn2-core)
  (declare (xargs :stobjs fn2-core :verify-guards nil))
  (b* ((fn2-core (fn2-core-init (fn2-b-test-profile *fn2-profile-tiny* 0) fn2-core))
-      (owner (fn2-machine-kind-base *fn2-scribe-kind* fn2-core))
+      (owner (fn2-machine-kind-base owner-kind fn2-core))
       (ogen (fn2-machine-generation owner fn2-core))
       ((mv reserved target epoch allocation fn2-core)
        (stobj-let ((fn2-extents (fn2-core-extents fn2-core)))
@@ -37,7 +37,7 @@
       ; This actual producer selects the containing batch, packs the retained
       ; member bytes, binds intent, opens/joins and records the exact control.
       ((mv submitted batch event fn2-core)
-       (fn2-retirement-submit target epoch allocation *fn2-scribe-kind* owner ogen fn2-core))
+       (fn2-retirement-submit target epoch allocation owner-kind owner ogen fn2-core))
       ((mv pick id &) (fn2-commit-pick fn2-core))
       ((unless (and reserved (eq protected :ok) (eq submitted :ok) (eq pick :join)
                      (fn2-commit-idp id fn2-core) (posp batch) (posp event)
@@ -70,7 +70,7 @@
              (fn2-alloc-retirement-intentp target epoch allocation fn2-extents)
              (= (fn2-alloc-retirement-intent-batch fn2-extents) batch)) bound))
       ((unless (and found bound (= kind *fn2-commit-member-kind-txn*) (posp len)
-                     (= okind *fn2-scribe-kind*) (= oslot owner) (= actual-ogen ogen)))
+                     (= okind owner-kind) (= oslot owner) (= actual-ogen ogen)))
        (mv nil fn2-core))
       ((mv framed rkind bytes next fn2-core)
        (fn2-commit-txn-frame base slot gen 0 len okind oslot actual-ogen fn2-core))
@@ -189,6 +189,31 @@
                ; Ordinary install mutates allocator only, not the retained
                ; source control or any existing protector edge.
                (equal (cadr before) (cadr after)) (equal (caddr before) (caddr after))))) fn2-core)))
+(defun fn2-riud-body (removed fn2-core)
+ (declare (xargs :stobjs fn2-core :verify-guards nil))
+ (fn2-riud-body-kind removed *fn2-scribe-kind* fn2-core))
+(defun fn2-riud-zero-kind ()
+ (declare (xargs :verify-guards nil))
+ (with-local-stobj fn2-core
+  (mv-let (ok fn2-core) (fn2-riud-body-kind nil *fn2-listener-kind* fn2-core) ok)))
+; Same actual reservation/protector/admission/dispatch control, using kind zero.
+(assert-event (equal *fn2-listener-kind* 0))
+(assert-event (fn2-riud-zero-kind))
+(defun fn2-riud-unbound-state (fn2-core)
+ (declare (xargs :stobjs fn2-core :verify-guards nil))
+ (let ((state (fn2-riud-state fn2-core)))
+  (stobj-let ((fn2-pool (fn2-core-pool fn2-core))) (pool)
+   (fn2-pool-copy fn2-pool) (list state pool))))
+(defun fn2-riud-unbound ()
+ (declare (xargs :verify-guards nil))
+ (with-local-stobj fn2-core
+  (let* ((fn2-core (fn2-core-init (fn2-b-test-profile *fn2-profile-tiny* 0) fn2-core))
+         (before (fn2-riud-unbound-state fn2-core)))
+   (mv-let (code batch event fn2-core)
+    (fn2-retirement-submit 0 1 1 0 0 0 fn2-core)
+    (and (eq code :admission) (equal batch 0) (equal event 0)
+         (equal before (fn2-riud-unbound-state fn2-core)))))))
+(assert-event (fn2-riud-unbound))
 (defun fn2-riud-run (removed)
  (declare (xargs :verify-guards nil))
  (with-local-stobj fn2-core (mv-let (ok fn2-core) (fn2-riud-body removed fn2-core) ok)))

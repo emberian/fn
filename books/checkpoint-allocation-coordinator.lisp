@@ -11,7 +11,7 @@
  (defun fn2-lifecycle-admit-packed (slot gen len okind oslot ogen need open-only fn2-core)
   (declare (xargs :stobjs fn2-core :guard (fn2-core-wfp fn2-core)))
   (b* (((unless (and (unsigned-byte-p 32 slot) (unsigned-byte-p 60 gen) (posp len)
-                     (posp okind) (unsigned-byte-p 8 okind) (unsigned-byte-p 32 oslot) (unsigned-byte-p 60 ogen)
+                     (posp ogen) (unsigned-byte-p 8 okind) (unsigned-byte-p 32 oslot) (unsigned-byte-p 60 ogen)
                      (posp need) (<= need *fn2-commit-records-room*) (not (fn2-core-stopped-p fn2-core))
                      (fn2-checkpoint-staging-match-p slot gen okind oslot ogen fn2-core)))
         (mv :invalid 0 0 fn2-core))
@@ -26,7 +26,7 @@
 
  (defun fn2-checkpoint-allocation-begin (okind oslot ogen fn2-core)
   (declare (xargs :stobjs fn2-core :guard (fn2-core-wfp fn2-core)))
-  (b* (((unless (and (posp okind) (unsigned-byte-p 8 okind)
+  (b* (((unless (and (posp ogen) (unsigned-byte-p 8 okind)
                      (unsigned-byte-p 32 oslot) (unsigned-byte-p 60 ogen)
                      (not (fn2-core-stopped-p fn2-core)))) (mv :admission fn2-core))
        (ready (stobj-let ((fn2-retirement-control (fn2-core-retirement-control fn2-core))
