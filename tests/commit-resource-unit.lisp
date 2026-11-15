@@ -74,7 +74,8 @@
 (assert-event (and (= (len *fn2-commit-seal-stages*) 19)
  (= *fn2-commit-seal-stage-records* 10) (= *fn2-commit-seal-stage-save-seal* 17)
  (= *fn2-commit-seal-stage-hash-seal-frame* 18) (= *fn2-commit-unit-bytes* 4096)
- (= *fn2-commit-write-resources* 3) (= *fn2-commit-pools* 4) (= *fn2-commit-extent-bytes* 12288)
+ (= *fn2-commit-write-resources* 3) (= *fn2-commit-pools* 4) (= *fn2-commit-extent-bytes* 65536)
+ (= (* *fn2-commit-write-resources* *fn2-commit-unit-bytes*) 12288)
  (= *fn2-commit-frame-trailer* 4063) (= *fn2-commit-frame-digest* 4064)))
 (make-event (value `(assert-event
  (and (= ,(fn2-machine-property 'fn2-commit :capacity (w state)) 2)

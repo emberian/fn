@@ -20,7 +20,7 @@
  '(fn2-core-seals fn2-core-overlays fn2-core-overlay-index fn2-core-run-installed fn2-core-run-builds
    fn2-core-run-writers fn2-core-run-restarts fn2-core-run-cache fn2-core-ribbon-builds fn2-core-ribbon-band
    fn2-core-fields fn2-core-pool fn2-core-fc fn2-core-fc-context fn2-core-b3 fn2-core-digests
-   fn2-core-ranges fn2-core-range-sources fn2-core-run-cursors fn2-core-run-paths))
+   fn2-core-ranges fn2-core-range-sources fn2-core-run-cursors fn2-core-run-paths fn2-core-csnapshot))
 (defcost fn2-sealer-step :answers (:bad-hash :bad-magic :bounds :busy :cache :capacity :done :empty :exhausted :failed
   :filter-capacity :filter-keys :format :full :idle :invariant :kind :length :levels :more
   :need-page :noncanonical :nonzero-padding :ok :order :overlap :owner :part :payload :pending
@@ -32,7 +32,7 @@
  :tables (fn2-core-seals fn2-core-overlays fn2-core-overlay-index fn2-core-run-installed fn2-core-run-builds
           fn2-core-run-writers fn2-core-run-restarts fn2-core-run-cache fn2-core-ribbon-builds fn2-core-ribbon-band
           fn2-core-fields fn2-core-pool fn2-core-fc fn2-core-fc-context fn2-core-b3 fn2-core-digests
-          fn2-core-ranges fn2-core-range-sources fn2-core-run-cursors fn2-core-run-paths)
+          fn2-core-ranges fn2-core-range-sources fn2-core-run-cursors fn2-core-run-paths fn2-core-csnapshot)
  :doc "One bounded seal step: at most 4,096 bytes of page or filter work, one entry merged and added, one install, or one page released.")
 (defcost fn2-sealer-refuse :tables (fn2-core-control)
  :doc "Stop the core by name: a seal step refused for want of a pool slot (:sealer-full), a cache row (:sealer-cache), or as an invariant (:sealer).")

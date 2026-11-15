@@ -272,11 +272,61 @@ ACL2_BOOKS = \
   tests/accounts-unit \
   tests/alloc-random \
   tests/alloc-unit \
-  tests/alloc-lifecycle-unit \
+  tests/alloc-freeze-unit \
+  tests/checkpoint-unit \
   tests/alloc-planning-unit \
+  tests/alloc-lifecycle-unit \
   tests/retirement-intent-allocator-unit \
   tests/retirement-intent-leaf-unit \
+  tests/block-workspace-interleaving-unit \
+  tests/checkpoint-aggregate-unit \
+  tests/checkpoint-allocation-coordinator-unit \
+  tests/checkpoint-allocation-unit \
+  tests/checkpoint-anchor-future-unit \
+  tests/checkpoint-bank-unit \
+  tests/checkpoint-builder-claim-unit \
+  tests/checkpoint-clear-build-unit \
+  tests/checkpoint-directory-budget-unit \
+  tests/checkpoint-directory-headroom-unit \
+  tests/checkpoint-future-resources-unit \
+  tests/checkpoint-installation-coordinator-unit \
+  tests/checkpoint-lifecycle-unit \
+  tests/checkpoint-maintenance-leases-unit \
+  tests/checkpoint-map-format-unit \
+  tests/checkpoint-map-roundtrip-unit \
+  tests/checkpoint-master-catalog-unit \
+  tests/checkpoint-page-handoff-unit \
+  tests/checkpoint-payload-physical-unit \
+  tests/checkpoint-plan-unit \
+  tests/checkpoint-publication-repeat-unit \
+  tests/checkpoint-recovery-census-unit \
+  tests/checkpoint-selected-source-unit \
+  tests/checkpoint-recovery-evidence-unit \
+  tests/checkpoint-restore-arena-unit \
+  tests/checkpoint-restore-semantic-unit \
+  tests/checkpoint-restore-semantic-work-unit \
+  tests/checkpoint-restore-unit \
+  tests/checkpoint-retention-profile-unit \
+  tests/checkpoint-semantic-unit \
+  tests/checkpoint-teardown-unit \
+  tests/checkpoint-working-release-unit \
+  tests/retirement-intent-unit \
+  tests/run-packing-unit \
+  tests/checkpoint-member-unit \
+  tests/checkpoint-tickets-unit \
+  tests/checkpoint-provenance-unit \
+  tests/checkpoint-build-budget-unit \
+  tests/checkpoint-publication-unit \
+  tests/checkpoint-geometry-unit \
+  tests/retirement-unit \
+  tests/retirement-replay-unit \
+  tests/retirement-live-unit \
+  tests/read-pins-unit \
+  tests/storage-write-pins-unit \
+  tests/storage-geometry-unit \
+  tests/owed-reclamation-unit \
   tests/retirement-intent-core-unit \
+  tests/startup-genesis-unit \
   tests/retirement-publish-core-unit \
   tests/retirement-canonical-core-unit \
   tests/authority-client \
@@ -366,6 +416,16 @@ ACL2_BOOKS = \
   tests/grammar-gen \
   tests/grammar-unit \
   tests/groups-unit \
+  tests/c-snapshot-unit \
+  tests/c-snapshot-materialization-unit \
+  tests/journal-members-unit \
+  tests/journal-allocation-codec-unit \
+  tests/event-frontier-unit \
+  tests/event-proof-format-unit \
+  tests/event-proof-source-unit \
+  tests/event-read-verified-unit \
+  tests/event-build-unit \
+  tests/checkpoint-page-header-unit \
   tests/cns-fetch-integrity-unit \
   tests/cursor-location-integrity-unit \
   tests/location-commitment-unit \

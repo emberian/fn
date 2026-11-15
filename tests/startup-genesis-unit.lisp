@@ -1,0 +1,55 @@
+; Actual C startup actors and NAME writers, without physical boot IO claims.
+(in-package "ACL2")
+(include-book "std/util/bstar" :dir :system)
+(include-book "../books/assembly-callbacks-c")
+(include-book "retirement-state-projections")
+(make-event
+ (cons 'progn (fn2-riud-projection-events
+               '(fn2-overlays fn2-overlay-index fn2-id-engine fn2-run-installed fn2-pool fn2-accounts) (w state))))
+(defconst *fn2-sgu-profile*
+ (put-assoc-equal :groups '(("startup.group" . 1))
+  (put-assoc-equal :authority 1
+   (put-assoc-equal :owner-account 2
+    (put-assoc-equal :identity-arena-bytes 4096
+     (put-assoc-equal :pool-classes '((8 . 64) (4 . 256) (16 . 4096)) *fn2-profile-tiny*))))))
+(defun fn2-sgu-name-state (fn2-core)
+ (declare (xargs :stobjs fn2-core :verify-guards nil))
+ (stobj-let ((fn2-overlays (fn2-core-overlays fn2-core))
+             (fn2-overlay-index (fn2-core-overlay-index fn2-core))
+             (fn2-id-engine (fn2-core-id-engine fn2-core))
+             (fn2-run-installed (fn2-core-run-installed fn2-core))
+             (fn2-pool (fn2-core-pool fn2-core))) (state)
+  (list (fn2-overlays-copy fn2-overlays) (fn2-overlay-index-copy fn2-overlay-index)
+        (fn2-id-engine-copy fn2-id-engine) (fn2-run-installed-copy fn2-run-installed)
+        (fn2-pool-copy fn2-pool)) state))
+(defun fn2-sgu-body (fn2-core)
+ (declare (xargs :stobjs fn2-core :verify-guards nil))
+ (b* ((fn2-core (fn2-core-init *fn2-sgu-profile* fn2-core))
+      (before (fn2-sgu-name-state fn2-core))
+      ((mv unbound _) (fn2-principals-bound-genesis-ids 2 fn2-core))
+      ((mv actors fn2-core) (fn2-engine-genesis-actors *fn2-sgu-profile* fn2-core))
+      (after-actors (fn2-sgu-name-state fn2-core))
+      ((mv bound ids) (fn2-principals-bound-genesis-ids 2 fn2-core))
+      (accounts (stobj-let ((fn2-accounts (fn2-core-accounts fn2-core))) (copy)
+                  (fn2-accounts-copy fn2-accounts) copy))
+      (not-ready (not (fn2-sealer-ready fn2-core)))
+      ; These are the existing trusted configuration writers, called here
+      ; only to test the split. Charged boot work uses the bounded owner.
+      ((mv groups fn2-core) (fn2-groups-genesis *fn2-sgu-profile* fn2-core))
+      ((mv names fn2-core) (fn2-principals-name-genesis *fn2-sgu-profile* fn2-core))
+      ((mv still-bound same-ids) (fn2-principals-bound-genesis-ids 2 fn2-core))
+      (same-accounts (stobj-let ((fn2-accounts (fn2-core-accounts fn2-core))) (same)
+                       (equal accounts (fn2-accounts-copy fn2-accounts)) same))
+      (names-present (stobj-let ((fn2-overlays (fn2-core-overlays fn2-core))) (present)
+         (let* ((n (fn2-overlays-rows fn2-overlays))
+                (g (fn2-idc-find-overlay n 0 *fn2-overlay-phase-frozen* *fn2-groups-sid* fn2-overlays))
+                (p (fn2-idc-find-overlay n 0 *fn2-overlay-phase-frozen* *fn2-principals-sid* fn2-overlays)))
+          (and (< g n) (< p n) (not (= g p)))) present)))
+  (mv (and (eq unbound :state) (eq actors :ok) (equal before after-actors)
+           (eq bound :ok) ids not-ready (eq groups :ok) (eq names :ok)
+           (eq still-bound :ok) (equal ids same-ids) same-accounts names-present
+           (fn2-core-wfp fn2-core)) fn2-core)))
+(defun fn2-sgu-run ()
+ (declare (xargs :verify-guards nil))
+ (with-local-stobj fn2-core (mv-let (ok fn2-core) (fn2-sgu-body fn2-core) ok)))
+(assert-event (fn2-sgu-run))

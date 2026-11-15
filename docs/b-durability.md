@@ -448,7 +448,7 @@ identity as well as its allocation pair, binding the physical context required b
 | dependency-entry | 9 | 73–121 | target-storage-domain, target-physical-unit, target-writer-epoch, target-allocation, target-page-kind, target-encoded-length, target-expected-hash, length, digest |
 | source-manifest-header | 3 | 35–51 | source-length, block-size, source-identity |
 | source-manifest-entry | 10 | 74–130 | logical-offset, length, block-storage-domain, block-physical-unit, block-writer-epoch, block-allocation, block-page-kind, block-encoded-length, block-expected-hash, subtree-cv |
-| allocation-map-entry | 7 | 7–47 | extent, state, owner-kind, owner, writer-epoch, allocation, retirement-commit |
+| allocation-map-entry | 8 | 8–56 | extent, state, owner-kind, owner, writer-epoch, allocation, retirement-commit, next-retired |
 | checkpoint-descriptor | 38 | 198–422 | checkpoint, cut-commit, cut-event, metadata-manifest-storage-domain, metadata-manifest-physical-unit, metadata-manifest-writer-epoch, metadata-manifest-allocation, metadata-manifest-page-kind, metadata-manifest-encoded-length, metadata-manifest-expected-hash, allocation-state-storage-domain, allocation-state-physical-unit, allocation-state-writer-epoch, allocation-state-allocation, allocation-state-page-kind, allocation-state-encoded-length, allocation-state-expected-hash, event-proof-directory-storage-domain, event-proof-directory-physical-unit, event-proof-directory-writer-epoch, event-proof-directory-allocation, event-proof-directory-page-kind, event-proof-directory-encoded-length, event-proof-directory-expected-hash, event-frontier-storage-domain, event-frontier-physical-unit, event-frontier-writer-epoch, event-frontier-allocation, event-frontier-page-kind, event-frontier-encoded-length, event-frontier-expected-hash, recovery-arena-storage-domain, recovery-arena-physical-unit, recovery-arena-writer-epoch, recovery-arena-allocation, recovery-arena-page-kind, recovery-arena-encoded-length, recovery-arena-expected-hash |
 | recovery-arena-entry | 3 | 3–27 | extent-physical-unit, writer-epoch, allocation |
 | membership-entry | 3 | 3–27 | group, group-number, article |
@@ -467,6 +467,27 @@ persistence) is owed.
 
 Allocation owner-kind is an opaque u8 machine/object category; owner is a typed `owner` ID
 matching the allocator’s owner-kind/owner-id fields.
+
+### CHECKPOINT-PUBLICATION-DESCRIPTOR-IDENTITY
+
+Engineering choice, 2026-11-14: an anchor's `previous-checkpoint` digest is the
+expected hash of the descriptor Ref from the prior successfully published
+checkpoint. The format previously named only an opaque digest. It is distinct
+from the installation batch seal and either slot's anchor hash. Genesis uses
+32 zero bytes. `fn2-checkpoint-publication-begin` snapshots the actual installed
+candidate's descriptor hash and identity into owned attempt columns; only the
+matching successful covering bank fence copies them into owned base columns.
+The next publication checks increasing checkpoint identity in the same lineage,
+loads that retained hash, and writes the opposite bank. This records physical
+publication; it grants no allocator cut, promotion, FREE or reclamation authority.
+
+The generated writer accepts only an actual installed production claim under its
+phase-2 frozen owner and retained references. Completion notification follows
+exact physical completion and release of all three private windows, and checks
+the requester's current generation. Startup must seed a predecessor only after
+authenticated anchor selection and full selected-base restore; the current
+nonempty-startup refusal remains in force. Map/FIFO investigation bits cannot
+seed publication lineage. Source preparation is not proof or runtime qualification.
 
 ## 7. Allocator
 
@@ -696,8 +717,54 @@ BLAKE3-256 as the declared fn2 hash profile. Leaves are `H(0x00 || canonical sem
 record bytes)`; internal nodes are `H(0x01 || left || right)`; the empty root is
 `H(empty)`. There is no additional leaf domain string. This retains the standard
 prefix rules while selecting BLAKE3 explicitly; SHA-256 interoperability is later work.
-Physical pool location is not hashed into a leaf. Callers supply canonical semantic
-encodings; this primitive does not validate their semantic schema.
+The served B-S2 leaf is one **semantic member**: the entire ordered sequence of
+canonical record headers and bodies carrying that member's event ID. A transaction
+may emit several records with the same event; they form one leaf, not several
+events. Keyed and lifecycle members normally contain one record. Members must
+cover the batch's declared consecutive event range exactly, with no gaps,
+reordering or return to an earlier event. Record-stream zero padding is excluded.
+Physical frame/page headers, trailers and seals are excluded from the leaf and
+retained separately as archive evidence. The pool's memory location is not hashed.
+Physical Refs encoded inside record bodies remain part of those canonical bytes;
+this is not a claim that relocating an application Ref preserves the leaf.
+The Merkle primitive alone does not validate this semantic-member convention.
+
+The first-checkpoint retained-event representation uses linked `:manifest` pages
+with body kind `:event-proof-directory`. Fixed slots enumerate every installed
+commit from 1 through the held cut, carrying `(commit, event-first, members,
+extent, writer-epoch, allocation, semantic-seal)`. The semantic seal is an anchor
+for authenticating the original journal seal and records frames; it is **not**
+a full-frame physical Ref hash. Original journal allocations remain retained.
+Before any installed-chain root edge is dropped, every retained directory tuple
+must acquire selectable-checkpoint/recovery-base protection. Six direct
+checkpoint page edges do not protect these journal descendants.
+
+`event-proof-source.lisp` packs an entry from the actual held C cut, committed
+allocator identity and exact installed-chain edge `7 + 2*extent`, held by its
+commit. `event-read-source.lisp` binds that identity in the same step and issues
+real operation-pinned reads. `event-read-verify.lisp` composes the existing frame
+and seal verifier against the installed seal directory, then authenticates the
+records commitment before scanning or hashing semantic members. Its terminal
+requires exact commit/event coverage. The separate `:merkle-node` frontier body
+is tagged `:semantic-member-frontier`, binds the directory Ref and cut, and has
+60 digest slots with occupancy determined by the u60 leaf count; unused slots
+are zero. Keeping it outside the keyed mutation's dependency page avoids a
+record-hash/frontier/dependency-hash cycle.
+
+`event-build.lisp` starts only from the actual candidate builder claim and
+this authenticated source terminal. It claims each retained journal allocation
+for the candidate, constructs directory pages backwards through the shared
+registered-page header/worker, then serializes the actual frontier. A bound
+source has no packing transition. Only exact retained physical completion and
+workspace ownership return advance page coverage or capture a root; root byte
+counts include every descendant write. Allocation exhaustion returns a distinct
+refusal with ownership retained.
+
+These source constructors remain unqualified: actual source-actor dispatch,
+shared ownership-transfer worker composition, restore and executed positive
+physical-read/page qualification must be connected before checkpoint admission. Packed bytes,
+physical write completion and a caller-selected count alone do not establish
+event-source completion or checkpoint durability.
 
 `fn2-mk-table-init(n, log)` allocates a profile-sized `defcolumns` table. Each row
 carries u60 size and proof continuation columns. Its 60 frontier digests and proof
@@ -1511,9 +1578,12 @@ reason `:batch-membership`. D's `:ready`, on `:exhausted`, parks with that wait 
 `:exhausted` while the pick finds the partner uncertain (B5-4a), so no later member can commit past
 an unresolved one. Recovery resolves it by classification and replay, never by waiting.
 
-**S8. The format floor.** `:format-slots` defaults to `4 + w`, and that is also its floor, with
-`w = fn2-b-upload-windows` (landed in B5-4a). Every profile therefore has the sealer's checker row.
-A profile that names fewer slots is refused.
+**S8. The format floor.** `:format-slots` defaults to `9 + w + c`, its supported-profile floor,
+where `w = fn2-b-upload-windows` and `c = fn2-b-ctl-rows`. The final five stripes belong to
+semantic retention, streaming payload retention, event construction, block verification and
+checkpoint writing, in that order; control stripes precede them. `fn2-b-field-rows` reserves the
+matching 128-field format stripes plus transaction, sealer and read workspaces. An explicit
+checker, B3/digest or field capacity below its derived floor is refused before admission.
 
 **D's amendments (accepted 2026-10-31).**
 - (1) D's `:ready` runs in this order: resolve, stage, `fn2-successor-out`, write the member records into

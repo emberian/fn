@@ -314,7 +314,7 @@
                 (mv hit nil 0 fn2-core fn2-sim fn2-own))
                (dependency-target (eq (fn2-b-write-fault-target seed) :dependency))
                (log-write (and (= kind *fn2-action-write*)
-                               (not (= (mod (fn2-sim-storage-offset slot fn2-sim) 12288) 0))))
+                               (not (= (mod (fn2-sim-storage-offset slot fn2-sim) *fn2-storage-extent-bytes*) 0))))
                ((when (and (not hit) (member-eq scenario '(:partial :eio :enospc)) log-write (not dependency-target)
                            (< (fn2-machine-cb-issued (fn2-sim-owner-slot slot fn2-sim) fn2-core) 2)))
                 ; Let the runnable issuer submit its sibling before harvesting
@@ -377,7 +377,7 @@
 ; choose the fault profile, the post-death faults and the device size.
 (defun fn2-b-case (profile seed cut scenario mode members post fn2-core fn2-sim fn2-own)
   (declare (xargs :stobjs (fn2-core fn2-sim fn2-own) :verify-guards nil))
-  (b* ((profile (fn2-b-test-profile (put-assoc-equal :sim-sectors (if post (nth 2 post) 8) profile) mode))
+  (b* ((profile (fn2-b-test-profile (put-assoc-equal :sim-sectors (if post (nth 2 post) (* 2 *fn2-storage-extent-units*)) profile) mode))
        (fn2-core (fn2-init-executor profile :null nil fn2-core))
        ; Recovery fixture: the preceding writer epoch fence has completed.
        ; B3 does not implement or claim this bootstrap protocol.
@@ -509,10 +509,10 @@
        ((mv next key capacity config) (fn2-commit-frontier fn2-core))
        ; Both recipients have made no delivery progress while BOTH batch rows
        ; drained and were reused. Their old published ranges remain replayable.
-       ((mv debt-a first-a end-a) (fn2-commit-notification-range 1 0 fn2-core))
-       ((mv debt-b first-b end-b) (fn2-commit-notification-range 2 0 fn2-core))
-       ((mv caught-up cursor end) (fn2-commit-notification-range 1 2 fn2-core))
-       (okay (and okay debt-a debt-b caught-up (= first-a 1) (= end-a 2)
+       ((mv debt-a first-a end-a status-a) (fn2-commit-notification-range 1 0 fn2-core))
+       ((mv debt-b first-b end-b status-b) (fn2-commit-notification-range 2 0 fn2-core))
+       ((mv caught-up cursor end status-up) (fn2-commit-notification-range 1 2 fn2-core))
+       (okay (and okay debt-a debt-b caught-up (eq status-a :resident) (eq status-b :resident) (eq status-up :resident) (= first-a 1) (= end-a 2)
                   (= first-b 2) (= end-b 3) (= cursor end) (= cursor 2)
                   (= (fn2-machine-phase a fn2-core) *fn2-commit-state-free*)
                   (= (fn2-machine-phase b fn2-core) *fn2-commit-state-free*)))

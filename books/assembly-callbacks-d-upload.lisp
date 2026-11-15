@@ -126,6 +126,7 @@
                            ((:set (pext e) (pepoch ep) (palloc al) (pdone 0) (sready 0) (ilen 0) (mfill 0) (munit 0)
                                   (cfree 0) (mstep 0) (mdrain 0))
                             (:next :stored-hash) (:charge :steps *fn2-work-transition* :runnable t))))
+                     ((:frozen) (:yield))
                      ((:no-space) (:set (word *fn2-upload-word-unaffordable*)) (:next :sealed)
                       (:charge :steps *fn2-work-transition* :runnable t)))))))
   ;; The same bounded span selector drives this hash, raw writes, and
@@ -202,19 +203,20 @@
                                                       row-c1-slot row-c1-gen row-hashed)
             :accept (:ok))
            (:set (mfill mf) (mstep 0)) (:charge :bytes *fn2-upload-head-bytes* :steps *fn2-work-transition* :runnable t))
-          ((and (< row-pdone total) (equal (mod blk *fn2-commit-write-resources*) 0) (equal row-cfree 0))
+          ((and (< row-pdone total) (equal (mod blk *fn2-upload-payload-units*) 0) (equal row-cfree 0))
            (:do (rcode e ep al) (fn2-upload-payload-reserve)
             :accept ()
             :case (((:ok) (:set (cext e) (cepoch ep) (calloc al) (cfree 1))
                     (:charge :steps *fn2-work-transition* :runnable t))
-                   ((:no-space) (:set (word *fn2-upload-word-unaffordable*)) (:next :sealed)
+                   ((:frozen) (:yield))
+                     ((:no-space) (:set (word *fn2-upload-word-unaffordable*)) (:next :sealed)
                     (:charge :steps *fn2-work-transition* :runnable t)))))
           ((< row-pdone total)
            (:do (gcode glen) (fn2-upload-stage row-lslot row-lgen row-ilen row-c0-slot row-c0-gen row-c1-slot row-c1-gen
                                                row-pdone row-hashed)
             :accept (:ok))
            (:issue (fn2-issue-write (+ (* *fn2-commit-extent-bytes* row-cext)
-                                       (* *fn2-commit-unit-bytes* (mod blk *fn2-commit-write-resources*)))
+                                       (* *fn2-commit-unit-bytes* (mod blk *fn2-upload-payload-units*)))
                                     row-lslot row-lgen *fn2-upload-page-stage* glen 0
                                     :principal row-principal-slot)
             :ok ((:set (sready 0)) (:next :store-wrote) (:wait :completion :bytes 4096 :steps *fn2-work-small*))))
@@ -263,8 +265,8 @@
           ((and (fn2-am-manifestp total) (< row-pdone total) (equal row-scount blen))
            (:let hrow (fn2-upload-hasher id))
            (:do (ecode mf) (fn2-upload-block-entry hrow row-lslot row-lgen blk blen
-                                                   (+ (* *fn2-commit-write-resources* row-cext)
-                                                      (mod blk *fn2-commit-write-resources*))
+                                                   (+ (* *fn2-storage-extent-units* row-cext)
+                                                      (mod blk *fn2-upload-payload-units*))
                                                    row-cepoch row-calloc row-mfill)
             :accept (:ok))
            (:set (pdone (+ row-pdone blen)) (mfill mf) (cfree 0) (sready 0) (mstep 0))
@@ -314,7 +316,8 @@
   ;; returns the store page, then releases the second chunk, then the first,
   ;; then the row.
   (:draining :on-refusal ((:stop :pool-release :steps *fn2-work-state*))
-   (:cond ((and (equal row-lease *fn2-upload-lease-held*)
+   (:let physical-frozen (fn2-storage-frozen))
+   (:cond (physical-frozen (:yield)) ((and (equal row-lease *fn2-upload-lease-held*)
                 (< row-mdrain (fn2-upload-manifest-units (+ row-ilen row-hashed) row-mfill)))
            (:let hrow (fn2-upload-hasher id))
            (:do (pcode) (fn2-upload-settle-unit (* 128 hrow) (+ row-ilen row-hashed) row-lslot row-lgen row-mfill

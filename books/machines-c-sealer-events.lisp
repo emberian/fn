@@ -24,7 +24,7 @@
    (:do (code) (fn2-sealer-step 4096)
     :accept ()
     :case (((:more :retired :done) (:charge :bytes 4096 :steps *fn2-work-transition* :runnable t))
-           ((:idle) (:park :sealable :steps *fn2-work-transition*))
+           ((:idle :busy) (:park :sealable :steps *fn2-work-transition*))
            (:otherwise
             (:do () (fn2-sealer-refuse code))
             (:set (stopped 1)) (:next :stopped)
@@ -33,9 +33,21 @@
 
 (defmacro fn2-sealer-core-events ()
  '(progn
+   ; The actual kind directory distinguishes an absent non-image boot actor
+   ; from a present actor whose snapshot is unreadable or not yet complete.
+   (defun fn2-sealer-boot-closed-p (fn2-core)
+    (declare (xargs :stobjs fn2-core :guard (fn2-core-wfp fn2-core)))
+    (let ((boot (fn2-machine-kind-base *fn2-boot-kind* fn2-core)))
+     (or (equal boot *fn2-none*)
+         (and (eq (fn2-boot-snapshot-read-code boot fn2-core) :ok)
+              (equal (fn2-machine-phase boot fn2-core) *fn2-boot-state-ready*)
+              (equal (fn2-machine-stopped boot fn2-core) 0)))))
    (assert-event (equal *fn2-sealer-kind* *fn2-idc-owner-kind*))
    (defun fn2-sealer-step (budget fn2-core)
     (declare (xargs :stobjs fn2-core :guard (fn2-core-wfp fn2-core)))
+    (if (or (not (fn2-sealer-boot-closed-p fn2-core))
+            (equal (mv-nth 0 (fn2-csnapshot-state fn2-core)) *fn2-csnapshot-phase-held*))
+        (mv :busy fn2-core)
     (stobj-let ((fn2-seals (fn2-core-seals fn2-core)) (fn2-overlays (fn2-core-overlays fn2-core))
                 (fn2-overlay-index (fn2-core-overlay-index fn2-core)) (fn2-run-installed (fn2-core-run-installed fn2-core))
                 (fn2-run-builds (fn2-core-run-builds fn2-core)) (fn2-run-writers (fn2-core-run-writers fn2-core))
@@ -51,7 +63,7 @@
      (fn2-seal-step budget fn2-seals fn2-overlays fn2-overlay-index fn2-run-installed fn2-run-builds fn2-run-writers
                     fn2-run-restarts fn2-run-cache fn2-ribbon-builds fn2-ribbon-band fn2-fields fn2-pool
                     fn2-fc fn2-fc-context fn2-b3 fn2-digests fn2-ranges fn2-range-sources fn2-run-cursors fn2-run-paths)
-     (mv code fn2-core)))
+     (mv code fn2-core))))
    (fn2-core-preserves fn2-sealer-step (budget fn2-core) :position 1 :rows nil :hints (("Goal" :in-theory (enable fn2-core-wfp))))
    ;; Genesis: the seal row's resources, owned by the sealer's row. With no
    ;; checker row 3 + windows in the profile (C-SEAL-NO-ROW, interim until
@@ -80,7 +92,9 @@
    (defun fn2-sealer-ready (fn2-core)
     (declare (xargs :stobjs fn2-core :guard (fn2-core-wfp fn2-core)))
     (let ((id (fn2-machine-kind-base *fn2-sealer-kind* fn2-core)))
-     (and (not (equal id *fn2-none*)) (fn2-machine-idp id fn2-core)
+     (and (fn2-sealer-boot-closed-p fn2-core)
+          (not (equal (mv-nth 0 (fn2-csnapshot-state fn2-core)) *fn2-csnapshot-phase-held*))
+          (not (equal id *fn2-none*)) (fn2-machine-idp id fn2-core)
           (eq (fn2-machine-phase-read-code id fn2-core) :ok)
           (equal (fn2-machine-phase id fn2-core) *fn2-sealer-state-sealing*)
           (eq (fn2-machine-wait-reason-read-code id fn2-core) :ok)
@@ -141,15 +155,27 @@
             (mv :ok fn2-core)))
       (mv :bounds fn2-core))))
    (fn2-core-preserves fn2-sealer-start-row (ready fn2-core) :position 1 :rows nil)
+      (defun fn2-engine-sealer-genesis (profile fn2-core)
+    (declare (xargs :stobjs fn2-core :guard (fn2-core-wfp fn2-core)))
+    (mv-let (code fn2-core) (fn2-sealer-genesis profile fn2-core)
+     (if (member-eq code '(:ok :no-row)) (fn2-sealer-start-row (eq code :ok) fn2-core) (mv code fn2-core))))
+   (fn2-core-preserves fn2-engine-sealer-genesis (profile fn2-core) :position 1 :rows nil)
+   ; Image startup can initialize actors before inspecting anchors without
+   ; staging any group/principal NAME overlay or rebinding actors later.
+   (defun fn2-engine-genesis-actors (profile fn2-core)
+    (declare (xargs :stobjs fn2-core :guard (fn2-core-wfp fn2-core)))
+    (mv-let (code ids fn2-core) (fn2-principals-bind-genesis profile fn2-core)
+     (declare (ignore ids))
+     (if (eq code :ok) (fn2-engine-sealer-genesis profile fn2-core) (mv code fn2-core))))
+   (fn2-core-preserves fn2-engine-genesis-actors (profile fn2-core) :position 1 :rows nil)
    (defun fn2-engine-genesis (profile fn2-core)
     (declare (xargs :stobjs fn2-core :guard (fn2-core-wfp fn2-core)))
     (b* (((mv code fn2-core) (fn2-groups-genesis profile fn2-core))
          ((unless (eq code :ok)) (mv code fn2-core))
          ((mv code fn2-core) (fn2-principals-genesis profile fn2-core))
-         ((unless (eq code :ok)) (mv code fn2-core))
-         ((mv code fn2-core) (fn2-sealer-genesis profile fn2-core)))
-     (if (member-eq code '(:ok :no-row)) (fn2-sealer-start-row (eq code :ok) fn2-core) (mv code fn2-core))))
+         ((unless (eq code :ok)) (mv code fn2-core)))
+     (fn2-engine-sealer-genesis profile fn2-core)))
    (fn2-core-preserves fn2-engine-genesis (profile fn2-core) :position 1 :rows nil)
-   (in-theory (disable fn2-sealer-start-row fn2-engine-genesis))
+   (in-theory (disable fn2-sealer-start-row fn2-engine-sealer-genesis fn2-engine-genesis-actors fn2-engine-genesis))
    (defmachine-arms fn2-sealer)
    (defmachine-run fn2-sealer)))

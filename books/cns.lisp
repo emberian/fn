@@ -792,14 +792,14 @@
 ) ; encapsulate
 
 ;; The control connection's field stripe and hasher row (interim, 14 item
-;; 8): the C rows below the format table's top row (B's block read check,
-;; machines-b.lisp), row FC-ROWS - C - 1 + S for control slot S of C. With
-;; :format-slots at its floor that is B's fn2-b-ctl-slot (owed: B's runtime
-;; accessor for row S).
+;; 8): the C rows below the format table's final five rows (semantic/payload
+;; retention, event construction, block read and checkpoint). The actual
+;; fn2-b-ctl-runtime-row selector uses FC-ROWS - C - 5 + S; at the supported
+;; profile floor it equals fn2-b-ctl-slot.
 (defthm fn2-ctl-fc-row-at-the-floor
   (implies (and (equal fc-rows (fn2-b-format-floor profile)) (equal c (fn2-b-ctl-rows profile)))
-           (equal (+ (- fc-rows c) -1 (nfix s)) (fn2-b-ctl-slot s profile)))
-  :hints (("Goal" :in-theory (enable fn2-b-format-floor fn2-b-ctl-slot))))
+           (equal (fn2-b-ctl-runtime-row s c fc-rows) (fn2-b-ctl-slot s profile)))
+  :hints (("Goal" :in-theory (enable fn2-b-format-floor fn2-b-ctl-slot fn2-b-ctl-runtime-row))))
 
 
 ;; ---------------------------------------------------------------------------
@@ -1785,9 +1785,9 @@
                (c (stobj-let ((fn2-ctl (fn2-ctl-table fn2-core))) (n) (fn2-ctl-rows fn2-ctl) n))
                (f (stobj-let ((fn2-fc (fn2-core-fc fn2-core))) (n) (fn2-fc-rows fn2-fc) n))
                (fr (stobj-let ((fn2-fields (fn2-core-fields fn2-core))) (n) (fn2-fields-rows fn2-fields) n)))
-           (if (and (natp s) (natp c) (natp f) (< s c) (< c f)
-                    (<= (* 128 (+ (- f c) s)) (nfix fr)))
-               (mv :ok (+ (- f c) -1 s))
+           (if (and (natp s) (natp c) (natp f) (< s c) (< (+ c 2) f)
+                    (<= (* 128 (+ 1 (fn2-b-ctl-runtime-row s c f))) (nfix fr)))
+               (mv :ok (fn2-b-ctl-runtime-row s c f))
              (mv :bounds 0)))))
      (defthm fn2-ctl-fc-row-natp
        (natp (mv-nth 1 (fn2-ctl-fc-row ctl fn2-core))) :rule-classes :type-prescription)

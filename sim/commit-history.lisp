@@ -7,7 +7,9 @@
 ; which loads named context references into its local fn2-digests workspace.
 ; Recovery therefore needs no borrowed live-core digest row after a crash.
 (in-package "ACL2")
+(include-book "std/util/bstar" :dir :system)
 (include-book "../books/assembly")
+(include-book "commit-test-profile")
 (include-book "sim-state-data")
 (include-book "check-history")
 
@@ -65,7 +67,7 @@
   ; occurrence = event, lineage, domain, incarnation 1, author, payer, grant.
   (cons (list (list *record-kind-keyed-mutation* 1 key 0 key 0 0 1 0 0 0)
               (list 1 key 0 key *fn2-b-zero-digest* 0
-                    0 (* 3 (nfix extent)) epoch allocation *page-kind-manifest* 4096 hash 0))
+                    0 (* *fn2-storage-extent-units* (nfix extent)) epoch allocation *page-kind-manifest* 4096 hash 0))
         (fn2-b-expected-members (- left 1) (+ 1 (nfix key)) extent epoch allocation hash))))
 
 (defun fn2-b-manifest-images (id batch first members mode extent epoch allocation records-frame seal-frame)
@@ -134,7 +136,7 @@
 (defun fn2-b-durable-image (extent role fn2-sim)
  (declare (xargs :stobjs fn2-sim :verify-guards nil))
  (stobj-let ((fn2-sim-storage (fn2-sim-disk fn2-sim))) (code bytes)
-  (fn2-b-durable-bytes 4096 (+ (* 12288 (nfix extent)) (* 4096 (nfix role))) fn2-sim-storage)
+  (fn2-b-durable-bytes 4096 (+ (* *fn2-storage-extent-bytes* (nfix extent)) (* 4096 (nfix role))) fn2-sim-storage)
   (mv code bytes)))
 
 (defun fn2-b-context (manifest role previous)
@@ -142,7 +144,7 @@
  (let ((e (fn2-b-manifest-extent manifest)) (epoch (fn2-b-manifest-epoch manifest))
        (allocation (fn2-b-manifest-allocation manifest))
        (batch (fn2-lm-batch-number (fn2-b-manifest-batch manifest))))
-  (append (list (+ (* 3 (nfix e)) (nfix role)) allocation 1 1 epoch batch *page-kind-manifest* 4096)
+  (append (list (+ (* *fn2-storage-extent-units* (nfix e)) (nfix role)) allocation 1 1 epoch batch *page-kind-manifest* 4096)
           (fn-b3-words 8 (cdr (fn2-b-manifest-page-hash manifest)))
           (make-list 8 :initial-element 0) (list epoch (- (nfix batch) 1))
           (fn-b3-words 8 (cdr previous)) (list e))))
@@ -150,7 +152,7 @@
 (defun fn2-b-seal-refp (base seal manifest)
  (declare (xargs :verify-guards nil))
  (equal (take *fn2-format-ref-num-fields* (nthcdr base seal))
-        (list 0 (* 3 (nfix (fn2-b-manifest-extent manifest)))
+        (list 0 (* *fn2-storage-extent-units* (nfix (fn2-b-manifest-extent manifest)))
               (fn2-b-manifest-epoch manifest) (fn2-b-manifest-allocation manifest)
               *page-kind-manifest* 4096 (fn2-b-manifest-page-hash manifest))))
 
@@ -356,11 +358,12 @@
          (events (if old events
                    (cons (fn2-b-batch-event m) events)))
          (writep (= (fn2-b-descriptor-kind d) *fn2-action-write*))
-         (role (floor (mod (fn2-b-descriptor-offset d) 12288) 4096))
+         (role (floor (mod (fn2-b-descriptor-offset d) *fn2-storage-extent-bytes*) 4096))
          ((unless (or (not writep)
-                      (and (equal (fn2-b-descriptor-length d) 4096)
+                      (and (< role *fn2-commit-write-resources*)
+                           (equal (fn2-b-descriptor-length d) 4096)
                            (equal (fn2-b-descriptor-offset d)
-                                  (+ (* 12288 (fn2-b-manifest-extent m)) (* 4096 role))))))
+                                  (+ (* *fn2-storage-extent-bytes* (fn2-b-manifest-extent m)) (* 4096 role))))))
           (mv :write-geometry seen manifests events bytes))
          (identity (if (= role 0) (car (fn2-lm-batch-dependencies batch))
                      (nth (- role 1) (fn2-b-manifest-logs m))))
@@ -448,18 +451,3 @@
                        (cons (list :ack (fn2-b-visible-batch b)) events) events))
            (events (if invalid (cons (list :projection-error :notification batch) events) events)))
       (fn2-b-project-visible old (cdr new) events))))
-(defun fn2-b-four-k-classp (classes)
-  (declare (xargs :verify-guards nil))
-  (if (atom classes) nil
-    (or (equal (cdar classes) 4096) (fn2-b-four-k-classp (cdr classes)))))
-(defun fn2-b-test-profile (profile mode)
-  (declare (xargs :verify-guards nil))
-  (let* ((sectors (if (assoc-equal :sim-sectors profile)
-                      (fn2-profile-get :sim-sectors profile) 16))
-         (profile (put-assoc-equal :sim-sectors sectors profile))
-         (profile (if (assoc-equal :extent-slots profile) profile
-                    (put-assoc-equal :extent-slots (floor (nfix sectors) 3) profile))))
-    (put-assoc-equal :commit-barrier-mode mode
-      (if (fn2-b-four-k-classp (fn2-profile-pool-classes profile)) profile
-        (put-assoc-equal :pool-classes
-          (append (fn2-profile-pool-classes profile) '((8 . 4096))) profile)))))

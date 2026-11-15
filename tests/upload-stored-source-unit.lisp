@@ -1,6 +1,7 @@
 ; Actual upload B3 operations over the shared storage span selector.
 ; Source-only authored fixture; run in the composed certified world.
 (in-package "ACL2")
+(include-book "std/util/bstar" :dir :system)
 (include-book "../books/owed-txn")
 
 (defun fn2-uss-write (bytes slot gen off fn2-core)

@@ -1,0 +1,295 @@
+# Persistent reclamation frontier
+
+The current fn2 served machine does not implement persistent extent recycling.
+`FN2-PERSISTENT-RECLAMATION-LIFETIME` in `books/owed-reclamation.lisp` records
+that missing guarantee in the existing square registry. It deliberately has
+no statement, proof or checker result. The product completion scope must
+require this row with served subject `FN2-TURN`; an allocator-local theorem
+does not establish that subject's lifetime guarantee.
+
+## Existing mechanisms and their limits
+
+`books/alloc.lisp` provides reserve, edge add/drop, retire, checkpoint advance,
+release and relocate. Its release predicate checks retirement, checkpoint cut
+and protection. `tests/alloc-unit.lisp` manually drives those operations and
+feeds `sim/check-reclaim.lisp`, an independent event interpreter. Those are
+useful allocator tests, not a served reclamation trace. The generic
+`sim/check.lisp` dispatcher still answers `:not-yet` for reclamation.
+
+The source recovery replay now calls `fn2-retirement-install`, which applies
+`fn2-alloc-retire` only for the containing batch and matching allocation.
+The live writer has no lifecycle producer yet. Persistent release, checkpoint
+advance and relocation remain unconnected to served reclamation.
+`books/commit.lisp` does reserve extents and
+maintain installed-root, prepared-successor and outstanding-I/O edges.
+Cancelling an uncommitted reservation is distinct from retiring live data.
+`fn2-rd-release` in `books/machines-c-read.lisp` releases query/range/read
+rows; it does not release persistent allocations. Scheduler machine reclaim
+and pool release likewise do not establish persistent extent recycling.
+
+`docs/b-durability.md` identifies B6 checkpoint/cleaner machines as owed;
+`books/checkpoint.lisp` and `books/cleaner.lisp` are absent. The legacy native
+expiry/reclaim tests name absent `books/store-reclaim-pack.lisp`,
+`books/owner-reclaim.lisp` and `host/native/checkpoint.lisp`. Their existence
+is not evidence about the current fn2 served path.
+
+This absence is not a demonstrated premature-reuse bug. Never reclaiming
+committed extents can avoid reuse while still failing the product's capacity
+and progress requirements.
+
+## Integration contract
+
+The next implementation must connect a bounded, resumable coordinator to the
+served machine, rather than enabling release calls in isolation:
+
+1. A read/borrow transition acquires its concrete extent and generation's
+   protection before exposing bytes. Protection lasts through the promised
+   read and every outstanding operation; completion and cancellation release
+   precisely the holder's edge. Query-row release alone is insufficient.
+2. Installed roots, every selectable checkpoint, recovery bases and candidates,
+   prepared successors and custody obligations preserve their own protection
+   through root replacement and recovery. These are distinct from read pins.
+3. Retirement and checkpoint selection make release eligible, but eligibility
+   does not make an extent reusable. The composed machine persists the release
+   before FREE, models each death cut, and excludes stale-generation references
+   after restart and reuse. Ambiguous persistence results require recovery.
+4. Once the last actual protector disappears and the installed cut permits
+   release, bounded steps eventually reclaim under stated scheduling and I/O
+   assumptions. This progress obligation is separate from lifetime safety;
+   no whole-store validation or arbitrary stored-data ceiling substitutes for it.
+
+The first connected witness should hold a served read across retirement,
+checkpoint installation and attempted release, assert the entire antecedent,
+then finish the read and observe persisted release and generation-safe reuse.
+Its removal control omits that live read's protection and reaches a stale read
+or premature reuse in the same composed trace. Crash controls straddle release
+persistence and reuse; a separate progress control detects permanent retention.
+
+`tests/owed-reclamation-unit.lisp` exercises only the registry boundary: the
+unbound requirement is valid, while fabricated proof and allocator-only check
+attachments are refused. It is not a storage safety witness. The completion
+gate owns the product scope and served-subject check; this lane adds no rival
+completion inventory. Until the coordinator and witnesses exist, this row
+must remain unbound and product completion must fail closed.
+
+## Concrete integration seams
+
+`fn2-alloc-release-code` now owns the actual release decision used by
+`fn2-alloc-release`. It is read-only preflight, not a durability token.
+`fn2-alloc-reclaim-candidate` visits one retired FIFO row and returns its next
+row, writer epoch, allocation counter and retirement commit. A protected head
+does not prevent the coordinator from inspecting its successor on the next
+turn. Both functions use existing concrete allocator metadata; neither is a
+second reference implementation or an enabled reclamation machine.
+
+The proposed served B coordinator enters through `fn2-turn` dispatch and keeps
+one candidate handle, next FIFO row, installed checkpoint identity/cut, and the
+pending journal operation identity across turns. A completed candidate scan
+does not certify that the store is reclaimable. A later pass revisits blocked
+rows. Candidate selection, record construction, persistence, and final release
+are separate states, with the release decision rechecked after persistence.
+
+The physical read pin belongs at `fn2-block-read-children` in
+`books/machines-b.lisp`: it currently validates the physical unit's extent,
+epoch and allocation, then issues asynchronous storage I/O. The logical
+read-row release is not that boundary. Cursor and CNS callers copy physical
+data into their owned pool lease; source-extent protection must last through
+physical read completion/backend exclusion, independently of subsequent pool
+borrow lifetime. The operation slot and generation are the proposed pin
+owner. Outbox acknowledgement cannot release this pin. Pin attachment must
+complete before the issued descriptor becomes visible to the adapter, and
+failure must not leave a descriptor without protection.
+
+Two dependencies prevent enabling final FREE now. First, the source physical
+pin integration needs admission and executable qualification. Second, although
+`fn2-format-retirement` and `fn2-format-release-allocation` already encode the
+lifecycle records (including checkpoint and physical release evidence), the
+internal retirement producer now joins the existing batch planner and writer,
+but has not been admitted or executed. General transaction admission remains
+closed to lifecycle input. Ordered recovery has a source retirement branch,
+but no release branch.
+The release coordinator must join the actual journal persistence and
+recovery path, including checkpoint-root protection, before any call to FREE.
+
+The persistence interval also needs an admission rule: a successful preflight
+must not let a new durable root or custody obligation publish against an
+extent whose release record is becoming durable. A late ephemeral read pin
+can make the final runtime recheck retain the extent, but this alone does not
+justify replaying release in the presence of a newly durable protector.
+Retirement/publication serialization must prohibit that durable reference
+race; recovery must establish backend exclusion for pre-crash physical I/O.
+
+The physical pin seam now has a source implementation awaiting admission:
+`fn2-block-read-children` acquires the next operation identity's dedicated edge
+before issuing, rolls it back on ordinary refusal, and retains it when issuance
+stops uncertainly. The profile reserves one edge per operation after the six
+commit-I/O edges and the two-per-extent root edges. `defcorechild :harvest`
+generates completion extensions; `fn2-harvest-one` calls them after validated
+harvest and pool settlement, before operation finish/recycle. B's callback
+releases only the matching read-result generation. Generated extension bindings
+exclude operation, pool and control children, with an unconditional operation
+table frame theorem for the lifecycle proof consumer.
+
+`tests/read-pins-unit.lisp` drives the actual block-read and harvest entries,
+interleaving retirement/checkpoint, ACK, stale completion and real physical
+completion; its removal control drops the acquired pin while that same read
+is outstanding. These fixtures do not implement checkpoint publication or
+journal replay, and source presence is not certification. No served FREE path
+is enabled by this change.
+
+The explicit `release-pending` allocator marker now closes durable edge
+admission after successful `fn2-alloc-release-prepare`. Ordinary retirement
+still accepts protections. Transient pins remain possible and continue to
+block release; no generic abort clears ambiguous intent. The marker itself
+is not durability evidence. Source fixtures inspect it directly, including
+reset on reuse; the allocator's display view does not carry it.
+
+`books/retirement.lisp` shares the existing member framing/body codec and one
+exact-batch install operation. Recovery passes its verified containing commit
+to `fn2-recovery-replay-record`, flushes any pending C workspace, and applies
+retirement after adoption. Wrong-batch, stale and conflicting records fail.
+Codec/truncation and actual replay-entry fixtures are in the unit catalog;
+admission and execution remain pending. `fn2-retirement-submit` now selects
+the actual collector, derives its batch, encodes one member, and joins it in
+one operation. A singleton retains the workspace through uncertain outcomes.
+The publish phase visits one member/frame per step after log/fence durability
+and root installation; retirement must match that singleton's physical handle,
+workspace, owner and containing batch before the shared installer runs.
+`fn2-retirement-poll` consumes only its exact batch/event settlement, preserving
+other outcomes from the same owner. `tests/retirement-live-unit.lisp` drives
+these entries through `fn2-turn` and the simulated adapter, with early-install
+refusal and ambiguous-write controls. These source fixtures remain unexecuted.
+
+Before reuse, recovery's historical-location adoption must become checkpoint
+aware: old and reused identities cannot be adopted as simultaneously live.
+Checkpoint publication/root selection and a journaled writer-epoch transition
+remain prerequisites. A release record decoder alone cannot close these gaps.
+
+The first narrow allocator admission passed on the record toolchain at source
+`a237c839d62e9b6b98558dfa28680acb63d11906`: all 84 forms of `books/alloc`,
+including the new column guards and release-intent operations, loaded from
+source in 7.78 seconds (885,173 prover steps). All five dependencies came from
+the exact compatible cache; no core world was loaded. The allocator closure
+key was `406d09970bb5cfbe71fa442f7814aa75b2af038fdb3642981ece0ab9da986634`.
+This is source admission, not a certificate or an executed integration fixture.
+Checkpoint selection/restoration, lifecycle replay through reuse, and physical
+completion composition remain prerequisites for enabling FREE.
+
+The first checkpoint also requires a durable C metadata snapshot that the
+current sealer does not produce. `fn2-successor-publish` advances a logical
+published frontier; data may remain in frozen overlays. `fn2-seal-step` builds
+resident run pages, and `fn2-seal-page` gives their cache identity to the page
+builder. The sealer has no B allocation/write/fence children. `fn2-run-installed`
+and `fn2-run-version` therefore do not identify a retained durable directory
+snapshot; compaction may replace their rows across a traversal yield.
+
+The production builder must bind an exact cut to both overlays and installed
+runs, incrementally materialize pages with real B allocation identities,
+persist their contents and manifest, and return a retained manifest reference.
+Recovery must restore that semantic root before suffix replay. A coordinated
+publication/materialization freeze is a possible first implementation, but it
+must permit B/C progress needed to persist the frozen snapshot. Merely observing
+an idle sealer or an event number cannot authorize checkpoint installation.
+Direct protection of the descriptor and five root pages is insufficient for
+reclaiming any reachable descendant; the retained closure must be established.
+
+Even a correctly restored checkpoint map does not justify preclaiming every
+article location in the suffix before replay: release followed by reuse may
+name two generations of one location. Allocation/lifecycle reconstruction must
+follow journal order before payload adoption. A numerical `commit <= cut`
+classification is usable only under authenticated selected-base restoration,
+never as an independent license to ignore a physical identity conflict.
+
+The allocator controls also executed at source
+`0bb1f61be5d739b3a69f4260cbb5dfe752e50310`: `tests/alloc-unit` loaded
+65 forms after source-loading `books/alloc`, in 8.12 seconds and 885,276
+steps. The actual release-intent/protector interleavings passed. The root
+closure was `82ec9fac376d3814242d7b78195fbc71f89b2cb15f4d7334f6a7931a3f86a8da`;
+six unchanged dependencies were exact cached artifacts. This is executed
+allocator control evidence, not certification or composed storage execution.
+Both narrow Forge sessions were stopped and their 2 GiB reservations released.
+
+The source integration now separates physical allocation geometry (64 KiB,
+16 physical units) from journal resources (three writes). This gives an existing
+64 KiB C page one allocation identity, without changing schema limits or
+silently spilling a page into another allocation. Upload payload packing still
+uses three units per allocation; the resulting space overhead is explicit.
+`fn2-block-write` pins the reserved identity before issuing a 4 KiB window from
+an owned workspace, including a source BOFF. Only validated physical completion
+releases that pin; ACK and stale completion do not. `storage-geometry-unit`
+exercises extent 1, unit 31, source BOFF 61440, and independent read/write pins.
+These composed controls are source fixtures, not yet executed. The shared
+`fn2-storage-reserve` now supplies the same allocator operation used by upload
+before checkpoint bytes bind their physical identity; it does not publish them.
+
+A held C snapshot alone does not identify durable allocator rows: an accepted
+article's payload can remain RESERVED until its transaction consumes the
+published settlement and calls `fn2-upload-extents-of`. Filtering all RESERVED
+rows would omit durable data. The builder must account for these exact published
+owners or reconstruct their identities from the retained semantic roots before
+persisting an allocation map. Unrelated in-progress uploads must not become
+checkpoint-durable merely because their reservations exist at the same time.
+
+The actual C cut now waits for PUBLISHED successor owners as well as STAGED and
+BOUND rows. Transaction settlement materializes accepted payload allocations
+before releasing its C successor; the snapshot refuses acquisition on a stopped
+core. `c-snapshot-materialization-unit` retains a real accepted writer outcome,
+checks that the cut stays pending, then follows materialization/release and
+checks the exact held cut. This composed source fixture remains unexecuted.
+
+Descriptor construction now obtains its own B reservation, binds the real held
+C token/cut and owned workspace, uses the existing header/descriptor codecs and
+sealing/checking path, and issues pinned physical writes under descriptor budget.
+Only its exact physical completion marks construction ready. External descriptor
+capture clears construction provenance even for identical bytes. Construction
+ready is not durable installation. Production remains `:roots-pending` until
+actual same-cut root constructors complete: the current served tree has no
+allocation-map/recovery-arena writer or event-proof-directory/frontier producer.
+Standalone Merkle machinery and synthetic root metadata cannot supply them.
+
+At source `76be97bd488cad4327944c5e8bb1244b4ce71093`, after merging the authentic
+`4400cb995db8709967f543340d71f62df4fee028` column proof bridge, the isolated
+`books/format-base` source admission passed: 19 forms in 1.60 seconds and 258,194
+prover steps. Seven byte-identical foundation dependencies were cached and
+compatible under toolchain `8aeb1bea18968c6cd33ac633a80ebf67e4924504db112fd27eb11f16a27b2a8c`.
+The root closure was `1ac328a0bef3b08fb6cb691d7371e4f33c1acecb2a77eb5e6fe69cfec3e8481c`.
+This checks the shared 16-unit geometry and unchanged Ref layout assertion,
+not runtime storage composition or certification. The session was stopped and
+its 2 GiB compute reservation released.
+
+Physical map construction now has a passive allocator gate in source: it retains
+an exact owner/token, refuses lifecycle mutations, and permits transient physical
+pins/completions. Upload reservation and cleanup yield while held. Seven literal
+mutation-frame statements are named `-by-definition`; their admission and the
+new primitive controls remain pending. The served path does not activate this
+gate until actual construction closure and journal ticket planning are connected.
+
+The existing B commit start/install path now has a reserved-ticket branch. It
+scans one construction-ledger row per attempt, consumes planned role-6 tickets
+in ordinal order, and binds their exact epoch/allocation to the ordinary three
+journal I/O roles. Installation accepts only the ticket's claimed batch/identity
+and restores the retained gate atomically. The ticket branch is currently
+`unreachable-in-composition` until the construction coordinator authorizes frozen
+installation. It does not establish that a checkpoint is durable. Ticket packing
+capacity derives from the actual commit count/byte budgets; a journal ticket's
+own allocation is installed by its commit rather than requiring a recursive
+allocation member for itself.
+
+C metadata construction is rebuilding overlay and resident-run entries through
+the existing run codecs with real B reservations; copying old cache-addressed
+index pages would be incorrect. A shared bounded rehome operation separately
+checks source and destination owners before replacing a decoded octet reference.
+The event producer groups all canonical records of one actual member/event into
+one leaf and composes the existing Merkle primitive. Its lossless directory
+retains original journal identity/seal tuples under actual installed-root edges;
+it must transfer those dependencies before any future installed-chain edge drop.
+The dependency-page frontier shortcut was rejected because an existing semantic
+record references that page's hash, which would create a hash cycle.
+
+Shared page construction now seals/checks existing codecs, retains verified
+identities, and uses pinned sector writes. Review corrected its pre-finish
+harvest ABI: unrelated notifications and consumed I/O failure return `:ok` to
+the hook chain, while failures retain the job's uncertain state. An `:unrelated`
+return would have stopped the actual core harvest dispatcher. None of these
+composed paths has been admitted or executed; root completion, lifecycle record
+installation and selected-base ordered recovery remain integration work.

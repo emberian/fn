@@ -1,0 +1,83 @@
+; UNEXECUTED typed-state controls for geometry rebinding and attempt reset.
+; These synthetic candidates/harvest notifications are NOT actual installed
+; production, issued-operation, C-cut, covering-fence or recovery witnesses.
+(in-package "ACL2")
+(include-book "../books/checkpoint-boot")
+
+(defun fn2-checkpoint-publication-repeat-body (fn2-boot-config fn2-checkpoint-publication fn2-checkpoints fn2-checkpoint-bytes fn2-digests)
+ (declare (xargs :stobjs (fn2-boot-config fn2-checkpoint-publication fn2-checkpoints fn2-checkpoint-bytes fn2-digests) :verify-guards nil))
+ (b* ((fn2-boot-config (fn2-boot-config-empty 0 fn2-boot-config))
+      (fn2-boot-config (update-fn2-boot-config-checkpoint-layout-ready 1 fn2-boot-config))
+      (fn2-boot-config (update-fn2-boot-config-image-size 102400 fn2-boot-config))
+      (fn2-boot-config (update-fn2-boot-config-extents 1 fn2-boot-config))
+      (fn2-boot-config (update-fn2-boot-config-count 1 fn2-boot-config))
+      (fn2-checkpoint-publication (fn2-checkpoint-publication-init 1 fn2-checkpoint-publication))
+      (fn2-checkpoint-publication (fn2-checkpoint-publication-put 0 (has-base 1) (active-bank 1) (base-checkpoint 2) (base-history 1) (base-incarnation 1)))
+      ((mv bound fn2-checkpoint-publication) (fn2-checkpoint-publication-bind-boot fn2-boot-config fn2-checkpoint-publication))
+      (retained (and (eq bound :ok) (equal (fn2-checkpoint-publication-has-base 0 fn2-checkpoint-publication) 1)
+                     (equal (fn2-checkpoint-publication-active-bank 0 fn2-checkpoint-publication) 1)))
+      (fn2-checkpoints (fn2-checkpoints-init 1 fn2-checkpoints))
+      (fn2-checkpoints (fn2-checkpoints-put 0 (state *fn2-checkpoint-state-installed*)
+       (checkpoint 3) (history 1) (incarnation 1) (installation-commit 5)))
+      (fn2-checkpoint-bytes (fn2-checkpoint-bytes-init 288 fn2-checkpoint-bytes))
+      (fn2-digests (fn2-digests-init 3 fn2-digests))
+      ; Distinct expected-hash words detect accidental batch/anchor/zero copies.
+      (fn2-checkpoint-bytes (fn2-checkpoint-bytes-set-value 0 17 fn2-checkpoint-bytes))
+      (fn2-checkpoint-bytes (fn2-checkpoint-bytes-set-value 4 18 fn2-checkpoint-bytes))
+      (fn2-checkpoint-bytes (fn2-checkpoint-bytes-set-value 8 19 fn2-checkpoint-bytes))
+      (fn2-checkpoint-bytes (fn2-checkpoint-bytes-set-value 12 20 fn2-checkpoint-bytes))
+      (fn2-checkpoint-bytes (fn2-checkpoint-bytes-set-value 16 21 fn2-checkpoint-bytes))
+      (fn2-checkpoint-bytes (fn2-checkpoint-bytes-set-value 20 22 fn2-checkpoint-bytes))
+      (fn2-checkpoint-bytes (fn2-checkpoint-bytes-set-value 24 23 fn2-checkpoint-bytes))
+      (fn2-checkpoint-bytes (fn2-checkpoint-bytes-set-value 28 24 fn2-checkpoint-bytes))
+
+      (fn2-checkpoint-publication (fn2-checkpoint-publication-put 0
+       (packet-mask 3) (stage0 5) (stage1 5) (len0 128) (len1 128) (op-slot 31) (op-gen 11) (bundle-released 1)))
+      ((mv begun fn2-checkpoint-publication fn2-checkpoint-bytes)
+       (fn2-checkpoint-publication-begin 0 102400 1 1 9 17 2 0 3 1 3 0 1 2
+        fn2-checkpoints fn2-checkpoint-publication fn2-checkpoint-bytes fn2-digests))
+      (reset (and (eq begun :ok) (equal (fn2-checkpoint-publication-bank 0 fn2-checkpoint-publication) 0)
+                  (equal (fn2-checkpoint-publication-active-bank 0 fn2-checkpoint-publication) 1)
+                  (equal (fn2-checkpoint-publication-stage0 0 fn2-checkpoint-publication) 0)
+                  (equal (fn2-checkpoint-publication-stage1 0 fn2-checkpoint-publication) 0)
+                  (equal (fn2-checkpoint-publication-packet-mask 0 fn2-checkpoint-publication) 0)
+                  (equal (fn2-checkpoint-publication-op-slot 0 fn2-checkpoint-publication) 0)
+                  (equal (fn2-checkpoint-publication-bundle-released 0 fn2-checkpoint-publication) 0)))
+      (fn2-checkpoint-publication (fn2-checkpoint-publication-put 0
+       (phase *fn2-checkpoint-publication-phase-wait-fence*) (op-slot 5) (op-gen 7)))
+      ((mv stale fn2-checkpoint-publication)
+       (fn2-checkpoint-publication-harvest 5 6 0 *fn2-event-fence-result* *fn2-outcome-done* 0 0 0 0 fn2-checkpoint-publication))
+      (stale-kept (and (eq stale :ok) (equal (fn2-checkpoint-publication-active-bank 0 fn2-checkpoint-publication) 1)))
+      ((mv done fn2-checkpoint-publication)
+       (fn2-checkpoint-publication-harvest 5 7 0 *fn2-event-fence-result* *fn2-outcome-done* 0 0 0 0 fn2-checkpoint-publication))
+      (published (and (eq done :ok)
+                      (equal (fn2-checkpoint-publication-base-checkpoint 0 fn2-checkpoint-publication) 3)
+                      (equal (fn2-checkpoint-publication-base-hash-0 0 fn2-checkpoint-publication) 17)
+                      (equal (fn2-checkpoint-publication-base-hash-7 0 fn2-checkpoint-publication) 24)))
+      (fn2-digests (fn2-checkpoint-publication-previous-load 0 1 fn2-checkpoint-publication fn2-digests))
+      (predecessor (and (equal (fn2-digest-word 1 0 fn2-digests) 17) (equal (fn2-digest-word 1 7 fn2-digests) 24)
+                       (fn2-checkpoint-publication-previous-matchesp 0 1 fn2-checkpoint-publication fn2-digests))))
+  (mv (and retained reset stale-kept published predecessor (eq done :ok)
+           (equal (fn2-checkpoint-publication-phase 0 fn2-checkpoint-publication) *fn2-checkpoint-publication-phase-complete*)
+           (equal (fn2-checkpoint-publication-active-bank 0 fn2-checkpoint-publication) 0)
+           (equal (fn2-checkpoint-publication-bundle-released 0 fn2-checkpoint-publication) 0))
+      fn2-boot-config fn2-checkpoint-publication fn2-checkpoints fn2-checkpoint-bytes fn2-digests)))
+
+(defun fn2-checkpoint-publication-repeat-control ()
+ (declare (xargs :verify-guards nil))
+ (with-local-stobj fn2-boot-config
+ (mv-let (ok fn2-boot-config)
+ (with-local-stobj fn2-checkpoint-publication
+ (mv-let (ok fn2-boot-config fn2-checkpoint-publication)
+ (with-local-stobj fn2-checkpoints
+ (mv-let (ok fn2-boot-config fn2-checkpoint-publication fn2-checkpoints)
+ (with-local-stobj fn2-checkpoint-bytes
+ (mv-let (ok fn2-boot-config fn2-checkpoint-publication fn2-checkpoints fn2-checkpoint-bytes)
+ (with-local-stobj fn2-digests
+ (mv-let (ok fn2-boot-config fn2-checkpoint-publication fn2-checkpoints fn2-checkpoint-bytes fn2-digests)
+  (fn2-checkpoint-publication-repeat-body fn2-boot-config fn2-checkpoint-publication fn2-checkpoints fn2-checkpoint-bytes fn2-digests)
+  (mv ok fn2-boot-config fn2-checkpoint-publication fn2-checkpoints fn2-checkpoint-bytes)))
+  (mv ok fn2-boot-config fn2-checkpoint-publication fn2-checkpoints)))
+  (mv ok fn2-boot-config fn2-checkpoint-publication)))
+  (mv ok fn2-boot-config))) ok)))
+(assert-event (fn2-checkpoint-publication-repeat-control))

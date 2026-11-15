@@ -7,6 +7,9 @@
 (in-package "ACL2")
 (include-book "range-served")
 (include-book "machines-b")
+(include-book "c-snapshot")
+(include-book "checkpoint-summary-state")
+(include-book "startup-genesis-state")
 (fn2-book-layer :c)
 
 ; ---------------------------------------------------------------------------
@@ -29,7 +32,7 @@
 (assert-event (and (<= (+ *fn2-idc-rb* *fn2-run-reader-fields*) *fn2-idc-stride*)
                    (<= (+ *fn2-idc-rb* *fn2-run-entry-rows*) *fn2-idc-stride*)
                    (<= (+ (* (- *fn2-succ-slots* 1) *fn2-succ-block*) *fn2-run-entry-rows*) *fn2-idc-stride*)
-                   (equal (fn2-b-field-rows '((:t . 3) (:format-slots . 2))) (+ (* 2 *fn2-idc-b-stripe*) (* 3 *fn2-idc-stride*) *fn2-b-seal-field-rows*))))
+                   (equal (fn2-b-field-rows '((:t . 3) (:format-slots . 2))) (+ (* 2 *fn2-idc-b-stripe*) (* 3 *fn2-idc-stride*) *fn2-b-seal-field-rows* *fn2-b-checkpoint-field-rows*))))
 
 ;; The overlay rows a profile gets when it names none (:identity-overlays):
 ;; a batch takes one private overlay per schema it writes, and a POST
@@ -65,10 +68,10 @@
       ;; Layer D's read rows (C-S4, machines-c-read.lisp): R of them, each
       ;; with 8 range sources, a lookup row and cursor after the
       ;; transactions' (t + R) and 8 source cursors after those (t + 9R).
-      (unsigned-byte-p 32 (+ (nfix (fn2-profile-t profile)) (* 9 (fn2-b-read-rows profile)) *fn2-idc-seal-cursors*))
-      (unsigned-byte-p 32 (* *fn2-run-max-levels* (+ (nfix (fn2-profile-t profile)) (* 9 (fn2-b-read-rows profile)) *fn2-idc-seal-cursors*)))
+      (unsigned-byte-p 32 (+ (nfix (fn2-profile-t profile)) (* 9 (fn2-b-read-rows profile)) *fn2-idc-seal-cursors* 1))
+      (unsigned-byte-p 32 (* *fn2-run-max-levels* (+ (nfix (fn2-profile-t profile)) (* 9 (fn2-b-read-rows profile)) *fn2-idc-seal-cursors* 1)))
       (<= (+ (* *fn2-idc-b-stripe* (nfix (fn2-b-format-slots profile)))
-             (* *fn2-idc-stride* (nfix (fn2-profile-t profile))) *fn2-b-seal-field-rows*
+             (* *fn2-idc-stride* (nfix (fn2-profile-t profile))) *fn2-b-seal-field-rows* *fn2-b-checkpoint-field-rows*
              (* *fn2-b-read-stride* (fn2-b-read-rows profile)))
           (nfix (fn2-b-capacity :format-field-slots (fn2-b-field-rows profile) profile)))))
 
@@ -91,6 +94,8 @@
     (in-theory (disable ,fn))
     (defcorechild ,field ,stobj :init (,fn profile ,stobj) :profilep (fn2-idc-profilep profile) :why ,why))))
 (in-theory (disable fn2-idc-profilep))
+(fn2-idc-child fn2-core-csnapshot fn2-csnapshot (fn2-csnapshot-init 1 fn2-csnapshot)
+ "One exact-owner resident metadata cut excludes staging and materialization until released.")
 (fn2-idc-child fn2-core-id-decides fn2-id-decides (fn2-id-decides-init (fn2-profile-t profile) fn2-id-decides)
  "One identity decision per transaction survives the transaction's yields (C-S1).")
 (fn2-idc-child fn2-core-overlays fn2-overlays (fn2-overlays-init (fn2-b-capacity :identity-overlays *fn2-idc-overlays-default* profile) fn2-overlays)
@@ -99,13 +104,16 @@
  (fn2-overlay-index-init (* (nfix (fn2-b-capacity :identity-overlays *fn2-idc-overlays-default* profile))
                             (nfix (fn2-b-capacity :identity-overlay-entries 256 profile))) fn2-overlay-index)
  "Each overlay's key-ordered index of its arena's entries.")
-(fn2-idc-child fn2-core-run-installed fn2-run-installed (fn2-run-installed-init (fn2-b-capacity :identity-runs 64 profile) fn2-run-installed)
+(fn2-idc-child fn2-core-run-installed fn2-run-installed (fn2-run-installed-init (+ (fn2-b-capacity :identity-runs 64 profile) (fn2-b-capacity :extent-slots 16 profile)) fn2-run-installed)
  "The resident view of each schema's sealed runs.")
 (fn2-idc-child fn2-core-run-cursors fn2-run-cursors
- (fn2-run-cursors-init (+ (nfix (fn2-profile-t profile)) (* 9 (fn2-b-read-rows profile)) *fn2-idc-seal-cursors*) fn2-run-cursors)
+ (fn2-run-cursors-init (+ (nfix (fn2-profile-t profile)) (* 9 (fn2-b-read-rows profile)) *fn2-idc-seal-cursors* 1) fn2-run-cursors)
  "A decision's resumable run cursor (cursor row = decision row), then each read row's lookup cursor and its range sources' (C-S4).")
+(fn2-idc-child fn2-core-checkpoint-summary-leases fn2-checkpoint-summary-leases
+ (fn2-checkpoint-summary-leases-init (+ (nfix (fn2-profile-t profile)) (* 9 (fn2-b-read-rows profile)) *fn2-idc-seal-cursors* 1) fn2-checkpoint-summary-leases)
+ "Every actual C cursor can retain one exact selected physical source across yields.")
 (fn2-idc-child fn2-core-run-paths fn2-run-paths
- (fn2-run-paths-init (* *fn2-run-max-levels* (+ (nfix (fn2-profile-t profile)) (* 9 (fn2-b-read-rows profile)) *fn2-idc-seal-cursors*)) fn2-run-paths)
+ (fn2-run-paths-init (* *fn2-run-max-levels* (+ (nfix (fn2-profile-t profile)) (* 9 (fn2-b-read-rows profile)) *fn2-idc-seal-cursors* 1)) fn2-run-paths)
  "Each cursor's descent, one row per level.")
 (fn2-idc-child fn2-core-run-cache fn2-run-cache (fn2-run-cache-init (fn2-b-capacity :run-cache 1024 profile) fn2-run-cache)
  "Verified run pages, keyed by exact (unit, allocation counter).")

@@ -68,7 +68,10 @@
 ;; anything runs.
 (defun fn2-init-engine (profile fn2-core)
   (declare (xargs :stobjs fn2-core :guard (fn2-core-wfp fn2-core)))
-  (mv-let (genesis fn2-core) (fn2-engine-genesis profile fn2-core)
+  (mv-let (genesis fn2-core)
+    (if (fn2-profile-get :image-boot profile)
+        (fn2-engine-genesis-actors profile fn2-core)
+      (fn2-engine-genesis profile fn2-core))
     (if (eq genesis :ok) fn2-core (fn2-core-stop *fn2-stop-reason-engine-genesis* fn2-core))))
 (defthm fn2-init-engine-type
   (implies (and (fn2-corep fn2-core) (fn2-core-wfp fn2-core)) (fn2-corep (fn2-init-engine profile fn2-core))))
@@ -112,9 +115,7 @@
 
 (defun fn2-image-sizep (size extents groups)
  (declare (xargs :guard t))
- (and (unsigned-byte-p 60 size) (equal (mod size 4096) 0)
-      (unsigned-byte-p 32 extents) (posp extents) (unsigned-byte-p 32 groups)
-      (<= (+ (* 12288 extents) (* 4096 (+ groups 3))) size)))
+ (fn2-checkpoint-image-sizep size extents groups))
 
 (defun fn2-image-create-request (size profile)
  (declare (xargs :guard t))
@@ -128,10 +129,15 @@
                     (equal (fn2-machine-phase id fn2-core) *fn2-boot-state-free*)
                     (unsigned-byte-p 60 size) (equal (mod size 4096) 0)))
        (mv :geometry fn2-core))
+      ; Four physical anchors are a format fact, not a tunable candidate
+      ; truncation. Reject an undersized boot profile before taking windows.
+      ((unless (stobj-let ((fn2-checkpoints (fn2-core-checkpoints fn2-core))) (ok)
+                  (<= 4 (fn2-checkpoints-rows fn2-checkpoints)) ok))
+       (mv :geometry fn2-core))
       ((mv base total) (stobj-let ((fn2-boot-config (fn2-core-boot-config fn2-core))) (base total)
-                        (mv (* 12288 (nfix (fn2-boot-config-extents fn2-boot-config)))
+                        (mv (* *fn2-storage-extent-bytes* (nfix (fn2-boot-config-extents fn2-boot-config)))
                             (fn2-boot-config-count fn2-boot-config)) (mv base total)))
-      ((unless (fn2-image-sizep size (/ base 12288) total)) (mv :geometry fn2-core))
+      ((unless (fn2-image-sizep size (floor base *fn2-storage-extent-bytes*) total)) (mv :geometry fn2-core))
       (gen (fn2-machine-generation id fn2-core))
       (class (stobj-let ((fn2-pool (fn2-core-pool fn2-core))) (class) (fn2-pool-class-for 4096 fn2-pool) class))
       ((unless class) (mv :window fn2-core))

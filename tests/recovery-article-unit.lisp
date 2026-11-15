@@ -221,7 +221,7 @@
     (b* ((a (car allocs))
          ((mv code lslot lgen fn2-core) (fn2-core-reserve 1 200 0 1 fn2-core))
          ((unless (eq code :ok)) (mv nil fn2-core))
-         ((mv code & & fn2-core) (fn2-block-read (* 3 (nth 0 a)) (nth 1 a) (nth 2 a) 0 4096 lslot lgen 200 0 1 0 fn2-core))
+         ((mv code & & fn2-core) (fn2-block-read (* *fn2-storage-extent-units* (nth 0 a)) (nth 1 a) (nth 2 a) 0 4096 lslot lgen 200 0 1 0 fn2-core))
          ((unless (eq code :ok)) (mv nil fn2-core))
          ((mv & & & & fn2-core) (fn2-cw-adapter-one 0 nil store fn2-core))
          ((mv code lslot lgen fn2-core) (fn2-ra-stage lslot fn2-core))
@@ -238,7 +238,7 @@
        ((mv loc fn2-core)
         (if (fn2-am-manifestp total) (fn2-ra-find-manifest mine total store fn2-core) (mv (car mine) fn2-core)))
        ((unless loc) (mv (list :no-location owner) nil fn2-core)))
-    (fn2-ra-read-stored (* 3 (nth 0 loc)) (nth 1 loc) (nth 2 loc) total store fn2-core)))
+    (fn2-ra-read-stored (* *fn2-storage-extent-units* (nth 0 loc)) (nth 1 loc) (nth 2 loc) total store fn2-core)))
 
 ; After death: a fresh core over the device STORE runs recovery (ASSUME the
 ; profile's assumption bits, no witness) through the executor and the
@@ -263,7 +263,7 @@
            (a (car (fn2-ra-owned (car owners) allocs)))
            ((mv lc lslot lgen fn2-core) (fn2-core-reserve 1 200 0 1 fn2-core))
            ((mv stale & & fn2-core)
-            (if (and a (eq lc :ok)) (fn2-block-read (* 3 (nth 0 a)) (nth 1 a) (+ 1 (nth 2 a)) 0 16 lslot lgen 200 0 1 0 fn2-core)
+            (if (and a (eq lc :ok)) (fn2-block-read (* *fn2-storage-extent-units* (nth 0 a)) (nth 1 a) (+ 1 (nth 2 a)) 0 16 lslot lgen 200 0 1 0 fn2-core)
               (mv :no-allocation 0 0 fn2-core))))
         (mv (list start status (fn2-core-stop-reason fn2-core)
                   (equal phase *fn2-recovery-machine-state-done*) class chain allocs
@@ -289,8 +289,8 @@
        (owners (fn2-ra-owners allocs nil))
        (post (fn2-ra-recover store assume owners)))
     (or (and (equal (nth 0 pre) :quiet) (equal (nth 1 pre) *fn2-ra-wire*) (equal (nth 4 pre) 0)
-             (< (len (fn2-ra-text *fn2-ra-small*)) *fn2-commit-extent-bytes*)
-             (< *fn2-commit-extent-bytes* (len (fn2-ra-text *fn2-ra-big*)))
+             (< (len (fn2-ra-text *fn2-ra-small*)) *fn2-upload-payload-bytes*)
+             (< *fn2-upload-payload-bytes* (len (fn2-ra-text *fn2-ra-big*)))
              (equal (len owners) 2)
              (equal (len (fn2-ra-owned (car owners) allocs)) 1)
              (equal (len (fn2-ra-owned (cadr owners) allocs)) 3)

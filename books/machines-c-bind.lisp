@@ -762,7 +762,7 @@
   :length :more :noncanonical :ok :owner :part :payload :range :refused :schema :stale :state
   :truncated :unknown-tag :wide)
  :bytes 4096
- :tables (fn2-core-succ-txns fn2-core-succ-slots fn2-core-id-engine fn2-core-overlays fn2-core-fields fn2-core-pool)
+ :tables (fn2-core-succ-txns fn2-core-succ-slots fn2-core-id-engine fn2-core-overlays fn2-core-fields fn2-core-pool fn2-core-csnapshot)
  :doc "Stage every write slot against the tip (one located entry per overlay of its schema), apply its fold step, and hold room (at most one arena per schema written).")
 (defcost fn2-successor-out :answers (:bounds :kind :ok :state)
  :doc "Read one field of a staged write slot's row.")
@@ -983,6 +983,7 @@
    (fn2-core-preserves ,name (,@args fn2-core) :position ,(+ 1 (len prefix)) :rows nil :hints (("Goal" :in-theory (enable fn2-core-wfp))))))
 (defmacro fn2-successor-prepare-events ()
  '(progn
+   (fn2-csnapshot-core-events)
    (fn2-succ-wrap fn2-successor-put (tx i sid kind)
     ((fn2-succ-txns (fn2-core-succ-txns fn2-core)) (fn2-succ-slots (fn2-core-succ-slots fn2-core)))
     (fn2-succ-txns fn2-succ-slots)
@@ -1077,16 +1078,23 @@
  '(progn
    (fn2-succ-wrap fn2-successor-stage (tx)
     ((fn2-succ-txns (fn2-core-succ-txns fn2-core)) (fn2-succ-slots (fn2-core-succ-slots fn2-core))
+     (fn2-csnapshot (fn2-core-csnapshot fn2-core))
      (fn2-id-decides (fn2-core-id-decides fn2-core))
      (fn2-run-installed (fn2-core-run-installed fn2-core)) (fn2-id-engine (fn2-core-id-engine fn2-core))
      (fn2-overlays (fn2-core-overlays fn2-core)) (fn2-overlay-index (fn2-core-overlay-index fn2-core))
      (fn2-fields (fn2-core-fields fn2-core)) (fn2-pool (fn2-core-pool fn2-core)) (fn2-fc (fn2-core-fc fn2-core)))
     (fn2-succ-txns fn2-succ-slots fn2-id-engine fn2-overlays fn2-fields fn2-pool)
-    (mv-let (c b0) (fn2-idc-stripe tx (fn2-fc-rows fn2-fc) fn2-id-decides fn2-fields)
+    (if (and (< 0 (fn2-csnapshot-rows fn2-csnapshot))
+             (not (= (fn2-csnapshot-phase 0 fn2-csnapshot) *fn2-csnapshot-phase-idle*))
+             (or (= (fn2-csnapshot-phase 0 fn2-csnapshot) *fn2-csnapshot-phase-held*)
+                 (not (and (natp tx) (< tx (fn2-succ-txns-rows fn2-succ-txns))
+                           (= (fn2-succ-txns-phase tx fn2-succ-txns) *fn2-succ-phase-staged*)))))
+        (mv :full 0 fn2-succ-txns fn2-succ-slots fn2-id-engine fn2-overlays fn2-fields fn2-pool)
+     (mv-let (c b0) (fn2-idc-stripe tx (fn2-fc-rows fn2-fc) fn2-id-decides fn2-fields)
      (if (eq c :ok)
          (fn2-succ-stage tx b0 fn2-succ-txns fn2-succ-slots fn2-run-installed fn2-id-engine
                          fn2-overlays fn2-overlay-index fn2-fields fn2-pool)
-       (mv c 0 fn2-succ-txns fn2-succ-slots fn2-id-engine fn2-overlays fn2-fields fn2-pool)))
+       (mv c 0 fn2-succ-txns fn2-succ-slots fn2-id-engine fn2-overlays fn2-fields fn2-pool))))
     i (code))
    (defun fn2-successor-out (tx i f fn2-core)
     (declare (xargs :stobjs fn2-core :guard (fn2-core-wfp fn2-core)))

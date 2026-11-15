@@ -77,7 +77,7 @@
 (defcost fn2-upload-conn-live-p :doc "Whether the connection still feeds this upload.")
 (defcost fn2-upload-txn-live-p :doc "Whether the upload's transaction still names it.")
 (defcost fn2-upload-wake :tables (fn2-core-machines) :doc "Wake the upload's transaction.")
-(defcost fn2-upload-payload-reserve :answers (:ok :no-space :fault) :faults (:fault) :tables (fn2-core-extents)
+(defcost fn2-upload-payload-reserve :answers (:ok :no-space :frozen :fault) :faults (:fault) :tables (fn2-core-extents fn2-core-control)
   :doc "Reserve the extent the source is stored in (B's allocator): (mv code extent epoch counter).")
 (defcost fn2-upload-payload-settle :answers (:ok :fault) :faults (:fault) :tables (fn2-core-extents)
   :doc "At the drain: a payload extent no transaction committed has its reservation cancelled.")
@@ -108,7 +108,7 @@
 (defcost fn2-upload-page-zero-to :answers (:ok :more :fault) :faults (:fault) :bytes *fn2-commit-unit-bytes*
   :tables (fn2-core-pool)
   :doc "Zero the store page from its fill toward an offset, one unit at most (:more: not yet there).")
-(defcost fn2-upload-extents-of :answers (:ok :fault) :faults (:fault) :bytes *fn2-commit-extent-bytes*
+(defcost fn2-upload-extents-of :answers (:ok :fault) :faults (:fault) :bytes *fn2-upload-payload-bytes*
   :tables (fn2-core-extents fn2-core-pool fn2-core-fields)
   :doc "Commit (to the article) or settle every extent stored octets occupy: the manifest's and each block's.")
 (defcost fn2-upload-settle-unit :answers (:ok :fault) :faults (:fault) :bytes *fn2-commit-unit-bytes*
@@ -387,19 +387,7 @@
 ;; reservation does).
 (defun fn2-upload-payload-reserve (fn2-core)
   (declare (xargs :stobjs fn2-core :guard (fn2-core-wfp fn2-core)))
-  (b* (((mv code e epoch counter fn2-core)
-        (stobj-let ((fn2-extents (fn2-core-extents fn2-core)))
-          (code e epoch counter fn2-extents)
-          (mv-let (code pressure e epoch counter fn2-extents) (fn2-alloc-reserve fn2-extents)
-            (declare (ignore pressure))
-            (mv code e epoch counter fn2-extents))
-          (mv code e epoch counter fn2-core)))
-       (fn2-core (if (eq code :links) (fn2-core-stop *fn2-stop-reason-alloc-links* fn2-core) fn2-core)))
-    (cond ((and (eq code :ok) (unsigned-byte-p 32 e) (not (equal e *fn2-none*))
-                (unsigned-byte-p 60 epoch) (unsigned-byte-p 60 counter))
-           (mv :ok e epoch counter fn2-core))
-          ((eq code :no-space) (mv :no-space 0 0 0 fn2-core))
-          (t (mv :fault 0 0 0 fn2-core)))))
+  (fn2-storage-reserve fn2-core))
 (fn2-core-preserves fn2-upload-payload-reserve (fn2-core) :position 4 :rows nil)
 ;; At the drain: an extent still reserved under this handle (no transaction
 ;; committed it) is returned; an allocated one is the article's. No extent
@@ -633,9 +621,9 @@
                 (mv code next lo len unit epoch alloc fn2-core)))
              ((unless (and (eq code :ok) (natp next) (natp unit) (< *fn2-upload-page-manifest* next))) (mv :bounds fn2-core))
              ((mv code fn2-core)
-              (cond ((not (equal (mod unit *fn2-commit-write-resources*) 0)) (mv :ok fn2-core))
-                    (commit (fn2-upload-extent-commit (floor unit *fn2-commit-write-resources*) epoch alloc event fn2-core))
-                    (t (fn2-upload-payload-settle (floor unit *fn2-commit-write-resources*) epoch alloc fn2-core))))
+              (cond ((not (equal (mod unit *fn2-storage-extent-units*) 0)) (mv :ok fn2-core))
+                    (commit (fn2-upload-extent-commit (floor unit *fn2-storage-extent-units*) epoch alloc event fn2-core))
+                    (t (fn2-upload-payload-settle (floor unit *fn2-storage-extent-units*) epoch alloc fn2-core))))
              ((unless (eq code :ok)) (mv code fn2-core)))
           (fn2-upload-manifest-extents (- fuel 1) commit event base ls lg (- next *fn2-upload-page-manifest*) lim mfill
                                        okind oslot ogen fn2-core))))))

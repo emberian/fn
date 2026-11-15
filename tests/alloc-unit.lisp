@@ -27,6 +27,19 @@
         (mv code (and (eq code :ok) (list :commit i)) fn2-extents fn2-alloc-edges)))
       (:retire (mv-let (code fn2-extents) (fn2-alloc-retire i epoch counter arg fn2-extents)
         (mv code (and (eq code :ok) (list :retire i arg)) fn2-extents fn2-alloc-edges)))
+      (:release-probe (mv (fn2-alloc-release-code i epoch counter fn2-extents) nil fn2-extents fn2-alloc-edges))
+      (:release-prepare
+       (mv-let (code fn2-extents) (fn2-alloc-release-prepare i epoch counter fn2-extents)
+        (mv code nil fn2-extents fn2-alloc-edges)))
+      (:release-prepare-stale
+       (mv-let (code fn2-extents) (fn2-alloc-release-prepare i (+ 1 epoch) counter fn2-extents)
+        (mv code nil fn2-extents fn2-alloc-edges)))
+      (:release-barrier
+       (mv (if (equal (fn2-extents-release-pending i fn2-extents) arg) :ok :barrier)
+           nil fn2-extents fn2-alloc-edges))
+      (:candidate (mv-let (code next e c retirement) (fn2-alloc-reclaim-candidate i fn2-extents)
+                    (mv (if (equal arg (list next e c retirement)) code :candidate-metadata)
+                        nil fn2-extents fn2-alloc-edges)))
       (:release (mv-let (code fn2-extents) (fn2-alloc-release i epoch counter fn2-extents)
         (mv code (and (eq code :ok) (list :release i)) fn2-extents fn2-alloc-edges)))
       (:cancel (mv-let (code fn2-extents) (fn2-alloc-cancel-reservation i epoch counter fn2-extents)
@@ -69,6 +82,56 @@
           (mv answer fn2-extents)))
       answer)))
 ; Four race witnesses name the rejected transition.
+; Actual durable edge admission, not a second state model. Ordinary retirement
+; still permits a durable protector; only explicit release intent closes it.
+(defun fn2-alloc-test-release-barrier (kinds)
+ (declare (xargs :verify-guards nil))
+ (if (atom kinds) t
+  (and (equal (fn2-alloc-test-run
+    (append
+     '((:reserve 0 nil 0 :ok) (:commit 0 nil 0 :ok) (:retire 0 nil 2 :ok))
+     (list (list :edge-add 0 (car kinds) 9 :ok)
+           (list :edge-drop 0 (car kinds) 9 :ok))
+     '((:release-prepare 0 nil 0 :checkpoint-blocked)
+       (:checkpoint-advance 0 1 2 :ok)
+       (:release-prepare-stale 0 nil 0 :stale)
+       (:release-prepare 0 nil 0 :ok) (:release-barrier 0 nil 1 :ok))
+     (list (list :edge-add 0 (car kinds) 9 :release-pending))
+     '((:edge-add 0 :outstanding-io 17 :ok)
+       (:release-prepare 0 nil 0 :outstanding-io)
+       (:release 0 nil 0 :outstanding-io)
+       (:release-barrier 0 nil 1 :ok)
+       (:edge-drop 0 :outstanding-io 17 :ok)
+       (:release-prepare 0 nil 0 :ok) (:release 0 nil 0 :ok)
+       (:release-barrier 0 nil 0 :ok)
+       (:reserve 0 nil 0 :ok) (:commit 0 nil 0 :ok))
+     (list (list :edge-add 0 (car kinds) 9 :ok)))) t)
+   (fn2-alloc-test-release-barrier (cdr kinds)))))
+(assert-event (fn2-alloc-test-release-barrier
+ '(:installed-root :selectable-checkpoint :recovery-base
+   :prepared-successor :obligation :recovery-candidate)))
+; Preflight cannot free or authorize a later release through a newly held pin.
+; The second probe also controls checkpoint eligibility independently of pins.
+(assert-event (equal (fn2-alloc-test-run
+ '((:reserve 0 nil 0 :ok) (:commit 0 nil 0 :ok) (:retire 0 nil 2 :ok)
+   (:release-probe 0 nil 0 :checkpoint-blocked)
+   (:checkpoint-advance 0 1 2 :ok) (:release-probe 0 nil 0 :ok)
+   (:edge-add 0 :promised-read 17 :ok)
+   (:release-probe 0 nil 0 :promised-read) (:release 0 nil 0 :promised-read)
+   (:edge-drop 0 :promised-read 17 :ok)
+   (:release-probe 0 nil 0 :ok) (:release 0 nil 0 :ok)
+   (:release-probe 0 nil 0 :state))) t))
+; A protected head does not require a scan or hide the next retirement. Each
+; call returns exactly one candidate's concrete identity and successor.
+(assert-event (equal (fn2-alloc-test-run
+ '((:reserve 0 nil 0 :ok) (:commit 0 nil 0 :ok) (:retire 0 nil 2 :ok)
+   (:reserve 0 nil 0 :ok) (:commit 1 nil 0 :ok) (:retire 1 nil 2 :ok)
+   (:checkpoint-advance 0 2 2 :ok) (:edge-add 0 :promised-read 17 :ok)
+   (:candidate 0 nil (1 1 0 2) :promised-read)
+   (:candidate 1 nil (4294967295 1 1 2) :ok)
+   (:candidate 4294967295 nil (4294967295 0 0 0) :done)
+   (:release 1 nil 0 :ok) (:candidate 1 nil (4294967295 0 0 0) :state)
+   (:edge-drop 0 :promised-read 17 :ok) (:release 0 nil 0 :ok))) t))
 (defconst *fn2-alloc-race-obligation* '((:reserve 0 nil 0 :ok) (:commit 0 nil 0 :ok)
   (:edge-add 0 :obligation 0 :ok) (:retire 0 nil 0 :ok) (:release 0 nil 0 :obligation)))
 (assert-event (equal (fn2-alloc-test-run *fn2-alloc-race-obligation*) t))
