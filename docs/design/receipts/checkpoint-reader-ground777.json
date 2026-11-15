@@ -1,0 +1,39 @@
+{
+  "source": "7778c95d517b33d3fd1dc8d9a7ff37d64dd8df95",
+  "scope": "source-author checkpoint prefix59 and four actual logical ground controls; no whole checkpoint certificate",
+  "parents": 28,
+  "fixture": "tests/checkpoint-reader-scalar-domain-unit.lisp",
+  "fixture_sha256": "cece35c800507bf4db1b71557ccb8bde543ce23cac9aa1039670d27370187cf0",
+  "checkpoint_sha256": "4a4f863d7efdc23cc51c862ad19590a42d2a3b056fe50c3619dc3270bb65de36",
+  "result": {
+    "ground_questions": 4,
+    "capsule_seconds": 1.83,
+    "capsule_steps": 17942,
+    "per_original_event_step_limit": 2000000,
+    "per_original_event_seconds": 20
+  },
+  "scope_limits": {
+    "wrapper_pid": 1744292,
+    "wrapper_pgid": 1744291,
+    "cgroup": "/sys/fs/cgroup/user.slice/user-1000.slice/user@1000.service/swarm.slice/run-p1744290-i31100979.scope",
+    "memory_max": 2147483648,
+    "memory_swap_max": 0,
+    "started_at": 1794771645.108866,
+    "deadline": 1794771825.1088662
+  },
+  "release": {
+    "checked_at": 1794771829.168632,
+    "handles": {
+      "1744290": false,
+      "1744292": false,
+      "1744308": false,
+      "1744312": false
+    },
+    "scope_exists": false,
+    "result": "0\n"
+  },
+  "remote_full_session_log": "/build/lanes/assurance-digest-scalar-777/build/proof-repl/digest_scalar_777/log",
+  "ground_client_log_sha256": "adab600f2d73ba3278556649fe7d39cdc18d35739233ade282f28c126e199994",
+  "new947_refutation_guarded_and_caller_events": "UNRUN",
+  "full_session_log_sha256": "55b9511318ae61f8089ccd5cf5092a209ddafeb6e45e0763dd5a3a481a547411"
+}
