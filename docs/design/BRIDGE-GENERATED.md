@@ -523,3 +523,27 @@ requires a package-preserving input domain: the current Val symbol presentation
 can conflate a keyword with an ACL2 symbol whose name begins with a colon.
 Neither selection qualification nor the all-Val helper equation discharges that
 premise or the full extraction-keystone evidence package above.
+
+The symbol-data repair now uses fixed, disjoint encodings for the existing
+three-package subset: KEYWORD names retain `:`; COMMON-LISP NIL/T retain their
+truth values; other COMMON-LISP and ACL2 names carry their fixed package prefix.
+`Object.symbolValue?` accepts only when a deterministic inverse reconstructs the
+exact original object. `symbol_value_roundtrip` and
+`object_value_symbol_roundtrip` supply the injectivity needed by the original
+symbol-first EQUAL domain, without narrowing the caller to convenient keywords.
+`PrimitiveSymbols.symbol_equal_correspondence` is a source proposal for that
+primitive join. The old name-adapter collision, repaired equality, NIL package
+separation and embedded-separator cases are explicit Lean controls. These new
+Lean statements have not yet been kernel checked.
+
+The legacy world printer now carries actual symbol home-package metadata into
+literal emission; canonical decoding retains the same metadata. Only actual
+COMMON-LISP NIL terminates canonical lists, including dotted tails containing
+an ACL2 symbol named NIL. Python controls pass, including the real SBCL metadata
+printer helper. Syntactic identifiers remain separate from symbol data. The
+quoted arm-declaration syntax readers and served tuple emitter need the same
+explicit distinction; their migration is in progress. Existing generated bodies
+with unqualified nonkeyword data need regeneration and exact-body checking;
+no compatibility or qualification of those old bodies is claimed. Actual CNS
+PUT-ANSWER uses keyword literals, so its generated local MEMBER equation remains
+the selected consumer for the shared attached-world packet gate.

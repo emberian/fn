@@ -21,9 +21,15 @@ theorem object_spine_correspondence {object : Object} {value : Val}
   | rational n d => cases represented
   | complex r i => cases represented
   | symbol p n =>
-    cases hn : (Object.symbol p n).name? <;> simp [Object.value?, hn] at represented
-    cases represented
-    exact ⟨rfl,rfl⟩
+    cases he : symbolEncoding? p n with
+    | none => simp [Object.value?, Object.symbolValue?, he] at represented
+    | some encoded =>
+      simp only [Object.value?, Object.symbolValue?, he, Option.bind_some] at represented
+      split at represented
+      next =>
+        cases represented
+        exact ⟨rfl, rfl⟩
+      next => cases represented
   | character n =>
     simp only [Object.value?] at represented
     split at represented

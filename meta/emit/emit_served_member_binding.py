@@ -10,7 +10,7 @@ from pathlib import Path
 import argparse
 import os
 from emit_certificate import (Atom, List, fields, read_canonical, canonical_text,
-                              decode, fn_of, calls_of, show, as_list, shallow, ident, lean_object, term)
+                              decode, fn_of, calls_of, show, as_list, shallow, ident, lean_object, term, canonical_nil)
 
 STUB = 'FN2-CNS-RUN-STUB'
 RUN = 'FN2-CNS-RUN'
@@ -53,7 +53,7 @@ def inspect(snapshot):
         if key not in sd or key not in rd or sd[key] != rd[key]:
             raise ValueError('selected CNS ABI differs: ' + key)
     for name, (_, d) in rows.items():
-        if name != STUB and decode(d[':ATTACHMENT']) != Atom('NIL'):
+        if name != STUB and not canonical_nil(d[':ATTACHMENT']):
             raise ValueError('unaccounted attachment ' + name)
     graph = {name: calls_of(f.body, set()) for name, (f, _) in rows.items()}
 

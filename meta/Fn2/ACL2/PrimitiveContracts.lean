@@ -71,7 +71,7 @@ theorem values_roundtrip (xs : List Val) : (Val.ofList xs).toList = xs := by
   | cons x xs ih => simp [Val.ofList, Val.toList, ih]
 
 theorem string_roundtrip (s : String) :
-    Prim.coerce (Prim.coerce (.str s) (.sym "LIST")) (.sym "STRING") = .str s := by
+    Prim.coerce (Prim.coerce (.str s) (.sym "COMMON-LISP::LIST")) (.sym "COMMON-LISP::STRING") = .str s := by
   simp [Prim.coerce, values_roundtrip, List.map_map, Function.comp_def]
 
 theorem negative_ash_positive :
@@ -89,9 +89,9 @@ theorem signed_division_control :
     Native.ceiling (.int 3) (.int (-2)) = .int (-1) := by decide
 
 theorem crlf_preserved :
-    Prim.coerce (.str "\r\n") (.sym "LIST") =
+    Prim.coerce (.str "\r\n") (.sym "COMMON-LISP::LIST") =
       Val.ofList [.chr (Char.ofNat 13), .chr (Char.ofNat 10)] ∧
-    Prim.coerce (.str "\r\n") (.sym "LIST") ≠ Prim.coerce (.str "\n") (.sym "LIST") := by decide
+    Prim.coerce (.str "\r\n") (.sym "COMMON-LISP::LIST") ≠ Prim.coerce (.str "\n") (.sym "COMMON-LISP::LIST") := by decide
 
 theorem rational_intermediate_not_integer_lowering :
     ((Native.expt (.int 2) (.int (-1))).toInt : ℚ) ≠ (2 : ℚ) ^ (-1 : Int) := by

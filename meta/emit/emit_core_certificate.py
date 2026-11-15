@@ -81,7 +81,7 @@ def inspect_core_certificate(src, roots=None, *, snapshot=None):
         if n in want:return
         if n not in allf:raise ValueError('missing core callee '+n)
         want.add(n);f,d=allf[n]
-        if decode(d[':ATTACHMENT'])!=Atom('NIL'):raise ValueError('attached core callee '+n)
+        if not canonical_nil(d[':ATTACHMENT']):raise ValueError('attached core callee '+n)
         cs=calls_of(f.body,set())
         if n in cs and n!='MEMBER-EQ-EXEC':raise ValueError('recursive core callee '+n)
         active.append(n)
@@ -186,7 +186,7 @@ def closed_member_source(src, roots, *, snapshot=None):
         absent = dependencies - set(allf) - set(NATIVE) - set(SPECIAL)
         if absent:
             raise ValueError('missing canonical body/guard callees for ' + f.name + ': ' + ', '.join(sorted(absent)))
-        if decode(d[':ATTACHMENT']) != Atom('NIL'):
+        if not canonical_nil(d[':ATTACHMENT']):
             raise ValueError('attached canonical body/guard callee ' + f.name)
     lines = ['module', 'public import Fn2.ACL2.MemberBodyCorrect',
              '@[expose] public section', 'namespace Fn2.Instances.CoreCanonical',

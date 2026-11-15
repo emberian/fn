@@ -70,13 +70,80 @@ def Object.name? : Object → Option String
     else if p == "ACL2" || p == "COMMON-LISP" then some n else none
   | _ => none
 
+/-- Symbol data uses disjoint encodings for the three admitted packages.
+Function and variable names still use `name?`; data never does. -/
+def symbolEncoding? (packageName name : List Nat) : Option String := do
+  let packageName ← codeString packageName
+  let name ← codeString name
+  if packageName == "KEYWORD" then some (":" ++ name)
+  else if packageName == "ACL2" then some ("ACL2::" ++ name)
+  else if packageName == "COMMON-LISP" then
+    if name == "NIL" || name == "T" then some name
+    else some ("COMMON-LISP::" ++ name)
+  else none
+
+/-- Deterministic inverse. Prefixes are fixed package tags, not a separator
+between arbitrary strings. Names may themselves contain colons or escapes. -/
+def symbolObject? (encoded : String) : Option Object :=
+  let codes := fun (chars : List Char) => chars.map Char.toNat
+  match encoded.toList with
+  | ':' :: name => some (.symbol [75,69,89,87,79,82,68] (codes name))
+  | 'A' :: 'C' :: 'L' :: '2' :: ':' :: ':' :: name =>
+      some (.symbol [65,67,76,50] (codes name))
+  | 'C' :: 'O' :: 'M' :: 'M' :: 'O' :: 'N' :: '-' :: 'L' :: 'I' :: 'S' :: 'P' :: ':' :: ':' :: name =>
+      some (.symbol [67,79,77,77,79,78,45,76,73,83,80] (codes name))
+  | ['N', 'I', 'L'] => some (.symbol [67,79,77,77,79,78,45,76,73,83,80] [78,73,76])
+  | ['T'] => some (.symbol [67,79,77,77,79,78,45,76,73,83,80] [84])
+  | _ => none
+
+/-- The inverse check makes faithfulness part of decoding, including byte
+validity. It cannot accept two distinct objects under one Val symbol. -/
+def Object.symbolValue? (packageName name : List Nat) : Option Val := do
+  let encoded ← symbolEncoding? packageName name
+  if symbolObject? encoded = some (.symbol packageName name)
+    then some (.sym encoded) else none
+
+theorem symbol_value_roundtrip {packageName name : List Nat} {encoded : String}
+    (represented : Object.symbolValue? packageName name = some (.sym encoded)) :
+    symbolObject? encoded = some (.symbol packageName name) := by
+  unfold Object.symbolValue? at represented
+  cases h : symbolEncoding? packageName name with
+  | none => simp [h] at represented
+  | some result =>
+    simp only [h, Option.bind_some] at represented
+    split at represented
+    next faithful =>
+      have same : result = encoded := by simpa using represented
+      simpa [same] using faithful
+    next => simp at represented
+
 def Object.value? : Object → Option Val
   | .integer n => some (.int n)
   | .rational _ _ | .complex _ _ => none
-  | .symbol p n => (Object.symbol p n).name? |>.map Val.sym
+  | .symbol p n => Object.symbolValue? p n
   | .character n => if n < 256 then some (.chr (Char.ofNat n)) else none
   | .string cs => (codeString cs).map Val.str
   | .cons a d => do pure (.cons (← a.value?) (← d.value?))
+
+/-- Every accepted symbolic value has one exact canonical object, regardless
+of which object constructor a caller supplies. -/
+theorem object_value_symbol_roundtrip {object : Object} {encoded : String}
+    (represented : object.value? = some (.sym encoded)) :
+    symbolObject? encoded = some object := by
+  cases object with
+  | symbol p n => exact symbol_value_roundtrip represented
+  | integer n => cases represented
+  | rational n d => cases represented
+  | complex re im => cases represented
+  | character n =>
+      simp only [Object.value?] at represented
+      split at represented <;> cases represented
+  | string cs =>
+      cases hs : codeString cs <;> simp [Object.value?, hs] at represented
+  | cons a d =>
+      cases ha : a.value? <;> cases hd : d.value? <;>
+        simp [Object.value?, ha, hd] at represented
+
 
 def Object.list? : Object → Option (List Object)
   | .cons a d => (Object.list? d).map (a :: ·)
