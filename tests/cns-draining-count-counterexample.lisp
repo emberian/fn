@@ -61,4 +61,5 @@
   (with-local-stobj fn2-core
     (mv-let (ok fn2-core) (fn2-cns-drain-credit-counterexample-run fn2-core) ok)))
 (assert-event (fn2-cns-drain-without-reservation))
-(fn2-assert-owed-teeth fn2-cns-draining-counted-independent)
+; Complete counted-row evidence is checked after all providers in
+; cns-draining-teeth-unit; this book executes its own controls above.

@@ -163,4 +163,5 @@
                    (fn2-cns-drain-query-stale-owner)
                    (fn2-cns-drain-query-partial-release-mutant)))
 
-(fn2-assert-owed-teeth fn2-cns-draining-counted-independent)
+; Complete counted-row evidence is checked after all providers in
+; cns-draining-teeth-unit; this book executes its own controls above.

@@ -81,4 +81,5 @@
                    ; marked unreachable-in-composition by its constructor.
                    (fn2-cns-drain-credit-control :lease nil)))
 (assert-event (fn2-cns-drain-credit-positive))
-(fn2-assert-owed-teeth fn2-cns-draining-counted-independent)
+; Complete counted-row evidence is checked after all providers in
+; cns-draining-teeth-unit; this book executes its own controls above.
