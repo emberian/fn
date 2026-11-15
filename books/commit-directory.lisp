@@ -88,3 +88,10 @@
         ((not (and (posp row) (< row (fn2-commit-root-rows fn2-commit-root)))) (mv :state 0))
         ((= (fn2-commit-root-seal-ready row fn2-commit-root) 0) (mv :more 0))
         (t (mv :ok (+ (* *fn2-digest-stride* format-rows) row))))))
+; Fingerprint projection only. :OK means row0 is present; these observed
+; metadata words are not an independently checked summary or reuse grant.
+(defun fn2-commit-directory-base-state (fn2-commit-root)
+ (declare (xargs :stobjs fn2-commit-root :guard (fn2-commit-root-wfp fn2-commit-root)))
+ (if (not (< 0 (fn2-commit-root-rows fn2-commit-root))) (mv :state 0 0 0)
+  (mv :ok (fn2-commit-root-base-batch 0 fn2-commit-root)
+          (fn2-commit-root-base-event 0 fn2-commit-root) (fn2-commit-root-base-ready 0 fn2-commit-root))))

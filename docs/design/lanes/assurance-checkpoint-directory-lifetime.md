@@ -185,3 +185,9 @@ scope/metadata, unexpected-index and replacement-count controls. Prepared writer
 controls check computed-versus-installed seals, stale reused-row refusal, resident
 notification values, publication lag and explicit archived/base/absent dispatch.
 Their staged metadata is synthetic; they do not establish durable summary or reuse.
+
+`fn2-commit-directory-base-state` is a readonly fingerprint projection returning
+status/base-batch/base-event/base-ready. Its OK means row0 exists; it grants no
+summary authority. Pressure retry may observe it alongside headroom(0), whose
+credit formula remains unchanged until the rebase join is enabled. Source scan
+progress alone is not freed credit.
