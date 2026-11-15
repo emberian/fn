@@ -1,0 +1,799 @@
+{
+  "scope": "Source-only named-form inventory; NOT a copy-all-file transplant or qualification",
+  "root_commit": "9666d7ba67e9893730ad4dd4c27797ac37b2a0c1",
+  "source_controller_commit": "522e121817ffae223322bcf04d2493acf53cbc10",
+  "cost_overlay_commit": "af3ab4c0062b568ded2faf6fa1657d0e622e77ad",
+  "entries": [
+    {
+      "path": "books/machines.lisp",
+      "root_sha256": "7ca1fe48d5bdba9e6bfc6182c98f8b82185aeae48db377565ed798f8ee34a648",
+      "source522_sha256": "078b309df5051b4dab94bc996b9d08eafd1341eee04138fc0e517756ed4ef74e",
+      "changed_named_forms": [
+        {
+          "name": "defun fn2-machine-class-pair-forms",
+          "root_form_sha256": null,
+          "source522_form_sha256": "52356b2a0ac02e802770960632a5125062135018be1f60fdd3d21195225f2a27"
+        },
+        {
+          "name": "defun fn2-machine-taken-class-cases",
+          "root_form_sha256": "a4598c10037ffe6e194ed012085eb9d8b27751da9d93b9b87d4938873c66e145",
+          "source522_form_sha256": "e3f88f09605925246e102529e66647e80c8551427bf0269e6b4e7e583e0d4236"
+        },
+        {
+          "name": "defun fn2-machine-taken-ranges-p",
+          "root_form_sha256": "d375b1ec5077baa2584f588c6225c4456c9c37b3f681c75d2e8d2fb5f0ea4c1c",
+          "source522_form_sha256": "e5af6783df8f7cc89e9a33fd2da589be03a14a115130bb5cff205825ce28fa2d"
+        },
+        {
+          "name": "defun fn2-machine-taken-reserves",
+          "root_form_sha256": "1a2be228827aed9f36ef5287cea03934c9518336c5dc002ec032882afcc9ab59",
+          "source522_form_sha256": "fc6844ac2e1237058146be35735377e134ebffb710cfb20d8d1f4eb59906625f"
+        }
+      ]
+    },
+    {
+      "path": "books/machines-a-access.lisp",
+      "root_sha256": "f08c1a652fe7fbf06072d136e544a77e7cc27d53e98b2006c553fbdda7603adc",
+      "source522_sha256": "13f922ec79a38eb3d7273e7613ff0d5175c6fd144f631d2be9d2825fcb6025e9",
+      "changed_named_forms": [
+        {
+          "name": "defmacro fn2-machine-access-events",
+          "root_form_sha256": "9a1d799d138b4ffcf025651ce2275e1c1201dd432e36a7f56385260aab46abd7",
+          "source522_form_sha256": "3fc46166f4721fd68add18712ad1fc6c50d2191731bd0cb63a2b31bc211467be"
+        },
+        {
+          "name": "defun fn2-machine-pool-class-need",
+          "root_form_sha256": null,
+          "source522_form_sha256": "e49edd23b1b4961540b78bcec44e5a9bb578ca9e26931b3972d1c4c7416ce709"
+        },
+        {
+          "name": "defun fn2-machine-pool-has-p",
+          "root_form_sha256": "dbcd7abeec7f409ee4c92451381df8a2bb89e4d52ba766857e27eb56f31967ca",
+          "source522_form_sha256": "e908031c1826464d97280df7e99dbde4f64f19d6c5f2e079eb2c9c3055d0043c"
+        },
+        {
+          "name": "defun fn2-machine-pool-resolve-needs",
+          "root_form_sha256": null,
+          "source522_form_sha256": "fa97602d0b5f0723f6b422b7a0f78c8326fa3a640bc838316ac56a841d460b84"
+        },
+        {
+          "name": "defun fn2-machine-pool-resolved-has-p",
+          "root_form_sha256": null,
+          "source522_form_sha256": "84ee5ff3cd466cf27445c2870b0747102ab3ec10f16e7af3ddfe081ea4cc9c8d"
+        }
+      ]
+    },
+    {
+      "path": "books/machines-b.lisp",
+      "root_sha256": "a29059a34261d157eadd0f8105f48c60cf3b7d6b1179221002bfb0e63818e383",
+      "source522_sha256": "3083fd93d29e4cf4ddf74f0bdeb40517f6f171673f8e65475cb3ad3631d95631",
+      "changed_named_forms": [
+        {
+          "name": "defun fn2-b-alloc-edge-floor",
+          "root_form_sha256": "ee43b6166b6e5e0cb0a537596fb7a83e4753dbaeefd7f9892c4552178b23b078",
+          "source522_form_sha256": "4220bccff7941b4dc08ca75e64bb8736942bee61f483115a339e4cdf0811677f"
+        },
+        {
+          "name": "defun fn2-b-cns-source-geometry-p",
+          "root_form_sha256": null,
+          "source522_form_sha256": "5b764bc8d89f6aa75143d2ed50028c319e798b0c5bed2c6aa04cc877c92894b3"
+        },
+        {
+          "name": "defun fn2-b-cns-source-row",
+          "root_form_sha256": null,
+          "source522_form_sha256": "b3186217f9e31375392df72a890aa4f8bec01a3b915d8d38421552d0c43c67a3"
+        },
+        {
+          "name": "defun fn2-b-cns-source-rows",
+          "root_form_sha256": null,
+          "source522_form_sha256": "fd4d42970192aead329b7bc343cebe0a29745c48e81a63564cf93ae809d2624c"
+        },
+        {
+          "name": "defun fn2-b-ctl-runtime-row",
+          "root_form_sha256": "68ea76d8760f9cae3481a5fe66ebcb6c2b30de8501a17804af5a51acb2d0d0ef",
+          "source522_form_sha256": "10e5a7960654fadf86ce820cc7e3674014b2704a1f70b4651f535beca596152a"
+        },
+        {
+          "name": "defun fn2-b-ctl-slot",
+          "root_form_sha256": "d8732954a1e44a1a83ef769d2d1f456ee4cba5869f9c4230377c075e5ba30ea8",
+          "source522_form_sha256": "d0412aeeb8512a5dc6709ea9646efacdbb7db605fef8d5d127509b621ca338ae"
+        },
+        {
+          "name": "defun fn2-b-format-floor",
+          "root_form_sha256": "0ff0536b9b54f12905d0e6e683686f95b5a1066adfdbda7ce90664aaca04d950",
+          "source522_form_sha256": "679e8192f01a30f12d41b8b4125818ac0da005f302f660f849db07e3dfe90e26"
+        },
+        {
+          "name": "defun fn2-b-sealer-hash-row",
+          "root_form_sha256": null,
+          "source522_form_sha256": "286f4cb8753debb26c4d5c4767731aef37b4c56cbb9bae43bba39f837d585a39"
+        },
+        {
+          "name": "defun fn2-b-upload-hash-rows",
+          "root_form_sha256": null,
+          "source522_form_sha256": "0db9e7f66a13ed1781dc55c98cad3f7ad7c5b7902f317a1b8b0b26189786af79"
+        },
+        {
+          "name": "defun fn2-b-upload-source-hash-row",
+          "root_form_sha256": null,
+          "source522_form_sha256": "7da30fd24b4c2d4bd11e3283401c9e0ceb6a42d314909b5f6a87f985de267bb3"
+        },
+        {
+          "name": "defun fn2-b-upload-stored-hash-row",
+          "root_form_sha256": null,
+          "source522_form_sha256": "ad244568419d6e834674bf35bc4117332052e9079fc9de0500c6ce14bc616bfd"
+        }
+      ]
+    },
+    {
+      "path": "books/ordered.lisp",
+      "root_sha256": "67803ac18222ac6a6d684ac8205f9c55b4ad94a2bafd8d46d5bb8dfdb22968cb",
+      "source522_sha256": "4163de3177406b7e135d1fb74815d86a15e6b2ad15e13f7c0e04c1a64b127f4c",
+      "changed_named_forms": [
+        {
+          "name": "defconst *fn2-overview-octets-max*",
+          "root_form_sha256": "26194e4cd2dd5b304996f12b4cb1ba643f3663f92ff54b9cd647bd650529c02d",
+          "source522_form_sha256": null
+        }
+      ]
+    },
+    {
+      "path": "books/upload-window-geometry.lisp",
+      "root_sha256": null,
+      "source522_sha256": "d1a4a3b251f5b2c1775b161e2c93a693d708771977986a6698ad0759b9c3141a",
+      "changed_named_forms": [
+        {
+          "name": "defconst *fn2-overview-octets-max*",
+          "root_form_sha256": null,
+          "source522_form_sha256": "26194e4cd2dd5b304996f12b4cb1ba643f3663f92ff54b9cd647bd650529c02d"
+        },
+        {
+          "name": "defconst *fn2-upload-body-window-bytes*",
+          "root_form_sha256": null,
+          "source522_form_sha256": "ad55af132e048c20e84b8eb4e8d3677fb05c2d2021dd2090a1ffbb6f903830e4"
+        },
+        {
+          "name": "defconst *fn2-upload-digest-octets*",
+          "root_form_sha256": null,
+          "source522_form_sha256": "5fa97082af1e35475c9808ad0d0791aacc4b8826df8dbee4e012ff997c674d04"
+        },
+        {
+          "name": "defconst *fn2-upload-header-octets*",
+          "root_form_sha256": null,
+          "source522_form_sha256": "3d839e0626fdb9ac81fb17928b2343462e80b21db0ad1f5d684e53d5181d0e0b"
+        },
+        {
+          "name": "defconst *fn2-upload-header-workspace-bytes*",
+          "root_form_sha256": null,
+          "source522_form_sha256": "09e7c747df17f4fdf018f83ea30c4031b5688a364b8e3898552d56eb27e82584"
+        }
+      ]
+    },
+    {
+      "path": "books/upload-kind.lisp",
+      "root_sha256": "a6300c4761e615b8e046072c9fe6b3c1f0911d39e24c5edc424d8035ecb1737f",
+      "source522_sha256": "aa4f3e36d54445c0521df6f0968c6364511aea518cf3339b6011e2c126354586",
+      "changed_named_forms": [
+        {
+          "name": "defconst *fn2-upload-digest-octets*",
+          "root_form_sha256": "5fa97082af1e35475c9808ad0d0791aacc4b8826df8dbee4e012ff997c674d04",
+          "source522_form_sha256": null
+        },
+        {
+          "name": "defconst *fn2-upload-raw-bytes*",
+          "root_form_sha256": null,
+          "source522_form_sha256": "1633211cfdb6513b25c966b1d4e53c33d13064120a4b97ef7347b5783a3ef740"
+        },
+        {
+          "name": "defconst *fn2-upload-run-bytes*",
+          "root_form_sha256": "f848c3852b026874842489fb91bbd399c4d126c059de7e3d49e8878549682a32",
+          "source522_form_sha256": "01057915faf8a90fbc2dcbe5d512422b181e8be2826290f6483fc8e70bcc1cf2"
+        },
+        {
+          "name": "defmachine fn2-upload",
+          "root_form_sha256": "0216d46faf5d8acd4ce8ba119a088c0dd3ba1f2d3e9880d69ddef441f629f564",
+          "source522_form_sha256": "9c6bc2d85d128bff4bc24c64fc8be3bc8394e75d5d7f003975722a2ccb94c30f"
+        }
+      ]
+    },
+    {
+      "path": "books/upload-scan.lisp",
+      "root_sha256": "5f55444397869d0742e26b699e9aaf3de83bba3f12d22ec59d3d7e2ca78b71e7",
+      "source522_sha256": "9ba10aa98a0aba7e970aae698efd21fd96d397547152c4531223c2227c195c1d",
+      "changed_named_forms": [
+        {
+          "name": "defconst *fn2-upload-header-octets*",
+          "root_form_sha256": "3d839e0626fdb9ac81fb17928b2343462e80b21db0ad1f5d684e53d5181d0e0b",
+          "source522_form_sha256": null
+        }
+      ]
+    },
+    {
+      "path": "books/upload-feed.lisp",
+      "root_sha256": "07f67550cb01a4e2869a27605a78c74616bc91d4ec1acc5a9ae8a8da67c7ce65",
+      "source522_sha256": "ac54348ac96b3b64f401c368413c6cf8fca18ccf8be7ef8f0b78295074dc0b17",
+      "changed_named_forms": [
+        {
+          "name": "defun fn2-feed-crlf-at",
+          "root_form_sha256": null,
+          "source522_form_sha256": "4273812277f29a59e8c7a1749f9a3ba6d0e6d9c53463ce65a5ccb50a45780e57"
+        },
+        {
+          "name": "defun fn2-feed-header-complete-p",
+          "root_form_sha256": null,
+          "source522_form_sha256": "0a373eaee5de42248a0d42c86e58a6d16609a6e272502da6f2a2631bc5f0a666"
+        },
+        {
+          "name": "defun fn2-feed-header-end-p",
+          "root_form_sha256": null,
+          "source522_form_sha256": "02e09ad1a7ad8ad8692d64860c1a926cf67a993d600c96224459e7519e131326"
+        },
+        {
+          "name": "defun fn2-txn-count-loop",
+          "root_form_sha256": null,
+          "source522_form_sha256": "b991b050d51f69f1af52603133fc31c772f8daf1427afe062c0e75f6ddf33369"
+        },
+        {
+          "name": "defun fn2-upload-feed",
+          "root_form_sha256": "4b3c3fc2596d99f6eef674172735b1a5c52c58390fd0b35dae5343b335a910b5",
+          "source522_form_sha256": "864ba7ae9bf01f82d9fb5f6083951b9d5bce60eebf2201c23096f396de2133bb"
+        },
+        {
+          "name": "defun fn2-upload-feed-loop",
+          "root_form_sha256": "ddd717605d7dfa9a92be8dc26a46ccb82c4cdfed4e0169a7945963f4a3bbe106",
+          "source522_form_sha256": "2249da6191a85f89a5d66253dbcc16cce04bd4da6bc38b87a81bd49b6bd4e713"
+        }
+      ]
+    },
+    {
+      "path": "books/upload.lisp",
+      "root_sha256": "004b64f8666bba9ff56c12f0bb795765a1cf596786366006426a6cbf4d861ff6",
+      "source522_sha256": "e7391055b0c0c95e8a420a0d12c282d3a1d6e33594fd72b2492ef7fa07749250",
+      "changed_named_forms": [
+        {
+          "name": "defconst *fn2-upload-page-source*",
+          "root_form_sha256": null,
+          "source522_form_sha256": "a0215bd22492d396a9d566da551d6cbf3dd2ad8281359b73ce7040d588e7e7cd"
+        },
+        {
+          "name": "defconst *fn2-upload-word-uncertain*",
+          "root_form_sha256": null,
+          "source522_form_sha256": "3018ce30065cdf74b67be4aec2a3b7e783545e0538d83868f424150b1257e07c"
+        },
+        {
+          "name": "defcost fn2-upload-advance",
+          "root_form_sha256": "4a38fd91e214c8016a998e7eacd9ebd870925004c28dd8f6a3c1205ac9ca4abe",
+          "source522_form_sha256": "f85516b6612865b612efbd3a3038d8d2a8ada657d5daae7b1ca430a796d59784"
+        },
+        {
+          "name": "defcost fn2-upload-block-cv",
+          "root_form_sha256": "55ad0e38c8f26ef1c38bc96734cc41d5c53bd5d2fc21c78e10091bc4e01a82e7",
+          "source522_form_sha256": "ebbad416c99943c376446f9e4b4cc361f4dad9d508fb7e43e70eb30510637cc3"
+        },
+        {
+          "name": "defcost fn2-upload-hasher",
+          "root_form_sha256": "6faa81145082d17b3c58e961da6155a55af94c6a4c1f895e8a45d929c7d1978d",
+          "source522_form_sha256": "de226d6a4d57f8cceb5f4cb6f3c417195cff44e21c43b1451c51a36e00810e95"
+        },
+        {
+          "name": "defcost fn2-upload-save-source",
+          "root_form_sha256": null,
+          "source522_form_sha256": "e62c5dff69633e81a00c8db89082575923ac271a008d02edd86de2252454ec59"
+        },
+        {
+          "name": "defcost fn2-upload-start-discard",
+          "root_form_sha256": null,
+          "source522_form_sha256": "df88120c5aac611525c4f0cb0834d7c9d98870040d3bd2ff4ca78eef7406b179"
+        },
+        {
+          "name": "defcost fn2-upload-stored-hasher",
+          "root_form_sha256": null,
+          "source522_form_sha256": "0a3e254a1035a8d9da388a250fa31a64cae7b108438c7dcd08fcdb065f70f234"
+        },
+        {
+          "name": "defmacro fn2-upload-op-events",
+          "root_form_sha256": "b69acde2a03946e20a671f70bb5bb71f774ee3e8166c3ee87490277e4d1ba96f",
+          "source522_form_sha256": "4be79ec0564d85868b5cb4ca1ae0ad4d599bc353c9fcd9e9b6e9091cc6d970e6"
+        },
+        {
+          "name": "defun fn2-upload-advance",
+          "root_form_sha256": "d147a85086d05cd4b7a9fae91714469fdd50d303065a64185ccff3b8a3f6fb7f",
+          "source522_form_sha256": "bb58e42632d499a16c079e118c00d6792981fc23d2bdb5dcdb2286dc10465f01"
+        },
+        {
+          "name": "defun fn2-upload-block-cv",
+          "root_form_sha256": "41bf5623b987a60c697be8df0f7e9b452660f63eb95fa287ed69cdc892e8648b",
+          "source522_form_sha256": "93c76a015a860769c1b8579ce8631f0777583724d04ba592b449c0535347a0d2"
+        },
+        {
+          "name": "defun fn2-upload-block-hash",
+          "root_form_sha256": "e1def5a57efca9e4e659dff60029899ee90261a036bbb014a432d8742f09d84a",
+          "source522_form_sha256": "e41906f7b2c4b31d9eff52f36dc16d02762820476496bfdfda585770d0c0be31"
+        },
+        {
+          "name": "defun fn2-upload-block-hash-run",
+          "root_form_sha256": "846c411d36b1ba38372a387cf58cc0a14a71814b61c93a657319a159e49db4b0",
+          "source522_form_sha256": null
+        },
+        {
+          "name": "defun fn2-upload-bound",
+          "root_form_sha256": "c2dd444120abb14df96f3cae6acd1c316b48fbee547ccd04426cba6932045bf6",
+          "source522_form_sha256": "2260baad326559c0d4319a23dc2e2db8e28921403da996f776e96cb7465dd0be"
+        },
+        {
+          "name": "defun fn2-upload-chunk-fill",
+          "root_form_sha256": null,
+          "source522_form_sha256": "9ecca82075bf9eef48bd7923fb87a638d8ee10a8bbc924ae300c2226cd2decba"
+        },
+        {
+          "name": "defun fn2-upload-hash-run",
+          "root_form_sha256": "9846e9000f6e196c6d2b588348d75b7cbe5b0de4e8b47661d95699ef764d9c6b",
+          "source522_form_sha256": "d626e72d8fbb06217ef3586871b6cd0773b60222850f94604cb730ae51bd144c"
+        },
+        {
+          "name": "defun fn2-upload-hasher",
+          "root_form_sha256": "7b909bb87dc1c49e51aa84b8acb0cb8f481a04b759da6343f67dbb684abeb428",
+          "source522_form_sha256": "9db22a2c512cd697807ee7047a0957129840ddfa20a298f9629992c7f294c4cc"
+        },
+        {
+          "name": "defun fn2-upload-manifest-begin",
+          "root_form_sha256": "adaccd865d1bb35cd6c706e775a4dedae5084eb5391a04122a20a6b8bf11ac81",
+          "source522_form_sha256": "b70947966f158ee618de826b553c3db6b23cd0fc7093acb107fd163ec614e632"
+        },
+        {
+          "name": "defun fn2-upload-manifest-extents",
+          "root_form_sha256": "c390b1f2ea9c933444a018ce15f09e282f65dacaeda804067049fa0f2d47602b",
+          "source522_form_sha256": "0149ba3da8434f37b6618b77bab29bdc99daaee5fed9c4f4a6c0bce16eb1b895"
+        },
+        {
+          "name": "defun fn2-upload-save-source",
+          "root_form_sha256": null,
+          "source522_form_sha256": "e0c11cf3429290299cf59c26ff35442115398b66cca620e0d29757fcdbff8af9"
+        },
+        {
+          "name": "defun fn2-upload-start-discard",
+          "root_form_sha256": null,
+          "source522_form_sha256": "27dde141e507286355c87db81a3d0b41e95600de9789046953af3117e471753f"
+        },
+        {
+          "name": "defun fn2-upload-stored-hasher",
+          "root_form_sha256": null,
+          "source522_form_sha256": "6f800e9e7c12fc814118dbb15e3336f9f91383eb5f81e352220739b8a628001f"
+        }
+      ]
+    },
+    {
+      "path": "books/assembly-callbacks-d.lisp",
+      "root_sha256": "6989b0f48c34849d24e6528d1e4fce57c0fd44080b277788f5fdc06622be468b",
+      "source522_sha256": "a41515d0d32a7106ffad58d83748119e50b8c2eee6da71561634c78e78430f76",
+      "changed_named_forms": [
+        {
+          "name": "defun fn2-upload-feed-pool",
+          "root_form_sha256": "a1ef53eab6d6149cc6eeb2a5081fa7ef3c96e8d5a70fe15acc9fce5ecc89ed2a",
+          "source522_form_sha256": "5610065f26ef7dc997818faeaaaaac4451ff364cb84e1cf4f5186def39399a6a"
+        },
+        {
+          "name": "defun fn2-upload-feed-run",
+          "root_form_sha256": "120f6e030a56f7aa5491e5999813f9b4a20ae273e795000bc7afae844f594103",
+          "source522_form_sha256": "79f7b9c52d87422777600290b18cf1dd4656dc3539d2c0efbb3eee9c3a2a9510"
+        }
+      ]
+    },
+    {
+      "path": "books/assembly-callbacks-d-upload.lisp",
+      "root_sha256": "a342eca040465c03e2c8bcf506f0650622899115fc9497ead699c8692c176324",
+      "source522_sha256": "0bdc005acfae0ddc15067b14aee3d6703cc3c22fe9fc5dcbb847c6f24c5b5f9b",
+      "changed_named_forms": [
+        {
+          "name": "defcost fn2-am-manifestp",
+          "root_form_sha256": "0fbaabe7f4d01d6b90bfae790bfb79a99c1b4d03dcf5ebbfa2d5884c2c571925",
+          "source522_form_sha256": "cc71995e2cbf131f834306134123df2bd47f32692cf2e4bb73276c0699e64c7e"
+        },
+        {
+          "name": "defmachine-arms fn2-upload",
+          "root_form_sha256": "9e58ed16a9ae64b96791b039b5742be657ee59b04d1aab1f47f944e30454768b",
+          "source522_form_sha256": "0396725c539f13985bc9c0bd7cb1346bd1eda7ba13da3f634673608f239ec164"
+        }
+      ]
+    },
+    {
+      "path": "books/txn-kind.lisp",
+      "root_sha256": "854830ce6ee9b41c621ae8692de6601f296ea19d8548d1d28fe3ce07dba2b1ee",
+      "source522_sha256": "8e40b01eba39293fa720cd4af04bbefd99163a35055039c7e27bdc0c2fe7df8b",
+      "changed_named_forms": [
+        {
+          "name": "defmachine fn2-txn",
+          "root_form_sha256": "4a626008455642eb506d91fabc9f4d4f5d18686af70cfdefddf2364a131f28d7",
+          "source522_form_sha256": "05f4754e8e3fa313f8abe7e1a2c8d60bc000bfbf628ea0ae7f63171e6aec0587"
+        }
+      ]
+    },
+    {
+      "path": "books/txn.lisp",
+      "root_sha256": "cb93f76fd64df396329e8cce02589fb9f838401665da52143a47dd0ec74fdb63",
+      "source522_sha256": "056e563f03c0a6cd35792879af0d9e3536cf824b63d1103f0331e55f8df98595",
+      "changed_named_forms": [
+        {
+          "name": "defconst *fn2-upload-word-uncertain*",
+          "root_form_sha256": "3018ce30065cdf74b67be4aec2a3b7e783545e0538d83868f424150b1257e07c",
+          "source522_form_sha256": null
+        },
+        {
+          "name": "defcost fn2-txn-offer",
+          "root_form_sha256": "15c49524fc20a1f277b1019404a553d94180fd1f45c027d5e5fffd7d9ec8d277",
+          "source522_form_sha256": "0fa6c1c2748a2e8b98b7eb6ad1b79208bad0310a7671e303e6ba3c0c7a6c6e07"
+        },
+        {
+          "name": "defcost fn2-txn-source-digest-ref",
+          "root_form_sha256": null,
+          "source522_form_sha256": "fb505b1dda16b55e58dcedf27790888fa95b63afa7fdc4cfab5c7d6202db63af"
+        },
+        {
+          "name": "defmachine-arms fn2-txn",
+          "root_form_sha256": "554308ebbe5bf746337ee9476e1553d8c73501705e1758f176c87eaf2d3aced4",
+          "source522_form_sha256": "bebd050a29adfa166634fd7c346d5786fef2f81a2d64fc1fa19b21622b169609"
+        },
+        {
+          "name": "defmacro fn2-txn-op-events",
+          "root_form_sha256": "c61e2a21acd430d3a9c516bb5d252414f158e2d1c61c2a9bede486b21719fc57",
+          "source522_form_sha256": "ed503fa61437c4a3879080a8116d1951bf7bf13073dc8d581ae98d309f691c56"
+        },
+        {
+          "name": "defun fn2-txn-add-group",
+          "root_form_sha256": "11cf8d09686cf247b8bbc272f8997f51edf6386a974e67cb0e0f53624a801a8c",
+          "source522_form_sha256": "fb7a4c99338a3978181c7fe327f64dbb37281b809652df60312b3e6e572b8f8d"
+        },
+        {
+          "name": "defun fn2-txn-count-loop",
+          "root_form_sha256": "b991b050d51f69f1af52603133fc31c772f8daf1427afe062c0e75f6ddf33369",
+          "source522_form_sha256": null
+        },
+        {
+          "name": "defun fn2-txn-offer",
+          "root_form_sha256": "481e582b5a27d4b75ee32eb68a459f558b0e1b531654cc526442b49739d4fbf2",
+          "source522_form_sha256": "b8eece0a25eb3e37d9d3fc8db992bea4b96aa23f57cc74956ce2cfe6a42a298f"
+        },
+        {
+          "name": "defun fn2-txn-put-article",
+          "root_form_sha256": "0a60fb4ec49087e6c2080bacb6a99f3dfcd143acf37d5c1d195fc165adb8b43a",
+          "source522_form_sha256": "6834383b76746f062215836255cc3fecbacfd7f4d331578c5786add7a20892f1"
+        },
+        {
+          "name": "defun fn2-txn-put-evidence-for",
+          "root_form_sha256": "f083272d1a601c7b0139006839377dde516c08842ded9713be84fbeff56e3c79",
+          "source522_form_sha256": "b98741ceca606f02f25c608ba949ab33ab7ded4dc814d79e97e80670f5bee09c"
+        },
+        {
+          "name": "defun fn2-txn-put-post-for",
+          "root_form_sha256": "9d821c2e12316d6a8266bfb2961918ed4df5fdbe2d77470c254eda6e9cc65359",
+          "source522_form_sha256": "9696888a7050dfcc8a8c80d1eff930756146008c4bc52a487d33aef07ea34405"
+        },
+        {
+          "name": "defun fn2-txn-source-digest-ref",
+          "root_form_sha256": null,
+          "source522_form_sha256": "d82e6e50e954b114a2e95b61f074fded705922a0609bce37fd242c18d1538302"
+        }
+      ]
+    },
+    {
+      "path": "books/article-manifest.lisp",
+      "root_sha256": "68aa3deed50bd01949f6a188ed2a7726ad389246beff2107480fa846b7fae0c4",
+      "source522_sha256": "1195d03a1eddd47c858670c7416619f8a1afd2a227504a47249fe202b4ba43d0",
+      "changed_named_forms": [
+        {
+          "name": "defun fn2-am-manifestp",
+          "root_form_sha256": "1cbee7602a61f6c89363cd1aa8356e9e649c496d5ef92418acc0f6425a255575",
+          "source522_form_sha256": "0c8fb009f8fd5fc2ee495635f5c2b18745d1072699c24863aef43615e91b6e97"
+        }
+      ]
+    },
+    {
+      "path": "books/recovery-payload.lisp",
+      "root_sha256": "5e04bf95c1b0e242acfd0405112460e451f168181ef55d3ad04105aaeb1795f8",
+      "source522_sha256": "7c77058b5b08d25c11476d4b09211875825ea8dc1b05ad1ab53122b2598d9a81",
+      "changed_named_forms": [
+        {
+          "name": "defun fn2-recovery-claim-article",
+          "root_form_sha256": "84cdfdccfff6cd1d7d6363f0d330d580999f215d9186a9d6565fd6cfed2f3cd2",
+          "source522_form_sha256": "bc9ec32554d09307292a6b6f16ff99112d5f5e07361a148ec7ce509d78138e54"
+        },
+        {
+          "name": "defun fn2-rp-entries",
+          "root_form_sha256": "ace1c777947cdf7ec8c8ee3f238262930383d8e9e4ac0b8292de2ca7f2c7f3eb",
+          "source522_form_sha256": "07ebe12f55820108981213815b880189786c00291554ac32d31f3ff558d127d1"
+        }
+      ]
+    },
+    {
+      "path": "books/source-manifest-codec.lisp",
+      "root_sha256": null,
+      "source522_sha256": null,
+      "changed_named_forms": []
+    },
+    {
+      "path": "books/upload-page-geometry.lisp",
+      "root_sha256": null,
+      "source522_sha256": null,
+      "changed_named_forms": []
+    },
+    {
+      "path": "books/upload-stream.lisp",
+      "root_sha256": null,
+      "source522_sha256": "e6a0c49ab92e19996bd0a38fe50c9981f9f7223bbb4f4ef8db5f24751b4e53a3",
+      "changed_named_forms": [
+        {
+          "name": "defconst *fn2-upload-page-provisional*",
+          "root_form_sha256": null,
+          "source522_form_sha256": "b20654643ff6aff001cd91521a87df48ae68effff5754282adb500d8e4432715"
+        },
+        {
+          "name": "defcost fn2-am-entry-at",
+          "root_form_sha256": null,
+          "source522_form_sha256": "a7d0e0e2ebeae3c16e10fee346b1e7b25f48d6f408e361a08cb2942fe3e29090"
+        },
+        {
+          "name": "defcost fn2-upload-chunk-fill",
+          "root_form_sha256": null,
+          "source522_form_sha256": "141d2259c8978d9e2619104bd4a57447552b06282cb1bbe0b618ae4851370785"
+        },
+        {
+          "name": "defcost fn2-upload-location-tuple",
+          "root_form_sha256": null,
+          "source522_form_sha256": "f1d50e1dc255f2bffd332273c3eb64b265bbd0ff781281e3624d1de49ebb5ce7"
+        },
+        {
+          "name": "defcost fn2-upload-stream-class",
+          "root_form_sha256": null,
+          "source522_form_sha256": "2a640989b41cd188b52d432593fdc13652971430fcdc5c17dd344e932e34f8b0"
+        },
+        {
+          "name": "defcost fn2-upload-stream-entry",
+          "root_form_sha256": null,
+          "source522_form_sha256": "e4704de5aeea4b1c7bd7afc8827d3a9478ebae9ce01c3d9daf9a9b231e38d5c1"
+        },
+        {
+          "name": "defcost fn2-upload-stream-header",
+          "root_form_sha256": null,
+          "source522_form_sha256": "ee92fce78f833836aa8350f980e7e3b393a7f71727bef8c7181a175a6ce0048e"
+        },
+        {
+          "name": "defcost fn2-upload-stream-page-bytes",
+          "root_form_sha256": null,
+          "source522_form_sha256": "a211fc16b1c591b68388469038d4b51e8465695a506cc1d553c0cc05fec5cd20"
+        },
+        {
+          "name": "defcost fn2-upload-stream-page-ready-p",
+          "root_form_sha256": null,
+          "source522_form_sha256": "ed06564175bc88422368afa1b33337e580cc0ed52d3510ea1b7eaa38782ab80c"
+        },
+        {
+          "name": "defcost fn2-upload-stream-progress",
+          "root_form_sha256": null,
+          "source522_form_sha256": "459a17ff25510c951e745b1026b9de227d530a88f55e36e22d53ef981d69b340"
+        },
+        {
+          "name": "defcost fn2-upload-stream-source-final",
+          "root_form_sha256": null,
+          "source522_form_sha256": "8794e91bbf526e254f77f3b556780c2af4e5cc8bb190d0075e0a90e43f2ec4da"
+        },
+        {
+          "name": "defcost fn2-upload-word-now",
+          "root_form_sha256": null,
+          "source522_form_sha256": "bee40543fc2c87c9c025584d54e622422ef8a0d3af57be3f9c585e49dafa810e"
+        },
+        {
+          "name": "defmacro fn2-upload-stream-op-events",
+          "root_form_sha256": null,
+          "source522_form_sha256": "ffbabd9a2059899d1743b0a8096b1b0c6fb30ea6bc3d3bb90f88f3ae21673498"
+        },
+        {
+          "name": "defun fn2-upload-location-tuple",
+          "root_form_sha256": null,
+          "source522_form_sha256": "c9cd04cd8326db6de68765a18a2c7f2f34f0bdeed2d6b147188033c46a2d6093"
+        },
+        {
+          "name": "defun fn2-upload-stream-class",
+          "root_form_sha256": null,
+          "source522_form_sha256": "da2b4931d4c9c5191fc690f3efdaf42a8e6d7ede416b53c32481b96af77e7c00"
+        },
+        {
+          "name": "defun fn2-upload-stream-entry",
+          "root_form_sha256": null,
+          "source522_form_sha256": "27a32a52baaf98bebcf245f23895340d88bc3b02a4a3e25d9f5fe411726dd600"
+        },
+        {
+          "name": "defun fn2-upload-stream-header",
+          "root_form_sha256": null,
+          "source522_form_sha256": "d1a88265defba465d2e43a459b577da324a99c647493e6b2a9fa5b21325fcaf8"
+        },
+        {
+          "name": "defun fn2-upload-stream-page-bytes",
+          "root_form_sha256": null,
+          "source522_form_sha256": "9ccc9403ece250315576f1813d8efdd26692e0423a8572f2044a8adaac225f02"
+        },
+        {
+          "name": "defun fn2-upload-stream-page-ready-p",
+          "root_form_sha256": null,
+          "source522_form_sha256": "d08493c77c1e821e26357e353cca5f7dc9d4da5786f006a083e38baa6f748eb0"
+        },
+        {
+          "name": "defun fn2-upload-stream-progress",
+          "root_form_sha256": null,
+          "source522_form_sha256": "1635cea4583a0eaa68884a487453bd92857f851f52993afc653b867e30fc674b"
+        },
+        {
+          "name": "defun fn2-upload-stream-source-final",
+          "root_form_sha256": null,
+          "source522_form_sha256": "4bb2222a17e226e3122e103b65aa18829610fd3a9a6c0df4133568f1768ba944"
+        }
+      ]
+    },
+    {
+      "path": "books/upload-stream-stage.lisp",
+      "root_sha256": null,
+      "source522_sha256": "85d6766bd9d153ee4e387271d47f9978c2a0b455665ce015a61c59048f3404ec",
+      "changed_named_forms": [
+        {
+          "name": "defcost fn2-upload-stream-stage",
+          "root_form_sha256": null,
+          "source522_form_sha256": "d192605ad7912655dbc9f234f9ebc07a4dadaab129d91bd63f8b42da3ee6b590"
+        },
+        {
+          "name": "defmacro fn2-upload-stream-stage-events",
+          "root_form_sha256": null,
+          "source522_form_sha256": "ce8dd5fc6b517b12490cd48e5bbc1d4434188b0a4bc6487b2540b6698a0f9598"
+        },
+        {
+          "name": "defun fn2-upload-stream-stage",
+          "root_form_sha256": null,
+          "source522_form_sha256": "a0d1f792143fff32fd87964d97cd7c12ba0402571324258c5cbc5c40a6d591e4"
+        }
+      ]
+    },
+    {
+      "path": "books/upload-stream-manifest.lisp",
+      "root_sha256": null,
+      "source522_sha256": "ea59a0babd75106790dbc0a4b7c5b2f129b8c062f70caceae282832588dc86f5",
+      "changed_named_forms": [
+        {
+          "name": "defcost fn2-upload-repack-entry",
+          "root_form_sha256": null,
+          "source522_form_sha256": "599f026852260c861d28d06848cce2ac50f44053b1607986770f0d691d7b6b80"
+        },
+        {
+          "name": "defmacro fn2-upload-stream-manifest-op-events",
+          "root_form_sha256": null,
+          "source522_form_sha256": "8b63c9554480a44a8296bd14a26cfcd75e50d53a37ca318872f169e11689c40e"
+        },
+        {
+          "name": "defun fn2-upload-repack-entry",
+          "root_form_sha256": null,
+          "source522_form_sha256": "ce9609376fb2ba9d459d0813d50c9b99164ea15cf392a81c9db76bbb6a8d1162"
+        },
+        {
+          "name": "defun fn2-upload-repack-entry-children",
+          "root_form_sha256": null,
+          "source522_form_sha256": "88547af608ce181ac38f54f16bc9d6c7997b50482e69c4814bf3a497c69e4562"
+        }
+      ]
+    },
+    {
+      "path": "books/upload-stream-reset.lisp",
+      "root_sha256": null,
+      "source522_sha256": "6df2c372efc688240c7ed39e4e545ab9f011a899cf3b0f954a2a1a37942e5fda",
+      "changed_named_forms": [
+        {
+          "name": "defcost fn2-upload-stream-reset",
+          "root_form_sha256": null,
+          "source522_form_sha256": "e4ea3d119477f847d69befe9c654b82fbc19b0dbd45290555a56052da8b0efa4"
+        },
+        {
+          "name": "defmacro fn2-upload-stream-reset-op-events",
+          "root_form_sha256": null,
+          "source522_form_sha256": "bd573407bfb1c5d977e22188488b1eb530461d19ecc9f402fe25171a811ad95f"
+        },
+        {
+          "name": "defun fn2-upload-stream-reset",
+          "root_form_sha256": null,
+          "source522_form_sha256": "d8c88fbed5b16eddf1e95f5915f8462201118b32711764542ef3bf25a57b247d"
+        },
+        {
+          "name": "defun fn2-upload-stream-reset-owner-p",
+          "root_form_sha256": null,
+          "source522_form_sha256": "dc190781074b95e44478cb2049734f14ab9918b208a107cb985fde43fdab00f2"
+        }
+      ]
+    },
+    {
+      "path": "books/upload-stream-settle.lisp",
+      "root_sha256": null,
+      "source522_sha256": "b10fcf43379c31e782041b15386f45262dcf970c9dd291ed6782e547960dda65",
+      "changed_named_forms": [
+        {
+          "name": "defcost fn2-upload-stream-settle-next",
+          "root_form_sha256": null,
+          "source522_form_sha256": "37f5cb63aafc31a3e2aa6a00c85883a528aa211ebaa9a8c52cd5177f18a8eae8"
+        },
+        {
+          "name": "defmacro fn2-upload-stream-settle-op-events",
+          "root_form_sha256": null,
+          "source522_form_sha256": "c68c1fb197a292ea1402cff97c35341e623b85cc02b79f6cce741fccccbd7636"
+        },
+        {
+          "name": "defun fn2-upload-stream-settle-next",
+          "root_form_sha256": null,
+          "source522_form_sha256": "5c043afe221d2dbe9c34a586ab8e68bf2b3d1f695379a90e09b2797afcfda2c6"
+        }
+      ]
+    }
+  ],
+  "root_lower_leaves_policy": "Retain existing source-manifest-codec/upload-page-geometry; consume capacity d51a39aba and remove upper duplicate forms, never delete root extraction.",
+  "critical_shared_policy": "Patch named machine generator/accessor and protocol helper scopes; preserve unrelated checkpoint/pool/compiler/current CNS forms.",
+  "runtime_prerequisites": [
+    {
+      "packet": "fe9f761ab + dfc12386f + 0943d496f + 1383fb964 + 4a277af8e",
+      "scope": "Physical payload addressing16, raw3U threshold, group16; preserve real producer/decoder and fixed observer controls"
+    },
+    {
+      "packet": "6f6b577c4 + 0d8994140 + 0506c97c9",
+      "scope": "Shared paired2W Bmap and atomic block scratch consumer; actualCNS/CTL4arg consumers are separately owned prerequisites"
+    },
+    {
+      "packet": "34a679896 + 43d35617e + 116b20aab + a74b4df7b + c18906405",
+      "scope": "Original SOURCE in stablepage and actualtransaction typedref consumers; no callerreadinessflag"
+    },
+    {
+      "packet": "9a02f58d8 + 12c046652 + c77acfec8",
+      "scope": "Same actualLF counter moved once, incremental source-line carrier and literal-budget declaration"
+    },
+    {
+      "packet": "41c783ddf + 6d629b0ed + 288e20ca3",
+      "scope": "Byteclass taken grammar/legacy rejection; actualheader17440/body4096 takes; alias-aware grant resolution"
+    },
+    {
+      "packet": "a657da10d + 1e844ff81 + 5334e8f88 + 86356fbcd + 52cf1d886",
+      "scope": "Logicalheader/body feed cut; one-span storedstage; canonicalentry repack; exactsamelease reset"
+    },
+    {
+      "packet": "d1275ba25 + 6989c583b + 30a728119 + 727e4b809 + 99c10a52f + 522e12181",
+      "scope": "Issued uncertainty; actualcontroller; oneentrysettle; boundeddefiniterefusal/ownergone cleanup; reachablefault controls"
+    },
+    {
+      "packet": "dd52f3850 + 732626a9d + 0fac22629 + af3ab4c00",
+      "scope": "Compoundbytecharges/derivedstagequantum2036; onepassPath exactlanguage/refinement and bounded4746verdict"
+    },
+    {
+      "packet": "d51a39aba (capacity owner)",
+      "scope": "Shared lowerBgeometry and F minimumadmission; paired upperduplicate removal still to compose, actualconcurrencyreservation separately pending"
+    }
+  ],
+  "actual_gate_roots": [
+    {
+      "path": "tests/upload-rolling-served-unit.lisp",
+      "packet": "9bd6c0530",
+      "scope": "RealCW32Ksmallbodywindow/MIDstable/readback andstored12288/12289, threeassertionsUNRUN"
+    },
+    {
+      "path": "tests/upload-uncertainty-served-unit.lisp",
+      "packet": "6989c583b + 522e12181",
+      "scope": "RealissuedrollingWriteIO/shortWrite/FlushIO, threeassertionsUNRUN"
+    },
+    {
+      "path": "tests/upload-stream-abort-served-unit.lisp",
+      "packet": "f0887c94f",
+      "scope": "RealearlyEOF/failedrefusalFence/lateactualtxnconflict; lateROOTownergoneunreachable, fourassertionsUNRUN"
+    }
+  ],
+  "helper_gate_roots": [
+    "tests/upload-dual-hash-unit.lisp",
+    "tests/upload-stream-manifest-unit.lisp",
+    "tests/upload-rolling-feed-component-unit.lisp",
+    "tests/upload-posted-linear-unit.lisp"
+  ],
+  "integration_exclusions": [
+    "No wholefilecopy of machines/machines-b/machines-a-access: preserve newer compilerproofs, checkpoint, pool and actual4argCNS consumers.",
+    "Never delete root-only source-manifest-codec/upload-page-geometry. Compose lower semanticfollowup d51 and structurally remove duplicates from upper.",
+    "Originalform hashes include comments; txn-add-group differs only a SOURCE comment. That is not a runtime dependency.",
+    "No ACL2/native execution or qualification inferred. StaticFminimum does not prove full concurrentupload progress."
+  ]
+}
