@@ -56,3 +56,29 @@ and ambiguous refusal, post-freeze late-claim refusal, duplicate/omitted/
 truncated/foreign inventory, old settled target reuse, repeated recovery,
 wrong owner/generation and same-length substituted source. Source checks are
 not ACL2 qualification or a nonseeded productive-recovery witness.
+
+The connected source milestone is `lane/assurance-release-inventory@0088c2e82`,
+on the exact c62 physical-directory baseline above. It is not a transplant onto
+the later direct-index root: original journal namespace, mapped directory and
+physical reader dependencies must remain coherent. `9260ac9a3`'s stale-seal
+repair and its synthetic controls stay with that rolling-directory packet.
+
+The actual boot route authenticates directory journals and frontier, captures
+the inventory child Ref, reads its linked pages using the existing root leases,
+and reaches event COMPLETE only after inventory terminal validation. After
+selected map projection and all bank protection, the inventory apply actor
+first restores every pending three-edge proof claim, then settles disjoint
+targets through the shared LIVE-index kernel. Boot hands that same G-owned
+index to suffix recovery afterward. Suffix stage8 rechecks its original member
+and applied inventory; only `:settled` consumes the original next offset.
+
+Master teardown now runs THAW, a bounded settled-proof substitution pass, then
+atomic event/inventory rearm. Pending evidence remains retained. Independent
+prepared/selectable checkpoint source claims preserve older selectable-bank
+proof objects after E3 settlement and substitution; target and proof roles
+remain distinct. Foreign query claims remain unchanged.
+
+Qualification still owes actual ACL2 admission/guard proofs, generated actor
+emission, a nonseeded full producer/read/apply run, and persistence crash cuts.
+Source tests and explicitly synthetic typed resource controls do not establish
+those results. The existing activation NIL and FREE locks are unchanged.
