@@ -96,6 +96,8 @@ class LiveMaster(unittest.TestCase):
    d={}
    for op,labels in selectors(t):d.setdefault(op,[]).append(labels)
    return d
+  frozen=json.loads((ROOT/'tools/fixtures/checkpoint-master-do-selectors.json').read_text())
+  self.assertEqual(selectors(actual),[(op,labels) for op,labels in frozen['selectors']])
   got=grouped(actual)
   for op,labels in grouped(old).items():self.assertEqual(got[op],labels,op)
   import copy
