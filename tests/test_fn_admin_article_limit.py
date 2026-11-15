@@ -10,6 +10,26 @@ import fn_admin as admin
 
 
 class ArticleLimitStartup(unittest.TestCase):
+    def test_explicit_option_overrides_ambient_text(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            (root / 'tools').mkdir()
+            (root / 'tools/image-node.lsp').write_text('; no runtime\n')
+            args = admin.build_parser().parse_args(['init', str(root / 'node.img'), '--article-max', '00098304'])
+            with mock.patch.dict(os.environ, {'FN2_ARTICLE_MAX': '100000'}, clear=True), \
+                 mock.patch.object(admin, 'prepare_native_crypto'), \
+                 mock.patch.object(admin, 'prepare_native_tls'), \
+                 mock.patch.object(admin.subprocess, 'call', return_value=1) as initial:
+                admin.cmd_init(args, root)
+                self.assertEqual(initial.call_args.kwargs['env']['FN2_ARTICLE_MAX'], '00098304')
+            args.article_max = None
+            with mock.patch.dict(os.environ, {'FN2_ARTICLE_MAX': '100000'}, clear=True), \
+                 mock.patch.object(admin, 'prepare_native_crypto'), \
+                 mock.patch.object(admin, 'prepare_native_tls'), \
+                 mock.patch.object(admin.subprocess, 'call', return_value=1) as initial:
+                admin.cmd_init(args, root)
+                self.assertEqual(initial.call_args.kwargs['env']['FN2_ARTICLE_MAX'], '100000')
+
     def test_raw_text_and_omitted_default_on_both_launch_paths(self):
         for value in (None, '00098304', 'invalid-limit', '4294967296', ''):
             for mode in ('init', 'serve'):

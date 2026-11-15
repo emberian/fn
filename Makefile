@@ -474,6 +474,7 @@ ACL2_BOOKS = \
   tests/ops-semantic-steps-unit \
   tests/origin-unit \
   tests/article-limit-config-unit \
+  tests/article-limit-text-unit \
   tests/origin-format-unit \
   tests/origin-boot-unit \
   tests/owed-authority-unit \

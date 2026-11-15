@@ -4,7 +4,7 @@
 (declaim (declaration xargs))
 (defun nfix (x) (if (and (integerp x) (<= 0 x)) x 0))
 (defun unsigned-byte-p (n x) (typep x `(unsigned-byte ,n)))
-(with-open-file (in "books/article-limit-config.lisp")
+(with-open-file (in "books/article-limit-text.lisp")
  (loop for form = (read in nil :end) until (eq form :end)
        when (and (consp form) (eq (car form) 'defun)
                  (member (second form) '(fn2-article-limit-decimal fn2-article-limit-decimal-aux)))

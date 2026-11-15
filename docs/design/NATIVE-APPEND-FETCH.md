@@ -60,7 +60,9 @@ passes the text unchanged; ACL2 parses it, checks the upload manifest domain,
 and applies the same execution/resource admission as other profile settings.
 Invalid text or an unsupported profile is refused rather than replaced with the
 default. Use the same explicit setting when initializing and reopening a test
-image; this startup option does not change the on-disk format. A larger limit
+image; this runtime admission setting is not persisted in the image. An omitted
+option uses `FN2_ARTICLE_MAX` when set, otherwise the default profile. This
+option does not change the on-disk format. A larger limit
 alone does not establish rolling-window support or bypass upload capacity.
 
 Separate large-article campaigns (not part of the fast gates):
