@@ -2,7 +2,8 @@
 (in-package "ACL2")
 (include-book "../books/columns")
 (make-event
- (value `(defconst *fn2-numeric-theory-incoming* ',(current-theory :here))))
+ (let ((world (w state)))
+  (value `(defconst *fn2-numeric-theory-incoming* ',(current-theory :here)))))
 
 (defcolumns fn2-numeric-theory-table ((value :u60) (flag :bool))
  :extra-fields
@@ -22,7 +23,9 @@
    :why "External nested-stobj constructor requires incoming facts.")
   (fn2-numeric-theory-mixed-count :type (unsigned-byte 32) :initially 0
    :why "A numeric sibling does not hide the external constructor.")))
-(assert-event (subsetp-equal *fn2-numeric-theory-incoming* (current-theory :here)))
+(assert-event
+ (let ((world (w state)))
+  (subsetp-equal *fn2-numeric-theory-incoming* (current-theory :here))))
 
 ; A real multi-value producer exercises public ROWS -> raw NTH. The public
 ; ROWS theorem remains enabled when RAW-ROWS is admitted, matching OP-RESERVE.
