@@ -7,6 +7,7 @@
 (include-book "machines-a-costs")
 (include-book "machine-arms")
 (include-book "c-actor-loader-form")
+(include-book "cns-read-state")
 (fn2-book-layer :e)
 
 (defconst *fn2-cns-esub-dimension*
