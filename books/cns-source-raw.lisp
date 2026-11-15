@@ -54,7 +54,7 @@
       ((unless (eq code :ok))
        (let ((fn2-cns-sources (if (equal (fn2-control-stop fn2-control) 1)
               (fn2-cns-sources-put s (phase *fn2-cns-source-phase-bad*) (uncertain 1)) fn2-cns-sources)))
-        (mv (if (eq code :exhausted) :wait :bad) op opgen fn2-cns-sources fn2-cns-source-operations fn2-pool fn2-ops fn2-control fn2-extents fn2-alloc-edges)))
+        (mv (if (and (eq code :exhausted) (equal (fn2-control-stop fn2-control) 0)) :wait :bad) op opgen fn2-cns-sources fn2-cns-source-operations fn2-pool fn2-ops fn2-control fn2-extents fn2-alloc-edges)))
       (fn2-cns-source-operations (fn2-cns-source-operations-put op (live 1) (generation opgen) (source-row s)))
       (fn2-cns-sources (fn2-cns-sources-put s (pending 1) (op-slot op) (op-gen opgen) (unit-length len) (unit-copied 0) (unit-hashed 0)
        (phase (if raw *fn2-cns-source-phase-raw-wait* phase))
