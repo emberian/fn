@@ -17,7 +17,7 @@
 (fn2-book-layer :c)
 
 (defcolumns fn2-overlays
- ((phase (:enum fn2-overlay-phase (:free :active :frozen :private :spare)))
+ ((phase (:enum fn2-overlay-phase (:free :active :frozen :private :spare :draining)))
   (schema :u60) (slot :u32) (gen :u60) (fill :u32) (cap :u32)
   (count :u32) (ibase :u32) (icap :u32) (okind :u8) (oslot :u32) (ogen :u60) (cov :u60) (batch :u60) (seq :u60)))
 (defcolumns fn2-overlay-index ((off :u32)))

@@ -504,6 +504,9 @@ ACL2_BOOKS = \
   tests/runs-unit \
   tests/sched-unit \
   tests/scribe-scenario \
+  tests/seal-release-row-held-unit \
+  tests/seal-draining-sources-unit \
+  tests/seal-draining-pinned-read-unit \
   tests/sealer-capacity-unit \
   tests/sealer-machine-unit \
   tests/sealer-unit \
