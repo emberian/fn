@@ -370,8 +370,11 @@
   (:teardown-holding-uncertain (:set (stopped 1)) (:stop :checkpoint))
   (:teardown-uncertain (:set (stopped 1)) (:stop :checkpoint))
   ; Reuse waits for authenticated ancestry/archive reachability, not EOF alone.
-  (:teardown-retained (:set (debt-scan (+ 1 row-debt-scan)) (scan 0))
-   (:next :teardown-select) (:charge :steps *fn2-work-small* :runnable t))
+  (:teardown-retained
+   (:if (< row-debt-scan *fn2-alloc-none*)
+    ((:set (debt-scan (+ 1 row-debt-scan)) (scan 0)) (:next :teardown-select)
+     (:charge :steps *fn2-work-small* :runnable t))
+    ((:next :teardown-uncertain) (:charge :steps *fn2-work-small* :runnable t))))
   (:done (:set (pending 0) (token 0) (retirement-seen row-attempt-retirement)) (:next :idle) (:charge :steps *fn2-work-small* :runnable t))
   (:admission-refused (:idle))
   (:refused (:set (stopped 1)) (:stop :checkpoint))
