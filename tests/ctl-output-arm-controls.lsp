@@ -7,6 +7,7 @@
 (defun fn2-machine-pool-borrows-read-code (slot) (declare (ignore slot)) :ok)
 (defun fn2-machine-pool-borrows (slot) (declare (ignore slot)) *borrow-count*)
 (defun natp (x) (and (integerp x) (<= 0 x)))
+(defun nfix (x) (if (natp x) x 0))
 (setf (symbol-function 'base-execute-steps) (symbol-function 'execute-steps))
 (defun execute-steps (steps)
  (dolist (step steps)
