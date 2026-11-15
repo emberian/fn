@@ -26,12 +26,23 @@
          (rows (fn2-columns-sym obj "-ROWS")))
    (append `((,p ,value) (,wfp ,value) (equal (,rows ,value) (,rows ,obj)))
            (append (if (eq obj 'fn2-b3) `((equal (len (nth *fn2-b3-wordsi* ,value)) (len (nth *fn2-b3-wordsi* fn2-b3)))) nil) (fn2-fc-shape-claims (cdr outputs) call))))))
-(defmacro fn2-fc-shape (name call guard outputs)
+; Frame observations must remain public at every caller, including tables
+; added to an output tuple later. This changes only the generated proof hint.
+(defun fn2-fc-shape-row-observers (outputs)
+ (declare (xargs :verify-guards nil))
+ (if (atom outputs) nil
+  (cons (fn2-columns-sym (caar outputs) "-ROWS")
+        (fn2-fc-shape-row-observers (cdr outputs)))))
+(defun fn2-fc-shape-event (name call guard outputs)
+ (declare (xargs :verify-guards nil))
  `(defthm ,name
    (implies ,guard (and ,@(fn2-fc-shape-claims outputs call)))
    :hints (("Goal" :in-theory (disable fn2-digestsp fn2-digests-wfp fn2-fcp fn2-fc-wfp fn2-fc-contextp fn2-fc-context-wfp
                                      fn2-b3p fn2-b3-wfp fn2-fieldsp fn2-fields-wfp
-                                     fn2-poolp fn2-pool-wfp length char len)))))
+                                     fn2-poolp fn2-pool-wfp length char len
+                                     ,@(fn2-fc-shape-row-observers outputs))))))
+(defmacro fn2-fc-shape (name call guard outputs)
+ (fn2-fc-shape-event name call guard outputs))
 (local (in-theory (disable fn2-digestsp fn2-digests-wfp fn2-digests-rows fn2-fc-context-hash fn2-fc-context-geometry fn2-fc-context-previous-seal fn2-fcp fn2-fc-wfp fn2-fc-contextp fn2-fc-context-wfp fn2-b3p fn2-b3-wfp fn2-fieldsp fn2-fields-wfp fn2-poolp fn2-pool-wfp fn2-pool-rows fn2-pool-read fn2-pool-write fn2-b3-roomp fn-b3-word fn2-fields-rows fn2-b3-rows fn2-fc-phase fn2-fc-pos fn2-fc-zero fn2-fc-pad fn2-fc-pad-end fn2-fc-geom fn2-fc-previous-seal-offset fn2-fc-rows fn2-fc-context-location fn2-fc-context-allocation fn2-fc-context-history fn2-fc-context-incarnation fn2-fc-context-writer-epoch fn2-fc-context-commit fn2-fc-context-page-kind fn2-fc-context-encoded-length fn2-fc-context-extent-writer-epoch fn2-fc-context-previous-commit fn2-fc-context-extent fn2-fc-context-rows fn2-fields-value fn2-fields-ref-off)))
 (defun fn2-fc-domain (kind)
  (declare (xargs :guard t))

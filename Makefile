@@ -418,6 +418,7 @@ ACL2_BOOKS = \
   tests/form-probe-unit \
   tests/format-check \
   tests/format-check-unit \
+  tests/format-shape-observers-unit \
   tests/format-roundtrip \
   tests/format-unit \
   tests/grammar-fuzz \
