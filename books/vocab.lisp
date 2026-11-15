@@ -839,7 +839,19 @@
        '(fn2-ops-posted-fifo-length)
        '(fn2-ops-peek-posted fn2-ops-latch-peer) world)
      '(:use ((:instance fn2-ops-peek-posted-slot (ops fn2-ops))
-             fn2-ops-peek-posted-post-bounds))))))
+             fn2-ops-peek-posted-post-bounds
+             ; Normalize the frame fact with the actual marked-cell state,
+             ; just as the guard normalizes its raw scalar observations.
+             (:instance fn2-ops-latch-peer-posted-frame
+              (cell 0) (slot (mv-nth 1 (fn2-ops-peek-posted fn2-ops)))
+              (fn2-ops
+               (fn2-ops-set-c0-harvested
+                (mv-nth 1 (fn2-ops-peek-posted fn2-ops)) 1 fn2-ops)))
+             (:instance fn2-ops-latch-peer-posted-frame
+              (cell 1) (slot (mv-nth 1 (fn2-ops-peek-posted fn2-ops)))
+              (fn2-ops
+               (fn2-ops-set-c1-harvested
+                (mv-nth 1 (fn2-ops-peek-posted fn2-ops)) 1 fn2-ops)))))))))
   (mv-let (found slot cell) (fn2-ops-peek-posted fn2-ops)
     (if (not (eq found t)) (mv found 0 0 0 fn2-ops)
       (let* ((gen (fn2-ops-gen slot fn2-ops))

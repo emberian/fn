@@ -151,3 +151,21 @@ statements, frame fields and runtime bodies are unchanged. The added control
 checks that exact single-reader/opaque-producer configuration. This follow-up
 remains UNRUN, with the same minimal pilot plan and all seven qualified
 parents unchanged. The prior27 qualified prefix is untouched.
+
+### Explicit frame use at both marked states
+
+The be136 pilot admitted the posted latch frame in1,082 steps/0.02s, then
+stopped at HARVEST guard goals:118,944 steps,18.53s for the attempted book.
+All72 final guard goals belong to12 conclusion classes: six each for the
+actual C0-mark and C1-mark state. They require integer/nonnegative post-head,
+integer/nonnegative decremented post-count, numeric post-count and incremented
+head below2^60. Initial bounds are present, but the goals contain normalized
+raw NTH observations of the latch, so its named-reader rewrite does not match.
+
+The next source hint explicitly USEs the already proved frame at both actual
+marked states, with the slot taken from the actual peek result. Its fields and
+H/C stay unchanged; this is not another frame or a new reader toggle. Both
+cell-state instances are source-controlled. The same single FIFO observation
+remains enabled and all unrelated readers remain closed. This candidate is
+UNRUN. Prior27 qualified payloads remain unchanged; no record was granted for
+be136, and all owned processes/scope were gone before releasing2Gi.

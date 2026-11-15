@@ -66,10 +66,10 @@
   },
   "target": {
     "book": "books/vocab",
-    "key": "c304e1852f72ddb04539e442419d29ec4110a6c97b323648017ffe508286fb4a",
-    "sha256": "4a1e68ce02b5611dc8187ea7a5e467a52b7a0e9d51289e6275fe37bc6678f378"
+    "key": "f25b0db226005357f44bbfcf8f986e2193b041da652b95420a3fc290e78099df",
+    "sha256": "96606555ca9b71fcc9d3e5b955deb5052300526347dbb5f5f8e74545813b1c53"
   },
   "then": "Record only entire VOCAB if READY, continue remaining two-fixture37 using qualified27 parent-closedprefix. Borrow-accounting sourcecontract unchanged but wholebook notqualified here.",
   "toolchain": "8aeb1bea18968c6cd33ac633a80ebf67e4924504db112fd27eb11f16a27b2a8c",
-  "source_parent": "2545a6c10"
+  "source_parent": "be1366816"
 }

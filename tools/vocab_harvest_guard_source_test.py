@@ -73,6 +73,19 @@ class HarvestGuard(unittest.TestCase):
         self.assertIn(':use', str(harvest[3]))
         self.assertIn('fn2-ops-peek-posted-post-bounds', str(harvest[3]))
 
+    def test_frame_use_covers_both_actual_marked_cell_states(self):
+        parsed = ledger.read_forms(Path('books/vocab.lisp').read_text())
+        harvest = next(x for x in nodes(parsed) if x[:2] == ['defun', 'fn2-harvest-next'])
+        uses = [x for x in nodes(harvest[3])
+                if x[:2] == [':instance', 'fn2-ops-latch-peer-posted-frame']]
+        slot = ['mv-nth', 1, ['fn2-ops-peek-posted', 'fn2-ops']]
+        self.assertEqual(len(uses), 2)
+        for cell in (0, 1):
+            expected = [':instance', 'fn2-ops-latch-peer-posted-frame',
+                        ['cell', cell], ['slot', slot],
+                        ['fn2-ops', [f'fn2-ops-set-c{cell}-harvested', slot, 1, 'fn2-ops']]]
+            self.assertIn(expected, uses)
+
     def test_no_invented_ring_invariant_and_all_posted_metadata_framed(self):
         _, t, _ = inventory({'books/vocab.lisp': Path('books/vocab.lisp').read_text()})
         fact = str(t['fn2-ops-peek-posted-post-bounds'][0])
