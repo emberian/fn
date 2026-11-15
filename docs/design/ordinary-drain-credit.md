@@ -53,9 +53,11 @@ The separate `assurance-drain-credit-root-slice` keeps root
 `d7f9c00e0`'s existing canonical C/B assembly and applies only the pool credit
 prerequisites, ordinary B consumer, shared geometry/configuration and staged
 unit. It does not import cold boot/checkpoint workers or change root's directory
-representation. The staged/refusal closure is 165 local books, with seven direct
-form changes and 125 invalidated/new closure keys. Forty closures are unchanged
-from that root; eight have candidates in the author's local cache. These are
+representation. After the qualified API source cohort and atomic stage preflight,
+the staged/refusal closure is167 local books, stage-only164, union168. Thirteen
+books have direct form changes and152 closure keys are new or invalidated.
+Sixteen closures remain unchanged from that root; eight have candidates in the
+author's local cache. These are
 source-key/candidate facts, not an installed warm prefix or ACL2 admission.
 The exact inventory and plain closure keys are recorded in the adjacent JSON.
 The higher simulated-adapter entry stays in the owning cold donor lane; it is
@@ -69,3 +71,12 @@ for exact FREE-row unwind binding. The new reserve/return helpers are internal
 DEFUN calls under existing admission/release operations, never new arm operands.
 Root's lifecycle cursor predicate declaration is preserved. New capacity arm
 operations must receive their own declaration/face audit when their source lands.
+
+The compact projection still uses the earlier protected-quota-only configure
+ABI. It is an intermediate B-consumer control, not the final profile-service
+admission target. The current cold donor imports the profile-aware configure
+and passes the same profile used by actual core initialization. Projecting that
+ABI requires the actual shared source-manifest geometry leaf and its preceding
+three-unit payload/physical-stride separation, which this older root lacks.
+Copying the later formula into the older representation would hide that genuine
+semantic dependency. No warm gate is requested for the incomplete admission cut.
