@@ -1,8 +1,8 @@
 # Budgeted digest fetch: current-source proof packet
 
-SOURCE ONLY. No ACL2, certificate installation, pair-alist comparison, native
-execution or farm job has run for this packet. Archive authority and hold release
-remain unfinished; this packet grants neither.
+SOURCE-ONLY successor to the frozen6a5 author check described below. The new
+natural-measure proof boundary has not run in ACL2. Archive authority and hold
+release remain unfinished; this packet grants neither.
 
 The base is `a1dba5a1c7bd303ba6085c589b9020c357624079`. The entire original
 `fn2-rec-fetch` definition, `fn2-rec-byte-at` definition and two byte theorems,
@@ -45,8 +45,8 @@ derived by decoding the writer output. These executable controls are UNRUN.
 
 The mechanical transformations and their before fixtures are in
 `tools/pool_digest_budget_rewrite.py` and `tools/pool_digest_proof_rewrite.py`.
-Eight Python source controls pass. Lisp structural checks, secrets and diff
-checks pass. No logical proof or executable fixture success is claimed.
+Nine Python source controls pass. Lisp structural checks, secrets and diff
+checks pass. No whole-book proof or executable fixture success is claimed.
 
 ## Exact dependency/cache cut
 
@@ -72,3 +72,41 @@ The shared launcher coordinate supplied by the integrator is
 later gate requires a named root compute grant and must reuse the nine cached
 candidates without silently certifying dependencies. The broader cold archive
 reader/boot closure is deliberately excluded from this prerequisite packet.
+
+## Frozen6a5 first refusal and proposed local boundary
+
+Root granted one author-only exact ten-book check of `6a5ab24a0`, using nine
+cached dependencies, 2 GiB external MemoryMax, zero swap, 600 total seconds,
+and fresh 2 million steps/20 seconds per original event. Client preflight
+accepted all 42 forms. The source range began at the local system include so
+its arithmetic theory remained inside the source encapsulate. The original
+byte reader/theorems and new state predicate admitted, then worker definition
+form14 refused during termination: rewrite call-depth1000, 1,515 steps and
+0.04 ACL2 seconds (the enclosing source attempt reported 0.27 seconds). The
+final equality, worker guards and all fixture assertions were unreached.
+This is a proof-engine refusal, not a counterexample or certification.
+
+`digest-fetch-6a5-author-refusal.json` binds the raw input/refusal hashes and
+scope. Raw artifacts remain under the owned lane's
+`build/coordinator/evidence/digest-fetch-6a5/` and remote `/tmp/digest-fetch-6a5-*`.
+Explicit release stopped only the recorded own session: outer1395116,
+wrapper1395117, server1395153 and ACL2 group1395157 were all absent, and
+`run-p1395116-i30751807.scope` was absent before ledger release was reported.
+
+The displayed termination goal is `(o-p (nfix left))` plus decrease of
+`(nfix (- left 1))` under `(not (zp left))`; all source/codec branch facts are
+irrelevant to that measure. The refusal's rule summary shows the enabled
+state predicate opening unsigned-byte/integer-range/exponent arithmetic in
+those branch facts. No gstack was captured, so this source diagnosis does not
+claim to identify a unique repeated rewrite rune.
+
+The proposed fix adds only local `fn2-rec-fetch-left-measure`, stating that
+scalar natural-measure fact, and a worker termination hint that uses it under
+`minimal-theory`. The unchanged worker measure, guard and executable body do
+not depend on semantic state normalization. A source control checks the exact
+helper formula, absence of codec/pool arguments, the explicit minimal theory,
+and byte-identical worker body; the old fetch remains entirely byte-identical.
+No rewrite depth, step/time allowance, runtime data domain or error behavior
+changes. The minimal next question is whether this local natural-measure
+boundary admits, and then which next original event is first to refuse.
+The successor requires a new named root scope; no retry has run.

@@ -29,10 +29,20 @@
        (0 (equal acc 0)) (1 (unsigned-byte-p 8 acc))
        (2 (unsigned-byte-p 16 acc)) (otherwise (unsigned-byte-p 24 acc)))))
 
+; Termination depends only on LEFT. Keep source/codec predicates opaque
+; while proving the worker's measure, rather than normalizing irrelevant data.
+(local (defthm fn2-rec-fetch-left-measure
+ (and (o-p (nfix left))
+      (implies (not (zp left)) (o< (nfix (- left 1)) (nfix left))))
+ :hints (("Goal" :in-theory (enable o-p o-finp o< nfix zp)))
+ :rule-classes nil))
+
 (defun fn2-rec-fetch-bytes (left next acc dst slot gen off okind oslot ogen fn2-pool fn2-digests)
  (declare (xargs :stobjs (fn2-pool fn2-digests) :verify-guards nil :measure (nfix left)
   :guard (and (fn2-pool-wfp fn2-pool) (fn2-digest-rowp dst fn2-digests)
-              (natp left) (fn2-rec-fetch-state-p next acc) (natp off))))
+              (natp left) (fn2-rec-fetch-state-p next acc) (natp off))
+  :hints (("Goal" :use ((:instance fn2-rec-fetch-left-measure))
+                 :in-theory (theory 'minimal-theory)))))
  (b* (((when (= next 32)) (mv :ok next acc fn2-digests))
       ((when (zp left)) (mv :more next acc fn2-digests))
       ((mv code byte) (fn2-rec-byte-at slot gen (+ off next) okind oslot ogen fn2-pool))

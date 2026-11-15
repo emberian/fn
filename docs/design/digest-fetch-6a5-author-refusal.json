@@ -1,0 +1,37 @@
+{
+  "source_commit": "6a5ab24a0df248aa6c5081294507555e2aa9fe7d",
+  "toolchain": "8aeb1bea18968c6cd33ac633a80ebf67e4924504db112fd27eb11f16a27b2a8c",
+  "scope": "author-only exact10/9cached; not certification",
+  "outcome": "first refusal at worker measure admission",
+  "first_event": "fn2-rec-fetch-bytes",
+  "original_form": 14,
+  "refusal": "ACL2 rewrite call-depth1000",
+  "steps": 1515,
+  "worker_acl2_seconds": 0.04,
+  "encapsulate_acl2_seconds": 0.27,
+  "equality": "unreached",
+  "guards": "unreached",
+  "fixtures": "not requested or run",
+  "memory_max": 2147483648,
+  "memory_swap_max": 0,
+  "total_seconds_limit": 600,
+  "event_steps_limit": 2000000,
+  "event_seconds_limit": 20,
+  "recorded_own_pids": [
+    1395116,
+    1395117,
+    1395153,
+    1395157
+  ],
+  "released": true,
+  "artifacts_sha256": {
+    "digest-fetch-6a5-author-input.lisp": "d8426e32a0643380cd98bcdc3ad9d4806d174d5887fac834a8175fdfcd030f9f",
+    "digest-fetch-6a5-handles.json": "1b8408f4161ff5ae24e4494255afbffe1786c72d1186686bd7233f562aac858e",
+    "digest-fetch-6a5-preflight.json": "43fd3bc9f5731759cd7d25c3d991bdb5cfef26d2a0140a0c5d8c547575f64a0c",
+    "last-output-3.txt": "e675f6962c5ddb9c3cccbf42c5da2c6ef1ff248ee0708e5c8823159c23a83dd8",
+    "digest-fetch-6a5-release-receipt.json": "7edf948f03cb0159cc4573a07854776e91a53c0ed6a7ad83c9033f70b9156398",
+    "digest-fetch-6a5-scope.json": "ce4ec59852d6006c452791b42626875e4a928b1db318ed02aa8449eec9283b10",
+    "digest-fetch-6a5-author.log": "749f0c17cc7ccbacb3b39ac3dcf1277afdd9e1ed24b251fd75cef835822910e1"
+  },
+  "author_input_sha256": "d8426e32a0643380cd98bcdc3ad9d4806d174d5887fac834a8175fdfcd030f9f"
+}

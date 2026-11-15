@@ -11,6 +11,16 @@ def node(s,p):
  if len(m)!=1:raise ValueError((p,len(m)))
  return m[0].node
 
+MEASURE='''; Termination depends only on LEFT. Keep source/codec predicates opaque
+; while proving the worker's measure, rather than normalizing irrelevant data.
+(local (defthm fn2-rec-fetch-left-measure
+ (and (o-p (nfix left))
+      (implies (not (zp left)) (o< (nfix (- left 1)) (nfix left))))
+ :hints (("Goal" :in-theory (enable o-p o-finp o< nfix zp)))
+ :rule-classes nil))
+
+'''
+
 SUPPORT='''; Local proof support: a backend pool read never uses the continuation
 ; status :MORE. Thus worker concatenation cannot mistake an error for yield.
 (local (defthm fn2-rec-byte-at-not-more
@@ -144,6 +154,12 @@ def with_hint(source,name,hint):
 
 def rewrite(source):
  if '(local (defthm fn2-rec-fetch-bytes-compose' in source:return source
+ worker=node(source,'(defun fn2-rec-fetch-bytes ?*body)')
+ xargs=lr.match('(xargs ?*body)',[worker])[0].node
+ source=lr.write(source,[(worker.start,worker.start,MEASURE),
+  (xargs.end-1,xargs.end-1,'''
+  :hints (("Goal" :use ((:instance fn2-rec-fetch-left-measure))
+                 :in-theory (theory 'minimal-theory)))''')])
  anchor=node(source,'(defun fn2-rec-fetch-step ?*body)')
  source=lr.write(source,[(anchor.start,anchor.start,SUPPORT)])
  source=with_hint(source,'fn2-rec-fetch-step-progress-bound', ''':hints (("Goal" :use ((:instance fn2-rec-fetch-bytes-bound (left (min budget (- 32 next)))))

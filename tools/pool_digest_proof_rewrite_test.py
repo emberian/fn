@@ -14,7 +14,20 @@ class Proof(unittest.TestCase):
   self.assertEqual(after,read('books/pool-digest.lisp'));self.assertEqual(after,proof.rewrite(after))
   old={m.captures['name'].low:text(before,m.node) for m in lr.match('(defun ?name ?*body)',lr.parse(before).forms,deep=False)}
   new={m.captures['name'].low:text(after,m.node) for m in lr.match('(defun ?name ?*body)',lr.parse(after).forms,deep=False)}
-  self.assertEqual(old,new)
+  worker=one(after,'(defun fn2-rec-fetch-bytes ?*body)')
+  xargs=lr.match('(xargs ?*body)',[worker])[0].node
+  for i,n in enumerate(xargs.items[:-1]):
+   if getattr(n,'low',None)==':hints':
+    cleaned=lr.write(after,[(n.start,xargs.items[i+1].end,'')])
+    new['fn2-rec-fetch-bytes']=text(cleaned,one(cleaned,'(defun fn2-rec-fetch-bytes ?*body)'))
+    break
+  self.assertEqual({k:v for k,v in old.items() if k!='fn2-rec-fetch-bytes'},
+                   {k:v for k,v in new.items() if k!='fn2-rec-fetch-bytes'})
+  import re
+  self.assertEqual(re.sub(r'\s+','',old['fn2-rec-fetch-bytes']),
+                   re.sub(r'\s+','',new['fn2-rec-fetch-bytes']))
+  prior=one(before,'(defun fn2-rec-fetch-bytes ?*body)')
+  self.assertEqual(text(before,prior.items[-1]),text(after,worker.items[-1]))
   for name in ['fn2-rec-fetch-step-progress-bound','fn2-rec-fetch-step-result-state','fn2-rec-fetch-step-zero','fn2-rec-fetch-step-shape','fn2-rec-fetch-exec-refines','fn2-rec-fetch-shape']:
    a=one(before,'(defthm '+name+' ?*body)');b=one(after,'(defthm '+name+' ?*body)')
    self.assertEqual(text(before,a.items[2]),text(after,b.items[2]),name)
@@ -29,6 +42,13 @@ class Proof(unittest.TestCase):
   self.assertIn('(mv-nth 1 (fn2-layout-byte :u32',rhs)
   self.assertIn('(if (= k 7) :ok :more)',rhs)
   self.assertNotIn('(defun',rhs)
+ def test_termination_uses_only_natural_measure_fact(self):
+  s=read('books/pool-digest.lisp');worker=one(s,'(defun fn2-rec-fetch-bytes ?*body)')
+  self.assertIn(':use ((:instance fn2-rec-fetch-left-measure))',text(s,worker))
+  self.assertIn(":in-theory (theory 'minimal-theory)",text(s,worker))
+  lemma=lr.match('(defthm fn2-rec-fetch-left-measure ?*body)',lr.parse(s).forms)[0].node
+  self.assertTrue(lr.match('(and (o-p (nfix left)) (implies (not (zp left)) (o< (nfix (- left 1)) (nfix left))))',[lemma]))
+  self.assertNotIn('fn2-pool',text(s,lemma));self.assertNotIn('fn2-layout',text(s,lemma))
  def test_exported_result_state_requires_valid_input(self):
   s=read('books/pool-digest.lisp');n=one(s,'(defthm fn2-rec-fetch-step-result-state ?*body)')
   self.assertTrue(lr.match('(implies (and (natp budget) (natp off) (fn2-rec-fetch-state-p next acc)) (fn2-rec-fetch-state-p (mv-nth 1 ?call) (mv-nth 2 ?call)))',[n]))
