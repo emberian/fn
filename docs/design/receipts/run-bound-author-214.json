@@ -1,0 +1,44 @@
+{
+  "scope": "Actual bound reader author evidence only; target fixture not reached, no new certification",
+  "lisp_source_commit": "21477fa8e138b4f26bd840a04d8f94330e32fe5d",
+  "target": "tests/run-physical-bound-unit",
+  "target_key": "04ecc247a77d544aa885db7c88a4ba9a8f9fd1f94f29311129b43a980ac75e3e",
+  "entry": "Definition-free compiled43 parents; source23 in dependency order, each original event2Msteps/20s inside original LOCAL scope",
+  "author_window": {
+    "memory_bytes": 2147483648,
+    "swap_bytes": 0,
+    "outer_seconds": 1200,
+    "outer_pid": 976126,
+    "terminal": "original deadline after retained guard refusals",
+    "accepted_source_books": [
+      "books/boot-config-state",
+      "books/run-geometry",
+      "books/boot-geometry-state",
+      "books/commit-format",
+      "books/runs-page",
+      "books/checkpoint-semantic-page",
+      "books/runs-schema",
+      "books/authority-schema",
+      "books/folds"
+    ],
+    "final_refusal": "FN2-RIBBON-ADD guard: MV-NTH0 PLACE start naturality not matched by CAR type-prescription",
+    "released": true
+  },
+  "current_source_only_repair": "MV-NTH0 naturality bridge from existing unconditional CAR theorem; unexecuted",
+  "audit": {
+    "qualified": 43,
+    "miss_count": 23,
+    "pair_compatibility": "UNKNOWN: metadata/fullpayload integrity only, no install/artifactselection/ACL2",
+    "json_sha256": "a7b7f20331b872a152d38aec517b065db80e89cc2bcea99943da5e97399f1122"
+  },
+  "fixture_limits": [
+    "Synthetic post-source fullRef/owner binding and boot-layout admission",
+    "Production16stobj types, real codecs, B3/format checker, pinned operations and completion subject",
+    "No catalog/archive authority, whole-core serving, fence acceptance or reclamation qualification"
+  ],
+  "outstanding": [
+    "Admit source-only PLACE MV contract and finish actual remaining source dependencies/fixture",
+    "Record exact current closure only after author PASS and cleanup",
+    "Compose shared application dependencies against its actual newer compiler source; old43 does not imply compatibility"
+  ]
+}
