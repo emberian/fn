@@ -54,7 +54,7 @@
     "event": "FN2-CHECKPOINT-RETAIN-EXTENTS-TYPE",
     "cause": "No compositional ACCOUNT/EDGE-ADD output typing interface; primitive extra scalar updater terms remain under opaque EXTENTSP.",
     "existing_public_abstraction": "FN2-EXTENTS-UPDATE-FIELD-TYPE from columns record API; do not expand whole EXTENTSP at every consumer.",
-    "next_bounded_strategy": "Expose only metadata-derived extra scalar getter/updater names in the ACCOUNT type proof, keeping P/NTH opaque so UPDATE-FIELD-TYPE and raw NTH frames apply; keep raw updaters named in WFP/ROWS proofs so existing public frames fire. Add typed corollaries of existing ADJUST-RANGE only if needed."
+    "next_bounded_strategy": "Use existing raw scalar updater PRESERVES-TYPE/WFP/ROWS facts. Expose metadata-derived scalar getters so existing UPDATE-*-NTH frames normalize post-state observations; keep the raw updater bodies, EXTENTSP, ADJUST/OKP and REASON opaque. Compose with existing ADJUST-RANGE, SET-EDGE TYPE/WFP/ROWS, HANDLE-CODE-OK-SLOTP and the exact count range."
   },
   "guarded_constructor_extension": {
     "status": "Logical metadata functions admitted; one actual scalar writer instance passed; ACCOUNT instance still refused.",
@@ -81,5 +81,20 @@
     "scope_exists": false,
     "ledger_grant": "released",
     "new_compute": "none; shared application owner now executes dependencies."
+  },
+  "current_producer_candidate": {
+    "source": "7fad878a12e43f864278b36f513f505a9e8133c0",
+    "status": "Source-only; queued for actual shared application dependency execution. No new private world.",
+    "packet": "/tmp/checkpoint-producer-7fad/source-manifest.json",
+    "scalar_updater_type_facts": "Already emitted by columns; no seven handwritten replacements.",
+    "contracts": [
+      "ACCOUNT guarded TYPE/WFP and unconditional ROWS",
+      "EDGE-COUNT NATP/BOUND",
+      "EDGE-ADD holder-independent EXTENTS preservation",
+      "EDGE-ADD guarded EDGES preservation"
+    ],
+    "source_identity": "All 20 checkpoint and 3 member entire defun ASTs equal canonical508 after removing only :guard-hints.",
+    "controls": "Whole retired-H refutation, typed-H positive and metadata-derived actual verified-caller guard control; final coherent source admission pending.",
+    "preflight": "Shared structural reader parsed six full roots and three payloads; secrets and diff checks pass."
   }
 }
