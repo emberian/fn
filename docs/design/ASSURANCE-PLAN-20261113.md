@@ -12,6 +12,19 @@ recovery of accepted data. Integrated work now goes directly to upstream dev;
 component records alone do not establish this milestone. The shared application
 build owns the coherent current callback/runtime prefix and executable controls.
 
+The coherent application candidate is `0b84789e4`, with proof-only BIND repair
+`05d5a14e0` on top. Its 107-book prerequisite closure has 84 qualified books and
+23 complete author passes awaiting record certification. Root independently
+matched all 107 source hashes and closure keys after the repair; BIND is outside
+that cut. The repair uses the existing preservation generator to forward TYPE,
+WFP and ROWS facts for the actual masked query write. The original served body,
+guards and shape statement are unchanged; four factory/source mutation controls
+pass. The earlier failure was not missing LOCAL scope: the intermediate setter's
+hypotheses relieved, but its resulting recognizer was unavailable to the next
+getter's type reasoning. ACL2 admission of this repair and the actual FETCH
+cancellation fixture remain pending. The next run records the completed
+prerequisites before continuing at BIND, without replaying their author proofs.
+
 The native acceptance sequence uses both existing real-socket tests after
 current `node-profile` and `native-b3-evidence` qualification and host/interface
 checks. `tests/native-append-fetch-restart.py` requires two committed FNCT replies,
