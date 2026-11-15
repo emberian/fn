@@ -29,7 +29,7 @@
  ((phase (:enum fn2-checkpoint-restore-events-phase
     (:idle :directory :journal-bind :journal :frontier-begin :frontier :peaks :padding :complete :uncertain)))
   (candidate :u32) (generation :u60) (cut-commit :u60) (cut-event :u60)
-  (checkpoint :u60) (history :u60) (incarnation :u60)
+  (checkpoint :u60) (history :u60) (incarnation :u60) (token :u60)
   (owner-kind :u8) (owner-slot :u32) (owner-gen :u60)
   (slot :u32) (gen :u60) (record-slot :u32) (record-gen :u60)
   (head :u32) (tail :u32) (count :u60) (next-event :u60)

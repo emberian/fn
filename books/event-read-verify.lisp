@@ -141,15 +141,9 @@
       ; Leaf output is outside all workspaces. Its absolute row is derived
       ; from the format/recovery region, not a caller-selected digest input.
       (leaf (fn2-event-read-leaf-digest 0 fn2-event-read))
-      (ready (equal (fn2-journal-members-phase 0 fn2-journal-members) *fn2-journal-members-phase-leaf*))
       ((mv code fn2-journal-members fn2-mk fn2-b3 fn2-fields fn2-digests)
-       (if ready
-           (mv-let (code fn2-journal-members fn2-mk fn2-b3 fn2-digests)
-            (fn2-event-member-hash-step row leaf fn2-journal-members fn2-mk fn2-b3 fn2-digests fn2-pool)
-            (mv code fn2-journal-members fn2-mk fn2-b3 fn2-fields fn2-digests))
-         (mv-let (code fn2-journal-members fn2-fields)
-          (fn2-journal-members-step (fn2-event-read-field-base 0 fn2-event-read) fn2-journal-members fn2-fields fn2-pool)
-          (mv code fn2-journal-members fn2-mk fn2-b3 fn2-fields fn2-digests))))
+       (fn2-event-members-step (fn2-event-read-field-base 0 fn2-event-read) row leaf
+        fn2-journal-members fn2-mk fn2-b3 fn2-fields fn2-pool fn2-digests))
       ((when (member-eq code '(:more :leaf :appended)))
        (mv :more fn2-event-read fn2-journal-members fn2-mk fn2-b3 fn2-fields fn2-digests))
       (next (+ (fn2-event-read-first 0 fn2-event-read) (fn2-event-read-members 0 fn2-event-read)))
@@ -166,18 +160,50 @@
 ; Live ownership/expected-digest derivation remains the actual held C cut
 ; and installed seal directory. Cold callers use the SAME core below their own
 ; exact candidate/map-generation/decoded-directory source gate.
+
+(defun fn2-event-source-load-seal (i zero row dst fn2-checkpoint-restore-events-work fn2-digests)
+ (declare (xargs :stobjs (fn2-checkpoint-restore-events-work fn2-digests) :measure (nfix (- 8 (nfix i)))
+ :guard (and (fn2-checkpoint-restore-events-work-wfp fn2-checkpoint-restore-events-work) (fn2-digests-wfp fn2-digests)
+             (natp i) (<= i 8) (booleanp zero) (natp row) (fn2-digest-rowp dst fn2-digests)
+             (or zero (<= (* 32 (+ 1 row)) (fn2-checkpoint-restore-events-work-seals-length fn2-checkpoint-restore-events-work))))))
+ (if (>= (nfix i) 8) fn2-digests
+  (let ((fn2-digests (fn2-digest-set-word dst i (if zero 0 (fn2-event-catalog-seal-word row i fn2-checkpoint-restore-events-work)) fn2-digests)))
+   (fn2-event-source-load-seal (+ 1 i) zero row dst fn2-checkpoint-restore-events-work fn2-digests))))
+(defun fn2-event-source-seal (batch dst fn2-checkpoint-summary-authority fn2-checkpoints fn2-checkpoint-refs fn2-checkpoint-bytes fn2-commit-root fn2-extents fn2-alloc-edges fn2-ops fn2-fc fn2-checkpoint-restore-events fn2-checkpoint-restore-events-work fn2-digests)
+ (declare (xargs :stobjs (fn2-checkpoint-summary-authority fn2-checkpoints fn2-checkpoint-refs fn2-checkpoint-bytes fn2-commit-root fn2-extents fn2-alloc-edges fn2-ops fn2-fc fn2-checkpoint-restore-events fn2-checkpoint-restore-events-work fn2-digests)
+ :guard (and (fn2-checkpoint-summary-authority-wfp fn2-checkpoint-summary-authority) (fn2-checkpoints-wfp fn2-checkpoints) (fn2-checkpoint-refs-wfp fn2-checkpoint-refs) (fn2-checkpoint-bytes-wfp fn2-checkpoint-bytes) (fn2-commit-root-wfp fn2-commit-root) (fn2-extents-wfp fn2-extents) (fn2-alloc-edges-wfp fn2-alloc-edges) (fn2-ops-wfp fn2-ops) (fn2-fc-wfp fn2-fc) (fn2-checkpoint-restore-events-wfp fn2-checkpoint-restore-events) (fn2-checkpoint-restore-events-work-wfp fn2-checkpoint-restore-events-work) (fn2-digests-wfp fn2-digests))))
+ (b* (((mv code archived row) (fn2-event-source-lookup batch fn2-checkpoint-summary-authority fn2-checkpoints fn2-checkpoint-refs fn2-checkpoint-bytes fn2-commit-root fn2-checkpoint-restore-events fn2-checkpoint-restore-events-work))
+      ((unless (member-eq code '(:ok :genesis))) (mv code 0 fn2-digests))
+      ((when (and (eq code :genesis) (> (fn2-commit-root-base-batch 0 fn2-commit-root) 0)))
+       (if (not (fn2-digest-rowp dst fn2-digests)) (mv :bounds 0 fn2-digests)
+        (let ((fn2-digests (fn2-event-source-load-seal 0 t 0 dst fn2-checkpoint-restore-events-work fn2-digests))) (mv :ok dst fn2-digests))))
+      ((when (eq code :genesis))
+       (mv-let (sealed seal) (fn2-commit-directory-seal-slot 0 (fn2-fc-rows fn2-fc) fn2-commit-root) (mv sealed seal fn2-digests)))
+      (e (if archived (fn2-checkpoint-restore-events-work-extent row fn2-checkpoint-restore-events-work) (fn2-commit-root-extent row fn2-commit-root)))
+      ((unless (fn2-alloc-slotp e fn2-extents)) (mv :source 0 fn2-digests))
+      (epoch (if archived (fn2-checkpoint-restore-events-work-epoch row fn2-checkpoint-restore-events-work) (fn2-extents-epoch e fn2-extents)))
+      (allocation (if archived (fn2-checkpoint-restore-events-work-allocation row fn2-checkpoint-restore-events-work) (fn2-extents-counter e fn2-extents)))
+      ((unless (fn2-event-catalog-held-p batch e epoch allocation fn2-checkpoint-restore-events fn2-extents fn2-alloc-edges fn2-ops fn2-checkpoints)) (mv :source 0 fn2-digests))
+      ((when (not archived)) (mv-let (sealed seal) (fn2-commit-directory-seal-slot batch (fn2-fc-rows fn2-fc) fn2-commit-root) (mv sealed seal fn2-digests)))
+      ((unless (fn2-digest-rowp dst fn2-digests)) (mv :bounds 0 fn2-digests))
+      (fn2-digests (fn2-event-source-load-seal 0 nil row dst fn2-checkpoint-restore-events-work fn2-digests)))
+  (mv :ok dst fn2-digests)))
 (defun fn2-event-read-format-step (budget fn2-event-read fn2-csnapshot fn2-commit-root
-                                  fn2-journal-members fn2-fc fn2-fc-context fn2-b3 fn2-fields fn2-pool fn2-digests)
- (declare (xargs :stobjs (fn2-event-read fn2-csnapshot fn2-commit-root fn2-journal-members fn2-fc fn2-fc-context fn2-b3 fn2-fields fn2-pool fn2-digests)
+                                  fn2-journal-members fn2-fc fn2-fc-context fn2-b3 fn2-fields fn2-pool fn2-digests fn2-checkpoint-summary-authority fn2-checkpoints fn2-checkpoint-refs fn2-checkpoint-bytes fn2-checkpoint-restore-events fn2-checkpoint-restore-events-work fn2-ops fn2-extents fn2-alloc-edges)
+ (declare (xargs :stobjs (fn2-event-read fn2-csnapshot fn2-commit-root fn2-journal-members fn2-fc fn2-fc-context fn2-b3 fn2-fields fn2-pool fn2-digests fn2-checkpoint-summary-authority fn2-checkpoints fn2-checkpoint-refs fn2-checkpoint-bytes fn2-checkpoint-restore-events fn2-checkpoint-restore-events-work fn2-ops fn2-extents fn2-alloc-edges)
   :verify-guards nil :guard (and (fn2-event-read-wfp fn2-event-read) (fn2-csnapshot-wfp fn2-csnapshot) (fn2-commit-root-wfp fn2-commit-root)
-   (fn2-journal-members-wfp fn2-journal-members) (fn2-fc-wfp fn2-fc) (fn2-fc-context-wfp fn2-fc-context) (fn2-b3-wfp fn2-b3) (fn2-fields-wfp fn2-fields) (fn2-pool-wfp fn2-pool) (fn2-digests-wfp fn2-digests))))
+   (fn2-journal-members-wfp fn2-journal-members) (fn2-fc-wfp fn2-fc) (fn2-fc-context-wfp fn2-fc-context) (fn2-b3-wfp fn2-b3) (fn2-fields-wfp fn2-fields) (fn2-pool-wfp fn2-pool) (fn2-digests-wfp fn2-digests) (fn2-checkpoint-summary-authority-wfp fn2-checkpoint-summary-authority) (fn2-checkpoints-wfp fn2-checkpoints) (fn2-checkpoint-refs-wfp fn2-checkpoint-refs) (fn2-checkpoint-bytes-wfp fn2-checkpoint-bytes) (fn2-checkpoint-restore-events-wfp fn2-checkpoint-restore-events) (fn2-checkpoint-restore-events-work-wfp fn2-checkpoint-restore-events-work) (fn2-ops-wfp fn2-ops) (fn2-extents-wfp fn2-extents) (fn2-alloc-edges-wfp fn2-alloc-edges))))
  (b* (((unless (fn2-event-read-ownerp fn2-event-read fn2-csnapshot))
        (mv :snapshot fn2-event-read fn2-journal-members fn2-fc fn2-fc-context fn2-b3 fn2-fields fn2-pool fn2-digests))
       (commit (fn2-event-read-commit 0 fn2-event-read))
-      (rootbase (* *fn2-digest-stride* (fn2-fc-rows fn2-fc)))
-      ((unless (and (posp commit) (< commit (fn2-commit-root-rows fn2-commit-root))))
-       (mv :state fn2-event-read fn2-journal-members fn2-fc fn2-fc-context fn2-b3 fn2-fields fn2-pool fn2-digests)))
-  (fn2-event-read-format-core budget (+ rootbase commit) (+ rootbase (- commit 1)) fn2-event-read fn2-journal-members fn2-fc fn2-fc-context fn2-b3 fn2-fields fn2-pool fn2-digests)))
+      ((unless (and (posp commit) (fn2-event-read-source-held-p fn2-event-read fn2-checkpoint-summary-authority fn2-checkpoints fn2-checkpoint-refs fn2-checkpoint-bytes fn2-commit-root fn2-extents fn2-alloc-edges fn2-ops fn2-checkpoint-restore-events fn2-checkpoint-restore-events-work)))
+       (mv :source fn2-event-read fn2-journal-members fn2-fc fn2-fc-context fn2-b3 fn2-fields fn2-pool fn2-digests))
+      ((mv expected-code expected fn2-digests) (fn2-event-source-seal commit (fn2-b-event-expected-digest (fn2-fc-rows fn2-fc) (fn2-extents-rows fn2-extents)) fn2-checkpoint-summary-authority fn2-checkpoints fn2-checkpoint-refs fn2-checkpoint-bytes fn2-commit-root fn2-extents fn2-alloc-edges fn2-ops fn2-fc fn2-checkpoint-restore-events fn2-checkpoint-restore-events-work fn2-digests))
+      ((mv previous-code previous fn2-digests) (fn2-event-source-seal (- commit 1) (fn2-b-event-previous-digest (fn2-fc-rows fn2-fc) (fn2-extents-rows fn2-extents)) fn2-checkpoint-summary-authority fn2-checkpoints fn2-checkpoint-refs fn2-checkpoint-bytes fn2-commit-root fn2-extents fn2-alloc-edges fn2-ops fn2-fc fn2-checkpoint-restore-events fn2-checkpoint-restore-events-work fn2-digests))
+      ((unless (and (eq expected-code :ok) (eq previous-code :ok)))
+       (mv :source fn2-event-read fn2-journal-members fn2-fc fn2-fc-context fn2-b3 fn2-fields fn2-pool fn2-digests)))
+  (fn2-event-read-format-core budget expected previous fn2-event-read fn2-journal-members fn2-fc fn2-fc-context fn2-b3 fn2-fields fn2-pool fn2-digests)))
+
 
 (defun fn2-event-read-member-step (fn2-event-read fn2-csnapshot fn2-journal-members fn2-mk fn2-b3 fn2-fields fn2-pool fn2-digests)
  (declare (xargs :stobjs (fn2-event-read fn2-csnapshot fn2-journal-members fn2-mk fn2-b3 fn2-fields fn2-pool fn2-digests)
@@ -189,7 +215,7 @@
 
 (fn2-event-read-preserves fn2-event-read-format-step
  (budget fn2-event-read fn2-csnapshot fn2-commit-root fn2-journal-members
-  fn2-fc fn2-fc-context fn2-b3 fn2-fields fn2-pool fn2-digests)
+  fn2-fc fn2-fc-context fn2-b3 fn2-fields fn2-pool fn2-digests fn2-checkpoint-summary-authority fn2-checkpoints fn2-checkpoint-refs fn2-checkpoint-bytes fn2-checkpoint-restore-events fn2-checkpoint-restore-events-work fn2-ops fn2-extents fn2-alloc-edges)
  :carriers ((fn2-event-read 1 :prefix "-READER") (fn2-journal-members 2 :prefix "-MEMBERS")
             (fn2-fc 3 :prefix "-FORMAT") (fn2-fc-context 4 :prefix "-CONTEXT") (fn2-b3 5 :prefix "-HASHER")
             (fn2-fields 6 :prefix "-FIELDS") (fn2-pool 7 :prefix "-POOL") (fn2-digests 8 :prefix "-DIGESTS")))
@@ -268,3 +294,13 @@
    fn2-event-readp fn2-event-read-wfp fn2-journal-membersp fn2-journal-members-wfp)))))
 (verify-guards fn2-event-read-member-step
  :hints (("Goal" :in-theory (disable fn2-event-read-member-core fn2-event-read-ownerp))))
+
+(fn2-digests-preserves fn2-event-source-load-seal
+ (i zero row dst fn2-checkpoint-restore-events-work fn2-digests)
+ :hyps ((fn2-checkpoint-restore-events-workp fn2-checkpoint-restore-events-work) (fn2-checkpoint-restore-events-work-wfp fn2-checkpoint-restore-events-work) (fn2-digestsp fn2-digests) (fn2-digests-wfp fn2-digests))
+ :carriers ((fn2-digests nil :prefix "-0")))
+
+(fn2-digests-preserves fn2-event-source-seal
+ (batch dst fn2-checkpoint-summary-authority fn2-checkpoints fn2-checkpoint-refs fn2-checkpoint-bytes fn2-commit-root fn2-extents fn2-alloc-edges fn2-ops fn2-fc fn2-checkpoint-restore-events fn2-checkpoint-restore-events-work fn2-digests)
+ :hyps ((fn2-checkpoint-summary-authorityp fn2-checkpoint-summary-authority) (fn2-checkpoint-summary-authority-wfp fn2-checkpoint-summary-authority) (fn2-checkpointsp fn2-checkpoints) (fn2-checkpoints-wfp fn2-checkpoints) (fn2-checkpoint-refsp fn2-checkpoint-refs) (fn2-checkpoint-refs-wfp fn2-checkpoint-refs) (fn2-checkpoint-bytesp fn2-checkpoint-bytes) (fn2-checkpoint-bytes-wfp fn2-checkpoint-bytes) (fn2-commit-rootp fn2-commit-root) (fn2-commit-root-wfp fn2-commit-root) (fn2-extentsp fn2-extents) (fn2-extents-wfp fn2-extents) (fn2-alloc-edgesp fn2-alloc-edges) (fn2-alloc-edges-wfp fn2-alloc-edges) (fn2-opsp fn2-ops) (fn2-ops-wfp fn2-ops) (fn2-fcp fn2-fc) (fn2-fc-wfp fn2-fc) (fn2-checkpoint-restore-eventsp fn2-checkpoint-restore-events) (fn2-checkpoint-restore-events-wfp fn2-checkpoint-restore-events) (fn2-checkpoint-restore-events-workp fn2-checkpoint-restore-events-work) (fn2-checkpoint-restore-events-work-wfp fn2-checkpoint-restore-events-work) (fn2-digestsp fn2-digests) (fn2-digests-wfp fn2-digests))
+ :carriers ((fn2-digests 2 :prefix "-0")))
