@@ -87,3 +87,59 @@
             (mv (if (eq span :ok) :act span) action private-channel private-offset private-count serial
                 fn2-tls-transport fn2-tls-record))
          (mv status action 0 offset count serial fn2-tls-transport fn2-tls-record)))))))))
+
+; Closure authorizes a PUBLIC application operation through its live descriptor.
+; The carrier's last slot/gen can belong to a different full-duplex sibling.
+(defcodec-record-closure fn2-tls-record fn2-tls-transport)
+(defun fn2-host-tls-mark-closed (op gen fn2-tls-transport fn2-tls-record fn2-core)
+ (declare (xargs :stobjs (fn2-tls-transport fn2-tls-record fn2-core) :verify-guards nil
+  :guard (and (fn2-core-wfp fn2-core) (fn2-tls-transport-wfp fn2-tls-transport)
+              (fn2-tls-record-wfp fn2-tls-record))))
+ (mv-let (code kind cap nonce address length) (fn2-host-codec-op op gen fn2-core)
+  (declare (ignore kind address))
+  (cond ((not (eq code :ok)) (mv code fn2-tls-record))
+        ((not (fn2-tls-transport-retired-p cap nonce fn2-tls-transport))
+         (mv :live fn2-tls-record))
+        ((and (= (fn2-tls-record-rows fn2-tls-record) 1)
+              (< 0 (fn2-tls-record-parent-serial 0 fn2-tls-record)))
+         (mv :child fn2-tls-record))
+        (t
+         (mv-let (bound fn2-tls-record)
+          (fn2-tls-record-bind cap nonce op gen length fn2-tls-record)
+          (if (not (eq bound :ok)) (mv bound fn2-tls-record)
+           (fn2-tls-record-mark-carrier-closed cap nonce op gen length
+            fn2-tls-transport fn2-tls-record)))))))
+
+; Validate the Cancel descriptor itself without rejecting held work after stop.
+(defun fn2-host-codec-cancel-target (cancel gen fn2-core)
+ (declare (xargs :stobjs fn2-core :verify-guards nil :guard (fn2-core-wfp fn2-core)))
+ (stobj-let ((fn2-ops (fn2-core-ops fn2-core)))
+  (code target target-gen)
+  (cond
+   ((not (and (natp cancel) (< cancel (fn2-ops-rows fn2-ops)))) (mv :bounds 0 0))
+   ((not (equal gen (fn2-ops-gen cancel fn2-ops))) (mv :stale 0 0))
+   ((not (and (equal (fn2-ops-phase cancel fn2-ops) *fn2-op-phase-submitted*)
+               (equal (fn2-ops-c0-posted cancel fn2-ops) 0)
+               (equal (fn2-ops-kind cancel fn2-ops) *fn2-action-cancel*))) (mv :state 0 0))
+   (t (mv-let (target target-gen) (fn2-op-cancel-target cancel fn2-ops)
+        (if (equal target cancel) (mv :stale 0 0) (mv :ok target target-gen)))))
+  (mv code target target-gen)))
+
+(defun fn2-host-tls-cancel-result (cancel gen fn2-tls-record fn2-core)
+ (declare (xargs :stobjs (fn2-tls-record fn2-core) :verify-guards nil
+  :guard (and (fn2-core-wfp fn2-core) (fn2-tls-record-wfp fn2-tls-record))))
+ (mv-let (authorized target target-gen) (fn2-host-codec-cancel-target cancel gen fn2-core)
+  (if (not (eq authorized :ok)) (mv authorized 0 nil 0 nil 0 fn2-tls-record)
+   (mv-let (code kind cap nonce address length) (fn2-host-codec-op target target-gen fn2-core)
+    (cond ((not (eq code :ok)) (mv code target nil 0 nil 0 fn2-tls-record))
+          ((not (= (fn2-tls-record-rows fn2-tls-record) 1))
+           (mv :unbound target nil 0 nil address fn2-tls-record))
+          (t
+           (mv-let (bound fn2-tls-record)
+            (fn2-tls-record-bind cap nonce target target-gen length fn2-tls-record)
+            (if (not (eq bound :ok)) (mv bound target nil 0 nil address fn2-tls-record)
+             (mv-let (decision terminal-code count won fn2-tls-record)
+              (fn2-tls-record-cancel (equal kind *fn2-action-receive*) fn2-tls-record)
+              (mv decision target terminal-code count won address fn2-tls-record)))))))))
+
+)
