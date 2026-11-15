@@ -1183,7 +1183,8 @@
       "raw_log_sha256": "5e8f6d1e8b66d2b9d970b4f65970e37547bfde630401a25e4e9595793fa0fd9f",
       "current_family_fixture_exact": true,
       "qualification_limit": "No record certification, complete function return/effect lifting or served runtime guard qualification from these fragment laws",
-      "receipt_clarification": "6dce9f270: success marker belongs to hashed driver stdout; raw ACL2 terminal marker is FN-REPL-DONE 7"
+      "receipt_clarification": "6dce9f270: success marker belongs to hashed driver stdout; raw ACL2 terminal marker is FN-REPL-DONE 7",
+      "current_record_qualification": "Exact currentstate11-based13book recordqualified at a9; docs/design/receipts/cns-source-leaf-enum-qualified-thirteen.json"
     },
     "whole_function_lift": {
       "source": "239fb42d6",
@@ -1205,13 +1206,13 @@
     "status": "Helper is included in qualified current parent136; RAW wholebook remains UNPROVED"
   },
   "closure_plan": {
-    "RAW": 134,
-    "FETCH": 244,
-    "FETCH_plus_actual_BT_fixture": 246,
+    "RAW": 136,
+    "FETCH": 246,
+    "FETCH_plus_actual_BT_fixture": 248,
     "native_tail_after_combined": 17,
     "prior135_current_key_matches": 119,
     "prior135_rekeyed_by_storage_append": 16,
-    "scope": "Source-only dependency cut; final key/cacheplan pending DATA packet; prior136/reader scopes remain exact separately",
+    "scope": "Source-only currentfamily counts; two reviewednewdimensionleaves pending actualauthor. Fullcache/READYcut follows leafresults, no broadcurrent qualification",
     "receipt_backed_current_application_bindings": 47
   },
   "root_reader_projection": {
@@ -1239,7 +1240,7 @@
     "current_foundation_raw_keys_match": 34,
     "old_receipt_scope": "Original prefoundation reader34 remains historical; only10oldkeys unchanged"
   },
-  "pending_source_join": "Executor-owned DATA backinglength chain pending; batch before freshcurrent cache/READYaudit",
+  "pending_source_join": "None required for granted leafpilots. Actual pool/B3leaf results pending; metadata/rolling/COMPRESS held.",
   "foundation_join": {
     "source": "6e7a1a9c105f2ccfeb0b06f32c0c566378cf62d9",
     "rows_source": "31635689e152fa20aa3e9eb18ae456ebe2397b64",
@@ -1276,6 +1277,28 @@
     "RAW_closure": 134,
     "capture_closure": 136,
     "controls": "5source testsPASS; wholelift fixture regenerates exactf893333a...12eb",
-    "qualification": "New leaf and changed consumer composition UNRUN; no old136 transfer claim"
+    "qualification": "Current12primary/13enum scopes qualified; all13 raw/currentkeys match a9 receipt, rootindependentlypayloadverified; changedRAW/capture stillunproved",
+    "primary_qualified_receipt": "docs/design/receipts/cns-source-leaf-qualified-twelve.json",
+    "enum_qualified_receipt": "docs/design/receipts/cns-source-leaf-enum-qualified-thirteen.json"
+  },
+  "dimension_interfaces_join": {
+    "pool_source": "2c5e7b6daa6da6044e1a0f688d0208d917df45d1",
+    "B3_source": "84fd211467636762b9e2d40d85dc9f0176f58bd4",
+    "ground_fixture_source": "4d6b4ba6d",
+    "scope": "Reviewed source-only producer interfaces; all existing runtime/guards/H+C unchanged, new claims UNADMITTED. No wholeRAW/FETCH claim.",
+    "pool_domain": "Unconditional metadata-only ROWS/backing-DATA equations derived from actual admitted ABI; no borrowed recognizer",
+    "B3_domain": "Scalar-only unconditional, actual STORE writers physical-stripe bounded; not a P/WFP surrogate",
+    "cache_audit": "/tmp/served-family-dimension-leaf-cache-audit.json",
+    "leaf_union": {
+      "books": 20,
+      "current_verified_payload_hits": 16,
+      "misses": [
+        "books/pool-dimensions",
+        "books/pool-digest",
+        "books/blake3-row-frames",
+        "books/blake3-word-frames"
+      ]
+    },
+    "focused_controls": "8DATA/B3 tests+5dependency-cut testsPASS; whole-result fixture still exactf893; no prover by integrationowner"
   }
 }

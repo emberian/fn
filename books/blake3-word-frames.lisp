@@ -1,0 +1,63 @@
+; Buffered-word dimensions, independent of word values and digest typing.
+(in-package "ACL2")
+(include-book "blake3-row-frames")
+(fn2-book-layer :b)
+(local (include-book "arithmetic-3/floor-mod/floor-mod" :dir :system))
+
+; Only STORE writes this array. Its physical stripe bound is deliberately
+; weaker than READY or a stobj recognizer, and is preserved by scalar writes.
+(defun fn2-b3-word-stripep (row fn2-b3)
+ (declare (xargs :stobjs fn2-b3 :guard t))
+ (and (natp row) (<= (* 16 (+ 1 row)) (fn2-b3-words-length fn2-b3))))
+
+(defun fn2-b3-word-frame-event (name domain world)
+ (declare (xargs :verify-guards nil))
+ (let* ((args (getpropc name 'formals nil world))
+        (outputs (getpropc name 'stobjs-out nil world))
+        (position (position-eq 'fn2-b3 outputs))
+        (call (cons name args))
+        (result (if (equal (len outputs) 1) call `(mv-nth ,position ,call)))
+        (claim `(equal (fn2-b3-words-length ,result)
+                       (fn2-b3-words-length fn2-b3)))
+        (hyps (append (and domain '((fn2-b3-word-stripep row fn2-b3)))
+                      (and (eq domain :index) '((natp i) (<= i 16)))))
+        (recursive (getpropc name 'recursivep nil world)))
+  (if (or (not (member-eq 'fn2-b3 args)) (not position)
+          (not (member-eq domain '(nil :stripe :index)))
+          (and domain (not (member-eq 'row args)))
+          (and (eq domain :index) (not (member-eq 'i args))))
+      (er hard 'fn2-b3-word-frame-event "Invalid actual B3 frame ABI/domain: ~x0 ~x1." name domain)
+   `(defthm ,(fn2-columns-sym name "-WORD-FRAME")
+     ,(if hyps `(implies (and ,@hyps) ,claim) claim)
+     :hints (("Goal" ,@(and recursive `(:induct ,call))
+              :in-theory (e/d (,name fn2-b3-word-stripep)
+                              (fn2-b3-words-length fn2-b3-rows))))))))
+(defmacro fn2-b3-word-frame (name &optional domain)
+ `(make-event (value (fn2-b3-word-frame-event ',name ',domain (w state)))))
+
+(defthm fn2-b3-store-word-frame
+ (implies (and (fn2-b3-word-stripep row fn2-b3) (natp i) (< i 16))
+  (equal (fn2-b3-words-length (fn2-b3-store row i v fn2-b3))
+         (fn2-b3-words-length fn2-b3)))
+ :hints (("Goal" :in-theory (enable fn2-b3-store fn2-b3-word-stripep fn2-b3-words-length))))
+
+; Scalar-only paths need no typing or stripe hypothesis at all.
+(fn2-b3-word-frame fn2-b3-init)
+(fn2-b3-word-frame fn2-b3-push)
+(fn2-b3-word-frame fn2-b3-flush)
+; BYTE normalizes POS modulo 64; POOL-MESSAGE traverses indices [i,16).
+; Their callers retain the physical stripe after each returned update.
+(fn2-b3-word-frame fn2-b3-byte :stripe)
+(fn2-b3-word-frame fn2-b3-pool-message :index)
+(fn2-b3-word-frame fn2-b3-chunk-output-into :stripe)
+(fn2-b3-word-frame fn2-b3-bulk :stripe)
+(fn2-b3-word-frame fn2-b3-span :stripe)
+(fn2-b3-word-frame fn2-b3-fragment-into :stripe)
+(fn2-b3-word-frame fn2-b3-feed :stripe)
+(fn2-b3-word-frame fn2-b3-update :stripe)
+
+(defthm fn2-b3-ready-word-stripe
+ (implies (fn2-b3-ready row fn2-b3 fn2-digests)
+          (fn2-b3-word-stripep row fn2-b3))
+ :hints (("Goal" :in-theory (enable fn2-b3-ready fn2-b3-word-stripep))))
+(in-theory (disable fn2-b3-word-stripep))

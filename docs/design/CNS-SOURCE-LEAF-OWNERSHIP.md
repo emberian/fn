@@ -34,3 +34,16 @@ admission and actual changed-consumer composition remain required gates.
 This is an isolated future-join packet atop0581. The live316 proof snapshot and
 shared served-family worktree are untouched. The independent DATA-dimension
 producer facts can compose without overlapping these definitions.
+
+## Actual leaf and enum qualification
+
+The exact current geometry parent was recorded from unchanged source READY.
+POOL-COPY and source-state each passed their whole original events at2M20 in
+a fresh actual qualified-parent world, then received whole records. Their
+exact12 union has verified actual8aeb cert/port/FASL payloads. The unchanged
+actual universal enum fixture then passed whole AUTHOR and record, giving
+exact13 with the two leaves. Both receipts include raw source hashes.
+
+All final four owned PIDs and scope were absent before ledger release. This
+qualifies the leaf/enum closure; RAW and other changed consumers still require
+composition with the independent DATA-dimension provider packet.
