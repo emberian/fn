@@ -19,10 +19,41 @@
               (fn2-alloc-edges-wfp fn2-alloc-edges) (fn2-fc-wfp fn2-fc)
               (fn2-digests-wfp fn2-digests) (fn2-mk-wfp fn2-mk)
               (fn2-fields-wfp fn2-fields) (fn2-origin-wfp fn2-origin) (fn2-pool-wfp fn2-pool))))
- (fn2-event-read-open-core (fn2-origin-history fn2-origin) (fn2-origin-history-incarnation fn2-origin)
-  token ordinal rslot rgen dslot dgen off scratch sgen okind oslot ogen
-  fn2-event-read fn2-csnapshot fn2-commit-root fn2-extents fn2-alloc-edges
-  fn2-fc fn2-digests fn2-mk fn2-fields fn2-pool))
+ (b* ((history (fn2-origin-history fn2-origin))
+      (incarnation (fn2-origin-history-incarnation fn2-origin))
+      ((when (and (< 0 (fn2-csnapshot-rows fn2-csnapshot))
+                  (equal (fn2-csnapshot-cut-commit 0 fn2-csnapshot) 0)))
+       (b* ((row (fn2-b-event-row (fn2-fc-rows fn2-fc)))
+            ((unless (and (equal ordinal 0)
+                           (fn2-csnapshot-ownerp token okind oslot ogen fn2-csnapshot)
+                           (equal (fn2-csnapshot-phase 0 fn2-csnapshot) *fn2-csnapshot-phase-held*)
+                           (equal (fn2-csnapshot-cut-event 0 fn2-csnapshot) 0)
+                           (< 0 (fn2-commit-root-rows fn2-commit-root))
+                           (equal (fn2-commit-root-installed 0 fn2-commit-root) 0)
+                           (equal (fn2-commit-root-published 0 fn2-commit-root) 0)
+                           (equal (fn2-commit-root-proposed 0 fn2-commit-root) 0)
+                           (<= (fn2-commit-root-first-key 0 fn2-commit-root) 1)
+                           (fn2-origin-physicalp history incarnation)
+                           (< 0 (fn2-event-read-rows fn2-event-read))
+                           (equal (fn2-event-read-phase 0 fn2-event-read) *fn2-event-read-phase-idle*)
+                           (< row (fn2-fc-rows fn2-fc))
+                           (equal (fn2-fc-phase row fn2-fc) *fn2-fc-phase-idle*)
+                           (fn2-mk-ready row fn2-mk fn2-digests)
+                           (eq (fn2-pool-workspace-code rslot rgen okind oslot ogen fn2-pool) :ok)))
+             (mv :snapshot fn2-event-read fn2-mk fn2-fields fn2-pool))
+            (fn2-mk (fn2-mk-init row fn2-mk))
+            (fn2-event-read (fn2-event-read-put 0
+             (phase *fn2-event-read-phase-complete*) (token token)
+             (owner-kind okind) (owner-slot oslot) (owner-gen ogen)
+             (history history) (history-incarnation incarnation)
+             (journal-history 0) (journal-incarnation 0)
+             (cut-commit 0) (cut-event 0) (commit 0) (next-event 1)
+             (slot rslot) (gen rgen) (checker row) (pending 0))))
+        (mv :complete fn2-event-read fn2-mk fn2-fields fn2-pool))))
+  (fn2-event-read-open-core history incarnation
+   token ordinal rslot rgen dslot dgen off scratch sgen okind oslot ogen
+   fn2-event-read fn2-csnapshot fn2-commit-root fn2-extents fn2-alloc-edges
+   fn2-fc fn2-digests fn2-mk fn2-fields fn2-pool)))
 (fn2-event-read-preserves fn2-peer-history-open
  (token ordinal rslot rgen dslot dgen off scratch sgen okind oslot ogen
   fn2-event-read fn2-csnapshot fn2-commit-root fn2-extents fn2-alloc-edges
