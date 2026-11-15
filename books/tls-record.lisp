@@ -91,7 +91,9 @@
              (sink-extent (case action
                             ((4 6) (fn2-tls-transport-quantum 0 fn2-tls-transport))
                             (12 (fn2-tls-record-extent 0 fn2-tls-record)) (otherwise 0))))
-       (mv-let (selected serial fn2-tls-transport)
+       (if (not (fn2-tls-record-requestable-p (+ 1 (fn2-tls-transport-serial 0 fn2-tls-transport)) action (if (= action 13) count 0) (if (= action 12) count 0) fn2-tls-record))
+      (mv :state 0 0 0 0 fn2-tls-transport fn2-tls-record)
+      (mv-let (selected serial fn2-tls-transport)
         (fn2-tls-transport-select (fn2-tls-record-cap 0 fn2-tls-record) (fn2-tls-record-nonce 0 fn2-tls-record)
          (fn2-tls-record-slot 0 fn2-tls-record) (fn2-tls-record-generation 0 fn2-tls-record) action
          source (if (= source 0) 0 offset) (if (= source 0) 0 count) source-extent
@@ -99,7 +101,7 @@
         (if (not (eq selected :ok)) (mv selected 0 0 0 0 fn2-tls-transport fn2-tls-record)
          (mv-let (reserved fn2-tls-record)
           (fn2-tls-record-request serial action (if (= action 13) count 0) (if (= action 12) count 0) fn2-tls-record)
-          (mv (if (eq reserved :ok) :act :state) action offset count serial fn2-tls-transport fn2-tls-record)))))))))))
+          (mv (if (eq reserved :ok) :act :state) action offset count serial fn2-tls-transport fn2-tls-record))))))))))))
 
 (defun fn2-tls-record-step-observe (serial raw count errno fn2-tls-transport fn2-tls-record)
  (declare (xargs :stobjs (fn2-tls-transport fn2-tls-record) :verify-guards nil
@@ -123,7 +125,9 @@
                           (fn2-tls-record-sink-progress 0 fn2-tls-record)))
           (requested (if (= action 13) (fn2-tls-record-source-count 0 fn2-tls-record)
                        (fn2-tls-record-sink-count 0 fn2-tls-record))))
-    (mv-let (observed fn2-tls-transport)
+    (if (not (fn2-tls-record-observable-p serial (if (= action 13) used 0) (if (= action 12) made 0) fn2-tls-record))
+      (mv :bounds fn2-tls-transport fn2-tls-record)
+      (mv-let (observed fn2-tls-transport)
      (fn2-tls-transport-observe-spans (fn2-tls-record-cap 0 fn2-tls-record)
       (fn2-tls-record-nonce 0 fn2-tls-record) (fn2-tls-record-slot 0 fn2-tls-record)
       (fn2-tls-record-generation 0 fn2-tls-record) serial raw used made errno fn2-tls-transport)
@@ -149,5 +153,5 @@
                  (fn2-tls-record (fn2-tls-record-put 0 (seen-progress serial) (kick 1))))
            (mv :ok fn2-tls-transport fn2-tls-record)))
          (t (let ((fn2-tls-record (fn2-tls-record-put 0 (status 5) (kick 1))))
-              (mv :ok fn2-tls-transport fn2-tls-record)))))))))))
+              (mv :ok fn2-tls-transport fn2-tls-record))))))))))))
 )
