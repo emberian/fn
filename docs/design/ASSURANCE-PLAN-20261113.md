@@ -42,12 +42,21 @@ is missing from its proof interface. A generic bounds prototype passed only with
 an exploratory scalar lemma. The replacement standalone proof generator now
 admits the allocation and retirement size bounds without scratch lemmas; the
 actual allocation packer's unchanged guard passed in 0.25 seconds / 30,953 steps.
-The subsequent allocation carrier family still needs a local row-opacity proof
-repair, and the mixed-schema fixture remains pending. `defcodec-size-bounds`
-is requested by actual consumers, leaving existing layout expansions and keys
-unchanged. Consumer candidate `3cab2749d` preserves runtime functions, guards
-and theorem statements. The combined narrow author gate precedes another broad
-module run; neither these candidates nor the full closure are certified. The 32
+The combined author session subsequently passed the final mixed-schema fixture,
+both allocation and retirement packer guards and their carrier families. Local
+row-opacity hints repaired allocation installation and ticket preservation.
+A named `pool-read` byte contract and complete COPY-HASH carrier facts also
+admitted the unchanged hash-copy and capture-roots consumers. The checkpoint
+CHECK-STEP guard still exhausted two million steps in 22.43 seconds; installation
+packing still refused after a targeted opacity attempt. Neither is a proved
+counterexample or a passing book. The session stopped before its deadline.
+
+Clean candidates `827af50ad` (shared proof foundations) and `dccf0eb32` (consumer
+connections) preserve the current pool and layout source. Root independently
+compared 31 runtime function/guard ASTs across five consumer books, allowing only
+proof-hint differences. `defcodec-size-bounds` replaces the retirement-local
+prototype. Current-pool qualification remains pending; the two outstanding
+guards are assigned to proof-cost repair before canonical composition. The 32
 canonical runtime assertions and full application composition remain unexecuted.
 
 Codec fixture record `certify-20261115T020143Z-708421` passed all 24 books of
