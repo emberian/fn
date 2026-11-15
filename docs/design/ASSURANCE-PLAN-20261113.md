@@ -7,7 +7,7 @@ must be derived from that store and the actual served call/attachment graph.
 
 ## Current integration frontier — 2026-11-15 UTC
 
-Current integration source is `415e495e6`, including retirement dispatch, actual-type
+Current integration source is `9e35f6916`, including retirement dispatch, actual-type
 codec fixtures, failed-Send classification, consumed-input accounting and farm
 Git metadata protection. No current whole-system image, full host gate,
 canonical served certificate, or completed assurance claim exists.
@@ -145,12 +145,24 @@ now connects complete row construction, reversal and actual run-resume
 composition at `415e495e6`. Exact four-book record
 `certify-20261115T030618Z-772326` passed in 0.901 seconds with two reused and two
 new books; root matched all four current source digests. Controls assert the
-whole composition antecedent and exercise insufficient fuel. Source-byte and
-segment induction, validation/linear-path refinement and global fuel adequacy
-remain open.
+whole composition antecedent and exercise insufficient fuel. The actual source-byte batch and complete segment loop are integrated at
+`9e35f6916`. Seven-book record `certify-20261115T032116Z-787638` passed
+in 1.041 seconds (three reused, four new); root matched all seven before/after
+source hashes. Controls assert the whole antecedent and falsify the result when
+the fixed-suffix hypothesis is removed. Segment dispatch/reversal, initial-row
+alignment, validation/linear-path refinement and global fuel adequacy remain open.
 
 Farm transport repair `0dda1d6ac` protects both Git pointer files and directories
 during source sync. Five transport and three budget controls pass.
+
+Compression controllers and closure are integrated at `9e35f6916`, qualified
+by 32-book record `certify-20261115T031924Z-785362` (ten reused, 22 new,
+64.832 seconds). Root matched all 32 current source hashes to both manifest
+snapshots. Actual controls cover syscall retry epochs, stale observations, failed
+Send with consumed count, and productive cancellation after carrier closure.
+The native artifact preparation at `78623a36e` passed fourteen Python controls
+and a real Python primitive/SBCL FFI round trip against the same artifact.
+These component results do not qualify the assembled served host path.
 
 TLS/COMPRESS shared host closure, actual native input-prefix emission, and replay
 receipt consumption are source candidates, not qualified host behavior. Native
