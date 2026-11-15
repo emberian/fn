@@ -15,6 +15,8 @@
 (include-book "checkpoint-projection-protect")
 (include-book "checkpoint-cbase-acquire")
 (include-book "checkpoint-cbase-release")
+(include-book "checkpoint-summary-adoption")
+(include-book "checkpoint-summary-apply")
 (include-book "machines-a-access")
 (fn2-book-layer :b)
 
@@ -880,8 +882,31 @@
   (:checkpoint-cbase-acquire
    (:do (code) (fn2-checkpoint-cbase-acquire-op 1) :accept ()
     :case (((:more) (:next :checkpoint-cbase-acquire) (:charge :bytes 256 :steps *fn2-work-stage* :runnable t))
-           ; Adoption remains closed until the actual empty-C preflight is composed.
-           ((:held) (:stop :checkpoint))
+           ((:held) (:next :checkpoint-adopt-begin) (:charge :steps *fn2-work-stage* :runnable t))
+           (:otherwise (:stop :checkpoint)))))
+
+
+  (:checkpoint-adopt-begin :on-refusal ((:stop :checkpoint))
+   (:do (code) (fn2-checkpoint-summary-apply-begin-op) :accept (:more))
+   (:next :checkpoint-adopt-preflight) (:charge :steps *fn2-work-stage* :runnable t))
+  (:checkpoint-adopt-preflight
+   (:do (code) (fn2-checkpoint-summary-apply-preflight-op) :accept ()
+    :case (((:more) (:next :checkpoint-adopt-preflight) (:charge :steps *fn2-work-stage* :runnable t))
+           ((:copy) (:next :checkpoint-adopt-copy) (:charge :steps *fn2-work-stage* :runnable t))
+           (:otherwise (:stop :checkpoint)))))
+  (:checkpoint-adopt-copy
+   (:do (code) (fn2-checkpoint-summary-apply-step-op) :accept ()
+    :case (((:more) (:next :checkpoint-adopt-copy) (:charge :bytes 256 :steps *fn2-work-stage* :runnable t))
+           ((:applied) (:next :checkpoint-authority-begin) (:charge :steps *fn2-work-stage* :runnable t))
+           (:otherwise (:stop :checkpoint)))))
+  (:checkpoint-authority-begin :on-refusal ((:stop :checkpoint))
+   (:do (code) (fn2-checkpoint-summary-authority-cold-begin-op) :accept (:more))
+   (:next :checkpoint-authority-copy) (:charge :bytes 32 :steps *fn2-work-stage* :runnable t))
+  (:checkpoint-authority-copy
+   (:do (code) (fn2-checkpoint-summary-authority-cold-step-op) :accept ()
+    :case (((:more) (:next :checkpoint-authority-copy) (:charge :bytes 4 :steps *fn2-work-stage* :runnable t))
+           ; Actual suffix/base installation and persisted epoch closure follow.
+           ((:complete) (:stop :checkpoint))
            (:otherwise (:stop :checkpoint)))))
 
 
