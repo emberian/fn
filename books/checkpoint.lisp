@@ -5,6 +5,8 @@
 (include-book "alloc")
 (local (include-book "pool-read-contracts"))
 (local (include-book "columns-guard-hints"))
+(include-book "columns-carrier-contracts")
+(include-book "owed")
 (include-book "vocab")
 (fn2-book-layer :b)
 ; Current native backend routes one image. Domain0 is the format writer's
@@ -509,10 +511,44 @@
 ; Leaf contracts consumed by the generated core faces. They preserve concrete
 ; table shape only; these are not checkpoint/durability keystones.
 
-(fn2-checkpoint-refs-preserves fn2-checkpoint-retain
- (c role edge fn2-checkpoints fn2-checkpoint-refs fn2-checkpoint-bytes fn2-extents fn2-alloc-edges fn2-ops)
+; HOLDER is stored only in the returned edge carrier. The original extent
+; facet therefore does not need a readonly checkpoint type premise.
+(local (defthm fn2-checkpoint-retain-extent-holder-independent
+ (equal (mv-nth 1 (fn2-alloc-edge-add edge holder i epoch counter kind fn2-extents fn2-alloc-edges))
+        (mv-nth 1 (fn2-alloc-edge-add edge 0 i epoch counter kind fn2-extents fn2-alloc-edges)))
+ :hints (("Goal" :in-theory (e/d (fn2-alloc-edge-add fn2-alloc-edge-add-transition)
+  (fn2-alloc-handle-code fn2-alloc-durable-edgep fn2-alloc-retirement-intentp
+   fn2-alloc-edge-slotp fn2-alloc-edge-count fn2-alloc-account fn2-alloc-set-edge
+   fn2-alloc-reason))))))
+
+; The original off-guard EDGES-TYPE omitted readonly checkpoint typing.
+; Preserve its generated formula as an explicit unresolved claim, while the
+; distinct served interface supplies the actual readonly recognizers.
+(make-event
+ (let* ((name 'fn2-checkpoint-retain) (world (w state))
+        (args (getpropc name 'formals :missing world))
+        (carriers '((fn2-checkpoint-refs 1 :prefix "-REFS")
+                    (fn2-extents 2 :prefix "-EXTENTS")
+                    (fn2-alloc-edges 3 :prefix "-EDGES")))
+        (hyps (fn2-columns-carrier-hyps carriers))
+        (spec (nth 4 (fn2-columns-carrier-specs carriers)))
+        (old (car (fn2-columns-preservation-facts name (cons name args) (list spec) hyps nil))))
+  (if (or (eq args :missing) (not (equal (car spec) "-EDGES-TYPE")))
+      (er soft 'checkpoint-retain-contract "Actual retained edge carrier metadata changed.")
+    (value `(defthm-owed ,(cadr old) ,args ,(caddr old)
+      :teeth (fn2-checkpoint-retain-edges-type-positive-check
+              fn2-checkpoint-retain-edges-type-readonly-removal-check)
+      :layer :b
+      :doc "Original off-guard EDGES-TYPE remains unresolved. The typed-readonly served interface has a distinct name; diagnostic ground controls are separately owed.")))))
+
+(defcolumns-carrier-contracts fn2-checkpoint-retain
  :carriers ((fn2-checkpoint-refs 1 :prefix "-REFS")
-            (fn2-extents 2 :prefix "-EXTENTS") (fn2-alloc-edges 3 :prefix "-EDGES")))
+            (fn2-extents 2 :prefix "-EXTENTS") (fn2-alloc-edges 3 :prefix "-EDGES"))
+ :typed-readonly (fn2-alloc-edges)
+ :hints ((fn2-columns-guard-hint
+          '(fn2-checkpoints fn2-checkpoint-refs fn2-checkpoint-bytes fn2-extents fn2-alloc-edges fn2-ops)
+          '(fn2-alloc-edge-add fn2-alloc-edge-matchesp)
+          '(fn2-checkpoint-retain) world)))
 (fn2-checkpoints-preserves fn2-checkpoint-install
  (c install-commit base slot gen okind oslot ogen fn2-checkpoints fn2-checkpoint-refs fn2-checkpoint-bytes
     fn2-fields fn2-pool fn2-alloc-edges fn2-extents fn2-ops) :position 1)

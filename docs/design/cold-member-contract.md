@@ -51,3 +51,14 @@ hint-only change. The richer allocator and its extra-resizer frame hook remain.
 The composed cold source, its caller proof and its fixtures remain UNRUN at
 these combined keys. No new compute, publication, hold transfer or FREE
 activation is included.
+
+The reader author run also reached retention's older `EDGES-TYPE` boundary.
+Its original generated formula is retained as explicitly owed; the distinct
+`-UNDER-READONLY-TYPES` fact requires the actual readonly checkpoint type.
+The live lifecycle child already supplies that recognizer in its stored guard
+and preservation antecedent. No old off-guard edge typing is asserted.
+The original extent-carrier facet remains unchanged: the holder argument only
+changes the returned edge carrier, and a local equality reduces its extent
+result to the existing holder-zero type contract. The two new retention
+positive/readonly-removal diagnostic teeth remain outstanding; no executed
+retention counterexample or completed caller qualification is claimed here.
