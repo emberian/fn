@@ -53,7 +53,8 @@
  (let ((dst (fn2-digest-slot (nfix row) *fn2-b3-result*)))
   (if (not (and (fn2-b3-ready row fn2-b3 fn2-digests) (fn2-digest-rowp dst fn2-digests)))
       (mv :bounds fn2-digests fn2-b3)
-   (mv :ok (fn2-b3-finalize dst row fn2-digests fn2-b3) fn2-b3))))
+   (let ((fn2-digests (fn2-b3-finalize dst row fn2-digests fn2-b3)))
+    (mv :ok fn2-digests fn2-b3)))))
 
 (defun fn2-fnct-stream-trailer-part (index count dst slot gen off okind oslot ogen fn2-digests fn2-pool)
  (declare (xargs :stobjs (fn2-digests fn2-pool) :measure (nfix count)
