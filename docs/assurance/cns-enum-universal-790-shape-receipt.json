@@ -1,0 +1,82 @@
+{
+  "status": "first-actual-support-proof-limit",
+  "fixture_sha256": "79040a36f2811a6d9bfbba9b4d5429af3a2d29997099c327591a1035db0368da",
+  "campaign_exit": 1,
+  "state_compiled_load_acl2_seconds": 10.27,
+  "qualified_compiled_books": 131,
+  "setup_staging": "Initial generated script renamed fixture path before it was copied; strict preflight exited2 before ACL2. Corrected exact frozen copy; failure separately retained /tmp/enum-universal-790-staging-failure.log.",
+  "support_summaries": [
+    {
+      "kind": "DEFUN",
+      "name": "FN2-CNS-ENUM-STOBJ-EXECS",
+      "acl2_seconds": 0.0,
+      "outcome": "admitted before enclosing encapsulate failure"
+    },
+    {
+      "kind": "DEFUN",
+      "name": "FN2-CNS-ENUM-DEFINITION-CLOSURE",
+      "acl2_seconds": 0.01,
+      "outcome": "admitted before enclosing encapsulate failure"
+    },
+    {
+      "kind": "DEFUN",
+      "name": "FN2-CNS-ENUM-SELECT-RUNES",
+      "acl2_seconds": 0.0,
+      "outcome": "admitted before enclosing encapsulate failure"
+    },
+    {
+      "kind": "DEFTHEORY",
+      "name": "FN2-CNS-ENUM-LOGICAL-THEORY",
+      "acl2_seconds": 0.0,
+      "outcome": "admitted before enclosing encapsulate failure"
+    },
+    {
+      "kind": "DEFTHM",
+      "name": "FN2-CNS-ENUM-BOUNDED-UPDATE-SELF",
+      "acl2_seconds": 0.11,
+      "outcome": "admitted before enclosing encapsulate failure"
+    },
+    {
+      "kind": "DEFTHEORY",
+      "name": "FN2-CNS-ENUM-SHAPE-THEORY",
+      "acl2_seconds": 0.0,
+      "outcome": "admitted before enclosing encapsulate failure"
+    },
+    {
+      "kind": "DEFTHM",
+      "name": "FN2-CNS-ENUM-ACTUAL-TARGET-SHAPE",
+      "acl2_seconds": 20.0,
+      "outcome": "original20s-proof-limit"
+    }
+  ],
+  "first_refusal": {
+    "name": "FN2-CNS-ENUM-ACTUAL-TARGET-SHAPE",
+    "class": "original per-event proof time limit",
+    "acl2_seconds": 20.0,
+    "prover_steps": 11094,
+    "checkpoint": "Actual P exposes TRUE-LISTP table and LENGTH table=50; narrow shape theory lacked LENGTH-to-LEN bridge. Residual outer-bound goal (<0 (LEN table)); WFP expansion introduced49 unrelated array equalities. Failed search is not a counterexample."
+  },
+  "universal_admitted": 0,
+  "universal_requested": 3,
+  "negative": "not reached",
+  "raw_log": "/tmp/enum-universal-790-first-refusal.txt on forge",
+  "raw_log_sha256": "ba38cace3ea732e493b15e6d92b3cfe07b360c63bc08d5fe0a773dd71b4c7ec6",
+  "cleanup": {
+    "absent_pids": [
+      1873097,
+      1873100,
+      1873151,
+      1873152
+    ],
+    "absent_scope": "run-p1873097-i31229786.scope",
+    "ledger_owner": "enum_universal",
+    "ledger_gib_after": 0,
+    "ledger_recomputed_both_unassigned_fields_under_lock": true
+  },
+  "source_only_successor": {
+    "fixture_sha256": "716f4ced7b54cde1e4fc7fc5107e526006c7e550a09f425d2ea59e662321bb07",
+    "universal_and_negative_and_target_shape_formulas_unchanged": true,
+    "proposal": "Local actual record LEN bridge, explicit public target column LENGTH-WHEN-WFP facts and explicit shape :use; do not unfold WFP or element recognizers. Metadata raw stobj executable exclusions retained.",
+    "kernel_status": "unrun"
+  }
+}

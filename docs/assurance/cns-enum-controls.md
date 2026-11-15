@@ -41,9 +41,8 @@ The baseline git object must be available. This lane intentionally does not
 commit a 430 KB generated artifact or modify the runtime donor.
 
 **Remaining obligations:** record certification of the generated witnesses
-(author admission passed below); an actual
-P+WFP+valid-row universal whole-fragment equality proof with the cached stage
-bound to the actual getter; composed return-value/effect equivalence of the three
+(author admission passed below); record certification of the [three author-admitted universal whole-fragment
+equalities](cns-enum-universal-author-25186111.json); composed return-value/effect equivalence of the three
 served functions; repaired-book guard verification and record certification.
 The local source check and lexical parse establish none of these. The fragment
 controls intentionally include branch combinations that may be unreachable in
@@ -174,7 +173,9 @@ world provenance, retained raw-log hash, resource limits, and terminal cleanup.
 It establishes logical whole-carrier equality for the recorded concrete witnesses,
 including 255, named transitions, and the missing-row negative. It is author
 admission rather than a record-toolchain certificate or runtime qualification;
-the universal fragment and composed served-function obligations remain open.
+the composed served-function obligations remain open. Subsequent universal
+fragment admission is recorded separately in
+[cns-enum-universal-author-25186111.json](cns-enum-universal-author-25186111.json).
 All owned handles and their exact scope were absent before the actual ledger
 slot was released under lock, recalculating both unassigned fields. No additional
 compute or runtime consumer replay was performed.

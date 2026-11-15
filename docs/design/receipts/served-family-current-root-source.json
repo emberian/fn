@@ -1046,7 +1046,8 @@
     "d797_targeted_controls_including_reader": 22,
     "reader34_after_source_state_API": "All34raw/currentkeys still exact",
     "enum_fixture_unchanged_after_frame_API": true,
-    "d797_control_scope": "22 focused tests incl6detached-reader checks; enum226 fixture identical; no ACL2run"
+    "d797_control_scope": "22 focused tests incl6detached-reader checks; enum226 fixture identical; no ACL2run",
+    "enum_universal_integration": "Current generator emits exact admitted fixture25186111 and exact3universal formula hashes; ground226 remains exact61bbea7a;4source testsPASS; no prover run"
   },
   "qualification": {
     "prior135": "/tmp/served-d55-qualified135-receipt.json; all135 source/key payloads audited; RAW excluded",
@@ -1122,7 +1123,17 @@
   "enum_fragment_evidence": {
     "donor": "2ebbb5164",
     "receipt": "docs/assurance/cns-enum-fragment-author-61bbea7a.json",
-    "scope": "226 exact closed fragment whole-carrier witnesses under explicit P/WFP/valid-row antecedents and missing-row negative; author admission only, no universal/composed runtime equivalence or RAW record claim"
+    "scope": "226 exact closed fragment whole-carrier witnesses under explicit P/WFP/valid-row antecedents and missing-row negative; author admission only, no universal/composed runtime equivalence or RAW record claim",
+    "universal3": {
+      "donor": "8d4944ada",
+      "receipt": "docs/assurance/cns-enum-universal-author-25186111.json",
+      "status": "Three universal actual whole-carrier fragment laws author-admitted under P/WFP/valid-row plus actual cached-getter premises",
+      "fixture_sha256": "251861111de3bf4d8e2e4dbd4d40f68b7a9d1cf728b52fa47c1049007bb91d7c",
+      "raw_log_sha256": "5e8f6d1e8b66d2b9d970b4f65970e37547bfde630401a25e4e9595793fa0fd9f",
+      "current_family_fixture_exact": true,
+      "qualification_limit": "No record certification, complete function return/effect lifting or served runtime guard qualification from these fragment laws",
+      "receipt_clarification": "6dce9f270: success marker belongs to hashed driver stdout; raw ACL2 terminal marker is FN-REPL-DONE 7"
+    }
   },
   "observation_frame_join": {
     "source": "cc73111c5f326fbc0cd5938670fa040b9c87ddad",
