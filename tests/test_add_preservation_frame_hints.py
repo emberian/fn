@@ -3,11 +3,17 @@ import sys
 from pathlib import Path
 import unittest
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "tools"))
-from add_preservation_frame_hints import add_preservation_frame_hints
+from add_preservation_frame_hints import add_preservation_frame_hints, use_preservation_adapter
 from lisp_source import forms, read_sexp
 
 
 class PreservationFrameHintsTest(unittest.TestCase):
+    def test_adapter_changes_only_top_level_macro_head(self):
+        source = '; fn2-cns-edges-preserves stays in comment\n(fn2-cns-edges-preserves f (x) :rows t :hints nil)\n(quote (fn2-cns-edges-preserves nested (x)))'
+        result = use_preservation_adapter(source, "cns-edges", "fn2-cns-edges-row-preserves")
+        self.assertEqual(result, source.replace('(fn2-cns-edges-preserves f', '(fn2-cns-edges-row-preserves f'))
+        self.assertEqual(use_preservation_adapter(result, "cns-edges", "fn2-cns-edges-row-preserves"), result)
+
     def test_multiple_carriers_keep_their_projection_options(self):
         source = '(fn2-cns-edges-preserves grant (e m c) :carriers ((e 1) (m 2 :prefix "-M") (c 3 :prefix "-C")))'
         result = add_preservation_frame_hints(source, "cns-edges")
