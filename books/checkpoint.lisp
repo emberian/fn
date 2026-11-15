@@ -451,6 +451,23 @@
           '(fn2-fc-run-bytes fn2-fc-decoded fn2-b3-init fn2-layout-range-code)
           '(fn2-format-run fn2-fc-step fn2-fc-start fn2-fc-decode-step) world))))
 
+; Actual read mode never writes the pool; prove the exact threaded effect.
+(local (defthm fn2-checkpoint-fc-byte-read-pool-frame
+ (implies (not sealp) (equal (mv-nth 3 (fn2-fc-byte row kind sealp slot gen off len base okind oslot ogen fn2-fc fn2-fc-context fn2-b3 fn2-fields fn2-pool fn2-digests)) fn2-pool))
+ :hints (("Goal" :in-theory (e/d (fn2-fc-byte) (fn2-b3-byte fn2-b3-finalize fn2-b3-read fn2-fc-check-byte fn2-fc-digest-byte fn2-fc-context-hash-word fn2-pool-write))))))
+(local (defthm fn2-checkpoint-fc-advance-read-pool-frame
+ (implies (not sealp) (equal (mv-nth 4 (fn2-fc-advance fuel row kind sealp slot gen off len base okind oslot ogen fn2-fc fn2-fc-context fn2-b3 fn2-fields fn2-pool fn2-digests)) fn2-pool))
+ :hints (("Goal" :in-theory (e/d (fn2-fc-advance) (fn2-fc-byte fn2-fc-page-span))))))
+(local (defthm fn2-checkpoint-fc-run-bytes-read-pool-frame
+ (implies (not sealp) (equal (mv-nth 3 (fn2-fc-run-bytes fuel row kind sealp slot gen off len base okind oslot ogen fn2-fc fn2-fc-context fn2-b3 fn2-fields fn2-pool fn2-digests)) fn2-pool))
+ :hints (("Goal" :induct (fn2-fc-run-bytes fuel row kind sealp slot gen off len base okind oslot ogen fn2-fc fn2-fc-context fn2-b3 fn2-fields fn2-pool fn2-digests) :in-theory (e/d (fn2-fc-run-bytes) (fn2-fc-advance))))))
+(local (defthm fn2-checkpoint-fc-step-read-pool-frame
+ (implies (not sealp) (equal (mv-nth 4 (fn2-fc-step row kind sealp slot gen off len base okind oslot ogen budget fn2-fc fn2-fc-context fn2-b3 fn2-fields fn2-pool fn2-digests)) fn2-pool))
+ :hints (("Goal" :in-theory (e/d (fn2-fc-step) (fn2-fc-run-bytes fn2-fc-decoded fn2-fc-decode-step fn2-fc-start fn2-b3-init fn2-layout-range-code))))))
+(local (defthm fn2-checkpoint-format-run-read-pool-frame
+ (implies (not sealp) (equal (mv-nth 4 (fn2-format-run kind sealp row slot gen off len base okind oslot ogen budget fn2-fc fn2-fc-context fn2-b3 fn2-fields fn2-pool fn2-digests)) fn2-pool))
+ :hints (("Goal" :in-theory (e/d (fn2-format-run) (fn2-fc-step fn2-fc-reset))))))
+
 ; The successful page checker and descriptor decode are in ONE transition.
 ; A caller cannot supply a verification flag. Buffer ownership and checker
 ; continuation ownership must persist across :more, as for other B readers.
