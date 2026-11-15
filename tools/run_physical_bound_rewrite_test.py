@@ -44,6 +44,11 @@ class BoundExtraction(unittest.TestCase):
    args=[x.low for x in n.items[2].items]
    self.assertFalse(any('summary' in x or x=='fn2-run-installed' for x in args))
    self.assertEqual(len(args),len(set(args)))
+ def test_generated_page_kind_dispatch_exists_before_bound_step(self):
+  s=read('books/run-physical-bound-step.lisp');forms=lr.parse(s).forms
+  included=lr.match('(include-book "runs-served")',forms,deep=False)
+  self.assertEqual(len(included),1)
+  self.assertLess(included[0].node.end,fn(s,'fn2-run-bound-step').start)
  def test_wrappers_import_the_actual_shared_implementation(self):
   for old,lower in [('io','bound-io'),('step','bound-step')]:
    forms=lr.parse(read('books/run-physical-'+old+'.lisp')).forms
