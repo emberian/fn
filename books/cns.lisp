@@ -167,6 +167,9 @@
  :doc "Open the FNCT frame in the receive range: (mv code kind plen value), VALUE a control command or a request's code.")
 (defcost fn2-ctl-stream-child-live-p :child fn2-ctl-stream-child-live-p
  :doc "Retain CTL storage until its exact consumer incarnation has settled.")
+(defcost fn2-ctl-stream-reply-status :answers (:active :handback :aborting :cancelled :stale)
+ :tables (fn2-core-pool)
+ :doc "Checked transport phase and actual pending/loan state for the original source tuple.")
 (defcost fn2-ctl-stream-reply-start :answers (:ok :stale) :enqueues 1
  :tables (fn2-ctl-table fn2-core-sched fn2-core-trace fn2-core-control)
  :doc "Bind a checked FETCH source to its original CTL request and schedule output staging.")
@@ -1035,6 +1038,7 @@
     ((not (equal row-pending 0)) (:charge :steps *fn2-work-empty*))
     ((not (eq (fn2-machine-pool-borrows-read-code row-rx-slot) :ok)) (:stop :machine-phase))
     ((not (equal (fn2-machine-pool-borrows row-rx-slot) 0)) (:charge :steps *fn2-work-poll*))
+    ((fn2-core-query-heldp row-rx-slot row-rx-gen) (:charge :steps *fn2-work-poll*))
     ((not (and (natp budget) (< 0 budget))) (:charge :steps *fn2-work-poll* :runnable t))
     ((equal row-ophase *fn2-ctl-output-prefix*)
      (:do (reset) (fn2-core-reset row-rx-slot row-rx-gen) :accept (:ok))
@@ -1134,6 +1138,10 @@
    (:cond ((not (equal row-pending 0)) (:charge :steps *fn2-work-empty*))
           ((not (equal row-borrows 0)) (:charge :steps *fn2-work-poll*))
           ((fn2-ctl-stream-child-live-p row-cns row-cns-gen)
+           ;; Closing initially wakes an :aborting source. After actual Close
+           ;; or loan completion wakes CTL, notify the child again so it can
+           ;; observe :cancelled and release its retained source claims.
+           (:if (equal row-ophase *fn2-ctl-output-cancelled*) ((:wake-row row-cns)) ())
            (:charge :steps *fn2-work-empty*))
           (t (:do (rcode) (fn2-core-release row-rx-slot row-rx-gen) :effects ((:release (:rx-range)))
               :accept (:ok :retired) :why "a retired range is a completed release (the pool retires the slot)"
@@ -1713,6 +1721,7 @@
        :hints (("Goal" :in-theory (e/d (fn2-ctl-fc-row) (fn2-core-wfp)))))
      (in-theory (disable fn2-ctl-fc-row))
      (fn2-ctl-stream-events)
+     (fn2-ctl-output-status-events)
      (defun fn2-cns-stream-upload-live-p (u ugen fn2-core)
        (declare (xargs :stobjs fn2-core :guard (fn2-core-wfp fn2-core)))
        (and (eq (fn2-upload-snapshot-read-code u fn2-core) :ok)
