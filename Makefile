@@ -4,6 +4,7 @@ ACL2_BOOKS = \
   books/accounts \
   books/accounts-core \
   books/alloc \
+  books/alloc-identity-index \
   books/arm-children \
   books/arm-issue-effects \
   books/executor-reservation \
@@ -330,6 +331,7 @@ ACL2_BOOKS = \
   tests/alloc-random \
   tests/alloc-unit \
   tests/alloc-adopt-identity-unit \
+  tests/alloc-identity-index-unit \
   tests/alloc-protection-notification-unit \
   tests/alloc-freeze-unit \
   tests/checkpoint-unit \
