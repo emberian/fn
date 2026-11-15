@@ -74,3 +74,26 @@
             (cadr (fn2-eo-language-row (cons (cons :prefix rest) following) peer))))))
  :hints (("Goal" :in-theory (enable fn2-envelope-output-language-p
                                     fn2-eo-language-row))))
+(defthm fn2-eo-phase8-acc-refines-language
+ (implies
+  (and (equal (fn2-eo-phase fn2-envelope-output-state) 8)
+       (consp (fn2-eo-scan fn2-envelope-output-state))
+       (fn2-eo-octets-p (fn2-eo-scan fn2-envelope-output-state))
+       (unsigned-byte-p 8 (fn2-eo-byte fn2-envelope-output-state))
+       (fn2-eo-octets-p rest) (fn2-eo-segments-p following)
+       (equal (fn2-eo-suffix-scan fn2-envelope-output-state)
+              (fn2-eo-language-row following (fn2-eo-scan fn2-envelope-output-state)))
+       (equal (fn2-eo-shifted fn2-envelope-output-state)
+        (cdr (fn2-eo-language-row
+         (cons (cons (if (fn2-eo-prefix fn2-envelope-output-state) :prefix :exact) rest) following)
+         (fn2-eo-scan fn2-envelope-output-state)))))
+  (equal
+   (fn2-eo-acc (fn2-envelope-output-step fn2-envelope-output-state))
+   (cons (fn2-envelope-output-language-p
+    (cons (cons (if (fn2-eo-prefix fn2-envelope-output-state) :prefix :exact)
+                (cons (fn2-eo-byte fn2-envelope-output-state) rest)) following)
+    (fn2-eo-scan fn2-envelope-output-state))
+    (fn2-eo-acc fn2-envelope-output-state))))
+ :rule-classes nil
+ :hints (("Goal" :in-theory (enable fn2-envelope-output-step fn2-eo-language-row
+                                    fn2-envelope-output-language-p))))
