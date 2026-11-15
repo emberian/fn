@@ -294,6 +294,8 @@ ACL2_BOOKS = \
   tests/recovery-release-dispatch-support \
   tests/recovery-release-image-support \
   tests/recovery-release-connected-unit \
+  tests/recovery-release-producer-support \
+  tests/release-allocation-live-unit \
   tests/checkpoint-cold-path-unit \
   books/checkpoint-restore-semantic-source \
   books/checkpoint-bank-closure-state \
