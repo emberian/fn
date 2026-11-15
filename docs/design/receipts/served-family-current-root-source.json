@@ -242,10 +242,10 @@
     {
       "path": "books/machines-c-read.lisp",
       "source": "2015b9ed65eec4ebde0036a51bda35726a85be1e",
-      "sha256": "2db84b3b950eb5e955c90eef6cb935e8b765f337feafdc432a0858c3df738b4e",
+      "sha256": "45ee9f7a2437300bc84e33cb69b87b1e91cd9a0bb87a0a67617e4fe975a3c985",
       "root_sha256": "561bae3856e59b753136e657df7d8960154e0618208954ed8e49a151bde3964d",
       "prior_join_sha256": "693af05503342474822b31d844aab7aed653a63151a910f47927c73d90d91f15",
-      "source_scope": "Current family after reviewed foundation/dependency/dimension overlays; original donor records runtime origin, not exact final bytes"
+      "source_scope": "Current family after reviewed runtime-preserving proof/interface/import overlays; donor labels original runtime origin"
     },
     {
       "path": "books/machines-c-stage.lisp",
@@ -1268,7 +1268,7 @@
     "current_foundation_raw_keys_match": 34,
     "old_receipt_scope": "Original prefoundation reader34 remains historical; only10oldkeys unchanged"
   },
-  "pending_source_join": "No required source join pending; B3 rawprojection pilot and COPY DATA law source repair active. BroadRAW/app gated on actual producers.",
+  "pending_source_join": "B3 sharedextra-array LENGTH observer candidate3144 pendingrootreview; currentCOPY221+readwrappers source joined, newleafpilot pending. NoRAW/app grant.",
   "foundation_join": {
     "source": "6e7a1a9c105f2ccfeb0b06f32c0c566378cf62d9",
     "rows_source": "31635689e152fa20aa3e9eb18ae456ebe2397b64",
@@ -1347,5 +1347,14 @@
     "2c5e7b6da",
     "84fd21146",
     "5f69d871d"
-  ]
+  ],
+  "copy_data_interfaces": {
+    "source": "221f6a01880826cb6eb3fa461aa37e6487fcd052",
+    "prior_source": "f65d3562092d8c6609fea32a315a3513f3a6de1f",
+    "scope": "Pending producer/reader proofinterfaces only; runtime,guards,originalclaims exact",
+    "proof_domain": "Nonempty WRITE backinglength; invalidbyte unchanged; valid successfulREAD impliesnonempty; unconditional actualCOPY induction, no borrowedWFPguard",
+    "actual_partial": "WRITE nonempty and invalid-byte lemmasPASS; localvalid-byte\u21d2nonempty firstrefusal dueLENopacity; approvedhint-only LENenable retry UNRUN atjoin",
+    "whole_copy_record": "NONE",
+    "reader_requests": "RD-OCTETS DATA and actual publicREAD ROWS/DATA connected; wrapper wholebooksUNRUN"
+  }
 }
