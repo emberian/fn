@@ -168,6 +168,14 @@
      (setf (fn2-native-tls-transport tls) next-transport (fn2-nop-tls-record op) next-record)
      (unless (member observed '(:ok :blocked))
       (error "fn2 TLS: selected record observation refused: ~S" observed))
+     (multiple-value-bind (effect relative-offset effect-count)
+         (fn2-tls-record-input-prefix serial action offset moved next-record)
+      (case effect
+       (:input-prefix
+        (fn2-n-record host (list :input-prefix slot (fn2-nop-gen op)
+          relative-offset effect-count (fn2-n-octets host address effect-count))))
+       (:none nil)
+       (otherwise (error "fn2 TLS: accepted input effect refused: ~S" effect))))
      (values :progress 0 0))))))
 
 (defun fn2-native-tls-child-step (host slot tls fd upper input output)
