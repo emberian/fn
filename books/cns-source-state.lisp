@@ -7,8 +7,8 @@
 (fn2-book-layer :d)
 (defconst *fn2-cns-source-next-bytes* (+ 1024 1024))
 (defcolumns fn2-cns-sources
- ((phase (:enum fn2-cns-source-phase (:free :capturing :retain :raw-read :raw-wait :raw-check :raw-hash :raw-copy :manifest :final :complete :releasing :bad)))
-  (cns-id :u32) (cns-gen :u60) (ctl-id :u32) (ctl-gen :u60) (request :u60)
+ ((phase (:enum fn2-cns-source-phase (:free :capturing :retain :raw-read :raw-wait :raw-check :raw-hash :raw-copy :manifest :final :complete :releasing :released :bad)))
+  (cns-id :u32) (owner-kind :u8) (cns-gen :u60) (ctl-id :u32) (ctl-gen :u60) (request :u60)
   (lslot :u32) (lgen :u60) (article :u60) (version :u60) (total :u60)
   (location-kind :u8) (unit :u60) (epoch :u60) (allocation :u60) (hashes :u32)
   (root-unit :u60) (root-epoch :u60) (root-allocation :u60)
