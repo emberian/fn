@@ -31,21 +31,42 @@
          (mv nil (cdr unbound)))
         (t (mv :physical-take-mismatch unbound)))))
 
+; Physical returns enter the selected worker's done FIFO, then the host's
+; completion FIFO. A terminal crash may leave a suffix unposted, but cannot
+; justify posting a later physical completion before an earlier one.
+(defun fn2-nde-returned-ids (records)
+ (if (atom records) nil
+  (if (eq (caar records) :return)
+      (cons (nth 1 (car records)) (fn2-nde-returned-ids (cdr records)))
+    (fn2-nde-returned-ids (cdr records)))))
+(defun fn2-nde-post-join-p (e records unposted)
+ (declare (xargs :verify-guards nil))
+ (let ((job (fn2-nde-job (nth 1 e) (nth 2 e) records)))
+  (or (not job) (and (consp unposted) (equal (nth 1 job) (car unposted))))))
+
 ; Reuse the actual replay step rather than copying its transition semantics.
 ; The take comparison runs after that step has validated the complete logical
 ; descriptor. Take itself does not release or mutate its borrowed range.
-(defun fn2-native-device-envelope-steps (rest trace records taken caps unbound backend fn2-core)
+(defun fn2-native-device-envelope-steps (rest trace records taken caps unbound unposted backend fn2-core)
  (declare (xargs :stobjs fn2-core :verify-guards nil :measure (acl2-count rest)))
  (if (atom rest)
      (mv (if (or rest unbound) :unbound-physical-job :pass) caps fn2-core)
   (let ((e (car rest)))
    (mv-let (failure taken caps fn2-core) (fn2-envelope-step e t taken caps fn2-core)
     (if failure (mv failure caps fn2-core)
-     (mv-let (binding unbound)
-      (if (eq (car e) :take) (fn2-nde-bind-take e records unbound (cdr rest) backend fn2-core)
-       (mv (and (eq (car e) :post) (not (fn2-nde-post-p e trace records backend)) :physical-post-mismatch) unbound))
+     (mv-let (binding unbound unposted)
+      (cond ((eq (car e) :take)
+             (mv-let (binding unbound) (fn2-nde-bind-take e records unbound (cdr rest) backend fn2-core)
+              (mv binding unbound unposted)))
+            ((eq (car e) :post)
+             (mv (cond ((not (fn2-nde-post-p e trace records backend)) :physical-post-mismatch)
+                       ((not (fn2-nde-post-join-p e records unposted)) :physical-post-order)
+                       (t nil))
+                 unbound
+                 (if (fn2-nde-job (nth 1 e) (nth 2 e) records) (cdr unposted) unposted)))
+            (t (mv nil unbound unposted)))
       (if binding (mv binding caps fn2-core)
-       (fn2-native-device-envelope-steps (cdr rest) trace records taken caps unbound backend fn2-core))))))))
+       (fn2-native-device-envelope-steps (cdr rest) trace records taken caps unbound unposted backend fn2-core))))))))
 
 (defun fn2-native-device-control-replay (profile boot trace records fd backend)
  (declare (xargs :verify-guards nil))
@@ -58,6 +79,6 @@
       (mv-let (code fn2-core) (fn2-boot-start (nth 1 boot) (nth 2 boot) fn2-core)
        (if (and (equal (car boot) :boot-start) (equal (len boot) 4)
                 (equal code :ok) (equal code (nth 3 boot)))
-           (fn2-native-device-envelope-steps trace trace records nil nil (fn2-nde-submitted-ids records) backend fn2-core)
+           (fn2-native-device-envelope-steps trace trace records nil nil (fn2-nde-submitted-ids records) (fn2-nde-returned-ids records) backend fn2-core)
          (mv :boot-start-mismatch nil fn2-core))))
      (list verdict caps))))))

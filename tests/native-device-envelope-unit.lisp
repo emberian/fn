@@ -18,3 +18,17 @@
       (fn2-nde-submit-join-p *fn2-nde-write-take* nil nil '((:ack 1)) :fdatasync)
       (not (fn2-nde-submit-join-p *fn2-nde-write-take* nil '(1) nil :fdatasync))
       (not (fn2-nde-submit-join-p *fn2-nde-write-take* nil nil '((:ack 1) (:turn 0)) :fdatasync))))
+
+; Physical return order is independent of submit identity coverage. Refuse a
+; later completion first; leaving an unposted suffix is a valid terminal cut.
+(assert-event
+ (let* ((records '((:submit 1 (17 4 7 :write 100 3 (8 9 10)))
+                   (:submit 2 (17 5 7 :write 100 3 (8 9 10)))
+                   (:begin 1) (:return 1 3 0 nil)
+                   (:begin 2) (:return 2 3 0 nil)))
+        (unposted (fn2-nde-returned-ids records)))
+  (and (equal unposted '(1 2))
+       (fn2-nde-post-join-p '(:post 4 7) records unposted)
+       (not (fn2-nde-post-join-p '(:post 5 7) records unposted))
+       (fn2-nde-post-join-p '(:post 5 7) records (cdr unposted))
+       (not (fn2-nde-post-join-p '(:post 4 7) records nil)))))

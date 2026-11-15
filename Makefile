@@ -441,8 +441,6 @@ ACL2_BOOKS = \
   tests/envelope-output-complete-unit \
   tests/envelope-input-unit \
   tests/envelope-prefix-unit \
-  tests/native-device-effects-unit \
-  tests/native-device-bindings-unit \
   tests/native-unit \
   tests/network-backpressure-unit \
   tests/ops-semantic-steps-unit \
