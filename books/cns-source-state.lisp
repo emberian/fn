@@ -29,3 +29,25 @@
       (equal ctl (fn2-cns-sources-ctl-id s fn2-cns-sources))
       (equal ctlgen (fn2-cns-sources-ctl-gen s fn2-cns-sources))
       (equal request (fn2-cns-sources-request s fn2-cns-sources))))
+
+; The returned carriers are the only writable children. Explicit ROWS frames
+; accompany TYPE/WFP because the columns carrier shorthand does not emit ROWS.
+(defun fn2-cns-source-frame-hyps (children)
+ (declare (xargs :verify-guards nil))
+ (if (atom children) nil
+  (append (list (list (fn2-columns-sym (car children) "P") (car children))
+                (list (fn2-columns-sym (car children) "-WFP") (car children)))
+          (fn2-cns-source-frame-hyps (cdr children)))))
+(defun fn2-cns-source-frame-specs (outputs)
+ (declare (xargs :verify-guards nil))
+ (if (atom outputs) nil
+  (let* ((child (caar outputs)) (position (cadar outputs)) (prefix (symbol-name child)))
+   (append (list (list (concatenate 'string "-" prefix "-TYPE") (fn2-columns-sym child "P") position)
+                 (list (concatenate 'string "-" prefix "-WFP") (fn2-columns-sym child "-WFP") position)
+                 (list (concatenate 'string "-" prefix "-ROWS") (fn2-columns-sym child "-ROWS") position :frame child))
+    (and (eq child 'fn2-pool) (list (list "-POOL-DATA" 'fn2-pool-data-length position :frame child)))
+    (and (eq child 'fn2-b3) (list (list "-B3-WORDS" 'fn2-b3-words-length position :frame child)))
+    (fn2-cns-source-frame-specs (cdr outputs))))))
+(defmacro fn2-cns-source-frames (name args children outputs)
+ `(fn2-cns-sources-preserves ,name ,args :hyps ,(fn2-cns-source-frame-hyps children)
+   :specs ,(fn2-cns-source-frame-specs outputs)))
