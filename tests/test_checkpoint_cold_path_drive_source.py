@@ -106,6 +106,21 @@ class Source(unittest.TestCase):
                     checked += 1
         self.assertGreater(checked, 20)
 
+    def test_success_and_failure_assert_raw_allocator_and_lease_outcomes(self):
+        forms = lr.parse((ROOT/'tests/checkpoint-cold-path-unit.lisp').read_text()).forms
+        assertions = lr.match('(assert-event ?body)', forms, deep=False)
+        self.assertEqual(len(assertions), 2)
+        for assertion, fault, phase, begun in zip(assertions,
+                ['*fn2-fault-none*', '*fn2-fault-flush-io*'], [0, 4], [1, 0]):
+            fn = assertion.node
+            for pattern in [f'(fn2-ccp-test {fault})', f'(= (nth 0 facts) {phase})',
+                            f'(= (nth 1 facts) {begun})', '(= (len facts) 6)',
+                            '(< (+ 1 (nth 3 result)) (nth 4 result))']:
+                self.assertTrue(lr.match(pattern, [fn]), pattern)
+        for pattern in ['(eq (cadr result) :failed)', '(eq (nth 3 facts) :ok)',
+                        '(= (nth 2 facts) (nth 5 facts))']:
+            self.assertTrue(lr.match(pattern, [assertions[1].node]), pattern)
+
 
 if __name__ == "__main__":
     unittest.main()
