@@ -12,7 +12,10 @@
   (history :u60) (incarnation :u60) (sector :u8) (copied :u32)
   (pending :bool) (op-slot :u32) (op-gen :u60)
   (hash-0 :u32) (hash-1 :u32) (hash-2 :u32) (hash-3 :u32)
-  (hash-4 :u32) (hash-5 :u32) (hash-6 :u32) (hash-7 :u32)))
+  (hash-4 :u32) (hash-5 :u32) (hash-6 :u32) (hash-7 :u32))
+ :extra-fields
+ ((fn2-run-loads-admissions :type (unsigned-byte 60) :initially 0
+   :why "Every actual IDLE-to-owned admission invalidates a cold initialized-loader scan before allocating.")))
 ; Direct operation routing avoids a whole-job scan at host completion. A
 ; stale generation cannot deliver into a reused cursor or clear its pending bit.
 (defcolumns fn2-run-load-ops ((live :bool) (generation :u60) (cursor :u32)))

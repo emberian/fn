@@ -92,6 +92,10 @@ class PhysicalLoaderSource(unittest.TestCase):
         self.assertIn(['<=', '2', ['fn2-pool-class-countsi', 'pc', 'fn2-pool']], list(walk(f)))
         self.assertEqual(len(calls(f, 'fn2-pool-reserve')), 2)
         self.assertEqual(len(calls(f, 'fn2-pool-release')), 1)
+        self.assertEqual(len(calls(f, 'update-fn2-run-loads-admissions')), 1)
+        source = (ROOT / 'books/run-physical-resources.lisp').read_text()
+        self.assertLess(source.index('(update-fn2-run-loads-admissions admission'), source.index('(fn2-pool-reserve pc'))
+        self.assertLess(source.index('(unsigned-byte-p 60 admission)'), source.index('(update-fn2-run-loads-admissions admission'))
         release = self.d['fn2-run-load-release']
         self.assertTrue(has_equality(release, ['fn2-run-loads-pending', 'c', 'fn2-run-loads'], '0'))
         self.assertEqual(len(calls(release, 'fn2-pool-workspace-code')), 2)
