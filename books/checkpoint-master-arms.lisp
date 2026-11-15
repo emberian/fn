@@ -9,6 +9,7 @@
 (include-book "event-build-kind")
 (include-book "checkpoint-summary-authority-live")
 (include-book "checkpoint-live-catalog")
+(include-book "checkpoint-live-cbase")
 (include-book "checkpoint-directory-consume")
 (fn2-book-layer :c)
 
