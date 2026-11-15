@@ -4,12 +4,16 @@
 (include-book "checkpoint-directory-rebase-state")
 (include-book "checkpoint-restore-events-state")
 (include-book "checkpoint-build-state")
-(include-book "release-allocation")
+(include-book "release-allocation-state")
+(include-book "release-evidence-state")
+(include-book "event-archive-state")
 (include-book "retirement")
 (fn2-book-layer :c)
-(defun fn2-checkpoint-dispose-held-p (c checkpoint fn2-checkpoints fn2-checkpoint-summary fn2-checkpoint-summary-authority fn2-checkpoint-cbase-holds fn2-checkpoint-restore-events fn2-directory-rebase fn2-checkpoint-build fn2-allocation-release fn2-retirement-control)
- (declare (xargs :stobjs (fn2-checkpoints fn2-checkpoint-summary fn2-checkpoint-summary-authority fn2-checkpoint-cbase-holds fn2-checkpoint-restore-events fn2-directory-rebase fn2-checkpoint-build fn2-allocation-release fn2-retirement-control) :verify-guards nil
- :guard (and (fn2-checkpoints-wfp fn2-checkpoints) (fn2-checkpoint-summary-wfp fn2-checkpoint-summary) (fn2-checkpoint-summary-authority-wfp fn2-checkpoint-summary-authority) (fn2-checkpoint-cbase-holds-wfp fn2-checkpoint-cbase-holds) (fn2-checkpoint-restore-events-wfp fn2-checkpoint-restore-events) (fn2-directory-rebase-wfp fn2-directory-rebase) (fn2-checkpoint-build-wfp fn2-checkpoint-build) (fn2-allocation-release-wfp fn2-allocation-release) (fn2-retirement-control-wfp fn2-retirement-control))))
+(defun fn2-checkpoint-dispose-held-p (c checkpoint fn2-checkpoints fn2-checkpoint-summary fn2-checkpoint-summary-authority fn2-checkpoint-cbase-holds fn2-checkpoint-restore-events fn2-directory-rebase fn2-checkpoint-build fn2-allocation-release fn2-retirement-control fn2-event-archive fn2-release-evidence-candidates)
+ (declare (xargs :stobjs (fn2-checkpoints fn2-checkpoint-summary fn2-checkpoint-summary-authority fn2-checkpoint-cbase-holds fn2-checkpoint-restore-events fn2-directory-rebase fn2-checkpoint-build fn2-allocation-release fn2-retirement-control fn2-event-archive fn2-release-evidence-candidates) :verify-guards nil
+ :guard (and (fn2-event-archivep fn2-event-archive) (fn2-event-archive-wfp fn2-event-archive)
+              (fn2-release-evidence-candidatesp fn2-release-evidence-candidates) (fn2-release-evidence-candidates-wfp fn2-release-evidence-candidates)
+              (fn2-checkpoints-wfp fn2-checkpoints) (fn2-checkpoint-summary-wfp fn2-checkpoint-summary) (fn2-checkpoint-summary-authority-wfp fn2-checkpoint-summary-authority) (fn2-checkpoint-cbase-holds-wfp fn2-checkpoint-cbase-holds) (fn2-checkpoint-restore-events-wfp fn2-checkpoint-restore-events) (fn2-directory-rebase-wfp fn2-directory-rebase) (fn2-checkpoint-build-wfp fn2-checkpoint-build) (fn2-allocation-release-wfp fn2-allocation-release) (fn2-retirement-control-wfp fn2-retirement-control))))
  (or (not (and (natp c) (< c (fn2-checkpoints-rows fn2-checkpoints))
                (< 1 (fn2-checkpoint-summary-rows fn2-checkpoint-summary))
                (< 1 (fn2-checkpoint-summary-authority-rows fn2-checkpoint-summary-authority))
@@ -18,7 +22,9 @@
                (< 0 (fn2-directory-rebase-rows fn2-directory-rebase))
                (< 0 (fn2-checkpoint-build-rows fn2-checkpoint-build))
                (< 0 (fn2-allocation-release-rows fn2-allocation-release))
-               (< 0 (fn2-retirement-control-rows fn2-retirement-control))))
+               (< 0 (fn2-retirement-control-rows fn2-retirement-control))
+               (< 1 (fn2-event-archive-rows fn2-event-archive))
+               (= (fn2-checkpoints-rows fn2-checkpoints) (fn2-release-evidence-candidates-rows fn2-release-evidence-candidates))))
      (fn2-checkpoint-candidate-source-held-p c fn2-checkpoint-summary fn2-checkpoint-summary-authority fn2-checkpoint-cbase-holds)
      ; Row1 is the durable event catalog; scratch row0 COMPLETE is inert after
      ; adoption, but its active investigation still owns the source candidate.
@@ -33,6 +39,10 @@
      (and (= c (fn2-checkpoint-build-candidate 0 fn2-checkpoint-build))
           (not (= (fn2-checkpoint-build-phase 0 fn2-checkpoint-build) *fn2-checkpoint-build-phase-idle*)))
      (fn2-allocation-release-candidate-held-p c checkpoint fn2-allocation-release)
+     (not (eq (fn2-release-evidence-candidate-state c checkpoint
+                (fn2-checkpoints-history c fn2-checkpoints) (fn2-checkpoints-incarnation c fn2-checkpoints)
+                fn2-release-evidence-candidates) :clear))
+     (fn2-event-archive-candidate-held-p c checkpoint fn2-event-archive)
      ; Ordinary RETIREMENT stores a physical tuple only. Checkpoint allocation
      ; and installation members additionally retain actual candidate metadata.
      (and (not (= (fn2-retirement-control-state 0 fn2-retirement-control) *fn2-retirement-state-idle*))
