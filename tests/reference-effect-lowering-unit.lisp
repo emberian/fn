@@ -4,12 +4,16 @@
 (include-book "../books/reference-effect-lowering")
 (defcolumns fn2-sched ((link :u8)))
 (defcolumns fn2-effect-extra ((value :u8)))
+(defcolumns fn2-effect-other ((value :u8)))
 (defcorechild fn2-core-sched fn2-sched
  :init (fn2-sched-init 1 fn2-sched) :profilep t :why "Fixture scheduler child; forbidden outside the declared boundary.")
 (defcorechild fn2-core-extra fn2-effect-extra
  :init (fn2-effect-extra-init 1 fn2-effect-extra) :profilep t :why "Unrelated child retained through the generated callback.")
+(defcorechild fn2-core-other fn2-effect-other
+ :init (fn2-effect-other-init 1 fn2-effect-other) :profilep t :why "Second distinct borrowed child.")
 (defstobj fn2-core (fn2-core-sched :type fn2-sched)
-                  (fn2-core-extra :type fn2-effect-extra))
+                  (fn2-core-extra :type fn2-effect-extra)
+                  (fn2-core-other :type fn2-effect-other))
 
 (defun fn2-effect-test-boundary (id fn2-core)
  (declare (xargs :stobjs fn2-core :verify-guards nil :guard t))
@@ -36,6 +40,20 @@
  (stobj-let ((fn2-effect-extra (fn2-core-extra fn2-core))) (answer)
   (fn2-effect-extra-value 0 fn2-effect-extra)
   (let ((fn2-core (fn2-effect-test-boundary (+ x answer) fn2-core)))
+   (mv answer fn2-core))))
+(defun fn2-effect-test-two-leaf (x fn2-effect-extra fn2-effect-other)
+ (declare (xargs :stobjs (fn2-effect-extra fn2-effect-other) :verify-guards nil :guard t))
+ (let* ((v (if (unsigned-byte-p 8 x) x 0))
+        (fn2-effect-extra (fn2-effect-extra-set-value 0 v fn2-effect-extra))
+        (fn2-effect-other (fn2-effect-other-set-value 0 v fn2-effect-other)))
+  (mv x fn2-effect-extra fn2-effect-other)))
+(defun fn2-effect-test-two (x fn2-core)
+ (declare (xargs :stobjs fn2-core :verify-guards nil :guard t))
+ (stobj-let ((fn2-effect-extra (fn2-core-extra fn2-core))
+             (fn2-effect-other (fn2-core-other fn2-core)))
+  (answer fn2-effect-extra fn2-effect-other)
+  (fn2-effect-test-two-leaf x fn2-effect-extra fn2-effect-other)
+  (let ((fn2-core (fn2-effect-test-boundary answer fn2-core)))
    (mv answer fn2-core))))
 (defun fn2-effect-test-order (x fn2-core)
  (declare (xargs :stobjs fn2-core :verify-guards nil :guard t))
@@ -166,6 +184,10 @@
 (make-event
  (mv-let (err event) (fn2-effect-test-emission 'fn2-effect-test-read (w state))
   (if err (er soft 'fn2-effect-test-emission "Read borrow refused: ~x0" err)
+   (value event))))
+(make-event
+ (mv-let (err event) (fn2-effect-test-emission 'fn2-effect-test-two (w state))
+  (if err (er soft 'fn2-effect-test-emission "Parallel borrow refused: ~x0" err)
    (value event))))
 (make-event
  (let* ((world (w state))
