@@ -31,6 +31,16 @@ right input, with distinct input rows and a protected sibling. The hypothesis
 removal witness supplies the correct digest but changes the sibling: the result
 is a different entire carrier and the primitive assumption is false.
 
+`books/native-b3-evidence.lisp` connects this CRITICAL boundary to the live
+fn2-squares/OWED registry, included by the node image and OWED exporter. Its
+registered statement is taken from the admitted theorem's world property.
+Formula-bound evidence proves the actual domain, all hypotheses and conclusion
+for a concrete aliased call; its removal witness preserves the digest words but
+corrupts the protected sibling. The removed primitive hypothesis and the
+conclusion are both false, while the remaining hypotheses hold. Regeneration
+checks the live statement and ABI, and the completion row names `fn2-mk-node`.
+This registration retains the explicit C/FFI assumption.
+
 `served_host_check` separately pins the complete source AST of the input loader,
 node adapter and shared-store adapter. It checks the eight word offsets and
 that both original input rows are captured before the C call and destination
@@ -55,6 +65,23 @@ witness were admitted. The whole-effect proof took 3,691 steps / 0.04 seconds;
 the two positives took 255 steps each, and frame removal took 437 steps.
 These author results are retained under the lane's
 `build/native-contract-author/`.
+
+The current 19-book evidence closure passed qualified record certification
+`certify-20261115T002302Z-613027` at authenticated
+`68ab9f5620c71e63d2027558659b699d2e6d1934`. All 19 source files are byte equal
+to root `07a4db98c`; the closure key is
+`147eb51e774711f4a35251c33ddff602c57cd583067043b08759ba9e1929bc14` and source
+identity is
+`a29310e3b5dd74c9985763b5a44c5a33ca38f53e536be56e1b8f8120f204f645`.
+Thirteen qualified compiled pairs were reused, including the separately
+published current layout pair, and six books were certified and published.
+Official triage found no failures, limits or killed processes. The record used
+the toolchain below, with external memory cap 2,147,483,648 bytes and swap zero.
+The whole-effect theorem cost 120,979 steps / 0.35 seconds; the evidence book
+cost 1.119 seconds. Current Merkle cost 10.802 seconds and BLAKE3 cost 17.628
+seconds remain D26 proof-cost work. This record covers the evidence closure,
+not current native execution or the full host. The current 28-book native
+runtime dependency plan still needs six format books qualified.
 
 The exact donor `390c57de0e006e4ab06becf6c278daa04c4d7782` subsequently passed
 record certification `certify-20261114T230520Z-536071`: 16 books, 12 qualified
