@@ -24,7 +24,10 @@ then FETCH of the exact original article. It requires intact completed recovery,
 quiet termination and zero stop reason. The shared session helper now accepts
 the existing device; old callers still supply NIL. Execution remains owed.
 This test does not cover native process-death cuts or actual socket restart.
-The native socket restart fixture and public FETCH client are integrated;
+The native socket restart fixture and public FETCH client are integrated.
+The fixture now commits two distinct 6144-byte articles before process death,
+requires exact FETCH of both after restart, and refuses the first real identity
+when paired with the second occurrence. Its two byte-oracle controls pass;
 actual node execution is still pending.
 
 Actual FNCT APPEND boundary controls are now qualified by exact18 record
@@ -56,12 +59,17 @@ and scheduler books in the retained author world. FETCH prefix decoding and
 its 0/6144/16384-byte unit assertions also passed after the macro/fixture repairs.
 These are source-admission results, not qualification of the full application.
 Checkpoint-member still refuses its generated FIELDS TYPE claim; CNS edges
-hits the RAW-ROWS proof budget; trace registration reports a conflicting
-`:COLUMNS FN2-TRACE` definition. The generator hint repair `4777bf7fc` and
-trace enum repair belong in the next coherent candidate, with changed
-ancestor keys recomputed rather than reused as if unchanged. The trace conflict
-is a five-tag foundational enum versus the actual seven-tag consumer; the
-repair must preserve existing tags 0–4 and include MACHINE-START and ENQUEUE.
+hits the RAW-ROWS proof budget. The trace enum conflict is now repaired
+atomically in the foundational vocabulary and consumer, preserving tags 0–4
+and adding MACHINE-START and ENQUEUE. Exact five-book record
+`certify-20261115T102442Z-1200620` passed (one reused parent, four new books);
+root independently matched all five current source hashes and closure keys.
+The same record covers the column generator's RAW-ROWS opacity hint, but does
+not establish its CNS-edge consumer: the twenty-book author run admitted
+operations, columns, profile and trace, then exhausted the unchanged two-million
+step budget in pool's original conservation encapsulate. No full application
+or native claim follows. Pool's local credit/owner selector opacity repair is
+prepared for the next narrow run; the original proof block and cap stay intact.
 
 Physical address geometry remains an executable blocker. `fe9f761ab` repairs
 POST's root location from three units per extent to the physical sixteen, with

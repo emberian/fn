@@ -208,7 +208,9 @@
                 `((defthm ,(fn2-columns-sym name (concatenate 'string prefix "-RAW-ROWS"))
                     (equal (nth ,(fn2-columns-pre "*" (fn2-columns-sym table "-ROWS*")) ,result)
                            (nth ,(fn2-columns-pre "*" (fn2-columns-sym table "-ROWS*")) ,table))
-                    :hints (("Goal" :use ,(fn2-columns-sym name (concatenate 'string prefix "-ROWS")))))))
+                    :hints (("Goal"
+                             :in-theory (e/d (,(fn2-columns-sym table "-ROWS")) (,name))
+                             :use ,(fn2-columns-sym name (concatenate 'string prefix "-ROWS")))))))
               ,@(and disable `((in-theory (disable ,name)))))))
       (if part (nth part forms) forms))))
 (defun fn2-columns-preserves-macro (table)
