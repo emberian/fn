@@ -46,6 +46,27 @@ class GroupSourceObserver(unittest.TestCase):
   self.assertLess(text.index('(fn2-id-decided'),text.index('(fn2-succ-source-acquire'))
   self.assertLess(text.index('(fn2-succ-source-acquire'),text.index('(fn2-id-decide-step'))
   self.assertLess(text.index('(fn2-id-decide-step'),text.index('(fn2-succ-source-close'))
+ def test_foreign_resolver_hold_is_rejected_before_shared_admission(self):
+  macro=definition('fn2-directory-source-core-definition')
+  first=next(n for n in walk(macro) if n and n[0]=='b*')[1][0]
+  self.assertTrue(calls(first,'fn2-succ-txns-source-receipt'))
+  self.assertTrue(calls(first,'fn2-succ-txns-lphase'))
+  self.assertIn('*fn2-succ-lookup-idle*',str(first))
+ def test_readonly_geometry_does_not_widen_public_or_child_outputs(self):
+  for name in ('fn2-directory-source-core-definition','fn2-identity-decide'):
+   node=definition(name)
+   binding=next(n for n in walk(node) if n and n[0]=='stobj-let')
+   self.assertNotIn('fn2-reads',binding[2])
+   self.assertIn('fn2-c-source-control',binding[2])
+   self.assertIn('fn2-c-source-readers',binding[2])
+   self.assertLessEqual(len(binding[2]),32)
+ def test_prepared_whole_h_control_uses_actual_public_calls_and_pending_poll(self):
+  text=(ROOT/'tests/group-source-observer-unit.lisp').read_text()
+  for name in ('UNEXECUTED','SYNTHETIC','fn2-group-lookup','fn2-principal-lookup','fn2-identity-decide','fn2-c-source-writer-begin','fn2-c-source-writer-poll','fn2-c-source-reader-release','fn2-gobs-whole-h','fn2-gobs-cleared','fn2-gobs-resolver-test','fn2-successor-put','fn2-successor-resolve','fn2-successor-release'):
+   self.assertIn(name,text)
+  for mode in ('group','principal','identity','error'):self.assertIn('(assert-event (fn2-gobs-test :'+mode+'))',text)
+  for flag in ('(phase *fn2-c-source-writer-phase-exclusive*)','(readers 0)','(wake-pending 1)'):
+   self.assertNotIn(flag,text)
  def test_no_production_direct_lower_call_bypasses_the_owned_core_path(self):
   # Named lower seams stay in this book; actual callers use public wrappers.
   for path in (ROOT/'books').glob('*.lisp'):
