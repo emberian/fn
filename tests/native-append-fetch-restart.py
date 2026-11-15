@@ -8,6 +8,7 @@ import argparse
 import importlib.util
 import json
 import os
+import signal
 from pathlib import Path
 import subprocess
 import time
@@ -61,6 +62,31 @@ def crossing_article(mid, body_variant=0):
     return article.ljust(6142, b"x") + b"\r\n"
 
 
+
+def initialize(directory, image, seconds=600):
+    """Bound initialization and clean up only this recorded launch session."""
+    command = [str(ROOT / "fn"), "init", str(image), "--size-mb", "32", "--group", "local.test"]
+    with (directory / "init.log").open("wb") as log:
+        process = subprocess.Popen(command, cwd=ROOT, env=environment(), stdout=log,
+                                   stderr=subprocess.STDOUT, start_new_session=True)
+        pidfile = directory / "init.launcher.pid"
+        pidfile.write_text(f"{process.pid}\n")
+        try:
+            result = process.wait(timeout=seconds)
+        except subprocess.TimeoutExpired:
+            # fn init waits for tools/acl2, which waits for the actual runtime.
+            # Killing only the direct Python child leaves those descendants.
+            assert int(pidfile.read_text()) == process.pid
+            try:
+                os.killpg(process.pid, signal.SIGKILL)
+            except ProcessLookupError:
+                pass
+            process.wait(timeout=30)
+            raise
+        if result:
+            raise subprocess.CalledProcessError(result, command)
+
+
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--directory", type=Path, required=True)
@@ -77,8 +103,7 @@ def main():
         article_path = directory / f"submitted-{index}.article"
         article_path.write_bytes(article)
         submissions.append((mid, article, article_path))
-    subprocess.run([str(ROOT / "fn"), "init", str(image), "--size-mb", "32", "--group", "local.test"],
-                   cwd=ROOT, env=environment(), check=True, timeout=600)
+    initialize(directory, image)
     receipts = []
     node = restart.Node(directory, image, "serve", "append", control_sock=control,
                         env=environment())
