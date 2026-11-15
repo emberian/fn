@@ -1087,7 +1087,70 @@ def wrap_limit(form: str, limit: float | None, *, event: bool = False) -> str:
     return form
 
 
-def per_event_steps(form: str, steps: int, limit: float | None = None) -> str:
+def declared_event_macros(texts: list[str]) -> set[str]:
+    """Finite declaration provenance, not a semantic audit of macro expansions.
+
+    Read only literal event positions. DEFColumns' preservation macro is a known
+    generator output; arbitrary event-generating expressions are never evaluated.
+    LOCAL declarations may classify a form but never move or export that form.
+    """
+    found: set[str] = set()
+
+    def visit(form: str) -> None:
+        text = form.strip()
+        if not text.startswith("(") or not text.endswith(")"):
+            return
+        inner = text[1:-1]
+        children = spans(inner)
+        if not children:
+            return
+        head = inner[slice(*children[0])].lower()
+        if head in ("defmacro", "defcolumns") and len(children) >= 2:
+            name = inner[slice(*children[1])].lower()
+            if re.fullmatch(r"[a-z0-9*+!_<>/=?.-]+", name):
+                found.add(name if head == "defmacro" else name + "-preserves")
+        start = (2 if head == "encapsulate" else 1)
+        if head in ("local", "progn", "encapsulate"):
+            for begin, end in children[start:]:
+                visit(inner[begin:end])
+
+    for text in texts:
+        for form in forms(text):
+            visit(form)
+    return found
+
+
+def source_event_inventory(path: Path, root: Path | None = None) -> tuple[set[str], dict[str, str], str]:
+    """Snapshot an actual source closure, binding its finite macro names to SHA256s.
+
+    No global registry: edits require a fresh inventory. Refuse a closure changing
+    during collection. The returned target text is the same snapshot classified.
+    This is the source loader's existing macro contract, not proof of safe macro
+    expansion or that a declaration is available in the session's current world.
+    """
+    root = (root or ROOT).resolve()
+    path = path.resolve()
+    if path.is_relative_to(root):
+        book = path.relative_to(root).with_suffix("").as_posix()
+        closure = certs.closure(root, book)
+        sources = {name: root / (name + ".lisp") for name in closure}
+    else:
+        closure = None
+        sources = {str(path): path}
+    snapshots = {name: source.read_bytes() for name, source in sources.items()}
+    if closure is not None and certs.closure(root, book) != closure:
+        raise ValueError("source event inventory closure changed while reading")
+    if any(source.read_bytes() != snapshots[name] for name, source in sources.items()):
+        raise ValueError("source event inventory bytes changed while reading")
+    hashes = {name: hashlib.sha256(data).hexdigest() for name, data in snapshots.items()}
+    texts = [data.decode("utf-8") for data in snapshots.values()]
+    target = next(snapshots[name].decode("utf-8") for name, source in sources.items()
+                  if source.resolve() == path)
+    return declared_event_macros(texts), hashes, target
+
+
+def per_event_steps(form: str, steps: int, limit: float | None = None,
+                    event_macros: set[str] | None = None) -> str:
     """Give one unchanged original event a fresh counter, uncharged to its parent.
 
     Do not split LOCAL, ENCAPSULATE or macro expansions: their original scope
@@ -1110,12 +1173,17 @@ def per_event_steps(form: str, steps: int, limit: float | None = None) -> str:
                                   "fn2-book-layer", "fn2-extents-preserves", "defthm-owed",
                                   "defcorechild", "defstobj", "fn2-cm-defreaders", "defun-nx",
                                   "fn2-owed-discharge", "fn2-assert-owed-teeth",
-                                  "fn2-assert-square-evidence",
+                                  "fn2-assert-square-evidence", "defun-inline", "deftheory",
                                   "fn2-control-preserves", "fn2-issue-children-wrapper",
                                   "fn2-machines-keeps-directory", "fn2-machines-preserves",
                                   "fn2-machines-wait-queue", "fn2-ops-preserves",
                                   "fn2-pool-preserves", "fn2-env-ops-advanced-by-heads"}
-    if head not in allowed:
+    forbidden = {"skip-proofs", "defaxiom", "defttag", "defattach", "progn!",
+                 "with-prover-step-limit", "with-prover-time-limit", "ld", "program"}
+    if (head in forbidden or head.startswith(("set-", ":"))
+            or leaves_loop(form) or undoes(form)):
+        raise ValueError(f"per-event steps refuses control/trust event head {head!r}")
+    if head not in allowed and head not in (event_macros or set()):
         raise ValueError(f"per-event steps does not support event head {head!r}")
     inner = text[1:-1]
     children = spans(inner)
@@ -1124,7 +1192,7 @@ def per_event_steps(form: str, steps: int, limit: float | None = None) -> str:
         if head == "local" and len(children) != 2 or head == "encapsulate" and len(children) < 2:
             raise ValueError("malformed literal event container")
         for begin, end in children[start:]:
-            per_event_steps(inner[begin:end], steps)  # validate, never split
+            per_event_steps(inner[begin:end], steps, event_macros=event_macros)  # validate, never split
     return f"(with-prover-step-limit {steps} t {wrap_limit(form, limit, event=True)})"
 
 
@@ -1274,7 +1342,8 @@ HOISTED_HEADS = ("include-book", "defpkg")
 
 def encapsulated(text: str, directory: Path, skip: set[str],
                  limit: float | None = None,
-                 steps: int | None = None) -> tuple[list[str], str]:
+                 steps: int | None = None,
+                 event_macros: set[str] | None = None) -> tuple[list[str], str]:
     """A book's forms as one `(encapsulate () ...)`, so its local events stay local.
 
     Loaded form by form, a from-source book's `local` lemmas stay in the
@@ -1309,7 +1378,7 @@ def encapsulated(text: str, directory: Path, skip: set[str],
             hoisted.append(form)
         else:
             limited = wrap_limit(form, limit)
-            kept.append(per_event_steps(form, steps, limit) if steps is not None else limited)
+            kept.append(per_event_steps(form, steps, limit, event_macros) if steps is not None else limited)
     # Include-only umbrellas have no embedded events after hoisting/skips.
     # ACL2 rejects an empty encapsulate; the includes already export the world.
     return hoisted, ("(encapsulate ()\n" + "\n".join(kept) + "\n)" if kept else "")
@@ -2907,7 +2976,15 @@ def send_range(args) -> int:
             raise SystemExit("proof-repl: --per-event-steps requires an explicit "
                              "positive finite --limit per original event")
     path = book_path(args.book)
-    all_forms = forms(path.read_text(encoding="utf-8"))
+    event_macros = None
+    if getattr(args, "per_event_steps", None) is not None:
+        event_macros, source_hashes, source_text = source_event_inventory(path)
+        inventory_hash = hashlib.sha256(json.dumps(source_hashes, sort_keys=True).encode()).hexdigest()
+        print(f"source event inventory: {len(event_macros)} declared macro names from "
+              f"{len(source_hashes)} source snapshots; SHA256 {inventory_hash}", flush=True)
+    else:
+        source_text = path.read_text(encoding="utf-8")
+    all_forms = forms(source_text)
     chosen = select_range(all_forms, args.start, args.until, args.through)
     state = read_state(args.name) or {}
     from_source = set(state.get("ld") or [])
@@ -2918,7 +2995,7 @@ def send_range(args) -> int:
                       args.until))
     if not items:
         return 0
-    text = path.read_text(encoding="utf-8")
+    text = source_text
     for line in guard_notes(text, chosen):
         print(line, flush=True)
     warn_free_expands([form for _, form in items], [text])
@@ -2929,7 +3006,8 @@ def send_range(args) -> int:
                   "summary excludes child proof work", flush=True)
         hoisted, body = encapsulated("\n".join(form for _, form in items), path.parent,
                                      set(), args.limit if getattr(args, "per_event_steps", None)
-                                     is not None else None, getattr(args, "per_event_steps", None))
+                                     is not None else None, getattr(args, "per_event_steps", None),
+                                     event_macros)
         items = ([(form_label(0, form).split(" ", 1)[1], form) for form in hoisted]
                  + ([(f"#{chosen.start + 1}-#{chosen.stop} (encapsulate)", body)] if body else []))
     items.insert(0, ("source-book", f'(assign proof-repl-source-book "{path}")'))
