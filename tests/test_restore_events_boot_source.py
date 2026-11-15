@@ -38,7 +38,33 @@ class EventBootSourceTests(unittest.TestCase):
         for phase in PHASES:
             self.assertTrue(lr.match('(' + phase + ' ?*body)', lr.parse(src).forms, deep=True), phase)
         self.assertIn('(fn2-boot-checkpoint-investigation-finish id row-generation)', src)
-        self.assertIn('((:validated) (:stop :checkpoint))', src)
+        # The former stop was an unfinished implementation boundary. Check
+        # the real forward path and its guarded final release, not that gap.
+        forms = lr.parse(src).forms
+        self.assertTrue(lr.match('((:validated) (:next :checkpoint-project-begin) ?*rest)', forms))
+        path = {
+            ':checkpoint-project-begin': ':checkpoint-project-step',
+            ':checkpoint-project-step': ':checkpoint-project-protect',
+            ':checkpoint-project-protect': ':checkpoint-cbase-acquire',
+            ':checkpoint-cbase-acquire': ':checkpoint-adopt-begin',
+            ':checkpoint-authority-copy': ':checkpoint-catalog-begin',
+            ':checkpoint-catalog-copy': ':checkpoint-directory-install',
+            ':checkpoint-directory-install': ':checkpoint-bank-bind',
+            ':checkpoint-bank-bind': ':recover',
+            ':recover': ':recover-wait',
+            ':recover-wait': ':epoch',
+        }
+        for phase, target in path.items():
+            body = lr.match('(' + phase + ' ?*body)', forms)[0].node
+            self.assertTrue(lr.match('(:next ' + target + ')', [body]), (phase, target))
+            self.assertFalse(lr.match('(:next :release)', [body]), phase)
+        fence = lr.match('(:epoch-fence ?*body)', forms)[0].node
+        self.assertTrue(lr.match('(fn2-issue-fence :principal 0)', [fence]))
+        result = lr.match('(:epoch-result ?*body)', forms)[0].node
+        self.assertTrue(lr.match('((not (equal row-outcome *fn2-outcome-done*)) (:stop :io))', [result]))
+        self.assertTrue(lr.match('(fn2-boot-finish-bank-obligations id row-generation)', [result]))
+        self.assertEqual(len(lr.match('(:next :release)', forms)), 1)
+        self.assertTrue(lr.match('(:next :release)', [result]))
         self.assertIn('(if (equal row-stage 10) row-read-length 4096)', src)
 
 if __name__ == '__main__':
