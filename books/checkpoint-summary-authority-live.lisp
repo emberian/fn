@@ -55,7 +55,7 @@
   (= (fn2-checkpoint-publication-phase 0 fn2-checkpoint-publication) *fn2-checkpoint-publication-phase-complete*)
   (= (fn2-checkpoint-publication-has-base 0 fn2-checkpoint-publication) 1)
 
-  
+
 
   (let ((c (fn2-checkpoint-build-candidate 0 fn2-checkpoint-build)))
    (and (fn2-checkpoint-slotp c fn2-checkpoints fn2-checkpoint-refs fn2-checkpoint-bytes)

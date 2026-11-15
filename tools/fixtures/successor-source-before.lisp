@@ -29,7 +29,7 @@
                     (fn2-overlays-wfp fn2-overlays) (fn2-overlay-index-wfp fn2-overlay-index) (fn2-fields-wfp fn2-fields)
                     (fn2-pool-wfp fn2-pool) (< 0 (fn2-id-engine-rows fn2-id-engine))))
        (mv :state 0 fn2-succ-txns fn2-succ-slots fn2-id-engine fn2-overlays fn2-fields fn2-pool))
-      ((unless (and (natp tx) (< tx (fn2-succ-txns-rows fn2-succ-txns)) (natp b0))) 
+      ((unless (and (natp tx) (< tx (fn2-succ-txns-rows fn2-succ-txns)) (natp b0)))
        (mv :bounds 0 fn2-succ-txns fn2-succ-slots fn2-id-engine fn2-overlays fn2-fields fn2-pool))
       ((unless (and (member (fn2-succ-txns-phase tx fn2-succ-txns) (list *fn2-succ-phase-open* *fn2-succ-phase-staged*))
                     (<= *fn2-succ-slots* (nfix (fn2-succ-txns-ri tx fn2-succ-txns)))))
