@@ -13,3 +13,13 @@ The existing RELEASE_ALLOCATION wire record is not yet a served release lifecycl
 A chronological RELEASE followed by a new ALLOCATION of the same extent must reconstruct ownership in that order while recovery remains closed to physical issuance. The later persisted epoch Fence establishes backend exclusion before physical use opens; it cannot be used as a reason to skip chronological replay. The shared allocator transition and its exact closed-recovery authority still require implementation and review. Unknown orphan allocations remain a refusal, not an invented identity or silent cancellation.
 
 RELEASE_EVIDENCE contains a physical Ref. The release journal must retain the exact descriptor allocation through a typed durable obligation until an authenticated checkpoint summary replaces that dependency. Evidence capture alone does not establish protection reconstruction, and copying bank evidence does not discharge independent cold-anchor edges. Candidate disposal must close new claims before its first edge removal and retain its debt until all such owners have actually transferred or drained.
+
+The current selected install pass still adopts all suffix physical candidates
+before ordered record replay. That ordering rejects a valid later allocation
+whose extent retains an older RETIRE_PENDING identity in the selected map: the
+earlier release has not replayed yet. The required repair separates authenticated
+journal read provenance from allocator ownership, then applies ownership at the
+actual chronological commit/record boundary. Reclamation owns that driver change;
+the codec owner supplies the shared release transition and RELEASE–ALLOCATION–
+RELEASE control. Neither overwriting the old identity nor skipping its release is
+an acceptable substitute. The full-discovery path is a separate existing scope.
