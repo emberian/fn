@@ -1,10 +1,11 @@
-# Ordinary retirement intent controls — source only
+# Ordinary retirement intent controls
 
 The isolated `tests/retirement-intent-unit.lisp` depends on primitive/coordinator
 changes 060bb71b6, completion-mode repair 0036c2769, and relocation repair
 06337e461. It invokes the actual functions and observes their concrete tables;
-there is no alternate retirement model. Nothing in this file has been executed
-in ACL2 or through the physical writer.
+there is no alternate retirement model. The composed submit/poll and record-install controls remain unexecuted in
+ACL2; the narrower allocator controls passed the author gate described below.
+No physical writer result is claimed.
 
 The leaf control reserves/commits exact allocations, retains an existing target
 obligation, begins retirement intent, and interleaves new installed-root refusal
@@ -77,3 +78,36 @@ The existing certification runner's read-only local-include scanner reports:
 
 The qualified system B* book is outside those local-source counts. These are
 source dependency closures, not certificate keys or executed gate results.
+
+## Allocator lifecycle author gate (2026-11-14)
+
+The exact nine-book source gate began at `926f82ffe`, with five qualified cached
+parents (tuple, owed, declare, columns, operations). The source roots were alloc,
+alloc-planning-unit, retirement-intent-allocator-unit and alloc-lifecycle-unit.
+No format or core book was loaded. This is source admission and assertion
+execution, not a record certificate.
+
+The original allocator refused stobj translation in intent cancellation. The
+same retained world admitted `d82406b1b` after all three new direct stobj-return
+terms were given explicit LET bindings, preserving their guards and equations:
+12.33 seconds and 1,463,790 prover steps. Planning's test observer then exposed
+an attempted guard verification, non-executable projection, and missing deferred
+snapshot definition. The final fixture (`aef710296`) instantiates the existing
+column reference generator from the exact schema, including all columns and
+scalar extras; it does not substitute a narrower observation.
+
+Actual retirement assertions passed in 0.06 seconds; actual planning assertions
+passed in 0.89 seconds, followed by the umbrella with zero refusals. These cover
+owner/stale-frontier refusal, generic allocation closure, transient pin blocking
+cancellation, exact cancellation and reopening, plus the intent interleavings
+above. HELD construction, journal submit/poll, and durable FREE remain unqualified.
+
+Forge logs: `/tmp/reclamation-alloc-lifecycle.log` (original refusal),
+`-continue1.log` (revised allocator), `-retirement.log` (retirement assertions),
+`-controls4.log` (planning and umbrella), all with the same filename prefix.
+The detached outer PID was 594353, server 594586, ACL2 process group 594590;
+external memory.max was 2147483648 and memory.swap.max was 0. The 600-second
+window used a per-event 60-second/2,000,000-step limit. Explicit session cleanup
+completed and all three recorded handles were absent; the cgroup disappeared.
+Wrapper status 75 preserves the original startup refusal, separately from the
+later successful retained-world results. The named 2 GiB allocation was released.

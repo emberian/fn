@@ -611,7 +611,9 @@
               ((and (eq copied-code :ok) (equal copied 32) (equal left 0)) :found)
               (t :fault)))
        (t code)))
-(defthm fn2-cns-found-record-has-bound-commitment
+; Scalar policy only: actual row identity and copied bytes need the caller
+; refinement, followed by verification of the returned storage bytes.
+(defthm fn2-cns-item-binding-answer-found-record-requires-copy
  (implies (and (equal type *fn2-fnct-item-record*)
                (equal (fn2-cns-item-binding-answer code type held reset copied-code copied left) :found))
           (and held (equal reset :ok) (equal copied-code :ok)

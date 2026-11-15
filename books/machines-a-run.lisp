@@ -72,21 +72,6 @@
     (mv *fn2-none* fn2-core)))
 (fn2-core-preserves fn2-machine-refuse-observation (fn2-core) :position 1 :rows nil)
 
-
-(defun fn2-machine-issue-result (id code bytes fn2-core)
-  (declare (xargs :stobjs fn2-core :guard (and (fn2-core-wfp fn2-core) (natp bytes) (<= bytes *fn2-echo-run-bytes*))))
-  (if (eq code :ok)
-      (let ((fn2-core (fn2-machine-put id (pending 1) (wait-reason *fn2-wait-completion*))))
-        (fn2-machine-result bytes *fn2-work-mailbox* 1 nil fn2-core))
-    (if (eq code :exhausted)
-        (let ((fn2-core (fn2-machine-park id fn2-core)))
-          (fn2-machine-result 0 *fn2-work-mailbox* 0 nil fn2-core))
-      ; TODO R6-NONEXHAUSTION-REFUSAL: replace this retained stop with the
-      ; named close/release or evidence posture chosen by R6.
-      (let ((fn2-core (fn2-machine-put id (stopped 1) (wait-reason *fn2-wait-none*))))
-        (fn2-machine-result 0 *fn2-work-mailbox* 0 nil fn2-core)))))
-(fn2-core-preserves fn2-machine-issue-result (id code bytes fn2-core) :position 4 :rows nil)
-
 ; The kinds' arms, generated from their declarations (machine-arms.lisp),
 ; then their run entries and certificates.
 (defmachine-arms fn2-listener)
