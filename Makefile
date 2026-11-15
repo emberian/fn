@@ -229,6 +229,7 @@ ACL2_BOOKS = \
   books/pool \
   books/pool-block \
   books/pool-ranges \
+  books/pool-read-contracts \
   books/port \
   books/profile \
   books/q1 \

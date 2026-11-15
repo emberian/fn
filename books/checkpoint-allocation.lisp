@@ -83,4 +83,5 @@
  (base fn2-checkpoint-construction fn2-fields fn2-extents)
  :hyps ((fn2-checkpoint-constructionp fn2-checkpoint-construction) (fn2-checkpoint-construction-wfp fn2-checkpoint-construction)
         (fn2-fieldsp fn2-fields) (fn2-fields-wfp fn2-fields) (fn2-extentsp fn2-extents) (fn2-extents-wfp fn2-extents))
- :specs (("-TYPE" fn2-extentsp 1) ("-WFP" fn2-extents-wfp 1) ("-ROWS" fn2-extents-rows 1 :frame fn2-extents)))
+ :specs (("-TYPE" fn2-extentsp 1) ("-WFP" fn2-extents-wfp 1) ("-ROWS" fn2-extents-rows 1 :frame fn2-extents))
+ :hints (("Goal" :in-theory (disable fn2-extents-rows))))

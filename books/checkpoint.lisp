@@ -4,6 +4,7 @@
 (include-book "format-check")
 (include-book "alloc")
 (include-book "vocab")
+(include-book "pool-read-contracts")
 (fn2-book-layer :b)
 ; Current native backend routes one image. Domain0 is the format writer's
 ; declared domain; foreign references must never alias this allocator.
@@ -166,6 +167,9 @@
 (defun fn2-checkpoint-copy-hash (left dst src slot gen okind oslot ogen
                                 fn2-pool fn2-checkpoint-bytes)
  (declare (xargs :stobjs (fn2-pool fn2-checkpoint-bytes) :measure (nfix left)
+  :guard-hints (("Goal"
+    :use ((:instance fn2-pool-read-byte-type (idx src)))
+    :in-theory (disable fn2-pool-read)))
   :guard (and (fn2-pool-wfp fn2-pool) (fn2-checkpoint-bytes-wfp fn2-checkpoint-bytes)
               (natp left) (<= left 32) (natp dst) (natp src)
               (<= (+ dst left) (fn2-checkpoint-bytes-rows fn2-checkpoint-bytes)))))
@@ -175,6 +179,15 @@
     (let ((fn2-checkpoint-bytes (fn2-checkpoint-bytes-set-value dst byte fn2-checkpoint-bytes)))
      (fn2-checkpoint-copy-hash (- left 1) (+ 1 dst) (+ 1 src) slot gen okind oslot ogen
                                fn2-pool fn2-checkpoint-bytes))))))
+
+(fn2-checkpoint-bytes-preserves fn2-checkpoint-copy-hash
+ (left dst src slot gen okind oslot ogen fn2-pool fn2-checkpoint-bytes)
+ :position 1
+ :hyps ((fn2-poolp fn2-pool) (fn2-pool-wfp fn2-pool)
+        (natp left) (<= left 32) (natp dst) (natp src)
+        (<= (+ dst left) (fn2-checkpoint-bytes-rows fn2-checkpoint-bytes))
+        (fn2-checkpoint-bytesp fn2-checkpoint-bytes) (fn2-checkpoint-bytes-wfp fn2-checkpoint-bytes))
+ :hints (("Goal" :in-theory (e/d (fn2-pool-read) (fn2-checkpoint-bytes-rows)))))
 
 ; Descriptor root fields are an existing format declaration, in groups of
 ; seven. This helper consumes one root per call; callers resume at ROLE+1.
