@@ -1,0 +1,44 @@
+{
+ "base": "1c9e7c905fef6161b4ed05c71eaa99da3cdb4dbb",
+ "read-source-sha256": "0b809780be2098e6821de5cbd2788b0d793e3174ec73637b973bf46dce00aab8",
+ "lower": "fn2-read-observer-enter",
+ "scalars": [
+  "x",
+  "fresh"
+ ],
+ "stobjs-in": [
+  "fn2-reads",
+  "fn2-c-source-control",
+  "fn2-c-source-readers",
+  "fn2-id-decides",
+  "fn2-run-loads",
+  "fn2-run-cursors",
+  "fn2-checkpoint-summary",
+  "fn2-checkpoint-summary-leases",
+  "fn2-pool"
+ ],
+ "mutable-outputs": [
+  "fn2-reads",
+  "fn2-c-source-control",
+  "fn2-c-source-readers",
+  "fn2-run-loads",
+  "fn2-run-cursors",
+  "fn2-checkpoint-summary",
+  "fn2-checkpoint-summary-leases"
+ ],
+ "readonly-inputs": [
+  "fn2-id-decides",
+  "fn2-pool"
+ ],
+ "result-prefix": [
+  "code"
+ ],
+ "no-installed-input": true,
+ "no-observer-enter-children-source": true,
+ "canonical-park-source": "864f4dcac",
+ "new-provider-files": [
+  "books/run-physical-release.lisp",
+  "books/run-physical-park-region.lisp"
+ ],
+ "scope": "Exact source ABI and static include graph. Actual CORE wrappers come from unchanged fn2-read-core-events; SAME emitter fixture is prepared, unexecuted."
+}

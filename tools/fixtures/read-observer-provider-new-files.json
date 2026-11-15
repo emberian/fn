@@ -1,0 +1,41 @@
+{
+ "base": "1c9e7c905fef6161b4ed05c71eaa99da3cdb4dbb",
+ "new-only-providers": [
+  "books/successor-schema-geometry.lisp",
+  "books/successor-workspace-geometry.lisp",
+  "books/c-snapshot.lisp",
+  "books/c-snapshot-state.lisp",
+  "books/run-physical-region.lisp",
+  "books/run-physical-source.lisp",
+  "books/run-physical-bound-bind.lisp",
+  "books/run-physical-bound.lisp",
+  "books/run-physical-resources.lisp",
+  "books/run-physical-state.lisp",
+  "books/checkpoint-summary-leases.lisp",
+  "books/checkpoint-summary-state.lisp",
+  "books/checkpoint-restore-semantic-state.lisp",
+  "books/checkpoint-restore-provenance.lisp",
+  "books/checkpoint-restore-map.lisp",
+  "books/checkpoint-restore-reader.lisp",
+  "books/checkpoint-restore.lisp",
+  "books/checkpoint-restore-read.lisp",
+  "books/event-proof-format.lisp",
+  "books/checkpoint-map-format.lisp",
+  "books/checkpoint-geometry.lisp",
+  "books/checkpoint-restore-reach-state.lisp",
+  "books/run-physical-geometry.lisp",
+  "books/run-physical-harvest.lisp",
+  "books/c-source-observer.lisp",
+  "books/c-source-observer-state.lisp",
+  "books/run-physical-step.lisp",
+  "books/run-physical-io.lisp",
+  "books/run-physical-bound-io.lisp",
+  "books/run-physical-bound-step.lisp",
+  "books/checkpoint-semantic-page.lisp"
+ ],
+ "canonical-park": [
+  "books/run-physical-release.lisp",
+  "books/run-physical-park-region.lisp"
+ ],
+ "scope": "Minimal static READ include closure; existing current ROOT tracked files untouched."
+}
