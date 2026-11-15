@@ -1093,6 +1093,9 @@
       :accept (:ok :wait :stale))
      (:cond ((eq code :wait) (:wake-row row-cns) (:charge :steps *fn2-work-transition*))
             ((eq code :ok)
+             ;; The source marks handback; CNS releases its own lease through
+             ;; its declared actor transition after this checked wake.
+             (:wake-row row-cns)
              (:do (reset) (fn2-core-reset row-rx-slot row-rx-gen) :accept (:ok))
              (:set (fill 0) (pos 0) (flen 0) (cns *fn2-none*) (cns-gen 0)
                    (tx-off 0) (tx-len 0) (ophase *fn2-ctl-output-none*) (sphase *fn2-ctl-stream-none*))
