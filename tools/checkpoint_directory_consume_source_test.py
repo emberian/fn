@@ -16,6 +16,7 @@ def consume_contract(source):
       '(= (fn2-directory-rebase-phase 0 fn2-directory-rebase) *fn2-directory-rebase-phase-source-scanned*)',
       '(= (fn2-alloc-freeze-phase fn2-extents) 2)',
       '(fn2-directory-rebase-seal-p 0 fn2-directory-rebase fn2-checkpoint-summary-authority)',
+      '(fn2-event-catalog-subject-p 1 ?*args)',
       '(= installation (fn2-commit-root-proposed 0 fn2-commit-root))',
       '(= (fn2-directory-rebase-suffix-scanned 0 fn2-directory-rebase) (- installation target))',
       '(fn2-commit-root-put 0 (base-batch target) ?*rest)',
@@ -58,6 +59,9 @@ class Source(unittest.TestCase):
         require(getter,'(fn2-directory-cold-source-p ?*args)')
         require(getter,'(mv :selected ?*args (fn2-alloc-current-epoch fn2-extents))')
         require(getter,'(= (fn2-alloc-freeze-phase fn2-extents) 0)')
+    def test_missing_pending_catalog_refuses(self):
+        s=(ROOT/'books/checkpoint-directory-consume.lisp').read_text().replace('(fn2-event-catalog-subject-p 1 fn2-checkpoint-summary-authority fn2-checkpoints fn2-checkpoint-refs fn2-checkpoint-bytes fn2-checkpoint-restore-events fn2-checkpoint-restore-events-work)','t')
+        with self.assertRaises(ValueError): consume_contract(s)
     def test_runtime_stays_inactive_until_composition(self):
         s=(ROOT/'books/checkpoint-master-state.lisp').read_text()
         self.assertIn('(defconst *fn2-checkpoint-activation-qualified* nil)',s)

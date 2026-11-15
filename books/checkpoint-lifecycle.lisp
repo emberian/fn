@@ -57,7 +57,7 @@
          ((when (equal e (fn2-extents-rows fn2-extents)))
           (let ((fn2-checkpoint-lifecycle (fn2-checkpoint-lifecycle-set-phase 0 *fn2-checkpoint-lifecycle-phase-roots* fn2-checkpoint-lifecycle))) (mv :more fn2-checkpoint-lifecycle fn2-checkpoint-refs fn2-extents fn2-alloc-edges)))
          ((unless (and (< e (fn2-extents-rows fn2-extents)) (unsigned-byte-p 32 (+ e 1)))) (mv :bounds fn2-checkpoint-lifecycle fn2-checkpoint-refs fn2-extents fn2-alloc-edges))
-         (ours (and (equal (fn2-checkpoint-construction-live e fn2-checkpoint-construction) 1)
+         (ours (and (fn2-checkpoint-construction-native-p e fn2-checkpoint-construction)
                     (equal (fn2-checkpoint-construction-token e fn2-checkpoint-construction) token)))
          (r (fn2-checkpoint-construction-role e fn2-checkpoint-construction))
          (epoch (fn2-checkpoint-construction-epoch e fn2-checkpoint-construction))

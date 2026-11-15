@@ -1,0 +1,27 @@
+; Actual protection mutation notification, not a readiness/permission flag.
+(in-package "ACL2")
+(include-book "../books/alloc")
+(include-book "../books/runs-page")
+(defun fn2-apnu-body (fn2-extents)
+ (declare (xargs :stobjs fn2-extents :verify-guards nil))
+ (b* ((fn2-extents (fn2-alloc-columns-init 2 fn2-extents))
+      (initial (= (fn2-alloc-protection-dirty fn2-extents) 0))
+      (fn2-extents (fn2-alloc-set-edge 1 :promised-read 0 fn2-extents))
+      (no-op (= (fn2-alloc-protection-dirty fn2-extents) 0))
+      (fn2-extents (fn2-alloc-set-edge 1 :promised-read 1 fn2-extents))
+      (changed (and (= (fn2-alloc-protection-dirty fn2-extents) 1)
+                    (= (fn2-extents-promised-read 1 fn2-extents) 1)))
+      (fn2-extents (fn2-alloc-set-edge 0 :outstanding-io 1 fn2-extents))
+      (coalesced (= (fn2-alloc-protection-dirty fn2-extents) 1))
+      ; Synthetic sweep-BEGIN premise: only the actual full debt-sweep owner
+      ; will clear this in composition. A subsequent release must relatch it.
+      (fn2-extents (update-fn2-alloc-protection-dirty 0 fn2-extents))
+      (fn2-extents (fn2-alloc-set-edge 1 :promised-read 0 fn2-extents)))
+  (mv (and initial no-op changed coalesced
+           (= (fn2-alloc-protection-dirty fn2-extents) 1)
+           (= (fn2-extents-promised-read 1 fn2-extents) 0)
+           (= (fn2-extents-outstanding-io 0 fn2-extents) 1)) fn2-extents)))
+(defun fn2-apnu-test ()
+ (declare (xargs :verify-guards nil))
+ (fn2-run-with-local (fn2-extents) (fn2-apnu-body fn2-extents)))
+(assert-event (fn2-apnu-test))

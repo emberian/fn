@@ -5,12 +5,9 @@
 (include-book "event-catalog")
 (fn2-book-layer :c)
 (defun fn2-event-catalog-copy-descriptor (i fn2-checkpoint-summary-authority fn2-checkpoint-restore-events)
- (declare (xargs :stobjs (fn2-checkpoint-summary-authority fn2-checkpoint-restore-events) :measure (nfix (- 32 (nfix i)))
+ (declare (xargs :stobjs (fn2-checkpoint-summary-authority fn2-checkpoint-restore-events)
  :guard (and (fn2-checkpoint-summary-authority-wfp fn2-checkpoint-summary-authority) (fn2-checkpoint-restore-events-wfp fn2-checkpoint-restore-events) (natp i) (<= i 32))))
- (if (>= (nfix i) 32) fn2-checkpoint-restore-events
-  (let ((fn2-checkpoint-restore-events (update-fn2-checkpoint-restore-events-catalog-descriptori i
-         (fn2-checkpoint-summary-authority-descriptori i fn2-checkpoint-summary-authority) fn2-checkpoint-restore-events)))
-   (fn2-event-catalog-copy-descriptor (+ 1 i) fn2-checkpoint-summary-authority fn2-checkpoint-restore-events))))
+ (fn2-event-catalog-copy-descriptor-from-row 0 i fn2-checkpoint-summary-authority fn2-checkpoint-restore-events))
 (defun fn2-event-catalog-copy-seal (i src dst fn2-checkpoint-restore-events-work)
  (declare (xargs :stobjs fn2-checkpoint-restore-events-work :measure (nfix (- 32 (nfix i)))
  :guard (and (fn2-checkpoint-restore-events-work-wfp fn2-checkpoint-restore-events-work)

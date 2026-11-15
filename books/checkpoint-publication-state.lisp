@@ -9,6 +9,9 @@
  ((phase (:enum fn2-checkpoint-publication-phase
     (:idle :prepare :write-first :wait-first :write-second :wait-second :fence :wait-fence :complete :uncertain)))
   (candidate :u32) (bank :bool) (packet-mask :u8)
+  (cold-bind-phase (:enum fn2-checkpoint-cold-bind-phase (:idle :binding :complete :uncertain)))
+  (cold-bind-cursor :u8) (cold-bound-mask :u8) (cold-live-mask :u8) (cold-pending-mask :u8) (cold-retired-mask :u8)
+  (cold-checked-mask :u8) (cold-empty-mask :u8) (cold-invalid-mask :u8) (cold-selected :u8)
   (layout-ready :bool) (image-size :u60) (extents :u32) (groups :u32)
   (has-base :bool) (active-bank :bool) (bundle-released :bool)
   ; Fence-owned bank identities and one retained displaced-candidate debt.
@@ -65,7 +68,9 @@
   (fn2-checkpoint-publication-cold-meta :type (array (unsigned-byte 60) (48)) :initially 0
    :why "One independently investigated record per physical anchor: phase, full tuple, source generation/tag and bounded copy cursor.")
   (fn2-checkpoint-publication-cold-words :type (array (unsigned-byte 32) (192)) :initially 0
-   :why "Each of four physical anchors retains six hashes, including the actual anchor hash, before shared cold scratch is reused.")))
+   :why "Each of four physical anchors retains six hashes, including the actual anchor hash, before shared cold scratch is reused.")
+  (fn2-checkpoint-publication-cold-catalog :type (array (unsigned-byte 32) (4)) :initially 0
+   :why "Actual census duplicate identities may share one catalog representative while all four physical anchor obligations and hashes remain distinct.")))
 
 (defun fn2-checkpoint-descriptor-identity-word (c i fn2-checkpoint-bytes)
  (declare (xargs :stobjs fn2-checkpoint-bytes

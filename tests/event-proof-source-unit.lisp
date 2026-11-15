@@ -9,11 +9,11 @@
  (stobj-let ((fn2-csnapshot (fn2-core-csnapshot fn2-core)) (fn2-commit-root (fn2-core-commit-root fn2-core))
              (fn2-extents (fn2-core-extents fn2-core)) (fn2-alloc-edges (fn2-core-alloc-edges fn2-core))
              (fn2-fc (fn2-core-fc fn2-core)) (fn2-digests (fn2-core-digests fn2-core))
-             (fn2-fields (fn2-core-fields fn2-core)) (fn2-pool (fn2-core-pool fn2-core)))
+             (fn2-fields (fn2-core-fields fn2-core)) (fn2-pool (fn2-core-pool fn2-core)) (fn2-checkpoint-summary-authority (fn2-core-checkpoint-summary-authority fn2-core)) (fn2-checkpoints (fn2-core-checkpoints fn2-core)) (fn2-checkpoint-refs (fn2-core-checkpoint-refs fn2-core)) (fn2-checkpoint-bytes (fn2-core-checkpoint-bytes fn2-core)) (fn2-checkpoint-restore-events (fn2-core-checkpoint-restore-events fn2-core)) (fn2-checkpoint-restore-events-work (fn2-core-checkpoint-restore-events-work fn2-core)) (fn2-ops (fn2-core-ops fn2-core)))
   (code end fn2-fields fn2-pool)
   (fn2-event-proof-pack-entry token ordinal (* 128 (fn2-b-event-row (fn2-fc-rows fn2-fc)))
    slot gen off scratch sgen 7 0 ownergen
-   fn2-csnapshot fn2-commit-root fn2-extents fn2-alloc-edges fn2-fc fn2-digests fn2-fields fn2-pool)
+   fn2-csnapshot fn2-commit-root fn2-extents fn2-alloc-edges fn2-fc fn2-digests fn2-fields fn2-pool fn2-checkpoint-summary-authority fn2-checkpoints fn2-checkpoint-refs fn2-checkpoint-bytes fn2-checkpoint-restore-events fn2-checkpoint-restore-events-work fn2-ops)
   (mv code end fn2-core)))
 ; Issue a real pinned source read, then deliver a stale completion and an
 ; exact short physical completion through the actual harvest extension.
@@ -26,7 +26,7 @@
                    (fn2-commit-root (fn2-core-commit-root fn2-core)) (fn2-extents (fn2-core-extents fn2-core))
                    (fn2-alloc-edges (fn2-core-alloc-edges fn2-core)) (fn2-fc (fn2-core-fc fn2-core))
                    (fn2-digests (fn2-core-digests fn2-core)) (fn2-mk (fn2-core-mk fn2-core))
-                   (fn2-fields (fn2-core-fields fn2-core)) (fn2-pool (fn2-core-pool fn2-core)))
+                   (fn2-fields (fn2-core-fields fn2-core)) (fn2-pool (fn2-core-pool fn2-core)) (fn2-checkpoint-summary-authority (fn2-core-checkpoint-summary-authority fn2-core)) (fn2-checkpoints (fn2-core-checkpoints fn2-core)) (fn2-checkpoint-refs (fn2-core-checkpoint-refs fn2-core)) (fn2-checkpoint-bytes (fn2-core-checkpoint-bytes fn2-core)) (fn2-checkpoint-restore-events (fn2-core-checkpoint-restore-events fn2-core)) (fn2-checkpoint-restore-events-work (fn2-core-checkpoint-restore-events-work fn2-core)) (fn2-ops (fn2-core-ops fn2-core)))
         (code fn2-event-read fn2-mk fn2-fields fn2-pool)
         ; Reader-only fixture premise: an owner-bound build carrying the configured
         ; physical pair. Actual build BEGIN capture is checked by the budget fixture.
@@ -40,14 +40,14 @@
                   (cut-commit (fn2-csnapshot-cut-commit 0 fn2-csnapshot)) (cut-event (fn2-csnapshot-cut-event 0 fn2-csnapshot))
                   (history (fn2-origin-history fn2-origin)) (history-incarnation (fn2-origin-history-incarnation fn2-origin)))))
            (fn2-event-read-open token 0 slot gen dslot dgen *fn2-checkpoint-map-entries-start* scratch sgen 7 0 1
-          fn2-event-read fn2-csnapshot fn2-commit-root fn2-extents fn2-alloc-edges fn2-fc fn2-digests fn2-mk fn2-fields fn2-checkpoint-build fn2-pool))))
+          fn2-event-read fn2-csnapshot fn2-commit-root fn2-extents fn2-alloc-edges fn2-fc fn2-digests fn2-mk fn2-fields fn2-checkpoint-build fn2-pool fn2-checkpoint-summary-authority fn2-checkpoints fn2-checkpoint-refs fn2-checkpoint-bytes fn2-checkpoint-restore-events fn2-checkpoint-restore-events-work fn2-ops))))
         (mv code fn2-core)))
       ((mv issued fn2-core)
        (stobj-let ((fn2-event-read (fn2-core-event-read fn2-core)) (fn2-csnapshot (fn2-core-csnapshot fn2-core))
                    (fn2-extents (fn2-core-extents fn2-core)) (fn2-alloc-edges (fn2-core-alloc-edges fn2-core))
-                   (fn2-pool (fn2-core-pool fn2-core)) (fn2-ops (fn2-core-ops fn2-core)) (fn2-control (fn2-core-control fn2-core)))
+                   (fn2-pool (fn2-core-pool fn2-core)) (fn2-ops (fn2-core-ops fn2-core)) (fn2-control (fn2-core-control fn2-core)) (fn2-checkpoint-summary-authority (fn2-core-checkpoint-summary-authority fn2-core)) (fn2-checkpoints (fn2-core-checkpoints fn2-core)) (fn2-checkpoint-refs (fn2-core-checkpoint-refs fn2-core)) (fn2-checkpoint-bytes (fn2-core-checkpoint-bytes fn2-core)) (fn2-checkpoint-restore-events (fn2-core-checkpoint-restore-events fn2-core)) (fn2-checkpoint-restore-events-work (fn2-core-checkpoint-restore-events-work fn2-core)) (fn2-commit-root (fn2-core-commit-root fn2-core)))
         (code fn2-event-read fn2-extents fn2-alloc-edges fn2-pool fn2-ops fn2-control)
-        (fn2-event-read-issue fn2-event-read fn2-csnapshot fn2-extents fn2-alloc-edges fn2-pool fn2-ops fn2-control)
+        (fn2-event-read-issue fn2-event-read fn2-csnapshot fn2-extents fn2-alloc-edges fn2-pool fn2-ops fn2-control fn2-checkpoint-summary-authority fn2-checkpoints fn2-checkpoint-refs fn2-checkpoint-bytes fn2-checkpoint-restore-events fn2-checkpoint-restore-events-work fn2-commit-root)
         (mv code fn2-core)))
       ((mv op og extent)
        (stobj-let ((fn2-event-read (fn2-core-event-read fn2-core))) (op og extent)

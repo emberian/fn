@@ -90,3 +90,17 @@ clearing. Parent owns the actual fresh/no-checkpoint branch before full-prefix
 replay and the sealer startup gate; selected checkpoint boot never begins NAME.
 
 The actual fresh stage2 anchor completion now enters the bounded BEGIN/STEP writer and reaches recovery only on COMPLETE. One insertion/open/close transition executes per turn with the declared 4096-byte charge. Stored checkpoint selection never enters these NAME phases. Invalid create-profile NAME content may now refuse after initial image writes but before replay/service, preserving partial state as uncertain; no earlier rejection timing is claimed.
+Empty roles advance without opening an overlay or consulting an unused codec
+stripe. Both public operations retain the existing C snapshot HELD barrier.
+The owner slot uses the existing `fn2-profile-owner-account` normalization; its
+u32 check does not introduce a new accepted-profile restriction.
+
+`startup-genesis-unit` adds five actual sealer controls over frozen NAME work:
+present waiting, READY, stopped, unreadable typed boot snapshot, and absent
+non-image boot. Refused direct steps compare every generated core child; READY
+and absent cases assert actual eligibility. `startup-name-owner-unit` uses
+actual executor initialization and the bounded writer for completion, stale
+generation, changed account incarnation, changed lease generation and empty
+profile controls. Its boot phases are explicit logical premises, not a claim
+of physical anchor IO execution. All assertions are source-only and unrun;
+guard/cost qualification and composed fresh/cold boot execution remain owed.

@@ -67,7 +67,7 @@ class Source(unittest.TestCase):
         states=[x.low for x in props[':states'].items]
         self.assertEqual(states,[x.items[0].low for x in props[':arms'].items])
         holds={x.items[0].low:[y.low for y in x.items[1:]] for x in props[':holds'].items}
-        for name in [':summary-authority-begin',':summary-authority-copy',':rebase-begin',':rebase-source',':rebase-consume']:
+        for name in [':summary-authority-begin',':summary-authority-copy',':rebase-begin',':rebase-source',':rebase-consume',':rebase-archive']:
             self.assertEqual(holds[name],[':storage-window',':storage-window'])
         actual=lr.match('(defmachine-arms fn2-checkpoint-master ?*body)',lr.parse((ROOT/'books/checkpoint-master-arms.lisp').read_text()).forms)[0].node
         arms=next(actual.items[i+1] for i,x in enumerate(actual.items) if getattr(x,'low',None)==':arms')

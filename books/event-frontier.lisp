@@ -55,3 +55,26 @@
  (row leaf fn2-journal-members fn2-mk fn2-b3 fn2-digests fn2-pool)
  :carriers ((fn2-journal-members 1 :prefix "-MEMBERS") (fn2-mk 2 :prefix "-TREE")
             (fn2-b3 3 :prefix "-HASHER") (fn2-digests 4 :prefix "-DIGESTS")))
+
+; One shared bounded scanner/hash transition. Consumers own the immutable
+; source lease and the row/leaf workspaces; each retains its own cut and
+; terminal-event checks. In particular this helper does not reset a restored
+; frontier or accept a caller-supplied leaf digest.
+(defun fn2-event-members-step (base row leaf fn2-journal-members fn2-mk fn2-b3 fn2-fields fn2-pool fn2-digests)
+ (declare (xargs :stobjs (fn2-journal-members fn2-mk fn2-b3 fn2-fields fn2-pool fn2-digests)
+  :guard (and (fn2-journal-members-wfp fn2-journal-members) (fn2-mk-wfp fn2-mk)
+              (fn2-b3-wfp fn2-b3) (fn2-fields-wfp fn2-fields)
+              (fn2-pool-wfp fn2-pool) (fn2-digests-wfp fn2-digests))))
+ (if (and (< 0 (fn2-journal-members-rows fn2-journal-members))
+          (= (fn2-journal-members-phase 0 fn2-journal-members) *fn2-journal-members-phase-leaf*))
+     (mv-let (code fn2-journal-members fn2-mk fn2-b3 fn2-digests)
+      (fn2-event-member-hash-step row leaf fn2-journal-members fn2-mk fn2-b3 fn2-digests fn2-pool)
+      (mv code fn2-journal-members fn2-mk fn2-b3 fn2-fields fn2-digests))
+   (mv-let (code fn2-journal-members fn2-fields)
+    (fn2-journal-members-step base fn2-journal-members fn2-fields fn2-pool)
+    (mv code fn2-journal-members fn2-mk fn2-b3 fn2-fields fn2-digests))))
+(fn2-journal-members-preserves fn2-event-members-step
+ (base row leaf fn2-journal-members fn2-mk fn2-b3 fn2-fields fn2-pool fn2-digests)
+ :carriers ((fn2-journal-members 1 :prefix "-MEMBERS") (fn2-mk 2 :prefix "-TREE")
+            (fn2-b3 3 :prefix "-HASHER") (fn2-fields 4 :prefix "-FIELDS")
+            (fn2-digests 5 :prefix "-DIGESTS")))

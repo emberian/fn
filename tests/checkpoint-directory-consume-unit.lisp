@@ -23,9 +23,9 @@
    (mv (and (eq reserve :ok) (eq commit :ok) (eq pin :ok) (eq source :ok) tail)
        fn2-extents fn2-alloc-edges fn2-commit-root))))
 (defun fn2-dcu-body (mode fn2-directory-rebase fn2-checkpoint-summary-authority fn2-csnapshot fn2-checkpoint-publication
- fn2-checkpoints fn2-checkpoint-refs fn2-checkpoint-bytes fn2-commit-root fn2-extents fn2-alloc-edges fn2-ops fn2-fc fn2-digests)
+ fn2-checkpoints fn2-checkpoint-refs fn2-checkpoint-bytes fn2-commit-root fn2-extents fn2-alloc-edges fn2-ops fn2-fc fn2-digests fn2-checkpoint-restore-events fn2-checkpoint-restore-events-work)
  (declare (xargs :stobjs (fn2-directory-rebase fn2-checkpoint-summary-authority fn2-csnapshot fn2-checkpoint-publication
- fn2-checkpoints fn2-checkpoint-refs fn2-checkpoint-bytes fn2-commit-root fn2-extents fn2-alloc-edges fn2-ops fn2-fc fn2-digests) :verify-guards nil))
+ fn2-checkpoints fn2-checkpoint-refs fn2-checkpoint-bytes fn2-commit-root fn2-extents fn2-alloc-edges fn2-ops fn2-fc fn2-digests fn2-checkpoint-restore-events fn2-checkpoint-restore-events-work) :verify-guards nil))
  (b* ((fn2-directory-rebase (fn2-directory-rebase-init 1 fn2-directory-rebase))
       (fn2-checkpoint-summary-authority (fn2-checkpoint-summary-authority-init 2 fn2-checkpoint-summary-authority))
       (fn2-csnapshot (fn2-csnapshot-init 1 fn2-csnapshot))
@@ -38,7 +38,9 @@
       (fn2-alloc-edges (fn2-alloc-edges-init 24 fn2-alloc-edges))
       (fn2-ops (fn2-ops-init 1 fn2-ops))
       (fn2-fc (fn2-fc-init 3 fn2-fc))
-      (fn2-digests (fn2-digests-init (+ (* *fn2-digest-stride* 3) 4) fn2-digests))
+      (fn2-checkpoint-restore-events (fn2-checkpoint-restore-events-init 2 fn2-checkpoint-restore-events))
+      (fn2-checkpoint-restore-events-work (fn2-checkpoint-restore-events-work-init 3 fn2-checkpoint-restore-events-work))
+      (fn2-digests (fn2-digests-init (+ 1 (fn2-b-event-previous-digest 3 3)) fn2-digests))
       ((mv epoch fn2-extents) (fn2-alloc-begin-epoch 1 fn2-extents))
       (fn2-checkpoints (fn2-checkpoints-put 0 (state *fn2-checkpoint-state-installed*) (checkpoint 9)
        (history 37) (incarnation 41) (cut-commit 1) (cut-event 1) (installation-commit 3)
@@ -59,7 +61,7 @@
       (fn2-extents (update-fn2-alloc-freeze-owner-gen 1 fn2-extents))
       (fn2-digests (fn2-digest-set-word (+ (* *fn2-digest-stride* 3) 1) 0 123 fn2-digests))
       (fn2-checkpoint-summary-authority (update-fn2-checkpoint-summary-authority-descriptori 0 77 fn2-checkpoint-summary-authority))
-      (fn2-checkpoint-summary-authority (fn2-checkpoint-summary-authority-put 0 (tag 5)))
+      (fn2-checkpoint-summary-authority (fn2-checkpoint-summary-authority-put 0 (tag 0)))
       (fn2-checkpoint-summary-authority (fn2-checkpoint-summary-authority-put 1
        (phase (if (eq mode :incomplete) *fn2-checkpoint-summary-authority-phase-copy* *fn2-checkpoint-summary-authority-phase-complete*))
        (origin *fn2-checkpoint-summary-authority-origin-live*) (tag 9) (candidate 0) (checkpoint 9)
@@ -69,11 +71,15 @@
       ((mv begin fn2-directory-rebase) (fn2-directory-rebase-begin 9 7 0 1 fn2-directory-rebase fn2-csnapshot
        fn2-checkpoint-publication fn2-checkpoints fn2-checkpoint-bytes fn2-commit-root fn2-extents))
       ((mv s1 fn2-directory-rebase) (fn2-directory-rebase-step fn2-directory-rebase fn2-csnapshot fn2-checkpoint-publication
-       fn2-checkpoints fn2-checkpoint-bytes fn2-commit-root fn2-extents fn2-alloc-edges fn2-ops fn2-fc fn2-digests))
+       fn2-checkpoints fn2-checkpoint-bytes fn2-commit-root fn2-extents fn2-alloc-edges fn2-ops fn2-fc fn2-digests ))
       ((mv s2 fn2-directory-rebase) (fn2-directory-rebase-step fn2-directory-rebase fn2-csnapshot fn2-checkpoint-publication
-       fn2-checkpoints fn2-checkpoint-bytes fn2-commit-root fn2-extents fn2-alloc-edges fn2-ops fn2-fc fn2-digests))
+       fn2-checkpoints fn2-checkpoint-bytes fn2-commit-root fn2-extents fn2-alloc-edges fn2-ops fn2-fc fn2-digests ))
       ((mv s3 fn2-directory-rebase) (fn2-directory-rebase-step fn2-directory-rebase fn2-csnapshot fn2-checkpoint-publication
-       fn2-checkpoints fn2-checkpoint-bytes fn2-commit-root fn2-extents fn2-alloc-edges fn2-ops fn2-fc fn2-digests))
+       fn2-checkpoints fn2-checkpoint-bytes fn2-commit-root fn2-extents fn2-alloc-edges fn2-ops fn2-fc fn2-digests ))
+      ((mv archived fn2-checkpoint-restore-events fn2-checkpoint-restore-events-work)
+       (fn2-event-catalog-live-step fn2-directory-rebase fn2-checkpoint-summary-authority fn2-csnapshot fn2-checkpoint-publication
+        fn2-checkpoints fn2-checkpoint-refs fn2-checkpoint-bytes fn2-commit-root fn2-extents fn2-alloc-edges fn2-ops fn2-fc fn2-digests
+        fn2-checkpoint-restore-events fn2-checkpoint-restore-events-work))
       (old-prefix (fn2-extents-row-snapshot 0 fn2-extents))
       (old-edge (fn2-alloc-edges-row-snapshot (fn2-checkpoint-source-edge 0 0 fn2-extents fn2-ops fn2-checkpoints) fn2-alloc-edges))
       (suffix2 (fn2-commit-root-row-snapshot 2 fn2-commit-root))
@@ -83,7 +89,7 @@
       ((mv consumed fn2-directory-rebase fn2-checkpoint-summary-authority fn2-commit-root fn2-digests)
        (fn2-directory-rebase-consume 9 7 0 1 fn2-directory-rebase fn2-checkpoint-summary-authority
         fn2-csnapshot fn2-checkpoint-publication fn2-checkpoints fn2-checkpoint-refs fn2-checkpoint-bytes fn2-commit-root
-        fn2-extents fn2-fc fn2-digests))
+        fn2-extents fn2-fc fn2-digests fn2-checkpoint-restore-events fn2-checkpoint-restore-events-work))
       (okay (and sources (eq epoch :ok) (eq begin :ok)
        (equal old-prefix (fn2-extents-row-snapshot 0 fn2-extents))
        (equal old-edge (fn2-alloc-edges-row-snapshot (fn2-checkpoint-source-edge 0 0 fn2-extents fn2-ops fn2-checkpoints) fn2-alloc-edges))
@@ -91,24 +97,26 @@
        (if mode
         (and (eq consumed (case mode (:owner :owner) (:interleave :source) (:hold :owner) (otherwise :authority)))
          (= (fn2-commit-root-base-batch 0 fn2-commit-root) 0)
-         (= (fn2-checkpoint-summary-authority-tag 0 fn2-checkpoint-summary-authority) 5)
+         (= (fn2-checkpoint-summary-authority-tag 0 fn2-checkpoint-summary-authority) 0)
          (= (fn2-checkpoint-summary-authority-descriptori 0 fn2-checkpoint-summary-authority) 77)
          (= (fn2-checkpoint-summary-authority-tag 1 fn2-checkpoint-summary-authority) 9))
-        (and (eq s1 :more) (eq s2 :more) (eq s3 :await-evidence) (eq consumed :committed)
+        (and (eq s1 :more) (eq s2 :more) (eq s3 :await-evidence) (eq archived :complete) (eq consumed :committed)
          (= (fn2-commit-root-base-batch 0 fn2-commit-root) 1) (= (fn2-commit-root-base-event 0 fn2-commit-root) 1)
          (= (fn2-commit-root-base-ready 0 fn2-commit-root) 1) (= (fn2-commit-root-installed 0 fn2-commit-root) 3)
          (= (fn2-commit-root-proposed 0 fn2-commit-root) 3) (= (fn2-commit-root-published 0 fn2-commit-root) 3)
          (= (fn2-digest-word (* *fn2-digest-stride* 3) 0 fn2-digests) 123)
          (= (fn2-checkpoint-summary-authority-tag 0 fn2-checkpoint-summary-authority) 9)
+         (= (fn2-event-catalog-seal-word 3 0 fn2-checkpoint-restore-events-work) 123)
+         (fn2-event-catalog-current-p fn2-checkpoint-summary-authority fn2-checkpoints fn2-checkpoint-refs fn2-checkpoint-bytes fn2-commit-root fn2-checkpoint-restore-events fn2-checkpoint-restore-events-work)
          (= (fn2-checkpoint-summary-authority-phase 1 fn2-checkpoint-summary-authority) *fn2-checkpoint-summary-authority-phase-idle*))))))
   (mv okay fn2-directory-rebase fn2-checkpoint-summary-authority fn2-csnapshot fn2-checkpoint-publication
-   fn2-checkpoints fn2-checkpoint-refs fn2-checkpoint-bytes fn2-commit-root fn2-extents fn2-alloc-edges fn2-ops fn2-fc fn2-digests)))
+   fn2-checkpoints fn2-checkpoint-refs fn2-checkpoint-bytes fn2-commit-root fn2-extents fn2-alloc-edges fn2-ops fn2-fc fn2-digests fn2-checkpoint-restore-events fn2-checkpoint-restore-events-work)))
 (defun fn2-dcu-run (mode)
  (declare (xargs :verify-guards nil))
  (fn2-run-with-local (fn2-directory-rebase fn2-checkpoint-summary-authority fn2-csnapshot fn2-checkpoint-publication
-  fn2-checkpoints fn2-checkpoint-refs fn2-checkpoint-bytes fn2-commit-root fn2-extents fn2-alloc-edges fn2-ops fn2-fc fn2-digests)
+  fn2-checkpoints fn2-checkpoint-refs fn2-checkpoint-bytes fn2-commit-root fn2-extents fn2-alloc-edges fn2-ops fn2-fc fn2-digests fn2-checkpoint-restore-events fn2-checkpoint-restore-events-work)
   (fn2-dcu-body mode fn2-directory-rebase fn2-checkpoint-summary-authority fn2-csnapshot fn2-checkpoint-publication
-   fn2-checkpoints fn2-checkpoint-refs fn2-checkpoint-bytes fn2-commit-root fn2-extents fn2-alloc-edges fn2-ops fn2-fc fn2-digests)))
+   fn2-checkpoints fn2-checkpoint-refs fn2-checkpoint-bytes fn2-commit-root fn2-extents fn2-alloc-edges fn2-ops fn2-fc fn2-digests fn2-checkpoint-restore-events fn2-checkpoint-restore-events-work)))
 (assert-event (fn2-dcu-run nil))
 (assert-event (fn2-dcu-run :incomplete))
 (assert-event (fn2-dcu-run :owner))

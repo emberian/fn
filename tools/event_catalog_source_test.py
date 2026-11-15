@@ -35,8 +35,17 @@ class Source(unittest.TestCase):
   s=(ROOT/'books/boot-kind.lisp').read_text()
   self.assertIn('(fn2-checkpoint-restore-events-init 2 fn2-checkpoint-restore-events)',s)
   self.assertIn('(fn2-checkpoint-restore-events-work-init (fn2-b-capacity :extent-slots 16 profile) fn2-checkpoint-restore-events-work)',s)
+ def test_live_append_copies_actual_resident_source(self):
+  n=fn((ROOT/'books/event-catalog-live.lisp').read_text(),'fn2-event-catalog-live-step')
+  for p in ['(fn2-commit-directory-lookup batch ?*args)', '(fn2-commit-directory-seal-slot batch ?*args)',
+            '(fn2-checkpoint-source-claimedp c ?*args)', '(dst (+ n count))',
+            '(= (fn2-checkpoint-restore-events-work-generation dst fn2-checkpoint-restore-events-work) 0)',
+            '(fn2-event-catalog-copy-descriptor-from-row 1 0 ?*args)',
+            '(fn2-event-catalog-copy-resident-seal 0 seal dst ?*args)']:
+   need(n,p)
  def test_source_requires_actual_exact_owned_protection(self):
   n=fn((ROOT/'books/event-catalog.lisp').read_text(),'fn2-event-catalog-held-p')
+  need(n,'(member (fn2-extents-state e fn2-extents) (list *fn2-extent-state-allocated* *fn2-extent-state-retire-pending*))')
   for kind in [':installed-root',':recovery-base',':selectable-checkpoint']:
    need(n,'(fn2-alloc-edge-matchesp ?*args '+kind+' fn2-alloc-edges)')
 if __name__=='__main__':unittest.main()

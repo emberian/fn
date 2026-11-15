@@ -4,6 +4,7 @@
 ; synthetic premises, not installation/packet/device/composed C witnesses.
 ; Master(1,2,3), writer(4,5,6) and journal borrower(8,9,10) are distinct.
 (in-package "ACL2")
+(include-book "checkpoint-bank-fixture")
 (include-book "../books/checkpoint-writer-ops")
 
 ; Snapshot every retained handle and actual physical owner for refusal frames.
@@ -28,7 +29,7 @@
  (b* ((fn2-checkpoint-future (fn2-checkpoint-future-init 1 fn2-checkpoint-future))
       (fn2-checkpoint-future-windows (fn2-checkpoint-future-windows-init 8 fn2-checkpoint-future-windows))
       (fn2-checkpoints (fn2-checkpoints-init 1 fn2-checkpoints))
-      (fn2-checkpoint-publication (fn2-checkpoint-publication-init 1 fn2-checkpoint-publication))
+      (fn2-checkpoint-publication (fn2-checkpoint-test-empty-publication fn2-checkpoint-publication))
       (fn2-extents (fn2-alloc-init 1 fn2-extents))
       (fn2-control (fn2-control-columns-init 0 fn2-control))
       (capacity (max *fn2-commit-unit-bytes* (fn2-checkpoint-future-window-length 0)))

@@ -3,6 +3,7 @@
 ; publication neither drops those holds nor grants RELEASE_ALLOCATION authority.
 (in-package "ACL2")
 (include-book "checkpoint-directory-rebase")
+(include-book "event-catalog-live")
 (fn2-book-layer :c)
 
 ; Fixed representation work: 32 descriptor bytes, 480 frontier words and eight
@@ -41,14 +42,15 @@
 
 (defun fn2-directory-rebase-consume (token kind owner gen fn2-directory-rebase fn2-checkpoint-summary-authority
  fn2-csnapshot fn2-checkpoint-publication fn2-checkpoints fn2-checkpoint-refs fn2-checkpoint-bytes fn2-commit-root
- fn2-extents fn2-fc fn2-digests)
+ fn2-extents fn2-fc fn2-digests fn2-checkpoint-restore-events fn2-checkpoint-restore-events-work)
  (declare (xargs :stobjs (fn2-directory-rebase fn2-checkpoint-summary-authority fn2-csnapshot fn2-checkpoint-publication
- fn2-checkpoints fn2-checkpoint-refs fn2-checkpoint-bytes fn2-commit-root fn2-extents fn2-fc fn2-digests)
+ fn2-checkpoints fn2-checkpoint-refs fn2-checkpoint-bytes fn2-commit-root fn2-extents fn2-fc fn2-digests fn2-checkpoint-restore-events fn2-checkpoint-restore-events-work)
  :guard (and (fn2-directory-rebase-wfp fn2-directory-rebase) (fn2-checkpoint-summary-authority-wfp fn2-checkpoint-summary-authority)
              (fn2-csnapshot-wfp fn2-csnapshot) (fn2-checkpoint-publication-wfp fn2-checkpoint-publication)
              (fn2-checkpoints-wfp fn2-checkpoints) (fn2-checkpoint-refs-wfp fn2-checkpoint-refs)
              (fn2-checkpoint-bytes-wfp fn2-checkpoint-bytes) (fn2-commit-root-wfp fn2-commit-root)
-             (fn2-extents-wfp fn2-extents) (fn2-fc-wfp fn2-fc) (fn2-digests-wfp fn2-digests))))
+             (fn2-extents-wfp fn2-extents) (fn2-fc-wfp fn2-fc) (fn2-digests-wfp fn2-digests) (fn2-checkpoint-restore-events-wfp fn2-checkpoint-restore-events)
+             (fn2-checkpoint-restore-events-work-wfp fn2-checkpoint-restore-events-work))))
  (b* (((unless (and (unsigned-byte-p 60 token) (posp token) (unsigned-byte-p 8 kind)
                     (unsigned-byte-p 32 owner) (unsigned-byte-p 60 gen)
                     (< 0 (fn2-directory-rebase-rows fn2-directory-rebase))
@@ -78,7 +80,8 @@
                     (= (fn2-checkpoint-summary-authority-incarnation 1 fn2-checkpoint-summary-authority) (fn2-directory-rebase-incarnation 0 fn2-directory-rebase))
                     (= (fn2-checkpoint-summary-authority-cut-commit 1 fn2-checkpoint-summary-authority) (fn2-directory-rebase-target 0 fn2-directory-rebase))
                     (= (fn2-checkpoint-summary-authority-cut-event 1 fn2-checkpoint-summary-authority) (fn2-directory-rebase-target-event 0 fn2-directory-rebase))
-                    (fn2-directory-rebase-seal-p 0 fn2-directory-rebase fn2-checkpoint-summary-authority)))
+                    (fn2-directory-rebase-seal-p 0 fn2-directory-rebase fn2-checkpoint-summary-authority)
+                    (fn2-event-catalog-subject-p 1 fn2-checkpoint-summary-authority fn2-checkpoints fn2-checkpoint-refs fn2-checkpoint-bytes fn2-checkpoint-restore-events fn2-checkpoint-restore-events-work)))
        (mv :authority fn2-directory-rebase fn2-checkpoint-summary-authority fn2-commit-root fn2-digests))
       (c (fn2-directory-rebase-candidate 0 fn2-directory-rebase))
       (target (fn2-directory-rebase-target 0 fn2-directory-rebase))
@@ -128,7 +131,7 @@
 (defcost fn2-checkpoint-directory-rebase-step-op :child fn2-directory-rebase-step :answers t :bytes 32
  :tables (fn2-core-checkpoint-directory-rebase fn2-core-csnapshot fn2-core-checkpoint-publication fn2-core-checkpoints fn2-core-checkpoint-bytes fn2-core-commit-root fn2-core-extents fn2-core-alloc-edges fn2-core-ops fn2-core-fc fn2-core-digests))
 (defcost fn2-checkpoint-directory-rebase-consume-op :child fn2-directory-rebase-consume :answers t :bytes 4096
- :tables (fn2-core-checkpoint-directory-rebase fn2-core-checkpoint-summary-authority fn2-core-csnapshot fn2-core-checkpoint-publication fn2-core-checkpoints fn2-core-checkpoint-refs fn2-core-checkpoint-bytes fn2-core-commit-root fn2-core-extents fn2-core-fc fn2-core-digests)
+ :tables (fn2-core-checkpoint-directory-rebase fn2-core-checkpoint-summary-authority fn2-core-csnapshot fn2-core-checkpoint-publication fn2-core-checkpoints fn2-core-checkpoint-refs fn2-core-checkpoint-bytes fn2-core-commit-root fn2-core-extents fn2-core-fc fn2-core-digests fn2-core-checkpoint-restore-events fn2-core-checkpoint-restore-events-work)
  :doc "Publish exact base C and consume pending authority only after held canonical prefix and complete C+1..J suffix scan; retain every allocator/query/archive hold.")
 
 (fn2-checkpoint-summary-authority-preserves fn2-directory-rebase-transfer-bytes
@@ -144,6 +147,6 @@
 (fn2-directory-rebase-preserves fn2-directory-rebase-consume
  (token kind owner gen fn2-directory-rebase fn2-checkpoint-summary-authority
  fn2-csnapshot fn2-checkpoint-publication fn2-checkpoints fn2-checkpoint-refs fn2-checkpoint-bytes fn2-commit-root
- fn2-extents fn2-fc fn2-digests)
- :hyps ((fn2-directory-rebasep fn2-directory-rebase) (fn2-directory-rebase-wfp fn2-directory-rebase) (fn2-checkpoint-summary-authorityp fn2-checkpoint-summary-authority) (fn2-checkpoint-summary-authority-wfp fn2-checkpoint-summary-authority) (fn2-csnapshotp fn2-csnapshot) (fn2-csnapshot-wfp fn2-csnapshot) (fn2-checkpoint-publicationp fn2-checkpoint-publication) (fn2-checkpoint-publication-wfp fn2-checkpoint-publication) (fn2-checkpointsp fn2-checkpoints) (fn2-checkpoints-wfp fn2-checkpoints) (fn2-checkpoint-refsp fn2-checkpoint-refs) (fn2-checkpoint-refs-wfp fn2-checkpoint-refs) (fn2-checkpoint-bytesp fn2-checkpoint-bytes) (fn2-checkpoint-bytes-wfp fn2-checkpoint-bytes) (fn2-commit-rootp fn2-commit-root) (fn2-commit-root-wfp fn2-commit-root) (fn2-extentsp fn2-extents) (fn2-extents-wfp fn2-extents) (fn2-fcp fn2-fc) (fn2-fc-wfp fn2-fc) (fn2-digestsp fn2-digests) (fn2-digests-wfp fn2-digests))
+ fn2-extents fn2-fc fn2-digests fn2-checkpoint-restore-events fn2-checkpoint-restore-events-work)
+ :hyps ((fn2-checkpoint-restore-eventsp fn2-checkpoint-restore-events) (fn2-checkpoint-restore-events-wfp fn2-checkpoint-restore-events) (fn2-checkpoint-restore-events-workp fn2-checkpoint-restore-events-work) (fn2-checkpoint-restore-events-work-wfp fn2-checkpoint-restore-events-work) (fn2-directory-rebasep fn2-directory-rebase) (fn2-directory-rebase-wfp fn2-directory-rebase) (fn2-checkpoint-summary-authorityp fn2-checkpoint-summary-authority) (fn2-checkpoint-summary-authority-wfp fn2-checkpoint-summary-authority) (fn2-csnapshotp fn2-csnapshot) (fn2-csnapshot-wfp fn2-csnapshot) (fn2-checkpoint-publicationp fn2-checkpoint-publication) (fn2-checkpoint-publication-wfp fn2-checkpoint-publication) (fn2-checkpointsp fn2-checkpoints) (fn2-checkpoints-wfp fn2-checkpoints) (fn2-checkpoint-refsp fn2-checkpoint-refs) (fn2-checkpoint-refs-wfp fn2-checkpoint-refs) (fn2-checkpoint-bytesp fn2-checkpoint-bytes) (fn2-checkpoint-bytes-wfp fn2-checkpoint-bytes) (fn2-commit-rootp fn2-commit-root) (fn2-commit-root-wfp fn2-commit-root) (fn2-extentsp fn2-extents) (fn2-extents-wfp fn2-extents) (fn2-fcp fn2-fc) (fn2-fc-wfp fn2-fc) (fn2-digestsp fn2-digests) (fn2-digests-wfp fn2-digests))
  :carriers ((fn2-directory-rebase 1 :prefix "-0") (fn2-checkpoint-summary-authority 2 :prefix "-1") (fn2-commit-root 3 :prefix "-2") (fn2-digests 4 :prefix "-3")))

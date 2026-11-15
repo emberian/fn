@@ -236,6 +236,12 @@ ACL2_BOOKS = \
   books/recovery \
   books/recovery-machine \
   books/recovery-payload \
+  books/recovery-frontier \
+  books/recovery-selected-adopt \
+  tests/recovery-selected-adopt-unit \
+  books/checkpoint-bank-bind \
+  books/checkpoint-bank-empty \
+  books/checkpoint-bank-boot \
   books/recovery-proof \
   books/reference \
   books/reference-state \
@@ -272,6 +278,7 @@ ACL2_BOOKS = \
   tests/accounts-unit \
   tests/alloc-random \
   tests/alloc-unit \
+  tests/alloc-protection-notification-unit \
   tests/alloc-freeze-unit \
   tests/checkpoint-unit \
   tests/alloc-planning-unit \
@@ -309,6 +316,9 @@ ACL2_BOOKS = \
   tests/checkpoint-retention-profile-unit \
   tests/checkpoint-semantic-unit \
   tests/checkpoint-teardown-unit \
+  tests/checkpoint-teardown-transfer-unit \
+  tests/checkpoint-teardown-cold-unit \
+  tests/checkpoint-bank-transfer-unit \
   tests/checkpoint-working-release-unit \
   tests/retirement-intent-unit \
   tests/run-packing-unit \
@@ -327,6 +337,7 @@ ACL2_BOOKS = \
   tests/owed-reclamation-unit \
   tests/retirement-intent-core-unit \
   tests/startup-genesis-unit \
+  tests/startup-name-owner-unit \
   tests/retirement-publish-core-unit \
   tests/retirement-canonical-core-unit \
   tests/authority-client \

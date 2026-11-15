@@ -194,6 +194,8 @@
          (phase (fn2-checkpoint-writer-phase 0 fn2-checkpoint-writer))
          (p (fn2-checkpoint-publication-phase 0 fn2-checkpoint-publication))
          ((unless (and (equal (fn2-checkpoint-publication-debt-valid 0 fn2-checkpoint-publication) 0)
+                       (fn2-checkpoint-bank-obligations-complete-p fn2-checkpoint-publication)
+                       (equal (fn2-checkpoint-publication-cold-pending-mask 0 fn2-checkpoint-publication) 0)
                        (equal (fn2-checkpoint-writer-pending 0 fn2-checkpoint-writer) 0)
                        (equal (fn2-checkpoint-writer-stopped 0 fn2-checkpoint-writer) 0)
                        (or (and (equal phase *fn2-checkpoint-writer-state-free*) (equal p *fn2-checkpoint-publication-phase-idle*))

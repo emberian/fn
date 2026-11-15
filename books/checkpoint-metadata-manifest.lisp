@@ -302,7 +302,7 @@
        (fn2-checkpoint-metadata-manifest-scan-mv :snapshot))
       ((when (< row (fn2-checkpoint-construction-rows fn2-checkpoint-construction)))
        (b* (((unless (unsigned-byte-p 32 (+ 1 row))) (fn2-checkpoint-metadata-manifest-scan-mv :bounds))
-            (ours (and (equal (fn2-checkpoint-construction-live row fn2-checkpoint-construction) 1)
+            (ours (and (fn2-checkpoint-construction-native-p row fn2-checkpoint-construction)
                         (equal (fn2-checkpoint-construction-token row fn2-checkpoint-construction) token)
                         (equal (fn2-checkpoint-construction-role row fn2-checkpoint-construction) 1)))
             ((unless (or (not ours)

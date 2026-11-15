@@ -25,13 +25,15 @@
           :installation-begin :installation-source :installation-submit :installation-wait
           :retention-begin :retention-source :publish-start :publish-wait :release :release-complete :thaw :event-rearm :rearm :snapshot-release :teardown-begin :teardown-source :teardown-submit :teardown-wait :teardown-drop :teardown-holding-uncertain :teardown-uncertain :teardown-retained :done
           :admission-refused :refused :uncertain :loan-uncertain
-          :summary-authority-begin :summary-authority-copy :rebase-begin :rebase-source :rebase-consume)
+          :summary-authority-begin :summary-authority-copy :rebase-begin :rebase-source :rebase-consume :rebase-archive
+          :teardown-transfer-begin :teardown-transfer-copy :teardown-select
+          :teardown-cold-next :teardown-cold-begin :teardown-cold-copy :teardown-cold-ack)
  :fields ((pending :u32) (stopped :bool) (token :u60)
           (scan :u32) (highest :u60) (candidate :u32) (candidate-found :bool) (checkpoint :u60)
           (page-slot :u32) (page-gen :u60) (scratch-slot :u32) (scratch-gen :u60) (read-slot :u32) (read-gen :u60)
           (source :u8) (field-base :u32) (map-role :u8) (target :u32) (target-gen :u60)
           (teardown-extent :u32) (teardown-epoch :u60) (teardown-allocation :u60)
-          (batch :u60) (event :u60) (covered :u60) (retirement-seen :u60) (attempt-retirement :u60))
+          (batch :u60) (event :u60) (covered :u60) (retirement-seen :u60) (attempt-retirement :u60) (debt-scan :u32))
  :holds ((:teardown-wait :storage-window) (:teardown-holding-uncertain :storage-window)
          (:workspaces :storage-window :storage-window)
          (:directory :storage-window :storage-window) (:abort-snapshot :storage-window :storage-window)
@@ -48,7 +50,7 @@
          (:retention-begin :storage-window :storage-window) (:retention-source :storage-window :storage-window) (:publish-start :storage-window :storage-window)
          (:publish-wait :storage-window :storage-window) (:release :storage-window :storage-window) (:release-complete :storage-window :storage-window) (:refused :storage-window :storage-window) (:uncertain :storage-window :storage-window) (:loan-uncertain :storage-window)
           (:summary-authority-begin :storage-window :storage-window) (:summary-authority-copy :storage-window :storage-window)
-          (:rebase-begin :storage-window :storage-window) (:rebase-source :storage-window :storage-window) (:rebase-consume :storage-window :storage-window))
+          (:rebase-begin :storage-window :storage-window) (:rebase-source :storage-window :storage-window) (:rebase-consume :storage-window :storage-window) (:rebase-archive :storage-window :storage-window))
  :budget (:bytes 16384 :steps 32 :descriptors 4)
  :stops (:checkpoint :pool :bounds)
  :capacity (if (posp (fn2-b-checkpoint-capacity profile)) 1 0)
@@ -64,5 +66,7 @@
         (:installation-begin) (:installation-source) (:installation-submit) (:installation-wait)
         (:retention-begin) (:retention-source) (:publish-start) (:publish-wait) (:release) (:release-complete) (:thaw) (:event-rearm) (:rearm) (:snapshot-release) (:teardown-begin) (:teardown-source) (:teardown-submit) (:teardown-wait) (:teardown-drop) (:teardown-holding-uncertain) (:teardown-uncertain) (:teardown-retained) (:done)
         (:admission-refused) (:refused) (:uncertain) (:loan-uncertain)
-          (:summary-authority-begin) (:summary-authority-copy) (:rebase-begin) (:rebase-source) (:rebase-consume))
+          (:summary-authority-begin) (:summary-authority-copy) (:rebase-begin) (:rebase-source) (:rebase-consume) (:rebase-archive)
+          (:teardown-transfer-begin) (:teardown-transfer-copy) (:teardown-select)
+          (:teardown-cold-next) (:teardown-cold-begin) (:teardown-cold-copy) (:teardown-cold-ack))
  :observes ((:read-result)))

@@ -2,6 +2,7 @@
 ; These synthetic candidates/harvest notifications are NOT actual installed
 ; production, issued-operation, C-cut, covering-fence or recovery witnesses.
 (in-package "ACL2")
+(include-book "checkpoint-bank-fixture")
 (include-book "../books/checkpoint-boot")
 
 (defun fn2-checkpoint-publication-repeat-body (fn2-boot-config fn2-checkpoint-publication fn2-checkpoints fn2-checkpoint-bytes fn2-digests)
@@ -11,7 +12,7 @@
       (fn2-boot-config (update-fn2-boot-config-image-size 102400 fn2-boot-config))
       (fn2-boot-config (update-fn2-boot-config-extents 1 fn2-boot-config))
       (fn2-boot-config (update-fn2-boot-config-count 1 fn2-boot-config))
-      (fn2-checkpoint-publication (fn2-checkpoint-publication-init 1 fn2-checkpoint-publication))
+      (fn2-checkpoint-publication (fn2-checkpoint-test-empty-publication fn2-checkpoint-publication))
       (fn2-checkpoint-publication (fn2-checkpoint-publication-put 0 (has-base 1) (active-bank 1) (base-checkpoint 2) (base-history 1) (base-incarnation 1)))
       ((mv bound fn2-checkpoint-publication) (fn2-checkpoint-publication-bind-boot fn2-boot-config fn2-checkpoint-publication))
       (retained (and (eq bound :ok) (equal (fn2-checkpoint-publication-has-base 0 fn2-checkpoint-publication) 1)
