@@ -13,6 +13,7 @@
 ; stage and out; machines-c-bind bind, release, publication, the defcosts
 ; and the wrappers (C-SUCCESSOR-BOOK).
 (in-package "ACL2")
+(include-book "successor-state")
 (include-book "machines-c-sealer-kind")
 (include-book "identity-workspace-geometry")
 (fn2-book-layer :c)
@@ -84,11 +85,7 @@
   (fn2-id-engine-set-arena 0 bytes fn2-id-engine)))
 (fn2-idc-child fn2-core-id-engine fn2-id-engine (fn2-id-engine-init-arena (fn2-idc-profile-arena profile) fn2-id-engine)
  "The engine's bind scratch, arena size and overlay sequence (C-S3).")
-(defcolumns fn2-succ-txns
- ((phase (:enum fn2-succ-phase (:idle :open :staged :bound :published)))
-  (batch :u60) (event :u60)
-  (ri :u32) (rstate (:enum fn2-succ-resolve (:fresh :next :look))) (rbound :u60)
-  (lphase (:enum fn2-succ-lookup (:idle :overlays :runs :scan))) (lbound :u60) (lrow :u32) (lver :u60)))
+
 (make-event
  `(defcolumns fn2-succ-slots
    ((phase (:enum fn2-succ-slot-phase (:empty :put :resolved)))
