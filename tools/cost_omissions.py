@@ -41,12 +41,19 @@ def nonempty(value):
     return value not in (None, [], ledger.Sym('nil'))
 
 
-def audit(sources: dict[str, str]) -> list[Finding]:
+@dataclass
+class Audit:
+    findings: list[Finding]
+    unknown_providers: list[dict]
+    ambiguous_declarations: list[dict]
+
+
+def audit_report(sources: dict[str, str]) -> Audit:
     declarations, arms = {}, []
     for source, text in sources.items():
         for form, _ in ledger.source_events(ledger.Reader(text).top_level()):
             if ledger.head(form) == 'defcost' and len(form) >= 2:
-                declarations[str(form[1])] = (source, ledger.keyword_plist(form[2:]))
+                declarations.setdefault(str(form[1]), []).append((source, ledger.keyword_plist(form[2:])))
             if ledger.head(form) == 'defmachine-arms':
                 for group in (':arms', ':subarms'):
                     try:
@@ -57,7 +64,14 @@ def audit(sources: dict[str, str]) -> list[Finding]:
                         for row in rows:
                             if isinstance(row, list) and row:
                                 arms.append((source, str(form[1]) + '/' + group + '/' + str(row[0]), row))
-    findings = []
+    findings, unknown, ambiguous = [], [], []
+    for name, rows in sorted(declarations.items()):
+        if any(row != rows[0][1] for _, row in rows[1:]):
+            ambiguous.append({'operation': name,
+                'declarations': [{'source': owner,
+                                  'options': {k: ledger.source_text(v) for k, v in row.items()}}
+                                 for owner, row in rows], 'reached_at': []})
+    ambiguous_by_name = {row['operation']: row for row in ambiguous}
     for source, arm, body in arms:
         charges = [ledger.source_text(node) for node in walk(body)
                    if ledger.head(node) == ':charge']
@@ -65,9 +79,15 @@ def audit(sources: dict[str, str]) -> list[Finding]:
             if ledger.head(node) != ':do' or len(node) < 3 or not isinstance(node[2], list) or not node[2]:
                 continue
             operation = str(node[2][0])
+            site = {'operation': operation, 'arm': arm, 'call_source': source,
+                    'arm_charges': charges}
             if operation not in declarations:
-                continue  # Unknown ownership is not guessed to be zero work.
-            owner, row = declarations[operation]
+                unknown.append({**site, 'reason': 'No DEFcost in supplied sources; may be an operation or declared elsewhere'})
+                continue
+            if operation in ambiguous_by_name:
+                ambiguous_by_name[operation]['reached_at'].append(site)
+                continue  # Never choose a declaration by source iteration order.
+            owner, row = declarations[operation][0]
             boundary = {k: ledger.source_text(row[k]) for k in BOUNDARIES if nonempty(row.get(k))}
             if ':steps' in row or not boundary:
                 continue  # Explicit zero and pure scalar helpers are distinct from omission.
@@ -75,7 +95,12 @@ def audit(sources: dict[str, str]) -> list[Finding]:
                 [k for k in DIMENSIONS if k not in row],
                 {k: ledger.source_text(row[k]) for k in DIMENSIONS if k in row},
                 boundary, charges))
-    return findings
+    return Audit(findings, unknown, ambiguous)
+
+
+def audit(sources: dict[str, str]) -> list[Finding]:
+    """Compatibility view for focused finding checks; CLI always exposes partial scope."""
+    return audit_report(sources).findings
 
 
 def main():
@@ -83,10 +108,12 @@ def main():
     p.add_argument('sources', nargs='+', type=Path, help='Declaration and actual arm sources to join')
     p.add_argument('--require-explicit', action='store_true', help='Fail for reached unpriced stateful callbacks')
     args = p.parse_args()
-    found = audit({str(path): path.read_text() for path in args.sources})
-    print(json.dumps({'scope': 'source omissions, not physical-work qualification',
-                      'findings': [asdict(x) for x in found]}, indent=2))
-    return int(args.require_explicit and bool(found))
+    report = audit_report({str(path): path.read_text() for path in args.sources})
+    print(json.dumps({'scope': 'supplied source ownership only; not physical-work qualification',
+                      'complete_source_ownership': not (report.unknown_providers or report.ambiguous_declarations),
+                      **asdict(report)}, indent=2))
+    return int(args.require_explicit and bool(report.findings or report.unknown_providers
+                                             or report.ambiguous_declarations))
 
 
 if __name__ == '__main__':

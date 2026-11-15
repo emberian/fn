@@ -45,6 +45,25 @@ class CostOmissions(unittest.TestCase):
         self.assertEqual(len(audit.audit({'p': positive.replace(':steps 12 ', ''), 'a': ARM})), 2)
         self.assertFalse(audit.audit({'p': DECL, 'a': ARM.replace('(release id generation)', '(other id generation)')}))
 
+    def test_unknown_provider_is_an_explicit_partial_scope_result(self):
+        report = audit.audit_report({'a': ARM})
+        self.assertEqual(report.findings, [])
+        self.assertEqual(len(report.unknown_providers), 2)
+        self.assertIn('supplied sources', report.unknown_providers[0]['reason'])
+        self.assertEqual(report.ambiguous_declarations, [])
+
+    def test_conflicting_actual_declarations_never_use_last_wins(self):
+        changed = DECL.replace(':answers', ':steps 12 :answers')
+        for sources in ({'first': DECL, 'second': changed, 'a': ARM},
+                        {'first': changed, 'second': DECL, 'a': ARM}):
+            report = audit.audit_report(sources)
+            self.assertEqual(report.findings, [])
+            self.assertEqual(report.unknown_providers, [])
+            self.assertEqual(len(report.ambiguous_declarations), 1)
+            self.assertEqual(len(report.ambiguous_declarations[0]['reached_at']), 2)
+        # Identical redundant declarations remain one known provider.
+        self.assertEqual(len(audit.audit_report({'p': DECL, 'copy': DECL, 'a': ARM}).findings), 2)
+
     def test_quoted_and_must_fail_declarations_are_not_real_owners(self):
         fake = "(defmacro template () '" + DECL + ')\n(must-fail ' + DECL + ')'
         self.assertFalse(audit.audit({'p': fake, 'a': ARM}))
