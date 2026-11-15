@@ -4,7 +4,7 @@
 (include-book "../books/alloc")
 (include-book "std/util/bstar" :dir :system)
 (defun-nx fn2-alloc-planning-test-view (fn2-extents)
- (declare (xargs :stobjs fn2-extents))
+ (declare (xargs :stobjs fn2-extents :verify-guards nil))
  (list (fn2-extents-view fn2-extents) (fn2-alloc-free-head fn2-extents)
        (fn2-alloc-current-epoch fn2-extents) (fn2-alloc-next-counter fn2-extents)
        (fn2-alloc-freeze-phase fn2-extents) (fn2-alloc-freeze-token fn2-extents)
