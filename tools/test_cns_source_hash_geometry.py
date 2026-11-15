@@ -8,7 +8,7 @@ class Geometry(unittest.TestCase):
   for connections in range(5):
    for sources in range(5):
     for extra in (0, 1, 19):
-     rows = 9 + 16 + connections + sources + extra
+     rows = 9 + 2*16 + connections + sources + extra
      controls = set(range(rows-sources-connections-5, rows-sources-5))
      streams = set(range(rows-sources-5, rows-5))
      tail = set(range(rows-5, rows))
@@ -17,9 +17,11 @@ class Geometry(unittest.TestCase):
      self.assertFalse(streams & tail)
  def test_actual_selector_formula(self):
   s=(ROOT/'books/machines-b.lisp').read_text()
-  self.assertIn('(+ 9 (fn2-b-upload-windows profile) (fn2-b-ctl-rows profile) (fn2-b-cns-source-rows profile))',s)
+  self.assertIn('(+ 9 (fn2-b-upload-hash-rows profile) (fn2-b-ctl-rows profile) (fn2-b-cns-source-rows profile))',s)
   self.assertIn('(- (nfix rows) (nfix sources) (nfix connections) 5)',s)
   self.assertIn('(- (nfix rows) (nfix sources) 5)',s)
+  self.assertIn('(* 2 (fn2-b-upload-windows profile))',s)
+  self.assertIn('(+ 4 (fn2-b-upload-hash-rows profile) (nfix s))',s)
  def test_shared_hash_implementation(self):
   s=(ROOT/'books/cns-source-hash.lisp').read_text()
   self.assertIn('(<= len 1024)',s)

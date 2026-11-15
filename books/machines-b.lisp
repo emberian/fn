@@ -65,34 +65,40 @@
  :harvest (fn2-b-read-pin-harvest
            ((fn2-core-extents fn2-extents) (fn2-core-alloc-edges fn2-alloc-edges)))
  :why "Disjoint commit, root, operation-pin and checkpoint-reference edges survive yields.")
-; Format checker rows (b-durability.md §11): 0-1 the commit kind's, 2
-; recovery's, 3 .. 2+w D's large-upload windows, 3+w C's sealer, then
-; 4+w .. 3+w+c E's control connections (fn2-ctl row S decodes FNCT into its
-; slot's 128-row field stripe and hashes the BLAKE3 trailer in its b3 row,
-; both at fn2-b-ctl-slot when the profile is at its floor), then
-; source-retention rows 4+w+c and 5+w+c, event row 6+w+c,
-; block-read row 7+w+c and final checkpoint row 8+w+c. The block read's check
-; (fn2-block-read-done-children hashes a block read through a source
-; manifest there, within one call, so one row serves every cursor row;
-; b-durability.md S9a); the count is derived, so every profile has every
-; row (main's ruling, 2026-10-30); w's default is resources.lisp's round-2
-; bound (16), c's the tiny profile's 2; D's upload capacity, C's sealer row
-; and E's control capacity read these functions.
+; Format/hash rows: 0-1 commit, 2 recovery; each upload window has
+; source/stored rows 3+2s/4+2s, then the sealer at 3+2W. CTL frame rows
+; start4+2W, followed by N per-CNS stored-stream rows and the final five
+; semantic/payload/event/block/checkpoint jobs. Every allocation derives from
+; this one format floor. The F-2 block row is synchronous scratch: no caller
+; retains its hasher or result across a scheduler yield.
 (defun fn2-b-upload-windows (profile)
  (declare (xargs :guard t))
  (nfix (fn2-b-capacity :large-upload-windows 16 profile)))
+ ; Each admitted upload window keeps original and stored stream contexts.
+(defun fn2-b-upload-hash-rows (profile)
+ (declare (xargs :guard t))
+ (* 2 (fn2-b-upload-windows profile)))
+(defun fn2-b-upload-source-hash-row (slot)
+ (declare (xargs :guard t))
+ (+ 3 (* 2 (nfix slot))))
+(defun fn2-b-upload-stored-hash-row (slot)
+ (declare (xargs :guard t))
+ (+ 1 (fn2-b-upload-source-hash-row slot)))
+(defun fn2-b-sealer-hash-row (profile)
+ (declare (xargs :guard t))
+ (+ 3 (fn2-b-upload-hash-rows profile)))
 (defun fn2-b-ctl-rows (profile)
  (declare (xargs :guard t))
  (nfix (fn2-b-capacity :control-connections 2 profile)))
 (defun fn2-b-ctl-slot (s profile)
  (declare (xargs :guard t))
- (+ 4 (fn2-b-upload-windows profile) (nfix s)))
+ (+ 4 (fn2-b-upload-hash-rows profile) (nfix s)))
 (defun fn2-b-cns-source-rows (profile)
  (declare (xargs :guard t))
  (nfix (fn2-profile-get :cns profile)))
 (defun fn2-b-format-floor (profile)
  (declare (xargs :guard t))
- (+ 9 (fn2-b-upload-windows profile) (fn2-b-ctl-rows profile) (fn2-b-cns-source-rows profile)))
+ (+ 9 (fn2-b-upload-hash-rows profile) (fn2-b-ctl-rows profile) (fn2-b-cns-source-rows profile)))
 (defun fn2-b-format-slots (profile)
  (declare (xargs :guard t))
  (fn2-b-capacity :format-slots (fn2-b-format-floor profile) profile))
