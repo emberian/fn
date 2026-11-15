@@ -11,6 +11,9 @@ ACL2_BOOKS = \
   books/boot-bootstrap-pack \
   books/boot-bootstrap-verify \
   books/boot-bootstrap-receipt \
+  books/checkpoint-anchor-input \
+  books/checkpoint-zero-range \
+  books/boot-anchor-admission \
   books/cns-append-prefix-codec \
   books/arm-children \
   books/arm-issue-effects \

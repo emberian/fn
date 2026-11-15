@@ -90,3 +90,13 @@
    (if (not (eq code :ok)) (mv code fn2-boot-config)
     (let ((fn2-boot-config (update-fn2-boot-config-geometryi i byte fn2-boot-config)))
      (fn2-boot-save-geometry (+ 1 i) source sgen source-off kind id ogen fn2-pool fn2-boot-config))))))
+
+(defun fn2-boot-save-anchor-digest (left dst src slot gen kind id ogen fn2-pool fn2-boot-config)
+ (declare (xargs :stobjs (fn2-pool fn2-boot-config) :measure (nfix left)
+  :guard (and (fn2-pool-wfp fn2-pool) (fn2-boot-config-wfp fn2-boot-config)
+              (natp left) (<= left 32) (natp dst) (<= (+ dst left) 384) (natp src))))
+ (if (zp left) (mv :ok fn2-boot-config)
+  (mv-let (code byte) (fn2-pool-read slot gen src kind id ogen fn2-pool)
+   (if (not (eq code :ok)) (mv code fn2-boot-config)
+    (let ((fn2-boot-config (update-fn2-boot-config-anchor-evidencei dst byte fn2-boot-config)))
+     (fn2-boot-save-anchor-digest (- left 1) (+ dst 1) (+ src 1) slot gen kind id ogen fn2-pool fn2-boot-config))))))

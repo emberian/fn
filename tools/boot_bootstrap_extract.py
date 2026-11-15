@@ -8,7 +8,8 @@ import json
 import lisp_rewrite as lr
 
 ROOT = Path(__file__).resolve().parents[1]
-GENERIC = ('fn2-boot-pack-geometry', 'fn2-boot-bootstrap-pool', 'fn2-boot-save-geometry')
+GENERIC = ('fn2-boot-pack-geometry', 'fn2-boot-bootstrap-pool', 'fn2-boot-save-geometry',
+           'fn2-boot-save-anchor-digest')
 
 
 def nodes(n):

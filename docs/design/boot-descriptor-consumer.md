@@ -22,6 +22,10 @@ hash. It cannot write a receipt. `fn2-boot-bootstrap-verify-pool` rebuilds these
 bytes, compares the entire sector against the separate owned read window,
 saves geometry and the complete namespace, and publishes receipt generation
 last. A mismatch cannot mint authority. It needs no third lease.
+Before construction it checks the two backing extents are apart using the
+same base/capacity relation as `fn2-pool-extents-apart`. Distinct slot numbers
+alone are insufficient in arbitrary well-typed pool tables; alias refusal
+leaves all carriers unchanged before expected bytes can overwrite the read.
 
 The CORE verification wrapper must enforce the actual persisted bootstrap
 read's address, complete count, no pending operation and prior verified genesis
@@ -56,6 +60,17 @@ hash loader. Apply `checkpoint_boot_input_extract.remove_from_restore` to the
 owning physical restore source at composition so it includes this provider and
 does not define a second copy. The frozen before source and five source
 controls check extraction, retained producers and input/callback ABI.
+
+`boot-anchor-admission` consumes the same retained receipt and actual physical
+anchor index. Its first visit checks an empty sector or generated anchor span
+plus canonical zero tail, retains the span/context and yields. Later visits
+resume the existing authenticated anchor intake without reseeding. A candidate
+records the actual batch/predecessor/anchor digests before the checked mask is
+published. Empty and rejected nonempty observations have separate masks;
+owner/source/context refusals do not record successful census evidence.
+`checkpoint-anchor-input` and `checkpoint-zero-range` move the original
+physical-family functions unchanged; the extraction tool removes their old
+definitions at composition.
 
 The next executable fixture must create persisted bootstrap and checkpoint
 bytes through real producers, crash and drive actual BOOT read completions to
