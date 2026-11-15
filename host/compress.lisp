@@ -134,9 +134,14 @@
  ;; Called only while opening the host, before any connection is admitted.
  (multiple-value-bind (code iq oq ratio burst capacity) (fn2-host-compress-settings profile)
   (when (eq code :ok)
-   (sb-alien:load-shared-object
-    (or (sb-ext:posix-getenv "FN2_DEFLATE_LIBRARY")
-        #+darwin "build/lib/libfn2-deflate.dylib" #-darwin "build/lib/libfn2-deflate.so")))
+   (let* ((path (or (sb-ext:posix-getenv "FN2_DEFLATE_LIBRARY")
+                   #+darwin "build/lib/libfn2-deflate.dylib" #-darwin "build/lib/libfn2-deflate.so"))
+          (prepared (sb-ext:run-program "python3"
+                      (list "tools/fn_admin.py" "__prepare-native-deflate" path)
+                      :search t :wait t :output *standard-output* :error *error-output*)))
+    (unless (eql (sb-ext:process-exit-code prepared) 0)
+     (error "fn2 native: selected compression library preparation refused"))
+    (sb-alien:load-shared-object path)))
   (values code iq oq ratio burst capacity)))
 
 (defun fn2-native-compress-op-record (op)
