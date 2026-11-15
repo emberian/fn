@@ -31,6 +31,6 @@
  (+ *fn2-sealer-checkpoint-pending-steps* *fn2-sealer-pressure-resumable-steps* 2))
 (assert-event (equal *fn2-sealer-checkpoint-pending-steps* 74))
 (assert-event (equal *fn2-sealer-checkpoint-wake-steps*
-                     (+ 188 (* 6 *fn2-run-active-source-cursors*)))))
+                     (+ 188 (* 6 *fn2-run-active-source-cursors*))))
 ; Both callbacks read only scalar metadata: zero typed payload bytes, zero IO.
 ; MASTER sequential face+controller/charge admission is not established here.
