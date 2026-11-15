@@ -160,3 +160,21 @@
    (fn2-compress-record-carrier-observe :blocked 0 errno fn2-compress-operation fn2-compress-transport))
   (t (fn2-compress-record-carrier-observe (if (< 0 raw) :done :failed) (if (< raw 0) 0 raw) errno
        fn2-compress-operation fn2-compress-transport))))
+
+; Keep the generated scalar abstraction in guard proofs. Common row frames
+; connect the two ledgers after observations without opening either updater.
+(make-event
+ (let* ((world (w state))
+        (readers
+         (append
+          '(fn2-compress-transport-rows fn2-compress-operation-rows)
+          (fn2-columns-projection-readers 'fn2-compress-transport
+           (fn2-decl-get :columns (fn2-decl-row '(:columns fn2-compress-transport) world)))
+          (fn2-columns-projection-readers 'fn2-compress-operation
+           (fn2-decl-get :columns (fn2-decl-row '(:columns fn2-compress-operation) world)))))
+        (hints `(("Goal" :in-theory (disable ,@readers)))))
+  (value `(progn
+   (verify-guards fn2-compress-record-next :hints ,hints)
+   (verify-guards fn2-compress-record-observe :hints ,hints)
+   (verify-guards fn2-compress-record-carrier-observe :hints ,hints)
+   (verify-guards fn2-compress-record-socket-observe :hints ,hints)))))
