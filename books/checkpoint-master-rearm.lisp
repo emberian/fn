@@ -5,7 +5,7 @@
 (include-book "std/util/bstar" :dir :system)
 (include-book "checkpoint-master-control")
 (fn2-book-layer :c)
-(defun fn2-checkpoint-master-rearm-children (token kind owner gen fn2-checkpoint-build fn2-checkpoint-plan fn2-checkpoint-map-build
+(defun fn2-checkpoint-master-rearm-children-at-phase (phase token kind owner gen fn2-checkpoint-build fn2-checkpoint-plan fn2-checkpoint-map-build
                                            fn2-csnapshot fn2-checkpoints fn2-checkpoint-publication fn2-checkpoint-root1
                                            fn2-extents fn2-checkpoint-page)
  (declare (xargs :stobjs (fn2-checkpoint-build fn2-checkpoint-plan fn2-checkpoint-map-build fn2-csnapshot fn2-checkpoints
@@ -21,9 +21,9 @@
                     (< 0 (fn2-checkpoint-publication-rows fn2-checkpoint-publication))
                     (< 0 (fn2-checkpoint-root1-rows fn2-checkpoint-root1))
                     (< 0 (fn2-checkpoint-page-rows fn2-checkpoint-page))
-                    (fn2-checkpoint-build-ownerp token kind owner gen fn2-checkpoint-build fn2-csnapshot)
+                    (fn2-checkpoint-build-ownerp-at-phase phase token kind owner gen fn2-checkpoint-build fn2-csnapshot)
                     (equal (fn2-checkpoint-build-phase 0 fn2-checkpoint-build) *fn2-checkpoint-build-phase-ready*)
-                    (fn2-checkpoint-plan-closedp token kind owner gen fn2-checkpoint-plan fn2-csnapshot)))
+                    (fn2-checkpoint-plan-closedp-at-phase phase token kind owner gen fn2-checkpoint-plan fn2-csnapshot)))
        (mv :state fn2-checkpoint-build fn2-checkpoint-plan fn2-checkpoint-map-build))
       (c (fn2-checkpoint-build-candidate 0 fn2-checkpoint-build))
       ((unless (and (natp c) (< c (fn2-checkpoints-rows fn2-checkpoints))
@@ -63,6 +63,17 @@
       (fn2-checkpoint-plan (fn2-checkpoint-plan-set-phase 0 *fn2-checkpoint-plan-phase-idle* fn2-checkpoint-plan))
       (fn2-checkpoint-map-build (fn2-checkpoint-map-build-set-phase 0 *fn2-checkpoint-map-build-phase-idle* fn2-checkpoint-map-build)))
   (mv :ok fn2-checkpoint-build fn2-checkpoint-plan fn2-checkpoint-map-build)))
+(defun fn2-checkpoint-master-rearm-children (token kind owner gen fn2-checkpoint-build fn2-checkpoint-plan fn2-checkpoint-map-build
+                                           fn2-csnapshot fn2-checkpoints fn2-checkpoint-publication fn2-checkpoint-root1
+                                           fn2-extents fn2-checkpoint-page)
+ (declare (xargs :stobjs (fn2-checkpoint-build fn2-checkpoint-plan fn2-checkpoint-map-build fn2-csnapshot fn2-checkpoints
+                          fn2-checkpoint-publication fn2-checkpoint-root1 fn2-extents fn2-checkpoint-page)
+  :guard (and (fn2-checkpoint-build-wfp fn2-checkpoint-build) (fn2-checkpoint-plan-wfp fn2-checkpoint-plan)
+              (fn2-checkpoint-map-build-wfp fn2-checkpoint-map-build) (fn2-csnapshot-wfp fn2-csnapshot)
+              (fn2-checkpoints-wfp fn2-checkpoints) (fn2-checkpoint-publication-wfp fn2-checkpoint-publication)
+              (fn2-checkpoint-root1-wfp fn2-checkpoint-root1) (fn2-extents-wfp fn2-extents)
+              (fn2-checkpoint-page-wfp fn2-checkpoint-page))))
+ (fn2-checkpoint-master-rearm-children-at-phase *fn2-csnapshot-phase-held* token kind owner gen fn2-checkpoint-build fn2-checkpoint-plan fn2-checkpoint-map-build fn2-csnapshot fn2-checkpoints fn2-checkpoint-publication fn2-checkpoint-root1 fn2-extents fn2-checkpoint-page))
 (defcost fn2-checkpoint-master-rearm-op :child fn2-checkpoint-master-rearm-children :answers (:state :owner :ok)
  :tables (fn2-core-checkpoint-build fn2-core-checkpoint-plan fn2-core-checkpoint-map-build fn2-core-csnapshot
           fn2-core-checkpoints fn2-core-checkpoint-publication fn2-core-checkpoint-root1 fn2-core-extents fn2-core-checkpoint-page)

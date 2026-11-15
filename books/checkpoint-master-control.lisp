@@ -62,19 +62,26 @@
           fn2-core-checkpoint-construction fn2-core-extents fn2-core-checkpoint-plan-marks)
  :doc "Validate one actual reservation identity and ordinal before the physical copy gate.")
 
-(defun fn2-checkpoint-master-ready-children (token okind oslot ogen fn2-checkpoint-plan fn2-checkpoint-build
+(defun fn2-checkpoint-master-ready-children-at-phase (phase token okind oslot ogen fn2-checkpoint-plan fn2-checkpoint-build
                                             fn2-csnapshot fn2-checkpoints fn2-checkpoint-refs)
  (declare (xargs :stobjs (fn2-checkpoint-plan fn2-checkpoint-build fn2-csnapshot fn2-checkpoints fn2-checkpoint-refs)
   :guard (and (fn2-checkpoint-plan-wfp fn2-checkpoint-plan) (fn2-checkpoint-build-wfp fn2-checkpoint-build)
               (fn2-csnapshot-wfp fn2-csnapshot) (fn2-checkpoints-wfp fn2-checkpoints)
               (fn2-checkpoint-refs-wfp fn2-checkpoint-refs))))
  (mv-let (code checkpoint c extent epoch allocation slot gen)
-  (fn2-checkpoint-build-ready token okind oslot ogen fn2-checkpoint-build fn2-csnapshot fn2-checkpoints fn2-checkpoint-refs)
+  (fn2-checkpoint-build-ready-at-phase phase token okind oslot ogen fn2-checkpoint-build fn2-csnapshot fn2-checkpoints fn2-checkpoint-refs)
   (declare (ignore checkpoint extent epoch allocation slot gen))
   (if (and (eq code :ready)
-           (fn2-checkpoint-plan-closedp token okind oslot ogen fn2-checkpoint-plan fn2-csnapshot)
+           (fn2-checkpoint-plan-closedp-at-phase phase token okind oslot ogen fn2-checkpoint-plan fn2-csnapshot)
            (equal c (fn2-checkpoint-plan-candidate 0 fn2-checkpoint-plan)))
       (mv :ready c) (mv :pending 0))))
+(defun fn2-checkpoint-master-ready-children (token okind oslot ogen fn2-checkpoint-plan fn2-checkpoint-build
+                                            fn2-csnapshot fn2-checkpoints fn2-checkpoint-refs)
+ (declare (xargs :stobjs (fn2-checkpoint-plan fn2-checkpoint-build fn2-csnapshot fn2-checkpoints fn2-checkpoint-refs)
+  :guard (and (fn2-checkpoint-plan-wfp fn2-checkpoint-plan) (fn2-checkpoint-build-wfp fn2-checkpoint-build)
+              (fn2-csnapshot-wfp fn2-csnapshot) (fn2-checkpoints-wfp fn2-checkpoints)
+              (fn2-checkpoint-refs-wfp fn2-checkpoint-refs))))
+ (fn2-checkpoint-master-ready-children-at-phase *fn2-csnapshot-phase-held* token okind oslot ogen fn2-checkpoint-plan fn2-checkpoint-build fn2-csnapshot fn2-checkpoints fn2-checkpoint-refs))
 (defcost fn2-checkpoint-master-ready-op :child fn2-checkpoint-master-ready-children :answers (:ready :pending)
  :tables (fn2-core-checkpoint-plan fn2-core-checkpoint-build fn2-core-csnapshot fn2-core-checkpoints fn2-core-checkpoint-refs)
  :doc "Derive final B admission's candidate from actual closed C construction and physically ready descriptor state.")
@@ -123,7 +130,7 @@
 ; The lower release cursor resets root1 to IDLE only after all nineteen
 ; actual lease releases succeed. This observation ends the abstract bundle
 ; hold once, rather than pretending that each partial release drops it.
-(defun fn2-checkpoint-master-release-complete-children (token kind owner gen fn2-checkpoint-root1 fn2-checkpoint-plan
+(defun fn2-checkpoint-master-release-complete-children-at-phase (phase token kind owner gen fn2-checkpoint-root1 fn2-checkpoint-plan
                                                       fn2-checkpoint-build fn2-csnapshot fn2-checkpoints
                                                       fn2-checkpoint-refs fn2-checkpoint-publication fn2-extents)
  (declare (xargs :stobjs (fn2-checkpoint-root1 fn2-checkpoint-plan fn2-checkpoint-build fn2-csnapshot fn2-checkpoints
@@ -133,7 +140,7 @@
               (fn2-checkpoints-wfp fn2-checkpoints) (fn2-checkpoint-refs-wfp fn2-checkpoint-refs)
               (fn2-checkpoint-publication-wfp fn2-checkpoint-publication) (fn2-extents-wfp fn2-extents))))
  (mv-let (code c)
-  (fn2-checkpoint-master-ready-children token kind owner gen fn2-checkpoint-plan fn2-checkpoint-build
+  (fn2-checkpoint-master-ready-children-at-phase phase token kind owner gen fn2-checkpoint-plan fn2-checkpoint-build
    fn2-csnapshot fn2-checkpoints fn2-checkpoint-refs)
   (if (and (eq code :ready) (< 0 (fn2-checkpoint-root1-rows fn2-checkpoint-root1))
            (< 0 (fn2-checkpoint-publication-rows fn2-checkpoint-publication))
@@ -150,6 +157,16 @@
            (equal (fn2-alloc-freeze-owner-kind fn2-extents) kind)
            (equal (fn2-alloc-freeze-owner-slot fn2-extents) owner)
            (equal (fn2-alloc-freeze-owner-gen fn2-extents) gen)) :ok :state)))
+(defun fn2-checkpoint-master-release-complete-children (token kind owner gen fn2-checkpoint-root1 fn2-checkpoint-plan
+                                                      fn2-checkpoint-build fn2-csnapshot fn2-checkpoints
+                                                      fn2-checkpoint-refs fn2-checkpoint-publication fn2-extents)
+ (declare (xargs :stobjs (fn2-checkpoint-root1 fn2-checkpoint-plan fn2-checkpoint-build fn2-csnapshot fn2-checkpoints
+                          fn2-checkpoint-refs fn2-checkpoint-publication fn2-extents)
+  :guard (and (fn2-checkpoint-root1-wfp fn2-checkpoint-root1) (fn2-checkpoint-plan-wfp fn2-checkpoint-plan)
+              (fn2-checkpoint-build-wfp fn2-checkpoint-build) (fn2-csnapshot-wfp fn2-csnapshot)
+              (fn2-checkpoints-wfp fn2-checkpoints) (fn2-checkpoint-refs-wfp fn2-checkpoint-refs)
+              (fn2-checkpoint-publication-wfp fn2-checkpoint-publication) (fn2-extents-wfp fn2-extents))))
+ (fn2-checkpoint-master-release-complete-children-at-phase *fn2-csnapshot-phase-held* token kind owner gen fn2-checkpoint-root1 fn2-checkpoint-plan fn2-checkpoint-build fn2-csnapshot fn2-checkpoints fn2-checkpoint-refs fn2-checkpoint-publication fn2-extents))
 (defcost fn2-checkpoint-master-release-complete-op :child fn2-checkpoint-master-release-complete-children
  :answers (:ok :state)
  :tables (fn2-core-checkpoint-root1 fn2-core-checkpoint-plan fn2-core-checkpoint-build fn2-core-csnapshot fn2-core-checkpoints

@@ -5,14 +5,14 @@
 (include-book "checkpoint-lifecycle")
 (fn2-book-layer :c)
 
-(defun fn2-event-producer-ownerp (fn2-event-build fn2-csnapshot fn2-checkpoints)
+(defun fn2-event-producer-ownerp-at-phase (phase fn2-event-build fn2-csnapshot fn2-checkpoints)
  (declare (xargs :stobjs (fn2-event-build fn2-csnapshot fn2-checkpoints) :verify-guards nil
   :guard (and (fn2-event-build-wfp fn2-event-build) (fn2-csnapshot-wfp fn2-csnapshot) (fn2-checkpoints-wfp fn2-checkpoints))))
  (and (< 0 (fn2-event-build-rows fn2-event-build))
       (fn2-csnapshot-ownerp (fn2-event-build-token 0 fn2-event-build)
        (fn2-event-build-owner-kind 0 fn2-event-build) (fn2-event-build-owner-slot 0 fn2-event-build)
        (fn2-event-build-owner-gen 0 fn2-event-build) fn2-csnapshot)
-      (equal (fn2-csnapshot-phase 0 fn2-csnapshot) *fn2-csnapshot-phase-held*)
+      (equal (fn2-csnapshot-phase 0 fn2-csnapshot) phase)
       (equal (fn2-event-build-cut-commit 0 fn2-event-build) (fn2-csnapshot-cut-commit 0 fn2-csnapshot))
       (equal (fn2-event-build-cut-event 0 fn2-event-build) (fn2-csnapshot-cut-event 0 fn2-csnapshot))
       (fn2-checkpoint-builder-claimp (fn2-event-build-candidate 0 fn2-event-build) (fn2-event-build-token 0 fn2-event-build)
@@ -20,6 +20,10 @@
        (fn2-event-build-owner-gen 0 fn2-event-build) fn2-checkpoints)
       (equal (fn2-event-build-history 0 fn2-event-build) (fn2-checkpoints-history (fn2-event-build-candidate 0 fn2-event-build) fn2-checkpoints))
       (equal (fn2-event-build-history-incarnation 0 fn2-event-build) (fn2-checkpoints-incarnation (fn2-event-build-candidate 0 fn2-event-build) fn2-checkpoints))))
+(defun fn2-event-producer-ownerp (fn2-event-build fn2-csnapshot fn2-checkpoints)
+ (declare (xargs :stobjs (fn2-event-build fn2-csnapshot fn2-checkpoints) :verify-guards nil
+  :guard (and (fn2-event-build-wfp fn2-event-build) (fn2-csnapshot-wfp fn2-csnapshot) (fn2-checkpoints-wfp fn2-checkpoints))))
+ (fn2-event-producer-ownerp-at-phase *fn2-csnapshot-phase-held* fn2-event-build fn2-csnapshot fn2-checkpoints))
 
 (defun fn2-event-producer-begin (token okind oslot ogen slot gen scratch sgen read-slot read-gen
                                 fn2-event-build fn2-event-read fn2-checkpoint-build fn2-csnapshot fn2-checkpoints
@@ -185,20 +189,24 @@
       (if (eq code :ok) (fn2-event-read-op-gen 0 fn2-event-read) 0)
       fn2-event-build fn2-event-read fn2-extents fn2-alloc-edges fn2-pool fn2-ops fn2-control)))
 
-(defun fn2-event-producer-donep (fn2-event-build fn2-event-read fn2-csnapshot fn2-checkpoints fn2-checkpoint-refs fn2-mk fn2-fc fn2-digests)
+(defun fn2-event-producer-donep-at-phase (phase fn2-event-build fn2-event-read fn2-csnapshot fn2-checkpoints fn2-checkpoint-refs fn2-mk fn2-fc fn2-digests)
  (declare (xargs :stobjs (fn2-event-build fn2-event-read fn2-csnapshot fn2-checkpoints fn2-checkpoint-refs fn2-mk fn2-fc fn2-digests) :verify-guards nil
   :guard (and (fn2-event-build-wfp fn2-event-build) (fn2-event-read-wfp fn2-event-read) (fn2-csnapshot-wfp fn2-csnapshot) (fn2-checkpoints-wfp fn2-checkpoints) (fn2-checkpoint-refs-wfp fn2-checkpoint-refs) (fn2-mk-wfp fn2-mk) (fn2-fc-wfp fn2-fc) (fn2-digests-wfp fn2-digests))))
- (and (fn2-event-producer-ownerp fn2-event-build fn2-csnapshot fn2-checkpoints)
+ (and (fn2-event-producer-ownerp-at-phase phase fn2-event-build fn2-csnapshot fn2-checkpoints)
       (equal (fn2-event-build-phase 0 fn2-event-build) *fn2-event-build-phase-done*)
       (equal (fn2-event-build-claimed 0 fn2-event-build) (fn2-event-build-cut-commit 0 fn2-event-build))
       (equal (fn2-event-build-pages 0 fn2-event-build) (fn2-checkpoint-map-page-count (fn2-event-build-cut-commit 0 fn2-event-build) *fn2-event-proof-slots*))
       (equal (fn2-event-build-directory-completed 0 fn2-event-build) (* (fn2-event-build-pages 0 fn2-event-build) *fn2-format-page-size*))
       (equal (fn2-event-build-frontier-completed 0 fn2-event-build) *fn2-format-page-size*)
-      (fn2-event-frontier-source-p (fn2-event-build-token 0 fn2-event-build)
+      (fn2-event-frontier-source-p-at-phase phase (fn2-event-build-token 0 fn2-event-build)
        (fn2-event-build-owner-kind 0 fn2-event-build) (fn2-event-build-owner-slot 0 fn2-event-build)
        (fn2-event-build-owner-gen 0 fn2-event-build) fn2-event-read fn2-csnapshot fn2-mk fn2-fc fn2-digests)
       (fn2-event-producer-roots-p 3 (fn2-event-build-candidate 0 fn2-event-build)
        (fn2-event-build-token 0 fn2-event-build) (fn2-event-build-pages 0 fn2-event-build) fn2-checkpoint-refs)))
+(defun fn2-event-producer-donep (fn2-event-build fn2-event-read fn2-csnapshot fn2-checkpoints fn2-checkpoint-refs fn2-mk fn2-fc fn2-digests)
+ (declare (xargs :stobjs (fn2-event-build fn2-event-read fn2-csnapshot fn2-checkpoints fn2-checkpoint-refs fn2-mk fn2-fc fn2-digests) :verify-guards nil
+  :guard (and (fn2-event-build-wfp fn2-event-build) (fn2-event-read-wfp fn2-event-read) (fn2-csnapshot-wfp fn2-csnapshot) (fn2-checkpoints-wfp fn2-checkpoints) (fn2-checkpoint-refs-wfp fn2-checkpoint-refs) (fn2-mk-wfp fn2-mk) (fn2-fc-wfp fn2-fc) (fn2-digests-wfp fn2-digests))))
+ (fn2-event-producer-donep-at-phase *fn2-csnapshot-phase-held* fn2-event-build fn2-event-read fn2-csnapshot fn2-checkpoints fn2-checkpoint-refs fn2-mk fn2-fc fn2-digests))
 
 (defun fn2-event-producer-step (budget fn2-event-build fn2-event-read fn2-csnapshot fn2-checkpoints fn2-commit-root
  fn2-checkpoint-refs fn2-checkpoint-bytes fn2-checkpoint-construction fn2-extents fn2-alloc-edges fn2-ops

@@ -6,16 +6,20 @@
 (include-book "checkpoint-build-state")
 (fn2-book-layer :c)
 
-(defun fn2-event-read-ownerp (fn2-event-read fn2-csnapshot)
+(defun fn2-event-read-ownerp-at-phase (phase fn2-event-read fn2-csnapshot)
  (declare (xargs :stobjs (fn2-event-read fn2-csnapshot)
   :guard (and (fn2-event-read-wfp fn2-event-read) (fn2-csnapshot-wfp fn2-csnapshot))))
  (and (< 0 (fn2-event-read-rows fn2-event-read))
       (fn2-csnapshot-ownerp (fn2-event-read-token 0 fn2-event-read)
        (fn2-event-read-owner-kind 0 fn2-event-read) (fn2-event-read-owner-slot 0 fn2-event-read)
        (fn2-event-read-owner-gen 0 fn2-event-read) fn2-csnapshot)
-      (equal (fn2-csnapshot-phase 0 fn2-csnapshot) *fn2-csnapshot-phase-held*)
+      (equal (fn2-csnapshot-phase 0 fn2-csnapshot) phase)
       (equal (fn2-event-read-cut-commit 0 fn2-event-read) (fn2-csnapshot-cut-commit 0 fn2-csnapshot))
       (equal (fn2-event-read-cut-event 0 fn2-event-read) (fn2-csnapshot-cut-event 0 fn2-csnapshot))))
+(defun fn2-event-read-ownerp (fn2-event-read fn2-csnapshot)
+ (declare (xargs :stobjs (fn2-event-read fn2-csnapshot)
+  :guard (and (fn2-event-read-wfp fn2-event-read) (fn2-csnapshot-wfp fn2-csnapshot))))
+ (fn2-event-read-ownerp-at-phase *fn2-csnapshot-phase-held* fn2-event-read fn2-csnapshot))
 
 (defun fn2-event-read-open-core (history history-incarnation token ordinal rslot rgen dslot dgen off scratch sgen okind oslot ogen
                            fn2-event-read fn2-csnapshot fn2-commit-root fn2-extents fn2-alloc-edges

@@ -23,17 +23,21 @@
 ; until then production descriptor admission remains roots-pending.
 
 
-(defun fn2-checkpoint-build-ownerp (token okind oslot ogen fn2-checkpoint-build fn2-csnapshot)
+(defun fn2-checkpoint-build-ownerp-at-phase (phase token okind oslot ogen fn2-checkpoint-build fn2-csnapshot)
  (declare (xargs :stobjs (fn2-checkpoint-build fn2-csnapshot)
   :guard (and (fn2-checkpoint-build-wfp fn2-checkpoint-build) (fn2-csnapshot-wfp fn2-csnapshot))))
  (and (< 0 (fn2-checkpoint-build-rows fn2-checkpoint-build))
       (fn2-origin-physicalp (fn2-checkpoint-build-history 0 fn2-checkpoint-build) (fn2-checkpoint-build-history-incarnation 0 fn2-checkpoint-build))
       (not (equal (fn2-checkpoint-build-phase 0 fn2-checkpoint-build) *fn2-checkpoint-build-phase-idle*))
       (fn2-csnapshot-ownerp token okind oslot ogen fn2-csnapshot)
-      (equal (fn2-csnapshot-phase 0 fn2-csnapshot) *fn2-csnapshot-phase-held*)
+      (equal (fn2-csnapshot-phase 0 fn2-csnapshot) phase)
       (equal token (fn2-checkpoint-build-snapshot-token 0 fn2-checkpoint-build))
       (equal okind (fn2-checkpoint-build-owner-kind 0 fn2-checkpoint-build))
       (equal oslot (fn2-checkpoint-build-owner-slot 0 fn2-checkpoint-build))
       (equal ogen (fn2-checkpoint-build-owner-gen 0 fn2-checkpoint-build))
       (equal (fn2-checkpoint-build-cut-commit 0 fn2-checkpoint-build) (fn2-csnapshot-cut-commit 0 fn2-csnapshot))
       (equal (fn2-checkpoint-build-cut-event 0 fn2-checkpoint-build) (fn2-csnapshot-cut-event 0 fn2-csnapshot))))
+(defun fn2-checkpoint-build-ownerp (token okind oslot ogen fn2-checkpoint-build fn2-csnapshot)
+ (declare (xargs :stobjs (fn2-checkpoint-build fn2-csnapshot)
+  :guard (and (fn2-checkpoint-build-wfp fn2-checkpoint-build) (fn2-csnapshot-wfp fn2-csnapshot))))
+ (fn2-checkpoint-build-ownerp-at-phase *fn2-csnapshot-phase-held* token okind oslot ogen fn2-checkpoint-build fn2-csnapshot))
