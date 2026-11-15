@@ -24,6 +24,13 @@ class SliceComposition(unittest.TestCase):
         self.assertIn('(declare (ignore lines))',body)
         self.assertIn('(mv status next mode2 discard2 copied fn2-pool)',body)
         self.assertIn('fn2-upload-feed-slice-projection-by-definition',text)
+    def test_count_worker_has_one_owner_and_txn_reaches_it(self):
+        import certs
+        txn=(ROOT/'books/txn.lisp').read_text()
+        feed=(ROOT/'books/upload-feed.lisp').read_text()
+        self.assertNotIn('(defun fn2-txn-count-loop ',txn)
+        self.assertEqual(feed.count('(defun fn2-txn-count-loop '),1)
+        self.assertIn('books/upload-feed',certs.closure(ROOT,'books/txn'))
     def test_control_uses_actual_slice_and_whole_pool_refusal(self):
         text=(ROOT/'tests/upload-feed-slice-unit.lisp').read_text()
         self.assertIn('(fn2-upload-feed-slice budget',text)
