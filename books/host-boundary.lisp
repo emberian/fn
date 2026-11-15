@@ -10,6 +10,7 @@
 (include-book "host-ops")
 ; Native TLS calls the guarded transport controller and its ownership ledger.
 (include-book "host-codec")
+(include-book "host-compress")
 
 (local (in-theory (enable fn2-core-wfp)))
 

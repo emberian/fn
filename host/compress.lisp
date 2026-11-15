@@ -213,3 +213,38 @@
      ((:unbound :kind) nil)
      (:too-late (fn2-n-complete host slot :ok 0 0 nil) t)
      (otherwise (error "fn2 compression: deferred cancellation refused: ~S" decision)))))))
+
+(defun fn2-n-compress-ready (host slot cap)
+ ;; One selected physical action per scheduler turn. NEXT owns terminal counts.
+ (let* ((op (aref (fn2-nhost-ops host) slot))
+        (startp (= (fn2-nop-kind op) *fn2-action-compress-start*)))
+  (unless (fn2-ncap-compress cap)
+   (unless (and startp (fn2-nhost-compress-settings host))
+    (fn2-n-complete host slot :failed 0)
+    (return-from fn2-n-compress-ready nil))
+   (multiple-value-bind (code compression)
+       (apply #'fn2-native-compress-start host slot (fn2-nhost-compress-settings host))
+    (unless (eq code :ok)
+     (fn2-n-complete host slot :failed 0)
+     (return-from fn2-n-compress-ready nil))
+    (setf (fn2-ncap-compress cap) compression)))
+  (if startp
+      (multiple-value-bind (status copied)
+          (fn2-native-compress-upgrade-step host slot (fn2-ncap-compress cap))
+       (case status
+        (:done (fn2-n-complete host slot :ok copied))
+        ((:ok :closing) nil)
+        (:failed (fn2-n-complete host slot :failed 0))
+        (otherwise (error "fn2 compression: upgrade authorization/controller refused: ~S" status))))
+    (multiple-value-bind (status count)
+        (fn2-native-compress-record-step host slot (fn2-ncap-compress cap) cap)
+     (case status
+      (:done
+       (cond ((= (fn2-nop-kind op) *fn2-action-receive*) (incf (fn2-ncap-rx cap) count))
+             ((= (fn2-nop-kind op) *fn2-action-send*) (incf (fn2-ncap-tx cap) count)))
+       (fn2-n-complete host slot :ok count 0 nil (fn2-n-octets host (fn2-nop-address op) count)))
+      (:eof (setf (fn2-ncap-eof cap) t)
+            (fn2-n-complete host slot :eof count 0 nil (fn2-n-octets host (fn2-nop-address op) count)))
+      (:failed (fn2-n-complete host slot :failed count 0 nil (fn2-n-octets host (fn2-nop-address op) count)))
+      ((:progress :pending :blocked) nil)
+      (otherwise (error "fn2 compression: record authorization/controller refused: ~S" status)))))))
