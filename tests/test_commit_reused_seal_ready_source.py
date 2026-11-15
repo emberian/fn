@@ -22,4 +22,7 @@ class ReusedSeal(unittest.TestCase):
    self.assertIn(name,str(witness))
   self.assertIn(['eq','after',':more'],list(walk(witness)))
   self.assertIn(['eq','without-reset',':ok'],list(walk(witness)))
+  self.assertIn(['fn2-commit-seal-context','id','nil','fn2-core'],list(walk(witness)))
+  self.assertIn(['eq','completed',':ok'],list(walk(witness)))
+  self.assertIn(['eq','fresh',':ok'],list(walk(witness)))
 if __name__=='__main__':unittest.main()

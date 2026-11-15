@@ -25,13 +25,21 @@
                              (fn2-commit-idp id fn2-core)))
       (fn2-core (fn2-commit-prepare-root id fn2-core))
       ((mv after &) (fn2-crsr-get next fn2-core))
-      ; Hypothesis-removal witness: the old ready bit is the only changed
-      ; decision input. This is the constructor effect without its new reset.
+      ; Reset-effect mutation control: the old ready bit is the only changed
+      ; decision input. This is not a keystone hypothesis-removal witness.
       (fn2-core (stobj-let ((fn2-commit-root (fn2-core-commit-root fn2-core))) (fn2-commit-root)
                   (fn2-commit-root-set-seal-ready 1 1 fn2-commit-root) fn2-core))
-      ((mv without-reset &) (fn2-crsr-get next fn2-core)))
+      ((mv without-reset &) (fn2-crsr-get next fn2-core))
+      (fn2-core (stobj-let ((fn2-commit-root (fn2-core-commit-root fn2-core))) (fn2-commit-root)
+                  (fn2-commit-root-set-seal-ready 1 0 fn2-commit-root) fn2-core))
+      ; The actual emitted producer installs its current format result before
+      ; the same predecessor consumer reports OK. Its internal guard is the
+      ; full typed core; the result bytes here are synthetic source premises.
+      ((mv completed fn2-core) (fn2-commit-seal-context id nil fn2-core))
+      ((mv fresh &) (fn2-crsr-get next fn2-core)))
   (mv (and whole-antecedent (fn2-corep fn2-core) (fn2-core-wfp fn2-core)
-           (not (fn2-core-stopped-p fn2-core)) (eq after :more) (eq without-reset :ok)) fn2-core)))
+           (not (fn2-core-stopped-p fn2-core)) (eq after :more) (eq without-reset :ok)
+           (eq completed :ok) (eq fresh :ok)) fn2-core)))
 (defun fn2-crsr-test ()
  (declare (xargs :verify-guards nil))
  (with-local-stobj fn2-core (mv-let (answer fn2-core) (fn2-crsr-body fn2-core) answer)))
