@@ -1,0 +1,328 @@
+{
+  "schema": "fn-record-receipt-v1",
+  "scope": "Exact current allocator lifecycle fixture closure; no consumers or baseline rerun.",
+  "source_commit": "8595723fc4b59b63714a145fa4c8cc8bc4893085",
+  "source_change_commits": [
+    "771957afdf66ccc30c023fe7c5af84d51f235394",
+    "9e28f063ef9a99d6aaad67f61a8e47d86183a8db"
+  ],
+  "remote_host": "fn@dregg-forge",
+  "remote_source": "/build/lanes/assurance-alloc-cost-record-8595723",
+  "farm_run": "run-20261115T011223Z-a2b0",
+  "certify_run": "certify-20261115T011246Z-662045",
+  "manifest": "/build/lanes/assurance-alloc-cost-record-8595723/build/acl2/certify-20261115T011246Z-662045/manifest.json",
+  "manifest_sha256": "5e0ac5e6d3ef4ac1a3c39538fa05c32610495e3eb369eef26c34ecd5bfd7f271",
+  "remote_audits": "/build/lanes/assurance-alloc-cost-record-8595723/build/alloc-cost-record-evidence",
+  "status": "passed",
+  "roots": [
+    "tests/alloc-lifecycle-unit"
+  ],
+  "selection": {
+    "lane": true,
+    "affected_by": [
+      "tests/alloc-lifecycle-unit"
+    ]
+  },
+  "source_evidence": {
+    "method": "All 12 file SHA256 values matched immutable source_commit bytes and manifest before/after digests.",
+    "manifest_git_revision": null,
+    "runner_unchanged": true,
+    "before_equals_after": true,
+    "closure": [
+      {
+        "book": "tests/alloc-lifecycle-unit",
+        "sha256": "268fb9f903c3362c35498b8cb972e9e512dbd122b3eeb324d5e3416e815ca3c6",
+        "key": "e489533e4bb89d61b5014fe820a5efa5aaa159c91d7354cf1c891f87f794cc8a"
+      },
+      {
+        "book": "tests/alloc-unit",
+        "sha256": "c9e20c26e181530bfc64477839907cd64de9e811c7c33f217e966cd00705d1d4",
+        "key": "d7d1a43586473076d99dca7c7743cd5a8bb4be7179819953a7f5429a218efd77"
+      },
+      {
+        "book": "sim/check-reclaim",
+        "sha256": "bd0501f40c4d9ff493c45968cd5c79857d970c0a7ad2406115fa9574e7d553bb",
+        "key": "c6c9c28a9ae43fc140295d1075c133f9340c4af3cc8d91dd59f3321374105940"
+      },
+      {
+        "book": "books/tuple",
+        "sha256": "c6b895fd566be6b91ba68fb040826b689a5ad4891a65e040773bfb28b90e1978",
+        "key": "b0fe12b03ba9cae656e0a0d40c8ccd699ff47788c2bd5a448903fb0c0401b9c6"
+      },
+      {
+        "book": "tests/alloc-test-state",
+        "sha256": "858193afa4fe81979871a8626c78dd071c2f83d50b94fd16f2628ac6d907650d",
+        "key": "3cef250914f1e6ee755958e997de44cc874ceecaa55cbb5689f97654e1e95a26"
+      },
+      {
+        "book": "books/alloc",
+        "sha256": "886dd5c4550a43b78fafa99c02db28edbdc70c7bb1cbe806ce5e40403477a11e",
+        "key": "ba94a7520419a551b395a319c8d8c0f35f301a2f313367256c6a3800afc4b28e"
+      },
+      {
+        "book": "books/owed",
+        "sha256": "04104985582a552ad115a0a6adcf2e957597b1b9ca3228bf25900877cbbcb17b",
+        "key": "6f334038cc4bddaaa337357384a139be3700c2c3403094bab3398dacb7fd5a3b"
+      },
+      {
+        "book": "books/declare",
+        "sha256": "1c706e559ef3b314fb9bd48171fb2891fad8613bd4eb1c5de5268443833c4bfb",
+        "key": "f1df352dc360553d08906239d267e9371fcb2fe4f19c6581adc1b0b322b30875"
+      },
+      {
+        "book": "books/columns",
+        "sha256": "df0b05ba3ba125a4b85036d24a721aaa4ce793864409a90e77f978cc1f969fca",
+        "key": "c8e9df5d21df547effaf69baa79db3c4c93eb88b694468b3e20e7684b30d9419"
+      },
+      {
+        "book": "books/operations",
+        "sha256": "959da2da147247146a2360e23d2c7d6abd6c581abdf0f6873661f63cee87484f",
+        "key": "bd6bdf7f71b74618b02924c542559dcb99a149c816aeed11f3f5cd82d766483f"
+      },
+      {
+        "book": "tests/retirement-intent-allocator-unit",
+        "sha256": "df58855ec18377ccf11bb85b2de235feb454aaeeafd4d28e0439ff9614442519",
+        "key": "c86fad2d7c48dc0e69a8078b3e2a8a537efd69d200be889a7b8ff408d4a102e7"
+      },
+      {
+        "book": "tests/alloc-planning-unit",
+        "sha256": "ded71c261a42c681361a733b54e2019fc16c1ad68e3702cb93ec9be0f39656e5",
+        "key": "26228f1f9114f69d8c1ac2e5f355d55d51afe35a7015490df92f4b9d45efd3bc"
+      }
+    ]
+  },
+  "toolchain_identity": "8aeb1bea18968c6cd33ac633a80ebf67e4924504db112fd27eb11f16a27b2a8c",
+  "acl2_executable": "/tank/fn/toolchains/w28/acl2-literal-4g-tls64k",
+  "limits": {
+    "jobs": 1,
+    "images": "off",
+    "book_timeout_seconds": 120,
+    "outer_budget_seconds": 600,
+    "effective_cgroups": [
+      {
+        "pid": 662013,
+        "cgroup": "/user.slice/user-1000.slice/user@1000.service/swarm.slice/run-p662011-i30018703.scope",
+        "memory_max": "2147483648",
+        "memory_swap_max": "0"
+      },
+      {
+        "pid": 662046,
+        "cgroup": "/user.slice/user-1000.slice/user@1000.service/swarm.slice/run-p662044-i30018736.scope",
+        "memory_max": "2147483648",
+        "memory_swap_max": "0"
+      }
+    ]
+  },
+  "reuse": {
+    "qualified_lower_dependencies": 6,
+    "installed_books": {
+      "books/columns": "/build/lanes/assurance-storage-codec-5ca",
+      "books/declare": "/build/lanes/finish-build-row",
+      "books/operations": "/build/lanes/assurance-storage-codec-5ca",
+      "books/owed": "/build/lanes/finish-build-row",
+      "books/tuple": "/build/lanes/review-kimi",
+      "sim/check-reclaim": "/build/lanes/finish-convergence-6e07e62f3"
+    },
+    "new_books": [
+      "books/alloc",
+      "tests/alloc-lifecycle-unit",
+      "tests/alloc-planning-unit",
+      "tests/alloc-test-state",
+      "tests/alloc-unit",
+      "tests/retirement-intent-allocator-unit"
+    ],
+    "unexpected_cold_parents": []
+  },
+  "book_results": {
+    "books/alloc": "passed",
+    "tests/alloc-lifecycle-unit": "passed",
+    "tests/alloc-planning-unit": "passed",
+    "tests/alloc-test-state": "passed",
+    "tests/alloc-unit": "passed",
+    "tests/retirement-intent-allocator-unit": "passed"
+  },
+  "book_wall_seconds": {
+    "books/alloc": 10.509,
+    "tests/alloc-lifecycle-unit": 0.767,
+    "tests/alloc-planning-unit": 0.717,
+    "tests/alloc-test-state": 1.871,
+    "tests/alloc-unit": 0.918,
+    "tests/retirement-intent-allocator-unit": 0.667
+  },
+  "book_prover_steps": {
+    "books/alloc": 1145528,
+    "tests/alloc-lifecycle-unit": 0,
+    "tests/alloc-planning-unit": 0,
+    "tests/alloc-test-state": 0,
+    "tests/alloc-unit": 103,
+    "tests/retirement-intent-allocator-unit": 0
+  },
+  "target_events": [
+    {
+      "form": "( DEFTHM FN2-ALLOC-HANDLE-CODE-OK-SLOTP ...)",
+      "seconds": 0.01,
+      "steps": 358
+    },
+    {
+      "form": "( DEFTHM FN2-ALLOC-EDGE-DROP-REQUIRES-MATCHING-HOLDER ...)",
+      "seconds": 0.03,
+      "steps": 13322
+    },
+    {
+      "form": "( DEFUN FN2-ALLOC-RELOCATE ...)",
+      "seconds": 0.21,
+      "steps": 24890
+    }
+  ],
+  "comparison": {
+    "baseline_manifest": "/build/lanes/reclamation-alloc-record-58b/build/acl2/certify-20261115T004941Z-639322/manifest.json",
+    "baseline_rerun": false,
+    "baseline_alloc_wall_seconds": 11.213,
+    "current_alloc_wall_seconds": 10.509,
+    "baseline_alloc_steps": 1463790,
+    "current_alloc_steps": 1145528,
+    "current_acl2_summary_seconds": {
+      "total": 10.43,
+      "prove": 5.46,
+      "print": 0.08,
+      "other": 4.89
+    }
+  },
+  "cache_directory": "/home/fn/.cache/fn-certs",
+  "published_entries": [
+    {
+      "book": "books/alloc",
+      "key": "ba94a7520419a551b395a319c8d8c0f35f301a2f313367256c6a3800afc4b28e",
+      "entry": "/home/fn/.cache/fn-certs/ba94a7520419a551b395a319c8d8c0f35f301a2f313367256c6a3800afc4b28e/209ff07d4362f276",
+      "owners": {
+        "book.port": "fn",
+        ".entry.lock": "fn",
+        "meta.json": "fn",
+        "book.fasl": "fn",
+        "book.cert": "fn"
+      },
+      "cert_sha256": "0ffee87cf2b3ffed0289d291795acc6b5fb9ea9f01674179773a2097fae49656",
+      "fasl_sha256": "40b9ae267b7f1e0fa32aebeaef110257994548cd4ff2448b12dd58dfb455ab91",
+      "source_sha256": "886dd5c4550a43b78fafa99c02db28edbdc70c7bb1cbe806ce5e40403477a11e",
+      "toolchain_identity": "8aeb1bea18968c6cd33ac633a80ebf67e4924504db112fd27eb11f16a27b2a8c",
+      "origin_root": "/build/lanes/assurance-alloc-cost-record-8595723",
+      "origin_kind": "run",
+      "evidence": "/build/lanes/assurance-alloc-cost-record-8595723/build/acl2/certify-20261115T011246Z-662045",
+      "payload_digests_verified": true
+    },
+    {
+      "book": "tests/alloc-lifecycle-unit",
+      "key": "e489533e4bb89d61b5014fe820a5efa5aaa159c91d7354cf1c891f87f794cc8a",
+      "entry": "/home/fn/.cache/fn-certs/e489533e4bb89d61b5014fe820a5efa5aaa159c91d7354cf1c891f87f794cc8a/209ff07d4362f276",
+      "owners": {
+        "book.port": "fn",
+        ".entry.lock": "fn",
+        "meta.json": "fn",
+        "book.fasl": "fn",
+        "book.cert": "fn"
+      },
+      "cert_sha256": "cbf081f9156c80e77b0a368a920bcb5b19acfb32d0f875316ae36fc4b87abda7",
+      "fasl_sha256": "29ad2d3e53021e6509643e161ff4d26777e464114fca170a6bdaa3b0b7d25fde",
+      "source_sha256": "268fb9f903c3362c35498b8cb972e9e512dbd122b3eeb324d5e3416e815ca3c6",
+      "toolchain_identity": "8aeb1bea18968c6cd33ac633a80ebf67e4924504db112fd27eb11f16a27b2a8c",
+      "origin_root": "/build/lanes/assurance-alloc-cost-record-8595723",
+      "origin_kind": "run",
+      "evidence": "/build/lanes/assurance-alloc-cost-record-8595723/build/acl2/certify-20261115T011246Z-662045",
+      "payload_digests_verified": true
+    },
+    {
+      "book": "tests/alloc-planning-unit",
+      "key": "26228f1f9114f69d8c1ac2e5f355d55d51afe35a7015490df92f4b9d45efd3bc",
+      "entry": "/home/fn/.cache/fn-certs/26228f1f9114f69d8c1ac2e5f355d55d51afe35a7015490df92f4b9d45efd3bc/209ff07d4362f276",
+      "owners": {
+        "book.port": "fn",
+        ".entry.lock": "fn",
+        "meta.json": "fn",
+        "book.fasl": "fn",
+        "book.cert": "fn"
+      },
+      "cert_sha256": "e7c264ad9ccd107d8abb605d780fe1b0521a8c59c1604021fff56b88fd893e9f",
+      "fasl_sha256": "c162be418929cf391c3f314eafd030bf8f3e5841fc25e3da8c1611a377d4c928",
+      "source_sha256": "ded71c261a42c681361a733b54e2019fc16c1ad68e3702cb93ec9be0f39656e5",
+      "toolchain_identity": "8aeb1bea18968c6cd33ac633a80ebf67e4924504db112fd27eb11f16a27b2a8c",
+      "origin_root": "/build/lanes/assurance-alloc-cost-record-8595723",
+      "origin_kind": "run",
+      "evidence": "/build/lanes/assurance-alloc-cost-record-8595723/build/acl2/certify-20261115T011246Z-662045",
+      "payload_digests_verified": true
+    },
+    {
+      "book": "tests/alloc-test-state",
+      "key": "3cef250914f1e6ee755958e997de44cc874ceecaa55cbb5689f97654e1e95a26",
+      "entry": "/home/fn/.cache/fn-certs/3cef250914f1e6ee755958e997de44cc874ceecaa55cbb5689f97654e1e95a26/209ff07d4362f276",
+      "owners": {
+        "book.port": "fn",
+        ".entry.lock": "fn",
+        "meta.json": "fn",
+        "book.fasl": "fn",
+        "book.cert": "fn"
+      },
+      "cert_sha256": "4c0672a1d966838c1e3653ac80b884b5f09a772e9e62b24688e49dae7f5d76cc",
+      "fasl_sha256": "5758428bda26d1780cf86e804dc91a91707668bf113a7964957da9c5c08b070a",
+      "source_sha256": "858193afa4fe81979871a8626c78dd071c2f83d50b94fd16f2628ac6d907650d",
+      "toolchain_identity": "8aeb1bea18968c6cd33ac633a80ebf67e4924504db112fd27eb11f16a27b2a8c",
+      "origin_root": "/build/lanes/assurance-alloc-cost-record-8595723",
+      "origin_kind": "run",
+      "evidence": "/build/lanes/assurance-alloc-cost-record-8595723/build/acl2/certify-20261115T011246Z-662045",
+      "payload_digests_verified": true
+    },
+    {
+      "book": "tests/alloc-unit",
+      "key": "d7d1a43586473076d99dca7c7743cd5a8bb4be7179819953a7f5429a218efd77",
+      "entry": "/home/fn/.cache/fn-certs/d7d1a43586473076d99dca7c7743cd5a8bb4be7179819953a7f5429a218efd77/209ff07d4362f276",
+      "owners": {
+        "book.port": "fn",
+        ".entry.lock": "fn",
+        "meta.json": "fn",
+        "book.fasl": "fn",
+        "book.cert": "fn"
+      },
+      "cert_sha256": "1d0f3b2be9484760449bfd05bfec6f8d2e078e9a577972e93cfbe2969996aa14",
+      "fasl_sha256": "51ff007231edf21dd863ff764b18d24fc223a594488a8678cff8067126c45649",
+      "source_sha256": "c9e20c26e181530bfc64477839907cd64de9e811c7c33f217e966cd00705d1d4",
+      "toolchain_identity": "8aeb1bea18968c6cd33ac633a80ebf67e4924504db112fd27eb11f16a27b2a8c",
+      "origin_root": "/build/lanes/assurance-alloc-cost-record-8595723",
+      "origin_kind": "run",
+      "evidence": "/build/lanes/assurance-alloc-cost-record-8595723/build/acl2/certify-20261115T011246Z-662045",
+      "payload_digests_verified": true
+    },
+    {
+      "book": "tests/retirement-intent-allocator-unit",
+      "key": "c86fad2d7c48dc0e69a8078b3e2a8a537efd69d200be889a7b8ff408d4a102e7",
+      "entry": "/home/fn/.cache/fn-certs/c86fad2d7c48dc0e69a8078b3e2a8a537efd69d200be889a7b8ff408d4a102e7/209ff07d4362f276",
+      "owners": {
+        "book.port": "fn",
+        ".entry.lock": "fn",
+        "meta.json": "fn",
+        "book.fasl": "fn",
+        "book.cert": "fn"
+      },
+      "cert_sha256": "0837ca6cc41a895c9e208cd9f4885a326a35e4b9622eadc97c33e433d5f35d2f",
+      "fasl_sha256": "1df0543d9f9ceea9d01dca32445e728d8d44287d5b399bf1cb63dfef704b1172",
+      "source_sha256": "df58855ec18377ccf11bb85b2de235feb454aaeeafd4d28e0439ff9614442519",
+      "toolchain_identity": "8aeb1bea18968c6cd33ac633a80ebf67e4924504db112fd27eb11f16a27b2a8c",
+      "origin_root": "/build/lanes/assurance-alloc-cost-record-8595723",
+      "origin_kind": "run",
+      "evidence": "/build/lanes/assurance-alloc-cost-record-8595723/build/acl2/certify-20261115T011246Z-662045",
+      "payload_digests_verified": true
+    }
+  ],
+  "finished": {
+    "farm_status": 0,
+    "absent_pids": [
+      662040,
+      662044,
+      662145
+    ],
+    "allocation_released": true
+  },
+  "limits_of_claim": [
+    "This record qualifies the 12-book allocator lifecycle closure, reusing 6 lower books and newly certifying 6.",
+    "Allocator wall time improved from 11.213s to 10.509s in these j1 records; it still exceeds 10 seconds. D26 remains open.",
+    "No whole-application closure or consumer qualification is claimed."
+  ]
+}
