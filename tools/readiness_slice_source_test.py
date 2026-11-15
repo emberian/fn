@@ -18,6 +18,7 @@ class Slice(unittest.TestCase):
     # the same declared physical-anchor count; old geometry remains exact.
     expected=expected.replace('(include-book "checkpoint-cbase-state")', '(include-book "checkpoint-cbase-state")\n(include-book "checkpoint-geometry")')
     expected=expected.replace('    (* 2 (nfix (fn2-b-capacity :extent-slots 16 profile)) (fn2-b-checkpoint-capacity profile))))', '    (* 2 (nfix (fn2-b-capacity :extent-slots 16 profile)) (fn2-b-checkpoint-capacity profile))\n    ; Four independent physical anchors cannot alias canonical source holds.\n    (* *fn2-checkpoint-anchor-slots* (nfix (fn2-b-capacity :extent-slots 16 profile)))))')
+    expected=expected.replace('(rc-frontier-first :u60) (rc-frontier-last :u60) (rc-frontier-started :bool)', '(rc-frontier-first :u60) (rc-frontier-last :u60) (rc-frontier-started :bool)\n          (rc-own-token :u32) (rc-own-left :u32)')
    self.assertEqual((B/name).read_text(),expected)
  def test_same_actual_scan_provider_forms(self):
   for name in ['run-physical-state.lisp','run-physical-resources.lisp','run-physical-geometry.lisp','run-physical-readiness.lisp']:
