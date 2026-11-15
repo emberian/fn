@@ -222,6 +222,7 @@ import fcntl
 import fractions
 import hashlib
 import json
+import math
 import os
 from pathlib import Path
 import queue
@@ -1076,14 +1077,124 @@ def brief(output: str, keep: int = 60, where: str | None = None) -> str:
 UNLIMITED_HEADS = ("defpkg", "defttag")
 
 
-def wrap_limit(form: str, limit: float | None) -> str:
-    if limit and is_event(form) and head_and_name(form)[0] not in UNLIMITED_HEADS:
+def wrap_limit(form: str, limit: float | None, *, event: bool = False) -> str:
+    if limit and (event or is_event(form)) and head_and_name(form)[0] not in UNLIMITED_HEADS:
         if float(limit).is_integer():
             return f"(with-prover-time-limit {int(limit)} {form})"
         # ACL2 takes a rational number of seconds.
         fraction = fractions.Fraction(str(limit)).limit_denominator(1000)
         return f"(with-prover-time-limit {fraction.numerator}/{fraction.denominator} {form})"
     return form
+
+
+def declared_event_macros(texts: list[str]) -> set[str]:
+    """Finite declaration provenance, not a semantic audit of macro expansions.
+
+    Read only literal event positions. DEFColumns' preservation macro is a known
+    generator output; arbitrary event-generating expressions are never evaluated.
+    LOCAL declarations may classify a form but never move or export that form.
+    """
+    found: set[str] = set()
+
+    def visit(form: str) -> None:
+        text = form.strip()
+        if not text.startswith("(") or not text.endswith(")"):
+            return
+        inner = text[1:-1]
+        children = spans(inner)
+        if not children:
+            return
+        head = inner[slice(*children[0])].lower()
+        if head in ("defmacro", "defcolumns") and len(children) >= 2:
+            name = inner[slice(*children[1])].lower()
+            if re.fullmatch(r"[a-z0-9*+!_<>/=?.-]+", name):
+                found.add(name if head == "defmacro" else name + "-preserves")
+        start = (2 if head == "encapsulate" else 1)
+        if head in ("local", "progn", "encapsulate"):
+            for begin, end in children[start:]:
+                visit(inner[begin:end])
+
+    for text in texts:
+        for form in forms(text):
+            visit(form)
+    return found
+
+
+def source_event_inventory(path: Path, root: Path | None = None) -> tuple[set[str], dict[str, str], str]:
+    """Snapshot an actual source closure, binding its finite macro names to SHA256s.
+
+    No global registry: edits require a fresh inventory. Refuse a closure changing
+    during collection. The returned target text is the same snapshot classified.
+    This is the source loader's existing macro contract, not proof of safe macro
+    expansion or that a declaration is available in the session's current world.
+    """
+    root = (root or ROOT).resolve()
+    path = path.resolve()
+    if path.is_relative_to(root):
+        book = path.relative_to(root).with_suffix("").as_posix()
+        closure = certs.closure(root, book)
+        sources = {name: root / (name + ".lisp") for name in closure}
+    else:
+        closure = None
+        sources = {str(path): path}
+    snapshots = {name: source.read_bytes() for name, source in sources.items()}
+    if closure is not None and certs.closure(root, book) != closure:
+        raise ValueError("source event inventory closure changed while reading")
+    if any(source.read_bytes() != snapshots[name] for name, source in sources.items()):
+        raise ValueError("source event inventory bytes changed while reading")
+    hashes = {name: hashlib.sha256(data).hexdigest() for name, data in snapshots.items()}
+    texts = [data.decode("utf-8") for data in snapshots.values()]
+    target = next(snapshots[name].decode("utf-8") for name, source in sources.items()
+                  if source.resolve() == path)
+    return declared_event_macros(texts), hashes, target
+
+
+def per_event_steps(form: str, steps: int, limit: float | None = None,
+                    event_macros: set[str] | None = None) -> str:
+    """Give one unchanged original event a fresh counter, uncharged to its parent.
+
+    Do not split LOCAL, ENCAPSULATE or macro expansions: their original scope
+    and aggregate budget remain intact. The enclosing source-book wrapper is
+    constructed separately by encapsulated(). Its summary no longer measures
+    total proof work; inspect the original events' summaries instead.
+    """
+    if isinstance(steps, bool) or not isinstance(steps, int) or not 1 <= steps <= 2_000_000:
+        raise ValueError("per-event steps must be an integer from 1 to 2000000")
+    text = form.strip()
+    if not text.startswith("(") or not text.endswith(")") or len(forms(text)) != 1:
+        raise ValueError("per-event steps requires a literal event form")
+    head = form_head(text)
+    # Reject literal commands, limit overrides, raw evaluation and trust mechanisms.
+    # The explicitly listed project event macros follow the source loader contract; their expansions
+    # remain one original event, never recursively split or evaluated by Python.
+    allowed = set(EVENT_HEADS) | {"local", "progn", "in-theory", "table", "deflabel",
+                                  "defmacro", "defequiv", "defcong", "defrefinement",
+                                  "assert-event", "value-triple", "include-book", "defun-sk", "defcolumns",
+                                  "fn2-book-layer", "fn2-extents-preserves", "defthm-owed",
+                                  "defcorechild", "defstobj", "fn2-cm-defreaders", "defun-nx",
+                                  "fn2-owed-discharge", "fn2-assert-owed-teeth",
+                                  "fn2-assert-square-evidence", "defun-inline", "deftheory",
+                                  "defcost", "fn2-core-preserves", "fn2-succ-slots-preserves",
+                                  "fn2-control-preserves", "fn2-issue-children-wrapper",
+                                  "fn2-machines-keeps-directory", "fn2-machines-preserves",
+                                  "fn2-machines-wait-queue", "fn2-ops-preserves",
+                                  "fn2-pool-preserves", "fn2-env-ops-advanced-by-heads"}
+    forbidden = {"skip-proofs", "defaxiom", "defttag", "defattach", "progn!",
+                 "with-prover-step-limit", "with-prover-time-limit", "ld", "program"}
+    if (head in forbidden or head.startswith(("set-", ":"))
+            or leaves_loop(form) or undoes(form)):
+        raise ValueError(f"per-event steps refuses control/trust event head {head!r}")
+    if head not in allowed and head not in (event_macros or set()):
+        raise ValueError(f"per-event steps does not support event head {head!r}")
+    inner = text[1:-1]
+    children = spans(inner)
+    start = 2 if head == "encapsulate" else 1
+    if head in ("local", "progn", "encapsulate"):
+        if head == "local" and len(children) != 2 or head == "encapsulate" and len(children) < 2:
+            raise ValueError("malformed literal event container")
+        for begin, end in children[start:]:
+            per_event_steps(inner[begin:end], steps, event_macros=event_macros)  # validate, never split
+    return f"(with-prover-step-limit {steps} t {wrap_limit(form, limit, event=True)})"
 
 
 # --- the session server ------------------------------------------------------
@@ -1231,7 +1342,9 @@ HOISTED_HEADS = ("include-book", "defpkg")
 
 
 def encapsulated(text: str, directory: Path, skip: set[str],
-                 limit: float | None = None) -> tuple[list[str], str]:
+                 limit: float | None = None,
+                 steps: int | None = None,
+                 event_macros: set[str] | None = None) -> tuple[list[str], str]:
     """A book's forms as one `(encapsulate () ...)`, so its local events stay local.
 
     Loaded form by form, a from-source book's `local` lemmas stay in the
@@ -1248,6 +1361,8 @@ def encapsulated(text: str, directory: Path, skip: set[str],
     belongs in the session anyway; a local one stays inside, local.  With
     LIMIT, each event inside is wrapped in `with-prover-time-limit`, as a
     `send` is, so one runaway lemma costs LIMIT seconds, not the session.
+    STEPS opts in to fresh counters per unchanged original event, without
+    charging the source-book encapsulate. Its summary is then not total work.
     The encapsulate is empty text when no embedded events remain; an
     include-only umbrella still exports its successfully loaded dependencies.
     """
@@ -1263,7 +1378,8 @@ def encapsulated(text: str, directory: Path, skip: set[str],
         if head in HOISTED_HEADS and not LOCAL_FORM.match(form):
             hoisted.append(form)
         else:
-            kept.append(wrap_limit(form, limit))
+            limited = wrap_limit(form, limit)
+            kept.append(per_event_steps(form, steps, limit, event_macros) if steps is not None else limited)
     # Include-only umbrellas have no embedded events after hoisting/skips.
     # ACL2 rejects an empty encapsulate; the includes already export the world.
     return hoisted, ("(encapsulate ()\n" + "\n".join(kept) + "\n)" if kept else "")
@@ -1581,7 +1697,9 @@ def handle(request: dict, acl2: Acl2, state: dict, default_limit: float) -> dict
         return {"error": True, "output": f"send exactly one form, not {count}"}
     limit = default_limit if request.get("limit") is None else request["limit"]
     hard = limit * 1.5 + 30
-    if head_and_name(form)[0] == "ld":
+    if (head_and_name(form)[0] == "ld"
+            or request.get("scoped_event_budgets") and limit == 0
+            and form_head(form) == "encapsulate"):
         # A source LD contains many individually budgeted events. Its total
         # time is not the budget of one proof; use the startup load allowance.
         hard = max(hard, state.get("load_timeout", 600.0))
@@ -2303,7 +2421,8 @@ def send_one(name: str, form: str, limit: float | None, full: bool) -> int:
 
 
 def send_many(name: str, items: list[tuple[str, str]], limit: float | None,
-              full: bool = False, keep_going: bool = False) -> int:
+              full: bool = False, keep_going: bool = False,
+              scoped_event_budgets: bool = False) -> int:
     """Each (label, form) in order: one line of cost per form, the output of a refusal.
 
     Stops at the first refusal unless KEEP_GOING; a form that outlives the
@@ -2311,7 +2430,8 @@ def send_many(name: str, items: list[tuple[str, str]], limit: float | None,
     """
     totals = Totals()
     for position, (label, form) in enumerate(items, 1):
-        answer = ask(name, {"op": "send", "form": form, "limit": limit})
+        answer = ask(name, {"op": "send", "form": form, "limit": limit,
+                            "scoped_event_budgets": scoped_event_budgets})
         output = answer.get("output", "")
         refused = bool(answer.get("error"))
         cost = measure(output)
@@ -2850,8 +2970,30 @@ def guard_notes(text: str, chosen: range) -> list[str]:
 
 def send_range(args) -> int:
     """A book's forms from --from to --until/--through into a live session."""
+    if getattr(args, "per_event_steps", None) is not None and not args.ld_local:
+        raise SystemExit("proof-repl: --per-event-steps requires --ld-local")
+    if getattr(args, "per_event_steps", None) is not None:
+        if args.limit is None or not math.isfinite(args.limit) or args.limit <= 0:
+            raise SystemExit("proof-repl: --per-event-steps requires an explicit "
+                             "positive finite --limit per original event")
     path = book_path(args.book)
-    all_forms = forms(path.read_text(encoding="utf-8"))
+    event_macros = None
+    if getattr(args, "per_event_steps", None) is not None:
+        event_macros, source_hashes, source_text = source_event_inventory(path)
+        if path.resolve().is_relative_to(ROOT.resolve()):
+            refusal = attachment_source_refusal({name: [] for name in source_hashes},
+                                                list(source_hashes))
+        else:
+            refusal = ("proof-repl: refusing scoped source attachment replay"
+                       if attachment_events(source_text) else None)
+        if refusal:
+            raise SystemExit(refusal)
+        inventory_hash = hashlib.sha256(json.dumps(source_hashes, sort_keys=True).encode()).hexdigest()
+        print(f"source event inventory: {len(event_macros)} declared macro names from "
+              f"{len(source_hashes)} source snapshots; SHA256 {inventory_hash}", flush=True)
+    else:
+        source_text = path.read_text(encoding="utf-8")
+    all_forms = forms(source_text)
     chosen = select_range(all_forms, args.start, args.until, args.through)
     state = read_state(args.name) or {}
     from_source = set(state.get("ld") or [])
@@ -2862,16 +3004,27 @@ def send_range(args) -> int:
                       args.until))
     if not items:
         return 0
-    text = path.read_text(encoding="utf-8")
+    text = source_text
     for line in guard_notes(text, chosen):
         print(line, flush=True)
     warn_free_expands([form for _, form in items], [text])
     if ld_local:
+        steps = getattr(args, "per_event_steps", None)
+        if steps is not None:
+            print(f"fresh {steps} steps per original event; enclosing encapsulate "
+                  "summary excludes child proof work", flush=True)
         hoisted, body = encapsulated("\n".join(form for _, form in items), path.parent,
-                                     set(), None)
+                                     set(), args.limit if getattr(args, "per_event_steps", None)
+                                     is not None else None, getattr(args, "per_event_steps", None),
+                                     event_macros)
         items = ([(form_label(0, form).split(" ", 1)[1], form) for form in hoisted]
                  + ([(f"#{chosen.start + 1}-#{chosen.stop} (encapsulate)", body)] if body else []))
     items.insert(0, ("source-book", f'(assign proof-repl-source-book "{path}")'))
+    if getattr(args, "per_event_steps", None) is not None:
+        # None means "session default", whereas zero explicitly disables the
+        # outer time wrapper. Original events already carry their own limits.
+        return send_many(args.name, items, 0, args.full, args.keep_going,
+                         scoped_event_budgets=True)
     return send_many(args.name, items, args.limit, args.full, args.keep_going)
 
 
@@ -4356,6 +4509,10 @@ def main(argv: list[str] | None = None) -> int:
                    help="send the range inside one encapsulate (non-local include-book "
                         "and defpkg first), so its local events are dropped at the end, "
                         "as a certified include drops them")
+    p.add_argument("--per-event-steps", type=int, metavar="N",
+                   help="with --ld-local: fresh 1..2000000 step budget per unchanged "
+                        "original source event; no parent charging; outer summary "
+                        "does not measure total work")
     p.add_argument("--skip-includes", action="store_true",
                    help="skip every local include-book form (the session's own "
                         "from-source books are always skipped)")

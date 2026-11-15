@@ -8,10 +8,12 @@
  (if (atom xs) (null xs)
   (and (unsigned-byte-p 8 (car xs)) (fn2-nde-octetsp (cdr xs)))))
 (defun fn2-nde-descriptorp (d fd)
- (and (true-listp d) (equal (len d) 7) (equal (nth 0 d) fd)
+ (and (true-listp d) (equal (len d) 10) (equal (nth 0 d) fd)
       (or (null (nth 1 d)) (natp (nth 1 d)))
       (or (null (nth 2 d)) (natp (nth 2 d)))
       (member-eq (nth 3 d) '(:read :write :fence))
+      (natp (nth 7 d)) (posp (nth 8 d))
+      (or (null (nth 9 d)) (posp (nth 9 d)))
       (natp (nth 4 d)) (natp (nth 5 d))
       (if (eq (nth 3 d) :write)
           (and (fn2-nde-octetsp (nth 6 d)) (equal (len (nth 6 d)) (nth 5 d)))
@@ -102,12 +104,29 @@
  (and (natp address) (fn2-nde-octetsp before) (fn2-nde-octetsp after)
       (fn2-nde-slice (fn2-nde-span-effects effects address (len before)) address before after)))
 
+; Positive completed transfer spans must exist in the observed fixed image.
+; Empty reads beyond EOF are harmless. An unresolved requested span may cross
+; EOF without any effect; it remains an uncertain bound, never exact evidence.
+(defun fn2-native-device-effects-bounded-p (effects image-size)
+ (declare (xargs :verify-guards nil))
+ (if (atom effects) (null effects)
+  (let ((e (car effects)))
+   (and (case (car e)
+          ((:read :write)
+           (and (natp (nth 1 e)) (natp (nth 2 e))
+                (or (equal (nth 2 e) 0) (<= (+ (nth 1 e) (nth 2 e)) image-size))))
+          (:uncertain (and (natp (nth 1 e)) (natp (nth 2 e))))
+          (:fence t)
+          (otherwise nil))
+        (fn2-native-device-effects-bounded-p (cdr effects) image-size)))))
+
 ; The streaming consumer starts at cursor 0, requires identical observed image
 ; sizes, admits each nonempty slice only at the returned cursor, and finishes
 ; ONLY at image-size. A sampling caller cannot obtain the complete verdict.
 (defun fn2-native-device-image-chunk (effects image-size cursor address before after)
  (declare (xargs :verify-guards nil))
  (if (and (natp image-size) (natp cursor) (equal address cursor)
+          (fn2-native-device-effects-bounded-p effects image-size)
           (consp before) (<= (+ cursor (len before)) image-size)
           (fn2-native-device-image-slice-p effects address before after))
      (mv :ok (+ cursor (len before)))
@@ -115,5 +134,6 @@
 (defun fn2-native-device-image-finish (effects before-size after-size cursor)
  (declare (xargs :verify-guards nil))
  (if (and (natp before-size) (equal before-size after-size) (equal cursor before-size))
-     (if (fn2-native-device-effects-uncertain-p effects) :uncertain-effect-bound :exact-process-view)
+     (if (not (fn2-native-device-effects-bounded-p effects before-size)) :out-of-image-effect
+       (if (fn2-native-device-effects-uncertain-p effects) :uncertain-effect-bound :exact-process-view))
    :incomplete-image))

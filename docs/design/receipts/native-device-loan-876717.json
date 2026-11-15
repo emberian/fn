@@ -1,0 +1,125 @@
+{
+  "manifest": "/build/lanes/stride-owed-integrated/build/acl2/certify-20261115T045011Z-876717/manifest.json",
+  "manifest_status": "passed",
+  "manifest_seconds": 2.033,
+  "closure": {
+    "sim/native-device-effects": "de5ee4c6bc10da3a41c6ad90b3602b9da94869b1635d2740cf06ab81de8d0e93",
+    "tests/native-device-effects-unit": "6912da73dc3c49531a56f38529e2b0427e77e3899bd601f0dd067f7122f9d7ab",
+    "sim/native-device-bindings": "4c04202025f8c35e84aff23ee4b5684ef981e2f30dd2f410667ada5eb2055765",
+    "books/terminal-values": "c789d269c4807c6b86c1a90ae0ce59a81dfa8540d5fccf803fb3ccc7712a48a8",
+    "books/vocab": "4099736dd0ecb84952f05cfe2065db89e11432ebb9e65e67d2584ca5f4c2255f",
+    "books/profile": "1f216ed6c0505dc1b01ada0f7d3d9482af6da7b7dff8736b5100ef3e3fbc1038",
+    "books/operations": "959da2da147247146a2360e23d2c7d6abd6c581abdf0f6873661f63cee87484f",
+    "books/declare": "1c706e559ef3b314fb9bd48171fb2891fad8613bd4eb1c5de5268443833c4bfb",
+    "books/owed": "04104985582a552ad115a0a6adcf2e957597b1b9ca3228bf25900877cbbcb17b",
+    "books/columns": "d3a58387c7c0dabc4ceaffeeb20672031a04693d8dd52078f50c5fa487c0d5f8",
+    "books/device-boundary": "a95986549c060d0fef96005999e6df9292cec47150d525008ddafb6e6e08d8ef",
+    "tests/native-device-bindings-unit": "e2405b2e9bd19a132ab9694ac20646891dcabdd62eb8b26cc70f43ec0e4e3bd8"
+  },
+  "books": {
+    "sim/native-device-effects": {
+      "key": "2f53130e4f465735e1ef300793dd86c30d3177a930b4990de8fe7941f3ecbc80",
+      "entries": [
+        {
+          "path": "/home/fn/.cache/fn-certs/2f53130e4f465735e1ef300793dd86c30d3177a930b4990de8fe7941f3ecbc80/24812bb86804db98",
+          "compiled": true,
+          "metadata": {
+            "origin_kind": "worktree",
+            "origin_root": "/build/lanes/stride-owed-integrated",
+            "toolchain_identity": "8aeb1bea18968c6cd33ac633a80ebf67e4924504db112fd27eb11f16a27b2a8c"
+          }
+        }
+      ]
+    },
+    "tests/native-device-effects-unit": {
+      "key": "b28786266256b1229682c284f97fa17972d64bfe731adbc46a6fdfdf49e0cbb3",
+      "entries": [
+        {
+          "path": "/home/fn/.cache/fn-certs/b28786266256b1229682c284f97fa17972d64bfe731adbc46a6fdfdf49e0cbb3/24812bb86804db98",
+          "compiled": true,
+          "metadata": {
+            "origin_kind": "worktree",
+            "origin_root": "/build/lanes/stride-owed-integrated",
+            "toolchain_identity": "8aeb1bea18968c6cd33ac633a80ebf67e4924504db112fd27eb11f16a27b2a8c"
+          }
+        }
+      ]
+    },
+    "sim/native-device-bindings": {
+      "key": "f002829e46dce2849cd294e0710331bac8e961e0358ed87a4479f56824e1adbc",
+      "entries": [
+        {
+          "path": "/home/fn/.cache/fn-certs/f002829e46dce2849cd294e0710331bac8e961e0358ed87a4479f56824e1adbc/24812bb86804db98",
+          "compiled": true,
+          "metadata": {
+            "origin_kind": "worktree",
+            "origin_root": "/build/lanes/stride-owed-integrated",
+            "toolchain_identity": "8aeb1bea18968c6cd33ac633a80ebf67e4924504db112fd27eb11f16a27b2a8c"
+          }
+        }
+      ]
+    },
+    "tests/native-device-bindings-unit": {
+      "key": "9604421c8e4dd746a04f0c005a5b73c5cdb69c5b78c0eed48756d0c9fe1f8f02",
+      "entries": [
+        {
+          "path": "/home/fn/.cache/fn-certs/9604421c8e4dd746a04f0c005a5b73c5cdb69c5b78c0eed48756d0c9fe1f8f02/24812bb86804db98",
+          "compiled": true,
+          "metadata": {
+            "origin_kind": "worktree",
+            "origin_root": "/build/lanes/stride-owed-integrated",
+            "toolchain_identity": "8aeb1bea18968c6cd33ac633a80ebf67e4924504db112fd27eb11f16a27b2a8c"
+          }
+        }
+      ]
+    }
+  },
+  "sha256": {
+    "sim/native-device-effects.lisp": "de5ee4c6bc10da3a41c6ad90b3602b9da94869b1635d2740cf06ab81de8d0e93",
+    "tests/native-device-effects-unit.lisp": "6912da73dc3c49531a56f38529e2b0427e77e3899bd601f0dd067f7122f9d7ab",
+    "sim/native-device-bindings.lisp": "4c04202025f8c35e84aff23ee4b5684ef981e2f30dd2f410667ada5eb2055765",
+    "books/terminal-values.lisp": "c789d269c4807c6b86c1a90ae0ce59a81dfa8540d5fccf803fb3ccc7712a48a8",
+    "books/vocab.lisp": "4099736dd0ecb84952f05cfe2065db89e11432ebb9e65e67d2584ca5f4c2255f",
+    "books/profile.lisp": "1f216ed6c0505dc1b01ada0f7d3d9482af6da7b7dff8736b5100ef3e3fbc1038",
+    "books/operations.lisp": "959da2da147247146a2360e23d2c7d6abd6c581abdf0f6873661f63cee87484f",
+    "books/declare.lisp": "1c706e559ef3b314fb9bd48171fb2891fad8613bd4eb1c5de5268443833c4bfb",
+    "books/owed.lisp": "04104985582a552ad115a0a6adcf2e957597b1b9ca3228bf25900877cbbcb17b",
+    "books/columns.lisp": "d3a58387c7c0dabc4ceaffeeb20672031a04693d8dd52078f50c5fa487c0d5f8",
+    "books/device-boundary.lisp": "a95986549c060d0fef96005999e6df9292cec47150d525008ddafb6e6e08d8ef",
+    "tests/native-device-bindings-unit.lisp": "e2405b2e9bd19a132ab9694ac20646891dcabdd62eb8b26cc70f43ec0e4e3bd8"
+  },
+  "scope": "Qualified physical effect and scalar loan/Post helpers only; actual core envelope and selected native whole-image join remain separately unqualified.",
+  "source": "10068e625 plus c4c9c11cb and explicit offset0 raw mock constructors",
+  "raw": {
+    "path": "forge:/tmp/stride-device-loan-raw.LCpTS3/run2.log",
+    "result": "DEVICE EFFECT RECORDER CONTROLS PASS",
+    "cap": "256MiB, swap0, SBCL128MiB, timeout30",
+    "source_sha256": {
+      "host/device.lisp": "d2f0e0b118fd863ab32926da4053152846bcad1c9584700721895cfe63335c89",
+      "tests/native-device-effects-capture.lsp": "3d44f05a5e6d8041a88525f0f98e38f01f0bdae20f350e9ddf643695032d320a",
+      "tests/native-device-effects-capture-unit.lsp": "1847504f4d21fc3655d9063f00ec40030b5f8a09d20b6a316da8d2ba95be0a75"
+    }
+  },
+  "author": {
+    "log": "forge:/tmp/stride-device-loan-author2.log",
+    "qualified_parents": 8,
+    "source_roots": 4,
+    "control_forms": [
+      17,
+      15
+    ],
+    "refused_after_repair": 0,
+    "closed": true
+  },
+  "first_refusals": [
+    "author CLI cached-only+explicit ld refused before ACL2; explicit ld refuses unnamed cache misses",
+    "dotted Post reached NTH before shape check; outer proper-list check added",
+    "raw mock constructors omitted offset; explicit offset0 added, expected packet unchanged"
+  ],
+  "limits": [
+    "Opaque backing tokens attest selected capture object identity, not general host memory noninterference",
+    "Raw performer mocked; no disk/served witness",
+    "Powerloss Fence truth remains external assumption",
+    "Actual envelope and same-object image/control replay source remain unadmitted"
+  ]
+}

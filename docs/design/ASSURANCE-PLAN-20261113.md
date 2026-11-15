@@ -7,10 +7,80 @@ must be derived from that store and the actual served call/attachment graph.
 
 ## Current integration frontier — 2026-11-15 UTC
 
-Current integration includes matcher DP traversal `b88e96190`, retirement dispatch, actual-type
-codec fixtures, failed-Send classification, consumed-input accounting and farm
-Git metadata protection. No current whole-system image, full host gate,
-canonical served certificate, or completed assurance claim exists.
+The next completion milestone is actual APPEND → STATUS → query, followed by
+recovery of accepted data. Integrated work now goes directly to upstream dev;
+component records alone do not establish this milestone. The shared application
+build owns the coherent current callback/runtime prefix and executable controls.
+
+Raw APPEND EOF controls from85c0114a3 are integrated as unexecuted regressions:
+seven real wire sessions require a trailing-CR refusal, empty STATUS, successful
+same-Message-ID retry, exactly one published occurrence, successful epoch setup,
+quiet termination and zero stop reason. Existing session helpers and assertions
+are preserved byte-for-byte in the shared support extraction. The precise
+final-mode-check mutant must reach actual reply divergence; a build failure is
+not a successful mutation control. Baseline and mutant execution remain owed.
+
+Current integration includes qualified held child release and generic compiler
+record890585 (29 books, root0bcf7ee29), device loan bindings record876717
+(12 books), and the earlier matcher/codec/pool scopes below. Root059ec5264 adds
+scoped CNS artifact generation from one immutable packet; its17 source controls
+pass, but a fresh served packet and its ACL2/Lean checks remain outstanding.
+No current whole-system image, full host gate, canonical served certificate, or
+completed assurance claim exists.
+
+Grouped reference-effect generation is now qualified at exact30 record939931
+(27 reused, three new;6.187s); all30 composed source hashes match before/after.
+Actual emitted mutable, readonly and two-child fixture programs admit and execute
+with all scalar results, fixture cells and FIFO checked. Logical world metadata
+binds recognizer ownership and ABI. This does not discharge generated
+WHOLE-RESULT obligations or qualify the actual IdentityDecide/CNS callbacks;
+those consumers and full selection/leaf/reuse composition remain next.
+
+The stable24 runtime frontier and credit11 API/primitive-control records now pass
+(18.950s and5.383s respectively); root verified all current source hashes.
+Credit kind-zero repair now supersedes the credit API record: exact11 record
+928116 passes in5.73s (nine reused, two new), with all11 composed source hashes
+matching before/after. Begin and owner checks accept the actual zero-based
+machine kind while retaining positive generation/nonce and exact provenance.
+Controls execute configure/begin/reserve/end/return and unchanged-frame refusal
+for unbound ownership and zero generation. This qualifies primitive credit
+behavior, not actor admission, redemption, or end-to-end progress.
+Public credit TYPE/WFP/ROWS contracts now pass exact10 record952201
+(nine reused, one new;8.704s), with all10 current source hashes and qualified
+cache entries checked. The generated configuration-resizer frame class has two
+passing source controls. This supplies existing API carrier effects to consumers;
+full accounting, admission/redemption and progress obligations remain separate.
+Checkpoint/member typed-readonly contract replacement remains active. The actual
+pinned-I/O extraction now passes exact34 record935930 (33 reused, one new;7.466s).
+All34 composed source hashes match; ten original production forms move unchanged
+into storage-block-io, and machines-b imports that implementation. Five source
+identity/registry controls pass. B registry composition, the66-book actual reader
+fixture, and larger cold/native executions remain outstanding. Native digest-carrier
+evidence separately passes exact19 record936479 (17 reused, two new;3.019s),
+with all19 current hashes matched. Its whole-effect theorem is conditional on the
+explicit native observation assumption; it is not native execution or a C/crypto proof. The columns carrier-hint default fix
+f2a1a1233 and layout proof-cost donor e8885ffdb are held for a shared convergence
+that removes temporary consumer hints and requalifies affected current closures.
+
+Two substantive obligations remain distinct from proof automation. The pending
+held-release independent model omits actual credited-input refusal ordering;
+Q1 source candidate8b1f165ba covers those inputs under its original hypotheses,
+including sticky stops, query preflight and a completed workspace return before
+namespace refusal. Its actual-callback controls remain unexecuted. The adjacent
+refusal oracle is being checked for the same sticky-stop rule.
+Recovery's consumed-prefix predicate alone does not establish uniqueness of live
+allocation epoch/identity pairs: exact7 record920695 executes a duplicate-adoption
+counterexample under the allocator invariant and original API guards. This is a
+primitive counterexample, not authenticated replay reachability. The bounded
+recovery identity index carrier exists at e34211eb9; one-probe steps, atomic
+adopt/remove, replay wiring and crash/retry controls remain unfinished.
+
+A separate parser coverage gap concerns raw CNS APPEND EOF. The real
+fn2-cns-feed-article check rejects a trailing CR/non-BOL final mode, while the
+existing upload-feed fixture calls the nonraw entry point. This is no confirmed
+runtime bug. Actual callback controls for trailing CR, quantum/fragment boundaries
+and removal of the EOF check are assigned to audit_claims; no-publication and
+subsequent-append claims require the composed lifecycle, not grammar output shape.
 
 The public matcher now has unconditional correspondence to the independent
 language predicate, including original-input domain checks before reversal,
@@ -33,6 +103,47 @@ The raw gate substitutes the performer and proves only recorder behavior.
 The selected single-submitter/initial direct-setup premise, actual Take/Post
 binding, whole-image driver execution and crash recovery correspondence remain
 open. A successful Fence observation does not prove power-loss persistence.
+The out-of-image effect gap found during driver review is repaired: ACL2 checks
+positive completed Read/Write extents at both chunk admission and finalization,
+including empty images. Zero-byte Reads and uncertain requested spans retain
+their distinct semantics. Exact two-book record
+`certify-20261115T042149Z-847972` passes in 0.348 seconds; root matched current
+source hashes and closure keys. The renewed mocked raw-recorder control also
+passes nonzero-address short Reads, untouched sentinels and error Read capture.
+These supersede the earlier checker source; actual selected-host binding and
+whole-image driver execution remain open.
+
+The scalar device binding interface now consumes the actual device request
+policy and shared terminal normalizer. Exact eleven-book record
+`certify-20261115T043011Z-856572` passes (nine reused, two new; 1.960 seconds);
+root matched all source hashes and both new closure keys. Controls reject
+missing descriptor fields, altered short/error results and Read bytes, and
+missing ordinary physical jobs. The explicit backend determines unsupported
+requests through the production policy. The Post hook is contextual behind
+actual envelope-step validation. Ordered Take/submission correspondence,
+logical Write-loan comparison and complete native replay remain separate;
+matching job identities as an unordered set is insufficient.
+
+Selected cold recovery has two source repairs awaiting qualification under the
+reclamation owner. Recovery finishes frozen, but ordinary epoch initialization
+refuses that state: the private post-Fence finalization requires complete
+bank-protection reconstruction and orphan classification. In addition, eagerly
+adopting all suffix physical candidates can reject legitimate extent reuse before
+its preceding RELEASE is replayed. Directory/read provenance must be installed
+separately from chronological authenticated ownership changes. Ordinary frozen
+state refusals remain intact; physical reuse stays closed until finalization.
+
+
+The compression sibling-wait repair and TLS progress regressions pass current
+joint record `certify-20261115T041953Z-845993`: thirty-two books, eight reused,
+twenty-four newly certified, 96.572 seconds. Root matched all before/after
+source hashes to the integration candidate. A fresh or bound sibling no longer
+requests an immediate wake while another operation owns a pending TLS child;
+the owner retains socket readiness and the sibling becomes runnable after
+settlement. Actual operation controls and the original-wait mutation pass.
+The suspected TLS progress defect was refuted: actual NEXT already uses the SSL
+progress epoch. Full Receive/Send controls and an epoch-conflation mutation
+protect that behavior. Native host delivery remains a separate unqualified gate.
 
 The shared columns diagnostic and opt-in guard-hint API are qualified by
 `certify-20261115T034623Z-812141`: six books, two reused and four new,
@@ -52,10 +163,29 @@ Its seven-book closure matches qualified cache key
 `079b4ac98a0b3d945869386f9e8d2ebecf0a00d8715e247ba18202d4d7fbfc24`;
 root independently checked source, closure and certificate/FASL/port digests.
 This adds credit provenance and protected ordinary reservations; credit
-configuration and consumers remain unqualified. The larger twelve-book run
-stopped at pool-ranges preservation: its interactive pass did not reproduce in
-clean certification. That repair remains open. The independent format-check
-closure does not include pool-ranges, so its existing scoped gate can proceed.
+configuration and consumers remain unqualified. The earlier twelve-book run
+stopped at pool-ranges preservation. The repair moves the unchanged public
+copy-up extent/frame theorem before the preservation proof that consumes it,
+with shared getter opacity. Root compared all sixteen explicit function and
+theorem forms: bodies, guards and statements are byte-identical.
+Exact thirteen-book record `certify-20261115T044157Z-868394` now passes
+(ten reused, three new; 5.437 seconds). Root matched every before/after source
+hash to integration. Current ordinary pool/query controls and the protected-floor
+fixture pass; the latter has an explicit synthetic configured-accounting premise
+and does not qualify credit configuration APIs. The ranges prerequisite is closed. The independent format-check
+closure does not include pool-ranges. Its exact twenty-one-book record
+`certify-20261115T041904Z-845121` now passes: ten reused, eleven newly
+certified, 178.618 seconds. Root matched all before/after source hashes against
+the current integration tree and confirmed the runner unchanged. This qualifies
+the format prefix, not checkpoint/member or the complete served core. The next
+alloc/read-contract prerequisite record `certify-20261115T042507Z-851291`
+passes its exact ten-book scope (eight reused, two new; 10.558 seconds). Root
+matched all ten before/after source hashes to integration; the owner audited
+qualified compiled cache entries. The ranges record above closes the final prerequisite for the
+actual checkpoint/member guard pilot.
+Layout (56.921 seconds), format-events (35.140), format-check (24.448),
+format-storage (22.652) and blake3 (18.539) retain proof-cost debt; targeted
+layout guard work is separate from current consumer qualification.
 
 
 Allocator refinement `8595723fc` is qualified by twelve-book record
@@ -582,3 +712,63 @@ map roundtrip admission, authenticated selected-base restoration, ordered suffix
 replay, dynamic maintenance headroom, and commit-directory/candidate lifetime.
 FREE and checkpoint activation remain disabled until their connected prerequisites
 are implemented and verified. Authorization remains an independent release blocker.
+
+## Device loan binding integration — record 876717
+
+Integrated donor0376a63c1's scalar device helpers and raw recorder. Descriptors
+now bind the submitted address and backing-object identity to the slab captured
+at actual host storage submission. Canonical Post shape is checked before field
+access; shifted-address and replacement-buffer controls reject unchanged bytes.
+Exact12 record passed in2.033s (8reused,4new); root verified all12 current closure
+hashes and all3 raw fixture source hashes against the receipt. Raw mocked performer
+controls passed. Actual envelope replay, host image execution and general memory
+noninterference remain unqualified; this gate does not establish disk durability.
+
+## Current consumer gates and restored assurance ownership
+
+At root b8a54b894, exact device envelope composition on donor6fc0926cf has
+227 books:56 matching qualified compiled pairs and171 missing. Assembly-core,
+host-boundary and check-envelope are among the missing current keys. The bounded
+reader candidate de31 has100 books:30 qualified and70 missing. These read-only
+inventories do not qualify either composition; convergence shares their common
+compiler dependencies rather than starting independent cold builds.
+
+The actual CHECK-STEP guard passed in retained author world9abe after adding a
+generic-index integer projection from the existing DECODE carrier contracts.
+Its original body and guard are unchanged; MEMBER and clean record qualification
+remain pending. Q1's old author world is terminal with owned cleanup verified;
+the next same29-book world uses corrected per-original-event budgets.
+
+Audit_bridge resumes the actual CNS canonical body/domain/selected-attachment
+connection, including the pending31b selected-dispatch helper. Audit_claims resumes
+independent stored-content/reread binding and whole-antecedent keystone evidence
+checks against current reclamation source. Their source candidates remain separate
+from current qualified claims; neither task changes authorization activation.
+
+## Current compiler and held-release integration — record 890585
+
+The integrated core child release now treats query-held ownership as retained:
+`:held` leaves pool and control unchanged; only`:ok`/`:retired` complete release.
+Other failures retain the existing sticky stop behavior. Full generated pool and
+control snapshots test held→last-reference close→retry, wrong owner and wrong
+state, with a populated sibling and nonzero counters. The exact two-root29-book
+record passed57.412s (14reused,15new); root matched all29 before/after/current
+source hashes and the owner audited29 current usable compiled cache entries.
+Receipt: CORE-RELEASE-HELD-20261114.json. Arm-children19.793s atj1 remains a proof
+cost issue; no repeat at two jobs was run. This qualifies the generic compiler
+and actual child boundary, not full CNS/host composition or query-producer
+lifecycle controls. Peer caller audit found no reachable early row reclamation;
+its actual composed execution controls remain pending.
+
+## Qualified credit API — record908176
+
+The credit configuration, begin/reserve/end/release and empty-abort API is now
+integrated with guarded producer contracts and executable primitive controls.
+The exact11-book record reused9 and certified2; all current source hashes match.
+Controls cover protected ordinary capacity, wrong owner/nonce, query-held refusal,
+borrowed range refusal, return/reacquire, retirement depletion and empty no-I/O
+retry. Generated requested frame lemmas come from actual pool declarations;
+original API bodies and guards are unchanged from the reviewed candidate.
+The pool implementation remains at3ef26. This does not qualify actor admission,
+served credit redemption, complete checkpoint progress or a no-I/O history
+guarantee inferred from quota alone. Receipt: receipts/pool-credit-api-691c06f3e.json.
