@@ -7,7 +7,7 @@
 (include-book "origin")
 (fn2-book-layer :c)
 (defcolumns fn2-checkpoint-build
- ((phase (:enum fn2-checkpoint-build-phase (:idle :await-roots :pack :page :bound :ready :uncertain)))
+ ((phase (:enum fn2-checkpoint-build-phase (:idle :await-roots :pack :page :bound :ready :uncertain :cancelling :cancelled)))
   (owner-kind :u8) (owner-slot :u32) (owner-gen :u60) (snapshot-token :u60)
   (candidate :u32) (checkpoint :u60) (cut-commit :u60) (cut-event :u60)
   (extent :u32) (epoch :u60) (allocation :u60)
@@ -15,7 +15,7 @@
   (checker-row :u32) (field-base :u32)
   (intended-bytes :u60) (completed-bytes :u60)
   ; Physical identity captured from the owner-bound configured origin.
-  (history :u60) (history-incarnation :u60)))
+  (history :u60) (history-incarnation :u60) (abort-row :u32)))
 
 ; These five carriers are produced by actual metadata/map/proof/frontier/arena
 ; constructors bound to this frozen token. A read/decoded candidate has token0.
