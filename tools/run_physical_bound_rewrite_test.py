@@ -44,6 +44,10 @@ class BoundExtraction(unittest.TestCase):
    args=[x.low for x in n.items[2].items]
    self.assertFalse(any('summary' in x or x=='fn2-run-installed' for x in args))
    self.assertEqual(len(args),len(set(args)))
+ def test_wrappers_import_the_actual_shared_implementation(self):
+  for old,lower in [('io','bound-io'),('step','bound-step')]:
+   forms=lr.parse(read('books/run-physical-'+old+'.lisp')).forms
+   self.assertEqual(len(lr.match('(include-book "run-physical-'+lower+'")',forms,deep=False)),1)
  def test_actual_harvest_body_is_shared_unchanged(self):
   old=fn(read('tools/fixtures/run-physical-bound/io.lisp'),'fn2-run-load-harvest')
   new=fn(read('books/run-physical-bound-io.lisp'),'fn2-run-load-harvest')

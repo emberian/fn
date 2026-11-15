@@ -502,14 +502,14 @@
 
 (defcost fn2-group-lookup :answers (:source :reference :hash :source-header :source-index :page-kind :absent :bad-magic :bounds :done :end :entry :format :invariant :length :lost :miss :more
   :noncanonical :ok :owner :part :payload :schema :stale :state :truncated :unknown-tag :wide)
- :bytes 4096
+ :bytes *fn2-c-read-step-bytes*
  :tables (fn2-core-succ-txns fn2-core-run-cursors fn2-core-run-paths fn2-core-fields)
- :doc "One source of a group-name lookup: one overlay search (at most 250-octet compares over 9 probes) or one run step of at most 4,096 pool reads.")
+ :doc "One source of a group-name lookup: one overlay search (under the declared overlay probe and key bounds) or one run step under the generated codec work bound.")
 (defcost fn2-principal-lookup :answers (:source :reference :hash :source-header :source-index :page-kind :absent :bad-magic :bounds :done :end :entry :format :invariant :length :lost :miss :more
   :noncanonical :ok :owner :part :payload :schema :stale :state :truncated :unknown-tag :wide)
- :bytes 4096
+ :bytes *fn2-c-read-step-bytes*
  :tables (fn2-core-succ-txns fn2-core-run-cursors fn2-core-run-paths fn2-core-fields)
- :doc "One source of a principal-name lookup in fn2-principals: one overlay search (at most 64-octet compares) or one run step of at most 4,096 pool reads.")
+ :doc "One source of a principal-name lookup in fn2-principals: one overlay search (at most 64-octet compares) or one run step under the generated codec work bound.")
 (defcost fn2-principal-of-slot :answers (:ok :state)
  :doc "The durable principal id (slot * 2^32 + incarnation) of an account slot: (mv code id).")
 
@@ -658,9 +658,9 @@
  :doc "Start a transaction's identity decision: its query (five rows) written, its lookup idle.")
 (defcost fn2-identity-decide :child fn2-identity-decide-child :answers (:source :reference :hash :source-header :source-index :page-kind :bad-magic :bounds :conflict :done :duplicate :end :entry :evidence :format :invariant :length
   :lost :miss :more :noncanonical :owner :part :payload :schema :stale :state :stored :truncated :unknown-tag :wide)
- :bytes 4096
+ :bytes *fn2-c-read-step-bytes*
  :tables (fn2-core-succ-txns fn2-core-id-decides fn2-core-run-cursors fn2-core-run-paths fn2-core-fields)
- :doc "One source of an identity decision's two exact reads (the summary, then the candidate): one overlay search or one run step of at most 4,096 pool reads.")
+ :doc "One source of an identity decision's two exact reads (the summary, then the candidate): one overlay search or one run step under the generated codec work bound.")
 (defcost fn2-identity-facts :answers (:ok :state) :child fn2-id-facts
  :doc "Read a done decision's facts: verdict, selection, candidate ordinal, evidence status, coverage.")
 (defmacro fn2-identity-core-events ()

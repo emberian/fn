@@ -36,6 +36,29 @@ class RunPhysicalLoaderFixtureSource(unittest.TestCase):
     def setUp(self):
         self.defs = definitions()
 
+    def test_wrapper_output_projection_is_within_actual_mv_limit(self):
+        wrappers = [n for n in FORMS if n and n[0] == 'fn2-rpl-wrapper']
+        self.assertGreater(len(wrappers), 10)
+        for n in wrappers:
+            _, name, args, inputs, outputs, scalars, body = n
+            self.assertTrue(set(outputs).issubset(inputs), name)
+            self.assertLessEqual(len(scalars) + len(outputs), 32, name)
+            self.assertLessEqual(len(scalars) + 1, 32, name)
+        macro = self.defs['fn2-rpl-bindings']
+        self.assertIn('fn2-core', str(macro))
+        self.assertIn('(mv ,@scalars fn2-core)', TEXT)
+
+    def test_fixture_uses_actual_c_and_core_without_full_executor(self):
+        self.assertIn('(include-book "../books/assembly-callbacks-c")', TEXT)
+        self.assertNotIn('(include-book "../books/executor")', TEXT)
+        self.assertNotIn('defcore', [n[0] for n in FORMS if n])
+
+    def test_synthetic_opener_scope_names_actual_preflight_stage(self):
+        seeded = self.defs['fn2-rpl-cold-admission']
+        self.assertIn(['application-stage', '2'], list(walk(seeded)))
+        self.assertIn('does not qualify the cold opener', TEXT)
+        self.assertNotIn('fn2-checkpoint-summary-apply-begin', calls(seeded))
+
     def test_actual_queue_adapter_completion_and_verifier_chain(self):
         done = self.defs['fn2-rpl-complete-read']
         for name in ['fn2-host-outbox-peek', 'fn2-host-action', 'fn2-rpl-input-copy',

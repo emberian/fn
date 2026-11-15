@@ -102,7 +102,7 @@ def cns_continuations(text):
         n=found.node;call=n.items[2]
         if not isinstance(call,Lst) or not call.items or not isinstance(call.items[0],Atom) or call.items[0].low not in CNS_CONTINUATIONS:continue
         ix=next((i for i,x in enumerate(n.items) if a(x,':case')),None)
-        clause='((:more :miss) (:charge :bytes *fn2-c-read-step-bytes* :steps *fn2-work-transition* :runnable t))'
+        clause='((:more :miss) (:charge :bytes *fn2-c-read-callback-bytes* :steps *fn2-work-transition* :runnable t))'
         if ix is None:
             edits.append((n.end-1,n.end-1,'\n    :case ('+clause+')'))
         else:
@@ -119,4 +119,11 @@ def cns_continuations(text):
                 edits.append((vals.start,vals.end,'('+' '.join(keep)+')'))
     for found in match('((eq icode :more) ?*tail)',tree.forms):
         edits.append((found.start,found.end,''))
+    return write(text,edits),len(edits)
+
+def cns_callback_charge(text):
+    edits=[]
+    for found in match('(:charge :bytes *fn2-c-read-step-bytes* ?*tail)',parse(text).forms):
+        n=found.node
+        edits.append((n.items[2].start,n.items[2].end,'*fn2-c-read-callback-bytes*'))
     return write(text,edits),len(edits)

@@ -113,11 +113,16 @@
 ; is the range the fold answers for. A bootstrap (:init (:from FN)) or a later
 ; coverage start ((:from POSITION), the earlier range declared unavailable)
 ; is refused until a fold needs one.
-;; Every value field an integer (no octets, no digest): a :union payload.
+(defun fn2-rs-scalar-value-kindp (kind)
+ (declare (xargs :verify-guards nil))
+ (or (member-eq kind '(:u8 :u16 :u32 :u60 :u64 :bool :varint))
+     (and (consp kind) (member-eq (car kind) '(:id :enum)))))
+;; A UNION payload is compared as scalar fields. Key-octet bounds must not
+;; classify a large value octet vector as an integer.
 (defun fn2-rs-int-valuesp (value)
  (declare (xargs :verify-guards nil))
- (if (atom value) t
-  (and (consp (car value)) (not (eq (cadar value) :digest)) (not (fn2-rs-octetsp (cadar value)))
+ (if (atom value) (null value)
+  (and (consp (car value)) (fn2-rs-scalar-value-kindp (cadar value))
        (fn2-rs-int-valuesp (cdr value)))))
 (defun fn2-rf-value-kindp (kind)
  (declare (xargs :verify-guards nil))
@@ -471,7 +476,10 @@
  (declare (xargs :verify-guards nil))
  (let* ((entry (fn2-rs-sym name "-ENTRY")) (index (fn2-rs-sym name "-INDEX")) (run (fn2-rs-sym name "-RUN"))
         (cmp (fn2-rs-sym name "-COMPARE")) (layout (append key value)))
-  (cond ((not (and (symbolp name) (natp id) (consp key) (fn2-rs-keyp key) (fn2-layoutp layout)
+  (cond ((and fold (not (fn2-rf-valuesp value)))
+         `(make-event (er soft 'defrunschema
+           "Fold ~x0 requires scalar value fields; octet/reference values require owned per-slot rehoming before another page is loaded." ',name)))
+        ((not (and (symbolp name) (natp id) (consp key) (fn2-rs-keyp key) (fn2-layoutp layout)
                    (<= (len layout) *fn2-run-key-fields-max*)
                    (member-eq merge '(:union :latest :unique))
                    ;; a :union payload is integers, so stage compares it whole
@@ -492,6 +500,19 @@
               nil
               (append (fn2-rs-compare-events name entry key) (and fold (fn2-rf-events name key value fold))))
            ,@(and fold (fn2-rf-logic-events name key value fold)))))))
+
+ ; Declaration-time ratchet over the actual registered schema descriptors.
+; This is not whole-state validation on a served read path.
+(defun fn2-rs-fold-values-ownedp (rows)
+ (declare (xargs :verify-guards nil))
+ (if (atom rows) (null rows)
+  (and (or (null (fn2-decl-get :fold (cdar rows)))
+           (fn2-rf-valuesp (fn2-decl-get :value (cdar rows))))
+       (fn2-rs-fold-values-ownedp (cdr rows)))))
+(defun fn2-rs-fold-descriptor-count (rows)
+ (declare (xargs :verify-guards nil))
+ (if (atom rows) 0
+  (+ (if (fn2-decl-get :fold (cdar rows)) 1 0) (fn2-rs-fold-descriptor-count (cdr rows)))))
 
 ;; A schema declared after the run assembly would never be dispatched: refused.
 (defun fn2-rs-assembled (world)

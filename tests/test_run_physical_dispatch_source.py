@@ -38,10 +38,24 @@ class DispatchSource(unittest.TestCase):
         src=text('cursor.lisp'); a=src.index('  (:select :on-refusal'); b=src.index('  (:seek :on-refusal',a); select=src[a:b]
         self.assertLess(select.index('fn2-run-page-bundle-reserve'),select.index('(:next (:if (equal complete 1) :seek :finish))'))
         self.assertIn('(load-refuse (if (equal complete 1) 0 1))',select)
-        self.assertIn('(:if (equal row-query-bundle *fn2-cursor-query-bundle-none*)',select)
+        self.assertLess(select.index('fn2-c-source-read-acquire'),select.index('fn2-cursor-physical-sources'))
+        split=match('(:if (equal physical 0) ?resident ?physical)',parse(select).forms)
+        self.assertEqual(len(split),1)
+        branches=split[0].node.items
+        resident=select[branches[2].start:branches[2].end]
+        physical=select[branches[3].start:branches[3].end]
+        self.assertIn('(:goto resident-admit)',resident)
+        self.assertNotIn('fn2-run-page-bundle-reserve',resident)
+        self.assertEqual(physical.count('fn2-run-page-bundle-reserve'),1)
+        self.assertIn(':effects ((:acquire (:storage-window)))',physical)
+        self.assertIn('(:goto source-release-refuse)',physical)
         a=src.index('  (:finish :on-refusal');b=src.index('  (:draining',a);finish=src[a:b]
         self.assertLess(finish.index('(lease *fn2-cursor-lease-none*)'),finish.index('(:goto run-load-drain)'))
-        self.assertLess(finish.index('(:goto run-load-drain)'),finish.index('((equal row-load-refuse 1)'))
+        self.assertLess(finish.index('(:goto run-load-drain)'),finish.index('(:goto source-release-finish)'))
+        release=match('(source-release-finish :on-refusal ?ref ?*steps)',parse(src).forms)[0]
+        released=src[release.start:release.end]
+        self.assertLess(released.index('fn2-c-source-read-release'),released.index('(equal row-load-refuse 1)'))
+        self.assertIn('(:next :draining)',released)
         self.assertIn('*fn2-b-query-loader-jobs*',finish)
     def test_last_member_rank_and_operation_loan(self):
         src=text('machines-c-read-loader.lisp'); region=text('run-physical-region.lisp'); suffix=block(region,'defun','fn2-run-load-region-suffix')
@@ -83,7 +97,25 @@ class DispatchSource(unittest.TestCase):
         self.assertIn('(physical 0)',borrow);self.assertIn('*fn2-run-load-phase-reserved*',borrow)
         self.assertLess(borrow.index('fn2-succ-txns-lphase'),borrow.index('(fn2-pool-reset'))
         self.assertNotIn('fn2-pool-reserve',borrow)
-        self.assertNotIn('fn2-cursor-lease-reserve',src);self.assertNotIn('fn2-cursor-lease-release',src)
+        # Physical article rendering still borrows a preadmitted exact page;
+        # only the resident preheader path admits a standalone workspace.
+        late=match('(art-lease :on-refusal ?ref ?*steps)',parse(src).forms)[0]
+        late=src[late.start:late.end]
+        self.assertIn('fn2-cursor-query-article-page',late)
+        self.assertNotIn('fn2-cursor-lease-reserve',late)
+        resident=match('(resident-admit :on-refusal ?ref ?*steps)',parse(src).forms)[0]
+        resident=src[resident.start:resident.end]
+        self.assertIn('fn2-cursor-lease-reserve',resident)
+        self.assertIn('(:goto source-release-refuse)',resident)
+        self.assertIn('(:next :seek)',resident)
+        for name in ('art-fail','art-end',':finish'):
+            scope=match(f'({name} :on-refusal ?ref ?*steps)',parse(src).forms)[0]
+            scope=src[scope.start:scope.end]
+            guarded=match('(:if (equal row-query-bundle *fn2-cursor-query-bundle-none*) ?standalone ?borrowed)',parse(scope).forms)
+            self.assertEqual(len(guarded),1)
+            standalone=guarded[0].node.items[2];borrowed=guarded[0].node.items[3]
+            self.assertIn('fn2-cursor-lease-release',scope[standalone.start:standalone.end])
+            self.assertEqual(scope[borrowed.start:borrowed.end],'()')
         self.assertNotIn('(:park :pool',src)
         self.assertIn('(fn2-cursor-query-article-page row-slot id row-generation)',src)
     def test_prepared_article_borrow_fixture(self):

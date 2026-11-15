@@ -756,7 +756,7 @@
  :doc "Give a staged slot's late octet argument by reference.")
 (defcost fn2-successor-resolve :child fn2-successor-resolve-child :answers (:source :reference :hash :source-header :source-index :page-kind :bad-magic :bounds :done :end :entry :format :invariant :length :lost :miss :more :noncanonical
   :ok :owner :part :payload :schema :stale :state :truncated :unknown-tag :wide)
- :bytes 4096
+ :bytes *fn2-c-read-step-bytes*
  :tables (fn2-core-succ-txns fn2-core-succ-slots fn2-core-run-cursors fn2-core-run-paths fn2-core-fields)
  :doc "One bounded step reading a write slot's key in the installed runs: one run selection or one lookup step of at most 4,096 pool reads.")
 (defcost fn2-successor-stage :child fn2-successor-stage-child :answers (:bounds :capacity :changed :done :duplicate :event :evidence :full :inconsistent :invariant
