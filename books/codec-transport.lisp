@@ -399,6 +399,7 @@
  '((cap :u32) (nonce :u60) (slot :u32) (generation :u60) (extent :u32)
    (source-progress :u32) (sink-progress :u32)
    (parent-serial :u60) (terminal :bool) (carrier-closed :bool) (last-serial :u60) (pending-serial :u60) (pending-action :u8)
+   (observed-serial :u60) (observed-action :u8) (observed-used :u32) (observed-made :u32)
    (source-count :u32) (sink-count :u32)))
 ; A productive Receive cannot use :cancelled: the shared terminal ABI erases
 ; cancelled input counts. Output cancellation retains accepted application
@@ -523,9 +524,10 @@
                   (posp expected-action) (unsigned-byte-p 8 expected-action)
                   (unsigned-byte-p 32 offset) (posp count) (unsigned-byte-p 32 count)
                   (= (,(fn2-columns-sym name "-PENDING-SERIAL") 0 ,name) 0)
-                  (equal (,(fn2-columns-sym name "-PENDING-ACTION") 0 ,name) expected-action)
+                  (equal (,(fn2-columns-sym name "-OBSERVED-ACTION") 0 ,name) expected-action)
                   (= (,(fn2-columns-sym name "-LAST-SERIAL") 0 ,name) serial)
-                  (<= count (,(fn2-columns-sym name "-SINK-COUNT") 0 ,name))
+                  (= (,(fn2-columns-sym name "-OBSERVED-SERIAL") 0 ,name) serial)
+                  (equal count (,(fn2-columns-sym name "-OBSERVED-MADE") 0 ,name))
                   (= (+ offset count) (,(fn2-columns-sym name "-SINK-PROGRESS") 0 ,name))
                   (<= (+ offset count) (,(fn2-columns-sym name "-EXTENT") 0 ,name))))
        (mv :stale 0 0))
@@ -585,7 +587,9 @@
          (mv :bounds ,name)
        (let* ((next-source (+ (,(fn2-columns-sym name "-SOURCE-PROGRESS") 0 ,name) used))
               (next-sink (+ (,(fn2-columns-sym name "-SINK-PROGRESS") 0 ,name) made))
+              (action (,(fn2-columns-sym name "-PENDING-ACTION") 0 ,name))
               (,name (,put 0 (source-progress next-source) (sink-progress next-sink)
+                            (observed-serial serial) (observed-action action) (observed-used used) (observed-made made)
                             (pending-serial 0) (pending-action 0) (source-count 0) (sink-count 0))))
         (mv :ok ,name))))
     (verify-guards ,(fn2-columns-sym name "-BIND") :hints (("Goal" :in-theory (disable ,@readers))))
@@ -630,6 +634,28 @@
      (implies (and (,(fn2-columns-sym name "P") ,name) (,wfp ,name) (= (,rows ,name) 1))
       (,wfp (mv-nth 1 (,(fn2-columns-sym name "-OBSERVE") serial used made ,name))))
      :hints (("Goal" :in-theory (disable ,@readers))))
+    (defthm ,(fn2-columns-sym name "-OBSERVE-REFUSAL-FRAME-BY-DEFINITION")
+     (implies (not (,(fn2-columns-sym name "-OBSERVABLE-P") serial used made ,name))
+      (equal (mv-nth 1 (,(fn2-columns-sym name "-OBSERVE") serial used made ,name)) ,name))
+     :hints (("Goal" :in-theory (disable ,@readers))))
+    (defthm ,(fn2-columns-sym name "-OBSERVE-ACCEPTED-RECEIPT")
+     (implies (and (,(fn2-columns-sym name "P") ,name) (,wfp ,name) (= (,rows ,name) 1)
+                   (,(fn2-columns-sym name "-OBSERVABLE-P") serial used made ,name))
+      (and
+       (equal (,(fn2-columns-sym name "-OBSERVED-SERIAL") 0
+                (mv-nth 1 (,(fn2-columns-sym name "-OBSERVE") serial used made ,name))) serial)
+       (equal (,(fn2-columns-sym name "-OBSERVED-ACTION") 0
+                (mv-nth 1 (,(fn2-columns-sym name "-OBSERVE") serial used made ,name)))
+              (,(fn2-columns-sym name "-PENDING-ACTION") 0 ,name))
+       (equal (,(fn2-columns-sym name "-OBSERVED-USED") 0
+                (mv-nth 1 (,(fn2-columns-sym name "-OBSERVE") serial used made ,name))) used)
+       (equal (,(fn2-columns-sym name "-OBSERVED-MADE") 0
+                (mv-nth 1 (,(fn2-columns-sym name "-OBSERVE") serial used made ,name))) made)))
+     :hints (("Goal" :in-theory
+      (union-theories
+       '(,(fn2-columns-sym name "-OBSERVED-SERIAL") ,(fn2-columns-sym name "-OBSERVED-ACTION")
+         ,(fn2-columns-sym name "-OBSERVED-USED") ,(fn2-columns-sym name "-OBSERVED-MADE"))
+       (set-difference-theories (current-theory :here) ',readers)))))
     (defthm ,(fn2-columns-sym name "-CANCEL-WFP")
      (implies (and (,(fn2-columns-sym name "P") ,name) (,wfp ,name) (= (,rows ,name) 1))
       (,wfp (mv-nth 4 (,(fn2-columns-sym name "-CANCEL") receivep ,name))))
