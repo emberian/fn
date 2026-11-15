@@ -28,7 +28,7 @@
 ;     version move (fn2-xl-step). A delivered entry is read (fn2-read-value,
 ;     fn2-read-octets) only while its schema's run version is the one it was
 ;     delivered under, else :stale: no read touches a freed arena. :miss
-;     keeps its word though resident pages cannot raise it before M2.
+;     names the actual physical cursor awaiting the request's bounded loader.
 ; (c) fn2-read-frontier: the view a connection pins, C's :published
 ;     position (fn2-id-engine, written by fn2-succ-publish as max(published,
 ;     batch cov)), read through C's fn2-successor-published; (mv code
