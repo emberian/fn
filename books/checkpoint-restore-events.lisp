@@ -315,6 +315,7 @@
       (row (fn2-b-event-row (fn2-fc-rows fn2-fc)))
       (terminal (equal next *fn2-alloc-none*))
       (good (and (unsigned-byte-p 60 seen)
+        (fn2-origin-physicalp (fn2-event-read-journal-history 0 fn2-event-read) (fn2-event-read-journal-incarnation 0 fn2-event-read))
         (equal (fn2-event-read-commit 0 fn2-event-read) seen)
         (if terminal
             (and (eq code :complete) (equal seen (fn2-checkpoint-restore-events-count 0 fn2-checkpoint-restore-events))
@@ -329,7 +330,11 @@
       ((unless good)
        (let ((fn2-checkpoint-restore-events (fn2-checkpoint-restore-events-set-phase 0 *fn2-checkpoint-restore-events-phase-uncertain* fn2-checkpoint-restore-events)))
         (mv :uncertain fn2-checkpoint-restore-events fn2-checkpoint-restore-events-work fn2-event-read fn2-journal-members fn2-mk fn2-fc fn2-fc-context fn2-b3 fn2-fields fn2-pool fn2-digests)))
-      (fn2-checkpoint-restore-events-work (fn2-checkpoint-restore-events-work-set-consumed e 1 fn2-checkpoint-restore-events-work))
+      ; Only the verified member terminal can publish this physical namespace
+      ; fact. Header hints and directory naming alone never set CONSUMED.
+      (fn2-checkpoint-restore-events-work (fn2-checkpoint-restore-events-work-put e
+       (journal-history (fn2-event-read-journal-history 0 fn2-event-read))
+       (journal-incarnation (fn2-event-read-journal-incarnation 0 fn2-event-read)) (consumed 1)))
       (fn2-checkpoint-restore-events (fn2-checkpoint-restore-events-put 0
        (previous e) (cursor next) (consumed seen)
        (phase (if terminal *fn2-checkpoint-restore-events-phase-frontier-begin* *fn2-checkpoint-restore-events-phase-journal-bind*)))))

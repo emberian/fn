@@ -204,7 +204,7 @@
       (= (fn2-checkpoint-restore-map-allocation e fn2-checkpoint-restore-map) allocation)
       (member-equal (fn2-checkpoint-restore-map-state e fn2-checkpoint-restore-map) (list *fn2-extent-state-allocated* *fn2-extent-state-retire-pending*))))
 (fn2-checkpoint-release-reader-operation fn2-checkpoint-restore-release-inventory-entry ()
- (fn2-checkpoints fn2-checkpoint-refs fn2-checkpoint-bytes fn2-checkpoint-restore-map fn2-checkpoint-restore-map-control fn2-checkpoint-restore-reach fn2-checkpoint-restore-reach-control fn2-checkpoint-restore-reader fn2-checkpoint-restore-release-inventory fn2-checkpoint-restore-release-entries fn2-fields fn2-pool)
+ (fn2-checkpoints fn2-checkpoint-refs fn2-checkpoint-bytes fn2-checkpoint-restore-map fn2-checkpoint-restore-map-control fn2-checkpoint-restore-reach fn2-checkpoint-restore-reach-control fn2-checkpoint-restore-reader fn2-checkpoint-restore-release-inventory fn2-checkpoint-restore-release-entries fn2-fields fn2-pool fn2-checkpoint-restore-events-work)
  (fn2-checkpoint-restore-reader fn2-checkpoint-restore-release-inventory fn2-checkpoint-restore-release-entries fn2-checkpoint-restore-reach fn2-fields)
  (b* (((unless (and (fn2-checkpoint-restore-release-inventory-current-p fn2-checkpoints fn2-checkpoint-refs fn2-checkpoint-bytes fn2-checkpoint-restore-map fn2-checkpoint-restore-map-control fn2-checkpoint-restore-reach-control fn2-checkpoint-restore-release-inventory)
    (fn2-checkpoint-restore-release-inventory-reader-p fn2-checkpoint-restore-reader fn2-checkpoint-restore-release-inventory)
@@ -244,6 +244,14 @@
                           (fn2-fields-value (+ base *fn2-release-inventory-entry-field-installation-incarnation*) fn2-fields))
     (fn2-origin-physicalp (fn2-fields-value (+ base *fn2-release-inventory-entry-field-history*) fn2-fields)
                           (fn2-fields-value (+ base *fn2-release-inventory-entry-field-incarnation*) fn2-fields))
+    (fn2-checkpoint-restore-events-journal-tuple-p journal generation commit event jepoch jallocation
+     (fn2-fields-value (+ base *fn2-release-inventory-entry-field-journal-history*) fn2-fields)
+     (fn2-fields-value (+ base *fn2-release-inventory-entry-field-journal-incarnation*) fn2-fields) fn2-checkpoint-restore-events-work)
+    (fn2-checkpoint-restore-events-journal-tuple-p installation generation
+     (fn2-fields-value (+ base *fn2-release-inventory-entry-field-installation-commit*) fn2-fields)
+     (fn2-fields-value (+ base *fn2-release-inventory-entry-field-installation-event*) fn2-fields) iepoch iallocation
+     (fn2-fields-value (+ base *fn2-release-inventory-entry-field-installation-history*) fn2-fields)
+     (fn2-fields-value (+ base *fn2-release-inventory-entry-field-installation-incarnation*) fn2-fields) fn2-checkpoint-restore-events-work)
     (posp (fn2-fields-value (+ base *fn2-release-inventory-entry-field-checkpoint*) fn2-fields))
     (<= retirement (fn2-fields-value (+ base *fn2-release-inventory-entry-field-cut-commit*) fn2-fields))
     (< (fn2-fields-value (+ base *fn2-release-inventory-entry-field-cut-commit*) fn2-fields) (fn2-fields-value (+ base *fn2-release-inventory-entry-field-installation-commit*) fn2-fields))
