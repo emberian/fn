@@ -12,6 +12,7 @@
   (first-event :u60) (last-event :u60) (member-runs :u60) (manifest-entries :u60)
   (member-pages :u60) (manifest-pages :u60) (source-pages :u60)
   (member-unit :u60) (member-epoch :u60) (member-allocation :u60) (member-height :u8) (member-entries :u60)
+  (member-first-event :u60) (member-last-event :u60) (member-seen :u60)
   (manifest-unit :u60) (manifest-epoch :u60) (manifest-allocation :u60) (manifest-height :u8)
   (header-ordinal :u60) (header-slot :u32) (header-gen :u60) (header-zero :u32) (header-payload :u32)
   (header-unit :u60) (header-epoch :u60) (header-allocation :u60)

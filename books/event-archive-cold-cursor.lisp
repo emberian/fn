@@ -6,6 +6,36 @@
 (include-book "run-physical-bound-bind")
 (include-book "run-physical-bound-step")
 (fn2-book-layer :c)
+; One concrete root constructor for both retained manifest/member Refs.
+; Callers establish the exact candidate and typed decoded source before entry.
+(defun fn2-event-archive-cold-start-root (c kind base fn2-event-archive fn2-run-cursors)
+ (declare (xargs :stobjs (fn2-event-archive fn2-run-cursors)
+ :guard (and (fn2-event-archive-wfp fn2-event-archive) (fn2-run-cursors-wfp fn2-run-cursors))))
+ (b* (((unless (and (< 1 (fn2-event-archive-rows fn2-event-archive)) (member-eq kind '(:manifest :member))))
+       (mv :source fn2-run-cursors))
+      (manifest (eq kind :manifest))
+      (height (if manifest (fn2-event-archive-manifest-height 1 fn2-event-archive) (fn2-event-archive-member-height 1 fn2-event-archive)))
+      (unit (if manifest (fn2-event-archive-manifest-unit 1 fn2-event-archive) (fn2-event-archive-member-unit 1 fn2-event-archive)))
+      (epoch (if manifest (fn2-event-archive-manifest-epoch 1 fn2-event-archive) (fn2-event-archive-member-epoch 1 fn2-event-archive)))
+      (allocation (if manifest (fn2-event-archive-manifest-allocation 1 fn2-event-archive) (fn2-event-archive-member-allocation 1 fn2-event-archive)))
+      (schema (if manifest 10 *fn2-event-archive-schema*))
+      (run (if manifest (fn2-event-archive-checkpoint 1 fn2-event-archive) (fn2-event-archive-member-last-event 1 fn2-event-archive)))
+      (kind-owner (fn2-event-archive-owner-kind 1 fn2-event-archive)) (owner (fn2-event-archive-owner-slot 1 fn2-event-archive)) (gen (fn2-event-archive-owner-gen 1 fn2-event-archive))
+      ((unless (and (posp height) (<= height *fn2-run-max-levels*))) (mv :bounds fn2-run-cursors))
+      ((mv code fn2-run-cursors) (fn2-run-cursor-start c schema (- height 1) *fn2-none* 0
+        unit allocation
+        base kind-owner owner gen fn2-run-cursors))
+      ((unless (eq code :ok)) (mv code fn2-run-cursors))
+      (fn2-run-cursors (fn2-run-cursors-put c (physical 1) (phase *fn2-run-cursor-phase-miss*)
+       (source-row (fn2-event-archive-candidate 1 fn2-event-archive)) (catalog-tag 0)
+       (epoch epoch) (run run)
+       (hash-0 (fn2-event-archive-word 1 kind 0 fn2-event-archive)) (hash-1 (fn2-event-archive-word 1 kind 1 fn2-event-archive))
+       (hash-2 (fn2-event-archive-word 1 kind 2 fn2-event-archive)) (hash-3 (fn2-event-archive-word 1 kind 3 fn2-event-archive))
+       (hash-4 (fn2-event-archive-word 1 kind 4 fn2-event-archive)) (hash-5 (fn2-event-archive-word 1 kind 5 fn2-event-archive))
+       (hash-6 (fn2-event-archive-word 1 kind 6 fn2-event-archive)) (hash-7 (fn2-event-archive-word 1 kind 7 fn2-event-archive)))))
+  (mv :ok fn2-run-cursors)))
+(fn2-run-cursors-preserves fn2-event-archive-cold-start-root (c kind base fn2-event-archive fn2-run-cursors) :position 1 :raw-rows t)
+
 (assert-event (<= (+ *fn2-run-reader-fields* 3) 128))
 
 (fn2-event-archive-operation (fn2-event-archive-cold-cursor-begin scratch sgen)
@@ -42,17 +72,8 @@
        (mv :window fn2-event-archive fn2-run-loads fn2-run-cursors fn2-fields))
       ((mv code fn2-run-loads) (fn2-run-load-admission-begin fn2-run-loads))
       ((unless (eq code :ok)) (mv code fn2-event-archive fn2-run-loads fn2-run-cursors fn2-fields))
-      ((mv code fn2-run-cursors) (fn2-run-cursor-start c 10 (- height 1) *fn2-none* 0
-        (fn2-event-archive-manifest-unit 1 fn2-event-archive) (fn2-event-archive-manifest-allocation 1 fn2-event-archive)
-        base kind owner gen fn2-run-cursors))
+      ((mv code fn2-run-cursors) (fn2-event-archive-cold-start-root c :manifest base fn2-event-archive fn2-run-cursors))
       ((unless (eq code :ok)) (mv code fn2-event-archive fn2-run-loads fn2-run-cursors fn2-fields))
-      (fn2-run-cursors (fn2-run-cursors-put c (physical 1) (phase *fn2-run-cursor-phase-miss*)
-       (source-row (fn2-event-archive-candidate 1 fn2-event-archive)) (catalog-tag 0)
-       (epoch (fn2-event-archive-manifest-epoch 1 fn2-event-archive)) (run (fn2-event-archive-checkpoint 1 fn2-event-archive))
-       (hash-0 (fn2-event-archive-word 1 :manifest 0 fn2-event-archive)) (hash-1 (fn2-event-archive-word 1 :manifest 1 fn2-event-archive))
-       (hash-2 (fn2-event-archive-word 1 :manifest 2 fn2-event-archive)) (hash-3 (fn2-event-archive-word 1 :manifest 3 fn2-event-archive))
-       (hash-4 (fn2-event-archive-word 1 :manifest 4 fn2-event-archive)) (hash-5 (fn2-event-archive-word 1 :manifest 5 fn2-event-archive))
-       (hash-6 (fn2-event-archive-word 1 :manifest 6 fn2-event-archive)) (hash-7 (fn2-event-archive-word 1 :manifest 7 fn2-event-archive))))
       ; No installed-run/catalog row is fabricated. Source-row is this private
       ; candidate, checked by the archive wrapper, never a catalog capability.
       (fn2-run-loads (fn2-run-loads-put c (phase *fn2-run-load-phase-reserved*)

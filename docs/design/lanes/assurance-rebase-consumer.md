@@ -369,3 +369,16 @@ role/ledger fixture covers generation, role and allocation refusal. The new
 real header core face runs under existing root-verify/role3/full-page/owner
 checks; parent routing is still absent. These claims establish authenticated
 page retention, not contiguous canonical coverage or events-complete.
+
+One actual decoded schema10 entry now binds its schema20 member run: the held
+entry must come from a verified/typed-claimed manifest leaf, name internal20,
+have a positive count/height and endpoint within Cevent, and derive an interval
+whose first event equals the current next-event. Its exact root Ref/hash are
+captured before source-page reuse. A shared cached-root constructor preserves
+the existing manifest constructor and maps a member endpoint to the physical
+schema20 run ID; the structural replay retains the old setter class once.
+Three source controls pass; an unrun actual root-constructor fixture covers
+height-count versus level, both root kinds and refusal. This returns only
+MEMBER-BOUND. Member scanning, event hashing/count validation, outer-manifest
+resume and terminal/root4 closure remain incomplete and cannot reach COMPLETE.
+No witness format declaration was changed.
