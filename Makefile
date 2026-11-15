@@ -326,6 +326,7 @@ ACL2_BOOKS = \
   tests/owed-reclamation-unit \
   tests/retirement-intent-core-unit \
   tests/startup-genesis-unit \
+  tests/startup-name-owner-unit \
   tests/retirement-publish-core-unit \
   tests/authority-client \
   tests/authority-served \
