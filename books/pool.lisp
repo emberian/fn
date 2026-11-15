@@ -1001,6 +1001,28 @@
                                 (:instance fn2-pool-row-okp-by-key (fn2-pool (,w j v fn2-pool)))))))
               (fn2-pool-key-frame-events (cdr writers))))))
   (make-event (cons 'progn (fn2-pool-key-frame-events *fn2-pool-frame-writers*)))
+  ;; These writers do not occur in the exact row key. Keep the original
+  ;; different-row contracts above; add stronger same-row frames under fresh
+  ;; names so byte/query-only operations need not open the row invariant.
+  (defun fn2-pool-ignored-key-frame-events (writers)
+    (declare (xargs :guard (symbol-listp writers)))
+    (if (atom writers) nil
+      (let ((w (car writers)))
+        (if (member-eq w '(fn2-pool-set-query-ref-count fn2-pool-set-next-free
+                          fn2-pool-set-owner-kind fn2-pool-set-owner-slot fn2-pool-set-owner-gen
+                          fn2-pool-set-lease-op-slot fn2-pool-set-lease-op-gen
+                          fn2-pool-set-hand-to-kind fn2-pool-set-hand-to-slot fn2-pool-set-hand-to-gen))
+            (cons `(defthm ,(fn2-pool-frame-name 'fn2-pool-row-okp-any-row w)
+                     (equal (fn2-pool-row-okp i (,w j v fn2-pool))
+                            (fn2-pool-row-okp i fn2-pool))
+                     :hints (("Goal" :in-theory (disable fn2-pool-row-okp)
+                              :use ((:instance fn2-pool-row-okp-by-key)
+                                    (:instance fn2-pool-row-okp-by-key
+                                               (fn2-pool (,w j v fn2-pool)))))))
+                  (fn2-pool-ignored-key-frame-events (cdr writers)))
+          (fn2-pool-ignored-key-frame-events (cdr writers))))))
+  (make-event (cons 'progn (fn2-pool-ignored-key-frame-events *fn2-pool-frame-writers*)))
+
   (defthm fn2-pool-row-okp-of-update-fn2-pool-retired-count
     (equal (fn2-pool-row-okp i (update-fn2-pool-retired-count v fn2-pool)) (fn2-pool-row-okp i fn2-pool))
     :hints (("Goal" :use ((:instance fn2-pool-row-okp-by-key)
@@ -1405,9 +1427,14 @@
                       (natp ,slot) (< ,slot (fn2-pool-rows fn2-pool)))
                  (fn2-pool-row-okp ,slot ,q))
         :hints (("Goal" :do-not '(generalize eliminate-destructors fertilize)
-                 :in-theory ,(if (member-eq op '(fn2-pool-write fn2-pool-reset))
-                                 '(disable fn2-pool-row-okp fn2-pool-row-okp-of-invariant)
-                               '(e/d (fn2-pool-row-okp) (fn2-pool-row-okp-of-invariant)))
+                 :in-theory ,(cond
+                               ((member-eq op '(fn2-pool-write fn2-pool-reset))
+                                '(disable fn2-pool-row-okp fn2-pool-row-okp-of-invariant))
+                               ((member-eq op '(fn2-pool-adapter-write fn2-pool-query-acquire fn2-pool-query-release))
+                                `(e/d (,op)
+                                      (fn2-pool-row-okp fn2-pool-row-okp-of-invariant
+                                       fn2-pool-input-code fn2-pool-handle-code fn2-pool-readable-code)))
+                               (t '(e/d (fn2-pool-row-okp) (fn2-pool-row-okp-of-invariant))))
                  :use (,@(and (member-eq op '(fn2-pool-write fn2-pool-reset))
                               `((:instance fn2-pool-row-okp-fill-bound (i ,slot))))
                        (:instance fn2-pool-slot-types (i ,slot))
