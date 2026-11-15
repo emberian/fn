@@ -3,6 +3,8 @@
 (in-package "ACL2")
 (include-book "alloc")
 (include-book "blake3")
+(include-book "columns-resize-frames")
+(fn2-columns-extra-resize-frames fn2-extents)
 (local (in-theory (disable fn2-extentsp fn2-extents-wfp fn2-extents-rows
  fn2-alloc-edgesp fn2-alloc-edges-wfp fn2-alloc-edges-rows fn2-b3p fn2-b3-wfp fn2-b3-rows
  fn2-extents-installed-root fn2-extents-selectable-checkpoint fn2-extents-recovery-base
