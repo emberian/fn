@@ -1,0 +1,198 @@
+; Retained installed journal traversal: actual commits, C snapshot lease,
+; physical read completions and shared verifier. No checkpoint-build owner,
+; cold archive, protocol admission or durable cursor is supplied by this test.
+(in-package "ACL2")
+(include-book "std/util/bstar" :dir :system)
+(include-book "retirement-live-unit")
+(include-book "c-snapshot-unit")
+(include-book "../books/peer-history")
+
+; Projection only: these wrappers expose the actual leaves to fn2-core tests.
+(defmacro fn2-phu-wrapper (name args children results call output)
+ `(defun ,name (,@args fn2-core)
+   (declare (xargs :stobjs fn2-core :verify-guards nil))
+   (stobj-let ,children ,results ,call ,output)))
+
+(fn2-phu-wrapper fn2-phu-issue nil
+ ((fn2-event-read (fn2-core-event-read fn2-core)) (fn2-csnapshot (fn2-core-csnapshot fn2-core))
+  (fn2-extents (fn2-core-extents fn2-core)) (fn2-alloc-edges (fn2-core-alloc-edges fn2-core))
+  (fn2-pool (fn2-core-pool fn2-core)) (fn2-ops (fn2-core-ops fn2-core)) (fn2-control (fn2-core-control fn2-core)))
+ (code fn2-event-read fn2-extents fn2-alloc-edges fn2-pool fn2-ops fn2-control)
+ (fn2-event-read-issue fn2-event-read fn2-csnapshot fn2-extents fn2-alloc-edges fn2-pool fn2-ops fn2-control)
+ (mv code fn2-core))
+(fn2-phu-wrapper fn2-phu-format nil
+ ((fn2-event-read (fn2-core-event-read fn2-core)) (fn2-csnapshot (fn2-core-csnapshot fn2-core))
+  (fn2-commit-root (fn2-core-commit-root fn2-core)) (fn2-journal-members (fn2-core-journal-members fn2-core))
+  (fn2-fc (fn2-core-fc fn2-core)) (fn2-fc-context (fn2-core-fc-context fn2-core)) (fn2-b3 (fn2-core-b3 fn2-core))
+  (fn2-fields (fn2-core-fields fn2-core)) (fn2-pool (fn2-core-pool fn2-core)) (fn2-digests (fn2-core-digests fn2-core)))
+ (code fn2-event-read fn2-journal-members fn2-fc fn2-fc-context fn2-b3 fn2-fields fn2-pool fn2-digests)
+ (fn2-event-read-format-step 4096 fn2-event-read fn2-csnapshot fn2-commit-root fn2-journal-members
+  fn2-fc fn2-fc-context fn2-b3 fn2-fields fn2-pool fn2-digests)
+ (mv code fn2-core))
+
+
+; Same physical completion/harvest path as event-read-verified-unit. This
+; driver does not install bytes into the reader or set any ready phase.
+(defun fn2-phu-physical (fn2-core fn2-sim fn2-own)
+ (declare (xargs :stobjs (fn2-core fn2-sim fn2-own) :verify-guards nil))
+ (b* (((mv & fn2-core fn2-sim fn2-own)
+       (if (consp (fn2-b-outbox fn2-core)) (fn2-sim-take-prefix 1 0 fn2-core fn2-sim fn2-own)
+        (mv nil fn2-core fn2-sim fn2-own)))
+      (flight (fn2-commit-proof-flight (fn2-sim-rows fn2-sim) fn2-sim))
+      ((mv & fn2-core fn2-sim fn2-own)
+       (if flight
+           (let* ((fn2-sim (fn2-sim-clock (fn2-sim-due flight fn2-sim) 26 fn2-sim))
+                  (fn2-sim (fn2-sim-environment flight 26 1 fn2-sim)))
+            (fn2-sim-complete flight 26 1 fn2-core fn2-sim fn2-own))
+        (mv nil fn2-core fn2-sim fn2-own)))
+      ((mv & & & & & & & & & & fn2-core) (fn2-harvest-one fn2-core)))
+  (mv fn2-core fn2-sim fn2-own)))
+; Continuation and frontier observed before and after a refused extraction.
+(defun fn2-phu-position (fn2-core)
+ (declare (xargs :stobjs fn2-core :verify-guards nil))
+ (stobj-let ((fn2-event-read (fn2-core-event-read fn2-core))
+             (fn2-journal-members (fn2-core-journal-members fn2-core)) (fn2-mk (fn2-core-mk fn2-core))) (position)
+  (list (fn2-event-read-phase 0 fn2-event-read) (fn2-event-read-commit 0 fn2-event-read)
+        (fn2-event-read-next-event 0 fn2-event-read) (fn2-journal-members-phase 0 fn2-journal-members)
+        (fn2-journal-members-event 0 fn2-journal-members) (fn2-journal-members-next-event 0 fn2-journal-members)
+        (fn2-journal-members-hash-phase 0 fn2-journal-members) (fn2-journal-members-off 0 fn2-journal-members)
+        (fn2-mk-size (fn2-event-read-checker 0 fn2-event-read) fn2-mk)) position))
+(defun fn2-phu-controls (token dest gen fn2-core)
+ (declare (xargs :stobjs fn2-core :verify-guards nil))
+ (b* ((before (fn2-phu-position fn2-core))
+      (cap (stobj-let ((fn2-pool (fn2-core-pool fn2-core))) (cap) (fn2-pool-cap dest fn2-pool) cap))
+      ((mv wrong-token te tl fn2-core) (fn2-peer-history-member-core (+ 1 token) dest gen 0 7 0 1 fn2-core))
+      (a (equal before (fn2-phu-position fn2-core)))
+      ((mv wrong-owner oe ol fn2-core) (fn2-peer-history-member-core token dest gen 0 7 0 2 fn2-core))
+      (b (equal before (fn2-phu-position fn2-core)))
+      ((mv full fe fl fn2-core) (fn2-peer-history-member-core token dest gen cap 7 0 1 fn2-core))
+      (c (equal before (fn2-phu-position fn2-core)))
+      ; A stale generation loses exactly the destination capability. The
+      ; actual slot is retained so restoring its valid capability can retry.
+      ((mv lost le ll fn2-core) (fn2-peer-history-member-core token dest (+ 1 gen) 0 7 0 1 fn2-core))
+      (d (equal before (fn2-phu-position fn2-core))))
+  (mv (and (eq wrong-token :snapshot) (eq wrong-owner :snapshot)
+           (eq full :bounds) (eq lost :source) a b c d
+           (equal (list te tl oe ol fe fl le ll) '(0 0 0 0 0 0 0 0))) fn2-core)))
+
+; Independent list grammar and complete re-encoding check, then the expected
+; event/object/original-origin fields. Production member extraction uses the
+; concrete scanner, physical verifier and member hasher, not these adapters.
+(defun fn2-phu-canonical (event bytes)
+ (declare (xargs :verify-guards nil))
+ (b* (((mv hc header rest) (fn2-layout-parse *fn2-format-record-header* bytes))
+      ((mv bc body tail) (fn2-layout-parse *fn2-format-keyed-mutation* rest)))
+  (and (eq hc :ok) (eq bc :ok) (null tail)
+       (equal header (list *record-kind-keyed-mutation* 1 event 0 event 101 103 107 0 0 0))
+       (equal (take 4 body) (list 1 event 0 event)) (equal (nth 5 body) 0)
+       (equal (car (last body)) 0)
+       (equal bytes (append (fn2-layout-octets *fn2-format-record-header* header)
+                            (fn2-layout-octets *fn2-format-keyed-mutation* body))))))
+
+(defun fn2-phu-drive (fuel token slot gen directory dgen scratch sgen dest destgen releasep checked records
+                          fn2-core fn2-sim fn2-own)
+ (declare (xargs :stobjs (fn2-core fn2-sim fn2-own) :verify-guards nil :measure (nfix fuel)))
+ (b* ((position (fn2-phu-position fn2-core)) (phase (nth 0 position))
+      (ready (and (equal phase *fn2-event-read-phase-members*)
+                  (equal (nth 3 position) *fn2-journal-members-phase-leaf*) (equal (nth 6 position) 3)))
+      ((when (or (zp fuel) (equal phase *fn2-event-read-phase-uncertain*)))
+       (mv nil (reverse records) fn2-core fn2-sim fn2-own))
+      ((when (equal phase *fn2-event-read-phase-complete*))
+       (mv (and checked (equal (nth 8 position) 2)) (reverse records) fn2-core fn2-sim fn2-own))
+      ((when (and releasep ready (equal (nth 4 position) 2)))
+       (b* (((mv released fn2-core) (fn2-csnapshot-release token 7 0 1 fn2-core))
+            ((mv code event len fn2-core) (fn2-peer-history-member-core token dest destgen 0 7 0 1 fn2-core)))
+        (mv (and checked (eq released :ok) (eq code :snapshot) (equal event 0) (equal len 0)
+                 (equal position (fn2-phu-position fn2-core))) (reverse records) fn2-core fn2-sim fn2-own)))
+      ((mv controls fn2-core)
+       (if (and ready (not checked)) (fn2-phu-controls token dest destgen fn2-core) (mv t fn2-core)))
+      ((unless controls) (mv nil (reverse records) fn2-core fn2-sim fn2-own))
+      ((mv code event len fn2-core)
+       (cond
+        ((equal phase *fn2-event-read-phase-next*)
+         (mv-let (code fn2-core) (fn2-peer-history-open-core token (nth 1 position) slot gen directory dgen *fn2-checkpoint-map-entries-start* scratch sgen 7 0 1 fn2-core)
+          (mv code 0 0 fn2-core)))
+        ((member-equal phase (list *fn2-event-read-phase-read-seal* *fn2-event-read-phase-read-records*))
+         (mv-let (code fn2-core) (fn2-phu-issue fn2-core) (mv code 0 0 fn2-core)))
+        ((member-equal phase (list *fn2-event-read-phase-frame-seal* *fn2-event-read-phase-semantic-seal*
+                                  *fn2-event-read-phase-frame-records*))
+         (mv-let (code fn2-core) (fn2-phu-format fn2-core) (mv code 0 0 fn2-core)))
+        ((equal phase *fn2-event-read-phase-members*) (fn2-peer-history-member-core token dest destgen 0 7 0 1 fn2-core))
+        (t (mv :wait 0 0 fn2-core))))
+      ; An actual submitted physical read still owns its pin. Close must
+      ; refuse until the adapter has completed and harvest has drained it.
+      (issued-position (fn2-phu-position fn2-core))
+      ((mv pending-close fn2-core)
+       (if (and (member-equal phase (list *fn2-event-read-phase-read-seal*
+                                          *fn2-event-read-phase-read-records*))
+                (eq code :ok))
+           (fn2-peer-history-close token 7 0 1 fn2-core)
+         (mv :busy fn2-core)))
+      ((unless (and (eq pending-close :busy)
+                    (equal issued-position (fn2-phu-position fn2-core))))
+       (mv nil (reverse records) fn2-core fn2-sim fn2-own))
+      (bytes (and (eq code :member)
+              (stobj-let ((fn2-pool (fn2-core-pool fn2-core))) (bytes)
+               (fn2-pool-logical-octets len (fn2-pool-base dest fn2-pool) fn2-pool) bytes)))
+      ((unless (or (not (eq code :member))
+                   (and (equal event (+ 1 (len records))) (posp len) (fn2-phu-canonical event bytes))))
+       (mv nil (reverse records) fn2-core fn2-sim fn2-own))
+      (records (if (eq code :member) (cons (list event bytes) records) records))
+      ((mv fn2-core fn2-sim fn2-own) (fn2-phu-physical fn2-core fn2-sim fn2-own)))
+  (fn2-phu-drive (- fuel 1) token slot gen directory dgen scratch sgen dest destgen releasep
+   (or checked ready) records fn2-core fn2-sim fn2-own)))
+
+(defun fn2-phu-body (releasep fn2-core fn2-sim fn2-own)
+ (declare (xargs :stobjs (fn2-core fn2-sim fn2-own) :verify-guards nil))
+ (b* ((profile (put-assoc-equal :origin-lineage 101
+               (put-assoc-equal :origin-domain 103 (put-assoc-equal :origin-incarnation 107
+                (put-assoc-equal :history-id 257 (put-assoc-equal :history-incarnation 65537
+                  (fn2-b-test-profile *fn2-csu-profile* 0)))))))
+      (fn2-core (fn2-core-init profile fn2-core))
+      (fn2-sim (fn2-sim-init 1 :none "peer-history" profile fn2-sim))
+      (fn2-own (fn2-own-init profile fn2-own))
+      (owner (fn2-machine-kind-base *fn2-scribe-kind* fn2-core)) (ogen (fn2-machine-generation owner fn2-core))
+      ((mv epoch fn2-core)
+       (stobj-let ((fn2-extents (fn2-core-extents fn2-core))) (code fn2-extents)
+        (fn2-alloc-begin-epoch 1 fn2-extents) (mv code fn2-core)))
+      ((mv admitted1 & batch1 event1 fn2-core) (fn2-commit-admit-keyed 1 0 *fn2-scribe-kind* owner ogen fn2-core))
+      ((mv fn2-core fn2-sim fn2-own) (fn2-retirement-live-drive 600 26 fn2-core fn2-sim fn2-own))
+      ((mv taken1 & & outcome1 fn2-core) (fn2-commit-take *fn2-scribe-kind* owner ogen fn2-core))
+      ((mv admitted2 & batch2 event2 fn2-core) (fn2-commit-admit-keyed 1 0 *fn2-scribe-kind* owner ogen fn2-core))
+      ((mv fn2-core fn2-sim fn2-own) (fn2-retirement-live-drive 600 26 fn2-core fn2-sim fn2-own))
+      ((mv taken2 & & outcome2 fn2-core) (fn2-commit-take *fn2-scribe-kind* owner ogen fn2-core))
+      ((mv begun token fn2-core) (fn2-csnapshot-begin 7 0 1 fn2-core))
+      ((mv held cut events fn2-core) (fn2-csu-poll 30 token fn2-core))
+      ((mv page directory dgen fn2-core) (fn2-core-reserve 3 7 0 1 fn2-core))
+      ((mv scratch-code scratch sgen fn2-core) (fn2-core-reserve 1 7 0 1 fn2-core))
+      ((mv reader-code slot gen fn2-core) (fn2-core-reserve 2 7 0 1 fn2-core))
+      ((mv dest-code dest destgen fn2-core) (fn2-core-reserve 2 7 0 1 fn2-core))
+      ((mv zeroed fn2-core)
+       (stobj-let ((fn2-pool (fn2-core-pool fn2-core))) (code fn2-pool)
+        (fn2-run-zero 4096 directory dgen 0 7 0 1 fn2-pool) (mv code fn2-core)))
+      ((unless (and (eq epoch :ok) (eq admitted1 :ok) (eq admitted2 :ok)
+                    (eq taken1 :ok) (eq taken2 :ok) (= outcome1 *fn2-commit-outcome-accepted*)
+                    (= outcome2 *fn2-commit-outcome-accepted*) (= batch1 1) (= event1 1) (= batch2 2) (= event2 2)
+                    (eq begun :ok) (eq held :held) (= cut 2) (= events 2)
+                    (eq page :ok) (eq scratch-code :ok) (eq reader-code :ok) (eq dest-code :ok) (eq zeroed :ok)))
+       (mv nil fn2-core fn2-sim fn2-own))
+      ((mv opened fn2-core) (fn2-peer-history-open-core token 0 slot gen directory dgen *fn2-checkpoint-map-entries-start* scratch sgen 7 0 1 fn2-core))
+      ((mv good records fn2-core fn2-sim fn2-own)
+       (fn2-phu-drive 500 token slot gen directory dgen scratch sgen dest destgen releasep nil nil
+                      fn2-core fn2-sim fn2-own))
+      ((mv finish fn2-core)
+       (if releasep (mv :ok fn2-core) (fn2-peer-history-close token 7 0 1 fn2-core)))
+      (closed (or releasep (equal (car (fn2-phu-position fn2-core)) *fn2-event-read-phase-idle*))))
+  (mv (and (eq opened :ok) good (eq finish :ok) closed (equal (len records) (if releasep 1 2))
+           (not (fn2-core-stopped-p fn2-core))) fn2-core fn2-sim fn2-own)))
+(defun fn2-phu-test (releasep)
+ (declare (xargs :stobjs nil :verify-guards nil))
+ (with-local-stobj fn2-core
+  (mv-let (answer fn2-core)
+   (with-local-stobj fn2-sim
+    (mv-let (answer fn2-core fn2-sim)
+     (with-local-stobj fn2-own
+      (mv-let (answer fn2-core fn2-sim fn2-own) (fn2-phu-body releasep fn2-core fn2-sim fn2-own)
+       (mv answer fn2-core fn2-sim))) (mv answer fn2-core))) answer)))
+(assert-event (fn2-phu-test nil))
+(assert-event (fn2-phu-test t))
