@@ -898,6 +898,11 @@
                       fn2-pool-lease-op-slot fn2-pool-lease-op-gen fn2-pool-hand-to-kind
                       fn2-pool-hand-to-slot fn2-pool-hand-to-gen))
   (in-theory (set-difference-theories (current-theory :here) (theory 'fn2-pool-frame-raw-theory)))
+  ;; Admission and owner tests only choose refusal or the checked state update.
+  ;; Conservation uses the update's row/frame interfaces, not credit arithmetic
+  ;; or the representation of an owner identity or credit-group selector.
+  (in-theory (disable fn2-pool-reservable-count fn2-pool-credit-group
+                      fn2-pool-ownerp fn2-pool-mrefp))
 
   ;; Row invariant: one row's clause, and all rows but one.
   (defun fn2-pool-row-okp (i fn2-pool)
