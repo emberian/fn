@@ -353,7 +353,7 @@
         (< (fn2-digest-slot row *fn2-fc-previous-seal*) 4294967296) (unsigned-byte-p 32 hrow)))
 
 ; B's shape lemmas are stated over the rows accessors; keep them folded.
-(local (in-theory (disable fn2-digests-rows fn2-fc-rows fn2-fc-context-rows fn2-b3-rows fn2-fields-rows)))
+(local (in-theory (disable fn2-digests-rows fn2-fc-rows fn2-fc-context-rows fn2-b3-rows fn2-fields-rows fn2-pool-rows)))
 ; The caller sets the context with fn2-run-seal-context once, when ROW is
 ; idle; every step then checks that the context still names this writer's hash.
 (defun fn2-run-seal-step (w row hrow budget fn2-run-writers fn2-fc fn2-fc-context fn2-b3 fn2-fields fn2-pool fn2-digests)
