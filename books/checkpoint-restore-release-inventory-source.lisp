@@ -43,6 +43,7 @@
       (= (fn2-checkpoint-restore-release-inventory-cut-event 0 fn2-checkpoint-restore-release-inventory) (fn2-checkpoint-restore-reach-control-source-cut-event 0 fn2-checkpoint-restore-reach-control))
       (= (fn2-checkpoint-restore-release-inventory-history 0 fn2-checkpoint-restore-release-inventory) (fn2-checkpoint-restore-reach-control-source-history 0 fn2-checkpoint-restore-reach-control))
       (= (fn2-checkpoint-restore-release-inventory-incarnation 0 fn2-checkpoint-restore-release-inventory) (fn2-checkpoint-restore-reach-control-source-incarnation 0 fn2-checkpoint-restore-reach-control))
+      (<= (fn2-checkpoint-restore-release-inventory-total 0 fn2-checkpoint-restore-release-inventory) (fn2-checkpoint-restore-map-rows fn2-checkpoint-restore-map))
       (fn2-checkpoint-restore-release-inventory-hashes-p 0 fn2-checkpoints fn2-checkpoint-bytes fn2-checkpoint-restore-release-inventory)
       (let ((r (+ (* 6 (fn2-checkpoint-restore-release-inventory-candidate 0 fn2-checkpoint-restore-release-inventory)) 4)))
        (and (< r (fn2-checkpoint-refs-rows fn2-checkpoint-refs))
@@ -90,6 +91,9 @@
         (and (= head *fn2-alloc-none*) (= tail *fn2-alloc-none*))
         (and (< head (fn2-checkpoint-restore-release-entries-rows fn2-checkpoint-restore-release-entries))
              (< tail (fn2-checkpoint-restore-release-entries-rows fn2-checkpoint-restore-release-entries))
+             (= (fn2-checkpoint-restore-release-entries-generation head fn2-checkpoint-restore-release-entries) (fn2-checkpoint-restore-release-inventory-generation 0 fn2-checkpoint-restore-release-inventory))
+             (= (fn2-checkpoint-restore-release-entries-journal-extent head fn2-checkpoint-restore-release-entries) head)
+             (= (fn2-checkpoint-restore-release-entries-journal-extent tail fn2-checkpoint-restore-release-entries) tail)
              (= (fn2-checkpoint-restore-release-entries-generation tail fn2-checkpoint-restore-release-entries) (fn2-checkpoint-restore-release-inventory-generation 0 fn2-checkpoint-restore-release-inventory))
              (= (fn2-checkpoint-restore-release-entries-next tail fn2-checkpoint-restore-release-entries) *fn2-alloc-none*))))))
 
