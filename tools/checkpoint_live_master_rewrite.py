@@ -128,7 +128,27 @@ def arms(text):
   if getattr(arg,'low','')=='*fn2-checkpoint-master-pure-byte-quantum*':continue
   if getattr(arg,'low','')!='budget':raise ValueError('unexpected byte callback quantum '+op)
   edits.append((arg.start,arg.end,'*fn2-checkpoint-master-pure-byte-quantum*'))
- return lr.write(text,edits),n+len(edits)
+ text=lr.write(text,edits);n+=len(edits)
+ text,count=pure_result_charges(text)
+ return text,n+count
+
+def pure_result_charges(text):
+ # Every result follows the same real pure call. Charge its declared byte
+ # envelope even on refusal/wait; WAIT still parks, YIELD stays runnable.
+ edits=[]
+ for phase,byte in ((':root1-source','*fn2-checkpoint-root1-turn-bytes*'),(':events-source','4096'),(':map-source','4096'),(':descriptor-source','4096')):
+  matches=lr.match('('+phase+' ?*body)',lr.parse(text).forms,deep=True)
+  if len(matches)!=1:raise ValueError('one audited pure source arm required '+phase)
+  node=matches[0].node
+  for m in lr.match('(:charge ?*body)',[node],deep=True):
+   runnable='nil' if ':runnable nil' in text[m.node.start:m.node.end] else 't'
+   charge='(:charge :bytes '+byte+' :steps *fn2-work-stage* :runnable '+runnable+')'
+   if text[m.node.start:m.node.end]!=charge:edits.append((m.node.start,m.node.end,charge))
+  for head,runnable in ((':yield','t'),(':idle','nil')):
+   for m in lr.match('('+head+')',[node],deep=True):
+    edits.append((m.node.start,m.node.end,'(:charge :bytes '+byte+' :steps *fn2-work-stage* :runnable '+runnable+')'))
+ return lr.write(text,edits),len(edits)
+
 def face_reopen(e):
  matches=lr.match('(fn2-run-loader-core-face-events ?ops ?world)',lr.parse(e).forms,deep=True)
  selected=[]

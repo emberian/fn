@@ -83,6 +83,20 @@ class LiveMaster(unittest.TestCase):
    self.assertEqual(arm(p),old)
   for op in ('fn2-checkpoint-master-abort-step-op','fn2-checkpoint-root1-consume-op','fn2-checkpoint-root1-release-op','fn2-checkpoint-build-bind-op','fn2-checkpoint-build-consume-op'):
    self.assertTrue(all(x[1]=='budget' for x in walk(actual) if x and x[0]==op),op)
+ def test_four_pure_results_charge_bytes_including_page_wait_yield(self):
+  expected={':root1-source':'*fn2-checkpoint-root1-turn-bytes*',':events-source':'4096',':map-source':'4096',':descriptor-source':'4096'}
+  for phase,byte in expected.items():
+   a=arm(phase)
+   self.assertFalse(any(x in [[':yield'],[':idle']] for x in walk(a)),phase)
+   for x in walk(a):
+    if x and x[0]==':charge':
+     self.assertEqual(x[x.index(':bytes')+1],byte,phase)
+     self.assertEqual(x[x.index(':steps')+1],'*fn2-work-stage*',phase)
+   waits=[x for x in walk(a) if x and x[0]==[':wait']]
+   for x in waits:self.assertEqual(x[1][-1],'nil')
+   for x in walk(a):
+    if x and x[0]==[':page']:
+     self.assertTrue(any(y and y[0]==':charge' and y[y.index(':bytes')+1]==byte for y in walk(x)))
  def test_full_post_do_charges_include_refusal_and_controller(self):
   expected={':live-catalog-begin':('64','*fn2-master-live-one-turn-steps*'),':live-catalog-copy':('64','*fn2-master-live-two-turn-steps*'),':live-cbase':('32','*fn2-master-live-two-turn-steps*'),':live-exclusive':('64','*fn2-master-live-two-turn-steps*'),':live-install':('64','*fn2-master-live-three-turn-steps*'),':live-retire':('64','*fn2-master-live-three-turn-steps*'),':live-readiness-begin':('0','*fn2-master-live-one-turn-steps*'),':live-readiness-scan':('0','*fn2-master-live-three-turn-steps*'),':live-promote':('*fn2-checkpoint-live-promotion-bytes*','*fn2-master-promote-turn-steps*'),':live-reopen':('*fn2-checkpoint-live-reopen-bytes*','*fn2-master-reopen-turn-steps*'),':rebase-consume':('*fn2-directory-rebase-consume-bytes*','*fn2-master-consume-turn-steps*')}
   for phase,(byte,step) in expected.items():
