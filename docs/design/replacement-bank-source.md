@@ -26,7 +26,7 @@ with the existing descriptor, canonical authority-consume and writer receipt.
 
 `tools/replacement_bank_live_rewrite.py` is a named transformation over the
 three frozen providers in its fixture. It preserves function formals and guards.
-Its five Python controls check source replay, retained bank identity and the
+Its six Python controls check source replay, retained bank identity and the
 actual range/drain clauses. They are source controls, not ACL2 admission,
 physical-work refinement or productive two-adoption evidence.
 
@@ -43,6 +43,21 @@ Remaining connected obligations before this can serve:
   old observer and prove refusal before durable acceptance, then progress after
   actual release. Cold reconstruction must preserve old proof holds across
   recovery. Those execution/critical evidence obligations are still unrun.
+
+The draft `checkpoint-bank-admission.lisp` supplies lower BEGIN/STEP/READY-P
+functions over `(token kind owner generation snapshot summary installed job)`.
+Its singleton retains the actual HELD owner/cut and active catalog identity;
+STEP inspects at most one actual inactive-bank cell. An occupied cell returns
+`:resources` without advancing the cursor. No pool reserve, durable mutation,
+or physical Write occurs in this provider. Four source controls pass. Actual
+registration, derived callback charge, MASTER post-HELD/pre-reserve routing and
+core initialization remain unfinished. The typed BEGIN transformation now
+appends the readonly actual admission child, checks READY-P before writer BEGIN
+and captures the scanned target bank into SUMMARY1. The existing argument
+order, mutable result list and guard conjuncts remain; the new child adds its
+own WFP guard. This requires the matching child registration before emission.
+Its READY phase is a
+derived scan continuation, not a caller-supplied readiness flag.
 
 The current-root projection is based on ROOT42aba and preserves named newer
 foundation/C/reader providers. Untracked dependency leaves in this worktree
