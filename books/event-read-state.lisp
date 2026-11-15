@@ -7,6 +7,7 @@
  ((phase (:enum fn2-event-read-phase (:idle :read-seal :wait-seal :frame-seal :semantic-seal
                                      :read-records :wait-records :frame-records :members :next :complete :uncertain)))
   (token :u60) (owner-kind :u8) (owner-slot :u32) (owner-gen :u60)
+  (journal-history :u60) (journal-incarnation :u60)
   (cut-commit :u60) (cut-event :u60) (commit :u60) (next-event :u60)
   (extent :u32) (epoch :u60) (allocation :u60) (first :u60) (members :u32)
   (slot :u32) (gen :u60) (checker :u32) (field-base :u32) (leaf-digest :u32)

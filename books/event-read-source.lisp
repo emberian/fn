@@ -58,7 +58,8 @@
       (fn2-mk (if (equal ordinal 0) (fn2-mk-init row fn2-mk) fn2-mk))
       (fn2-event-read (fn2-event-read-put 0
        (phase *fn2-event-read-phase-read-seal*) (token token) (owner-kind okind) (owner-slot oslot) (owner-gen ogen)
-       (cut-commit (fn2-csnapshot-cut-commit 0 fn2-csnapshot)) (cut-event (fn2-csnapshot-cut-event 0 fn2-csnapshot))
+       (journal-history 0) (journal-incarnation 0)
+        (cut-commit (fn2-csnapshot-cut-commit 0 fn2-csnapshot)) (cut-event (fn2-csnapshot-cut-event 0 fn2-csnapshot))
        (commit (+ ordinal 1)) (next-event first)
        (extent (fn2-fields-value (+ base *fn2-event-proof-entry-field-extent*) fn2-fields))
        (epoch (fn2-fields-value (+ base *fn2-event-proof-entry-field-writer-epoch*) fn2-fields))
