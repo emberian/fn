@@ -10,6 +10,7 @@ import unittest
 
 import lisp_rewrite as lr
 import seal_release_held_rewrite as rw
+import seal_cleanup_phase_rewrite as phases
 
 ROOT = Path(__file__).resolve().parents[1]
 BASE = 'cfe47d373'
@@ -84,18 +85,26 @@ class Source(unittest.TestCase):
                 self.assertEqual(baseline[node.start:node.end], old, pattern)
             expected, count = rw.transform(file, baseline)
             self.assertEqual(count, len(patterns) + (2 if file == 'books/sealer.lisp' else 0), file)
+            if file == 'books/sealer.lisp':
+                expected, phase_count = phases.transform(expected)
+                self.assertEqual(phase_count, 6)
             self.assertEqual(expected, (ROOT / file).read_text(), file)
-            self.assertEqual(rw.transform(file, expected), (expected, 0))
+            if file == 'books/sealer.lisp':
+                self.assertEqual(phases.transform(expected), (expected, 0))
+            else:
+                self.assertEqual(rw.transform(file, expected), (expected, 0))
 
     def test_both_effect_orders_and_refusals(self):
         sealer = (ROOT / 'books/sealer.lisp').read_text()
         check_order(sealer)
         start = one('(defun fn2-seal-start ?*body)', sealer)
-        install = one('(defun fn2-seal-install ?*body)', sealer)
+        overlay_return = one('(defun fn2-seal-overlay-return ?*body)', sealer)
+        hash_return = one('(defun fn2-seal-hash-return ?*body)', sealer)
         self.assertTrue(lr.match('(if (or (eq code :ok) (eq code :retired)) :retired code)', [start]))
-        self.assertEqual(len(lr.match('((unless (or (eq code :ok) (eq code :retired))) '
-                                      '(mv code fn2-seals fn2-overlays fn2-run-installed fn2-pool))',
-                                      [install])), 2)
+        self.assertTrue(lr.match('((unless (or (eq code :ok) (eq code :retired))) '
+                                 '(mv code fn2-seals fn2-overlays fn2-pool))', [overlay_return]))
+        self.assertTrue(lr.match('((unless (or (eq code :ok) (eq code :retired))) '
+                                 '(mv code fn2-seals fn2-pool))', [hash_return]))
 
     def test_order_mutations_are_refused(self):
         actual = (ROOT / 'books/sealer.lisp').read_text()
@@ -153,7 +162,7 @@ class Source(unittest.TestCase):
         self.assertTrue(lr.match('(fn2-ov-start 0 1 slot gen 0 1 1 10 3 0 '
                                  'fn2-overlays fn2-overlay-index fn2-pool)', [overlay]))
         self.assertTrue(lr.match('(fn2-ov-freeze 0 fn2-overlays)', [overlay]))
-        self.assertEqual(len(lr.match('(assert-event ?*body)', lr.parse(fixture).forms, deep=False)), 5)
+        self.assertEqual(len(lr.match('(assert-event ?*body)', lr.parse(fixture).forms, deep=False)), 7)
         overlay_retired = one('(defun fn2-srh-overlay-retired-body ?*body)', fixture)
         self.assertTrue(lr.match('(eq released :retired)', [overlay_retired]))
         self.assertTrue(lr.match('(eq twice :state)', [overlay_retired]))
