@@ -49,4 +49,12 @@ class PhysicalStride(unittest.TestCase):
    self.assertTrue(lr.match('('+name+' ?*args)',p.forms),name)
   for name in ['fn2-upload-block-entry','fn2-upload-payload-reserve','fn2-extents-set-state','fn2-upload-put-core']:
    self.assertFalse(lr.match('('+name+' ?*args)',p.forms),name)
+ def test_observer_uses_initialized_kind_global_range(self):
+  p=lr.parse(ROOT/'tests/upload-group16-served-unit.lisp')
+  self.assertTrue(lr.match('(fn2-machine-kind-base *fn2-upload-kind* fn2-core)',p.forms))
+  self.assertTrue(lr.match('(fn2-upload-table fn2-core)',p.forms))
+  self.assertTrue(lr.match('(fn2-upload-rows fn2-upload)',p.forms))
+  self.assertTrue(lr.match('(fn2-up16-observe-rows rows base fn2-core)',p.forms))
+  for literal in ['0','1']:
+   self.assertFalse(lr.match('(fn2-up16-observe '+literal+' fn2-core)',p.forms))
 if __name__=='__main__': unittest.main()
