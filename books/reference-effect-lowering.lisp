@@ -54,13 +54,22 @@
           (list (fn2-effect-result-at fn args (1- n) count)))))
 ; A leaf is retained only under an exact, admitted whole-R contract.
 ; Mere existence of an unrelated theorem never authorizes an opaque call.
+(defun fn2-effect-core-recognizer-p (fn world)
+ (declare (xargs :verify-guards nil))
+ (and (eq fn 'fn2-corep) (stobj-recognizer-p fn world)
+      (eq fn (get-stobj-recognizer 'fn2-core world))
+      (equal (len (getpropc fn 'formals nil world)) 1)
+      (equal (getpropc fn 'stobjs-out nil world) '(nil))))
 (defun fn2-reference-effect-leaf-formula (fn kind relation world)
  (declare (xargs :verify-guards nil))
- (let* ((args (getpropc fn 'formals nil world))
+ (let* ((recognizer (fn2-effect-core-recognizer-p fn world))
+        (formals (getpropc fn 'formals nil world))
+        (args (if recognizer '(fn2-core) formals))
         (refargs (subst 'fn2-ref-core 'fn2-core args))
-        (guard (fn2-lower-source-form (getpropc fn 'guard t world)))
+        (guard (fn2-lower-source-form
+                (fn2-lower-substitute (getpropc fn 'guard t world) (pairlis$ formals args) world)))
         (refguard (fn2-lower-source-form
-                   (fn2-lower-substitute (getpropc fn 'guard t world) '((fn2-core . fn2-ref-core)) world)))
+                   (fn2-lower-substitute (getpropc fn 'guard t world) (pairlis$ formals refargs) world)))
         (count (len (getpropc fn 'stobjs-out nil world)))
         (hyp `(and ,(fn2-reference-effect-domain relation) ,guard ,refguard)))
   (case kind
@@ -85,7 +94,8 @@
   (and lemma (getpropc lemma 'theorem nil world)
        (case kind
         (:shape (and (equal outs '(nil))
-                     (equal (remove-eq nil (getpropc fn 'stobjs-in nil world)) '(fn2-core))))
+                     (or (equal (remove-eq nil (getpropc fn 'stobjs-in nil world)) '(fn2-core))
+                         (fn2-effect-core-recognizer-p fn world))))
         (:frame (fn2-effect-core-abi-p fn world))
         (otherwise nil))
        (equal (getpropc lemma 'untranslated-theorem nil world)
@@ -167,6 +177,15 @@
        (if (car ins) (and (eq (caar irs) :child) (eq (cadar irs) (car ins)))
          (and (not (eq (caar irs) :child)) (not (fn2-effect-stobj-tuple-p (car irs)))))
        (fn2-effect-args-p (cdr irs) (cdr ins)))))
+; ACL2 recognizers are the sole legal child-to-ordinary argument case.
+; Accept only the actual core recognizer under its exact admitted R leaf
+; contract; no generic coercion or queue-reading helper is introduced.
+(defun fn2-effect-call-args-p (fn irs ins rows world)
+ (declare (xargs :verify-guards nil))
+ (or (fn2-effect-args-p irs ins)
+     (and (fn2-effect-core-recognizer-p fn world)
+          (fn2-decl-get :leaf-contract (cdr (assoc-eq fn rows)))
+          (equal irs '((:child fn2-core))))))
 (defun fn2-effect-tail (ir)
  (declare (xargs :verify-guards nil))
  (mv-let (err xs) (fn2-product-exprs (fn2-product-flat ir nil))
@@ -229,7 +248,7 @@
         (let* ((ins (getpropc fn 'stobjs-in nil world)) (outs (getpropc fn 'stobjs-out nil world))
                (effect (or (eq fn boundary) (fn2-decl-get :effect (cdr (assoc-eq fn rows)))))
                (callee (if (eq fn boundary) replacement (if effect (fn2-effect-name fn) fn))))
-         (if (not (and (consp outs) (fn2-effect-args-p irs ins))) (mv (list :call-mv-abi fn) nil nil next)
+         (if (not (and (consp outs) (fn2-effect-call-args-p fn irs ins rows world))) (mv (list :call-mv-abi fn) nil nil next)
           (mv-let (bad args) (fn2-product-exprs irs)
            (mv-let (vars vals final) (fn2-product-outs outs next)
             (mv bad (append stages (list (list (if effect (append vars (list *fn2-effect-carrier*)) vars)
@@ -320,6 +339,23 @@
          (table fn2-reference-effect-lowered ',fn
           ',(append row (list :generated lifted :boundary boundary :replacement replacement
                              :whole (fn2-columns-sym lifted "-WHOLE-RESULT"))))))))))))
+; Validate non-effectful core wrappers as well. They remain shared, but
+; cannot conceal raw core aliases or native value-context reads behind a
+; helper that the effectful root calls. Registered lenses/contracts are
+; explicit leaves and have no body in this derived graph.
+(defun fn2-effect-validate-bodies (rows all boundary replacement world)
+ (declare (xargs :verify-guards nil))
+ (if (atom rows) nil
+  (let* ((fn (caar rows)) (row (cdar rows)) (body (fn2-decl-get :body row)))
+   (if (not body) (fn2-effect-validate-bodies (cdr rows) all boundary replacement world)
+    (mv-let (err stages ir counter)
+     (fn2-effect-compile body
+      (fn2-effect-env (fn2-decl-get :formals row) (fn2-decl-get :inputs row))
+      all boundary replacement world 0 100000)
+     (declare (ignore stages counter))
+     (if (or err (not (fn2-effect-output-shape-p ir (fn2-decl-get :outputs row))))
+         (list :unshared-callee-body fn (or err :result-mv-abi))
+       (fn2-effect-validate-bodies (cdr rows) all boundary replacement world)))))))
 (defun fn2-effect-definition-list (rows all boundary replacement relation world)
  (declare (xargs :verify-guards nil))
  (if (atom rows) (mv nil nil)
@@ -341,6 +377,8 @@
   (t
    (mv-let (err rows) (fn2-effect-plan-one fn boundary leaves world nil nil 100000)
     (cond (err (mv err nil))
+          ((fn2-effect-validate-bodies rows rows boundary replacement world)
+           (mv (fn2-effect-validate-bodies rows rows boundary replacement world) nil))
           ((not (fn2-decl-get :effect (cdr (assoc-eq fn rows)))) (mv :no-declared-effect-path nil))
           (t (mv-let (err events) (fn2-effect-definition-list rows rows boundary replacement relation world)
               (mv err (and (not err)
