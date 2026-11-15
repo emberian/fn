@@ -92,9 +92,9 @@
 ; proof-support entries.  The snapshot is diagnostic evidence, not a cert.
 (defun fn2-proof-support-export (path roots subjects fuel state)
   (declare (xargs :stobjs state :verify-guards nil))
-  (mv-let (channel state) (open-output-channel path :character state)
+  (mv-let (channel state) (open-output-channel path :object state)
     (if (not channel)
         (prog2$ (er hard 'fn2-proof-support-export "Cannot write ~x0." path) state)
-      (let ((state (prin1$ (fn2-proof-support-report roots subjects fuel (w state))
+      (let ((state (print-object$ (fn2-proof-support-report roots subjects fuel (w state))
                            channel state)))
         (close-output-channel channel state)))))
