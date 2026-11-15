@@ -1,0 +1,173 @@
+; SOURCE-ONLY authored actual served rolling witness; assertions UNRUN.
+; Requires the rolling controller, not a seeded actor or a larger body chunk.
+(in-package "ACL2")
+(include-book "std/util/bstar" :dir :system)
+(include-book "../books/owed-txn")
+
+(defconst *fn2-ur-profile*
+ (put-assoc-equal :aturn 1 (put-assoc-equal :article-max 100000 *fn2-txn-posting-profile*)))
+(defconst *fn2-ur-head*
+ '("From: a@example.invalid" "Subject: rolling" "Newsgroups: local.test"
+   "Message-ID: <rolling@example.invalid>" ""))
+; Each complete line contributes its CRLF to N; no long-line limit is evaded.
+(defun fn2-ur-lines (n)
+ (declare (xargs :verify-guards nil :measure (nfix n)))
+ (if (<= (nfix n) 514)
+     (list (coerce (repeat (nfix (- (nfix n) 2)) #\a) 'string))
+   (cons (coerce (repeat 512 #\a) 'string) (fn2-ur-lines (- (nfix n) 514)))))
+(defun fn2-ur-at (key row) (cdr (assoc-eq key row)))
+
+(defun fn2-ur-bytes (left off slot lease id gen fn2-pool)
+ (declare (xargs :stobjs fn2-pool :verify-guards nil :measure (nfix left)))
+ (if (zp left) nil
+  (mv-let (code byte) (fn2-pool-read slot lease off *fn2-upload-kind* id gen fn2-pool)
+   (if (not (eq code :ok)) (list :unreadable)
+    (cons byte (fn2-ur-bytes (- left 1) (+ 1 (nfix off)) slot lease id gen fn2-pool))))))
+
+(defun fn2-ur-observe (id fn2-core)
+ (declare (xargs :stobjs fn2-core :verify-guards nil))
+ (if (not (and (eq (fn2-upload-snapshot-read-code id fn2-core) :ok)
+              (not (= (fn2-upload-row-pext id fn2-core) *fn2-none*))
+              (or (>= (fn2-upload-row-phase id fn2-core) *fn2-upload-state-stream-receiving*)
+                  (= (fn2-upload-row-phase id fn2-core) *fn2-upload-state-sealed*)))) nil
+  (let* ((gen (fn2-upload-row-generation id fn2-core))
+         (slot (fn2-upload-row-c1-slot id fn2-core))
+         (lease (fn2-upload-row-c1-gen id fn2-core))
+         (owner (fn2-upload-row-conn id fn2-core))
+         (fed (if (eq (fn2-cns-snapshot-read-code owner fn2-core) :ok)
+                  (fn2-cns-row-fed owner fn2-core) (fn2-conn-row-fed owner fn2-core)))
+         (workspace
+          (stobj-let ((fn2-pool (fn2-core-pool fn2-core))) (ok)
+           (and (fn2-poolp fn2-pool) (fn2-pool-wfp fn2-pool) (fn2-pool-semanticp fn2-pool)
+            (eq (fn2-pool-workspace-code slot lease *fn2-upload-kind* id gen fn2-pool) :ok)
+            (= (fn2-pool-out-count slot fn2-pool) 0)
+            (= (fn2-pool-query-ref-count slot fn2-pool) 0)
+            (eq (fn2-pool-workspace-code (fn2-upload-row-lslot id fn2-core)
+                 (fn2-upload-row-lgen id fn2-core) *fn2-upload-kind* id gen fn2-pool) :ok)) ok)))
+   (list (cons :id id) (cons :gen gen)
+    (cons :first (list (fn2-upload-row-pext id fn2-core)
+                       (fn2-upload-row-pepoch id fn2-core) (fn2-upload-row-palloc id fn2-core)))
+    (cons :phase (fn2-upload-row-phase id fn2-core))
+    (cons :resets (fn2-upload-row-stream-resets id fn2-core))
+    (cons :end (fn2-upload-row-stream-end id fn2-core))
+    (cons :hashed (fn2-upload-row-hashed id fn2-core))
+    (cons :stored (fn2-upload-row-stored-hashed id fn2-core))
+    (cons :ilen (fn2-upload-row-ilen id fn2-core)) (cons :fed fed)
+    (cons :pending (fn2-upload-row-pending id fn2-core))
+    (cons :ready (fn2-upload-row-sready id fn2-core))
+    (cons :count (fn2-upload-row-scount id fn2-core))
+    (cons :stage-used (fn2-upload-row-stream-stage-used id fn2-core))
+    (cons :event (fn2-upload-row-sevent id fn2-core))
+    (cons :outcome (fn2-upload-row-soutcome id fn2-core))
+    (cons :injected
+     (stobj-let ((fn2-pool (fn2-core-pool fn2-core))) (bytes)
+      (fn2-ur-bytes (fn2-upload-row-ilen id fn2-core) 0
+       (fn2-upload-row-lslot id fn2-core) (fn2-upload-row-lgen id fn2-core) id gen fn2-pool) bytes))
+    (cons :workspace workspace)
+    (cons :root (fn2-upload-row-rootext id fn2-core))))))
+(defun fn2-ur-observe-rows (left id fn2-core)
+ (declare (xargs :stobjs fn2-core :verify-guards nil :measure (nfix left)))
+ (if (zp left) nil
+  (or (fn2-ur-observe id fn2-core)
+      (fn2-ur-observe-rows (- left 1) (+ 1 (nfix id)) fn2-core))))
+(defun fn2-ur-observe-kind (fn2-core)
+ (declare (xargs :stobjs fn2-core :verify-guards nil))
+ (let ((base (fn2-machine-kind-base *fn2-upload-kind* fn2-core))
+       (rows (stobj-let ((fn2-upload (fn2-upload-table fn2-core))) (rows)
+               (fn2-upload-rows fn2-upload) rows)))
+  (fn2-ur-observe-rows rows base fn2-core)))
+
+; LOG=(previous first reset-receipts sealed bad writes last-reset-write).
+; Observe, never set actor state.
+(defun fn2-ur-record (now log)
+ (if (not now) log
+  (let* ((before (nth 0 log)) (first (or (nth 1 log) (list (fn2-ur-at :first now) (fn2-ur-at :injected now))))
+         (changed (and before (> (fn2-ur-at :resets now) (fn2-ur-at :resets before))))
+         (write (and (= (fn2-ur-at :phase now) *fn2-upload-state-stream-wrote*)
+                     (= (fn2-ur-at :ready now) 1)
+                     (= (fn2-ur-at :event now) *fn2-event-write-result*)
+                     (= (fn2-ur-at :outcome now) *fn2-outcome-done*)
+                     (= (fn2-ur-at :count now) (fn2-ur-at :stage-used now))
+                     (< 0 (fn2-ur-at :count now))
+                     (= (fn2-ur-at :pending now) 0)))
+         (writes (+ (nfix (nth 5 log)) (if write 1 0))))
+   (list now first
+    (+ (nfix (nth 2 log)) (if changed 1 0))
+    (if (= (fn2-ur-at :phase now) *fn2-upload-state-sealed*) now (nth 3 log))
+    (or (nth 4 log) (not (equal first (list (fn2-ur-at :first now) (fn2-ur-at :injected now))))
+     (and changed
+      (not (and (equal (fn2-ur-at :id now) (fn2-ur-at :id before))
+       (equal (fn2-ur-at :gen now) (fn2-ur-at :gen before))
+       (= (fn2-ur-at :resets now) (+ 1 (fn2-ur-at :resets before)))
+       (= (fn2-ur-at :phase before) *fn2-upload-state-stream-fenced*)
+       (= (fn2-ur-at :ready before) 1)
+       (= (fn2-ur-at :event before) *fn2-event-fence-result*)
+       (= (fn2-ur-at :outcome before) *fn2-outcome-done*)
+       (< (nfix (nth 6 log)) writes)
+       (= (fn2-ur-at :pending before) 0) (fn2-ur-at :workspace before)
+       (= (fn2-ur-at :fed before) (fn2-ur-at :end before))
+       (<= (fn2-ur-at :end before) (fn2-ur-at :hashed before))
+       (<= (+ (fn2-ur-at :ilen before) (fn2-ur-at :end before))
+           (fn2-ur-at :stored before))))))
+    writes (if changed writes (nfix (nth 6 log)))))))
+
+(defun fn2-ur-loop (fuel idle accepted clients store log fn2-core)
+ (declare (xargs :stobjs fn2-core :verify-guards nil :measure (nfix fuel)))
+ (if (zp fuel) (mv :fuel clients store log fn2-core)
+  (b* ((log (fn2-ur-record (fn2-ur-observe-kind fn2-core) log))
+       ((mv & observed visited actions fn2-core) (fn2-turn fn2-core))
+       ((mv took accepted clients store fn2-core) (fn2-cw-adapter-one accepted clients store fn2-core))
+       (idle (if (or took (< 0 observed) (< 0 visited) (< 0 actions)) 0 (+ 1 (nfix idle)))))
+   (if (or (<= 3 idle) (fn2-core-stopped-p fn2-core))
+       (mv :quiet clients store log fn2-core)
+    (fn2-ur-loop (- fuel 1) idle accepted clients store log fn2-core)))))
+
+(defun fn2-ur-body (stored rolling fn2-core)
+ (declare (xargs :stobjs fn2-core :verify-guards nil))
+ (b* ((head (if rolling (remove-equal "Message-ID: <rolling@example.invalid>" *fn2-ur-head*) *fn2-ur-head*))
+      (headbytes (len (fn2-cw-crlf-octets head)))
+      (lines (fn2-ur-lines (if rolling 32768 (- (nfix stored) headbytes))))
+      (article (append head lines))
+      (total (len (fn2-cw-crlf-octets article)))
+      (input (fn2-cw-crlf-octets (append '("POST") article
+               '("." "GROUP local.test" "ARTICLE 1" "QUIT"))))
+      (fn2-core (fn2-init-executor *fn2-ur-profile* :echo nil fn2-core))
+      ((mv epoch fn2-core)
+       (stobj-let ((fn2-extents (fn2-core-extents fn2-core))) (code fn2-extents)
+        (fn2-alloc-begin-epoch 1 fn2-extents) (mv code fn2-core)))
+      ((mv status clients & log fn2-core)
+       (fn2-ur-loop 800000 0 0 (fn2-cw-clients (list (list input (list (len input))))) nil nil fn2-core))
+      (sealed (nth 3 log))
+      (injected (fn2-ur-at :injected sealed))
+      (mid (if rolling (take (nfix (- (len injected) 14)) (nthcdr 12 injected))
+             (fn2-cw-chars (coerce "<rolling@example.invalid>" 'list))))
+      (storedtotal (+ total (len injected)))
+      (manifest (< 12288 storedtotal))
+      (expected
+       (list (append
+        (fn2-cw-crlf-octets '("200 fn-nntp experimental server ready" "340 send article to be posted"
+                             "240 article received OK" "211 1 1 1 local.test"))
+        (fn2-cw-chars (coerce "220 1 " 'list)) mid
+        (fn2-cw-crlf-octets '(" article follows" "Xref: fn2.invalid local.test:1"))
+        injected (fn2-cw-crlf-octets article)
+        (fn2-cw-crlf-octets '("." "205 closing connection"))) t)))
+  (mv (if (and (eq epoch :ok) (eq status :quiet)
+    (equal (fn2-profile-get :pool-classes *fn2-ur-profile*) '((8 . 1024) (128 . 4096) (64 . 65536)))
+    (fn2-core-wfp fn2-core)
+    (not (fn2-core-stopped-p fn2-core)) (not (nth 4 log)) sealed
+    (equal (fn2-cw-results clients) (list expected))
+    (if rolling (posp (fn2-ur-at :ilen sealed)) (= (fn2-ur-at :ilen sealed) 0))
+    (= (fn2-ur-at :hashed sealed) total)
+    (= (fn2-ur-at :stored sealed) storedtotal)
+    (if rolling (and (= total (+ headbytes 32768)) (<= 2 (nfix (nth 2 log)))) (= total stored))
+    (if manifest (and (not (= (fn2-ur-at :root sealed) *fn2-none*))
+                     (not (= (fn2-ur-at :root sealed) (car (car (nth 1 log))))))
+                 (= (fn2-ur-at :root sealed) *fn2-none*)))
+   :ok (list :rolling status log (fn2-core-stop-reason fn2-core))) fn2-core)))
+
+(assert-event (with-local-stobj fn2-core
+ (mv-let (answer fn2-core) (fn2-ur-body 0 t fn2-core) (equal answer :ok))))
+(assert-event (with-local-stobj fn2-core
+ (mv-let (answer fn2-core) (fn2-ur-body 12288 nil fn2-core) (equal answer :ok))))
+(assert-event (with-local-stobj fn2-core
+ (mv-let (answer fn2-core) (fn2-ur-body 12289 nil fn2-core) (equal answer :ok))))
