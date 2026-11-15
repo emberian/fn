@@ -912,7 +912,7 @@
   (:checkpoint-directory-install :on-refusal ((:stop :checkpoint))
    (:do (code) (fn2-directory-cold-install-op) :accept (:installed))
    ; The selected suffix and persisted epoch transition must complete before serving.
-   (:stop :checkpoint))
+   (:stop :checkpoint) (:charge :bytes 4096 :steps *fn2-work-stage*))
 
 
   (:checkpoint-payload-begin :on-refusal ((:stop :checkpoint))
