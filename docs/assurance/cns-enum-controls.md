@@ -80,3 +80,28 @@ all formulas use its copied PUT fragments and the state book's actual macros,
 logical functions, types, and enum constants. Record the ACL2 exit, all 226 event
 names, and a fresh success marker; a timeout or first refusal is diagnostic,
 never certification. This is a proposal, not an authorized or completed run.
+
+## First kernel admission attempt
+
+The coordinator granted the frozen `a7a717e2` fixture a single 2 GiB / zero swap,
+240-second outer / 180-second internal wall job on forge. In the isolated
+`/build/lanes/assurance-enum-controls-kernel` tree at `3e4d2b7cb`, all 135 source
+hashes and qualified cert/FASL payloads passed preflight, as did the exact repaired
+raw, state, and fixture hashes. The state-only compiled entry loaded in 11.06
+ACL2 seconds. No raw consumer book was included.
+
+Admission stopped at the first theorem,
+`FN2-CNS-ENUM-CONTROL-0-0-0-0-0-1-1`: ACL2 translation rejects its unused LET
+binding `N`. The shared ground environment binds variables used by the other
+fragments, and needs lexical `IGNORABLE` declarations or fragment-specific
+binding selection. Neither the theorem nor a proof was admitted: **0/226
+witnesses, zero prover steps**. This was a translation failure, not a failed
+logical equality or a counterexample.
+
+The exact output is retained on forge at `/tmp/enum-controls-first-refusal.txt`,
+with `/tmp/enum-controls-{campaign,start,author,stop}.log` and the frozen fixture
+in the isolated tree. Owned outer PID 1838571, driver 1838577, serve 1838643, and
+ACL2 process group 1838647 were all absent after cleanup; their scope
+`run-p1838571-i31195260.scope` was gone. The compute grant was released. The
+approved frozen source and fixture remain unchanged; a repair requires a new
+frozen fixture and a separate admission grant.
