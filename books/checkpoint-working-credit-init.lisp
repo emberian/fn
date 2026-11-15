@@ -35,12 +35,18 @@
        (declare (xargs :stobjs fn2-core :guard (and (fn2-profilep profile) (fn2-core-wfp fn2-core))))
        (stobj-let ((fn2-commit (fn2-commit-table fn2-core))
                    (fn2-commit-io (fn2-core-commit-io fn2-core))
+                   (fn2-id-engine (fn2-core-id-engine fn2-core))
                    (fn2-pool (fn2-core-pool fn2-core)))
-        (code fn2-pool)
-        (fn2-checkpoint-working-credit-configure
-         profile (fn2-commit-rows fn2-commit) (fn2-commit-io-rows fn2-commit-io)
-         (fn2-checkpoint-service-protocol-classes fn2-pool)
-         (fn2-checkpoint-service-upload-classes fn2-pool) fn2-pool)
+        (code fn2-id-engine fn2-pool)
+        (b* (((mv configured fn2-pool)
+              (fn2-checkpoint-working-credit-configure
+               profile (fn2-commit-rows fn2-commit) (fn2-commit-io-rows fn2-commit-io)
+               (fn2-checkpoint-service-protocol-classes fn2-pool)
+               (fn2-checkpoint-service-upload-classes fn2-pool) fn2-pool))
+             ((unless (eq configured :ok)) (mv configured fn2-id-engine fn2-pool)))
+         ; The SAME global C scratch would otherwise be acquired lazily.
+         ; Redeem its existing F allowance before any foreground promise.
+         (fn2-idc-scratch fn2-id-engine fn2-pool))
         (mv code fn2-core)))
       (fn2-core-preserves fn2-checkpoint-working-credit-init (profile fn2-core)
        :position 1 :rows nil :hyps ((fn2-profilep profile))))))))
