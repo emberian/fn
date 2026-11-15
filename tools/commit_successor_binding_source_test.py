@@ -91,5 +91,20 @@ class BindClaims(unittest.TestCase):
         self.assertEqual(changed, '(fn2-commit-txn-scan-claimed a b c tx txgen fn2-core)')
         self.assertEqual(scan_transform.transform(changed), changed)
 
+    def test_typed_cost_is_actual_explicit_cross_kind_footprint(self):
+        s = Path('books/machines-b.lisp').read_text()
+        a = s.index('(defcost fn2-commit-admit-successor ')
+        b = s.index('(defcost ', a+1)
+        actual = s[a:b]
+        for getter in ['fn2-commit-table','fn2-core-commit-io','fn2-core-commit-members',
+                       'fn2-core-commit-settled','fn2-core-commit-root','fn2-core-sched',
+                       'fn2-core-machines','fn2-core-control','fn2-core-pool','fn2-core-extents',
+                       'fn2-core-fields','fn2-core-succ-txns','fn2-core-id-engine']:
+            self.assertIn(getter, actual)
+        self.assertNotIn(':child ', actual)
+        self.assertNotIn('(:layers ', actual)
+        opened = functions(Path('books/commit.lisp').read_text())['fn2-commit-txn-open']
+        self.assertIn('(or (eq code :uncertain) (fn2-core-stopped-p fn2-core)) :uncertain', opened)
+
 if __name__ == '__main__':
     unittest.main()
