@@ -33,6 +33,6 @@
                  (loop for row = (read in nil :eof) until (eq row :eof) collect row))))
  (assert (equal records
   '((:submit 1 (17 4 7 :write 100 3 (1 2 3)))
-    (:begin 1) (:return 1 2 0)
+    (:begin 1) (:return 1 2 0 nil)
     (:submit 2 (17 4 8 :write 200 1 (5)))))))
 (format t "DEVICE EFFECT RECORDER CONTROLS PASS~%")

@@ -22,6 +22,18 @@ malformed inputs and removal of the original-domain conjunct. The first clean
 record exposed a missing declared row prerequisite; the corrected include is
 part of this qualified source. Native delivery/refinement remains separate.
 
+The device-effect recorder now captures returned Read bytes, and the pure
+checker enforces submit FIFO, raw count bounds, exact completed Write prefixes,
+and consistent Read observations. Missing/error Writes admit arbitrary bytes
+only inside their requested span and retain an uncertain verdict. Review controls
+reject out-of-order begin, contradictory Reads and inconsistent final bytes.
+Exact two-book record `certify-20261115T041522Z-841581` passes in 0.296 seconds;
+root matched both current source hashes/keys and the renewed raw-recorder hashes.
+The raw gate substitutes the performer and proves only recorder behavior.
+The selected single-submitter/initial direct-setup premise, actual Take/Post
+binding, whole-image driver execution and crash recovery correspondence remain
+open. A successful Fence observation does not prove power-loss persistence.
+
 The shared columns diagnostic and opt-in guard-hint API are qualified by
 `certify-20261115T034623Z-812141`: six books, two reused and four new,
 3.918 seconds. Root matched all six before/after source hashes. Actual declarations
