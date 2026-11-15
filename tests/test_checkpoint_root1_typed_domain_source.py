@@ -20,13 +20,13 @@ def typed_domain(tree):
 
 class TypedDomain(unittest.TestCase):
     def test_every_actual_child_gets_type_and_shape(self):
-        t = definition("books/checkpoint-metadata-driver.lisp", "fn2-checkpoint-root1-child-hyps")
+        t = definition("books/checkpoint-child-contracts.lisp", "fn2-checkpoint-root1-child-hyps")
         self.assertTrue(typed_domain(t))
         old = [*t[:-1], ["if", ["atom", "children"], "nil", ["cons", t[-1][3][2], t[-1][3][-1]]]]
         self.assertFalse(typed_domain(old))
         arms = definition("books/machine-arms.lisp", "fn2-arms-child-shape-hyps")
         self.assertEqual(arms[-1][3][0], "list*")
-        source = (ROOT / "books/checkpoint-metadata-driver.lisp").read_text()
+        source = (ROOT / "books/checkpoint-child-contracts.lisp").read_text()
         self.assertIn('(list (fn2-columns-sym (car children) "P")', source)
         self.assertIn('(list (fn2-columns-sym (car children) "-WFP")', source)
 

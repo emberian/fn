@@ -1,7 +1,9 @@
-"""Move exact cold getter/receipt definitions to lower B books, no twins."""
+"""Move exact shared generator/receipt definitions to lower B books, no twins."""
 from pathlib import Path
 import lisp_rewrite as lr
 CLASSES=(
+ ('checkpoint-metadata-driver','checkpoint-child-contracts',('columns',),
+  ('fn2-checkpoint-root1-child-hyps','fn2-checkpoint-root1-child-tables','fn2-checkpoint-root1-child-specs')),
  ('checkpoint-bank-cold','checkpoint-bank-cold-state',('checkpoint-publication-state',),
   ('fn2-checkpoint-bank-cold-capacityp','fn2-checkpoint-bank-cold-ready-p',
    'fn2-checkpoint-bank-cold-snapshot','fn2-checkpoint-bank-cold-event','fn2-checkpoint-bank-cold-word')),
@@ -26,9 +28,10 @@ def extract(text,names,lower,includes):
 
 if __name__=='__main__':
     import argparse
-    p=argparse.ArgumentParser();p.add_argument('--write',action='store_true');args=p.parse_args()
+    p=argparse.ArgumentParser();p.add_argument('--write',action='store_true');p.add_argument('--only');args=p.parse_args()
     root=Path(__file__).resolve().parents[1]/'books'
     for high,low,includes,names in CLASSES:
+        if args.only and high!=args.only:continue
         path=root/(high+'.lisp');out,leaf=extract(path.read_text(),names,low,includes)
         print(high,'->',low,len(names))
         if args.write:
