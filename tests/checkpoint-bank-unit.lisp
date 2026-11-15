@@ -1,5 +1,6 @@
 ; Typed callback controls only: not a real issued Write/Write/Fence witness.
 (in-package "ACL2")
+(include-book "checkpoint-bank-fixture")
 (include-book "std/util/bstar" :dir :system)
 (include-book "../books/checkpoint-publication")
 
@@ -13,7 +14,7 @@
 
 (defun fn2-checkpoint-bank-test-body (fn2-checkpoint-publication)
  (declare (xargs :stobjs fn2-checkpoint-publication :verify-guards nil))
- (b* ((fn2-checkpoint-publication (fn2-checkpoint-publication-init 1 fn2-checkpoint-publication))
+ (b* ((fn2-checkpoint-publication (fn2-checkpoint-test-empty-publication fn2-checkpoint-publication))
       (fn2-checkpoint-publication (fn2-checkpoint-bank-test-attempt 0 0 1 100 fn2-checkpoint-publication))
       ((mv & fn2-checkpoint-publication)
        (fn2-checkpoint-publication-harvest 5 6 0 *fn2-event-fence-result* *fn2-outcome-done* 0 0 0 0 fn2-checkpoint-publication))

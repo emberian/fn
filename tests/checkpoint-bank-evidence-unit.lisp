@@ -2,6 +2,7 @@
 ; issued-operation premises. This is not a real persisted writer, host Fence,
 ; authenticated boot, cold-seed or directory-forgetting witness.
 (in-package "ACL2")
+(include-book "checkpoint-bank-fixture")
 (include-book "std/util/bstar" :dir :system)
 (include-book "../books/checkpoint-publication")
 (include-book "../books/runs-page")
@@ -10,7 +11,7 @@
  (b* ((fn2-checkpoint-publication (fn2-checkpoint-publication-init 0 fn2-checkpoint-publication))
       (fn2-checkpoint-publication (fn2-checkpoint-bank-evidence-record-fence fn2-checkpoint-publication))
       (empty (equal (fn2-checkpoint-publication-rows fn2-checkpoint-publication) 0))
-      (fn2-checkpoint-publication (fn2-checkpoint-publication-init 1 fn2-checkpoint-publication))
+      (fn2-checkpoint-publication (fn2-checkpoint-test-empty-publication fn2-checkpoint-publication))
       (fn2-checkpoints (fn2-checkpoints-init 1 fn2-checkpoints))
       (fn2-commit-root (fn2-commit-root-init 4 fn2-commit-root))
       (fn2-fc (fn2-fc-init 3 fn2-fc))
