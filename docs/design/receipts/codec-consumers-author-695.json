@@ -1,0 +1,97 @@
+{
+  "scope": "Author evidence only on frozen695d6a19f6 plus named proof-only overlays; not certification and not current-pool qualification",
+  "source_donor": "dccf0eb32",
+  "base_current": "417080f99",
+  "foundation_commit": "827af50ad",
+  "host": "fn@dregg-forge",
+  "tree": "/build/lanes/finish-codec-combined-695",
+  "session": "codec-combined-695",
+  "pids": [
+    750447,
+    750471,
+    750475
+  ],
+  "cap_bytes": 2147483648,
+  "swap_bytes": 0,
+  "outer_seconds": 600,
+  "event_step_limit": 2000000,
+  "event_seconds": 60,
+  "state": "explicitly stopped and all recorded PIDs absent",
+  "cache": {
+    "toolchain": "8aeb1bea18968c6cd33ac633a80ebf67e4924504db112fd27eb11f16a27b2a8c",
+    "union": 37,
+    "qualified": 28,
+    "source": 9
+  },
+  "passes": {
+    "final_size_fixture": [
+      4.98,
+      550286
+    ],
+    "retirement_original_pack_guard": [
+      0.09,
+      6585
+    ],
+    "retirement_carriers": [
+      0.1,
+      10435
+    ],
+    "allocation_original_pack_guard": [
+      0.4,
+      36435
+    ],
+    "allocation_carriers": [
+      1.26,
+      109797
+    ],
+    "ticket_install_rows": [
+      0.18,
+      8625
+    ],
+    "allocation_install_rows": [
+      3.93,
+      151872
+    ],
+    "actual_pool_read_byte_type": [
+      0.09,
+      4531
+    ],
+    "copy_hash_original_guard_using_opaque_reader_contract": [
+      0.07,
+      1404
+    ],
+    "copy_hash_complete_guard_carriers": [
+      1.84,
+      232334
+    ],
+    "capture_roots_original_guard": [
+      0.45,
+      65950
+    ],
+    "member_hash_carriers": [
+      0.54,
+      106029
+    ]
+  },
+  "remaining": {
+    "checkpoint_check_step": "Original guard exceeded2M steps in22.43s; no counterexample established",
+    "checkpoint_installation_pack_member": "Original guard exceeded2M in30.90s; targeted opacity hint produced real refusal24.62s/1759110 at raw checkpoint-ref numeric accessor facts; failed hint not committed",
+    "record": "No record run; pool foundation changed after author source freeze. Recompute current keys before qualification."
+  },
+  "supervisor_rc": 1,
+  "supervisor_rc_reason": "Retained first checkpoint-tickets refusal; subsequent separately logged proof-only repair passed",
+  "runtime_identity": "Top-level runtime DEFUNs and guards compared to0dda; identical after removing newly added guard-hints",
+  "log_sha256": {
+    "/tmp/finish-codec-combined.log": "453c2c68877cb5e371efc3f76147dd0ce5cf849a3c4bc0a30a02026ad8d96c99",
+    "/tmp/finish-codec-ticket-hint.log": "eee3a7ec9e1d13b7490897e2d56d97b2f93877b545bc3732269fce5575051989",
+    "/tmp/finish-codec-two.log": "da6b3527fdab1c863c49025f1690a58ab3b2a6a953d023cae849264f4869f1e6",
+    "/tmp/finish-codec-allocation-install.log": "d5a2013e8efa02502abd47132cde22bbed547858bebfd1b0efeb378deb2a8619",
+    "/tmp/finish-codec-pool-read-byte.log": "0d680923843f059b70c3718c4a016f226f605ec378ee7b06ac7ae5595862715c",
+    "/tmp/finish-codec-copy-hash-final.log": "df8625c8432fa3dfa7831fbe9f177db3a530650de9c0414fec0749a664275289",
+    "/tmp/finish-codec-copy-contract-v2.log": "235381ea9a2cf403ac9e24a50c439fc7321588b9d862391b4913cc99bf8d00b2",
+    "/tmp/finish-codec-member-v2.log": "9d254ed264bec9d7dfe7b56f762d508ad6fbeff13bd8a42b1fe5b501364b4786",
+    "/tmp/finish-codec-member-hash-contract.log": "ff11613cc2b4f1e3ec981ec82447a8c392be1581b64a56f25a59d0e89946ad0b",
+    "/tmp/finish-codec-member-final.log": "8a591415a9113e1c31aa195accba66d210ba4b591fc49185376efe0b62529639",
+    "/tmp/finish-codec-member-pack-hint.log": "038b23ec5587a4e0811365c9605206b30ffa3ba67a69857df578328629a76fa5"
+  }
+}
