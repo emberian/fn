@@ -44,9 +44,15 @@ def exact_fetch(reply, expected):
     return actual
 
 
-def crossing_article(mid):
+def crossing_article(mid, body_variant=0):
     """A valid, exact 6 KiB article crossing the transport's 4 KiB window."""
     _, lines = restart.article(mid.encode("ascii"), 100)
+    # Vary every body window, not just the Message-ID in the first unit.
+    # A reused extent from the other article must change the exact FETCH bytes.
+    assert body_variant in (0, 1)
+    if body_variant:
+        mapping = bytes.maketrans(b"0123456789", b"abcdefghij")
+        lines = lines[:5] + [line.translate(mapping) for line in lines[5:]]
     article = restart.wire(lines)
     # Keep the varied body (including a dot-leading line), and shorten only
     # its tail. End on CRLF without adding an NNTP dot terminator to FNCT data.
@@ -67,7 +73,7 @@ def main():
     submissions = []
     for index in range(2):
         mid = f"<native-append-fetch-{index}@example.invalid>"
-        article = crossing_article(mid)
+        article = crossing_article(mid, body_variant=index)
         article_path = directory / f"submitted-{index}.article"
         article_path.write_bytes(article)
         submissions.append((mid, article, article_path))
