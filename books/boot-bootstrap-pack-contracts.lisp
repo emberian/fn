@@ -4,7 +4,13 @@
 (include-book "boot-bootstrap-pack")
 (include-book "columns-carrier-contracts")
 (local (include-book "pool-read-contracts"))
+(local (include-book "blake3-row-frames"))
 (fn2-book-layer :b)
+
+; The public shape theorem is typed; the ROWS facets below are unconditional.
+; Derive their actual wrapper boundary with the canonical ABI-driven form.
+(fn2-hash-row-frames fn2-pool-block-hash-loop fn2-digests fn2-b3)
+(fn2-hash-row-frames fn2-pool-block-hash fn2-digests fn2-b3)
 
 (defcolumns-guarded-contracts fn2-boot-pack-geometry
  :carriers ((fn2-fields 2 :prefix "-FIELDS") (fn2-digests 3 :prefix "-DIGESTS")
