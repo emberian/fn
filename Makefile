@@ -79,6 +79,9 @@ ACL2_BOOKS = \
   books/cns-pool-refinement \
   books/cns-release-accounting \
   books/cns-query-lifetime-model \
+  books/queue-model \
+  books/reference-state-model \
+  books/reference-effect-semantics \
   books/cns-release-refinement \
   books/core-init-projections \
   books/machine-reservations-entry \
@@ -299,6 +302,7 @@ ACL2_BOOKS = \
   tests/claims-unit \
   tests/cns-release-refinement-unit \
   tests/cns-query-lifetime-unit \
+  tests/queue-model-unit \
   tests/cns-release-evidence-unit \
   tests/cns-decode-unit \
   tests/cns-edges-unit \
