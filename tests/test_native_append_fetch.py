@@ -2,6 +2,7 @@
 import importlib.util
 from pathlib import Path
 import unittest
+from unittest import mock
 
 spec = importlib.util.spec_from_file_location("native_append_fetch", Path(__file__).with_name("native-append-fetch-restart.py"))
 campaign = importlib.util.module_from_spec(spec)
@@ -9,6 +10,20 @@ spec.loader.exec_module(campaign)
 
 
 class ExactFetch(unittest.TestCase):
+    def test_isolated_origin_overrides_ambient_deployment_names(self):
+        expected = dict(FN2_ORIGIN_LINEAGE="711", FN2_ORIGIN_DOMAIN="712",
+                        FN2_ORIGIN_INCARNATION="1", FN2_HISTORY_ID="713",
+                        FN2_HISTORY_INCARNATION="1")
+        ambient = {name: "wrong-deployment" for name in expected}
+        ambient.update(FN2_KILL_AT="1", FN2_STORAGE_FAULT_MODEL="broad",
+                       FN_ACL2="/qualified/launcher")
+        with mock.patch.dict(campaign.os.environ, ambient):
+            actual = campaign.environment()
+        self.assertEqual({name: actual[name] for name in expected}, expected)
+        self.assertEqual(actual["FN2_STORAGE_FAULT_MODEL"], "crash-only")
+        self.assertNotIn("FN2_KILL_AT", actual)
+        self.assertEqual(actual["FN_ACL2"], "/qualified/launcher")
+
     def test_crossing_articles_reject_a_previous_article_reply(self):
         first = campaign.crossing_article("<native-append-fetch-0@example.invalid>")
         second = campaign.crossing_article("<native-append-fetch-1@example.invalid>")
