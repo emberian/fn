@@ -367,11 +367,22 @@ ACL2_BOOKS = \
   tests/trace-events-unit \
   books/cns-append-prefix-codec \
   tests/cns-stream-append-unit \
+  books/successor-schema-geometry \
+  books/successor-workspace-geometry \
+  tests/successor-geometry-unit \
+  tests/ctl-hash-interleave-unit \
+  books/cns-source-core \
+  tests/cns-stream-fetch-unit \
+  tests/cns-source-capture-unit \
+  tests/cns-source-retention-unit \
+  tests/cns-source-hash-interleave-unit \
+  tests/fnct-client-frame-unit \
   books/cns-fetch-prefix-codec \
   tests/cns-fetch-prefix-unit \
   tests/txn-upload-physical-location-unit \
   tests/upload-manifest-physical-unit \
   tests/upload-raw-threshold-unit \
+  tests/upload-group16-served-unit \
   tests/ctl-stripe-map-unit \
   tests/consumer-commit-unit \
   tests/consumer-helm \

@@ -8,13 +8,24 @@
 
 (defconst *fn2-crf-mid* "<recovered-fetch@example.invalid>")
 (defconst *fn2-crf-mid-bytes* (fn2-cw-chars (coerce *fn2-crf-mid* 'list)))
-(defconst *fn2-crf-article*
+(defconst *fn2-crf-headers*
   (fn2-cw-crlf-octets
     '("From: recovery@example.invalid" "Subject: recovered bytes"
-      "Newsgroups: local.test" "Message-ID: <recovered-fetch@example.invalid>"
-      "" "persistent body AAA")))
+      "Newsgroups: local.test" "Message-ID: <recovered-fetch@example.invalid>" "")))
+; Exact requested length with short CRLF body lines, so crossing source/storage
+; windows does not accidentally test an overlong article line instead.
+(defun fn2-crf-body (n)
+  (declare (xargs :verify-guards nil :measure (nfix n)))
+  (if (<= (nfix n) 82)
+      (append (repeat (nfix (- (nfix n) 2)) 120) '(13 10))
+    (let ((line (if (equal n 83) 79 80)))
+      (append (repeat line 120) '(13 10)
+              (fn2-crf-body (- (nfix n) (+ line 2)))))))
+(defun fn2-crf-article (n)
+  (declare (xargs :verify-guards nil))
+  (append *fn2-crf-headers* (fn2-crf-body (- (nfix n) (len *fn2-crf-headers*)))))
 
-(defun fn2-crf-produce ()
+(defun fn2-crf-produce (article)
   (declare (xargs :verify-guards nil))
   (with-local-stobj fn2-core
     (mv-let (result fn2-core)
@@ -24,7 +35,7 @@
               (code fn2-extents)
               (fn2-alloc-begin-epoch 1 fn2-extents) (mv code fn2-core)))
            ((mv status wire store fn2-core)
-            (fn2-ccu-session 0 (list (fnc-append 9 *fn2-crf-article*)
+            (fn2-ccu-session 0 (list (fnc-append 9 article)
                                        (fnc-control 5)) fn2-core))
            (reply (car (fnc-replies '(append) wire))))
         (mv (list epoch status reply store (fn2-core-stop-reason fn2-core))
@@ -55,11 +66,11 @@
                   (fn2-core-stop-reason fn2-core)) fn2-core))
       result)))
 
-(defun fn2-crf-run ()
+(defun fn2-crf-run (n)
   (declare (xargs :verify-guards nil))
-  (let* ((live (fn2-crf-produce)) (reply (nth 2 live))
+  (let* ((article (fn2-crf-article n)) (live (fn2-crf-produce article)) (reply (nth 2 live))
          (position (car (nth 2 reply))) (store (nth 3 live)))
-    (if (and (eq (nth 0 live) :ok) (eq (nth 1 live) :quiet)
+    (if (and (equal (len article) n) (eq (nth 0 live) :ok) (eq (nth 1 live) :quiet)
              (equal (nth 4 live) 0) (consp store)
              (eq (car reply) :accepted) (equal (cadr reply) "")
              (posp position) (equal (cadr (nth 2 reply)) 1))
@@ -68,5 +79,9 @@
 
 ; Exact octets, not an accepted reply alone or a reconstructed shadow model.
 (assert-event
- (equal (fn2-crf-run)
-        (list :fetched :quiet (list (list :accepted "" *fn2-crf-article*)) 0)))
+ (equal (fn2-crf-run 1024)
+        (list :fetched :quiet (list (list :accepted "" (fn2-crf-article 1024))) 0)))
+; Actual 6 KiB source crosses storage units, input/feed quanta and output loans.
+(assert-event
+ (equal (fn2-crf-run 6144)
+        (list :fetched :quiet (list (list :accepted "" (fn2-crf-article 6144))) 0)))

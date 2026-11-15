@@ -1,0 +1,269 @@
+{
+  "base_successor": "acc494c2a",
+  "merged_root": "eec6feab3",
+  "donor": "d99032d7c9e9c9f7b7874f7753a26b22bc3d2239",
+  "files": {
+    "books/cns-draining-model.lisp": {
+      "source": "d99032d7c9e9c9f7b7874f7753a26b22bc3d2239",
+      "sha256": "e1f4324851ffd52a9d6157a2f5c3ad6eb062a61936c9b4fcfe739f3131a7a1d6"
+    },
+    "books/cns-fetch-prefix-codec.lisp": {
+      "source": "d99032d7c9e9c9f7b7874f7753a26b22bc3d2239",
+      "sha256": "7a40b6078faafd9ee0a72fc23ed2065e151bc78ac9f429a38c8755de579b0f56"
+    },
+    "books/cns-kind.lisp": {
+      "source": "d99032d7c9e9c9f7b7874f7753a26b22bc3d2239",
+      "sha256": "e89cdb8f190e0b4000e207bbde5c81b55498f2c861af8cc537f7e6104e8afaac"
+    },
+    "books/cns-source-capture.lisp": {
+      "source": "d99032d7c9e9c9f7b7874f7753a26b22bc3d2239",
+      "sha256": "e35334278e92c3209a3b67d08e99388879aa66f1fd160499e6ee9c7de85d5727"
+    },
+    "books/cns-source-core.lisp": {
+      "source": "d99032d7c9e9c9f7b7874f7753a26b22bc3d2239",
+      "sha256": "56c5ddf76cd44737da6b9c31f1c44127c6e0f69cd8de8db9b908d4e8a23c1c91"
+    },
+    "books/cns-source-hash.lisp": {
+      "source": "d99032d7c9e9c9f7b7874f7753a26b22bc3d2239",
+      "sha256": "60e2d6bec152895c0ac026b9a1e2135ca49ac9a1ed9fa24b25d14b07615f8a4c"
+    },
+    "books/cns-source-manifest.lisp": {
+      "source": "d99032d7c9e9c9f7b7874f7753a26b22bc3d2239",
+      "sha256": "63e9e4f974f3012778ac705d16b4d1fcb471196eacb420e8e9b648e96a5e4543"
+    },
+    "books/cns-source-raw.lisp": {
+      "source": "d99032d7c9e9c9f7b7874f7753a26b22bc3d2239",
+      "sha256": "bdd25e186d3ac7db95d75370548fb2730fefa0c975657cd9373f8ed91b83fac2"
+    },
+    "books/cns-source-retention.lisp": {
+      "source": "d99032d7c9e9c9f7b7874f7753a26b22bc3d2239",
+      "sha256": "75c901e7b3b7f7a2e7adb72e0e3220fc89675c45374810b57b926a1b704a7122"
+    },
+    "books/cns-source-state.lisp": {
+      "source": "d99032d7c9e9c9f7b7874f7753a26b22bc3d2239",
+      "sha256": "01056705c1c63fff3b196bf743b838deca04ea1a938c823105574728d9d2192e"
+    },
+    "books/cns-source-workspace.lisp": {
+      "source": "d99032d7c9e9c9f7b7874f7753a26b22bc3d2239",
+      "sha256": "ccb4f43d3c4b9b1a2e82d092d7fea50516ba0d0175b82512523a4e50b097fc38"
+    },
+    "books/cns.lisp": {
+      "source": "d99032d7c9e9c9f7b7874f7753a26b22bc3d2239",
+      "sha256": "1dd89a25d6ffaa5bb9144b579a723b5ea01bbcbaf639c0e6f40fee610c322420"
+    },
+    "books/ctl-output-events.lisp": {
+      "source": "d99032d7c9e9c9f7b7874f7753a26b22bc3d2239",
+      "sha256": "d0ed54f484c344489fc06ef2df5dd51b6af37bbde2bc0f14aa8fdea37908364f"
+    },
+    "books/ctl-stream-events.lisp": {
+      "source": "d99032d7c9e9c9f7b7874f7753a26b22bc3d2239",
+      "sha256": "9f15678a809e0d684bf13ca0edd9ca8c6032c0ee10f710b8d2f683a4a5f88540"
+    },
+    "books/cursor.lisp": {
+      "source": "d99032d7c9e9c9f7b7874f7753a26b22bc3d2239",
+      "sha256": "cd5edbedde00df7eaeb91de0df3e0769d22cb5024cc2acf9f6a2321b8c52762c"
+    },
+    "books/machines-b.lisp": {
+      "source": "d99032d7c9e9c9f7b7874f7753a26b22bc3d2239",
+      "sha256": "b71a437fb20a6fd0381dd8c0e54a92513638f3955a092d3b99ae2c2d1eb25ba5"
+    },
+    "books/machines-c-successor.lisp": {
+      "source": "d99032d7c9e9c9f7b7874f7753a26b22bc3d2239",
+      "sha256": "0211f10dde290b5f58550f2d7831c6e8b343ea8f4545b4eea181b7df379552a0"
+    },
+    "books/machines-c.lisp": {
+      "source": "d99032d7c9e9c9f7b7874f7753a26b22bc3d2239",
+      "sha256": "56741ecb83f56d36c0272ce15ad45ae138568563f2df8e90ba590f03efb690ff"
+    },
+    "books/source-manifest-entry.lisp": {
+      "source": "d99032d7c9e9c9f7b7874f7753a26b22bc3d2239",
+      "sha256": "7bd3b811e51923f75237f37ec2a906bc02860532ba18558b37fffbd915d6d4fc"
+    },
+    "books/successor-schema-geometry.lisp": {
+      "source": "d99032d7c9e9c9f7b7874f7753a26b22bc3d2239",
+      "sha256": "3fe71db82be666b73349aaee70569f5eb0465478691341f04599017cb5508fd5"
+    },
+    "books/successor-workspace-geometry.lisp": {
+      "source": "d99032d7c9e9c9f7b7874f7753a26b22bc3d2239",
+      "sha256": "a94c86448e9a52a2abc76a8b8d4437311b5044e00c2edb61c0c0e49aec1e841f"
+    },
+    "tests/cns-drain-parent-controls.lsp": {
+      "source": "d99032d7c9e9c9f7b7874f7753a26b22bc3d2239",
+      "sha256": "df2ee5fdfc8af48a7093ec11815966907d45ef4fdd9c59ab844570a832658287"
+    },
+    "tests/cns-fetch-prefix-unit.lisp": {
+      "source": "d99032d7c9e9c9f7b7874f7753a26b22bc3d2239",
+      "sha256": "5f16bd9bd84ac0a6a1c0f56e0a3ee4bace537b632f42a74c389262a462f991a5"
+    },
+    "tests/cns-source-arm-controls.lsp": {
+      "source": "d99032d7c9e9c9f7b7874f7753a26b22bc3d2239",
+      "sha256": "1628c4ae011808fa6e54ff7edb2d38a763cb053e2b540b1ec782dafb89b23e6a"
+    },
+    "tests/cns-source-capture-unit.lisp": {
+      "source": "d99032d7c9e9c9f7b7874f7753a26b22bc3d2239",
+      "sha256": "cd9179b3b54f7b7b463b6ca2bfc6ff40f7fea880ac8f7ec8b4f26aeee459dc4d"
+    },
+    "tests/cns-source-hash-interleave-unit.lisp": {
+      "source": "d99032d7c9e9c9f7b7874f7753a26b22bc3d2239",
+      "sha256": "b11836a2e959ada702216c8e177fe5198ab8ec1108000b6ef06e1547de73c06a"
+    },
+    "tests/cns-source-retention-unit.lisp": {
+      "source": "d99032d7c9e9c9f7b7874f7753a26b22bc3d2239",
+      "sha256": "3ada1249dd74672b532de2d736ccdec4502236253c60c6f14d8297b9c792fb92"
+    },
+    "tests/cns-stream-fetch-unit.lisp": {
+      "source": "d99032d7c9e9c9f7b7874f7753a26b22bc3d2239",
+      "sha256": "20695e2a8d6e3e9fef88222ce482bd184955cee1344db293ede58b9a82420388"
+    },
+    "tests/ctl-frame-receive-controls.lsp": {
+      "source": "d99032d7c9e9c9f7b7874f7753a26b22bc3d2239",
+      "sha256": "d514f0b51d7f1f65a1867d8b1091738704781129e65450514dafb8d07d1f8c46"
+    },
+    "tests/ctl-hash-interleave-unit.lisp": {
+      "source": "d99032d7c9e9c9f7b7874f7753a26b22bc3d2239",
+      "sha256": "9370746538071d43972bda6f5df2756766dd40d1f22e1b52e8641d9b522f59a3"
+    },
+    "tests/ctl-output-arm-controls.lsp": {
+      "source": "d99032d7c9e9c9f7b7874f7753a26b22bc3d2239",
+      "sha256": "a629f08e8a8637fbf07b9da6afb57203600515dfcfd9c26df3c9fbbc95e0a72c"
+    },
+    "tests/ctl-output-geometry-controls.lsp": {
+      "source": "d99032d7c9e9c9f7b7874f7753a26b22bc3d2239",
+      "sha256": "d3bfa1cffd331d4149744e5e121ec0499b6dbb7ff6f80d18505dc02ff3be49a2"
+    },
+    "tests/ctl-stream-arm-controls.lsp": {
+      "source": "d99032d7c9e9c9f7b7874f7753a26b22bc3d2239",
+      "sha256": "745635aaf8e7f9cd260677751ebfd06544a9b0d652085de58fb140169f4f9e53"
+    },
+    "tests/ctl-stripe-map-unit.lisp": {
+      "source": "d99032d7c9e9c9f7b7874f7753a26b22bc3d2239",
+      "sha256": "c8da483517946a7e884b62ee0850ef5c099ca56de782346dce9d39bca6cb7a79"
+    },
+    "tests/fixtures/cns_source_mv_returns.json": {
+      "source": "d99032d7c9e9c9f7b7874f7753a26b22bc3d2239",
+      "sha256": "e22c257083c0993f7dfa04bebb292b86b6d1745719bb2d36fabed9855b5b7724"
+    },
+    "tests/fnct-stream-controls.lsp": {
+      "source": "d99032d7c9e9c9f7b7874f7753a26b22bc3d2239",
+      "sha256": "a6a2001ac7fbb44cd951f91fa8d584699bacfc90f110c11089bc2d94ffe38d7f"
+    },
+    "tests/successor-geometry-unit.lisp": {
+      "source": "d99032d7c9e9c9f7b7874f7753a26b22bc3d2239",
+      "sha256": "55e27e3347a24aa1d332d716f08f9db6a20bd1b5054f4a60c586bdf5763362ae"
+    },
+    "tools/cns_source_arity_check.py": {
+      "source": "d99032d7c9e9c9f7b7874f7753a26b22bc3d2239",
+      "sha256": "023d4a8c080e79bc21ae44d192217f8bca46722514f6d848ca42dea022a0b0f1"
+    },
+    "tools/cns_source_mv_rewrite.py": {
+      "source": "d99032d7c9e9c9f7b7874f7753a26b22bc3d2239",
+      "sha256": "3ec097ab799cc0e4b9482a794fb3564f8ca766ef884c9bc99ac97c7c1541e07a"
+    },
+    "tools/cns_source_raw_check.py": {
+      "source": "d99032d7c9e9c9f7b7874f7753a26b22bc3d2239",
+      "sha256": "1772d3d9c64e7d00cb110b139ec4afda16274773814f894365980e87bbcb9473"
+    },
+    "tools/cns_source_retention_check.py": {
+      "source": "d99032d7c9e9c9f7b7874f7753a26b22bc3d2239",
+      "sha256": "1a6ae73b2e399c100ad5698e307bd08550adeace13acbc85a227c2cc04a97a9d"
+    },
+    "tools/fixtures/successor_geometry.json": {
+      "source": "d99032d7c9e9c9f7b7874f7753a26b22bc3d2239",
+      "sha256": "73eb5ee10942779c001bcec786e2170fe75da7e8017e69639dd49e1dc7f554bf"
+    },
+    "tools/rewrite_successor_geometry.py": {
+      "source": "d99032d7c9e9c9f7b7874f7753a26b22bc3d2239",
+      "sha256": "4c61a4f5ba0d36f52635b0a623d8d4065d62f56523d2766d8295b9f270ee29ca"
+    },
+    "tools/successor_geometry_source_check.py": {
+      "source": "d99032d7c9e9c9f7b7874f7753a26b22bc3d2239",
+      "sha256": "a775203264546fb7c033fc582d92dffe597bf595c1b612f53864d04e4abae586"
+    },
+    "tools/test_cns_source_hash_geometry.py": {
+      "source": "d99032d7c9e9c9f7b7874f7753a26b22bc3d2239",
+      "sha256": "b53aa529a8c48eaeee6d21fa12cf836165a8aff9e06a26267c1447a16e3ae31a"
+    },
+    "tools/test_cns_source_mv_rewrite.py": {
+      "source": "d99032d7c9e9c9f7b7874f7753a26b22bc3d2239",
+      "sha256": "fe012c09a749c35260e93d02384362cdf8c5c0cbed33c097ca28e1232583ec94"
+    },
+    "tools/test_rewrite_successor_geometry.py": {
+      "source": "d99032d7c9e9c9f7b7874f7753a26b22bc3d2239",
+      "sha256": "652ed00fe79a6eb6d547a5f81cd873ac186e9317d96ba176da03cc5342847cee"
+    },
+    "tools/test_source_manifest_extraction.py": {
+      "source": "d99032d7c9e9c9f7b7874f7753a26b22bc3d2239",
+      "sha256": "1afa3b3780f7daa2831870c47edcfce21b15362befeecb4e51adbd140a4163b5"
+    }
+  },
+  "intentionally_preserved": [
+    "books/checkpoint-descriptor-read.lisp",
+    "books/checkpoint.lisp",
+    "books/checkpoint-member.lisp",
+    "books/article-manifest.lisp",
+    "books/upload.lisp",
+    "books/recovery-payload.lisp",
+    "books/txn.lisp",
+    "books/assembly-callbacks-d-upload.lisp",
+    "tests/native-append-fetch-restart.py",
+    "tests/test_native_append_fetch.py"
+  ],
+  "makefile_added": [
+    "books/successor-schema-geometry",
+    "books/successor-workspace-geometry",
+    "tests/successor-geometry-unit",
+    "tests/ctl-hash-interleave-unit",
+    "books/cns-source-core",
+    "tests/cns-stream-fetch-unit"
+  ],
+  "status": "source composition only, no actual actor/native run",
+  "test_client": {
+    "tests/fnct-client.lisp": {
+      "source": "3a3eb515a",
+      "sha256": "e258fa93440b3ee54ba51acabcf5a49eefa479efca329ef2fcb511408a8137c9"
+    },
+    "tests/fnct-client-frame-unit.lisp": {
+      "source": "3a3eb515a",
+      "sha256": "4044b6955ef1879802ff2e9686729b74d0a3e950daef035175ebd6e93c1b58e4"
+    },
+    "tests/cns-recovered-fetch-unit.lisp": {
+      "source": "3a3eb515a",
+      "sha256": "d8c9c573b01665b85ab37d7532fcb47e5104926910a2aca18b278117ff2b3ea5"
+    }
+  },
+  "group16_reviewed": [
+    "1383fb964",
+    "4a277af8e"
+  ],
+  "current_root_fixture": "eec6feab3",
+  "source_gates": {
+    "served_host_static": "6 raw sources, 0 findings",
+    "arity": "73 actual-definition calls /35 known MV bindings, 0 findings",
+    "python_controls": {
+      "raw_source": 7,
+      "retention": 5,
+      "hash_geometry": 3,
+      "MV_rewrite": 3,
+      "manifest_extraction": 3,
+      "physical_stride": 7,
+      "raw_threshold": 3,
+      "native_fixture": 3,
+      "successor_geometry": 2
+    },
+    "sbcl_controls": [
+      "actual source/abort/preheader",
+      "actual output/cancel/terminal-close",
+      "geometry including FC=B3/jobs=CNS",
+      "coalesced header/exact Receive cap"
+    ],
+    "dynamic_interface": "Not run: interface_emit --check delegates served --load, which requires a current qualified node prefix; no cold compile launched.",
+    "actual_app_native": "Unrun"
+  },
+  "pending_finalization": [
+    "qualified new columns63eb",
+    "member7b current-parent proof closure",
+    "pool101d/current source proof closure",
+    "current actor/interface admission"
+  ],
+  "root_fixture_sha256": "556fdbe0a36ce4948cf58fdfdd797f42fc4f5f71d67d7dbd2d804d4a4a9f5986"
+}
