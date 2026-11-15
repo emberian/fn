@@ -9,10 +9,10 @@
 ; own BLAKE3) and its chaining value in the stored octets' BLAKE3 tree (the
 ; subtree of its four chunks at chunk counter 4i; a final block shorter than a
 ; unit is no complete subtree, and its entry carries its own BLAKE3 there).
-; Three consecutive blocks share one extent (an extent is
-; *fn2-commit-write-resources* units), so block i is unit i mod 3 of its
-; extent, and the entry of a block at unit 0 of its extent is the extent's
-; only owner record the article keeps.
+; Three consecutive blocks share one physical extent. Block i uses unit
+; i mod *fn2-commit-write-resources* within that extent; the physical base
+; is *fn2-storage-extent-units* times its extent index. Only the group
+; leader at physical offset 0 owns the extent for the article.
 ;
 ; The manifest is stored in an extent of its own, its units in order; an
 ; entry never straddles two units (one starts in the next unit when fewer

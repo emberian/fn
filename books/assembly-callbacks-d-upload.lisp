@@ -263,7 +263,7 @@
           ((and (fn2-am-manifestp total) (< row-pdone total) (equal row-scount blen))
            (:let hrow (fn2-upload-hasher id))
            (:do (ecode mf) (fn2-upload-block-entry hrow row-lslot row-lgen blk blen
-                                                   (+ (* *fn2-commit-write-resources* row-cext)
+                                                   (+ (* *fn2-storage-extent-units* row-cext)
                                                       (mod blk *fn2-commit-write-resources*))
                                                    row-cepoch row-calloc row-mfill)
             :accept (:ok))
