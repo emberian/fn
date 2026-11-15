@@ -1,0 +1,19 @@
+Source-only mutation control; neither baseline nor mutant has executed yet.
+
+Apply cns-raw-eof.patch to a separate frozen source worktree containing the
+baseline tests/cns-raw-eof-unit.lisp. It removes exactly the EOF mode check in
+the actual generated fn2-cns-feed-article callback. Raw feed, actual upload,
+transaction/publication, client codec, and all assertion oracles stay unchanged.
+
+Required qualification, after a scoped current-prefix allocation:
+1. Baseline tests/cns-raw-eof-unit must pass all seven actual sessions.
+2. With this patch, load the same fixture against the rebuilt affected callback
+   prefix. It must reach an assertion failure in fn2-cre-ok: trailing-CR APPEND
+   must no longer satisfy the exact framing refusal / empty stream requirement.
+3. A parser, admission, dependency, timeout, or unrelated assertion failure is
+   not a successful mutation control. Record actual replies for the divergent
+   request and its STATUS before claiming sensitivity.
+
+The fixture covers this finite live APPEND refusal/publication/retry path.
+It does not prove universal framing, crash durability, or complete reclamation.
+No fixture uses a surrogate feed or a hand-published article.

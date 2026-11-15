@@ -90,6 +90,7 @@ ACL2_BOOKS = \
   tests/cns-draining-direct-events-unit \
   tests/cns-fence-proof-world \
   tests/column-snapshot-support \
+  tests/core-release-held-unit \
   tests/core-snapshot-support \
   tests/machine-reservations-unit \
   tests/pool-initialization-unit \
@@ -112,6 +113,7 @@ ACL2_BOOKS = \
   books/host-compress \
   books/columns \
   books/columns-guard-hints \
+  books/columns-carrier-contracts \
   books/compress-policy \
   books/compress-kind \
   books/compress-operation \
@@ -141,6 +143,9 @@ ACL2_BOOKS = \
   books/core-children-a \
   books/core-lowering \
   books/core-product-lowering \
+  books/reference-effect-lowering \
+  tests/reference-effect-lowering-unit \
+  tests/reference-effect-emitted-unit \
   books/core-walk \
   books/crash-model \
   books/cursor \
@@ -178,6 +183,7 @@ ACL2_BOOKS = \
   books/host-ops \
   books/identity \
   books/layout \
+  books/layout-size-bounds \
   books/log-model \
   books/machine-arms \
   books/machine-dispatch \
@@ -188,6 +194,7 @@ ACL2_BOOKS = \
   books/machines-a-run \
   books/machines-a-scribe \
   books/machines-all \
+  books/storage-block-io \
   books/machines-b \
   books/machines-c \
   books/machines-c-bind \
@@ -228,6 +235,8 @@ ACL2_BOOKS = \
   books/peer-model \
   books/pointwise-contracts \
   books/pool \
+  books/pool-credit \
+  books/pool-credit-contracts \
   books/pool-block \
   books/pool-ranges \
   books/pool-read-contracts \
@@ -299,6 +308,8 @@ ACL2_BOOKS = \
   tests/cns-release-refinement-unit \
   tests/cns-release-evidence-unit \
   tests/cns-decode-unit \
+  tests/cns-raw-eof-unit \
+  tests/cns-recovered-fetch-unit \
   tests/cns-edges-unit \
   tests/columns-cost-unit \
   tests/columns-cost-unit-10 \
@@ -335,6 +346,7 @@ ACL2_BOOKS = \
   tests/conn-answer-unit \
   tests/conn-unit \
   tests/consumer-codec-unit \
+  tests/fnct-append-boundary-unit \
   tests/consumer-commit-unit \
   tests/consumer-helm \
   tests/consumer-mini \
@@ -461,6 +473,7 @@ ACL2_BOOKS = \
   tests/pool-ranges-unit \
   tests/pool-query-ref-unit \
   tests/pool-protected-floor-unit \
+  tests/pool-credit-unit \
   tests/pool-unit \
   tests/port-unit \
   tests/primitive-list-domain-unit \

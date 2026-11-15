@@ -7,10 +7,172 @@ must be derived from that store and the actual served call/attachment graph.
 
 ## Current integration frontier — 2026-11-15 UTC
 
-Current integration includes matcher DP traversal `b88e96190`, retirement dispatch, actual-type
-codec fixtures, failed-Send classification, consumed-input accounting and farm
-Git metadata protection. No current whole-system image, full host gate,
-canonical served certificate, or completed assurance claim exists.
+The next completion milestone is actual APPEND → STATUS → query, followed by
+recovery of accepted data. Integrated work now goes directly to upstream dev;
+component records alone do not establish this milestone. The shared application
+build owns the coherent current callback/runtime prefix and executable controls.
+
+The first shared application source blocker, pool-block HASH-LOOP-SHAPE, is
+repaired at `ae6ad572f`: the complete book admits in the retained application
+world in 3.30 seconds / 281,519 steps. Only the induction hint changes; runtime
+definitions, guards and theorem hypotheses/conclusions are unchanged. This is
+an author-load result, not record-toolchain certification of the application.
+
+`d6f73cb84` adds `tests/cns-recovered-fetch-unit.lisp`: accepted wire APPEND,
+discarded live core, fresh-core recovery over the persisted simulator device,
+then FETCH of the exact original article. It requires intact completed recovery,
+quiet termination and zero stop reason. The shared session helper now accepts
+the existing device; old callers still supply NIL. Execution remains owed.
+This test does not cover native process-death cuts or actual socket restart.
+The native socket restart fixture and public FETCH client are integrated;
+actual node execution is still pending.
+
+Actual FNCT APPEND boundary controls are now qualified by exact18 record
+`certify-20261115T091528Z-1136034` (17 reused, one new, 1.934 seconds).
+Root matched all 18 current source hashes and closure keys to the receipt and
+both manifest snapshots. The generated full decoder completes encoded spans
+4095 and 4096, but returns `:more` at 4097 and 6152. Budget-one DECODE-STEP
+continuation completes the same exact byte-oracle inputs and field references.
+This executes the codec, not the CNS actor or socket path. Source tracing finds
+that CNS maps this `:more` result to frame refusal, while CTL also has a 4096-byte
+receive/frame envelope. Q1 owns bounded CNS continuation; native owns the CTL
+streaming connection. Raising a buffer limit to fit the 6KiB fixture is not the
+solution: admitted articles must stream through bounded owned buffers. These
+repairs and the actual socket restart test remain open.
+
+Current served article integration has a concrete workspace mismatch:
+`ordered.lisp` declares 13 article fields including location-hashes, while
+`machines-c-successor.lisp` permits only 12 and `fn2-succ-arg` rejects index 12.
+The fix must derive the shared entry/argument/result regions and B transaction
+stripe from the assembled schema requirements, preserving disjoint write
+footprints and allocation bounds. Raising only the article limit would overlap
+the adjacent workspace. Reclamation owns this repair before APPEND execution.
+The reviewed repair candidate `ddc7e3111` derives 13-field entry/argument regions,
+12-value result space and a 52-row slot from the assembled schema inventory.
+The complete footprint still fits the existing 2048-row transaction stripe;
+no allocation expansion is needed. Scratch derives to the existing 4096 bytes.
+Actual argument-12 admission and decoder/neighbor-sentinel execution remain
+owed before integration. Whole-bind work accounting remains a separate open
+obligation: per-entry copying alone does not bound search, decoding and encoding.
+
+The public client now provides exact-byte FETCH (`099a7a2c8`) and a native
+APPEND/restart/FETCH fixture. Four focused codec/socket-client and exact-byte
+controls pass; actual node execution remains owed. The NNTP parser generator
+hint repair (`3384f2984`) admits its actual generated book in 7.29 seconds.
+FNCT schema declarations (`c2d28dd96`) preserve all 1666 generated events and
+pass completeness/refusal controls; consumer-codec admits in 41.04 seconds in
+the retained application world. Its whole-book proof cost remains above the
+D26 target. These author loads are not record-toolchain certification.
+
+The current application snapshot `eea3146c1` has 230 books: 81 qualified
+compiled parents and 149 source books. Its retained Forge session admitted the
+checker frame interface, decoded-value bounds, and six preservation facets each
+for CAPTURE-ROOT and CAPTURE-ROOTS. CHECK-STEP candidate/reference/byte facets
+then passed. A concrete whole-antecedent witness refuted its unguarded CHECKER
+TYPE/WFP claims: row1 with zero checker rows permits RESET to damage the shape.
+The matching row-room control and a separate full-stored-guard positive pass;
+two explicitly guarded replacement contracts pass. Other original statements
+remain unchanged. The current obstruction is the separate HASHER-TYPE facet,
+whose workspace-domain counterexample is still under evaluation. The complete
+checkpoint book, member and application fixtures remain unadmitted/unrun.
+CHECK-STEP has no current-dev caller, but the incoming cold boot source calls it
+through the registered descriptor verifier; this work enables that integration.
+The standard `must-fail` event classification fix is integrated at `dab9393a0`;
+it preserves the original two-million-step/twenty-second event limits.
+
+The saved seven-root prefix is qualified by record
+`certify-20261115T074148Z-1049303`: 36 reused and 31 newly certified books,
+278.551 seconds at one job. All 67 source hashes now match the integration tree:
+the two enqueue-metadata generator files and two proof helpers are integrated.
+The compiler change derives enqueue bounds from declared calls and repeat
+counts; it does not size a runtime queue or establish query completion.
+The prefix certificate excludes checkpoint/member, the full application and
+native execution. Its artifacts allow the next run to start at the caller
+repair without replaying the already accepted source prefix. Accounts (`3f7b07618`) and answer preservation (`00e04f000`)
+repair only hints. The layout interface candidate disables an overly broad
+structural rewrite and explicitly supplies it to SCAN/EMIT guards; all 136 forms
+admit; exact eight-book record `certify-20261115T072636Z-1034939` passes
+with seven installed parents and one newly certified book (14.472 seconds at
+one job; D26 cost remains open). Root matched all eight source hashes. These results do not certify
+the application or establish accepted-data recovery.
+
+The native node tail adds 18 books beyond the frozen application plan: 14
+host/profile dependencies and four BLAKE3 evidence dependencies. Current record
+qualification of `node-profile` and `native-b3-evidence` is required before the
+unchanged CLI can execute. Then build BLAKE3, run host/interface gates and run
+the socket restart fixture as specified in `NATIVE-APPEND-FETCH.md`. Cleanup fix
+`5c36665eb` handles failure before NODE-PID; three regression controls and an
+actual isolated launcher check pass. This does not establish node recovery.
+
+Raw APPEND EOF controls from85c0114a3 are integrated as unexecuted regressions:
+seven real wire sessions require a trailing-CR refusal, empty STATUS, successful
+same-Message-ID retry, exactly one published occurrence, successful epoch setup,
+quiet termination and zero stop reason. Existing session helpers and assertions
+are preserved byte-for-byte in the shared support extraction. The precise
+final-mode-check mutant must reach actual reply divergence; a build failure is
+not a successful mutation control. Baseline and mutant execution remain owed.
+
+Current integration includes qualified held child release and generic compiler
+record890585 (29 books, root0bcf7ee29), device loan bindings record876717
+(12 books), and the earlier matcher/codec/pool scopes below. Root059ec5264 adds
+scoped CNS artifact generation from one immutable packet; its17 source controls
+pass, but a fresh served packet and its ACL2/Lean checks remain outstanding.
+No current whole-system image, full host gate, canonical served certificate, or
+completed assurance claim exists.
+
+Grouped reference-effect generation is now qualified at exact30 record939931
+(27 reused, three new;6.187s); all30 composed source hashes match before/after.
+Actual emitted mutable, readonly and two-child fixture programs admit and execute
+with all scalar results, fixture cells and FIFO checked. Logical world metadata
+binds recognizer ownership and ABI. This does not discharge generated
+WHOLE-RESULT obligations or qualify the actual IdentityDecide/CNS callbacks;
+those consumers and full selection/leaf/reuse composition remain next.
+
+The stable24 runtime frontier and credit11 API/primitive-control records now pass
+(18.950s and5.383s respectively); root verified all current source hashes.
+Credit kind-zero repair now supersedes the credit API record: exact11 record
+928116 passes in5.73s (nine reused, two new), with all11 composed source hashes
+matching before/after. Begin and owner checks accept the actual zero-based
+machine kind while retaining positive generation/nonce and exact provenance.
+Controls execute configure/begin/reserve/end/return and unchanged-frame refusal
+for unbound ownership and zero generation. This qualifies primitive credit
+behavior, not actor admission, redemption, or end-to-end progress.
+Public credit TYPE/WFP/ROWS contracts now pass exact10 record952201
+(nine reused, one new;8.704s), with all10 current source hashes and qualified
+cache entries checked. The generated configuration-resizer frame class has two
+passing source controls. This supplies existing API carrier effects to consumers;
+full accounting, admission/redemption and progress obligations remain separate.
+Checkpoint/member typed-readonly contract replacement remains active. The actual
+pinned-I/O extraction now passes exact34 record935930 (33 reused, one new;7.466s).
+All34 composed source hashes match; ten original production forms move unchanged
+into storage-block-io, and machines-b imports that implementation. Five source
+identity/registry controls pass. B registry composition, the66-book actual reader
+fixture, and larger cold/native executions remain outstanding. Native digest-carrier
+evidence separately passes exact19 record936479 (17 reused, two new;3.019s),
+with all19 current hashes matched. Its whole-effect theorem is conditional on the
+explicit native observation assumption; it is not native execution or a C/crypto proof. The columns carrier-hint default fix
+f2a1a1233 and layout proof-cost donor e8885ffdb are held for a shared convergence
+that removes temporary consumer hints and requalifies affected current closures.
+
+Two substantive obligations remain distinct from proof automation. The pending
+held-release independent model omits actual credited-input refusal ordering;
+Q1 source candidate8b1f165ba covers those inputs under its original hypotheses,
+including sticky stops, query preflight and a completed workspace return before
+namespace refusal. Its actual-callback controls remain unexecuted. The adjacent
+refusal oracle is being checked for the same sticky-stop rule.
+Recovery's consumed-prefix predicate alone does not establish uniqueness of live
+allocation epoch/identity pairs: exact7 record920695 executes a duplicate-adoption
+counterexample under the allocator invariant and original API guards. This is a
+primitive counterexample, not authenticated replay reachability. The bounded
+recovery identity index carrier exists at e34211eb9; one-probe steps, atomic
+adopt/remove, replay wiring and crash/retry controls remain unfinished.
+
+A separate parser coverage gap concerns raw CNS APPEND EOF. The real
+fn2-cns-feed-article check rejects a trailing CR/non-BOL final mode, while the
+existing upload-feed fixture calls the nonraw entry point. This is no confirmed
+runtime bug. Actual callback controls for trailing CR, quantum/fragment boundaries
+and removal of the EOF check are assigned to audit_claims; no-publication and
+subsequent-append claims require the composed lifecycle, not grammar output shape.
 
 The public matcher now has unconditional correspondence to the independent
 language predicate, including original-input domain checks before reversal,
@@ -54,9 +216,9 @@ actual envelope-step validation. Ordered Take/submission correspondence,
 logical Write-loan comparison and complete native replay remain separate;
 matching job identities as an unordered set is insufficient.
 
-Selected cold recovery has two concrete implementation blockers under the
+Selected cold recovery has two source repairs awaiting qualification under the
 reclamation owner. Recovery finishes frozen, but ordinary epoch initialization
-refuses that state: the private post-Fence finalization must require complete
+refuses that state: the private post-Fence finalization requires complete
 bank-protection reconstruction and orphan classification. In addition, eagerly
 adopting all suffix physical candidates can reject legitimate extent reuse before
 its preceding RELEASE is replayed. Directory/read provenance must be installed
@@ -653,3 +815,52 @@ Exact12 record passed in2.033s (8reused,4new); root verified all12 current closu
 hashes and all3 raw fixture source hashes against the receipt. Raw mocked performer
 controls passed. Actual envelope replay, host image execution and general memory
 noninterference remain unqualified; this gate does not establish disk durability.
+
+## Current consumer gates and restored assurance ownership
+
+At root b8a54b894, exact device envelope composition on donor6fc0926cf has
+227 books:56 matching qualified compiled pairs and171 missing. Assembly-core,
+host-boundary and check-envelope are among the missing current keys. The bounded
+reader candidate de31 has100 books:30 qualified and70 missing. These read-only
+inventories do not qualify either composition; convergence shares their common
+compiler dependencies rather than starting independent cold builds.
+
+The actual CHECK-STEP guard passed in retained author world9abe after adding a
+generic-index integer projection from the existing DECODE carrier contracts.
+Its original body and guard are unchanged; MEMBER and clean record qualification
+remain pending. Q1's old author world is terminal with owned cleanup verified;
+the next same29-book world uses corrected per-original-event budgets.
+
+Audit_bridge resumes the actual CNS canonical body/domain/selected-attachment
+connection, including the pending31b selected-dispatch helper. Audit_claims resumes
+independent stored-content/reread binding and whole-antecedent keystone evidence
+checks against current reclamation source. Their source candidates remain separate
+from current qualified claims; neither task changes authorization activation.
+
+## Current compiler and held-release integration — record 890585
+
+The integrated core child release now treats query-held ownership as retained:
+`:held` leaves pool and control unchanged; only`:ok`/`:retired` complete release.
+Other failures retain the existing sticky stop behavior. Full generated pool and
+control snapshots test held→last-reference close→retry, wrong owner and wrong
+state, with a populated sibling and nonzero counters. The exact two-root29-book
+record passed57.412s (14reused,15new); root matched all29 before/after/current
+source hashes and the owner audited29 current usable compiled cache entries.
+Receipt: CORE-RELEASE-HELD-20261114.json. Arm-children19.793s atj1 remains a proof
+cost issue; no repeat at two jobs was run. This qualifies the generic compiler
+and actual child boundary, not full CNS/host composition or query-producer
+lifecycle controls. Peer caller audit found no reachable early row reclamation;
+its actual composed execution controls remain pending.
+
+## Qualified credit API — record908176
+
+The credit configuration, begin/reserve/end/release and empty-abort API is now
+integrated with guarded producer contracts and executable primitive controls.
+The exact11-book record reused9 and certified2; all current source hashes match.
+Controls cover protected ordinary capacity, wrong owner/nonce, query-held refusal,
+borrowed range refusal, return/reacquire, retirement depletion and empty no-I/O
+retry. Generated requested frame lemmas come from actual pool declarations;
+original API bodies and guards are unchanged from the reviewed candidate.
+The pool implementation remains at3ef26. This does not qualify actor admission,
+served credit redemption, complete checkpoint progress or a no-I/O history
+guarantee inferred from quota alone. Receipt: receipts/pool-credit-api-691c06f3e.json.

@@ -729,7 +729,8 @@
         ;; :malformed (H pin P-UTF8-WS): 501, then close.
         (otherwise (mv-let (rc fn2-pool) (fn2-answer-say none *fn2-nntp-reply-syntax* mask 0 tslot tgen okind oslot ogen fn2-pool)
                      (mv rc :closing pending fn2-pool)))))))
-(fn2-pool-preserves fn2-answer (s e mask pending posting reading seen flags real rslot rgen tslot tgen okind oslot ogen fn2-pool) :position 3 :rows nil)
+(fn2-pool-preserves fn2-answer (s e mask pending posting reading seen flags real rslot rgen tslot tgen okind oslot ogen fn2-pool) :position 3 :rows nil
+ :hints (("Goal" :in-theory (disable nfix fn2-nntp-state-refusal))))
 (in-theory (disable fn2-answer))
 
 ;; Every command tag is answered by the table: no tag reaches :untabled.
