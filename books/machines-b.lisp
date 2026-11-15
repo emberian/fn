@@ -48,12 +48,14 @@
  (nfix (fn2-b-capacity :checkpoint-candidates 4 profile)))
 ; Dedicated regions: six commit I/O edges, two roots per extent, one pin per
 ; operation, six direct references per candidate, then one source-retention
-; edge per extent per active candidate. These are dedicated resident resources.
+; edge per extent per active candidate, then a disjoint per-CNS/per-extent
+; promised-read region. Its profile capacity bounds active queries, not stored data.
 (defun fn2-b-alloc-edge-floor (profile)
  (declare (xargs :guard t))
  (+ 6 (* 2 (nfix (fn2-b-capacity :extent-slots 16 profile)))
     (nfix (fn2-profile-o profile)) (* 6 (fn2-b-checkpoint-capacity profile))
-    (* (nfix (fn2-b-capacity :extent-slots 16 profile)) (fn2-b-checkpoint-capacity profile))))
+    (* (nfix (fn2-b-capacity :extent-slots 16 profile)) (fn2-b-checkpoint-capacity profile))
+    (* (nfix (fn2-b-capacity :extent-slots 16 profile)) (nfix (fn2-profile-get :cns profile)))))
 (defcorechild fn2-core-alloc-edges fn2-alloc-edges
  :init (fn2-alloc-edges-init (fn2-b-capacity :alloc-edge-slots (fn2-b-alloc-edge-floor profile) profile) fn2-alloc-edges)
  :profilep (and
@@ -85,9 +87,12 @@
 (defun fn2-b-ctl-slot (s profile)
  (declare (xargs :guard t))
  (+ 4 (fn2-b-upload-windows profile) (nfix s)))
+(defun fn2-b-cns-source-rows (profile)
+ (declare (xargs :guard t))
+ (nfix (fn2-profile-get :cns profile)))
 (defun fn2-b-format-floor (profile)
  (declare (xargs :guard t))
- (+ 9 (fn2-b-upload-windows profile) (fn2-b-ctl-rows profile)))
+ (+ 9 (fn2-b-upload-windows profile) (fn2-b-ctl-rows profile) (fn2-b-cns-source-rows profile)))
 (defun fn2-b-format-slots (profile)
  (declare (xargs :guard t))
  (fn2-b-capacity :format-slots (fn2-b-format-floor profile) profile))
@@ -104,9 +109,29 @@
 (defun fn2-b-event-row (rows)
  (declare (xargs :guard t))
  (nfix (- (nfix rows) 3)))
-(defun fn2-b-ctl-runtime-row (s connections rows)
+;; Source stream hashers follow all control frame hashers; the final five
+;; rows remain semantic/payload/event/block/checkpoint jobs.
+(defun fn2-b-ctl-runtime-row (s connections sources rows)
  (declare (xargs :guard t))
- (+ (nfix (- (nfix rows) (nfix connections) 5)) (nfix s)))
+ (+ (nfix (- (nfix rows) (nfix sources) (nfix connections) 5)) (nfix s)))
+(defun fn2-b-cns-source-row (s sources rows)
+ (declare (xargs :guard t))
+ (+ (nfix (- (nfix rows) (nfix sources) 5)) (nfix s)))
+(defun fn2-b-cns-source-geometry-p (sources connections rows)
+ (declare (xargs :guard t))
+ (and (natp sources) (natp connections) (natp rows)
+      (<= (+ sources connections 5) rows)))
+(defthm fn2-b-cns-source-row-disjoint-from-control
+ (implies (and (fn2-b-cns-source-geometry-p sources connections rows)
+               (natp c) (< c connections) (natp s) (< s sources))
+  (< (fn2-b-ctl-runtime-row c connections sources rows)
+     (fn2-b-cns-source-row s sources rows)))
+ :hints (("Goal" :in-theory (enable fn2-b-cns-source-geometry-p fn2-b-ctl-runtime-row fn2-b-cns-source-row))))
+(defthm fn2-b-cns-source-row-before-tail
+ (implies (and (natp sources) (natp rows) (<= (+ sources 5) rows)
+               (natp s) (< s sources))
+  (< (fn2-b-cns-source-row s sources rows) (- rows 5)))
+ :hints (("Goal" :in-theory (enable fn2-b-cns-source-row))))
 (defun fn2-b-checkpoint-row (rows)
  (declare (xargs :guard t))
  (nfix (- (nfix rows) 1)))
