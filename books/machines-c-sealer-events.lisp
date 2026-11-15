@@ -15,9 +15,10 @@
 ;; merges first (C5, sealer.lisp: it joins the schema's runs whenever one
 ;; free page or row is left, and its install and release free theirs), so
 ;; :full is a pool that cannot hold one batch's runs and a merge; with no
-;; wake for that, every other answer stops the core by name through fn2-sealer-refuse (:full is
-;; :sealer-full, :cache :sealer-cache, any other :sealer) rather than park a
-;; row nothing would wake, and moves the row to :stopped.
+;; wake for that, :held retries the retained cleanup phase. :credit stops
+;; with its handles and observer retained for recovery; other refusals stop
+;; the core by name through fn2-sealer-refuse (:full is :sealer-full,
+;; :cache :sealer-cache, any other :sealer).
 (defmachine-arms fn2-sealer :declare
  :arms
  ((:sealing :on-refusal ((:stop :machine-phase))
@@ -37,6 +38,9 @@
     (t
      (:do (code) (fn2-sealer-step 4096) :accept () :case
       (((:more) (:charge :bytes (+ *fn2-c-read-callback-bytes* 4096) :steps *fn2-work-transition* :runnable t))
+       ((:held) (:charge :steps *fn2-work-transition* :runnable t))
+       ((:credit) (:do () (fn2-sealer-refuse code)) (:set (stopped 1))
+        (:next :stopped) (:charge :steps *fn2-work-transition*))
        ((:done :retired :idle)
         (:if (equal row-bundle *fn2-sealer-bundle-held*)
          ((:set (drain 0) (copy-drained 0)) (:next :draining) (:charge :bytes (+ *fn2-c-read-callback-bytes* 4096) :steps *fn2-work-transition* :runnable t))
