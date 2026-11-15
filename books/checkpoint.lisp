@@ -267,6 +267,16 @@
              (fn2-checkpoint-refs (fn2-checkpoint-ref-clear-build r fn2-checkpoint-refs)))
        (mv :ok fn2-checkpoint-refs fn2-checkpoint-bytes))))))))
 
+; The actual stored guard supplies readonly field/pool types as well as
+; mutable carrier invariants. Input bounds are checked in CAPTURE-ROOT itself.
+(defcolumns-guarded-contracts fn2-checkpoint-capture-root
+ :carriers ((fn2-checkpoint-refs 1 :prefix "-REFS")
+            (fn2-checkpoint-bytes 2 :prefix "-BYTES")) :rows t
+ :hints ((fn2-columns-guard-hint
+          '(fn2-fields fn2-pool fn2-checkpoint-refs fn2-checkpoint-bytes)
+          '(fn2-checkpoint-copy-hash fn2-checkpoint-ref-clear-build)
+          '(fn2-checkpoint-capture-root) world)))
+
 ; Called immediately after the descriptor's physical page checker succeeds,
 ; before another decode can replace header fields. It decodes only its payload
 ; and rejects trailing bytes. This is a decode operation, NOT authentication;
@@ -436,6 +446,16 @@
    (if (not (eq code :ok)) (mv code fn2-checkpoint-refs fn2-checkpoint-bytes)
     (fn2-checkpoint-capture-roots (+ 1 role) c base slot gen okind oslot ogen
                                  fn2-fields fn2-pool fn2-checkpoint-refs fn2-checkpoint-bytes)))))
+
+(defcolumns-guarded-contracts fn2-checkpoint-capture-roots
+ :carriers ((fn2-checkpoint-refs 1 :prefix "-REFS")
+            (fn2-checkpoint-bytes 2 :prefix "-BYTES")) :rows t
+ :hints ((append
+          (fn2-columns-guard-hint
+           '(fn2-fields fn2-pool fn2-checkpoint-refs fn2-checkpoint-bytes)
+           '(fn2-checkpoint-capture-root) '(fn2-checkpoint-capture-roots) world)
+          '(:induct (fn2-checkpoint-capture-roots role c base slot gen okind oslot ogen
+                     fn2-fields fn2-pool fn2-checkpoint-refs fn2-checkpoint-bytes)))))
 
 ; The successful page checker and descriptor decode are in ONE transition.
 ; A caller cannot supply a verification flag. Buffer ownership and checker
