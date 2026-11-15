@@ -753,7 +753,7 @@
 (defcost fn2-successor-fill-octets :answers (:bounds :kind :ok :owner :state)
  :tables (fn2-core-succ-slots fn2-core-fields)
  :doc "Give a staged slot's late octet argument by reference.")
-(defcost fn2-successor-resolve :child fn2-successor-resolve-child :answers (:bad-magic :bounds :done :end :entry :format :invariant :length :lost :miss :more :noncanonical
+(defcost fn2-successor-resolve :child fn2-successor-resolve-child :answers (:source :reference :hash :source-header :source-index :page-kind :bad-magic :bounds :done :end :entry :format :invariant :length :lost :miss :more :noncanonical
   :ok :owner :part :payload :schema :stale :state :truncated :unknown-tag :wide)
  :bytes 4096
  :tables (fn2-core-succ-txns fn2-core-succ-slots fn2-core-run-cursors fn2-core-run-paths fn2-core-fields)
@@ -1009,7 +1009,7 @@
     (mv-let (c b0) (fn2-idc-stripe tx (fn2-fc-rows fn2-fc) fn2-id-decides fn2-fields)
      (if (eq c :ok) (fn2-succ-arg-octets-late tx i j max b0 fn2-succ-txns fn2-succ-slots fn2-fields)
        (mv c fn2-succ-txns fn2-succ-slots fn2-fields))))
-   (fn2-succ-wrap fn2-successor-resolve (tx budget)
+   (fn2-succ-wrap fn2-successor-resolve (tx budget qk qs qg)
     ((fn2-succ-txns (fn2-core-succ-txns fn2-core)) (fn2-succ-slots (fn2-core-succ-slots fn2-core))
      (fn2-id-decides (fn2-core-id-decides fn2-core)) (fn2-run-installed (fn2-core-run-installed fn2-core))
      (fn2-run-cursors (fn2-core-run-cursors fn2-core)) (fn2-run-paths (fn2-core-run-paths fn2-core))
@@ -1018,7 +1018,7 @@
     (fn2-succ-txns fn2-succ-slots fn2-run-cursors fn2-run-paths fn2-fields)
     (mv-let (c b0) (fn2-idc-stripe tx (fn2-fc-rows fn2-fc) fn2-id-decides fn2-fields)
      (if (eq c :ok)
-         (fn2-succ-resolve tx budget b0 fn2-succ-txns fn2-succ-slots fn2-id-decides fn2-run-installed fn2-run-cursors fn2-run-paths
+         (fn2-succ-resolve tx budget b0 qk qs qg fn2-succ-txns fn2-succ-slots fn2-id-decides fn2-run-installed fn2-run-cursors fn2-run-paths
                            fn2-run-cache fn2-fields fn2-pool)
        (mv c fn2-succ-txns fn2-succ-slots fn2-run-cursors fn2-run-paths fn2-fields)))
     answer)

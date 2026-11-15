@@ -975,7 +975,7 @@
                  (:set (wstep 1))
                  (:charge :bytes 8192 :steps *fn2-work-transition* :runnable t))
                 ((equal row-wstep 1)
-                 (:do (rvcode) (fn2-successor-resolve row-sx 4096)
+                 (:do (rvcode) (fn2-successor-resolve row-sx 4096 *fn2-auth-kind* id row-generation)
                   :accept ()
                   :case (((:ok) (:set (wstep 2)) (:charge :bytes 8192 :steps *fn2-work-transition* :runnable t))
                          ((:more) (:charge :bytes 8192 :steps *fn2-work-transition* :runnable t))
