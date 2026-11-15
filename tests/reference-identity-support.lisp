@@ -1,0 +1,37 @@
+; Admit real live owners without loading an unrelated machine callback.
+; No phase, generation, query-reference count or queue link is fabricated.
+(in-package "ACL2")
+(include-book "../books/identity-query-callback")
+(include-book "../books/cns-query-lifetime-model")
+(include-book "core-snapshot-support")
+(defconst *fn2-cns-drain-profile*
+  (put-assoc-equal :cns 2
+    (put-assoc-equal :pool-classes '((16 . 4096)) *fn2-profile-tiny*)))
+(defun fn2-ref-identity-admit-profile (profile fn2-core)
+ (declare (xargs :stobjs fn2-core :verify-guards nil))
+ (b* ((supported (fn2-core-profilep profile))
+      (fn2-core (fn2-core-init profile fn2-core))
+      ((mv c0 id gen fn2-core)
+       (fn2-machine-take-fn2-cns *fn2-none* *fn2-none* 0 1 0 0 4 *fn2-none* 0 fn2-core))
+      ((mv c1 sibling sibling-gen fn2-core)
+       (fn2-machine-take-fn2-cns *fn2-none* *fn2-none* 0 2 0 0 4 *fn2-none* 0 fn2-core)))
+  (mv (and supported (eq c0 :ok) (eq c1 :ok) (not (equal id sibling))
+           (fn2-query-owner-livep *fn2-cns-kind* id gen fn2-core)
+           (fn2-query-owner-livep *fn2-cns-kind* sibling sibling-gen fn2-core)
+           (not (fn2-core-stopped-p fn2-core))) id sibling fn2-core)))
+
+(defun fn2-cns-query-write (bytes slot gen off owner ogen fn2-core)
+  (declare (xargs :stobjs fn2-core :verify-guards nil))
+  (if (atom bytes) (mv :ok fn2-core)
+    (mv-let (code fn2-core)
+      (fn2-core-write slot gen off (car bytes) *fn2-cns-kind* owner ogen fn2-core)
+      (if (eq code :ok)
+          (fn2-cns-query-write (cdr bytes) slot gen (+ 1 off) owner ogen fn2-core)
+        (mv code fn2-core)))))
+
+(defun fn2-cns-query-drive (fuel tx fn2-core)
+  (declare (xargs :stobjs fn2-core :verify-guards nil))
+  (if (zp fuel) (mv :fuel fn2-core)
+    (mv-let (code fn2-core) (fn2-identity-decide tx 4096 fn2-core)
+      (if (eq code :more) (fn2-cns-query-drive (- fuel 1) tx fn2-core)
+        (mv code fn2-core)))))

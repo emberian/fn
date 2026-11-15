@@ -267,8 +267,8 @@
 (defcost fn2-claim-release-core :answers (:ok :bounds :state) :tables (fn2-core-claims fn2-core-machines)
   :effects ((:release (:identity-reservation)))
   :doc "Release a held claim and hand it to its FIFO's head, waking that transaction.")
-(defcost fn2-txn-offer :answers (:ok :bounds :state)
-  :tables (fn2-core-succ-txns fn2-core-id-decides fn2-core-fields)
+(defcost fn2-txn-offer :enqueues 1 :answers (:ok :bounds :state :exhausted :owner :stale)
+  :tables (fn2-core-succ-txns fn2-core-id-decides fn2-core-fields fn2-core-pool fn2-core-machines fn2-core-control fn2-core-sched fn2-core-trace)
   :doc "Start the identity decision for the upload's Message-ID and content digest.")
 (defcost fn2-txn-count :child fn2-txn-count-loop :answers (:ok :bounds) :bytes *fn2-txn-count-bytes*
   :doc "Count LF octets in up to 2,048 octets of a pool slot.")
@@ -442,6 +442,10 @@
   ;; count the body's lines, look each group up, refuse :group or the injected
   ;; fields, declare the slots (evidence or article); then resolve them
   (:prepare :on-refusal ((:stop :machine-phase))
+   (:if (or (fn2-core-query-heldp (:read upload c0-slot) (:read upload c0-gen))
+            (fn2-core-query-heldp (:read upload c1-slot) (:read upload c1-gen)))
+        ((:charge :steps *fn2-work-state*))
+        (
    (:if (equal row-prepared 1)
         ((:do (answer) (fn2-successor-resolve row-slot 4096)
           :accept ()
@@ -499,9 +503,13 @@
                               ((:set (word inj)) (:next :refused)
                                (:charge :bytes 8192 :steps *fn2-work-transition* :runnable t))
                               ((:set (prepared 1))
-                               (:charge :bytes 8192 :steps *fn2-work-transition* :runnable t))))))))))
+                               (:charge :bytes 8192 :steps *fn2-work-transition* :runnable t))))))))))))
   ;; stage every slot against the tip, emit into chunk 1, admit the member, bind on :ok (one run)
   (:ready :on-refusal ((:stop :machine-phase))
+   (:if (or (fn2-core-query-heldp (:read upload c0-slot) (:read upload c0-gen))
+            (fn2-core-query-heldp (:read upload c1-slot) (:read upload c1-gen)))
+        ((:charge :steps *fn2-work-state*))
+        (
    (:let sslot row-slot)
    (:if (eq (fn2-commit-posture) :draining)
         ((:set (word *fn2-upload-word-unaffordable*)) (:next :refused)
@@ -563,7 +571,7 @@
                  ((:duplicate) (:set (word *fn2-upload-word-duplicate*)) (:next :refused)
                                (:charge :bytes 24576 :steps *fn2-work-transition* :runnable t))
                  ((:capacity) (:set (word *fn2-upload-word-unaffordable*)) (:next :refused)
-                              (:charge :bytes 24576 :steps *fn2-work-transition* :runnable t)))))))
+                              (:charge :bytes 24576 :steps *fn2-work-transition* :runnable t)))))))))
   (:batched :on-refusal ((:stop :machine-phase))
    (:do (tcode tbatch tevent tout)
         (fn2-commit-take :owner upload)

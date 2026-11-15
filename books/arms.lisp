@@ -21,7 +21,7 @@
     integerp unsigned-byte-p 1+ 1- floor mod logand logior ash not
     binary-+ binary-* unary-- null))
 (defconst *fn2-arm-control* '(if cond and or mv prog2$ progn case))
-(defconst *fn2-arm-keys* '(:cost :writes :tables :next :uses :language :on-refusal :paths))
+(defconst *fn2-arm-keys* '(:cost :writes :tables :next :uses :language :on-refusal :paths :enqueues))
 ; The emitter's own stop branches (refused snapshots) may set the stop
 ; reason; every arm may therefore change the control child.
 (defconst *fn2-arm-implicit-tables* '(fn2-core-control))
@@ -178,7 +178,7 @@
 ; :child names the operation's body over the core children it touches
 ; (MACHINE-FORM 6.5 P2): the same formals with fn2-core replaced by those
 ; children, the same results with fn2-core replaced likewise.
-(defconst *fn2-cost-keys* '(:bytes :steps :descriptors :tables :own-writes :effects :target :answers :faults :must-route :child :doc))
+(defconst *fn2-cost-keys* '(:bytes :steps :descriptors :enqueues :tables :own-writes :effects :target :answers :faults :must-route :child :doc))
 (defun fn2-cost-boundp (x)
   (declare (xargs :verify-guards nil))
   (or (natp x) (and (symbolp x) x (not (keywordp x)) (not (eq x t)))))
@@ -237,7 +237,8 @@
          (msg "defcost ~x0: keys are ~v1." fn *fn2-cost-keys*))
         ((not (and (fn2-cost-boundp (or (fn2-arm-get :bytes args) 0))
                    (fn2-cost-boundp (or (fn2-arm-get :steps args) 0))
-                   (fn2-cost-boundp (or (fn2-arm-get :descriptors args) 0))))
+                   (fn2-cost-boundp (or (fn2-arm-get :descriptors args) 0))
+                   (fn2-cost-boundp (or (fn2-arm-get :enqueues args) 0))))
          (msg "defcost ~x0: a cost is a natural or a named constant." fn))
         ((not (and (fn2-cost-tables-p (fn2-arm-get :tables args))
                    (fn2-arm-namesp (fn2-arm-get :own-writes args))))
@@ -271,6 +272,7 @@
       (fn2-declare (list :cost fn)
         (list :bytes (or (fn2-arm-get :bytes args) 0) :steps (or (fn2-arm-get :steps args) 0)
               :descriptors (or (fn2-arm-get :descriptors args) 0)
+              :enqueues (or (fn2-arm-get :enqueues args) 0)
               :tables (fn2-arm-get :tables args) :own-writes (fn2-arm-get :own-writes args)
               :effects (fn2-arm-get :effects args) :target (fn2-arm-get :target args)
               :answers (fn2-arm-get :answers args) :faults (fn2-arm-get :faults args)
@@ -314,6 +316,8 @@
      ((not (fn2-cost-plistp (fn2-arm-get :cost c)))
       (msg "~x0: arm ~x1's :cost ~x2 is not a cost form over constants and declared calls."
            name (car entry) (fn2-arm-get :cost c)))
+     ((not (natp (or (fn2-arm-get :enqueues c) 0)))
+      (msg "~x0: arm ~x1's :enqueues is not a derived natural bound." name (car entry)))
      ((not (and (fn2-arm-namesp (fn2-arm-get :writes c))
                 (fn2-arm-subsetp (fn2-arm-get :writes c) fields)))
       (msg "~x0: arm ~x1 writes ~x2, which are not all its own fields ~x3 (phase moves are :next)."

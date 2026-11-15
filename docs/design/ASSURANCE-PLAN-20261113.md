@@ -32,6 +32,11 @@ machine kind while retaining positive generation/nonce and exact provenance.
 Controls execute configure/begin/reserve/end/return and unchanged-frame refusal
 for unbound ownership and zero generation. This qualifies primitive credit
 behavior, not actor admission, redemption, or end-to-end progress.
+Public credit TYPE/WFP/ROWS contracts now pass exact10 record952201
+(nine reused, one new;8.704s), with all10 current source hashes and qualified
+cache entries checked. The generated configuration-resizer frame class has two
+passing source controls. This supplies existing API carrier effects to consumers;
+full accounting, admission/redemption and progress obligations remain separate.
 Checkpoint/member typed-readonly contract replacement remains active. The actual
 pinned-I/O extraction now passes exact34 record935930 (33 reused, one new;7.466s).
 All34 composed source hashes match; ten original production forms move unchanged

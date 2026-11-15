@@ -77,6 +77,7 @@ ACL2_BOOKS = \
   books/cns-draining-model \
   books/cns-draining-public \
   books/cns-pool-refinement \
+  books/cns-query-lifetime-model \
   books/cns-release-accounting \
   books/cns-release-refinement \
   books/core-init-projections \
@@ -87,6 +88,16 @@ ACL2_BOOKS = \
   tests/cns-draining-composition-unit \
   tests/cns-draining-contract-unit \
   tests/cns-draining-count-counterexample \
+  tests/cns-draining-credit-unit \
+  tests/cns-draining-teeth-unit \
+  books/identity-query-callback \
+  books/reference-state-model \
+  books/reference-effect-semantics \
+  books/reference-effect-leaves \
+  books/reference-effect-query \
+  tests/reference-identity-support \
+  tests/reference-effect-query-unit \
+  tests/reference-effect-query-last-unit \
   tests/cns-draining-direct-events-unit \
   tests/cns-fence-proof-world \
   tests/column-snapshot-support \
@@ -234,6 +245,7 @@ ACL2_BOOKS = \
   books/pointwise-contracts \
   books/pool \
   books/pool-credit \
+  books/pool-credit-contracts \
   books/pool-block \
   books/pool-ranges \
   books/pool-read-contracts \
@@ -273,6 +285,13 @@ ACL2_BOOKS = \
   books/stobj-scope \
   books/stop-boundary \
   books/terminal-values \
+  books/core-scheduler-wake \
+  books/enqueue-trace \
+  books/query-reference-predicates \
+  books/query-reference-core-predicate \
+  books/query-ref-wake \
+  books/queue-model \
+  books/trace-events \
   books/trace \
   books/translation-primitives \
   books/translation-validation \
@@ -308,9 +327,12 @@ ACL2_BOOKS = \
   tests/check-history-unit \
   tests/check-own-unit \
   tests/claims-unit \
+  tests/cns-query-support \
+  tests/cns-query-lifetime-unit \
   tests/cns-release-refinement-unit \
   tests/cns-release-evidence-unit \
   tests/cns-decode-unit \
+  tests/cns-raw-eof-unit \
   tests/cns-edges-unit \
   tests/columns-cost-unit \
   tests/columns-cost-unit-10 \
@@ -471,6 +493,12 @@ ACL2_BOOKS = \
   tests/peer-replay-unit \
   tests/pointwise-contracts-unit \
   tests/pool-ranges-unit \
+  tests/enqueue-cost-unit \
+  tests/query-reference-unit \
+  tests/query-two-wake-unit \
+  tests/query-owner-drain-unit \
+  tests/queue-model-unit \
+  tests/trace-events-unit \
   tests/pool-query-ref-unit \
   tests/pool-protected-floor-unit \
   tests/pool-credit-unit \

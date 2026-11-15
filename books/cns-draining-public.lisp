@@ -24,8 +24,9 @@
                  fn2-cns-draining-reservedp fn2-cns-drain-releasablep)))))
 
 ; A complete independent result must survive the real post-arm check.
-; In particular, reclaim changes the phase to FREE or RETIRED; proving only
-; its quantities would omit that check and could hide a contract-stop.
+; Query holds and stopped credit refusals retain DRAINING; successful final
+; reclaim changes it to FREE or RETIRED. The exact refusal charge must also
+; pass this check: quantities alone could conceal a contract-stop.
 (defthm fn2-cns-draining-expected-accepted-by-public-contract
   (implies (and (fn2-corep core) (fn2-core-wfp core)
                 (natp budget) (fn2-cns-draining-domainp id core)
@@ -38,6 +39,9 @@
   :hints (("Goal" :do-not-induct t
            :in-theory
            (e/d (fn2-cns-draining-domainp fn2-cns-draining-expected
+                 fn2-cns-draining-zero-query-expected
+                 fn2-cns-draining-uncredited-zero-query-expected
+                 fn2-cns-draining-credit-stop-expected fn2-cns-drain-stopped-control
                  fn2-cns-arm-ok-p fn2-cns-arm-charge-ok-p fn2-cns-arm-next-ok-p
                  fn2-machine-phase-read-code fn2-machine-phase fn2-machine-idp
                  fn2-machine-kind fn2-machine-kind-read-code
