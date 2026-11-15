@@ -34,7 +34,13 @@ class Projection(unittest.TestCase):
      self.assertEqual(rw.head(new[phase].items[3]),':do')
      self.assertEqual(rw.head(new[phase].items[3].items[2]),'fn2-cns-request-release')
     for name in ('hand','cancel','page-end','page-fail','page-cancel'):
-     self.assertEqual(rw.head(subs[name].items[3].items[2]),'fn2-cns-request-release')
+     if case['streamed'] and name in ('cancel','page-fail','page-cancel'):
+      first=subs[name].items[3]
+      self.assertEqual(rw.head(first),':if')
+      self.assertEqual(rw.head(first.items[1]),'fn2-cns-source-boundp')
+      self.assertFalse(first.items[2].items)
+      self.assertEqual(len(calls(first.items[3],'fn2-cns-request-release')),1)
+     else:self.assertEqual(rw.head(subs[name].items[3].items[2]),'fn2-cns-request-release')
     self.assertFalse(calls(new[':commit'],'fn2-cns-lookup-cursor'))
     self.assertFalse(calls(new[':committed'],'fn2-cns-lookup-cursor'))
     self.assertEqual(len(calls(new[':refresh'],'fn2-cns-lookup-cursor')),1)
@@ -49,6 +55,19 @@ class Projection(unittest.TestCase):
      self.assertFalse(calls(opened,'fn2-cns-entry-mid'))
      self.assertTrue(calls(opened,'fn2-cns-row-mid-checked'))
      self.assertEqual(len(calls(subs['item'],'fn2-cns-stream-source-check-mid')),1)
+     self.assertFalse(calls(subs['item'],'fn2-cns-request-release'))
+     sourcecase=next(n for n in new[':source'].items if rw.head(n)==':case')
+     for branch in sourcecase.items[2:]:
+      label=rw.head(branch.items[0]) if isinstance(branch.items[0],lr.Lst) else ''
+      if label in (':covered',':handoff'):
+       self.assertEqual(rw.head(branch.items[1]),':if')
+       self.assertEqual(rw.head(branch.items[1].items[1]),'posp')
+       self.assertEqual(len(calls(branch.items[1],'fn2-cns-request-release')),1)
+       self.assertFalse(branch.items[1].items[3].items)
+       target='fn2-cns-stream-source-open' if label==':covered' else 'fn2-cns-lease-release'
+       self.assertLess(calls(branch,'fn2-cns-request-release')[0].start,calls(branch,target)[0].start)
+      else:self.assertFalse(calls(branch,'fn2-cns-request-release'))
+
     # Inserted call-result names are globally fresh. A PAGE end can
     # drop metadata, then reach HAND in the same generated arm path.
     oldvars={rw.sym(v) for n in rw.walk(rw.named(b.forms,'defmachine-arms','fn2-cns'))
@@ -72,6 +91,73 @@ class Projection(unittest.TestCase):
     self.assertLess(page.index('fn2-cns-request-release'),page.index('fn2-cns-lease-reserve'))
     self.assertEqual(rw.transform_callbacks(after,R,M),after)
     self.assertEqual(rw.transform_kind(k),k)
+ def test_actual_covered_wait_transcript(self):
+  # Execute the actual SOURCE arm's control flow, with explicit callee
+  # outcomes. This checks routing/once-only release, not callee semantics.
+  source=arms((ROOT/'books/cns.lisp').read_text(),':arms')[':source']
+  class End(Exception):pass
+  def run(env,status):
+   def val(x):
+    if isinstance(x,lr.Atom):
+     if x.low in env:return env[x.low]
+     if x.low=='nil':return False
+     if x.low=='t':return True
+     try:return int(x.low)
+     except ValueError:return x.low
+    h=rw.head(x);args=[val(y) for y in x.items[1:]]
+    if h=='posp':return isinstance(args[0],int) and args[0]>0
+    if h in ('eq','equal'):return args[0]==args[1]
+    raise AssertionError('unsupported expression '+h)
+   def seq(steps):
+    for step in steps:
+     h=rw.head(step)
+     if h==':do':
+      call=rw.head(step.items[2])
+      if call=='fn2-cns-stream-source-step':answer=status
+      elif call=='fn2-cns-request-release':
+       self.assertGreater(env['row-observer-serial'],0)
+       env['releases']+=1;answer=':ok'
+      elif call=='fn2-cns-stream-source-open':env['opens']+=1;answer=':wait'
+      else:raise AssertionError('unsupported callee '+call)
+      try:accept=rw.value(step,':accept')
+      except ValueError:raise AssertionError('actual routed call lacks acceptance')
+      self.assertIn(answer,[rw.sym(v) for v in accept.items])
+      self.assertEqual(len(step.items[1].items),1)
+      env[rw.sym(step.items[1].items[0])]=answer
+     elif h==':if':seq(step.items[2 if val(step.items[1]) else 3].items)
+     elif h==':set':
+      for b in step.items[1:]:env['row-'+rw.head(b)]=val(b.items[1])
+     elif h==':case':
+      answer=val(step.items[1]);matched=False
+      for branch in step.items[2:]:
+       labels=branch.items[0]
+       if isinstance(labels,lr.Lst) and answer in [rw.sym(v) for v in labels.items] or rw.sym(labels)==':otherwise':
+        seq(branch.items[1:]);matched=True;break
+      self.assertTrue(matched)
+     elif h==':charge':raise End()
+     elif h==':stop':env['stopped']=True;raise End()
+     else:raise AssertionError('unsupported control '+h)
+   try:seq(source.items[3:])
+   except End:pass
+  env={'row-observer-serial':17,'releases':0,'opens':0,'stopped':False}
+  run(env,':covered')
+  self.assertEqual((env['row-observer-serial'],env['releases'],env['opens']),(0,1,1))
+  run(env,':covered')
+  self.assertEqual((env['row-observer-serial'],env['releases'],env['opens']),(0,1,2))
+  # Removing the actual serial guard must expose a second release on
+  # the repeated covered/WAIT transcript, rather than pass this control.
+  original=source
+  sourcecase=next(n for n in source.items if rw.head(n)==':case')
+  covered=next(n for n in sourcecase.items[2:] if isinstance(n.items[0],lr.Lst) and rw.head(n.items[0])==':covered')
+  condition=covered.items[1].items[1]
+  mutated=lr.write((ROOT/'books/cns.lisp').read_text(),[(condition.start,condition.end,'t')])
+  source=arms(mutated,':arms')[':source']
+  with self.assertRaises(AssertionError):run({'row-observer-serial':0,'releases':1,'opens':1,'stopped':False},':covered')
+  source=original
+  for code in (':stale',':uncertain'):
+   retained={'row-observer-serial':17,'releases':0,'opens':0,'stopped':False}
+   run(retained,code)
+   self.assertEqual((retained['row-observer-serial'],retained['releases'],retained['opens'],retained['stopped']),(17,0,0,True))
  def test_missing_protocol_refuses(self):
   case=json.loads(FIX.read_text())[0]
   broken=case['callbacks'].replace('(:committed :on-refusal','(:missing-committed :on-refusal',1)

@@ -49,6 +49,44 @@ def named(forms,h,name):
  return matches[0]
 def text(p,n):return p.text[n.start:n.end]
 def append_items(edits,node,source):edits.append((node.end-1,node.end-1,' '+source))
+def source_handoff(source):
+ """Keep the live C observer until transitive physical retention is complete.
+
+ A manifest root claim is not a descendant closure. Cancellation retains the
+ same receipt until bounded source cleanup reaches actual HANDOFF.
+ """
+ p=lr.parse(source);body=named(p.forms,'defmachine-arms','fn2-cns')
+ arms={head(n):n for n in value(body,':arms').items};subs={head(n):n for n in value(body,':subarms').items}
+ if ':source' not in arms:return source
+ edits=[]
+ item=subs['item']
+ calls=[n for n in walk(item) if head(n)==':do' and head(n.items[2])=='fn2-cns-request-release']
+ for call in calls:
+  sets=[n for n in walk(item) if head(n)==':set' and n.start>call.end and any(head(x)=='observer-serial' for x in n.items[1:])]
+  if len(calls)!=1 or not sets:raise ValueError('unexpected ITEM metadata drop')
+  clear=min(sets,key=lambda n:n.start)
+  edits.append((call.start,clear.end,''))
+ # A captured but refused item can reach these cleanup subarms before SOURCE.
+ # Their SOURCE-bound branch must retain the observer until HANDOFF as well.
+ for name in ('cancel','page-fail','page-cancel'):
+  sub=subs[name]
+  if head(sub.items[3])==':if' and head(sub.items[3].items[1])=='fn2-cns-source-boundp':continue
+  call=sub.items[3];clear=sub.items[4]
+  if not(head(call)==':do' and head(call.items[2])=='fn2-cns-request-release' and head(clear)==':set'):
+   raise ValueError('unexpected source cancellation drop '+name)
+  edits.append((call.start,clear.end,'(:if (fn2-cns-source-boundp id row-generation row-ctl row-ctl-gen row-request)\n         ()\n         ('+text(p,call)+'\n          '+text(p,clear)+'))'))
+ case=next(n for n in arms[':source'].items if head(n)==':case')
+ def clause(name):return next(n for n in case.items[2:] if isinstance(n,lr.Lst) and head(n.items[0])==name)
+ for name,site in ((':covered','source-covered'),(':handoff','source-handoff')):
+  branch=clause(name)
+  if any(head(n)=='fn2-cns-request-release' for n in walk(branch)):continue
+  step=branch.items[1]
+  why=('All authenticated manifest descendants now have exact retained claims; release C before any prefix.'
+       if name==':covered' else 'Abort/preheader cleanup has released every source claim; retire its retained C observation before the workspace.')
+  code='; '+why+'\n     (:if (posp row-observer-serial)\n          ('+drop(site).replace('\n   ','\n           ')+')\n          ())\n     '
+  edits.append((step.start,step.start,code))
+ return lr.write(source,edits).replace('\n     \n     (:set (stream 0))', '\n     (:set (stream 0))')
+
 def validate_callbacks(source):
  p=lr.parse(source);body=named(p.forms,'defmachine-arms','fn2-cns')
  arms={head(n):n for n in value(body,':arms').items};subs={head(n):n for n in value(body,':subarms').items}
@@ -58,10 +96,24 @@ def validate_callbacks(source):
  for phase in (':commit',':committed',':append',':park'):
   if head(arms[phase].items[3])!=':do' or head(arms[phase].items[3].items[2])!='fn2-cns-request-release':raise ValueError('missing metadata drop '+phase)
  for name in ('hand','cancel','page-end','page-fail','page-cancel'):
+  if ':source' in arms and name in ('cancel','page-fail','page-cancel'):
+   first=subs[name].items[3]
+   if head(first)!=':if' or head(first.items[1])!='fn2-cns-source-boundp' or first.items[2].items:raise ValueError('early source cancellation drop '+name)
+   continue
   if head(subs[name].items[3])!=':do' or head(subs[name].items[3].items[2])!='fn2-cns-request-release':raise ValueError('missing metadata handoff '+name)
  for phase in (':commit',':committed'):
   if count(arms[phase],'fn2-cns-lookup-cursor'):raise ValueError('yielding metadata read still consumes commit result '+phase)
  if count(arms[':draining'],'fn2-cns-request-release'):raise ValueError('draining changed instead of preserving its original semantic subject')
+ if ':source' in arms:
+  if count(subs['item'],'fn2-cns-request-release'):raise ValueError('root-only claim dropped META')
+  case=next(n for n in arms[':source'].items if head(n)==':case')
+  for branch in case.items[2:]:
+   label=head(branch.items[0]) if isinstance(branch,lr.Lst) and isinstance(branch.items[0],lr.Lst) else ''
+   drops=[n for n in walk(branch) if head(n)=='fn2-cns-request-release']
+   if label in (':covered',':handoff'):
+    if len(drops)!=1 or head(branch.items[1])!=':if' or head(branch.items[1].items[1])!='posp':raise ValueError('missing once-only physical handoff '+label)
+   elif drops:raise ValueError('precoverage metadata drop '+label)
+
  if '"cns-request-observer"' not in source or '(fn2-cns-request-observer-events)' not in source:raise ValueError('missing observer provider')
  opened=[n for f in p.forms for n in walk(f) if head(n)=='defun' and sym(n.items[1])=='fn2-cns-stream-source-open']
  if opened and (count(opened[0],'fn2-cns-entry-mid') or not count(opened[0],'fn2-cns-row-mid-checked')):raise ValueError('source handoff still borrows C')
@@ -87,7 +139,7 @@ def transform_kind(source):
 def transform_callbacks(source,refresh,mid):
  p=lr.parse(source);body=named(p.forms,'defmachine-arms','fn2-cns');arms=value(body,':arms');subs=value(body,':subarms');edits=[]
  if '(fn2-cns-request-acquire id row-generation)' in source:
-  validate_callbacks(source);return source
+  source=source_handoff(source);validate_callbacks(source);return source
  include=next(f for f in p.forms if head(f)=='include-book' and text(p,f)=='(include-book "cns-kind")')
  edits.append((include.end,include.end,'\n(include-book "cns-request-observer")'))
  costs=[f for f in p.forms if head(f)=='defcost']
@@ -154,7 +206,7 @@ def transform_callbacks(source,refresh,mid):
   stop=next(n for n in bindings.items if isinstance(n,lr.Lst) and len(n.items)==2 and head(n.items[0])=='mv' and sym(n.items[0].items[1])=='code')
   edits.append((start.start,stop.start,'''((unless (equal (fn2-cns-row-mid-checked cns fn2-core) 1)) (mv :bad fn2-core))
            '''))
- result=lr.write(source,edits);validate_callbacks(result);return result
+ result=source_handoff(lr.write(source,edits));validate_callbacks(result);return result
 def main():
  ap=argparse.ArgumentParser();ap.add_argument('callbacks',type=Path);ap.add_argument('kind',type=Path);ap.add_argument('--write',action='store_true');a=ap.parse_args()
  here=Path(__file__).resolve().parent

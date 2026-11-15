@@ -1,6 +1,7 @@
 ; One metadata observation per actual CNS incarnation. This parent is not a
-; Send lease: owned replies, or captured FETCH commitments + physical holds,
-; replace C references before transport may wait on the client.
+; Send lease: owned replies, or completed authenticated FETCH coverage with
+; exact claims for every descendant, replace C references before transport.
+; A captured manifest root alone does not close its descendant lifetime.
 (in-package "ACL2")
 (include-book "cns-kind")
 (include-book "cursor-kind")
