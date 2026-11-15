@@ -2,15 +2,38 @@
 ; unchanged. Generic ARM-DEADLINE is intentionally not an opaque leaf: it
 ; may set a service flag. Positive ARM-DELAY-MS never takes that branch.
 (in-package "ACL2")
-(include-book "reference-effect-leaves")
-(include-book "cns-draining-contract")
-(include-book "assembly-callbacks-d-conn")
+(include-book "reference-effect-semantics")
+(include-book "reference-effect-lowering")
+(include-book "timer-core")
 
 (defthm fn2-ref-effect-positive-delay-is-future
   (implies (and (natp now) (unsigned-byte-p 32 milliseconds)
                 (< 0 milliseconds))
            (< now (+ now (* 1000 milliseconds))))
   :rule-classes (:rewrite :linear))
+
+(defthm fn2-ref-effect-zero-delay-refusal
+  (equal (fn2-sched-arm-delay-ms machine 0 sched control)
+         (list :bounds 0 sched control))
+  :hints (("Goal" :in-theory (enable fn2-sched-arm-delay-ms))))
+(defthm fn2-ref-effect-overflow-delay-refusal
+  (implies (and (unsigned-byte-p 32 milliseconds) (< 0 milliseconds)
+                (<= *fn2-no-deadline*
+                    (+ (fn2-control-now control) (* 1000 milliseconds))))
+    (equal (fn2-sched-arm-delay-ms machine milliseconds sched control)
+           (list :bounds 0 sched control)))
+  :hints (("Goal" :in-theory (enable fn2-sched-arm-delay-ms))))
+; Refusal after conversion retains the computed scalar deadline. Do not
+; confuse it with zero/overflow refusal or infer success from that scalar.
+(defthm fn2-ref-effect-future-invalid-row-refusal
+  (implies (and (unsigned-byte-p 32 milliseconds) (< 0 milliseconds)
+                (unsigned-byte-p 60 (+ (fn2-control-now control) (* 1000 milliseconds)))
+                (< (+ (fn2-control-now control) (* 1000 milliseconds)) *fn2-no-deadline*)
+                (not (and (natp machine) (< machine (fn2-sched-rows sched)))))
+    (equal (fn2-sched-arm-delay-ms machine milliseconds sched control)
+           (list :bounds (+ (fn2-control-now control) (* 1000 milliseconds)) sched control)))
+  :hints (("Goal" :in-theory
+           (enable fn2-sched-arm-delay-ms fn2-sched-arm-deadline))))
 
 ; Extract only the selected timer row from the existing relation. This is
 ; not a replacement timer model and imposes no equality on intrusive queues.

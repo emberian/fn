@@ -248,6 +248,11 @@ ACL2_BOOKS = \
   books/recovery-proof \
   books/reference \
   books/reference-state \
+  books/reference-state-model \
+  books/reference-effect-semantics \
+  books/reference-effect-timer-leaves \
+  books/core-scheduler-wake \
+  books/queue-model \
   books/resident \
   books/resources \
   books/resources-owed \
