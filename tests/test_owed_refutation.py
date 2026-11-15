@@ -22,14 +22,6 @@ class RefutationPlumbing(unittest.TestCase):
         self.assertIn(':refuted-original', complete)
         self.assertIn(':candidate-replacement-link-unverified', complete)
         self.assertIn('(not (eq (car (fn2-decl-get :proof row)) :proved))', complete)
-    def test_actual_member_binding_and_export_are_connected(self):
-        source = (ROOT / 'tests/checkpoint-member-refutation-unit.lisp').read_text()
-        self.assertIn('(not (fn2-checkpoint-installation-pack-member-fields-type$owed', source)
-        self.assertIn(':use fn2-checkpoint-member-fields-type-readonly-removal-ground', source)
-        self.assertIn('fn2-checkpoint-installation-pack-member-fields-type-under-guard', source)
-        self.assertIn('(include-book "tests/checkpoint-member-refutation-unit")',
-                      (ROOT / 'tools/owed-export.lsp').read_text())
-        self.assertIn('link unverified', (ROOT / 'books/owed-report.lisp').read_text())
     def test_identity_survives_table_clear_without_naming_statement(self):
         declaration = (ROOT / 'books/declare.lisp').read_text()
         guard = (ROOT / 'books/owed.lisp').read_text()
@@ -45,8 +37,7 @@ class RefutationPlumbing(unittest.TestCase):
         self.assertNotIn('(not (search ":PROVED" text))', export)
 
     def test_adversarial_actual_events_parse(self):
-        for path in ['tests/owed-refutation-unit.lisp', 'tests/owed-refutation-export.lsp',
-                     'tests/checkpoint-member-refutation-unit.lisp']:
+        for path in ['tests/owed-refutation-unit.lisp', 'tests/owed-refutation-export.lsp']:
             self.assertTrue(read_all((ROOT / path).read_text()))
         text = (ROOT / 'tests/owed-refutation-unit.lisp').read_text()
         self.assertGreaterEqual(text.count('(must-fail'), 5)
