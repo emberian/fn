@@ -128,3 +128,49 @@ Forge receipts are `/tmp/finish-pin-modules.log`,
 `/tmp/finish-pin-modules-format-events.log`,
 `/tmp/finish-pin-modules-continue2.log`, and named book/event logs under
 `/tmp/finish-pin-modules/` and `/tmp/finish-pin-*.log`.
+
+## Qualified reusable prefix at 4faebb39d
+
+The compact retirement book's final source ordering passed in an exact
+`4faebb39d617a653eac6b125fe2c2cadab79c518` author world: ten source events,
+6.05 seconds / 510,174 steps, including the original packer guard and carrier
+proofs without the exploratory guard hint. That author world stopped before
+record certification began.
+
+Farm run `run-20261115T015615Z-600f`, record
+`certify-20261115T015645Z-703564`, passed the five-root, 33-book prefix in
+108.61 seconds: 21 qualified cache entries reused, all 12 new books passed and
+published. Roots are core-children, read-pins, format-check,
+retirement-coordinator, and checkpoint-construction. None is subsumed by another
+root. The record used exact source 4faebb39d, unchanged before/after closure
+hashes and runner, record fingerprint 8aeb1bea18968c6cd33ac633a80ebf67e4924504db112fd27eb11f16a27b2a8c,
+j1, 4 GiB cgroup cap, swap 0, 120-second per-book timeout, and a 300-second run
+budget. A post-publication digest/FASL/toolchain audit found all 33 qualified,
+zero missing, zero uncompiled, and no publication failures. Recorded leader
+703559 and runner 703564 were absent after exit 0; compute was released.
+
+The supported farm explicit-root route preserved this exact scope:
+
+```
+FN_FARM_MEM_MAX=4G FN_CERTIFY_JOBS=1 python3 tools/farm.py submit forge \
+  books/core-children books/read-pins books/format-check \
+  books/retirement-coordinator books/checkpoint-construction \
+  --jobs 1 --budget-seconds 300 --timeout-seconds 120 --images off \
+  --cache /home/fn/.cache/fn-certs \
+  --remote-root /build/lanes/finish-pin-prefix-record-4fa
+```
+
+`--lane --affected-by` adds direct consumers beyond the approved 33 books, so
+this gate used explicit roots through farm rather than widening the selection.
+The local box table lacked required capacity declarations; a task-local
+`FN_BOXES_FILE` copy supplied certify_jobs=1 and load_ceiling=16 for the actual
+16-CPU Forge wrapper. The persistent box configuration was not changed. Farm
+resolved the existing forge alias to the designated fn identity and measured
+load 0.31 before admission.
+
+This qualification covers the shared module prefix, not machines-b itself,
+a materialized canonical core, or the 32 canonical retirement controls. The
+next metadata audit at these same sources finds machines-b closure 76 with
+50 qualified / 26 missing (25 dependencies plus the target). Canonical R2
+closure 159 remains 61 qualified / 98 missing; the canonical control entry
+closure 166 remains 61 qualified / 105 missing. No broader job was launched.
