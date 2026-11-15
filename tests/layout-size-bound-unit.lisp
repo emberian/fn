@@ -1,11 +1,20 @@
 (in-package "ACL2")
-(include-book "../books/layout")
+(include-book "../books/layout-size-bounds")
 
 ; The retirement producer writes this actual four-field body length into a
 ; u60 journal field. Its guard should use the generated bound, not unfold
 ; every field's sizer or invoke the pool-dependent value checker.
 (deflayout fn2-codec-size-values
   '((extent :u60) (writer-epoch :u60) (allocation :u60) (commit :u60)))
+(make-event
+ (let ((world (w state)))
+  (value `(defconst *fn2-codec-size-incoming-runes*
+            ',(intersection-equal (current-theory :here) *fn2-codec-proof-runes*)))))
+(defcodec-size-bounds fn2-codec-size-values)
+(assert-event
+ (let ((world (w state)))
+  (equal (intersection-equal (current-theory :here) *fn2-codec-proof-runes*)
+         *fn2-codec-size-incoming-runes*)))
 (defun fn2-codec-size-store-length (base out fn2-fields)
   (declare (xargs :stobjs fn2-fields
     :guard (and (fn2-fields-wfp fn2-fields) (natp base)
@@ -23,6 +32,7 @@
 (deflayout fn2-codec-size-mixed
   '((counter :varint) (bytes (:octets 0)) (short (:octets16 0))
     (long (:octets32 0)) (fixed :u64be) (hash :digest) (padding (:zero 2))))
+(defcodec-size-bounds fn2-codec-size-mixed)
 
 (defun fn2-codec-size-bound-controls (fn2-fields)
   (declare (xargs :stobjs fn2-fields))
