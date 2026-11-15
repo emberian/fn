@@ -73,7 +73,7 @@
       (tag (+ 1 (fn2-checkpoint-summary-tag 0 fn2-checkpoint-summary)))
       ((unless (unsigned-byte-p 60 tag)) (mv :tag-exhausted fn2-checkpoint-summary))
       (fn2-checkpoint-summary (fn2-checkpoint-summary-copy-descriptor 0 fn2-checkpoint-restore-map-control fn2-checkpoint-summary))
-      (fn2-checkpoint-summary (fn2-checkpoint-summary-put 0 (phase *fn2-checkpoint-summary-phase-capture*) (application-stage 0) (tag tag)
+      (fn2-checkpoint-summary (fn2-checkpoint-summary-put 0 (phase *fn2-checkpoint-summary-phase-capture*) (priority-base 0) (application-stage 0) (tag tag)
        (candidate (fn2-checkpoint-restore-semantic-candidate 0 fn2-checkpoint-restore-semantic))
        (checkpoint (fn2-checkpoint-restore-map-control-source-checkpoint 0 fn2-checkpoint-restore-map-control))
        (cut-commit (fn2-checkpoint-restore-map-control-source-cut-commit 0 fn2-checkpoint-restore-map-control))
