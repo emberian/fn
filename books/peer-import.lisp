@@ -179,6 +179,7 @@
       (nl (fn2-fields-ref-len (+ base 1) fn2-fields))
       ; Register the taking before any fallible copy; failed starts retain it for abort.
       (fn2-peer-imports (fn2-peer-imports-put tx (phase *fn2-peer-import-phase-failed*)
+       (query-incarnation (fn2-id-decides-query-incarnation tx fn2-id-decides)) (query-held 0)
        (slot slot) (gen gen) (ok ok) (os os) (og og) (base base) (hbase (if receipt hb 0))
        (receipt (if receipt 1 0)) (name-len nl)
        (namespace (fn2-fields-value (+ base 0) fn2-fields))
@@ -207,7 +208,8 @@
       ((mv code fn2-succ-txns fn2-id-decides fn2-fields)
        (fn2-peer-import-start-key tx (+ b0 *fn2-peer-import-e*) ok os og b0 fn2-succ-txns fn2-id-decides fn2-fields))
       ((unless (eq code :ok)) (mv code fn2-peer-imports fn2-succ-txns fn2-id-decides fn2-fields fn2-pool))
-      (fn2-peer-imports (fn2-peer-imports-set-phase tx *fn2-peer-import-phase-reading* fn2-peer-imports)))
+      (fn2-peer-imports (fn2-peer-imports-put tx (phase *fn2-peer-import-phase-reading*) (query-held 1)
+                        (query-incarnation (fn2-id-decides-query-incarnation tx fn2-id-decides)))))
   (mv :ok fn2-peer-imports fn2-succ-txns fn2-id-decides fn2-fields fn2-pool)))
 (fn2-rd-shape fn2-peer-import-start-child
  (tx base hb receipt ok os og b0 fn2-peer-imports fn2-succ-txns fn2-succ-slots fn2-id-decides fn2-fields fn2-pool)
@@ -215,7 +217,7 @@
  (fn2-peer-imports fn2-succ-txns fn2-succ-slots fn2-id-decides fn2-fields fn2-pool)
  (fn2-peer-import-room fn2-peer-import-typed fn2-peer-import-equal fn2-peer-import-empty fn2-pool-class-for
   fn2-pool-reserve fn2-rd-copy fn2-peer-import-materialize fn2-peer-import-start-key
-  fn2-succ-txns-phase fn2-id-decides-phase fn2-peer-imports-phase fn2-fields-value fn2-fields-ref-slot fn2-fields-ref-gen fn2-fields-ref-off fn2-fields-ref-len))
+  fn2-succ-txns-phase fn2-id-decides-phase fn2-id-decides-query-incarnation fn2-peer-imports-phase fn2-fields-value fn2-fields-ref-slot fn2-fields-ref-gen fn2-fields-ref-off fn2-fields-ref-len))
 
 ; Abort only our unbound private transaction. Release after publication is a
 ; separate mode; bound and interfered takings remain retained for recovery.
@@ -224,20 +226,32 @@
  :guard (and (fn2-peer-imports-wfp fn2-peer-imports) (fn2-succ-txns-wfp fn2-succ-txns)
              (fn2-succ-slots-wfp fn2-succ-slots) (fn2-id-decides-wfp fn2-id-decides) (fn2-pool-wfp fn2-pool))))
  (b* (((unless (and (natp tx) (< tx (fn2-peer-imports-rows fn2-peer-imports)) (< tx (fn2-succ-txns-rows fn2-succ-txns))
+                    (< tx (fn2-id-decides-rows fn2-id-decides))
                     (not (member (fn2-peer-imports-phase tx fn2-peer-imports)
                                  (list *fn2-peer-import-phase-idle* *fn2-peer-import-phase-interfered*)))
                     (equal (fn2-peer-imports-ok tx fn2-peer-imports) ok) (equal (fn2-peer-imports-os tx fn2-peer-imports) os)
-                    (equal (fn2-peer-imports-og tx fn2-peer-imports) og)
-                    (or (and (equal (fn2-succ-txns-phase tx fn2-succ-txns) *fn2-succ-phase-idle*)
-                             (fn2-peer-import-empty *fn2-succ-slots* (* tx *fn2-succ-slots*) fn2-succ-slots))
-                        (and (member (fn2-peer-imports-phase tx fn2-peer-imports)
-                                     (list *fn2-peer-import-phase-building* *fn2-peer-import-phase-declared*))
-                             (equal (fn2-succ-txns-phase tx fn2-succ-txns)
-                                    (if published *fn2-succ-phase-published* *fn2-succ-phase-open*))))))
+                    (equal (fn2-peer-imports-og tx fn2-peer-imports) og)))
+       (mv :state fn2-peer-imports fn2-succ-txns fn2-succ-slots fn2-id-decides fn2-pool))
+      ((unless (and (equal (fn2-peer-imports-query-incarnation tx fn2-peer-imports)
+                           (fn2-id-decides-query-incarnation tx fn2-id-decides))
+                    (if (equal (fn2-peer-imports-query-held tx fn2-peer-imports) 1)
+                        (and (equal (fn2-id-decides-qk tx fn2-id-decides) ok)
+                             (equal (fn2-id-decides-qs tx fn2-id-decides) os)
+                             (equal (fn2-id-decides-qg tx fn2-id-decides) og))
+                      (equal (fn2-id-decides-phase tx fn2-id-decides) *fn2-id-decide-phase-idle*))))
+       (let ((fn2-peer-imports (fn2-peer-imports-set-phase tx *fn2-peer-import-phase-interfered* fn2-peer-imports)))
+        (mv :interference fn2-peer-imports fn2-succ-txns fn2-succ-slots fn2-id-decides fn2-pool)))
+      ((unless (or (and (equal (fn2-succ-txns-phase tx fn2-succ-txns) *fn2-succ-phase-idle*)
+                         (fn2-peer-import-empty *fn2-succ-slots* (* tx *fn2-succ-slots*) fn2-succ-slots))
+                    (and (member (fn2-peer-imports-phase tx fn2-peer-imports)
+                                 (list *fn2-peer-import-phase-building* *fn2-peer-import-phase-declared*))
+                         (equal (fn2-succ-txns-phase tx fn2-succ-txns)
+                                (if published *fn2-succ-phase-published* *fn2-succ-phase-open*)))))
        (mv :state fn2-peer-imports fn2-succ-txns fn2-succ-slots fn2-id-decides fn2-pool))
       ((mv code fn2-succ-txns fn2-succ-slots fn2-id-decides) (fn2-succ-release tx fn2-succ-txns fn2-succ-slots fn2-id-decides))
       ((unless (eq code :ok)) (mv code fn2-peer-imports fn2-succ-txns fn2-succ-slots fn2-id-decides fn2-pool))
-      (fn2-peer-imports (fn2-peer-imports-set-phase tx *fn2-peer-import-phase-failed* fn2-peer-imports))
+      (fn2-peer-imports (fn2-peer-imports-put tx (phase *fn2-peer-import-phase-failed*) (query-held 0)
+                        (query-incarnation (fn2-id-decides-query-incarnation tx fn2-id-decides))))
       ((mv code fn2-pool) (fn2-pool-release (fn2-peer-imports-slot tx fn2-peer-imports)
                            (fn2-peer-imports-gen tx fn2-peer-imports) ok os og fn2-pool))
       ((unless (member-eq code '(:ok :retired))) (mv code fn2-peer-imports fn2-succ-txns fn2-succ-slots fn2-id-decides fn2-pool))
@@ -248,7 +262,8 @@
  ((fn2-peer-imports 1) (fn2-succ-txns 2) (fn2-succ-slots 3) (fn2-id-decides 4) (fn2-pool 5))
  (fn2-peer-imports fn2-succ-txns fn2-succ-slots fn2-id-decides fn2-pool)
  (fn2-succ-release fn2-pool-release fn2-peer-import-empty fn2-succ-txns-phase fn2-peer-imports-phase fn2-peer-imports-ok fn2-peer-imports-os fn2-peer-imports-og
-  fn2-peer-imports-slot fn2-peer-imports-gen))
+  fn2-peer-imports-slot fn2-peer-imports-gen fn2-peer-imports-query-incarnation fn2-peer-imports-query-held
+  fn2-id-decides-phase fn2-id-decides-query-incarnation fn2-id-decides-qk fn2-id-decides-qs fn2-id-decides-qg))
 
 (defun fn2-peer-import-prepare-child (tx base hb receipt ok os og b0 fn2-peer-imports fn2-succ-txns fn2-succ-slots fn2-id-decides fn2-fields fn2-pool)
  (declare (xargs :stobjs (fn2-peer-imports fn2-succ-txns fn2-succ-slots fn2-id-decides fn2-fields fn2-pool)
@@ -265,9 +280,12 @@
                     (equal (fn2-peer-imports-hbase tx fn2-peer-imports) (if receipt hb 0))
                     (equal (fn2-peer-imports-receipt tx fn2-peer-imports) (if receipt 1 0))
                     (fn2-peer-import-room base b0 fn2-fields)
-                    (or (not receipt) (fn2-peer-import-room hb b0 fn2-fields))
+                    (or (not receipt) (fn2-peer-import-room hb b0 fn2-fields)))) (mv :state 0 0 fn2-fields))
+      ((unless (and (equal (fn2-peer-imports-query-held tx fn2-peer-imports) 1)
+                    (equal (fn2-peer-imports-query-incarnation tx fn2-peer-imports)
+                           (fn2-id-decides-query-incarnation tx fn2-id-decides))
                     (equal (fn2-id-decides-qk tx fn2-id-decides) ok) (equal (fn2-id-decides-qs tx fn2-id-decides) os)
-                    (equal (fn2-id-decides-qg tx fn2-id-decides) og))) (mv :state 0 0 fn2-fields))
+                    (equal (fn2-id-decides-qg tx fn2-id-decides) og))) (mv :interference 0 0 fn2-fields))
       ((unless (and (equal (fn2-succ-txns-phase tx fn2-succ-txns) *fn2-succ-phase-idle*)
                     (fn2-peer-import-empty *fn2-succ-slots* (* tx *fn2-succ-slots*) fn2-succ-slots)))
        (mv :interference 0 0 fn2-fields))
@@ -286,7 +304,8 @@
  ((fn2-fields 3)) (fn2-peer-imports fn2-succ-txns fn2-succ-slots fn2-id-decides fn2-fields fn2-pool)
  (fn2-peer-import-materialize fn2-peer-import-room fn2-peer-import-equal fn2-peer-import-empty fn2-succ-txns-phase fn2-id-facts fn2-peer-imports-phase fn2-peer-imports-ok fn2-peer-imports-os
   fn2-peer-imports-og fn2-peer-imports-base fn2-peer-imports-hbase fn2-peer-imports-receipt fn2-peer-imports-kind
-  fn2-id-decides-qk fn2-id-decides-qs fn2-id-decides-qg))
+  fn2-id-decides-qk fn2-id-decides-qs fn2-id-decides-qg fn2-id-decides-query-incarnation
+  fn2-peer-imports-query-incarnation fn2-peer-imports-query-held))
 
 (defmacro fn2-peer-import-core-events ()
  '(progn
@@ -437,7 +456,8 @@
                              fn2-core)))
              (mv :interference fn2-core)))
            (t (mv-let (cleanup fn2-core) (fn2-peer-import-abort tx ok os og fn2-core)
-               (mv (if (member-eq cleanup '(:ok :state)) code :cleanup) fn2-core))))))
+               (mv (cond ((eq cleanup :interference) :interference)
+                         ((member-eq cleanup '(:ok :state)) code) (t :cleanup)) fn2-core))))))
    (fn2-core-preserves fn2-peer-import-declare (tx base hb receipt ok os og fn2-core) :position 1 :rows nil
     :hints (("Goal" :in-theory (enable fn2-core-wfp))))
    (in-theory (disable fn2-peer-import-start fn2-peer-import-copy-arg fn2-peer-import-copy-args
