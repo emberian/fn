@@ -13,6 +13,7 @@
 (include-book "checkpoint-restore-events-boot")
 (include-book "checkpoint-selected-finish")
 (include-book "checkpoint-projection-protect")
+(include-book "checkpoint-owned-projection")
 (include-book "checkpoint-cbase-acquire")
 (include-book "checkpoint-cbase-release")
 (include-book "checkpoint-summary-adoption")
@@ -927,7 +928,7 @@
    (:do (code) (fn2-checkpoint-projection-begin-op) :accept (:more))
    (:next :checkpoint-project-step) (:charge :bytes 256 :steps *fn2-work-stage* :runnable t))
   (:checkpoint-project-step
-   (:do (code) (fn2-checkpoint-projection-step-op) :accept ()
+   (:do (code) (fn2-checkpoint-projection-step-op *fn2-checkpoint-master-kind*) :accept ()
     :case (((:more) (:next :checkpoint-project-step) (:charge :bytes 256 :steps *fn2-work-stage* :runnable t))
            ((:projected) (:next :checkpoint-project-protect) (:charge :steps *fn2-work-stage* :runnable t))
            (:otherwise (:stop :checkpoint)))))
