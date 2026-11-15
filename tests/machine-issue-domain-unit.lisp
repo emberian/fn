@@ -22,6 +22,8 @@
       (not (fn2-issue-domain-callers 'fn2-machine-issue-result (w state)))
       (not (fn2-issue-domain-mentions 'fn2-machine-issue-result
               (table-alist 'fn2-machine-arm-bodies (w state))))
+      (not (fn2-issue-domain-mentions 'fn2-machine-issue-result
+              (fn2-machine-run-arms (fn2-machine-names (w state)) 0 (w state))))
       (fn2-assert-compliant-p '(fn2-listener-run fn2-echo-run) (w state))))
 
 ; Evaluate the actual finish guard without calling FINISH outside its guard.
