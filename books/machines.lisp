@@ -345,7 +345,7 @@
   (if (atom specs) t
     (and (consp (car specs)) (assoc-eq (caar specs) *fn2-resource-order*)
          (member-eq (fn2-arm-get :slot (cdar specs)) own) (member-eq (fn2-arm-get :gen (cdar specs)) own)
-         (natp (fn2-arm-get :class (cdar specs)))
+         (fn2-machine-class-specp (fn2-arm-get :class (cdar specs)))
          (fn2-machine-taken-ranges-p (cdr specs) own))))
 (defun fn2-machine-taken-problem (name taken admission states own)
   (declare (xargs :verify-guards nil))
@@ -4561,7 +4561,10 @@
   (if (atom specs) install
     (let ((code (packn-pos (list 'code n) 'fn2-core)))
       `(mv-let (,code ,(packn-pos (list 'slot n) 'fn2-core) ,(packn-pos (list 'pgen n) 'fn2-core) fn2-core)
-         (fn2-core-reserve ,(fn2-arm-get :class (cdar specs)) ,kind target gen fn2-core)
+         (fn2-core-reserve ,(let ((c (fn2-arm-get :class (cdar specs))))
+                              (if (natp c) c
+                                (er hard 'defmachine "A (:bytes B) taken range class needs the kind's registry in child form (defmachine-registry): ~x0." kind)))
+                           ,kind target gen fn2-core)
          (if (not (eq ,code :ok))
              ,(fn2-machine-range-releases n kind `(let ((fn2-core ,park)) (mv :pool *fn2-none* 0 fn2-core)))
            ,(fn2-machine-taken-reserves (cdr specs) (+ 1 (nfix n)) kind install park))))))
