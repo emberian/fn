@@ -12,12 +12,12 @@ state='''; One slot per actual overlay or installed row, independent of output c
 (fn2-book-layer :c)
 (defcolumns fn2-checkpoint-predecessors
  ((live :bool) (token :u60) (kind :u8) (row :u32) (schema :u60) (order :u60)
-  (source-state :u8) (seen :u60) (last-round :u60) (ended :bool)
+  (source-state :u8) (semantic-live :bool) (empty-verified :bool) (seen :u60) (last-round :u60) (ended :bool)
   (output-rank :u60) (retire-stage :u8)
 '''
 state+='\n'.join('  (old-'+f+' '+t+')' for f,t in FIELDS)+'''))
 (defcolumns fn2-checkpoint-predecessor-control
- ((phase (:enum fn2-checkpoint-predecessor-phase (:idle :capture :ready :checking :complete :retiring :done)))
+ ((phase (:enum fn2-checkpoint-predecessor-phase (:idle :capture :ready :checking :complete :retiring :done :empty)))
   (token :u60) (candidate :u32) (owner-kind :u8) (owner-slot :u32) (owner-gen :u60)
   (cut-commit :u60) (cut-event :u60) (overlay-rows :u32) (run-rows :u32)
   (cursor :u32) (count :u32) (checked :u32)))
@@ -49,6 +49,9 @@ s+=defin('fn2-checkpoint-predecessor-bound-p',common,body)
 for name,phase in [('ready','ready'),('complete','complete')]:
  body=' (and '+owner+' (fn2-checkpoint-predecessor-bound-p '+' '.join(common)+')\n (= (fn2-checkpoint-predecessor-control-phase 0 fn2-checkpoint-predecessor-control) *fn2-checkpoint-predecessor-phase-'+phase+'*)'+('\n (= (fn2-checkpoint-compaction-phase 0 fn2-checkpoint-compaction) *fn2-checkpoint-compaction-phase-done*)' if phase=='complete' else '')+')'
  s+=defin('fn2-checkpoint-predecessor-'+name+'-p',common,body)
+body=' (and '+owner+' (fn2-checkpoint-predecessor-bound-p '+' '.join(common)+')\n (member-equal (fn2-checkpoint-predecessor-control-phase 0 fn2-checkpoint-predecessor-control) (list *fn2-checkpoint-predecessor-phase-empty* *fn2-checkpoint-predecessor-phase-ready*)))'
+s+=defin('fn2-checkpoint-predecessor-captured-p',common,body)
+
 
 # Pure exact capture identity independent of compaction active phase.
 a=[pfx,'fn2-overlays','fn2-run-installed']
@@ -92,11 +95,17 @@ body=' (b* (((unless (posp budget)) '+mv(':yield',out)+''')
   (= (fn2-checkpoint-compaction-phase 0 fn2-checkpoint-compaction) *fn2-checkpoint-compaction-phase-schema*))) '''+mv(':snapshot',out)+''')
  (i (fn2-checkpoint-predecessor-control-cursor 0 fn2-checkpoint-predecessor-control))
  (o (fn2-overlays-rows fn2-overlays)) (n (fn2-checkpoint-predecessors-rows fn2-checkpoint-predecessors))
- ((when (= i n)) (let ((fn2-checkpoint-predecessor-control (fn2-checkpoint-predecessor-control-set-phase 0 *fn2-checkpoint-predecessor-phase-ready* fn2-checkpoint-predecessor-control))) '''+mv(':ready',out)+'''))
+ ((when (= i n)) (let ((fn2-checkpoint-predecessor-control (fn2-checkpoint-predecessor-control-put 0 (phase *fn2-checkpoint-predecessor-phase-empty*) (cursor 0)))) '''+mv(':captured',out)+'''))
  ((unless (and (< i n) (unsigned-byte-p 32 (+ 1 i)))) '''+mv(':bounds',out)+''')
  (kind (if (< i o) 0 1)) (r (if (< i o) i (- i o)))
- ((mv code schema order) (fn2-checkpoint-compaction-source-tuple kind r fn2-overlays fn2-run-installed))
- ((unless (eq code :ok))
+ ((mv code & &) (fn2-checkpoint-compaction-source-tuple kind r fn2-overlays fn2-run-installed))
+ (owned (if (= kind 0)
+             (member-equal (fn2-overlays-phase r fn2-overlays) (list *fn2-overlay-phase-active* *fn2-overlay-phase-frozen*))
+             (= (fn2-run-installed-state r fn2-run-installed) *fn2-run-installed-state-live*)))
+ (semantic (eq code :ok))
+ (schema (if (= kind 0) (fn2-overlays-schema r fn2-overlays) (fn2-run-installed-schema r fn2-run-installed)))
+ (order (if (= kind 0) (fn2-overlays-seq r fn2-overlays) (fn2-run-installed-run r fn2-run-installed)))
+ ((unless owned)
   (b* ((fn2-checkpoint-predecessors (fn2-checkpoint-predecessors-put i (live 0) (token 0)))
        (fn2-checkpoint-predecessor-control (fn2-checkpoint-predecessor-control-set-cursor 0 (+ 1 i) fn2-checkpoint-predecessor-control))) '''+mv(':more',out)+'''))
  (count (+ 1 (fn2-checkpoint-predecessor-control-count 0 fn2-checkpoint-predecessor-control)))
@@ -105,6 +114,9 @@ body=' (b* (((unless (posp budget)) '+mv(':yield',out)+''')
   (live 1) (token (fn2-checkpoint-compaction-token 0 fn2-checkpoint-compaction))
   (kind kind) (row r) (schema schema) (order order)
   (source-state (if (= kind 0) (fn2-overlays-phase r fn2-overlays) (fn2-run-installed-state r fn2-run-installed)))
+  (semantic-live (if semantic 1 0))
+  ; Zero-entry ownership remains unresolved until actual empty verification.
+  (empty-verified 0)
   (seen 0) (last-round 0) (ended 0) (output-rank 0) (retire-stage 0)
 '''
 for f,_ in FIELDS:
@@ -113,6 +125,57 @@ for f,_ in FIELDS:
  body+='  (old-'+f+' (if (= kind 0) '+ov+' '+rv+'))\n'
 body+='  ))\n (fn2-checkpoint-predecessor-control (fn2-checkpoint-predecessor-control-put 0 (cursor (+ 1 i)) (count count))))\n '+mv(':more',out)+')'
 s+=defin('fn2-checkpoint-predecessor-capture-step',common,body,['budget'])
+# Empty discovery is bounded and names only a captured original, never caller row.
+out=[comp,control]
+body=' (b* (((unless (posp budget)) '+mv(':yield',out)+''')
+ ((unless (and '''+owner+' (fn2-checkpoint-predecessor-bound-p '+' '.join(common)+''')
+ (= (fn2-checkpoint-predecessor-control-phase 0 fn2-checkpoint-predecessor-control) *fn2-checkpoint-predecessor-phase-empty*)
+ (= (fn2-checkpoint-compaction-phase 0 fn2-checkpoint-compaction) *fn2-checkpoint-compaction-phase-schema*)
+ (= (fn2-checkpoint-compaction-schema-open 0 fn2-checkpoint-compaction) 0))) '''+mv(':snapshot',out)+''')
+ (i (fn2-checkpoint-predecessor-control-cursor 0 fn2-checkpoint-predecessor-control))
+ (n (fn2-checkpoint-predecessors-rows fn2-checkpoint-predecessors))
+ ((when (= i n))
+  (let ((fn2-checkpoint-predecessor-control (fn2-checkpoint-predecessor-control-put 0 (phase *fn2-checkpoint-predecessor-phase-ready*) (cursor 0)))) '''+mv(':ready',out)+'''))
+ ((unless (and (< i n) (unsigned-byte-p 32 (+ 1 i)))) '''+mv(':bounds',out)+''')
+ ((when (or (= (fn2-checkpoint-predecessors-live i fn2-checkpoint-predecessors) 0)
+            (= (fn2-checkpoint-predecessors-semantic-live i fn2-checkpoint-predecessors) 1)
+            (= (fn2-checkpoint-predecessors-ended i fn2-checkpoint-predecessors) 1)))
+  (let ((fn2-checkpoint-predecessor-control (fn2-checkpoint-predecessor-control-set-cursor 0 (+ 1 i) fn2-checkpoint-predecessor-control))) '''+mv(':more',out)+'''))
+ ((unless (and (= (fn2-checkpoint-predecessors-token i fn2-checkpoint-predecessors) (fn2-checkpoint-compaction-token 0 fn2-checkpoint-compaction))
+               (= (fn2-checkpoint-predecessors-old-entries i fn2-checkpoint-predecessors) 0)
+               (fn2-checkpoint-predecessor-identity-p i fn2-checkpoint-predecessors fn2-overlays fn2-run-installed))) '''+mv(':source',out)+''')
+ (fn2-checkpoint-compaction (fn2-checkpoint-compaction-put 0
+  (phase *fn2-checkpoint-compaction-phase-empty-seek*) (empty-headers 0)
+  (source-kind (fn2-checkpoint-predecessors-kind i fn2-checkpoint-predecessors))
+  (source-row (fn2-checkpoint-predecessors-row i fn2-checkpoint-predecessors))
+  (source-order (fn2-checkpoint-predecessors-order i fn2-checkpoint-predecessors))
+  (schema (fn2-checkpoint-predecessors-schema i fn2-checkpoint-predecessors)) (source-started 0))))
+ '''+mv(':source',out)+')'
+s+=defin('fn2-checkpoint-predecessor-empty-next',common,body,['budget'])
+out=[comp,pfx]
+body=' (b* (((unless (and '+owner+' (fn2-checkpoint-predecessor-bound-p '+' '.join(common)+''')
+ (= (fn2-checkpoint-predecessor-control-phase 0 fn2-checkpoint-predecessor-control) *fn2-checkpoint-predecessor-phase-empty*)
+ (= (fn2-checkpoint-compaction-phase 0 fn2-checkpoint-compaction) *fn2-checkpoint-compaction-phase-empty-end*)
+ (= (fn2-checkpoint-compaction-schema-open 0 fn2-checkpoint-compaction) 0))) '''+mv(':snapshot',out)+''')
+ (i (fn2-checkpoint-predecessor-control-cursor 0 fn2-checkpoint-predecessor-control))
+ ((unless (and (< i (fn2-checkpoint-predecessors-rows fn2-checkpoint-predecessors))
+  (fn2-checkpoint-predecessor-identity-p i fn2-checkpoint-predecessors fn2-overlays fn2-run-installed)
+  (= (fn2-checkpoint-predecessors-token i fn2-checkpoint-predecessors) (fn2-checkpoint-compaction-token 0 fn2-checkpoint-compaction))
+  (= (fn2-checkpoint-predecessors-semantic-live i fn2-checkpoint-predecessors) 0)
+  (= (fn2-checkpoint-predecessors-old-entries i fn2-checkpoint-predecessors) 0)
+  (= (fn2-checkpoint-predecessors-seen i fn2-checkpoint-predecessors) 0)
+  (= (fn2-checkpoint-predecessors-ended i fn2-checkpoint-predecessors) 0)
+  (= (fn2-checkpoint-predecessors-kind i fn2-checkpoint-predecessors) (fn2-checkpoint-compaction-source-kind 0 fn2-checkpoint-compaction))
+  (= (fn2-checkpoint-predecessors-row i fn2-checkpoint-predecessors) (fn2-checkpoint-compaction-source-row 0 fn2-checkpoint-compaction))
+  (= (fn2-checkpoint-predecessors-schema i fn2-checkpoint-predecessors) (fn2-checkpoint-compaction-schema 0 fn2-checkpoint-compaction))
+  (= (fn2-checkpoint-predecessors-order i fn2-checkpoint-predecessors) (fn2-checkpoint-compaction-source-order 0 fn2-checkpoint-compaction))
+  (or (= (fn2-checkpoint-predecessors-kind i fn2-checkpoint-predecessors) 0)
+      (posp (fn2-checkpoint-compaction-empty-headers 0 fn2-checkpoint-compaction))))) '''+mv(':source',out)+''')
+ (fn2-checkpoint-predecessors (fn2-checkpoint-predecessors-put i (ended 1) (empty-verified 1) (output-rank 0)))
+ (fn2-checkpoint-compaction (fn2-checkpoint-compaction-set-phase 0 *fn2-checkpoint-compaction-phase-park* fn2-checkpoint-compaction)))
+ '''+mv(':more',out)+')'
+s+=defin('fn2-checkpoint-predecessor-empty-end',common,body)
+
 # Internal hook shared bindings derive exact source, never supplied by caller.
 hook=''' (b* (((unless (and '''+owner+' (fn2-checkpoint-predecessor-bound-p '+' '.join(common)+''')
   (= (fn2-checkpoint-predecessor-control-phase 0 fn2-checkpoint-predecessor-control) *fn2-checkpoint-predecessor-phase-ready*)
@@ -126,13 +189,15 @@ hook=''' (b* (((unless (and '''+owner+' (fn2-checkpoint-predecessor-bound-p '+' 
   (= (fn2-checkpoint-predecessors-token i fn2-checkpoint-predecessors) (fn2-checkpoint-compaction-token 0 fn2-checkpoint-compaction))
   (= (fn2-checkpoint-predecessors-schema i fn2-checkpoint-predecessors) (fn2-checkpoint-compaction-schema 0 fn2-checkpoint-compaction))
   (= (fn2-checkpoint-predecessors-order i fn2-checkpoint-predecessors) (fn2-checkpoint-compaction-source-order 0 fn2-checkpoint-compaction))
+  (= (fn2-checkpoint-predecessors-semantic-live i fn2-checkpoint-predecessors) 1)
   (posp rank) (or (= (fn2-checkpoint-predecessors-output-rank i fn2-checkpoint-predecessors) 0)
                  (= (fn2-checkpoint-predecessors-output-rank i fn2-checkpoint-predecessors) rank)))) REFUSE)
 '''
 out=[comp,pfx]
 body=hook.replace('PHASE','*fn2-checkpoint-compaction-phase-equal-lower*').replace('REFUSE',mv(':source',out))
 body+=''' (round (fn2-checkpoint-compaction-lower-round 0 fn2-checkpoint-compaction))
- ((unless (and (= (fn2-checkpoint-compaction-has-lower 0 fn2-checkpoint-compaction) 1)
+ ((unless (and (= (fn2-checkpoint-predecessors-semantic-live i fn2-checkpoint-predecessors) 1)
+               (= (fn2-checkpoint-compaction-has-lower 0 fn2-checkpoint-compaction) 1)
                (= (fn2-checkpoint-predecessors-ended i fn2-checkpoint-predecessors) 0)
                (< (fn2-checkpoint-predecessors-last-round i fn2-checkpoint-predecessors) round)
                (< (fn2-checkpoint-predecessors-seen i fn2-checkpoint-predecessors) (fn2-checkpoint-predecessors-old-entries i fn2-checkpoint-predecessors)))) '''+mv(':count',out)+''')
@@ -143,7 +208,9 @@ body+=''' (round (fn2-checkpoint-compaction-lower-round 0 fn2-checkpoint-compact
 s+=defin('fn2-checkpoint-predecessor-source-key',common,body)
 body=hook.replace('PHASE','*fn2-checkpoint-compaction-phase-source-end*').replace('REFUSE',mv(':source',out))
 body+=''' ((unless (= (fn2-checkpoint-predecessors-seen i fn2-checkpoint-predecessors) (fn2-checkpoint-predecessors-old-entries i fn2-checkpoint-predecessors))) '''+mv(':count',out)+''')
- (fn2-checkpoint-predecessors (fn2-checkpoint-predecessors-put i (ended 1) (output-rank rank)))
+ (fn2-checkpoint-predecessors (fn2-checkpoint-predecessors-put i (ended 1)
+  (empty-verified (if (= (fn2-checkpoint-predecessors-old-entries i fn2-checkpoint-predecessors) 0) 1 0))
+  (output-rank (if (= (fn2-checkpoint-predecessors-old-entries i fn2-checkpoint-predecessors) 0) 0 rank))))
  (fn2-checkpoint-compaction (fn2-checkpoint-compaction-set-phase 0 *fn2-checkpoint-compaction-phase-park* fn2-checkpoint-compaction)))
  '''+mv(':more',out)+')'
 s+=defin('fn2-checkpoint-predecessor-source-end',common,body)
@@ -165,18 +232,25 @@ body=' (b* (((unless (posp budget)) '+mv(':yield',out)+''')
  (r (if (= kind 0) i (- i (fn2-overlays-rows fn2-overlays))))
  ((mv code & &) (fn2-checkpoint-compaction-source-tuple kind r fn2-overlays fn2-run-installed))
  (live (= (fn2-checkpoint-predecessors-live i fn2-checkpoint-predecessors) 1))
- ((unless (and (eq live (eq code :ok))
+ (owned (if (= kind 0)
+             (member-equal (fn2-overlays-phase r fn2-overlays) (list *fn2-overlay-phase-active* *fn2-overlay-phase-frozen*))
+             (= (fn2-run-installed-state r fn2-run-installed) *fn2-run-installed-state-live*)))
+ ((unless (and (iff live owned)
   (or (not live) (and
    (= (fn2-checkpoint-predecessors-token i fn2-checkpoint-predecessors) (fn2-checkpoint-compaction-token 0 fn2-checkpoint-compaction))
    (fn2-checkpoint-predecessor-identity-p i fn2-checkpoint-predecessors fn2-overlays fn2-run-installed)
    (= (fn2-checkpoint-predecessors-ended i fn2-checkpoint-predecessors) 1)
    (= (fn2-checkpoint-predecessors-seen i fn2-checkpoint-predecessors) (fn2-checkpoint-predecessors-old-entries i fn2-checkpoint-predecessors))
-   (posp (fn2-checkpoint-predecessors-output-rank i fn2-checkpoint-predecessors)))))) '''+mv(':source',out)+''')
+   (if (= (fn2-checkpoint-predecessors-semantic-live i fn2-checkpoint-predecessors) 1)
+       (and (eq code :ok) (posp (fn2-checkpoint-predecessors-output-rank i fn2-checkpoint-predecessors)))
+       (and (= (fn2-checkpoint-predecessors-old-entries i fn2-checkpoint-predecessors) 0)
+            (= (fn2-checkpoint-predecessors-empty-verified i fn2-checkpoint-predecessors) 1)
+            (= (fn2-checkpoint-predecessors-output-rank i fn2-checkpoint-predecessors) 0))))))) '''+mv(':source',out)+''')
  (checked (+ (if live 1 0) (fn2-checkpoint-predecessor-control-checked 0 fn2-checkpoint-predecessor-control)))
  ((unless (unsigned-byte-p 32 checked)) '''+mv(':bounds',out)+''')
  (fn2-checkpoint-predecessor-control (fn2-checkpoint-predecessor-control-put 0 (cursor (+ 1 i)) (checked checked))))
  '''+mv(':more',out)+')'
 s+=defin('fn2-checkpoint-predecessor-complete-step',common,body,['budget'])
-for name in ['begin','capture-step','source-key','source-end','complete-step']:
+for name in ['begin','capture-step','empty-next','empty-end','source-key','source-end','complete-step']:
  s+='(defcost fn2-checkpoint-predecessor-'+name+'-op :child fn2-checkpoint-predecessor-'+name+' :answers t :steps *fn2-work-stage* :bytes 128 :descriptors 0\n :tables ('+' '.join(x.replace('fn2-','fn2-core-',1) for x in common)+')\n :doc "One actual held original-source inventory transition; no output/source count ceiling.")\n'
 Path('books/checkpoint-predecessors.lisp').write_text(s)
