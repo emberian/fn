@@ -148,7 +148,7 @@
       (p (fn2-machine-rc-found id fn2-core))
       ((unless (fn2-recovery-selected-current-p id fn2-core))
        (if (and (= (fn2-machine-rc-base id fn2-core) 0) (= (fn2-machine-rc-base-tag id fn2-core) 0))
-        (mv-let (code fn2-core) (fn2-recovery-adopt p fn2-core) (mv (if (eq code :ok) :adopted code) fn2-core))
+        (mv-let (code fn2-core) (fn2-recovery-adopt id ogen p fn2-core) (mv (if (eq code :ok) :adopted code) fn2-core))
         (mv :source fn2-core)))
       (base (fn2-machine-rc-base id fn2-core)))
   (stobj-let ((fn2-checkpoint-projection (fn2-core-checkpoint-projection fn2-core))
