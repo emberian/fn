@@ -5,7 +5,9 @@
 (include-book "std/util/bstar" :dir :system)
 (include-book "checkpoint")
 (include-book "pool-ranges")
+(include-book "layout-size-bounds")
 (fn2-book-layer :b)
+(defcodec-size-bounds fn2-format-checkpoint-installation)
 
 (defun fn2-checkpoint-installation-member-capacity ()
  (declare (xargs :guard t))

@@ -3,7 +3,9 @@
 (in-package "ACL2")
 (include-book "commit-alloc")
 (include-book "format-events")
+(include-book "layout-size-bounds")
 (fn2-book-layer :b)
+(defcodec-size-bounds fn2-format-retirement)
 
 ; One B-owned lifecycle member may be in flight. The checkpoint worker owns
 ; the workspace and receives the normal commit wakeup; this row serializes
@@ -48,29 +50,7 @@
 ; A bounded member producer. COMMIT is selected by the live batch planner,
 ; never supplied by the host. Frame the existing body codec as an ordinary
 ; txn member: the existing sealed journal stream is the sole write path.
-; The retained member length occupies one u60 field. Derive its actual
-; codec-size bound once so both guard and carrier proofs share the interface.
-(encapsulate ()
- (local (include-book "arithmetic-3/floor-mod/floor-mod" :dir :system))
- (local
-  (defthm fn2-retirement-varsize-coarse-bound
- (<= (fn2-layout-varsize v) (+ 1 (floor (nfix v) 128)))
- :rule-classes :linear
- :hints (("Goal" :induct (fn2-layout-varsize v)
-                  :in-theory (e/d (fn2-layout-varsize) (floor))))))
-(defthm fn2-format-retirement-size-fits-field
- (implies (and (fn2-fieldsp fn2-fields) (fn2-fields-wfp fn2-fields)
-               (natp base) (<= (+ base 4) (fn2-fields-rows fn2-fields)))
-          (< (fn2-format-retirement-size base fn2-fields) (expt 2 60)))
- :rule-classes :linear
- :hints (("Goal" :use ((:instance fn2-retirement-varsize-coarse-bound (v (fn2-fields-value (+ base 0) fn2-fields)))
-          (:instance fn2-retirement-varsize-coarse-bound (v (fn2-fields-value (+ base 1) fn2-fields)))
-          (:instance fn2-retirement-varsize-coarse-bound (v (fn2-fields-value (+ base 2) fn2-fields)))
-          (:instance fn2-retirement-varsize-coarse-bound (v (fn2-fields-value (+ base 3) fn2-fields))))
- :in-theory (e/d (fn2-format-retirement-size fn2-format-retirement-size-extent
- fn2-format-retirement-size-writer-epoch fn2-format-retirement-size-allocation
- fn2-format-retirement-size-retirement-commit)
- (floor fn2-layout-varsize fn2-fields-value fn2-fields-rows fn2-fieldsp fn2-fields-wfp))))))
+
 
 (defun fn2-retirement-pack-member (extent epoch allocation commit base slot gen off
                                  okind oslot ogen fn2-fields fn2-pool)
