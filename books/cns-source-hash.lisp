@@ -43,8 +43,10 @@
  :hints (("Goal" :in-theory (disable fn2-b3p fn2-b3-wfp fn2-b3-rows fn2-digestsp fn2-digests-wfp fn2-digests-rows))))
 (fn2-b3-preserves fn2-cns-source-hash-begin (row fn2-b3 fn2-digests)
  :hyps ((fn2-b3p fn2-b3) (fn2-b3-wfp fn2-b3) (fn2-digestsp fn2-digests) (fn2-digests-wfp fn2-digests))
- :specs (("-B3-TYPE" fn2-b3p 1) ("-B3-WFP" fn2-b3-wfp 1) ("-B3-ROWS" fn2-b3-rows 1 :frame fn2-b3)
-         ("-DIGESTS-TYPE" fn2-digestsp 2) ("-DIGESTS-WFP" fn2-digests-wfp 2) ("-DIGESTS-ROWS" fn2-digests-rows 2 :frame fn2-digests))
+ :specs (("-B3-TYPE" fn2-b3p 1) ("-B3-WFP" fn2-b3-wfp 1) ("-B3-ROWS" fn2-b3-rows 1 :frame fn2-b3
+          :hints (("Goal" :in-theory (e/d (fn2-cns-source-hash-begin) (fn2-b3-rows fn2-digests-rows)))))
+         ("-DIGESTS-TYPE" fn2-digestsp 2) ("-DIGESTS-WFP" fn2-digests-wfp 2) ("-DIGESTS-ROWS" fn2-digests-rows 2 :frame fn2-digests
+          :hints (("Goal" :in-theory (e/d (fn2-cns-source-hash-begin) (fn2-b3-rows fn2-digests-rows))))))
  :hints (("Goal" :use fn2-cns-source-hash-begin-shape :in-theory (disable fn2-cns-source-hash-begin fn2-b3p fn2-b3-wfp fn2-b3-rows fn2-digestsp fn2-digests-wfp fn2-digests-rows))))
 (in-theory (disable fn2-cns-source-hash-begin))
 
@@ -56,8 +58,10 @@
  :hints (("Goal" :in-theory (disable fn2-b3p fn2-b3-wfp fn2-b3-rows fn2-digestsp fn2-digests-wfp fn2-digests-rows))))
 (fn2-b3-preserves fn2-cns-source-hash-update (row slot gen off len kind owner generation fn2-b3 fn2-digests fn2-pool)
  :hyps ((fn2-b3p fn2-b3) (fn2-b3-wfp fn2-b3) (fn2-digestsp fn2-digests) (fn2-digests-wfp fn2-digests) (fn2-poolp fn2-pool) (fn2-pool-wfp fn2-pool))
- :specs (("-B3-TYPE" fn2-b3p 2) ("-B3-WFP" fn2-b3-wfp 2) ("-B3-ROWS" fn2-b3-rows 2 :frame fn2-b3)
-         ("-DIGESTS-TYPE" fn2-digestsp 3) ("-DIGESTS-WFP" fn2-digests-wfp 3) ("-DIGESTS-ROWS" fn2-digests-rows 3 :frame fn2-digests))
+ :specs (("-B3-TYPE" fn2-b3p 2) ("-B3-WFP" fn2-b3-wfp 2) ("-B3-ROWS" fn2-b3-rows 2 :frame fn2-b3
+          :hints (("Goal" :in-theory (e/d (fn2-cns-source-hash-update) (fn2-b3-rows fn2-digests-rows)))))
+         ("-DIGESTS-TYPE" fn2-digestsp 3) ("-DIGESTS-WFP" fn2-digests-wfp 3) ("-DIGESTS-ROWS" fn2-digests-rows 3 :frame fn2-digests
+          :hints (("Goal" :in-theory (e/d (fn2-cns-source-hash-update) (fn2-b3-rows fn2-digests-rows))))))
  :hints (("Goal" :use fn2-cns-source-hash-update-shape :in-theory (disable fn2-cns-source-hash-update fn2-b3p fn2-b3-wfp fn2-b3-rows fn2-digestsp fn2-digests-wfp fn2-digests-rows))))
 (in-theory (disable fn2-cns-source-hash-update))
 
@@ -69,7 +73,9 @@
  :hints (("Goal" :in-theory (disable fn2-b3p fn2-b3-wfp fn2-b3-rows fn2-digestsp fn2-digests-wfp fn2-digests-rows))))
 (fn2-b3-preserves fn2-cns-source-hash-finish (row slot gen expected kind owner generation fn2-b3 fn2-digests fn2-pool)
  :hyps ((fn2-b3p fn2-b3) (fn2-b3-wfp fn2-b3) (fn2-digestsp fn2-digests) (fn2-digests-wfp fn2-digests) (fn2-poolp fn2-pool) (fn2-pool-wfp fn2-pool))
- :specs (("-B3-TYPE" fn2-b3p 1) ("-B3-WFP" fn2-b3-wfp 1) ("-B3-ROWS" fn2-b3-rows 1 :frame fn2-b3)
-         ("-DIGESTS-TYPE" fn2-digestsp 2) ("-DIGESTS-WFP" fn2-digests-wfp 2) ("-DIGESTS-ROWS" fn2-digests-rows 2 :frame fn2-digests))
+ :specs (("-B3-TYPE" fn2-b3p 1) ("-B3-WFP" fn2-b3-wfp 1) ("-B3-ROWS" fn2-b3-rows 1 :frame fn2-b3
+          :hints (("Goal" :in-theory (e/d (fn2-cns-source-hash-finish) (fn2-b3-rows fn2-digests-rows)))))
+         ("-DIGESTS-TYPE" fn2-digestsp 2) ("-DIGESTS-WFP" fn2-digests-wfp 2) ("-DIGESTS-ROWS" fn2-digests-rows 2 :frame fn2-digests
+          :hints (("Goal" :in-theory (e/d (fn2-cns-source-hash-finish) (fn2-b3-rows fn2-digests-rows))))))
  :hints (("Goal" :use fn2-cns-source-hash-finish-shape :in-theory (disable fn2-cns-source-hash-finish fn2-b3p fn2-b3-wfp fn2-b3-rows fn2-digestsp fn2-digests-wfp fn2-digests-rows))))
 (in-theory (disable fn2-cns-source-hash-finish))
