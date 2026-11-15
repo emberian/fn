@@ -86,7 +86,7 @@
           (let* ((r (fn2-csnapshot-scan 0 fn2-csnapshot))
                  (phase (fn2-succ-txns-phase r fn2-succ-txns))
                  (blocked (or (= (fn2-csnapshot-blocked 0 fn2-csnapshot) 1)
-                              (= phase *fn2-succ-phase-staged*) (= phase *fn2-succ-phase-bound*)
+                              (= phase *fn2-succ-phase-staged*) (= phase *fn2-succ-phase-bound*) (= phase *fn2-succ-phase-binding*)
                               (= phase *fn2-succ-phase-published*)))
                  (fn2-csnapshot (fn2-csnapshot-put 0 (scan (+ 1 r)) (blocked (if blocked 1 0)))))
            (mv :more 0 0 fn2-csnapshot))))

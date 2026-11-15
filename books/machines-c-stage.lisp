@@ -414,6 +414,7 @@
                                              fn2-run-layout-size fn2-run-lookup-step fn2-run-cursor-start
                                              fn2-fields-rows fn2-succ-slots-rows fn2-succ-txns-rows fn2-overlays-rows)))))
  (b* (((unless (< 0 (fn2-id-engine-rows fn2-id-engine))) (mv :state fn2-id-engine fn2-pool))
+      ((unless (fn2-successor-binder-idle-p fn2-id-engine)) (mv :full fn2-id-engine fn2-pool))
       ((when (equal (fn2-id-engine-scratch 0 fn2-id-engine) 1)) (mv :ok fn2-id-engine fn2-pool))
       (class (fn2-pool-class-for *fn2-idc-scratch-bytes* fn2-pool))
       ((unless (natp class)) (mv :capacity fn2-id-engine fn2-pool))
@@ -497,6 +498,8 @@
        (mv :state 0 fn2-succ-txns fn2-succ-slots fn2-id-engine fn2-overlays fn2-fields fn2-pool))
       ((unless (and (natp tx) (< tx (fn2-succ-txns-rows fn2-succ-txns)) (natp b0))) 
        (mv :bounds 0 fn2-succ-txns fn2-succ-slots fn2-id-engine fn2-overlays fn2-fields fn2-pool))
+      ((unless (fn2-successor-binder-idle-p fn2-id-engine))
+       (mv :full 0 fn2-succ-txns fn2-succ-slots fn2-id-engine fn2-overlays fn2-fields fn2-pool))
       ((unless (and (member (fn2-succ-txns-phase tx fn2-succ-txns) (list *fn2-succ-phase-open* *fn2-succ-phase-staged*))
                     (<= *fn2-succ-slots* (nfix (fn2-succ-txns-ri tx fn2-succ-txns)))))
        (mv :state 0 fn2-succ-txns fn2-succ-slots fn2-id-engine fn2-overlays fn2-fields fn2-pool))

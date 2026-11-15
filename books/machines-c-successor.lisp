@@ -86,6 +86,9 @@
 (fn2-idc-child fn2-core-id-engine fn2-id-engine (fn2-id-engine-init-arena (fn2-idc-profile-arena profile) fn2-id-engine)
  "The engine's bind scratch, arena size and overlay sequence (C-S3).")
 
+(fn2-idc-child fn2-core-ov-insertion fn2-ov-insertion
+ (fn2-ov-insertion-init 1 fn2-ov-insertion)
+ "One shared private-overlay insertion continuation, owned by the actual C binder or startup producer.")
 (make-event
  `(defcolumns fn2-succ-slots
    ((phase (:enum fn2-succ-slot-phase (:empty :put :resolved)))
