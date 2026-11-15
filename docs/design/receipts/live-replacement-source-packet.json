@@ -1,0 +1,41 @@
+{
+  "scope": "source-only; no ACL2 admission, runtime execution or master activation",
+  "consumer_files": [
+    "books/checkpoint-live-retire.lisp",
+    "books/checkpoint-live-finish.lisp",
+    "tests/checkpoint-live-catalog-unit.lisp",
+    "tests/checkpoint-live-finish-unit.lisp"
+  ],
+  "local_prerequisites": [
+    "f0e1a613268cd0b0effb29829b4f54f6fa65b8ac",
+    "42d9281ae89fa6a23eb1e923659177ae8548f543",
+    "f20f44e9b6a73d7dff2c2526ac0b2216c270203a",
+    "0e18a52b0faa81f19250ce546f33e76c96b32ab5",
+    "7fbbf3b4bddac4c36d21061f3e7472a394952412",
+    "83f941d428db4d4ebde820d51172cfdac608529b",
+    "5064aafc21feaafa5b54332d85e40056a965af71",
+    "ef4b77b7b0d4b54c2ceeeb547017e50adcfb6f1a"
+  ],
+  "physical_provider_prerequisites": [
+    "083775bf6c3b779539d9c447a53dbe655990a624",
+    "04da370ba15d2c5d1cce459951913c0819dfa90f"
+  ],
+  "assembly": {
+    "include": "checkpoint-live-finish (lower typed books only; no assembly/master dependency)",
+    "event": "fn2-checkpoint-live-finish-events",
+    "after": [
+      "fn2-c-actor-loader-core-events",
+      "fn2-run-load-readiness-core-events"
+    ],
+    "owner": "sol_metadata_root: reserved assembly-e-cns seam; not a whole assembly replacement"
+  },
+  "actual_positive_fixture": "fn2-clf-body: actual fn2-clc-body publication/install/retire, actual live authority begin/488 copy steps, actual owner-aware live scan, actual finish; assertions unexecuted",
+  "actual_refusal_fixture": "same actual constructor; premature finish :source preserves all five mutable carriers",
+  "still_required": [
+    "compose complete actual physical NNTP/CNS request/loader consumers and provider prerequisites",
+    "execute connected fixture and guards under explicit allocation",
+    "wire actual master adoption states and charge *fn2-checkpoint-live-promotion-bytes*; activation remains NIL",
+    "maintained source-count and typed replacement receipt preservation proofs"
+  ],
+  "resources": "retire/cleanup/final promotion reserve no new window/descriptor and issue no IO; original C-base held before first visibility; source observer next-receipt retained"
+}
