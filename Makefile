@@ -242,6 +242,34 @@ ACL2_BOOKS = \
   books/checkpoint-bank-bind \
   books/checkpoint-bank-empty \
   books/checkpoint-bank-boot \
+  books/boot-root-release \
+  tests/boot-root-release-unit \
+  tests/recovery-payload-chain-unit \
+  books/checkpoint-restore-semantic-source \
+  books/checkpoint-bank-closure-state \
+  books/checkpoint-bank-closure-capture \
+  books/checkpoint-bank-closure-kind \
+  books/checkpoint-bank-protection \
+  books/checkpoint-bank-closure-edges \
+  tests/checkpoint-bank-closure-edges-unit \
+  books/checkpoint-bank-protection-kind \
+  tests/checkpoint-bank-reset-unit \
+  books/boot-config-state \
+  books/boot-geometry-state \
+  books/commit-root-state \
+  books/run-active-geometry \
+  books/run-physical-state \
+  books/run-physical-resources \
+  books/run-physical-geometry \
+  books/run-physical-readiness \
+  books/run-physical-harvest \
+  books/checkpoint-summary-loader-readiness \
+  books/checkpoint-owned-extent \
+  books/checkpoint-owned-projection \
+  books/checkpoint-owned-release \
+  tests/checkpoint-owned-extent-unit \
+  tests/checkpoint-owned-projection-unit \
+  tests/checkpoint-owned-release-unit \
   books/recovery-proof \
   books/reference \
   books/reference-state \
