@@ -79,10 +79,15 @@ class ActualSettlement(unittest.TestCase):
   mutant=[pair for pair in table if pair[0]!='installation-extent']
   self.assertNotIn(['installation-extent','fn2-allocation-release-installation-position'],mutant)
  def test_all_readonly_inputs_have_generated_type_and_wfp_domain(self):
-  domain=next(read_sexp(raw) for raw in forms(self.text) if read_sexp(raw)[:2]==['defun','fn2-release-replay-settlement-hyps'])
-  self.assertIn('"P"',next(raw for raw in forms(self.text) if 'defun fn2-release-replay-settlement-hyps' in raw))
-  self.assertIn('"-WFP"',next(raw for raw in forms(self.text) if 'defun fn2-release-replay-settlement-hyps' in raw))
-  self.assertTrue(calls(domain,'fn2-release-replay-settlement-hyps'))
+  import rewrite_release_carrier_hyps as rw
+  self.assertNotIn('(defun fn2-release-replay-settlement-hyps',self.text)
+  self.assertIn('(fn2-columns-carrier-hyps (pairlis$ children nil))',self.text)
+  self.assertEqual(rw.rewrite(self.text),(self.text,0))
+  fixture='(defun fn2-release-replay-settlement-hyps (children) children) (m (fn2-release-replay-settlement-hyps children))'
+  out,count=rw.rewrite(fixture)
+  self.assertEqual(count,2)
+  self.assertIn('(fn2-columns-carrier-hyps (pairlis$ children nil))',out)
+  self.assertEqual(rw.rewrite(out),(out,0))
   unit=(ROOT/'tests/release-replay-settlement-unit.lisp').read_text()
   for name in ('fn2-release-replay-settlement-current-code','fn2-alloc-ownership-invp',
                'fn2-alloc-identity-refines-p','fn2-rrsu-snapshot','fn2-aiu-adopt'):

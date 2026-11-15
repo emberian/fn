@@ -14,16 +14,11 @@
 (defconst *fn2-release-replay-settlement-children*
  '(fn2-allocation-release fn2-release-evidence fn2-release-evidence-candidates
    fn2-checkpoint-construction fn2-extents fn2-alloc-edges fn2-ops fn2-checkpoints))
-(defun fn2-release-replay-settlement-hyps (children)
- (declare (xargs :verify-guards nil))
- (if (atom children) nil
-  (append (list (list (fn2-columns-sym (car children) "P") (car children))
-                (list (fn2-columns-sym (car children) "-WFP") (car children)))
-          (fn2-release-replay-settlement-hyps (cdr children)))))
+
 (defmacro fn2-release-replay-settlement-function (name args &rest body)
  `(defun ,name (,@args ,@*fn2-release-replay-settlement-children*)
    (declare (xargs :stobjs ,*fn2-release-replay-settlement-children* :verify-guards nil
-      :guard (and ,@(fn2-release-replay-settlement-hyps *fn2-release-replay-settlement-children*))))
+      :guard (and ,@(fn2-columns-carrier-hyps (pairlis$ *fn2-release-replay-settlement-children* nil)))))
    ,@body))
 
 (fn2-release-replay-settlement-function fn2-release-target-settlement-code ()
@@ -140,7 +135,7 @@
 ; These are shape/frame obligations, not authentication or prefix authority.
 (defmacro fn2-release-replay-settlement-contracts (name)
  (let* ((args *fn2-release-replay-settlement-children*)
-        (hyps (fn2-release-replay-settlement-hyps args)))
+        (hyps (fn2-columns-carrier-hyps (pairlis$ args nil))))
  `(progn
    (fn2-allocation-release-preserves ,name ,args
     :hyps ,hyps
@@ -164,7 +159,7 @@
 (defmacro fn2-release-replay-settlement-refusal-frame (code-fn progress-fn name)
  (let ((children *fn2-release-replay-settlement-children*))
  `(defthm ,name
-   (implies (and ,@(fn2-release-replay-settlement-hyps children)
+   (implies (and ,@(fn2-columns-carrier-hyps (pairlis$ children nil))
                  (not (equal (,code-fn ,@children) :ok)))
     (equal (,progress-fn ,@children)
            (mv (,code-fn ,@children) 0 fn2-allocation-release fn2-release-evidence fn2-checkpoint-construction fn2-extents)))
@@ -176,7 +171,7 @@
  fn2-release-replay-settlement-refusal-frame-by-definition)
 (defmacro fn2-release-target-settlement-control-frame ()
  `(defthm fn2-release-target-settlement-control-frame-by-definition
-   (implies (and ,@(fn2-release-replay-settlement-hyps *fn2-release-replay-settlement-children*))
+   (implies (and ,@(fn2-columns-carrier-hyps (pairlis$ *fn2-release-replay-settlement-children* nil)))
     (equal (mv-nth 2 (fn2-release-target-settlement-progress ,@*fn2-release-replay-settlement-children*)) fn2-allocation-release))
    :hints (("Goal" :in-theory (enable fn2-release-target-settlement-progress)))
    :rule-classes nil))
