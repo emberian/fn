@@ -12,12 +12,13 @@ def dispatch(source,expected):
 def state(source):
  if '(defun fn2-event-read-format-phase-p ' in source:return source
  if source.count(':frame-seal :semantic-seal')!=1:raise ValueError('reader state declaration drift')
- source=source.replace(':frame-seal :semantic-seal',':frame-seal :seal-span :semantic-seal')
+ source=source.replace(':frame-seal :semantic-seal',':frame-seal :seal-span :seal-tail :semantic-seal')
+ source=source.replace('(body-off :u32) (body-len :u32)', '(body-off :u32) (body-len :u32)\n  (seal-span-started :bool) (seal-span-next :u32) (seal-span-length :u32)')
  anchor=lr.match('(defun fn2-event-read-harvest ?*body)',lr.parse(source).forms,deep=False)[0].node
  helper='''; Format work owns one bounded source visit; callers yield before it at zero.
 (defun fn2-event-read-format-phase-p (phase)
  (declare (xargs :guard t))
- (and (member-equal phase (list *fn2-event-read-phase-frame-seal* *fn2-event-read-phase-seal-span*
+ (and (member-equal phase (list *fn2-event-read-phase-frame-seal* *fn2-event-read-phase-seal-span* *fn2-event-read-phase-seal-tail*
                                *fn2-event-read-phase-semantic-seal* *fn2-event-read-phase-frame-records*)) t))
 
 '''

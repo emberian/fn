@@ -19,7 +19,7 @@ class SealSpan(unittest.TestCase):
   after=rw.state(read('tools/fixtures/seal-span-before-event-read-state.lisp'))
   self.assertEqual(after,read('books/event-read-state.lisp'));self.assertEqual(rw.state(after),after)
   f=node(after,'(defun fn2-event-read-format-phase-p ?*body)')
-  for phase in ['frame-seal','seal-span','semantic-seal','frame-records']:
+  for phase in ['frame-seal','seal-span','seal-tail','semantic-seal','frame-records']:
    self.assertIn('*fn2-event-read-phase-'+phase+'*',after[f.start:f.end])
  def test_shared_decoder_and_zero_tail_bound(self):
   s=read('books/event-read-verify.lisp');f=node(s,'(defun fn2-event-read-seal-span ?*body)')
@@ -32,12 +32,24 @@ class SealSpan(unittest.TestCase):
   self.assertFalse(lr.match('(fn2-pool-write ?*args)',[f]))
  def test_actual_transition_preserves_source_subject(self):
   s=read('books/event-read-verify.lisp');f=node(s,'(defun fn2-event-read-format-core ?*body)')
-  span=lr.match('((when (equal phase *fn2-event-read-phase-seal-span*)) ?*body)',[f])[0].node
+  span=lr.match('(fn2-event-read-seal-span-step budget fn2-event-read fn2-fields fn2-pool)',[f])[0].node
   self.assertLess(span.start,lr.match('(fn2-format-run ?*args)',[f])[0].node.start)
-  put=lr.match('(fn2-event-read-put 0 ?*fields)',[span])[0].node
-  self.assertEqual([n.items[0].low for n in put.items[2:]],['phase','body-len'])
   self.assertTrue(lr.match('(if semantic (fn2-event-read-body-len 0 fn2-event-read) 4096)',[f]))
-  self.assertTrue(lr.match('(if sealframe *fn2-event-read-phase-seal-span* *fn2-event-read-phase-members*)',[f]))
+  step=node(s,'(defun fn2-event-read-seal-span-step ?*body)')
+  allowed={'phase','body-len','seal-span-started','seal-span-next','seal-span-length'}
+  for put in lr.match('(fn2-event-read-put 0 ?*fields)',[step]):
+   self.assertTrue({n.items[0].low for n in put.node.items[2:]} <= allowed)
+  self.assertTrue(lr.match('(fn2-format-sealed-batch-start base fn2-fields)',[step]))
+  self.assertTrue(lr.match('(fn2-format-sealed-batch-decode-step base slot gen off (+ off payload) kind owner generation budget fn2-fields fn2-pool)',[step]))
+  self.assertTrue(lr.match('(count (min budget (- (+ off payload) next)))',[step]))
+  self.assertTrue(lr.match('(fn2-journal-zero-tail count next slot gen kind owner generation fn2-pool)',[step]))
+  self.assertTrue(lr.match('((when (zp budget)) (mv :more fn2-event-read fn2-fields))',[step]))
+ def test_small_budget_fixture_progress_and_full_zero_snapshot(self):
+  s=read('tests/event-read-seal-budget-unit.lisp')
+  self.assertTrue(matches(s,'(fn2-event-read-format-core 0 ?*args)'))
+  self.assertTrue(matches(s,'(equal before (fn2-esb-snapshot ?*args))'))
+  self.assertTrue(matches(s,'(<= (- after-position position) budget)'))
+  self.assertTrue(matches(s,'(fn2-esb-test 1)'));self.assertTrue(matches(s,'(fn2-esb-test 4096)'))
  def test_real_callers_yield_before_new_format_work(self):
   s=read('books/event-producer.lisp')
   gates=matches(s,'((and (not (posp budget)) (fn2-event-read-format-phase-p read-phase)) ?*body)')
