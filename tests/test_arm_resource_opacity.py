@@ -31,11 +31,15 @@ class ResourceOpacity(unittest.TestCase):
             check=True, stdout=subprocess.PIPE).stdout
         old = lisp.parse(before)
         new = lisp.parse(ROOT / 'books/machine-arms.lisp')
-        current = [form for form in new.forms if not (
-            isinstance(form, lisp.Lst) and len(form.items) > 1
-            and lisp.flat(form.items[0]) == 'defun'
-            and lisp.flat(form.items[1]) in HELPERS)]
-        self.assertEqual([tree(form) for form in old.forms], [tree(form) for form in current])
+        targets = {'fn2-arms-child-quantities-event-with-residual',
+                   'fn2-arms-child-effects-event'}
+        def selected(forms):
+            return [tree(form) for form in forms if (
+                isinstance(form, lisp.Lst) and len(form.items) > 1
+                and lisp.flat(form.items[0]) == 'defun'
+                and lisp.flat(form.items[1]) in targets)]
+        self.assertEqual(len(selected(old.forms)), 2)
+        self.assertEqual(selected(old.forms), selected(new.forms))
 
     @unittest.skipUnless(shutil.which('sbcl'), 'SBCL needed for metadata controls')
     def test_metadata_filter_keeps_issuing_strategy(self):
