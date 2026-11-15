@@ -7,6 +7,7 @@
 ; grant service, never by a scan.
 (in-package "ACL2")
 (include-book "cns-kind")
+(include-book "cns-request-observer")
 (include-book "cns-source-core")
 (include-book "sched-timers")
 (include-book "authority-kind")
@@ -21,6 +22,17 @@
 (fn2-book-layer :e)
 
 ;; The operations the request kind's arms call (child form).
+(defcost fn2-cns-request-acquire :answers (:ok :admission :fault) :faults (:fault)
+ :tables (fn2-core-reads fn2-core-c-source-control fn2-core-c-source-readers)
+ :doc "Admit the exact CNS metadata operation and bind its one nested READ; existing receipts drain under PENDING.")
+(defcost fn2-cns-request-release :answers (:ok :fault) :faults (:fault)
+ :tables (fn2-core-reads fn2-core-ranges fn2-core-range-sources fn2-core-seeks fn2-core-succ-txns
+          fn2-core-run-cursors fn2-core-run-paths fn2-core-fields fn2-core-c-source-control fn2-core-c-source-readers)
+ :doc "Close the owned READ then relinquish its metadata parent before commit/upload/transport waits.")
+(defcost fn2-cns-stream-source-check-mid :answers (:ok :bad) :bytes 4096 :own-writes (mid-checked)
+ :tables (fn2-cns-table fn2-core-reads fn2-core-ranges fn2-core-range-sources fn2-core-seeks fn2-core-run-cursors
+          fn2-core-run-paths fn2-core-succ-txns fn2-core-fields fn2-core-pool fn2-core-c-source-control fn2-core-c-source-readers)
+ :doc "Record the actual selected occurrence/MID comparison before physical-source retention replaces the C observer.")
 (defcost fn2-cns-edge-link-core :child fn2-cns-edge-link :answers (:ok :behind :exhausted)
  :tables (fn2-core-cns-edges)
  :doc "Link a parked wait's edge on its stream from its first unread position: :behind (a publish since its read: read again), :exhausted (every row in use).")
@@ -105,7 +117,7 @@
 (defcost fn2-cns-stream-source-finish :answers (:ok :wait :stale)
  :tables (fn2-core-cns-sources)
  :doc "Acknowledge final Send handback or a terminal, borrow-free cancelled transport.")
-(defcost fn2-cns-stream-source-step :answers t :bytes *fn2-cns-source-unit-work-bytes*
+(defcost fn2-cns-stream-source-step :answers (:more :wait :need-read :ready :complete :bad :bounds :released :handoff :stale :uncertain :covered :claim) :bytes *fn2-cns-source-unit-work-bytes*
  :tables (fn2-core-cns-sources fn2-core-fields fn2-core-b3 fn2-core-digests fn2-core-extents fn2-core-alloc-edges)
  :doc "One source verification/hash/manifest claim or one owned-edge cleanup step; never hidden I/O.")
 (defcost fn2-cns-stream-source-issue :answers (:ok :wait :bad) :descriptors 1
@@ -118,14 +130,14 @@
 (defcost fn2-cns-stream-source-clear :answers (:ok :stale) :tables (fn2-core-cns-sources)
  :doc "Clear a released source identity only after the actor's declared workspace release.")
 (defcost fn2-cns-stream-source-open :answers (:ok :bad :wait) :bytes 4096 :enqueues 1
- :tables (fn2-core-reads fn2-core-ranges fn2-core-range-sources fn2-core-seeks fn2-core-run-cursors fn2-core-run-paths fn2-core-fields fn2-core-pool fn2-ctl-table fn2-core-sched fn2-core-trace fn2-core-control)
- :doc "Check occurrence MID and complete source coverage before scheduling the generated FETCH prefix.")
+ :tables (fn2-ctl-table fn2-core-sched fn2-core-trace fn2-core-control)
+ :doc "Open a captured source only after its retained actual MID check and complete authenticated coverage.")
 (defcost fn2-cns-stream-upload-live-p :doc "The current generation of the staged upload; stale IDs are not woken.")
 (defcost fn2-cns-stream-ctl-live-p :doc "The current generation of the original control owner; final reclaim wakes it before dropping the tuple.")
 (defcost fn2-ctl-stream-metadata :answers (:none :ok :bad :stale)
  :doc "Generation/request-bound APPEND operation and declared article length.")
 (defcost fn2-cns-authority-allows :answers (:ok :access :more :state) :bytes 4096
- :tables (fn2-core-reads fn2-core-ranges fn2-core-seeks fn2-core-succ-txns fn2-core-run-cursors fn2-core-run-paths fn2-core-fields)
+ :tables (fn2-core-reads fn2-core-ranges fn2-core-seeks fn2-core-succ-txns fn2-core-run-cursors fn2-core-run-paths fn2-core-fields fn2-core-c-source-control fn2-core-c-source-readers)
  :doc "One bounded step of the consumer surface's check (books/authority.lisp, AUTHORITY-20261105 section 4) on the request's own read row: (fn2-cns-authority-allows cns gen right scope target xstep head grant budget) -> (mv code xstep head grant).")
 ;; the consume right on the principal's own consumers (authority.lisp's
 ;; *fn2-authority-right-consume* and -scope-own-consumers, asserted equal there)
@@ -134,7 +146,7 @@
 
 (defcost fn2-cns-lookup-cursor :answers (:ok) :bytes 2048
  :tables (fn2-core-id-engine fn2-core-reads fn2-core-ranges fn2-core-range-sources fn2-core-seeks
-          fn2-core-succ-txns fn2-core-run-cursors fn2-core-run-paths fn2-core-fields)
+          fn2-core-succ-txns fn2-core-run-cursors fn2-core-run-paths fn2-core-fields fn2-core-c-source-control fn2-core-c-source-readers)
  :doc "Read the consumer cursor (position, version) from fn2-consumer-cursor and the principal's stream frontier (fn2-cns-stream-frontier).")
 ;; The positioned seek's step bound for a stream frontier: 61 probes over
 ;; u60 positions, each a probe, a range read and a narrowing step.
@@ -152,15 +164,15 @@
 (defcost fn2-cns-item-next :answers (:found :end :more :retry :lease :fault) :bytes 8192
  :tables (fn2-core-id-engine fn2-core-reads fn2-core-ranges fn2-core-range-sources
           fn2-core-seeks fn2-core-succ-txns fn2-core-run-cursors fn2-core-run-paths
-          fn2-core-fields fn2-core-pool fn2-core-cns-sources fn2-core-extents fn2-core-alloc-edges)
+          fn2-core-fields fn2-core-pool fn2-core-cns-sources fn2-core-extents fn2-core-alloc-edges fn2-core-c-source-control fn2-core-c-source-readers)
  :doc "The principal's next addr entry past a position up to the frontier, its article row and the item type the page's room allows: (mv code position article type bytes unit epoch allocation).")
 (defcost fn2-cns-put-item :answers (:ok :full :dropped :fault) :bytes 8192
  :tables (fn2-ctl-table fn2-core-machines fn2-core-reads fn2-core-ranges fn2-core-range-sources fn2-core-seeks
-          fn2-core-succ-txns fn2-core-run-cursors fn2-core-run-paths fn2-core-fields fn2-core-pool)
+          fn2-core-succ-txns fn2-core-run-cursors fn2-core-run-paths fn2-core-fields fn2-core-pool fn2-core-c-source-control fn2-core-c-source-readers)
  :doc "Encode one page item in the lease (its Message-ID from the overview row, a record's octets read there, a reference's count and content) and append it to the control range: (mv code at len).")
 (defcost fn2-cns-put-article :answers (:ok :absent :full :dropped :fault) :bytes 8192
  :tables (fn2-ctl-table fn2-core-machines fn2-core-reads fn2-core-ranges fn2-core-range-sources fn2-core-seeks
-          fn2-core-succ-txns fn2-core-run-cursors fn2-core-run-paths fn2-core-fields fn2-core-pool)
+          fn2-core-succ-txns fn2-core-run-cursors fn2-core-run-paths fn2-core-fields fn2-core-pool fn2-core-c-source-control fn2-core-c-source-readers)
  :doc "Fetch's article: the occurrence's Message-ID checked against the request's, its octets (read into the lease) appended to the control range: (mv code at len).")
 ;; An append's reply carries D's word as its reason (e-surface.md 3.3): an
 ;; append where posting is not served is D's refused (NNTP's 440).
@@ -184,7 +196,7 @@
  :doc "Encode the kind 28 reply after the request in the control range and post its extent to the waiting control connection.")
 (defcost fn2-cns-decode-port :answers (:ok :refused) :bytes 2048
  :tables (fn2-core-reads fn2-core-ranges fn2-core-range-sources fn2-core-seeks fn2-core-run-cursors fn2-core-run-paths
-          fn2-core-fields)
+          fn2-core-fields fn2-core-c-source-control fn2-core-c-source-readers)
  :doc "Decode a kind 4 request's code and fields into the request row: (mv answer reason verb cid cstart to lim epoch wait-ms op fstart noff nlen).")
 (defcost fn2-ctl-open-frame :answers (:ok :need-more :size :frame :bounds) :bytes 512
  :tables (fn2-core-fields fn2-core-digests fn2-core-b3)
@@ -913,7 +925,7 @@
            (:cond ((eq ocode :need-more) (:set (flen 0)) (:charge :bytes 4096 :steps *fn2-work-transition* :runnable t))
                   ((eq ocode :size)
                    (:do (sc op alen start remaining) (fn2-ctl-stream-begin id row-generation row-rx-slot row-rx-gen)
-                    :accept (:ok :need-more :frame :bounds))
+                    :accept (:ok :need-more :frame :bounds) :why "the following bounded stream dispatch waits or closes on refusal and never accepts a provisional frame as complete")
                    (:cond ((eq sc :need-more) (:set (flen 0))
                            (:charge :bytes 4096 :steps *fn2-work-transition* :runnable t))
                           ((eq sc :ok)
@@ -1013,7 +1025,7 @@
         ((:charge :steps *fn2-work-poll*))))
       (t (:do (tc copied) (fn2-ctl-stream-trailer id row-generation row-strailer row-rx-slot row-rx-gen
                                                  row-shash row-fill)
-          :accept (:verified :more :frame :bounds))
+          :accept (:verified :more :frame :bounds) :why "the following bounded stream dispatch waits or closes on refusal and never accepts a provisional frame as complete")
          (:cond
           ((and (eq tc :verified)
                 (equal (+ row-shash copied) row-fill)
@@ -1067,7 +1079,7 @@
     ((equal row-ophase *fn2-ctl-output-prefix*)
      (:do (reset) (fn2-core-reset row-rx-slot row-rx-gen) :accept (:ok))
      (:do (code end) (fn2-ctl-stream-output-prefix id row-generation row-ototal row-rx-slot row-rx-gen)
-      :accept (:ok :bounds :size))
+      :accept (:ok :bounds :size) :why "the following bounded stream dispatch waits or closes on refusal and never accepts a provisional frame as complete")
      (:if (and (eq code :ok) (unsigned-byte-p 32 end) (<= end *fn2-ctl-io-bytes*))
       ((:set (fill end) (shash 0) (tx-off 0) (tx-len 0) (ophase *fn2-ctl-output-fill*))
        (:charge :bytes 128 :steps *fn2-work-transition* :runnable t))
@@ -1079,7 +1091,7 @@
        (:do (code copied eof)
         (fn2-cns-stream-source-next row-cns row-cns-gen id row-generation row-request
                                    row-rx-slot row-rx-gen row-fill cap)
-        :accept (:ok :wait :bad))
+        :accept (:ok :wait :bad) :why "wait retains the source; bad closes the provisional frame; only checked EOF permits a trailer")
        (:cond
         ((eq code :wait) (:wake-row row-cns) (:charge :bytes *fn2-cns-source-next-cost* :steps *fn2-work-transition*))
         ((and (eq code :ok) (natp copied) (<= copied cap)
@@ -1091,7 +1103,7 @@
         (t (:next :closing) (:charge :bytes *fn2-cns-source-next-cost* :steps *fn2-work-transition* :runnable t))))))
     ((equal row-ophase *fn2-ctl-output-hash*)
      (:do (code copied) (fn2-ctl-stream-hash id row-generation row-rx-slot row-rx-gen 0 row-fill
-                                           (equal row-ochecked 1)) :accept (:ok :more :bounds))
+                                           (equal row-ochecked 1)) :accept (:ok :more :bounds) :why "the following bounded stream dispatch waits or closes on refusal and never accepts a provisional frame as complete")
      (:if (and (eq code :ok) (equal copied row-fill))
       ((:set (tx-off 0) (tx-len row-fill) (ophase *fn2-ctl-output-send*))
        (:charge :bytes 4096 :steps *fn2-work-transition* :runnable t))
@@ -1111,14 +1123,14 @@
          (:charge :steps *fn2-work-transition* :runnable t))))
     ((equal row-ophase *fn2-ctl-output-trailer*)
      ;; This state is reachable only after checked EOF and final BLAKE3 update.
-     (:do (code) (fn2-ctl-stream-output-trailer id row-generation row-rx-slot row-rx-gen) :accept (:ok :bounds))
+     (:do (code) (fn2-ctl-stream-output-trailer id row-generation row-rx-slot row-rx-gen) :accept (:ok :bounds) :why "the following bounded stream dispatch waits or closes on refusal and never accepts a provisional frame as complete")
      (:if (eq code :ok)
       ((:set (tx-off 0) (tx-len 32) (ophase *fn2-ctl-output-last*))
        (:charge :bytes 32 :steps *fn2-work-transition* :runnable t))
       ((:next :closing) (:charge :bytes 32 :steps *fn2-work-transition* :runnable t))))
     ((equal row-ophase *fn2-ctl-output-done*)
      (:do (code) (fn2-cns-stream-source-finish row-cns row-cns-gen id row-generation row-request)
-      :accept (:ok :wait :stale))
+      :accept (:ok :wait :stale) :why "wait retains ownership; the following dispatch handles checked handback or a stale transport tuple")
      (:cond ((eq code :wait) (:wake-row row-cns) (:charge :steps *fn2-work-transition*))
             ((eq code :ok)
              ;; The source marks handback; CNS releases its own lease through
@@ -1248,6 +1260,8 @@
            (:if (fn2-cns-stream-upload-live-p row-upload row-upload-gen) ((:wake-row row-upload)) ())
            (:charge :bytes *fn2-conn-feed-cost* :steps *fn2-work-transition* :runnable (eq status :budget)))))))
  (hand :on-refusal ((:stop :machine-phase))
+   (:do (meta-drop-hand) (fn2-cns-request-release id row-generation) :accept (:ok))
+   (:set (observer-serial 0))
    (:cond
     ((equal row-lease *fn2-cns-lease-held*)
              (:do (lc) (fn2-cns-lease-release row-lslot row-lgen) :effects ((:release (:storage-window))) :accept (:ok :retired)
@@ -1273,6 +1287,8 @@
    (:set (outcome *fn2-cns-outcome-refused*))
    (:goto answer))
   (cancel :on-refusal ((:stop :machine-phase))
+   (:do (meta-drop-cancel) (fn2-cns-request-release id row-generation) :accept (:ok))
+   (:set (observer-serial 0))
    (:cond
     ((fn2-cns-source-boundp id row-generation row-ctl row-ctl-gen row-request)
      (:do () (fn2-cns-stream-source-abort id row-generation row-ctl row-ctl-gen row-request))
@@ -1325,7 +1341,14 @@
    (:cond
     ((and (equal row-verb *fn2-cns-verb-fetch*)
           (fn2-cns-source-boundp id row-generation row-ctl row-ctl-gen row-request))
-     (:set (stream 0)) (:next :source) (:charge :bytes 8192 :steps *fn2-work-transition* :runnable t))
+     (:do (meta-mid-code) (fn2-cns-stream-source-check-mid id row-generation) :accept (:ok :bad) :why "a mismatch enters owned-source cleanup before any prefix")
+     (:do (meta-drop-fetch-capture) (fn2-cns-request-release id row-generation) :accept (:ok))
+   (:set (observer-serial 0))
+     (:set (stream 0))
+     (:if (eq meta-mid-code :ok)
+          ((:next :source) (:charge :bytes 12288 :steps *fn2-work-transition* :runnable t))
+          ((:do () (fn2-cns-stream-source-abort id row-generation row-ctl row-ctl-gen row-request))
+           (:next :source) (:charge :bytes 12288 :steps *fn2-work-transition* :runnable t))))
     ((equal row-itype *fn2-fnct-item-record*)
          (:issue (fn2-block-read row-lunit row-lepoch row-lalloc 0 row-alen row-lslot row-lgen
                                  :principal row-principal-slot)
@@ -1334,6 +1357,8 @@
   ;; the page's end: the lease returned first (a step of its own), then
   ;; the answer, or a wait with nothing parks
   (page-end :on-refusal ((:stop :machine-phase))
+   (:do (meta-drop-page-end) (fn2-cns-request-release id row-generation) :accept (:ok))
+   (:set (observer-serial 0))
    (:cond ((equal row-lease *fn2-cns-lease-held*)
            (:do (lc) (fn2-cns-lease-release row-lslot row-lgen) :effects ((:release (:storage-window))) :accept (:ok :retired)
             :why ":retired: the lease's slot reached its generation limit and leaves the pool")
@@ -1352,6 +1377,8 @@
                       ((:next :park) (:charge :bytes 4096 :steps *fn2-work-transition* :runnable t))))))
           (t (:set (count 0) (more 0) (outcome *fn2-cns-outcome-accepted*)) (:goto answer))))
   (page-fail :on-refusal ((:stop :machine-phase))
+   (:do (meta-drop-page-fail) (fn2-cns-request-release id row-generation) :accept (:ok))
+   (:set (observer-serial 0))
    (:cond
     ((fn2-cns-source-boundp id row-generation row-ctl row-ctl-gen row-request)
      (:do () (fn2-cns-stream-source-abort id row-generation row-ctl row-ctl-gen row-request))
@@ -1362,6 +1389,8 @@
            (:charge :steps *fn2-work-transition* :runnable t))
           (t (:goto refuse))))
   (page-cancel :on-refusal ((:stop :machine-phase))
+   (:do (meta-drop-page-cancel) (fn2-cns-request-release id row-generation) :accept (:ok))
+   (:set (observer-serial 0))
    (:cond
     ((fn2-cns-source-boundp id row-generation row-ctl row-ctl-gen row-request)
      (:do () (fn2-cns-stream-source-abort id row-generation row-ctl row-ctl-gen row-request))
@@ -1379,6 +1408,9 @@
   (:decode :on-refusal ((:stop :machine-phase))
    (:do (rxcode x) (fn2-cns-read-row id) :case (((:bounds) (:stop :machine-phase))))
    (:set (xrow x))
+   (:do (meta-code-decode meta-receipt-decode) (fn2-cns-request-acquire id row-generation)
+    :accept (:ok) :case (((:admission) (:charge :steps *fn2-work-transition* :runnable t))))
+   (:set (observer-serial meta-receipt-decode))
    (:cond ((equal row-ctl *fn2-none*) (:goto cancel))
           ((equal row-fkind 11)
            (:do (scode sop slength) (fn2-ctl-stream-metadata row-ctl row-ctl-gen row-request)
@@ -1393,6 +1425,9 @@
             (:otherwise (:goto cancel))))
           (t (:goto decode-request))))
   (:check :on-refusal ((:stop :machine-phase))
+   (:do (meta-code-check meta-receipt-check) (fn2-cns-request-acquire id row-generation)
+    :accept (:ok) :case (((:admission) (:charge :steps *fn2-work-transition* :runnable t))))
+   (:set (observer-serial meta-receipt-check))
    (:cond ((equal row-lease *fn2-cns-lease-held*)
            (:do (lc) (fn2-cns-lease-release row-lslot row-lgen) :effects ((:release (:storage-window))) :accept (:ok :retired)
             :why ":retired: the lease's slot reached its generation limit and leaves the pool")
@@ -1421,6 +1456,9 @@
                   ((:next :commit) (:charge :bytes 4096 :steps *fn2-work-transition* :runnable t))
                   ((:next :lookup) (:charge :bytes 4096 :steps *fn2-work-transition* :runnable t))))))
   (:lookup :on-refusal ((:stop :machine-phase))
+   (:do (meta-code-lookup meta-receipt-lookup) (fn2-cns-request-acquire id row-generation)
+    :accept (:ok) :case (((:admission) (:charge :steps *fn2-work-transition* :runnable t))))
+   (:set (observer-serial meta-receipt-lookup))
    (:if (equal row-lease *fn2-cns-lease-held*)
         ((:do (lc) (fn2-cns-lease-release row-lslot row-lgen) :effects ((:release (:storage-window))) :accept (:ok :retired)
           :why ":retired: the lease's slot reached its generation limit and leaves the pool")
@@ -1449,6 +1487,9 @@
           (t (:set (cpos ncpos) (version nver) (pub-frontier pfront))
              (:next :read) (:charge :bytes 4096 :steps *fn2-work-transition* :runnable t))))))
   (:read :on-refusal ((:stop :machine-phase))
+   (:do (meta-code-read meta-receipt-read) (fn2-cns-request-acquire id row-generation)
+    :accept (:ok) :case (((:admission) (:charge :steps *fn2-work-transition* :runnable t))))
+   (:set (observer-serial meta-receipt-read))
    (:do (fcode ncpos nver pfront)
         (fn2-cns-lookup-cursor row-consumer row-epoch row-principal-slot row-cpos row-version row-pub-frontier row-xrow))
    (:set (cpos ncpos) (version nver) (pub-frontier pfront) (count 0) (more 0) (ioff 0) (ilen 0)
@@ -1464,6 +1505,9 @@
   ;; frontier, at the client's item limit or when the next item's octets do
   ;; not fit the range (MORE): a wait with nothing parks, lease returned.
   (:page :on-refusal ((:stop :machine-phase))
+   (:do (meta-code-page meta-receipt-page) (fn2-cns-request-acquire id row-generation)
+    :accept (:ok) :case (((:admission) (:charge :steps *fn2-work-transition* :runnable t))))
+   (:set (observer-serial meta-receipt-page))
    (:cond ((equal row-ctl *fn2-none*) (:goto page-cancel))
           ((equal row-outcome *fn2-cns-outcome-refused*) (:goto page-fail))
           ((equal row-more 1) (:goto page-end))
@@ -1491,7 +1535,9 @@
                   ((equal row-lease *fn2-cns-lease-held*)
                    (:set (npos np) (art a) (istream st) (itype ty) (alen bytes) (lunit u) (lepoch e) (lalloc al))
                    (:goto item))
-                  (t (:let class (fn2-cns-lease-class))
+                  (t (:do (meta-drop-page-lease) (fn2-cns-request-release id row-generation) :accept (:ok))
+   (:set (observer-serial 0))
+                     (:let class (fn2-cns-lease-class))
                      (:if (null class) ((:set (reason *fn2-cns-reason-unavailable*)) (:goto refuse))
                           ((:do (code ls lg) (fn2-cns-lease-reserve class) :effects ((:acquire (:storage-window)))
                             :case (((:exhausted) (:park :pool class :steps *fn2-work-transition*))
@@ -1503,7 +1549,7 @@
   ; Published FETCH uses retained source jobs. No whole article is copied
   ; into a request/reply range, and no accepted trailer precedes checked EOF.
   (:source :on-refusal ((:stop :machine-phase))
-   (:do (sc) (fn2-cns-stream-source-step id row-generation row-ctl row-ctl-gen row-request (equal row-stream 1)))
+   (:do (sc) (fn2-cns-stream-source-step id row-generation row-ctl row-ctl-gen row-request (equal row-stream 1)) :accept (:more :wait :need-read :ready :complete :bad :bounds :released :handoff :stale :uncertain :covered :claim) :why "the following source-state dispatch handles bounded continuation, read admission, checked data/EOF, handoff and explicit fault states")
    (:case sc
     ((:uncertain :stale) (:stop :machine-observation :steps *fn2-work-state*))
     ((:bad :bounds)
@@ -1511,15 +1557,11 @@
      (:charge :bytes *fn2-cns-source-unit-work-bytes* :steps *fn2-work-transition* :runnable t))
     ((:wait) (:charge :bytes *fn2-cns-source-unit-work-bytes* :steps *fn2-work-poll*))
     ((:need-read)
-     (:do (rc op og) (fn2-cns-stream-source-issue id row-generation row-ctl row-ctl-gen row-request row-principal-slot))
-     (:case rc
-      ((:ok) (:charge :bytes *fn2-cns-source-unit-work-bytes* :descriptors 1 :steps *fn2-work-transition*))
-      ((:wait) (:charge :bytes *fn2-cns-source-unit-work-bytes* :descriptors 1 :steps *fn2-work-poll* :runnable t))
-      (:otherwise
+     (:do (rc op og) (fn2-cns-stream-source-issue id row-generation row-ctl row-ctl-gen row-request row-principal-slot) :accept () :case (((:ok) (:charge :bytes *fn2-cns-source-unit-work-bytes* :descriptors 1 :steps *fn2-work-transition*)) ((:wait) (:charge :bytes *fn2-cns-source-unit-work-bytes* :descriptors 1 :steps *fn2-work-poll* :runnable t)) (:otherwise
        (:do () (fn2-cns-stream-source-abort id row-generation row-ctl row-ctl-gen row-request))
-       (:charge :bytes *fn2-cns-source-unit-work-bytes* :descriptors 1 :steps *fn2-work-transition* :runnable t))))
+       (:charge :bytes *fn2-cns-source-unit-work-bytes* :descriptors 1 :steps *fn2-work-transition* :runnable t)))))
     ((:covered)
-     (:do (oc) (fn2-cns-stream-source-open id row-generation))
+     (:do (oc) (fn2-cns-stream-source-open id row-generation) :accept (:ok :bad :wait) :why "the following dispatch starts output only when ready, waits for transport, or cleans the retained source on refusal")
      (:case oc
       ((:ok) (:set (stream 1)) (:charge :bytes (+ *fn2-cns-source-unit-work-bytes* 4096) :steps *fn2-work-transition* :runnable t))
       ((:wait) (:charge :bytes (+ *fn2-cns-source-unit-work-bytes* 4096) :steps *fn2-work-poll*))
@@ -1531,23 +1573,23 @@
     ((:released)
      (:cond
       ((equal row-stream 1)
-       (:do (ts) (fn2-ctl-stream-reply-status row-ctl row-ctl-gen row-request id row-generation))
+       (:do (ts) (fn2-ctl-stream-reply-status row-ctl row-ctl-gen row-request id row-generation) :accept (:active :handback :aborting :cancelled :stale) :why "the exact transport state selects cancellation handoff or the checked owner wake")
        (:if (eq ts :cancelled)
             ((:do (fc) (fn2-cns-stream-source-finish id row-generation row-ctl row-ctl-gen row-request)
-              :accept (:ok :wait))
+              :accept (:ok :wait) :case (((:stale) (:stop :machine-phase))) :why "wait retains ownership; the following dispatch handles checked handback or a stale transport tuple")
              (:charge :bytes *fn2-cns-source-unit-work-bytes* :steps *fn2-work-transition* :runnable (eq fc :ok)))
             ((:wake-row row-ctl) (:charge :bytes *fn2-cns-source-unit-work-bytes* :steps *fn2-work-poll*))))
       (t
        (:do (fc) (fn2-cns-stream-source-finish id row-generation row-ctl row-ctl-gen row-request)
-        :accept (:ok :wait))
+        :accept (:ok :wait) :case (((:stale) (:stop :machine-phase))) :why "wait retains ownership; the following dispatch handles checked handback or a stale transport tuple")
        (:charge :bytes *fn2-cns-source-unit-work-bytes* :steps *fn2-work-transition* :runnable t))))
     ((:handoff)
      (:if (equal row-lease *fn2-cns-lease-held*)
           ((:do (lc) (fn2-cns-lease-release row-lslot row-lgen)
-            :effects ((:release (:storage-window))) :accept (:ok :retired))
+            :effects ((:release (:storage-window))) :accept (:ok :retired) :why "a slot at its generation limit retires instead of returning to the free chain")
            (:set (lease *fn2-cns-lease-none*) (lslot *fn2-none*) (lgen 0))
            (:charge :bytes *fn2-cns-source-unit-work-bytes* :steps *fn2-work-transition* :runnable t))
-          ((:do (cc) (fn2-cns-stream-source-clear id row-generation row-ctl row-ctl-gen row-request) :accept (:ok))
+          ((:do (cc) (fn2-cns-stream-source-clear id row-generation row-ctl row-ctl-gen row-request) :accept (:ok) :case (((:stale) (:stop :machine-phase))))
            (:if (equal row-stream 1)
                 ((:next :draining) (:charge :bytes *fn2-cns-source-unit-work-bytes* :steps *fn2-work-transition* :runnable t))
                 ((:set (reason *fn2-cns-reason-unavailable*)) (:goto refuse))))))
@@ -1565,6 +1607,8 @@
           (t (:set (rready 0) (reason *fn2-cns-reason-unavailable*) (outcome *fn2-cns-outcome-refused*))
              (:next :page) (:charge :steps *fn2-work-transition* :runnable t))))
   (:park :on-refusal ((:stop :machine-phase))
+   (:do (meta-drop-park) (fn2-cns-request-release id row-generation) :accept (:ok))
+   (:set (observer-serial 0))
    (:cond ((equal row-ctl *fn2-none*)
            (:if (equal row-edge *fn2-none*)
                 ((:goto cancel))
@@ -1587,7 +1631,23 @@
   ;; the row's own successor (fn2-cns-successor); 1 resolves them a bounded
   ;; step per run; 2 stages, emits into the row's workspace WS, admits and
   ;; binds, then :committed waits for B's settled outcome.
-  (:commit :on-refusal ((:stop :machine-phase))
+    ; The commit result is already consumed. Admission can yield here without
+  ; taking that receipt twice or retaining a C observer through B settlement.
+  (:refresh :on-refusal ((:stop :machine-phase))
+   (:do (meta-code-refresh meta-receipt-refresh) (fn2-cns-request-acquire id row-generation)
+    :accept (:ok) :case (((:admission) (:charge :steps *fn2-work-transition* :runnable t))))
+   (:set (observer-serial meta-receipt-refresh))
+   (:do (lcode lpos lver lpf)
+    (fn2-cns-lookup-cursor (fn2-cns-cid-default row-consumer) (fn2-cns-ep-default row-epoch)
+                         row-principal-slot row-cpos row-version row-pub-frontier row-xrow))
+   (:set (cpos lpos) (version lver) (pub-frontier lpf))
+   (:if (and (equal row-refresh *fn2-cns-refresh-duplicate*) (not (< 0 lver)))
+        ((:set (reason *fn2-cns-reason-equal*)) (:goto refuse))
+        ((:set (outcome *fn2-cns-outcome-accepted*)) (:goto answer))))
+
+(:commit :on-refusal ((:stop :machine-phase))
+   (:do (meta-drop-commit) (fn2-cns-request-release id row-generation) :accept (:ok))
+   (:set (observer-serial 0))
    (:cond
     ((equal row-lease *fn2-cns-lease-held*)
      (:do (lc) (fn2-cns-lease-release row-lslot row-lgen) :effects ((:release (:storage-window))) :accept (:ok :retired)
@@ -1625,24 +1685,13 @@
       ;; ack a concurrent one overtook (decided again: equal is accepted
       ;; read-only, lower behind)
       :unchanged ((:if (equal row-verb *fn2-cns-verb-register*)
-                       ((:do (ucode upos uver upf)
-                             (fn2-cns-lookup-cursor (fn2-cns-cid-default row-consumer) (fn2-cns-ep-default row-epoch)
-                                                    row-principal-slot row-cpos row-version row-pub-frontier row-xrow))
-                        (:set (cpos upos) (version uver) (pub-frontier upf) (outcome *fn2-cns-outcome-accepted*))
-                        (:goto answer))
+                       ((:set (refresh *fn2-cns-refresh-unchanged*)) (:next :refresh) (:charge :steps *fn2-work-transition* :runnable t))
                        ((:set (wstep 0)) (:next :lookup) (:charge :steps *fn2-work-transition* :runnable t))))
       ;; a registration of a name the ledger holds answers the recorded
       ;; cursor (refused equal when none is recorded)
       :refused ((:cond
                  ((eq cwhy :duplicate)
-                  (:do (dcode dpos dver dpf)
-                       (fn2-cns-lookup-cursor (fn2-cns-cid-default row-consumer) (fn2-cns-ep-default row-epoch)
-                                              row-principal-slot row-cpos row-version row-pub-frontier row-xrow))
-                  (:if (< 0 dver)
-                       ((:set (cpos dpos) (version dver) (pub-frontier dpf) (outcome *fn2-cns-outcome-accepted*))
-                        (:goto answer))
-                       ((:set (cpos dpos) (version dver) (pub-frontier dpf) (reason *fn2-cns-reason-equal*))
-                        (:goto refuse))))
+                  (:set (refresh *fn2-cns-refresh-duplicate*)) (:next :refresh) (:charge :steps *fn2-work-transition* :runnable t))
                  ((and (eq cwhy :refused) (equal row-verb *fn2-cns-verb-register*))
                   (:set (reason *fn2-cns-reason-equal*)) (:goto refuse))
                  (t (:set (reason *fn2-cns-reason-unavailable*)) (:goto refuse))))))))
@@ -1651,6 +1700,8 @@
   ;; records, read back after B published the batch, never a value assumed
   ;; here; B's refusal of the batch is unavailable; uncertain stays so.
   (:committed :on-refusal ((:stop :machine-phase))
+   (:do (meta-drop-committed) (fn2-cns-request-release id row-generation) :accept (:ok))
+   (:set (observer-serial 0))
    (:cond
     ((equal row-lease *fn2-cns-lease-held*)
      (:do (lc) (fn2-cns-lease-release row-lslot row-lgen) :effects ((:release (:storage-window))) :accept (:ok :retired)
@@ -1659,11 +1710,7 @@
      (:charge :steps *fn2-work-transition* :runnable t))
     (t
    (:commit row-sx :workspace (row-ws-slot row-ws-gen) :ticket ticket :wait :committed :why cwhy
-    :accepted ((:do (lcode lpos lver lpf)
-                    (fn2-cns-lookup-cursor (fn2-cns-cid-default row-consumer) (fn2-cns-ep-default row-epoch)
-                                           row-principal-slot row-cpos row-version row-pub-frontier row-xrow))
-               (:set (cpos lpos) (version lver) (pub-frontier lpf) (outcome *fn2-cns-outcome-accepted*))
-               (:goto answer))
+    :accepted ((:set (refresh *fn2-cns-refresh-accepted*)) (:next :refresh) (:charge :steps *fn2-work-transition* :runnable t))
     :refused ((:set (reason *fn2-cns-reason-unavailable*)) (:goto refuse))
     :uncertain ((:set (outcome *fn2-cns-outcome-uncertain*)) (:goto answer))))))
   ;; :append (e-surface.md 3.3): an append is a POST through the one write
@@ -1672,6 +1719,8 @@
   ;; its transaction (or its refusal) posts here (fn2-cns-post-outcome):
   ;; the reply's reason is then the D word, its cpos the commit position.
   (:append :on-refusal ((:stop :machine-phase))
+   (:do (meta-drop-append) (fn2-cns-request-release id row-generation) :accept (:ok))
+   (:set (observer-serial 0))
    (:let posting (fn2-cns-posting-p))
    (:cond ((equal row-lease *fn2-cns-lease-held*)
            (:do (lc) (fn2-cns-lease-release row-lslot row-lgen) :effects ((:release (:storage-window))) :accept (:ok :retired)
@@ -1916,6 +1965,7 @@
      (in-theory (disable fn2-ctl-owner-principal))
      ;; fn2-cns-read-row is defined by fn2-auth-read-events (books/authority.lisp),
      ;; expanded before fn2-cns-events; the defcost above is its contract.
+     (fn2-cns-request-observer-events)
      (defun fn2-cns-lookup-loop (k r sid fn2-core)
        (declare (xargs :stobjs fn2-core :measure (nfix k) :guard (fn2-core-wfp fn2-core)))
        (if (<= (nfix k) 0)
@@ -2256,6 +2306,33 @@
      (fn2-core-preserves fn2-cns-entry-mid (stream art position pf lslot lgen lk ls lg x fn2-core)
        :position 3 :rows nil :hints (("Goal" :in-theory (disable nfix))))
      (in-theory (disable fn2-cns-entry-mid))
+     ; This records the producer's actual MID comparison while metadata is
+     ; observed; source-open never re-enters C after physical retention takes over.
+     (defun fn2-cns-stream-source-check-mid (cns cgen fn2-core)
+      (declare (xargs :stobjs fn2-core :guard (fn2-core-wfp fn2-core)))
+      (b* ((ctl (fn2-cns-row-ctl cns fn2-core)) (cg (fn2-cns-row-ctl-gen cns fn2-core))
+           (r (fn2-cns-row-request cns fn2-core))
+           ((unless (and (fn2-cns-source-boundp cns cgen ctl cg r fn2-core)
+                         (eq (fn2-ctl-stream-reply-status ctl cg r cns cgen fn2-core) :active)
+                         (equal (fn2-ctl-row-phase ctl fn2-core) *fn2-ctl-state-waiting*))) (mv :bad fn2-core))
+           (s (fn2-machine-slot cns fn2-core))
+           (article (stobj-let ((fn2-cns-sources (fn2-core-cns-sources fn2-core)))
+                     (n) (fn2-cns-sources-article s fn2-cns-sources) n))
+           ((unless (equal article (fn2-cns-row-art cns fn2-core))) (mv :bad fn2-core))
+           (slot (fn2-cns-row-lslot cns fn2-core)) (gen (fn2-cns-row-lgen cns fn2-core))
+           (fn2-core (fn2-machine-write-mid-checked cns 0 fn2-core))
+           ((mv mc ms ml fn2-core)
+            (fn2-cns-entry-mid (fn2-cns-row-istream cns fn2-core) article
+             (fn2-cns-row-npos cns fn2-core) (fn2-cns-row-pub-frontier cns fn2-core)
+             slot gen *fn2-cns-kind* cns cgen (fn2-cns-row-xrow cns fn2-core) fn2-core))
+           (same (and (eq mc :ok) (equal ml (fn2-cns-row-name-len cns fn2-core))
+                      (fn2-cns-core-same ml slot gen ms *fn2-cns-kind* cns cgen
+                       (fn2-cns-row-tx-slot cns fn2-core) (fn2-cns-row-tx-gen cns fn2-core)
+                       (fn2-cns-row-name-off cns fn2-core) *fn2-ctl-kind* ctl cg fn2-core)))
+           (fn2-core (if same (fn2-machine-write-mid-checked cns 1 fn2-core) fn2-core)))
+       (mv (if same :ok :bad) fn2-core)))
+     (fn2-core-preserves fn2-cns-stream-source-check-mid (cns cgen fn2-core) :position 1 :rows nil)
+
      ;; The L carrier's frames over the core (books/fnct-pool.lisp): the
      ;; control slot's stripe and hasher row, opening a received frame, the
      ;; kind 2 posture reply, a kind 4 request's decode and its kind 28 reply.
@@ -2502,16 +2579,7 @@
                          (equal total (fn2-cns-row-alen cns fn2-core))
                          (unsigned-byte-p 32 total))) (mv :bad fn2-core))
            ((unless (eq (fn2-ctl-stream-reply-status ctl cg r cns cgen fn2-core) :active)) (mv :wait fn2-core))
-           (slot (fn2-cns-row-lslot cns fn2-core)) (gen (fn2-cns-row-lgen cns fn2-core))
-           ((mv mc ms ml fn2-core)
-            (fn2-cns-entry-mid (fn2-cns-row-istream cns fn2-core) (fn2-cns-row-art cns fn2-core)
-             (fn2-cns-row-npos cns fn2-core) (fn2-cns-row-pub-frontier cns fn2-core)
-             slot gen *fn2-cns-kind* cns cgen (fn2-cns-row-xrow cns fn2-core) fn2-core))
-           ((unless (and (eq mc :ok) (equal ml (fn2-cns-row-name-len cns fn2-core))
-                         (fn2-cns-core-same ml slot gen ms *fn2-cns-kind* cns cgen
-                          (fn2-cns-row-tx-slot cns fn2-core) (fn2-cns-row-tx-gen cns fn2-core)
-                          (fn2-cns-row-name-off cns fn2-core) *fn2-ctl-kind* ctl cg fn2-core)))
-            (mv :bad fn2-core))
+           ((unless (equal (fn2-cns-row-mid-checked cns fn2-core) 1)) (mv :bad fn2-core))
            ((mv code fn2-core) (fn2-ctl-stream-reply-start ctl cg r cns cgen total fn2-core)))
        (mv (if (eq code :ok) :ok :bad) fn2-core)))
      (fn2-core-preserves fn2-cns-stream-source-open (cns cgen fn2-core) :position 1 :rows nil)

@@ -6,13 +6,6 @@
 (include-book "cursor-kind")
 (include-book "c-source-observer")
 (fn2-book-layer :e)
-(defun fn2-cns-request-boundp (x parent receipt fn2-reads fn2-c-source-readers)
- (declare (xargs :stobjs (fn2-reads fn2-c-source-readers)
-  :guard (and (fn2-reads-wfp fn2-reads) (fn2-c-source-readers-wfp fn2-c-source-readers))))
- (and (natp x) (< x (fn2-reads-rows fn2-reads))
-      (equal (fn2-reads-observer-parent x fn2-reads) parent)
-      (equal (fn2-reads-observer-parent-serial x fn2-reads) receipt)
-      (fn2-c-source-reader-current-p parent receipt fn2-c-source-readers)))
 (defun fn2-cns-request-acquire-children (slot generation x fn2-cns fn2-reads fn2-succ-txns fn2-cursor-table
                                       fn2-c-source-control fn2-c-source-readers)
  (declare (xargs :stobjs (fn2-cns fn2-reads fn2-succ-txns fn2-cursor-table fn2-c-source-control fn2-c-source-readers)
@@ -21,6 +14,9 @@
               (fn2-c-source-readers-wfp fn2-c-source-readers))))
  (b* (((unless (and (natp slot) (< slot (fn2-cns-rows fn2-cns))
                     (equal generation (fn2-cns-generation slot fn2-cns))
+                    (member-equal (fn2-cns-phase slot fn2-cns)
+                     (list *fn2-cns-state-decode* *fn2-cns-state-check* *fn2-cns-state-lookup*
+                           *fn2-cns-state-read* *fn2-cns-state-page* *fn2-cns-state-refresh*))
                     (equal x (fn2-cns-xrow slot fn2-cns))
                     (< 0 (fn2-c-source-control-rows fn2-c-source-control))
                     (not (equal (fn2-c-source-control-phase 0 fn2-c-source-control) *fn2-c-source-writer-phase-uncertain*))))
@@ -35,7 +31,7 @@
       ; A resumed operation may have a live nested READ. Rebinding would
       ; refuse its dead-child preflight; retain the exact existing binding.
       ((when (posp expected))
-       (mv (if (fn2-cns-request-boundp x parent receipt fn2-reads fn2-c-source-readers) :ok :fault)
+       (mv (if (fn2-read-parent-binding-current-p x parent receipt fn2-reads fn2-c-source-readers) :ok :fault)
            receipt fn2-reads fn2-c-source-control fn2-c-source-readers))
       ((mv bound fn2-reads) (fn2-read-parent-bind-one x parent receipt fn2-reads fn2-c-source-readers))
       ((when (eq bound :ok)) (mv :ok receipt fn2-reads fn2-c-source-control fn2-c-source-readers))
@@ -106,7 +102,7 @@
                    (stobj-let ((fn2-succ-txns (fn2-core-succ-txns fn2-core))) (n) (fn2-succ-txns-rows fn2-succ-txns) n)
                    (stobj-let ((fn2-cursor-table (fn2-cursor-table fn2-core))) (n) (fn2-cursor-rows fn2-cursor-table) n) slot))
          (bound (stobj-let ((fn2-reads (fn2-core-reads fn2-core)) (fn2-c-source-readers (fn2-core-c-source-readers fn2-core)))
-                 (yes) (fn2-cns-request-boundp x parent receipt fn2-reads fn2-c-source-readers) yes))
+                 (yes) (fn2-read-parent-binding-current-p x parent receipt fn2-reads fn2-c-source-readers) yes))
          ((unless bound) (mv :fault fn2-core))
          ((mv rc fn2-core) (fn2-read-release x fn2-core))
          ((unless (eq rc :ok)) (mv :fault fn2-core)))

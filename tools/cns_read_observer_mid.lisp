@@ -1,0 +1,26 @@
+     ; This records the producer's actual MID comparison while metadata is
+     ; observed; source-open never re-enters C after physical retention takes over.
+     (defun fn2-cns-stream-source-check-mid (cns cgen fn2-core)
+      (declare (xargs :stobjs fn2-core :guard (fn2-core-wfp fn2-core)))
+      (b* ((ctl (fn2-cns-row-ctl cns fn2-core)) (cg (fn2-cns-row-ctl-gen cns fn2-core))
+           (r (fn2-cns-row-request cns fn2-core))
+           ((unless (and (fn2-cns-source-boundp cns cgen ctl cg r fn2-core)
+                         (eq (fn2-ctl-stream-reply-status ctl cg r cns cgen fn2-core) :active)
+                         (equal (fn2-ctl-row-phase ctl fn2-core) *fn2-ctl-state-waiting*))) (mv :bad fn2-core))
+           (s (fn2-machine-slot cns fn2-core))
+           (article (stobj-let ((fn2-cns-sources (fn2-core-cns-sources fn2-core)))
+                     (n) (fn2-cns-sources-article s fn2-cns-sources) n))
+           ((unless (equal article (fn2-cns-row-art cns fn2-core))) (mv :bad fn2-core))
+           (slot (fn2-cns-row-lslot cns fn2-core)) (gen (fn2-cns-row-lgen cns fn2-core))
+           (fn2-core (fn2-machine-write-mid-checked cns 0 fn2-core))
+           ((mv mc ms ml fn2-core)
+            (fn2-cns-entry-mid (fn2-cns-row-istream cns fn2-core) article
+             (fn2-cns-row-npos cns fn2-core) (fn2-cns-row-pub-frontier cns fn2-core)
+             slot gen *fn2-cns-kind* cns cgen (fn2-cns-row-xrow cns fn2-core) fn2-core))
+           (same (and (eq mc :ok) (equal ml (fn2-cns-row-name-len cns fn2-core))
+                      (fn2-cns-core-same ml slot gen ms *fn2-cns-kind* cns cgen
+                       (fn2-cns-row-tx-slot cns fn2-core) (fn2-cns-row-tx-gen cns fn2-core)
+                       (fn2-cns-row-name-off cns fn2-core) *fn2-ctl-kind* ctl cg fn2-core)))
+           (fn2-core (if same (fn2-machine-write-mid-checked cns 1 fn2-core) fn2-core)))
+       (mv (if same :ok :bad) fn2-core)))
+     (fn2-core-preserves fn2-cns-stream-source-check-mid (cns cgen fn2-core) :position 1 :rows nil)
