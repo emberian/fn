@@ -652,11 +652,15 @@
   (if (fn2-alloc-frozenp fn2-extents)
       (mv :frozen fn2-extents)
     (fn2-alloc-retire-transition i epoch counter commit fn2-extents)))
-(defun fn2-alloc-releasablep (i fn2-extents)
-  (declare (xargs :stobjs fn2-extents :guard (and (fn2-extents-wfp fn2-extents) (fn2-alloc-slotp i fn2-extents))))
+; Private decision only: actual callers derive CUT from persisted authority.
+(defun fn2-alloc-releasable-under-cut-p (i cut fn2-extents)
+  (declare (xargs :stobjs fn2-extents :guard (and (fn2-extents-wfp fn2-extents) (fn2-alloc-slotp i fn2-extents) (unsigned-byte-p 60 cut))))
   (and (= (fn2-extents-state i fn2-extents) *fn2-extent-state-retire-pending*)
        (not (fn2-alloc-protector i nil fn2-extents))
-       (<= (fn2-extents-retirement i fn2-extents) (fn2-alloc-cut fn2-extents))))
+       (<= (fn2-extents-retirement i fn2-extents) cut)))
+(defun fn2-alloc-releasablep (i fn2-extents)
+  (declare (xargs :stobjs fn2-extents :guard (and (fn2-extents-wfp fn2-extents) (fn2-alloc-slotp i fn2-extents))))
+  (fn2-alloc-releasable-under-cut-p i (fn2-alloc-cut fn2-extents) fn2-extents))
  ; The complete FIFO retains covered rows until release; pending is its suffix.
 (defun fn2-alloc-unlink (i fn2-extents)
   (declare (xargs :stobjs fn2-extents :guard (and (fn2-extents-wfp fn2-extents) (fn2-alloc-slotp i fn2-extents))))
@@ -703,17 +707,21 @@
 ; RELEASE rechecks after persistence. :OK is eligibility, never evidence that
 ; a release was persisted. A new protector between those steps must still win.
 ; Share this decision with the mutator so preflight cannot drift from release.
-(defun fn2-alloc-release-code (i epoch counter fn2-extents)
-  (declare (xargs :stobjs fn2-extents :guard (fn2-extents-wfp fn2-extents)))
-  (if (fn2-alloc-frozenp fn2-extents)
-      :frozen
+; Shared exact decision, not release authority and not a freeze bypass.
+(defun fn2-alloc-release-under-cut-code (i epoch counter cut fn2-extents)
+  (declare (xargs :stobjs fn2-extents :guard (and (fn2-extents-wfp fn2-extents) (unsigned-byte-p 60 cut))))
     (let ((code (fn2-alloc-handle-code i epoch counter fn2-extents)))
     (cond ((not (eq code :ok)) code)
           ((not (= (fn2-extents-state i fn2-extents) *fn2-extent-state-retire-pending*)) :state)
           ((fn2-alloc-protector i nil fn2-extents) (fn2-alloc-protector i nil fn2-extents))
-          ((not (fn2-alloc-releasablep i fn2-extents)) :checkpoint-blocked)
+          ((not (fn2-alloc-releasable-under-cut-p i cut fn2-extents)) :checkpoint-blocked)
           ((not (fn2-alloc-free-linksp i fn2-extents)) :links)
-          (t :ok)))))
+          (t :ok))))
+(defun fn2-alloc-release-code (i epoch counter fn2-extents)
+  (declare (xargs :stobjs fn2-extents :guard (fn2-extents-wfp fn2-extents)))
+  (if (fn2-alloc-frozenp fn2-extents)
+      :frozen
+    (fn2-alloc-release-under-cut-code i epoch counter (fn2-alloc-cut fn2-extents) fn2-extents)))
 (defun fn2-alloc-release (i epoch counter fn2-extents)
   (declare (xargs :stobjs fn2-extents :guard (fn2-extents-wfp fn2-extents)))
   (let ((code (fn2-alloc-release-code i epoch counter fn2-extents)))
