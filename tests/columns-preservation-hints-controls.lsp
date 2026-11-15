@@ -1,0 +1,52 @@
+; Execute actual preservation generator definitions, without starting ACL2.
+(defpackage "ACL2" (:use "CL"))
+(in-package "ACL2")
+(declaim (declaration xargs))
+(defun member-eq (x xs) (member x xs))
+(defun intern-in-package-of-symbol (name symbol) (intern name (symbol-package symbol)))
+(with-open-file (in "books/declare.lisp")
+ (loop for form = (read in nil :eof) until (eq form :eof) do
+  (when (and (eq (car form) 'defun) (eq (cadr form) 'fn2-decl-get)) (eval form))))
+(with-open-file (in "books/columns.lisp")
+ (loop for form = (read in nil :eof) until (eq form :eof) do
+  (when (and (eq (car form) 'defun)
+             (member (cadr form)
+              '(fn2-columns-sym fn2-columns-pre fn2-columns-preservation-facts
+                fn2-columns-carrier-hyps fn2-columns-carrier-specs
+                fn2-columns-forward-facts fn2-columns-preserves fn2-columns-preserves-macro)))
+   (eval form))))
+(eval (fn2-columns-preserves-macro 'fn2-output))
+(defun expand-carrier (options outer)
+ (macroexpand-1 `(fn2-output-preserves fn2-change (fn2-input)
+                  :carriers ((fn2-input nil ,@options))
+                  :disable nil :hints ,outer)))
+(defun proof-hints (event) (fn2-decl-get :hints (cdddr event)))
+(let* ((outer '(("Goal" :in-theory '(outer-rule))))
+       (override '(("Goal" :use override-rule)))
+       (fallback (expand-carrier nil outer))
+       (optout (expand-carrier '(:hints nil) outer))
+       (selected (expand-carrier `(:hints ,override) outer))
+       (plain (expand-carrier nil nil)))
+ ; Both generated formulas and hypotheses stay byte-for-byte identical.
+ (assert (equal (mapcar (lambda (x) (subseq x 0 3)) (cdr fallback))
+                (mapcar (lambda (x) (subseq x 0 3)) (cdr optout))))
+ (assert (equal (mapcar (lambda (x) (subseq x 0 3)) (cdr fallback))
+                (mapcar (lambda (x) (subseq x 0 3)) (cdr selected))))
+ (assert (equal (mapcar #'third (cdr fallback))
+                '((implies (and (fn2-inputp fn2-input) (fn2-input-wfp fn2-input))
+                           (fn2-inputp (fn2-change fn2-input)))
+                  (implies (and (fn2-inputp fn2-input) (fn2-input-wfp fn2-input))
+                           (fn2-input-wfp (fn2-change fn2-input))))))
+ ; Absent per-carrier hints inherit the outer proof API for TYPE and WFP.
+ (assert (every (lambda (x) (equal (proof-hints x) outer)) (cdr fallback)))
+ ; Explicit NIL still opts the WFP proof out; TYPE retains its prior behavior.
+ (assert (equal (proof-hints (second optout)) outer))
+ (assert (not (member-eq :hints (cdddr (third optout)))))
+ (assert (equal (proof-hints (third selected)) override))
+ (assert (every (lambda (x) (not (member-eq :hints (cdddr x)))) (cdr plain)))
+ ; Absence and explicit NIL remain distinct in the intermediate specs too.
+ (let ((absent (second (fn2-columns-carrier-specs '((fn2-input nil)))))
+       (explicit (second (fn2-columns-carrier-specs '((fn2-input nil :hints nil))))))
+  (assert (not (member-eq :hints (cdddr absent))))
+  (assert (member-eq :hints (cdddr explicit)))))
+(format t "COLUMNS PRESERVATION HINT CONTROLS PASS~%")

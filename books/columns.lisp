@@ -173,6 +173,8 @@
            (inv (or (fn2-decl-get :invariant options) (fn2-columns-sym table "-WFP"))))
       (append `((,(fn2-columns-sym table "P") ,table) (,inv ,table))
               (fn2-columns-carrier-hyps (cdr carriers))))))
+; Absence inherits the preservation call's hints. An explicit :hints nil
+; remains a per-carrier opt-out, as preservation-facts distinguishes presence.
 (defun fn2-columns-carrier-specs (carriers)
   (declare (xargs :verify-guards nil))
   (if (atom carriers) nil
@@ -182,7 +184,8 @@
            (suffix (or (fn2-decl-get :suffix options) "-WFP")))
       (append `((,(concatenate 'string prefix "-TYPE") ,(fn2-columns-sym table "P") ,pos)
                 (,(concatenate 'string prefix suffix) ,inv ,pos
-                 :hints ,(fn2-decl-get :hints options)))
+                 ,@(and (member-eq :hints options)
+                        `(:hints ,(fn2-decl-get :hints options)))))
               (fn2-columns-carrier-specs (cdr carriers))))))
 (defun fn2-columns-forward-facts (facts call)
   (declare (xargs :verify-guards nil))
