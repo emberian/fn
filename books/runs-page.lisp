@@ -168,7 +168,8 @@
 (fn2-fields-preserves fn2-run-write-restarts (k j w cursor scratch slot gen okind oslot ogen fn2-run-restarts fn2-fields fn2-pool)
  :position 1 :disable nil :hyps ((fn2-fieldsp fn2-fields) (fn2-fields-wfp fn2-fields) (fn2-run-restartsp fn2-run-restarts) (fn2-run-restarts-wfp fn2-run-restarts) (natp scratch) (< scratch (fn2-fields-rows fn2-fields))))
 (fn2-pool-preserves fn2-run-write-restarts (k j w cursor scratch slot gen okind oslot ogen fn2-run-restarts fn2-fields fn2-pool)
- :position 2 :prefix "-POOL-PRESERVES")
+ :position 2 :prefix "-POOL-PRESERVES"
+ :hints (("Goal" :in-theory (disable fn2-pool-rows))))
 
 ; Closing: the restart directory, then zeros to the page end, at most BUDGET
 ; bytes per call. POS counts bytes written after the last entry.
