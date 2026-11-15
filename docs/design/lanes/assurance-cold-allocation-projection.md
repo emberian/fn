@@ -60,5 +60,14 @@ canonical free-chain coverage, validated FIFO reconstruction, real quarantine
 ownership and selected reach protection coverage. No runtime whole-store
 revalidation replaces these proofs. TYPE/WFP/ROWS statements use the full actual
 guard domain including readonly sources. Prepared ordinary cold-gate controls
-are in alloc-cold-gate-unit; full actual codec→projection and old-cancel/new-
-reservation controls are being connected before a compute gate is requested.
+are in alloc-cold-gate-unit. checkpoint-projection-unit now constructs the mixed
+map through actual reserve/commit/retire calls, packs each real frozen row,
+decodes through the actual retained reader/map/FIFO path, and invokes actual
+projection/protection. Five controls cover the positive terminal and old-owner
+cancel refusal/new reservation success, stale actor, stale generation, changed
+descriptor, and an occupied quarantine slot retained on refusal. Census checked
+evidence, selected-validation completion and the later reopen are explicitly
+synthetic premises; this fixture does not witness cold authentication, C adoption,
+or persisted epoch authority. Assertions and guard qualification remain UNRUN.
+SBCL READ with read-eval disabled, structural checks, 65 actual defun call arities,
+24 known MV bindings and the secrets scan passed as source checks only.
