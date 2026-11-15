@@ -68,6 +68,14 @@ class RollingSource(unittest.TestCase):
    self.assertIn(token,s)
   self.assertNotIn('fn2-machine-write-',s)
   self.assertNotIn('fn2-upload-put ',s)
+ def test_fault_controls_follow_reachable_rolling_operations(self):
+  s=(ROOT/'tests/upload-uncertainty-served-unit.lisp').read_text()
+  self.assertIn('*fn2-upload-state-stream-wrote*',s)
+  self.assertIn('*fn2-upload-state-stream-fenced*',s)
+  for field in ['rootext','rootepoch','rootalloc','stream-end','stream-resets','stream-stage-used',
+                'stream-eof','stream-stored-finalized','stream-provisional','stream-repack']:
+   self.assertIn('fn2-upload-row-'+field,s)
+  self.assertEqual(s.count('(assert-event (fn2-uui-run '),3)
  def test_new_books_parse(self):
   for name in ['upload-stream','upload-stream-stage','upload-stream-reset','upload-stream-manifest','upload-stream-settle']:
    self.assertTrue(lr.parse(ROOT/'books'/f'{name}.lisp').forms)
