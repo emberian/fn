@@ -82,7 +82,8 @@
        (mv nil fn2-c-source-control fn2-c-source-readers))
       ((mv final & & fn2-c-source-control fn2-c-source-readers) (fn2-c-source-reader-release 0 fresh fn2-c-source-control fn2-c-source-readers))
       ; Explicit synthetic exhaustion premise, not a reachable-loop witness.
-      (fn2-c-source-control (fn2-c-source-control-put 0 `((next-receipt ,(- (expt 2 60) 1))) fn2-c-source-control))
+      (fn2-c-source-control (fn2-c-source-control-put 0
+        (next-receipt (- (expt 2 60) 1))))
       ((mv exhausted zero fn2-c-source-control fn2-c-source-readers) (fn2-c-source-reader-acquire 0 0 fn2-c-source-control fn2-c-source-readers)))
   (mv (and (eq final :ok) (eq exhausted :exhausted) (equal zero 0)
            (equal (fn2-c-source-control-readers 0 fn2-c-source-control) 0)
@@ -100,7 +101,9 @@
  (declare (xargs :stobjs (fn2-c-source-control fn2-c-source-readers) :verify-guards nil))
  (b* ((fn2-c-source-control (fn2-c-source-control-init 1 fn2-c-source-control))
       (fn2-c-source-readers (fn2-c-source-readers-init 1 fn2-c-source-readers))
-      (fn2-c-source-readers (fn2-c-source-readers-put 0 '((live 1) (serial 1)) fn2-c-source-readers))
+      (fn2-c-source-readers (fn2-c-source-readers-put 0
+        (live 1)
+        (serial 1)))
       ((mv begin fn2-c-source-control) (fn2-c-source-writer-begin 7 40 11 31 51 61 fn2-c-source-control)))
   (mv (and (fn2-c-source-controlp fn2-c-source-control) (fn2-c-source-control-wfp fn2-c-source-control)
            (fn2-c-source-readersp fn2-c-source-readers) (fn2-c-source-readers-wfp fn2-c-source-readers)
