@@ -18,7 +18,9 @@
 (fn2-extents-preserves fn2-alloc-retire (i epoch counter commit fn2-extents)
  :position 1
  :hyps ((fn2-extentsp fn2-extents) (fn2-extents-wfp fn2-extents)
-        (unsigned-byte-p 60 commit)))
+        (unsigned-byte-p 60 commit))
+ ; Match the existing opaque allocator-account row frame before exposing NTH.
+ :hints (("Goal" :in-theory (disable fn2-extents-rows))))
 
 (defun fn2-retirement-install (commit base fn2-fields fn2-extents)
  (declare (xargs :stobjs (fn2-fields fn2-extents)
