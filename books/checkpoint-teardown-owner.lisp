@@ -24,6 +24,8 @@
       (equal (fn2-checkpoint-teardown-debt-checkpoint c fn2-checkpoint-teardown-debt) (fn2-checkpoints-checkpoint c fn2-checkpoints))
       (equal (fn2-checkpoint-teardown-debt-history c fn2-checkpoint-teardown-debt) (fn2-checkpoints-history c fn2-checkpoints))
       (equal (fn2-checkpoint-teardown-debt-incarnation c fn2-checkpoint-teardown-debt) (fn2-checkpoints-incarnation c fn2-checkpoints))
+      (equal (fn2-checkpoint-teardown-debt-cut-commit c fn2-checkpoint-teardown-debt) (fn2-checkpoints-cut-commit c fn2-checkpoints))
+      (equal (fn2-checkpoint-teardown-debt-cut-event c fn2-checkpoint-teardown-debt) (fn2-checkpoints-cut-event c fn2-checkpoints))
       (equal (fn2-checkpoint-teardown-debt-installation-commit c fn2-checkpoint-teardown-debt) (fn2-checkpoints-installation-commit c fn2-checkpoints))
       (equal (fn2-checkpoint-teardown-debt-installation-event c fn2-checkpoint-teardown-debt) (fn2-checkpoints-installation-event c fn2-checkpoints))
       (member-equal (fn2-checkpoints-state c fn2-checkpoints) (list *fn2-checkpoint-state-installed* *fn2-checkpoint-state-promoting* *fn2-checkpoint-state-promoted*))

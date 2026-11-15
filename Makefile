@@ -272,6 +272,7 @@ ACL2_BOOKS = \
   tests/accounts-unit \
   tests/alloc-random \
   tests/alloc-unit \
+  tests/alloc-protection-notification-unit \
   tests/alloc-freeze-unit \
   tests/checkpoint-unit \
   tests/alloc-planning-unit \
@@ -309,6 +310,7 @@ ACL2_BOOKS = \
   tests/checkpoint-retention-profile-unit \
   tests/checkpoint-semantic-unit \
   tests/checkpoint-teardown-unit \
+  tests/checkpoint-teardown-transfer-unit \
   tests/checkpoint-working-release-unit \
   tests/retirement-intent-unit \
   tests/run-packing-unit \
