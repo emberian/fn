@@ -1,0 +1,51 @@
+# Actual ordinary retirement callback source slice
+
+`tests/retirement-intent-core-unit` has a 105-book local source closure. It
+materializes the actual A/B machine/core/access registrations, existing commit
+admission sections and the production persisted lifecycle dispatcher. It includes
+checkpoint catalog, construction and future lease state because the current B
+operations actually use them; it does not invent an ordinary implementation of
+those operations. Its closure contains no checkpoint builder, master, boot,
+writer or restore worker. The machine callbacks are the ones served assembly
+materializes, without the full simulator/executor entry.
+
+The exact local include closure and its 27 new / 15 changed source files relative
+to root b7b79808d are in `retirement-core-source-slice.json`. This is an include
+manifest, not permission to replace root files wholesale: the reviewed integration
+568724889 already preserves root transport/layout/helper-leaf changes. Changes
+outside this manifest are not required to admit this callback entry.
+
+`checkpoint-catalog-kind` contains the same capacity helper and three catalog
+registrations formerly embedded in `checkpoint-kind-b`; the latter retains its
+publication/lifecycle/worker registrations and includes the catalog leaf. This
+is state/worker separation, with no alternate layout or runtime variant. Two
+existing pure test profile helpers now live in `sim/commit-test-profile`, shared
+by the original simulator harness and this callback fixture.
+
+The original submit/poll body, run function and all three assertions moved
+unchanged into one test event macro. Both the original full simulator entry and
+the small core entry emit these exact events. Source structural comparisons of
+those events, catalog declarations and test-profile functions passed. The three
+controls exercise actual submit/poll with exact refusal, contradictory accepted
+settlement, and stopped ambiguity, including durable-edge interleaving and
+transient pins. Settlements are deliberately synthetic; none is a physical
+writer/fence/ACK acceptance witness. Existing leaf and higher assertions remain.
+
+The source entry also calls the actual generic transaction-body decoder for
+ALLOCATION, RETIREMENT and CHECKPOINT_INSTALLATION and expects `:kind`. Generic
+admission reaches this decoder through `txn-scan`, before open/join. Ordinary
+keyed packing writes KEYED_MUTATION; its journal extent allocation is performed
+by `fn2-commit-allocate` after durability, not an ALLOCATION transaction record.
+Dedicated retirement packs RETIREMENT. Explicit ALLOCATION and checkpoint
+installation members originate from their dedicated checkpoint coordinators,
+which remain connected to the production checkpoint adapter. The ordinary
+adapter's lifecycle-kind refusal therefore does not discard ordinary keyed
+journal extent allocation. This is a source reachability inventory plus an
+unrun actual decoder control, not a proved whole-machine reachability theorem.
+
+The small instance retains the existing refusing default C hook attachments and
+does not materialize the complete commit run/ACK loop. It is useful to qualify
+actual submit/poll/dispatcher translation and those controls, not full ordinary
+persistence. The original full simulator entry still supplies the later physical
+writer/fence/install/notification qualification boundary. No ACL2, native,
+remote, service or runtime compute was run for this source slice.
