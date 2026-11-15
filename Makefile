@@ -232,6 +232,7 @@ ACL2_BOOKS = \
   books/peer-import-state \
   books/core-scheduler-wake \
   books/enqueue-trace \
+  books/trace-events \
   books/query-ref-wake \
   books/pointwise-contracts \
   books/pool \
@@ -438,6 +439,8 @@ ACL2_BOOKS = \
   tests/query-reference-unit \
   tests/query-owner-drain-unit \
   tests/query-two-wake-unit \
+  tests/enqueue-cost-unit \
+  tests/trace-events-unit \
   tests/peer-replay-unit \
   tests/pointwise-contracts-unit \
   tests/pool-ranges-unit \
