@@ -57,7 +57,8 @@
   :guard (and (fn2-checkpoint-source-wfp fn2-checkpoint-source)
               (< 0 (fn2-checkpoint-source-rows fn2-checkpoint-source))
               (unsigned-byte-p 60 schema) (unsigned-byte-p 8 kind) (unsigned-byte-p 60 order) (unsigned-byte-p 32 row))))
- (if (and (or (equal (fn2-checkpoint-source-has-last 0 fn2-checkpoint-source) 0)
+ (if (and (not (fn2-run-layout-internal-p schema))
+          (or (equal (fn2-checkpoint-source-has-last 0 fn2-checkpoint-source) 0)
               (fn2-checkpoint-source-beforep
                (fn2-checkpoint-source-last-schema 0 fn2-checkpoint-source)
                (fn2-checkpoint-source-last-kind 0 fn2-checkpoint-source)

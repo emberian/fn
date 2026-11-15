@@ -330,3 +330,11 @@ loader/source boundaries pass. The three remaining readiness-slice failures
 are whole-current B/C replay, whole boot extraction replay, and the actual
 no-engine closure assertion; exact updated cursor/state/geometry expectations
 are preserved by explicit transformations, not new baseline fixtures.
+
+Registering schema20 also required closing actual root1 schema admission. Native
+source consideration and cold root1 manifest child admission now reject the
+generated internal-schema flag, before selection/enqueue mutation. There is no
+numeric schema ceiling. The summary catalog owner is adding the same check to
+the shared record-field gate. Two source controls pass; an actual native
+consideration fixture distinguishes internal20 and ordinary3 and is unrun.
+This leaves the independent root3 archive reader free to admit exact internal20.
