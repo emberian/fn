@@ -24,7 +24,8 @@
           (native-cap (make-fn2-ncap :fd -1 :nonce nonce :compress compression))
           (host (make-fn2-nhost :core core
                  :bytes (svref (svref core *fn2-core-pool*) *fn2-pool-datai*)
-                 :ops ops :trace (make-array 8 :initial-element nil)))
+                 :ops ops :trace (make-array 8 :initial-element nil)
+                 :completions (make-array 16 :initial-element 0)))
           (before (copy-seq (fn2-nhost-bytes host)))
           (peer -1))
     (dotimes (i (length ops)) (setf (aref ops i) (make-fn2-nop)))
@@ -111,6 +112,23 @@
        (assert (fn2-input-prefix-replay-control :deferred event))
        (assert (fn2-input-prefix-replay-control :duplicate event))
        (assert (fn2-input-prefix-replay-control :after-close-ack event)))
+      ;; Drive the actual adapter completion and core post, not only the
+      ;; prefix projector. A partial Receive is DONE/count2 in the real ABI.
+      (fn2-n-compress-ready host slot native-cap)
+      (let ((op (aref ops slot)))
+       (assert (and (= (fn2-nop-state op) +fn2-n-completed+)
+                    (= (fn2-nop-outcome op) *fn2-outcome-done*)
+                    (= (fn2-nop-reason op) *fn2-reason-none*)
+                    (= (fn2-nop-count op) 2)
+                    (= (fn2-ncap-rx native-cap) 2)
+                    (= (fn2-nhost-pending host) 1))))
+      (fn2-n-post-completions host)
+      (let ((trace (fn2-n-trace-list host)))
+       (assert (and (= (length trace) 2) (= (fn2-nhost-pending host) 0)
+                    (equal (second trace)
+                      (list :post 0 slot generation *fn2-event-receive-result*
+                        *fn2-outcome-done* *fn2-reason-none* 2 0 0
+                        *fn2-peer-family-none* '(0 0 0 0 0) '(70 71))))))
       t)
      (unwind-protect
        (fn2-native-compress-close host compression nil cap nonce)
