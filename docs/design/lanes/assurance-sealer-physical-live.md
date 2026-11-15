@@ -3,15 +3,18 @@
 The actual sealer plan counts its selected physical inputs before allocating
 an unpublished prefix. Resident-only plans retain their existing resource path.
 A physical plan returns `:need-loader`; the actor reserves its actual eight
-cursor pairs and one dedicated engine-owned entry scratch as one preflighted
-recipe. Counts come from the declared source geometry and actual pool classes,
+cursor pairs, dedicated engine-owned entry scratch, prefix hash workspace,
+and first output page as one preflighted 19-window recipe. Counts come from
+the declared source geometry and actual pool classes,
 using canonical reservable counts. Refusal leaves no prefix; partial ownership
 is retained solely for bounded cleanup, not a same-rank capacity wait.
 
 The retained source receipt gates admission and MISS ownership. The actual
-range/source/cursor geometry selects the MISS. Both the cursor and that exact
-range source adopt the real sealer machine tuple so key comparisons use the
-private page's actual owner. The shared physical reader binds the full Ref,
+range/source/cursor geometry selects the MISS. The MISS adapter binds the
+cursor to the real sealer machine tuple. The
+shared authenticated range HEAD constructor subsequently publishes that owner
+with the decoded view, so key comparisons use the private page's actual owner.
+The shared physical reader binds the full Ref,
 issues one sector through the explicit `:issue` face, and authenticates the
 full page before ordinary cursor decode. The existing prefinish routing hook
 owns completion; the sealer observer only wakes the actual machine.
@@ -22,8 +25,12 @@ bounded rehome loop reads with that capability and writes dedicated scratch
 with the engine capability. It rewrites a field reference only after its full
 copy. The scratch stays private through actual entry encoding.
 
-Physical input row retirement uses the existing catalog promise path. Actual
-lower IDLE then drives scratch and cursor/lease drain before the exact source
+Physical input row retirement uses the existing catalog promise path. Its
+actual admitted function footprint must retain Cbase holds read-only; freeing
+an installed row never releases the old durable backing promise. Only the
+separate typed replacement path may release that promise, under the actual
+new post-Fence current catalog, new Cbase HELD, and writer EXCLUSIVE gate. Actual
+lower IDLE then drives unused recipe windows and cursor/lease drain before the exact source
 receipt is released. CLOSING allows an already observed prefix to finish;
 HELD never permits publication. The existing final snapshot poll still waits
 for lower IDLE/held0/receipt0 and endpoint0.
@@ -39,8 +46,9 @@ cleanup, without planting a catalog or claiming a physical merge. Static
 callback/ownership checks do not establish ACL2 admission or runtime behavior.
 
 Remaining frontier: output runs still occupy the resident verified-page cache.
-The input reader does not supply a streaming physical output publisher, stable
-credits for an arbitrarily growing resident output, or close arbitrary-history
-maintenance capacity. Prefix hash/output-page admission remains the existing
-builder's path; the 17-window input recipe is not a promise for later output
-allocation. No held same-rank capacity wait was added.
+The input reader does not supply a streaming physical output publisher or
+stable credits for arbitrarily growing resident output. Prefix hash and the
+first output page are owned before opening, through the same extracted builder
+and page handoff paths as legacy allocation. Further output growth remains the
+resident-capacity frontier. Initial recipe refusal releases owned windows and
+the source observer before native pool wait; no held same-rank wait was added.
