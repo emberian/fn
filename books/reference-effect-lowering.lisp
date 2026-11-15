@@ -13,16 +13,83 @@
  (let ((ins (getpropc fn 'stobjs-in nil world)) (outs (getpropc fn 'stobjs-out nil world)))
   (and (equal (remove-eq nil ins) '(fn2-core)) (eq (car (last ins)) 'fn2-core)
        (equal (remove-eq nil outs) '(fn2-core)) (eq (car (last outs)) 'fn2-core))))
+(defun fn2-reference-effect-domain (relation)
+ (declare (xargs :verify-guards nil))
+ `(and (fn2-corep fn2-core) (fn2-ref-corep fn2-ref-core)
+       (fn2-core-wfp fn2-core) (fn2-core-wfp fn2-ref-core)
+       (,relation fn2-core fn2-ref-core ,*fn2-effect-carrier*)))
+(defun fn2-effect-core-lens (fn world)
+ (declare (xargs :verify-guards nil))
+ (let* ((registry (fn2-core-child-registry world)) (reader (assoc-eq fn registry))
+        (writer (assoc-eq fn (fn2-product-writers registry))))
+  (or (and reader (fn2-core-child-property reader :stobj)) (cdr writer))))
+(mutual-recursion
+ (defun fn2-effect-raw-core-use-p (term)
+  (declare (xargs :verify-guards nil))
+  (cond ((atom term) nil) ((eq (car term) 'quote) nil)
+        ((consp (car term))
+         (or (fn2-effect-raw-core-use-p (caddar term))
+             (fn2-effect-raw-core-use-list-p (cdr term))))
+        (t (or (and (member-eq (car term) '(nth update-nth car cdr consp atom len true-listp equal))
+                    (member-eq 'fn2-core (cdr term)))
+               (fn2-effect-raw-core-use-list-p (cdr term))))))
+ (defun fn2-effect-raw-core-use-list-p (terms)
+  (declare (xargs :verify-guards nil))
+  (and (consp terms) (or (fn2-effect-raw-core-use-p (car terms))
+                         (fn2-effect-raw-core-use-list-p (cdr terms))))))
 (defun fn2-effect-queue-use-p (fn world)
  (declare (xargs :verify-guards nil))
  (or (member-eq 'fn2-sched (getpropc fn 'stobjs-in nil world))
+     (member-eq 'fn2-trace (getpropc fn 'stobjs-in nil world))
+     (member-eq 'fn2-trace (getpropc fn 'stobjs-out nil world))
      (member-eq 'fn2-sched (getpropc fn 'stobjs-out nil world))
-     (eq fn 'fn2-core-sched)))
+     (member-eq fn '(fn2-core-sched fn2-core-trace))))
+(defun fn2-effect-result-at (fn args index count)
+ (declare (xargs :verify-guards nil))
+ (if (equal count 1) (cons fn args) (list 'mv-nth index (cons fn args))))
+(defun fn2-effect-scalars (fn args n count)
+ (declare (xargs :verify-guards nil :measure (nfix n)))
+ (if (zp n) nil
+  (append (fn2-effect-scalars fn args (1- n) count)
+          (list (fn2-effect-result-at fn args (1- n) count)))))
+; A leaf is retained only under an exact, admitted whole-R contract.
+; Mere existence of an unrelated theorem never authorizes an opaque call.
+(defun fn2-reference-effect-leaf-formula (fn kind relation world)
+ (declare (xargs :verify-guards nil))
+ (let* ((args (getpropc fn 'formals nil world))
+        (refargs (subst 'fn2-ref-core 'fn2-core args))
+        (guard (fn2-lower-source-form (getpropc fn 'guard t world)))
+        (refguard (fn2-lower-source-form
+                   (fn2-lower-substitute (getpropc fn 'guard t world) '((fn2-core . fn2-ref-core)) world)))
+        (count (len (getpropc fn 'stobjs-out nil world)))
+        (hyp `(and ,(fn2-reference-effect-domain relation) ,guard ,refguard)))
+  (case kind
+   (:shape `(implies ,hyp (equal (,fn ,@args) (,fn ,@refargs))))
+   (:frame `(implies ,hyp
+      (fn2-ref-effect-whole-resultp
+       (list ,@(fn2-effect-scalars fn args (1- count) count))
+       (list ,@(fn2-effect-scalars fn refargs (1- count) count))
+       ,(fn2-effect-result-at fn args (1- count) count)
+       ,(fn2-effect-result-at fn refargs (1- count) count) ,*fn2-effect-carrier*)))
+   (otherwise nil))))
+(defun fn2-effect-leaf-bindings (rows kind relation)
+ (declare (xargs :verify-guards nil))
+ (if (atom rows) nil
+  (acons (caar rows) (list :kind kind :lemma (cdar rows) :relation relation)
+         (fn2-effect-leaf-bindings (cdr rows) kind relation))))
 (defun fn2-effect-shape-leaf-p (fn leaves world)
  (declare (xargs :verify-guards nil))
- (let ((lemma (cdr (assoc-eq fn leaves))))
+ (let* ((row (cdr (assoc-eq fn leaves))) (lemma (fn2-decl-get :lemma row))
+        (kind (fn2-decl-get :kind row)) (relation (fn2-decl-get :relation row))
+        (outs (getpropc fn 'stobjs-out nil world)))
   (and lemma (getpropc lemma 'theorem nil world)
-       (not (remove-eq nil (getpropc fn 'stobjs-out nil world))))))
+       (case kind
+        (:shape (and (equal outs '(nil))
+                     (equal (remove-eq nil (getpropc fn 'stobjs-in nil world)) '(fn2-core))))
+        (:frame (fn2-effect-core-abi-p fn world))
+        (otherwise nil))
+       (equal (getpropc lemma 'untranslated-theorem nil world)
+              (fn2-reference-effect-leaf-formula fn kind relation world)))))
 
 ; Plan every core-carrying dependency. Native queue carriers are forbidden
 ; outside the declared boundary, even below an otherwise non-effectful call.
@@ -40,8 +107,13 @@
    ((assoc-eq fn rows) (mv nil rows))
    ((eq fn boundary) (mv nil (acons fn '(:effect t :boundary t) rows)))
    ((fn2-effect-shape-leaf-p fn leaves world)
-    (mv nil (acons fn (list :effect nil :shape-lemma (cdr (assoc-eq fn leaves))) rows)))
+    (mv nil (acons fn (list :effect nil :leaf-contract (cdr (assoc-eq fn leaves))) rows)))
+   ((assoc-eq fn leaves) (mv (list :invalid-leaf-contract fn) rows))
    ((fn2-effect-queue-use-p fn world) (mv (list :native-queue-outside-boundary fn) rows))
+   ((fn2-effect-core-lens fn world)
+    (if (member-eq (fn2-effect-core-lens fn world) '(fn2-sched fn2-trace))
+        (mv (list :native-queue-outside-boundary fn) rows)
+      (mv nil (acons fn (list :effect nil :generated-lens (fn2-effect-core-lens fn world)) rows))))
    ((not (member-eq 'fn2-core (getpropc fn 'stobjs-in nil world))) (mv nil rows))
    ((member-eq fn stack)
     (if (and (eq fn (car stack)) (fn2-lower-scalar-measure fn world)) (mv nil rows)
@@ -50,12 +122,14 @@
    (t
     (let* ((body (getpropc fn 'unnormalized-body nil world))
            (calls (and body (fn2-lower-call-names body))))
-     (if (not (and body (pseudo-termp body))) (mv (list :unknown-core-callee fn) rows)
-      (mv-let (err rows)
+     (cond ((not (and body (pseudo-termp body))) (mv (list :unknown-core-callee fn) rows))
+           ((fn2-effect-raw-core-use-p body) (mv (list :raw-core-inspection fn) rows))
+           (t (mv-let (err rows)
        (fn2-effect-plan-list calls boundary leaves world (cons fn stack) rows (1- fuel))
        (let* ((effect (or (member-eq boundary calls) (fn2-effect-any-p calls rows)))
               (problem (or err (and effect (not (fn2-effect-core-abi-p fn world)) (list :effectful-mv-abi fn))
-                           (and effect (member-eq *fn2-effect-carrier* (fn2-lower-vars body))
+                           (and effect (member-eq *fn2-effect-carrier*
+                                          (union-eq (getpropc fn 'formals nil world) (fn2-lower-vars body)))
                                 (list :carrier-capture fn)))))
         (mv problem
          (acons fn (list :effect effect :body body :calls calls
@@ -64,7 +138,7 @@
                         :outputs (getpropc fn 'stobjs-out nil world)
                         :guard (getpropc fn 'guard t world)
                         :measure (fn2-lower-scalar-measure fn world)
-                        :event (getpropc fn 'absolute-event-number nil world)) rows)))))))))
+                        :event (getpropc fn 'absolute-event-number nil world)) rows))))))))))
  (defun fn2-effect-plan-list (fns boundary leaves world stack rows fuel)
   (declare (xargs :verify-guards nil :measure (nfix fuel)))
   (cond ((atom fns) (mv nil rows)) ((zp fuel) (mv :graph-budget rows))
@@ -195,14 +269,8 @@
  (declare (xargs :verify-guards nil))
  (let ((flat (fn2-product-flat ir nil)))
   (and (equal (len flat) (len outs)) (fn2-effect-args-p flat outs))))
-(defun fn2-effect-result-at (fn args index count)
- (declare (xargs :verify-guards nil))
- (if (equal count 1) (cons fn args) (list 'mv-nth index (cons fn args))))
-(defun fn2-effect-scalars (fn args n count)
- (declare (xargs :verify-guards nil :measure (nfix n)))
- (if (zp n) nil
-  (append (fn2-effect-scalars fn args (1- n) count)
-          (list (fn2-effect-result-at fn args (1- n) count)))))
+
+
 
 ; The relation includes the entire original core, not just a changed field.
 ; All original scalar results are enumerated in order. The declaration is
@@ -216,7 +284,7 @@
         (refguard (fn2-lower-substitute guard '((fn2-core . fn2-ref-core)) world))
         (theorem (fn2-columns-sym lifted "-WHOLE-RESULT")))
   `(defthm-owed ,theorem ,(append (remove-eq 'fn2-core args) (list 'fn2-core 'fn2-ref-core *fn2-effect-carrier*))
-    (implies (and ,guard ,refguard (,relation fn2-core fn2-ref-core ,*fn2-effect-carrier*))
+    (implies (and ,(fn2-reference-effect-domain relation) ,guard ,refguard)
      (fn2-ref-effect-whole-resultp
       (list ,@(fn2-effect-scalars fn args (1- count) count))
       (list ,@(fn2-effect-scalars lifted modelargs (1- count) (1+ count)))
@@ -284,10 +352,12 @@
 
 (defmacro fn2-reference-effect-lower (fn &key
  (boundary 'fn2-core-scheduler-wake) (replacement 'fn2-ref-effect-scheduler-wake)
- (relation 'fn2-representation-relation) shape-leaves selected-from)
+ (relation 'fn2-representation-relation) shape-leaves frame-leaves selected-from)
  `(make-event
    (mv-let (problem events)
-    (fn2-reference-effect-events ',fn ',boundary ',replacement ',relation ',shape-leaves ',selected-from (w state))
+    (fn2-reference-effect-events ',fn ',boundary ',replacement ',relation
+     (append (fn2-effect-leaf-bindings ',shape-leaves :shape ',relation)
+             (fn2-effect-leaf-bindings ',frame-leaves :frame ',relation)) ',selected-from (w state))
     (if problem
         (er soft 'fn2-reference-effect-lower "Refused reference effect lowering of ~x0: ~x1." ',fn problem)
       (value (cons 'progn events))))))
