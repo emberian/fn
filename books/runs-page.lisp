@@ -2,11 +2,12 @@
 ; The payload is C's run-page header in a reserved region, the entries in key
 ; order, then the restart directory; B checks the zero padding after it.
 (in-package "ACL2")
+(include-book "run-geometry")
 (include-book "format-check")
 (include-book "pool-ranges")
 (fn2-book-layer :c)
 
-(defconst *fn2-run-page-size* *fn2-format-page-size*)
+
 ; B's header area, rounded to 32 bytes as the commit pages round it.
 (defconst *fn2-run-header-area* (* 32 (ceiling *fn2-format-page-header-max-size* 32)))
 (deflayout fn2-run-page-header
@@ -118,15 +119,34 @@
   (mv :ok fn2-run-writers fn2-run-restarts)))
 
 ; Room for an entry of SIZE bytes, counting the restart it may add.
+; Exact occupied end after this entry and its possible restart. This is the
+; served packing decision, also exposed for bounded layout observation. It
+; predicts no page identity, ordering, encoding success or physical completion.
+(defun fn2-run-pack-bound (size cursor entries restarts limit)
+ (declare (xargs :guard (and (natp size) (natp cursor) (natp entries) (natp restarts) (natp limit))))
+ (let* ((next-restarts (+ restarts (if (equal (mod entries *fn2-run-restart-interval*) 0) 1 0)))
+        (end (+ cursor size (* *fn2-run-restart-bytes* next-restarts))))
+  (mv (<= end (min limit *fn2-run-page-size*)) end next-restarts)))
+
 (defun fn2-run-roomp (w size fn2-run-writers)
  (declare (xargs :stobjs fn2-run-writers
   :guard (and (fn2-run-writers-wfp fn2-run-writers) (natp w) (< w (fn2-run-writers-rows fn2-run-writers))
               (natp size))))
- (let* ((entries (fn2-run-writers-entries w fn2-run-writers))
-        (restarts (+ (fn2-run-writers-restarts w fn2-run-writers)
-                     (if (equal (mod entries *fn2-run-restart-interval*) 0) 1 0))))
-  (<= (+ (fn2-run-writers-cursor w fn2-run-writers) size (* *fn2-run-restart-bytes* restarts))
-      (min (fn2-run-writers-limit w fn2-run-writers) *fn2-run-page-size*))))
+ (mv-let (fits end restarts)
+  (fn2-run-pack-bound size (fn2-run-writers-cursor w fn2-run-writers)
+   (fn2-run-writers-entries w fn2-run-writers) (fn2-run-writers-restarts w fn2-run-writers)
+   (fn2-run-writers-limit w fn2-run-writers))
+  (declare (ignore end restarts)) fits))
+
+; The old room predicate is unchanged, including its logical totalization.
+(defthm fn2-run-roomp-by-definition
+ (equal (fn2-run-roomp w size fn2-run-writers)
+  (let* ((entries (fn2-run-writers-entries w fn2-run-writers))
+         (restarts (+ (fn2-run-writers-restarts w fn2-run-writers)
+                      (if (equal (mod entries *fn2-run-restart-interval*) 0) 1 0))))
+   (<= (+ (fn2-run-writers-cursor w fn2-run-writers) size (* *fn2-run-restart-bytes* restarts))
+       (min (fn2-run-writers-limit w fn2-run-writers) *fn2-run-page-size*))))
+ :hints (("Goal" :in-theory (enable fn2-run-roomp fn2-run-pack-bound))))
 
 ; Restarts J .. J+K-1 of writer W, encoded at CURSOR + 4j through the
 ; generated restart codec (one scratch field row).
@@ -195,6 +215,18 @@
             (fn2-run-writers (fn2-run-writers-set-phase w *fn2-run-writer-phase-closing* fn2-run-writers)))
       (mv :ok fn2-run-writers))
   (mv :state fn2-run-writers)))
+; A full page containing no entry cannot make progress by being closed.
+; Preserve that page and the unconsumed entry; only a nonempty full page
+; can advance to close/seal and then retry the same entry on its successor.
+(defun fn2-run-close-full (w fn2-run-writers)
+ (declare (xargs :stobjs fn2-run-writers
+  :guard (and (fn2-run-writers-wfp fn2-run-writers) (natp w) (< w (fn2-run-writers-rows fn2-run-writers)))))
+ (if (zp (fn2-run-writers-entries w fn2-run-writers))
+     (mv :length fn2-run-writers)
+  (mv-let (code fn2-run-writers) (fn2-run-close w fn2-run-writers)
+   (mv (if (eq code :ok) :more code) fn2-run-writers))))
+(fn2-run-writers-preserves fn2-run-close-full (w fn2-run-writers) :position 1 :raw-rows t
+ :hyps ((fn2-run-writersp fn2-run-writers) (fn2-run-writers-wfp fn2-run-writers) (natp w) (< w (fn2-run-writers-rows fn2-run-writers))))
 (fn2-run-writers-preserves fn2-run-close (w fn2-run-writers) :position 1 :raw-rows t
  :hyps ((fn2-run-writersp fn2-run-writers) (fn2-run-writers-wfp fn2-run-writers) (natp w) (< w (fn2-run-writers-rows fn2-run-writers))))
 (fn2-run-writers-preserves fn2-run-open (w slot gen schema version level run ordinal page-kind unit epoch counter history incarnation okind oslot ogen fields limit fn2-run-writers fn2-pool) :position 1 :raw-rows t :disable nil

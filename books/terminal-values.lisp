@@ -7,9 +7,12 @@
 (defun fn2-sim-result-outcome (kind code count len)
   (declare (xargs :guard (and (natp count) (natp len))))
   (cond ((eq code :cancelled) *fn2-outcome-cancelled*)
+        ; Send count is consumed application input, not proof that codec
+        ; flush/socket drain succeeded. Preserve failure even at count=LEN.
+        ((and (equal kind *fn2-action-send*) (not (eq code :ok))) *fn2-outcome-failed*)
         ((and (equal kind *fn2-action-write*) (< count len)) *fn2-outcome-failed*)
         ((or (eq code :ok) (eq code :eof)
-             (and (< 0 count) (or (equal kind *fn2-action-send*) (equal kind *fn2-action-receive*))))
+             (and (< 0 count) (equal kind *fn2-action-receive*)))
          (if (and (< count len) (or (equal kind *fn2-action-send*) (equal kind *fn2-action-read*)))
              *fn2-outcome-short* *fn2-outcome-done*))
         (t *fn2-outcome-failed*)))
