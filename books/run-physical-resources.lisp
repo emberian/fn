@@ -1,7 +1,7 @@
 ; Atomic acquisition: no request waits while retaining half a page bundle.
 (in-package "ACL2")
 (include-book "run-physical-state")
-(include-book "machines-b")
+(include-book "storage-block-io")
 (fn2-book-layer :c)
 (defun fn2-run-load-reserve (c kind owner generation fn2-run-loads fn2-pool)
  (declare (xargs :stobjs (fn2-run-loads fn2-pool)

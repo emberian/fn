@@ -4,6 +4,7 @@ from pathlib import Path
 import hashlib,subprocess,unittest
 import lisp_rewrite as lr
 import run_bound_root_projection as rw
+import storage_block_io_lower as io_lower
 ROOT=Path(__file__).resolve().parents[1]
 BASE='0234c0de23a19ca446b8764bdfb2bb35462c80a2'
 def read(p):return (ROOT/p).read_text()
@@ -29,14 +30,18 @@ class RootProjection(unittest.TestCase):
   for excluded in ('fn2-boot-config','*fn2-boot-group-entry-bytes*'):before.pop(excluded)
   self.assertEqual(before,after)
  def test_current_foundations_are_retained(self):
-  for p in ('books/alloc.lisp','books/columns.lisp','books/machines.lisp','books/machines-b.lisp','books/runs-schema.lisp','books/runs-assemble.lisp'):
+  for p in ('books/alloc.lisp','books/columns.lisp','books/machines.lisp','books/runs-schema.lisp','books/runs-assemble.lisp'):
    self.assertEqual((ROOT/p).read_bytes(),subprocess.check_output(['git','show',BASE+':'+p],cwd=ROOT),p)
+  before_b=subprocess.check_output(['git','show',BASE+':books/machines-b.lisp'],cwd=ROOT,text=True)
+  before_resources=subprocess.check_output(['git','show','de31cba77741e057b78e00faa33539346340d3d8:books/run-physical-resources.lisp'],cwd=ROOT,text=True)
+  expected_b,_,_=io_lower.transform(before_b,before_resources)
+  self.assertEqual(read('books/machines-b.lisp'),expected_b)
   self.assertEqual(hashlib.sha256((ROOT/'books/pool.lisp').read_bytes()).hexdigest(),'3ef26f41207ee64f6121621cc24d7100936e364b5224a4be8ae28292aa4d7fa7')
   for name in ('fn2-pool-query-acquire','fn2-pool-query-heldp','fn2-pool-query-release'):self.assertIn(name,named(read('books/pool.lisp')))
  def test_resource_leaf_has_no_profile_constructor_requirement(self):
   s=read('books/run-physical-resources.lisp')
   self.assertNotIn('fn2-b-run-cursor-rows',s);self.assertNotIn('defun fn2-run-load-profile-init',s)
-  self.assertIn('(include-book "machines-b")',s)
+  self.assertIn('(include-book "storage-block-io")',s)
  def test_replay_retains_future_root_fields_and_rejects_duplicates(self):
   s=read('tools/fixtures/run-bound-root/boot-before.lisp').replace('((fn2-boot-config-groups','((root-future-flag :type (unsigned-byte 1) :initially 0) (fn2-boot-config-groups')
   _,lower=rw.boot(s,read('tools/fixtures/run-bound-root/boot-provider-fields.lisp'))
