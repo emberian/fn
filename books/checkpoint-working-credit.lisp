@@ -25,7 +25,7 @@
         (fn2-checkpoint-drain-credit-groups (- rows 1) vector))))
 ; Static startup overlap: protected working/drain quotas plus the actual
 ; supported foreground service envelope. This does not reserve service F.
-(defun fn2-checkpoint-working-credit-fitp (class groups service fn2-pool)
+(defun fn2-checkpoint-working-profile-fitp (class groups service fn2-pool)
  (declare (xargs :stobjs fn2-pool
   :guard (and (fn2-pool-wfp fn2-pool) (natp class) (true-listp service))
   :measure (nfix (- (nfix (fn2-pool-nclasses fn2-pool)) (nfix class)))))
@@ -33,7 +33,7 @@
   (and (<= (+ (fn2-pool-credit-request class groups)
               (nfix (nth class service)))
            (fn2-pool-class-countsi class fn2-pool))
-       (fn2-checkpoint-working-credit-fitp (+ class 1) groups service fn2-pool))))
+       (fn2-checkpoint-working-profile-fitp (+ class 1) groups service fn2-pool))))
 (defun fn2-checkpoint-working-credit-configure (profile commitrows commit-io-rows fn2-pool)
  (declare (xargs :stobjs fn2-pool :guard (fn2-pool-wfp fn2-pool)))
  (b* (((unless (and (posp commitrows) (unsigned-byte-p 32 commitrows)
@@ -51,6 +51,6 @@
       (groups (cons (cons *fn2-pool-credit-working* working)
                     (fn2-checkpoint-drain-credit-groups commitrows drain)))
       ((unless (and (fn2-pool-credit-demandsp service (fn2-pool-nclasses fn2-pool))
-                    (fn2-checkpoint-working-credit-fitp 0 groups service fn2-pool)))
+                    (fn2-checkpoint-working-profile-fitp 0 groups service fn2-pool)))
        (mv :exhausted fn2-pool)))
   (fn2-pool-credit-configure groups fn2-pool)))
