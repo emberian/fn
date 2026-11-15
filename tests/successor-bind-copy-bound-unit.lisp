@@ -1,0 +1,31 @@
+; Actual owned field-loop positive/refusal control, UNEXECUTED. This is the
+; bind copy primitive's whole input, not a B/C accepted transaction witness.
+(in-package "ACL2")
+(include-book "std/util/bstar" :dir :system)
+(include-book "../books/machines-c-bind")
+(defun fn2-sbc-body (fn2-fields fn2-pool)
+ (declare (xargs :stobjs (fn2-fields fn2-pool) :verify-guards nil))
+ (b* ((fn2-fields (fn2-fields-init *fn2-idc-stride* fn2-fields))
+      (fn2-pool (fn2-pool-init '((2 . 4096)) 1 100 fn2-pool))
+      ((mv a source sg fn2-pool) (fn2-pool-reserve 0 *fn2-idc-owner-kind* *fn2-idc-owner-slot* *fn2-idc-owner-gen* fn2-pool))
+      ((mv b dest dg fn2-pool) (fn2-pool-reserve 0 *fn2-idc-owner-kind* *fn2-idc-owner-slot* *fn2-idc-owner-gen* fn2-pool))
+      ((mv filled fn2-pool) (fn2-run-zero (+ 1 *fn2-overview-octets-max*) source sg 0 *fn2-idc-owner-kind* *fn2-idc-owner-slot* *fn2-idc-owner-gen* fn2-pool))
+      (nf (fn2-run-layout-fields 3 0)) (f *fn2-overview-entry-field-line*)
+      (fn2-fields (fn2-succ-zero-rows nf 0 fn2-fields))
+      (fn2-fields (fn2-fields-put f (ref-slot source) (ref-gen sg) (ref-off 0) (ref-len *fn2-overview-octets-max*)))
+      ((mv valid fn2-fields fn2-pool) (fn2-succ-rehome-octets nf 0 3 0 0 *fn2-idc-owner-kind* *fn2-idc-owner-slot* *fn2-idc-owner-gen* dest dg fn2-fields fn2-pool))
+      (whole-valid (and (eq a :ok) (eq b :ok) (eq filled :ok) (eq valid :ok)
+       (= (fn2-pool-fill dest fn2-pool) *fn2-overview-octets-max*)
+       (= (fn2-fields-ref-slot f fn2-fields) dest)))
+      ((mv reset fn2-pool) (fn2-pool-reset dest dg *fn2-idc-owner-kind* *fn2-idc-owner-slot* *fn2-idc-owner-gen* fn2-pool))
+      (fn2-fields (fn2-fields-put f (ref-slot source) (ref-gen sg) (ref-off 0) (ref-len (+ 1 *fn2-overview-octets-max*))))
+      (before (list (fn2-fields-copy fn2-fields) (fn2-pool-copy fn2-pool)))
+      ((mv invalid fn2-fields fn2-pool) (fn2-succ-rehome-octets nf 0 3 0 0 *fn2-idc-owner-kind* *fn2-idc-owner-slot* *fn2-idc-owner-gen* dest dg fn2-fields fn2-pool)))
+  (mv (and whole-valid (eq reset :ok) (eq invalid :bounds)
+       (equal before (list (fn2-fields-copy fn2-fields) (fn2-pool-copy fn2-pool)))) fn2-fields fn2-pool)))
+(assert-event
+ (with-local-stobj fn2-fields
+  (mv-let (ok fn2-fields)
+   (with-local-stobj fn2-pool
+    (mv-let (ok fn2-fields fn2-pool) (fn2-sbc-body fn2-fields fn2-pool) (mv ok fn2-fields)))
+   ok)))
