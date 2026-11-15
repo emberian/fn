@@ -64,4 +64,12 @@ class SealerPhysicalSource(unittest.TestCase):
   helper=tree('sealer-physical-loader.lisp')
   self.assertTrue(calls(helper,'fn2-sealer-copy-class-need'))
   self.assertTrue(calls(tree('machines-c-sealer-events.lisp'),'fn2-sealer-copy-release-op'))
+ def test_copy_control_uses_real_merge_encoder_and_decoder(self):
+  f=next(f for f in tree('../tests/sealer-physical-loader-unit.lisp') if isinstance(f,list) and f[:2]==['defun','fn2-sealer-physical-copy-unit'])
+  self.assertEqual(len(calls(f,'fn2-seal-merge-add')),1)
+  self.assertEqual(len(calls(f,'fn2-spl-copy-drive')),1)
+  self.assertEqual(len(calls(f,'fn2-run-layout-decode')),1)
+  self.assertEqual(len(calls(f,'fn2-pool-read')),2)
+  self.assertIn(['equal','byte','120'],list(walk(f)))
+  self.assertIn(['equal','original','120'],list(walk(f)))
 if __name__=='__main__':unittest.main()
