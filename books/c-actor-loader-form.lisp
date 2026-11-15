@@ -158,7 +158,10 @@
      (:do (observed) (fn2-c-source-read-acquire id row-generation) :accept ()
       :case (((:ok) (:set (source-observation ,held) (source-row 0))
                     (:charge :steps *fn2-work-transition* :runnable t))
-             ((:busy :exhausted) (:next :load-refused) (:charge :steps *fn2-work-transition* :runnable t))
+             ,@(if (and (eq name 'fn2-cns) (eq phase :register-output))
+                 '(((:busy) (:charge :steps *fn2-work-poll* :runnable t))
+                   ((:exhausted) (:stop :machine-phase)))
+                 '(((:busy :exhausted) (:next :load-refused) (:charge :steps *fn2-work-transition* :runnable t))))
              (:otherwise (:stop :machine-phase)))))
     ((equal row-source-observation ,released)
      ,@(if boundary
