@@ -13,9 +13,8 @@ def check_retire(text):
     fn = lr.match('(defun fn2-checkpoint-summary-retire-row ?*body)', lr.parse(text).forms)[0].node
     for form in ['(fn2-checkpoint-cbase-promised-p fn2-checkpoint-summary fn2-checkpoint-cbase-holds)',
                  '(fn2-checkpoint-summary-run-source-p r fn2-checkpoint-summary fn2-checkpoint-summary-sources fn2-run-installed)',
-                 '(= (fn2-checkpoint-summary-lease-count 0 fn2-checkpoint-summary) 0)',
                  '(= (fn2-run-installed-state r fn2-run-installed) *fn2-run-installed-state-retired*)',
-                 '(= (fn2-checkpoint-summary-phase 0 fn2-checkpoint-summary) *fn2-checkpoint-summary-phase-retiring*)']:
+                 '(member-equal (fn2-checkpoint-summary-phase 0 fn2-checkpoint-summary) (list *fn2-checkpoint-summary-phase-applied* *fn2-checkpoint-summary-phase-retiring*))']:
         if not lr.match(form, [fn]):
             raise ValueError('missing exact retirement gate: '+form)
     if lr.match('(fn2-run-cache-drop ?*args)', [fn]) or lr.match('(fn2-pool-release ?*args)', [fn]):
@@ -28,7 +27,7 @@ class Source(unittest.TestCase):
         with self.assertRaises(ValueError): check_fence(source)
     def test_actual_retirement(self):
         check_retire((ROOT/'books/checkpoint-summary-retire.lisp').read_text())
-    def test_missing_lease_gate_refused(self):
-        source=(ROOT/'books/checkpoint-summary-retire.lisp').read_text().replace('(= (fn2-checkpoint-summary-lease-count 0 fn2-checkpoint-summary) 0)', 't')
+    def test_missing_promise_gate_refused(self):
+        source=(ROOT/'books/checkpoint-summary-retire.lisp').read_text().replace('(fn2-checkpoint-cbase-promised-p fn2-checkpoint-summary fn2-checkpoint-cbase-holds)', 't')
         with self.assertRaises(ValueError): check_retire(source)
 if __name__ == '__main__': unittest.main()

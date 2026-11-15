@@ -1,5 +1,6 @@
 ; Physical rows retain no global cache ownership. Free only after their exact
-; catalog promise remains held and all catalog query leases have drained.
+; catalog promise remains held. Immutable query leases survive row reuse;
+; only final promise/catalog release waits for every such lease to drain.
 (in-package "ACL2")
 (include-book "std/util/bstar" :dir :system)
 (include-book "checkpoint-summary-leases")
@@ -14,12 +15,11 @@
  (b* (((unless (and (natp r) (< r (fn2-run-installed-rows fn2-run-installed))))
        (mv :bounds fn2-checkpoint-summary fn2-run-installed))
       ((unless (and (fn2-checkpoint-cbase-promised-p fn2-checkpoint-summary fn2-checkpoint-cbase-holds)
-                    (= (fn2-checkpoint-summary-phase 0 fn2-checkpoint-summary) *fn2-checkpoint-summary-phase-retiring*)
+                    (member-equal (fn2-checkpoint-summary-phase 0 fn2-checkpoint-summary)
+                     (list *fn2-checkpoint-summary-phase-applied* *fn2-checkpoint-summary-phase-retiring*))
                     (fn2-checkpoint-summary-run-source-p r fn2-checkpoint-summary fn2-checkpoint-summary-sources fn2-run-installed)
                     (= (fn2-run-installed-state r fn2-run-installed) *fn2-run-installed-state-retired*)))
        (mv :source fn2-checkpoint-summary fn2-run-installed))
-      ((unless (= (fn2-checkpoint-summary-lease-count 0 fn2-checkpoint-summary) 0))
-       (mv :leased fn2-checkpoint-summary fn2-run-installed))
       ((unless (posp (fn2-checkpoint-summary-installed 0 fn2-checkpoint-summary)))
        (mv :coverage fn2-checkpoint-summary fn2-run-installed))
       (fn2-run-installed (fn2-run-installed-put r (state *fn2-run-installed-state-free*) (physical 0) (catalog-tag 0)))
