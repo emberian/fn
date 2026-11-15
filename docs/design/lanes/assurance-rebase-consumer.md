@@ -656,3 +656,12 @@ byte transition. The source-keyed baseline and whole digest-carrier equality
 statement are retained. Original-frame reconstruction, selected root4 terminal,
 durable unfinished-prefix transfer and two-checkpoint physical reuse remain
 unfinished. This change releases no historical/source hold and activates noFREE.
+
+The actual reader now also has a runnable removed-loan control: after byte1
+from the genuine verified seal, it invokes the real pool-release face on the
+reader workspace. The next production budget1 visit must return stale, retain
+the exact partial cursor/accumulator and whole digest carrier, preserve all
+readonly carriers, and enter UNCERTAIN with no member exposure. This fourth
+actual reader assertion remains UNRUN. The primitive fixture's three fixed
+loops now use the existing nfix-successor totalization recipe, preserving
+natural-index effects while making their stated logical measures decrease.

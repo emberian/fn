@@ -61,7 +61,9 @@ class RecordDigest(unittest.TestCase):
             '(fn2-epv-fetch-controls fn2-core)','(fn2-epv-fetch-one fn2-core)',
             '(fn2-commit-admit-keyed ?*args)','(fn2-retirement-live-drive ?*args)',
             '(fn2-epv-open ?*args)','(fn2-epv-test nil)',
-            '(fn2-epv-test :seal)','(fn2-epv-test :records)']:
+            '(fn2-epv-test :seal)','(fn2-epv-test :records)', '(fn2-epv-test :loan)',
+            '(fn2-pool-release ?*args)', '(eq code :stale)',
+            '(equal digest (fn2-digests-copy fn2-digests))']:
    self.assertTrue(calls(s,p),p)
   self.assertIn("'(:token :slot :gen :commit :ref :result)",s)
   self.assertFalse(calls(s,'(fn2-event-read-put ?i (phase *fn2-event-read-phase-record-digest*) ?*rest)'))

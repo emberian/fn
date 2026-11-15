@@ -205,6 +205,29 @@ def fixture(s):
        ((mv code fn2-core) (fn2-epv-format 0 fn2-core))
        ((unless (and (eq code :more) (equal before (fn2-epv-fetch-snapshot fn2-core)))) (mv nil fn2-core)))
    (fn2-epv-fetch-refusals '(:token :slot :gen :commit :ref :result) fn2-core)))
+ ; Removing the owned source loan after one genuine byte is a hypothesis
+ ; removal control: the next real reader visit must report stale, preserve the
+ ; partial digest, and enter UNCERTAIN rather than expose records.
+ (defun fn2-epv-fetch-loan-error (fn2-core)
+  (declare (xargs :stobjs fn2-core :verify-guards nil))
+  (b* (((mv released fn2-core)
+        (stobj-let ((fn2-event-read (fn2-core-event-read fn2-core)) (fn2-pool (fn2-core-pool fn2-core))) (code fn2-pool)
+         (fn2-pool-release (fn2-event-read-slot 0 fn2-event-read) (fn2-event-read-gen 0 fn2-event-read)
+          (fn2-event-read-owner-kind 0 fn2-event-read) (fn2-event-read-owner-slot 0 fn2-event-read)
+          (fn2-event-read-owner-gen 0 fn2-event-read) fn2-pool) (mv code fn2-core)))
+       (before (fn2-epv-fetch-readonly fn2-core))
+       ((mv acc digest)
+        (stobj-let ((fn2-event-read (fn2-core-event-read fn2-core)) (fn2-digests (fn2-core-digests fn2-core))) (acc digest)
+         (mv (fn2-event-read-record-fetch-acc 0 fn2-event-read) (fn2-digests-copy fn2-digests)) (mv acc digest)))
+       ((mv code fn2-core) (fn2-epv-format 1 fn2-core))
+       (after
+        (stobj-let ((fn2-event-read (fn2-core-event-read fn2-core)) (fn2-digests (fn2-core-digests fn2-core))) (after)
+         (and (= (fn2-event-read-record-fetch-next 0 fn2-event-read) 1)
+              (= (fn2-event-read-record-fetch-acc 0 fn2-event-read) acc)
+              (= (fn2-event-read-phase 0 fn2-event-read) *fn2-event-read-phase-uncertain*)
+              (equal digest (fn2-digests-copy fn2-digests))) after)))
+   (mv (and (eq released :ok) (eq code :stale) after
+            (equal before (fn2-epv-fetch-readonly fn2-core))) fn2-core)))
  (defun fn2-epv-fetch-word-frame (i next before after)
   (declare (xargs :measure (nfix (- 8 (nfix i))) :verify-guards nil))
   (if (or (not (natp i)) (>= i 8)) t
@@ -240,11 +263,18 @@ def fixture(s):
                                  (member-equal (fn2-event-read-record-fetch-next 0 fn2-event-read) '(0 1)) first)))
        ((mv controls fn2-core) (if first-fetch (fn2-epv-fetch-controls fn2-core) (mv t fn2-core)))
        ((unless controls) (mv *fn2-event-read-phase-uncertain* (reverse records) fn2-core fn2-sim fn2-own))
+       (loan-error (and (eq fault :loan) fetch
+                    (stobj-let ((fn2-event-read (fn2-core-event-read fn2-core))) (partial)
+                     (= (fn2-event-read-record-fetch-next 0 fn2-event-read) 1) partial)))
+       ((mv failed-closed fn2-core) (if loan-error (fn2-epv-fetch-loan-error fn2-core) (mv t fn2-core)))
+       ((when loan-error) (mv (if failed-closed *fn2-event-read-phase-uncertain* *fn2-event-read-phase-idle*)
+                            (reverse records) fn2-core fn2-sim fn2-own))
        ((mv fetched fn2-core) (if fetch (fn2-epv-fetch-one fn2-core) (mv t fn2-core)))
        ((unless fetched) (mv *fn2-event-read-phase-uncertain* (reverse records) fn2-core fn2-sim fn2-own))
  '''
  assert s.count(anchor)==1;s=s.replace(anchor,insert+anchor)
  s=s.replace('((fn2-event-read-format-phase-p phase)\n              (fn2-epv-format fn2-core))','((and (not fetch) (fn2-event-read-format-phase-p phase))\n              (fn2-epv-format 4096 fn2-core))',1)
+ s += '(assert-event (fn2-epv-test :loan))\n'
  return '\n'.join(line.rstrip() for line in s.splitlines())+'\n'
 if __name__=='__main__':
  root=Path(__file__).resolve().parents[1]
