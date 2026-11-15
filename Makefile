@@ -99,6 +99,9 @@ ACL2_BOOKS = \
   books/codec-profile \
   books/codec-transport \
   books/codec-stack \
+  books/codec-close \
+  tests/codec-cancel-unit \
+  tests/codec-child-close-unit \
   books/compress-transport-state \
   books/tls-record-policy \
   books/tls-record-state \
