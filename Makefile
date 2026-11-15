@@ -245,6 +245,8 @@ ACL2_BOOKS = \
   tests/alloc-lifecycle-unit \
   tests/alloc-planning-unit \
   tests/retirement-intent-allocator-unit \
+  tests/retirement-intent-leaf-unit \
+  tests/retirement-intent-core-unit \
   tests/authority-client \
   tests/authority-served \
   tests/authority-stream-resolve \
