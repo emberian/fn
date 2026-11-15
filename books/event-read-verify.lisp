@@ -139,6 +139,38 @@
         (<= (+ off 32) (+ (fn2-event-read-body-off 0 fn2-event-read) (fn2-event-read-body-len 0 fn2-event-read)))
 ))))
 
+; Consumer-facing consequences of the public bounded loader contracts.  Keep
+; its worker opaque: the reader stores NEXT in :u8 and ACC in :u32.
+(local (defthm fn2-event-read-fetch-result-widths
+ (implies (and (natp budget) (natp off) (fn2-rec-fetch-state-p next acc))
+  (and (unsigned-byte-p 8
+        (mv-nth 1 (fn2-rec-fetch-step budget next acc dst slot gen off kind owner generation fn2-pool fn2-digests)))
+       (unsigned-byte-p 32
+        (mv-nth 2 (fn2-rec-fetch-step budget next acc dst slot gen off kind owner generation fn2-pool fn2-digests)))))
+ :hints (("Goal"
+  :use ((:instance fn2-rec-fetch-step-result-state
+         (okind kind) (oslot owner) (ogen generation)))
+  :in-theory (e/d (fn2-rec-fetch-state-p unsigned-byte-p)
+                  (fn2-rec-fetch-step fn2-rec-fetch-bytes))))))
+
+(local (defthm fn2-event-read-fetch-result-carrier
+ (implies (and (fn2-digestsp fn2-digests) (fn2-digest-rowp dst fn2-digests))
+  (and (fn2-digestsp
+        (mv-nth 3 (fn2-rec-fetch-step budget next acc dst slot gen off kind owner generation fn2-pool fn2-digests)))
+       (fn2-digests-wfp
+        (mv-nth 3 (fn2-rec-fetch-step budget next acc dst slot gen off kind owner generation fn2-pool fn2-digests)))
+       (equal (fn2-digests-rows
+        (mv-nth 3 (fn2-rec-fetch-step budget next acc dst slot gen off kind owner generation fn2-pool fn2-digests)))
+        (fn2-digests-rows fn2-digests))))
+ :hints (("Goal"
+  :use ((:instance fn2-rec-fetch-step-shape
+         (okind kind) (oslot owner) (ogen generation)))
+  :in-theory (disable fn2-rec-fetch-step fn2-rec-fetch-bytes
+                     fn2-digestsp fn2-digests-wfp fn2-digests-rows)))))
+
+(verify-guards fn2-event-read-record-digest-current-p
+ :hints (("Goal" :in-theory (disable fn2-digest-equal fn2-rec-fetch-state-p))))
+
 (defun fn2-event-read-record-digest-step (budget expected fn2-event-read fn2-fc fn2-fields fn2-pool fn2-digests)
  (declare (xargs :stobjs (fn2-event-read fn2-fc fn2-fields fn2-pool fn2-digests) :verify-guards nil
   :guard (and (fn2-event-read-wfp fn2-event-read) (fn2-fc-wfp fn2-fc)
@@ -168,6 +200,27 @@
   (mv (if (and (eq code :ok) (not complete)) :invariant code) fn2-event-read fn2-digests)))
 (fn2-event-read-preserves fn2-event-read-record-digest-step
  (budget expected fn2-event-read fn2-fc fn2-fields fn2-pool fn2-digests) :position 1)
+
+; The format core returns this digest carrier at position 8.  Export the
+; actual child result here, alongside the reader preservation above.
+(fn2-digests-preserves fn2-event-read-record-digest-step
+ (budget expected fn2-event-read fn2-fc fn2-fields fn2-pool fn2-digests)
+ :position 2 :prefix "-DIGESTS-PRESERVES" :rows nil
+ :hints (("Goal" :in-theory (e/d (fn2-event-read-record-digest-step)
+  (fn2-rec-fetch-step fn2-rec-fetch-bytes fn2-digestsp fn2-digests-wfp fn2-digests-rows)))))
+
+(defthm fn2-event-read-record-digest-step-digests-preserves-rows
+ (implies (and (fn2-digestsp fn2-digests) (fn2-digests-wfp fn2-digests))
+  (equal (fn2-digests-rows (mv-nth 2
+           (fn2-event-read-record-digest-step budget expected fn2-event-read fn2-fc fn2-fields fn2-pool fn2-digests)))
+         (fn2-digests-rows fn2-digests)))
+ :hints (("Goal" :in-theory (e/d (fn2-event-read-record-digest-step)
+  (fn2-rec-fetch-step fn2-rec-fetch-bytes fn2-digestsp fn2-digests-wfp fn2-digests-rows)))))
+
+(verify-guards fn2-event-read-record-digest-step
+ :hints (("Goal" :in-theory (e/d (fn2-event-read-record-digest-current-p)
+  (fn2-rec-fetch-step fn2-rec-fetch-bytes fn2-digest-equal
+   fn2-event-readp fn2-event-read-wfp fn2-digestsp fn2-digests-wfp)))))
 
 (defun fn2-event-read-format-core (budget expected previous fn2-event-read
                                   fn2-journal-members fn2-fc fn2-fc-context fn2-b3 fn2-fields fn2-pool fn2-digests)
