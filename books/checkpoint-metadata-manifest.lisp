@@ -23,7 +23,7 @@
        (fn2-checkpoint-metadata-manifest-owner-gen 0 fn2-checkpoint-metadata-manifest) fn2-csnapshot)
       (equal (fn2-csnapshot-phase 0 fn2-csnapshot) *fn2-csnapshot-phase-held*)
       (let ((b (fn2-checkpoint-metadata-manifest-build 0 fn2-checkpoint-metadata-manifest)))
-       (and (fn2-run-buildp b fn2-run-builds fn2-run-writers) (equal (fn2-run-builds-schema b fn2-run-builds) 10)
+       (and (fn2-run-buildp-carried b fn2-run-builds fn2-run-writers) (equal (fn2-run-builds-schema b fn2-run-builds) 10)
             (equal (fn2-run-builds-run b fn2-run-builds) (fn2-checkpoint-metadata-manifest-token 0 fn2-checkpoint-metadata-manifest))
             (equal (fn2-run-builds-okind b fn2-run-builds) (fn2-checkpoint-metadata-manifest-owner-kind 0 fn2-checkpoint-metadata-manifest))
             (equal (fn2-run-builds-oslot b fn2-run-builds) (fn2-checkpoint-metadata-manifest-owner-slot 0 fn2-checkpoint-metadata-manifest))

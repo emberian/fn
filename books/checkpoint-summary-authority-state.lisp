@@ -37,7 +37,7 @@
       (member (fn2-checkpoint-summary-authority-origin r fn2-checkpoint-summary-authority)
        (list *fn2-checkpoint-summary-authority-origin-cold* *fn2-checkpoint-summary-authority-origin-live*))
       (let ((c (fn2-checkpoint-summary-authority-candidate r fn2-checkpoint-summary-authority)))
-       (and (fn2-checkpoint-slotp c fn2-checkpoints fn2-checkpoint-refs fn2-checkpoint-bytes)
+       (and (fn2-checkpoint-slotp-carried c fn2-checkpoints fn2-checkpoint-refs fn2-checkpoint-bytes)
             (member (fn2-checkpoints-state c fn2-checkpoints)
              (list *fn2-checkpoint-state-checked* *fn2-checkpoint-state-installed* *fn2-checkpoint-state-promoting* *fn2-checkpoint-state-promoted*))
             (= (fn2-checkpoint-summary-authority-checkpoint r fn2-checkpoint-summary-authority) (fn2-checkpoints-checkpoint c fn2-checkpoints))

@@ -619,6 +619,25 @@
       (local (in-theory (disable ,bridge)))
       (in-theory (disable ,wfp)))))
 
+; A compound row/span predicate can carry the same generated column WFP
+; invariant as its caller. Keep the checked public face and derive its fast
+; guarded face from ONE declaration; bounds and semantic tests stay intact.
+(defun fn2-columns-predicate-events (name formals stobjs shape tests)
+ (declare (xargs :verify-guards nil))
+ (let ((carried (fn2-columns-sym name "-CARRIED")))
+  `((defun ,name ,formals
+      (declare (xargs :stobjs ,stobjs :guard t))
+      (and ,@shape ,@tests))
+    (defun ,carried ,formals
+      (declare (xargs :stobjs ,stobjs :guard (and ,@shape)))
+      (and ,@tests))
+    (defthm ,(fn2-columns-sym name "-CARRIED-EQUIVALENCE")
+      (implies (and ,@shape) (equal (,name ,@formals) (,carried ,@formals)))
+      :rule-classes nil
+      :hints (("Goal" :in-theory (enable ,name ,carried)))))))
+(defmacro defcolumns-predicate (name formals &key stobjs shape tests)
+ (cons 'progn (fn2-columns-predicate-events name formals stobjs shape tests)))
+
 (defun fn2-columns-wfp-write-facts (name fields column-fields)
   (declare (xargs :guard t :verify-guards nil))
   (if (atom fields) nil
