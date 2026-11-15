@@ -205,23 +205,49 @@
 (fn2-pool-preserves fn2-upload-feed-counted (left i end mode discard raw rslot rgen rk rs rg dslot dgen dk ds dg limit stop-header fn2-pool)
   :position 6 :rows nil)
 
+; Six-result slice face used by the actual core wrapper and connection feed.
+; The primitive alone owns byte interpretation; this face drops only LF count.
+(defun fn2-upload-feed-slice (left i end mode discard raw rslot rgen rk rs rg dslot dgen dk ds dg fn2-pool)
+  (declare (xargs :stobjs fn2-pool
+                  :guard (and (fn2-pool-wfp fn2-pool) (natp left) (natp i)
+                              (natp end) (natp mode))))
+  (mv-let (status next mode2 discard2 copied lines fn2-pool)
+    (fn2-upload-feed-counted left i end mode discard raw rslot rgen rk rs rg
+                             dslot dgen dk ds dg (fn2-feed-cap dslot fn2-pool) nil fn2-pool)
+    (declare (ignore lines))
+    (mv status next mode2 discard2 copied fn2-pool)))
+(defthm fn2-upload-feed-slice-projection-by-definition
+  (and
+       (equal (mv-nth 0 (fn2-upload-feed-slice left i end mode discard raw rslot rgen rk rs rg dslot dgen dk ds dg fn2-pool))
+              (mv-nth 0 (fn2-upload-feed-counted left i end mode discard raw rslot rgen rk rs rg dslot dgen dk ds dg (fn2-feed-cap dslot fn2-pool) nil fn2-pool)))
+       (equal (mv-nth 1 (fn2-upload-feed-slice left i end mode discard raw rslot rgen rk rs rg dslot dgen dk ds dg fn2-pool))
+              (mv-nth 1 (fn2-upload-feed-counted left i end mode discard raw rslot rgen rk rs rg dslot dgen dk ds dg (fn2-feed-cap dslot fn2-pool) nil fn2-pool)))
+       (equal (mv-nth 2 (fn2-upload-feed-slice left i end mode discard raw rslot rgen rk rs rg dslot dgen dk ds dg fn2-pool))
+              (mv-nth 2 (fn2-upload-feed-counted left i end mode discard raw rslot rgen rk rs rg dslot dgen dk ds dg (fn2-feed-cap dslot fn2-pool) nil fn2-pool)))
+       (equal (mv-nth 3 (fn2-upload-feed-slice left i end mode discard raw rslot rgen rk rs rg dslot dgen dk ds dg fn2-pool))
+              (mv-nth 3 (fn2-upload-feed-counted left i end mode discard raw rslot rgen rk rs rg dslot dgen dk ds dg (fn2-feed-cap dslot fn2-pool) nil fn2-pool)))
+       (equal (mv-nth 4 (fn2-upload-feed-slice left i end mode discard raw rslot rgen rk rs rg dslot dgen dk ds dg fn2-pool))
+              (mv-nth 4 (fn2-upload-feed-counted left i end mode discard raw rslot rgen rk rs rg dslot dgen dk ds dg (fn2-feed-cap dslot fn2-pool) nil fn2-pool)))
+       (equal (mv-nth 5 (fn2-upload-feed-slice left i end mode discard raw rslot rgen rk rs rg dslot dgen dk ds dg fn2-pool))
+              (mv-nth 6 (fn2-upload-feed-counted left i end mode discard raw rslot rgen rk rs rg dslot dgen dk ds dg (fn2-feed-cap dslot fn2-pool) nil fn2-pool))))
+  :rule-classes nil
+  :hints (("Goal" :in-theory (e/d (fn2-upload-feed-slice) (fn2-upload-feed-counted fn2-feed-cap)))))
+(fn2-pool-preserves fn2-upload-feed-slice (left i end mode discard raw rslot rgen rk rs rg dslot dgen dk ds dg fn2-pool)
+  :position 5 :rows nil)
+
 ; One call from the connection's continuation: [i, fill) of RX.
 (defun fn2-upload-feed (left i mode discard rslot rgen rk rs rg dslot dgen dk ds dg fn2-pool)
   (declare (xargs :stobjs fn2-pool
                   :guard (and (fn2-pool-wfp fn2-pool) (natp left) (natp i) (natp mode))))
-  (mv-let (status next mode2 discard2 copied lines fn2-pool)
-    (fn2-upload-feed-counted left i (fn2-gram-fill rslot fn2-pool) mode discard nil
-                             rslot rgen rk rs rg dslot dgen dk ds dg
-                             (fn2-feed-cap dslot fn2-pool) nil fn2-pool)
-    (declare (ignore lines))
-    (mv status next mode2 discard2 copied fn2-pool)))
+  (fn2-upload-feed-slice left i (fn2-gram-fill rslot fn2-pool) mode discard nil
+                          rslot rgen rk rs rg dslot dgen dk ds dg fn2-pool))
 (fn2-pool-preserves fn2-upload-feed (left i mode discard rslot rgen rk rs rg dslot dgen dk ds dg fn2-pool)
   :position 5 :rows nil)
 
 (assert-event
  (fn2-assert-compliant-p '(fn2-feed-step fn2-feed-emit fn2-feed-emitted-lf fn2-feed-crlf-at
                            fn2-feed-header-end-p fn2-feed-header-complete-p
-                           fn2-upload-feed-loop fn2-upload-feed-counted fn2-upload-feed) (w state)))
+                           fn2-upload-feed-loop fn2-upload-feed-counted fn2-upload-feed-slice fn2-upload-feed) (w state)))
 
 ; Shared LF counter: upload retains counts before source windows can roll;
 ; transaction counter controls call this same primitive.

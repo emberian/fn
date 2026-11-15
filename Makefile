@@ -566,7 +566,7 @@ ACL2_BOOKS = \
   tests/upload-stream-abort-served-unit \
   tests/upload-dual-hash-unit \
   tests/upload-block-private-unit \
-  tests/upload-feed-lf-unit \
+  tests/upload-feed-lf-unit tests/upload-feed-slice-unit \
   tests/upload-stream-manifest-unit \
   tests/upload-rolling-feed-component-unit \
   tests/upload-posted-linear-unit \
