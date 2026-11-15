@@ -84,7 +84,7 @@
 (local (defthm fn2-rec-fetch-state-next-bound
  (implies (fn2-rec-fetch-state-p next acc) (<= next 32))
  :hints (("Goal" :in-theory (e/d (fn2-rec-fetch-state-p) (unsigned-byte-p))))
- :rule-classes :linear))
+ :rule-classes :rewrite))
 (local (defthm fn2-rec-fetch-bytes-bound
  (implies (and (natp left) (fn2-rec-fetch-state-p next acc))
   (and (fn2-rec-fetch-state-p
