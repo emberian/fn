@@ -35,7 +35,8 @@
 
 ; Windows 0..5 source levels; 6..11 directory levels; 12/13 hash arrays;
 ; 14 held decoded entry; 15 directory digest; 16 authenticated semantic page;
-; 17 semantic read/payload manifest; 18 payload data. Sharing window17 is
+; 17 semantic read/payload manifest; 18 payload data; appended physical-source
+; page/read windows have dedicated declared indices. Sharing window17 is
 ; sequential: semantic holds its authenticated page while payload uses17/18.
 
 
@@ -46,7 +47,7 @@
 
 
 
-; All27 leases share one per-class preflight and one non-yielding acquisition.
+; All declared working leases share one per-class preflight and one non-yielding acquisition.
 ; Future workers borrow actual protected leases; a free-count promise alone is
 ; insufficient because ordinary readers may still allocate while C is held.
 
@@ -81,7 +82,7 @@
 (defcost fn2-checkpoint-root1-reserve-op :child fn2-checkpoint-root1-reserve :answers t
  :tables (fn2-core-checkpoint-root1 fn2-core-checkpoint-windows fn2-core-checkpoint-future fn2-core-checkpoint-future-windows fn2-core-csnapshot fn2-core-pool)
  :effects :per-use
- :doc "Try all27 root, staging, journal and anchor leases atomically for the exact HELD cut; refusal requires immediate cut release.")
+ :doc "Try all declared root, staging, journal and anchor leases atomically for the exact HELD cut; refusal requires immediate cut release.")
 (defcost fn2-checkpoint-root1-workspaces-op :child fn2-checkpoint-root1-workspaces :answers t
  :tables (fn2-core-checkpoint-root1 fn2-core-checkpoint-windows fn2-core-pool)
  :doc "Derive the stable descriptor/page/scratch/read tuple from actual admitted root1 ownership.")

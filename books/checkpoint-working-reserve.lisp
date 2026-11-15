@@ -5,11 +5,17 @@
 (include-book "checkpoint-future-working")
 (fn2-book-layer :c)
 
-(defconst *fn2-checkpoint-window-count* 19)
+; Dedicated physical-source reader windows follow the original nineteen.
+; They cannot alias semantic/payload windows across iterator yields.
+(defconst *fn2-checkpoint-source-page-window* 19)
+(defconst *fn2-checkpoint-source-read-window* (+ 1 *fn2-checkpoint-source-page-window*))
+(defconst *fn2-checkpoint-window-count* (+ 1 *fn2-checkpoint-source-read-window*))
+(defconst *fn2-checkpoint-working-window-count*
+ (+ *fn2-checkpoint-window-count* *fn2-checkpoint-future-window-count*))
 
 (defun fn2-checkpoint-window-length (i)
  (declare (xargs :guard t))
- (cond ((or (< (nfix i) 12) (equal i 14) (equal i 16)) *fn2-run-page-size*)
+ (cond ((or (< (nfix i) 12) (equal i 14) (equal i 16) (equal i *fn2-checkpoint-source-page-window*)) *fn2-run-page-size*)
        ((or (equal i 12) (equal i 13)) (* 32 *fn2-run-max-levels*))
        ((equal i 15) 64) (t 4096)))
 
@@ -55,8 +61,8 @@
    (fn2-checkpoint-windows-reserve-loop (+ i 1) kind owner generation fn2-checkpoint-root1 fn2-checkpoint-windows fn2-pool))))
 
 (defun fn2-checkpoint-admission-roomp (i fn2-pool)
- (declare (xargs :stobjs fn2-pool :guard (and (natp i) (<= i 27)) :measure (nfix (- 27 i))))
- (if (>= i 27) t
+ (declare (xargs :stobjs fn2-pool :guard (and (natp i) (<= i *fn2-checkpoint-working-window-count*)) :measure (nfix (- *fn2-checkpoint-working-window-count* i))))
+ (if (>= i *fn2-checkpoint-working-window-count*) t
   (let ((class (fn2-pool-class-for
                 (if (< i *fn2-checkpoint-window-count*) (fn2-checkpoint-window-length i)
                  (fn2-checkpoint-future-window-length (- i *fn2-checkpoint-window-count*))) fn2-pool)))
