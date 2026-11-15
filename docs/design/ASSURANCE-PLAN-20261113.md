@@ -33,11 +33,15 @@ The raw gate substitutes the performer and proves only recorder behavior.
 The selected single-submitter/initial direct-setup premise, actual Take/Post
 binding, whole-image driver execution and crash recovery correspondence remain
 open. A successful Fence observation does not prove power-loss persistence.
-Root review of the pending whole-image driver also found that successful effect
-spans outside the observed image evade per-byte checks. Whole-effect extent
-validation, including crossing EOF and empty images, is required before that
-driver can claim complete observation consistency; the two-book record above
-does not establish this additional obligation.
+The out-of-image effect gap found during driver review is repaired: ACL2 checks
+positive completed Read/Write extents at both chunk admission and finalization,
+including empty images. Zero-byte Reads and uncertain requested spans retain
+their distinct semantics. Exact two-book record
+`certify-20261115T042149Z-847972` passes in 0.348 seconds; root matched current
+source hashes and closure keys. The renewed mocked raw-recorder control also
+passes nonzero-address short Reads, untouched sentinels and error Read capture.
+These supersede the earlier checker source; actual selected-host binding and
+whole-image driver execution remain open.
 
 Selected cold recovery has two concrete implementation blockers under the
 reclamation owner. Recovery finishes frozen, but ordinary epoch initialization

@@ -82,3 +82,14 @@
       (not (fn2-native-device-image-slice-p
         '((:uncertain 0 1 (:error -1 5) (8)) (:read 0 1 (7)))
         0 '(0) '(8)))))
+
+; Whole-image completion cannot ignore successful bytes beyond/crossing EOF,
+; including an empty image for which no chunk was processed.
+(assert-event
+ (and (eq (fn2-native-device-image-finish '((:read 4 1 (7))) 4 4 4) :out-of-image-effect)
+      (eq (fn2-native-device-image-finish '((:read 3 2 (7 8))) 4 4 4) :out-of-image-effect)
+      (eq (fn2-native-device-image-finish '((:write 4 1 (7))) 4 4 4) :out-of-image-effect)
+      (eq (fn2-native-device-image-finish '((:read 0 1 (7))) 0 0 0) :out-of-image-effect)
+      (eq (fn2-native-device-image-finish '((:write 0 1 (7))) 0 0 0) :out-of-image-effect)
+      (eq (fn2-native-device-image-finish '((:read 9 0 nil)) 0 0 0) :exact-process-view)
+      (eq (fn2-native-device-image-finish '((:uncertain 4 2 :pending (7 8))) 4 4 4) :uncertain-effect-bound)))

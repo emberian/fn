@@ -12,7 +12,13 @@
    (let ((lock (symbol-value '*fn2-device-evidence-lock*)))
      (assert (sb-thread:grab-mutex lock :waitp nil))
      (sb-thread:release-mutex lock))
-   (setf (fn2-device-job-result job) 2 (fn2-device-job-errno job) 0)
+   (if (and (eq (fn2-device-job-kind job) :read) (= (fn2-device-job-offset job) 999))
+       (setf (fn2-device-job-result job) -1 (fn2-device-job-errno job) 5)
+     (progn
+       (when (eq (fn2-device-job-kind job) :read)
+         (setf (aref (fn2-device-job-bytes job) (fn2-device-job-address job)) 61
+               (aref (fn2-device-job-bytes job) (1+ (fn2-device-job-address job))) 62))
+       (setf (fn2-device-job-result job) 2 (fn2-device-job-errno job) 0)))
    (values :original-return :second-value)))
 (load "tests/native-device-effects-capture.lsp")
 (let* ((device (%make-fn2-device :fd 17))
@@ -27,6 +33,20 @@
  (fn2-device-submit device job)
  (setf (aref bytes 0) 6)
  (assert (handler-case (progn (fn2-device-perform device job) nil) (error () t))))
+;; Only the returned Read span is captured, not the prefix, unfilled requested
+;; suffix, or backing-array suffix. Error Reads have no returned byte witness.
+(let* ((device (%make-fn2-device :fd 17))
+       (bytes (make-array 6 :element-type '(unsigned-byte 8) :initial-contents '(11 12 0 0 13 14)))
+       (job (make-fn2-device-job :slot 5 :gen 7 :kind :read :bytes bytes :address 2 :length 3 :offset 100)))
+ (fn2-device-submit device job)
+ (fn2-device-perform device job)
+ (assert (equal (coerce bytes 'list) '(11 12 61 62 13 14))))
+(let* ((device (%make-fn2-device :fd 17))
+       (bytes (make-array 6 :element-type '(unsigned-byte 8) :initial-contents '(11 12 55 56 13 14)))
+       (job (make-fn2-device-job :slot 6 :gen 7 :kind :read :bytes bytes :address 2 :length 3 :offset 999)))
+ (fn2-device-submit device job)
+ (fn2-device-perform device job)
+ (assert (equal (coerce bytes 'list) '(11 12 55 56 13 14))))
 ;; The unmatched submit must remain in the stream, never synthesized as zero.
 (close *fn2-device-evidence-stream*)
 (let ((records (with-open-file (in (sb-ext:posix-getenv "FN2_TEST_DEVICE_EFFECTS"))
@@ -34,5 +54,7 @@
  (assert (equal records
   '((:submit 1 (17 4 7 :write 100 3 (1 2 3)))
     (:begin 1) (:return 1 2 0 nil)
-    (:submit 2 (17 4 8 :write 200 1 (5)))))))
+    (:submit 2 (17 4 8 :write 200 1 (5)))
+    (:submit 3 (17 5 7 :read 100 3 nil)) (:begin 3) (:return 3 2 0 (61 62))
+    (:submit 4 (17 6 7 :read 999 3 nil)) (:begin 4) (:return 4 -1 5 nil)))))
 (format t "DEVICE EFFECT RECORDER CONTROLS PASS~%")
