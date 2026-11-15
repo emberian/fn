@@ -72,9 +72,13 @@
   (declare (xargs :verify-guards nil))
   (with-local-stobj fn2-core
     (mv-let (yes fn2-core) (fn2-cns-drain-credit-run target pinned fn2-core) yes)))
-(assert-event (and (fn2-cns-drain-credit-control :ws nil)
+(defun fn2-cns-drain-credit-positive ()
+  (declare (xargs :verify-guards nil))
+  (and (fn2-cns-drain-credit-control :ws nil)
                    (fn2-cns-drain-credit-control :ns nil)
                    (fn2-cns-drain-credit-control :ns t)
                    ; The held-lease case remains defensive logical input,
                    ; marked unreachable-in-composition by its constructor.
                    (fn2-cns-drain-credit-control :lease nil)))
+(assert-event (fn2-cns-drain-credit-positive))
+(fn2-assert-owed-teeth fn2-cns-draining-counted-independent)

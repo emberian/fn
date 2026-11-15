@@ -24,9 +24,9 @@
                  fn2-cns-draining-reservedp fn2-cns-drain-releasablep)))))
 
 ; A complete independent result must survive the real post-arm check.
-; A query hold keeps DRAINING. Otherwise reclaim changes the phase to FREE
-; or RETIRED; proving only
-; its quantities would omit that check and could hide a contract-stop.
+; Query holds and stopped credit refusals retain DRAINING; successful final
+; reclaim changes it to FREE or RETIRED. The exact refusal charge must also
+; pass this check: quantities alone could conceal a contract-stop.
 (defthm fn2-cns-draining-expected-accepted-by-public-contract
   (implies (and (fn2-corep core) (fn2-core-wfp core)
                 (natp budget) (fn2-cns-draining-domainp id core)

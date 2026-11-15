@@ -32,8 +32,7 @@
                    (fn2-cns-drain-released-pool (fn2-cns-drain-cell 'fn2-cns-ws-slot slot own) pool)
                  pool))
          (ctl (fn2-cns-drain-child 'fn2-control before))
-         (ctl (fn2-cns-drain-put 'fn2-control-stop 1
-                (fn2-cns-drain-put 'fn2-control-stop-reason *fn2-stop-reason-pool-release* ctl)))
+         (ctl (fn2-cns-drain-stopped-control *fn2-stop-reason-pool-release* ctl))
          (expected (fn2-cns-drain-put-child 'fn2-control ctl
                      (fn2-cns-drain-put-child 'fn2-pool pool before))))
     (and (member-eq stage '(:workspace :name))
@@ -141,10 +140,10 @@
     (mv-let (b s d r after) (fn2-cns-run id budget core)
       (fn2-cns-draining-resultp id core b s d r after)))
   :schema :invariant :claim :semantic
-  :teeth (fn2-cns-drain-positive fn2-cns-drain-without-pool-accounting
+  :teeth (fn2-cns-drain-positive fn2-cns-drain-credit-positive fn2-cns-drain-without-pool-accounting
           fn2-cns-drain-without-reservation
           fn2-cns-drain-refusal-control fn2-cns-drain-negative
           fn2-cns-drain-query-held-positive fn2-cns-drain-query-stale-owner
           fn2-cns-drain-query-partial-release-mutant)
   :case (:run fn2-cns :draining) :boundary :application-reclamation
-  :doc "Given pool accounting and partition reservations, actual CNS draining retains its complete state non-runnable while either relevant range has query references; after they close, it releases exactly its owned resources, preserves siblings, clears its incarnation timer and returns reusable credit. Held/draining is defensive unreachable-in-composition input coverage; successful final reclaim is the served case. Universal proof and caller invariant links remain owed.")
+  :doc "Given pool accounting and partition reservations, actual CNS draining retains its complete state non-runnable while either relevant range has query references; after they close, ordinary ranges release exactly their resources, clear their incarnation timer and return reusable admission credit. A private-credit range denies ordinary release with a sticky stop and retains its phase; namespace refusal preserves a workspace return already completed. All cases preserve siblings. Held/draining is defensive unreachable-in-composition input coverage; successful final reclaim is the served case. Universal proof and caller invariant links remain owed.")
