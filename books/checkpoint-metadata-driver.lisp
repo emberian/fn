@@ -36,8 +36,9 @@
 (defun fn2-checkpoint-root1-child-hyps (children)
  (declare (xargs :verify-guards nil))
  (if (atom children) nil
-  (cons (list (fn2-columns-sym (car children) "-WFP") (car children))
-        (fn2-checkpoint-root1-child-hyps (cdr children)))))
+  (list* (list (fn2-columns-sym (car children) "P") (car children))
+         (list (fn2-columns-sym (car children) "-WFP") (car children))
+         (fn2-checkpoint-root1-child-hyps (cdr children)))))
 (defun fn2-checkpoint-root1-child-tables (children)
  (declare (xargs :verify-guards nil))
  (if (atom children) nil
