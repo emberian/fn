@@ -26,6 +26,14 @@
 (defthm fn2-mk-leaf-never-scanner-done
  (not (equal (mv-nth 0 (fn2-mk-leaf slot gen off len okind oslot ogen row fn2-digests fn2-b3 fn2-pool)) :done))
  :hints (("Goal" :in-theory (e/d (fn2-mk-leaf) (fn2-b3-counter fn2-b3-blocks fn2-b3-pos)))))
+(defthm fn2-mk-leaf-car-never-scanner-done
+ (not (equal (car (fn2-mk-leaf slot gen off len okind oslot ogen row fn2-digests fn2-b3 fn2-pool)) :done))
+ :hints (("Goal" :use fn2-mk-leaf-never-scanner-done
+          :in-theory (e/d (mv-nth) (fn2-mk-leaf-never-scanner-done)))))
 (defthm fn2-mk-append-never-scanner-done
  (not (equal (mv-nth 0 (fn2-mk-append row leaf fn2-digests fn2-mk)) :done))
  :hints (("Goal" :in-theory (enable fn2-mk-append))))
+(defthm fn2-mk-append-car-never-scanner-done
+ (not (equal (car (fn2-mk-append row leaf fn2-digests fn2-mk)) :done))
+ :hints (("Goal" :use fn2-mk-append-never-scanner-done
+          :in-theory (e/d (mv-nth) (fn2-mk-append-never-scanner-done)))))
