@@ -75,7 +75,7 @@
           (mv :invalid fn2-retirement-control fn2-fields fn2-pool))
          ((when (< e (fn2-extents-rows fn2-extents)))
           (b* (((unless (unsigned-byte-p 32 (+ 1 e))) (mv :invalid fn2-retirement-control fn2-fields fn2-pool))
-               (own (and (= (fn2-checkpoint-construction-live e fn2-checkpoint-construction) 1)
+               (own (and (fn2-checkpoint-construction-native-p e fn2-checkpoint-construction)
                          (= (fn2-checkpoint-construction-token e fn2-checkpoint-construction) token)))
                ((unless own)
                 (let* ((fn2-retirement-control (fn2-retirement-control-set-scan 0 (+ 1 e) fn2-retirement-control)))

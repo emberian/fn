@@ -121,7 +121,7 @@
               (fn2-extents-wfp fn2-extents) (fn2-ops-wfp fn2-ops) (fn2-alloc-edges-wfp fn2-alloc-edges))))
  (and (natp c) (< c (fn2-checkpoints-rows fn2-checkpoints)) (fn2-alloc-slotp e fn2-extents)
       (< e (fn2-checkpoint-construction-rows fn2-checkpoint-construction))
-      (equal (fn2-checkpoint-construction-live e fn2-checkpoint-construction) 1)
+      (fn2-checkpoint-construction-native-p e fn2-checkpoint-construction)
       (< (fn2-checkpoint-construction-role e fn2-checkpoint-construction) 6)
       (posp (fn2-checkpoints-builder-token c fn2-checkpoints))
       (equal (fn2-checkpoint-construction-token e fn2-checkpoint-construction) (fn2-checkpoints-builder-token c fn2-checkpoints))
