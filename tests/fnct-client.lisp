@@ -110,7 +110,8 @@
 (defun fnc-k28-result (octets)
   ; The result octets of the first frame in OCTETS when it is an accepted kind 28 reply.
   (declare (xargs :verify-guards nil))
-  (b* ((f (fn2-fnct-open (fnc-frame-extent octets) (len (fnc-frame-extent octets))))
+  (b* ((frame (fnc-frame-extent octets))
+       (f (fn2-fnct-open frame (len frame)))
        ((unless (and (eq (car f) :ok) (equal (cadr f) *fn2-fnct-port-reply-kind*))) nil)
        (r (fnc-parse *fn2-fnct-port-reply-layout* (caddr f))))
     (and r (equal (car (cadr r)) 0) (caddr (cadr r)))))
@@ -126,7 +127,8 @@
   ; for kind 28, WORD a string and RESULT the accepted verb's summary (nil
   ; otherwise); (:malformed ...) for anything else.
   (declare (xargs :verify-guards nil))
-  (b* ((f (fn2-fnct-open (fnc-frame-extent octets) (len (fnc-frame-extent octets))))
+  (b* ((frame (fnc-frame-extent octets))
+       (f (fn2-fnct-open frame (len frame)))
        ((unless (eq (car f) :ok)) (list :malformed (cadr f) octets))
        ((list & kind payload) f))
     (cond ((and (equal kind *fn2-fnct-control-reply-kind*) (consp payload) (null (cdr payload)))
