@@ -9,6 +9,12 @@
                          fn2-b3-set-pos fn2-b3-byte fn2-b3-word
                          fn2-b3-pos fn2-b3-words-length)))
 
+(local
+ (in-theory
+  (e/d (update-fn2-b3-pos$ai update-fn2-b3-wordsi resize-fn2-b3-words)
+       (nth (:executable-counterpart update-fn2-b3-pos$ai)
+        (:executable-counterpart update-fn2-b3-wordsi)))))
+
 (defthm fn2-b3-word-stripe-store-positive
  (let* ((b (fn2-b3-table-init 2 (create-fn2-b3)))
         (out (fn2-b3-store 1 0 37 b)))
