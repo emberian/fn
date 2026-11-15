@@ -55,7 +55,7 @@ class ReadClose(unittest.TestCase):
    self.assertNotIn('fn2-pool',outs)
    self.assertEqual(len(st.items[3].items)-1,len(child.items[2].items))
    cost=costs['fn2-read-'+op];i=next(i for i,v in enumerate(cost.items) if sym(v)==':tables');tables=[sym(v) for v in cost.items[i+1].items]
-   for carrier in MORE:self.assertIn(carrier.replace('fn2-','fn2-core-',1),tables)
+   for carrier in MORE+[v for v in outs if v.startswith('fn2-')]:self.assertIn(carrier.replace('fn2-','fn2-core-',1),tables)
    self.assertNotIn(':effects',emit(cost))
  def test_known_mv_bindings_match_actual_child_projections(self):
   known={'fn2-read-observer-release':8,'fn2-read-observer-enter':8,'fn2-read-source-close':5,'fn2-read-source-owner':4,
@@ -85,4 +85,18 @@ class ReadClose(unittest.TestCase):
   now=source('tests/read-observer-endpoint-unit.lisp');self.assertEqual(project_endpoint_fixture(old),now)
   p=next(f for f in lr.parse(now).forms if isinstance(f,lr.Lst) and len(f.items)>2 and sym(f.items[1])=='*fn2-rdo-stobjs*')
   self.assertEqual(len(p.items[2].node.items),11);self.assertLessEqual(1+len(p.items[2].node.items),32)
+ def test_prepared_pending_mixed_owner_and_park_fixture_uses_actual_key(self):
+  s=source('tests/read-close-park-unit.lisp')
+  self.assertIn('UNEXECUTED',s);self.assertIn('SYNTHETIC',s)
+  self.assertEqual(s.count('(fn2-read-key-children '),3)
+  self.assertIn('(fn2-run-load-reserve 1 7 8 1',s)
+  self.assertIn('(fn2-run-load-reserve 2 7 10 1',s)
+  for fact in ('(eq pending-refused :state)','(eq owner-refused :state)',
+               '(equal (fn2-reads-observer-serial 0 fn2-reads) receipt)',
+               '(equal (fn2-checkpoint-summary-leases-live 1 fn2-checkpoint-summary-leases) 1)',
+               '(eq key :ok)','(equal (fn2-checkpoint-summary-lease-count 0 fn2-checkpoint-summary) 0)',
+               '(equal (fn2-run-loads-windows 1 fn2-run-loads) 2)',
+               '(eq (fn2-pool-workspace-code (fn2-run-loads-page 1',
+               '(eq (fn2-pool-workspace-code (fn2-run-loads-scratch 1'):
+   self.assertIn(fact,s)
 if __name__=='__main__':unittest.main()

@@ -70,7 +70,8 @@ def project(src,helpers):
   head=sym(f.items[0]);name=sym(f.items[1]);op=name.removeprefix('fn2-read-')
   if head=='defcost' and op in MUT:
    i=next(i for i,v in enumerate(f.items) if sym(v)==':tables');tables=f.items[i+1];have=[sym(v) for v in tables.items]
-   add(tables,' '.join(v.replace('fn2-','fn2-core-',1) for v in MORE if v.replace('fn2-','fn2-core-',1) not in have))
+   needed=list(dict.fromkeys(MORE+[v for v in core[op][0][1:] if v.startswith('fn2-')]))
+   add(tables,' '.join(v.replace('fn2-','fn2-core-',1) for v in needed if v.replace('fn2-','fn2-core-',1) not in have))
   if head=='fn2-rd-shape' and name in {'fn2-read-observer-release','fn2-read-observer-enter'}:
    add(f.items[2],' '.join(MORE));add(f.items[3],' '.join('('+v+' '+str(i+4)+')' for i,v in enumerate(PARK)));add(f.items[4],' '.join(MORE))
    if name=='fn2-read-observer-release':add(f.items[5],'fn2-read-source-close')
