@@ -41,6 +41,14 @@ def rewrite(source):
 '''+''.join(source[d.start:d.end]+'\n' for d in defs)+'))'
     source=lr.write(source,[(d.start,d.end,macro if i==0 else '') for i,d in enumerate(defs)])
     source=source.replace('(include-book "event-producer")','(include-book "event-producer")\n(include-book "event-rearm")')
+    # This hash-only helper never receives writer, machines or lifecycle.
+    # Remove ambient guard operands inherited from the original template.
+    helper=lr.match('(defun fn2-checkpoint-summary-live-published-hash-p ?*body)',lr.parse(source).forms,deep=False)[0].node
+    edits=[]
+    for carrier in ['fn2-checkpoint-writer','fn2-machines','fn2-checkpoint-lifecycle']:
+        for m in lr.match(f'({carrier}-wfp {carrier})',[helper]):
+            edits.append((m.start,m.end,''))
+    source=lr.write(source,edits)
     while '\n  \n' in source:source=source.replace('\n  \n','\n\n')
     return source
 if __name__=='__main__':

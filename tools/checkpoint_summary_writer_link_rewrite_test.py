@@ -9,6 +9,11 @@ class Link(unittest.TestCase):
         before=(ROOT/'tools/fixtures/checkpoint-summary-live-writer-before.lisp').read_text()
         actual=(ROOT/'books/checkpoint-summary-authority-live.lisp').read_text()
         self.assertEqual(actual,rw.rewrite(before))
+    def test_hash_helper_has_no_unbound_stobj_guards(self):
+        forms=lr.parse(ROOT/'books/checkpoint-summary-authority-live.lisp').forms
+        fn=lr.match('(defun fn2-checkpoint-summary-live-published-hash-p ?*body)',forms)[0].node
+        for carrier in ['fn2-checkpoint-writer','fn2-machines','fn2-checkpoint-lifecycle']:
+            self.assertFalse(lr.match(f'({carrier}-wfp {carrier})',[fn]))
     def test_actual_request_not_wrong_direct_owner(self):
         forms=lr.parse(ROOT/'books/checkpoint-summary-authority-live.lisp').forms
         fn=lr.match('(defun fn2-checkpoint-summary-authority-live-source-p ?*body)',forms)[0].node
