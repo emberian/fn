@@ -78,7 +78,7 @@
 ; late args filled since the last stage (FILLED).
 ; PUBLISHED: the greatest commit position publication has made readable
 ; (C-S4 amendment (c): D's frontier reads it, never derives it from overlays).
-(defcolumns fn2-id-engine ((scratch :bool) (slot :u32) (gen :u60) (arena :u32) (seq :u60) (published :u60)))
+
 (defun fn2-id-engine-init-arena (bytes fn2-id-engine)
  (declare (xargs :stobjs fn2-id-engine :guard (unsigned-byte-p 32 bytes)))
  (let ((fn2-id-engine (fn2-id-engine-init 1 fn2-id-engine)))

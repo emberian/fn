@@ -3,6 +3,16 @@
 (in-package "ACL2")
 (include-book "successor-workspace-geometry")
 (fn2-book-layer :b)
+(defcolumns fn2-id-engine
+ ((scratch :bool) (slot :u32) (gen :u60) (arena :u32) (seq :u60) (published :u60)
+  (binding-phase (:enum fn2-succ-binder-phase (:idle :prepare :insert :unstage :uncertain :target :target-finish :failed)))
+  (binding-tx :u32) (binding-generation :u60) (binding-batch :u60) (binding-event :u60)
+  (binding-base :u32) (binding-slot :u32) (binding-scan :u32) (binding-overlay :u32)
+  (binding-sid :u60) (binding-size :u32) (binding-target-cursor :u32) (binding-best :u32) (binding-spare :u32)))
+(defun fn2-successor-binder-idle-p (fn2-id-engine)
+ (declare (xargs :stobjs fn2-id-engine :guard (fn2-id-engine-wfp fn2-id-engine)))
+ (and (< 0 (fn2-id-engine-rows fn2-id-engine))
+      (equal (fn2-id-engine-binding-phase 0 fn2-id-engine) *fn2-succ-binder-phase-idle*)))
 (defcolumns fn2-succ-txns
  ((phase (:enum fn2-succ-phase (:idle :open :staged :bound :published :binding)))
   (batch :u60) (event :u60)
