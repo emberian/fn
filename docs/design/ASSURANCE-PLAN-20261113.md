@@ -7,6 +7,15 @@ must be derived from that store and the actual served call/attachment graph.
 
 ## Current integration frontier — 2026-11-14 evening
 
+Allocator proof refinement `8595723fc` is now qualified by the current twelve-book
+record `certify-20261115T011246Z-662045`: six reused and six newly certified.
+Root matched all twelve source digests before/after and to the integration tree.
+Whole-book time is 10.509 seconds versus the prior 11.213; total steps fell from
+1,463,790 to 1,145,528. The D26 cost item remains open. Runtime bodies, guards and
+existing theorem formulas are unchanged; the proof uses checked-slot contracts
+and keeps representation readers opaque. This record supersedes the earlier
+allocator scope below, not the still-unqualified retirement/core composition.
+
 The next assembled-core qualification must include the reviewed retirement
 runtime changes, rather than complete the superseded 113-book world. That run
 was intentionally stopped after seventeen passes: eight new results remain
