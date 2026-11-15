@@ -642,7 +642,13 @@
           '(fn2-checkpoint-retain) world)))
 (fn2-checkpoints-preserves fn2-checkpoint-install
  (c install-commit base slot gen okind oslot ogen fn2-checkpoints fn2-checkpoint-refs fn2-checkpoint-bytes
-    fn2-fields fn2-pool fn2-alloc-edges fn2-extents fn2-ops) :position 1)
+    fn2-fields fn2-pool fn2-alloc-edges fn2-extents fn2-ops) :position 1
+ :hints ((fn2-columns-guard-hint
+          '(fn2-checkpoints fn2-checkpoint-refs fn2-checkpoint-bytes
+            fn2-fields fn2-pool fn2-alloc-edges fn2-extents fn2-ops)
+          '(fn2-checkpoint-retainedp fn2-checkpoint-pool-hash-matchesp
+            fn2-alloc-edge-matchesp fn2-alloc-handle-code)
+          '(fn2-checkpoint-install) world)))
 (fn2-checkpoints-preserves fn2-checkpoint-check-step
  (c row slot gen off len base okind oslot ogen budget fn2-checkpoints fn2-checkpoint-refs fn2-checkpoint-bytes
     fn2-fc fn2-fc-context fn2-b3 fn2-fields fn2-pool fn2-digests)

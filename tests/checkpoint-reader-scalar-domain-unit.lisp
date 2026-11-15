@@ -107,10 +107,11 @@
 (local (defun fn2-checkpoint-scalar-ground-hint (functions execs minimal world)
  (declare (xargs :verify-guards nil))
  (list :in-theory
-  (set-difference-equal
-   (union-equal functions (union-equal execs minimal))
-   (cons '(:executable-counterpart fn2-checkpoint-reader-scalar-domain-check)
-         (fn2-checkpoint-scalar-table-execs execs world))))))
+  (list 'quote
+   (set-difference-equal
+    (union-equal functions (union-equal execs minimal))
+    (cons '(:executable-counterpart fn2-checkpoint-reader-scalar-domain-check)
+          (fn2-checkpoint-scalar-table-execs execs world)))))))
 
 ; All four source questions are UNRUN. The negative predicates establish the
 ; whole ORIGINAL H plus a false TYPE/WFP conclusion only if actually proved.
