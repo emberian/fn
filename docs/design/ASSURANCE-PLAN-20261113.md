@@ -293,6 +293,17 @@ has 34 with only five. Their new closure keys have not been source-replayed or
 certified, and the member's new registry bridge remains unadmitted. No application
 world was started; the previous member counterexample receipt remains valid for
 its original frozen closure.
+The existing small correspondence consumer subsequently passed all 49 actual
+forms (0.27 seconds, 32,957 steps), then exact four-book record
+`certify-20261115T180639Z-1652106`: two qualified declaration/owed parents reused,
+square-evidence and its unchanged correspondence fixture newly certified.
+[Correspondence receipt](receipts/refuted-correspondence-four-record.json) binds
+those sources and payloads. Together the two records cover six distinct local
+books, including the original-conclusion mutation/domain controls. They do not
+qualify the larger core-lowering regression or the member registry bridge.
+Generic registry integration excludes the new member bridge and its global
+export include until that actual instance theorem is admitted.
+
 
 
 The shared `:type-hints` fix replaces member-specific event surgery. Its original
