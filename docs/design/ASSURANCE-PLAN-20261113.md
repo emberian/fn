@@ -21,10 +21,16 @@ The twelve-book author gate passed, including all existing protector/model trace
 and direct release-marker interleavings. Review exposed five old test setups that
 acquired durable protectors after retirement; those now use the permitted ordering
 while retaining transient post-retirement races. This changes allocator-dependent
-closure keys. Record certification and composed journal/core qualification remain
-open. The next callback slice uses production generators, but its initial controls
-never called the persisted dispatcher; direct dispatcher controls are now required
-before treating that boundary as tested.
+closure keys. Current twelve-book record
+`certify-20261115T004941Z-639322` passed: six cached books and six newly certified.
+Root independently matched all twelve current source digests before and after,
+all six success results, the unchanged runner, and toolchain
+`8aeb1bea18968c6cd33ac633a80ebf67e4924504db112fd27eb11f16a27b2a8c`.
+Allocator certification took 11.213 seconds; its D26 proof-cost debt remains.
+Composed journal/core qualification is still open. The next callback slice now
+has direct persisted-dispatcher source controls at `4e8f31e46`, with a nonempty
+owned obligation and nine separate premise-removal refusals. Independent source
+review passed; execution and physical persistence correspondence remain owed.
 
 Actual cancellation composition remains a transport blocker. Close removes the
 live capability lookup before a later Cancel, so results must come from retained
