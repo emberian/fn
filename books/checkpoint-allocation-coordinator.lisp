@@ -2,6 +2,7 @@
 ; rows 1..the planner-derived capacity retain exact staged identities.
 (in-package "ACL2")
 (include-book "retirement")
+(include-book "checkpoint-allocation")
 (fn2-book-layer :b)
 (defmacro fn2-checkpoint-allocation-coordinator-events ()
  '(progn
