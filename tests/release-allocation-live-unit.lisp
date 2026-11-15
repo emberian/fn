@@ -1,0 +1,77 @@
+; Actual LIVE producer -> persisted typed dispatch -> exact accepted poll.
+; Shares the SAME pre-crash history with the selected-recovery packet; no test
+; publisher, accepted flag, ready state or direct dispatcher call supplies it.
+; SOURCE ONLY / UNEXECUTED. Physical FREE stays disabled.
+(in-package "ACL2")
+(include-book "std/util/bstar" :dir :system)
+(include-book "recovery-release-producer-support")
+
+(defun fn2-rrl-terminal-p (producer fn2-core)
+ (declare (xargs :stobjs fn2-core :verify-guards nil))
+ (and (fn2-core-wfp fn2-core) (not (fn2-core-stopped-p fn2-core))
+      (eq (car producer) :persisted) (= (len producer) 8)
+      (posp (nth 4 producer)) (< (nth 4 producer) (nth 5 producer))
+      (< (nth 5 producer) (nth 6 producer)) (posp (nth 7 producer))
+  (stobj-let ((fn2-allocation-release (fn2-core-allocation-release fn2-core))
+              (fn2-release-evidence (fn2-core-release-evidence fn2-core))
+              (fn2-release-evidence-candidates (fn2-core-release-evidence-candidates fn2-core))
+              (fn2-extents (fn2-core-extents fn2-core))
+              (fn2-alloc-edges (fn2-core-alloc-edges fn2-core))
+              (fn2-ops (fn2-core-ops fn2-core))
+              (fn2-checkpoints (fn2-core-checkpoints fn2-core))
+              (fn2-pool (fn2-core-pool fn2-core))) (terminal)
+   (and (< 0 (fn2-allocation-release-rows fn2-allocation-release))
+    (let ((target (nth 1 producer)) (epoch (nth 2 producer)) (allocation (nth 3 producer))
+          (journal (fn2-allocation-release-journal 0 fn2-allocation-release)))
+     (and (= (fn2-allocation-release-phase 0 fn2-allocation-release) *fn2-allocation-release-phase-persisted*)
+      (= (fn2-allocation-release-workspace-released 0 fn2-allocation-release) 1)
+      (= (fn2-allocation-release-evidence-owned 0 fn2-allocation-release) 1)
+      (= (fn2-allocation-release-batch 0 fn2-allocation-release) (nth 6 producer))
+      (= (fn2-allocation-release-event 0 fn2-allocation-release) (nth 7 producer))
+      (= (fn2-allocation-release-cut-commit 0 fn2-allocation-release) (nth 4 producer))
+      (< (fn2-allocation-release-cut-commit 0 fn2-allocation-release)
+         (fn2-allocation-release-installation-commit 0 fn2-allocation-release))
+      (< (fn2-allocation-release-installation-commit 0 fn2-allocation-release) (nth 6 producer))
+      (= (fn2-allocation-release-extent 0 fn2-allocation-release) target)
+      (= (fn2-allocation-release-epoch 0 fn2-allocation-release) epoch)
+      (= (fn2-allocation-release-allocation 0 fn2-allocation-release) allocation)
+      (= (fn2-alloc-freeze-phase fn2-extents) 0) (= (fn2-alloc-epoch-begun fn2-extents) 1)
+      (eq (fn2-alloc-handle-code target epoch allocation fn2-extents) :ok)
+      (= (fn2-extents-state target fn2-extents) *fn2-extent-state-retire-pending*)
+      (= (fn2-extents-retirement target fn2-extents) (fn2-allocation-release-retirement 0 fn2-allocation-release))
+      (<= (fn2-extents-retirement target fn2-extents) (nth 4 producer))
+      ; Return/retirement of the exact workspace changes no durable verdict.
+      ; Do not require its credit to be available: generation retirement is
+      ; correctly DEPLETED and must still preserve the persisted evidence.
+      (not (eq (fn2-pool-workspace-code
+                 (fn2-allocation-release-slot 0 fn2-allocation-release)
+                 (fn2-allocation-release-gen 0 fn2-allocation-release)
+                 (fn2-allocation-release-owner-kind 0 fn2-allocation-release)
+                 (fn2-allocation-release-owner-slot 0 fn2-allocation-release)
+                 (fn2-allocation-release-owner-gen 0 fn2-allocation-release) fn2-pool) :ok))
+      (fn2-release-evidence-row-matches journal fn2-allocation-release fn2-release-evidence)
+      (fn2-release-evidence-row-owned-p journal
+       (fn2-allocation-release-journal-epoch 0 fn2-allocation-release)
+       (fn2-allocation-release-journal-allocation 0 fn2-allocation-release)
+       (nth 6 producer) fn2-release-evidence fn2-release-evidence-candidates
+       fn2-extents fn2-alloc-edges fn2-ops fn2-checkpoints)))) terminal)))
+
+(defun fn2-rrl-body (fn2-core fn2-sim fn2-own)
+ (declare (xargs :stobjs (fn2-core fn2-sim fn2-own) :verify-guards nil))
+ (b* (((mv producer fn2-core fn2-sim fn2-own) (fn2-rrc-producer fn2-core fn2-sim fn2-own))
+      ((unless (fn2-rrl-terminal-p producer fn2-core))
+       (mv (list :producer producer) fn2-core fn2-sim fn2-own))
+      (owner (fn2-machine-kind-base *fn2-checkpoint-master-kind* fn2-core))
+      (generation (fn2-machine-generation owner fn2-core))
+      ((mv code batch event fn2-core)
+       (fn2-allocation-release-poll *fn2-checkpoint-master-kind* owner generation fn2-core)))
+  (mv (if (and (eq code :persisted) (= batch (nth 6 producer)) (= event (nth 7 producer))
+               (fn2-rrl-terminal-p producer fn2-core)) :ok (list :poll code batch event))
+      fn2-core fn2-sim fn2-own)))
+
+(defun fn2-rrl-test ()
+ (declare (xargs :verify-guards nil))
+ (fn2-run-with-local (fn2-core fn2-sim fn2-own)
+  (fn2-rrl-body fn2-core fn2-sim fn2-own)))
+
+(assert-event (equal (fn2-rrl-test) :ok))

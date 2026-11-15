@@ -59,6 +59,7 @@ class DispatchPacket(unittest.TestCase):
 
     def test_positive_constructs_then_crashes_real_history(self):
         source = (ROOT / "tests/recovery-release-connected-unit.lisp").read_text()
+        source += (ROOT / "tests/recovery-release-producer-support.lisp").read_text()
         self.assertEqual(forbidden(source), set())
         for call in ("fn2-boot-start", "fn2-alloc-reserve", "fn2-alloc-commit-allocation",
                      "fn2-alloc-retire", "fn2-ccp-prefix-and-publication",
@@ -80,6 +81,37 @@ class DispatchPacket(unittest.TestCase):
             self.assertIn("(" + call + " ", source)
         self.assertNotIn("update-fn2-digest", source)
         self.assertNotIn("fn2-core-write", source)
+
+    def test_live_gate_reuses_producer_without_crash_or_test_dispatch(self):
+        source = (ROOT / "tests/release-allocation-live-unit.lisp").read_text()
+        self.assertEqual(forbidden(source), set())
+        for call in ("fn2-rrc-producer", "fn2-allocation-release-poll",
+                     "fn2-release-evidence-row-matches", "fn2-release-evidence-row-owned-p"):
+            self.assertIn("(" + call + " ", source)
+        for call in ("fn2-ccp-restart", "fn2-allocation-release-install-member",
+                     "fn2-rrc-body", "fn2-rrc-test"):
+            self.assertNotIn("(" + call + " ", source)
+        self.assertIn("*fn2-extent-state-retire-pending*", source)
+        self.assertIn("*fn2-allocation-release-phase-persisted*", source)
+        self.assertIn("(assert-event (equal (fn2-rrl-test) :ok))", source)
+
+    def test_extraction_preserves_exact_prefix_and_four_assertions(self):
+        import json
+        from extract_release_producer_fixture import extract, FIXTURE
+        original = json.loads(FIXTURE.read_text())["source"]
+        support, unit = extract(original)
+        self.assertEqual(support, (ROOT / "tests/recovery-release-producer-support.lisp").read_text())
+        self.assertEqual(unit, (ROOT / "tests/recovery-release-connected-unit.lisp").read_text())
+        prefix = original[original.index('(fn2-core (fn2-init-executor *fn2-rrc-profile*'):original.index('((mv restarted fn2-core')]
+        self.assertIn(prefix, support)
+        def assertions(text):
+            return [text[f.start:f.end] for f in parse(text).forms if isinstance(f, Lst)
+                    and isinstance(f.items[0], Atom) and f.items[0].low == "assert-event"]
+        self.assertEqual(assertions(original), assertions(unit))
+        self.assertEqual(len(assertions(unit)), 4)
+        self.assertEqual(assertions(support), [])
+        with self.assertRaises(ValueError):
+            extract(original.replace('((mv restarted fn2-core', '((mv substituted fn2-core'))
 
 
 if __name__ == "__main__":
