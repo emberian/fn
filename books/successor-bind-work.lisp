@@ -38,7 +38,7 @@
   (if (not (and (equal (len limits) 1) (natp (car limits))))
       (er soft 'successor-bind-work "Actual overlay search has no unique static work bound: ~x0." limits)
    (let* ((search (car limits))
-          (inventory (fn2-successor-bind-work-inventory *fn2-run-assembled-ids* search))
+          (inventory (fn2-successor-bind-work-inventory *fn2-successor-schema-ids* search))
           (bound (* *fn2-succ-slots* (fn2-successor-bind-work-max inventory))))
     (value `(progn
      (defconst *fn2-successor-bind-search-bound* ,search)

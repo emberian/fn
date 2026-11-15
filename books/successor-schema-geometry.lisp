@@ -20,9 +20,22 @@
    (list (max nf (fn2-successor-fold-args-max sid *fn2-run-fold-kinds*) (nfix (car rest)))
          (max (nfix (- nf nk)) (nfix (cadr rest)))
          (max (fn2-succ-octets-total sid 0 nf) (nfix (caddr rest)))))))
+; The same declaration metadata used by public PUT/replay admission. Internal
+; archive codecs remain in the run assembly and its decoder guard geometry;
+; they are not successor writes and do not require public successor scratch.
+(defun fn2-successor-declared-schema-ids (rows assembled)
+ (declare (xargs :verify-guards nil))
+ (if (atom rows) nil
+  (let ((row (cdar rows)))
+   (if (and (member-equal (fn2-decl-get :id row) assembled)
+            (not (fn2-decl-get :internal row)))
+       (cons (fn2-decl-get :id row) (fn2-successor-declared-schema-ids (cdr rows) assembled))
+    (fn2-successor-declared-schema-ids (cdr rows) assembled)))))
 (make-event
- (let ((bounds (fn2-successor-schema-bounds *fn2-run-assembled-ids*)))
+ (let* ((ids (fn2-successor-declared-schema-ids (fn2-decl-rows :schema (w state)) *fn2-run-assembled-ids*))
+        (bounds (fn2-successor-schema-bounds ids)))
   (value `(progn
+    (defconst *fn2-successor-schema-ids* ',ids)
     (defconst *fn2-succ-fields-max* ,(car bounds))
     (defconst *fn2-succ-values-max* ,(cadr bounds))
     (defconst *fn2-succ-octets-max* ,(caddr bounds))))))
