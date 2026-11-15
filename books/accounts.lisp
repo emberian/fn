@@ -456,7 +456,8 @@
 (defthm fn2-account-rebind-fresh
   (implies (and (fn2-account-guard) (equal (mv-nth 0 (fn2-account-rebind p fn2-accounts)) :ok))
            (< (fn2-account-principal-id p fn2-accounts)
-              (fn2-account-principal-id p (mv-nth 1 (fn2-account-rebind p fn2-accounts))))))
+              (fn2-account-principal-id p (mv-nth 1 (fn2-account-rebind p fn2-accounts)))))
+  :hints (("Goal" :in-theory (disable functional-commutativity-of-minus-*-left))))
 (in-theory (disable fn2-account-rebind))
 
 ;; A durable principal's slot (AUTHORITY-20261105 section 1, principal-create):
@@ -677,7 +678,9 @@
              (fn2-account-profile-capacity d profile))
          (fn2-account-totals-ok (+ 1 d) entries profile))))
 (defun fn2-accounts-profilep (profile)
-  (declare (xargs :guard t))
+  (declare (xargs :guard t
+    :guard-hints (("Goal" :in-theory
+      (disable fn2-profile-p unsigned-byte-p fn2-account-entriesp)))))
   (let ((p (fn2-profile-p profile)) (entries (fn2-profile-get :accounts profile)))
     (and (posp p) (< (+ 1 p) 4294967296)
          (unsigned-byte-p 32 (* *fn2-account-nh* (+ 1 p)))
