@@ -306,6 +306,7 @@ ACL2_BOOKS = \
   tests/tls-record-policy-unit \
   tests/tls-record-unit \
   tests/send-failure-unit \
+  tests/send-accounting-unit \
   tests/tls-stack-unit \
   tests/compress-policy-unit \
   tests/compress-action-unit \
