@@ -61,13 +61,27 @@ class CheckpointOriginCalls(unittest.TestCase):
   errors,_=arity_errors(sources)
   self.assertTrue(any(name=='fn2-rec-context' for _,name,_,_ in errors))
  def test_actual_recovery_context_pair_uses_the_physical_carrier(self):
-  for file,stem in [('checkpoint-recovery-evidence','fn2-origin'),('event-read-verify','fn2-event-read')]:
+  for file,stem in [('event-read-verify','fn2-event-read')]:
    text=(ROOT/'books'/f'{file}.lisp').read_text()
    calls=lr.match('(?*xs)',lr.parse(text).forms,head='fn2-rec-context')
    self.assertTrue(calls)
    for match in calls:
     self.assertEqual(match.node.items[10].items[0].low,stem+'-history')
     self.assertEqual(match.node.items[11].items[0].low,stem+'-history-incarnation')
+
+ def test_historical_evidence_pair_is_retained_from_decoded_frame(self):
+  text=(ROOT/'books/checkpoint-recovery-evidence.lisp').read_text()
+  for name,slots in [('fn2-rec-context',(10,11)),('fn2-rec-header-check',(2,3)),('fn2-rec-seal-check',(5,6))]:
+   calls=lr.match('(?*xs)',lr.parse(text).forms,head=name)
+   self.assertTrue(calls)
+   for match in calls:
+    self.assertEqual(match.node.items[slots[0]].low,'history')
+    self.assertEqual(match.node.items[slots[1]].low,'incarnation')
+  for source in ('(history (fn2-cpe-f *fn2-format-frame-header-field-history*))',
+                 '(incarnation (fn2-cpe-f *fn2-format-frame-header-field-incarnation*))',
+                 '(history (fn2-cpe journal-history))', '(incarnation (fn2-cpe journal-incarnation))',
+                 '(journal-history history) (journal-incarnation incarnation)'):
+   self.assertIn(source,text)
 
  def test_record_envelope_uses_complete_semantic_tuple(self):
   text=(ROOT/'books/checkpoint-recovery-evidence-records.lisp').read_text()
