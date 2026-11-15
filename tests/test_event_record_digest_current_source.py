@@ -67,6 +67,10 @@ class EventRecordDigestCurrent(unittest.TestCase):
   s=(ROOT/'tests/event-read-digest-cold-unit.lisp').read_text()
   for call in ['fn2-ccp-prefix-and-publication','fn2-ccp-restart','fn2-ecd-hold-fetch','fn2-boot-checkpoint-events-begin id generation','fn2-boot-checkpoint-events-journal-bind fn2-core','fn2-boot-checkpoint-events-journal-step 1','fn2-ecd-bytes 32']:
    self.assertIn(call,s)
+  self.assertIn('(fn2-rec-fetch 0 0 slot gen off kind owner generation fn2-pool fn2-digests)',s)
+  self.assertIn('(not (equal old-target (cadr expected)))',s)
+  self.assertIn('(equal (fn2-digest-list target fn2-digests) (cadr expected))',s)
+  self.assertIn('(fn2-ecd-digest-frame target digest-before',s)
   self.assertNotIn('fn2-event-read-put',s)
   self.assertNotIn('fn2-checkpoint-restore-events-put',s)
   for child in ['fn2-checkpoint-restore-reader','fn2-checkpoint-restore-events-work','fn2-journal-members','fn2-mk','fn2-fc-context','fn2-b3','fn2-fields','fn2-digests']:

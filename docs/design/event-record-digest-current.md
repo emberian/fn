@@ -49,7 +49,10 @@ and actual pool-loan release after byte1 preserving the partial digest while
 entering UNCERTAIN. `event-read-digest-cold-unit` produces a persisted checkpoint,
 crashes, waits for selected boot's genuine semantic-success continuation,
 checks public boot BEGIN and JOURNAL-BIND rejection with full output snapshots,
-and drives the real cold journal-step through all32 byte visits. Both new ACL2
+and drives the real cold journal-step through all32 byte visits. A separate
+local digest instance runs the unchanged legacy fetch on the authenticated
+source Ref before those visits; the final target must equal that oracle,
+differ from its prefetch value, and preserve every other digest cell/scalar. Both new ACL2
 consumer controls are UNRUN; guards/refinement and composed qualification remain
 required. These are registered certification roots, not execution evidence.
 

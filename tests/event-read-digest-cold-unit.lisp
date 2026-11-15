@@ -21,6 +21,27 @@
  (stobj-let ((fn2-checkpoint-restore-reader (fn2-core-checkpoint-restore-reader fn2-core)) (fn2-checkpoint-restore-events (fn2-core-checkpoint-restore-events fn2-core)) (fn2-checkpoint-restore-events-work (fn2-core-checkpoint-restore-events-work fn2-core)) (fn2-event-read (fn2-core-event-read fn2-core)) (fn2-journal-members (fn2-core-journal-members fn2-core)) (fn2-mk (fn2-core-mk fn2-core)) (fn2-fc (fn2-core-fc fn2-core)) (fn2-fc-context (fn2-core-fc-context fn2-core)) (fn2-b3 (fn2-core-b3 fn2-core)) (fn2-fields (fn2-core-fields fn2-core)) (fn2-pool (fn2-core-pool fn2-core)) (fn2-digests (fn2-core-digests fn2-core))) (snapshot)
   (list (fn2-test-table-snapshot-fn2-checkpoint-restore-reader fn2-checkpoint-restore-reader) (fn2-test-table-snapshot-fn2-checkpoint-restore-events fn2-checkpoint-restore-events) (fn2-test-table-snapshot-fn2-checkpoint-restore-events-work fn2-checkpoint-restore-events-work) (fn2-test-table-snapshot-fn2-event-read fn2-event-read) (fn2-test-table-snapshot-fn2-journal-members fn2-journal-members) (fn2-test-table-snapshot-fn2-mk fn2-mk) (fn2-test-table-snapshot-fn2-fc fn2-fc) (fn2-test-table-snapshot-fn2-fc-context fn2-fc-context) (fn2-test-table-snapshot-fn2-b3 fn2-b3) (fn2-test-table-snapshot-fn2-fields fn2-fields) (fn2-test-table-snapshot-fn2-pool fn2-pool) (fn2-test-table-snapshot-fn2-digests fn2-digests)) snapshot))
 
+ ; Oracle runs the unchanged legacy fetch against a separate local digest row.
+; It reads the actual authenticated semantic Ref without touching the target.
+(defun fn2-ecd-expected (slot gen off kind owner generation fn2-pool)
+ (declare (xargs :stobjs fn2-pool :verify-guards nil))
+ (with-local-stobj fn2-digests
+  (mv-let (answer fn2-digests)
+   (b* ((fn2-digests (fn2-digests-init 1 fn2-digests))
+        ((mv code fn2-digests) (fn2-rec-fetch 0 0 slot gen off kind owner generation fn2-pool fn2-digests)))
+    (mv (list code (fn2-digest-list 0 fn2-digests)) fn2-digests)) answer)))
+; Snapshot every actual digest column/extra scalar. Only the target cell of
+; each word column may differ; column lengths and all other cells must agree.
+(defun fn2-ecd-digest-frame (row before after)
+ (declare (xargs :verify-guards nil))
+ (if (atom before) (equal before after)
+  (and (consp after)
+       (if (consp (car before))
+           (and (equal (len (car before)) (len (car after)))
+                (equal (car before) (update-nth row (nth row (car before)) (car after))))
+         (equal (car before) (car after)))
+       (fn2-ecd-digest-frame row (cdr before) (cdr after)))))
+
 (defun fn2-ecd-at-fetch-p (fn2-core)
  (declare (xargs :stobjs fn2-core :verify-guards nil))
  (let ((id (fn2-machine-kind-base *fn2-boot-kind* fn2-core)))
@@ -73,8 +94,23 @@
       ((unless (and (eq bound :state) (equal before (fn2-ecd-snapshot fn2-core)))) (mv nil fn2-core fn2-sim fn2-own))
       ((mv zero fn2-core) (fn2-boot-checkpoint-events-journal-step 0 fn2-core))
       ((unless (and (eq zero :yield) (equal before (fn2-ecd-snapshot fn2-core)))) (mv nil fn2-core fn2-sim fn2-own))
-      ((mv completed fn2-core) (fn2-ecd-bytes 32 fn2-core)))
-  (mv completed fn2-core fn2-sim fn2-own)))
+      ((mv expected target digest-before old-target)
+       (stobj-let ((fn2-event-read (fn2-core-event-read fn2-core)) (fn2-pool (fn2-core-pool fn2-core))
+                   (fn2-digests (fn2-core-digests fn2-core))) (expected target digest-before old-target)
+        (let ((target (fn2-digest-slot (fn2-event-read-checker 0 fn2-event-read) *fn2-fc-hash*)))
+         (mv (fn2-ecd-expected (fn2-event-read-slot 0 fn2-event-read) (fn2-event-read-gen 0 fn2-event-read)
+               (fn2-event-read-record-fetch-off 0 fn2-event-read)
+               (fn2-event-read-owner-kind 0 fn2-event-read) (fn2-event-read-owner-slot 0 fn2-event-read)
+               (fn2-event-read-owner-gen 0 fn2-event-read) fn2-pool)
+             target (fn2-test-table-snapshot-fn2-digests fn2-digests) (fn2-digest-list target fn2-digests)))
+        (mv expected target digest-before old-target)))
+      ((unless (and (eq (car expected) :ok) (not (equal old-target (cadr expected)))))
+       (mv nil fn2-core fn2-sim fn2-own))
+      ((mv completed fn2-core) (fn2-ecd-bytes 32 fn2-core))
+      (bound (stobj-let ((fn2-digests (fn2-core-digests fn2-core))) (bound)
+        (and (equal (fn2-digest-list target fn2-digests) (cadr expected))
+             (fn2-ecd-digest-frame target digest-before (fn2-test-table-snapshot-fn2-digests fn2-digests))) bound)))
+  (mv (and completed bound) fn2-core fn2-sim fn2-own)))
 (defun fn2-ecd-test ()
  (declare (xargs :verify-guards nil))
  (with-local-stobj fn2-core
