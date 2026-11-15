@@ -476,6 +476,7 @@ ACL2_BOOKS = \
   tests/pointwise-contracts-unit \
   tests/pool-ranges-unit \
   tests/pool-query-ref-unit \
+  tests/pool-protected-floor-unit \
   tests/pool-unit \
   tests/port-unit \
   tests/primitive-list-domain-unit \
