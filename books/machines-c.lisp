@@ -100,7 +100,7 @@
       (unsigned-byte-p 32 (fn2-c-source-endpoint-rows profile))
       (unsigned-byte-p 32 (fn2-b-run-cursor-rows profile))
       (unsigned-byte-p 32 (* *fn2-run-max-levels* (fn2-b-run-cursor-rows profile)))
-      (and (posp (fn2-b-capacity :extent-slots 16 profile)) (unsigned-byte-p 32 (fn2-b-capacity :extent-slots 16 profile)) (unsigned-byte-p 32 (+ (fn2-b-capacity :identity-runs 64 profile) (* 2 (fn2-b-capacity :extent-slots 16 profile)))))))
+      (and (posp (fn2-b-capacity :extent-slots 16 profile)) (unsigned-byte-p 32 (fn2-b-capacity :extent-slots 16 profile)) (unsigned-byte-p 32 (fn2-run-installed-row-count (fn2-b-capacity :identity-runs 64 profile) (fn2-b-capacity :extent-slots 16 profile))))))
 
 ;; Each child's init is a function whose guard is proved here once, so the
 ;; core init's guard (assembly-init) meets only the opaque profile predicate.
