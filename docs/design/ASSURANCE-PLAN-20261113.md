@@ -40,6 +40,17 @@ streaming connection. Raising a buffer limit to fit the 6KiB fixture is not the
 solution: admitted articles must stream through bounded owned buffers. These
 repairs and the actual socket restart test remain open.
 
+The bounded FNCT hash/trailer primitive is now integrated at `955cc8635`.
+Exact33 record `certify-20261115T094415Z-1162997` passes with 31 reused
+parents and two new books (5.316 seconds). Root matched all 33 current source
+hashes and closure keys. The actual primitive hashes the official 6144-byte
+pattern through one recycled 4096-byte pool loan, matches the expected digest,
+verifies a 17/15 split trailer and rejects a corrupted suffix. This does not
+qualify the pending CTL/CNS actor integration or socket restart. The combined
+inbound source packet exists; outbound FETCH streaming remains in progress.
+The current upload's two chunks admit at most 8159 bytes despite the configured
+32768-byte article maximum: rolling upload remains required beyond this milestone.
+
 Current served article integration has a concrete workspace mismatch:
 `ordered.lisp` declares 13 article fields including location-hashes, while
 `machines-c-successor.lisp` permits only 12 and `fn2-succ-arg` rejects index 12.
@@ -64,21 +75,25 @@ pass completeness/refusal controls; consumer-codec admits in 41.04 seconds in
 the retained application world. Its whole-book proof cost remains above the
 D26 target. These author loads are not record-toolchain certification.
 
-The current application snapshot `eea3146c1` has 230 books: 81 qualified
-compiled parents and 149 source books. Its retained Forge session admitted the
-checker frame interface, decoded-value bounds, and six preservation facets each
-for CAPTURE-ROOT and CAPTURE-ROOTS. CHECK-STEP candidate/reference/byte facets
-then passed. A concrete whole-antecedent witness refuted its unguarded CHECKER
-TYPE/WFP claims: row1 with zero checker rows permits RESET to damage the shape.
-The matching row-room control and a separate full-stored-guard positive pass;
-two explicitly guarded replacement contracts pass. Other original statements
-remain unchanged. The current obstruction is the separate HASHER-TYPE facet,
-whose workspace-domain counterexample is still under evaluation. The complete
-checkpoint book, member and application fixtures remain unadmitted/unrun.
-CHECK-STEP has no current-dev caller, but the incoming cold boot source calls it
-through the registered descriptor verifier; this work enables that integration.
-The standard `must-fail` event classification fix is integrated at `dab9393a0`;
-it preserves the original two-million-step/twenty-second event limits.
+The old shared application campaign at `eea3146c1` ended at its original
+deadline and released its allocation. Its 81 qualified compiled parents are
+reused by focused successor gates. Common checkpoint construction is now
+qualified by exact28 record `certify-20261115T094514Z-1163974` (27 reused,
+one new, 19.677 seconds); root matched all 28 source hashes to both manifest
+snapshots. The source admission took 17.16 seconds, so D26 proof cost remains
+open. All 19 common executable function bodies are unchanged. The proof repair
+uses public carrier interfaces and keeps branch-only predicates opaque.
+
+CHECK-STEP and its complete original carrier event now live in the explicitly
+registered `checkpoint-descriptor-read` book. It has no current served caller;
+incoming cold boot must explicitly import it. Moving it does not discharge its
+obligations: actual negative evidence refuted the unguarded CHECKER TYPE/WFP
+claims, and guarded replacements plus a full-stored-guard positive passed in
+the old author world. Those reader repairs remain separate source work; the
+HASHER claim has neither a proof nor an established counterexample. Reader,
+member, full application and native restart qualification remain open.
+The standard `must-fail` classification fix at `dab9393a0` preserves the original
+two-million-step/twenty-second event limits.
 
 The saved seven-root prefix is qualified by record
 `certify-20261115T074148Z-1049303`: 36 reused and 31 newly certified books,
