@@ -1,5 +1,7 @@
 ; PREPARED, UNEXECUTED actual actor/resource control. No catalog or physical
 ; page is planted: this witnesses admission and drain, not a physical merge.
+; Direct core initialization leaves image credit scheduling unarmed; protected
+; image-profile overlap is a separate qualification, not established here.
 (in-package "ACL2")
 (include-book "../books/assembly-callbacks-c")
 (include-book "std/util/bstar" :dir :system)

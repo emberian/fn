@@ -3,6 +3,7 @@
 (in-package "ACL2")
 (include-book "c-snapshot-state")
 (include-book "overlay")
+(include-book "run-physical-region")
 (fn2-book-layer :c)
 
 
@@ -79,12 +80,18 @@
          (= (fn2-machine-stopped id fn2-core) 0)
      (stobj-let ((fn2-seals (fn2-core-seals fn2-core)) (fn2-reads (fn2-core-reads fn2-core))
                  (fn2-succ-txns (fn2-core-succ-txns fn2-core))
+                 (fn2-run-loads (fn2-core-run-loads fn2-core))
+                 (fn2-checkpoint-summary-leases (fn2-core-checkpoint-summary-leases fn2-core))
                  (fn2-c-source-readers (fn2-core-c-source-readers fn2-core))) (yes)
       (let ((e (fn2-c-source-sealer-endpoint (fn2-reads-rows fn2-reads) (fn2-succ-txns-rows fn2-succ-txns))))
        (and (< 0 (fn2-seals-rows fn2-seals)) (< e (fn2-c-source-readers-rows fn2-c-source-readers))
             (= (fn2-seals-phase 0 fn2-seals) *fn2-seal-phase-idle*)
             (= (fn2-seals-held 0 fn2-seals) 0) (= (fn2-seals-source-receipt 0 fn2-seals) 0)
-            (= (fn2-c-source-readers-live e fn2-c-source-readers) 0))) yes)))))
+            (= (fn2-c-source-readers-live e fn2-c-source-readers) 0)
+            (= (fn2-seals-copy-live 0 fn2-seals) 0)
+            (= (fn2-seals-prefix-hash-live 0 fn2-seals) 0) (= (fn2-seals-prefix-page-live 0 fn2-seals) 0)
+            (fn2-run-load-region-freep 0 (fn2-seals-cbase 0 fn2-seals) *fn2-b-seal-source-cursors* 0 0 0 0
+             fn2-run-loads fn2-checkpoint-summary-leases))) yes)))))
  (fn2-csnapshot-op fn2-csnapshot-poll (token okind oslot ogen) 3
   (if (fn2-core-stopped-p fn2-core) (mv :stopped 0 0 fn2-core)
   (let ((sealer-quiescent (fn2-csnapshot-sealer-quiescent-p fn2-core)))

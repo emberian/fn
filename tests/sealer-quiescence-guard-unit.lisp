@@ -1,0 +1,28 @@
+; PREPARED, UNEXECUTED direct-guard control. Positive state comes from core
+; init/genesis. Negative advertised-WFP rows below are explicit fault injection,
+; not reachable producer states or manufactured source/read completion.
+(in-package "ACL2")
+(include-book "../books/assembly-callbacks-c")
+(include-book "std/util/bstar" :dir :system)
+(defun fn2-sqg-body (fn2-core)
+ (declare (xargs :stobjs fn2-core :verify-guards nil))
+ (b* ((fn2-core (fn2-core-init *fn2-profile-tiny* fn2-core))
+      ((mv genesis fn2-core) (fn2-sealer-genesis *fn2-profile-tiny* fn2-core))
+      ((mv started fn2-core) (fn2-sealer-start-row t fn2-core))
+      (initial (fn2-csnapshot-sealer-quiescent-p fn2-core))
+      (fn2-core (stobj-let ((fn2-seals (fn2-core-seals fn2-core))) (fn2-seals)
+        (fn2-seals-set-prefix-page-live 0 1 fn2-seals) fn2-core))
+      (owned-refused (and (fn2-core-wfp fn2-core) (not (fn2-csnapshot-sealer-quiescent-p fn2-core))))
+      (fn2-core (stobj-let ((fn2-seals (fn2-core-seals fn2-core))) (fn2-seals)
+        (fn2-seals-set-prefix-page-live 0 0 fn2-seals) fn2-core))
+      (fn2-core (stobj-let ((fn2-seals (fn2-core-seals fn2-core)) (fn2-run-loads (fn2-core-run-loads fn2-core))) (fn2-run-loads)
+        (fn2-run-loads-set-pending (fn2-seals-cbase 0 fn2-seals) 1 fn2-run-loads) fn2-core))
+      (pending-refused (and (fn2-core-wfp fn2-core) (not (fn2-csnapshot-sealer-quiescent-p fn2-core))))
+      (fn2-core (stobj-let ((fn2-seals (fn2-core-seals fn2-core)) (fn2-run-loads (fn2-core-run-loads fn2-core))) (fn2-run-loads)
+        (fn2-run-loads-put (fn2-seals-cbase 0 fn2-seals) (pending 0) (windows 1)) fn2-core))
+      (window-refused (and (fn2-core-wfp fn2-core) (not (fn2-csnapshot-sealer-quiescent-p fn2-core))))
+      (fn2-core (stobj-let ((fn2-seals (fn2-core-seals fn2-core)) (fn2-run-loads (fn2-core-run-loads fn2-core))) (fn2-run-loads)
+        (fn2-run-loads-set-windows (fn2-seals-cbase 0 fn2-seals) 0 fn2-run-loads) fn2-core)))
+  (mv (and (eq genesis :ok) (eq started :ok) initial owned-refused pending-refused window-refused
+           (fn2-csnapshot-sealer-quiescent-p fn2-core)) fn2-core)))
+(assert-event (with-local-stobj fn2-core (mv-let (ok fn2-core) (fn2-sqg-body fn2-core) ok)))
