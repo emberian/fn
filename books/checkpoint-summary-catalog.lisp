@@ -59,7 +59,10 @@
  (b* (((unless (and (< 0 (fn2-checkpoint-summary-rows fn2-checkpoint-summary))
                     (< 0 (fn2-checkpoint-restore-semantic-rows fn2-checkpoint-restore-semantic))
                     (= (fn2-checkpoint-summary-lease-count 0 fn2-checkpoint-summary) 0)
-                    (not (= (fn2-checkpoint-summary-phase 0 fn2-checkpoint-summary) *fn2-checkpoint-summary-phase-applied*))
+                    (member (fn2-checkpoint-summary-phase 0 fn2-checkpoint-summary)
+                     (list *fn2-checkpoint-summary-phase-idle* *fn2-checkpoint-summary-phase-capture*
+                           *fn2-checkpoint-summary-phase-captured* *fn2-checkpoint-summary-phase-retired*))
+                    (= (fn2-checkpoint-summary-installed 0 fn2-checkpoint-summary) 0)
                     (= (fn2-checkpoint-restore-semantic-phase 0 fn2-checkpoint-restore-semantic) *fn2-checkpoint-restore-semantic-phase-read*)
                     (= (fn2-checkpoint-restore-semantic-directory 0 fn2-checkpoint-restore-semantic) 1)
                     (= (fn2-checkpoint-restore-semantic-depth 0 fn2-checkpoint-restore-semantic) 1)
@@ -79,6 +82,9 @@
        (incarnation (fn2-checkpoint-restore-map-control-source-incarnation 0 fn2-checkpoint-restore-map-control))
        (generation (fn2-checkpoint-restore-map-control-reach-generation 0 fn2-checkpoint-restore-map-control))
        (semantic-tag (fn2-checkpoint-restore-semantic-tag 0 fn2-checkpoint-restore-semantic))
+       (owner-kind (fn2-checkpoint-restore-semantic-owner-kind 0 fn2-checkpoint-restore-semantic))
+       (owner-slot (fn2-checkpoint-restore-semantic-owner-slot 0 fn2-checkpoint-restore-semantic))
+       (owner-gen (fn2-checkpoint-restore-semantic-owner-gen 0 fn2-checkpoint-restore-semantic))
        (count 0) (cursor 0) (installed 0))))
   (mv :ok fn2-checkpoint-summary)))
 
