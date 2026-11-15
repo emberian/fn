@@ -184,6 +184,20 @@
                    in-channel in-offset in-count in-extent
                    out-channel out-offset out-count out-extent ,name))))
      :hints (("Goal" :in-theory (disable ,@readers))))
+; Opaque callers need the concrete recognizer and one-row shape as well
+; as WFP when a selected request becomes their next physical action.
+(defthm ,(fn2-columns-sym name "-SELECT-PRESERVES-TYPE")
+     (implies (and (,recognizer ,name) (,wfp ,name) (= (,rows ,name) 1))
+      (,recognizer (mv-nth 2 (,select cap nonce slot generation action
+                   in-channel in-offset in-count in-extent
+                   out-channel out-offset out-count out-extent ,name))))
+     :hints (("Goal" :in-theory (disable ,@readers))))
+(defthm ,(fn2-columns-sym name "-SELECT-ROWS")
+     (implies (and (,recognizer ,name) (,wfp ,name) (= (,rows ,name) 1))
+      (equal (,rows (mv-nth 2 (,select cap nonce slot generation action
+                   in-channel in-offset in-count in-extent
+                   out-channel out-offset out-count out-extent ,name))) 1))
+     :hints (("Goal" :in-theory (disable ,@readers))))
 (defthm ,(fn2-columns-sym name "-ADVANCE-SPANS-ROWS")
      (implies (and (,recognizer ,name) (,wfp ,name) (= (,rows ,name) 1))
       (equal (,rows (mv-nth 1 (,advance cap nonce slot generation serial used made ,name))) 1))
