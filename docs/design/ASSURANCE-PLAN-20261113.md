@@ -34,6 +34,18 @@ qualify the current dependent closures. The next shared freeze combines the
 stable pool implementation with focused pool controls before format/core checks.
 Credit-book contract proofs and actual host-path qualification remain open.
 
+The pool implementation is now integrated at the frozen source digest
+`3ef26f41207ee64f6121621cc24d7100936e364b5224a4be8ae28292aa4d7fa7`.
+Its seven-book closure matches qualified cache key
+`079b4ac98a0b3d945869386f9e8d2ebecf0a00d8715e247ba18202d4d7fbfc24`;
+root independently checked source, closure and certificate/FASL/port digests.
+This adds credit provenance and protected ordinary reservations; credit
+configuration and consumers remain unqualified. The larger twelve-book run
+stopped at pool-ranges preservation: its interactive pass did not reproduce in
+clean certification. That repair remains open. The independent format-check
+closure does not include pool-ranges, so its existing scoped gate can proceed.
+
+
 Allocator refinement `8595723fc` is qualified by twelve-book record
 `certify-20261115T011246Z-662045`: six reused, six newly certified. Root matched
 all twelve before/after source digests to integration. Whole-book time fell from
