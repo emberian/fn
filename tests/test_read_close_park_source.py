@@ -59,7 +59,8 @@ class ReadClose(unittest.TestCase):
    self.assertNotIn(':effects',emit(cost))
  def test_known_mv_bindings_match_actual_child_projections(self):
   known={'fn2-read-observer-release':8,'fn2-read-observer-enter':8,'fn2-read-source-close':5,'fn2-read-source-owner':4,
-         'fn2-run-load-region-park':5,'fn2-c-source-reader-acquire':4,'fn2-c-source-reader-acquire-under':4,'fn2-c-source-reader-release':5}
+         'fn2-run-load-region-park':5,'fn2-c-source-reader-acquire':4,'fn2-c-source-reader-acquire-under':4,'fn2-c-source-reader-release':5,
+         'fn2-run-load-reserve':3,'fn2-run-load-release':6}
   for op in MUT:known['fn2-read-'+op+'-children']=len(self.f['fn2-read-'+op].items[-1].items[2].items)
   def expected(call):
    if not isinstance(call,lr.Lst) or not call.items:return None
@@ -71,7 +72,7 @@ class ReadClose(unittest.TestCase):
     return a if a==b else None
    return None
   checked=0
-  for f in self.f.values():
+  for f in list(self.f.values())+list(defs(source('tests/read-close-park-unit.lisp')).values()):
    for n in nodes(f.items[-1]):
     if not isinstance(n,lr.Lst) or not n.items:continue
     if sym(n.items[0])=='mv-let':lhs,call=n.items[1],n.items[2];actual=len(lhs.items)
@@ -79,7 +80,7 @@ class ReadClose(unittest.TestCase):
     else:continue
     count=expected(call)
     if count is not None:checked+=1;self.assertEqual(actual,count)
-  self.assertEqual(checked,13)
+  self.assertEqual(checked,20)
  def test_endpoint_fixture_is_same_projection_with_bounded_outputs(self):
   old=subprocess.check_output(['git','show','a0b13a692:tests/read-observer-endpoint-unit.lisp'],cwd=ROOT,text=True)
   now=source('tests/read-observer-endpoint-unit.lisp');self.assertEqual(project_endpoint_fixture(old),now)
