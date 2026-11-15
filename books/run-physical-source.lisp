@@ -1,6 +1,7 @@
 ; Admission binds an actual MISS cursor to its current immutable catalog lease.
 (in-package "ACL2")
 (include-book "run-physical-bound")
+(include-book "checkpoint-summary-leases")
 (fn2-book-layer :c)
 
 (defun fn2-run-load-sourcep (c fn2-run-loads fn2-run-cursors fn2-checkpoint-summary fn2-checkpoint-summary-sources fn2-checkpoint-summary-leases fn2-run-installed)
