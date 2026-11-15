@@ -631,6 +631,7 @@ ACL2_BOOKS = \
   tests/checkpoint-configured-borrow-unit \
   tests/allocation-release-credit-retirement-unit \
   tests/loader-fixed-cursor-rows-unit \
+  tests/machine-budget-cost-unit \
   tests/upload-page-geometry-unit \
   tests/checkpoint-service-geometry-unit \
   tests/checkpoint-working-credit-configure-unit \
