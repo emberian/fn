@@ -269,6 +269,7 @@ ACL2_BOOKS = \
   books/upload \
   books/upload-feed \
   books/upload-kind \
+  books/upload-page-geometry \
   books/upload-scan \
   books/vocab \
   books/words \
@@ -497,6 +498,7 @@ ACL2_BOOKS = \
   tests/pointwise-contracts-unit \
   tests/pool-ranges-unit \
   tests/pool-query-ref-unit \
+  tests/upload-page-geometry-unit \
   tests/pool-unit \
   tests/port-unit \
   tests/primitive-list-domain-unit \
