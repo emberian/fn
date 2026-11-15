@@ -978,7 +978,7 @@
     :case (((:more :miss) (:charge :bytes *fn2-c-read-step-bytes* :steps *fn2-work-transition* :runnable t))))
    (:case pc
     ((:ok) (:set (ipos row-npos) (count 1) (ioff at) (ilen nl))
-           (:next :page) (:charge :bytes 4096 :steps *fn2-work-transition* :runnable t))
+           (:next :page) (:charge :bytes (+ *fn2-c-read-callback-bytes* 4096) :steps *fn2-work-transition* :runnable t))
     ((:dropped) (:set (ctl *fn2-none*)) (:next :page) (:charge :steps *fn2-work-transition* :runnable t))
     (:otherwise (:set (reason *fn2-cns-reason-unavailable*) (outcome *fn2-cns-outcome-refused*)) (:next :page)
                 (:charge :steps *fn2-work-transition* :runnable t))))
@@ -997,7 +997,7 @@
    (:case pc
     ((:ok) (:set (ipos row-npos) (count (+ 1 row-count)) (ilen (+ row-ilen nl))
                  (ioff (if (equal row-count 0) at row-ioff)))
-           (:next :page) (:charge :bytes 4096 :steps *fn2-work-transition* :runnable t))
+           (:next :page) (:charge :bytes (+ *fn2-c-read-callback-bytes* 4096) :steps *fn2-work-transition* :runnable t))
     ((:full) (:set (more 1)) (:next :page) (:charge :steps *fn2-work-transition* :runnable t))
     ((:fault) (:set (reason *fn2-cns-reason-unavailable*) (outcome *fn2-cns-outcome-refused*)) (:next :page)
               (:charge :steps *fn2-work-transition* :runnable t))
@@ -1064,7 +1064,7 @@
              (:if (eq dcode :ok)
                   ((:set (verb nverb) (consumer ncid) (cstart ncstart) (to nto) (page-limit nlim) (epoch nepoch)
                          (wait-ms nwait) (op nop) (fstart nfstart) (name-off nnoff) (name-len nnlen))
-                   (:next :check) (:charge :bytes 4096 :steps *fn2-work-transition* :runnable t))
+                   (:next :check) (:charge :bytes (+ *fn2-c-read-callback-bytes* 4096) :steps *fn2-work-transition* :runnable t))
                   ((:set (reason dreason)) (:goto refuse))))))
   (:check :on-refusal ((:stop :machine-phase))
    (:cond ((equal row-lease *fn2-cns-lease-held*)
@@ -1118,12 +1118,12 @@
                    (:set (cpos ncpos) (version nver) (pub-frontier pfront) (reason *fn2-cns-reason-beyond-frontier*))
                    (:goto refuse))
                   (t (:set (cpos ncpos) (version nver) (pub-frontier pfront))
-                     (:next :commit) (:charge :bytes 4096 :steps *fn2-work-transition* :runnable t))))
+                     (:next :commit) (:charge :bytes (+ *fn2-c-read-callback-bytes* 4096) :steps *fn2-work-transition* :runnable t))))
           ((or (equal row-verb *fn2-cns-verb-position*) (equal row-verb *fn2-cns-verb-status*))
            (:set (cpos ncpos) (version nver) (pub-frontier pfront) (outcome *fn2-cns-outcome-accepted*))
            (:goto answer))
           (t (:set (cpos ncpos) (version nver) (pub-frontier pfront))
-             (:next :read) (:charge :bytes 4096 :steps *fn2-work-transition* :runnable t))))))
+             (:next :read) (:charge :bytes (+ *fn2-c-read-callback-bytes* 4096) :steps *fn2-work-transition* :runnable t))))))
   (:read :on-refusal ((:stop :machine-phase))
    (:do (fcode ncpos nver pfront)
         (fn2-cns-lookup-cursor row-consumer row-epoch row-principal-slot row-cpos row-version row-pub-frontier row-xrow)
@@ -1131,7 +1131,7 @@
    (:set (cpos ncpos) (version nver) (pub-frontier pfront) (count 0) (more 0) (ioff 0) (ilen 0)
          (ipos (if (equal row-verb *fn2-cns-verb-fetch*) (- row-to 1) ncpos)))
    (:next :page)
-   (:charge :bytes 4096 :steps *fn2-work-transition* :runnable t))
+   (:charge :bytes (+ *fn2-c-read-callback-bytes* 4096) :steps *fn2-work-transition* :runnable t))
   ;; :page walks the principal's addr entries past IPOS, one item a step
   ;; (fn2-cns-item-next: the entry, its article row and the item type the
   ;; page's room allows); a record's stored octets are read into the lease
@@ -1154,7 +1154,7 @@
             :accept (:found :end :retry :lease :fault)
             :why ":end: no entry of the principal's past IPOS up to the frontier; :more/:miss: resume the exact retained lookup without advancing the page; :retry: article publication changed before commitment copy; :lease: reserve before selecting a record; :fault: the store contradicts its own rows"
     :case (((:more :miss) (:charge :bytes *fn2-c-read-step-bytes* :steps *fn2-work-transition* :runnable t))))
-           (:cond ((eq icode :retry) (:charge :bytes 4096 :steps *fn2-work-transition* :runnable t))
+           (:cond ((eq icode :retry) (:charge :bytes (+ *fn2-c-read-callback-bytes* 4096) :steps *fn2-work-transition* :runnable t))
                   ((eq icode :end) (:set (ipos row-pub-frontier)) (:goto page-end))
 
                   ((not (member-eq icode '(:found :lease)))
@@ -1232,12 +1232,12 @@
         :case (((:state) (:do (rcode) (fn2-successor-release nsx))
                          (:set (reason *fn2-cns-reason-unavailable*)) (:goto refuse))))
        (:set (sx nsx) (wstep 1))
-       (:charge :bytes 4096 :steps *fn2-work-transition* :runnable t))))
+       (:charge :bytes (+ *fn2-c-read-callback-bytes* 4096) :steps *fn2-work-transition* :runnable t))))
     ((equal row-wstep 1)
      (:do (rvcode) (fn2-successor-resolve row-sx 4096 *fn2-cns-kind* id row-generation)
       :accept ()
-      :case (((:ok) (:set (wstep 2)) (:charge :bytes 4096 :steps *fn2-work-transition* :runnable t))
-             ((:more :miss) (:charge :bytes 4096 :steps *fn2-work-transition* :runnable t))
+      :case (((:ok) (:set (wstep 2)) (:charge :bytes (+ *fn2-c-read-callback-bytes* 4096) :steps *fn2-work-transition* :runnable t))
+             ((:more :miss) (:charge :bytes (+ *fn2-c-read-callback-bytes* 4096) :steps *fn2-work-transition* :runnable t))
 
              (:otherwise (:do (rcode) (fn2-successor-release row-sx))
                          (:set (reason *fn2-cns-reason-unavailable*)) (:goto refuse)))))

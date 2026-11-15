@@ -49,7 +49,7 @@
          (:publish-wait :storage-window :storage-window) (:release :storage-window :storage-window) (:release-complete :storage-window :storage-window) (:refused :storage-window :storage-window) (:uncertain :storage-window :storage-window) (:loan-uncertain :storage-window)
           (:summary-authority-begin :storage-window :storage-window) (:summary-authority-copy :storage-window :storage-window)
           (:rebase-begin :storage-window :storage-window) (:rebase-source :storage-window :storage-window) (:rebase-consume :storage-window :storage-window))
- :budget (:bytes 16384 :steps 32 :descriptors 4)
+ :budget (:bytes (+ 16384 (* 9 *fn2-c-read-callback-bytes*)) :steps 32 :descriptors 4)
  :stops (:checkpoint :pool :bounds)
  :capacity (if (posp (fn2-b-checkpoint-capacity profile)) 1 0)
  :initial ((generation fn2-commit-initial-generation) (phase *fn2-checkpoint-master-state-idle*)
