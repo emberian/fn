@@ -18,3 +18,29 @@
          (filter-unit (:id physical-unit)) (filter-epoch (:id writer-epoch)) (filter-allocation (:id allocation)) (filter-hash :digest))
  :merge :latest
  :page-kind :manifest)
+
+; Shared field binding only: callers derive subject/Ref/hash from their
+; actual completed source. Both producers own a 64-byte root/zero-filter window.
+(defun fn2-manifest-bind-unfiltered (base schema run height entries unit epoch allocation slot gen fn2-fields)
+ (declare (xargs :stobjs fn2-fields :guard (fn2-fields-wfp fn2-fields)))
+ (b* (((unless (and (natp base) (<= (+ base *fn2-manifest-entry-num-fields*) (fn2-fields-rows fn2-fields))
+                    (unsigned-byte-p 60 schema) (unsigned-byte-p 60 run) (unsigned-byte-p 8 height)
+                    (unsigned-byte-p 60 entries) (unsigned-byte-p 60 unit) (unsigned-byte-p 60 epoch) (unsigned-byte-p 60 allocation)
+                    (unsigned-byte-p 32 slot) (unsigned-byte-p 60 gen))) (mv :bounds fn2-fields))
+      (fn2-fields (fn2-fields-set-value (+ base *fn2-manifest-entry-field-schema*) schema fn2-fields))
+      (fn2-fields (fn2-fields-set-value (+ base *fn2-manifest-entry-field-run*) run fn2-fields))
+      (fn2-fields (fn2-fields-set-value (+ base *fn2-manifest-entry-field-height*) height fn2-fields))
+      (fn2-fields (fn2-fields-set-value (+ base *fn2-manifest-entry-field-entries*) entries fn2-fields))
+      (fn2-fields (fn2-fields-set-value (+ base *fn2-manifest-entry-field-root-unit*) unit fn2-fields))
+      (fn2-fields (fn2-fields-set-value (+ base *fn2-manifest-entry-field-root-epoch*) epoch fn2-fields))
+      (fn2-fields (fn2-fields-set-value (+ base *fn2-manifest-entry-field-root-allocation*) allocation fn2-fields))
+      (fn2-fields (fn2-fields-set-value (+ base *fn2-manifest-entry-field-filter-unit*) 0 fn2-fields))
+      (fn2-fields (fn2-fields-set-value (+ base *fn2-manifest-entry-field-filter-epoch*) 0 fn2-fields))
+      (fn2-fields (fn2-fields-set-value (+ base *fn2-manifest-entry-field-filter-allocation*) 0 fn2-fields))
+      (fn2-fields (fn2-fields-put (+ base *fn2-manifest-entry-field-root-hash*)
+       (value 1) (ref-slot slot) (ref-gen gen) (ref-off 0) (ref-len 32)))
+      (fn2-fields (fn2-fields-put (+ base *fn2-manifest-entry-field-filter-hash*)
+       (value 1) (ref-slot slot) (ref-gen gen) (ref-off 32) (ref-len 32))))
+  (mv :ok fn2-fields)))
+(fn2-fields-preserves fn2-manifest-bind-unfiltered
+ (base schema run height entries unit epoch allocation slot gen fn2-fields) :position 1 :raw-rows t)

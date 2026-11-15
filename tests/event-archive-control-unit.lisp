@@ -38,3 +38,19 @@
       (mv (and archive root1 (not (fn2-checkpoint-metadata-role 1 fn2-checkpoint-metadata fn2-run-builds))) fn2-checkpoint-metadata fn2-run-builds))
      (mv answer fn2-checkpoint-metadata))) answer)))
 (assert-event (fn2-eacu-roles))
+
+; Shared field binding only; source admission/bytes remain separate contracts.
+(defun fn2-eacu-manifest-fields ()
+ (declare (xargs :verify-guards nil))
+ (with-local-stobj fn2-fields
+  (mv-let (answer fn2-fields)
+   (b* ((fn2-fields (fn2-fields-init *fn2-manifest-entry-num-fields* fn2-fields))
+        ((mv code fn2-fields) (fn2-manifest-bind-unfiltered 0 20 7 1 4 16 2 9 0 1 fn2-fields)))
+    (mv (and (eq code :ok)
+             (= (fn2-fields-value *fn2-manifest-entry-field-height* fn2-fields) 1)
+             (= (fn2-fields-value *fn2-manifest-entry-field-entries* fn2-fields) 4)
+             (= (fn2-fields-value *fn2-manifest-entry-field-root-unit* fn2-fields) 16)
+             (= (fn2-fields-ref-len *fn2-manifest-entry-field-root-hash* fn2-fields) 32)
+             (= (fn2-fields-value *fn2-manifest-entry-field-filter-unit* fn2-fields) 0)
+             (= (fn2-fields-ref-off *fn2-manifest-entry-field-filter-hash* fn2-fields) 32)) fn2-fields)) answer)))
+(assert-event (fn2-eacu-manifest-fields))

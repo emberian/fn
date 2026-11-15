@@ -183,3 +183,16 @@ root1 schema10 build remains role1. Internal20 without that ownership refuses.
 Four program-transformation controls preserve the owner decision and output
 projection and check every worker-call arity; an unrun ACL2 control distinguishes
 archive build1, root1 build2 and removed archive ownership.
+
+The fresh nonempty member run now feeds an actual schema10 manifest through
+`event-archive-manifest`: sequential begin reuses only captured source build1,
+emit preserves exact 1..Cevent coverage and uses the shared no-filter field
+binder and run writer, finish checks admitted count, and capture requires actual
+physical manifest-root completion before HEADER. Construction ordinals continue
+across member and manifest pages. The existing root1 setter class was extracted
+unchanged into the same binder; three transformation controls preserve every
+field value and both digest windows. Manifest heights use level counts, matching
+the real schema10 contract (top level is height-1). Four additional source
+controls cover reuse, coverage, actual completion and that height distinction.
+Empty-cut manifest construction currently explicitly refuses and remains owed;
+new header page publication, selected read and retained-run append are pending.

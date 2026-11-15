@@ -134,4 +134,35 @@ class ArchiveControlSource(unittest.TestCase):
   self.assertNotIn('(fn2-event-archive-copy-digest 0',s)
   for name in ['fn2-alloc-edge-drop','fn2-pool-release','fn2-alloc-free','fn2-checkpoint-refs-put']:
    self.assertNotIn('('+name,s)
+class ArchiveManifestSource(unittest.TestCase):
+ def test_begin_uses_only_captured_completed_member_and_same_build(self):
+  n=form('event-archive-manifest.lisp','fn2-event-archive-operation','fn2-event-archive-manifest-begin')
+  self.assertTrue(has(n,'fn2-event-archive-ownerp'))
+  s=text('event-archive-manifest.lisp',n)
+  self.assertIn('*fn2-event-archive-phase-member-complete*',s)
+  self.assertIn('*fn2-run-build-phase-done*',s)
+  start=calls(n,'fn2-run-build-start')[0].node
+  self.assertEqual(start.items[1].low,'b');self.assertEqual(start.items[2].low,'10')
+  self.assertFalse(has(n,'fn2-checkpoint-metadata-manifest-put'))
+  self.assertFalse(has(n,'fn2-checkpoint-metadata-set-ordinal'))
+ def test_emit_preserves_exact_coverage_and_shared_schema10_binder(self):
+  n=form('event-archive-manifest.lisp','fn2-event-archive-operation','fn2-event-archive-manifest-emit')
+  for name in ['fn2-event-archive-builderp','fn2-event-archive-load-digest','fn2-manifest-bind-unfiltered','fn2-run-build-add']:
+   self.assertTrue(has(n,name),name)
+  s=text('event-archive-manifest.lisp',n)
+  self.assertIn('(equal (fn2-event-archive-first-event 1 fn2-event-archive) 1)',s)
+  self.assertIn('(equal (fn2-event-archive-last-event 1 fn2-event-archive) (fn2-event-archive-member-entries 1 fn2-event-archive))',s)
+  self.assertIn('(if (eq code :ok) (fn2-event-archive-set-manifest-entries 1 1',s)
+ def test_finish_and_capture_require_actual_manifest_count_and_page(self):
+  finish=form('event-archive-manifest.lisp','fn2-event-archive-operation','fn2-event-archive-manifest-finish')
+  self.assertTrue(has(finish,'fn2-run-build-finish'))
+  capture=form('event-archive-manifest.lisp','fn2-event-archive-operation','fn2-event-archive-capture-manifest')
+  self.assertTrue(has(capture,'fn2-checkpoint-metadata-page-consume'))
+  s=text('event-archive-manifest.lisp',capture)
+  self.assertIn('(manifest-height (fn2-run-builds-height b fn2-run-builds))',s)
+  self.assertIn('*fn2-event-archive-phase-header*',s)
+  self.assertNotIn('root-source-complete',s)
+ def test_schema10_height_is_level_count_at_both_captures(self):
+  n=form('event-archive-control.lisp','fn2-event-archive-operation','fn2-event-archive-capture-member')
+  self.assertIn('(member-height (fn2-run-builds-height b fn2-run-builds))',text('event-archive-control.lisp',n))
 if __name__=='__main__':unittest.main()

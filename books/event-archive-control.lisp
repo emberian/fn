@@ -96,6 +96,6 @@
       (fn2-event-archive (fn2-event-archive-copy-digest 1 :member 0 hash fn2-digests fn2-event-archive))
       (fn2-event-archive (fn2-event-archive-put 1 (phase *fn2-event-archive-phase-member-complete*)
        (member-unit (fn2-run-writers-unit writer fn2-run-writers)) (member-epoch (fn2-run-writers-epoch writer fn2-run-writers))
-       (member-allocation (fn2-run-writers-counter writer fn2-run-writers)) (member-height level)
+       (member-allocation (fn2-run-writers-counter writer fn2-run-writers)) (member-height (fn2-run-builds-height b fn2-run-builds))
        (member-entries (fn2-run-builds-entries b fn2-run-builds)))))
   (mv :ok fn2-event-archive fn2-digests)))
