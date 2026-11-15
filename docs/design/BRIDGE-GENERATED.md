@@ -539,8 +539,8 @@ This excludes the later declaration syntax migration and generated app world.
 **Unfinished syntax scope:** the coherent eleven-module migration is not
 qualified. Its new projection and nine control examples passed a bounded author
 probe, but four unchanged Pathway fixture read equations still need a checked
-projection boundary before internal-reader reduction. The source now separates
-`Arm.readSyntax` from `Arm.read` and proposes exact concrete projection lemmas;
+projection boundary before internal-reader reduction. The source now proves each concrete canonical
+projection separately, then rewrites it into the unchanged `Arm.read` parser;
 this repair has not yet been checked. No compatibility fallback accepts old
 unqualified external declaration names. Existing generated bodies with
 nonkeyword data must be regenerated from actual package-preserving literals.

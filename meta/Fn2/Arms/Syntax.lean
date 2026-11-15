@@ -7,8 +7,6 @@ public import Fn2.ACL2.Val
 namespace Fn2.Arms.Syntax
 open Fn2.ACL2
 
-deriving instance DecidableEq for Except
-
 /-- The declaration reader has its own syntax alphabet. Data symbols are never
 unqualified: this projection visits only positions designated by the grammar.
 The name environment makes the projection injective on the names it uses. -/

@@ -12,6 +12,8 @@ import all Init.Data.String.Pattern.String
 namespace Fn2.Arms.SyntaxControls
 open Fn2.ACL2 Fn2.Arms.Syntax
 
+deriving instance DecidableEq for Except
+
 
 /-- Data names that collide with internal syntax remain exact under QUOTE. -/
 theorem quote_keeps_data : (expression 8 (Val.ofList [.sym "COMMON-LISP::QUOTE", .sym "ACL2:::SIZE"])).map

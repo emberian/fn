@@ -33,6 +33,8 @@ term evaluator total (they are `partial`, so opaque to the kernel).
 namespace Fn2.Pathway
 open Fn2.ACL2 Fn2.Arms
 
+deriving instance DecidableEq for Except
+
 /-- The value formals before the children: `(id slot kind ordinal budget)` for an arm,
 `(id slot kind ordinal event outcome reason count aux0 aux1)` for a handler. -/
 def nPre (observe : Bool) : Nat := if observe then 10 else 5
@@ -1161,7 +1163,9 @@ private theorem pw3EchoCommandArm_read :
         Val.ofList [.sym ":NEXT", .sym ":REPLY"],
         Val.ofList [.sym ":CHARGE", .sym ":BYTES", .int 64,
           .sym ":STEPS", .int 2, .sym ":RUNNABLE", Val.t]]) := by decide +kernel
-  exact Arm.read_of_projection_by_definition projected rfl
+  unfold Arm.read
+  rw [projected]
+  rfl
 
 private theorem pw3EchoCloseResultArm_read :
     pw3EchoCloseResultArm.read =
@@ -1169,7 +1173,9 @@ private theorem pw3EchoCloseResultArm_read :
             steps := [.next (.sym ":DRAINING"), .wake] }  := by
   have projected : Syntax.readDeclaration readDepth pw3EchoCloseResultArm.decl =
       .ok (Val.ofList [Val.ofList [.sym ":NEXT", .sym ":DRAINING"], Val.ofList [.sym ":WAKE"]]) := by decide +kernel
-  exact Arm.read_of_projection_by_definition projected rfl
+  unfold Arm.read
+  rw [projected]
+  rfl
 
 private theorem pw3ListenerCloseResultArm_read :
     pw3ListenerCloseResultArm.read =
@@ -1179,7 +1185,9 @@ private theorem pw3ListenerCloseResultArm_read :
       .ok (Val.ofList [
         Val.ofList [.sym ":SET", Val.ofList [.sym "EVENT-READY", .int 0]],
         Val.ofList [.sym ":NEXT", .sym ":ACCEPTING"], Val.ofList [.sym ":WAKE"]]) := by decide +kernel
-  exact Arm.read_of_projection_by_definition projected rfl
+  unfold Arm.read
+  rw [projected]
+  rfl
 
 private theorem pw3ScribeStopSubarm_read :
     pw3ScribeStopSubarm.read =
@@ -1193,7 +1201,9 @@ private theorem pw3ScribeStopSubarm_read :
           Val.ofList [.sym "EVENT-READY", .int 0]],
         Val.ofList [.sym ":NEXT", .sym ":STOPPED"],
         Val.ofList [.sym ":CHARGE", .sym ":STEPS", .int 4]]) := by decide +kernel
-  exact Arm.read_of_projection_by_definition projected rfl
+  unfold Arm.read
+  rw [projected]
+  rfl
 
 private theorem except_bind_assoc {ε α β γ : Type} (m : Except ε α)
     (f : α → Except ε β) (g : β → Except ε γ) :
