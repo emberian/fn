@@ -2,6 +2,9 @@
 ; transport. The later direct READ is a primitive actual-owned CNS resource
 ; control, not an additional signed-client/FETCH witness. Every page comes
 ; through real MISS selection, pinned BREAD, SIM completion and verification.
+; Maintenance enters through fn2-ccp-maintenance-entry's TEST-ONLY CATALOG
+; transition under *fn2-checkpoint-activation-qualified*=NIL. This is downstream
+; publication/adoption ancestry, not automatic maintenance/recovery admission.
 (in-package "ACL2")
 (include-book "checkpoint-live-network-prefix-support")
 (defconst *fn2-sad-article*

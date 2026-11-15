@@ -3,6 +3,9 @@
 ; Real client prefix, first complete adoption/cleanup, productive physical
 ; XL/range read, then a second persisted publication/adoption in the SAME SIM.
 ; No APPLIED/READY/catalog/source-authority state is populated by this fixture.
+; Maintenance admission remains the explicit TEST-ONLY CATALOG entry under
+; activation NIL; actual recovery RELEASE/prefix settlement and production
+; maintenance activation are separate gates, never established by source checks.
 (in-package "ACL2")
 (include-book "checkpoint-second-adoption-support")
 (defun fn2-productive-second-adoption-unit-body (fn2-core fn2-sim fn2-own)
