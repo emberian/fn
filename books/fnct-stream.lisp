@@ -3,6 +3,9 @@
 (in-package "ACL2")
 (include-book "fnct-pool")
 (fn2-book-layer :e)
+; Keep decoder carrier preservation visible before representation expansion.
+(local (in-theory (disable fn2-fields-rows fn2-fieldsp fn2-fields-wfp
+                           fn2-poolp fn2-pool-wfp fn2-pool-rows)))
 
 (defun fn2-fnct-stream-head (base slot gen okind oslot ogen fn2-fields fn2-pool)
  (declare (xargs :stobjs (fn2-fields fn2-pool)
