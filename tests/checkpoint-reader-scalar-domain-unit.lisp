@@ -3,7 +3,6 @@
 ; out-of-bounds typed stobj through raw Lisp; DEFUN-NX selects logical calls.
 (in-package "ACL2")
 (include-book "../books/checkpoint")
-(include-book "../books/commit-geometry")
 
 (defun-nx fn2-checkpoint-reader-scalar-domain-check (which)
  (let* ((row (if (member-eq which '(:checker :positive)) 2 1))
@@ -18,7 +17,7 @@
         (fn2-checkpoints (fn2-checkpoints-put 0 (state *fn2-checkpoint-state-preparing*)
                            (checkpoint 1) (history 1) (incarnation 1)))
         (fn2-checkpoint-refs (fn2-checkpoint-refs-init 6 (create-fn2-checkpoint-refs)))
-        (fn2-checkpoint-refs (fn2-checkpoint-refs-put 0 (encoded-length *fn2-commit-unit-bytes*)
+        (fn2-checkpoint-refs (fn2-checkpoint-refs-put 0 (encoded-length *fn2-format-sector-size*)
                               (writer-epoch 1) (allocation 1)))
         (fn2-checkpoint-bytes (fn2-checkpoint-bytes-init 192 (create-fn2-checkpoint-bytes)))
         (fn2-fc (fn2-fc-init fc-n (create-fn2-fc)))
@@ -26,16 +25,16 @@
         (fn2-fc-context (fn2-fc-context-put row (location 0) (allocation 1)
                           (history 1) (incarnation 1) (writer-epoch 1)
                           (page-kind *page-kind-checkpoint-descriptor*)
-                          (encoded-length *fn2-commit-unit-bytes*)
+                          (encoded-length *fn2-format-sector-size*)
                           (hash hash) (geometry geometry) (previous-seal previous)))
         (fn2-b3 (fn2-b3-table-init b3-n (create-fn2-b3)))
         (fn2-fields (fn2-fields-init (+ base *fn2-format-sealed-batch-num-fields*) (create-fn2-fields)))
         (fn2-pool (fn2-pool-columns-init 1 (create-fn2-pool)))
-        (fn2-pool (resize-fn2-pool-data *fn2-commit-unit-bytes* fn2-pool))
+        (fn2-pool (resize-fn2-pool-data *fn2-format-sector-size* fn2-pool))
         ; The resized octets are zero-initialized. This is a logical typed
         ; input, not a claimed authenticated page or fabricated source receipt.
         (fn2-pool (fn2-pool-put 0 (state *fn2-pool-state-workspace*)
-                     (cap *fn2-commit-unit-bytes*) (fill *fn2-commit-unit-bytes*)))
+                     (cap *fn2-format-sector-size*) (fill *fn2-format-sector-size*)))
         (fn2-digests (fn2-digests-init digest-n (create-fn2-digests)))
         (whole-h
          (and (fn2-checkpointsp fn2-checkpoints) (fn2-checkpoints-wfp fn2-checkpoints)
@@ -48,7 +47,7 @@
               (fn2-digestsp fn2-digests) (fn2-digests-wfp fn2-digests)))
         (typed-readonly (and (fn2-fc-contextp fn2-fc-context)
                              (fn2-fc-context-wfp fn2-fc-context)))
-        (off 0) (len *fn2-commit-unit-bytes*)
+        (off 0) (len *fn2-format-sector-size*)
         (whole-guard (and (fn2-fc-guard) (fn2-checkpoints-wfp fn2-checkpoints)
                           (fn2-checkpoint-refs-wfp fn2-checkpoint-refs)
                           (fn2-checkpoint-bytes-wfp fn2-checkpoint-bytes)))
