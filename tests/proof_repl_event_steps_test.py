@@ -4,6 +4,7 @@ import unittest
 from unittest.mock import Mock, patch
 from types import SimpleNamespace
 import tempfile
+import os
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / 'tools'))
 import proof_repl as repl
 
@@ -107,6 +108,52 @@ class EventSteps(unittest.TestCase):
         for form in ['(defttag unsafe)', '(defaxiom unsafe t)', '(fn2-unreviewed-macro t)']:
             with self.subTest(form=form), self.assertRaises(ValueError):
                 repl.per_event_steps(form, 2000000, 20)
+
+    def test_reference_effect_actual_source_constructor_events(self):
+        root = Path(os.environ.get('FN_PROOF_EVENT_SOURCE_ROOT',
+                                   Path(__file__).resolve().parents[1]))
+        sources = [root / name for name in [
+            'books/reference-effect-lowering.lisp',
+            'tests/reference-effect-lowering-unit.lisp',
+            'tests/reference-effect-emitted-unit.lisp']]
+        if not all(source.is_file() for source in sources):
+            self.skipTest('reference effect sources absent; set FN_PROOF_EVENT_SOURCE_ROOT to their checkout')
+        constructors = []
+        for source in sources:
+            with self.subTest(source=source.name):
+                originals = [form for form in repl.forms(source.read_text())
+                             if repl.form_head(form) not in ['in-package', 'include-book', 'defpkg']]
+                constructors.extend(repl.form_head(form) for form in originals
+                                    if repl.form_head(form) in ['defcorechild', 'defstobj'])
+                hoisted, body = repl.encapsulated(source.read_text(), source.parent,
+                                                  set(), 20, 2000000)
+                self.assertEqual(body, '(encapsulate ()\n' + '\n'.join(
+                    f'(with-prover-step-limit 2000000 t {repl.wrap_limit(form, 20, event=True)})'
+                    for form in originals) + '\n)')
+        self.assertEqual(constructors.count('defcorechild'), 3)
+        self.assertEqual(constructors.count('defstobj'), 1)
+
+    def test_cold_allocator_complete_source_inventory(self):
+        root = Path(os.environ.get('FN_PROOF_COLD_ALLOC_ROOT',
+                                   Path(__file__).resolve().parents[1]))
+        sources = [root / ('books/' + book + '.lisp') for book in
+                   ['alloc', 'columns', 'declare', 'operations', 'owed', 'tuple']]
+        sources.append(root / 'tests/alloc-adopt-identity-unit.lisp')
+        if not all(source.is_file() for source in sources):
+            self.skipTest('cold allocator fixture absent; set FN_PROOF_COLD_ALLOC_ROOT')
+        heads = set()
+        for source in sources:
+            with self.subTest(source=source.name):
+                originals = [form for form in repl.forms(source.read_text())
+                             if repl.form_head(form) not in ['in-package', 'include-book', 'defpkg']]
+                heads.update(repl.form_head(form) for form in originals)
+                hoisted, body = repl.encapsulated(source.read_text(), source.parent,
+                                                  set(), 20, 2000000)
+                self.assertEqual(body, '(encapsulate ()\n' + '\n'.join(
+                    f'(with-prover-step-limit 2000000 t {repl.wrap_limit(form, 20, event=True)})'
+                    for form in originals) + '\n)')
+        self.assertIn('fn2-cm-defreaders', heads)
+        self.assertIn('defun-nx', heads)
 
     def test_macro_time_cap(self):
         form = '(fn2-machines-preserves example)'
