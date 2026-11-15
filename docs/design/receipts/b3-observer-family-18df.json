@@ -75,5 +75,38 @@
     "observer-word-author.log": "84c3011f50eda24e2bedb325f7e0083a9274899b38b71d678b2df516bd5a1273",
     "byte-index-bound-v2-corrected.log": "f8516286f8e50a18a76bb1b94ad13b278c3b834f29e44d2c9125b8890d0b97b5",
     "byte-after-bound.log": "2a8859d273a73ddc61f73f76319d9890ca19b49e1fa570ac88de3c382a2e8e5c"
+  },
+  "whole_word_af4": {
+    "source": "af4c53ddc",
+    "book_sha256": "593689f6c975c85df9a3d08ddf14e8a4fbb85456a67e04502d9abd9e935196a0",
+    "actual_parent_context": "16 genuine compiled qualified parents, sourcebase166; final proof-only bridge hint frozen in exactaf4 external file before replay",
+    "first_bridge_refusal": "READY-to-stripe rawROWS lost WFP integer row fact, .03s1628",
+    "repaired_same_formula_bridge": ".02s260 with public dimension observers opaque",
+    "rollback": ":ubt first newlygenerated B3 setter-frame event, preserving qualifiedparents",
+    "whole_source_replay": {
+      "status": "passed",
+      "seconds": 0.69,
+      "prover_steps": 52927,
+      "budget": "stricter single encapsulate 2M steps/20s for wholebook",
+      "log": "/tmp/b3-word-current-pilot/whole-word-replay-v2.log",
+      "sha256": "da5800bdfe2ea579a592f65196f16c88df58868b4dda6901410ba01486241303"
+    },
+    "per_event_client_refusal": "external/tmp sourcefile relativeincludes did not inventory newmacro; ValueError before logicaladmission; no whitelistchange",
+    "ground_fixture": "fullfixture failed on malformedPOS logical value normalization; STORE positive/removal proved within later-rolled-back encapsulate; no fullfixture admission",
+    "v3_fixture": "dc2951dd6 hint-only source; send encountered no live session after fixed deadline cleanup, no proofattempt",
+    "record": "pending; ready wholeword source is distinct from pending groundfixture",
+    "scope": "run-p1956227-i31312916.scope",
+    "effective_memory_max": 2147483648,
+    "swap_max": 0,
+    "internal_epoch": 1794785368,
+    "outer_epoch": 1794785428,
+    "handles": [
+      1956226,
+      1956227,
+      1956241,
+      1956245
+    ],
+    "all_absent_scope_inactive_dead": true,
+    "stop_rc": 0
   }
 }
