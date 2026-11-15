@@ -26,7 +26,14 @@ class Faces(unittest.TestCase):
                 expected=(['fn2-checkpoint-summary','fn2-run-installed','fn2-id-engine','fn2-seals']
                           if child=='fn2-checkpoint-summary-apply-step' else
                           ['fn2-checkpoint-summary-authority'] if 'authority' in child else ['fn2-checkpoint-summary'])
+                binders=set()
+                for block in lr.match('(b* ?bindings ?*body)',[fn.node]):
+                    for binding in block.captures['bindings'].items:
+                        if hasattr(binding,'items') and binding.items and hasattr(binding.items[0],'items'):
+                            head=binding.items[0]
+                            if head.items and getattr(head.items[0],'low',None)=='mv':binders.add(head.start)
                 for mv in lr.match('(mv ?*args)',[fn.node]):
+                    if mv.start in binders:continue
                     outputs=[getattr(x,'low',None) for x in mv.captures['args']]
                     actual=[x for x in outputs if x in inputs]
                     if actual:self.assertEqual(actual,expected,(child,outputs))
