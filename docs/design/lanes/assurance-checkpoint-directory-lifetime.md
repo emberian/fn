@@ -80,9 +80,10 @@ sources. Neither dependency is established by this headroom change.
 No host source currently computes these directory indices. The two concrete
 index namespaces (root cells and seal digest cells) must change together. The
 current event readers/proof builders make a metadata-only ring conversion unsafe.
-`fn2-commit-notification-range` presently has no source caller outside its own
-definition, but its declared replayable-debt semantics must not be erased to make
-reuse appear complete. Type/guard-only dependencies in event-build/producer and
+`fn2-commit-notification-range` has three source test consumers in sim-layer-b.
+Its resident ready/first/end values remain unchanged; a fourth status now
+distinguishes resident, pending, base, archived, absent and stale. Missing
+resident history is not completed delivery debt. Type/guard-only dependencies in event-build/producer and
 writer books still need their composed closure checked after representation work.
 
 ## Qualification and refusal obligations before reuse
@@ -165,3 +166,22 @@ old-row alias refusal, unready seals, absent future identities, exact genesis
 row0 and refusal of an unproved positive base. These are synthetic typed metadata
 premises, not a live wrap/rebase witness. ACL2 admission, guard qualification,
 crash-cut execution and second-checkpoint/refold observations remain unrun.
+
+
+### Writer mapping milestone
+
+Live prepare/grow, abort boundary lookup, computed seal predecessor/current
+storage, publication swap and unprepare now use checked physical directory rows.
+A tentative proposal row is distinct from installed-chain evidence. The writer
+may consume an exact tagged SEAL-READY predecessor before installation, preserving
+pipeline behavior; ordinary installation/proof readers still require installed
+identity. Unprepare refuses a stale mapping before allocation mutation, and abort
+frontier restoration cannot cross the retained base. Current admission/headroom
+still provides no wrap credit. Recovery link/replay and external mapped consumers
+remain part of the implementation drain before the actual rebase join is enabled.
+
+The index rewrite uses tools/commit_directory_rewrite.py with discriminating
+scope/metadata, unexpected-index and replacement-count controls. Prepared writer
+controls check computed-versus-installed seals, stale reused-row refusal, resident
+notification values, publication lag and explicit archived/base/absent dispatch.
+Their staged metadata is synthetic; they do not establish durable summary or reuse.
