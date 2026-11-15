@@ -56,12 +56,18 @@ class SuccessorObserver(unittest.TestCase):
    self.assertEqual(final[0],'mv',name)
    self.assertEqual(len(final)-1,8,name)
   for child in ('fn2-core-c-source-control','fn2-core-c-source-readers'):self.assertIn(child,text)
+ def test_stage_refuses_live_receipt_before_snapshot_wait(self):
+  text=FILES[1].read_text().split('(fn2-succ-wrap fn2-successor-stage',1)[1].split('(defun fn2-successor-out',1)[0]
+  self.assertLess(text.index('fn2-succ-txns-source-receipt'),text.index('fn2-csnapshot-phase'))
+  self.assertIn('(mv :state 0 fn2-succ-txns',text)
  def test_prepared_actual_wrapper_progress_cancel_and_error(self):
   text=(ROOT/'tests/successor-source-observer-unit.lisp').read_text()
   for name in ('fn2-successor-resolve','fn2-successor-release','fn2-c-source-writer-begin','fn2-c-source-writer-poll','fn2-succ-copy-scalar-row'):
    self.assertIn('('+name,text)
   self.assertNotIn('(ri *fn2-succ-slots*)',text)
   self.assertIn('(eq bypass :state)',text)
+  self.assertIn('(eq staged :state) stage-kept',text)
+  self.assertIn('(stage-kept (fn2-sso-live-H endpoint receipt b0 fn2-core))',text)
   self.assertIn('(eq writer :waiting)',text)
   self.assertIn('(eq poll :exclusive)',text)
   for mode in (':complete',':cancel',':error'):
