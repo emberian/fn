@@ -92,3 +92,38 @@ reachable invariant. Raw run-install has no pool operand and cannot enforce it
 alone. The credit fixture deliberately removes that producer hypothesis by
 manual run-install after reserve-credit; it is a hypothesis-removal negative,
 not supported credit cleanup or a credit retry/return promise.
+
+## Frozen nonempty consumer controls
+
+The follow-on packet adds two prepared executable Lisp leaves, both unexecuted:
+
+- `seal-draining-sources-unit`: four real encoded one-entry runs and four real
+  encoded nonempty overlays enumerate at the actual eight-source limit. The
+  actual sealer selects its four-run merge, builds its replacement and stops
+  immediately after atomic INSTALL/DRAINING. A real query reference forces held
+  cleanup; actual read-source refresh sees four sources and resumes exactly
+  keys 2 through 8 after key 1. Last-reference close permits arena/hash return
+  and actual retired-page cleanup returns four installed rows to capacity.
+  This uses the existing component adapters, not a durable transaction seed.
+- `seal-draining-pinned-read-unit`: the existing real read-unit core and actual
+  transaction seeding produce the overview. A delivered field's exact actual
+  arena is pinned through the real pool API (adversarial component injection,
+  not the served TxnOffer producer). The actual sealer stops at matching atomic
+  publication; held cleanup retains a nonempty DRAINING arena, old scalar and
+  octet reads return stale, and the real query resumes with exact remaining
+  lines before the last reference closes. It also observes noncredit arena,
+  actual new run page and hash workspace from the real producer path.
+
+The source ABI/geometry review found and fixed a first-step `:more` assumption:
+first delivery now uses a bounded actual-step loop. Independent read-only review
+found no further definite API/geometry mismatch; admission and behavior remain
+unrun. Fixture carrier emission follows the actual served sealer ABI and checks
+the shared range adapter inputs are contained in it. Fields/reader windows derive
+from the current representation constants, not unchecked fixed offsets.
+
+Incoming cold/full integration must explicitly refuse DRAINING in preserved
+`checkpoint-live-adoption.lisp`, `fn2-checkpoint-live-adoption-retire-overlays`
+(at source52: phase binding341, ACTIVE342, FROZEN345, generic private skip350-352).
+Do not let it fall through as private. Its exact owned cleanup is an alternative
+only behind actual authority; this focused current-root donor adds neither that
+adopter nor a broader phase bypass. Parent owns this cold-composition change.
