@@ -30,8 +30,10 @@
    `(defthm ,(fn2-columns-sym name "-WORD-FRAME")
      ,(if hyps `(implies (and ,@hyps) ,claim) claim)
      :hints (("Goal" ,@(and recursive `(:induct ,call))
-              :in-theory (e/d (,name fn2-b3-word-stripep)
-                              (fn2-b3-words-length fn2-b3-rows))))))))
+              :in-theory (e/d (,name fn2-b3-word-stripep
+                               ,@(and (not domain) '(fn2-b3-words-length)))
+                              (fn2-b3-rows
+                               ,@(and domain '(fn2-b3-words-length))))))))))
 (defmacro fn2-b3-word-frame (name &optional domain)
  `(make-event (value (fn2-b3-word-frame-event ',name ',domain (w state)))))
 
@@ -41,7 +43,9 @@
          (fn2-b3-words-length fn2-b3)))
  :hints (("Goal" :in-theory (enable fn2-b3-store fn2-b3-word-stripep fn2-b3-words-length))))
 
-; Scalar-only paths need no typing or stripe hypothesis at all.
+; Scalar-only paths need no typing or stripe hypothesis at all. The producer
+; exposes WORDS-LENGTH there so existing public SET-*-NTH rules apply; no
+; duplicated setter matrix or scalar implementation unfolding is needed.
 (fn2-b3-word-frame fn2-b3-init)
 (fn2-b3-word-frame fn2-b3-push)
 (fn2-b3-word-frame fn2-b3-flush)
