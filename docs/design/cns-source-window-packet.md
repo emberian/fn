@@ -20,14 +20,14 @@ copy/Send → checked EOF → final trailer Send return → promise release → 
 stored SOURCE from the same live typed READ into an initialized 160-byte prefix.
 It acquires the root promise in the same callback before releasing that READ.
 The unchanged item workspace is 10294 bytes; prefix, manifest unit and data unit
-end at8352. A named declaration theorem states their fit and nonoverlap. The
+end at 8352. A named declaration theorem states their fit and nonoverlap. The
 actual actor keeps its existing pool lease; there is no additional pool loan.
 
 `cns-source-raw` queues the existing pinned BREAD primitive and routes exact
 operation/cell/generation completion through the registered global prefinish
 hook. READ observers only wake the CNS actor. Unit verification and <=1024-byte
 stored-stream hashing are separate CNS phases. The public `source-next` only
-appends <=1024 checked/hashed bytes to CTL staging, with a2048-byte copy charge.
+appends <=1024 checked/hashed bytes to CTL staging, with a 2048-byte copy charge.
 It rejects stale destination offsets. Hash progress advances by actual USED;
 Send retries cannot rehash a unit. EOF requires both copied and hashed length
 to equal the selected total, the actual stored-source comparison and live lease.
@@ -48,8 +48,8 @@ through its declared operation, then clears its job. Uncertain reads retain
 claims/lease and stop rather than use the normal cleanup path.
 
 One authoritative row map reserves paired upload source/stored contexts at
-3+2s/4+2s, sealer3+2W, CTL4+2W+s at the floor, per-CNS contexts next, then five
-existing tail jobs. The floor is9+2W+C+N. Runtime CTL/CNS selectors are end-relative;
+3+2s/4+2s, sealer 3+2W, CTL 4+2W+s at the floor, per-CNS contexts next, then five
+existing tail jobs. The floor is 9+2W+C+N. Runtime CTL/CNS selectors are end-relative;
 actual callbacks check FC=B3 dimensions and source-job count=CNS count. The
 ordinary block row F-2 is synchronous scratch, copied to the owner's page before
 yield. The minimal paired producer/sealer consumers are included; broader
@@ -60,14 +60,14 @@ shared raw threshold12288. Raw and manifest-root commitments remain at most
 three units (96 bytes); the journal's write-resource count remains three.
 The reader adds no private article limit or global stored-history ceiling.
 
-The real `cns-stream-fetch-unit` posts, persists and FETCHes6144 exact bytes
+The real `cns-stream-fetch-unit` posts, persists and FETCHes 6144 exact bytes
 through the ordinary actors without seeding a source descriptor or phase. It
 remains unexecuted. A narrower two-unit reader witness drives actual allocation,
-pinned operations, completion primitives, B3, a reused4KiB output window and EOF;
+pinned operations, completion primitives, B3, a reused 4 KiB output window and EOF;
 its selected typed READ premise is explicitly synthetic. Retention and hash
 interleaving witnesses likewise state their scope and are unexecuted.
 
-Forty-five targeted Python source controls pass. Advisory checks cover139 actual
-lower calls/43 known MV bindings and9 lower-derived faces/20 direct plus14 DSL
-source calls. The literal235-book union has no missing files or include cycles.
+Forty-five targeted Python source controls pass. Advisory checks cover 139 actual
+lower calls/43 known MV bindings and 9 lower-derived faces/20 direct plus 14 DSL
+source calls. The literal 235-book union has no missing files or include cycles.
 These are source checks, not guard admission, certificate or runtime evidence.
