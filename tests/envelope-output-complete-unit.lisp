@@ -29,3 +29,34 @@
       (fn2-eo-matching-witness '((:prefix 1) (:exact 1)) '(1) 0)
       (fn2-eo-matching-witness nil nil 0)
       (fn2-eo-matching-witness nil '(1) 0)))
+
+(defun fn2-eo-public-witness (segments peer)
+ (declare (xargs :verify-guards nil))
+ (equal (fn2-envelope-output-matches-p segments peer)
+        (and (fn2-eo-segments-p segments) (fn2-eo-octets-p peer)
+             (fn2-envelope-output-language-p (revappend segments nil) peer))))
+(assert-event
+ (and (fn2-eo-public-witness '((:exact 3) (:exact 1 2)) '(1 2 3))
+      (fn2-eo-public-witness '((:prefix 2 3) (:exact 1)) '(1 2))
+      (fn2-eo-public-witness '((:exact 3) (:prefix 2) (:exact 1)) '(1 3))
+      (fn2-eo-public-witness '((:exact 1) (:prefix 1)) '(1))
+      (fn2-eo-public-witness '((:exact 3) (:prefix 2) (:exact 1)) '(1 4))
+      (fn2-eo-public-witness nil nil)
+      (fn2-eo-public-witness nil '(1))
+      (fn2-eo-public-witness '((:exact 2) (:prefix 1)) '(1 2 . bad))
+      (fn2-eo-public-witness '((:exact 1 . bad)) '(1))
+      (fn2-eo-public-witness '((:exact 1) . bad) '(1))
+      (fn2-eo-public-witness '((:exact 300)) '(300))))
+; Removing the ORIGINAL-domain conjunct accepts these malformed observations.
+; This is a specification-conjunct removal witness, not a removed theorem
+; hypothesis: the public correspondence theorem is unconditional.
+(assert-event
+ (and (not (fn2-eo-segments-p '((:exact 1) . bad)))
+      (fn2-envelope-output-language-p (ec-call (revappend '((:exact 1) . bad) nil)) '(1))
+      (not (fn2-envelope-output-matches-p '((:exact 1) . bad) '(1)))
+      (not (fn2-eo-segments-p '((:prefix . bad))))
+      (fn2-envelope-output-language-p '((:prefix . bad)) nil)
+      (not (fn2-envelope-output-matches-p '((:prefix . bad)) nil))
+      (not (fn2-eo-octets-p '(300)))
+      (fn2-envelope-output-language-p '((:exact 300)) '(300))
+      (not (fn2-envelope-output-matches-p '((:exact 300)) '(300)))))

@@ -115,3 +115,41 @@
                  (fn2-envelope-output-state (fn2-envelope-output-step fn2-envelope-output-state)))
                 (:instance fn2-eo-phase3-sufficient-fuel (fuel (1- fuel))
                  (fn2-envelope-output-state (fn2-envelope-output-step fn2-envelope-output-state)))))))
+
+
+(defthm fn2-eo-validation-and-matching
+ (implies (and (equal (fn2-eo-phase fn2-envelope-output-state) 0) (equal (fn2-eo-ordered fn2-envelope-output-state) nil))
+  (let ((finished (fn2-envelope-output-run (fn2-envelope-output-budget (fn2-eo-segments fn2-envelope-output-state) (fn2-eo-peer fn2-envelope-output-state)) fn2-envelope-output-state)))
+   (and (equal (fn2-eo-phase finished) 10)
+        (equal (fn2-eo-result finished)
+          (and (fn2-eo-segments-p (fn2-eo-segments fn2-envelope-output-state)) (fn2-eo-octets-p (fn2-eo-peer fn2-envelope-output-state))
+               (fn2-envelope-output-language-p (revappend (fn2-eo-segments fn2-envelope-output-state) nil) (fn2-eo-peer fn2-envelope-output-state)))))))
+ :rule-classes nil
+ :hints (("Goal"
+  :use ((:instance fn2-eo-validation-reaches-matching-or-refuses)
+        (:instance fn2-eo-phase1-sufficient-fuel
+         (fuel (- (fn2-envelope-output-budget (fn2-eo-segments fn2-envelope-output-state) (fn2-eo-peer fn2-envelope-output-state)) (+ 2 (* 2 (len (fn2-eo-segments fn2-envelope-output-state))) (fn2-envelope-output-source-size (fn2-eo-segments fn2-envelope-output-state)) (len (fn2-eo-peer fn2-envelope-output-state))))) (fn2-envelope-output-state (fn2-envelope-output-run (+ 2 (* 2 (len (fn2-eo-segments fn2-envelope-output-state))) (fn2-envelope-output-source-size (fn2-eo-segments fn2-envelope-output-state)) (len (fn2-eo-peer fn2-envelope-output-state))) fn2-envelope-output-state)))
+        (:instance fn2-envelope-output-run-resume (a (+ 2 (* 2 (len (fn2-eo-segments fn2-envelope-output-state))) (fn2-envelope-output-source-size (fn2-eo-segments fn2-envelope-output-state)) (len (fn2-eo-peer fn2-envelope-output-state)))) (b (- (fn2-envelope-output-budget (fn2-eo-segments fn2-envelope-output-state) (fn2-eo-peer fn2-envelope-output-state)) (+ 2 (* 2 (len (fn2-eo-segments fn2-envelope-output-state))) (fn2-envelope-output-source-size (fn2-eo-segments fn2-envelope-output-state)) (len (fn2-eo-peer fn2-envelope-output-state)))))))
+  :in-theory (disable fn2-envelope-output-run fn2-envelope-output-step fn2-eo-terminal-step-run
+              fn2-eo-collect-one-product fn2-eo-double-product fn2-eo-product-two-middle fn2-eo-dp-cost-algebra
+              fn2-envelope-output-language-p fn2-eo-phase fn2-eo-segments fn2-eo-peer fn2-eo-result fn2-eo-ordered))))
+
+(defthm fn2-envelope-output-matches-prefix-language
+ (equal (fn2-envelope-output-matches-p segments-reversed peer)
+        (and (fn2-eo-segments-p segments-reversed) (fn2-eo-octets-p peer)
+             (fn2-envelope-output-language-p (revappend segments-reversed nil) peer)))
+ :rule-classes nil
+ :hints (("Goal"
+  :use ((:instance fn2-eo-validation-and-matching
+         (fn2-envelope-output-state
+          (fn2-envelope-output-init segments-reversed peer (create-fn2-envelope-output-state)))))
+  :in-theory (e/d (fn2-envelope-output-matches-p fn2-envelope-output-init)
+              (fn2-envelope-output-run fn2-envelope-output-step fn2-envelope-output-budget
+               fn2-eo-collect-one-product fn2-eo-double-product fn2-eo-product-two-middle fn2-eo-dp-cost-algebra
+               fn2-envelope-output-language-p)))))
+(defthm fn2-envelope-output-matches-rejects-malformed
+ (implies (or (not (fn2-eo-segments-p segments-reversed))
+              (not (fn2-eo-octets-p peer)))
+          (not (fn2-envelope-output-matches-p segments-reversed peer)))
+ :hints (("Goal" :use ((:instance fn2-envelope-output-matches-prefix-language))
+          :in-theory (disable fn2-envelope-output-matches-p fn2-envelope-output-language-p))))
