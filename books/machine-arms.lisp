@@ -804,12 +804,14 @@
   (let* ((row (fn2-arms-op-row (fn2-arm-use-name (car calls)) world))
          (n (fn2-arms-bound (or (fn2-decl-get :enqueues row) 0) nil world 8))
          (rest (fn2-arms-call-enqueues (cdr calls) world)))
-   (and n rest (+ n rest)))))
+   (and row n rest (+ n rest)))))
 (defun fn2-arms-loop-enqueues (loops)
  (declare (xargs :verify-guards nil))
  (if (atom loops) 0
-  (+ (* (nth 5 (car loops)) (nfix (nth 6 (car loops))))
-     (fn2-arms-loop-enqueues (cdr loops)))))
+  (let* ((loop (car loops)) (rest (fn2-arms-loop-enqueues (cdr loops))))
+   (and (true-listp loop) (equal (len loop) 7)
+        (natp (nth 5 loop)) (natp (nth 6 loop)) rest
+        (+ (* (nth 5 loop) (nth 6 loop)) rest)))))
 (defun fn2-arms-enqueue-max (bounds)
  (declare (xargs :guard t))
  (if (atom bounds) 0
@@ -828,8 +830,9 @@
            (fields (fn2-arms-while-fields env))
            (enqueues (fn2-arms-call-enqueues (append (fn2-arm-get :path-calls env) own)
                                              (fn2-arm-get :world env)))
+           (loop-enqueues (fn2-arms-loop-enqueues (fn2-arm-get :loops env)))
            (acc (fn2-arms-add :enqueue-bounds
-                  (list (and enqueues (+ enqueues (fn2-arms-loop-enqueues (fn2-arm-get :loops env))))) acc)))
+                  (list (and enqueues loop-enqueues (+ enqueues loop-enqueues))) acc)))
       (fn2-decl-set :paths
         (cons (list (if phase (fn2-arms-values-of (cdr phase) (fn2-arms-universe 'phase env)) :any)
                     (if (fn2-arm-get :next-phases env) (fn2-arm-get :next-phases env) :stay)
