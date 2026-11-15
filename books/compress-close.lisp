@@ -45,20 +45,29 @@
   :guard (and (fn2-compress-operation-wfp fn2-compress-operation)
               (fn2-compress-transport-wfp fn2-compress-transport)
               (fn2-tls-transport-wfp fn2-tls-transport) (fn2-tls-record-wfp fn2-tls-record))))
- (if (and (= (fn2-compress-operation-rows fn2-compress-operation) 1)
-          (= (fn2-compress-transport-rows fn2-compress-transport) 1)
-          (fn2-compress-transport-match-p
-           (fn2-compress-operation-cap 0 fn2-compress-operation)
-           (fn2-compress-operation-nonce 0 fn2-compress-operation)
-           (fn2-compress-operation-slot 0 fn2-compress-operation)
-           (fn2-compress-operation-generation 0 fn2-compress-operation)
-           (fn2-compress-operation-pending-serial 0 fn2-compress-operation) fn2-compress-transport)
-          (member-equal (fn2-compress-transport-pending 0 fn2-compress-transport) '(5 6))
-          (fn2-tls-transport-selected-p
-           (fn2-compress-operation-cap 0 fn2-compress-operation)
-           (fn2-compress-operation-nonce 0 fn2-compress-operation) fn2-tls-transport))
-     (fn2-tls-record-wait fn2-tls-transport fn2-tls-record)
-   (fn2-compress-record-wait fn2-compress-operation)))
+ (let ((ownerp
+        (and (= (fn2-compress-operation-rows fn2-compress-operation) 1)
+             (= (fn2-compress-transport-rows fn2-compress-transport) 1)
+             (fn2-compress-transport-match-p
+              (fn2-compress-operation-cap 0 fn2-compress-operation)
+              (fn2-compress-operation-nonce 0 fn2-compress-operation)
+              (fn2-compress-operation-slot 0 fn2-compress-operation)
+              (fn2-compress-operation-generation 0 fn2-compress-operation)
+              (fn2-compress-operation-pending-serial 0 fn2-compress-operation) fn2-compress-transport))))
+  (cond
+   ; A retained child belongs to one operation. A fresh sibling's ordinary
+   ; initial kick must not turn that owner's socket backpressure into a spin.
+   ((and (= (fn2-compress-transport-rows fn2-compress-transport) 1)
+         (member-equal (fn2-compress-transport-pending 0 fn2-compress-transport) '(5 6))
+         (not ownerp))
+    (mv 0 nil))
+   ((and ownerp
+         (member-equal (fn2-compress-transport-pending 0 fn2-compress-transport) '(5 6))
+         (fn2-tls-transport-selected-p
+          (fn2-compress-operation-cap 0 fn2-compress-operation)
+          (fn2-compress-operation-nonce 0 fn2-compress-operation) fn2-tls-transport))
+    (fn2-tls-record-wait fn2-tls-transport fn2-tls-record))
+   (t (fn2-compress-record-wait fn2-compress-operation)))))
 
 (make-event
  (let* ((world (w state))
