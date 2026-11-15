@@ -20,6 +20,8 @@
                      'update-fn2-alloc-identity-phase))
 (assert-event (equal (car (cadar (fn2-alloc-identity-bindings '((count 0)))))
                      'update-fn2-alloc-identity-count))
+(assert-event (equal (car (cadar (fn2-alloc-identity-bindings '((owner-slot 0)))))
+                     'update-fn2-alloc-identity-owner-slot))
 (defmacro fn2-alloc-identity-put (&rest fields)
  `(let* ,(fn2-alloc-identity-bindings fields) fn2-extents))
 
