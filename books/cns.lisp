@@ -14,6 +14,7 @@
 (include-book "fnct-pool")
 (include-book "upload-kind")
 (include-book "cursor")
+(include-book "c-actor-loader")
 (fn2-book-layer :e)
 
 ;; The operations the request kind's arms call (child form).
@@ -87,7 +88,7 @@
   :answers (:need-more :budget :bounds :fault) :faults (:bounds :fault) :tables (fn2-core-pool)
   :doc "Feed the append frame's article octets into the request's upload, as a connection feeds a POST (fn2-upload-feed-run, raw): (mv status start mode why copied).")
 
-(defcost fn2-cns-authority-allows :answers (:ok :access :more :state) :bytes 4096
+(defcost fn2-cns-authority-allows :answers (:ok :access :more :state :miss) :bytes 4096
  :tables (fn2-core-reads fn2-core-ranges fn2-core-seeks fn2-core-succ-txns fn2-core-run-cursors fn2-core-run-paths fn2-core-fields)
  :doc "One bounded step of the consumer surface's check (books/authority.lisp, AUTHORITY-20261105 section 4) on the request's own read row: (fn2-cns-authority-allows cns gen right scope target xstep head grant budget) -> (mv code xstep head grant).")
 ;; the consume right on the principal's own consumers (authority.lisp's
@@ -932,12 +933,12 @@
 
 ;; ---------------------------------------------------------------------------
 ;; fn2-cns: one consumer request; a parked wait is this row parked on its edge.
-(defmachine-arms fn2-cns :declare
+(fn2-c-actor-loader-arms fn2-cns :declare
  :subarms
  ((hand :on-refusal ((:stop :machine-phase))
    (:cond
     ((equal row-lease *fn2-cns-lease-held*)
-             (:do (lc) (fn2-cns-lease-release row-lslot row-lgen) :effects ((:release (:storage-window))) :accept (:ok :retired)
+             (:do (lc) (fn2-cns-lease-release row-lslot row-lgen)  :accept (:ok :retired)
               :why ":retired: the lease's slot reached its generation limit and leaves the pool")
              (:set (lease *fn2-cns-lease-none*) (lslot *fn2-none*) (lgen 0))
              (:charge :steps *fn2-work-transition* :runnable t))
@@ -962,7 +963,7 @@
   (cancel :on-refusal ((:stop :machine-phase))
    (:cond
     ((equal row-lease *fn2-cns-lease-held*)
-           (:do (lc) (fn2-cns-lease-release row-lslot row-lgen) :effects ((:release (:storage-window))) :accept (:ok :retired)
+           (:do (lc) (fn2-cns-lease-release row-lslot row-lgen)  :accept (:ok :retired)
             :why ":retired: the lease's slot reached its generation limit and leaves the pool")
            (:set (lease *fn2-cns-lease-none*) (lslot *fn2-none*) (lgen 0))
            (:charge :steps *fn2-work-transition* :runnable t))
@@ -1015,7 +1016,7 @@
   ;; the answer, or a wait with nothing parks
   (page-end :on-refusal ((:stop :machine-phase))
    (:cond ((equal row-lease *fn2-cns-lease-held*)
-           (:do (lc) (fn2-cns-lease-release row-lslot row-lgen) :effects ((:release (:storage-window))) :accept (:ok :retired)
+           (:do (lc) (fn2-cns-lease-release row-lslot row-lgen)  :accept (:ok :retired)
             :why ":retired: the lease's slot reached its generation limit and leaves the pool")
            (:set (lease *fn2-cns-lease-none*) (lslot *fn2-none*) (lgen 0))
            (:charge :steps *fn2-work-transition* :runnable t))
@@ -1033,14 +1034,14 @@
           (t (:set (count 0) (more 0) (outcome *fn2-cns-outcome-accepted*)) (:goto answer))))
   (page-fail :on-refusal ((:stop :machine-phase))
    (:cond ((equal row-lease *fn2-cns-lease-held*)
-           (:do (lc) (fn2-cns-lease-release row-lslot row-lgen) :effects ((:release (:storage-window))) :accept (:ok :retired)
+           (:do (lc) (fn2-cns-lease-release row-lslot row-lgen)  :accept (:ok :retired)
             :why ":retired: the lease's slot reached its generation limit and leaves the pool")
            (:set (lease *fn2-cns-lease-none*) (lslot *fn2-none*) (lgen 0))
            (:charge :steps *fn2-work-transition* :runnable t))
           (t (:goto refuse))))
   (page-cancel :on-refusal ((:stop :machine-phase))
    (:cond ((equal row-lease *fn2-cns-lease-held*)
-           (:do (lc) (fn2-cns-lease-release row-lslot row-lgen) :effects ((:release (:storage-window))) :accept (:ok :retired)
+           (:do (lc) (fn2-cns-lease-release row-lslot row-lgen)  :accept (:ok :retired)
             :why ":retired: the lease's slot reached its generation limit and leaves the pool")
            (:set (lease *fn2-cns-lease-none*) (lslot *fn2-none*) (lgen 0))
            (:charge :steps *fn2-work-transition* :runnable t))
@@ -1065,7 +1066,7 @@
                   ((:set (reason dreason)) (:goto refuse))))))
   (:check :on-refusal ((:stop :machine-phase))
    (:cond ((equal row-lease *fn2-cns-lease-held*)
-           (:do (lc) (fn2-cns-lease-release row-lslot row-lgen) :effects ((:release (:storage-window))) :accept (:ok :retired)
+           (:do (lc) (fn2-cns-lease-release row-lslot row-lgen)  :accept (:ok :retired)
             :why ":retired: the lease's slot reached its generation limit and leaves the pool")
            (:set (lease *fn2-cns-lease-none*) (lslot *fn2-none*) (lgen 0))
            (:charge :steps *fn2-work-transition* :runnable t))
@@ -1084,16 +1085,17 @@
                   (fn2-cns-authority-allows id row-generation *fn2-cns-right-consume* *fn2-cns-scope-own-consumers* 0
                                             row-xstep row-xhead row-xgrant 4096)
               :accept (:ok)
-              :case (((:more) (:set (xstep astep) (xhead ahead) (xgrant agrant))
+              :case (((:more :miss) (:set (xstep astep) (xhead ahead) (xgrant agrant))
                               (:charge :bytes 4096 :steps *fn2-work-transition* :runnable t))
                      ((:access) (:set (reason *fn2-cns-reason-access*)) (:goto refuse))
-                     ((:state) (:goto cancel))))
+                     ((:state) (:goto cancel))
+             ))
              (:if (equal row-verb *fn2-cns-verb-register*)
                   ((:next :commit) (:charge :bytes 4096 :steps *fn2-work-transition* :runnable t))
                   ((:next :lookup) (:charge :bytes 4096 :steps *fn2-work-transition* :runnable t))))))
   (:lookup :on-refusal ((:stop :machine-phase))
    (:if (equal row-lease *fn2-cns-lease-held*)
-        ((:do (lc) (fn2-cns-lease-release row-lslot row-lgen) :effects ((:release (:storage-window))) :accept (:ok :retired)
+        ((:do (lc) (fn2-cns-lease-release row-lslot row-lgen)  :accept (:ok :retired)
           :why ":retired: the lease's slot reached its generation limit and leaves the pool")
          (:set (lease *fn2-cns-lease-none*) (lslot *fn2-none*) (lgen 0))
          (:charge :steps *fn2-work-transition* :runnable t))
@@ -1164,8 +1166,8 @@
                    (:goto item))
                   (t (:let class (fn2-cns-lease-class))
                      (:if (null class) ((:set (reason *fn2-cns-reason-unavailable*)) (:goto refuse))
-                          ((:do (code ls lg) (fn2-cns-lease-reserve class) :effects ((:acquire (:storage-window)))
-                            :case (((:exhausted) (:park :pool class :steps *fn2-work-transition*))
+                          ((:do (code ls lg) (fn2-cns-lease-reserve class)
+                            :case (((:exhausted) (:set (reason *fn2-cns-reason-unavailable*)) (:goto refuse))
                                    (:otherwise (:set (reason *fn2-cns-reason-unavailable*)) (:goto refuse))))
                            (:set (lslot ls) (lgen lg) (lease *fn2-cns-lease-held*))
                            (:charge :steps *fn2-work-transition* :runnable t))))))
@@ -1209,7 +1211,7 @@
   (:commit :on-refusal ((:stop :machine-phase))
    (:cond
     ((equal row-lease *fn2-cns-lease-held*)
-     (:do (lc) (fn2-cns-lease-release row-lslot row-lgen) :effects ((:release (:storage-window))) :accept (:ok :retired)
+     (:do (lc) (fn2-cns-lease-release row-lslot row-lgen)  :accept (:ok :retired)
       :why ":retired: the lease's slot reached its generation limit and leaves the pool")
      (:set (lease *fn2-cns-lease-none*) (lslot *fn2-none*) (lgen 0))
      (:charge :steps *fn2-work-transition* :runnable t))
@@ -1230,7 +1232,8 @@
      (:do (rvcode) (fn2-successor-resolve row-sx 4096 *fn2-cns-kind* id row-generation)
       :accept ()
       :case (((:ok) (:set (wstep 2)) (:charge :bytes 4096 :steps *fn2-work-transition* :runnable t))
-             ((:more) (:charge :bytes 4096 :steps *fn2-work-transition* :runnable t))
+             ((:more :miss) (:charge :bytes 4096 :steps *fn2-work-transition* :runnable t))
+
              (:otherwise (:do (rcode) (fn2-successor-release row-sx))
                          (:set (reason *fn2-cns-reason-unavailable*)) (:goto refuse)))))
     (t
@@ -1272,7 +1275,7 @@
   (:committed :on-refusal ((:stop :machine-phase))
    (:cond
     ((equal row-lease *fn2-cns-lease-held*)
-     (:do (lc) (fn2-cns-lease-release row-lslot row-lgen) :effects ((:release (:storage-window))) :accept (:ok :retired)
+     (:do (lc) (fn2-cns-lease-release row-lslot row-lgen)  :accept (:ok :retired)
       :why ":retired: the lease's slot reached its generation limit and leaves the pool")
      (:set (lease *fn2-cns-lease-none*) (lslot *fn2-none*) (lgen 0))
      (:charge :steps *fn2-work-transition* :runnable t))
@@ -1293,7 +1296,7 @@
   (:append :on-refusal ((:stop :machine-phase))
    (:let posting (fn2-cns-posting-p))
    (:cond ((equal row-lease *fn2-cns-lease-held*)
-           (:do (lc) (fn2-cns-lease-release row-lslot row-lgen) :effects ((:release (:storage-window))) :accept (:ok :retired)
+           (:do (lc) (fn2-cns-lease-release row-lslot row-lgen)  :accept (:ok :retired)
             :why ":retired: the lease's slot reached its generation limit and leaves the pool")
            (:set (lease *fn2-cns-lease-none*) (lslot *fn2-none*) (lgen 0))
            (:charge :steps *fn2-work-transition* :runnable t))
@@ -1333,7 +1336,7 @@
   (:draining :on-refusal ((:stop :machine-phase))
    (:cond
     ((equal row-lease *fn2-cns-lease-held*)
-           (:do (lc) (fn2-cns-lease-release row-lslot row-lgen) :effects ((:release (:storage-window))) :accept (:ok :retired)
+           (:do (lc) (fn2-cns-lease-release row-lslot row-lgen)  :accept (:ok :retired)
             :why ":retired: the lease's slot reached its generation limit and leaves the pool")
            (:set (lease *fn2-cns-lease-none*) (lslot *fn2-none*) (lgen 0))
            (:charge :steps *fn2-work-transition* :runnable t))

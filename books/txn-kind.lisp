@@ -5,6 +5,7 @@
 (include-book "claims")
 (include-book "machines-c-bind")
 (include-book "machine-arms")
+(include-book "c-actor-loader-form")
 (fn2-book-layer :d)
 
 (defconst *fn2-txn-evidence-sid* 1)
@@ -86,7 +87,7 @@
 ;; The T-row shares (fn2-txn-authority-share, -consumer-share, -capacity)
 ;; are in upload-kind.lisp: posting is served only when fn2-txn has a row.
 
-(defmachine fn2-txn
+(fn2-c-actor-loader-kind fn2-txn
  :phases (:free :admit :reserve :lookup :prepare :ready :batched :accepted :refused :uncertain :releasing :draining :retired)
  ;; CONN is the upload's owner the outcome goes to: a connection, or a
  ;; consumer request whose append this is (e-surface.md 3.3).
