@@ -135,6 +135,12 @@
       (fn2-ribbon-odd32 b)
       (fn2-prng-mix32 (fn2-ribbon-xor32 a (fn2-ribbon-xor32 b #x9e3779b9))))))
 (defthm fn2-ribbon-place-start (natp (car (fn2-ribbon-place h1 h2 slots))) :rule-classes :type-prescription)
+; The served MV binding retains MV-NTH, rather than CAR, in guard goals.
+(defthm fn2-ribbon-place-start-mv-nth
+ (natp (mv-nth 0 (fn2-ribbon-place h1 h2 slots)))
+ :rule-classes :type-prescription
+ :hints (("Goal" :use fn2-ribbon-place-start
+                  :in-theory (e/d (mv-nth) (fn2-ribbon-place)))))
 (fn2-ribbon-ub fn2-ribbon-place-lo 32 (and (unsigned-byte-p 32 h1) (unsigned-byte-p 32 h2)) (mv-nth 1 (fn2-ribbon-place h1 h2 slots)))
 (fn2-ribbon-ub fn2-ribbon-place-hi 32 (and (unsigned-byte-p 32 h1) (unsigned-byte-p 32 h2)) (mv-nth 2 (fn2-ribbon-place h1 h2 slots)))
 (in-theory (disable fn2-ribbon-place))
@@ -225,7 +231,9 @@
 (defun fn2-ribbon-emit-bytes (n i base slot gen off okind oslot ogen fn2-ribbon-band fn2-pool)
  (declare (xargs :stobjs (fn2-ribbon-band fn2-pool) :measure (nfix n)
   :guard (and (fn2-ribbon-band-wfp fn2-ribbon-band) (fn2-pool-wfp fn2-pool) (natp n) (natp i)
-              (natp base) (natp off))))
+              (natp base) (natp off))
+  :guard-hints ((fn2-columns-guard-hint '(fn2-pool fn2-ribbon-band)
+                                         '(fn2-pool-write) nil world))))
  (b* (((when (zp n)) (mv :ok fn2-pool))
       (r (+ base i))
       ((unless (< r (fn2-ribbon-band-rows fn2-ribbon-band))) (mv :bounds fn2-pool))
