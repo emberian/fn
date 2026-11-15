@@ -219,9 +219,13 @@
           (fn2-columns-projection-readers 'fn2-compress-operation
            (fn2-decl-get :columns (fn2-decl-row '(:columns fn2-compress-operation) world)))))
         (hints `(("Goal" :in-theory (disable ,@readers))))
-        (next-hints `(("Goal" :in-theory (disable ,@readers)
+        (next-hints `(("Goal" :in-theory
+                        (disable ,@readers fn2-compress-operation-bind-preserves-type
+                         fn2-compress-operation-bind-ok-inputs fn2-compress-operation-bind-wfp
+                         fn2-compress-operation-bind-rows-ok)
                        :use (fn2-compress-operation-bind-preserves-type
-                             fn2-compress-operation-bind-ok-inputs)))))
+                             fn2-compress-operation-bind-ok-inputs fn2-compress-operation-bind-wfp
+                             fn2-compress-operation-bind-rows-ok)))))
   (value `(progn
    (verify-guards fn2-compress-record-next :hints ,next-hints)
    (verify-guards fn2-compress-record-observe :hints ,hints)
