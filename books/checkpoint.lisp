@@ -39,18 +39,22 @@
  :position 1 :prefix "-EXTENTS"
  :hyps ((fn2-extentsp fn2-extents) (fn2-extents-wfp fn2-extents)
         (fn2-alloc-edgesp fn2-alloc-edges) (fn2-alloc-edges-wfp fn2-alloc-edges))
- :hints ((fn2-columns-guard-hint '(fn2-extents fn2-alloc-edges)
+ :hints ((append (fn2-columns-guard-hint '(fn2-extents fn2-alloc-edges)
            '(fn2-alloc-account fn2-alloc-set-edge fn2-alloc-edge-count
              fn2-alloc-reason fn2-alloc-retirement-intentp fn2-alloc-durable-edgep)
-           '(fn2-alloc-edge-add) world)))
+           '(fn2-alloc-edge-add) world)
+          '(:use ((:instance fn2-alloc-edge-count-natp)
+                  (:instance fn2-alloc-edge-count-bound))))))
 
 ; The edge holder DOES require the actual stored input guard and input types.
 (defcolumns-guarded-contracts fn2-alloc-edge-add
  :carriers ((fn2-alloc-edges 2 :prefix "-EDGES")) :rows t
- :hints ((fn2-columns-guard-hint '(fn2-extents fn2-alloc-edges)
+ :hints ((append (fn2-columns-guard-hint '(fn2-extents fn2-alloc-edges)
            '(fn2-alloc-account fn2-alloc-set-edge fn2-alloc-edge-count
              fn2-alloc-reason fn2-alloc-retirement-intentp fn2-alloc-durable-edgep)
-           '(fn2-alloc-edge-add) world)))
+           '(fn2-alloc-edge-add) world)
+          '(:use ((:instance fn2-alloc-edge-count-natp)
+                  (:instance fn2-alloc-edge-count-bound))))))
 ; Current native backend routes one image. Domain0 is the format writer's
 ; declared domain; foreign references must never alias this allocator.
 (defconst *fn2-checkpoint-served-storage-domain* 0)
