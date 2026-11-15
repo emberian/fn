@@ -2,9 +2,11 @@
 
 This source projects the reader interfaces and actual closed controls from
 qualified `6347c86a9` onto root `42aba480a` (plus the tool-only `fa9451c27`).
-Its own 34-book closure is unqualified. The donor's 33-book record is evidence
-for that exact source only; no record is transferred by matching function names
-or runtime bodies.
+Its own 34-book closure is now qualified at source `0b13cdffa`: 30 cached
+parents and four newly certified books. All current closure keys, source hashes
+and actual certificate/FASL payloads were independently checked in
+`receipts/checkpoint-reader-current-thirty-four-record.json`. The donor's
+33-book record remains evidence only for its own source.
 
 The production delta has two files:
 
@@ -30,7 +32,9 @@ typed readonly context and false checker/hasher/digest P and WFP conclusions.
 The positive asserts the entire actual guard, `:more`/DECODE and all eight
 output P/WFP pairs. Exact closed negations bind the six live originals;
 canonical predicate evidence proves and replays complete positive/removal
-assertions for the six new guarded rows. All new-closure events are UNRUN.
+assertions for the six new guarded rows. All four changed whole books passed
+author admission and record certification. The original false claims remain
+refuted and unfinished; their distinct guarded replacements are qualified.
 
 This reader is **unreachable-in-composition** in the present root BOOT path:
 there is no `fn2-boot-checkpoint-descriptor-pool` or restore-load-hash face in
