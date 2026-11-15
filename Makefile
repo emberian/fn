@@ -582,6 +582,7 @@ ACL2_BOOKS = \
   tests/pool-credit-unit \
   tests/upload-page-geometry-unit \
   tests/checkpoint-service-geometry-unit \
+  tests/checkpoint-working-credit-configure-unit \
   tests/pool-unit \
   tests/port-unit \
   tests/primitive-list-domain-unit \
