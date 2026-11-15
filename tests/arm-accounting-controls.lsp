@@ -66,4 +66,9 @@
   (assert (equal (multiple-value-list
    (eval `(let ((n 6000) (left 1) (table 'table-value) (pool 'pool-value)) ,form)))
    '(6021 8 1 t table-value pool-value)))))
+; Nonzero descriptor effects returned by a subarm remain exact while prefix
+; byte/step charges accumulate. No descriptor capacity is fabricated.
+(assert (equal (multiple-value-list
+  (eval (fn2-arms-prefix-report '(mv 100 2 2 t 'state) 8192 3 nil)))
+  '(8292 5 2 t state)))
 (format t "ARM ACCOUNTING COMPOSED CONTROLS PASS~%")
