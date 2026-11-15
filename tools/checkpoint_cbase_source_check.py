@@ -23,10 +23,11 @@ def check(acquire, release):
     assert ['fn2-alloc-edge-matchesp', 'source', ['fn2-checkpoint-cbase-holds-checkpoint', 'c', 'fn2-checkpoint-cbase-holds'], 'e', 'epoch', 'allocation', ':recovery-base', 'fn2-alloc-edges'] in nodes
     assert ['fn2-alloc-edge-add', 'edge', 'tag', 'e', 'epoch', 'allocation', ':promised-read', 'fn2-extents', 'fn2-alloc-edges'] in nodes
     assert not any(n and n[0] in ('fn2-alloc-edge-add-transition', 'fn2-alloc-edge-drop', 'fn2-alloc-release') for n in nodes)
-    closing = list(walk(definition(release, 'fn2-checkpoint-cbase-release-step')))
-    assert ['equal', ['fn2-checkpoint-summary-lease-count', '0', 'fn2-checkpoint-summary'], '0'] in closing
-    assert ['fn2-checkpoint-summary-retire-row', 'r', 'fn2-checkpoint-summary', 'fn2-checkpoint-summary-sources', 'fn2-checkpoint-cbase-holds', 'fn2-run-installed'] in closing
-    assert ['equal', ['fn2-checkpoint-summary-installed', '0', 'fn2-checkpoint-summary'], '0'] in closing
+    closing = list(walk(definition(release, 'fn2-checkpoint-cbase-row-release-step')))
+    assert ['equal', ['fn2-checkpoint-summary-lease-count', 's', 'fn2-checkpoint-summary'], '0'] in closing
+    assert ['fn2-checkpoint-summary-row-retire-row', 's', 'r', 'fn2-checkpoint-summary', 'fn2-checkpoint-summary-sources', 'fn2-checkpoint-cbase-holds', 'fn2-run-installed'] in closing
+    assert ['equal', ['fn2-checkpoint-summary-installed', 's', 'fn2-checkpoint-summary'], '0'] in closing
+    assert ['update-fn2-alloc-protection-dirty', '1', 'fn2-extents'] in closing
     drops = [n for n in closing if n and n[0] == 'fn2-alloc-edge-drop']
     assert len(drops) == 1 and drops[0][-3:] == [':promised-read', 'fn2-extents', 'fn2-alloc-edges']
     assert not any(n and n[0] in ('fn2-alloc-release', 'fn2-run-retired-next', 'fn2-cache-drop') for n in closing)
@@ -40,9 +41,10 @@ if __name__ == '__main__':
     mutations += [(a.replace('(equal (fn2-extents-release-pending e fn2-extents) 0)', 't', 1), r),
                   (a.replace(':recovery-base fn2-alloc-edges)', ':installed-root fn2-alloc-edges)', 1), r),
                   (a.replace('(fn2-alloc-edge-add edge tag e epoch allocation :promised-read', '(fn2-alloc-edge-add-transition edge tag e epoch allocation :promised-read', 1), r),
-                  (a, r.replace('(equal (fn2-checkpoint-summary-lease-count 0 fn2-checkpoint-summary) 0)', 't')),
-                  (a, r.replace('(fn2-checkpoint-summary-retire-row r ', '(fn2-run-retired-next r ', 1)),
-                  (a, r.replace('(equal (fn2-checkpoint-summary-installed 0 fn2-checkpoint-summary) 0)', 't'))]
+                  (a, r.replace('(equal (fn2-checkpoint-summary-lease-count s fn2-checkpoint-summary) 0)', 't')),
+                  (a, r.replace('(fn2-checkpoint-summary-row-retire-row s r ', '(fn2-run-retired-next r ', 1)),
+                  (a, r.replace('(equal (fn2-checkpoint-summary-installed s fn2-checkpoint-summary) 0)', 't'))]
+    mutations.append((a, r.replace('(update-fn2-alloc-protection-dirty 1 fn2-extents)', 'fn2-extents', 1)))
     for x, y in mutations:
         try:
             check(x, y)
