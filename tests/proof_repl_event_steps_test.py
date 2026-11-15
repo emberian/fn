@@ -1,6 +1,9 @@
 from pathlib import Path
 import sys
 import unittest
+from unittest.mock import Mock, patch
+from types import SimpleNamespace
+import tempfile
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / 'tools'))
 import proof_repl as repl
 
@@ -29,6 +32,35 @@ class EventSteps(unittest.TestCase):
         for steps in [0, -1, 2000001, 2.5, True]:
             with self.subTest(steps=steps), self.assertRaises(ValueError):
                 repl.per_event_steps('(thm t)', steps)
+
+    def test_scoped_range_disables_only_outer_limit(self):
+        with tempfile.TemporaryDirectory() as directory:
+            path = Path(directory) / 'events.lisp'
+            path.write_text('(local (defthm private (equal x x)))')
+            args = SimpleNamespace(name='test', book=str(path), start=None, until=None,
+                                   through=None, skip_includes=True, ld_local=True,
+                                   limit=20, full=False, keep_going=False, per_event_steps=2000000)
+            with patch.object(repl, 'book_path', return_value=path), \
+                 patch.object(repl, 'read_state', return_value={}), \
+                 patch.object(repl, 'guard_notes', return_value=[]), \
+                 patch.object(repl, 'warn_free_expands'), \
+                 patch.object(repl, 'send_many', return_value=0) as send:
+                self.assertEqual(repl.send_range(args), 0)
+                self.assertEqual(send.call_args.args[2], 0)
+                self.assertTrue(send.call_args.kwargs['scoped_event_budgets'])
+                self.assertIn('(with-prover-time-limit 20 ', send.call_args.args[1][-1][1])
+
+    def test_server_preserves_inner_cap_and_bounded_compound_deadline(self):
+        form = '(encapsulate () (with-prover-step-limit 2000000 t (with-prover-time-limit 20 (thm t))))'
+        acl2 = Mock()
+        acl2.send.return_value = ('', False)
+        state = {'sends': 0, 'load_timeout': 120}
+        repl.handle({'op': 'send', 'form': form, 'limit': 0,
+                     'scoped_event_budgets': True}, acl2, state, 20)
+        acl2.send.assert_called_once_with(form, 120)
+        acl2.reset_mock()
+        repl.handle({'op': 'send', 'form': '(thm t)', 'limit': None}, acl2, state, 20)
+        acl2.send.assert_called_once_with('(with-prover-time-limit 20 (thm t))', 60)
 
     def test_macro_time_cap(self):
         form = '(fn2-machines-preserves example)'

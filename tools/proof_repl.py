@@ -1618,7 +1618,9 @@ def handle(request: dict, acl2: Acl2, state: dict, default_limit: float) -> dict
         return {"error": True, "output": f"send exactly one form, not {count}"}
     limit = default_limit if request.get("limit") is None else request["limit"]
     hard = limit * 1.5 + 30
-    if head_and_name(form)[0] == "ld":
+    if (head_and_name(form)[0] == "ld"
+            or request.get("scoped_event_budgets") and limit == 0
+            and form_head(form) == "encapsulate"):
         # A source LD contains many individually budgeted events. Its total
         # time is not the budget of one proof; use the startup load allowance.
         hard = max(hard, state.get("load_timeout", 600.0))
@@ -2340,7 +2342,8 @@ def send_one(name: str, form: str, limit: float | None, full: bool) -> int:
 
 
 def send_many(name: str, items: list[tuple[str, str]], limit: float | None,
-              full: bool = False, keep_going: bool = False) -> int:
+              full: bool = False, keep_going: bool = False,
+              scoped_event_budgets: bool = False) -> int:
     """Each (label, form) in order: one line of cost per form, the output of a refusal.
 
     Stops at the first refusal unless KEEP_GOING; a form that outlives the
@@ -2348,7 +2351,8 @@ def send_many(name: str, items: list[tuple[str, str]], limit: float | None,
     """
     totals = Totals()
     for position, (label, form) in enumerate(items, 1):
-        answer = ask(name, {"op": "send", "form": form, "limit": limit})
+        answer = ask(name, {"op": "send", "form": form, "limit": limit,
+                            "scoped_event_budgets": scoped_event_budgets})
         output = answer.get("output", "")
         refused = bool(answer.get("error"))
         cost = measure(output)
@@ -2916,6 +2920,11 @@ def send_range(args) -> int:
         items = ([(form_label(0, form).split(" ", 1)[1], form) for form in hoisted]
                  + ([(f"#{chosen.start + 1}-#{chosen.stop} (encapsulate)", body)] if body else []))
     items.insert(0, ("source-book", f'(assign proof-repl-source-book "{path}")'))
+    if getattr(args, "per_event_steps", None) is not None:
+        # None means "session default", whereas zero explicitly disables the
+        # outer time wrapper. Original events already carry their own limits.
+        return send_many(args.name, items, 0, args.full, args.keep_going,
+                         scoped_event_budgets=True)
     return send_many(args.name, items, args.limit, args.full, args.keep_going)
 
 
