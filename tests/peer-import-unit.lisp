@@ -63,6 +63,29 @@
       ((mv resolve fn2-core) (fn2-piu-resolve 100 0 fn2-core))
       ((mv stage at fn2-core) (fn2-successor-stage 0 fn2-core)))
   (mv (list start decide declare resolve stage at) fn2-core)))
+(defun fn2-piu-pool-bytes (n slot gen off fn2-pool)
+ (declare (xargs :stobjs fn2-pool :verify-guards nil))
+ (if (zp n) nil
+  (mv-let (code byte) (fn2-pool-read slot gen off 5 1 1 fn2-pool)
+   (if (eq code :ok) (cons byte (fn2-piu-pool-bytes (- n 1) slot gen (+ off 1) fn2-pool)) (list code)))))
+(defun fn2-piu-output-octets (slot j fn2-core)
+ (declare (xargs :stobjs fn2-core :verify-guards nil))
+ (stobj-let ((fn2-fields (fn2-core-fields fn2-core)) (fn2-pool (fn2-core-pool fn2-core))
+             (fn2-id-decides (fn2-core-id-decides fn2-core)) (fn2-fc (fn2-core-fc fn2-core))) (bytes)
+  (mv-let (code b0) (fn2-idc-stripe 0 (fn2-fc-rows fn2-fc) fn2-id-decides fn2-fields)
+   (if (not (eq code :ok)) (list code)
+    (let ((row (+ b0 (* slot *fn2-succ-block*) j)))
+     (fn2-piu-pool-bytes (fn2-fields-ref-len row fn2-fields) (fn2-fields-ref-slot row fn2-fields)
+                         (fn2-fields-ref-gen row fn2-fields) (fn2-fields-ref-off row fn2-fields) fn2-pool)))) bytes))
+; Scalars come from the real staged successor outputs; octets come from
+; those staged fields' actual references. Expected values below are literal.
+(defun fn2-piu-output (n j slot fn2-core)
+ (declare (xargs :stobjs fn2-core :verify-guards nil))
+ (if (zp n) nil
+  (let ((value (if (or (equal j 1) (equal j 4)) (fn2-piu-output-octets slot j fn2-core)
+                (mv-let (code value) (fn2-successor-out 0 slot j fn2-core)
+                 (if (eq code :ok) value code)))))
+   (cons value (fn2-piu-output (- n 1) (+ j 1) slot fn2-core)))))
 (defun fn2-piu-run (fn2-core)
  (declare (xargs :stobjs fn2-core :verify-guards nil))
  (b* ((fn2-core (fn2-core-init *fn2-piu-profile* fn2-core))
@@ -79,6 +102,8 @@
       ((mv & position) (fn2-successor-out 0 1 *fn2-identity-history-entry-field-position* fn2-core))
       ((mv & selected) (fn2-successor-out 0 2 *fn2-identity-summary-entry-field-selected* fn2-core))
       ((mv & local) (fn2-successor-out 0 3 *fn2-identity-candidates-entry-field-local* fn2-core))
+      (whole-evidence (fn2-piu-output 11 0 0 fn2-core))
+      (whole-history (fn2-piu-output 11 0 1 fn2-core))
       ((mv bind fn2-core) (fn2-successor-bind 0 4 10 fn2-core))
       ((mv bound-abort fn2-core) (fn2-peer-import-abort 0 5 1 1 fn2-core))
       ((mv bound-release fn2-core) (fn2-peer-import-release 0 5 1 1 fn2-core))
@@ -101,15 +126,19 @@
       ((mv nonbinding fn2-core) (fn2-piu-stage nil fn2-core))
       ((mv & qualified) (fn2-successor-out 0 3 *fn2-identity-candidates-entry-field-qualified* fn2-core)))
   (mv (list premature first fresh lineage occurrence position selected local bind bound-abort bound-release retained publish release
-            second repeated repeated-history evidence-count history-count inconsistent nonbinding qualified) fn2-core)))
+            second repeated repeated-history evidence-count history-count inconsistent nonbinding qualified
+            whole-evidence whole-history) fn2-core)))
 (defun fn2-piu-result ()
  (declare (xargs :verify-guards nil))
  (with-local-stobj fn2-core (mv-let (result fn2-core) (fn2-piu-run fn2-core) result)))
 (assert-event
  (equal (fn2-piu-result)
-  '(:state (:ok :stored :ok :ok :ok 0) :applied 91 94 101 0 0 :ok :state :state t :ok :ok
-    (:ok :evidence :ok :ok :ok 0) :unchanged :unchanged 1 1
-    (:ok :evidence :ok :ok :inconsistent 0) (:ok :stored :ok :ok :ok 0) 0)))
+  (append
+   '(:state (:ok :stored :ok :ok :ok 0) :applied 91 94 101 0 0 :ok :state :state t :ok :ok
+     (:ok :evidence :ok :ok :ok 0) :unchanged :unchanged 1 1
+     (:ok :evidence :ok :ok :inconsistent 0) (:ok :stored :ok :ok :ok 0) 0)
+   (list (list 9 '(109) 7 8 (make-list 32 :initial-element 7) 91 92 93 94 0 95)
+         (list 9 '(109) 7 8 (make-list 32 :initial-element 7) 91 92 93 101 94 102)))))
 
 ; Authoritative absence is checked through C's actual ordered reader, for
 ; evidence, foreign history, summary and candidate, after attempted publication.
