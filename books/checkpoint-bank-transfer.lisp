@@ -16,7 +16,8 @@
   (mv :transferred fn2-checkpoint-publication)))
 (fn2-checkpoint-publication-preserves fn2-checkpoint-bank-obligations-transfer
  (physicalslot fn2-checkpoint-teardown-debt fn2-checkpoint-publication)
- :hyps ((fn2-checkpoint-teardown-debt-wfp fn2-checkpoint-teardown-debt) (fn2-checkpoint-publication-wfp fn2-checkpoint-publication)) :position 1)
+ :hyps ((fn2-checkpoint-teardown-debtp fn2-checkpoint-teardown-debt) (fn2-checkpoint-teardown-debt-wfp fn2-checkpoint-teardown-debt)
+        (fn2-checkpoint-publicationp fn2-checkpoint-publication) (fn2-checkpoint-publication-wfp fn2-checkpoint-publication)) :position 1)
 (defcost fn2-checkpoint-teardown-cold-ack-op :child fn2-checkpoint-bank-obligations-transfer :answers t
  :tables (fn2-core-checkpoint-teardown-debt fn2-core-checkpoint-publication)
  :doc "Discharge one overwritten physical anchor only after exact48-word evidence is retained by actual candidate debt; no physical edge is dropped.")
