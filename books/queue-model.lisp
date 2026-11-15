@@ -32,3 +32,7 @@
     (fn2-ref-set-queue
      principal (append (true-list-fix (fn2-ref-queue principal queues))
                        (list machine)) queues)))
+
+(defun fn2-ref-queue-count (queues)
+  (declare (xargs :verify-guards nil))
+  (if (atom queues) 0 (+ (len (cdar queues)) (fn2-ref-queue-count (cdr queues)))))

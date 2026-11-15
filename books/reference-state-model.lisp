@@ -57,9 +57,7 @@
   (declare (xargs :verify-guards nil))
   (list (fn2-ref-calendar weights) cursor queues '(0 0 0 0)))
 
-(defun fn2-ref-queue-count (queues)
-  (declare (xargs :verify-guards nil))
-  (if (atom queues) 0 (+ (len (cdar queues)) (fn2-ref-queue-count (cdr queues)))))
+
 
 (defun fn2-ref-wake (id lists fn2-ref-core)
   (declare (xargs :stobjs fn2-ref-core :verify-guards nil))
