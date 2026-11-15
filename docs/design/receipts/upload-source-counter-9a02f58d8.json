@@ -1,0 +1,30 @@
+{
+  "scope": "source-form preservation only; no ACL2 admission or composed upload execution",
+  "original_commit": "fe9f761ab",
+  "implementation_commit": "9a02f58d8",
+  "from": "books/txn.lisp",
+  "to": "books/upload-feed.lisp",
+  "events": [
+    {
+      "event": "fn2-txn-count-loop",
+      "sha256": "b991b050d51f69f1af52603133fc31c772f8daf1427afe062c0e75f6ddf33369",
+      "byte_identical": true
+    },
+    {
+      "event": "fn2-txn-count-loop-natp",
+      "sha256": "dfc4575d65ff9a01ed84b10072620879bfc4f79ade4b8a40a2f75a065d695fbb",
+      "byte_identical": true
+    },
+    {
+      "event": "fn2-txn-count-loop-bound",
+      "sha256": "c20b29e0a030eff3ee6627c5aa11254370ede2d7804db6d9f52f2411b97b6e0c",
+      "byte_identical": true
+    }
+  ],
+  "unqualified": [
+    "new source-lines machine field and frame footprint",
+    "hash/count composition and totality guards",
+    "actual EOF transaction count projection",
+    "rolling workspace reuse remains disabled"
+  ]
+}
