@@ -28,3 +28,12 @@
       (not (fn2-envelope-output-matches-p '((:exact 2) (:prefix 1) (:prefix 1)) '(1 3 2)))
       (fn2-envelope-output-resume-check '((:exact 1 2) (:prefix 1)) '(1 1 2) 7)
       (fn2-envelope-output-resume-check '((:prefix 3 4) (:exact 1 2)) '(1 2 3) 3)))
+; Malformed observations and constraint storage must fail in every path.
+(assert-event
+ (and (not (fn2-envelope-output-matches-p '((:exact 1) (:prefix 1)) '(1 . 7)))
+      (not (fn2-envelope-output-matches-p '((:exact 1) (:prefix 1)) '(256)))
+      (not (fn2-envelope-output-matches-p '((:prefix 1 . 7)) nil))
+      (not (fn2-envelope-output-matches-p '((:prefix 1 256)) nil))
+      (not (fn2-envelope-output-matches-p '((:bogus 1)) '(1)))
+      (not (fn2-envelope-output-matches-p '((:exact 1) . 7) '(1)))
+      (not (fn2-envelope-output-matches-p '(7) nil))))
