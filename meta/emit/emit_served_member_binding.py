@@ -10,7 +10,7 @@ from pathlib import Path
 import argparse
 import os
 from emit_certificate import (Atom, List, fields, read_canonical, canonical_text,
-                              decode, fn_of, calls_of, show, as_list, shallow, ident, lean_object, term, canonical_nil)
+                              decode, fn_of, calls_of, show, as_list, shallow, ident, lean_object, term, canonical_nil, is_lambda, val)
 
 STUB = 'FN2-CNS-RUN-STUB'
 RUN = 'FN2-CNS-RUN'
@@ -110,6 +110,51 @@ def qualification_book(snapshot, output):
     return '\n\n'.join(lines) + '\n'
 
 
+def member_literal_site(body):
+    """Read the actual simple MEMBER lambda expansion, retaining quote data.
+
+    This is a syntactic selector for a domain proof, never an evaluator or a
+    replacement formula. Unsupported call shapes are refused.
+    """
+    sites = []
+    def substitute(value, env):
+        if isinstance(value, Atom):
+            return env.get(str(value), value)
+        if not isinstance(value, List) or not value or value[0] == 'QUOTE':
+            return value
+        if is_lambda(value[0]):
+            raise ValueError('nested lambda actual outside MEMBER selector')
+        return List([substitute(item, env) for item in value])
+    def walk(value, env):
+        if not isinstance(value, List) or not value or value[0] == 'QUOTE':
+            return
+        if is_lambda(value[0]):
+            formals = list(map(str, value[0][1]))
+            if len(formals) != len(value) - 1 or len(set(formals)) != len(formals):
+                raise ValueError('MEMBER lambda ABI differs')
+            actuals = [substitute(item, env) for item in value[1:]]
+            walk(value[0][2], dict(zip(formals, actuals)))
+            return
+        if value[0] == 'MEMBER-EQUAL':
+            sites.append([substitute(item, env) for item in value[1:]])
+        for item in value[1:]:
+            walk(item, env)
+    walk(body, {})
+    if len(sites) != 1 or len(sites[0]) != 2:
+        raise ValueError('requires one exact MEMBER comparison site')
+    key, quoted = sites[0]
+    if not isinstance(key, Atom) or str(key) != 'RC':
+        raise ValueError('MEMBER key is not actual RC argument')
+    if not isinstance(quoted, List) or len(quoted) != 2 or quoted[0] != 'QUOTE':
+        raise ValueError('MEMBER list is not literal')
+    elements = quoted[1]
+    if (not isinstance(elements, List) or not elements or
+            any(not isinstance(item, Atom) or not hasattr(item, 'symbol_package')
+                for item in elements)):
+        raise ValueError('MEMBER literal elements are not canonical symbols')
+    return elements
+
+
 def member_context_source(snapshot):
     """Generate the actual helper's MEMBER execution/logical context equation.
 
@@ -134,11 +179,22 @@ def member_context_source(snapshot):
     executed = replace(function.body)
     if count != 1:
         raise ValueError('reply helper must contain exactly one logical MEMBER site')
+    elements = member_literal_site(function.body)
+    domain_proofs = ['⟨rfl, rc, ' + val(item) + ', rfl, Or.inr ⟨_, rfl⟩⟩' for item in elements]
+    domain_proof = domain_proofs[-1]
+    for proof in reversed(domain_proofs[:-1]):
+        domain_proof = '⟨' + proof + ', ' + domain_proof + '⟩'
+    domain_lines = [
+        'theorem reached_comparison_domains (rc : Val) :',
+        '    ' + ' ∧\n    '.join('PrimitiveSymbols.symbolEqualDomain "EQUAL" [rc, ' + val(item) + ']' for item in elements) + ' := by',
+        '  exact ' + domain_proof,
+        '#print axioms reached_comparison_domains']
     binders = ' '.join('(' + ident(x) + ' : Val)' for x in function.formals)
     arguments = ' '.join(ident(x) for x in function.formals)
     return '\n'.join([
         'module',
         'public import Fn2.ACL2.MemberBodyCorrect',
+        'public import Fn2.ACL2.PrimitiveSymbols',
         'public import Fn2.Instances.LayerAEqns4',
         'import all Fn2.Instances.LayerAWorld.KCns_d0to12',
         'import all Init.Data.String.Basic',
@@ -160,6 +216,7 @@ def member_context_source(snapshot):
         '  simp only [MemberBodyCorrect.emitted_eq_native]',
         '  rfl',
         '#print axioms member_context',
+        *domain_lines,
         'end Fn2.ACL2.CnsSelectedMember', ''])
 
 

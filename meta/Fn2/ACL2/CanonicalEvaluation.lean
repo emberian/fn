@@ -252,7 +252,9 @@ theorem object_of_value_integer {object : Object} {i : Int}
       cases he : symbolEncoding? p n with
       | none => simp [Object.value?, Object.symbolValue?, he] at represented
       | some encoded =>
-        simp only [Object.value?, Object.symbolValue?, he, Option.bind_some] at represented
+        simp only [Object.value?, Object.symbolValue?, he] at represented
+        change (if symbolObject? encoded = some (.symbol p n)
+          then some (Val.sym encoded) else none) = some (.int i) at represented
         split at represented <;> cases represented
   | character n =>
       simp only [Object.value?] at represented

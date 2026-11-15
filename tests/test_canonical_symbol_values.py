@@ -46,6 +46,16 @@ class CanonicalSymbolValues(unittest.TestCase):
         self.assertEqual(c.val(c.decode(dotted)),
                          '(Val.cons (Val.sym "ACL2::.") (Val.int 7))')
 
+    def test_syntax_collisions_refused_but_quoted_data_retained(self):
+        left = c.decode(symbol('ACL2', 'X'))
+        right = c.decode(symbol('COMMON-LISP', 'X'))
+        with self.assertRaisesRegex(ValueError, 'syntax package collision'):
+            c.validate_syntax_symbols(c.List([left, right]))
+        quote = c.decode(symbol('COMMON-LISP', 'QUOTE'))
+        c.validate_syntax_symbols(left, c.List([quote, right]))
+        with self.assertRaisesRegex(ValueError, 'special-form package'):
+            c.validate_syntax_symbols(c.List([c.decode(symbol('ACL2', 'QUOTE')), left]))
+
     def test_unknown_package_fails_closed(self):
         with self.assertRaisesRegex(ValueError, 'unsupported package'):
             c.decode(symbol('UNKNOWN', 'SIZE'))

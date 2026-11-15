@@ -24,7 +24,9 @@ theorem object_spine_correspondence {object : Object} {value : Val}
     cases he : symbolEncoding? p n with
     | none => simp [Object.value?, Object.symbolValue?, he] at represented
     | some encoded =>
-      simp only [Object.value?, Object.symbolValue?, he, Option.bind_some] at represented
+      simp only [Object.value?, Object.symbolValue?, he] at represented
+      change (if symbolObject? encoded = some (.symbol p n)
+        then some (Val.sym encoded) else none) = some value at represented
       split at represented
       next =>
         cases represented

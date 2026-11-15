@@ -176,9 +176,45 @@ def expression_proof(t, defined, env, indent='  ', dispatch=None, lambdas=None):
     return [indent+'refine Translation.eval_app (vs := ['+', '.join(vals)+']) (by decide) (by decide) ?_ ('+proof+')', indent+'·']+args_proof(t[1:])
 
 
+def validate_syntax_symbols(*terms):
+    """Reject package collisions in syntactic identifiers; quoted data is separate.
+
+    The existing term environment uses strings. It is sound only when distinct
+    canonical identifiers do not collapse in this selected function's syntax.
+    """
+    names = {}
+    reserved = {'QUOTE': 'COMMON-LISP', 'IF': 'COMMON-LISP',
+                'LAMBDA': 'COMMON-LISP', 'RETURN-LAST': 'ACL2'}
+    def atom(value, operator=False):
+        if not isinstance(value, Atom) or not hasattr(value, 'symbol_package'):
+            return
+        identity = (value.symbol_package, value.symbol_name)
+        spelling = str(value)
+        if spelling in names and names[spelling] != identity:
+            raise ValueError('canonical syntax package collision: ' + spelling)
+        names[spelling] = identity
+        if operator and spelling in reserved and identity != (reserved[spelling], spelling):
+            raise ValueError('wrong canonical special-form package: ' + spelling)
+    def walk(value):
+        if not isinstance(value, List):
+            atom(value)
+            return
+        if not value:
+            return
+        atom(value[0], operator=True)
+        if value[0] == 'QUOTE':
+            return
+        for item in value:
+            walk(item)
+    for term_ in terms:
+        walk(term_)
+
+
 def fn_of(row):
     d = fields(row)
     name = decode(d[':FUNCTION'])
+    validate_syntax_symbols(name, decode(d[':FORMALS']),
+                            decode(d[':LOGICAL-BODY']), decode(d[':GUARD']))
     # Justification is retained exactly; only nonrecursive bodies are claimed.
     # The bridge's first closure is nonrecursive except guard dependencies; do
     # not guess recursive adequacy from the examples. Existing emitter handles

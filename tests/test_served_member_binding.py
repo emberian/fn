@@ -15,13 +15,13 @@ obj = fixtures.obj
 def packet(selector=s.RUN, broken_path=False, wrong_abi=False, package='ACL2'):
     rows = []
     definitions = {
-        s.STUB: (['ID', 'BUDGET', 'CORE'], ['QUOTE', 'NIL']),
+        s.STUB: (['ID', 'BUDGET', 'CORE'], ['COMMON-LISP::QUOTE', 'COMMON-LISP::NIL']),
         s.RUN: (['ID', 'BUDGET', 'CORE'], [s.ITEM, 'ID', 'CORE']),
-        s.ITEM: (['ID', 'CORE'], ['QUOTE', 'NIL'] if broken_path else
+        s.ITEM: (['ID', 'CORE'], ['COMMON-LISP::QUOTE', 'COMMON-LISP::NIL'] if broken_path else
                  [s.ANSWER, 'ID', 'ID', 'ID', 'ID', 'ID', 'ID']),
         s.ANSWER: (['LIVE', 'OK0', 'RC', 'CODE', 'FITS', 'CC'],
-                   ['MEMBER-EQUAL', 'RC', ['QUOTE', ['KEYWORD::SIZE', 'KEYWORD::FULL']]]),
-        'FN2-CNS-RUN-ALTERNATE': (['ID', 'BUDGET', 'CORE'], ['QUOTE', 'NIL']),
+                   ['MEMBER-EQUAL', 'RC', ['COMMON-LISP::QUOTE', ['KEYWORD::SIZE', 'KEYWORD::FULL']]]),
+        'FN2-CNS-RUN-ALTERNATE': (['ID', 'BUDGET', 'CORE'], ['COMMON-LISP::QUOTE', 'COMMON-LISP::NIL']),
     }
     for name, (formals, body) in definitions.items():
         attachment = (f'(:CONS {obj(package + "::" + s.STUB)} {obj(selector)})'
@@ -50,6 +50,8 @@ class ServedSelection(unittest.TestCase):
         self.assertIn('«FN2-CNS-PUT-ANSWER»', source)
         self.assertIn('«MEMBER-EQ-EXEC» «RC»', source)
         self.assertIn('canonicalAnswer : Object', source)
+        self.assertIn('reached_comparison_domains (rc : Val)', source)
+        self.assertIn('symbolEqualDomain "EQUAL" [rc, (Val.sym ":SIZE")]', source)
         self.assertNotIn('sorry', source)
         self.assertNotIn('axiom ', source)
 
@@ -66,6 +68,16 @@ class ServedSelection(unittest.TestCase):
         self.assertEqual(branch[0], 'if')
         self.assertEqual(branch[2][0], 'value')
         self.assertEqual(branch[3][:2], ['er', 'soft'])
+
+    def test_actual_member_lambda_and_nonliteral_refusal(self):
+        from emit_certificate import decode, read_canonical
+        body = decode(read_canonical(obj([
+            ['COMMON-LISP::LAMBDA', ['X', 'L'], ['MEMBER-EQUAL', 'X', 'L']],
+            'RC', ['COMMON-LISP::QUOTE', ['KEYWORD::SIZE', 'KEYWORD::FULL']]])))
+        self.assertEqual(list(map(str, s.member_literal_site(body))), [':SIZE', ':FULL'])
+        body[2] = decode(read_canonical(obj('DYNAMIC-LIST')))
+        with self.assertRaisesRegex(ValueError, 'not literal'):
+            s.member_literal_site(body)
 
     def test_same_abi_wrong_selector_refused(self):
         with self.assertRaisesRegex(ValueError, 'selector differs'):

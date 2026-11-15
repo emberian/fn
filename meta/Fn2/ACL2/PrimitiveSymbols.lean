@@ -56,7 +56,7 @@ theorem symbol_equal_correspondence :
         · simp [equalObjects, reflection.mpr same]
         · rw [← resultEq]
           decide
-      · have different := fun equal => same (reflection.mp equal)
+      · have different : left ≠ right := fun equality => same (reflection.mp equality)
         have native : nativeCall "EQUAL" [leftValue, rightValue] = some Val.nil := by
           change some (Prim.equal leftValue rightValue) = _
           simp [Prim.equal, Val.ofBool, same]

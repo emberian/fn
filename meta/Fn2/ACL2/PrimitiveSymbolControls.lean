@@ -50,6 +50,10 @@ theorem embedded_separators_remain_distinct :
       some (.sym "ACL2::COMMON-LISP::T") ∧
     canonicalTrue.value? = some Val.t := by decide
 
+#print axioms old_adapter_collision
+#print axioms repaired_presentations
+#print axioms nil_packages_remain_distinct
+#print axioms embedded_separators_remain_distinct
 #print axioms symbol_objects_injective
 #print axioms actual_equal_agrees
 end Fn2.ACL2.Translation.PrimitiveSymbolControls

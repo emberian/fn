@@ -110,7 +110,9 @@ theorem symbol_value_roundtrip {packageName name : List Nat} {encoded : String}
   cases h : symbolEncoding? packageName name with
   | none => simp [h] at represented
   | some result =>
-    simp only [h, Option.bind_some] at represented
+    simp only [h] at represented
+    change (if symbolObject? result = some (.symbol packageName name)
+      then some (Val.sym result) else none) = some (.sym encoded) at represented
     split at represented
     next faithful =>
       have same : result = encoded := by simpa using represented
@@ -144,6 +146,9 @@ theorem object_value_symbol_roundtrip {object : Object} {encoded : String}
       cases ha : a.value? <;> cases hd : d.value? <;>
         simp [Object.value?, ha, hd] at represented
 
+
+#print axioms symbol_value_roundtrip
+#print axioms object_value_symbol_roundtrip
 
 def Object.list? : Object → Option (List Object)
   | .cons a d => (Object.list? d).map (a :: ·)
