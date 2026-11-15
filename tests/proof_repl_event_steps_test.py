@@ -155,6 +155,24 @@ class EventSteps(unittest.TestCase):
         self.assertIn('fn2-cm-defreaders', heads)
         self.assertIn('defun-nx', heads)
 
+    def test_native_b3_actual_source_evidence_events(self):
+        root = Path(os.environ.get('FN_PROOF_NATIVE_SOURCE_ROOT',
+                                   Path(__file__).resolve().parents[1]))
+        heads = set()
+        for book in ['native-b3-correspondence', 'native-b3-evidence']:
+            source = root / 'books' / (book + '.lisp')
+            with self.subTest(book=book):
+                originals = [form for form in repl.forms(source.read_text())
+                             if repl.form_head(form) not in ['in-package', 'include-book', 'defpkg']]
+                heads.update(repl.form_head(form) for form in originals)
+                hoisted, body = repl.encapsulated(source.read_text(), source.parent,
+                                                  set(), 20, 2000000)
+                self.assertEqual(body, '(encapsulate ()\n' + '\n'.join(
+                    f'(with-prover-step-limit 2000000 t {repl.wrap_limit(form, 20, event=True)})'
+                    for form in originals) + '\n)')
+        self.assertTrue({'defun-nx', 'fn2-owed-discharge', 'fn2-assert-owed-teeth',
+                         'fn2-assert-square-evidence'}.issubset(heads))
+
     def test_macro_time_cap(self):
         form = '(fn2-machines-preserves example)'
         self.assertEqual(repl.per_event_steps(form, 2000000, 20),
