@@ -93,7 +93,9 @@ class Projection(unittest.TestCase):
     self.assertEqual(rw.transform_kind(k),k)
  def test_actual_covered_wait_transcript(self):
   # Execute the actual SOURCE arm's control flow, with explicit callee
-  # outcomes. This checks routing/once-only release, not callee semantics.
+  # outcomes. covered/open-WAIT is unreachable-in-composition for this
+  # actual caller under its CTL frames; this is a defensive routing check,
+  # not callee semantics or the reachable pending-READ/DATA control.
   source=arms((ROOT/'books/cns.lisp').read_text(),':arms')[':source']
   class End(Exception):pass
   def run(env,status):
