@@ -17,21 +17,21 @@
         (body (fn2-ufu-octets (coerce (fn2-ufu-crlf '("body")) 'list)))
         (wire (append (fn2-ufu-block (append header body)) '(81 85 73 84)))
         (fn2-pool (fn2-ufu-put wire rx rg fn2-pool))
-        ((mv first i mode discard copied fn2-pool)
-         (fn2-upload-feed-loop 1000 0 (len wire) 0 nil nil 0 rx rg 1 1 1 c0 g0 2 2 2
+        ((mv first i mode discard copied lines fn2-pool)
+         (fn2-upload-feed-counted 1000 0 (len wire) 0 nil nil rx rg 1 1 1 c0 g0 2 2 2
                                *fn2-upload-header-octets* t fn2-pool))
         ((mv tail-code complete) (fn2-feed-header-complete-p c0 g0 2 2 2 fn2-pool))
         (header-only (fn2-ufu-read 0 (fn2-gram-fill c0 fn2-pool) c0 g0 fn2-pool))
-        ((mv last end mode2 discard2 copied2 fn2-pool)
-         (fn2-upload-feed-loop 1000 i (len wire) mode discard nil 0 rx rg 1 1 1 c1 g1 2 2 2
+        ((mv last end mode2 discard2 copied2 lines2 fn2-pool)
+         (fn2-upload-feed-counted 1000 i (len wire) mode discard nil rx rg 1 1 1 c1 g1 2 2 2
                                *fn2-upload-body-window-bytes* nil fn2-pool))
         (body-only (fn2-ufu-read 0 (fn2-gram-fill c1 fn2-pool) c1 g1 fn2-pool)))
     (mv (and (eq rx-code :ok) (eq c0-code :ok) (eq c1-code :ok)
              (eq first :header) (eq tail-code :ok) complete
-             (= i (len header)) (= copied (len header))
+             (= i (len header)) (= copied (len header)) (= lines 2)
              (equal header-only header) (null discard)
              (eq last :terminator) (= end (- (len wire) 4))
-             (= copied2 (len body)) (equal body-only body)
+             (= copied2 (len body)) (= lines2 1) (equal body-only body)
              (equal (append header-only body-only) (append header body))
              (null discard2) (= mode2 *fn2-feed-bol*)
              (= (fn2-feed-cap c0 fn2-pool) 65536)
@@ -50,25 +50,25 @@
         (wire (append header (make-list (if headerp (+ 1 *fn2-upload-header-octets*)
                                          (+ 1 *fn2-upload-body-window-bytes*)) :initial-element 120)))
         (fn2-pool (fn2-ufu-put wire rx rg fn2-pool))
-        ((mv first i mode discard copied fn2-pool)
-         (fn2-upload-feed-loop 20000 0 (len wire) 0 nil nil 0 rx rg 1 1 1 c0 g0 2 2 2
+        ((mv first i mode discard copied lines fn2-pool)
+         (fn2-upload-feed-counted 20000 0 (len wire) 0 nil nil rx rg 1 1 1 c0 g0 2 2 2
                                *fn2-upload-header-octets* t fn2-pool))
         ((mv tail-code complete) (fn2-feed-header-complete-p c0 g0 2 2 2 fn2-pool))
-        ((mv second j mode2 discard2 copied2 fn2-pool)
-         (if headerp (mv :none i mode discard 0 fn2-pool)
-           (fn2-upload-feed-loop 20000 i (len wire) mode discard nil 0 rx rg 1 1 1 c1 g1 2 2 2
+        ((mv second j mode2 discard2 copied2 lines2 fn2-pool)
+         (if headerp (mv :none i mode discard 0 0 fn2-pool)
+           (fn2-upload-feed-counted 20000 i (len wire) mode discard nil rx rg 1 1 1 c1 g1 2 2 2
                                  *fn2-upload-body-window-bytes* nil fn2-pool))))
     (mv (and (eq rx-code :ok) (eq c0-code :ok) (eq c1-code :ok)
              (= (fn2-feed-cap c0 fn2-pool) 65536)
              (= (fn2-feed-cap c1 fn2-pool) 65536)
              (if headerp
                  (and (eq first :full) (= i *fn2-upload-header-octets*)
-                      (= copied *fn2-upload-header-octets*)
+                      (= copied *fn2-upload-header-octets*) (= lines 0)
                       (= (fn2-gram-fill c0 fn2-pool) *fn2-upload-header-octets*)
                       (eq tail-code :ok) (not complete) (eq second :none))
-               (and (eq first :header) (= i (len header)) complete
+               (and (eq first :header) (= i (len header)) (= lines 2) complete
                     (eq second :full) (= j (+ (len header) *fn2-upload-body-window-bytes*))
-                    (= copied2 *fn2-upload-body-window-bytes*)
+                    (= copied2 *fn2-upload-body-window-bytes*) (= lines2 0)
                     (= (fn2-gram-fill c0 fn2-pool) (len header))
                     (= (fn2-gram-fill c1 fn2-pool) *fn2-upload-body-window-bytes*)
                     (= (nth j wire) 120) (= mode2 *fn2-feed-mid*) (null discard2))))
