@@ -61,6 +61,23 @@
 (fn2-checkpoint-construction-preserves fn2-checkpoint-ticket-take
  (batch fn2-checkpoint-construction fn2-extents) :position 4)
 
+; The ticket wrapper temporarily changes only the freeze scalar.  Keep the
+; allocator's unconditional row frame available even after ROWS has unfolded
+; to its raw NTH accessor; TYPE/WFP hypotheses do not justify this frame.
+(local
+ (defthm fn2-checkpoint-ticket-account-raw-rows
+  (equal (nth *fn2-extents-rows*
+              (fn2-alloc-account i old-state old-reason fn2-extents))
+         (nth *fn2-extents-rows* fn2-extents))
+  :hints (("Goal" :in-theory (enable fn2-alloc-account)))))
+(local
+ (defthm fn2-checkpoint-ticket-commit-allocation-raw-rows
+  (equal (nth *fn2-extents-rows*
+              (mv-nth 1 (fn2-alloc-commit-allocation
+                         i epoch counter owner-kind owner-id fn2-extents)))
+         (nth *fn2-extents-rows* fn2-extents))
+  :hints (("Goal" :in-theory (enable fn2-alloc-commit-allocation)))))
+
 ; Existing journal installation commits its own exact ticket allocation. This
 ; call is atomic: the normal allocator primitive is reused with its generic
 ; gate locally open, and the retained gate is restored on every result. There
