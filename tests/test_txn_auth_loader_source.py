@@ -59,6 +59,19 @@ class TxnAuthLoader(unittest.TestCase):
    self.assertIn(required,text)
   for forbidden in ('fn2-post-result','fn2-run-cache-install','(phase *fn2-run-load-phase-ready*)','(phase *fn2-checkpoint-summary-phase-applied*)'):
    self.assertNotIn(forbidden,text)
+ def test_real_harvest_preserves_history_but_live_quiescence_accepts(self):
+  p=ROOT/'tests/txn-auth-loader-physical-unit.lisp';x=fn('fn2-tal-sector',p);text=p.read_text()
+  for n in ('fn2-tal-bound-read-op','fn2-sim-complete','fn2-exec-harvest','fn2-run-load-readiness-op-quiescent-p','fn2-run-load-readiness-op-row-p','fn2-test-core-snapshot'):
+   self.assertTrue(calls(x,n),n)
+  replay=calls(x,'fn2-tal-stale-harvest-op');self.assertEqual(len(replay),2)
+  self.assertEqual(replay[0][1:3],['oldop','oldgen']);self.assertEqual(replay[1][1:3],['op','gen'])
+  for required in ('(equal (fn2-run-load-ops-generation op fn2-run-load-ops) gen)',
+                   '(equal (fn2-run-load-ops-cursor op fn2-run-load-ops) c)',
+                   '(posp gen) (posp c)','(not (fn2-run-load-readiness-op-row-p op fn2-run-load-ops fn2-ops))',
+                   '(equal before-stale (fn2-test-core-snapshot fn2-core))',
+                   '(equal before-duplicate (fn2-test-core-snapshot fn2-core))','(posp reused-count)'):
+   self.assertIn(required,text)
+  self.assertNotIn('fn2-run-load-ops-put',text);self.assertNotIn('fn2-run-load-ops-set-generation',text)
  def test_real_receipt_and_selected_miss_before_owner_capture(self):
   x=fn('fn2-c-actor-tx-missp')
   for name in ('fn2-c-source-reader-current-p','fn2-succ-txns-source-receipt','fn2-c-source-successor-endpoint','fn2-run-cursors-priority'):
