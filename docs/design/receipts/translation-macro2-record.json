@@ -1,0 +1,31 @@
+{
+  "result": "PASS",
+  "scope": "exact2 local books; actual live macro positive and refusal controls, no app or served packet qualification",
+  "source_commit": "8663207f25c0743d06a667256c5340544aa51f61",
+  "run": "certify-20261115T142111Z-1430148",
+  "toolchain_identity": "8aeb1bea18968c6cd33ac633a80ebf67e4924504db112fd27eb11f16a27b2a8c",
+  "records": [
+    {
+      "book": "books/translation-validation",
+      "closure_key": "7ca95a3b1504fdb20373ddfb9fb31d7538b1272e8920536ff5f173fd6eba8c6d",
+      "cache_entry": "/home/fn/.cache/fn-certs/7ca95a3b1504fdb20373ddfb9fb31d7538b1272e8920536ff5f173fd6eba8c6d/70a7a33a9d02dcde",
+      "source_sha256": "8265dabd4fb1ed483651799a56703229aae5b2ef5631035ca0a33ff736369143",
+      "cert_sha256": "1ca7367c73f3049d4aa90b32834ffbb9df8d5ee98ebf5bd25fed01ff41e312c2",
+      "fasl_sha256": "ebe94ab293ad6bfb27cb324895655136f0e7293f3fe374a9c65dcc839ce1f35a"
+    },
+    {
+      "book": "tests/translation-event-results-unit",
+      "closure_key": "a5868deffba4bf435c11cc39f3e21c93021cc604628ec5f3a73be23937e6e821",
+      "cache_entry": "/home/fn/.cache/fn-certs/a5868deffba4bf435c11cc39f3e21c93021cc604628ec5f3a73be23937e6e821/70a7a33a9d02dcde",
+      "source_sha256": "fb5b6185d6df440ea4245aacec26430412b4bccee04185104697f2bccec51d78",
+      "cert_sha256": "cd7e2c7529f65ca3c4b38b51179c92b5719b415878f6a98a07c2652bb0397b54",
+      "fasl_sha256": "f157859098d43691834424f5d00b2e6fdb7056501cede7459ad2d78e04e75b61"
+    }
+  ],
+  "manifest_sha256": "10bac61c17cc48ab8a3107386276ef9ad33dd58da4483e5f8db86499f641b91b",
+  "record_pid": 1430138,
+  "record_runner_pid": 1430148,
+  "cleanup": "record and author/serve PIDs absent; author stop_holder0",
+  "memory_peak_bytes": 148787200,
+  "oom_events": 0
+}

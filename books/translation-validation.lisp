@@ -86,13 +86,13 @@
 (defmacro fn2-tv-check-function (entry fn)
   `(make-event
     (if (fn2-tv-matches-function ,entry ,fn (w state))
-        '(value-triple :export-matches-live-function)
+        (value '(value-triple :export-matches-live-function))
       (er soft 'fn2-tv-check-function "Export differs from the live function ~x0." ,fn))))
 
 (defmacro fn2-tv-check-manifest (manifest)
   `(make-event
     (if (equal ,manifest (fn2-tv-manifest (w state)))
-        '(value-triple :export-matches-live-assembly)
+        (value '(value-triple :export-matches-live-assembly))
       (er soft 'fn2-tv-check-manifest "Export differs from the live assembly."))))
 
 ; The arm denominator is reconstructed from the live declarations. A proposal
@@ -139,7 +139,7 @@
 (defmacro fn2-tv-check-arm-inventory (inventory)
   `(make-event
     (if (equal ,inventory (fn2-tv-arm-inventory (w state)))
-        '(value-triple :export-matches-complete-arm-inventory)
+        (value '(value-triple :export-matches-complete-arm-inventory))
       (er soft 'fn2-tv-check-arm-inventory "Arm inventory is incomplete or differs from the live world."))))
 
 (defun fn2-tv-matches-functions (entries world)
@@ -151,7 +151,7 @@
 (defmacro fn2-tv-check-functions (entries)
   `(make-event
     (if (fn2-tv-matches-functions ,entries (w state))
-        '(value-triple :all-exports-match-live-functions)
+        (value '(value-triple :all-exports-match-live-functions))
       (er soft 'fn2-tv-check-functions "At least one export differs from its live function."))))
 
 ; Source-book packing only: the transport and equality remain canonical.
@@ -186,7 +186,7 @@
 (defmacro fn2-tv-check-packed-functions (entries)
   `(make-event
     (if (fn2-tv-matches-packed-functions ,entries (w state))
-        '(value-triple :all-packed-exports-match-live-functions)
+        (value '(value-triple :all-packed-exports-match-live-functions))
       (er soft 'fn2-tv-check-packed-functions "At least one export differs from its live function."))))
 
 ; Closure is checked in the live world, not inferred from an emitter's count.
@@ -257,7 +257,7 @@
 (defmacro fn2-tv-check-served-closure (names refused)
   `(make-event
     (if (fn2-tv-served-closure-p ,names ,refused (w state))
-        '(value-triple :complete-served-export-closure)
+        (value '(value-triple :complete-served-export-closure))
       (er soft 'fn2-tv-check-served-closure "Missing served root/callee, duplicate function, or false refusal."))))
 
 ; Every durable word in the original declarations has a certificate row.
