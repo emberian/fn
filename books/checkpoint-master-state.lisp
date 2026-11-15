@@ -27,7 +27,8 @@
           :admission-refused :refused :uncertain :loan-uncertain
           :summary-authority-begin :summary-authority-copy :rebase-begin :rebase-source :rebase-consume :rebase-archive
           :teardown-transfer-begin :teardown-transfer-copy :teardown-select
-          :teardown-cold-next :teardown-cold-begin :teardown-cold-copy :teardown-cold-ack)
+          :teardown-cold-next :teardown-cold-begin :teardown-cold-copy :teardown-cold-ack
+          :teardown-owned-begin :teardown-owned-scan :teardown-owned-submit :teardown-owned-wait :teardown-owned-uncertain :teardown-owned-holding-uncertain)
  :fields ((pending :u32) (stopped :bool) (token :u60)
           (scan :u32) (highest :u60) (candidate :u32) (candidate-found :bool) (checkpoint :u60)
           (page-slot :u32) (page-gen :u60) (scratch-slot :u32) (scratch-gen :u60) (read-slot :u32) (read-gen :u60)
@@ -50,7 +51,8 @@
          (:retention-begin :storage-window :storage-window) (:retention-source :storage-window :storage-window) (:publish-start :storage-window :storage-window)
          (:publish-wait :storage-window :storage-window) (:release :storage-window :storage-window) (:release-complete :storage-window :storage-window) (:refused :storage-window :storage-window) (:uncertain :storage-window :storage-window) (:loan-uncertain :storage-window)
           (:summary-authority-begin :storage-window :storage-window) (:summary-authority-copy :storage-window :storage-window)
-          (:rebase-begin :storage-window :storage-window) (:rebase-source :storage-window :storage-window) (:rebase-consume :storage-window :storage-window) (:rebase-archive :storage-window :storage-window))
+          (:rebase-begin :storage-window :storage-window) (:rebase-source :storage-window :storage-window) (:rebase-consume :storage-window :storage-window) (:rebase-archive :storage-window :storage-window)
+         (:teardown-owned-wait :storage-window) (:teardown-owned-holding-uncertain :storage-window))
  :budget (:bytes 16384 :steps 32 :descriptors 4)
  :stops (:checkpoint :pool :bounds)
  :capacity (if (posp (fn2-b-checkpoint-capacity profile)) 1 0)
@@ -68,5 +70,6 @@
         (:admission-refused) (:refused) (:uncertain) (:loan-uncertain)
           (:summary-authority-begin) (:summary-authority-copy) (:rebase-begin) (:rebase-source) (:rebase-consume) (:rebase-archive)
           (:teardown-transfer-begin) (:teardown-transfer-copy) (:teardown-select)
-          (:teardown-cold-next) (:teardown-cold-begin) (:teardown-cold-copy) (:teardown-cold-ack))
+          (:teardown-cold-next) (:teardown-cold-begin) (:teardown-cold-copy) (:teardown-cold-ack)
+          (:teardown-owned-begin) (:teardown-owned-scan) (:teardown-owned-submit) (:teardown-owned-wait) (:teardown-owned-uncertain) (:teardown-owned-holding-uncertain))
  :observes ((:read-result)))

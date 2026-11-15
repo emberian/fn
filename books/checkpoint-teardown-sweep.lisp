@@ -31,10 +31,11 @@
 (defun fn2-checkpoint-teardown-needed (fn2-checkpoint-teardown-debt fn2-checkpoint-publication fn2-extents)
  (declare (xargs :stobjs (fn2-checkpoint-teardown-debt fn2-checkpoint-publication fn2-extents) :verify-guards nil
   :guard (and (fn2-checkpoint-teardown-debt-wfp fn2-checkpoint-teardown-debt) (fn2-checkpoint-publication-wfp fn2-checkpoint-publication) (fn2-extents-wfp fn2-extents))))
- (mv :ok (and (< 0 (fn2-checkpoint-teardown-debt-count fn2-checkpoint-teardown-debt))
+ (mv :ok (or (= (fn2-alloc-orphan-dirty fn2-extents) 1)
+              (and (< 0 (fn2-checkpoint-teardown-debt-count fn2-checkpoint-teardown-debt))
               (or (equal (fn2-checkpoint-teardown-debt-notified fn2-checkpoint-teardown-debt) 1)
                   (equal (fn2-alloc-protection-dirty fn2-extents) 1)
-                  (not (fn2-checkpoint-teardown-banks-samep fn2-checkpoint-teardown-debt fn2-checkpoint-publication))))))
+                  (not (fn2-checkpoint-teardown-banks-samep fn2-checkpoint-teardown-debt fn2-checkpoint-publication)))))))
 (defcost fn2-checkpoint-teardown-needed-op :child fn2-checkpoint-teardown-needed :answers (:ok)
  :doc "Constant-work notification from actual complete debt transfer, bank exclusion tuple change or actual allocator protector-count mutation.")
 
