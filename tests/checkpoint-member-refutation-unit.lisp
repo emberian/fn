@@ -1,6 +1,7 @@
 ; Registry bridge only: actual counterexample and positive fixture remain unchanged.
 (in-package "ACL2")
 (include-book "checkpoint-member-readonly-removal")
+(include-book "../books/assurance-completion")
 
 (defun-nx fn2-checkpoint-member-refutation-arguments ()
  (let* ((fn2-checkpoints (fn2-checkpoints-init 1 (create-fn2-checkpoints)))
@@ -51,3 +52,15 @@
 (assert-event
  (member-eq 'fn2-checkpoint-installation-pack-member-fields-type
             (fn2-owed-names (w state))))
+
+; Refutation is an established failure of the original, not a green completion.
+(assert-event
+ (let* ((name 'fn2-checkpoint-installation-pack-member-fields-type)
+        (row (fn2-decl-row (list :square name) (w state)))
+        (problems (fn2-assurance-row-problems name nil (w state))))
+  (and (member-equal (list name :unproved) problems)
+       (member-equal
+        (list name :refuted-original :candidate-replacement-link-unverified
+              'fn2-checkpoint-installation-pack-member-fields-type-under-guard)
+        problems)
+       (equal (nth 2 (fn2-square-counts (list (cons name row)))) 0))))
