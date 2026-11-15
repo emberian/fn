@@ -1,7 +1,7 @@
 ; Connected source fixture: actual image create -> ordinary prefix -> actual
 ; maintenance publication -> ordinary suffix -> simulated process death ->
 ; selected cold boot -> held final epoch Fence -> actual completion.
-; UNEXECUTED. In particular the current post-Fence physical-open join is owed.
+; UNEXECUTED. Assertions below target the actual final epoch/resource join.
 ; Catalog entry is test-only, parent-authorized: activation remains NIL and
 ; this makes no scheduler-reachability claim for automatic maintenance.
 (in-package "ACL2")
@@ -120,14 +120,26 @@
             (fn2-pool-workspace-code root-slot root-gen *fn2-boot-kind* boot owner-generation fn2-pool)
             (fn2-checkpoint-payload-rebindablep fn2-checkpoint-payload))
         (mv phase begun epoch window rebindable)))
-      (open (and (= phase 0) (= begun 1) (< closed-epoch epoch) (not (eq window :ok)) rebindable)))
-  (mv (list posted finished open prefix suffix (list phase begun epoch window rebindable)) fn2-core fn2-sim fn2-own)))
+      (open (if (and (= phase 0) (= begun 1) (< closed-epoch epoch)
+                     (member-eq window '(:stale :state)) rebindable) t nil)))
+  (mv (list posted finished open prefix suffix (list phase begun epoch window rebindable closed-epoch)) fn2-core fn2-sim fn2-own)))
 
 (defun fn2-ccp-test (fault)
  (declare (xargs :verify-guards nil))
  (fn2-run-with-local (fn2-core fn2-sim fn2-own)
   (fn2-ccp-body fault fn2-core fn2-sim fn2-own)))
-; Intentionally no assert-event until the actual post-Fence open join lands.
-; Gate entry will require :posted/:ready/open plus exact phase0/begun1/newer
-; epoch and settled root/payload for NONE. FLUSH-IO must be :posted/:failed
-; with phase4/begun0 (not merely NOT OPEN), each from a fresh producer.
+; Each assertion constructs its own image, publication, suffix and crash. No
+; previous synthetic terminal fixture or saved READY core supplies authority.
+(assert-event
+ (let* ((result (fn2-ccp-test *fn2-fault-none*)) (facts (nth 5 result)))
+  (and (eq (car result) :posted) (eq (cadr result) :ready) (eq (nth 2 result) t)
+       (posp (nth 3 result)) (< (+ 1 (nth 3 result)) (nth 4 result))
+       (= (len facts) 6) (= (nth 0 facts) 0) (= (nth 1 facts) 1)
+       (< (nth 5 facts) (nth 2 facts)) (member-eq (nth 3 facts) '(:stale :state))
+       (nth 4 facts))))
+(assert-event
+ (let* ((result (fn2-ccp-test *fn2-fault-flush-io*)) (facts (nth 5 result)))
+  (and (eq (car result) :posted) (eq (cadr result) :failed) (not (nth 2 result))
+       (posp (nth 3 result)) (< (+ 1 (nth 3 result)) (nth 4 result))
+       (= (len facts) 6) (= (nth 0 facts) 4) (= (nth 1 facts) 0)
+       (= (nth 2 facts) (nth 5 facts)) (eq (nth 3 facts) :ok) (nth 4 facts))))
