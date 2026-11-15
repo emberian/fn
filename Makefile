@@ -82,6 +82,7 @@ ACL2_BOOKS = \
   books/queue-model \
   books/reference-state-model \
   books/reference-effect-semantics \
+  books/reference-effect-lowering \
   books/cns-release-refinement \
   books/core-init-projections \
   books/machine-reservations-entry \
@@ -447,6 +448,7 @@ ACL2_BOOKS = \
   tests/query-reference-unit \
   tests/query-owner-drain-unit \
   tests/query-two-wake-unit \
+  tests/reference-effect-lowering-unit \
   tests/enqueue-cost-unit \
   tests/trace-events-unit \
   tests/peer-replay-unit \
