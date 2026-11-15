@@ -7,10 +7,28 @@ must be derived from that store and the actual served call/attachment graph.
 
 ## Current integration frontier — 2026-11-15 UTC
 
-Current integration includes matcher DP traversal `b88e96190`, retirement dispatch, actual-type
-codec fixtures, failed-Send classification, consumed-input accounting and farm
-Git metadata protection. No current whole-system image, full host gate,
-canonical served certificate, or completed assurance claim exists.
+Current integration includes qualified held child release and generic compiler
+record890585 (29 books, root0bcf7ee29), device loan bindings record876717
+(12 books), and the earlier matcher/codec/pool scopes below. Root059ec5264 adds
+scoped CNS artifact generation from one immutable packet; its17 source controls
+pass, but a fresh served packet and its ACL2/Lean checks remain outstanding.
+No current whole-system image, full host gate, canonical served certificate, or
+completed assurance claim exists.
+
+Current executable work is the stable24 runtime frontier, checkpoint/member31
+book completion, and credit11 API contracts. Actual pinned-I/O extraction has a
+34-book gate conditional on current qualified parents; its66-book reader fixture
+and larger cold/native compositions follow. The columns carrier-hint default fix
+f2a1a1233 and layout proof-cost donor e8885ffdb are held for a shared convergence
+that removes temporary consumer hints and requalifies affected current closures.
+
+Two substantive obligations remain distinct from proof automation. The pending
+held-release independent model omits actual credited-input refusal ordering;
+Q1 must cover those inputs under its original hypotheses and retain meaningful
+independent behavior controls. Recovery's consumed-prefix predicate alone does
+not establish uniqueness of live allocation epoch/identity pairs in arbitrary
+state. The owner is tracing producer provenance and preparing a concrete removal
+witness; adding an unestablished premise does not close the served invariant.
 
 The public matcher now has unconditional correspondence to the independent
 language predicate, including original-input domain checks before reversal,
@@ -54,9 +72,9 @@ actual envelope-step validation. Ordered Take/submission correspondence,
 logical Write-loan comparison and complete native replay remain separate;
 matching job identities as an unordered set is insufficient.
 
-Selected cold recovery has two concrete implementation blockers under the
+Selected cold recovery has two source repairs awaiting qualification under the
 reclamation owner. Recovery finishes frozen, but ordinary epoch initialization
-refuses that state: the private post-Fence finalization must require complete
+refuses that state: the private post-Fence finalization requires complete
 bank-protection reconstruction and orphan classification. In addition, eagerly
 adopting all suffix physical candidates can reject legitimate extent reuse before
 its preceding RELEASE is replayed. Directory/read provenance must be installed
