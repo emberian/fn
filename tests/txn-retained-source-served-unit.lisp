@@ -35,6 +35,7 @@
       (original (fn2-uslt-read 32 slot gen off id ugen fn2-core))
       (txid (fn2-machine-kind-base *fn2-txn-kind* fn2-core))
       (old-link-gen (fn2-txn-row-upload-gen txid fn2-core))
+      (old-page-gen (fn2-upload-row-lgen id fn2-core))
       (valid (and (eq sealed :sealed) (eq code :ok)
                   (eq (fn2-upload-snapshot-read-code id fn2-core) :ok)
                   (= ugen old-link-gen)
@@ -43,11 +44,18 @@
                   (= (fn2-upload-row-stored-hashed id fn2-core)
                      (+ (fn2-upload-row-ilen id fn2-core)
                         (fn2-upload-row-hashed id fn2-core)))))
+      ;; The actual upload row still has its page lease; only its handle
+      ;; generation is made stale for this one negative ref check.
+      (fn2-core (fn2-upload-put-core id (lgen (+ 1 old-page-gen)) fn2-core))
+      ((mv stale-page & & &) (fn2-txn-source-digest-ref 0 fn2-core))
+      (fn2-core (fn2-upload-put-core id (lgen old-page-gen) fn2-core))
+      ((mv restored & & &) (fn2-txn-source-digest-ref 0 fn2-core))
       ;; Remove only the generation match from the otherwise real sealed row.
       (fn2-core (fn2-txn-put-core txid (upload-gen (+ 1 old-link-gen)) fn2-core))
       ((mv stale & & &) (fn2-txn-source-digest-ref 0 fn2-core)))
   (mv (and (eq epoch :ok) (eq source-cut :cut) (eq premature :bounds)
-           valid (eq stale :bounds)
+           valid (eq stale-page :bounds) (eq restored :ok) (eq stale :bounds)
+           (= (fn2-upload-row-lgen id fn2-core) old-page-gen)
            (= (fn2-txn-row-upload-gen txid fn2-core) (+ 1 old-link-gen))
            (= (fn2-machine-generation id fn2-core) ugen)
            (= (fn2-upload-row-lease id fn2-core) *fn2-upload-lease-held*)
