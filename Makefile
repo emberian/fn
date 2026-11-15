@@ -141,6 +141,7 @@ ACL2_BOOKS = \
   books/format-physical \
   books/format-storage \
   books/grammar \
+  books/host-result \
   books/host-boundary \
   books/host-ops \
   books/identity \
