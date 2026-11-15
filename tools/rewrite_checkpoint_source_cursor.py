@@ -6,6 +6,8 @@ from pathlib import Path
 import argparse
 from lisp_rewrite import parse, match, write
 PATTERNS=(
+ ('(< 0 (fn2-run-loads-rows fn2-run-loads))','(<= 2 (fn2-run-loads-rows fn2-run-loads))'),
+ ('(< 0 (fn2-run-cursors-rows fn2-run-cursors))','(<= 2 (fn2-run-cursors-rows fn2-run-cursors))'),
  ('(- (fn2-run-loads-rows fn2-run-loads) 1)','(fn2-b-checkpoint-source-cursor-from-rows (fn2-run-loads-rows fn2-run-loads))'),
  ('(- (fn2-run-cursors-rows fn2-run-cursors) 1)','(fn2-b-checkpoint-source-cursor-from-rows (fn2-run-cursors-rows fn2-run-cursors))'))
 def transform(text,fixture=False):
