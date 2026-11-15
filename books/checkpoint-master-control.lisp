@@ -37,7 +37,7 @@
 
 (defcost fn2-checkpoint-plan-begin-op :child fn2-checkpoint-plan-begin :answers t
  :tables (fn2-core-checkpoint-plan fn2-core-csnapshot fn2-core-checkpoint-build fn2-core-checkpoints
-          fn2-core-checkpoint-refs fn2-core-checkpoint-construction fn2-core-extents fn2-core-checkpoint-plan-marks)
+          fn2-core-checkpoint-refs fn2-core-checkpoint-construction fn2-core-extents fn2-core-checkpoint-plan-marks fn2-core-checkpoint-planning)
  :doc "Start counting the actual completed source roots and retained construction set.")
 (defcost fn2-checkpoint-plan-count-op :child fn2-checkpoint-plan-count-step :answers t
  :tables (fn2-core-checkpoint-plan fn2-core-csnapshot fn2-core-checkpoint-build fn2-core-checkpoint-refs
@@ -47,7 +47,7 @@
  :tables (fn2-core-checkpoint-plan fn2-core-csnapshot fn2-core-extents)
  :doc "Advance one monotone ticket/arena fixedpoint iteration under actual allocator capacity.")
 (defcost fn2-checkpoint-plan-reserve-op :child fn2-checkpoint-plan-reserve-step :answers t
- :tables (fn2-core-checkpoint-plan fn2-core-csnapshot fn2-core-checkpoint-construction fn2-core-extents fn2-core-control)
+ :tables (fn2-core-checkpoint-plan fn2-core-csnapshot fn2-core-checkpoint-construction fn2-core-extents fn2-core-control fn2-core-checkpoint-planning fn2-core-checkpoint-recipe fn2-core-checkpoint-recipe-order)
  :doc "Reserve one derived map, arena or journal ticket extent; retained prefixes survive refusal.")
 (defcost fn2-checkpoint-plan-validate-op :child fn2-checkpoint-plan-validate-step :answers t
  :tables (fn2-core-checkpoint-plan fn2-core-csnapshot fn2-core-checkpoint-build fn2-core-checkpoint-refs

@@ -25,7 +25,8 @@
  (if (not (and (fn2-checkpoint-planning-cancel-ownerp c token kind owner gen fn2-checkpoint-planning fn2-extents)
                (member (fn2-checkpoint-planning-phase 0 fn2-checkpoint-planning)
                 (list *fn2-checkpoint-planning-phase-clear* *fn2-checkpoint-planning-phase-preview*
-                      *fn2-checkpoint-planning-phase-materialize* *fn2-checkpoint-planning-phase-uncertain*))))
+                      *fn2-checkpoint-planning-phase-materialize* *fn2-checkpoint-planning-phase-size* *fn2-checkpoint-planning-phase-append*
+                      *fn2-checkpoint-planning-phase-planned* *fn2-checkpoint-planning-phase-uncertain*))))
   (mv :owner fn2-checkpoint-planning)
   (let ((fn2-checkpoint-planning (fn2-checkpoint-planning-put 0 (phase *fn2-checkpoint-planning-phase-cancel*) (abort-row 0))))
    (mv :ok fn2-checkpoint-planning))))
