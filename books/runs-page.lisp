@@ -62,7 +62,8 @@
   (mv-let (code fn2-pool) (fn2-pool-write slot gen pos 0 okind oslot ogen fn2-pool)
    (if (eq code :ok) (fn2-run-zero (- n 1) slot gen (+ 1 pos) okind oslot ogen fn2-pool)
     (mv code fn2-pool)))))
-(fn2-pool-preserves fn2-run-zero (n slot gen pos okind oslot ogen fn2-pool) :position 1)
+(fn2-pool-preserves fn2-run-zero (n slot gen pos okind oslot ogen fn2-pool) :position 1
+ :hints ((fn2-columns-guard-hint '(fn2-pool) nil nil world)))
 
 ; Open a page in a fresh C-owned workspace: reset it, zero the header area and
 ; the reserved C header region. Entries start at *fn2-run-entries-base*.
@@ -166,9 +167,11 @@
        ((unless (eq code :ok)) (mv code fn2-fields fn2-pool)))
    (fn2-run-write-restarts (- k 1) (+ 1 j) w cursor scratch slot gen okind oslot ogen fn2-run-restarts fn2-fields fn2-pool))))
 (fn2-fields-preserves fn2-run-write-restarts (k j w cursor scratch slot gen okind oslot ogen fn2-run-restarts fn2-fields fn2-pool)
- :position 1 :disable nil :hyps ((fn2-fieldsp fn2-fields) (fn2-fields-wfp fn2-fields) (fn2-run-restartsp fn2-run-restarts) (fn2-run-restarts-wfp fn2-run-restarts) (natp scratch) (< scratch (fn2-fields-rows fn2-fields))))
+ :position 1 :disable nil :hyps ((fn2-fieldsp fn2-fields) (fn2-fields-wfp fn2-fields) (fn2-run-restartsp fn2-run-restarts) (fn2-run-restarts-wfp fn2-run-restarts) (natp scratch) (< scratch (fn2-fields-rows fn2-fields)))
+ :hints ((fn2-columns-guard-hint '(fn2-fields) nil nil world)))
 (fn2-pool-preserves fn2-run-write-restarts (k j w cursor scratch slot gen okind oslot ogen fn2-run-restarts fn2-fields fn2-pool)
- :position 2 :prefix "-POOL-PRESERVES")
+ :position 2 :prefix "-POOL-PRESERVES"
+ :hints ((fn2-columns-guard-hint '(fn2-pool) nil nil world)))
 
 ; Closing: the restart directory, then zeros to the page end, at most BUDGET
 ; bytes per call. POS counts bytes written after the last entry.
@@ -226,22 +229,31 @@
   (mv-let (code fn2-run-writers) (fn2-run-close w fn2-run-writers)
    (mv (if (eq code :ok) :more code) fn2-run-writers))))
 (fn2-run-writers-preserves fn2-run-close-full (w fn2-run-writers) :position 1 :raw-rows t
- :hyps ((fn2-run-writersp fn2-run-writers) (fn2-run-writers-wfp fn2-run-writers) (natp w) (< w (fn2-run-writers-rows fn2-run-writers))))
+ :hyps ((fn2-run-writersp fn2-run-writers) (fn2-run-writers-wfp fn2-run-writers) (natp w) (< w (fn2-run-writers-rows fn2-run-writers)))
+ :hints ((fn2-columns-guard-hint '(fn2-run-writers) nil nil world)))
 (fn2-run-writers-preserves fn2-run-close (w fn2-run-writers) :position 1 :raw-rows t
- :hyps ((fn2-run-writersp fn2-run-writers) (fn2-run-writers-wfp fn2-run-writers) (natp w) (< w (fn2-run-writers-rows fn2-run-writers))))
+ :hyps ((fn2-run-writersp fn2-run-writers) (fn2-run-writers-wfp fn2-run-writers) (natp w) (< w (fn2-run-writers-rows fn2-run-writers)))
+ :hints ((fn2-columns-guard-hint '(fn2-run-writers) nil nil world)))
 (fn2-run-writers-preserves fn2-run-open (w slot gen schema version level run ordinal page-kind unit epoch counter history incarnation okind oslot ogen fields limit fn2-run-writers fn2-pool) :position 1 :raw-rows t :disable nil
- :hyps ((fn2-run-writersp fn2-run-writers) (fn2-run-writers-wfp fn2-run-writers) (natp w) (< w (fn2-run-writers-rows fn2-run-writers))))
-(fn2-pool-preserves fn2-run-open (w slot gen schema version level run ordinal page-kind unit epoch counter history incarnation okind oslot ogen fields limit fn2-run-writers fn2-pool) :position 2 :prefix "-POOL-PRESERVES")
+ :hyps ((fn2-run-writersp fn2-run-writers) (fn2-run-writers-wfp fn2-run-writers) (natp w) (< w (fn2-run-writers-rows fn2-run-writers)))
+ :hints ((fn2-columns-guard-hint '(fn2-run-writers) nil nil world)))
+(fn2-pool-preserves fn2-run-open (w slot gen schema version level run ordinal page-kind unit epoch counter history incarnation okind oslot ogen fields limit fn2-run-writers fn2-pool) :position 2 :prefix "-POOL-PRESERVES"
+ :hints ((fn2-columns-guard-hint '(fn2-pool) nil nil world)))
 (fn2-run-writers-preserves fn2-run-note-restart (w fn2-run-writers fn2-run-restarts) :position 1 :raw-rows t :disable nil
- :hyps ((fn2-run-writersp fn2-run-writers) (fn2-run-writers-wfp fn2-run-writers) (natp w) (< w (fn2-run-writers-rows fn2-run-writers))))
+ :hyps ((fn2-run-writersp fn2-run-writers) (fn2-run-writers-wfp fn2-run-writers) (natp w) (< w (fn2-run-writers-rows fn2-run-writers)))
+ :hints ((fn2-columns-guard-hint '(fn2-run-writers) nil nil world)))
 (fn2-run-restarts-preserves fn2-run-note-restart (w fn2-run-writers fn2-run-restarts) :position 2 :prefix "-RESTARTS-PRESERVES" :raw-rows t
  :hyps ((fn2-run-restartsp fn2-run-restarts) (fn2-run-restarts-wfp fn2-run-restarts) (fn2-run-writersp fn2-run-writers) (fn2-run-writers-wfp fn2-run-writers) (natp w) (< w (fn2-run-writers-rows fn2-run-writers))
-        (<= (* (+ 1 w) *fn2-run-restart-capacity*) (fn2-run-restarts-rows fn2-run-restarts))))
+        (<= (* (+ 1 w) *fn2-run-restart-capacity*) (fn2-run-restarts-rows fn2-run-restarts)))
+ :hints ((fn2-columns-guard-hint '(fn2-run-restarts) nil nil world)))
 (fn2-run-writers-preserves fn2-run-close-step (w budget fn2-run-writers fn2-run-restarts fn2-fields fn2-pool) :position 1 :raw-rows t :disable nil
- :hyps ((fn2-run-writersp fn2-run-writers) (fn2-run-restartsp fn2-run-restarts) (fn2-run-writerp w fn2-run-writers fn2-run-restarts fn2-fields)))
+ :hyps ((fn2-run-writersp fn2-run-writers) (fn2-run-restartsp fn2-run-restarts) (fn2-run-writerp w fn2-run-writers fn2-run-restarts fn2-fields))
+ :hints ((fn2-columns-guard-hint '(fn2-run-writers) nil nil world)))
 (fn2-fields-preserves fn2-run-close-step (w budget fn2-run-writers fn2-run-restarts fn2-fields fn2-pool) :position 2 :prefix "-FIELDS-PRESERVES" :disable nil
- :hyps ((fn2-fieldsp fn2-fields) (fn2-run-writersp fn2-run-writers) (fn2-run-restartsp fn2-run-restarts) (fn2-run-writerp w fn2-run-writers fn2-run-restarts fn2-fields)))
-(fn2-pool-preserves fn2-run-close-step (w budget fn2-run-writers fn2-run-restarts fn2-fields fn2-pool) :position 3 :prefix "-POOL-PRESERVES")
+ :hyps ((fn2-fieldsp fn2-fields) (fn2-run-writersp fn2-run-writers) (fn2-run-restartsp fn2-run-restarts) (fn2-run-writerp w fn2-run-writers fn2-run-restarts fn2-fields))
+ :hints ((fn2-columns-guard-hint '(fn2-fields) nil nil world)))
+(fn2-pool-preserves fn2-run-close-step (w budget fn2-run-writers fn2-run-restarts fn2-fields fn2-pool) :position 3 :prefix "-POOL-PRESERVES"
+ :hints ((fn2-columns-guard-hint '(fn2-pool) nil nil world)))
 
 ; Heading: B's page header at 0 and C's run-page header at the header area,
 ; both through the generated encoders. Field rows: B's at BASE, C's after.
@@ -281,13 +293,16 @@
   (mv :ok fn2-fields fn2-pool)))
 (fn2-fields-preserves fn2-run-head-b (w b fn2-run-writers fn2-fields fn2-pool) :position 1 :disable nil
  :hyps ((fn2-fieldsp fn2-fields) (fn2-fields-wfp fn2-fields) (fn2-run-writersp fn2-run-writers) (fn2-run-writers-wfp fn2-run-writers)
-        (natp w) (< w (fn2-run-writers-rows fn2-run-writers))))
-(fn2-pool-preserves fn2-run-head-b (w b fn2-run-writers fn2-fields fn2-pool) :position 2 :prefix "-POOL-PRESERVES")
+        (natp w) (< w (fn2-run-writers-rows fn2-run-writers)))
+ :hints ((fn2-columns-guard-hint '(fn2-fields) nil nil world)))
+(fn2-pool-preserves fn2-run-head-b (w b fn2-run-writers fn2-fields fn2-pool) :position 2 :prefix "-POOL-PRESERVES"
+ :hints ((fn2-columns-guard-hint '(fn2-pool) nil nil world)))
 (in-theory (disable fn2-run-head-b))
 (defun fn2-run-head (w fn2-run-writers fn2-run-restarts fn2-fields fn2-pool)
  (declare (ignore fn2-run-restarts))
  (declare (xargs :stobjs (fn2-run-writers fn2-run-restarts fn2-fields fn2-pool)
-  :guard (and (fn2-run-writerp w fn2-run-writers fn2-run-restarts fn2-fields) (fn2-pool-wfp fn2-pool))))
+  :guard (and (fn2-run-writerp w fn2-run-writers fn2-run-restarts fn2-fields) (fn2-pool-wfp fn2-pool))
+  :guard-hints ((fn2-columns-guard-hint '(fn2-fields) nil nil world))))
  (b* (((unless (equal (fn2-run-writers-phase w fn2-run-writers) *fn2-run-writer-phase-heading*))
        (mv :state fn2-run-writers fn2-fields fn2-pool))
       (slot (fn2-run-writers-slot w fn2-run-writers)) (gen (fn2-run-writers-gen w fn2-run-writers))
@@ -310,10 +325,13 @@
       (fn2-run-writers (fn2-run-writers-set-phase w *fn2-run-writer-phase-sealing* fn2-run-writers)))
   (mv :ok fn2-run-writers fn2-fields fn2-pool)))
 (fn2-run-writers-preserves fn2-run-head (w fn2-run-writers fn2-run-restarts fn2-fields fn2-pool) :position 1 :raw-rows t :disable nil
- :hyps ((fn2-run-writersp fn2-run-writers) (fn2-run-writerp w fn2-run-writers fn2-run-restarts fn2-fields)))
+ :hyps ((fn2-run-writersp fn2-run-writers) (fn2-run-writerp w fn2-run-writers fn2-run-restarts fn2-fields))
+ :hints ((fn2-columns-guard-hint '(fn2-run-writers) nil nil world)))
 (fn2-fields-preserves fn2-run-head (w fn2-run-writers fn2-run-restarts fn2-fields fn2-pool) :position 2 :prefix "-FIELDS-PRESERVES" :disable nil
- :hyps ((fn2-fieldsp fn2-fields) (fn2-run-writersp fn2-run-writers) (fn2-run-writerp w fn2-run-writers fn2-run-restarts fn2-fields)))
-(fn2-pool-preserves fn2-run-head (w fn2-run-writers fn2-run-restarts fn2-fields fn2-pool) :position 3 :prefix "-POOL-PRESERVES")
+ :hyps ((fn2-fieldsp fn2-fields) (fn2-run-writersp fn2-run-writers) (fn2-run-writerp w fn2-run-writers fn2-run-restarts fn2-fields))
+ :hints ((fn2-columns-guard-hint '(fn2-fields) nil nil world)))
+(fn2-pool-preserves fn2-run-head (w fn2-run-writers fn2-run-restarts fn2-fields fn2-pool) :position 3 :prefix "-POOL-PRESERVES"
+ :hints ((fn2-columns-guard-hint '(fn2-pool) nil nil world)))
 
 ; Sealing: B's page sealer writes the parent-held hash into digest row HROW.
 ; The expected context is the writer's own identity, set once when the
@@ -339,7 +357,8 @@
  :hyps ((fn2-fc-contextp fn2-fc-context) (fn2-fc-context-wfp fn2-fc-context) (fn2-run-writersp fn2-run-writers)
         (fn2-run-writers-wfp fn2-run-writers) (natp w) (< w (fn2-run-writers-rows fn2-run-writers))
         (natp row) (< row (fn2-fc-context-rows fn2-fc-context))
-        (< (fn2-digest-slot row *fn2-fc-previous-seal*) 4294967296) (unsigned-byte-p 32 hrow)))
+        (< (fn2-digest-slot row *fn2-fc-previous-seal*) 4294967296) (unsigned-byte-p 32 hrow))
+ :hints ((fn2-columns-guard-hint '(fn2-fc-context) nil nil world)))
 
 ; B's shape lemmas are stated over the rows accessors; keep them folded.
 (local (in-theory (disable fn2-digests-rows fn2-fc-rows fn2-fc-context-rows fn2-b3-rows fn2-fields-rows)))
@@ -374,7 +393,13 @@
       (fn2-run-writers (if (eq code :ok) (fn2-run-writers-set-phase w *fn2-run-writer-phase-sealed* fn2-run-writers)
                          fn2-run-writers)))
   (mv code fn2-run-writers fn2-fc fn2-b3 fn2-fields fn2-pool fn2-digests)))
-(fn2-fc-shape fn2-run-seal-step-shape
+(encapsulate ()
+ (local (in-theory (disable fn2-pool-rows fn2-fields-rows fn2-run-writers-rows
+                            fn2-fc-rows fn2-b3-rows fn2-digests-rows
+                            fn2-run-writers-fields fn2-fc-context-rows
+                            fn2-fc-context-hash fn2-fc-context-geometry
+                            fn2-fc-context-previous-seal)))
+ (fn2-fc-shape fn2-run-seal-step-shape
  (fn2-run-seal-step w row hrow budget fn2-run-writers fn2-fc fn2-fc-context fn2-b3 fn2-fields fn2-pool fn2-digests)
  (and (fn2-run-writersp fn2-run-writers) (fn2-fcp fn2-fc) (fn2-fc-contextp fn2-fc-context) (fn2-b3p fn2-b3)
       (fn2-fieldsp fn2-fields) (fn2-poolp fn2-pool) (fn2-digestsp fn2-digests)
@@ -384,6 +409,7 @@
       (fn2-fields-wfp fn2-fields) (fn2-pool-wfp fn2-pool) (fn2-digests-wfp fn2-digests)
       (fn2-b3-wfp fn2-b3) (unsigned-byte-p 32 hrow) (natp budget))
  ((fn2-run-writers 1) (fn2-fc 2) (fn2-b3 3) (fn2-fields 4) (fn2-pool 5) (fn2-digests 6)))
+)
 (in-theory (disable fn2-run-seal-step fn2-run-head fn2-run-close-step fn2-run-open fn2-run-note-restart))
 
 ; Copy field row FROM to TO (value, reference, status).
@@ -397,7 +423,8 @@
   (fn2-layout-store to v rs rg ro rl st fn2-fields)))
 (fn2-fields-preserves fn2-run-copy-row (from to fn2-fields)
  :hyps ((fn2-fieldsp fn2-fields) (fn2-fields-wfp fn2-fields) (natp from) (natp to)
-        (< from (fn2-fields-rows fn2-fields)) (< to (fn2-fields-rows fn2-fields))))
+        (< from (fn2-fields-rows fn2-fields)) (< to (fn2-fields-rows fn2-fields)))
+ :hints ((fn2-columns-guard-hint '(fn2-fields) nil nil world)))
 
 ; Reader. A page is read only after B's checker accepted it under its
 ; parent-held hash; these checks name malformed internal structure anyway.
@@ -430,7 +457,8 @@
          (mv :format fn2-fields))
         (t (mv :ok fn2-fields)))))
 (fn2-fields-preserves fn2-run-read-header (slot gen base okind oslot ogen fn2-fields fn2-pool) :position 1
- :hyps ((fn2-fieldsp fn2-fields) (fn2-run-readerp base fn2-fields)))
+ :hyps ((fn2-fieldsp fn2-fields) (fn2-run-readerp base fn2-fields))
+ :hints ((fn2-columns-guard-hint '(fn2-fields) nil nil world)))
 (defun fn2-run-header-value (base field fn2-fields)
  (declare (xargs :stobjs fn2-fields :guard (and (fn2-run-readerp base fn2-fields) (natp field) (< field *fn2-run-reader-restart*))))
  (nfix (fn2-fields-value (+ base field) fn2-fields)))
@@ -454,7 +482,8 @@
       (off (nfix (fn2-fields-value r fn2-fields))))
   (if (and (<= *fn2-run-entries-base* off) (< off dir)) (mv :ok off fn2-fields) (mv :format 0 fn2-fields))))
 (fn2-fields-preserves fn2-run-restart-offset (j slot gen base okind oslot ogen fn2-fields fn2-pool) :position 2
- :hyps ((fn2-fieldsp fn2-fields) (fn2-run-readerp base fn2-fields)))
+ :hyps ((fn2-fieldsp fn2-fields) (fn2-run-readerp base fn2-fields))
+ :hints ((fn2-columns-guard-hint '(fn2-fields) nil nil world)))
 
 ; A key's octet fields are at most this long, so one key comparison stays
 ; inside a run's 4096-byte quantum.
@@ -515,7 +544,8 @@
    (let ((fn2-run-writers (fn2-run-writers-set-phase w *fn2-run-writer-phase-failed* fn2-run-writers)))
     (mv (if (eq code :ok) :bounds code) fn2-run-writers)))))
 (fn2-run-writers-preserves fn2-run-add-commit (w code end fn2-run-writers) :position 1 :raw-rows t
- :hyps ((fn2-run-writersp fn2-run-writers) (fn2-run-writers-wfp fn2-run-writers) (natp w) (< w (fn2-run-writers-rows fn2-run-writers))))
+ :hyps ((fn2-run-writersp fn2-run-writers) (fn2-run-writers-wfp fn2-run-writers) (natp w) (< w (fn2-run-writers-rows fn2-run-writers)))
+ :hints ((fn2-columns-guard-hint '(fn2-run-writers) nil nil world)))
 (in-theory (disable fn2-run-roomp))
 (defthm fn2-run-restart-offset-natp
  (natp (mv-nth 1 (fn2-run-restart-offset j slot gen base okind oslot ogen fn2-fields fn2-pool)))
