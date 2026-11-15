@@ -7,10 +7,62 @@ must be derived from that store and the actual served call/attachment graph.
 
 ## Current integration frontier — 2026-11-15 UTC
 
-Current integration includes matcher DP traversal `b88e96190`, retirement dispatch, actual-type
-codec fixtures, failed-Send classification, consumed-input accounting and farm
-Git metadata protection. No current whole-system image, full host gate,
-canonical served certificate, or completed assurance claim exists.
+Current integration includes qualified held child release and generic compiler
+record890585 (29 books, root0bcf7ee29), device loan bindings record876717
+(12 books), and the earlier matcher/codec/pool scopes below. Root059ec5264 adds
+scoped CNS artifact generation from one immutable packet; its17 source controls
+pass, but a fresh served packet and its ACL2/Lean checks remain outstanding.
+No current whole-system image, full host gate, canonical served certificate, or
+completed assurance claim exists.
+
+Grouped reference-effect generation is now qualified at exact30 record939931
+(27 reused, three new;6.187s); all30 composed source hashes match before/after.
+Actual emitted mutable, readonly and two-child fixture programs admit and execute
+with all scalar results, fixture cells and FIFO checked. Logical world metadata
+binds recognizer ownership and ABI. This does not discharge generated
+WHOLE-RESULT obligations or qualify the actual IdentityDecide/CNS callbacks;
+those consumers and full selection/leaf/reuse composition remain next.
+
+The stable24 runtime frontier and credit11 API/primitive-control records now pass
+(18.950s and5.383s respectively); root verified all current source hashes.
+Credit kind-zero repair now supersedes the credit API record: exact11 record
+928116 passes in5.73s (nine reused, two new), with all11 composed source hashes
+matching before/after. Begin and owner checks accept the actual zero-based
+machine kind while retaining positive generation/nonce and exact provenance.
+Controls execute configure/begin/reserve/end/return and unchanged-frame refusal
+for unbound ownership and zero generation. This qualifies primitive credit
+behavior, not actor admission, redemption, or end-to-end progress.
+Checkpoint/member typed-readonly contract replacement remains active. The actual
+pinned-I/O extraction now passes exact34 record935930 (33 reused, one new;7.466s).
+All34 composed source hashes match; ten original production forms move unchanged
+into storage-block-io, and machines-b imports that implementation. Five source
+identity/registry controls pass. B registry composition, the66-book actual reader
+fixture, and larger cold/native executions remain outstanding. Native digest-carrier
+evidence separately passes exact19 record936479 (17 reused, two new;3.019s),
+with all19 current hashes matched. Its whole-effect theorem is conditional on the
+explicit native observation assumption; it is not native execution or a C/crypto proof. The columns carrier-hint default fix
+f2a1a1233 and layout proof-cost donor e8885ffdb are held for a shared convergence
+that removes temporary consumer hints and requalifies affected current closures.
+
+Two substantive obligations remain distinct from proof automation. The pending
+held-release independent model omits actual credited-input refusal ordering;
+Q1 source candidate8b1f165ba covers those inputs under its original hypotheses,
+including sticky stops, query preflight and a completed workspace return before
+namespace refusal. Its actual-callback controls remain unexecuted. The adjacent
+refusal oracle is being checked for the same sticky-stop rule.
+Recovery's consumed-prefix predicate alone does not establish uniqueness of live
+allocation epoch/identity pairs: exact7 record920695 executes a duplicate-adoption
+counterexample under the allocator invariant and original API guards. This is a
+primitive counterexample, not authenticated replay reachability. The bounded
+recovery identity index carrier exists at e34211eb9; one-probe steps, atomic
+adopt/remove, replay wiring and crash/retry controls remain unfinished.
+
+A separate parser coverage gap concerns raw CNS APPEND EOF. The real
+fn2-cns-feed-article check rejects a trailing CR/non-BOL final mode, while the
+existing upload-feed fixture calls the nonraw entry point. This is no confirmed
+runtime bug. Actual callback controls for trailing CR, quantum/fragment boundaries
+and removal of the EOF check are assigned to audit_claims; no-publication and
+subsequent-append claims require the composed lifecycle, not grammar output shape.
 
 The public matcher now has unconditional correspondence to the independent
 language predicate, including original-input domain checks before reversal,
@@ -54,9 +106,9 @@ actual envelope-step validation. Ordered Take/submission correspondence,
 logical Write-loan comparison and complete native replay remain separate;
 matching job identities as an unordered set is insufficient.
 
-Selected cold recovery has two concrete implementation blockers under the
+Selected cold recovery has two source repairs awaiting qualification under the
 reclamation owner. Recovery finishes frozen, but ordinary epoch initialization
-refuses that state: the private post-Fence finalization must require complete
+refuses that state: the private post-Fence finalization requires complete
 bank-protection reconstruction and orphan classification. In addition, eagerly
 adopting all suffix physical candidates can reject legitimate extent reuse before
 its preceding RELEASE is replayed. Directory/read provenance must be installed
@@ -689,3 +741,16 @@ cost issue; no repeat at two jobs was run. This qualifies the generic compiler
 and actual child boundary, not full CNS/host composition or query-producer
 lifecycle controls. Peer caller audit found no reachable early row reclamation;
 its actual composed execution controls remain pending.
+
+## Qualified credit API — record908176
+
+The credit configuration, begin/reserve/end/release and empty-abort API is now
+integrated with guarded producer contracts and executable primitive controls.
+The exact11-book record reused9 and certified2; all current source hashes match.
+Controls cover protected ordinary capacity, wrong owner/nonce, query-held refusal,
+borrowed range refusal, return/reacquire, retirement depletion and empty no-I/O
+retry. Generated requested frame lemmas come from actual pool declarations;
+original API bodies and guards are unchanged from the reviewed candidate.
+The pool implementation remains at3ef26. This does not qualify actor admission,
+served credit redemption, complete checkpoint progress or a no-I/O history
+guarantee inferred from quota alone. Receipt: receipts/pool-credit-api-691c06f3e.json.

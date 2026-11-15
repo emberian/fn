@@ -152,6 +152,9 @@ ACL2_BOOKS = \
   books/core-children-a \
   books/core-lowering \
   books/core-product-lowering \
+  books/reference-effect-lowering \
+  tests/reference-effect-lowering-unit \
+  tests/reference-effect-emitted-unit \
   books/core-walk \
   books/crash-model \
   books/cursor \
@@ -199,6 +202,7 @@ ACL2_BOOKS = \
   books/machines-a-run \
   books/machines-a-scribe \
   books/machines-all \
+  books/storage-block-io \
   books/machines-b \
   books/machines-c \
   books/machines-c-bind \
@@ -239,6 +243,7 @@ ACL2_BOOKS = \
   books/peer-model \
   books/pointwise-contracts \
   books/pool \
+  books/pool-credit \
   books/pool-block \
   books/pool-ranges \
   books/pool-read-contracts \
@@ -486,6 +491,7 @@ ACL2_BOOKS = \
   tests/trace-events-unit \
   tests/pool-query-ref-unit \
   tests/pool-protected-floor-unit \
+  tests/pool-credit-unit \
   tests/pool-unit \
   tests/port-unit \
   tests/primitive-list-domain-unit \
