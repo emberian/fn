@@ -9,13 +9,19 @@
 
 (defun fn2-rrd-journal (id fn2-core)
  (declare (xargs :stobjs fn2-core :verify-guards nil))
- (let ((slot (fn2-machine-pool-slot id fn2-core)))
+ (let ((slot (fn2-machine-pool-slot id fn2-core))
+       (gen (fn2-machine-pool-gen id fn2-core))
+       (ogen (fn2-machine-generation id fn2-core)))
   (list (fn2-machine-rc-roff id fn2-core) (fn2-machine-rc-rend id fn2-core)
         slot (fn2-machine-pool-gen id fn2-core)
         (fn2-machine-rc-filled id fn2-core) (fn2-machine-rc-count id fn2-core)
         (fn2-machine-rc-pos id fn2-core) (fn2-machine-rc-commit id fn2-core)
         (stobj-let ((fn2-pool (fn2-core-pool fn2-core))) (octets)
          (fn2-cw-read-range 0 4096 slot fn2-pool) octets)
+        (stobj-let ((fn2-pool (fn2-core-pool fn2-core))) (workspace)
+         (fn2-pool-workspace-code slot gen *fn2-recovery-machine-kind* id ogen fn2-pool) workspace)
+        (stobj-let ((fn2-extents (fn2-core-extents fn2-core))) (closed)
+         (list (fn2-alloc-freeze-phase fn2-extents) (fn2-alloc-epoch-begun fn2-extents)) closed)
         (stobj-let ((fn2-allocation-release (fn2-core-allocation-release fn2-core))) (owner)
          (list (fn2-allocation-release-owner-kind 0 fn2-allocation-release)
                (fn2-allocation-release-owner-slot 0 fn2-allocation-release)
@@ -54,7 +60,8 @@
       (fn2-core (stobj-let ((fn2-pool (fn2-core-pool fn2-core))) (fn2-pool)
                   (fn2-cw-write-loan off bytes slot gen op opgen fn2-pool) fn2-core))
       (fn2-core (fn2-cw-post 0 op (if (eq fault :wrong-opgen) (+ 1 opgen) opgen)
-                   *fn2-event-read-result* *fn2-outcome-done*
+                   *fn2-event-read-result*
+                   (if (eq fault :short) *fn2-outcome-short* *fn2-outcome-done*)
                    (if (eq fault :short) (- length 1) length) 0 0 fn2-core)))
   (mv t fn2-core)))
 
