@@ -21,6 +21,9 @@
     (declare (xargs :stobjs (,transport ,operation) :verify-guards nil
      :guard (and (,tr-wfp ,transport) (,op-wfp ,operation))))
     (cond
+     ; Carrier identity alone cannot authorize an arbitrary sibling loan.
+     ; The live-core caller must bind the public operation before closure.
+     ((not (= (,op-rows ,operation) 1)) (mv :unbound ,operation))
      ((not (= (,tr-rows ,transport) 1)) (mv :stale ,operation))
      ((not (and (equal cap (,(fn2-columns-sym transport "-CAP") 0 ,transport))
                  (equal nonce (,(fn2-columns-sym transport "-NONCE") 0 ,transport))))

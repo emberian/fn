@@ -2,6 +2,7 @@
 (in-package "ACL2")
 (include-book "host-loan")
 (include-book "tls-stack")
+(include-book "codec-close")
 (local (in-theory (enable fn2-core-wfp)))
 (local
  (in-theory
@@ -87,3 +88,22 @@
             (mv (if (eq span :ok) :act span) action private-channel private-offset private-count serial
                 fn2-tls-transport fn2-tls-record))
          (mv status action 0 offset count serial fn2-tls-transport fn2-tls-record)))))))))
+
+; Closure authorizes a PUBLIC application operation through its live descriptor.
+; The carrier's last slot/gen can belong to a different full-duplex sibling.
+(defcodec-record-closure fn2-tls-record fn2-tls-transport)
+(defun fn2-host-tls-mark-closed (op gen fn2-tls-transport fn2-tls-record fn2-core)
+ (declare (xargs :stobjs (fn2-tls-transport fn2-tls-record fn2-core) :verify-guards nil
+  :guard (and (fn2-core-wfp fn2-core) (fn2-tls-transport-wfp fn2-tls-transport)
+              (fn2-tls-record-wfp fn2-tls-record))))
+ (mv-let (code kind cap nonce address length) (fn2-host-codec-op op gen fn2-core)
+  (declare (ignore kind address))
+  (cond ((not (eq code :ok)) (mv code fn2-tls-record))
+        ((not (fn2-tls-transport-retired-p cap nonce fn2-tls-transport))
+         (mv :live fn2-tls-record))
+        (t
+         (mv-let (bound fn2-tls-record)
+          (fn2-tls-record-bind cap nonce op gen length fn2-tls-record)
+          (if (not (eq bound :ok)) (mv bound fn2-tls-record)
+           (fn2-tls-record-mark-carrier-closed cap nonce op gen length
+            fn2-tls-transport fn2-tls-record)))))))
