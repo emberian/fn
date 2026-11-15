@@ -1298,7 +1298,12 @@
              (fn2-pool-class-okp c2 (mv-nth 3 (fn2-pool-reserve class okind oslot ogen fn2-pool))))
     :hints (("Goal" :do-not '(generalize eliminate-destructors fertilize)
              :in-theory (e/d (fn2-pool-class-okp) (fn2-pool-class-okp-of-accounts))
-             :use (                 (:instance fn2-pool-class-okp-of-accounts (n (fn2-pool-nclasses fn2-pool)) (c c2))
+             :cases ((equal class c2))
+             :use (fn2-pool-nclasses-at-most-16
+                   (:instance fn2-pool-class-headsi-type (c class))
+                   (:instance fn2-pool-class-headsi-type (c c2))
+                   (:instance fn2-pool-class-countsi-type (c class))
+                   (:instance fn2-pool-class-okp-of-accounts (n (fn2-pool-nclasses fn2-pool)) (c c2))
                    (:instance fn2-pool-class-okp-of-accounts (n (fn2-pool-nclasses fn2-pool)) (c class))
                    (:instance fn2-pool-free-chain-open (f (fn2-pool-rows fn2-pool))
                               (x (fn2-pool-class-headsi class fn2-pool)))
