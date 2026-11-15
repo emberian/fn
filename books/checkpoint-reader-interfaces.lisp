@@ -5,10 +5,13 @@
 (include-book "columns-guard-hints")
 (fn2-book-layer :b)
 
+(encapsulate ()
+ (local (in-theory (disable fn2-checkpoint-decode-preserves-rows)))
 (fn2-fields-preserves fn2-checkpoint-decode
  (base slot gen off len okind oslot ogen fn2-fields fn2-pool) :position 1 :prefix "-FIELDS-ONLY" :raw-rows t
  :hints (("Goal" :in-theory (e/d (fn2-checkpoint-decode)
                                  (fn2-format-checkpoint-descriptor-decode fn2-fields-rows fn2-fields-value)))))
+)
 
 (defthm fn2-checkpoint-decode-fields-domain-value-type
  (implies
