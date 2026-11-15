@@ -61,5 +61,5 @@
        (sc (fn2-pool-class-for *fn2-commit-unit-bytes* fn2-pool)))
   (and (natp n) (natp pc) (< pc (fn2-pool-nclasses fn2-pool))
        (natp sc) (< sc (fn2-pool-nclasses fn2-pool))
-       (if (equal pc sc) (<= (* 2 n) (fn2-pool-class-countsi pc fn2-pool))
-        (and (<= n (fn2-pool-class-countsi pc fn2-pool)) (<= n (fn2-pool-class-countsi sc fn2-pool)))))))
+       (if (equal pc sc) (<= (* 2 n) (fn2-pool-reservable-count pc fn2-pool))
+        (and (<= n (fn2-pool-reservable-count pc fn2-pool)) (<= n (fn2-pool-reservable-count sc fn2-pool)))))))

@@ -2,13 +2,16 @@ import json
 from pathlib import Path
 import unittest
 from run_loader_prefix_rewrite import project,RULES
+from run_loader_room_rewrite import project as room_project
 ROOT=Path(__file__).resolve().parents[1]
 class Prefix(unittest.TestCase):
  def test_exact_named_projection(self):
   saved=json.loads((ROOT/'tools/fixtures/run-physical-park/prefix.json').read_text())
   for name in RULES:
    actual=(ROOT/'books'/name).read_text()
-   self.assertEqual(project(name,saved[name]),actual)
+   expected=project(name,saved[name])
+   if name=='run-physical-resources.lisp':expected=room_project(expected)
+   self.assertEqual(expected,actual)
    with self.assertRaises(ValueError):project(name,actual)
  def test_initializer_uses_the_same_canonical_b_prefix(self):
   geometry=(ROOT/'books/run-physical-geometry.lisp').read_text()
