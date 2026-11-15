@@ -265,8 +265,8 @@ leaves. Root matched all 34 source hashes and keys against the qualified entries
 Receipt: [readonly counterexample](receipts/member-readonly-counterexample34-record.json).
 Receipt: [member and actual positive](receipts/checkpoint-member-thirty-three-record.json).
 
-Source follow-on (`assurance-refuted-claims`, not yet certified) adds registry
-status `(:refuted counterexample-theorem candidate-replacement-theorem)`. The
+Registry follow-on (`assurance-refuted-claims`) adds status
+`(:refuted counterexample-theorem candidate-replacement-theorem)`. The
 table guard accepts only an admitted negation of a closed instance of the exact
 live `$OWED` statement; raw author formula or a diagnostic predicate name cannot
 bind it. Refuted originals remain in the unfinished export and completion gate,
@@ -280,8 +280,19 @@ constant (statement, variables, source formula, translated body). Every table
 status must match it; direct retargeting, unbinding, display-formula mutation and
 clear/re-add cannot redirect the established key. Initial unbound requirements
 and custom statement names remain supported. Status/evidence/check/doc updates
-remain separate. Focused actual ACL2 refusal/export controls and the bridge
-await a scoped gate; five structural source tests pass. No application world was started.
+remain separate. Exact four-book record `certify-20261115T180152Z-1647029`
+at `05cb2fa790e5479b75d3713e0eb3eecac50a52c7` qualifies declare/owed/report and
+35-form actual registry controls, including retarget, unbind, clear/re-add,
+wrong/open counterexamples and redundant author/identity replay. Actual report
+readback verifies the target row is REFUTED, unfinished, replacement link
+unverified, with zero proved claims. Five structural source tests also pass.
+[Four-book receipt](receipts/refuted-obligations-four-record.json) records exact
+source, cert/FASL/port hashes and toolchain. The square-evidence regression has
+31 local books with only four exact qualified entries; the actual member bridge
+has 34 with only five. Their new closure keys have not been source-replayed or
+certified, and the member's new registry bridge remains unadmitted. No application
+world was started; the previous member counterexample receipt remains valid for
+its original frozen closure.
 
 
 The shared `:type-hints` fix replaces member-specific event surgery. Its original
