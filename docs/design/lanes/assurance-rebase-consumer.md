@@ -413,3 +413,16 @@ then the shared decoder/tail checker for positive, truncated and nonzero-tail
 cases; the existing full actual event-reader/simulator fixture is migrated too.
 All ACL2 fixtures and the new bounds lemma remain unexecuted and uncertified;
 this source-only milestone does not establish the trusted archive receipt.
+
+Review of the first seal-span patch found that an atomic 3900-byte visit did
+not respect a legal positive budget of 1. The actual path now uses the same
+generated START/DECODE-STEP continuation with the caller's budget, followed
+by a distinct SEAL-TAIL cursor checking min(budget, remaining) through the
+shared zero-tail primitive. The authenticated body offset/payload remain
+unchanged until the tail completes; only then is semantic length installed.
+No minimum grant is invented. Parsed classifier replay includes both phases.
+A runnable actual-core fixture repeats budget1 to semantic completion, checks
+byte-position advancement per visit and unchanged other carriers/source, and
+compares full eight-carrier snapshots for budget0. It also checks the full4096
+quantum. Both fixtures explicitly own B* and are registered in Makefile. All
+ACL2 execution remains unrun; source controls alone do not qualify admission.

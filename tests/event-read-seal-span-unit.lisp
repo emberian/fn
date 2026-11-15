@@ -1,6 +1,7 @@
 ; Boundary fixture only: actual writer encoder -> generated decoder/zero-tail.
 ; The separate event-read-verified-unit exercises full physical authentication.
 (in-package "ACL2")
+(include-book "std/util/bstar" :dir :system)
 (include-book "../books/event-read-verify")
 (include-book "../books/commit-format")
 (include-book "../books/runs-page")
