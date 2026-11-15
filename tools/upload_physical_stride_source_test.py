@@ -6,6 +6,7 @@ import unittest
 import lisp_rewrite as lr
 from upload_physical_stride_rewrite import RULES, transform
 from upload_payload_group_rewrite import transform as payload_group
+from upload_uncertainty_rewrite import transform as uncertainty
 ROOT=Path(__file__).resolve().parents[1]
 class PhysicalStride(unittest.TestCase):
  def test_exact_authorized_transform(self):
@@ -21,6 +22,11 @@ class PhysicalStride(unittest.TestCase):
     grouped=payload_group(expected)
     self.assertEqual(payload_group(grouped, reverse=True),expected)
     expected=grouped
+   # Compose the independently reviewed ambiguity/ownership change without
+   # replacing the original physical-address baseline.
+   ambiguous=uncertainty(expected,name)
+   self.assertEqual(uncertainty(ambiguous,name,reverse=True),expected)
+   expected=ambiguous
    self.assertEqual(expected,(ROOT/name).read_text(),name)
  def test_payload_grouping_uses_physical_extent(self):
   p=lr.parse(ROOT/'books/assembly-callbacks-d-upload.lisp')

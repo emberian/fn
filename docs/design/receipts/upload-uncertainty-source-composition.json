@@ -1,0 +1,38 @@
+{
+  "source_parent": "7e0de36f5dceaec83358702ec5dc88261dbf6043",
+  "source_donors": [
+    "d1275ba2577221a2dcbc8135d9e4dd126b353683",
+    "6989c583b"
+  ],
+  "runtime_source_exact_donor": {
+    "books/assembly-callbacks-d-upload.lisp": "6c0f9a558e2d9b8d0f1328252f01e20004183bd520edfc2ce13cf2a9e7413ae3",
+    "books/txn.lisp": "aa3b7e3685b34b354194c40065ea3ed66d501d39efa0a08f918d66e0dd295fb6",
+    "books/upload-kind.lisp": "017715e8aed1b68f50f18a282be9cc02db0c04a4d04ddbdeb4cf4c7b205060f4",
+    "books/upload.lisp": "3ec0073a959bf9492ffe8c3ad9286cfa574f4e61643c3ceff8da8bdaa5de4849"
+  },
+  "runtime_scope": "Ambiguous issued Write/Fence or invalid Write progress retains ownership in uncertain phase and stops for recovery; preissue refusal and successful DONE paths retain their prior behavior.",
+  "control_scope": {
+    "source_tests": 6,
+    "physical_composition_tests": 7,
+    "threshold_tests": 3,
+    "static_host": "6 raw sources, 0 findings",
+    "native_restart_fixture_python_controls": 3,
+    "actual_uncertainty_fixture": "UNRUN",
+    "actual_native_socket": "UNRUN"
+  },
+  "exact_transform": "Explicit reviewed uncertainty hunks compose with the existing physical/group16 transforms and inverse controls; original baseline retained.",
+  "unchanged_record_scope": {
+    "roots": [
+      "books/pool",
+      "books/blake3-pool-spec"
+    ],
+    "count": 10,
+    "all_source_and_keys_unchanged": true
+  },
+  "next_source_gate": {
+    "root": "tests/upload-uncertainty-served-unit",
+    "count": 245,
+    "key": "4023f0ca907413ccc4fb987a7e196bfeff35e3e9adc173b699cae8a5a7f83a57",
+    "scope": "Actual captured issued storage operation/native fault/turn stop; does not claim real filesystem crash execution"
+  }
+}

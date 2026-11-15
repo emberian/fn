@@ -384,6 +384,7 @@ ACL2_BOOKS = \
   tests/upload-manifest-physical-unit \
   tests/upload-raw-threshold-unit \
   tests/upload-group16-served-unit \
+  tests/upload-uncertainty-served-unit \
   tests/ctl-stripe-map-unit \
   tests/consumer-commit-unit \
   tests/consumer-helm \

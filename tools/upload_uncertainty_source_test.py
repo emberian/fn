@@ -3,8 +3,20 @@
 from pathlib import Path
 import unittest
 import lisp_rewrite as lr
+from upload_uncertainty_rewrite import transform
 ROOT=Path(__file__).resolve().parents[1]
 class UploadUncertainty(unittest.TestCase):
+ def test_reviewed_transform_roundtrip(self):
+  for name in ['books/assembly-callbacks-d-upload.lisp','books/txn.lisp',
+               'books/upload-kind.lisp','books/upload.lisp']:
+   source=(ROOT/name).read_text()
+   original=transform(source,name,reverse=True)
+   self.assertEqual(transform(original,name),source)
+ def test_transform_rejects_missing_uncertain_stop(self):
+  name='books/assembly-callbacks-d-upload.lisp'
+  source=(ROOT/name).read_text().replace('(:uncertain (:stop :upload-uncertain))',
+                                        '(:uncertain (:stop :machine-phase))',1)
+  with self.assertRaises(ValueError):transform(source,name,reverse=True)
  def test_issued_failures_never_enter_sealed_drain(self):
   s=(ROOT/'books/assembly-callbacks-d-upload.lisp').read_text()
   a=s.index('(:store-wrote :on-refusal');b=s.index(';; :sealed:',a);s=s[a:b]
