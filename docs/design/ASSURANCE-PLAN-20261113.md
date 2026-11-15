@@ -28,24 +28,26 @@ columns generator and changes only unconditional row-frame hints. TYPE, WFP,
 RAW-ROWS and explicit hints retain their original behavior. Actual generated-form
 controls and the complete source book pass, including ACL2's second pass.
 The composed consumer author build advanced through format, hashing, runs,
-overlay and run assembly. Ribbon is now qualified by the
-[exact 29-book record](receipts/ribbon29-record.json), with 28 reused parents
-and one certified book; all current hashes and closure keys match. Local guard
-hints preserve the checked byte width, pool-write preservation and field span
-types. Standalone certification exposed an incidental author-world dependency;
-Ribbon now explicitly includes the byte-contract book locally. Runtime bodies,
-guards and theorem statements are unchanged. Its 19.684-second certification
-still leaves proof-cost work open. The composed author run has advanced through
-identity, commit geometry/format, ordered runs, authority schema, folds and
-run manifests. Its next refusal is the original generated `runs-served`
-assembly event reaching its unchanged 20-second proof limit. APPEND/FETCH and
-native restart remain unexecuted.
+overlay and run assembly. Ribbon's earlier standalone certification exposed
+an incidental author-world dependency; it now explicitly includes the byte-contract
+book locally. The composed author run advanced through identity, commit
+geometry/format, ordered runs, authority schema, folds and run manifests. Its
+next refusal is the original generated `runs-served` assembly event reaching
+its unchanged 20-second proof limit. A targeted assembly-generator hint is
+queued in the separate application source. APPEND/FETCH and native restart
+remain unexecuted.
 
-Generated fold guards now retain the public field-value and row type contracts
-through a local observer exclusion. The [28-book record](receipts/folds28-record.json)
-reused 27 parents and certified folds; root matched all current source hashes
-and closure keys. Schema declarations, guards and statements are unchanged.
-Its 18.736-second certification leaves proof-cost work open.
+The shared call-derived proof helper now replaces repeated fold and Ribbon
+hints, including the temporary local fold observer exclusion. It derives column
+inputs from the admitted signature and uses admitted preservation contracts to
+keep stateful callees opaque. The generated guard and preservation hints retain
+all runtime bodies, guards and theorem formulas. The
+[33-book record](receipts/columns-call-guards33-record.json) covers 28 reused
+parents and five new books; root independently matched all 33 current source
+hashes and closure keys and ran five focused controls. Both complete folds and
+Ribbon passed under the original per-event limits. Their record times of
+19.248 and 20.994 seconds leave proof-cost work open. This package is integrated
+separately from the running application source; it does not qualify composition.
 
 The counted upload feeder is integrated through the same six-result slice used
 by the actual core callback and public feeder. Its
