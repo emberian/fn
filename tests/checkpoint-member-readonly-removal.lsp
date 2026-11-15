@@ -6,5 +6,16 @@
  :rule-classes nil
  :hints (("Goal" :in-theory
           (union-theories
-           '((:definition fn2-checkpoint-member-fields-type-readonly-removal-check))
-           (executable-counterpart-theory :here)))))
+           '((:definition fn2-checkpoint-member-fields-type-readonly-removal-check)
+             (:definition create-fn2-checkpoints)
+             (:definition create-fn2-checkpoint-refs)
+             (:definition create-fn2-checkpoint-bytes)
+             (:definition create-fn2-fields)
+             (:definition create-fn2-pool))
+           (set-difference-theories
+            (executable-counterpart-theory :here)
+            '((:executable-counterpart create-fn2-checkpoints)
+              (:executable-counterpart create-fn2-checkpoint-refs)
+              (:executable-counterpart create-fn2-checkpoint-bytes)
+              (:executable-counterpart create-fn2-fields)
+              (:executable-counterpart create-fn2-pool)))))))
