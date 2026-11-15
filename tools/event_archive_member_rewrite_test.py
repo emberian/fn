@@ -66,7 +66,10 @@ class Member(unittest.TestCase):
   definitions={}
   for path in ['books/event-archive-cold-step.lisp','books/event-archive-cold-members.lisp','books/event-archive-cold-reach.lisp']:
    for m in calls(read(path),'(fn2-event-archive-operation ?name ?children ?outputs ?*body)'):
-    definitions[m.captures['name'].low]=(len(m.captures['children'].items),1+len(m.captures['outputs'].items))
+    decl=m.captures['name']
+   name=decl.items[0].low if isinstance(decl,lr.Lst) else decl.low
+   scalars=len(decl.items)-1 if isinstance(decl,lr.Lst) else 0
+   definitions[name]=(scalars+len(m.captures['children'].items),1+len(m.captures['outputs'].items))
   for path in ['books/event-archive-cold-step.lisp','books/event-archive-cold-members.lisp','tests/event-archive-cold-member-unit.lisp']:
    text=read(path)
    for name,(arity,mvs) in definitions.items():

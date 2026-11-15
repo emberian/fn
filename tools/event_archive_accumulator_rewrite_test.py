@@ -4,6 +4,7 @@ import unittest
 import lisp_rewrite as lr
 import event_archive_accumulator_rewrite as rw
 import event_archive_test_accumulator_rewrite as tests
+import event_archive_batch_rewrite as batch
 
 ROOT=Path(__file__).resolve().parents[1]
 
@@ -19,7 +20,9 @@ class Accumulator(unittest.TestCase):
         for name,recipe in [('event-archive-state.lisp',rw.state),
                             ('event-archive-cold-cursor.lisp',rw.cursor),
                             ('event-archive-cold-boot.lisp',rw.boot)]:
-            after=recipe(before[name]);self.assertEqual(after,(ROOT/'books'/name).read_text())
+            after=recipe(before[name])
+            after=batch.state(after) if name=='event-archive-state.lisp' else after
+            self.assertEqual(after,(ROOT/'books'/name).read_text())
             self.assertEqual(after,recipe(after))
         self.assertEqual(form(before['event-archive-state.lisp'],'(defun fn2-event-archive-candidate-held-p ?*body)'),
                          form((ROOT/'books/event-archive-state.lisp').read_text(),'(defun fn2-event-archive-candidate-held-p ?*body)'))

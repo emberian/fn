@@ -675,3 +675,23 @@ composition proof needed before the general full-carrier equality can admit;
 its current opaque-worker proof hint is insufficient. No certificate claim
 is made. The runnable input oracle now includes0/255/256/65535/65536 and signed
 boundaries0x7fffffff/0x80000000/0xffffffff, exercising all four byte positions.
+
+Cold reconstruction source now has a private batch continuation in the SAME
+active/pending archive carrier and two exact source-derived original-header
+substeps. The constructor requires the existing selected descriptor/map/reach
+page predicate, the first actual schema20 event/batch-first, and nonempty
+original-header/seal spans from that decoded page. It captures page generation,
+physical fullRef identity, cursor index and both exact Ref spans. Each decoder
+visit rebinds these and the same common selected source; malformed field-stripe
+geometry must refuse before the existing generated header decoder can write.
+The actual decoder STEP receives the real budget, owns its continuation, and
+requires exact semantic end, original physical pair/J/extent/epoch/allocation,
+record kind/ordinal/fragment and the generated writer payload/trailer relation.
+
+These original-header substeps are currently unreachable-in-composition,
+explicitly marked in source. Header success reaches only SEAL-COPY and grants
+no original-batch, root4 or prefix authority. The existing canonical-only leaf
+consumer and candidate-held predicate remain byte-identical. Source projection
+controls pass; runnable original-writer/budget1/zero/interleaving controls and
+actual seal-copy/shared-verifier/frame reconstruction dispatch follow next.
+No current boot state, buffer count, wire format, source hold or FREE changed.
