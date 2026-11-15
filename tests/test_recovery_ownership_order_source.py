@@ -18,7 +18,7 @@ class OwnershipOrder(unittest.TestCase):
         self.assertIn('(t :deferred)',body)
         self.assertNotIn('fn2-checkpoint-suffix-allocation-begin-record',body)
         self.assertNotIn('fn2-recovery-selected-adopt-position',body)
-        self.assertIn('(fn2-recovery-adopt p fn2-core)',body) # full-base path retained
+        self.assertIn('(fn2-recovery-adopt id ogen p fn2-core)',body) # full-base path retained
     def test_authentication_precedes_every_replay_mutation(self):
         body=form(self.adopt,'fn2-recovery-replay-adopt')
         self.assertLess(body.index('fn2-rp-current-unit-auth-p'),body.index('fn2-recovery-selected-adopt-position'))
