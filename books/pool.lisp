@@ -38,6 +38,12 @@
         ((not (equal gen (fn2-pool-gen slot fn2-pool))) :stale)
         (t :ok)))
 
+(defun fn2-pool-query-heldp (slot gen fn2-pool)
+  (declare (xargs :stobjs fn2-pool :guard (fn2-pool-wfp fn2-pool)))
+  (and (natp slot) (< slot (fn2-pool-rows fn2-pool))
+       (equal gen (fn2-pool-gen slot fn2-pool))
+       (< 0 (fn2-pool-query-ref-count slot fn2-pool))))
+
 (defun fn2-pool-ownerp (slot okind oslot ogen fn2-pool)
   (declare (xargs :stobjs fn2-pool
                   :guard (and (fn2-pool-wfp fn2-pool) (natp slot)
