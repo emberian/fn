@@ -2,7 +2,7 @@
 ; PARENT=batch-1 is the stored batch tag; a modulo coincidence is insufficient.
 ; No function in this book advances the base or makes a row reusable.
 (in-package "ACL2")
-(include-book "machines-b")
+(include-book "commit-root-state")
 (fn2-book-layer :b)
 (defun fn2-commit-directory-lookup (batch fn2-commit-root)
  (declare (xargs :stobjs fn2-commit-root :guard (fn2-commit-root-wfp fn2-commit-root)))
