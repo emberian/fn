@@ -13,7 +13,9 @@
    (lease-op-slot :link) (lease-op-gen :u60) (lease-off :u32) (lease-len :u32)
    (out-count :u32) (query-ref-count :u60) (fill :u32)
    (hand-to-kind :u8) (hand-to-slot :link) (hand-to-gen :u60)
-   (next-free :link) (class :u8))
+   (next-free :link) (class :u8)
+   (credit-group :link) (credit-nonce :u60)
+   (credit-owner-kind :u8) (credit-owner-slot :u32) (credit-owner-gen :u60))
   :rows-bound 4294967296
   :init-name fn2-pool-columns-init
   :extra-fields
@@ -23,6 +25,18 @@
    (fn2-pool-class-sizes :type (array (unsigned-byte 32) (16)) :initially 0 :why "Class geometry has a different cardinality from slots.")
    (fn2-pool-nclasses :type (integer 0 16) :initially 0 :why "Number of configured size classes governs class-array access.")
    (fn2-pool-gen-limit :type (unsigned-byte 60) :initially 0 :why "A single retirement limit applies to all pool slots.")
+
+   (fn2-pool-credit-configured :type (integer 0 1) :initially 0 :why "Credit geometry is established only at initialization.")
+   (fn2-pool-credit-group-count :type (unsigned-byte 32) :initially 0 :why "One working group and actual ordinary commit-row drain groups.")
+   (fn2-pool-credit-protected :type (array (unsigned-byte 32) (0)) :initially 0 :resizable t :why "Profile-derived credit accounting; protected is per class, demand/available per group and class.")
+   (fn2-pool-credit-purpose :type (array (unsigned-byte 8) (0)) :initially 0 :resizable t :why "Profile-derived credit accounting; protected is per class, demand/available per group and class.")
+   (fn2-pool-credit-phase :type (array (unsigned-byte 8) (0)) :initially 0 :resizable t :why "Profile-derived credit accounting; protected is per class, demand/available per group and class.")
+   (fn2-pool-credit-nonce :type (array (unsigned-byte 60) (0)) :initially 0 :resizable t :why "Profile-derived credit accounting; protected is per class, demand/available per group and class.")
+   (fn2-pool-credit-owner-kind :type (array (unsigned-byte 8) (0)) :initially 0 :resizable t :why "Profile-derived credit accounting; protected is per class, demand/available per group and class.")
+   (fn2-pool-credit-owner-slot :type (array (unsigned-byte 32) (0)) :initially 0 :resizable t :why "Profile-derived credit accounting; protected is per class, demand/available per group and class.")
+   (fn2-pool-credit-owner-gen :type (array (unsigned-byte 60) (0)) :initially 0 :resizable t :why "Profile-derived credit accounting; protected is per class, demand/available per group and class.")
+   (fn2-pool-credit-demand :type (array (unsigned-byte 32) (0)) :initially 0 :resizable t :why "Profile-derived credit accounting; protected is per class, demand/available per group and class.")
+   (fn2-pool-credit-available :type (array (unsigned-byte 32) (0)) :initially 0 :resizable t :why "Profile-derived credit accounting; protected is per class, demand/available per group and class.")
    (fn2-pool-retired-count :type (unsigned-byte 32) :initially 0 :why "Aggregate retired capacity survives slot reuse.")))
 
 ; Expansion only: runtime is a straight let* of scalar column writes.
@@ -91,7 +105,8 @@
                            (hand-to-kind 0) (hand-to-slot 0) (hand-to-gen 0)
                            (next-free (if (and (< 1 left) (< (+ 1 slot) (fn2-pool-rows fn2-pool)))
                                           (+ 1 slot) *fn2-none*))
-                           (class class))))
+                           (class class) (credit-group *fn2-none*) (credit-nonce 0)
+                           (credit-owner-kind 0) (credit-owner-slot 0) (credit-owner-gen 0))))
       (fn2-pool-carve-slots (- left 1) (+ slot 1) (+ base cap) cap class gen fn2-pool))))
 
 (defthm fn2-pool-carve-slots-wfp
@@ -147,6 +162,17 @@
          (fn2-pool (resize-fn2-pool-data (fn2-profile-pool-bytes classes) fn2-pool))
          (fn2-pool (update-fn2-pool-nclasses (len classes) fn2-pool))
          (fn2-pool (update-fn2-pool-gen-limit gen-limit fn2-pool))
+         (fn2-pool (update-fn2-pool-credit-configured 0 fn2-pool))
+         (fn2-pool (update-fn2-pool-credit-group-count 0 fn2-pool))
+         (fn2-pool (resize-fn2-pool-credit-protected 0 fn2-pool))
+         (fn2-pool (resize-fn2-pool-credit-purpose 0 fn2-pool))
+         (fn2-pool (resize-fn2-pool-credit-phase 0 fn2-pool))
+         (fn2-pool (resize-fn2-pool-credit-nonce 0 fn2-pool))
+         (fn2-pool (resize-fn2-pool-credit-owner-kind 0 fn2-pool))
+         (fn2-pool (resize-fn2-pool-credit-owner-slot 0 fn2-pool))
+         (fn2-pool (resize-fn2-pool-credit-owner-gen 0 fn2-pool))
+         (fn2-pool (resize-fn2-pool-credit-demand 0 fn2-pool))
+         (fn2-pool (resize-fn2-pool-credit-available 0 fn2-pool))
          (fn2-pool (update-fn2-pool-retired-count 0 fn2-pool)))
     (fn2-pool-carve-classes classes 0 0 0 gen-start fn2-pool)))
 
@@ -165,7 +191,15 @@
   (declare (xargs :stobjs fn2-pool :guard (natp len)))
   (fn2-pool-class-scan 0 len nil 0 fn2-pool))
 
-(defun fn2-pool-reserve (class okind oslot ogen fn2-pool)
+(defun fn2-pool-reservable-count (class fn2-pool)
+ (declare (xargs :stobjs fn2-pool :guard (fn2-pool-wfp fn2-pool)))
+ (if (not (and (natp class) (< class (fn2-pool-nclasses fn2-pool)))) 0
+  (let ((free (fn2-pool-class-countsi class fn2-pool)))
+   (if (equal (fn2-pool-credit-configured fn2-pool) 0) free
+    (if (< class (fn2-pool-credit-protected-length fn2-pool))
+        (nfix (- free (fn2-pool-credit-protectedi class fn2-pool))) 0)))))
+
+(defun fn2-pool-reserve-body (class okind oslot ogen fn2-pool)
   (declare (xargs :stobjs fn2-pool :guard (fn2-pool-wfp fn2-pool)))
   (if (not (and (natp class) (< class (fn2-pool-nclasses fn2-pool))
                 (fn2-pool-mrefp okind oslot ogen)))
@@ -188,6 +222,13 @@
                                             (out-count 0) (query-ref-count 0) (fill 0))))
                  (mv :ok slot gen fn2-pool)))))))
 
+(defun fn2-pool-reserve (class okind oslot ogen fn2-pool)
+ (declare (xargs :stobjs fn2-pool :guard (fn2-pool-wfp fn2-pool)))
+ (cond ((not (and (natp class) (< class (fn2-pool-nclasses fn2-pool))
+                  (fn2-pool-mrefp okind oslot ogen))) (mv :bounds 0 0 fn2-pool))
+       ((zp (fn2-pool-reservable-count class fn2-pool)) (mv :exhausted 0 0 fn2-pool))
+       (t (fn2-pool-reserve-body class okind oslot ogen fn2-pool))))
+
  ; The count premise is local and constant-work. Semantic accounting owes
 ; that releasing a live row satisfies it; no whole-pool traversal is served.
 (defun fn2-pool-release-countp (slot fn2-pool)
@@ -203,7 +244,7 @@
   (implies (and (natp count) (natp rows) (< count rows) (< rows 4294967296))
            (unsigned-byte-p 32 (+ 1 count))))
 
-(defun fn2-pool-release (slot gen okind oslot ogen fn2-pool)
+(defun fn2-pool-release-body (slot gen okind oslot ogen fn2-pool)
   (declare (xargs :stobjs fn2-pool
                   :guard (and (fn2-pool-wfp fn2-pool)
                               (fn2-pool-release-countp slot fn2-pool))))
@@ -227,6 +268,14 @@
                           (fn2-pool (update-fn2-pool-class-headsi class slot fn2-pool))
                           (fn2-pool (update-fn2-pool-class-countsi class (+ 1 count) fn2-pool)))
                      (mv :ok fn2-pool)))))))))
+
+(defun fn2-pool-release (slot gen okind oslot ogen fn2-pool)
+ (declare (xargs :stobjs fn2-pool
+  :guard (and (fn2-pool-wfp fn2-pool) (fn2-pool-release-countp slot fn2-pool))))
+ (if (and (natp slot) (< slot (fn2-pool-rows fn2-pool))
+          (not (equal (fn2-pool-credit-group slot fn2-pool) *fn2-none*)))
+     (mv :credit fn2-pool)
+   (fn2-pool-release-body slot gen okind oslot ogen fn2-pool)))
 
 (defun fn2-pool-lease-in (slot gen len opslot opgen okind oslot ogen fn2-pool)
   (declare (xargs :stobjs fn2-pool :guard (fn2-pool-wfp fn2-pool)))
