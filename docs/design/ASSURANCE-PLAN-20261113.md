@@ -17,6 +17,13 @@ completed assurance claim exists.
 
 The stable24 runtime frontier and credit11 API/primitive-control records now pass
 (18.950s and5.383s respectively); root verified all current source hashes.
+Credit kind-zero repair now supersedes the credit API record: exact11 record
+928116 passes in5.73s (nine reused, two new), with all11 composed source hashes
+matching before/after. Begin and owner checks accept the actual zero-based
+machine kind while retaining positive generation/nonce and exact provenance.
+Controls execute configure/begin/reserve/end/return and unchanged-frame refusal
+for unbound ownership and zero generation. This qualifies primitive credit
+behavior, not actor admission, redemption, or end-to-end progress.
 Checkpoint/member31 book completion remains active. Actual pinned-I/O extraction has a
 34-book gate conditional on current qualified parents; its66-book reader fixture
 and larger cold/native compositions follow. The columns carrier-hint default fix
