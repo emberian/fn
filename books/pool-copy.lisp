@@ -34,7 +34,7 @@
  (implies (unsigned-byte-p 8 (fn2-pool-datai i fn2-pool))
           (posp (fn2-pool-data-length fn2-pool)))
  :hints (("Goal" :cases ((consp (nth *fn2-pool-datai* fn2-pool)))
-   :in-theory (enable fn2-pool-datai fn2-pool-data-length unsigned-byte-p integer-range-p)))))
+   :in-theory (enable len fn2-pool-datai fn2-pool-data-length unsigned-byte-p integer-range-p)))))
 (defthm fn2-pool-read-valid-byte-data-nonempty
  (implies
   (and (equal (car (fn2-pool-read slot gen idx okind oslot ogen fn2-pool)) :ok)
