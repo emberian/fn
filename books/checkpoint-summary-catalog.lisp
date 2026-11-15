@@ -16,7 +16,7 @@
  (if (>= (nfix i) 32) fn2-checkpoint-summary
   (let ((fn2-checkpoint-summary (update-fn2-checkpoint-summary-descriptori i
          (fn2-checkpoint-restore-map-control-descriptori i fn2-checkpoint-restore-map-control) fn2-checkpoint-summary)))
-   (fn2-checkpoint-summary-copy-descriptor (+ 1 i) fn2-checkpoint-restore-map-control fn2-checkpoint-summary))))
+   (fn2-checkpoint-summary-copy-descriptor (+ 1 (nfix i)) fn2-checkpoint-restore-map-control fn2-checkpoint-summary))))
 (defun fn2-checkpoint-summary-descriptor-equal (i fn2-checkpoint-restore-map-control fn2-checkpoint-summary)
  (declare (xargs :stobjs (fn2-checkpoint-restore-map-control fn2-checkpoint-summary)
   :measure (nfix (- 32 (nfix i)))
@@ -25,7 +25,7 @@
  (or (>= (nfix i) 32)
   (and (equal (fn2-checkpoint-summary-descriptori i fn2-checkpoint-summary)
               (fn2-checkpoint-restore-map-control-descriptori i fn2-checkpoint-restore-map-control))
-       (fn2-checkpoint-summary-descriptor-equal (+ 1 i) fn2-checkpoint-restore-map-control fn2-checkpoint-summary))))
+       (fn2-checkpoint-summary-descriptor-equal (+ 1 (nfix i)) fn2-checkpoint-restore-map-control fn2-checkpoint-summary))))
 
 (defun fn2-checkpoint-summary-current-p (fn2-checkpoint-summary fn2-checkpoints fn2-checkpoint-refs fn2-checkpoint-bytes
  fn2-checkpoint-restore-map fn2-checkpoint-restore-map-control fn2-checkpoint-restore-semantic)

@@ -36,7 +36,7 @@
  (if (>= (nfix i) 32) fn2-checkpoint-summary
   (let ((fn2-checkpoint-summary (update-fn2-checkpoint-summary-descriptori (+ 32 i)
           (fn2-checkpoint-summary-authority-descriptori (+ 32 i) fn2-checkpoint-summary-authority) fn2-checkpoint-summary)))
-   (fn2-checkpoint-summary-live-copy-descriptor (+ 1 i) fn2-checkpoint-summary fn2-checkpoint-summary-authority))))
+   (fn2-checkpoint-summary-live-copy-descriptor (+ 1 (nfix i)) fn2-checkpoint-summary fn2-checkpoint-summary-authority))))
 (defun fn2-checkpoint-summary-live-close (fn2-checkpoint-summary fn2-checkpoint-summary-authority fn2-checkpoints fn2-checkpoint-refs fn2-checkpoint-bytes)
  (declare (xargs :stobjs (fn2-checkpoint-summary fn2-checkpoint-summary-authority fn2-checkpoints fn2-checkpoint-refs fn2-checkpoint-bytes) :guard (and (fn2-checkpoint-summary-wfp fn2-checkpoint-summary)
               (fn2-checkpoint-summary-authority-wfp fn2-checkpoint-summary-authority)

@@ -28,7 +28,7 @@
          (5 (fn2-checkpoint-summary-sources-set-hash-5 row word fn2-checkpoint-summary-sources))
          (6 (fn2-checkpoint-summary-sources-set-hash-6 row word fn2-checkpoint-summary-sources))
          (otherwise (fn2-checkpoint-summary-sources-set-hash-7 row word fn2-checkpoint-summary-sources)))))
-   (fn2-checkpoint-summary-load-hash (+ 1 i) off slot gen kind owner generation row fn2-pool fn2-checkpoint-summary-sources))))
+   (fn2-checkpoint-summary-load-hash (+ 1 (nfix i)) off slot gen kind owner generation row fn2-pool fn2-checkpoint-summary-sources))))
 
 ; Shared recording consumes existing generated schema10 fields, never a new
 ; parser or caller-computed hash. The caller supplies actual authenticated

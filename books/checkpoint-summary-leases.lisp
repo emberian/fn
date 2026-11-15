@@ -35,7 +35,7 @@
   (natp r) (< r (fn2-run-installed-rows fn2-run-installed)))))
  (or (>= (nfix i) 8)
   (and (= (fn2-checkpoint-summary-source-word e i fn2-checkpoint-summary-sources) (fn2-run-installed-hash-word r i fn2-run-installed))
-       (fn2-checkpoint-summary-source-hash-equal (+ 1 i) e r fn2-checkpoint-summary-sources fn2-run-installed))))
+       (fn2-checkpoint-summary-source-hash-equal (+ 1 (nfix i)) e r fn2-checkpoint-summary-sources fn2-run-installed))))
 (defun fn2-checkpoint-summary-run-source-p (r fn2-checkpoint-summary fn2-checkpoint-summary-sources fn2-run-installed)
  (declare (xargs :stobjs (fn2-checkpoint-summary fn2-checkpoint-summary-sources fn2-run-installed)
  :guard (and (fn2-checkpoint-summary-wfp fn2-checkpoint-summary) (fn2-checkpoint-summary-sources-wfp fn2-checkpoint-summary-sources)
