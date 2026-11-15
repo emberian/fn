@@ -1,0 +1,56 @@
+; The READ region is its one XL cursor plus eight range-source cursors. The
+; public x-only domain is synchronous/exclusive; actual ML dispatch establishes
+; current generation before calling it. Never reinterpret query-pool ownership
+; as ML authority: use the first retained non-IDLE job's actual resource tuple.
+(defun fn2-read-source-owner (i x transactions reads fn2-run-loads fn2-run-cursors fn2-checkpoint-summary-leases)
+ (declare (xargs :stobjs (fn2-run-loads fn2-run-cursors fn2-checkpoint-summary-leases)
+  :measure (nfix (- (+ 1 *fn2-b-range-source-cursors*) (nfix i)))
+  :guard (and (fn2-run-loads-wfp fn2-run-loads) (fn2-run-cursors-wfp fn2-run-cursors)
+              (fn2-checkpoint-summary-leases-wfp fn2-checkpoint-summary-leases))))
+ (b* (((when (>= (nfix i) (+ 1 *fn2-b-range-source-cursors*))) (mv :empty 0 0 0))
+      (c (fn2-run-load-region-cursor i (+ (nfix transactions) (nfix x)) 1
+           (+ (nfix transactions) (nfix reads) (* *fn2-b-range-source-cursors* (nfix x))) *fn2-b-range-source-cursors* 0 0))
+      ((unless (and (< c (fn2-run-loads-rows fn2-run-loads)) (< c (fn2-run-cursors-rows fn2-run-cursors))
+                    (< c (fn2-checkpoint-summary-leases-rows fn2-checkpoint-summary-leases)))) (mv :bounds 0 0 0))
+      ((unless (equal (fn2-run-loads-phase c fn2-run-loads) *fn2-run-load-phase-idle*))
+       (mv :ok (fn2-run-loads-kind c fn2-run-loads) (fn2-run-loads-owner c fn2-run-loads) (fn2-run-loads-generation c fn2-run-loads)))
+      ((unless (and (equal (fn2-run-loads-windows c fn2-run-loads) 0)
+                    (equal (fn2-run-loads-pending c fn2-run-loads) 0)
+                    (equal (fn2-checkpoint-summary-leases-live c fn2-checkpoint-summary-leases) 0))) (mv :source 0 0 0)))
+  (fn2-read-source-owner (+ (nfix i) 1) x transactions reads fn2-run-loads fn2-run-cursors fn2-checkpoint-summary-leases)))
+
+(defun fn2-read-source-close (x fn2-reads fn2-id-decides fn2-run-loads fn2-run-cursors fn2-checkpoint-summary fn2-checkpoint-summary-leases fn2-pool)
+ (declare (xargs :stobjs (fn2-reads fn2-id-decides fn2-run-loads fn2-run-cursors fn2-checkpoint-summary fn2-checkpoint-summary-leases fn2-pool)
+  :guard (and (fn2-reads-wfp fn2-reads) (fn2-id-decides-wfp fn2-id-decides) (fn2-run-loads-wfp fn2-run-loads)
+              (fn2-run-cursors-wfp fn2-run-cursors) (fn2-checkpoint-summary-wfp fn2-checkpoint-summary)
+              (fn2-checkpoint-summary-leases-wfp fn2-checkpoint-summary-leases) (fn2-pool-wfp fn2-pool))))
+ (b* (((unless (and (natp x) (< x (fn2-reads-rows fn2-reads))))
+       (mv :bounds fn2-run-loads fn2-run-cursors fn2-checkpoint-summary fn2-checkpoint-summary-leases))
+      (transactions (fn2-id-decides-rows fn2-id-decides)) (reads (fn2-reads-rows fn2-reads))
+      ((mv code kind owner generation) (fn2-read-source-owner 0 x transactions reads fn2-run-loads fn2-run-cursors fn2-checkpoint-summary-leases))
+      ((when (eq code :empty)) (mv :ok fn2-run-loads fn2-run-cursors fn2-checkpoint-summary fn2-checkpoint-summary-leases))
+      ((unless (eq code :ok)) (mv code fn2-run-loads fn2-run-cursors fn2-checkpoint-summary fn2-checkpoint-summary-leases)))
+  (fn2-run-load-region-park (+ transactions x) 1
+   (+ transactions reads (* *fn2-b-range-source-cursors* x)) *fn2-b-range-source-cursors* 0 0 kind owner generation
+   fn2-run-loads fn2-run-cursors fn2-checkpoint-summary fn2-checkpoint-summary-leases fn2-pool)))
+
+(defun fn2-read-observer-release (x fn2-reads fn2-c-source-control fn2-c-source-readers fn2-id-decides fn2-run-loads fn2-run-cursors fn2-checkpoint-summary fn2-checkpoint-summary-leases fn2-pool)
+ (declare (xargs :stobjs (fn2-reads fn2-c-source-control fn2-c-source-readers fn2-id-decides fn2-run-loads fn2-run-cursors fn2-checkpoint-summary fn2-checkpoint-summary-leases fn2-pool)
+  :guard (and (fn2-reads-wfp fn2-reads) (fn2-c-source-control-wfp fn2-c-source-control) (fn2-c-source-readers-wfp fn2-c-source-readers)
+              (fn2-id-decides-wfp fn2-id-decides) (fn2-run-loads-wfp fn2-run-loads) (fn2-run-cursors-wfp fn2-run-cursors)
+              (fn2-checkpoint-summary-wfp fn2-checkpoint-summary) (fn2-checkpoint-summary-leases-wfp fn2-checkpoint-summary-leases) (fn2-pool-wfp fn2-pool))))
+ (b* (((unless (and (natp x) (< x (fn2-reads-rows fn2-reads))))
+       (mv :bounds fn2-reads fn2-c-source-control fn2-c-source-readers fn2-run-loads fn2-run-cursors fn2-checkpoint-summary fn2-checkpoint-summary-leases))
+      ((mv parked fn2-run-loads fn2-run-cursors fn2-checkpoint-summary fn2-checkpoint-summary-leases)
+       (fn2-read-source-close x fn2-reads fn2-id-decides fn2-run-loads fn2-run-cursors fn2-checkpoint-summary fn2-checkpoint-summary-leases fn2-pool))
+      ((unless (eq parked :ok))
+       (mv :state fn2-reads fn2-c-source-control fn2-c-source-readers fn2-run-loads fn2-run-cursors fn2-checkpoint-summary fn2-checkpoint-summary-leases))
+      (receipt (fn2-reads-observer-serial x fn2-reads))
+      ((when (equal receipt 0))
+       (mv :ok fn2-reads fn2-c-source-control fn2-c-source-readers fn2-run-loads fn2-run-cursors fn2-checkpoint-summary fn2-checkpoint-summary-leases))
+      ; The actual writer's bounded poll consumes the retained wake notification.
+      ((mv code & & fn2-c-source-control fn2-c-source-readers) (fn2-c-source-reader-release x receipt fn2-c-source-control fn2-c-source-readers))
+      ((unless (eq code :ok))
+       (mv :state fn2-reads fn2-c-source-control fn2-c-source-readers fn2-run-loads fn2-run-cursors fn2-checkpoint-summary fn2-checkpoint-summary-leases))
+      (fn2-reads (fn2-reads-put x (observer-serial 0) (op *fn2-read-op-idle*) (entry 0))))
+  (mv :ok fn2-reads fn2-c-source-control fn2-c-source-readers fn2-run-loads fn2-run-cursors fn2-checkpoint-summary fn2-checkpoint-summary-leases)))
