@@ -1,14 +1,15 @@
 ; Live readiness validates parked resources against actual machine generation
 ; and the same admitted job geometry as their constructor. No caller flag.
 (in-package "ACL2")
-(include-book "run-physical-readiness")
+(include-book "run-physical-readiness-live")
+(include-book "run-physical-core-faces")
 (include-book "c-actor-loader")
 (include-book "cursor-kind")
 (fn2-book-layer :d)
 (defcost fn2-run-load-readiness-owned-step
  :answers (:yield :row :changed :more :bounds :operation :capacity :complete)
  :steps *fn2-work-stage* :bytes 0 :descriptors 0
- :tables (fn2-core-machines fn2-txn-table fn2-auth-table fn2-cns-table fn2-cursor-table fn2-sealer-table
+ :tables (fn2-core-checkpoint-summary fn2-core-c-source-control fn2-core-machines fn2-txn-table fn2-auth-table fn2-cns-table fn2-cursor-table fn2-sealer-table
   fn2-core-run-load-readiness fn2-core-run-load-geometry fn2-core-id-decides fn2-core-reads
   fn2-core-run-loads fn2-core-run-cursors fn2-core-checkpoint-summary-leases fn2-core-run-load-ops
   fn2-core-ops fn2-core-fc fn2-core-fc-context fn2-core-b3 fn2-core-fields fn2-core-digests fn2-core-pool)
@@ -22,6 +23,9 @@
 
 (defmacro fn2-run-load-readiness-core-events ()
  '(progn
+   (make-event
+    (mv-let (err events) (fn2-run-loader-core-face-events '(fn2-run-load-readiness-live-begin-op) (w state))
+     (if err (er soft 'fn2-run-load-readiness-core-events "~@0" err) (value (cons 'progn events)))))
    (defun fn2-run-load-parked-machine-current-p (c fn2-core)
     (declare (xargs :stobjs fn2-core :guard (fn2-core-wfp fn2-core)))
     (b* (((mv code kind owner generation transactions reads)
@@ -66,6 +70,11 @@
    (defun fn2-run-load-readiness-owned-step (budget fn2-core)
     (declare (xargs :stobjs fn2-core :guard (fn2-core-wfp fn2-core)))
     (b* (((unless (posp budget)) (mv :yield fn2-core))
+         (current (stobj-let ((fn2-checkpoint-summary (fn2-core-checkpoint-summary fn2-core))
+                             (fn2-c-source-control (fn2-core-c-source-control fn2-core))
+                             (fn2-run-load-readiness (fn2-core-run-load-readiness fn2-core))) (current)
+          (fn2-run-load-readiness-live-current-p fn2-checkpoint-summary fn2-c-source-control fn2-run-load-readiness) current))
+         ((unless current) (mv :changed fn2-core))
          ((mv parked c kind owner generation)
           (stobj-let ((fn2-run-load-readiness (fn2-core-run-load-readiness fn2-core))
                       (fn2-run-loads (fn2-core-run-loads fn2-core)))

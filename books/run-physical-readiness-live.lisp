@@ -1,0 +1,65 @@
+; Persistent live capability is distinct from transient new-request room.
+; Actual post-Fence replacement allocates no loader windows or I/O descriptor.
+; New served requests still reserve their entire recipe before any header.
+(in-package "ACL2")
+(include-book "run-physical-readiness")
+(include-book "checkpoint-summary-state")
+(include-book "c-source-observer-state")
+(fn2-book-layer :c)
+(defun fn2-run-load-readiness-live-current-p (fn2-checkpoint-summary fn2-c-source-control fn2-run-load-readiness)
+ (declare (xargs :stobjs (fn2-checkpoint-summary fn2-c-source-control fn2-run-load-readiness)
+ :guard (and (fn2-checkpoint-summary-wfp fn2-checkpoint-summary) (fn2-c-source-control-wfp fn2-c-source-control)
+  (fn2-run-load-readiness-wfp fn2-run-load-readiness))))
+ (and (< 1 (fn2-checkpoint-summary-rows fn2-checkpoint-summary))
+      (equal (fn2-run-load-readiness-rows fn2-run-load-readiness) 1)
+      (equal (fn2-run-load-readiness-scope 0 fn2-run-load-readiness) *fn2-run-load-readiness-scope-live*)
+      (fn2-run-load-readiness-ownerp (fn2-checkpoint-summary-tag 1 fn2-checkpoint-summary) (fn2-checkpoint-summary-generation 1 fn2-checkpoint-summary)
+   (fn2-checkpoint-summary-candidate 1 fn2-checkpoint-summary) (fn2-checkpoint-summary-owner-kind 1 fn2-checkpoint-summary)
+   (fn2-checkpoint-summary-owner-slot 1 fn2-checkpoint-summary) (fn2-checkpoint-summary-owner-gen 1 fn2-checkpoint-summary) fn2-run-load-readiness)
+      (equal (fn2-run-load-readiness-cut-commit 0 fn2-run-load-readiness) (fn2-checkpoint-summary-cut-commit 1 fn2-checkpoint-summary))
+      (equal (fn2-run-load-readiness-cut-event 0 fn2-run-load-readiness) (fn2-checkpoint-summary-cut-event 1 fn2-checkpoint-summary))
+      (fn2-c-source-writer-exclusive-p (fn2-checkpoint-summary-owner-kind 1 fn2-checkpoint-summary)
+   (fn2-checkpoint-summary-owner-slot 1 fn2-checkpoint-summary) (fn2-checkpoint-summary-owner-gen 1 fn2-checkpoint-summary)
+   (fn2-checkpoint-summary-generation 1 fn2-checkpoint-summary) (fn2-checkpoint-summary-cut-commit 1 fn2-checkpoint-summary)
+   (fn2-checkpoint-summary-cut-event 1 fn2-checkpoint-summary) fn2-c-source-control)))
+
+(defun fn2-run-load-readiness-live-begin (fn2-checkpoint-summary fn2-c-source-control fn2-run-load-readiness fn2-run-load-geometry fn2-id-decides fn2-reads fn2-run-loads fn2-run-cursors fn2-checkpoint-summary-leases fn2-run-load-ops fn2-ops fn2-fc fn2-fc-context fn2-b3 fn2-fields fn2-digests fn2-pool)
+ (declare (xargs :stobjs (fn2-checkpoint-summary fn2-c-source-control fn2-run-load-readiness fn2-run-load-geometry fn2-id-decides fn2-reads fn2-run-loads fn2-run-cursors fn2-checkpoint-summary-leases fn2-run-load-ops fn2-ops fn2-fc fn2-fc-context fn2-b3 fn2-fields fn2-digests fn2-pool) :guard (and (fn2-checkpoint-summary-wfp fn2-checkpoint-summary)
+  (fn2-c-source-control-wfp fn2-c-source-control) (fn2-run-load-readiness-guard))))
+ (b* (((unless (and (< 1 (fn2-checkpoint-summary-rows fn2-checkpoint-summary))
+                    (member (fn2-checkpoint-summary-phase 1 fn2-checkpoint-summary)
+                     (list *fn2-checkpoint-summary-phase-captured* *fn2-checkpoint-summary-phase-applying*))
+                    (fn2-c-source-writer-exclusive-p (fn2-checkpoint-summary-owner-kind 1 fn2-checkpoint-summary)
+   (fn2-checkpoint-summary-owner-slot 1 fn2-checkpoint-summary) (fn2-checkpoint-summary-owner-gen 1 fn2-checkpoint-summary)
+   (fn2-checkpoint-summary-generation 1 fn2-checkpoint-summary) (fn2-checkpoint-summary-cut-commit 1 fn2-checkpoint-summary)
+   (fn2-checkpoint-summary-cut-event 1 fn2-checkpoint-summary) fn2-c-source-control)))
+       (mv :source fn2-run-load-readiness))
+      ((mv code fn2-run-load-readiness) (fn2-run-load-readiness-begin-geometry (fn2-checkpoint-summary-tag 1 fn2-checkpoint-summary) (fn2-checkpoint-summary-generation 1 fn2-checkpoint-summary)
+   (fn2-checkpoint-summary-candidate 1 fn2-checkpoint-summary) (fn2-checkpoint-summary-owner-kind 1 fn2-checkpoint-summary)
+   (fn2-checkpoint-summary-owner-slot 1 fn2-checkpoint-summary) (fn2-checkpoint-summary-owner-gen 1 fn2-checkpoint-summary) fn2-run-load-readiness fn2-run-load-geometry fn2-id-decides fn2-reads fn2-run-loads fn2-run-cursors fn2-checkpoint-summary-leases fn2-run-load-ops fn2-ops fn2-fc fn2-fc-context fn2-b3 fn2-fields fn2-digests fn2-pool))
+      ((unless (eq code :more)) (mv code fn2-run-load-readiness))
+      (fn2-run-load-readiness (fn2-run-load-readiness-put 0 (scope *fn2-run-load-readiness-scope-live*)
+       (cut-commit (fn2-checkpoint-summary-cut-commit 1 fn2-checkpoint-summary))
+       (cut-event (fn2-checkpoint-summary-cut-event 1 fn2-checkpoint-summary)))))
+  (mv :more fn2-run-load-readiness)))
+
+(defun fn2-run-load-readiness-live-complete-current-p (fn2-checkpoint-summary fn2-c-source-control fn2-run-load-readiness fn2-run-load-geometry fn2-id-decides fn2-reads fn2-run-loads fn2-run-cursors fn2-checkpoint-summary-leases fn2-run-load-ops fn2-ops fn2-fc fn2-fc-context fn2-b3 fn2-fields fn2-digests fn2-pool)
+ (declare (xargs :stobjs (fn2-checkpoint-summary fn2-c-source-control fn2-run-load-readiness fn2-run-load-geometry fn2-id-decides fn2-reads fn2-run-loads fn2-run-cursors fn2-checkpoint-summary-leases fn2-run-load-ops fn2-ops fn2-fc fn2-fc-context fn2-b3 fn2-fields fn2-digests fn2-pool) :guard (and (fn2-checkpoint-summary-wfp fn2-checkpoint-summary)
+  (fn2-c-source-control-wfp fn2-c-source-control) (fn2-run-load-readiness-guard))))
+ (and (fn2-run-load-readiness-live-current-p fn2-checkpoint-summary fn2-c-source-control fn2-run-load-readiness)
+      (fn2-run-load-readiness-complete-geometry-p (fn2-checkpoint-summary-tag 1 fn2-checkpoint-summary) (fn2-checkpoint-summary-generation 1 fn2-checkpoint-summary)
+   (fn2-checkpoint-summary-candidate 1 fn2-checkpoint-summary) (fn2-checkpoint-summary-owner-kind 1 fn2-checkpoint-summary)
+   (fn2-checkpoint-summary-owner-slot 1 fn2-checkpoint-summary) (fn2-checkpoint-summary-owner-gen 1 fn2-checkpoint-summary) fn2-run-load-readiness fn2-run-load-geometry fn2-id-decides fn2-reads fn2-run-loads fn2-run-cursors fn2-checkpoint-summary-leases fn2-run-load-ops fn2-ops fn2-fc fn2-fc-context fn2-b3 fn2-fields fn2-digests fn2-pool)))
+
+(fn2-run-load-readiness-preserves fn2-run-load-readiness-live-begin
+ (fn2-checkpoint-summary fn2-c-source-control fn2-run-load-readiness fn2-run-load-geometry fn2-id-decides fn2-reads fn2-run-loads fn2-run-cursors fn2-checkpoint-summary-leases fn2-run-load-ops fn2-ops fn2-fc fn2-fc-context fn2-b3 fn2-fields fn2-digests fn2-pool) :position 1
+ :hyps ((fn2-run-load-readinessp fn2-run-load-readiness) (fn2-checkpoint-summary-wfp fn2-checkpoint-summary)
+        (fn2-c-source-control-wfp fn2-c-source-control) (fn2-run-load-readiness-guard))
+ :specs (("-TYPE" fn2-run-load-readinessp 1) ("-WFP" fn2-run-load-readiness-wfp 1)
+         ("-ROWS" fn2-run-load-readiness-rows 1 :frame fn2-run-load-readiness)))
+(defcost fn2-run-load-readiness-live-begin-op :child fn2-run-load-readiness-live-begin
+ :answers (:source :geometry :more) :steps *fn2-work-stage* :bytes 0 :descriptors 0
+ :tables (fn2-core-checkpoint-summary fn2-core-c-source-control fn2-core-run-load-readiness fn2-core-run-load-geometry
+  fn2-core-id-decides fn2-core-reads fn2-core-run-loads fn2-core-run-cursors fn2-core-checkpoint-summary-leases
+  fn2-core-run-load-ops fn2-core-ops fn2-core-fc fn2-core-fc-context fn2-core-b3 fn2-core-fields fn2-core-digests fn2-core-pool)
+ :doc "Bind live loader geometry scan to the actual EXCLUSIVE pending catalog receipt without reserving another request bundle.")

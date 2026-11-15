@@ -1,58 +1,61 @@
-# Physical consumer dependency cut after source exclusion
+# Physical consumer composition frontier
 
-Live physical adoption remains inactive. The current cold source already owns
-the authenticated common engine (`run-physical-bound-bind`, `-io`, `-step`),
-source wrappers, and exact per-operation harvest registration. A readiness scan
-of their initialized geometry does not establish usable serving ports.
+Live physical adoption remains inactive. This lane now connects the existing
+FullRef constructor at XL, successor and range starts; actual txn/auth loader
+dispatch; raw READ and successor/group CLOSE parking; and NNTP MISS issue,
+harvest/wake and terminal drain. Public READ and successor scalar APIs remain
+unchanged. The shared physical parser/hash/I/O engine has not been replaced.
+These are source changes, not ACL2 or runtime qualification.
 
-The current `fn2-xl-run-next` still calls resident `fn2-run-cursor-start` with
-slot/generation/unit/counter. The successor and range starts have the same class.
-They must call the existing installed-aware full Ref constructor while retaining
-wire-run separately from query priority. The narrow historical donor is
-`0b4d583d5`; only those three start bodies are relevant. Its public actor-tuple
-ABI changes conflict with the current operation-receipt API and must not be
-copied wholesale.
+CLOSE preflights every actual job, exact lease owner/tag and aggregate lease
+count before mutation. It parks catalog obligations before dropping an operation
+receipt and retains owned private windows. Pending, foreign and uncertain jobs
+cannot silently release that receipt. Terminal actor paths drain uncertain jobs
+before CLOSE; response parents remain held throughout bounded terminal cleanup.
 
-The next source port uses existing engine bodies, not another reader:
+NNTP admission samples the maintained physical-source count while its actual
+response parent prevents source replacement. A resident response keeps the old
+path. A physical response acquires its whole query recipe before the header.
+ARTICLE-like operations reserve their existing scratch class first, then the
+query recipe, with owned rollback on definite refusal. The explicit aggregate
+storage-rank receipt remains held until both scratch and query jobs return.
+There is no new same-rank pool wait after a physical bundle has been acquired.
 
-- Public page reserve/bind/release, bounded step, and explicit descriptor-bearing
-  read faces: cost declarations from `807e52f7e`, new core-face book from
-  `17c3e5deb`, and the corresponding callback materialization.
-- Exact job-region iteration and current READ/resolve MISS selection:
-  `8909df8ea` and `bdbf7e9bb`.
-- Actual txn/auth/CNS issue, result wake, retry and terminal resource drain:
-  `f8f044de3`, with txn MISS priority fix `da78f8ee6`.
+Live readiness is being separated from cold initialization. Cold callers still
+require initialized zero-history routing rows and a currently unused full query
+bundle. The live constructor binds the actual pending catalog namespace and
+EXCLUSIVE writer token/cuts; every live turn validates that receipt. Live scans
+check actual ML generation and constructor job membership, owned parked page and
+sector handles/capacities, empty source leases, idle cursors and checker stripes.
+Dead routing rows may retain historical generation/cursor values: canonical
+harvest clears LIVE only, and stale completions test LIVE and exact generation.
+The same scan transition implements both scopes.
 
-These are source references, not qualified closure identities. Keep the current
-engine and all current ROOT pool, columns, allocator, compiler, framing and
-RELEASE definitions. Exclude all old actor-wide source-observer fields, hooks and adapters;
-current request and operation endpoint receipts replace them. A cited cost
-declaration is a named hunk, not permission to import its surrounding layer.
+The live writer's current install and Cbase steps have no pool carrier and issue
+no I/O. Requiring another unused query bundle while old actors retain parked
+windows can block publication behind actors waiting for HELD to end. The live
+scan therefore establishes persistent geometry/quiescence, while each new
+request continues its real all-or-refuse capacity admission. Confirmation of
+remaining retirement/promotion allocation behavior and a real producer-driven
+writer-progress regression are still required before this is called closed.
 
-CNS conflicts are direct. Old actor ports rewrote the same page, put-article,
-source, fetch, post-commit and callback regions as the current retained payload
-reader. Q1 owns their current source. Port metadata MORE/MISS retention and
-physical dispatcher calls into those actual functions; preserve source coverage,
-E*N promises, MID producer facts, SEND handback and cancellation. An article
-lease and a physical loader workspace are distinct active wait reasons and must
-not cause double acquisition or release.
+Remaining connected work:
 
-Resource counts derive from actual cursor regions: the historical actor recipe
-had txn one, auth two and CNS ten cursor windows, each a page plus read sector.
-Do not duplicate those literals as new admission geometry. Admission must be
-all-or-refuse before source observation or the first reply; a resident-only fast
-path is valid only while the actual response observer prevents a physical
-publisher from changing that source class.
+- Q1 owns actual CNS physical MISS dispatch and pending/uncertain drain before
+  metadata DROP. Its metadata observer join alone does not close this port.
+  Preserve retained payload E*N holds, captured MID, SOURCE/STORED identities,
+  SEND handback and current cancellation/refresh behavior.
+- Restore owns bounded retirement/cache cleanup, pending catalog promotion and
+  the sole typed APPLIED/reopen endpoint. Resource readiness grants no source
+  selection or publication authority.
+- The real post-Fence fixture needs restore providers `42d9281ae`, `0e18a52b0`
+  and `5064aafc2`, including their actual assembly event invocations. They are
+  not in this lane's older cold base. Its bound-I/O control is explicitly an
+  APPLYING refusal/actual-engine witness, not a served semantic lookup.
+- After those joins, exercise real REGISTER/APPEND, publication, adoption and
+  before/after served lookup. Current prepared units remain unexecuted.
 
-Before dropping an operation receipt, detach its catalog source lease through
-the actual loader terminal. `run-load-park-source` retains private windows;
-resolve/stage waits cannot keep an old catalog borrow. Either fully release
-unneeded windows before stage/B admission, or prove readiness accepts the actual
-quiescent owned parked state. Requiring every active loader to be entirely free
-while waiting on an actor blocked by HELD would deadlock. Whole-response readers
-may retain their private windows until their request terminal, with the request
-parent protecting nested reads throughout.
-
-This dependency audit performed no source merge, build, ACL2 execution, cache
-installation or activation. It is required continuation work after the CNS
-metadata observer join and typed coherent writer publication are composed.
+Integration must project named transforms onto current ROOT/rolling sources,
+not copy whole old C/B/CNS files. Preserve current pool/columns/format/compiler,
+allocator, paired upload/CNS geometry, peer/query runtime and RELEASE changes.
+No builds, cache installation, remote jobs or activation were run here.

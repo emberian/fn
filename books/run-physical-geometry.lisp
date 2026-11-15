@@ -8,6 +8,7 @@
   (uploads :u32) (controls :u32) (prefix :u32) (format-rows :u32) (field-rows :u32) (digest-rows :u32)))
 (defcolumns fn2-run-load-readiness
  ((phase (:enum fn2-run-load-readiness-phase (:idle :cursors :operations :complete :refused)))
+  (scope (:enum fn2-run-load-readiness-scope (:cold :live))) (cut-commit :u60) (cut-event :u60)
   (tag :u60) (selected-generation :u60) (candidate :u32)
   (owner-kind :u8) (owner-slot :u32) (owner-gen :u60)
   (admissions :u60) (row :u32) (cursor-end :u32)))

@@ -30,7 +30,19 @@ class ParkedReadiness(unittest.TestCase):
   changes=[(f.items[1].start-m.start,f.items[1].end-m.start,'fn2-run-load-readiness-step'),
    (f.items[2].items[1].start-m.start,f.items[2].items[4].start-m.start,''),
    (gate.start-m.start,gate.end-m.start,self.s[strict.start:strict.end])]
-  self.assertEqual(lr.write(text,changes),saved)
+  # The live mode adds only actual quiescence and omits transient request
+  # room at EOF; the cold transition remains the recorded original.
+  restored=lr.write(text,changes)
+  live_binding='\n      (live (equal (fn2-run-load-readiness-scope 0 fn2-run-load-readiness) *fn2-run-load-readiness-scope-live*))'
+  self.assertEqual(restored.count(live_binding),1)
+  restored=restored.replace(live_binding,'')
+  live_op='(if live (fn2-run-load-readiness-op-quiescent-p row fn2-run-load-ops fn2-ops)\n                    (fn2-run-load-readiness-op-row-p row fn2-run-load-ops fn2-ops))'
+  self.assertEqual(restored.count(live_op),1)
+  restored=restored.replace(live_op,'(fn2-run-load-readiness-op-row-p row fn2-run-load-ops fn2-ops)')
+  live_room='(and (not live) (not (fn2-run-load-readiness-roomp fn2-pool fn2-ops)))'
+  self.assertEqual(restored.count(live_room),1)
+  restored=restored.replace(live_room,'(not (fn2-run-load-readiness-roomp fn2-pool fn2-ops))')
+  self.assertEqual(restored,saved)
   public=fn(self.s,'fn2-run-load-readiness-step')
   text=self.s[public.start:public.end]
   self.assertIn('(fn2-run-load-readiness-step-with-owner budget 0 0 0 ',text)
