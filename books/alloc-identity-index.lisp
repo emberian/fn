@@ -3,6 +3,7 @@
 (in-package "ACL2")
 (include-book "std/util/bstar" :dir :system)
 (include-book "alloc")
+(include-book "arithmetic-3/floor-mod/floor-mod" :dir :system)
 (fn2-book-layer :b)
 (make-event (cons 'progn (fn2-columns-enum-events
  '((phase (:enum fn2-alloc-identity-phase (:idle :clearing :probe :ready :refused)))
@@ -45,6 +46,19 @@
 (defun fn2-alloc-identity-home (epoch counter n)
  (declare (xargs :guard (and (unsigned-byte-p 60 epoch) (unsigned-byte-p 60 counter) (natp n))))
  (if (zp n) 0 (mod (logxor epoch counter) n)))
+
+(defthm fn2-alloc-identity-home-natural
+ (implies (and (integerp epoch) (integerp counter) (natp n))
+  (natp (fn2-alloc-identity-home epoch counter n)))
+ :hints (("Goal" :in-theory (e/d (fn2-alloc-identity-home) (mod logxor))))
+ :rule-classes (:rewrite :type-prescription))
+(defthm fn2-alloc-identity-home-less-than-rows
+ (implies (and (integerp epoch) (integerp counter) (posp n))
+  (< (fn2-alloc-identity-home epoch counter n) n))
+ :hints (("Goal" :in-theory (e/d (fn2-alloc-identity-home) (mod logxor))
+          :use ((:instance mod-bounds-1 (x (logxor epoch counter)) (y n)))))
+ :rule-classes (:rewrite :linear))
+(in-theory (disable fn2-alloc-identity-home))
 
 (defun fn2-alloc-identity-begin (kind owner ogen source fn2-extents)
  (declare (xargs :stobjs fn2-extents :guard (fn2-extents-wfp fn2-extents)))
