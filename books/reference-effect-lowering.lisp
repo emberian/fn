@@ -56,10 +56,15 @@
 ; Mere existence of an unrelated theorem never authorizes an opaque call.
 (defun fn2-effect-core-recognizer-p (fn world)
  (declare (xargs :verify-guards nil))
- (and (eq fn 'fn2-corep) (stobj-recognizer-p fn world)
-      (eq fn (get-stobj-recognizer 'fn2-core world))
-      (equal (len (getpropc fn 'formals nil world)) 1)
-      (equal (getpropc fn 'stobjs-out nil world) '(nil))))
+ ; Use the logical stobj record: ACL2's convenience recognizer lookup
+ ; functions are PROGRAM-mode. A spelling match alone authorizes nothing.
+ (let ((property (getpropc 'fn2-core 'stobj nil world)))
+  (and (eq fn 'fn2-corep)
+       (eq (getpropc fn 'stobj-function nil world) 'fn2-core)
+       property (eq fn (access stobj-property property :recognizer))
+       (equal (len (getpropc fn 'formals nil world)) 1)
+       (equal (getpropc fn 'stobjs-in nil world) '(nil))
+       (equal (getpropc fn 'stobjs-out nil world) '(nil)))))
 (defun fn2-reference-effect-leaf-formula (fn kind relation world)
  (declare (xargs :verify-guards nil))
  (let* ((recognizer (fn2-effect-core-recognizer-p fn world))
@@ -105,6 +110,15 @@
 ; outside the declared boundary, even below an otherwise non-effectful call.
 ; An attachment is NOT a logical equation: callers select the implementation
 ; explicitly, and this planner refuses hidden attachment substitutions.
+; Logical equivalent of ACL2's attachment lookup, including its one-level
+; symbolic attachment alias and explicit disallowed marker.
+(defun fn2-effect-attachment-pair (fn world)
+ (declare (xargs :verify-guards nil))
+ (let* ((property (getpropc fn 'attachment nil world))
+        (pairs (if (symbolp property)
+                   (getpropc property 'attachment nil world) property)))
+  (and pairs (not (eq (car pairs) :attachment-disallowed))
+       (assoc-eq fn pairs))))
 (defun fn2-effect-any-p (fns rows)
  (declare (xargs :verify-guards nil))
  (and (consp fns) (or (fn2-decl-get :effect (cdr (assoc-eq (car fns) rows)))
@@ -130,7 +144,7 @@
    ((member-eq fn stack)
     (if (and (eq fn (car stack)) (fn2-lower-scalar-measure fn world)) (mv nil rows)
      (mv (list :unsupported-scc fn stack) rows)))
-   ((attachment-pair fn world) (mv (list :attachment-needs-operational-binding fn (attachment-pair fn world)) rows))
+   ((fn2-effect-attachment-pair fn world) (mv (list :attachment-needs-operational-binding fn (fn2-effect-attachment-pair fn world)) rows))
    (t
     (let* ((body (getpropc fn 'unnormalized-body nil world))
            (calls (and body (fn2-lower-call-names body))))
@@ -354,7 +368,8 @@
  (if (atom a) (atom b)
   (and (consp b)
        (if (or (car a) (car b))
-           (and (car a) (car b) (congruent-stobjsp (car a) (car b) world)) t)
+           (and (car a) (car b) (eq (or (getpropc (car a) 'congruent-stobj-rep nil world) (car a))
+               (or (getpropc (car b) 'congruent-stobj-rep nil world) (car b)))) t)
        (fn2-effect-abi-congruent-p (cdr a) (cdr b) world))))
 (defun fn2-effect-boundary-abi-p (boundary replacement world)
  (declare (xargs :verify-guards nil))
@@ -510,7 +525,7 @@
   ((not (fn2-effect-boundary-abi-p boundary replacement world)) (mv :boundary-mv-abi nil))
   ((not (and (function-symbolp relation world)
              (function-symbolp 'fn2-ref-effect-whole-resultp world))) (mv :missing-full-result-relation nil))
-  ((and selected-from (not (equal (attachment-pair selected-from world) (cons selected-from fn))))
+  ((and selected-from (not (equal (fn2-effect-attachment-pair selected-from world) (cons selected-from fn))))
    (mv :selected-implementation-binding nil))
   (t
    (mv-let (err rows) (fn2-effect-plan-one fn boundary leaves world nil nil 100000)
@@ -524,7 +539,7 @@
                 `((table fn2-reference-effect-selections ',(fn2-effect-selection-key fn selected-from)
                    '(:selected-from ,selected-from :implementation ,fn
                      :scope ,(if selected-from :selected-implementation :direct-call)
-                     :attachment ,(and selected-from (attachment-pair selected-from world))
+                     :attachment ,(and selected-from (fn2-effect-attachment-pair selected-from world))
                      :boundary ,boundary :replacement ,replacement :relation ,relation
                      :leaves ,leaves :graph ,rows
                      :logical-stub-equality nil :whole-subject ,fn)))))))))))))

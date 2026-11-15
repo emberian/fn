@@ -15,6 +15,24 @@
                   (fn2-core-extra :type fn2-effect-extra)
                   (fn2-core-other :type fn2-effect-other))
 
+; The only recognizer coercion is tied to the actual registered stobj.
+; Altering either side of that registration or the state argument refuses.
+(make-event
+ (let* ((world (w state)) (property (getpropc 'fn2-core 'stobj nil world))
+        (wrong-recognizer
+         (cons (list* 'fn2-core 'stobj
+                      (change stobj-property property :recognizer 'other-recognizer)) world))
+        (wrong-owner (cons (list* 'fn2-corep 'stobj-function 'other-state) world))
+        (wrong-abi (cons (list* 'fn2-corep 'stobjs-out '(fn2-core)) world))
+        (rows '((fn2-corep . (:leaf-contract present)))))
+  (value `(assert-event
+   ',(and (fn2-effect-core-recognizer-p 'fn2-corep world)
+          (not (fn2-effect-core-recognizer-p 'fn2-corep wrong-recognizer))
+          (not (fn2-effect-core-recognizer-p 'fn2-corep wrong-owner))
+          (not (fn2-effect-core-recognizer-p 'fn2-corep wrong-abi))
+          (fn2-effect-call-args-p 'fn2-corep '((:child fn2-core)) '(nil) rows world)
+          (not (fn2-effect-call-args-p 'fn2-corep '((:child state)) '(nil) rows world)))))))
+
 (defun fn2-effect-test-boundary (id fn2-core)
  (declare (xargs :stobjs fn2-core :verify-guards nil :guard t))
  (stobj-let ((fn2-sched (fn2-core-sched fn2-core))) (fn2-sched)
@@ -193,11 +211,13 @@
  (let* ((world (w state))
         (fn 'fn2-effect-test-mv-ref-effect)
         (image (fn2-effect-admitted-image fn world))
-        (stored (list :source 'source-a :admitted image)))
+        (stored (list :source 'source-a :admitted image))
+        (changed-body (cons (list* fn 'unnormalized-body ''changed-body) world)))
   (value `(assert-event
    ',(and (equal (getpropc fn 'stobjs-out nil world) '(nil nil nil fn2-core nil))
           (fn2-effect-reuse-p stored 'source-a fn world)
           (not (fn2-effect-reuse-p stored 'source-b fn world))
+          (not (fn2-effect-reuse-p stored 'source-a fn changed-body))
           (not (fn2-effect-reuse-p (list :source 'source-a :admitted nil)
                                   'source-a fn world)))))))
 
