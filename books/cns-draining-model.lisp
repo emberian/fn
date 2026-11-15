@@ -168,7 +168,7 @@
         (fn2-cns-drain-put 'fn2-sched-earliest-deadline *fn2-no-deadline* sched)
       sched)))
 
-; Stream cleanup hands ownership back to the same live CTL incarnation.
+; Cleanup hands ownership back to the same live CTL request/incarnation.
 ; This is a schema-level predicate, independent of production readers.
 (defun fn2-cns-drain-stream-parent (id before)
   (let* ((dir (fn2-cns-drain-child 'fn2-machines before))
@@ -177,12 +177,13 @@
          (row (fn2-cns-drain-cell 'fn2-machines-slot id dir))
          (parent (fn2-cns-drain-cell 'fn2-cns-ctl row own))
          (slot (fn2-cns-drain-cell 'fn2-machines-slot parent dir)))
-    (if (and (equal (fn2-cns-drain-cell 'fn2-cns-stream row own) 1)
-             (natp parent) (< parent (fn2-cns-drain-get 'fn2-machines-rows dir))
+    (if (and (natp parent) (< parent (fn2-cns-drain-get 'fn2-machines-rows dir))
              (equal (fn2-cns-drain-cell 'fn2-machines-kind parent dir) *fn2-ctl-kind*)
              (natp slot) (< slot (fn2-cns-drain-get 'fn2-ctl-rows ctl))
              (equal (fn2-cns-drain-cell 'fn2-ctl-generation slot ctl)
                     (fn2-cns-drain-cell 'fn2-cns-ctl-gen row own))
+             (equal (fn2-cns-drain-cell 'fn2-ctl-request slot ctl)
+                    (fn2-cns-drain-cell 'fn2-cns-request row own))
              (not (member-equal (fn2-cns-drain-cell 'fn2-ctl-phase slot ctl)
                                (list *fn2-ctl-state-free* *fn2-ctl-state-retired*))))
         parent *fn2-none*)))
