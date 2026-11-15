@@ -6,7 +6,7 @@
 (include-book "std/util/bstar" :dir :system)
 (fn2-book-layer :c)
 
-(defun fn2-c-source-reader-acquire (endpoint expected-receipt fn2-c-source-control fn2-c-source-readers)
+(defun fn2-c-source-reader-acquire-core (endpoint expected-receipt parentendpoint parentreceipt fn2-c-source-control fn2-c-source-readers)
  (declare (xargs :stobjs (fn2-c-source-control fn2-c-source-readers)
   :guard (and (fn2-c-source-control-wfp fn2-c-source-control) (fn2-c-source-readers-wfp fn2-c-source-readers))))
  (b* (((unless (and (< 0 (fn2-c-source-control-rows fn2-c-source-control))
@@ -17,7 +17,10 @@
            (if (fn2-c-source-reader-current-p endpoint expected-receipt fn2-c-source-readers) expected-receipt 0)
            fn2-c-source-control fn2-c-source-readers))
       ((unless (equal expected-receipt 0)) (mv :stale 0 fn2-c-source-control fn2-c-source-readers))
-      ((unless (equal (fn2-c-source-control-phase 0 fn2-c-source-control) *fn2-c-source-writer-phase-idle*))
+      ((unless (or (equal (fn2-c-source-control-phase 0 fn2-c-source-control) *fn2-c-source-writer-phase-idle*)
+                   (and (equal (fn2-c-source-control-phase 0 fn2-c-source-control) *fn2-c-source-writer-phase-pending*)
+                        (not (equal endpoint parentendpoint))
+                        (fn2-c-source-reader-current-p parentendpoint parentreceipt fn2-c-source-readers))))
        (mv :busy 0 fn2-c-source-control fn2-c-source-readers))
       (receipt (+ 1 (fn2-c-source-control-next-receipt 0 fn2-c-source-control)))
       (count (+ 1 (fn2-c-source-control-readers 0 fn2-c-source-control)))
@@ -27,6 +30,22 @@
       (fn2-c-source-readers (fn2-c-source-readers-put endpoint `((live 1) (serial ,receipt)) fn2-c-source-readers))
       (fn2-c-source-control (fn2-c-source-control-put 0 `((readers ,count) (next-receipt ,receipt)) fn2-c-source-control)))
   (mv :ok receipt fn2-c-source-control fn2-c-source-readers)))
+
+(defun fn2-c-source-reader-acquire (endpoint expected-receipt fn2-c-source-control fn2-c-source-readers)
+ (declare (xargs :stobjs (fn2-c-source-control fn2-c-source-readers)
+  :guard (and (fn2-c-source-control-wfp fn2-c-source-control) (fn2-c-source-readers-wfp fn2-c-source-readers))))
+ (fn2-c-source-reader-acquire-core endpoint expected-receipt 0 0 fn2-c-source-control fn2-c-source-readers))
+
+; A request retaining actual source references may need another READ after a
+; response prefix. Only its exact still-live parent receipt can extend work
+; under PENDING; a new unrelated request remains blocked by the same barrier.
+(defun fn2-c-source-reader-acquire-under (endpoint expected-receipt parentendpoint parentreceipt fn2-c-source-control fn2-c-source-readers)
+ (declare (xargs :stobjs (fn2-c-source-control fn2-c-source-readers)
+  :guard (and (fn2-c-source-control-wfp fn2-c-source-control) (fn2-c-source-readers-wfp fn2-c-source-readers))))
+ (if (and (not (equal endpoint parentendpoint))
+          (fn2-c-source-reader-current-p parentendpoint parentreceipt fn2-c-source-readers))
+     (fn2-c-source-reader-acquire-core endpoint expected-receipt parentendpoint parentreceipt fn2-c-source-control fn2-c-source-readers)
+   (mv :parent 0 fn2-c-source-control fn2-c-source-readers)))
 
 (defun fn2-c-source-reader-release (endpoint receipt fn2-c-source-control fn2-c-source-readers)
  (declare (xargs :stobjs (fn2-c-source-control fn2-c-source-readers)
@@ -183,3 +202,39 @@
                (fn2-c-source-count-invariant-p fn2-c-source-control fn2-c-source-readers))
           (fn2-c-source-count-invariant-p
            (mv-nth 1 (fn2-c-source-writer-abort-pending kind owner gen token cutcommit cutevent fn2-c-source-control)) fn2-c-source-readers)))
+
+(fn2-c-source-control-preserves fn2-c-source-reader-acquire-core (endpoint expected-receipt parentendpoint parentreceipt fn2-c-source-control fn2-c-source-readers)
+ :position 2 :prefix "-CONTROL" :disable nil
+ :hyps ((fn2-c-source-controlp fn2-c-source-control) (fn2-c-source-control-wfp fn2-c-source-control)
+        (fn2-c-source-readersp fn2-c-source-readers) (fn2-c-source-readers-wfp fn2-c-source-readers)))
+
+(fn2-c-source-readers-preserves fn2-c-source-reader-acquire-core (endpoint expected-receipt parentendpoint parentreceipt fn2-c-source-control fn2-c-source-readers)
+ :position 3 :prefix "-READERS" :disable nil
+ :hyps ((fn2-c-source-controlp fn2-c-source-control) (fn2-c-source-control-wfp fn2-c-source-control)
+        (fn2-c-source-readersp fn2-c-source-readers) (fn2-c-source-readers-wfp fn2-c-source-readers)))
+
+(defthm fn2-c-source-reader-acquire-core-preserves-count-invariant
+ (implies (and (fn2-c-source-controlp fn2-c-source-control) (fn2-c-source-control-wfp fn2-c-source-control)
+               (fn2-c-source-readersp fn2-c-source-readers) (fn2-c-source-readers-wfp fn2-c-source-readers)
+               (fn2-c-source-count-invariant-p fn2-c-source-control fn2-c-source-readers))
+          (fn2-c-source-count-invariant-p
+           (mv-nth 2 (fn2-c-source-reader-acquire-core endpoint expected-receipt parentendpoint parentreceipt fn2-c-source-control fn2-c-source-readers))
+           (mv-nth 3 (fn2-c-source-reader-acquire-core endpoint expected-receipt parentendpoint parentreceipt fn2-c-source-control fn2-c-source-readers)))))
+
+(fn2-c-source-control-preserves fn2-c-source-reader-acquire-under (endpoint expected-receipt parentendpoint parentreceipt fn2-c-source-control fn2-c-source-readers)
+ :position 2 :prefix "-CONTROL" :disable nil
+ :hyps ((fn2-c-source-controlp fn2-c-source-control) (fn2-c-source-control-wfp fn2-c-source-control)
+        (fn2-c-source-readersp fn2-c-source-readers) (fn2-c-source-readers-wfp fn2-c-source-readers)))
+
+(fn2-c-source-readers-preserves fn2-c-source-reader-acquire-under (endpoint expected-receipt parentendpoint parentreceipt fn2-c-source-control fn2-c-source-readers)
+ :position 3 :prefix "-READERS" :disable nil
+ :hyps ((fn2-c-source-controlp fn2-c-source-control) (fn2-c-source-control-wfp fn2-c-source-control)
+        (fn2-c-source-readersp fn2-c-source-readers) (fn2-c-source-readers-wfp fn2-c-source-readers)))
+
+(defthm fn2-c-source-reader-acquire-under-preserves-count-invariant
+ (implies (and (fn2-c-source-controlp fn2-c-source-control) (fn2-c-source-control-wfp fn2-c-source-control)
+               (fn2-c-source-readersp fn2-c-source-readers) (fn2-c-source-readers-wfp fn2-c-source-readers)
+               (fn2-c-source-count-invariant-p fn2-c-source-control fn2-c-source-readers))
+          (fn2-c-source-count-invariant-p
+           (mv-nth 2 (fn2-c-source-reader-acquire-under endpoint expected-receipt parentendpoint parentreceipt fn2-c-source-control fn2-c-source-readers))
+           (mv-nth 3 (fn2-c-source-reader-acquire-under endpoint expected-receipt parentendpoint parentreceipt fn2-c-source-control fn2-c-source-readers)))))
