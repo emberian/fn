@@ -6,6 +6,12 @@
 (include-book "event-catalog-live")
 (fn2-book-layer :c)
 
+; A pure guard sharing fact, not a publication/readiness theorem.
+(defthm fn2-directory-consume-subject-subsumes-complete-by-definition
+ (implies (fn2-event-catalog-subject-p r fn2-checkpoint-summary-authority fn2-checkpoints fn2-checkpoint-refs fn2-checkpoint-bytes fn2-checkpoint-restore-events fn2-checkpoint-restore-events-work)
+          (fn2-checkpoint-summary-authority-row-complete-p r fn2-checkpoint-summary-authority fn2-checkpoints fn2-checkpoint-refs fn2-checkpoint-bytes))
+ :hints (("Goal" :in-theory (enable fn2-event-catalog-subject-p))))
+
 ; Fixed representation work: 32 descriptor bytes, 480 frontier words and eight
 ; predecessor words. There is no work proportional to retained history here.
 (defun fn2-directory-rebase-transfer-bytes (i fn2-checkpoint-summary-authority)
@@ -68,7 +74,10 @@
                     (= (fn2-alloc-freeze-owner-slot fn2-extents) owner)
                     (= (fn2-alloc-freeze-owner-gen fn2-extents) gen)))
        (mv :owner fn2-directory-rebase fn2-checkpoint-summary-authority fn2-commit-root fn2-digests))
-      ((unless (and (fn2-checkpoint-summary-authority-row-complete-p 1 fn2-checkpoint-summary-authority fn2-checkpoints fn2-checkpoint-refs fn2-checkpoint-bytes)
+      ; SUBJECT validates the same pending authority before row1 scalar reads.
+      ; Its row-complete check subsumes the formerly repeated direct check;
+      ; no state changes between these pure preflight conditions.
+      ((unless (and (fn2-event-catalog-subject-p 1 fn2-checkpoint-summary-authority fn2-checkpoints fn2-checkpoint-refs fn2-checkpoint-bytes fn2-checkpoint-restore-events fn2-checkpoint-restore-events-work)
                     (= (fn2-checkpoint-summary-authority-origin 1 fn2-checkpoint-summary-authority) *fn2-checkpoint-summary-authority-origin-live*)
                     (= (fn2-checkpoint-summary-authority-tag 1 fn2-checkpoint-summary-authority) token)
                     (= (fn2-checkpoint-summary-authority-owner-kind 1 fn2-checkpoint-summary-authority) kind)
@@ -80,8 +89,7 @@
                     (= (fn2-checkpoint-summary-authority-incarnation 1 fn2-checkpoint-summary-authority) (fn2-directory-rebase-incarnation 0 fn2-directory-rebase))
                     (= (fn2-checkpoint-summary-authority-cut-commit 1 fn2-checkpoint-summary-authority) (fn2-directory-rebase-target 0 fn2-directory-rebase))
                     (= (fn2-checkpoint-summary-authority-cut-event 1 fn2-checkpoint-summary-authority) (fn2-directory-rebase-target-event 0 fn2-directory-rebase))
-                    (fn2-directory-rebase-seal-p 0 fn2-directory-rebase fn2-checkpoint-summary-authority)
-                    (fn2-event-catalog-subject-p 1 fn2-checkpoint-summary-authority fn2-checkpoints fn2-checkpoint-refs fn2-checkpoint-bytes fn2-checkpoint-restore-events fn2-checkpoint-restore-events-work)))
+                    (fn2-directory-rebase-seal-p 0 fn2-directory-rebase fn2-checkpoint-summary-authority)))
        (mv :authority fn2-directory-rebase fn2-checkpoint-summary-authority fn2-commit-root fn2-digests))
       (c (fn2-directory-rebase-candidate 0 fn2-directory-rebase))
       (target (fn2-directory-rebase-target 0 fn2-directory-rebase))
