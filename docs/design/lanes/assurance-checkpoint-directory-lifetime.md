@@ -191,3 +191,49 @@ status/base-batch/base-event/base-ready. Its OK means row0 exists; it grants no
 summary authority. Pressure retry may observe it alongside headroom(0), whose
 credit formula remains unchanged until the rebase join is enabled. Source scan
 progress alone is not freed credit.
+
+## Exact proof-consumer inventory at fa37a690f
+
+This is a source review, not a proof refusal or a counterexample report. No
+existing theorem formula has been rewritten. Distinguish a stale proof link from
+a false claim: most existing row0 frontier/frame formulas remain true, but their
+old raw-row construction lemmas do not describe the mapped producer body.
+
+| Actual producer / observation | Existing named consumers | Required connection |
+|---|---|---|
+| prepare-root writes physical row, absolute proposed frontier | commit-durable-all: fn2-env-commit-root-prepare-reads, fn2-env-prepare-root-not-stopped, fn2-env-stopped-p-prepare-root, fn2-env-x-prepare-root | Keep original raw construction lemma. Add a bounded nonzero physical-row construction lemma, preserve ALL existing row0 effects, instantiate it with actual new-row result. The original batch-index construction is its specialization, not a replacement subject. |
+| root swap preserves absolute install/publication ordering | fn2-env-root-swap-facts, fn2-env-f-root-of-root-swap, fn2-env-f-ar-of-root-swap | Existing frontier conclusions stay. Discharge exact proposal tag/seal-ready gate from actual producer state; add refusal identity/frame controls. Do not substitute physical row for logical batch. |
+| abort first-event / end-abort | fn2-env-f-root-of-mark-abort, fn2-env-f-root-of-end-abort, fn2-env-f-ar-of-end-abort | Keep existing row0 frame/frontier effects. Connect actual proposal lookup and add no-cross-base invariant; an absent unprepared proposal uses its actual caller first event, not another cell's event. |
+| unprepare refuses stale identity before allocator mutation | fn2-env-unprepare-edges, fn2-env-x-unprepare-shape, fn2-env-x-unprepare-ok, fn2-env-x-unprepare-refused | Extend source-case proof links for the early refusal. Actual dropping arm advances only on OK. X is handle/loan safety, not a theorem that every directory row was released or that summary coverage holds. |
+| frontier-only root projection | fn2-env-root, fn2-env-rk, fn2-env-rk-view-equivalence; commit-durable-children fn2-env-rk-col-events and *fn2-env-rk-runes* | Keep these installed/published row0 observations unchanged. Add a distinct base/mapped-identity observation for the D13 claim. Generate keep facts for new base columns; do not pretend the old triple observes summary authority. |
+| generated source frames / initialization | commit-turn-frame fn2-defcolumn-footprint forms for prepare-root, mark-abort, seal-context, unprepare, end-abort; fn2-env-commit-root-init-for-ar | Column write footprints remain the same for the mapped writer operations. Requalify against actual bodies. Init still has genesis frontiers; add actual base-state genesis fact and update explicit constructor hints for new declared columns. |
+
+`fn2-env-directory-view` in commit-durable-all observes the MACHINES child.
+`fn2-ctf-dir` in commit-turn-frame preserves machine kind/slot readability. They
+are not the commit batch directory and must not be expanded or weakened merely
+because their names contain "directory". The commit root whole-child view is
+`fn2-env-root-table-view`; the existing column footprint generator is the source
+of its concrete layout facts.
+
+The storage/recovery boundary is larger than a row-index proof. Existing
+`fn2-env-j-frontier`/`fn2-env-prefix-durable-p` retain historical device-log write
+evidence. They do not show current image bytes survive physical reuse.
+`fn2-env-image-holds-prefix-p` and owed `fn2-recovery-chain-complete` explicitly
+require image-held batches1..N byte for byte. Preserve that original formula and
+its teeth. A selected-summary-plus-suffix completeness result must observe the
+same actual recovery subject and actual adopted C sources, and prove retained
+contract observations equal the full fold. It cannot replace image-held prefix
+with a number at or below a frontier. If the recovery report changes from raw
+replayed batch IDs to certified logical coverage, that observer connection is
+itself owed; a numeric base is not proof of covered batch identities.
+
+Prepared discriminating controls are in commit-directory-unit and
+commit-directory-writer-unit: batch5 aliases batch1 in a two-cell ring, but the
+exact tag distinguishes them; metadata and digest use the SAME physical row;
+a computed predecessor can be ready before installed; a stale reused row still
+refuses; an unproved positive base refuses. Further required controls before
+activation: unready computed predecessor, two selectable bank installation
+identities surviving row reuse, a live/cold candidate mismatch, two checkpoints
+with actual C summary adoption and suffix replay, and retained identity/retry/
+cursor/charge/address observations across a real crash/reuse cut. No such
+activation or whole observation-preservation result is claimed here.
