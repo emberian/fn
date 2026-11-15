@@ -50,3 +50,27 @@ proofs. The prepared lower controls exercise actual protocol transitions under
 explicit synthetic actor premises. They do not establish a full live handoff,
 source overwrite safety, ACL2 admission, or durable acceptance. Source-only work
 must not activate checkpoint/FREE or physical adoption from these controls alone.
+
+## D cursor admission and drain
+
+The D cursor acquires the actual observer before reading the maintained global
+installed physical-source count. Under that observer, zero selects the resident
+path: metadata-only requests reserve no run-page bundle. Article and stored
+header requests reserve their single article workspace before the first reply;
+ordinary pool refusal releases the observer and wakes the actual waiting writer
+before returning the preheader refusal. They never park on pool capacity while
+holding a source observer. A nonzero count retains the existing physical-query
+bundle admission and article-page borrowing.
+
+The cursor's storage conditional hold represents the union of the standalone
+article lease and physical bundle. Standalone article handles release their
+actual pool window; borrowed handles only clear the alias. Final physical
+member/catalog cleanup precedes the last bundle-window release. Only then does
+the cursor release its observer and advance toward generation reclamation.
+MORE, physical MISS, pending I/O, response handoff, and continuation yields do
+not release the observer. The writer must hold actual EXCLUSIVE authority
+before changing the physical source set; the count is not lifetime permission.
+
+`tests/test_cursor_source_observer_source.py` checks the connected admission,
+refusal, union, and final cleanup source. These source checks do not establish
+ACL2 admission or execute the request/adoption interleaving.

@@ -45,13 +45,14 @@
           ;; The pre-reply physical-query bundle outlives individual article
           ;; reads. Every catalog/page lease is drained before row reuse.
           (query-bundle (:enum fn2-cursor-query-bundle (:none :held)))
+          (storage (:enum fn2-cursor-storage (:none :held)))
           (load-active :bool) (load-read :u32) (load-cursor :u32) (load-release :u32) (load-refuse :bool))
- :holds ((:select :cursor-row (:storage-window :while (query-bundle :held)))
-         (:seek :cursor-row (:storage-window :while (query-bundle :held)))
-         (:render :cursor-row (:storage-window :while (query-bundle :held)))
-         (:send :cursor-row (:storage-window :while (query-bundle :held)))
-         (:fetch :cursor-row (:storage-window :while (query-bundle :held)))
-         (:finish :cursor-row (:storage-window :while (query-bundle :held))) (:draining :cursor-row))
+ :holds ((:select :cursor-row (:storage-window :while (storage :held)))
+         (:seek :cursor-row (:storage-window :while (storage :held)))
+         (:render :cursor-row (:storage-window :while (storage :held)))
+         (:send :cursor-row (:storage-window :while (storage :held)))
+         (:fetch :cursor-row (:storage-window :while (storage :held)))
+         (:finish :cursor-row (:storage-window :while (storage :held))) (:draining :cursor-row))
  :budget (:bytes (+ 16384 (* 9 *fn2-c-read-callback-bytes*)) :steps 32 :descriptors 4)
  :capacity (fn2-b-cursor-rows profile)
  :taken (:phase :select :rows :cursor-row :ranges ()
@@ -59,7 +60,7 @@
          :clear (tag k0 a0 b0 k1 a1 b1 a2 b2 lat step lo hi next found count low high sel ncurrent spin update reply roff
                  lpos seen have turn done cancel stopped lgroup klen
                  art lunit lepoch lalloc alen apos plen loff ast lease oat mso mln said revent routcome rcount rready
-                 mkind mpos bunit bepoch balloc blen bready mread bhash bcv lhashlen hmode hk hstep cursor query-bundle load-active load-read load-cursor load-release load-refuse))
+                 mkind mpos bunit bepoch balloc blen bready mread bhash bcv lhashlen hmode hk hstep cursor query-bundle storage load-active load-read load-cursor load-release load-refuse))
  :initial ((generation fn2-machine-initial-generation) (ready-prev *fn2-none*) (ready-next *fn2-none*)
            (conn *fn2-none*) (rx-slot *fn2-none*) (tx-slot *fn2-none*) (lslot *fn2-none*)
            (next-free fn2-machine-initial-next-free))
