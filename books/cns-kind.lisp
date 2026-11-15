@@ -182,6 +182,8 @@
           (stopped :bool) (next-free :link))
  :holds ((:decode :tx-range :wait-row (:storage-window :while (lease :held))) (:check :tx-range :wait-row (:storage-window :while (lease :held))) (:lookup :tx-range :wait-row (:storage-window :while (lease :held)))
          (:read :tx-range :wait-row (:storage-window :while (lease :held))) (:page :tx-range :wait-row (:storage-window :while (lease :held)))
+         (:article :tx-range :wait-row (:storage-window :while (lease :held)))
+         (:item :tx-range :wait-row (:storage-window :while (lease :held)))
          (:fetch :tx-range :wait-row (:storage-window :while (lease :held)))
          (:source :tx-range :wait-row (:storage-window :while (lease :held))) (:park :tx-range :wait-row (:storage-window :while (lease :held)))
          (:commit :tx-range :wait-row (:storage-window :while (lease :held)))
@@ -198,7 +200,7 @@
  :initial ((generation fn2-machine-initial-generation) (ready-prev *fn2-none*) (ready-next *fn2-none*)
            (ctl *fn2-none*) (edge *fn2-none*) (txn *fn2-none*) (tx-slot *fn2-none*) (upload *fn2-none*)
            (lslot *fn2-none*) (ws-slot *fn2-none*) (ns-slot *fn2-none*) (next-free fn2-machine-initial-next-free))
- :arms ((:free) (:decode) (:check) (:lookup) (:read) (:page) (:fetch) (:source) (:park) (:commit) (:committed) (:append) (:draining) (:retired))
+ :arms ((:free) (:decode) (:check) (:lookup) (:read) (:page) (:article) (:item) (:fetch) (:source) (:park) (:commit) (:committed) (:append) (:draining) (:retired))
  :observes ((:read-result)))
 
 (defmachine-registry fn2-cns)
