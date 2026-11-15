@@ -22,9 +22,15 @@ directory. This does not introduce a production service or change authorization.
 The runtime prerequisites are the exact current `books/node-profile` and
 `books/native-b3-evidence` closures, then the selected raw host load/interface
 gate. Reuse the shared application prefix; no separate cold build is needed.
-After those qualify, inside the allocated timed runtime scope:
+After those qualify, inside the allocated timed runtime scope, build the
+selected native BLAKE3 library before the host load gate. `host/b3-native.lisp`
+qualifies this shared object while loading; it cannot wait for the later
+`fn init` preparation. The command below is the same designated recipe used
+by `prepare_native_crypto` in `tools/fn_admin.py`. The current Makefile has no
+native library build target (its only executable target is `certify`).
 
 ```sh
+sh host/build-blake3.sh build/lib
 python3 tools/host_check.py --load
 python3 tools/interface_emit.py --check
 FN2_ORIGIN_LINEAGE=711 FN2_ORIGIN_DOMAIN=712 FN2_ORIGIN_INCARNATION=1 \
@@ -35,9 +41,10 @@ python3 tests/native-append-fetch-restart.py --directory build/native-append-fet
 These origin names are assigned only to this disposable isolated fixture.
 The fixture explicitly selects crash-only recovery under the honest-fence
 assumption. It tests process-death visibility, not power-loss durability.
-The existing POST240/ARTICLE campaign and its joined control/device replay are
-separate follow-on checks documented in `NATIVE-CONTROL-DEATH.md`; those also
-require the current envelope/control test books. Neither gate has been run by
+The pending POST240/ARTICLE campaign and its joined control/device replay are
+separate follow-on work; those also require the current envelope/control test
+books and their fixture donor. They are not prerequisites for this basic socket
+APPEND/FETCH gate. Neither gate has been run by
 this source change.
 
 Source controls:
