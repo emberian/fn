@@ -7,7 +7,8 @@ must be derived from that store and the actual served call/attachment graph.
 
 ## Current integration frontier — 2026-11-15 UTC
 
-Integration source is `a6723f41c`. No current whole-system image, full host gate,
+Retirement integration source is `73f8ada7d`; the codec fixtures now use actual
+TLS/COMPRESS types. No current whole-system image, full host gate,
 canonical served certificate, or completed assurance claim exists.
 
 Allocator refinement `8595723fc` is qualified by twelve-book record
@@ -29,16 +30,23 @@ in 16.229 seconds. Root matched all eleven before/after digests to integration.
 This shared-generator change invalidates the dependent keys of the earlier
 26-book scope; those dependent consumers need fresh qualification.
 
-Canonical composition proceeds from actual production declarations, rather than
-a temporary test-only core instance. Candidate `4faebb39d` includes retirement
-runtime changes, exact lifecycle count/terminal-cursor checks, opaque pinned-I/O
-effect contracts, and the actual canonical 32-control fixture. The bounded
-module author run admitted twelve of 37 source dependencies before its deadline;
-25 dependencies and the machines-b target remain. Retirement row-frame and size
-proofs passed individually; their final compact ordering still needs admission.
-The next gate checks that ordering, then records the 33-book reusable prefix
-(21 qualified, twelve missing), avoiding repeated source loading. None of this
-constitutes execution of the canonical dispatcher/publish controls yet.
+Canonical composition uses actual production declarations. Retirement dispatch,
+operation-owned storage pins, lifecycle cursor checks, pinned-I/O contracts and
+canonical controls are integrated at `73f8ada7d`. The 33-book prerequisite record
+`certify-20261115T015645Z-703564` passed: 21 reused, twelve newly certified in
+108.61 seconds. Root matched every before/after digest to integration. Final
+retirement size-proof ordering is now certified. The current machines-b gate
+has 50 qualified books, 25 source dependencies and its target remaining; a
+bounded author wave is running on that exact source. The 32 canonical runtime
+assertions remain unexecuted, as do full application composition checks.
+
+Codec fixture record `certify-20261115T020143Z-708421` passed all 24 books of
+its exact scope: eleven reused, thirteen newly certified in 50.719 seconds.
+Root matched every before/after digest to integration. The fixtures replace
+duplicate schemas with actual TLS/COMPRESS types, actual TLS startup/handshake
+and cleanup; all eight assertions remain. Cancellation fixture time fell from
+15.282 to 1.170 seconds, child-close from 25.372 to 4.731 seconds. This covers
+component behavior, not native encrypted I/O or the full COMPRESS controller.
 
 The old 113-book assembly run was deliberately stopped after seventeen passes;
 its interrupted runs-page has no verdict. Eight results were reusable against
@@ -52,7 +60,9 @@ Pool mutations and release refuse held references; owners preflight their entire
 release or mutation set before effects, then retry through checked last-reference
 wakeups. Peer owns shared pool edits; CNS whole-result semantics retain the old
 operation-borrow assumptions and add held/no-effect behavior without assuming
-query references away. These changes remain source-only. Protected checkpoint
+query references away. These changes remain source-only. A newly found composition concern holds
+integration: query-reference cleanup may overwrite an already populated singleton
+wake. The repair must preserve both scheduler effects and trace replay. Protected checkpoint
 capacity must also guarantee ordinary staged journal drain capacity per class;
 aggregate totals or double-counted reservations cannot establish progress.
 
@@ -62,6 +72,11 @@ actual summary/rebase. Startup currently creates genesis NAME overlays before
 choosing a stored checkpoint; reclamation owns moving genesis into the fresh
 branch and tying sealer eligibility to actual boot closure. The autonomous
 retirement submit/poll producer also remains unconnected.
+
+A separate actual Send defect is under repair: the shared result normalizer
+promotes positive consumed counts to success even when a later codec drain fails.
+The proposed shared rule preserves failed Send with its consumed count; productive
+Receive and cancellation semantics must retain their existing guarantees.
 
 TLS/COMPRESS shared host closure, actual native input-prefix emission, and replay
 receipt consumption are source candidates, not qualified host behavior. Native
