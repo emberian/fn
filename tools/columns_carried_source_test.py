@@ -36,6 +36,22 @@ CASES = [('books/runs.lisp', 'fn2-run-buildp'),
 
 
 class Carried(unittest.TestCase):
+    def test_fixture_local_stobj_bindings(self):
+        tree = parsed(Path('tests/columns-carried-unit.lisp').read_text())
+        def bindings(x):
+            if not isinstance(x, list):
+                return []
+            own = [x] if x[:1] == ['with-local-stobj'] else []
+            return own + [b for child in x for b in bindings(child)]
+        found = bindings(tree)
+        self.assertEqual(len(found), 5)
+        for binding in found:
+            self.assertEqual(binding[2][0], 'mv-let')
+            self.assertIn(binding[1], binding[2][1])
+        # Direct nesting was the actual first translation refusal.
+        broken = ['with-local-stobj', 'outer', ['with-local-stobj', 'inner']]
+        self.assertNotEqual(broken[2][0], 'mv-let')
+
     def test_checked_public_behavior_unchanged(self):
         for path, name in CASES:
             old = Path('tools/fixtures/columns-carried-baseline.lisp').read_text()
