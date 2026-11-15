@@ -93,9 +93,16 @@ Its seven-book closure matches qualified cache key
 `079b4ac98a0b3d945869386f9e8d2ebecf0a00d8715e247ba18202d4d7fbfc24`;
 root independently checked source, closure and certificate/FASL/port digests.
 This adds credit provenance and protected ordinary reservations; credit
-configuration and consumers remain unqualified. The larger twelve-book run
-stopped at pool-ranges preservation: its interactive pass did not reproduce in
-clean certification. That repair remains open. The independent format-check
+configuration and consumers remain unqualified. The earlier twelve-book run
+stopped at pool-ranges preservation. The repair moves the unchanged public
+copy-up extent/frame theorem before the preservation proof that consumes it,
+with shared getter opacity. Root compared all sixteen explicit function and
+theorem forms: bodies, guards and statements are byte-identical.
+Exact thirteen-book record `certify-20261115T044157Z-868394` now passes
+(ten reused, three new; 5.437 seconds). Root matched every before/after source
+hash to integration. Current ordinary pool/query controls and the protected-floor
+fixture pass; the latter has an explicit synthetic configured-accounting premise
+and does not qualify credit configuration APIs. The ranges prerequisite is closed. The independent format-check
 closure does not include pool-ranges. Its exact twenty-one-book record
 `certify-20261115T041904Z-845121` now passes: ten reused, eleven newly
 certified, 178.618 seconds. Root matched all before/after source hashes against
@@ -104,7 +111,7 @@ the format prefix, not checkpoint/member or the complete served core. The next
 alloc/read-contract prerequisite record `certify-20261115T042507Z-851291`
 passes its exact ten-book scope (eight reused, two new; 10.558 seconds). Root
 matched all ten before/after source hashes to integration; the owner audited
-qualified compiled cache entries. Only repaired pool-ranges remains before the
+qualified compiled cache entries. The ranges record above closes the final prerequisite for the
 actual checkpoint/member guard pilot.
 Layout (56.921 seconds), format-events (35.140), format-check (24.448),
 format-storage (22.652) and blake3 (18.539) retain proof-cost debt; targeted
