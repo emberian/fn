@@ -4,6 +4,7 @@
 ; their local contracts are not whole-machine acceptance/reclamation claims.
 (in-package "ACL2")
 (include-book "checkpoint-kind")
+(include-book "checkpoint-retry")
 (include-book "machine-arms")
 (fn2-book-layer :c)
 
@@ -30,7 +31,7 @@
           (page-slot :u32) (page-gen :u60) (scratch-slot :u32) (scratch-gen :u60) (read-slot :u32) (read-gen :u60)
           (source :u8) (field-base :u32) (map-role :u8) (target :u32) (target-gen :u60)
           (teardown-extent :u32) (teardown-epoch :u60) (teardown-allocation :u60)
-          (batch :u60) (event :u60) (covered :u60) (retirement-seen :u60) (attempt-retirement :u60))
+          (batch :u60) (event :u60) (covered :u60) (retirement-seen :u60) (attempt-retirement :u60) (refusal-reason :u8))
  :holds ((:teardown-wait :storage-window) (:teardown-holding-uncertain :storage-window)
          (:workspaces :storage-window :storage-window)
          (:directory :storage-window :storage-window) (:abort-snapshot :storage-window :storage-window)

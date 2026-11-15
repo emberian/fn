@@ -45,6 +45,7 @@
   (sub (:enum fn2-seal-sub (:open :clear :add :drive :finish :solve)))
   (history :u60) (history-incarnation :u60)
   (o :u32) (pos :u32) (sid :u60) (run :u60) (runs :u60) (units :u60)
+  (published-source :u60)
   (top :u8) (rslot :u32) (rgen :u60) (runit :u60) (rcounter :u60) (entries :u60)
   (hslot :u32) (hgen :u60) (filter :bool) (funit :u60) (fcounter :u60)
   (wbase :u32) (fbase :u32) (crow :u32) (fill :u32) (okind :u8) (oslot :u32) (ogen :u60)
@@ -1025,6 +1026,10 @@
                                             fn2-seals-rows fn2-run-installed-rows fn2-overlays-rows fn2-pool-rows
                                             fn2-seals-o fn2-seals-hslot fn2-seals-hgen fn2-seals-okind fn2-seals-oslot fn2-seals-ogen)))))
  (b* (((unless (< 0 (fn2-seals-rows fn2-seals))) (mv :bounds fn2-seals fn2-overlays fn2-run-installed fn2-pool))
+      ; This source-catalog generation survives resource reinitialization.
+      ; Refuse exhaustion before changing any visible overlay/run source.
+      (published-source (+ 1 (fn2-seals-published-source 0 fn2-seals)))
+      ((unless (unsigned-byte-p 60 published-source)) (mv :bounds fn2-seals fn2-overlays fn2-run-installed fn2-pool))
       (k (nfix (fn2-seals-k 0 fn2-seals)))
       (sid (fn2-seals-sid 0 fn2-seals)) (rlo (fn2-seals-rlo 0 fn2-seals))
       (rows (fn2-run-installed-rows fn2-run-installed))
@@ -1053,7 +1058,7 @@
                                             (fn2-seals-oslot 0 fn2-seals) (fn2-seals-ogen 0 fn2-seals) fn2-pool))
       ((unless (eq code :ok)) (mv code fn2-seals fn2-overlays fn2-run-installed fn2-pool))
       (fn2-seals (fn2-seals-put 0 (phase (if (zp k) *fn2-seal-phase-idle* *fn2-seal-phase-release*)) (sub *fn2-seal-sub-open*)
-                                (filter 0) (k 0) (held 0))))
+                                (filter 0) (k 0) (held 0) (published-source published-source))))
   (mv :done fn2-seals fn2-overlays fn2-run-installed fn2-pool)))
 (fn2-seal-shape fn2-seal-install (fn2-seals fn2-overlays fn2-run-installed fn2-pool)
  (fn2-seals fn2-overlays fn2-run-installed fn2-pool) (fn2-seals fn2-overlays fn2-run-installed fn2-pool) t
