@@ -158,7 +158,8 @@
 (defun fn2-rf-vars (names) (declare (xargs :verify-guards nil)) (if (atom names) nil (cons (fn2-rf-var (car names)) (fn2-rf-vars (cdr names)))))
 (mutual-recursion
  (defun fn2-rf-exprp (x names)
-  (declare (xargs :verify-guards nil))
+  (declare (xargs :verify-guards nil
+                  :hints (("Goal" :in-theory (disable member-equal true-listp len)))))
   (cond ((natp x) t)
         ((symbolp x) (and (member-eq x names) t))
         ((atom x) nil)
@@ -168,7 +169,8 @@
          (and (fn2-rf-testp (cadr x) names) (fn2-rf-exprp (caddr x) names) (fn2-rf-exprp (cadddr x) names)))
         (t nil)))
  (defun fn2-rf-testp (x names)
-  (declare (xargs :verify-guards nil))
+  (declare (xargs :verify-guards nil
+                  :hints (("Goal" :in-theory (disable member-equal true-listp len)))))
   (cond ((atom x) nil)
         ((and (member-eq (car x) '(= < <=)) (true-listp x) (equal (len x) 3))
          (and (fn2-rf-exprp (cadr x) names) (fn2-rf-exprp (caddr x) names)))
