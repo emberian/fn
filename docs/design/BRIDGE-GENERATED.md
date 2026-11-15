@@ -568,8 +568,12 @@ mappings. The tuple emitter distinguishes symbol data from syntactic identifiers
 its live body/guard/measure/ABI closure and the PUT-ITEM → PUT-ANSWER call; bind
 both canonical operands to the actual RC producer and each reached literal
 MEMBER element, then compose the full caller domain and selected attachment.
-Val-only comparison-domain facts and a logical call-graph path do not supply
-that canonical pair correspondence or reachability. The generated helper context
+The packet emitter now also proposes per-literal canonical operand equations and
+RC-first/literal-second EQUAL correspondence, using the literal's exact package
+and name and requiring the caller's original RC Object-to-Val representation.
+Its ten source controls include same-spelling package substitution. These
+proposed proofs still need the actual attached packet and kernel check; they do
+not establish the caller's representation premise or reachability. The generated helper context
 equation is still a proposal until checked against the actual packet. Full
 extraction assurance remains open with whole-antecedent/removal evidence owed.
 
