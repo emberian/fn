@@ -70,7 +70,15 @@ This adds credit provenance and protected ordinary reservations; credit
 configuration and consumers remain unqualified. The larger twelve-book run
 stopped at pool-ranges preservation: its interactive pass did not reproduce in
 clean certification. That repair remains open. The independent format-check
-closure does not include pool-ranges, so its existing scoped gate can proceed.
+closure does not include pool-ranges. Its exact twenty-one-book record
+`certify-20261115T041904Z-845121` now passes: ten reused, eleven newly
+certified, 178.618 seconds. Root matched all before/after source hashes against
+the current integration tree and confirmed the runner unchanged. This qualifies
+the format prefix, not checkpoint/member or the complete served core. The next
+consumer prerequisites are alloc, pool-read-contracts and repaired pool-ranges.
+Layout (56.921 seconds), format-events (35.140), format-check (24.448),
+format-storage (22.652) and blake3 (18.539) retain proof-cost debt; targeted
+layout guard work is separate from current consumer qualification.
 
 
 Allocator refinement `8595723fc` is qualified by twelve-book record
