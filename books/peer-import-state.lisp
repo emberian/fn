@@ -1,9 +1,9 @@
 ; Transaction-owned import snapshot metadata. Octets live in its own pool taking.
 (in-package "ACL2")
-(include-book "identity")
+(include-book "columns")
 (fn2-book-layer :c)
 (defcolumns fn2-peer-imports
- ((phase (:enum fn2-peer-import-phase (:idle :reading :building :declared :failed)))
+ ((phase (:enum fn2-peer-import-phase (:idle :reading :building :declared :failed :interfered)))
   (slot :u32) (gen :u60) (ok :u8) (os :u32) (og :u60)
   (base :u32) (hbase :u32) (receipt :bool) (name-len :u32)
   (namespace :u60)
