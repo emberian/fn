@@ -262,20 +262,30 @@
   ; and the event it began at (b54 M3).
   (aborting :u60) (abort-event :u60)
  ))
-; Current representation: row0 is metadata and positive absolute batch IDs
-; occupy rows1..PROPOSED. Count from actual proposals, including in-flight rows;
-; publication lag and hoped-for checkpoint reclamation grant no extra credit.
+; Resident occupancy is the proposed suffix above the actual installed base.
+; In-flight proposals count; publication lag or hoped-for physical release does
+; not grant extra credit. The allocator independently refuses protected extents.
+(defun fn2-commit-directory-window-state-p (fn2-commit-root)
+ (declare (xargs :stobjs fn2-commit-root :guard (fn2-commit-root-wfp fn2-commit-root)))
+ (and (< 0 (fn2-commit-root-rows fn2-commit-root))
+  (let ((base (fn2-commit-root-base-batch 0 fn2-commit-root))
+        (published (fn2-commit-root-published 0 fn2-commit-root))
+        (installed (fn2-commit-root-installed 0 fn2-commit-root))
+        (proposed (fn2-commit-root-proposed 0 fn2-commit-root)))
+   (and (<= base published) (<= published installed) (<= installed proposed)
+        (<= (- proposed base) (- (fn2-commit-root-rows fn2-commit-root) 1))
+        (or (= base 0) (= (fn2-commit-root-base-ready 0 fn2-commit-root) 1))))))
+(defun fn2-commit-directory-admission-limit (fn2-commit-root)
+ (declare (xargs :stobjs fn2-commit-root :guard (fn2-commit-root-wfp fn2-commit-root)))
+ (if (fn2-commit-directory-window-state-p fn2-commit-root)
+     (+ (fn2-commit-root-base-batch 0 fn2-commit-root) (fn2-commit-root-rows fn2-commit-root)) 0))
 (defun fn2-commit-directory-headroom (needed fn2-commit-root)
  (declare (xargs :stobjs fn2-commit-root :guard (fn2-commit-root-wfp fn2-commit-root)))
- (if (not (and (natp needed) (posp (fn2-commit-root-rows fn2-commit-root)))) (mv :state 0)
-  (let* ((proposed (fn2-commit-root-proposed 0 fn2-commit-root))
-         (installed (fn2-commit-root-installed 0 fn2-commit-root))
-         (published (fn2-commit-root-published 0 fn2-commit-root))
-         (capacity (- (fn2-commit-root-rows fn2-commit-root) 1)))
-   (if (not (and (natp published) (natp installed) (natp proposed)
-                  (<= published installed) (<= installed proposed) (<= proposed capacity))) (mv :state 0)
-    (let ((available (- capacity proposed)))
-     (mv (if (<= needed available) :ok :no-space) available))))))
+ (if (not (and (natp needed) (fn2-commit-directory-window-state-p fn2-commit-root))) (mv :state 0)
+  (let ((available (- (- (fn2-commit-root-rows fn2-commit-root) 1)
+                      (- (fn2-commit-root-proposed 0 fn2-commit-root) (fn2-commit-root-base-batch 0 fn2-commit-root)))))
+   (mv (if (<= needed available) :ok :no-space) available))))
+
 (defthm fn2-commit-directory-headroom-available-nat
  (natp (mv-nth 1 (fn2-commit-directory-headroom needed fn2-commit-root)))
  :rule-classes :type-prescription
