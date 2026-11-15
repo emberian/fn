@@ -47,4 +47,15 @@ class Fetch(unittest.TestCase):
             self.assertIn(text,fixture)
 
 
+    def test_fixed_fixture_recursion_has_total_logical_successors(self):
+        before=(ROOT/'tools/fixtures/pool-digest-budget-unit-before-totalize.lisp').read_text()
+        after=rw.fixture_totalize(before)
+        self.assertEqual(after,(ROOT/'tests/pool-digest-budget-unit.lisp').read_text())
+        self.assertEqual(after,rw.fixture_totalize(after))
+        for name,index in [('fn2-rdb-seed','i'),('fn2-rdb-words','i'),('fn2-rdb-full','k')]:
+            function=form(after,'defun',name)
+            n=lr.match('('+name+' ?index ?*rest)',lr.parse(function).forms[0].items[-1:])[0].captures['index']
+            self.assertTrue(lr.match('(+ 1 (nfix '+index+'))',[n],deep=False))
+
+
 if __name__=='__main__':unittest.main()

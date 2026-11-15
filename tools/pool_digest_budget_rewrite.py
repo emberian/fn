@@ -98,3 +98,20 @@ def rewrite(source):
     anchor='(include-book "pool")'
     if source.count(anchor)!=1:raise ValueError('pool dependency drift')
     return source.replace(anchor,anchor+'\n(include-book "layout")',1)
+
+
+def fixture_totalize(source):
+    """Apply the authentic fixed-index recipe; keep natural controls unchanged."""
+    from checkpoint_summary_recursion_rewrite import rewrite as fixed
+    source, _ = fixed(source, {'fn2-rdb-seed': 8, 'fn2-rdb-words': 8})
+    forms = lr.parse(source).forms
+    fn = lr.match('(defun fn2-rdb-full ?*body)', forms, deep=False)[0].node
+    calls = lr.match('(fn2-rdb-full ?k ?*rest)', [fn.items[-1]])
+    if len(calls) != 1:
+        raise ValueError('full fixture recursion drift')
+    arg = calls[0].captures['k']
+    if lr.match('(+ 1 (nfix k))', [arg], deep=False):
+        return source
+    if not lr.match('(+ 1 k)', [arg], deep=False):
+        raise ValueError('full fixture successor drift')
+    return lr.write(source, [(arg.start, arg.end, '(+ 1 (nfix k))')])
