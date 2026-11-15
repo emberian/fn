@@ -479,6 +479,8 @@ ACL2_BOOKS = \
   tests/peer-witnesses \
   tests/peer-replay-unit \
   tests/pointwise-contracts-unit \
+  tests/pool-digest-budget-unit \
+  tests/pool-digest-critical-unit \
   tests/pool-ranges-unit \
   tests/pool-query-ref-unit \
   tests/pool-protected-floor-unit \

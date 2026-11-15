@@ -49,6 +49,18 @@ Ribbon passed under the original per-event limits. Their record times of
 19.248 and 20.994 seconds leave proof-cost work open. This package is integrated
 separately from the running application source; it does not qualify composition.
 
+The bounded digest fetch operation and its critical fixtures are integrated.
+Its byte-budget worker retains partial words across visits, writes only complete
+words, and refines the existing fetch result including the entire digest carrier.
+The progress theorem bounds cursor advance, not physical read cost. The
+[12-book record](receipts/digest-fetch12-record.json) covers nine reused parents
+and three new books, including budget and hypothesis-removal witnesses. Both
+fixtures are active certification roots. Root matched all 12 source hashes and
+the complete fixture closure key; two source controls pass. Actual event-reader
+adoption remains pending: semantic verification must yield before digest work
+uses the next visit's budget, and record reads must await all 32 digest bytes.
+This leaf record does not qualify the caller or recovery behavior.
+
 The counted upload feeder is integrated through the same six-result slice used
 by the actual core callback and public feeder. Its
 [15-book record](receipts/feed15-record-20261115.json) covers 11 reused parents
