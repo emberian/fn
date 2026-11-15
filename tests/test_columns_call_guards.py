@@ -62,6 +62,14 @@ class ColumnCallGuards(unittest.TestCase):
                     and lisp.flat(f.items[1]) not in changed}
         self.assertEqual(explicit(old), explicit(new))
 
+    def test_existing_fixture_and_negative_index_control_unchanged(self):
+        def relevant(forms):
+            return [tree(f) for f in forms if not (
+                isinstance(f, lisp.Lst) and lisp.flat(f.items[0]) == 'include-book')]
+        old = relevant(before('tests/columns-guard-hints-unit.lisp').forms)
+        new = relevant(lisp.parse(ROOT / 'tests/columns-guard-hints-unit.lisp').forms)
+        self.assertEqual(old, new[:len(old)])
+
     @unittest.skipUnless(shutil.which('sbcl'), 'SBCL required for source metadata control')
     def test_signature_and_contract_filter_and_explicit_enables(self):
         result = subprocess.run(['sbcl', '--noinform', '--script', 'tests/columns-call-guard-controls.lsp'],
