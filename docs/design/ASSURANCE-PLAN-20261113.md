@@ -7,8 +7,8 @@ must be derived from that store and the actual served call/attachment graph.
 
 ## Current integration frontier — 2026-11-15 UTC
 
-Retirement integration source is `73f8ada7d`; the codec fixtures now use actual
-TLS/COMPRESS types. No current whole-system image, full host gate,
+Current integration is `11ceb6ada`, including retirement dispatch, actual-type
+codec fixtures and failed-Send classification. No current whole-system image, full host gate,
 canonical served certificate, or completed assurance claim exists.
 
 Allocator refinement `8595723fc` is qualified by twelve-book record
@@ -35,10 +35,14 @@ operation-owned storage pins, lifecycle cursor checks, pinned-I/O contracts and
 canonical controls are integrated at `73f8ada7d`. The 33-book prerequisite record
 `certify-20261115T015645Z-703564` passed: 21 reused, twelve newly certified in
 108.61 seconds. Root matched every before/after digest to integration. Final
-retirement size-proof ordering is now certified. The current machines-b gate
-has 50 qualified books, 25 source dependencies and its target remaining; a
-bounded author wave is running on that exact source. The 32 canonical runtime
-assertions remain unexecuted, as do full application composition checks.
+retirement size-proof ordering is now certified. The next machines-b wave reused 50 qualified books and admitted three further
+source modules before stopping at allocation packing: the codec-size upper bound
+is missing from its proof interface. A generic bounds prototype passed only with
+an exploratory scalar lemma, so the final producer and original packer guard are
+still pending. The chosen repair is a separate proof-generator book exposing
+`defcodec-size-bounds` at actual consumers, leaving existing layout expansions and
+keys unchanged. Its standalone gate precedes another broad module run. The 32
+canonical runtime assertions and full application composition remain unexecuted.
 
 Codec fixture record `certify-20261115T020143Z-708421` passed all 24 books of
 its exact scope: eleven reused, thirteen newly certified in 50.719 seconds.
@@ -47,6 +51,8 @@ duplicate schemas with actual TLS/COMPRESS types, actual TLS startup/handshake
 and cleanup; all eight assertions remain. Cancellation fixture time fell from
 15.282 to 1.170 seconds, child-close from 25.372 to 4.731 seconds. This covers
 component behavior, not native encrypted I/O or the full COMPRESS controller.
+The subsequent terminal-values change invalidates dependent keys in this record;
+the unchanged TLS parent scope remains reusable.
 
 The old 113-book assembly run was deliberately stopped after seventeen passes;
 its interrupted runs-page has no verdict. Eight results were reusable against
@@ -73,10 +79,16 @@ choosing a stored checkpoint; reclamation owns moving genesis into the fresh
 branch and tying sealer eligibility to actual boot closure. The autonomous
 retirement submit/poll producer also remains unconnected.
 
-A separate actual Send defect is under repair: the shared result normalizer
-promotes positive consumed counts to success even when a later codec drain fails.
-The proposed shared rule preserves failed Send with its consumed count; productive
-Receive and cancellation semantics must retain their existing guarantees.
+Failed-Send repair `11ceb6ada` is qualified by exact nineteen-book record
+`certify-20261115T021059Z-717536`: sixteen reused, three newly certified in 2.78
+seconds, all before/after digests matched by root. Only raw `:ok` Send becomes
+DONE/SHORT; failure retains consumed count and reason. Actual TLS full/partial
+drain-failure controls refute the old normalizer while its success control remains
+accepted. Productive Receive and cancellation compatibility controls pass.
+Replay separately conflates consumed Send bytes with peer delivery in its
+capability transcript. Names owns ordered delivery constraints checked against
+independently captured peer RX, including failed and productive cancelled Send;
+consumed-byte validation alone must not establish delivery.
 
 TLS/COMPRESS shared host closure, actual native input-prefix emission, and replay
 receipt consumption are source candidates, not qualified host behavior. Native
