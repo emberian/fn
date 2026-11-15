@@ -119,6 +119,8 @@
           ;; (FED of them written, FEED-MODE the feed's line state, then
           ;; done; FEED-DISCARD 1 framing, 2 too large), as a connection feeds it
           (upload :link) (upload-gen :u60) (fstart :u32) (fed :u60) (feed-mode :u8) (feed-discard :u8)
+          ;; Streaming frame metadata is scalar; RX loans remain owned by CTL.
+          (stream :bool)
           ;; a register's consumer name, the octets of its request's consumer
           ;; field in the control range (the names row it writes)
           (name-off :u32) (name-len :u8)
@@ -166,7 +168,7 @@
  :taken (:phase :decode :rows :wait-row :ranges ((:tx-range :slot ws-slot :gen ws-gen :class 0) (:tx-range :slot ns-slot :gen ns-gen :class 0))
          :copy (ctl ctl-gen request fpos flen fkind tx-slot tx-gen)
          :clear (verb consumer epoch op to cstart page-limit wait-ms deadline cpos version pub-frontier count more outcome
-                 reason posted posted-word txn-gen upload-gen fstart fed feed-mode feed-discard name-off name-len
+                 reason posted posted-word txn-gen upload-gen fstart fed feed-mode feed-discard stream name-off name-len
                  ipos ioff ilen npos art istream itype alen lunit lepoch lalloc lgen lease revent routcome rcount rready cursor xrow xstep xhead xgrant
                  sx wstep ticket stopped))
  :initial ((generation fn2-machine-initial-generation) (ready-prev *fn2-none*) (ready-next *fn2-none*)
