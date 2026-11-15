@@ -60,4 +60,16 @@ class ObserverSource(unittest.TestCase):
   fixture=(ROOT/'tests/c-source-observer-unit.lisp').read_text()
   for needle in ('(equal token 1)','(equal token2 2)','(equal tb 2)','(equal gb 33)','(eq blocked :busy)','(eq uncertain :uncertain)'):
    self.assertIn(needle,fixture)
+ def test_prepared_typed_controls_use_actual_actor_take_and_shared_faces(self):
+  source=(ROOT/'tests/c-source-observer-admitted-unit.lisp').read_text()
+  self.assertEqual(source.count('(fn2-machine-take-fn2-auth '),2)
+  self.assertIn('(fn2-c-source-read-release id0 (+ gen0 1)',source)
+  self.assertIn('(equal tb writer)',source);self.assertIn('(equal tbgen wgen)',source)
+  for name in ('fn2-c-source-read-acquire','fn2-c-source-read-release','fn2-c-source-writer-begin','fn2-c-source-writer-poll'):
+   self.assertIn('('+name+' ',source)
+  adapters=(ROOT/'books/c-source-observer-adapters.lisp').read_text()
+  for line in adapters.splitlines():
+   if line.startswith(' :tables '):
+    for kind in ('txn','auth','cns','cursor','sealer','checkpoint-master'):
+     self.assertNotIn('fn2-'+kind+' ',line)
 if __name__=='__main__':unittest.main()
