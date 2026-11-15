@@ -134,6 +134,24 @@ metadata owner must derive complete bounded work or split the transition,
 while preserving publication, writer exclusion and old-source drain checks.
 No additional release-order defect was found in that scoped source review.
 
+The subsequent actual-master trace found a composition blocker: the master
+still takes its summary-authority/rebase route without invoking the typed live
+catalog install/retire/finish path. Directory rebase supplies required journal
+prefix and event archive evidence; it cannot simply be skipped. Both rebase
+consumption and the proposed typed finish transfer pending authority into the
+active row. Current typed finish also clears the pending summary row, so merely
+calling both operations in sequence does not compose their prerequisites.
+The metadata owner is joining them around one authority transfer, retaining
+writer exclusion through archive consumption and reopening only at the final
+terminal. Partial promotion and archive progress need explicit recovery cuts.
+An actual first-to-second adoption followed by served lookup remains required.
+
+The same source audit found another cost gap: `run-bound-step` can copy a
+4,096-byte page, requiring 8,192 payload bytes of reads and writes, while
+`fn2-run-page-step` declares 4,096. Its VERIFY phase also delegates format work;
+a COPY-only correction will not establish the complete phase budget. The
+sealer owner is connecting phase costs and actual engine progress controls.
+
 The counted upload feeder is integrated through the same six-result slice used
 by the actual core callback and public feeder. Its
 [15-book record](receipts/feed15-record-20261115.json) covers 11 reused parents
