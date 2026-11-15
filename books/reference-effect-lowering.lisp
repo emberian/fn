@@ -366,6 +366,12 @@
       (fn2-effect-definition-events (caar rows) (cdar rows) all boundary replacement relation world)
       (mv err (append rest events))))))))
 
+; Operational selections are keyed by the constrained symbol: distinct stubs
+; may select the same implementation. Direct calls have a separate namespace
+; and make no claim about a served dispatcher or a future attachment world.
+(defun fn2-effect-selection-key (fn selected-from)
+ (if selected-from selected-from (list :direct-call fn)))
+
 (defun fn2-reference-effect-events (fn boundary replacement relation leaves selected-from world)
  (declare (xargs :verify-guards nil))
  (cond
@@ -383,9 +389,12 @@
           (t (mv-let (err events) (fn2-effect-definition-list rows rows boundary replacement relation world)
               (mv err (and (not err)
                (append events
-                `((table fn2-reference-effect-selections ',fn
+                `((table fn2-reference-effect-selections ',(fn2-effect-selection-key fn selected-from)
                    '(:selected-from ,selected-from :implementation ,fn
+                     :scope ,(if selected-from :selected-implementation :direct-call)
                      :attachment ,(and selected-from (attachment-pair selected-from world))
+                     :boundary ,boundary :replacement ,replacement :relation ,relation
+                     :leaves ,leaves :graph ,rows
                      :logical-stub-equality nil :whole-subject ,fn)))))))))))))
 
 (defmacro fn2-reference-effect-lower (fn &key
