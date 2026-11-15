@@ -18,11 +18,13 @@ def check(before,after):
     helper=[i for i,n in enumerate(new) if canon(n)==['include-book','"columns-call-guards"']]
     assert len(helper)==1
     new.pop(helper[0])
-    fn=[n for n in new if isinstance(n,Lst) and canon(n)[:2]==['defun','fn2-cns-source-issue-children']]
-    assert len(fn)==1
-    xargs=fn[0].items[3].items[1].items
-    assert xargs[-2].low==':guard-hints'
-    xargs[-2:]=[]
+    subjects={'fn2-cns-source-issue-children','fn2-cns-source-raw-step-children'}
+    fns=[n for n in new if isinstance(n,Lst) and canon(n)[0]=='defun' and n.items[1].low in subjects]
+    assert len(fns)==2
+    for fn in fns:
+        xargs=fn.items[3].items[1].items
+        assert xargs[-2].low==':guard-hints'
+        xargs[-2:]=[]
     assert [canon(n) for n in old]==[canon(n) for n in new]
 class SourceRawCallHints(unittest.TestCase):
     def setUp(self):

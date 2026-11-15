@@ -9,10 +9,12 @@ BASE='4c46607449f33dc604d944d81ea614661eba04e3'
 def runtime_forms(text):
     parsed=parse(text)
     for found in match(None,parsed,deep=False,head='defun'):
-        if found.node.items[1].low=='fn2-cns-source-issue-children':
+        if found.node.items[1].low in ('fn2-cns-source-issue-children','fn2-cns-source-raw-step-children'):
             xs=found.node.items[3].items[1].items
-            i=next(i for i,n in enumerate(xs) if isinstance(n,Atom) and n.low==':guard-hints')
-            del xs[i:i+2]
+            positions=[i for i,n in enumerate(xs) if isinstance(n,Atom) and n.low==':guard-hints']
+            if positions:
+                i=positions[0]
+                del xs[i:i+2]
     def canonical(n):
         if isinstance(n,Lst):return [canonical(x) for x in n.items]
         if isinstance(n,Pre):return (n.prefix,canonical(n.node))
