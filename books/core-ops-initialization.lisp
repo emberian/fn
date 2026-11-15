@@ -1,4 +1,5 @@
 (in-package "ACL2")
+(include-book "assembly-core")
 (include-book "core-init-projections")
 (include-book "ops-conservation")
 
