@@ -1,7 +1,9 @@
 ; Codec records use the submitted, unposted incarnation of the actual loan.
 (in-package "ACL2")
 (include-book "host-loan")
+(include-book "host-codec-close")
 (include-book "tls-stack")
+(include-book "codec-close")
 (local (in-theory (enable fn2-core-wfp)))
 (local
  (in-theory
@@ -87,3 +89,46 @@
             (mv (if (eq span :ok) :act span) action private-channel private-offset private-count serial
                 fn2-tls-transport fn2-tls-record))
          (mv status action 0 offset count serial fn2-tls-transport fn2-tls-record)))))))))
+
+; The generated closure handlers share this submitted Cancel target validator.
+
+
+
+; Validate the Cancel descriptor itself without rejecting held work after stop.
+(defun fn2-host-codec-cancel-target (cancel gen fn2-core)
+ (declare (xargs :stobjs fn2-core :verify-guards nil :guard (fn2-core-wfp fn2-core)))
+ (stobj-let ((fn2-ops (fn2-core-ops fn2-core)))
+  (code target target-gen)
+  (cond
+   ((not (and (natp cancel) (< cancel (fn2-ops-rows fn2-ops)))) (mv :bounds 0 0))
+   ((not (equal gen (fn2-ops-gen cancel fn2-ops))) (mv :stale 0 0))
+   ((not (and (equal (fn2-ops-phase cancel fn2-ops) *fn2-op-phase-submitted*)
+               (equal (fn2-ops-c0-posted cancel fn2-ops) 0)
+               (equal (fn2-ops-kind cancel fn2-ops) *fn2-action-cancel*))) (mv :state 0 0))
+   (t (mv-let (target target-gen) (fn2-op-cancel-target cancel fn2-ops)
+        (if (equal target cancel) (mv :stale 0 0) (mv :ok target target-gen)))))
+  (mv code target target-gen)))
+
+
+
+; Request guards on the actual raw-host entries, preserving opaque shared
+; row/type contracts rather than opening concrete codec arrays in the host.
+(make-event
+ (let* ((world (w state))
+        (readers
+         (append
+          '(fn2-tls-record-rows fn2-tls-transport-rows fn2-compress-transport-rows
+            fn2-tls-record-start fn2-tls-record-next)
+          (fn2-columns-projection-readers 'fn2-tls-record
+           (fn2-decl-get :columns (fn2-decl-row '(:columns fn2-tls-record) world)))
+          (fn2-columns-projection-readers 'fn2-tls-transport
+           (fn2-decl-get :columns (fn2-decl-row '(:columns fn2-tls-transport) world)))
+          (fn2-columns-projection-readers 'fn2-compress-transport
+           (fn2-decl-get :columns (fn2-decl-row '(:columns fn2-compress-transport) world)))))
+        (hints `(("Goal" :in-theory (disable ,@readers)))))
+  (value `(progn
+   (verify-guards fn2-host-codec-cancel-target)
+   (verify-guards fn2-host-tls-record-next :hints ,hints)
+   (verify-guards fn2-host-tls-child-next :hints ,hints)))))
+
+(defcodec-host-closure fn2-host-tls fn2-tls-transport fn2-tls-record)
