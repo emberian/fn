@@ -343,6 +343,7 @@ ACL2_BOOKS = \
   tests/alloc-unit \
   tests/alloc-identity-index-unit \
   tests/alloc-identity-index-provenance-unit \
+  tests/checkpoint-projection-identity-unit \
   tests/alloc-identity-index-initialization-unit \
   tests/alloc-adopt-identity-unit \
   tests/alloc-identity-index-unit \

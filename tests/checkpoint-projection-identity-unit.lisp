@@ -1,0 +1,77 @@
+; Actual owned projection consumer, with per-yield identity observations.
+; Checked census/selected validated premises remain synthetic exactly as in
+; checkpoint-projection-unit. This is not disk authentication/full cold boot.
+; SOURCE corruption controls change the retained owner only AFTER real
+; prepare/probe produced PROBE or READY; no pending phase is manually minted.
+(in-package "ACL2")
+(include-book "std/util/bstar" :dir :system)
+(include-book "checkpoint-projection-unit")
+(include-book "../books/checkpoint-projection-identity-preservation")
+(fn2-alloc-test-reference-events fn2-checkpoint-construction)
+(defun fn2-cpi-snapshot (fn2-checkpoint-projection fn2-checkpoint-selected-source fn2-extents fn2-alloc-edges fn2-checkpoint-construction)
+ (declare (xargs :stobjs (fn2-checkpoint-projection fn2-checkpoint-selected-source fn2-extents fn2-alloc-edges fn2-checkpoint-construction) :verify-guards nil))
+ (list (fn2-cpu-snapshot fn2-checkpoint-projection fn2-checkpoint-selected-source fn2-extents fn2-alloc-edges)
+       (fn2-checkpoint-construction-logical-snapshot fn2-checkpoint-construction)))
+(defun fn2-cpi-owned-drive (fuel mode trace saw-probe saw-ready checkpoint-kind fn2-checkpoint-selected-source fn2-boot-config fn2-checkpoints fn2-checkpoint-refs fn2-checkpoint-bytes fn2-origin fn2-checkpoint-recovery-evidence fn2-checkpoint-recovery-census fn2-checkpoint-restore-map fn2-checkpoint-restore-map-control fn2-checkpoint-restore-reach-control fn2-checkpoint-projection fn2-extents fn2-ops fn2-alloc-edges fn2-checkpoint-restore-reach fn2-checkpoint-construction)
+ (declare (xargs :stobjs (fn2-checkpoint-selected-source fn2-boot-config fn2-checkpoints fn2-checkpoint-refs fn2-checkpoint-bytes fn2-origin fn2-checkpoint-recovery-evidence fn2-checkpoint-recovery-census fn2-checkpoint-restore-map fn2-checkpoint-restore-map-control fn2-checkpoint-restore-reach-control fn2-checkpoint-projection fn2-extents fn2-ops fn2-alloc-edges fn2-checkpoint-restore-reach fn2-checkpoint-construction) :verify-guards nil :measure (nfix fuel)))
+ (if (zp fuel) (mv :budget nil saw-probe saw-ready fn2-checkpoint-projection fn2-checkpoint-selected-source fn2-extents fn2-alloc-edges fn2-checkpoint-construction)
+  (b* ((phase (fn2-alloc-identity-phase fn2-extents))
+       (saw-probe (or saw-probe (= phase *fn2-alloc-identity-phase-probe*)))
+       (saw-ready (or saw-ready (= phase *fn2-alloc-identity-phase-ready*)))
+       (before-domain (fn2-checkpoint-projection-index-carriers fn2-checkpoint-selected-source fn2-boot-config fn2-checkpoints fn2-checkpoint-refs fn2-checkpoint-bytes fn2-origin fn2-checkpoint-recovery-evidence fn2-checkpoint-recovery-census fn2-checkpoint-restore-map fn2-checkpoint-restore-map-control fn2-checkpoint-restore-reach-control fn2-checkpoint-projection fn2-extents fn2-ops fn2-alloc-edges fn2-checkpoint-restore-reach fn2-checkpoint-construction))
+       (before-loop (fn2-checkpoint-projection-index-loop-p fn2-checkpoint-projection fn2-checkpoint-restore-map fn2-extents))
+       (before-current (fn2-checkpoint-projection-current-p fn2-checkpoint-selected-source fn2-boot-config fn2-checkpoints fn2-checkpoint-refs fn2-checkpoint-bytes fn2-origin fn2-checkpoint-recovery-evidence fn2-checkpoint-recovery-census fn2-checkpoint-restore-map fn2-checkpoint-restore-map-control fn2-checkpoint-restore-reach-control fn2-checkpoint-projection fn2-ops fn2-extents))
+       (refuse (or (and (eq mode :probe-owner) (= phase *fn2-alloc-identity-phase-probe*))
+                   (and (eq mode :ready-owner) (= phase *fn2-alloc-identity-phase-ready*))))
+       (fn2-checkpoint-selected-source (if refuse
+        (fn2-checkpoint-selected-source-set-owner-gen 0
+         (+ 1 (fn2-checkpoint-selected-source-owner-gen 0 fn2-checkpoint-selected-source)) fn2-checkpoint-selected-source)
+        fn2-checkpoint-selected-source))
+       (call-domain (fn2-checkpoint-projection-index-carriers fn2-checkpoint-selected-source fn2-boot-config fn2-checkpoints fn2-checkpoint-refs fn2-checkpoint-bytes fn2-origin fn2-checkpoint-recovery-evidence fn2-checkpoint-recovery-census fn2-checkpoint-restore-map fn2-checkpoint-restore-map-control fn2-checkpoint-restore-reach-control fn2-checkpoint-projection fn2-extents fn2-ops fn2-alloc-edges fn2-checkpoint-restore-reach fn2-checkpoint-construction))
+       (current-after-corruption (fn2-checkpoint-projection-current-p fn2-checkpoint-selected-source fn2-boot-config fn2-checkpoints fn2-checkpoint-refs fn2-checkpoint-bytes fn2-origin fn2-checkpoint-recovery-evidence fn2-checkpoint-recovery-census fn2-checkpoint-restore-map fn2-checkpoint-restore-map-control fn2-checkpoint-restore-reach-control fn2-checkpoint-projection fn2-ops fn2-extents))
+       (before (if refuse (fn2-cpi-snapshot fn2-checkpoint-projection fn2-checkpoint-selected-source fn2-extents fn2-alloc-edges fn2-checkpoint-construction) nil))
+       ((mv code fn2-checkpoint-projection fn2-checkpoint-selected-source fn2-extents fn2-alloc-edges fn2-checkpoint-construction) (fn2-checkpoint-projection-owned-step checkpoint-kind fn2-checkpoint-selected-source fn2-boot-config fn2-checkpoints fn2-checkpoint-refs fn2-checkpoint-bytes fn2-origin fn2-checkpoint-recovery-evidence fn2-checkpoint-recovery-census fn2-checkpoint-restore-map fn2-checkpoint-restore-map-control fn2-checkpoint-restore-reach-control fn2-checkpoint-projection fn2-extents fn2-ops fn2-alloc-edges fn2-checkpoint-restore-reach fn2-checkpoint-construction))
+       (after-loop (fn2-checkpoint-projection-index-loop-p fn2-checkpoint-projection fn2-checkpoint-restore-map fn2-extents))
+       (trace (and trace before-domain before-loop before-current call-domain after-loop)))
+   (cond
+    (refuse (mv code (and trace (not current-after-corruption) (eq code :ownership) (equal before (fn2-cpi-snapshot fn2-checkpoint-projection fn2-checkpoint-selected-source fn2-extents fn2-alloc-edges fn2-checkpoint-construction))
+                           (= phase (fn2-alloc-identity-phase fn2-extents))) saw-probe saw-ready fn2-checkpoint-projection fn2-checkpoint-selected-source fn2-extents fn2-alloc-edges fn2-checkpoint-construction))
+    ((eq code :more) (fn2-cpi-owned-drive (- fuel 1) mode trace saw-probe saw-ready checkpoint-kind fn2-checkpoint-selected-source fn2-boot-config fn2-checkpoints fn2-checkpoint-refs fn2-checkpoint-bytes fn2-origin fn2-checkpoint-recovery-evidence fn2-checkpoint-recovery-census fn2-checkpoint-restore-map fn2-checkpoint-restore-map-control fn2-checkpoint-restore-reach-control fn2-checkpoint-projection fn2-extents fn2-ops fn2-alloc-edges fn2-checkpoint-restore-reach fn2-checkpoint-construction))
+    (t (mv code trace saw-probe saw-ready fn2-checkpoint-projection fn2-checkpoint-selected-source fn2-extents fn2-alloc-edges fn2-checkpoint-construction))))))
+(defun fn2-cpi-body (mode fn2-checkpoint-projection fn2-core)
+ (declare (xargs :stobjs (fn2-checkpoint-projection fn2-core) :verify-guards nil))
+ (b* ((fn2-core (fn2-core-init (put-assoc-equal :extent-slots 6 *fn2-profile-tiny*) fn2-core))
+      (fn2-checkpoint-projection (fn2-checkpoint-projection-init 1 fn2-checkpoint-projection))
+      ((mv selected fn2-core) (fn2-cpu-select fn2-core))
+      ((mv decoded fn2-core) (fn2-cpu-map fn2-core)))
+  (stobj-let ((fn2-checkpoint-selected-source (fn2-core-checkpoint-selected-source fn2-core)) (fn2-boot-config (fn2-core-boot-config fn2-core)) (fn2-checkpoints (fn2-core-checkpoints fn2-core)) (fn2-checkpoint-refs (fn2-core-checkpoint-refs fn2-core)) (fn2-checkpoint-bytes (fn2-core-checkpoint-bytes fn2-core)) (fn2-origin (fn2-core-origin fn2-core)) (fn2-checkpoint-recovery-evidence (fn2-core-checkpoint-recovery-evidence fn2-core)) (fn2-checkpoint-recovery-census (fn2-core-checkpoint-recovery-census fn2-core)) (fn2-checkpoint-restore-map (fn2-core-checkpoint-restore-map fn2-core)) (fn2-checkpoint-restore-map-control (fn2-core-checkpoint-restore-map-control fn2-core)) (fn2-checkpoint-restore-reach-control (fn2-core-checkpoint-restore-reach-control fn2-core)) (fn2-extents (fn2-core-extents fn2-core)) (fn2-ops (fn2-core-ops fn2-core)) (fn2-alloc-edges (fn2-core-alloc-edges fn2-core)) (fn2-checkpoint-restore-reach (fn2-core-checkpoint-restore-reach fn2-core)) (fn2-checkpoint-construction (fn2-core-checkpoint-construction fn2-core)))
+   (answer fn2-checkpoint-projection fn2-checkpoint-selected-source fn2-extents fn2-alloc-edges fn2-checkpoint-construction)
+   (b* ((fn2-checkpoint-selected-source (fn2-checkpoint-selected-source-put 0
+         (phase *fn2-checkpoint-selected-source-phase-validated*)
+         (generation (fn2-checkpoint-restore-reach-control-generation 0 fn2-checkpoint-restore-reach-control))))
+        (fn2-extents (fn2-alloc-init 6 fn2-extents))
+        (fn2-alloc-edges (fn2-alloc-edges-init 128 fn2-alloc-edges))
+        ((mv begun fn2-checkpoint-projection fn2-checkpoint-selected-source fn2-extents)
+         (fn2-checkpoint-projection-begin fn2-checkpoint-selected-source fn2-boot-config fn2-checkpoints fn2-checkpoint-refs fn2-checkpoint-bytes fn2-origin fn2-checkpoint-recovery-evidence fn2-checkpoint-recovery-census fn2-checkpoint-restore-map fn2-checkpoint-restore-map-control fn2-checkpoint-restore-reach-control fn2-checkpoint-projection fn2-extents fn2-ops fn2-alloc-edges))
+        (initial (fn2-checkpoint-projection-index-loop-p fn2-checkpoint-projection fn2-checkpoint-restore-map fn2-extents))
+        ((mv code trace saw-probe saw-ready fn2-checkpoint-projection fn2-checkpoint-selected-source fn2-extents fn2-alloc-edges fn2-checkpoint-construction)
+         (fn2-cpi-owned-drive (+ 16 (* 6 (+ 6 4))) mode t nil nil *fn2-checkpoint-master-kind* fn2-checkpoint-selected-source fn2-boot-config fn2-checkpoints fn2-checkpoint-refs fn2-checkpoint-bytes fn2-origin fn2-checkpoint-recovery-evidence fn2-checkpoint-recovery-census fn2-checkpoint-restore-map fn2-checkpoint-restore-map-control fn2-checkpoint-restore-reach-control fn2-checkpoint-projection fn2-extents fn2-ops fn2-alloc-edges fn2-checkpoint-restore-reach fn2-checkpoint-construction)))
+    (mv (and selected decoded (eq begun :more) initial trace saw-probe
+         (if mode
+          (and (eq code :ownership) (if (eq mode :ready-owner) saw-ready (not saw-ready))
+               (= (fn2-extents-state (fn2-checkpoint-projection-cursor 0 fn2-checkpoint-projection) fn2-extents)
+                  *fn2-extent-state-free*))
+          (and (eq code :projected) saw-ready
+               (fn2-alloc-identity-maintained-p fn2-extents)
+               (fn2-cpu-rows-p 0 fn2-extents fn2-checkpoint-restore-map)))) fn2-checkpoint-projection fn2-checkpoint-selected-source fn2-extents fn2-alloc-edges fn2-checkpoint-construction))
+   (mv answer fn2-checkpoint-projection fn2-core))))
+(defun fn2-cpi-run (mode)
+ (declare (xargs :verify-guards nil))
+ (with-local-stobj fn2-core
+  (mv-let (answer fn2-core)
+   (with-local-stobj fn2-checkpoint-projection
+    (mv-let (answer fn2-checkpoint-projection fn2-core)
+     (fn2-cpi-body mode fn2-checkpoint-projection fn2-core) (mv answer fn2-core))) answer)))
+(assert-event (fn2-cpi-run nil))
+(assert-event (fn2-cpi-run :probe-owner))
+(assert-event (fn2-cpi-run :ready-owner))
