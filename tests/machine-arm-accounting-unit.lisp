@@ -65,7 +65,7 @@
             (equal (fn2-cost-values (fn2-arm-get :cost (cddr entry)) (w state)) '(12288 5 0))
             (fn2-machine-arm-problem 'fn2-accounting-too-small entry nil nil (w state)))
        '(value-triple :unchanged-cap-refused)
-     (er soft 'accounting-cap "Actual generated over-cap contract was not refused.")))))
+     '(assert-event nil)))))
 (make-event
  (mv-let (err form) (fn2-arms-events 'fn2-accounting-probe :wrappers (w state))
   (let* ((conts (cadr (member-eq :continuations (cadr (cadddr (cadr form))))))
@@ -74,4 +74,4 @@
             (equal (fn2-cost-values (fn2-arm-get :cost (cddr found)) (w state)) '(12288 5 0))
             (equal (fn2-cost-values (fn2-arm-get :cost (cddr end)) (w state)) '(8192 4 0)))
        '(value-triple :nested-prefix-and-public-bound-slack)
-     (er soft 'accounting-static "Unexpected actual DSL accounting envelope.")))))
+     '(assert-event nil)))))
