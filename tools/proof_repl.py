@@ -1107,6 +1107,7 @@ def per_event_steps(form: str, steps: int, limit: float | None = None) -> str:
     allowed = set(EVENT_HEADS) | {"local", "progn", "in-theory", "table", "deflabel",
                                   "defmacro", "defequiv", "defcong", "defrefinement",
                                   "assert-event", "value-triple", "include-book", "defun-sk", "defcolumns",
+                                  "fn2-book-layer", "fn2-extents-preserves", "defthm-owed",
                                   "fn2-control-preserves", "fn2-issue-children-wrapper",
                                   "fn2-machines-keeps-directory", "fn2-machines-preserves",
                                   "fn2-machines-wait-queue", "fn2-ops-preserves",
