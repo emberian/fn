@@ -209,7 +209,7 @@
          (:checkpoint-directory-install :storage-window)
          (:genesis-begin :storage-window)
          (:genesis-step :storage-window))
- :budget (:bytes 32768 :steps 32 :descriptors 4)
+ :budget (:bytes *fn2-checkpoint-semantic-visit-bytes* :steps 32 :descriptors 4)
  :stops (:geometry :configuration :io :anchor :checkpoint :recovery :epoch :bounds)
  :capacity (if (fn2-profile-get :image-boot profile) 1 0)
  :initial ((generation fn2-commit-initial-generation) (ready-prev *fn2-none*) (ready-next *fn2-none*))
