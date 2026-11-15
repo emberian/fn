@@ -1,0 +1,35 @@
+# Reader qualification after the shared foundation
+
+At root6e7a1a9c1 the actual two-root reader closure remains34 books. Thirty
+current keys have usable8aeb cache entries whose actual cert/port/FASL bytes
+were checked. Four books need requalification; no ACL2 was launched for this
+plan. The receipt binds every current key and raw source hash.
+
+Only four raw providers differ from the original reader34 receipt:
+
+- COLUMNS: absent-versus-explicit-NIL WFP hint routing and the shared
+  defcolumns-predicate generator.
+- CHECKPOINT: the exact slotp checked body/guard is generated alongside the
+  guarded carried helper/equality. All other reader-owned source is unchanged.
+- POOL: the row-fold theorem's localized theory hint only.
+- VOCAB: producer-owned posted-slot theorem, success bounds, scalar latch
+  frame and HARVEST guard proof. Existing runtime bodies/guards are unchanged.
+
+These four providers already have current whole records in foundation37.
+All other30 raw sources, including both actual reader books and both witness
+fixtures, equal the original reader receipt. Their claims, guarded replacement
+and refutations require no source change.
+
+The minimal campaign reuses30 payloads, then authors/records only:
+
+1. checkpoint-reader-interfaces, importing actual CHECKPOINT.
+2. checkpoint-descriptor-read, importing the newly qualified interfaces.
+3. checkpoint-reader-scalar-domain-unit, importing the actual descriptor reader.
+4. checkpoint-reader-refutation-unit, importing that scalar fixture and
+   assurance-completion.
+
+Each book uses a fresh world with only its actual qualified parent imports,
+its complete original events at2M20, then a whole record only after whole
+AUTHOR success. Stop at the first refusal; no provider or prior34 replay.
+After all four pass, check the exact current34 keys and payload bytes. This
+qualifies the reader closure only; late physical callers remain separate.
