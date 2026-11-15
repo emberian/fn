@@ -398,7 +398,7 @@
 (defun fn2-as-resolve (fuel tx fn2-core)
  (declare (xargs :stobjs fn2-core :verify-guards nil))
  (if (zp fuel) (mv :fuel fn2-core)
-  (mv-let (answer fn2-core) (fn2-successor-resolve tx 4096 fn2-core)
+  (mv-let (answer fn2-core) (fn2-successor-resolve tx 4096 *fn2-idc-owner-kind* *fn2-idc-owner-slot* *fn2-idc-owner-gen* fn2-core)
    (if (eq answer :more) (fn2-as-resolve (- fuel 1) tx fn2-core) (mv answer fn2-core)))))
 ;; slot 0 of TX: KIND (the fold's :grant event, or :depend) of fn2-authority-head, P -> H
 (defun fn2-as-head-slot (tx kind p h fn2-core)

@@ -87,7 +87,7 @@
 (defun fn2-gu-resolve (fuel tx fn2-core)
  (declare (xargs :stobjs fn2-core :verify-guards nil))
  (if (zp fuel) (mv :fuel fn2-core)
-  (mv-let (answer fn2-core) (fn2-successor-resolve tx 4096 fn2-core)
+  (mv-let (answer fn2-core) (fn2-successor-resolve tx 4096 *fn2-idc-owner-kind* *fn2-idc-owner-slot* *fn2-idc-owner-gen* fn2-core)
    (if (eq answer :more) (fn2-gu-resolve (- fuel 1) tx fn2-core) (mv answer fn2-core)))))
 (defun fn2-gu-decide (fuel d fn2-core)
  (declare (xargs :stobjs fn2-core :verify-guards nil))

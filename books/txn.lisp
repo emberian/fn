@@ -443,7 +443,7 @@
   ;; fields, declare the slots (evidence or article); then resolve them
   (:prepare :on-refusal ((:stop :machine-phase))
    (:if (equal row-prepared 1)
-        ((:do (answer) (fn2-successor-resolve row-slot 4096)
+        ((:do (answer) (fn2-successor-resolve row-slot 4096 *fn2-txn-kind* id row-generation)
           :accept ()
           :case (((:ok) (:next :ready) (:charge :bytes 8192 :steps *fn2-work-transition* :runnable t))
                  ((:more) (:charge :bytes 8192 :steps *fn2-work-transition* :runnable t)))))
