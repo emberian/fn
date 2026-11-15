@@ -43,6 +43,7 @@
 (defcolumns fn2-seals
  ((phase (:enum fn2-seal-phase (:idle :build :filter :install :overlay-return :hash-return :failed :release)))
   (sub (:enum fn2-seal-sub (:open :clear :add :drive :finish :solve)))
+  (source-receipt :u60) ; Exact source observer serial; retained through input retirement.
   (history :u60) (history-incarnation :u60)
   (o :u32) (pos :u32) (sid :u60) (run :u60) (runs :u60) (units :u60)
   (top :u8) (rslot :u32) (rgen :u60) (runit :u60) (rcounter :u60) (entries :u60)
@@ -62,7 +63,7 @@
 ; Set the seal row's resources: idle, no run or unit handed out yet.
 (defun fn2-seal-init (wbase fbase crow pagefill okind oslot ogen history history-incarnation fn2-seals)
  (declare (xargs :stobjs fn2-seals :guard (fn2-seals-wfp fn2-seals)))
- (if (not (and (fn2-origin-physicalp history history-incarnation) (< 0 (fn2-seals-rows fn2-seals)) (unsigned-byte-p 32 wbase) (unsigned-byte-p 32 fbase)
+ (if (not (and (fn2-origin-physicalp history history-incarnation) (< 0 (fn2-seals-rows fn2-seals)) (= (fn2-seals-source-receipt 0 fn2-seals) 0) (unsigned-byte-p 32 wbase) (unsigned-byte-p 32 fbase)
                (unsigned-byte-p 32 crow) (unsigned-byte-p 32 pagefill) (unsigned-byte-p 8 okind)
                (unsigned-byte-p 32 oslot) (unsigned-byte-p 60 ogen)))
      (mv :bounds fn2-seals)
