@@ -12,13 +12,14 @@ recovery of accepted data. Integrated work now goes directly to upstream dev;
 component records alone do not establish this milestone. The shared application
 build owns the coherent current callback/runtime prefix and executable controls.
 
-Current outstanding gate: application candidate `8677da3e9` clears the
-`FN2-RUN-HEAD` guard and stops at `FN2-RUN-SEAL-STEP-SHAPE`, whose raw pool-row
-equality crosses `FN2-FORMAT-RUN`. The whole-book attempt took 24.69 seconds;
-this is a proof refusal, not a counterexample or an application certificate.
-`recover_children` owns the interface/hint repair and `sol_proof_event_budget`
-owns the retained executor. The full reviewed pool/fields hint packet must be
-present; applying only its last guard-hint commit omits required earlier changes.
+Run-page source `f3a8f5668` is now qualified by the
+[26-book record](receipts/runs-page26-record.json): 25 reused and one new book.
+Root matched all 26 source hashes and closure keys. The complete book passes
+with the existing pool/fields observer hints, the HEAD guard hint, and the
+missing local pool-row exclusion at `FN2-RUN-SEAL-STEP-SHAPE`. Runtime bodies,
+guards and theorem formulas are unchanged. The structural rewrite has three
+passing controls. The next gate is the composed current APPEND/FETCH consumer;
+this record does not qualify that consumer or the native restart path.
 
 Stable connection/TLS schema providers are integrated at `bf2fc57e7` with
 [qualified 39-book evidence](receipts/kind-schema39-record.json): 35 reused,
