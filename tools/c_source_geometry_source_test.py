@@ -7,9 +7,10 @@ ROOT = Path(__file__).resolve().parents[1]
 def check(text):
     forms = lr.parse(text).forms
     required = [
-        '(defun fn2-c-source-endpoint-rows (profile) (declare (xargs :guard t)) (+ 1 (nfix (fn2-profile-t profile)) (* 2 (fn2-b-read-rows profile))))',
+        '(defun fn2-c-source-endpoint-rows (profile) (declare (xargs :guard t)) (+ 1 (nfix (fn2-profile-t profile)) (* 2 (fn2-b-read-rows profile)) (fn2-b-cursor-rows profile)))',
         '(defun fn2-c-source-successor-endpoint (read-rows tx) (declare (xargs :guard (and (natp read-rows) (natp tx)))) (+ read-rows tx))',
         '(defun fn2-c-source-sealer-endpoint (read-rows successor-rows) (declare (xargs :guard (and (natp read-rows) (natp successor-rows)))) (+ read-rows successor-rows))',
+        '(defun fn2-c-source-request-endpoint (read-rows successor-rows cursor-row) (declare (xargs :guard (and (natp read-rows) (natp successor-rows) (natp cursor-row)))) (+ 1 read-rows successor-rows cursor-row))',
         '(unsigned-byte-p 32 (fn2-c-source-endpoint-rows profile))',
         '(fn2-c-source-readers-init (fn2-c-source-endpoint-rows profile) fn2-c-source-readers)',
     ]
@@ -28,9 +29,11 @@ class Source(unittest.TestCase):
         with self.assertRaises(ValueError): check(text)
     def test_regions_disjoint_at_empty_and_nonempty_profiles(self):
         # Arithmetic control of the source formula, not executable initialization.
-        for t, r in [(0,0),(0,3),(4,0),(7,11)]:
+        for t, r, x in [(0,0,0),(0,3,1),(4,0,0),(7,11,4)]:
             reads=set(range(r)); successors=set(range(r,r+t+r)); sealer=r+t+r
             self.assertFalse(reads & successors)
             self.assertNotIn(sealer, reads|successors)
-            self.assertEqual(len(reads|successors|{sealer}), 1+t+2*r)
+            requests=set(range(sealer+1,sealer+1+x))
+            self.assertFalse(requests & (reads|successors|{sealer}))
+            self.assertEqual(len(reads|successors|{sealer}|requests), 1+t+2*r+x)
 if __name__ == '__main__': unittest.main()

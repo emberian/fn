@@ -67,13 +67,17 @@
 ;; owns both.  The final endpoint protects the sealer's complete merge lifetime.
 (defun fn2-c-source-endpoint-rows (profile)
  (declare (xargs :guard t))
- (+ 1 (nfix (fn2-profile-t profile)) (* 2 (fn2-b-read-rows profile))))
+ (+ 1 (nfix (fn2-profile-t profile)) (* 2 (fn2-b-read-rows profile))
+    (fn2-b-cursor-rows profile)))
 (defun fn2-c-source-successor-endpoint (read-rows tx)
  (declare (xargs :guard (and (natp read-rows) (natp tx))))
  (+ read-rows tx))
 (defun fn2-c-source-sealer-endpoint (read-rows successor-rows)
  (declare (xargs :guard (and (natp read-rows) (natp successor-rows))))
  (+ read-rows successor-rows))
+(defun fn2-c-source-request-endpoint (read-rows successor-rows cursor-row)
+ (declare (xargs :guard (and (natp read-rows) (natp successor-rows) (natp cursor-row))))
+ (+ 1 read-rows successor-rows cursor-row))
 (defthm fn2-c-source-endpoint-rows-natp
  (natp (fn2-c-source-endpoint-rows profile)) :rule-classes :type-prescription)
 (defun fn2-idc-profilep (profile)
@@ -124,7 +128,7 @@
  "Writer preference closes new semantic observers before bounded live source replacement.")
 (fn2-idc-child fn2-core-c-source-readers fn2-c-source-readers
  (fn2-c-source-readers-init (fn2-c-source-endpoint-rows profile) fn2-c-source-readers)
- "One exact receipt per read, successor, and sealer endpoint survives yields until references are dead.")
+ "One exact receipt per read, successor, sealer, and complete cursor request endpoint survives yields until references are dead.")
 (fn2-idc-child fn2-core-csnapshot fn2-csnapshot (fn2-csnapshot-init 1 fn2-csnapshot)
  "One exact-owner resident metadata cut excludes staging and materialization until released.")
 (fn2-idc-child fn2-core-id-decides fn2-id-decides (fn2-id-decides-init (fn2-profile-t profile) fn2-id-decides)
