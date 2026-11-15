@@ -671,8 +671,36 @@ allocations through the existing journal producer, remove only this candidate's
 root/source edges, and preserve other candidates and read pins. Borrowed sources
 are not retired by this operation. Cold boot must reconstruct both authenticated
 bank occupants and retained installation evidence before teardown is authorized;
-runtime fields do not establish cold authority. Master debt-drain scheduling and
-catalog reuse remain unimplemented. Activation and FREE remain disabled.
+runtime fields do not establish cold authority. Bounded debt inspection/retirement scheduling now exists; terminal
+catalog reuse remains unimplemented. Activation and FREE remain disabled.
+
+The master now reaches a bounded displaced-candidate inspection after normal
+C snapshot release. Each call checks one actual physical row under the retained
+latest lifecycle/candidate owner, published descriptor identity and exact old
+debt identity. An owned role0..5 construction may be eligible only with its exact
+victim source edge, its counted exact six-root edges and no nonvictim durable
+protector. Physical read/I/O pins remain untouched; role6 journal tickets,
+borrowed sources and shared/archive-protected extents are not retirement input.
+The candidate and B lifecycle provenance remain retained across this traversal.
+
+The actual submit wrapper rechecks the full eligibility gate and calls the
+existing ordinary retirement producer in the same ACL2 call. That producer
+binds the actual containing batch and installs the allocator retirement intent
+before txn admission. New durable protectors are refused during the asynchronous
+wait and after persisted retirement; physical pins may still complete. Exact
+accepted/refused settlement releases the staging lease, while uncertainty
+retains it and the intent. The master tracks that one lease separately from the
+already released working27 bundle, including the uncertain-acquisition path.
+
+Only exact accepted batch/event settlement reaches the edge-drop arm. That arm
+checks the same owner/debt, exact allocation and actual RETIRE_PENDING retirement
+commit, then invokes the existing allocator edge-drop for the victim's source
+edge alone. It preserves all six roots, borrowed/shared/archive references,
+other candidates and transient pins. Submit, settlement consumption and edge
+drop have explicit zero-budget no-effect branches. EOF retains debt and catalog
+state: archive/ancestry reachability must be settled before root/source teardown
+or catalog reuse. The source actor and primitive controls remain unadmitted;
+activation and allocator FREE remain disabled.
 
 Cold semantic closure uses an extent-indexed DFS stack, replacing the pending
 FIFO. A GRAY page is an active ancestor, and encountering it again refuses a

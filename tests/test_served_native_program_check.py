@@ -32,7 +32,7 @@ class ServedNativeProgramTests(unittest.TestCase):
     def test_actual_graph(self):
         report = checker.check(self.root)
         self.assertTrue(report['audit_ok'], report)
-        self.assertEqual(report['cuts'], 17)
+        self.assertEqual(report['cuts'], 15)
         self.assertEqual(report['cut_mapping_status'], 'incomplete')
         self.assertEqual(report['host_refinement'], 'not_checked')
 
@@ -87,20 +87,52 @@ class ServedNativeProgramTests(unittest.TestCase):
                     ':start1 offset :end1 (+ offset (length seed))')
         self.assertFalse(checker.check(self.root)['audit_ok'])
 
+    def test_tls_record_must_authorize_live_loan(self):
+        self.change('host/tls.lisp', '(fn2-host-tls-record-next slot',
+                    '(unvalidated-record-select slot')
+        self.assertFalse(checker.check(self.root)['audit_ok'])
+
+    def test_tls_record_cannot_use_native_mirror_bounds(self):
+        self.change('host/tls.lisp', '(sb-sys:sap+ (sb-sys:vector-sap bytes) address) count)',
+                    '(fn2-n-sap host (fn2-nop-address op)) (fn2-nop-len op))')
+        self.assertFalse(checker.check(self.root)['audit_ok'])
+
+    def test_tls_failure_preserves_observed_payload(self):
+        self.change('host/adapter.lisp',
+                    '(fn2-n-complete host slot :failed count 0 nil (fn2-n-octets host address count))',
+                    '(fn2-n-complete host slot :failed count)')
+        self.assertFalse(checker.check(self.root)['audit_ok'])
+
+    def test_tls_child_requires_live_core_and_upper_pending(self):
+        self.change('host/tls.lisp', '(fn2-host-tls-child-next slot',
+                    '(unvalidated-child-select slot')
+        self.assertFalse(checker.check(self.root)['audit_ok'])
+
+    def test_tls_child_uses_authorized_private_offset(self):
+        self.change('host/tls.lisp', 'action bytes offset offset count)',
+                    'action bytes 0 offset count)')
+        self.assertFalse(checker.check(self.root)['audit_ok'])
+
+    def test_tls_record_must_observe_raw_count(self):
+        self.change('host/tls.lisp', 'serial raw moved errno transport record)',
+                    'serial raw 0 errno transport record)')
+        self.assertFalse(checker.check(self.root)['audit_ok'])
+
     def test_tls_short_write_must_retain_offset(self):
-        self.change('host/tls.lisp', '(incf (fn2-native-tls-output-offset tls) n)',
-                    '(setf (fn2-native-tls-output-offset tls) 0)')
+        self.change('host/tls.lisp',
+                    '(multiple-value-bind (raw errno)\n        (fn2-native-tls-perform tls action offset count',
+                    '(multiple-value-bind (raw errno)\n        (fn2-native-tls-perform tls action 0 count')
         self.assertFalse(checker.check(self.root)['audit_ok'])
 
     def test_tls_receive_must_observe_bio_capacity(self):
-        self.change('host/tls.lisp', '(fn2-native-recv fd (sb-sys:vector-sap buffer) room)',
-                    '(fn2-native-recv fd (sb-sys:vector-sap buffer) (length buffer))')
+        self.change('host/tls.lisp', '(fn2-native-recv fd (sb-sys:vector-sap input) count)',
+                    '(fn2-native-recv fd (sb-sys:vector-sap input) (length input))')
         self.assertFalse(checker.check(self.root)['audit_ok'])
 
     def test_tls_completion_requires_flushed_output(self):
-        self.change('host/adapter.lisp',
-                    '(and (fn2-nop-tls-finished op) (fn2-native-tls-output-empty-p tls))',
-                    '(fn2-nop-tls-finished op)')
+        self.change('books/tls-record-policy.lisp',
+                    '((< oo ol) (mv :act 5 oo (min quantum (- ol oo))))',
+                    '(nil (mv :act 5 oo (min quantum (- ol oo))))')
         self.assertFalse(checker.check(self.root)['audit_ok'])
 
     def test_tls_observation_preserves_epoch_and_raw_return(self):
@@ -111,8 +143,8 @@ class ServedNativeProgramTests(unittest.TestCase):
 
     def test_tls_handoff_preserves_pending_input(self):
         self.change('host/adapter.lisp',
-                    '(fn2-native-tls-input-length tls) il',
-                    '(fn2-native-tls-input-length tls) 0')
+                    '(setf (fn2-native-tls-transport tls) ledger)',
+                    '(setf (fn2-native-tls-transport tls) (create-fn2-tls-transport))')
         self.assertFalse(checker.check(self.root)['audit_ok'])
 
     def test_tls_free_cannot_bypass_logical_retirement(self):
@@ -181,7 +213,7 @@ class ServedNativeProgramTests(unittest.TestCase):
         self.assertFalse(checker.check(self.root)['audit_ok'])
 
     def test_shared_normalizer_cannot_fabricate_count(self):
-        self.change('books/host-boundary.lisp', 'kind code count aux len nil cancelled)',
+        self.change('books/host-result.lisp', 'kind code count aux len nil cancelled)',
                     'kind code 0 aux len nil cancelled)')
         self.assertFalse(checker.check(self.root)['audit_ok'])
 

@@ -3,7 +3,6 @@
 (in-package "ACL2")
 (include-book "commit-alloc")
 (include-book "format-events")
-(include-book "checkpoint-allocation")
 (fn2-book-layer :b)
 
 ; One B-owned lifecycle member may be in flight. The checkpoint worker owns

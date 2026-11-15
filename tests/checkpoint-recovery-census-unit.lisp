@@ -49,7 +49,9 @@
  (declare (xargs :stobjs (fn2-boot-config fn2-checkpoints fn2-checkpoint-refs fn2-checkpoint-bytes fn2-checkpoint-recovery-evidence fn2-checkpoint-recovery-census) :verify-guards nil :measure (nfix fuel)))
  (if (zp fuel) (mv :fuel fn2-checkpoint-recovery-census)
   (mv-let (code fn2-checkpoint-recovery-census)
-   (fn2-checkpoint-recovery-census-step fn2-boot-config fn2-checkpoints fn2-checkpoint-refs fn2-checkpoint-bytes fn2-checkpoint-recovery-evidence fn2-checkpoint-recovery-census)
+   (with-local-stobj fn2-origin
+        (let ((fn2-origin (fn2-origin-prepare '((:origin-lineage . 101) (:origin-domain . 103) (:origin-incarnation . 107) (:history-id . 1) (:history-incarnation . 1)) fn2-origin)))
+         (fn2-checkpoint-recovery-census-step fn2-boot-config fn2-checkpoints fn2-checkpoint-refs fn2-checkpoint-bytes fn2-checkpoint-recovery-evidence fn2-origin fn2-checkpoint-recovery-census)))
    (if (eq code :more) (fn2-crcu-drive (- fuel 1) fn2-boot-config fn2-checkpoints fn2-checkpoint-refs fn2-checkpoint-bytes fn2-checkpoint-recovery-evidence fn2-checkpoint-recovery-census)
     (mv code fn2-checkpoint-recovery-census)))))
 
@@ -76,10 +78,25 @@
         ((eq mode :missing-first) (fn2-checkpoint-recovery-evidence-set-first 1 0 fn2-checkpoint-recovery-evidence))
         (t fn2-checkpoint-recovery-evidence)))
       (positive-bound (if mode t (and
-        (fn2-checkpoint-recovery-census-bound-p 0 fn2-boot-config fn2-checkpoints fn2-checkpoint-refs fn2-checkpoint-bytes fn2-checkpoint-recovery-evidence)
-        (fn2-checkpoint-recovery-census-bound-p 1 fn2-boot-config fn2-checkpoints fn2-checkpoint-refs fn2-checkpoint-bytes fn2-checkpoint-recovery-evidence)
-        (fn2-checkpoint-recovery-census-bound-p 2 fn2-boot-config fn2-checkpoints fn2-checkpoint-refs fn2-checkpoint-bytes fn2-checkpoint-recovery-evidence)
-        (fn2-checkpoint-recovery-census-bound-p 3 fn2-boot-config fn2-checkpoints fn2-checkpoint-refs fn2-checkpoint-bytes fn2-checkpoint-recovery-evidence))))
+        (with-local-stobj fn2-origin
+        (let ((fn2-origin (fn2-origin-prepare '((:origin-lineage . 101) (:origin-domain . 103) (:origin-incarnation . 107) (:history-id . 1) (:history-incarnation . 1)) fn2-origin)))
+         (fn2-checkpoint-recovery-census-bound-p 0 fn2-boot-config fn2-checkpoints fn2-checkpoint-refs fn2-checkpoint-bytes fn2-origin fn2-checkpoint-recovery-evidence)))
+        (with-local-stobj fn2-origin
+        (let ((fn2-origin (fn2-origin-prepare '((:origin-lineage . 101) (:origin-domain . 103) (:origin-incarnation . 107) (:history-id . 1) (:history-incarnation . 1)) fn2-origin)))
+         (fn2-checkpoint-recovery-census-bound-p 1 fn2-boot-config fn2-checkpoints fn2-checkpoint-refs fn2-checkpoint-bytes fn2-origin fn2-checkpoint-recovery-evidence)))
+        (with-local-stobj fn2-origin
+        (let ((fn2-origin (fn2-origin-prepare '((:origin-lineage . 101) (:origin-domain . 103) (:origin-incarnation . 107) (:history-id . 1) (:history-incarnation . 1)) fn2-origin)))
+         (fn2-checkpoint-recovery-census-bound-p 2 fn2-boot-config fn2-checkpoints fn2-checkpoint-refs fn2-checkpoint-bytes fn2-origin fn2-checkpoint-recovery-evidence)))
+        (with-local-stobj fn2-origin
+        (let ((fn2-origin (fn2-origin-prepare '((:origin-lineage . 101) (:origin-domain . 103) (:origin-incarnation . 107) (:history-id . 1) (:history-incarnation . 1)) fn2-origin)))
+         (fn2-checkpoint-recovery-census-bound-p 3 fn2-boot-config fn2-checkpoints fn2-checkpoint-refs fn2-checkpoint-bytes fn2-origin fn2-checkpoint-recovery-evidence))))))
+      ; Same semantic names, different physical pair: the otherwise bound
+      ; candidate must not acquire authority through default1/1 fallback.
+      (wrong-physical-bound (if mode t
+       (with-local-stobj fn2-origin
+        (let ((fn2-origin (fn2-origin-prepare '((:origin-lineage . 101) (:origin-domain . 103) (:origin-incarnation . 107)
+                                             (:history-id . 37) (:history-incarnation . 41)) fn2-origin)))
+         (not (fn2-checkpoint-recovery-census-bound-p 0 fn2-boot-config fn2-checkpoints fn2-checkpoint-refs fn2-checkpoint-bytes fn2-origin fn2-checkpoint-recovery-evidence))))))
       ((mv begun fn2-checkpoint-recovery-census) (fn2-checkpoint-recovery-census-begin fn2-boot-config fn2-checkpoint-recovery-census))
       ((mv done fn2-checkpoint-recovery-census) (if (eq begun :more)
         (fn2-crcu-drive 100 fn2-boot-config fn2-checkpoints fn2-checkpoint-refs fn2-checkpoint-bytes fn2-checkpoint-recovery-evidence fn2-checkpoint-recovery-census)
@@ -88,7 +105,7 @@
                       ((eq mode :fork) *fn2-checkpoint-recovery-census-topology-fork*)
                       ((member-eq mode '(:stale-batch :stale-descriptor :stale-cut :missing-evidence :missing-first :invalid-slot :invalid-prior :contradictory-masks :incomplete-scan)) *fn2-checkpoint-recovery-census-topology-incomplete*)
                       (t *fn2-checkpoint-recovery-census-topology-single-head*))))
-  (mv (and positive-bound (eq done (if (member-eq mode '(:incomplete-scan :contradictory-masks)) :scan-incomplete :semantic-roots-owed))
+  (mv (and positive-bound wrong-physical-bound (eq done (if (member-eq mode '(:incomplete-scan :contradictory-masks)) :scan-incomplete :semantic-roots-owed))
            (= (fn2-checkpoint-recovery-census-topology 0 fn2-checkpoint-recovery-census) expected)
            (= (fn2-checkpoint-recovery-census-semantic-roots-owed 0 fn2-checkpoint-recovery-census) 1)
            ; Invalid slots deliberately retain fully matching old candidate
