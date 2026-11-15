@@ -502,6 +502,7 @@ ACL2_BOOKS = \
   tests/pointwise-contracts-unit \
   tests/pool-ranges-unit \
   tests/pool-query-ref-unit \
+  tests/checkpoint-working-geometry-unit \
   tests/upload-page-geometry-unit \
   tests/checkpoint-service-geometry-unit \
   tests/checkpoint-working-credit-configure-unit \
