@@ -49,6 +49,16 @@ class Producer(unittest.TestCase):
    self.assertIn(['=',['fn2-extents-state',target,'fn2-extents'],'*fn2-extent-state-allocated*'],list(walk(helper)))
   outputs=next(f[2][1] for f in forms_ if f[:2]==['defconst','*fn2-release-inventory-source-outputs*'])
   self.assertIn('fn2-alloc-edges',outputs)
+ def test_executable_component_controls_use_actual_factory_and_no_fake_completion(self):
+  text=(ROOT/'tests/release-inventory-producer-unit.lisp').read_text()
+  for name in ('fn2-release-inventory-begin','fn2-release-inventory-source-step','fn2-release-inventory-bind','fn2-release-inventory-consume','fn2-release-evidence-claim-transition','fn2-release-evidence-mark-persisted','fn2-release-inventory-entry-decode'):
+   self.assertIn(name,text)
+  self.assertIn('whole-antecedent',text)
+  self.assertIn('fn2-test-table-snapshot-fn2-release-evidence',text)
+  self.assertIn('fn2-ripu-edge-frame',text)
+  self.assertIn('(eq pending :pending)',text)
+  self.assertNotIn('fn2-checkpoint-page-set-phase',text)
+  self.assertNotIn('update-fn2-checkpoint-page-verified',text)
  def test_one_generated_numeric_source_has_no_catalog_indices(self):
   forms_=tree('release-inventory-source.lisp')
   mapping=next(f[2][1] for f in forms_ if f[:2]==['defconst','*fn2-release-inventory-numeric-bindings*'])
