@@ -3,9 +3,7 @@
 (in-package "ACL2")
 (include-book "machines-c-read-loader")
 (include-book "run-physical-region")
-(include-book "authority-kind")
-(include-book "cns-kind")
-(fn2-book-layer :e)
+(fn2-book-layer :c)
 
 (defun fn2-c-actor-load-active (i b0 n0 b1 n1 b2 n2 kind owner generation fn2-run-loads)
  (declare (xargs :stobjs fn2-run-loads :guard (fn2-run-loads-wfp fn2-run-loads)
@@ -53,14 +51,24 @@
       (phase (fn2-run-loads-phase tx fn2-run-loads))
       (fn2-run-cursors (fn2-run-cursors-put tx (okind kind) (oslot owner) (ogen generation))))
   (mv :bind tx phase fn2-run-cursors)))
-(fn2-run-cursors-preserves fn2-c-actor-tx-owner
+(fn2-rd-shape fn2-c-actor-tx-owner
  (tx kind owner generation fn2-succ-txns fn2-succ-slots fn2-run-cursors fn2-run-loads fn2-checkpoint-summary-leases)
- :position 3 :raw-rows t)
+ ((fn2-run-cursors 3))
+ (fn2-succ-txns fn2-succ-slots fn2-run-cursors fn2-run-loads fn2-checkpoint-summary-leases)
+ (fn2-c-actor-tx-missp fn2-run-load-ownerp))
 
-(defcost fn2-c-actor-loader-reserve :answers t :effects ((:acquire (:storage-window))))
-(defcost fn2-c-actor-loader-state :answers t)
-(defcost fn2-c-actor-loader-drain :answers t)
-(defcost fn2-c-actor-loader-member-release :answers t)
+(defcost fn2-c-actor-loader-reserve :answers t :effects ((:acquire (:storage-window)))
+ :tables (fn2-core-machines fn2-txn-table fn2-auth-table fn2-cns-table fn2-core-id-decides fn2-core-reads fn2-core-run-loads fn2-core-run-cursors fn2-core-checkpoint-summary fn2-core-checkpoint-summary-leases fn2-core-pool)
+ :doc "Admit exactly the live actor's derived physical cursor job set before source interpretation.")
+(defcost fn2-c-actor-loader-state :answers t
+ :tables (fn2-core-machines fn2-txn-table fn2-auth-table fn2-cns-table fn2-core-id-decides fn2-core-reads fn2-core-succ-txns fn2-core-succ-slots fn2-core-ranges fn2-core-range-sources fn2-core-run-cursors fn2-core-run-loads fn2-core-checkpoint-summary-leases)
+ :doc "Find an actual selected MISS or continue the exact actor-owned pending loader.")
+(defcost fn2-c-actor-loader-drain :answers t
+ :tables (fn2-core-machines fn2-txn-table fn2-auth-table fn2-cns-table fn2-core-id-decides fn2-core-reads fn2-core-run-loads)
+ :doc "Select one exact owned job for bounded generation-safe actor drain.")
+(defcost fn2-c-actor-loader-member-release :answers t
+ :tables (fn2-core-machines fn2-txn-table fn2-auth-table fn2-cns-table fn2-core-id-decides fn2-core-reads fn2-core-run-loads fn2-core-run-cursors fn2-core-checkpoint-summary fn2-core-checkpoint-summary-leases fn2-core-pool)
+ :doc "Release one actual job while an exact actor-owned suffix retains the bundle rank.")
 
 (defmacro fn2-c-actor-loader-core-events ()
  '(progn
@@ -77,11 +85,14 @@
          ((unless (and (natp slot) (natp p) (natp a) (natp c) (natp transactions) (natp reads)
                         (<= (+ p a c) transactions) (<= (+ a c) reads))) (mv :bounds 0 0 0 0 0 0 0)))
      (cond
-      ((and (equal kind *fn2-txn-kind*) (eq (fn2-txn-snapshot-read-code id fn2-core) :ok) (< slot p))
+      ((and (equal kind *fn2-txn-kind*) (eq (fn2-txn-snapshot-read-code id fn2-core) :ok)
+             (not (member (fn2-machine-phase id fn2-core) (list *fn2-txn-state-free* *fn2-txn-state-retired*))) (< slot p))
        (mv :ok kind slot 1 0 0 0 0))
-      ((and (equal kind *fn2-auth-kind*) (eq (fn2-auth-snapshot-read-code id fn2-core) :ok) (< slot a))
+      ((and (equal kind *fn2-auth-kind*) (eq (fn2-auth-snapshot-read-code id fn2-core) :ok)
+             (not (member (fn2-machine-phase id fn2-core) (list *fn2-auth-state-free* *fn2-auth-state-retired*))) (< slot a))
        (mv :ok kind (+ p slot) 1 (+ transactions (- reads a) slot) 1 0 0))
-      ((and (equal kind *fn2-cns-kind*) (eq (fn2-cns-snapshot-read-code id fn2-core) :ok) (< slot c))
+      ((and (equal kind *fn2-cns-kind*) (eq (fn2-cns-snapshot-read-code id fn2-core) :ok)
+             (not (member (fn2-machine-phase id fn2-core) (list *fn2-cns-state-free* *fn2-cns-state-retired*))) (< slot c))
        (let ((x (+ (- reads (+ a c)) slot)))
         (mv :ok kind (+ p a slot) 1 (+ transactions x) 1
          (+ transactions reads (* *fn2-b-range-source-cursors* x)) *fn2-b-range-source-cursors*)))
