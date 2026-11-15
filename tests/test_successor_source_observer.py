@@ -77,6 +77,15 @@ class SuccessorObserver(unittest.TestCase):
   for name in ('fn2-succ-resolve-observed','fn2-succ-release-observed'):
    self.assertIn('readrows',function(name)[2])
    self.assertFalse(calls(function(name),'fn2-id-decides-rows') and 'readrows (-' in str(function(name)))
+ def test_observer_formals_and_actual_release_call_arity(self):
+  names=('fn2-succ-source-acquire','fn2-succ-source-close','fn2-succ-resolve-observed','fn2-succ-release-observed')
+  for name in names:
+   args=function(name)[2]
+   self.assertEqual(len(args),len(set(args)),name)
+  expected=len(function('fn2-succ-release-observed')[2])
+  actual=[x for f in parsed(FILES[1]) for x in calls(f,'fn2-succ-release-observed')]
+  self.assertEqual(len(actual),1)
+  self.assertEqual(len(actual[0])-1,expected)
  def test_prepared_error_restarts_under_a_new_actual_receipt(self):
   text=(ROOT/'tests/successor-source-observer-unit.lisp').read_text()
   for required in ('(fn2-sso-retry-error receipt fn2-core)','(< old-receipt (fn2-succ-txns-source-receipt 0 fn2-succ-txns))',

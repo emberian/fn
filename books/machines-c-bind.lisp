@@ -275,7 +275,7 @@
 ; Public cancellation closes the live source endpoint before the ordinary
 ; release can reset its row. Internal publish/replay release remains receipt0
 ; only; it cannot silently reset an abandoned live observer.
-(defun fn2-succ-release-observed (tx b0 readrows readrows fn2-succ-txns fn2-succ-slots fn2-id-decides fn2-run-cursors fn2-fields fn2-c-source-control fn2-c-source-readers)
+(defun fn2-succ-release-observed (tx b0 readrows fn2-succ-txns fn2-succ-slots fn2-id-decides fn2-run-cursors fn2-fields fn2-c-source-control fn2-c-source-readers)
  (declare (xargs :stobjs (fn2-succ-txns fn2-succ-slots fn2-id-decides fn2-run-cursors fn2-fields fn2-c-source-control fn2-c-source-readers) :guard t))
  (b* (((unless (and (fn2-succ-txns-wfp fn2-succ-txns) (fn2-id-decides-wfp fn2-id-decides)
                     (natp tx) (< tx (fn2-id-decides-rows fn2-id-decides)) (< tx (fn2-succ-txns-rows fn2-succ-txns))
