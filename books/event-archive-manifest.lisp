@@ -8,9 +8,9 @@
  (declare (xargs :stobjs (fn2-event-archive fn2-digests) :measure (nfix (- 8 (nfix i)))
  :guard (and (fn2-event-archive-wfp fn2-event-archive) (fn2-digests-wfp fn2-digests)
              (natp r) (< r 2) (member-eq kind '(:member :manifest :cut-seal)) (natp i) (<= i 8) (fn2-digest-rowp row fn2-digests))))
- (if (>= i 8) fn2-digests
+ (if (>= (nfix i) 8) fn2-digests
   (let ((fn2-digests (fn2-digest-set-word row i (fn2-event-archive-word r kind i fn2-event-archive) fn2-digests)))
-   (fn2-event-archive-load-digest r kind (+ i 1) row fn2-event-archive fn2-digests))))
+   (fn2-event-archive-load-digest r kind (+ 1 (nfix i)) row fn2-event-archive fn2-digests))))
 (fn2-digests-preserves fn2-event-archive-load-digest (r kind i row fn2-event-archive fn2-digests) :position nil)
 
 (fn2-event-archive-operation fn2-event-archive-manifest-begin
@@ -125,5 +125,5 @@
       (writer (fn2-run-level-writer b level))
       (fn2-event-archive (fn2-event-archive-put 1 (phase *fn2-event-archive-phase-header*)
        (manifest-unit (fn2-run-writers-unit writer fn2-run-writers)) (manifest-epoch (fn2-run-writers-epoch writer fn2-run-writers))
-       (manifest-allocation (fn2-run-writers-counter writer fn2-run-writers)) (manifest-height (fn2-run-builds-height b fn2-run-builds)))))
+       (manifest-allocation (fn2-run-writers-counter writer fn2-run-writers)) (manifest-height (fn2-run-builds-height b fn2-run-builds)) (manifest-pages (fn2-run-builds-pages b fn2-run-builds)))))
   (mv :ok fn2-event-archive fn2-digests)))

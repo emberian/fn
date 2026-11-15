@@ -38,6 +38,8 @@
       (< 0 (fn2-checkpoint-build-rows fn2-checkpoint-build))
       (< 0 (fn2-checkpoint-source-rows fn2-checkpoint-source))
       (< 0 (fn2-checkpoint-metadata-manifest-rows fn2-checkpoint-metadata-manifest))
+      (< *fn2-checkpoint-manifest-build* (fn2-run-builds-rows fn2-run-builds))
+      (equal (fn2-checkpoint-metadata-manifest-build 0 fn2-checkpoint-metadata-manifest) *fn2-checkpoint-manifest-build*)
       (equal (fn2-checkpoint-root1-phase 0 fn2-checkpoint-root1) *fn2-checkpoint-root1-phase-complete*)
       (equal (fn2-checkpoint-source-phase 0 fn2-checkpoint-source) *fn2-checkpoint-source-phase-done*)
       (equal (fn2-checkpoint-metadata-manifest-phase 0 fn2-checkpoint-metadata-manifest) *fn2-checkpoint-metadata-manifest-phase-complete*)

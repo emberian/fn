@@ -20,7 +20,7 @@
            (fn2-checkpoint-summary-authority-frontieri (+ 480 (- i 32)) fn2-checkpoint-summary-authority) fn2-checkpoint-summary-authority))
          (t (update-fn2-checkpoint-summary-authority-cut-seali (- i 512)
            (fn2-checkpoint-summary-authority-cut-seali (+ 8 (- i 512)) fn2-checkpoint-summary-authority) fn2-checkpoint-summary-authority)))))
-   (fn2-directory-rebase-transfer-bytes (+ 1 i) fn2-checkpoint-summary-authority))))
+   (fn2-directory-rebase-transfer-bytes (+ 1 (nfix i)) fn2-checkpoint-summary-authority))))
 
 (defun fn2-directory-rebase-seal-p (i fn2-directory-rebase fn2-checkpoint-summary-authority)
  (declare (xargs :stobjs (fn2-directory-rebase fn2-checkpoint-summary-authority) :measure (nfix (- 8 (nfix i)))
@@ -29,7 +29,7 @@
  (or (>= (nfix i) 8)
   (and (= (fn2-directory-rebase-seal-wordsi i fn2-directory-rebase)
           (fn2-checkpoint-summary-authority-cut-seali (+ 8 i) fn2-checkpoint-summary-authority))
-       (fn2-directory-rebase-seal-p (+ 1 i) fn2-directory-rebase fn2-checkpoint-summary-authority))))
+       (fn2-directory-rebase-seal-p (+ 1 (nfix i)) fn2-directory-rebase fn2-checkpoint-summary-authority))))
 
 (defun fn2-directory-rebase-base-seal (i row fn2-checkpoint-summary-authority fn2-digests)
  (declare (xargs :stobjs (fn2-checkpoint-summary-authority fn2-digests) :measure (nfix (- 8 (nfix i)))
@@ -38,7 +38,7 @@
  (if (>= (nfix i) 8) fn2-digests
   (let ((fn2-digests (fn2-digest-set-word row i
          (fn2-checkpoint-summary-authority-cut-seali (+ 8 i) fn2-checkpoint-summary-authority) fn2-digests)))
-   (fn2-directory-rebase-base-seal (+ 1 i) row fn2-checkpoint-summary-authority fn2-digests))))
+   (fn2-directory-rebase-base-seal (+ 1 (nfix i)) row fn2-checkpoint-summary-authority fn2-digests))))
 
 (defun fn2-directory-rebase-consume (token kind owner gen fn2-directory-rebase fn2-checkpoint-summary-authority
  fn2-csnapshot fn2-checkpoint-publication fn2-checkpoints fn2-checkpoint-refs fn2-checkpoint-bytes fn2-commit-root

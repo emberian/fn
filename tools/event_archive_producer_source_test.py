@@ -185,4 +185,48 @@ class ArchivePageKindSource(unittest.TestCase):
   bind=form('checkpoint-metadata-page.lisp','defun','fn2-checkpoint-metadata-page-bind')
   self.assertTrue(has(bind,'fn2-checkpoint-metadata-writerp'))
   self.assertTrue(has(bind,'fn2-checkpoint-metadata-role'))
+class ArchiveHeaderSource(unittest.TestCase):
+ def test_reservation_derives_actual_ledger_ordinal_and_page_counts(self):
+  n=form('event-archive-header.lisp','fn2-event-archive-operation','fn2-event-archive-header-reserve')
+  for name in ['fn2-event-archive-ownerp','fn2-checkpoint-root1-workspaces','fn2-checkpoint-construction-reserve']:
+   self.assertTrue(has(n,name),name)
+  s=text('event-archive-header.lisp',n)
+  self.assertIn('(equal (+ ordinal 1) pages)',s)
+  self.assertIn('(header-ordinal ordinal)',s)
+  self.assertIn('(source-pages pages)',s)
+  self.assertTrue(all(x.low.startswith('fn2-') for x in n.items[2].items))
+ def test_bounded_zero_and_actual_generated_codec(self):
+  zero=form('event-archive-header.lisp','fn2-event-archive-operation','fn2-event-archive-header-zero-step')
+  self.assertIn('(min 4096 (- *fn2-format-page-size* at))',text('event-archive-header.lisp',zero))
+  pack=form('event-archive-header.lisp','fn2-event-archive-operation','fn2-event-archive-header-pack')
+  self.assertTrue(has(pack,'fn2-event-archive-header-bind'))
+  self.assertTrue(has(pack,'fn2-event-archive-header-encode'))
+  self.assertEqual(len(calls(pack,'fn2-event-archive-header-bind')[0].node.items)-1,27)
+  self.assertIn(':cut-seal',text('event-archive-header.lisp',pack))
+  self.assertIn(':manifest',text('event-archive-header.lisp',pack))
+  self.assertIn('(if (eq code :ok) :format code)',text('event-archive-header.lisp',pack))
+ def test_bind_and_completion_use_real_shared_worker(self):
+  bind=form('event-archive-header.lisp','fn2-event-archive-operation','fn2-event-archive-header-bind-page')
+  self.assertTrue(has(bind,'fn2-checkpoint-page-begin'))
+  self.assertIn('*fn2-event-archive-phase-bound*',text('event-archive-header.lisp',bind))
+  done=form('event-archive-header.lisp','fn2-event-archive-operation','fn2-event-archive-header-complete')
+  self.assertTrue(has(done,'fn2-checkpoint-page-completed-extent-p'))
+  writes=calls(done,'fn2-checkpoint-refs-put')
+  self.assertEqual(len(writes),1)
+  self.assertLess(calls(done,'fn2-checkpoint-page-completed-extent-p')[0].node.start,writes[0].node.start)
+  s=text('event-archive-header.lisp',done)
+  for field in ['epoch','allocation','page-kind','history','incarnation','encoded-length']:
+   self.assertIn('(fn2-checkpoint-page-verified-'+field,s)
+  self.assertIn('(equal (fn2-checkpoint-refs-root-source-complete r fn2-checkpoint-refs) 0)',s)
+  self.assertIn('(equal pages (fn2-checkpoint-metadata-ordinal 0 fn2-checkpoint-metadata))',s)
+  self.assertNotIn('fn2-alloc-edge-drop',s)
+  self.assertNotIn('fn2-pool-release',s)
+ def test_operation_names_do_not_collide_with_generated_state_accessors(self):
+  state=form('event-archive-state.lisp','defcolumns','fn2-event-archive')
+  getters={'fn2-event-archive-'+f.items[0].low for f in state.items[2].items}
+  for n in __import__('lisp_rewrite').match('(fn2-event-archive-operation ?name ?*body)',__import__('lisp_rewrite').parse(source('event-archive-header.lisp')).forms,deep=False):
+   self.assertNotIn(n.captures['name'].low,getters)
+ def test_source_admission_preserves_the_actual_root1_manifest_builder(self):
+  n=form('event-archive-producer.lisp','defun','fn2-event-archive-sourcep')
+  self.assertIn('(equal (fn2-checkpoint-metadata-manifest-build 0 fn2-checkpoint-metadata-manifest) *fn2-checkpoint-manifest-build*)',text('event-archive-producer.lisp',n))
 if __name__=='__main__':unittest.main()

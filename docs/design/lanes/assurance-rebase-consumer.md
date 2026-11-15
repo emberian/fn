@@ -197,10 +197,11 @@ controls cover reuse, coverage, actual completion and that height distinction.
 Empty-cut manifest construction currently explicitly refuses and remains owed;
 new header page publication, selected read and retained-run append are pending.
 
-The shared physical page worker's role3 class formerly admitted only manifest
-pages, which would refuse the real internal20 run/data descendants. Its class
-now admits exactly manifest, run-data and run-index; other role classes are
-unchanged. Actual archive ownership/build/phase still gates the C writer, whose
+The shared checkpoint header packer's role3 class now admits manifest,
+run-data and run-index, matching the archive descendants; other role classes
+are unchanged. This predicate gates header packing, not worker admission.
+Actual run pages already receive headers from the shared run-open operation;
+the worker verifies their captured kind/context. Actual archive ownership/build/phase still gates the C writer, whose
 page kind derives from the sole schema/level dispatcher and whose promotion
 requires the real physical completion. Root3's header retains the existing
 manifest envelope. Two source controls and unrun actual class/refusal assertions
@@ -213,3 +214,19 @@ or source authority. The existing codec still checks wire-kind validity and
 framing. Four source controls cover declaration lookup, actual field offsets,
 guards/effects and header use; an unrun eight-field mixed scalar/reference/zero
 fixture checks the emitted concrete binder.
+
+`event-archive-header` now reserves the actual role3 header allocation, zeroes
+one4096-byte step, binds/encodes the generated header, and calls the shared B
+header packer/page worker. Its terminal requires exact physical completion,
+returned workspace ownership, namespace/fullRef identity and aggregate actual
+member+manifest+header page ordinals before installing the root3 source Ref/hash.
+This is physical source completion, not durable acceptance or obligation release.
+The source guard now explicitly preserves root1's actual manifest build2.
+Five more source controls cover this path and generated-name collisions.
+
+The authentic fixed-array recursion repair from d394d6f91 now totalizes the
+three directory transfer/seal helpers and two archive digest copy/load helpers.
+A scoped adapter normalizes the latter's equivalent natural-index spelling,
+then uses the same checked successor rewrite. Three source controls preserve
+actual definitions/arity and refuse measure drift. Guarded natural-index byte
+behavior is unchanged; ACL2 admission remains unrun.

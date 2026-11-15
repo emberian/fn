@@ -1,0 +1,32 @@
+[
+  {
+    "file": "books/checkpoint-directory-consume.lisp",
+    "name": "fn2-directory-rebase-transfer-bytes",
+    "bound": 520,
+    "before": "(defun fn2-directory-rebase-transfer-bytes (i fn2-checkpoint-summary-authority)\n (declare (xargs :stobjs fn2-checkpoint-summary-authority :measure (nfix (- 520 (nfix i)))\n  :guard (and (fn2-checkpoint-summary-authority-wfp fn2-checkpoint-summary-authority)\n              (natp i) (<= i 520))))\n (if (>= (nfix i) 520) fn2-checkpoint-summary-authority\n  (let ((fn2-checkpoint-summary-authority\n   (cond ((< i 32) (update-fn2-checkpoint-summary-authority-descriptori i\n           (fn2-checkpoint-summary-authority-descriptori (+ 32 i) fn2-checkpoint-summary-authority) fn2-checkpoint-summary-authority))\n         ((< i 512) (update-fn2-checkpoint-summary-authority-frontieri (- i 32)\n           (fn2-checkpoint-summary-authority-frontieri (+ 480 (- i 32)) fn2-checkpoint-summary-authority) fn2-checkpoint-summary-authority))\n         (t (update-fn2-checkpoint-summary-authority-cut-seali (- i 512)\n           (fn2-checkpoint-summary-authority-cut-seali (+ 8 (- i 512)) fn2-checkpoint-summary-authority) fn2-checkpoint-summary-authority)))))\n   (fn2-directory-rebase-transfer-bytes (+ 1 i) fn2-checkpoint-summary-authority))))"
+  },
+  {
+    "file": "books/checkpoint-directory-consume.lisp",
+    "name": "fn2-directory-rebase-seal-p",
+    "bound": 8,
+    "before": "(defun fn2-directory-rebase-seal-p (i fn2-directory-rebase fn2-checkpoint-summary-authority)\n (declare (xargs :stobjs (fn2-directory-rebase fn2-checkpoint-summary-authority) :measure (nfix (- 8 (nfix i)))\n  :guard (and (fn2-directory-rebase-wfp fn2-directory-rebase)\n              (fn2-checkpoint-summary-authority-wfp fn2-checkpoint-summary-authority) (natp i) (<= i 8))))\n (or (>= (nfix i) 8)\n  (and (= (fn2-directory-rebase-seal-wordsi i fn2-directory-rebase)\n          (fn2-checkpoint-summary-authority-cut-seali (+ 8 i) fn2-checkpoint-summary-authority))\n       (fn2-directory-rebase-seal-p (+ 1 i) fn2-directory-rebase fn2-checkpoint-summary-authority))))"
+  },
+  {
+    "file": "books/checkpoint-directory-consume.lisp",
+    "name": "fn2-directory-rebase-base-seal",
+    "bound": 8,
+    "before": "(defun fn2-directory-rebase-base-seal (i row fn2-checkpoint-summary-authority fn2-digests)\n (declare (xargs :stobjs (fn2-checkpoint-summary-authority fn2-digests) :measure (nfix (- 8 (nfix i)))\n  :guard (and (fn2-checkpoint-summary-authority-wfp fn2-checkpoint-summary-authority) (fn2-digests-wfp fn2-digests)\n              (natp i) (<= i 8) (fn2-digest-rowp row fn2-digests))))\n (if (>= (nfix i) 8) fn2-digests\n  (let ((fn2-digests (fn2-digest-set-word row i\n         (fn2-checkpoint-summary-authority-cut-seali (+ 8 i) fn2-checkpoint-summary-authority) fn2-digests)))\n   (fn2-directory-rebase-base-seal (+ 1 i) row fn2-checkpoint-summary-authority fn2-digests))))"
+  },
+  {
+    "file": "books/event-archive-control.lisp",
+    "name": "fn2-event-archive-copy-digest",
+    "bound": 8,
+    "before": "(defun fn2-event-archive-copy-digest (r kind i row fn2-digests fn2-event-archive)\n (declare (xargs :stobjs (fn2-digests fn2-event-archive) :measure (nfix (- 8 (nfix i)))\n :guard (and (fn2-digests-wfp fn2-digests) (fn2-event-archive-wfp fn2-event-archive)\n             (natp r) (< r 2) (member-eq kind '(:member :manifest :cut-seal)) (natp i) (<= i 8) (fn2-digest-rowp row fn2-digests))))\n (if (>= i 8) fn2-event-archive\n  (let ((fn2-event-archive (update-fn2-event-archive-wordsi\n          (+ (* r 24) (case kind (:member 0) (:manifest 8) (otherwise 16)) i)\n          (fn2-digest-word row i fn2-digests) fn2-event-archive)))\n   (fn2-event-archive-copy-digest r kind (+ i 1) row fn2-digests fn2-event-archive))))"
+  },
+  {
+    "file": "books/event-archive-manifest.lisp",
+    "name": "fn2-event-archive-load-digest",
+    "bound": 8,
+    "before": "(defun fn2-event-archive-load-digest (r kind i row fn2-event-archive fn2-digests)\n (declare (xargs :stobjs (fn2-event-archive fn2-digests) :measure (nfix (- 8 (nfix i)))\n :guard (and (fn2-event-archive-wfp fn2-event-archive) (fn2-digests-wfp fn2-digests)\n             (natp r) (< r 2) (member-eq kind '(:member :manifest :cut-seal)) (natp i) (<= i 8) (fn2-digest-rowp row fn2-digests))))\n (if (>= i 8) fn2-digests\n  (let ((fn2-digests (fn2-digest-set-word row i (fn2-event-archive-word r kind i fn2-event-archive) fn2-digests)))\n   (fn2-event-archive-load-digest r kind (+ i 1) row fn2-event-archive fn2-digests))))"
+  }
+]

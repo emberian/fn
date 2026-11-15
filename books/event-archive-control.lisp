@@ -13,11 +13,11 @@
  (declare (xargs :stobjs (fn2-digests fn2-event-archive) :measure (nfix (- 8 (nfix i)))
  :guard (and (fn2-digests-wfp fn2-digests) (fn2-event-archive-wfp fn2-event-archive)
              (natp r) (< r 2) (member-eq kind '(:member :manifest :cut-seal)) (natp i) (<= i 8) (fn2-digest-rowp row fn2-digests))))
- (if (>= i 8) fn2-event-archive
+ (if (>= (nfix i) 8) fn2-event-archive
   (let ((fn2-event-archive (update-fn2-event-archive-wordsi
           (+ (* r 24) (case kind (:member 0) (:manifest 8) (otherwise 16)) i)
           (fn2-digest-word row i fn2-digests) fn2-event-archive)))
-   (fn2-event-archive-copy-digest r kind (+ i 1) row fn2-digests fn2-event-archive))))
+   (fn2-event-archive-copy-digest r kind (+ 1 (nfix i)) row fn2-digests fn2-event-archive))))
 (fn2-event-archive-preserves fn2-event-archive-copy-digest (r kind i row fn2-digests fn2-event-archive) :position nil)
 
 (fn2-event-archive-operation fn2-event-archive-fresh-start
@@ -83,7 +83,7 @@
       ((unless (eq code :ok)) (mv code fn2-event-archive fn2-digests))
       (fn2-event-archive (fn2-event-archive-copy-digest 1 :cut-seal 0 seal fn2-digests fn2-event-archive))
       ((when empty)
-       (let ((fn2-event-archive (fn2-event-archive-set-phase 1 *fn2-event-archive-phase-member-complete* fn2-event-archive)))
+       (let ((fn2-event-archive (fn2-event-archive-put 1 (phase *fn2-event-archive-phase-member-complete*) (member-pages 0))))
         (mv :ok fn2-event-archive fn2-digests)))
       (writer (fn2-run-level-writer b level))
       (extent (floor (fn2-run-writers-unit writer fn2-run-writers) *fn2-storage-extent-units*))
@@ -97,5 +97,5 @@
       (fn2-event-archive (fn2-event-archive-put 1 (phase *fn2-event-archive-phase-member-complete*)
        (member-unit (fn2-run-writers-unit writer fn2-run-writers)) (member-epoch (fn2-run-writers-epoch writer fn2-run-writers))
        (member-allocation (fn2-run-writers-counter writer fn2-run-writers)) (member-height (fn2-run-builds-height b fn2-run-builds))
-       (member-entries (fn2-run-builds-entries b fn2-run-builds)))))
+       (member-entries (fn2-run-builds-entries b fn2-run-builds)) (member-pages (fn2-run-builds-pages b fn2-run-builds)))))
   (mv :ok fn2-event-archive fn2-digests)))
