@@ -27,7 +27,12 @@ class DeflateStartup(unittest.TestCase):
         self.output.write_bytes(b"prior valid library")
 
     def compiler(self, argv, **kwargs):
-        self.assertEqual(argv[:2], ["sh", str(self.root / "host/build-deflate.sh")])
+        self.assertEqual(argv[0], "sh")
+        recipe = Path(argv[1])
+        self.assertNotEqual(recipe, self.root / "host/build-deflate.sh")
+        self.assertEqual(recipe.name, "build-deflate.sh")
+        self.assertEqual(recipe.read_text(), "selected recipe")
+        self.assertEqual((recipe.parent / "fn2-deflate.c").read_text(), "selected source")
         self.assertEqual(kwargs, dict(cwd=self.root, check=True, timeout=120))
         self.assertNotEqual(Path(argv[2]), self.output)
         self.assertEqual(self.output.read_bytes(), b"prior valid library")
@@ -72,6 +77,16 @@ class DeflateStartup(unittest.TestCase):
             self.assertEqual(admin.main(["__prepare-native-deflate"], self.root), admin.EXIT_ERROR)
             self.assertEqual(admin.main(["__prepare-native-deflate", "path", "profile"], self.root), admin.EXIT_ERROR)
             prepare.assert_not_called()
+
+    def test_compiler_reads_snapshot_even_if_live_input_changes_and_returns(self):
+        def changing(argv, **kwargs):
+            self.source.write_text("transient live source")
+            self.compiler(argv, **kwargs)
+            self.source.write_text("selected source")
+        with mock.patch.object(admin.subprocess, "run", side_effect=changing):
+            receipt = admin.prepare_native_deflate(self.root, self.output)
+        self.assertEqual(receipt["source_sha256"], hashlib.sha256(b"selected source").hexdigest())
+        self.assertEqual(self.output.read_bytes(), b"fresh library")
 
 
 if __name__ == "__main__":

@@ -810,13 +810,21 @@ def prepare_native_deflate(root: Path, selected: Path) -> dict[str, str]:
     """
     selected = (selected if selected.is_absolute() else root / selected).absolute()
     source, recipe = root / "host/fn2-deflate.c", root / "host/build-deflate.sh"
-    inputs = {"source_sha256": hashlib.sha256(source.read_bytes()).hexdigest(),
-              "recipe_sha256": hashlib.sha256(recipe.read_bytes()).hexdigest()}
+    source_bytes, recipe_bytes = source.read_bytes(), recipe.read_bytes()
+    inputs = {"source_sha256": hashlib.sha256(source_bytes).hexdigest(),
+              "recipe_sha256": hashlib.sha256(recipe_bytes).hexdigest()}
     selected.parent.mkdir(parents=True, exist_ok=True)
     with tempfile.TemporaryDirectory(prefix=".fn2-deflate-", dir=selected.parent) as scratch:
         candidate = Path(scratch) / selected.name
+        # The recipe resolves its source beside itself. Compile immutable
+        # captured inputs, not live files which could change between hashes.
+        snapshot = Path(scratch) / "inputs"
+        snapshot.mkdir()
+        (snapshot / source.name).write_bytes(source_bytes)
+        snapshot_recipe = snapshot / recipe.name
+        snapshot_recipe.write_bytes(recipe_bytes)
         try:
-            subprocess.run(["sh", str(recipe), str(candidate)], cwd=root, check=True, timeout=120)
+            subprocess.run(["sh", str(snapshot_recipe), str(candidate)], cwd=root, check=True, timeout=120)
         except (subprocess.CalledProcessError, subprocess.TimeoutExpired) as exc:
             raise OSError("native deflate build failed; selected library was not replaced") from exc
         if (inputs["source_sha256"] != hashlib.sha256(source.read_bytes()).hexdigest()
