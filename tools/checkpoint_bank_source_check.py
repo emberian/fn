@@ -21,6 +21,9 @@ def check(publication, writer):
     assert ['equal',['fn2-checkpoint-publication-debt-valid','0','fn2-checkpoint-publication'],'0'] in list(walk(success))
     capture = next(v for n,v in bindings if n == 'fn2-checkpoint-publication' and isinstance(v,list) and ['fn2-checkpoint-publication-record-bank','fn2-checkpoint-publication'] in v)
     assert capture == ['if',['and','fence','success'],['fn2-checkpoint-publication-record-bank','fn2-checkpoint-publication'],'fn2-checkpoint-publication']
+    evidence = next(v for n,v in bindings if n == 'fn2-checkpoint-publication' and isinstance(v,list) and ['fn2-checkpoint-bank-evidence-record-fence','fn2-checkpoint-publication'] in v)
+    assert evidence == ['if',['and','fence','success'],['fn2-checkpoint-bank-evidence-record-fence','fn2-checkpoint-publication'],'fn2-checkpoint-publication']
+    assert bindings.index(['fn2-checkpoint-publication', evidence]) < bindings.index(['fn2-checkpoint-publication', capture])
     record = definition(publication, 'fn2-checkpoint-publication-record-bank')[-1]
     assert record[:3] == ['if',['or',['zp',['fn2-checkpoint-publication-rows','fn2-checkpoint-publication']],['not',['equal',['fn2-checkpoint-publication-debt-valid','0','fn2-checkpoint-publication'],'0']]],'fn2-checkpoint-publication']
     nodes = list(walk(record))
@@ -39,7 +42,7 @@ def check(publication, writer):
     assert gate < rearm
     assert '(debt-valid 0)' not in publication, 'no caller-clear operation'
 def main():
-    p=(ROOT/'books/checkpoint-publication.lisp').read_text()
+    p=(ROOT/'books/checkpoint-publication-state.lisp').read_text() + '\n' + (ROOT/'books/checkpoint-publication.lisp').read_text()
     w=(ROOT/'books/checkpoint-writer.lisp').read_text()
     check(p,w)
     from rewrite_checkpoint_bank_capture import rewrite

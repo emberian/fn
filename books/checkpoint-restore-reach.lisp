@@ -100,7 +100,8 @@
        (mv :source fn2-checkpoint-restore-reach)))
   (mv-let (code fn2-checkpoint-restore-reach)
    (fn2-checkpoint-restore-reach-name role unit epoch allocation fn2-checkpoint-restore-reach fn2-checkpoint-restore-reach-control)
-   (mv code (if (eq code :ok) (fn2-checkpoint-restore-reach-set-state e *fn2-checkpoint-restore-reach-state-mapped* fn2-checkpoint-restore-reach) fn2-checkpoint-restore-reach)))))
+   (let* ((fn2-checkpoint-restore-reach (if (eq code :ok) (fn2-checkpoint-restore-reach-set-state e *fn2-checkpoint-restore-reach-state-mapped* fn2-checkpoint-restore-reach) fn2-checkpoint-restore-reach)))
+    (mv code fn2-checkpoint-restore-reach)))))
 
 (defun fn2-checkpoint-restore-reach-reader-hash-p (i fn2-checkpoint-restore-reader fn2-checkpoint-restore-reach-control)
  (declare (xargs :stobjs (fn2-checkpoint-restore-reader fn2-checkpoint-restore-reach-control) :measure (nfix (- 32 (nfix i)))
@@ -182,7 +183,23 @@
                      ; may be named. Both are constructor allocations.
                      (equal (fn2-checkpoint-restore-map-state e fn2-checkpoint-restore-map) *fn2-extent-state-reserved*)))
        (mv :identity fn2-checkpoint-restore-reach)))
-  (mv :ok (fn2-checkpoint-restore-reach-set-state e *fn2-checkpoint-restore-reach-state-mapped* fn2-checkpoint-restore-reach))))
+  (let* ((fn2-checkpoint-restore-reach (fn2-checkpoint-restore-reach-set-state e *fn2-checkpoint-restore-reach-state-mapped* fn2-checkpoint-restore-reach)))
+   (mv :ok fn2-checkpoint-restore-reach))))
+
+; Constructor-page traversal can require uniqueness while payload aliases
+; retain idempotent union semantics. No allocation identity is overwritten.
+(defun fn2-checkpoint-restore-reach-claim-once (role unit epoch allocation fn2-checkpoints fn2-checkpoint-refs fn2-checkpoint-bytes fn2-checkpoint-restore-map fn2-checkpoint-restore-map-control fn2-checkpoint-restore-reach fn2-checkpoint-restore-reach-control)
+ (declare (xargs :stobjs (fn2-checkpoints fn2-checkpoint-refs fn2-checkpoint-bytes fn2-checkpoint-restore-map fn2-checkpoint-restore-map-control fn2-checkpoint-restore-reach fn2-checkpoint-restore-reach-control) :verify-guards nil
+  :guard (and (fn2-checkpoints-wfp fn2-checkpoints) (fn2-checkpoint-refs-wfp fn2-checkpoint-refs) (fn2-checkpoint-bytes-wfp fn2-checkpoint-bytes) (fn2-checkpoint-restore-map-wfp fn2-checkpoint-restore-map) (fn2-checkpoint-restore-map-control-wfp fn2-checkpoint-restore-map-control) (fn2-checkpoint-restore-reach-wfp fn2-checkpoint-restore-reach) (fn2-checkpoint-restore-reach-control-wfp fn2-checkpoint-restore-reach-control))))
+ (b* ((e (floor (nfix unit) *fn2-storage-extent-units*))
+      ((when (and (natp role) (< role *fn2-checkpoint-restore-reach-role-count*)
+                   (< 0 (fn2-checkpoint-restore-reach-control-rows fn2-checkpoint-restore-reach-control))
+                   (< e (fn2-checkpoint-restore-reach-rows fn2-checkpoint-restore-reach))
+                   (equal (fn2-checkpoint-restore-reach-generation e fn2-checkpoint-restore-reach)
+                          (fn2-checkpoint-restore-reach-control-generation 0 fn2-checkpoint-restore-reach-control))
+                   (logbitp role (fn2-checkpoint-restore-reach-role-bits e fn2-checkpoint-restore-reach))))
+       (mv :duplicate fn2-checkpoint-restore-reach)))
+  (fn2-checkpoint-restore-reach-claim role unit epoch allocation fn2-checkpoints fn2-checkpoint-refs fn2-checkpoint-bytes fn2-checkpoint-restore-map fn2-checkpoint-restore-map-control fn2-checkpoint-restore-reach fn2-checkpoint-restore-reach-control)))
 
 ; The only early names are produced after the real linked-page verifier.
 (defun fn2-checkpoint-restore-reach-root-page (fn2-checkpoints fn2-checkpoint-refs fn2-checkpoint-bytes fn2-checkpoint-restore-reader fn2-checkpoint-restore-map fn2-checkpoint-restore-map-control fn2-checkpoint-restore-reach fn2-checkpoint-restore-reach-control)
@@ -193,12 +210,14 @@
                      (member-equal (fn2-checkpoint-restore-reader-phase 0 fn2-checkpoint-restore-reader)
                        (list *fn2-checkpoint-restore-reader-phase-entries* *fn2-checkpoint-restore-reader-phase-padding*))
                      (equal (fn2-checkpoint-restore-reader-started 0 fn2-checkpoint-restore-reader) 0)
-                     (member-equal (fn2-checkpoint-restore-reader-role 0 fn2-checkpoint-restore-reader) '(2 5))))
+                     (member-equal (fn2-checkpoint-restore-reader-role 0 fn2-checkpoint-restore-reader) '(2 3 5))))
        (mv :source fn2-checkpoint-restore-reach))
       (role (fn2-checkpoint-restore-reader-role 0 fn2-checkpoint-restore-reader))
       (unit (fn2-checkpoint-restore-reader-unit 0 fn2-checkpoint-restore-reader))
       (epoch (fn2-checkpoint-restore-reader-epoch 0 fn2-checkpoint-restore-reader))
       (allocation (fn2-checkpoint-restore-reader-allocation 0 fn2-checkpoint-restore-reader))
+      ((when (equal role 3))
+       (fn2-checkpoint-restore-reach-claim-once *fn2-checkpoint-restore-reach-role-event-directory* unit epoch allocation fn2-checkpoints fn2-checkpoint-refs fn2-checkpoint-bytes fn2-checkpoint-restore-map fn2-checkpoint-restore-map-control fn2-checkpoint-restore-reach fn2-checkpoint-restore-reach-control))
       ((when (equal role 5))
        (fn2-checkpoint-restore-reach-claim *fn2-checkpoint-restore-reach-role-arena* unit epoch allocation fn2-checkpoints fn2-checkpoint-refs fn2-checkpoint-bytes fn2-checkpoint-restore-map fn2-checkpoint-restore-map-control fn2-checkpoint-restore-reach fn2-checkpoint-restore-reach-control))
       ((mv code fn2-checkpoint-restore-reach)
@@ -389,3 +408,8 @@
       (not (equal (fn2-checkpoint-restore-map-state e fn2-checkpoint-restore-map) *fn2-extent-state-free*))
       (equal (fn2-checkpoint-restore-map-epoch e fn2-checkpoint-restore-map) (fn2-checkpoint-restore-reach-epoch e fn2-checkpoint-restore-reach))
       (equal (fn2-checkpoint-restore-map-allocation e fn2-checkpoint-restore-map) (fn2-checkpoint-restore-reach-allocation e fn2-checkpoint-restore-reach))))
+
+(fn2-checkpoint-restore-reach-preserves fn2-checkpoint-restore-reach-claim-once
+ (role unit epoch allocation fn2-checkpoints fn2-checkpoint-refs fn2-checkpoint-bytes fn2-checkpoint-restore-map fn2-checkpoint-restore-map-control fn2-checkpoint-restore-reach fn2-checkpoint-restore-reach-control)
+ :hyps ((fn2-checkpointsp fn2-checkpoints) (fn2-checkpoints-wfp fn2-checkpoints) (fn2-checkpoint-refsp fn2-checkpoint-refs) (fn2-checkpoint-refs-wfp fn2-checkpoint-refs) (fn2-checkpoint-bytesp fn2-checkpoint-bytes) (fn2-checkpoint-bytes-wfp fn2-checkpoint-bytes) (fn2-checkpoint-restore-mapp fn2-checkpoint-restore-map) (fn2-checkpoint-restore-map-wfp fn2-checkpoint-restore-map) (fn2-checkpoint-restore-map-controlp fn2-checkpoint-restore-map-control) (fn2-checkpoint-restore-map-control-wfp fn2-checkpoint-restore-map-control) (fn2-checkpoint-restore-reachp fn2-checkpoint-restore-reach) (fn2-checkpoint-restore-reach-wfp fn2-checkpoint-restore-reach) (fn2-checkpoint-restore-reach-controlp fn2-checkpoint-restore-reach-control) (fn2-checkpoint-restore-reach-control-wfp fn2-checkpoint-restore-reach-control))
+ :specs (("-GUARD-DOMAIN-TYPE" fn2-checkpoint-restore-reachp 1) ("-GUARD-DOMAIN-WFP" fn2-checkpoint-restore-reach-wfp 1) ("-GUARD-DOMAIN-ROWS" fn2-checkpoint-restore-reach-rows 1 :frame fn2-checkpoint-restore-reach)))

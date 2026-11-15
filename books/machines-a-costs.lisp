@@ -31,6 +31,9 @@
 (defcost fn2-issue-tls-start :child fn2-issue-tls-start-children :descriptors 1 :answers t
  :tables (fn2-core-ops fn2-core-pool) :effects ((:acquire (:operation)))
  :doc "Begin TLS with a loan of the retained ciphertext suffix; terminal harvest releases it.")
+(defcost fn2-issue-compress-start :child fn2-issue-compress-start-children :descriptors 1 :answers t
+ :tables (fn2-core-ops fn2-core-pool) :effects ((:acquire (:operation)))
+ :doc "Activate compression with a loan of the retained compressed suffix; terminal harvest releases it.")
 (defcost fn2-issue-write :child fn2-issue-write-children :descriptors 1 :answers t :tables (fn2-core-ops fn2-core-pool) :effects ((:acquire (:operation)))
   :doc "Write from the scribe's window.")
 (defcost fn2-issue-fence :child fn2-issue-fence-children :descriptors 1 :answers t :tables (fn2-core-ops) :effects ((:acquire (:operation)))
@@ -58,10 +61,6 @@
   :doc "Read into the scribe's window.")
 
 ; Generic row helpers: they write the acting row's wait links and status.
-(defcost fn2-machine-issue-result :steps *fn2-work-mailbox*
-  :own-writes (pending wait-reason stopped ready-prev ready-next)
-  :tables (fn2-core-machines fn2-core-machine-tables)
-  :doc "Record an issue's outcome: pending, park on exhaustion, or stop.")
 (defcost fn2-machine-park :child fn2-machines-park :own-writes (wait-reason ready-prev ready-next)
   :tables (fn2-core-machines fn2-core-machine-tables) :doc "Park on the operation-credit FIFO.")
 (defcost fn2-machine-park-admission :child fn2-machines-park-admission :own-writes (wait-reason ready-prev ready-next)
