@@ -18,8 +18,8 @@ class CreditSource(unittest.TestCase):
         form = next(source[n.start:n.end] for n in parsed.forms
                     if source[n.start:n.end].startswith('(defun fn2-checkpoint-working-credit-configure'))
         self.assertLess(form.index('(fn2-checkpoint-service-demand-vector profile fn2-pool)'),
-                        form.index('(fn2-checkpoint-working-credit-fitp 0 groups service fn2-pool)'))
-        self.assertLess(form.index('(fn2-checkpoint-working-credit-fitp 0 groups service fn2-pool)'),
+                        form.index('(fn2-checkpoint-working-profile-fitp 0 groups service fn2-pool)'))
+        self.assertLess(form.index('(fn2-checkpoint-working-profile-fitp 0 groups service fn2-pool)'),
                         form.index('(fn2-pool-credit-configure groups fn2-pool)'))
         self.assertEqual(form.count('(fn2-pool-credit-configure groups fn2-pool)'), 1)
         self.assertNotIn('(update-', form)
