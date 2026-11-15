@@ -2,20 +2,15 @@
 (in-package "ACL2")
 (include-book "std/util/bstar" :dir :system)
 (include-book "format-check")
-(include-book "alloc")
+(include-book "commit-alloc")
 (include-book "vocab")
 (include-book "pool-read-contracts")
 (include-book "columns-guard-hints")
 (include-book "columns-carrier-contracts")
 (fn2-book-layer :b)
 
-; Proof-only producer interfaces. No allocator definition or guard changes.
-(defcolumns-guarded-contracts fn2-alloc-account
- :carriers ((fn2-extents nil :prefix "-EXTENTS")) :rows t
- :hints ((fn2-columns-scalar-frame-hint '(fn2-extents)
-           '(fn2-alloc-account)
-           '(fn2-alloc-adjust fn2-alloc-adjust-okp fn2-alloc-reason) world)))
-
+; Reuse the allocator accounting API from COMMIT-ALLOC.
+; These additional output interfaces do not change allocator definitions.
 (defthm fn2-alloc-edge-count-natp
  (implies (and (fn2-extentsp fn2-extents) (fn2-extents-wfp fn2-extents)
                (fn2-alloc-slotp i fn2-extents))
