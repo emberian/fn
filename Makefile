@@ -501,6 +501,7 @@ ACL2_BOOKS = \
   tests/ordinary-drain-credit-unit \
   tests/upload-page-geometry-unit \
   tests/checkpoint-service-geometry-unit \
+  tests/c-stage-pool-preflight-unit \
   tests/ordinary-drain-credit-live-unit \
   tests/pool-unit \
   tests/port-unit \

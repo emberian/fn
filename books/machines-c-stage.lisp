@@ -4,6 +4,7 @@
 ; publication, the defcosts and the core wrappers machines-c-bind.lisp's
 ; (C-SUCCESSOR-BOOK).
 (in-package "ACL2")
+(include-book "std/util/bstar" :dir :system)
 (include-book "machines-c-successor")
 (fn2-book-layer :c)
 (local (in-theory (disable fn2-run-layout-fields fn2-run-layout-keys fn2-run-layout-merge fn2-run-layout-size
@@ -468,6 +469,35 @@
 (fn2-idc-fn-shape fn2-idc-hold-spares (k need fn2-id-engine fn2-overlays fn2-overlay-index fn2-pool) (fn2-overlays fn2-pool)
  (fn2-id-engine fn2-overlays fn2-overlay-index fn2-pool) t (fn2-idc-add-spare fn2-idc-count-overlays))
 
+; Preflight the exact additional scratch/spares in the same nonyielding
+; stage. Existing pool accounting is carried; this does not audit the pool
+; or promise NEW-upload completion / sealer progress.
+(defun fn2-idc-stage-pool-preflight (need fn2-id-engine fn2-overlays fn2-pool)
+ (declare (xargs :stobjs (fn2-id-engine fn2-overlays fn2-pool)
+  :guard (and (natp need) (fn2-id-engine-wfp fn2-id-engine)
+              (< 0 (fn2-id-engine-rows fn2-id-engine))
+              (fn2-overlays-wfp fn2-overlays) (fn2-pool-wfp fn2-pool))))
+ (b* ((rows (fn2-overlays-rows fn2-overlays))
+      (spares (fn2-idc-count-overlays rows 0 *fn2-overlay-phase-spare* fn2-overlays))
+      (missing (nfix (- (nfix need) spares)))
+      (scratch (if (equal (fn2-id-engine-scratch 0 fn2-id-engine) 1) 0 1))
+      (scratch-class (if (zp scratch) 0 (fn2-pool-class-for *fn2-idc-scratch-bytes* fn2-pool)))
+      ((unless (or (zp scratch) (natp scratch-class))) :capacity)
+      ; Preserve scratch-first refusal before looking for an arena.
+      ((unless (<= scratch (fn2-pool-reservable-count scratch-class fn2-pool))) :full)
+      (free (if (zp missing) 0
+               (fn2-idc-count-overlays rows 0 *fn2-overlay-phase-free* fn2-overlays)))
+      ((unless (or (zp missing) (posp free))) :full)
+      (arena-class (if (zp missing) 0 (fn2-pool-class-for (fn2-id-engine-arena 0 fn2-id-engine) fn2-pool)))
+      ((unless (or (zp missing) (natp arena-class))) :capacity)
+      ((unless (<= missing free)) :full)
+      ; When both resources use one class, compare their SUM with the same
+      ; reservable count used by actual generic pool reservation.
+      ((unless (if (equal scratch-class arena-class)
+                   (<= (+ scratch missing) (fn2-pool-reservable-count scratch-class fn2-pool))
+                 (<= missing (fn2-pool-reservable-count arena-class fn2-pool)))) :full))
+  :ok))
+
 ; Stage TX: every slot in order against the tip, then room. (mv code i ...):
 ; :ok (TX :staged: bind may follow in this transition); :stale (resolve
 ; again); :changed (slot I's read dependency moved: decide again); :refused (slot I's fold test failed); :range; :duplicate (a
@@ -478,7 +508,7 @@
                        fn2-overlays fn2-overlay-index fn2-fields fn2-pool)
  (declare (xargs :stobjs (fn2-succ-txns fn2-succ-slots fn2-run-installed fn2-id-engine
                           fn2-overlays fn2-overlay-index fn2-fields fn2-pool) :guard t
-  :guard-hints (("Goal" :in-theory (disable fn2-succ-stage-slots fn2-succ-room fn2-idc-scratch fn2-idc-hold-spares
+  :guard-hints (("Goal" :in-theory (disable fn2-succ-stage-slots fn2-succ-room fn2-idc-stage-pool-preflight fn2-idc-scratch fn2-idc-hold-spares
                                             fn2-overlays-rows fn2-overlay-index-rows)))))
  (b* (((unless (and (fn2-succ-txns-wfp fn2-succ-txns) (fn2-succ-slots-wfp fn2-succ-slots)
                     (fn2-run-installed-wfp fn2-run-installed) (fn2-id-engine-wfp fn2-id-engine)
@@ -500,6 +530,9 @@
       ((mv code need) (fn2-succ-room *fn2-succ-slots* 0 tx (fn2-id-engine-arena 0 fn2-id-engine)
                                      (floor (fn2-overlay-index-rows fn2-overlay-index) orows) 0 fn2-succ-slots fn2-overlays))
       ((unless (eq code :ok)) (mv code 0 fn2-succ-txns fn2-succ-slots fn2-id-engine fn2-overlays fn2-fields fn2-pool))
+      (preflight (fn2-idc-stage-pool-preflight need fn2-id-engine fn2-overlays fn2-pool))
+      ((unless (eq preflight :ok))
+       (mv preflight 0 fn2-succ-txns fn2-succ-slots fn2-id-engine fn2-overlays fn2-fields fn2-pool))
       ((mv code fn2-id-engine fn2-pool) (fn2-idc-scratch fn2-id-engine fn2-pool))
       ((unless (eq code :ok)) (mv code 0 fn2-succ-txns fn2-succ-slots fn2-id-engine fn2-overlays fn2-fields fn2-pool))
       ((mv code fn2-overlays fn2-pool) (fn2-idc-hold-spares need need fn2-id-engine fn2-overlays fn2-overlay-index fn2-pool))
@@ -510,7 +543,7 @@
                                   fn2-overlays fn2-overlay-index fn2-fields fn2-pool)
  ((fn2-succ-txns 2) (fn2-succ-slots 3) (fn2-id-engine 4) (fn2-overlays 5) (fn2-fields 6) (fn2-pool 7))
  (fn2-succ-txns fn2-succ-slots fn2-run-installed fn2-id-engine fn2-overlays fn2-overlay-index fn2-fields fn2-pool) t
- (fn2-succ-txns-phase fn2-succ-txns-ri fn2-id-engine-arena fn2-succ-stage-slots fn2-succ-room fn2-idc-scratch fn2-idc-hold-spares))
+ (fn2-succ-txns-phase fn2-succ-txns-ri fn2-id-engine-arena fn2-succ-stage-slots fn2-succ-room fn2-idc-stage-pool-preflight fn2-idc-scratch fn2-idc-hold-spares))
 
 ; Field F of slot I's staged row (D reads the assigned group number here
 ; before admission): (mv code value); an octet field is :kind.
