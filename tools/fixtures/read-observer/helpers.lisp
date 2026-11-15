@@ -102,4 +102,3 @@
  (if (not (and (fn2-read-parent-pair-p x0 x1 parent receipt fn2-reads fn2-c-source-readers) (fn2-read-parent-bound-p x0 parent receipt fn2-reads fn2-c-source-readers) (fn2-read-parent-bound-p x1 parent receipt fn2-reads fn2-c-source-readers))) (mv :state fn2-reads)
    (let* ((fn2-reads (fn2-reads-put x0 (observer-parent 0) (observer-parent-serial 0)))
           (fn2-reads (fn2-reads-put x1 (observer-parent 0) (observer-parent-serial 0)))) (mv :ok fn2-reads))))
-

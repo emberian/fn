@@ -186,7 +186,6 @@
           (fn2-reads (fn2-reads-put x1 (observer-parent 0) (observer-parent-serial 0)))) (mv :ok fn2-reads))))
 
 
-
 ; The read rows' children, their inits' guards proved once over their own
 ; profile predicate (the transaction-sized children's is fn2-idc-profilep).
 (defun fn2-read-profilep (profile)
