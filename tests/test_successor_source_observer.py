@@ -77,6 +77,12 @@ class SuccessorObserver(unittest.TestCase):
   for name in ('fn2-succ-resolve-observed','fn2-succ-release-observed'):
    self.assertIn('readrows',function(name)[2])
    self.assertFalse(calls(function(name),'fn2-id-decides-rows') and 'readrows (-' in str(function(name)))
+ def test_prepared_error_restarts_under_a_new_actual_receipt(self):
+  text=(ROOT/'tests/successor-source-observer-unit.lisp').read_text()
+  for required in ('(fn2-sso-retry-error receipt fn2-core)','(< old-receipt (fn2-succ-txns-source-receipt 0 fn2-succ-txns))',
+                   '(fn2-c-source-writer-abort-pending 2 3 4 5 6 7 fn2-c-source-control)',
+                   '(eq premature :state) restartable','(eq first :more) fresh finished complete'):
+   self.assertIn(required,text)
  def test_prepared_actual_wrapper_progress_cancel_and_error(self):
   text=(ROOT/'tests/successor-source-observer-unit.lisp').read_text()
   for name in ('fn2-successor-resolve','fn2-successor-release','fn2-c-source-writer-begin','fn2-c-source-writer-poll','fn2-succ-copy-scalar-row'):
@@ -86,7 +92,7 @@ class SuccessorObserver(unittest.TestCase):
   self.assertIn('(eq staged :state) stage-kept',text)
   self.assertIn('(stage-kept (fn2-sso-live-H endpoint receipt b0 fn2-core))',text)
   self.assertIn('(eq writer :waiting)',text)
-  self.assertIn('(eq poll :exclusive)',text)
+  self.assertIn('(eq poll (if (eq mode :error) :owner :exclusive))',text)
   for mode in (':complete',':cancel',':error'):
    self.assertIn('(assert-event (fn2-successor-source-observer-unit '+mode+'))',text)
 if __name__=='__main__':unittest.main()
