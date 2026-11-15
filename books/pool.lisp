@@ -1005,6 +1005,18 @@
     (equal (fn2-pool-row-okp i (update-fn2-pool-retired-count v fn2-pool)) (fn2-pool-row-okp i fn2-pool))
     :hints (("Goal" :use ((:instance fn2-pool-row-okp-by-key)
                           (:instance fn2-pool-row-okp-by-key (fn2-pool (update-fn2-pool-retired-count v fn2-pool)))))))
+  ;; A readable-prefix update leaves the remaining row clauses unchanged.
+  (defthm fn2-pool-row-okp-fill-bound
+    (implies (fn2-pool-row-okp i fn2-pool)
+             (<= (fn2-pool-fill i fn2-pool) (fn2-pool-cap i fn2-pool)))
+    :rule-classes nil
+    :hints (("Goal" :in-theory (enable fn2-pool-row-okp))))
+  (defthm fn2-pool-row-okp-of-set-fill-bounded
+    (implies (and (fn2-pool-row-okp i fn2-pool) (natp i) (natp v)
+                  (<= v (fn2-pool-cap i fn2-pool))
+                  (not (equal (fn2-pool-state i fn2-pool) *fn2-pool-state-leased-in*)))
+             (fn2-pool-row-okp i (fn2-pool-set-fill i v fn2-pool)))
+    :hints (("Goal" :in-theory (enable fn2-pool-row-okp))))
   ;; Every writer at row S leaves the other rows' clauses alone.
   (defun fn2-pool-except-frame-events (writers)
     (declare (xargs :guard (symbol-listp writers)))
@@ -1393,8 +1405,12 @@
                       (natp ,slot) (< ,slot (fn2-pool-rows fn2-pool)))
                  (fn2-pool-row-okp ,slot ,q))
         :hints (("Goal" :do-not '(generalize eliminate-destructors fertilize)
-                 :in-theory (e/d (fn2-pool-row-okp) (fn2-pool-row-okp-of-invariant))
-                 :use ((:instance fn2-pool-slot-types (i ,slot))
+                 :in-theory ,(if (member-eq op '(fn2-pool-write fn2-pool-reset))
+                                 '(disable fn2-pool-row-okp fn2-pool-row-okp-of-invariant)
+                               '(e/d (fn2-pool-row-okp) (fn2-pool-row-okp-of-invariant)))
+                 :use (,@(and (member-eq op '(fn2-pool-write fn2-pool-reset))
+                              `((:instance fn2-pool-row-okp-fill-bound (i ,slot))))
+                       (:instance fn2-pool-slot-types (i ,slot))
                        (:instance fn2-pool-row-okp-of-invariant
                                   (n (fn2-pool-rows fn2-pool)) (i ,slot)))))))
       (defthm ,(fn2-pool-op-sym op "-CONSERVATION")
