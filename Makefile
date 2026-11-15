@@ -77,6 +77,7 @@ ACL2_BOOKS = \
   tests/release-evidence-unit \
   tests/seal-release-row-held-unit \
   tests/seal-draining-sources-unit \
+  tests/seal-physical-release-refusal-unit \
   tests/seal-draining-pinned-read-unit \
   books/borrow-accounting \
   books/borrow-conservation \
