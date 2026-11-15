@@ -26,6 +26,7 @@
   (fn2-b3-wfp fn2-b3) (fn2-fields-wfp fn2-fields) (fn2-digests-wfp fn2-digests))))
  (and (equal (fn2-run-load-geometry-rows fn2-run-load-geometry) 1)
       (equal (fn2-run-load-geometry-version 0 fn2-run-load-geometry) 1)
+      (unsigned-byte-p 60 (+ 1 (fn2-run-loads-admissions fn2-run-loads)))
       (equal (fn2-run-load-geometry-transactions 0 fn2-run-load-geometry) (fn2-id-decides-rows fn2-id-decides))
       (equal (fn2-run-load-geometry-reads 0 fn2-run-load-geometry) (fn2-reads-rows fn2-reads))
       (equal (fn2-run-load-geometry-cursors 0 fn2-run-load-geometry)

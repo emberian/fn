@@ -53,6 +53,7 @@ class RunPhysicalReadinessSource(unittest.TestCase):
             self.assertIn(actual, calls(current))
         self.assertIn('*fn2-b-range-source-cursors*', str(current))
         self.assertIn('*fn2-b-seal-source-cursors*', str(current))
+        self.assertIn('fn2-run-loads-admissions', calls(current))
 
     def test_row_checks_private_checker_stripes_and_initialized_jobs(self):
         row = self.ready['fn2-run-load-readiness-one-row-p']
