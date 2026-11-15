@@ -6,6 +6,7 @@
 (include-book "machines-a")
 (include-book "codec-profile")
 (include-book "core-children")
+(include-book "owed-discharge")
 
 (fn2-book-layer :d)
 

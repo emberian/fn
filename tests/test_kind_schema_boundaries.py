@@ -22,6 +22,10 @@ def forms(source, skip=()):
 
 
 class KindSchemaBoundaries(unittest.TestCase):
+    def test_provider_imports_direct_discharge_owner(self):
+        imports = forms((ROOT / 'books/tls-schema.lisp').read_text())
+        self.assertIn('(include-book "owed-discharge")', imports)
+
     def test_all_original_declarations_and_import_order_preserved(self):
         for kind, schema in PAIRS:
             with self.subTest(kind=kind):
