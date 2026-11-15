@@ -109,6 +109,7 @@ ACL2_BOOKS = \
   books/tls-stack \
   books/host-loan \
   books/host-codec \
+  books/host-codec-close \
   books/host-compress \
   books/columns \
   books/compress-policy \
@@ -303,6 +304,7 @@ ACL2_BOOKS = \
   tests/codec-profile-unit \
   tests/codec-transport-unit \
   tests/host-codec-unit \
+  tests/host-codec-cancel-unit \
   tests/tls-record-policy-unit \
   tests/tls-record-unit \
   tests/send-failure-unit \
@@ -409,8 +411,13 @@ ACL2_BOOKS = \
   tests/storage-cancel-unit \
   tests/native-cut-binding-unit \
   tests/native-envelope-prefix-unit \
+  sim/envelope-output \
+  tests/envelope-output-unit \
+  tests/send-envelope-unit \
   tests/envelope-input-unit \
   tests/envelope-prefix-unit \
+  tests/input-prefix-unit \
+  tests/tls-input-prefix-unit \
   tests/native-unit \
   tests/network-backpressure-unit \
   tests/ops-semantic-steps-unit \

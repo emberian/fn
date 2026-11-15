@@ -153,4 +153,5 @@
   '(fn2-host-post-result fn2-host-post-accept-result fn2-host-post-clock fn2-host-post-signal
     fn2-host-count-stray fn2-host-stray fn2-host-outbox-ack fn2-host-op-finish
     fn2-host-outbox-queued fn2-host-outbox-peek fn2-host-action
-    fn2-host-op-span fn2-host-codec-op fn2-host-tls-record-next fn2-host-result fn2-host-listener-pathp fn2-host-listener-bind fn2-host-tls-settings fn2-host-compress-settings fn2-host-tls-span fn2-host-tls-stage-span fn2-host-tls-next-turn fn2-host-stopped-p fn2-host-stop-reason fn2-host-stop-details fn2-host-boot-refusal-class fn2-host-boot-refusal fn2-host-idle-deadline) (w state)))
+    fn2-host-op-span fn2-host-codec-op fn2-host-codec-cancel-target fn2-host-tls-record-next
+    fn2-host-tls-mark-closed fn2-host-tls-cancel-result fn2-host-result fn2-host-listener-pathp fn2-host-listener-bind fn2-host-tls-settings fn2-host-compress-settings fn2-host-tls-span fn2-host-tls-stage-span fn2-host-tls-next-turn fn2-host-stopped-p fn2-host-stop-reason fn2-host-stop-details fn2-host-boot-refusal-class fn2-host-boot-refusal fn2-host-idle-deadline) (w state)))

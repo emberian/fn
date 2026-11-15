@@ -7,15 +7,19 @@
 ; allowed relation (4.1.2's table) and is accepted by the replay's core.
 ; Separately it checks the bytes: per capability the Receive octets are the
 ; client's, and the octets each Send moved are the replay's own borrowed
-; range, whose concatenation is what the client received.
+; range. Successful segments are exact receipt constraints; failed/cancelled
+; segments constrain only an unknown prefix. Actual peer observations, not
+; consumed counts, supply the delivered transcript.
 ; Trace entries (host/adapter.lisp writes them):
 ;   (:clock mono real flags) (:signal bits) (:turn status)
 ;   (:take op gen kind cap nonce rslot rgen off len soff fua may-release cslot cgen deadline ogen)
 ;   (:ack n) (:finish op gen)
+;   (:input-prefix op gen relative-offset count octets)
 ;   (:post cell op gen event outcome reason count aux0 aux1 family (port w0 w1 w2 w3) octets)
 (in-package "ACL2")
 (include-book "../books/host-boundary")
 (include-book "envelope-input")
+(include-book "envelope-output")
 
 ; ------------------------------------------------------------------------
 ; The allowed relation: the cell words an adapter may post for an op of
@@ -85,6 +89,57 @@
   (let ((c (fn2-envelope-get (cons index nonce) caps)))
     (and c (not (nth 5 c)))))
 
+; Close executes immediately after ACK in the native take path. Its queued
+; terminal may be posted later. Keep this physical-input cutoff distinct from
+; legacy completion bookkeeping, which may publish earlier work meanwhile.
+(defun fn2-envelope-input-open-p (index nonce caps)
+  (declare (xargs :guard t))
+  (let ((c (fn2-envelope-get (cons index nonce) caps)))
+    (and c (not (nth 5 c)) (not (nth 7 c)))))
+
+; Physical Receive prefixes are recorded while the capability is live. They
+; authorize deferred publication after Close, never a new post-Close read.
+; TAKEN[14] retains (count octets); slot/generation/loan live in the same row.
+(defun fn2-envelope-octetsp (xs)
+  (declare (xargs :guard t))
+  (if (atom xs) (equal xs nil)
+    (and (unsigned-byte-p 8 (car xs)) (fn2-envelope-octetsp (cdr xs)))))
+
+(defun fn2-envelope-input-prefix (e taken caps fn2-core)
+  (declare (xargs :stobjs fn2-core :verify-guards nil))
+  (b* ((slot (nth 1 e)) (gen (nth 2 e)) (relative (nth 3 e))
+       (count (nth 4 e)) (octets (nth 5 e))
+       (tk (fn2-envelope-get slot taken)) (receipt (nth 14 tk))
+       (previous (if receipt (nth 0 receipt) 0))
+       ((unless (and (true-listp e) (equal (len e) 6)
+                     tk (equal (nth 0 tk) gen) (nth 9 tk) (not (nth 10 tk))
+                     (equal (nth 1 tk) *fn2-action-receive*)))
+        (mv :input-prefix-descriptor taken caps fn2-core))
+       ((unless (fn2-envelope-input-open-p (nth 2 tk) (nth 3 tk) caps))
+        (mv :input-prefix-after-close taken caps fn2-core))
+       ((unless (and (natp relative) (posp count) (equal relative previous)
+                     (<= (+ relative count) (nth 7 tk))
+                     (equal count (len octets)) (fn2-envelope-octetsp octets)))
+        (mv :input-prefix-span taken caps fn2-core))
+       ((mv span address length) (fn2-host-op-span slot gen fn2-core))
+       (- address)
+       ((unless (and (eq span :ok) (equal length (nth 7 tk))))
+        (mv :input-prefix-loan taken caps fn2-core))
+       ((mv code fn2-core)
+        (stobj-let ((fn2-pool (fn2-core-pool fn2-core))) (code fn2-pool)
+          (fn2-envelope-write-loan (+ (nth 6 tk) relative) octets
+                                  (nth 4 tk) (nth 5 tk) slot gen fn2-pool)
+          (mv code fn2-core)))
+       ((unless (eq code :ok)) (mv :input-prefix-loan taken caps fn2-core))
+       (receipt (list (+ relative count) (append (nth 1 receipt) octets))))
+    (mv nil (put-assoc-equal slot (update-nth 14 receipt tk) taken) caps fn2-core)))
+
+(defun fn2-envelope-input-receipt-p (tk kind outcome count octets)
+  (declare (xargs :guard t))
+  (and (equal kind *fn2-action-receive*) (equal outcome *fn2-outcome-done*)
+       (consp (nth 14 tk)) (posp count)
+       (equal count (nth 0 (nth 14 tk))) (equal octets (nth 1 (nth 14 tk)))))
+
 ; One post. Result (mv failure taken caps fn2-core); FAILURE nil when legal.
 ; BYTES-P also compares a Send's recorded octets with the replay's range.
 (defun fn2-envelope-post (e bytes-p taken caps fn2-core)
@@ -113,9 +168,13 @@
               (put-assoc-equal slot (update-nth 12 t tk) taken) caps fn2-core)))
        ((unless (fn2-host-result-allowedp kind outcome reason count aux0 aux1 len may-release))
         (mv :post-not-allowed taken caps fn2-core))
+       (recorded-input (fn2-envelope-input-receipt-p tk kind outcome count octets))
+       ((when (and (nth 14 tk) (not recorded-input)))
+        (mv :input-prefix-result taken caps fn2-core))
        ((when (and (or (equal kind *fn2-action-receive*) (equal kind *fn2-action-send*))
                    (not (fn2-envelope-cap-live-p cap nonce caps))
-                   (not (equal outcome *fn2-outcome-cancelled*))))
+                   (not (equal outcome *fn2-outcome-cancelled*))
+                   (not recorded-input)))
         (mv :post-after-close taken caps fn2-core))
        (stray (stobj-let ((fn2-ops (fn2-core-ops fn2-core))) (n) (fn2-ops-stray fn2-ops) n))
        ; Receive and a storage Read: the recorded octets (what the peer sent,
@@ -123,16 +182,19 @@
        ; A short Read also wrote its returned prefix before normalization;
        ; its non-done status must not discard that physical memory effect.
        ((mv wcode fn2-core)
-        (stobj-let ((fn2-pool (fn2-core-pool fn2-core))) (code fn2-pool)
-          (fn2-envelope-input kind outcome count octets off rslot rgen slot gen fn2-pool)
-          (mv code fn2-core)))
+        (if recorded-input (mv :ok fn2-core)
+          (stobj-let ((fn2-pool (fn2-core-pool fn2-core))) (code fn2-pool)
+            (fn2-envelope-input kind outcome count octets off rslot rgen slot gen fn2-pool)
+            (mv code fn2-core))))
        ((unless (eq wcode :ok)) (mv :receive-loan taken caps fn2-core))
-       ; Send: what the replay's borrowed range holds, before the post releases it.
-       (sent (if (and (equal kind *fn2-action-send*) (not (equal outcome *fn2-outcome-cancelled*)))
+       ; Consumed application source is not evidence of peer delivery. Even a
+       ; cancelled Send retains this source while its loan is still owned.
+       (consumed (if (equal kind *fn2-action-send*)
                  (stobj-let ((fn2-pool (fn2-core-pool fn2-core))) (bytes)
                    (fn2-envelope-read-range off (+ off count) rslot fn2-pool) bytes)
                nil))
-       ((when (and bytes-p (equal kind *fn2-action-send*) (not (equal sent octets))))
+       (recorded-source (if (equal outcome *fn2-outcome-cancelled*) nil consumed))
+       ((when (and bytes-p (equal kind *fn2-action-send*) (not (equal recorded-source octets))))
         (mv :send-bytes taken caps fn2-core))
        ((when (and (equal kind *fn2-action-accept*) (equal outcome *fn2-outcome-done*)
                    (fn2-envelope-cap-issued-p aux0 aux1 caps)))
@@ -152,11 +214,14 @@
                (put-assoc-equal (cons aux0 aux1) (list aux1 (nth 0 peer) nil nil nil nil nil) caps))
               ((and (equal kind *fn2-action-receive*) (equal outcome *fn2-outcome-done*) c)
                (put-assoc-equal key (list (nth 0 c) (nth 1 c) (revappend octets (nth 2 c)) (nth 3 c)
-                                          (or (nth 4 c) (equal count 0)) (nth 5 c) (cons count (nth 6 c)))
+                                          (or (nth 4 c) (equal count 0)) (nth 5 c) (cons count (nth 6 c)) (nth 7 c) (nth 8 c))
                                 caps))
               ((and (equal kind *fn2-action-send*) c)
-               (put-assoc-equal key (list (nth 0 c) (nth 1 c) (nth 2 c) (revappend sent (nth 3 c))
-                                          (nth 4 c) (nth 5 c) (nth 6 c))
+               (put-assoc-equal key (list (nth 0 c) (nth 1 c) (nth 2 c) (revappend consumed (nth 3 c))
+                                          (nth 4 c) (nth 5 c) (nth 6 c) (nth 7 c)
+                                          (cons (cons (if (member-equal outcome (list *fn2-outcome-done* *fn2-outcome-short*))
+                                                           :exact :prefix) consumed)
+                                                (nth 8 c)))
                                 caps))
               ((and (equal kind *fn2-action-close*) c)
                (put-assoc-equal key (update-nth 5 t c) caps))
@@ -189,9 +254,15 @@
                           (mv :ack-untaken taken caps fn2-core)
                         (mv-let (acode fn2-core) (fn2-host-outbox-ack 1 fn2-core)
                           (mv (if (eq acode :ok) nil :ack-refused)
-                              (put-assoc-equal slot (update-nth 9 t tk) taken) caps fn2-core))))))
+                              (put-assoc-equal slot (update-nth 9 t tk) taken)
+                              (let* ((key (cons (nth 2 tk) (nth 3 tk)))
+                                     (c (fn2-envelope-get key caps)))
+                                (if (and (eq acode :ok) (equal (nth 1 tk) *fn2-action-close*) c)
+                                    (put-assoc-equal key (update-nth 7 t c) caps) caps))
+                              fn2-core))))))
             (:finish (mv-let (code fn2-core) (fn2-host-op-finish (nth 1 e) (nth 2 e) fn2-core)
                        (mv (if (eq code :ok) nil :finish-refused) taken caps fn2-core)))
+            (:input-prefix (fn2-envelope-input-prefix e taken caps fn2-core))
             (:post (fn2-envelope-post e bytes-p taken caps fn2-core))
             (otherwise (mv :unknown-entry taken caps fn2-core)))))
 (in-theory (disable fn2-envelope-step))
@@ -229,8 +300,9 @@
 ; port) per client, the incarnation (index . nonce) the session bound the
 ; client to, octet lists oldest first. Per incarnation: the Accept's peer port
 ; is the client's local port, the Receive octets are the client's sent octets
-; (all of them when the node read EOF, else a prefix), and the Send octets
-; are exactly what the client received.
+; (all of them when the node read EOF, else a prefix). CAPS[3] records consumed
+; Send source, not delivered bytes. CAPS[8] retains ordered exact/unknown-prefix
+; constraints; only the independently captured client RX establishes receipt.
 (defun fn2-envelope-prefixp (a b)
   (declare (xargs :guard t))
   (if (atom a) t (and (consp b) (equal (car a) (car b)) (fn2-envelope-prefixp (cdr a) (cdr b)))))
@@ -243,12 +315,13 @@
   (declare (xargs :verify-guards nil))
   (if (atom caps) :pass
     (b* ((c (cdr (car caps))) (cl (fn2-envelope-client (car (car caps)) clients))
-         (rx (reverse (nth 2 c))) (tx (reverse (nth 3 c))))
+         (rx (reverse (nth 2 c))))
       (cond ((null cl) (list :no-client (nth 1 c)))
             ((not (equal (nth 4 cl) (nth 1 c))) (list :peer-port-not-client (nth 1 c)))
             ((not (if (nth 4 c) (equal rx (nth 1 cl)) (fn2-envelope-prefixp rx (nth 1 cl))))
              (list :receive-not-client (nth 1 c)))
-            ((not (equal tx (nth 2 cl))) (list :send-not-client (nth 1 c)))
+            ((not (fn2-envelope-output-matches-p (nth 8 c) (nth 2 cl)))
+             (list :send-not-client (nth 1 c)))
             (t (fn2-envelope-bytes (cdr caps) clients))))))
 
 ; The input half alone: a legal replay (no Send byte comparison), then the
