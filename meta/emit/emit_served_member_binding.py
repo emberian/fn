@@ -190,6 +190,28 @@ def member_context_source(snapshot):
         '    ' + ' ∧\n    '.join('PrimitiveSymbols.symbolEqualDomain "EQUAL" [rc, ' + val(item) + ']' for item in elements) + ' := by',
         '  exact ' + domain_proof,
         '#print axioms reached_comparison_domains']
+    # Bind canonical operands, not only their decoded spellings. The RC
+    # representation premise must be supplied by the actual caller certificate.
+    pair_lines = []
+    for index, item in enumerate(elements):
+        literal = List([Atom(':SYMBOL'),
+                        List([Atom(str(ord(c))) for c in item.symbol_package]),
+                        List([Atom(str(ord(c))) for c in item.symbol_name])])
+        name = 'memberLiteral' + str(index)
+        pair_lines.extend([
+            'def ' + name + ' : Object := ' + lean_object(literal),
+            'theorem ' + name + '_represented : ' + name + '.value? = some ' + val(item) + ' := by rfl',
+            'theorem reached_pair_' + str(index) + ' (rcObject : Object) (rc : Val)',
+            '    (rcRepresented : rcObject.value? = some rc) :',
+            '    ∃ resultObject,',
+            '      PrimitiveSymbols.equalObjects "EQUAL" [rcObject, ' + name + '] = some resultObject ∧',
+            '      resultObject.value? = some (Prim.equal rc ' + val(item) + ') := by',
+            '  exact PrimitiveSymbols.symbol_equal_correspondence',
+            '    "EQUAL" [rcObject, ' + name + '] [rc, ' + val(item) + ']',
+            '    (.cons rcRepresented (.cons ' + name + '_represented .nil))',
+            '    ⟨rfl, rc, ' + val(item) + ', rfl, Or.inr ⟨_, rfl⟩⟩',
+            '    (Prim.equal rc ' + val(item) + ') rfl',
+            '#print axioms reached_pair_' + str(index)])
     binders = ' '.join('(' + ident(x) + ' : Val)' for x in function.formals)
     arguments = ' '.join(ident(x) for x in function.formals)
     return '\n'.join([
@@ -218,6 +240,7 @@ def member_context_source(snapshot):
         '  rfl',
         '#print axioms member_context',
         *domain_lines,
+        *pair_lines,
         'end Fn2.ACL2.CnsSelectedMember', ''])
 
 
