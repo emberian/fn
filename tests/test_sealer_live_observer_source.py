@@ -45,6 +45,10 @@ class SealerObserver(unittest.TestCase):
   s=(ROOT/'tests/sealer-source-quiescence-unit.lisp').read_text()
   for x in ('fn2-seals-set-phase','fn2-c-source-readers-put','fn2-c-source-control-put','fn2-csnapshot-put','fn2-machine-write-phase'):self.assertNotIn(x,s)
   for x in ('fn2-ov-write','fn2-ov-freeze','fn2-sealer-run','fn2-csnapshot-begin','fn2-csnapshot-poll','allocator-open'):self.assertIn(x,s)
+ def test_wake_validates_actual_writer_generation(self):
+  s=form('books/machines-c-sealer-events.lisp','fn2-sealer-source-wake-p')
+  for x in ('fn2-machine-kind-read-code','fn2-machine-generation-read-code','*fn2-checkpoint-master-kind*','fn2-machine-generation target fn2-core) targetgen','fn2-c-source-control-writer-owner','fn2-c-source-control-writer-gen'):self.assertIn(x,s)
+  self.assertIn('(fn2-sealer-source-wake-p target targetgen',form('books/machines-c-sealer-events.lisp','fn2-sealer-source-release'))
  def test_actual_wake_and_new_start_gate(self):
   s=(ROOT/'books/machines-c-sealer-events.lisp').read_text()
   self.assertIn('(:do (code target targetgen) (fn2-sealer-source-release)',s)
