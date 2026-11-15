@@ -1,4 +1,27 @@
-# Universal CNS enum fragment equalities — proposed, unadmitted
+# Universal CNS enum fragment equalities — author admitted
+
+
+All three frozen old/new fragment whole-carrier equalities passed author admission
+under actual SOURCESP, WFP, valid row, and the real cached getter premises. ISSUE
+took 0.06 ACL2 seconds / 12,511 steps; HARVEST 0.16 / 12,311; NEXT/COPY 0.03 /
+6,919. The unchanged actual-table missing-row negative and all four support laws
+also passed. The fixture command took 0.8 seconds wall after the genuine 131-book
+compiled state closure loaded in 9.72 ACL2 seconds.
+
+The [final scoped receipt](cns-enum-universal-author-25186111.json) binds exact
+names/formula hashes, the frozen fixture, actual per-theorem summaries, qualified
+warm-world inputs, original budgets, retained raw-log hash, and verified complete
+cleanup and actual ledger release. Ground 226-witness admission is separate and
+was not replayed. This proves the three logical fragment equalities; record
+certification, complete function return/effect lifting, and served runtime guard
+qualification remain separate obligations.
+
+The admitted fixture SHA256 is
+`251861111de3bf4d8e2e4dbd4d40f68b7a9d1cf728b52fa47c1049007bb91d7c`.
+Its three universal formula SHA256 is
+`431eaafad2d5f865672fb225fffae59651076bf95bf1c432132a88b7d9ad6f22`.
+All earlier proposal/refusal notes below describe their frozen predecessor and
+are superseded by this final author result; their receipts preserve exact scope.
 
 `tools/cns_enum_universal.py` emits the three actual old/new PUT fragment
 equalities in `tests/cns-enum-universal-controls.lisp`. Its source target is

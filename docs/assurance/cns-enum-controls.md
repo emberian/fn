@@ -41,9 +41,8 @@ The baseline git object must be available. This lane intentionally does not
 commit a 430 KB generated artifact or modify the runtime donor.
 
 **Remaining obligations:** record certification of the generated witnesses
-(author admission passed below); an actual
-P+WFP+valid-row universal whole-fragment equality proof with the cached stage
-bound to the actual getter; composed return-value/effect equivalence of the three
+(author admission passed below); record certification of the [three author-admitted universal whole-fragment
+equalities](cns-enum-universal-author-25186111.json); composed return-value/effect equivalence of the three
 served functions; repaired-book guard verification and record certification.
 The local source check and lexical parse establish none of these. The fragment
 controls intentionally include branch combinations that may be unreachable in

@@ -1,0 +1,123 @@
+{
+  "status": "author-admission-passed",
+  "scope": "Three universal equalities over actual extracted old/new whole sources carriers under actual P/WFP/valid row and actual cached getter premises; not full-function effects, record certification or runtime guard qualification",
+  "source_commit": "66d9a6db4",
+  "fixture_path": "tests/cns-enum-universal-controls.lisp",
+  "fixture_sha256": "251861111de3bf4d8e2e4dbd4d40f68b7a9d1cf728b52fa47c1049007bb91d7c",
+  "generator_sha256": "66079c4e370590e3002e43594bbbe49407895a1eda57ee4cf5d65f6fd2941638",
+  "inputs": {
+    "old_raw_ref": "4c46607449f33dc604d944d81ea614661eba04e3",
+    "new_raw_ref": "969065e2f",
+    "new_raw_sha256": "8aa01d1a7d7ddb15ce9f6bcd110dfca0df66f1798f6c1e2cdbf645e963433981",
+    "state_sha256": "01056705c1c63fff3b196bf743b838deca04ea1a938c823105574728d9d2192e"
+  },
+  "formula_hash_encoding": "UTF-8 compact JSON array of [lowercase theorem name, parsed formula]; separators comma/colon, ensure_ascii=true, no newline; hints excluded",
+  "universal_formula_json_sha256": "431eaafad2d5f865672fb225fffae59651076bf95bf1c432132a88b7d9ad6f22",
+  "all8_formula_json_sha256": "24ead184ec88bb191d095eb5a4787108290928d42bd0c69a09c7189d878be49f",
+  "universal_names": [
+    "FN2-CNS-SOURCE-ISSUE-CHILDREN-ENUM-FRAGMENT-WHOLE-CARRIER-EQUALITY",
+    "FN2-CNS-SOURCE-HARVEST-ENUM-FRAGMENT-WHOLE-CARRIER-EQUALITY",
+    "FN2-CNS-SOURCE-NEXT-CHILDREN-ENUM-FRAGMENT-WHOLE-CARRIER-EQUALITY"
+  ],
+  "actual_admitted_theorem_summaries": [
+    {
+      "name": "FN2-CNS-ENUM-BOUNDED-UPDATE-SELF",
+      "status": "author-admitted",
+      "acl2_seconds": 0.11,
+      "steps": 1371
+    },
+    {
+      "name": "FN2-CNS-ENUM-BOUNDED-UPDATE-WHEN-VALUE-SAME",
+      "status": "author-admitted",
+      "acl2_seconds": 0.06,
+      "steps": 157
+    },
+    {
+      "name": "FN2-CNS-ENUM-ACTUAL-RECORD-LENGTH",
+      "status": "author-admitted",
+      "acl2_seconds": 0.15,
+      "steps": 10899
+    },
+    {
+      "name": "FN2-CNS-ENUM-ACTUAL-TARGET-SHAPE",
+      "status": "author-admitted",
+      "acl2_seconds": 0.09,
+      "steps": 882
+    },
+    {
+      "name": "FN2-CNS-SOURCE-ISSUE-CHILDREN-ENUM-FRAGMENT-WHOLE-CARRIER-EQUALITY",
+      "status": "author-admitted",
+      "acl2_seconds": 0.06,
+      "steps": 12511
+    },
+    {
+      "name": "FN2-CNS-SOURCE-HARVEST-ENUM-FRAGMENT-WHOLE-CARRIER-EQUALITY",
+      "status": "author-admitted",
+      "acl2_seconds": 0.16,
+      "steps": 12311
+    },
+    {
+      "name": "FN2-CNS-SOURCE-NEXT-CHILDREN-ENUM-FRAGMENT-WHOLE-CARRIER-EQUALITY",
+      "status": "author-admitted",
+      "acl2_seconds": 0.03,
+      "steps": 6919
+    },
+    {
+      "name": "FN2-CNS-ENUM-MISSING-ROW-CONTROL",
+      "status": "author-admitted",
+      "acl2_seconds": 0.0,
+      "steps": 1045
+    }
+  ],
+  "warm_world": {
+    "tree_source": "3e4d2b7cbf2da8d5c225ce5f1088bf450f88dd5e",
+    "state_compiled_books": 131,
+    "qualified_receipt_books": 135,
+    "qualified_receipt": "/tmp/served-d55-qualified135-receipt.json",
+    "state_closure_key": "2ed934279cd42e6b845b38bf3cca2fa5d81b2da2f8c871f09f379b2e1ac0ef84",
+    "toolchain_identity": "8aeb1bea18968c6cd33ac633a80ebf67e4924504db112fd27eb11f16a27b2a8c",
+    "preflight": "Exact driver absolute path and fixture hash, raw/state input hashes, all135 source closure keys and qualified cert/FASL payloads passed",
+    "compiled_load_acl2_seconds": 9.72
+  },
+  "run": {
+    "host": "forge",
+    "tree": "/build/lanes/assurance-enum-controls-kernel",
+    "driver": "/tmp/enum-universal-251-driver.sh",
+    "campaign_exit": 0,
+    "universal_admitted": 3,
+    "universal_requested": 3,
+    "negative": "FN2-CNS-ENUM-MISSING-ROW-CONTROL admitted",
+    "support_admitted": 4,
+    "memory_max_bytes": 2147483648,
+    "swap_max_bytes": 0,
+    "outer_wall_limit_seconds": 180,
+    "internal_wall_limit_seconds": 120,
+    "per_original_event_steps": 2000000,
+    "per_original_event_seconds": 20,
+    "fixture_elapsed_wall_seconds": 0.8,
+    "outer_encapsulate_acl2_seconds": 0.78,
+    "outer_encapsulate_steps": 1045,
+    "outer_summary_scope": "Excludes child proof work; individual theorem summaries above are authoritative",
+    "raw_log": "/tmp/enum-universal-251-success-raw.txt on forge",
+    "raw_log_sha256": "5e8f6d1e8b66d2b9d970b4f65970e37547bfde630401a25e4e9595793fa0fd9f",
+    "success_marker": "ENUM_UNIVERSAL_3_SUCCESS_25186111"
+  },
+  "cleanup": {
+    "owned_absent_pids": [
+      1890490,
+      1890494,
+      1890543,
+      1890548
+    ],
+    "owned_absent_scope": "run-p1890490-i31247179.scope",
+    "ledger_owner": "enum_universal",
+    "ledger_gib_after": 0,
+    "both_unassigned_fields_recomputed_under_fresh_lock": true
+  },
+  "ground226": "Separate earlier author admission receipt cns-enum-fragment-author-61bbea7a.json; not replayed or counted as these universal proofs",
+  "remaining": [
+    "record certification at current composed closure",
+    "prove actual full function return/effect equivalence by lifting through unchanged B* contexts and establishing actual entry hypotheses",
+    "served runtime guard qualification and composed process-death effects remain separately owned"
+  ]
+}
