@@ -40,9 +40,9 @@
     ((and (member-eq tag '(:submit :direct)) (true-listp r) (equal (len r) 3)
           (posp id) (not (member-equal id seen)) (fn2-nde-descriptorp (nth 2 r) fd))
      (fn2-nde-decode (cdr records) fd (cons id seen)
-       (acons id (nth 2 r) pending) active effects))
+       (append pending (list (cons id (nth 2 r)))) active effects))
     ((and (eq tag :begin) (true-listp r) (equal (len r) 2)
-          (not active) (assoc-equal id pending))
+          (not active) (consp pending) (equal id (caar pending)))
      (fn2-nde-decode (cdr records) fd seen pending id effects))
     ((and (eq tag :return) (true-listp r) (equal (len r) 5)
           active (equal id active) (assoc-equal id pending)
@@ -81,7 +81,7 @@
          (hit (and (member-eq (car e) '(:write :uncertain :read))
                    (<= (nth 1 e) address) (< address (+ (nth 1 e) (nth 2 e)))))
          (observed (and hit (eq (car e) :read)))
-         (next (if (and hit (not observed))
+         (next (if hit
                    (if (eq (car e) :uncertain) :unknown
                      (nth (- address (nth 1 e)) (nth 3 e))) prior)))
    (and (or (not observed) (eq prior :unknown)

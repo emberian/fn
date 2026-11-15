@@ -66,3 +66,19 @@
              (eq (fn2-native-device-image-finish nil 4 5 cursor) :incomplete-image)
              (eq (fn2-native-device-image-finish '((:uncertain 1 1 :pending (8))) 4 4 cursor)
                  :uncertain-effect-bound))))))
+
+; Submit order is FIFO, not merely a chosen serial physical order.
+(assert-event
+ (eq (fn2-nde-test-verdict
+       (list *fn2-nde-test-write* '(:submit 2 (17 5 7 :read 1 1 nil)) '(:begin 2))) :malformed))
+; A successful Read constrains an unknown byte until a later effect changes it.
+(assert-event
+ (and (fn2-native-device-image-slice-p
+        '((:uncertain 0 1 (:error -1 5) (8)) (:read 0 1 (7)) (:read 0 1 (7)))
+        0 '(0) '(7))
+      (not (fn2-native-device-image-slice-p
+        '((:uncertain 0 1 (:error -1 5) (8)) (:read 0 1 (7)) (:read 0 1 (8)))
+        0 '(0) '(8)))
+      (not (fn2-native-device-image-slice-p
+        '((:uncertain 0 1 (:error -1 5) (8)) (:read 0 1 (7)))
+        0 '(0) '(8)))))
