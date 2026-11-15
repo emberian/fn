@@ -10,7 +10,8 @@ APIS={
  'fn2-checkpoint-build-begin','fn2-checkpoint-map-build-begin','fn2-checkpoint-descriptor-pack-page',
  'fn2-checkpoint-metadata-overlay-begin','fn2-checkpoint-metadata-run-begin',
  'fn2-checkpoint-recovery-census-bound-p','fn2-checkpoint-recovery-census-step',
- 'fn2-checkpoint-recovery-evidence-physical','fn2-boot-scan-checkpoint-pool-inner',
+ 'fn2-checkpoint-recovery-evidence-physical','fn2-checkpoint-recovery-evidence-record',
+ 'fn2-boot-scan-checkpoint-pool-inner',
  'fn2-boot-scan-checkpoint-pool','fn2-event-read-open','fn2-event-producer-auth-step',
  'fn2-event-producer-step','fn2-rec-context','fn2-rec-header-check','fn2-rec-seal-check',
 }
@@ -67,5 +68,11 @@ class CheckpointOriginCalls(unittest.TestCase):
    for match in calls:
     self.assertEqual(match.node.items[10].items[0].low,stem+'-history')
     self.assertEqual(match.node.items[11].items[0].low,stem+'-history-incarnation')
+
+ def test_record_envelope_uses_complete_semantic_tuple(self):
+  text=(ROOT/'books/checkpoint-recovery-evidence-records.lisp').read_text()
+  for field in ('lineage','domain','incarnation'):
+   self.assertIn('(= (fn2-cpe-f *fn2-format-record-header-field-'+field+'*) (fn2-origin-'+field+' fn2-origin))',text)
+  self.assertNotIn('(fn2-checkpoints-incarnation c fn2-checkpoints)',text)
 
 if __name__=='__main__':unittest.main()
