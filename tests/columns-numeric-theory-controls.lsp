@@ -64,4 +64,12 @@
        (assert (string= (prin1-to-string before)
                         (prin1-to-string (factory-without-first-local-theory after)))))
     (assert (string= (prin1-to-string before) (prin1-to-string after))))))
+; The raw row frame uses the public theorem without rewriting it away.
+(let* ((events (fn2-columns-preserves 'table 'producer '(i v table)
+                3 nil nil "-PRESERVES" t t nil t t nil nil nil))
+       (raw (nth 4 events))
+       (hint (car (fn2-decl-get :hints (cdddr raw))))
+       (theory (fn2-decl-get :in-theory (cdr hint))))
+ (assert (equal (caddr theory) '(producer producer-preserves-rows)))
+ (assert (eq (fn2-decl-get :use (cdr hint)) 'producer-preserves-rows)))
 (format t "COLUMNS NUMERIC THEORY CONTROLS PASS~%")

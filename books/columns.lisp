@@ -212,8 +212,11 @@
                 `((defthm ,(fn2-columns-sym name (concatenate 'string prefix "-RAW-ROWS"))
                     (equal (nth ,(fn2-columns-pre "*" (fn2-columns-sym table "-ROWS*")) ,result)
                            (nth ,(fn2-columns-pre "*" (fn2-columns-sym table "-ROWS*")) ,table))
+                    ; Keep the supplied public ROWS equality as a hypothesis;
+                    ; its enabled rewrite rule would erase it before NTH opens.
                     :hints (("Goal"
-                             :in-theory (e/d (,(fn2-columns-sym table "-ROWS")) (,name))
+                             :in-theory (e/d (,(fn2-columns-sym table "-ROWS"))
+                                             (,name ,(fn2-columns-sym name (concatenate 'string prefix "-ROWS"))))
                              :use ,(fn2-columns-sym name (concatenate 'string prefix "-ROWS")))))))
               ,@(and disable `((in-theory (disable ,name)))))))
       (if part (nth part forms) forms))))

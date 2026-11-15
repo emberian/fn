@@ -23,3 +23,26 @@
   (fn2-numeric-theory-mixed-count :type (unsigned-byte 32) :initially 0
    :why "A numeric sibling does not hide the external constructor.")))
 (assert-event (subsetp-equal *fn2-numeric-theory-incoming* (current-theory :here)))
+
+; A real multi-value producer exercises public ROWS -> raw NTH. The public
+; ROWS theorem remains enabled when RAW-ROWS is admitted, matching OP-RESERVE.
+(defun fn2-numeric-theory-update (i v fn2-numeric-theory-table)
+ (declare (xargs :stobjs fn2-numeric-theory-table
+                 :guard (fn2-numeric-theory-table-wfp fn2-numeric-theory-table)))
+ (if (and (natp i) (< i (fn2-numeric-theory-table-rows fn2-numeric-theory-table))
+          (unsigned-byte-p 60 v))
+     (mv :ok 0 0 (fn2-numeric-theory-table-set-value i v fn2-numeric-theory-table))
+   (mv :bounds 0 0 fn2-numeric-theory-table)))
+(assert-event
+ (let* ((events (fn2-columns-preserves 'fn2-numeric-theory-table
+                 'fn2-numeric-theory-update '(i v fn2-numeric-theory-table)
+                 3 nil nil "-PRESERVES" t t nil t t nil nil nil))
+        (raw (nth 4 events))
+        (hint (car (fn2-decl-get :hints (cdddr raw))))
+        (theory (fn2-decl-get :in-theory (cdr hint))))
+  (and (eq (cadr raw) 'fn2-numeric-theory-update-preserves-raw-rows)
+       (member-eq 'fn2-numeric-theory-update (caddr theory))
+       (member-eq 'fn2-numeric-theory-update-preserves-rows (caddr theory))
+       (eq (fn2-decl-get :use (cdr hint)) 'fn2-numeric-theory-update-preserves-rows))))
+(fn2-numeric-theory-table-preserves fn2-numeric-theory-update
+ (i v fn2-numeric-theory-table) :position 3 :raw-rows t)
