@@ -12,6 +12,7 @@ class PhysicalFixture(unittest.TestCase):
    at=body.index(call,at)+len(call)
   self.assertIn('SYNTHETIC',s)
   self.assertIn('UNEXECUTED',s)
+  self.assertIn('(include-book "../books/executor")',s)
   for call in ('*fn2-checkpoint-master-kind*','fn2-machine-kind-base kind','fn2-checkpoint-master-row-generation owner','fn2-exec-genesis-row owner','fn2-csnapshot-begin kind owner gen'):
    self.assertIn(call,s)
  def test_no_seeded_ready_and_actual_op_completion(self):

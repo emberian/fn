@@ -6,6 +6,9 @@
 ; actual functions. No cache readiness, checker completion, or digest is seeded.
 (in-package "ACL2")
 (include-book "run-physical-loader-unit")
+; This advanced control invokes real master genesis; the ordinary lookup
+; fixture keeps its narrower assembly callback closure.
+(include-book "../books/executor")
 (include-book "../books/checkpoint-metadata-driver")
 
 (defconst *fn2-rsr-profile*
