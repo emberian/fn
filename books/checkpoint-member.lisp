@@ -154,7 +154,12 @@
                 "-PRESERVES" t t hints t nil nil nil nil)))
   (if (or (eq args :missing)
           (not (fn2-columns-contract-carriersp carriers args inputs outputs world))
-          (not (equal (caar specs) "-FIELDS-TYPE")))
+          (not (equal (caar specs) "-FIELDS-TYPE"))
+          (not (equal (len rest) 5))
+          (not (equal (cadr (nth 2 rest)) (fn2-columns-sym name "-POOL-TYPE")))
+          (not (equal (cadr (nth 3 rest)) (fn2-columns-sym name "-POOL-WFP")))
+          (not (equal (nthcdr 3 (nth 2 rest)) (list :hints hints)))
+          (not (equal (nthcdr 3 (nth 3 rest)) (list :hints hints))))
       (er soft 'checkpoint-member-contract "Actual member carrier metadata changed.")
     (value
      `(progn
