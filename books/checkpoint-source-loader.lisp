@@ -194,6 +194,9 @@
       (let ((c (fn2-b-checkpoint-source-cursor-from-rows (fn2-run-loads-rows fn2-run-loads))))
        (and (equal (fn2-run-loads-phase c fn2-run-loads) *fn2-run-load-phase-idle*)
             (equal (fn2-run-loads-windows c fn2-run-loads) 0)
+            (equal (fn2-run-loads-kind c fn2-run-loads) 0)
+            (equal (fn2-run-loads-owner c fn2-run-loads) 0)
+            (equal (fn2-run-loads-generation c fn2-run-loads) 0)
             (equal (fn2-run-loads-lease-mode c fn2-run-loads) *fn2-run-load-lease-mode-owned*)
             (equal (fn2-run-loads-borrow-token c fn2-run-loads) 0)
             (equal (fn2-run-loads-pending c fn2-run-loads) 0)
@@ -220,7 +223,8 @@
        ((unless (eq code :ok)) (fn2-checkpoint-source-reader-detach-mv code))
        (fn2-run-cursors (fn2-run-cursors-put c (phase *fn2-run-cursor-phase-idle*) (physical 0)))
        (fn2-run-loads (fn2-run-loads-put c (phase *fn2-run-load-phase-idle*) (windows 0)
-        (lease-mode *fn2-run-load-lease-mode-owned*) (borrow-token 0) (tag 0))))
+        (lease-mode *fn2-run-load-lease-mode-owned*) (borrow-token 0) (tag 0)
+        (kind 0) (owner 0) (generation 0))))
    (fn2-checkpoint-source-reader-detach-mv :ok)))
 
 (defun fn2-checkpoint-source-reader-finish (token kind owner gen fn2-checkpoint-root1 fn2-checkpoint-windows fn2-csnapshot
