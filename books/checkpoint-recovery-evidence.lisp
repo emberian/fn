@@ -50,6 +50,7 @@
       (okind (fn2-cpe owner-kind)) (oslot (fn2-cpe owner-slot)) (ogen (fn2-cpe owner-gen))
       (e (fn2-cpe extent)) (ep (fn2-cpe epoch)) (al (fn2-cpe allocation))
       (c (fn2-cpe candidate)) (phase (fn2-cpe phase)) (commit (fn2-cpe commit))
+      (history (fn2-cpe journal-history)) (incarnation (fn2-cpe journal-incarnation))
       (hash (fn2-digest-slot row *fn2-fc-hash*)) (prev (fn2-digest-slot row *fn2-fc-previous-seal*))
       (geometry (fn2-digest-slot row *fn2-fc-geometry*))
       ((unless (and (fn2-checkpoint-recovery-evidence-bound-candidate-p fn2-checkpoints fn2-checkpoint-refs fn2-checkpoint-bytes fn2-checkpoint-recovery-evidence)
@@ -67,12 +68,19 @@
     (if (= (fn2-cpe started) 0)
      (b* (((mv code next fn2-fields) (fn2-format-frame-header-decode base slot gen 8192 12288 okind oslot ogen fn2-fields fn2-pool))
           ((unless (eq code :ok)) (fn2-cpe-answer :skip))
-          ((mv ok batch epoch allocation payload) (fn2-rec-header-check e (fn2-origin-history fn2-origin) (fn2-origin-history-incarnation fn2-origin) fn2-fields))
+          ; Tentative identity from actual bytes. The sealed body must agree,
+          ; then :seal authenticates this pair against the anchor batch hash.
+          ; Historical journal identity need not equal current anchor identity.
+          (history (fn2-cpe-f *fn2-format-frame-header-field-history*))
+          (incarnation (fn2-cpe-f *fn2-format-frame-header-field-incarnation*))
+          ((unless (fn2-origin-physicalp history incarnation)) (fn2-cpe-answer :skip))
+          ((mv ok batch epoch allocation payload) (fn2-rec-header-check e history incarnation fn2-fields))
           ((unless (and ok (= epoch ep) (= allocation al) (natp next) (<= (+ next payload) 12288)
                          (unsigned-byte-p 32 next) (unsigned-byte-p 32 payload))) (fn2-cpe-answer :skip))
-          (fn2-fc-context (fn2-rec-context row e 2 ep al batch hash prev geometry (fn2-origin-history fn2-origin) (fn2-origin-history-incarnation fn2-origin) fn2-fc-context))
+          (fn2-fc-context (fn2-rec-context row e 2 ep al batch hash prev geometry history incarnation fn2-fc-context))
           (fn2-fc (fn2-fc-reset row fn2-fc))
           (fn2-checkpoint-recovery-evidence (fn2-checkpoint-recovery-evidence-put 0
+            (journal-history history) (journal-incarnation incarnation)
             (commit batch) (seal-off next) (seal-len payload) (started 1))))
       (fn2-cpe-answer :more))
      (mv-let (code fn2-fc fn2-b3 fn2-fields fn2-pool fn2-digests)
@@ -84,7 +92,7 @@
     (b* (((mv code end fn2-fields) (fn2-format-sealed-batch-decode base slot gen (fn2-cpe seal-off)
           (+ (fn2-cpe seal-off) (fn2-cpe seal-len)) okind oslot ogen fn2-fields fn2-pool))
          ((unless (eq code :ok)) (fn2-cpe-answer :skip))
-         ((mv ok first last) (fn2-rec-seal-check e commit ep al (fn2-origin-history fn2-origin) (fn2-origin-history-incarnation fn2-origin) fn2-fields))
+         ((mv ok first last) (fn2-rec-seal-check e commit ep al history incarnation fn2-fields))
          (f *fn2-format-sealed-batch-field-dependencies-storage-domain*)
          ((unless (and ok (natp end) (<= (fn2-cpe seal-off) end) (unsigned-byte-p 32 (- end (fn2-cpe seal-off)))
                         (unsigned-byte-p 60 first) (unsigned-byte-p 60 last)
@@ -104,7 +112,7 @@
          ; This is the sealed immediate predecessor, never anchor+32's previous
          ; checkpoint batch. Its final seal is authenticated against anchor+0.
          (fn2-digests (fn2-checkpoint-recovery-evidence-load 0 96 prev fn2-checkpoint-recovery-evidence fn2-digests))
-         (fn2-fc-context (fn2-rec-context row e 2 ep al commit hash prev geometry (fn2-origin-history fn2-origin) (fn2-origin-history-incarnation fn2-origin) fn2-fc-context))
+         (fn2-fc-context (fn2-rec-context row e 2 ep al commit hash prev geometry history incarnation fn2-fc-context))
          (fn2-fc (fn2-fc-reset row fn2-fc))
          (fn2-checkpoint-recovery-evidence (fn2-checkpoint-recovery-evidence-put 0
           (phase *fn2-checkpoint-recovery-evidence-phase-seal*) (seal-len (- end (fn2-cpe seal-off))) (first first) (last last))))
@@ -114,7 +122,7 @@
      (fn2-format-run :seal nil row slot gen (fn2-cpe seal-off) (fn2-cpe seal-len) base okind oslot ogen budget
       fn2-fc fn2-fc-context fn2-b3 fn2-fields fn2-pool fn2-digests)
      (b* (((unless (eq code :ok)) (fn2-cpe-answer (if (eq code :more) :more :invalid)))
-          (fn2-fc-context (fn2-rec-context row e 1 ep al commit hash prev geometry (fn2-origin-history fn2-origin) (fn2-origin-history-incarnation fn2-origin) fn2-fc-context))
+          (fn2-fc-context (fn2-rec-context row e 1 ep al commit hash prev geometry history incarnation fn2-fc-context))
           (fn2-fc (fn2-fc-reset row fn2-fc))
           (fn2-checkpoint-recovery-evidence (fn2-checkpoint-recovery-evidence-put 0 (phase *fn2-checkpoint-recovery-evidence-phase-records*))))
       (fn2-cpe-answer :more))))
@@ -133,7 +141,7 @@
          (fn2-digests (fn2-checkpoint-recovery-evidence-load 0 128 prev fn2-checkpoint-recovery-evidence fn2-digests))
          ((unless (and (eq code :ok) (fn2-digest-equal hash prev fn2-digests))) (fn2-cpe-answer :invalid))
          (fn2-digests (fn2-checkpoint-recovery-evidence-load 0 160 hash fn2-checkpoint-recovery-evidence fn2-digests))
-         (fn2-fc-context (fn2-rec-context row e 0 ep al commit hash prev geometry (fn2-origin-history fn2-origin) (fn2-origin-history-incarnation fn2-origin) fn2-fc-context))
+         (fn2-fc-context (fn2-rec-context row e 0 ep al commit hash prev geometry history incarnation fn2-fc-context))
          (fn2-fc (fn2-fc-reset row fn2-fc))
          (fn2-checkpoint-recovery-evidence (fn2-checkpoint-recovery-evidence-put 0 (phase *fn2-checkpoint-recovery-evidence-phase-dependencies*))))
      (fn2-cpe-answer :more)))
