@@ -80,7 +80,7 @@
      (equal (fn2-machine-stopped id fn2-core) 0)
      (stobj-let ((fn2-seals (fn2-core-seals fn2-core)) (fn2-c-source-observers (fn2-core-c-source-observers fn2-core))) (yes)
       (and (< 0 (fn2-seals-rows fn2-seals)) (< id (fn2-c-source-observers-rows fn2-c-source-observers))
-           (member (fn2-seals-phase 0 fn2-seals) (list *fn2-seal-phase-idle* *fn2-seal-phase-release*))
+           (equal (fn2-seals-phase 0 fn2-seals) *fn2-seal-phase-idle*)
            (equal (fn2-seals-held 0 fn2-seals) 0) (equal (fn2-seals-copy-live 0 fn2-seals) 0)
            (equal (fn2-c-source-observers-live id fn2-c-source-observers) 0)) yes)))))
  (fn2-csnapshot-op fn2-csnapshot-poll (token okind oslot ogen) 3
