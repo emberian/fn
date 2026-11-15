@@ -83,6 +83,7 @@ ACL2_BOOKS = \
   books/compress-policy \
   books/compress-kind \
   books/compress-operation \
+  books/compress-record \
   books/compress-transport-state \
   books/compress-transport-lifecycle \
   books/compress-transport-ops \
