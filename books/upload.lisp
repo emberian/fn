@@ -2,7 +2,7 @@
 ;; row 3). The design is docs/d-machines-nntp.md section 14.3. An upload
 ;; row is taken by a connection that opens an article block (POST after 340,
 ;; IHAVE after 335, TAKETHIS at once) with its window: two chunk slots of the
-;; chunk class and the BLAKE3 hasher row 3 + its slot (B-S1). The
+;; chunk class and distinct original/stored BLAKE3 contexts (B-S1). The
 ;; connection's feed writes the unstuffed source into the chunks
 ;; (upload-feed.lisp) and reports what it wrote (fn2-upload-input); the
 ;; upload's own runs hash it and scan its header (upload-scan.lisp), at most
@@ -89,7 +89,8 @@
 (defcost fn2-upload-store-span :doc "The next storage write's pool range, offset and length: (mv slot gen off len).")
 (defcost fn2-upload-lease-class :doc "The pool class of the store page for stored octets of a length (nil: none).")
 ;; The source manifest's operations (stored octets longer than one extent).
-(defcost fn2-upload-hasher :doc "The upload row's hasher row (3 + its slot), whose format stripe the manifest's fields use.")
+(defcost fn2-upload-hasher :doc "The upload's original-source context from the shared B geometry; its stripe holds manifest fields.")
+(defcost fn2-upload-stored-hasher :doc "The actual upload's distinct stored-stream hash context.")
 (defcost fn2-upload-save-source :answers (:ok :bounds) :bytes *fn2-upload-digest-octets*
   :tables (fn2-core-pool)
   :doc "Save this actual upload's SOURCE identity in its owned page before B3 reuse.")
@@ -108,7 +109,7 @@
   :tables (fn2-core-b3 fn2-core-digests fn2-core-pool)
   :doc "The staged block's BLAKE3 into the store page.")
 (defcost fn2-upload-block-cv :answers (:ok :fault) :faults (:fault) :bytes *fn2-commit-unit-bytes*
-  :tables (fn2-core-digests fn2-core-pool)
+  :tables (fn2-core-b3 fn2-core-digests fn2-core-pool)
   :doc "The staged block's chaining value (its BLAKE3 for a short final block) into the store page.")
 (defcost fn2-upload-block-entry :answers (:ok :fault) :faults (:fault) :bytes *fn2-upload-entry-bytes*
   :tables (fn2-core-pool fn2-core-fields)
@@ -133,10 +134,13 @@
 (defmacro fn2-upload-op-events ()
  '(progn
 (defun fn2-upload-hasher (id fn2-core)
-  ;; the hasher row of the upload row ID: 3 + its slot (B-S1: rows 0-1 the
-  ;; commit kind's, row 2 recovery's checker)
-  (declare (xargs :stobjs fn2-core :guard (fn2-core-wfp fn2-core)))
-  (if (eq (fn2-upload-snapshot-read-code id fn2-core) :ok) (+ 3 (nfix (fn2-machine-slot id fn2-core))) 0))
+ (declare (xargs :stobjs fn2-core :guard (fn2-core-wfp fn2-core)))
+ (if (eq (fn2-upload-snapshot-read-code id fn2-core) :ok)
+     (fn2-b-upload-source-hash-row (fn2-machine-slot id fn2-core)) 0))
+(defun fn2-upload-stored-hasher (id fn2-core)
+ (declare (xargs :stobjs fn2-core :guard (fn2-core-wfp fn2-core)))
+ (if (eq (fn2-upload-snapshot-read-code id fn2-core) :ok)
+     (fn2-b-upload-stored-hash-row (fn2-machine-slot id fn2-core)) 0))
 (defun fn2-upload-hash-begin (row fn2-core)
   (declare (xargs :stobjs fn2-core :guard (fn2-core-wfp fn2-core)))
   (stobj-let ((fn2-b3 (fn2-core-b3 fn2-core)) (fn2-digests (fn2-core-digests fn2-core)))
@@ -558,27 +562,22 @@
         (fn2-upload-digest-store row ls lg *fn2-upload-page-stored-source* oslot ogen fn2-core)))
     (mv (if (eq code :ok) :ok :fault) fn2-core)))
 (fn2-core-preserves fn2-upload-stored-hash (row slot gen off done blen last ls lg okind oslot ogen fn2-core) :position 1 :rows nil)
-;; The staged block's BLAKE3 into the page at *fn2-upload-page-hash* (the
-;; window's hasher row ROW; after the verdict the source's digest is already
-;; appended to it): (mv code fn2-core).
-(defun fn2-upload-block-hash-run (row ls lg blen okind oslot ogen fn2-core)
-  (declare (xargs :stobjs fn2-core :guard (fn2-core-wfp fn2-core)) (ignorable okind))
-  (b* (((mv code fn2-core) (fn2-upload-hash-begin row fn2-core))
-       ((unless (eq code :ok)) (mv code fn2-core))
-       ((mv code fn2-core)
-        (if (and (natp blen) (<= blen *fn2-commit-unit-bytes*))
-            (fn2-upload-hash-span 8 row ls lg *fn2-upload-page-stage* blen oslot ogen fn2-core)
-          (mv :bounds fn2-core)))
-       ((unless (eq code :ok)) (mv :bounds fn2-core))
-       ((mv code fn2-core) (fn2-upload-hash-end row fn2-core))
-       ((unless (eq code :ok)) (mv code fn2-core)))
-    (fn2-upload-digest-store row ls lg *fn2-upload-page-hash* oslot ogen fn2-core)))
-(fn2-core-preserves fn2-upload-block-hash-run (row ls lg blen okind oslot ogen fn2-core) :position 1 :rows nil)
-(defun fn2-upload-block-hash (row ls lg blen okind oslot ogen fn2-core)
-  (declare (xargs :stobjs fn2-core :guard (fn2-core-wfp fn2-core)))
-  (mv-let (code fn2-core) (fn2-upload-block-hash-run row ls lg blen okind oslot ogen fn2-core)
-    (mv (if (eq code :ok) :ok :fault) fn2-core)))
-(fn2-core-preserves fn2-upload-block-hash (row ls lg blen okind oslot ogen fn2-core) :position 1 :rows nil)
+;; A bounded block hash owns the shared synchronous block scratch only for
+;; this call. Copy its result to the upload page before returning/yielding.
+(defun fn2-upload-block-hash (ls lg blen okind oslot ogen fn2-core)
+ (declare (xargs :stobjs fn2-core :guard (fn2-core-wfp fn2-core)))
+ (stobj-let ((fn2-b3 (fn2-core-b3 fn2-core)) (fn2-digests (fn2-core-digests fn2-core))
+             (fn2-pool (fn2-core-pool fn2-core))) (code fn2-b3 fn2-digests fn2-pool)
+  (let ((row (fn2-b-block-read-row (fn2-b3-rows fn2-b3))))
+   (mv-let (code fn2-b3 fn2-digests)
+    (fn2-block-hash-into row ls lg *fn2-upload-page-stage* blen okind oslot ogen fn2-b3 fn2-digests fn2-pool)
+    (if (not (eq code :ok)) (mv :fault fn2-b3 fn2-digests fn2-pool)
+     (mv-let (copied fn2-pool)
+      (fn2-digest-store 32 (fn2-digest-slot row *fn2-b3-result*) ls lg *fn2-upload-page-hash*
+                        okind oslot ogen fn2-digests fn2-pool)
+      (mv (if (eq copied :ok) :ok :fault) fn2-b3 fn2-digests fn2-pool)))))
+  (mv code fn2-core)))
+(fn2-core-preserves fn2-upload-block-hash (ls lg blen okind oslot ogen fn2-core) :position 1 :rows nil)
 (defun fn2-upload-location-hash (row ls lg off blen unit okind oslot ogen fn2-core)
   (declare (xargs :stobjs fn2-core :guard (fn2-core-wfp fn2-core)) (ignorable okind))
   (b* (((unless (and (natp unit) (< unit *fn2-commit-write-resources*)
@@ -594,31 +593,35 @@
     (mv (if (eq code :ok) :ok :fault) fn2-core)))
 (fn2-core-preserves fn2-upload-location-hash (row ls lg off blen unit okind oslot ogen fn2-core)
   :position 1 :rows nil)
-;; The staged block's chaining value at chunk counter 4 BLOCK (a whole unit)
-;; into the page 32 octets after its BLAKE3; a short final block is no
-;; complete subtree and its BLAKE3 (still the hasher row's result) goes there
-;; again (article-manifest.lisp): (mv code fn2-core).
-(defun fn2-upload-block-cv (row ls lg blen block okind oslot ogen fn2-core)
-  (declare (xargs :stobjs fn2-core :guard (fn2-core-wfp fn2-core)) (ignorable okind))
-  (b* ((fn2-core
-        (if (equal blen *fn2-commit-unit-bytes*)
-            (stobj-let ((fn2-digests (fn2-core-digests fn2-core)) (fn2-pool (fn2-core-pool fn2-core)))
-              (fn2-digests)
-              (let ((dst (fn2-digest-slot (nfix row) *fn2-b3-result*))
-                    (off (+ (if (and (natp ls) (< ls (fn2-pool-rows fn2-pool))) (nfix (fn2-pool-slot-base ls fn2-pool)) 0)
-                            *fn2-upload-page-stage*))
-                    (counter (* 4 (nfix block))))
-                (if (and (natp row) (fn2-digest-rowp dst fn2-digests) (fn2-pool-wfp fn2-pool)
-                         (<= (+ off *fn2-commit-unit-bytes*) (fn2-pool-data-length fn2-pool))
-                         (unsigned-byte-p 48 counter))
-                    (fn2-b3-subtree-cv-into dst off *fn2-commit-unit-bytes* counter fn2-digests fn2-pool)
-                  fn2-digests))
-              fn2-core)
-          fn2-core))
-       ((mv code fn2-core) (fn2-upload-digest-store row ls lg (+ 32 *fn2-upload-page-hash*) oslot ogen fn2-core)))
-    (mv (if (eq code :ok) :ok :fault) fn2-core)))
-(fn2-core-preserves fn2-upload-block-cv (row ls lg blen block okind oslot ogen fn2-core) :position 1 :rows nil
-  :hints (("Goal" :in-theory (enable fn2-core-wfp))))
+;; CV production also completes in one call. A short block uses the hash
+;; already retained in its page, never a shared scratch result across yields.
+(defun fn2-upload-block-cv (ls lg blen block okind oslot ogen fn2-core)
+ (declare (xargs :stobjs fn2-core :guard (fn2-core-wfp fn2-core)))
+ (if (not (and (posp blen) (<= blen *fn2-commit-unit-bytes*) (natp block)))
+     (mv :fault fn2-core)
+  (if (not (equal blen *fn2-commit-unit-bytes*))
+     (mv-let (code fn2-core)
+      (fn2-core-copy-range ls lg *fn2-upload-page-hash* ls lg (+ 32 *fn2-upload-page-hash*)
+                           32 okind oslot ogen fn2-core)
+      (mv (if (eq code :ok) :ok :fault) fn2-core))
+   (stobj-let ((fn2-b3 (fn2-core-b3 fn2-core)) (fn2-digests (fn2-core-digests fn2-core))
+               (fn2-pool (fn2-core-pool fn2-core))) (code fn2-digests fn2-pool)
+    (let* ((row (fn2-b-block-read-row (fn2-b3-rows fn2-b3)))
+           (dst (fn2-digest-slot row *fn2-b3-result*))
+           (code (fn2-pool-workspace-code ls lg okind oslot ogen fn2-pool))
+           (counter (* 4 (nfix block))))
+     (if (not (and (eq code :ok) (natp block) (fn2-digest-rowp dst fn2-digests)
+                   (<= (+ *fn2-upload-page-stage* *fn2-commit-unit-bytes*) (fn2-pool-fill ls fn2-pool))
+                   (unsigned-byte-p 48 counter)))
+         (mv :fault fn2-digests fn2-pool)
+       (let* ((off (+ (fn2-pool-slot-base ls fn2-pool) *fn2-upload-page-stage*))
+              (fn2-digests (fn2-b3-subtree-cv-into dst off *fn2-commit-unit-bytes* counter fn2-digests fn2-pool)))
+        (mv-let (copied fn2-pool)
+         (fn2-digest-store 32 dst ls lg (+ 32 *fn2-upload-page-hash*) okind oslot ogen fn2-digests fn2-pool)
+         (mv (if (eq copied :ok) :ok :fault) fn2-digests fn2-pool)))))
+    (mv code fn2-core)))))
+(fn2-core-preserves fn2-upload-block-cv (ls lg blen block okind oslot ogen fn2-core) :position 1 :rows nil
+ :hints (("Goal" :in-theory (enable fn2-core-wfp))))
 ;; The block's entry after the manifest's MFILL octets (the packing rule):
 ;; (mv code mfill fn2-core).
 (defun fn2-upload-block-entry (row ls lg block blen unit epoch alloc mfill okind oslot ogen fn2-core)
@@ -775,7 +778,7 @@
   :hints (("Goal" :in-theory (disable nfix))))
 (in-theory (disable fn2-upload-payload-reserve fn2-upload-payload-settle fn2-upload-store-span
                     fn2-upload-lease-class fn2-upload-put-mid fn2-upload-page-zero fn2-upload-page-zero-to fn2-upload-manifest-begin
-                    fn2-upload-stage-loop fn2-upload-stage fn2-upload-hash-span fn2-upload-stored-hash fn2-upload-block-hash-run fn2-upload-block-hash fn2-upload-location-hash fn2-upload-block-entry
+                    fn2-upload-stage-loop fn2-upload-stage fn2-upload-hash-span fn2-upload-stored-hash fn2-upload-block-hash fn2-upload-location-hash fn2-upload-block-entry
                     fn2-upload-extent-commit fn2-upload-manifest-extents fn2-upload-manifest-head fn2-upload-extents-run fn2-upload-extents-of
                     fn2-upload-block-cv fn2-upload-manifest-walk fn2-upload-manifest-units fn2-upload-settle-unit
                     fn2-upload-extents-close-run fn2-upload-extents-close))
