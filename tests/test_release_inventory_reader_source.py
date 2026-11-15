@@ -38,6 +38,7 @@ class InventoryReader(unittest.TestCase):
                         'fn2-checkpoint-restore-release-entries-generation','fn2-checkpoint-release-copy-entry-hash'):
             self.assertIn(premise,entry)
         self.assertIn("['<', 'tail', 'journal']",entry)
+        self.assertEqual(entry.count('fn2-origin-physicalp'),3)
         calls=list(walk(operation('fn2-checkpoint-restore-release-inventory-entry')))
         claims=[c for c in calls if c and c[0]=='fn2-checkpoint-restore-reach-claim']
         self.assertEqual(len(claims),3)
