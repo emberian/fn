@@ -69,6 +69,31 @@
        (phase (if done *fn2-alloc-identity-phase-idle* *fn2-alloc-identity-phase-clearing*)))))
   (mv (if done :active :more) fn2-extents)))
 
+; The caller binds NEW to the actual launched child. SOURCE never changes;
+; an outstanding lookup cannot be delegated or retargeted to another record.
+(defun fn2-alloc-identity-transfer (kind owner ogen source new-kind new-owner new-gen fn2-extents)
+ (declare (xargs :stobjs fn2-extents :guard (fn2-extents-wfp fn2-extents)))
+ (if (not (and (fn2-alloc-identity-owner-p kind owner ogen source fn2-extents)
+               (fn2-alloc-identity-geometry-p fn2-extents)
+               (= (fn2-alloc-identity-phase fn2-extents) *fn2-alloc-identity-phase-idle*)
+               (= (fn2-alloc-identity-op fn2-extents) *fn2-alloc-identity-op-none*)
+               (unsigned-byte-p 8 new-kind) (unsigned-byte-p 32 new-owner)
+               (posp new-gen) (unsigned-byte-p 60 new-gen))) (mv :owner fn2-extents)
+  (let ((fn2-extents (fn2-alloc-identity-put (owner-kind new-kind) (owner-slot new-owner) (owner-gen new-gen))))
+   (mv :ok fn2-extents))))
+
+; Private terminal handoff. The actual post-Fence finalizer establishes all
+; recovery/source/lease obligations and calls this immediately before ordinary
+; begin-epoch in the same nonyielding arm. This is not a served disable face.
+(defun fn2-alloc-identity-end (kind owner ogen source fn2-extents)
+ (declare (xargs :stobjs fn2-extents :guard (fn2-extents-wfp fn2-extents)))
+ (if (not (and (fn2-alloc-identity-owner-p kind owner ogen source fn2-extents)
+               (fn2-alloc-identity-geometry-p fn2-extents)
+               (= (fn2-alloc-identity-phase fn2-extents) *fn2-alloc-identity-phase-idle*)
+               (= (fn2-alloc-identity-op fn2-extents) *fn2-alloc-identity-op-none*)))
+  (mv :owner fn2-extents)
+  (let ((fn2-extents (update-fn2-alloc-identity-active 0 fn2-extents))) (mv :ok fn2-extents))))
+
 ; Pending lookup binds OLD actual row and exact NEW tuple. No row is changed
 ; by prepare/probe; publication and the original transition are one step.
 (defun fn2-alloc-identity-prepare (kind owner ogen source op i previous state epoch counter cut fn2-extents)
@@ -140,14 +165,16 @@
       ((when (= used *fn2-alloc-identity-bucket-empty*))
        (if insert
         (if (< (fn2-alloc-identity-count fn2-extents) n)
-         (let ((fn2-extents (fn2-alloc-identity-ready (if (= tomb *fn2-alloc-none*) at tomb) fn2-extents)))
+         (let* ((fn2-extents (fn2-alloc-identity-put (visited (+ 1 seen))))
+                (fn2-extents (fn2-alloc-identity-ready (if (= tomb *fn2-alloc-none*) at tomb) fn2-extents)))
           (mv :ready fn2-extents)) (mv :full fn2-extents))
         (mv :missing fn2-extents)))
       ((when (and (= used *fn2-alloc-identity-bucket-used*) (= (fn2-alloc-identity-epochsi at fn2-extents) epoch)
                    (= (fn2-alloc-identity-countersi at fn2-extents) counter)))
        (cond ((not (= (fn2-alloc-identity-extentsi at fn2-extents) (fn2-alloc-identity-extent fn2-extents))) (mv :conflict fn2-extents))
              (insert (mv :index fn2-extents))
-             (t (let ((fn2-extents (fn2-alloc-identity-ready at fn2-extents))) (mv :ready fn2-extents)))))
+             (t (let* ((fn2-extents (fn2-alloc-identity-put (visited (+ 1 seen))))
+                       (fn2-extents (fn2-alloc-identity-ready at fn2-extents))) (mv :ready fn2-extents)))))
       ((unless (member-equal used (list *fn2-alloc-identity-bucket-used* *fn2-alloc-identity-bucket-tombstone*))) (mv :index fn2-extents))
       (tomb (if (and (= tomb *fn2-alloc-none*) (= used *fn2-alloc-identity-bucket-tombstone*)) at tomb))
       (visited (+ 1 seen)) (next (if (= (+ 1 at) n) 0 (+ 1 at)))
@@ -220,6 +247,14 @@
        (= (fn2-alloc-identity-extentsi b fn2-extents) (fn2-alloc-identity-extent fn2-extents))
        (= (fn2-alloc-identity-epochsi b fn2-extents) (fn2-alloc-identity-old-epoch fn2-extents))
        (= (fn2-alloc-identity-countersi b fn2-extents) (fn2-alloc-identity-old-counter fn2-extents)))))
+(defun fn2-alloc-identity-free-ready-p (kind owner ogen source i epoch counter cut fn2-extents)
+ (declare (xargs :stobjs fn2-extents :guard (fn2-extents-wfp fn2-extents)))
+ (and (fn2-alloc-identity-pending-current-p kind owner ogen source fn2-extents)
+      (= (fn2-alloc-identity-phase fn2-extents) *fn2-alloc-identity-phase-ready*)
+      (= (fn2-alloc-identity-op fn2-extents) *fn2-alloc-identity-op-free*)
+      (equal i (fn2-alloc-identity-extent fn2-extents)) (equal epoch (fn2-alloc-identity-old-epoch fn2-extents))
+      (equal counter (fn2-alloc-identity-old-counter fn2-extents)) (equal cut (fn2-alloc-identity-cut fn2-extents))
+      (fn2-alloc-identity-old-bucket-p fn2-extents)))
 (defun fn2-alloc-identity-commit-free (kind owner ogen source fn2-extents)
  (declare (xargs :stobjs fn2-extents :guard (fn2-extents-wfp fn2-extents)))
  (b* (((unless (and (fn2-alloc-identity-pending-current-p kind owner ogen source fn2-extents)
