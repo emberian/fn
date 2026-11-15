@@ -120,3 +120,54 @@ paired relational hook contract. The first callback control must assert the
 full initial relation, compare every result and post-state carrier, and
 reject an omitted-enqueue mutation. The direct two-wake seam controls do not
 establish served callback reachability.
+
+## Reachable release composition (source audit, 2026-11-15)
+
+At `peer-query-refs@6d89f3ced`, the production query producers are the sealed
+upload's `fn2-txn-offer` and internal `fn2-peer-import-start-key`. TxnOffer
+passes the actual upload owner: its name is in C0 or the injected-ID storage
+page, and its digest in C0/C1. The internal importer queries its owned copy;
+this is not an activated served import route. CNS/CONN lifecycle fixtures
+exercise the generic query API, not an additional served producer.
+Reclamation's scoped cold-source audit at `62363300e` found no query acquire
+in checkpoint/recovery/commit/run-physical code; physical pins and credit
+leases are separate ownership mechanisms.
+
+Upload page and C1/C0 releases in `assembly-callbacks-d-upload.lisp` accept
+only `:ok`/`:retired` before clearing handles or reclaiming the row. The page
+preflight precedes manifest settlement/extent close, and both chunk checks
+precede either chunk release. There is no yield or callback between these
+checks and their bounded release set. Internal importer cleanup/detach also
+checks the release result, retains its snapshot on `:held`, and can retry
+through the existing abort entry. A future served importer still needs its
+own connected wake/consumer contract.
+
+The only incoming upload `:aborting` edges are pre-store work and identity.
+Work rejects a held storage lease before its owner-loss edge; identity is
+before store acquisition. Stored uploads remain `:sealed`, relay the child
+transaction wake, then enter normal `:draining`. No page-held abort path is
+claimed reachable, and its refusal is unchanged.
+
+The `:page-loss` controls in `query-owner-drain-unit.lisp` pause after real
+TxnOffer has acquired both references, checking the exact UPLOAD owner and
+name page/gen/offset/length, plus the chunk digest source. An independent
+query retains the page through actual QUIT and connection reclamation. They
+require normal draining, a complete unchanged held callback result/core,
+unchanged query/page/C0/C1 while quiet, last DONE/cancel wake, scheduler retry,
+and final stale handles for all three ranges. These controls remain UNRUN.
+
+Both generated admission rollback functions ignore release results:
+`fn2-machine-range-releases` and `fn2-arms-registry-releases`. Their sole
+callers are synchronous fresh-reservation chains, with installation only
+after all reservations succeed. No write, query, callback or scheduler step
+intervenes. Fresh reservations have fill/count zero, so the positive name
+and 32-byte digest acquisition cannot succeed there. This excludes held
+rollback in the current generated path, not arbitrary malformed states or
+normal post-publication cleanup; independent structural controls are being
+added by the pool audit owner.
+
+The raw core-release held/no-stop leaf gate does not qualify consumers.
+Their execution requires coherent current-root query descriptor/start/DONE/
+cancel, scheduler effects, owner callbacks and current pool-credit geometry,
+preserving Send accounting. Complete descriptor-count lifecycle/frame
+obligations and selected callback full-result correspondence remain separate.

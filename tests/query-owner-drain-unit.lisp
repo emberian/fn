@@ -224,12 +224,14 @@
       ((mv final-status & & fn2-core) (fn2-cw-loop 40000 0 accepted clients store fn2-core))
       (freed (not (equal (fn2-machine-generation target fn2-core) targetgen)))
       (stale-source (car (fn2-qod-life slot gen kind owner generation fn2-core)))
-      (stale-other (car (fn2-qod-life other othergen kind owner generation fn2-core))))
+      (stale-other (car (fn2-qod-life other othergen kind owner generation fn2-core)))
+      (stale-c0 (if (eq mode :page-loss)
+                    (car (fn2-qod-life c0 g0 kind owner generation fn2-core)) :stale)))
   (mv (if (and parked wake-ok child-wake-ok (eq final-status :quiet) freed
-               (eq stale-source :stale) (eq stale-other :stale)
+               (eq stale-source :stale) (eq stale-other :stale) (eq stale-c0 :stale)
                (or (not held) (eq finished (if cancel :ok :stored)))
                (not (fn2-core-stopped-p fn2-core)))
-          t (list :resume mode held parked finished wake owner child-wake-ok freed stale-source stale-other)) fn2-core)))
+          t (list :resume mode held parked finished wake owner child-wake-ok freed stale-source stale-other stale-c0)) fn2-core)))
 (defun fn2-qod-test (mode held cancel)
  (declare (xargs :verify-guards nil))
  (with-local-stobj fn2-core
