@@ -77,7 +77,11 @@
                       (fn2-cas-read-idlep x fn2-core)))
       ; Zero is an admitted u60 primary key. This separate direct-API
       ; control changes request input before claiming XL, not while held.
-      (fn2-core (if (eq mode :zero) (fn2-cns-put-core id (art 0)) fn2-core))
+      (fn2-core (cond ((eq mode :zero) (fn2-cns-put-core id (art 0)))
+                      ; Make PF agree even for the offered wrong FETCH mode,
+                      ; so rejection depends on the actual verb binding.
+                      ((eq mode :fetch) (fn2-cns-put-core id (to 101)))
+                      (t fn2-core)))
       ((mv b s d runnable fn2-core) (fn2-cns-run id 4 fn2-core))
       (yielded (and selection (equal b *fn2-cns-article-next-pool-work-bound*)
                     (equal s *fn2-work-transition*) (equal d 0) runnable
