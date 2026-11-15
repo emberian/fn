@@ -61,6 +61,9 @@
   (implies (and (fn2-layoutp layout) (consp layout))
            (and (consp (car layout)) (consp (cdar layout))
                 (fn2-layout-kindp (cadar layout)))))
+; A generic CONSP goal must not trigger a recursive search for a layout.
+; Codec guards instantiate this structural fact explicitly where needed.
+(in-theory (disable fn2-layoutp-head))
 (defthm fn2-layoutp-cdr (implies (fn2-layoutp layout) (fn2-layoutp (cdr layout))))
 (defun fn2-layout-kind-code (k)
   (declare (xargs :guard (fn2-layout-kindp k)))
@@ -261,7 +264,8 @@
            (fn2-fieldsp (mv-nth 9 (fn2-layout-scan layout fuel i pos v hi size ref phase next slot gen end okind oslot ogen  fn2-fields fn2-pool))))
   :hints (("Goal" :in-theory (disable fn2-fields-rows nfix member-equal fn2-fields-value fn2-fields-ref-slot fn2-fields-ref-gen fn2-fields-ref-off fn2-fields-ref-len fn2-fields-status))))
 (verify-guards fn2-layout-scan
-  :hints (("Goal" :in-theory (disable fn2-layoutp fn2-layout-kindp member-equal nfix fn2-fields-rows fn2-fields-value fn2-fields-ref-slot fn2-fields-ref-gen fn2-fields-ref-off fn2-fields-ref-len fn2-fields-status))))
+  :hints (("Goal" :use ((:instance fn2-layoutp-head))
+           :in-theory (disable fn2-layoutp fn2-layout-kindp member-equal nfix fn2-fields-rows fn2-fields-value fn2-fields-ref-slot fn2-fields-ref-gen fn2-fields-ref-off fn2-fields-ref-len fn2-fields-status))))
 (in-theory (disable fn2-layout-scan))
 
 (defun fn2-layout-save (i pos v hi size ref phase next fn2-fields)
@@ -291,13 +295,24 @@
 (defthm fn2-layoutp-tail
   (implies (fn2-layoutp layout) (fn2-layoutp (nthcdr n layout)))
   :hints (("Goal" :in-theory (disable fn2-layoutp))))
+; Full-entry callers admit this declared finite layout work before calling.
+; A generated scan consumes one transition per byte or empty field; MAX+FIELDS
+; therefore covers every admitted complete encoding, including >4096-byte ones.
+(defun fn2-layout-decode-transition-bound (layout)
+ (declare (xargs :guard (fn2-layoutp layout)))
+ (max 1 (+ (nfix (fn2-layout-max-size layout)) (len layout))))
+(defthm fn2-layout-decode-transition-bound-positive
+ (and (integerp (fn2-layout-decode-transition-bound layout))
+      (< 0 (fn2-layout-decode-transition-bound layout))) :rule-classes :type-prescription)
+(in-theory (disable fn2-layout-decode-transition-bound))
+
 (defun fn2-layout-decode-run (layout slot gen off end okind oslot ogen budget resume fn2-fields fn2-pool)
   (declare (xargs :stobjs (fn2-fields fn2-pool)
                   :guard (and (fn2-layoutp layout) (fn2-fields-wfp fn2-fields) (fn2-pool-wfp fn2-pool))))
   (b* ((code (fn2-layout-range-code slot gen off end nil okind oslot ogen fn2-pool))
        ((unless (eq code :ok)) (mv code off fn2-fields))
        ((unless (and (unsigned-byte-p 32 off) (unsigned-byte-p 32 end)
-                     (posp budget) (<= budget 4096) (<= (len layout) (fn2-fields-rows fn2-fields))))
+                     (posp budget) (or (not resume) (<= budget 4096)) (<= (len layout) (fn2-fields-rows fn2-fields))))
         (mv :bounds off fn2-fields))
        (i (if resume (fn2-fields-cursor fn2-fields) 0))
        (pos (if resume (fn2-fields-pos fn2-fields) 0))
@@ -328,8 +343,10 @@
 (defun fn2-layout-decode (layout slot gen off end okind oslot ogen fn2-fields fn2-pool)
   (declare (xargs :stobjs (fn2-fields fn2-pool)
                   :guard (and (fn2-layoutp layout) (fn2-fields-wfp fn2-fields) (fn2-pool-wfp fn2-pool))))
-  (if (> (fn2-layout-max-size layout) 4096) (mv :budget off fn2-fields)
-    (fn2-layout-decode-run layout slot gen off end okind oslot ogen 4096 nil fn2-fields fn2-pool)))
+  (mv-let (code next fn2-fields)
+   (fn2-layout-decode-run layout slot gen off end okind oslot ogen
+    (fn2-layout-decode-transition-bound layout) nil fn2-fields fn2-pool)
+   (mv (if (eq code :more) :oversized code) next fn2-fields)))
 (defthm fn2-layout-decode-wfp
   (implies (fn2-fields-wfp fn2-fields)
            (fn2-fields-wfp (mv-nth 2 (fn2-layout-decode layout slot gen off end okind oslot ogen fn2-fields fn2-pool)))))
@@ -414,7 +431,8 @@
 (defun fn2-layout-emit (layout fuel i pos next slot gen okind oslot ogen fn2-fields fn2-pool)
   (declare (xargs :stobjs (fn2-fields fn2-pool) :measure (+ (nfix fuel) (len layout))
                   :hints (("Goal" :in-theory (disable fn2-layout-field-size)))
-                  :guard-hints (("Goal" :in-theory (disable fn2-layoutp fn2-layout-kindp fn2-layout-field-size)))
+                  :guard-hints (("Goal" :use ((:instance fn2-layoutp-head))
+                                       :in-theory (disable fn2-layoutp fn2-layout-kindp fn2-layout-field-size)))
                   :guard (and (fn2-layoutp layout) (fn2-fields-wfp fn2-fields) (fn2-pool-wfp fn2-pool)
                               (natp fuel) (natp i) (natp pos) (natp next))))
   (b* (((when (atom layout)) (mv :ok i pos next fn2-pool))
@@ -436,13 +454,12 @@
   (declare (xargs :stobjs (fn2-fields fn2-pool)
                   :guard (and (fn2-layoutp layout) (fn2-fields-wfp fn2-fields) (fn2-pool-wfp fn2-pool))))
   (b* (((unless (unsigned-byte-p 32 off)) (mv :bounds off fn2-pool))
-       ((when (> (fn2-layout-max-size layout) 4096)) (mv :budget off fn2-pool))
        (end (+ off (fn2-layout-size layout 0 fn2-fields)))
        (code (fn2-layout-range-code slot gen off end t okind oslot ogen fn2-pool))
        ((unless (eq code :ok)) (mv code off fn2-pool))
        (code (fn2-layout-check-values layout 0 slot off end okind oslot ogen fn2-fields fn2-pool))
        ((unless (eq code :ok)) (mv code off fn2-pool))
-       ((mv code i pos next fn2-pool) (fn2-layout-emit layout 4096 0 0 off slot gen okind oslot ogen fn2-fields fn2-pool))
+       ((mv code i pos next fn2-pool) (fn2-layout-emit layout (fn2-layout-decode-transition-bound layout) 0 0 off slot gen okind oslot ogen fn2-fields fn2-pool))
        (- i pos))
     (mv code next fn2-pool)))
 (encapsulate ()
@@ -924,8 +941,7 @@
             (<= (+ base ,count) (fn2-fields-rows fn2-fields))
             (unsigned-byte-p 32 off)
             (let ((end (+ off (,sizefn base fn2-fields))))
-              (and (<= (+ (- end off) ,(fn2-codec-empty-count layout)) 4096)
-                   (eq (fn2-layout-range-code slot gen off end t okind oslot ogen fn2-pool) :ok)
+              (and (eq (fn2-layout-range-code slot gen off end t okind oslot ogen fn2-pool) :ok)
                    (eq (,check base slot off end okind oslot ogen fn2-fields fn2-pool) :ok)))))
      (defthm-owed ,(fn2-codec-symbol name "-ROUNDTRIP")
        (base slot gen off okind oslot ogen f p)
@@ -940,7 +956,7 @@
        :teeth (fn2-layout-generated-teeth)
        :schema :g1 :claim :representation :shared ((:layout ,name))
        :sides (:concrete (,encode ,decode) :reference (fn2-layout-values fn2-layout-octets))
-       :doc "Generated one-shot exports refine the list specification when the complete transition count fits their 4096-step budget. General proof owed; larger inputs use decode-step.")
+       :doc "Generated complete-entry exports refine the list specification under the declared layout transition bound. Callers admit that bound; smaller runtime quanta use decode-step. General proof owed.")
      (defthm-owed ,(fn2-codec-symbol name "-CANONICAL")
        (base slot gen off end okind oslot ogen f p)
        (mv-let (code next f2) (,decode base slot gen off end okind oslot ogen f p)
@@ -961,6 +977,7 @@
         (constant (fn2-codec-constant name ""))
         (count-name (fn2-codec-constant name "-NUM-FIELDS"))
         (max-name (fn2-codec-constant name "-MAX-SIZE"))
+        (transitions-name (fn2-codec-constant name "-DECODE-TRANSITIONS"))
         (done (fn2-codec-phase name 'done))
         (bytefn (fn2-codec-symbol name "-BYTE"))
         (emptyfn (fn2-codec-symbol name "-EMPTY-P"))
@@ -990,6 +1007,7 @@
     (defconst ,constant ',layout)
     (defconst ,count-name ,count)
     (defconst ,max-name ,(fn2-layout-max-size layout))
+    (defconst ,transitions-name ,(fn2-layout-decode-transition-bound layout))
     ,@(fn2-codec-index-events name layout 0)
     ,@(fn2-columns-enum-events
         `((phase (:enum ,(fn2-codec-symbol name "-PHASE") ,(fn2-codec-phase-keywords layout)))))
@@ -1091,8 +1109,17 @@
     (defun ,decode (,@decodeargs fn2-fields fn2-pool)
       (declare (xargs :stobjs (fn2-fields fn2-pool)
                       :guard (and ,room (fn2-pool-wfp fn2-pool))))
-      (let ((fn2-fields (,start base fn2-fields)))
-        (,step base slot gen off end okind oslot ogen 4096 fn2-fields fn2-pool)))
+      (b* ((code (fn2-layout-range-code slot gen off end nil okind oslot ogen fn2-pool))
+           ((unless (eq code :ok)) (mv code off fn2-fields))
+           ((unless (and (unsigned-byte-p 32 off) (unsigned-byte-p 32 end))) (mv :bounds off fn2-fields))
+           (fn2-fields (,start base fn2-fields))
+           ((mv code next fn2-fields)
+            (,scan ,transitions-name base (fn2-fields-decode-phase base fn2-fields)
+             (fn2-fields-decode-pos base fn2-fields) (fn2-fields-decode-acc base fn2-fields)
+             (fn2-fields-decode-high base fn2-fields) (fn2-fields-decode-size base fn2-fields)
+             (fn2-fields-decode-ref base fn2-fields) (fn2-fields-decode-payload base fn2-fields)
+             off slot gen end okind oslot ogen fn2-fields fn2-pool)))
+       (mv (if (eq code :more) :oversized code) next fn2-fields)))
     ,@(fn2-codec-fields-facts decode decodeargs 2)
     (in-theory (disable ,decode))
     ,@(fn2-codec-sizer-events name layout count)
@@ -1131,7 +1158,7 @@
     ,@(fn2-codec-spec-events name layout count)
     (table fn2-layouts ',name
       '(:layout ,layout :value-width ,value-width :phase (:enum ,(fn2-codec-symbol name "-PHASE") ,(fn2-codec-phase-keywords layout)) :fields ,count :max-size ,(fn2-layout-max-size layout)
-        :encode ,encode :decode ,decode :decode-step ,step :start ,start :size ,sizefn
+        :encode ,encode :decode ,decode :decode-step ,step :decode-transitions ,transitions-name :start ,start :size ,sizefn
         :roundtrip-hyps ,(fn2-codec-symbol name "-ROUNDTRIP-HYPS"))))))
 
 (defmacro deflayout (name expression)

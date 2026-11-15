@@ -518,3 +518,25 @@ span7/producer26/member7/visit3/budget4/domain2 source controls pass; twelve Lis
 structural checks are0. This does not establish reconstructed-frame byte equality,
 original-batch verification in the cold reader, prefix RELEASE closure, root4
 terminal or physical reclamation. Those remain the next owned implementation.
+
+The shared complete-entry decoder now uses the same scan engine with one
+declared transition bound MAX-bytes plus field count (minimum1), exported by
+each generated codec as DECODE-TRANSITIONS and in its layout metadata. The
+quota-taking DECODE-STEP remains resumable with its explicit4096 cap. Generic
+logical full decode/encode use the same declared bound, removing their old
+4KiB-only behavior; complete decode refuses oversize instead of silently
+returning a partial success continuation. The G1 roundtrip antecedent no longer
+excludes valid large entries. Canonical layout6f624/ccd+71c proof-hint/rune
+fixes are retained exactly by the checked transformation.
+
+Four source controls pass. A registered runnable near-max schema20 fixture
+asserts the whole generated roundtrip antecedent/conclusion, actual encoded
+entry>4096, old4096 quota incompleteness, full/model decoding, budget1 pervisit
+progress, zero-budget unchanged fields/pool, owner/truncation refusal and real
+run-build/page/hash/cursor/NTH lookup. Its witness strings are typed fixture
+data, not original-batch authentication. All ACL2 assertions remain UNRUN.
+The layout structural checker reports the same existing B* ignore-binding
+finding on canonical source and this source; the changed fixture parses at0.
+This generator slice is not qualified for activation: actual caller byte/table
+work charges and full-quota versus streaming admission must close with the
+checkpoint cost owner before runtime composition. No archive compute grant.
