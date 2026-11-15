@@ -5,6 +5,14 @@
 (include-book "c-snapshot")
 (fn2-book-layer :c)
 
+; Internal macro shared only by real reservation-result sites.
+; No runtime register(handle) primitive or served child is introduced.
+(defmacro fn2-checkpoint-construction-retain-reserved ()
+ '(fn2-checkpoint-construction-put extent
+       (live 1) (token token) (owner-kind okind) (owner-slot oslot) (owner-gen ogen)
+       (role role) (ordinal ordinal) (epoch epoch) (counter counter)
+       (intended-bytes intended) (completed-bytes 0) (ticket-claimed 0) (ticket-batch 0)))
+
 ; Preflight the allocator's actual next row, then reserve and retain the exact
 ; returned identity in that row. There is intentionally no register(handle) or
 ; generic completion operation. Future physical-write harvest owns completion.
@@ -35,10 +43,7 @@
       ; A mismatch is retained, never cancelled or called ordinary pressure.
       ((unless (equal extent next))
        (mv :uncertain extent epoch counter fn2-checkpoint-construction fn2-extents fn2-control))
-      (fn2-checkpoint-construction (fn2-checkpoint-construction-put extent
-       (live 1) (token token) (owner-kind okind) (owner-slot oslot) (owner-gen ogen)
-       (role role) (ordinal ordinal) (epoch epoch) (counter counter)
-       (intended-bytes intended) (completed-bytes 0) (ticket-claimed 0) (ticket-batch 0))))
+      (fn2-checkpoint-construction (fn2-checkpoint-construction-retain-reserved)))
   (mv :ok extent epoch counter fn2-checkpoint-construction fn2-extents fn2-control)))
 
 (fn2-checkpoint-construction-preserves fn2-checkpoint-construction-reserve
