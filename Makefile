@@ -250,6 +250,9 @@ ACL2_BOOKS = \
   books/pool-credit \
   books/pool-credit-contracts \
   books/checkpoint-working-geometry \
+  books/allocation-release-geometry \
+  books/release-member-binding \
+  books/allocation-release-coordinator \
   books/checkpoint-working-credit \
   books/checkpoint-working-credit-init \
   books/pool-block \
