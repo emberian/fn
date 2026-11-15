@@ -205,7 +205,7 @@
            (:do (hcode mf) (fn2-upload-manifest-begin hrow row-lslot row-lgen total)
             :accept (:ok))
            (:set (mfill mf) (mstep 0)) (:charge :bytes *fn2-upload-head-bytes* :steps *fn2-work-transition* :runnable t))
-          ((and (< row-pdone total) (equal (mod blk *fn2-commit-write-resources*) 0) (equal row-cfree 0))
+          ((and (< row-pdone total) (equal (mod blk *fn2-storage-extent-units*) 0) (equal row-cfree 0))
            (:do (rcode e ep al) (fn2-upload-payload-reserve)
             :accept ()
             :case (((:ok) (:set (cext e) (cepoch ep) (calloc al) (cfree 1))
@@ -217,7 +217,7 @@
                                                row-pdone row-hashed)
             :accept (:ok))
            (:issue (fn2-issue-write (+ (* *fn2-commit-extent-bytes* row-cext)
-                                       (* *fn2-commit-unit-bytes* (mod blk *fn2-commit-write-resources*)))
+                                       (* *fn2-commit-unit-bytes* (mod blk *fn2-storage-extent-units*)))
                                     row-lslot row-lgen *fn2-upload-page-stage* glen 0
                                     :principal row-principal-slot)
             :ok ((:set (sready 0)) (:next :store-wrote) (:wait :completion :bytes 4096 :steps *fn2-work-small*))))
@@ -265,7 +265,7 @@
            (:let hrow (fn2-upload-hasher id))
            (:do (ecode mf) (fn2-upload-block-entry hrow row-lslot row-lgen blk blen
                                                    (+ (* *fn2-storage-extent-units* row-cext)
-                                                      (mod blk *fn2-commit-write-resources*))
+                                                      (mod blk *fn2-storage-extent-units*))
                                                    row-cepoch row-calloc row-mfill)
             :accept (:ok))
            (:set (pdone (+ row-pdone blen)) (mfill mf) (cfree 0) (sready 0) (mstep 0))
