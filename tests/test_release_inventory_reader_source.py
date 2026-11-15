@@ -50,6 +50,8 @@ class InventoryReader(unittest.TestCase):
                          'fn2-checkpoint-restore-reader-entry-ordinal','fn2-checkpoint-restore-release-inventory-consumed',
                          'fn2-checkpoint-restore-release-inventory-hashes-p','fn2-checkpoint-restore-reach-reader-p'):
             self.assertIn(required,source)
+        self.assertIn('(fn2-checkpoint-restore-release-entries-generation head',source)
+        self.assertIn('(fn2-checkpoint-restore-release-entries-journal-extent tail',source)
         finish=operation('fn2-checkpoint-restore-release-inventory-finish')
         self.assertEqual(finish[2],[])
         self.assertIn('fn2-checkpoint-restore-release-inventory-reader-terminal-p',str(finish))
