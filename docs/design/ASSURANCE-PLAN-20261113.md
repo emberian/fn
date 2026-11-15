@@ -13,7 +13,8 @@ identity and retain refuted claims as unfinished. The six-book union of the
 [correspondence](receipts/refuted-correspondence-four-record.json) records matches
 that integration's current sources and closure keys. The current-layout
 [member/completion record](receipts/member-refutation-current-thirty-seven-record.json)
-adds its 37-book closure; their union is 39 distinct current qualified books.
+adds its 37-book closure; their union is 39 distinct current qualified books. The initializer/CONN
+record below expands this union to 61, with each record retaining its scope.
 Earlier records below
 remain evidence for their named frozen sources; dependent closures changed by
 this declaration update require qualification at their new keys. The active
@@ -56,8 +57,18 @@ closure keys, actual certificate/FASL hashes and toolchain metadata. This is
 candidate `04aadad8f`, with its original declaration foundation, not a claim
 that all 112 match upstream's later registry changes. Application author work
 then reached `conn-schema`, whose original rich defmachine event exhausted its
-20-second limit. A shared initializer proof-hint repair is being tested against
-that unchanged event; actual application and native execution remain pending. Actual FETCH cancellation remains
+20-second limit. The shared initializer proof-hint repair now passes that
+unchanged event: the pilot's complete CONN book took 16.32 seconds under the
+original limits. Runtime, guards, rich connection fields and public theorem
+formulas remain unchanged; four actual-generator/source controls pass.
+The [current-root CONN33 record](receipts/machine-initializer-current-conn33-record.json)
+qualifies the integrated repair with 12 reused entries and 21 newly certified
+books. Root independently checked every current source/key and actual
+certificate/FASL/toolchain identity. Its
+[pilot record](receipts/machine-initializer-pilot-conn33-record.json) remains scoped
+to the earlier frozen candidate. This generator change rekeys dependent
+application closures; the old READ112 record does not qualify those new keys.
+Actual application and native execution remain pending. Actual FETCH cancellation remains
 unexecuted. Its fixture binds the failed Send to the captured connection,
 request, operation generation and range and rejects stale generations before
 acknowledging the queue head.
