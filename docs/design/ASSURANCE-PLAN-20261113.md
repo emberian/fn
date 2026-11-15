@@ -308,8 +308,9 @@ live `$OWED` statement; raw author formula or a diagnostic predicate name cannot
 bind it. Refuted originals remain in the unfinished export and completion gate,
 with zero admitted proof credit. The replacement locator is explicitly unverified
 as a semantic link; existence of another theorem does not repair the original.
-The new member bridge uses the admitted readonly-removal witness to propose that
-exact negated instance and points to the distinct FIELDS-TYPE-UNDER-GUARD theorem.
+The member bridge uses the admitted readonly-removal witness to prove that
+exact negated instance and points to the distinct FIELDS-TYPE-UNDER-GUARD theorem,
+with the frozen qualification scope stated below.
 Existing production member and positive/negative witness bytes are unchanged.
 Each bound declaration now also emits an immutable logical claim-identity
 constant (statement, variables, source formula, translated body). Every table
@@ -323,12 +324,8 @@ wrong/open counterexamples and redundant author/identity replay. Actual report
 readback verifies the target row is REFUTED, unfinished, replacement link
 unverified, with zero proved claims. Four generic structural source tests pass; member-specific controls stay with the separate member packet.
 [Four-book receipt](receipts/refuted-obligations-four-record.json) records exact
-source, cert/FASL/port hashes and toolchain. The square-evidence regression has
-31 local books with only four exact qualified entries; the actual member bridge
-has 34 with only five. These receipts do not qualify those larger closures; the separate member
-source campaign is in progress and its registry bridge remains unadmitted. No
-application world was started for these registry records; the previous member counterexample receipt remains valid for
-its original frozen closure.
+source, cert/FASL/port hashes and toolchain. These generic registry records do
+not qualify the larger core-lowering regression or a full application world.
 The existing small correspondence consumer subsequently passed all 49 actual
 forms (0.27 seconds, 32,957 steps), then exact four-book record
 `certify-20261115T180639Z-1652106`: two qualified declaration/owed parents reused,
@@ -337,8 +334,24 @@ square-evidence and its unchanged correspondence fixture newly certified.
 those sources and payloads. Together the two records cover six distinct local
 books, including the original-conclusion mutation/domain controls. They do not
 qualify the larger core-lowering regression or the member registry bridge.
-Generic registry integration excludes the new member bridge and its global
-export include until that actual instance theorem is admitted.
+The actual member bridge now passed exact frozen 37-book record
+`certify-20261115T182438Z-1671306` at `64ee0f8592f085c0322a529b06105d053445b423`
+(15 reused, 22 new), including the completion checker and report book.
+The unchanged member definition and original readonly-removal theorem passed;
+the new closed-instance negation, status registration and completion assertions
+passed in 0.10 seconds / 10,124 steps. Actual report readback names the member
+row REFUTED, leaves it unfinished with zero proof credit, and labels the
+replacement relationship unverified. The complete original H/C and actual
+packer remain unchanged; no malformed raw stobj was executed.
+[Member bridge receipt](receipts/member-refutation-thirty-seven-record.json)
+records every source/cert/FASL/port hash and the real export digest.
+The minimal source packet is projected onto integration `11456b2cc`: only
+`books/layout.lisp` differs among the existing closure sources, replacing the
+literal 4096 with its named constant. Exactly 23 closure keys are unchanged and
+14 layout-dependent keys differ. The frozen receipt does not certify those 14
+current keys; no unchanged proof or full application world was replayed for this
+projection. The member test/export hook and two member-specific source controls
+are separate from the already integrated generic registry packet.
 
 
 
