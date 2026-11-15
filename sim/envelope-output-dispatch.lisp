@@ -1,4 +1,4 @@
-; Pending author proof: actual phase5 dispatch and phase6 reversal.
+; Actual phase5 dispatch and phase6 reversal through the qualified byte loop.
 (in-package "ACL2")
 (include-book "envelope-output-segment-loop")
 
@@ -66,6 +66,17 @@
        (equal (fn2-eo-row (fn2-envelope-output-step fn2-envelope-output-state)) (fn2-eo-row fn2-envelope-output-state))
        (equal (fn2-eo-peer (fn2-envelope-output-step fn2-envelope-output-state)) (fn2-eo-peer fn2-envelope-output-state))))
  :hints (("Goal" :in-theory (disable fn2-envelope-output-step))))
+
+(defthm fn2-eo-octets-revappend
+ (implies (and (fn2-eo-octets-p xs) (fn2-eo-octets-p ys))
+          (fn2-eo-octets-p (revappend xs ys)))
+ :hints (("Goal" :induct (revappend xs ys)
+          :in-theory (enable fn2-eo-octets-p))))
+
+(defthm fn2-eo-pair-reconstruct
+ (implies (and (consp pair) (equal (car pair) tag))
+          (equal (cons tag (cdr pair)) pair))
+ :hints (("Goal" :use ((:instance car-cdr-elim (x pair))))))
 
 (defthm fn2-eo-phase5-processes-one-segment
  (implies
