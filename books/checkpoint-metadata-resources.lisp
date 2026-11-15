@@ -2,6 +2,7 @@
 ; Drain the C cut before atomic admission, so reservation cannot strand staged
 ; transactions needing journal windows. Refusal must release the cut, never wait.
 (in-package "ACL2")
+(include-book "run-installed-geometry")
 (include-book "checkpoint-working-reserve")
 (include-book "checkpoint-metadata-manifest")
 (include-book "checkpoint-compaction-state")
@@ -94,8 +95,9 @@
 (defun fn2-checkpoint-predecessor-rows (profile)
  (declare (xargs :guard t))
  (+ (nfix (fn2-b-capacity :identity-overlays *fn2-idc-overlays-default* profile))
-    (nfix (fn2-b-capacity :identity-runs 64 profile))
-    (nfix (fn2-b-capacity :extent-slots 16 profile))))
+    (fn2-run-installed-row-count
+     (nfix (fn2-b-capacity :identity-runs 64 profile))
+     (nfix (fn2-b-capacity :extent-slots 16 profile)))))
 (defun fn2-checkpoint-predecessor-profilep (profile)
  (declare (xargs :guard t))
  (and (natp (fn2-b-capacity :identity-overlays *fn2-idc-overlays-default* profile))

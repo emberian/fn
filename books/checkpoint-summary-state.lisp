@@ -7,7 +7,7 @@
  ((phase (:enum fn2-checkpoint-summary-phase (:idle :capture :captured :applying :applied :retiring :retired :uncertain :promoting)))
   (tag :u60) (candidate :u32) (checkpoint :u60) (cut-commit :u60) (cut-event :u60)
   (history :u60) (incarnation :u60) (generation :u60) (semantic-tag :u60) (owner-kind :u8) (owner-slot :u32) (owner-gen :u60)
-  (priority-base :u60) (application-stage :u8) (count :u60) (cursor :u32) (target :u32) (free-count :u32) (installed :u60) (lease-count :u32))
+  (priority-base :u60) (bank :bool) (application-stage :u8) (count :u60) (cursor :u32) (target :u32) (free-count :u32) (installed :u60) (lease-count :u32))
  :extra-fields
  ((fn2-checkpoint-summary-descriptor :type (array (unsigned-byte 8) (64)) :initially 0
    :why "Active and sole pending catalog descriptors occupy disjoint 32-byte rows; old query identity survives until actual drain.")
