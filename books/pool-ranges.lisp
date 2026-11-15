@@ -197,8 +197,14 @@
                (mv :ok fn2-pool)))))))
 
 (fn2-pool-preserves fn2-pool-copy-range (src sgen soff dst dgen doff len okind oslot ogen fn2-pool) :position 1 :disable nil)
+(defthm fn2-pool-copy-up-keeps-extents
+  (let ((q (fn2-pool-copy-up src dst m fn2-pool)))
+    (and (equal (fn2-pool-rows q) (fn2-pool-rows fn2-pool))
+         (equal (fn2-pool-base i q) (fn2-pool-base i fn2-pool))
+         (equal (fn2-pool-cap i q) (fn2-pool-cap i fn2-pool))))
+  :hints (("Goal" :induct (fn2-pool-copy-up src dst m fn2-pool) :in-theory (enable fn2-pool-copy-up))))
 (fn2-pool-preserves fn2-pool-drop-prefix (slot gen k cursor limit okind oslot ogen fn2-pool) :position 2 :disable nil
- :hints ((fn2-columns-guard-hint '(fn2-pool) '(fn2-pool-copy-up fn2-pool-workspace-code) nil world)))
+ :hints ((fn2-columns-guard-hint '(fn2-pool) '(fn2-pool-copy-up) nil world)))
 (fn2-pool-preserves fn2-pool-truncate (slot gen n okind oslot ogen fn2-pool) :position 1)
 (assert-event
  (fn2-assert-compliant-p
@@ -245,12 +251,7 @@
            :use ((:instance fn2-pool-semanticp-row-bounds (i slot))
                  (:instance fn2-pool-semanticp-row-bounds (i other))
                  (:instance fn2-pool-extents-apart (i slot) (j other))))))
-(defthm fn2-pool-copy-up-keeps-extents
-  (let ((q (fn2-pool-copy-up src dst m fn2-pool)))
-    (and (equal (fn2-pool-rows q) (fn2-pool-rows fn2-pool))
-         (equal (fn2-pool-base i q) (fn2-pool-base i fn2-pool))
-         (equal (fn2-pool-cap i q) (fn2-pool-cap i fn2-pool))))
-  :hints (("Goal" :induct (fn2-pool-copy-up src dst m fn2-pool) :in-theory (enable fn2-pool-copy-up))))
+
 (defthm fn2-pool-copy-down-keeps-extents
   (let ((q (fn2-pool-copy-down src dst m fn2-pool)))
     (and (equal (fn2-pool-rows q) (fn2-pool-rows fn2-pool))
