@@ -24,7 +24,9 @@ class RootCreditInit(unittest.TestCase):
         self.assertIn('(not (fn2-profile-get :image-boot profile)) (mv :ok fn2-core)', boundary)
         self.assertIn('(fn2-checkpoint-working-credit-init profile fn2-core)', boundary)
         init = Path('books/checkpoint-working-credit-init.lisp').read_text()
-        self.assertIn('profile (fn2-commit-rows fn2-commit) (fn2-commit-io-rows fn2-commit-io) fn2-pool', init)
+        self.assertIn('profile (fn2-commit-rows fn2-commit) (fn2-commit-io-rows fn2-commit-io)', init)
+        self.assertIn('(fn2-checkpoint-service-protocol-classes fn2-pool)', init)
+        self.assertIn('(fn2-checkpoint-service-upload-classes fn2-pool) fn2-pool', init)
 
     def test_one_actual_p_formula_and_capacity(self):
         s = Path('books/checkpoint-working-credit.lisp').read_text()
@@ -32,7 +34,7 @@ class RootCreditInit(unittest.TestCase):
         for actual in ['(fn2-checkpoint-working-credit-vector 0 fn2-pool)',
                        '(fn2-checkpoint-drain-credit-vector 0 journal-class windows fn2-pool)',
                        '(fn2-allocation-release-credit-vector 0 fn2-pool)',
-                       '(fn2-checkpoint-service-demand-vector profile fn2-pool)',
+                       '(fn2-checkpoint-service-demand-vector profile paths uploads fn2-pool)',
                        '(fn2-checkpoint-working-profile-fitp 0 groups service fn2-pool)',
                        '(equal commit-io-rows (* *fn2-commit-write-resources* commitrows))']:
             self.assertIn(actual,s)
@@ -83,6 +85,19 @@ class RootCreditInit(unittest.TestCase):
                        '(assert-event (fn2-rwciu-short-run))']:
             self.assertIn(actual,s)
         self.assertNotIn('(:pool-classes .',s)
+
+    def test_protocol_projection_uses_actual_registry_and_resolver(self):
+        init=Path('books/checkpoint-working-credit-init.lisp').read_text()
+        self.assertIn('(fn2-machine-class-form (fn2-arm-get :class (cdar specs))',init)
+        for kind,face in [('fn2-conn',':admission'),('fn2-ctl',':admission'),('fn2-cns',':taken'),('fn2-upload',':taken')]:
+            self.assertIn("(fn2-checkpoint-service-kind-form '"+kind+' '+face+' world)',init)
+        service=Path('books/checkpoint-service-geometry.lisp').read_text()
+        self.assertIn('(fn2-checkpoint-service-path-demand class paths)',service)
+        self.assertIn('(fn2-checkpoint-service-class-count class uploads)',service)
+        self.assertNotIn('(equal class *fn2-upload-chunk-class*)',service)
+        fixture=Path('tests/root-working-credit-init-unit.lisp').read_text()
+        self.assertIn('(assert-event (fn2-rwciu-alias-run))',fixture)
+        self.assertIn('(assert-event (fn2-rwciu-protocol-short-run))',fixture)
 
 if __name__=='__main__':
     unittest.main()

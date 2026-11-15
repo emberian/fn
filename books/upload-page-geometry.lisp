@@ -1,6 +1,7 @@
 ; Shared actual ROOT upload sizing; no cold payload-policy change.
 (in-package "ACL2")
 (include-book "profile")
+(include-book "upload-window-geometry")
 (include-book "source-manifest-codec")
 (fn2-book-layer :b)
 
@@ -10,7 +11,6 @@
 
 (defconst *fn2-upload-article-max* 32768)
 
-(defconst *fn2-upload-digest-octets* 32)
 
 (defconst *fn2-upload-mid-field-octets* 12)
 

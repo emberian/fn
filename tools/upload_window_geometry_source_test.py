@@ -20,7 +20,7 @@ class WindowGeometry(unittest.TestCase):
     p.write_bytes(subprocess.check_output(['git','show',BASE+':'+f],cwd=ROOT))
    transform(root)
    for f in names+['books/upload-window-geometry.lisp','docs/design/receipts/upload-window-geometry-source.json']:
-    self.assertEqual((root/f).read_bytes(),(ROOT/f).read_bytes(),f)
+    self.assertEqual((root/f).read_bytes(),subprocess.check_output(['git','show','6d629b0ed:'+f],cwd=ROOT),f)
  def test_original_constants_unchanged_unique(self):
   receipt=json.loads((ROOT/'docs/design/receipts/upload-window-geometry-source.json').read_text())
   leaf=lr.parse(ROOT/'books/upload-window-geometry.lisp')
@@ -29,6 +29,8 @@ class WindowGeometry(unittest.TestCase):
    ms=lr.match(pattern,leaf.forms);self.assertEqual(len(ms),1)
    self.assertEqual(hashlib.sha256(leaf.text[ms[0].start:ms[0].end].encode()).hexdigest(),item['sha256'])
    self.assertFalse(lr.match(pattern,lr.parse(ROOT/item['source']).forms))
+   for extra in ['books/upload-page-geometry.lisp']:
+    self.assertFalse(lr.match(pattern,lr.parse(ROOT/extra).forms))
  def test_actual_declarations_use_same_shared_requirements(self):
   p=lr.parse(ROOT/'books/upload-kind.lisp')
   for slot,gen,size in [('c0-slot','c0-gen','*fn2-upload-header-workspace-bytes*'),

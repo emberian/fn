@@ -68,3 +68,30 @@ included before claiming exact-equality P+F supports full served admission.
 The rolling producer owner will expose its actual header/body size declarations;
 F must consume those declarations and cannot retain the old fixed two-window
 formula once that producer changes. No rolling resource change is made here.
+
+Declaration-derived one-request follow-on
+
+Actual init now projects conn admission, CTL admission, CNS TAKE and upload TAKE
+from the completed machine registry. It uses fn2-machine-range-specs and the
+same fn2-machine-class-form resolver. No lower-layer book imports protocol kinds.
+The pure fit receives these internally generated class paths. Per class, F adds
+the maximum of the two competing one-request protocol paths, together with the
+actual upload header/body classes, rather than counting distinct class names.
+Byte requirements consequently select and count physical aliases correctly.
+
+The paired upload declaration requests the shared17440-byte header workspace
+and4096-byte body window. The existing digest32 constant has one provider in
+upload-window-geometry after its subsequent exact move from upload-page-geometry;
+both original extraction receipts remain unchanged, with an explicit follow-on
+move receipt. Existing ROOT hash quantum/manifest policy remain unchanged here.
+
+Actual node initializer controls add a single-class alias configuration positive
+and a profile derived from P+upload/storage F with only protocol ranges removed.
+The latter must stop actual image initialization before genesis. Assertions are
+source-prepared, not run. Init closure66; actual initializer fixture238.
+
+This is a connected one-request startup admission envelope. It neither proves
+rolling feed/spool progress (producer is not delivered here) nor protects F from
+other admitted foreground holders. Supported concurrency, uncertain retained
+leases and grant exclusion remain separate required work; P's protected quotas
+remain authoritative and unchanged.

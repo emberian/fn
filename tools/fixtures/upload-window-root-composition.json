@@ -1,0 +1,12 @@
+{
+  "scope": "subsequent exact move; original extraction receipts unchanged",
+  "moves": [
+    {
+      "symbol": "*fn2-upload-digest-octets*",
+      "source": "books/upload-page-geometry.lisp",
+      "target": "books/upload-window-geometry.lisp",
+      "form": "(defconst *fn2-upload-digest-octets* 32)",
+      "sha256": "5fa97082af1e35475c9808ad0d0791aacc4b8826df8dbee4e012ff997c674d04"
+    }
+  ]
+}

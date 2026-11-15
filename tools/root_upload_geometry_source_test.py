@@ -25,7 +25,17 @@ class RootGeometry(unittest.TestCase):
         for row in self.receipt['moves']:
             with self.subTest(name=row['name'],needle=row['needle']):
                 self.assertEqual(hashlib.sha256(row['form'].encode()).hexdigest(),row['sha256'])
-                target=(ROOT/row['target']).read_text()
+                target_path=row['target']
+                follow=ROOT/'tools/fixtures/upload-window-root-composition.json'
+                if follow.exists():
+                    for move in json.loads(follow.read_text())['moves']:
+                        if row['name']==move['symbol']:
+                            self.assertEqual(move['source'],row['target'])
+                            self.assertEqual(move['form'],row['form'])
+                            self.assertEqual(move['sha256'],row['sha256'])
+                            self.assertNotIn(move['form'],(ROOT/move['source']).read_text())
+                            target_path=move['target']
+                target=(ROOT/target_path).read_text()
                 form,_,_=unique(target,row['head'],row['name'],row['needle'])
                 self.assertEqual(form,row['form'])
                 old=(ROOT/row['source']).read_text()
