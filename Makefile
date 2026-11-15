@@ -5,6 +5,8 @@ ACL2_BOOKS = \
   books/accounts-core \
   books/alloc \
   books/checkpoint-descriptor-read \
+  books/checkpoint-descriptor-input \
+  books/checkpoint-boot-descriptor \
   books/cns-append-prefix-codec \
   books/arm-children \
   books/arm-issue-effects \
