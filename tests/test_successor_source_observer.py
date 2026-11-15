@@ -56,4 +56,14 @@ class SuccessorObserver(unittest.TestCase):
    self.assertEqual(final[0],'mv',name)
    self.assertEqual(len(final)-1,8,name)
   for child in ('fn2-core-c-source-control','fn2-core-c-source-readers'):self.assertIn(child,text)
+ def test_prepared_actual_wrapper_progress_cancel_and_error(self):
+  text=(ROOT/'tests/successor-source-observer-unit.lisp').read_text()
+  for name in ('fn2-successor-resolve','fn2-successor-release','fn2-c-source-writer-begin','fn2-c-source-writer-poll','fn2-succ-copy-scalar-row'):
+   self.assertIn('('+name,text)
+  self.assertNotIn('(ri *fn2-succ-slots*)',text)
+  self.assertIn('(eq bypass :state)',text)
+  self.assertIn('(eq writer :waiting)',text)
+  self.assertIn('(eq poll :exclusive)',text)
+  for mode in (':complete',':cancel',':error'):
+   self.assertIn('(assert-event (fn2-successor-source-observer-unit '+mode+'))',text)
 if __name__=='__main__':unittest.main()
