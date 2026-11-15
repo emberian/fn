@@ -255,6 +255,35 @@ class EventSteps(unittest.TestCase):
                 repl.send_range(args)
             send.assert_not_called()
 
+    def test_must_fail_actual_checkpoint_source_is_one_original_event(self):
+        root = Path(os.environ.get('FN_PROOF_CHECKPOINT_SOURCE_ROOT',
+                                   Path(__file__).resolve().parents[1]))
+        source = root / 'tests/checkpoint-carrier-unit.lisp'
+        if not source.is_file():
+            self.skipTest('set FN_PROOF_CHECKPOINT_SOURCE_ROOT to the actual checkpoint fixture checkout')
+        names, hashes, text = repl.source_event_inventory(source, root)
+        forms = repl.forms(text)
+        original = next(form for form in forms if repl.form_head(form) == 'must-fail')
+        expected = f'(with-prover-step-limit 2000000 t (with-prover-time-limit 20 {original}))'
+        self.assertEqual(repl.per_event_steps(original, 2000000, 20, names), expected)
+        hoisted, body = repl.encapsulated(text, source.parent, set(), 20, 2000000, names)
+        self.assertIn(expected, body)
+        self.assertEqual(expected.count('(with-prover-step-limit '), 1)
+        self.assertIn(':expected :soft :check-expansion t', expected)
+        self.assertTrue(any('std/testing/must-fail' in form for form in hoisted))
+
+    def test_must_fail_final_result_still_controls_refusal(self):
+        # Parser controls only: expected inner errors are not outer failures.
+        caught = 'ACL2 Error in inner event\nSummary\nForm: (MUST-FAIL ...)\nTime: 0.01 seconds\n'
+        self.assertFalse(repl.errored(caught))
+        self.assertTrue(repl.errored(caught + 'ACL2 Error in MUST-FAIL: expected failure but command succeeded\n'))
+        original = '(must-fail (thm nil) :expected :soft :check-expansion t)'
+        wrapped = repl.per_event_steps(original, 2000000, 20)
+        self.assertEqual(wrapped, f'(with-prover-step-limit 2000000 t (with-prover-time-limit 20 {original}))')
+        self.assertEqual(wrapped.count('with-prover-step-limit'), 1)
+        with self.assertRaises(ValueError):
+            repl.per_event_steps('(must-fail-unreviewed (thm nil))', 2000000, 20)
+
     def test_macro_time_cap(self):
         form = '(fn2-machines-preserves example)'
         self.assertEqual(repl.per_event_steps(form, 2000000, 20),
