@@ -26,7 +26,7 @@
          (fn2-checkpoint-bank-closures (update-fn2-checkpoint-bank-closures-capture-generationi i 0 fn2-checkpoint-bank-closures))
          (fn2-checkpoint-bank-closures (update-fn2-checkpoint-bank-closures-capture-tagi i 0 fn2-checkpoint-bank-closures))
          (fn2-checkpoint-bank-closures (update-fn2-checkpoint-bank-closures-capture-seeni i 0 fn2-checkpoint-bank-closures)))
-   (fn2-checkpoint-bank-closures-reset-controls (+ i 1) fn2-checkpoint-bank-closures))))
+   (fn2-checkpoint-bank-closures-reset-controls (+ 1 (nfix i)) fn2-checkpoint-bank-closures))))
 
 (fn2-checkpoint-bank-closures-preserves fn2-checkpoint-bank-closures-reset-controls
  (i fn2-checkpoint-bank-closures) :hyps ((fn2-checkpoint-bank-closuresp fn2-checkpoint-bank-closures)
@@ -59,7 +59,7 @@
  (or (>= (nfix i) 16)
   (and (equal (fn2-checkpoint-bank-closures-identityi (+ (* 16 c) i) fn2-checkpoint-bank-closures)
               (fn2-checkpoint-publication-cold-wordsi (+ (* 48 c) 32 i) fn2-checkpoint-publication))
-       (fn2-checkpoint-bank-closure-identity-p (+ i 1) c fn2-checkpoint-bank-closures fn2-checkpoint-publication))))
+       (fn2-checkpoint-bank-closure-identity-p (+ 1 (nfix i)) c fn2-checkpoint-bank-closures fn2-checkpoint-publication))))
 (defun fn2-checkpoint-bank-closure-current-p (c fn2-checkpoint-bank-closures fn2-checkpoint-publication)
  (declare (xargs :stobjs (fn2-checkpoint-bank-closures fn2-checkpoint-publication)
  :guard (and (fn2-checkpoint-bank-closures-wfp fn2-checkpoint-bank-closures) (fn2-checkpoint-publication-wfp fn2-checkpoint-publication))))
