@@ -138,6 +138,16 @@
   :positive ((x '2))
   :negative (:kind :hypothesis-removal :remove (fn2-ep-domainp x)
              :occurrences 2 :bindings ((x '-1/2)))))
+(must-fail
+ (defsquare-evidence fn2-ep-duplicate :conclusion-kind :predicate
+  :positive ((x '2))
+  :negative (:kind :hypothesis-removal :remove (fn2-ep-domainp x)
+             :occurrences 0 :bindings ((x '-1)))))
+(must-fail
+ (defsquare-evidence fn2-ep-duplicate :conclusion-kind :predicate
+  :positive ((x '2))
+  :negative (:kind :hypothesis-removal :remove (fn2-ep-domainp x)
+             :occurrences :two :bindings ((x '-1)))))
 ; A repeated identical premise is one semantic assumption. Its explicit
 ; multiplicity must match the live formula; default1 still refuses above.
 (defsquare-evidence fn2-ep-duplicate :conclusion-kind :predicate
