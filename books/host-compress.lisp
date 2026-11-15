@@ -102,3 +102,24 @@
     (fn2-compress-operation-input-prefix serial action 10
      (fn2-compress-transport-request-out-offset 0 fn2-compress-transport) count fn2-compress-operation)
     (mv effect offset made (+ address offset))))))
+
+(make-event
+ (let* ((world (w state))
+        (readers
+         (append
+          '(fn2-compress-operation-rows fn2-compress-transport-rows fn2-tls-transport-rows fn2-tls-record-rows
+            fn2-compress-operation-bind fn2-compress-record-next fn2-compress-record-close-child)
+          (fn2-columns-projection-readers 'fn2-compress-operation
+           (fn2-decl-get :columns (fn2-decl-row '(:columns fn2-compress-operation) world)))
+          (fn2-columns-projection-readers 'fn2-compress-transport
+           (fn2-decl-get :columns (fn2-decl-row '(:columns fn2-compress-transport) world)))
+          (fn2-columns-projection-readers 'fn2-tls-transport
+           (fn2-decl-get :columns (fn2-decl-row '(:columns fn2-tls-transport) world)))
+          (fn2-columns-projection-readers 'fn2-tls-record
+           (fn2-decl-get :columns (fn2-decl-row '(:columns fn2-tls-record) world)))))
+        (hints `(("Goal" :in-theory (disable ,@readers)))))
+  (value `(progn
+   (verify-guards fn2-host-compress-record-next :hints ,hints)
+   (verify-guards fn2-host-compress-close-owner :hints ,hints)
+   (verify-guards fn2-host-compress-close-child :hints ,hints)
+   (verify-guards fn2-host-compress-input-prefix :hints ,hints)))))

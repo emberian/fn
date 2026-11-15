@@ -111,4 +111,24 @@
 
 
 
+; Request guards on the actual raw-host entries, preserving opaque shared
+; row/type contracts rather than opening concrete codec arrays in the host.
+(make-event
+ (let* ((world (w state))
+        (readers
+         (append
+          '(fn2-tls-record-rows fn2-tls-transport-rows fn2-compress-transport-rows
+            fn2-tls-record-start fn2-tls-record-next)
+          (fn2-columns-projection-readers 'fn2-tls-record
+           (fn2-decl-get :columns (fn2-decl-row '(:columns fn2-tls-record) world)))
+          (fn2-columns-projection-readers 'fn2-tls-transport
+           (fn2-decl-get :columns (fn2-decl-row '(:columns fn2-tls-transport) world)))
+          (fn2-columns-projection-readers 'fn2-compress-transport
+           (fn2-decl-get :columns (fn2-decl-row '(:columns fn2-compress-transport) world)))))
+        (hints `(("Goal" :in-theory (disable ,@readers)))))
+  (value `(progn
+   (verify-guards fn2-host-codec-cancel-target)
+   (verify-guards fn2-host-tls-record-next :hints ,hints)
+   (verify-guards fn2-host-tls-child-next :hints ,hints)))))
+
 (defcodec-host-closure fn2-host-tls fn2-tls-transport fn2-tls-record)

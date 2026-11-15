@@ -43,5 +43,27 @@
               (mv decision target terminal-code count won address ,operation)))))))))
 
 )))
+; Generated host handlers use the same concrete-ledger abstraction as their
+; pure consumers; verification belongs to the actual instantiated functions.
+(defun fn2-codec-host-closure-guard-events (stem transport operation world)
+ (declare (xargs :verify-guards nil))
+ (let ((readers
+        (append
+         (list (fn2-columns-sym transport "-ROWS") (fn2-columns-sym operation "-ROWS")
+               (fn2-columns-sym operation "-BIND")
+               (fn2-columns-sym operation "-MARK-CARRIER-CLOSED")
+               (fn2-columns-sym operation "-CANCEL"))
+         (fn2-columns-projection-readers transport
+          (fn2-decl-get :columns (fn2-decl-row (list :columns transport) world)))
+         (fn2-columns-projection-readers operation
+          (fn2-decl-get :columns (fn2-decl-row (list :columns operation) world))))))
+  `((verify-guards ,(fn2-columns-sym stem "-MARK-CLOSED")
+      :hints (("Goal" :in-theory (disable ,@readers))))
+    (verify-guards ,(fn2-columns-sym stem "-CANCEL-RESULT")
+      :hints (("Goal" :in-theory (disable ,@readers)))))))
+
 (defmacro defcodec-host-closure (stem transport operation)
- `(make-event (value (fn2-codec-host-closure-events ',stem ',transport ',operation))))
+ `(make-event
+   (value (cons 'progn
+     (append (cdr (fn2-codec-host-closure-events ',stem ',transport ',operation))
+             (fn2-codec-host-closure-guard-events ',stem ',transport ',operation (w state)))))))
