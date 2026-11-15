@@ -49,8 +49,15 @@ GROUPS, sealer and machines-c-sealer subsequently passed their whole-book
 author checks, separately from this record. READ also passes its complete author check at candidate `04aadad8f`: the existing
 single-walk shape constructor preserves the public statement and runtime,
 with four independent source/mutation controls passing. Its 60.30-second
-whole-book pass leaves proof-cost work open. These author passes are outside
-the BIND record; application composition follows. Actual FETCH cancellation remains
+whole-book pass leaves proof-cost work open. The subsequent [112-book READ record](receipts/coherent-read112-record.json)
+qualifies that frozen candidate: 108 exact entries reused and GROUPS, sealer,
+machines-c-sealer and READ newly certified. Root matched all 112 source hashes,
+closure keys, actual certificate/FASL hashes and toolchain metadata. This is
+candidate `04aadad8f`, with its original declaration foundation, not a claim
+that all 112 match upstream's later registry changes. Application author work
+then reached `conn-schema`, whose original rich defmachine event exhausted its
+20-second limit. A shared initializer proof-hint repair is being tested against
+that unchanged event; actual application and native execution remain pending. Actual FETCH cancellation remains
 unexecuted. Its fixture binds the failed Send to the captured connection,
 request, operation generation and range and rejects stale generations before
 acknowledging the queue head.
@@ -162,6 +169,20 @@ The metadata owner is joining them around one authority transfer, retaining
 writer exclusion through archive consumption and reopening only at the final
 terminal. Partial promotion and archive progress need explicit recovery cuts.
 An actual first-to-second adoption followed by served lookup remains required.
+
+The activation audit at metadata source `c62b3e0bd` identifies a concrete
+remaining runtime gap. Master admission is locked by the literal
+`*fn2-checkpoint-activation-qualified* = NIL`; no runtime or admitted
+qualification predicate discharges it. Authenticated RELEASE recovery reaches
+stage 8 and returns `:blocked`, and its dispatcher stops without chronological
+settlement from reconstructed prefix obligations. Existing publication fixtures
+start the master at CATALOG explicitly, so their downstream Write/Fence evidence
+does not establish ordinary activation. The release owner is joining existing
+selected-base, suffix and obligation providers into that recovery path. The
+required witness starts through real initialization and ordinary pressure or
+request, reaches packing/submission/persistence without phase writes, and
+restores accepted data before a subsequent append. The lock remains intact
+until the actual recovery and composed-machine requirements are established.
 
 The same source audit found another cost gap: `run-bound-step` can copy a
 4,096-byte page, requiring 8,192 payload bytes of reads and writes, while
