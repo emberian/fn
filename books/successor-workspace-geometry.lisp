@@ -3,6 +3,7 @@
 (in-package "ACL2")
 (include-book "format-base")
 (fn2-book-layer :b)
+(defconst *fn2-succ-slots* 24)
 (defun fn2-successor-block-fields (fields values)
  (declare (xargs :guard (and (natp fields) (natp values))))
  (+ (* 3 (nfix fields)) (nfix values) 1))
