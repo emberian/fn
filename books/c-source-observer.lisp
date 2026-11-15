@@ -27,8 +27,12 @@
       ((unless (and (unsigned-byte-p 60 receipt) (unsigned-byte-p 32 count)
                     (<= count (fn2-c-source-readers-rows fn2-c-source-readers))))
        (mv :exhausted 0 fn2-c-source-control fn2-c-source-readers))
-      (fn2-c-source-readers (fn2-c-source-readers-put endpoint `((live 1) (serial ,receipt)) fn2-c-source-readers))
-      (fn2-c-source-control (fn2-c-source-control-put 0 `((readers ,count) (next-receipt ,receipt)) fn2-c-source-control)))
+      (fn2-c-source-readers (fn2-c-source-readers-put endpoint
+        (live 1)
+        (serial receipt)))
+      (fn2-c-source-control (fn2-c-source-control-put 0
+        (readers count)
+        (next-receipt receipt))))
   (mv :ok receipt fn2-c-source-control fn2-c-source-readers)))
 
 (defun fn2-c-source-reader-acquire (endpoint expected-receipt fn2-c-source-control fn2-c-source-readers)
@@ -62,9 +66,12 @@
                  (equal (fn2-c-source-control-phase 0 fn2-c-source-control) *fn2-c-source-writer-phase-pending*)))
       (target (if wake (fn2-c-source-control-writer-owner 0 fn2-c-source-control) *fn2-none*))
       (targetgen (if wake (fn2-c-source-control-writer-gen 0 fn2-c-source-control) 0))
-      (fn2-c-source-readers (fn2-c-source-readers-put endpoint '((live 0) (serial 0)) fn2-c-source-readers))
-      (fn2-c-source-control (fn2-c-source-control-put 0 `((readers ,count)
-        (wake-pending ,(if wake 1 (fn2-c-source-control-wake-pending 0 fn2-c-source-control)))) fn2-c-source-control)))
+      (fn2-c-source-readers (fn2-c-source-readers-put endpoint
+        (live 0)
+        (serial 0)))
+      (fn2-c-source-control (fn2-c-source-control-put 0
+        (readers count)
+        (wake-pending (if wake 1 (fn2-c-source-control-wake-pending 0 fn2-c-source-control))))))
   (mv :ok target targetgen fn2-c-source-control fn2-c-source-readers)))
 
 (defun fn2-c-source-writer-poll (kind owner gen token cutcommit cutevent fn2-c-source-control)
@@ -78,7 +85,8 @@
        ((not (equal (fn2-c-source-control-readers 0 fn2-c-source-control) 0))
         (mv :waiting fn2-c-source-control))
        (t (let ((fn2-c-source-control (fn2-c-source-control-put 0
-                  `((phase ,*fn2-c-source-writer-phase-exclusive*) (wake-pending 0)) fn2-c-source-control)))
+        (phase *fn2-c-source-writer-phase-exclusive*)
+        (wake-pending 0))))
             (mv :exclusive fn2-c-source-control)))))
 
 (defun fn2-c-source-writer-begin (kind owner gen token cutcommit cutevent fn2-c-source-control)
@@ -93,9 +101,14 @@
        ((not (equal (fn2-c-source-control-phase 0 fn2-c-source-control) *fn2-c-source-writer-phase-idle*))
         (mv :busy fn2-c-source-control))
        (t (let ((fn2-c-source-control (fn2-c-source-control-put 0
-                  `((phase ,*fn2-c-source-writer-phase-pending*) (writer-kind ,kind) (writer-owner ,owner)
-                    (writer-gen ,gen) (writer-token ,token) (cut-commit ,cutcommit) (cut-event ,cutevent)
-                    (wake-pending 0)) fn2-c-source-control)))
+        (phase *fn2-c-source-writer-phase-pending*)
+        (writer-kind kind)
+        (writer-owner owner)
+        (writer-gen gen)
+        (writer-token token)
+        (cut-commit cutcommit)
+        (cut-event cutevent)
+        (wake-pending 0))))
             (fn2-c-source-writer-poll kind owner gen token cutcommit cutevent fn2-c-source-control)))))
 
 ; Cancellation is only PENDING: after exclusive replacement starts, the real
@@ -105,8 +118,14 @@
  (if (and (fn2-c-source-writer-receipt-p kind owner gen token cutcommit cutevent fn2-c-source-control)
           (equal (fn2-c-source-control-phase 0 fn2-c-source-control) *fn2-c-source-writer-phase-pending*))
      (let ((fn2-c-source-control (fn2-c-source-control-put 0
-             `((phase ,*fn2-c-source-writer-phase-idle*) (writer-kind 0) (writer-owner 0) (writer-gen 0)
-               (writer-token 0) (cut-commit 0) (cut-event 0) (wake-pending 0)) fn2-c-source-control)))
+        (phase *fn2-c-source-writer-phase-idle*)
+        (writer-kind 0)
+        (writer-owner 0)
+        (writer-gen 0)
+        (writer-token 0)
+        (cut-commit 0)
+        (cut-event 0)
+        (wake-pending 0))))
        (mv :aborted fn2-c-source-control))
    (mv :owner fn2-c-source-control)))
 
