@@ -28,9 +28,13 @@
 (must-fail
  (defsquare-evidence fn2-ep-claim :conclusion-kind :predicate
   :positive ((x '2)) :negative (:kind :mutation :bindings ((x '-1)))))
+(defthm fn2-ep-positive-ground
+ (and (integerp (fn2-ep-input 2)) (fn2-ep-domainp (fn2-ep-input 2))
+      (fn2-ep-resultp (mv-nth 1 (fn2-ep-producer (fn2-ep-input 2)))))
+ :rule-classes nil)
 (defsquare-evidence fn2-ep-claim :conclusion-kind :predicate
  :positive ((x (fn2-ep-input '2)))
- :positive-hints (("Goal" :in-theory (enable fn2-ep-input fn2-ep-resultp)))
+ :positive-hints (("Goal" :use fn2-ep-positive-ground :in-theory (enable fn2-ep-input fn2-ep-resultp)))
  :negative-hints (("Goal" :in-theory (enable fn2-ep-input fn2-ep-resultp)))
  :negative (:kind :hypothesis-removal :remove (fn2-ep-domainp x)
             :bindings ((x (fn2-ep-input '-1)))))
@@ -76,3 +80,31 @@
   :negative (:kind :hypothesis-removal
              :remove (if (integerp x) (fn2-ep-domainp x) 'nil)
              :bindings ((x 'nil)))))
+
+; True C alone is insufficient: the complete positive H must also hold.
+(defun fn2-ep-smallp (x) (and (natp x) (< x 10)))
+(defthm-owed fn2-ep-false-h (x)
+ (implies (fn2-ep-smallp x) (fn2-ep-resultp x)))
+(must-fail
+ (defsquare-evidence fn2-ep-false-h :conclusion-kind :predicate
+  :positive ((x '20))
+  :negative (:kind :hypothesis-removal :remove (fn2-ep-smallp x)
+             :bindings ((x '-1)))))
+(defthm-owed fn2-ep-duplicate (x)
+ (implies (and (integerp x) (fn2-ep-domainp x) (fn2-ep-domainp x))
+          (fn2-ep-resultp x)))
+(must-fail
+ (defsquare-evidence fn2-ep-duplicate :conclusion-kind :predicate
+  :positive ((x '2))
+  :negative (:kind :hypothesis-removal :remove (fn2-ep-domainp x)
+             :bindings ((x '-1)))))
+; Old admitted theorem names/bodies cannot bless redirected bindings.
+(must-fail
+ (progn
+  (make-event
+   (value `(table fn2-squares 'fn2-ep-claim
+            ',(let* ((row (fn2-decl-row '(:square fn2-ep-claim) (w state)))
+                     (e (fn2-decl-get :evidence row)))
+                (fn2-decl-set :evidence
+                  (fn2-decl-set :positive-bindings '((x '-1)) e) row)))))
+  (fn2-assert-square-evidence fn2-ep-claim)))
