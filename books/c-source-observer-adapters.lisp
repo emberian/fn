@@ -82,19 +82,19 @@
       (equal (fn2-c-source-control-phase 0 fn2-c-source-control) *fn2-c-source-writer-phase-exclusive*)
       (equal (fn2-c-source-control-readers 0 fn2-c-source-control) 0)))
 (defcost fn2-c-source-read-acquire :child fn2-c-source-read-acquire-children :answers (:ok :busy :stale :bounds :exhausted)
- :tables (fn2-core-c-source-control fn2-core-c-source-observers fn2-core-machines fn2-txn fn2-auth fn2-cns fn2-cursor fn2-sealer)
+ :tables (fn2-core-c-source-control fn2-core-c-source-observers fn2-core-machines fn2-txn-table fn2-auth-table fn2-cns-table fn2-cursor-table fn2-sealer-table)
  :doc "Acquire the actual actor's source observation before any source/page admission; pending writer closes new observers.")
 (defcost fn2-c-source-read-release :child fn2-c-source-read-release-children :answers (:ok :absent :stale :bounds :invariant :recovery-required)
- :tables (fn2-core-c-source-control fn2-core-c-source-observers fn2-core-machines fn2-txn fn2-auth fn2-cns fn2-cursor fn2-sealer fn2-checkpoint-master)
+ :tables (fn2-core-c-source-control fn2-core-c-source-observers fn2-core-machines fn2-txn-table fn2-auth-table fn2-cns-table fn2-cursor-table fn2-sealer-table fn2-checkpoint-master-table)
  :doc "Release only after actual owned materialization/cancel or complete query drain; return only an exact current writer wake target.")
 (defcost fn2-c-source-writer-begin :child fn2-c-source-writer-begin-children :answers t
- :tables (fn2-core-c-source-control fn2-core-c-source-observers fn2-core-machines fn2-checkpoint-master)
+ :tables (fn2-core-c-source-control fn2-core-c-source-observers fn2-core-machines fn2-checkpoint-master-table)
  :doc "Close new observers first and generate a retained writer session; exclusive only after all existing observers release.")
 (defcost fn2-c-source-writer-poll :child fn2-c-source-writer-poll-children :answers (:waiting :exclusive :uncertain :stale)
- :tables (fn2-core-c-source-control fn2-core-machines fn2-checkpoint-master)
+ :tables (fn2-core-c-source-control fn2-core-machines fn2-checkpoint-master-table)
  :doc "Poll the exact current master session without reopening source admission.")
 (defcost fn2-c-source-writer-exclusive :child fn2-c-source-writer-exclusive-children
- :tables (fn2-core-c-source-control fn2-core-machines fn2-checkpoint-master)
+ :tables (fn2-core-c-source-control fn2-core-machines fn2-checkpoint-master-table)
  :doc "Actual owner/session/count predicate for the adopter's bounded replacement and terminal constructors.")
 
 (defconst *fn2-c-source-core-operations*
