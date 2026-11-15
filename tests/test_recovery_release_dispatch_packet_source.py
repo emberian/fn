@@ -52,6 +52,7 @@ class DispatchPacket(unittest.TestCase):
             self.assertIn(call, self.source)
         self.assertIn("(if (eq fault :wrong-opgen) (+ 1 opgen) opgen)", self.source)
         self.assertIn("(if (eq fault :short) (- length 1) length)", self.source)
+        self.assertIn("(if (eq fault :short) *fn2-outcome-short* *fn2-outcome-done*)", self.source)
         self.assertIn("fn2-checkpoint-selected-source-set-generation", self.source)
         self.assertIn("(= (logand 4 (nth 1 result)) 0)", self.source)
 
