@@ -16,6 +16,7 @@
 (in-package "ACL2")
 (include-book "txn-kind")
 (include-book "upload")
+(include-book "upload-stream")
 (fn2-book-layer :d)
 
 ;; The claim walk's chain steps per run: each step compares at most one
@@ -67,7 +68,6 @@
 (assert-event (equal *fn2-txn-ready-bytes* 26624))  ; the kind's :budget (txn-kind.lisp)
 
 (defconst *fn2-upload-word-accepted* (fn2-upload-word-code :accepted))
-(defconst *fn2-upload-word-uncertain* (fn2-upload-word-code :uncertain))
 (defconst *fn2-upload-word-duplicate* (fn2-upload-word-code :duplicate))
 (defconst *fn2-upload-word-conflict* (fn2-upload-word-code :conflict))
 (defconst *fn2-upload-word-group* (fn2-upload-word-code :group))
@@ -80,26 +80,6 @@
 (defthm fn2-txn-hash-pool-type
   (unsigned-byte-p 32 (mv-nth 1 (fn2-txn-hash-pool n slot gen off okind oslot ogen fn2-pool))))
 (in-theory (disable fn2-txn-hash-pool))
-
-;; :prepare. The body's lines first (the article row's `lines`): LF octets of
-;; [body, source) read under the upload's owner, at most
-;; *fn2-txn-count-bytes* per run, COUNTED the continuation.
-(defun fn2-txn-count-loop (n slot gen off lines okind oslot ogen fn2-pool)
-  (declare (xargs :stobjs fn2-pool :measure (nfix n)
-                  :guard (and (fn2-pool-wfp fn2-pool) (natp n) (natp off) (natp lines))))
-  (if (zp n) (mv :ok lines)
-    (mv-let (ok byte) (fn2-gram-read slot gen off okind oslot ogen fn2-pool)
-      (if (not ok) (mv :bounds lines)
-        (fn2-txn-count-loop (- n 1) slot gen (+ 1 off) (if (equal byte 10) (+ 1 (nfix lines)) (nfix lines))
-                            okind oslot ogen fn2-pool)))))
-(defthm fn2-txn-count-loop-natp
-  (implies (natp lines) (natp (mv-nth 1 (fn2-txn-count-loop n slot gen off lines okind oslot ogen fn2-pool))))
-  :rule-classes :type-prescription)
-(defthm fn2-txn-count-loop-bound
-  (implies (natp lines) (<= (mv-nth 1 (fn2-txn-count-loop n slot gen off lines okind oslot ogen fn2-pool))
-                            (+ lines (nfix n))))
-  :rule-classes :linear)
-(in-theory (disable fn2-txn-count-loop))
 
 ;; Newsgroups, a name at a time: the value's names are separated by commas
 ;; and white space (the model's split).
@@ -267,9 +247,12 @@
 (defcost fn2-claim-release-core :answers (:ok :bounds :state) :tables (fn2-core-claims fn2-core-machines)
   :effects ((:release (:identity-reservation)))
   :doc "Release a held claim and hand it to its FIFO's head, waking that transaction.")
-(defcost fn2-txn-offer :answers (:ok :bounds :state)
-  :tables (fn2-core-succ-txns fn2-core-id-decides fn2-core-fields)
+(defcost fn2-txn-offer :enqueues 1 :answers (:ok :bounds :state :exhausted :owner :stale)
+  :tables (fn2-core-succ-txns fn2-core-id-decides fn2-core-fields fn2-core-pool fn2-core-machines fn2-core-control fn2-core-sched fn2-core-trace)
   :doc "Start the identity decision for the upload's Message-ID and content digest.")
+(defcost fn2-txn-source-digest-ref :answers (:ok :bounds)
+  :tables (fn2-core-machines fn2-core-machine-tables fn2-txn-table fn2-upload-table fn2-core-pool)
+  :doc "Resolve the sealed upload's retained original SOURCE digest through the live transaction link.")
 (defcost fn2-txn-count :child fn2-txn-count-loop :answers (:ok :bounds) :bytes *fn2-txn-count-bytes*
   :doc "Count LF octets in up to 2,048 octets of a pool slot.")
 (defcost fn2-txn-count-next :answers (:ok :bounds) :bytes *fn2-txn-count-bytes*
@@ -418,12 +401,11 @@
              (:cond ((not (equal w 0)) (:set (word w)) (:next :refused)
                                        (:charge :bytes 4096 :steps *fn2-work-transition* :runnable t))
                     ((not (equal row-offered 1))
+                     (:do (dcode ds dg doff) (fn2-txn-source-digest-ref lslot) :accept (:ok))
                      (:do (code) (fn2-txn-offer lslot (if (equal (:read upload ilen) 0) (:read upload c0-slot) (:read upload lslot))
                                                 (if (equal (:read upload ilen) 0) (:read upload c0-gen) (:read upload lgen))
                                                 (:read upload mo) (:read upload ml)
-                                                (:read upload c0-slot) (:read upload c0-gen)
-                                                (:read upload c1-slot) (:read upload c1-gen)
-                                                (:read upload hashed) :owner upload))
+                                                ds dg doff :owner upload))
                      (:set (offered 1)) (:charge :bytes 4096 :steps *fn2-work-transition* :runnable t))
                     (t (:do (answer) (fn2-identity-decide lslot 4096)
                         :accept ()
@@ -442,6 +424,10 @@
   ;; count the body's lines, look each group up, refuse :group or the injected
   ;; fields, declare the slots (evidence or article); then resolve them
   (:prepare :on-refusal ((:stop :machine-phase))
+   (:if (or (fn2-core-query-heldp (:read upload c0-slot) (:read upload c0-gen))
+            (fn2-core-query-heldp (:read upload c1-slot) (:read upload c1-gen)))
+        ((:charge :steps *fn2-work-state*))
+        (
    (:if (equal row-prepared 1)
         ((:do (answer) (fn2-successor-resolve row-slot 4096)
           :accept ()
@@ -449,13 +435,12 @@
                  ((:more) (:charge :bytes 8192 :steps *fn2-work-transition* :runnable t)))))
         ((:if (equal row-tmode *fn2-txn-mode-evidence*)
               ((:do (fcode verdict selection h evidence coverage) (fn2-identity-facts row-slot))
+               (:do (dcode ds dg doff) (fn2-txn-source-digest-ref row-slot) :accept (:ok))
                (:do (pcode) (fn2-txn-put-evidence-for row-slot
                                                       (if (equal (:read upload ilen) 0) (:read upload c0-slot) (:read upload lslot))
                                                       (if (equal (:read upload ilen) 0) (:read upload c0-gen) (:read upload lgen))
                                                       (:read upload mo) (:read upload ml)
-                                                      (:read upload c0-slot) (:read upload c0-gen)
-                                                      (:read upload c1-slot) (:read upload c1-gen)
-                                                      (:read upload hashed) h row-principal-slot :owner upload))
+                                                      ds dg doff h row-principal-slot :owner upload))
                (:set (prepared 1))
                (:charge :bytes 8192 :steps *fn2-work-transition* :runnable t))
               ((:let c0 (:read upload c0-slot)) (:let g0 (:read upload c0-gen))
@@ -464,24 +449,28 @@
                (:let nl (:read upload nl))
                (:let counted (max scanned row-counted))
                (:cond ((< counted hashed)
-                       (:do (ccode counted2 lines2)
-                            (fn2-txn-count-next c0 g0 c1 g1 counted hashed row-lines :owner upload))
-                       (:if (and (unsigned-byte-p 60 counted2) (unsigned-byte-p 32 lines2))
-                            ((:set (counted counted2) (lines lines2))
+                       ;; Nlines excludes the terminating blank header line.
+                       ;; SOURCE-LINES counts the exact hashed source, including it.
+                       (:let all-lines (:read upload source-lines))
+                       (:let header-lines (+ 1 (:read upload nlines)))
+                       (:if (and (unsigned-byte-p 32 all-lines) (<= header-lines all-lines))
+                            ((:set (counted hashed) (lines (- all-lines header-lines)))
                              (:charge :bytes 8192 :steps *fn2-work-transition* :runnable t))
                             ((:stop :machine-phase))))
                       ;; the article's slots and its overview line's first
                       ;; seven fields, then its groups (chunk 1 keeps their names)
                       ((equal row-filed 0)
                        (:do (fcode verdict selection h evidence coverage) (fn2-identity-facts row-slot))
+                       (:do (dcode ds dg doff) (fn2-txn-source-digest-ref row-slot) :accept (:ok))
+                       (:do (lcode le lep lal) (fn2-upload-location-tuple row-upload row-upload-gen) :accept (:ok))
                        (:do (pcode) (fn2-txn-put-post-for row-slot
                                                           (if (equal (:read upload ilen) 0) (:read upload c0-slot) (:read upload lslot))
                                                           (if (equal (:read upload ilen) 0) (:read upload c0-gen) (:read upload lgen))
                                                           (:read upload mo) (:read upload ml)
-                                                          c0 g0 c1 g1 scanned hashed (:read upload ilen)
+                                                          c0 g0 scanned hashed (:read upload ilen)
+                                                          ds dg doff
                                                           h row-principal-slot row-lines
-                                                          (:read upload pext) (:read upload pepoch)
-                                                          (:read upload palloc)
+                                                          le lep lal
                                                           (:read upload lslot) (:read upload lgen) *fn2-upload-page-stored-source*
                                                           *fn2-upload-page-location-hashes* (* 32 (:read upload location-hashed))
                                                           (:read upload op)
@@ -499,9 +488,13 @@
                               ((:set (word inj)) (:next :refused)
                                (:charge :bytes 8192 :steps *fn2-work-transition* :runnable t))
                               ((:set (prepared 1))
-                               (:charge :bytes 8192 :steps *fn2-work-transition* :runnable t))))))))))
+                               (:charge :bytes 8192 :steps *fn2-work-transition* :runnable t))))))))))))
   ;; stage every slot against the tip, emit into chunk 1, admit the member, bind on :ok (one run)
   (:ready :on-refusal ((:stop :machine-phase))
+   (:if (or (fn2-core-query-heldp (:read upload c0-slot) (:read upload c0-gen))
+            (fn2-core-query-heldp (:read upload c1-slot) (:read upload c1-gen)))
+        ((:charge :steps *fn2-work-state*))
+        (
    (:let sslot row-slot)
    (:if (eq (fn2-commit-posture) :draining)
         ((:set (word *fn2-upload-word-unaffordable*)) (:next :refused)
@@ -563,7 +556,7 @@
                  ((:duplicate) (:set (word *fn2-upload-word-duplicate*)) (:next :refused)
                                (:charge :bytes 24576 :steps *fn2-work-transition* :runnable t))
                  ((:capacity) (:set (word *fn2-upload-word-unaffordable*)) (:next :refused)
-                              (:charge :bytes 24576 :steps *fn2-work-transition* :runnable t)))))))
+                              (:charge :bytes 24576 :steps *fn2-work-transition* :runnable t)))))))))
   (:batched :on-refusal ((:stop :machine-phase))
    (:do (tcode tbatch tevent tout)
         (fn2-commit-take :owner upload)
@@ -579,11 +572,11 @@
                          ;; (every extent its stored octets occupy: the
                          ;; manifest's and each block's)
                          ((:let hrow (fn2-upload-hasher row-upload))
+                          (:do (lcode le lep lal) (fn2-upload-location-tuple row-upload row-upload-gen) :accept (:ok))
                           (:do (acode) (fn2-upload-extents-of t tevent (* 128 hrow)
                                                               (+ (:read upload ilen) (:read upload hashed))
                                                               (:read upload lslot) (:read upload lgen) (:read upload mfill)
-                                                              (:read upload pext) (:read upload pepoch)
-                                                              (:read upload palloc) *fn2-none* 0 0 0
+                                                              le lep lal *fn2-none* 0 0 0
                                                               :owner upload)
                            :accept (:ok))
                           (:set (word *fn2-upload-word-accepted*))
@@ -695,11 +688,45 @@
   :hints (("Goal" :in-theory (disable fn2-upload-snapshot-read-code))))
 (in-theory (disable fn2-txn-wake-upload))
 
-(defun fn2-txn-offer (tx ms mg mo ml c0 g0 c1 g1 hashed okind oslot ogen fn2-core)
-  (declare (xargs :stobjs fn2-core :guard (and (fn2-core-wfp fn2-core) (natp hashed))))
-  (mv-let (in1 doff) (fn2-upload-digest-at hashed (fn2-upload-chunk-cap c0 fn2-core))
-    (fn2-identity-decide-start tx ms mg mo ml (if in1 c1 c0) (if in1 g1 g0) doff okind oslot ogen fn2-core)))
-(fn2-core-preserves fn2-txn-offer (tx ms mg mo ml c0 g0 c1 g1 hashed okind oslot ogen fn2-core) :position 1 :rows nil)
+;; TX is the transaction's local row slot; the machine link names a global
+;; upload ID.  The page remains owned by that upload until the transaction
+;; leaves :sealed, so all three consumers use this same retained SOURCE ref.
+(defun fn2-txn-source-digest-ref (tx fn2-core)
+  (declare (xargs :stobjs fn2-core :guard (fn2-core-wfp fn2-core)))
+  (b* (((unless (natp tx)) (mv :bounds 0 0 0))
+       (id (+ (fn2-machine-kind-base *fn2-txn-kind* fn2-core) tx))
+       ((unless (eq (fn2-txn-snapshot-read-code id fn2-core) :ok)) (mv :bounds 0 0 0))
+       (gen (fn2-machine-generation id fn2-core))
+       (u (fn2-txn-row-upload id fn2-core))
+       (ug (fn2-txn-row-upload-gen id fn2-core))
+       ((unless (and (eq (fn2-upload-snapshot-read-code u fn2-core) :ok)
+                     (equal (fn2-machine-generation u fn2-core) ug)
+                     (equal (fn2-upload-row-txn u fn2-core) id)
+                     (equal (fn2-upload-row-txn-gen u fn2-core) gen)
+                     (equal (fn2-upload-row-phase u fn2-core) *fn2-upload-state-sealed*)
+                     (equal (fn2-upload-row-lease u fn2-core) *fn2-upload-lease-held*)
+                     (equal (fn2-upload-row-word u fn2-core) 0)
+                     (posp (fn2-upload-row-hashed u fn2-core))
+                     (equal (fn2-upload-row-stored-hashed u fn2-core)
+                            (+ (fn2-upload-row-ilen u fn2-core)
+                               (fn2-upload-row-hashed u fn2-core)))))
+        (mv :bounds 0 0 0))
+       (slot (fn2-upload-row-lslot u fn2-core))
+       (page-gen (fn2-upload-row-lgen u fn2-core))
+       ((mv readable fill)
+        (stobj-let ((fn2-pool (fn2-core-pool fn2-core))) (code n)
+          (mv (fn2-pool-readable-code slot page-gen *fn2-upload-kind* u ug fn2-pool)
+              (fn2-gram-fill slot fn2-pool))
+          (mv code n)))
+       ((unless (and (eq readable :ok)
+                     (<= (+ *fn2-upload-page-source* *fn2-upload-digest-octets*) fill)))
+        (mv :bounds 0 0 0)))
+    (mv :ok slot page-gen *fn2-upload-page-source*)))
+(in-theory (disable fn2-txn-source-digest-ref))
+(defun fn2-txn-offer (tx ms mg mo ml ds dg doff okind oslot ogen fn2-core)
+  (declare (xargs :stobjs fn2-core :guard (fn2-core-wfp fn2-core)))
+  (fn2-identity-decide-start tx ms mg mo ml ds dg doff okind oslot ogen fn2-core))
+(fn2-core-preserves fn2-txn-offer (tx ms mg mo ml ds dg doff okind oslot ogen fn2-core) :position 1 :rows nil)
 (in-theory (disable fn2-txn-offer))
 
 ;; One counting run over [from, to) of the source (chunk 0 then chunk 1):
@@ -798,8 +825,8 @@
           (location-hashes sslot sgen hoff hlen)
           (bytes bytes) (lines lines)
           (location-unit lunit) (location-epoch lepoch) (location-allocation lalloc)
-          ;; one extent's octets are its raw source; longer ones are named
-          ;; through their source manifest (article-manifest.lisp)
+          ;; Raw commitment span's octets are direct; longer sources use
+          ;; their source manifest (article-manifest.lisp).
           (location-kind (if (fn2-am-manifestp bytes) *fn2-txn-location-source-manifest* *fn2-txn-location-raw-source*))
           :owner (okind oslot ogen) fn2-core))
        ((unless (eq c :ok)) (mv c fn2-core)))
@@ -836,7 +863,7 @@
   ;; entry; its name (NLEN octets at NOFF of chunk 0's Newsgroups field) is
   ;; appended to chunk 1 as one length octet and the name, for the Xref field.
   ;; Chunk 1 is scratch here: the source is durable and counted and its
-  ;; digest already copied into chunk 0 (fn2-txn-put-post-for).
+  ;; retained SOURCE digest already copied into chunk 0 (fn2-txn-put-post-for).
   (declare (xargs :stobjs fn2-core :guard (and (fn2-core-wfp fn2-core) (natp k))))
   (b* ((ac (fn2-txn-group-slot k))
        (ov (+ 1 ac))
@@ -959,9 +986,9 @@
 (in-theory (disable fn2-txn-xref))
 
 ;; The article's location is its upload's payload extent: the extent's first
-;; unit (an extent is *fn2-commit-write-resources* units) and its handle; its
+;; physical unit (an extent is *fn2-storage-extent-units* units) and its handle; its
 ;; length the stored octets' (the injected field's ILEN and the source's HASHED).
-(defun fn2-txn-put-post-for (tx ms mg mo ml c0 g0 c1 g1 scanned hashed ilen h principal lines pext pepoch palloc
+(defun fn2-txn-put-post-for (tx ms mg mo ml c0 g0 scanned hashed ilen ds dg doff h principal lines pext pepoch palloc
                                 sslot sgen soff hoff hlen op okind oslot ogen fn2-core)
   (declare (xargs :stobjs fn2-core
                   :guard (and (fn2-core-wfp fn2-core) (natp mo) (natp ml) (natp scanned) (natp hashed) (natp ilen)
@@ -974,27 +1001,25 @@
   ;; chunk 1 is free for the group names and then the emission (:ready)
   ;; however far the source runs into it.
   (b* ((cap0 (fn2-upload-chunk-cap c0 fn2-core))
-       ((mv in1 doff) (fn2-upload-digest-at hashed cap0))
        ((mv c fn2-core)
         (if (<= (+ scanned *fn2-upload-digest-octets*) cap0)
-            (fn2-core-copy-range (if in1 c1 c0) (if in1 g1 g0) doff c0 g0 scanned *fn2-upload-digest-octets*
+            (fn2-core-copy-range ds dg doff c0 g0 scanned *fn2-upload-digest-octets*
                                  okind oslot ogen fn2-core)
           (mv :bounds fn2-core)))
        ((unless (eq c :ok)) (mv c fn2-core))
        ((mv c fn2-core)
         (fn2-txn-put-post tx ms mg mo ml c0 g0 scanned sslot sgen soff hoff hlen (+ hashed ilen) lines
-                          (* *fn2-commit-write-resources* (nfix pext)) pepoch palloc okind oslot ogen h principal op fn2-core))
+                          (* *fn2-storage-extent-units* (nfix pext)) pepoch palloc okind oslot ogen h principal op fn2-core))
        ((unless (eq c :ok)) (mv c fn2-core))
        ((mv ov-off ov-len fn2-core)
         (fn2-txn-synth-ov ms mg mo ml scanned scanned (+ hashed ilen) lines c0 g0 okind oslot ogen fn2-core)))
     (mv (if (and (equal ov-off (+ scanned *fn2-upload-digest-octets*)) (posp ov-len)) :ok :bounds) fn2-core)))
 (fn2-core-preserves fn2-txn-put-post-for
-  (tx ms mg mo ml c0 g0 c1 g1 scanned hashed ilen h principal lines pext pepoch palloc sslot sgen soff hoff hlen op okind oslot ogen fn2-core) :position 1 :rows nil)
-(defun fn2-txn-put-evidence-for (tx ms mg mo ml c0 g0 c1 g1 hashed h principal okind oslot ogen fn2-core)
-  (declare (xargs :stobjs fn2-core :guard (and (fn2-core-wfp fn2-core) (natp hashed))))
-  (mv-let (in1 doff) (fn2-upload-digest-at hashed (fn2-upload-chunk-cap c0 fn2-core))
-    (fn2-txn-put-identity tx ms mg mo ml (if in1 c1 c0) (if in1 g1 g0) doff okind oslot ogen h principal 0 fn2-core)))
-(fn2-core-preserves fn2-txn-put-evidence-for (tx ms mg mo ml c0 g0 c1 g1 hashed h principal okind oslot ogen fn2-core)
+  (tx ms mg mo ml c0 g0 scanned hashed ilen ds dg doff h principal lines pext pepoch palloc sslot sgen soff hoff hlen op okind oslot ogen fn2-core) :position 1 :rows nil)
+(defun fn2-txn-put-evidence-for (tx ms mg mo ml ds dg doff h principal okind oslot ogen fn2-core)
+  (declare (xargs :stobjs fn2-core :guard (fn2-core-wfp fn2-core)))
+  (fn2-txn-put-identity tx ms mg mo ml ds dg doff okind oslot ogen h principal 0 fn2-core))
+(fn2-core-preserves fn2-txn-put-evidence-for (tx ms mg mo ml ds dg doff h principal okind oslot ogen fn2-core)
   :position 1 :rows nil)
 (in-theory (disable fn2-txn-put-post-for fn2-txn-put-evidence-for))
 

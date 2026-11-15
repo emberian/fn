@@ -1,0 +1,73 @@
+{
+  "actual_producer": "522e12181",
+  "scope": "exact source moves plus explicit paired rolling policy; no execution/activation claim",
+  "moves": [
+    {
+      "source": "books/upload.lisp",
+      "target": "books/upload-page-geometry.lisp",
+      "head": "defconst",
+      "name": "*fn2-upload-page-source*",
+      "needle": null,
+      "form": "(defconst *fn2-upload-page-source* (+ *fn2-upload-page-stored-source* *fn2-upload-digest-octets*))",
+      "sha256": "a0215bd22492d396a9d566da551d6cbf3dd2ad8281359b73ce7040d588e7e7cd"
+    },
+    {
+      "source": "books/upload.lisp",
+      "target": "books/upload-page-geometry.lisp",
+      "head": "assert-event",
+      "name": null,
+      "needle": "*fn2-upload-page-source*",
+      "form": "(assert-event (equal (+ *fn2-upload-page-source* *fn2-upload-digest-octets*)\n                     *fn2-upload-page-location-hashes*))",
+      "sha256": "8932d5ad24e07eb6aa64fb4734688e605ff8f18cee648f4ebc33f95c36e00f4a"
+    },
+    {
+      "source": "books/upload-stream.lisp",
+      "target": "books/upload-page-geometry.lisp",
+      "head": "defconst",
+      "name": "*fn2-upload-page-provisional*",
+      "needle": null,
+      "form": "(defconst *fn2-upload-page-provisional*\n  (+ *fn2-upload-page-manifest* *fn2-upload-raw-bytes*))",
+      "sha256": "b20654643ff6aff001cd91521a87df48ae68effff5754282adb500d8e4432715"
+    },
+    {
+      "source": "books/upload-stream.lisp",
+      "target": "books/upload-page-geometry.lisp",
+      "head": "defun",
+      "name": "fn2-upload-stream-page-bytes",
+      "needle": null,
+      "form": "(defun fn2-upload-stream-page-bytes (total)\n  (declare (xargs :guard t))\n  (+ *fn2-upload-page-provisional*\n     (* *fn2-commit-unit-bytes* (fn2-am-units total))))",
+      "sha256": "9ccc9403ece250315576f1813d8efdd26692e0423a8572f2044a8adaac225f02"
+    },
+    {
+      "source": "books/upload-kind.lisp",
+      "target": "books/source-manifest-codec.lisp",
+      "head": "defconst",
+      "name": "*fn2-upload-raw-bytes*",
+      "needle": null,
+      "form": "(defconst *fn2-upload-raw-bytes*\n  (* *fn2-commit-write-resources* *fn2-commit-unit-bytes*))",
+      "sha256": "1633211cfdb6513b25c966b1d4e53c33d13064120a4b97ef7347b5783a3ef740"
+    }
+  ],
+  "policies": [
+    {
+      "book": "books/upload-page-geometry.lisp",
+      "head": "defun",
+      "name": "fn2-upload-input-bound",
+      "old": "(defun fn2-upload-input-bound (article-max cap0 cap1)\n (declare (xargs :guard t))\n (min (nfix article-max) (nfix (- (+ (nfix cap0) (nfix cap1)) (+ 1 *fn2-upload-digest-octets*)))))",
+      "new": "(defun fn2-upload-input-bound (article-max cap0 cap1)\n (declare (xargs :guard t) (ignorable cap0 cap1))\n (nfix article-max))",
+      "actual_upper": "(defun fn2-upload-bound (cap0 cap1 fn2-core)\n  (declare (xargs :stobjs fn2-core :guard (fn2-core-wfp fn2-core)) (ignorable cap0 cap1))\n  (stobj-let ((fn2-input-config (fn2-core-input-config fn2-core)))\n    (max)\n    (if (and (fn2-input-config-wfp fn2-input-config) (natp (fn2-input-config-rows fn2-input-config))\n             (< 0 (fn2-input-config-rows fn2-input-config)))\n        (fn2-input-config-article-max 0 fn2-input-config) 0)\n    (nfix max)))"
+    },
+    {
+      "book": "books/source-manifest-codec.lisp",
+      "head": "defun",
+      "name": "fn2-am-manifestp",
+      "old": "(defun fn2-am-manifestp (total)\n  (declare (xargs :guard t))\n  (< *fn2-commit-extent-bytes* (nfix total)))",
+      "new": "(defun fn2-am-manifestp (total)\n  (declare (xargs :guard t))\n  (< *fn2-upload-raw-bytes* (nfix total)))"
+    }
+  ],
+  "previous_policy_fixture": {
+    "path": "tests/root-upload-geometry-unit.lisp",
+    "source": "; ROOT's actual shared sizing decisions, not the donor cold payload policy.\n; Source-prepared only; these do not admit or reserve foreground work.\n(in-package \"ACL2\")\n(include-book \"../books/upload-page-geometry\")\n(assert-event (= *fn2-commit-extent-bytes* 65536))\n(assert-event (and (not (fn2-am-manifestp 12289))\n                   (not (fn2-am-manifestp 33032))\n                   (not (fn2-am-manifestp 65536))\n                   (fn2-am-manifestp 65537)))\n; Distinguishes ROOT from the cold donor's three-unit raw/manifest boundary,\n; including the full existing default article+generated Message-ID footprint.\n(assert-event (= (fn2-upload-page-bytes 33032) *fn2-upload-page-manifest*))\n(assert-event (= (fn2-upload-page-bytes 65536) *fn2-upload-page-manifest*))\n(assert-event (= (fn2-upload-page-bytes 65537)\n                 (+ *fn2-upload-page-manifest* *fn2-commit-unit-bytes*)))\n(assert-event (= (fn2-upload-profile-article-max nil) *fn2-upload-article-max*))\n(assert-event (= (fn2-upload-profile-article-max '((:article-max . 40000))) 40000))\n(assert-event (= (fn2-upload-input-bound 40000 8192 8192) 16351))\n(assert-event (and (fn2-upload-article-profilep nil)\n                   (not (fn2-upload-article-profilep '((:article-max . -1))))))\n",
+    "sha256": "67842ea649f6d3569aea0d3c5359c66fa6d0cdf7d2d4e9eff749af50343f3081"
+  }
+}
