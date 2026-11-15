@@ -112,3 +112,56 @@ fixtures for the many getter/setter and digest-index consumers. Current mileston
 validation is source-only: structural parsing, explicit B* dependency and named
 secrets/whitespace checks; qualification of the new critical resource-credit
 helper, exact caller and composed prefix/rebase obligations remains pending.
+
+
+## D13 contract and active implementation partition
+
+The recovery contract is `State_n = Fold(Summary_k, Events[k+1..n])`, with
+observations preserved for every supported retained schema and future request.
+The selected, authenticated summary supplies k, its event frontier, predecessor
+seal, source views, interpretation and coverage. A target checkpoint's frontier
+is not proof of its own summary. Root4 peaks support append continuation; they
+are not old event bodies, inclusion paths, exact identity evidence or catchup.
+C base adoption must install the actual authenticated retained sources, including
+identity/binding evidence, retry outcomes, addresses, cursors, charges and
+control schemas. CNS address delivery may use those retained schema4/2/15
+sources; a new public historical catchup promise needs its own explicit contract.
+
+The directory's resident batch identity stays absolute. `commit-directory.lisp`
+uses one physical row for metadata and its seal digest; PARENT=batch-1 is the
+exact stored tag, together with SEAL-READY. Lookup refuses an old modulo alias.
+Row0 remains metadata. Its base-batch/base-event/base-ready fields name only the
+independently retained recovery boundary, whose predecessor seal occupies the
+separate directory digest row0. They are initialized to genesis. There is no
+positive base setter or new wrap credit in this milestone; current admission
+still refuses its existing capacity limit. The actual installation-seal consumer
+now requires the checked mapped resident identity. An archived/base status does
+not impersonate independent bank installation evidence.
+
+`checkpoint-directory-rebase.lisp` implements bounded source preparation:
+BEGIN derives the target from the active Fence-published bank/candidate and all
+actual descriptor hash words under a HELD snapshot owner/token. STEP revalidates
+that binding, visits one exact resident batch, checks event continuity, actual
+allocation owner/epoch/generation and installed-root edge, and copies its seal.
+The last step retains the exact target event and predecessor seal and enters
+SOURCE-SCANNED, returning AWAIT-EVIDENCE. It does not advance the base, clear
+rows, release pins or authorize FREE. A crash before, during or after scanning
+therefore leaves the original directory/extent obligations intact. Restart must
+rederive the published target; a changed owner/candidate/source is refused.
+
+The required commit join remains active implementation work: selected C summary
+adoption (sol_stored_commitment), authenticated prior role3/4 prefix and accumulator
+(release_trace), independent installation/cut/seal evidence for BOTH selectable
+banks (checkpoint owner), and actual retained lease/archive/proof obligations
+(peer_assurance). A retained peer-history snapshot remains a real lease until
+pending physical I/O drains and close succeeds. A cursor is not a row index and
+missing prefix is not DONE. Directory cell reuse and physical journal eligibility
+are separate transitions: old extents require both selectable-bank evidence and
+all real source obligations to be gone. Neither a descriptor order nor this
+source preflight discharges them.
+
+Prepared source controls exercise a mapped batch beyond one physical capacity,
+old-row alias refusal, unready seals, absent future identities, exact genesis
+row0 and refusal of an unproved positive base. These are synthetic typed metadata
+premises, not a live wrap/rebase witness. ACL2 admission, guard qualification,
+crash-cut execution and second-checkpoint/refold observations remain unrun.
