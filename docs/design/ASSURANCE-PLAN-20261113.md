@@ -27,6 +27,19 @@ This test does not cover native process-death cuts or actual socket restart.
 The native socket restart fixture and public FETCH client are integrated;
 actual node execution is still pending.
 
+Actual FNCT APPEND boundary controls are now qualified by exact18 record
+`certify-20261115T091528Z-1136034` (17 reused, one new, 1.934 seconds).
+Root matched all 18 current source hashes and closure keys to the receipt and
+both manifest snapshots. The generated full decoder completes encoded spans
+4095 and 4096, but returns `:more` at 4097 and 6152. Budget-one DECODE-STEP
+continuation completes the same exact byte-oracle inputs and field references.
+This executes the codec, not the CNS actor or socket path. Source tracing finds
+that CNS maps this `:more` result to frame refusal, while CTL also has a 4096-byte
+receive/frame envelope. Q1 owns bounded CNS continuation; native owns the CTL
+streaming connection. Raising a buffer limit to fit the 6KiB fixture is not the
+solution: admitted articles must stream through bounded owned buffers. These
+repairs and the actual socket restart test remain open.
+
 Current served article integration has a concrete workspace mismatch:
 `ordered.lisp` declares 13 article fields including location-hashes, while
 `machines-c-successor.lisp` permits only 12 and `fn2-succ-arg` rejects index 12.
@@ -52,14 +65,18 @@ the retained application world. Its whole-book proof cost remains above the
 D26 target. These author loads are not record-toolchain certification.
 
 The current application snapshot `eea3146c1` has 230 books: 81 qualified
-compiled parents and 149 source books. Its bounded Forge session loaded all
-81 parents, admitted `format-check-read-contracts`, and reached the unchanged
-`FN2-CHECKPOINT-CHECK-STEP-CANDIDATES-TYPE` obligation. Full checkpoint admission
-refused after 33.46 seconds; the final obligation used 10,294 steps and 0.32
-seconds. The checker frame interface now rewrites; the residual concerns
-u60 decoded field values supplied to the checkpoint cut setters. This is a
-proof obligation, not a counterexample or a passing checkpoint book. The live
-session is retained for a focused repair; application fixtures remain unrun.
+compiled parents and 149 source books. Its retained Forge session admitted the
+checker frame interface, decoded-value bounds, and six preservation facets each
+for CAPTURE-ROOT and CAPTURE-ROOTS. CHECK-STEP candidate/reference/byte facets
+then passed. A concrete whole-antecedent witness refuted its unguarded CHECKER
+TYPE/WFP claims: row1 with zero checker rows permits RESET to damage the shape.
+The matching row-room control and a separate full-stored-guard positive pass;
+two explicitly guarded replacement contracts pass. Other original statements
+remain unchanged. The current obstruction is the separate HASHER-TYPE facet,
+whose workspace-domain counterexample is still under evaluation. The complete
+checkpoint book, member and application fixtures remain unadmitted/unrun.
+CHECK-STEP has no current-dev caller, but the incoming cold boot source calls it
+through the registered descriptor verifier; this work enables that integration.
 The standard `must-fail` event classification fix is integrated at `dab9393a0`;
 it preserves the original two-million-step/twenty-second event limits.
 
