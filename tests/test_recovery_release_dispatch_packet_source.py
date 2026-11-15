@@ -22,7 +22,8 @@ def forbidden(source):
         "fn2-recovery-release-begin", "fn2-recovery-release-issue",
         "fn2-recovery-release-step", "fn2-allocation-release-harvest",
         "fn2-machine-observe-terminal", "fn2-recovery-machine-put-core",
-    } or h.startswith("fn2-allocation-release-set-")}
+    } or h.startswith("fn2-allocation-release-set-")
+      or h == "fn2-checkpoint-selected-source-set-phase"}
 
 
 class DispatchPacket(unittest.TestCase):
@@ -53,6 +54,28 @@ class DispatchPacket(unittest.TestCase):
         self.assertIn("(if (eq fault :short) (- length 1) length)", self.source)
         self.assertIn("fn2-checkpoint-selected-source-set-generation", self.source)
         self.assertIn("(= (logand 4 (nth 1 result)) 0)", self.source)
+
+    def test_positive_constructs_then_crashes_real_history(self):
+        source = (ROOT / "tests/recovery-release-connected-unit.lisp").read_text()
+        self.assertEqual(forbidden(source), set())
+        for call in ("fn2-boot-start", "fn2-alloc-reserve", "fn2-alloc-commit-allocation",
+                     "fn2-alloc-retire", "fn2-ccp-prefix-and-publication",
+                     "fn2-allocation-release-stage", "fn2-allocation-release-submit",
+                     "fn2-allocation-release-poll", "fn2-ccp-restart",
+                     "fn2-rp-release-current-p", "fn2-rrd-image-packet"):
+            self.assertIn("(" + call + " ", source)
+        for mode in ("clean", "wrong-opgen", "short", "stale-source"):
+            self.assertIn(f"(assert-event (fn2-rrd-result-p :{mode} (fn2-rrc-test :{mode})))", source)
+        self.assertIn("(put-assoc-equal :aturn 1 *fn2-ccp-profile*)", source)
+
+    def test_image_bridge_does_not_supply_expected_authentication(self):
+        source = (ROOT / "tests/recovery-release-image-support.lisp").read_text()
+        self.assertEqual(forbidden(source), set())
+        for call in ("fn2-sim-storage-pending", "fn2-allocation-release-read-unit",
+                     "fn2-rp-release-current-p", "fn2-rp-release-installation-metadata-p"):
+            self.assertIn("(" + call + " ", source)
+        self.assertNotIn("update-fn2-digest", source)
+        self.assertNotIn("fn2-core-write", source)
 
 
 if __name__ == "__main__":

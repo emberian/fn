@@ -15,7 +15,13 @@
         (fn2-machine-rc-filled id fn2-core) (fn2-machine-rc-count id fn2-core)
         (fn2-machine-rc-pos id fn2-core) (fn2-machine-rc-commit id fn2-core)
         (stobj-let ((fn2-pool (fn2-core-pool fn2-core))) (octets)
-         (fn2-cw-read-range 0 4096 slot fn2-pool) octets))))
+         (fn2-cw-read-range 0 4096 slot fn2-pool) octets)
+        (stobj-let ((fn2-allocation-release (fn2-core-allocation-release fn2-core))) (owner)
+         (list (fn2-allocation-release-owner-kind 0 fn2-allocation-release)
+               (fn2-allocation-release-owner-slot 0 fn2-allocation-release)
+               (fn2-allocation-release-owner-gen 0 fn2-allocation-release)
+               (fn2-allocation-release-journal 0 fn2-allocation-release)
+               (fn2-allocation-release-installation-commit 0 fn2-allocation-release)) owner))))
 
 (defun fn2-rrd-release-state (fn2-core)
  (declare (xargs :stobjs fn2-core :verify-guards nil))
@@ -61,14 +67,16 @@
     fn2-checkpoint-selected-source) fn2-core))
 
 ; MASK records actual dispatcher milestones:11 issue-ready,12 outstanding,
-; 13 hook/observer complete with generic pending decrement,14 checker progressed.
+; 13 hook/observer complete with generic pending decrement,14 descriptor checker
+; completed and requested the installation reread (private checker-stage3).
 ; No direct worker, hook, kind observer or generic decrement calls occur here.
 (defun fn2-rrd-drive (fuel id ogen fault injected mask journal store fn2-core)
  (declare (xargs :stobjs fn2-core :verify-guards nil :measure (nfix fuel)))
  (b* ((stage (fn2-machine-rc-stage id fn2-core))
       (pending (fn2-machine-pending id fn2-core))
       (release (fn2-rrd-release-state fn2-core))
-      (same (equal journal (fn2-rrd-journal id fn2-core)))
+      (same (and (equal journal (fn2-rrd-journal id fn2-core))
+                 (fn2-rp-release-installation-metadata-p fn2-core)))
       (mask (if (= stage 11) (logior mask 1) mask))
       (mask (if (and (= stage 12) (= pending 1)) (logior mask 2) mask))
       (completed (and (= stage 13) (= pending 0)
@@ -77,7 +85,11 @@
                      (fn2-rp-current-unit-auth-p id ogen fn2-core)
                      (fn2-rp-release-current-p id ogen fn2-core)))
       (mask (if completed (logior mask 4) mask))
-      (checked (and completed (> (nth 5 release) 0)))
+      (checked (and (= (logand mask 4) 4) (= stage 11) (= pending 0)
+                    (= (nth 1 release) *fn2-allocation-release-read-phase-need*)
+                    (= (nth 5 release) 3)
+                    (fn2-rp-current-unit-auth-p id ogen fn2-core)
+                    (fn2-rp-release-current-p id ogen fn2-core)))
       (mask (if checked (logior mask 8) mask))
       ((when (or (not same) checked (fn2-core-stopped-p fn2-core) (zp fuel)))
        (mv (list :packet mask injected same (fn2-core-stop-reason fn2-core)
@@ -102,7 +114,9 @@
  (b* ((ogen (fn2-machine-generation id fn2-core))
       ((unless (and (fn2-recovery-idp id fn2-core)
              (= (fn2-machine-phase id fn2-core) *fn2-recovery-machine-state-verify*)
-             (= (fn2-machine-rc-stage id fn2-core) 0)
+             (= (fn2-machine-rc-stage id fn2-core) 11)
+             (fn2-rp-release-current-p id ogen fn2-core)
+             (fn2-rp-release-installation-metadata-p fn2-core)
              (= (fn2-machine-rc-mode id fn2-core) *fn2-rec-mode-replay*)
              (= (fn2-machine-rc-wlen id fn2-core) 0)
              (fn2-recovery-selected-current-p id fn2-core)
@@ -112,6 +126,7 @@
   (fn2-rrd-drive fuel id ogen fault nil 0 journal store fn2-core)))
 
 (defun fn2-rrd-result-p (fault result)
+ (declare (xargs :verify-guards nil))
  ; A positive packet requires every observed milestone, not merely no STOP.
  ; Wrong-generation notification may remain pending rather than STOP: it must
  ; still retain ownership and must never reach the successful observer arm.
@@ -119,7 +134,9 @@
   (= (car (nth 7 result)) *fn2-allocation-release-phase-replaying*)
   (if (eq fault :clean)
       (and (= (nth 1 result) 15) (not (nth 2 result)) (= (nth 4 result) 0)
-           (= (nth 5 result) 13) (= (nth 6 result) 0))
+           (= (nth 5 result) 11) (= (nth 6 result) 0)
+           (= (nth 1 (nth 7 result)) *fn2-allocation-release-read-phase-need*)
+           (= (nth 5 (nth 7 result)) 3))
     (and (member-eq fault '(:wrong-opgen :short :stale-source))
          (nth 2 result) (= (logand 4 (nth 1 result)) 0)
          (or (not (= (nth 4 result) 0))
