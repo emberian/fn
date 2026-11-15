@@ -30,6 +30,11 @@ class EventSteps(unittest.TestCase):
             with self.subTest(steps=steps), self.assertRaises(ValueError):
                 repl.per_event_steps('(thm t)', steps)
 
+    def test_macro_time_cap(self):
+        form = '(fn2-machines-preserves example)'
+        self.assertEqual(repl.per_event_steps(form, 2000000, 20),
+                         f'(with-prover-step-limit 2000000 t (with-prover-time-limit 20 {form}))')
+
     def test_default_and_generated_event(self):
         form = '(make-event (value (list (quote defthm) (quote generated) t)))'
         self.assertEqual(repl.per_event_steps(form, 10), f'(with-prover-step-limit 10 t {form})')
