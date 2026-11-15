@@ -11,6 +11,7 @@
 (defconst *fn2-pool-credit-redeeming* 1)
 (defconst *fn2-pool-credit-held* 2)
 (defconst *fn2-pool-credit-depleted* 3)
+(defconst *fn2-pool-credit-aborted-empty* 4)
 
 (defun fn2-pool-credit-shapep (fn2-pool)
  (declare (xargs :stobjs fn2-pool :guard (fn2-pool-wfp fn2-pool)))
@@ -145,8 +146,11 @@
  (if (not (and (fn2-pool-credit-shapep fn2-pool) (natp group) (< group (fn2-pool-credit-group-count fn2-pool))
                (fn2-pool-mrefp kind owner generation) (posp kind) (posp generation) (posp nonce) (unsigned-byte-p 60 nonce)
                (equal purpose (fn2-pool-credit-purposei group fn2-pool))
-               (equal (fn2-pool-credit-phasei group fn2-pool) *fn2-pool-credit-idle*)
-               (< (fn2-pool-credit-noncei group fn2-pool) nonce)
+               (member-equal (fn2-pool-credit-phasei group fn2-pool)
+                (list *fn2-pool-credit-idle* *fn2-pool-credit-aborted-empty*))
+               (or (< (fn2-pool-credit-noncei group fn2-pool) nonce)
+                   (and (equal (fn2-pool-credit-phasei group fn2-pool) *fn2-pool-credit-aborted-empty*)
+                        (fn2-pool-credit-ownerp group nonce kind owner generation fn2-pool)))
                (fn2-pool-credit-fullp group 0 fn2-pool))) (mv :owner fn2-pool)
   (let* ((fn2-pool (update-fn2-pool-credit-owner-kindi group kind fn2-pool))
          (fn2-pool (update-fn2-pool-credit-owner-sloti group owner fn2-pool))
@@ -176,12 +180,14 @@
                (equal (fn2-pool-credit-phasei group fn2-pool) *fn2-pool-credit-redeeming*)
                (fn2-pool-credit-emptyp group 0 fn2-pool))) (mv :pending fn2-pool)
   (let ((fn2-pool (update-fn2-pool-credit-phasei group *fn2-pool-credit-held* fn2-pool))) (mv :ok fn2-pool))))
+; Actual producers must establish no issue before END; full quota alone
+; describes resources and does not prove absence of past IO.
 (defun fn2-pool-credit-abort-empty (group nonce kind owner generation fn2-pool)
  (declare (xargs :stobjs fn2-pool :guard (fn2-pool-wfp fn2-pool)))
  (if (not (and (fn2-pool-credit-ownerp group nonce kind owner generation fn2-pool)
                (equal (fn2-pool-credit-phasei group fn2-pool) *fn2-pool-credit-redeeming*)
                (fn2-pool-credit-fullp group 0 fn2-pool))) (mv :pending fn2-pool)
-  (let ((fn2-pool (update-fn2-pool-credit-phasei group *fn2-pool-credit-idle* fn2-pool))) (mv :ok fn2-pool))))
+  (let ((fn2-pool (update-fn2-pool-credit-phasei group *fn2-pool-credit-aborted-empty* fn2-pool))) (mv :ok fn2-pool))))
 
 (defun fn2-pool-release-credit (slot gen group nonce kind owner generation fn2-pool)
  (declare (xargs :stobjs fn2-pool :guard (fn2-pool-wfp fn2-pool)))
