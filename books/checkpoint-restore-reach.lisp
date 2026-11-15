@@ -2,6 +2,7 @@
 ; Physical source authentication stays in the real page/entry consumers.
 (in-package "ACL2")
 (include-book "checkpoint-restore-provenance")
+(include-book "checkpoint-restore-arena")
 (fn2-book-layer :b)
 
 (defun fn2-checkpoint-restore-reach-copy-descriptor (i c fn2-checkpoint-bytes fn2-checkpoint-restore-reach-control)
@@ -54,7 +55,7 @@
 (defun fn2-checkpoint-restore-reach-map-state-p (role state)
  (declare (xargs :guard t))
  (and (natp role) (< role *fn2-checkpoint-restore-reach-role-count*)
-      (if (member-equal role (list *fn2-checkpoint-restore-reach-role-payload-manifest* *fn2-checkpoint-restore-reach-role-payload-raw* *fn2-checkpoint-restore-reach-role-payload-block*))
+      (if (member-equal role (list *fn2-checkpoint-restore-reach-role-payload-manifest* *fn2-checkpoint-restore-reach-role-payload-raw* *fn2-checkpoint-restore-reach-role-payload-block* *fn2-checkpoint-restore-reach-role-semantic-source*))
           (member-equal state (list *fn2-extent-state-allocated* *fn2-extent-state-retire-pending*))
         (if (equal role *fn2-checkpoint-restore-reach-role-journal*)
             (member-equal state (list *fn2-extent-state-allocated* *fn2-extent-state-retire-pending*))
@@ -326,3 +327,65 @@
          ("-FIELDS-TYPE" fn2-fieldsp 5)
          ("-FIELDS-WFP" fn2-fields-wfp 5)
          ("-FIELDS-ROWS" fn2-fields-rows 5 :frame fn2-fields)))
+
+; The ordered journal ticket closure is derived from the actual decoded arena
+; row retained in this same call; there is no caller-supplied extent or tag.
+(defun fn2-checkpoint-restore-reach-arena-consume (fn2-checkpoint-restore-reader fn2-checkpoint-restore-map fn2-checkpoint-restore-map-control fn2-checkpoint-restore-arena fn2-checkpoint-restore-arena-marks fn2-checkpoint-restore-arena-control fn2-checkpoint-restore-reach fn2-checkpoint-restore-reach-control fn2-checkpoints fn2-checkpoint-refs fn2-checkpoint-bytes fn2-fields fn2-pool)
+ (declare (xargs :stobjs (fn2-checkpoint-restore-reader fn2-checkpoint-restore-map fn2-checkpoint-restore-map-control fn2-checkpoint-restore-arena fn2-checkpoint-restore-arena-marks fn2-checkpoint-restore-arena-control fn2-checkpoint-restore-reach fn2-checkpoint-restore-reach-control fn2-checkpoints fn2-checkpoint-refs fn2-checkpoint-bytes fn2-fields fn2-pool) :verify-guards nil
+  :guard (and (fn2-checkpoint-restore-reader-wfp fn2-checkpoint-restore-reader) (fn2-checkpoint-restore-map-wfp fn2-checkpoint-restore-map) (fn2-checkpoint-restore-map-control-wfp fn2-checkpoint-restore-map-control) (fn2-checkpoint-restore-arena-wfp fn2-checkpoint-restore-arena) (fn2-checkpoint-restore-arena-marks-wfp fn2-checkpoint-restore-arena-marks) (fn2-checkpoint-restore-arena-control-wfp fn2-checkpoint-restore-arena-control) (fn2-checkpoint-restore-reach-wfp fn2-checkpoint-restore-reach) (fn2-checkpoint-restore-reach-control-wfp fn2-checkpoint-restore-reach-control) (fn2-checkpoints-wfp fn2-checkpoints) (fn2-checkpoint-refs-wfp fn2-checkpoint-refs) (fn2-checkpoint-bytes-wfp fn2-checkpoint-bytes) (fn2-fields-wfp fn2-fields) (fn2-pool-wfp fn2-pool))))
+ (b* (((unless (and (fn2-checkpoint-restore-reach-current-p fn2-checkpoints fn2-checkpoint-refs fn2-checkpoint-bytes fn2-checkpoint-restore-map fn2-checkpoint-restore-map-control fn2-checkpoint-restore-reach-control)
+                     (fn2-checkpoint-restore-reach-reader-p fn2-checkpoint-restore-reader fn2-checkpoint-restore-reach-control)))
+       (mv :source fn2-checkpoint-restore-reader fn2-checkpoint-restore-arena fn2-checkpoint-restore-arena-marks fn2-checkpoint-restore-arena-control fn2-checkpoint-restore-reach fn2-fields))
+      (ordinal (fn2-checkpoint-restore-reader-entry-ordinal 0 fn2-checkpoint-restore-reader))
+      ((mv code fn2-checkpoint-restore-reader fn2-checkpoint-restore-arena fn2-checkpoint-restore-arena-marks fn2-checkpoint-restore-arena-control fn2-fields)
+       (fn2-checkpoint-restore-arena-consume fn2-checkpoint-restore-reader fn2-checkpoint-restore-map fn2-checkpoint-restore-map-control fn2-checkpoint-restore-arena fn2-checkpoint-restore-arena-marks fn2-checkpoint-restore-arena-control fn2-fields fn2-pool))
+      ((unless (eq code :entry)) (mv code fn2-checkpoint-restore-reader fn2-checkpoint-restore-arena fn2-checkpoint-restore-arena-marks fn2-checkpoint-restore-arena-control fn2-checkpoint-restore-reach fn2-fields))
+      ((mv claimed fn2-checkpoint-restore-reach)
+       (fn2-checkpoint-restore-reach-claim *fn2-checkpoint-restore-reach-role-journal-ticket*
+        (* *fn2-storage-extent-units* (fn2-checkpoint-restore-arena-extent ordinal fn2-checkpoint-restore-arena))
+        (fn2-checkpoint-restore-arena-epoch ordinal fn2-checkpoint-restore-arena) (fn2-checkpoint-restore-arena-allocation ordinal fn2-checkpoint-restore-arena)
+        fn2-checkpoints fn2-checkpoint-refs fn2-checkpoint-bytes fn2-checkpoint-restore-map fn2-checkpoint-restore-map-control fn2-checkpoint-restore-reach fn2-checkpoint-restore-reach-control)))
+  (mv (if (eq claimed :ok) :entry claimed) fn2-checkpoint-restore-reader fn2-checkpoint-restore-arena fn2-checkpoint-restore-arena-marks fn2-checkpoint-restore-arena-control fn2-checkpoint-restore-reach fn2-fields)))
+(defcost fn2-boot-checkpoint-arena-consume :child fn2-checkpoint-restore-reach-arena-consume :answers t :bytes *fn2-checkpoint-arena-entry-width*
+ :tables (fn2-core-checkpoint-restore-reader fn2-core-checkpoint-restore-arena fn2-core-checkpoint-restore-arena-marks fn2-core-checkpoint-restore-arena-control fn2-core-checkpoint-restore-reach fn2-core-fields)
+ :doc "Consume actual authenticated arena ticket and retain its exact shared-generation journal protection.")
+
+(fn2-checkpoint-restore-reach-preserves fn2-checkpoint-restore-reach-arena-consume
+ (fn2-checkpoint-restore-reader fn2-checkpoint-restore-map fn2-checkpoint-restore-map-control fn2-checkpoint-restore-arena fn2-checkpoint-restore-arena-marks fn2-checkpoint-restore-arena-control fn2-checkpoint-restore-reach fn2-checkpoint-restore-reach-control fn2-checkpoints fn2-checkpoint-refs fn2-checkpoint-bytes fn2-fields fn2-pool)
+ :hyps ((fn2-checkpoint-restore-readerp fn2-checkpoint-restore-reader) (fn2-checkpoint-restore-reader-wfp fn2-checkpoint-restore-reader) (fn2-checkpoint-restore-mapp fn2-checkpoint-restore-map) (fn2-checkpoint-restore-map-wfp fn2-checkpoint-restore-map) (fn2-checkpoint-restore-map-controlp fn2-checkpoint-restore-map-control) (fn2-checkpoint-restore-map-control-wfp fn2-checkpoint-restore-map-control) (fn2-checkpoint-restore-arenap fn2-checkpoint-restore-arena) (fn2-checkpoint-restore-arena-wfp fn2-checkpoint-restore-arena) (fn2-checkpoint-restore-arena-marksp fn2-checkpoint-restore-arena-marks) (fn2-checkpoint-restore-arena-marks-wfp fn2-checkpoint-restore-arena-marks) (fn2-checkpoint-restore-arena-controlp fn2-checkpoint-restore-arena-control) (fn2-checkpoint-restore-arena-control-wfp fn2-checkpoint-restore-arena-control) (fn2-checkpoint-restore-reachp fn2-checkpoint-restore-reach) (fn2-checkpoint-restore-reach-wfp fn2-checkpoint-restore-reach) (fn2-checkpoint-restore-reach-controlp fn2-checkpoint-restore-reach-control) (fn2-checkpoint-restore-reach-control-wfp fn2-checkpoint-restore-reach-control) (fn2-checkpointsp fn2-checkpoints) (fn2-checkpoints-wfp fn2-checkpoints) (fn2-checkpoint-refsp fn2-checkpoint-refs) (fn2-checkpoint-refs-wfp fn2-checkpoint-refs) (fn2-checkpoint-bytesp fn2-checkpoint-bytes) (fn2-checkpoint-bytes-wfp fn2-checkpoint-bytes) (fn2-fieldsp fn2-fields) (fn2-fields-wfp fn2-fields) (fn2-poolp fn2-pool) (fn2-pool-wfp fn2-pool))
+ :specs (("-CHECKPOINT-RESTORE-READER-TYPE" fn2-checkpoint-restore-readerp 1)
+         ("-CHECKPOINT-RESTORE-READER-WFP" fn2-checkpoint-restore-reader-wfp 1)
+         ("-CHECKPOINT-RESTORE-READER-ROWS" fn2-checkpoint-restore-reader-rows 1 :frame fn2-checkpoint-restore-reader)
+         ("-CHECKPOINT-RESTORE-ARENA-TYPE" fn2-checkpoint-restore-arenap 2)
+         ("-CHECKPOINT-RESTORE-ARENA-WFP" fn2-checkpoint-restore-arena-wfp 2)
+         ("-CHECKPOINT-RESTORE-ARENA-ROWS" fn2-checkpoint-restore-arena-rows 2 :frame fn2-checkpoint-restore-arena)
+         ("-CHECKPOINT-RESTORE-ARENA-MARKS-TYPE" fn2-checkpoint-restore-arena-marksp 3)
+         ("-CHECKPOINT-RESTORE-ARENA-MARKS-WFP" fn2-checkpoint-restore-arena-marks-wfp 3)
+         ("-CHECKPOINT-RESTORE-ARENA-MARKS-ROWS" fn2-checkpoint-restore-arena-marks-rows 3 :frame fn2-checkpoint-restore-arena-marks)
+         ("-CHECKPOINT-RESTORE-ARENA-CONTROL-TYPE" fn2-checkpoint-restore-arena-controlp 4)
+         ("-CHECKPOINT-RESTORE-ARENA-CONTROL-WFP" fn2-checkpoint-restore-arena-control-wfp 4)
+         ("-CHECKPOINT-RESTORE-ARENA-CONTROL-ROWS" fn2-checkpoint-restore-arena-control-rows 4 :frame fn2-checkpoint-restore-arena-control)
+         ("-CHECKPOINT-RESTORE-REACH-TYPE" fn2-checkpoint-restore-reachp 5)
+         ("-CHECKPOINT-RESTORE-REACH-WFP" fn2-checkpoint-restore-reach-wfp 5)
+         ("-CHECKPOINT-RESTORE-REACH-ROWS" fn2-checkpoint-restore-reach-rows 5 :frame fn2-checkpoint-restore-reach)
+         ("-FIELDS-TYPE" fn2-fieldsp 6)
+         ("-FIELDS-WFP" fn2-fields-wfp 6)
+         ("-FIELDS-ROWS" fn2-fields-rows 6 :frame fn2-fields)))
+
+; Read one protection row during selected-base projection. A table slot or
+; generation alone is insufficient: exact durable provenance and map identity
+; are checked before any role union can be consumed. This changes no allocator.
+(defun fn2-checkpoint-restore-reach-row-p (e fn2-checkpoints fn2-checkpoint-refs fn2-checkpoint-bytes fn2-checkpoint-restore-map fn2-checkpoint-restore-map-control fn2-checkpoint-restore-reach fn2-checkpoint-restore-reach-control)
+ (declare (xargs :stobjs (fn2-checkpoints fn2-checkpoint-refs fn2-checkpoint-bytes fn2-checkpoint-restore-map fn2-checkpoint-restore-map-control fn2-checkpoint-restore-reach fn2-checkpoint-restore-reach-control) :verify-guards nil
+  :guard (and (fn2-checkpoints-wfp fn2-checkpoints) (fn2-checkpoint-refs-wfp fn2-checkpoint-refs) (fn2-checkpoint-bytes-wfp fn2-checkpoint-bytes) (fn2-checkpoint-restore-map-wfp fn2-checkpoint-restore-map) (fn2-checkpoint-restore-map-control-wfp fn2-checkpoint-restore-map-control) (fn2-checkpoint-restore-reach-wfp fn2-checkpoint-restore-reach) (fn2-checkpoint-restore-reach-control-wfp fn2-checkpoint-restore-reach-control))))
+ (and (fn2-checkpoint-restore-reach-current-p fn2-checkpoints fn2-checkpoint-refs fn2-checkpoint-bytes fn2-checkpoint-restore-map fn2-checkpoint-restore-map-control fn2-checkpoint-restore-reach-control)
+      (natp e) (< e (fn2-checkpoint-restore-map-rows fn2-checkpoint-restore-map))
+      (< e (fn2-checkpoint-restore-reach-rows fn2-checkpoint-restore-reach))
+      (equal (fn2-checkpoint-restore-reach-generation e fn2-checkpoint-restore-reach) (fn2-checkpoint-restore-reach-control-generation 0 fn2-checkpoint-restore-reach-control))
+      (equal (fn2-checkpoint-restore-reach-state e fn2-checkpoint-restore-reach) *fn2-checkpoint-restore-reach-state-mapped*)
+      (posp (fn2-checkpoint-restore-reach-role-bits e fn2-checkpoint-restore-reach))
+      (< (fn2-checkpoint-restore-reach-role-bits e fn2-checkpoint-restore-reach) (ash 1 *fn2-checkpoint-restore-reach-role-count*))
+      (equal (fn2-checkpoint-restore-map-present e fn2-checkpoint-restore-map) 1)
+      (not (equal (fn2-checkpoint-restore-map-state e fn2-checkpoint-restore-map) *fn2-extent-state-free*))
+      (equal (fn2-checkpoint-restore-map-epoch e fn2-checkpoint-restore-map) (fn2-checkpoint-restore-reach-epoch e fn2-checkpoint-restore-reach))
+      (equal (fn2-checkpoint-restore-map-allocation e fn2-checkpoint-restore-map) (fn2-checkpoint-restore-reach-allocation e fn2-checkpoint-restore-reach))))
