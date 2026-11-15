@@ -4,6 +4,7 @@
 (in-package "ACL2")
 (include-book "cns-source-state")
 (include-book "txn-kind")
+(include-book "cns-source-retention")
 (fn2-book-layer :d)
 (defmacro fn2-cns-source-capture-mv (code total)
  `(mv ,code ,total fn2-cns-sources fn2-pool))
@@ -57,7 +58,8 @@
        (pending 0) (uncertain 0) (borrow-count 0) (retention-phase 0) (retain-row 0) (release-row 0)
        (retain-entry-index 0) (retain-entry-count 0) (manifest-position 0) (manifest-index 0) (manifest-count (fn2-am-units total)) (manifest-seen 0)))
       ((mv reset fn2-pool) (fn2-pool-reset lslot lgen kind cns cnsgen fn2-pool))
-      ((mv v copied left fn2-pool) (if (eq reset :ok)
+      ((mv padded fn2-pool) (if (eq reset :ok) (fn2-run-zero *fn2-cns-source-prefix* lslot lgen 0 kind cns cnsgen fn2-pool) (mv :bad fn2-pool)))
+      ((mv v copied left fn2-pool) (if (eq padded :ok)
        (fn2-read-octets-children x *fn2-article-entry-field-location-hashes* 0 hashes lslot lgen 0 kind cns cnsgen fn2-reads fn2-run-installed fn2-fields fn2-pool)
        (mv :bad 0 0 fn2-pool)))
       (vector-ok (and (eq v :ok) (equal copied hashes) (equal left 0)))
@@ -72,3 +74,28 @@
   ; This internal intermediate result must be followed by root-hold in the
   ; same external capture callback BEFORE releasing the READ.
   (fn2-cns-source-capture-mv (if good :captured :bad) (if good total 0))))
+
+; Complete external capture admission in one call: copied metadata is never
+; published as a usable source before its real promised-read root exists.
+(defun fn2-cns-source-capture-children (s cns cnsgen ctl ctlgen request x lslot lgen kind
+ fn2-cns-sources fn2-reads fn2-run-installed fn2-fields fn2-pool fn2-checkpoints fn2-extents fn2-alloc-edges fn2-ops)
+ (declare (xargs :stobjs (fn2-cns-sources fn2-reads fn2-run-installed fn2-fields fn2-pool fn2-checkpoints fn2-extents fn2-alloc-edges fn2-ops)
+ :guard (and (fn2-cns-sources-wfp fn2-cns-sources) (fn2-reads-wfp fn2-reads) (fn2-run-installed-wfp fn2-run-installed)
+  (fn2-fields-wfp fn2-fields) (fn2-pool-wfp fn2-pool) (fn2-checkpoints-wfp fn2-checkpoints)
+  (fn2-extents-wfp fn2-extents) (fn2-alloc-edges-wfp fn2-alloc-edges) (fn2-ops-wfp fn2-ops))))
+ (b* (((mv code total fn2-cns-sources fn2-pool)
+       (fn2-cns-source-capture-read-children s cns cnsgen ctl ctlgen request x lslot lgen kind fn2-cns-sources fn2-reads fn2-run-installed fn2-fields fn2-pool))
+      ((unless (eq code :captured)) (mv :bad 0 fn2-cns-sources fn2-pool fn2-extents fn2-alloc-edges))
+      ((mv held fn2-cns-sources fn2-extents fn2-alloc-edges)
+       (fn2-cns-source-root-hold-children s cns cnsgen ctl ctlgen request fn2-cns-sources fn2-checkpoints fn2-extents fn2-alloc-edges fn2-ops))
+      (fn2-cns-sources (if (eq held :ok) fn2-cns-sources (fn2-cns-sources-set-phase s *fn2-cns-source-phase-bad* fn2-cns-sources))))
+  (mv (if (eq held :ok) :ok :bad) (if (eq held :ok) total 0) fn2-cns-sources fn2-pool fn2-extents fn2-alloc-edges)))
+
+(fn2-cns-source-frames fn2-cns-source-capture-read-children
+ (s cns cnsgen ctl ctlgen request x lslot lgen kind fn2-cns-sources fn2-reads fn2-run-installed fn2-fields fn2-pool)
+ (fn2-cns-sources fn2-reads fn2-run-installed fn2-fields fn2-pool)
+ ((fn2-cns-sources 2) (fn2-pool 3)))
+(fn2-cns-source-frames fn2-cns-source-capture-children
+ (s cns cnsgen ctl ctlgen request x lslot lgen kind fn2-cns-sources fn2-reads fn2-run-installed fn2-fields fn2-pool fn2-checkpoints fn2-extents fn2-alloc-edges fn2-ops)
+ (fn2-cns-sources fn2-reads fn2-run-installed fn2-fields fn2-pool fn2-checkpoints fn2-extents fn2-alloc-edges fn2-ops)
+ ((fn2-cns-sources 2) (fn2-pool 3) (fn2-extents 4) (fn2-alloc-edges 5)))
