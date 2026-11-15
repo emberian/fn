@@ -794,6 +794,30 @@
   (if (atom fields) nil
     (let ((s (assoc-eq (car fields) (fn2-arm-get :path-sets env))))
       (append (and s (list s)) (fn2-arms-path-sets (cdr fields) env)))))
+; Extra scheduler enqueues are effects, separate from I/O descriptors.
+; Bounds are inferred per terminal path; :repeat multiplies a pass bound
+; by its already required static iteration bound. They never size a runtime
+; pending queue or gate scheduling on diagnostic trace capacity.
+(defun fn2-arms-call-enqueues (calls world)
+ (declare (xargs :verify-guards nil))
+ (if (atom calls) 0
+  (let* ((row (fn2-arms-op-row (fn2-arm-use-name (car calls)) world))
+         (n (fn2-arms-bound (or (fn2-decl-get :enqueues row) 0) nil world 8))
+         (rest (fn2-arms-call-enqueues (cdr calls) world)))
+   (and row n rest (+ n rest)))))
+(defun fn2-arms-loop-enqueues (loops)
+ (declare (xargs :verify-guards nil))
+ (if (atom loops) 0
+  (let* ((loop (car loops)) (rest (fn2-arms-loop-enqueues (cdr loops))))
+   (and (true-listp loop) (equal (len loop) 7)
+        (natp (nth 5 loop)) (natp (nth 6 loop)) rest
+        (+ (* (nth 5 loop) (nth 6 loop)) rest)))))
+(defun fn2-arms-enqueue-max (bounds)
+ (declare (xargs :guard t))
+ (if (atom bounds) 0
+  (let ((rest (fn2-arms-enqueue-max (cdr bounds))))
+   (if (and (natp (car bounds)) (natp rest))
+       (max (car bounds) rest) :unbounded))))
 (defun fn2-arms-path-record (step env acc0 acc)
   ; ACC with the path ending at terminal STEP (ACC0 before the terminal)
   (declare (xargs :verify-guards nil))
@@ -803,7 +827,12 @@
                         (and (eq (car step) :park) (eq (cadr step) :pool) (fn2-arm-get :children env)
                              '(fn2-machine-park-pool))))
            (phase (assoc-eq 'phase (fn2-arm-get :entry env)))
-           (fields (fn2-arms-while-fields env)))
+           (fields (fn2-arms-while-fields env))
+           (enqueues (fn2-arms-call-enqueues (append (fn2-arm-get :path-calls env) own)
+                                             (fn2-arm-get :world env)))
+           (loop-enqueues (fn2-arms-loop-enqueues (fn2-arm-get :loops env)))
+           (acc (fn2-arms-add :enqueue-bounds
+                  (list (and enqueues loop-enqueues (+ enqueues loop-enqueues))) acc)))
       (fn2-decl-set :paths
         (cons (list (if phase (fn2-arms-values-of (cdr phase) (fn2-arms-universe 'phase env)) :any)
                     (if (fn2-arm-get :next-phases env) (fn2-arm-get :next-phases env) :stay)
@@ -1908,6 +1937,7 @@
                            (pb (fn2-arms-calls-cost calls :bytes world))
                            (ps (fn2-arms-calls-cost calls :steps world))
                            (pd (fn2-arms-calls-cost calls :descriptors world))
+                           (pe (fn2-arms-call-enqueues calls world))
                            (left (packn-pos (list helper '-left) helper))
                            (acc (fn2-decl-set :aux (append (fn2-arm-get :aux acc) (fn2-arm-get :aux bacc) events)
                                   (fn2-arms-add :uses (fn2-arm-get :uses bacc)
@@ -1917,13 +1947,13 @@
                            (call (if (fn2-arm-get :children env)
                                      `(,helper ,n id slot kind ordinal budget ,@(fn2-arms-tuple env))
                                    `(,helper ,n id budget fn2-core))))
-                      (if (not (and pb ps pd))
+                      (if (not (and pb ps pd pe))
                           (mv (msg "~x0 calls an operation whose declared cost has no static bound." step) nil acc)
                         (mv-let (err2 rest-code acc)
                           (fn2-arms-steps rest (fn2-decl-set :pending nil
                                                  (fn2-decl-set :path-uses (append (fn2-arm-get :path-uses env) (reverse calls))
                                                  (fn2-decl-set :written (strip-cars (fn2-arm-get :columns env))
-                                                   (fn2-decl-set :loops (cons (list left n pb (+ 1 ps) pd (fn2-arms-bound n nil world 64))
+                                                   (fn2-decl-set :loops (cons (list left n pb (+ 1 ps) pd (fn2-arms-bound n nil world 64) pe)
                                                                               (fn2-arm-get :loops env))
                                                      env))))
                                           (fn2-decl-set :calls (append calls (fn2-arm-get :calls acc)) acc) (1- fuel))
@@ -2241,6 +2271,7 @@
                      ((fn2-arm-get :stay acc) (union-eq (list tag) (fn2-arm-get :nexts acc)))
                      (t (fn2-arm-get :nexts acc)))))
     (append (list :cost cost
+                  :enqueues (fn2-arms-enqueue-max (fn2-arm-get :enqueue-bounds acc))
                   :writes (remove-eq 'phase (fn2-arm-get :writes acc))
                   :tables (union-eq (fn2-arms-own-table kind (fn2-arm-get :tables acc))
                                     (fn2-machine-directory-child (fn2-arm-get :writes acc)))
@@ -2277,6 +2308,7 @@
                                                          (cadr (fn2-cost-values (fn2-arm-get :cost contract) world))))
                                (w state))))))))
             (list :writes (fn2-arm-get :writes contract) :cost (fn2-arm-get :cost contract)
+                  :enqueues (fn2-arm-get :enqueues contract)
                   :refusal nil :contract contract
                   :cost-values (fn2-cost-values (fn2-arm-get :cost contract) world))))))))
 
@@ -2465,6 +2497,7 @@
                                                      (cadr (fn2-cost-values (fn2-arm-get :cost contract) world))))
                            (w state))))))))
             (list :writes (fn2-arm-get :writes contract) :cost (fn2-arm-get :cost contract)
+                  :enqueues (fn2-arm-get :enqueues contract)
                   :refusal nil :contract contract
                   :cost-values (fn2-cost-values (fn2-arm-get :cost contract) world))))))
 ; MODE: :core (arms over fn2-core, in the kind's callbacks section),

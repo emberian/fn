@@ -58,11 +58,15 @@ interface. Eight exact-function frame lemmas passed in the same session without
 changing the checkpoint theorem. The final caller retry did not start because
 its orchestration script referenced a missing path. The bounded session ended
 and all owned processes were released; the application fixtures have not run.
-The saved seven-root prefix spans 67 books. With the current layout source,
-36 have qualified artifacts and 31 need certification; the next narrow record
-will make this accepted prefix reusable. This composition still includes the
-08c enqueue metadata and two proof helpers absent from upstream, so it is not
-yet a certificate for the complete upstream tree. Accounts (`3f7b07618`) and answer preservation (`00e04f000`)
+The saved seven-root prefix is qualified by record
+`certify-20261115T074148Z-1049303`: 36 reused and 31 newly certified books,
+278.551 seconds at one job. All 67 source hashes now match the integration tree:
+the two enqueue-metadata generator files and two proof helpers are integrated.
+The compiler change derives enqueue bounds from declared calls and repeat
+counts; it does not size a runtime queue or establish query completion.
+The prefix certificate excludes checkpoint/member, the full application and
+native execution. Its artifacts allow the next run to start at the caller
+repair without replaying the already accepted source prefix. Accounts (`3f7b07618`) and answer preservation (`00e04f000`)
 repair only hints. The layout interface candidate disables an overly broad
 structural rewrite and explicitly supplies it to SCAN/EMIT guards; all 136 forms
 admit; exact eight-book record `certify-20261115T072636Z-1034939` passes
