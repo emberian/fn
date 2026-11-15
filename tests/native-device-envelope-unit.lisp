@@ -35,3 +35,17 @@
        (not (fn2-nde-post-join-p b records unposted))
        (fn2-nde-post-join-p b records (cdr unposted))
        (not (fn2-nde-post-join-p a records nil)))))
+
+; Use the real constructor widths (especially Post's cell before slot/gen).
+; Shape rejection precedes all replay positional access and state mutation.
+(assert-event
+ (and (fn2-nde-control-shape-p *fn2-nde-write-take*)
+      (fn2-nde-control-shape-p *fn2-nde-write-post*)
+      (fn2-nde-control-shape-p '(:clock 1 2 1))
+      (fn2-nde-control-shape-p '(:ack 1))
+      (not (fn2-nde-control-shape-p (take 10 *fn2-nde-write-post*)))
+      (not (fn2-nde-control-shape-p (append *fn2-nde-write-post* '(extra))))
+      (not (fn2-nde-control-shape-p (append *fn2-nde-write-post* 'dotted)))
+      (not (fn2-nde-control-shape-p '(:clock 1 2)))
+      (not (fn2-nde-control-shape-p '(:ack 1 extra)))
+      (not (fn2-nde-control-shape-p '(:unknown 1)))))

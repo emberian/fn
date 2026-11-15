@@ -415,6 +415,7 @@ ACL2_BOOKS = \
   tests/native-cut-program-unit \
   tests/native-device-effects-unit \
   tests/native-device-bindings-unit \
+  tests/native-device-envelope-unit \
   tests/storage-cancel-unit \
   tests/native-cut-binding-unit \
   tests/native-envelope-prefix-unit \
