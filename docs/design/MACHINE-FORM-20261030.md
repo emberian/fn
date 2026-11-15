@@ -136,6 +136,37 @@ whose corrected bound is too large; it must be split into bounded transitions.
 and composed functions, including nested goto, zero terminal, dynamic explicit
 charges, repeats and preserved result carriers. Both undercharge mutations fail.
 `tests/machine-arm-accounting-unit.lisp` is the real generated-child whole-result
-and smaller-cap refusal fixture; ACL2 admission is pending. Declared callback
+and smaller-cap refusal fixture; its exact closure is qualified below. Declared callback
 costs alone do not establish a physical pool-read counting theorem. Actual CNS
 consumer composition remains owed after the shared generator fixture passes.
+
+
+Accounting receipt: frozen `9f85d0a9f`, Forge
+`/build/lanes/audit-arm-accounting-final/build/acl2/certify-20261115T133412Z-1382828`:
+25 current closure keys qualified under toolchain `8aeb1bea18968c6cd33ac633a80ebf67e4924504db112fd27eb11f16a27b2a8c`,
+23 reused and two certified (machine-arms 3.629s, unit 4.741s, total 8.486s).
+Author gate preserved original 2M-step/20s per-event budgets. Actual whole-result
+claims passed: found path returns 12288 bytes/5 steps, end path returns 8192/3;
+full DSL static bounds are respectively 12288/5 and 8192/4. The last extra step
+is the existing public subarm quantity-contract floor, not claimed actual work.
+The real run-contract validator rejects the generated found contract under the
+unchanged 8192-byte cap. Three executable lowering controls (including two
+undercharge mutants) and two proof-opacity controls pass.
+
+Manifest SHA256 `8de622669a3b25bb0127b8db6c88113486b6daad5343a398004ff098cb6448c0`;
+generator SHA256 `c31788bd91bb81a1e78eb99b1299166caad9c4c89e3a1b9659a78eb63213efee`;
+fixture SHA256 `f46c7639c0d552259ec82295be5dec87884f2c8ebf340260b171407d509048ea`.
+Full receipt `/tmp/audit-arm-accounting-qualified25-receipt.json` on author and
+Forge includes all source keys and certificate/FASL artifact hashes. Owned PIDs
+1382585/1382610/1382828 and scope ended; explicit 2Gi reservation released;
+zero swap, peak 438018048 bytes, no limit/OOM events.
+
+Remaining descriptor composition: this repair preserves the subarm's exact
+issued count; it does not carry a preceding successful `:issue` across `:goto`.
+A parsed source census found no explicit such success path in books at this
+snapshot, but macro-expanded sites are a separate obligation. The issue effect
+interface gives exact weight one on `:ok`, zero otherwise. A general extension
+must compose that exact prefix count and residual admission before subeffects;
+it must not substitute declared descriptor capacity. No new DSL restriction was
+introduced. Actual served CNS callback composition and physical read-count
+refinement remain required independently of this qualified shared fixture.
