@@ -7,6 +7,7 @@
 (include-book "checkpoint-map-build")
 (include-book "checkpoint-metadata-driver")
 (include-book "checkpoint-metadata-release")
+(include-book "checkpoint-metadata-abort")
 (fn2-book-layer :c)
 
 (defcorechild fn2-core-checkpoint-build fn2-checkpoint-build

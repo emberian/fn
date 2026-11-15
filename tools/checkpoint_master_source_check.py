@@ -69,6 +69,7 @@ def check(source):
         assert holds[phase] == [':storage-window']
     for phase in [':page-take',':page-consume',':uncertain',':release-complete']:
         assert holds[phase] == [':storage-window',':storage-window']
+    assert arms[':cancel-ledger'][-1][:2] == [':if',['and',['natp','budget'],['<','0','budget']]], 'ledger cancellation must yield at zero budget'
     parked = {tag for tag,arm in arms.items() if arm[1:] == [[':idle']]}
     assert parked == {':disabled', ':admission-refused'}, 'no productive phase may be a parked placeholder'
     assert ['fn2-checkpoint-master-release-complete-op','row-token','*fn2-checkpoint-master-kind*','id','row-generation'] in list(walk(arms[':release-complete']))

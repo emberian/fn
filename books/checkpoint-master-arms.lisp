@@ -2,6 +2,7 @@
 ; No second page writer or host/caller completion flag exists in this machine.
 (in-package "ACL2")
 (include-book "checkpoint-master-rearm")
+(include-book "checkpoint-build-abort-finish")
 (include-book "checkpoint-teardown")
 (include-book "checkpoint-metadata-driver")
 (include-book "event-build-kind")
@@ -68,14 +69,39 @@
   (:abort-complete :on-refusal ((:next :uncertain) (:charge :steps *fn2-work-small* :runnable t))
    (:do (code) (fn2-checkpoint-master-abort-complete-op))
    (:set (pending 0) (token 0)) (:next :idle) (:charge :steps *fn2-work-small* :runnable t))
-  (:descriptor-begin :on-refusal ((:next :refused) (:charge :steps *fn2-work-small* :runnable t))
+  (:cancel-ledger :on-refusal ((:next :cancel-recovery) (:charge :steps *fn2-work-small* :runnable t))
+   (:if (and (natp budget) (< 0 budget))
+    ((:do (code) (fn2-checkpoint-root1-planning-cancel-op *fn2-checkpoint-master-kind* id row-generation) :accept () :case
+      (((:more) (:charge :steps *fn2-work-stage* :runnable t))
+       ((:ledger-empty) (:next :cancel-candidate) (:charge :steps *fn2-work-stage* :runnable t))
+       (:otherwise (:next :cancel-recovery) (:charge :steps *fn2-work-small* :runnable t)))))
+    ((:yield))))
+  (:cancel-candidate :on-refusal ((:next :cancel-recovery) (:charge :steps *fn2-work-small* :runnable t))
+   (:do (code) (fn2-checkpoint-build-abort-step-op budget row-token *fn2-checkpoint-master-kind* id row-generation) :accept () :case
+    (((:more) (:charge :bytes 1 :steps *fn2-work-stage* :runnable t)) ((:yield) (:yield))
+     ((:clean) (:next :cancel-reset) (:charge :steps *fn2-work-stage* :runnable t))
+     (:otherwise (:next :cancel-recovery) (:charge :steps *fn2-work-small* :runnable t)))))
+  (:cancel-reset :on-refusal ((:next :cancel-recovery) (:charge :steps *fn2-work-small* :runnable t))
+   (:do (code) (fn2-checkpoint-root1-abort-reset-op budget row-token *fn2-checkpoint-master-kind* id row-generation) :accept () :case
+    (((:more) (:charge :steps *fn2-work-stage* :runnable t)) ((:yield) (:yield))
+     ((:reset) (:next :cancel-finish) (:charge :steps *fn2-work-stage* :runnable t))
+     (:otherwise (:next :cancel-recovery) (:charge :steps *fn2-work-small* :runnable t)))))
+  (:cancel-finish :on-refusal ((:next :cancel-recovery) (:charge :steps *fn2-work-small* :runnable t))
+   (:do (code) (fn2-checkpoint-build-abort-finish-op budget row-token *fn2-checkpoint-master-kind* id row-generation) :accept () :case
+    (((:ok) (:next :abort-snapshot) (:charge :steps *fn2-work-stage* :runnable t)) ((:yield) (:yield))
+     (:otherwise (:next :cancel-recovery) (:charge :steps *fn2-work-small* :runnable t)))))
+  (:cancel-recovery (:set (stopped 1)) (:stop :checkpoint))
+  (:descriptor-begin :on-refusal ((:next :uncertain) (:charge :steps *fn2-work-small* :runnable t))
    (:do (code) (fn2-checkpoint-build-begin-op row-checkpoint row-candidate row-token
-    row-page-slot row-page-gen row-scratch-slot row-scratch-gen *fn2-checkpoint-master-kind* id row-generation))
-   (:next :root1-begin) (:charge :steps *fn2-work-stage* :runnable t))
+    row-page-slot row-page-gen row-scratch-slot row-scratch-gen *fn2-checkpoint-master-kind* id row-generation) :accept () :case
+    (((:ok) (:next :root1-begin) (:charge :steps *fn2-work-stage* :runnable t))
+     ((:no-space :exhausted) (:next :abort-snapshot) (:charge :steps *fn2-work-stage* :runnable t))
+     (:otherwise (:next :uncertain) (:charge :steps *fn2-work-small* :runnable t)))))
   (:root1-begin :on-refusal ((:next :uncertain) (:charge :steps *fn2-work-small* :runnable t))
    (:do (code) (fn2-checkpoint-root1-planning-start-op *fn2-checkpoint-master-kind* id row-generation) :accept () :case
     (((:more) (:charge :steps *fn2-work-stage* :runnable t))
      ((:started) (:next :root1-source) (:charge :steps *fn2-work-stage* :runnable t))
+     ((:no-space :exhausted :directory-no-space) (:next :cancel-ledger) (:charge :steps *fn2-work-stage* :runnable t))
      (:otherwise (:next :uncertain) (:charge :steps *fn2-work-small* :runnable t)))))
   (:root1-source :on-refusal ((:next :uncertain) (:charge :steps *fn2-work-small* :runnable t))
    (:do (code) (fn2-checkpoint-root1-step-op budget *fn2-checkpoint-master-kind* id row-generation) :accept () :case
@@ -83,7 +109,7 @@
      ((:page) (:set (source 1)) (:next :page-bind) (:charge :bytes 4096 :steps *fn2-work-stage* :runnable t))
      ((:need-read) (:next :root1-read) (:charge :bytes 4096 :steps *fn2-work-stage* :runnable t))
      ((:done) (:next :events-begin) (:charge :bytes 4096 :steps *fn2-work-stage* :runnable t))
-     ((:no-space :exhausted) (:next :refused) (:charge :bytes 4096 :steps *fn2-work-stage* :runnable t)) (:otherwise (:next :uncertain) (:charge :steps *fn2-work-small* :runnable t)))))
+     ((:no-space :exhausted :directory-no-space) (:next :cancel-ledger) (:charge :bytes 4096 :steps *fn2-work-stage* :runnable t)) (:otherwise (:next :uncertain) (:charge :steps *fn2-work-small* :runnable t)))))
   (:root1-read :on-refusal ((:next :uncertain) (:charge :steps *fn2-work-small* :runnable t))
    (:if (and (natp budget) (< 0 budget))
     ((:issue (fn2-checkpoint-root1-read-op budget *fn2-checkpoint-master-kind* id row-generation) :ok ((:next :root1-source) (:wait :completion :bytes 4096 :steps *fn2-work-stage*))))
@@ -96,7 +122,7 @@
      ((:page) (:set (source 3)) (:next :page-bind) (:charge :bytes 4096 :steps *fn2-work-stage* :runnable t))
      ((:need-read) (:next :events-read) (:charge :bytes 4096 :steps *fn2-work-stage* :runnable t))
      ((:done) (:next :plan-begin) (:charge :bytes 4096 :steps *fn2-work-stage* :runnable t))
-     ((:no-space :exhausted) (:next :refused) (:charge :bytes 4096 :steps *fn2-work-stage* :runnable t)) (:otherwise (:next :uncertain) (:charge :steps *fn2-work-small* :runnable t)))))
+     ((:no-space :exhausted :directory-no-space) (:next :cancel-ledger) (:charge :bytes 4096 :steps *fn2-work-stage* :runnable t)) (:otherwise (:next :uncertain) (:charge :steps *fn2-work-small* :runnable t)))))
   (:events-read :on-refusal ((:next :uncertain) (:charge :steps *fn2-work-small* :runnable t))
    (:if (and (natp budget) (< 0 budget))
     ((:issue (fn2-checkpoint-events-read) :ok ((:next :events-source) (:wait :completion :bytes 4096 :steps *fn2-work-stage*))))

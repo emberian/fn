@@ -32,4 +32,3 @@
             (equal (fn2-run-builds-okind b fn2-run-builds) (fn2-checkpoint-metadata-owner-kind 0 fn2-checkpoint-metadata))
             (equal (fn2-run-builds-oslot b fn2-run-builds) (fn2-checkpoint-metadata-owner-slot 0 fn2-checkpoint-metadata))
             (equal (fn2-run-builds-ogen b fn2-run-builds) (fn2-checkpoint-metadata-owner-gen 0 fn2-checkpoint-metadata))))))
-

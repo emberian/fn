@@ -3,9 +3,18 @@
 (in-package "ACL2")
 (include-book "../books/alloc")
 (include-book "std/util/bstar" :dir :system)
-(defun-nx fn2-alloc-planning-test-view (fn2-extents)
- (declare (xargs :stobjs fn2-extents))
- (list (fn2-extents-view fn2-extents) (fn2-alloc-free-head fn2-extents)
+; Materialize the existing declaration-owned reference projection locally.
+; This includes every declared column, row count and scalar extra field.
+(make-event
+ (let* ((name 'fn2-extents)
+        (schema (cdr (assoc-eq name (fn2-decl-rows :columns (w state)))))
+        (fields (append (fn2-columns-fields name (fn2-decl-get :columns schema))
+                        `((fn2-extents-rows :type (integer 0 ,(- (fn2-decl-get :rows-bound schema) 1)) :initially 0))
+                        (fn2-decl-get :extra-fields schema))))
+  (cons 'progn (fn2-columns-reference-events name 'fn2-extents-ref fields))))
+(defun fn2-alloc-planning-test-view (fn2-extents)
+ (declare (xargs :stobjs fn2-extents :verify-guards nil))
+ (list (fn2-extents-copy fn2-extents) (fn2-alloc-free-head fn2-extents)
        (fn2-alloc-current-epoch fn2-extents) (fn2-alloc-next-counter fn2-extents)
        (fn2-alloc-freeze-phase fn2-extents) (fn2-alloc-freeze-token fn2-extents)
        (fn2-alloc-freeze-owner-kind fn2-extents) (fn2-alloc-freeze-owner-slot fn2-extents)

@@ -571,6 +571,23 @@ held-cut admission rechecks permission. This does not guarantee physical
 construction headroom or maintenance liveness. Source arity, dispatch and gate
 controls are static checks; these actor books have not been admitted or run.
 
+The pre-construction directory check runs only at the settled held C cut,
+before descriptor BEGIN. Its resident commit budget is derived as one final
+installation plus the ceiling of actual extent rows divided by the actual
+allocation-record capacity per batch. This covers any physically feasible
+construction's allocation records, but can conservatively refuse a smaller
+snapshot near directory exhaustion; it is not physical free-space headroom.
+The same hint in the pressure source prevents immediate abort/retry churn.
+Startup's actual completed-fence layout binding is required before admission.
+
+A refused pre-construction directory check releases the exact C snapshot token
+first, then calls the sole shared working-release body over future8 and root19,
+one actual owned lease per step. Its authority comes from the actual master
+abort phase, FREE candidate, IDLE descriptor builder and untouched zero-token,
+no-loan bundle. It cannot cancel allocations or release persistent edges, and
+cannot authorize cleanup after descriptor BEGIN. Normal publication and this
+abort share the physical release loop with separate permission guards.
+These actor guards and controls remain source-only and unadmitted.
 The subsequent 20-book map roundtrip probe at `60d49ddff` refused at
 `FN2-CHECKPOINT-FROZEN-MAP-ENTRY-PRESERVES-TYPE`, before the packer/reader and
 target assertions ran. The generated TYPE formula assumed only destination
@@ -701,3 +718,42 @@ drop have explicit zero-budget no-effect branches. EOF retains debt and catalog
 state: archive/ancestry reachability must be settled before root/source teardown
 or catalog reuse. The source actor and primitive controls remain unadmitted;
 activation and allocator FREE remain disabled.
+
+Planning cancellation resets root1 source state only after the actual build
+cleanup reaches CANCELLED at its exact extent-plus-198 cursor under the same
+HELD cut and phase3 owner. `checkpoint-metadata-abort.lisp` additionally checks
+all 27 current lease owners, returned future borrows, and zero page/semantic/
+payload pending operations before each bounded reset turn. It retires only
+private writer/path and source continuations, preserves retained-entry serial,
+and resets only the two private checker phases. B3/digest bytes are untouched;
+the next actual producer begin initializes them. The terminal record binds the
+candidate, token, owner and cut. It leaves root1 RESERVED/token0, future token0
+and snapshot COMPLETE0; the checkpoint owner retains candidate/planning state
+until its final gate. This operation releases no cut, lease or allocator edge.
+
+Planning refusal after descriptor reservation uses an actual post-descriptor
+abort chain. The master first drives the existing owner-scoped cancellation
+across the construction ledger while phase3 stays closed. An issued, completed
+or claimed row requires recovery; it cannot enter ordinary working cleanup.
+After actual CANCEL-EMPTY, the descriptor continuation scans the candidate's
+exact unpublished PREPARED source edges, clears six unretained reference rows,
+then zeros its 192 hash bytes, one row or byte per call. The BUILDING claim,
+physical namespace and held cut remain intact through the last byte. Foreign
+holders and read/I/O pins remain unchanged, including during source-edge cleanup.
+
+The separate lower reset consumes exact CANCELLED/EOF and cancellation/cut
+provenance. It requires ownership of all 27 leases, no future borrowers and no
+pending semantic/payload/page operations before resetting private source
+continuations. It leaves root1 RESERVED/token0 and future8 token0. Final abort
+checks that actual reset terminal/cursor and resource capacities, then ends
+phase3 using the allocator's current frontier and clears only the unpublished
+candidate/build/planning state in the same call. No fallible operation or yield
+separates opening the gate from clearing that claim. The master then rejoins
+the existing cut release and bounded shared27 cleanup. Refusal before descriptor
+reservation uses the original preconstruction gate. Allocator FREE, bank debt
+clearing and installed-candidate teardown are not granted by either abort path.
+
+These connected source arms and primitive controls remain unadmitted and
+activation stays disabled. Repeated identical planning refusal also needs an
+actual resource-change retry policy; cancellation does not mark retirement debt
+seen or establish a maintenance liveness guarantee.
