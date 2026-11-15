@@ -24,6 +24,19 @@
                       (= (fn2-commit-root-seal-ready row fn2-commit-root) 1))
                  (mv :ok row)
                (mv :stale 0))))))))
+; Only an exact installed/chained tagged row can supply physical provenance.
+; A base seal or archived logical boundary is not a physical journal identity.
+(defun fn2-commit-directory-physical-source (batch fn2-commit-root)
+ (declare (xargs :stobjs fn2-commit-root
+  :guard (and (fn2-commit-rootp fn2-commit-root) (fn2-commit-root-wfp fn2-commit-root))))
+ (mv-let (code row) (fn2-commit-directory-lookup batch fn2-commit-root)
+  (if (not (and (eq code :ok) (posp row) (< row (fn2-commit-root-rows fn2-commit-root))
+                (posp (fn2-commit-root-physical-history row fn2-commit-root))
+                (posp (fn2-commit-root-physical-incarnation row fn2-commit-root))))
+      (mv (if (eq code :ok) :physical-source code) 0 0 0)
+   (mv :ok (fn2-commit-root-extent row fn2-commit-root)
+       (fn2-commit-root-physical-history row fn2-commit-root)
+       (fn2-commit-root-physical-incarnation row fn2-commit-root)))))
 (defun fn2-commit-directory-seal-slot (batch format-rows fn2-commit-root)
  (declare (xargs :stobjs fn2-commit-root :guard (fn2-commit-root-wfp fn2-commit-root)))
  (if (not (and (unsigned-byte-p 32 format-rows)
