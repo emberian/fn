@@ -3,6 +3,7 @@
 (include-book "machines")
 (include-book "core-children")
 (include-book "profile")
+(include-book "run-active-geometry")
 (include-book "origin")
 (include-book "sched")
 (include-book "commit-alloc")
@@ -76,18 +77,78 @@
 ; row (main's ruling, 2026-10-30); w's default is resources.lisp's round-2
 ; bound (16), c's the tiny profile's 2; D's upload capacity, C's sealer row
 ; and E's control capacity read these functions.
+(defun fn2-b-cursor-rows (profile)
+ (declare (xargs :guard t))
+ (if (fn2-profile-get :reading profile) (nfix (fn2-profile-x profile)) 0))
+(defun fn2-b-cns-rows (profile)
+ (declare (xargs :guard t))
+ (nfix (fn2-profile-get :cns profile)))
+(defun fn2-b-auth-rows (profile)
+ (declare (xargs :guard t))
+ (nfix (fn2-profile-get :authority profile)))
+(defun fn2-b-read-rows (profile)
+ (declare (xargs :guard t))
+ (+ (* 2 (fn2-b-cursor-rows profile)) (fn2-b-cns-rows profile) (fn2-b-auth-rows profile)))
+(defthm fn2-b-cursor-rows-natp (natp (fn2-b-cursor-rows profile)) :rule-classes :type-prescription)
+(defthm fn2-b-cns-rows-natp (natp (fn2-b-cns-rows profile)) :rule-classes :type-prescription)
+(defthm fn2-b-auth-rows-natp (natp (fn2-b-auth-rows profile)) :rule-classes :type-prescription)
+(defthm fn2-b-read-rows-natp (natp (fn2-b-read-rows profile)) :rule-classes :type-prescription)
+
+(defconst *fn2-b-query-read-rows* 2)
+(defconst *fn2-b-seal-source-cursors* *fn2-run-active-source-cursors*)
+(defconst *fn2-b-range-source-cursors* *fn2-b-seal-source-cursors*)
+(defconst *fn2-b-read-loader-jobs* (+ 1 *fn2-b-range-source-cursors*))
+(defconst *fn2-b-query-loader-jobs* (* *fn2-b-query-read-rows* *fn2-b-read-loader-jobs*))
+(defun fn2-b-run-cursor-rows-from-counts (transactions reads)
+ (declare (xargs :guard t))
+ (+ (nfix transactions) (* (+ 1 *fn2-b-range-source-cursors*) (nfix reads))
+    *fn2-b-seal-source-cursors* 2))
+(defun fn2-b-checkpoint-source-cursor (profile)
+ (declare (xargs :guard t))
+ (+ (nfix (fn2-profile-t profile)) (* (+ 1 *fn2-b-range-source-cursors*) (fn2-b-read-rows profile))
+    *fn2-b-seal-source-cursors*))
+(defun fn2-b-event-archive-cursor (profile)
+ (declare (xargs :guard t)) (+ 1 (fn2-b-checkpoint-source-cursor profile)))
+(defun fn2-b-run-cursor-rows (profile)
+ (declare (xargs :guard t)) (+ 1 (fn2-b-event-archive-cursor profile)))
+(defun fn2-b-fixed-cursor-rows-p (rows)
+ (declare (xargs :guard t)) (and (natp rows) (<= 2 rows)))
+(defun fn2-b-checkpoint-source-cursor-from-rows (rows)
+ (declare (xargs :guard (fn2-b-fixed-cursor-rows-p rows))) (nfix (- (nfix rows) 2)))
+(defun fn2-b-event-archive-cursor-from-rows (rows)
+ (declare (xargs :guard (fn2-b-fixed-cursor-rows-p rows))) (nfix (- (nfix rows) 1)))
+(defthm fn2-b-checkpoint-source-cursor-from-profile-rows
+ (equal (fn2-b-checkpoint-source-cursor-from-rows (fn2-b-run-cursor-rows profile))
+        (fn2-b-checkpoint-source-cursor profile))
+ :hints (("Goal" :in-theory (enable fn2-b-checkpoint-source-cursor-from-rows fn2-b-run-cursor-rows
+                                  fn2-b-event-archive-cursor fn2-b-checkpoint-source-cursor))))
+(defthm fn2-b-event-archive-cursor-from-profile-rows
+ (equal (fn2-b-event-archive-cursor-from-rows (fn2-b-run-cursor-rows profile))
+        (fn2-b-event-archive-cursor profile))
+ :hints (("Goal" :in-theory (enable fn2-b-event-archive-cursor-from-rows fn2-b-run-cursor-rows
+                                  fn2-b-event-archive-cursor fn2-b-checkpoint-source-cursor))))
+(defthm fn2-b-run-cursor-rows-counts-from-profile
+ (equal (fn2-b-run-cursor-rows-from-counts (fn2-profile-t profile) (fn2-b-read-rows profile))
+        (fn2-b-run-cursor-rows profile))
+ :hints (("Goal" :in-theory (enable fn2-b-run-cursor-rows-from-counts fn2-b-run-cursor-rows
+                                  fn2-b-event-archive-cursor fn2-b-checkpoint-source-cursor))))
+
 (defun fn2-b-upload-windows (profile)
  (declare (xargs :guard t))
  (nfix (fn2-b-capacity :large-upload-windows 16 profile)))
+(defun fn2-b-run-loader-row (cursor profile)
+ (declare (xargs :guard t))
+ (+ 4 (fn2-b-upload-windows profile) (nfix cursor)))
+
 (defun fn2-b-ctl-rows (profile)
  (declare (xargs :guard t))
  (nfix (fn2-b-capacity :control-connections 2 profile)))
 (defun fn2-b-ctl-slot (s profile)
  (declare (xargs :guard t))
- (+ 4 (fn2-b-upload-windows profile) (nfix s)))
+ (+ 4 (fn2-b-upload-windows profile) (nfix s) (fn2-b-run-cursor-rows profile)))
 (defun fn2-b-format-floor (profile)
  (declare (xargs :guard t))
- (+ 9 (fn2-b-upload-windows profile) (fn2-b-ctl-rows profile)))
+ (+ 9 (fn2-b-upload-windows profile) (fn2-b-ctl-rows profile) (fn2-b-run-cursor-rows profile)))
 (defun fn2-b-format-slots (profile)
  (declare (xargs :guard t))
  (fn2-b-capacity :format-slots (fn2-b-format-floor profile) profile))
@@ -187,24 +248,16 @@
 ;; profile's :cns, 0 until fn2-cns serves). D's cursor kind and E's request
 ;; kind take their capacities from these functions.
 (defconst *fn2-b-read-stride* *fn2-b-read-stride-rows*)
-(defun fn2-b-cursor-rows (profile)
- (declare (xargs :guard t))
- (if (fn2-profile-get :reading profile) (nfix (fn2-profile-x profile)) 0))
-(defun fn2-b-cns-rows (profile)
- (declare (xargs :guard t))
- (nfix (fn2-profile-get :cns profile)))
+
+
 ;; the authority rows' (fn2-auth, authority.lisp): the last :authority read
 ;; rows, one per row slot (its capacity is at most this)
-(defun fn2-b-auth-rows (profile)
- (declare (xargs :guard t))
- (nfix (fn2-profile-get :authority profile)))
-(defun fn2-b-read-rows (profile)
- (declare (xargs :guard t))
- (+ (* 2 (fn2-b-cursor-rows profile)) (fn2-b-cns-rows profile) (fn2-b-auth-rows profile)))
-(defthm fn2-b-cursor-rows-natp (natp (fn2-b-cursor-rows profile)) :rule-classes :type-prescription)
-(defthm fn2-b-cns-rows-natp (natp (fn2-b-cns-rows profile)) :rule-classes :type-prescription)
-(defthm fn2-b-auth-rows-natp (natp (fn2-b-auth-rows profile)) :rule-classes :type-prescription)
-(defthm fn2-b-read-rows-natp (natp (fn2-b-read-rows profile)) :rule-classes :type-prescription)
+
+
+
+
+
+
 (defthm fn2-b-read-rows-parts
  (and (<= (* 2 (fn2-b-cursor-rows profile)) (fn2-b-read-rows profile))
       (<= (fn2-b-cns-rows profile) (fn2-b-read-rows profile)))
