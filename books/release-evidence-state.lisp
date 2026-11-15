@@ -4,7 +4,15 @@
 (include-book "alloc-edge-layout")
 (fn2-book-layer :b)
 (defcolumns fn2-release-evidence
- ((live :bool) (journal-epoch :u60) (journal-allocation :u60) (batch :u60)
+ ((live :bool)
+  ; LIVE owns the three physical proof resources until summary substitution.
+  ; PHASE separately records target settlement; SETTLED is never restored as
+  ; an unfinished target merely because proof ownership is still LIVE.
+  (phase (:enum fn2-release-evidence-phase (:empty :claimed :persisted :settled)))
+  (journal-history :u60) (journal-incarnation :u60) (event :u60)
+  (extent :u32) (epoch :u60) (allocation :u60) (retirement :u60)
+  (installation-history :u60) (installation-incarnation :u60)
+  (journal-epoch :u60) (journal-allocation :u60) (batch :u60)
   (candidate :u32) (candidate-bound :bool) (checkpoint :u60) (history :u60) (incarnation :u60)
   (cut-commit :u60) (cut-event :u60) (installation-commit :u60) (installation-event :u60)
   (installation-extent :u32) (installation-epoch :u60) (installation-allocation :u60)

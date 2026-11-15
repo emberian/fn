@@ -13,7 +13,7 @@
   (page-kind :u60) (encoded-length :u60)
   (slot :u32) (gen :u60) (batch :u60) (event :u60)
   (writer-slot :u32) (writer-gen :u60) (member-length :u32) (workspace-released :bool)
-  (journal :u32) (journal-epoch :u60) (journal-allocation :u60) (evidence-owned :bool)
+  (journal :u32) (journal-history :u60) (journal-incarnation :u60) (journal-epoch :u60) (journal-allocation :u60) (evidence-owned :bool)
   (read-phase (:enum fn2-allocation-release-read-phase (:idle :need :wait :loaded :uncertain)))
   (read-slot :u32) (read-gen :u60) (read-unit :u60) (read-epoch :u60) (read-allocation :u60)
   (read-length :u32) (read-pending :bool) (read-op-slot :u32) (read-op-gen :u60)
