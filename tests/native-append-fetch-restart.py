@@ -19,9 +19,18 @@ spec.loader.exec_module(boundary)
 restart = boundary.restart
 
 
+def environment():
+    """One explicit origin for this isolated image and both fresh processes."""
+    env = boundary.environment()
+    env.update(FN2_ORIGIN_LINEAGE="711", FN2_ORIGIN_DOMAIN="712",
+               FN2_ORIGIN_INCARNATION="1", FN2_HISTORY_ID="713",
+               FN2_HISTORY_INCARNATION="1")
+    return env
+
+
 def run_fn(directory, label, *args, expected=0):
     result = subprocess.run([str(ROOT / "fn"), *map(str, args), "--json"], cwd=ROOT,
-                            env=boundary.environment(), capture_output=True, timeout=90)
+                            env=environment(), capture_output=True, timeout=90)
     (directory / f"{label}.stdout").write_bytes(result.stdout)
     (directory / f"{label}.stderr").write_bytes(result.stderr)
     assert result.returncode == expected, (label, result.returncode, result.stderr)
@@ -63,10 +72,10 @@ def main():
         article_path.write_bytes(article)
         submissions.append((mid, article, article_path))
     subprocess.run([str(ROOT / "fn"), "init", str(image), "--size-mb", "32", "--group", "local.test"],
-                   cwd=ROOT, env=boundary.environment(), check=True, timeout=600)
+                   cwd=ROOT, env=environment(), check=True, timeout=600)
     receipts = []
     node = restart.Node(directory, image, "serve", "append", control_sock=control,
-                        env=boundary.environment())
+                        env=environment())
     try:
         node.marker(b"LISTENING-LOCAL ")
         created = run_fn(directory, "principal", "principal", "create", principal, "--control-sock", control)
@@ -92,7 +101,7 @@ def main():
         node.close()
     (directory / "processes.json").write_text(json.dumps(receipts, indent=2) + "\n")
     node = restart.Node(directory, image, "serve", "fetch", control_sock=control,
-                        env=boundary.environment())
+                        env=environment())
     try:
         node.marker(b"LISTENING-LOCAL ")
         for index, ((mid, article, _), accepted) in enumerate(zip(submissions, accepted_articles)):
