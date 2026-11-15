@@ -55,6 +55,15 @@ class Routes(unittest.TestCase):
   a=lr.parse('(:do (c) (fn2-cns-stream-source-issue 1) :accept (:ok) :effects ((:acquire (:operation))))').forms[0]
   b=lr.parse('(:do (c) (fn2-cns-stream-source-issue 1) :accept (:ok) :effects ((:release (:operation))))').forms[0]
   self.assertNotEqual(canon(a),canon(b))
+ def test_transform_preserves_issue_effects(self):
+  case=json.loads((ROOT/'tests/fixtures/cns_source_status_routes.json').read_text())[0]
+  source=case['text'];parsed=lr.parse(source)
+  node=next(n for machine,name,n in r.sites(parsed) if name=='fn2-cns-stream-source-issue')
+  mutant=lr.write(source,[(node.end-1,node.end-1,' :effects ((:acquire (:operation)))')])
+  transformed=r.transform(mutant)
+  self.assertEqual([canon(f) for f in lr.parse(mutant).forms],[canon(f) for f in lr.parse(transformed).forms])
+  updated=next(n for machine,name,n in r.sites(lr.parse(transformed)) if name=='fn2-cns-stream-source-issue')
+  self.assertEqual(canon(r.option(updated,':effects',3)),[[':acquire',[':operation']]])
  def test_actual_return_closure(self):
   from cns_source_status_returns import status_closure
   expected=set(r.codes(lr.parse(r.STEP).forms[0]))
