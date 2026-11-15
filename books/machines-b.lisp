@@ -502,9 +502,19 @@
  :doc "Adopt one arena position into the allocator with its recorded identity.")
 ; Foreground failure cleanup reads the future loan discriminator even though
 ; the public frozen-admission gate excludes future lease mutations here.
-(defcost fn2-commit-admit-txn :child fn2-commit-admit-txn-child :answers (:ok :exhausted :admission) :bytes 4096
+(defcost fn2-commit-admit-txn :child fn2-commit-admit-txn-child :answers (:ok :exhausted :admission :uncertain) :bytes 4096
  :tables (fn2-core-checkpoint-future fn2-core-checkpoint-future-windows fn2-core-commit-members fn2-core-commit-settled fn2-core-commit-root fn2-core-fields fn2-core-pool)
  :doc "B-S2: admit a transaction member's workspace to a commit batch; (mv code batch event).")
+ ; Complete actual typed admission footprint, including real START and its
+ ; exact failure/unwind paths. C provenance tables are readonly; no broad B
+ ; layer footprint or unimplemented child surrogate supplies authority.
+(defcost fn2-commit-admit-successor :answers (:ok :exhausted :admission :uncertain) :bytes 4096
+ :tables (fn2-commit-table fn2-core-machines fn2-core-control fn2-core-sched
+          fn2-core-commit-io fn2-core-commit-members fn2-core-commit-settled fn2-core-commit-root
+          fn2-core-fields fn2-core-pool fn2-core-extents
+          fn2-core-checkpoint-future fn2-core-checkpoint-future-windows fn2-core-checkpoint-construction
+          fn2-core-succ-txns fn2-core-id-engine)
+ :doc "Authenticate actual LIVE EMIT and idle binder, admit its actual B member and register exact pending C binding before yielding.")
 (defcost fn2-commit-take :child fn2-cs-take :answers (:ok :pending :none) :tables (fn2-core-commit-settled)
  :doc "B-S2: the owner's settled outcome; (mv code batch event outcome).")
 (defcost fn2-commit-txn-source :answers (:ok :none :bounds) :tables (fn2-core-fields fn2-core-pool)
