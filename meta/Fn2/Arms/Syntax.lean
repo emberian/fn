@@ -7,6 +7,8 @@ public import Fn2.ACL2.Val
 namespace Fn2.Arms.Syntax
 open Fn2.ACL2
 
+deriving instance DecidableEq for Except
+
 /-- The declaration reader has its own syntax alphabet. Data symbols are never
 unqualified: this projection visits only positions designated by the grammar.
 The name environment makes the projection injective on the names it uses. -/
@@ -248,7 +250,7 @@ theorem expansionAgrees_sound {fuel : Nat} {word expansion : Val}
       | error err => simp [expansionAgrees, hw, he, hr] at h
       | ok result =>
         have same : result = e.toList := by simpa [expansionAgrees, hw, he, hr] using h
-        exact ⟨w, e, hw, he, same ▸ hr⟩
+        exact ⟨w, e, rfl, rfl, same ▸ hr⟩
 
 end Fn2.Arms.Syntax
 

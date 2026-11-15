@@ -273,7 +273,7 @@ structure ArmDecl where
   onRefusal : List Step
   steps : List Step
 
-def Arm.read (a : Arm) : Except String ArmDecl := do
+def Arm.readSyntax (a : Arm) (declSyntax : Val) : Except String ArmDecl := do
   let rec opts : Val → Except String (List String × Val × Val)
     | .cons (.sym ":FROM") (.cons f rest) => do
       let (_, r, ss) ← opts rest
@@ -282,7 +282,6 @@ def Arm.read (a : Arm) : Except String ArmDecl := do
       let (fr, _, ss) ← opts rest
       pure (fr, r, ss)
     | ss => pure ([], Val.nil, ss)
-  let declSyntax ← Syntax.readDeclaration readDepth a.decl
   let (fr, r, ss) ← opts declSyntax
   -- `:on-refusal` takes one step or a list of steps: a bare step (its head a keyword) is a list of
   -- one (`fn2-arms-norm-refusal`)
@@ -291,6 +290,19 @@ def Arm.read (a : Arm) : Except String ArmDecl := do
     | _ => r
   let cc := { a.commit with tag := if a.commit.tag == "" then a.tag else a.commit.tag }
   pure ⟨fr, ← readSteps a.refuse cc r, ← readSteps a.refuse cc ss⟩
+
+/-- Canonical declaration data is projected once before the existing reader. -/
+def Arm.read (a : Arm) : Except String ArmDecl := do
+  let declSyntax ← Syntax.readDeclaration readDepth a.decl
+  a.readSyntax declSyntax
+
+/-- Isolate the checked projection from internal syntax evaluation. -/
+theorem Arm.read_of_projection_by_definition {a : Arm} {declSyntax : Val} {parsed : ArmDecl}
+    (projected : Syntax.readDeclaration readDepth a.decl = .ok declSyntax)
+    (read : a.readSyntax declSyntax = .ok parsed) : a.read = .ok parsed := by
+  unfold Arm.read
+  rw [projected]
+  exact read
 
 /-- A column's carrier, for the checked write: an unsigned width, or an enum's tag count. -/
 inductive ColType

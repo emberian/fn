@@ -2,6 +2,7 @@ module
 
 public import Fn2.Arms
 public import Fn2.ArmsLemmas
+import all Fn2.Arms.Syntax
 import all Init.Data.String.Basic
 import all Init.Data.String.Slice
 import all Init.Data.String.TakeDrop
@@ -908,7 +909,7 @@ def pw3EchoKind : Kind :=
         sig := some ⟨["FN2-ECHO", "FN2-MACHINES", "FN2-CONTROL"],
                      ["FN2-ECHO", "FN2-MACHINES", "FN2-CONTROL"], 4⟩
         decl := Val.ofList [
-          Val.ofList [.sym ":SET", Val.ofList [.sym "OFF", .int 0]],
+          Val.ofList [.sym ":SET", Val.ofList [.sym "ACL2::OFF", .int 0]],
           Val.ofList [.sym ":NEXT", .sym ":REPLY"],
           Val.ofList [.sym ":CHARGE", .sym ":BYTES", .int 64, .sym ":STEPS", .int 2, .sym ":RUNNABLE", Val.t]
         ]
@@ -953,7 +954,7 @@ def pw3ListenerKind : Kind :=
         sig := some ⟨["FN2-LISTENER", "FN2-MACHINES", "FN2-CONTROL"],
                      ["FN2-LISTENER", "FN2-MACHINES", "FN2-CONTROL"], 1⟩
         decl := Val.ofList [
-          Val.ofList [.sym ":SET", Val.ofList [.sym "EVENT-READY", .int 0]],
+          Val.ofList [.sym ":SET", Val.ofList [.sym "ACL2::EVENT-READY", .int 0]],
           Val.ofList [.sym ":NEXT", .sym ":ACCEPTING"],
           Val.ofList [.sym ":WAKE"]
         ]
@@ -980,7 +981,7 @@ def pw3ScribeKind : Kind :=
         sig := some ⟨["FN2-SCRIBE", "FN2-MACHINES", "FN2-CONTROL"],
                      ["FN2-SCRIBE", "FN2-MACHINES", "FN2-CONTROL"], 4⟩
         decl := Val.ofList [
-          Val.ofList [.sym ":SET", Val.ofList [.sym "STOPPED", .int 1], Val.ofList [.sym "EVENT-READY", .int 0]],
+          Val.ofList [.sym ":SET", Val.ofList [.sym "ACL2::STOPPED", .int 1], Val.ofList [.sym "ACL2::EVENT-READY", .int 0]],
           Val.ofList [.sym ":NEXT", .sym ":STOPPED"],
           Val.ofList [.sym ":CHARGE", .sym ":STEPS", .int 4]
         ]
@@ -1148,28 +1149,51 @@ def pw3Guard (fn : String) (args : List Val) : Option Val :=
 @[simp] private theorem readNext_scribe_stopped :
     readNext pw3World pw3ScribeKind (.sym ":STOPPED") = .ok (.quote (.int 5)) := rfl
 
+
 private theorem pw3EchoCommandArm_read :
     pw3EchoCommandArm.read =
       .ok { from_ := [], onRefusal := [],
             steps := [.set [("OFF", .int 0)], .next (.sym ":REPLY"),
-                      .charge (some (.int 64)) (some (.int 2)) none (some (.sym "T"))] } := rfl
+                      .charge (some (.int 64)) (some (.int 2)) none (some (.sym "T"))] }  := by
+  have projected : Syntax.readDeclaration readDepth pw3EchoCommandArm.decl =
+      .ok (Val.ofList [
+        Val.ofList [.sym ":SET", Val.ofList [.sym "OFF", .int 0]],
+        Val.ofList [.sym ":NEXT", .sym ":REPLY"],
+        Val.ofList [.sym ":CHARGE", .sym ":BYTES", .int 64,
+          .sym ":STEPS", .int 2, .sym ":RUNNABLE", Val.t]]) := by decide +kernel
+  exact Arm.read_of_projection_by_definition projected rfl
 
 private theorem pw3EchoCloseResultArm_read :
     pw3EchoCloseResultArm.read =
       .ok { from_ := [], onRefusal := [],
-            steps := [.next (.sym ":DRAINING"), .wake] } := rfl
+            steps := [.next (.sym ":DRAINING"), .wake] }  := by
+  have projected : Syntax.readDeclaration readDepth pw3EchoCloseResultArm.decl =
+      .ok (Val.ofList [Val.ofList [.sym ":NEXT", .sym ":DRAINING"], Val.ofList [.sym ":WAKE"]]) := by decide +kernel
+  exact Arm.read_of_projection_by_definition projected rfl
 
 private theorem pw3ListenerCloseResultArm_read :
     pw3ListenerCloseResultArm.read =
       .ok { from_ := [], onRefusal := [],
-            steps := [.set [("EVENT-READY", .int 0)], .next (.sym ":ACCEPTING"), .wake] } := rfl
+            steps := [.set [("EVENT-READY", .int 0)], .next (.sym ":ACCEPTING"), .wake] }  := by
+  have projected : Syntax.readDeclaration readDepth pw3ListenerCloseResultArm.decl =
+      .ok (Val.ofList [
+        Val.ofList [.sym ":SET", Val.ofList [.sym "EVENT-READY", .int 0]],
+        Val.ofList [.sym ":NEXT", .sym ":ACCEPTING"], Val.ofList [.sym ":WAKE"]]) := by decide +kernel
+  exact Arm.read_of_projection_by_definition projected rfl
 
 private theorem pw3ScribeStopSubarm_read :
     pw3ScribeStopSubarm.read =
       .ok { from_ := [], onRefusal := [],
             steps := [.set [("STOPPED", .int 1), ("EVENT-READY", .int 0)],
                       .next (.sym ":STOPPED"),
-                      .charge none (some (.int 4)) none none] } := rfl
+                      .charge none (some (.int 4)) none none] }  := by
+  have projected : Syntax.readDeclaration readDepth pw3ScribeStopSubarm.decl =
+      .ok (Val.ofList [
+        Val.ofList [.sym ":SET", Val.ofList [.sym "STOPPED", .int 1],
+          Val.ofList [.sym "EVENT-READY", .int 0]],
+        Val.ofList [.sym ":NEXT", .sym ":STOPPED"],
+        Val.ofList [.sym ":CHARGE", .sym ":STEPS", .int 4]]) := by decide +kernel
+  exact Arm.read_of_projection_by_definition projected rfl
 
 private theorem except_bind_assoc {ε α β γ : Type} (m : Except ε α)
     (f : α → Except ε β) (g : β → Except ε γ) :

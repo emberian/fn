@@ -65,6 +65,15 @@ def canonical_nil(x):
             list(map(str, x[2])) == list(map(str, map(ord, 'NIL'))))
 
 
+def canonical_list(elements):
+    """Construct a canonical proper list without dropping symbol packages."""
+    tail = List([Atom(':SYMBOL'), List(map(Atom, map(str, map(ord, 'COMMON-LISP')))),
+                 List(map(Atom, map(str, map(ord, 'NIL'))))])
+    for element in reversed(elements):
+        tail = List([Atom(':CONS'), element, tail])
+    return tail
+
+
 def object_list(x):
     """Project an exact canonical list without decoding its elements."""
     result = []

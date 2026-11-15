@@ -514,36 +514,55 @@ unconditional `emitted_eq_native` proves that local substitution for arbitrary
 Val inputs; no unsupported symbol-key premise is inserted. This is not yet a
 canonical primitive correspondence or an ACL2-to-served behavior theorem.
 
-Seven direct Python controls pass, including same-ABI selector redirection,
-package alias, disconnected helper, wrong ABI and missing MEMBER site. These
-packets are synthetic controls. The current served packet, generated Lean
-checking and current-world qualification remain pending the sole shared world.
-A logical call graph path is not a reachability proof. Canonical equality still
-requires a package-preserving input domain: the current Val symbol presentation
-can conflate a keyword with an ACL2 symbol whose name begins with a colon.
-Neither selection qualification nor the all-Val helper equation discharges that
-premise or the full extraction-keystone evidence package above.
+Nine direct Python controls pass for the selector/context proposal, including
+same-ABI redirection, package aliases, disconnected helper, and nonliteral
+MEMBER arguments. These are synthetic packet controls. The actual attached CNS
+packet and generated helper proof still await the sole shared admitted world.
 
-The symbol-data repair now uses fixed, disjoint encodings for the existing
-three-package subset: KEYWORD names retain `:`; COMMON-LISP NIL/T retain their
-truth values; other COMMON-LISP and ACL2 names carry their fixed package prefix.
-`Object.symbolValue?` accepts only when a deterministic inverse reconstructs the
-exact original object. `symbol_value_roundtrip` and
-`object_value_symbol_roundtrip` supply the injectivity needed by the original
-symbol-first EQUAL domain, without narrowing the caller to convenient keywords.
-`PrimitiveSymbols.symbol_equal_correspondence` is a source proposal for that
-primitive join. The old name-adapter collision, repaired equality, NIL package
-separation and embedded-separator cases are explicit Lean controls. These new
-Lean statements have not yet been kernel checked.
+The former symbol-data adapter conflated KEYWORD SIZE with ACL2 `:SIZE`.
+The repair uses fixed disjoint encodings for the existing three-package subset
+and accepts a symbolic value only when its deterministic inverse reconstructs
+the exact canonical object. COMMON-LISP NIL/T retain their truth behavior.
+`PrimitiveSymbols.symbol_equal_correspondence` covers **either** symbolic
+argument: actual MEMBER compares arbitrary RC first with a keyword element
+second. No RC-symbol hypothesis is inserted.
 
-The legacy world printer now carries actual symbol home-package metadata into
-literal emission; canonical decoding retains the same metadata. Only actual
-COMMON-LISP NIL terminates canonical lists, including dotted tails containing
-an ACL2 symbol named NIL. Python controls pass, including the real SBCL metadata
-printer helper. Syntactic identifiers remain separate from symbol data. The
-quoted arm-declaration syntax readers and served tuple emitter need the same
-explicit distinction; their migration is in progress. Existing generated bodies
-with unqualified nonkeyword data need regeneration and exact-body checking;
-no compatibility or qualification of those old bodies is claimed. Actual CNS
-PUT-ANSWER uses keyword literals, so its generated local MEMBER equation remains
-the selected consumer for the shared attached-world packet gate.
+**Qualified foundation scope:** nine local Lean modules at
+`fb4daf6bc11633b202052c94e35fd27aa5827cf0`, receipt
+`/tmp/symbol-foundation-qualified9-receipt.json`, including inverse/injectivity,
+either-side EQUAL, actual collision, NIL and separator controls. Axiom censuses
+contain only propext, Classical.choice and Quot.sound. Compiler SHA256
+`3e0d0d3d801675359f2d4cf9815bfdb417b20b92fdd9d48b3b14c95bbae28bbf`;
+log SHA256 `d7b293364d59895871d2c3f4264e4dee421c69a127287b342d44349e7e668ac5`.
+This excludes the later declaration syntax migration and generated app world.
+
+**Unfinished syntax scope:** the coherent eleven-module migration is not
+qualified. Its new projection and nine control examples passed a bounded author
+probe, but four unchanged Pathway fixture read equations still need a checked
+projection boundary before internal-reader reduction. The source now separates
+`Arm.readSyntax` from `Arm.read` and proposes exact concrete projection lemmas;
+this repair has not yet been checked. No compatibility fallback accepts old
+unqualified external declaration names. Existing generated bodies with
+nonkeyword data must be regenerated from actual package-preserving literals.
+
+The printer retains actual home packages; canonical emission preserves them and
+recognizes only real COMMON-LISP NIL as a list terminator. Annotated dot symbols
+remain data rather than dotted-tail syntax. Typed declaration projection keeps
+QUOTE payloads and CASE keys unchanged and rejects noninjective syntax-name
+mappings. The tuple emitter distinguishes symbol data from syntactic identifiers.
+
+**Remaining served obligation:** qualify the actual RUN-STUB selection of RUN,
+its live body/guard/measure/ABI closure and the PUT-ITEM → PUT-ANSWER call; bind
+both canonical operands to the actual RC producer and each reached literal
+MEMBER element, then compose the full caller domain and selected attachment.
+Val-only comparison-domain facts and a logical call-graph path do not supply
+that canonical pair correspondence or reachability. The generated helper context
+equation is still a proposal until checked against the actual packet. Full
+extraction assurance remains open with whole-antecedent/removal evidence owed.
+
+Separately, the six actual translation-validation checker macros now return
+uniform error triples. Exact two-book record
+`certify-20261115T142111Z-1430148` at source `8663207f25c0743d06a667256c5340544aa51f61`
+checks live fn2-tv-codes identity, body-only mutation and actual macro refusals;
+receipt `/tmp/translation-macro-qualified2-receipt.json`. This tooling gate has no
+application or served packet dependency and does not enlarge the scope above.

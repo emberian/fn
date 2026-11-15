@@ -42,6 +42,7 @@ class ServedSelection(unittest.TestCase):
         self.assertIn('(fn2-tv-attachment \'fn2-cns-run-stub (w state))', text)
         self.assertEqual(text.count('(fn2-tv-check-function '), 5)
         self.assertIn('fn2-tv-closed-functions', text)
+        self.assertIn('(equal (fn2-tv-object *fn2-tv-native-boundary*)', text)
         self.assertIn('no guard, primitive, or served-behavior discharge', text)
 
     def test_context_uses_actual_body_and_unconditional_member_bridge(self):

@@ -159,12 +159,13 @@ def closed_member_book(src, roots, output, *, snapshot=None):
   (if (and (consp roots) (no-duplicatesp-eq roots)
            (no-duplicatesp-eq names) (subsetp-eq roots names)
            (no-duplicatesp-eq natives)
+           (equal (fn2-tv-object *fn2-tv-native-boundary*) '%s)
            (subsetp-eq natives *fn2-tv-native-boundary*)
            (subsetp-eq *fn2-tv-native-boundary* natives)
            (fn2-tv-closed-functions names (append names natives) (w state)))
       (value '(value-triple :scoped-export-identity-and-closure))
     (er soft 'scoped-core-export "Missing root/callee or changed native boundary."))))""" %
-                 (names, '(' + ' '.join(roots) + ')', natives))
+                 (names, '(' + ' '.join(roots) + ')', natives, canonical_text(canonical_list(p[':NATIVES']))))
     return '\n\n'.join(lines) + '\n'
 
 

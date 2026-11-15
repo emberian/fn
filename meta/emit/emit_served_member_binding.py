@@ -10,7 +10,7 @@ from pathlib import Path
 import argparse
 import os
 from emit_certificate import (Atom, List, fields, read_canonical, canonical_text,
-                              decode, fn_of, calls_of, show, as_list, shallow, ident, lean_object, term, canonical_nil, is_lambda, val)
+                              decode, fn_of, calls_of, show, as_list, shallow, ident, lean_object, term, canonical_nil, is_lambda, val, canonical_list)
 
 STUB = 'FN2-CNS-RUN-STUB'
 RUN = 'FN2-CNS-RUN'
@@ -101,12 +101,13 @@ def qualification_book(snapshot, output):
  (if (and (equal (fn2-tv-attachment 'fn2-cns-run-stub (w state))
                  '(fn2-cns-run-stub . fn2-cns-run))
           (no-duplicatesp-eq '%s)
+          (equal (fn2-tv-object *fn2-tv-native-boundary*) '%s)
           (subsetp-eq '%s *fn2-tv-native-boundary*)
           (subsetp-eq *fn2-tv-native-boundary* '%s)
           (fn2-tv-closed-functions '%s (append '%s '%s) (w state)))
      (value '(value-triple :cns-selected-records-bound))
    (er soft 'cns-selected-records "Selector or canonical closure differs.")))""" %
-                 (natives, natives, natives, names, names, natives))
+                 (natives, canonical_text(canonical_list(p[':NATIVES'])), natives, natives, names, names, natives))
     return '\n\n'.join(lines) + '\n'
 
 
