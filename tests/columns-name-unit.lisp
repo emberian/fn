@@ -6,16 +6,14 @@
 ; a defstobj or trying either of the incompatible raw-NTH facts.
 (assert-event
  (equal
-  (fn2-columns-duplicate-name
+  (fn2-columns-event-list-conflict
    (append
-    (fn2-columns-event-list-names
-     (fn2-columns-accessor-events 'fn2-name-control '((credit-nonce :u60)) 0 1))
-    (fn2-columns-event-list-names
-     (fn2-columns-all-field-facts
+    (fn2-columns-accessor-events 'fn2-name-control '((credit-nonce :u60)) 0 1)
+    (fn2-columns-all-field-facts
       'fn2-name-control
       '((fn2-name-control-credit-nonce
          :type (array (unsigned-byte 60) (0)) :initially 0 :resizable t))
-      2 nil))))
+      2 nil)))
   'fn2-name-control-credit-nonce-raw-nth-natp))
 
 (must-fail
@@ -38,11 +36,23 @@
 (assert-event (fn2-decl-row '(:columns fn2-name-control-valid) (w state)))
 
 (assert-event
- (equal (fn2-columns-event-list-names
-          '((local (defthm a '(defun ignored)))
-            (encapsulate () (progn (defun b (x) x)))
-            (in-theory (disable a))))
-        '(a b)))
+ (not (fn2-columns-event-list-conflict
+       '((encapsulate () (local (defun shared-local (x) x)))
+         (encapsulate () (local (defun shared-local (x) (cons x x))))))))
+(encapsulate () (local (defun fn2-name-control-local (x) x)))
+(encapsulate () (local (defun fn2-name-control-local (x) (cons x x))))
+
+; The unchecked generator emitted these same redundant enum events. Admit
+; the actual declaration to preserve that established declaration language.
+(defcolumns fn2-name-control-shared
+ ((a (:enum fn2-name-control-enum (:x :y)))
+  (b (:enum fn2-name-control-enum (:x :y)))) :rows-bound 8)
+(must-fail
+ (defcolumns fn2-name-control-enum-conflict
+  ((a (:enum fn2-name-control-other-enum (:x :y)))
+   (b (:enum fn2-name-control-other-enum (:x :z)))) :rows-bound 8)
+ :expected :soft :with-output-off nil :check-expansion t)
+
 ; A declaration with distinct emitted names is handed to the same registry
 ; without any modification of its payload, requirements, or event forms.
 (assert-event

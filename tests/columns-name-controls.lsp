@@ -47,12 +47,27 @@
 (refused (lambda () (emit '((value :u8)) nil 'fn2-p-value)) "FN2-P-VALUE")
 ; Enum names are emitted too; distinct row fields can share an enum namespace.
 (refused (lambda () (emit '((a (:enum shared (:x :y)))
-                            (b (:enum shared (:x :y)))) nil)) "*SHARED-COUNT*")
-; Wrapper traversal sees names but does not scan quoted terms or proof hints.
-(assert (equal (fn2-columns-event-list-names
+                            (b (:enum shared (:x :z)))) nil)) "SHARED-CODE->KEYWORD")
+; Wrapper traversal checks local definitions without scanning quoted terms.
+(assert (eq (fn2-columns-event-list-conflict
  '((local (defthm a '(defun ignored)))
-   (encapsulate () (progn (defun b (x) x)))
-   (in-theory (disable a)))) '(a b)))
+   (progn (defthm a '(defun changed))))) 'a))
+; Redundant identical emitted definitions and disjoint local scopes are valid.
+(assert (not (fn2-columns-event-list-conflict
+ '((defconst *same* 2) (defconst *same* 2)))))
+(assert (not (fn2-columns-event-list-conflict
+ '((encapsulate () (local (defun shared-local (x) x)))
+   (encapsulate () (local (defun shared-local (x) (cons x x))))))))
+(assert (eq (fn2-columns-event-list-conflict
+ '((encapsulate () (local (defun shared-local (x) x))
+                    (local (defun shared-local (x) (cons x x))))))
+ 'shared-local))
+(assert (eq (fn2-columns-event-list-conflict
+ '((encapsulate () (defun exported (x) x))
+   (encapsulate () (defun exported (x) (cons x x))))) 'exported))
+; This was a valid unchecked-generator output, including repeated enum events.
+(assert (emit '((a (:enum shared (:x :y)))
+                (b (:enum shared (:x :y)))) nil))
 ; Valid output is exactly the previous registry invocation, not rewritten.
 (let* ((cols '((credit-nonce :u60)))
        (extras '((fn2-p-credit-group-nonce :type (array (unsigned-byte 60) (0))

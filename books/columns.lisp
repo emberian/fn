@@ -867,38 +867,65 @@
              (declare (xargs :guard t)) (nth ,index (true-list-fix record)))
           (fn2-columns-record-readers name (cdr cols) (+ 1 (nfix index))))))
 
-; Inspect the events actually emitted, including local facts and wrapper
-; progns. Separate naming recipes drift when a new generated fact is added.
-; Implicit defstobj function names remain subject to ACL2 admission checks.
+; Compare actual emitted definitions, allowing ACL2's redundant identical
+; events. Local definitions belong to their enclosing encapsulate; they do
+; not escape into sibling scopes. Implicit defstobj names stay ACL2's check.
 (mutual-recursion
- (defun fn2-columns-event-names (event)
+ (defun fn2-columns-event-definitions (event include-local)
   (declare (xargs :verify-guards nil))
   (case (car event)
-    (local (fn2-columns-event-names (cadr event)))
-    (encapsulate (fn2-columns-event-list-names (cddr event)))
-    (progn (fn2-columns-event-list-names (cdr event)))
-    ((defun defun-nx defmacro defconst defthm defthmd defstobj)
-     (list (cadr event)))
+    (local (and include-local
+                (fn2-columns-event-definitions (cadr event) t)))
+    (encapsulate (fn2-columns-event-list-definitions (cddr event) nil))
+    (progn (fn2-columns-event-list-definitions (cdr event) include-local))
+    ((defun defun-nx defmacro defconst defthm defthmd defstobj) (list event))
     (otherwise nil)))
- (defun fn2-columns-event-list-names (events)
+ (defun fn2-columns-event-list-definitions (events include-local)
   (declare (xargs :verify-guards nil))
   (if (atom events) nil
-    (append (fn2-columns-event-names (car events))
-            (fn2-columns-event-list-names (cdr events))))))
+    (append (fn2-columns-event-definitions (car events) include-local)
+            (fn2-columns-event-list-definitions (cdr events) include-local)))))
 
-(defun fn2-columns-duplicate-name (names)
+(defun fn2-columns-definition-conflict (event definitions)
   (declare (xargs :verify-guards nil))
-  (if (atom names) nil
-    (if (member-eq (car names) (cdr names)) (car names)
-      (fn2-columns-duplicate-name (cdr names)))))
+  (if (atom definitions) nil
+    (if (and (eq (cadr event) (cadar definitions))
+             (not (equal event (car definitions))))
+        (cadr event)
+      (fn2-columns-definition-conflict event (cdr definitions)))))
+
+(defun fn2-columns-definition-list-conflict (definitions)
+  (declare (xargs :verify-guards nil))
+  (if (atom definitions) nil
+    (or (fn2-columns-definition-conflict (car definitions) (cdr definitions))
+        (fn2-columns-definition-list-conflict (cdr definitions)))))
+
+(mutual-recursion
+ (defun fn2-columns-event-conflict (event)
+  (declare (xargs :verify-guards nil :measure (* 2 (acl2-count event))))
+  (case (car event)
+    (local (fn2-columns-event-conflict (cadr event)))
+    (encapsulate (fn2-columns-event-list-conflict (cddr event)))
+    (progn (fn2-columns-event-list-conflict (cdr event)))
+    (otherwise nil)))
+ (defun fn2-columns-nested-conflict (events)
+  (declare (xargs :verify-guards nil :measure (* 2 (acl2-count events))))
+  (if (atom events) nil
+    (or (fn2-columns-event-conflict (car events))
+        (fn2-columns-nested-conflict (cdr events)))))
+ (defun fn2-columns-event-list-conflict (events)
+  (declare (xargs :verify-guards nil :measure (+ 1 (* 2 (acl2-count events)))))
+  (or (fn2-columns-definition-list-conflict
+       (fn2-columns-event-list-definitions events t))
+      (fn2-columns-nested-conflict events))))
 
 (defun fn2-columns-declare (id payload requires events)
   (declare (xargs :verify-guards nil))
-  (let ((names (fn2-columns-event-list-names events)))
-    (if (no-duplicatesp-eq names)
-        (fn2-declare id payload requires events)
-      (er hard 'defcolumns "Duplicate emitted name in ~x0: ~x1."
-          id (fn2-columns-duplicate-name names)))))
+  (let ((conflict (fn2-columns-event-list-conflict events)))
+    (if conflict
+        (er hard 'defcolumns "Conflicting emitted definitions in ~x0: ~x1."
+            id conflict)
+      (fn2-declare id payload requires events))))
 
 (defun fn2-columns-events (name cols bound extras init-name put-policy)
   (declare (xargs :guard t :verify-guards nil))
