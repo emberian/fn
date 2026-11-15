@@ -1334,7 +1334,15 @@
              :in-theory (e/d (fn2-pool-class-okp)
                              (fn2-pool-class-okp-of-accounts no-duplicatesp-equal subsetp-equal))
              :cases ((equal class c2))
-             :use (fn2-pool-nclasses-at-most-16
+             :use ((:instance fn2-pool-subsetp-cdr-remove
+                              (l (fn2-pool-free-chain (fn2-pool-rows fn2-pool)
+                                   (fn2-pool-class-headsi class fn2-pool) fn2-pool))
+                              (f (fn2-pool-free-slots (fn2-pool-rows fn2-pool) class fn2-pool)))
+                   (:instance fn2-pool-remove-subsetp-cdr
+                              (l (fn2-pool-free-chain (fn2-pool-rows fn2-pool)
+                                   (fn2-pool-class-headsi class fn2-pool) fn2-pool))
+                              (f (fn2-pool-free-slots (fn2-pool-rows fn2-pool) class fn2-pool)))
+                   fn2-pool-nclasses-at-most-16
                    (:instance fn2-pool-class-headsi-type (c class))
                    (:instance fn2-pool-class-headsi-type (c c2))
                    (:instance fn2-pool-class-countsi-type (c class))
