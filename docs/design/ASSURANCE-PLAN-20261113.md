@@ -68,8 +68,11 @@ The same record covers the column generator's RAW-ROWS opacity hint, but does
 not establish its CNS-edge consumer: the twenty-book author run admitted
 operations, columns, profile and trace, then exhausted the unchanged two-million
 step budget in pool's original conservation encapsulate. No full application
-or native claim follows. Pool's local credit/owner selector opacity repair is
-prepared for the next narrow run; the original proof block and cap stay intact.
+or native claim follows. Pool's local credit/owner selector opacity repair reduced the author attempt
+from exhaustion at two million steps to 474,224 steps, then refused
+RESERVE-CLASS-OKP on missing public selector typing facts. The revised candidate
+`9db8e27b` supplies those facts and separates the observed/reserved class cases;
+its next gate is pending. The original proof block and cap stay intact.
 
 Physical address geometry remains an executable blocker. `fe9f761ab` repairs
 POST's root location from three units per extent to the physical sixteen, with
@@ -77,10 +80,30 @@ an unexecuted nonzero-extent constructor control. Root also traced the same
 mismatch through manifest production and settlement: the upload callback writes
 at `extent-bytes * cext` but encodes block-entry locations as `3 * cext + offset`,
 and `fn2-upload-manifest-extents` recovers the extent by dividing by three.
-The actual storage reader divides physical units by sixteen. Reclamation owns
-the complete encode/decode repair and a nonzero-extent manifest/settlement
-control. Three-block write grouping is a distinct concept and must remain three;
-the POST-only repair does not close this class.
+The actual storage reader divides physical units by sixteen. The coherent
+source repair `dfc12386f` now covers emission, settlement and recovery; its
+nonzero-extent encoder/decoder, leader/nonleader settlement, stale-epoch refusal
+and recovery-entry controls are staged in the successor. Six focused source
+controls across this repair and the threshold correction pass independently;
+ACL2 execution and the complete served path remain owed. The POST-only repair
+does not close this class.
+
+Candidate `0943d496f` selects manifests above 12,288 stored bytes, the actual
+three-unit raw hash-vector capacity, instead of above the 65,536-byte physical
+extent capacity. It preserves the configured article maximum and bounded work;
+it does not enable rolling upload beyond the current two chunks. Three-unit
+raw commitments and the three-unit manifest-root budget are distinct from
+payload grouping. Source review found no requirement for grouping only three
+manifest payload blocks in a sixteen-unit extent. A separate capacity repair
+will use the physical extent capacity with sixteenth/seventeenth-block controls;
+it must not silently change the already staged physical-stride packet.
+
+The input framing path also needs a concrete coalescing repair: a receive can
+contain REGISTER plus a prefix of APPEND, but the current full-frame opener
+refuses bytes beyond the first declared frame. Native is implementing a fixed
+header receive followed by reads bounded by the generated ACL2 remaining-length
+decision. The existing coalesced actor fixture must remain; CLI requests sent
+one at a time do not establish this property.
 
 Outbound composition is still unfinished. Native and CNS owners agreed that
 closing first stops new reads, then waits for outstanding sends/borrows to
