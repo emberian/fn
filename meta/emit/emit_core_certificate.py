@@ -72,6 +72,7 @@ def inspect_core_certificate(src, roots=None):
         p=fields(read_canonical(source.read())[1:])
     if as_list(p[':REFUSED']):raise ValueError('unresolved export roots')
     allfs=[fn_of(r) for r in p[':FUNCTIONS']]; allf={f.name:(f,d) for f,d in allfs}
+    if len(allf) != len(allfs):raise ValueError('duplicate decoded canonical function subject')
     want=set();active=[]
     def visit(n):
         if n in NATIVE or n in SPECIAL:return
@@ -103,6 +104,50 @@ def inspect_core_certificate(src, roots=None):
     for r in ['FN2-CNS-ROWS','FN2-MACHINES-ROWS','FN2-MACHINE-SLOT','FN2-CONTROL-RECORD-STOP']:visit(r)
     fs=[(f,d)for f,d in allfs if f.name in want]
     return p,fs,allf,want,kd
+
+MEMBER_DEFINITIONS = {
+    'NOT': 'notDefinition', 'ATOM': 'atomDefinition', 'ENDP': 'endpDefinition',
+    'EQ': 'eqDefinition', 'MEMBER-EQ-EXEC': 'memberDefinition',
+}
+
+
+def closed_member_source(src, roots):
+    """Propose an exact-record recursive consumer; domain premises stay explicit.
+
+    This is a Lean proposal, not packet qualification or a discharge of caller
+    guards, primitive correspondence, selected attachments, or MBE equivalence.
+    """
+    _, fs, _, names, _ = inspect_core_certificate(src, roots)
+    missing = set(MEMBER_DEFINITIONS) - names
+    if missing:
+        raise ValueError('member closure missing: ' + ', '.join(sorted(missing)))
+    lines = ['module', 'public import Fn2.ACL2.MemberExecEvaluation',
+             '@[expose] public section', 'namespace Fn2.Instances.CoreCanonical',
+             'open Fn2.ACL2 Fn2.ACL2.Translation',
+             'def program : CanonicalProgram']
+    for f, d in fs:
+        fuel = 32 if f.name in MEMBER_DEFINITIONS else 512
+        formals = '[' + ', '.join(lean_str(a) for a in f.formals) + ']'
+        lines.append('  | ' + lean_str(f.name) + ' => some ⟨' + formals + ', ' +
+                     lean_object(d[':LOGICAL-BODY']) + ', ' + str(fuel) + '⟩')
+    lines += ['  | _ => none',
+              'theorem member_records : ∀ name definition,',
+              '    MemberExecEvaluation.program name = some definition →',
+              '    program name = some definition := by',
+              '  apply MemberExecEvaluation.program_extension_of_lookups',
+              *['  · rfl' for _ in MEMBER_DEFINITIONS],
+              'theorem member_closed (domain primitiveDomain : CallDomain)',
+              '    (calls : ∀ name values, MemberExecEvaluation.domain name values → domain name values)',
+              '    (primitives : ∀ name values, MemberExecEvaluation.primitiveDomain name values → primitiveDomain name values)',
+              '    (key : String) (xs : List Val) :',
+              '    CanonicalExportEval program domain primitiveDomain "MEMBER-EQ-EXEC"',
+              '      [.sym key, Val.ofList xs]',
+              '      (LayerAWorld.«MEMBER-EQ-EXEC» (.sym key) (Val.ofList xs)) :=',
+              '  MemberExecEvaluation.closed_in_program member_records calls primitives key xs',
+              '#print axioms member_records', '#print axioms member_closed',
+              'end Fn2.Instances.CoreCanonical', 'end', '']
+    return '\n'.join(lines)
+
 
 def main(src):
     p,fs,allf,want,kd=inspect_core_certificate(src)
@@ -217,9 +262,17 @@ def cli(argv=None):
     import argparse
     parser=argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--inspect', action='store_true', help='inspect the selected closure without writing artifacts')
+    parser.add_argument('--closed-member-output', type=Path, help='propose packet-bound closed MEMBER consumer; requires explicit roots and Lean checking')
     parser.add_argument('--root', action='append', help='inspect only this explicit function body closure (repeatable)')
     parser.add_argument('source', help='canonical export packet')
     args=parser.parse_args(argv)
+    if args.closed_member_output:
+        if args.inspect or not args.root:
+            parser.error('--closed-member-output requires explicit --root and cannot combine with --inspect')
+        proposal = closed_member_source(args.source, args.root)
+        args.closed_member_output.write_text(proposal)
+        print('CLOSED MEMBER PROPOSAL (domain premises remain; kernel and current-world gates required)')
+        return
     if args.root and not args.inspect:
         parser.error('--root currently requires --inspect; full core emission keeps its declared arm subjects')
     if args.inspect:
