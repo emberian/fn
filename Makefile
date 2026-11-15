@@ -214,6 +214,7 @@ ACL2_BOOKS = \
   books/owed \
   books/owed-accounts \
   books/owed-authority \
+  books/wire-fixture-profiles \
   books/owed-conn \
   books/owed-consumer \
   books/owed-cursor \
@@ -239,12 +240,18 @@ ACL2_BOOKS = \
   books/recovery-frontier \
   books/recovery-selected-adopt \
   tests/recovery-selected-adopt-unit \
+  tests/recovery-replay-prefix-state \
+  tests/recovery-replay-prefix-proof \
+  tests/recovery-replay-prefix-unit \
   books/checkpoint-bank-bind \
   books/checkpoint-bank-empty \
   books/checkpoint-bank-boot \
   books/boot-root-release \
   tests/boot-root-release-unit \
   tests/recovery-payload-chain-unit \
+  tests/recovery-payload-chain-proof \
+  tests/checkpoint-cold-path-drive \
+  tests/checkpoint-cold-path-unit \
   books/checkpoint-restore-semantic-source \
   books/checkpoint-bank-closure-state \
   books/checkpoint-bank-closure-capture \
@@ -469,6 +476,7 @@ ACL2_BOOKS = \
   tests/manifest-binding-served-unit \
   tests/manifest-publication-unit \
   tests/recovery-manifest-binding-unit \
+  tests/recovery-reread-integrity-unit \
   tests/upload-location-hashes-unit \
   tests/upload-stored-source-unit \
   tests/host-unit \

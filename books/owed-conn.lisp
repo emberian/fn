@@ -13,16 +13,14 @@
 (include-book "executor")
 (include-book "assembly-attach")
 (include-book "terminal-values")
+(include-book "wire-fixture-profiles")
 (fn2-book-layer :d)
 
 (make-event (value (fn2-declare '(:operation-set fn2-conn-wire) nil nil nil)))
 
 ; A tiny profile whose pool gives every connection two slots of at least
 ; *fn2-conn-range-min* octets, with the served listener admitting fn2-conn.
-(defconst *fn2-conn-wire-profile*
-  (put-assoc-equal :listener-targets 'fn2-conn
-    (put-assoc-equal :pool-classes '((8 . 1024) (4 . 256)) *fn2-profile-tiny*)))
-
+; Shared unchanged serving fixture geometry: wire-fixture-profiles.lisp.
 (defun fn2-cw-chars (cs)
   (declare (xargs :verify-guards nil))
   (if (atom cs) nil (cons (char-code (car cs)) (fn2-cw-chars (cdr cs)))))
