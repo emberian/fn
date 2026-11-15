@@ -1,4 +1,4 @@
-; Pending whole-segment induction: helpers admitted, final aux retry unrun.
+; Actual whole-segment induction through the admitted source-byte batch.
 (in-package "ACL2")
 (include-book "envelope-output-segment")
 (local ; Proof-only induction scheme; every transition is the existing actual runner.
