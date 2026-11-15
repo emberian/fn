@@ -26,6 +26,7 @@
 (include-book "event-catalog-cold")
 (include-book "checkpoint-bank-cold")
 (include-book "machines-a-access")
+(local (include-book "columns-call-guards"))
 (fn2-book-layer :b)
 
 (defun fn2-boot-geometry-bindings (bindings)
@@ -235,6 +236,9 @@
                                           fn2-fc fn2-fc-context fn2-b3 fn2-fields fn2-pool fn2-digests)
  (declare (xargs :stobjs (fn2-checkpoints fn2-checkpoint-refs fn2-checkpoint-bytes
                           fn2-fc fn2-fc-context fn2-b3 fn2-fields fn2-pool fn2-digests)
+  :guard-hints ((fn2-columns-call-guard-hint
+     'fn2-boot-checkpoint-descriptor-pool
+     '(fn2-checkpoint-check-step fn2-checkpoint-restore-load-hash) nil world))
   :guard (and (fn2-checkpoints-wfp fn2-checkpoints) (fn2-checkpoint-refs-wfp fn2-checkpoint-refs)
               (fn2-checkpoint-bytes-wfp fn2-checkpoint-bytes) (fn2-fc-wfp fn2-fc)
               (fn2-fc-context-wfp fn2-fc-context) (fn2-b3-wfp fn2-b3) (fn2-fields-wfp fn2-fields)
@@ -265,6 +269,18 @@
        (fn2-checkpoint-check-step c row slot gen off len base *fn2-boot-kind* id ogen 4096
          fn2-checkpoints fn2-checkpoint-refs fn2-checkpoint-bytes fn2-fc fn2-fc-context fn2-b3 fn2-fields fn2-pool fn2-digests)))
   (mv code fn2-checkpoints fn2-checkpoint-refs fn2-checkpoint-bytes fn2-fc fn2-fc-context fn2-b3 fn2-fields fn2-pool fn2-digests)))
+; fn2-boot-checkpoint-descriptor-pool-guarded-bridge: the actual boot face
+; checks row/capacity, loads its retained candidate hash and writes context
+; before CHECK-STEP. Consume that producer's distinct stored-guard facts;
+; the six false unrestricted originals are never used as caller contracts.
+(defcolumns-guarded-contracts fn2-boot-checkpoint-descriptor-pool
+ :carriers ((fn2-fc 4 :prefix "-CHECKER") (fn2-b3 6 :prefix "-HASHER")
+            (fn2-digests 9 :prefix "-DIGESTS"))
+ :hints ((fn2-columns-call-guard-hint
+    'fn2-boot-checkpoint-descriptor-pool
+    '(fn2-checkpoint-check-step fn2-checkpoint-restore-load-hash)
+    '(fn2-boot-checkpoint-descriptor-pool) world)))
+
 
 (defcost fn2-boot-pack :answers t :bytes 12288
  :tables (fn2-core-pool fn2-core-fields fn2-core-digests fn2-core-b3)

@@ -375,6 +375,8 @@ ACL2_BOOKS = \
   tests/alloc-protection-notification-unit \
   tests/alloc-freeze-unit \
   tests/checkpoint-unit \
+  tests/checkpoint-reader-scalar-domain-unit \
+  tests/checkpoint-reader-refutation-unit \
   tests/alloc-planning-unit \
   tests/alloc-lifecycle-unit \
   tests/retirement-intent-allocator-unit \

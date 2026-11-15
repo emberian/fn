@@ -649,10 +649,31 @@
           '(fn2-checkpoint-retainedp fn2-checkpoint-pool-hash-matchesp
             fn2-alloc-edge-matchesp fn2-alloc-handle-code)
           '(fn2-checkpoint-install) world)))
-(fn2-checkpoints-preserves fn2-checkpoint-check-step
- (c row slot gen off len base okind oslot ogen budget fn2-checkpoints fn2-checkpoint-refs fn2-checkpoint-bytes
-    fn2-fc fn2-fc-context fn2-b3 fn2-fields fn2-pool fn2-digests)
- :carriers ((fn2-checkpoints 1 :prefix "-CANDIDATES" :type-hints ((append
+; Six original unrestricted facets have concrete logical counterexamples.
+; Generate their exact old formulas from the same metadata as the ten retained
+; facets. No guarded replacement is a proof of an unrestricted original.
+(local (defun fn2-checkpoint-reader-partition-contracts (args specs facts)
+ (declare (xargs :verify-guards nil))
+ (if (atom specs) nil
+  (let* ((fact (car facts)) (position (caddar specs))
+         (negative (cdr (assoc-equal position
+                       '((4 . fn2-checkpoint-reader-checker-domain-removal-check)
+                         (5 . fn2-checkpoint-reader-hasher-domain-removal-check)
+                         (8 . fn2-checkpoint-reader-digests-domain-removal-check))))))
+   (cons (if negative
+          `(defthm-owed ,(cadr fact) ,args ,(caddr fact)
+            :teeth (fn2-checkpoint-reader-guard-positive-check ,negative)
+            :layer :b
+            :doc "Original unrestricted carrier formula. Its exact closed-instance refutation and distinct stored-guard interface are in the reader refutation unit; this obligation is never discharged by that replacement.")
+          fact)
+         (fn2-checkpoint-reader-partition-contracts
+          args (cdr specs) (cdr facts)))))))
+(make-event
+ (let* ((world (w state)) (name 'fn2-checkpoint-check-step)
+        (args (getpropc name 'formals :missing world))
+        (expected-args '(c row slot gen off len base okind oslot ogen budget fn2-checkpoints fn2-checkpoint-refs fn2-checkpoint-bytes
+    fn2-fc fn2-fc-context fn2-b3 fn2-fields fn2-pool fn2-digests))
+        (carriers '((fn2-checkpoints 1 :prefix "-CANDIDATES" :type-hints ((append
  (fn2-columns-guard-hint
   '(fn2-checkpoints fn2-checkpoint-refs fn2-checkpoint-bytes fn2-fc fn2-fc-context
     fn2-b3 fn2-fields fn2-pool fn2-digests)
@@ -675,7 +696,30 @@
                        fn2-fc fn2-fc-context fn2-b3 fn2-fields fn2-pool fn2-digests)))))))))
             (fn2-checkpoint-refs 2 :prefix "-REFS") (fn2-checkpoint-bytes 3 :prefix "-BYTES")
             (fn2-fc 4 :prefix "-CHECKER") (fn2-b3 5 :prefix "-HASHER")
-            (fn2-fields 6 :prefix "-FIELDS") (fn2-pool 7 :prefix "-POOL") (fn2-digests 8 :prefix "-DIGESTS"))
+            (fn2-fields 6 :prefix "-FIELDS") (fn2-pool 7 :prefix "-POOL") (fn2-digests 8 :prefix "-DIGESTS")))
+        (hints '((fn2-columns-guard-hint
+    '(fn2-checkpoints fn2-checkpoint-refs fn2-checkpoint-bytes fn2-fc fn2-fc-context
+      fn2-b3 fn2-fields fn2-pool fn2-digests)
+    '(fn2-format-run fn2-checkpoint-decode fn2-checkpoint-capture-roots fn2-checkpoint-hash-matchesp)
+    '(fn2-checkpoint-check-step) world)))
+        (hyps (fn2-columns-carrier-hyps carriers))
+        (specs (fn2-columns-carrier-specs carriers))
+        (facts (fn2-columns-preservation-facts name (cons name args) specs hyps hints)))
+  (if (or (not (equal args expected-args))
+          (not (fn2-columns-contract-carriersp carriers args
+                (getpropc name 'stobjs-in nil world)
+                (getpropc name 'stobjs-out nil world) world))
+          (not (equal (len facts) 16)))
+      (er soft 'checkpoint-reader-contract "Actual descriptor reader metadata changed.")
+    (value `(progn
+      ,@(fn2-checkpoint-reader-partition-contracts args specs facts)
+      (in-theory (disable fn2-checkpoint-check-step)))))))
+
+; Distinct actual-guard interface. The omitted scalar/capacity premises are
+; already in the stored guard; no runtime or guard is strengthened here.
+(defcolumns-guarded-contracts fn2-checkpoint-check-step
+ :carriers ((fn2-fc 4 :prefix "-CHECKER") (fn2-b3 5 :prefix "-HASHER")
+            (fn2-digests 8 :prefix "-DIGESTS"))
  :hints ((fn2-columns-guard-hint
     '(fn2-checkpoints fn2-checkpoint-refs fn2-checkpoint-bytes fn2-fc fn2-fc-context
       fn2-b3 fn2-fields fn2-pool fn2-digests)

@@ -13,6 +13,10 @@
    (and row (not (fn2-square-rowp name row world))
         (list (list name :invalid-live-statement-or-proof)))
    (and row (not statement) (list (list name :unbound-requirement)))
+   (and row (eq (car (fn2-decl-get :proof row)) :refuted)
+        (list (list name :refuted-original
+                    :candidate-replacement-link-unverified
+                    (caddr (fn2-decl-get :proof row)))))
    (and row (not (eq (car (fn2-decl-get :proof row)) :proved))
         (list (list name :unproved)))
    (and row (not (and (symbol-listp (fn2-decl-get :depends row))
