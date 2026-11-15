@@ -61,6 +61,18 @@ adoption remains pending: semantic verification must yield before digest work
 uses the next visit's budget, and record reads must await all 32 digest bytes.
 This leaf record does not qualify the caller or recovery behavior.
 
+Metadata and physical-reader composition remains a product blocker. The source
+lane has connected FullRef reader starts and transaction/auth dispatch, but
+CLOSE must park catalog resources before releasing its observer receipt, readiness
+must distinguish an owned parked reader from an idle one, and typed catalog
+completion must lead to an actual served lookup. The NNTP ARTICLE path also
+needs its scratch storage reserved with the loader windows before emitting a
+reply prefix; retaining loader windows while waiting for scratch is not a
+completed capacity design. Q1's reviewed PAGE fixture requires these newer
+schemas and cannot be loaded into the older assembled application world.
+These source changes and fixtures remain unqualified; no productive served
+lookup or checkpoint reclamation activation is established by their presence.
+
 The counted upload feeder is integrated through the same six-result slice used
 by the actual core callback and public feeder. Its
 [15-book record](receipts/feed15-record-20261115.json) covers 11 reused parents
