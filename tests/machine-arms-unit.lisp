@@ -17,6 +17,23 @@
        (equal (cadr (member-eq :hints (cdddr issued)))
               '(("Goal" :by fn2-arms-probe-run-free-children-descriptor-effect))))))
 
+; Actual non-issuing allocator/classifier bodies stay opaque in resource proofs.
+; The readonly classifier must be covered as well as the pool writer.
+(assert-event
+ (let* ((world (w state))
+        (name 'fn2-scribe-run-reserve-children)
+        (closed (fn2-arms-resource-callees name world))
+        (event (fn2-arms-child-effects-event name world))
+        (hint (car (fn2-decl-get :hints (cdddr event))))
+        (theory (fn2-decl-get :in-theory (cdr hint))))
+  (and (not (member-eq 'fn2-ops (car (fn2-arms-sig name world))))
+       (subsetp-eq '(fn2-pool-reserve fn2-scribe-window-class-of) closed)
+       (not (member-eq name closed))
+       (subsetp-eq closed (caddr theory))
+       ; An actual issuing arm retains the existing numeric/effect strategy.
+       (member-eq 'fn2-ops (car (fn2-arms-sig 'fn2-echo-run-reply-children world)))
+       (null (fn2-arms-resource-callees 'fn2-echo-run-reply-children world)))))
+
 
 (assert-event (equal (fn2-machine-declared 'fn2-arms-probe :stops (w state)) '(:probe-overflow :probe-refused)))
 (assert-event (fn2-assert-compliant-p '(fn2-arms-probe-run-work-children fn2-arms-probe-sub-close-children
