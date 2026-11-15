@@ -4,6 +4,7 @@
 (include-book "../books/arm-children")
 (include-book "column-snapshot-support")
 (defun fn2-held-control-index (field fields)
+ (declare (xargs :verify-guards nil))
  (if (atom fields) nil
   (if (eq field (caar fields)) 0
    (let ((rest (fn2-held-control-index field (cdr fields))))
