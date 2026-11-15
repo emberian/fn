@@ -100,9 +100,6 @@
  :tables (fn2-core-cns-read-work fn2-cns-table fn2-core-machines fn2-core-id-engine fn2-core-reads fn2-core-ranges fn2-core-range-sources fn2-core-seeks
           fn2-core-succ-txns fn2-core-run-cursors fn2-core-run-paths fn2-core-fields)
  :doc "Read the consumer cursor (position, version) from fn2-consumer-cursor and the principal's stream frontier (fn2-cns-stream-frontier).")
-;; The positioned seek's step bound for a stream frontier: 61 probes over
-;; u60 positions, each a probe, a range read and a narrowing step.
-(defconst *fn2-cns-frontier-seek-steps* 256)
 
 (defcost fn2-cns-successor :answers (:ok :bounds)
  :doc "The request row's successor write transaction: fn2-txn's and fn2-auth's capacities plus the row's slot (fn2-txn-consumer-share).")
@@ -1439,16 +1436,6 @@
      (in-theory (disable fn2-ctl-owner-principal))
      ;; fn2-cns-read-row is defined by fn2-auth-read-events (books/authority.lisp),
      ;; expanded before fn2-cns-events; the defcost above is its contract.
-     (defun fn2-cns-lookup-loop (k r sid fn2-core)
-       (declare (xargs :stobjs fn2-core :measure (nfix k) :guard (fn2-core-wfp fn2-core)))
-       (if (<= (nfix k) 0)
-           (mv :more fn2-core)
-         (mv-let (code fn2-core) (fn2-read-lookup r sid 256 fn2-core)
-           (if (eq code :more)
-               (fn2-cns-lookup-loop (- (nfix k) 1) r sid fn2-core)
-             (mv code fn2-core)))))
-     (fn2-core-preserves fn2-cns-lookup-loop (k r sid fn2-core) :position 1 :rows nil)
-     (in-theory (disable fn2-cns-lookup-loop))
      (defun fn2-cns-resolve-loop (k tx fn2-core)
        (declare (xargs :stobjs fn2-core :measure (nfix k) :guard (fn2-core-wfp fn2-core)))
        (if (<= (nfix k) 0)
@@ -1475,20 +1462,6 @@
                (mv :ok (+ c a s))
              (mv :bounds 0)))))
      (in-theory (disable fn2-cns-successor))
-     (defun fn2-cns-seek-loop (k r fn2-core)
-       (declare (xargs :stobjs fn2-core :measure (nfix k) :guard (fn2-core-wfp fn2-core)))
-       (if (<= (nfix k) 0)
-           (mv :state 0 fn2-core)
-         (mv-let (code answer fn2-core) (fn2-read-seek-step r 256 fn2-core)
-           (if (eq code :more)
-               (fn2-cns-seek-loop (- (nfix k) 1) r fn2-core)
-             (mv code (nfix answer) fn2-core)))))
-     (defthm fn2-cns-seek-loop-natp-1
-       (natp (mv-nth 1 (fn2-cns-seek-loop k r fn2-core)))
-       :rule-classes (:rewrite :type-prescription)
-       :hints (("Goal" :in-theory (e/d (fn2-cns-seek-loop) (nfix)))))
-     (fn2-core-preserves fn2-cns-seek-loop (k r fn2-core) :position 2 :rows nil)
-     (in-theory (disable fn2-cns-seek-loop))
      ;; The principal's stream frontier (e-surface.md 3.2): the greatest
      ;; position at or below B's published one carrying an fn2-addr entry of
      ;; PRINCIPAL, 0 when none does. A consumer's frontier and gap are its
@@ -1497,8 +1470,8 @@
      ;; principals' commits leave it where it is. One positioned seek over the
      ;; addr key (principal, position), position its own last key field
      ;; (fn2-seek-step: one more than the last position at or below P); at
-     ;; most 61 probes over u60 positions, each at most four seek steps, so
-     ;; *fn2-cns-frontier-seek-steps* bounds the work. (mv code frontier
+     ;; most 61 probes over u60 positions, resumed one C step per callback.
+     ;; (mv code frontier
      ;; fn2-core), code :ok or the published read's or the seek's refusal.
      ; Invert the actual admitted read-row partition and validate the real
      ; request directory. A reused read row cannot inherit another request's
@@ -1610,13 +1583,14 @@
      (fn2-core-preserves fn2-cns-range-addr-keys (p lo-pos pf x fn2-core) :position 1 :rows nil)
      (in-theory (disable fn2-cns-range-addr-keys))
      ;; The first entry of read row R's range: (mv code position article stream fn2-core),
-     ;; :more when the steps ran out before it (the page stops there, MORE).
+     ;; :more keeps the range continuation for the next callback; it never
+     ;; ends the page or advances its proposal.
      (defun fn2-cns-first-entry (k r fn2-core)
-       (declare (xargs :stobjs fn2-core :measure (nfix k) :guard (fn2-core-wfp fn2-core)))
+       (declare (xargs :stobjs fn2-core :guard (fn2-core-wfp fn2-core)))
        (if (<= (nfix k) 0)
            (mv :more 0 0 0 fn2-core)
          (mv-let (code fn2-core) (fn2-read-next r 256 fn2-core)
-           (cond ((eq code :more) (fn2-cns-first-entry (- (nfix k) 1) r fn2-core))
+           (cond ((eq code :more) (mv :more 0 0 0 fn2-core))
                  ((eq code :end) (mv :end 0 0 0 fn2-core))
                  ((eq code :miss) (mv :miss 0 0 0 fn2-core))
                  ((not (eq code :entry)) (mv :fault 0 0 0 fn2-core))
@@ -1728,7 +1702,8 @@
      (in-theory (disable fn2-cns-core-put-item-pool))
      ;; Article ART's row (S-ARTICLE-LOCATION): (mv code state bytes kind unit
      ;; epoch allocation fn2-core), code :ok, :absent (no row: reclaimed),
-     ;; :more (the lookup's steps ran out) or :fault. The core is threaded
+     ;; :more or :miss (the same retained lookup needs another step/page),
+     ;; or :fault. The core is threaded
      ;; through with the lookup retained; ITEM-NEXT copies any commitment
      ;; before releasing it. The answer is fn2-cns-article-answer's.
           (defun fn2-cns-article-query (art x fn2-core)
