@@ -1045,7 +1045,7 @@
        (:charge :bytes 128 :steps *fn2-work-transition* :runnable t))
       ((:next :closing) (:charge :bytes 128 :steps *fn2-work-transition* :runnable t))))
     ((equal row-ophase *fn2-ctl-output-fill*)
-     (:if (equal row-fill *fn2-ctl-io-bytes*)
+     (:if (<= *fn2-ctl-io-bytes* row-fill)
       ((:set (ophase *fn2-ctl-output-hash*)) (:charge :steps *fn2-work-transition* :runnable t))
       ((:let cap (min 1024 row-oleft (- *fn2-ctl-io-bytes* row-fill)))
        (:do (code copied eof)
@@ -1071,7 +1071,7 @@
     ((member-equal row-ophase (list *fn2-ctl-output-send* *fn2-ctl-output-last*))
      (:cond
       ((< row-tx-off row-tx-len)
-       (:let count (- row-tx-len row-tx-off))
+       (:let count (min *fn2-ctl-io-bytes* (nfix (- row-tx-len row-tx-off))))
        (:issue (fn2-issue-send row-cap-index row-cap-nonce row-rx-slot row-rx-gen row-tx-off count 1
                                :principal row-principal-slot)
         :ok ((:set (borrows 1)) (:wait :completion :bytes count))))

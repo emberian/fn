@@ -55,3 +55,20 @@
  (assert (not (assoc :call effects)))
  (assert (= (cdr (assoc 'row-ophase vars)) 7)))
 (format t "CTL OUTPUT ACTUAL ARM SOURCE CONTROLS PASS: retained loan, bad source, checked zero-cap EOF, final Send handback~%")
+;; Handback acknowledgement wakes CNS before this request tuple is dropped;
+;; no source lease release is hidden in the transport's callback sequence.
+(let ((*results* '((fn2-cns-stream-source-finish :ok) (fn2-core-reset :ok))))
+ (multiple-value-bind (effects vars)
+  (run *out-arm* (append '((row-ophase . 7) (*fn2-none* . 999)
+                           (*fn2-ctl-output-none* . 0) (*fn2-ctl-stream-none* . 0)) *out-vars*))
+  (assert (member '(:call fn2-cns-stream-source-finish) effects :test #'equal))
+  (assert (member '(:wake-row row-cns) effects :test #'equal))
+  (assert (member '(:next :frame) effects :test #'equal))
+  (assert (= (cdr (assoc 'row-cns vars)) 999))
+  (assert (= (cdr (assoc 'row-cns-gen vars)) 0))))
+;; An unproductive successful next cannot spin forever or authorize EOF.
+(let ((*results* '((fn2-cns-stream-source-next :ok 0 nil))))
+ (multiple-value-bind (effects vars) (run *out-arm* (cons '(row-ophase . 2) *out-vars*))
+  (declare (ignore vars))
+  (assert (member '(:next :closing) effects :test #'equal))))
+(format t "CTL OUTPUT HANDBACK SOURCE CONTROLS PASS: checked child wake, tuple clear, zero-progress refusal~%")
