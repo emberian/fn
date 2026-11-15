@@ -86,6 +86,7 @@ ACL2_BOOKS = \
   books/machine-reservations \
   books/pool-initialization \
   books/pool-release-admission \
+  tests/successor-geometry-unit \
   tests/cns-draining-composition-unit \
   tests/cns-draining-contract-unit \
   tests/cns-draining-count-counterexample \
@@ -201,6 +202,8 @@ ACL2_BOOKS = \
   books/storage-block-io \
   books/machines-b \
   books/machines-c \
+  books/successor-workspace-geometry \
+  books/successor-schema-geometry \
   books/machines-c-bind \
   books/machines-c-groups \
   books/machines-c-read \
@@ -241,6 +244,12 @@ ACL2_BOOKS = \
   books/pool \
   books/pool-credit \
   books/pool-credit-contracts \
+  books/allocation-release-geometry \
+  books/identity-workspace-geometry \
+  books/checkpoint-working-geometry \
+  books/checkpoint-service-geometry \
+  books/checkpoint-working-credit \
+  books/checkpoint-working-credit-init \
   books/pool-block \
   books/pool-ranges \
   books/pool-read-contracts \
@@ -280,6 +289,15 @@ ACL2_BOOKS = \
   books/txn \
   books/txn-kind \
   books/upload \
+  books/upload-window-geometry \
+  books/upload-page-geometry \
+  books/source-manifest-codec \
+  books/upload-stream \
+  books/upload-block-private \
+  books/upload-stream-stage \
+  books/upload-stream-manifest \
+  books/upload-stream-reset \
+  books/upload-stream-settle \
   books/upload-feed \
   books/upload-kind \
   books/upload-scan \
@@ -528,6 +546,7 @@ ACL2_BOOKS = \
   tests/pool-query-ref-unit \
   tests/pool-protected-floor-unit \
   tests/pool-credit-unit \
+  tests/root-working-credit-init-unit \
   tests/pool-unit \
   tests/port-unit \
   tests/primitive-list-domain-unit \
@@ -577,10 +596,28 @@ ACL2_BOOKS = \
   tests/translation-domain-unit \
   tests/translation-inventory-unit \
   tests/translation-validation-unit \
+  tests/translation-event-results-unit \
   tests/txn-unit \
   tests/upload-feed-unit \
   tests/upload-scan-unit \
   tests/upload-unit \
+  tests/machine-taken-byte-class-unit \
+  tests/grant-class-resolution-unit \
+  tests/root-upload-geometry-unit \
+  tests/upload-rolling-served-unit \
+  tests/upload-page-take-unit \
+  tests/machine-range-provider-unit \
+  tests/upload-window-profile-unit \
+  tests/upload-uncertainty-served-unit \
+  tests/upload-stream-abort-served-unit \
+  tests/upload-dual-hash-unit \
+  tests/upload-block-private-unit \
+  tests/upload-feed-lf-unit tests/upload-feed-slice-unit \
+  tests/upload-stream-manifest-unit \
+  tests/upload-rolling-feed-component-unit \
+  tests/upload-posted-linear-unit \
+  tests/txn-retained-source-served-unit \
+  tests/txn-upload-physical-location-unit \
   tests/view-contracts-unit \
   tests/vocab-unit \
   tests/wake-unit \

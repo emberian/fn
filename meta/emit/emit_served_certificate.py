@@ -206,7 +206,7 @@ def lean_metadata(p, out):
                   f'theorem {n}_original : {n}.value? = some kinds[{ki}]!.{part}[{ai}]!.decl := by rfl']
         # Every child of a child-form tuple is retained, independently of narrowing.
         lines += [f'def tuple{ki} : Translation.Object := '+lean_object(k[':TUPLE']),
-          f'theorem tuple{ki}_complete : tuple{ki}.value? = some (Val.ofList (kinds[{ki}]!.tuple.map Val.sym)) := by rfl']
+          f'theorem tuple{ki}_complete : tuple{ki}.value? = some (Val.ofList (kinds[{ki}]!.tuple.map (fun n => Val.sym ("ACL2::" ++ n)))) := by rfl']
     lines += ['#print axioms complete_layout','end Fn2.Instances.ServedMetadata','']
     out.write_text(as_module('\n'.join(lines), expose=True, import_all=CORE_STRING_BODIES))
 
@@ -220,10 +220,10 @@ def lean_commit_words(p,out):
         ki=indices[str(kn)]
         actualtag='NIL' if str(area)==':SUBARMS' else str(tag)
         lines += [f'def word{i} : Val := '+val(step),f'def expansion{i} : Val := '+val(expanded),
-          f'theorem word{i}_translation : Commit.expand',
-          f'    {{tag := {lean_str(actualtag)}, phases := kinds[{ki}]!.states,',
-          f'     tickets := kinds[{ki}]!.columns.filterMap (fun (n,t) => match t with | .uw 60 => some n | _ => none)}}',
-          f'    word{i} = .ok expansion{i}.toList := by decide +kernel',f'#print axioms word{i}_translation']
+          f'theorem word{i}_translation : Syntax.expansionAgrees readDepth word{i} expansion{i}',
+          f'    (Commit.expand {{tag := {lean_str(actualtag)}, phases := kinds[{ki}]!.states,',
+          f'     tickets := kinds[{ki}]!.columns.filterMap (fun (n,t) => match t with | .uw 60 => some n | _ => none)}})',
+          '    = true := by decide +kernel', f'#print axioms word{i}_translation']
     lines += ['end Fn2.Instances.ServedCommit','']
     out.write_text(as_module('\n'.join(lines), expose=True, import_all=CORE_STRING_BODIES))
 

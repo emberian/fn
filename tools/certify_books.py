@@ -1420,7 +1420,9 @@ def main() -> int:
     # them, and the steps not at all dependent on it (tools/proof_cost.py).
     book_load_average: dict[str, list[float | None]] = {}
     book_prover_steps: dict[str, int] = {}
+    # Keep proof work (steps) distinct from the slowest timed event.
     book_costliest_event: dict[str, dict[str, Any]] = {}
+    book_slowest_event: dict[str, dict[str, Any]] = {}
     start_order: list[str] = []
     record_lock = threading.Lock()
     # One publisher at a time: `certs.publish` reads and renames files in the
@@ -1439,6 +1441,11 @@ def main() -> int:
             book_costliest_event[book] = {
                 "form": heaviest.form[:200], "steps": heaviest.steps,
                 "seconds": heaviest.seconds}
+        slowest = acl2_cost.slowest_event(output)
+        if slowest is not None:
+            book_slowest_event[book] = {
+                "form": slowest.form[:200], "steps": slowest.steps,
+                "seconds": slowest.seconds}
 
     def certify(book: str) -> None:
         log_path = run_dir / (book.replace("/", "--") + ".certify.log")
@@ -1679,6 +1686,7 @@ def main() -> int:
             "book_load_average": book_load_average,
             "book_prover_steps": book_prover_steps,
             "book_costliest_event": book_costliest_event,
+            "book_slowest_event": book_slowest_event,
             "cpu_count": os.cpu_count(),
             "certify_wall_seconds": certify_wall_seconds,
             "pcert_wall_seconds": pcert_wall_seconds,

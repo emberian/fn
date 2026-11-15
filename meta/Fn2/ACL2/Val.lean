@@ -5,8 +5,8 @@ module
 # Fn2.ACL2.Val: ACL2's universe and the primitives of fn2's closed subset
 
 The shallow embedding of LEAN-METATHEORY §-1 item 2 reads ACL2 terms into Lean functions over
-`Val`, a Lean model of the ACL2 objects the subset can produce: integers, symbols (by their
-printed name in the `ACL2` package, so `NIL`, `T`, `:OK`, `FN2-NONE`), strings, characters and
+`Val`, a Lean model of the ACL2 objects the subset can produce: integers, symbols (with
+a package-preserving encoding, so `NIL`, `T`, `:OK`, `ACL2::FN2-NONE`), strings, characters and
 conses. A stobj is its logical value: a true list of its fields, an array field the list of its
 elements (ACL2's own logical definition of every stobj accessor, which the emitter translates
 like any other function).
@@ -25,7 +25,7 @@ definitions; a translated function's guard is a separate term (`Fn2.ACL2.Fn.guar
 
 namespace Fn2.ACL2
 
-/-- An ACL2 object of the subset. A symbol is its printed name relative to the `ACL2` package. -/
+/-- An ACL2 object of the subset. Symbol data retains its package through the checked canonical encoding. -/
 inductive Val where
   | int (i : Int)
   | sym (name : String)
@@ -136,7 +136,7 @@ def rationalp (a : Val) : Val := ofBool a.isInt
 non-character is `(code-char 0)`, as `MAKE-CHARACTER-LIST`). -/
 def coerce (x y : Val) : Val :=
   match y with
-  | .sym "LIST" => match x with
+  | .sym "COMMON-LISP::LIST" => match x with
     | .str s => Val.ofList (s.toList.map Val.chr)
     | _ => Val.nil
   | _ => .str (String.ofList (x.toList.map fun | .chr c => c | _ => Char.ofNat 0))

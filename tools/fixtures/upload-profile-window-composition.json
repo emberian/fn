@@ -1,0 +1,8 @@
+{
+  "scope": "Explicit byte-window guard followup; no quota promise",
+  "name": "fn2-input-config-profilep",
+  "old": "(defun fn2-input-config-profilep (profile)\n  (declare (xargs :guard t))\n  (and (booleanp (fn2-profile-get :posting-interim profile))\n       (booleanp (fn2-profile-get :peering-interim profile))\n       ;; article input needs the chunk class and a hasher row per window\n       (or (not (fn2-profile-get :posting-interim profile))\n           (and (true-listp (fn2-profile-get :pool-classes profile))\n                (< *fn2-upload-chunk-class* (len (fn2-profile-get :pool-classes profile)))\n                (< 0 (fn2-b-upload-windows profile))))\n       (fn2-upload-article-profilep profile)))",
+  "old_sha256": "1acdb190912430d679badacd0163f9de9c2d1c958a2e876b11770b5aa510a2ff",
+  "new": "(defun fn2-input-config-profilep (profile)\n  (declare (xargs :guard t))\n  (and (booleanp (fn2-profile-get :posting-interim profile))\n       (booleanp (fn2-profile-get :peering-interim profile))\n       ;; article input needs its actual declared byte windows and private hash rows\n       (or (not (fn2-profile-get :posting-interim profile))\n           (and (fn2-upload-window-profilep profile)\n                (< 0 (fn2-b-upload-windows profile))))\n       (fn2-upload-article-profilep profile)))",
+  "new_sha256": "89fb8eca814870d97cef5806c1ff81c734618eeece3e1b085123e3b98b9e6d74"
+}

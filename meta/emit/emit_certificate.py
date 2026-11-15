@@ -58,13 +58,29 @@ def fields(xs):
     return dict(zip(map(str, xs[::2]), xs[1::2]))
 
 
+def canonical_nil(x):
+    """Only the actual COMMON-LISP NIL is a canonical list terminator."""
+    return (isinstance(x, List) and len(x) == 3 and x[0] == ':SYMBOL' and
+            list(map(str, x[1])) == list(map(str, map(ord, 'COMMON-LISP'))) and
+            list(map(str, x[2])) == list(map(str, map(ord, 'NIL'))))
+
+
+def canonical_list(elements):
+    """Construct a canonical proper list without dropping symbol packages."""
+    tail = List([Atom(':SYMBOL'), List(map(Atom, map(str, map(ord, 'COMMON-LISP')))),
+                 List(map(Atom, map(str, map(ord, 'NIL'))))])
+    for element in reversed(elements):
+        tail = List([Atom(':CONS'), element, tail])
+    return tail
+
+
 def object_list(x):
     """Project an exact canonical list without decoding its elements."""
     result = []
     while x[0] == ':CONS':
         if len(x) != 3: raise ValueError('malformed canonical cons')
         result.append(x[1]); x = x[2]
-    if decode(x) != Atom('NIL'): raise ValueError('improper canonical list')
+    if not canonical_nil(x): raise ValueError('improper canonical list')
     return result
 
 
@@ -84,18 +100,23 @@ def decode(x):
     tag, *xs = as_list(x)
     if tag == ':CONS' and len(xs) == 2:
         a, d = decode(xs[0]), decode(xs[1])
-        if d == Atom('NIL'): return List([a])
+        if canonical_nil(xs[1]): return List([a])
         if isinstance(d, List): return List([a, *d])
         return List([a, Atom('.'), d])
     if tag == ':SYMBOL' and len(xs) == 2:
         pkg, name = codes(xs[0]), codes(xs[1])
-        if pkg == 'KEYWORD': return Atom(':' + name)
+        if pkg == 'KEYWORD':
+            result = Atom(':' + name)
+            result.symbol_package, result.symbol_name = pkg, name
+            return result
         if pkg not in ('ACL2', 'COMMON-LISP'): raise ValueError('unsupported package ' + pkg)
         # Canonical identity is retained in the checked package. The existing Val
         # presentation uses the ACL2-imported spelling on this admitted world.
         if any(c.isspace() or c in '()|\\"' for c in name):
             raise ValueError('symbol outside the legacy Val presentation: ' + name)
-        return Atom(name)
+        result = Atom(name)
+        result.symbol_package, result.symbol_name = pkg, name
+        return result
     if tag == ':INTEGER' and len(xs) == 1: return Atom(str(int(xs[0])))
     if tag == ':STRING' and len(xs) == 1: return Str(codes(xs[0]))
     if tag == ':CHARACTER' and len(xs) == 1:
@@ -164,9 +185,45 @@ def expression_proof(t, defined, env, indent='  ', dispatch=None, lambdas=None):
     return [indent+'refine Translation.eval_app (vs := ['+', '.join(vals)+']) (by decide) (by decide) ?_ ('+proof+')', indent+'·']+args_proof(t[1:])
 
 
+def validate_syntax_symbols(*terms):
+    """Reject package collisions in syntactic identifiers; quoted data is separate.
+
+    The existing term environment uses strings. It is sound only when distinct
+    canonical identifiers do not collapse in this selected function's syntax.
+    """
+    names = {}
+    reserved = {'QUOTE': 'COMMON-LISP', 'IF': 'COMMON-LISP',
+                'LAMBDA': 'COMMON-LISP', 'RETURN-LAST': 'ACL2'}
+    def atom(value, operator=False):
+        if not isinstance(value, Atom) or not hasattr(value, 'symbol_package'):
+            return
+        identity = (value.symbol_package, value.symbol_name)
+        spelling = str(value)
+        if spelling in names and names[spelling] != identity:
+            raise ValueError('canonical syntax package collision: ' + spelling)
+        names[spelling] = identity
+        if operator and spelling in reserved and identity != (reserved[spelling], spelling):
+            raise ValueError('wrong canonical special-form package: ' + spelling)
+    def walk(value):
+        if not isinstance(value, List):
+            atom(value)
+            return
+        if not value:
+            return
+        atom(value[0], operator=True)
+        if value[0] == 'QUOTE':
+            return
+        for item in value:
+            walk(item)
+    for term_ in terms:
+        walk(term_)
+
+
 def fn_of(row):
     d = fields(row)
     name = decode(d[':FUNCTION'])
+    validate_syntax_symbols(name, decode(d[':FORMALS']),
+                            decode(d[':LOGICAL-BODY']), decode(d[':GUARD']))
     # Justification is retained exactly; only nonrecursive bodies are claimed.
     # The bridge's first closure is nonrecursive except guard dependencies; do
     # not guess recursive adequacy from the examples. Existing emitter handles
@@ -284,7 +341,7 @@ def main(src, outdir, bookpath=None):
         f,d = allf[n]
         if str(f.body) in (':MISSING', 'NIL'):
             raise ValueError('no admitted logical body certificate: ' + n)
-        if decode(d[':ATTACHMENT']) != Atom('NIL'):
+        if not canonical_nil(d[':ATTACHMENT']):
             raise ValueError('attachment contract certificate required: ' + n)
         if n in calls_of(f.body, set()): raise ValueError('recursive body needs loop certificate: ' + n)
         for c in calls_of(f.body, set()): visit(c)
