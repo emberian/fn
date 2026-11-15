@@ -204,7 +204,9 @@
 (in-theory (disable fn2-issue-connect))
 
 ; ----------------------------------------------------------------------
-; Pool range release: a release that is neither done nor retired stops the core.
+; Pool range release: query-held ownership is retained for wake/retry.
+; Only :ok/:retired complete release; :held preserves pool and control.
+; Other release failures still record the first core stop reason.
 (defun fn2-core-release-children (slot gen okind oslot ogen fn2-pool fn2-control)
   (declare (xargs :stobjs (fn2-pool fn2-control)
                   :guard (and (fn2-pool-wfp fn2-pool) (fn2-control-wfp fn2-control))))
@@ -212,7 +214,7 @@
     (if (fn2-pool-release-countp slot fn2-pool)
         (fn2-pool-release slot gen okind oslot ogen fn2-pool)
       (mv :corrupt fn2-pool))
-    (let ((fn2-control (if (or (eq code :ok) (eq code :retired)) fn2-control
+    (let ((fn2-control (if (member-eq code '(:ok :retired :held)) fn2-control
                          (fn2-control-record-stop *fn2-stop-reason-pool-release* fn2-control))))
       (mv code fn2-pool fn2-control))))
 (fn2-pool-preserves fn2-core-release-children (slot gen okind oslot ogen fn2-pool fn2-control)

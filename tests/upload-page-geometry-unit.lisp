@@ -1,0 +1,12 @@
+; Actual served upload sizing after its shared pure extraction. Source-only.
+(in-package "ACL2")
+(include-book "../books/upload-page-geometry")
+(assert-event (and (= (fn2-upload-profile-article-max nil) *fn2-upload-article-max*)
+                   (= (fn2-upload-profile-article-max '((:article-max . 0))) 0)
+                   (= (fn2-upload-profile-article-max '((:article-max . -1))) *fn2-upload-article-max*)))
+(assert-event (and (= (fn2-upload-input-bound *fn2-upload-article-max* 65536 65536) *fn2-upload-article-max*)
+                   (= (fn2-upload-input-bound *fn2-upload-article-max* 4096 4096) 8159)
+                   (= (fn2-upload-input-bound *fn2-upload-article-max* 0 0) 0)))
+(assert-event (and (= (fn2-upload-page-bytes *fn2-upload-payload-bytes*) *fn2-upload-page-manifest*)
+                   (> (fn2-upload-page-bytes (+ 1 *fn2-upload-payload-bytes*)) *fn2-upload-page-manifest*)
+                   (= (fn2-upload-page-bytes (+ *fn2-upload-article-max* *fn2-upload-mid-line-max*)) 8768)))

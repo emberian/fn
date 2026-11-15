@@ -29,9 +29,34 @@ class OwnershipOrder(unittest.TestCase):
         start=self.machine.index('  (replay-frontier :')
         end=self.machine.index('  (replay-open :',start)
         arms=self.machine[start:end]
-        self.assertIn('((:done) (:set (rc-stage 5) (rc-own-token 0) (rc-own-left 0))',arms)
+        self.assertIn('((:done) (:charge :steps *fn2-work-advance* :runnable t))',arms)
+        frontier=(ROOT/'books/recovery-frontier.lisp').read_text()
+        self.assertIn('(if (eq code :done)',frontier)
+        self.assertIn('(rc-stage 5) (rc-own-token 0) (rc-own-left 0)',frontier)
+        self.assertNotIn('(rc-stage 5)',arms)
         self.assertIn('((:owned) (:set (rc-stage 0))',arms)
         self.assertIn("(member-equal row-rc-stage '(5 6 7 8))) (:goto replay-adopt)",self.machine)
+    def test_fixed_records_unit_is_opened_only_for_a_new_commit(self):
+        # Role 1 is one fixed records unit, unlike PAYLOAD manifest units.
+        reset = '(rc-role 1) (rc-roff 0) (rc-rend 0)'
+        replay = self.machine[self.machine.index('  (install-finish :'):]
+        self.assertEqual(replay.count(reset), 2)
+        install = self.machine[self.machine.index('  (install-finish :'):self.machine.index('  (replay-frontier :')]
+        advance = self.machine[self.machine.index('  (replay-commit-end :'):self.machine.index('  (replay-lifecycle :')]
+        self.assertIn(reset, install)
+        self.assertIn('(rc-commit (+ 1 row-rc-base))', install)
+        self.assertIn(reset, advance)
+        self.assertIn('(rc-commit (+ 1 row-rc-commit))', advance)
+        for begin, end in [('replay-flush', 'replay-commit-end'),
+                           ('replay-lifecycle', 'replay-record'),
+                           ('replay-record', ':arms')]:
+            start = self.machine.index('  (' + begin + ' :')
+            stop = self.machine.index('  (' + end + ' :', start) if end != ':arms' else self.machine.index(' :arms', start)
+            body = self.machine[start:stop]
+            self.assertNotIn('(rc-rend 0)', body)
+            self.assertNotIn('(:next :read)', body)
+        self.assertIn('(equal row-rc-rend 0)) (:goto replay-open)', self.machine)
+
     def test_resumed_worker_binds_exact_candidate(self):
         body=form(self.adopt,'fn2-recovery-selected-adopt-position')
         for name in ['worker-kind','worker-slot','worker-gen','classification','commit','extent','epoch','allocation','owner-kind','owner']:

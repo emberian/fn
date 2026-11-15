@@ -939,7 +939,7 @@
   (replay-frontier :on-refusal ((:stop :recovery-replay))
    (:do (code) (fn2-recovery-frontier-step id) :accept ()
     :case (((:more) (:charge :bytes 4096 :steps *fn2-work-stage* :runnable t))
-           ((:done) (:set (rc-stage 5) (rc-own-token 0) (rc-own-left 0)) (:charge :steps *fn2-work-advance* :runnable t))
+           ((:done) (:charge :steps *fn2-work-advance* :runnable t))
            (:otherwise (:stop :recovery-replay)))))
   (replay-adopt :on-refusal ((:stop :recovery-replay))
    (:do (code) (fn2-recovery-replay-adopt id row-generation) :accept ()

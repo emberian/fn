@@ -1,0 +1,76 @@
+; Shared actual upload sizing. These are the production geometry forms,
+; consumed by D upload and C startup/service admission, not a second codec.
+(in-package "ACL2")
+(include-book "profile")
+(include-book "source-manifest-codec")
+(fn2-book-layer :b)
+
+(defconst *fn2-article-location-hashes-max* (* 32 *fn2-commit-write-resources*))
+
+(defconst *fn2-upload-chunk-class* 1)
+
+(defconst *fn2-upload-article-max* 32768)
+
+(defconst *fn2-upload-digest-octets* 32)
+
+(defconst *fn2-upload-mid-field-octets* 12)
+
+(defconst *fn2-upload-mid-template*
+  (concatenate 'string "Message-ID: <fn2." (string (code-char 1)) "." (string (code-char 1)) "@"))
+
+(defconst *fn2-upload-mid-close* (coerce (list #\> (code-char 13) (code-char 10)) 'string))
+
+(defconst *fn2-upload-op-mid-template*
+  (concatenate 'string "Message-ID: <op-" (string (code-char 1)) "-" (string (code-char 1)) "@"))
+
+(assert-event (<= (length *fn2-upload-op-mid-template*) (length *fn2-upload-mid-template*)))
+
+(defconst *fn2-upload-mid-line-max*
+  (+ (- (length *fn2-upload-mid-template*) 2) 40 *fn2-profile-path-identity-max* (length *fn2-upload-mid-close*)))
+
+(assert-event (equal (- *fn2-upload-mid-line-max* (+ *fn2-upload-mid-field-octets* 2)) 250))
+
+(defconst *fn2-am-stored-max*
+  (* *fn2-am-block-bytes* *fn2-am-entries-per-unit* *fn2-upload-payload-units*))
+
+(assert-event (equal *fn2-am-stored-max* 380928))
+
+(assert-event (<= (+ *fn2-upload-article-max* *fn2-upload-mid-line-max*) *fn2-am-stored-max*))
+
+(defconst *fn2-upload-page-stored-source* (* 64 (ceiling *fn2-upload-mid-line-max* 64)))
+
+(defconst *fn2-upload-page-location-hashes* (+ *fn2-upload-page-stored-source* 64))
+
+(defconst *fn2-upload-page-stage*
+  (+ *fn2-upload-page-location-hashes* (* 64 (ceiling *fn2-article-location-hashes-max* 64))))
+
+(defconst *fn2-upload-page-hash* (+ *fn2-upload-page-stage* *fn2-commit-unit-bytes*))
+
+(defconst *fn2-upload-page-manifest* (+ *fn2-upload-page-hash* 64))
+
+(defconst *fn2-upload-head-bytes* (+ 32 *fn2-am-header-max*))
+
+(defconst *fn2-upload-entry-bytes* (+ 64 (* 2 *fn2-am-entry-max*)))
+
+(defun fn2-upload-page-bytes (total)
+  (declare (xargs :guard t))
+  (if (fn2-am-manifestp total)
+      (+ *fn2-upload-page-manifest* (* *fn2-commit-unit-bytes* (fn2-am-units total)))
+    *fn2-upload-page-manifest*))
+
+; The same normalization and byte bound used by the served D consumer.
+(defun fn2-upload-profile-article-max (profile)
+ (declare (xargs :guard t))
+ (let ((max (fn2-profile-get :article-max profile)))
+  (if (unsigned-byte-p 32 max) max *fn2-upload-article-max*)))
+(defun fn2-upload-input-bound (article-max cap0 cap1)
+ (declare (xargs :guard t))
+ (min (nfix article-max)
+      (nfix (- (+ (nfix cap0) (nfix cap1)) (+ 1 *fn2-upload-digest-octets*)))))
+
+(defun fn2-upload-article-profilep (profile)
+ (declare (xargs :guard t))
+ (or (null (fn2-profile-get :article-max profile))
+     (and (natp (fn2-profile-get :article-max profile))
+          (<= (+ (fn2-profile-get :article-max profile) *fn2-upload-mid-line-max*)
+              *fn2-am-stored-max*))))

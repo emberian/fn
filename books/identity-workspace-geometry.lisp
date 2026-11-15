@@ -1,0 +1,10 @@
+; One definition for the actual C engine workspace sizes and profile default.
+(in-package "ACL2")
+(include-book "profile")
+(fn2-book-layer :b)
+(defconst *fn2-idc-scratch-bytes* 4096)
+(defconst *fn2-idc-arena-default* 65536)
+(defun fn2-idc-profile-arena (profile)
+ (declare (xargs :guard t))
+ (if (and (alistp profile) (assoc-equal :identity-arena-bytes profile))
+     (fn2-profile-get :identity-arena-bytes profile) *fn2-idc-arena-default*))
