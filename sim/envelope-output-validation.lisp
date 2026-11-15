@@ -2,6 +2,12 @@
 (in-package "ACL2")
 (include-book "envelope-output-language")
 
+(defthm fn2-eo-terminal-run-identity
+ (implies (equal (fn2-eo-phase fn2-envelope-output-state) 10)
+          (equal (fn2-envelope-output-run fuel fn2-envelope-output-state)
+                 fn2-envelope-output-state))
+ :hints (("Goal" :in-theory (enable fn2-envelope-output-run))))
+
 (defthm fn2-eo-phase11-step-unfolds
  (implies (equal (fn2-eo-phase fn2-envelope-output-state) 11)
   (equal (fn2-envelope-output-step fn2-envelope-output-state)
