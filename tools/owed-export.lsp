@@ -56,6 +56,7 @@
 (include-book "tests/consumer-commit-unit")
 (include-book "books/owed-peer")
 (include-book "tests/peer-witnesses")
+(include-book "tests/cns-release-evidence-unit")
 ; Other layers' unit and checker books are included above this line.
 ; The obligation input closes here, at the top of the world, never inside a
 ; library book (DSL-METATHEORY section 2.4): include order cannot refuse a row.
