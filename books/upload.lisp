@@ -47,6 +47,7 @@
 ;; The words the store's refusals give (also the transaction's).
 (defconst *fn2-upload-word-unaffordable* (fn2-upload-word-code :unaffordable))
 (defconst *fn2-upload-word-not-stored* (fn2-upload-word-code :not-stored))
+(defconst *fn2-upload-word-uncertain* (fn2-upload-word-code :uncertain))
 
 (defcost fn2-conn-feed-run :bytes *fn2-conn-feed-cost*
   :answers (:terminator :need-more :budget :bounds :fault)
