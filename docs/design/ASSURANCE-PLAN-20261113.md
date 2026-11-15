@@ -36,8 +36,10 @@ recorded for reuse. APPEND/FETCH and native restart remain unexecuted.
 
 The same consumer needed `RUN-BUILD-PAGE` to use `(zp (nfix level))` before
 its checked page-kind call. This preserves logical ZP behavior on arbitrary
-inputs and passes actual whole-book admission; exact record qualification is
-pending. The callee still receives the original level and rejects invalid input.
+inputs and is qualified by the [exact 28-book record](receipts/runs28-record.json):
+26 reused parents and two newly certified books. Root matched all current source
+hashes and closure keys. Runs took 21.75 seconds, leaving proof-cost work open.
+The callee still receives the original level and rejects invalid input.
 
 SOURCE routing now has a reviewed structural repair for sixteen findings in the
 frozen consumer: finite returned statuses reach their explicit continuation or
