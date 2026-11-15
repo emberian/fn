@@ -195,6 +195,7 @@
        (fn2-digests (fn2-digest-set-word dst k word fn2-digests)))
   (mv (if (= k 7) :ok :more) (+ (* 4 k) 4) 0 fn2-digests)))))
  :hints (("Goal" :cases ((< k 1) (< k 2) (< k 3) (< k 4) (< k 5) (< k 6) (< k 7) (< k 8))
+                 :expand ((:free (next acc fn2-digests) (fn2-rec-fetch-bytes 4 next acc dst slot gen off okind oslot ogen fn2-pool fn2-digests)) (:free (next acc fn2-digests) (fn2-rec-fetch-bytes 3 next acc dst slot gen off okind oslot ogen fn2-pool fn2-digests)) (:free (next acc fn2-digests) (fn2-rec-fetch-bytes 2 next acc dst slot gen off okind oslot ogen fn2-pool fn2-digests)) (:free (next acc fn2-digests) (fn2-rec-fetch-bytes 1 next acc dst slot gen off okind oslot ogen fn2-pool fn2-digests)) (:free (next acc fn2-digests) (fn2-rec-fetch-bytes 0 next acc dst slot gen off okind oslot ogen fn2-pool fn2-digests)))
                  :in-theory (enable fn2-rec-fetch-bytes fn2-rec-fetch-state-p fn2-layout-byte fn2-layout-kind-code ash)))
  :rule-classes nil))
 (local (defthm fn2-rec-fetch-four-code

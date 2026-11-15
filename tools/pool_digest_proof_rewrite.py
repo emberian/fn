@@ -102,12 +102,14 @@ def aligned(source):
                (natp k) (< k 8) (natp off))'''
  call='(fn2-rec-fetch-bytes 4 (* 4 k) 0 dst slot gen off okind oslot ogen fn2-pool fn2-digests)'
  cases=' '.join('(< k '+str(i)+')' for i in range(1,9))
+ expansions=' '.join('(:free (next acc fn2-digests) (fn2-rec-fetch-bytes '+str(n)+' next acc dst slot gen off okind oslot ogen fn2-pool fn2-digests))' for n in range(4,-1,-1))
  result='''; This local four-byte view is extracted from the unchanged original
 ; first-word reads/update. Partial accumulator terms use the SAME byte codec.
 (local (defthm fn2-rec-fetch-four-result
  (implies '''+guard+'''
   (equal (mv-list 4 '''+call+''') (mv-list 4 '''+rhs+''')))
  :hints (("Goal" :cases ('''+cases+''')
+                 :expand ('''+expansions+''')
                  :in-theory (enable fn2-rec-fetch-bytes fn2-rec-fetch-state-p fn2-layout-byte fn2-layout-kind-code ash)))
  :rule-classes nil))
 '''
