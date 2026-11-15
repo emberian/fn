@@ -703,7 +703,8 @@
    (fn2-ra-shape fn2-run-step-header-shape
     (fn2-run-step-header c level slot gen lo hi idx off unit counter rb ok os og fn2-run-cursors fn2-run-paths fn2-fields fn2-pool)
     (and (fn2-run-cursorsp fn2-run-cursors) (fn2-run-cursors-wfp fn2-run-cursors) (fn2-run-pathsp fn2-run-paths) (fn2-run-paths-wfp fn2-run-paths) (fn2-fieldsp fn2-fields) (fn2-fields-wfp fn2-fields) (fn2-run-readerp rb fn2-fields))
-    ((fn2-run-cursors 1) (fn2-run-paths 2) (fn2-fields 3)) (fn2-run-cursors-rows fn2-run-paths-rows fn2-fields-rows))
+    ((fn2-run-cursors 1) (fn2-run-paths 2) (fn2-fields 3)) (fn2-run-cursors-rows fn2-run-paths-rows fn2-fields-rows
+     fn2-run-layout-page-kind fn2-run-header-value fn2-run-readerp fn2-run-cursors-schema))
    (fn2-ra-shape fn2-run-step-seek-shape
     (fn2-run-step-seek c sid left level budget lo hi idx off qbase slot gen unit counter rb ok os og qk qs qg fn2-run-cursors fn2-fields fn2-pool)
     (and (fn2-run-cursorsp fn2-run-cursors) (fn2-run-cursors-wfp fn2-run-cursors) (fn2-run-pathsp fn2-run-paths) (fn2-run-paths-wfp fn2-run-paths) (fn2-fieldsp fn2-fields) (fn2-fields-wfp fn2-fields) (fn2-run-readerp rb fn2-fields))
