@@ -1175,6 +1175,18 @@
       "current_family_fixture_exact": true,
       "qualification_limit": "No record certification, complete function return/effect lifting or served runtime guard qualification from these fragment laws",
       "receipt_clarification": "6dce9f270: success marker belongs to hashed driver stdout; raw ACL2 terminal marker is FN-REPL-DONE 7"
+    },
+    "whole_function_lift": {
+      "source": "239fb42d6",
+      "fixture": "tests/cns-enum-whole-result-controls.lisp",
+      "fixture_sha256": "f893333a374057f38bb29c052bc16c413869ea5b8b3e83f18fc8e4933bad12eb",
+      "status": "Source-only pending proof; exact actual whole-MV proposals, not admitted",
+      "prerequisites": [
+        "Qualified current whole RAW",
+        "Qualified universal fragment fixture book"
+      ],
+      "current_family_fixture_exact": true,
+      "scope": "No production clone or runtime changes; old source clones are test-only with original body/guard and proof verify-guards nil; not native I/O equivalence"
     }
   },
   "observation_frame_join": {
