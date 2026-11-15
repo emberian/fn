@@ -24,6 +24,19 @@
       (if (member-eq (car out) '(:ok :retired :held)) control
         (fn2-cns-drain-stopped-control *fn2-stop-reason-pool-release* control)))))
 
+; Scalar control access is a list position in both descriptions. Keep
+; this small bridge separate from pool accounting and its array arithmetic.
+(defthm fn2-cns-stop-independent-by-definition
+  (equal (fn2-control-record-stop reason control)
+         (fn2-cns-drain-stopped-control reason control))
+  :rule-classes nil
+  :hints (("Goal" :in-theory
+           (e/d (fn2-control-record-stop fn2-control-stop
+                 update-fn2-control-stop update-fn2-control-stop-reason
+                 fn2-cns-drain-stopped-control fn2-cns-drain-get
+                 fn2-cns-drain-put fn2-cns-drain-index)
+                (fn2-controlp fn2-control-wfp)))))
+
 (defthm fn2-cns-core-release-children-independent
   (implies (and (fn2-poolp pool) (fn2-pool-wfp pool)
                 (fn2-cns-drain-releasablep slot gen id ogen pool))
@@ -33,15 +46,15 @@
   :rule-classes nil
   :hints (("Goal"
            :use (fn2-cns-owned-release-admission-by-definition
-                 fn2-cns-owned-pool-release-independent)
+                 fn2-cns-owned-pool-release-independent
+                 (:instance fn2-cns-stop-independent-by-definition
+                            (reason *fn2-stop-reason-pool-release*)))
            :in-theory
-           (e/d (fn2-core-release-children fn2-cns-release-children-expected
-                 fn2-cns-owned-pool-release-expected fn2-cns-drain-stopped-control
-                 fn2-control-record-stop fn2-control-stop
-                 update-fn2-control-stop update-fn2-control-stop-reason)
+           (e/d (fn2-core-release-children fn2-cns-release-children-expected)
                 (fn2-pool-release fn2-pool-release-countp fn2-poolp fn2-pool-wfp
-                 fn2-cns-drain-releasablep fn2-cns-drain-released-pool
-                 fn2-cns-drain-cell fn2-cns-drain-get)))))
+                 fn2-cns-owned-pool-release-expected fn2-control-record-stop
+                 fn2-cns-drain-stopped-control fn2-cns-drain-releasablep
+                 fn2-cns-drain-released-pool fn2-cns-drain-cell fn2-cns-drain-get)))))
 
 (defun fn2-cns-core-release-output-expected (out before)
   (let ((after (fn2-cns-drain-put-child 'fn2-pool (cadr out) before)))
