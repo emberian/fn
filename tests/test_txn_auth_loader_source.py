@@ -48,6 +48,17 @@ class TxnAuthLoader(unittest.TestCase):
   self.assertIn('(eq existing :resident) (equal existing-complete 0) existing-kept',text)
   self.assertIn('(equal before (fn2-tal-capacity-view fn2-core))',text)
   self.assertNotIn('update-fn2-run-installed-physical-count',text)
+ def test_prepared_nonempty_written_ref_uses_actual_sim_and_bound_engine(self):
+  text=(ROOT/'tests/txn-auth-loader-physical-unit.lisp').read_text()
+  for method in ('fn2-clc-produce-held','fn2-run-cursor-start-installed','fn2-sim-take-prefix','fn2-sim-complete','fn2-exec-harvest'):
+   self.assertIn('('+method,text)
+  for child in ('fn2-run-bound-bind','fn2-run-bound-issue','fn2-run-bound-step'):
+   self.assertIn(':child '+child,text)
+  for required in ('(eq refused :source) kept','(eq no-receipt :source) owner-kept','(eq premature :pending) release-kept',
+                   '(posp (fn2-run-hdr base entries))','(equal sectors *fn2-storage-extent-units*)','(eq released :ok) clean'):
+   self.assertIn(required,text)
+  for forbidden in ('fn2-post-result','fn2-run-cache-install','(phase *fn2-run-load-phase-ready*)','(phase *fn2-checkpoint-summary-phase-applied*)'):
+   self.assertNotIn(forbidden,text)
  def test_real_receipt_and_selected_miss_before_owner_capture(self):
   x=fn('fn2-c-actor-tx-missp')
   for name in ('fn2-c-source-reader-current-p','fn2-succ-txns-source-receipt','fn2-c-source-successor-endpoint','fn2-run-cursors-priority'):
