@@ -6,7 +6,7 @@
 
 ;; The source manifest's pure decisions the arms read (article-manifest.lisp).
 (defcost fn2-am-fits :doc "Whether stored octets of a length are named by one source manifest.")
-(defcost fn2-am-manifestp :doc "Whether stored octets of a length are longer than one extent (named through a manifest).")
+(defcost fn2-am-manifestp :doc "Whether stored octets exceed the raw commitment span (named through a manifest).")
 (defcost fn2-upload-manifest-units :doc "The manifest units the drain settles, a unit of entries per step.")
 
 (defun fn2-upload-release-c0 (slot gen okind oslot ogen fn2-core)

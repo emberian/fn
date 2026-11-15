@@ -70,6 +70,10 @@
 ;; blocks, 380,928 octets) and the profile's article bound, with the
 ;; generated Message-ID field, stays within it (fn2-input-config-profilep).
 (defconst *fn2-am-block-bytes* *fn2-commit-unit-bytes*)
+;; Raw articles carry one trusted digest per write resource. Larger sources
+;; use manifests even though a physical extent has more storage units.
+(defconst *fn2-upload-raw-bytes*
+  (* *fn2-commit-write-resources* *fn2-commit-unit-bytes*))
 (defconst *fn2-am-header-max* (fn2-layout-max-size *fn2-format-source-manifest-header*))
 (defconst *fn2-am-entry-max* (fn2-layout-max-size *fn2-format-source-manifest-entry*))
 ;; entries of the largest size one unit holds (the first holds the header too)
