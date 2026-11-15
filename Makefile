@@ -298,6 +298,7 @@ ACL2_BOOKS = \
   tests/blake3-native \
   tests/blake3-unit \
   tests/cns-fetch-prefix-unit \
+  tests/ctl-hash-interleave-unit \
   tests/blake3-vectors \
   tests/boot-unit \
   tests/borrow-conservation-unit \
