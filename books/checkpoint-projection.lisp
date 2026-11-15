@@ -130,6 +130,15 @@
      (fn2-checkpoint-projection-answer (if (member-eq code '(:more :active)) :more :identity))))
    ((= phase *fn2-checkpoint-projection-phase-rows*)
     (b* ((e (fn2-checkpoint-projection-cursor 0 fn2-checkpoint-projection))
+         ; The row counters describe exactly the completed prefix. Besides
+         ; rejecting stale continuation metadata, this constant-time check
+         ; bounds every increment by the actual u32 extent-row capacity.
+         ((unless (and (<= e total)
+                        (= (+ (fn2-checkpoint-projection-free-count 0 fn2-checkpoint-projection)
+                              (fn2-checkpoint-projection-reserved-count 0 fn2-checkpoint-projection)
+                              (fn2-checkpoint-projection-allocated-count 0 fn2-checkpoint-projection)
+                              (fn2-checkpoint-projection-retired-count 0 fn2-checkpoint-projection)) e)))
+          (fn2-checkpoint-projection-answer :totals))
          ((when (= e total))
           (if (not (and (= (fn2-checkpoint-projection-observed-maximum 0 fn2-checkpoint-projection) (fn2-checkpoint-projection-maximum-epoch 0 fn2-checkpoint-projection))
                          (= (+ (fn2-checkpoint-projection-free-count 0 fn2-checkpoint-projection) (fn2-checkpoint-projection-reserved-count 0 fn2-checkpoint-projection)
