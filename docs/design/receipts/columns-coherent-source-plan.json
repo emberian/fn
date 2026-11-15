@@ -148,8 +148,8 @@
       "sha256": "96606555ca9b71fcc9d3e5b955deb5052300526347dbb5f5f8e74545813b1c53"
     },
     "tests/columns-carried-unit": {
-      "key": "5a4fa7ca11c736d25ae1e4bfb6d3916e8a355fed184ed789e049b01905156c64",
-      "sha256": "d626533d08e5ed81cdd26705c90a035484c01607aa3cb9de46289e47021fab6c"
+      "key": "b0429d769fee224453bf6a5490c9fc14a82d55f0af4ebe8800cbe03de91aba54",
+      "sha256": "aa13fc5eee7cfc9ef34764e2eb20afbeebf250dba06cc7da69ba9644a3a1a2e4"
     },
     "tests/columns-carrier-hints-unit": {
       "key": "1030784c691fe4eda8b4918926d49e8e6545689dc9ce6dd366d70b5daf8aafbe",

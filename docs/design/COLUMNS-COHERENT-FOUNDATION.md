@@ -189,3 +189,18 @@ carried fixture. Fresh actual parent worlds and dependency-order whole-book
 records avoid replaying the19 qualified records or exposing unrelated LOCAL
 proof modules globally. Final exact two-root37-union qualification is separate
 and remains pending a new compute grant. No partial book receives a record.
+
+### Final current foundation qualification
+
+At b549c158d, the corrected actual local-stobj fixture passed its whole source
+and whole record, following successful whole records for all eight missing
+providers. The first fixture attempt exposed an invalid nested binding; each
+local production table now has its own MV-LET, retaining every constructor and
+positive/negative assertion. No provider was replayed for this fixture repair.
+
+`receipts/columns-coherent-final37.json` binds all37 current closure keys and
+raw source hashes to actual cert/port/FASL hashes under toolchain8aeb. The two
+roots are carrier-hints-unit and columns-carried-unit. All final four owned
+PIDs and scope were absent before ledger release. This qualifies the foundation
+fixture closure; actual late metadata callers and the full application remain
+separate gates.
