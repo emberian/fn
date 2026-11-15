@@ -18,7 +18,7 @@ def progress_before_release(f,status):
  binds=f[4][1] if f[3][0]=='declare' and f[4][0]=='b*' else None
  if binds is None:return False
  for b in binds:
-  if isinstance(b[0],list) and b[0] and b[0][0]=='when' and status in str(b[0]):return True
+  if isinstance(b[0],list) and b[0] and b[0][0]=='when' and any(y and y[0]=='member-eq' and status in str(y) for y in walk(b[0])):return True
   if isinstance(b[1],list) and b[1] and b[1][0]=='fn2-read-release':return False
  return False
 class CNSContinuationSource(unittest.TestCase):
@@ -31,6 +31,23 @@ class CNSContinuationSource(unittest.TestCase):
   self.assertIn('*fn2-cns-state-retired*',src)
   for term in ('fn2-cns-read-work-owner','fn2-cns-read-work-generation','fn2-cns-read-work-a','fn2-cns-read-work-f'):
    self.assertIn(term,(ROOT/'books/cns-read-state.lisp').read_text())
+ def test_exact_fingerprint_guard_and_mutation_control(self):
+  raw=(ROOT/'books/cns-read-state.lisp').read_text()
+  d={x[1]:x for f in forms(raw) for x in walk(read_sexp(f)) if x and x[0]=='defun'}
+  f=d['fn2-cns-read-work-open']
+  expected=[['equal',n,['fn2-cns-read-work-'+n,'w','fn2-cns-read-work']] for n in 'abcdef']
+  def complete(node):return all(term in list(walk(node)) for term in expected)
+  self.assertTrue(complete(f))
+  bad=copy.deepcopy(f)
+  for x in walk(bad):
+   if x==expected[2]:x[0]='DROPPED-input-c'
+  self.assertFalse(complete(bad))
+  f=d['fn2-cns-read-work-save']
+  for name,param in [('owner','owner'),('generation','gen')]:
+   self.assertIn(['equal',param,['fn2-cns-read-work-'+name,'w','fn2-cns-read-work']],list(walk(f)))
+  f=self.d['fn2-cns-work-open']
+  self.assertEqual(len(calls(f,'fn2-cns-read-owner')),1)
+  self.assertEqual(calls(f,'fn2-cns-read-work-open')[0][1:5],['x','op','owner','gen'])
  def test_frontier_retains_miss_before_release(self):
   f=self.d['fn2-cns-stream-frontier']
   self.assertEqual(len(calls(f,'fn2-read-seek-step')),1)
@@ -40,7 +57,7 @@ class CNSContinuationSource(unittest.TestCase):
   bad=copy.deepcopy(f)
   for x in walk(bad):
    if x and x[0]=='member-eq' and ':miss' in str(x):x[0]='DROPPED-progress'
-  self.assertNotEqual(bad,f)
+  self.assertFalse(progress_before_release(bad,':miss'))
  def test_lookup_carries_scalars_into_frontier(self):
   f=self.d['fn2-cns-lookup-cursor']
   self.assertEqual(len(calls(f,'fn2-read-lookup')),1)
@@ -85,4 +102,14 @@ class CNSContinuationSource(unittest.TestCase):
   self.assertFalse(calls(f,'fn2-cns-lookup-loop'))
   self.assertTrue(calls(f,'fn2-cns-article-query'))
   self.assertIn(':miss',str(self.d['fn2-cns-decode-port']))
+ def test_legacy_frontier_probe_uses_actual_taken_request(self):
+  src=(ROOT/'tests/consumer-commit-unit.lisp').read_text()
+  self.assertNotIn('(fn2-cns-stream-frontier 0 0 fn2-core)',src)
+  self.assertNotIn('(fn2-cns-stream-frontier 1 0 fn2-core)',src)
+  ds={x[1]:x for f in forms(src) for x in walk(read_sexp(f)) if x and x[0]=='defun'}
+  f=ds['fn2-ccu-frontier-probe']
+  for name in ('fn2-machine-take-fn2-cns','fn2-cns-read-row','fn2-ccu-frontier-drive','fn2-cw-loop'):
+   self.assertEqual(len(calls(f,name)),1)
+  self.assertIn('*fn2-cns-state-draining*',str(f))
+  self.assertIn('*fn2-cns-state-free*',str(f))
 if __name__=='__main__':unittest.main()
