@@ -76,7 +76,10 @@ column getter definitions into many branch splits. This was not an adapter
 skipping a generated default hint. Candidate `c99c74bd2` retains the row-only
 adapter and uses the existing `fn2-columns-guard-hint` with CNS table metadata
 and opaque `fn2-cns-bucket`. TYPE/WFP and raw-row proofs retain their original
-hints. Its actual proof result is pending. The helper is already an ancestor
+hints. Its complete same-world source admission passed in 37.35 seconds with 615
+reported prover steps and the original event wrappers intact. This is author
+admission, not record qualification. The getter branch explosion is removed,
+but the whole-book D26 cost remains. The helper is already an ancestor
 through arm-children -> pool-ranges, so the explicit include adds no new
 source dependency members.
 
