@@ -843,11 +843,9 @@
 
 ) ; encapsulate
 
-;; The control connection's field stripe and hasher row (interim, 14 item
-;; 8): the C rows below the format table's top row (B's block read check,
-;; machines-b.lisp), row FC-ROWS - C - 1 + S for control slot S of C. With
-;; :format-slots at its floor that is B's fn2-b-ctl-slot (owed: B's runtime
-;; accessor for row S).
+;; The control connection's persistent field/hash stripe uses B's named
+;; runtime selector, below its retained-source and verification jobs. At
+;; the profile floor this is the declared per-connection format slot.
 (defthm fn2-ctl-fc-row-at-the-floor
   (implies (and (equal fc-rows (fn2-b-format-floor profile)) (equal c (fn2-b-ctl-rows profile)))
            (equal (fn2-b-ctl-runtime-row s c fc-rows) (fn2-b-ctl-slot s profile)))
