@@ -27,7 +27,10 @@
   (source-okind :u8) (source-oslot :u32) (source-ogen :u60)
   (copy-field :u32) (copy-offset :u32) (copy-end :u32)))
 
-(defun fn2-checkpoint-compaction-ownerp
+; The cut tuple survives publication/retirement. Construction additionally
+; requires BUILDING/await-roots, so this split cannot authorize source reads
+; from a published carrier merely because its old tuple still matches.
+(defun fn2-checkpoint-compaction-cut-ownerp
  (fn2-checkpoint-compaction fn2-checkpoint-build fn2-csnapshot fn2-checkpoints fn2-overlays fn2-run-installed)
  (declare (xargs :stobjs (fn2-checkpoint-compaction fn2-checkpoint-build fn2-csnapshot fn2-checkpoints fn2-overlays fn2-run-installed)
  :guard (and (fn2-checkpoint-compaction-wfp fn2-checkpoint-compaction)
@@ -44,10 +47,9 @@
        (fn2-checkpoint-compaction-owner-slot 0 fn2-checkpoint-compaction)
        (fn2-checkpoint-compaction-owner-gen 0 fn2-checkpoint-compaction)
        fn2-checkpoint-build fn2-csnapshot)
-      (equal (fn2-checkpoint-build-phase 0 fn2-checkpoint-build) *fn2-checkpoint-build-phase-await-roots*)
       (equal (fn2-checkpoint-compaction-candidate 0 fn2-checkpoint-compaction)
              (fn2-checkpoint-build-candidate 0 fn2-checkpoint-build))
-      (fn2-checkpoint-builder-ownerp
+      (fn2-checkpoint-builder-claimp
        (fn2-checkpoint-compaction-candidate 0 fn2-checkpoint-compaction)
        (fn2-checkpoint-compaction-token 0 fn2-checkpoint-compaction)
        (fn2-checkpoint-compaction-owner-kind 0 fn2-checkpoint-compaction)
@@ -55,6 +57,23 @@
        (fn2-checkpoint-compaction-owner-gen 0 fn2-checkpoint-compaction) fn2-checkpoints)
       (equal (fn2-checkpoint-compaction-overlay-rows 0 fn2-checkpoint-compaction) (fn2-overlays-rows fn2-overlays))
       (equal (fn2-checkpoint-compaction-run-rows 0 fn2-checkpoint-compaction) (fn2-run-installed-rows fn2-run-installed))))
+
+(defun fn2-checkpoint-compaction-ownerp
+ (fn2-checkpoint-compaction fn2-checkpoint-build fn2-csnapshot fn2-checkpoints fn2-overlays fn2-run-installed)
+ (declare (xargs :stobjs (fn2-checkpoint-compaction fn2-checkpoint-build fn2-csnapshot fn2-checkpoints fn2-overlays fn2-run-installed)
+ :guard (and (fn2-checkpoint-compaction-wfp fn2-checkpoint-compaction)
+             (fn2-checkpoint-build-wfp fn2-checkpoint-build) (fn2-csnapshot-wfp fn2-csnapshot)
+             (fn2-checkpoints-wfp fn2-checkpoints) (fn2-overlays-wfp fn2-overlays)
+             (fn2-run-installed-wfp fn2-run-installed))))
+ (and (fn2-checkpoint-compaction-cut-ownerp
+       fn2-checkpoint-compaction fn2-checkpoint-build fn2-csnapshot fn2-checkpoints fn2-overlays fn2-run-installed)
+      (equal (fn2-checkpoint-build-phase 0 fn2-checkpoint-build) *fn2-checkpoint-build-phase-await-roots*)
+      (fn2-checkpoint-builder-ownerp
+       (fn2-checkpoint-compaction-candidate 0 fn2-checkpoint-compaction)
+       (fn2-checkpoint-compaction-token 0 fn2-checkpoint-compaction)
+       (fn2-checkpoint-compaction-owner-kind 0 fn2-checkpoint-compaction)
+       (fn2-checkpoint-compaction-owner-slot 0 fn2-checkpoint-compaction)
+       (fn2-checkpoint-compaction-owner-gen 0 fn2-checkpoint-compaction) fn2-checkpoints)))
 
 (defun fn2-checkpoint-compaction-begin
  (token kind owner generation fn2-checkpoint-compaction fn2-checkpoint-build fn2-csnapshot fn2-checkpoints fn2-overlays fn2-run-installed)

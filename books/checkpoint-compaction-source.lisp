@@ -108,3 +108,22 @@
       (fn2-checkpoint-compaction (fn2-checkpoint-compaction-put 0
        (phase *fn2-checkpoint-compaction-phase-seek*) (source-kind kind) (source-row row) (source-order order) (source-started 0))))
   (mv :source fn2-checkpoint-compaction)))
+
+; The schema's last full source scan found no head beyond its lower key.
+; Every matching source had to leave SEEK/COPY through its actual park/count
+; continuation before this raw scan could reach its physical row boundary.
+(defun fn2-checkpoint-compaction-schema-drained-p
+ (fn2-checkpoint-compaction fn2-checkpoint-build fn2-csnapshot fn2-checkpoints fn2-overlays fn2-run-installed)
+ (declare (xargs :stobjs (fn2-checkpoint-compaction fn2-checkpoint-build fn2-csnapshot fn2-checkpoints fn2-overlays fn2-run-installed)
+ :guard (and (fn2-checkpoint-compaction-wfp fn2-checkpoint-compaction)
+             (fn2-checkpoint-build-wfp fn2-checkpoint-build) (fn2-csnapshot-wfp fn2-csnapshot)
+             (fn2-checkpoints-wfp fn2-checkpoints) (fn2-overlays-wfp fn2-overlays)
+             (fn2-run-installed-wfp fn2-run-installed))))
+ (and (fn2-checkpoint-compaction-ownerp fn2-checkpoint-compaction fn2-checkpoint-build fn2-csnapshot fn2-checkpoints fn2-overlays fn2-run-installed)
+      (equal (fn2-checkpoint-compaction-phase 0 fn2-checkpoint-compaction) *fn2-checkpoint-compaction-phase-schema-done*)
+      (equal (fn2-checkpoint-compaction-schema-open 0 fn2-checkpoint-compaction) 1)
+      (equal (fn2-checkpoint-compaction-scan-kind 0 fn2-checkpoint-compaction) 1)
+      (equal (fn2-checkpoint-compaction-scan-row 0 fn2-checkpoint-compaction) (fn2-run-installed-rows fn2-run-installed))
+      (equal (fn2-checkpoint-compaction-best 0 fn2-checkpoint-compaction) 0)
+      (equal (fn2-checkpoint-compaction-has-lower 0 fn2-checkpoint-compaction) 1)
+      (posp (fn2-checkpoint-compaction-lower-round 0 fn2-checkpoint-compaction))))

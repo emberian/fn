@@ -55,9 +55,13 @@ class CompactionSource(unittest.TestCase):
 
     def test_each_source_scan_retains_cut_and_geometry(self):
         t = definition(STATE, "fn2-checkpoint-compaction-ownerp")
-        for p in ("fn2-checkpoint-build-ownerp", "fn2-checkpoint-builder-ownerp",
+        self.assertTrue(calls(t, "fn2-checkpoint-compaction-cut-ownerp"))
+        self.assertTrue(calls(t, "fn2-checkpoint-builder-ownerp"))
+        self.assertIn("*fn2-checkpoint-build-phase-await-roots*", repr(t))
+        cut = definition(STATE, "fn2-checkpoint-compaction-cut-ownerp")
+        for p in ("fn2-checkpoint-build-ownerp", "fn2-checkpoint-builder-claimp",
                   "fn2-overlays-rows", "fn2-run-installed-rows"):
-            self.assertTrue(calls(t, p))
+            self.assertTrue(calls(cut, p))
         step = definition(SOURCE, "fn2-checkpoint-compaction-source-step")
         self.assertTrue(calls(step, "fn2-checkpoint-compaction-ownerp"))
 

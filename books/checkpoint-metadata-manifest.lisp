@@ -8,6 +8,7 @@
 (include-book "checkpoint-metadata-manifest-state")
 (include-book "checkpoint-metadata-page")
 (include-book "checkpoint-build-state")
+(include-book "checkpoint-compaction-production")
 (fn2-book-layer :c)
 
 
@@ -30,27 +31,27 @@
             (equal (fn2-run-builds-ogen b fn2-run-builds) (fn2-checkpoint-metadata-manifest-owner-gen 0 fn2-checkpoint-metadata-manifest))))))
 
 (defun fn2-checkpoint-metadata-manifest-begin (b wbase crow hbase hslot hgen fields entry-base hash-slot hash-gen limit
-                                              fn2-checkpoint-metadata-manifest fn2-checkpoint-metadata fn2-checkpoint-source
-                                              fn2-checkpoint-build fn2-csnapshot fn2-checkpoints fn2-run-builds fn2-run-writers fn2-fields fn2-pool)
- (declare (xargs :stobjs (fn2-checkpoint-metadata-manifest fn2-checkpoint-metadata fn2-checkpoint-source fn2-checkpoint-build
-                          fn2-csnapshot fn2-checkpoints fn2-run-builds fn2-run-writers fn2-fields fn2-pool)
+                                              fn2-checkpoint-metadata-manifest fn2-checkpoint-metadata fn2-checkpoint-compaction
+                                              fn2-checkpoint-build fn2-csnapshot fn2-checkpoints fn2-run-builds fn2-run-writers fn2-fields fn2-pool fn2-overlays fn2-run-installed)
+ (declare (xargs :stobjs (fn2-checkpoint-metadata-manifest fn2-checkpoint-metadata fn2-checkpoint-compaction fn2-checkpoint-build
+                          fn2-csnapshot fn2-checkpoints fn2-run-builds fn2-run-writers fn2-fields fn2-pool fn2-overlays fn2-run-installed)
   :guard (and (fn2-checkpoint-metadata-manifest-wfp fn2-checkpoint-metadata-manifest) (fn2-checkpoint-metadata-wfp fn2-checkpoint-metadata)
-              (fn2-checkpoint-source-wfp fn2-checkpoint-source) (fn2-checkpoint-build-wfp fn2-checkpoint-build)
+              (fn2-checkpoint-compaction-wfp fn2-checkpoint-compaction) (fn2-checkpoint-build-wfp fn2-checkpoint-build)
               (fn2-csnapshot-wfp fn2-csnapshot) (fn2-checkpoints-wfp fn2-checkpoints) (fn2-run-builds-wfp fn2-run-builds) (fn2-run-writers-wfp fn2-run-writers)
-              (fn2-fields-wfp fn2-fields) (fn2-pool-wfp fn2-pool))))
+              (fn2-fields-wfp fn2-fields) (fn2-pool-wfp fn2-pool) (fn2-overlays-wfp fn2-overlays) (fn2-run-installed-wfp fn2-run-installed))))
  (b* (((unless (and (< 0 (fn2-checkpoint-metadata-manifest-rows fn2-checkpoint-metadata-manifest))
                      (< 0 (fn2-checkpoint-metadata-rows fn2-checkpoint-metadata))
                      (equal (fn2-checkpoint-metadata-manifest-phase 0 fn2-checkpoint-metadata-manifest) *fn2-checkpoint-metadata-manifest-phase-idle*)
                      (equal (fn2-checkpoint-metadata-phase 0 fn2-checkpoint-metadata) *fn2-checkpoint-metadata-phase-idle*)
-                     (fn2-checkpoint-source-ownerp fn2-checkpoint-source fn2-csnapshot)
-                     (equal (fn2-checkpoint-source-phase 0 fn2-checkpoint-source) *fn2-checkpoint-source-phase-scan*)
-                     (equal (fn2-checkpoint-source-rank 0 fn2-checkpoint-source) 0)
+                     (fn2-checkpoint-compaction-ownerp fn2-checkpoint-compaction fn2-checkpoint-build fn2-csnapshot fn2-checkpoints fn2-overlays fn2-run-installed)
+                     (equal (fn2-checkpoint-compaction-phase 0 fn2-checkpoint-compaction) *fn2-checkpoint-compaction-phase-schema*)
+                     (equal (fn2-checkpoint-compaction-output-rank 0 fn2-checkpoint-compaction) 0)
                      (< 0 (fn2-checkpoint-build-rows fn2-checkpoint-build))))
        (mv :snapshot fn2-checkpoint-metadata-manifest fn2-checkpoint-metadata fn2-run-builds fn2-run-writers fn2-pool))
-      (token (fn2-checkpoint-source-token 0 fn2-checkpoint-source))
-      (kind (fn2-checkpoint-source-owner-kind 0 fn2-checkpoint-source))
-      (owner (fn2-checkpoint-source-owner-slot 0 fn2-checkpoint-source))
-      (generation (fn2-checkpoint-source-owner-gen 0 fn2-checkpoint-source))
+      (token (fn2-checkpoint-compaction-token 0 fn2-checkpoint-compaction))
+      (kind (fn2-checkpoint-compaction-owner-kind 0 fn2-checkpoint-compaction))
+      (owner (fn2-checkpoint-compaction-owner-slot 0 fn2-checkpoint-compaction))
+      (generation (fn2-checkpoint-compaction-owner-gen 0 fn2-checkpoint-compaction))
       ((unless (and (fn2-checkpoint-build-ownerp token kind owner generation fn2-checkpoint-build fn2-csnapshot)
                      (fn2-checkpoint-builder-ownerp (fn2-checkpoint-build-candidate 0 fn2-checkpoint-build) token kind owner generation fn2-checkpoints)
                      (equal (fn2-checkpoint-build-phase 0 fn2-checkpoint-build) *fn2-checkpoint-build-phase-await-roots*)
@@ -89,23 +90,23 @@
    (fn2-checkpoint-metadata-manifest-hash (+ i 1) extent slot gen kind owner generation fn2-checkpoint-page-verified fn2-pool))))
 
 (defmacro fn2-checkpoint-metadata-manifest-emit-mv (code)
- `(mv ,code fn2-checkpoint-metadata-manifest fn2-checkpoint-metadata fn2-checkpoint-source
+ `(mv ,code fn2-checkpoint-metadata-manifest fn2-checkpoint-metadata fn2-checkpoint-compaction
       fn2-run-builds fn2-run-writers fn2-run-restarts fn2-fields fn2-pool))
 
-; One completed real source contributes one canonical schema10 entry. Only
-; successful append advances the ordered selector; page backpressure retains
-; the same source, builder and verified root for a later retry.
-(defun fn2-checkpoint-metadata-manifest-emit (fn2-checkpoint-metadata-manifest fn2-checkpoint-metadata fn2-checkpoint-source
+; One completed nonempty schema contributes one canonical directory entry.
+; Successful append advances the actual schema continuation; page backpressure
+; retains the same completed physical root for a later retry.
+(defun fn2-checkpoint-metadata-manifest-emit (fn2-checkpoint-metadata-manifest fn2-checkpoint-metadata fn2-checkpoint-compaction
                                             fn2-csnapshot fn2-checkpoint-page fn2-checkpoint-page-verified fn2-checkpoint-construction fn2-extents
-                                            fn2-run-builds fn2-run-writers fn2-run-restarts fn2-fields fn2-pool)
- (declare (xargs :stobjs (fn2-checkpoint-metadata-manifest fn2-checkpoint-metadata fn2-checkpoint-source fn2-csnapshot fn2-checkpoint-page
+                                            fn2-run-builds fn2-run-writers fn2-run-restarts fn2-fields fn2-pool fn2-checkpoint-build fn2-checkpoints fn2-overlays fn2-run-installed fn2-checkpoint-predecessors fn2-checkpoint-predecessor-control)
+ (declare (xargs :stobjs (fn2-checkpoint-metadata-manifest fn2-checkpoint-metadata fn2-checkpoint-compaction fn2-csnapshot fn2-checkpoint-page
                           fn2-checkpoint-page-verified fn2-checkpoint-construction fn2-extents fn2-run-builds fn2-run-writers
-                          fn2-run-restarts fn2-fields fn2-pool)
+                          fn2-run-restarts fn2-fields fn2-pool fn2-checkpoint-build fn2-checkpoints fn2-overlays fn2-run-installed fn2-checkpoint-predecessors fn2-checkpoint-predecessor-control)
   :guard (and (fn2-checkpoint-metadata-manifest-wfp fn2-checkpoint-metadata-manifest) (fn2-checkpoint-metadata-wfp fn2-checkpoint-metadata)
-              (fn2-checkpoint-source-wfp fn2-checkpoint-source) (fn2-csnapshot-wfp fn2-csnapshot)
+              (fn2-checkpoint-compaction-wfp fn2-checkpoint-compaction) (fn2-csnapshot-wfp fn2-csnapshot)
               (fn2-checkpoint-page-wfp fn2-checkpoint-page) (fn2-checkpoint-page-verified-wfp fn2-checkpoint-page-verified) (fn2-checkpoint-construction-wfp fn2-checkpoint-construction)
               (fn2-extents-wfp fn2-extents) (fn2-run-builds-wfp fn2-run-builds) (fn2-run-writers-wfp fn2-run-writers)
-              (fn2-run-restarts-wfp fn2-run-restarts) (fn2-fields-wfp fn2-fields) (fn2-pool-wfp fn2-pool))))
+              (fn2-run-restarts-wfp fn2-run-restarts) (fn2-fields-wfp fn2-fields) (fn2-pool-wfp fn2-pool) (fn2-checkpoint-build-wfp fn2-checkpoint-build) (fn2-checkpoints-wfp fn2-checkpoints) (fn2-overlays-wfp fn2-overlays) (fn2-run-installed-wfp fn2-run-installed) (fn2-checkpoint-predecessors-wfp fn2-checkpoint-predecessors) (fn2-checkpoint-predecessor-control-wfp fn2-checkpoint-predecessor-control))))
  (b* (((unless (and (fn2-checkpoint-metadata-manifest-ownerp fn2-checkpoint-metadata-manifest fn2-csnapshot fn2-run-builds fn2-run-writers)
                      (fn2-checkpoint-metadata-ownerp fn2-checkpoint-metadata fn2-csnapshot fn2-run-builds fn2-run-writers)
                      (equal (fn2-checkpoint-metadata-manifest-phase 0 fn2-checkpoint-metadata-manifest) *fn2-checkpoint-metadata-manifest-phase-adding*)
@@ -124,14 +125,13 @@
       ((unless (and (not (equal b mb)) (posp height) (<= height *fn2-run-max-levels*)
                      (equal (fn2-run-builds-phase b fn2-run-builds) *fn2-run-build-phase-done*)
                      (equal token (fn2-checkpoint-metadata-token 0 fn2-checkpoint-metadata))
-                     (fn2-checkpoint-source-selectedp token kind owner generation
-                      (fn2-checkpoint-metadata-source-kind 0 fn2-checkpoint-metadata)
-                      (fn2-checkpoint-metadata-source-row 0 fn2-checkpoint-metadata) fn2-checkpoint-source fn2-csnapshot)
-                     (equal (fn2-checkpoint-source-schema 0 fn2-checkpoint-source) (fn2-run-builds-schema b fn2-run-builds))
-                     (equal (fn2-checkpoint-source-order 0 fn2-checkpoint-source) (fn2-checkpoint-metadata-source-order 0 fn2-checkpoint-metadata))
-                     (equal (fn2-checkpoint-metadata-run-rank 0 fn2-checkpoint-metadata) (fn2-checkpoint-source-rank 0 fn2-checkpoint-source))
+                     (and (fn2-checkpoint-predecessor-ready-p fn2-checkpoint-compaction fn2-checkpoint-build fn2-csnapshot fn2-checkpoints fn2-overlays fn2-run-installed fn2-checkpoint-predecessors fn2-checkpoint-predecessor-control)
+                     (fn2-checkpoint-compaction-schema-drained-p fn2-checkpoint-compaction fn2-checkpoint-build fn2-csnapshot fn2-checkpoints fn2-overlays fn2-run-installed))
+                     (equal (fn2-checkpoint-compaction-schema 0 fn2-checkpoint-compaction) (fn2-run-builds-schema b fn2-run-builds))
+                     (equal (fn2-run-builds-run b fn2-run-builds) (fn2-checkpoint-compaction-output-rank 0 fn2-checkpoint-compaction))
+                     (equal (fn2-checkpoint-metadata-run-rank 0 fn2-checkpoint-metadata) (fn2-checkpoint-compaction-output-rank 0 fn2-checkpoint-compaction))
                      (equal (+ 1 (fn2-checkpoint-metadata-manifest-entries 0 fn2-checkpoint-metadata-manifest))
-                            (fn2-checkpoint-source-rank 0 fn2-checkpoint-source))
+                            (fn2-checkpoint-compaction-output-rank 0 fn2-checkpoint-compaction))
                      (natp base) (<= (+ base *fn2-manifest-entry-num-fields*) (fn2-fields-rows fn2-fields))
                      (fn2-checkpoint-metadata-page-complete-p b (- height 1) fn2-checkpoint-metadata fn2-csnapshot fn2-run-builds fn2-run-writers
                       fn2-checkpoint-page-verified fn2-checkpoint-construction fn2-extents fn2-checkpoint-page fn2-pool)))
@@ -148,7 +148,7 @@
       ((unless (eq code :ok)) (fn2-checkpoint-metadata-manifest-emit-mv code))
       ((mv code fn2-pool) (fn2-checkpoint-metadata-manifest-hash 0 extent slot gen kind owner generation fn2-checkpoint-page-verified fn2-pool))
       ((unless (eq code :ok)) (fn2-checkpoint-metadata-manifest-emit-mv code))
-      (fn2-fields (fn2-fields-set-value (+ base *fn2-manifest-entry-field-schema*) (fn2-checkpoint-source-schema 0 fn2-checkpoint-source) fn2-fields))
+      (fn2-fields (fn2-fields-set-value (+ base *fn2-manifest-entry-field-schema*) (fn2-checkpoint-compaction-schema 0 fn2-checkpoint-compaction) fn2-fields))
       (fn2-fields (fn2-fields-set-value (+ base *fn2-manifest-entry-field-run*) (fn2-checkpoint-metadata-run-rank 0 fn2-checkpoint-metadata) fn2-fields))
       (fn2-fields (fn2-fields-set-value (+ base *fn2-manifest-entry-field-height*) (fn2-run-builds-height b fn2-run-builds) fn2-fields))
       (fn2-fields (fn2-fields-set-value (+ base *fn2-manifest-entry-field-entries*) (fn2-run-builds-entries b fn2-run-builds) fn2-fields))
@@ -172,36 +172,10 @@
        (fn2-checkpoint-metadata-manifest-put extent
         (catalog-old-stage 0) (catalog-installed-tag 0) (catalog-installed-row 0)
         (catalog-token token) (catalog-rank (fn2-checkpoint-metadata-run-rank 0 fn2-checkpoint-metadata))
-        (catalog-old-slot (fn2-checkpoint-metadata-old-slot 0 fn2-checkpoint-metadata))
-        (catalog-old-gen (fn2-checkpoint-metadata-old-gen 0 fn2-checkpoint-metadata))
-        (catalog-old-unit (fn2-checkpoint-metadata-old-unit 0 fn2-checkpoint-metadata))
-        (catalog-old-epoch (fn2-checkpoint-metadata-old-epoch 0 fn2-checkpoint-metadata))
-        (catalog-old-allocation (fn2-checkpoint-metadata-old-allocation 0 fn2-checkpoint-metadata))
-        (catalog-old-physical (fn2-checkpoint-metadata-old-physical 0 fn2-checkpoint-metadata))
-        (catalog-old-tag (fn2-checkpoint-metadata-old-tag 0 fn2-checkpoint-metadata))
-        (catalog-old-top (fn2-checkpoint-metadata-old-top 0 fn2-checkpoint-metadata))
-        (catalog-old-entries (fn2-checkpoint-metadata-old-entries 0 fn2-checkpoint-metadata))
-        (catalog-old-okind (fn2-checkpoint-metadata-old-okind 0 fn2-checkpoint-metadata))
-        (catalog-old-oslot (fn2-checkpoint-metadata-old-oslot 0 fn2-checkpoint-metadata))
-        (catalog-old-ogen (fn2-checkpoint-metadata-old-ogen 0 fn2-checkpoint-metadata))
-        (catalog-old-filter (fn2-checkpoint-metadata-old-filter 0 fn2-checkpoint-metadata))
-        (catalog-old-funit (fn2-checkpoint-metadata-old-funit 0 fn2-checkpoint-metadata))
-        (catalog-old-fcounter (fn2-checkpoint-metadata-old-fcounter 0 fn2-checkpoint-metadata))
-        (catalog-old-ufirst (fn2-checkpoint-metadata-old-ufirst 0 fn2-checkpoint-metadata))
-        (catalog-old-ulast (fn2-checkpoint-metadata-old-ulast 0 fn2-checkpoint-metadata))
-        (catalog-old-wire-run (fn2-checkpoint-metadata-old-wire-run 0 fn2-checkpoint-metadata))
-        (catalog-old-hash-0 (fn2-checkpoint-metadata-old-hash-0 0 fn2-checkpoint-metadata))
-        (catalog-old-hash-1 (fn2-checkpoint-metadata-old-hash-1 0 fn2-checkpoint-metadata))
-        (catalog-old-hash-2 (fn2-checkpoint-metadata-old-hash-2 0 fn2-checkpoint-metadata))
-        (catalog-old-hash-3 (fn2-checkpoint-metadata-old-hash-3 0 fn2-checkpoint-metadata))
-        (catalog-old-hash-4 (fn2-checkpoint-metadata-old-hash-4 0 fn2-checkpoint-metadata))
-        (catalog-old-hash-5 (fn2-checkpoint-metadata-old-hash-5 0 fn2-checkpoint-metadata))
-        (catalog-old-hash-6 (fn2-checkpoint-metadata-old-hash-6 0 fn2-checkpoint-metadata))
-        (catalog-old-hash-7 (fn2-checkpoint-metadata-old-hash-7 0 fn2-checkpoint-metadata))
-        (catalog-source-kind (fn2-checkpoint-source-kind 0 fn2-checkpoint-source))
-        (catalog-source-row (fn2-checkpoint-source-row 0 fn2-checkpoint-source))
-        (catalog-source-order (fn2-checkpoint-source-order 0 fn2-checkpoint-source))
-        (catalog-schema (fn2-checkpoint-source-schema 0 fn2-checkpoint-source))
+        (catalog-source-kind 2)
+        (catalog-source-row 0)
+        (catalog-source-order 0)
+        (catalog-schema (fn2-checkpoint-compaction-schema 0 fn2-checkpoint-compaction))
         (catalog-top (- height 1)) (catalog-entries (fn2-run-builds-entries b fn2-run-builds))
         (catalog-epoch (fn2-run-writers-epoch w fn2-run-writers))
         (catalog-allocation (fn2-run-writers-counter w fn2-run-writers))
@@ -215,8 +189,10 @@
         (catalog-hash-7 (fn2-checkpoint-page-verified-word extent 7 fn2-checkpoint-page-verified))))
       (fn2-checkpoint-metadata-manifest (fn2-checkpoint-metadata-manifest-set-entries 0
        (+ 1 (fn2-checkpoint-metadata-manifest-entries 0 fn2-checkpoint-metadata-manifest)) fn2-checkpoint-metadata-manifest))
-      (fn2-checkpoint-source (fn2-checkpoint-source-put 0
-       (phase *fn2-checkpoint-source-phase-scan*) (scan-kind 0) (scan-row 0) (found 0)))
+      (fn2-checkpoint-compaction (fn2-checkpoint-compaction-put 0
+       (phase *fn2-checkpoint-compaction-phase-schema*) (schema-open 0)
+       (has-last-schema 1) (last-schema (fn2-checkpoint-compaction-schema 0 fn2-checkpoint-compaction))
+       (scan-kind 0) (scan-row 0) (schema-found 0) (best 0) (has-lower 0) (source-started 0)))
       (fn2-checkpoint-metadata (fn2-checkpoint-metadata-set-phase 0 *fn2-checkpoint-metadata-phase-idle* fn2-checkpoint-metadata)))
   (fn2-checkpoint-metadata-manifest-emit-mv :ok)))
 
@@ -242,21 +218,21 @@
   (fn2-checkpoint-metadata-page-for-build b level *page-kind-manifest* slot gen fn2-checkpoint-metadata fn2-csnapshot
    fn2-checkpoint-construction fn2-extents fn2-control fn2-run-builds fn2-run-writers fn2-pool)))
 
-; Finish only after the selector exhausted every held source and each emitted
-; rank entered schema10 once. The empty-root case still runs the ordinary
+; Finish only after actual compaction and original-source coverage complete,
+; with each emitted schema rank entering the directory once. The empty-root case still runs the ordinary
 ; close/header/seal machinery; it does not manufacture a complete root.
-(defun fn2-checkpoint-metadata-manifest-finish (fn2-checkpoint-metadata-manifest fn2-checkpoint-source fn2-checkpoint-metadata
-                                              fn2-csnapshot fn2-run-builds fn2-run-writers)
- (declare (xargs :stobjs (fn2-checkpoint-metadata-manifest fn2-checkpoint-source fn2-checkpoint-metadata fn2-csnapshot fn2-run-builds fn2-run-writers)
-  :guard (and (fn2-checkpoint-metadata-manifest-wfp fn2-checkpoint-metadata-manifest) (fn2-checkpoint-source-wfp fn2-checkpoint-source)
+(defun fn2-checkpoint-metadata-manifest-finish (fn2-checkpoint-metadata-manifest fn2-checkpoint-compaction fn2-checkpoint-metadata
+                                              fn2-csnapshot fn2-run-builds fn2-run-writers fn2-checkpoint-build fn2-checkpoints fn2-overlays fn2-run-installed fn2-checkpoint-predecessors fn2-checkpoint-predecessor-control)
+ (declare (xargs :stobjs (fn2-checkpoint-metadata-manifest fn2-checkpoint-compaction fn2-checkpoint-metadata fn2-csnapshot fn2-run-builds fn2-run-writers fn2-checkpoint-build fn2-checkpoints fn2-overlays fn2-run-installed fn2-checkpoint-predecessors fn2-checkpoint-predecessor-control)
+  :guard (and (fn2-checkpoint-metadata-manifest-wfp fn2-checkpoint-metadata-manifest) (fn2-checkpoint-compaction-wfp fn2-checkpoint-compaction)
               (fn2-checkpoint-metadata-wfp fn2-checkpoint-metadata) (fn2-csnapshot-wfp fn2-csnapshot)
-              (fn2-run-builds-wfp fn2-run-builds) (fn2-run-writers-wfp fn2-run-writers))))
+              (fn2-run-builds-wfp fn2-run-builds) (fn2-run-writers-wfp fn2-run-writers) (fn2-checkpoint-build-wfp fn2-checkpoint-build) (fn2-checkpoints-wfp fn2-checkpoints) (fn2-overlays-wfp fn2-overlays) (fn2-run-installed-wfp fn2-run-installed) (fn2-checkpoint-predecessors-wfp fn2-checkpoint-predecessors) (fn2-checkpoint-predecessor-control-wfp fn2-checkpoint-predecessor-control))))
  (b* (((unless (and (fn2-checkpoint-metadata-manifest-ownerp fn2-checkpoint-metadata-manifest fn2-csnapshot fn2-run-builds fn2-run-writers)
-                     (fn2-checkpoint-source-ownerp fn2-checkpoint-source fn2-csnapshot)
+                     (fn2-checkpoint-predecessor-complete-p fn2-checkpoint-compaction fn2-checkpoint-build fn2-csnapshot fn2-checkpoints fn2-overlays fn2-run-installed fn2-checkpoint-predecessors fn2-checkpoint-predecessor-control)
                      (equal (fn2-checkpoint-metadata-manifest-phase 0 fn2-checkpoint-metadata-manifest) *fn2-checkpoint-metadata-manifest-phase-adding*)
-                     (equal (fn2-checkpoint-source-phase 0 fn2-checkpoint-source) *fn2-checkpoint-source-phase-done*)
-                     (equal (fn2-checkpoint-source-token 0 fn2-checkpoint-source) (fn2-checkpoint-metadata-manifest-token 0 fn2-checkpoint-metadata-manifest))
-                     (equal (fn2-checkpoint-source-rank 0 fn2-checkpoint-source) (fn2-checkpoint-metadata-manifest-entries 0 fn2-checkpoint-metadata-manifest))
+                     (equal (fn2-checkpoint-compaction-phase 0 fn2-checkpoint-compaction) *fn2-checkpoint-compaction-phase-done*)
+                     (equal (fn2-checkpoint-compaction-token 0 fn2-checkpoint-compaction) (fn2-checkpoint-metadata-manifest-token 0 fn2-checkpoint-metadata-manifest))
+                     (equal (fn2-checkpoint-compaction-output-rank 0 fn2-checkpoint-compaction) (fn2-checkpoint-metadata-manifest-entries 0 fn2-checkpoint-metadata-manifest))
                      (< 0 (fn2-checkpoint-metadata-rows fn2-checkpoint-metadata))
                      (equal (fn2-checkpoint-metadata-phase 0 fn2-checkpoint-metadata) *fn2-checkpoint-metadata-phase-idle*)))
        (mv :source-pending fn2-checkpoint-metadata-manifest fn2-run-builds))
@@ -277,20 +253,20 @@
        fn2-checkpoint-metadata-manifest)))
   (mv code fn2-checkpoint-metadata-manifest fn2-run-builds)))
 
-(defun fn2-checkpoint-metadata-manifest-scan-begin (fn2-checkpoint-metadata-manifest fn2-checkpoint-metadata fn2-checkpoint-source fn2-csnapshot
-                                                  fn2-run-builds fn2-run-writers fn2-checkpoint-page-verified fn2-checkpoint-construction fn2-extents fn2-checkpoint-page fn2-pool)
- (declare (xargs :stobjs (fn2-checkpoint-metadata-manifest fn2-checkpoint-metadata fn2-checkpoint-source fn2-csnapshot fn2-run-builds fn2-run-writers
-                          fn2-checkpoint-page-verified fn2-checkpoint-construction fn2-extents fn2-checkpoint-page fn2-pool)
+(defun fn2-checkpoint-metadata-manifest-scan-begin (fn2-checkpoint-metadata-manifest fn2-checkpoint-metadata fn2-checkpoint-compaction fn2-csnapshot
+                                                  fn2-run-builds fn2-run-writers fn2-checkpoint-page-verified fn2-checkpoint-construction fn2-extents fn2-checkpoint-page fn2-pool fn2-checkpoint-build fn2-checkpoints fn2-overlays fn2-run-installed fn2-checkpoint-predecessors fn2-checkpoint-predecessor-control)
+ (declare (xargs :stobjs (fn2-checkpoint-metadata-manifest fn2-checkpoint-metadata fn2-checkpoint-compaction fn2-csnapshot fn2-run-builds fn2-run-writers
+                          fn2-checkpoint-page-verified fn2-checkpoint-construction fn2-extents fn2-checkpoint-page fn2-pool fn2-checkpoint-build fn2-checkpoints fn2-overlays fn2-run-installed fn2-checkpoint-predecessors fn2-checkpoint-predecessor-control)
   :guard (and (fn2-checkpoint-metadata-manifest-wfp fn2-checkpoint-metadata-manifest) (fn2-checkpoint-metadata-wfp fn2-checkpoint-metadata)
-              (fn2-checkpoint-source-wfp fn2-checkpoint-source) (fn2-csnapshot-wfp fn2-csnapshot)
+              (fn2-checkpoint-compaction-wfp fn2-checkpoint-compaction) (fn2-csnapshot-wfp fn2-csnapshot)
               (fn2-run-builds-wfp fn2-run-builds) (fn2-run-writers-wfp fn2-run-writers)
               (fn2-checkpoint-page-verified-wfp fn2-checkpoint-page-verified) (fn2-checkpoint-construction-wfp fn2-checkpoint-construction)
-              (fn2-extents-wfp fn2-extents) (fn2-checkpoint-page-wfp fn2-checkpoint-page) (fn2-pool-wfp fn2-pool))))
+              (fn2-extents-wfp fn2-extents) (fn2-checkpoint-page-wfp fn2-checkpoint-page) (fn2-pool-wfp fn2-pool) (fn2-checkpoint-build-wfp fn2-checkpoint-build) (fn2-checkpoints-wfp fn2-checkpoints) (fn2-overlays-wfp fn2-overlays) (fn2-run-installed-wfp fn2-run-installed) (fn2-checkpoint-predecessors-wfp fn2-checkpoint-predecessors) (fn2-checkpoint-predecessor-control-wfp fn2-checkpoint-predecessor-control))))
  (b* (((unless (and (fn2-checkpoint-metadata-manifest-ownerp fn2-checkpoint-metadata-manifest fn2-csnapshot fn2-run-builds fn2-run-writers)
-                     (fn2-checkpoint-source-ownerp fn2-checkpoint-source fn2-csnapshot)
-                     (equal (fn2-checkpoint-source-token 0 fn2-checkpoint-source) (fn2-checkpoint-metadata-manifest-token 0 fn2-checkpoint-metadata-manifest))
-                     (equal (fn2-checkpoint-source-phase 0 fn2-checkpoint-source) *fn2-checkpoint-source-phase-done*)
-                     (equal (fn2-checkpoint-source-rank 0 fn2-checkpoint-source) (fn2-checkpoint-metadata-manifest-entries 0 fn2-checkpoint-metadata-manifest))
+                     (fn2-checkpoint-predecessor-complete-p fn2-checkpoint-compaction fn2-checkpoint-build fn2-csnapshot fn2-checkpoints fn2-overlays fn2-run-installed fn2-checkpoint-predecessors fn2-checkpoint-predecessor-control)
+                     (equal (fn2-checkpoint-compaction-token 0 fn2-checkpoint-compaction) (fn2-checkpoint-metadata-manifest-token 0 fn2-checkpoint-metadata-manifest))
+                     (equal (fn2-checkpoint-compaction-phase 0 fn2-checkpoint-compaction) *fn2-checkpoint-compaction-phase-done*)
+                     (equal (fn2-checkpoint-compaction-output-rank 0 fn2-checkpoint-compaction) (fn2-checkpoint-metadata-manifest-entries 0 fn2-checkpoint-metadata-manifest))
                      (equal (fn2-checkpoint-metadata-manifest-phase 0 fn2-checkpoint-metadata-manifest) *fn2-checkpoint-metadata-manifest-phase-finishing*)))
        (mv :source fn2-checkpoint-metadata-manifest))
       (b (fn2-checkpoint-metadata-manifest-build 0 fn2-checkpoint-metadata-manifest))
@@ -324,22 +300,22 @@
 (defmacro fn2-checkpoint-metadata-manifest-scan-mv (code)
  `(mv ,code fn2-checkpoint-metadata-manifest fn2-checkpoint-refs fn2-checkpoint-bytes fn2-extents fn2-alloc-edges))
 
-(defun fn2-checkpoint-metadata-manifest-scan-step (budget fn2-checkpoint-metadata-manifest fn2-checkpoint-metadata fn2-checkpoint-source
+(defun fn2-checkpoint-metadata-manifest-scan-step (budget fn2-checkpoint-metadata-manifest fn2-checkpoint-metadata fn2-checkpoint-compaction
                                                  fn2-checkpoint-build fn2-csnapshot fn2-checkpoint-construction fn2-extents fn2-alloc-edges fn2-ops fn2-checkpoints fn2-checkpoint-page-verified
-                                                 fn2-checkpoint-refs fn2-checkpoint-bytes)
- (declare (xargs :stobjs (fn2-checkpoint-metadata-manifest fn2-checkpoint-metadata fn2-checkpoint-source fn2-checkpoint-build fn2-csnapshot
-                          fn2-checkpoint-construction fn2-extents fn2-alloc-edges fn2-ops fn2-checkpoints fn2-checkpoint-page-verified fn2-checkpoint-refs fn2-checkpoint-bytes)
+                                                 fn2-checkpoint-refs fn2-checkpoint-bytes fn2-overlays fn2-run-installed fn2-checkpoint-predecessors fn2-checkpoint-predecessor-control)
+ (declare (xargs :stobjs (fn2-checkpoint-metadata-manifest fn2-checkpoint-metadata fn2-checkpoint-compaction fn2-checkpoint-build fn2-csnapshot
+                          fn2-checkpoint-construction fn2-extents fn2-alloc-edges fn2-ops fn2-checkpoints fn2-checkpoint-page-verified fn2-checkpoint-refs fn2-checkpoint-bytes fn2-overlays fn2-run-installed fn2-checkpoint-predecessors fn2-checkpoint-predecessor-control)
   :guard (and (fn2-checkpoint-metadata-manifest-wfp fn2-checkpoint-metadata-manifest) (fn2-checkpoint-metadata-wfp fn2-checkpoint-metadata)
-              (fn2-checkpoint-source-wfp fn2-checkpoint-source) (fn2-checkpoint-build-wfp fn2-checkpoint-build) (fn2-csnapshot-wfp fn2-csnapshot)
+              (fn2-checkpoint-compaction-wfp fn2-checkpoint-compaction) (fn2-checkpoint-build-wfp fn2-checkpoint-build) (fn2-csnapshot-wfp fn2-csnapshot)
               (fn2-checkpoint-construction-wfp fn2-checkpoint-construction) (fn2-extents-wfp fn2-extents) (fn2-alloc-edges-wfp fn2-alloc-edges) (fn2-ops-wfp fn2-ops) (fn2-checkpoints-wfp fn2-checkpoints)
               (fn2-checkpoint-page-verified-wfp fn2-checkpoint-page-verified) (fn2-checkpoint-refs-wfp fn2-checkpoint-refs)
-              (fn2-checkpoint-bytes-wfp fn2-checkpoint-bytes))))
+              (fn2-checkpoint-bytes-wfp fn2-checkpoint-bytes) (fn2-overlays-wfp fn2-overlays) (fn2-run-installed-wfp fn2-run-installed) (fn2-checkpoint-predecessors-wfp fn2-checkpoint-predecessors) (fn2-checkpoint-predecessor-control-wfp fn2-checkpoint-predecessor-control))))
  (b* (((unless (and (natp budget) (< 0 budget))) (fn2-checkpoint-metadata-manifest-scan-mv :yield))
       ((unless (and (< 0 (fn2-checkpoint-metadata-manifest-rows fn2-checkpoint-metadata-manifest))
                      (< 0 (fn2-checkpoint-metadata-rows fn2-checkpoint-metadata))
                      (equal (fn2-checkpoint-metadata-manifest-phase 0 fn2-checkpoint-metadata-manifest) *fn2-checkpoint-metadata-manifest-phase-scan*)
-                     (fn2-checkpoint-source-ownerp fn2-checkpoint-source fn2-csnapshot)
-                     (equal (fn2-checkpoint-source-phase 0 fn2-checkpoint-source) *fn2-checkpoint-source-phase-done*)))
+                     (fn2-checkpoint-predecessor-complete-p fn2-checkpoint-compaction fn2-checkpoint-build fn2-csnapshot fn2-checkpoints fn2-overlays fn2-run-installed fn2-checkpoint-predecessors fn2-checkpoint-predecessor-control)
+                     (equal (fn2-checkpoint-compaction-phase 0 fn2-checkpoint-compaction) *fn2-checkpoint-compaction-phase-done*)))
        (fn2-checkpoint-metadata-manifest-scan-mv :source))
       (token (fn2-checkpoint-metadata-manifest-token 0 fn2-checkpoint-metadata-manifest))
       (kind (fn2-checkpoint-metadata-manifest-owner-kind 0 fn2-checkpoint-metadata-manifest))
@@ -350,7 +326,7 @@
       (checkpoint (if (< 0 (fn2-checkpoint-build-rows fn2-checkpoint-build)) (fn2-checkpoint-build-checkpoint 0 fn2-checkpoint-build) 0))
       ((unless (and (fn2-checkpoint-build-ownerp token kind owner generation fn2-checkpoint-build fn2-csnapshot)
                      (fn2-checkpoint-builder-ownerp c token kind owner generation fn2-checkpoints)
-                     (equal token (fn2-checkpoint-source-token 0 fn2-checkpoint-source))
+                     (equal token (fn2-checkpoint-compaction-token 0 fn2-checkpoint-compaction))
                      (equal token (fn2-checkpoint-metadata-token 0 fn2-checkpoint-metadata))
                      (equal (fn2-checkpoint-metadata-manifest-candidate 0 fn2-checkpoint-metadata-manifest) (fn2-checkpoint-build-candidate 0 fn2-checkpoint-build))))
        (fn2-checkpoint-metadata-manifest-scan-mv :snapshot))
@@ -387,7 +363,7 @@
                      (posp (fn2-checkpoint-metadata-manifest-intended-bytes 0 fn2-checkpoint-metadata-manifest))
                      (equal (fn2-checkpoint-metadata-manifest-intended-bytes 0 fn2-checkpoint-metadata-manifest)
                             (fn2-checkpoint-metadata-manifest-completed-bytes 0 fn2-checkpoint-metadata-manifest))
-                     (equal (fn2-checkpoint-source-rank 0 fn2-checkpoint-source) (fn2-checkpoint-metadata-manifest-entries 0 fn2-checkpoint-metadata-manifest))
+                     (equal (fn2-checkpoint-compaction-output-rank 0 fn2-checkpoint-compaction) (fn2-checkpoint-metadata-manifest-entries 0 fn2-checkpoint-metadata-manifest))
                      (< extent (fn2-checkpoint-construction-rows fn2-checkpoint-construction))
                      (< extent (fn2-checkpoint-page-verified-rows fn2-checkpoint-page-verified))
                      (fn2-checkpoint-page-completed-extent-p token kind owner generation 1
