@@ -3,7 +3,11 @@
 ; bootstrap is claimed. Real pool windows carry sentinels before the callback.
 (in-package "ACL2")
 (include-book "std/util/bstar" :dir :system)
-(include-book "../books/assembly")
+(include-book "../books/assembly-rows-b")
+(include-book "../books/checkpoint-restore-payload-boot")
+; Materialize the exact production callback macro over the sole registered
+; core, without unrelated continuation/dispatch attachment qualification.
+(fn2-boot-checkpoint-payload-operations)
 
 (defun fn2-crpbu-observe (fn2-core)
  (declare (xargs :stobjs fn2-core :verify-guards nil))
