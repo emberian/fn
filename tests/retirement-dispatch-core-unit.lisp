@@ -131,6 +131,10 @@
         (:log (fn2-commit-put-core id (cb-log-ok 0)))
         (:fence (fn2-commit-put-core id (cb-fence-ok 0)))
         (:failed (fn2-commit-put-core id (cb-failed 1)))
+        (:count-over (fn2-commit-put-core id (member-count (+ 1 *fn2-commit-members-per-batch*))))
+        (:partition-cross (fn2-commit-put-core id (member-count (+ 1 *fn2-commit-members-per-batch*))))
+        (:terminal-batch (stobj-let ((fn2-commit-root (fn2-core-commit-root fn2-core))) (fn2-commit-root)
+                           (fn2-commit-root-set-installed 0 (+ 1 batch) fn2-commit-root) fn2-core))
         (:batch (stobj-let ((fn2-commit-root (fn2-core-commit-root fn2-core))) (fn2-commit-root)
                   (fn2-commit-root-set-installed 0 (+ 1 batch) fn2-commit-root) fn2-core))
         ; A stale member owner generation fails workspace ownership. The
@@ -146,9 +150,41 @@
             (fn2-alloc-retirement-intent-cancel target epoch allocation batch fn2-extents) (mv code fn2-core))
          (mv :ok fn2-core)))
       ((unless (eq cancelled :ok)) (mv nil fn2-core))
+      (input-member (case removed
+                      (:member-over (+ 1 (fn2-machine-member-count id fn2-core)))
+                      (:terminal-off (fn2-machine-member-count id fn2-core))
+                      (:terminal-batch (fn2-machine-member-count id fn2-core))
+                      (:partition-cross *fn2-commit-members-per-batch*)
+                      (otherwise 0)))
+      (input-off (if (eq removed :terminal-off) 1 0))
+      ; The crossing index is physically in the neighboring partition, not
+      ; outside the whole member table. Its real initialized :none row would
+      ; be skipped by the old dispatcher instead of refused. No row copy or
+      ; alternate allocation model is needed to witness that wrong lookup.
+      (crossing-witness
+       (if (eq removed :partition-cross)
+           (stobj-let ((fn2-commit-member (fn2-core-commit-members fn2-core))) (witness)
+            (and (= row 0)
+                 (< *fn2-commit-members-per-batch* (fn2-commit-member-rows fn2-commit-member))
+                 (= (fn2-commit-member-kind *fn2-commit-members-per-batch* fn2-commit-member)
+                    *fn2-commit-member-kind-none*)) witness)
+         t))
+      ; These corrupt cursors remain structurally within the actual core
+      ; representation. Core WFP alone is not the partition/cursor invariant.
+      ((unless (and crossing-witness (fn2-core-wfp fn2-core))) (mv nil fn2-core))
       (before (fn2-riud-state fn2-core))
-      ((mv code member off fn2-core) (fn2-commit-lifecycle-step id 0 0 fn2-core))
+      ((mv code member off fn2-core) (fn2-commit-lifecycle-step id input-member input-off fn2-core))
       (after (fn2-riud-state fn2-core))
+      ((mv advanced advanced-member advanced-off fn2-core)
+       (if (eq removed :terminal-ok)
+           (fn2-commit-lifecycle-step id member off fn2-core)
+         (mv :unused member off fn2-core)))
+      (before-terminal (fn2-riud-state fn2-core))
+      ((mv terminal terminal-member terminal-off fn2-core)
+       (if (eq removed :terminal-ok)
+           (fn2-commit-lifecycle-step id advanced-member advanced-off fn2-core)
+         (mv :unused advanced-member advanced-off fn2-core)))
+      (after-terminal (fn2-riud-state fn2-core))
       (installed (stobj-let ((fn2-extents (fn2-core-extents fn2-core))
                              (fn2-alloc-edges (fn2-core-alloc-edges fn2-core))) (installed)
          (and (eq (fn2-alloc-handle-code target epoch allocation fn2-extents) :ok)
@@ -157,12 +193,19 @@
               (= (fn2-extents-obligation target fn2-extents) 1)
               (fn2-alloc-edge-matchesp 0 50 target epoch allocation :obligation fn2-alloc-edges)
               (= (fn2-alloc-retirement-intent-batch fn2-extents) 0)) installed)))
-  (mv (if removed
-          (and (eq code :invalid) (equal before after) (not installed))
-        (and (eq code :more) (= member 0) (= off len) installed
-             ; Ordinary install mutates allocator only, not the retained
-             ; source control or any existing protector edge.
-             (equal (cadr before) (cadr after)) (equal (caddr before) (caddr after)))) fn2-core)))
+  (mv (if (eq removed :terminal-ok)
+          (and (eq code :more) (= member 0) (= off len) installed
+               (eq advanced :more) (= advanced-member (fn2-machine-member-count id fn2-core))
+               (= advanced-off 0) (eq terminal :done)
+               (= terminal-member advanced-member) (= terminal-off 0)
+               (equal after before-terminal) (equal before-terminal after-terminal)
+               (equal (cadr before) (cadr after)) (equal (caddr before) (caddr after)))
+        (if removed
+            (and (eq code :invalid) (equal before after) (not installed))
+          (and (eq code :more) (= member 0) (= off len) installed
+               ; Ordinary install mutates allocator only, not the retained
+               ; source control or any existing protector edge.
+               (equal (cadr before) (cadr after)) (equal (caddr before) (caddr after))))) fn2-core)))
 (defun fn2-riud-run (removed)
  (declare (xargs :verify-guards nil))
  (with-local-stobj fn2-core (mv-let (ok fn2-core) (fn2-riud-body removed fn2-core) ok)))
@@ -176,3 +219,29 @@
 (assert-event (fn2-riud-run :member))
 (assert-event (fn2-riud-run :control-event))
 (assert-event (fn2-riud-run :intent))
+
+; Count/index corruptions are individually exercised on the same actual
+; producer receipt and logical persisted envelope as the positive above.
+(assert-event (fn2-riud-run :count-over))
+(assert-event (fn2-riud-run :partition-cross))
+(assert-event (fn2-riud-run :member-over))
+(assert-event (fn2-riud-run :terminal-off))
+; Reach the terminal cursor only by successfully installing and advancing the
+; actual member; then exact installed terminal state is :done and read-only.
+(assert-event (fn2-riud-run :terminal-ok))
+(assert-event (fn2-riud-run :terminal-batch))
+
+; This is the shared runtime cursor predicate, supplied by the owning runtime
+; fix. It is not a fixture-local model. The terminal boundary is exactly
+; member=count with zero offset; a live member's byte offset is checked later
+; by the actual framing/decoder path.
+(assert-event (fn2-commit-lifecycle-cursorp 0 0 0))
+(assert-event (fn2-commit-lifecycle-cursorp *fn2-commit-members-per-batch*
+                                           *fn2-commit-members-per-batch* 0))
+(assert-event (fn2-commit-lifecycle-cursorp *fn2-commit-members-per-batch*
+                                           (- *fn2-commit-members-per-batch* 1) 1))
+(assert-event (not (fn2-commit-lifecycle-cursorp (+ 1 *fn2-commit-members-per-batch*) 0 0)))
+(assert-event (not (fn2-commit-lifecycle-cursorp 1 2 0)))
+(assert-event (not (fn2-commit-lifecycle-cursorp 1 1 1)))
+(assert-event (not (fn2-commit-lifecycle-cursorp -1 0 0)))
+(assert-event (not (fn2-commit-lifecycle-cursorp 1 0 -1)))
