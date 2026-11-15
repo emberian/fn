@@ -58,6 +58,15 @@ class ServedSelection(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, 'exactly one logical MEMBER'):
             s.member_context_source(text)
 
+    def test_make_event_both_branches_return_error_triples(self):
+        from emit_certificate import read_all
+        text = s.qualification_book(packet(), Path('/tmp/served-binding.lisp'))
+        event = next(f for f in read_all(text) if f[0] == 'make-event')
+        branch = event[1]
+        self.assertEqual(branch[0], 'if')
+        self.assertEqual(branch[2][0], 'value')
+        self.assertEqual(branch[3][:2], ['er', 'soft'])
+
     def test_same_abi_wrong_selector_refused(self):
         with self.assertRaisesRegex(ValueError, 'selector differs'):
             s.inspect(packet(selector='FN2-CNS-RUN-ALTERNATE'))

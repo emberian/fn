@@ -104,7 +104,7 @@ def qualification_book(snapshot, output):
           (subsetp-eq '%s *fn2-tv-native-boundary*)
           (subsetp-eq *fn2-tv-native-boundary* '%s)
           (fn2-tv-closed-functions '%s (append '%s '%s) (w state)))
-     '(value-triple :cns-selected-records-bound)
+     (value '(value-triple :cns-selected-records-bound))
    (er soft 'cns-selected-records "Selector or canonical closure differs.")))""" %
                  (natives, natives, natives, names, names, natives))
     return '\n\n'.join(lines) + '\n'

@@ -162,7 +162,7 @@ def closed_member_book(src, roots, output, *, snapshot=None):
            (subsetp-eq natives *fn2-tv-native-boundary*)
            (subsetp-eq *fn2-tv-native-boundary* natives)
            (fn2-tv-closed-functions names (append names natives) (w state)))
-      '(value-triple :scoped-export-identity-and-closure)
+      (value '(value-triple :scoped-export-identity-and-closure))
     (er soft 'scoped-core-export "Missing root/callee or changed native boundary."))))""" %
                  (names, '(' + ' '.join(roots) + ')', natives))
     return '\n\n'.join(lines) + '\n'
@@ -314,11 +314,11 @@ def main(src):
         K += [f'def {name} : Arm := cns.{part}[{i}]!',f'def canonical_{name} : Translation.Object := {lean_object(d[":DECL"])}',
               f'theorem canonical_{name}_decoded : canonical_{name}.value? = some {name}.decl := by rfl']
         C += [f'''(make-event (if (equal '{show(decode(d[':DECL']))} (cdr (assoc-eq {tag} (fn2-machine-declared 'fn2-cns {key} (w state)))))
- '(value-triple :export-matches-live-declaration) (er soft 'core-export "Declaration differs.")))''']
+ (value '(value-triple :export-matches-live-declaration)) (er soft 'core-export "Declaration differs.")))''']
     path=out/'CoreKinds.lean';path.write_text(path.read_text().replace('end Fn2.Instances.CoreKinds','\n'.join(K)+'\nend Fn2.Instances.CoreKinds'))
     for row in as_list(decode(p[':OPERATION-DECLARATIONS'])):
         C += [f'''(make-event (if (equal '{show(List(row[1:]))} (fn2-arms-op-row '{row[0]} (w state)))
- '(value-triple :export-matches-live-operation) (er soft 'core-export "Operation differs.")))''']
+ (value '(value-triple :export-matches-live-operation)) (er soft 'core-export "Operation differs.")))''']
     C += [evaluator_certificate(fs,allf).replace('FN2-EXPORT-EVAL','FN2-CORE-EXPORT-EVAL')]
     for f,d in fs:C += [s.replace('FN2-EXPORT-EVAL','FN2-CORE-EXPORT-EVAL')for s in body_certificate(f,d,allf)]
     Path('meta/emit/core-body.lisp').write_text('\n\n'.join(C)+'\n')
