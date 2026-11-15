@@ -4,6 +4,7 @@ import unittest
 import lisp_rewrite as lr
 import event_archive_root_rewrite as rw
 import event_archive_frontier_begin_rewrite as frontier
+import event_archive_member_rewrite as member
 ROOT=Path(__file__).resolve().parents[1]
 def read(p):return (ROOT/p).read_text()
 def calls(s,p):return lr.match(p,lr.parse(s).forms)
@@ -11,7 +12,7 @@ class Root(unittest.TestCase):
  def test_manifest_constructor_replay_and_idempotence(self):
   old=read('tools/fixtures/event-archive-cold-cursor-before-root.lisp')
   after,helper=rw.transform(old)
-  current=read('books/event-archive-cold-cursor.lisp');composed=frontier.cursor(after)
+  current=read('books/event-archive-cold-cursor.lisp');composed=member.cursor(frontier.cursor(after))
   for pattern in ['(defun fn2-event-archive-cold-start-root ?*body)','(fn2-event-archive-operation (fn2-event-archive-cold-cursor-begin ?*args) ?*body)']:
    a=calls(composed,pattern)[0].node;b=calls(current,pattern)[0].node
    self.assertEqual(composed[a.start:a.end],current[b.start:b.end])
@@ -27,7 +28,9 @@ class Root(unittest.TestCase):
   self.assertTrue(calls(s,'(fn2-event-archive-cold-reach-current-p ?*args)'))
   self.assertTrue(calls(s,'(fn2-event-archive-reached-page-p ?*args)'))
  def test_exact_decoded_hash_and_root_before_source_page_reuse(self):
-  s=read('books/event-archive-cold-members.lisp')
+  whole=read('books/event-archive-cold-members.lisp')
+  n=calls(whole,'(fn2-event-archive-operation fn2-event-archive-cold-bind-member ?*body)')[0].node
+  s=whole[n.start:n.end]
   self.assertTrue(calls(s,'(equal (fn2-fields-ref-slot ref fn2-fields) page)'))
   self.assertTrue(calls(s,'(equal (fn2-fields-ref-gen ref fn2-fields) pgen)'))
   fetched=calls(s,'(fn2-rec-fetch ?*args)')[0].node

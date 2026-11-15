@@ -3,6 +3,7 @@ from pathlib import Path
 import unittest
 import lisp_rewrite as lr
 import event_archive_frontier_begin_rewrite as rw
+import event_archive_member_rewrite as member
 ROOT=Path(__file__).resolve().parents[1]
 def read(p):return (ROOT/p).read_text()
 def one(s,p):return lr.match(p,lr.parse(s).forms)[0].node
@@ -12,6 +13,7 @@ class Begin(unittest.TestCase):
    ('cursor',rw.cursor,['(fn2-event-archive-operation (fn2-event-archive-cold-cursor-begin ?*args) ?*body)']),
    ('boot',rw.boot,['(defcost fn2-boot-checkpoint-archive-begin ?*body)','(defun fn2-boot-checkpoint-archive-begin ?*body)'])]:
    before=read('tools/fixtures/event-archive-cold-'+name+'-before-frontier.lisp');after=fn(before)
+   after=member.cursor(after) if name=='cursor' else after
    self.assertEqual(fn(after),after)
    current=read('books/event-archive-cold-'+name+'.lisp')
    for pattern in patterns:

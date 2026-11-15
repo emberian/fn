@@ -2,7 +2,7 @@
 ; Parent owns stage12 routing through the existing :read/:read-result machine.
 (in-package "ACL2")
 (include-book "boot-kind")
-(include-book "event-archive-cold-reach")
+(include-book "event-archive-cold-step")
 (fn2-book-layer :c)
 (defcost fn2-boot-checkpoint-archive-header-raw :child fn2-event-archive-cold-header-reach :answers t :bytes (* 2 *fn2-run-layout-max-entry-bytes*)
  :tables (fn2-core-event-archive fn2-core-checkpoints fn2-core-checkpoint-refs fn2-core-checkpoint-bytes fn2-core-extents fn2-core-checkpoint-restore-reader
@@ -19,18 +19,18 @@
  :tables (fn2-core-event-archive fn2-core-checkpoints fn2-core-checkpoint-refs fn2-core-checkpoint-bytes fn2-core-run-loads fn2-core-run-cursors fn2-core-pool fn2-core-checkpoint-restore-map fn2-core-checkpoint-restore-map-control fn2-core-checkpoint-restore-reach fn2-core-checkpoint-restore-reach-control))
 (defcost fn2-boot-checkpoint-archive-received :answers t :bytes 512
  :tables (fn2-core-event-archive fn2-core-checkpoints fn2-core-checkpoint-refs fn2-core-checkpoint-bytes fn2-core-run-loads fn2-core-run-cursors fn2-core-pool fn2-core-checkpoint-restore-map fn2-core-checkpoint-restore-map-control fn2-core-checkpoint-restore-reach fn2-core-checkpoint-restore-reach-control))
-(defcost fn2-boot-checkpoint-archive-check-raw :child fn2-event-archive-cold-step-reach :answers t :bytes *fn2-run-entry-visit-bytes*
+(defcost fn2-boot-checkpoint-archive-check-raw :child fn2-event-archive-cold-step :answers t :bytes *fn2-run-entry-visit-bytes*
  :tables (fn2-core-event-archive fn2-core-checkpoints fn2-core-checkpoint-refs fn2-core-checkpoint-bytes fn2-core-run-loads fn2-core-run-cursors
-          fn2-core-run-paths fn2-core-run-cache fn2-core-boot-config fn2-core-fc fn2-core-fc-context fn2-core-b3 fn2-core-fields fn2-core-pool fn2-core-digests fn2-core-checkpoint-restore-map fn2-core-checkpoint-restore-map-control fn2-core-checkpoint-restore-reach fn2-core-checkpoint-restore-reach-control))
+          fn2-core-run-paths fn2-core-run-cache fn2-core-boot-config fn2-core-fc fn2-core-fc-context fn2-core-b3 fn2-core-fields fn2-core-pool fn2-core-digests fn2-core-checkpoint-restore-map fn2-core-checkpoint-restore-map-control fn2-core-checkpoint-restore-reach fn2-core-checkpoint-restore-reach-control fn2-core-journal-members fn2-core-mk fn2-core-extents))
 (defcost fn2-boot-checkpoint-archive-check :answers t :bytes *fn2-run-entry-visit-bytes*
  :tables (fn2-core-event-archive fn2-core-checkpoints fn2-core-checkpoint-refs fn2-core-checkpoint-bytes fn2-core-run-loads fn2-core-run-cursors
-          fn2-core-run-paths fn2-core-run-cache fn2-core-boot-config fn2-core-fc fn2-core-fc-context fn2-core-b3 fn2-core-fields fn2-core-pool fn2-core-digests fn2-core-checkpoint-restore-map fn2-core-checkpoint-restore-map-control fn2-core-checkpoint-restore-reach fn2-core-checkpoint-restore-reach-control))
+          fn2-core-run-paths fn2-core-run-cache fn2-core-boot-config fn2-core-fc fn2-core-fc-context fn2-core-b3 fn2-core-fields fn2-core-pool fn2-core-digests fn2-core-checkpoint-restore-map fn2-core-checkpoint-restore-map-control fn2-core-checkpoint-restore-reach fn2-core-checkpoint-restore-reach-control fn2-core-journal-members fn2-core-mk fn2-core-extents))
 
 (defmacro fn2-boot-checkpoint-archive-operations ()
  '(progn
   (make-event (value (cons 'progn (append
    (fn2-arms-op-face-events 'fn2-boot-checkpoint-archive-header-raw 'fn2-event-archive-cold-header-reach (w state))
-   (fn2-arms-op-face-events 'fn2-boot-checkpoint-archive-check-raw 'fn2-event-archive-cold-step-reach (w state))))))
+   (fn2-arms-op-face-events 'fn2-boot-checkpoint-archive-check-raw 'fn2-event-archive-cold-step (w state))))))
   (defun fn2-boot-checkpoint-archive-header (id ogen fn2-core)
    (declare (xargs :stobjs fn2-core :guard (fn2-core-wfp fn2-core)))
    (if (not (and (eq (fn2-boot-snapshot-read-code id fn2-core) :ok)

@@ -4,6 +4,8 @@ import unittest
 import lisp_rewrite as lr
 import event_archive_reach_bind_rewrite as rw
 import event_archive_frontier_begin_rewrite as frontier
+import event_archive_visit_rewrite as visit
+import event_archive_member_rewrite as member
 ROOT=Path(__file__).resolve().parents[1]
 def read(p):return (ROOT/p).read_text()
 def tree(n):
@@ -18,7 +20,7 @@ class Reach(unittest.TestCase):
  def test_exact_existing_face_class_replay(self):
   old=read('tools/fixtures/event-archive-cold-boot-before-reach.lisp');after,count=rw.transform(old)
   self.assertEqual(count,7);self.assertEqual(rw.transform(after),(after,0))
-  current=read('books/event-archive-cold-boot.lisp');after=frontier.boot(after)
+  current=read('books/event-archive-cold-boot.lisp');after=member.boot(visit.explicit(frontier.boot(after),['fn2-boot-checkpoint-archive-check-raw','fn2-boot-checkpoint-archive-check']))
   for m in lr.match('(defcost ?name ?*body)',lr.parse(after).forms,deep=False):
    p='(defcost '+m.captures['name'].low+' ?*body)'
    self.assertEqual(tree(m.node),tree(one(current,p)))

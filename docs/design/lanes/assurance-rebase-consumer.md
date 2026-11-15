@@ -449,3 +449,35 @@ expansion. Cursor child, reach wrapper and both actual core CHECK faces use
 the shared cost. Three replay/cost controls, four cursor controls, four budget
 controls and26 producer controls pass; actual Lisp admission is unrun. This
 repairs per-visit reservation, not the unimplemented member/receipt terminal.
+
+Actual delayed archive CHECK now reaches the member consumer through
+fn2-event-archive-cold-step. The same candidate/common-generation predicate
+selects manifest10/checkpoint versus member20/terminalE. Binding a decoded
+manifest entry installs the physical archive namespace/event query in the
+private cursor. Every frozen member visit rechecks source, lease and typed
+claimed page; copies the exact generated canonical range (including offsets
+beyond4KiB) into the existing scratch; drives the sole journal scanner/hash;
+compares the stored leaf before phase3 append; and counts only actual scanner
+DONE. Actual member-run EOF plus exact count/private-MK end permits a seek
+back into the retained outer manifest at terminalE+1. All intervals and one-past
+values are checked for overflow. No stored-history ceiling or second hash added.
+
+The CHECK raw/public child tables now thread actual journal-members/MK/extents
+through this dispatcher at the shared exact restart cost. Whole outer EOF
+returns only COVERED-AWAIT-WITNESS after exact run/event/frontier counts; no
+archive COMPLETE, events-complete, bank authority or disposal release follows.
+Seven new source controls check exact setter/return/query replay, calls/MV
+shapes, frozen source/claim, preappend comparison, DONE counts and EOF resume.
+A registered runnable boundary fixture uses actual commit and schema20 codecs
+then the real consumer, with positive, event/generation/owner snapshot refusal
+and wrong-leaf controls. Its page/reach admission premise is synthetic, so it
+does not establish physical IO/header authentication; all ACL2 assertions
+remain unrun. The existing read/reach/root/frontier/cost/producer source controls
+pass after composing the exact new transformations.
+
+Still required before terminal authority: reviewed original-batch witness
+implementation/reconstruction, actual root4 equality to exact root3, decoded
+prefix RELEASE three-edge restoration before selected-suffix authority, active
+old-manifest append/cold0/live1 transfer and actual bank/query/peer protections.
+The full physical producer-to-cold composition fixture and two-checkpoint
+physical reclaim/reuse control remain outstanding. FREE stays off.

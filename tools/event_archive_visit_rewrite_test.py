@@ -3,6 +3,7 @@ from pathlib import Path
 import unittest
 import lisp_rewrite as lr
 import event_archive_visit_rewrite as rw
+import event_archive_member_rewrite as member
 ROOT=Path(__file__).resolve().parents[1]
 def read(p):return (ROOT/p).read_text()
 def form(s,p):
@@ -29,11 +30,11 @@ class Visit(unittest.TestCase):
   old=read('tools/fixtures/archive-visit-before-event-archive-cold-boot.lisp')
   names=['fn2-boot-checkpoint-archive-check-raw','fn2-boot-checkpoint-archive-check']
   current=read('books/event-archive-cold-boot.lisp');after=rw.explicit(old,names)
-  self.assertEqual(after,current);self.assertEqual(rw.explicit(after,names),after)
+  self.assertEqual(member.boot(after),current);self.assertEqual(rw.explicit(after,names),after)
   for path,name in [('event-archive-cold-cursor','fn2-event-archive-cold-cursor-step'),('event-archive-cold-reach','fn2-event-archive-cold-step-reach')]:
    s=read('books/'+path+'.lisp');n=lr.match('(fn2-event-archive-operation '+name+' ?*body)',lr.parse(s).forms)[0].node
    self.assertEqual(s[n.items[4].start:n.items[4].end],'(:bytes *fn2-run-entry-visit-bytes*)')
-   before=read('tools/fixtures/archive-visit-before-'+path+'.lisp');beforeform=form(before,'(fn2-event-archive-operation '+name+' ?*body)')
+   before=read('tools/fixtures/archive-visit-before-'+path+'.lisp');before=member.cursor(before) if path=='event-archive-cold-cursor' else before;beforeform=form(before,'(fn2-event-archive-operation '+name+' ?*body)')
    restored=lr.write(s,[(n.items[4].start,n.items[4].end+1,'')])
    # Byte-cost directive alone must leave the actual implementation AST identical.
    norm=lambda x:lr.flat(lr.parse(x).forms[0])
