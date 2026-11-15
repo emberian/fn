@@ -4,6 +4,7 @@
 (include-book "std/util/bstar" :dir :system)
 (include-book "checkpoint-member")
 (include-book "checkpoint-production")
+(include-book "arms")
 (fn2-book-layer :b)
 (defmacro fn2-checkpoint-installation-coordinator-events ()
  '(progn
