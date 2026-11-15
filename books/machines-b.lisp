@@ -113,10 +113,10 @@
 ;; rows remain semantic/payload/event/block/checkpoint jobs.
 (defun fn2-b-ctl-runtime-row (s connections sources rows)
  (declare (xargs :guard t))
- (+ (nfix (- (nfix rows) (nfix sources) (nfix connections) 5)) (nfix s)))
+ (+ (nfix (- (- (- (nfix rows) (nfix sources)) (nfix connections)) 5)) (nfix s)))
 (defun fn2-b-cns-source-row (s sources rows)
  (declare (xargs :guard t))
- (+ (nfix (- (nfix rows) (nfix sources) 5)) (nfix s)))
+ (+ (nfix (- (- (nfix rows) (nfix sources)) 5)) (nfix s)))
 (defun fn2-b-cns-source-geometry-p (sources connections rows)
  (declare (xargs :guard t))
  (and (natp sources) (natp connections) (natp rows)
