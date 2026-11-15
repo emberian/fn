@@ -7,8 +7,9 @@ must be derived from that store and the actual served call/attachment graph.
 
 ## Current integration frontier — 2026-11-15 22:25 UTC
 
-Upstream `5a3c90893` includes the current-root descriptor reader and its
-[34-book qualification](receipts/checkpoint-reader-current-thirty-four-record.json).
+The descriptor reader is qualified on the shared foundation at `6e7a1a9c1`;
+its [current 34-book record](receipts/checkpoint-reader-foundation-thirty-four-record.json)
+reuses 30 certificates and records four unchanged reader/interface/witness books.
 The six original unrestricted reader claims remain refuted and unfinished;
 the six distinct guarded replacements are qualified. BOOT still needs to consume
 this bounded reader with verified persisted geometry and retained ownership.
@@ -40,10 +41,10 @@ and exposes the latch fields needed by HARVEST's unchanged guard. The final
 production-constructor fixture passed after repairing its local-state binding
 syntax; its assertions were retained.
 
-This foundation changes downstream closure keys. The reader34 and served-family
-records above remain evidence at their named sources, not certification of the
-new foundation combined with those consumers. Requalification and actual use of
-the carried predicates by the physical metadata callers remain outstanding.
+This foundation changes downstream closure keys. Reader requalification is
+complete at the current 34-book record above. The served-family records retain
+their named earlier sources; application requalification and actual use of the
+carried predicates by physical metadata callers remain outstanding.
 
 Completion still requires composed FETCH/cancellation, the native APPEND/STATUS/
 query and NNTP consumers, process-death recovery of accepted data, productive
