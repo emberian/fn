@@ -170,7 +170,7 @@
     :interference t t (:ok t nil t nil) :ok t t (:stale nil t nil t) t t :stored 2)))
 (defconst *fn2-pid-alias-expected*
  '((:ok :ok :ok :ok :ok :stored :ok :ok :ok :ok :ok)
-   :interference :state t t (:ok t nil t nil) t t :ok :ok t t (:stale nil t nil t) 2))
+   :interference :held t t (:held t nil t nil) t t :ok :ok t t (:stale nil t nil t) 2))
 (assert-event
  (and (equal (fn2-pid-alias-result :both) *fn2-pid-alias-expected*)
       (equal (fn2-pid-alias-result :name) *fn2-pid-alias-expected*)

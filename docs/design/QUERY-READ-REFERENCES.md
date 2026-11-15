@@ -1,9 +1,12 @@
 # Query read references: implementation plan
 
-Status: source design, not implemented or qualified. Foundation is current
-020d6313c composed with peer-history-order through 277f927c3. The existing
-same-transaction incarnation/detach controls do not establish cross-transaction
-reference safety. Authorization and network import remain inactive.
+Status: source implementation in progress, not admitted or qualified.
+Foundation is 020d6313c composed with peer-history-order through 277f927c3.
+The pool counter, actual query lifecycle, checked owner wake, CNS drainage,
+upload/connection drainage, and transaction prepare/ready preflights are
+present in source. Independent global accounting preservation and actual
+owner lifecycle controls remain in progress. Authorization and network
+import remain inactive.
 
 ## Ownership subject
 
@@ -81,5 +84,21 @@ completion and cancellation; forbidden source writes/free/transfer while held;
 CNS retained drainage followed by last-ref wake and successful retry;
 stale owner generation; and unchanged scalar results after read refs close.
 The earlier same-transaction duplicate/conflict and detach controls remain
-required composition checks. Shared pool/CNS ownership and a narrow execution
-grant must be coordinated before implementing this plan.
+required composition checks. Pool/query/CNS ownership is assigned. No execution grant has been allocated;
+source parsing and checks do not establish these control results.
+
+## Wake composition frontier
+
+The current source flush uses the machine directory's single wake slot.
+A composed callback that already posted a different wake can lose that
+notification when query completion overwrites the slot. The candidate
+transaction reply path has not been demonstrated reachable with an ACTIVE
+query and a nonzero reply word; the generic composed callback seam remains
+unsafe independently of that reachability question.
+
+The repair will share the actual scheduler enqueue operation with the
+executor, preserve the ordinary wake intent, and record the additional
+scheduler effect in the diagnostic trace. Trace loss must invalidate replay
+evidence without stopping legitimate scheduling. Runtime and independent
+trace changes are under construction; current lifecycle fixtures are source
+controls awaiting that repair and execution.

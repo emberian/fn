@@ -353,6 +353,11 @@
   (:draining
    (:cond ((not (equal row-pending 0)) (:charge :steps *fn2-work-empty*))
           ((not (equal row-borrows 0)) (:charge :steps *fn2-work-poll*))
+          ;; Preserve both ranges and all cleanup state while a query holds
+          ;; either one. Last-reference release wakes this exact live owner.
+          ((or (fn2-core-query-heldp row-tx-slot row-tx-gen)
+               (fn2-core-query-heldp row-rx-slot row-rx-gen))
+           (:charge :steps *fn2-work-state*))
           (t (:if (equal row-upgrade-target *fn2-conn-upgrade-target-tls*)
                   ((:do (dcode) (fn2-tls-clear-timer id) :case ((:otherwise (:stop :machine-phase))))
                    (:do (tcode) (fn2-tls-release-token row-tls-token row-tls-token-gen id row-generation)

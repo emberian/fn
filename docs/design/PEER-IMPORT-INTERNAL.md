@@ -64,7 +64,9 @@ query reaches `:done`, `fn2-txn-put-post-for` repurposes upload buffers before
 that release. The completion boundary must therefore close read references
 atomically with the stored scalar result; subsequent done/facts operations
 read no source octets. Errors and cancellation need their own retained or
-released states. This connection is not implemented or qualified yet.
+released states. This connection is implemented in the current query-reference source lane,
+but is not admitted or qualified. Other cleanup callers and the complete
+query accounting invariant remain under review.
 
 The shared change must also extend the independent ownership and CNS drain
 models. Current CNS drainage stops on a failed pool release. A live query
