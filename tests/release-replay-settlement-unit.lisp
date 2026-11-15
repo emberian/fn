@@ -20,7 +20,7 @@
 (defmacro fn2-rrsu-snapshot ()
  `(list ,@(fn2-rrsu-snapshot-calls *fn2-release-replay-settlement-children*)))
 (defmacro fn2-rrsu-typed ()
- `(and ,@(fn2-release-replay-settlement-hyps *fn2-release-replay-settlement-children*)))
+ `(and ,@(fn2-columns-carrier-hyps (pairlis$ *fn2-release-replay-settlement-children* nil))))
 (defun fn2-rrsu-array-frame (at row before after)
  (declare (xargs :verify-guards nil :measure (acl2-count before)))
  (if (atom before) (equal before after)
