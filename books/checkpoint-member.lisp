@@ -6,6 +6,7 @@
 (include-book "checkpoint")
 (include-book "pool-ranges")
 (include-book "layout-size-bounds")
+(include-book "columns-guard-hints")
 (fn2-book-layer :b)
 (defcodec-size-bounds fn2-format-checkpoint-installation)
 
@@ -36,6 +37,11 @@
                                               fn2-checkpoints fn2-checkpoint-refs fn2-checkpoint-bytes
                                               fn2-fields fn2-pool)
  (declare (xargs :stobjs (fn2-checkpoints fn2-checkpoint-refs fn2-checkpoint-bytes fn2-fields fn2-pool)
+  :guard-hints ((fn2-columns-guard-hint
+                 '(fn2-checkpoints fn2-checkpoint-refs fn2-checkpoint-bytes fn2-fields fn2-pool)
+                 '(fn2-pool-reset fn2-pool-copy-range fn2-pool-truncate
+                   fn2-checkpoint-member-hash fn2-format-checkpoint-installation-size)
+                 nil world))
   :guard (and (fn2-checkpoints-wfp fn2-checkpoints) (fn2-checkpoint-refs-wfp fn2-checkpoint-refs)
               (fn2-checkpoint-bytes-wfp fn2-checkpoint-bytes) (fn2-fields-wfp fn2-fields)
               (fn2-pool-wfp fn2-pool))))

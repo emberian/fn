@@ -5,6 +5,7 @@
 (include-book "alloc")
 (include-book "vocab")
 (include-book "pool-read-contracts")
+(include-book "columns-guard-hints")
 (fn2-book-layer :b)
 ; Current native backend routes one image. Domain0 is the format writer's
 ; declared domain; foreign references must never alias this allocator.
@@ -241,6 +242,14 @@
                                              okind oslot ogen fn2-fields fn2-pool)
      (mv (if (and (eq code :ok) (not (equal next (+ off header payload)))) :length code) fn2-fields))))))
 
+; The checker consumes the decoder's output shape, never its branch tree.
+(fn2-fields-preserves fn2-checkpoint-decode
+ (base slot gen off len okind oslot ogen fn2-fields fn2-pool) :position 1
+ :hyps ((fn2-fieldsp fn2-fields) (fn2-fields-wfp fn2-fields)
+        (fn2-poolp fn2-pool) (fn2-pool-wfp fn2-pool))
+ :hints (("Goal" :in-theory (disable fn2-fields-rows fn2-fields-value
+                                    fn2-format-checkpoint-descriptor-decode))))
+
 (defun fn2-checkpoint-copy-expected (i dst hash fn2-digests fn2-checkpoint-bytes)
  (declare (xargs :stobjs (fn2-digests fn2-checkpoint-bytes)
   :measure (nfix (- 32 (nfix i)))
@@ -342,6 +351,12 @@
                                 fn2-fc fn2-fc-context fn2-b3 fn2-fields fn2-pool fn2-digests)
  (declare (xargs :stobjs (fn2-checkpoints fn2-checkpoint-refs fn2-checkpoint-bytes
                           fn2-fc fn2-fc-context fn2-b3 fn2-fields fn2-pool fn2-digests)
+  :guard-hints ((fn2-columns-guard-hint
+                 '(fn2-checkpoints fn2-checkpoint-refs fn2-checkpoint-bytes
+                   fn2-fc fn2-fc-context fn2-b3 fn2-fields fn2-pool fn2-digests)
+                 '(fn2-checkpoint-decode fn2-checkpoint-hash-matchesp
+                   fn2-checkpoint-capture-roots fn2-b3-ready fn2-digest-rowp)
+                 nil world))
   :guard (and (fn2-fc-guard) (fn2-checkpoints-wfp fn2-checkpoints)
               (fn2-checkpoint-refs-wfp fn2-checkpoint-refs) (fn2-checkpoint-bytes-wfp fn2-checkpoint-bytes))))
  (b* (((unless (and (fn2-checkpoint-slotp c fn2-checkpoints fn2-checkpoint-refs fn2-checkpoint-bytes)

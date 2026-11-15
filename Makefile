@@ -111,6 +111,7 @@ ACL2_BOOKS = \
   books/host-codec \
   books/host-compress \
   books/columns \
+  books/columns-guard-hints \
   books/compress-policy \
   books/compress-kind \
   books/compress-operation \
@@ -384,6 +385,7 @@ ACL2_BOOKS = \
   tests/layout-unit \
   tests/layout-proof-scope-unit \
   tests/layout-size-bound-unit \
+  tests/columns-guard-hints-unit \
   tests/log-model-unit \
   tests/m2-cuts \
   tests/machine-arms-probe-fixture \
