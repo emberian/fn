@@ -142,4 +142,18 @@ class ActorLoader(unittest.TestCase):
   event=(ROOT/'books/assembly-callbacks-e-cns.lisp').read_text()
   self.assertEqual(event.count('(fn2-c-actor-loader-core-events)'),1)
 
+class ActorPark(unittest.TestCase):
+ def test_checked_resolve_boundary_and_real_terminal_scan(self):
+  fs=parsed('books/c-actor-loader.lisp')
+  resolved=function('fn2-c-actor-loader-resolvedp',fs)
+  for getter in ('fn2-succ-txns-ri','fn2-succ-txns-rstate','fn2-succ-txns-phase','fn2-txn-row-prepared','fn2-auth-row-wstep','fn2-cns-row-wstep'):
+   self.assertTrue(calls(resolved,getter),getter)
+  park=function('fn2-c-actor-loader-park-step',fs)
+  for helper in ('fn2-c-actor-loader-resolvedp','fn2-c-actor-loader-parkedp','fn2-run-load-park-source'):
+   self.assertTrue(calls(park,helper),helper)
+  self.assertFalse(calls(park,'fn2-run-page-release'))
+  terminal=function('fn2-c-actor-loader-parkedp',fs)
+  for getter in ('fn2-run-loads-pending','fn2-run-loads-lease-mode','fn2-checkpoint-summary-leases-live','fn2-pool-workspace-code'):
+   self.assertTrue(calls(terminal,getter),getter)
+
 if __name__=='__main__':unittest.main()
