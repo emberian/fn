@@ -9,6 +9,7 @@
 (include-book "commit-alloc")
 (include-book "read-pins")
 (include-book "checkpoint-cbase-state")
+(include-book "checkpoint-geometry")
 (include-book "checkpoint-lifecycle-coordinator")
 (include-book "checkpoint-tickets")
 (include-book "format-check")
@@ -56,7 +57,9 @@
  (declare (xargs :guard t))
  (+ 6 (* 2 (nfix (fn2-b-capacity :extent-slots 16 profile)))
     (nfix (fn2-profile-o profile)) (* 6 (fn2-b-checkpoint-capacity profile))
-    (* 2 (nfix (fn2-b-capacity :extent-slots 16 profile)) (fn2-b-checkpoint-capacity profile))))
+    (* 2 (nfix (fn2-b-capacity :extent-slots 16 profile)) (fn2-b-checkpoint-capacity profile))
+    ; Four independent physical anchors cannot alias canonical source holds.
+    (* *fn2-checkpoint-anchor-slots* (nfix (fn2-b-capacity :extent-slots 16 profile)))))
 (defcorechild fn2-core-checkpoint-cbase-holds fn2-checkpoint-cbase-holds
  :init (fn2-checkpoint-cbase-holds-init (fn2-b-checkpoint-capacity profile) fn2-checkpoint-cbase-holds)
  :profilep (unsigned-byte-p 32 (fn2-b-checkpoint-capacity profile))
