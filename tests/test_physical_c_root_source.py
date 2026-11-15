@@ -3,12 +3,12 @@ from pathlib import Path
 import sys,unittest
 ROOT=Path(__file__).resolve().parents[1];sys.path.insert(0,str(ROOT/'tools'))
 import lisp_rewrite as lr
-from physical_c_root_rewrite import DATA,node,source,project_runs,project_range,project_machines
+from physical_c_root_rewrite import DATA,node,source,project_runs,project_range,project_machines,project_c_workspace,project_run_cursor_paths,project_join
 
 def forms(text):return { (getattr(x.items[0],'low',''),getattr(x.items[1],'low','')):source(text,x) for x in lr.parse(text).forms if isinstance(x,lr.Lst) and len(x.items)>1}
 class PhysicalCurrentRoot(unittest.TestCase):
  def test_named_projection_idempotence(self):
-  for book,fn in (('runs',project_runs),('range',project_range),('machines-c',project_machines)):
+  for book,fn in (('runs',project_runs),('range',project_range),('machines-c',lambda x:project_c_workspace(project_machines(x),'machines-c'))):
    actual=(ROOT/'books'/(book+'.lisp')).read_text()
    self.assertEqual(fn(DATA['before'][book]),actual)
    self.assertEqual(fn(actual),actual)
@@ -45,9 +45,99 @@ class PhysicalCurrentRoot(unittest.TestCase):
   self.assertIn(':effects ((:acquire (:operation)))',actual)
   self.assertIn('(fn2-run-cursors-init (fn2-b-run-cursor-rows profile)',actual)
   # Current ROOT successor geometry has not been replaced with an old donor.
-  self.assertIn('(defconst *fn2-succ-block* 48)',actual)
+  self.assertNotIn('(defconst *fn2-succ-block* 48)',actual)
+  self.assertIn('(assert-event (<= *fn2-idc-required-fields* *fn2-idc-stride*))',actual)
+ def test_current_served_joins_and_idempotence(self):
+  for name in ('machines-c-successor','machines-c-bind','machines-c-groups','machines-c-stage','machines-c-read'):
+   actual=(ROOT/'books'/(name+'.lisp')).read_text()
+   fn=lambda t:project_c_workspace(project_join(t,name),name)
+   self.assertEqual(fn(DATA['before'][name]),actual,name)
+   self.assertEqual(fn(actual),actual,name)
+  actual=(ROOT/'books/runs-assemble.lisp').read_text()
+  self.assertEqual(project_run_cursor_paths(DATA['before']['runs-assemble']),actual)
+  self.assertEqual(project_run_cursor_paths(actual),actual)
+  for name in ('fn2-run-step-header','fn2-run-step-seek','fn2-run-step-child','fn2-run-step-up','fn2-run-cursor-step'):
+   old=lr.match('(defun '+name+' ?*body)',lr.parse(DATA['before']['runs-assemble']).forms,deep=True)[0].node
+   new=lr.match('(defun '+name+' ?*body)',lr.parse(actual).forms,deep=True)[0].node
+   self.assertEqual(source(DATA['before']['runs-assemble'],old.items[3]),source(actual,new.items[3]))
+ def test_no_unrelated_genesis_or_profile_replacement(self):
+  text=(ROOT/'books/machines-c-groups.lisp').read_text()
+  self.assertEqual(source(text,node(text,'defun','fn2-grp-genesis')),source(DATA['before']['machines-c-groups'],node(DATA['before']['machines-c-groups'],'defun','fn2-grp-genesis')))
+  text=(ROOT/'books/machines-c-successor.lisp').read_text()
+  self.assertEqual(source(text,node(text,'fn2-idc-child','fn2-core-id-engine')),source(DATA['before']['machines-c-successor'],node(DATA['before']['machines-c-successor'],'fn2-idc-child','fn2-core-id-engine')))
+  self.assertIn('(defconst *fn2-b-txn-field-rows* 2048)',(ROOT/'books/machines-b.lisp').read_text())
+ def test_all_original_guard_hints_and_stage_algorithm_are_retained(self):
+  for book in ('machines-c-successor','machines-c-bind','machines-c-groups','machines-c-stage','machines-c-read'):
+   old=DATA['before'][book];new=(ROOT/'books'/(book+'.lisp')).read_text()
+   for f in lr.parse(old).forms:
+    if not isinstance(f,lr.Lst) or len(f.items)<5 or getattr(f.items[0],'low','')!='defun':continue
+    name=f.items[1].low
+    if name=='fn2-succ-octets-total':continue # single canonical shared provider
+    # Stage is rehomed to RAW, with the same body and qualified declaration.
+    dest='fn2-succ-stage-raw' if name=='fn2-succ-stage' else name
+    n=node(new,'defun',dest)
+    for m in lr.match('(xargs ?*args)',[f.items[3]],deep=True):
+     xs=m.captures['args']
+     for i,x in enumerate(xs[:-1]):
+      if getattr(x,'low','')==':guard-hints':self.assertIn(source(old,xs[i+1]),source(new,n.items[3]),(book,name))
+  old=DATA['before']['machines-c-stage'];new=(ROOT/'books/machines-c-stage.lisp').read_text()
+  self.assertEqual(source(old,node(old,'defun','fn2-succ-stage').items[-1]),source(new,node(new,'defun','fn2-succ-stage-raw').items[-1]))
+ def test_actual_receipt_close_before_release_and_state_retention(self):
+  text=(ROOT/'books/machines-c-successor.lisp').read_text()
+  close=source(text,node(text,'defun','fn2-succ-source-close'))
+  self.assertLess(close.index('fn2-run-load-region-park'),close.index('(fn2-c-source-reader-release'))
+  self.assertIn('(lphase *fn2-succ-lookup-idle*) (lbound 0) (lrow 0) (lver 0)',close)
+  observed=source(text,node(text,'defun','fn2-succ-resolve-observed'))
+  self.assertIn('(fn2-succ-resolve-raw tx budget b0',observed)
+  self.assertIn("(member-eq code '(:more :miss))",observed)
+  bind=(ROOT/'books/machines-c-bind.lisp').read_text()
+  self.assertIn('(fn2-reads-rows fn2-reads)',bind)
+  self.assertIn('(fn2-succ-release-observed tx b0',bind)
+  read=(ROOT/'books/machines-c-read.lisp').read_text()
+  release=source(read,node(read,'defun','fn2-read-release-children'))
+  self.assertLess(release.index('fn2-read-observer-release'),release.index('fn2-rd-release'))
+  release=source(read,node(read,'defun','fn2-read-observer-release'))
+  self.assertLess(release.index('fn2-read-source-close'),release.index('(fn2-c-source-reader-release'))
+ def test_actual_read_mutable_outputs_and_known_call_arities(self):
+  text=(ROOT/'books/machines-c-read.lisp').read_text()
+  expected={
+   'fn2-read-lookup-children':['fn2-reads','fn2-succ-txns','fn2-run-cursors','fn2-run-paths','fn2-fields','fn2-c-source-control','fn2-c-source-readers','fn2-run-loads','fn2-checkpoint-summary','fn2-checkpoint-summary-leases'],
+   'fn2-read-range-children':['fn2-reads','fn2-ranges','fn2-range-sources','fn2-c-source-control','fn2-c-source-readers','fn2-run-loads','fn2-run-cursors','fn2-checkpoint-summary','fn2-checkpoint-summary-leases'],
+   'fn2-read-seek-children':['fn2-reads','fn2-seeks','fn2-ranges','fn2-range-sources','fn2-c-source-control','fn2-c-source-readers','fn2-run-loads','fn2-run-cursors','fn2-checkpoint-summary','fn2-checkpoint-summary-leases'],
+   'fn2-read-scan-children':['fn2-reads','fn2-ranges','fn2-range-sources','fn2-fields','fn2-c-source-control','fn2-c-source-readers','fn2-run-loads','fn2-run-cursors','fn2-checkpoint-summary','fn2-checkpoint-summary-leases']}
+  for name,states in expected.items():
+   f=node(text,'defun',name)
+   def tail_returns(x):
+    if not isinstance(x,lr.Lst) or not x.items:return []
+    head=getattr(x.items[0],'low','')
+    if head=='mv':return [x.items[2:]]
+    if head=='if':return tail_returns(x.items[2])+tail_returns(x.items[3])
+    if head in ('mv-let','let','let*','b*'):return tail_returns(x.items[-1])
+    return []
+   returns=tail_returns(f.items[-1]);self.assertTrue(returns,name)
+   for values in returns:self.assertEqual([getattr(x,'low','') for x in values],states,name)
+  # Actual explicit functions, not guessed generated wrapper arities.
+  texts={b:(ROOT/'books'/(b+'.lisp')).read_text() for b in DATA['before']}
+  known={}
+  for t in texts.values():
+   for m in lr.match('(defun ?name ?args ?*body)',lr.parse(t).forms,deep=True):
+    args=m.captures['args']
+    if isinstance(m.captures['name'],lr.Atom) and isinstance(args,lr.Lst) and all(isinstance(x,lr.Atom) for x in args.items):known[m.captures['name'].low]=len(args.items)
+  def calls(x):
+   if not isinstance(x,lr.Lst) or not x.items:return
+   if getattr(x.items[0],'low','') in ('quote','declare'):return
+   yield x
+   for y in (x.items[1:] if isinstance(x.items[0],lr.Atom) else x.items):yield from calls(y)
+  checked=0
+  for book,t in texts.items():
+   for m in lr.match('(defun ?name ?args ?*body)',lr.parse(t).forms,deep=True):
+    for call in calls(m.node.items[-1]):
+     name=getattr(call.items[0],'low','')
+     if name in known:
+      self.assertEqual(len(call.items)-1,known[name],(book,name));checked+=1
+  self.assertGreater(checked,200)
  def test_literal_mv_limit(self):
-  for book in ('runs','range','machines-c'):
+  for book in ('runs','range','machines-c','runs-assemble','machines-c-successor','machines-c-bind','machines-c-groups','machines-c-stage','machines-c-read'):
    text=(ROOT/'books'/(book+'.lisp')).read_text()
    for m in lr.match('(mv ?*values)',lr.parse(text).forms,deep=True):self.assertLessEqual(len(m.captures['values']),32)
 if __name__=='__main__':unittest.main()
