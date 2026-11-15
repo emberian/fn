@@ -60,4 +60,15 @@ This scope includes actual TLS record and private bridge guards, accepted-receip
 
 The later unused-reservation repair at `3c6d773fa` changes these dependency keys. `RETIRE` now discharges the cleanup reservation without a physical free only when no action is pending and both alive and handle are zero; a pending allocation must return first. The actual-name 11-book cancellation closure passed in 16.229 seconds (eight reused, three certified), with all source digests matching integration `a6723f41c` before and after. Its qualified root key is `bdd21f376029f53da90c070def7df3b53937266253bf0fbcde650a8c4f681696`; evidence is `forge:/build/lanes/finish-names-export/build/acl2/certify-20261115T015505Z-701805/manifest.json`. All eleven cache entries passed integrity lookup and were owned and readable by `fn`.
 
-The cancellation fixture still took 15.282 seconds. Source checkpoint `1834945cd` replaces its dummy schemas and the child-close fixture's dummy schemas with actual TLS/COMPRESS carrier and TLS record types. It retains all eight assertions and exercises actual TLS start, handshake observation, handoff and free routing. This fixture revision and the current dependent TLS guards are pending qualification; the earlier 26-book record is evidence for its historical closure only.
+The cancellation fixture still took 15.282 seconds. Source checkpoint `1834945cd` replaces its dummy schemas and the child-close fixture's dummy schemas with actual TLS/COMPRESS carrier and TLS record types. It retains all eight assertions and exercises actual TLS start, handshake observation, handoff and free routing. The earlier 26-book record remains evidence for its historical closure only; the following narrower current gate qualifies the reused fixtures and their actual dependent TLS guards.
+
+
+The reused-fixture 24-book union passed at `755dbbff1` in `certify-20261115T020143Z-708421` (50.719 seconds, eleven reused/thirteen certified), with before/after source and runner unchanged. All 24 source digests match integration `5bd5a38cf4f57dfd1b4d9a3eec8238ce1f63eac9`. Qualified cache integrity and designated-`fn` ownership/read checks pass. The live record wrapper captured memory.max 2147483648 and memory.swap.max 0. Cancellation certification now takes 1.170 seconds and child-close 4.731 seconds; actual TLS record certification takes 8.795 seconds.
+
+| Current subject | Qualified closure key |
+| --- | --- |
+| `tests/codec-cancel-unit` | `f61f86119d3d64476d803d56e55dcab8b21bd6e11377d05ce6d0344b7d17a03e` |
+| `tests/codec-child-close-unit` | `4741dcdb4d80d6d89c4d38ab62aa90093b057fcf54039f81e1d9ed2b6bd3febd` |
+| `books/tls-record` | `27649a65254e7b1f05804b107835e9ecceaf8e57c9ed90cdb1580eba5ce06ce9` |
+
+This gate exercises all eight cancellation/child controls and actual TLS start, handshake observation, handoff, free and record guards. The upper COMPRESS carrier is the actual generated type with explicitly initialized component state; full COMPRESS activation/record policy and live-core/native/replay composition remain separate gates. The historical standalone TLS record/stack test roots were not recertified by this two-root run.
