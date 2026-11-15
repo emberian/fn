@@ -1108,6 +1108,7 @@ def per_event_steps(form: str, steps: int, limit: float | None = None) -> str:
                                   "defmacro", "defequiv", "defcong", "defrefinement",
                                   "assert-event", "value-triple", "include-book", "defun-sk", "defcolumns",
                                   "fn2-book-layer", "fn2-extents-preserves", "defthm-owed",
+                                  "defcorechild", "defstobj", "fn2-cm-defreaders", "defun-nx",
                                   "fn2-control-preserves", "fn2-issue-children-wrapper",
                                   "fn2-machines-keeps-directory", "fn2-machines-preserves",
                                   "fn2-machines-wait-queue", "fn2-ops-preserves",
