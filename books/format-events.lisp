@@ -150,10 +150,11 @@
 
 (deflayout fn2-format-release-allocation
   (append
-    `((extent (:id extent)) (writer-epoch (:id writer-epoch)) (allocation (:id allocation)) (retirement-commit (:id commit)) (promoted-checkpoint (:id checkpoint)))
+    `((extent (:id extent)) (writer-epoch (:id writer-epoch)) (allocation (:id allocation)) (retirement-commit (:id commit)) (promoted-checkpoint (:id checkpoint))
+      (installation-commit (:id commit)) (installation-event (:id event)))
     (fn2-format-prefix "RELEASE-EVIDENCE-" *fn2-format-ref*)))
 (assert-event (fn2-layoutp *fn2-format-release-allocation*))
-(assert-event (equal (fn2-layout-max-size *fn2-format-release-allocation*) 124))
+(assert-event (equal (fn2-layout-max-size *fn2-format-release-allocation*) 142))
 
 (deflayout fn2-format-checkpoint-installation
   (append
