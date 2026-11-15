@@ -17,7 +17,7 @@
  (fn2-checkpoints-wfp fn2-checkpoints) (fn2-extents-wfp fn2-extents) (fn2-alloc-edges-wfp fn2-alloc-edges) (fn2-pool-wfp fn2-pool) (fn2-ops-wfp fn2-ops) (fn2-control-wfp fn2-control))
  :guard-hints ((fn2-columns-call-guard-hint 'fn2-cns-source-issue-children
                 '(fn2-pool-truncate fn2-block-read-children
-                  fn2-cns-source-heldp fn2-pool-workspace-code
+                  fn2-cns-source-heldp fn2-pool-ownerp
                   fn2-cns-source-data-position-p) nil world))))
  (b* (((unless (and (fn2-cns-source-ownerp s cns cnsgen ctl ctlgen request fn2-cns-sources)
                     (equal kind (fn2-cns-sources-owner-kind s fn2-cns-sources))
