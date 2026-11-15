@@ -1,0 +1,60 @@
+{
+  "base": "86f919a16a606851302690cf6e0547dd3b07319a",
+  "source": "3429e6e3c6ef8447ec0dbf8867dea63ceb78117f",
+  "scope": "source-only providers, not actor activation or certification",
+  "protected_unchanged_blobs": {
+    "books/pool.lisp": "8d4bac2eb47d863cc3529c4c58c09a32b0edb431",
+    "books/columns.lisp": "65dba7fcfe3c8fad137b51af84fedf539a91ccd5",
+    "books/core.lisp": "7189fcd17ee1c228c4e370f5405fec805f976841",
+    "books/machines.lisp": "135c46d16020ca5e91642dc62d279a15c8bf92d1",
+    "books/machine-arms.lisp": "050e326bff3990e81e2018a717fe755d994a63d8",
+    "books/storage-block-io.lisp": "3c81e770fe9af36fe333c271e9327876ae85fbc1"
+  },
+  "named_files": {
+    "books/article-manifest.lisp": "2d897570a123304211bec99fefdc83d8130f30a3cc9b2d65a5ed121fbe0c430b",
+    "books/assembly-callbacks-d-upload.lisp": "fe05b5b3d412552b2da6175b439b4f432ccd156caa75419f44d5b1261d75a6e6",
+    "books/cns-source-capture.lisp": "e35334278e92c3209a3b67d08e99388879aa66f1fd160499e6ee9c7de85d5727",
+    "books/cns-source-hash.lisp": "cd86e7668f9a9085820f6b3158be72d94620c4a32d60547d9134d90e84676d71",
+    "books/cns-source-manifest.lisp": "7255c162a041b7cf03d8db87f8cc384a02177dc56baf11392f3df53bbd200a9c",
+    "books/cns-source-raw.lisp": "bdd25e186d3ac7db95d75370548fb2730fefa0c975657cd9373f8ed91b83fac2",
+    "books/cns-source-retention.lisp": "75c901e7b3b7f7a2e7adb72e0e3220fc89675c45374810b57b926a1b704a7122",
+    "books/cns-source-state.lisp": "01056705c1c63fff3b196bf743b838deca04ea1a938c823105574728d9d2192e",
+    "books/cns-source-workspace.lisp": "ccb4f43d3c4b9b1a2e82d092d7fea50516ba0d0175b82512523a4e50b097fc38",
+    "books/cursor.lisp": "cd5edbedde00df7eaeb91de0df3e0769d22cb5024cc2acf9f6a2321b8c52762c",
+    "books/machines-b.lisp": "b71a437fb20a6fd0381dd8c0e54a92513638f3955a092d3b99ae2c2d1eb25ba5",
+    "books/recovery-payload.lisp": "7c77058b5b08d25c11476d4b09211875825ea8dc1b05ad1ab53122b2598d9a81",
+    "books/source-manifest-entry.lisp": "7bd3b811e51923f75237f37ec2a906bc02860532ba18558b37fffbd915d6d4fc",
+    "books/txn.lisp": "e0d1fcdc0e82b5d041b4201e7b004104b6596063227744f1e8cf9391bcc82409",
+    "books/upload-kind.lisp": "0d657505b2ba6b85742dbb578dff4a28e1d3b917df1925d39da79415000cdc77",
+    "books/upload.lisp": "e4dfae49d9635c53a3970434a3978ff15856833b1884ec1564fcb17b679ae43a",
+    "tests/cns-source-capture-unit.lisp": "cd9179b3b54f7b7b463b6ca2bfc6ff40f7fea880ac8f7ec8b4f26aeee459dc4d",
+    "tests/cns-source-hash-interleave-unit.lisp": "b11836a2e959ada702216c8e177fe5198ab8ec1108000b6ef06e1547de73c06a",
+    "tests/cns-source-retention-unit.lisp": "3ada1249dd74672b532de2d736ccdec4502236253c60c6f14d8297b9c792fb92",
+    "tests/fixtures/cns_source_mv_returns.json": "e22c257083c0993f7dfa04bebb292b86b6d1745719bb2d36fabed9855b5b7724",
+    "tests/txn-upload-physical-location-unit.lisp": "b18c1d92e2f5da8c4a7d4bf6910a793bc0c9ba82601e07615dda17a540232a2b",
+    "tests/upload-manifest-physical-unit.lisp": "983617cfa57c096a457b649952dd7a2558275d183cf01c71a281de4952ed6b4a",
+    "tests/upload-raw-threshold-unit.lisp": "bac309de4ffbb871f6205aa4dc95e4b31c6f3d7b787b4f481b15e20a91b79263",
+    "tools/cns_source_arity_check.py": "870fb27374eeccfae6992425b5ab25a55aaef80c89a75bdc2dbc76450bb86ca0",
+    "tools/cns_source_mv_rewrite.py": "3ec097ab799cc0e4b9482a794fb3564f8ca766ef884c9bc99ac97c7c1541e07a",
+    "tools/cns_source_raw_check.py": "c947bb4fa8faf1f42ff4c5d1aa2dae013e2320bd6cbbc1cc3778fd8ecdbe80b0",
+    "tools/cns_source_retention_check.py": "1a6ae73b2e399c100ad5698e307bd08550adeace13acbc85a227c2cc04a97a9d",
+    "tools/test_cns_source_hash_geometry.py": "b53aa529a8c48eaeee6d21fa12cf836165a8aff9e06a26267c1447a16e3ae31a",
+    "tools/test_cns_source_mv_rewrite.py": "fe012c09a749c35260e93d02384362cdf8c5c0cbed33c097ca28e1232583ec94",
+    "tools/test_source_manifest_extraction.py": "1afa3b3780f7daa2831870c47edcfce21b15362befeecb4e51adbd140a4163b5",
+    "tools/upload_physical_stride_rewrite.py": "4aebd207318107f186c993ed782c4bcf6f88d542417c229b2da472592d8e19e0",
+    "tools/upload_physical_stride_source_test.py": "1805dc32a2f083fa64583d5e6456f07c58e88509810c8264d9f6657969231bbf",
+    "tools/upload_raw_threshold_source_test.py": "256ecfb9a0f2e6d51a59dbc24cbc53160c5922db4f20ec0c8340ac23f166e80d"
+  },
+  "producer_dependencies": {
+    "fe9f761ab": "actual POST extent base16",
+    "dfc12386f": "manifest encoder/settlement/recovery stride16",
+    "0943d496f": "raw span3*unit, same manifest selector"
+  },
+  "checks": {
+    "python_source_controls": 22,
+    "actual_defun_calls": 139,
+    "known_mv_bindings": 43,
+    "acl2_execution": false
+  },
+  "remaining": "Q1 actual CNS actor/core hooks + native OUTPUT named-hunk integration; no INPUT freeze mutation"
+}
