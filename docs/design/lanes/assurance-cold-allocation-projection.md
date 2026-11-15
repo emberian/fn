@@ -60,13 +60,23 @@ canonical free-chain coverage, validated FIFO reconstruction, real quarantine
 ownership and selected reach protection coverage. No runtime whole-store
 revalidation replaces these proofs. TYPE/WFP/ROWS statements use the full actual
 guard domain including readonly sources. Prepared ordinary cold-gate controls
-are in alloc-cold-gate-unit; full actual codec→projection and old-cancel/new-
-reservation controls are being connected before a compute gate is requested.
+are in alloc-cold-gate-unit. checkpoint-projection-unit now constructs the mixed
+map through actual reserve/commit/retire calls, packs each real frozen row,
+decodes through the actual retained reader/map/FIFO path, and invokes actual
+projection/protection. Five controls cover the positive terminal and old-owner
+cancel refusal/new reservation success, stale actor, stale generation, changed
+descriptor, and an occupied quarantine slot retained on refusal. Census checked
+evidence, selected-validation completion and the later reopen are explicitly
+synthetic premises; this fixture does not witness cold authentication, C adoption,
+or persisted epoch authority. Assertions and guard qualification remain UNRUN.
+SBCL READ with read-eval disabled, structural checks, 65 actual defun call arities,
+24 known MV bindings and the secrets scan passed as source checks only.
 
 ## Owning boot integration
 
 The actual boot machine now advances validated selected investigation into the shared projection child operations, one map row or FIFO link per turn, then one closure protection and process-C hold per turn. Every stage retains the existing startup windows and charges before rescheduling. No input supplies a selected extent, ready flag or cut. Generic durable protection remains closed in phase4.
 
-The HELD outcome is still stopped before catalog adoption until the bounded empty-C opener and startup NAME selection are composed. Phase4 suffix settlement and persisted epoch closure remain required; this source does not enable FREE or claim executed cold recovery. The live scheduled retirement producer remains owned by reclamation: wire checkpoint teardown submit/poll after actual bank/source hold transfer, retain ambiguous intent, and add actual scheduler crash/refusal controls. Rebase and retained archive obligations must precede any reuse.
+Phase4 suffix settlement and persisted epoch closure remain required; this source does not enable FREE or claim executed cold recovery. The live scheduled retirement producer remains owned by reclamation: wire checkpoint teardown submit/poll after actual bank/source hold transfer, retain ambiguous intent, and add actual scheduler crash/refusal controls. Rebase and retained archive obligations must precede any reuse.
 
-The boot continuation now follows HELD through actual empty-C preflight, bounded source adoption, and copying the authenticated frontier/cut seal into active authority. Each call uses the declared child operation, including all readonly source inputs; no ready argument selects the outcome. COMPLETE still stops before directory/suffix/epoch closure. Startup actor/NAME separation is being composed so the preflight is reachable on stored images. Source checks only.
+The boot continuation now follows HELD through actual empty-C preflight, bounded source adoption, and copying the authenticated frontier/cut seal into active authority. Each call uses the declared child operation, including all readonly source inputs; no ready argument selects the outcome. COMPLETE now installs the exact directory base and stops before suffix/epoch closure. Startup actor/NAME separation is being composed so the preflight is reachable on stored images. Source checks only.
+
