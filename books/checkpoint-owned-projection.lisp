@@ -1,0 +1,57 @@
+; Selected-map ownership provenance. This is not a construction producer.
+(in-package "ACL2")
+(include-book "checkpoint-projection")
+(include-book "checkpoint-restore-reach")
+(include-book "checkpoint-construction")
+(fn2-book-layer :b)
+(defconst *fn2-checkpoint-owned-constructor-role-mask*
+ (logior (ash 1 *fn2-checkpoint-restore-reach-role-descriptor*)
+         (ash 1 *fn2-checkpoint-restore-reach-role-semantic*)
+         (ash 1 *fn2-checkpoint-restore-reach-role-allocation-map*)
+         (ash 1 *fn2-checkpoint-restore-reach-role-event-directory*)
+         (ash 1 *fn2-checkpoint-restore-reach-role-frontier*)
+         (ash 1 *fn2-checkpoint-restore-reach-role-arena*)))
+(defun fn2-checkpoint-projection-owned-step (checkpoint-kind fn2-checkpoint-selected-source fn2-boot-config fn2-checkpoints fn2-checkpoint-refs fn2-checkpoint-bytes fn2-origin fn2-checkpoint-recovery-evidence fn2-checkpoint-recovery-census fn2-checkpoint-restore-map fn2-checkpoint-restore-map-control fn2-checkpoint-restore-reach-control fn2-checkpoint-projection fn2-extents fn2-ops fn2-alloc-edges fn2-checkpoint-restore-reach fn2-checkpoint-construction)
+ (declare (xargs :stobjs (fn2-checkpoint-selected-source fn2-boot-config fn2-checkpoints fn2-checkpoint-refs fn2-checkpoint-bytes fn2-origin fn2-checkpoint-recovery-evidence fn2-checkpoint-recovery-census fn2-checkpoint-restore-map fn2-checkpoint-restore-map-control fn2-checkpoint-restore-reach-control fn2-checkpoint-projection fn2-extents fn2-ops fn2-alloc-edges fn2-checkpoint-restore-reach fn2-checkpoint-construction) :verify-guards nil
+ :guard (and (fn2-checkpoint-selected-source-wfp fn2-checkpoint-selected-source) (fn2-boot-config-wfp fn2-boot-config) (fn2-checkpoints-wfp fn2-checkpoints) (fn2-checkpoint-refs-wfp fn2-checkpoint-refs) (fn2-checkpoint-bytes-wfp fn2-checkpoint-bytes) (fn2-origin-wfp fn2-origin) (fn2-checkpoint-recovery-evidence-wfp fn2-checkpoint-recovery-evidence) (fn2-checkpoint-recovery-census-wfp fn2-checkpoint-recovery-census) (fn2-checkpoint-restore-map-wfp fn2-checkpoint-restore-map) (fn2-checkpoint-restore-map-control-wfp fn2-checkpoint-restore-map-control) (fn2-checkpoint-restore-reach-control-wfp fn2-checkpoint-restore-reach-control) (fn2-checkpoint-projection-wfp fn2-checkpoint-projection) (fn2-extents-wfp fn2-extents) (fn2-ops-wfp fn2-ops) (fn2-alloc-edges-wfp fn2-alloc-edges) (fn2-checkpoint-restore-reach-wfp fn2-checkpoint-restore-reach) (fn2-checkpoint-construction-wfp fn2-checkpoint-construction))))
+ (b* ((e (if (< 0 (fn2-checkpoint-projection-rows fn2-checkpoint-projection)) (fn2-checkpoint-projection-cursor 0 fn2-checkpoint-projection) 0))
+      (row (and (< 0 (fn2-checkpoint-projection-rows fn2-checkpoint-projection))
+                 (= (fn2-checkpoint-projection-phase 0 fn2-checkpoint-projection) *fn2-checkpoint-projection-phase-rows*)
+                 (< e (fn2-checkpoint-projection-total 0 fn2-checkpoint-projection))))
+      ((unless (and (unsigned-byte-p 8 checkpoint-kind) (posp checkpoint-kind)
+ (= (fn2-checkpoint-construction-rows fn2-checkpoint-construction) (fn2-extents-rows fn2-extents))
+ (fn2-checkpoint-projection-current-p fn2-checkpoint-selected-source fn2-boot-config fn2-checkpoints fn2-checkpoint-refs fn2-checkpoint-bytes fn2-origin fn2-checkpoint-recovery-evidence fn2-checkpoint-recovery-census fn2-checkpoint-restore-map fn2-checkpoint-restore-map-control fn2-checkpoint-restore-reach-control fn2-checkpoint-projection fn2-ops fn2-extents))) (mv :ownership fn2-checkpoint-projection fn2-checkpoint-selected-source fn2-extents fn2-alloc-edges fn2-checkpoint-construction))
+      (state (if row (fn2-checkpoint-restore-map-state e fn2-checkpoint-restore-map) *fn2-extent-state-free*))
+      (epoch (if row (fn2-checkpoint-restore-map-epoch e fn2-checkpoint-restore-map) 0))
+      (allocation (if row (fn2-checkpoint-restore-map-allocation e fn2-checkpoint-restore-map) 0))
+      (owned (and row
+       (or (and (member-equal state (list *fn2-extent-state-allocated* *fn2-extent-state-retire-pending*))
+                 (= (fn2-checkpoint-restore-map-owner-kind e fn2-checkpoint-restore-map) checkpoint-kind)
+                 (posp (fn2-checkpoint-restore-map-owner e fn2-checkpoint-restore-map)))
+           (and (= state *fn2-extent-state-reserved*)
+                (fn2-checkpoint-restore-reach-row-p e fn2-checkpoints fn2-checkpoint-refs fn2-checkpoint-bytes fn2-checkpoint-restore-map fn2-checkpoint-restore-map-control fn2-checkpoint-restore-reach fn2-checkpoint-restore-reach-control)
+                (not (= (logand *fn2-checkpoint-owned-constructor-role-mask* (fn2-checkpoint-restore-reach-role-bits e fn2-checkpoint-restore-reach)) 0))))))
+      ; Refuse native rows and every conflicting restored identity before the
+      ; allocator row can change. Unrelated ledger rows remain untouched.
+      ((unless (or (not row)
+                    (= (fn2-checkpoint-construction-live e fn2-checkpoint-construction) 0)
+                    (and owned
+                         (= (fn2-checkpoint-construction-role e fn2-checkpoint-construction) *fn2-checkpoint-owned-restored-role*)
+                         (= (fn2-checkpoint-construction-epoch e fn2-checkpoint-construction) epoch)
+                         (= (fn2-checkpoint-construction-counter e fn2-checkpoint-construction) allocation))))
+(mv :ownership fn2-checkpoint-projection fn2-checkpoint-selected-source fn2-extents fn2-alloc-edges fn2-checkpoint-construction))
+      ((mv code fn2-checkpoint-projection fn2-checkpoint-selected-source fn2-extents fn2-alloc-edges)
+       (fn2-checkpoint-projection-step fn2-checkpoint-selected-source fn2-boot-config fn2-checkpoints fn2-checkpoint-refs fn2-checkpoint-bytes fn2-origin fn2-checkpoint-recovery-evidence fn2-checkpoint-recovery-census fn2-checkpoint-restore-map fn2-checkpoint-restore-map-control fn2-checkpoint-restore-reach-control fn2-checkpoint-projection fn2-extents fn2-ops fn2-alloc-edges))
+      (fn2-checkpoint-construction
+       (if (and owned (eq code :more)
+                 (= (fn2-checkpoint-projection-cursor 0 fn2-checkpoint-projection) (+ e 1)))
+        (fn2-checkpoint-construction-put e (live 1) (role *fn2-checkpoint-owned-restored-role*)
+         (epoch epoch) (counter allocation) (token 0) (owner-kind 0) (owner-slot 0) (owner-gen 0)
+         (ordinal 0) (intended-bytes 0) (completed-bytes 0) (ticket-claimed 0) (ticket-batch 0))
+        fn2-checkpoint-construction)))
+  (mv code fn2-checkpoint-projection fn2-checkpoint-selected-source fn2-extents fn2-alloc-edges fn2-checkpoint-construction)))
+
+(defcost fn2-checkpoint-projection-step-op :child fn2-checkpoint-projection-owned-step
+ :answers (:more :projected :source :capacity :cursor :totals :row :fifo :state :ownership)
+ :tables (fn2-core-checkpoint-projection fn2-core-checkpoint-selected-source fn2-core-extents fn2-core-alloc-edges fn2-core-checkpoint-construction)
+ :doc "One exact selected map/FIFO step with source-derived physical ownership provenance.")

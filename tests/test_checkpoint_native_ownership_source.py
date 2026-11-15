@@ -26,4 +26,18 @@ class NativeOwnership(unittest.TestCase):
         text = (root / 'books/checkpoint-construction.lisp').read_text()
         self.assertIn('(defconst *fn2-checkpoint-owned-restored-role* 255)', text)
         self.assertIn('(<= (fn2-checkpoint-construction-role e fn2-checkpoint-construction) 6)', text)
+class ProjectionOwnership(unittest.TestCase):
+    def test_actual_face_has_one_source_bound_writer(self):
+        root = Path(__file__).resolve().parents[1]
+        source = (root / 'books/checkpoint-owned-projection.lisp').read_text()
+        parsed = lr.parse(source)
+        self.assertEqual(len(lr.match('(fn2-checkpoint-construction-put ?*args)', parsed.forms)), 1)
+        self.assertIn('(fn2-checkpoint-projection-step ', source)
+        self.assertIn('(fn2-checkpoint-projection-current-p ', source)
+        self.assertIn('(fn2-checkpoint-restore-reach-row-p ', source)
+        self.assertIn('(= (fn2-checkpoint-projection-cursor 0 fn2-checkpoint-projection) (+ e 1))', source)
+        self.assertIn('(intended-bytes 0) (completed-bytes 0)', source)
+        self.assertIn('(token 0) (owner-kind 0) (owner-slot 0) (owner-gen 0)', source)
+        self.assertNotIn('role-journal', source)
+        self.assertIn('(fn2-checkpoint-projection-step-op *fn2-checkpoint-master-kind*)', (root / 'books/boot.lisp').read_text())
 if __name__ == '__main__': unittest.main()
