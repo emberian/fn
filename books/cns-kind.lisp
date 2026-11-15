@@ -76,7 +76,7 @@
 (in-theory (disable fn2-ctl-capacity fn2-cns-capacity))
 
 (defmachine fn2-ctl
- :phases (:free :greeting :frame :dispatch :waiting :reply :closing :draining :retired)
+ :phases (:free :greeting :frame :stream :dispatch :waiting :reply :closing :draining :retired)
  :fields ((cap-index :u32) (cap-nonce :u32) (rx-slot :link) (rx-gen :u60) (tx-slot :link) (tx-gen :u60)
           (fill :u32) (pos :u32) (flen :u32) (fkind :u8) (cns :link) (cns-gen :u60) (owner :bool)
           (tx-off :u32) (tx-len :u32) (request :u32) (pending :u32) (borrows :u32) (stopped :bool)
@@ -85,9 +85,12 @@
           ;; durable principal, whether it administers (an owner connection not
           ;; yet bound), whether it has done consumer work, and its auth request
           (principal :u60) (admin :bool) (worked :bool) (auth :link) (auth-gen :u60)
+          (sphase (:enum fn2-ctl-stream (:none :hash :feed :trailer :verified :bad :cancelled)))
+          (swindow :u60) (sremaining :u60) (shash :u32) (sstart :u32) (send :u32) (sack :bool)
+          (strailer :u8) (sop :u60) (slength :u32)
           (next-free :link))
  :holds ((:greeting :connection-row :rx-range) (:frame :connection-row :rx-range)
-         (:dispatch :connection-row :rx-range) (:waiting :connection-row :rx-range)
+         (:stream :connection-row :rx-range) (:dispatch :connection-row :rx-range) (:waiting :connection-row :rx-range)
          (:reply :connection-row :rx-range) (:closing :connection-row :rx-range)
          (:draining :connection-row :rx-range))
  :budget (:bytes 8192 :steps 32 :descriptors 4)
@@ -95,11 +98,11 @@
  :admission (:phase :greeting :ranges ((:rx-range :slot rx-slot :gen rx-gen :class (:bytes *fn2-ctl-io-bytes*)))
              :copy (peer-family peer-w0)
              :clear (fill pos flen fkind cns-gen owner tx-off tx-len request pending borrows stopped cmd posture
-                     principal admin worked auth-gen))
+                     principal admin worked auth-gen sphase swindow sremaining shash sstart send sack strailer sop slength))
  :initial ((generation fn2-machine-initial-generation) (ready-prev *fn2-none*) (ready-next *fn2-none*)
            (rx-slot *fn2-none*) (tx-slot *fn2-none*) (cns *fn2-none*) (auth *fn2-none*)
            (next-free fn2-machine-initial-next-free))
- :arms ((:free) (:greeting) (:frame) (:dispatch) (:waiting) (:reply) (:closing) (:draining) (:retired))
+ :arms ((:free) (:greeting) (:frame) (:stream) (:dispatch) (:waiting) (:reply) (:closing) (:draining) (:retired))
  :observes ((:receive-result) (:send-result) (:borrow-released) (:close-result)))
 
 (defmachine-registry fn2-ctl)
@@ -119,6 +122,8 @@
           ;; (FED of them written, FEED-MODE the feed's line state, then
           ;; done; FEED-DISCARD 1 framing, 2 too large), as a connection feeds it
           (upload :link) (upload-gen :u60) (fstart :u32) (fed :u60) (feed-mode :u8) (feed-discard :u8)
+          ;; Streaming frame metadata is scalar; RX loans remain owned by CTL.
+          (stream :bool)
           ;; a register's consumer name, the octets of its request's consumer
           ;; field in the control range (the names row it writes)
           (name-off :u32) (name-len :u8)
@@ -166,7 +171,7 @@
  :taken (:phase :decode :rows :wait-row :ranges ((:tx-range :slot ws-slot :gen ws-gen :class 0) (:tx-range :slot ns-slot :gen ns-gen :class 0))
          :copy (ctl ctl-gen request fpos flen fkind tx-slot tx-gen)
          :clear (verb consumer epoch op to cstart page-limit wait-ms deadline cpos version pub-frontier count more outcome
-                 reason posted posted-word txn-gen upload-gen fstart fed feed-mode feed-discard name-off name-len
+                 reason posted posted-word txn-gen upload-gen fstart fed feed-mode feed-discard stream name-off name-len
                  ipos ioff ilen npos art istream itype alen lunit lepoch lalloc lgen lease revent routcome rcount rready cursor xrow xstep xhead xgrant
                  sx wstep ticket stopped))
  :initial ((generation fn2-machine-initial-generation) (ready-prev *fn2-none*) (ready-next *fn2-none*)

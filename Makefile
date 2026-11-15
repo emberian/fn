@@ -348,6 +348,25 @@ ACL2_BOOKS = \
   tests/consumer-codec-unit \
   tests/fnct-append-boundary-unit \
   tests/fnct-stream-unit \
+  books/cns-query-lifetime-model \
+  books/core-scheduler-wake \
+  books/enqueue-trace \
+  books/query-reference-predicates \
+  books/query-reference-core-predicate \
+  books/query-ref-wake \
+  books/queue-model \
+  books/trace-events \
+  tests/cns-query-support \
+  tests/cns-query-lifetime-unit \
+  tests/enqueue-cost-unit \
+  tests/query-reference-unit \
+  tests/query-two-wake-unit \
+  tests/query-owner-drain-unit \
+  tests/queue-model-unit \
+  tests/trace-events-unit \
+  books/cns-append-prefix-codec \
+  tests/cns-stream-append-unit \
+  tests/ctl-stripe-map-unit \
   tests/consumer-commit-unit \
   tests/consumer-helm \
   tests/consumer-mini \
