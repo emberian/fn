@@ -311,6 +311,8 @@ ACL2_BOOKS = \
   tests/checkpoint-semantic-unit \
   tests/checkpoint-teardown-unit \
   tests/checkpoint-teardown-transfer-unit \
+  tests/checkpoint-teardown-cold-unit \
+  tests/checkpoint-bank-transfer-unit \
   tests/checkpoint-working-release-unit \
   tests/retirement-intent-unit \
   tests/run-packing-unit \

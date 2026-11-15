@@ -3,6 +3,8 @@
 (in-package "ACL2")
 (include-book "checkpoint-master-rearm")
 (include-book "checkpoint-teardown-sweep")
+(include-book "checkpoint-teardown-cold-transfer")
+(include-book "checkpoint-bank-transfer")
 (include-book "checkpoint-metadata-driver")
 (include-book "event-build-kind")
 (include-book "checkpoint-summary-authority-live")
@@ -301,15 +303,36 @@
   (:teardown-transfer-begin :on-refusal ((:next :teardown-uncertain) (:charge :steps *fn2-work-small* :runnable t))
    (:do (code candidate) (fn2-checkpoint-teardown-transfer-begin-op row-token *fn2-checkpoint-master-kind* id row-generation)
     :accept () :case
-    (((:none) (:next :done) (:charge :steps *fn2-work-small* :runnable t))
+    (((:none) (:set (scan 0)) (:next :teardown-cold-next) (:charge :steps *fn2-work-small* :runnable t))
      ((:copy :duplicate) (:set (debt-scan candidate)) (:next :teardown-transfer-copy) (:charge :bytes 160 :steps *fn2-work-stage* :runnable t))
      (:otherwise (:next :teardown-uncertain) (:charge :steps *fn2-work-small* :runnable t)))))
   (:teardown-transfer-copy :on-refusal ((:next :teardown-uncertain) (:charge :steps *fn2-work-small* :runnable t))
    (:do (code) (fn2-checkpoint-teardown-transfer-step-op row-debt-scan row-token *fn2-checkpoint-master-kind* id row-generation)
     :accept () :case
     (((:more) (:charge :bytes 4 :steps *fn2-work-stage* :runnable t))
-     ((:transferred) (:next :done) (:charge :bytes 160 :steps *fn2-work-stage* :runnable t))
+     ((:transferred) (:set (scan 0)) (:next :teardown-cold-next) (:charge :bytes 160 :steps *fn2-work-stage* :runnable t))
      (:otherwise (:next :teardown-uncertain) (:charge :steps *fn2-work-small* :runnable t)))))
+
+  (:teardown-cold-next :on-refusal ((:next :teardown-uncertain) (:charge :steps *fn2-work-small* :runnable t))
+   (:do (code next physicalslot) (fn2-checkpoint-teardown-cold-next-op row-scan) :accept () :case
+    (((:pending) (:set (scan next) (source physicalslot)) (:next :teardown-cold-begin) (:charge :steps *fn2-work-stage* :runnable t))
+     ((:more) (:set (scan next)) (:charge :steps *fn2-work-small* :runnable t))
+     ((:end) (:next :done) (:charge :steps *fn2-work-small* :runnable t))
+     (:otherwise (:next :teardown-uncertain) (:charge :steps *fn2-work-small* :runnable t)))))
+  (:teardown-cold-begin :on-refusal ((:next :teardown-uncertain) (:charge :steps *fn2-work-small* :runnable t))
+   (:do (code candidate) (fn2-checkpoint-teardown-cold-begin-op row-source row-token *fn2-checkpoint-master-kind* id row-generation) :accept () :case
+    (((:copy) (:set (debt-scan candidate)) (:next :teardown-cold-copy) (:charge :bytes 192 :steps *fn2-work-stage* :runnable t))
+     ((:copied) (:set (debt-scan candidate)) (:next :teardown-cold-ack) (:charge :bytes 192 :steps *fn2-work-stage* :runnable t))
+     (:otherwise (:next :teardown-uncertain) (:charge :steps *fn2-work-small* :runnable t)))))
+  (:teardown-cold-copy :on-refusal ((:next :teardown-uncertain) (:charge :steps *fn2-work-small* :runnable t))
+   (:do (code) (fn2-checkpoint-teardown-cold-step-op row-source row-debt-scan row-token *fn2-checkpoint-master-kind* id row-generation) :accept () :case
+    (((:more) (:charge :bytes 4 :steps *fn2-work-stage* :runnable t))
+     ((:copied) (:next :teardown-cold-ack) (:charge :bytes 192 :steps *fn2-work-stage* :runnable t))
+     (:otherwise (:next :teardown-uncertain) (:charge :steps *fn2-work-small* :runnable t)))))
+  (:teardown-cold-ack :on-refusal ((:next :teardown-uncertain) (:charge :steps *fn2-work-small* :runnable t))
+   (:do (code) (fn2-checkpoint-teardown-cold-ack-op row-source) :accept (:transferred))
+   (:next :teardown-cold-next) (:charge :bytes 192 :steps *fn2-work-stage* :runnable t))
+
   (:teardown-select :on-refusal ((:next :teardown-uncertain) (:charge :steps *fn2-work-small* :runnable t))
    (:do (code next token extent epoch allocation batch event phase)
     (fn2-checkpoint-teardown-select-op row-debt-scan *fn2-checkpoint-master-kind* id row-generation)
