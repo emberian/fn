@@ -179,6 +179,8 @@
                            copied (min maximum (- len copied))) (fn2-pool-fill source fn2-pool))))
        (mv :bad 0 nil fn2-cns-sources fn2-pool))
       (n (min maximum (- len copied)))
+      ((unless (unsigned-byte-p 32 (+ 1 (fn2-cns-sources-unit-index s fn2-cns-sources))))
+       (mv :bad 0 nil fn2-cns-sources fn2-pool))
       (base (if (equal (fn2-cns-sources-location-kind s fn2-cns-sources) 0) *fn2-cns-source-prefix* *fn2-cns-source-data-offset*))
       ((mv code fn2-pool) (fn2-rd-copy n source sgen (+ base copied) kind cns cnsgen slot gen off ctlkind ctl ctlgen fn2-pool))
       ((unless (eq code :ok))
