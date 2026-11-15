@@ -90,7 +90,11 @@ closure does not include pool-ranges. Its exact twenty-one-book record
 certified, 178.618 seconds. Root matched all before/after source hashes against
 the current integration tree and confirmed the runner unchanged. This qualifies
 the format prefix, not checkpoint/member or the complete served core. The next
-consumer prerequisites are alloc, pool-read-contracts and repaired pool-ranges.
+alloc/read-contract prerequisite record `certify-20261115T042507Z-851291`
+passes its exact ten-book scope (eight reused, two new; 10.558 seconds). Root
+matched all ten before/after source hashes to integration; the owner audited
+qualified compiled cache entries. Only repaired pool-ranges remains before the
+actual checkpoint/member guard pilot.
 Layout (56.921 seconds), format-events (35.140), format-check (24.448),
 format-storage (22.652) and blake3 (18.539) retain proof-cost debt; targeted
 layout guard work is separate from current consumer qualification.
