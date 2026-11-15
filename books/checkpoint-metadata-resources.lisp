@@ -4,6 +4,8 @@
 (in-package "ACL2")
 (include-book "checkpoint-working-reserve")
 (include-book "checkpoint-metadata-manifest")
+(include-book "checkpoint-compaction-state")
+(include-book "checkpoint-predecessors")
 (include-book "checkpoint-payload")
 (include-book "checkpoint-semantic-retention")
 (include-book "machines-c-sealer")
@@ -86,3 +88,37 @@
 (defcost fn2-checkpoint-root1-workspaces-op :child fn2-checkpoint-root1-workspaces :answers t
  :tables (fn2-core-checkpoint-root1 fn2-core-checkpoint-windows fn2-core-pool)
  :doc "Derive the stable descriptor/page/scratch/read tuple from actual admitted root1 ownership.")
+
+; Profile geometry, not a stored-history limit: every actual original C row
+; receives one inventory slot, including physical rows appended to R.
+(defun fn2-checkpoint-predecessor-rows (profile)
+ (declare (xargs :guard t))
+ (+ (nfix (fn2-b-capacity :identity-overlays *fn2-idc-overlays-default* profile))
+    (nfix (fn2-b-capacity :identity-runs 64 profile))
+    (nfix (fn2-b-capacity :extent-slots 16 profile))))
+(defun fn2-checkpoint-predecessor-profilep (profile)
+ (declare (xargs :guard t))
+ (and (natp (fn2-b-capacity :identity-overlays *fn2-idc-overlays-default* profile))
+      (natp (fn2-b-capacity :identity-runs 64 profile))
+      (natp (fn2-b-capacity :extent-slots 16 profile))
+      (unsigned-byte-p 32 (fn2-checkpoint-predecessor-rows profile))))
+(defun fn2-checkpoint-predecessors-init-for (profile fn2-checkpoint-predecessors)
+ (declare (xargs :stobjs fn2-checkpoint-predecessors
+  :guard (fn2-checkpoint-predecessor-profilep profile)))
+ (fn2-checkpoint-predecessors-init (fn2-checkpoint-predecessor-rows profile) fn2-checkpoint-predecessors))
+(defthm fn2-checkpoint-predecessors-init-for-type
+ (implies (and (fn2-checkpoint-predecessorsp fn2-checkpoint-predecessors) (fn2-checkpoint-predecessor-profilep profile))
+  (fn2-checkpoint-predecessorsp (fn2-checkpoint-predecessors-init-for profile fn2-checkpoint-predecessors))))
+(defthm fn2-checkpoint-predecessors-init-for-wfp
+ (implies (fn2-checkpoint-predecessor-profilep profile)
+  (fn2-checkpoint-predecessors-wfp (fn2-checkpoint-predecessors-init-for profile fn2-checkpoint-predecessors))))
+(defcorechild fn2-core-checkpoint-predecessors fn2-checkpoint-predecessors
+ :init (fn2-checkpoint-predecessors-init-for profile fn2-checkpoint-predecessors)
+ :profilep (fn2-checkpoint-predecessor-profilep profile)
+ :why "Exact original held source inventory has O+R rows; many originals may map to one durable schema output.")
+(fn2-sealer-child fn2-core-checkpoint-predecessor-control fn2-checkpoint-predecessor-control
+ (fn2-checkpoint-predecessor-control-init 1 fn2-checkpoint-predecessor-control)
+ "Current held candidate/token and bounded capture/check/retirement cursor retain original-source obligations.")
+(fn2-sealer-child fn2-core-checkpoint-compaction fn2-checkpoint-compaction
+ (fn2-checkpoint-compaction-init 1 fn2-checkpoint-compaction)
+ "The actual schema merge's authenticated seek/equality/park continuation survives bounded rescans.")
