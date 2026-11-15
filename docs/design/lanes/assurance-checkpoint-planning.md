@@ -71,3 +71,42 @@ same-builder index/directory forecast is required before using such a cache as
 admission authority. No new aggregate or growth bound is implemented from this
 observation. The current global planning identity provider must not be silently
 replaced by guessed per-source counts or entries-times-levels arithmetic.
+
+## Retry and prospective source credits
+
+The actual pressure consumer now compares an owner-scoped refusal stamp only
+as a wake hint. The abort consumers capture it after cancellation, C release
+and working-lease return, before clearing the master token. An unchanged
+physical forecast remains idle; pool free-count changes wake only a pool
+refusal. Retirement debt remains unchanged. Successful sealer installation
+increments a checked publication generation which resource seal-init does not
+reset. The prepared controls exercise actual allocator transitions, pressure
+calls, source installation and reset; they remain unexecuted.
+
+Foreground credit cannot be inserted as a yielding call to successor-stage
+without another ownership boundary. The actual successor-stage wrapper in
+machines-c-bind.lisp stages the transaction under its stripe; its caller then
+obtains B batch/event positions and binds. Staged entries include event-derived
+fields and bounded late octets. A count taken before those assignments does
+not identify the eventual encoded source. Replaying a global sequential free
+frontier later also changes child Ref widths when another source is inserted.
+
+The proposed next boundary is an admission intent bound to the actual actor
+and successor transaction, retaining exact next batch/event assignments while
+one bounded forecast step runs. A private-source credit owns actual RESERVED
+physical identities, keyed by overlay identity and a non-resetting source
+generation. The same builder packs that source using those identities; the
+credit records its actual recipe, not bytes-times-levels. Publication transfers
+the credit with the immutable source. Checkpoint planning consumes those exact
+identities and forecasts the changing source-directory and fixed suffix.
+Sealer replacement obtains its replacement credit before switching sources;
+old-source credit cancellation waits for all source pins to drain. This is a
+proposed producer-consumer boundary, not implemented admission authority.
+
+The first connected scope would reserve and forecast one actual staged private
+source before B admission, then require its exact actor/transaction/source
+credit at bind and publication. Refusal must return before accepting the B
+member; cancellation must distinguish unissued credit from possible physical
+IO. Bootstrap and sealer source producers need the same ownership contract
+before enabling this path. A count-only gate at stage, or a fingerprint match,
+cannot substitute for those physical reservations.
