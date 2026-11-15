@@ -1,6 +1,6 @@
 ; Actual installed-chain evidence for the checkpoint publisher.
 (in-package "ACL2")
-(include-book "machines-b")
+(include-book "commit-directory")
 (include-book "checkpoint-boot")
 (fn2-book-layer :b)
 
@@ -15,12 +15,13 @@
                (< 0 (fn2-commit-root-rows fn2-commit-root))
                (equal (fn2-checkpoints-state c fn2-checkpoints) *fn2-checkpoint-state-installed*)))
      (mv :state 0)
-  (let* ((batch (fn2-checkpoints-installation-commit c fn2-checkpoints))
-         (row (+ (* *fn2-digest-stride* (fn2-fc-rows fn2-fc)) batch)))
-   (cond ((not (and (posp batch) (< batch (fn2-commit-root-rows fn2-commit-root))
-                     (<= batch (fn2-commit-root-installed 0 fn2-commit-root))
-                     (equal (fn2-commit-root-seal-ready batch fn2-commit-root) 1)
-                     (equal (fn2-commit-root-parent batch fn2-commit-root) (- batch 1))))
-          (mv :installation 0))
-         ((not (fn2-digest-rowp row fn2-digests)) (mv :bounds 0))
-         (t (mv :ok row))))))
+  (let ((batch (fn2-checkpoints-installation-commit c fn2-checkpoints)))
+   (mv-let (code row) (fn2-commit-directory-lookup batch fn2-commit-root)
+    (declare (ignore row))
+    ; A base predecessor is not independent per-bank installation evidence.
+    ; This consumer requires the exact resident installation until that evidence
+    ; is captured by the covering publication protocol.
+    (if (not (and (posp batch) (eq code :ok))) (mv :installation 0)
+     (mv-let (code seal) (fn2-commit-directory-seal-slot batch (fn2-fc-rows fn2-fc) fn2-commit-root)
+      (if (not (and (eq code :ok) (fn2-digest-rowp seal fn2-digests))) (mv :bounds 0)
+       (mv :ok seal))))))))

@@ -80,9 +80,10 @@ sources. Neither dependency is established by this headroom change.
 No host source currently computes these directory indices. The two concrete
 index namespaces (root cells and seal digest cells) must change together. The
 current event readers/proof builders make a metadata-only ring conversion unsafe.
-`fn2-commit-notification-range` presently has no source caller outside its own
-definition, but its declared replayable-debt semantics must not be erased to make
-reuse appear complete. Type/guard-only dependencies in event-build/producer and
+`fn2-commit-notification-range` has three source test consumers in sim-layer-b.
+Its resident ready/first/end values remain unchanged; a fourth status now
+distinguishes resident, pending, base, archived, absent and stale. Missing
+resident history is not completed delivery debt. Type/guard-only dependencies in event-build/producer and
 writer books still need their composed closure checked after representation work.
 
 ## Qualification and refusal obligations before reuse
@@ -112,3 +113,81 @@ fixtures for the many getter/setter and digest-index consumers. Current mileston
 validation is source-only: structural parsing, explicit B* dependency and named
 secrets/whitespace checks; qualification of the new critical resource-credit
 helper, exact caller and composed prefix/rebase obligations remains pending.
+
+
+## D13 contract and active implementation partition
+
+The recovery contract is `State_n = Fold(Summary_k, Events[k+1..n])`, with
+observations preserved for every supported retained schema and future request.
+The selected, authenticated summary supplies k, its event frontier, predecessor
+seal, source views, interpretation and coverage. A target checkpoint's frontier
+is not proof of its own summary. Root4 peaks support append continuation; they
+are not old event bodies, inclusion paths, exact identity evidence or catchup.
+C base adoption must install the actual authenticated retained sources, including
+identity/binding evidence, retry outcomes, addresses, cursors, charges and
+control schemas. CNS address delivery may use those retained schema4/2/15
+sources; a new public historical catchup promise needs its own explicit contract.
+
+The directory's resident batch identity stays absolute. `commit-directory.lisp`
+uses one physical row for metadata and its seal digest; PARENT=batch-1 is the
+exact stored tag, together with SEAL-READY. Lookup refuses an old modulo alias.
+Row0 remains metadata. Its base-batch/base-event/base-ready fields name only the
+independently retained recovery boundary, whose predecessor seal occupies the
+separate directory digest row0. They are initialized to genesis. There is no
+positive base setter or new wrap credit in this milestone; current admission
+still refuses its existing capacity limit. The actual installation-seal consumer
+now requires the checked mapped resident identity. An archived/base status does
+not impersonate independent bank installation evidence.
+
+`checkpoint-directory-rebase.lisp` implements bounded source preparation:
+BEGIN derives the target from the active Fence-published bank/candidate and all
+actual descriptor hash words under a HELD snapshot owner/token. STEP revalidates
+that binding, visits one exact resident batch, checks event continuity, actual
+allocation owner/epoch/generation and installed-root edge, and copies its seal.
+The last step retains the exact target event and predecessor seal and enters
+SOURCE-SCANNED, returning AWAIT-EVIDENCE. It does not advance the base, clear
+rows, release pins or authorize FREE. A crash before, during or after scanning
+therefore leaves the original directory/extent obligations intact. Restart must
+rederive the published target; a changed owner/candidate/source is refused.
+
+The required commit join remains active implementation work: selected C summary
+adoption (sol_stored_commitment), authenticated prior role3/4 prefix and accumulator
+(release_trace), independent installation/cut/seal evidence for BOTH selectable
+banks (checkpoint owner), and actual retained lease/archive/proof obligations
+(peer_assurance). A retained peer-history snapshot remains a real lease until
+pending physical I/O drains and close succeeds. A cursor is not a row index and
+missing prefix is not DONE. Directory cell reuse and physical journal eligibility
+are separate transitions: old extents require both selectable-bank evidence and
+all real source obligations to be gone. Neither a descriptor order nor this
+source preflight discharges them.
+
+Prepared source controls exercise a mapped batch beyond one physical capacity,
+old-row alias refusal, unready seals, absent future identities, exact genesis
+row0 and refusal of an unproved positive base. These are synthetic typed metadata
+premises, not a live wrap/rebase witness. ACL2 admission, guard qualification,
+crash-cut execution and second-checkpoint/refold observations remain unrun.
+
+
+### Writer mapping milestone
+
+Live prepare/grow, abort boundary lookup, computed seal predecessor/current
+storage, publication swap and unprepare now use checked physical directory rows.
+A tentative proposal row is distinct from installed-chain evidence. The writer
+may consume an exact tagged SEAL-READY predecessor before installation, preserving
+pipeline behavior; ordinary installation/proof readers still require installed
+identity. Unprepare refuses a stale mapping before allocation mutation, and abort
+frontier restoration cannot cross the retained base. Current admission/headroom
+still provides no wrap credit. Recovery link/replay and external mapped consumers
+remain part of the implementation drain before the actual rebase join is enabled.
+
+The index rewrite uses tools/commit_directory_rewrite.py with discriminating
+scope/metadata, unexpected-index and replacement-count controls. Prepared writer
+controls check computed-versus-installed seals, stale reused-row refusal, resident
+notification values, publication lag and explicit archived/base/absent dispatch.
+Their staged metadata is synthetic; they do not establish durable summary or reuse.
+
+`fn2-commit-directory-base-state` is a readonly fingerprint projection returning
+status/base-batch/base-event/base-ready. Its OK means row0 exists; it grants no
+summary authority. Pressure retry may observe it alongside headroom(0), whose
+credit formula remains unchanged until the rebase join is enabled. Source scan
+progress alone is not freed credit.

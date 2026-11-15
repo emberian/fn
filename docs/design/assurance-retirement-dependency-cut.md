@@ -40,3 +40,13 @@ construction/tickets and other checkpoint-related children. Those independent
 extension seams must be separated before claiming a small whole-core ordinary
 closure. Existing full assembly continues to instantiate the checkpoint adapter.
 No ACL2, native, remote, service or runtime qualification was run for this split.
+
+## Stobj translation repair
+
+The followup binds `fn2-core-stop` results before returning the core through
+`mv`, including the cancellation branch whose final argument was an `if`.
+The original pre-factor fingerprint remains recorded as
+`PRE_FACTOR_EVENT_SHA256`; the additional normal-form fingerprint is derived
+from that original tree at d2a1b7c0f. The source control permits only the explicit
+core LET/return rewrite with no core reference in the scalar result expressions.
+It does not replace the historical receipt with the repaired tree's digest.
