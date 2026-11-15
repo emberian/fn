@@ -9,10 +9,12 @@ def body(name):return lr.match('(defun '+name+' ?*body)',lr.parse(S).forms,deep=
 def tree(n):return tuple(tree(x) for x in n.items) if hasattr(n,'items') else n.low
 class ArchiveGeometry(unittest.TestCase):
  def test_original_source_formula_and_appended_archive(self):
-  self.assertEqual(tree(body('fn2-b-checkpoint-source-cursor')),
-   ('+',('nfix',('fn2-profile-t','profile')),('*',('+','1','*fn2-b-range-source-cursors*'),('fn2-b-read-rows','profile')),'*fn2-b-seal-source-cursors*'))
-  self.assertEqual(tree(body('fn2-b-event-archive-cursor')),('+','1',('fn2-b-checkpoint-source-cursor','profile')))
-  self.assertEqual(tree(body('fn2-b-run-cursor-rows')),('+','1',('fn2-b-event-archive-cursor','profile')))
+  self.assertEqual(tree(body('fn2-b-checkpoint-source-cursor-parts')),
+   ('+',('nfix','transactions'),('*',('+','1','*fn2-b-range-source-cursors*'),('nfix','reads')),'*fn2-b-seal-source-cursors*'))
+  self.assertEqual(tree(body('fn2-b-event-archive-cursor-parts')),('+','1',('fn2-b-checkpoint-source-cursor-parts','transactions','reads')))
+  self.assertEqual(tree(body('fn2-b-run-cursor-rows-parts')),('+','1',('fn2-b-event-archive-cursor-parts','transactions','reads')))
+  for name in ['checkpoint-source-cursor','event-archive-cursor','run-cursor-rows']:
+   self.assertEqual(tree(body('fn2-b-'+name)),('fn2-b-'+name+'-parts',('fn2-profile-t','profile'),('fn2-b-read-rows','profile')))
  def test_bridges_and_named_profile_equalities(self):
   for stem,n in [('checkpoint-source','2'),('event-archive','1')]:
    self.assertEqual(tree(body('fn2-b-'+stem+'-cursor-from-rows')),('nfix',('-',('nfix','rows'),n)))
