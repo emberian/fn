@@ -76,6 +76,8 @@ class SemanticDfsSource(unittest.TestCase):
         self.assertIn("fn2-checkpoint-semantic-page-read-header", calls(page))
         self.assertIn("fn2-checkpoint-restore-semantic-resume", calls(page))
         self.assertIn("fn2-checkpoint-restore-semantic-entries", calls(page))
+        self.assertIn("*fn2-run-max-levels*", str(page))
+        self.assertIn("fn2-ribbon-read-header", calls(page))
         state = (ROOT / "books/checkpoint-restore-semantic-state.lisp").read_text()
         self.assertNotIn("pending-head", state)
         self.assertIn("(:empty :gray :closed)", state)

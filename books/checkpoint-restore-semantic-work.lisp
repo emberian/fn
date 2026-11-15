@@ -48,10 +48,9 @@
  :position 1)
 
 
-; This internal writer is reached only from the current authenticated typed
-; entry below. All physical pages emitted by the current root1 constructor
-; remain RESERVED in the frozen map; payload/borrowed source admission is a
-; distinct consumer, not a widening of this construction-page state check.
+; Stack identities come only from the current authenticated typed entry.
+; Constructor pages stay RESERVED; actual nested manifest sources carry a
+; distinct interpretation and require ALLOCATED or RETIRE-PENDING.
 (defun fn2-checkpoint-restore-semantic-work-word (e i fn2-checkpoint-restore-semantic-work)
  (declare (xargs :stobjs fn2-checkpoint-restore-semantic-work
  :guard (and (fn2-checkpoint-restore-semantic-work-wfp fn2-checkpoint-restore-semantic-work)

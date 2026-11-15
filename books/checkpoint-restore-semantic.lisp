@@ -5,6 +5,7 @@
 (include-book "checkpoint-restore-semantic-state")
 (include-book "checkpoint-semantic-page")
 (include-book "ribbon")
+(include-book "runs-served")
 (fn2-book-layer :c)
 
 (defun fn2-checkpoint-restore-semantic-root-hash (i src fn2-checkpoint-bytes fn2-checkpoint-restore-semantic)
@@ -233,7 +234,7 @@
                              (equal (fn2-checkpoint-restore-semantic-expected-known 0 fn2-checkpoint-restore-semantic) 0))
                         (and (equal run (fn2-checkpoint-restore-semantic-run 0 fn2-checkpoint-restore-semantic))
                              (equal level (fn2-checkpoint-restore-semantic-level 0 fn2-checkpoint-restore-semantic))))
-                    (unsigned-byte-p 60 run) (unsigned-byte-p 8 level)
+                    (unsigned-byte-p 60 run) (unsigned-byte-p 8 level) (< level *fn2-run-max-levels*)
                     (unsigned-byte-p 32 (fn2-run-hdr base entries))
                     (or (equal (fn2-checkpoint-restore-semantic-resume 0 fn2-checkpoint-restore-semantic) 0)
                         (and (equal (fn2-run-hdr base entries) (fn2-checkpoint-restore-semantic-entries 0 fn2-checkpoint-restore-semantic))
