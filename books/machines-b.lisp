@@ -11,6 +11,8 @@
 (include-book "checkpoint-cbase-state")
 (include-book "checkpoint-geometry")
 (include-book "checkpoint-lifecycle-coordinator")
+(include-book "release-allocation-harvest")
+(include-book "release-evidence-state")
 (include-book "checkpoint-tickets")
 (include-book "format-check")
 (include-book "payload-workspace")
@@ -46,20 +48,24 @@
 (defcorechild fn2-core-retirement-control fn2-retirement-control
  :init (fn2-retirement-control-init (+ 1 *fn2-checkpoint-allocation-records-per-ticket*) fn2-retirement-control) :profilep t
  :why "One lifecycle producer, retained workspace and exact settlement identity across yields.")
+(defcorechild fn2-core-allocation-release fn2-allocation-release
+ :init (fn2-allocation-release-init 1 fn2-allocation-release)
+ :profilep t
+ :harvest (fn2-allocation-release-harvest
+  ((fn2-core-allocation-release fn2-allocation-release)))
+ :why "One actual staged/pending RELEASE_ALLOCATION owns exact checkpoint evidence and target across yields; no FREE admission is granted by staging.")
 (defun fn2-b-checkpoint-capacity (profile)
  (declare (xargs :guard t))
  (nfix (fn2-b-capacity :checkpoint-candidates 4 profile)))
 ; Dedicated regions: six commit I/O edges, two roots per extent, one pin per
 ; operation, six direct references per candidate, then one source-retention
 ; edge per extent per active candidate, then a disjoint C-base promise region
-; of the same derived size. These are dedicated resident resources.
+; of the same derived size, then three release-evidence obligations per journal
+; extent. The shared layout checks profile overflow. These are resident resources.
 (defun fn2-b-alloc-edge-floor (profile)
  (declare (xargs :guard t))
- (+ 6 (* 2 (nfix (fn2-b-capacity :extent-slots 16 profile)))
-    (nfix (fn2-profile-o profile)) (* 6 (fn2-b-checkpoint-capacity profile))
-    (* 2 (nfix (fn2-b-capacity :extent-slots 16 profile)) (fn2-b-checkpoint-capacity profile))
-    ; Four independent physical anchors cannot alias canonical source holds.
-    (* *fn2-checkpoint-anchor-slots* (nfix (fn2-b-capacity :extent-slots 16 profile)))))
+ (fn2-alloc-edge-layout-floor (nfix (fn2-b-capacity :extent-slots 16 profile))
+  (nfix (fn2-profile-o profile)) (fn2-b-checkpoint-capacity profile)))
 (defcorechild fn2-core-checkpoint-cbase-holds fn2-checkpoint-cbase-holds
  :init (fn2-checkpoint-cbase-holds-init (fn2-b-checkpoint-capacity profile) fn2-checkpoint-cbase-holds)
  :profilep (unsigned-byte-p 32 (fn2-b-checkpoint-capacity profile))
@@ -67,12 +73,21 @@
 (defcorechild fn2-core-alloc-edges fn2-alloc-edges
  :init (fn2-alloc-edges-init (fn2-b-capacity :alloc-edge-slots (fn2-b-alloc-edge-floor profile) profile) fn2-alloc-edges)
  :profilep (and
+  (fn2-alloc-edge-layoutp (nfix (fn2-b-capacity :extent-slots 16 profile)) (nfix (fn2-profile-o profile)) (fn2-b-checkpoint-capacity profile))
   (unsigned-byte-p 32 (fn2-b-capacity :alloc-edge-slots (fn2-b-alloc-edge-floor profile) profile))
   (<= (fn2-b-alloc-edge-floor profile)
       (fn2-b-capacity :alloc-edge-slots (fn2-b-alloc-edge-floor profile) profile)))
  :harvest (fn2-b-read-pin-harvest
            ((fn2-core-extents fn2-extents) (fn2-core-alloc-edges fn2-alloc-edges)))
  :why "Disjoint commit, root, operation-pin and checkpoint-reference edges survive yields.")
+(defcorechild fn2-core-release-evidence fn2-release-evidence
+ :init (fn2-release-evidence-init (fn2-b-capacity :extent-slots 16 profile) fn2-release-evidence)
+ :profilep (unsigned-byte-p 32 (fn2-b-capacity :extent-slots 16 profile))
+ :why "One exact journal allocation stamp owns its descriptor, installation and self evidence obligations until authenticated substitution.")
+(defcorechild fn2-core-release-evidence-candidates fn2-release-evidence-candidates
+ :init (fn2-release-evidence-candidates-init (fn2-b-checkpoint-capacity profile) fn2-release-evidence-candidates)
+ :profilep (unsigned-byte-p 32 (fn2-b-checkpoint-capacity profile))
+ :why "Paired exact candidate aggregate blocks disposal while release journals retain its descriptor evidence.")
 ; Format checker rows (b-durability.md §11): 0-1 the commit kind's, 2
 ; recovery's, 3 .. 2+w D's large-upload windows, 3+w C's sealer, then
 ; 4+w .. 3+w+c E's control connections (fn2-ctl row S decodes FNCT into its

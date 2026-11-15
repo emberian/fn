@@ -5,6 +5,7 @@ import lisp_rewrite as lr
 import readiness_slice_rewrite as rw
 import boot_geometry_lower_rewrite as boot
 import commit_root_lower_rewrite as lower
+import release_core_rewrite as release
 ROOT=Path(__file__).resolve().parents[1];B=ROOT/'books';F=ROOT/'tools/fixtures'
 def canon(n):return n.low if hasattr(n,'low') else tuple(canon(x) for x in n.items)
 def same(a,b):return canon(lr.parse(a).forms[0])==canon(lr.parse(b).forms[0])
@@ -19,6 +20,7 @@ class Slice(unittest.TestCase):
     expected=expected.replace('(include-book "checkpoint-cbase-state")', '(include-book "checkpoint-cbase-state")\n(include-book "checkpoint-geometry")')
     expected=expected.replace('    (* 2 (nfix (fn2-b-capacity :extent-slots 16 profile)) (fn2-b-checkpoint-capacity profile))))', '    (* 2 (nfix (fn2-b-capacity :extent-slots 16 profile)) (fn2-b-checkpoint-capacity profile))\n    ; Four independent physical anchors cannot alias canonical source holds.\n    (* *fn2-checkpoint-anchor-slots* (nfix (fn2-b-capacity :extent-slots 16 profile)))))')
     expected=expected.replace('(rc-frontier-first :u60) (rc-frontier-last :u60) (rc-frontier-started :bool)', '(rc-frontier-first :u60) (rc-frontier-last :u60) (rc-frontier-started :bool)\n          (rc-own-token :u32) (rc-own-left :u32)')
+    expected=release.transform(expected,(F/'release-core-registration.lisp').read_text())
    self.assertEqual((B/name).read_text(),expected)
  def test_same_actual_scan_provider_forms(self):
   for name in ['run-physical-state.lisp','run-physical-resources.lisp','run-physical-geometry.lisp','run-physical-readiness.lisp']:
