@@ -115,6 +115,7 @@ ACL2_BOOKS = \
   books/host-compress \
   books/columns \
   books/columns-guard-hints \
+  books/columns-call-guards \
   books/columns-carrier-contracts \
   books/compress-policy \
   books/compress-kind \

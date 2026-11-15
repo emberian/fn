@@ -5,6 +5,7 @@
 ; codecs, and the append, seek, build and lookup are written once over it.
 (in-package "ACL2")
 (include-book "runs-page")
+(include-book "columns-call-guards")
 (fn2-book-layer :c)
 
 (defun fn2-rs-sym (name suffix) (declare (xargs :verify-guards nil)) (fn2-columns-sym name suffix))
@@ -379,7 +380,8 @@
      (declare (xargs :guard t))
      (and (consp e) (true-listp e) (case (car e) ,@(fn2-rf-eventp-arms evs key) (otherwise nil))))
     (defun ,(fn2-rs-sym name "-FOLD-APPLY") (kind vbase abase fn2-fields)
-     (declare (xargs :stobjs fn2-fields :guard (and (fn2-fields-wfp fn2-fields) (natp vbase) (natp abase))))
+     (declare (xargs :stobjs fn2-fields :guard (and (fn2-fields-wfp fn2-fields) (natp vbase) (natp abase))
+       :guard-hints ((fn2-columns-call-guard-hint ',(fn2-rs-sym name "-FOLD-APPLY") nil nil world))))
      (if (not (and (natp vbase) (natp abase)
                    (<= (+ vbase ,(+ nk nv)) (fn2-fields-rows fn2-fields)) (<= (+ abase ,(fn2-rf-max-args evs)) (fn2-fields-rows fn2-fields))))
          (mv :bounds fn2-fields)
@@ -390,7 +392,8 @@
     ;; the arg rows at ABASE: :ok (a kind without assigns writes nothing),
     ;; :range, :event (not an event of the fold), :bounds.
     (defun ,(fn2-rs-sym name "-FOLD-ASSIGN") (kind vbase abase fn2-fields)
-     (declare (xargs :stobjs fn2-fields :guard (and (fn2-fields-wfp fn2-fields) (natp vbase) (natp abase))))
+     (declare (xargs :stobjs fn2-fields :guard (and (fn2-fields-wfp fn2-fields) (natp vbase) (natp abase))
+       :guard-hints ((fn2-columns-call-guard-hint ',(fn2-rs-sym name "-FOLD-ASSIGN") nil nil world))))
      (if (not (and (natp vbase) (natp abase)
                    (<= (+ vbase ,(+ nk nv)) (fn2-fields-rows fn2-fields)) (<= (+ abase ,(fn2-rf-max-args evs)) (fn2-fields-rows fn2-fields))))
          (mv :bounds fn2-fields)
