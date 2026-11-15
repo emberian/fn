@@ -98,3 +98,35 @@ After fixture certification, `tools/acl2 --timeout 60 <
 tests/square-evidence-export.lsp` writes and reads the actual report, checking
 that redirected display metadata cannot replace its statement. File output
 runs outside book events; no trust tag is needed.
+
+## Direct predicate conclusions (source candidate)
+
+`:conclusion-kind :predicate` accepts the exact live conclusion as an admitted
+predicate call, including predicates of `mv-nth` results. It does not invent
+an equality endpoint or claim producer equivalence. Its only negative kind is
+`:hypothesis-removal`: the positive theorem asserts `H and C`; the negative
+asserts every remaining conjunct, `not removed`, and `not C`. The selected
+hypothesis must occur exactly once in the translated conjunction tree. A
+composite stored guard can be removed as a whole; all outside carrier premises
+remain. A constant-true predicate cannot pass the required false-C theorem.
+
+Predicate bindings may be quoted values or closed ACL2 pseudo-terms, in exact
+statement-variable order. Constructor calls therefore remain logical terms
+whose complete ground assertions ACL2 must prove, not host-computed state or
+raw execution of malformed stobjs. Indices and other constants in this
+translated-term interface must be quoted. Optional `:positive-hints` and
+`:negative-hints` permit reuse of admitted ground facts with the actual raw
+producer disabled. Replay regenerates the original assertions and uses those
+same proof hints; hints never replace H or C.
+
+Programmatic consumers use
+`fn2-square-predicate-evidence-events-with-hints(name, positive, negative,
+positive-hints, negative-hints, recheck, world)`; the five-argument variant
+supplies empty hints. Existing equality/correspondence APIs and their quoted
+binding restriction are unchanged. Predicate evidence leaves the row's
+universal proof status unchanged.
+
+`tests/square-evidence-predicate-unit.lisp` contains positive, composite-guard,
+wrong-formula, vacuity, open-binding, remaining-premise and unsupported-mutation
+controls. These new events are source-parsed only; ACL2 qualification and the
+six actual guarded checkpoint-reader consumer instances remain pending.
