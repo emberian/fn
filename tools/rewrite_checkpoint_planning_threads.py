@@ -30,6 +30,7 @@ def rewrite(text):
       if isinstance(x,Atom) and x.low==':guard':append(n.items[i+1], ' '.join('('+a+'-wfp '+a+')' for a in EXTRA.split()))
   for n in walk(top):
    if head(n) in TARGETS:append(n)
+   if head(n)=='mv-let' and len(n.items)>=4 and hascall(n.items[2]):append(n.items[1])
    if isinstance(n,Lst) and len(n.items)==2 and head(n.items[0])=='mv' and hascall(n.items[1]):append(n.items[0])
  return write(text,edits)
 def selftest():
@@ -40,10 +41,12 @@ def selftest():
  out=rewrite(src);assert out.startswith('; keep\n') and out.count(EXTRA)==3
  src='(defun fn2-checkpoint-metadata-page (x) (declare (xargs :stobjs (s) :guard (and p))) (b* (((mv c s) (ordinary s))) (mv c s)))'
  assert '(mv c s) (ordinary s)' in rewrite(src)
+ src='(mv-let (c s) (fn2-checkpoint-metadata-page x) (mv c s))'
+ assert rewrite(src).count(EXTRA)==2
  assert rewrite('(other (mv x y))')=='(other (mv x y))'
 if __name__=='__main__':
  selftest()
- if '--selftest' in sys.argv:print('4 planning-thread rewrite controls passed')
+ if '--selftest' in sys.argv:print('5 planning-thread rewrite controls passed')
  else:
   for f in sys.argv[1:]:
    p=Path(f);p.write_text(rewrite(p.read_text()))
