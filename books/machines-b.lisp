@@ -409,6 +409,12 @@
           ;; source manifest being followed (its position, unit, units, stored
           ;; length and owner event)
           (rc-commit :u60) (rc-roff :u32) (rc-rend :u32)
+          ;; Actual authenticated reread identity; no decoded-record caller flag.
+          (rc-auth :bool) (rc-auth-progress :u8) (rc-auth-mode :u8) (rc-auth-generation :u60) (rc-auth-pos :u32) (rc-auth-commit :u60)
+          (rc-auth-slot :u32) (rc-auth-gen :u60) (rc-auth-base :u60) (rc-auth-tag :u60)
+          (rc-auth-h0 :u32) (rc-auth-h1 :u32) (rc-auth-h2 :u32) (rc-auth-h3 :u32) (rc-auth-h4 :u32) (rc-auth-h5 :u32) (rc-auth-h6 :u32) (rc-auth-h7 :u32)
+          (rc-auth-roff :u32) (rc-auth-rend :u32) (rc-lifecycle-next :u32)
+          (rc-frontier-first :u60) (rc-frontier-last :u60) (rc-frontier-started :bool)
           (rc-mpos :u32) (rc-munit :u8) (rc-munits :u8) (rc-mtotal :u60) (rc-mevent :u60)
           ;; M7's replay: the member workspace (held with the window), its
           ;; length and its member's event, the members replayed of the
