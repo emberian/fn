@@ -4,13 +4,14 @@ import lisp_rewrite as lr
 N='fn2-checkpoint-summary-authority-live-'
 def rewrite(s):
  forms=lr.parse(s).forms;ed=[]
+ live=[lr.match(f'(defun {N}{name} ?*body)',forms)[0].node for name in ['source-p','begin','step']]
  if '(include-book "checkpoint-summary-live-catalog")' in s:raise ValueError('already bound')
  for m in lr.match('(?head ?*args)',forms):
   n=m.node;h=getattr(n.items[0],'low','')
   if h in [N+'source-p',N+'begin',N+'step','fn2-checkpoint-summary-authority'] and any(getattr(x,'low','')=='fn2-checkpoint-source' for x in n.items):
    ed.append((n.items[-1].end,n.items[-1].end,' fn2-checkpoint-summary'))
   elif h=='fn2-core-checkpoint-summary-authority':ed.append((n.items[-1].end,n.items[-1].end,' fn2-core-checkpoint-summary'))
-  elif h=='fn2-checkpoint-summary-authority-wfp':
+  elif h=='fn2-checkpoint-summary-authority-wfp' and any(f.start <= n.start < f.end for f in live):
    ed.append((n.end,n.end,' (fn2-checkpoint-summary-wfp fn2-checkpoint-summary)'))
  s=lr.write(s,ed);forms=lr.parse(s).forms;ed=[]
  source=lr.match(f'(defun {N}source-p ?*body)',forms)[0].node

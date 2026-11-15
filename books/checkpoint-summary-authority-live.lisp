@@ -173,7 +173,7 @@
 ))
 (defun fn2-checkpoint-summary-authority-live-descriptor (i c fn2-checkpoint-bytes fn2-checkpoint-summary-authority)
  (declare (xargs :stobjs (fn2-checkpoint-bytes fn2-checkpoint-summary-authority) :measure (nfix (- 32 (nfix i)))
- :guard (and (fn2-checkpoint-bytes-wfp fn2-checkpoint-bytes) (fn2-checkpoint-summary-authority-wfp fn2-checkpoint-summary-authority) (fn2-checkpoint-summary-wfp fn2-checkpoint-summary)
+ :guard (and (fn2-checkpoint-bytes-wfp fn2-checkpoint-bytes) (fn2-checkpoint-summary-authority-wfp fn2-checkpoint-summary-authority)
  (natp c) (<= (+ (* 192 c) 32) (fn2-checkpoint-bytes-rows fn2-checkpoint-bytes)) (natp i) (<= i 32))))
  (if (>= (nfix i) 32) fn2-checkpoint-summary-authority
   (let ((fn2-checkpoint-summary-authority (update-fn2-checkpoint-summary-authority-descriptori (+ 32 i)

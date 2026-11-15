@@ -9,6 +9,14 @@ def fn(s,name):return lr.match(f'(defun {name} ?*body)',lr.parse(s).forms)[0].no
 class Join(unittest.TestCase):
  def test_existing_authority_class_replay(self):
   self.assertEqual((B/'checkpoint-summary-authority-live.lisp').read_text(),bind.rewrite((F/'checkpoint-live-catalog-authority-before.lisp').read_text()))
+ def test_helper_guard_stobjs_are_actual_formals(self):
+  s=(B/'checkpoint-summary-authority-live.lisp').read_text()
+  for m in lr.match('(defun ?name ?formals ?*body)',lr.parse(s).forms):
+   n=m.node;formals={x.low for x in n.items[2].items}
+   for call in lr.match('(?pred ?obj)',[n]):
+    xs=call.node.items;pred=getattr(xs[0],'low','');obj=getattr(xs[1],'low','')
+    if pred.startswith('fn2-') and pred.endswith('-wfp') and obj.startswith('fn2-'):
+     self.assertIn(obj,formals,(n.items[1].low,obj))
  def test_master_uses_actual_close_operation(self):
   a,b=phase.rewrite((F/'checkpoint-live-close-checkpoint-master-state.lisp').read_text(),(F/'checkpoint-live-close-checkpoint-master-arms.lisp').read_text())
   self.assertEqual(a,(B/'checkpoint-master-state.lisp').read_text());self.assertEqual(b,(B/'checkpoint-master-arms.lisp').read_text())
