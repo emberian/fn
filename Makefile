@@ -242,6 +242,9 @@ ACL2_BOOKS = \
   tests/recovery-selected-adopt-unit \
   tests/recovery-replay-init-proof \
   tests/recovery-replay-prefix-state \
+  tests/recovery-replay-prefix-identity \
+  tests/recovery-replay-prefix-chain-lemmas \
+  tests/recovery-replay-prefix-frame-lemmas \
   tests/recovery-replay-prefix-proof \
   tests/recovery-replay-prefix-unit \
   books/checkpoint-bank-bind \
@@ -314,6 +317,7 @@ ACL2_BOOKS = \
   tests/accounts-unit \
   tests/alloc-random \
   tests/alloc-unit \
+  tests/alloc-adopt-identity-unit \
   tests/alloc-protection-notification-unit \
   tests/alloc-freeze-unit \
   tests/checkpoint-unit \
