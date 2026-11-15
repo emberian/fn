@@ -60,6 +60,8 @@
   (= (fn2-checkpoint-restore-map-owner-kind p fn2-checkpoint-restore-map) (fn2-extents-owner-kind p fn2-extents))
   (= (fn2-checkpoint-restore-map-owner p fn2-checkpoint-restore-map) (fn2-extents-owner-id p fn2-extents))
   (= (fn2-checkpoint-restore-map-retirement p fn2-checkpoint-restore-map) (fn2-extents-retirement p fn2-extents))
+  (= (fn2-checkpoint-restore-map-next-retired p fn2-checkpoint-restore-map) (fn2-extents-next-retired p fn2-extents))
+  (= (fn2-extents-reservation p fn2-extents) (if (= (fn2-extents-state p fn2-extents) *fn2-extent-state-reserved*) 1 0))
   (= (fn2-extents-release-pending p fn2-extents) 0)
   (if (= (fn2-extents-state p fn2-extents) *fn2-extent-state-reserved*)
    (and (= (fn2-extents-reservation p fn2-extents) 1)
