@@ -197,3 +197,13 @@ outgoing descriptor protection. The worker currently stops at indexed-settlement
 join after own evidence restoration; FREE is not activated by these source changes.
 All new guard/proof/runtime controls remain UNRUN; source READ/structure/arity
 and original-mutation/mandatory-edge extraction controls pass.
+
+Observer API: fn2-recovery-release-read-state(id,ogen,core) returns code,core
+without mutation. It requires actual VERIFY/replay/stage12 and machinepending1,
+then shared retained owner/record/J metadata and actual selected-source/hash
+binding. It deliberately does not call pending0 current-unit-auth. Exact-hook
+LOADED/pending0 yields ready, unmatched WAIT remains waiting, and matched failed
+read yields uncertain. Parent kind handler additionally checks DONE/count4096
+and routes ready to stage13; generic observe-terminal decrements pending only
+after that handler returns. Stage13 then performs full current-unit authorization.
+This is I/O readiness only, never descriptor/J authentication or FREE authority.
