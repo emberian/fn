@@ -82,7 +82,7 @@
       (fn2-checkpoint-refs (fn2-core-checkpoint-refs fn2-core)) (fn2-checkpoint-bytes (fn2-core-checkpoint-bytes fn2-core))
       (fn2-run-loads (fn2-core-run-loads fn2-core)) (fn2-run-cursors (fn2-core-run-cursors fn2-core)) (fn2-pool (fn2-core-pool fn2-core)))
      (code fn2-event-archive offset)
-     (b* (((unless (< 1 (fn2-run-loads-rows fn2-run-loads))) (mv :state fn2-event-archive 0))
+     (b* (((unless (fn2-b-fixed-cursor-rows-p (fn2-run-loads-rows fn2-run-loads))) (mv :state fn2-event-archive 0))
           (c (fn2-b-event-archive-cursor-from-rows (fn2-run-loads-rows fn2-run-loads)))
           (offset (* *fn2-commit-unit-bytes* (+ (fn2-run-loads-unit c fn2-run-loads) (fn2-run-loads-sector c fn2-run-loads))))
           ((unless (and (equal (fn2-run-loads-scratch c fn2-run-loads) (fn2-machine-rx-slot id fn2-core))

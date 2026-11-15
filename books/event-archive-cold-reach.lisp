@@ -60,7 +60,7 @@
  (:bytes *fn2-run-entry-visit-bytes*)
  (b* (((unless (and (fn2-event-archive-cold-reach-current-p fn2-event-archive fn2-checkpoints fn2-checkpoint-refs fn2-checkpoint-bytes
                      fn2-checkpoint-restore-map fn2-checkpoint-restore-map-control fn2-checkpoint-restore-reach-control)
-                    (< 1 (fn2-run-loads-rows fn2-run-loads))
+                    (fn2-b-fixed-cursor-rows-p (fn2-run-loads-rows fn2-run-loads))
                     (equal (fn2-run-loads-rows fn2-run-loads) (fn2-run-cursors-rows fn2-run-cursors))))
        (mv :source fn2-event-archive fn2-checkpoint-restore-reach fn2-run-loads fn2-run-cursors fn2-run-paths fn2-fc fn2-fc-context fn2-b3 fn2-fields fn2-pool fn2-digests))
       (c (fn2-b-event-archive-cursor-from-rows (fn2-run-loads-rows fn2-run-loads)))

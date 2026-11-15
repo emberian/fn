@@ -15,7 +15,17 @@ class Geometry(unittest.TestCase):
   provider=named((F/'event-archive-geometry-provider.lisp').read_text())
   for name,form in provider.items():self.assertEqual(new[name],form,name)
   self.assertEqual(rw.machines_b(after),after)
-  self.assertEqual(rw.machines_b((ROOT/'books/machines-b.lisp').read_text()),(ROOT/'books/machines-b.lisp').read_text())
+  # Current geometry composes the later canonical fixed-pair guard class.
+  # Check exact composed declarations, rather than stripping their guards.
+  guarded=(F/'event-archive-fixed-row-provider.lisp').read_text()
+  composed=(F/'event-archive-geometry-provider.lisp').read_text()
+  for n in lr.parse(guarded).forms:
+   name=n.items[1].low
+   if name=='fn2-b-fixed-cursor-rows-p':continue
+   old=rw.one(composed,'(defun '+name+' ?*body)')
+   composed=lr.write(composed,[(old.start,old.end,guarded[n.start:n.end])])
+  current=(ROOT/'books/machines-b.lisp').read_text()
+  self.assertEqual(rw.machines_b(current,provider=composed),current)
  def test_actual_providers_precede_every_call(self):
   before=(F/'event-archive-geometry-before-machines-b.lisp').read_text();after=rw.machines_b(before)
   for n in ['fn2-b-cursor-rows','fn2-b-cns-rows','fn2-b-auth-rows','fn2-b-read-rows']:

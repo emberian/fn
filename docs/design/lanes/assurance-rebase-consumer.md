@@ -565,3 +565,13 @@ Original-frame byte reconstruction/Jseal verification, selected root4 terminal,
 producer-derived live pending obligations and the actual two-checkpoint physical
 reuse control remain owned and unfinished. No old raw hold is discharged by
 covered-await-witness, a descriptor hash, empty E row or a header-only read.
+
+Archive fixed-row callers now consume the exact cd9023f93 shared predicate and
+selector guards. Five existing <1 checks (borrow/source, step, boot arm and
+reach) use fn2-b-fixed-cursor-rows-p before any cursor selection; initialized
+admitted indices are unchanged. The earlier exact replay controls compose this
+later transformation in dependency order, with a checked Python-AST recipe for
+the seven repeated test-call edits. Fixed-row3, geometry4+4, member7, frontier3,
+visit3, reach4 and cursor4/read5 source controls pass. The peer's actual
+zero/one/two-carrier fixture remains UNRUN; this source hunk grants no archive
+terminal or hold release.

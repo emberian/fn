@@ -6,6 +6,7 @@ import event_archive_reach_bind_rewrite as rw
 import event_archive_frontier_begin_rewrite as frontier
 import event_archive_visit_rewrite as visit
 import event_archive_member_rewrite as member
+import event_archive_fixed_rows_rewrite as fixed
 ROOT=Path(__file__).resolve().parents[1]
 def read(p):return (ROOT/p).read_text()
 def tree(n):
@@ -27,7 +28,7 @@ class Reach(unittest.TestCase):
   self.assertEqual(tree(one(after,'(defun fn2-boot-checkpoint-archive-owner-p ?*body)')),tree(one(current,'(defun fn2-boot-checkpoint-archive-owner-p ?*body)')))
   for name in ['begin','arm','received','check']:
    p='(defun fn2-boot-checkpoint-archive-'+name+' ?*body)'
-   self.assertEqual(tree(one(frontier.boot(old),p)),tree(one(current,p)),name)
+   self.assertEqual(tree(one(fixed.rewrite(frontier.boot(old)),p)),tree(one(current,p)),name)
  def test_existing_role_policies_preserved_and_new_cold_role_bounded(self):
   old=one(read('tools/fixtures/event-archive-reach-map-state-before.lisp'),'(defun fn2-checkpoint-restore-reach-map-state-p ?*body)')
   current=one(read('books/checkpoint-restore-reach.lisp'),'(defun fn2-checkpoint-restore-reach-map-state-p ?*body)')

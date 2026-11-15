@@ -117,10 +117,12 @@
  (declare (xargs :guard t)) (+ 1 (fn2-b-event-archive-cursor profile)))
 ; Runtime workers derive their fixed admitted row from actual carrier geometry,
 ; without caller-selected indexes or reconstructing T/R from unrelated tables.
+(defun fn2-b-fixed-cursor-rows-p (rows)
+ (declare (xargs :guard t)) (and (natp rows) (<= 2 rows)))
 (defun fn2-b-checkpoint-source-cursor-from-rows (rows)
- (declare (xargs :guard t)) (nfix (- (nfix rows) 2)))
+ (declare (xargs :guard (fn2-b-fixed-cursor-rows-p rows))) (nfix (- (nfix rows) 2)))
 (defun fn2-b-event-archive-cursor-from-rows (rows)
- (declare (xargs :guard t)) (nfix (- (nfix rows) 1)))
+ (declare (xargs :guard (fn2-b-fixed-cursor-rows-p rows))) (nfix (- (nfix rows) 1)))
 (defthm fn2-b-checkpoint-source-cursor-from-profile-rows
  (equal (fn2-b-checkpoint-source-cursor-from-rows (fn2-b-run-cursor-rows profile))
         (fn2-b-checkpoint-source-cursor profile))

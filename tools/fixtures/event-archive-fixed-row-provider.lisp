@@ -1,0 +1,6 @@
+(defun fn2-b-fixed-cursor-rows-p (rows)
+ (declare (xargs :guard t)) (and (natp rows) (<= 2 rows)))
+(defun fn2-b-checkpoint-source-cursor-from-rows (rows)
+ (declare (xargs :guard (fn2-b-fixed-cursor-rows-p rows))) (nfix (- (nfix rows) 2)))
+(defun fn2-b-event-archive-cursor-from-rows (rows)
+ (declare (xargs :guard (fn2-b-fixed-cursor-rows-p rows))) (nfix (- (nfix rows) 1)))
