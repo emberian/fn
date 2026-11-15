@@ -49,4 +49,15 @@ class Inventory(unittest.TestCase):
   self.assertIn('(posp (fn2-checkpoint-compaction-empty-headers',end)
   self.assertIn('(ended 1) (empty-verified 1) (output-rank 0)',end)
   self.assertNotIn('output-rank rank',end)
+ def test_completed_count_is_minted_only_at_validated_EOF(self):
+  s=(ROOT/'books/checkpoint-predecessors.lisp').read_text()
+  self.assertEqual(s.count('(completed-originals '),2)
+  self.assertIn('(completed-originals 0)',s)
+  terminal=s[s.index('(defun fn2-checkpoint-predecessor-complete-step'):]
+  self.assertLess(terminal.index('((when (= i n))'),terminal.index('(completed-originals '))
+  self.assertLess(terminal.index('(if (not (= (fn2-checkpoint-predecessor-control-checked'),terminal.index('(completed-originals '))
+  self.assertIn('(completed-originals (fn2-checkpoint-predecessor-control-checked 0 fn2-checkpoint-predecessor-control))',terminal)
+  retirement=(ROOT/'books/checkpoint-live-retire.lisp').read_text()
+  self.assertNotIn('(completed-originals ',retirement)
+  self.assertNotIn('set-completed-originals',retirement)
 if __name__=='__main__':unittest.main()

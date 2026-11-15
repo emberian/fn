@@ -21,7 +21,7 @@ state+='\n'.join('  (old-'+f+' '+t+')' for f,t in FIELDS)+'''))
  ((phase (:enum fn2-checkpoint-predecessor-phase (:idle :capture :ready :checking :complete :retiring :done :empty :mapping)))
   (token :u60) (candidate :u32) (owner-kind :u8) (owner-slot :u32) (owner-gen :u60)
   (cut-commit :u60) (cut-event :u60) (overlay-rows :u32) (run-rows :u32)
-  (cursor :u32) (count :u32) (checked :u32)))
+  (cursor :u32) (count :u32) (checked :u32) (completed-originals :u32)))
 '''
 Path('books/checkpoint-predecessors-state.lisp').write_text(state)
 def decl(args):return ' (declare (xargs :stobjs ('+' '.join(args)+') :guard (and '+' '.join('('+a+'-wfp '+a+')' for a in args)+')))\n'
@@ -82,7 +82,7 @@ body=' (b* (((unless (and '+owner+'''
  (unsigned-byte-p 32 (+ (fn2-overlays-rows fn2-overlays) (fn2-run-installed-rows fn2-run-installed)))
  (= (fn2-checkpoint-predecessors-rows fn2-checkpoint-predecessors) (+ (fn2-overlays-rows fn2-overlays) (fn2-run-installed-rows fn2-run-installed))))) '''+mv(':snapshot',out)+''')
  (fn2-checkpoint-predecessor-control (fn2-checkpoint-predecessor-control-put 0
-  (phase *fn2-checkpoint-predecessor-phase-capture*) (cursor 0) (count 0) (checked 0)
+  (phase *fn2-checkpoint-predecessor-phase-capture*) (cursor 0) (count 0) (checked 0) (completed-originals 0)
 '''
 for f in ['token','candidate','owner-kind','owner-slot','owner-gen']:body+='  ('+f+' ('+comp+'-'+f+' 0 '+comp+'))\n'
 for f in ['cut-commit','cut-event']:body+='  ('+f+' (fn2-csnapshot-'+f+' 0 fn2-csnapshot))\n'
@@ -226,7 +226,8 @@ body=' (b* (((unless (posp budget)) '+mv(':yield',out)+''')
  (n (fn2-checkpoint-predecessors-rows fn2-checkpoint-predecessors))
  ((when (= i n))
   (if (not (= (fn2-checkpoint-predecessor-control-checked 0 fn2-checkpoint-predecessor-control) (fn2-checkpoint-predecessor-control-count 0 fn2-checkpoint-predecessor-control))) '''+mv(':count',out)+'''
-   (let ((fn2-checkpoint-predecessor-control (fn2-checkpoint-predecessor-control-set-phase 0 *fn2-checkpoint-predecessor-phase-complete* fn2-checkpoint-predecessor-control))) '''+mv(':complete',out)+''')))
+   (let ((fn2-checkpoint-predecessor-control (fn2-checkpoint-predecessor-control-put 0 (phase *fn2-checkpoint-predecessor-phase-complete*)
+     (completed-originals (fn2-checkpoint-predecessor-control-checked 0 fn2-checkpoint-predecessor-control))))) '''+mv(':complete',out)+''')))
  ((unless (and (< i n) (unsigned-byte-p 32 (+ 1 i)))) '''+mv(':bounds',out)+''')
  (kind (if (< i (fn2-overlays-rows fn2-overlays)) 0 1))
  (r (if (= kind 0) i (- i (fn2-overlays-rows fn2-overlays))))

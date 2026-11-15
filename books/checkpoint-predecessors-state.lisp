@@ -38,4 +38,4 @@
  ((phase (:enum fn2-checkpoint-predecessor-phase (:idle :capture :ready :checking :complete :retiring :done :empty :mapping)))
   (token :u60) (candidate :u32) (owner-kind :u8) (owner-slot :u32) (owner-gen :u60)
   (cut-commit :u60) (cut-event :u60) (overlay-rows :u32) (run-rows :u32)
-  (cursor :u32) (count :u32) (checked :u32)))
+  (cursor :u32) (count :u32) (checked :u32) (completed-originals :u32)))
