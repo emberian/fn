@@ -6,6 +6,7 @@
 (include-book "checkpoint-metadata-driver")
 (include-book "event-build-kind")
 (include-book "checkpoint-summary-authority-live")
+(include-book "checkpoint-directory-consume")
 (fn2-book-layer :c)
 
 (defmachine-arms fn2-checkpoint-master :declare
@@ -356,6 +357,17 @@
   (:summary-authority-copy :on-refusal ((:next :uncertain) (:charge :steps *fn2-work-small* :runnable t))
    (:do (code) (fn2-checkpoint-summary-authority-live-step-op) :accept () :case
     (((:more) (:charge :steps *fn2-work-stage* :runnable t))
-     ((:complete) (:next :release) (:charge :steps *fn2-work-stage* :runnable t))
-     (:otherwise (:next :uncertain) (:charge :steps *fn2-work-small* :runnable t))))))
+     ((:complete) (:next :rebase-begin) (:charge :steps *fn2-work-stage* :runnable t))
+     (:otherwise (:next :uncertain) (:charge :steps *fn2-work-small* :runnable t)))))
+  (:rebase-begin :on-refusal ((:next :uncertain) (:charge :steps *fn2-work-small* :runnable t))
+   (:do (code) (fn2-checkpoint-directory-rebase-begin-op row-token *fn2-checkpoint-master-kind* id row-generation))
+   (:next :rebase-source) (:charge :steps *fn2-work-stage* :runnable t))
+  (:rebase-source :on-refusal ((:next :uncertain) (:charge :steps *fn2-work-small* :runnable t))
+   (:do (code) (fn2-checkpoint-directory-rebase-step-op) :accept () :case
+    (((:more) (:charge :steps *fn2-work-stage* :runnable t))
+     ((:await-evidence) (:next :rebase-consume) (:charge :steps *fn2-work-small* :runnable t))
+     (:otherwise (:next :uncertain) (:charge :steps *fn2-work-small* :runnable t)))))
+  (:rebase-consume :on-refusal ((:next :uncertain) (:charge :steps *fn2-work-small* :runnable t))
+   (:do (code) (fn2-checkpoint-directory-rebase-consume-op row-token *fn2-checkpoint-master-kind* id row-generation) :accept (:committed))
+   (:next :release) (:charge :bytes 4096 :steps *fn2-work-stage* :runnable t)))
  :observes ((:read-result (:wake))))
