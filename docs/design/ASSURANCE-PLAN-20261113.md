@@ -5,7 +5,7 @@ Owner: integration. Commissioned by ember on 2026-11-13, following the
 `fn2-squares` remains the obligation store. Reports and public-claim coverage
 must be derived from that store and the actual served call/attachment graph.
 
-## Current integration frontier — 2026-11-15 22:25 UTC
+## Current integration frontier — 2026-11-15 23:15 UTC
 
 The descriptor reader is qualified on the shared foundation at `6e7a1a9c1`;
 its [current 34-book record](receipts/checkpoint-reader-foundation-thirty-four-record.json)
@@ -14,15 +14,29 @@ The six original unrestricted reader claims remain refuted and unfinished;
 the six distinct guarded replacements are qualified. BOOT still needs to consume
 this bounded reader with verified persisted geometry and retained ownership.
 
-The served-family candidate is separate from upstream. Its `d7973ce44` parent
-closure has 136 qualified books (119 reused, 17 newly recorded); the whole RAW
-source is not qualified. All four RAW guards passed in earlier author work, and
-the latest complete-source attempt passed ISSUE TYPE/WFP before refusing its
-unconditional POOL-ROWS frame. The next repair exposes the existing unconditional
-row-count fact through actual issue and storage wrappers. Conditional shape
-contracts cannot substitute for that unconditional statement. READ backing-length
-contracts must respect the recursive helper's valid-state domain and the public
-reader's explicit runtime state check.
+The served-family candidate remains separate from upstream, currently
+`8897f790e840651bbfc402ec31ee35a434f8109b`. Its current ARM/storage closure has
+37 qualified books: 26 initial cache hits and 11 newly recorded dependencies.
+Root independently matched all 37 source hashes and closure keys to this family,
+and checked the actual record-toolchain metadata and certificate/port/FASL bytes.
+The family owns the scoped receipt; this does not qualify RAW or the application.
+
+The earlier unconditional ISSUE POOL-ROWS refusal is repaired and passed in the
+whole RAW author attempt at `31635689e`. Its next refusal was unconditional
+POOL-DATA preservation. Current metadata-only lease/truncate DATA contracts and
+ARM/storage wrappers are qualified. COPY's actual backing-length contract remains
+under repair; WFP alone does not establish element typing and cannot justify an
+unconditional WRITE preservation claim. The BLAKE3 word-frame pilot admitted
+STORE, INIT and PUSH; FLUSH needs the same public frame exposed through its raw
+observer projection. The generated projection retry hit a pseudo-term guard
+error before INIT, so that generator correction remains unqualified.
+
+BOOT's lower persisted-bootstrap producer and component controls are entering
+whole-source admission, including explicit final guard verification. This does
+not yet connect the public BOOT/CORE path. The lifetime trace confirms that FETCH releases META after a root-only hold,
+before descendant preflight establishes coverage. The repair must retain META
+until actual coverage, preserve abort cleanup, and avoid a drain deadlock. The rolling upload and explicit article-profile packets are being joined
+on the current foundation; their accepted 96 KiB restart campaign remains unrun.
 
 The enum repair has three admitted universal whole-carrier fragment equalities
 at `lane/assurance-enum-controls@8d4944ada`, with provenance clarified at
