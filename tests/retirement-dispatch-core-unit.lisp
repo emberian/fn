@@ -8,16 +8,7 @@
 
 ; The existing declaration-owned reference generator includes every field,
 ; row count and scalar extra field; no hand-written snapshot model.
-(defun fn2-riud-projection-events (names world)
- (declare (xargs :verify-guards nil))
- (if (atom names) nil
-  (let* ((name (car names))
-         (schema (cdr (assoc-eq name (fn2-decl-rows :columns world))))
-         (fields (append (fn2-columns-fields name (fn2-decl-get :columns schema))
-                         `((,(fn2-columns-sym name "-ROWS") :type (integer 0 ,(- (fn2-decl-get :rows-bound schema) 1)) :initially 0))
-                         (fn2-decl-get :extra-fields schema))))
-   (append (fn2-columns-reference-events name (fn2-columns-sym name "-REF") fields)
-           (fn2-riud-projection-events (cdr names) world)))))
+(include-book "retirement-state-projections")
 (make-event
  (cons 'progn (fn2-riud-projection-events
                '(fn2-extents fn2-retirement-control fn2-alloc-edges) (w state))))

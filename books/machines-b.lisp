@@ -499,6 +499,15 @@
 (defun fn2-pinned-block-io-children (writep pu epoch alloc off len lslot lgen boff okind oslot ogen principal
                                    fn2-extents fn2-alloc-edges fn2-pool fn2-ops fn2-control)
  (declare (xargs :stobjs (fn2-extents fn2-alloc-edges fn2-pool fn2-ops fn2-control)
+                 :guard-hints
+                 (("Goal" :in-theory
+                   (e/d (fn2-alloc-handle-code fn2-alloc-slotp)
+                    (fn2-ops-rows fn2-extents-rows fn2-alloc-edges-rows fn2-pool-rows
+                     fn2-extentsp fn2-extents-wfp fn2-alloc-edgesp fn2-alloc-edges-wfp
+                     fn2-poolp fn2-pool-wfp fn2-opsp fn2-ops-wfp
+                     fn2-controlp fn2-control-wfp fn2-control-stop fn2-extents-state
+                     fn2-ops-free-head fn2-ops-gen fn2-issue-read-children
+                     fn2-issue-write-children fn2-alloc-edge-add fn2-b-read-pin-drop))))
                  :guard (and (fn2-extents-wfp fn2-extents) (fn2-alloc-edges-wfp fn2-alloc-edges)
                              (fn2-pool-wfp fn2-pool) (fn2-ops-wfp fn2-ops)
                              (fn2-control-wfp fn2-control))))
@@ -548,6 +557,17 @@
                      (fn2-control-record-stop *fn2-stop-reason-issue-storage* fn2-control))))
   (mv (if (eq code :exhausted) :exhausted :bounds) slot gen
       fn2-pool fn2-ops fn2-control fn2-extents fn2-alloc-edges)))
+(encapsulate ()
+ ; Carrier WFP specs supply their own hints; the shared opaque theory must
+ ; surround the whole generated family, not only its TYPE theorem hints.
+ (local (in-theory (disable
+   fn2-ops-rows fn2-extents-rows fn2-alloc-edges-rows fn2-pool-rows
+   fn2-extentsp fn2-extents-wfp fn2-alloc-edgesp fn2-alloc-edges-wfp
+   fn2-poolp fn2-pool-wfp fn2-opsp fn2-ops-wfp fn2-controlp fn2-control-wfp
+   fn2-control-stop fn2-extents-state fn2-ops-free-head fn2-ops-gen
+   fn2-issue-read-children fn2-issue-write-children fn2-alloc-edge-add
+   fn2-b-read-pin-drop fn2-b-read-pin-edge fn2-alloc-handle-code
+   fn2-control-record-stop)))
 (fn2-pool-preserves fn2-pinned-block-io-children (writep pu epoch alloc off len lslot lgen boff okind oslot ogen principal
                                              fn2-extents fn2-alloc-edges fn2-pool fn2-ops fn2-control)
   :carriers ((fn2-pool 3 :prefix "-POOL") (fn2-ops 4 :prefix "-OPS") (fn2-control 5 :prefix "-CONTROL")
@@ -558,11 +578,6 @@
 ; Prove the owning eight-result primitive before closing it. These shared
 ; producers bind the operation carrier from its actual ABI (position 4), and
 ; retain the original queue/history equations on success and every refusal.
-(encapsulate ()
- (local (in-theory (disable fn2-alloc-handle-code fn2-alloc-edge-add
-                            fn2-b-read-pin-drop fn2-b-read-pin-edge
-                            fn2-extents-state fn2-ops-free-head fn2-ops-gen
-                            fn2-control-stop fn2-control-record-stop)))
  (make-event
   (value (cons 'progn
    (append
