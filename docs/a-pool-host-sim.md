@@ -256,9 +256,26 @@ validates widths and the listed relations; ENVELOPE, 4.1.5, checks every column)
 | write-result | done, cancelled / failed {io, no-space, uncertain} | done: `range-len`; a partial write is failed/uncertain with its known progress | zero | zero | `:none` |
 | fence-result | done, cancelled / failed {io} | zero | zero | zero | `:none` |
 | cancel-result | done, cancelled, not-found, not-cancellable | zero | zero | zero | `:none` |
-| tls-result | done, cancelled / failed {handshake, reset, timed-out} | zero | zero | zero | `:none` (E1) |
+| tls-result | done, cancelled / failed {handshake, reset, timed-out} | done: `range-len` retained seed octets copied into owned staging; failed or cancelled: zero | zero | zero | `:none` (E1) |
+| compress-result | done, cancelled / failed {io} | done: `range-len` retained seed octets copied into owned staging; failed or cancelled: zero | zero | zero | `:none` |
 | entropy-result | done, cancelled | done: octets written, `<= range-len`; cancelled: zero | zero | zero | `:none` |
 | borrow-released (cell 1) | done | zero | zero | zero | `:none` |
+
+Upgrade success counts the borrowed seed copied into owned codec staging, not
+plaintext delivered, handshake bytes sent or bytes already fed to the library.
+The common HANDOFF requires `copied = seed-total` before returning this count;
+retained seed not yet fed stays owned by the codec after the loan is released.
+An empty seed therefore succeeds with count zero. Failure/cancellation returns
+zero even if an incomplete upgrade copied a private prefix, because that private
+staging is reclaimed rather than handed off. This reconciles the former zero-only
+TLS row with the implemented retained-seed handoff and simulator upgrade branch.
+
+For codec-backed Send, progress counts accepted application octets, not a promise
+that buffered ciphertext reached the peer. Cancellation preserves that consumed
+prefix. A productive Receive must complete its actual prefix as `done` and report
+the competing Cancel as too late (`not-found`); labelling it `cancelled` would
+cause the shared normalizer to erase the input count. These are terminal result
+rules, not permission to reclaim a pending primitive or a live codec handle.
 
 The core validates a superset (widths, the per-primitive status sets, `count <= range-len` for
 transfers, the release flag's authority, the peer record); the table is the canonical production
