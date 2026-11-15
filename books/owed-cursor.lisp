@@ -255,7 +255,7 @@
        ((mv & & & h & &) (fn2-identity-facts 0 fn2-core))
        ((mv c lines fn2-core) (fn2-cs-count 64 c0 g0 c1 g1 scanned hashed 0 fn2-core))
        ((unless (eq c :ok)) (mv (list :count c) nil store fn2-core))
-       ((mv c fn2-core) (fn2-txn-put-post-for 0 c0 g0 mo ml c0 g0 scanned hashed 0 :ok ds dg 0 h 0 lines e epoch counter
+       ((mv c fn2-core) (fn2-txn-put-post-for 0 c0 g0 mo ml c0 g0 scanned hashed 0 ds dg 0 h 0 lines e epoch counter
                                               ds dg 0 32 (len location-hashes) 0 200 0 1 fn2-core))
        ((unless (eq c :ok)) (mv (list :post c) nil store fn2-core))
        ((mv c k fn2-core) (fn2-cs-groups 64 no nl 0 nil 0 c0 g0 c1 g1 fn2-core))
