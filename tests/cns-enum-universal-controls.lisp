@@ -58,7 +58,8 @@
 ; Shape proof opens only actual P/WFP and target array lengths, keeping
 ; all array element recognizers and their recursive definitions opaque.
 (local (make-event
- (let* ((base (theory 'fn2-cns-enum-logical-theory))
+ (let* ((world (w state))
+        (base (theory 'fn2-cns-enum-logical-theory))
         (selected (fn2-cns-enum-select-runes base
                     '(fn2-cns-sourcesp fn2-cns-sources-wfp fn2-cns-sources-rows fn2-cns-sources-phase$a-length fn2-cns-sources-manifest-stage$a-length))))
   (value (list 'deftheory 'fn2-cns-enum-shape-theory

@@ -70,3 +70,26 @@ Reproduce in a tree containing both source revisions and the runtime donor:
 ```sh
 python3 tools/cns_enum_universal.py --source-root . --emit tests/cns-enum-universal-controls.lisp --audit docs/assurance/cns-enum-universal-source-audit.json
 ```
+
+## First author gate and lexical-world successor
+
+The frozen `24c655ac` fixture reached a setup refusal in the shape-theory
+MAKE-EVENT: `(theory ...)` expands using lexical WORLD, which that LET omitted.
+Before that refusal, the three local helper DEFUNs and initial logical DEFTHEORY
+were admitted, and the new bounded list law was proved in 0.13 ACL2 seconds /
+1,371 steps. The enclosing encapsulate then failed: **0/3 universal equalities**
+were admitted, and the actual shape theorem and negative were not reached. The
+state-only 131-book closure loaded in 9.66 ACL2 seconds. The
+[setup receipt](cns-enum-universal-24c-setup-receipt.json) preserves exact event
+names, refusal output hash, the separate initial staging failure before ACL2,
+and verified terminal handles/scope and actual ledger release.
+
+The source successor binds `(world (w state))` in that MAKE-EVENT. A structural
+check verifies both generated MAKE-EVENT theory expressions now bind WORLD;
+DEFTHEORY and theorem theory expressions use their ordinary ACL2 event context.
+All three universal theorem names/formulas and the missing-row negative remain
+exactly identical. The new frozen fixture SHA256 is
+`79040a36f2811a6d9bfbba9b4d5429af3a2d29997099c327591a1035db0368da`;
+its emitter SHA256 is
+`2c58df94e9015c016fa4d66fab9ba550042955f576a7922e160472478a9d83a4`.
+No successor ACL2 run or other compute was started.
