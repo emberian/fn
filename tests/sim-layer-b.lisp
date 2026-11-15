@@ -509,10 +509,10 @@
        ((mv next key capacity config) (fn2-commit-frontier fn2-core))
        ; Both recipients have made no delivery progress while BOTH batch rows
        ; drained and were reused. Their old published ranges remain replayable.
-       ((mv debt-a first-a end-a) (fn2-commit-notification-range 1 0 fn2-core))
-       ((mv debt-b first-b end-b) (fn2-commit-notification-range 2 0 fn2-core))
-       ((mv caught-up cursor end) (fn2-commit-notification-range 1 2 fn2-core))
-       (okay (and okay debt-a debt-b caught-up (= first-a 1) (= end-a 2)
+       ((mv debt-a first-a end-a status-a) (fn2-commit-notification-range 1 0 fn2-core))
+       ((mv debt-b first-b end-b status-b) (fn2-commit-notification-range 2 0 fn2-core))
+       ((mv caught-up cursor end status-up) (fn2-commit-notification-range 1 2 fn2-core))
+       (okay (and okay debt-a debt-b caught-up (eq status-a :resident) (eq status-b :resident) (eq status-up :resident) (= first-a 1) (= end-a 2)
                   (= first-b 2) (= end-b 3) (= cursor end) (= cursor 2)
                   (= (fn2-machine-phase a fn2-core) *fn2-commit-state-free*)
                   (= (fn2-machine-phase b fn2-core) *fn2-commit-state-free*)))
