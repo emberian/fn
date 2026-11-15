@@ -41,6 +41,8 @@
       ((mv committed fn2-extents) (fn2-alloc-commit-allocation-transition 0 0 0 6 11 fn2-extents))
       ((mv retired fn2-extents) (fn2-alloc-retire-transition 0 0 0 1 fn2-extents))
       ((mv prepared fn2-extents) (fn2-alloc-identity-prepare-free 7 2 3 4 0 0 0 1 fn2-extents))
+      (pending-receipt (and (fn2-alloc-identity-free-pending-p 7 2 3 4 0 0 0 1 fn2-extents)
+                            (not (fn2-alloc-identity-free-pending-p 7 2 3 4 0 0 0 2 fn2-extents))))
       ((mv probed fn2-extents) (fn2-aiu-probe 4 7 2 3 4 fn2-extents))
       (receipt (and (fn2-alloc-identity-free-ready-p 7 2 3 4 0 0 0 1 fn2-extents)
                     (not (fn2-alloc-identity-free-ready-p 7 2 3 4 0 0 0 2 fn2-extents))))
@@ -49,7 +51,7 @@
                  (fn2-alloc-identity-refines-p fn2-extents) (fn2-alloc-invp fn2-extents)))
       ((mv reused fn2-extents) (fn2-aiu-adopt 0 1 2 fn2-extents)))
   (mv (and start a b c full (eq committed :ok) (eq retired :ok) (eq prepared :more)
-           (eq probed :ready) receipt (eq freed :ok) tomb reused
+           (eq probed :ready) pending-receipt receipt (eq freed :ok) tomb reused
            (= (fn2-alloc-identity-visited fn2-extents) 3)
            (= (fn2-alloc-identity-statesi 0 fn2-extents) *fn2-alloc-identity-bucket-used*)) fn2-extents)))
 (defun fn2-aiu-view (fn2-extents)
