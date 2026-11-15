@@ -30,6 +30,9 @@ class QueryMaskForward(unittest.TestCase):
     def test_checked_hypothesis_removal_refused(self):
         self.assertNotEqual(self.control('hyps').returncode, 0)
 
+    def test_wake_guard_width_mutation_refused(self):
+        self.assertNotEqual(self.control('wake-width').returncode, 0)
+
     def test_missing_forward_interface_refused(self):
         self.assertNotEqual(self.control('forward').returncode, 0)
 

@@ -294,24 +294,39 @@
  :hints (("Goal" :cases ((equal mask 0) (equal mask 1)
                          (equal mask 2) (equal mask 3))))))
 (local (fn2-id-decides-preserves fn2-id-decides-set-qmask
- (tx (logand 2 (fn2-id-decides-qmask tx fn2-id-decides)) fn2-id-decides)
- :position nil :prefix "-QUERY-MASK" :wfp-type t :forward t
+ (tx v fn2-id-decides)
+ :position nil :prefix "-QUERY-WRITE" :wfp-type t :forward t
  :hyps ((fn2-id-decidesp fn2-id-decides)
         (fn2-id-decides-wfp fn2-id-decides)
         (natp tx) (< tx (fn2-id-decides-rows fn2-id-decides))
-        (<= (fn2-id-decides-qmask tx fn2-id-decides) 3))
+        (unsigned-byte-p 8 v))
  :hints (("Goal"
-  :use ((:instance fn2-id-decides-set-qmask-preserves-type
-          (i tx) (v (logand 2 (fn2-id-decides-qmask tx fn2-id-decides))))
-        (:instance fn2-id-decides-set-qmask-preserves-wfp
-          (i tx) (v (logand 2 (fn2-id-decides-qmask tx fn2-id-decides))))
-        (:instance fn2-id-decides-set-qmask-rows
-          (i tx) (v (logand 2 (fn2-id-decides-qmask tx fn2-id-decides)))))
+  :use ((:instance fn2-id-decides-set-qmask-preserves-type (i tx))
+        (:instance fn2-id-decides-set-qmask-preserves-wfp (i tx))
+        (:instance fn2-id-decides-set-qmask-rows (i tx)))
   :in-theory (disable fn2-id-decides-set-qmask-preserves-type
                      fn2-id-decides-set-qmask-preserves-wfp
                      fn2-id-decides-set-qmask-rows
                      fn2-id-decidesp fn2-id-decides-wfp
-                     fn2-id-decides-qmask fn2-id-decides-rows)))))
+                     fn2-id-decides-qmask fn2-id-decides-qwake
+                     fn2-id-decides-rows)))))
+(local (fn2-id-decides-preserves fn2-id-decides-set-qwake
+ (tx v fn2-id-decides)
+ :position nil :prefix "-QUERY-WRITE" :wfp-type t :forward t
+ :hyps ((fn2-id-decidesp fn2-id-decides)
+        (fn2-id-decides-wfp fn2-id-decides)
+        (natp tx) (< tx (fn2-id-decides-rows fn2-id-decides))
+        (unsigned-byte-p 1 v))
+ :hints (("Goal"
+  :use ((:instance fn2-id-decides-set-qwake-preserves-type (i tx))
+        (:instance fn2-id-decides-set-qwake-preserves-wfp (i tx))
+        (:instance fn2-id-decides-set-qwake-rows (i tx)))
+  :in-theory (disable fn2-id-decides-set-qwake-preserves-type
+                     fn2-id-decides-set-qwake-preserves-wfp
+                     fn2-id-decides-set-qwake-rows
+                     fn2-id-decidesp fn2-id-decides-wfp
+                     fn2-id-decides-qmask fn2-id-decides-qwake
+                     fn2-id-decides-rows)))))
 (fn2-idc-fn-shape fn2-id-query-release (tx fn2-id-decides fn2-pool)
  (fn2-id-decides fn2-pool) (fn2-id-decides fn2-pool) t
  (fn2-pool-query-release fn2-id-decides-qmask fn2-id-decides-qwake fn2-id-decides-q1slot
