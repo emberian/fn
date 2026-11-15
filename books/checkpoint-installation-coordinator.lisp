@@ -10,7 +10,7 @@
  (defun fn2-checkpoint-installation-begin (c token okind oslot ogen fn2-core)
   (declare (xargs :stobjs fn2-core :guard (fn2-core-wfp fn2-core)))
   (b* (((unless (and (unsigned-byte-p 32 c) (posp token) (unsigned-byte-p 60 token)
-                     (posp ogen) (unsigned-byte-p 8 okind) (unsigned-byte-p 32 oslot) (unsigned-byte-p 60 ogen)
+                     (or (posp okind) (posp ogen)) (unsigned-byte-p 8 okind) (unsigned-byte-p 32 oslot) (unsigned-byte-p 60 ogen)
                      (not (fn2-core-stopped-p fn2-core)))) (mv :admission fn2-core))
        ((mv ready ordinal)
         (stobj-let ((fn2-checkpoints (fn2-core-checkpoints fn2-core))

@@ -831,7 +831,7 @@
  (declare (xargs :stobjs fn2-core :guard (fn2-core-wfp fn2-core)))
  (b* (((when (fn2-storage-frozen fn2-core)) (mv :exhausted 0 0 fn2-core))
       ((unless (and (posp len) (<= len *fn2-commit-records-room*) (unsigned-byte-p 32 slot)
-                    (unsigned-byte-p 60 gen) (posp ogen) (unsigned-byte-p 8 okind)
+                    (unsigned-byte-p 60 gen) (or (posp okind) (posp ogen)) (unsigned-byte-p 8 okind)
                     (unsigned-byte-p 32 oslot) (unsigned-byte-p 60 ogen)))
        (mv :admission 0 0 fn2-core))
       ((mv pick id partner) (fn2-commit-pick fn2-core))

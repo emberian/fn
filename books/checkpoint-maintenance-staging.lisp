@@ -16,7 +16,7 @@
    (b* (((unless (and (< 0 (fn2-checkpoint-future-rows fn2-checkpoint-future))
                       (< 0 (fn2-checkpoint-future-windows-rows fn2-checkpoint-future-windows))
                       (= (fn2-checkpoint-future-windows-borrowed 0 fn2-checkpoint-future-windows) 0)
-                      (unsigned-byte-p 32 expected-c) (posp need) (posp ogen) (unsigned-byte-p 8 okind)
+                      (unsigned-byte-p 32 expected-c) (posp need) (or (posp okind) (posp ogen)) (unsigned-byte-p 8 okind)
                       (unsigned-byte-p 32 oslot) (unsigned-byte-p 60 ogen)))
          (mv :state 0 0 0 0 fn2-checkpoint-future fn2-checkpoint-future-windows fn2-pool))
         (c (fn2-checkpoint-future-candidate 0 fn2-checkpoint-future))

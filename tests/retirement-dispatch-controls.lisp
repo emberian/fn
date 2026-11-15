@@ -13,11 +13,11 @@
         (fn2-retirement-control-copy fn2-retirement-control)
         (fn2-alloc-edges-copy fn2-alloc-edges)) snapshot))
 
-(defun fn2-riud-body-kind (removed owner-kind fn2-core)
+(defun fn2-riud-body-owner (removed owner-kind zero-generation fn2-core)
  (declare (xargs :stobjs fn2-core :verify-guards nil))
  (b* ((fn2-core (fn2-core-init (fn2-b-test-profile *fn2-profile-tiny* 0) fn2-core))
       (owner (fn2-machine-kind-base owner-kind fn2-core))
-      (ogen (fn2-machine-generation owner fn2-core))
+      (ogen (if zero-generation 0 (fn2-machine-generation owner fn2-core)))
       ((mv reserved target epoch allocation fn2-core)
        (stobj-let ((fn2-extents (fn2-core-extents fn2-core)))
         (ok target epoch allocation fn2-extents)
@@ -189,6 +189,16 @@
                ; Ordinary install mutates allocator only, not the retained
                ; source control or any existing protector edge.
                (equal (cadr before) (cadr after)) (equal (caddr before) (caddr after))))) fn2-core)))
+(defun fn2-riud-body-kind (removed owner-kind fn2-core)
+ (declare (xargs :stobjs fn2-core :verify-guards nil))
+ (fn2-riud-body-owner removed owner-kind nil fn2-core))
+; Positive logical owner kinds historically admit generation zero. Preserve
+; that domain; generation zero alone is not an unbound-owner predicate.
+(defun fn2-riud-logical-zero-generation ()
+ (declare (xargs :verify-guards nil))
+ (with-local-stobj fn2-core
+  (mv-let (ok fn2-core) (fn2-riud-body-owner nil *fn2-scribe-kind* t fn2-core) ok)))
+(assert-event (fn2-riud-logical-zero-generation))
 (defun fn2-riud-body (removed fn2-core)
  (declare (xargs :stobjs fn2-core :verify-guards nil))
  (fn2-riud-body-kind removed *fn2-scribe-kind* fn2-core))
