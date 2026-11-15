@@ -36,6 +36,11 @@ class RunPhysicalLoaderFixtureSource(unittest.TestCase):
     def setUp(self):
         self.defs = definitions()
 
+    def test_fixture_uses_actual_c_and_core_without_full_executor(self):
+        self.assertIn('(include-book "../books/assembly-callbacks-c")', TEXT)
+        self.assertNotIn('(include-book "../books/executor")', TEXT)
+        self.assertNotIn('defcore', [n[0] for n in FORMS if n])
+
     def test_synthetic_opener_scope_names_actual_preflight_stage(self):
         seeded = self.defs['fn2-rpl-cold-admission']
         self.assertIn(['application-stage', '2'], list(walk(seeded)))

@@ -6,7 +6,9 @@
 ; Fuel bounds only the fixture; success requires complete physical reads and
 ; terminal lookup, never a seeded cache row or a caller readiness flag.
 (in-package "ACL2")
-(include-book "../books/executor")
+; Use the actual C callback assembly and common core I/O boundary. No
+; scheduler loop, E actor assembly or alternate core is needed by this fixture.
+(include-book "../books/assembly-callbacks-c")
 (include-book "../books/checkpoint-summary-apply")
 (include-book "../books/checkpoint-metadata-source")
 (include-book "std/util/bstar" :dir :system)
