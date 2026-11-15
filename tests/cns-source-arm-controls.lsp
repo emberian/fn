@@ -14,6 +14,17 @@
 (defun execute-steps (steps)
  (dolist (step steps)
   (case (car step)
+   (:do
+    (source-base-execute-steps (list step))
+    (let* ((options (cdddr step)) (branches (getf options :case))
+           (accepted (getf options :accept))
+           (code (and (second step) (cdr (assoc (car (second step)) *vars*)))))
+     (when (and branches (not (member code accepted :test #'equal)))
+      (let ((clause (find-if (lambda (clause)
+                      (or (eq (car clause) :otherwise)
+                          (member code (car clause) :test #'equal))) branches)))
+       (assert clause) (execute-steps (cdr clause))
+       (throw 'source-route-terminal nil)))))
    (:case
     (let* ((value (expression (second step)))
            (clause (find-if (lambda (clause)
@@ -22,6 +33,10 @@
      (assert clause) (execute-steps (cdr clause))))
    (:goto (push step *effects*))
    (otherwise (source-base-execute-steps (list step))))))
+(defun run (steps vars)
+ (let ((*vars* vars) (*effects* nil))
+  (catch 'source-route-terminal (execute-steps steps))
+  (values *effects* *vars*)))
 (defparameter *cns*
  (with-open-file (in "books/cns.lisp")
   (loop for f = (read in nil :end) until (eq f :end)
@@ -131,3 +146,14 @@
   (assert (member 'fn2-cns-stream-source-finish (source-calls effects)))
   (assert (not (member 'fn2-cns-lease-release (source-calls effects))))))
 (format t "CNS PREHEADER ARM SOURCE CONTROL PASS: receipt before own workspace release~%")
+
+; The real DSL routes stale finish receipts to a terminal fault, never the
+; continuation after an accepted OK/WAIT. Exercise that inline case here.
+(let ((*results* '((fn2-cns-stream-source-step :released)
+                   (fn2-ctl-stream-reply-status :cancelled)
+                   (fn2-cns-stream-source-finish :stale))))
+ (multiple-value-bind (effects vars) (run *source-arm* *source-vars*)
+  (declare (ignore vars))
+  (assert (member '(:stop :machine-phase) effects :test #'equal))
+  (assert (not (assoc :charge effects)))))
+(format t "CNS INLINE STATUS SOURCE CONTROL PASS: stale finish stops before continuation~%")
