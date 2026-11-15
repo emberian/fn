@@ -1,25 +1,57 @@
-; Narrow actual B producer in the existing canonical R2 world. The configured
-; schedule is configured by the actual profile-bearing primitive using actual
-; initialized B children. This does not exercise executor/init or C staging.
+; Narrow actual B producer in the existing canonical R2 world. Configuration
+; is an explicit fixture antecedent: protect the actual B future8 bundle and
+; one actual journal/scratch quota per initialized B row. This is not full C
+; working29, service/init, C staging or physical IO qualification.
 ; No alternate core, checkpoint master, executor or simulated IO is needed.
 (in-package "ACL2")
 (include-book "std/util/bstar" :dir :system)
 (include-book "retirement-publish-core-unit")
-(include-book "../books/checkpoint-working-credit")
+(include-book "../books/checkpoint-future-working")
 (include-book "../books/pool-credit-contracts")
+(make-event
+ (cons 'progn (fn2-riud-projection-events '(fn2-commit-io) (w state))))
+(defun fn2-odcc-leases (fn2-core)
+ (declare (xargs :stobjs fn2-core :verify-guards nil))
+ (stobj-let ((fn2-pool (fn2-core-pool fn2-core))
+             (fn2-commit-io (fn2-core-commit-io fn2-core))) (view)
+  (list (fn2-pool-copy fn2-pool) (fn2-commit-io-copy fn2-commit-io)) view))
+(defun fn2-odcc-free-counts (i fn2-pool)
+ (declare (xargs :stobjs fn2-pool :verify-guards nil
+                 :measure (nfix (- (fn2-pool-nclasses fn2-pool) (nfix i)))))
+ (if (not (and (natp i) (< i (nfix (fn2-pool-nclasses fn2-pool))))) nil
+  (cons (fn2-pool-free-count i fn2-pool) (fn2-odcc-free-counts (+ 1 i) fn2-pool))))
 (defconst *fn2-odcc-profile*
  (fn2-b-test-profile
-  (put-assoc-equal :identity-arena-bytes 4096
-   (put-assoc-equal :pool-classes
-   (list (cons 48 *fn2-format-sector-bytes*)
-         (cons *fn2-checkpoint-window-count* *fn2-run-page-size*)) *fn2-profile-tiny*)) 0))
+  (put-assoc-equal :pool-classes
+   (list (cons 16 64) (cons 8 256) (cons 48 *fn2-format-sector-bytes*)
+         (cons *fn2-checkpoint-future-window-count*
+               (max *fn2-commit-unit-bytes* (fn2-checkpoint-future-window-length 0)))) *fn2-profile-tiny*) 0))
+; Fixture input construction only; the actual credit-configure checks and
+; stores this complete schedule, and the actual START is its consumer.
+(defun fn2-odcc-vector (class journal windows future fn2-pool)
+ (declare (xargs :stobjs fn2-pool :verify-guards nil
+                 :measure (nfix (- (fn2-pool-nclasses fn2-pool) (nfix class)))))
+ (if (not (and (natp class) (< class (nfix (fn2-pool-nclasses fn2-pool))))) nil
+  (cons (if future (fn2-checkpoint-future-class-demand 0 class fn2-pool)
+          (if (= class journal) windows 0))
+   (fn2-odcc-vector (+ class 1) journal windows future fn2-pool))))
+(defun fn2-odcc-drain-groups (rows vector)
+ (declare (xargs :verify-guards nil :measure (nfix rows)))
+ (if (zp rows) nil
+  (cons (cons *fn2-pool-credit-drain* vector) (fn2-odcc-drain-groups (- rows 1) vector))))
 (defun fn2-odcc-configure (fn2-core)
  (declare (xargs :stobjs fn2-core :verify-guards nil))
  (stobj-let ((fn2-commit (fn2-commit-table fn2-core))
              (fn2-commit-io (fn2-core-commit-io fn2-core))
              (fn2-pool (fn2-core-pool fn2-core))) (code fn2-pool)
-  (fn2-checkpoint-working-credit-configure *fn2-odcc-profile*
-   (fn2-commit-rows fn2-commit) (fn2-commit-io-rows fn2-commit-io) fn2-pool)
+  (let* ((rows (fn2-commit-rows fn2-commit))
+         (io (fn2-commit-io-rows fn2-commit-io))
+         (journal (fn2-pool-class-for *fn2-commit-unit-bytes* fn2-pool)))
+   (if (or (zp rows) (not (= io (* *fn2-commit-write-resources* rows)))
+           (not (fn2-checkpoint-future-roomp 0 fn2-pool))) (mv :geometry fn2-pool)
+    (fn2-pool-credit-configure
+     (cons (cons *fn2-pool-credit-working* (fn2-odcc-vector 0 journal 0 t fn2-pool))
+           (fn2-odcc-drain-groups rows (fn2-odcc-vector 0 journal (+ 1 (floor io rows)) nil fn2-pool))) fn2-pool)))
   (mv code fn2-core)))
 (defun fn2-odcc-exhaust-generic (left class fn2-core)
  (declare (xargs :stobjs fn2-core :verify-guards nil :measure (nfix left)))
@@ -52,6 +84,19 @@
        (stobj-let ((fn2-extents (fn2-core-extents fn2-core))) (code fn2-extents)
         (fn2-alloc-begin-epoch 1 fn2-extents) (mv code fn2-core)))
       ((mv configured fn2-core) (fn2-odcc-configure fn2-core))
+      (configured-state
+       (stobj-let ((fn2-commit (fn2-commit-table fn2-core))
+                    (fn2-commit-io (fn2-core-commit-io fn2-core))
+                    (fn2-pool (fn2-core-pool fn2-core))) (yes)
+        (and (= (fn2-commit-rows fn2-commit) 2)
+             (= (fn2-commit-io-rows fn2-commit-io) (* *fn2-commit-write-resources* (fn2-commit-rows fn2-commit)))
+             (fn2-pool-credit-shapep fn2-pool)
+             (= (fn2-pool-credit-group-count fn2-pool) (+ 1 (fn2-commit-rows fn2-commit)))
+             (= (fn2-pool-credit-purposei 0 fn2-pool) *fn2-pool-credit-working*)
+             (= (fn2-pool-credit-purposei 1 fn2-pool) *fn2-pool-credit-drain*)
+             (= (fn2-pool-credit-purposei 2 fn2-pool) *fn2-pool-credit-drain*)
+             (fn2-pool-credit-fullp 0 0 fn2-pool)
+             (fn2-pool-credit-fullp 1 0 fn2-pool) (fn2-pool-credit-fullp 2 0 fn2-pool)) yes))
       (id (fn2-machine-kind-base *fn2-commit-kind* fn2-core)) (partner (+ 1 id))
       (generation (fn2-machine-generation id fn2-core))
       (class (fn2-scribe-window-class fn2-core))
@@ -59,9 +104,11 @@
       ((mv generic fn2-core) (fn2-odcc-exhaust-generic (+ 1 poolrows) class fn2-core))
       (extrows (stobj-let ((fn2-extents (fn2-core-extents fn2-core))) (n) (fn2-extents-rows fn2-extents) n))
       ((mv exhausted reservations fn2-core) (fn2-odcc-reserve-extents (+ 1 extrows) fn2-core))
-      ((unless (and (eq epoch :ok) (eq configured :ok) (eq generic :exhausted)
+      ((unless (and (eq epoch :ok) (eq configured :ok) configured-state (eq generic :exhausted)
                     (eq exhausted :no-space) (consp reservations))) (mv nil fn2-core))
       ((mv nonce key & mode) (fn2-commit-frontier fn2-core))
+      (free-before (stobj-let ((fn2-pool (fn2-core-pool fn2-core))) (free)
+                     (fn2-odcc-free-counts 0 fn2-pool) free))
       (before (fn2-odcc-queued fn2-core))
       ((mv refused fn2-core) (fn2-commit-start id 1 key mode partner fn2-core))
       (empty (stobj-let ((fn2-pool (fn2-core-pool fn2-core))) (yes)
@@ -83,11 +130,32 @@
               (and (= (fn2-pool-credit-phasei 1 fn2-pool) *fn2-pool-credit-held*)
                    (fn2-pool-credit-ownerp 1 nonce *fn2-commit-kind* id generation fn2-pool)
                    (fn2-pool-credit-emptyp 1 0 fn2-pool)
-                   (fn2-pool-credit-fullp 0 0 fn2-pool) (fn2-pool-credit-fullp 2 0 fn2-pool)) yes)))
-  (mv (and (eq cancelled :ok) (eq admitted :ok) held
-           (= (fn2-machine-batch-no id fn2-core) nonce)
-           (= (fn2-machine-phase id fn2-core) *fn2-commit-state-collect*)
-           (= (fn2-machine-cb-issued id fn2-core) 0)
+                   (fn2-pool-credit-fullp 0 0 fn2-pool) (fn2-pool-credit-fullp 2 0 fn2-pool)) yes))
+      ((unless (and (eq cancelled :ok) (eq admitted :ok) held
+                    (= (fn2-machine-batch-no id fn2-core) nonce)
+                    (= (fn2-machine-phase id fn2-core) *fn2-commit-state-collect*)
+                    (= (fn2-machine-cb-issued id fn2-core) 0))) (mv nil fn2-core))
+      ((mv & & & slot gen) (fn2-commit-resource id 0 fn2-core))
+      ; Explicit no-IO DRAINING premise; no fence/write success is planted.
+      (fn2-core (fn2-commit-put-core id (phase *fn2-commit-state-draining*)))
+      (leases-before (fn2-odcc-leases fn2-core))
+      ((mv stale fn2-core) (fn2-commit-release-pool id 0 (+ 1 generation) fn2-core))
+      ((unless (and (eq stale :owner) (equal leases-before (fn2-odcc-leases fn2-core)))) (mv nil fn2-core))
+      ((mv handed fn2-core) (fn2-core-hand slot gen *fn2-commit-kind* id generation 200 2 1 fn2-core))
+      ((mv accepted fn2-core) (fn2-core-accept-hand slot gen 200 2 1 fn2-core))
+      (leases-before (fn2-odcc-leases fn2-core))
+      ((mv away fn2-core) (fn2-commit-release-pool id 0 generation fn2-core))
+      ((unless (and (eq handed :ok) (eq accepted :ok) (eq away :owner)
+                    (equal leases-before (fn2-odcc-leases fn2-core)))) (mv nil fn2-core))
+      ((mv handback fn2-core) (fn2-core-hand slot gen 200 2 1 *fn2-commit-kind* id generation fn2-core))
+      ((mv received fn2-core) (fn2-core-accept-hand slot gen *fn2-commit-kind* id generation fn2-core))
+      (fn2-core (fn2-commit-release-pools (+ 1 *fn2-commit-write-resources*) id generation fn2-core))
+      (restored (stobj-let ((fn2-pool (fn2-core-pool fn2-core))) (yes)
+                  (and (fn2-pool-credit-fullp 0 0 fn2-pool)
+                       (fn2-pool-credit-fullp 1 0 fn2-pool)
+                       (fn2-pool-credit-fullp 2 0 fn2-pool)
+                       (equal free-before (fn2-odcc-free-counts 0 fn2-pool))) yes)))
+  (mv (and (eq handback :ok) (eq received :ok) restored
            (not (fn2-core-stopped-p fn2-core))) fn2-core)))
 (defun fn2-odcc-run ()
  (declare (xargs :verify-guards nil))

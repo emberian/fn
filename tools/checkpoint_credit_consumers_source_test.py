@@ -51,5 +51,17 @@ class CreditConsumers(unittest.TestCase):
                      '(equal leases-before (fn2-odc-pool fn2-core))']:
             self.assertIn(call, fixture)
 
+    def test_minimal_canonical_b_uses_actual_config_and_producer(self):
+        s = Path('tests/ordinary-drain-credit-canonical-unit.lisp').read_text()
+        lr.parse(s)
+        for call in ['(fn2-pool-credit-configure', '(fn2-checkpoint-future-class-demand ',
+                     '(fn2-commit-start ', '(fn2-core-hand ', '(fn2-core-accept-hand ',
+                     '(fn2-commit-release-pools ', '(fn2-pool-credit-shapep fn2-pool)',
+                     '(equal free-before (fn2-odcc-free-counts 0 fn2-pool))']:
+            self.assertIn(call, s)
+        for forbidden in ['checkpoint-working-credit', 'checkpoint-working-geometry',
+                          'checkpoint-master', '(fn2-core-events)', '(fn2-commit-events)']:
+            self.assertNotIn(forbidden, s)
+
 if __name__ == '__main__':
     unittest.main()
