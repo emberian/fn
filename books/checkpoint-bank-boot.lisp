@@ -115,7 +115,7 @@
         (epoch (fn2-machine-next-epoch id fn2-core))
         (phase (stobj-let ((fn2-extents (fn2-core-extents fn2-core))) (phase)
                  (fn2-alloc-freeze-phase fn2-extents) phase))
-        ((when (= phase 0)) (fn2-boot-adopt-epoch epoch fn2-core))
+        ((when (= phase 0)) (fn2-boot-finalize-fullbase-index id ogen fn2-core))
         (rid (fn2-machine-kind-base *fn2-recovery-machine-kind* fn2-core))
         ((unless (and (= phase 4) (eq (fn2-boot-recovered fn2-core) :ok)
                       (fn2-recovery-idp rid fn2-core)

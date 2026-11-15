@@ -115,3 +115,29 @@
 (assert-event (fn2-rfiu-run :edge))
 
 (assert-event (fn2-rfiu-run :empty))
+
+; Actual epoch selection, with explicit synthetic completed-recovery antecedent.
+; Persisted anchor evidence is not manufactured by this function-level control.
+(defun fn2-rfiu-epoch (mode fn2-core)
+ (declare (xargs :stobjs fn2-core :verify-guards nil))
+ (b* ((fn2-core (fn2-core-init *fn2-profile-tiny* fn2-core))
+      (rid (fn2-machine-kind-base *fn2-recovery-machine-kind* fn2-core))
+      (fn2-core (fn2-recovery-machine-put-core rid
+       (phase (if (eq mode :unfinished) *fn2-recovery-machine-state-install* *fn2-recovery-machine-state-done*))
+       (rc-class *fn2-rec-class-intact*)
+       (rc-epoch (if (eq mode :overflow) (- (expt 2 60) 1) 9))))
+      (fn2-core (stobj-let ((fn2-extents (fn2-core-extents fn2-core))) (fn2-extents)
+       (update-fn2-alloc-current-epoch (if (eq mode :allocator) 11 0) fn2-extents) fn2-core))
+      (before (fn2-test-core-snapshot fn2-core))
+      ((mv code epoch) (fn2-boot-select-epoch 2 3 fn2-core)))
+  (mv (and (equal before (fn2-test-core-snapshot fn2-core))
+       (if (member-eq mode '(:unfinished :overflow)) (and (eq code :bounds) (= epoch 0))
+        (and (fn2-recovery-idp rid fn2-core) (eq (fn2-boot-recovered fn2-core) :ok)
+             (eq code :ok) (= epoch (if (eq mode :allocator) 12 10))))) fn2-core)))
+(defun fn2-rfiu-epoch-run (mode)
+ (declare (xargs :verify-guards nil))
+ (with-local-stobj fn2-core (mv-let (ok fn2-core) (fn2-rfiu-epoch mode fn2-core) ok)))
+(assert-event (fn2-rfiu-epoch-run :recovered))
+(assert-event (fn2-rfiu-epoch-run :allocator))
+(assert-event (fn2-rfiu-epoch-run :unfinished))
+(assert-event (fn2-rfiu-epoch-run :overflow))

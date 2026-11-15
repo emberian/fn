@@ -1,4 +1,4 @@
-"""The full-base helper is an unwired source seam until the outer boot join uses it."""
+"""The full-base helper is consumed by the actual post-Fence boot join."""
 from pathlib import Path
 import sys, unittest
 ROOT=Path(__file__).resolve().parents[1]
@@ -38,7 +38,9 @@ class FullbaseFence(unittest.TestCase):
         self.assertLess(text.index('(fn2-alloc-identity-owner-p'),text.index('(fn2-alloc-identity-end'))
         self.assertLess(text.index('(fn2-alloc-identity-end'),text.index('(fn2-alloc-begin-epoch'))
         self.assertIn('((when (= active 0)) (fn2-boot-adopt-epoch epoch fn2-core))',text)
-    def test_exact_actual_join_and_original_transition(self):self.check(self.src)
+    def test_exact_actual_join_and_original_transition(self):
+        self.check(self.src)
+        self.assertIn('((when (= phase 0)) (fn2-boot-finalize-fullbase-index id ogen fn2-core))', self.src)
     def test_missing_fence_owner_terminal_and_epoch_refuse_source_gate(self):
         for old in ['(= (fn2-machine-outcome id fn2-core) *fn2-outcome-done*)',
                     '(fn2-alloc-identity-owner-p *fn2-recovery-machine-kind* rid rgen rgen fn2-extents)',
