@@ -20,6 +20,8 @@ class Guards(unittest.TestCase):
   self.assertEqual(findings('(defun f (p) (declare (xargs :guard (and (wfp p) (wfp q)))) p)'),(1,[('f',['q'])]))
  def test_generated_literal_defun_is_checked(self):
   self.assertEqual(findings("(defmacro events () '(progn (defun f (x) (declare (xargs :guard (g x y))) x)))"),(1,[('f',['y'])]))
+ def test_star_name_is_not_assumed_constant(self):
+  self.assertEqual(findings('(defun f (x) (declare (xargs :guard (< x *unknown*))) x)'),(1,[('f',['*unknown*'])]))
  def test_unknown_binding_refuses(self):
   with self.assertRaises(ValueError):findings('(defun f (x) (declare (xargs :guard (b* ((y x)) y))) x)')
 if __name__=='__main__':unittest.main()

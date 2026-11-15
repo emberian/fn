@@ -1,7 +1,8 @@
 """Literal DEFUN guard free-variable preflight, including quoted generated DEFUNs.
 
 No Lisp evaluation or macro expansion. Function positions, quoted data and
-ACL2 constants are not variables. LET/LET*/MV-LET scope is handled; unknown
+self-evaluating literals are not variables. Star names are not assumed to be
+constants. LET/LET*/MV-LET scope is handled; unknown
 binding constructs refuse instead of being reported safe.
 """
 import re
@@ -17,10 +18,11 @@ def variables(n,bound):
   raise ValueError('unresolved guard reader prefix')
  if isinstance(n,lr.Atom):
   s=n.low
-  if s in ('t','nil') or s.startswith((':','*','#')) or re.fullmatch(r'[+-]?[0-9]+(?:/[0-9]+)?',s):return set()
+  if s in ('t','nil') or s.startswith((':','#')) or re.fullmatch(r'[+-]?[0-9]+(?:/[0-9]+)?',s):return set()
   return set() if s in bound else {s}
  if not isinstance(n,lr.Lst) or not n.items:return set()
  h=atom(n.items[0]);args=n.items[1:]
+ if h is None:raise ValueError('unresolved guard function position')
  if h in ('quote','function'):return set()
  if h in ('let','let*'):
   names=set(bound);free=set()
