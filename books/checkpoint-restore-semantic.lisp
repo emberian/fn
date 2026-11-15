@@ -88,7 +88,7 @@
       (fn2-checkpoint-restore-semantic (fn2-checkpoint-restore-semantic-root-hash 0 (* 32 r) fn2-checkpoint-bytes fn2-checkpoint-restore-semantic))
       (fn2-checkpoint-restore-semantic (fn2-checkpoint-restore-semantic-source-copy 0 fn2-checkpoint-restore-map-control fn2-checkpoint-restore-semantic))
       (fn2-checkpoint-restore-semantic (fn2-checkpoint-restore-semantic-put 0
-       (phase *fn2-checkpoint-restore-semantic-phase-read*) (candidate c) (tag tag) (scan 0)
+       (phase *fn2-checkpoint-restore-semantic-phase-read*) (candidate c) (tag tag) (pending-head *fn2-alloc-none*) (pending-tail *fn2-alloc-none*) (pending-count 0)
        (schema 10) (expected-known 0) (expected-count 0) (seen 0) (page-kind *page-kind-manifest*)
        (source-checkpoint (fn2-checkpoint-restore-map-control-source-checkpoint 0 fn2-checkpoint-restore-map-control))
        (source-cut-commit (fn2-checkpoint-restore-map-control-source-cut-commit 0 fn2-checkpoint-restore-map-control))

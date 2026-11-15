@@ -72,11 +72,12 @@
       (len (if manifestp *fn2-commit-unit-bytes* (fn2-checkpoint-payload-block-length 0 fn2-checkpoint-payload)))
       (success (and (fn2-checkpoint-payload-sourcep fn2-checkpoint-payload fn2-checkpoint-retained-entry fn2-csnapshot fn2-checkpoints fn2-fields)
                      (equal outcome *fn2-outcome-done*) (equal count len)))
-      (fn2-checkpoint-payload (fn2-checkpoint-payload-put 0 (pending 0)
-       (phase (if success
-                (if manifestp (if (equal (fn2-checkpoint-payload-manifest-position 0 fn2-checkpoint-payload) 0)
-                                  *fn2-checkpoint-payload-phase-header* *fn2-checkpoint-payload-phase-entry*)
-                  *fn2-checkpoint-payload-phase-block-verify*)
+      (next (if manifestp (if (equal (fn2-checkpoint-payload-manifest-position 0 fn2-checkpoint-payload) 0)
+                           *fn2-checkpoint-payload-phase-header* *fn2-checkpoint-payload-phase-entry*)
+               *fn2-checkpoint-payload-phase-block-verify*))
+      (verify (or manifestp (equal (fn2-checkpoint-payload-location-kind 0 fn2-checkpoint-payload) 0)))
+      (fn2-checkpoint-payload (fn2-checkpoint-payload-put 0 (pending 0) (verify-next next)
+       (phase (if success (if verify *fn2-checkpoint-payload-phase-location-verify* next)
                 *fn2-checkpoint-payload-phase-uncertain*)))))
   (mv :ok fn2-checkpoint-payload)))
 
