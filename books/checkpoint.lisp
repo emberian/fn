@@ -3,6 +3,7 @@
 (include-book "std/util/bstar" :dir :system)
 (include-book "format-check")
 (include-book "alloc")
+(local (include-book "pool-read-contracts"))
 (include-book "vocab")
 (fn2-book-layer :b)
 ; Current native backend routes one image. Domain0 is the format writer's
