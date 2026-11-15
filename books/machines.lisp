@@ -633,7 +633,7 @@
                      (natp (cadr (member-eq :descriptors budget)))))
            (msg ":budget ~x0 is (:bytes N :steps N :descriptors N), naturals." budget))
       (and (not capacity) (msg ":capacity is nil.")))))))
-(defmacro defmachine (name &key states phases fields budget continuations observes (capacity '1) initial holds
+(defmacro fn2-defmachine-literal (name &key states phases fields budget continuations observes (capacity '1) initial holds
                            admission taken arms subarms stops links sub genesis)
   (let* ((states (or states phases))
          (sub-problem (fn2-machine-sub-problem name sub fields))
@@ -685,6 +685,31 @@
     (er hard 'defmachine "Invalid machine declaration ~x0: ~@1" name
         (fn2-arm-problems "" (fn2-machine-declaration-problems name states fields stops newp arms observe-arms subarms
                                                                links genesis continuations observes initial budget capacity))))))
+
+; Opt-in declaration-time cost resolution. The literal generator above is
+; the sole emitter; legacy :budget declarations expand through it unchanged.
+(defun fn2-machine-without-budget-cost (args)
+ (declare (xargs :verify-guards nil))
+ (if (atom args) nil
+  (if (eq (car args) :budget-cost) (cddr args)
+   (cons (car args) (cons (cadr args) (fn2-machine-without-budget-cost (cddr args)))))))
+(defun fn2-machine-resolved-declaration (name args world)
+ (declare (xargs :verify-guards nil))
+ (let* ((cost (fn2-arm-get :budget-cost args))
+        (values (fn2-cost-values cost world)))
+  (if (and (not (member-eq :budget args)) (fn2-cost-plistp cost)
+           (natp (car values)) (natp (cadr values)) (natp (caddr values)))
+      (list nil `(fn2-defmachine-literal ,name
+                   :budget (:bytes ,(car values) :steps ,(cadr values) :descriptors ,(caddr values))
+                   ,@(fn2-machine-without-budget-cost args)))
+   (list (msg "~x0: :budget-cost must be a resolvable declared cost, without :budget: ~x1." name cost) nil))))
+(defmacro defmachine (name &rest args)
+ (if (member-eq :budget-cost args)
+     `(make-event
+       (let ((resolved (fn2-machine-resolved-declaration ',name ',args (w state))))
+        (if (car resolved) (er soft 'defmachine "~@0" (car resolved))
+         (value (cadr resolved)))))
+  `(fn2-defmachine-literal ,name ,@args)))
 
 ; ----------------------------------------------------------------------
 ; Owner-declared wait kinds (MACHINE-FORM 6.10, D F4): a D0 wait kind whose
