@@ -11,6 +11,8 @@
 (include-book "checkpoint-restore-arena")
 (include-book "checkpoint-restore-semantic-state")
 (include-book "checkpoint-restore-events-state")
+(include-book "checkpoint-summary-state")
+(include-book "checkpoint-payload-harvest")
 (include-book "boot-format")
 (fn2-book-layer :b)
 
@@ -128,10 +130,23 @@
  :profilep t
  :why "One exact descriptor-bound cold semantic page reader; no selected-base or live allocator authority.")
 
+(defcorechild fn2-core-checkpoint-summary fn2-checkpoint-summary
+ :init (fn2-checkpoint-summary-init (if (fn2-profile-get :image-boot profile) 1 0) fn2-checkpoint-summary)
+ :profilep t :why "Exact selected-source catalog intake and bounded C adoption; capture alone is not sufficient-summary authority.")
+(defcorechild fn2-core-checkpoint-summary-sources fn2-checkpoint-summary-sources
+ :init (fn2-checkpoint-summary-sources-init (fn2-b-capacity :extent-slots 16 profile) fn2-checkpoint-summary-sources)
+ :profilep t :why "One authenticated C source root per actual physical extent, tagged by exact descriptor investigation.")
 (defcorechild fn2-core-checkpoint-restore-semantic-work fn2-checkpoint-restore-semantic-work
  :init (fn2-checkpoint-restore-semantic-work-init (fn2-b-capacity :extent-slots 16 profile) fn2-checkpoint-restore-semantic-work)
  :profilep (unsigned-byte-p 32 (fn2-b-capacity :extent-slots 16 profile))
  :why "Tagged exact authenticated semantic page targets, one row per physical extent; no live edge or serving authority.")
+
+(defcorechild fn2-core-checkpoint-payload fn2-checkpoint-payload
+ :init (fn2-checkpoint-payload-init 1 fn2-checkpoint-payload)
+ :profilep t
+ :why "One canonical payload continuation: concrete binders choose live/cold ownership only after prior physical work settles."
+ :harvest (fn2-checkpoint-payload-harvest-children
+  ((fn2-core-checkpoint-payload fn2-checkpoint-payload) (fn2-core-ops fn2-ops))))
 
 (defcorechild fn2-core-checkpoint-recovery-evidence fn2-checkpoint-recovery-evidence
  :init (fn2-checkpoint-recovery-evidence-init 5 fn2-checkpoint-recovery-evidence) :profilep t
@@ -144,12 +159,12 @@
 
 (defmachine fn2-boot
  :states (:free :prepare :write :write-result :read :read-result :verify :advance
-          :anchor :bootstrap :bootstrap-verify :checkpoint-anchor :checkpoint-check :checkpoint-descriptor :checkpoint-verify :checkpoint-root-candidate :checkpoint-root-reserve :checkpoint-root-begin :checkpoint-root-load :checkpoint-root-copy :checkpoint-root-verify :checkpoint-root-dispatch :checkpoint-root-padding :checkpoint-root-next :checkpoint-root-finish :checkpoint-root-fifo :checkpoint-evidence-begin :checkpoint-evidence-target :checkpoint-evidence-load :checkpoint-evidence-copy :checkpoint-evidence-check :checkpoint-evidence-record :checkpoint-evidence-next :checkpoint-semantic-begin :checkpoint-semantic-load :checkpoint-semantic-copy :checkpoint-semantic-check :checkpoint-semantic-entries :checkpoint-semantic-find :checkpoint-census :recover :recover-wait :epoch :epoch-fence :epoch-result :release :ready :failed)
+          :anchor :bootstrap :bootstrap-verify :checkpoint-anchor :checkpoint-check :checkpoint-descriptor :checkpoint-verify :checkpoint-root-candidate :checkpoint-root-reserve :checkpoint-root-begin :checkpoint-root-load :checkpoint-root-copy :checkpoint-root-verify :checkpoint-root-dispatch :checkpoint-root-padding :checkpoint-root-next :checkpoint-root-finish :checkpoint-root-fifo :checkpoint-evidence-begin :checkpoint-evidence-target :checkpoint-evidence-load :checkpoint-evidence-copy :checkpoint-evidence-check :checkpoint-evidence-record :checkpoint-evidence-next :checkpoint-semantic-begin :checkpoint-semantic-load :checkpoint-semantic-copy :checkpoint-semantic-check :checkpoint-summary-capture :checkpoint-semantic-entries :checkpoint-semantic-find :checkpoint-summary-close :checkpoint-payload-begin :checkpoint-payload-load :checkpoint-payload-copy :checkpoint-payload-step :checkpoint-census :recover :recover-wait :epoch :epoch-fence :epoch-result :release :ready :failed)
  :fields ((pending :u32) (stopped :bool) (pool-slot :u32) (pool-gen :u60)
           (rx-slot :u32) (rx-gen :u60) (create :bool) (image-size :u60)
           (base :u60) (total :u32) (index :u32) (stage :u8) (offset :u60)
           (checkpoint-index :u8) (checkpoint-length :u32) (checkpoint-seen :bool) (root-role :u8) (root-slot :u32) (root-gen :u60) (root-cursor :u32) (epoch0 :u60) (epoch1 :u60) (next-epoch :u60) (anchor-slot :bool)
-          (event-ready :bool) (outcome :u8) (count :u32) (release-index :u32))
+          (event-ready :bool) (outcome :u8) (count :u32) (release-index :u32) (read-length :u32))
  :holds ((:prepare :storage-window) (:write :storage-window) (:write-result :storage-window)
          (:read :storage-window) (:read-result :storage-window) (:verify :storage-window)
          (:advance :storage-window) (:anchor :storage-window)
@@ -167,8 +182,14 @@
          (:checkpoint-semantic-load :storage-window)
          (:checkpoint-semantic-copy :storage-window)
          (:checkpoint-semantic-check :storage-window)
+         (:checkpoint-summary-capture :storage-window)
+         (:checkpoint-summary-close :storage-window)
          (:checkpoint-semantic-entries :storage-window)
          (:checkpoint-semantic-find :storage-window)
+         (:checkpoint-payload-begin :storage-window)
+         (:checkpoint-payload-load :storage-window)
+         (:checkpoint-payload-copy :storage-window)
+         (:checkpoint-payload-step :storage-window)
          (:checkpoint-census :storage-window) (:recover :storage-window)
          (:recover-wait :storage-window) (:epoch :storage-window) (:epoch-fence :storage-window)
          (:epoch-result :storage-window))
@@ -189,8 +210,14 @@
         (:checkpoint-semantic-load)
         (:checkpoint-semantic-copy)
         (:checkpoint-semantic-check)
+        (:checkpoint-summary-capture)
+        (:checkpoint-summary-close)
         (:checkpoint-semantic-entries)
         (:checkpoint-semantic-find)
+        (:checkpoint-payload-begin)
+        (:checkpoint-payload-load)
+        (:checkpoint-payload-copy)
+        (:checkpoint-payload-step)
         (:checkpoint-census) (:recover) (:recover-wait) (:epoch) (:epoch-fence) (:epoch-result) (:release) (:ready) (:failed))
  :observes ((:read-result) (:write-result) (:fence-result)))
 

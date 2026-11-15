@@ -2312,6 +2312,9 @@
 (defun fn2-arms-child-quantities-event (name work-limit world)
   (declare (xargs :verify-guards nil))
   (fn2-arms-child-quantities-event-with-residual name work-limit 'budget world))
+; Keep row values and their width checks opaque in effect proofs, as in
+; shape proofs: effects compose through callee contracts, not storage layout.
+; Opening these readers splits each path on unrelated field ranges.
 ; This is an actual effect proof, distinct from the numeric report bound.
 ; Arms without an operation child must report zero; issuing arms prove the
 ; exact append count. A body that dequeues or underreports cannot satisfy it.
@@ -2329,7 +2332,9 @@
           `(equal ,after (+ ,before (mv-nth 2 ,call)))
         `(equal (mv-nth 2 ,call) 0)))
     :hints (("Goal" :in-theory (e/d (,name)
-       (natp nfix nth ,@(fn2-arms-shape-fns ins) ,@(fn2-arms-rows-fns ins))))))))
+       (natp nfix nth unsigned-byte-p min max
+        ,@(fn2-arms-shape-fns ins) ,@(fn2-arms-rows-fns ins)
+        ,@(fn2-arms-quantity-readers ins world))))))))
 (defun fn2-arms-child-issued-event (name world)
  (declare (xargs :verify-guards nil))
  (let* ((sig (fn2-arms-sig name world)) (ins (car sig)) (outs (cadr sig))
@@ -2353,8 +2358,10 @@
        ,formula
        :hints ,(if ops
                    `(("Goal" :in-theory (e/d (,name)
-                      (natp nfix nth fn2-ops-issued-count fn2-op-issued-weight
-                       ,@(fn2-arms-shape-fns ins) ,@(fn2-arms-rows-fns ins)))))
+                      (natp nfix nth unsigned-byte-p min max
+                       fn2-ops-issued-count fn2-op-issued-weight
+                       ,@(fn2-arms-shape-fns ins) ,@(fn2-arms-rows-fns ins)
+                       ,@(fn2-arms-quantity-readers ins world)))))
                  `(("Goal" :by ,(fn2-columns-sym name "-DESCRIPTOR-EFFECT"))))))))
 (defun fn2-arms-child-fn-events (name kind observe acc body world)
   (declare (xargs :verify-guards nil))

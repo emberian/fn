@@ -12,10 +12,10 @@
 (defcost fn2-boot-checkpoint-semantic-check :child fn2-checkpoint-restore-semantic-page-reach :answers t :bytes 4096
  :tables (fn2-core-checkpoint-restore-semantic fn2-core-checkpoint-restore-reach fn2-core-fc fn2-core-fc-context fn2-core-b3 fn2-core-fields fn2-core-pool fn2-core-digests))
 
-(defcost fn2-boot-checkpoint-semantic-consume :child fn2-checkpoint-restore-semantic-consume :answers t
+(defcost fn2-boot-checkpoint-semantic-consume :child fn2-checkpoint-restore-semantic-consume :answers t :bytes *fn2-checkpoint-restore-semantic-entry-bytes*
  :tables (fn2-core-checkpoint-restore-semantic fn2-core-checkpoint-restore-semantic-work fn2-core-fields fn2-core-digests))
 (defcost fn2-boot-checkpoint-semantic-find :child fn2-checkpoint-restore-semantic-find :answers t
- :tables (fn2-core-checkpoint-restore-semantic fn2-core-fc fn2-core-pool))
+ :tables (fn2-core-checkpoint-restore-semantic fn2-core-checkpoint-restore-semantic-work fn2-core-fc fn2-core-pool))
 
 (defmacro fn2-boot-checkpoint-semantic-operations ()
  '(progn

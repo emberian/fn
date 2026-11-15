@@ -1,6 +1,7 @@
 ; One retained reader over the actual installed journal, not an archive model.
 ; Only exact physical read completion grants a buffer to the format verifier.
 (in-package "ACL2")
+(include-book "std/util/bstar" :dir :system)
 (include-book "arm-children")
 (fn2-book-layer :b)
 (defcolumns fn2-event-read

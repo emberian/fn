@@ -6,10 +6,10 @@
 (include-book "executor")
 (include-book "device-boundary")
 (include-book "assembly-attach")
-(include-book "terminal-values")
+(include-book "host-result")
 (include-book "host-ops")
 ; Native TLS calls the guarded transport controller and its ownership ledger.
-(include-book "tls-transport-reservation")
+(include-book "host-codec")
 
 (local (in-theory (enable fn2-core-wfp)))
 
@@ -26,57 +26,25 @@
 ; Validate the whole physical loan before exposing its SAP offset. This is
 ; bounded row access, not a traversal or whole-state invariant check. Both
 ; queued (take) and submitted (physical execution) descriptors may be checked.
-(defun fn2-host-op-span (op gen fn2-core)
-  (declare (xargs :stobjs fn2-core :guard (fn2-core-wfp fn2-core)))
-  (stobj-let ((fn2-ops (fn2-core-ops fn2-core))
-              (fn2-pool (fn2-core-pool fn2-core)))
-    (code address length)
-    (cond
-     ((not (and (natp op) (< op (fn2-ops-rows fn2-ops)))) (mv :bounds 0 0))
-     ((not (equal gen (fn2-ops-gen op fn2-ops))) (mv :stale 0 0))
-     ((not (or (equal (fn2-ops-phase op fn2-ops) *fn2-op-phase-queued*)
-               (equal (fn2-ops-phase op fn2-ops) *fn2-op-phase-submitted*)))
-      (mv :state 0 0))
-     (t
-      (let* ((kind (fn2-ops-kind op fn2-ops))
-             (input (or (equal kind *fn2-action-receive*)
-                        (equal kind *fn2-action-read*)
-                        (equal kind *fn2-action-entropy*)))
-             (output (fn2-op-output-kindp kind))
-             (slot (fn2-ops-range-slot op fn2-ops))
-             (rgen (fn2-ops-range-gen op fn2-ops))
-             (off (fn2-ops-range-off op fn2-ops))
-             (len (fn2-ops-range-len op fn2-ops)))
-        (cond
-         ((not (or input output)) (mv :ok 0 0))
-         ((not (< slot (fn2-pool-rows fn2-pool))) (mv :bounds 0 0))
-         ((not (equal rgen (fn2-pool-gen slot fn2-pool))) (mv :stale 0 0))
-         ((or (> (+ off len) (fn2-pool-cap slot fn2-pool))
-              (> (+ (fn2-pool-base slot fn2-pool) off len)
-                 (fn2-pool-data-length fn2-pool)))
-          (mv :bounds 0 0))
-         ((if input
-              (not (and (eq (fn2-pool-input-code slot rgen op gen fn2-pool) :ok)
-                        (equal off (fn2-pool-lease-off slot fn2-pool))
-                        (equal len (fn2-pool-lease-len slot fn2-pool))))
-            (not (and (equal (fn2-pool-state slot fn2-pool) *fn2-pool-state-leased-out*)
-                      (< 0 (fn2-pool-out-count slot fn2-pool))
-                      (<= (+ off len) (fn2-pool-fill slot fn2-pool))
-                      (fn2-pool-ownerp slot (fn2-ops-owner-kind op fn2-ops)
-                        (fn2-ops-owner-slot op fn2-ops)
-                        (fn2-ops-owner-gen op fn2-ops) fn2-pool))))
-          (mv :owner 0 0))
-         (t (mv :ok (+ (fn2-pool-base slot fn2-pool) off) len))))))
-    (mv code address length)))
+
+
+; An existing transport operation may finish after the core stops. This checks
+; its retained submitted incarnation, not fresh admission through host-action.
+
+
+; SSL partial records complete one bounded prefix of the descriptor. A WANT
+; retry selects the same prefix. The core owns the loan and the codec envelope
+; owns its physical request identity; neither address nor size comes from raw.
+
+
+
 
 ; Result normalization (layer doc 4.1.2, 4.1.3): a physical outcome (CODE one
 ; of :ok :eof :reset :closed :cancelled :no-space :failed; COUNT the octets
 ; moved, or an Accept's capability index; AUX an Accept's nonce) as the
 ; simulator's own normalizer states it, so every native completion is one
 ; the simulator could post.
-(defun fn2-host-result (kind code count aux len cancelled)
-  (declare (xargs :guard (natp len)))
-  (fn2-sim-terminal-values kind code count aux len nil cancelled))
+; fn2-host-result is defined in the scalar host-result leaf.
 
 ;; The configured listeners (layer doc 4.1.4): the served profile's
 ;; :listener-address (an IPv4 address as a u32, network order; default
@@ -115,6 +83,18 @@
        (t (mv :ok (fn2-profile-get :tls-certificate profile) (fn2-profile-get :tls-key profile)
               (fn2-tls-setting :tls-window 16384 profile) *fn2-tls-io-bytes* *fn2-tls-minimum-version* (fn2-codec-seed-capacity profile)
               (fn2-tls-setting :tls-handshake-turns 65536 profile)))))
+
+(defun fn2-host-compress-settings (profile)
+ (declare (xargs :guard t))
+ (let ((capacity (fn2-codec-seed-capacity profile)))
+  (cond ((not (fn2-compress-profilep profile)) (mv :compress-profile 0 0 0 0 0))
+        ((not (fn2-profile-get :compress-enabled profile)) (mv :off 0 0 0 0 0))
+        ((not (and (posp capacity) (unsigned-byte-p 32 capacity)))
+         (mv :compress-profile 0 0 0 0 0))
+        (t (mv :ok (fn2-profile-get :compress-input-quantum profile)
+                   (fn2-profile-get :compress-output-quantum profile)
+                   (fn2-profile-get :compress-expansion-ratio profile)
+                   (fn2-profile-get :compress-expansion-burst profile) capacity)))))
 
 ; The sticky stop (fn2-core-stopped-p): the adapter's test before it touches
 ; a core it did not just turn.
@@ -173,4 +153,4 @@
   '(fn2-host-post-result fn2-host-post-accept-result fn2-host-post-clock fn2-host-post-signal
     fn2-host-count-stray fn2-host-stray fn2-host-outbox-ack fn2-host-op-finish
     fn2-host-outbox-queued fn2-host-outbox-peek fn2-host-action
-    fn2-host-op-span fn2-host-result fn2-host-listener-pathp fn2-host-listener-bind fn2-host-tls-settings fn2-host-tls-span fn2-host-tls-stage-span fn2-host-tls-next-turn fn2-host-stopped-p fn2-host-stop-reason fn2-host-stop-details fn2-host-boot-refusal-class fn2-host-boot-refusal fn2-host-idle-deadline) (w state)))
+    fn2-host-op-span fn2-host-codec-op fn2-host-tls-record-next fn2-host-result fn2-host-listener-pathp fn2-host-listener-bind fn2-host-tls-settings fn2-host-compress-settings fn2-host-tls-span fn2-host-tls-stage-span fn2-host-tls-next-turn fn2-host-stopped-p fn2-host-stop-reason fn2-host-stop-details fn2-host-boot-refusal-class fn2-host-boot-refusal fn2-host-idle-deadline) (w state)))
