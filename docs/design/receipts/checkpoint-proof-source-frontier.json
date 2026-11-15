@@ -32,7 +32,7 @@
     },
     {
       "file": "tests/checkpoint-carrier-unit.lisp",
-      "sha256": "d05be94561eef92f5fa667a8d52220f6ae9312db161aa23e36550adbc79dfc8c"
+      "sha256": "47bef04082bb4d39dc8943b6de7e5ba247f4110146c576f52bba88f954dfff1b"
     },
     {
       "file": "tests/layout-size-bound-unit.lisp",
@@ -211,7 +211,7 @@
     "checker_row_positive": "Old H +valid FC row positive PASS0.29s/130197steps. Not the full new guard.",
     "checker_guarded_two": "Actual stored-guard replacement TYPE/WFP PASS0.38s/11596steps; helper source untouched.",
     "latest_selective_family": "After explicit CHECKSTEP body enable, original first6 and newguardedchecker2 pass; original HASHER-TYPE refuses2.01s/158696. Falseness not yet established.",
-    "whole_new_guard_positive": "Exact metadata storedguard +actual constructor source prepared; not executed yet."
+    "whole_new_guard_positive": "PASS0.33s/132164steps; actual live storedguard embedded, fulloldH, real format bounds path, checkerP/WFP. Committed in complete fixture."
   },
   "next_gate": {
     "resource_owner": "Parent must allocate; no private reservation or job.",
