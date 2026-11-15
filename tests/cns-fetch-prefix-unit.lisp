@@ -9,7 +9,7 @@
 
 (defun fn2-cfp-model (n)
  (declare (xargs :verify-guards nil))
- (let* ((article (repeat n 120))
+ (let* ((article (make-list n :initial-element 120))
         (result (fn2-layout-octets (cadr (assoc-eq 'fetch *fn2-fnct-results*)) (list article)))
         (port (fn2-layout-octets *fn2-fnct-port-reply-layout*
                                (list *fn2-cns-fetch-accepted-class* nil result)))
