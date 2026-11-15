@@ -755,3 +755,21 @@ provider argument/result counts, zero gate before mutation and unchanged holder
 /old leaf intake. Runnable original-writer crypto controls, normalized frame
 byte relation, all batches/append, real caller dispatch, root4 and unfinished
 prefix ownership transfer remain owed. No compute grant has been used.
+
+The new cold semantic control is authored from the existing concrete setup by
+program transformation: production record/header codecs, real records-frame
+ZERO/header/canonical/tag/hash, actual saved records digest into the complete
+semantic body, then real semantic sealing and schema20 encoding/decoding. It
+asserts the whole supplied synthetic-page/reach premise, full zero-quantum
+snapshot and quantum1 expected/record digest progress. Positive result must
+retain the actual writer Jseal/record-stream digest while leaving original
+records reconstruction, event advancement and prefix authority unfinished.
+Bad hash, changed original namespace and an extra zero semantic tail must refuse.
+All four ACL2 assertions remain UNRUN. No new runtime changes follow a25df7fc3.
+
+Parent now prioritizes a clean CURRENT-root projection of the narrow shared
+fetch prerequisite and smallest refuting gate, before additional cold source.
+Next owned work is the aligned-word/composition refinement proof source and
+exact ten-book cache inventory, with original body/guard/formula comparison;
+no compute is granted. Historical cold dependency cycles and later B3 hints
+are not imported by that narrow projection.

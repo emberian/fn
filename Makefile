@@ -469,6 +469,7 @@ ACL2_BOOKS = \
   tests/event-read-seal-budget-unit \
   tests/event-read-witness-unit \
   tests/event-archive-cold-member-unit \
+  tests/event-archive-cold-seal-unit \
   tests/event-archive-entry-size-unit \
   tests/event-build-unit \
   tests/checkpoint-page-header-unit \
