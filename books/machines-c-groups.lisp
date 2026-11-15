@@ -242,38 +242,6 @@
 ; windows across yields; DONE retains scalar facts and inert key coordinates.
 ; The decision must be idle or done and resolve
 ; not inside a run descent (they share the transaction's lookup).
-; Query windows are independent of scratch fields. A mask bit is consumed
-; only by the matching successful pool decrement; SAME handle twice owns
-; two references and therefore releases twice. Owner wake is latched until
-; the core's checked generation/live-row helper consumes it.
-(defun fn2-id-query-release (tx fn2-id-decides fn2-pool)
- (declare (xargs :stobjs (fn2-id-decides fn2-pool) :guard t))
- (b* (((unless (and (fn2-id-decides-wfp fn2-id-decides) (fn2-pool-wfp fn2-pool)
-                    (natp tx) (< tx (fn2-id-decides-rows fn2-id-decides))))
-       (mv :state fn2-id-decides fn2-pool))
-      ((mv code last fn2-pool)
-       (if (logbitp 0 (fn2-id-decides-qmask tx fn2-id-decides))
-           (fn2-pool-query-release (fn2-id-decides-q1slot tx fn2-id-decides)
-                                  (fn2-id-decides-q1gen tx fn2-id-decides) fn2-pool)
-         (mv :ok nil fn2-pool)))
-      ((unless (eq code :ok)) (mv code fn2-id-decides fn2-pool))
-      (fn2-id-decides (fn2-id-decides-put tx
-       (qmask (logand 2 (fn2-id-decides-qmask tx fn2-id-decides)))
-       (qwake (if last 1 (fn2-id-decides-qwake tx fn2-id-decides)))))
-      ((mv code last fn2-pool)
-       (if (logbitp 1 (fn2-id-decides-qmask tx fn2-id-decides))
-           (fn2-pool-query-release (fn2-id-decides-q2slot tx fn2-id-decides)
-                                  (fn2-id-decides-q2gen tx fn2-id-decides) fn2-pool)
-         (mv :ok nil fn2-pool)))
-      ((unless (eq code :ok)) (mv code fn2-id-decides fn2-pool))
-      (fn2-id-decides (fn2-id-decides-put tx (qmask 0)
-       (qwake (if last 1 (fn2-id-decides-qwake tx fn2-id-decides))))))
-  (mv :ok fn2-id-decides fn2-pool)))
-(fn2-idc-fn-shape fn2-id-query-release (tx fn2-id-decides fn2-pool)
- (fn2-id-decides fn2-pool) (fn2-id-decides fn2-pool) t
- (fn2-pool-query-release fn2-id-decides-qmask fn2-id-decides-qwake fn2-id-decides-q1slot
-  fn2-id-decides-q1gen fn2-id-decides-q2slot fn2-id-decides-q2gen))
-
 ; Rebuild only an ACTIVE key. DONE returns scalar facts without touching
 ; either source. Completed key coordinates remain for import/result binding.
 (defun fn2-id-query-rebuild (tx b0 fn2-id-decides fn2-fields)
