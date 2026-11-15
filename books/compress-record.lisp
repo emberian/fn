@@ -199,7 +199,8 @@
    (if (= (fn2-compress-operation-terminal 0 fn2-compress-operation) 1)
        (mv :too-late prefix fn2-compress-operation)
     (mv-let (code fn2-compress-operation) (fn2-compress-operation-finish fn2-compress-operation)
-     (mv (if (eq code :ok) :cancelled code) prefix fn2-compress-operation))))))
+     (mv (if (eq code :ok) (if (and (= receive 1) (< 0 prefix)) :productive :cancelled) code)
+         prefix fn2-compress-operation))))))
 
 ; Keep the generated scalar abstraction in guard proofs. Common row frames
 ; connect the two ledgers after observations without opening either updater.
@@ -209,6 +210,7 @@
          (append
           '(fn2-compress-transport-rows fn2-compress-operation-rows
             fn2-compress-operation-bind fn2-compress-operation-request fn2-compress-operation-observe
+            fn2-compress-operation-requestable-p fn2-compress-operation-observable-p fn2-compress-observe
             fn2-compress-transport-observe-spans fn2-compress-transport-select
             fn2-compress-transport-select-encode fn2-compress-transport-select-decode
             fn2-compress-transport-select-drain fn2-compress-transport-select-fill)
