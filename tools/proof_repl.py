@@ -1076,8 +1076,8 @@ def brief(output: str, keep: int = 60, where: str | None = None) -> str:
 UNLIMITED_HEADS = ("defpkg", "defttag")
 
 
-def wrap_limit(form: str, limit: float | None) -> str:
-    if limit and is_event(form) and head_and_name(form)[0] not in UNLIMITED_HEADS:
+def wrap_limit(form: str, limit: float | None, *, event: bool = False) -> str:
+    if limit and (event or is_event(form)) and head_and_name(form)[0] not in UNLIMITED_HEADS:
         if float(limit).is_integer():
             return f"(with-prover-time-limit {int(limit)} {form})"
         # ACL2 takes a rational number of seconds.
@@ -1116,7 +1116,7 @@ def per_event_steps(form: str, steps: int, limit: float | None = None) -> str:
             raise ValueError("malformed literal event container")
         for begin, end in children[start:]:
             per_event_steps(inner[begin:end], steps)  # validate, never split
-    return f"(with-prover-step-limit {steps} t {wrap_limit(form, limit)})"
+    return f"(with-prover-step-limit {steps} t {wrap_limit(form, limit, event=True)})"
 
 
 # --- the session server ------------------------------------------------------
