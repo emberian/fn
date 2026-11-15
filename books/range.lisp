@@ -347,13 +347,15 @@
    (fn2-ra-shape fn2-range-advance-overlay-shape
     (fn2-range-advance-overlay s qbase qk qs qg fn2-range-sources fn2-overlays fn2-overlay-index fn2-fields fn2-pool)
     (and (fn2-range-sourcesp fn2-range-sources) (fn2-range-sources-wfp fn2-range-sources) (fn2-fieldsp fn2-fields) (fn2-fields-wfp fn2-fields))
-    ((fn2-range-sources 1) (fn2-fields 2)) (fn2-range-sourcesp fn2-range-sources-wfp fn2-ov-locate fn2-ov-entry fn2-run-cursors-rows fn2-run-paths-rows fn2-fields-rows fn2-range-sources-rows fn2-ranges-rows))
+    ((fn2-range-sources 1) (fn2-fields 2)) (fn2-range-sourcesp fn2-range-sources-wfp fn2-ov-locate fn2-ov-entry fn2-run-cursors-rows fn2-run-paths-rows fn2-fields-rows fn2-range-sources-rows fn2-ranges-rows)
+    ((fn2-columns-call-guard-hint 'fn2-range-advance-overlay '(fn2-range-sourcesp fn2-range-sources-wfp fn2-ov-locate fn2-ov-entry fn2-run-cursors-rows fn2-run-paths-rows fn2-fields-rows fn2-range-sources-rows fn2-ranges-rows) '(fn2-range-advance-overlay) world)))
    (fn2-ra-shape fn2-range-advance-run-shape
     (fn2-range-advance-run s sid budget qbase qk qs qg fn2-range-sources fn2-run-installed fn2-run-cursors fn2-run-paths fn2-run-cache fn2-fields fn2-pool)
     (and (fn2-range-sourcesp fn2-range-sources) (fn2-range-sources-wfp fn2-range-sources) (fn2-fieldsp fn2-fields) (fn2-fields-wfp fn2-fields) (fn2-run-cursorsp fn2-run-cursors) (fn2-run-cursors-wfp fn2-run-cursors)
          (fn2-run-pathsp fn2-run-paths) (fn2-run-paths-wfp fn2-run-paths))
     ((fn2-range-sources 1) (fn2-run-cursors 2) (fn2-run-paths 3) (fn2-fields 4))
-    (fn2-range-sourcesp fn2-range-sources-wfp fn2-run-cursor-start fn2-run-scan-step fn2-run-cursors-rows fn2-run-paths-rows fn2-fields-rows fn2-range-sources-rows fn2-ranges-rows))
+    (fn2-range-sourcesp fn2-range-sources-wfp fn2-run-cursor-start fn2-run-scan-step fn2-run-cursors-rows fn2-run-paths-rows fn2-fields-rows fn2-range-sources-rows fn2-ranges-rows)
+    ((fn2-columns-call-guard-hint 'fn2-range-advance-run '(fn2-range-sourcesp fn2-range-sources-wfp fn2-run-cursor-start fn2-run-scan-step fn2-run-cursors-rows fn2-run-paths-rows fn2-fields-rows fn2-range-sources-rows fn2-ranges-rows) '(fn2-range-advance-run) world)))
    (in-theory (disable fn2-range-advance-overlay fn2-range-advance-run))
    ;; Advance every source that needs it, sources counted down by N.
    ;; :ok when all have a head or are at their end.
@@ -389,7 +391,8 @@
     (and (fn2-range-sourcesp fn2-range-sources) (fn2-range-sources-wfp fn2-range-sources) (fn2-fieldsp fn2-fields) (fn2-fields-wfp fn2-fields) (fn2-run-cursorsp fn2-run-cursors) (fn2-run-cursors-wfp fn2-run-cursors)
          (fn2-run-pathsp fn2-run-paths) (fn2-run-paths-wfp fn2-run-paths))
     ((fn2-range-sources 1) (fn2-run-cursors 2) (fn2-run-paths 3) (fn2-fields 4))
-    (fn2-range-sourcesp fn2-range-sources-wfp fn2-run-cursors-rows fn2-run-paths-rows fn2-fields-rows fn2-range-sources-rows fn2-ranges-rows))
+    (fn2-range-sourcesp fn2-range-sources-wfp fn2-run-cursors-rows fn2-run-paths-rows fn2-fields-rows fn2-range-sources-rows fn2-ranges-rows)
+    ((fn2-columns-call-guard-hint 'fn2-range-advance-all '(fn2-range-sourcesp fn2-range-sources-wfp fn2-run-cursors-rows fn2-run-paths-rows fn2-fields-rows fn2-range-sources-rows fn2-ranges-rows) '(fn2-range-advance-all) world)))
    (in-theory (disable fn2-range-advance-all))
    ;; How the heads of sources A and B (absolute rows) compare: (mv code order).
    (defun fn2-range-order (sid a b fn2-range-sources fn2-fields fn2-pool)
