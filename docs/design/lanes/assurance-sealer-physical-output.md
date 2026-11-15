@@ -1,94 +1,96 @@
-# Physical merge output: proposed connected implementation
+# Physical merge output through canonical checkpoint compaction
 
-Source basis: `53973df71`. This is an implementation proposal, not an implemented
-physical-output producer or an admission result. Ordinary sealer output still
-retains every generated run page in the resident cache and can reach FULL.
+The source lane now connects root1 to a bounded rescan compactor and redirects
+fresh ordinary sealer work before a resident output prefix is allocated. This is
+source integration, not ACL2 admission, executed physical output or activation.
+The master request/wake routing, recomputed cost evidence and composed producer
+controls must land before the route can run; qualification remains NIL.
 
-The preferred route is compacting checkpoint root1, using its actual held cut,
-construction ledger, page worker, descriptor installation, Fence and typed live
-replacement. Direct ordinary streaming is a larger alternative: the tree has a
-run-replacement codec and an unregistered `fn2-runs-install` hook, but no connected
-ordinary replacement admission/replay/publication producer. Those codec objects
-alone confer no durability or replacement authority.
+The durable authority is the existing checkpoint construction ledger, canonical
+page worker and actual Write completion, descriptor installation, covering Fence
+and typed live adoption. A run-replacement codec or the unregistered ordinary
+`fn2-runs-install` hook does not supply that authority. No second writer, parser,
+hasher or recovery record is introduced.
 
-## Existing implementation seams
+## Actual source and output continuation
 
-- `fn2-seal-merge-next` uses the actual range advance/pick/consume operations and
-  `fn2-run-build-add`. Extract its common merge continuation, retaining separate
-  ordinary-source and HELD checkpoint-source authority checks. Do not duplicate
-  range ordering, decoding, entry copying or page construction.
-- `fn2-checkpoint-source-step` enumerates actual held sources in ascending served
-  precedence: schema, runs before overlays, increasing RUN/SEQ, decreasing row on
-  ties. It scans one row per call, including empty/dead rows, and proves exhaustion
-  by a complete scan. The current selection cost is O(N squared).
-- `fn2-checkpoint-metadata-manifest-emit` currently binds one selected source to
-  one emitted root and captures exactly that predecessor. Compaction must replace
-  this one-to-one condition with retained actual group membership; substituting a
-  nominal selected row would lose old-source retirement and coverage provenance.
-- Existing metadata page production reserves real B identities, seals/verifies
-  through the canonical codec, loans immutable workspace to the actual page
-  worker, harvests exact writes, and waits for handback before promotion. Completion
-  remains distinct from the eventual covering Fence/publication.
+`checkpoint-compaction-{state,source,workspaces,merge,park,output,schema,empty,reader}`
+retain the actual HELD token, BUILDING candidate and owner tuple. A raw source
+scan visits one actual overlay/installed row per turn. For each next distinct
+key it seeks every eligible original using the existing overlay/run decoder,
+compares authenticated heads with the actual layout comparator and canonical
+source precedence, and copies one best entry through the existing rehome helper.
+Equal lower-key entries advance only through the original inventory hook.
 
-## Revised preferred protocol: rescan, one final root per schema
+One final root is produced per nonempty schema. There are no published partial
+passes above the four-run allowance, no temporary physical merge runs, and no
+member-count truncation. The algorithm costs O(S*K*seek), for S sources and K
+output keys, plus authentication/copying. This is correctness-first performance
+debt; it does not assert efficient large-history compaction.
 
-Produce exactly one final physical root per nonempty schema before publication.
-Retain all ORIGINAL source predecessors independently of output count. Rather
-than persisting temporary merge runs, repeatedly visit the full held source set
-for each next output key. Keep one current best entry and a stable lower key.
-For each actual source, reuse the existing single-source range seek/advance,
-physical MISS loader and canonical layout comparison. Skip entries equal to the
-last emitted key; compare its next head against the current best using the same
-newer/tie precedence as `fn2-range-pick`. A complete held-set scan establishes the
-next global winner, or schema exhaustion. Then run existing typed retention,
-rehome and builder add. One call never scans the whole set or article.
+The named fold schemas5/6/7 already store materialized values with `:merge :latest`.
+The compactor uses their actual layout/newer semantics; it does not add partial
+event deltas or assume associative checked-counter arithmetic.
 
-This costs O(S times K source seeks/advances), for S sources and K distinct output
-keys, plus physical authentication and rehome work. It trades repeated reads for
-bounded memory and avoids unpublished-run allocation/disposal or a new recovery
-class. It does not limit S, K or page count. No replacement is published until
-all schemas are exhausted and all actual output pages complete. The output count
-is one per schema, within the existing four-run allowance with overlay headroom.
+`checkpoint-predecessors` records every original ownership obligation, including
+empty LIVE physical roots and empty owned overlays. Empty traversal uses the real
+authenticated header/end path. Key/end hooks retain exact source identity/count,
+then complete-step mints the carried validated-original count. Postpublication
+retirement consumes this original inventory, independently of dense output rank.
+An empty original does not fabricate an output Ref. Old Cbase and query promises
+remain governed by actual typed replacement and drain.
 
-The named fold schemas 5/6/7 in folds.lisp store already-materialized values and
-explicitly declare :merge :latest. This protocol must use the actual layout and
-range comparison; it neither combines partial event deltas nor assumes addition
-or default-zero associativity. Further registered schemas must be checked against
-the same actual sealer semantics before enabling them.
+`fn2-checkpoint-root1-step` now dispatches these continuations, typed payload and
+semantic closure, actual page seal/HAND/RETURN and directory emission. Its32-value
+projection retains every assigned lower carrier. The separate small inventory
+operation mutates the control cursor; STEP returns `:inventory` to request it.
+Physical reads remain separate explicit issue calls with exact retained op identity.
+Terminal source detach reuses the same canonical detach mutation recipe, gated by
+actual compacted production and completed directory/source coverage.
 
-Candidate exact operations (internal static calls, not arbitrary callbacks):
+No current postconstruction cancel provider exists in the coherent source.
+After BEGIN, hard faults retain construction, inventory, pending operations and
+loans as uncertain recovery state. They do not reset/retry an unfinished source.
+Preconstruction bank refusal remains before root1 reserve/Write and uses the
+existing safe empty abort path.
 
-- compaction-begin derives HELD token/candidate/owner and starts the original-source
-  inventory; no caller member count or completion flag.
-- source-step retains actual source identity and bounded whole-set scan progress;
-  reseek-step drives the existing cursor, returning :need-read separately.
-- candidate-step compares two actual authenticated entry views, then invokes the
-  existing bounded rehome for a replacement best. The source page stays frozen
-  until that copy completes; lower-key bytes remain immutable throughout a scan.
-- selected-entry-bind constructs the common retained-entry only from the finished
-  whole-set scan and current candidate identity. Existing semantic/payload closure
-  runs before builder add; consume requires exact origin/serial completion.
-- page bind/worker TAKE/write harvest/RETURN/consume are unchanged actual checkpoint
-  operations. Directory emit occurs only at schema exhaustion and uses final dense
-  output rank, independent of original inventory rank.
-- existing typed live retirement must consume original inventory rather than
-  manifest root count; it preserves durable old holds until actual replacement.
+## Window and bank lifetime
 
-Proposed new leaves are checkpoint-compaction-state/source/merge. Scoped adapters
-are checkpoint-metadata-source/metadata/manifest/driver, plus the original-source
-inventory consumer in checkpoint-live-retire under its owner's coordination.
-The master owner wires ordinary sealer request -> real drain -> checkpoint ->
-resume; a disabled route or helper endpoint does not repair FULL. Do not add B
-records, parsers or hashers. Existing legacy bounded resident admission may remain
-for its genuine fast path, but physical/unbounded output must take this route
-before a prefix is emitted.
+The maintenance bundle is22root1 plus8future handles:30 total, one more than the
+prior29. BEST uses page-sized window14; immutable LOWER uses new page-sized21;
+input page/read use19/20. Window16 remains available for real page-worker and
+semantic loans and cannot hold LOWER across HAND. Codec-derived entry/key width
+assertions must fit the canonical page representation. This adds one selected
+64KiB-capable class slot (including actual larger fallback charge), not storage
+proportional to source bytes. Class aliasing is counted by the existing atomic
+all-or-refuse recipe. Admission occurs at actual HELD before construction and
+never waits while holding a partial working bundle.
 
-Resource investigation is still pending. Existing candidate entry window14,
-semantic window16 and physical page/read19/20 might support best/lower-key/input
-roles in disjoint phases; semantic closure overwrites16, so the lower key must
-be reconstructible from the protected current candidate after closure and before
-the next scan. Exact octet references and reset/generation checks must demonstrate
-this without authority borrowing. An eight-pair recipe would require43 windows instead of the current29 and remains
-on HOLD; no
-geometry edits or class/credit feasibility claim is made. If another protected
-scratch is required it must join atomic pre-cut admission, not a held-cut wait.
+The resident installed prefix and two physical E-sized banks are disjoint.
+Original inventory geometry derives O plus the canonical installed-row count.
+Actual inactive-bank admission runs after HELD but before reserve or durable
+acceptance. Root1 BEGIN consumes its exact scan receipt. Typed adoption captures
+the target bank and keeps existing publication/hash/ownership gates.
+
+## Ordinary request and resume
+
+Before source observer acquisition, actual lower IDLE/held0/receipt0 and free
+loader windows select canonical checkpoint output for every nonempty ordinary
+seal target or actual run-only compact target. This covers resident inputs as
+well as physical inputs. Already-active prefixes retain their existing observer
+and continue their canonical drain during CLOSING; no prefix publishes in HELD.
+
+The actual sealer `:checkpointing` continuation owns no windows/observer. It
+captures the current catalog tag and wakes the validated actual master. Resume
+requires a newer APPLIED catalog, matching original-inventory DONE namespace and
+cut, validated-original count, source-writer/snapshot IDLE and no loader loans.
+A wake alone does not assert completion. The master must include this actual
+state in pressure detection and wake it after typed adoption and snapshot release.
+
+Seven driver source/arity/write/MV controls, nine publication controls, six request
+controls and the existing nine observer/nineteen physical-loader source controls
+pass at the source tip. The real typed-overlay request fixture is authored but
+unexecuted. Required composed controls still include tied keys/origins, empty and
+more-than-fanin source sets, sources exceeding resident cache, repeated yields and
+HAND returns, original retirement/crash old-authority, and ordinary request through
+actual checkpoint publication to resume. None is claimed by the source checks.
