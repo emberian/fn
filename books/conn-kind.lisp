@@ -5,6 +5,7 @@
 (include-book "profile")
 (include-book "conn-answer")
 (include-book "tls-kind")
+(include-book "compress-kind")
 (include-book "accounts-core")
 (include-book "upload-scan")
 (include-book "upload-feed")
@@ -52,11 +53,12 @@
  :fields ((cap-index :u32) (cap-nonce :u32)
           (rx-slot :link) (rx-gen :u60) (tx-slot :link) (tx-gen :u60)
           (start :u32) (pos :u32) (overflow :bool) (compacting :bool) (cursor :u32)
-          (tx-off :u32) (after (:enum fn2-conn-after (:command :article-input :upgrading :closing :query)))
+          (tx-off :u32) (after (:enum fn2-conn-after (:command :article-input :upgrading :closing :query :compress-upgrading)))
           (pending :u32) (borrows :u32) (mask :u8) (ordinal :u32) (access-ref :u32)
           (auth-pending (:enum fn2-conn-auth (:none :user :sasl :redeem)))
+          (upgrade-target (:enum fn2-conn-upgrade-target (:none :tls :compress)))
           (tls-token :link) (tls-token-gen :u60) (tls-op :u32) (tls-op-gen :u60)
-          (tls-stage (:enum fn2-conn-tls-stage (:none :admitted :running :finished))) (tls-ok :bool)
+          (upgrade-stage (:enum fn2-conn-upgrade-stage (:none :admitted :running :finished))) (tls-ok :bool)
           (refused :bool) (stopped :bool) (next-free :link)
           ;; article input (D4, section 14.2): the upload this connection
           ;; feeds, the block's rule, the request it answers, the feed's
@@ -89,13 +91,13 @@
  :admission (:phase :greeting :ranges (:rx-range :tx-range)
              :copy (principal-slot account-ref peer-family peer-port peer-w0 peer-w1 peer-w2 peer-w3)
              :clear (start pos overflow compacting cursor tx-off pending borrows ordinal refused
-                     auth-pending tls-token-gen tls-op-gen tls-stage tls-ok access-ref upload-gen rule request feed-mode feed-discard fed word
+                     auth-pending upgrade-target tls-token-gen tls-op-gen upgrade-stage tls-ok access-ref upload-gen rule request feed-mode feed-discard fed word
                      outcome-ready posting query-gen line-s line-e group current pin))
  :initial ((generation fn2-machine-initial-generation) (ready-prev *fn2-none*) (ready-next *fn2-none*)
            (rx-slot *fn2-none*) (tx-slot *fn2-none*) (account-ref *fn2-none*) (next-free fn2-machine-initial-next-free)
            (upload *fn2-none*) (query *fn2-none*) (tls-token *fn2-none*) (tls-op *fn2-none*))
  :arms ((:free) (:greeting) (:command) (:article-input) (:reply) (:upgrading) (:closing) (:draining) (:retired) (:query))
- :observes ((:receive-result) (:send-result) (:borrow-released) (:close-result) (:tls-result) (:cancel-result)))
+ :observes ((:receive-result) (:send-result) (:borrow-released) (:close-result) (:tls-result) (:compress-result) (:cancel-result)))
 
 ; MACHINE-FORM 6.5 P4: the kind's admission in child form, proved here;
 ; the admission section (assembly-callbacks-a) makes its core face.
