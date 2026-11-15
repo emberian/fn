@@ -57,3 +57,35 @@ Those author results establish only the two new predicates in their respective
 old imported worlds. They do not qualify the three metadata callers, this new
 shared foundation closure, or application behavior. No compute was run for this
 composition.
+
+## First author refusal and focused repair
+
+The immutable245 source was authored with nine genuine 8aeb cache imports and
+original two-million-step/20-second budgets per original source event. Columns,
+its guard-hint/carrier-contract books, the actual hint fixture, allocator and
+digests passed. POOL stopped inside its original conservation encapsulate at
+`fn2-pool-reserve-conservation`: earlier proofs left61,594 steps, and the shared
+two-million-step cap was exhausted. No record run followed. All four owned PIDs
+and the2Gi/swap0 scope were verified gone before release. Raw evidence is retained
+at `/tmp/columns-coherent37-first-evidence.tar.gz` on the author and receiver.
+
+POOL itself was byte-identical to the earlier successful minimal-provider run.
+The newer warm world includes FNV and places the actual hint fixture, allocator
+and digests before POOL. Its row-invariant unfolding lemma alone grew from61,428
+to246,214 steps; this is ambient proof sensitivity, not evidence against the
+canonical absent-versus-NIL API. POOL's preservation calls have no outer hints.
+
+The focused follow-up changes only that lemma's local theory: its two actual
+source definitions and ZP over minimal-theory. The theorem, rule classes,
+original whole encapsulate and budget are unchanged. Source controls compare
+its statement/rule classes and hash every other original POOL event, with a
+statement-mutation refusal control. The fix has NOT been admitted yet.
+
+The next pilot must retain the broader245 warm world and original dependency
+order (including the hint fixture, allocator and digests before POOL), rather
+than reorder to the old fortunate theory. Reuse the nine integrity-checked
+qualified parents, source-admit the same six preceding books, then the repaired
+whole POOL with original2M20. Stop on first refusal; on success continue the
+remaining actual closure and both fixtures. Record only source-READY targets
+within a separately authorized fixed deadline. Later metadata projection and
+physical cost refinement remain separate gates.
