@@ -24,7 +24,12 @@
 ;; The full stored digest stays before the stage, after the generated field.
 ;; The location vector follows it; raw uploads also stage one complete unit.
 (defconst *fn2-upload-page-stored-source* (* 64 (ceiling *fn2-upload-mid-line-max* 64)))
+;; The two distinct identities share the already-reserved 64-byte area.
+;; SOURCE is copied here before B3 is reused for the stored-byte digest.
+(defconst *fn2-upload-page-source* (+ *fn2-upload-page-stored-source* *fn2-upload-digest-octets*))
 (defconst *fn2-upload-page-location-hashes* (+ *fn2-upload-page-stored-source* 64))
+(assert-event (equal (+ *fn2-upload-page-source* *fn2-upload-digest-octets*)
+                     *fn2-upload-page-location-hashes*))
 (defconst *fn2-upload-page-stage*
   (+ *fn2-upload-page-location-hashes* (* 64 (ceiling *fn2-article-location-hashes-max* 64))))
 (defconst *fn2-upload-page-hash* (+ *fn2-upload-page-stage* *fn2-commit-unit-bytes*))
@@ -85,6 +90,9 @@
 (defcost fn2-upload-lease-class :doc "The pool class of the store page for stored octets of a length (nil: none).")
 ;; The source manifest's operations (stored octets longer than one extent).
 (defcost fn2-upload-hasher :doc "The upload row's hasher row (3 + its slot), whose format stripe the manifest's fields use.")
+(defcost fn2-upload-save-source :answers (:ok :bounds) :bytes *fn2-upload-digest-octets*
+  :tables (fn2-core-pool)
+  :doc "Save this actual upload's SOURCE identity in its owned page before B3 reuse.")
 (defcost fn2-upload-manifest-begin :answers (:ok :fault) :faults (:fault) :bytes *fn2-upload-head-bytes*
   :tables (fn2-core-pool fn2-core-fields)
   :doc "Encode the manifest's header at the (zeroed) store page's manifest: (mv code mfill).")
@@ -458,22 +466,42 @@
       (fn2-upload-page-zero (min left *fn2-commit-unit-bytes*) pfill ls lg okind oslot ogen fn2-core)
       (mv (cond ((not (eq code :ok)) :fault) ((< *fn2-commit-unit-bytes* left) :more) (t :ok)) fn2-core))))
 (fn2-core-preserves fn2-upload-page-zero-to (to ls lg okind oslot ogen fn2-core) :position 1 :rows nil)
-;; The manifest begun (the page zeroed to its start first, by
-;; fn2-upload-page-zero-to): the header (TOTAL stored octets, the source
-;; identity where the verdict appended it) encoded at
-;; *fn2-upload-page-manifest*: (mv code mfill fn2-core), MFILL the manifest's
-;; octets. Fields at the window's format stripe (row ROW).
-(defun fn2-upload-manifest-begin (row ls lg total c0 g0 c1 g1 hashed okind oslot ogen fn2-core)
-  (declare (xargs :stobjs fn2-core :guard (and (fn2-core-wfp fn2-core) (natp hashed))))
+;; SOURCE must be saved from the actual completed upload before this hash
+;; context is reused. The page's two digest halves have distinct meanings.
+(defun fn2-upload-save-source (id gen fn2-core)
+ (declare (xargs :stobjs fn2-core :guard (fn2-core-wfp fn2-core)))
+ (b* (((unless (and (eq (fn2-upload-snapshot-read-code id fn2-core) :ok)
+                    (equal (fn2-machine-generation id fn2-core) gen)
+                    (equal (fn2-upload-row-phase id fn2-core) *fn2-upload-state-stored-hash*)
+                    (equal (fn2-upload-row-mstep id fn2-core) 1)
+                    (equal (fn2-upload-row-stored-hashed id fn2-core) 0)
+                    (equal (fn2-upload-row-lease id fn2-core) *fn2-upload-lease-held*)
+                    (equal (fn2-upload-row-word id fn2-core) 0)))
+       (mv :bounds fn2-core))
+      (c0 (fn2-upload-row-c0-slot id fn2-core)) (g0 (fn2-upload-row-c0-gen id fn2-core))
+      (c1 (fn2-upload-row-c1-slot id fn2-core)) (g1 (fn2-upload-row-c1-gen id fn2-core))
+      (hashed (fn2-upload-row-hashed id fn2-core))
+      (ls (fn2-upload-row-lslot id fn2-core)) (lg (fn2-upload-row-lgen id fn2-core))
+      ((mv in1 off) (fn2-upload-digest-at hashed (fn2-upload-chunk-cap c0 fn2-core)))
+      ((mv code fn2-core)
+       (fn2-core-copy-range (if in1 c1 c0) (if in1 g1 g0) off
+                            ls lg *fn2-upload-page-source* *fn2-upload-digest-octets*
+                            *fn2-upload-kind* id gen fn2-core)))
+  (mv (if (eq code :ok) :ok :bounds) fn2-core)))
+(fn2-core-preserves fn2-upload-save-source (id gen fn2-core) :position 1 :rows nil)
+(in-theory (disable fn2-upload-save-source))
+;; The manifest header consumes the retained original SOURCE identity,
+;; independently of the stored-byte digest in the adjacent first half.
+(defun fn2-upload-manifest-begin (row ls lg total okind oslot ogen fn2-core)
+  (declare (xargs :stobjs fn2-core :guard (fn2-core-wfp fn2-core)))
   (b* ((pfill (stobj-let ((fn2-pool (fn2-core-pool fn2-core))) (n) (fn2-gram-fill ls fn2-pool) n))
-       ((unless (equal pfill *fn2-upload-page-manifest*)) (mv :fault 0 fn2-core))
-       ((mv in1 doff) (fn2-upload-digest-at hashed (fn2-upload-chunk-cap c0 fn2-core))))
+       ((unless (equal pfill *fn2-upload-page-manifest*)) (mv :fault 0 fn2-core)))
     (stobj-let ((fn2-fields (fn2-core-fields fn2-core)) (fn2-pool (fn2-core-pool fn2-core)))
       (code end fn2-fields fn2-pool)
-      (fn2-am-put-header (* 128 (nfix row)) total (if in1 c1 c0) (if in1 g1 g0) doff ls lg *fn2-upload-page-manifest*
-                         okind oslot ogen fn2-fields fn2-pool)
+      (fn2-am-put-header (* 128 (nfix row)) total ls lg *fn2-upload-page-source*
+                         ls lg *fn2-upload-page-manifest* okind oslot ogen fn2-fields fn2-pool)
       (mv (if (eq code :ok) :ok :fault) (nfix (- (nfix end) *fn2-upload-page-manifest*)) fn2-core))))
-(fn2-core-preserves fn2-upload-manifest-begin (row ls lg total c0 g0 c1 g1 hashed okind oslot ogen fn2-core) :position 2 :rows nil
+(fn2-core-preserves fn2-upload-manifest-begin (row ls lg total okind oslot ogen fn2-core) :position 2 :rows nil
   :hints (("Goal" :in-theory (enable fn2-core-wfp))))
 ;; Block DONE / unit of the stored octets copied to the page's stage, piece
 ;; by piece (the generated field, chunk 0, chunk 1; FUEL pieces at most):
