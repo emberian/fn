@@ -5,6 +5,7 @@
 (in-package "ACL2")
 (include-book "assembly-callbacks-c-commit")
 (include-book "machines-c-sealer-events")
+(include-book "peer-history")
 (fn2-groups-core-events)
 (fn2-identity-core-events)
 (fn2-sealer-core-events)
@@ -16,3 +17,5 @@
 (fn2-checkpoint-writer-events)
 (fn2-event-producer-rearm-events)
 (fn2-checkpoint-master-events)
+
+(fn2-peer-history-core-events)
