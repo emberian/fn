@@ -424,8 +424,11 @@ ACL2_BOOKS = \
   tests/envelope-output-segment-unit \
   sim/envelope-output-segment-loop \
   tests/envelope-output-segment-loop-unit \
+  tests/send-envelope-unit \
   tests/envelope-input-unit \
   tests/envelope-prefix-unit \
+  tests/input-prefix-unit \
+  tests/tls-input-prefix-unit \
   tests/native-unit \
   tests/network-backpressure-unit \
   tests/ops-semantic-steps-unit \

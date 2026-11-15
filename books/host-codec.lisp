@@ -3,6 +3,7 @@
 (include-book "host-loan")
 (include-book "host-codec-close")
 (include-book "tls-stack")
+(include-book "codec-close")
 (local (in-theory (enable fn2-core-wfp)))
 (local
  (in-theory
