@@ -104,8 +104,8 @@ All 31 current checkpoint-member parents are now qualified by record
 `certify-20261115T122350Z-1314201` (21 reused, ten certified, 122.156 seconds).
 Its roots are `books/checkpoint`, `books/pool-ranges` and `books/layout-size-bounds`;
 their union excludes member itself. Root matched all 31 source hashes and closure
-keys to integration and the qualified payload receipt. The next author check can
-load these compiled parents and test member alone. Record timings still expose
+keys to integration and the qualified payload receipt. These compiled parents
+supported the member check below. Record timings still expose
 proof-cost work; neither this record nor the generator pilot qualifies member,
 the application, or native restart.
 Receipt: [member parents](receipts/member-parents31-record.json).
@@ -119,9 +119,15 @@ All four served-domain TYPE/WFP contracts and the other three original off-guard
 facets are proved. The actual packer witness asserts its whole stored guard,
 readonly and mutable recognizers, successful packing, exact fill and all four
 output recognizers/invariants. Runtime definitions and guards are unchanged.
-The original stronger off-guard FIELDS-TYPE formula remains explicitly owed,
-not weakened or silently claimed proved; a concrete readonly-hypothesis removal
-candidate is being checked separately.
+The original stronger off-guard FIELDS-TYPE formula is now refuted by an actual
+logical counterexample. Its complete original antecedent holds, while a readonly
+checkpoint value of -1 makes the actual packer's output fail FIELDSP. The guarded
+replacement retains the missing readonly recognizer. Production formula/registry
+bytes remain unchanged: the registry has no refuted state, and this claim must
+not be treated as proved. Exact 34-book record `certify-20261115T124759Z-1337739`
+reuses 32 production books and certifies the connected positive/negative test
+leaves. Root matched all 34 source hashes and keys against the qualified entries.
+Receipt: [readonly counterexample](receipts/member-readonly-counterexample34-record.json).
 Receipt: [member and actual positive](receipts/checkpoint-member-thirty-three-record.json).
 
 The shared `:type-hints` fix replaces member-specific event surgery. Its original
@@ -140,6 +146,67 @@ The actual ticket author events passed in 3.39 seconds. Root matched all 27
 source hashes and closure keys against the qualified receipt. The remaining
 consumer gate is the emitted application composition, not a macro declaration.
 Receipt: [checkpoint tickets](receipts/checkpoint-tickets27-record.json).
+
+The next shared application prerequisites are qualified by exact 62-book record
+`certify-20261115T124249Z-1332436` (25 reused, 37 certified, 226.122 seconds).
+Root matched all 62 source hashes and dependency keys to upstream integration;
+no candidate-only runtime import was needed for this receipt. The actual
+167-book `assembly-callbacks-bt` author world starts with 78 compiled books and
+89 source books. Its first seven source books pass. `machines-a-run` then reaches
+the unchanged 20-second cap in an original macro (20.08 seconds, 1,174,320 steps).
+The shared repair now derives opaque child calls from admitted signatures for
+non-issuing numeric and effect proofs. Exact 37-book record
+`certify-20261115T131114Z-1360565` reused 34 books and certified machine-arms,
+conn-kind and tls-kind. Root independently matched all 37 source hashes and
+closure keys after integration; two source controls pass. Runtime definitions,
+guards, theorem statements and rule classes are unchanged. The actual
+`machine-arms-unit` assertions still await application qualification.
+
+A separately labeled diagnostic reduced the original Scribe macro to 13.64
+seconds under the unchanged cap and advanced through allocation/coordinator
+repairs. It then stopped at a future-working termination gap; its scope has
+ended and resources are released. This diagnostic is not source qualification.
+The actual application candidate must consume the qualified generator and
+reviewed leaf repairs before the native two-article restart/FETCH gate.
+Receipt: [resource proof boundary](receipts/arm-resource37-record.json).
+
+The real `machines-a-run` consumer now passes record certification at source
+`9fabbb99d`, run `certify-20261115T132706Z-1375558`. The 35-book closure first
+qualified its six missing parents, then reused all 34 parents to certify the
+actual consumer. Echo and Scribe original macros passed in 10.22 and 9.12
+seconds under unchanged 20-second/2M-step limits; no trial helpers were used.
+The readonly query-held cost declaration is integrated, and root independently
+matched all 35 source hashes and closure keys to the integration tree. This
+qualifies the A-machine consumer, not the remaining application or native gate.
+The next actual BT composition reuses this record.
+Receipt: [actual machine consumer](receipts/machine-run-actual35-record.json).
+
+The checkpoint leaf repairs now pass standalone record certification at source
+`fc1d61483`, run `certify-20261115T133755Z-1386601`: 42 reused parents and four
+new certifications in the 46-book union. Allocation was certified in the prior
+attempt and reused. Both coordinator books now import their DEFCOST owner
+explicitly; the larger author session had masked one missing include. Allocation
+uses the public codec-size interface and row-frame hints. Future-working index
+loops retain their guards and guarded bodies while rejecting invalid logical
+indices before recursion or mutation. Root matched all 46 source hashes and
+closure keys after integrating the four changed files. The installation caller
+hint is inside an event macro: this declaration record alone does not certify
+its emitted application theorem. Actual BT composition and native execution
+remain separate gates.
+Receipt: [checkpoint leaf repairs](receipts/checkpoint-leaves46-record.json).
+
+The next actual block-integrity obstruction is repaired without weakening its
+unconditional frame theorem. The opt-in `blake3-row-frames` book derives full
+output projections from admitted function signatures and proves row counts
+unchanged through the actual hashing helpers. The caller consumes these frames
+instead of trying to use a recognizer-dependent shape lemma off guard. All
+existing runtime definitions, guards and six preservation statements remain
+unchanged. Exact 17-book record `certify-20261115T134543Z-1394312` reused 15
+parents and certified the new interface and block-integrity. Root matched all
+17 source hashes and closure keys after integration. This closes these row
+frames, not cryptographic assumptions or the remaining application/native gates.
+Receipt: [block-integrity row frames](receipts/block-integrity17-record.json).
+Receipt: [shared application prerequisites](receipts/bt-ready62-record.json).
 
 Physical address geometry remains an executable blocker. `fe9f761ab` repairs
 POST's root location from three units per extent to the physical sixteen, with
@@ -676,6 +743,39 @@ with a documented registry-derived theorem, not a silent rebaseline.
 Q1 entry/partition/step/exit proofs follow these transition contracts.
 Primitive work/allocation semantics is a separate dependency of the actual
 bounded-work claim; summing declarations alone is insufficient.
+
+### Returned-charge repair and remaining composition — November 15
+
+At integration `26342e8cb`, `fn2-arms-charge-form` returns explicit byte/step
+charges plus loop work, while only its static metadata takes the maximum with
+summed callback declarations. `fn2-exec-principal` debits and records that
+returned tuple directly. The `:goto` terminal also returns the subarm tuple
+without carrying the caller-prefix cost. A static envelope therefore does not
+establish runtime accounting. `audit_bridge` owns the shared generator repair:
+connect returned byte/step charges and composed prefix costs, retain exact
+issued-descriptor counts, and test the actual generated composed arm and
+unchanged-cap refusal. No profile limit increase is authorized by this defect.
+
+The shared repair now passes exact 25-book record
+`certify-20261115T133412Z-1382828` (23 reused, generator and fixture certified).
+The actual generated found path reports 12288 bytes/5 steps; its end path
+reports 8192/3. The static end envelope is 8192/4 because it uses the public
+subarm step floor. The actual run-contract validator rejects the found path
+under an unchanged 8192-byte cap. Root matched all 25 source hashes and closure
+keys and reran five focused controls. This runtime generator change rekeys its
+consumers: the earlier actual A-machine35 record remains evidence for its
+stated source, not qualification of the new accounting composition. Requalify
+actual consumers after integrating the remaining peer/runtime changes.
+Preceding successful issue counts across goto remain a separate exact-effect
+and residual-admission obligation; no new DSL restriction was introduced.
+Receipt: [callback accounting](receipts/arm-accounting25-record.json).
+
+`peer_assurance` owns resumable article lookup and schema-specific physical
+read bounds in parallel. A declared callback cost is not a proof of physical
+work. The existing bounded lookup can discard unfinished progress and restart;
+its replacement must preserve dedicated actor generation, query identity and
+phase across yields and cancellation. Source-derived byte inequalities remain
+unproved until connected to actual read/count semantics.
 
 ### Evidence and claim graph
 
