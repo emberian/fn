@@ -15,9 +15,15 @@
       ; This is not a checkpoint publication or authenticated replay premise.
       (fn2-extents (update-fn2-alloc-epoch-begun 0 fn2-extents))
       (fn2-extents (update-fn2-alloc-freeze-phase 4 fn2-extents))
+      (observe-guard (and (fn2-extents-wfp fn2-extents)
+                          (unsigned-byte-p 60 epoch) (unsigned-byte-p 60 recorded)))
       ((mv observed fn2-extents) (fn2-alloc-cold-observe-identity epoch recorded fn2-extents))
       (antecedent (and (eq begun :ok) (eq reserved :ok) (eq committed :ok)
-                       (eq observed :ok) (fn2-alloc-invp fn2-extents)
+                       (eq observed :ok) observe-guard
+                       (fn2-extentsp fn2-extents) (fn2-extents-wfp fn2-extents)
+                       (unsigned-byte-p 32 *fn2-alloc-none*)
+                       (unsigned-byte-p 60 epoch) (unsigned-byte-p 60 recorded)
+                       (fn2-alloc-invp fn2-extents)
                        (not (= first second))
                        (= (fn2-extents-state second fn2-extents) *fn2-extent-state-free*)))
       ((mv adopted fn2-extents)

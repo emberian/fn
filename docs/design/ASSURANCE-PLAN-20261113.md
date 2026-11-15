@@ -78,6 +78,21 @@ preservation controls pass; the actual selected fixture, RELEASE transition and
 whole-history execution remain required. Carried payload-prefix invariants and
 cross-yield authentication must be proved for the actual machine.
 
+**Executed historical-identity counterexample.** The seven-book primitive
+record `certify-20261115T053220Z-920695` on `e64729747` passed with five reused
+parents and newly qualified cold allocator plus `alloc-adopt-identity-unit`.
+Its positive case preserves `alloc-invp`; its duplicate epoch/counter case
+executes the same historical adoption primitive and violates uniqueness despite
+the complete initial invariant and API guards. The cold phase is explicitly
+synthetic: this does not establish reachable authenticated-replay corruption.
+The actual replay preservation claim therefore needs a producer-derived identity
+compatibility invariant or bounded carried admission, including initial map
+identities and historical reuse. An append-only index of every historical
+allocation cannot use a fixed two-per-extent bound. Original claim and removal
+control are retained in the replay-prefix proof package; those larger proofs and
+controls remain unexecuted. This lane's older dependency keys are not relabeled
+as the record's current-foundation seven-book qualification.
+
 Autonomous orphan retirement now has a source producer using ordinary submit/poll
 and retaining ambiguity; its runtime qualification and holder discharge remain
 open. Live physical C adoption, retained archive/rebase transfer and actual credit
