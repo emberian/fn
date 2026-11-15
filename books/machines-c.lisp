@@ -7,6 +7,7 @@
 (in-package "ACL2")
 (include-book "range-served")
 (include-book "machines-b")
+(include-book "successor-schema-geometry")
 (include-book "c-snapshot")
 (include-book "checkpoint-summary-state")
 (include-book "run-physical-geometry")
@@ -27,14 +28,16 @@
 (defconst *fn2-idc-stride* *fn2-b-txn-field-rows*)
 (defconst *fn2-idc-b-stripe* 128)
 (defconst *fn2-succ-slots* 24)
-(defconst *fn2-succ-block* 48)
+; Successor offsets/capacities are declared once from actual schemas.
 (defconst *fn2-idc-ident* (* *fn2-succ-slots* *fn2-succ-block*))
 (defconst *fn2-idc-eb* (+ *fn2-idc-ident* 4))
 (defconst *fn2-idc-rb* (+ *fn2-idc-eb* *fn2-run-entry-rows*))
+(defconst *fn2-idc-required-fields* (fn2-successor-required-fields *fn2-succ-fields-max* *fn2-succ-values-max* *fn2-succ-slots* *fn2-run-entry-rows* *fn2-run-reader-fields*))
+(assert-event (<= *fn2-idc-required-fields* *fn2-idc-stride*))
 (assert-event (and (<= (+ *fn2-idc-rb* *fn2-run-reader-fields*) *fn2-idc-stride*)
                    (<= (+ *fn2-idc-rb* *fn2-run-entry-rows*) *fn2-idc-stride*)
                    (<= (+ (* (- *fn2-succ-slots* 1) *fn2-succ-block*) *fn2-run-entry-rows*) *fn2-idc-stride*)
-                   (equal (fn2-b-field-rows '((:t . 3) (:format-slots . 2))) (+ (* 2 *fn2-idc-b-stripe*) (* 3 *fn2-idc-stride*) *fn2-b-seal-field-rows*))))
+                   (equal (fn2-b-field-rows '((:t . 3) (:format-slots . 2))) (+ (* 2 *fn2-idc-b-stripe*) (* 3 *fn2-idc-stride*) *fn2-b-seal-field-rows* *fn2-b-checkpoint-field-rows*))))
 
 ;; The overlay rows a profile gets when it names none (:identity-overlays):
 ;; a batch takes one private overlay per schema it writes, and a POST

@@ -94,7 +94,7 @@
 
 ; The run leg, between runs: start the cursor in the newest live run of SID
 ; below the bound, or answer :absent past the last.
-(defun fn2-xl-run-next (tx sid rb fn2-succ-txns fn2-run-installed fn2-run-cursors)
+(defun fn2-xl-run-next (tx sid rb qk qs qg fn2-succ-txns fn2-run-installed fn2-run-cursors)
  (declare (xargs :stobjs (fn2-succ-txns fn2-run-installed fn2-run-cursors)
   :guard (and (fn2-succ-txns-wfp fn2-succ-txns) (fn2-run-installed-wfp fn2-run-installed) (fn2-run-cursors-wfp fn2-run-cursors))
   :guard-hints (("Goal" :in-theory (disable fn2-run-cursor-start fn2-xl-done)))))
@@ -105,19 +105,15 @@
       ((unless (and (natp r) (< r rows)))
        (mv-let (code fn2-succ-txns) (fn2-xl-done tx :absent fn2-succ-txns) (mv code fn2-succ-txns fn2-run-cursors)))
       ((mv code fn2-run-cursors)
-       (fn2-run-cursor-start tx sid (fn2-run-installed-top r fn2-run-installed) (fn2-run-installed-slot r fn2-run-installed)
-                             (fn2-run-installed-gen r fn2-run-installed) (fn2-run-installed-unit r fn2-run-installed)
-                             (fn2-run-installed-counter r fn2-run-installed) rb
-                             (fn2-run-installed-okind r fn2-run-installed) (fn2-run-installed-oslot r fn2-run-installed)
-                             (fn2-run-installed-ogen r fn2-run-installed) fn2-run-cursors))
+       (fn2-run-cursor-start-installed tx r rb qk qs qg fn2-run-installed fn2-run-cursors))
       ((unless (eq code :ok)) (mv code fn2-succ-txns fn2-run-cursors))
       (run (fn2-run-installed-run r fn2-run-installed))
       ((unless (and (unsigned-byte-p 60 run) (unsigned-byte-p 32 r))) (mv :bounds fn2-succ-txns fn2-run-cursors))
       (fn2-succ-txns (fn2-succ-txns-put tx (lphase *fn2-succ-lookup-scan*) (lbound run) (lrow r))))
   (mv :more fn2-succ-txns fn2-run-cursors)))
-(fn2-idc-fn-shape fn2-xl-run-next (tx sid rb fn2-succ-txns fn2-run-installed fn2-run-cursors)
+(fn2-idc-fn-shape fn2-xl-run-next (tx sid rb qk qs qg fn2-succ-txns fn2-run-installed fn2-run-cursors)
  (fn2-succ-txns fn2-run-cursors) (fn2-succ-txns fn2-run-installed fn2-run-cursors) t
- (fn2-succ-newest-run fn2-run-cursor-start fn2-xl-done fn2-succ-txns-lbound fn2-run-installed-run
+ (fn2-succ-newest-run fn2-run-cursor-start-installed fn2-xl-done fn2-succ-txns-lbound fn2-run-installed-run
   fn2-run-installed-top fn2-run-installed-slot fn2-run-installed-gen fn2-run-installed-unit fn2-run-installed-counter
   fn2-run-installed-okind fn2-run-installed-oslot fn2-run-installed-ogen))
 
@@ -154,7 +150,7 @@
     (mv-let (code fn2-succ-txns) (fn2-xl-restart tx sid fn2-succ-txns fn2-run-installed)
      (mv code 0 fn2-succ-txns fn2-run-cursors fn2-run-paths fn2-fields)))
    ((equal lphase *fn2-succ-lookup-runs*)
-    (mv-let (code fn2-succ-txns fn2-run-cursors) (fn2-xl-run-next tx sid rb fn2-succ-txns fn2-run-installed fn2-run-cursors)
+    (mv-let (code fn2-succ-txns fn2-run-cursors) (fn2-xl-run-next tx sid rb qk qs qg fn2-succ-txns fn2-run-installed fn2-run-cursors)
      (mv code 0 fn2-succ-txns fn2-run-cursors fn2-run-paths fn2-fields)))
    (t
     (b* (((mv code fn2-run-cursors fn2-run-paths fn2-fields)
@@ -250,7 +246,8 @@
                     (unsigned-byte-p 32 dslot) (unsigned-byte-p 60 dgen) (unsigned-byte-p 32 doff)
                     (unsigned-byte-p 8 okind) (unsigned-byte-p 32 oslot) (unsigned-byte-p 60 ogen)))
        (mv :bounds fn2-succ-txns fn2-id-decides fn2-fields))
-      ((unless (and (member (fn2-id-decides-phase tx fn2-id-decides) (list *fn2-id-decide-phase-idle* *fn2-id-decide-phase-done*))
+      ((unless (and (equal (fn2-succ-txns-source-receipt tx fn2-succ-txns) 0)
+                    (member (fn2-id-decides-phase tx fn2-id-decides) (list *fn2-id-decide-phase-idle* *fn2-id-decide-phase-done*))
                     (not (equal (fn2-succ-txns-rstate tx fn2-succ-txns) *fn2-succ-resolve-look*))))
        (mv :state fn2-succ-txns fn2-id-decides fn2-fields))
       (q (+ b0 *fn2-idc-eb*))
@@ -467,37 +464,64 @@
 (defcost fn2-group-lookup :answers (:absent :bad-magic :bounds :done :end :entry :format :invariant :length :lost :miss :more
   :noncanonical :ok :owner :part :payload :schema :stale :state :truncated :unknown-tag :wide)
  :bytes 4096
- :tables (fn2-core-succ-txns fn2-core-run-cursors fn2-core-run-paths fn2-core-fields)
+ :tables (fn2-core-succ-txns fn2-core-run-cursors fn2-core-run-paths fn2-core-fields fn2-core-reads fn2-core-c-source-control fn2-core-c-source-readers fn2-core-run-loads fn2-core-checkpoint-summary fn2-core-checkpoint-summary-leases fn2-core-pool)
  :doc "One source of a group-name lookup: one overlay search (at most 250-octet compares over 9 probes) or one run step of at most 4,096 pool reads.")
 (defcost fn2-principal-lookup :answers (:absent :bad-magic :bounds :done :end :entry :format :invariant :length :lost :miss :more
   :noncanonical :ok :owner :part :payload :schema :stale :state :truncated :unknown-tag :wide)
  :bytes 4096
- :tables (fn2-core-succ-txns fn2-core-run-cursors fn2-core-run-paths fn2-core-fields)
+ :tables (fn2-core-succ-txns fn2-core-run-cursors fn2-core-run-paths fn2-core-fields fn2-core-reads fn2-core-c-source-control fn2-core-c-source-readers fn2-core-run-loads fn2-core-checkpoint-summary fn2-core-checkpoint-summary-leases fn2-core-pool)
  :doc "One source of a principal-name lookup in fn2-principals: one overlay search (at most 64-octet compares) or one run step of at most 4,096 pool reads.")
 (defcost fn2-principal-of-slot :answers (:ok :state)
  :doc "The durable principal id (slot * 2^32 + incarnation) of an account slot: (mv code id).")
 
+(defmacro fn2-directory-source-core-definition (name sid maximum value-field result)
+ `(defun ,name (tx slot gen off len okind oslot ogen budget fn2-core)
+   (declare (xargs :stobjs fn2-core :guard (fn2-core-wfp fn2-core)))
+   (stobj-let ((fn2-succ-txns (fn2-core-succ-txns fn2-core)) (fn2-id-decides (fn2-core-id-decides fn2-core))
+               (fn2-overlays (fn2-core-overlays fn2-core)) (fn2-overlay-index (fn2-core-overlay-index fn2-core))
+               (fn2-run-installed (fn2-core-run-installed fn2-core)) (fn2-run-cursors (fn2-core-run-cursors fn2-core))
+               (fn2-run-paths (fn2-core-run-paths fn2-core)) (fn2-run-cache (fn2-core-run-cache fn2-core))
+               (fn2-fields (fn2-core-fields fn2-core)) (fn2-pool (fn2-core-pool fn2-core)) (fn2-fc (fn2-core-fc fn2-core))
+               (fn2-reads (fn2-core-reads fn2-core)) (fn2-c-source-control (fn2-core-c-source-control fn2-core))
+               (fn2-c-source-readers (fn2-core-c-source-readers fn2-core)) (fn2-run-loads (fn2-core-run-loads fn2-core)) (fn2-checkpoint-summary (fn2-core-checkpoint-summary fn2-core)) (fn2-checkpoint-summary-leases (fn2-core-checkpoint-summary-leases fn2-core)))
+    (code ,result fn2-succ-txns fn2-run-cursors fn2-run-paths fn2-fields fn2-c-source-control fn2-c-source-readers fn2-run-loads fn2-checkpoint-summary fn2-checkpoint-summary-leases)
+    (b* (((unless (and (natp tx) (< tx (fn2-succ-txns-rows fn2-succ-txns)) (< tx (fn2-id-decides-rows fn2-id-decides))))
+          (mv :bounds 0 fn2-succ-txns fn2-run-cursors fn2-run-paths fn2-fields fn2-c-source-control fn2-c-source-readers fn2-run-loads fn2-checkpoint-summary fn2-checkpoint-summary-leases))
+         ((unless (and (member (fn2-id-decides-phase tx fn2-id-decides) (list *fn2-id-decide-phase-idle* *fn2-id-decide-phase-done*))
+                       ; Resolver holds span every slot, including FRESH/NEXT.
+                       ; Only a live direct XL continuation may reuse this hold.
+                       (or (equal (fn2-succ-txns-source-receipt tx fn2-succ-txns) 0)
+                           (not (equal (fn2-succ-txns-lphase tx fn2-succ-txns) *fn2-succ-lookup-idle*)))
+                       (not (equal (fn2-succ-txns-rstate tx fn2-succ-txns) *fn2-succ-resolve-look*))))
+          (mv :state 0 fn2-succ-txns fn2-run-cursors fn2-run-paths fn2-fields fn2-c-source-control fn2-c-source-readers fn2-run-loads fn2-checkpoint-summary fn2-checkpoint-summary-leases))
+         ((mv c b0) (fn2-idc-stripe tx (fn2-fc-rows fn2-fc) fn2-id-decides fn2-fields))
+         ((unless (eq c :ok)) (mv c 0 fn2-succ-txns fn2-run-cursors fn2-run-paths fn2-fields fn2-c-source-control fn2-c-source-readers fn2-run-loads fn2-checkpoint-summary fn2-checkpoint-summary-leases))
+         (readrows (fn2-reads-rows fn2-reads))
+         ((mv admitted fn2-succ-txns fn2-c-source-control fn2-c-source-readers)
+          (fn2-succ-source-acquire tx readrows fn2-succ-txns fn2-c-source-control fn2-c-source-readers))
+         ((unless (eq admitted :ok))
+          (mv (if (eq admitted :busy) :more :state) 0 fn2-succ-txns fn2-run-cursors fn2-run-paths fn2-fields fn2-c-source-control fn2-c-source-readers fn2-run-loads fn2-checkpoint-summary fn2-checkpoint-summary-leases))
+         ((mv answer ,result fn2-succ-txns fn2-run-cursors fn2-run-paths fn2-fields)
+          (fn2-grp-lookup ,sid ,maximum ,value-field tx slot gen off len okind oslot ogen budget b0
+           fn2-succ-txns fn2-id-decides fn2-overlays fn2-overlay-index fn2-run-installed fn2-run-cursors fn2-run-paths fn2-run-cache fn2-fields fn2-pool))
+         ((when (member-eq answer '(:more :miss)))
+          (mv answer ,result fn2-succ-txns fn2-run-cursors fn2-run-paths fn2-fields fn2-c-source-control fn2-c-source-readers fn2-run-loads fn2-checkpoint-summary fn2-checkpoint-summary-leases))
+         ; The result is already scalar. Clear all decoded source references
+         ; and the cursor before releasing this exact retained receipt.
+         ((mv closed fn2-succ-txns fn2-run-cursors fn2-fields fn2-c-source-control fn2-c-source-readers fn2-run-loads fn2-checkpoint-summary fn2-checkpoint-summary-leases)
+          (fn2-succ-source-close tx readrows b0 fn2-succ-txns fn2-run-cursors fn2-fields fn2-c-source-control fn2-c-source-readers fn2-run-loads fn2-checkpoint-summary fn2-checkpoint-summary-leases fn2-pool)))
+     (mv (if (eq closed :ok) answer :state) (if (eq closed :ok) ,result 0)
+      fn2-succ-txns fn2-run-cursors fn2-run-paths fn2-fields fn2-c-source-control fn2-c-source-readers fn2-run-loads fn2-checkpoint-summary fn2-checkpoint-summary-leases))
+    (mv code ,result fn2-core))))
 (defmacro fn2-groups-core-events ()
  '(progn
-   (defun fn2-group-lookup (tx slot gen off len okind oslot ogen budget fn2-core)
-    (declare (xargs :stobjs fn2-core :guard (fn2-core-wfp fn2-core)))
-    (stobj-let ((fn2-succ-txns (fn2-core-succ-txns fn2-core)) (fn2-id-decides (fn2-core-id-decides fn2-core))
-                (fn2-overlays (fn2-core-overlays fn2-core)) (fn2-overlay-index (fn2-core-overlay-index fn2-core))
-                (fn2-run-installed (fn2-core-run-installed fn2-core)) (fn2-run-cursors (fn2-core-run-cursors fn2-core))
-                (fn2-run-paths (fn2-core-run-paths fn2-core)) (fn2-run-cache (fn2-core-run-cache fn2-core))
-                (fn2-fields (fn2-core-fields fn2-core)) (fn2-pool (fn2-core-pool fn2-core)) (fn2-fc (fn2-core-fc fn2-core)))
-     (code group fn2-succ-txns fn2-run-cursors fn2-run-paths fn2-fields)
-     (mv-let (c b0) (fn2-idc-stripe tx (fn2-fc-rows fn2-fc) fn2-id-decides fn2-fields)
-      (if (eq c :ok)
-          (fn2-grp-lookup *fn2-groups-sid* *fn2-groups-name-max* *fn2-groups-entry-field-group*
-                          tx slot gen off len okind oslot ogen budget b0 fn2-succ-txns fn2-id-decides fn2-overlays
-                          fn2-overlay-index fn2-run-installed fn2-run-cursors fn2-run-paths fn2-run-cache fn2-fields fn2-pool)
-        (mv c 0 fn2-succ-txns fn2-run-cursors fn2-run-paths fn2-fields)))
-     (mv code group fn2-core)))
+   (fn2-directory-source-core-definition fn2-group-lookup *fn2-groups-sid* *fn2-groups-name-max* *fn2-groups-entry-field-group* group)
    (fn2-core-preserves fn2-group-lookup (tx slot gen off len okind oslot ogen budget fn2-core)
     :position 2 :rows nil :hints (("Goal" :in-theory (enable fn2-core-wfp))))
    (defun fn2-groups-genesis (profile fn2-core)
     (declare (xargs :stobjs fn2-core :guard (fn2-core-wfp fn2-core)))
+    (if (equal (mv-nth 0 (fn2-csnapshot-state fn2-core)) *fn2-csnapshot-phase-held*)
+        (mv :full fn2-core)
     (stobj-let ((fn2-id-engine (fn2-core-id-engine fn2-core)) (fn2-id-decides (fn2-core-id-decides fn2-core))
                 (fn2-overlays (fn2-core-overlays fn2-core)) (fn2-overlay-index (fn2-core-overlay-index fn2-core))
                 (fn2-fields (fn2-core-fields fn2-core)) (fn2-pool (fn2-core-pool fn2-core)) (fn2-fc (fn2-core-fc fn2-core)))
@@ -506,26 +530,12 @@
       (if (eq c :ok)
           (fn2-grp-genesis *fn2-groups-sid* *fn2-groups-name-max* (fn2-profile-get :groups profile) b0 fn2-id-engine fn2-overlays fn2-overlay-index fn2-fields fn2-pool)
         (mv c fn2-id-engine fn2-overlays fn2-overlay-index fn2-fields fn2-pool)))
-     (mv code fn2-core)))
+     (mv code fn2-core))))
    (fn2-core-preserves fn2-groups-genesis (profile fn2-core)
     :position 1 :rows nil :hints (("Goal" :in-theory (enable fn2-core-wfp))))
    ;; The principal directory's exact lookup (principal-create's repeat,
    ;; principal-bind): NAME's durable id, or :absent.
-   (defun fn2-principal-lookup (tx slot gen off len okind oslot ogen budget fn2-core)
-    (declare (xargs :stobjs fn2-core :guard (fn2-core-wfp fn2-core)))
-    (stobj-let ((fn2-succ-txns (fn2-core-succ-txns fn2-core)) (fn2-id-decides (fn2-core-id-decides fn2-core))
-                (fn2-overlays (fn2-core-overlays fn2-core)) (fn2-overlay-index (fn2-core-overlay-index fn2-core))
-                (fn2-run-installed (fn2-core-run-installed fn2-core)) (fn2-run-cursors (fn2-core-run-cursors fn2-core))
-                (fn2-run-paths (fn2-core-run-paths fn2-core)) (fn2-run-cache (fn2-core-run-cache fn2-core))
-                (fn2-fields (fn2-core-fields fn2-core)) (fn2-pool (fn2-core-pool fn2-core)) (fn2-fc (fn2-core-fc fn2-core)))
-     (code principal fn2-succ-txns fn2-run-cursors fn2-run-paths fn2-fields)
-     (mv-let (c b0) (fn2-idc-stripe tx (fn2-fc-rows fn2-fc) fn2-id-decides fn2-fields)
-      (if (eq c :ok)
-          (fn2-grp-lookup *fn2-principals-sid* *fn2-principals-name-max* *fn2-principals-entry-field-principal*
-                          tx slot gen off len okind oslot ogen budget b0 fn2-succ-txns fn2-id-decides fn2-overlays
-                          fn2-overlay-index fn2-run-installed fn2-run-cursors fn2-run-paths fn2-run-cache fn2-fields fn2-pool)
-        (mv c 0 fn2-succ-txns fn2-run-cursors fn2-run-paths fn2-fields)))
-     (mv code principal fn2-core)))
+   (fn2-directory-source-core-definition fn2-principal-lookup *fn2-principals-sid* *fn2-principals-name-max* *fn2-principals-entry-field-principal* principal)
    (fn2-core-preserves fn2-principal-lookup (tx slot gen off len okind oslot ogen budget fn2-core)
     :position 2 :rows nil :hints (("Goal" :in-theory (enable fn2-core-wfp))))
    ;; The store's two persisted principals (AUTHORITY-20261105 section 1): the
@@ -557,9 +567,26 @@
    ;; and principal-bind read them, and where the profile must give the
    ;; directory its overlay. A profile serving no authority (the tiny unit
    ;; profiles) has no reader of the names and need not hold the overlay.
-   (defun fn2-principals-genesis (profile fn2-core)
+      ; Read already-bound actor identities. This never increments incarnation.
+   ; The owner slot is trusted startup configuration; IDs come from accounts.
+   (defun fn2-principals-bound-genesis-ids (owner-slot fn2-core)
     (declare (xargs :stobjs fn2-core :guard (fn2-core-wfp fn2-core)))
-    (mv-let (code ids fn2-core) (fn2-principals-bind-genesis profile fn2-core)
+    (stobj-let ((fn2-accounts (fn2-core-accounts fn2-core))) (code ids)
+     (if (and (fn2-accountsp fn2-accounts) (fn2-accounts-wfp fn2-accounts) (fn2-accounts-shapep fn2-accounts)
+              (natp owner-slot) (< 0 (fn2-accounts-rows fn2-accounts)))
+         (let* ((owner (< (+ 1 owner-slot) (fn2-accounts-rows fn2-accounts)))
+                (anonymous (fn2-account-principal-id 0 fn2-accounts))
+                (owner-id (if owner (fn2-account-principal-id owner-slot fn2-accounts) 0)))
+          (if (and (posp (fn2-accounts-incarnation 0 fn2-accounts)) (unsigned-byte-p 60 anonymous)
+                   (or (not owner) (and (posp (fn2-accounts-incarnation owner-slot fn2-accounts))
+                                        (unsigned-byte-p 60 owner-id))))
+              (mv :ok (cons (cons "anonymous" anonymous) (and owner (list (cons "owner" owner-id)))))
+            (mv :state nil)))
+       (mv :state nil))
+     (mv code ids)))
+(defun fn2-principals-name-genesis (profile fn2-core)
+    (declare (xargs :stobjs fn2-core :guard (fn2-core-wfp fn2-core)))
+    (mv-let (code ids) (fn2-principals-bound-genesis-ids (fn2-principals-owner-slot profile) fn2-core)
      (if (or (not (eq code :ok)) (not (posp (nfix (fn2-profile-get :authority profile)))))
          (mv code fn2-core)
       (stobj-let ((fn2-id-engine (fn2-core-id-engine fn2-core)) (fn2-id-decides (fn2-core-id-decides fn2-core))
@@ -572,6 +599,15 @@
                              fn2-id-engine fn2-overlays fn2-overlay-index fn2-fields fn2-pool)
           (mv c fn2-id-engine fn2-overlays fn2-overlay-index fn2-fields fn2-pool)))
        (mv code fn2-core)))))
+   (fn2-core-preserves fn2-principals-name-genesis (profile fn2-core)
+    :position 1 :rows nil :hints (("Goal" :in-theory (enable fn2-core-wfp))))
+   ; Preserve the original nonimage/public operation: bind once, then write
+   ; the authority NAME overlay from those same actual bound identities.
+   (defun fn2-principals-genesis (profile fn2-core)
+    (declare (xargs :stobjs fn2-core :guard (fn2-core-wfp fn2-core)))
+    (mv-let (code ids fn2-core) (fn2-principals-bind-genesis profile fn2-core)
+     (declare (ignore ids))
+     (if (eq code :ok) (fn2-principals-name-genesis profile fn2-core) (mv code fn2-core))))
    (fn2-core-preserves fn2-principals-genesis (profile fn2-core)
     :position 1 :rows nil :hints (("Goal" :in-theory (enable fn2-core-wfp))))
    ;; A connection's durable principal id from its account slot (D7's id).
@@ -585,7 +621,7 @@
        (mv :state 0))
      (mv code (nfix id))))
    (in-theory (disable fn2-group-lookup fn2-groups-genesis fn2-principal-lookup fn2-principals-bind-genesis
-                       fn2-principals-genesis fn2-principal-of-slot))
+                       fn2-principals-genesis fn2-principals-name-genesis fn2-principals-bound-genesis-ids fn2-principal-of-slot))
    (assert-event (fn2-assert-compliant-p '(fn2-group-lookup fn2-groups-genesis fn2-principal-lookup
                                           fn2-principals-genesis fn2-principal-of-slot) (w state)))))
 
@@ -595,7 +631,7 @@
 (defcost fn2-identity-decide :child fn2-identity-decide-child :answers (:bad-magic :bounds :conflict :done :duplicate :end :entry :evidence :format :invariant :length
   :lost :miss :more :noncanonical :owner :part :payload :schema :stale :state :stored :truncated :unknown-tag :wide)
  :bytes 4096
- :tables (fn2-core-succ-txns fn2-core-id-decides fn2-core-run-cursors fn2-core-run-paths fn2-core-fields)
+ :tables (fn2-core-succ-txns fn2-core-id-decides fn2-core-run-cursors fn2-core-run-paths fn2-core-fields fn2-core-reads fn2-core-c-source-control fn2-core-c-source-readers fn2-core-run-loads fn2-core-checkpoint-summary fn2-core-checkpoint-summary-leases fn2-core-pool)
  :doc "One source of an identity decision's two exact reads (the summary, then the candidate): one overlay search or one run step of at most 4,096 pool reads.")
 (defcost fn2-identity-facts :answers (:ok :state) :child fn2-id-facts
  :doc "Read a done decision's facts: verdict, selection, candidate ordinal, evidence status, coverage.")
@@ -619,14 +655,28 @@
                 (fn2-overlays (fn2-core-overlays fn2-core)) (fn2-overlay-index (fn2-core-overlay-index fn2-core))
                 (fn2-run-installed (fn2-core-run-installed fn2-core)) (fn2-run-cursors (fn2-core-run-cursors fn2-core))
                 (fn2-run-paths (fn2-core-run-paths fn2-core)) (fn2-run-cache (fn2-core-run-cache fn2-core))
-                (fn2-fields (fn2-core-fields fn2-core)) (fn2-pool (fn2-core-pool fn2-core)) (fn2-fc (fn2-core-fc fn2-core)))
-     (code fn2-succ-txns fn2-id-decides fn2-run-cursors fn2-run-paths fn2-fields)
-     (mv-let (c b0) (fn2-idc-stripe tx (fn2-fc-rows fn2-fc) fn2-id-decides fn2-fields)
-      (if (eq c :ok)
-          (fn2-id-decide-step tx budget b0 fn2-succ-txns fn2-id-decides fn2-overlays fn2-overlay-index fn2-run-installed
-                              fn2-run-cursors fn2-run-paths fn2-run-cache fn2-fields fn2-pool)
-        (mv c fn2-succ-txns fn2-id-decides fn2-run-cursors fn2-run-paths fn2-fields)))
-     (mv code fn2-core)))
+                (fn2-fields (fn2-core-fields fn2-core)) (fn2-pool (fn2-core-pool fn2-core)) (fn2-fc (fn2-core-fc fn2-core)) (fn2-reads (fn2-core-reads fn2-core)) (fn2-c-source-control (fn2-core-c-source-control fn2-core)) (fn2-c-source-readers (fn2-core-c-source-readers fn2-core)) (fn2-run-loads (fn2-core-run-loads fn2-core)) (fn2-checkpoint-summary (fn2-core-checkpoint-summary fn2-core)) (fn2-checkpoint-summary-leases (fn2-core-checkpoint-summary-leases fn2-core)))
+(code fn2-succ-txns fn2-id-decides fn2-run-cursors fn2-run-paths fn2-fields fn2-c-source-control fn2-c-source-readers fn2-run-loads fn2-checkpoint-summary fn2-checkpoint-summary-leases)
+(b* (((unless (and (natp tx) (< tx (fn2-succ-txns-rows fn2-succ-txns)) (< tx (fn2-id-decides-rows fn2-id-decides)))) (mv :bounds fn2-succ-txns fn2-id-decides fn2-run-cursors fn2-run-paths fn2-fields fn2-c-source-control fn2-c-source-readers fn2-run-loads fn2-checkpoint-summary fn2-checkpoint-summary-leases))
+ (phase (fn2-id-decides-phase tx fn2-id-decides))
+ ((when (equal phase *fn2-id-decide-phase-done*)) (mv (fn2-id-decided tx fn2-id-decides) fn2-succ-txns fn2-id-decides fn2-run-cursors fn2-run-paths fn2-fields fn2-c-source-control fn2-c-source-readers fn2-run-loads fn2-checkpoint-summary fn2-checkpoint-summary-leases))
+ ((unless (member phase (list *fn2-id-decide-phase-summary* *fn2-id-decide-phase-candidate*))) (mv :state fn2-succ-txns fn2-id-decides fn2-run-cursors fn2-run-paths fn2-fields fn2-c-source-control fn2-c-source-readers fn2-run-loads fn2-checkpoint-summary fn2-checkpoint-summary-leases))
+ ((mv c b0) (fn2-idc-stripe tx (fn2-fc-rows fn2-fc) fn2-id-decides fn2-fields))
+ ((unless (eq c :ok)) (mv c fn2-succ-txns fn2-id-decides fn2-run-cursors fn2-run-paths fn2-fields fn2-c-source-control fn2-c-source-readers fn2-run-loads fn2-checkpoint-summary fn2-checkpoint-summary-leases))
+ (readrows (fn2-reads-rows fn2-reads))
+ ((mv admitted fn2-succ-txns fn2-c-source-control fn2-c-source-readers)
+  (fn2-succ-source-acquire tx readrows fn2-succ-txns fn2-c-source-control fn2-c-source-readers))
+ ((unless (eq admitted :ok)) (mv (if (eq admitted :busy) :more :state) fn2-succ-txns fn2-id-decides fn2-run-cursors fn2-run-paths fn2-fields fn2-c-source-control fn2-c-source-readers fn2-run-loads fn2-checkpoint-summary fn2-checkpoint-summary-leases))
+ ((mv answer fn2-succ-txns fn2-id-decides fn2-run-cursors fn2-run-paths fn2-fields)
+  (fn2-id-decide-step tx budget b0 fn2-succ-txns fn2-id-decides fn2-overlays fn2-overlay-index fn2-run-installed fn2-run-cursors fn2-run-paths fn2-run-cache fn2-fields fn2-pool))
+ ((when (member-eq answer '(:more :miss))) (mv answer fn2-succ-txns fn2-id-decides fn2-run-cursors fn2-run-paths fn2-fields fn2-c-source-control fn2-c-source-readers fn2-run-loads fn2-checkpoint-summary fn2-checkpoint-summary-leases))
+ ((mv closed fn2-succ-txns fn2-run-cursors fn2-fields fn2-c-source-control fn2-c-source-readers fn2-run-loads fn2-checkpoint-summary fn2-checkpoint-summary-leases)
+  (fn2-succ-source-close tx readrows b0 fn2-succ-txns fn2-run-cursors fn2-fields fn2-c-source-control fn2-c-source-readers fn2-run-loads fn2-checkpoint-summary fn2-checkpoint-summary-leases fn2-pool))
+ ; A refusal cannot resume partial summary facts under a newly admitted H.
+ (fn2-id-decides (if (and (eq closed :ok) (not (equal (fn2-id-decides-phase tx fn2-id-decides) *fn2-id-decide-phase-done*)))
+  (fn2-id-decides-set-phase tx *fn2-id-decide-phase-idle* fn2-id-decides) fn2-id-decides)))
+ (mv (if (eq closed :ok) answer :state) fn2-succ-txns fn2-id-decides fn2-run-cursors fn2-run-paths fn2-fields fn2-c-source-control fn2-c-source-readers fn2-run-loads fn2-checkpoint-summary fn2-checkpoint-summary-leases))
+(mv code fn2-core)))
    (fn2-core-preserves fn2-identity-decide (tx budget fn2-core)
     :position 1 :rows nil :hints (("Goal" :in-theory (enable fn2-core-wfp))))
    (defun fn2-identity-facts (tx fn2-core)
