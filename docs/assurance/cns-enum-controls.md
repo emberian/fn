@@ -48,3 +48,35 @@ The local source check and lexical parse establish none of these. The fragment
 controls intentionally include branch combinations that may be unreachable in
 the composed machine; they are not claims about reachability or keystones.
 No ACL2 or build process was started by this lane.
+
+## Logical-only kernel gate proposal
+
+Every emitted ground theorem now carries a proof-only local computed hint. It
+selects `:executable-counterpart` runes from the actual ACL2 world and excludes
+all whose `stobjs-in` or `stobjs-out` contains `fn2-cns-sources`. The remaining
+function definitions and ordinary executable counterparts provide reduction.
+This is the same signature-metadata method as
+`tests/checkpoint-member-guarded-evidence-unit.lisp`; no frozen accessor list or
+raw SBCL array operation is used. The formulas and their positive hypotheses are
+unchanged. Old PUT terms intentionally contain enum setter applications to 255;
+their logical definitions must be reduced, never raw-executed on the quoted
+logical carriers. The missing-row witness uses logical `update-nth` directly.
+
+Frozen source inputs:
+
+- old raw source: git `4c46607449f33dc604d944d81ea614661eba04e3`
+- repaired raw source SHA256: `8aa01d1a7d7ddb15ce9f6bcd110dfca0df66f1798f6c1e2cdbf645e963433981`
+- state declaration SHA256: `01056705c1c63fff3b196bf743b838deca04ea1a938c823105574728d9d2192e`
+- emitted logical fixture SHA256: `a7a717e212d49359786865ec58344eff5e012b610c49db55ab3892591cd94ed8`
+
+Proposed next gate, pending the coordinator's compute grant: one isolated
+2 GiB memory / zero swap job, 180 seconds CPU / 240 seconds wall. Reuse the
+existing qualified 135-book world, whose receipt includes `cns-source-state`
+closure key `2ed934279cd42e6b845b38bf3cca2fa5d81b2da2f8c871f09f379b2e1ac0ef84`.
+Preflight the exact source hashes and qualified cache payloads, place the frozen
+fixture under that isolated tree's `tests/`, and admit only that fixture with
+stop-on-first-error. No `cns-source-raw` include or requalification is necessary:
+all formulas use its copied PUT fragments and the state book's actual macros,
+logical functions, types, and enum constants. Record the ACL2 exit, all 226 event
+names, and a fresh success marker; a timeout or first refusal is diagnostic,
+never certification. This is a proposal, not an authorized or completed run.
