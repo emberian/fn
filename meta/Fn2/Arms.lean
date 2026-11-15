@@ -282,8 +282,8 @@ def Arm.read (a : Arm) : Except String ArmDecl := do
       let (fr, _, ss) ← opts rest
       pure (fr, r, ss)
     | ss => pure ([], Val.nil, ss)
-  let syntax ← Syntax.readDeclaration readDepth a.decl
-  let (fr, r, ss) ← opts syntax
+  let declSyntax ← Syntax.readDeclaration readDepth a.decl
+  let (fr, r, ss) ← opts declSyntax
   -- `:on-refusal` takes one step or a list of steps: a bare step (its head a keyword) is a list of
   -- one (`fn2-arms-norm-refusal`)
   let r := match r with
