@@ -86,6 +86,7 @@ ACL2_BOOKS = \
   books/machine-reservations \
   books/pool-initialization \
   books/pool-release-admission \
+  tests/successor-geometry-unit \
   tests/cns-draining-composition-unit \
   tests/cns-draining-contract-unit \
   tests/cns-draining-count-counterexample \
@@ -199,6 +200,8 @@ ACL2_BOOKS = \
   books/storage-block-io \
   books/machines-b \
   books/machines-c \
+  books/successor-workspace-geometry \
+  books/successor-schema-geometry \
   books/machines-c-bind \
   books/machines-c-groups \
   books/machines-c-read \
