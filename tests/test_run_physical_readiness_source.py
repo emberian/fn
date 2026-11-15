@@ -51,9 +51,43 @@ class RunPhysicalReadinessSource(unittest.TestCase):
                        'fn2-checkpoint-summary-leases-rows', 'fn2-ops-rows', 'fn2-run-load-ops-rows',
                        'fn2-fc-rows', 'fn2-fc-context-rows', 'fn2-b3-rows', 'fn2-fields-rows', 'fn2-digests-rows']:
             self.assertIn(actual, calls(current))
-        self.assertIn('*fn2-b-range-source-cursors*', str(current))
-        self.assertIn('*fn2-b-seal-source-cursors*', str(current))
+        self.assertIn('fn2-b-run-cursor-rows-parts', calls(current))
+        self.assertNotIn('*fn2-b-range-source-cursors*', str(current))
+        self.assertNotIn('*fn2-b-seal-source-cursors*', str(current))
         self.assertIn('fn2-run-loads-admissions', calls(current))
+
+    def test_profile_and_actual_checker_share_the_same_canonical_parts(self):
+        b = definitions('books/machines-b.lisp')
+        self.assertEqual(b['fn2-b-run-cursor-rows'][-1],
+            ['fn2-b-run-cursor-rows-parts', ['fn2-profile-t', 'profile'], ['fn2-b-read-rows', 'profile']])
+        expected = ['equal', ['fn2-run-load-geometry-cursors', '0', 'fn2-run-load-geometry'],
+            ['fn2-b-run-cursor-rows-parts', ['fn2-id-decides-rows', 'fn2-id-decides'], ['fn2-reads-rows', 'fn2-reads']]]
+        checker = self.ready['fn2-run-load-geometry-current-p']
+        self.assertIn(expected, list(walk(checker)))
+        damaged = copy.deepcopy(checker)
+        for n in walk(damaged):
+            if n and n[0] == 'fn2-b-run-cursor-rows-parts':
+                n[0] = 'obsolete-checker-only-geometry'
+        self.assertNotIn(expected, list(walk(damaged)))
+        self.assertEqual(b['fn2-b-event-archive-cursor-parts'][-1],
+            ['+', '1', ['fn2-b-checkpoint-source-cursor-parts', 'transactions', 'reads']])
+        self.assertEqual(b['fn2-b-run-cursor-rows-parts'][-1],
+            ['+', '1', ['fn2-b-event-archive-cursor-parts', 'transactions', 'reads']])
+
+    def test_actual_initializer_equation_precedes_begin_and_obsolete_dimension_refuses(self):
+        unit = definitions('tests/run-physical-readiness-unit.lisp')
+        body = unit['fn2-rly-body']
+        used = calls(body)
+        self.assertLess(used.index('fn2-core-init'), used.index('fn2-rly-initialized-geometry-current-p'))
+        self.assertLess(used.index('fn2-rly-initialized-geometry-current-p'), used.index('fn2-rly-begin'))
+        equation = unit['fn2-rly-initialized-geometry-current-p']
+        for name in ['fn2-b-run-cursor-rows-parts', 'fn2-b-run-cursor-rows', 'fn2-id-decides-rows',
+                     'fn2-reads-rows', 'fn2-run-loads-rows', 'fn2-run-load-geometry-current-p',
+                     'fn2-b-checkpoint-source-cursor-from-rows', 'fn2-b-checkpoint-source-cursor',
+                     'fn2-b-event-archive-cursor-from-rows', 'fn2-b-event-archive-cursor']:
+            self.assertIn(name, calls(equation))
+        self.assertIn('fn2-rly-old-geometry', used)
+        self.assertIn(['eq', 'begin', ':geometry'], list(walk(body)))
 
     def test_row_checks_private_checker_stripes_and_initialized_jobs(self):
         row = self.ready['fn2-run-load-readiness-one-row-p']
@@ -121,7 +155,7 @@ class RunPhysicalReadinessSource(unittest.TestCase):
         self.assertIn('fn2-run-loads-rows', calls(fuel))
         self.assertIn('fn2-run-load-ops-rows', calls(fuel))
         text = (ROOT / 'tests/run-physical-readiness-unit.lisp').read_text()
-        for mode in ['complete', 'partial', 'row', 'foreign', 'serial']:
+        for mode in ['complete', 'partial', 'row', 'foreign', 'serial', 'geometry']:
             self.assertIn('(assert-event (fn2-rly-test :' + mode + '))', text)
         production = definitions('books/run-physical-resources.lisp')['fn2-run-load-reserve']
         bstar = next(n for n in walk(production) if n and n[0] == 'b*')
