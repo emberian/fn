@@ -5,6 +5,8 @@
 (include-book "reference-state")
 ; B/C/D registration books go HERE, before either registry is consumed.
 (include-book "machines-b")
+; B lifecycle callbacks need the catalog carriers even without worker admission.
+(include-book "checkpoint-catalog-kind")
 (include-book "machines-c-read")
 (include-book "conn-kind")
 (include-book "upload-kind")
