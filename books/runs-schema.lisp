@@ -472,7 +472,7 @@
      (declare (xargs :verify-guards nil))
      (if (atom qs) nil (cons (,(fn2-rs-sym name "-FOLD-OBSERVE") st (car qs)) (,(fn2-rs-sym name "-FOLD-OBSERVE-ALL") st (cdr qs))))))))
 
-(defun fn2-defrunschema (name id key value merge page-kind fold)
+(defun fn2-defrunschema (name id key value merge page-kind fold internal)
  (declare (xargs :verify-guards nil))
  (let* ((entry (fn2-rs-sym name "-ENTRY")) (index (fn2-rs-sym name "-INDEX")) (run (fn2-rs-sym name "-RUN"))
         (cmp (fn2-rs-sym name "-COMPARE")) (layout (append key value)))
@@ -485,7 +485,8 @@
                    ;; a :union payload is integers, so stage compares it whole
                    (or (not (eq merge :union)) (fn2-rs-int-valuesp value))
                    (member-eq page-kind '(:run-data :manifest))
-                   (or (null fold) (fn2-rf-okp fold key value merge))))
+                   (or (null fold) (fn2-rf-okp fold key value merge))
+                   (booleanp internal) (or (not internal) (null fold))))
          `(make-event (er soft 'defrunschema "Malformed run schema ~x0." ',name)))
         (t
          `(progn
@@ -495,7 +496,7 @@
            ,(fn2-rs-shape-assertion name (len key))
            ,(fn2-declare (list :schema name)
               (list :id id :key key :value value :merge merge :page-kind page-kind
-                    :layouts (list entry index run) :compare cmp :fold fold)
+                    :layouts (list entry index run) :compare cmp :fold fold :internal internal)
               nil
               (append (fn2-rs-compare-events name entry key) (and fold (fn2-rf-events name key value fold))))
            ,@(and fold (fn2-rf-logic-events name key value fold)))))))
@@ -517,10 +518,10 @@
 (defun fn2-rs-assembled (world)
  (declare (xargs :verify-guards nil))
  (cdr (assoc-eq :schemas (table-alist 'fn2-run-assembly world))))
-(defmacro defrunschema (name &key id key value merge (page-kind ':run-data) fold)
+(defmacro defrunschema (name &key id key value merge (page-kind ':run-data) fold internal)
  `(progn
    (make-event
     (if (fn2-rs-assembled (w state))
         (er soft 'defrunschema "Schema ~x0 is declared after the run assembly." ',name)
       (value '(value-triple :unassembled))))
-   ,(fn2-defrunschema name id key value merge page-kind fold)))
+   ,(fn2-defrunschema name id key value merge page-kind fold internal)))

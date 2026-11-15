@@ -64,6 +64,11 @@
   (cons `(,(fn2-decl-get :id (cdar rows))
           ,(if (fn2-ra-fields-physical-ref-p (append (fn2-decl-get :key (cdar rows)) (fn2-decl-get :value (cdar rows)))) t nil))
         (fn2-ra-physical-ref-arms (cdr rows)))))
+(defun fn2-ra-internal-arms (rows)
+ (declare (xargs :verify-guards nil))
+ (if (atom rows) nil
+  (cons `(,(fn2-decl-get :id (cdar rows)) ,(if (fn2-decl-get :internal (cdar rows)) t nil))
+        (fn2-ra-internal-arms (cdr rows)))))
 (defun fn2-ra-page-kind-arms (rows)
  (declare (xargs :verify-guards nil))
  (if (atom rows) nil
@@ -236,6 +241,10 @@
    (defconst *fn2-c-read-callback-bytes*
     (+ *fn2-c-read-step-bytes* (* 2 *fn2-run-layout-max-entry-bytes*) (* 2 *fn2-format-sector-size*)))
    (assert-event (and (posp *fn2-c-read-step-bytes*) (unsigned-byte-p 32 *fn2-c-read-callback-bytes*)))
+   ; Internal maintenance rows have ordinary codecs, never semantic writes.
+   (defun fn2-run-layout-internal-p (sid)
+    (declare (xargs :guard t))
+    (case sid ,@(fn2-ra-internal-arms rows) (otherwise nil)))
    (defun fn2-run-layout-physical-ref-p (sid)
     (declare (xargs :guard t))
     (case sid ,@(fn2-ra-physical-ref-arms rows) (otherwise t)))
