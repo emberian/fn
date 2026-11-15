@@ -58,7 +58,7 @@
  (fn2-c-actor-tx-missp fn2-run-load-ownerp))
 
 (defcost fn2-c-actor-loader-reserve :answers t :effects ((:acquire (:storage-window)))
- :tables (fn2-core-machines fn2-txn-table fn2-auth-table fn2-cns-table fn2-core-id-decides fn2-core-reads fn2-core-run-loads fn2-core-run-cursors fn2-core-checkpoint-summary fn2-core-checkpoint-summary-leases fn2-core-pool)
+ :tables (fn2-core-machines fn2-txn-table fn2-auth-table fn2-cns-table fn2-core-id-decides fn2-core-reads fn2-core-run-installed fn2-core-run-loads fn2-core-run-cursors fn2-core-checkpoint-summary fn2-core-checkpoint-summary-leases fn2-core-pool)
  :doc "Admit exactly the live actor's derived physical cursor job set before source interpretation.")
 (defcost fn2-c-actor-loader-state :answers t
  :tables (fn2-core-machines fn2-txn-table fn2-auth-table fn2-cns-table fn2-core-id-decides fn2-core-reads fn2-core-succ-txns fn2-core-succ-slots fn2-core-ranges fn2-core-range-sources fn2-core-run-cursors fn2-core-run-loads fn2-core-checkpoint-summary-leases)
@@ -102,7 +102,10 @@
    (defun fn2-c-actor-loader-reserve (id gen fn2-core)
     (declare (xargs :stobjs fn2-core :guard (fn2-core-wfp fn2-core)))
     (b* (((mv code kind b0 n0 b1 n1 b2 n2) (fn2-c-actor-loader-plan id gen fn2-core))
-         ((unless (eq code :ok)) (mv code 0 fn2-core)))
+         ((unless (eq code :ok)) (mv code 0 fn2-core))
+         ((when (stobj-let ((fn2-run-installed (fn2-core-run-installed fn2-core))) (resident)
+                  (equal (fn2-run-installed-physical-count fn2-run-installed) 0) resident))
+          (mv :resident 0 fn2-core)))
      (stobj-let ((fn2-run-loads (fn2-core-run-loads fn2-core)) (fn2-run-cursors (fn2-core-run-cursors fn2-core))
                  (fn2-checkpoint-summary (fn2-core-checkpoint-summary fn2-core))
                  (fn2-checkpoint-summary-leases (fn2-core-checkpoint-summary-leases fn2-core)) (fn2-pool (fn2-core-pool fn2-core)))

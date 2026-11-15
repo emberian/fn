@@ -74,3 +74,49 @@ def cns_lease_union(text):
     for found in match('(:park :pool ?class :steps ?steps)',parse(text).forms):
         edits.append((found.start,found.end,'(:set (reason *fn2-cns-reason-unavailable*)) (:goto refuse)'))
     return write(text,edits),len(edits)
+
+def cns_commit_outputs(text):
+    edits=[];tree=parse(text)
+    for found in match('(:if (equal row-verb *fn2-cns-verb-register*) ?yes ?no)',tree.forms):
+        yes=found.node.items[2]
+        if isinstance(yes,Lst) and any(isinstance(n,Lst) and n.items and a(n.items[0],':do') and len(n.items)>1 and isinstance(n.items[1],Lst) and n.items[1].items and a(n.items[1].items[0],'ucode') for n in yes.items):
+            edits.append((yes.start,yes.end,'((:set (register-check 0)) (:next :register-output) (:charge :steps *fn2-work-transition* :runnable t))'))
+    for found in match('((eq cwhy :duplicate) ?*tail)',tree.forms):
+        n=found.node
+        if any(isinstance(x,Lst) and x.items and a(x.items[0],':do') and len(x.items)>1 and isinstance(x.items[1],Lst) and x.items[1].items and a(x.items[1].items[0],'dcode') for x in n.items):
+            edits.append((n.start,n.end,'((eq cwhy :duplicate) (:set (register-check 1)) (:next :register-output) (:charge :steps *fn2-work-transition* :runnable t))'))
+    for found in match('(:commit ?*tail)',tree.forms):
+        n=found.node;i=next((i for i,x in enumerate(n.items) if a(x,':accepted')),None)
+        if i is None:continue
+        body=n.items[i+1]
+        if isinstance(body,Lst) and body.items and isinstance(body.items[0],Lst) and a(body.items[0].items[0],':do'):
+            call=body.items[0]
+            if len(call.items)>1 and isinstance(call.items[1],Lst) and call.items[1].items and a(call.items[1].items[0],'lcode'):
+                edits.append((body.start,body.end,'((:set (register-check 0)) (:next :register-output) (:charge :steps *fn2-work-transition* :runnable t))'))
+    return write(text,edits),len(edits)
+
+CNS_CONTINUATIONS={'fn2-cns-lookup-cursor','fn2-cns-decode-port','fn2-cns-item-next','fn2-cns-put-item','fn2-cns-put-article'}
+def cns_continuations(text):
+    edits=[];tree=parse(text)
+    for found in match('(:do ?results ?call ?*tail)',tree.forms):
+        n=found.node;call=n.items[2]
+        if not isinstance(call,Lst) or not call.items or not isinstance(call.items[0],Atom) or call.items[0].low not in CNS_CONTINUATIONS:continue
+        ix=next((i for i,x in enumerate(n.items) if a(x,':case')),None)
+        clause='((:more :miss) (:charge :bytes *fn2-c-read-step-bytes* :steps *fn2-work-transition* :runnable t))'
+        if ix is None:
+            edits.append((n.end-1,n.end-1,'\n    :case ('+clause+')'))
+        else:
+            cases=n.items[ix+1]
+            if not isinstance(cases,Lst):raise ValueError('CNS continuation cases malformed')
+            if any(isinstance(c,Lst) and c.items and isinstance(c.items[0],Lst) and any(a(v,':miss') for v in c.items[0].items) for c in cases.items):continue
+            edits.append((cases.start+1,cases.start+1,clause+'\n    '))
+        accept=next((i for i,x in enumerate(n.items) if a(x,':accept')),None)
+        if accept is None:edits.append((n.end-1,n.end-1,' :accept (:ok)'))
+        else:
+            vals=n.items[accept+1]
+            if isinstance(vals,Lst):
+                keep=[text[x.start:x.end] for x in vals.items if not a(x,':more') and not a(x,':miss')]
+                edits.append((vals.start,vals.end,'('+' '.join(keep)+')'))
+    for found in match('((eq icode :more) ?*tail)',tree.forms):
+        edits.append((found.start,found.end,''))
+    return write(text,edits),len(edits)

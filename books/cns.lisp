@@ -975,7 +975,8 @@
                                         row-lslot row-lgen *fn2-cns-kind* id row-generation
                                         row-tx-slot row-tx-gen row-ctl row-ctl-gen row-xrow)
     :accept (:ok :absent :full :dropped :fault)
-    :why ":absent: the occurrence's Message-ID is not the request's; :full: its octets do not fit the reply; :dropped: the control connection closed; :fault: the store contradicts its own rows")
+    :why ":absent: the occurrence's Message-ID is not the request's; :full: its octets do not fit the reply; :dropped: the control connection closed; :fault: the store contradicts its own rows"
+    :case (((:more :miss) (:charge :bytes *fn2-c-read-step-bytes* :steps *fn2-work-transition* :runnable t))))
    (:case pc
     ((:ok) (:set (ipos row-npos) (count 1) (ioff at) (ilen nl))
            (:next :page) (:charge :bytes 4096 :steps *fn2-work-transition* :runnable t))
@@ -992,7 +993,8 @@
                                      row-lslot row-lgen *fn2-cns-kind* id row-generation
                                      row-tx-slot row-tx-gen row-ctl row-ctl-gen row-xrow)
     :accept (:ok :full :dropped :fault)
-    :why ":dropped: the control connection closed while the page was read; :fault: the store contradicts its own rows")
+    :why ":dropped: the control connection closed while the page was read; :fault: the store contradicts its own rows"
+    :case (((:more :miss) (:charge :bytes *fn2-c-read-step-bytes* :steps *fn2-work-transition* :runnable t))))
    (:case pc
     ((:ok) (:set (ipos row-npos) (count (+ 1 row-count)) (ilen (+ row-ilen nl))
                  (ioff (if (equal row-count 0) at row-ioff)))
@@ -1058,7 +1060,8 @@
           (t (:do (dcode dreason nverb ncid ncstart nto nlim nepoch nwait nop nfstart nnoff nnlen)
                   (fn2-cns-decode-port row-fpos row-flen row-fkind row-principal-slot
                                        row-ctl row-ctl-gen row-tx-slot row-tx-gen x)
-              :accept (:ok :refused) :why "a request that does not decode is answered refused")
+              :accept (:ok :refused) :why "a request that does not decode is answered refused"
+    :case (((:more :miss) (:charge :bytes *fn2-c-read-step-bytes* :steps *fn2-work-transition* :runnable t))))
              (:if (eq dcode :ok)
                   ((:set (verb nverb) (consumer ncid) (cstart ncstart) (to nto) (page-limit nlim) (epoch nepoch)
                          (wait-ms nwait) (op nop) (fstart nfstart) (name-off nnoff) (name-len nnlen))
@@ -1100,7 +1103,8 @@
          (:set (lease *fn2-cns-lease-none*) (lslot *fn2-none*) (lgen 0))
          (:charge :steps *fn2-work-transition* :runnable t))
         ((:do (fcode ncpos nver pfront)
-        (fn2-cns-lookup-cursor row-consumer row-epoch row-principal-slot row-cpos row-version row-pub-frontier row-xrow))
+        (fn2-cns-lookup-cursor row-consumer row-epoch row-principal-slot row-cpos row-version row-pub-frontier row-xrow)
+    :case (((:more :miss) (:charge :bytes *fn2-c-read-step-bytes* :steps *fn2-work-transition* :runnable t))) :accept (:ok))
    (:cond ((equal row-epoch 0)
            (:set (cpos ncpos) (version nver) (pub-frontier pfront) (reason *fn2-cns-reason-scope*))
            (:goto refuse))
@@ -1123,7 +1127,8 @@
              (:next :read) (:charge :bytes 4096 :steps *fn2-work-transition* :runnable t))))))
   (:read :on-refusal ((:stop :machine-phase))
    (:do (fcode ncpos nver pfront)
-        (fn2-cns-lookup-cursor row-consumer row-epoch row-principal-slot row-cpos row-version row-pub-frontier row-xrow))
+        (fn2-cns-lookup-cursor row-consumer row-epoch row-principal-slot row-cpos row-version row-pub-frontier row-xrow)
+    :case (((:more :miss) (:charge :bytes *fn2-c-read-step-bytes* :steps *fn2-work-transition* :runnable t))) :accept (:ok))
    (:set (cpos ncpos) (version nver) (pub-frontier pfront) (count 0) (more 0) (ioff 0) (ilen 0)
          (ipos (if (equal row-verb *fn2-cns-verb-fetch*) (- row-to 1) ncpos)))
    (:next :page)
@@ -1147,11 +1152,12 @@
                                    row-ilen (if (equal row-verb *fn2-cns-verb-fetch*) 1 0) row-tx-slot row-xrow
                                    (equal row-lease *fn2-cns-lease-held*) row-lslot row-lgen
                                    *fn2-cns-kind* id row-generation)
-            :accept (:found :end :more :retry :lease :fault)
-            :why ":end: no entry of the principal's past IPOS up to the frontier; :more: the walk's steps ran out (the page stops, MORE); :retry: article publication changed before commitment copy; :lease: reserve before selecting a record; :fault: the store contradicts its own rows")
+            :accept (:found :end :retry :lease :fault)
+            :why ":end: no entry of the principal's past IPOS up to the frontier; :more/:miss: resume the exact retained lookup without advancing the page; :retry: article publication changed before commitment copy; :lease: reserve before selecting a record; :fault: the store contradicts its own rows"
+    :case (((:more :miss) (:charge :bytes *fn2-c-read-step-bytes* :steps *fn2-work-transition* :runnable t))))
            (:cond ((eq icode :retry) (:charge :bytes 4096 :steps *fn2-work-transition* :runnable t))
                   ((eq icode :end) (:set (ipos row-pub-frontier)) (:goto page-end))
-                  ((eq icode :more) (:set (more 1)) (:goto page-end))
+
                   ((not (member-eq icode '(:found :lease)))
                    (:set (reason *fn2-cns-reason-unavailable*) (outcome *fn2-cns-outcome-refused*)) (:goto page-fail))
                   ;; fetch: the exact occurrence's stored octets or the refusal;
@@ -1247,24 +1253,12 @@
       ;; ack a concurrent one overtook (decided again: equal is accepted
       ;; read-only, lower behind)
       :unchanged ((:if (equal row-verb *fn2-cns-verb-register*)
-                       ((:do (ucode upos uver upf)
-                             (fn2-cns-lookup-cursor (fn2-cns-cid-default row-consumer) (fn2-cns-ep-default row-epoch)
-                                                    row-principal-slot row-cpos row-version row-pub-frontier row-xrow))
-                        (:set (cpos upos) (version uver) (pub-frontier upf) (outcome *fn2-cns-outcome-accepted*))
-                        (:goto answer))
+                       ((:set (register-check 0)) (:next :register-output) (:charge :steps *fn2-work-transition* :runnable t))
                        ((:set (wstep 0)) (:next :lookup) (:charge :steps *fn2-work-transition* :runnable t))))
       ;; a registration of a name the ledger holds answers the recorded
       ;; cursor (refused equal when none is recorded)
       :refused ((:cond
-                 ((eq cwhy :duplicate)
-                  (:do (dcode dpos dver dpf)
-                       (fn2-cns-lookup-cursor (fn2-cns-cid-default row-consumer) (fn2-cns-ep-default row-epoch)
-                                              row-principal-slot row-cpos row-version row-pub-frontier row-xrow))
-                  (:if (< 0 dver)
-                       ((:set (cpos dpos) (version dver) (pub-frontier dpf) (outcome *fn2-cns-outcome-accepted*))
-                        (:goto answer))
-                       ((:set (cpos dpos) (version dver) (pub-frontier dpf) (reason *fn2-cns-reason-equal*))
-                        (:goto refuse))))
+                 ((eq cwhy :duplicate) (:set (register-check 1)) (:next :register-output) (:charge :steps *fn2-work-transition* :runnable t))
                  ((and (eq cwhy :refused) (equal row-verb *fn2-cns-verb-register*))
                   (:set (reason *fn2-cns-reason-equal*)) (:goto refuse))
                  (t (:set (reason *fn2-cns-reason-unavailable*)) (:goto refuse))))))))
@@ -1281,11 +1275,7 @@
      (:charge :steps *fn2-work-transition* :runnable t))
     (t
    (:commit row-sx :workspace (row-ws-slot row-ws-gen) :ticket ticket :wait :committed :why cwhy
-    :accepted ((:do (lcode lpos lver lpf)
-                    (fn2-cns-lookup-cursor (fn2-cns-cid-default row-consumer) (fn2-cns-ep-default row-epoch)
-                                           row-principal-slot row-cpos row-version row-pub-frontier row-xrow))
-               (:set (cpos lpos) (version lver) (pub-frontier lpf) (outcome *fn2-cns-outcome-accepted*))
-               (:goto answer))
+    :accepted ((:set (register-check 0)) (:next :register-output) (:charge :steps *fn2-work-transition* :runnable t))
     :refused ((:set (reason *fn2-cns-reason-unavailable*)) (:goto refuse))
     :uncertain ((:set (outcome *fn2-cns-outcome-uncertain*)) (:goto answer))))))
   ;; :append (e-surface.md 3.3): an append is a POST through the one write

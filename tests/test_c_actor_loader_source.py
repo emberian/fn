@@ -5,7 +5,7 @@ import unittest
 ROOT=Path(__file__).resolve().parents[1]
 sys.path.insert(0,str(ROOT/'tools'))
 from lisp_source import forms,read_sexp
-from c_actor_loader_rewrite import transform,route,answers,cns_lease_union
+from c_actor_loader_rewrite import transform,route,answers,cns_lease_union,cns_commit_outputs,cns_continuations,CNS_CONTINUATIONS
 
 def walk(x):
  if isinstance(x,list):
@@ -56,6 +56,15 @@ class ActorLoader(unittest.TestCase):
   self.assertTrue(calls(state,'fn2-read-loader-selected'))
   self.assertTrue(calls(state,'fn2-read-loader-owner'))
   self.assertFalse(calls(state,'fn2-block-read-children'))
+ def test_resident_zero_count_does_not_claim_a_bundle(self):
+  fs=parsed('books/c-actor-loader.lisp')
+  reserve=function('fn2-c-actor-loader-reserve',fs)
+  self.assertIn(['equal',['fn2-run-installed-physical-count','fn2-run-installed'],'0'],list(walk(reserve)))
+  self.assertIn(['mv',':resident','0','fn2-core'],list(walk(reserve)))
+  text=(ROOT/'books/c-actor-loader.lisp').read_text()
+  self.assertLess(text.index('(fn2-run-installed-physical-count'),text.index('(fn2-run-load-region-reserve'))
+  form=function('fn2-c-actor-loader-work',parsed('books/c-actor-loader-form.lisp'))
+  self.assertTrue(any(x and x[0]==[':resident'] for x in walk(form)))
  def test_generated_explicit_io_and_ranked_drain(self):
   fs=parsed('books/c-actor-loader-form.lisp')
   work=function('fn2-c-actor-loader-work',fs)
@@ -82,6 +91,23 @@ class ActorLoader(unittest.TestCase):
     for x in walk(f):
      if len(x)>2 and x[0]==':do' and isinstance(x[2],list) and x[2] and x[2][0] in ('fn2-authority-allows','fn2-cns-authority-allows'):
       self.assertTrue(any(y and y[0]==[':more',':miss'] for y in walk(x)))
+ def test_cns_continuations_do_not_repeat_consumed_commit_or_fetch(self):
+  text=(ROOT/'books/cns.lisp').read_text()
+  self.assertEqual(cns_commit_outputs(text),(text,0))
+  self.assertEqual(cns_continuations(text),(text,0))
+  for f in parsed('books/cns.lisp'):
+   for x in walk(f):
+    if x and x[0]==':commit':
+     self.assertFalse(calls(x,'fn2-cns-lookup-cursor'))
+    if len(x)>2 and x[0]==':do' and isinstance(x[2],list) and x[2] and x[2][0] in CNS_CONTINUATIONS:
+     self.assertIn([':more',':miss'],list(walk(x)))
+  self.assertNotIn('((eq icode :more) (:set (more 1))',text)
+  forms=parsed('books/c-actor-loader-form.lisp')
+  outputs=function('fn2-c-actor-loader-cns-output-arms',forms)
+  self.assertIn([':next',':item-output'],list(walk(outputs)))
+  self.assertIn([':next',':article-output'],list(walk(outputs)))
+  self.assertTrue(calls(outputs,'fn2-cns-lookup-cursor'))
+  self.assertIn(['equal','row-register-check','1'],list(walk(outputs)))
  def test_no_same_rank_pool_wait_and_common_events_once(self):
   text=(ROOT/'books/cns.lisp').read_text()
   self.assertEqual(cns_lease_union(text),(text,0))
