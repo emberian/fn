@@ -281,7 +281,7 @@
 
 ; A shape lemma (recognizer, invariant, rows) for each named output, proved
 ; with the recognizers and the named rows accessors folded.
-(defmacro fn2-ra-shape (name call guard outputs disables &optional (hints nil hints-p))
+(defmacro fn2-ra-shape (name call guard outputs disables &optional (hints 'nil hints-p))
  `(defthm ,name
    (implies ,guard (and ,@(fn2-fc-shape-claims outputs call)))
    :hints ,(if hints-p hints
