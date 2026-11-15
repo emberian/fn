@@ -519,24 +519,46 @@ structural checks are0. This does not establish reconstructed-frame byte equalit
 original-batch verification in the cold reader, prefix RELEASE closure, root4
 terminal or physical reclamation. Those remain the next owned implementation.
 
-The shared complete-entry decoder now uses the same scan engine with one
-declared transition bound MAX-bytes plus field count (minimum1), exported by
-each generated codec as DECODE-TRANSITIONS and in its layout metadata. The
-quota-taking DECODE-STEP remains resumable with its explicit4096 cap. Generic
-logical full decode/encode use the same declared bound, removing their old
-4KiB-only behavior; complete decode refuses oversize instead of silently
-returning a partial success continuation. The G1 roundtrip antecedent no longer
-excludes valid large entries. Canonical layout6f624/ccd+71c proof-hint/rune
-fixes are retained exactly by the checked transformation.
+The complete-entry rewrite3fc086396 is QUARANTINED source: its MAX-bytes plus
+field-count fuel is a finite valid-entry bound, but exposing it as a caller
+allowance gives APPEND's opaque article a multi-GiB quota. It is not composed
+into the qualified root. Its near-max schema20 fixture and four source controls
+are UNRUN/uncertified. Root's actual current-baseline APPEND boundary fixture
+f07bda94d executed14 forms in0.33s: full DECODE returns OK for encoded4095/4096,
+MORE at4097/6152, while repeated STEP1 completes exact END/Refs/DONE. These are
+actual codec assertions; the native CNS actor is a separate subject.
 
-Four source controls pass. A registered runnable near-max schema20 fixture
-asserts the whole generated roundtrip antecedent/conclusion, actual encoded
-entry>4096, old4096 quota incompleteness, full/model decoding, budget1 pervisit
-progress, zero-budget unchanged fields/pool, owner/truncation refusal and real
-run-build/page/hash/cursor/NTH lookup. Its witness strings are typed fixture
-data, not original-batch authentication. All ACL2 assertions remain UNRUN.
-The layout structural checker reports the same existing B* ignore-binding
-finding on canonical source and this source; the changed fixture parses at0.
-This generator slice is not qualified for activation: actual caller byte/table
-work charges and full-quota versus streaming admission must close with the
-checkpoint cost owner before runtime composition. No archive compute grant.
+Source audit finds two independent caller facts. Native CTL currently admits
+only a4096-byte receive range and caps reads at that same envelope, including
+42 bytes of FNCT frame overhead; a6KiB request is not reachable through that
+current admission. Q1 owns actual CNS continuation; root coordinates the
+receive/profile boundary. Generic
+fn2-layout-decode-run also returns original OFF on scanner errors, whereas the
+generated STEP returns its fault NEXT; general error-NEXT equivalence is already
+absent from the current baseline and must not be claimed by a new refinement.
+
+The isolated layout_payload_span_rewrite projection preserves byte fuel: an
+opaque payload chunk is min(remaining payload, remaining input, fuel), the
+existing BYTE receives its last position, and recursion subtracts that exact
+chunk. All public faces, logical/model scan, G1 statements, hints and rune
+restoration remain byte-identical to qualified layout2060684e. One initial
+pool-read preserves current error precedence; the shared range checker validates
+the entire chunk. The logical POOLP condition inside MBE falls back to one-byte
+checks for malformed untyped carriers, while guarded execution uses the carried
+typed stobj without runtime whole-pool validation. Two projection controls pass;
+this source projection is not integrated or qualified. Exact scan/effect
+refinement, bad-octet/partial/truncated controls and actual caller charge scope
+must close before integration. The current full4096 limitation is intentionally
+still visible; a separate visit quota derived from field kinds is needed for a
+useful bounded full face, or callers must use the existing continuation.
+
+6a44f8b75 supplies narrow parsed internal-schema declaration/scalar/admission
+projection over currentad722 source. It adds the missing :internal declaration
+metadata and rejects public PUT/replay before mutation/decode, preserving newer
+fold proof bodies byte-identically. Three source controls pass; actual declaration
+admission is UNRUN. Metadata owns the complementary current provider packetf583.
+
+Original-frame byte reconstruction/Jseal verification, selected root4 terminal,
+producer-derived live pending obligations and the actual two-checkpoint physical
+reuse control remain owned and unfinished. No old raw hold is discharged by
+covered-await-witness, a descriptor hash, empty E row or a header-only read.
