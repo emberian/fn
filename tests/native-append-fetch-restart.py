@@ -35,6 +35,17 @@ def exact_fetch(reply, expected):
     return actual
 
 
+def crossing_article(mid):
+    """A valid, exact 6 KiB article crossing the transport's 4 KiB window."""
+    _, lines = restart.article(mid.encode("ascii"), 100)
+    article = restart.wire(lines)
+    # Keep the varied body (including a dot-leading line), and shorten only
+    # its tail. End on CRLF without adding an NNTP dot terminator to FNCT data.
+    assert len(article) >= 6144 and len(restart.wire(lines[:5])) < 6142
+    article = article[:6142].rstrip(b"\r\n")
+    return article.ljust(6142, b"x") + b"\r\n"
+
+
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--directory", type=Path, required=True)
@@ -45,8 +56,7 @@ def main():
     control = Path(f"/tmp/fn2-append-fetch-{os.getpid()}-{time.time_ns()}.sock")
     principal = "crash-reader"
     mid = "<native-append-fetch@example.invalid>"
-    _, lines = restart.article(mid.encode("ascii"), 100)
-    article = restart.wire(lines)
+    article = crossing_article(mid)
     article_path = directory / "submitted.article"
     article_path.write_bytes(article)
     subprocess.run([str(ROOT / "fn"), "init", str(image), "--size-mb", "32", "--group", "local.test"],
@@ -69,6 +79,7 @@ def main():
         # The actual socket reply has reached this parent before SIGKILL.
         node.kill()
         receipts.append(dict(phase="accepted", node_pid=node.node_pid, exit=node.proc.returncode,
+                             article_octets=len(article),
                              cut="SIGKILL after parent received accepted committed APPEND reply"))
     finally:
         node.close()
@@ -92,7 +103,7 @@ def main():
     finally:
         node.close()
     (directory / "processes.json").write_text(json.dumps(receipts, indent=2) + "\n")
-    print("NATIVE APPEND/FETCH RESTART PASS: actual local socket, independent fresh process, exact article bytes")
+    print("NATIVE APPEND/FETCH RESTART PASS: actual local socket, independent fresh process, exact 6144 article octets")
 
 
 if __name__ == "__main__":
