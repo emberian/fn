@@ -81,6 +81,11 @@ ACL2_BOOKS = \
   books/host-codec \
   books/columns \
   books/compress-policy \
+  books/compress-kind \
+  books/compress-operation \
+  books/compress-transport-lifecycle \
+  books/compress-transport-ops \
+  books/compress \
   books/commit \
   books/commit-alloc \
   books/commit-arms \
@@ -260,6 +265,10 @@ ACL2_BOOKS = \
   tests/tls-record-unit \
   tests/tls-stack-unit \
   tests/compress-policy-unit \
+  tests/compress-action-unit \
+  tests/compress-settings-unit \
+  tests/compress-transport-unit \
+  tests/compress-stage-unit \
   tests/commit-ceiling-unit \
   tests/commit-durable-all-unit \
   tests/commit-executor-contracts-unit \

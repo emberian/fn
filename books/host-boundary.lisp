@@ -86,6 +86,18 @@
               (fn2-tls-setting :tls-window 16384 profile) *fn2-tls-io-bytes* *fn2-tls-minimum-version* (fn2-codec-seed-capacity profile)
               (fn2-tls-setting :tls-handshake-turns 65536 profile)))))
 
+(defun fn2-host-compress-settings (profile)
+ (declare (xargs :guard t))
+ (let ((capacity (fn2-codec-seed-capacity profile)))
+  (cond ((not (fn2-compress-profilep profile)) (mv :compress-profile 0 0 0 0 0))
+        ((not (fn2-profile-get :compress-enabled profile)) (mv :off 0 0 0 0 0))
+        ((not (and (posp capacity) (unsigned-byte-p 32 capacity)))
+         (mv :compress-profile 0 0 0 0 0))
+        (t (mv :ok (fn2-profile-get :compress-input-quantum profile)
+                   (fn2-profile-get :compress-output-quantum profile)
+                   (fn2-profile-get :compress-expansion-ratio profile)
+                   (fn2-profile-get :compress-expansion-burst profile) capacity)))))
+
 ; The sticky stop (fn2-core-stopped-p): the adapter's test before it touches
 ; a core it did not just turn.
 (defun fn2-host-stopped-p (fn2-core)
@@ -143,4 +155,4 @@
   '(fn2-host-post-result fn2-host-post-accept-result fn2-host-post-clock fn2-host-post-signal
     fn2-host-count-stray fn2-host-stray fn2-host-outbox-ack fn2-host-op-finish
     fn2-host-outbox-queued fn2-host-outbox-peek fn2-host-action
-    fn2-host-op-span fn2-host-codec-op fn2-host-tls-record-next fn2-host-result fn2-host-listener-pathp fn2-host-listener-bind fn2-host-tls-settings fn2-host-tls-span fn2-host-tls-stage-span fn2-host-tls-next-turn fn2-host-stopped-p fn2-host-stop-reason fn2-host-stop-details fn2-host-boot-refusal-class fn2-host-boot-refusal fn2-host-idle-deadline) (w state)))
+    fn2-host-op-span fn2-host-codec-op fn2-host-tls-record-next fn2-host-result fn2-host-listener-pathp fn2-host-listener-bind fn2-host-tls-settings fn2-host-compress-settings fn2-host-tls-span fn2-host-tls-stage-span fn2-host-tls-next-turn fn2-host-stopped-p fn2-host-stop-reason fn2-host-stop-details fn2-host-boot-refusal-class fn2-host-boot-refusal fn2-host-idle-deadline) (w state)))
