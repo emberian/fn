@@ -9,6 +9,7 @@ ACL2_BOOKS = \
   books/checkpoint-boot-descriptor \
   books/checkpoint-geometry \
   books/boot-bootstrap-pack \
+  books/boot-bootstrap-pack-contracts \
   books/boot-bootstrap-verify \
   books/boot-bootstrap-receipt \
   books/checkpoint-anchor-input \

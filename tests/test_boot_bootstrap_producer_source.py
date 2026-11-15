@@ -2,6 +2,7 @@
 import json
 from pathlib import Path
 import sys
+import subprocess
 import unittest
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -108,6 +109,22 @@ class BootstrapProducer(unittest.TestCase):
         self.assertIn('(fn2-columns-reference-events name',fixture)
         for bad in ('fn2-machine-set-phase','update-fn2-boot-config-bootstrap-owner-gen'):
             self.assertNotIn(bad,fixture)
+
+    def test_guard_successor_keeps_actual_runtime_and_accepted_constructor(self):
+        for path in ('books/boot-bootstrap-verify.lisp','books/boot-anchor-admission.lisp'):
+            before = subprocess.check_output(['git','show','f849f3e80:'+path],cwd=ROOT,text=True)
+            now = (ROOT/path).read_text()
+            for node in lr.parse(before).forms:
+                if isinstance(node,lr.Lst) and getattr(node.items[0],'low',None)=='defun':
+                    new = e.unique(now,node.items[1].low)
+                    self.assertEqual(before[node.start:node.end],now[new.start:new.end])
+        accepted = subprocess.check_output(['git','show','f849f3e80:books/boot-bootstrap-pack.lisp'],cwd=ROOT,text=True)
+        self.assertEqual(accepted,self.pack)
+        contracts = (ROOT/'books/boot-bootstrap-pack-contracts.lisp').read_text()
+        self.assertFalse(lr.match('(defun ?*body)',lr.parse(contracts).forms))
+        self.assertIn('fn2-boot-pack-geometry-ok-result-row-by-definition',contracts)
+        self.assertIn('fn2-boot-pack-geometry-ok-image-by-definition',contracts)
+        self.assertIn('(local (include-book "pool-read-contracts"))',contracts)
 
 
 if __name__ == '__main__':

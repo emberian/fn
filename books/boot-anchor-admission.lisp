@@ -1,6 +1,6 @@
 ; The real bootstrap receipt gates the existing authenticated anchor intake.
 (in-package "ACL2")
-(include-book "boot-bootstrap-pack")
+(include-book "boot-bootstrap-pack-contracts")
 (include-book "checkpoint-anchor-input")
 (include-book "checkpoint-zero-range")
 (include-book "checkpoint-boot-descriptor")

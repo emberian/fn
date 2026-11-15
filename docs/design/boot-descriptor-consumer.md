@@ -81,3 +81,19 @@ receipt; it cannot initialize them to simulate successful verification. The
 new lower bootstrap producer, anchor admission and CORE routing are still
 being composed, so this file does not register a fictitious fixture or
 claim current served BOOT adoption.
+
+The f849 author pilot accepted seven complete prerequisite books, including
+the constructor book and its guards. It stopped at the explicit guard proof
+for `fn2-boot-bootstrap-pack-pool`: the caller lacked output WFP facts and the
+successful constructor's checked result-digest row. No component assertion or
+anchor admission ran, and no certificate was recorded.
+
+The proof-only `boot-bootstrap-pack-contracts` successor preserves those
+constructor bytes and keys. It exports actual stored-guard carrier contracts
+and the exact image/result-row facts established by successful construction.
+Explicit instances connect the actual returned carriers to the verifier's
+guard. The receipt setter bounds also follow from the existing successful
+construction branch. These additions do not change any runtime body or stored
+guard, and still need an author run. The 31-book constructor closure is READY
+for a separate record-only gate (24 qualified parents and seven whole author
+passes); this does not qualify the rejected verifier or its consumers.

@@ -1,7 +1,7 @@
 ; The actual BOOT completion wrapper owns persisted-read and genesis provenance.
 ; This lower leaf rebuilds and compares every bootstrap octet before minting.
 (in-package "ACL2")
-(include-book "boot-bootstrap-pack")
+(include-book "boot-bootstrap-pack-contracts")
 (include-book "origin")
 (local (include-book "columns-call-guards"))
 (fn2-book-layer :b)
@@ -49,6 +49,30 @@
         (fn2-boot-config-count fn2-boot-config) page pgen page pgen
         *fn2-format-sector-size* kind id ogen fn2-fields fn2-pool)))
   (mv code fn2-fields fn2-digests fn2-b3 fn2-pool)))
+
+(defcolumns-guarded-contracts fn2-boot-bootstrap-pack-pool
+ :carriers ((fn2-fields 1 :prefix "-FIELDS") (fn2-digests 2 :prefix "-DIGESTS")
+            (fn2-b3 3 :prefix "-HASHER") (fn2-pool 4 :prefix "-POOL")) :rows t
+ :hints ((fn2-columns-guard-hint
+  '(fn2-boot-config fn2-fields fn2-digests fn2-b3 fn2-pool)
+  '(fn2-boot-pack-geometry fn2-boot-bootstrap-encode-pool fn2-boot-pad fn2-digest-store)
+  '(fn2-boot-bootstrap-pack-pool) world)))
+
+(defthm fn2-boot-bootstrap-pack-ok-inputs-by-definition
+ (implies
+  (equal (car (fn2-boot-bootstrap-pack-pool size page pgen kind id ogen fn2-boot-config
+               fn2-fields fn2-digests fn2-b3 fn2-pool)) :ok)
+  (and (unsigned-byte-p 8 kind) (unsigned-byte-p 32 id)
+       (posp ogen) (unsigned-byte-p 60 ogen)
+       (fn2-checkpoint-image-sizep size (fn2-boot-config-extents fn2-boot-config)
+                                       (fn2-boot-config-count fn2-boot-config))))
+ :hints (("Goal"
+  :use ((:instance fn2-boot-pack-geometry-ok-image-by-definition
+   (extents (fn2-boot-config-extents fn2-boot-config))
+   (groups (fn2-boot-config-count fn2-boot-config)) (slot page) (gen pgen)))
+  :in-theory (e/d (fn2-boot-bootstrap-pack-pool)
+   (fn2-boot-pack-geometry fn2-boot-bootstrap-encode-pool fn2-boot-pad fn2-digest-store
+    fn2-checkpoint-image-sizep fn2-boot-config-extents fn2-boot-config-count)))))
 
 ; The CORE caller must establish actual bootstrap-read completion at its saved
 ; address, no pending operation, and the already verified genesis namespace.
@@ -99,8 +123,12 @@
 ; These final obligations are part of this component author pilot. No nil-
 ; guard-verification runtime body can qualify merely by loading its DEFUN.
 (verify-guards fn2-boot-bootstrap-pack-pool
- :hints ((fn2-columns-call-guard-hint 'fn2-boot-bootstrap-pack-pool
-  '(fn2-boot-pack-geometry fn2-boot-bootstrap-encode-pool fn2-boot-pad fn2-digest-store) nil world)))
+ :hints ((append (fn2-columns-call-guard-hint 'fn2-boot-bootstrap-pack-pool
+  '(fn2-boot-pack-geometry fn2-boot-bootstrap-encode-pool fn2-boot-pad fn2-digest-store) nil world)
+  '(:use ((:instance fn2-boot-pack-geometry-ok-result-row-by-definition
+   (extents (fn2-boot-config-extents fn2-boot-config))
+   (groups (fn2-boot-config-count fn2-boot-config)) (slot page) (gen pgen)))))))
 (verify-guards fn2-boot-bootstrap-verify-pool
- :hints ((fn2-columns-call-guard-hint 'fn2-boot-bootstrap-verify-pool
-  '(fn2-boot-bootstrap-pack-pool fn2-pool-compare fn2-boot-save-geometry) nil world)))
+ :hints ((append (fn2-columns-call-guard-hint 'fn2-boot-bootstrap-verify-pool
+  '(fn2-boot-bootstrap-pack-pool fn2-pool-compare fn2-boot-save-geometry) nil world)
+  '(:use ((:instance fn2-boot-bootstrap-pack-ok-inputs-by-definition))))))
