@@ -653,3 +653,24 @@ Exact12 record passed in2.033s (8reused,4new); root verified all12 current closu
 hashes and all3 raw fixture source hashes against the receipt. Raw mocked performer
 controls passed. Actual envelope replay, host image execution and general memory
 noninterference remain unqualified; this gate does not establish disk durability.
+
+## Current consumer gates and restored assurance ownership
+
+At root b8a54b894, exact device envelope composition on donor6fc0926cf has
+227 books:56 matching qualified compiled pairs and171 missing. Assembly-core,
+host-boundary and check-envelope are among the missing current keys. The bounded
+reader candidate de31 has100 books:30 qualified and70 missing. These read-only
+inventories do not qualify either composition; convergence shares their common
+compiler dependencies rather than starting independent cold builds.
+
+The actual CHECK-STEP guard passed in retained author world9abe after adding a
+generic-index integer projection from the existing DECODE carrier contracts.
+Its original body and guard are unchanged; MEMBER and clean record qualification
+remain pending. Q1's old author world is terminal with owned cleanup verified;
+the next same29-book world uses corrected per-original-event budgets.
+
+Audit_bridge resumes the actual CNS canonical body/domain/selected-attachment
+connection, including the pending31b selected-dispatch helper. Audit_claims resumes
+independent stored-content/reread binding and whole-antecedent keystone evidence
+checks against current reclamation source. Their source candidates remain separate
+from current qualified claims; neither task changes authorization activation.
