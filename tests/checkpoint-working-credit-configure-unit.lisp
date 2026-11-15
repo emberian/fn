@@ -26,6 +26,7 @@
  (declare (xargs :stobjs fn2-pool :verify-guards nil))
  (b* ((fn2-pool (fn2-pool-init '((1 . 4096) (1 . 65536)) 1 100 fn2-pool))
       (working (fn2-checkpoint-working-credit-vector 0 fn2-pool))
+      (release (fn2-allocation-release-credit-vector 0 fn2-pool))
       (journal-class (fn2-pool-class-for *fn2-format-sector-bytes* fn2-pool))
       (drain (fn2-checkpoint-drain-credit-vector 0 journal-class
               (+ 1 (floor *fn2-cwc-io-rows* *fn2-cwc-rows*)) fn2-pool))
@@ -33,8 +34,8 @@
       ((unless (and (eq service-code :ok) (posp (nth 0 service)) (posp (nth 1 service))
                     (equal (+ (nth 0 working) (nth 1 working)) *fn2-checkpoint-working-window-count*)))
        (mv nil fn2-pool))
-      (p0 (+ (nth 0 working) (* *fn2-cwc-rows* (nth 0 drain))))
-      (p1 (+ (nth 1 working) (* *fn2-cwc-rows* (nth 1 drain))))
+      (p0 (+ (nth 0 working) (* *fn2-cwc-rows* (nth 0 drain)) (nth 0 release)))
+      (p1 (+ (nth 1 working) (* *fn2-cwc-rows* (nth 1 drain)) (nth 1 release)))
       (fn2-pool (fn2-pool-init (list (cons p0 4096) (cons p1 65536)) 1 100 fn2-pool))
       (before (fn2-cwc-unconfigured-view fn2-pool))
       ((mv protected-only fn2-pool) (fn2-checkpoint-working-credit-configure
@@ -51,7 +52,7 @@
       ((mv configured fn2-pool) (fn2-checkpoint-working-credit-configure
                                 *fn2-cwc-profile* *fn2-cwc-rows* *fn2-cwc-io-rows* fn2-pool)))
   (mv (and (eq configured :ok) (fn2-pool-wfp fn2-pool)
-           (equal (fn2-pool-credit-group-count fn2-pool) (+ 1 *fn2-cwc-rows*))
+           (equal (fn2-pool-credit-group-count fn2-pool) (+ 1 (fn2-allocation-release-credit-group *fn2-cwc-rows*)))
            (equal (fn2-pool-credit-protectedi 0 fn2-pool) p0)
            (equal (fn2-pool-credit-protectedi 1 fn2-pool) p1)
            (equal (fn2-pool-reservable-count 0 fn2-pool) (nth 0 service))
