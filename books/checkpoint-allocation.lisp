@@ -55,7 +55,8 @@
         (fn2-extentsp fn2-extents) (fn2-extents-wfp fn2-extents)
         (fn2-fieldsp fn2-fields) (fn2-fields-wfp fn2-fields) (fn2-poolp fn2-pool) (fn2-pool-wfp fn2-pool))
  :specs (("-FIELDS-TYPE" fn2-fieldsp 2) ("-FIELDS-WFP" fn2-fields-wfp 2) ("-FIELDS-ROWS" fn2-fields-rows 2 :frame fn2-fields)
-         ("-POOL-TYPE" fn2-poolp 3) ("-POOL-WFP" fn2-pool-wfp 3) ("-POOL-ROWS" fn2-pool-rows 3 :frame fn2-pool)))
+         ("-POOL-TYPE" fn2-poolp 3) ("-POOL-WFP" fn2-pool-wfp 3) ("-POOL-ROWS" fn2-pool-rows 3 :frame fn2-pool))
+ :hints (("Goal" :in-theory (disable fn2-fields-rows fn2-pool-rows))))
 
 (defun fn2-checkpoint-allocation-install (base fn2-checkpoint-construction fn2-fields fn2-extents)
  (declare (xargs :stobjs (fn2-checkpoint-construction fn2-fields fn2-extents)
