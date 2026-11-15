@@ -1144,10 +1144,11 @@
    (:cond ((not (equal row-pending 0)) (:charge :steps *fn2-work-empty*))
           ((not (equal row-borrows 0)) (:charge :steps *fn2-work-poll*))
           ((fn2-ctl-stream-child-live-p row-cns row-cns-gen)
-           ;; Closing initially wakes an :aborting source. After actual Close
-           ;; or loan completion wakes CTL, notify the child again so it can
-           ;; observe :cancelled and release its retained source claims.
-           (:if (equal row-ophase *fn2-ctl-output-cancelled*) ((:wake-row row-cns)) ())
+           ;; A source can retain claims before either stream phase starts.
+           ;; Its Read may return while Close is pending and observe :aborting.
+           ;; Every terminal Close/loan wake must therefore notify the checked
+           ;; live child, including pre-prefix sources with both phases NONE.
+           (:wake-row row-cns)
            (:charge :steps *fn2-work-empty*))
           (t (:do (rcode) (fn2-core-release row-rx-slot row-rx-gen) :effects ((:release (:rx-range)))
               :accept (:ok :retired) :why "a retired range is a completed release (the pool retires the slot)"
