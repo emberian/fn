@@ -615,6 +615,7 @@ ACL2_BOOKS = \
   tests/pool-credit-unit \
   tests/checkpoint-worker-totalization-unit \
   tests/checkpoint-configured-borrow-unit \
+  tests/allocation-release-credit-retirement-unit \
   tests/upload-page-geometry-unit \
   tests/checkpoint-service-geometry-unit \
   tests/checkpoint-working-credit-configure-unit \

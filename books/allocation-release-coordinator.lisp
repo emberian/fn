@@ -46,6 +46,13 @@
         (stobj-let ((fn2-pool (fn2-core-pool fn2-core))) (code fn2-pool)
          (fn2-pool-release-credit slot gen group nonce kind owner generation fn2-pool)
          (mv code fn2-core)))
+       ; Generation-limit retirement has ended ownership without restoring
+       ; quota. It is known no-IO capacity depletion, not persistence doubt.
+       ((when (eq returned :retired))
+        (stobj-let ((fn2-allocation-release (fn2-core-allocation-release fn2-core))) (fn2-allocation-release)
+         (if (< 0 (fn2-allocation-release-rows fn2-allocation-release))
+             (fn2-allocation-release-set-workspace-released 0 1 fn2-allocation-release) fn2-allocation-release)
+         (mv :retired fn2-core)))
        ((unless (eq returned :ok)) (let ((fn2-core (fn2-release-live-uncertain fn2-core))) (mv :uncertain fn2-core)))
        ((mv aborted fn2-core)
         (stobj-let ((fn2-pool (fn2-core-pool fn2-core))) (code fn2-pool)
@@ -171,7 +178,7 @@
        ((unless (and (eq packed :packed) (posp len) (unsigned-byte-p 32 len)
                      (posp need) (<= need *fn2-commit-records-room*)))
         (mv-let (returned fn2-core) (fn2-release-live-return-empty group nonce slot gen kind owner generation fn2-core)
-         (mv (if (eq returned :ok) :source :uncertain) 0 0 fn2-core)))
+         (mv (cond ((eq returned :ok) :source) ((eq returned :retired) :exhausted) (t :uncertain)) 0 0 fn2-core)))
        ; Retain the selected writer identity even if START later reports an
        ; unexpected refusal before its own row generation assignment.
        (expected-writer-gen (if (< 0 (fn2-machine-batch-no id fn2-core))
@@ -186,7 +193,7 @@
         (if (and (member-eq started '(:admission :exhausted :no-space))
                  (fn2-release-live-start-refused-p id nonce key fn2-core))
             (mv-let (returned fn2-core) (fn2-release-live-return-empty group nonce slot gen kind owner generation fn2-core)
-             (mv (if (eq returned :ok) started :uncertain) 0 0 fn2-core))
+             (mv (cond ((eq returned :ok) started) ((eq returned :retired) :exhausted) (t :uncertain)) 0 0 fn2-core))
           (let ((fn2-core (fn2-release-live-uncertain fn2-core))) (mv :uncertain nonce key fn2-core))))
        ((mv claimed fn2-core) (fn2-release-live-claim id kind owner generation fn2-core))
        ((unless (eq claimed :owned)) (let ((fn2-core (fn2-release-live-uncertain fn2-core))) (mv :uncertain nonce key fn2-core)))
@@ -316,7 +323,7 @@
        ((mv returned fn2-core)
         (stobj-let ((fn2-pool (fn2-core-pool fn2-core))) (code fn2-pool)
          (fn2-pool-release-credit slot gen group batch kind owner generation fn2-pool) (mv code fn2-core)))
-       ((unless (eq returned :ok)) (let ((fn2-core (fn2-release-live-uncertain fn2-core))) (mv :uncertain batch event fn2-core))))
+       ((unless (member-eq returned '(:ok :retired))) (let ((fn2-core (fn2-release-live-uncertain fn2-core))) (mv :uncertain batch event fn2-core))))
    (stobj-let ((fn2-allocation-release (fn2-core-allocation-release fn2-core))) (fn2-allocation-release)
     ; Preserve the exact historical slot/generation for ownership auditing.
     (fn2-allocation-release-set-workspace-released 0 1 fn2-allocation-release)
