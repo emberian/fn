@@ -4,6 +4,7 @@
 (include-book "format-check")
 (include-book "alloc")
 (local (include-book "pool-read-contracts"))
+(local (include-book "columns-guard-hints"))
 (include-book "vocab")
 (fn2-book-layer :b)
 ; Current native backend routes one image. Domain0 is the format writer's
@@ -370,6 +371,11 @@
                                 fn2-fc fn2-fc-context fn2-b3 fn2-fields fn2-pool fn2-digests)
  (declare (xargs :stobjs (fn2-checkpoints fn2-checkpoint-refs fn2-checkpoint-bytes
                           fn2-fc fn2-fc-context fn2-b3 fn2-fields fn2-pool fn2-digests)
+  :guard-hints ((fn2-columns-guard-hint
+    '(fn2-checkpoints fn2-checkpoint-refs fn2-checkpoint-bytes
+      fn2-fc fn2-fc-context fn2-b3 fn2-fields fn2-pool fn2-digests)
+    '(fn2-format-run fn2-checkpoint-decode fn2-checkpoint-capture-roots
+      fn2-checkpoint-hash-matchesp) nil world))
   :guard (and (fn2-fc-guard) (fn2-checkpoints-wfp fn2-checkpoints)
               (fn2-checkpoint-refs-wfp fn2-checkpoint-refs) (fn2-checkpoint-bytes-wfp fn2-checkpoint-bytes))))
  (b* (((unless (and (fn2-checkpoint-slotp c fn2-checkpoints fn2-checkpoint-refs fn2-checkpoint-bytes)
