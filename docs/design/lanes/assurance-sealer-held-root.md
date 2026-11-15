@@ -4,7 +4,7 @@ Base is actual `lane/finish-integration@099a7a2c80ab2cad6c42aae7d07233d0ead01fbb
 read before creating isolated `reclamation-cleanup-root`. The root tree was not
 edited. This donor does not import the cold072 allocator/catalog layout.
 
-Exactly four production books change: `runs`, `sealer`,
+The initial cleanup donor changes four production books: `runs`, `sealer`,
 `machines-c-sealer-kind`, `machines-c-sealer-events`. Pool and columns are byte
 unchanged. The root's installed carrier is resident-only, so the structural
 extractor accepts its actual eight-binding release body; it does not add absent
@@ -63,3 +63,32 @@ qualification should use its actual compatible prefix/artifact set and execute
 this one fixture, not the unrelated full-adoption graph. This donor grants no
 activation/FREE or payload-retirement authority; the full handoff remains active
 work owned with the parent.
+
+## Atomic published-source cut
+
+A follow-on adds only the canonical overlay phase `:draining`, appended after
+the existing phase values. INSTALL checks the selected overlay is FROZEN before
+any input-run mutation, publishes the replacement run, and changes only the old
+overlay phase to DRAINING before returning. The exact arena slot/generation and
+owner stay retained; the row is neither selectable nor FREE/reusable. Published
+overlay-return requires DRAINING. The shared retire leaf still accepts FROZEN
+for the existing empty-overlay start path; the generic range adapter's unrelated
+FROZEN retirement is unchanged. Only actual accepted pool return advances FREE.
+
+Range/XL source selection and pinned-source validation accept ACTIVE/FROZEN only;
+DRAINING invalidates a pinned overlay source, and installation moves run-version
+in the same call. FREE-only C row admission cannot reuse DRAINING. Sealer pending
+includes both cleanup phases, so its actor keeps retrying held cleanup. This root
+does not yet contain the later C snapshot/observer quiescence implementation; no
+quiescence claim is inferred from an absent component. Nonempty boundary/pinned
+query controls are being prepared before this follow-on is proposed for merge.
+
+Current served C producer trace is noncredit: sealer page/hash reserves, C spare
+arenas and group genesis arenas all use ordinary `fn2-pool-reserve`; no
+reserve-credit call is in those producers. Pool initialization stamps NONE/0;
+accepted credit return clears its tag atomically, and retired slots are not FREE.
+This is a source-derived producer/lifecycle obligation, not a new certified
+reachable invariant. Raw run-install has no pool operand and cannot enforce it
+alone. The credit fixture deliberately removes that producer hypothesis by
+manual run-install after reserve-credit; it is a hypothesis-removal negative,
+not supported credit cleanup or a credit retry/return promise.

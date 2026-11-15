@@ -80,5 +80,13 @@ def fixture_source():
  # scalar via current declaration inventory rather than import that feature.
  for field in ('version-floor','physical-count'):
   for m in lr.match(f'(fn2-run-installed-{field} fn2-run-installed)',lr.parse(source).forms):edits.append((m.start,m.end,''))
+ fn=one('(defun fn2-srh-staged-cleanup-body ?*args)',source)
+ pub=lr.match('(published (fn2-srh-run-installed-rows 0 fn2-run-installed))',[fn]);assert len(pub)==1
+ edits.append((pub[0].end,pub[0].end, '\n      (atomic-replacement (and (= (fn2-overlays-phase 0 fn2-overlays) *fn2-overlay-phase-draining*)\n       (= (fn2-run-installed-state 0 fn2-run-installed) *fn2-run-installed-state-live*)\n       (= (fn2-overlays-slot 0 fn2-overlays) oslot) (= (fn2-overlays-gen 0 fn2-overlays) ogen)\n       (eq (fn2-pool-slot-state oslot fn2-pool) :workspace)))'))
+ result=lr.match('(and (eq reserve-o :ok) ?*rest)',[fn]);assert len(result)==1
+ edits.append((result[0].node.items[0].end,result[0].node.items[0].end,' atomic-replacement'))
+ for m in lr.match('(= (fn2-overlays-phase 0 fn2-overlays) *fn2-overlay-phase-frozen*)',[fn]):
+  v=m.node.items[-1];edits.append((v.start,v.end,'*fn2-overlay-phase-draining*'))
  source='\n'.join(line.rstrip() for line in lr.write(source,edits).split('\n'))
+ source=source.replace('; ordinary release must return :credit while retaining the row and handle.', '; Hypothesis-removal control: manual run-install after reserve-credit is not\n; the current sealer producer. Ordinary release must refuse :credit, retaining\n; the row/handle; no credit retry or return authority is asserted.')
  return source.replace('; provider 826e44b7fd086f13cee9344aa6a4dacef74c144b. This branch does not\n; carry that pool API yet; integrate with the provider before ACL2 execution.', '; provider826 query API retained by current ROOT099. All assertions are prepared\n; and unexecuted; snapshots enumerate the actual current carrier columns.')

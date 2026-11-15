@@ -316,7 +316,9 @@
 (assert-event (fn2-srh-overlay-retired-test))
 
 ; Actual credit configuration and reserve-credit producer tag this slot. The
-; ordinary release must return :credit while retaining the row and handle.
+; Hypothesis-removal control: manual run-install after reserve-credit is not
+; the current sealer producer. Ordinary release must refuse :credit, retaining
+; the row/handle; no credit retry or return authority is asserted.
 (defun fn2-srh-resident-credit-body (fn2-run-installed fn2-run-cache fn2-pool)
  (declare (xargs :stobjs (fn2-run-installed fn2-run-cache fn2-pool) :verify-guards nil))
  (b* ((fn2-run-installed (fn2-run-installed-init 1 fn2-run-installed))
@@ -383,6 +385,10 @@
       ((mv installed fn2-seals fn2-overlays fn2-run-installed fn2-pool)
        (fn2-seal-install fn2-seals fn2-overlays fn2-run-installed fn2-pool))
       (published (fn2-srh-run-installed-rows 0 fn2-run-installed))
+      (atomic-replacement (and (= (fn2-overlays-phase 0 fn2-overlays) *fn2-overlay-phase-draining*)
+       (= (fn2-run-installed-state 0 fn2-run-installed) *fn2-run-installed-state-live*)
+       (= (fn2-overlays-slot 0 fn2-overlays) oslot) (= (fn2-overlays-gen 0 fn2-overlays) ogen)
+       (eq (fn2-pool-slot-state oslot fn2-pool) :workspace)))
       (after-install-seals (fn2-srh-seals-rows 0 fn2-seals))
       (after-install-overlays (fn2-srh-overlays-rows 0 fn2-overlays))
       (after-install-pool (fn2-srh-pool-snapshot fn2-pool))
@@ -415,7 +421,7 @@
                 (= (fn2-overlays-phase 0 fn2-overlays) *fn2-overlay-phase-free*))
          (and (eq arena :held) (eq hash-first :skipped)
               (= (fn2-seals-phase 0 fn2-seals) *fn2-seal-phase-overlay-return*)
-              (= (fn2-overlays-phase 0 fn2-overlays) *fn2-overlay-phase-frozen*)))))
+              (= (fn2-overlays-phase 0 fn2-overlays) *fn2-overlay-phase-draining*)))))
       ((mv closed last fn2-pool)
        (fn2-pool-query-release held-slot held-gen fn2-pool))
       ((mv arena-retry fn2-seals fn2-overlays fn2-pool)
@@ -425,7 +431,7 @@
        (fn2-seal-hash-return fn2-seals fn2-pool))
       ((mv again fn2-seals fn2-pool)
        (fn2-seal-hash-return fn2-seals fn2-pool)))
-  (mv (and (eq reserve-o :ok) (eq reserve-h :ok) (eq reserve-r :ok)
+  (mv (and atomic-replacement (eq reserve-o :ok) (eq reserve-h :ok) (eq reserve-r :ok)
            (eq started :ok) (eq frozen :ok) (eq write-o :ok) (eq write-h :ok)
            (eq acquired :ok) (eq installed :more) (eq duplicate :state)
            duplicate-retains
