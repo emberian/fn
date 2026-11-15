@@ -46,11 +46,23 @@ that removes temporary consumer hints and requalifies affected current closures.
 
 Two substantive obligations remain distinct from proof automation. The pending
 held-release independent model omits actual credited-input refusal ordering;
-Q1 must cover those inputs under its original hypotheses and retain meaningful
-independent behavior controls. Recovery's consumed-prefix predicate alone does
-not establish uniqueness of live allocation epoch/identity pairs in arbitrary
-state. The owner is tracing producer provenance and preparing a concrete removal
-witness; adding an unestablished premise does not close the served invariant.
+Q1 source candidate8b1f165ba covers those inputs under its original hypotheses,
+including sticky stops, query preflight and a completed workspace return before
+namespace refusal. Its actual-callback controls remain unexecuted. The adjacent
+refusal oracle is being checked for the same sticky-stop rule.
+Recovery's consumed-prefix predicate alone does not establish uniqueness of live
+allocation epoch/identity pairs: exact7 record920695 executes a duplicate-adoption
+counterexample under the allocator invariant and original API guards. This is a
+primitive counterexample, not authenticated replay reachability. The bounded
+recovery identity index carrier exists at e34211eb9; one-probe steps, atomic
+adopt/remove, replay wiring and crash/retry controls remain unfinished.
+
+A separate parser coverage gap concerns raw CNS APPEND EOF. The real
+fn2-cns-feed-article check rejects a trailing CR/non-BOL final mode, while the
+existing upload-feed fixture calls the nonraw entry point. This is no confirmed
+runtime bug. Actual callback controls for trailing CR, quantum/fragment boundaries
+and removal of the EOF check are assigned to audit_claims; no-publication and
+subsequent-append claims require the composed lifecycle, not grammar output shape.
 
 The public matcher now has unconditional correspondence to the independent
 language predicate, including original-input domain checks before reversal,
