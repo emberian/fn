@@ -6,7 +6,7 @@
 (defun fn2-checkpoint-owned-provenance-p (checkpoint-kind e fn2-checkpoint-construction fn2-extents)
  (declare (xargs :stobjs (fn2-checkpoint-construction fn2-extents)
   :guard (and (fn2-checkpoint-construction-wfp fn2-checkpoint-construction) (fn2-extents-wfp fn2-extents))))
- (and (unsigned-byte-p 8 checkpoint-kind) (posp checkpoint-kind)
+ (and (unsigned-byte-p 8 checkpoint-kind)
       (fn2-alloc-slotp e fn2-extents) (< e (fn2-checkpoint-construction-rows fn2-checkpoint-construction))
       (= (fn2-checkpoint-construction-live e fn2-checkpoint-construction) 1)
       (if (member-equal (fn2-extents-state e fn2-extents) (list *fn2-extent-state-allocated* *fn2-extent-state-retire-pending*)) t nil)

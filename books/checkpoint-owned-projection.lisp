@@ -18,7 +18,7 @@
       (row (and (< 0 (fn2-checkpoint-projection-rows fn2-checkpoint-projection))
                  (= (fn2-checkpoint-projection-phase 0 fn2-checkpoint-projection) *fn2-checkpoint-projection-phase-rows*)
                  (< e (fn2-checkpoint-projection-total 0 fn2-checkpoint-projection))))
-      ((unless (and (unsigned-byte-p 8 checkpoint-kind) (posp checkpoint-kind)
+      ((unless (and (unsigned-byte-p 8 checkpoint-kind)
  (= (fn2-checkpoint-construction-rows fn2-checkpoint-construction) (fn2-extents-rows fn2-extents))
  (fn2-checkpoint-projection-current-p fn2-checkpoint-selected-source fn2-boot-config fn2-checkpoints fn2-checkpoint-refs fn2-checkpoint-bytes fn2-origin fn2-checkpoint-recovery-evidence fn2-checkpoint-recovery-census fn2-checkpoint-restore-map fn2-checkpoint-restore-map-control fn2-checkpoint-restore-reach-control fn2-checkpoint-projection fn2-ops fn2-extents))) (mv :ownership fn2-checkpoint-projection fn2-checkpoint-selected-source fn2-extents fn2-alloc-edges fn2-checkpoint-construction))
       (state (if row (fn2-checkpoint-restore-map-state e fn2-checkpoint-restore-map) *fn2-extent-state-free*))
