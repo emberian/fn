@@ -319,17 +319,13 @@
      :guard (and (fn2-range-sources-wfp fn2-range-sources) (fn2-run-installed-wfp fn2-run-installed) (fn2-run-cursors-wfp fn2-run-cursors)
                  (fn2-run-paths-wfp fn2-run-paths) (fn2-run-cache-wfp fn2-run-cache) (fn2-fields-wfp fn2-fields) (fn2-pool-wfp fn2-pool)
                  (natp budget))
-     :guard-hints (("Goal" :in-theory (disable fn2-run-cursor-start fn2-run-scan-step)))))
+     :guard-hints (("Goal" :in-theory (disable fn2-run-cursor-start-installed fn2-run-scan-step)))))
     (b* (((unless (and (natp s) (< s (fn2-range-sources-rows fn2-range-sources)))) (mv :bounds fn2-range-sources fn2-run-cursors fn2-run-paths fn2-fields))
          (r (fn2-range-sources-src s fn2-range-sources)) (c (fn2-range-sources-cursor s fn2-range-sources))
-         ((unless (< r (fn2-run-installed-rows fn2-run-installed))) (mv :bounds fn2-range-sources fn2-run-cursors fn2-run-paths fn2-fields))
+         ((unless (and (< r (fn2-run-installed-rows fn2-run-installed)) (equal (fn2-run-installed-schema r fn2-run-installed) sid))) (mv :bounds fn2-range-sources fn2-run-cursors fn2-run-paths fn2-fields))
          ((mv code fn2-run-cursors)
           (if (equal (fn2-range-sources-state s fn2-range-sources) *fn2-range-state-seek*)
-              (fn2-run-cursor-start c sid (fn2-run-installed-top r fn2-run-installed) (fn2-run-installed-slot r fn2-run-installed)
-                                    (fn2-run-installed-gen r fn2-run-installed) (fn2-run-installed-unit r fn2-run-installed)
-                                    (fn2-run-installed-counter r fn2-run-installed) (fn2-range-sources-rb s fn2-range-sources)
-                                    (fn2-run-installed-okind r fn2-run-installed) (fn2-run-installed-oslot r fn2-run-installed)
-                                    (fn2-run-installed-ogen r fn2-run-installed) fn2-run-cursors)
+              (fn2-run-cursor-start-installed c r (fn2-range-sources-rb s fn2-range-sources) qk qs qg fn2-run-installed fn2-run-cursors)
             (mv :ok fn2-run-cursors)))
          ((unless (eq code :ok)) (mv code fn2-range-sources fn2-run-cursors fn2-run-paths fn2-fields))
          (fn2-range-sources (fn2-range-sources-set-state s *fn2-range-state-scan* fn2-range-sources))
@@ -337,8 +333,19 @@
           (fn2-run-scan-step c budget qbase qk qs qg fn2-run-cursors fn2-run-paths fn2-run-cache fn2-fields fn2-pool))
          ((unless (and (natp s) (< s (fn2-range-sources-rows fn2-range-sources)))) (mv :bounds fn2-range-sources fn2-run-cursors fn2-run-paths fn2-fields)))
      (case code
-      (:entry (let ((fn2-range-sources (fn2-range-sources-set-state s *fn2-range-state-head* fn2-range-sources)))
-               (mv :ok fn2-range-sources fn2-run-cursors fn2-run-paths fn2-fields)))
+      (:entry
+       (if (not (and (natp c) (< c (fn2-run-cursors-rows fn2-run-cursors))))
+        (mv :bounds fn2-range-sources fn2-run-cursors fn2-run-paths fn2-fields)
+        ; Physical decoded octets belong to this verified cursor page, not
+        ; the immutable installed root's former producer.
+        (let ((fn2-range-sources
+               (if (equal (fn2-run-cursors-physical c fn2-run-cursors) 1)
+                (fn2-range-sources-put s (state *fn2-range-state-head*)
+                (okind (fn2-run-cursors-okind c fn2-run-cursors))
+                (oslot (fn2-run-cursors-oslot c fn2-run-cursors))
+                (ogen (fn2-run-cursors-ogen c fn2-run-cursors)))
+                (fn2-range-sources-set-state s *fn2-range-state-head* fn2-range-sources))))
+         (mv :ok fn2-range-sources fn2-run-cursors fn2-run-paths fn2-fields))))
       (:end (let ((fn2-range-sources (fn2-range-sources-set-state s *fn2-range-state-end* fn2-range-sources)))
              (mv :ok fn2-range-sources fn2-run-cursors fn2-run-paths fn2-fields)))
       (:lost (let ((fn2-range-sources (fn2-range-sources-set-state s *fn2-range-state-seek* fn2-range-sources)))
@@ -354,8 +361,8 @@
     (and (fn2-range-sourcesp fn2-range-sources) (fn2-range-sources-wfp fn2-range-sources) (fn2-fieldsp fn2-fields) (fn2-fields-wfp fn2-fields) (fn2-run-cursorsp fn2-run-cursors) (fn2-run-cursors-wfp fn2-run-cursors)
          (fn2-run-pathsp fn2-run-paths) (fn2-run-paths-wfp fn2-run-paths))
     ((fn2-range-sources 1) (fn2-run-cursors 2) (fn2-run-paths 3) (fn2-fields 4))
-    (fn2-range-sourcesp fn2-range-sources-wfp fn2-run-cursor-start fn2-run-scan-step fn2-run-cursors-rows fn2-run-paths-rows fn2-fields-rows fn2-range-sources-rows fn2-ranges-rows)
-    ((fn2-columns-call-guard-hint 'fn2-range-advance-run '(fn2-range-sourcesp fn2-range-sources-wfp fn2-run-cursor-start fn2-run-scan-step fn2-run-cursors-rows fn2-run-paths-rows fn2-fields-rows fn2-range-sources-rows fn2-ranges-rows) '(fn2-range-advance-run) world)))
+    (fn2-range-sourcesp fn2-range-sources-wfp fn2-run-cursor-start-installed fn2-run-scan-step fn2-run-cursors-rows fn2-run-paths-rows fn2-fields-rows fn2-range-sources-rows fn2-ranges-rows)
+    ((fn2-columns-call-guard-hint 'fn2-range-advance-run '(fn2-range-sourcesp fn2-range-sources-wfp fn2-run-cursor-start-installed fn2-run-scan-step fn2-run-cursors-rows fn2-run-paths-rows fn2-fields-rows fn2-range-sources-rows fn2-ranges-rows) '(fn2-range-advance-run) world)))
    (in-theory (disable fn2-range-advance-overlay fn2-range-advance-run))
    ;; Advance every source that needs it, sources counted down by N.
    ;; :ok when all have a head or are at their end.
