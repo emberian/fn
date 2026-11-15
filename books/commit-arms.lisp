@@ -45,6 +45,8 @@
 (defcost fn2-commit-partner-state :answers (:invalid :failed :ok)
  :doc "The partner row's state: not a commit row, failed (an older partner uncertain, or an abort at or below this batch), or ok.")
 (defcost fn2-commit-idp :doc "Whether a row id is a live commit row.")
+(defcost fn2-commit-lifecycle-cursorp
+ :doc "Whether the member cursor is within its declared batch partition and has zero offset at the exact terminal.")
 (defcost fn2-commit-peer-phase :doc "The partner row's phase (free when it is not a commit row).")
 (defcost fn2-commit-peer-batch-no :doc "The partner row's batch number (0 when it is not a commit row).")
 (defcost fn2-commit-peer-fence-live :doc "Whether the partner row's fence is in flight (0 when it is not a commit row).")
