@@ -84,22 +84,7 @@
 ;; :prepare. The body's lines first (the article row's `lines`): LF octets of
 ;; [body, source) read under the upload's owner, at most
 ;; *fn2-txn-count-bytes* per run, COUNTED the continuation.
-(defun fn2-txn-count-loop (n slot gen off lines okind oslot ogen fn2-pool)
-  (declare (xargs :stobjs fn2-pool :measure (nfix n)
-                  :guard (and (fn2-pool-wfp fn2-pool) (natp n) (natp off) (natp lines))))
-  (if (zp n) (mv :ok lines)
-    (mv-let (ok byte) (fn2-gram-read slot gen off okind oslot ogen fn2-pool)
-      (if (not ok) (mv :bounds lines)
-        (fn2-txn-count-loop (- n 1) slot gen (+ 1 off) (if (equal byte 10) (+ 1 (nfix lines)) (nfix lines))
-                            okind oslot ogen fn2-pool)))))
-(defthm fn2-txn-count-loop-natp
-  (implies (natp lines) (natp (mv-nth 1 (fn2-txn-count-loop n slot gen off lines okind oslot ogen fn2-pool))))
-  :rule-classes :type-prescription)
-(defthm fn2-txn-count-loop-bound
-  (implies (natp lines) (<= (mv-nth 1 (fn2-txn-count-loop n slot gen off lines okind oslot ogen fn2-pool))
-                            (+ lines (nfix n))))
-  :rule-classes :linear)
-(in-theory (disable fn2-txn-count-loop))
+; Shared byte-for-byte worker and contracts are owned by upload-feed (via upload).
 
 ;; Newsgroups, a name at a time: the value's names are separated by commas
 ;; and white space (the model's split).
