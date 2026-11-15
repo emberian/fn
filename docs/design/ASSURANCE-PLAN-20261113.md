@@ -23,22 +23,20 @@ served behavior. Checkpoint core functions emitted by macros, downstream
 application composition and native execution remain outside this record.
 The remaining machine geometry/ABI changes stay with their actual consumers.
 
-The coherent application candidate is `0b84789e4`, with proof-only BIND repair
-`05d5a14e0` on top. Its [107-book prerequisite record](receipts/coherent-application-prerequisites107-record.json)
-contains 84 reused and 23 newly certified books. Root independently matched all
-107 candidate source hashes and closure keys, actual cert/FASL hashes and
-toolchain metadata; BIND is outside that cut. The repair uses the existing preservation generator to forward TYPE,
-WFP and ROWS facts for the actual masked query write. The original served body,
-guards and shape statement are unchanged; four factory/source mutation controls
-pass. The earlier failure was not missing LOCAL scope: the intermediate setter's
-hypotheses relieved, but its resulting recognizer was unavailable to the next
-getter's type reasoning. The first admission attempt still fails the original shape theorem in 0.63
-seconds: later literal-zero and wake writes need the same forward interface.
-The executor is applying the existing general setter contracts to cover that
-chain, without changing the original theorem or served function. The actual
-FETCH cancellation fixture remains unexecuted. Its revised source binds the
-failed Send to the captured connection, request, operation generation and range
-and checks stale-generation rejection before acknowledging the queue head.
+The coherent application candidate is `98fd4fd28`. Its
+[108-book BIND record](receipts/coherent-bind108-record.json) reuses the 107
+qualified prerequisites and certifies the completed BIND book. Root independently
+matched all 108 candidate source hashes and closure keys, actual cert/FASL
+hashes and toolchain metadata. Query release uses two local read/write frame
+facts and checked-mask facts; its caller uses the shared call-derived guard
+hint. Runtime bodies, guards and the original shape statement are unchanged.
+The complete BIND author pass took 46.13 seconds under the original per-event
+limits, leaving proof-cost work open. Six source/mutation controls pass.
+GROUPS subsequently passed its author check, separately from this record;
+sealer and application composition follow. Actual FETCH cancellation remains
+unexecuted. Its fixture binds the failed Send to the captured connection,
+request, operation generation and range and rejects stale generations before
+acknowledging the queue head.
 
 The native acceptance sequence uses both existing real-socket tests after
 current `node-profile` and `native-b3-evidence` qualification and host/interface
