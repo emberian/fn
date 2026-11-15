@@ -25,7 +25,7 @@
              (fn2-run-installed-wfp fn2-run-installed))))
  (and (fn2-checkpoint-compaction-ownerp fn2-checkpoint-compaction fn2-checkpoint-build fn2-csnapshot fn2-checkpoints fn2-overlays fn2-run-installed)
       (member (fn2-checkpoint-compaction-phase 0 fn2-checkpoint-compaction)
-       (list *fn2-checkpoint-compaction-phase-seek* *fn2-checkpoint-compaction-phase-compare* *fn2-checkpoint-compaction-phase-copy*))
+       (list *fn2-checkpoint-compaction-phase-seek* *fn2-checkpoint-compaction-phase-compare* *fn2-checkpoint-compaction-phase-equal-lower* *fn2-checkpoint-compaction-phase-source-end* *fn2-checkpoint-compaction-phase-copy*))
       (mv-let (code schema order)
        (fn2-checkpoint-compaction-source-tuple
         (fn2-checkpoint-compaction-source-kind 0 fn2-checkpoint-compaction)
@@ -87,5 +87,5 @@
       ((unless (equal schema (fn2-checkpoint-compaction-schema 0 fn2-checkpoint-compaction)))
        (mv :more fn2-checkpoint-compaction))
       (fn2-checkpoint-compaction (fn2-checkpoint-compaction-put 0
-       (phase *fn2-checkpoint-compaction-phase-seek*) (source-kind kind) (source-row row) (source-order order))))
+       (phase *fn2-checkpoint-compaction-phase-seek*) (source-kind kind) (source-row row) (source-order order) (source-started 0))))
   (mv :source fn2-checkpoint-compaction)))

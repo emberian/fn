@@ -98,6 +98,66 @@ class CompactionSource(unittest.TestCase):
         self.assertIn("(assert-event (<= *fn2-run-layout-max-key-octets* *fn2-format-page-size*))", state)
         self.assertIn("(assert-event (<= *fn2-run-layout-max-entry-bytes* *fn2-format-page-size*))", state)
 
+class CompactionMerge(unittest.TestCase):
+    def step(self):
+        return definition("books/checkpoint-compaction-merge.lisp", "fn2-checkpoint-compaction-merge-step")
+
+    def test_real_decoders_and_shared_comparator(self):
+        t = self.step()
+        for p in ("fn2-ov-locate", "fn2-ov-entry", "fn2-run-scan-step",
+                  "fn2-run-layout-compare", "fn2-checkpoint-source-beforep"):
+            self.assertTrue(calls(t, p), p)
+        for n in nodes(t):
+            if n and isinstance(n[0], str):
+                self.assertFalse(n[0].startswith(("fn2-block-", "fn2-issue-", "fn2-b3-", "fn2-format-run-")))
+        self.assertIn(":need-read", repr(t))
+
+    def test_copy_reads_and_writes_fit_grant(self):
+        t = self.step()
+        copy = calls(t, "fn2-run-entry-rehome-step")
+        self.assertEqual(len(copy), 1)
+        self.assertEqual(copy[0][-3], ["floor", "budget", "2"])
+        self.assertIn(["<=", "2", "budget"], list(nodes(t)))
+        # A raw-budget mutation is rejected by this exact source condition.
+        bad = list(copy[0]); bad[-3] = "budget"
+        self.assertNotEqual(bad[-3], ["floor", "budget", "2"])
+
+    def test_lower_is_strict_without_key_successor_twin(self):
+        t = self.step()
+        self.assertIn(["eq", "lower-order", ":eq"], list(nodes(t)))
+        self.assertIn(["eq", "lower-order", ":gt"], list(nodes(t)))
+        self.assertFalse(calls(t, "fn2-range-successor"))
+        self.assertFalse(calls(t, "fn2-run-build-add"))
+
+    def test_actual_identity_gate_is_shared_with_old_rebuild(self):
+        t = self.step()
+        self.assertEqual(len(calls(t, "fn2-checkpoint-source-run-headerp")), 1)
+        old = definition("books/checkpoint-metadata.lisp", "fn2-checkpoint-metadata-run-step")
+        self.assertEqual(len(calls(old, "fn2-checkpoint-source-run-headerp")), 1)
+        h = definition(OLD, "fn2-checkpoint-source-run-headerp")
+        for p in ("fn2-run-readerp", "fn2-run-installed-wire-run", "fn2-run-installed-schema"):
+            self.assertTrue(calls(h, p))
+        self.assertIn("*fn2-format-page-header-field-history*", repr(h))
+        self.assertIn("*fn2-format-page-header-field-incarnation*", repr(h))
+
+    def test_source_view_frozen_until_copy_done(self):
+        t = self.step()
+        self.assertIn("*fn2-checkpoint-compaction-phase-copy*", repr(t))
+        self.assertIn("*fn2-checkpoint-compaction-phase-park*", repr(t))
+        self.assertNotIn("*fn2-checkpoint-compaction-phase-sources*", repr(t))
+        self.assertFalse(calls(t, "fn2-checkpoint-compaction-source-step"))
+
+    def test_retained_windows_are_bound_to_actual_declared_slots(self):
+        t = definition("books/checkpoint-compaction-workspaces.lisp", "fn2-checkpoint-compaction-windowsp")
+        for p in ("fn2-checkpoint-windows-generation", "fn2-checkpoint-windows-slot",
+                  "fn2-checkpoint-compaction-key-disjoint-p", "fn2-pool-workspace-code"):
+            self.assertTrue(calls(t, p))
+        self.assertIn("*fn2-checkpoint-compaction-key-window*", repr(t))
+        step = self.step()
+        for p in ("fn2-checkpoint-source-ebase", "fn2-checkpoint-manifest-ebase", "fn2-checkpoint-source-rbase",
+                  "fn2-b-checkpoint-source-cursor-from-rows"):
+            self.assertTrue(calls(step, p))
+
 
 if __name__ == "__main__":
     unittest.main()

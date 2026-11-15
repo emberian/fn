@@ -40,6 +40,18 @@
       (posp (fn2-run-installed-entries row fn2-run-installed))
       (equal (fn2-run-installed-state row fn2-run-installed) *fn2-run-installed-state-live*)))
 
+; Shared source header identity after the canonical run cursor decodes it.
+; This does not authenticate bytes or change cursor/page readiness.
+(defun fn2-checkpoint-source-run-headerp (row rb history incarnation fn2-run-installed fn2-fields)
+ (declare (xargs :stobjs (fn2-run-installed fn2-fields)
+ :guard (and (fn2-run-installed-wfp fn2-run-installed) (fn2-fields-wfp fn2-fields))))
+ (and (natp row) (< row (fn2-run-installed-rows fn2-run-installed))
+      (natp rb) (fn2-run-readerp rb fn2-fields)
+      (equal (fn2-fields-value (+ rb *fn2-format-page-header-field-history*) fn2-fields) history)
+      (equal (fn2-fields-value (+ rb *fn2-format-page-header-field-incarnation*) fn2-fields) incarnation)
+      (equal (fn2-run-hdr rb schema) (fn2-run-installed-schema row fn2-run-installed))
+      (equal (fn2-run-hdr rb run) (fn2-run-installed-wire-run row fn2-run-installed))))
+
 (defun fn2-checkpoint-source-ownerp (fn2-checkpoint-source fn2-csnapshot)
  (declare (xargs :stobjs (fn2-checkpoint-source fn2-csnapshot)
   :guard (and (fn2-checkpoint-source-wfp fn2-checkpoint-source) (fn2-csnapshot-wfp fn2-csnapshot))))
