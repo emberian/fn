@@ -258,5 +258,37 @@ class CompactionEmpty(unittest.TestCase):
         self.assertIn("fn2-checkpoint-compaction-schema-open", repr(park))
 
 
+class CompactionReader(unittest.TestCase):
+    def test_exact_cursor_proof_is_shared_with_old_source_reader(self):
+        p = "books/checkpoint-source-loader.lisp"
+        old = definition(p, "fn2-checkpoint-source-reader-sourcep")
+        new = definition("books/checkpoint-compaction-reader.lisp", "fn2-checkpoint-compaction-reader-sourcep")
+        self.assertEqual(len(calls(old,"fn2-checkpoint-source-cursorp")),1)
+        self.assertEqual(len(calls(new,"fn2-checkpoint-source-cursorp")),1)
+        helper = definition(p,"fn2-checkpoint-source-cursorp")
+        for column in ("source-row","catalog-tag","schema","run","priority","okind","oslot","ogen"):
+            self.assertTrue(calls(helper,"fn2-run-cursors-"+column))
+        self.assertIn("*fn2-run-cursor-phase-miss*", repr(helper))
+        self.assertIn("*fn2-run-installed-state-live*", repr(helper))
+        self.assertTrue(calls(old,"fn2-checkpoint-source-selectedp"))
+        self.assertTrue(calls(new,"fn2-checkpoint-compaction-current-source-p"))
+
+    def test_bound_step_delegates_same_actual_engine(self):
+        t = definition("books/checkpoint-compaction-reader.lisp", "fn2-checkpoint-compaction-reader-step")
+        self.assertEqual(len(calls(t,"fn2-run-load-bind")),1)
+        self.assertEqual(len(calls(t,"fn2-run-load-step")),1)
+        self.assertFalse(calls(t,"fn2-block-read-children"))
+        self.assertFalse(calls(t,"fn2-run-load-issue"))
+        self.assertTrue(calls(t,"fn2-checkpoint-compaction-reader-sourcep"))
+
+    def test_physical_issue_is_explicit_and_does_not_mutate_compaction(self):
+        t = definition("books/checkpoint-compaction-reader.lisp", "fn2-checkpoint-compaction-reader-issue")
+        self.assertEqual(len(calls(t,"fn2-run-load-issue")),1)
+        self.assertFalse(calls(t,"fn2-checkpoint-compaction-put"))
+        self.assertTrue(calls(t,"fn2-checkpoint-compaction-reader-sourcep"))
+        self.assertIn(["posp","budget"],list(nodes(t)))
+        self.assertNotIn("complete", t[2])
+
+
 if __name__ == "__main__":
     unittest.main()
