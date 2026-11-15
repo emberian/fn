@@ -5,36 +5,141 @@ Owner: integration. Commissioned by ember on 2026-11-13, following the
 `fn2-squares` remains the obligation store. Reports and public-claim coverage
 must be derived from that store and the actual served call/attachment graph.
 
-## Current integration frontier — 2026-11-14 evening
+## Current integration frontier — 2026-11-15 UTC
 
-Root `d486cbe80` integrates shared observer row-count frames and actual TLS
-START/WAIT/NEXT guard events (`a56eb2806`), plus compression selector guard
-repairs and executable live-row frame controls. The retained author sessions
-admitted those guards and compression controls. Compression record definitions
-were admitted without their guards; native composition and current record
-certification remain separate obligations.
+Current integration source is `79440f99d`, including retirement dispatch, actual-type
+codec fixtures, failed-Send classification, consumed-input accounting and farm
+Git metadata protection. No current whole-system image, full host gate,
+canonical served certificate, or completed assurance claim exists.
 
-TLS owner has individually admitted the remaining observer guard and private
-bridge guards. Shared policy-field and bridge guard generators (`33efacc35`,
-`fe18e7078`) await their final generated-form check before root integration.
-Layout owner reports a qualified nine-book record (seven reused, two new) at
-`certify-20261115T001611Z-606256`; root receipt verification is pending. Layout
-itself still took 56.455 seconds, so proof-cost debt remains.
+Allocator refinement `8595723fc` is qualified by twelve-book record
+`certify-20261115T011246Z-662045`: six reused, six newly certified. Root matched
+all twelve before/after source digests to integration. Whole-book time fell from
+11.213 to 10.509 seconds, steps from 1,463,790 to 1,145,528. Runtime bodies,
+guards and existing theorem formulas are unchanged; D26 remains open.
 
-Reclamation primitive slice `75db3d8ea` is under review, not integrated. Independent
-review found existing `alloc-unit` controls acquire durable protection after
-retirement, now correctly refused by the new barrier. The owner must preserve
-those controls by acquiring durable protection before retirement, retain transient
-post-retirement cases, and exercise `release-prepare` directly. The actual journal
-coordinator and pin consumers are being factored into a connected integration
-slice; primitive admission does not establish the served lifecycle.
+Codec record `certify-20261115T013358Z-681968` qualifies all 26 books of its
+scope against integration: nine reused, seventeen newly certified. Root matched
+all before/after digests and the runner. Accepted-observation metadata now retains
+exact serial, action and counts after pending fields clear; input-prefix receipts
+reject stale, rearmed and reset observations. This supersedes the historical
+13/20-book codec scopes, but does not qualify host/native/replay composition.
+Cleanup fix `a6723f41c` discharges unused cleanup credit after unstarted or
+failed allocation while preserving pending and live-handle cleanup. Its eleven-book
+record `certify-20261115T015505Z-701805` passed: eight reused, three newly certified
+in 16.229 seconds. Root matched all eleven before/after digests to integration.
+This shared-generator change invalidates the dependent keys of the earlier
+26-book scope; those dependent consumers need fresh qualification.
 
-`recover_lean` resumes actual CNS canonical-body/domain/attachment composition;
-`sol_q1_semantics` resumes actual CNS effect and invariant proofs against the
-integrated callback changes. Their completed helper proofs do not discharge these
-obligations. Native registry certification reuses the published layout prerequisite
-instead of rebuilding it. Root owns named compute grants; no broad rerun is
-scheduled merely to refresh provenance. Historical scopes below remain historical.
+Canonical composition uses actual production declarations. Retirement dispatch,
+operation-owned storage pins, lifecycle cursor checks, pinned-I/O contracts and
+canonical controls are integrated at `73f8ada7d`. The 33-book prerequisite record
+`certify-20261115T015645Z-703564` passed: 21 reused, twelve newly certified in
+108.61 seconds. Root matched every before/after digest to integration. Final
+retirement size-proof ordering is now certified. The next machines-b wave reused 50 qualified books and admitted three further
+source modules before stopping at allocation packing: the codec-size upper bound
+is missing from its proof interface. A generic bounds prototype passed only with
+an exploratory scalar lemma. The replacement standalone proof generator now
+admits the allocation and retirement size bounds without scratch lemmas; the
+actual allocation packer's unchanged guard passed in 0.25 seconds / 30,953 steps.
+The subsequent allocation carrier family still needs a local row-opacity proof
+repair, and the mixed-schema fixture remains pending. `defcodec-size-bounds`
+is requested by actual consumers, leaving existing layout expansions and keys
+unchanged. Consumer candidate `3cab2749d` preserves runtime functions, guards
+and theorem statements. The combined narrow author gate precedes another broad
+module run; neither these candidates nor the full closure are certified. The 32
+canonical runtime assertions and full application composition remain unexecuted.
+
+Codec fixture record `certify-20261115T020143Z-708421` passed all 24 books of
+its exact scope: eleven reused, thirteen newly certified in 50.719 seconds.
+Root matched every before/after digest to integration. The fixtures replace
+duplicate schemas with actual TLS/COMPRESS types, actual TLS startup/handshake
+and cleanup; all eight assertions remain. Cancellation fixture time fell from
+15.282 to 1.170 seconds, child-close from 25.372 to 4.731 seconds. This covers
+component behavior, not native encrypted I/O or the full COMPRESS controller.
+The subsequent terminal-values change invalidates dependent keys in this record;
+the unchanged TLS parent scope remains reusable.
+
+The old 113-book assembly run was deliberately stopped after seventeen passes;
+its interrupted runs-page has no verdict. Eight results were reusable against
+then-current retirement source, but later allocator changes invalidate commit-alloc.
+The earlier 27-book core record is historical until current closure keys match.
+
+Peer import source repairs bind cleanup to query incarnation and preserve a
+replacement foreign query. The broader lifetime repair adds separate query
+references, held only while ACTIVE and released on DONE before scratch reuse.
+Pool mutations and release refuse held references; owners preflight their entire
+release or mutation set before effects, then retry through checked last-reference
+wakeups. Peer owns shared pool edits; CNS whole-result semantics retain the old
+operation-borrow assumptions and add held/no-effect behavior without assuming
+query references away. The pool conservation, range and two unit controls passed source-author
+execution. Exact ten-book record `certify-20261115T024211Z-748010` then passed:
+seven reused, three newly certified in 22.788 seconds. Root matched all ten
+before/after source digests to candidate `0b3475cce`, with unchanged runner and
+qualified toolchain. This pool scope does not qualify the broader callbacks. The broader
+callback changes remain unqualified. Last-query-reference cleanup now uses the
+shared scheduler enqueue primitive in its candidate, preserving an occupied
+ordinary wake. Complete callback effects, reference correspondence and trace
+replay still need qualification before integration. Protected checkpoint
+capacity must also guarantee ordinary staged journal drain capacity per class;
+aggregate totals or double-counted reservations cannot establish progress.
+
+Cold recovery remains unfinished. It needs bounded physical page loading,
+allocator reconstruction, retained C-source ownership through query drain, and
+actual summary/rebase. Startup currently creates genesis NAME overlays before
+choosing a stored checkpoint; reclamation owns moving genesis into the fresh
+branch and tying sealer eligibility to actual boot closure. The autonomous
+retirement submit/poll producer also remains unconnected.
+
+Failed-Send repair `11ceb6ada` is qualified by exact nineteen-book record
+`certify-20261115T021059Z-717536`: sixteen reused, three newly certified in 2.78
+seconds, all before/after digests matched by root. Only raw `:ok` Send becomes
+DONE/SHORT; failure retains consumed count and reason. Actual TLS full/partial
+drain-failure controls refute the old normalizer while its success control remains
+accepted. Productive Receive and cancellation compatibility controls pass.
+Connection accounting repair `ad9cc38dc` charges consumed input before
+terminal-status handling; only DONE/SHORT advance the transmit offset. Its actual
+callback controls remain unexecuted pending the application dependencies.
+
+Replay's candidate separates consumed Send bytes from independently captured
+peer delivery using ordered exact/prefix constraints, including failed and
+productive cancelled Send. Independent review found malformed-list and non-octet
+acceptance defects; candidate `67a776052` repairs them with bounded validation.
+Its exact two-book record `certify-20261115T023638Z-742660` passed in 0.45 seconds;
+root matched both before/after digests to that candidate, and the owner audited
+cache integrity. General language refinement, fuel adequacy and the actual
+composed native/replay gate remain owed. The exact matcher is integrated at
+`79440f99d`; the host/replay consumer remains a separate candidate awaiting its
+dynamic host and interface gates. Independent review confirms the malformed
+fixes and a conservative fuel calculation, but this is not an admitted fuel
+theorem. The language specification requires explicit well-formed input
+hypotheses; runtime rejection of malformed observations is a separate obligation.
+
+Farm transport repair `0dda1d6ac` protects both Git pointer files and directories
+during source sync. Five transport and three budget controls pass.
+
+TLS/COMPRESS shared host closure, actual native input-prefix emission, and replay
+receipt consumption are source candidates, not qualified host behavior. Native
+Close/Cancel must retain operation identity and accepted counts; deferred Receive
+must match bytes already recorded before Close acknowledgement. Native evidence
+in [NATIVE-B3-CORRESPONDENCE.md](NATIVE-B3-CORRESPONDENCE.md) retains its separate
+finite C/FFI scope; it does not establish an encrypted network roundtrip.
+
+The actual core-release theorem/evidence candidates remain owed. The Lean
+packet-bound consumer accepts its positive fixture and rejects a changed recursive
+body, but the current CNS packet, reached domains, MBE correspondence and selected
+attachments remain open. In particular, `defattach` does not prove equality
+between logical dispatch stubs and their selected executable bodies. Reference
+callback generation must preserve complete results and state correspondence,
+substituting independent literal-FIFO semantics only at declared scheduler
+effect boundaries. Hidden intrusive-queue reads must be rejected or separately
+related; trace records cannot drive reference queues. Initialized reachable-state
+durability must replace the
+refuted arbitrary-state claim while preserving the public ACK guarantee.
+
+Root owns named compute grants; metadata inventories do not authorize broad
+rebuilds. Authorization remains independently blocked; no deployment or wire
+activation is included in these gates. Historical scopes below remain historical.
 
 ## Destination and proof structure
 
