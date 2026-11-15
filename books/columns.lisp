@@ -180,7 +180,11 @@
            (prefix (or (fn2-decl-get :prefix options) ""))
            (inv (or (fn2-decl-get :invariant options) (fn2-columns-sym table "-WFP")))
            (suffix (or (fn2-decl-get :suffix options) "-WFP")))
-      (append `((,(concatenate 'string prefix "-TYPE") ,(fn2-columns-sym table "P") ,pos)
+      ; TYPE keeps the outer fallback unless explicitly overridden. An explicit
+      ; NIL suppresses that fallback; :hints continues to select WFP hints.
+      (append `((,(concatenate 'string prefix "-TYPE") ,(fn2-columns-sym table "P") ,pos
+                 ,@(and (member-eq :type-hints options)
+                        `(:hints ,(fn2-decl-get :type-hints options))))
                 (,(concatenate 'string prefix suffix) ,inv ,pos
                  :hints ,(fn2-decl-get :hints options)))
               (fn2-columns-carrier-specs (cdr carriers))))))
