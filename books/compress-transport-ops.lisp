@@ -94,6 +94,31 @@
 (verify-guards fn2-compress-transport-select-fill
  :hints (("Goal" :in-theory (disable fn2-compress-transport-rows fn2-compress-transport-fed fn2-compress-transport-copied fn2-compress-transport-input-offset fn2-compress-transport-input-length fn2-compress-transport-input-quantum fn2-compress-transport-output-quantum))))
 
+; Export the same concrete type, invariant and row frames as other generated
+; column consumers. NEXT need not unfold a selector or its transport updater.
+(make-event
+ (let* ((readers (cons 'fn2-compress-transport-rows
+                  (fn2-columns-projection-readers 'fn2-compress-transport
+                   (fn2-decl-get :columns
+                    (fn2-decl-row '(:columns fn2-compress-transport) (w state))))))
+        (hyps '((fn2-compress-transportp fn2-compress-transport)
+                (fn2-compress-transport-wfp fn2-compress-transport)
+                (= (fn2-compress-transport-rows fn2-compress-transport) 1)))
+        (hints `(("Goal" :in-theory (disable ,@readers)))))
+  (value `(progn
+   (fn2-compress-transport-preserves fn2-compress-transport-select-encode
+    (cap nonce slot generation source-offset source-total flush-complete fn2-compress-transport)
+    :position 2 :hyps ,hyps :hints ,hints :forward t :disable nil)
+   (fn2-compress-transport-preserves fn2-compress-transport-select-decode
+    (cap nonce slot generation sink-offset sink-total fn2-compress-transport)
+    :position 2 :hyps ,hyps :hints ,hints :forward t :disable nil)
+   (fn2-compress-transport-preserves fn2-compress-transport-select-drain
+    (cap nonce slot generation fn2-compress-transport)
+    :position 2 :hyps ,hyps :hints ,hints :forward t :disable nil)
+   (fn2-compress-transport-preserves fn2-compress-transport-select-fill
+    (cap nonce slot generation fn2-compress-transport)
+    :position 2 :hyps ,hyps :hints ,hints :forward t :disable nil)))))
+
 (defthm-owed fn2-compress-encoder-window-full (cap nonce slot generation source-offset source-total flush-complete s)
  (implies (and (fn2-compress-transportp s) (fn2-compress-transport-wfp s)
                (equal (fn2-compress-transport-rows s) 1)

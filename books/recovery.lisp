@@ -19,6 +19,7 @@
 (defcolumns fn2-rec-cand
  ((status (:enum fn2-rec-status (:unread :empty :invalid :unreadable :candidate :chained :payload)))
   (commit :u60) (epoch :u60) (allocation :u60) (first :u60) (last :u60)
+  (history :u60) (history-incarnation :u60)
   (seal-off :u32) (seal-len :u32) (owner-kind :u8) (owner :u60)))
 
 ; Classification and witness outcome vocabularies (ROUND2 §E.4, scholar ch. 4).
@@ -112,7 +113,7 @@
               (unsigned-byte-p 60 allocation) (unsigned-byte-p 60 commit)
               (unsigned-byte-p 60 history) (unsigned-byte-p 60 history-incarnation)
               (unsigned-byte-p 32 page-hash) (unsigned-byte-p 32 previous) (unsigned-byte-p 32 geometry))))
- (let* ((fn2-fc-context (fn2-fc-context-set-location row (+ (* 3 p) role) fn2-fc-context))
+ (let* ((fn2-fc-context (fn2-fc-context-set-location row (+ (* *fn2-storage-extent-units* p) role) fn2-fc-context))
         (fn2-fc-context (fn2-fc-context-set-allocation row allocation fn2-fc-context))
         (fn2-fc-context (fn2-fc-context-set-history row history fn2-fc-context))
         (fn2-fc-context (fn2-fc-context-set-incarnation row history-incarnation fn2-fc-context))

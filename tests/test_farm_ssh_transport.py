@@ -2,6 +2,7 @@
 import contextlib
 import io
 from pathlib import Path
+import shutil
 import subprocess
 import sys
 import tempfile
@@ -31,6 +32,41 @@ class FarmSSHTransport(unittest.TestCase):
             return subprocess.CompletedProcess(command, *output(command[-1]))
 
         return selected, run
+
+    @unittest.skipUnless(shutil.which("rsync"), "rsync required for push controls")
+    def test_push_preserves_remote_git_file_and_directory(self):
+        # Exercise the actual rsync flags against temporary local directories.
+        with tempfile.TemporaryDirectory() as directory:
+            for kind in ("file", "directory"):
+                with self.subTest(kind=kind):
+                    source = Path(directory) / ("source-" + kind)
+                    remote = Path(directory) / ("remote-" + kind)
+                    source.mkdir()
+                    remote.mkdir()
+                    source_git, remote_git = source / ".git", remote / ".git"
+                    if kind == "directory":
+                        source_git.mkdir()
+                        remote_git.mkdir()
+                        source_git, remote_git = source_git / "HEAD", remote_git / "HEAD"
+                    source_git.write_text("laptop Git metadata\n")
+                    remote_git.write_text("forge Git metadata\n")
+                    (source / "book.lisp").write_text('(in-package "ACL2")\n')
+
+                    def local_rsync(command, **kwargs):
+                        command = list(command)
+                        self.assertEqual(command[0], "rsync")
+                        self.assertEqual(command[-1], f"fixture-box:{remote}/")
+                        self.assertFalse(kwargs["check"])
+                        command[-1] = str(remote) + "/"
+                        return subprocess.run(command, text=True, capture_output=True,
+                                              check=False, timeout=10)
+
+                    with mock.patch.object(farm, "ssh", return_value=subprocess.CompletedProcess([], 0, "")), \
+                         mock.patch.object(farm, "run", side_effect=local_rsync):
+                        farm.push("fixture-box", source, remote)
+                    self.assertEqual(remote_git.read_text(), "forge Git metadata\n")
+                    self.assertEqual((remote / "book.lisp").read_text(),
+                                     (source / "book.lisp").read_text())
 
     def test_preflight_and_main_submit_share_selected_identity(self):
         commands = []

@@ -22,7 +22,7 @@
   (if (atom entries) nil
     (cons (fn2-core-child-property (car entries) :stobj)
           (fn2-core-child-types (cdr entries)))))
-(defmacro defcorechild (field stobj &key init profilep why
+(defmacro defcorechild (field stobj &key init profilep why harvest
                               (reference ':state) (order ':extension))
   (if (and (symbolp stobj) stobj init profilep
            (stringp why) (< 0 (length why))
@@ -34,15 +34,21 @@
             (er soft 'defcorechild "Child registration requires an open assembly and unique stobj: ~x0 / ~x1." ',field ',stobj)
           (value (fn2-declare '(:core-child ,field)
                    '(:stobj ,stobj :init ,init :profilep ,profilep
-                     :reference ,reference :order ,order :why ,why)
+                     :reference ,reference :order ,order :why ,why
+                     ,@(and harvest (list :harvest harvest)))
                    '((:declaration (:columns ,stobj))
-                     ,@(and (consp init) `((:function ,(car init) :at :core)))) nil))))
+                     ,@(and (consp init) `((:function ,(car init) :at :core)))
+                     ,@(and harvest `((:function ,(car harvest) :at :core)))) nil))))
     (er hard 'defcorechild "Invalid child ~x0: init, profilep and nonempty why are required." field)))
 (defun fn2-core-registered-pairs (entries)
   (declare (xargs :verify-guards nil))
   (if (atom entries) nil
     (cons (list (caar entries) (fn2-core-child-property (car entries) :stobj))
           (fn2-core-registered-pairs (cdr entries)))))
+(defun fn2-core-child-bindings (children)
+  (if (atom children) nil
+    (cons `(,(cadar children) (,(caar children) fn2-core))
+          (fn2-core-child-bindings (cdr children)))))
 (defun fn2-core-registered-forms (entries key)
   (declare (xargs :verify-guards nil))
   (if (atom entries) nil

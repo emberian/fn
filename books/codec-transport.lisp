@@ -69,15 +69,28 @@
         (recognizer (fn2-columns-sym name "P"))
         (wfp (fn2-columns-sym name "-WFP"))
         (rows (fn2-columns-sym name "-ROWS"))
+        (advance (fn2-columns-sym name "-ADVANCE-SPANS"))
         (observe (fn2-columns-sym name "-OBSERVE-SPANS")))
-   (cons
-    `(defthm ,(fn2-columns-sym reader "-OF-OBSERVE-SPANS")
-      (implies (and (,recognizer ,name) (,wfp ,name) (= (,rows ,name) 1))
-       (equal (,reader 0 (mv-nth 1 (,observe cap nonce slot generation serial raw-code used made errno ,name)))
-              (,reader 0 ,name)))
-      :hints (("Goal" :in-theory
-       (union-theories '(,reader)
-        (set-difference-theories (current-theory :here) ',readers)))))
+   (append
+    (list
+     `(defthm ,(fn2-columns-sym reader "-OF-ADVANCE-SPANS")
+       (implies (and (,recognizer ,name) (,wfp ,name) (= (,rows ,name) 1))
+        (equal (,reader 0 (mv-nth 1 (,advance cap nonce slot generation serial used made ,name)))
+               (,reader 0 ,name)))
+       :hints (("Goal" :in-theory
+        (union-theories '(,reader)
+         (set-difference-theories (current-theory :here) ',readers)))))
+     `(defthm ,(fn2-columns-sym reader "-OF-OBSERVE-SPANS")
+       (implies (and (,recognizer ,name) (,wfp ,name) (= (,rows ,name) 1))
+        (equal (,reader 0 (mv-nth 1 (,observe cap nonce slot generation serial raw-code used made errno ,name)))
+               (,reader 0 ,name)))
+       :hints (("Goal" :in-theory
+        (union-theories '(,reader)
+         (set-difference-theories (current-theory :here) '(,advance ,@readers)))
+        :use ((:instance ,(fn2-columns-sym reader "-OF-ADVANCE-SPANS")
+               (,name (,(fn2-columns-sym name "-PUT") 0
+                (raw-negative (if (< raw-code 0) 1 0)) (raw-code (abs raw-code))
+                (raw-used used) (raw-made made) (raw-errno errno)))))))))
     (fn2-codec-transport-policy-frame-events name (cdr fields) readers)))))
 
 (defun fn2-codec-transport-operation-events (name input-quantum-field output-quantum-field world)
@@ -175,6 +188,13 @@
       (let ((,name (,put 0 (raw-negative (if (< raw-code 0) 1 0)) (raw-code (abs raw-code))
                       (raw-used used) (raw-made made) (raw-errno errno))))
        (,advance cap nonce slot generation serial used made ,name))))
+; Callers may keep the physical observer opaque while using its accepted
+; scalar packet. The widths are the observer's existing admission checks.
+(defthm ,(fn2-columns-sym name "-OBSERVE-SPANS-OK-INPUTS")
+ (implies (equal (mv-nth 0 (,observe cap nonce slot generation serial raw-code used made errno ,name)) :ok)
+  (and (integerp raw-code) (unsigned-byte-p 64 (abs raw-code))
+       (unsigned-byte-p 32 used) (unsigned-byte-p 32 made) (unsigned-byte-p 32 errno)))
+ :hints (("Goal" :in-theory (disable ,@readers ,advance))))
 (verify-guards ,select :hints (("Goal" :in-theory (disable ,@readers))))
 (verify-guards ,advance :hints (("Goal" :in-theory (disable ,@readers))))
 (verify-guards ,observe :hints (("Goal" :in-theory (disable ,@readers))))
@@ -183,6 +203,20 @@
       (,wfp (mv-nth 2 (,select cap nonce slot generation action
                    in-channel in-offset in-count in-extent
                    out-channel out-offset out-count out-extent ,name))))
+     :hints (("Goal" :in-theory (disable ,@readers))))
+; Opaque callers need the concrete recognizer and one-row shape as well
+; as WFP when a selected request becomes their next physical action.
+(defthm ,(fn2-columns-sym name "-SELECT-PRESERVES-TYPE")
+     (implies (and (,recognizer ,name) (,wfp ,name) (= (,rows ,name) 1))
+      (,recognizer (mv-nth 2 (,select cap nonce slot generation action
+                   in-channel in-offset in-count in-extent
+                   out-channel out-offset out-count out-extent ,name))))
+     :hints (("Goal" :in-theory (disable ,@readers))))
+(defthm ,(fn2-columns-sym name "-SELECT-ROWS")
+     (implies (and (,recognizer ,name) (,wfp ,name) (= (,rows ,name) 1))
+      (equal (,rows (mv-nth 2 (,select cap nonce slot generation action
+                   in-channel in-offset in-count in-extent
+                   out-channel out-offset out-count out-extent ,name))) 1))
      :hints (("Goal" :in-theory (disable ,@readers))))
 (defthm ,(fn2-columns-sym name "-ADVANCE-SPANS-ROWS")
      (implies (and (,recognizer ,name) (,wfp ,name) (= (,rows ,name) 1))
@@ -265,8 +299,14 @@
    (mv :pending ,name))
   (t
    (let* ((alive (,(fn2-columns-sym name "-ALIVE") 0 ,name))
-          (,name (,(fn2-columns-sym name "-PUT") 0 (terminal 4))))
-    (mv (if (= alive 0) :done :closing) ,name)))))
+          (handle (,(fn2-columns-sym name "-HANDLE-ID") 0 ,name))
+          ;; No primitive is pending here. Only an unused reservation can be
+          ;; discharged without selecting and observing the physical free.
+          (unused (and (= alive 0) (= handle 0)))
+          (,name (if unused
+                     (,(fn2-columns-sym name "-PUT") 0 (terminal 4) (cleanup-credit 0))
+                   (,(fn2-columns-sym name "-PUT") 0 (terminal 4)))))
+    (mv (if unused :done :closing) ,name)))))
 (defun ,(fn2-columns-sym name "-RETIRED-P") (cap nonce ,name)
  (declare (xargs :stobjs ,name :verify-guards nil :guard (,wfp ,name)))
  (and (= (,rows ,name) 1)
@@ -372,6 +412,7 @@
  '((cap :u32) (nonce :u60) (slot :u32) (generation :u60) (extent :u32)
    (source-progress :u32) (sink-progress :u32)
    (parent-serial :u60) (terminal :bool) (carrier-closed :bool) (last-serial :u60) (pending-serial :u60) (pending-action :u8)
+   (observed-serial :u60) (observed-action :u8) (observed-used :u32) (observed-made :u32)
    (source-count :u32) (sink-count :u32)))
 ; A productive Receive cannot use :cancelled: the shared terminal ABI erases
 ; cancelled input counts. Output cancellation retains accepted application
@@ -484,6 +525,26 @@
      (declare (xargs :stobjs ,name :verify-guards nil :guard (and (,wfp ,name) (= (,rows ,name) 1))))
      (if (not (= (,(fn2-columns-sym name "-PENDING-SERIAL") 0 ,name) 0)) (mv :pending ,name)
        (let ((,name (,put 0 (terminal 1)))) (mv :ok ,name))))
+    ; Codec policy supplies its public-input action (TLS12, DEFLATE10).
+    ; The shared operation ledger supplies accepted incarnation and prefix.
+    (defun ,(fn2-columns-sym name "-INPUT-PREFIX") (serial action expected-action offset count ,name)
+     (declare (xargs :stobjs ,name :verify-guards nil
+      :guard (and (,wfp ,name) (= (,rows ,name) 1))))
+     (cond
+      ((or (not (equal action expected-action)) (equal count 0)
+           (not (= (,(fn2-columns-sym name "-PARENT-SERIAL") 0 ,name) 0))) (mv :none 0 0))
+      ((not (and (posp serial) (unsigned-byte-p 60 serial)
+                  (posp expected-action) (unsigned-byte-p 8 expected-action)
+                  (unsigned-byte-p 32 offset) (posp count) (unsigned-byte-p 32 count)
+                  (= (,(fn2-columns-sym name "-PENDING-SERIAL") 0 ,name) 0)
+                  (equal (,(fn2-columns-sym name "-OBSERVED-ACTION") 0 ,name) expected-action)
+                  (= (,(fn2-columns-sym name "-LAST-SERIAL") 0 ,name) serial)
+                  (= (,(fn2-columns-sym name "-OBSERVED-SERIAL") 0 ,name) serial)
+                  (equal count (,(fn2-columns-sym name "-OBSERVED-MADE") 0 ,name))
+                  (= (+ offset count) (,(fn2-columns-sym name "-SINK-PROGRESS") 0 ,name))
+                  (<= (+ offset count) (,(fn2-columns-sym name "-EXTENT") 0 ,name))))
+       (mv :stale 0 0))
+      (t (mv :input-prefix offset count))))
     (defun ,(fn2-columns-sym name "-CANCEL") (receivep ,name)
      (declare (xargs :stobjs ,name :verify-guards nil :guard (and (,wfp ,name) (= (,rows ,name) 1))))
      (cond ((not (booleanp receivep)) (mv :bounds nil 0 nil ,name))
@@ -539,12 +600,15 @@
          (mv :bounds ,name)
        (let* ((next-source (+ (,(fn2-columns-sym name "-SOURCE-PROGRESS") 0 ,name) used))
               (next-sink (+ (,(fn2-columns-sym name "-SINK-PROGRESS") 0 ,name) made))
+              (action (,(fn2-columns-sym name "-PENDING-ACTION") 0 ,name))
               (,name (,put 0 (source-progress next-source) (sink-progress next-sink)
+                            (observed-serial serial) (observed-action action) (observed-used used) (observed-made made)
                             (pending-serial 0) (pending-action 0) (source-count 0) (sink-count 0))))
         (mv :ok ,name))))
     (verify-guards ,(fn2-columns-sym name "-BIND") :hints (("Goal" :in-theory (disable ,@readers))))
     (verify-guards ,(fn2-columns-sym name "-BIND-CHILD") :hints (("Goal" :in-theory (disable ,@readers))))
     (verify-guards ,(fn2-columns-sym name "-FINISH") :hints (("Goal" :in-theory (disable ,@readers))))
+    (verify-guards ,(fn2-columns-sym name "-INPUT-PREFIX") :hints (("Goal" :in-theory (disable ,@readers))))
     (verify-guards ,(fn2-columns-sym name "-CANCEL") :hints (("Goal" :in-theory (disable ,@readers))))
     (verify-guards ,(fn2-columns-sym name "-REQUESTABLE-P") :hints (("Goal" :in-theory (disable ,@readers))))
     (verify-guards ,(fn2-columns-sym name "-REQUEST") :hints (("Goal" :in-theory (disable ,@readers))))
@@ -583,6 +647,28 @@
      (implies (and (,(fn2-columns-sym name "P") ,name) (,wfp ,name) (= (,rows ,name) 1))
       (,wfp (mv-nth 1 (,(fn2-columns-sym name "-OBSERVE") serial used made ,name))))
      :hints (("Goal" :in-theory (disable ,@readers))))
+    (defthm ,(fn2-columns-sym name "-OBSERVE-REFUSAL-FRAME-BY-DEFINITION")
+     (implies (not (,(fn2-columns-sym name "-OBSERVABLE-P") serial used made ,name))
+      (equal (mv-nth 1 (,(fn2-columns-sym name "-OBSERVE") serial used made ,name)) ,name))
+     :hints (("Goal" :in-theory (disable ,@readers))))
+    (defthm ,(fn2-columns-sym name "-OBSERVE-ACCEPTED-RECEIPT")
+     (implies (and (,(fn2-columns-sym name "P") ,name) (,wfp ,name) (= (,rows ,name) 1)
+                   (,(fn2-columns-sym name "-OBSERVABLE-P") serial used made ,name))
+      (and
+       (equal (,(fn2-columns-sym name "-OBSERVED-SERIAL") 0
+                (mv-nth 1 (,(fn2-columns-sym name "-OBSERVE") serial used made ,name))) serial)
+       (equal (,(fn2-columns-sym name "-OBSERVED-ACTION") 0
+                (mv-nth 1 (,(fn2-columns-sym name "-OBSERVE") serial used made ,name)))
+              (,(fn2-columns-sym name "-PENDING-ACTION") 0 ,name))
+       (equal (,(fn2-columns-sym name "-OBSERVED-USED") 0
+                (mv-nth 1 (,(fn2-columns-sym name "-OBSERVE") serial used made ,name))) used)
+       (equal (,(fn2-columns-sym name "-OBSERVED-MADE") 0
+                (mv-nth 1 (,(fn2-columns-sym name "-OBSERVE") serial used made ,name))) made)))
+     :hints (("Goal" :in-theory
+      (union-theories
+       '(,(fn2-columns-sym name "-OBSERVED-SERIAL") ,(fn2-columns-sym name "-OBSERVED-ACTION")
+         ,(fn2-columns-sym name "-OBSERVED-USED") ,(fn2-columns-sym name "-OBSERVED-MADE"))
+       (set-difference-theories (current-theory :here) ',readers)))))
     (defthm ,(fn2-columns-sym name "-CANCEL-WFP")
      (implies (and (,(fn2-columns-sym name "P") ,name) (,wfp ,name) (= (,rows ,name) 1))
       (,wfp (mv-nth 4 (,(fn2-columns-sym name "-CANCEL") receivep ,name))))

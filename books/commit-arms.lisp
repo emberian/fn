@@ -45,6 +45,8 @@
 (defcost fn2-commit-partner-state :answers (:invalid :failed :ok)
  :doc "The partner row's state: not a commit row, failed (an older partner uncertain, or an abort at or below this batch), or ok.")
 (defcost fn2-commit-idp :doc "Whether a row id is a live commit row.")
+(defcost fn2-commit-lifecycle-cursorp
+ :doc "Whether the member cursor is within its declared batch partition and has zero offset at the exact terminal.")
 (defcost fn2-commit-peer-phase :doc "The partner row's phase (free when it is not a commit row).")
 (defcost fn2-commit-peer-batch-no :doc "The partner row's batch number (0 when it is not a commit row).")
 (defcost fn2-commit-peer-fence-live :doc "Whether the partner row's fence is in flight (0 when it is not a commit row).")
@@ -55,6 +57,9 @@
  :doc "Open (or lower) the suffix abort at this batch.")
 (defcost fn2-commit-root-edge :answers t :tables (fn2-core-extents fn2-core-alloc-edges fn2-core-control)
  :doc "Add the batch's prepared-successor edge, or swap it for the installed-root edge.")
+(defcost fn2-commit-lifecycle-step :answers (:more :done :invalid) :bytes 4096
+ :tables (fn2-core-fields fn2-core-pool fn2-core-extents fn2-core-commit-members fn2-core-commit-root fn2-core-machines fn2-core-retirement-control fn2-core-checkpoint-future fn2-core-checkpoint-future-windows fn2-core-checkpoints fn2-core-checkpoint-refs fn2-core-checkpoint-bytes fn2-core-checkpoint-construction fn2-core-alloc-edges fn2-core-ops)
+ :doc "After durable root installation, inspect one member frame and apply its exact-bound lifecycle record before publication.")
 (defcost fn2-commit-seal-step :answers t :bytes 4096 :own-writes (cb-cursor cb-issued cb-seal-len)
  :tables (fn2-core-pool fn2-core-control (:layers :b))
  :doc "One seal stage: at most one 4 KiB fill or hash, or one record encoding.")
@@ -80,9 +85,10 @@
  :doc "Close the suffix abort once its last batch has dropped.")
 ;; D0 counts the batch's four pool ranges as the one :storage-window the row
 ;; holds from :collect (fn2-commit's :holds); the drain's last release returns
-;; it (its :effects in the drain arm), the first three return ranges of it.
-(defcost fn2-commit-release-pool :answers t :own-writes (pool-slot pool-gen) :tables (fn2-core-pool fn2-core-commit-io fn2-core-control)
- :doc "Release one of the row's pool ranges (role 0..3).")
+;; it (its :effects in the drain arm). Foreground returns the first three
+;; ranges separately; maintenance retains its exact bundle until the final stage.
+(defcost fn2-commit-release-pool :answers t :own-writes (pool-slot pool-gen) :tables (fn2-core-pool fn2-core-commit-io fn2-core-checkpoint-future fn2-core-checkpoint-future-windows fn2-core-extents fn2-core-control)
+ :doc "Release one foreground pool range, or return all four exact maintenance leases only at the final drain stage.")
 
 ;; The shared step sequences.
 (defconst *fn2-commit-arm-mailbox* '(:charge :steps *fn2-work-mailbox*))
@@ -295,25 +301,32 @@
               ((:charge :steps *fn2-work-mailbox* :runnable t))
               ((:do (code) (fn2-commit-root-edge id t)
                 :accept ()
-                :case (((:ok) (:next :publish) (:charge :steps *fn2-work-stage* :runnable t))
+                :case (((:ok) (:set (cb-life-member 0) (cb-life-off 0)) (:next :publish) (:charge :steps *fn2-work-stage* :runnable t))
                        (:otherwise (:stop :commit-edge)))))))))
    ;; b54 M6: C publishes the batch's private successor before any outcome
    (:publish
     ,@(fn2-commit-arm-partner t
-       `((:do (ok) (fn2-commit-root-swap id t))
-         (:if (not ok)
-              ,(fn2-commit-arm-uncertain '*fn2-commit-reason-durable* nil *fn2-commit-arm-advance-run*)
-              ;; publishing ends the batch's membership (resources.lisp's
-              ;; (:commit-batch :publish) releases it)
-              ((:do (code) (fn2-successor-publish row-batch-no)
-                :effects ((:release (:batch-membership)))
-                :accept ()
-                :case (((:ok)
-                        (:do (wcode) (fn2-commit-stream-wake row-batch-no)
-                         :accept ()
-                         :case (((:ok :unregistered) (:set (cb-published 1)) (:next :notify) ,*fn2-commit-arm-advance-run*)
-                                (:otherwise (:stop :commit-publish)))))
-                       (:otherwise (:stop :commit-publish :steps *fn2-work-mailbox*)))))))))
+       `((:if (not (fn2-commit-lifecycle-cursorp row-member-count row-cb-life-member row-cb-life-off))
+          ((:stop :commit-publish))
+          ((:if (< row-cb-life-member row-member-count)
+          ((:do (code member off) (fn2-commit-lifecycle-step id row-cb-life-member row-cb-life-off)
+            :accept ()
+            :case (((:more) (:set (cb-life-member member) (cb-life-off off))
+                     (:charge :bytes 4096 :steps *fn2-work-stage* :runnable t))
+                   (:otherwise (:stop :commit-publish)))))
+          ((:do (ok) (fn2-commit-root-swap id t))
+           (:if (not ok)
+                ,(fn2-commit-arm-uncertain '*fn2-commit-reason-durable* nil *fn2-commit-arm-advance-run*)
+                ;; Lifecycle effects precede publication and any outcome.
+                ((:do (code) (fn2-successor-publish row-batch-no)
+                  :effects ((:release (:batch-membership)))
+                  :accept ()
+                  :case (((:ok)
+                          (:do (wcode) (fn2-commit-stream-wake row-batch-no)
+                           :accept ()
+                           :case (((:ok :unregistered) (:set (cb-published 1)) (:next :notify) ,*fn2-commit-arm-advance-run*)
+                                  (:otherwise (:stop :commit-publish)))))
+                         (:otherwise (:stop :commit-publish :steps *fn2-work-mailbox*)))))))))))))
    (:notify
     ,@(fn2-commit-arm-partner t
        `((:if (< row-cb-acks row-member-count)
