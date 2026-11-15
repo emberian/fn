@@ -105,3 +105,16 @@ ACL2 process group 1838647 were all absent after cleanup; their scope
 `run-p1838571-i31195260.scope` was gone. The compute grant was released. The
 approved frozen source and fixture remain unchanged; a repair requires a new
 frozen fixture and a separate admission grant.
+
+The source-only successor adds `(declare (ignorable ...))` to each positive
+witness's shared constant LET bindings. A parsed comparison verifies all 226
+theorem names and formulas are exactly identical after stripping the declarations;
+no actual constructor, premise, or result term changes. The source comparisons,
+mutation checks, missing-row check, and 230-form lexical parse pass again.
+Successor fixture `/tmp/assurance-enum-controls-ignorable.lisp` SHA256:
+`848c6934bfe163081287d69e7d9a8950e6cdf7abae4673f2a2898b8b6fb78e00`.
+Emitter SHA256:
+`b73a015423837f2fa9fbf605bf6ff6996930f0fe161c73e2d06892b1621d90fe`.
+This successor has not been submitted to ACL2. Its existing state-only dependency,
+metadata-based raw-executable exclusion, and all outstanding proof obligations
+remain the same.

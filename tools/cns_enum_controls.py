@@ -198,8 +198,9 @@ def main():
             bindings = ' '.join(f'({k} {sexp(v) if isinstance(v, list) else ("t" if v is True else "nil" if v is False else v)})'
                                 if k != TABLE else f'({TABLE} (quote {sexp(v)}))'
                                 for k, v in env.items() if k not in constants)
+            declaration = '(declare (ignorable ' + ' '.join(k for k in env if k not in constants) + '))'
             hyp = f'(and ({TABLE}p {TABLE}) ({TABLE}-wfp {TABLE}) (natp s) (< s ({TABLE}-rows {TABLE})))'
-            fixtures.append(f'(defthm fn2-cns-enum-control-{case}-{phase}-{stage}-{int(flag)}-{int(data)}-{int(raw)}-{int(same)}\n (let* ({bindings}) (and {hyp} (equal {sexp(before)} {sexp(after)})))\n :rule-classes nil{hint})')
+            fixtures.append(f'(defthm fn2-cns-enum-control-{case}-{phase}-{stage}-{int(flag)}-{int(data)}-{int(raw)}-{int(same)}\n (let* ({bindings}) {declaration} (and {hyp} (equal {sexp(before)} {sexp(after)})))\n :rule-classes nil{hint})')
     assert all(m[2] for m in mutants), "a removed named transition escaped controls"
     # Removing valid-row alone breaks no-op elimination: existing WFP zero-row
     # table, setter UPDATE-NTH extends the enum array, skipped write does not.
