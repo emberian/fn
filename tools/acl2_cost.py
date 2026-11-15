@@ -22,7 +22,11 @@ from dataclasses import dataclass
 import re
 
 SUMMARY = re.compile(r"(?m)^Summary\s*$")
-FORM = re.compile(r"(?m)^Form:\s*(.*)$")
+# ACL2 wraps long event names onto following lines. Stop at summary metadata,
+# not the first newline, so the event label retains its actual name.
+FORM = re.compile(
+    r"(?ms)^Form:[ \t]*(.*?)(?=^Rules:|^Hint-events:|^Splitter rules:|"
+    r"^Warnings:|^Time:|^Prover steps counted:|\Z)")
 TIME = re.compile(r"(?m)^Time:\s*([0-9]+(?:\.[0-9]+)?) seconds")
 STEPS = re.compile(r"(?m)^Prover steps counted:\s*(More than\s+)?([0-9,]+)")
 WRAPPER = re.compile(r"^\(\s*(?:ENCAPSULATE|PROGN|MAKE-EVENT|CERTIFY-BOOK)\b", re.I)
@@ -48,7 +52,7 @@ def events(log: str) -> list[Event]:
             continue
         time, steps = TIME.search(block), STEPS.search(block)
         found.append(Event(
-            form.group(1).strip(),
+            " ".join(line.strip() for line in form.group(1).splitlines()),
             float(time.group(1)) if time else None,
             int(steps.group(2).replace(",", "")) if steps else None,
             bool(steps and steps.group(1))))
