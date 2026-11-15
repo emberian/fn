@@ -108,6 +108,16 @@ class PhysicalLoaderSource(unittest.TestCase):
         self.assertEqual(len(accepted), 2)
         self.assertTrue(all(x[2] == ['quote', [':ok', ':retired']] for x in accepted))
 
+    def test_source_park_keeps_bytes_but_drops_exact_catalog_lease(self):
+        f = self.d['fn2-run-load-park-source']
+        self.assertTrue(has_equality(f, ['fn2-run-loads-lease-mode', 'c', 'fn2-run-loads'], '*fn2-run-load-lease-mode-owned*'))
+        self.assertTrue(has_equality(f, ['fn2-run-loads-pending', 'c', 'fn2-run-loads'], '0'))
+        self.assertEqual(len(calls(f, 'fn2-pool-workspace-code')), 2)
+        self.assertEqual(len(calls(f, 'fn2-checkpoint-summary-release')), 1)
+        self.assertFalse(calls(f, 'fn2-pool-release'))
+        self.assertFalse(calls(f, 'fn2-pool-reset'))
+        self.assertFalse(calls(f, 'fn2-pool-write'))
+
     def test_return_frames_match_actual_mutations_and_mv_limit(self):
         frames = {f[1]: f for p in FILES for raw in forms(p.read_text())
                   if isinstance((f := read_sexp(raw)), list) and f and f[0] == 'fn2-run-load-frames'}
@@ -123,7 +133,7 @@ class PhysicalLoaderSource(unittest.TestCase):
                         assigned.update(n for n in names if isinstance(n, str) and n.startswith('fn2-'))
             self.assertEqual(outputs, assigned, name)
             self.assertLessEqual(max(int(o[1]) for o in frame[4]) + 1, 32)
-        self.assertEqual(len(frames), 6)
+        self.assertEqual(len(frames), 7)
 
 if __name__ == '__main__':
     unittest.main()
