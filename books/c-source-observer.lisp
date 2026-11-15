@@ -119,3 +119,67 @@
 
 (fn2-c-source-control-preserves fn2-c-source-writer-abort-pending
  (kind owner gen token cutcommit cutevent fn2-c-source-control) :position 1 :prefix "-CONTROL" :disable nil)
+
+; Logical aggregate carried from initialization by the actual transitions.
+; This scan is a proof/model function, never a served admission/poll operation.
+(defun fn2-c-source-reader-live-count (n fn2-c-source-readers)
+ (declare (xargs :stobjs fn2-c-source-readers :measure (nfix n)
+  :guard (and (fn2-c-source-readers-wfp fn2-c-source-readers)
+              (natp n) (<= n (fn2-c-source-readers-rows fn2-c-source-readers)))))
+ (if (zp n) 0
+   (+ (if (equal (fn2-c-source-readers-live (- n 1) fn2-c-source-readers) 1) 1 0)
+      (fn2-c-source-reader-live-count (- n 1) fn2-c-source-readers))))
+
+(defun fn2-c-source-count-invariant-p (fn2-c-source-control fn2-c-source-readers)
+ (declare (xargs :stobjs (fn2-c-source-control fn2-c-source-readers)
+  :guard (and (fn2-c-source-control-wfp fn2-c-source-control) (fn2-c-source-readers-wfp fn2-c-source-readers))))
+ (and (< 0 (fn2-c-source-control-rows fn2-c-source-control))
+      (equal (fn2-c-source-control-readers 0 fn2-c-source-control)
+             (fn2-c-source-reader-live-count (fn2-c-source-readers-rows fn2-c-source-readers) fn2-c-source-readers))))
+
+(defthm fn2-c-source-count-invariant-init
+ (implies (unsigned-byte-p 32 rows)
+  (fn2-c-source-count-invariant-p
+   (fn2-c-source-control-init 1 fn2-c-source-control)
+   (fn2-c-source-readers-init rows fn2-c-source-readers))))
+
+(defthm fn2-c-source-exclusive-has-no-live-endpoint
+ (implies (and (fn2-c-source-controlp fn2-c-source-control) (fn2-c-source-control-wfp fn2-c-source-control)
+               (fn2-c-source-readersp fn2-c-source-readers) (fn2-c-source-readers-wfp fn2-c-source-readers)
+               (fn2-c-source-count-invariant-p fn2-c-source-control fn2-c-source-readers)
+               (fn2-c-source-writer-exclusive-p kind owner gen token cutcommit cutevent fn2-c-source-control)
+               (natp endpoint) (< endpoint (fn2-c-source-readers-rows fn2-c-source-readers)))
+          (equal (fn2-c-source-readers-live endpoint fn2-c-source-readers) 0)))
+
+(defthm fn2-c-source-reader-acquire-preserves-count-invariant
+ (implies (and (fn2-c-source-controlp fn2-c-source-control) (fn2-c-source-control-wfp fn2-c-source-control)
+               (fn2-c-source-readersp fn2-c-source-readers) (fn2-c-source-readers-wfp fn2-c-source-readers)
+               (fn2-c-source-count-invariant-p fn2-c-source-control fn2-c-source-readers))
+          (fn2-c-source-count-invariant-p (mv-nth 2 (fn2-c-source-reader-acquire endpoint expected-receipt fn2-c-source-control fn2-c-source-readers)) (mv-nth 3 (fn2-c-source-reader-acquire endpoint expected-receipt fn2-c-source-control fn2-c-source-readers)))))
+
+(defthm fn2-c-source-reader-release-preserves-count-invariant
+ (implies (and (fn2-c-source-controlp fn2-c-source-control) (fn2-c-source-control-wfp fn2-c-source-control)
+               (fn2-c-source-readersp fn2-c-source-readers) (fn2-c-source-readers-wfp fn2-c-source-readers)
+               (fn2-c-source-count-invariant-p fn2-c-source-control fn2-c-source-readers))
+          (fn2-c-source-count-invariant-p (mv-nth 3 (fn2-c-source-reader-release endpoint receipt fn2-c-source-control fn2-c-source-readers)) (mv-nth 4 (fn2-c-source-reader-release endpoint receipt fn2-c-source-control fn2-c-source-readers)))))
+
+(defthm fn2-c-source-writer-begin-preserves-count-invariant
+ (implies (and (fn2-c-source-controlp fn2-c-source-control) (fn2-c-source-control-wfp fn2-c-source-control)
+               (fn2-c-source-readersp fn2-c-source-readers) (fn2-c-source-readers-wfp fn2-c-source-readers)
+               (fn2-c-source-count-invariant-p fn2-c-source-control fn2-c-source-readers))
+          (fn2-c-source-count-invariant-p
+           (mv-nth 1 (fn2-c-source-writer-begin kind owner gen token cutcommit cutevent fn2-c-source-control)) fn2-c-source-readers)))
+
+(defthm fn2-c-source-writer-poll-preserves-count-invariant
+ (implies (and (fn2-c-source-controlp fn2-c-source-control) (fn2-c-source-control-wfp fn2-c-source-control)
+               (fn2-c-source-readersp fn2-c-source-readers) (fn2-c-source-readers-wfp fn2-c-source-readers)
+               (fn2-c-source-count-invariant-p fn2-c-source-control fn2-c-source-readers))
+          (fn2-c-source-count-invariant-p
+           (mv-nth 1 (fn2-c-source-writer-poll kind owner gen token cutcommit cutevent fn2-c-source-control)) fn2-c-source-readers)))
+
+(defthm fn2-c-source-writer-abort-pending-preserves-count-invariant
+ (implies (and (fn2-c-source-controlp fn2-c-source-control) (fn2-c-source-control-wfp fn2-c-source-control)
+               (fn2-c-source-readersp fn2-c-source-readers) (fn2-c-source-readers-wfp fn2-c-source-readers)
+               (fn2-c-source-count-invariant-p fn2-c-source-control fn2-c-source-readers))
+          (fn2-c-source-count-invariant-p
+           (mv-nth 1 (fn2-c-source-writer-abort-pending kind owner gen token cutcommit cutevent fn2-c-source-control)) fn2-c-source-readers)))
