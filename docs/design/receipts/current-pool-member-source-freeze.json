@@ -1,0 +1,18 @@
+{
+  "status": "current source checkpoint only; pool and full member not yet admitted/current-key certified",
+  "root_merge": "77f9dccfe",
+  "columns_source_sha256": "f21583e2e5471fb1d44dd5bdc34158b32e13e43146950b72abee4c57ac9d8e5b",
+  "source_donors": {
+    "books/pool.lisp": "101d286dd903cf24a20b2e8308f839d95251d326",
+    "books/checkpoint-member.lisp": "7b2e2188b6bdd5668ff2b5a984da94cc44c07b8a",
+    "tests/checkpoint-member-interface-unit.lisp": "7b2e2188b6bdd5668ff2b5a984da94cc44c07b8a",
+    "books/checkpoint-installation-coordinator.lisp": "a156d2429"
+  },
+  "source_sha256": {
+    "books/pool.lisp": "32dce8695606e5faa78dbd1d4de70f7ace78436501ad8390a24fe301c2cf07db",
+    "books/checkpoint-member.lisp": "8b76cf4210628fed16261fceaedc00623f4d864e22779d9714db0bcbef486d31",
+    "tests/checkpoint-member-interface-unit.lisp": "0dab7c9ed176645e012dad9db73f32ec72c5d857adb425694ce46c080fd5fae3",
+    "books/checkpoint-installation-coordinator.lisp": "9cd0558b36e1032d2131c6c490015c9552f9f6b9b89c92af2533d1c807be7bfe"
+  },
+  "scope": "Pool and member share one dependency-ordered current author world; installation caller later. No duplicate cold member author."
+}

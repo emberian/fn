@@ -373,6 +373,7 @@ ACL2_BOOKS = \
   tests/ctl-hash-interleave-unit \
   books/cns-source-core \
   tests/cns-stream-fetch-unit \
+  tests/checkpoint-member-interface-unit \
   tests/cns-source-capture-unit \
   tests/cns-source-retention-unit \
   tests/cns-source-hash-interleave-unit \

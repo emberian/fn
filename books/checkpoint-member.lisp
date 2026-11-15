@@ -7,6 +7,7 @@
 (include-book "pool-ranges")
 (include-book "layout-size-bounds")
 (include-book "columns-guard-hints")
+(include-book "owed")
 (fn2-book-layer :b)
 (defcodec-size-bounds fn2-format-checkpoint-installation)
 
@@ -83,10 +84,89 @@
       ((unless (eq code :ok)) (mv code 0 fn2-fields fn2-pool))
       ((mv code fn2-pool) (fn2-pool-truncate slot gen length okind oslot ogen fn2-pool)))
   (mv code (if (eq code :ok) length 0) fn2-fields fn2-pool)))
-(defcolumns-carrier-contracts fn2-checkpoint-installation-pack-member
- :carriers ((fn2-fields 2 :prefix "-FIELDS" ) (fn2-pool 3 :prefix "-POOL" ))
- :hints ((fn2-columns-guard-hint
-                 '(fn2-checkpoints fn2-checkpoint-refs fn2-checkpoint-bytes fn2-fields fn2-pool)
-                 '(fn2-pool-reset fn2-pool-copy-range fn2-pool-truncate
-                   fn2-checkpoint-member-hash fn2-format-checkpoint-installation-size)
-                 nil world)))
+; The served interface uses the actual stored guard, including all readonly
+; input recognizers. The stronger off-guard FIELDS claim remains explicitly owed.
+; New distinct served-domain interface. No old theorem is renamed/weakened.
+(defcolumns-guarded-contracts fn2-checkpoint-installation-pack-member
+ :carriers ((fn2-fields 2 :prefix "-FIELDS")
+             (fn2-pool 3 :prefix "-POOL"
+              :type-hints ((fn2-columns-guard-hint
+                     '(fn2-checkpoints fn2-checkpoint-refs fn2-checkpoint-bytes fn2-fields fn2-pool)
+                     '(fn2-pool-reset fn2-pool-copy-range fn2-pool-truncate
+                       fn2-checkpoint-member-hash fn2-format-checkpoint-installation-size
+                       fn2-format-txn-record-encode fn2-format-checkpoint-installation-encode
+                       fn2-checkpoint-slotp unsigned-byte-p integer-range-p natp member-equal)
+                     '(fn2-checkpoint-installation-pack-member) world))
+              :hints ((fn2-columns-guard-hint
+                     '(fn2-checkpoints fn2-checkpoint-refs fn2-checkpoint-bytes fn2-fields fn2-pool)
+                     '(fn2-pool-reset fn2-pool-copy-range fn2-pool-truncate
+                       fn2-checkpoint-member-hash fn2-format-checkpoint-installation-size
+                       fn2-format-txn-record-encode fn2-format-checkpoint-installation-encode
+                       fn2-checkpoint-slotp unsigned-byte-p integer-range-p natp member-equal)
+                     '(fn2-checkpoint-installation-pack-member) world))))
+ :hints ((append
+          (fn2-columns-guard-hint
+           '(fn2-checkpoints fn2-checkpoint-refs fn2-checkpoint-bytes fn2-fields fn2-pool)
+           '(fn2-pool-reset fn2-pool-copy-range fn2-pool-truncate
+             fn2-checkpoint-member-hash fn2-format-checkpoint-installation-size)
+           '(fn2-checkpoint-installation-pack-member) world)
+          '(:use (
+   (:instance fn2-checkpoints-checkpoint-natp (i c))
+   (:instance fn2-checkpoints-checkpoint-bound (i c))
+   (:instance fn2-checkpoint-refs-storage-domain-natp (i (* 6 c)))
+   (:instance fn2-checkpoint-refs-storage-domain-bound (i (* 6 c)))
+   (:instance fn2-checkpoint-refs-physical-unit-natp (i (* 6 c)))
+   (:instance fn2-checkpoint-refs-physical-unit-bound (i (* 6 c)))
+   (:instance fn2-checkpoint-refs-writer-epoch-natp (i (* 6 c)))
+   (:instance fn2-checkpoint-refs-writer-epoch-bound (i (* 6 c)))
+   (:instance fn2-checkpoint-refs-allocation-natp (i (* 6 c)))
+   (:instance fn2-checkpoint-refs-allocation-bound (i (* 6 c)))
+   (:instance fn2-checkpoint-refs-page-kind-natp (i (* 6 c)))
+   (:instance fn2-checkpoint-refs-page-kind-bound (i (* 6 c)))
+   (:instance fn2-checkpoint-refs-encoded-length-natp (i (* 6 c)))
+   (:instance fn2-checkpoint-refs-encoded-length-bound (i (* 6 c))))))))
+
+; Preserve the other three original facets with their exact original H.
+(make-event
+ (let* ((world (w state)) (name 'fn2-checkpoint-installation-pack-member)
+        (args (getpropc name 'formals :missing world))
+        (inputs (getpropc name 'stobjs-in nil world))
+        (outputs (getpropc name 'stobjs-out nil world))
+        (carriers '((fn2-fields 2 :prefix "-FIELDS")
+             (fn2-pool 3 :prefix "-POOL"
+              :type-hints ((fn2-columns-guard-hint
+                     '(fn2-checkpoints fn2-checkpoint-refs fn2-checkpoint-bytes fn2-fields fn2-pool)
+                     '(fn2-pool-reset fn2-pool-copy-range fn2-pool-truncate
+                       fn2-checkpoint-member-hash fn2-format-checkpoint-installation-size
+                       fn2-format-txn-record-encode fn2-format-checkpoint-installation-encode
+                       fn2-checkpoint-slotp unsigned-byte-p integer-range-p natp member-equal)
+                     '(fn2-checkpoint-installation-pack-member) world))
+              :hints ((fn2-columns-guard-hint
+                     '(fn2-checkpoints fn2-checkpoint-refs fn2-checkpoint-bytes fn2-fields fn2-pool)
+                     '(fn2-pool-reset fn2-pool-copy-range fn2-pool-truncate
+                       fn2-checkpoint-member-hash fn2-format-checkpoint-installation-size
+                       fn2-format-txn-record-encode fn2-format-checkpoint-installation-encode
+                       fn2-checkpoint-slotp unsigned-byte-p integer-range-p natp member-equal)
+                     '(fn2-checkpoint-installation-pack-member) world)))))
+        (hints '((fn2-columns-guard-hint
+                  '(fn2-checkpoints fn2-checkpoint-refs fn2-checkpoint-bytes fn2-fields fn2-pool)
+                  '(fn2-pool-reset fn2-pool-copy-range fn2-pool-truncate
+                    fn2-checkpoint-member-hash fn2-format-checkpoint-installation-size)
+                  '(fn2-checkpoint-installation-pack-member) world)))
+        (hyps (fn2-columns-carrier-hyps carriers))
+        (specs (fn2-columns-carrier-specs (fn2-columns-inherit-carrier-hints carriers hints)))
+        (old (car (fn2-columns-preservation-facts name (cons name args) (list (car specs)) hyps nil)))
+        (rest (fn2-columns-preserves (caar carriers) name args nil hyps (cdr specs)
+                "-PRESERVES" t t hints t nil nil nil nil)))
+  (if (or (eq args :missing)
+          (not (fn2-columns-contract-carriersp carriers args inputs outputs world))
+          (not (equal (caar specs) "-FIELDS-TYPE")))
+      (er soft 'checkpoint-member-contract "Actual member carrier metadata changed.")
+    (value
+     `(progn
+       (defthm-owed ,(cadr old) ,args ,(caddr old)
+        :teeth (fn2-checkpoint-member-fields-type-positive-check
+                fn2-checkpoint-member-fields-type-readonly-removal-check)
+        :layer :b
+        :doc "Original off-guard FIELDS-TYPE formula is unresolved, not proved or refuted. Guarded served-domain facts have distinct names. Evaluating diagnostic teeth are separately owed in the member unit.")
+       ,@(cdr rest))))))

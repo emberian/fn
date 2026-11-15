@@ -123,7 +123,20 @@
          ((unless (and (eq code :ok) (posp len) (unsigned-byte-p 32 len))) (mv :invalid fn2-retirement-control fn2-fields fn2-pool))
          (fn2-retirement-control (fn2-retirement-control-put 0 (state *fn2-retirement-state-staged*) (bytes len) (count 1))))
      (mv :staged fn2-retirement-control fn2-fields fn2-pool)) (mv code fn2-core)))))
- (fn2-core-preserves fn2-checkpoint-installation-step (fn2-core) :position 1 :rows nil)
+ ; Keep the actual packer opaque and consume its served-domain contracts.
+ ; COREP/WFP supply every mutable and readonly input recognizer; no served
+ ; revalidation is added. Disable the stronger off-guard alternatives here.
+ (fn2-core-preserves fn2-checkpoint-installation-step (fn2-core) :position 1 :rows nil
+  :hints (("Goal" :in-theory
+           (e/d (fn2-checkpoint-installation-step
+                 fn2-checkpoint-installation-pack-member-fields-type-under-guard
+                 fn2-checkpoint-installation-pack-member-fields-wfp-under-guard
+                 fn2-checkpoint-installation-pack-member-pool-type-under-guard
+                 fn2-checkpoint-installation-pack-member-pool-wfp-under-guard)
+                (fn2-checkpoint-installation-pack-member
+                 fn2-checkpoint-installation-pack-member-fields-wfp
+                 fn2-checkpoint-installation-pack-member-pool-type
+                 fn2-checkpoint-installation-pack-member-pool-wfp)))))
 
  (defun fn2-checkpoint-installation-submit (fn2-core)
   (declare (xargs :stobjs fn2-core :guard (fn2-core-wfp fn2-core)))
