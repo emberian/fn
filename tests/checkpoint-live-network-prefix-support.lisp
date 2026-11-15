@@ -17,7 +17,10 @@
       ((when (or found (= (fn2-sim-wake-pending fn2-sim) 1)))
        (mv-let (& fn2-core fn2-sim fn2-own)
         (fn2-sim-advance-selected nil accept found slot *fn2-fault-none* cap fn2-core fn2-sim fn2-own)
-        (mv :more fn2-core fn2-sim fn2-own)))
+        ; A waiting Accept/Recv remains a flight. Give the real executor its
+        ; turn even when that completion only moved the flight deadline.
+        (mv-let (status & fn2-core) (fn2-b-turn fn2-core)
+         (mv (if (eq status :stop) :failed :more) fn2-core fn2-sim fn2-own))))
       ((mv status & fn2-core) (fn2-b-turn fn2-core)))
   (mv (if (eq status :stop) :failed :more) fn2-core fn2-sim fn2-own)))
 

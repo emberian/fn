@@ -14,6 +14,9 @@ class NetworkPrefix(unittest.TestCase):
             self.assertIn('(' + call + ' ', source)
         self.assertIn('(fn2-sim-advance-selected nil accept', source)
         self.assertNotIn('fn2-sim-client-drain', source)
+        advance = source.index('(fn2-sim-advance-selected nil accept')
+        following = source[advance:source.index('(defun fn2-cln-exchange')]
+        self.assertIn('(fn2-b-turn fn2-core)', following)
 
     def test_reply_derived_subject_and_order(self):
         source = SOURCE.read_text()
