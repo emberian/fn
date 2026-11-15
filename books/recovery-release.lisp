@@ -6,6 +6,7 @@
 (include-book "std/util/bstar" :dir :system)
 (include-book "recovery-payload")
 (include-book "release-evidence")
+(include-book "release-member-binding")
 (include-book "release-descriptor-check")
 (include-book "checkpoint-installation-binding")
 (fn2-book-layer :d)
@@ -321,13 +322,7 @@
      (read-phase *fn2-allocation-release-read-phase-need*) (read-pending 0))))
    (mv code fn2-core))))
 (fn2-core-preserves fn2-rp-release-prepare-installation (id ogen fn2-core) :position 1 :rows nil)
-(defun fn2-release-member-hash-p (i off slot gen kind owner generation fn2-allocation-release fn2-pool)
- (declare (xargs :stobjs (fn2-allocation-release fn2-pool) :measure (nfix (- 32 (nfix i)))
-  :guard (and (fn2-allocation-release-wfp fn2-allocation-release) (fn2-pool-wfp fn2-pool) (natp i) (<= i 32) (natp off))))
- (or (>= (nfix i) 32)
-  (mv-let (code byte) (fn2-pool-read slot gen (+ off i) kind owner generation fn2-pool)
-   (and (eq code :ok) (equal byte (fn2-allocation-release-descriptori i fn2-allocation-release))
-    (fn2-release-member-hash-p (+ i 1) off slot gen kind owner generation fn2-allocation-release fn2-pool)))))
+
 (defun fn2-rp-release-member-matches-p (kind id ogen fn2-core)
  (declare (xargs :stobjs fn2-core :guard (fn2-core-wfp fn2-core)))
  (if (not (fn2-rp-release-installation-current-p id ogen fn2-core)) nil
