@@ -275,6 +275,7 @@ ACL2_BOOKS = \
   tests/recovery-payload-chain-unit \
   tests/recovery-payload-chain-proof \
   tests/checkpoint-cold-path-drive \
+  tests/checkpoint-cold-path-producer-support \
   tests/checkpoint-cold-path-unit \
   books/checkpoint-restore-semantic-source \
   books/checkpoint-bank-closure-state \
