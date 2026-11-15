@@ -131,7 +131,10 @@ class EventBootSourceTests(unittest.TestCase):
         self.assertFalse(reaches(':checkpoint-events-finish', {':epoch-result'}))
         self.assertTrue(lr.match('(:issue (fn2-issue-fence :principal 0) ?*rest)', [arm(':epoch-fence')], deep=True))
         self.assertTrue(lr.match('(:cond ((equal row-event-ready 0) (:idle)) ((not (equal row-outcome *fn2-outcome-done*)) (:stop :io)) (t ?*success))', [arm(':epoch-result')], deep=True))
-        self.assertTrue(lr.match('(fn2-boot-adopt-epoch row-next-epoch)', [arm(':epoch-result')], deep=True))
+        self.assertTrue(lr.match('(fn2-boot-finalize-recovery id row-generation)', [arm(':epoch-result')], deep=True))
+        root_release = lr.match('(fn2-boot-release-root-window id row-generation)', [arm(':epoch-result')], deep=True)[0].node
+        final = lr.match('(fn2-boot-finalize-recovery id row-generation)', [arm(':epoch-result')], deep=True)[0].node
+        self.assertLess(root_release.start, final.start)
         # Listeners are woken only in post-Fence release/ready arms.
         for phase in (':checkpoint-events-finish', ':checkpoint-project-begin', ':checkpoint-project-step', ':checkpoint-project-protect', ':checkpoint-cbase-acquire', ':checkpoint-loader-begin', ':checkpoint-loader-step', ':checkpoint-adopt-begin', ':checkpoint-adopt-copy', ':checkpoint-authority-copy', ':checkpoint-directory-install', ':checkpoint-bank-bind', ':checkpoint-bank-protect', ':recover-wait', ':epoch', ':epoch-fence'):
             self.assertFalse(lr.match('(:wake-row ?target)', [arm(phase)], deep=True), phase)

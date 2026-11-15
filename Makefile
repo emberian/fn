@@ -242,6 +242,9 @@ ACL2_BOOKS = \
   books/checkpoint-bank-bind \
   books/checkpoint-bank-empty \
   books/checkpoint-bank-boot \
+  books/boot-root-release \
+  tests/boot-root-release-unit \
+  tests/recovery-payload-chain-unit \
   books/checkpoint-restore-semantic-source \
   books/checkpoint-bank-closure-state \
   books/checkpoint-bank-closure-capture \

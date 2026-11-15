@@ -77,4 +77,39 @@ class Source(unittest.TestCase):
         self.assertEqual(len(lr.match('(assert-event ?test)', forms)), 12)
 
 
+class FinalizeSource(unittest.TestCase):
+    def check_gate(self, source):
+        fn = lr.match('(defun fn2-boot-finalize-recovery (id ogen fn2-core) ?*body)', lr.parse(source).forms)[0].node
+        patterns = [
+            '(= (fn2-machine-root-gen id fn2-core) 0)',
+            '(= (fn2-machine-outcome id fn2-core) *fn2-outcome-done*)',
+            '(fn2-recovery-selected-current-p rid fn2-core)',
+            '(> epoch (fn2-machine-rc-epoch rid fn2-core))',
+            '(fn2-checkpoint-bank-protection-complete-p ?*args)',
+            '(fn2-checkpoint-bank-promote-selected ?*args)',
+            '((unless (eq code :installed)) (mv code fn2-checkpoints fn2-extents))',
+            '(update-fn2-alloc-freeze-phase 0 fn2-extents)',
+            '(fn2-alloc-begin-epoch epoch fn2-extents)',
+        ]
+        positions = []
+        for pattern in patterns:
+            matches = lr.match(pattern, [fn])
+            self.assertEqual(len(matches), 1, pattern)
+            positions.append(matches[0].node.start)
+        self.assertEqual(positions, sorted(positions))
+        self.assertFalse(lr.match('(update-fn2-alloc-epoch-begun ?*args)', [fn]))
+
+    def test_actual_final_gate_and_removed_premises(self):
+        source = (ROOT / 'books/checkpoint-bank-boot.lisp').read_text()
+        self.check_gate(source)
+        for old in [
+            '(> epoch (fn2-machine-rc-epoch rid fn2-core))',
+            '(fn2-recovery-selected-current-p rid fn2-core)',
+            '(= (fn2-machine-root-gen id fn2-core) 0)',
+        ]:
+            self.assertIn(old, source)
+            with self.assertRaises(AssertionError):
+                self.check_gate(source.replace(old, 't', 1))
+
+
 if __name__ == '__main__': unittest.main()
