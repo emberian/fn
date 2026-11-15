@@ -111,3 +111,21 @@ lookup yet. Historical replay must explicitly refuse that missing producer; it
 must never infer a Ref or publication witness from the selected cut. The existing
 member matcher supplies the canonical cp+Ref6+hash/C<J check once actual exact J
 bytes and chained provenance are available.
+
+The third-obligation source milestone derives J through actual tagged resident
+directory lookup, checks the captured installation event belongs to that batch,
+and requires its exact installed-root physical allocation edge. Archived/base/
+missing/stale J refuses; no numeric substitution is accepted. It reserves the
+third disjoint edge, preflights all three targets/counts before mutation, stores
+J's physical stamp with installation event, and checks the same stamp/edge on
+idempotence and retained ownership. Source and installation journals must differ
+from each other and from descriptor allocation. The aggregate remains paired
+with all three real obligations. No discharge/FREE is introduced.
+
+The actual fixture now allocates and installs a separate J journal before source
+capture, then reserves the release journal. It retains the explicit synthetic
+installation/Fence/native premises. Missing installed-root, stale absolute J tag
+and occupied third-edge controls require unchanged release ownership/aggregate
+and unrelated edge preservation. ACL2 assertions remain UNRUN. Readonly directory
+threading through all five frame declarations is one checked source transform
+with discriminating fixtures; its actual guard domain is retained.

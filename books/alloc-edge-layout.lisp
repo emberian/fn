@@ -1,5 +1,5 @@
 ; One declared edge layout. Existing regions keep their offsets; journal
-; evidence appends one descriptor and one self-obligation per actual extent.
+; evidence appends descriptor, source-self and installation-journal obligations.
 (in-package "ACL2")
 (include-book "columns")
 (include-book "checkpoint-geometry")
@@ -11,7 +11,7 @@
     (* *fn2-checkpoint-anchor-slots* (nfix extents))))
 (defun fn2-alloc-edge-layout-floor (extents ops checkpoints)
  (declare (xargs :guard t))
- (+ (fn2-alloc-edge-release-base extents ops checkpoints) (* 2 (nfix extents))))
+ (+ (fn2-alloc-edge-release-base extents ops checkpoints) (* 3 (nfix extents))))
 (defun fn2-alloc-edge-layoutp (extents ops checkpoints)
  (declare (xargs :guard t))
  (and (unsigned-byte-p 32 extents) (unsigned-byte-p 32 ops)
@@ -19,10 +19,19 @@
       (unsigned-byte-p 32 (fn2-alloc-edge-layout-floor extents ops checkpoints))))
 (defun fn2-alloc-release-descriptor-edge (journal extents ops checkpoints)
  (declare (xargs :guard t))
- (+ (fn2-alloc-edge-release-base extents ops checkpoints) (* 2 (nfix journal))))
+ (+ (fn2-alloc-edge-release-base extents ops checkpoints) (* 3 (nfix journal))))
 (defun fn2-alloc-release-journal-edge (journal extents ops checkpoints)
  (declare (xargs :guard t))
  (+ 1 (fn2-alloc-release-descriptor-edge journal extents ops checkpoints)))
+(defun fn2-alloc-release-installation-edge (journal extents ops checkpoints)
+ (declare (xargs :guard t))
+ (+ 2 (fn2-alloc-release-descriptor-edge journal extents ops checkpoints)))
+(defthm fn2-alloc-release-installation-edge-disjoint
+ (and (not (equal (fn2-alloc-release-installation-edge j e o c) (fn2-alloc-release-descriptor-edge j e o c)))
+      (not (equal (fn2-alloc-release-installation-edge j e o c) (fn2-alloc-release-journal-edge j e o c)))))
+(defthm fn2-alloc-release-installation-edge-bounds
+ (implies (and (natp j) (natp e) (< j e))
+  (< (fn2-alloc-release-installation-edge j e o c) (fn2-alloc-edge-layout-floor e o c))))
 (defthm fn2-alloc-release-edge-pair-disjoint
  (not (equal (fn2-alloc-release-descriptor-edge j e o c)
              (fn2-alloc-release-journal-edge j e o c))))
