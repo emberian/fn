@@ -192,6 +192,7 @@ ACL2_BOOKS = \
   books/machines-a-run \
   books/machines-a-scribe \
   books/machines-all \
+  books/storage-block-io \
   books/machines-b \
   books/machines-c \
   books/machines-c-bind \

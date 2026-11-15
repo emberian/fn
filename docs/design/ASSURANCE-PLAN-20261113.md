@@ -32,9 +32,15 @@ machine kind while retaining positive generation/nonce and exact provenance.
 Controls execute configure/begin/reserve/end/return and unchanged-frame refusal
 for unbound ownership and zero generation. This qualifies primitive credit
 behavior, not actor admission, redemption, or end-to-end progress.
-Checkpoint/member31 book completion remains active. Actual pinned-I/O extraction has a
-34-book gate conditional on current qualified parents; its66-book reader fixture
-and larger cold/native compositions follow. The columns carrier-hint default fix
+Checkpoint/member typed-readonly contract replacement remains active. The actual
+pinned-I/O extraction now passes exact34 record935930 (33 reused, one new;7.466s).
+All34 composed source hashes match; ten original production forms move unchanged
+into storage-block-io, and machines-b imports that implementation. Five source
+identity/registry controls pass. B registry composition, the66-book actual reader
+fixture, and larger cold/native executions remain outstanding. Native digest-carrier
+evidence separately passes exact19 record936479 (17 reused, two new;3.019s),
+with all19 current hashes matched. Its whole-effect theorem is conditional on the
+explicit native observation assumption; it is not native execution or a C/crypto proof. The columns carrier-hint default fix
 f2a1a1233 and layout proof-cost donor e8885ffdb are held for a shared convergence
 that removes temporary consumer hints and requalifies affected current closures.
 
