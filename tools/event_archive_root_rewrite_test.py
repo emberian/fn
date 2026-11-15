@@ -5,6 +5,7 @@ import lisp_rewrite as lr
 import event_archive_root_rewrite as rw
 import event_archive_frontier_begin_rewrite as frontier
 import event_archive_member_rewrite as member
+import event_archive_batch_rewrite as batch
 ROOT=Path(__file__).resolve().parents[1]
 def read(p):return (ROOT/p).read_text()
 def calls(s,p):return lr.match(p,lr.parse(s).forms)
@@ -12,7 +13,7 @@ class Root(unittest.TestCase):
  def test_manifest_constructor_replay_and_idempotence(self):
   old=read('tools/fixtures/event-archive-cold-cursor-before-root.lisp')
   after,helper=rw.transform(old)
-  current=read('books/event-archive-cold-cursor.lisp');composed=member.cursor(frontier.cursor(after))
+  current=read('books/event-archive-cold-cursor.lisp');composed=batch.project_cursor(member.cursor(frontier.cursor(after)))
   for pattern in ['(defun fn2-event-archive-cold-start-root ?*body)','(fn2-event-archive-operation (fn2-event-archive-cold-cursor-begin ?*args) ?*body)']:
    a=calls(composed,pattern)[0].node;b=calls(current,pattern)[0].node
    self.assertEqual(composed[a.start:a.end],current[b.start:b.end])

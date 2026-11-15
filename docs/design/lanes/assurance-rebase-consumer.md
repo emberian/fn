@@ -709,3 +709,22 @@ remains distinct from the archive key123/456. Wrong J and one extra header-tail
 byte must reach uncertain instead of SEAL-COPY. All three new assertions remain
 UNRUN. Constructor endpoint bounds and private decoder-NEXT rebinding now close
 those direct-table source gaps; no runtime route or terminal authority is added.
+
+Cold semantic-body copy now has a real quantum-taking continuation over the
+same selected schema20 page and existing accumulator. It captures/rebinds the
+accumulator loan with the original page/Ref tuple, checks current source span
+bounds before mutation, and rechecks destination fill against its saved cursor
+after starting. Quantum0 returns before resetting the accumulator; positive
+visits reset only once and copy at most the supplied budget. Completion reaches
+SEAL-SPAN only, with no digest receipt, original-batch/prefix authority or source
+drop. The actual cold cursor BEGIN resets private batch work only after its
+existing candidate/owner/geometry admission; active row0 remains untouched.
+
+A fourth runnable batch control starts with preexisting accumulator contents,
+checks the complete archive/pool snapshot at0, advances one byte at each call,
+refuses changed destination generation/fill after byte1 without mutation, then
+checks the entire copied semantic-body byte range against the actual decoded
+schema20 page range. Its assertions remain UNRUN. The first header/body bytes
+come from the real writer codecs under the explicitly synthetic page/reach
+premise. Seal decoding/hash reconstruction, live caller dispatch, root4/prefix
+transfer and physical reuse remain required; this is still unactivated source.

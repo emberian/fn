@@ -10,7 +10,8 @@ FIELDS=[('batch-page','u32'),('batch-page-gen','u60'),('batch-entry','u32'),
  ('batch-header-off','u32'),('batch-header-length','u32'),('batch-seal-off','u32'),('batch-seal-length','u32'),
  ('batch-first','u60'),('batch-last','u60'),('batch-commit','u60'),('batch-extent','u32'),
  ('batch-epoch','u60'),('batch-allocation','u60'),('batch-history','u60'),('batch-incarnation','u60'),
- ('batch-decode-started','bool'),('batch-cursor','u32')]
+ ('batch-decode-started','bool'),('batch-cursor','u32'),('batch-copy-started','bool'),('batch-copy-next','u32'),
+ ('batch-accumulator-slot','u32'),('batch-accumulator-gen','u60')]
 def node(s,p):
  m=lr.match(p,lr.parse(s).forms)
  if len(m)!=1:raise ValueError((p,len(m)))
@@ -31,7 +32,9 @@ PAGE_ARGS=CHILDREN.replace(' fn2-fc','')
 REFS=[('header','original-records-header'),('seal','original-sealed-batch')]
 BIND=[('batch-page','page'),('batch-page-gen','pgen'),('batch-entry','(fn2-run-cursors-idx c fn2-run-cursors)'),
  ('batch-source-unit','(fn2-run-loads-unit c fn2-run-loads)'),('batch-source-epoch','(fn2-run-loads-epoch c fn2-run-loads)'),
- ('batch-source-allocation','(fn2-run-loads-allocation c fn2-run-loads)')]
+ ('batch-source-allocation','(fn2-run-loads-allocation c fn2-run-loads)'),
+ ('batch-accumulator-slot','(fn2-event-archive-accumulator-slot 1 fn2-event-archive)'),
+ ('batch-accumulator-gen','(fn2-event-archive-accumulator-gen 1 fn2-event-archive)')]
 def source_body():
  refs='\n'.join('      ('+short+' (+ eb *fn2-event-archive-member-entry-field-'+long+'*))' for short,long in REFS)
  captures='\n'.join('       ('+name+' '+value+')' for name,value in BIND)
@@ -88,6 +91,7 @@ def source_body():
        (mv :witness fn2-event-archive))
       (fn2-event-archive (fn2-event-archive-put 1 (batch-phase *fn2-event-archive-batch-phase-header*)
        (batch-decode-started 0) (batch-cursor (fn2-fields-ref-off header fn2-fields)) (batch-first event)
+       (batch-copy-started 0) (batch-copy-next 0)
 '''+captures+''')))
   (mv :more fn2-event-archive)))
 
@@ -96,14 +100,16 @@ def source_body():
   :guard (and '''+' '.join('('+x+'-wfp '+x+')' for x in CHILDREN.split())+''')))
  (and (fn2-event-archive-cold-member-page-p '''+PAGE_ARGS+''')
   (fn2-event-archive-cold-batch-fields-p fn2-run-loads fn2-run-cursors fn2-fc fn2-fields)
-  (equal (fn2-event-archive-batch-phase 1 fn2-event-archive) *fn2-event-archive-batch-phase-header*)
+  (member-equal (fn2-event-archive-batch-phase 1 fn2-event-archive) (list *fn2-event-archive-batch-phase-header* *fn2-event-archive-batch-phase-seal-copy*))
   (let* ((c (fn2-b-event-archive-cursor-from-rows (fn2-run-loads-rows fn2-run-loads)))
          (work (* 128 (fn2-b-event-row (fn2-fc-rows fn2-fc))))
          (eb (+ (fn2-run-cursors-rb c fn2-run-cursors) *fn2-run-reader-entry*))
          (page (fn2-run-loads-page c fn2-run-loads)) (pgen (fn2-run-loads-page-gen c fn2-run-loads))
          (header (+ eb *fn2-event-archive-member-entry-field-original-records-header*))
          (seal (+ eb *fn2-event-archive-member-entry-field-original-sealed-batch*)))
-   (and (or (equal (fn2-event-archive-batch-decode-started 1 fn2-event-archive) 0)
+   (and (<= (+ (fn2-event-archive-batch-header-off 1 fn2-event-archive) (fn2-event-archive-batch-header-length 1 fn2-event-archive)) (fn2-pool-fill page fn2-pool))
+        (<= (+ (fn2-event-archive-batch-seal-off 1 fn2-event-archive) (fn2-event-archive-batch-seal-length 1 fn2-event-archive)) (fn2-pool-fill page fn2-pool))
+        (or (equal (fn2-event-archive-batch-decode-started 1 fn2-event-archive) 0)
                  (equal (fn2-fields-decode-next work fn2-fields) (fn2-event-archive-batch-cursor 1 fn2-event-archive)))
         (equal (fn2-event-archive-next-event 1 fn2-event-archive) (fn2-event-archive-batch-first 1 fn2-event-archive))
         (equal (fn2-fields-value (+ eb *fn2-event-archive-member-entry-field-event*) fn2-fields) (fn2-event-archive-batch-first 1 fn2-event-archive))
@@ -113,7 +119,8 @@ def source_body():
 (fn2-event-archive-operation (fn2-event-archive-cold-batch-header-step budget)
  ('''+CHILDREN+''') (fn2-event-archive fn2-fields)
  (:bytes *fn2-commit-unit-bytes*)
- (b* (((unless (fn2-event-archive-cold-batch-header-current-p '''+CHILDREN+''')) (mv :source fn2-event-archive fn2-fields))
+ (b* (((unless (and (fn2-event-archive-cold-batch-header-current-p '''+CHILDREN+''')
+                    (equal (fn2-event-archive-batch-phase 1 fn2-event-archive) *fn2-event-archive-batch-phase-header*))) (mv :source fn2-event-archive fn2-fields))
       ((unless (and (natp budget) (<= budget *fn2-commit-unit-bytes*))) (mv :bounds fn2-event-archive fn2-fields))
       ((when (zp budget)) (mv :more fn2-event-archive fn2-fields))
       (row (fn2-b-event-row (fn2-fc-rows fn2-fc))) (base (* 128 row))
@@ -274,8 +281,12 @@ def fixture(s):
 
 
 def arity_test(s):
+ if 'import event_archive_batch_rewrite as batch' not in s:
+  s=s.replace('import event_archive_member_rewrite as rw','import event_archive_member_rewrite as rw\nimport event_archive_batch_rewrite as batch')
+ s=s.replace("after=acc.project('cursor', fixed.rewrite(rw.cursor(read('tools/fixtures/archive-members-before-cursor.lisp'))))", "after=batch.project_cursor(acc.project('cursor', fixed.rewrite(rw.cursor(read('tools/fixtures/archive-members-before-cursor.lisp')))))")
+ s=s.replace("self.assertEqual(acc.project('cursor', fixed.rewrite(rw.cursor(after))),after)", "self.assertEqual(batch.project_cursor(acc.project('cursor', fixed.rewrite(rw.cursor(after)))),after)")
  count="  self.assertEqual(len(calls(s,'(assert-event (fn2-eamcu-test ?fault))')),7)"
- expected="  self.assertCountEqual([lr.flat(m.captures['fault']) for m in calls(s,'(assert-event (fn2-eamcu-test ?fault))')], ['nil',':event',':generation',':owner',':leaf',':accumulator-alias',':accumulator-generation',':batch-header',':batch-commit',':batch-tail'])"
+ expected="  self.assertCountEqual([lr.flat(m.captures['fault']) for m in calls(s,'(assert-event (fn2-eamcu-test ?fault))')], ['nil',':event',':generation',':owner',':leaf',':accumulator-alias',':accumulator-generation',':batch-header',':batch-commit',':batch-tail',':batch-copy'])"
  if count in s:s=s.replace(count,expected)
  elif expected not in s:raise ValueError('actual fixture assertion class drift')
  old="    definitions[m.captures['name'].low]=(len(m.captures['children'].items),1+len(m.captures['outputs'].items))"
@@ -288,3 +299,149 @@ def arity_test(s):
   raise ValueError('source arity test drift')
  if s.count(old)!=1:raise ValueError('ambiguous source arity test')
  return s.replace(old,new)
+
+
+def copy_body():
+ return '''; Copy the exact source-owned semantic body into the existing role3
+; accumulator. The first positive quantum resets it; quantum0 changes nothing.
+(fn2-event-archive-operation (fn2-event-archive-cold-batch-seal-copy-step budget)
+ ('''+CHILDREN+''') (fn2-event-archive fn2-pool)
+ (:bytes *fn2-commit-unit-bytes*)
+ (b* (((unless (and (fn2-event-archive-cold-batch-header-current-p '''+CHILDREN+''')
+                    (equal (fn2-event-archive-batch-phase 1 fn2-event-archive) *fn2-event-archive-batch-phase-seal-copy*)))
+       (mv :source fn2-event-archive fn2-pool))
+      ((unless (and (natp budget) (<= budget *fn2-commit-unit-bytes*))) (mv :bounds fn2-event-archive fn2-pool))
+      (cursor (fn2-event-archive-batch-copy-next 1 fn2-event-archive))
+      (length (fn2-event-archive-batch-seal-length 1 fn2-event-archive))
+      (slot (fn2-event-archive-batch-page 1 fn2-event-archive)) (gen (fn2-event-archive-batch-page-gen 1 fn2-event-archive))
+      (off (fn2-event-archive-batch-seal-off 1 fn2-event-archive))
+      (dst (fn2-event-archive-batch-accumulator-slot 1 fn2-event-archive)) (dgen (fn2-event-archive-batch-accumulator-gen 1 fn2-event-archive))
+      (kind (fn2-event-archive-owner-kind 1 fn2-event-archive)) (owner (fn2-event-archive-owner-slot 1 fn2-event-archive)) (generation (fn2-event-archive-owner-gen 1 fn2-event-archive))
+      (started (equal (fn2-event-archive-batch-copy-started 1 fn2-event-archive) 1))
+      ((unless (and (posp length) (<= length *fn2-format-sealed-batch-max-size*)
+                    (<= cursor length) (not (equal slot dst))
+                    (eq (fn2-pool-workspace-code dst dgen kind owner generation fn2-pool) :ok)
+                    (<= *fn2-commit-unit-bytes* (fn2-pool-cap dst fn2-pool))
+                    (if started (equal (fn2-pool-fill dst fn2-pool) cursor) (equal cursor 0))))
+       (mv :source fn2-event-archive fn2-pool))
+      ((when (zp budget)) (mv :more fn2-event-archive fn2-pool))
+      ((mv reset fn2-pool) (if started (mv :ok fn2-pool) (fn2-pool-reset dst dgen kind owner generation fn2-pool)))
+      ((unless (eq reset :ok)) (mv reset fn2-event-archive fn2-pool))
+      (count (min budget (- length cursor)))
+      ((mv code fn2-pool) (fn2-pool-copy-range slot gen (+ off cursor) dst dgen cursor count kind owner generation fn2-pool))
+      ((unless (eq code :ok)) (mv code fn2-event-archive fn2-pool))
+      (next (+ cursor count)) (complete (equal next length))
+      (fn2-event-archive (fn2-event-archive-put 1 (batch-copy-started 1) (batch-copy-next next)
+       (batch-phase (if complete *fn2-event-archive-batch-phase-seal-span* *fn2-event-archive-batch-phase-seal-copy*)))))
+  (mv (if complete :seal-copied :more) fn2-event-archive fn2-pool)))
+
+'''
+
+
+def seal_copy(s):
+ if '(fn2-event-archive-operation (fn2-event-archive-cold-batch-seal-copy-step budget)' in s:return s
+ n=node(s,'(fn2-event-archive-operation fn2-event-archive-cold-member-step ?*body)')
+ return lr.write(s,[(n.start,n.start,copy_body())])
+
+
+def copy_fixture(s):
+ if '(defun fn2-eabs-run ' in s:return s
+ snapshot='(list (fn2-event-archive-copy fn2-event-archive) (fn2-pool-copy fn2-pool))'
+ children=CHILDREN
+ helper='''; Exact selected witness bytes, not a seal receipt. The same owner-bound
+; accumulator is reused; zero quantum preserves even preexisting contents.
+(defun fn2-eabs-drive (fuel '''+children+''')
+ (declare (xargs :stobjs ('''+children+''') :verify-guards nil :measure (nfix fuel)))
+ (if (zp fuel) (mv :fuel fn2-event-archive fn2-pool)
+  (b* ((cursor (fn2-event-archive-batch-copy-next 1 fn2-event-archive))
+       ((mv code fn2-event-archive fn2-pool) (fn2-event-archive-cold-batch-seal-copy-step 1 '''+children+'''))
+       (next (fn2-event-archive-batch-copy-next 1 fn2-event-archive))
+       ((unless (= next (+ cursor 1))) (mv :overrun fn2-event-archive fn2-pool))
+       ((unless (eq code :more)) (mv code fn2-event-archive fn2-pool)))
+   (fn2-eabs-drive (- fuel 1) '''+children+'''))))
+(defun fn2-eabs-run ('''+children+''')
+ (declare (xargs :stobjs ('''+children+''') :verify-guards nil))
+ (b* ((slot (fn2-event-archive-accumulator-slot 1 fn2-event-archive)) (gen (fn2-event-archive-accumulator-gen 1 fn2-event-archive))
+      (kind (fn2-event-archive-owner-kind 1 fn2-event-archive)) (owner (fn2-event-archive-owner-slot 1 fn2-event-archive)) (generation (fn2-event-archive-owner-gen 1 fn2-event-archive))
+      ((mv seed fn2-pool) (fn2-pool-write slot gen 0 77 kind owner generation fn2-pool))
+      (before '''+snapshot+''')
+      ((mv zero fn2-event-archive fn2-pool) (fn2-event-archive-cold-batch-seal-copy-step 0 '''+children+'''))
+      ((unless (and (eq seed :ok) (eq zero :more) (equal before '''+snapshot+'''))) (mv :zero fn2-event-archive fn2-pool))
+      ((mv first fn2-event-archive fn2-pool) (fn2-event-archive-cold-batch-seal-copy-step 1 '''+children+'''))
+      ((unless (and (eq first :more) (= (fn2-event-archive-batch-copy-next 1 fn2-event-archive) 1) (= (fn2-pool-fill slot fn2-pool) 1))) (mv :first fn2-event-archive fn2-pool))
+      (fn2-event-archive (fn2-event-archive-set-accumulator-gen 1 (+ gen 1) fn2-event-archive))
+      (before '''+snapshot+''')
+      ((mv stale fn2-event-archive fn2-pool) (fn2-event-archive-cold-batch-seal-copy-step 1 '''+children+'''))
+      (same (equal before '''+snapshot+'''))
+      (fn2-event-archive (fn2-event-archive-set-accumulator-gen 1 gen fn2-event-archive))
+      ((unless (and (eq stale :source) same)) (mv :stale-control fn2-event-archive fn2-pool))
+      (fn2-pool (fn2-pool-set-fill slot 2 fn2-pool))
+      (before '''+snapshot+''')
+      ((mv shifted fn2-event-archive fn2-pool) (fn2-event-archive-cold-batch-seal-copy-step 1 '''+children+'''))
+      (same (equal before '''+snapshot+'''))
+      (fn2-pool (fn2-pool-set-fill slot 1 fn2-pool))
+      ((unless (and (eq shifted :source) same)) (mv :fill-control fn2-event-archive fn2-pool)))
+  (fn2-eabs-drive (+ 1 (fn2-event-archive-batch-seal-length 1 fn2-event-archive)) '''+children+''')))
+
+'''
+ n=node(s,'(defun fn2-eamcu-body ?*body)');s=lr.write(s,[(n.start,n.start,helper)])
+ n=node(s,'(defun fn2-eamcu-body ?*body)');text=s[n.start:n.end]
+ anchor="(batch-mode (member-eq fault '(:batch-header :batch-commit :batch-tail)))"
+ if text.count(anchor)!=1:raise ValueError('copy fixture producer-mode drift')
+ text=text.replace(anchor,"(batch-mode (member-eq fault '(:batch-header :batch-commit :batch-tail :batch-copy)))")
+ branch=node(text,'(mv-let (code fn2-event-archive fn2-fields) (fn2-eabh-run ?*args) ?*body)')
+ last=branch.items[-1];old=text[last.start:last.end]
+ text=lr.write(text,[(last.start,last.end,'''(if (and (eq fault :batch-copy) (eq code :header-checked))
+         (mv-let (code fn2-event-archive fn2-pool) (fn2-eabs-run '''+children+''')
+          '''+old+''')
+         '''+old+')')])
+ anchor="(cond ((member-eq fault '(:batch-header :batch-commit :batch-tail))"
+ replacement='''(cond ((eq fault :batch-copy)
+                  (and (eq code :seal-copied) (= (fn2-mk-size row fn2-mk) 0)
+                       (= (fn2-event-archive-next-event 1 fn2-event-archive) 1)
+                       (= (fn2-event-archive-phase 1 fn2-event-archive) *fn2-event-archive-phase-cold-members*)
+                       (= (fn2-event-archive-batch-phase 1 fn2-event-archive) *fn2-event-archive-batch-phase-seal-span*)
+                       (= (fn2-event-archive-entry-pending 1 fn2-event-archive) 1)
+                       (= (fn2-pool-fill accumulator fn2-pool) (fn2-event-archive-batch-seal-length 1 fn2-event-archive))
+                       (equal (fn2-pool-logical-octets (fn2-event-archive-batch-seal-length 1 fn2-event-archive) (fn2-pool-base accumulator fn2-pool) fn2-pool)
+                              (fn2-pool-logical-octets (fn2-event-archive-batch-seal-length 1 fn2-event-archive)
+                               (+ (fn2-pool-base page fn2-pool) (fn2-event-archive-batch-seal-off 1 fn2-event-archive)) fn2-pool))))
+                 ((member-eq fault '(:batch-header :batch-commit :batch-tail))'''
+ if text.count(anchor)!=1:raise ValueError('copy fixture expected-result drift')
+ text=text.replace(anchor,replacement)
+ s=lr.write(s,[(n.start,n.end,text)])
+ return s+'\n(assert-event (fn2-eamcu-test :batch-copy))\n'
+
+
+def cursor_reset(s):
+ n=node(s,'(fn2-event-archive-operation (fn2-event-archive-cold-cursor-begin ?*args) ?*body)')
+ already=lr.match('(batch-phase *fn2-event-archive-batch-phase-idle*)',[n])
+ if already:return s
+ puts=lr.match('(fn2-event-archive-put 1 (phase *fn2-event-archive-phase-cold-manifest*) ?*fields)',[n])
+ if len(puts)!=1:raise ValueError('actual cold admission reset drift')
+ p=puts[0].node
+ fields=' (batch-phase *fn2-event-archive-batch-phase-idle*) '+ ' '.join('('+name+' 0)' for name,_ in FIELDS)
+ return lr.write(s,[(p.end-1,p.end-1,fields)])
+
+
+def project_cursor(s):
+ import event_archive_fixed_rows_rewrite as fixed
+ import event_archive_accumulator_rewrite as acc
+ return cursor_reset(acc.cursor(fixed.rewrite(s)))
+
+
+def source_test(s,name):
+ if name=='event_archive_member_rewrite_test.py':return arity_test(s)
+ if name=='event_archive_frontier_begin_rewrite_test.py':
+  if 'import event_archive_batch_rewrite as batch' not in s:
+   s=s.replace('import event_archive_member_rewrite as member','import event_archive_member_rewrite as member\nimport event_archive_batch_rewrite as batch')
+  old="   after=acc.project(name, fixed.rewrite(member.cursor(after) if name=='cursor' else after))"
+  new=old+"\n   after=batch.project_cursor(after) if name=='cursor' else after"
+  if new not in s:
+   if s.count(old)!=1:raise ValueError('frontier cursor projection drift')
+   s=s.replace(old,new)
+ if name=='event_archive_root_rewrite_test.py':
+  if 'import event_archive_batch_rewrite as batch' not in s:
+   s=s.replace('import event_archive_member_rewrite as member','import event_archive_member_rewrite as member\nimport event_archive_batch_rewrite as batch')
+  s=s.replace('composed=member.cursor(frontier.cursor(after))','composed=batch.project_cursor(member.cursor(frontier.cursor(after)))')
+ return s

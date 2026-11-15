@@ -6,6 +6,7 @@ import event_archive_accumulator_rewrite as acc
 import event_archive_fixed_rows_rewrite as fixed
 import event_archive_frontier_begin_rewrite as rw
 import event_archive_member_rewrite as member
+import event_archive_batch_rewrite as batch
 ROOT=Path(__file__).resolve().parents[1]
 def read(p):return (ROOT/p).read_text()
 def one(s,p):return lr.match(p,lr.parse(s).forms)[0].node
@@ -16,6 +17,7 @@ class Begin(unittest.TestCase):
    ('boot',rw.boot,['(defcost fn2-boot-checkpoint-archive-begin ?*body)','(defun fn2-boot-checkpoint-archive-begin ?*body)'])]:
    before=read('tools/fixtures/event-archive-cold-'+name+'-before-frontier.lisp');after=fn(before)
    after=acc.project(name, fixed.rewrite(member.cursor(after) if name=='cursor' else after))
+   after=batch.project_cursor(after) if name=='cursor' else after
    self.assertEqual(fn(after),after)
    current=read('books/event-archive-cold-'+name+'.lisp')
    for pattern in patterns:

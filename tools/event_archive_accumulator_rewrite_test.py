@@ -22,6 +22,7 @@ class Accumulator(unittest.TestCase):
                             ('event-archive-cold-boot.lisp',rw.boot)]:
             after=recipe(before[name])
             after=batch.state(after) if name=='event-archive-state.lisp' else after
+            after=batch.project_cursor(after) if name=='event-archive-cold-cursor.lisp' else after
             self.assertEqual(after,(ROOT/'books'/name).read_text())
             self.assertEqual(after,recipe(after))
         self.assertEqual(form(before['event-archive-state.lisp'],'(defun fn2-event-archive-candidate-held-p ?*body)'),
@@ -53,13 +54,13 @@ class Accumulator(unittest.TestCase):
         before=json.loads((ROOT/'tools/fixtures/event-archive-accumulator-tests-before.json').read_text())
         for name,source in before.items():
             after=tests.rewrite(source,name)
-            after=batch.arity_test(after) if name=='event_archive_member_rewrite_test.py' else after
+            after=batch.source_test(after,name)
             self.assertEqual(after,(ROOT/'tools'/name).read_text())
             self.assertEqual(after,tests.rewrite(after,name))
         before=json.loads((ROOT/'tools/fixtures/event-archive-accumulator-units-before.json').read_text())
         for name,source in before.items():
             after=rw.fixture(source)
-            after=batch.fixture(after) if name=='event-archive-cold-member-unit.lisp' else after
+            after=batch.copy_fixture(batch.fixture(after)) if name=='event-archive-cold-member-unit.lisp' else after
             self.assertEqual(after,(ROOT/'tests'/name).read_text())
             self.assertEqual(after,rw.fixture(after))
             self.assertIn('(fn2-pool-reserve 1 1 2 3 fn2-pool)',after)

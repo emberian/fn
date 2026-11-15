@@ -93,7 +93,7 @@
       (q (+ base *fn2-run-reader-fields*))
       (fn2-fields (fn2-fields-set-value q *fn2-event-archive-schema* fn2-fields))
       (fn2-fields (fn2-fields-set-value (+ q 1) 1 fn2-fields))
-      (fn2-event-archive (fn2-event-archive-put 1 (phase *fn2-event-archive-phase-cold-manifest*) (accumulator-slot accumulator) (accumulator-gen agen) (scan 0) (next-event 1) (entry-pending 0) (leaf-pending 0) (read-armed 0))))
+      (fn2-event-archive (fn2-event-archive-put 1 (phase *fn2-event-archive-phase-cold-manifest*) (accumulator-slot accumulator) (accumulator-gen agen) (scan 0) (next-event 1) (entry-pending 0) (leaf-pending 0) (read-armed 0) (batch-phase *fn2-event-archive-batch-phase-idle*) (batch-page 0) (batch-page-gen 0) (batch-entry 0) (batch-source-unit 0) (batch-source-epoch 0) (batch-source-allocation 0) (batch-header-off 0) (batch-header-length 0) (batch-seal-off 0) (batch-seal-length 0) (batch-first 0) (batch-last 0) (batch-commit 0) (batch-extent 0) (batch-epoch 0) (batch-allocation 0) (batch-history 0) (batch-incarnation 0) (batch-decode-started 0) (batch-cursor 0) (batch-copy-started 0) (batch-copy-next 0) (batch-accumulator-slot 0) (batch-accumulator-gen 0))))
   (mv :borrowed fn2-event-archive fn2-run-loads fn2-run-cursors fn2-fields fn2-mk)))
 
 (defun fn2-event-archive-cold-cursor-source-p (fn2-event-archive fn2-checkpoints fn2-checkpoint-refs fn2-checkpoint-bytes

@@ -5,6 +5,7 @@ import lisp_rewrite as lr
 import event_archive_accumulator_rewrite as acc
 import event_archive_fixed_rows_rewrite as fixed
 import event_archive_member_rewrite as rw
+import event_archive_batch_rewrite as batch
 ROOT=Path(__file__).resolve().parents[1]
 def read(p):return (ROOT/p).read_text()
 def calls(s,p):return lr.match(p,lr.parse(s).forms)
@@ -13,8 +14,8 @@ def form(s,p):
  return s[n.start:n.end]
 class Member(unittest.TestCase):
  def test_cursor_replay_and_idempotence(self):
-  after=acc.project('cursor', fixed.rewrite(rw.cursor(read('tools/fixtures/archive-members-before-cursor.lisp'))))
-  self.assertEqual(after,read('books/event-archive-cold-cursor.lisp'));self.assertEqual(acc.project('cursor', fixed.rewrite(rw.cursor(after))),after)
+  after=batch.project_cursor(acc.project('cursor', fixed.rewrite(rw.cursor(read('tools/fixtures/archive-members-before-cursor.lisp')))))
+  self.assertEqual(after,read('books/event-archive-cold-cursor.lisp'));self.assertEqual(batch.project_cursor(acc.project('cursor', fixed.rewrite(rw.cursor(after)))),after)
  def test_actual_bind_return_class_and_physical_query(self):
   after=rw.bind(read('tools/fixtures/archive-members-before-bind.lisp'))
   pattern='(fn2-event-archive-operation fn2-event-archive-cold-bind-member ?*body)'
@@ -83,7 +84,7 @@ class Member(unittest.TestCase):
             '(fn2-event-archive-cold-member-page-p ?*args)','(fn2-event-archive-cold-member-step ?*args)',
             '(equal before (fn2-eamcu-snapshot ?*args))']:
    self.assertTrue(calls(s,p),p)
-  self.assertCountEqual([lr.flat(m.captures['fault']) for m in calls(s,'(assert-event (fn2-eamcu-test ?fault))')], ['nil',':event',':generation',':owner',':leaf',':accumulator-alias',':accumulator-generation',':batch-header',':batch-commit',':batch-tail'])
+  self.assertCountEqual([lr.flat(m.captures['fault']) for m in calls(s,'(assert-event (fn2-eamcu-test ?fault))')], ['nil',':event',':generation',':owner',':leaf',':accumulator-alias',':accumulator-generation',':batch-header',':batch-commit',':batch-tail',':batch-copy'])
   for n in calls(s,'(fn2-commit-pack ?*args)'):
    decl=calls(read('books/commit-format.lisp'),'(defun fn2-commit-pack ?args ?*body)')[0]
    self.assertEqual(len(n.node.items)-1,len(decl.captures['args'].items))

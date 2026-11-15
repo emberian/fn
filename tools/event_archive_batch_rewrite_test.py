@@ -10,7 +10,7 @@ def form(s,p):
  n=calls(s,p)[0].node;return s[n.start:n.end]
 class Batch(unittest.TestCase):
  def test_exact_source_projection_retains_old_holders_and_leaf_consumer(self):
-  for name,fun in [('event-archive-state',rw.state),('event-archive-cold-members',rw.members),('event-archive-cold-member-unit',rw.fixture)]:
+  for name,fun in [('event-archive-state',rw.state),('event-archive-cold-members',lambda s:rw.seal_copy(rw.members(s))),('event-archive-cold-member-unit',lambda s:rw.copy_fixture(rw.fixture(s)))]:
    before=read('tools/fixtures/cold-batch-before-'+name+'.lisp');after=fun(before)
    self.assertEqual(after,read(('tests/' if name.endswith('unit') else 'books/')+name+'.lisp'));self.assertEqual(after,fun(after))
    if name.endswith('unit'):continue
@@ -70,4 +70,26 @@ class Batch(unittest.TestCase):
   self.assertIn("'(:decoder-next :header-off :seal-off)",s)
   self.assertTrue(calls(read('books/event-archive-cold-members.lisp'),
     '(equal (fn2-fields-decode-next work fn2-fields) (fn2-event-archive-batch-cursor 1 fn2-event-archive))'))
+ def test_seal_copy_real_budget_and_captured_accumulator(self):
+  s=read('books/event-archive-cold-members.lisp')
+  step=form(s,'(fn2-event-archive-operation (fn2-event-archive-cold-batch-seal-copy-step budget) ?*body)')
+  for p in ['(count (min budget (- length cursor)))',
+            '(fn2-pool-copy-range slot gen (+ off cursor) dst dgen cursor count kind owner generation fn2-pool)',
+            '(if started (equal (fn2-pool-fill dst fn2-pool) cursor) (equal cursor 0))',
+            '(batch-phase (if complete *fn2-event-archive-batch-phase-seal-span* *fn2-event-archive-batch-phase-seal-copy*))']:
+   self.assertTrue(calls(step,p),p)
+  self.assertLess(calls(step,'((when (zp budget)) ?*body)')[0].node.start,calls(step,'(fn2-pool-reset ?*args)')[0].node.start)
+  self.assertFalse(calls(step,'(fn2-format-run ?*args)'))
+  fixture=read('tests/event-archive-cold-member-unit.lisp')
+  for p in ['(fn2-event-archive-cold-batch-seal-copy-step 0 ?*args)',
+            '(fn2-event-archive-cold-batch-seal-copy-step 1 ?*args)', '(= next (+ cursor 1))',
+            '(fn2-pool-write slot gen 0 77 kind owner generation fn2-pool)',
+            '(equal before (list (fn2-event-archive-copy fn2-event-archive) (fn2-pool-copy fn2-pool)))',
+            '(fn2-eamcu-test :batch-copy)', '(eq stale :source)', '(eq shifted :source)']:
+   self.assertTrue(calls(fixture,p),p)
+  cursor=read('books/event-archive-cold-cursor.lisp')
+  self.assertEqual(cursor,rw.cursor_reset(cursor))
+  begin=form(cursor,'(fn2-event-archive-operation (fn2-event-archive-cold-cursor-begin ?*args) ?*body)')
+  self.assertTrue(calls(begin,'(batch-phase *fn2-event-archive-batch-phase-idle*)'))
+  for name,_ in rw.FIELDS:self.assertTrue(calls(begin,'('+name+' 0)'),name)
 if __name__=='__main__':unittest.main()
