@@ -50,3 +50,26 @@ and attempted publication followed by authoritative reads of all four
 schemas. Direct C bind/publication is not a persisted acceptance test.
 Current evidence is source review and structural checks only: ACL2 admission,
 guard closure and execution of these controls are still required.
+
+The next ownership connection is a real query read reference, separate from
+I/O descriptor `out-count`. Existing `fn2-pool-release-out` requires a matched
+terminal OpRef; query reads cannot pretend to be operations. The proposed
+state records the two query windows independently of reused query scratch
+and counts their pool holds. Start must acquire both or roll back, including
+two references to one window; replacement and cancellation must close the
+stored references exactly once.
+
+Read references cannot simply last until successor release: after the
+query reaches `:done`, `fn2-txn-put-post-for` repurposes upload buffers before
+that release. The completion boundary must therefore close read references
+atomically with the stored scalar result; subsequent done/facts operations
+read no source octets. Errors and cancellation need their own retained or
+released states. This connection is not implemented or qualified yet.
+
+The shared change must also extend the independent ownership and CNS drain
+models. Current CNS drainage stops on a failed pool release. A live query
+hold needs an explicit retained outcome and a bounded wake/retry connection
+when its last read reference closes. Merely adding a zero-query-reference
+premise to existing release laws would not establish that behavior. Current
+root contains those drain/refinement books; the next implementation must
+compose with that source rather than this lane's older base.
