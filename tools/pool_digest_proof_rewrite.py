@@ -26,6 +26,10 @@ SUPPORT='''; Local proof support: a backend pool read never uses the continuatio
 (local (defthm fn2-rec-byte-at-not-more
  (not (equal (mv-nth 0 (fn2-rec-byte-at slot gen off okind oslot ogen fn2-pool)) :more))
  :hints (("Goal" :in-theory (enable fn2-rec-byte-at fn2-pool-read fn2-pool-readable-code fn2-pool-handle-code)))))
+(local (defthm fn2-rec-byte-at-car-not-more
+ (not (equal (car (fn2-rec-byte-at slot gen off okind oslot ogen fn2-pool)) :more))
+ :hints (("Goal" :use ((:instance fn2-rec-byte-at-not-more))
+                 :in-theory (e/d (mv-nth) (fn2-rec-byte-at fn2-rec-byte-at-not-more))))))
 (local (defthm fn2-rec-byte-at-u8
  (unsigned-byte-p 8 (mv-nth 1 (fn2-rec-byte-at slot gen off okind oslot ogen fn2-pool)))
  :hints (("Goal" :in-theory (enable unsigned-byte-p)))))
