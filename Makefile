@@ -176,6 +176,7 @@ ACL2_BOOKS = \
   books/host-ops \
   books/identity \
   books/layout \
+  books/layout-size-bounds \
   books/log-model \
   books/machine-arms \
   books/machine-dispatch \
@@ -228,6 +229,7 @@ ACL2_BOOKS = \
   books/pool \
   books/pool-block \
   books/pool-ranges \
+  books/pool-read-contracts \
   books/port \
   books/profile \
   books/q1 \
@@ -381,6 +383,7 @@ ACL2_BOOKS = \
   tests/layout-teeth-unit \
   tests/layout-unit \
   tests/layout-proof-scope-unit \
+  tests/layout-size-bound-unit \
   tests/log-model-unit \
   tests/m2-cuts \
   tests/machine-arms-probe-fixture \
