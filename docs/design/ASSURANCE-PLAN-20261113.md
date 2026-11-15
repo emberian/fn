@@ -707,6 +707,25 @@ Q1 entry/partition/step/exit proofs follow these transition contracts.
 Primitive work/allocation semantics is a separate dependency of the actual
 bounded-work claim; summing declarations alone is insufficient.
 
+### Open returned-charge defect — November 15
+
+At integration `26342e8cb`, `fn2-arms-charge-form` returns explicit byte/step
+charges plus loop work, while only its static metadata takes the maximum with
+summed callback declarations. `fn2-exec-principal` debits and records that
+returned tuple directly. The `:goto` terminal also returns the subarm tuple
+without carrying the caller-prefix cost. A static envelope therefore does not
+establish runtime accounting. `audit_bridge` owns the shared generator repair:
+connect returned byte/step charges and composed prefix costs, retain exact
+issued-descriptor counts, and test the actual generated composed arm and
+unchanged-cap refusal. No profile limit increase is authorized by this defect.
+
+`peer_assurance` owns resumable article lookup and schema-specific physical
+read bounds in parallel. A declared callback cost is not a proof of physical
+work. The existing bounded lookup can discard unfinished progress and restart;
+its replacement must preserve dedicated actor generation, query identity and
+phase across yields and cancellation. Source-derived byte inequalities remain
+unproved until connected to actual read/count semantics.
+
 ### Evidence and claim graph
 
 Extend `fn2-squares`, reusing statement/formals/body identity, sides, contracts,
