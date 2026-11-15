@@ -242,6 +242,12 @@ ACL2_BOOKS = \
   books/checkpoint-bank-bind \
   books/checkpoint-bank-empty \
   books/checkpoint-bank-boot \
+  books/checkpoint-owned-extent \
+  books/checkpoint-owned-projection \
+  books/checkpoint-owned-release \
+  tests/checkpoint-owned-extent-unit \
+  tests/checkpoint-owned-projection-unit \
+  tests/checkpoint-owned-release-unit \
   books/recovery-proof \
   books/reference \
   books/reference-state \
