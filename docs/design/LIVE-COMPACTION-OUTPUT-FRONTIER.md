@@ -1,6 +1,6 @@
 # Live compaction output frontier
 
-Source-only boundary at the live-capacity/adoption lane. Neither a larger
+Historical resident-output refutation at83f941d42; source-only boundary. Neither a larger
 resident pool nor successful source-fit admission proves unlimited stored-data
 progress. Live adoption remains inactive pending the actual query-parent joins.
 
@@ -11,8 +11,11 @@ pool page and `fn2-seal-page` starts the run writer with a resident virtual unit
 LIVE only in `fn2-seal-install`; the existing bounded release then returns old
 input pages, not the newly installed output. A merge over a large physical base
 can therefore exhaust resident pages or direct-mapped cache rows before that
-installation. The source-fit demand now requests real compaction after releasing
-the cut, but does not remove this output dependency.
+installation. The historical source-fit demand requested real compaction after releasing
+the cut. Current bank admission replaces that global-free/original-count
+criterion with the canonical inactive-bank receipt. The actual per-schema
+root1 streaming producer is separate; neither row admission nor this historical
+resident-output witness establishes its runtime completion.
 
 The actual checkpoint producer already supplies the required durable page
 mechanism: `fn2-checkpoint-metadata-page` reserves one whole B extent before
