@@ -426,3 +426,16 @@ byte-position advancement per visit and unchanged other carriers/source, and
 compares full eight-carrier snapshots for budget0. It also checks the full4096
 quantum. Both fixtures explicitly own B* and are registered in Makefile. All
 ACL2 execution remains unrun; source controls alone do not qualify admission.
+
+Revised witness proposal v2 in event-archive-witness-review.md supersedes the
+ten-field proposal: only the first member of each original batch preserves
+its exact generated records header and complete semantic sealed-batch body;
+all members carry batch-first as a seek hint checked by full batch replay.
+Cold/point verification reconstructs one normalized original4096 records frame
+from shared canonical scanner ranges and checked zero padding, then uses the
+actual role1 frame and role2 semantic seal hasher/context. All original hash
+inputs are preserved; no omitted refs/default scalars or event-leaf/raw-record
+hash equivalence is assumed. Proposed scratch ownership and actual reconstruction
+relation still need implementation/evidence. No durable declaration changed;
+root review is pending. Prefix RELEASE typed obligations must complete before
+selected suffix source authority. Disposal, transfer and FREE remain closed.
