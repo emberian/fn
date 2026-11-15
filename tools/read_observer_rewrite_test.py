@@ -46,4 +46,20 @@ class Controls(unittest.TestCase):
   self.assertIn('(fn2-c-source-reader-release x receipt',self.helpers)
   self.assertIn('(fn2-c-source-reader-acquire x expected',self.helpers)
   for name in ('release','enter'):self.assertIn('(fn2-rd-shape fn2-read-observer-'+name,self.now)
+ def test_parent_bind_clear_atomic_preflight(self):
+  for name in ('bind','clear'):
+   body=self.f['fn2-read-parent-'+name+'-pair'].items[-1]
+   self.assertEqual(sym(body.items[0]),'if')
+   self.assertIn('fn2-read-parent-pair-p',lr.emit(body.items[1],drop_comments=True))
+   self.assertNotIn('fn2-reads-put',lr.emit(body.items[2],drop_comments=True))
+   self.assertEqual(lr.emit(body.items[3],drop_comments=True).count('fn2-reads-put'),2)
+ def test_parent_tuple_preserved_across_read_release(self):
+  base=formmap(self.base)
+  for name in ('fn2-rd-release','fn2-rd-key','fn2-rd-key-octets'):
+   self.assertNotIn('observer-parent',lr.emit(self.f[name],drop_comments=True))
+  enter=lr.emit(self.f['fn2-read-observer-enter'],drop_comments=True)
+  self.assertIn('fn2-c-source-reader-acquire-under',enter)
+  current=lr.emit(self.f['fn2-read-observer-current-p'],drop_comments=True)
+  self.assertIn('fn2-reads-observer-parent-serial',current)
+  self.assertEqual(current.count('fn2-c-source-reader-current-p'),2)
 if __name__=='__main__':unittest.main()
