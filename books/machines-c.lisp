@@ -13,6 +13,7 @@
 (include-book "run-physical-geometry")
 (include-book "run-physical-harvest")
 (include-book "startup-genesis-state")
+(include-book "c-source-observer")
 (fn2-book-layer :c)
 
 ; ---------------------------------------------------------------------------
@@ -61,9 +62,24 @@
 ;; waits, :full, until the sealer catches up: machines-c-stage.lisp).
 (defconst *fn2-idc-run-budget* 4)
 (defconst *fn2-idc-overlay-budget* (- *fn2-idc-seal-cursors* *fn2-idc-run-budget*))
+;; Source observers name actual resumable operation rows, not actor identities.
+;; Reads and successor resolutions have distinct endpoints even when one actor
+;; owns both.  The final endpoint protects the sealer's complete merge lifetime.
+(defun fn2-c-source-endpoint-rows (profile)
+ (declare (xargs :guard t))
+ (+ 1 (nfix (fn2-profile-t profile)) (* 2 (fn2-b-read-rows profile))))
+(defun fn2-c-source-successor-endpoint (read-rows tx)
+ (declare (xargs :guard (and (natp read-rows) (natp tx))))
+ (+ read-rows tx))
+(defun fn2-c-source-sealer-endpoint (read-rows successor-rows)
+ (declare (xargs :guard (and (natp read-rows) (natp successor-rows))))
+ (+ read-rows successor-rows))
+(defthm fn2-c-source-endpoint-rows-natp
+ (natp (fn2-c-source-endpoint-rows profile)) :rule-classes :type-prescription)
 (defun fn2-idc-profilep (profile)
  (declare (xargs :guard t))
- (and (unsigned-byte-p 32 (fn2-profile-t profile))
+ (and (unsigned-byte-p 32 (fn2-c-source-endpoint-rows profile))
+      (unsigned-byte-p 32 (fn2-profile-t profile))
       (unsigned-byte-p 32 (* *fn2-run-max-levels* (nfix (fn2-profile-t profile))))
       (unsigned-byte-p 32 (* *fn2-succ-slots* (nfix (fn2-profile-t profile))))
       (unsigned-byte-p 32 (fn2-b-capacity :identity-overlays *fn2-idc-overlays-default* profile))
@@ -103,6 +119,12 @@
     (in-theory (disable ,fn))
     (defcorechild ,field ,stobj :init (,fn profile ,stobj) :profilep (fn2-idc-profilep profile) :why ,why))))
 (in-theory (disable fn2-idc-profilep))
+(fn2-idc-child fn2-core-c-source-control fn2-c-source-control
+ (fn2-c-source-control-init 1 fn2-c-source-control)
+ "Writer preference closes new semantic observers before bounded live source replacement.")
+(fn2-idc-child fn2-core-c-source-readers fn2-c-source-readers
+ (fn2-c-source-readers-init (fn2-c-source-endpoint-rows profile) fn2-c-source-readers)
+ "One exact receipt per read, successor, and sealer endpoint survives yields until references are dead.")
 (fn2-idc-child fn2-core-csnapshot fn2-csnapshot (fn2-csnapshot-init 1 fn2-csnapshot)
  "One exact-owner resident metadata cut excludes staging and materialization until released.")
 (fn2-idc-child fn2-core-id-decides fn2-id-decides (fn2-id-decides-init (fn2-profile-t profile) fn2-id-decides)
