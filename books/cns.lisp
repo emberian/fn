@@ -850,8 +850,8 @@
 ;; accessor for row S).
 (defthm fn2-ctl-fc-row-at-the-floor
   (implies (and (equal fc-rows (fn2-b-format-floor profile)) (equal c (fn2-b-ctl-rows profile)))
-           (equal (+ (- fc-rows c) -1 (nfix s)) (fn2-b-ctl-slot s profile)))
-  :hints (("Goal" :in-theory (enable fn2-b-format-floor fn2-b-ctl-slot))))
+           (equal (fn2-b-ctl-runtime-row s c fc-rows) (fn2-b-ctl-slot s profile)))
+  :hints (("Goal" :in-theory (enable fn2-b-format-floor fn2-b-ctl-slot fn2-b-ctl-runtime-row))))
 
 
 ;; ---------------------------------------------------------------------------
@@ -1614,10 +1614,13 @@
                (c (stobj-let ((fn2-ctl (fn2-ctl-table fn2-core))) (n) (fn2-ctl-rows fn2-ctl) n))
                (f (stobj-let ((fn2-fc (fn2-core-fc fn2-core))) (n) (fn2-fc-rows fn2-fc) n))
                (fr (stobj-let ((fn2-fields (fn2-core-fields fn2-core))) (n) (fn2-fields-rows fn2-fields) n)))
-           (if (and (natp s) (natp c) (natp f) (< s c) (< c f)
-                    (<= (* 128 (+ (- f c) s)) (nfix fr)))
-               (mv :ok (+ (- f c) -1 s))
-             (mv :bounds 0)))))
+           (let ((row (fn2-b-ctl-runtime-row s c f)))
+            (if (and (natp s) (natp c) (natp f) (< s c)
+                     (<= c (fn2-b-semantic-retention-row f))
+                     (< row (fn2-b-semantic-retention-row f))
+                     (<= (* 128 (+ 1 row)) (nfix fr)))
+                (mv :ok row)
+              (mv :bounds 0))))))
      (defthm fn2-ctl-fc-row-natp
        (natp (mv-nth 1 (fn2-ctl-fc-row ctl fn2-core))) :rule-classes :type-prescription)
      (in-theory (disable fn2-ctl-fc-row))
