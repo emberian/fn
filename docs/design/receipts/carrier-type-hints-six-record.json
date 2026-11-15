@@ -1,0 +1,141 @@
+{
+  "source_commit": "63ebaba46e5a9b5434aa6c061bdef272f0970de1",
+  "root": "tests/columns-carrier-hints-unit",
+  "count": 6,
+  "author": "four source books PASS after two current qualified parents",
+  "record": {
+    "source": "63ebaba46e5a9b5434aa6c061bdef272f0970de1",
+    "roots": [
+      "tests/columns-carrier-hints-unit"
+    ],
+    "keys": {
+      "tests/columns-carrier-hints-unit": "66cb7804d0ee3f08254fd1df5768d2ac01d870607277dad332540cf0fcdea75b"
+    },
+    "count": 6,
+    "cgroup": "/sys/fs/cgroup/user.slice/user-1000.slice/user@1000.service/swarm.slice/run-p1248517-i30605208.scope",
+    "memory_max": 2147483648,
+    "swap_max": 0,
+    "source_hashes_before": {
+      "tests/columns-carrier-hints-unit": "279c94e5c7adb2f82dae69d65abea4e031adcff7d83becb06c908e68e2d00694",
+      "books/columns-carrier-contracts": "36cf411d1119704be488c119243d0aff8006e9babe38bb128f5d627353373c5a",
+      "books/columns-guard-hints": "e0a20c5669df681bf75fa5eeae426adc4053010915b3c7657d56e247d5c8440b",
+      "books/columns": "f21583e2e5471fb1d44dd5bdc34158b32e13e43146950b72abee4c57ac9d8e5b",
+      "books/operations": "419120e7ae100f400d18cdee2d080d6133523673cac22fae1b05c7201ff97dd8",
+      "books/declare": "1c706e559ef3b314fb9bd48171fb2891fad8613bd4eb1c5de5268443833c4bfb"
+    },
+    "status": "passed",
+    "runner_pid": 1248612,
+    "command": [
+      "/usr/bin/python3",
+      "tools/certify_books.py",
+      "--jobs",
+      "1",
+      "--incremental",
+      "--images",
+      "off",
+      "--timeout-seconds",
+      "120",
+      "tests/columns-carrier-hints-unit"
+    ],
+    "run_dir": "/build/lanes/proof-event-carrier-type-hints-63ebaba46/build/acl2/certify-20261115T111450Z-1248612",
+    "runner_exit": 0,
+    "source_hashes_after": {
+      "tests/columns-carrier-hints-unit": "279c94e5c7adb2f82dae69d65abea4e031adcff7d83becb06c908e68e2d00694",
+      "books/columns-carrier-contracts": "36cf411d1119704be488c119243d0aff8006e9babe38bb128f5d627353373c5a",
+      "books/columns-guard-hints": "e0a20c5669df681bf75fa5eeae426adc4053010915b3c7657d56e247d5c8440b",
+      "books/columns": "f21583e2e5471fb1d44dd5bdc34158b32e13e43146950b72abee4c57ac9d8e5b",
+      "books/operations": "419120e7ae100f400d18cdee2d080d6133523673cac22fae1b05c7201ff97dd8",
+      "books/declare": "1c706e559ef3b314fb9bd48171fb2891fad8613bd4eb1c5de5268443833c4bfb"
+    },
+    "source_unchanged": true
+  },
+  "artifact_verification": [
+    {
+      "book": "books/declare",
+      "key": "f1df352dc360553d08906239d267e9371fcb2fe4f19c6581adc1b0b322b30875",
+      "source_sha256": "1c706e559ef3b314fb9bd48171fb2891fad8613bd4eb1c5de5268443833c4bfb",
+      "cache_entry": "/home/fn/.cache/fn-certs/f1df352dc360553d08906239d267e9371fcb2fe4f19c6581adc1b0b322b30875/2c56b9035d330b37",
+      "toolchain_identity": "8aeb1bea18968c6cd33ac633a80ebf67e4924504db112fd27eb11f16a27b2a8c",
+      "artifact_hashes": {
+        "cert_sha256": "202d9dd8bfa5eb1d5c2f705fc7dd054f87014e5263da1f80bbafef057ce68971",
+        "fasl_sha256": "949ada9e4b8673d8401f9a6d053f5f11b1e373f28b38638cc3fae79c3b469db6",
+        "port_sha256": "f4cb7e8160cfa6f41cddb04be508f922aa8e87c4ff126bfaad3379aa92e647e0",
+        "source_sha256": "1c706e559ef3b314fb9bd48171fb2891fad8613bd4eb1c5de5268443833c4bfb"
+      }
+    },
+    {
+      "book": "books/operations",
+      "key": "15da3cfd8dd9976d08f0c8590f6b607f62e664c5cf20fcb68c5525ad2347b53f",
+      "source_sha256": "419120e7ae100f400d18cdee2d080d6133523673cac22fae1b05c7201ff97dd8",
+      "cache_entry": "/home/fn/.cache/fn-certs/15da3cfd8dd9976d08f0c8590f6b607f62e664c5cf20fcb68c5525ad2347b53f/4847be3c35763d2d",
+      "toolchain_identity": "8aeb1bea18968c6cd33ac633a80ebf67e4924504db112fd27eb11f16a27b2a8c",
+      "artifact_hashes": {
+        "cert_sha256": "909cbcb30de1e31131cb08690f9ecc4776de3463b6c17538281a7ea613d7b233",
+        "fasl_sha256": "9fa565c104e04b0c33a2fdab4662e711829a5ef88e02b7173d99c2f667a406d8",
+        "port_sha256": "f4cb7e8160cfa6f41cddb04be508f922aa8e87c4ff126bfaad3379aa92e647e0",
+        "source_sha256": "419120e7ae100f400d18cdee2d080d6133523673cac22fae1b05c7201ff97dd8"
+      }
+    },
+    {
+      "book": "books/columns",
+      "key": "a18eca87d67ac59cf27b0b9c11cd578acd923038e3e51914e0bf8536c0ad8598",
+      "source_sha256": "f21583e2e5471fb1d44dd5bdc34158b32e13e43146950b72abee4c57ac9d8e5b",
+      "cache_entry": "/home/fn/.cache/fn-certs/a18eca87d67ac59cf27b0b9c11cd578acd923038e3e51914e0bf8536c0ad8598/c5dbe20cc7e045ae",
+      "toolchain_identity": "8aeb1bea18968c6cd33ac633a80ebf67e4924504db112fd27eb11f16a27b2a8c",
+      "artifact_hashes": {
+        "cert_sha256": "d9e45565f4feeadd491aad47063200c1cfc04e5614bef5e1f517ea2cae5ce1f9",
+        "fasl_sha256": "857bda0e8e2ad23deb3f538ec4742d7700196fe8744830f1d8e4444b909a0093",
+        "port_sha256": "f4cb7e8160cfa6f41cddb04be508f922aa8e87c4ff126bfaad3379aa92e647e0",
+        "source_sha256": "f21583e2e5471fb1d44dd5bdc34158b32e13e43146950b72abee4c57ac9d8e5b"
+      }
+    },
+    {
+      "book": "books/columns-guard-hints",
+      "key": "bb26c66040fe6346df42615f908fe25a143493a08fa11a07bc7474b6585b52a7",
+      "source_sha256": "e0a20c5669df681bf75fa5eeae426adc4053010915b3c7657d56e247d5c8440b",
+      "cache_entry": "/home/fn/.cache/fn-certs/bb26c66040fe6346df42615f908fe25a143493a08fa11a07bc7474b6585b52a7/c5dbe20cc7e045ae",
+      "toolchain_identity": "8aeb1bea18968c6cd33ac633a80ebf67e4924504db112fd27eb11f16a27b2a8c",
+      "artifact_hashes": {
+        "cert_sha256": "a710b0d06bc1a0594af30a0d7c505e138c4dc21fc2f86aa8626945d59b81820b",
+        "fasl_sha256": "8695a68f9febeca6e5baa0f1e811b37b1f2bbf30cb60261a819cc0f3fe869d03",
+        "port_sha256": "f4cb7e8160cfa6f41cddb04be508f922aa8e87c4ff126bfaad3379aa92e647e0",
+        "source_sha256": "e0a20c5669df681bf75fa5eeae426adc4053010915b3c7657d56e247d5c8440b"
+      }
+    },
+    {
+      "book": "books/columns-carrier-contracts",
+      "key": "79f7f4f40c98703f0100a962d42e45461ee1307a50f2b1528639987169a399a1",
+      "source_sha256": "36cf411d1119704be488c119243d0aff8006e9babe38bb128f5d627353373c5a",
+      "cache_entry": "/home/fn/.cache/fn-certs/79f7f4f40c98703f0100a962d42e45461ee1307a50f2b1528639987169a399a1/c5dbe20cc7e045ae",
+      "toolchain_identity": "8aeb1bea18968c6cd33ac633a80ebf67e4924504db112fd27eb11f16a27b2a8c",
+      "artifact_hashes": {
+        "cert_sha256": "4e76743bedd937252612d9d9d6e420e9f74519f95b44f3bb12291cb1daea3c80",
+        "fasl_sha256": "f0ce5110d843518ba155a1be7b3f7054ce115941eb97e51896888f598e8ba474",
+        "port_sha256": "f4cb7e8160cfa6f41cddb04be508f922aa8e87c4ff126bfaad3379aa92e647e0",
+        "source_sha256": "36cf411d1119704be488c119243d0aff8006e9babe38bb128f5d627353373c5a"
+      }
+    },
+    {
+      "book": "tests/columns-carrier-hints-unit",
+      "key": "66cb7804d0ee3f08254fd1df5768d2ac01d870607277dad332540cf0fcdea75b",
+      "source_sha256": "279c94e5c7adb2f82dae69d65abea4e031adcff7d83becb06c908e68e2d00694",
+      "cache_entry": "/home/fn/.cache/fn-certs/66cb7804d0ee3f08254fd1df5768d2ac01d870607277dad332540cf0fcdea75b/c5dbe20cc7e045ae",
+      "toolchain_identity": "8aeb1bea18968c6cd33ac633a80ebf67e4924504db112fd27eb11f16a27b2a8c",
+      "artifact_hashes": {
+        "cert_sha256": "1c17950c00631f4f0937118adc04083d1cdb6872985d89d3e773ddf3ee8bf9f5",
+        "fasl_sha256": "9d5594a0a775f7f10ce14e6542e186beb0a61429d1d329554f1a445894ef1cc6",
+        "port_sha256": "f4cb7e8160cfa6f41cddb04be508f922aa8e87c4ff126bfaad3379aa92e647e0",
+        "source_sha256": "279c94e5c7adb2f82dae69d65abea4e031adcff7d83becb06c908e68e2d00694"
+      }
+    }
+  ],
+  "owned_pids_absent": [
+    1248517,
+    1248521,
+    1248536,
+    1248540,
+    1248612
+  ],
+  "scope_absent": "/sys/fs/cgroup/user.slice/user-1000.slice/user@1000.service/swarm.slice/run-p1248517-i30605208.scope",
+  "scope_released": true
+}

@@ -80,8 +80,16 @@ with its whole stored guard, input recognizers and all four output type/WFP
 checks. This positive witness does not establish the general preservation claims.
 The guarded contract block exhausted its shared budget at POOL TYPE after both
 FIELDS claims passed; POOL WFP was not reached. Per-carrier hints were found to
-route only to WFP. The shared generator is being extended to support distinct
-TYPE hints instead of retaining member-specific generated-event surgery.
+route only to WFP. The shared generator now accepts opt-in `:type-hints`, keeping
+legacy output unchanged when absent and leaving `:hints` for WFP. Exact six-book
+record `certify-20261115T111450Z-1248612` passed with two reused parents and four
+new books. Root matched all six current source hashes and closure keys to both
+record snapshots and qualified cache entries. The registered fixture exercises
+actual constructor routing and admission; source controls reject the old generator.
+Receipt: [carrier TYPE hints](receipts/carrier-type-hints-six-record.json).
+Member-specific event surgery is removed in reviewed candidate `7b2e2188b`, but
+its current parent closure must include the pending pool repair before execution.
+This six-book record does not qualify member preservation or the application.
 
 Physical address geometry remains an executable blocker. `fe9f761ab` repairs
 POST's root location from three units per extent to the physical sixteen, with
