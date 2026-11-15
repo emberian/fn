@@ -4,6 +4,7 @@ import unittest
 import lisp_rewrite as lr
 import event_archive_fixed_rows_rewrite as rw
 import event_archive_test_fixed_rows_rewrite as tests
+import event_archive_accumulator_rewrite as acc
 
 ROOT=Path(__file__).resolve().parents[1]
 
@@ -14,7 +15,7 @@ class Rows(unittest.TestCase):
         count=0
         for name,old in before.items():
             count+=len(lr.match('(< 1 (fn2-run-loads-rows fn2-run-loads))',lr.parse(old).forms))
-            after=rw.rewrite(old)
+            after=acc.project(name,rw.rewrite(old))
             self.assertEqual(after,(ROOT/'books'/name).read_text())
             self.assertEqual(after,rw.rewrite(after))
         self.assertEqual(count,5)

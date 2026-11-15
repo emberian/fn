@@ -2,6 +2,7 @@
 from pathlib import Path
 import unittest
 import lisp_rewrite as lr
+import event_archive_accumulator_rewrite as acc
 import event_archive_fixed_rows_rewrite as fixed
 import event_archive_member_rewrite as rw
 ROOT=Path(__file__).resolve().parents[1]
@@ -12,8 +13,8 @@ def form(s,p):
  return s[n.start:n.end]
 class Member(unittest.TestCase):
  def test_cursor_replay_and_idempotence(self):
-  after=fixed.rewrite(rw.cursor(read('tools/fixtures/archive-members-before-cursor.lisp')))
-  self.assertEqual(after,read('books/event-archive-cold-cursor.lisp'));self.assertEqual(fixed.rewrite(rw.cursor(after)),after)
+  after=acc.project('cursor', fixed.rewrite(rw.cursor(read('tools/fixtures/archive-members-before-cursor.lisp'))))
+  self.assertEqual(after,read('books/event-archive-cold-cursor.lisp'));self.assertEqual(acc.project('cursor', fixed.rewrite(rw.cursor(after))),after)
  def test_actual_bind_return_class_and_physical_query(self):
   after=rw.bind(read('tools/fixtures/archive-members-before-bind.lisp'))
   pattern='(fn2-event-archive-operation fn2-event-archive-cold-bind-member ?*body)'
@@ -57,7 +58,7 @@ class Member(unittest.TestCase):
   self.assertNotIn('prefix-complete',s)
  def test_composed_check_dispatch_and_actual_call_mv_shapes(self):
   before=read('tools/fixtures/archive-members-before-boot.lisp')
-  after=fixed.rewrite(rw.boot(before));self.assertEqual(after,read('books/event-archive-cold-boot.lisp'));self.assertEqual(fixed.rewrite(rw.boot(after)),after)
+  after=acc.project('boot', fixed.rewrite(rw.boot(before)));self.assertEqual(after,read('books/event-archive-cold-boot.lisp'));self.assertEqual(acc.project('boot', fixed.rewrite(rw.boot(after))),after)
   driver=read('books/event-archive-cold-step.lisp')
   for name in ['fn2-event-archive-cold-bind-member','fn2-event-archive-cold-member-step','fn2-event-archive-cold-next-manifest','fn2-event-archive-cold-step-reach']:
    self.assertEqual(len(calls(driver,'('+name+' ?*args)')),1,name)
@@ -79,7 +80,7 @@ class Member(unittest.TestCase):
             '(fn2-event-archive-cold-member-page-p ?*args)','(fn2-event-archive-cold-member-step ?*args)',
             '(equal before (fn2-eamcu-snapshot ?*args))']:
    self.assertTrue(calls(s,p),p)
-  self.assertEqual(len(calls(s,'(assert-event (fn2-eamcu-test ?fault))')),5)
+  self.assertEqual(len(calls(s,'(assert-event (fn2-eamcu-test ?fault))')),7)
   for n in calls(s,'(fn2-commit-pack ?*args)'):
    decl=calls(read('books/commit-format.lisp'),'(defun fn2-commit-pack ?args ?*body)')[0]
    self.assertEqual(len(n.node.items)-1,len(decl.captures['args'].items))

@@ -1,5 +1,6 @@
 """Compose the later fixed-row program transformation into exact replay tests."""
 import ast
+import event_archive_test_accumulator_rewrite as accumulator
 
 
 def rewrite(source, name):
@@ -30,5 +31,6 @@ def rewrite(source, name):
               'event_archive_visit_rewrite_test.py':2}[name]
     if len(edits)!=expected:raise ValueError('replay-test source drift')
     for start,end,text in sorted(edits,reverse=True):source=source[:start]+text+source[end:]
-    return source.replace('import lisp_rewrite as lr\n',
+    result=source.replace('import lisp_rewrite as lr\n',
         'import lisp_rewrite as lr\nimport event_archive_fixed_rows_rewrite as fixed\n',1)
+    return accumulator.rewrite(result,name)

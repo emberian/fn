@@ -17,6 +17,7 @@
   (header-ordinal :u60) (header-slot :u32) (header-gen :u60) (header-zero :u32) (header-payload :u32)
   (header-unit :u60) (header-epoch :u60) (header-allocation :u60)
   (source-tag :u60) (source-generation :u60) (scan :u60) (next-event :u60) (entry-pending :bool) (leaf-pending :bool)
+  (accumulator-slot :u32) (accumulator-gen :u60)
   (read-armed :bool) (read-offset :u60) (read-sector :u8)
   (read-unit :u60) (read-epoch :u60) (read-allocation :u60) (read-schema :u60) (read-run :u60) (read-level :u8)
   (read-page :u32) (read-page-gen :u60) (read-scratch :u32) (read-scratch-gen :u60)

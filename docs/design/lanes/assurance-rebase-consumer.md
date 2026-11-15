@@ -611,3 +611,21 @@ Sol_rebase_consumer retains ownership of that real transfer, original-frame
 reconstruction/Jseal/root4 completion and append/reuse controls. Codec and
 terminal-disposal owners have the exact missing receipt condition; they must
 continue refusing prefix authority until this producer/reader joins it.
+
+The real role3 cold constructor now binds the existing machine.pool-slot/gen
+as its accumulator, separately from rx scratch and the64KiB page. All three
+loans are checked before cursor admission; two pending-row metadata fields
+retain the accumulator identity, and every source-current visit rechecks its
+owner/generation/capacity/distinctness. Public archive owner guards now require
+root-role3, so role4 cannot inherit this workspace permission. BEGIN does not
+reset/zero the accumulator or read borrowed descriptor refs. This is an actual
+constructor/consumer source hunk, not a ready flag or extra profile buffer.
+
+The existing synthetic-page/reach fixtures now reserve the real third4KiB
+workspace and bind it. Added alias and stale-generation cases must refuse with
+complete member snapshots or after real read issue/harvest interleaving. Their
+assertions remain UNRUN and do not authenticate a candidate. Four accumulator
+projection controls and the existing35 related source controls pass; five Lisp
+books/fixtures have0structural findings. Candidate-holder ABI stays byte-identical.
+Frame reconstruction, original seal/records verification and prefix transfer
+still follow; this binding grants no archive terminal, source drop or FREE.

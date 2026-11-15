@@ -2,6 +2,7 @@
 from pathlib import Path
 import unittest
 import lisp_rewrite as lr
+import event_archive_accumulator_rewrite as acc
 import event_archive_reach_bind_rewrite as rw
 import event_archive_frontier_begin_rewrite as frontier
 import event_archive_visit_rewrite as visit
@@ -21,14 +22,14 @@ class Reach(unittest.TestCase):
  def test_exact_existing_face_class_replay(self):
   old=read('tools/fixtures/event-archive-cold-boot-before-reach.lisp');after,count=rw.transform(old)
   self.assertEqual(count,7);self.assertEqual(rw.transform(after),(after,0))
-  current=read('books/event-archive-cold-boot.lisp');after=member.boot(visit.explicit(frontier.boot(after),['fn2-boot-checkpoint-archive-check-raw','fn2-boot-checkpoint-archive-check']))
+  current=read('books/event-archive-cold-boot.lisp');after=acc.project('boot', member.boot(visit.explicit(frontier.boot(after),['fn2-boot-checkpoint-archive-check-raw','fn2-boot-checkpoint-archive-check'])))
   for m in lr.match('(defcost ?name ?*body)',lr.parse(after).forms,deep=False):
    p='(defcost '+m.captures['name'].low+' ?*body)'
    self.assertEqual(tree(m.node),tree(one(current,p)))
   self.assertEqual(tree(one(after,'(defun fn2-boot-checkpoint-archive-owner-p ?*body)')),tree(one(current,'(defun fn2-boot-checkpoint-archive-owner-p ?*body)')))
   for name in ['begin','arm','received','check']:
    p='(defun fn2-boot-checkpoint-archive-'+name+' ?*body)'
-   self.assertEqual(tree(one(fixed.rewrite(frontier.boot(old)),p)),tree(one(current,p)),name)
+   self.assertEqual(tree(one(acc.project('boot', fixed.rewrite(frontier.boot(old))),p)),tree(one(current,p)),name)
  def test_existing_role_policies_preserved_and_new_cold_role_bounded(self):
   old=one(read('tools/fixtures/event-archive-reach-map-state-before.lisp'),'(defun fn2-checkpoint-restore-reach-map-state-p ?*body)')
   current=one(read('books/checkpoint-restore-reach.lisp'),'(defun fn2-checkpoint-restore-reach-map-state-p ?*body)')

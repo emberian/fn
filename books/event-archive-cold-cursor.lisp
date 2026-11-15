@@ -39,7 +39,7 @@
 
 (assert-event (<= (+ *fn2-run-reader-fields* 3) 128))
 
-(fn2-event-archive-operation (fn2-event-archive-cold-cursor-begin scratch sgen)
+(fn2-event-archive-operation (fn2-event-archive-cold-cursor-begin scratch sgen accumulator agen)
  (fn2-event-archive fn2-checkpoints fn2-checkpoint-refs fn2-checkpoint-bytes fn2-checkpoint-restore-reader
   fn2-run-loads fn2-run-cursors fn2-fc fn2-fields fn2-pool fn2-mk fn2-b3 fn2-digests)
  (fn2-event-archive fn2-run-loads fn2-run-cursors fn2-fields fn2-mk)
@@ -71,6 +71,10 @@
                     (unsigned-byte-p 32 scratch) (unsigned-byte-p 60 sgen) (not (equal scratch page))
                     (eq (fn2-pool-workspace-code scratch sgen kind owner gen fn2-pool) :ok)
                     (<= *fn2-commit-unit-bytes* (fn2-pool-cap scratch fn2-pool))
+                    (unsigned-byte-p 32 accumulator) (unsigned-byte-p 60 agen)
+                    (not (equal accumulator scratch)) (not (equal accumulator page))
+                    (eq (fn2-pool-workspace-code accumulator agen kind owner gen fn2-pool) :ok)
+                    (<= *fn2-commit-unit-bytes* (fn2-pool-cap accumulator fn2-pool))
                     (< 0 event-row) (< event-row (fn2-fc-rows fn2-fc))
                     (equal (fn2-fc-phase event-row fn2-fc) *fn2-fc-phase-idle*)
                     (fn2-mk-ready event-row fn2-mk fn2-digests) (fn2-b3-ready event-row fn2-b3 fn2-digests)))
@@ -89,7 +93,7 @@
       (q (+ base *fn2-run-reader-fields*))
       (fn2-fields (fn2-fields-set-value q *fn2-event-archive-schema* fn2-fields))
       (fn2-fields (fn2-fields-set-value (+ q 1) 1 fn2-fields))
-      (fn2-event-archive (fn2-event-archive-put 1 (phase *fn2-event-archive-phase-cold-manifest*) (scan 0) (next-event 1) (entry-pending 0) (leaf-pending 0) (read-armed 0))))
+      (fn2-event-archive (fn2-event-archive-put 1 (phase *fn2-event-archive-phase-cold-manifest*) (accumulator-slot accumulator) (accumulator-gen agen) (scan 0) (next-event 1) (entry-pending 0) (leaf-pending 0) (read-armed 0))))
   (mv :borrowed fn2-event-archive fn2-run-loads fn2-run-cursors fn2-fields fn2-mk)))
 
 (defun fn2-event-archive-cold-cursor-source-p (fn2-event-archive fn2-checkpoints fn2-checkpoint-refs fn2-checkpoint-bytes
@@ -122,7 +126,12 @@
             (equal (fn2-run-cursors-ogen c fn2-run-cursors) gen)
             (equal (fn2-run-cursors-rb c fn2-run-cursors) (* 128 (fn2-run-loads-checker c fn2-run-loads)))
             (eq (fn2-pool-workspace-code (fn2-run-loads-page c fn2-run-loads) (fn2-run-loads-page-gen c fn2-run-loads) kind owner gen fn2-pool) :ok)
-            (eq (fn2-pool-workspace-code (fn2-run-loads-scratch c fn2-run-loads) (fn2-run-loads-scratch-gen c fn2-run-loads) kind owner gen fn2-pool) :ok)))))
+            (eq (fn2-pool-workspace-code (fn2-run-loads-scratch c fn2-run-loads) (fn2-run-loads-scratch-gen c fn2-run-loads) kind owner gen fn2-pool) :ok)
+            (not (equal (fn2-event-archive-accumulator-slot 1 fn2-event-archive) (fn2-run-loads-page c fn2-run-loads)))
+            (not (equal (fn2-event-archive-accumulator-slot 1 fn2-event-archive) (fn2-run-loads-scratch c fn2-run-loads)))
+            (eq (fn2-pool-workspace-code (fn2-event-archive-accumulator-slot 1 fn2-event-archive)
+                  (fn2-event-archive-accumulator-gen 1 fn2-event-archive) kind owner gen fn2-pool) :ok)
+            (<= *fn2-commit-unit-bytes* (fn2-pool-cap (fn2-event-archive-accumulator-slot 1 fn2-event-archive) fn2-pool))))))
 
 ; One actual shared parser/hash/cursor transition. An entry remains frozen
 ; until the archive consumer captures its exact Ref/hash and interval.
