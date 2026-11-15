@@ -5,6 +5,7 @@ import lisp_rewrite as lr
 from checkpoint_compaction_manifest_port import project as manifest_port, BEFORE
 from checkpoint_compaction_live_port import project_all, FIXTURES, NAMES
 from checkpoint_live_retire_emit import emit
+from replacement_bank_live_rewrite import project as bank_project, project_receipt
 from lisp_source import forms, read_sexp
 ROOT=Path(__file__).resolve().parents[1]
 
@@ -12,7 +13,13 @@ def defs(text):
  return {lr.emit(m.node.items[1],drop_comments=True):text[m.start:m.end]
          for m in lr.match('(defun ?name ?*body)',lr.parse(text).forms,deep=True)}
 
-def expected_live():return project_all({n:(FIXTURES/(n+'.lisp')).read_text() for n in NAMES})
+def expected_live():
+ result=project_all({n:(FIXTURES/(n+'.lisp')).read_text() for n in NAMES})
+ for name in ('checkpoint-live-install','checkpoint-live-finish'):
+  result[name]=bank_project(name,result[name])
+ result['checkpoint-live-install']=project_receipt(result['checkpoint-live-install'])
+ result['checkpoint-live-retire']=emit(result['checkpoint-live-install'])
+ return result
 def require_live(candidate):
  if candidate!=expected_live():raise ValueError('changed outside exact live carrier migration')
 def require_manifest(candidate):
