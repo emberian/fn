@@ -8,6 +8,7 @@
 (include-book "c-snapshot")
 (include-book "checkpoint-page-header")
 (include-book "checkpoint-linked-header")
+(include-book "checkpoint-source-retention")
 (include-book "checkpoint-page-io")
 (include-book "runs-page")
 (fn2-book-layer :c)
@@ -224,11 +225,50 @@
                   *fn2-release-inventory-build-phase-header* *fn2-release-inventory-build-phase-entries*)))))
   (mv :more fn2-release-inventory-build fn2-fields fn2-pool)))
 
+(fn2-release-inventory-operation fn2-release-inventory-claim-pending (journal)
+ (fn2-release-inventory-build fn2-release-evidence fn2-release-evidence-candidates fn2-csnapshot fn2-checkpoints fn2-extents fn2-alloc-edges fn2-ops)
+ (fn2-release-inventory-build fn2-extents fn2-alloc-edges)
+ (b* (((unless (and (fn2-release-inventory-owner-p fn2-release-inventory-build fn2-csnapshot fn2-checkpoints fn2-extents)
+                    (= (fn2-alloc-freeze-phase fn2-extents) 0)
+                    (eq (fn2-release-inventory-row-code journal
+                         (fn2-release-inventory-build-cut-commit 0 fn2-release-inventory-build)
+                         (fn2-release-inventory-build-cut-event 0 fn2-release-inventory-build)
+                         fn2-release-evidence fn2-release-evidence-candidates fn2-extents fn2-alloc-edges fn2-ops fn2-checkpoints) :pending)))
+       (mv :source fn2-release-inventory-build fn2-extents fn2-alloc-edges))
+      (c (fn2-release-inventory-build-candidate 0 fn2-release-inventory-build))
+      (checkpoint (fn2-checkpoints-checkpoint c fn2-checkpoints))
+      (descriptor (floor (fn2-release-evidence-physical-unit journal fn2-release-evidence) *fn2-storage-extent-units*))
+      (installation (fn2-release-evidence-installation-extent journal fn2-release-evidence))
+      ; Ordinary durable claim admission must win for every proof resource.
+      ; An old proof in RETIRE_PENDING is an actionable refusal, not a bypass.
+      ((unless (and (= (fn2-extents-state descriptor fn2-extents) *fn2-extent-state-allocated*)
+                    (= (fn2-extents-state installation fn2-extents) *fn2-extent-state-allocated*)
+                    (= (fn2-extents-state journal fn2-extents) *fn2-extent-state-allocated*)))
+       (mv :retired fn2-release-inventory-build fn2-extents fn2-alloc-edges))
+      ((mv dcode fn2-extents fn2-alloc-edges)
+       (fn2-checkpoint-source-claim c checkpoint descriptor
+        (fn2-release-evidence-descriptor-epoch journal fn2-release-evidence)
+        (fn2-release-evidence-descriptor-allocation journal fn2-release-evidence)
+        fn2-extents fn2-alloc-edges fn2-ops fn2-checkpoints))
+      ((unless (eq dcode :ok)) (mv dcode fn2-release-inventory-build fn2-extents fn2-alloc-edges))
+      ((mv icode fn2-extents fn2-alloc-edges)
+       (fn2-checkpoint-source-claim c checkpoint installation
+        (fn2-release-evidence-installation-epoch journal fn2-release-evidence)
+        (fn2-release-evidence-installation-allocation journal fn2-release-evidence)
+        fn2-extents fn2-alloc-edges fn2-ops fn2-checkpoints))
+      ((unless (eq icode :ok)) (mv icode fn2-release-inventory-build fn2-extents fn2-alloc-edges))
+      ((mv jcode fn2-extents fn2-alloc-edges)
+       (fn2-checkpoint-source-claim c checkpoint journal
+        (fn2-release-evidence-journal-epoch journal fn2-release-evidence)
+        (fn2-release-evidence-journal-allocation journal fn2-release-evidence)
+        fn2-extents fn2-alloc-edges fn2-ops fn2-checkpoints)))
+  (mv jcode fn2-release-inventory-build fn2-extents fn2-alloc-edges)))
+
 (defconst *fn2-release-inventory-source-children*
  '(fn2-release-inventory-build fn2-release-evidence fn2-release-evidence-candidates fn2-csnapshot fn2-checkpoints
    fn2-checkpoint-construction fn2-extents fn2-alloc-edges fn2-ops fn2-checkpoint-page-verified fn2-fc fn2-fields fn2-pool fn2-control))
 (defconst *fn2-release-inventory-source-outputs*
- '(fn2-release-inventory-build fn2-checkpoint-construction fn2-extents fn2-fields fn2-pool fn2-control))
+ '(fn2-release-inventory-build fn2-checkpoint-construction fn2-extents fn2-alloc-edges fn2-fields fn2-pool fn2-control))
 (defmacro fn2-release-inventory-mv (code)
  `(mv ,code ,@*fn2-release-inventory-source-outputs*))
 (defmacro fn2-release-inventory-step-event ()
@@ -265,6 +305,12 @@
             (fn2-release-inventory-mv :more)))
           (code (fn2-release-inventory-row-code scan cut cut-event fn2-release-evidence fn2-release-evidence-candidates fn2-extents fn2-alloc-edges fn2-ops fn2-checkpoints))
           ((unless (member-eq code '(:skip :settled :pending))) (fn2-release-inventory-mv code))
+          ((mv claimed fn2-release-inventory-build fn2-extents fn2-alloc-edges)
+           (if (eq code :pending)
+            (fn2-release-inventory-claim-pending scan fn2-release-inventory-build fn2-release-evidence fn2-release-evidence-candidates
+             fn2-csnapshot fn2-checkpoints fn2-extents fn2-alloc-edges fn2-ops)
+            (mv :ok fn2-release-inventory-build fn2-extents fn2-alloc-edges)))
+          ((unless (eq claimed :ok)) (fn2-release-inventory-mv claimed))
           ((unless (and (unsigned-byte-p 32 (+ 1 scan))
                         (or (not (eq code :pending)) (unsigned-byte-p 32 (+ 1 count))))) (fn2-release-inventory-mv :exhausted))
           (fn2-release-inventory-build (fn2-release-inventory-build-put 0

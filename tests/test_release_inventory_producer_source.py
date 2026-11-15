@@ -38,6 +38,17 @@ class Producer(unittest.TestCase):
   self.assertIn('fn2-pool-workspace-code',str(consume))
   self.assertIn('fn2-checkpoint-page-transferred',str(consume))
   self.assertNotIn('(fn2-alloc-commit',s);self.assertNotIn('(fn2-alloc-release',s)
+ def test_pending_inventory_claims_only_the_three_actual_proof_resources(self):
+  forms_=tree('release-inventory-source.lisp')
+  helper=next(n for f in forms_ for n in walk(f) if n[:2]==['fn2-release-inventory-operation','fn2-release-inventory-claim-pending'])
+  claims=[n for n in walk(helper) if n and n[0]=='fn2-checkpoint-source-claim']
+  self.assertEqual(len(claims),3)
+  self.assertEqual([n[3] for n in claims],['descriptor','installation','journal'])
+  self.assertNotIn('fn2-release-evidence-extent',str(helper))
+  for target in ('descriptor','installation','journal'):
+   self.assertIn(['=',['fn2-extents-state',target,'fn2-extents'],'*fn2-extent-state-allocated*'],list(walk(helper)))
+  outputs=next(f[2][1] for f in forms_ if f[:2]==['defconst','*fn2-release-inventory-source-outputs*'])
+  self.assertIn('fn2-alloc-edges',outputs)
  def test_one_generated_numeric_source_has_no_catalog_indices(self):
   forms_=tree('release-inventory-source.lisp')
   mapping=next(f[2][1] for f in forms_ if f[:2]==['defconst','*fn2-release-inventory-numeric-bindings*'])
