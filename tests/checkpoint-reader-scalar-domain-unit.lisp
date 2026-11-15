@@ -106,12 +106,18 @@
      (fn2-checkpoint-scalar-table-execs (cdr runes) world))))))
 (local (defun fn2-checkpoint-scalar-ground-hint (functions execs minimal world)
  (declare (xargs :verify-guards nil))
- (list :in-theory
-  (list 'quote
-   (set-difference-equal
-    (union-equal functions (union-equal execs minimal))
-    (cons '(:executable-counterpart fn2-checkpoint-reader-scalar-domain-check)
-          (fn2-checkpoint-scalar-table-execs execs world)))))))
+ (let ((logical
+        (set-difference-equal
+         (union-equal functions (union-equal execs minimal))
+         (cons '(:executable-counterpart fn2-checkpoint-reader-scalar-domain-check)
+               (fn2-checkpoint-scalar-table-execs execs world)))))
+  (if (not (and (member-equal '(:definition fn2-checkpoint-hash-matchesp) logical)
+                (not (member-equal '(:executable-counterpart fn2-checkpoint-hash-matchesp) logical))))
+      (er hard 'fn2-checkpoint-scalar-ground-hint
+          "Ground matcher must retain its logical definition and exclude raw execution.")
+    (list :in-theory (list 'quote logical)
+          :expand '((:free (i dst hash fn2-digests fn2-checkpoint-bytes)
+                    (fn2-checkpoint-hash-matchesp i dst hash fn2-digests fn2-checkpoint-bytes))))))))
 
 ; All four source questions are UNRUN. The negative predicates establish the
 ; whole ORIGINAL H plus a false TYPE/WFP conclusion only if actually proved.
