@@ -38,7 +38,7 @@
 (defun fn2-ccu-done-clients (n)
   (declare (xargs :verify-guards nil))
   (if (zp n) nil (cons (list nil nil nil nil) (fn2-ccu-done-clients (- n 1)))))
-(defun fn2-ccu-session (cap frames fn2-core)
+(defun fn2-ccu-session-store (cap frames store fn2-core)
   (declare (xargs :stobjs fn2-core :verify-guards nil))
   (b* ((fn2-core (fn2-listener-take-credit *fn2-ctl-admission-ordinal* fn2-core))
        ((mv acode fn2-core) (fn2-machine-admit-fn2-ctl cap (+ 77 cap) 3 0 fn2-core))
@@ -46,6 +46,11 @@
        ((mv wake fn2-core) (fn2-machine-take-wake fn2-core))
        (fn2-core (fn2-exec-wake wake fn2-core))
        (clients (append (fn2-ccu-done-clients cap) (list (fn2-ccu-client frames))))
-       ((mv status clients store fn2-core) (fn2-cw-loop 40000 0 (+ 1 cap) clients nil fn2-core)))
+       ((mv status clients store fn2-core) (fn2-cw-loop 40000 0 (+ 1 cap) clients store fn2-core)))
     (mv status (car (nth cap (fn2-cw-results clients))) store fn2-core)))
 
+; Existing callers start a new empty adapter device. Recovery/FETCH callers
+; must retain the actual device returned by the producer/recovery loop.
+(defun fn2-ccu-session (cap frames fn2-core)
+  (declare (xargs :stobjs fn2-core :verify-guards nil))
+  (fn2-ccu-session-store cap frames nil fn2-core))
