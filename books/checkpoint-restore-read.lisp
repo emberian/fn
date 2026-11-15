@@ -3,6 +3,7 @@
 (in-package "ACL2")
 (include-book "std/util/bstar" :dir :system)
 (include-book "event-proof-format")
+(include-book "release-inventory-format")
 (include-book "alloc")
 (fn2-book-layer :b)
 
@@ -15,6 +16,7 @@
   (3 (mv :ok *page-kind-manifest* *checkpoint-map-body-kind-event-proof-directory* *fn2-event-proof-slots* *fn2-event-proof-entry-width* *fn2-event-proof-entry-num-fields*))
   (4 (mv :frontier *page-kind-merkle-node* 0 60 32 *fn2-event-frontier-header-num-fields*))
   (5 (mv :ok *page-kind-recovery-arena* *checkpoint-map-body-kind-recovery-arena* *fn2-checkpoint-arena-slots* *fn2-checkpoint-arena-entry-width* *fn2-format-recovery-arena-entry-num-fields*))
+  (6 (mv :ok *page-kind-merkle-node* *checkpoint-map-body-kind-release-inventory* *fn2-release-inventory-slots* *fn2-release-inventory-entry-width* *fn2-release-inventory-entry-num-fields*))
   (otherwise (mv :role 0 0 1 0 0))))
 
 ; Each invocation checks at most one format slot/header gap (less than a
@@ -148,6 +150,7 @@
        (case role
         (2 (fn2-format-allocation-map-entry-decode base slot gen off (+ off width) okind oslot ogen fn2-fields fn2-pool))
         (3 (fn2-event-proof-entry-decode base slot gen off (+ off width) okind oslot ogen fn2-fields fn2-pool))
+        (6 (fn2-release-inventory-entry-decode base slot gen off (+ off width) okind oslot ogen fn2-fields fn2-pool))
         (otherwise (fn2-format-recovery-arena-entry-decode base slot gen off (+ off width) okind oslot ogen fn2-fields fn2-pool))))
       ((unless (and (eq code :ok) (natp end) (<= off end) (<= end (+ off width)))) (mv :format fn2-fields))
       (code (fn2-checkpoint-restore-zero-range (- (+ off width) end) end slot gen okind oslot ogen fn2-pool))
@@ -159,6 +162,8 @@
         (3 (and (equal (fn2-fields-value (+ base *fn2-event-proof-entry-field-commit*) fn2-fields) (+ 1 ordinal))
                 (equal (fn2-fields-value (+ base *fn2-event-proof-entry-field-semantic-seal*) fn2-fields) 1)
                 (equal (fn2-fields-ref-len (+ base *fn2-event-proof-entry-field-semantic-seal*) fn2-fields) 32)))
+        (6 (and (equal (fn2-fields-value (+ base *fn2-release-inventory-entry-field-descriptor-expected-hash*) fn2-fields) 1)
+                (equal (fn2-fields-ref-len (+ base *fn2-release-inventory-entry-field-descriptor-expected-hash*) fn2-fields) 32)))
         (otherwise (equal (mod (fn2-fields-value (+ base *fn2-format-recovery-arena-entry-field-extent-physical-unit*) fn2-fields)
                     *fn2-storage-extent-units*) 0)))) (mv :identity fn2-fields)))
   (mv :entry fn2-fields)))
