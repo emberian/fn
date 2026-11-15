@@ -8,11 +8,13 @@
 (include-book "checkpoint-restore-map")
 (include-book "checkpoint-recovery-evidence-state")
 (include-book "checkpoint-recovery-census-state")
+(include-book "checkpoint-selected-source-state")
 (include-book "checkpoint-restore-arena")
 (include-book "checkpoint-restore-semantic-state")
 (include-book "checkpoint-restore-events-state")
 (include-book "checkpoint-summary-state")
 (include-book "checkpoint-payload-harvest")
+(include-book "checkpoint-restore-events-state")
 (include-book "boot-format")
 (fn2-book-layer :b)
 
@@ -133,6 +135,9 @@
 (defcorechild fn2-core-checkpoint-summary fn2-checkpoint-summary
  :init (fn2-checkpoint-summary-init (if (fn2-profile-get :image-boot profile) 1 0) fn2-checkpoint-summary)
  :profilep t :why "Exact selected-source catalog intake and bounded C adoption; capture alone is not sufficient-summary authority.")
+(defcorechild fn2-core-checkpoint-selected-source fn2-checkpoint-selected-source
+ :init (fn2-checkpoint-selected-source-init 1 fn2-checkpoint-selected-source)
+ :profilep t :why "Owner-bound chosen cold source; re-investigation precedes allocator projection and serving authority.")
 (defcorechild fn2-core-checkpoint-summary-sources fn2-checkpoint-summary-sources
  :init (fn2-checkpoint-summary-sources-init (fn2-b-capacity :extent-slots 16 profile) fn2-checkpoint-summary-sources)
  :profilep t :why "One authenticated C source root per actual physical extent, tagged by exact descriptor investigation.")
@@ -211,9 +216,9 @@
         (:checkpoint-semantic-copy)
         (:checkpoint-semantic-check)
         (:checkpoint-summary-capture)
-        (:checkpoint-summary-close)
         (:checkpoint-semantic-entries)
         (:checkpoint-semantic-find)
+        (:checkpoint-summary-close)
         (:checkpoint-payload-begin)
         (:checkpoint-payload-load)
         (:checkpoint-payload-copy)
