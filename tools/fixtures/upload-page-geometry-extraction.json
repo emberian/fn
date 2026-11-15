@@ -1,0 +1,121 @@
+{
+  "original_commit": "728765bd1",
+  "forms": {
+    "books/upload-kind.lisp": [
+      {
+        "head": "(defconst",
+        "sha256": "657338441c5fa549cb00588f5535c72d8e39a9afbd905b83b8b8f8650347e5ee",
+        "form": "(defconst *fn2-upload-chunk-class* 1)"
+      },
+      {
+        "head": "(defconst",
+        "sha256": "f0c40d1075c862ba56a496bd2be74bdabdf0c76a920b1ca068445b32d6b0a584",
+        "form": "(defconst *fn2-upload-article-max* 32768)"
+      },
+      {
+        "head": "(defconst",
+        "sha256": "5fa97082af1e35475c9808ad0d0791aacc4b8826df8dbee4e012ff997c674d04",
+        "form": "(defconst *fn2-upload-digest-octets* 32)"
+      },
+      {
+        "head": "(defconst",
+        "sha256": "8879468b10b641887f1e059f195a30ca783aa298f4931668fdfc35377af98ee2",
+        "form": "(defconst *fn2-upload-mid-field-octets* 12)"
+      },
+      {
+        "head": "(defconst",
+        "sha256": "36065caa440a3e137e6fab33382263903008948a661cdea7425b92b9102e392d",
+        "form": "(defconst *fn2-upload-mid-template*\n  (concatenate 'string \"Message-ID: <fn2.\" (string (code-char 1)) \".\" (string (code-char 1)) \"@\"))"
+      },
+      {
+        "head": "(defconst",
+        "sha256": "7ab19d06cac9808c4ead58c20a4310a81aeefae2f21c72fe0d0d0e9efca44272",
+        "form": "(defconst *fn2-upload-mid-close* (coerce (list #\\> (code-char 13) (code-char 10)) 'string))"
+      },
+      {
+        "head": "(defconst",
+        "sha256": "798be9bbd1859a3f6c51b2dd75e654193ae396886040d33048dfad098a4ab6f0",
+        "form": "(defconst *fn2-upload-op-mid-template*\n  (concatenate 'string \"Message-ID: <op-\" (string (code-char 1)) \"-\" (string (code-char 1)) \"@\"))"
+      },
+      {
+        "head": "(assert-event",
+        "sha256": "88e3befc527ac9a7a6c4bb435619e80514acabcecbc8f57be5e2d20fdfa17c3d",
+        "form": "(assert-event (<= (length *fn2-upload-op-mid-template*) (length *fn2-upload-mid-template*)))"
+      },
+      {
+        "head": "(defconst",
+        "sha256": "685adc26c67f91193c87036a6ecbc773ab177863fe5182882c89b3d38c0b6d26",
+        "form": "(defconst *fn2-upload-mid-line-max*\n  (+ (- (length *fn2-upload-mid-template*) 2) 40 *fn2-profile-path-identity-max* (length *fn2-upload-mid-close*)))"
+      },
+      {
+        "head": "(assert-event",
+        "sha256": "de3f4ee5bcc1098260bf5f367562b29505ceef9fa602f707e229b07108141c6a",
+        "form": "(assert-event (equal (- *fn2-upload-mid-line-max* (+ *fn2-upload-mid-field-octets* 2)) 250))"
+      },
+      {
+        "head": "(defconst",
+        "sha256": "4f5e9192ed6439ed1e3ba1892ad57d70ba7d88e6c1a2c2da6db56aeddfd41c19",
+        "form": "(defconst *fn2-am-stored-max*\n  (* *fn2-am-block-bytes* *fn2-am-entries-per-unit* *fn2-upload-payload-units*))"
+      },
+      {
+        "head": "(assert-event",
+        "sha256": "a4d7bdbc7e438fd01c7afa2af084b4a86750afcdb2bb9bae3dfc67f3e7df9b24",
+        "form": "(assert-event (equal *fn2-am-stored-max* 380928))"
+      },
+      {
+        "head": "(assert-event",
+        "sha256": "1eb83db50f5412189e6708f488cc48900442d210e9746aac4c28155cec160a83",
+        "form": "(assert-event (<= (+ *fn2-upload-article-max* *fn2-upload-mid-line-max*) *fn2-am-stored-max*))"
+      }
+    ],
+    "books/upload.lisp": [
+      {
+        "head": "(defconst",
+        "sha256": "768e20c929602867b5125958d9357b0658dbec1e992eaebcc1c0aee15bb053a0",
+        "form": "(defconst *fn2-upload-page-stored-source* (* 64 (ceiling *fn2-upload-mid-line-max* 64)))"
+      },
+      {
+        "head": "(defconst",
+        "sha256": "b759042cfb450c2a0b0a6de4686a3eb445b0ab5753e5388d7cd14ee868965073",
+        "form": "(defconst *fn2-upload-page-location-hashes* (+ *fn2-upload-page-stored-source* 64))"
+      },
+      {
+        "head": "(defconst",
+        "sha256": "0573f947f712ad47a60b8e20587ef08ec6c3bdf20cb3402d09fd7c61ca3c1f04",
+        "form": "(defconst *fn2-upload-page-stage*\n  (+ *fn2-upload-page-location-hashes* (* 64 (ceiling *fn2-article-location-hashes-max* 64))))"
+      },
+      {
+        "head": "(defconst",
+        "sha256": "6ba158c7582fe9384aa75f27d561447dd4a32cc8ed4b5338d58ff86238ffd2ca",
+        "form": "(defconst *fn2-upload-page-hash* (+ *fn2-upload-page-stage* *fn2-commit-unit-bytes*))"
+      },
+      {
+        "head": "(defconst",
+        "sha256": "b6fcc75a8b731795f25033e14f86960171d8d032b24ec26590203d230ccba73c",
+        "form": "(defconst *fn2-upload-page-manifest* (+ *fn2-upload-page-hash* 64))"
+      },
+      {
+        "head": "(defconst",
+        "sha256": "2932def3a891cd6c3085b1b94c5a363197792d7a71c5b713bc4b47c57df00d95",
+        "form": "(defconst *fn2-upload-head-bytes* (+ 32 *fn2-am-header-max*))"
+      },
+      {
+        "head": "(defconst",
+        "sha256": "d8946e17ae778c460599f83c52a6b2c71f051842d4a032f5335d3fae6d2d2a74",
+        "form": "(defconst *fn2-upload-entry-bytes* (+ 64 (* 2 *fn2-am-entry-max*)))"
+      },
+      {
+        "head": "(defun",
+        "sha256": "938f6bf86e32412b20edc66e5c86d0a30954f6a655df65765b60c7e2dab9d65e",
+        "form": "(defun fn2-upload-page-bytes (total)\n  (declare (xargs :guard t))\n  (if (fn2-am-manifestp total)\n      (+ *fn2-upload-page-manifest* (* *fn2-commit-unit-bytes* (fn2-am-units total)))\n    *fn2-upload-page-manifest*))"
+      }
+    ],
+    "books/ordered.lisp": [
+      {
+        "head": "(defconst",
+        "sha256": "6f7a4f7ba0780ffa9c4ca780801ed3177085f72369580765bedc3828631a8a14",
+        "form": "(defconst *fn2-article-location-hashes-max* (* 32 *fn2-commit-write-resources*))"
+      }
+    ]
+  }
+}
