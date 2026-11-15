@@ -4,7 +4,7 @@
 (include-book "machines-c-read")
 (include-book "article-manifest")
 (include-book "cns-source-workspace")
-(fn2-book-layer :c)
+(fn2-book-layer :d)
 (defconst *fn2-cns-source-next-bytes* (+ 1024 1024))
 (defcolumns fn2-cns-sources
  ((phase (:enum fn2-cns-source-phase (:free :capturing :retain :raw-read :raw-wait :raw-check :raw-hash :raw-copy :manifest :final :complete :releasing :bad)))

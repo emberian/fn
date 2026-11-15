@@ -6,7 +6,7 @@
 (include-book "source-manifest-entry")
 (include-book "block-integrity")
 (include-book "cns-source-retention")
-(fn2-book-layer :c)
+(fn2-book-layer :d)
 (defun fn2-cns-source-manifest-check (s cns cnsgen ctl ctlgen request kind base fn2-cns-sources fn2-fields fn2-b3 fn2-digests fn2-pool)
  (declare (xargs :stobjs (fn2-cns-sources fn2-fields fn2-b3 fn2-digests fn2-pool)
   :guard (and (fn2-cns-sources-wfp fn2-cns-sources) (fn2-fields-wfp fn2-fields) (fn2-pool-wfp fn2-pool))))
