@@ -37,17 +37,17 @@
 ; Uncertain, pending and pre-publication paths cannot enter this operation.
 (defun fn2-event-producer-rearm (fn2-event-build fn2-event-read fn2-journal-members
  fn2-csnapshot fn2-checkpoints fn2-checkpoint-refs fn2-checkpoint-publication
- fn2-checkpoint-lifecycle fn2-extents fn2-mk fn2-fc fn2-digests fn2-checkpoint-writer fn2-machines)
+ fn2-checkpoint-lifecycle fn2-extents fn2-mk fn2-fc fn2-digests fn2-checkpoint-writer fn2-machines fn2-release-inventory-build)
  (declare (xargs :stobjs (fn2-event-build fn2-event-read fn2-journal-members
   fn2-csnapshot fn2-checkpoints fn2-checkpoint-refs fn2-checkpoint-publication
-  fn2-checkpoint-lifecycle fn2-extents fn2-mk fn2-fc fn2-digests fn2-checkpoint-writer fn2-machines) :verify-guards nil
-  :guard (and (fn2-event-build-wfp fn2-event-build) (fn2-event-read-wfp fn2-event-read) (fn2-journal-members-wfp fn2-journal-members) (fn2-csnapshot-wfp fn2-csnapshot) (fn2-checkpoints-wfp fn2-checkpoints) (fn2-checkpoint-refs-wfp fn2-checkpoint-refs) (fn2-checkpoint-publication-wfp fn2-checkpoint-publication) (fn2-checkpoint-lifecycle-wfp fn2-checkpoint-lifecycle) (fn2-extents-wfp fn2-extents) (fn2-mk-wfp fn2-mk) (fn2-fc-wfp fn2-fc) (fn2-digests-wfp fn2-digests) (fn2-checkpoint-writer-wfp fn2-checkpoint-writer) (fn2-machines-wfp fn2-machines))))
+  fn2-checkpoint-lifecycle fn2-extents fn2-mk fn2-fc fn2-digests fn2-checkpoint-writer fn2-machines fn2-release-inventory-build) :verify-guards nil
+  :guard (and (fn2-event-build-wfp fn2-event-build) (fn2-event-read-wfp fn2-event-read) (fn2-journal-members-wfp fn2-journal-members) (fn2-csnapshot-wfp fn2-csnapshot) (fn2-checkpoints-wfp fn2-checkpoints) (fn2-checkpoint-refs-wfp fn2-checkpoint-refs) (fn2-checkpoint-publication-wfp fn2-checkpoint-publication) (fn2-checkpoint-lifecycle-wfp fn2-checkpoint-lifecycle) (fn2-extents-wfp fn2-extents) (fn2-mk-wfp fn2-mk) (fn2-fc-wfp fn2-fc) (fn2-digests-wfp fn2-digests) (fn2-checkpoint-writer-wfp fn2-checkpoint-writer) (fn2-machines-wfp fn2-machines) (fn2-event-buildp fn2-event-build) (fn2-event-readp fn2-event-read) (fn2-journal-membersp fn2-journal-members) (fn2-csnapshotp fn2-csnapshot) (fn2-checkpointsp fn2-checkpoints) (fn2-checkpoint-refsp fn2-checkpoint-refs) (fn2-checkpoint-publicationp fn2-checkpoint-publication) (fn2-checkpoint-lifecyclep fn2-checkpoint-lifecycle) (fn2-extentsp fn2-extents) (fn2-mkp fn2-mk) (fn2-fcp fn2-fc) (fn2-digestsp fn2-digests) (fn2-checkpoint-writerp fn2-checkpoint-writer) (fn2-machinesp fn2-machines) (fn2-release-inventory-buildp fn2-release-inventory-build) (fn2-release-inventory-build-wfp fn2-release-inventory-build))))
  (b* (((unless (and (< 0 (fn2-event-build-rows fn2-event-build))
                      (< 0 (fn2-event-read-rows fn2-event-read))
                      (< 0 (fn2-journal-members-rows fn2-journal-members))
                      (< 0 (fn2-checkpoint-publication-rows fn2-checkpoint-publication))
                      (< 0 (fn2-checkpoint-lifecycle-rows fn2-checkpoint-lifecycle))))
-       (mv :state fn2-event-build fn2-event-read fn2-journal-members))
+       (mv :state fn2-event-build fn2-event-read fn2-journal-members fn2-release-inventory-build))
       (c (fn2-event-build-candidate 0 fn2-event-build))
       (token (fn2-event-build-token 0 fn2-event-build))
       (kind (fn2-event-build-owner-kind 0 fn2-event-build))
@@ -55,7 +55,7 @@
       (gen (fn2-event-build-owner-gen 0 fn2-event-build))
       (cut (fn2-event-build-cut-commit 0 fn2-event-build))
       (row (fn2-b-event-row (fn2-fc-rows fn2-fc)))
-      ((unless (and (fn2-event-producer-donep fn2-event-build fn2-event-read fn2-csnapshot fn2-checkpoints fn2-checkpoint-refs fn2-mk fn2-fc fn2-digests)
+      ((unless (and (fn2-event-producer-donep fn2-event-build fn2-event-read fn2-csnapshot fn2-checkpoints fn2-checkpoint-refs fn2-mk fn2-fc fn2-digests fn2-release-inventory-build)
                      (< c (fn2-checkpoints-rows fn2-checkpoints))
                      (equal (fn2-checkpoints-state c fn2-checkpoints) *fn2-checkpoint-state-installed*)
                      (posp (fn2-checkpoints-installation-commit c fn2-checkpoints))
@@ -90,13 +90,13 @@
                             (equal (fn2-journal-members-owner-slot 0 fn2-journal-members) slot)
                             (equal (fn2-journal-members-owner-gen 0 fn2-journal-members) gen)
                             (equal (fn2-journal-members-next-event 0 fn2-journal-members) (+ 1 (fn2-event-build-cut-event 0 fn2-event-build)))))))
-       (mv :retained fn2-event-build fn2-event-read fn2-journal-members))
+       (mv :retained fn2-event-build fn2-event-read fn2-journal-members fn2-release-inventory-build))
       (fn2-event-build (fn2-event-build-set-phase 0 *fn2-event-build-phase-idle* fn2-event-build))
       (fn2-event-read (fn2-event-read-set-phase 0 *fn2-event-read-phase-idle* fn2-event-read))
       (fn2-journal-members (fn2-journal-members-set-phase 0 *fn2-journal-members-phase-idle* fn2-journal-members)))
-  (mv :ok fn2-event-build fn2-event-read fn2-journal-members)))
+  (mv :ok fn2-event-build fn2-event-read fn2-journal-members fn2-release-inventory-build)))
 
 (fn2-event-build-preserves fn2-event-producer-rearm
- (fn2-event-build fn2-event-read fn2-journal-members fn2-csnapshot fn2-checkpoints fn2-checkpoint-refs fn2-checkpoint-publication fn2-checkpoint-lifecycle fn2-extents fn2-mk fn2-fc fn2-digests fn2-checkpoint-writer fn2-machines)
- :carriers ((fn2-event-build 1 :prefix "-BUILD") (fn2-event-read 2 :prefix "-READ") (fn2-journal-members 3 :prefix "-MEMBERS")))
+ (fn2-event-build fn2-event-read fn2-journal-members fn2-csnapshot fn2-checkpoints fn2-checkpoint-refs fn2-checkpoint-publication fn2-checkpoint-lifecycle fn2-extents fn2-mk fn2-fc fn2-digests fn2-checkpoint-writer fn2-machines fn2-release-inventory-build)
+ :carriers ((fn2-event-build 1 :prefix "-BUILD") (fn2-event-read 2 :prefix "-READ") (fn2-journal-members 3 :prefix "-MEMBERS") (fn2-release-inventory-build 4 :prefix "-RELEASE-INVENTORY")) :hyps ((fn2-event-buildp fn2-event-build) (fn2-event-build-wfp fn2-event-build) (fn2-event-readp fn2-event-read) (fn2-event-read-wfp fn2-event-read) (fn2-journal-membersp fn2-journal-members) (fn2-journal-members-wfp fn2-journal-members) (fn2-csnapshotp fn2-csnapshot) (fn2-csnapshot-wfp fn2-csnapshot) (fn2-checkpointsp fn2-checkpoints) (fn2-checkpoints-wfp fn2-checkpoints) (fn2-checkpoint-refsp fn2-checkpoint-refs) (fn2-checkpoint-refs-wfp fn2-checkpoint-refs) (fn2-checkpoint-publicationp fn2-checkpoint-publication) (fn2-checkpoint-publication-wfp fn2-checkpoint-publication) (fn2-checkpoint-lifecyclep fn2-checkpoint-lifecycle) (fn2-checkpoint-lifecycle-wfp fn2-checkpoint-lifecycle) (fn2-extentsp fn2-extents) (fn2-extents-wfp fn2-extents) (fn2-mkp fn2-mk) (fn2-mk-wfp fn2-mk) (fn2-fcp fn2-fc) (fn2-fc-wfp fn2-fc) (fn2-digestsp fn2-digests) (fn2-digests-wfp fn2-digests) (fn2-checkpoint-writerp fn2-checkpoint-writer) (fn2-checkpoint-writer-wfp fn2-checkpoint-writer) (fn2-machinesp fn2-machines) (fn2-machines-wfp fn2-machines) (fn2-release-inventory-buildp fn2-release-inventory-build) (fn2-release-inventory-build-wfp fn2-release-inventory-build)))
 ))
