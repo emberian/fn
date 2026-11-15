@@ -52,7 +52,7 @@
          (:send :cursor-row (:storage-window :while (query-bundle :held)))
          (:fetch :cursor-row (:storage-window :while (query-bundle :held)))
          (:finish :cursor-row (:storage-window :while (query-bundle :held))) (:draining :cursor-row))
- :budget (:bytes 16384 :steps 32 :descriptors 4)
+ :budget (:bytes (+ 16384 (* 9 *fn2-c-read-callback-bytes*)) :steps 32 :descriptors 4)
  :capacity (fn2-b-cursor-rows profile)
  :taken (:phase :select :rows :cursor-row :ranges ()
          :copy (conn conn-gen conn-kind mask rx-slot rx-gen line-s line-e tx-slot tx-gen group current pin posting)

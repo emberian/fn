@@ -83,8 +83,8 @@
     (fn2-checkpoint-root1-preserves ,name (,@args ,@children)
      :hyps ,hyps :specs ,(append (fn2-checkpoint-root1-child-specs outputs 1)
        (fn2-checkpoint-root1-extra-specs outputs 1)))
-    (defcost ,(fn2-columns-sym name "-OP") :child ,name :answers t :bytes 4096
-     :tables ,tables :doc "One actual bounded checkpoint root1 source transition.")))))
+    (defcost ,(fn2-columns-sym name "-OP") :child ,name :answers t :bytes *fn2-c-read-callback-bytes*
+     :tables ,tables :doc "One actual codec-bounded checkpoint root1 source transition, including restart entry decoding and owned copying.")))))
 
 (fn2-checkpoint-root1-operation fn2-checkpoint-root1-begin (token kind owner gen)
  (b* (((unless (and (< 0 (fn2-checkpoint-root1-rows fn2-checkpoint-root1))
