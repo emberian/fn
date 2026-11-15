@@ -1,0 +1,32 @@
+; SOURCE fixture, unexecuted. Actual initialized production carriers establish
+; TYPE/WFP; zero/one-row tables must not alias the root1 cursor to row zero.
+(in-package "ACL2")
+(include-book "../books/checkpoint-source-loader")
+(defun fn2-loader-fixed-row-witness (n fn2-run-loads fn2-run-cursors fn2-checkpoint-summary-leases)
+ (declare (xargs :stobjs (fn2-run-loads fn2-run-cursors fn2-checkpoint-summary-leases)
+                 :verify-guards nil))
+ (let* ((fn2-run-loads (fn2-run-loads-init n fn2-run-loads))
+        (fn2-run-cursors (fn2-run-cursors-init n fn2-run-cursors))
+        (fn2-checkpoint-summary-leases (fn2-checkpoint-summary-leases-init n fn2-checkpoint-summary-leases)))
+  (mv (and (fn2-run-loadsp fn2-run-loads) (fn2-run-loads-wfp fn2-run-loads)
+           (fn2-run-cursorsp fn2-run-cursors) (fn2-run-cursors-wfp fn2-run-cursors)
+           (fn2-checkpoint-summary-leasesp fn2-checkpoint-summary-leases)
+           (fn2-checkpoint-summary-leases-wfp fn2-checkpoint-summary-leases)
+           (equal (fn2-checkpoint-source-reader-detachedp fn2-run-loads fn2-run-cursors fn2-checkpoint-summary-leases)
+                  (if (<= 2 (nfix n)) t nil)))
+      fn2-run-loads fn2-run-cursors fn2-checkpoint-summary-leases)))
+(defun fn2-loader-fixed-row-control (n)
+ (declare (xargs :verify-guards nil))
+ (with-local-stobj fn2-run-loads
+  (mv-let (answer fn2-run-loads)
+   (with-local-stobj fn2-run-cursors
+    (mv-let (answer fn2-run-loads fn2-run-cursors)
+     (with-local-stobj fn2-checkpoint-summary-leases
+      (mv-let (answer fn2-run-loads fn2-run-cursors fn2-checkpoint-summary-leases)
+       (fn2-loader-fixed-row-witness n fn2-run-loads fn2-run-cursors fn2-checkpoint-summary-leases)
+       (mv answer fn2-run-loads fn2-run-cursors)))
+     (mv answer fn2-run-loads)))
+   answer)))
+(assert-event (fn2-loader-fixed-row-control 0))
+(assert-event (fn2-loader-fixed-row-control 1))
+(assert-event (fn2-loader-fixed-row-control 2))

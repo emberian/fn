@@ -311,6 +311,15 @@ ACL2_BOOKS = \
   books/commit-root-state \
   books/run-active-geometry \
   books/run-physical-state \
+  books/checkpoint-source-loader \
+  books/run-physical-bound \
+  books/run-physical-bound-bind \
+  books/run-physical-bound-io \
+  books/run-physical-bound-step \
+  books/run-physical-source \
+  books/run-physical-io \
+  books/run-physical-step \
+  books/run-physical-release \
   books/run-physical-resources \
   books/run-physical-geometry \
   books/run-physical-readiness \
@@ -621,6 +630,7 @@ ACL2_BOOKS = \
   tests/checkpoint-worker-totalization-unit \
   tests/checkpoint-configured-borrow-unit \
   tests/allocation-release-credit-retirement-unit \
+  tests/loader-fixed-cursor-rows-unit \
   tests/upload-page-geometry-unit \
   tests/checkpoint-service-geometry-unit \
   tests/checkpoint-working-credit-configure-unit \

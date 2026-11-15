@@ -105,7 +105,6 @@
 (defconst *fn2-b-range-source-cursors* *fn2-b-seal-source-cursors*)
 (defconst *fn2-b-read-loader-jobs* (+ 1 *fn2-b-range-source-cursors*))
 (defconst *fn2-b-query-loader-jobs* (* *fn2-b-query-read-rows* *fn2-b-read-loader-jobs*))
-(defthm fn2-b-cursor-rows-natp (natp (fn2-b-cursor-rows profile)) :rule-classes :type-prescription)
 (defun fn2-b-run-cursor-rows-from-counts (transactions reads)
  (declare (xargs :guard t))
  (+ (nfix transactions) (* (+ 1 *fn2-b-range-source-cursors*) (nfix reads))
@@ -118,10 +117,14 @@
  (declare (xargs :guard t)) (+ 1 (fn2-b-checkpoint-source-cursor profile)))
 (defun fn2-b-run-cursor-rows (profile)
  (declare (xargs :guard t)) (+ 1 (fn2-b-event-archive-cursor profile)))
+; The pair exists even for profiles with no query readers. Leaf callers must
+; establish this before selecting a fixed row; NFix underflow is not admission.
+(defun fn2-b-fixed-cursor-rows-p (rows)
+ (declare (xargs :guard t)) (and (natp rows) (<= 2 rows)))
 (defun fn2-b-checkpoint-source-cursor-from-rows (rows)
- (declare (xargs :guard t)) (nfix (- (nfix rows) 2)))
+ (declare (xargs :guard (fn2-b-fixed-cursor-rows-p rows))) (nfix (- (nfix rows) 2)))
 (defun fn2-b-event-archive-cursor-from-rows (rows)
- (declare (xargs :guard t)) (nfix (- (nfix rows) 1)))
+ (declare (xargs :guard (fn2-b-fixed-cursor-rows-p rows))) (nfix (- (nfix rows) 1)))
 (defthm fn2-b-checkpoint-source-cursor-from-profile-rows
  (equal (fn2-b-checkpoint-source-cursor-from-rows (fn2-b-run-cursor-rows profile))
         (fn2-b-checkpoint-source-cursor profile))
@@ -275,6 +278,7 @@
  (declare (xargs :guard t))
  (+ (* *fn2-b-query-read-rows* (fn2-b-cursor-rows profile)) (fn2-b-cns-rows profile) (fn2-b-auth-rows profile)))
 
+(defthm fn2-b-cursor-rows-natp (natp (fn2-b-cursor-rows profile)) :rule-classes :type-prescription)
 (defthm fn2-b-cns-rows-natp (natp (fn2-b-cns-rows profile)) :rule-classes :type-prescription)
 (defthm fn2-b-auth-rows-natp (natp (fn2-b-auth-rows profile)) :rule-classes :type-prescription)
 (defthm fn2-b-read-rows-natp (natp (fn2-b-read-rows profile)) :rule-classes :type-prescription)
