@@ -88,5 +88,18 @@ class RootCreditInit(unittest.TestCase):
         self.assertIn('(assert-event (fn2-rwciu-alias-run))',fixture)
         self.assertIn('(assert-event (fn2-rwciu-protocol-short-run))',fixture)
 
+    def test_scratch_redeemed_before_foreground_and_reused_under_pressure(self):
+        init=Path('books/checkpoint-working-credit-init.lisp').read_text()
+        self.assertIn('(fn2-id-engine (fn2-core-id-engine fn2-core))',init)
+        self.assertLess(init.index('(fn2-checkpoint-working-credit-configure'),init.index('(fn2-idc-scratch fn2-id-engine fn2-pool)'))
+        self.assertIn('((unless (eq configured :ok)) (mv configured fn2-id-engine fn2-pool))',init)
+        unit=Path('tests/root-working-credit-init-unit.lisp').read_text()
+        for actual in ['(fn2-init-executor profile :null nil fn2-core)',
+                       '(fn2-rwciu-exhaust-class (fn2-pool-rows fn2-pool) class fn2-pool)',
+                       '(fn2-idc-scratch fn2-id-engine fn2-pool)',
+                       '(equal before (fn2-pcu-view fn2-pool))',
+                       '(assert-event (fn2-rwciu-empty-names-run))']:
+            self.assertIn(actual,unit)
+
 if __name__=='__main__':
     unittest.main()

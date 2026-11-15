@@ -3,6 +3,7 @@
 (in-package "ACL2")
 (include-book "std/util/bstar" :dir :system)
 (include-book "../books/node-profile")
+(include-book "pool-credit-unit")
 (make-event
  (value `(defconst *fn2-rwciu-b-rows*
            ,(fn2-machine-property 'fn2-commit :capacity (w state)))))
@@ -139,3 +140,45 @@
  (declare (xargs :verify-guards nil))
  (with-local-stobj fn2-core (mv-let (yes fn2-core) (fn2-rwciu-protocol-short-body fn2-core) yes)))
 (assert-event (fn2-rwciu-protocol-short-run))
+
+; Actual image constructor with no NAME work cannot rely on incidental name
+; staging to acquire the shared C scratch. Ordinary pressure later cannot take it.
+(defun fn2-rwciu-exhaust-class (k class fn2-pool)
+ (declare (xargs :stobjs fn2-pool :verify-guards nil :measure (nfix k)))
+ (if (zp k) fn2-pool
+  (mv-let (code slot gen fn2-pool) (fn2-pool-reserve class 200 0 1 fn2-pool)
+   (declare (ignore slot gen))
+   (if (eq code :ok) (fn2-rwciu-exhaust-class (- k 1) class fn2-pool) fn2-pool))))
+(defun fn2-rwciu-empty-names-body (fn2-core)
+ (declare (xargs :stobjs fn2-core :verify-guards nil))
+ (b* ((profile (fn2-image-profile
+                (put-assoc-equal :groups nil (put-assoc-equal :authority 0 *fn2-node-profile*))))
+      ((unless (and (fn2-profilep profile) (fn2-core-profilep profile)
+                    (= (fn2-checkpoint-name-arena-count profile) 0))) (mv nil fn2-core))
+      (fn2-core (fn2-init-executor profile :null nil fn2-core))
+      (stopped (fn2-core-stopped-p fn2-core)))
+  (stobj-let ((fn2-id-engine (fn2-core-id-engine fn2-core))
+              (fn2-pool (fn2-core-pool fn2-core))) (yes fn2-id-engine fn2-pool)
+   (b* ((slot (fn2-id-engine-slot 0 fn2-id-engine))
+        (gen (fn2-id-engine-gen 0 fn2-id-engine))
+        (class (fn2-pool-class-for *fn2-idc-scratch-bytes* fn2-pool))
+        (owned (and (not stopped) (= (fn2-pool-credit-configured fn2-pool) 1)
+                    (= (fn2-id-engine-seq 0 fn2-id-engine) 0)
+                    (= (fn2-id-engine-scratch 0 fn2-id-engine) 1)
+                    (eq (fn2-pool-workspace-code slot gen *fn2-idc-owner-kind*
+                         *fn2-idc-owner-slot* *fn2-idc-owner-gen* fn2-pool) :ok)))
+        (fn2-pool (fn2-rwciu-exhaust-class (fn2-pool-rows fn2-pool) class fn2-pool))
+        (before (fn2-pcu-view fn2-pool))
+        ((mv reused fn2-id-engine fn2-pool) (fn2-idc-scratch fn2-id-engine fn2-pool)))
+    (mv (and owned (= (fn2-pool-reservable-count class fn2-pool) 0)
+             (eq reused :ok) (= slot (fn2-id-engine-slot 0 fn2-id-engine))
+             (= gen (fn2-id-engine-gen 0 fn2-id-engine))
+             (equal before (fn2-pcu-view fn2-pool))
+             (eq (fn2-pool-workspace-code slot gen *fn2-idc-owner-kind*
+                  *fn2-idc-owner-slot* *fn2-idc-owner-gen* fn2-pool) :ok))
+        fn2-id-engine fn2-pool))
+   (mv yes fn2-core))))
+(defun fn2-rwciu-empty-names-run ()
+ (declare (xargs :verify-guards nil))
+ (with-local-stobj fn2-core (mv-let (yes fn2-core) (fn2-rwciu-empty-names-body fn2-core) yes)))
+(assert-event (fn2-rwciu-empty-names-run))

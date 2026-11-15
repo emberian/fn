@@ -21,3 +21,12 @@ C-slot/DRAINING and upload continuation credits are separate follow-ons. Static
 P+F and immediate TAKE grant checks do not exclude every other future holder.
 No full concurrency, physical reclamation, sustained progress or activation is
 claimed. Qualify the actual initializer and live rolling fixture at current keys.
+
+The image initializer additionally calls the SAME existing idc-scratch operation
+immediately after successful configuration. This redeems its existing F allowance
+before foreground promises; no demand or quota is added. It prevents empty-NAME
+profiles from relying on incidental name staging to acquire the process-global
+scratch. The actual empty-NAME image control later exhausts ordinary capacity in
+that class, then calls idc-scratch and checks the identical owned slot/generation
+and pool snapshot. This assertion is prepared and unrun; concurrency completion
+and transient upload/sealer output ownership remain separate work.
