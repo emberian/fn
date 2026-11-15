@@ -53,6 +53,18 @@ class Controls(unittest.TestCase):
    self.assertIn('fn2-read-parent-pair-p',lr.emit(body.items[1],drop_comments=True))
    self.assertNotIn('fn2-reads-put',lr.emit(body.items[2],drop_comments=True))
    self.assertEqual(lr.emit(body.items[3],drop_comments=True).count('fn2-reads-put'),2)
+ def test_single_and_pair_share_exact_row_preflight(self):
+  for mode, pred in [('bind','bindable'),('clear','bound')]:
+   for arity in ['one','pair']:
+    body=self.f['fn2-read-parent-'+mode+'-'+arity].items[-1]
+    self.assertEqual(sym(body.items[0]),'if')
+    self.assertIn('fn2-read-parent-'+pred+'-p',lr.emit(body.items[1],drop_comments=True))
+    self.assertNotIn('fn2-reads-put',lr.emit(body.items[2],drop_comments=True))
+   pred_body=lr.emit(self.f['fn2-read-parent-'+pred+'-p'],drop_comments=True)
+   self.assertIn('fn2-read-parent-row-p',pred_body)
+  row=lr.emit(self.f['fn2-read-parent-row-p'],drop_comments=True)
+  for field in ['fn2-c-source-reader-current-p','fn2-c-source-readers-live','fn2-reads-observer-serial']:
+   self.assertIn(field,row)
  def test_parent_tuple_preserved_across_read_release(self):
   base=formmap(self.base)
   for name in ('fn2-rd-release','fn2-rd-key','fn2-rd-key-octets'):
