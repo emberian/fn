@@ -70,10 +70,58 @@ def project(book, text):
         return text
     raise ValueError(book)
 
+def project_receipt(text):
+    """Append the actual prepublication receipt to the sole typed BEGIN."""
+    if '(fn2-checkpoint-bank-admission-ready-p' in text:
+        return text
+    matches=lr.match('(defun fn2-checkpoint-live-replace-begin ?*body)',lr.parse(text).forms,deep=True)
+    if len(matches)!=1:raise ValueError('one actual typed BEGIN')
+    f=matches[0].node
+    source=text[f.start:f.end]
+    # Append one readonly child without altering any existing argument order,
+    # mutable result, guard conjunct or producer precondition.
+    edits=[]
+    args=f.items[2]
+    edits.append((args.end-1,args.end-1,' fn2-checkpoint-bank-admission'))
+    xargs=f.items[3].items[1]
+    for i,item in enumerate(xargs.items):
+        key=getattr(item,'low','')
+        if key==':stobjs':
+            n=xargs.items[i+1];edits.append((n.end-1,n.end-1,' fn2-checkpoint-bank-admission'))
+        elif key==':guard':
+            n=xargs.items[i+1];edits.append((n.end-1,n.end-1,' (fn2-checkpoint-bank-admission-wfp fn2-checkpoint-bank-admission)'))
+    text=lr.write(text,edits)
+    old='  ((mv code fn2-c-source-control) (fn2-c-source-writer-begin '
+    check='''  ((unless (fn2-checkpoint-bank-admission-ready-p
+   (fn2-checkpoint-summary-generation 1 fn2-checkpoint-summary)
+   (fn2-checkpoint-summary-owner-kind 1 fn2-checkpoint-summary)
+   (fn2-checkpoint-summary-owner-slot 1 fn2-checkpoint-summary)
+   (fn2-checkpoint-summary-owner-gen 1 fn2-checkpoint-summary)
+   fn2-csnapshot fn2-checkpoint-summary fn2-run-installed fn2-checkpoint-bank-admission))
+   (mv :admission fn2-checkpoint-summary fn2-c-source-control))
+'''
+    text=once(text,old,check+old)
+    text=once(text,'''(bank (if (= (fn2-checkpoint-summary-phase 0 fn2-checkpoint-summary) *fn2-checkpoint-summary-phase-applied*)
+             (- 1 (fn2-checkpoint-summary-bank 0 fn2-checkpoint-summary)) 0))''',
+      '(bank (fn2-checkpoint-bank-admission-bank 0 fn2-checkpoint-bank-admission))')
+    # Only BEGIN consumes this receipt. INSTALL subsequently owns SUMMARY1's
+    # exact chosen bank under EXCLUSIVE, and retirement changes SUMMARY0 phase.
+    ms=lr.match('(defcost fn2-checkpoint-live-replace-begin-op ?*body)',lr.parse(text).forms,deep=False)
+    if len(ms)!=1:raise ValueError('one actual typed BEGIN face')
+    cost=ms[0].node
+    for i,item in enumerate(cost.items):
+        if getattr(item,'low','')==':tables':
+            n=cost.items[i+1]
+            text=lr.write(text,[(n.end-1,n.end-1,' fn2-core-checkpoint-bank-admission')])
+            break
+    return once(text,'(include-book "c-source-observer")',
+      '(include-book "c-source-observer")\n(include-book "checkpoint-bank-admission")')
+
 if __name__ == '__main__':
     import argparse
     p=argparse.ArgumentParser();p.add_argument('root',type=Path);a=p.parse_args()
     for book in ('checkpoint-summary-state','checkpoint-live-install','checkpoint-live-finish'):
         path=a.root/'books'/(book+'.lisp');new=project(book,path.read_text())
+        if book=='checkpoint-live-install':new=project_receipt(new)
         lr.parse(new)
         path.write_text(new)

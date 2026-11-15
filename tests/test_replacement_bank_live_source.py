@@ -4,7 +4,7 @@ import json,sys,unittest
 ROOT=Path(__file__).resolve().parents[1]
 sys.path.insert(0,str(ROOT/'tools'))
 import lisp_rewrite as lr
-from replacement_bank_live_rewrite import project
+from replacement_bank_live_rewrite import project,project_receipt
 DATA=json.loads((ROOT/'tools/fixtures/replacement-bank-live-source.json').read_text())
 
 def form(text, name):
@@ -17,8 +17,11 @@ class ReplacementBanks(unittest.TestCase):
     def test_exact_named_replay_and_idempotence(self):
         for book,before in DATA['before'].items():
             current=(ROOT/'books'/(book+'.lisp')).read_text()
-            self.assertEqual(project(book,before),current)
+            expected=project(book,before)
+            if book=='checkpoint-live-install':expected=project_receipt(expected)
+            self.assertEqual(expected,current)
             self.assertEqual(project(book,current),current)
+            if book=='checkpoint-live-install':self.assertEqual(project_receipt(current),current)
             lr.parse(current)
 
     def test_actual_installer_reserves_entire_target_bank(self):
@@ -32,6 +35,13 @@ class ReplacementBanks(unittest.TestCase):
         self.assertIn('(fn2-run-installed-bank-row-p bank r fn2-run-installed)',body)
         self.assertIn('(target (+ 1 r))',body)
         self.assertNotIn('(fn2-checkpoint-summary-set-target 1 (+ 1 r)',body)
+
+    def test_actual_begin_consumes_prepublication_receipt(self):
+        p=form((ROOT/'books/checkpoint-live-install.lisp').read_text(),
+               'fn2-checkpoint-live-replace-begin')
+        self.assertIn('(bank (fn2-checkpoint-bank-admission-bank 0 fn2-checkpoint-bank-admission))',p)
+        self.assertLess(p.index('(fn2-checkpoint-bank-admission-ready-p'),p.index('(fn2-c-source-writer-begin'))
+        self.assertIn('(mv :admission fn2-checkpoint-summary fn2-c-source-control)',p)
 
     def test_terminal_promotion_retains_exact_bank(self):
         text=(ROOT/'books/checkpoint-live-finish.lisp').read_text()
@@ -47,13 +57,18 @@ class ReplacementBanks(unittest.TestCase):
     def test_guards_formals_and_nonbank_events_preserved(self):
         for book,before in DATA['before'].items():
             after=project(book,before)
+            if book=='checkpoint-live-install':after=project_receipt(after)
             old=lr.match('(defun ?name ?*body)',lr.parse(before).forms,deep=True)
             new=lr.match('(defun ?name ?*body)',lr.parse(after).forms,deep=True)
             self.assertEqual(len(old),len(new))
             for a,b in zip(old,new):
                 for i in (1,2,3):
                     x=a.node.items[i];y=b.node.items[i]
-                    self.assertEqual(before[x.start:x.end],after[y.start:y.end])
+                    old=before[x.start:x.end];new=after[y.start:y.end]
+                    if getattr(a.node.items[1],'low','')=='fn2-checkpoint-live-replace-begin':
+                        new=new.replace(' (fn2-checkpoint-bank-admission-wfp fn2-checkpoint-bank-admission)','')
+                        new=new.replace(' fn2-checkpoint-bank-admission)',')')
+                    self.assertEqual(old,new)
 
     def test_mutations_lose_actual_safety_clauses(self):
         text=project('checkpoint-live-install',DATA['before']['checkpoint-live-install'])
