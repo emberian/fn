@@ -18,6 +18,21 @@
  (equal (nth *fn2-extents-rows* (fn2-alloc-unlink i fn2-extents))
         (nth *fn2-extents-rows* fn2-extents))
  :hints (("Goal" :use ((:instance fn2-alloc-unlink-rows (p fn2-extents))))))
+(defthm fn2-alloc-unlink-raw-free-head
+ (equal (nth *fn2-alloc-free-head* (fn2-alloc-unlink i fn2-extents))
+        (nth *fn2-alloc-free-head* fn2-extents))
+ :hints (("Goal" :in-theory (enable fn2-alloc-unlink))))
+; Carry the original guarded output facts at the actual intermediate call,
+; before composing typed row setters and ACCOUNT's input-domain consumer.
+(defthm fn2-alloc-unlink-output-carrier
+ (implies (and (fn2-extentsp fn2-extents) (fn2-extents-wfp fn2-extents)
+               (fn2-alloc-slotp i fn2-extents))
+  (and (fn2-extentsp (fn2-alloc-unlink i fn2-extents))
+       (fn2-extents-wfp (fn2-alloc-unlink i fn2-extents))))
+ :hints (("Goal" :in-theory (disable fn2-alloc-unlink fn2-extentsp fn2-extents-wfp)
+          :use ((:instance fn2-alloc-unlink-type (p fn2-extents))
+                (:instance fn2-alloc-unlink-wfp (p fn2-extents)))))
+ :rule-classes ((:forward-chaining :trigger-terms ((fn2-alloc-unlink i fn2-extents)))))
 (in-theory (disable fn2-alloc-unlink))
 
 ; These predicates concern only the concrete carrier, not persisted release
