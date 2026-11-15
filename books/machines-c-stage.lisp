@@ -468,13 +468,23 @@
 (fn2-idc-fn-shape fn2-idc-hold-spares (k need fn2-id-engine fn2-overlays fn2-overlay-index fn2-pool) (fn2-overlays fn2-pool)
  (fn2-id-engine fn2-overlays fn2-overlay-index fn2-pool) t (fn2-idc-add-spare fn2-idc-count-overlays))
 
+; Failed stage invalidates each staged entry without touching raw arguments.
+(defun fn2-succ-clear-stage-refs (k i b0 fn2-fields)
+ (declare (xargs :stobjs fn2-fields :measure (nfix k)
+                 :guard (and (fn2-fields-wfp fn2-fields) (natp k) (natp i) (natp b0))))
+ (if (zp k) fn2-fields
+  (let ((fn2-fields (fn2-succ-clear-ref-rows *fn2-succ-fields-max*
+                    (+ b0 (* *fn2-succ-block* i)) fn2-fields)))
+   (fn2-succ-clear-stage-refs (- k 1) (+ 1 i) b0 fn2-fields))))
+(fn2-fields-preserves fn2-succ-clear-stage-refs (k i b0 fn2-fields) :position nil :raw-rows t)
+
 ; Stage TX: every slot in order against the tip, then room. (mv code i ...):
 ; :ok (TX :staged: bind may follow in this transition); :stale (resolve
 ; again); :changed (slot I's read dependency moved: decide again); :refused (slot I's fold test failed); :range; :duplicate (a
 ; :unique key present); :inconsistent (a :union key with another payload);
 ; :full (no room now: backpressure); :capacity; :state (TX not resolved, or
 ; a slot's args incomplete). I names the slot.
-(defun fn2-succ-stage (tx b0 fn2-succ-txns fn2-succ-slots fn2-run-installed fn2-id-engine
+(defun fn2-succ-stage-raw (tx b0 fn2-succ-txns fn2-succ-slots fn2-run-installed fn2-id-engine
                        fn2-overlays fn2-overlay-index fn2-fields fn2-pool)
  (declare (xargs :stobjs (fn2-succ-txns fn2-succ-slots fn2-run-installed fn2-id-engine
                           fn2-overlays fn2-overlay-index fn2-fields fn2-pool) :guard t
@@ -506,11 +516,40 @@
       ((unless (eq code :ok)) (mv code 0 fn2-succ-txns fn2-succ-slots fn2-id-engine fn2-overlays fn2-fields fn2-pool))
       (fn2-succ-txns (fn2-succ-txns-set-phase tx *fn2-succ-phase-staged* fn2-succ-txns)))
   (mv :ok 0 fn2-succ-txns fn2-succ-slots fn2-id-engine fn2-overlays fn2-fields fn2-pool)))
-(fn2-idc-fn-shape fn2-succ-stage (tx b0 fn2-succ-txns fn2-succ-slots fn2-run-installed fn2-id-engine
+(fn2-idc-fn-shape fn2-succ-stage-raw (tx b0 fn2-succ-txns fn2-succ-slots fn2-run-installed fn2-id-engine
                                   fn2-overlays fn2-overlay-index fn2-fields fn2-pool)
  ((fn2-succ-txns 2) (fn2-succ-slots 3) (fn2-id-engine 4) (fn2-overlays 5) (fn2-fields 6) (fn2-pool 7))
  (fn2-succ-txns fn2-succ-slots fn2-run-installed fn2-id-engine fn2-overlays fn2-overlay-index fn2-fields fn2-pool) t
  (fn2-succ-txns-phase fn2-succ-txns-ri fn2-id-engine-arena fn2-succ-stage-slots fn2-succ-room fn2-idc-scratch fn2-idc-hold-spares))
+
+; The public stage boundary may yield :full after a tip scan has decoded an
+; overlay into EB or a staged entry. Its caller can release the source-read
+; lease after this call: EB is always invalidated, and a failed stage leaves
+; no borrowed refs in staged entries. A successful staged row keeps its own
+; octet arguments for bind in this same machine transition.
+(defun fn2-succ-stage (tx b0 fn2-succ-txns fn2-succ-slots fn2-run-installed fn2-id-engine
+                      fn2-overlays fn2-overlay-index fn2-fields fn2-pool)
+ (declare (xargs :stobjs (fn2-succ-txns fn2-succ-slots fn2-run-installed fn2-id-engine
+                          fn2-overlays fn2-overlay-index fn2-fields fn2-pool) :guard t
+                 :guard-hints (("Goal" :in-theory (disable fn2-succ-stage-raw fn2-succ-clear-ref-rows
+                                                     fn2-succ-clear-stage-refs fn2-fields-rows)))))
+ (b* (((mv code i fn2-succ-txns fn2-succ-slots fn2-id-engine fn2-overlays fn2-fields fn2-pool)
+       (fn2-succ-stage-raw tx b0 fn2-succ-txns fn2-succ-slots fn2-run-installed fn2-id-engine
+                           fn2-overlays fn2-overlay-index fn2-fields fn2-pool))
+      (valid (and (fn2-fields-wfp fn2-fields) (natp b0)
+                  (<= (+ b0 *fn2-idc-stride*) (fn2-fields-rows fn2-fields))))
+      (fn2-fields (if valid
+                     (fn2-succ-clear-ref-rows *fn2-run-entry-rows* (+ b0 *fn2-idc-eb*) fn2-fields)
+                   fn2-fields))
+      (fn2-fields (if (and valid (not (eq code :ok)))
+                     (fn2-succ-clear-stage-refs *fn2-succ-slots* 0 b0 fn2-fields)
+                   fn2-fields)))
+  (mv code i fn2-succ-txns fn2-succ-slots fn2-id-engine fn2-overlays fn2-fields fn2-pool)))
+(fn2-idc-fn-shape fn2-succ-stage (tx b0 fn2-succ-txns fn2-succ-slots fn2-run-installed fn2-id-engine
+                                  fn2-overlays fn2-overlay-index fn2-fields fn2-pool)
+ ((fn2-succ-txns 2) (fn2-succ-slots 3) (fn2-id-engine 4) (fn2-overlays 5) (fn2-fields 6) (fn2-pool 7))
+ (fn2-succ-txns fn2-succ-slots fn2-run-installed fn2-id-engine fn2-overlays fn2-overlay-index fn2-fields fn2-pool) t
+ (fn2-succ-stage-raw fn2-succ-clear-ref-rows fn2-succ-clear-stage-refs fn2-fields-wfp fn2-fields-rows))
 
 ; Field F of slot I's staged row (D reads the assigned group number here
 ; before admission): (mv code value); an octet field is :kind.
