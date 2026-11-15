@@ -36,6 +36,8 @@ class Source(unittest.TestCase):
   need(n,'(fn2-event-source-seal (- commit 1) ?*args)')
   need(n,'(fn2-event-read-format-core budget expected previous ?*args)')
   n=fn('books/event-read-verify.lisp','fn2-event-read-member-core')
+  need(n,'(fn2-event-members-step ?*args)')
+  n=fn('books/event-frontier.lisp','fn2-event-members-step')
   need(n,'(fn2-event-member-hash-step row leaf ?*args)')
  def test_genesis_predecessor_does_not_alias_positive_base(self):
   n=fn('books/event-read-verify.lisp','fn2-event-source-seal')
