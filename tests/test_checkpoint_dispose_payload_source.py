@@ -38,6 +38,21 @@ class ExactWithdrawal(unittest.TestCase):
         self.assertEqual(drops[0][1][0],'fn2-checkpoint-source-edge')
         self.assertNotIn('fn2-alloc-retire',str(f));self.assertNotIn('fn2-alloc-release',str(f))
         self.assertNotIn('(defcost',source)
+    def test_actual_begin_closes_admissions_before_withdrawal(self):
+        source=(ROOT/'books/checkpoint-dispose-owner.lisp').read_text()
+        begin=definition(source,'fn2-checkpoint-dispose-begin')
+        self.assertIn('fn2-checkpoint-teardown-retained-ownerp',str(begin))
+        self.assertIn('fn2-checkpoint-dispose-environment-code',str(begin))
+        self.assertIn('*fn2-checkpoint-state-disposing*',str(begin))
+        self.assertNotIn('fn2-alloc-edge-drop',str(begin))
+        current=definition(source,'fn2-checkpoint-dispose-current-p')
+        self.assertIn('fn2-checkpoint-teardown-debt-generation',str(current))
+        self.assertIn('fn2-checkpoint-teardown-retained-hash-p',str(current))
+        self.assertIn('*fn2-checkpoint-dispose-phase-bytes*',str(current))
+        fixture=(ROOT/'tests/checkpoint-dispose-payload-unit.lisp').read_text()
+        self.assertIn('(fn2-checkpoint-dispose-begin 1 41 0 3 2',fixture)
+        self.assertNotIn('(state *fn2-checkpoint-state-disposing*)',fixture)
+
     def test_fixture_has_full_schema_frames_and_all_required_modes(self):
         fixture=(ROOT/'tests/checkpoint-dispose-payload-unit.lisp').read_text()
         for mode in ('live','deleted','foreign-query','event-zero','own-query','stale-generation',
