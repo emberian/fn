@@ -8,8 +8,22 @@ ROOT=Path(__file__).resolve().parents[1]
 def canon(n):
  if isinstance(n,lr.Pre):return [n.prefix,canon(n.node)]
  if isinstance(n,lr.Lst):
-  if r.head(n)==':do':return [':do',canon(n.items[1]),canon(n.items[2])]
-  xs=[canon(x) for x in n.items]
+  if r.head(n)==':do':
+   result=[canon(x) for x in n.items[:3]]
+   for i in range(3,len(n.items),2):
+    if r.sym(n.items[i]) not in (':accept',':why',':case'):
+     result.extend(canon(x) for x in n.items[i:i+2])
+   return result
+  # Normalize only the intentional relocation of an existing status CASE
+  # into its acquiring DO, which makes operation ownership conditional on OK.
+  projected=[]
+  for x in n.items:
+   projected.append(canon(x))
+   if r.head(x)==':do' and r.head(x.items[2])=='fn2-cns-stream-source-issue':
+    branch=r.option(x,':case',3)
+    if branch is not None:
+     projected.append([':case',canon(x.items[1].items[0])]+[canon(c) for c in branch.items])
+  xs=projected
   if r.head(n)=='defcost' and r.sym(n.items[1])=='fn2-cns-stream-source-step':
    xs[xs.index(':answers')+1]='t'
   return xs
@@ -33,8 +47,27 @@ class Routes(unittest.TestCase):
      if previous:self.assertEqual(canon(previous),canon(current))
      elif current:
       self.assertEqual(machine,'fn2-cns')
-      self.assertIn(name,('fn2-cns-stream-source-finish','fn2-cns-stream-source-clear'))
-      self.assertEqual(canon(current),[[[':stale'],[':stop',':machine-phase']]])
+      self.assertIn(name,('fn2-cns-stream-source-finish','fn2-cns-stream-source-clear','fn2-cns-stream-source-issue'))
+      if name.endswith('issue'):
+       self.assertEqual(r.codes(r.option(z,':accept',3)),[])
+      else:self.assertEqual(canon(current),[[[':stale'],[':stop',':machine-phase']]])
+ def test_effects_mutation_is_not_erased(self):
+  a=lr.parse('(:do (c) (fn2-cns-stream-source-issue 1) :accept (:ok) :effects ((:acquire (:operation))))').forms[0]
+  b=lr.parse('(:do (c) (fn2-cns-stream-source-issue 1) :accept (:ok) :effects ((:release (:operation))))').forms[0]
+  self.assertNotEqual(canon(a),canon(b))
+ def test_actual_return_closure(self):
+  from cns_source_status_returns import status_closure
+  expected=set(r.codes(lr.parse(r.STEP).forms[0]))
+  for fixture in json.loads((ROOT/'tests/fixtures/cns_source_status_returns.json').read_text()):
+   with self.subTest(source=fixture['source']):
+    actual,callees=status_closure(fixture['texts'])
+    self.assertEqual(actual,expected)
+    self.assertNotIn(':ok',actual)
+    self.assertEqual(len(callees),6)
+    mutant=[x.replace('(mv :more fn2-cns-sources', '(mv :ok fn2-cns-sources',1) for x in fixture['texts']]
+    changed,_=status_closure(mutant)
+    self.assertIn(':ok',changed)
+    self.assertNotEqual(changed,expected)
  def test_missing_why_detected(self):
   src='(defcost fn2-ctl-stream-hash :answers (:ok :more :bounds)) (defmachine-arms fn2-ctl :declare :arms ((:stream (:do (c n) (fn2-ctl-stream-hash 1) :accept (:ok :more :bounds)) (:charge))))'
   self.assertTrue(any('why' in problem for _,problem in r.issues(src)))

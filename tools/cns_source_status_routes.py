@@ -66,7 +66,24 @@ def issues(source):
    out.append((name,'non-OK accept lacks :why'))
  return out
 
+def inline_issue_cases(source):
+ p=lr.parse(source);edits=[]
+ for form in p.forms:
+  for parent in walk(form):
+   if not isinstance(parent,lr.Lst):continue
+   for i,n in enumerate(parent.items[:-1]):
+    if head(n)!=':do' or head(n.items[2])!='fn2-cns-stream-source-issue':continue
+    branch=parent.items[i+1]
+    if head(branch)!=':case':continue
+    if i+2!=len(parent.items):raise ValueError('source issue dispatch must end its clause')
+    if sym(branch.items[1])!=sym(n.items[1].items[0]):raise ValueError('source issue status mismatch')
+    call=source[n.items[2].start:n.items[2].end];variables=source[n.items[1].start:n.items[1].end]
+    clauses=' '.join(source[x.start:x.end] for x in branch.items[2:])
+    edits.append((n.start,branch.end,'(:do '+variables+' '+call+' :accept () :case ('+clauses+'))'))
+ return lr.write(source,edits)
+
 def transform(source):
+ source=inline_issue_cases(source)
  p=lr.parse(source);ops=operations(p);edits=[]
  row=ops.get('fn2-cns-stream-source-step')
  if row is not None and codes(option(row,':answers')) is None:
