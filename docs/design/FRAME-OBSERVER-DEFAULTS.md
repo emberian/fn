@@ -67,3 +67,40 @@ Qualification roots are `tests/columns-frame-opacity-unit` and
 the coherent new foundation freeze. Query exact closure/cache keys after that
 freeze; neither the earlier runs-page record nor a source test qualifies these
 new generator bytes.
+
+## Row-only metadata opacity after the CNS consumer
+
+The e98 application exposed a second cost class: the CNS row adapter already
+kept ROWS opaque, but `FN2-CNS-EDGE-UNLINK` still expanded read-only bucket and
+column getter definitions into many branch splits. This was not an adapter
+skipping a generated default hint. Candidate `c99c74bd2` retains the row-only
+adapter and uses the existing `fn2-columns-guard-hint` with CNS table metadata
+and opaque `fn2-cns-bucket`. TYPE/WFP and raw-row proofs retain their original
+hints. Its actual proof result is pending. The helper is already an ancestor
+through arm-children -> pool-ranges, so the explicit include adds no new
+source dependency members.
+
+Source census distinguishes observed failures from possible future sites:
+
+- Runs-page's six pool and seven fields preservation calls required row
+  observer opacity; their repaired book was qualified.
+- Allocation/member proof consumers also needed public observer boundaries.
+- Pool-ranges' DROP-PREFIX already consumes the shared metadata hint.
+- The presence of other unhinted preservation calls does not establish a
+  failure; do not mechanically change them without a concrete gate.
+
+A shared next-batch `:frame-hints` option on the owning preserves generator
+would let consumers supply metadata hints specifically for frame facets,
+without CNS-specific event adapters or duplicated theorem specifications.
+Per-spec hints (including NIL) remain authoritative; preserve existing common
+hint precedence and TYPE/WFP behavior. Add controls covering every precedence
+case and exact full event equality outside frame hints before migration.
+
+For a later call-derived frame policy, reuse columns-call-guards' admitted
+input-table/callee metadata. Read-only selectors with a table in stobjs-in but
+no corresponding output carrier, such as CNS-BUCKET, can stay opaque alongside
+registered getters. Mutating callees need their actual public row-frame
+contracts. Keep the actual subject enabled and preserve the complete original
+formula. The guard helper's TYPE/WFP-based callee discovery is not itself a
+substitute for checking the row-frame contract. This proposal is source design,
+not implemented or qualified, and does not modify the live application tree.
