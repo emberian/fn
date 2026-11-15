@@ -3,7 +3,7 @@
 ; completed authentication remains an explicit synthetic antecedent.
 (in-package "ACL2")
 (include-book "recovery-selected-adopt-unit")
-(include-book "recovery-replay-prefix-state")
+(include-book "recovery-replay-prefix-identity")
 (defun fn2-rspu-body (fn2-core)
  (declare (xargs :stobjs fn2-core :verify-guards nil))
  (b* (((mv ready tag fn2-core) (fn2-rsau-prepare :reservation fn2-core))
@@ -13,9 +13,13 @@
       (id (fn2-machine-kind-base *fn2-recovery-machine-kind* fn2-core))
       (gen (fn2-machine-generation id fn2-core))
       ((mv authenticated fn2-core) (fn2-rsau-auth id gen tag 4 fn2-core))
-      (initial (fn2-recovery-replay-carried-prefix-p id gen 4 12 4 103 tag fn2-core))
+      (initial (and (fn2-corep fn2-core)
+        (fn2-recovery-replay-carried-prefix-p id gen 4 12 4 103 tag fn2-core)
+        (fn2-recovery-replay-identities-compatible-p 4 12 4 103 fn2-core)))
       ((mv journal-step fn2-core) (fn2-recovery-replay-adopt id gen fn2-core))
-      (journal-prefix (fn2-recovery-replay-carried-prefix-p id gen 4 12 4 103 tag fn2-core))
+      (journal-prefix (and
+        (fn2-recovery-replay-carried-prefix-p id gen 4 12 4 103 tag fn2-core)
+        (fn2-recovery-replay-identities-compatible-p 4 12 4 103 fn2-core)))
       (actual-token (fn2-machine-rc-own-token id fn2-core))
       (actual-left (fn2-machine-rc-own-left id fn2-core))
       ; Hypothesis-removal control: manufacture the exact raw-domain omission.
@@ -29,7 +33,9 @@
       (removal-control (and removed unsettled (eq fabricated :owned)
                            (equal before (fn2-test-core-snapshot fn2-core))))
       (fn2-core (fn2-recovery-machine-put-core id (rc-own-token actual-token) (rc-own-left actual-left)))
-      (restored (fn2-recovery-replay-carried-prefix-p id gen 4 12 4 103 tag fn2-core))
+      (restored (and
+        (fn2-recovery-replay-carried-prefix-p id gen 4 12 4 103 tag fn2-core)
+        (fn2-recovery-replay-identities-compatible-p 4 12 4 103 fn2-core)))
       ((mv finished fn2-core) (fn2-rsau-drive 16 id gen fn2-core))
       ; Assert the WHOLE completion antecedent as well as its actual conclusion.
       (antecedent (and (fn2-corep fn2-core)
@@ -47,3 +53,35 @@
  (with-local-stobj fn2-core
   (mv-let (answer fn2-core) (fn2-rspu-body fn2-core) answer)))
 (assert-event (fn2-rspu-run))
+; Source-traced counterexample control, UNEXECUTED: an actual FREE physical
+; claim may carry another live slot's identity. The historical producer bridge
+; must exclude this; authentication alone is not an identity uniqueness proof.
+(defun fn2-rspu-find-preservation-break (n id gen tag fn2-core)
+ (declare (xargs :stobjs fn2-core :verify-guards nil :measure (nfix n)))
+ (if (zp n) (mv nil fn2-core)
+  (b* ((before (and (fn2-corep fn2-core)
+         (fn2-recovery-replay-carried-prefix-p id gen 4 12 4 103 tag fn2-core)))
+       ((mv code fn2-core) (fn2-recovery-replay-adopt id gen fn2-core))
+       (after (fn2-recovery-replay-carried-prefix-p id gen 4 12 4 103 tag fn2-core)))
+   (if (and before (eq code :more) (not after)) (mv t fn2-core)
+    (if (eq code :more) (fn2-rspu-find-preservation-break (- n 1) id gen tag fn2-core)
+     (mv nil fn2-core))))))
+(defun fn2-rspu-duplicate-body (fn2-core)
+ (declare (xargs :stobjs fn2-core :verify-guards nil))
+ (b* (((mv ready tag fn2-core) (fn2-rsau-prepare :reservation fn2-core))
+      ((mv linked fn2-core) (fn2-recovery-link 4 fn2-core))
+      ((mv classified fn2-core) (fn2-recovery-cand-put 5 *fn2-rec-status-invalid* 0 0 0 0 0 0 0 fn2-core))
+      ((mv claimed & fn2-core) (fn2-recovery-claim 5 4 101 6 103 12 fn2-core))
+      (id (fn2-machine-kind-base *fn2-recovery-machine-kind* fn2-core))
+      (gen (fn2-machine-generation id fn2-core))
+      ((mv authenticated fn2-core) (fn2-rsau-auth id gen tag 4 fn2-core))
+      (original-antecedent (fn2-recovery-replay-carried-prefix-p id gen 4 12 4 103 tag fn2-core))
+      (missing-compatibility (not (fn2-recovery-replay-identities-compatible-p 4 12 4 103 fn2-core)))
+      ((mv broke fn2-core) (fn2-rspu-find-preservation-break 16 id gen tag fn2-core)))
+  (mv (and ready (eq linked :ok) (eq classified :ok) (eq claimed :ok)
+       authenticated original-antecedent missing-compatibility broke) fn2-core)))
+(defun fn2-rspu-duplicate-run ()
+ (declare (xargs :verify-guards nil))
+ (with-local-stobj fn2-core
+  (mv-let (answer fn2-core) (fn2-rspu-duplicate-body fn2-core) answer)))
+(assert-event (fn2-rspu-duplicate-run))
