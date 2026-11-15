@@ -92,7 +92,7 @@
   (or (eq (caar effects) :uncertain)
       (fn2-native-device-effects-uncertain-p (cdr effects)))))
 (defun fn2-nde-slice (effects address before after)
- (declare (xargs :verify-guards nil))
+ (declare (xargs :verify-guards nil :measure (acl2-count before)))
  (if (atom before) (and (null before) (null after))
   (and (consp after)
        (fn2-nde-byte-observations-p effects address (car before) (car after))

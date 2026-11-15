@@ -1,0 +1,40 @@
+{
+  "scope": "Finite device evidence decoder and complete process-visible image/Read checker; not a host refinement or power-loss durability theorem",
+  "revision_base": "57632e951 with explicit slice measure and executable mv-let controls",
+  "sha256": {
+    "sim/native-device-effects.lisp": "ce62bdbf22db8671f33c5df8256404a2e284c7e8f6d09861985b16d7974b6fb7",
+    "tests/native-device-effects-unit.lisp": "d93a4610d17b556dc6f8358e8635ac8b89646e35799cf716cb3bcae660d09ecc",
+    "tests/native-device-effects-capture.lsp": "08502a894b61dc78cda99fec33f4fc50698a6ae365da82923a10c91bde199686",
+    "tests/native-device-effects-capture-unit.lsp": "0a5f6bb7171890b3a237afc9e960516a1cdb3a10009dc602a046e016922523c8"
+  },
+  "acl2": {
+    "manifest": "forge:/build/lanes/stride-owed-integrated/build/acl2/certify-20261115T041130Z-837418/manifest.json",
+    "status": "passed",
+    "roots": [
+      "sim/native-device-effects.lisp",
+      "tests/native-device-effects-unit.lisp"
+    ],
+    "local_book_ancestors": 0,
+    "wall_seconds": 0.293,
+    "published_pairs": 2,
+    "triage_failures": 0,
+    "memory_max": "2G",
+    "swap_max": 0
+  },
+  "raw_recorder": {
+    "scope": "mocked perform interface/concurrency only",
+    "log": "forge:/tmp/stride-device-recorder.5fry9N/run3.log",
+    "host_revision": "c1c86625e2b215ba1b937f470ece845513e46264",
+    "host_sha256": "d2f0e0b118fd863ab32926da4053152846bcad1c9584700721895cfe63335c89",
+    "memory_max": "256M",
+    "swap_max": 0,
+    "sbcl_dynamic_space_mib": 128,
+    "status": "passed"
+  },
+  "retained_author_refusal": "forge:/tmp/stride-device-effects-author.log: default measure chose increasing address; explicit acl2-count(before) fixes termination",
+  "limits": [
+    "pending/error writes admit arbitrary in-span bytes, retain source and cause, and finish as uncertain-effect-bound",
+    "successful Fence is an observation, not proof of physical persistence",
+    "actual Take/Post binding and complete selected-host snapshot driver remain pending"
+  ]
+}
