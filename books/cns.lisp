@@ -7,6 +7,7 @@
 ; grant service, never by a scan.
 (in-package "ACL2")
 (include-book "cns-kind")
+(include-book "cns-source-core")
 (include-book "sched-timers")
 (include-book "authority-kind")
 (include-book "machines-c-bind")
@@ -96,6 +97,29 @@
  :enqueues 1 :bytes *fn2-conn-feed-cost*
  :tables (fn2-core-pool fn2-ctl-table fn2-core-sched fn2-core-trace fn2-core-control)
  :doc "Feed one bounded raw APPEND window, acknowledge it, and finish only after the original frame trailer verifies.")
+; Source windows are verified and hashed by CNS; CTL NEXT only copies.
+(defcost fn2-cns-source-boundp :doc "An exact retained CNS/CTL incarnation and request tuple.")
+(defcost fn2-cns-stream-source-next :answers (:ok :wait :bad) :bytes *fn2-cns-source-next-cost*
+ :tables (fn2-core-cns-sources fn2-core-pool)
+ :doc "Copy at most 1024 already checked source octets into the current CTL staging loan.")
+(defcost fn2-cns-stream-source-finish :answers (:ok :wait :stale)
+ :tables (fn2-core-cns-sources)
+ :doc "Acknowledge final Send handback or a terminal, borrow-free cancelled transport.")
+(defcost fn2-cns-stream-source-step :answers t :bytes *fn2-cns-source-unit-work-bytes*
+ :tables (fn2-core-cns-sources fn2-core-fields fn2-core-b3 fn2-core-digests fn2-core-extents fn2-core-alloc-edges)
+ :doc "One source verification/hash/manifest claim or one owned-edge cleanup step; never hidden I/O.")
+(defcost fn2-cns-stream-source-issue :answers (:ok :wait :bad) :descriptors 1
+ :effects ((:acquire (:operation)))
+ :tables (fn2-core-cns-sources fn2-core-cns-source-operations fn2-core-pool fn2-core-ops fn2-core-control fn2-core-extents fn2-core-alloc-edges)
+ :doc "Issue one bounded pinned physical read for the exact retained source job.")
+(defcost fn2-cns-stream-source-abort
+ :tables (fn2-core-cns-sources fn2-ctl-table)
+ :doc "Mark source failure and close a started output; no trailer is emitted.")
+(defcost fn2-cns-stream-source-clear :answers (:ok :stale) :tables (fn2-core-cns-sources)
+ :doc "Clear a released source identity only after the actor's declared workspace release.")
+(defcost fn2-cns-stream-source-open :answers (:ok :bad :wait) :bytes 4096 :enqueues 1
+ :tables (fn2-core-reads fn2-core-ranges fn2-core-range-sources fn2-core-seeks fn2-core-run-cursors fn2-core-run-paths fn2-core-fields fn2-core-pool fn2-ctl-table fn2-core-sched fn2-core-trace fn2-core-control)
+ :doc "Check occurrence MID and complete source coverage before scheduling the generated FETCH prefix.")
 (defcost fn2-cns-stream-upload-live-p :doc "The current generation of the staged upload; stale IDs are not woken.")
 (defcost fn2-cns-stream-ctl-live-p :doc "The current generation of the original control owner; final reclaim wakes it before dropping the tuple.")
 (defcost fn2-ctl-stream-metadata :answers (:none :ok :bad :stale)
@@ -125,10 +149,10 @@
 
 (defcost fn2-cns-read-row :answers (:ok :bounds)
  :doc "The row's read row, in the cns block (the N read rows before the authority block's; machines-b's fn2-b-read-rows).")
-(defcost fn2-cns-item-next :answers (:found :end :more :retry :lease :fault) :bytes 4096
+(defcost fn2-cns-item-next :answers (:found :end :more :retry :lease :fault) :bytes 8192
  :tables (fn2-core-id-engine fn2-core-reads fn2-core-ranges fn2-core-range-sources
           fn2-core-seeks fn2-core-succ-txns fn2-core-run-cursors fn2-core-run-paths
-          fn2-core-fields fn2-core-pool)
+          fn2-core-fields fn2-core-pool fn2-core-cns-sources fn2-core-extents fn2-core-alloc-edges)
  :doc "The principal's next addr entry past a position up to the frontier, its article row and the item type the page's room allows: (mv code position article type bytes unit epoch allocation).")
 (defcost fn2-cns-put-item :answers (:ok :full :dropped :fault) :bytes 8192
  :tables (fn2-ctl-table fn2-core-machines fn2-core-reads fn2-core-ranges fn2-core-range-sources fn2-core-seeks
@@ -624,12 +648,6 @@
         (and (eq c1 :ok) (eq c2 :ok) (equal x y)
              (fn2-cns-same-octets (- (nfix n) 1) a ag (+ 1 (nfix aoff)) ak as agg b bg (+ 1 (nfix boff)) bk bs bgg fn2-pool))))))
 (in-theory (disable fn2-cns-same-octets))
-(defconst *fn2-cns-item-fixed* 22)
-;; Retained digest + raw body + copied overview + encoded item. The MID
-;; is a span within that bounded overview, so its duplicate fits too.
-;; This is a workspace requirement, independent of pool class rounding.
-(defconst *fn2-cns-item-workspace-bytes*
- (+ 32 (* 2 *fn2-commit-unit-bytes*) (* 2 *fn2-overview-octets-max*) *fn2-cns-item-fixed*))
 (defun fn2-cns-lease-class-of (fn2-pool)
  (declare (xargs :stobjs fn2-pool :guard (fn2-pool-wfp fn2-pool)))
  (fn2-pool-class-for *fn2-cns-item-workspace-bytes* fn2-pool))
@@ -1249,6 +1267,9 @@
    (:goto answer))
   (cancel :on-refusal ((:stop :machine-phase))
    (:cond
+    ((fn2-cns-source-boundp id row-generation row-ctl row-ctl-gen row-request)
+     (:do () (fn2-cns-stream-source-abort id row-generation row-ctl row-ctl-gen row-request))
+     (:next :source) (:charge :steps *fn2-work-transition* :runnable t))
     ((equal row-lease *fn2-cns-lease-held*)
            (:do (lc) (fn2-cns-lease-release row-lslot row-lgen) :effects ((:release (:storage-window))) :accept (:ok :retired)
             :why ":retired: the lease's slot reached its generation limit and leaves the pool")
@@ -1294,11 +1315,15 @@
   (item :on-refusal ((:stop :machine-phase))
    ;; ITEM-NEXT retained the published digest at [0,32); the read appends.
    ;; Resetting here would destroy the commitment and its output offset.
-   (:if (equal row-itype *fn2-fnct-item-record*)
-        ((:issue (fn2-block-read row-lunit row-lepoch row-lalloc 0 row-alen row-lslot row-lgen
+   (:cond
+    ((and (equal row-verb *fn2-cns-verb-fetch*)
+          (fn2-cns-source-boundp id row-generation row-ctl row-ctl-gen row-request))
+     (:set (stream 0)) (:next :source) (:charge :steps *fn2-work-transition* :runnable t))
+    ((equal row-itype *fn2-fnct-item-record*)
+         (:issue (fn2-block-read row-lunit row-lepoch row-lalloc 0 row-alen row-lslot row-lgen
                                  :principal row-principal-slot)
           :ok ((:set (rready 0)) (:next :fetch) (:wait :completion :bytes 4096 :steps *fn2-work-small*))))
-        ((:goto put))))
+    (t (:goto put))))
   ;; the page's end: the lease returned first (a step of its own), then
   ;; the answer, or a wait with nothing parks
   (page-end :on-refusal ((:stop :machine-phase))
@@ -1320,14 +1345,20 @@
                       ((:next :park) (:charge :bytes 4096 :steps *fn2-work-transition* :runnable t))))))
           (t (:set (count 0) (more 0) (outcome *fn2-cns-outcome-accepted*)) (:goto answer))))
   (page-fail :on-refusal ((:stop :machine-phase))
-   (:cond ((equal row-lease *fn2-cns-lease-held*)
+   (:cond
+    ((fn2-cns-source-boundp id row-generation row-ctl row-ctl-gen row-request)
+     (:do () (fn2-cns-stream-source-abort id row-generation row-ctl row-ctl-gen row-request))
+     (:next :source) (:charge :steps *fn2-work-transition* :runnable t)) ((equal row-lease *fn2-cns-lease-held*)
            (:do (lc) (fn2-cns-lease-release row-lslot row-lgen) :effects ((:release (:storage-window))) :accept (:ok :retired)
             :why ":retired: the lease's slot reached its generation limit and leaves the pool")
            (:set (lease *fn2-cns-lease-none*) (lslot *fn2-none*) (lgen 0))
            (:charge :steps *fn2-work-transition* :runnable t))
           (t (:goto refuse))))
   (page-cancel :on-refusal ((:stop :machine-phase))
-   (:cond ((equal row-lease *fn2-cns-lease-held*)
+   (:cond
+    ((fn2-cns-source-boundp id row-generation row-ctl row-ctl-gen row-request)
+     (:do () (fn2-cns-stream-source-abort id row-generation row-ctl row-ctl-gen row-request))
+     (:next :source) (:charge :steps *fn2-work-transition* :runnable t)) ((equal row-lease *fn2-cns-lease-held*)
            (:do (lc) (fn2-cns-lease-release row-lslot row-lgen) :effects ((:release (:storage-window))) :accept (:ok :retired)
             :why ":retired: the lease's slot reached its generation limit and leaves the pool")
            (:set (lease *fn2-cns-lease-none*) (lslot *fn2-none*) (lgen 0))
@@ -1438,7 +1469,7 @@
                                    *fn2-cns-kind* id row-generation)
             :accept (:found :end :more :retry :lease :fault)
             :why ":end: no entry of the principal's past IPOS up to the frontier; :more: the walk's steps ran out (the page stops, MORE); :retry: article publication changed before commitment copy; :lease: reserve before selecting a record; :fault: the store contradicts its own rows")
-           (:cond ((eq icode :retry) (:charge :bytes 4096 :steps *fn2-work-transition* :runnable t))
+           (:cond ((eq icode :retry) (:charge :bytes 8192 :steps *fn2-work-transition* :runnable t))
                   ((eq icode :end) (:set (ipos row-pub-frontier)) (:goto page-end))
                   ((eq icode :more) (:set (more 1)) (:goto page-end))
                   ((not (member-eq icode '(:found :lease)))
@@ -1462,6 +1493,61 @@
                            (:charge :steps *fn2-work-transition* :runnable t))))))
           ((< row-ipos row-pub-frontier) (:set (more 1)) (:goto page-end))
           (t (:goto page-end))))
+  ; Published FETCH uses retained source jobs. No whole article is copied
+  ; into a request/reply range, and no accepted trailer precedes checked EOF.
+  (:source :on-refusal ((:stop :machine-phase))
+   (:do (sc) (fn2-cns-stream-source-step id row-generation row-ctl row-ctl-gen row-request (equal row-stream 1)))
+   (:case sc
+    ((:uncertain :stale) (:stop :machine-observation :steps *fn2-work-state*))
+    ((:bad :bounds)
+     (:do () (fn2-cns-stream-source-abort id row-generation row-ctl row-ctl-gen row-request))
+     (:if (equal row-stream 1) ((:wake-row row-ctl)) ())
+     (:charge :bytes *fn2-cns-source-unit-work-bytes* :steps *fn2-work-transition* :runnable t))
+    ((:wait) (:charge :bytes *fn2-cns-source-unit-work-bytes* :steps *fn2-work-poll*))
+    ((:need-read)
+     (:do (rc op og) (fn2-cns-stream-source-issue id row-generation row-ctl row-ctl-gen row-request row-principal-slot))
+     (:case rc
+      ((:ok) (:charge :bytes *fn2-cns-source-unit-work-bytes* :descriptors 1 :steps *fn2-work-transition*))
+      ((:wait) (:charge :bytes *fn2-cns-source-unit-work-bytes* :descriptors 1 :steps *fn2-work-poll* :runnable t))
+      (:otherwise
+       (:do () (fn2-cns-stream-source-abort id row-generation row-ctl row-ctl-gen row-request))
+       (:charge :bytes *fn2-cns-source-unit-work-bytes* :descriptors 1 :steps *fn2-work-transition* :runnable t))))
+    ((:covered)
+     (:do (oc) (fn2-cns-stream-source-open id row-generation))
+     (:case oc
+      ((:ok) (:set (stream 1)) (:charge :bytes (+ *fn2-cns-source-unit-work-bytes* 4096) :steps *fn2-work-transition* :runnable t))
+      ((:wait) (:charge :bytes (+ *fn2-cns-source-unit-work-bytes* 4096) :steps *fn2-work-poll*))
+      (:otherwise
+       (:do () (fn2-cns-stream-source-abort id row-generation row-ctl row-ctl-gen row-request))
+       (:charge :bytes (+ *fn2-cns-source-unit-work-bytes* 4096) :steps *fn2-work-transition* :runnable t))))
+    ((:ready :complete)
+     (:wake-row row-ctl) (:charge :bytes *fn2-cns-source-unit-work-bytes* :steps *fn2-work-transition*))
+    ((:released)
+     (:cond
+      ((equal row-stream 1)
+       (:do (ts) (fn2-ctl-stream-reply-status row-ctl row-ctl-gen row-request id row-generation))
+       (:if (eq ts :cancelled)
+            ((:do (fc) (fn2-cns-stream-source-finish id row-generation row-ctl row-ctl-gen row-request)
+              :accept (:ok :wait))
+             (:charge :bytes *fn2-cns-source-unit-work-bytes* :steps *fn2-work-transition* :runnable (eq fc :ok)))
+            ((:wake-row row-ctl) (:charge :bytes *fn2-cns-source-unit-work-bytes* :steps *fn2-work-poll*))))
+      ((equal row-lease *fn2-cns-lease-held*)
+       (:do (lc) (fn2-cns-lease-release row-lslot row-lgen)
+        :effects ((:release (:storage-window))) :accept (:ok :retired))
+       (:set (lease *fn2-cns-lease-none*) (lslot *fn2-none*) (lgen 0))
+       (:charge :bytes *fn2-cns-source-unit-work-bytes* :steps *fn2-work-transition* :runnable t))
+      (t
+       (:do (cc) (fn2-cns-stream-source-clear id row-generation row-ctl row-ctl-gen row-request) :accept (:ok))
+       (:set (reason *fn2-cns-reason-unavailable*)) (:goto refuse))))
+    ((:handoff)
+     (:if (equal row-lease *fn2-cns-lease-held*)
+          ((:do (lc) (fn2-cns-lease-release row-lslot row-lgen)
+            :effects ((:release (:storage-window))) :accept (:ok :retired))
+           (:set (lease *fn2-cns-lease-none*) (lslot *fn2-none*) (lgen 0))
+           (:charge :bytes *fn2-cns-source-unit-work-bytes* :steps *fn2-work-transition* :runnable t))
+          ((:do (cc) (fn2-cns-stream-source-clear id row-generation row-ctl row-ctl-gen row-request) :accept (:ok))
+           (:next :draining) (:charge :bytes *fn2-cns-source-unit-work-bytes* :steps *fn2-work-transition* :runnable t))))
+    (:otherwise (:charge :bytes *fn2-cns-source-unit-work-bytes* :steps *fn2-work-transition* :runnable t))))
   (:fetch :on-refusal ((:stop :machine-phase))
    (:cond ((equal row-rready 0) (:charge :steps *fn2-work-poll*))
           ((and (equal row-revent *fn2-event-read-result*) (equal row-routcome *fn2-outcome-done*))
@@ -1665,7 +1751,10 @@
    (:charge :steps *fn2-work-release*))))
   (:retired (:idle)))
  :observes
- ((:read-result (:set (revent event) (routcome outcome) (rcount count) (rready 1)) (:wake))))
+ ((:read-result
+   (:if (equal row-phase *fn2-cns-state-source*)
+        ((:wake))
+        ((:set (revent event) (routcome outcome) (rcount count) (rready 1)) (:wake))))))
 
 (defun fn2-cns-cid-default (consumer)
   (declare (xargs :guard t))
@@ -1724,6 +1813,7 @@
      (in-theory (disable fn2-ctl-fc-row))
      (fn2-ctl-stream-events)
      (fn2-ctl-output-status-events)
+     (fn2-cns-source-core-events)
      (defun fn2-cns-stream-upload-live-p (u ugen fn2-core)
        (declare (xargs :stobjs fn2-core :guard (fn2-core-wfp fn2-core)))
        (and (eq (fn2-upload-snapshot-read-code u fn2-core) :ok)
@@ -2100,18 +2190,27 @@
             ((mv at cap) (fn2-cns-fill-cap tx-slot fn2-core))
             ((mv c p a sm ty by uu ee aa)
              (fn2-cns-item-answer walk code found pos art strm ac st bytes kind u e al at cap ilen fetch))
-            ;; Same live row supplies scalars and commitment. No I/O/yield
-            ;; separates them. Staleness restarts the entire selection.
+            ; FETCH capture is independent of the old whole-reply-fit policy.
+            ; SAME live article READ supplies the full descriptor and root pin.
+            (streaming (and (equal fetch 1) found (eq ac :ok)
+                            (not (equal st *fn2-article-state-withdrawn*)) (posp bytes)))
+            (ty (if streaming *fn2-fnct-item-record* ty))
             ((mv zc fn2-core)
-             (if held (fn2-core-reset lslot lgen lk ls lg fn2-core) (mv :ok fn2-core)))
-            (bind (and held (eq c :found) (equal ty *fn2-fnct-item-record*)))
+             (if (and held (not streaming)) (fn2-core-reset lslot lgen lk ls lg fn2-core) (mv :ok fn2-core)))
+            ((mv captured total fn2-core)
+             (if (and held streaming)
+                 (fn2-cns-stream-source-capture ls lg x lslot lgen fn2-core)
+               (mv :none 0 fn2-core)))
+            (bind (and held (not streaming) (eq c :found) (equal ty *fn2-fnct-item-record*)))
             ((mv hc copied left fn2-core)
              (if (and bind (eq zc :ok))
                  (fn2-read-octets x *fn2-article-entry-field-location-hashes*
                                   0 32 lslot lgen 0 lk ls lg fn2-core)
                (mv :ok 0 0 fn2-core)))
             ((mv & fn2-core) (fn2-read-release x fn2-core))
-            (c (fn2-cns-item-binding-answer c ty held zc hc copied left)))
+            (c (if streaming
+                   (cond ((not held) :lease) ((and (eq captured :ok) (equal total bytes)) :found) (t :fault))
+                 (fn2-cns-item-binding-answer c ty held zc hc copied left))))
          (mv c p a sm ty by uu ee aa fn2-core)))
      (fn2-cns-natp-outputs fn2-cns-item-next (principal ipos pf ilen fetch tx-slot x held lslot lgen lk ls lg fn2-core) (1 2 3 4 5 6 7 8))
      (fn2-core-preserves fn2-cns-item-next (principal ipos pf ilen fetch tx-slot x held lslot lgen lk ls lg fn2-core)
@@ -2384,6 +2483,35 @@
                        :use ((:instance fn2-cns-core-stream-wake-arm-kids)))))
      (in-theory (disable fn2-cns-core-stream-wake))
      (fn2-ctl-output-events)
+     (defun fn2-cns-stream-source-open (cns cgen fn2-core)
+      (declare (xargs :stobjs fn2-core :guard (fn2-core-wfp fn2-core)))
+      (b* ((ctl (fn2-cns-row-ctl cns fn2-core))
+           (cg (fn2-cns-row-ctl-gen cns fn2-core))
+           (r (fn2-cns-row-request cns fn2-core))
+           ((unless (fn2-cns-source-boundp cns cgen ctl cg r fn2-core)) (mv :bad fn2-core))
+           (s (fn2-machine-slot cns fn2-core))
+           ((mv retained total)
+            (stobj-let ((fn2-cns-sources (fn2-core-cns-sources fn2-core)))
+             (p n) (mv (fn2-cns-sources-retention-phase s fn2-cns-sources)
+                       (fn2-cns-sources-total s fn2-cns-sources)) (mv p n)))
+           ((unless (and (equal retained *fn2-cns-source-retention-ready*)
+                         (equal total (fn2-cns-row-alen cns fn2-core))
+                         (unsigned-byte-p 32 total))) (mv :bad fn2-core))
+           ((unless (eq (fn2-ctl-stream-reply-status ctl cg r cns cgen fn2-core) :active)) (mv :wait fn2-core))
+           (slot (fn2-cns-row-lslot cns fn2-core)) (gen (fn2-cns-row-lgen cns fn2-core))
+           ((mv mc ms ml fn2-core)
+            (fn2-cns-entry-mid (fn2-cns-row-istream cns fn2-core) (fn2-cns-row-art cns fn2-core)
+             (fn2-cns-row-npos cns fn2-core) (fn2-cns-row-pub-frontier cns fn2-core)
+             slot gen *fn2-cns-kind* cns cgen (fn2-cns-row-xrow cns fn2-core) fn2-core))
+           ((unless (and (eq mc :ok) (equal ml (fn2-cns-row-name-len cns fn2-core))
+                         (fn2-cns-core-same ml slot gen ms *fn2-cns-kind* cns cgen
+                          (fn2-cns-row-tx-slot cns fn2-core) (fn2-cns-row-tx-gen cns fn2-core)
+                          (fn2-cns-row-name-off cns fn2-core) *fn2-ctl-kind* ctl cg fn2-core)))
+            (mv :bad fn2-core))
+           ((mv code fn2-core) (fn2-ctl-stream-reply-start ctl cg r cns cgen total fn2-core)))
+       (mv (if (eq code :ok) :ok :bad) fn2-core)))
+     (fn2-core-preserves fn2-cns-stream-source-open (cns cgen fn2-core) :position 1 :rows nil)
+
      (defmachine-arms fn2-ctl)
      (defmachine-run fn2-ctl)
      (defmachine-arms fn2-cns)

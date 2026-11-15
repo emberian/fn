@@ -334,6 +334,8 @@ ACL2_BOOKS = \
   tests/cns-decode-unit \
   tests/cns-raw-eof-unit \
   tests/cns-stream-append-unit \
+  books/cns-source-core \
+  tests/cns-stream-fetch-unit \
   tests/ctl-stripe-map-unit \
   tests/cns-recovered-fetch-unit \
   tests/cns-edges-unit \
