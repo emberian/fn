@@ -452,8 +452,13 @@ from the root body. Both its canonical body and guard now appear in the emitted
 program. Changing only the root guard leaves the emitted body program identical
 but changes the guard table. Removing the helper or attaching it refuses. These
 are source-generation controls, not proofs of `DomainRespectsGuards` or guard
-satisfaction. The next bounded Lean gate is the existing warm-import membership
-fixture plus this guard-bearing emission (2 GiB, one job, 120 seconds); no Lean
-or ACL2 job was run for this change. The current served CNS packet still waits
-for its qualified callback world; the earlier six-record gate does not cover
-this new emission.
+satisfaction. The authorized warm-import Lean gate subsequently passed both
+emissions and rejected the changed-body and changed-guard controls at their
+respective exact equations. It used 2 GiB, one job and a 120-second timeout;
+peak memory was 108,294,144 bytes, memory events were zero and the scope was
+released. The six positive theorem censuses contain only the allowed axioms.
+The bounded fixture receipt is
+`docs/design/receipts/canonical-member-guards-fixture-record.json` (Forge
+PID 1157213, `/tmp/audit-bridge-guards-0e9b5f9ac/run.log`). No imports were
+rebuilt and no ACL2 admission was run. The current served CNS packet still
+waits for its qualified callback world; these fixture results do not qualify it.
