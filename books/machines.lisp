@@ -633,8 +633,31 @@
                      (natp (cadr (member-eq :descriptors budget)))))
            (msg ":budget ~x0 is (:bytes N :steps N :descriptors N), naturals." budget))
       (and (not capacity) (msg ":capacity is nil.")))))))
+(defun fn2-machine-budget-event (name args world)
+ (declare (xargs :verify-guards nil))
+ (let* ((budget (fn2-arm-get :budget args))
+        (bytes (fn2-cost-value (fn2-arm-get :bytes budget) world))
+        (steps (fn2-cost-value (fn2-arm-get :steps budget) world))
+        (descriptors (fn2-cost-value (fn2-arm-get :descriptors budget) world)))
+  (if (and (natp bytes) (natp steps) (natp descriptors))
+   (mv nil (cons 'defmachine (cons name
+    (fn2-decl-set :budget (list :bytes bytes :steps steps :descriptors descriptors) args))))
+   (mv (msg "~x0: named :budget ~x1 must resolve to natural costs in the actual ACL2 world." name budget) nil))))
 (defmacro defmachine (name &key states phases fields budget continuations observes (capacity '1) initial holds
                            admission taken arms subarms stops links sub genesis)
+  ; Resolve only declared cost expressions, then use this same generator's
+  ; natural-budget path. No alternate layout, arms or runtime evaluator.
+  (if (and (fn2-cost-plistp budget)
+           (not (and (natp (fn2-arm-get :bytes budget)) (natp (fn2-arm-get :steps budget))
+                     (natp (fn2-arm-get :descriptors budget)))))
+   `(make-event
+     (mv-let (err event)
+      (fn2-machine-budget-event ',name
+       ',(list :states states :phases phases :fields fields :budget budget
+          :continuations continuations :observes observes :capacity capacity :initial initial :holds holds
+          :admission admission :taken taken :arms arms :subarms subarms :stops stops :links links :sub sub :genesis genesis)
+       (w state))
+      (if err (er soft 'defmachine "~@0" err) (value event))))
   (let* ((states (or states phases))
          (sub-problem (fn2-machine-sub-problem name sub fields))
          ;; (G3, C gap 5) :genesis (STEP ...): an arm the executor's init runs
@@ -684,7 +707,7 @@
                                                             (and genesis (list :genesis genesis)))))))))
     (er hard 'defmachine "Invalid machine declaration ~x0: ~@1" name
         (fn2-arm-problems "" (fn2-machine-declaration-problems name states fields stops newp arms observe-arms subarms
-                                                               links genesis continuations observes initial budget capacity))))))
+                                                               links genesis continuations observes initial budget capacity)))))))
 
 ; ----------------------------------------------------------------------
 ; Owner-declared wait kinds (MACHINE-FORM 6.10, D F4): a D0 wait kind whose
