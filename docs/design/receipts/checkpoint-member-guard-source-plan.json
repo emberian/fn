@@ -148,9 +148,20 @@
       "books/format",
       "books/format-check"
     ],
-    "additional_named_proof_source": "books/layout-size-bounds"
+    "additional_named_proof_source": "books/layout-size-bounds",
+    "current_source_closure_counts": {
+      "checkpoint": 26,
+      "checkpoint_member": 30,
+      "size_fixture": 10
+    },
+    "parent_audit_requirement": "Re-audit all current lower dependencies (format-check21 plus alloc/vocab/pool-read-contracts/helper/pool-ranges/fnv), including new pool transitively; do not assume the earlier nine are exhaustive after freeze."
   },
   "author_sequence": [
+    {
+      "step": "start genuine checkpoint source book before any local event",
+      "command": "proof_repl start NAME books/checkpoint --upto *fn2-checkpoint-served-storage-domain* --cached-only --limit20",
+      "parents": "All current25 lower books must already be qualified; no source substitution or automatic expansion."
+    },
     {
       "step": "load standalone API",
       "from": "#4",
@@ -167,13 +178,15 @@
       "step": "load genuine current checkpoint source prefix",
       "through": "fn2-checkpoint-check-step",
       "cached_only_parents": true,
-      "includes": "new source API loaded explicitly; current cached helper/read contracts"
+      "includes": "new source API loaded explicitly; current cached helper/read contracts",
+      "command": "proof_repl send-range NAME books/checkpoint --from *fn2-checkpoint-served-storage-domain* --through fn2-checkpoint-check-step --skip-includes --full"
     },
     {
       "step": "load member helper and exact original pack guard on genuine checkpoint prefix",
       "from": "fn2-checkpoint-installation-member-capacity",
       "through": "fn2-checkpoint-installation-pack-member",
-      "skip_includes": true
+      "skip_includes": true,
+      "parents": "Load only current certified pool-ranges (and its fnv parent) explicitly before member source; source checkpoint prefix is genuine but not claimed certified."
     }
   ],
   "proposed_bounds": {
