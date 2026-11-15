@@ -1,8 +1,9 @@
 """Source-only contract checks; ACL2 guard/equality admission remains required."""
-import subprocess
 import unittest
 from pathlib import Path
-from lisp_source import forms, read_sexp
+from lisp_source import forms, read_sexp, generated_definition_expansion
+import ledger
+import host_check
 
 
 def parsed(text):
@@ -33,7 +34,7 @@ CASES = [('books/runs.lisp', 'fn2-run-buildp'),
 class Carried(unittest.TestCase):
     def test_checked_public_behavior_unchanged(self):
         for path, name in CASES:
-            old = subprocess.check_output(['git', 'show', '53973df71:' + path], text=True)
+            old = Path('tools/fixtures/columns-carried-baseline.lisp').read_text()
             f = next(x for x in parsed(old) if isinstance(x, list) and x[:2] == ['defun', name])
             d = declaration(path, name)
             self.assertEqual(f[2], d[2])
@@ -57,6 +58,20 @@ class Carried(unittest.TestCase):
             self.assertEqual(len(candidates), 1)
             for premise in shape:
                 self.assertIn(str(premise), str(candidates[0][3]))
+
+    def test_shared_inventory_and_cost_expansion(self):
+        for path, name in CASES:
+            text = Path(path).read_text()
+            d = declaration(path, name)
+            expanded = generated_definition_expansion(d)
+            names = {x[1] for x in expanded}
+            self.assertEqual(names, {name, name + '-carried', name + '-carried-equivalence'})
+            self.assertEqual(expanded[0][-1], public_body(d))
+            self.assertEqual(expanded[1][-1], ['and'] + d[d.index(':tests') + 1])
+            inventory = {str(f[1]) for f, _ in ledger.source_events(ledger.Reader(text).top_level())
+                         if ledger.head(f) in ('defun', 'defthm')}
+            self.assertTrue(names <= inventory)
+            self.assertTrue({name, name + '-carried'} <= host_check.world_names(text))
 
     def test_one_generator_retains_checks_and_named_equivalence(self):
         s = Path('books/columns.lisp').read_text()
