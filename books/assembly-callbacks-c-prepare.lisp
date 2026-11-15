@@ -9,4 +9,6 @@
 (include-book "machines-c-bind")
 (include-book "run-physical-core-faces")
 (fn2-run-page-core-faces)
+(include-book "c-source-observer-adapters")
+(fn2-c-source-observer-core-faces)
 (fn2-successor-prepare-events)
