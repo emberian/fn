@@ -41,7 +41,7 @@
     (fn2-nde-returned-ids (cdr records)))))
 (defun fn2-nde-post-join-p (e records unposted)
  (declare (xargs :verify-guards nil))
- (let ((job (fn2-nde-job (nth 1 e) (nth 2 e) records)))
+ (let ((job (fn2-nde-job (nth 2 e) (nth 3 e) records)))
   (or (not job) (and (consp unposted) (equal (nth 1 job) (car unposted))))))
 
 ; Reuse the actual replay step rather than copying its transition semantics.
@@ -63,7 +63,7 @@
                        ((not (fn2-nde-post-join-p e records unposted)) :physical-post-order)
                        (t nil))
                  unbound
-                 (if (fn2-nde-job (nth 1 e) (nth 2 e) records) (cdr unposted) unposted)))
+                 (if (fn2-nde-job (nth 2 e) (nth 3 e) records) (cdr unposted) unposted)))
             (t (mv nil unbound unposted)))
       (if binding (mv binding caps fn2-core)
        (fn2-native-device-envelope-steps (cdr rest) trace records taken caps unbound unposted backend fn2-core))))))))

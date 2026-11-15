@@ -1,14 +1,20 @@
 ;;; Test-owned capture and immutable image copies only. Load after certified
 ;;; sim/native-device-effects in the selected ACL2 image. No storage writes.
 (in-package "ACL2")
+; The joint control driver dynamically binds these exact parsed objects.
+; Standalone use remains an image-only check, never a control/effect join.
+(defvar *fn2-test-device-records*)
+(defvar *fn2-test-device-fd*)
 (let* ((*read-eval* nil)
-       (records (with-open-file (in (sb-ext:posix-getenv "FN2_TEST_DEVICE_EFFECTS"))
+       (records (if (boundp '*fn2-test-device-records*) *fn2-test-device-records*
+                 (with-open-file (in (sb-ext:posix-getenv "FN2_TEST_DEVICE_EFFECTS"))
                   ;; An interrupted final form raises an error, never truncates
                   ;; the evidence to an apparently completed prefix.
-                  (loop for row = (read in nil :end) until (eq row :end) collect row)))
-       (first (find-if (lambda (r) (member (car r) '(:submit :direct))) records)))
+                  (loop for row = (read in nil :end) until (eq row :end) collect row))))
+       (first (find-if (lambda (r) (member (car r) '(:submit :direct))) records))
+       (fd (if (boundp '*fn2-test-device-fd*) *fn2-test-device-fd* (car (third first)))))
   (assert first () "No physical device descriptor was captured")
-  (multiple-value-bind (code effects) (fn2-native-device-effects records (car (third first)))
+  (multiple-value-bind (code effects) (fn2-native-device-effects records fd)
     (assert (eq code :ok) () "Malformed physical device trace")
     (with-open-file (before (sb-ext:posix-getenv "FN2_TEST_DEVICE_BEFORE")
                             :element-type '(unsigned-byte 8))
