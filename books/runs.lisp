@@ -607,7 +607,9 @@
   (hash-0 :u32) (hash-1 :u32) (hash-2 :u32) (hash-3 :u32)
   (hash-4 :u32) (hash-5 :u32) (hash-6 :u32) (hash-7 :u32))
  :extra-fields ((fn2-run-installed-physical-count :type (unsigned-byte 32) :initially 0
- :why "All nonFREE physical installed rows, maintained by shared install/free transitions; not catalog-local or a caller readiness flag.")))
+ :why "All nonFREE physical installed rows, maintained by shared install/free transitions; not catalog-local or a caller readiness flag.")
+  (fn2-run-installed-version-floor :type (unsigned-byte 60) :initially 0
+   :why "Exclusive durable-source replacement raises every schema version before retiring old roots, including authenticated empty roots.")))
 ; The sole physical installation transition updates the global count. Its
 ; caller supplies Ref fields from an authenticated source catalog/producer.
 ; Logical row fold only: served admission reads the maintained scalar above.
@@ -625,7 +627,7 @@
 
 (defun fn2-run-install-physical (r schema run wire-run top entries unit epoch counter catalog-tag hash-0 hash-1 hash-2 hash-3 hash-4 hash-5 hash-6 hash-7 fn2-run-installed)
  (declare (xargs :stobjs fn2-run-installed :guard (fn2-run-installed-wfp fn2-run-installed)))
- (b* (((unless (and (natp r) (< r (fn2-run-installed-rows fn2-run-installed)) (unsigned-byte-p 60 schema) (unsigned-byte-p 60 run) (unsigned-byte-p 60 wire-run) (posp wire-run) (<= wire-run run) (unsigned-byte-p 8 top) (unsigned-byte-p 60 entries) (unsigned-byte-p 60 unit) (unsigned-byte-p 60 epoch) (unsigned-byte-p 60 counter) (unsigned-byte-p 60 catalog-tag) (unsigned-byte-p 32 hash-0) (unsigned-byte-p 32 hash-1) (unsigned-byte-p 32 hash-2) (unsigned-byte-p 32 hash-3) (unsigned-byte-p 32 hash-4) (unsigned-byte-p 32 hash-5) (unsigned-byte-p 32 hash-6) (unsigned-byte-p 32 hash-7) (< top *fn2-run-max-levels*) (posp run) (posp catalog-tag) (= (mod unit *fn2-storage-extent-units*) 0))) (mv :bounds fn2-run-installed))
+ (b* (((unless (and (natp r) (< r (fn2-run-installed-rows fn2-run-installed)) (unsigned-byte-p 60 schema) (unsigned-byte-p 60 run) (< (fn2-run-installed-version-floor fn2-run-installed) run) (unsigned-byte-p 60 wire-run) (posp wire-run) (<= wire-run run) (unsigned-byte-p 8 top) (unsigned-byte-p 60 entries) (unsigned-byte-p 60 unit) (unsigned-byte-p 60 epoch) (unsigned-byte-p 60 counter) (unsigned-byte-p 60 catalog-tag) (unsigned-byte-p 32 hash-0) (unsigned-byte-p 32 hash-1) (unsigned-byte-p 32 hash-2) (unsigned-byte-p 32 hash-3) (unsigned-byte-p 32 hash-4) (unsigned-byte-p 32 hash-5) (unsigned-byte-p 32 hash-6) (unsigned-byte-p 32 hash-7) (< top *fn2-run-max-levels*) (posp run) (posp catalog-tag) (= (mod unit *fn2-storage-extent-units*) 0))) (mv :bounds fn2-run-installed))
       ((unless (and (= (fn2-run-installed-state r fn2-run-installed) *fn2-run-installed-state-free*)
                     (= (fn2-run-installed-physical r fn2-run-installed) 0)))
        (mv :state fn2-run-installed))
@@ -639,7 +641,7 @@
 (defun fn2-run-install (r schema run top slot gen unit counter entries okind oslot ogen fn2-run-installed)
  (declare (xargs :stobjs fn2-run-installed :guard (fn2-run-installed-wfp fn2-run-installed)))
  (b* (((unless (and (natp r) (< r (fn2-run-installed-rows fn2-run-installed))
-                    (unsigned-byte-p 60 schema) (unsigned-byte-p 60 run) (unsigned-byte-p 8 top)
+                    (unsigned-byte-p 60 schema) (unsigned-byte-p 60 run) (< (fn2-run-installed-version-floor fn2-run-installed) run) (unsigned-byte-p 8 top)
                     (< top *fn2-run-max-levels*) (unsigned-byte-p 32 slot) (unsigned-byte-p 60 gen)
                     (unsigned-byte-p 60 unit) (unsigned-byte-p 60 counter) (unsigned-byte-p 60 entries)
                     (unsigned-byte-p 8 okind) (unsigned-byte-p 32 oslot) (unsigned-byte-p 60 ogen)))
@@ -715,15 +717,26 @@
                            (fn2-run-installed-put r (ufirst next)))))
   (mv :ok fn2-run-installed)))
 (fn2-run-installed-preserves fn2-run-retired-next (r fn2-run-installed) :position 1 :raw-rows t)
-; A schema's version: the greatest run identifier among its live runs.
+; A schema's version is the maximum of its live priorities and the retained
+; global replacement floor. Empty old sources cannot reset it on adoption.
 ; Run identifiers only grow, and every installation (a seal, C5's merge)
 ; installs a new one, so the version moves whenever facts move from an
 ; overlay into a run. A reader that holds it (an identity decision, a range
 ; read) knows by comparing it whether its sources moved under it.
+; Only the exclusive adopter derives NEXT above its bounded source scan.
+; Both ordinary installation constructors independently enforce this floor.
+(defun fn2-run-version-floor-advance (next fn2-run-installed)
+ (declare (xargs :stobjs fn2-run-installed :guard (fn2-run-installed-wfp fn2-run-installed)))
+ (if (not (and (unsigned-byte-p 60 next) (< (fn2-run-installed-version-floor fn2-run-installed) next)))
+     (mv :bounds fn2-run-installed)
+  (let ((fn2-run-installed (update-fn2-run-installed-version-floor next fn2-run-installed)))
+   (mv :ok fn2-run-installed))))
+(fn2-run-installed-preserves fn2-run-version-floor-advance (next fn2-run-installed) :position 1 :raw-rows t)
+
 (defun fn2-run-version (sid n fn2-run-installed)
  (declare (xargs :stobjs fn2-run-installed :measure (nfix n)
   :guard (and (fn2-run-installed-wfp fn2-run-installed) (natp n) (<= n (fn2-run-installed-rows fn2-run-installed)))))
- (if (zp n) 0
+ (if (zp n) (fn2-run-installed-version-floor fn2-run-installed)
   (let ((r (- n 1)) (rest (fn2-run-version sid (- n 1) fn2-run-installed)))
    (if (and (equal (fn2-run-installed-state r fn2-run-installed) *fn2-run-installed-state-live*)
             (equal (fn2-run-installed-schema r fn2-run-installed) sid)
