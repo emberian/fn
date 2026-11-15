@@ -227,6 +227,7 @@ ACL2_BOOKS = \
   books/pointwise-contracts \
   books/pool \
   books/pool-credit \
+  books/pool-credit-contracts \
   books/checkpoint-working-geometry \
   books/checkpoint-working-credit \
   books/pool-block \
@@ -498,6 +499,7 @@ ACL2_BOOKS = \
   tests/pool-ranges-unit \
   tests/pool-query-ref-unit \
   tests/pool-credit-unit \
+  tests/pool-protected-floor-unit \
   tests/ordinary-drain-credit-unit \
   tests/upload-page-geometry-unit \
   tests/checkpoint-service-geometry-unit \

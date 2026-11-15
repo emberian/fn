@@ -3,10 +3,11 @@
 ; No actor admission, complete checkpoint, or runtime grant is claimed.
 (in-package "ACL2")
 (include-book "../books/pool-credit")
+(include-book "pool-protected-floor-unit")
 ; Fixture-only snapshot includes every configured credit cell and class cache;
 ; the generated row view alone deliberately excludes extra fields.
-(defun-nx fn2-pcu-arrays (i n fn2-pool)
- (declare (xargs :stobjs fn2-pool :measure (nfix (- (nfix n) (nfix i)))))
+(defun fn2-pcu-arrays (i n fn2-pool)
+ (declare (xargs :stobjs fn2-pool :verify-guards nil :measure (nfix (- (nfix n) (nfix i)))))
  (if (not (and (natp i) (natp n) (< i n))) nil
   (cons (list
     (if (< i (fn2-pool-credit-protected-length fn2-pool)) (fn2-pool-credit-protectedi i fn2-pool) nil)
@@ -21,13 +22,24 @@
     (if (< i (fn2-pool-nclasses fn2-pool))
         (list (fn2-pool-class-countsi i fn2-pool) (fn2-pool-class-headsi i fn2-pool)) nil))
    (fn2-pcu-arrays (+ i 1) n fn2-pool))))
-(defun-nx fn2-pcu-view (fn2-pool)
- (declare (xargs :stobjs fn2-pool))
- (list (fn2-pool-view fn2-pool) (fn2-pool-credit-configured fn2-pool)
+(defun fn2-pcu-view (fn2-pool)
+ (declare (xargs :stobjs fn2-pool :verify-guards nil))
+ (list (fn2-pfu-slots 0 fn2-pool) (fn2-pool-credit-configured fn2-pool)
        (fn2-pool-credit-group-count fn2-pool) (fn2-pool-retired-count fn2-pool)
        (fn2-pcu-arrays 0 (max (fn2-pool-nclasses fn2-pool)
-                            (fn2-pool-credit-group-count fn2-pool)
-                            (fn2-pool-credit-demand-length fn2-pool)) fn2-pool)))
+                            (max (fn2-pool-credit-group-count fn2-pool)
+                                 (fn2-pool-credit-demand-length fn2-pool))) fn2-pool)))
+; These negative-index controls concern the total logical domain, outside
+; the writers' NATP guards. Served transition controls below stay guarded.
+(defthm fn2-pcu-logical-negative-demands-unchanged
+ (equal (fn2-pool-credit-store-demands xs -1 fn2-pool) fn2-pool)
+ :hints (("Goal" :in-theory (enable fn2-pool-credit-store-demands))))
+(defthm fn2-pcu-logical-negative-groups-unchanged
+ (equal (fn2-pool-credit-store-groups groups -1 fn2-pool) fn2-pool)
+ :hints (("Goal" :in-theory (enable fn2-pool-credit-store-groups))))
+(defthm fn2-pcu-logical-negative-protected-unchanged
+ (equal (fn2-pool-credit-store-protected -1 groups fn2-pool) fn2-pool)
+ :hints (("Goal" :in-theory (enable fn2-pool-credit-store-protected))))
 (defun fn2-pcu-body (fn2-pool)
  (declare (xargs :stobjs fn2-pool :verify-guards nil))
  (b* ((fn2-pool (fn2-pool-init '((6 . 4096)) 1 10 fn2-pool))
