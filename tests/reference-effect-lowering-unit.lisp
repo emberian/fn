@@ -126,3 +126,11 @@
    'fn2-effect-test-boundary 'fn2-effect-test-replacement (w state) 0 1000)
   (declare (ignore stages ir counter))
   (value `(assert-event ',(consp err)))))
+
+; Two constrained symbols selecting one implementation must retain distinct
+; binding records. Direct-call records cannot masquerade as either binding.
+(assert-event
+ (and (equal (fn2-effect-selection-key 'implementation 'stub-a) 'stub-a)
+      (equal (fn2-effect-selection-key 'implementation 'stub-b) 'stub-b)
+      (not (equal (fn2-effect-selection-key 'implementation nil)
+                  (fn2-effect-selection-key 'implementation 'stub-a)))))
