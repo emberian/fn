@@ -1,5 +1,5 @@
 {
-  "scope": "source-only; no ACL2 admission, runtime execution or master activation",
+  "scope": "SOURCE ONLY, bounded query-only promotion repair; no ACL2 admission/runtime or complete physical-work proof",
   "consumer_files": [
     "books/checkpoint-live-retire.lisp",
     "books/checkpoint-live-finish.lisp",
@@ -29,13 +29,30 @@
     ],
     "owner": "sol_metadata_root: reserved assembly-e-cns seam; not a whole assembly replacement"
   },
-  "actual_positive_fixture": "fn2-clf-body: actual fn2-clc-body publication/install/retire, actual live authority begin/488 copy steps, actual owner-aware live scan, actual finish; assertions unexecuted",
-  "actual_refusal_fixture": "same actual constructor; premature finish :source preserves all five mutable carriers",
+  "actual_positive_fixture": "fn2-clf-body actual publication/install/retire+real authority copier+real live scan+33 :more turns (start+32cells)+:promoted; observes retained pending authority/exclusion. Final positive with real canonical archive/rebase/consume and first->secondadoption owned by c_actor_loaders; not yet executed.",
+  "actual_refusal_fixture": "Premature promotion and pre-consume reopen :source preserve five mutable carriers and readonly endpoint table; actual count invariant explicitly checked before exclusive and after promotion.",
   "still_required": [
-    "compose complete actual physical NNTP/CNS request/loader consumers and provider prerequisites",
-    "execute connected fixture and guards under explicit allocation",
-    "wire actual master adoption states and charge *fn2-checkpoint-live-promotion-bytes*; activation remains NIL",
-    "maintained source-count and typed replacement receipt preservation proofs"
+    "canonical credited C-slot arena-return/sealer prerequisite for real userarticle overlays (capacity owner response pending; no stale sealer replacement)",
+    "complete physical-work preflight accounting/refinement for new callbacks",
+    "actual canonical rebase/archive/consume+typed reopen wholepositive and hypothesis-removal/crash controls",
+    "compose masterstates/emissionorder and actual FullRef NNTP/CNS request consumers",
+    "guard/admission/runtime qualification under explicit allocation; no compute granted"
   ],
-  "resources": "retire/cleanup/final promotion reserve no new window/descriptor and issue no IO; original C-base held before first visibility; source observer next-receipt retained"
+  "resources": "retire/cleanup/final promotion reserve no new window/descriptor and issue no IO; original C-base held before first visibility; source observer next-receipt retained",
+  "protocol": {
+    "query_promotion": "finish-op(core): resources5 -> stagePROMOTING6 cursor0; one SUMMARYdescriptorcell per :more; exact32EOF :promoted ->stagePROMOTED7. SUMMARY0phasePROMOTING; SUMMARY1retained; writerEXCLUSIVE.",
+    "authority_transfer": "Canonical fn2-directory-rebase-consume is sole AUTHORITY1 -> AUTHORITY0 copier/consumer; existing archive/source/suffix gates unchanged. AUTHORITY1.catalog-tag stamped from current pending SUMMARY1 only.",
+    "terminal": "reopen-op(core): :applied only actual directoryCOMMITTED exactsubject +AUTHORITY0complete/current/catalogtag +AUTHORITY1IDLE +SUMMARY1/live-scan/fullsource/newCbase/exclusive; scalarpromote/clearSUMMARY1/reopen samecall",
+    "crash_cuts": [
+      "SUMMARY0PROMOTING while pendingdescriptorcopy incomplete",
+      "SUMMARY1PROMOTED with AUTHORITY1COMPLETE beforecanonicalconsume",
+      "AUTHORITY0newcurrent plus AUTHORITY1IDLE afterconsume and beforetypedreopen"
+    ],
+    "restart": "All partial query state volatile; actual persisted publication must drive ordinary authenticated cold boot; no READY synthesis."
+  },
+  "cost_scope": {
+    "payload": "ONE source octet read +ONE destinationoctet write percell (2bytes); EOF scalaronly. Terminal readonly descriptorcompare32cells=64bytes; no authority payload copy.",
+    "declared_preflight": "256byte charge floor retained separately; callbackstepcharge150 derives component placeholders80+8+2*21summaryfields+20. This is DECLARED charge, NOT admitted whole physicalwork refinement. Complete preflight component/callgraph bound remains owed; no wholeturn bounded claim from charge.",
+    "canonical_consume": "Unchanged here; separate owner audits actual520 authoritytransfer+base-seal/preflight/controller charge."
+  }
 }
