@@ -3,6 +3,7 @@
 (in-package "ACL2")
 (include-book "std/util/bstar" :dir :system)
 (include-book "checkpoint-summary-state")
+(include-book "checkpoint-cbase-state")
 (include-book "checkpoint-restore-semantic-work")
 (fn2-book-layer :c)
 
@@ -45,20 +46,27 @@
       (equal (fn2-checkpoint-summary-cut-event 0 fn2-checkpoint-summary) (fn2-checkpoint-restore-map-control-source-cut-event 0 fn2-checkpoint-restore-map-control))
       (equal (fn2-checkpoint-summary-history 0 fn2-checkpoint-summary) (fn2-checkpoint-restore-map-control-source-history 0 fn2-checkpoint-restore-map-control))
       (equal (fn2-checkpoint-summary-incarnation 0 fn2-checkpoint-summary) (fn2-checkpoint-restore-map-control-source-incarnation 0 fn2-checkpoint-restore-map-control))
+      (equal (fn2-checkpoint-summary-owner-kind 0 fn2-checkpoint-summary) (fn2-checkpoint-restore-semantic-owner-kind 0 fn2-checkpoint-restore-semantic))
+      (equal (fn2-checkpoint-summary-owner-slot 0 fn2-checkpoint-summary) (fn2-checkpoint-restore-semantic-owner-slot 0 fn2-checkpoint-restore-semantic))
+      (equal (fn2-checkpoint-summary-owner-gen 0 fn2-checkpoint-summary) (fn2-checkpoint-restore-semantic-owner-gen 0 fn2-checkpoint-restore-semantic))
       (fn2-checkpoint-summary-descriptor-equal 0 fn2-checkpoint-restore-map-control fn2-checkpoint-summary)))
 
 ; Called just after the real cold semantic BEGIN, before any directory row.
 (defun fn2-checkpoint-summary-begin (fn2-checkpoint-summary fn2-checkpoints fn2-checkpoint-refs fn2-checkpoint-bytes
- fn2-checkpoint-restore-map fn2-checkpoint-restore-map-control fn2-checkpoint-restore-semantic)
+ fn2-checkpoint-restore-map fn2-checkpoint-restore-map-control fn2-checkpoint-restore-semantic fn2-checkpoint-cbase-holds)
  (declare (xargs :stobjs (fn2-checkpoint-summary fn2-checkpoints fn2-checkpoint-refs fn2-checkpoint-bytes
- fn2-checkpoint-restore-map fn2-checkpoint-restore-map-control fn2-checkpoint-restore-semantic)
+ fn2-checkpoint-restore-map fn2-checkpoint-restore-map-control fn2-checkpoint-restore-semantic fn2-checkpoint-cbase-holds)
  :guard (and (fn2-checkpoint-summary-wfp fn2-checkpoint-summary) (fn2-checkpoints-wfp fn2-checkpoints)
   (fn2-checkpoint-refs-wfp fn2-checkpoint-refs) (fn2-checkpoint-bytes-wfp fn2-checkpoint-bytes)
   (fn2-checkpoint-restore-map-wfp fn2-checkpoint-restore-map) (fn2-checkpoint-restore-map-control-wfp fn2-checkpoint-restore-map-control)
-  (fn2-checkpoint-restore-semantic-wfp fn2-checkpoint-restore-semantic))))
+  (fn2-checkpoint-restore-semantic-wfp fn2-checkpoint-restore-semantic)
+  (fn2-checkpoint-cbase-holds-wfp fn2-checkpoint-cbase-holds))))
  (b* (((unless (and (< 0 (fn2-checkpoint-summary-rows fn2-checkpoint-summary))
                     (< 0 (fn2-checkpoint-restore-semantic-rows fn2-checkpoint-restore-semantic))
                     (= (fn2-checkpoint-summary-lease-count 0 fn2-checkpoint-summary) 0)
+                    (fn2-checkpoint-cbase-catalog-available-p
+                     (fn2-checkpoint-summary-candidate 0 fn2-checkpoint-summary)
+                     (fn2-checkpoint-summary-tag 0 fn2-checkpoint-summary) fn2-checkpoint-cbase-holds)
                     (member (fn2-checkpoint-summary-phase 0 fn2-checkpoint-summary)
                      (list *fn2-checkpoint-summary-phase-idle* *fn2-checkpoint-summary-phase-capture*
                            *fn2-checkpoint-summary-phase-captured* *fn2-checkpoint-summary-phase-retired*))
@@ -73,7 +81,7 @@
       (tag (+ 1 (fn2-checkpoint-summary-tag 0 fn2-checkpoint-summary)))
       ((unless (unsigned-byte-p 60 tag)) (mv :tag-exhausted fn2-checkpoint-summary))
       (fn2-checkpoint-summary (fn2-checkpoint-summary-copy-descriptor 0 fn2-checkpoint-restore-map-control fn2-checkpoint-summary))
-      (fn2-checkpoint-summary (fn2-checkpoint-summary-put 0 (phase *fn2-checkpoint-summary-phase-capture*) (tag tag)
+      (fn2-checkpoint-summary (fn2-checkpoint-summary-put 0 (phase *fn2-checkpoint-summary-phase-capture*) (application-stage 0) (tag tag)
        (candidate (fn2-checkpoint-restore-semantic-candidate 0 fn2-checkpoint-restore-semantic))
        (checkpoint (fn2-checkpoint-restore-map-control-source-checkpoint 0 fn2-checkpoint-restore-map-control))
        (cut-commit (fn2-checkpoint-restore-map-control-source-cut-commit 0 fn2-checkpoint-restore-map-control))

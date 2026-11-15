@@ -24,6 +24,7 @@
         ((unless (eq code :read)) (mv code fn2-core))
         ((mv code fn2-core)
          (stobj-let ((fn2-checkpoint-summary (fn2-core-checkpoint-summary fn2-core))
+                     (fn2-checkpoint-cbase-holds (fn2-core-checkpoint-cbase-holds fn2-core))
                      (fn2-checkpoints (fn2-core-checkpoints fn2-core)) (fn2-checkpoint-refs (fn2-core-checkpoint-refs fn2-core))
                      (fn2-checkpoint-bytes (fn2-core-checkpoint-bytes fn2-core))
                      (fn2-checkpoint-restore-map (fn2-core-checkpoint-restore-map fn2-core))
@@ -31,7 +32,7 @@
                      (fn2-checkpoint-restore-semantic (fn2-core-checkpoint-restore-semantic fn2-core)))
           (code fn2-checkpoint-summary)
           (fn2-checkpoint-summary-begin fn2-checkpoint-summary fn2-checkpoints fn2-checkpoint-refs fn2-checkpoint-bytes
-           fn2-checkpoint-restore-map fn2-checkpoint-restore-map-control fn2-checkpoint-restore-semantic)
+           fn2-checkpoint-restore-map fn2-checkpoint-restore-map-control fn2-checkpoint-restore-semantic fn2-checkpoint-cbase-holds)
           (mv code fn2-core))))
     (mv (if (eq code :ok) :read code) fn2-core)))
   (fn2-core-preserves fn2-boot-checkpoint-summary-begin (id ogen fn2-core) :position 1 :rows nil)))
