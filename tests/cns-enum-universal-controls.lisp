@@ -55,29 +55,37 @@
           (equal (update-nth i (nth i xs) xs) xs))
  :hints (("Goal" :in-theory (enable update-nth nth)))))
 
-; Shape proof opens only actual P/WFP and target array lengths, keeping
-; all array element recognizers and their recursive definitions opaque.
-(local (make-event
- (let* ((world (w state))
-        (base (theory 'fn2-cns-enum-logical-theory))
-        (selected (fn2-cns-enum-select-runes base
-                    '(fn2-cns-sourcesp fn2-cns-sources-wfp fn2-cns-sources-rows fn2-cns-sources-phase$a-length fn2-cns-sources-manifest-stage$a-length))))
-  (value (list 'deftheory 'fn2-cns-enum-shape-theory
-               (list 'quote (append selected (theory 'minimal-theory))))))))
+ ; Actual recognizer uses LENGTH, not LEN. Derive this once from P;
+; element recognizers stay opaque in the ordinary admitted theory.
+(local (defthm fn2-cns-enum-actual-record-length
+ (implies (fn2-cns-sourcesp fn2-cns-sources) (equal (len fn2-cns-sources) 50))
+ :rule-classes nil
+ :hints (("Goal" :in-theory
+  (set-difference-theories
+   (enable fn2-cns-sourcesp length)
+   (fn2-cns-enum-stobj-execs (executable-counterpart-theory :here) world))))))
 
 (local (defthm fn2-cns-enum-actual-target-shape
  (implies (and (fn2-cns-sourcesp fn2-cns-sources) (fn2-cns-sources-wfp fn2-cns-sources) (natp s) (< s (fn2-cns-sources-rows fn2-cns-sources)))
   (and (< 0 (len fn2-cns-sources)) (< 45 (len fn2-cns-sources))
        (< s (len (nth 0 fn2-cns-sources)))
        (< s (len (nth 45 fn2-cns-sources)))) )
- :hints (("Goal" :in-theory (theory 'fn2-cns-enum-shape-theory)))))
+ :rule-classes nil
+ :hints (("Goal"
+  :use (fn2-cns-enum-actual-record-length
+        fn2-cns-sources-phase-length-when-wfp
+        fn2-cns-sources-manifest-stage-length-when-wfp)
+  :in-theory
+  (set-difference-theories
+   (disable fn2-cns-sourcesp fn2-cns-sources-wfp)
+   (fn2-cns-enum-stobj-execs (executable-counterpart-theory :here) world))))))
 
 ; No TYPE/P preservation is assumed for arbitrary prefix values. The
 ; target shape and nth/update-nth frame equations suffice after other fields.
 (local (deftheory fn2-cns-enum-universal-theory
  (set-difference-theories
   (union-theories (theory 'fn2-cns-enum-logical-theory)
-   '(fn2-cns-enum-bounded-update-self fn2-cns-enum-actual-target-shape
+   '(fn2-cns-enum-bounded-update-self
      nth-update-nth len-update-nth fn2-columns-len-update-nth))
   '((:definition nth) (:definition update-nth)
     (:definition fn2-cns-sourcesp) (:definition fn2-cns-sources-wfp)))))
@@ -86,19 +94,22 @@
  (implies (and (fn2-cns-sourcesp fn2-cns-sources) (fn2-cns-sources-wfp fn2-cns-sources) (natp s) (< s (fn2-cns-sources-rows fn2-cns-sources)) (equal phase (fn2-cns-sources-phase s fn2-cns-sources)) (equal stage (fn2-cns-sources-manifest-stage s fn2-cns-sources)))
           (equal (fn2-cns-sources-put s (pending 1) (op-slot op) (op-gen opgen) (unit-length len) (unit-copied 0) (unit-hashed 0) (phase (if raw *fn2-cns-source-phase-raw-wait* phase)) (manifest-stage (cond (manifest *fn2-cns-source-manifest-stage-wait*) (data *fn2-cns-source-manifest-stage-data-wait*) (t stage)))) (let* ((fn2-cns-sources (fn2-cns-sources-put s (pending 1) (op-slot op) (op-gen opgen) (unit-length len) (unit-copied 0) (unit-hashed 0) (phase (if raw *fn2-cns-source-phase-raw-wait* phase)))) (fn2-cns-sources (cond (manifest (fn2-cns-sources-put s (manifest-stage *fn2-cns-source-manifest-stage-wait*))) (data (fn2-cns-sources-put s (manifest-stage *fn2-cns-source-manifest-stage-data-wait*))) (t fn2-cns-sources)))) fn2-cns-sources)))
  :rule-classes nil
- :hints (("Goal" :in-theory (theory 'fn2-cns-enum-universal-theory))))
+ :hints (("Goal" :use (fn2-cns-enum-actual-target-shape)
+                 :in-theory (theory 'fn2-cns-enum-universal-theory))))
 
 (defthm fn2-cns-source-harvest-enum-fragment-whole-carrier-equality
  (implies (and (fn2-cns-sourcesp fn2-cns-sources) (fn2-cns-sources-wfp fn2-cns-sources) (natp s) (< s (fn2-cns-sources-rows fn2-cns-sources)) (equal stage (fn2-cns-sources-manifest-stage s fn2-cns-sources)))
           (equal (fn2-cns-sources-put s (pending 0) (result-kind event) (result-outcome outcome) (result-reason reason) (result-count count) (phase (if (equal (fn2-cns-sources-phase s fn2-cns-sources) *fn2-cns-source-phase-raw-wait*) *fn2-cns-source-phase-raw-check* (fn2-cns-sources-phase s fn2-cns-sources))) (manifest-stage (cond ((equal stage *fn2-cns-source-manifest-stage-wait*) *fn2-cns-source-manifest-stage-check*) ((equal stage *fn2-cns-source-manifest-stage-data-wait*) *fn2-cns-source-manifest-stage-data-check*) (t stage)))) (let* ((fn2-cns-sources (fn2-cns-sources-put s (pending 0) (result-kind event) (result-outcome outcome) (result-reason reason) (result-count count))) (fn2-cns-sources (if (equal (fn2-cns-sources-phase s fn2-cns-sources) *fn2-cns-source-phase-raw-wait*) (fn2-cns-sources-put s (phase *fn2-cns-source-phase-raw-check*)) fn2-cns-sources)) (fn2-cns-sources (cond ((equal stage *fn2-cns-source-manifest-stage-wait*) (fn2-cns-sources-put s (manifest-stage *fn2-cns-source-manifest-stage-check*))) ((equal stage *fn2-cns-source-manifest-stage-data-wait*) (fn2-cns-sources-put s (manifest-stage *fn2-cns-source-manifest-stage-data-check*))) (t fn2-cns-sources)))) fn2-cns-sources)))
  :rule-classes nil
- :hints (("Goal" :in-theory (theory 'fn2-cns-enum-universal-theory))))
+ :hints (("Goal" :use (fn2-cns-enum-actual-target-shape)
+                 :in-theory (theory 'fn2-cns-enum-universal-theory))))
 
 (defthm fn2-cns-source-next-children-enum-fragment-whole-carrier-equality
  (implies (and (fn2-cns-sourcesp fn2-cns-sources) (fn2-cns-sources-wfp fn2-cns-sources) (natp s) (< s (fn2-cns-sources-rows fn2-cns-sources)))
           (equal (fn2-cns-sources-put s (offset offset) (unit-copied (+ copied n)) (unit-index (if done (+ 1 (fn2-cns-sources-unit-index s fn2-cns-sources)) (fn2-cns-sources-unit-index s fn2-cns-sources))) (manifest-index (if (and done (not raw)) next-index (fn2-cns-sources-manifest-index s fn2-cns-sources))) (manifest-stage (if (and done (not raw)) (if (equal next-index (fn2-cns-sources-manifest-loaded-index s fn2-cns-sources)) *fn2-cns-source-manifest-stage-entry* *fn2-cns-source-manifest-stage-read*) (fn2-cns-sources-manifest-stage s fn2-cns-sources))) (phase (cond ((equal offset (fn2-cns-sources-total s fn2-cns-sources)) *fn2-cns-source-phase-final*) (done (if raw *fn2-cns-source-phase-raw-read* *fn2-cns-source-phase-manifest*)) (t *fn2-cns-source-phase-raw-copy*)))) (let* ((fn2-cns-sources (fn2-cns-sources-put s (offset offset) (unit-copied (+ copied n)) (unit-index (if done (+ 1 (fn2-cns-sources-unit-index s fn2-cns-sources)) (fn2-cns-sources-unit-index s fn2-cns-sources))) (manifest-index (if (and done (not raw)) next-index (fn2-cns-sources-manifest-index s fn2-cns-sources))))) (fn2-cns-sources (if (and done (not raw)) (fn2-cns-sources-put s (manifest-stage (if (equal next-index (fn2-cns-sources-manifest-loaded-index s fn2-cns-sources)) *fn2-cns-source-manifest-stage-entry* *fn2-cns-source-manifest-stage-read*))) fn2-cns-sources)) (fn2-cns-sources (fn2-cns-sources-put s (phase (cond ((equal offset (fn2-cns-sources-total s fn2-cns-sources)) *fn2-cns-source-phase-final*) (done (if raw *fn2-cns-source-phase-raw-read* *fn2-cns-source-phase-manifest*)) (t *fn2-cns-source-phase-raw-copy*)))))) fn2-cns-sources)))
  :rule-classes nil
- :hints (("Goal" :in-theory (theory 'fn2-cns-enum-universal-theory))))
+ :hints (("Goal" :use (fn2-cns-enum-actual-target-shape)
+                 :in-theory (theory 'fn2-cns-enum-universal-theory))))
 
 ; Existing actual-table missing-row negative remains unchanged.
 (defthm fn2-cns-enum-missing-row-control

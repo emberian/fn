@@ -93,3 +93,28 @@ exactly identical. The new frozen fixture SHA256 is
 its emitter SHA256 is
 `2c58df94e9015c016fa4d66fab9ba550042955f576a7922e160472478a9d83a4`.
 No successor ACL2 run or other compute was started.
+
+## Actual shape checkpoint and public-fact successor
+
+The `79040a36` gate passed setup but stopped at ACTUAL-TARGET-SHAPE's unchanged
+20-second event limit after 11,094 steps. Its exact checkpoint shows the actual
+recognizer's `(equal (length sources) 50)`, while the goal uses LEN; the narrow
+shape theory omitted that bridge and opened 49 irrelevant WFP array equations.
+This is an unsuccessful proof search, not a counterexample. All three universal
+laws and the negative remained unattempted. The
+[shape receipt](cns-enum-universal-790-shape-receipt.json) records support outcomes,
+exact output hash, staging correction, and verified cleanup and actual release.
+
+The new source proposal derives the actual record's LEN=50 once from P by opening
+LENGTH. Shape then explicitly instantiates that fact and the two public generated
+`fn2-cns-sources-{phase,manifest-stage}-length-when-wfp` theorems, with P/WFP and
+all element recognizers opaque. Its theory expressions retain actual signature
+metadata exclusions for every raw stobj executable counterpart. Shape is no longer
+a rewrite rule with a free row variable: each universal theorem explicitly uses
+its exact shape instance. The three universal formulas, target-shape formula,
+and missing-row negative are all parsed identical to the prior fixture.
+Successor fixture SHA256:
+`716f4ced7b54cde1e4fc7fc5107e526006c7e550a09f425d2ea59e662321bb07`;
+emitter SHA256:
+`4b1a48b350168c2d803461f55468b015c3b4bb805708f55d93ce65f7256cac1a`.
+This source support recipe has not been admitted; no new compute was started.
