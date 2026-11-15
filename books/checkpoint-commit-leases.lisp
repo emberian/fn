@@ -8,7 +8,7 @@
 (defun fn2-checkpoint-journal-borrower-seen-p (i kind id gen fn2-checkpoint-future-windows)
  (declare (xargs :stobjs fn2-checkpoint-future-windows :measure (nfix (- 5 (nfix i)))
   :guard (and (fn2-checkpoint-future-windows-wfp fn2-checkpoint-future-windows) (natp i) (<= i 5))))
- (and (< i 5) (< i (fn2-checkpoint-future-windows-rows fn2-checkpoint-future-windows))
+ (and (natp i) (< i 5) (< i (fn2-checkpoint-future-windows-rows fn2-checkpoint-future-windows))
   (or (and (= (fn2-checkpoint-future-windows-borrowed i fn2-checkpoint-future-windows) 1)
            (equal (fn2-checkpoint-future-windows-borrower-kind i fn2-checkpoint-future-windows) kind)
            (equal (fn2-checkpoint-future-windows-borrower-slot i fn2-checkpoint-future-windows) id)
@@ -35,7 +35,8 @@
  (defun fn2-checkpoint-commit-bindings-p (role id gen token fn2-core)
   (declare (xargs :stobjs fn2-core :measure (nfix (- 4 (nfix role)))
    :guard (and (fn2-core-wfp fn2-core) (natp role) (<= role 4))))
-  (if (>= role 4) t
+  (if (and (natp role) (<= role 4))
+   (if (>= role 4) t
    (and (fn2-commit-idp id fn2-core)
     (b* (((mv code expected-slot expected-gen)
           (stobj-let ((fn2-checkpoint-future (fn2-core-checkpoint-future fn2-core))
@@ -47,7 +48,8 @@
      (and (eq code :ok)
           (equal expected-slot (if (= role 3) (fn2-machine-pool-slot id fn2-core) slot))
           (equal expected-gen (if (= role 3) (fn2-machine-pool-gen id fn2-core) generation))
-          (fn2-checkpoint-commit-bindings-p (+ 1 role) id gen token fn2-core))))))
+          (fn2-checkpoint-commit-bindings-p (+ 1 role) id gen token fn2-core)))))
+   nil))
 
  (defun fn2-checkpoint-commit-clear-pools (left id fn2-core)
   (declare (xargs :stobjs fn2-core :measure (nfix left)
@@ -105,7 +107,8 @@
  (defun fn2-checkpoint-commit-bind-pools (role id gen token fn2-core)
   (declare (xargs :stobjs fn2-core :measure (nfix (- 4 (nfix role)))
    :guard (and (fn2-core-wfp fn2-core) (natp role) (<= role 4))))
-  (if (>= role 4) (mv :ok fn2-core)
+  (if (and (natp role) (<= role 4))
+   (if (>= role 4) (mv :ok fn2-core)
    (b* (((mv code slot generation)
          (stobj-let ((fn2-checkpoint-future (fn2-core-checkpoint-future fn2-core))
                      (fn2-checkpoint-future-windows (fn2-core-checkpoint-future-windows fn2-core))
@@ -116,7 +119,8 @@
          (let ((fn2-core (fn2-core-stop *fn2-stop-reason-commit-pool* fn2-core))) (mv :uncertain fn2-core)))
         (fn2-core (fn2-commit-keep-pool id role slot generation fn2-core))
         ((when (fn2-core-stopped-p fn2-core)) (mv :uncertain fn2-core)))
-    (fn2-checkpoint-commit-bind-pools (+ 1 role) id gen token fn2-core))))
+    (fn2-checkpoint-commit-bind-pools (+ 1 role) id gen token fn2-core)))
+   (mv :bounds fn2-core)))
  (fn2-core-preserves fn2-checkpoint-commit-bind-pools (role id gen token fn2-core) :position 1 :rows nil)
 
  (defun fn2-checkpoint-commit-reserve-pools (id gen fn2-core)
