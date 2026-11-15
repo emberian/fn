@@ -289,6 +289,32 @@
           (fn2-fields (mv-nth 1 (fn2-checkpoint-decode base slot gen off len okind oslot ogen fn2-fields fn2-pool)))))
   :in-theory (disable fn2-checkpoint-decode fn2-fields-value fn2-fields-rows))))
 
+; The unconditional decoded field shape does not require a readonly pool type.
+(local (defthm fn2-checkpoint-decode-fields-domain-value-type
+ (implies
+  (and (fn2-fieldsp fn2-fields) (fn2-fields-wfp fn2-fields)
+       (natp i) (< i (fn2-fields-rows fn2-fields)))
+  (unsigned-byte-p 60
+   (fn2-fields-value i
+    (mv-nth 1 (fn2-checkpoint-decode base slot gen off len okind oslot ogen fn2-fields fn2-pool)))))
+ :hints (("Goal"
+  :use ((:instance fn2-fields-value-natp
+          (fn2-fields (mv-nth 1 (fn2-checkpoint-decode base slot gen off len okind oslot ogen fn2-fields fn2-pool))))
+        (:instance fn2-fields-value-bound
+          (fn2-fields (mv-nth 1 (fn2-checkpoint-decode base slot gen off len okind oslot ogen fn2-fields fn2-pool)))))
+  :in-theory (disable fn2-checkpoint-decode fn2-fields-value fn2-fields-rows)))))
+(local (defthm fn2-checkpoint-decode-fields-domain-value-integer
+ (implies
+  (and (fn2-fieldsp fn2-fields) (fn2-fields-wfp fn2-fields)
+       (natp i) (< i (fn2-fields-rows fn2-fields)))
+  (integerp
+   (fn2-fields-value i
+    (mv-nth 1 (fn2-checkpoint-decode base slot gen off len okind oslot ogen fn2-fields fn2-pool)))))
+ :hints (("Goal"
+  :use ((:instance fn2-fields-value-natp
+          (fn2-fields (mv-nth 1 (fn2-checkpoint-decode base slot gen off len okind oslot ogen fn2-fields fn2-pool)))))
+  :in-theory (disable fn2-checkpoint-decode fn2-fields-value fn2-fields-rows)))))
+
 (defun fn2-checkpoint-copy-expected (i dst hash fn2-digests fn2-checkpoint-bytes)
  (declare (xargs :stobjs (fn2-digests fn2-checkpoint-bytes)
   :measure (nfix (- 32 (nfix i)))
