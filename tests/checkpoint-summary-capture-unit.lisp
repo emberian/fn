@@ -7,18 +7,22 @@
 (include-book "../books/checkpoint-summary-catalog")
 (defun fn2-csc-body (mode fn2-checkpoints fn2-checkpoint-refs fn2-checkpoint-bytes fn2-checkpoint-restore-reader
  fn2-checkpoint-restore-map fn2-checkpoint-restore-map-control fn2-fields fn2-pool fn2-checkpoint-restore-semantic
- fn2-run-writers fn2-run-restarts fn2-checkpoint-summary fn2-checkpoint-summary-sources)
+ fn2-run-writers fn2-run-restarts fn2-checkpoint-summary fn2-checkpoint-summary-sources fn2-checkpoint-cbase-holds)
  (declare (xargs :stobjs (fn2-checkpoints fn2-checkpoint-refs fn2-checkpoint-bytes fn2-checkpoint-restore-reader
  fn2-checkpoint-restore-map fn2-checkpoint-restore-map-control fn2-fields fn2-pool fn2-checkpoint-restore-semantic
- fn2-run-writers fn2-run-restarts fn2-checkpoint-summary fn2-checkpoint-summary-sources) :verify-guards nil))
+ fn2-run-writers fn2-run-restarts fn2-checkpoint-summary fn2-checkpoint-summary-sources fn2-checkpoint-cbase-holds) :verify-guards nil))
  (b* (((mv intake fn2-checkpoints fn2-checkpoint-refs fn2-checkpoint-bytes fn2-checkpoint-restore-reader
         fn2-checkpoint-restore-map fn2-checkpoint-restore-map-control fn2-fields fn2-pool fn2-checkpoint-restore-semantic)
        (fn2-crsu-body :children fn2-checkpoints fn2-checkpoint-refs fn2-checkpoint-bytes fn2-checkpoint-restore-reader
         fn2-checkpoint-restore-map fn2-checkpoint-restore-map-control fn2-fields fn2-pool fn2-checkpoint-restore-semantic))
+      (fn2-checkpoint-cbase-holds (fn2-checkpoint-cbase-holds-init 2 fn2-checkpoint-cbase-holds))
       (fn2-checkpoint-summary (fn2-checkpoint-summary-init 1 fn2-checkpoint-summary))
       (fn2-checkpoint-summary-sources (fn2-checkpoint-summary-sources-init 6 fn2-checkpoint-summary-sources))
+      ; A partial B promise acquisition must keep its original catalog owner.
+      (fn2-checkpoint-cbase-holds (if (eq mode :hold)
+       (fn2-checkpoint-cbase-holds-put 0 (phase *fn2-checkpoint-cbase-phase-acquiring*) (tag 1) (seen 1)) fn2-checkpoint-cbase-holds))
       ((mv begun fn2-checkpoint-summary) (fn2-checkpoint-summary-begin fn2-checkpoint-summary fn2-checkpoints fn2-checkpoint-refs fn2-checkpoint-bytes
-        fn2-checkpoint-restore-map fn2-checkpoint-restore-map-control fn2-checkpoint-restore-semantic))
+        fn2-checkpoint-restore-map fn2-checkpoint-restore-map-control fn2-checkpoint-restore-semantic fn2-checkpoint-cbase-holds))
       (fn2-fields (fn2-fields-init 512 fn2-fields))
       (fn2-run-writers (fn2-run-writers-init 1 fn2-run-writers))
       (fn2-run-restarts (fn2-run-restarts-init *fn2-run-restart-capacity* fn2-run-restarts))
@@ -56,7 +60,7 @@
       ((mv repeated fn2-checkpoint-summary fn2-checkpoint-summary-sources fn2-fields)
        (fn2-checkpoint-summary-capture 256 fn2-checkpoint-summary fn2-checkpoint-summary-sources fn2-checkpoint-restore-semantic
         fn2-checkpoints fn2-checkpoint-refs fn2-checkpoint-bytes fn2-checkpoint-restore-map fn2-checkpoint-restore-map-control fn2-fields fn2-pool)))
-  (mv (and intake (eq begun :ok) (eq opened :ok) (eq zeroed :ok) (eq added :ok) (eq closed :ok) (eq padded :ok) (eq headed :ok)
+  (mv (and intake (eq begun (if (eq mode :hold) :source :ok)) (eq opened :ok) (eq zeroed :ok) (eq added :ok) (eq closed :ok) (eq padded :ok) (eq headed :ok)
        (= (fn2-checkpoint-restore-semantic-cursor 0 fn2-checkpoint-restore-semantic) 0)
        (if mode
         (and (eq captured (if (eq mode :rank) :rank :source)) (= (fn2-checkpoint-summary-count 0 fn2-checkpoint-summary) 0)
@@ -66,13 +70,14 @@
              (= (fn2-checkpoint-summary-sources-rank 5 fn2-checkpoint-summary-sources) 1)
              (= (fn2-checkpoint-summary-sources-allocation 5 fn2-checkpoint-summary-sources) 35))))
    fn2-checkpoints fn2-checkpoint-refs fn2-checkpoint-bytes fn2-checkpoint-restore-reader fn2-checkpoint-restore-map fn2-checkpoint-restore-map-control
-   fn2-fields fn2-pool fn2-checkpoint-restore-semantic fn2-run-writers fn2-run-restarts fn2-checkpoint-summary fn2-checkpoint-summary-sources)))
+   fn2-fields fn2-pool fn2-checkpoint-restore-semantic fn2-run-writers fn2-run-restarts fn2-checkpoint-summary fn2-checkpoint-summary-sources fn2-checkpoint-cbase-holds)))
 (defun fn2-csc-test (mode)
  (declare (xargs :verify-guards nil))
  (fn2-run-with-local (fn2-checkpoints fn2-checkpoint-refs fn2-checkpoint-bytes fn2-checkpoint-restore-reader fn2-checkpoint-restore-map
- fn2-checkpoint-restore-map-control fn2-fields fn2-pool fn2-checkpoint-restore-semantic fn2-run-writers fn2-run-restarts fn2-checkpoint-summary fn2-checkpoint-summary-sources)
+ fn2-checkpoint-restore-map-control fn2-fields fn2-pool fn2-checkpoint-restore-semantic fn2-run-writers fn2-run-restarts fn2-checkpoint-summary fn2-checkpoint-summary-sources fn2-checkpoint-cbase-holds)
   (fn2-csc-body mode fn2-checkpoints fn2-checkpoint-refs fn2-checkpoint-bytes fn2-checkpoint-restore-reader fn2-checkpoint-restore-map
-   fn2-checkpoint-restore-map-control fn2-fields fn2-pool fn2-checkpoint-restore-semantic fn2-run-writers fn2-run-restarts fn2-checkpoint-summary fn2-checkpoint-summary-sources)))
+   fn2-checkpoint-restore-map-control fn2-fields fn2-pool fn2-checkpoint-restore-semantic fn2-run-writers fn2-run-restarts fn2-checkpoint-summary fn2-checkpoint-summary-sources fn2-checkpoint-cbase-holds)))
 (assert-event (fn2-csc-test nil))
 (assert-event (fn2-csc-test :rank))
 (assert-event (fn2-csc-test :stale))
+(assert-event (fn2-csc-test :hold))
