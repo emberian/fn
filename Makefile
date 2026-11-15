@@ -309,6 +309,7 @@ ACL2_BOOKS = \
   tests/host-codec-unit \
   tests/tls-record-policy-unit \
   tests/tls-record-unit \
+  tests/tls-record-progress-unit \
   tests/send-failure-unit \
   tests/send-accounting-unit \
   tests/tls-stack-unit \
@@ -458,6 +459,7 @@ ACL2_BOOKS = \
   tests/pointwise-contracts-unit \
   tests/pool-ranges-unit \
   tests/pool-query-ref-unit \
+  tests/pool-protected-floor-unit \
   tests/pool-unit \
   tests/port-unit \
   tests/primitive-list-domain-unit \

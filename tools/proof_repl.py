@@ -1076,14 +1076,47 @@ def brief(output: str, keep: int = 60, where: str | None = None) -> str:
 UNLIMITED_HEADS = ("defpkg", "defttag")
 
 
-def wrap_limit(form: str, limit: float | None) -> str:
-    if limit and is_event(form) and head_and_name(form)[0] not in UNLIMITED_HEADS:
+def wrap_limit(form: str, limit: float | None, *, event: bool = False) -> str:
+    if limit and (event or is_event(form)) and head_and_name(form)[0] not in UNLIMITED_HEADS:
         if float(limit).is_integer():
             return f"(with-prover-time-limit {int(limit)} {form})"
         # ACL2 takes a rational number of seconds.
         fraction = fractions.Fraction(str(limit)).limit_denominator(1000)
         return f"(with-prover-time-limit {fraction.numerator}/{fraction.denominator} {form})"
     return form
+
+
+def per_event_steps(form: str, steps: int, limit: float | None = None) -> str:
+    """Give one unchanged original event a fresh counter, uncharged to its parent.
+
+    Do not split LOCAL, ENCAPSULATE or macro expansions: their original scope
+    and aggregate budget remain intact. The enclosing source-book wrapper is
+    constructed separately by encapsulated(). Its summary no longer measures
+    total proof work; inspect the original events' summaries instead.
+    """
+    if isinstance(steps, bool) or not isinstance(steps, int) or not 1 <= steps <= 2_000_000:
+        raise ValueError("per-event steps must be an integer from 1 to 2000000")
+    text = form.strip()
+    if not text.startswith("(") or not text.endswith(")") or len(forms(text)) != 1:
+        raise ValueError("per-event steps requires a literal event form")
+    head = form_head(text)
+    # Reject literal commands, limit overrides, raw evaluation and trust mechanisms.
+    # Existing fn2 event macros follow the source loader contract; their expansions
+    # remain one original event, never recursively split or evaluated by Python.
+    allowed = set(EVENT_HEADS) | {"local", "progn", "in-theory", "table", "deflabel",
+                                  "defmacro", "defequiv", "defcong", "defrefinement",
+                                  "assert-event", "value-triple", "include-book", "defun-sk"}
+    if head not in allowed and not head.startswith("fn2-"):
+        raise ValueError(f"per-event steps does not support event head {head!r}")
+    inner = text[1:-1]
+    children = spans(inner)
+    start = 2 if head == "encapsulate" else 1
+    if head in ("local", "progn", "encapsulate"):
+        if head == "local" and len(children) != 2 or head == "encapsulate" and len(children) < 2:
+            raise ValueError("malformed literal event container")
+        for begin, end in children[start:]:
+            per_event_steps(inner[begin:end], steps)  # validate, never split
+    return f"(with-prover-step-limit {steps} t {wrap_limit(form, limit, event=True)})"
 
 
 # --- the session server ------------------------------------------------------
@@ -1231,7 +1264,8 @@ HOISTED_HEADS = ("include-book", "defpkg")
 
 
 def encapsulated(text: str, directory: Path, skip: set[str],
-                 limit: float | None = None) -> tuple[list[str], str]:
+                 limit: float | None = None,
+                 steps: int | None = None) -> tuple[list[str], str]:
     """A book's forms as one `(encapsulate () ...)`, so its local events stay local.
 
     Loaded form by form, a from-source book's `local` lemmas stay in the
@@ -1248,6 +1282,8 @@ def encapsulated(text: str, directory: Path, skip: set[str],
     belongs in the session anyway; a local one stays inside, local.  With
     LIMIT, each event inside is wrapped in `with-prover-time-limit`, as a
     `send` is, so one runaway lemma costs LIMIT seconds, not the session.
+    STEPS opts in to fresh counters per unchanged original event, without
+    charging the source-book encapsulate. Its summary is then not total work.
     The encapsulate is empty text when no embedded events remain; an
     include-only umbrella still exports its successfully loaded dependencies.
     """
@@ -1263,7 +1299,8 @@ def encapsulated(text: str, directory: Path, skip: set[str],
         if head in HOISTED_HEADS and not LOCAL_FORM.match(form):
             hoisted.append(form)
         else:
-            kept.append(wrap_limit(form, limit))
+            limited = wrap_limit(form, limit)
+            kept.append(per_event_steps(form, steps, limit) if steps is not None else limited)
     # Include-only umbrellas have no embedded events after hoisting/skips.
     # ACL2 rejects an empty encapsulate; the includes already export the world.
     return hoisted, ("(encapsulate ()\n" + "\n".join(kept) + "\n)" if kept else "")
@@ -1581,7 +1618,9 @@ def handle(request: dict, acl2: Acl2, state: dict, default_limit: float) -> dict
         return {"error": True, "output": f"send exactly one form, not {count}"}
     limit = default_limit if request.get("limit") is None else request["limit"]
     hard = limit * 1.5 + 30
-    if head_and_name(form)[0] == "ld":
+    if (head_and_name(form)[0] == "ld"
+            or request.get("scoped_event_budgets") and limit == 0
+            and form_head(form) == "encapsulate"):
         # A source LD contains many individually budgeted events. Its total
         # time is not the budget of one proof; use the startup load allowance.
         hard = max(hard, state.get("load_timeout", 600.0))
@@ -2303,7 +2342,8 @@ def send_one(name: str, form: str, limit: float | None, full: bool) -> int:
 
 
 def send_many(name: str, items: list[tuple[str, str]], limit: float | None,
-              full: bool = False, keep_going: bool = False) -> int:
+              full: bool = False, keep_going: bool = False,
+              scoped_event_budgets: bool = False) -> int:
     """Each (label, form) in order: one line of cost per form, the output of a refusal.
 
     Stops at the first refusal unless KEEP_GOING; a form that outlives the
@@ -2311,7 +2351,8 @@ def send_many(name: str, items: list[tuple[str, str]], limit: float | None,
     """
     totals = Totals()
     for position, (label, form) in enumerate(items, 1):
-        answer = ask(name, {"op": "send", "form": form, "limit": limit})
+        answer = ask(name, {"op": "send", "form": form, "limit": limit,
+                            "scoped_event_budgets": scoped_event_budgets})
         output = answer.get("output", "")
         refused = bool(answer.get("error"))
         cost = measure(output)
@@ -2850,6 +2891,8 @@ def guard_notes(text: str, chosen: range) -> list[str]:
 
 def send_range(args) -> int:
     """A book's forms from --from to --until/--through into a live session."""
+    if getattr(args, "per_event_steps", None) is not None and not args.ld_local:
+        raise SystemExit("proof-repl: --per-event-steps requires --ld-local")
     path = book_path(args.book)
     all_forms = forms(path.read_text(encoding="utf-8"))
     chosen = select_range(all_forms, args.start, args.until, args.through)
@@ -2867,11 +2910,21 @@ def send_range(args) -> int:
         print(line, flush=True)
     warn_free_expands([form for _, form in items], [text])
     if ld_local:
+        steps = getattr(args, "per_event_steps", None)
+        if steps is not None:
+            print(f"fresh {steps} steps per original event; enclosing encapsulate "
+                  "summary excludes child proof work", flush=True)
         hoisted, body = encapsulated("\n".join(form for _, form in items), path.parent,
-                                     set(), None)
+                                     set(), args.limit if getattr(args, "per_event_steps", None)
+                                     is not None else None, getattr(args, "per_event_steps", None))
         items = ([(form_label(0, form).split(" ", 1)[1], form) for form in hoisted]
                  + ([(f"#{chosen.start + 1}-#{chosen.stop} (encapsulate)", body)] if body else []))
     items.insert(0, ("source-book", f'(assign proof-repl-source-book "{path}")'))
+    if getattr(args, "per_event_steps", None) is not None:
+        # None means "session default", whereas zero explicitly disables the
+        # outer time wrapper. Original events already carry their own limits.
+        return send_many(args.name, items, 0, args.full, args.keep_going,
+                         scoped_event_budgets=True)
     return send_many(args.name, items, args.limit, args.full, args.keep_going)
 
 
@@ -4356,6 +4409,10 @@ def main(argv: list[str] | None = None) -> int:
                    help="send the range inside one encapsulate (non-local include-book "
                         "and defpkg first), so its local events are dropped at the end, "
                         "as a certified include drops them")
+    p.add_argument("--per-event-steps", type=int, metavar="N",
+                   help="with --ld-local: fresh 1..2000000 step budget per unchanged "
+                        "original source event; no parent charging; outer summary "
+                        "does not measure total work")
     p.add_argument("--skip-includes", action="store_true",
                    help="skip every local include-book form (the session's own "
                         "from-source books are always skipped)")

@@ -43,6 +43,17 @@ passes nonzero-address short Reads, untouched sentinels and error Read capture.
 These supersede the earlier checker source; actual selected-host binding and
 whole-image driver execution remain open.
 
+The scalar device binding interface now consumes the actual device request
+policy and shared terminal normalizer. Exact eleven-book record
+`certify-20261115T043011Z-856572` passes (nine reused, two new; 1.960 seconds);
+root matched all source hashes and both new closure keys. Controls reject
+missing descriptor fields, altered short/error results and Read bytes, and
+missing ordinary physical jobs. The explicit backend determines unsupported
+requests through the production policy. The Post hook is contextual behind
+actual envelope-step validation. Ordered Take/submission correspondence,
+logical Write-loan comparison and complete native replay remain separate;
+matching job identities as an unordered set is insufficient.
+
 Selected cold recovery has two concrete implementation blockers under the
 reclamation owner. Recovery finishes frozen, but ordinary epoch initialization
 refuses that state: the private post-Fence finalization must require complete
@@ -52,6 +63,17 @@ its preceding RELEASE is replayed. Directory/read provenance must be installed
 separately from chronological authenticated ownership changes. Ordinary frozen
 state refusals remain intact; physical reuse stays closed until finalization.
 
+
+The compression sibling-wait repair and TLS progress regressions pass current
+joint record `certify-20261115T041953Z-845993`: thirty-two books, eight reused,
+twenty-four newly certified, 96.572 seconds. Root matched all before/after
+source hashes to the integration candidate. A fresh or bound sibling no longer
+requests an immediate wake while another operation owns a pending TLS child;
+the owner retains socket readiness and the sibling becomes runnable after
+settlement. Actual operation controls and the original-wait mutation pass.
+The suspected TLS progress defect was refuted: actual NEXT already uses the SSL
+progress epoch. Full Receive/Send controls and an epoch-conflation mutation
+protect that behavior. Native host delivery remains a separate unqualified gate.
 
 The shared columns diagnostic and opt-in guard-hint API are qualified by
 `certify-20261115T034623Z-812141`: six books, two reused and four new,
@@ -71,15 +93,26 @@ Its seven-book closure matches qualified cache key
 `079b4ac98a0b3d945869386f9e8d2ebecf0a00d8715e247ba18202d4d7fbfc24`;
 root independently checked source, closure and certificate/FASL/port digests.
 This adds credit provenance and protected ordinary reservations; credit
-configuration and consumers remain unqualified. The larger twelve-book run
-stopped at pool-ranges preservation: its interactive pass did not reproduce in
-clean certification. That repair remains open. The independent format-check
+configuration and consumers remain unqualified. The earlier twelve-book run
+stopped at pool-ranges preservation. The repair moves the unchanged public
+copy-up extent/frame theorem before the preservation proof that consumes it,
+with shared getter opacity. Root compared all sixteen explicit function and
+theorem forms: bodies, guards and statements are byte-identical.
+Exact thirteen-book record `certify-20261115T044157Z-868394` now passes
+(ten reused, three new; 5.437 seconds). Root matched every before/after source
+hash to integration. Current ordinary pool/query controls and the protected-floor
+fixture pass; the latter has an explicit synthetic configured-accounting premise
+and does not qualify credit configuration APIs. The ranges prerequisite is closed. The independent format-check
 closure does not include pool-ranges. Its exact twenty-one-book record
 `certify-20261115T041904Z-845121` now passes: ten reused, eleven newly
 certified, 178.618 seconds. Root matched all before/after source hashes against
 the current integration tree and confirmed the runner unchanged. This qualifies
 the format prefix, not checkpoint/member or the complete served core. The next
-consumer prerequisites are alloc, pool-read-contracts and repaired pool-ranges.
+alloc/read-contract prerequisite record `certify-20261115T042507Z-851291`
+passes its exact ten-book scope (eight reused, two new; 10.558 seconds). Root
+matched all ten before/after source hashes to integration; the owner audited
+qualified compiled cache entries. The ranges record above closes the final prerequisite for the
+actual checkpoint/member guard pilot.
 Layout (56.921 seconds), format-events (35.140), format-check (24.448),
 format-storage (22.652) and blake3 (18.539) retain proof-cost debt; targeted
 layout guard work is separate from current consumer qualification.
@@ -609,3 +642,14 @@ map roundtrip admission, authenticated selected-base restoration, ordered suffix
 replay, dynamic maintenance headroom, and commit-directory/candidate lifetime.
 FREE and checkpoint activation remain disabled until their connected prerequisites
 are implemented and verified. Authorization remains an independent release blocker.
+
+## Device loan binding integration — record 876717
+
+Integrated donor0376a63c1's scalar device helpers and raw recorder. Descriptors
+now bind the submitted address and backing-object identity to the slab captured
+at actual host storage submission. Canonical Post shape is checked before field
+access; shifted-address and replacement-buffer controls reject unchanged bytes.
+Exact12 record passed in2.033s (8reused,4new); root verified all12 current closure
+hashes and all3 raw fixture source hashes against the receipt. Raw mocked performer
+controls passed. Actual envelope replay, host image execution and general memory
+noninterference remain unqualified; this gate does not establish disk durability.
