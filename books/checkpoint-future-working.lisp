@@ -3,7 +3,7 @@
 (include-book "std/util/bstar" :dir :system)
 (include-book "checkpoint-member")
 (include-book "commit-format")
-(include-book "pool-credit")
+(include-book "pool-credit-contracts")
 (fn2-book-layer :b)
 
 (defconst *fn2-checkpoint-future-window-count* 8)

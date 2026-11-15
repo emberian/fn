@@ -111,6 +111,7 @@ ACL2_BOOKS = \
   books/host-codec \
   books/host-compress \
   books/columns \
+  books/columns-guard-hints \
   books/compress-policy \
   books/compress-kind \
   books/compress-operation \
@@ -227,6 +228,7 @@ ACL2_BOOKS = \
   books/pointwise-contracts \
   books/pool \
   books/pool-credit \
+  books/pool-credit-contracts \
   books/checkpoint-working-geometry \
   books/checkpoint-working-credit \
   books/pool-block \
