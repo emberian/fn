@@ -7,7 +7,7 @@
 ; grant service, never by a scan.
 (in-package "ACL2")
 (include-book "cns-kind")
-(include-book "sched-timers")
+(include-book "timer-core")
 (include-book "authority-kind")
 (include-book "machines-c-bind")
 (include-book "machines-c-read")
@@ -25,15 +25,6 @@
 (defcost fn2-cns-reclaim :child fn2-machines-reclaim :tables (fn2-core-machines)
  :effects ((:release (:wait-row)))
  :doc "Return a drained consumer request row to its partition's free chain.")
-
-(defcost fn2-cns-arm-wait-timer :child fn2-sched-arm-delay-ms
- :answers (:ok :bounds :state) :tables (fn2-core-sched fn2-core-control)
- :doc "Arm this live request's one-shot wait timer, converting milliseconds to an absolute monotonic deadline without wrapping.")
-(defcost fn2-cns-clear-wait-timer :child fn2-sched-clear-deadline
- :answers (:ok :bounds) :tables (fn2-core-sched)
- :doc "Disarm a request's timer before reclaiming its machine row; clear its expired bit as well.")
-(defcost fn2-cns-wait-expired-p :child fn2-sched-timer-expired-p
- :doc "Whether the request's registered timer expired.")
 
 ;; ---------------------------------------------------------------------------
 ;; Pure helpers for fn2-ctl (L carrier) and fn2-cns (request).
@@ -72,7 +63,6 @@
 (defthm fn2-ctl-step-posture-natp (natp (fn2-ctl-step-posture cmd posture)) :rule-classes :type-prescription)
 (in-theory (disable fn2-ctl-owner-p fn2-ctl-step-posture))
 
-
 (defcost fn2-ctl-dispatch-cns :answers (:ok :no-row :pool :none) :must-route (:none)
  :tables (fn2-core-machines fn2-core-pool fn2-cns-table fn2-core-machine-tables)
  :doc "Take a consumer request row for a control frame and hand the frame metadata.")
@@ -81,7 +71,6 @@
  :doc "Take an authority request row (fn2-auth) for a kind-29 frame, handing it the frame and the connection's authority.")
 (defcost fn2-ctl-owner-principal :answers (:ok :absent)
  :doc "The owner's persisted principal (the profile's owner account slot, D7's id), :absent when the profile has no owner slot below the system row.")
-
 
 (defcost fn2-cns-feed-article :bytes *fn2-conn-feed-cost*
   :answers (:need-more :budget :bounds :fault) :faults (:bounds :fault) :tables (fn2-core-pool)
@@ -800,7 +789,6 @@
   (implies (and (equal fc-rows (fn2-b-format-floor profile)) (equal c (fn2-b-ctl-rows profile)))
            (equal (+ (- fc-rows c) -1 (nfix s)) (fn2-b-ctl-slot s profile)))
   :hints (("Goal" :in-theory (enable fn2-b-format-floor fn2-b-ctl-slot))))
-
 
 ;; ---------------------------------------------------------------------------
 ;; fn2-ctl: the L carrier on the :local listener (e-continuation E.P1).

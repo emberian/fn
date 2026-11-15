@@ -1,6 +1,7 @@
 ;; STARTTLS token lifecycle and connection helpers, materialized after the core.
 (in-package "ACL2")
 (include-book "tls-kind")
+(include-book "timer-core")
 (include-book "tls-transport")
 (include-book "conn-answer")
 
@@ -8,14 +9,7 @@
  :doc "Render the admitted382 or refused580 through the NNTP grammar.")
 (defcost fn2-tls-enabled-p :doc "Whether the supported profile enables configured TLS.")
 (defcost fn2-tls-timeout-ms :doc "The admitted handshake's profile deadline in milliseconds.")
-(defcost fn2-tls-arm-timer :child fn2-sched-arm-delay-ms
- :answers (:ok :bounds :state) :tables (fn2-core-sched fn2-core-control)
- :doc "Arm the connection deadline before sending the STARTTLS handoff reply.")
-(defcost fn2-tls-clear-timer :child fn2-sched-clear-deadline
- :answers (:ok :bounds) :tables (fn2-core-sched)
- :doc "Clear handshake deadline and expiration before resuming or reclaiming a connection.")
-(defcost fn2-tls-expired-p :child fn2-sched-timer-expired-p
- :doc "The scheduler's handshake-deadline observation.")
+
 (defcost fn2-tls-release-token :answers (:ok :stale)
  :tables (fn2-core-tls-admit fn2-core-machines)
  :doc "Wake the matching token's drain after its connection has no external operation/loan.")

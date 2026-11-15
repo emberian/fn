@@ -260,6 +260,8 @@ ACL2_BOOKS = \
   books/runs-served \
   books/sched \
   books/sched-timers \
+  books/timer-operations \
+  books/timer-core \
   books/sealer \
   books/square-evidence \
   books/squares \
