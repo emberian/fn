@@ -5,6 +5,7 @@
 (in-package "ACL2")
 (include-book "checkpoint-kind")
 (include-book "machine-arms")
+(include-book "checkpoint-master-work")
 (fn2-book-layer :c)
 
 ; This is a source integration gate, never a startup/caller assertion. Enabling
@@ -14,6 +15,7 @@
 ; a separate leaf contract; these inequalities do not establish it.
 (defconst *fn2-checkpoint-root1-turn-bytes* (+ *fn2-c-read-callback-bytes* 4096))
 (defconst *fn2-checkpoint-master-byte-budget* (+ 16384 (* 2 *fn2-c-read-callback-bytes*)))
+(assert-event (and (<= *fn2-directory-rebase-consume-bytes* *fn2-checkpoint-master-byte-budget*) (<= *fn2-checkpoint-live-reopen-bytes* *fn2-checkpoint-master-byte-budget*)))
 (assert-event (<= (+ *fn2-c-read-callback-bytes* *fn2-checkpoint-root1-turn-bytes*)
                  *fn2-checkpoint-master-byte-budget*))
 
@@ -21,6 +23,8 @@
 (defwait :checkpoint-needed :ready fn2-checkpoint-needed-ready-p :grant fn2-checkpoint-needed-grant-one
  :tables (fn2-core-machines)
  :doc "Wake the actual parked maintenance owner from real checkpoint pressure and available pre-cut working resources.")
+
+(defconst *fn2-checkpoint-master-step-budget* (max 32 *fn2-master-consume-turn-steps* *fn2-master-promote-turn-steps* *fn2-master-reopen-turn-steps* *fn2-master-live-three-turn-steps*))
 
 (defmachine fn2-checkpoint-master
  :states (:idle :disabled :catalog :reserve :workspaces :snapshot-begin :snapshot-poll :directory :abort-empty :abort-snapshot :abort-working :abort-complete :descriptor-begin
@@ -34,7 +38,8 @@
           :admission-refused :refused :uncertain :loan-uncertain
           :summary-authority-begin :summary-authority-copy :rebase-begin :rebase-source :rebase-consume :rebase-archive
           :teardown-transfer-begin :teardown-transfer-copy :teardown-select
-          :teardown-cold-next :teardown-cold-begin :teardown-cold-copy :teardown-cold-ack)
+          :teardown-cold-next :teardown-cold-begin :teardown-cold-copy :teardown-cold-ack
+          :live-catalog-begin :live-catalog-copy :live-cbase :live-exclusive :live-install :live-retire :live-readiness-begin :live-readiness-scan :live-promote :live-reopen)
  :fields ((pending :u32) (stopped :bool) (token :u60)
           (scan :u32) (highest :u60) (candidate :u32) (candidate-found :bool) (checkpoint :u60)
           (page-slot :u32) (page-gen :u60) (scratch-slot :u32) (scratch-gen :u60) (read-slot :u32) (read-gen :u60)
@@ -57,8 +62,9 @@
          (:retention-begin :storage-window :storage-window) (:retention-source :storage-window :storage-window) (:publish-start :storage-window :storage-window)
          (:publish-wait :storage-window :storage-window) (:release :storage-window :storage-window) (:release-complete :storage-window :storage-window) (:refused :storage-window :storage-window) (:uncertain :storage-window :storage-window) (:loan-uncertain :storage-window)
           (:summary-authority-begin :storage-window :storage-window) (:summary-authority-copy :storage-window :storage-window)
-          (:rebase-begin :storage-window :storage-window) (:rebase-source :storage-window :storage-window) (:rebase-consume :storage-window :storage-window) (:rebase-archive :storage-window :storage-window))
- :budget-cost (:bytes *fn2-checkpoint-master-byte-budget* :steps 32 :descriptors 4)
+          (:rebase-begin :storage-window :storage-window) (:rebase-source :storage-window :storage-window) (:rebase-consume :storage-window :storage-window) (:rebase-archive :storage-window :storage-window)
+          (:live-catalog-begin :storage-window :storage-window) (:live-catalog-copy :storage-window :storage-window) (:live-cbase :storage-window :storage-window) (:live-exclusive :storage-window :storage-window) (:live-install :storage-window :storage-window) (:live-retire :storage-window :storage-window) (:live-readiness-begin :storage-window :storage-window) (:live-readiness-scan :storage-window :storage-window) (:live-promote :storage-window :storage-window) (:live-reopen :storage-window :storage-window))
+ :budget-cost (:bytes *fn2-checkpoint-master-byte-budget* :steps *fn2-checkpoint-master-step-budget* :descriptors 4)
  :stops (:checkpoint :pool :bounds)
  :capacity (if (posp (fn2-b-checkpoint-capacity profile)) 1 0)
  :initial ((generation fn2-commit-initial-generation) (phase *fn2-checkpoint-master-state-idle*)
@@ -75,5 +81,6 @@
         (:admission-refused) (:refused) (:uncertain) (:loan-uncertain)
           (:summary-authority-begin) (:summary-authority-copy) (:rebase-begin) (:rebase-source) (:rebase-consume) (:rebase-archive)
           (:teardown-transfer-begin) (:teardown-transfer-copy) (:teardown-select)
-          (:teardown-cold-next) (:teardown-cold-begin) (:teardown-cold-copy) (:teardown-cold-ack))
+          (:teardown-cold-next) (:teardown-cold-begin) (:teardown-cold-copy) (:teardown-cold-ack)
+          (:live-catalog-begin) (:live-catalog-copy) (:live-cbase) (:live-exclusive) (:live-install) (:live-retire) (:live-readiness-begin) (:live-readiness-scan) (:live-promote) (:live-reopen))
  :observes ((:read-result)))

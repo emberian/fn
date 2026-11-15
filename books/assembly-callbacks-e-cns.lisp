@@ -13,7 +13,8 @@
 (fn2-run-load-readiness-core-events)
 (fn2-checkpoint-live-finish-events)
 (make-event
- (mv-let (err events) (fn2-run-loader-core-face-events '(fn2-checkpoint-live-replace-finish-op) (w state))
+ (mv-let (err events) (fn2-run-loader-core-face-events '(fn2-checkpoint-live-replace-finish-op fn2-checkpoint-live-replace-reopen-op) (w state))
   (if err (er soft 'fn2-checkpoint-live-finish-core-face "~@0" err) (value (cons 'progn events)))))
+(fn2-checkpoint-master-events)
 (fn2-auth-read-events)
 (fn2-cns-events)
