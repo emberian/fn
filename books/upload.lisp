@@ -52,6 +52,14 @@
 (assert-event (and (<= *fn2-upload-block-work-bytes* *fn2-upload-run-bytes*)
                   (<= *fn2-upload-digest-copy-bytes* *fn2-upload-block-work-bytes*)))
 
+ ;; One-pass Path validation uses two reads per Path octet. Trimming
+;; reads at most twice the MID field; transit comparison replaces the Path
+;; branch. The bounded MID grammar uses at most three MID spans plus four
+;; delimiter reads. Runtime range bounds below protect this under core WFP.
+(defconst *fn2-upload-verdict-work-bytes*
+ (+ (* 4 *fn2-upload-line-max*) (* 3 *fn2-format-message-id-max*) 4))
+(assert-event (<= *fn2-upload-verdict-work-bytes* *fn2-upload-run-bytes*))
+
 ;; The words the store's refusals give (also the transaction's).
 (defconst *fn2-upload-word-unaffordable* (fn2-upload-word-code :unaffordable))
 (defconst *fn2-upload-word-not-stored* (fn2-upload-word-code :not-stored))
@@ -69,9 +77,9 @@
 (defcost fn2-upload-hash-begin :tables (fn2-core-b3 fn2-core-digests) :doc "Start the hasher row.")
 (defcost fn2-upload-hash-end :tables (fn2-core-digests) :doc "Finalize the digest into the hasher row's result slot.")
 (defcost fn2-upload-scan-step :bytes *fn2-upload-scan-bytes* :doc "Advance the header scan over chunk 0.")
-(defcost fn2-upload-verdict-step :bytes 512 :doc "The definite verdict over the scanned header.")
+(defcost fn2-upload-verdict-step :bytes *fn2-upload-verdict-work-bytes* :doc "The definite verdict over the scanned header.")
 (defcost fn2-upload-chunk-cap :doc "A chunk's capacity.")
-(defcost fn2-upload-bound :doc "The article bound (the input configuration, at most two chunks).")
+(defcost fn2-upload-bound :doc "The configured article bound; physical windows are reused independently.")
 ; Its writes go through the kind-dispatching fn2-machine-write-word and
 ; -write-outcome-ready, which write the word columns of the connection, upload
 ; and transaction tables by the id's kind: those are its children.
@@ -379,7 +387,10 @@
 ;; model's order); OK nil when the row cannot be read.
 (defun fn2-upload-word-now (id gen c0 g0 cap0 cap1 filled fn2-core)
   (declare (xargs :stobjs fn2-core :guard (and (fn2-core-wfp fn2-core) (natp filled))))
-  (if (not (eq (fn2-upload-snapshot-read-code id fn2-core) :ok)) (mv nil 0 0)
+  (if (not (and (eq (fn2-upload-snapshot-read-code id fn2-core) :ok)
+                (<= (fn2-upload-row-ml id fn2-core) *fn2-upload-line-max*)
+                (<= (fn2-upload-row-pl id fn2-core) *fn2-upload-line-max*)))
+      (mv nil 0 0)
     (b* ((seen (fn2-upload-row-seen id fn2-core))
          (rule (case (fn2-upload-row-rule id fn2-core) (0 :post) (1 :ihave) (otherwise :takethis)))
          (conn (fn2-upload-row-conn id fn2-core))

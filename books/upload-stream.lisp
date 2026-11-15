@@ -12,7 +12,7 @@
   (+ *fn2-upload-page-provisional*
      (* *fn2-commit-unit-bytes* (fn2-am-units total))))
 (defcost fn2-am-entry-at :doc "Canonical no-straddle entry position.")
-(defcost fn2-upload-word-now :doc "Actual parsed header verdict and injection decision.")
+(defcost fn2-upload-word-now :bytes *fn2-upload-verdict-work-bytes* :doc "Actual parsed header verdict and injection decision.")
 (defcost fn2-upload-chunk-fill :doc "Actual filled octets of a retained upload window.")
 (defcost fn2-upload-stream-page-bytes :doc "Final manifest region plus profile-derived provisional entry region.")
 (defcost fn2-upload-stream-progress :answers (:run :idle :window :gone :refused :fault)

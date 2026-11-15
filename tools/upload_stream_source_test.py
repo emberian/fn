@@ -95,9 +95,19 @@ class RollingSource(unittest.TestCase):
                             '(:charge :bytes *fn2-upload-stream-stage-work*')
   expected=expected.replace('(:set (location-hashed (+ block 1)) (mstep 2)) (:charge :bytes 32',
                             '(:set (location-hashed (+ block 1)) (mstep 2)) (:charge :bytes *fn2-upload-digest-copy-bytes*')
-  self.assertEqual(expected,(ROOT/'books/assembly-callbacks-d-upload.lisp').read_text())
+  from upload_verdict_cost_rewrite import arm_charge
+  self.assertEqual(arm_charge(expected),(ROOT/'books/assembly-callbacks-d-upload.lisp').read_text())
   with self.assertRaises(AssertionError):
    rw.arm_charges(old.replace('fn2-upload-block-cv row-lslot','fn2-removed-call row-lslot',1))
+ def test_verdict_is_bounded_and_separate_from_stream_hash(self):
+  s=(ROOT/'books/upload.lisp').read_text()
+  self.assertIn('(<= (fn2-upload-row-ml id fn2-core) *fn2-upload-line-max*)',s)
+  self.assertIn('(<= (fn2-upload-row-pl id fn2-core) *fn2-upload-line-max*)',s)
+  self.assertEqual(4*998+3*250+4,4746)
+  self.assertLessEqual(4746,6144)
+  s=(ROOT/'books/assembly-callbacks-d-upload.lisp').read_text()
+  a=s.index('(:stream-init :on-refusal');b=s.index('(:stream-receiving :on-refusal',a)
+  self.assertEqual(s[a:b].count(':bytes *fn2-upload-verdict-work-bytes*'),2)
  def test_new_books_parse(self):
   for name in ['upload-stream','upload-stream-stage','upload-stream-reset','upload-stream-manifest','upload-stream-settle']:
    self.assertTrue(lr.parse(ROOT/'books'/f'{name}.lisp').forms)

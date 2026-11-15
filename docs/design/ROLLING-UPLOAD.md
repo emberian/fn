@@ -39,3 +39,19 @@ cancels first PEXT a second time. Query or borrowed workspaces postpone cleanup;
 failed or malformed Fence enters uncertainty instead. Actual abort-cut controls
 and execution of the new 32 KiB/threshold assertions remain required. No claim
 of recovery-byte equality or general upload completion has been executed yet.
+
+The byte-cost followup also accounts for each block hash/full CV/location
+hash reading one unit and writing 32 pool digest octets (4128), and digest
+copy reading/writing 32 octets (64). Final manifest repack is bounded by two
+codec-max spans plus the 64 referenced digest/CV octets. The original SOURCE
+finalization writes only its 32-octet result into the retained page.
+
+The header verdict is its own stream-init transition. Its Path POSTED worker
+uses one read per byte, with a named equality to the original per-start
+predicate and actual pool controls; that theorem and those controls are
+unrun. The actual verdict entry checks MID/Path ranges against the physical
+line bound before reading. Four line spans plus three Message-ID spans and
+four delimiter reads give the separate 4746-byte bound, below the unchanged
+6144-byte run budget. Invalid scan statuses return their verdict before any
+additional header pool read. None of these source checks certifies a byte
+refinement or runtime execution.
