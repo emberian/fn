@@ -36,6 +36,18 @@ class RunPhysicalLoaderFixtureSource(unittest.TestCase):
     def setUp(self):
         self.defs = definitions()
 
+    def test_wrapper_output_projection_is_within_actual_mv_limit(self):
+        wrappers = [n for n in FORMS if n and n[0] == 'fn2-rpl-wrapper']
+        self.assertGreater(len(wrappers), 10)
+        for n in wrappers:
+            _, name, args, inputs, outputs, scalars, body = n
+            self.assertTrue(set(outputs).issubset(inputs), name)
+            self.assertLessEqual(len(scalars) + len(outputs), 32, name)
+            self.assertLessEqual(len(scalars) + 1, 32, name)
+        macro = self.defs['fn2-rpl-bindings']
+        self.assertIn('fn2-core', str(macro))
+        self.assertIn('(mv ,@scalars fn2-core)', TEXT)
+
     def test_fixture_uses_actual_c_and_core_without_full_executor(self):
         self.assertIn('(include-book "../books/assembly-callbacks-c")', TEXT)
         self.assertNotIn('(include-book "../books/executor")', TEXT)
