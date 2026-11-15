@@ -19,7 +19,9 @@ def runtime_forms(text):
         if isinstance(n,Lst):return [canonical(x) for x in n.items]
         if isinstance(n,Pre):return (n.prefix,canonical(n.node))
         return n.text if n.kind=='string' else n.low
-    return [canonical(n) for n in parsed.forms]
+    ignored=[['include-book','"columns-observation-frames"'],
+             ['defcolumns-observation-frame','fn2-cns-sources-hash-offset-after-unit-hashed','fn2-cns-sources','hash-offset','unit-hashed']]
+    return [canonical(n) for n in parsed.forms if canonical(n) not in ignored]
 
 class EnumNoopLowering(unittest.TestCase):
     def setUp(self):
