@@ -16,6 +16,7 @@
 (in-package "ACL2")
 (include-book "txn-kind")
 (include-book "upload")
+(include-book "c-actor-loader")
 (fn2-book-layer :d)
 
 ;; The claim walk's chain steps per run: each step compares at most one
@@ -288,7 +289,7 @@
 (defcost fn2-txn-prebind :answers (:ok) :tables (fn2-core-fields)
   :doc "Pre-fill prospective event numbers into staged insert slots before emitting journal records.")
 (defconst *fn2-authority-right-append* 2)
-(defcost fn2-authority-allows :answers (:ok :access :more :state) :faults (:state) :bytes 4096
+(defcost fn2-authority-allows :answers (:ok :access :more :state :miss) :faults (:state) :bytes *fn2-c-read-step-bytes*
   :tables (fn2-core-succ-txns fn2-core-run-cursors fn2-core-run-paths fn2-core-fields)
   :doc "One bounded step of the append check (books/authority.lisp, AUTHORITY-20261105 section 4): (fn2-authority-allows tx principal-slot right target step head grant budget) -> (mv code step head grant), one exact lookup source per call (the head, the current grant, the grant row).")
 (defcost fn2-txn-principal :answers (:ok :state)
@@ -298,7 +299,7 @@
   :doc "Declare the transaction's read dependency on the principal's authority head it decided under (once; nothing when no grant governed).")
 (defcost fn2-txn-group-of :answers (:absent :bad-magic :bounds :done :end :entry :format :invariant :length :lost :miss :more
   :noncanonical :ok :owner :part :payload :schema :stale :state :truncated :unknown-tag :wide)
-  :bytes 4096
+  :bytes *fn2-c-read-step-bytes*
   :tables (fn2-core-succ-txns fn2-core-run-cursors fn2-core-run-paths fn2-core-fields)
   :doc "The group at the scan's name: the one the append check in progress holds (XSTEP > 0), else one source of its name lookup.")
 (defcost fn2-txn-wake-upload :tables (fn2-core-machines)
@@ -306,7 +307,7 @@
 (defcost fn2-txn-groups-limit
   :doc "Profile-configured cross-post group limit (:max-groups-per-article, D27).")
 
-(defmachine-arms fn2-txn :declare
+(fn2-c-actor-loader-arms fn2-txn :declare
  :subarms
  (;; one Newsgroups name: look it up, declare its group-count accept, overview and addr
   (group :on-refusal ((:stop :machine-phase))
@@ -319,16 +320,16 @@
     :accept (:run :end :name) :why "the name scan's three continuations; :fault goes to :on-refusal")
    (:cond ((not (unsigned-byte-p 32 next)) (:stop :machine-phase))
           ((eq status :run) (:set (gcur next) (gskip (if skip2 1 0)))
-                            (:charge :bytes 8192 :steps *fn2-work-transition* :runnable t))
-          ((eq status :end) (:set (gcur next)) (:charge :bytes 8192 :steps *fn2-work-transition* :runnable t))
+                            (:charge :bytes (+ *fn2-c-read-callback-bytes* 8192) :steps *fn2-work-transition* :runnable t))
+          ((eq status :end) (:set (gcur next)) (:charge :bytes (+ *fn2-c-read-callback-bytes* 8192) :steps *fn2-work-transition* :runnable t))
           (t (:do (code group) (fn2-txn-group-of gslot row-xstep row-xgroup c0 g0 (+ no start) len :budget 4096 :owner upload)
               :accept ()
-              :case (((:more) (:charge :bytes 8192 :steps *fn2-work-transition* :runnable t))
-                     ((:absent) (:set (gcur next)) (:charge :bytes 8192 :steps *fn2-work-transition* :runnable t))
+              :case (((:more :miss) (:charge :bytes (+ *fn2-c-read-callback-bytes* 8192) :steps *fn2-work-transition* :runnable t))
+                     ((:absent) (:set (gcur next)) (:charge :bytes (+ *fn2-c-read-callback-bytes* 8192) :steps *fn2-work-transition* :runnable t))
                      ((:ok)
                       (:cond ((>= row-ngroups (fn2-txn-groups-limit))
                               (:set (word *fn2-upload-word-unaffordable*)) (:next :refused)
-                              (:charge :bytes 8192 :steps *fn2-work-transition* :runnable t))
+                              (:charge :bytes (+ *fn2-c-read-callback-bytes* 8192) :steps *fn2-work-transition* :runnable t))
                              ;; the authority seam (AUTHORITY-20261105 section
                              ;; 4): the principal's append grant for this
                              ;; destination, in bounded steps, then the read
@@ -339,21 +340,21 @@
                                      (fn2-authority-allows gslot pid *fn2-authority-right-append* group
                                                            (if (equal row-xstep 0) 0 (- row-xstep 1)) row-xhead row-xgrant 4096)
                                  :accept (:ok)
-                                 :case (((:more)
+                                 :case (((:more :miss)
                                          (:cond ((< astep 255)
                                                  (:set (xstep (+ 1 astep)) (xgroup group) (xhead ahead) (xgrant agrant))
-                                                 (:charge :bytes 8192 :steps *fn2-work-transition* :runnable t))
+                                                 (:charge :bytes (+ *fn2-c-read-callback-bytes* 8192) :steps *fn2-work-transition* :runnable t))
                                                 (t (:stop :machine-phase))))
                                         ((:access) (:set (word *fn2-upload-word-refused*) (xstep 0)) (:next :refused)
-                                         (:charge :bytes 8192 :steps *fn2-work-transition* :runnable t))))
+                                         (:charge :bytes (+ *fn2-c-read-callback-bytes* 8192) :steps *fn2-work-transition* :runnable t))))
                                 (:do (dcode) (fn2-authority-depend gslot pid agrant ahead) :accept (:ok))
                                 (:do (pcode) (fn2-txn-add-group gslot row-ngroups group row-principal-slot c0 g0 c1 g1
                                                                  (+ no start) len :owner upload))
                                 (:if (eq pcode :ok)
                                      ((:set (ngroups (+ 1 row-ngroups)) (gcur next) (xstep 0))
-                                      (:charge :bytes 8192 :steps *fn2-work-transition* :runnable t))
+                                      (:charge :bytes (+ *fn2-c-read-callback-bytes* 8192) :steps *fn2-work-transition* :runnable t))
                                      ((:set (word *fn2-upload-word-unaffordable*)) (:next :refused)
-                                      (:charge :bytes 8192 :steps *fn2-work-transition* :runnable t)))))))))))
+                                      (:charge :bytes (+ *fn2-c-read-callback-bytes* 8192) :steps *fn2-work-transition* :runnable t)))))))))))
   ;; the outcome: the word to the owner (waking it; a consumer request also
   ;; gets an accepted article's commit position), the successor released
   (reply :on-refusal ((:stop :machine-phase))
@@ -412,11 +413,11 @@
    (:let lslot row-slot)
    (:let uphase (:read upload phase))
    (:cond ((not (and (:live upload) (not (equal uphase *fn2-upload-state-aborting*))))
-           (:set (word 0)) (:next :refused) (:charge :bytes 4096 :steps *fn2-work-transition* :runnable t))
-          ((not (equal uphase *fn2-upload-state-sealed*)) (:charge :bytes 4096 :steps *fn2-work-transition*))
+           (:set (word 0)) (:next :refused) (:charge :bytes (+ *fn2-c-read-callback-bytes* 4096) :steps *fn2-work-transition* :runnable t))
+          ((not (equal uphase *fn2-upload-state-sealed*)) (:charge :bytes (+ *fn2-c-read-callback-bytes* 4096) :steps *fn2-work-transition*))
           (t (:let w (:read upload word))
              (:cond ((not (equal w 0)) (:set (word w)) (:next :refused)
-                                       (:charge :bytes 4096 :steps *fn2-work-transition* :runnable t))
+                                       (:charge :bytes (+ *fn2-c-read-callback-bytes* 4096) :steps *fn2-work-transition* :runnable t))
                     ((not (equal row-offered 1))
                      (:do (code) (fn2-txn-offer lslot (if (equal (:read upload ilen) 0) (:read upload c0-slot) (:read upload lslot))
                                                 (if (equal (:read upload ilen) 0) (:read upload c0-gen) (:read upload lgen))
@@ -424,29 +425,29 @@
                                                 (:read upload c0-slot) (:read upload c0-gen)
                                                 (:read upload c1-slot) (:read upload c1-gen)
                                                 (:read upload hashed) :owner upload))
-                     (:set (offered 1)) (:charge :bytes 4096 :steps *fn2-work-transition* :runnable t))
+                     (:set (offered 1)) (:charge :bytes (+ *fn2-c-read-callback-bytes* 4096) :steps *fn2-work-transition* :runnable t))
                     (t (:do (answer) (fn2-identity-decide lslot 4096)
                         :accept ()
-                        :case (((:more) (:charge :bytes 4096 :steps *fn2-work-transition* :runnable t))
+                        :case (((:more :miss) (:charge :bytes (+ *fn2-c-read-callback-bytes* 4096) :steps *fn2-work-transition* :runnable t))
                                ((:stored :duplicate :conflict :evidence)
                                 (:do (fcode verdict selection h evidence coverage) (fn2-identity-facts lslot))
                                 (:cond ((eq selection :same)
                                         (:set (word *fn2-upload-word-duplicate*)) (:next :refused)
-                                        (:charge :bytes 4096 :steps *fn2-work-transition* :runnable t))
+                                        (:charge :bytes (+ *fn2-c-read-callback-bytes* 4096) :steps *fn2-work-transition* :runnable t))
                                        ((and (eq verdict :stored) (not (equal row-tmode *fn2-txn-mode-evidence*)))
                                         (:set (tmode *fn2-txn-mode-article*)) (:next :prepare)
-                                        (:charge :bytes 4096 :steps *fn2-work-transition* :runnable t))
+                                        (:charge :bytes (+ *fn2-c-read-callback-bytes* 4096) :steps *fn2-work-transition* :runnable t))
                                        (t (:set (tmode *fn2-txn-mode-evidence*) (word *fn2-upload-word-conflict*))
                                           (:next :prepare)
-                                          (:charge :bytes 4096 :steps *fn2-work-transition* :runnable t)))))))))))
+                                          (:charge :bytes (+ *fn2-c-read-callback-bytes* 4096) :steps *fn2-work-transition* :runnable t)))))))))))
   ;; count the body's lines, look each group up, refuse :group or the injected
   ;; fields, declare the slots (evidence or article); then resolve them
   (:prepare :on-refusal ((:stop :machine-phase))
    (:if (equal row-prepared 1)
         ((:do (answer) (fn2-successor-resolve row-slot 4096)
           :accept ()
-          :case (((:ok) (:next :ready) (:charge :bytes 8192 :steps *fn2-work-transition* :runnable t))
-                 ((:more) (:charge :bytes 8192 :steps *fn2-work-transition* :runnable t)))))
+          :case (((:ok) (:next :ready) (:charge :bytes (+ *fn2-c-read-callback-bytes* 8192) :steps *fn2-work-transition* :runnable t))
+                 ((:more :miss) (:charge :bytes (+ *fn2-c-read-callback-bytes* 8192) :steps *fn2-work-transition* :runnable t)))))
         ((:if (equal row-tmode *fn2-txn-mode-evidence*)
               ((:do (fcode verdict selection h evidence coverage) (fn2-identity-facts row-slot))
                (:do (pcode) (fn2-txn-put-evidence-for row-slot
@@ -457,7 +458,7 @@
                                                       (:read upload c1-slot) (:read upload c1-gen)
                                                       (:read upload hashed) h row-principal-slot :owner upload))
                (:set (prepared 1))
-               (:charge :bytes 8192 :steps *fn2-work-transition* :runnable t))
+               (:charge :bytes (+ *fn2-c-read-callback-bytes* 8192) :steps *fn2-work-transition* :runnable t))
               ((:let c0 (:read upload c0-slot)) (:let g0 (:read upload c0-gen))
                (:let c1 (:read upload c1-slot)) (:let g1 (:read upload c1-gen))
                (:let hashed (:read upload hashed)) (:let scanned (:read upload scan-off))
@@ -468,7 +469,7 @@
                             (fn2-txn-count-next c0 g0 c1 g1 counted hashed row-lines :owner upload))
                        (:if (and (unsigned-byte-p 60 counted2) (unsigned-byte-p 32 lines2))
                             ((:set (counted counted2) (lines lines2))
-                             (:charge :bytes 8192 :steps *fn2-work-transition* :runnable t))
+                             (:charge :bytes (+ *fn2-c-read-callback-bytes* 8192) :steps *fn2-work-transition* :runnable t))
                             ((:stop :machine-phase))))
                       ;; the article's slots and its overview line's first
                       ;; seven fields, then its groups (chunk 1 keeps their names)
@@ -487,19 +488,19 @@
                                                           (:read upload op)
                                                           :owner upload))
                        (:if (eq pcode :ok)
-                            ((:set (filed 1)) (:charge :bytes 8192 :steps *fn2-work-transition* :runnable t))
+                            ((:set (filed 1)) (:charge :bytes (+ *fn2-c-read-callback-bytes* 8192) :steps *fn2-work-transition* :runnable t))
                             ((:set (word *fn2-upload-word-unaffordable*)) (:next :refused)
-                             (:charge :bytes 8192 :steps *fn2-work-transition* :runnable t))))
+                             (:charge :bytes (+ *fn2-c-read-callback-bytes* 8192) :steps *fn2-work-transition* :runnable t))))
                       ((< row-gcur nl) (:goto group))
                       ((equal row-ngroups 0)
                        (:set (word *fn2-upload-word-group*)) (:next :refused)
-                       (:charge :bytes 8192 :steps *fn2-work-transition* :runnable t))
+                       (:charge :bytes (+ *fn2-c-read-callback-bytes* 8192) :steps *fn2-work-transition* :runnable t))
                       (t (:let inj (:read upload inj))
                          (:if (not (equal inj 0))
                               ((:set (word inj)) (:next :refused)
-                               (:charge :bytes 8192 :steps *fn2-work-transition* :runnable t))
+                               (:charge :bytes (+ *fn2-c-read-callback-bytes* 8192) :steps *fn2-work-transition* :runnable t))
                               ((:set (prepared 1))
-                               (:charge :bytes 8192 :steps *fn2-work-transition* :runnable t))))))))))
+                               (:charge :bytes (+ *fn2-c-read-callback-bytes* 8192) :steps *fn2-work-transition* :runnable t))))))))))
   ;; stage every slot against the tip, emit into chunk 1, admit the member, bind on :ok (one run)
   (:ready :on-refusal ((:stop :machine-phase))
    (:let sslot row-slot)
