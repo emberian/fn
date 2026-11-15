@@ -64,7 +64,8 @@
 (defconst *fn2-idc-overlay-budget* (- *fn2-idc-seal-cursors* *fn2-idc-run-budget*))
 ;; Source observers name actual resumable operation rows, not actor identities.
 ;; Reads and successor resolutions have distinct endpoints even when one actor
-;; owns both.  The final endpoint protects the sealer's complete merge lifetime.
+;; owns both.  Their following endpoint protects the complete sealer merge;
+;; cursor-response and CNS-metadata parents occupy the disjoint tail.
 (defun fn2-c-source-endpoint-rows (profile)
  (declare (xargs :guard t))
  (+ 1 (nfix (fn2-profile-t profile)) (* 2 (fn2-b-read-rows profile))
