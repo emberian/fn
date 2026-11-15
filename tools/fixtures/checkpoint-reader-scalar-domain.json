@@ -1,0 +1,24 @@
+{
+  "source": "2c7d41477b95758cf2067d844558427f284ca344",
+  "raw_sha256": "432c17aeba9fae457e4b5feb1d7a637e2aaa113a7e107b5ed5d436835b81843b",
+  "claim": "fn2-checkpoint-check-step-checker-type",
+  "original_hypotheses": [
+    "(FN2-CHECKPOINTSP FN2-CHECKPOINTS)",
+    "(FN2-CHECKPOINTS-WFP FN2-CHECKPOINTS)",
+    "(FN2-CHECKPOINT-REFSP FN2-CHECKPOINT-REFS)",
+    "(FN2-CHECKPOINT-REFS-WFP FN2-CHECKPOINT-REFS)",
+    "(FN2-CHECKPOINT-BYTESP FN2-CHECKPOINT-BYTES)",
+    "(FN2-CHECKPOINT-BYTES-WFP FN2-CHECKPOINT-BYTES)",
+    "(FN2-FCP FN2-FC)",
+    "(FN2-FC-WFP FN2-FC)",
+    "(FN2-B3P FN2-B3)",
+    "(FN2-B3-WFP FN2-B3)",
+    "(FN2-FIELDSP FN2-FIELDS)",
+    "(FN2-FIELDS-WFP FN2-FIELDS)",
+    "(FN2-POOLP FN2-POOL)",
+    "(FN2-POOL-WFP FN2-POOL)",
+    "(FN2-DIGESTSP FN2-DIGESTS)",
+    "(FN2-DIGESTS-WFP FN2-DIGESTS)"
+  ],
+  "status": "Observed original antecedent from actual refused event; no refutation verdict"
+}
