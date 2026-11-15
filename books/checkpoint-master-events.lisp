@@ -32,6 +32,7 @@
  '(progn
    (fn2-checkpoint-master-abort-events)
    (fn2-checkpoint-teardown-events)
+   (fn2-checkpoint-teardown-sweep-events)
    (fn2-checkpoint-master-faces)
    (defmachine-arms fn2-checkpoint-master)
    (defun fn2-checkpoint-needed-ready (fn2-core)
@@ -40,10 +41,13 @@
      (and (not (fn2-core-stopped-p fn2-core))
           (not (equal id *fn2-none*)) (fn2-machine-idp id fn2-core)
           (eq (fn2-checkpoint-master-snapshot-read-code id fn2-core) :ok)
-          (equal (fn2-machine-phase id fn2-core) *fn2-checkpoint-master-state-idle*)
           (equal (fn2-machine-wait-reason id fn2-core) *fn2-wait-checkpoint-needed*)
-          (mv-nth 1 (fn2-checkpoint-master-pressure-op
-                     (fn2-checkpoint-master-row-retirement-seen id fn2-core) fn2-core)))))
+          (or (and (equal (fn2-machine-phase id fn2-core) *fn2-checkpoint-master-state-idle*)
+                   (or (mv-nth 1 (fn2-checkpoint-teardown-needed-op fn2-core))
+                       (mv-nth 1 (fn2-checkpoint-master-pressure-op
+                                  (fn2-checkpoint-master-row-retirement-seen id fn2-core) fn2-core))))
+              (and (equal (fn2-machine-phase id fn2-core) *fn2-checkpoint-master-state-teardown-submit*)
+                   (mv-nth 1 (fn2-checkpoint-teardown-submission-ready-op fn2-core)))))))
    (defun fn2-checkpoint-needed-grant (fn2-core)
     (declare (xargs :stobjs fn2-core :guard (fn2-core-wfp fn2-core)))
     (if (fn2-checkpoint-needed-ready fn2-core)

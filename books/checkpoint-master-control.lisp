@@ -23,8 +23,16 @@
         (mv :more (+ 1 scan) next-highest (if choose scan candidate) (or found choose) 0)
       (mv :exhausted scan highest candidate found 0)))))
 
-(defcost fn2-checkpoint-catalog-op :child fn2-checkpoint-catalog-step :answers t
- :tables (fn2-core-checkpoints)
+(defun fn2-checkpoint-catalog-retained-step (scan highest candidate found fn2-checkpoints fn2-checkpoint-teardown-debt)
+ (declare (xargs :stobjs (fn2-checkpoints fn2-checkpoint-teardown-debt) :verify-guards nil
+  :guard (and (fn2-checkpoints-wfp fn2-checkpoints) (fn2-checkpoint-teardown-debt-wfp fn2-checkpoint-teardown-debt)
+              (unsigned-byte-p 32 scan) (unsigned-byte-p 60 highest) (unsigned-byte-p 32 candidate) (booleanp found))))
+ (mv-let (code next high chosen have identity) (fn2-checkpoint-catalog-step scan highest candidate found fn2-checkpoints)
+  (if (and (eq code :more) (not found) (equal chosen scan) (fn2-checkpoint-teardown-debt-heldp scan fn2-checkpoint-teardown-debt))
+      (mv :more next high candidate nil 0)
+    (mv code next high chosen have identity))))
+(defcost fn2-checkpoint-catalog-op :child fn2-checkpoint-catalog-retained-step :answers t
+ :tables (fn2-core-checkpoints fn2-core-checkpoint-teardown-debt)
  :doc "Inspect one actual candidate; choose a FREE row and an identity above installed predecessors before acquiring the C cut.")
 
 (defun fn2-checkpoint-plan-phase-children (fn2-checkpoint-plan)
