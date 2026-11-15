@@ -194,6 +194,7 @@ ACL2_BOOKS = \
   books/owed-txn \
   books/peer-model \
   books/peer-import \
+  books/peer-import-state \
   books/pointwise-contracts \
   books/pool \
   books/pool-block \
