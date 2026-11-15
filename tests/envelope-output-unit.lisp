@@ -37,3 +37,36 @@
       (not (fn2-envelope-output-matches-p '((:bogus 1)) '(1)))
       (not (fn2-envelope-output-matches-p '((:exact 1) . 7) '(1)))
       (not (fn2-envelope-output-matches-p '(7) nil))))
+(defun fn2-envelope-output-reinit-check ()
+ (declare (xargs :verify-guards nil))
+ (with-local-stobj fn2-envelope-output-state
+  (mv-let (ok fn2-envelope-output-state)
+   (let* ((fn2-envelope-output-state
+           (fn2-envelope-output-init '((:exact 1 2) (:prefix 1)) '(1 1 2) fn2-envelope-output-state))
+          (fn2-envelope-output-state (fn2-envelope-output-run 25 fn2-envelope-output-state))
+          (mid-dp (member-equal (fn2-eo-phase fn2-envelope-output-state) '(4 5 6 7 8 9)))
+          (fn2-envelope-output-state (fn2-envelope-output-init '((:exact 9)) '(9) fn2-envelope-output-state))
+          (fn2-envelope-output-state (fn2-envelope-output-run 100 fn2-envelope-output-state))
+          (good (and mid-dp (equal (fn2-eo-phase fn2-envelope-output-state) 10)
+                     (fn2-eo-result fn2-envelope-output-state)))
+          (fn2-envelope-output-state (fn2-envelope-output-init '((:exact 9)) '(9 . bad) fn2-envelope-output-state))
+          (fn2-envelope-output-state (fn2-envelope-output-run 100 fn2-envelope-output-state)))
+    (mv (and good (equal (fn2-eo-phase fn2-envelope-output-state) 10)
+             (not (fn2-eo-result fn2-envelope-output-state))) fn2-envelope-output-state)) ok)))
+(assert-event (fn2-envelope-output-reinit-check))
+
+(defun fn2-envelope-output-spec-controls (cases)
+ (declare (xargs :verify-guards nil))
+ (if (atom cases) t
+  (and (equal (fn2-envelope-output-matches-p (caar cases) (cadar cases))
+              (fn2-envelope-output-language-p (reverse (caar cases)) (cadar cases)))
+       (fn2-envelope-output-spec-controls (cdr cases)))))
+(assert-event
+ (fn2-envelope-output-spec-controls
+  '((((:exact 1 2)) (1 2)) (((:exact 1 2)) (1))
+    (((:exact 1) (:prefix 1)) (1)) (((:exact 1) (:prefix 1)) (1 1))
+    (((:exact 1 2) (:prefix 1)) (1 1 2)) (((:exact 1 2) (:prefix 1)) (1 2))
+    (((:exact 2) (:prefix 1) (:prefix 1)) (2))
+    (((:exact 2) (:prefix 1) (:prefix 1)) (1 2))
+    (((:exact 2) (:prefix 1) (:prefix 1)) (1 1 2))
+    (((:exact 2) (:prefix 1) (:prefix 1)) (1 3 2)))))
