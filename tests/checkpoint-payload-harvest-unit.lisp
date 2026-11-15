@@ -47,3 +47,23 @@
 (assert-event (fn2-cphu-test :cold))
 (assert-event (fn2-cphu-test :stale))
 (assert-event (fn2-cphu-test :owner))
+
+; Exhaust the settled/pending mode boundary with the actual admission predicate.
+; The mode is fixture setup, not a caller argument to either production binder.
+(defun fn2-cphu-rebind-body (mode phase pending expected fn2-checkpoint-payload)
+ (declare (xargs :stobjs fn2-checkpoint-payload :verify-guards nil))
+ (b* ((fn2-checkpoint-payload (fn2-checkpoint-payload-init 1 fn2-checkpoint-payload))
+      (fn2-checkpoint-payload (fn2-checkpoint-payload-put 0 (mode mode) (phase phase) (pending pending))))
+  (mv (iff (fn2-checkpoint-payload-rebindablep fn2-checkpoint-payload) expected) fn2-checkpoint-payload)))
+(defun fn2-cphu-rebind (mode phase pending expected)
+ (declare (xargs :verify-guards nil))
+ (with-local-stobj fn2-checkpoint-payload
+  (mv-let (result fn2-checkpoint-payload)
+   (fn2-cphu-rebind-body mode phase pending expected fn2-checkpoint-payload) result)))
+(assert-event
+ (and (fn2-cphu-rebind *fn2-checkpoint-payload-mode-live* *fn2-checkpoint-payload-phase-idle* 0 t)
+      (fn2-cphu-rebind *fn2-checkpoint-payload-mode-cold* *fn2-checkpoint-payload-phase-complete* 0 t)
+      (fn2-cphu-rebind *fn2-checkpoint-payload-mode-live* *fn2-checkpoint-payload-phase-complete* 1 nil)
+      (fn2-cphu-rebind *fn2-checkpoint-payload-mode-cold* *fn2-checkpoint-payload-phase-idle* 1 nil)
+      (fn2-cphu-rebind *fn2-checkpoint-payload-mode-live* *fn2-checkpoint-payload-phase-uncertain* 0 nil)
+      (fn2-cphu-rebind *fn2-checkpoint-payload-mode-cold* *fn2-checkpoint-payload-phase-block-verify* 0 nil)))
