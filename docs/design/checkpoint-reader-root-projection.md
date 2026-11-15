@@ -2,7 +2,8 @@
 
 This source projects the reader interfaces and actual closed controls from
 qualified `6347c86a9` onto root `42aba480a` (plus the tool-only `fa9451c27`).
-Its own 34-book closure is unqualified. The donor's 33-book record is evidence
+Its exact `0b13cdffa` 34-book closure is qualified on the `8aeb1bea…`
+record toolchain: 30 reused records and four newly certified books. The donor's 33-book record is evidence
 for that exact source only; no record is transferred by matching function names
 or runtime bodies.
 
@@ -30,7 +31,9 @@ typed readonly context and false checker/hasher/digest P and WFP conclusions.
 The positive asserts the entire actual guard, `:more`/DECODE and all eight
 output P/WFP pairs. Exact closed negations bind the six live originals;
 canonical predicate evidence proves and replays complete positive/removal
-assertions for the six new guarded rows. All new-closure events are UNRUN.
+assertions for the six new guarded rows. The four whole source books passed their author gates and the exact34
+record passed. All34 current raw/key and cert/FASL/port/meta hashes were
+independently checked; see `receipts/checkpoint-reader-current34.json`.
 
 This reader is **unreachable-in-composition** in the present root BOOT path:
 there is no `fn2-boot-checkpoint-descriptor-pool` or restore-load-hash face in
@@ -51,3 +54,8 @@ through the shared Lisp reader. Its before fixture and six source controls
 check runtime/guard/schema/provider identity, actual expansion-critical guard
 subjects, original carrier metadata and the unchanged actual ground controls.
 Source checks are not ACL2 admission, certification or BOOT qualification.
+
+The first current-root attempt exposed an ambient ROWS rewrite conflict.
+The existing old ROWS theorem erased the new generated RAW-ROWS use premise.
+A LOCAL theory boundary around that producer event retains the premise; no
+runtime, guard, original formula, event budget or marker check changed.
