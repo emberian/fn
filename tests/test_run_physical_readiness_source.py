@@ -51,8 +51,11 @@ class RunPhysicalReadinessSource(unittest.TestCase):
                        'fn2-checkpoint-summary-leases-rows', 'fn2-ops-rows', 'fn2-run-load-ops-rows',
                        'fn2-fc-rows', 'fn2-fc-context-rows', 'fn2-b3-rows', 'fn2-fields-rows', 'fn2-digests-rows']:
             self.assertIn(actual, calls(current))
-        self.assertIn('*fn2-b-range-source-cursors*', str(current))
-        self.assertIn('*fn2-b-seal-source-cursors*', str(current))
+        self.assertIn('fn2-b-run-cursor-rows-from-counts', calls(current))
+        bridge = definitions(ROOT / 'books/machines-b.lisp')['fn2-b-run-cursor-rows-from-counts']
+        self.assertEqual(bridge[-1], ['+', ['nfix', 'transactions'],
+            ['*', ['+', '1', '*fn2-b-range-source-cursors*'], ['nfix', 'reads']],
+            '*fn2-b-seal-source-cursors*', '2'])
         self.assertIn('fn2-run-loads-admissions', calls(current))
 
     def test_row_checks_private_checker_stripes_and_initialized_jobs(self):

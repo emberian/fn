@@ -18,6 +18,13 @@ class ArchiveGeometry(unittest.TestCase):
    self.assertEqual(tree(body('fn2-b-'+stem+'-cursor-from-rows')),('nfix',('-',('nfix','rows'),n)))
    t=lr.match('(defthm fn2-b-'+stem+'-cursor-from-profile-rows ?*body)',lr.parse(S).forms,deep=False)[0].node
    self.assertEqual(tree(t.items[2]),('equal',('fn2-b-'+stem+'-cursor-from-rows',('fn2-b-run-cursor-rows','profile')),('fn2-b-'+stem+'-cursor','profile')))
+ def test_actual_runtime_geometry_uses_same_count_bridge(self):
+  self.assertEqual(tree(body('fn2-b-run-cursor-rows-from-counts')),
+   ('+',('nfix','transactions'),('*',('+','1','*fn2-b-range-source-cursors*'),('nfix','reads')),'*fn2-b-seal-source-cursors*','2'))
+  theorem=lr.match('(defthm fn2-b-run-cursor-rows-counts-from-profile ?*body)',lr.parse(S).forms,deep=False)[0].node
+  self.assertEqual(tree(theorem.items[2]),('equal',('fn2-b-run-cursor-rows-from-counts',('fn2-profile-t','profile'),('fn2-b-read-rows','profile')),('fn2-b-run-cursor-rows','profile')))
+  actual=(ROOT/'books/run-physical-readiness.lisp').read_text()
+  self.assertEqual(len(lr.match('(equal (fn2-run-load-geometry-cursors 0 fn2-run-load-geometry) (fn2-b-run-cursor-rows-from-counts (fn2-id-decides-rows fn2-id-decides) (fn2-reads-rows fn2-reads)))',lr.parse(actual).forms)),1)
  def test_all_cursor_carriers_and_checkers_share_K(self):
   for p,name in [('machines-c.lisp','fn2-run-cursors-init'),('run-physical-resources.lisp','fn2-run-loads-init'),('machines-c.lisp','fn2-checkpoint-summary-leases-init')]:
    s=(ROOT/'books'/p).read_text()

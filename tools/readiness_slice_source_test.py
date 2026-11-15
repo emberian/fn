@@ -56,12 +56,13 @@ class Slice(unittest.TestCase):
    active.pop();visited.add(n)
   visit('checkpoint-summary-loader-readiness')
   self.assertNotIn('run-physical-io',visited);self.assertNotIn('run-physical-bound-step',visited)
- def test_no_archive_cursor_in_canonical_profile_count(self):
-  s=(B/'machines-b.lisp').read_text();f=rw.form(s,'(defun fn2-b-run-cursor-rows ?*body)')
-  self.assertNotIn('archive',f)
-  self.assertIn('*fn2-b-seal-source-cursors* 1',f)
+ def test_runtime_count_bridge_preserves_source_and_appends_archive(self):
+  s=(B/'machines-b.lisp').read_text()
+  source=lr.parse(rw.form(s,'(defun fn2-b-checkpoint-source-cursor ?*body)')).forms[0].items[-1]
+  self.assertEqual(canon(source),('+',('nfix',('fn2-profile-t','profile')),('*',('+','1','*fn2-b-range-source-cursors*'),('fn2-b-read-rows','profile')),'*fn2-b-seal-source-cursors*'))
+  self.assertEqual(canon(lr.parse(rw.form(s,'(defun fn2-b-run-cursor-rows ?*body)')).forms[0].items[-1]),('+','1',('fn2-b-event-archive-cursor','profile')))
   scan=(B/'run-physical-readiness.lisp').read_text()
-  self.assertTrue(lr.match('(equal (fn2-run-load-geometry-cursors 0 fn2-run-load-geometry) (+ (fn2-id-decides-rows fn2-id-decides) (* (+ 1 *fn2-b-range-source-cursors*) (fn2-reads-rows fn2-reads)) *fn2-b-seal-source-cursors* 1))',lr.parse(scan).forms))
+  self.assertTrue(lr.match('(equal (fn2-run-load-geometry-cursors 0 fn2-run-load-geometry) (fn2-b-run-cursor-rows-from-counts (fn2-id-decides-rows fn2-id-decides) (fn2-reads-rows fn2-reads)))',lr.parse(scan).forms))
  def test_actual_refusal_and_serial_boundaries(self):
   s=(B/'run-physical-readiness.lisp').read_text()
   self.assertIn('(mv :row fn2-run-load-readiness)',s);self.assertIn('*fn2-run-load-readiness-phase-refused*',s)

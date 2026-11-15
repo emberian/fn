@@ -290,3 +290,14 @@ prefix, concrete effect tree and extraction replay. Twelve existing loader/
 source-boundary controls pass. An unrun actual primitive fixture covers bound
 state and owner/duplicate refusal. Frozen bound issue/step/resource files and
 the separate minimal root fixture closure were not edited by this change.
+
+The actual initialized-loader geometry check still used the pre-archive K+1
+formula after the initializer gained the appended archive row. That would
+refuse every supported profile. Both profile and runtime now share the named
+transaction/read count bridge, with a profile equality theorem; the checkpoint
+source index stays fixed and one archive row remains appended. The checked
+replay installs this whole class on cold9f without replacing other B forms and
+moves the unchanged actual read-count providers before their first use. Four
+replay and four geometry controls plus six readiness controls pass. The existing
+actual-initializer COMPLETE/partial/wrong-row/foreign-owner/serial fixture remains
+runnable and unexecuted; it now reaches the consistent runtime equality.
