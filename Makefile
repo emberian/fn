@@ -375,6 +375,15 @@ ACL2_BOOKS = \
   tests/ctl-hash-interleave-unit \
   books/cns-source-core \
   tests/cns-stream-fetch-unit \
+  books/cns-read-work-bounds \
+  tests/cns-article-slice-unit \
+  tests/cns-draining-credit-unit \
+  tests/cns-draining-teeth-unit \
+  tests/cns-fetch-cancel-unit \
+  tests/cns-range-continuation-unit \
+  tests/cns-tall-runs-support \
+  tests/cns-tall-runs-unit \
+  tests/cns-terminal-accounting-unit \
   tests/checkpoint-member-interface-unit \
   tests/cns-source-capture-unit \
   tests/cns-source-retention-unit \

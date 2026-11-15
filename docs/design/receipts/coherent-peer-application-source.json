@@ -1,0 +1,147 @@
+{
+  "base_narrow_source": "f3a8f56681105a835c79d5c45d3d120d32941d32",
+  "peer_source": "59d7afb502135442317cb1a61ba6144dc2bafeb3",
+  "peer_files": [
+    {
+      "path": "books/cns-kind.lisp",
+      "sha256": "9d18e41af71fb313f452499ef0ec43395aa34028d46647cc9c23073046de9d9f",
+      "candidate_sha256": "e89cdb8f190e0b4000e207bbde5c81b55498f2c861af8cc537f7e6104e8afaac",
+      "candidate_equals_base": true
+    },
+    {
+      "path": "books/cns-read-work-bounds.lisp",
+      "sha256": "e1ab86cb377a7c2201142fba990f9ddff8ad4be6bf4902030d5c825d82b3ba7b",
+      "candidate_sha256": null,
+      "candidate_equals_base": true
+    },
+    {
+      "path": "books/cns.lisp",
+      "sha256": "d4796609be168711b438547bb466f9b72a9fa68fd7ad71665ef3c5e428d9a753",
+      "candidate_sha256": "1dd89a25d6ffaa5bb9144b579a723b5ea01bbcbaf639c0e6f40fee610c322420",
+      "candidate_equals_base": true
+    },
+    {
+      "path": "books/layout.lisp",
+      "sha256": "2bc995f6bb70ec17862c5b535a4734e90a7a5dfd6312ebdee7d06877b0fbb4d8",
+      "candidate_sha256": "2060684efd33bb23e0c426275edc9a3dc6c47b50ceda0b80207c84ec7fd89d48",
+      "candidate_equals_base": true
+    },
+    {
+      "path": "books/runs-assemble.lisp",
+      "sha256": "6d280a3c7168661745e44e5bb7781190d2610d94b0a32f895acbd3b97e388a63",
+      "candidate_sha256": "2c05dd758c603053ad4536fac837bb4f192a012430ad3fac17ec4d57139f385f",
+      "candidate_equals_base": true
+    },
+    {
+      "path": "tests/cns-article-slice-unit.lisp",
+      "sha256": "58fb26dc09db67722a76c17bd24a2d13a49d9f47cf65dc073bc06a32c86a73f5",
+      "candidate_sha256": null,
+      "candidate_equals_base": true
+    },
+    {
+      "path": "tests/cns-draining-count-counterexample.lisp",
+      "sha256": "83100770c7db7205d8660c6d4911f483eb97dfb1264b240424433f364e82e92e",
+      "candidate_sha256": "48043be834df0cdf2dde2917cc85c6eb52be398a3b274edb7e1b903621da6f00",
+      "candidate_equals_base": true
+    },
+    {
+      "path": "tests/cns-draining-credit-unit.lisp",
+      "sha256": "db48194dff5b9f16a75d668fa13940e11444c8ad045d1a60df98c8375efac17e",
+      "candidate_sha256": null,
+      "candidate_equals_base": true
+    },
+    {
+      "path": "tests/cns-draining-teeth-unit.lisp",
+      "sha256": "d18a80ab7ede8e332032cc15a281dce2e357d2f86e3bff4f43d1501aafaa0ebf",
+      "candidate_sha256": null,
+      "candidate_equals_base": true
+    },
+    {
+      "path": "tests/cns-fetch-cancel-unit.lisp",
+      "sha256": "0665f9bb4357930098aea4a88061591a62f2eb25a6bcaf9f2436fcb31bc2bd01",
+      "candidate_sha256": null,
+      "candidate_equals_base": true
+    },
+    {
+      "path": "tests/cns-range-continuation-unit.lisp",
+      "sha256": "1cc5b1bdc17a454bf353f5787414899a30cc24748dd0d679e646508f9528c362",
+      "candidate_sha256": null,
+      "candidate_equals_base": true
+    },
+    {
+      "path": "tests/cns-tall-runs-support.lisp",
+      "sha256": "3fb48f1e2e7f611ca28e401d79128cbba866c91ddff057aed04b26750815e623",
+      "candidate_sha256": null,
+      "candidate_equals_base": true
+    },
+    {
+      "path": "tests/cns-tall-runs-unit.lisp",
+      "sha256": "2ea5e5070605d1d6a4faa767c2681a579d56c6ccb1a81ffb1ee79b4ee3f99b70",
+      "candidate_sha256": null,
+      "candidate_equals_base": true
+    },
+    {
+      "path": "tests/cns-terminal-accounting-unit.lisp",
+      "sha256": "87fdfa505d19fad989715b72d5503a547020f651df3965584e83ea3362d139be",
+      "candidate_sha256": null,
+      "candidate_equals_base": true
+    },
+    {
+      "path": "tests/test_cns_phase_source.py",
+      "sha256": "195f5aa7ba5d33e0bbbb9173e65d51e6b2a920715b840acee07f1b996b0e7006",
+      "candidate_sha256": null,
+      "candidate_equals_base": true
+    },
+    {
+      "path": "tests/test_cns_read_work_source.py",
+      "sha256": "74d95fd63502bf71902499edbfa42b5dadf484bc4758a8fda3d1564133c5a84c",
+      "candidate_sha256": null,
+      "candidate_equals_base": true
+    },
+    {
+      "path": "docs/design/CNS-RANGE-CONTINUATION.md",
+      "sha256": "394062ef315c5dadb92005c468b7e20cafbaf906fbc475348498a8a461cb69b1",
+      "candidate_sha256": null,
+      "candidate_equals_base": true
+    }
+  ],
+  "qualified_schema_source": "add41531381538eaa4e52c27df7c22932ab7c3c3",
+  "all_schema39_raw_and_keys_match": true,
+  "held_columns379_included": false,
+  "columns_sha256": "64ace6b1a1caa3ee85262c2848f2c947220a03dcabbfea31481de6fc67ed27ed",
+  "page_source_sha256": "3c05d886f028eeb7ed874de5a2d6463c64f6853ac6499de30a4f7e91bde0df16",
+  "consumer_roots": [
+    "tests/cns-fetch-cancel-unit",
+    "tests/cns-terminal-accounting-unit",
+    "tests/cns-article-slice-unit"
+  ],
+  "actor_union_count": 246,
+  "native_loader_roots": [
+    "books/node-profile",
+    "books/native-b3-evidence"
+  ],
+  "native_union_count": 252,
+  "native_extra_books": [
+    "books/assurance-completion",
+    "books/codec-stack",
+    "books/compress-transport-state",
+    "books/device-boundary",
+    "books/host-boundary",
+    "books/host-codec",
+    "books/host-loan",
+    "books/host-ops",
+    "books/host-result",
+    "books/native-b3-correspondence",
+    "books/native-b3-evidence",
+    "books/node-profile",
+    "books/square-evidence",
+    "books/tls-record",
+    "books/tls-record-policy",
+    "books/tls-record-state",
+    "books/tls-stack",
+    "books/tls-transport-reservation"
+  ],
+  "native_extra_count": 18,
+  "status": "Source composition; new peer ACL2 assertions and actual native run UNRUN",
+  "cache_note": "Named constant extraction preserves literal4096/40 but changeslayout/runs-assemble source and transitivekeys. Exact39qualifiedschema remainsmatching; do not reuse oldlayout descendant keys ascurrent."
+}
