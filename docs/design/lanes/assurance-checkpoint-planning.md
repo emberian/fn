@@ -110,3 +110,19 @@ member; cancellation must distinguish unissued credit from possible physical
 IO. Bootstrap and sealer source producers need the same ownership contract
 before enabling this path. A count-only gate at stage, or a fingerprint match,
 cannot substitute for those physical reservations.
+
+There is a separate drain obligation before protecting working27. The actual
+ordinary commit-start obtains four scribe-class windows before physical extent
+reservation, COLLECT and PROPOSED. A STAGED C transaction therefore has no
+journal bundle yet. Protecting only working27 can strand that transaction while
+C closes. A protected working credit must be paired with an actual ordinary
+B drain bundle, accounting for every concurrently live commit row, or reserve
+that whole drain demand before stage. D0's declarative recovery reserve does
+not provide ordinary B windows. The existing maintenance future journal4 is
+role6-specific and cannot be counted again for ordinary drain.
+
+Upload payload extents are reserved and written before successor-stage.
+Consequently a stage-only physical headroom check is also too late: stable
+maintenance physical credits must be unavailable to generic foreground extent
+allocation from the start. Query admission is a third independent dimension:
+its page/sector bundle consumes working pool classes, not physical extents.
