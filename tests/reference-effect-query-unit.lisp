@@ -5,6 +5,26 @@
 (include-book "../books/reference-effect-query")
 (include-book "cns-query-support")
 
+; Read the antecedent from the generated LIVE obligation, including both
+; actual callable guards. The display row is not a substitute hypothesis.
+(make-event
+ (let* ((world (w state))
+        (row (fn2-decl-row '(:square fn2-identity-decide-ref-effect-whole-result) world))
+        (formula (fn2-decl-statement-body (fn2-decl-get :statement row) world))
+        (hyp (cond ((and (consp formula) (eq (car formula) 'implies)
+                         (equal (len formula) 3)) (cadr formula))
+                   ((and (consp formula) (eq (car formula) 'if)
+                         (equal (len formula) 4) (equal (cadddr formula) ''t))
+                    (cadr formula))
+                   (t nil))))
+   (if (not hyp)
+       (er soft 'fn2-ref-query-live-h "Actual whole-result implication is missing or changed.")
+     (value `(defun fn2-ref-query-live-whole-h (tx budget lists fn2-core fn2-ref-core)
+               (declare (ignorable tx budget)
+                        (xargs :stobjs (fn2-core fn2-ref-core) :verify-guards nil))
+               ,(fn2-lower-source-form
+                  (fn2-lower-substitute hyp '((fn2-effect-fifo . lists)) world)))))))
+
 (defun fn2-ref-query-paired-domainp (lists fn2-core fn2-ref-core)
   (declare (xargs :stobjs (fn2-core fn2-ref-core) :verify-guards nil))
   (and (fn2-corep fn2-core) (fn2-ref-corep fn2-ref-core)
@@ -14,7 +34,7 @@
 (defun fn2-ref-query-paired-drive (fuel tx lists fn2-core fn2-ref-core)
   (declare (xargs :stobjs (fn2-core fn2-ref-core) :verify-guards nil
                   :measure (nfix fuel)))
-  (b* ((whole-h (fn2-ref-query-paired-domainp lists fn2-core fn2-ref-core))
+  (b* ((whole-h (fn2-ref-query-live-whole-h tx 4096 lists fn2-core fn2-ref-core))
        ((when (zp fuel)) (mv nil :fuel lists fn2-core fn2-ref-core))
        (before (fn2-test-core-snapshot fn2-core))
        ((mv code fn2-core) (fn2-identity-decide tx 4096 fn2-core))
@@ -76,7 +96,8 @@
        ((mv refused fn2-core) (fn2-identity-decide *fn2-none* 4096 fn2-core))
        ((mv rrefused fn2-ref-core refusal-lists)
         (fn2-identity-decide-ref-effect *fn2-none* 4096 fn2-ref-core lists))
-       (refusal (and (eq refused :bounds) (eq rrefused :bounds)
+       (refusal (and (fn2-ref-query-live-whole-h *fn2-none* 4096 lists fn2-core fn2-ref-core)
+                     (eq refused :bounds) (eq rrefused :bounds)
                      (equal lists refusal-lists)
                      (equal before-refusal (fn2-test-core-snapshot fn2-core))
                      (fn2-representation-relation fn2-core fn2-ref-core refusal-lists)))
