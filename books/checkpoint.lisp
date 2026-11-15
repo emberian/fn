@@ -247,7 +247,7 @@
 (fn2-fields-preserves fn2-checkpoint-decode
  (base slot gen off len okind oslot ogen fn2-fields fn2-pool) :position 1 :raw-rows t
  :hints (("Goal" :in-theory (e/d (fn2-checkpoint-decode)
-                                 (fn2-format-checkpoint-descriptor-decode)))))
+                                 (fn2-format-checkpoint-descriptor-decode fn2-fields-rows fn2-fields-value)))))
 
 (defun fn2-checkpoint-copy-expected (i dst hash fn2-digests fn2-checkpoint-bytes)
  (declare (xargs :stobjs (fn2-digests fn2-checkpoint-bytes)
