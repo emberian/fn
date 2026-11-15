@@ -8,7 +8,10 @@
 ; path reaches a function that is not guard-verified.
 (in-package "ACL2")
 (include-book "overlay")
+(include-book "columns-call-guards")
 (fn2-book-layer :c)
+; Exact existing lower-bound probe budget, shared with source work bounds.
+(defconst *fn2-ov-search-steps* 40)
 
 ; Dispatch arms over schema rows (NAME . ROW): one case arm per schema id.
 ; Level 0 selects the entry layout, a positive level the index layout.
@@ -278,12 +281,13 @@
 
 ; A shape lemma (recognizer, invariant, rows) for each named output, proved
 ; with the recognizers and the named rows accessors folded.
-(defmacro fn2-ra-shape (name call guard outputs disables)
+(defmacro fn2-ra-shape (name call guard outputs disables &optional (hints 'nil hints-p))
  `(defthm ,name
    (implies ,guard (and ,@(fn2-fc-shape-claims outputs call)))
-   :hints (("Goal" :in-theory (disable fn2-run-writersp fn2-run-writers-wfp fn2-run-restartsp fn2-run-restarts-wfp
-                                       fn2-run-cursorsp fn2-run-cursors-wfp fn2-run-pathsp fn2-run-paths-wfp
-                                       fn2-fieldsp fn2-fields-wfp fn2-poolp fn2-pool-wfp ,@disables)))))
+   :hints ,(if hints-p hints
+              `(("Goal" :in-theory (disable fn2-run-writersp fn2-run-writers-wfp fn2-run-restartsp fn2-run-restarts-wfp
+                                           fn2-run-cursorsp fn2-run-cursors-wfp fn2-run-pathsp fn2-run-paths-wfp
+                                           fn2-fieldsp fn2-fields-wfp fn2-poolp fn2-pool-wfp ,@disables))))))
 
 ; Shape lemmas, by cases over the arms, from each codec's own lemmas.
 (defmacro fn2-ra-shape-events ()
@@ -344,7 +348,9 @@
    (defun fn2-run-add-ready (w sid ebase fn2-run-writers fn2-run-restarts fn2-fields fn2-pool)
     (declare (xargs :stobjs (fn2-run-writers fn2-run-restarts fn2-fields fn2-pool)
      :guard (and (fn2-run-writers-wfp fn2-run-writers) (fn2-run-restarts-wfp fn2-run-restarts)
-                 (fn2-fields-wfp fn2-fields) (fn2-pool-wfp fn2-pool))))
+                 (fn2-fields-wfp fn2-fields) (fn2-pool-wfp fn2-pool))
+     :guard-hints ((fn2-columns-call-guard-hint 'fn2-run-add-ready
+                    '((:definition fn2-run-layout-fields)) nil world))))
     (b* ((code (fn2-run-add-check w sid ebase fn2-run-writers fn2-run-restarts fn2-fields))
          ((unless (eq code :ok)) code)
          (lv (fn2-run-writers-level w fn2-run-writers))
@@ -387,11 +393,12 @@
             (mv code end fn2-fields)))
          ((mv code fn2-run-writers) (fn2-run-add-commit w code end fn2-run-writers)))
      (mv code fn2-run-writers fn2-run-restarts fn2-fields fn2-pool)))
-   (fn2-fc-shape fn2-run-add-write-shape (fn2-run-add-write w sid ebase fn2-run-writers fn2-run-restarts fn2-fields fn2-pool)
+   (fn2-ra-shape fn2-run-add-write-shape (fn2-run-add-write w sid ebase fn2-run-writers fn2-run-restarts fn2-fields fn2-pool)
     (and (fn2-run-writersp fn2-run-writers) (fn2-run-restartsp fn2-run-restarts) (fn2-fieldsp fn2-fields) (fn2-poolp fn2-pool)
          (fn2-run-writers-wfp fn2-run-writers) (fn2-run-restarts-wfp fn2-run-restarts)
          (fn2-fields-wfp fn2-fields) (fn2-pool-wfp fn2-pool))
-    ((fn2-run-writers 1) (fn2-run-restarts 2) (fn2-fields 3) (fn2-pool 4)))
+    ((fn2-run-writers 1) (fn2-run-restarts 2) (fn2-fields 3) (fn2-pool 4)) nil
+    ((fn2-columns-call-guard-hint 'fn2-run-add-write nil '(fn2-run-add-write) world)))
    (in-theory (disable fn2-run-add-ready fn2-run-add-write))
    ; Append one entry (writer level 0) or index entry (level >= 1) of schema
    ; SID to an open writer, in strict key order: :ok, :full (no room; nothing
@@ -505,7 +512,8 @@
     (declare (xargs :stobjs (fn2-run-builds fn2-run-writers fn2-run-restarts fn2-fields fn2-pool fn2-digests)
      :guard (and (fn2-run-buildp b fn2-run-builds fn2-run-writers) (fn2-run-restarts-wfp fn2-run-restarts)
                  (fn2-fields-wfp fn2-fields) (fn2-pool-wfp fn2-pool) (fn2-digests-wfp fn2-digests) (natp l))
-     :guard-hints (("Goal" :in-theory (disable fn2-run-writers-rows fn2-fields-rows fn2-run-promote-check)))))
+     :guard-hints ((fn2-columns-call-guard-hint 'fn2-run-build-promote
+                    '(fn2-run-promote-check (:definition fn2-run-layout-keys)) nil world))))
     (b* ((sid (fn2-run-builds-schema b fn2-run-builds))
          (w (+ (nfix (fn2-run-builds-wbase b fn2-run-builds)) (nfix l)))
          (ib (+ (nfix (fn2-run-builds-fields b fn2-run-builds)) *fn2-run-build-index*))
@@ -701,7 +709,8 @@
    (fn2-ra-shape fn2-run-step-header-shape
     (fn2-run-step-header c level slot gen lo hi idx off unit counter rb ok os og fn2-run-cursors fn2-run-paths fn2-fields fn2-pool)
     (and (fn2-run-cursorsp fn2-run-cursors) (fn2-run-cursors-wfp fn2-run-cursors) (fn2-run-pathsp fn2-run-paths) (fn2-run-paths-wfp fn2-run-paths) (fn2-fieldsp fn2-fields) (fn2-fields-wfp fn2-fields) (fn2-run-readerp rb fn2-fields))
-    ((fn2-run-cursors 1) (fn2-run-paths 2) (fn2-fields 3)) (fn2-run-cursors-rows fn2-run-paths-rows fn2-fields-rows))
+    ((fn2-run-cursors 1) (fn2-run-paths 2) (fn2-fields 3)) (fn2-run-cursors-rows fn2-run-paths-rows fn2-fields-rows
+     fn2-run-layout-page-kind fn2-run-header-value fn2-run-readerp fn2-run-cursors-schema))
    (fn2-ra-shape fn2-run-step-seek-shape
     (fn2-run-step-seek c sid left level budget lo hi idx off qbase slot gen unit counter rb ok os og qk qs qg fn2-run-cursors fn2-fields fn2-pool)
     (and (fn2-run-cursorsp fn2-run-cursors) (fn2-run-cursors-wfp fn2-run-cursors) (fn2-run-pathsp fn2-run-paths) (fn2-run-paths-wfp fn2-run-paths) (fn2-fieldsp fn2-fields) (fn2-fields-wfp fn2-fields) (fn2-run-readerp rb fn2-fields))
@@ -709,7 +718,8 @@
    (fn2-ra-shape fn2-run-step-child-shape
     (fn2-run-step-child c sid childp level nkeys slot gen lo hi idx off unit counter rb ok os og fn2-run-cursors fn2-run-paths fn2-run-cache fn2-fields fn2-pool)
     (and (fn2-run-cursorsp fn2-run-cursors) (fn2-run-cursors-wfp fn2-run-cursors) (fn2-run-pathsp fn2-run-paths) (fn2-run-paths-wfp fn2-run-paths) (fn2-fieldsp fn2-fields) (fn2-fields-wfp fn2-fields) (fn2-run-readerp rb fn2-fields))
-    ((fn2-run-cursors 1) (fn2-run-paths 2) (fn2-fields 3)) (fn2-run-cursors-rows fn2-run-paths-rows fn2-fields-rows))
+    ((fn2-run-cursors 1) (fn2-run-paths 2) (fn2-fields 3)) (fn2-run-cursors-rows fn2-run-paths-rows fn2-fields-rows)
+    ((fn2-columns-call-guard-hint 'fn2-run-step-child '(fn2-run-cursors-rows fn2-run-paths-rows fn2-fields-rows fn2-run-cache-lookup fn2-run-readerp) '(fn2-run-step-child) world)))
    (fn2-ra-shape fn2-run-step-deliver-shape
     (fn2-run-step-deliver c sid idx off slot gen unit counter rb ok os og fn2-run-cursors fn2-run-paths fn2-fields fn2-pool)
     (and (fn2-run-cursorsp fn2-run-cursors) (fn2-run-cursors-wfp fn2-run-cursors) (fn2-run-pathsp fn2-run-paths) (fn2-run-paths-wfp fn2-run-paths) (fn2-fieldsp fn2-fields) (fn2-fields-wfp fn2-fields) (fn2-run-readerp rb fn2-fields))
@@ -717,7 +727,8 @@
    (fn2-ra-shape fn2-run-step-up-shape
     (fn2-run-step-up c level top rb ok os og fn2-run-cursors fn2-run-paths fn2-run-cache fn2-fields fn2-pool)
     (and (fn2-run-cursorsp fn2-run-cursors) (fn2-run-cursors-wfp fn2-run-cursors) (fn2-run-pathsp fn2-run-paths) (fn2-run-paths-wfp fn2-run-paths) (fn2-fieldsp fn2-fields) (fn2-fields-wfp fn2-fields) (fn2-run-readerp rb fn2-fields))
-    ((fn2-run-cursors 1) (fn2-fields 2)) (fn2-run-cursors-rows fn2-run-paths-rows fn2-fields-rows))
+    ((fn2-run-cursors 1) (fn2-fields 2)) (fn2-run-cursors-rows fn2-run-paths-rows fn2-fields-rows)
+    ((fn2-columns-call-guard-hint 'fn2-run-step-up '(fn2-run-cursors-rows fn2-run-paths-rows fn2-fields-rows fn2-run-cache-lookup fn2-run-readerp) '(fn2-run-step-up) world)))
    (in-theory (disable fn2-run-step-header fn2-run-step-seek fn2-run-step-child fn2-run-step-deliver fn2-run-step-up))
    ;; Each phase reads the cursor row and checks it, then runs its helper;
    ;; the step dispatches on the phase.
@@ -904,7 +915,7 @@
     (declare (xargs :stobjs (fn2-overlays fn2-overlay-index fn2-fields fn2-pool) :guard (fn2-ra-ov-guard)))
     (b* (((unless (and (natp o) (< o (fn2-overlays-rows fn2-overlays)))) (mv :bounds 0 :end fn2-fields))
          ((mv code pos fn2-fields)
-          (fn2-ov-search 40 0 (fn2-overlays-count o fn2-overlays) o eb qbase qk qs qg fn2-overlays fn2-overlay-index fn2-fields fn2-pool))
+          (fn2-ov-search *fn2-ov-search-steps* 0 (fn2-overlays-count o fn2-overlays) o eb qbase qk qs qg fn2-overlays fn2-overlay-index fn2-fields fn2-pool))
          ((unless (eq code :ok)) (mv code pos :end fn2-fields))
          ((mv code order fn2-fields) (fn2-ov-order o pos eb qbase qk qs qg fn2-overlays fn2-overlay-index fn2-fields fn2-pool)))
      (mv code pos order fn2-fields)))
