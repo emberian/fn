@@ -72,6 +72,6 @@
          ("-CHECKPOINT-CONSTRUCTION-ROWS" fn2-checkpoint-construction-rows 5 :frame fn2-checkpoint-construction)))
 
 (defcost fn2-checkpoint-projection-step-op :child fn2-checkpoint-projection-owned-step
- :answers (:more :projected :source :capacity :cursor :totals :row :fifo :state :ownership)
+ :answers (:more :projected :source :capacity :cursor :totals :row :fifo :state :ownership :identity)
  :tables (fn2-core-checkpoint-projection fn2-core-checkpoint-selected-source fn2-core-extents fn2-core-alloc-edges fn2-core-checkpoint-construction)
  :doc "One exact selected map/FIFO step with source-derived physical ownership provenance.")

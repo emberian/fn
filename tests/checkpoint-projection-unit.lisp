@@ -146,12 +146,24 @@
    (= (fn2-extents-release-pending e fn2-extents) 0)
    (fn2-cpu-rows-p (+ 1 (nfix e)) fn2-extents fn2-checkpoint-restore-map))))
 
+; Hypothesis removal: the retained decoded map is corrupted after intake.
+; This is an initial-base identity control, not authenticated corruption.
+(defun fn2-cpu-duplicate-map (mode fn2-core)
+ (declare (xargs :stobjs fn2-core :verify-guards nil))
+ (if (not (eq mode :duplicate-identity)) fn2-core
+  (stobj-let ((fn2-checkpoint-restore-map (fn2-core-checkpoint-restore-map fn2-core)))
+   (fn2-checkpoint-restore-map)
+   (fn2-checkpoint-restore-map-put 4
+    (epoch (fn2-checkpoint-restore-map-epoch 3 fn2-checkpoint-restore-map))
+    (allocation (fn2-checkpoint-restore-map-allocation 3 fn2-checkpoint-restore-map)))
+   fn2-core)))
 (defun fn2-cpu-body (mode fn2-checkpoint-projection fn2-core)
  (declare (xargs :stobjs (fn2-checkpoint-projection fn2-core) :verify-guards nil))
  (b* ((fn2-core (fn2-core-init (put-assoc-equal :extent-slots 6 *fn2-profile-tiny*) fn2-core))
       (fn2-checkpoint-projection (fn2-checkpoint-projection-init 1 fn2-checkpoint-projection))
       ((mv selected fn2-core) (fn2-cpu-select fn2-core))
-      ((mv decoded fn2-core) (fn2-cpu-map fn2-core)))
+      ((mv decoded fn2-core) (fn2-cpu-map fn2-core))
+      (fn2-core (fn2-cpu-duplicate-map mode fn2-core)))
  (stobj-let ((fn2-checkpoint-selected-source (fn2-core-checkpoint-selected-source fn2-core)) (fn2-boot-config (fn2-core-boot-config fn2-core)) (fn2-checkpoints (fn2-core-checkpoints fn2-core)) (fn2-checkpoint-refs (fn2-core-checkpoint-refs fn2-core)) (fn2-checkpoint-bytes (fn2-core-checkpoint-bytes fn2-core)) (fn2-origin (fn2-core-origin fn2-core)) (fn2-checkpoint-recovery-evidence (fn2-core-checkpoint-recovery-evidence fn2-core)) (fn2-checkpoint-recovery-census (fn2-core-checkpoint-recovery-census fn2-core)) (fn2-checkpoint-restore-map (fn2-core-checkpoint-restore-map fn2-core)) (fn2-checkpoint-restore-map-control (fn2-core-checkpoint-restore-map-control fn2-core)) (fn2-checkpoint-restore-reach-control (fn2-core-checkpoint-restore-reach-control fn2-core)) (fn2-checkpoint-restore-reach (fn2-core-checkpoint-restore-reach fn2-core)) (fn2-ops (fn2-core-ops fn2-core)) (fn2-extents (fn2-core-extents fn2-core)) (fn2-alloc-edges (fn2-core-alloc-edges fn2-core)))
   (answer fn2-checkpoint-projection fn2-checkpoint-selected-source fn2-extents fn2-alloc-edges fn2-checkpoint-restore-map-control)
   (b* ( ; Synthetic selected-validation antecedent: the actual closure constructor
@@ -174,15 +186,24 @@
         (fn2-checkpoint-restore-map-control-set-reach-generation 0 (+ 1 (fn2-checkpoint-restore-map-control-reach-generation 0 fn2-checkpoint-restore-map-control)) fn2-checkpoint-restore-map-control)
         fn2-checkpoint-restore-map-control))
        ; Hypothesis-removal: an unknown occupied prepared slot is not cleared.
-       (fn2-alloc-edges (if (eq mode :collision)
+       (fn2-alloc-edges (if (eq mode :duplicate-identity)
+          (and (eq code :identity)
+               (= (fn2-checkpoint-projection-cursor 0 fn2-checkpoint-projection) 4)
+               (= (fn2-extents-state 4 fn2-extents) *fn2-extent-state-free*)
+               (= (fn2-alloc-identity-count fn2-extents) 4)
+               (fn2-alloc-identity-refines-p fn2-extents)
+               (= (fn2-alloc-freeze-phase fn2-extents) 4))
+         (if (eq mode :collision)
         (fn2-alloc-edges-put 10 (state *fn2-alloc-edge-state-live*)
          (kind *fn2-alloc-edge-kind-borrow*) (holder 777) (extent 2) (epoch 4) (counter 101))
         fn2-alloc-edges))
        ((mv code fn2-checkpoint-projection fn2-checkpoint-selected-source fn2-extents fn2-alloc-edges)
-        (fn2-cpu-drive 16 fn2-checkpoint-selected-source fn2-boot-config fn2-checkpoints fn2-checkpoint-refs fn2-checkpoint-bytes fn2-origin fn2-checkpoint-recovery-evidence fn2-checkpoint-recovery-census fn2-checkpoint-restore-map fn2-checkpoint-restore-map-control fn2-checkpoint-restore-reach-control fn2-checkpoint-projection fn2-extents fn2-ops fn2-alloc-edges))
+        ; Clear N buckets, visit at most N buckets per nonFREE row, then FIFO.
+        (fn2-cpu-drive (+ 16 (* 6 (+ 6 3))) fn2-checkpoint-selected-source fn2-boot-config fn2-checkpoints fn2-checkpoint-refs fn2-checkpoint-bytes fn2-origin fn2-checkpoint-recovery-evidence fn2-checkpoint-recovery-census fn2-checkpoint-restore-map fn2-checkpoint-restore-map-control fn2-checkpoint-restore-reach-control fn2-checkpoint-projection fn2-extents fn2-ops fn2-alloc-edges))
        (projected (and (eq code :projected)
         (fn2-checkpoint-projection-projected-p fn2-checkpoint-selected-source fn2-boot-config fn2-checkpoints fn2-checkpoint-refs fn2-checkpoint-bytes fn2-origin fn2-checkpoint-recovery-evidence fn2-checkpoint-recovery-census fn2-checkpoint-restore-map fn2-checkpoint-restore-map-control fn2-checkpoint-restore-reach-control fn2-checkpoint-projection fn2-ops fn2-extents)
         (fn2-cpu-rows-p 0 fn2-extents fn2-checkpoint-restore-map)
+        (fn2-alloc-identity-refines-p fn2-extents)
         (= (fn2-alloc-total-free fn2-extents) 1) (= (fn2-alloc-total-reserved fn2-extents) 2)
         (= (fn2-alloc-total-allocated fn2-extents) 1) (= (fn2-alloc-total-retired fn2-extents) 2)
         (= (fn2-alloc-quarantined fn2-extents) 2) (= (fn2-alloc-retired-tail fn2-extents) 1)
@@ -196,8 +217,10 @@
         (fn2-checkpoint-projection-protected-p fn2-checkpoint-selected-source fn2-boot-config fn2-checkpoints fn2-checkpoint-refs fn2-checkpoint-bytes fn2-origin fn2-checkpoint-recovery-evidence fn2-checkpoint-recovery-census fn2-checkpoint-restore-map fn2-checkpoint-restore-map-control fn2-checkpoint-restore-reach-control fn2-checkpoint-restore-reach fn2-ops fn2-checkpoint-projection fn2-extents fn2-alloc-edges)
         (fn2-alloc-ownership-invp fn2-extents fn2-alloc-edges)))
        ; Hypothesis-removal control only: synthetically reopen AFTER recording
-       ; actual terminal/coverage. This is not a persisted epoch/open witness.
+       ; actual terminal/coverage. Remove BOTH cold exclusion mechanisms; this
+       ; is not a persisted epoch/open or index-finalization witness.
        (fn2-extents (if mode fn2-extents (update-fn2-alloc-freeze-phase 0 fn2-extents)))
+       (fn2-extents (if mode fn2-extents (update-fn2-alloc-identity-active 0 fn2-extents)))
        ((mv epoch fn2-extents) (if mode (mv :not-run fn2-extents) (fn2-alloc-begin-epoch 5 fn2-extents)))
        ((mv old fn2-extents) (if mode (mv :not-run fn2-extents) (fn2-alloc-cancel-reservation 4 4 103 fn2-extents)))
        ((mv new & e ep allocation fn2-extents) (if mode (mv :not-run 0 0 0 0 fn2-extents) (fn2-alloc-reserve fn2-extents)))
@@ -212,7 +235,7 @@
                (= (fn2-alloc-freeze-phase fn2-extents) 4))
          (and (eq code :source) (= cursor (fn2-checkpoint-projection-cursor 0 fn2-checkpoint-projection))
               (= phase (fn2-checkpoint-projection-phase 0 fn2-checkpoint-projection))
-              (= (fn2-alloc-freeze-phase fn2-extents) 4) (= (fn2-alloc-total-free fn2-extents) 0)))
+              (= (fn2-alloc-freeze-phase fn2-extents) 4) (= (fn2-alloc-total-free fn2-extents) 0))))
          (and covered (eq epoch :ok) (eq old :recovery-candidate) (eq new :ok) (eq cancel :ok)
               (= e 5) (= ep 5) (= allocation 0)
               (= (fn2-extents-state 4 fn2-extents) *fn2-extent-state-reserved*)
@@ -234,3 +257,5 @@
 (assert-event (fn2-cpu-run :generation))
 (assert-event (fn2-cpu-run :descriptor))
 (assert-event (fn2-cpu-run :collision))
+
+(assert-event (fn2-cpu-run :duplicate-identity))

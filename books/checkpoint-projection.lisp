@@ -4,6 +4,7 @@
 (in-package "ACL2")
 (include-book "std/util/bstar" :dir :system)
 (include-book "checkpoint-projection-state")
+(include-book "alloc-identity-index")
 (fn2-book-layer :b)
 (defun fn2-checkpoint-projection-begin (fn2-checkpoint-selected-source fn2-boot-config fn2-checkpoints fn2-checkpoint-refs fn2-checkpoint-bytes fn2-origin fn2-checkpoint-recovery-evidence fn2-checkpoint-recovery-census fn2-checkpoint-restore-map fn2-checkpoint-restore-map-control fn2-checkpoint-restore-reach-control fn2-checkpoint-projection fn2-extents fn2-ops fn2-alloc-edges)
  (declare (xargs :stobjs (fn2-checkpoint-selected-source fn2-boot-config fn2-checkpoints fn2-checkpoint-refs fn2-checkpoint-bytes fn2-origin fn2-checkpoint-recovery-evidence fn2-checkpoint-recovery-census fn2-checkpoint-restore-map fn2-checkpoint-restore-map-control fn2-checkpoint-restore-reach-control fn2-checkpoint-projection fn2-extents fn2-ops fn2-alloc-edges) :guard (and (fn2-checkpoint-selected-source-wfp fn2-checkpoint-selected-source) (fn2-boot-config-wfp fn2-boot-config) (fn2-checkpoints-wfp fn2-checkpoints) (fn2-checkpoint-refs-wfp fn2-checkpoint-refs) (fn2-checkpoint-bytes-wfp fn2-checkpoint-bytes) (fn2-origin-wfp fn2-origin) (fn2-checkpoint-recovery-evidence-wfp fn2-checkpoint-recovery-evidence) (fn2-checkpoint-recovery-census-wfp fn2-checkpoint-recovery-census) (fn2-checkpoint-restore-map-wfp fn2-checkpoint-restore-map) (fn2-checkpoint-restore-map-control-wfp fn2-checkpoint-restore-map-control) (fn2-checkpoint-restore-reach-control-wfp fn2-checkpoint-restore-reach-control) (fn2-checkpoint-projection-wfp fn2-checkpoint-projection) (fn2-extents-wfp fn2-extents) (fn2-alloc-edges-wfp fn2-alloc-edges) (fn2-ops-wfp fn2-ops))))
@@ -24,6 +25,14 @@
                      (= (fn2-extents-rows fn2-extents) (fn2-checkpoint-restore-map-rows fn2-checkpoint-restore-map))
                      (<= (+ 6 (* 2 (fn2-extents-rows fn2-extents))) (fn2-alloc-edges-rows fn2-alloc-edges))))
        (mv :capacity fn2-checkpoint-projection fn2-checkpoint-selected-source fn2-extents))
+      ((mv identity-code fn2-extents)
+       (fn2-alloc-identity-begin
+        (fn2-checkpoint-selected-source-owner-kind 0 fn2-checkpoint-selected-source)
+        (fn2-checkpoint-selected-source-owner-slot 0 fn2-checkpoint-selected-source)
+        (fn2-checkpoint-selected-source-owner-gen 0 fn2-checkpoint-selected-source)
+        (fn2-checkpoint-selected-source-generation 0 fn2-checkpoint-selected-source) fn2-extents))
+      ((unless (eq identity-code :more))
+       (mv :identity fn2-checkpoint-projection fn2-checkpoint-selected-source fn2-extents))
       ; Enter phase4 BEFORE touching any row/metadata. Current process exclusion
       ; comes from actual selected boot provenance; the actual startup gate carries empty owned edges.
       (fn2-extents (update-fn2-alloc-freeze-phase 4 fn2-extents))
@@ -79,14 +88,44 @@
  (declare (xargs :stobjs fn2-checkpoint-projection :guard (fn2-checkpoint-projection-wfp fn2-checkpoint-projection)))
  (if (< 0 (fn2-checkpoint-projection-rows fn2-checkpoint-projection))
   (fn2-checkpoint-projection-put 0 (phase *fn2-checkpoint-projection-phase-uncertain*)) fn2-checkpoint-projection))
+; At most one index bucket is visited in a turn. A READY receipt is consumed
+; only on the following call, after the complete selected source is rechecked.
+(defun fn2-checkpoint-projection-identity-step (kind owner ogen source e state epoch allocation fn2-extents)
+ (declare (xargs :stobjs fn2-extents :guard (fn2-extents-wfp fn2-extents)))
+ (cond
+  ((fn2-alloc-identity-insert-ready-p kind owner ogen source e state epoch allocation fn2-extents)
+   (mv :ready fn2-extents))
+  ((= (fn2-alloc-identity-phase fn2-extents) *fn2-alloc-identity-phase-idle*)
+   (fn2-alloc-identity-prepare-insert kind owner ogen source e state epoch allocation fn2-extents))
+  ((and (fn2-alloc-identity-pending-current-p kind owner ogen source fn2-extents)
+        (= (fn2-alloc-identity-phase fn2-extents) *fn2-alloc-identity-phase-probe*)
+        (= (fn2-alloc-identity-op fn2-extents) *fn2-alloc-identity-op-insert*)
+        (equal e (fn2-alloc-identity-extent fn2-extents))
+        (equal state (fn2-alloc-identity-new-state fn2-extents))
+        (equal epoch (fn2-alloc-identity-new-epoch fn2-extents))
+        (equal allocation (fn2-alloc-identity-new-counter fn2-extents)))
+   (mv-let (code fn2-extents) (fn2-alloc-identity-step kind owner ogen source fn2-extents)
+    (mv (if (eq code :ready) :more code) fn2-extents)))
+  (t (mv :changed fn2-extents))))
+
 (defun fn2-checkpoint-projection-step (fn2-checkpoint-selected-source fn2-boot-config fn2-checkpoints fn2-checkpoint-refs fn2-checkpoint-bytes fn2-origin fn2-checkpoint-recovery-evidence fn2-checkpoint-recovery-census fn2-checkpoint-restore-map fn2-checkpoint-restore-map-control fn2-checkpoint-restore-reach-control fn2-checkpoint-projection fn2-extents fn2-ops fn2-alloc-edges)
  (declare (xargs :stobjs (fn2-checkpoint-selected-source fn2-boot-config fn2-checkpoints fn2-checkpoint-refs fn2-checkpoint-bytes fn2-origin fn2-checkpoint-recovery-evidence fn2-checkpoint-recovery-census fn2-checkpoint-restore-map fn2-checkpoint-restore-map-control fn2-checkpoint-restore-reach-control fn2-checkpoint-projection fn2-extents fn2-ops fn2-alloc-edges) :guard (and (fn2-checkpoint-selected-source-wfp fn2-checkpoint-selected-source) (fn2-boot-config-wfp fn2-boot-config) (fn2-checkpoints-wfp fn2-checkpoints) (fn2-checkpoint-refs-wfp fn2-checkpoint-refs) (fn2-checkpoint-bytes-wfp fn2-checkpoint-bytes) (fn2-origin-wfp fn2-origin) (fn2-checkpoint-recovery-evidence-wfp fn2-checkpoint-recovery-evidence) (fn2-checkpoint-recovery-census-wfp fn2-checkpoint-recovery-census) (fn2-checkpoint-restore-map-wfp fn2-checkpoint-restore-map) (fn2-checkpoint-restore-map-control-wfp fn2-checkpoint-restore-map-control) (fn2-checkpoint-restore-reach-control-wfp fn2-checkpoint-restore-reach-control) (fn2-checkpoint-projection-wfp fn2-checkpoint-projection) (fn2-extents-wfp fn2-extents) (fn2-alloc-edges-wfp fn2-alloc-edges) (fn2-ops-wfp fn2-ops))))
  (b* (((unless (fn2-checkpoint-projection-current-p fn2-checkpoint-selected-source fn2-boot-config fn2-checkpoints fn2-checkpoint-refs fn2-checkpoint-bytes fn2-origin fn2-checkpoint-recovery-evidence fn2-checkpoint-recovery-census fn2-checkpoint-restore-map fn2-checkpoint-restore-map-control fn2-checkpoint-restore-reach-control fn2-checkpoint-projection fn2-ops fn2-extents)) (fn2-checkpoint-projection-answer :source))
       ((unless (= (fn2-checkpoint-projection-edge-total 0 fn2-checkpoint-projection) (fn2-alloc-edges-rows fn2-alloc-edges)))
        (fn2-checkpoint-projection-answer :capacity))
       (phase (fn2-checkpoint-projection-phase 0 fn2-checkpoint-projection))
-      (total (fn2-checkpoint-projection-total 0 fn2-checkpoint-projection)))
+      (total (fn2-checkpoint-projection-total 0 fn2-checkpoint-projection))
+      (identity-kind (fn2-checkpoint-projection-owner-kind 0 fn2-checkpoint-projection))
+      (identity-owner (fn2-checkpoint-projection-owner-slot 0 fn2-checkpoint-projection))
+      (identity-gen (fn2-checkpoint-projection-owner-gen 0 fn2-checkpoint-projection))
+      (identity-source (fn2-checkpoint-projection-generation 0 fn2-checkpoint-projection))
+      ((unless (fn2-alloc-identity-owner-p identity-kind identity-owner identity-gen identity-source fn2-extents))
+       (fn2-checkpoint-projection-answer :identity)))
   (cond
+   ((= (fn2-alloc-identity-phase fn2-extents) *fn2-alloc-identity-phase-clearing*)
+    (mv-let (code fn2-extents)
+     (fn2-alloc-identity-clear-step identity-kind identity-owner identity-gen identity-source fn2-extents)
+     (fn2-checkpoint-projection-answer (if (member-eq code '(:more :active)) :more :identity))))
    ((= phase *fn2-checkpoint-projection-phase-rows*)
     (b* ((e (fn2-checkpoint-projection-cursor 0 fn2-checkpoint-projection))
          ((when (= e total))
@@ -114,6 +153,13 @@
                             (and (fn2-alloc-edge-slotp quarantine fn2-alloc-edges)
                                  (= (fn2-alloc-edges-state quarantine fn2-alloc-edges) *fn2-alloc-edge-state-free*)))))
           (let ((fn2-checkpoint-projection (fn2-checkpoint-projection-fail fn2-checkpoint-projection))) (fn2-checkpoint-projection-answer :row)))
+         ((mv identity-code fn2-extents)
+          (if (= state *fn2-extent-state-free*)
+           (mv (if (= (fn2-alloc-identity-phase fn2-extents) *fn2-alloc-identity-phase-idle*) :ready :changed) fn2-extents)
+           (fn2-checkpoint-projection-identity-step identity-kind identity-owner identity-gen identity-source
+            e state epoch allocation fn2-extents)))
+         ((unless (eq identity-code :ready))
+          (fn2-checkpoint-projection-answer (if (eq identity-code :more) :more :identity)))
          ; One decoded row. FREE linkage is canonically reconstructed in
          ; descending extent order, not falsely claimed to be serialized.
          (head (if (= state *fn2-extent-state-free*) e (fn2-checkpoint-projection-free-head 0 fn2-checkpoint-projection)))
@@ -125,6 +171,8 @@
           (next-retired next) (prev-retired *fn2-alloc-none*) (covered 0)
           (installed-root 0) (selectable-checkpoint 0) (recovery-base 0) (prepared-successor 0)
           (reservation (if (= state *fn2-extent-state-reserved*) 1 0)) (obligation 0) (promised-read 0) (borrow 0) (outstanding-io 0) (recovery-candidate 0)))
+         (fn2-extents (if (= state *fn2-extent-state-free*) fn2-extents
+          (fn2-alloc-identity-publish-existing-row identity-kind identity-owner identity-gen identity-source fn2-extents)))
          (fn2-checkpoint-projection (fn2-checkpoint-projection-put 0 (free-head head) (next-counter counter)
           (observed-maximum (max epoch (fn2-checkpoint-projection-observed-maximum 0 fn2-checkpoint-projection)))
           (free-count (+ (fn2-checkpoint-projection-free-count 0 fn2-checkpoint-projection) (if (= state *fn2-extent-state-free*) 1 0)))
@@ -214,7 +262,7 @@
 
 ; Actual child faces: no wrapper decision or caller-selected identity.
 (defcost fn2-checkpoint-projection-begin-op :child fn2-checkpoint-projection-begin
- :answers (:more :state :source :capacity)
+ :answers (:more :state :source :capacity :identity)
  :tables (fn2-core-checkpoint-projection fn2-core-checkpoint-selected-source fn2-core-extents)
  :doc "Enter exact selected cold projection and phase4; scalar code, no IO.")
 ; STEP cost face lives in checkpoint-owned-projection, which also restores ownership provenance.
