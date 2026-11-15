@@ -410,6 +410,7 @@ ACL2_BOOKS = \
   tests/checkpoint-member-interface-unit \
   tests/checkpoint-member-refutation-unit \
   tests/checkpoint-member-guarded-evidence-unit \
+  tests/checkpoint-installation-domain-unit \
   tests/layout-proof-scope-unit \
   tests/log-model-unit \
   tests/m2-cuts \

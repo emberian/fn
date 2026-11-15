@@ -161,3 +161,21 @@ one proved guarded row. The generic refutation status still labels candidate
 replacement links unverified: this leaf's checked domain relationship is not a
 global replacement-status upgrade, proof of the original, or proof of served
 caller reachability. No production member body, guard or theorem changed.
+
+## Actual emitted caller boundary (source candidate)
+
+`tests/checkpoint-installation-domain-unit.lisp` includes the real BT assembly,
+then checks the admitted and guard-verified `fn2-checkpoint-installation-step`,
+its exact core TYPE/WFP facts, and the actual logical packer call after lambda
+substitution. The call must retain every scalar binding and readonly/mutable
+core child projection from the installation branch. Changed scalar-base and
+readonly-child selections are rejected against the actual collected calls.
+The proposed theorems use the caller's live guard to establish the member's
+whole guarded domain and resulting FIELDSP conclusion. This source fixture
+is unrun and must share the application executor's qualified BT world.
+
+The current root has the coordinator provider but no MASTER installation
+dispatch. Held physical metadata source `b466dbad1` contains the real
+BEGIN→STEP→SUBMIT→WAIT route and materializes MASTER in late E. Its activation
+gate remains NIL. Provider certification, this proposed call-domain proof,
+activation, and a successful initialized installation are separate claims.
