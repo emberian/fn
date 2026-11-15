@@ -127,6 +127,8 @@
   *fn2-action-send* cap-index cap-nonce 0 0 slot gen off len may-release 0 0)
 (fn2-issue-children-wrapper fn2-issue-tls-start-children (cap-index cap-nonce slot gen off len)
   *fn2-action-tls-start* cap-index cap-nonce 0 0 slot gen off len 0 0 0)
+(fn2-issue-children-wrapper fn2-issue-compress-start-children (cap-index cap-nonce slot gen off len)
+  *fn2-action-compress-start* cap-index cap-nonce 0 0 slot gen off len 0 0 0)
 (fn2-issue-children-wrapper fn2-issue-read-children (offset slot gen len)
   *fn2-action-read* 0 0 offset 0 slot gen 0 len 0 0 0)
 (fn2-issue-children-wrapper fn2-issue-write-children (offset slot gen off len fua)

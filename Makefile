@@ -71,8 +71,23 @@ ACL2_BOOKS = \
   books/column-contracts \
   books/codec-profile \
   books/codec-transport \
+  books/codec-stack \
+  books/compress-transport-state \
+  books/tls-record-policy \
+  books/tls-record-state \
+  books/tls-record \
+  books/tls-stack \
+  books/host-loan \
+  books/host-codec \
+  books/host-compress \
   books/columns \
   books/compress-policy \
+  books/compress-kind \
+  books/compress-operation \
+  books/compress-record \
+  books/compress-transport-lifecycle \
+  books/compress-transport-ops \
+  books/compress \
   books/commit \
   books/commit-alloc \
   books/commit-arms \
@@ -100,6 +115,7 @@ ACL2_BOOKS = \
   books/cursor-kind \
   books/declare \
   books/device-boundary \
+  books/digest-store \
   books/digests \
   books/dispatch-fresh \
   books/dispatch-heads \
@@ -151,6 +167,8 @@ ACL2_BOOKS = \
   books/machines-c-successor \
   books/machines-directory \
   books/merkle \
+  books/native-b3-correspondence \
+  books/native-b3-evidence \
   books/nntp-grammar \
   books/node-profile \
   books/operations \
@@ -244,7 +262,16 @@ ACL2_BOOKS = \
   tests/columns-unit \
   tests/codec-profile-unit \
   tests/codec-transport-unit \
+  tests/host-codec-unit \
+  tests/tls-record-policy-unit \
+  tests/tls-record-unit \
+  tests/tls-stack-unit \
   tests/compress-policy-unit \
+  tests/compress-action-unit \
+  tests/compress-settings-unit \
+  tests/compress-transport-unit \
+  tests/compress-record-unit \
+  tests/compress-stage-unit \
   tests/commit-ceiling-unit \
   tests/commit-durable-all-unit \
   tests/commit-executor-contracts-unit \
@@ -297,12 +324,21 @@ ACL2_BOOKS = \
   tests/grammar-gen \
   tests/grammar-unit \
   tests/groups-unit \
+  tests/cns-fetch-integrity-unit \
+  tests/cursor-location-integrity-unit \
+  tests/location-commitment-unit \
+  tests/manifest-binding-served-unit \
+  tests/manifest-publication-unit \
+  tests/recovery-manifest-binding-unit \
+  tests/upload-location-hashes-unit \
+  tests/upload-stored-source-unit \
   tests/host-unit \
   tests/identity-core-unit \
   tests/identity-served-unit \
   tests/layout-roundtrip \
   tests/layout-teeth-unit \
   tests/layout-unit \
+  tests/layout-proof-scope-unit \
   tests/log-model-unit \
   tests/m2-cuts \
   tests/machine-arms-probe-fixture \
@@ -318,6 +354,7 @@ ACL2_BOOKS = \
   tests/machine-success-charge-context-unit \
   tests/issue-history-context-unit \
   tests/issue-wrapper-boundary-unit \
+  tests/machine-issue-domain-unit \
   tests/machine-child-tables-unit \
   tests/machines-a-unit \
   tests/shape-one-unit \
@@ -391,6 +428,7 @@ ACL2_BOOKS = \
   tests/staging-unit \
   tests/stop-boundary-unit \
   tests/storage-fault-policy-unit \
+  tests/storage-fence-suffix-unit \
   tests/storage-effectful-physical \
   tests/storage-effectful-error \
   tests/translation-domain-unit \
