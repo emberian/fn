@@ -1,0 +1,5 @@
+{
+  "source": "books/release-allocation.lisp",
+  "definition": "fn2-allocation-release-member-capacity",
+  "original_sha256": "d6202430397bb6bdb21c60c47f558f1b1b6fc893a5249e893ce8ff78ef5cf979"
+}
