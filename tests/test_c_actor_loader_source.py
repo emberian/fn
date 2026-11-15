@@ -164,6 +164,8 @@ class ActorObserver(unittest.TestCase):
   self.assertIn('`((:if (equal row-source-observation',text)
   self.assertNotIn(',@terminal',str(release))
   self.assertIn('((:busy :exhausted) (:next :load-refused)',text)
+  self.assertIn("(and (eq name 'fn2-cns) (eq phase :register-output))",text)
+  self.assertIn('((:busy) (:charge :steps *fn2-work-poll* :runnable t))',text)
  def test_only_actual_ready_conditions_enable_park(self):
   f=function('fn2-c-actor-source-boundary',parsed('books/c-actor-loader-form.lisp'))
   text=str(f)
