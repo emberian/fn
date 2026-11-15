@@ -64,10 +64,23 @@
         (fn2-up16-entries 17 0 (- after *fn2-upload-page-manifest*) end slot gen id ogen nil nil fn2-fields fn2-pool))
        (mv answer fn2-fields))) answer)))))
 
+(defun fn2-up16-observe-rows (left id fn2-core)
+ (declare (xargs :stobjs fn2-core :verify-guards nil :measure (nfix left)))
+ (if (zp left) nil
+  (or (fn2-up16-observe id fn2-core)
+      (fn2-up16-observe-rows (- left 1) (+ 1 (nfix id)) fn2-core))))
+
+(defun fn2-up16-observe-kind (fn2-core)
+ (declare (xargs :stobjs fn2-core :verify-guards nil))
+ (let ((base (fn2-machine-kind-base *fn2-upload-kind* fn2-core))
+       (rows (stobj-let ((fn2-upload (fn2-upload-table fn2-core))) (rows)
+               (fn2-upload-rows fn2-upload) rows)))
+  (fn2-up16-observe-rows rows base fn2-core)))
+
 (defun fn2-up16-loop (fuel idle accepted clients store captured fn2-core)
  (declare (xargs :stobjs fn2-core :verify-guards nil :measure (nfix fuel)))
  (if (zp fuel) (mv :fuel clients store captured fn2-core)
-  (b* ((captured (or captured (fn2-up16-observe 0 fn2-core) (fn2-up16-observe 1 fn2-core)))
+  (b* ((captured (or captured (fn2-up16-observe-kind fn2-core)))
        ((mv & observed visited actions fn2-core) (fn2-turn fn2-core))
        ((mv took accepted clients store fn2-core) (fn2-cw-adapter-one accepted clients store fn2-core))
        (idle (if (or took (< 0 observed) (< 0 visited) (< 0 actions)) 0 (+ 1 (nfix idle)))))
