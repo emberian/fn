@@ -527,6 +527,7 @@ ACL2_BOOKS = \
   tests/squares-unit \
   tests/square-evidence-unit \
   tests/square-evidence-correspondence-unit \
+  tests/square-evidence-predicate-unit \
   tests/staging-unit \
   tests/stop-boundary-unit \
   tests/storage-fault-policy-unit \
