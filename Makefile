@@ -244,6 +244,7 @@ ACL2_BOOKS = \
   books/pointwise-contracts \
   books/pool \
   books/pool-credit \
+  books/pool-credit-contracts \
   books/pool-block \
   books/pool-ranges \
   books/pool-read-contracts \
