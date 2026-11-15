@@ -215,8 +215,10 @@
         (observe-hints
          `(("Goal" :in-theory
              (disable ,@readers fn2-compress-operation-observe-preserves-type
-                      fn2-compress-operation-observe-wfp fn2-compress-operation-observe-rows)
-             :use ((:instance fn2-compress-operation-observe-preserves-type
+                      fn2-compress-operation-observe-wfp fn2-compress-operation-observe-rows
+                      fn2-compress-transport-observe-spans-ok-inputs)
+             :use ((:instance fn2-compress-transport-observe-spans-ok-inputs (raw-code raw))
+                   (:instance fn2-compress-operation-observe-preserves-type
                       (used (if (= (fn2-compress-transport-pending 0 fn2-compress-transport) 11) used 0))
                       (made (if (= (fn2-compress-transport-pending 0 fn2-compress-transport) 10) made 0)))
                    (:instance fn2-compress-operation-observe-wfp
