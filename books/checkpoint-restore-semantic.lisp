@@ -4,6 +4,7 @@
 (include-book "std/util/bstar" :dir :system)
 (include-book "checkpoint-restore-semantic-state")
 (include-book "checkpoint-semantic-page")
+(include-book "ribbon")
 (fn2-book-layer :c)
 
 (defun fn2-checkpoint-restore-semantic-root-hash (i src fn2-checkpoint-bytes fn2-checkpoint-restore-semantic)
@@ -90,7 +91,7 @@
       (fn2-checkpoint-restore-semantic (fn2-checkpoint-restore-semantic-root-hash 0 (* 32 r) fn2-checkpoint-bytes fn2-checkpoint-restore-semantic))
       (fn2-checkpoint-restore-semantic (fn2-checkpoint-restore-semantic-source-copy 0 fn2-checkpoint-restore-map-control fn2-checkpoint-restore-semantic))
       (fn2-checkpoint-restore-semantic (fn2-checkpoint-restore-semantic-put 0
-       (phase *fn2-checkpoint-restore-semantic-phase-read*) (candidate c) (tag tag) (pending-head *fn2-alloc-none*) (pending-tail *fn2-alloc-none*) (pending-count 0)
+       (phase *fn2-checkpoint-restore-semantic-phase-read*) (candidate c) (tag tag) (active e) (next *fn2-alloc-none*) (depth 1) (resume 0) (directory 1) (source 0) (filter 0) (entry-stage 0)
        (schema 10) (expected-known 0) (expected-count 0) (seen 0) (page-kind *page-kind-manifest*)
        (source-generation (fn2-checkpoint-restore-map-control-reach-generation 0 fn2-checkpoint-restore-map-control))
        (source-checkpoint (fn2-checkpoint-restore-map-control-source-checkpoint 0 fn2-checkpoint-restore-map-control))
@@ -202,6 +203,24 @@
        (checker-previous-seal-offset (fn2-fc-previous-seal-offset row fn2-fc))
        ))
       ((unless (eq code :ok)) (fn2-checkpoint-restore-semantic-page-mv code))
+      ; A partitioned filter has no run children. Its exact page hash/kind and
+      ; namespace were authenticated above by the same physical verifier used
+      ; by the live semantic filter consumer.
+      ((when (equal (fn2-checkpoint-restore-semantic-filter 0 fn2-checkpoint-restore-semantic) 1))
+       (b* (((unless (<= (+ base *fn2-ribbon-probe-fields*) (fn2-fields-rows fn2-fields)))
+             (fn2-checkpoint-restore-semantic-page-mv :bounds))
+            ((mv code fn2-fields) (fn2-ribbon-read-header slot gen base kind owner generation fn2-fields fn2-pool))
+            (cbase (+ base *fn2-run-c-header-fields*))
+            ((unless (and (eq code :ok)
+                           (equal (fn2-fields-value (+ cbase *fn2-ribbon-header-field-schema*) fn2-fields)
+                                  (fn2-checkpoint-restore-semantic-schema 0 fn2-checkpoint-restore-semantic))
+                           (equal (fn2-fields-value (+ cbase *fn2-ribbon-header-field-run*) fn2-fields)
+                                  (fn2-checkpoint-restore-semantic-run 0 fn2-checkpoint-restore-semantic))
+                           (equal (fn2-checkpoint-restore-semantic-level 0 fn2-checkpoint-restore-semantic) 0)))
+             (fn2-checkpoint-restore-semantic-page-mv :source-header))
+            (fn2-checkpoint-restore-semantic (fn2-checkpoint-restore-semantic-put 0
+             (phase *fn2-checkpoint-restore-semantic-phase-entries*) (entries 0) (cursor 0) (seen 0) (resume 0))))
+        (fn2-checkpoint-restore-semantic-page-mv :entries)))
       ; Run identity/height are authenticated page observations, not supplied
       ; admission facts. Schema10 is the declared root1 manifest format.
       ((mv code fn2-fields) (fn2-run-read-header slot gen base kind owner generation fn2-fields fn2-pool))
@@ -210,14 +229,22 @@
       ((mv code fn2-fields) (fn2-checkpoint-semantic-page-read-header slot gen base
        (fn2-checkpoint-restore-semantic-schema 0 fn2-checkpoint-restore-semantic) run level kind owner generation fn2-fields fn2-pool))
       ((unless (and (eq code :ok)
-                    (or (equal (fn2-checkpoint-restore-semantic-expected-known 0 fn2-checkpoint-restore-semantic) 0)
+                    (or (and (equal (fn2-checkpoint-restore-semantic-resume 0 fn2-checkpoint-restore-semantic) 0)
+                             (equal (fn2-checkpoint-restore-semantic-expected-known 0 fn2-checkpoint-restore-semantic) 0))
                         (and (equal run (fn2-checkpoint-restore-semantic-run 0 fn2-checkpoint-restore-semantic))
                              (equal level (fn2-checkpoint-restore-semantic-level 0 fn2-checkpoint-restore-semantic))))
                     (unsigned-byte-p 60 run) (unsigned-byte-p 8 level)
-                    (unsigned-byte-p 32 (fn2-run-hdr base entries))))
+                    (unsigned-byte-p 32 (fn2-run-hdr base entries))
+                    (or (equal (fn2-checkpoint-restore-semantic-resume 0 fn2-checkpoint-restore-semantic) 0)
+                        (and (equal (fn2-run-hdr base entries) (fn2-checkpoint-restore-semantic-entries 0 fn2-checkpoint-restore-semantic))
+                             (<= (fn2-checkpoint-restore-semantic-cursor 0 fn2-checkpoint-restore-semantic) (fn2-run-hdr base entries))))))
        (fn2-checkpoint-restore-semantic-page-mv :source-header))
       (fn2-checkpoint-restore-semantic (fn2-checkpoint-restore-semantic-put 0
-       (phase *fn2-checkpoint-restore-semantic-phase-entries*) (run run) (level level) (cursor 0) (seen 0)
+       (phase *fn2-checkpoint-restore-semantic-phase-entries*) (run run) (level level)
+       (cursor (if (equal (fn2-checkpoint-restore-semantic-resume 0 fn2-checkpoint-restore-semantic) 1)
+                (fn2-checkpoint-restore-semantic-cursor 0 fn2-checkpoint-restore-semantic) 0))
+       (seen (if (equal (fn2-checkpoint-restore-semantic-resume 0 fn2-checkpoint-restore-semantic) 1)
+              (fn2-checkpoint-restore-semantic-seen 0 fn2-checkpoint-restore-semantic) 0)) (resume 0)
        (entries (fn2-run-hdr base entries)))))
   (fn2-checkpoint-restore-semantic-page-mv :entries)))
 
