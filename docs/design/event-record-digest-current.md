@@ -40,7 +40,7 @@ including up to two eight-word archived seal loads. The eight-word helper now
 returns immediately outside its declared natural-index guard, closing its
 negative-index termination stutter without changing any guarded call.
 
-Seven direct Python source controls pass, including structural transformation
+Nine direct Python source controls pass, including structural transformation
 replay/idempotence and byte-identical legacy fetch. `event-read-verified-unit`
 retains its actual admitted writer, simulated disk and semantic verifier. Its
 new checks cover 32 separate budget-1 visits, no premature READ-RECORDS, zero and
@@ -54,7 +54,7 @@ consumer controls are UNRUN; guards/refinement and composed qualification remain
 required. These are registered certification roots, not execution evidence.
 
 Current literal closures: reader133, live fixture422, cold fixture448; no missing
-local books. No old whole-lane import, archive authority, hold release or FREE
+local books or literal include cycles. No old whole-lane import, archive authority, hold release or FREE
 activation is included. Lossless original-frame reconstruction, complete-prefix
 LIVE obligation transfer and successive-checkpoint physical reuse remain open
 in the broader D13 work.

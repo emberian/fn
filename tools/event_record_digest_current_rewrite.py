@@ -157,6 +157,7 @@ def verified(source):
  source=lr.write(source,[(anchor.start,anchor.start,reference+observations((fixtures/'verified-additions.lisp').read_text())+'\n')])
  drive=one(source,'(defun fn2-epv-drive ?*body)')
  source=lr.write(source,[(drive.start,drive.end,(fixtures/'verified-drive-after.lisp').read_text().strip())])
+ source=source.replace('(fn2-epv-drive 200 fault nil nil fn2-core', '(fn2-epv-drive 200 fault nil nil dslot dgen scratch sgen fn2-core',1)
  return source+'\n(assert-event (fn2-epv-test :loan))\n'
 
 if __name__=='__main__':

@@ -58,7 +58,7 @@
                 (fn2-digest-list (fn2-digest-slot (fn2-event-read-checker 0 fn2-event-read) *fn2-fc-hash*) fn2-digests)))) good)))
    (mv (and good (equal readonly (fn2-epv-fetch-readonly fn2-core))) fn2-core)))
 ; Interleavings use actual public phase-gated operations, not row shadows.
-(defun fn2-epv-fetch-controls (fn2-core)
+(defun fn2-epv-fetch-controls (dslot dgen scratch sgen fn2-core)
  (declare (xargs :stobjs fn2-core :verify-guards nil))
  (b* ((before (fn2-epv-fetch-snapshot fn2-core))
       ((mv zero fn2-core) (fn2-epv-format 0 fn2-core))
@@ -72,5 +72,5 @@
       ((mv token slot gen)
        (stobj-let ((fn2-event-read (fn2-core-event-read fn2-core))) (token slot gen)
         (mv (fn2-event-read-token 0 fn2-event-read) (fn2-event-read-slot 0 fn2-event-read) (fn2-event-read-gen 0 fn2-event-read)) (mv token slot gen)))
-      ((mv opened fn2-core) (fn2-epv-open token slot gen slot gen slot gen fn2-core)))
+      ((mv opened fn2-core) (fn2-epv-open token slot gen dslot dgen scratch sgen fn2-core)))
   (mv (and (eq opened :state) (equal before (fn2-epv-fetch-snapshot fn2-core))) fn2-core)))

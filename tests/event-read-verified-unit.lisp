@@ -126,7 +126,7 @@
                 (fn2-digest-list (fn2-digest-slot (fn2-event-read-checker 0 fn2-event-read) *fn2-fc-hash*) fn2-digests)))) good)))
    (mv (and good (equal readonly (fn2-epv-fetch-readonly fn2-core))) fn2-core)))
 ; Interleavings use actual public phase-gated operations, not row shadows.
-(defun fn2-epv-fetch-controls (fn2-core)
+(defun fn2-epv-fetch-controls (dslot dgen scratch sgen fn2-core)
  (declare (xargs :stobjs fn2-core :verify-guards nil))
  (b* ((before (fn2-epv-fetch-snapshot fn2-core))
       ((mv zero fn2-core) (fn2-epv-format 0 fn2-core))
@@ -140,7 +140,7 @@
       ((mv token slot gen)
        (stobj-let ((fn2-event-read (fn2-core-event-read fn2-core))) (token slot gen)
         (mv (fn2-event-read-token 0 fn2-event-read) (fn2-event-read-slot 0 fn2-event-read) (fn2-event-read-gen 0 fn2-event-read)) (mv token slot gen)))
-      ((mv opened fn2-core) (fn2-epv-open token slot gen slot gen slot gen fn2-core)))
+      ((mv opened fn2-core) (fn2-epv-open token slot gen dslot dgen scratch sgen fn2-core)))
   (mv (and (eq opened :state) (equal before (fn2-epv-fetch-snapshot fn2-core))) fn2-core)))
 
 (defun fn2-epv-physical (fn2-core fn2-sim fn2-own)
@@ -157,7 +157,7 @@
         (mv nil fn2-core fn2-sim fn2-own)))
       ((mv & & & & & & & & & & fn2-core) (fn2-harvest-one fn2-core)))
   (mv fn2-core fn2-sim fn2-own)))
-(defun fn2-epv-drive (fuel fault edited records fn2-core fn2-sim fn2-own)
+(defun fn2-epv-drive (fuel fault edited records dslot dgen scratch sgen fn2-core fn2-sim fn2-own)
  (declare (xargs :stobjs (fn2-core fn2-sim fn2-own) :verify-guards nil :measure (nfix fuel)))
  (b* (((mv phase slot gen)
        (stobj-let ((fn2-event-read (fn2-core-event-read fn2-core))) (phase slot gen)
@@ -184,7 +184,7 @@
       (fetch (equal phase *fn2-event-read-phase-record-digest*))
        (first-fetch (and fetch (stobj-let ((fn2-event-read (fn2-core-event-read fn2-core))) (first)
                                  (member-equal (fn2-event-read-record-fetch-next 0 fn2-event-read) '(0 1)) first)))
-       ((mv controls fn2-core) (if first-fetch (fn2-epv-fetch-controls fn2-core) (mv t fn2-core)))
+       ((mv controls fn2-core) (if first-fetch (fn2-epv-fetch-controls dslot dgen scratch sgen fn2-core) (mv t fn2-core)))
        ((unless controls) (mv *fn2-event-read-phase-uncertain* (reverse records) fn2-core fn2-sim fn2-own))
        (loan-error (and (eq fault :loan) fetch
                     (stobj-let ((fn2-event-read (fn2-core-event-read fn2-core))) (partial)
@@ -200,7 +200,7 @@
               (fn2-epv-format 4096 fn2-core))
              ((= phase *fn2-event-read-phase-members*) (fn2-epv-members fn2-core)) (t (mv :wait fn2-core))))
       ((mv fn2-core fn2-sim fn2-own) (fn2-epv-physical fn2-core fn2-sim fn2-own)))
-  (fn2-epv-drive (- fuel 1) fault (or edited corrupt) records fn2-core fn2-sim fn2-own)))
+  (fn2-epv-drive (- fuel 1) fault (or edited corrupt) records dslot dgen scratch sgen fn2-core fn2-sim fn2-own)))
 
 (defun fn2-epv-body (fault fn2-core fn2-sim fn2-own)
  (declare (xargs :stobjs (fn2-core fn2-sim fn2-own) :verify-guards nil))
@@ -227,7 +227,7 @@
                     (eq page :ok) (eq scratch-code :ok) (eq reader-code :ok) (eq zeroed :ok)))
        (mv nil fn2-core fn2-sim fn2-own))
       ((mv opened fn2-core) (fn2-epv-open token slot gen dslot dgen scratch sgen fn2-core))
-      ((mv phase records fn2-core fn2-sim fn2-own) (fn2-epv-drive 200 fault nil nil fn2-core fn2-sim fn2-own))
+      ((mv phase records fn2-core fn2-sim fn2-own) (fn2-epv-drive 200 fault nil nil dslot dgen scratch sgen fn2-core fn2-sim fn2-own))
       ((mv seed fn2-core) (fn2-core-write dslot dgen (+ *fn2-event-frontier-peaks-start* 32) 123 7 0 1 fn2-core))
       ((mv peak0 fn2-core) (fn2-epv-peak token 0 dslot dgen fn2-core))
       ((mv peak1 fn2-core) (fn2-epv-peak token 1 dslot dgen fn2-core))

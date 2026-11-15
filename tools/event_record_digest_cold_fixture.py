@@ -1,7 +1,7 @@
 from pathlib import Path
 import sys;sys.path.insert(0,'tools')
 import event_record_digest_current_rewrite as r
-names=('fn2-checkpoint-restore-reader','fn2-checkpoint-restore-events','fn2-event-read','fn2-mk','fn2-fc','fn2-pool','fn2-digests')
+names=('fn2-checkpoint-restore-reader','fn2-checkpoint-restore-events','fn2-checkpoint-restore-events-work','fn2-event-read','fn2-journal-members','fn2-mk','fn2-fc','fn2-fc-context','fn2-b3','fn2-fields','fn2-pool','fn2-digests')
 s='''; Actual persisted checkpoint -> crash -> selected semantic verifier -> digest
 ; continuation and public boot rebind refusal. SOURCE ONLY; ACL2 UNRUN.
 (in-package "ACL2")
