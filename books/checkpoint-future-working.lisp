@@ -35,14 +35,14 @@
       (equal gen (fn2-checkpoint-future-owner-gen 0 fn2-checkpoint-future))))
 
 (defun fn2-checkpoint-future-class-demand (i class fn2-pool)
- (declare (xargs :stobjs fn2-pool :guard (and (natp i) (<= i 8)) :measure (nfix (- 8 i))))
- (if (>= i 8) 0
+ (declare (xargs :stobjs fn2-pool :guard (and (natp i) (<= i 8)) :measure (nfix (- 8 (nfix i)))))
+ (if (not (and (natp i) (< i 8))) 0
   (+ (if (equal class (fn2-pool-class-for (fn2-checkpoint-future-window-length i) fn2-pool)) 1 0)
      (fn2-checkpoint-future-class-demand (+ i 1) class fn2-pool))))
 
 (defun fn2-checkpoint-future-roomp (i fn2-pool)
- (declare (xargs :stobjs fn2-pool :guard (and (natp i) (<= i 8)) :measure (nfix (- 8 i))))
- (if (>= i 8) t
+ (declare (xargs :stobjs fn2-pool :guard (and (natp i) (<= i 8)) :measure (nfix (- 8 (nfix i)))))
+ (if (not (and (natp i) (< i 8))) t
   (let ((class (fn2-pool-class-for (fn2-checkpoint-future-window-length i) fn2-pool)))
    (and (natp class) (< class (fn2-pool-nclasses fn2-pool))
         (<= (fn2-checkpoint-future-class-demand 0 class fn2-pool) (fn2-pool-free-count class fn2-pool))
@@ -52,8 +52,9 @@
  (declare (xargs :stobjs (fn2-checkpoint-future fn2-checkpoint-future-windows fn2-pool)
   :guard (and (fn2-checkpoint-future-wfp fn2-checkpoint-future) (< 0 (fn2-checkpoint-future-rows fn2-checkpoint-future))
               (fn2-checkpoint-future-windows-wfp fn2-checkpoint-future-windows) (<= 8 (fn2-checkpoint-future-windows-rows fn2-checkpoint-future-windows))
-              (fn2-pool-wfp fn2-pool) (natp i) (<= i 8)) :measure (nfix (- 8 i))))
- (if (>= i 8)
+              (fn2-pool-wfp fn2-pool) (natp i) (<= i 8)) :measure (nfix (- 8 (nfix i)))))
+ (if (and (natp i) (<= i 8) (< 0 (fn2-checkpoint-future-rows fn2-checkpoint-future)) (<= 8 (fn2-checkpoint-future-windows-rows fn2-checkpoint-future-windows)))
+  (if (>= i 8)
   (let* ((fn2-checkpoint-future (fn2-checkpoint-future-set-phase 0 *fn2-checkpoint-future-phase-reserved* fn2-checkpoint-future)))
    (mv :ok fn2-checkpoint-future fn2-checkpoint-future-windows fn2-pool))
   (b* ((class (fn2-pool-class-for (fn2-checkpoint-future-window-length i) fn2-pool))
@@ -65,7 +66,8 @@
          (mv :partial fn2-checkpoint-future fn2-checkpoint-future-windows fn2-pool)))
        (fn2-checkpoint-future-windows (fn2-checkpoint-future-windows-put i (live 1) (slot slot) (generation generation) (borrowed 0)))
        (fn2-checkpoint-future (fn2-checkpoint-future-set-reserved 0 (+ i 1) fn2-checkpoint-future)))
-   (fn2-checkpoint-future-reserve-loop (+ i 1) nonce kind owner gen fn2-checkpoint-future fn2-checkpoint-future-windows fn2-pool))))
+   (fn2-checkpoint-future-reserve-loop (+ i 1) nonce kind owner gen fn2-checkpoint-future fn2-checkpoint-future-windows fn2-pool)))
+  (mv :bounds fn2-checkpoint-future fn2-checkpoint-future-windows fn2-pool)))
 
 (defun fn2-checkpoint-future-reserve-with-credit (c nonce kind owner gen fn2-checkpoint-future fn2-checkpoint-future-windows fn2-pool)
  (declare (xargs :stobjs (fn2-checkpoint-future fn2-checkpoint-future-windows fn2-pool)
@@ -125,23 +127,26 @@
 (defun fn2-checkpoint-future-transfer-readyp (i end returning token kind owner gen bkind borrower bgen fn2-checkpoint-future fn2-checkpoint-future-windows fn2-pool)
  (declare (xargs :stobjs (fn2-checkpoint-future fn2-checkpoint-future-windows fn2-pool)
   :guard (and (fn2-checkpoint-future-wfp fn2-checkpoint-future) (fn2-checkpoint-future-windows-wfp fn2-checkpoint-future-windows) (fn2-pool-wfp fn2-pool)
-              (natp i) (natp end) (<= i end) (<= end 8)) :measure (nfix (- end i))))
- (if (>= i end) t
+              (natp i) (natp end) (<= i end) (<= end 8)) :measure (nfix (- (nfix end) (nfix i)))))
+ (if (and (natp i) (natp end) (<= i end) (<= end 8))
+  (if (>= i end) t
   (and (< i (fn2-checkpoint-future-windows-rows fn2-checkpoint-future-windows))
        (equal (fn2-checkpoint-future-windows-borrowed i fn2-checkpoint-future-windows) (if returning 1 0))
        (mv-let (code slot generation)
         (fn2-checkpoint-future-lease i token (if returning bkind kind) (if returning borrower owner) (if returning bgen gen)
          fn2-checkpoint-future fn2-checkpoint-future-windows fn2-pool)
         (declare (ignore slot generation)) (eq code :ok))
-       (fn2-checkpoint-future-transfer-readyp (+ i 1) end returning token kind owner gen bkind borrower bgen fn2-checkpoint-future fn2-checkpoint-future-windows fn2-pool))))
+       (fn2-checkpoint-future-transfer-readyp (+ i 1) end returning token kind owner gen bkind borrower bgen fn2-checkpoint-future fn2-checkpoint-future-windows fn2-pool)))
+  nil))
 
 (defun fn2-checkpoint-future-transfer-loop (i end returning kind owner gen bkind borrower bgen fn2-checkpoint-future-windows fn2-pool)
  (declare (xargs :stobjs (fn2-checkpoint-future-windows fn2-pool)
   :guard (and (fn2-checkpoint-future-windows-wfp fn2-checkpoint-future-windows) (fn2-pool-wfp fn2-pool)
               (natp i) (natp end) (<= i end) (<= end 8) (<= end (fn2-checkpoint-future-windows-rows fn2-checkpoint-future-windows))
               (fn2-pool-mrefp kind owner gen) (fn2-pool-mrefp bkind borrower bgen))
-  :measure (nfix (- end i))))
- (if (>= i end) (mv :ok fn2-checkpoint-future-windows fn2-pool)
+  :measure (nfix (- (nfix end) (nfix i)))))
+ (if (and (natp i) (natp end) (<= i end) (<= end 8) (<= end (fn2-checkpoint-future-windows-rows fn2-checkpoint-future-windows)))
+  (if (>= i end) (mv :ok fn2-checkpoint-future-windows fn2-pool)
   (b* ((slot (fn2-checkpoint-future-windows-slot i fn2-checkpoint-future-windows))
        (generation (fn2-checkpoint-future-windows-generation i fn2-checkpoint-future-windows))
        ((mv code fn2-pool)
@@ -153,7 +158,8 @@
        ((unless (eq code :ok)) (mv :partial fn2-checkpoint-future-windows fn2-pool))
        (fn2-checkpoint-future-windows (fn2-checkpoint-future-windows-put i (borrowed (if returning 0 1))
         (borrower-kind (if returning 0 bkind)) (borrower-slot (if returning 0 borrower)) (borrower-gen (if returning 0 bgen)))))
-   (fn2-checkpoint-future-transfer-loop (+ i 1) end returning kind owner gen bkind borrower bgen fn2-checkpoint-future-windows fn2-pool))))
+   (fn2-checkpoint-future-transfer-loop (+ i 1) end returning kind owner gen bkind borrower bgen fn2-checkpoint-future-windows fn2-pool)))
+  (mv :bounds fn2-checkpoint-future-windows fn2-pool)))
 
 (defmacro fn2-checkpoint-future-transfer-interface (name first end returning)
  `(defun ,name (token kind owner gen bkind borrower bgen fn2-checkpoint-future fn2-checkpoint-future-windows fn2-pool)
@@ -190,10 +196,12 @@
  (declare (xargs :stobjs fn2-checkpoint-future-windows
   :guard (and (fn2-checkpoint-future-windows-wfp fn2-checkpoint-future-windows) (natp i) (natp end)
               (<= i end) (<= end (fn2-checkpoint-future-windows-rows fn2-checkpoint-future-windows)))
-  :measure (nfix (- end i))))
- (if (>= i end) t
+  :measure (nfix (- (nfix end) (nfix i)))))
+ (if (and (natp i) (natp end) (<= i end) (<= end (fn2-checkpoint-future-windows-rows fn2-checkpoint-future-windows)))
+  (if (>= i end) t
   (and (equal (fn2-checkpoint-future-windows-borrowed i fn2-checkpoint-future-windows) 0)
-       (fn2-checkpoint-future-no-loansp (+ i 1) end fn2-checkpoint-future-windows))))
+       (fn2-checkpoint-future-no-loansp (+ i 1) end fn2-checkpoint-future-windows)))
+  nil))
 
 (defun fn2-checkpoint-future-release-one (c token kind owner gen fn2-checkpoint-future fn2-checkpoint-future-windows fn2-pool)
  (declare (xargs :stobjs (fn2-checkpoint-future fn2-checkpoint-future-windows fn2-pool)

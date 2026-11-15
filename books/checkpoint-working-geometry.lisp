@@ -23,14 +23,14 @@
 
 (defun fn2-checkpoint-window-class-demand (i class fn2-pool)
  (declare (xargs :stobjs fn2-pool :guard (and (natp i) (<= i *fn2-checkpoint-window-count*))
-                 :measure (nfix (- *fn2-checkpoint-window-count* i))))
- (if (>= i *fn2-checkpoint-window-count*) 0
+                 :measure (nfix (- *fn2-checkpoint-window-count* (nfix i)))))
+ (if (not (and (natp i) (< i *fn2-checkpoint-window-count*))) 0
   (+ (if (equal class (fn2-pool-class-for (fn2-checkpoint-window-length i) fn2-pool)) 1 0)
      (fn2-checkpoint-window-class-demand (+ i 1) class fn2-pool))))
 
 (defun fn2-checkpoint-admission-roomp (i fn2-pool)
- (declare (xargs :stobjs fn2-pool :guard (and (natp i) (<= i *fn2-checkpoint-working-window-count*)) :measure (nfix (- *fn2-checkpoint-working-window-count* i))))
- (if (>= i *fn2-checkpoint-working-window-count*) t
+ (declare (xargs :stobjs fn2-pool :guard (and (natp i) (<= i *fn2-checkpoint-working-window-count*)) :measure (nfix (- *fn2-checkpoint-working-window-count* (nfix i)))))
+ (if (not (and (natp i) (< i *fn2-checkpoint-working-window-count*))) t
   (let ((class (fn2-pool-class-for
                 (if (< i *fn2-checkpoint-window-count*) (fn2-checkpoint-window-length i)
                  (fn2-checkpoint-future-window-length (- i *fn2-checkpoint-window-count*))) fn2-pool)))
