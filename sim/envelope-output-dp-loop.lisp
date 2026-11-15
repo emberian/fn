@@ -1,4 +1,4 @@
-; Pending complete reversed-segment traversal through the actual runner.
+; Complete reversed-segment traversal through the actual runner.
 (in-package "ACL2")
 (include-book "envelope-output-dispatch")
 
