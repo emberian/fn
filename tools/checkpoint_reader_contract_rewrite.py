@@ -11,6 +11,7 @@ import reader_foundation_batch as rw
 
 ROOT = Path(__file__).resolve().parents[1]
 PATTERN = '(fn2-checkpoints-preserves fn2-checkpoint-check-step ?*body)'
+PREPARE_SOURCE = 'fa8d24704aee8407a57b63f20dbb265a8cf0172f'
 
 HELPER = '''; Six original unrestricted facets have concrete logical counterexamples.
 ; Generate their exact old formulas from the same metadata as the ten retained
@@ -288,9 +289,27 @@ def boot_bridge(source):
                              (insertion, insertion, hint), (node.end, node.end, contracts)])
 
 
+def prepare_interfaces(source):
+    provider = rw.source(ROOT, PREPARE_SOURCE, 'books/checkpoint.lisp')
+    old = rw.unique(source, '(defun fn2-checkpoint-copy-expected ?*body)')
+    new = rw.unique(provider, '(defun fn2-checkpoint-copy-expected ?*body)')
+    assert rw.norm(old) == rw.norm(new), 'copy actual runtime/guard changed'
+    edits = []
+    pattern = '(defcolumns-guarded-contracts fn2-checkpoint-copy-expected ?*body)'
+    contract = rw.unique(provider, pattern)
+    if not lr.match(pattern, lr.parse(source).forms):
+        edits.append((old.end, old.end, '\n\n'+provider[contract.start:contract.end]))
+    for name in ('fn2-checkpoint-prepare-body', 'fn2-checkpoint-prepare', 'fn2-checkpoint-prepare-owned'):
+        pattern = '(fn2-checkpoints-preserves '+name+' ?*body)'
+        old, new = rw.unique(source, pattern), rw.unique(provider, pattern)
+        assert rw.norm(old) == rw.norm(new), 'original H/C changed: '+name
+        edits.append((old.start, old.end, provider[new.start:new.end]))
+    return lr.write(source, edits)
+
+
 if __name__ == '__main__':
     path = ROOT / 'books/checkpoint.lisp'
-    path.write_text(transform(path.read_text()))
+    path.write_text(prepare_interfaces(transform(path.read_text())))
     fixture = ROOT / 'tests/checkpoint-reader-scalar-domain-unit.lisp'
     (ROOT / 'tests/checkpoint-reader-refutation-unit.lisp').write_text(refutation_unit(fixture.read_text()))
     boot = ROOT / 'books/boot.lisp'

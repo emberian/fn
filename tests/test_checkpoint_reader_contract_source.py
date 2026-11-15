@@ -20,7 +20,7 @@ class ReaderContracts(unittest.TestCase):
         fixture = (ROOT / 'tools/fixtures/checkpoint-reader-contract-before.lisp').read_text()
         self.assertEqual(old[node.start:node.end] + '\n', fixture)
         now = (ROOT / 'books/checkpoint.lisp').read_text()
-        self.assertEqual(transform.transform(old), now)
+        self.assertEqual(transform.prepare_interfaces(transform.transform(old)), now)
         self.assertEqual(transform.transform(now), now)
         # Inputs/specs/H remain canonical. Only three result positions select
         # unresolved old facts; all other generated DEFTHM forms pass unchanged.
@@ -89,6 +89,16 @@ class ReaderContracts(unittest.TestCase):
         self.assertIn('(fn2-b3 6 :prefix "-HASHER")', text)
         self.assertIn('(fn2-digests 9 :prefix "-DIGESTS")', text)
         self.assertIn('fn2-checkpoint-check-step fn2-checkpoint-restore-load-hash', text)
+
+    def test_prepare_uses_existing_frames_and_named_getters(self):
+        now = (ROOT / 'books/checkpoint.lisp').read_text()
+        self.assertEqual(transform.prepare_interfaces(now), now)
+        provider = rw.source(ROOT, transform.PREPARE_SOURCE, 'books/checkpoint.lisp')
+        pattern = '(defcolumns-guarded-contracts fn2-checkpoint-copy-expected ?*body)'
+        self.assertEqual(rw.plain(rw.unique(now, pattern)), rw.plain(rw.unique(provider, pattern)))
+        for name in ('fn2-checkpoint-prepare-body', 'fn2-checkpoint-prepare', 'fn2-checkpoint-prepare-owned'):
+            pattern = '(fn2-checkpoints-preserves '+name+' ?*body)'
+            self.assertEqual(rw.plain(rw.unique(now, pattern)), rw.plain(rw.unique(provider, pattern)))
 
     def test_predicate_evidence_uses_canonical_closed_domain_path(self):
         self.assertEqual((ROOT / 'books/square-evidence.lisp').read_text(),
