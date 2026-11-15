@@ -78,7 +78,17 @@
  (history history-incarnation token ordinal rslot rgen dslot dgen off scratch sgen okind oslot ogen
   fn2-event-read fn2-csnapshot fn2-commit-root fn2-extents fn2-alloc-edges fn2-fc fn2-digests fn2-mk fn2-fields fn2-pool)
  :carriers ((fn2-event-read 1 :prefix "-READER") (fn2-mk 2 :prefix "-TREE")
-            (fn2-fields 3 :prefix "-FIELDS") (fn2-pool 4 :prefix "-POOL")))
+            (fn2-fields 3 :prefix "-FIELDS") (fn2-pool 4 :prefix "-POOL"))
+ :hyps ((fn2-event-readp fn2-event-read) (fn2-event-read-wfp fn2-event-read)
+        (fn2-csnapshotp fn2-csnapshot) (fn2-csnapshot-wfp fn2-csnapshot)
+        (fn2-commit-rootp fn2-commit-root) (fn2-commit-root-wfp fn2-commit-root)
+        (fn2-extentsp fn2-extents) (fn2-extents-wfp fn2-extents)
+        (fn2-alloc-edgesp fn2-alloc-edges) (fn2-alloc-edges-wfp fn2-alloc-edges)
+        (fn2-fcp fn2-fc) (fn2-fc-wfp fn2-fc)
+        (fn2-digestsp fn2-digests) (fn2-digests-wfp fn2-digests)
+        (fn2-mkp fn2-mk) (fn2-mk-wfp fn2-mk)
+        (fn2-fieldsp fn2-fields) (fn2-fields-wfp fn2-fields)
+        (fn2-poolp fn2-pool) (fn2-pool-wfp fn2-pool)))
 
 (defun fn2-event-read-open (token ordinal rslot rgen dslot dgen off scratch sgen okind oslot ogen
                            fn2-event-read fn2-csnapshot fn2-commit-root fn2-extents fn2-alloc-edges
