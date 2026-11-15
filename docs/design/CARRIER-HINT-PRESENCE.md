@@ -53,3 +53,18 @@ and retain their exact routing under this change. Application consumers whose
 previously absent WFP hint now inherits a common hint need their original
 composed admission gate at that later freeze; the fixture alone does not
 qualify those consumers.
+
+Read-only Forge cache inventory at source `481facac5` found two integrity-checked
+compiled entries with toolchain identity `8aeb1bea18968c6cd33ac633a80ebf67e4924504db112fd27eb11f16a27b2a8c`:
+
+- declare: `299f7489bcfaeeb7c1a8f777c4a3b4886c5be174761a2f63f69a39599466aba1`
+- operations: `ffaf93d705d08918400704d108e7bffa6a3da8ae5ae2917128974f7d53c9e71b`
+
+The four exact misses are columns, columns-guard-hints,
+columns-carrier-contracts and the fixture. The fixture closure key is
+`c54a3d3abb11079eb6a5c0817bc063d8b2cf6cf33cdada3d64b84a179e9dc34c`.
+All six books permit only the plain certification world. No install, ACL2
+process or record run occurred. Plan and cache-query details are retained in
+`/tmp/carrier-hint-presence-plan.json` and
+`/tmp/carrier-hint-presence-cache.json` locally and on Forge; installation must
+revalidate entries and their compatibility when a gate is authorized.
