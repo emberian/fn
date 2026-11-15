@@ -7,7 +7,7 @@ must be derived from that store and the actual served call/attachment graph.
 
 ## Current integration frontier — 2026-11-15 UTC
 
-Current integration source is `0dda1d6ac`, including retirement dispatch, actual-type
+Current integration source is `79440f99d`, including retirement dispatch, actual-type
 codec fixtures, failed-Send classification, consumed-input accounting and farm
 Git metadata protection. No current whole-system image, full host gate,
 canonical served certificate, or completed assurance claim exists.
@@ -105,7 +105,12 @@ acceptance defects; candidate `67a776052` repairs them with bounded validation.
 Its exact two-book record `certify-20261115T023638Z-742660` passed in 0.45 seconds;
 root matched both before/after digests to that candidate, and the owner audited
 cache integrity. General language refinement, fuel adequacy and the actual
-composed native/replay gate remain owed. This candidate is not yet integrated.
+composed native/replay gate remain owed. The exact matcher is integrated at
+`79440f99d`; the host/replay consumer remains a separate candidate awaiting its
+dynamic host and interface gates. Independent review confirms the malformed
+fixes and a conservative fuel calculation, but this is not an admitted fuel
+theorem. The language specification requires explicit well-formed input
+hypotheses; runtime rejection of malformed observations is a separate obligation.
 
 Farm transport repair `0dda1d6ac` protects both Git pointer files and directories
 during source sync. Five transport and three budget controls pass.

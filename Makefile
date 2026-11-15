@@ -409,6 +409,8 @@ ACL2_BOOKS = \
   tests/storage-cancel-unit \
   tests/native-cut-binding-unit \
   tests/native-envelope-prefix-unit \
+  sim/envelope-output \
+  tests/envelope-output-unit \
   tests/envelope-input-unit \
   tests/envelope-prefix-unit \
   tests/native-unit \
