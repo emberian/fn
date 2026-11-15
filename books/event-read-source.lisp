@@ -17,16 +17,22 @@
       (equal (fn2-event-read-cut-commit 0 fn2-event-read) (fn2-csnapshot-cut-commit 0 fn2-csnapshot))
       (equal (fn2-event-read-cut-event 0 fn2-event-read) (fn2-csnapshot-cut-event 0 fn2-csnapshot))))
 
-(defun fn2-event-read-open (token ordinal rslot rgen dslot dgen off scratch sgen okind oslot ogen
+(defun fn2-event-read-open-core (history history-incarnation token ordinal rslot rgen dslot dgen off scratch sgen okind oslot ogen
                            fn2-event-read fn2-csnapshot fn2-commit-root fn2-extents fn2-alloc-edges
-                           fn2-fc fn2-digests fn2-mk fn2-fields fn2-checkpoint-build fn2-pool)
+                           fn2-fc fn2-digests fn2-mk fn2-fields fn2-pool)
  (declare (xargs :stobjs (fn2-event-read fn2-csnapshot fn2-commit-root fn2-extents fn2-alloc-edges
-                          fn2-fc fn2-digests fn2-mk fn2-fields fn2-checkpoint-build fn2-pool)
+                          fn2-fc fn2-digests fn2-mk fn2-fields fn2-pool)
   :guard (and (fn2-event-read-wfp fn2-event-read) (fn2-csnapshot-wfp fn2-csnapshot)
               (fn2-commit-root-wfp fn2-commit-root) (fn2-extents-wfp fn2-extents) (fn2-alloc-edges-wfp fn2-alloc-edges)
               (fn2-fc-wfp fn2-fc) (fn2-digests-wfp fn2-digests) (fn2-mk-wfp fn2-mk)
-              (fn2-fields-wfp fn2-fields) (fn2-pool-wfp fn2-pool) (fn2-checkpoint-build-wfp fn2-checkpoint-build))))
- (b* (((unless (fn2-checkpoint-build-ownerp token okind oslot ogen fn2-checkpoint-build fn2-csnapshot))
+              (fn2-fields-wfp fn2-fields) (fn2-pool-wfp fn2-pool) t)))
+ (b* (((unless (and (< 0 (fn2-event-read-rows fn2-event-read))
+                     (fn2-origin-physicalp history history-incarnation)
+                     (fn2-csnapshot-ownerp token okind oslot ogen fn2-csnapshot)
+                     (equal (fn2-csnapshot-phase 0 fn2-csnapshot) *fn2-csnapshot-phase-held*)
+                     (or (equal ordinal 0)
+                         (and (equal history (fn2-event-read-history 0 fn2-event-read))
+                              (equal history-incarnation (fn2-event-read-history-incarnation 0 fn2-event-read))))))
        (mv :source fn2-event-read fn2-mk fn2-fields fn2-pool))
       (row (fn2-b-event-row (fn2-fc-rows fn2-fc))) (base (* 128 row))
       (leaf (fn2-b-event-leaf-digest (fn2-fc-rows fn2-fc) (fn2-extents-rows fn2-extents)))
@@ -65,8 +71,32 @@
        (epoch (fn2-fields-value (+ base *fn2-event-proof-entry-field-writer-epoch*) fn2-fields))
        (allocation (fn2-fields-value (+ base *fn2-event-proof-entry-field-allocation*) fn2-fields))
        (first first) (members (fn2-fields-value (+ base *fn2-event-proof-entry-field-members*) fn2-fields))
-       (slot rslot) (gen rgen) (checker row) (field-base base) (leaf-digest leaf) (body-off 0) (body-len 0) (pending 0) (history (fn2-checkpoint-build-history 0 fn2-checkpoint-build)) (history-incarnation (fn2-checkpoint-build-history-incarnation 0 fn2-checkpoint-build)))))
+       (slot rslot) (gen rgen) (checker row) (field-base base) (leaf-digest leaf) (body-off 0) (body-len 0) (pending 0) (history history) (history-incarnation history-incarnation))))
   (mv :ok fn2-event-read fn2-mk fn2-fields fn2-pool)))
+
+(fn2-event-read-preserves fn2-event-read-open-core
+ (history history-incarnation token ordinal rslot rgen dslot dgen off scratch sgen okind oslot ogen
+  fn2-event-read fn2-csnapshot fn2-commit-root fn2-extents fn2-alloc-edges fn2-fc fn2-digests fn2-mk fn2-fields fn2-pool)
+ :carriers ((fn2-event-read 1 :prefix "-READER") (fn2-mk 2 :prefix "-TREE")
+            (fn2-fields 3 :prefix "-FIELDS") (fn2-pool 4 :prefix "-POOL")))
+
+(defun fn2-event-read-open (token ordinal rslot rgen dslot dgen off scratch sgen okind oslot ogen
+                           fn2-event-read fn2-csnapshot fn2-commit-root fn2-extents fn2-alloc-edges
+                           fn2-fc fn2-digests fn2-mk fn2-fields fn2-checkpoint-build fn2-pool)
+ (declare (xargs :stobjs (fn2-event-read fn2-csnapshot fn2-commit-root fn2-extents fn2-alloc-edges
+                          fn2-fc fn2-digests fn2-mk fn2-fields fn2-checkpoint-build fn2-pool)
+  :guard (and (fn2-event-read-wfp fn2-event-read) (fn2-csnapshot-wfp fn2-csnapshot)
+              (fn2-commit-root-wfp fn2-commit-root) (fn2-extents-wfp fn2-extents) (fn2-alloc-edges-wfp fn2-alloc-edges)
+              (fn2-fc-wfp fn2-fc) (fn2-digests-wfp fn2-digests) (fn2-mk-wfp fn2-mk)
+              (fn2-fields-wfp fn2-fields) (fn2-pool-wfp fn2-pool) (fn2-checkpoint-build-wfp fn2-checkpoint-build))))
+ (if (not (fn2-checkpoint-build-ownerp token okind oslot ogen fn2-checkpoint-build fn2-csnapshot))
+     (mv :source fn2-event-read fn2-mk fn2-fields fn2-pool)
+   (fn2-event-read-open-core
+    (fn2-checkpoint-build-history 0 fn2-checkpoint-build)
+    (fn2-checkpoint-build-history-incarnation 0 fn2-checkpoint-build)
+    token ordinal rslot rgen dslot dgen off scratch sgen okind oslot ogen
+    fn2-event-read fn2-csnapshot fn2-commit-root fn2-extents fn2-alloc-edges
+    fn2-fc fn2-digests fn2-mk fn2-fields fn2-pool)))
 (fn2-event-read-preserves fn2-event-read-open
  (token ordinal rslot rgen dslot dgen off scratch sgen okind oslot ogen fn2-event-read fn2-csnapshot fn2-commit-root
   fn2-extents fn2-alloc-edges fn2-fc fn2-digests fn2-mk fn2-fields fn2-checkpoint-build fn2-pool)
