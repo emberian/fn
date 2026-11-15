@@ -38,7 +38,7 @@
 (fn2-book-layer :e)
 
 ; Proof-only adapter delegates complete statements to the owning generator.
-(local (defun fn2-cns-row-hint-event (event)
+(defun fn2-cns-row-hint-event (event)
  (declare (xargs :verify-guards nil))
  (let ((claim (caddr event)))
   (if (and (eq (car event) 'defthm)
@@ -47,13 +47,13 @@
            (equal (caddr claim) '(fn2-cns-edges-rows fn2-cns-edges))
            (not (member-eq :hints (cdddr event))))
       (append event '(:hints (("Goal" :in-theory (disable fn2-cns-edges-rows)))))
-    event))))
-(local (defun fn2-cns-row-hint-events (events)
+    event)))
+(defun fn2-cns-row-hint-events (events)
  (declare (xargs :verify-guards nil))
  (if (atom events) nil
   (cons (fn2-cns-row-hint-event (car events))
-        (fn2-cns-row-hint-events (cdr events))))))
-(local (defmacro fn2-cns-edges-row-preserves
+        (fn2-cns-row-hint-events (cdr events)))))
+(defmacro fn2-cns-edges-row-preserves
  (name args &key position hyps specs (prefix '"-PRESERVES")
        (rows 't) (disable 't) hints (wfp-type 't) raw-rows carriers part forward)
  (let ((event (fn2-columns-preserves 'fn2-cns-edges name args position hyps specs prefix
@@ -62,7 +62,7 @@
   (cond ((or specs hints) event)
         ((eq (car event) 'progn)
          (cons 'progn (fn2-cns-row-hint-events (cdr event))))
-        (t (fn2-cns-row-hint-event event))))))
+        (t (fn2-cns-row-hint-event event)))))
 (local (assert-event
  (let* ((original (fn2-columns-preserves 'fn2-cns-edges 'sample '(x fn2-cns-edges)
                     nil nil nil "-PRESERVES" t t nil t t nil nil nil))
