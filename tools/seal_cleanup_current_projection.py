@@ -80,5 +80,5 @@ def fixture_source():
  # scalar via current declaration inventory rather than import that feature.
  for field in ('version-floor','physical-count'):
   for m in lr.match(f'(fn2-run-installed-{field} fn2-run-installed)',lr.parse(source).forms):edits.append((m.start,m.end,''))
- source=lr.write(source,edits)
+ source='\n'.join(line.rstrip() for line in lr.write(source,edits).split('\n'))
  return source.replace('; provider 826e44b7fd086f13cee9344aa6a4dacef74c144b. This branch does not\n; carry that pool API yet; integrate with the provider before ACL2 execution.', '; provider826 query API retained by current ROOT099. All assertions are prepared\n; and unexecuted; snapshots enumerate the actual current carrier columns.')

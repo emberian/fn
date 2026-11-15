@@ -188,7 +188,7 @@
       ((mv retired fn2-run-installed) (fn2-run-retire 0 fn2-run-installed))
       ((mv acquired fn2-pool) (fn2-pool-query-acquire slot gen 0 1 1 10 3 fn2-pool))
       (before-row (list (fn2-srh-run-installed-rows 0 fn2-run-installed)
-                        
+
                         ))
       (before-cache (fn2-srh-run-cache-rows 0 fn2-run-cache))
       (before-pool (fn2-srh-pool-snapshot fn2-pool))
@@ -196,7 +196,7 @@
        (fn2-seal-release-row 0 fn2-run-installed fn2-run-cache fn2-pool))
       (retained (and (eq held :held)
        (equal before-row (list (fn2-srh-run-installed-rows 0 fn2-run-installed)
-                               
+
                                ))
        (equal before-cache (fn2-srh-run-cache-rows 0 fn2-run-cache))
        (equal before-pool (fn2-srh-pool-snapshot fn2-pool))))
