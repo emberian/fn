@@ -244,6 +244,7 @@ ACL2_BOOKS = \
   books/pool-credit-contracts \
   books/allocation-release-geometry \
   books/identity-workspace-geometry \
+  books/identity-arena-credit \
   books/checkpoint-working-geometry \
   books/checkpoint-service-geometry \
   books/checkpoint-working-credit \
@@ -496,6 +497,7 @@ ACL2_BOOKS = \
   tests/pool-query-ref-unit \
   tests/pool-protected-floor-unit \
   tests/pool-credit-unit \
+  tests/identity-arena-credit-unit \
   tests/root-working-credit-init-unit \
   tests/pool-unit \
   tests/port-unit \

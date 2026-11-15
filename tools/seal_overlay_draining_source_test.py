@@ -3,13 +3,14 @@ from pathlib import Path
 import unittest
 import lisp_rewrite as lr
 import seal_overlay_draining_rewrite as d
+from identity_arena_draining_projection import before_current
 ROOT=Path(__file__).resolve().parents[1]
 def one(p,s):return d.one(p,s)
 class Draining(unittest.TestCase):
  def test_fixed_class_reproduces_and_is_idempotent(self):
   self.assertEqual(sum(map(len,d.BEFORE.values())),6)
   for file,items in d.BEFORE.items():
-   actual=(ROOT/file).read_text()
+   actual=before_current(file,(ROOT/file).read_text())
    for pattern,before in items.items():
     n=one(pattern,actual);self.assertEqual(actual[n.start:n.end],d.target(pattern,before))
    self.assertEqual(d.transform(file,actual),actual)
@@ -31,7 +32,7 @@ class Draining(unittest.TestCase):
   self.assertTrue(lr.match('(equal (fn2-overlays-phase o fn2-overlays) *fn2-overlay-phase-draining*)',[cleanup]))
   retire=one('(defun fn2-seal-retire ?*body)',s)
   self.assertTrue(lr.match('(member-equal phase (list *fn2-overlay-phase-frozen* *fn2-overlay-phase-draining*))',[retire]))
-  release=lr.match('(fn2-pool-release ?*args)',[retire])[0];advance=lr.match('(fn2-ov-advance o phase *fn2-overlay-phase-free* fn2-overlays)',[retire])[0]
+  release=lr.match('(fn2-idc-arena-return ?*args)',[retire])[0];advance=lr.match('(fn2-ov-advance o phase *fn2-overlay-phase-free* fn2-overlays)',[retire])[0]
   self.assertLess(release.start,advance.start)
   start=one('(defun fn2-seal-start ?*body)',s)
   self.assertTrue(lr.match('(not (posp (fn2-overlays-count o fn2-overlays)))',[start]))
@@ -40,11 +41,19 @@ class Draining(unittest.TestCase):
   self.assertTrue(lr.match('(list *fn2-overlay-phase-active* *fn2-overlay-phase-frozen*)',[n]))
   overlay=(ROOT/'books/overlay.lisp').read_text();n=one('(defun fn2-ov-start ?*body)',overlay)
   self.assertTrue(lr.match('(equal (fn2-overlays-phase o fn2-overlays) *fn2-overlay-phase-free*)',[n]))
- def test_credit_negative_is_not_supported_producer_or_retry(self):
+ def test_resident_credit_negative_is_not_arena_return_authority(self):
   fixture=(ROOT/'tests/seal-release-row-held-unit.lisp').read_text();self.assertIn('Hypothesis-removal control',fixture)
-  for book in ('sealer','machines-c-stage','machines-c-groups'):
-   src=(ROOT/'books'/(book+'.lisp')).read_text()
-   self.assertFalse(lr.match('(fn2-pool-reserve-credit ?*args)',lr.parse(src).forms))
+  provider=(ROOT/'books/identity-arena-credit.lisp').read_text()
+  self.assertTrue(lr.match('(fn2-pool-reserve-credit ?*args)',lr.parse(provider).forms))
+  self.assertIn('(fn2-idc-arena-credit-layout-p o commitrows class fn2-overlays fn2-pool)',provider)
+  # The resident run test removes the noncredit run-page origin premise;
+  # new arena credit authority does not authorize a run-cache page return.
+  self.assertIn('fn2-srh-resident-credit-body',fixture)
+  self.assertIn('fn2-pool-credit-configure',fixture)
+  sealer=(ROOT/'books/sealer.lisp').read_text()
+  release=one('(defun fn2-seal-release-row ?*body)',sealer)
+  self.assertTrue(lr.match('(fn2-pool-release ?*args)',[release]))
+  self.assertFalse(lr.match('(fn2-idc-arena-return ?*args)',[release]))
   actor=(ROOT/'books/machines-c-sealer-events.lisp').read_text()
   self.assertFalse(lr.match('((:credit) (:charge ?*args))',lr.parse(actor).forms))
 if __name__=='__main__':unittest.main()

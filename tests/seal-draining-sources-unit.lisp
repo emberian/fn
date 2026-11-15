@@ -20,7 +20,7 @@
                   ,@(and (member-eq (car args) '(fuel k)) `(:measure (nfix ,(car args)))))) ,@body))
 (defmacro fn2-dr8-mv (code) `(mv ,code ,@*fn2-dr8-stobjs*))
 (defmacro fn2-dr8-call (name &rest args) `(,name ,@args ,@*fn2-dr8-stobjs*))
-(defmacro fn2-dr8-step () `(fn2-seal-step 4096 ,@*fn2-dr8-stobjs*))
+(defmacro fn2-dr8-step () `(fn2-seal-step 0 4096 ,@*fn2-dr8-stobjs*))
 (defmacro fn2-dr8-setup ()
  `(b* (((mv code ,@*fn2-rga-stobjs*) (fn2-rga-call fn2-rga-setup))
        ((unless (eq code :ok)) (fn2-dr8-mv code))

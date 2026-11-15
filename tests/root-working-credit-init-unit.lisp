@@ -6,6 +6,26 @@
 (make-event
  (value `(defconst *fn2-rwciu-b-rows*
            ,(fn2-machine-property 'fn2-commit :capacity (w state)))))
+(defun fn2-rwciu-overlay-count ()
+ (declare (xargs :verify-guards nil))
+ (with-local-stobj fn2-overlays
+  (mv-let (n fn2-overlays)
+   (let ((fn2-overlays (fn2-overlays-init-for *fn2-node-profile* fn2-overlays)))
+    (mv (fn2-overlays-rows fn2-overlays) fn2-overlays)) n)))
+(defun fn2-rwciu-arena-origins (o commitrows fn2-overlays fn2-pool)
+ (declare (xargs :stobjs (fn2-overlays fn2-pool) :verify-guards nil
+  :measure (nfix (- (nfix (fn2-overlays-rows fn2-overlays)) (nfix o)))))
+ (if (not (and (natp o) (< o (nfix (fn2-overlays-rows fn2-overlays))))) t
+  (and (or (= (fn2-overlays-phase o fn2-overlays) *fn2-overlay-phase-free*)
+           (let* ((slot (fn2-overlays-slot o fn2-overlays))
+                  (group (fn2-idc-arena-credit-group o commitrows)))
+            (and (< slot (fn2-pool-rows fn2-pool))
+                 (= (fn2-pool-credit-group slot fn2-pool) group)
+                 (= (fn2-pool-credit-nonce slot fn2-pool) (fn2-pool-credit-group-noncei group fn2-pool))
+                 (eq (fn2-pool-workspace-code slot (fn2-overlays-gen o fn2-overlays)
+                       (fn2-overlays-okind o fn2-overlays) (fn2-overlays-oslot o fn2-overlays)
+                       (fn2-overlays-ogen o fn2-overlays) fn2-pool) :ok))))
+       (fn2-rwciu-arena-origins (+ o 1) commitrows fn2-overlays fn2-pool))))
 (defun fn2-rwciu-protected-classes (i fn2-pool)
  (declare (xargs :stobjs fn2-pool :verify-guards nil
   :measure (nfix (- (fn2-pool-nclasses fn2-pool) (nfix i)))))
@@ -20,7 +40,7 @@
                    (fn2-profile-generation-start *fn2-node-profile*)
                    (fn2-profile-generation-limit *fn2-node-profile*) fn2-pool))
         ((mv code fn2-pool) (fn2-checkpoint-working-credit-configure *fn2-node-profile*
-          *fn2-rwciu-b-rows* (* *fn2-commit-write-resources* *fn2-rwciu-b-rows*)
+          *fn2-rwciu-b-rows* (* *fn2-commit-write-resources* *fn2-rwciu-b-rows*) (fn2-rwciu-overlay-count)
           (fn2-checkpoint-service-protocol-classes fn2-pool)
           (fn2-checkpoint-service-upload-classes fn2-pool) fn2-pool)))
     (mv (if (eq code :ok) (put-assoc-equal :pool-classes (fn2-rwciu-protected-classes 0 fn2-pool) *fn2-node-profile*) nil) fn2-pool)) profile)))
@@ -32,13 +52,17 @@
       (stopped (fn2-core-stopped-p fn2-core)))
   (stobj-let ((fn2-commit (fn2-commit-table fn2-core))
               (fn2-commit-io (fn2-core-commit-io fn2-core))
+              (fn2-overlays (fn2-core-overlays fn2-core))
               (fn2-pool (fn2-core-pool fn2-core))) (yes)
    (and (not stopped)
         (= (fn2-commit-rows fn2-commit) *fn2-rwciu-b-rows*)
         (= (fn2-commit-io-rows fn2-commit-io) (* *fn2-commit-write-resources* (fn2-commit-rows fn2-commit)))
         (if image
             (and (fn2-pool-credit-shapep fn2-pool)
-                 (= (fn2-pool-credit-group-count fn2-pool) (+ 1 (fn2-allocation-release-credit-group (fn2-commit-rows fn2-commit))))
+                 (= (fn2-idc-count-overlays (fn2-overlays-rows fn2-overlays) 0 *fn2-overlay-phase-frozen* fn2-overlays)
+                    (fn2-checkpoint-name-arena-count profile))
+                 (= (fn2-pool-credit-group-count fn2-pool) (fn2-idc-arena-credit-total (fn2-commit-rows fn2-commit) (fn2-rwciu-overlay-count)))
+                 (fn2-rwciu-arena-origins 0 (fn2-commit-rows fn2-commit) fn2-overlays fn2-pool)
                  (fn2-pool-credit-fullp 0 0 fn2-pool)
                  (fn2-pool-credit-fullp 1 0 fn2-pool) (fn2-pool-credit-fullp 2 0 fn2-pool)
                  (fn2-pool-credit-fullp (fn2-allocation-release-credit-group (fn2-commit-rows fn2-commit)) 0 fn2-pool))
@@ -85,7 +109,7 @@
         (fn2-checkpoint-service-classes-fitp uploads fn2-pool)
         (equal paths '((0 0) (0 0 0))) (equal uploads '(0 0))))
       ((mv code fn2-pool) (fn2-checkpoint-working-credit-configure *fn2-node-profile*
-        *fn2-rwciu-b-rows* (* *fn2-commit-write-resources* *fn2-rwciu-b-rows*) paths uploads fn2-pool)))
+        *fn2-rwciu-b-rows* (* *fn2-commit-write-resources* *fn2-rwciu-b-rows*) (fn2-rwciu-overlay-count) paths uploads fn2-pool)))
   (mv (and antecedent (eq code :ok) (fn2-pool-credit-shapep fn2-pool)
            (= (fn2-checkpoint-service-path-demand 0 paths) 3)
            (= (fn2-checkpoint-service-class-count 0 uploads) 2)
@@ -116,7 +140,7 @@
         (uploads (fn2-checkpoint-service-upload-classes fn2-pool))
         ((mv sc service) (fn2-checkpoint-service-demand-vector *fn2-node-profile* (list nil nil) uploads fn2-pool))
         ((mv code fn2-pool) (fn2-checkpoint-working-credit-configure *fn2-node-profile*
-          *fn2-rwciu-b-rows* (* *fn2-commit-write-resources* *fn2-rwciu-b-rows*) paths uploads fn2-pool)))
+          *fn2-rwciu-b-rows* (* *fn2-commit-write-resources* *fn2-rwciu-b-rows*) (fn2-rwciu-overlay-count) paths uploads fn2-pool)))
     (mv (if (and (eq sc :ok) (eq code :ok))
             (put-assoc-equal :pool-classes (fn2-rwciu-service-classes 0 service fn2-pool) *fn2-node-profile*) nil)
         fn2-pool)) profile)))

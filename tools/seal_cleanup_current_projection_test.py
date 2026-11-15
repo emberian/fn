@@ -4,12 +4,13 @@ import unittest
 import lisp_rewrite as lr
 import seal_cleanup_current_projection as p
 import seal_overlay_draining_rewrite as drain
+from identity_arena_draining_projection import before_current
 ROOT=Path(__file__).resolve().parents[1]
 class Current(unittest.TestCase):
  def test_exact_current_projection(self):
-  for file,expected in p.project(p.BEFORE).items():self.assertEqual(drain.transform(file,expected),(ROOT/file).read_text(),file)
+  for file,expected in p.project(p.BEFORE).items():self.assertEqual(drain.transform(file,expected),before_current(file,(ROOT/file).read_text()),file)
  def test_current_fixture_is_canonical_projection(self):
-  self.assertEqual(p.fixture_source(),(ROOT/'tests/seal-release-row-held-unit.lisp').read_text())
+  self.assertEqual(p.fixture_source(),before_current('tests/seal-release-row-held-unit.lisp',(ROOT/'tests/seal-release-row-held-unit.lisp').read_text()))
  def test_query_reference_field_is_in_full_snapshot(self):
   text=p.fixture_source();self.assertIn('(fn2-pool-query-ref-count i fn2-pool)',text)
   self.assertNotIn('fn2-seals-copy-live',text);self.assertNotIn('fn2-run-installed-version-floor',text)

@@ -411,7 +411,7 @@
  (fn2-overlays fn2-overlay-index fn2-fields fn2-pool) (fn2-id-engine fn2-overlays fn2-overlay-index fn2-fields fn2-pool) t
  (fn2-grp-insert-one))
 
-(defun fn2-grp-genesis (sid max groups b0 fn2-id-engine fn2-overlays fn2-overlay-index fn2-fields fn2-pool)
+(defun fn2-grp-genesis (commitrows sid max groups b0 fn2-id-engine fn2-overlays fn2-overlay-index fn2-fields fn2-pool)
  (declare (xargs :stobjs (fn2-id-engine fn2-overlays fn2-overlay-index fn2-fields fn2-pool) :guard t
   :guard-hints (("Goal" :in-theory (disable fn2-idc-scratch fn2-ov-start fn2-ov-advance fn2-grp-insert-all fn2-pool-reserve
                                             fn2-pool-class-for fn2-fields-rows fn2-overlays-rows fn2-overlay-index-rows
@@ -433,12 +433,15 @@
        (mv (if (eq code :ok) :state code) fn2-id-engine fn2-overlays fn2-overlay-index fn2-fields fn2-pool))
       (arena (fn2-id-engine-arena 0 fn2-id-engine))
       (class (fn2-pool-class-for (nfix arena) fn2-pool))
-      ((unless (natp class)) (mv :capacity fn2-id-engine fn2-overlays fn2-overlay-index fn2-fields fn2-pool))
-      ((mv code slot gen fn2-pool) (fn2-pool-reserve class *fn2-idc-owner-kind* *fn2-idc-owner-slot* *fn2-idc-owner-gen* fn2-pool))
-      ((unless (eq code :ok)) (mv code fn2-id-engine fn2-overlays fn2-overlay-index fn2-fields fn2-pool))
+      ((mv picked o)
+       (if (= (fn2-pool-credit-configured fn2-pool) 0) (mv :ok o)
+        (fn2-idc-arena-pick 0 commitrows class *fn2-idc-owner-kind* *fn2-idc-owner-slot* *fn2-idc-owner-gen* nil
+         fn2-overlays fn2-pool)))
+      ((unless (eq picked :ok)) (mv picked fn2-id-engine fn2-overlays fn2-overlay-index fn2-fields fn2-pool))
       ((mv code fn2-overlays fn2-pool)
-       (fn2-ov-start o sid slot gen (* o icap) icap *fn2-idc-owner-kind* *fn2-idc-owner-slot* *fn2-idc-owner-gen* 0
-                     fn2-overlays fn2-overlay-index fn2-pool))
+       (fn2-idc-arena-create o commitrows sid arena (* o icap) icap
+        *fn2-idc-owner-kind* *fn2-idc-owner-slot* *fn2-idc-owner-gen* *fn2-overlay-phase-active*
+        fn2-overlays fn2-overlay-index fn2-pool))
       ((unless (eq code :ok)) (mv code fn2-id-engine fn2-overlays fn2-overlay-index fn2-fields fn2-pool))
       ((mv code fn2-overlays fn2-overlay-index fn2-fields fn2-pool)
        (fn2-grp-insert-all max groups o b0 (+ b0 *fn2-idc-eb*) fn2-id-engine fn2-overlays fn2-overlay-index fn2-fields fn2-pool))
@@ -449,7 +452,7 @@
       (fn2-overlays (fn2-overlays-set-seq o seq fn2-overlays))
       ((mv code fn2-overlays) (fn2-ov-advance o *fn2-overlay-phase-active* *fn2-overlay-phase-frozen* fn2-overlays)))
   (mv code fn2-id-engine fn2-overlays fn2-overlay-index fn2-fields fn2-pool)))
-(fn2-idc-fn-shape fn2-grp-genesis (sid max groups b0 fn2-id-engine fn2-overlays fn2-overlay-index fn2-fields fn2-pool)
+(fn2-idc-fn-shape fn2-grp-genesis (commitrows sid max groups b0 fn2-id-engine fn2-overlays fn2-overlay-index fn2-fields fn2-pool)
  (fn2-id-engine fn2-overlays fn2-overlay-index fn2-fields fn2-pool) (fn2-id-engine fn2-overlays fn2-overlay-index fn2-fields fn2-pool) t
  (fn2-grp-groupsp fn2-idc-find-overlay fn2-idc-scratch fn2-id-engine-arena fn2-id-engine-seq fn2-grp-insert-all fn2-pool-class-for))
 
@@ -498,13 +501,14 @@
     :position 2 :rows nil :hints (("Goal" :in-theory (enable fn2-core-wfp))))
    (defun fn2-groups-genesis (profile fn2-core)
     (declare (xargs :stobjs fn2-core :guard (fn2-core-wfp fn2-core)))
-    (stobj-let ((fn2-id-engine (fn2-core-id-engine fn2-core)) (fn2-id-decides (fn2-core-id-decides fn2-core))
+    (stobj-let ((fn2-commit (fn2-commit-table fn2-core))
+                  (fn2-id-engine (fn2-core-id-engine fn2-core)) (fn2-id-decides (fn2-core-id-decides fn2-core))
                 (fn2-overlays (fn2-core-overlays fn2-core)) (fn2-overlay-index (fn2-core-overlay-index fn2-core))
                 (fn2-fields (fn2-core-fields fn2-core)) (fn2-pool (fn2-core-pool fn2-core)) (fn2-fc (fn2-core-fc fn2-core)))
      (code fn2-id-engine fn2-overlays fn2-overlay-index fn2-fields fn2-pool)
      (mv-let (c b0) (fn2-idc-stripe 0 (fn2-fc-rows fn2-fc) fn2-id-decides fn2-fields)
       (if (eq c :ok)
-          (fn2-grp-genesis *fn2-groups-sid* *fn2-groups-name-max* (fn2-profile-get :groups profile) b0 fn2-id-engine fn2-overlays fn2-overlay-index fn2-fields fn2-pool)
+          (fn2-grp-genesis (fn2-commit-rows fn2-commit) *fn2-groups-sid* *fn2-groups-name-max* (fn2-profile-get :groups profile) b0 fn2-id-engine fn2-overlays fn2-overlay-index fn2-fields fn2-pool)
         (mv c fn2-id-engine fn2-overlays fn2-overlay-index fn2-fields fn2-pool)))
      (mv code fn2-core)))
    (fn2-core-preserves fn2-groups-genesis (profile fn2-core)
@@ -562,13 +566,14 @@
     (mv-let (code ids fn2-core) (fn2-principals-bind-genesis profile fn2-core)
      (if (or (not (eq code :ok)) (not (posp (nfix (fn2-profile-get :authority profile)))))
          (mv code fn2-core)
-      (stobj-let ((fn2-id-engine (fn2-core-id-engine fn2-core)) (fn2-id-decides (fn2-core-id-decides fn2-core))
+      (stobj-let ((fn2-commit (fn2-commit-table fn2-core))
+                  (fn2-id-engine (fn2-core-id-engine fn2-core)) (fn2-id-decides (fn2-core-id-decides fn2-core))
                   (fn2-overlays (fn2-core-overlays fn2-core)) (fn2-overlay-index (fn2-core-overlay-index fn2-core))
                   (fn2-fields (fn2-core-fields fn2-core)) (fn2-pool (fn2-core-pool fn2-core)) (fn2-fc (fn2-core-fc fn2-core)))
        (code fn2-id-engine fn2-overlays fn2-overlay-index fn2-fields fn2-pool)
        (mv-let (c b0) (fn2-idc-stripe 0 (fn2-fc-rows fn2-fc) fn2-id-decides fn2-fields)
         (if (eq c :ok)
-            (fn2-grp-genesis *fn2-principals-sid* *fn2-principals-name-max* ids b0
+            (fn2-grp-genesis (fn2-commit-rows fn2-commit) *fn2-principals-sid* *fn2-principals-name-max* ids b0
                              fn2-id-engine fn2-overlays fn2-overlay-index fn2-fields fn2-pool)
           (mv c fn2-id-engine fn2-overlays fn2-overlay-index fn2-fields fn2-pool)))
        (mv code fn2-core)))))
