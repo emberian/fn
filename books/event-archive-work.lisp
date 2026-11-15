@@ -45,7 +45,10 @@
                (equal (fn2-event-archive-phase 1 fn2-event-archive) *fn2-event-archive-phase-members*))
           (and (equal (fn2-run-builds-schema *fn2-checkpoint-source-build* fn2-run-builds) 10)
                (equal (fn2-event-archive-phase 1 fn2-event-archive) *fn2-event-archive-phase-manifest*)))
-      (equal (fn2-run-builds-run *fn2-checkpoint-source-build* fn2-run-builds) (fn2-checkpoint-build-checkpoint 0 fn2-checkpoint-build))))
+      (equal (fn2-run-builds-run *fn2-checkpoint-source-build* fn2-run-builds)
+       (if (equal (fn2-run-builds-schema *fn2-checkpoint-source-build* fn2-run-builds) *fn2-event-archive-schema*)
+           (fn2-event-archive-cut-event 1 fn2-event-archive)
+         (fn2-event-archive-checkpoint 1 fn2-event-archive)))))
 
 (fn2-event-archive-operation fn2-event-archive-finish
  (fn2-event-archive fn2-checkpoint-root1 fn2-checkpoint-windows fn2-csnapshot fn2-checkpoint-build fn2-checkpoint-source fn2-checkpoint-metadata-manifest

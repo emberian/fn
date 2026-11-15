@@ -81,7 +81,7 @@
       ((unless (eq code :ok)) (mv code fn2-event-archive fn2-checkpoint-metadata fn2-run-builds fn2-run-writers fn2-run-restarts fn2-fields fn2-pool fn2-digests))
       ((mv code fn2-pool) (fn2-run-zero 32 scratch sgen 32 kind owner gen fn2-pool))
       ((unless (eq code :ok)) (mv code fn2-event-archive fn2-checkpoint-metadata fn2-run-builds fn2-run-writers fn2-run-restarts fn2-fields fn2-pool fn2-digests))
-      ((mv field-code fn2-fields) (fn2-manifest-bind-unfiltered base *fn2-event-archive-schema* (fn2-event-archive-checkpoint 1 fn2-event-archive) (fn2-event-archive-member-height 1 fn2-event-archive) (fn2-event-archive-member-entries 1 fn2-event-archive) (fn2-event-archive-member-unit 1 fn2-event-archive) (fn2-event-archive-member-epoch 1 fn2-event-archive) (fn2-event-archive-member-allocation 1 fn2-event-archive) scratch sgen fn2-fields))
+      ((mv field-code fn2-fields) (fn2-manifest-bind-unfiltered base *fn2-event-archive-schema* (fn2-event-archive-last-event 1 fn2-event-archive) (fn2-event-archive-member-height 1 fn2-event-archive) (fn2-event-archive-member-entries 1 fn2-event-archive) (fn2-event-archive-member-unit 1 fn2-event-archive) (fn2-event-archive-member-epoch 1 fn2-event-archive) (fn2-event-archive-member-allocation 1 fn2-event-archive) scratch sgen fn2-fields))
       ((unless (eq field-code :ok)) (mv field-code fn2-event-archive fn2-checkpoint-metadata fn2-run-builds fn2-run-writers fn2-run-restarts fn2-fields fn2-pool fn2-digests))
       ((mv code fn2-run-builds fn2-run-writers fn2-run-restarts fn2-fields fn2-pool)
        (fn2-run-build-add b base fn2-run-builds fn2-run-writers fn2-run-restarts fn2-fields fn2-pool))

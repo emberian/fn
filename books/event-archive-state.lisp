@@ -4,7 +4,7 @@
 (include-book "columns")
 (fn2-book-layer :b)
 (defcolumns fn2-event-archive
- ((phase (:enum fn2-event-archive-phase (:idle :members :member-complete :manifest :header :header-zero :header-pack :header-seal :page :bound :complete :uncertain)))
+ ((phase (:enum fn2-event-archive-phase (:idle :members :member-complete :manifest :header :header-zero :header-pack :header-seal :page :bound :complete :cold-header :uncertain)))
   (origin (:enum fn2-event-archive-origin (:none :fresh :append :cold)))
   (token :u60) (owner-kind :u8) (owner-slot :u32) (owner-gen :u60)
   (candidate :u32) (checkpoint :u60) (history :u60) (incarnation :u60)

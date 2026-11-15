@@ -248,3 +248,24 @@ archive geometry, priority and lower extraction; its no-engine include assertion
 also finds an actual dependency via readiness→machines-c-read→sealer→machines-c.
 The include walk has no cycle. Metadata owner was asked to own the narrower
 READ-state dependency. These controls have not been removed or rebased.
+
+The schema20 run header ID and its schema10 manifest key now use the actual
+terminal absolute event; the outer manifest run ID remains the checkpoint.
+This permits the shared lower-bound reader to select the first run ending at
+or after E, followed by exact interval/count and physical namespace checks.
+
+`event-archive-cold-header` now invokes the existing candidate root3 physical
+envelope checker before the sole generated archive header decoder. It checks
+current descriptor/root hash bytes, exact fullRef and namespace/cut binding,
+framing, manifest shape and zero/nonzero coverage shape. Actual manifest hash
+and C seal are fetched through the shared concrete digest loader. It writes
+only pending1 in COLD-HEADER with origin COLD and generation/tag zero; the
+active row, archive COMPLETE and obligation release are unreachable here.
+No descendants or contiguous run coverage have been authenticated yet. The
+next selected manifest/member walker must establish those and common typed
+reach before any stable events-complete getter can become true. Four source
+controls pass. A runnable generated-header codec roundtrip checks the two-word
+physical namespace and typed manifest Ref; it is unexecuted and explicitly
+does not claim the physical-reader antecedent. Empty-cut and retained-manifest
+append producers, actual header publication/root4/master wiring and genuine
+raw journal reclamation/reuse remain open work owned by this lane.
