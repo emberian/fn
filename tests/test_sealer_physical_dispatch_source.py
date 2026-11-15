@@ -38,7 +38,7 @@ class SealerPhysicalSource(unittest.TestCase):
   self.assertFalse(calls(f,'fn2-run-cache-lookup'))
  def test_readiness_keeps_active_seal_and_capacity_distinct(self):
   fs=tree('machines-c-sealer-events.lisp')
-  self.assertTrue(calls(fs,'fn2-run-load-roomp'))
+  self.assertTrue(calls(fs,'fn2-sealer-copy-roomp'))
   self.assertTrue(calls(fs,'fn2-sealer-load-status'))
   kind=tree('machines-c-sealer-kind.lisp')
   self.assertIn([':read-result',[':wake']],list(walk(kind)))
@@ -52,4 +52,16 @@ class SealerPhysicalSource(unittest.TestCase):
   self.assertTrue(calls(fixture,'fn2-checkpoint-cbase-promised-p'))
   self.assertTrue(calls(fixture,'fn2-checkpoint-summary-lease-current-p'))
   self.assertEqual(len(calls(fixture,'fn2-sealer-load-retire')),3)
+ def test_foreign_source_octets_cross_real_owned_copy(self):
+  f=next(f for f in tree('sealer.lisp') if isinstance(f,list) and f[:2]==['defun','fn2-seal-merge-add'])
+  copy=calls(f,'fn2-run-entry-rehome-step')
+  self.assertEqual(len(copy),1)
+  for field in ('source-kind','source-slot','source-gen','okind','oslot','ogen'):
+   self.assertTrue(calls(copy,'fn2-seals-'+field))
+  self.assertTrue(calls(f,'fn2-run-build-add'))
+  ready=list(walk(f))
+  self.assertIn(['equal',['fn2-seals-copy-live','0','fn2-seals'],'1'],ready)
+  helper=tree('sealer-physical-loader.lisp')
+  self.assertTrue(calls(helper,'fn2-sealer-copy-class-need'))
+  self.assertTrue(calls(tree('machines-c-sealer-events.lisp'),'fn2-sealer-copy-release-op'))
 if __name__=='__main__':unittest.main()
