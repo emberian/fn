@@ -89,6 +89,7 @@ ACL2_BOOKS = \
   books/reference-selected-dispatcher \
   books/reference-selected-effects \
   tests/reference-effect-lowering-unit \
+  tests/reference-effect-emitted-unit \
   tests/reference-effect-query-unit \
   tests/reference-effect-query-last-unit \
   tests/reference-effect-partition-control \
