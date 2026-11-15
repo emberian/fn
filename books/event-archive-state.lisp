@@ -15,9 +15,18 @@
   (manifest-unit :u60) (manifest-epoch :u60) (manifest-allocation :u60) (manifest-height :u8)
   (header-ordinal :u60) (header-slot :u32) (header-gen :u60) (header-zero :u32) (header-payload :u32)
   (header-unit :u60) (header-epoch :u60) (header-allocation :u60)
-  (source-tag :u60) (source-generation :u60) (scan :u60) (next-event :u60) (entry-pending :bool))
- :extra-fields
- ((fn2-event-archive-words :type (array (unsigned-byte 32) (48)) :initially 0
+  (source-tag :u60) (source-generation :u60) (scan :u60) (next-event :u60) (entry-pending :bool)
+  (read-armed :bool) (read-offset :u60) (read-sector :u8)
+  (read-unit :u60) (read-epoch :u60) (read-allocation :u60) (read-schema :u60) (read-run :u60) (read-level :u8)
+  (read-page :u32) (read-page-gen :u60) (read-scratch :u32) (read-scratch-gen :u60)
+  (read-candidate :u32) (read-checkpoint :u60) (read-history :u60) (read-incarnation :u60)
+  (read-owner-kind :u8) (read-owner-slot :u32) (read-owner-gen :u60))
+  :extra-fields
+ ((fn2-event-archive-read-hash :type (array (unsigned-byte 32) (8)) :initially 0
+   :why "Exact single armed candidate-read hash; not recomputed from a mutable cursor at completion.")
+  (fn2-event-archive-read-descriptor :type (array (unsigned-byte 8) (32)) :initially 0
+   :why "Single armed read's descriptor binding survives candidate/row interleavings.")
+  (fn2-event-archive-words :type (array (unsigned-byte 32) (48)) :initially 0
    :why "Per active/pending row: actual completed member root, manifest root and cut-C seal, eight words each.")
   (fn2-event-archive-descriptor :type (array (unsigned-byte 8) (64)) :initially 0
    :why "Exact active/pending descriptor bindings; neither aliases investigation scratch.")))

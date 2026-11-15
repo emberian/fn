@@ -338,3 +338,19 @@ numeric schema ceiling. The summary catalog owner is adding the same check to
 the shared record-field gate. Two source controls pass; an actual native
 consideration fixture distinguishes internal20 and ordinary3 and is unrun.
 This leaves the independent root3 archive reader free to admit exact internal20.
+
+The delayed actual boot adapter now binds one saved read subject before the
+existing raw :read transport: absolute offset, sector, fullRef/hash, owned
+handles, candidate/descriptor, physical namespace and owner generation. While
+armed the archive cursor cannot advance. COPY requires the actual boot COPY
+phase/generation, stage12, pending/event-ready, DONE/count4096 and the same
+saved offset/handles/current source before enabling the common COPY phase.
+Recipient generation alone is not read-address evidence. No new raw issuer
+or allocator pin bypass exists; parent still owns archive state declarations,
+stage12 routing and finalization. These delayed faces are not yet in the
+composed machine. Five source controls pass. A runnable unexecuted fixture
+queues the actual raw read descriptor, mutates sector/unit/hash/descriptor
+between issue and completion, fills the actual loan, posts/harvests through
+the real protocol, and distinguishes matching from substituted subjects. The
+fixture's candidate is synthetic and does not claim physical header admission.
+The actual full boot-phase/callback fixture is still owed at parent composition.

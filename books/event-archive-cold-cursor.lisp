@@ -62,7 +62,7 @@
       (q (+ base *fn2-run-reader-fields*))
       (fn2-fields (fn2-fields-set-value q *fn2-event-archive-schema* fn2-fields))
       (fn2-fields (fn2-fields-set-value (+ q 1) 1 fn2-fields))
-      (fn2-event-archive (fn2-event-archive-put 1 (phase *fn2-event-archive-phase-cold-manifest*) (scan 0) (next-event 1) (entry-pending 0))))
+      (fn2-event-archive (fn2-event-archive-put 1 (phase *fn2-event-archive-phase-cold-manifest*) (scan 0) (next-event 1) (entry-pending 0) (read-armed 0))))
   (mv :borrowed fn2-event-archive fn2-run-loads fn2-run-cursors fn2-fields)))
 
 (defun fn2-event-archive-cold-cursor-source-p (fn2-event-archive fn2-checkpoints fn2-checkpoint-refs fn2-checkpoint-bytes
@@ -105,6 +105,8 @@
        (mv :source fn2-event-archive fn2-run-loads fn2-run-cursors fn2-run-paths fn2-fc fn2-fc-context fn2-b3 fn2-fields fn2-pool fn2-digests))
       (c (fn2-b-event-archive-cursor-from-rows (fn2-run-loads-rows fn2-run-loads)))
       (kind (fn2-event-archive-owner-kind 1 fn2-event-archive)) (owner (fn2-event-archive-owner-slot 1 fn2-event-archive)) (gen (fn2-event-archive-owner-gen 1 fn2-event-archive))
+      ((when (equal (fn2-event-archive-read-armed 1 fn2-event-archive) 1))
+       (mv :wait fn2-event-archive fn2-run-loads fn2-run-cursors fn2-run-paths fn2-fc fn2-fc-context fn2-b3 fn2-fields fn2-pool fn2-digests))
       ((when (equal (fn2-event-archive-entry-pending 1 fn2-event-archive) 1))
        (mv :manifest-entry fn2-event-archive fn2-run-loads fn2-run-cursors fn2-run-paths fn2-fc fn2-fc-context fn2-b3 fn2-fields fn2-pool fn2-digests))
       ((when (and (equal (fn2-run-cursors-phase c fn2-run-cursors) *fn2-run-cursor-phase-miss*)
