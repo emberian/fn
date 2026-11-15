@@ -1,0 +1,101 @@
+; C source replacement is frozen throughout live adoption. These are the
+; actual core mutation entries; the phase assignments model the adopter's
+; future state transitions without claiming a completed durable adoption.
+; Prepared ACL2 fixture, not executed in this lane.
+(in-package "ACL2")
+(include-book "std/util/bstar" :dir :system)
+(include-book "../books/executor")
+(include-book "retirement-state-projections")
+(make-event
+ (cons 'progn (fn2-riud-projection-events
+  '(fn2-overlays fn2-overlay-index fn2-id-engine fn2-pool fn2-fields
+    fn2-succ-txns fn2-succ-slots fn2-genesis-names) (w state))))
+
+(defconst *fn2-cmf-profile*
+ (put-assoc-equal :groups '(("mutation.test" . 7))
+  (put-assoc-equal :identity-arena-bytes 4096
+   (put-assoc-equal :large-upload-windows 1
+    (put-assoc-equal :pool-classes '((8 . 64) (4 . 256) (16 . 4096) (4 . 65536))
+                     *fn2-profile-tiny*)))))
+
+(defun fn2-cmf-view (fn2-core)
+ (declare (xargs :stobjs fn2-core :verify-guards nil))
+ (stobj-let ((fn2-overlays (fn2-core-overlays fn2-core))
+             (fn2-overlay-index (fn2-core-overlay-index fn2-core))
+             (fn2-id-engine (fn2-core-id-engine fn2-core))
+             (fn2-pool (fn2-core-pool fn2-core))
+             (fn2-fields (fn2-core-fields fn2-core))
+             (fn2-succ-txns (fn2-core-succ-txns fn2-core))
+             (fn2-succ-slots (fn2-core-succ-slots fn2-core))
+             (fn2-genesis-names (fn2-core-genesis-names fn2-core))) (view)
+  (list (fn2-overlays-copy fn2-overlays) (fn2-overlay-index-copy fn2-overlay-index)
+        (fn2-id-engine-copy fn2-id-engine) (fn2-pool-copy fn2-pool)
+        (fn2-fields-copy fn2-fields) (fn2-succ-txns-copy fn2-succ-txns)
+        (fn2-succ-slots-copy fn2-succ-slots) (fn2-genesis-names-copy fn2-genesis-names))
+  view))
+
+(defun fn2-cmf-phase (phase fn2-core)
+ (declare (xargs :stobjs fn2-core :verify-guards nil))
+ (stobj-let ((fn2-csnapshot (fn2-core-csnapshot fn2-core))) (fn2-csnapshot)
+  (fn2-csnapshot-set-phase 0 phase fn2-csnapshot) fn2-core))
+
+(defun fn2-cmf-poll (fuel token fn2-core)
+ (declare (xargs :stobjs fn2-core :verify-guards nil :measure (nfix fuel)))
+ (if (zp fuel) (mv :fuel fn2-core)
+  (mv-let (code & & fn2-core) (fn2-csnapshot-poll token 7 0 1 fn2-core)
+   (if (eq code :more) (fn2-cmf-poll (- fuel 1) token fn2-core)
+    (mv code fn2-core)))))
+
+(defun fn2-cmf-mutations (phase fn2-core)
+ (declare (xargs :stobjs fn2-core :verify-guards nil))
+ (b* ((fn2-core (fn2-cmf-phase phase fn2-core))
+      (before (fn2-cmf-view fn2-core))
+      (closed (stobj-let ((fn2-csnapshot (fn2-core-csnapshot fn2-core))) (closed)
+                (fn2-csnapshot-source-closed-p fn2-csnapshot) closed))
+      ((mv stage & fn2-core) (fn2-successor-stage 0 fn2-core))
+      ((mv group fn2-core) (fn2-groups-genesis *fn2-cmf-profile* fn2-core))
+      (ready (fn2-sealer-ready fn2-core))
+      ((mv seal fn2-core) (fn2-sealer-step 4096 fn2-core))
+      (after (fn2-cmf-view fn2-core)))
+  (mv (and closed (eq stage :full) (eq group :full) (not ready)
+           (eq seal :busy) (equal before after)) fn2-core)))
+
+(defun fn2-cmf-source-body (fn2-core)
+ (declare (xargs :stobjs fn2-core :verify-guards nil))
+ (b* ((fn2-core (fn2-init-executor *fn2-cmf-profile* :null nil fn2-core))
+      (ready-before (fn2-sealer-ready fn2-core))
+      ((mv put fn2-core) (fn2-successor-put 0 0 *fn2-groups-sid* :insert fn2-core))
+      ((mv begun token fn2-core) (fn2-csnapshot-begin 7 0 1 fn2-core))
+      (closing-open (stobj-let ((fn2-csnapshot (fn2-core-csnapshot fn2-core))) (open)
+                      (not (fn2-csnapshot-source-closed-p fn2-csnapshot)) open))
+      ((mv held fn2-core) (fn2-cmf-poll 20 token fn2-core))
+      ((mv adopting fn2-core) (fn2-cmf-mutations *fn2-csnapshot-phase-adopting* fn2-core))
+      ((mv adopted fn2-core) (fn2-cmf-mutations *fn2-csnapshot-phase-adopted* fn2-core)))
+  (mv (and ready-before (eq put :ok) (eq begun :ok) closing-open (eq held :held)
+           adopting adopted (not (fn2-core-stopped-p fn2-core))) fn2-core)))
+
+(defun fn2-cmf-boot-body (fn2-core)
+ (declare (xargs :stobjs fn2-core :verify-guards nil))
+ (b* ((profile (put-assoc-equal :image-boot t *fn2-cmf-profile*))
+      (fn2-core (fn2-init-executor profile :null nil fn2-core))
+      (id (fn2-machine-kind-base *fn2-boot-kind* fn2-core))
+      (generation (fn2-machine-generation id fn2-core))
+      (fn2-core (fn2-boot-put-core id (phase *fn2-boot-state-genesis-begin*) (stopped 0)))
+      (open (fn2-startup-name-contextp id generation *fn2-boot-state-genesis-begin* fn2-core))
+      (fn2-core (fn2-cmf-phase *fn2-csnapshot-phase-adopting* fn2-core))
+      (before (fn2-cmf-view fn2-core))
+      (closed (fn2-startup-name-contextp id generation *fn2-boot-state-genesis-begin* fn2-core))
+      ((mv begun fn2-core) (fn2-startup-name-begin id generation fn2-core))
+      (after (fn2-cmf-view fn2-core))
+      (fn2-core (fn2-cmf-phase *fn2-csnapshot-phase-adopted* fn2-core))
+      ((mv begun2 fn2-core) (fn2-startup-name-begin id generation fn2-core)))
+  (mv (and open (not closed) (eq begun :owner) (equal before after)
+           (eq begun2 :owner) (not (fn2-core-stopped-p fn2-core))) fn2-core)))
+
+(defun fn2-cmf-run ()
+ (declare (xargs :verify-guards nil))
+ (with-local-stobj fn2-core
+  (mv-let (source fn2-core) (fn2-cmf-source-body fn2-core)
+   (mv-let (boot fn2-core) (fn2-cmf-boot-body fn2-core)
+    (and source boot)))))
+(assert-event (fn2-cmf-run))
