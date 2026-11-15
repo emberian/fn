@@ -5,7 +5,7 @@
 (fn2-book-layer :b)
 (deflayout fn2-checkpoint-map-header
  (append
-  '((kind (:enum checkpoint-map-body-kind (:allocation-map :recovery-arena :event-proof-directory)))
+  '((kind (:enum checkpoint-map-body-kind (:allocation-map :recovery-arena :event-proof-directory :release-inventory)))
     (version :u8) (cut-commit (:id commit)) (cut-event (:id event))
     (total-entries :varint) (page-ordinal :varint) (first-ordinal :varint)
     (entry-count :varint) (has-next :u8)

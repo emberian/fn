@@ -22,8 +22,9 @@
 (deflayout fn2-event-frontier-header
  (append '((kind (:enum checkpoint-event-frontier-kind (:semantic-member-frontier)))
            (version :u8) (cut-commit (:id commit)) (cut-event (:id event))
-           (leaf-count (:id event)))
-         (fn2-format-prefix "DIRECTORY-" *fn2-format-ref*)))
+           (leaf-count (:id event)) (inventory-count :varint))
+         (fn2-format-prefix "DIRECTORY-" *fn2-format-ref*)
+         (fn2-format-prefix "INVENTORY-" *fn2-format-ref*)))
 (defconst *fn2-event-frontier-peaks-start*
  (+ *fn2-checkpoint-map-body-start* (* 32 (ceiling *fn2-event-frontier-header-max-size* 32))))
 (defconst *fn2-event-frontier-bytes* (* 60 32))
