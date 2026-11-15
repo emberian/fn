@@ -7,6 +7,54 @@ must be derived from that store and the actual served call/attachment graph.
 
 ## Current integration frontier — 2026-11-14 evening
 
+The next assembled-core qualification must include the reviewed retirement
+runtime changes, rather than complete the superseded 113-book world. That run
+was intentionally stopped after seventeen passes: eight new results remain
+reusable, nine belong only to its old source scope, and the interrupted
+`runs-page` has no verdict. The prior complete 27-book core record is separate.
+
+Integration blockers found in the compact retirement candidate `c68d8b006` are
+owned by reclamation and the children reviewer: validate lifecycle member/count
+partition bounds and exact terminal cursor, and give the opaque pinned-I/O
+helper its queued/history/semantic contracts before composing outer wrapper
+laws. Source review found correct durable-before-publication ordering and pin
+release at terminal harvest, but the scheduled retirement producer is still
+absent. Checkpoint summary adoption additionally requires an actual bounded
+physical page loader and a C-source lifetime hold through query-lease drain;
+marking a catalog ready or retaining every page in RAM is not the implementation.
+
+Peer import candidate `5531ae18b` remains held for a concrete interference bug:
+a foreign query can replace the import's completed query, then import cleanup
+resets that foreign query. The owner is adding a generated query incarnation,
+retained across query steps and successor release, and checking it before
+import declaration or cleanup. Tests must cover different-owner and same-owner
+replacement plus ordinary duplicate/conflict cleanup. This work is internal
+import correctness; it does not activate an authorization or wire path.
+
+The shared current core prerequisite is qualified in its 27-book scope:
+`certify-20261115T005654Z-646660` reused fourteen books and certified thirteen.
+Root matched all source digests before/after and to the integration tree. This
+covers core operations and scheduling, not the assembled application callbacks.
+
+Shared codec cancellation and child settlement are integrated at `53e7a596a`
+and qualified in the 13-book record `certify-20261115T005844Z-648440` (six reused,
+seven new). Root matched all thirteen current source digests and the unchanged
+runner. Four public cancellation controls and two child settlement controls pass.
+The shared generator changes invalidate older dependent TLS expansion keys;
+the historical twenty-book TLS result below is not current qualification for
+those changed consumers. Native/live-core composition is still pending. Review
+found that productive Receive completion after Close needs an explicit retained
+pre-Close input-effect receipt in replay; accepting arbitrary post-Close input
+would be an incorrect repair. Native cancelled Send must preserve accepted count
+without claiming delivered octets.
+
+The actual complete core-release theorem and its runtime/evidence candidates
+are now integrated and registered in the consumed obligation store. Their source
+includes nonempty sibling preservation, stale-generation refusal, and a sibling
+corruption control. The evidence candidate checks the exact live theorem H/C;
+universal status remains owed and current execution is pending the assembled-core
+prefix. Component ownership does not establish reachable CNS admission.
+
 Root `d18bcfbf2` includes the complete scoped TLS record/private-bridge guard
 changes (`756cef1ee`). The exact twenty-book record reused five qualified parents
 and certified fifteen books; root matched every source digest before and after.
@@ -21,10 +69,16 @@ The twelve-book author gate passed, including all existing protector/model trace
 and direct release-marker interleavings. Review exposed five old test setups that
 acquired durable protectors after retirement; those now use the permitted ordering
 while retaining transient post-retirement races. This changes allocator-dependent
-closure keys. Record certification and composed journal/core qualification remain
-open. The next callback slice uses production generators, but its initial controls
-never called the persisted dispatcher; direct dispatcher controls are now required
-before treating that boundary as tested.
+closure keys. Current twelve-book record
+`certify-20261115T004941Z-639322` passed: six cached books and six newly certified.
+Root independently matched all twelve current source digests before and after,
+all six success results, the unchanged runner, and toolchain
+`8aeb1bea18968c6cd33ac633a80ebf67e4924504db112fd27eb11f16a27b2a8c`.
+Allocator certification took 11.213 seconds; its D26 proof-cost debt remains.
+Composed journal/core qualification is still open. The next callback slice now
+has direct persisted-dispatcher source controls at `4e8f31e46`, with a nonempty
+owned obligation and nine separate premise-removal refusals. Independent source
+review passed; execution and physical persistence correspondence remain owed.
 
 Actual cancellation composition remains a transport blocker. Close removes the
 live capability lookup before a later Cancel, so results must come from retained

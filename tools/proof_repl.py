@@ -2265,7 +2265,7 @@ def status(args) -> int:
         print("  " + stop_note_words(args.name, note))
     load = state.get("load_cost")
     if load:
-        print(f"  loading cost ACL2 time {load['time']:.2f} s, prover steps {load['steps']:,}"
+        print(f"  successful load summaries only (excludes refused attempts): ACL2 time {load['time']:.2f} s, prover steps {load['steps']:,}"
               + ("; most steps: " + ", ".join(f"{label} ({steps:,})"
                                                for label, _, steps in load["slowest"])
                  if load.get("slowest") else ""))
