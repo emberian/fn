@@ -270,7 +270,8 @@
 (defcost fn2-txn-offer :enqueues 1 :answers (:ok :bounds :state :exhausted :owner :stale)
   :tables (fn2-core-succ-txns fn2-core-id-decides fn2-core-fields fn2-core-pool fn2-core-machines fn2-core-control fn2-core-sched fn2-core-trace)
   :doc "Start the identity decision for the upload's Message-ID and content digest.")
-(defcost fn2-txn-source-digest-ref :answers (:ok :bounds) :tables (fn2-core-machines)
+(defcost fn2-txn-source-digest-ref :answers (:ok :bounds)
+  :tables (fn2-core-machines fn2-core-machine-tables fn2-txn-table fn2-upload-table)
   :doc "Resolve the sealed upload's retained original SOURCE digest through the live transaction link.")
 (defcost fn2-txn-count :child fn2-txn-count-loop :answers (:ok :bounds) :bytes *fn2-txn-count-bytes*
   :doc "Count LF octets in up to 2,048 octets of a pool slot.")
