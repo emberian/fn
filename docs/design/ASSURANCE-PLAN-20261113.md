@@ -60,6 +60,14 @@ complete at the current 34-book record above. The served-family records retain
 their named earlier sources; application requalification and actual use of the
 carried predicates by physical metadata callers remain outstanding.
 
+The [served withdrawal audit](lanes/assurance-withdrawal-producer.md) identifies
+another required implementation gap: the specified NNTP cancel acceptance has no
+current concrete withdrawal writer or receiver-local target decision. Read-side
+WITHDRAWN support and the parked consumer model do not establish that behavior.
+Authenticated submitter provenance, target membership and positioned reports must
+be connected through the actual transaction path. Payload reclamation after
+withdrawal is a separate obligation; a withdrawal report alone cannot free data.
+
 Completion still requires composed FETCH/cancellation, the native APPEND/STATUS/
 query and NNTP consumers, process-death recovery of accepted data, productive
 physical checkpoint publication and reopen, and the remaining assurance/Lean
