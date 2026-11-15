@@ -5,6 +5,7 @@
 (include-book "checkpoint-construction")
 (include-book "checkpoint-lifecycle")
 (include-book "checkpoint-summary-authority-state")
+(include-book "checkpoint-directory-rebase-state")
 (fn2-book-layer :b)
 
 
@@ -26,3 +27,7 @@
 (defcorechild fn2-core-checkpoint-summary-authority fn2-checkpoint-summary-authority
  :init (fn2-checkpoint-summary-authority-init 2 fn2-checkpoint-summary-authority)
  :profilep t :why "Exact cold/live sufficient-summary subject, retained frontier and predecessor after the real C consumer completes; distinct from selected-source projection provenance.")
+
+(defcorechild fn2-core-checkpoint-directory-rebase fn2-directory-rebase
+ :init (fn2-directory-rebase-init 1 fn2-directory-rebase) :profilep t
+ :why "One owner-bound bounded scan joins actual summary consumption to the live directory base and preserved suffix.")
