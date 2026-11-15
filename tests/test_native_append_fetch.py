@@ -2,6 +2,11 @@
 import importlib.util
 from pathlib import Path
 import unittest
+import os
+import selectors
+import subprocess
+import tempfile
+import time
 from unittest import mock
 
 spec = importlib.util.spec_from_file_location("native_append_fetch", Path(__file__).with_name("native-append-fetch-restart.py"))
@@ -10,6 +15,56 @@ spec.loader.exec_module(campaign)
 
 
 class ExactFetch(unittest.TestCase):
+    def test_init_timeout_stops_owned_child_and_grandchild(self):
+        real_popen = subprocess.Popen
+        children = []
+        def capture(*args, **kwargs):
+            kwargs["stdout"] = subprocess.PIPE
+            process = real_popen(*args, **kwargs)
+            children.append(process)
+            return process
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            launcher = root / "fn"
+            launcher.write_text("#!/usr/bin/env python3\n"
+                                "import subprocess,sys,time\n"
+                                "subprocess.Popen([sys.executable, '-c', 'import time; time.sleep(60)'])\n"
+                                "print('GRANDCHILD-STARTED', flush=True)\n"
+                                "time.sleep(60)\n")
+            launcher.chmod(0o755)
+            try:
+                with mock.patch.object(campaign, "ROOT", root), \
+                     mock.patch.object(campaign.subprocess, "Popen", side_effect=capture):
+                    with self.assertRaises(subprocess.TimeoutExpired):
+                        campaign.initialize(root, root / "image", seconds=1)
+                process = children[0]
+                self.assertIsNotNone(process.poll())
+                self.assertEqual(int((root / "init.launcher.pid").read_text()), process.pid)
+                # Both processes inherit this pipe. EOF proves the grandchild
+                # did not survive the direct launcher's timeout cleanup.
+                os.set_blocking(process.stdout.fileno(), False)
+                data = b""
+                eof = False
+                deadline = time.monotonic() + 2
+                with selectors.DefaultSelector() as selector:
+                    selector.register(process.stdout, selectors.EVENT_READ)
+                    while time.monotonic() < deadline and not eof:
+                        if selector.select(0.1):
+                            chunk = os.read(process.stdout.fileno(), 65536)
+                            eof = not chunk
+                            data += chunk
+                self.assertIn(b"GRANDCHILD-STARTED", data)
+                self.assertTrue(eof, "grandchild still holds inherited stdout")
+            finally:
+                for process in children:
+                    # Test owns these exact sessions, including on assertion failure.
+                    try:
+                        os.killpg(process.pid, 9)
+                    except ProcessLookupError:
+                        pass
+                    process.wait(timeout=5)
+                    process.stdout.close()
+
     def test_isolated_origin_overrides_ambient_deployment_names(self):
         expected = dict(FN2_ORIGIN_LINEAGE="711", FN2_ORIGIN_DOMAIN="712",
                         FN2_ORIGIN_INCARNATION="1", FN2_HISTORY_ID="713",
