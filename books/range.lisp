@@ -745,7 +745,7 @@
          (fn2-range-sources (fn2-range-sources-init *fn2-rga-smax* fn2-range-sources))
          (fn2-overlays (fn2-overlays-init 1 fn2-overlays))
          (fn2-overlay-index (fn2-overlay-index-init 256 fn2-overlay-index))
-         (fn2-run-installed (fn2-run-installed-init 16 fn2-run-installed))
+         (fn2-run-installed (fn2-run-installed-init-configured 16 1 fn2-run-installed))
          (fn2-run-builds (fn2-run-builds-init 1 fn2-run-builds))
          (fn2-run-cursors (fn2-run-cursors-init *fn2-rga-smax* fn2-run-cursors))
          (fn2-run-paths (fn2-run-paths-init (* *fn2-rga-smax* *fn2-run-max-levels*) fn2-run-paths))
