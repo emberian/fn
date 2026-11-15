@@ -181,7 +181,10 @@ and requires that edge's live formula and origin to match the actual
 `fn2-a-crypto-native` encapsulate. This temporary function is a source identity
 check, not a replacement semantic model or an alternative theorem.
 
-Capture must follow source admission of the whole unchanged consumer book;
+Capture must run as top-level events after source admission of the whole
+unchanged consumer book. A fresh enclosing encapsulate temporarily hides its
+external proof supporters, so it is not a valid capture context. Final file I/O
+is an ordinary top-level state expression, not a MAKE-EVENT expansion;
 loading its certificate alone does not supply the recorded support edge. The
 capture names the consumer's raw source hash and closure key, exact theorem,
 support theorem, assumption subject, extractor closure key, and generator
@@ -206,3 +209,11 @@ The current exact union is 17 books. The metadata/payload audit finds 14 exact
 missing at current keys. No current production admission or capture is claimed
 until that small coherent cut is approved and actually run. The hook's identity
 and stale/substituted report controls are source-tested independently.
+
+The first actual source run admitted all three production books unchanged:
+`digest-store` 0.20 s, `merkle` 14.28 s, and the native consumer 0.15 s.
+The 16-book parent union was recorded at the current keys. Top-level capture
+checks then passed for the actual source formula and crypto-assumption edge.
+The initial hook's export inside MAKE-EVENT was rejected; the source correction
+moves only I/O outside event expansion. Completed export/readback and the final
+17-book receipt remain pending. No malformed snapshot is counted as evidence.

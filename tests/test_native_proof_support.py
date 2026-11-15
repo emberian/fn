@@ -15,7 +15,10 @@ class NativeProofSupport(unittest.TestCase):
     def test_hook_uses_exact_current_formula_and_actual_metadata(self):
         ident, formula = capture.identity(ROOT)
         text = capture.hook(ROOT, Path('/tmp/native-support.lsp'))
-        self.assertEqual(len(ledger.read_forms(text)), 4)
+        forms = ledger.read_forms(text)
+        self.assertEqual(len(forms), 4)
+        self.assertEqual(ledger.head(forms[-1]), 'mv-let')
+        self.assertNotIn('open-output-channel', ledger.source_text(forms[2]))
         self.assertIn(ledger.source_text(formula), text)
         for actual in ('getpropc', 'all-vars', 'fn2-proof-support-node',
                        'fn2-proof-assumption-contexts', '(equal actual translated)',

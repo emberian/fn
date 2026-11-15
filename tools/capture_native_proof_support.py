@@ -1,7 +1,8 @@
 #!/usr/bin/env python3
 """Emit a post-admission hook for the actual native whole-effect theorem.
 
-Run only after admitting the unchanged whole consumer book with proofs and the
+Run as TOP-LEVEL events, not in a new encapsulate (which hides external proof
+supporters). Run only after admitting the unchanged whole consumer book with proofs and the
 shared extractor. Including the consumer certificate cannot satisfy this hook.
 This does not launch ACL2, change certificates, or discharge the crypto premise.
 """
@@ -64,13 +65,12 @@ def hook(root, output):
                           :report (fn2-proof-support-report
                                    '({SUBJECT}) '({ASSUMPTION}) 128 world)))))
     (er soft 'native-proof-support "Source formula, actual proof support, or constraint binding differs."))))
-(make-event
- (mv-let (channel state) (open-output-channel {ledger.source_text(str(output))} :object state)
-  (if (not channel)
-      (er soft 'native-proof-support "Cannot open capture output.")
-    (let* ((state (print-object$ *fn2-native-proof-support-capture* channel state))
-           (state (close-output-channel channel state)))
-      (value '(value-triple :native-proof-support-captured))))))
+; Ordinary post-admission I/O: forbidden inside MAKE-EVENT or a book.
+(mv-let (channel state) (open-output-channel {ledger.source_text(str(output))} :object state)
+ (if (not channel)
+     (prog2$ (er hard 'native-proof-support "Cannot open capture output.") state)
+   (let ((state (print-object$ *fn2-native-proof-support-capture* channel state)))
+     (close-output-channel channel state))))
 '''
 
 
