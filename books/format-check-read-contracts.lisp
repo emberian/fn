@@ -24,15 +24,15 @@
  :hints (("Goal" :in-theory (enable fn2-format-run))))
 
 (defthm fn2-fc-decoded-never-ok
- (not (equal (mv-nth 0 (fn2-fc-decoded row kind off len base next fn2-fc fn2-fc-context fn2-b3 fn2-fields fn2-pool fn2-digests)) :ok))
+ (not (equal (car (fn2-fc-decoded row kind off len base next fn2-fc fn2-fc-context fn2-b3 fn2-fields fn2-pool fn2-digests)) :ok))
  :hints (("Goal" :in-theory (enable fn2-fc-decoded))))
 
 (defthm fn2-fc-step-page-check-ok-fields-frame
- (implies (equal (mv-nth 0 (fn2-fc-step row :page nil slot gen off len base okind oslot ogen budget fn2-fc fn2-fc-context fn2-b3 fn2-fields fn2-pool fn2-digests)) :ok)
+ (implies (equal (car (fn2-fc-step row :page nil slot gen off len base okind oslot ogen budget fn2-fc fn2-fc-context fn2-b3 fn2-fields fn2-pool fn2-digests)) :ok)
           (equal (mv-nth 3 (fn2-fc-step row :page nil slot gen off len base okind oslot ogen budget fn2-fc fn2-fc-context fn2-b3 fn2-fields fn2-pool fn2-digests)) fn2-fields))
  :hints (("Goal" :in-theory (enable fn2-fc-step))))
 
 (defthm fn2-format-run-page-check-ok-fields-frame
- (implies (equal (mv-nth 0 (fn2-format-run :page nil row slot gen off len base okind oslot ogen budget fn2-fc fn2-fc-context fn2-b3 fn2-fields fn2-pool fn2-digests)) :ok)
+ (implies (equal (car (fn2-format-run :page nil row slot gen off len base okind oslot ogen budget fn2-fc fn2-fc-context fn2-b3 fn2-fields fn2-pool fn2-digests)) :ok)
           (equal (mv-nth 3 (fn2-format-run :page nil row slot gen off len base okind oslot ogen budget fn2-fc fn2-fc-context fn2-b3 fn2-fields fn2-pool fn2-digests)) fn2-fields))
  :hints (("Goal" :in-theory (enable fn2-format-run))))
