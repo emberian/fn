@@ -19,10 +19,10 @@
  :tables (fn2-core-event-archive fn2-core-checkpoints fn2-core-checkpoint-refs fn2-core-checkpoint-bytes fn2-core-run-loads fn2-core-run-cursors fn2-core-pool fn2-core-checkpoint-restore-map fn2-core-checkpoint-restore-map-control fn2-core-checkpoint-restore-reach fn2-core-checkpoint-restore-reach-control))
 (defcost fn2-boot-checkpoint-archive-received :answers t :bytes 512
  :tables (fn2-core-event-archive fn2-core-checkpoints fn2-core-checkpoint-refs fn2-core-checkpoint-bytes fn2-core-run-loads fn2-core-run-cursors fn2-core-pool fn2-core-checkpoint-restore-map fn2-core-checkpoint-restore-map-control fn2-core-checkpoint-restore-reach fn2-core-checkpoint-restore-reach-control))
-(defcost fn2-boot-checkpoint-archive-check-raw :child fn2-event-archive-cold-step-reach :answers t :bytes (* 2 *fn2-run-layout-max-entry-bytes*)
+(defcost fn2-boot-checkpoint-archive-check-raw :child fn2-event-archive-cold-step-reach :answers t :bytes *fn2-run-entry-visit-bytes*
  :tables (fn2-core-event-archive fn2-core-checkpoints fn2-core-checkpoint-refs fn2-core-checkpoint-bytes fn2-core-run-loads fn2-core-run-cursors
           fn2-core-run-paths fn2-core-run-cache fn2-core-boot-config fn2-core-fc fn2-core-fc-context fn2-core-b3 fn2-core-fields fn2-core-pool fn2-core-digests fn2-core-checkpoint-restore-map fn2-core-checkpoint-restore-map-control fn2-core-checkpoint-restore-reach fn2-core-checkpoint-restore-reach-control))
-(defcost fn2-boot-checkpoint-archive-check :answers t :bytes (* 2 *fn2-run-layout-max-entry-bytes*)
+(defcost fn2-boot-checkpoint-archive-check :answers t :bytes *fn2-run-entry-visit-bytes*
  :tables (fn2-core-event-archive fn2-core-checkpoints fn2-core-checkpoint-refs fn2-core-checkpoint-bytes fn2-core-run-loads fn2-core-run-cursors
           fn2-core-run-paths fn2-core-run-cache fn2-core-boot-config fn2-core-fc fn2-core-fc-context fn2-core-b3 fn2-core-fields fn2-core-pool fn2-core-digests fn2-core-checkpoint-restore-map fn2-core-checkpoint-restore-map-control fn2-core-checkpoint-restore-reach fn2-core-checkpoint-restore-reach-control))
 

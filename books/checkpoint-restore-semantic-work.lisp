@@ -6,16 +6,8 @@
 (include-book "recovery")
 (include-book "checkpoint-geometry")
 (fn2-book-layer :c)
-(defconst *fn2-checkpoint-restore-semantic-entry-bytes*
- (+ (* 2 *fn2-run-entries-base*) *fn2-run-restart-bytes* 32
-    (* *fn2-run-restart-interval* *fn2-run-layout-max-entry-bytes*)))
-; Work admission, not a ceiling on retained entries or DFS depth.
-; Every admitted entry fits its physical page. Check both premises of the
-; B envelope against this sole actual schema assembly, then its exact bound.
-(assert-event (<= *fn2-run-layout-max-entry-bytes* *fn2-format-page-size*))
-(assert-event (<= (+ (* 2 *fn2-run-entries-base*) *fn2-run-restart-bytes* 32)
-                  (* 2 *fn2-format-page-size*)))
-(assert-event (<= *fn2-checkpoint-restore-semantic-entry-bytes* *fn2-checkpoint-semantic-visit-bytes*))
+(include-book "run-entry-work")
+(defconst *fn2-checkpoint-restore-semantic-entry-bytes* *fn2-run-entry-visit-bytes*)
 ; Only observation of an authenticated retained page reaches this decoder.
 ; The tuple stays in the held field stripe until its concrete work consumer
 ; accepts it; advancing the cursor is a separate atomic consumption step.

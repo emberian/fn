@@ -2,6 +2,7 @@
 from pathlib import Path
 import unittest
 import lisp_rewrite as lr
+import event_archive_visit_rewrite as visit
 ROOT=Path(__file__).resolve().parents[1]
 def read(p):return (ROOT/p).read_text()
 def calls(s,p):return lr.match(p,lr.parse(s).forms)
@@ -11,7 +12,7 @@ class Cursor(unittest.TestCase):
   expected=old.replace(' `(progn',' (let* ((fn (if (consp name) (car name) name))\n        (formals (append (if (consp name) (cdr name) nil) children)))\n `(progn',1)
   expected=expected.replace('(defun ,name ,children','(defun ,fn ,formals').replace('(fn2-checkpoint-root1-preserves ,name ,children','(fn2-checkpoint-root1-preserves ,fn ,formals').replace('(fn2-columns-sym name "-OP") :child ,name','(fn2-columns-sym fn "-OP") :child ,fn')+')'
   s=read('books/event-archive-producer.lisp');node=lr.match('(defmacro fn2-event-archive-operation ?*body)',lr.parse(s).forms,deep=False)[0].node
-  self.assertEqual(s[node.start:node.end],expected)
+  self.assertEqual(s[node.start:node.end],visit.operation(expected))
  def test_boot_borrow_handles_and_private_source_derived_root(self):
   s=read('books/event-archive-cold-cursor.lisp')
   self.assertTrue(calls(s,'(fn2-event-archive-cold-source-p fn2-event-archive fn2-checkpoints fn2-checkpoint-refs fn2-checkpoint-bytes)'))

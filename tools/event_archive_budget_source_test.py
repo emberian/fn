@@ -14,10 +14,11 @@ class ArchiveBudget(unittest.TestCase):
   n=node('checkpoint-geometry.lisp','defconst','*fn2-checkpoint-semantic-visit-bytes*')
   self.assertIn('(* (+ *fn2-format-run-restart-interval* 2) *fn2-format-page-size*)',raw('checkpoint-geometry.lisp',n))
  def test_actual_schema_bounds_remain_asserted(self):
-  s=read('checkpoint-restore-semantic-work.lisp')
+  s=read('run-entry-work.lisp')
   self.assertIn('(assert-event (<= *fn2-run-layout-max-entry-bytes* *fn2-format-page-size*))',s)
   self.assertIn('(assert-event (<= (+ (* 2 *fn2-run-entries-base*) *fn2-run-restart-bytes* 32)',s)
-  self.assertIn('(assert-event (<= *fn2-checkpoint-restore-semantic-entry-bytes* *fn2-checkpoint-semantic-visit-bytes*))',s)
+  self.assertIn('(assert-event (<= *fn2-run-entry-visit-bytes* *fn2-checkpoint-semantic-visit-bytes*))',s)
+  self.assertIn('(defconst *fn2-checkpoint-restore-semantic-entry-bytes* *fn2-run-entry-visit-bytes*)',read('checkpoint-restore-semantic-work.lisp'))
  def test_boot_declares_envelope_but_charges_exact_assembled_cost(self):
   self.assertIn(':budget (:bytes *fn2-checkpoint-semantic-visit-bytes* :steps 32 :descriptors 4)',read('boot-kind.lisp'))
   s=read('boot.lisp')

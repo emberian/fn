@@ -5,6 +5,7 @@
 (include-book "event-archive-cold-source")
 (include-book "run-physical-bound-bind")
 (include-book "run-physical-bound-step")
+(include-book "run-entry-work")
 (fn2-book-layer :c)
 ; One concrete root constructor for both retained manifest/member Refs.
 ; Callers establish the exact candidate and typed decoded source before entry.
@@ -127,6 +128,7 @@
  (fn2-event-archive fn2-checkpoints fn2-checkpoint-refs fn2-checkpoint-bytes fn2-run-loads fn2-run-cursors fn2-run-paths fn2-run-cache
   fn2-boot-config fn2-fc fn2-fc-context fn2-b3 fn2-fields fn2-pool fn2-digests)
  (fn2-event-archive fn2-run-loads fn2-run-cursors fn2-run-paths fn2-fc fn2-fc-context fn2-b3 fn2-fields fn2-pool fn2-digests)
+ (:bytes *fn2-run-entry-visit-bytes*)
  (b* (((unless (fn2-event-archive-cold-cursor-source-p fn2-event-archive fn2-checkpoints fn2-checkpoint-refs fn2-checkpoint-bytes fn2-run-loads fn2-run-cursors fn2-pool))
        (mv :source fn2-event-archive fn2-run-loads fn2-run-cursors fn2-run-paths fn2-fc fn2-fc-context fn2-b3 fn2-fields fn2-pool fn2-digests))
       (c (fn2-b-event-archive-cursor-from-rows (fn2-run-loads-rows fn2-run-loads)))

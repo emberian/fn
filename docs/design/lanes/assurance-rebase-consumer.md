@@ -439,3 +439,13 @@ hash equivalence is assumed. Proposed scratch ownership and actual reconstructio
 relation still need implementation/evidence. No durable declaration changed;
 root review is pending. Prefix RELEASE typed obligations must complete before
 selected suffix source authority. Disposal, transfer and FREE remain closed.
+
+Archive cursor CHECK now declares the same actual restart-entry byte cost as
+cold semantic entry traversal, including generated schema20 MAX-entry. The
+formula and page/envelope inequalities moved verbatim to run-entry-work; the
+existing semantic cost name aliases that shared declaration. The operation
+generator accepts an explicit bytes directive while all old forms retain their
+expansion. Cursor child, reach wrapper and both actual core CHECK faces use
+the shared cost. Three replay/cost controls, four cursor controls, four budget
+controls and26 producer controls pass; actual Lisp admission is unrun. This
+repairs per-visit reservation, not the unimplemented member/receipt terminal.

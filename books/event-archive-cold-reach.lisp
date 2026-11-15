@@ -57,6 +57,7 @@
   fn2-checkpoint-restore-reach fn2-checkpoint-restore-reach-control fn2-run-loads fn2-run-cursors fn2-run-paths fn2-run-cache
   fn2-boot-config fn2-fc fn2-fc-context fn2-b3 fn2-fields fn2-pool fn2-digests)
  (fn2-event-archive fn2-checkpoint-restore-reach fn2-run-loads fn2-run-cursors fn2-run-paths fn2-fc fn2-fc-context fn2-b3 fn2-fields fn2-pool fn2-digests)
+ (:bytes *fn2-run-entry-visit-bytes*)
  (b* (((unless (and (fn2-event-archive-cold-reach-current-p fn2-event-archive fn2-checkpoints fn2-checkpoint-refs fn2-checkpoint-bytes
                      fn2-checkpoint-restore-map fn2-checkpoint-restore-map-control fn2-checkpoint-restore-reach-control)
                     (< 1 (fn2-run-loads-rows fn2-run-loads))
