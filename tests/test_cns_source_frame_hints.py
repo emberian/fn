@@ -21,6 +21,25 @@ class Controls(unittest.TestCase):
    cmd=['sbcl','--noinform','--script','tests/cns-source-frame-hint-controls.lsp',f.name]
    if candidate:cmd.append(str(candidate))
    return subprocess.run(cmd,cwd=ROOT,text=True,stdout=subprocess.PIPE,stderr=subprocess.STDOUT,timeout=20)
+ def test_actual_call_boundaries_cover_custom_contracts(self):
+  text=(ROOT/'books/cns-source-raw.lisp').read_text();forms=parse(text).forms
+  calls={m.node.items[1].low:m.node for m in match(None,forms,deep=False,head='fn2-cns-source-frames')}
+  required={'fn2-cns-source-issue-children':{'fn2-block-read-children','fn2-pool-truncate','fn2-cns-source-heldp'},
+            'fn2-cns-source-harvest':set(),
+            'fn2-cns-source-raw-step-children':{'fn2-cns-source-hash-begin','fn2-cns-source-hash-update','fn2-cns-source-hash-finish','fn2-block-read-commitment-children'},
+            'fn2-cns-source-next-children':{'fn2-rd-copy'}}
+  for name,expected in required.items():
+   call=calls[name];hint=flat(call.items[5])
+   for fn in expected:self.assertIn(fn,hint)
+   self.assertIn("'("+name+")",hint)
+   self.assertNotIn('fn2-cns-source-ownerp',hint)
+  helper=(ROOT/'books/columns-call-guards.lisp').read_text()
+  self.assertIn('"-PRESERVES-TYPE"',helper)
+  for name in required['fn2-cns-source-raw-step-children']:
+   producer='books/block-integrity.lisp' if name=='fn2-block-read-commitment-children' else 'books/cns-source-hash.lisp'
+   contract=(ROOT/producer).read_text()
+   self.assertIn(name+'-shape',contract)
+   self.assertNotIn(name+'-preserves-type',contract)
  def test_actual_legacy_and_supplied_expansions(self):
   r=self.run_control();self.assertEqual(r.returncode,0,r.stdout)
  def test_changed_hyp_or_spec_rejected(self):
