@@ -1,0 +1,226 @@
+{
+  "scope": "Qualified record of the current conditional native-node correspondence and live registry evidence; C/FFI semantics remain an explicit assumption. No current native runtime or full-host claim.",
+  "source_commit": "68ab9f5620c71e63d2027558659b699d2e6d1934",
+  "source_books_byte_equal_to_root": "07a4db98c",
+  "roots": [
+    "books/native-b3-evidence"
+  ],
+  "books": 19,
+  "source_identity": "a29310e3b5dd74c9985763b5a44c5a33ca38f53e536be56e1b8f8120f204f645",
+  "closure_key": "147eb51e774711f4a35251c33ddff602c57cd583067043b08759ba9e1929bc14",
+  "manifest": "/build/lanes/native-registry-record-68ab9f562/build/acl2/certify-20261115T002302Z-613027/manifest.json",
+  "manifest_sha256": "6ed660f90fb84afd24dd9e5a351ac3ca3e3cbeaf5191d91b85dcdcf3affab85f",
+  "status": "passed",
+  "toolchain_identity": "8aeb1bea18968c6cd33ac633a80ebf67e4924504db112fd27eb11f16a27b2a8c",
+  "resource": {
+    "pid": 613015,
+    "cgroup": "/user.slice/user-0.slice/user@0.service/swarm.slice/run-p613004-i29969731.scope",
+    "memory.max": "2147483648",
+    "memory.swap.max": "0"
+  },
+  "triage": {
+    "real": 0,
+    "cascade": 0,
+    "must-fail": 0,
+    "limit": 0,
+    "killed": 0,
+    "other": 0,
+    "clean": 6
+  },
+  "reused": 13,
+  "certified_published": 6,
+  "book_wall_seconds": {
+    "books/assurance-completion": 0.166,
+    "books/blake3": 17.628,
+    "books/digest-store": 0.768,
+    "books/merkle": 10.802,
+    "books/native-b3-correspondence": 1.52,
+    "books/native-b3-evidence": 1.119
+  },
+  "book_costliest_event": {
+    "books/assurance-completion": {
+      "form": "( DEFUN FN2-ASSURANCE-WALK ...)",
+      "seconds": 0.0,
+      "steps": 134
+    },
+    "books/blake3": {
+      "form": "( DEFTHM FN2-B3-BULK-SHAPE ...)",
+      "seconds": 3.89,
+      "steps": 366437
+    },
+    "books/digest-store": {
+      "form": "( DEFTHM FN2-DIGEST-STORE-WORDS-OVERWRITE ...)",
+      "seconds": 0.01,
+      "steps": 7084
+    },
+    "books/merkle": {
+      "form": "( DEFTHM FN2-MK-VERIFY-CONSISTENCY-SHAPE ...)",
+      "seconds": 2.1,
+      "steps": 254712
+    },
+    "books/native-b3-correspondence": {
+      "form": "( DEFTHM FN2-NATIVE-MK-NODE-WHOLE-EFFECT ...)",
+      "seconds": 0.35,
+      "steps": 120979
+    },
+    "books/native-b3-evidence": {
+      "form": "( DEFTHM FN2-NATIVE-MK-NODE-WHOLE-EFFECT$BOUND-NEGATIVE ...)",
+      "seconds": 0.0,
+      "steps": 306
+    }
+  },
+  "entries": [
+    {
+      "book": "books/assumptions-integrity",
+      "key": "d0de1faeb356dc20ecda0024b00e62cec0c5ce23c46642a53bfc35ad19d100ff",
+      "entry": "/home/fn/.cache/fn-certs/d0de1faeb356dc20ecda0024b00e62cec0c5ce23c46642a53bfc35ad19d100ff/ad3f6018516232cc",
+      "origin": "/build/lanes/assurance-native-record-390c57de0",
+      "cert_sha256": "c829fd027c5b8ead7e3e1b51c75c695e6faadaa9c29ec3191ae8696c15e0d377",
+      "fasl_sha256": "a82a81828932de7532d96ed4086f3572e1cd1667845addeb43a557a136661f0b"
+    },
+    {
+      "book": "books/assurance-completion",
+      "key": "41730432c6c87f3371f814e522288aa90c2d99785f54f2306e7f14c9246cc3c8",
+      "entry": "/home/fn/.cache/fn-certs/41730432c6c87f3371f814e522288aa90c2d99785f54f2306e7f14c9246cc3c8/71c13cf045777750",
+      "origin": "/build/lanes/native-registry-record-68ab9f562",
+      "cert_sha256": "5241f655272e61086e104df5a7b68c860ea87ef4b916a5399711390cb5d00786",
+      "fasl_sha256": "f42dff1302f7f91d42a46724db326a30b8807131bf9f435db4209a30856fa0e8"
+    },
+    {
+      "book": "books/blake3",
+      "key": "f4628945ce9922972ed4850cdd735111933f1b9d241e3c1938c172443c860779",
+      "entry": "/home/fn/.cache/fn-certs/f4628945ce9922972ed4850cdd735111933f1b9d241e3c1938c172443c860779/71c13cf045777750",
+      "origin": "/build/lanes/native-registry-record-68ab9f562",
+      "cert_sha256": "8f9ac4e36f3374c6891ac597fc133a5cf37ed010cfb864a1142b446c6cace0c4",
+      "fasl_sha256": "127c97cc0828eeba39aec514436224d987ffa0861d133f79a62efd1d31d34227"
+    },
+    {
+      "book": "books/blake3-pool-spec",
+      "key": "090a01f756c114c6c7e629f43bfdb2fad3236466349114e7e93917a7ea5b4d06",
+      "entry": "/home/fn/.cache/fn-certs/090a01f756c114c6c7e629f43bfdb2fad3236466349114e7e93917a7ea5b4d06/de7b02499c36c005",
+      "origin": "/build/lanes/assurance-shared-foundation-8ade",
+      "cert_sha256": "316d9336c493f1219f70d4261ccc2c168da131326c529cdf98304291d0f52fc7",
+      "fasl_sha256": "7bc46efedc680abb93c317928261a65f3c2d18f7a3af41a7d136d4c09e62400f"
+    },
+    {
+      "book": "books/blake3-spec",
+      "key": "3944594ba7622d4b4067f30d5dd2faaddf41fc13057a464af1b79f7234e57d81",
+      "entry": "/home/fn/.cache/fn-certs/3944594ba7622d4b4067f30d5dd2faaddf41fc13057a464af1b79f7234e57d81/7d5228e73de09114",
+      "origin": "/build/lanes/review-kimi",
+      "cert_sha256": "7857694c18ad6214f37670ba28050ccc3203e00ac56f158064d7130341ffec49",
+      "fasl_sha256": "ea3181e0e6594e2c3d28216f329e085f0bb388d313f33a9f0831e0aa77b18aab"
+    },
+    {
+      "book": "books/columns",
+      "key": "c8e9df5d21df547effaf69baa79db3c4c93eb88b694468b3e20e7684b30d9419",
+      "entry": "/home/fn/.cache/fn-certs/c8e9df5d21df547effaf69baa79db3c4c93eb88b694468b3e20e7684b30d9419/84166f8b7b293004",
+      "origin": "/build/lanes/assurance-storage-codec-5ca",
+      "cert_sha256": "c2d4907f2e37880c265939c15ab719f46fdc3e3e7e17dde78055885f9cf631fc",
+      "fasl_sha256": "8842ef2cbfb2606680ac7ee930b04c963dac1662d8cda3edeec6c6fca32cd38c"
+    },
+    {
+      "book": "books/declare",
+      "key": "f1df352dc360553d08906239d267e9371fcb2fe4f19c6581adc1b0b322b30875",
+      "entry": "/home/fn/.cache/fn-certs/f1df352dc360553d08906239d267e9371fcb2fe4f19c6581adc1b0b322b30875/2c56b9035d330b37",
+      "origin": "/build/lanes/finish-build-row",
+      "cert_sha256": "202d9dd8bfa5eb1d5c2f705fc7dd054f87014e5263da1f80bbafef057ce68971",
+      "fasl_sha256": "949ada9e4b8673d8401f9a6d053f5f11b1e373f28b38638cc3fae79c3b469db6"
+    },
+    {
+      "book": "books/digest-store",
+      "key": "fb61da8b7639a18305e2309626b6f224d96c621969c8b27cadd21b601a72d244",
+      "entry": "/home/fn/.cache/fn-certs/fb61da8b7639a18305e2309626b6f224d96c621969c8b27cadd21b601a72d244/71c13cf045777750",
+      "origin": "/build/lanes/native-registry-record-68ab9f562",
+      "cert_sha256": "5d6b9185a7a92c6d910d657ea77c5dd8e9ff943f0c997c46b55f298060a9e935",
+      "fasl_sha256": "84ef3deb667c5522245d740b88226f71001f5373680bc764abcbbf0108c18263"
+    },
+    {
+      "book": "books/digests",
+      "key": "e67f92e037522b9183e245b3b4ef8f0d686e19f194ad63b0375b773603f26fa0",
+      "entry": "/home/fn/.cache/fn-certs/e67f92e037522b9183e245b3b4ef8f0d686e19f194ad63b0375b773603f26fa0/de7b02499c36c005",
+      "origin": "/build/lanes/assurance-shared-foundation-8ade",
+      "cert_sha256": "ba9fa61a3548009ffeffd5b4e4367f1797586470384b86a98de27921dd6e1805",
+      "fasl_sha256": "4755df1bdbe3be5110aafc862f71fef10d64bf2dcc8c6c921f34e32c83884613"
+    },
+    {
+      "book": "books/layout",
+      "key": "2b2fd8126927b669d4b1eb1739a3fab8b5e4771403e83bd58bbeb089088bee70",
+      "entry": "/home/fn/.cache/fn-certs/2b2fd8126927b669d4b1eb1739a3fab8b5e4771403e83bd58bbeb089088bee70/a613d13adedcb373",
+      "origin": "/build/lanes/assurance-layout-record-71c5c8cb1",
+      "cert_sha256": "3bc167c2214147deda0316a6772ad1e1765cfc20c49ebd9a2b3eecc67192b6b0",
+      "fasl_sha256": "ddd254c3f5c8d515ff7e17552049bfc6f0ec182b7b1535a5fb104cbd75bd17a3"
+    },
+    {
+      "book": "books/merkle",
+      "key": "edf73854b9c59b82047059d3db9637db74e4fb0702ffdc3ad299be28199e6c2a",
+      "entry": "/home/fn/.cache/fn-certs/edf73854b9c59b82047059d3db9637db74e4fb0702ffdc3ad299be28199e6c2a/71c13cf045777750",
+      "origin": "/build/lanes/native-registry-record-68ab9f562",
+      "cert_sha256": "4d1cc42d2635af5a0ffa7be222df74b5ce9bdd83b4420ac8b6487cc6f6e8e846",
+      "fasl_sha256": "85bcfff79e25db0bee0ef0d9619b124e52a3f533b8cd3c329c5752cd3e746fd8"
+    },
+    {
+      "book": "books/native-b3-correspondence",
+      "key": "445be60f47c10db346413c7ca311aff2e15b1fcab510d333a29a1edf8463881e",
+      "entry": "/home/fn/.cache/fn-certs/445be60f47c10db346413c7ca311aff2e15b1fcab510d333a29a1edf8463881e/71c13cf045777750",
+      "origin": "/build/lanes/native-registry-record-68ab9f562",
+      "cert_sha256": "a514fa058ca8cd9f95d5678629cd7f9d60b87958cfd84da79814cf6802fe9c11",
+      "fasl_sha256": "b1a3e3d7d62a2917d86e4d07f64136b8f8dd5e6610d23ebe7a29eb4f32d18ce6"
+    },
+    {
+      "book": "books/native-b3-evidence",
+      "key": "147eb51e774711f4a35251c33ddff602c57cd583067043b08759ba9e1929bc14",
+      "entry": "/home/fn/.cache/fn-certs/147eb51e774711f4a35251c33ddff602c57cd583067043b08759ba9e1929bc14/71c13cf045777750",
+      "origin": "/build/lanes/native-registry-record-68ab9f562",
+      "cert_sha256": "9e60da703ae7c81358371bd177f7e2cc3e6b2b45722178cabfcde4cd177bbd81",
+      "fasl_sha256": "65aecf28d1f44f2e3480ca3c8731ea33892d4439752186e216561aa945d86fb7"
+    },
+    {
+      "book": "books/operations",
+      "key": "bd6bdf7f71b74618b02924c542559dcb99a149c816aeed11f3f5cd82d766483f",
+      "entry": "/home/fn/.cache/fn-certs/bd6bdf7f71b74618b02924c542559dcb99a149c816aeed11f3f5cd82d766483f/84166f8b7b293004",
+      "origin": "/build/lanes/assurance-storage-codec-5ca",
+      "cert_sha256": "498648c5b419b4b8b83b2167dbdc831bf513629e10dc1b764bf7a314b73e1e5d",
+      "fasl_sha256": "d8ee889a9ed62314ef52fbef89daa3a40e379c48794ab076eddb5897d295b48d"
+    },
+    {
+      "book": "books/owed",
+      "key": "6f334038cc4bddaaa337357384a139be3700c2c3403094bab3398dacb7fd5a3b",
+      "entry": "/home/fn/.cache/fn-certs/6f334038cc4bddaaa337357384a139be3700c2c3403094bab3398dacb7fd5a3b/2c56b9035d330b37",
+      "origin": "/build/lanes/finish-build-row",
+      "cert_sha256": "148bd33abdf09c514975bdd7296425acfe710d0e9dddf2d21643a0ec4f544a20",
+      "fasl_sha256": "1d0f0a9a82c7ec001a440ba127e28c15abc35f50fd46a2b6070e86c509f910df"
+    },
+    {
+      "book": "books/owed-discharge",
+      "key": "97e73257b5f4cb3a4ca1b8ba4bf10956295c18ec211c0b297f557e780cd20fd1",
+      "entry": "/home/fn/.cache/fn-certs/97e73257b5f4cb3a4ca1b8ba4bf10956295c18ec211c0b297f557e780cd20fd1/bab1191b3d08490a",
+      "origin": "/build/lanes/finish-names-current",
+      "cert_sha256": "63fa5a7ba08f6bc849d0e15c642697cbba02fff367b763fcc28d6b7a7927dc53",
+      "fasl_sha256": "17a2fbf13ba55900448433c8f1d8ca53d95088dd0db4411c7ee827de680410b7"
+    },
+    {
+      "book": "books/pool",
+      "key": "2bfd19c844711f45df57ceb522e3f3e66edbb9438dd0d140ee860fdace4613ed",
+      "entry": "/home/fn/.cache/fn-certs/2bfd19c844711f45df57ceb522e3f3e66edbb9438dd0d140ee860fdace4613ed/de7b02499c36c005",
+      "origin": "/build/lanes/assurance-shared-foundation-8ade",
+      "cert_sha256": "fa6dd82acf21fb9ad325b4a9dee8e7dce4ce1c1172fbcf731476d04eed276ea6",
+      "fasl_sha256": "89cd6216e83ae4a94c3cde447146c7b2e47ea889525a51441ab9b8c9334a889b"
+    },
+    {
+      "book": "books/profile",
+      "key": "b8fb593112597395afac6a150c4a4fca81def3095ecd8f7f9be6aa0aec7384fc",
+      "entry": "/home/fn/.cache/fn-certs/b8fb593112597395afac6a150c4a4fca81def3095ecd8f7f9be6aa0aec7384fc/84166f8b7b293004",
+      "origin": "/build/lanes/assurance-storage-codec-5ca",
+      "cert_sha256": "df0b72c291ce96c36e816e6fc4fa9122d0f2f98ada638baec0dab62139ce9a85",
+      "fasl_sha256": "db84531b9954255cc27ca4c79c47c4c43f56a50e09c4f002731f9aa8fbab52f8"
+    },
+    {
+      "book": "books/square-evidence",
+      "key": "8cacb53c1e501b9c601144ce6caea12de5b65640d1763bebf4a6c935dbe02728",
+      "entry": "/home/fn/.cache/fn-certs/8cacb53c1e501b9c601144ce6caea12de5b65640d1763bebf4a6c935dbe02728/ccac93d0d5c78fc5",
+      "origin": "/build/lanes/assurance-evidence-projection-4f1",
+      "cert_sha256": "8da5c01e1c3a5ebfc853e9280ede650d4da701e2b17dd650107a8e388f1924cd",
+      "fasl_sha256": "373d9a68c9dc286f5cf2cd82b8c0ef7660eb1d525abecd63e8acea641842fbf4"
+    }
+  ]
+}

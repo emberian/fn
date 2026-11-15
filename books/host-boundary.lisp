@@ -6,7 +6,7 @@
 (include-book "executor")
 (include-book "device-boundary")
 (include-book "assembly-attach")
-(include-book "terminal-values")
+(include-book "host-result")
 (include-book "host-ops")
 ; Native TLS calls the guarded transport controller and its ownership ledger.
 (include-book "host-codec")
@@ -44,9 +44,7 @@
 ; moved, or an Accept's capability index; AUX an Accept's nonce) as the
 ; simulator's own normalizer states it, so every native completion is one
 ; the simulator could post.
-(defun fn2-host-result (kind code count aux len cancelled)
-  (declare (xargs :guard (natp len)))
-  (fn2-sim-terminal-values kind code count aux len nil cancelled))
+; fn2-host-result is defined in the scalar host-result leaf.
 
 ;; The configured listeners (layer doc 4.1.4): the served profile's
 ;; :listener-address (an IPv4 address as a u32, network order; default

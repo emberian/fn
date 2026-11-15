@@ -1,0 +1,129 @@
+{
+  "status": "author-admitted exact events; current-key record pending",
+  "baseline_source_commit": "adacd9e71d75ce32dfc0b3b8210b87851066d05c",
+  "baseline_source_sha256": "78fbd3ff1fe8ff1b9283e2e08680db5fa50b4103beab76f4586fdb6a24262c25",
+  "candidate_source_sha256": "886dd5c4550a43b78fafa99c02db28edbdc70c7bb1cbe806ce5e40403477a11e",
+  "existing_top_level_forms": 108,
+  "new_form": "fn2-alloc-handle-code-ok-slotp",
+  "changed_existing_forms": [
+    "fn2-alloc-edge-drop-requires-matching-holder",
+    "fn2-alloc-relocate"
+  ],
+  "control": "Structural comparison confirms every preexisting top-level form unchanged except one theorem hint and one guard-hints addition. The theorem formula, function arguments/body, and exact declared guard remain identical.",
+  "remote_log": "forge:/build/lanes/reclamation-alloc-record-58b/build/acl2/certify-20261115T004941Z-639322/books--alloc.certify.log",
+  "log_sha256": "dfac0aae7262ce3d0e1483a85962abaf03da4b549d0d3b6852f38b092ace5498",
+  "baseline_record": {
+    "book_wall_seconds": 11.213,
+    "acl2_total_seconds": 11.11,
+    "acl2_prove_seconds": 6.48,
+    "acl2_other_seconds": 4.55,
+    "steps": 1463790,
+    "relocate": {
+      "seconds": 1.52,
+      "steps": 238944
+    },
+    "edge_drop_requires_matching_holder": {
+      "seconds": 0.19,
+      "steps": 117888
+    }
+  },
+  "probe_needed": [
+    "Current-key narrow allocator record plus existing allocator controls after integration coordination."
+  ],
+  "scope_limit": "Exact author events passed; whole allocator timing and current-key certification remain unmeasured. No D26 closure is claimed.",
+  "author_probe": {
+    "host": "fn@dregg-forge",
+    "source": "/build/lanes/assurance-alloc-proof-771957afd",
+    "prefix_source_commit": "771957afdf66ccc30c023fe7c5af84d51f235394",
+    "wrapper_pid": 652242,
+    "wrapper_log": "/tmp/assurance-alloc-proof-author-771.log",
+    "session": "alloc-opacity-771",
+    "session_log": "/build/lanes/assurance-alloc-proof-771957afd/build/proof-repl/alloc-opacity-771/log",
+    "final_relocate_form": "/tmp/assurance-alloc-relocate-readers-771.lisp",
+    "final_relocate_log": "/tmp/assurance-alloc-proof-readers-771.log",
+    "final_relocate_log_sha256": "4a72a7b3ddd2b773d3f54b6315a29f32c31292866d2267d09d9c969178e53f5e",
+    "exact_final_form_matches_candidate": true,
+    "results": {
+      "fn2-alloc-handle-code-ok-slotp": {
+        "seconds": 0.01,
+        "steps": 358
+      },
+      "fn2-alloc-edge-drop-requires-matching-holder": {
+        "seconds": 0.04,
+        "steps": 13322
+      },
+      "fn2-alloc-relocate": {
+        "seconds": 0.29,
+        "steps": 24890
+      }
+    },
+    "limits": {
+      "outer_seconds": 600,
+      "per_event_steps": 1000000,
+      "per_event_seconds": 60,
+      "jobs": 1,
+      "memory_max": 2147483648,
+      "memory_swap_max": 0,
+      "cgroup": "/user.slice/user-1000.slice/user@1000.service/swarm.slice/run-p652242-i30008969.scope",
+      "observed_acl2_ancestor_pid": 652259
+    },
+    "qualified_parent_audit": [
+      {
+        "book": "books/tuple",
+        "key": "b0fe12b03ba9cae656e0a0d40c8ccd699ff47788c2bd5a448903fb0c0401b9c6",
+        "qualified_entries": 1
+      },
+      {
+        "book": "books/owed",
+        "key": "6f334038cc4bddaaa337357384a139be3700c2c3403094bab3398dacb7fd5a3b",
+        "qualified_entries": 3
+      },
+      {
+        "book": "books/declare",
+        "key": "f1df352dc360553d08906239d267e9371fcb2fe4f19c6581adc1b0b322b30875",
+        "qualified_entries": 3
+      },
+      {
+        "book": "books/columns",
+        "key": "c8e9df5d21df547effaf69baa79db3c4c93eb88b694468b3e20e7684b30d9419",
+        "qualified_entries": 1
+      },
+      {
+        "book": "books/operations",
+        "key": "bd6bdf7f71b74618b02924c542559dcb99a149c816aeed11f3f5cd82d766483f",
+        "qualified_entries": 1
+      }
+    ],
+    "controls": [
+      {
+        "change": "Predicate opacity without list/reader barrier",
+        "outcome": "guard refusal at 60 seconds, 824108 steps; recursive NTH induction"
+      },
+      {
+        "change": "Add NTH opacity only",
+        "outcome": "guard refusal, 0.77 seconds, 60270 steps"
+      },
+      {
+        "change": "Explicit slot contract instances plus NTH opacity",
+        "outcome": "guard refusal, 0.36 seconds, 25622 steps; public numeric readers still opened"
+      },
+      {
+        "change": "Keep public numeric readers opaque as well",
+        "outcome": "exact unchanged relocate body/guard admitted, 0.29 seconds, 24890 steps"
+      }
+    ],
+    "scratch_control": "An explicit-trigger alias of the slot contract was admitted during diagnosis but did not resolve the guard; the final successful proof has no dependency on that alias in its reported used runes.",
+    "finished": true,
+    "session_stopped": true,
+    "baseline_rerun": false,
+    "toolchain_identity": "8aeb1bea18968c6cd33ac633a80ebf67e4924504db112fd27eb11f16a27b2a8c",
+    "launcher": "/tank/fn/toolchains/w28/acl2-literal-4g-tls64k",
+    "effective_cap_receipt": "/build/lanes/assurance-alloc-proof-771957afd/build/alloc-opacity-effective-cap.json",
+    "stop_receipt": {
+      "wrapper_pid_absent": 652242,
+      "server_pid_absent": 652255,
+      "acl2_ancestor_pid_absent": 652259,
+      "log_final_line": "proof-repl: stopped alloc-opacity-771"
+    }
+  }
+}

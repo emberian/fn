@@ -11,6 +11,12 @@
 (defconst *fn2-commit-members-per-batch* 16)
 (defconst *fn2-commit-member-count* (* 2 *fn2-commit-members-per-batch*))
 (defconst *fn2-commit-settled-count* 64)
+; A bounded partition cursor; only the exact zero-offset terminal may publish.
+(defun fn2-commit-lifecycle-cursorp (count member off)
+ (declare (xargs :guard t))
+ (and (natp count) (<= count *fn2-commit-members-per-batch*)
+      (natp member) (<= member count) (natp off)
+      (or (< member count) (equal off 0))))
 (defcolumns fn2-commit-member
  ((kind (:enum fn2-commit-member-kind (:none :keyed-mutation :run-replacement :txn)))
   (slot :u32) (gen :u60) (len :u32)

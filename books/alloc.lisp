@@ -192,6 +192,12 @@
              (not (equal counter (fn2-extents-counter i fn2-extents)))) :stale)
         ((equal (fn2-extents-state i fn2-extents) *fn2-extent-state-free*) :state)
         (t :ok)))
+; Consumers need the checked slot, not the classifier's representation tests.
+(defthm fn2-alloc-handle-code-ok-slotp
+  (implies (equal (fn2-alloc-handle-code i epoch counter fn2-extents) :ok)
+           (fn2-alloc-slotp i fn2-extents))
+  :rule-classes :forward-chaining
+  :hints (("Goal" :in-theory (enable fn2-alloc-handle-code))))
 (defun fn2-alloc-init-links (n fn2-extents)
   (declare (xargs :stobjs fn2-extents :measure (nfix n)
     :guard (and (fn2-extents-wfp fn2-extents) (natp n) (<= n (fn2-extents-rows fn2-extents)))))
@@ -488,7 +494,8 @@
 (defthm fn2-alloc-edge-drop-requires-matching-holder
   (implies (equal (mv-nth 0 (fn2-alloc-edge-drop edge holder i epoch counter kind p edges)) :ok)
            (fn2-alloc-edge-matchesp edge holder i epoch counter kind edges))
-  :hints (("Goal" :in-theory (enable fn2-alloc-edge-drop))))
+  :hints (("Goal" :in-theory (e/d (fn2-alloc-edge-drop)
+                                 (fn2-alloc-edge-matchesp)))))
 (defun fn2-alloc-commit-allocation (i epoch counter owner-kind owner-id fn2-extents)
   (declare (xargs :stobjs fn2-extents :guard (and (fn2-extents-wfp fn2-extents)
     (unsigned-byte-p 8 owner-kind) (unsigned-byte-p 60 owner-id))))
@@ -737,7 +744,20 @@
 (defun fn2-alloc-relocate (edge holder i epoch counter j new-epoch new-counter durable fn2-extents fn2-alloc-edges)
   (declare (xargs :stobjs (fn2-extents fn2-alloc-edges)
     :guard (and (fn2-extents-wfp fn2-extents) (fn2-alloc-edges-wfp fn2-alloc-edges)
-                (unsigned-byte-p 60 new-epoch) (unsigned-byte-p 60 new-counter))))
+                (unsigned-byte-p 60 new-epoch) (unsigned-byte-p 60 new-counter))
+    ; Use the checked-slot contract and public numeric reader facts. Keep
+    ; branch-only tests and recursive list access below that proof boundary.
+    :guard-hints (("Goal"
+                  :use ((:instance fn2-alloc-handle-code-ok-slotp)
+                        (:instance fn2-alloc-handle-code-ok-slotp
+                         (i j) (epoch new-epoch) (counter new-counter)))
+                  :in-theory
+                  (disable nth fn2-extents-rows fn2-alloc-edges-rows
+                           fn2-extents-state fn2-extents-owner-kind fn2-extents-owner-id
+                           fn2-extents-installed-root fn2-extents-prepared-successor
+                           fn2-alloc-edges-kind fn2-alloc-handle-code fn2-alloc-edge-matchesp
+                           fn2-alloc-frozenp fn2-alloc-retirement-intentp
+                           fn2-alloc-edge-kind-code->keyword)))))
   (let ((a (fn2-alloc-handle-code i epoch counter fn2-extents))
         (b (fn2-alloc-handle-code j new-epoch new-counter fn2-extents)))
     (cond ((fn2-alloc-frozenp fn2-extents) (mv :frozen fn2-extents fn2-alloc-edges))

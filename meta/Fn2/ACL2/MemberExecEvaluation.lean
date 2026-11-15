@@ -249,6 +249,74 @@ theorem closed_adequate_emitted (key : String) (xs : List Val) :
     exact closed_evaluation key xs
   · simpa only [he] using hr
 
+/-- Five exact lookup equations suffice for embedding this recursive closure.
+Generated consumers prove these equations against their packet-derived records. -/
+theorem program_extension_of_lookups {target : CanonicalProgram}
+    (notLookup : target "NOT" = some notDefinition)
+    (atomLookup : target "ATOM" = some atomDefinition)
+    (endpLookup : target "ENDP" = some endpDefinition)
+    (eqLookup : target "EQ" = some eqDefinition)
+    (memberLookup : target "MEMBER-EQ-EXEC" = some memberDefinition) :
+    ∀ name definition, program name = some definition → target name = some definition := by
+  intro name definition resolved
+  by_cases hn : name = "NOT"
+  · subst name; exact notLookup.trans resolved
+  by_cases ha : name = "ATOM"
+  · subst name; exact atomLookup.trans resolved
+  by_cases he : name = "ENDP"
+  · subst name; exact endpLookup.trans resolved
+  by_cases hq : name = "EQ"
+  · subst name; exact eqLookup.trans resolved
+  by_cases hm : name = "MEMBER-EQ-EXEC"
+  · subst name; exact memberLookup.trans resolved
+  simp [program, hn, ha, he, hq, hm] at resolved
+
+/-- Reuse the actual emitted recursive result inside a larger canonical closure.
+All five logical records and every reached admission must be preserved. The
+consumer must discharge these premises from its own current canonical packet;
+this theorem does not identify a new emitted dispatcher or prove MBE guards. -/
+theorem closed_in_program {target : CanonicalProgram}
+    {targetDomain targetPrimitiveDomain : CallDomain}
+    (definitions : ∀ name definition, program name = some definition → target name = some definition)
+    (calls : ∀ name values, domain name values → targetDomain name values)
+    (primitives : ∀ name values, primitiveDomain name values → targetPrimitiveDomain name values)
+    (key : String) (xs : List Val) :
+    CanonicalExportEval target targetDomain targetPrimitiveDomain "MEMBER-EQ-EXEC"
+      [.sym key, Val.ofList xs] («MEMBER-EQ-EXEC» (.sym key) (Val.ofList xs)) :=
+  canonical_export_extend definitions calls primitives (closed_adequate_emitted key xs).2.1
+
+/-- A real extra definition is compatible with reuse; existing subjects win. -/
+def extendedProgram (name : String) : Option CanonicalDefinition :=
+  match program name with
+  | some definition => some definition
+  | none => some notDefinition
+
+theorem extended_program_positive (key : String) (xs : List Val) :
+    CanonicalExportEval extendedProgram domain primitiveDomain "MEMBER-EQ-EXEC"
+      [.sym key, Val.ofList xs] («MEMBER-EQ-EXEC» (.sym key) (Val.ofList xs)) := by
+  apply closed_in_program (key := key) (xs := xs)
+  · intro name definition resolved
+    simp only [extendedProgram, resolved]
+  · exact fun _ _ admitted => admitted
+  · exact fun _ _ admitted => admitted
+
+/-- Replacing the actual recursive definition with NOT is not an extension,
+even though both records are well-formed and independently evaluable. -/
+theorem changed_body_refused :
+    ¬ (∀ name definition, program name = some definition →
+      (some { memberDefinition with body := notDefinition.body } : Option CanonicalDefinition) = some definition) := by
+  intro claimed
+  have changed := Option.some.inj (claimed "MEMBER-EQ-EXEC" memberDefinition rfl)
+  have decoded := congrArg (fun definition : CanonicalDefinition => readTerm 32 definition.body) changed
+  change some notTerm = some memberTerm at decoded
+  simp [notTerm, memberTerm] at decoded
+
+/-- Denying the actual entry input cannot satisfy the required domain inclusion. -/
+theorem missing_domain_refused :
+    ¬ (∀ name values, domain name values → (False : Prop)) := by
+  intro claimed
+  exact claimed "MEMBER-EQ-EXEC" [.sym ":OK", Val.ofList []] ⟨[], rfl⟩
+
 theorem positive : domain "MEMBER-EQ-EXEC" [.sym ":OK", Val.ofList [.sym ":MORE", .sym ":OK"]] ∧
     CanonicalExportEval program domain primitiveDomain "MEMBER-EQ-EXEC"
       [.sym ":OK", Val.ofList [.sym ":MORE", .sym ":OK"]] (Val.ofList [.sym ":OK"]) ∧
@@ -283,6 +351,10 @@ theorem broken_recursion_never_succeeds (fuel : Nat) :
   | zero => rfl
   | succ fuel ih => simpa only [Countdown.run, mutated_transition_stalls] using ih
 
+#print axioms closed_in_program
+#print axioms extended_program_positive
+#print axioms changed_body_refused
+#print axioms missing_domain_refused
 #print axioms closed_evaluation
 #print axioms decreases
 #print axioms domain_preserved

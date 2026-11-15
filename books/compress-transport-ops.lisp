@@ -28,7 +28,8 @@
    (t (fn2-compress-transport-select cap nonce slot generation 11
         4 source-offset (min iq (- source-total source-offset)) source-total
         3 0 oq oq fn2-compress-transport)))))
-(verify-guards fn2-compress-transport-select-encode)
+(verify-guards fn2-compress-transport-select-encode
+ :hints (("Goal" :in-theory (disable fn2-compress-transport-rows fn2-compress-transport-input-quantum fn2-compress-transport-output-quantum fn2-compress-transport-output-offset fn2-compress-transport-output-length))))
 
 ; Decode may expose one application octet at a time. It consumes retained
 ; upgrade input before asking the lower carrier to fill the input window.
@@ -54,7 +55,8 @@
      (fn2-compress-transport-select cap nonce slot generation 10
        (if seed 1 2) source-offset input source-total
        5 sink-offset output sink-total fn2-compress-transport))))))
-(verify-guards fn2-compress-transport-select-decode)
+(verify-guards fn2-compress-transport-select-decode
+ :hints (("Goal" :in-theory (disable fn2-compress-transport-rows fn2-compress-transport-fed fn2-compress-transport-copied fn2-compress-transport-input-offset fn2-compress-transport-input-length fn2-compress-transport-input-quantum fn2-compress-transport-output-quantum fn2-compress-transport-credit))))
 
 ; Lower-carrier requests keep the parent serial pending until the child
 ; finishes. Wire prefixes never advance application progress.
@@ -70,7 +72,8 @@
     3 offset (min (fn2-compress-transport-input-quantum 0 fn2-compress-transport)
                   (- length offset)) length
     0 0 0 0 fn2-compress-transport))))
-(verify-guards fn2-compress-transport-select-drain)
+(verify-guards fn2-compress-transport-select-drain
+ :hints (("Goal" :in-theory (disable fn2-compress-transport-rows fn2-compress-transport-output-offset fn2-compress-transport-output-length fn2-compress-transport-input-quantum))))
 
 (defun fn2-compress-transport-select-fill
  (cap nonce slot generation fn2-compress-transport)
@@ -88,7 +91,8 @@
            (oq (fn2-compress-transport-output-quantum 0 fn2-compress-transport)))
       (fn2-compress-transport-select cap nonce slot generation 6
        0 0 0 0 2 0 (min iq oq) iq fn2-compress-transport)))))
-(verify-guards fn2-compress-transport-select-fill)
+(verify-guards fn2-compress-transport-select-fill
+ :hints (("Goal" :in-theory (disable fn2-compress-transport-rows fn2-compress-transport-fed fn2-compress-transport-copied fn2-compress-transport-input-offset fn2-compress-transport-input-length fn2-compress-transport-input-quantum fn2-compress-transport-output-quantum))))
 
 (defthm-owed fn2-compress-encoder-window-full (cap nonce slot generation source-offset source-total flush-complete s)
  (implies (and (fn2-compress-transportp s) (fn2-compress-transport-wfp s)

@@ -1,6 +1,7 @@
 ; B accepts candidate identity only, never caller closure/cut/hash claims. The
 ; actual C worker derives that identity from its completed builder separately.
 (in-package "ACL2")
+(include-book "std/util/bstar" :dir :system)
 (include-book "checkpoint-member")
 (include-book "checkpoint-production")
 (fn2-book-layer :b)
