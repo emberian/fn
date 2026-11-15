@@ -15,6 +15,14 @@ pass, but a fresh served packet and its ACL2/Lean checks remain outstanding.
 No current whole-system image, full host gate, canonical served certificate, or
 completed assurance claim exists.
 
+Grouped reference-effect generation is now qualified at exact30 record939931
+(27 reused, three new;6.187s); all30 composed source hashes match before/after.
+Actual emitted mutable, readonly and two-child fixture programs admit and execute
+with all scalar results, fixture cells and FIFO checked. Logical world metadata
+binds recognizer ownership and ABI. This does not discharge generated
+WHOLE-RESULT obligations or qualify the actual IdentityDecide/CNS callbacks;
+those consumers and full selection/leaf/reuse composition remain next.
+
 The stable24 runtime frontier and credit11 API/primitive-control records now pass
 (18.950s and5.383s respectively); root verified all current source hashes.
 Credit kind-zero repair now supersedes the credit API record: exact11 record

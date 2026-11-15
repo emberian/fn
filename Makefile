@@ -142,6 +142,9 @@ ACL2_BOOKS = \
   books/core-children-a \
   books/core-lowering \
   books/core-product-lowering \
+  books/reference-effect-lowering \
+  tests/reference-effect-lowering-unit \
+  tests/reference-effect-emitted-unit \
   books/core-walk \
   books/crash-model \
   books/cursor \
