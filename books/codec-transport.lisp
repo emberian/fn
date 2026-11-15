@@ -61,6 +61,25 @@
           (equal serial (,(fn2-columns-sym name "-SERIAL") 0 ,name))
           (< 0 (,(fn2-columns-sym name "-PENDING") 0 ,name)))))))
 
+; Common observation changes raw/staging fields, never codec policy columns.
+(defun fn2-codec-transport-policy-frame-events (name fields readers)
+ (declare (xargs :verify-guards nil))
+ (if (atom fields) nil
+  (let ((reader (fn2-columns-col-name name (caar fields)))
+        (recognizer (fn2-columns-sym name "P"))
+        (wfp (fn2-columns-sym name "-WFP"))
+        (rows (fn2-columns-sym name "-ROWS"))
+        (observe (fn2-columns-sym name "-OBSERVE-SPANS")))
+   (cons
+    `(defthm ,(fn2-columns-sym reader "-OF-OBSERVE-SPANS")
+      (implies (and (,recognizer ,name) (,wfp ,name) (= (,rows ,name) 1))
+       (equal (,reader 0 (mv-nth 1 (,observe cap nonce slot generation serial raw-code used made errno ,name)))
+              (,reader 0 ,name)))
+      :hints (("Goal" :in-theory
+       (union-theories '(,reader)
+        (set-difference-theories (current-theory :here) ',readers)))))
+    (fn2-codec-transport-policy-frame-events name (cdr fields) readers)))))
+
 (defun fn2-codec-transport-operation-events (name input-quantum-field output-quantum-field world)
  (declare (xargs :verify-guards nil))
 (let ((wfp (fn2-columns-sym name "-WFP"))
@@ -159,7 +178,10 @@
 (defthm ,(fn2-columns-sym name "-OBSERVE-SPANS-WFP")
      (implies (and (,recognizer ,name) (,wfp ,name) (= (,rows ,name) 1))
       (,wfp (mv-nth 1 (,observe cap nonce slot generation serial raw-code used made errno ,name))))
-     :hints (("Goal" :in-theory (disable ,@readers)))))))
+     :hints (("Goal" :in-theory (disable ,@readers))))
+,@(fn2-codec-transport-policy-frame-events name
+    (nthcdr (len *fn2-codec-transport-columns*)
+     (fn2-decl-get :columns (fn2-decl-row (list :columns name) world))) readers))))
 
 (defmacro defcodec-transport-operations (name &key (input-quantum-field 'quantum)
                                                 (output-quantum-field 'quantum))

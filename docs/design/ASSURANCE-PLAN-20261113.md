@@ -5,6 +5,37 @@ Owner: integration. Commissioned by ember on 2026-11-13, following the
 `fn2-squares` remains the obligation store. Reports and public-claim coverage
 must be derived from that store and the actual served call/attachment graph.
 
+## Current integration frontier — 2026-11-14 evening
+
+Root `d486cbe80` integrates shared observer row-count frames and actual TLS
+START/WAIT/NEXT guard events (`a56eb2806`), plus compression selector guard
+repairs and executable live-row frame controls. The retained author sessions
+admitted those guards and compression controls. Compression record definitions
+were admitted without their guards; native composition and current record
+certification remain separate obligations.
+
+TLS owner has individually admitted the remaining observer guard and private
+bridge guards. Shared policy-field and bridge guard generators (`33efacc35`,
+`fe18e7078`) await their final generated-form check before root integration.
+Layout owner reports a qualified nine-book record (seven reused, two new) at
+`certify-20261115T001611Z-606256`; root receipt verification is pending. Layout
+itself still took 56.455 seconds, so proof-cost debt remains.
+
+Reclamation primitive slice `75db3d8ea` is under review, not integrated. Independent
+review found existing `alloc-unit` controls acquire durable protection after
+retirement, now correctly refused by the new barrier. The owner must preserve
+those controls by acquiring durable protection before retirement, retain transient
+post-retirement cases, and exercise `release-prepare` directly. The actual journal
+coordinator and pin consumers are being factored into a connected integration
+slice; primitive admission does not establish the served lifecycle.
+
+`recover_lean` resumes actual CNS canonical-body/domain/attachment composition;
+`sol_q1_semantics` resumes actual CNS effect and invariant proofs against the
+integrated callback changes. Their completed helper proofs do not discharge these
+obligations. Native registry certification reuses the published layout prerequisite
+instead of rebuilding it. Root owns named compute grants; no broad rerun is
+scheduled merely to refresh provenance. Historical scopes below remain historical.
+
 ## Destination and proof structure
 
 The destination remains a working persistent engine and its intended network
