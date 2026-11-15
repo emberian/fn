@@ -6,9 +6,9 @@
 
 (defun fn2-chi-run (old fn2-digests fn2-b3 fn2-pool)
  (declare (xargs :stobjs (fn2-digests fn2-b3 fn2-pool) :verify-guards nil))
- (b* ((rows 32) (connections 2)
+ (b* ((rows 32) (connections 2) (sources 2)
       (ctl (if old (+ (- rows connections) -1)
-              (fn2-b-ctl-runtime-row 0 connections rows)))
+              (fn2-b-ctl-runtime-row 0 connections sources rows)))
       (other (fn2-b-event-row rows))
       (fn2-digests (fn2-digests-init (* rows *fn2-digest-stride*) fn2-digests))
       (fn2-b3 (fn2-b3-table-init rows fn2-b3))
