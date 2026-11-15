@@ -9,8 +9,8 @@
 ; own BLAKE3) and its chaining value in the stored octets' BLAKE3 tree (the
 ; subtree of its four chunks at chunk counter 4i; a final block shorter than a
 ; unit is no complete subtree, and its entry carries its own BLAKE3 there).
-; Three consecutive blocks share one physical extent. Block i uses unit
-; i mod *fn2-commit-write-resources* within that extent; the physical base
+; A physical extent's *fn2-storage-extent-units* consecutive blocks share it.
+; Block i uses unit i mod *fn2-storage-extent-units*; the physical base
 ; is *fn2-storage-extent-units* times its extent index. Only the group
 ; leader at physical offset 0 owns the extent for the article.
 ;
