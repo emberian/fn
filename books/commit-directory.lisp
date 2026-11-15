@@ -95,3 +95,19 @@
  (if (not (< 0 (fn2-commit-root-rows fn2-commit-root))) (mv :state 0 0 0)
   (mv :ok (fn2-commit-root-base-batch 0 fn2-commit-root)
           (fn2-commit-root-base-event 0 fn2-commit-root) (fn2-commit-root-base-ready 0 fn2-commit-root))))
+
+; Recovery carries exact append provenance in PROPOSED while reconstructed
+; rows remain non-serving. Finishing installs that same bounded suffix once.
+(defun fn2-commit-directory-recovery-terminal-p (chain fn2-commit-root)
+ (declare (xargs :stobjs fn2-commit-root :guard (fn2-commit-root-wfp fn2-commit-root)))
+ (and (unsigned-byte-p 60 chain) (< 0 (fn2-commit-root-rows fn2-commit-root))
+  (let ((base (fn2-commit-root-base-batch 0 fn2-commit-root)))
+   (and (<= base chain) (= chain (fn2-commit-root-proposed 0 fn2-commit-root))
+        (<= (- chain base) (- (fn2-commit-root-rows fn2-commit-root) 1))
+        (mv-let (base-code ignored) (fn2-commit-directory-lookup base fn2-commit-root)
+         (declare (ignore ignored))
+         (and (eq base-code :base)
+          (or (= chain base)
+           (mv-let (code row) (fn2-commit-directory-proposal-row chain fn2-commit-root)
+            (and (eq code :ok) (posp row) (< row (fn2-commit-root-rows fn2-commit-root))
+                 (= (fn2-commit-root-seal-ready row fn2-commit-root) 1))))))))))
