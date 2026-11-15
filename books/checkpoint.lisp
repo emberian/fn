@@ -450,12 +450,9 @@
 (defcolumns-guarded-contracts fn2-checkpoint-capture-roots
  :carriers ((fn2-checkpoint-refs 1 :prefix "-REFS")
             (fn2-checkpoint-bytes 2 :prefix "-BYTES")) :rows t
- :hints ((append
-          (fn2-columns-guard-hint
+ :hints ((fn2-columns-guard-hint
            '(fn2-fields fn2-pool fn2-checkpoint-refs fn2-checkpoint-bytes)
-           '(fn2-checkpoint-capture-root) '(fn2-checkpoint-capture-roots) world)
-          '(:induct (fn2-checkpoint-capture-roots role c base slot gen okind oslot ogen
-                     fn2-fields fn2-pool fn2-checkpoint-refs fn2-checkpoint-bytes)))))
+           '(fn2-checkpoint-capture-root) '(fn2-checkpoint-capture-roots) world)))
 
 ; The successful page checker and descriptor decode are in ONE transition.
 ; A caller cannot supply a verification flag. Buffer ownership and checker
