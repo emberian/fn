@@ -160,6 +160,9 @@ class ActorObserver(unittest.TestCase):
   # No ordinary reply/progress status releases the observer.
   release=function('fn2-c-actor-source-release',fs)
   self.assertFalse(calls(release,'fn2-run-page-release'))
+  self.assertIn('single wake slot',text)
+  self.assertIn('`((:if (equal row-source-observation',text)
+  self.assertNotIn(',@terminal',str(release))
   self.assertIn('((:busy :exhausted) (:next :load-refused)',text)
  def test_only_actual_ready_conditions_enable_park(self):
   f=function('fn2-c-actor-source-boundary',parsed('books/c-actor-loader-form.lisp'))

@@ -31,6 +31,10 @@
                        (fn2-c-source-observers (fn2-core-c-source-observers fn2-core))) (held)
        (and (equal (fn2-c-source-control-readers 0 fn2-c-source-control) 1)
             (fn2-c-source-observer-ownerp kind id gen fn2-c-source-observers)) held))
+      (writer (fn2-machine-kind-base *fn2-checkpoint-master-kind* fn2-core))
+      ((unless (fn2-machine-idp writer fn2-core)) (mv nil fn2-core))
+      (wgen (fn2-machine-generation writer fn2-core))
+      ((mv waiting token fn2-core) (fn2-c-source-writer-begin writer wgen fn2-core))
       ; No completion flag is seeded: real empty-slot resolve advances RI,
       ; the actual arm changes WSTEP, then one real park job runs per turn.
       ((mv released fn2-core) (fn2-c-actor-observer-drive 40 id fn2-core))
@@ -46,10 +50,13 @@
                              (fn2-c-source-observers (fn2-core-c-source-observers fn2-core))) (clear)
        (and (equal (fn2-c-source-control-readers 0 fn2-c-source-control) 0)
             (not (fn2-c-source-observer-ownerp kind id gen fn2-c-source-observers))) clear))
+      (woken (equal (fn2-machine-wake-id fn2-core) writer))
+      ((mv exclusive fn2-core) (fn2-c-source-writer-poll token writer wgen fn2-core))
       ; A re-resolve continuation must rearm before its next source step.
       (fn2-core (fn2-auth-put-core id (wstep 1)))
       ((mv & & & & fn2-core) (fn2-auth-run-ready id *fn2-c-read-callback-bytes* fn2-core)))
-  (mv (and (eq plan :ok) held released parked unobserved
+  (mv (and (eq plan :ok) held (eq waiting :waiting) (posp token) released parked unobserved
+           woken (eq exclusive :exclusive) (fn2-c-source-writer-exclusive token writer wgen fn2-core)
            (equal (fn2-auth-row-source-observation id fn2-core) *fn2-auth-source-observation-none*)
            (equal (fn2-auth-row-loader id fn2-core) *fn2-auth-loader-held*)) fn2-core)))
 (assert-event (with-local-stobj fn2-core

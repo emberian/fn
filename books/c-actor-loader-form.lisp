@@ -136,11 +136,15 @@
        (t nil)))
 (defun fn2-c-actor-source-release (name terminal)
  (declare (xargs :verify-guards nil))
- `((:do (observed-release source-target source-targetgen)
+ ; Waking the source writer occupies this turn's single wake slot. The
+ ; actor's original drain (which may wake its requester) runs next turn.
+ `((:if (equal row-source-observation ,(fn2-c-actor-source-symbol name "NONE"))
+     ,terminal
+     ((:do (observed-release source-target source-targetgen)
        (fn2-c-source-read-release id row-generation) :accept (:ok :absent))
-   (:if (not (equal source-target *fn2-none*)) ((:wake-row source-target)) ())
-   (:set (source-observation ,(fn2-c-actor-source-symbol name "NONE")) (source-row 0))
-   ,@terminal))
+      (:if (not (equal source-target *fn2-none*)) ((:wake-row source-target)) ())
+      (:set (source-observation ,(fn2-c-actor-source-symbol name "NONE")) (source-row 0))
+      (:charge :steps *fn2-work-transition* :runnable t)))))
 (defun fn2-c-actor-source-work (name phase original body)
  (declare (xargs :verify-guards nil))
  (let ((none (fn2-c-actor-source-symbol name "NONE"))
