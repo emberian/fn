@@ -1,0 +1,38 @@
+{
+  "subject": "books/pool-read-contracts",
+  "closure_key": "f4c18d6467946b7fb40738f44abc1a5c353e72838527520c7a3c7f87d3f15d39",
+  "scope": "Record qualification of current eight-book closure only; not lifecycle consumers",
+  "integration_donor": "7a79cc1cc",
+  "source_binding": "All eight manifest before/after source digests independently match integration donor bytes; manifest git_revision and git_dirty are null, not revision evidence",
+  "manifest": "certify-20261115T025521Z-761431",
+  "manifest_sha256": "7374d812dd8a334a340b4f222652943391f37d14ffa61702dc139fabea8d1da1",
+  "manifest_remote": "/build/lanes/finish-pool-read-record-95fd/build/acl2/certify-20261115T025521Z-761431/manifest.json",
+  "status": "passed",
+  "source_digests_sha256": {
+    "books/columns.lisp": "df0b05ba3ba125a4b85036d24a721aaa4ce793864409a90e77f978cc1f969fca",
+    "books/declare.lisp": "1c706e559ef3b314fb9bd48171fb2891fad8613bd4eb1c5de5268443833c4bfb",
+    "books/operations.lisp": "959da2da147247146a2360e23d2c7d6abd6c581abdf0f6873661f63cee87484f",
+    "books/owed-discharge.lisp": "53903322be1b79ed081ecfcbfcb9f60649d3fdbf8aa6853b772abf8e6fc69f01",
+    "books/owed.lisp": "04104985582a552ad115a0a6adcf2e957597b1b9ca3228bf25900877cbbcb17b",
+    "books/pool-read-contracts.lisp": "f51f92ce9bfcd7af93e6ba47bb5a4c43fbb5ac79424ef34ecf489b8f92e9e852",
+    "books/pool.lisp": "2bf0be9f8059897d6f7809a52fdbd3d74f2767d44ff8b0e876b0ed6a17c5c86c",
+    "books/profile.lisp": "1f216ed6c0505dc1b01ada0f7d3d9482af6da7b7dff8736b5100ef3e3fbc1038"
+  },
+  "runner_unchanged": true,
+  "toolchain": "8aeb1bea18968c6cd33ac633a80ebf67e4924504db112fd27eb11f16a27b2a8c",
+  "new_certified": 1,
+  "reused": 7,
+  "post_publication_integrity_qualified": 8,
+  "missing": [],
+  "book_seconds": 0.266,
+  "run_seconds": 0.276,
+  "farm_run": "run-20261115T025453Z-d6e7",
+  "farm_wait_exit": 0,
+  "pids": [
+    761427,
+    761431
+  ],
+  "released": "Both recorded processes absent; no active reservation",
+  "resource_scope": "Requested FN_FARM_MEM_MAX=2G via supported swarm-build (MemorySwapMax=0),j1,total300s/book120s. Job ended before live cgroup sampling; no measured cap claim.",
+  "selection": "Explicit farm root approved to preserve exact8; --lane --affected-by would include additional consumers."
+}
