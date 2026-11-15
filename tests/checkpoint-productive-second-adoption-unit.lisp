@@ -1,0 +1,36 @@
+; PREPARED, UNEXECUTED. Requires the actual joined MASTER typed pipeline,
+; bounded canonical consume and compatible canonical sealer credit producer.
+; Real client prefix, first complete adoption/cleanup, productive physical
+; XL/range read, then a second persisted publication/adoption in the SAME SIM.
+; No APPLIED/READY/catalog/source-authority state is populated by this fixture.
+(in-package "ACL2")
+(include-book "checkpoint-second-adoption-support")
+(defun fn2-productive-second-adoption-unit-body (fn2-core fn2-sim fn2-own)
+ (declare (xargs :stobjs (fn2-core fn2-sim fn2-own) :verify-guards nil))
+ (b* (((mv created fn2-core fn2-sim fn2-own) (fn2-sad-create fn2-core fn2-sim fn2-own))
+      ((unless (eq created :created)) (mv nil fn2-core fn2-sim fn2-own))
+      ((mv prefix cursor position nonce fn2-core fn2-sim fn2-own)
+       (fn2-cln-register-append 1 0 61 71 *fn2-sad-article* fn2-core fn2-sim fn2-own))
+      ((unless (and (eq prefix :complete) (consp cursor) (posp position) (posp nonce)))
+       (mv nil fn2-core fn2-sim fn2-own))
+      ((mv first-held fn2-core fn2-sim fn2-own) (fn2-clc-prefix-to-held fn2-core fn2-sim fn2-own))
+      ((unless (and (eq first-held :held) (fn2-clc-published-held-p fn2-core) (fn2-clc-full-live-source-p fn2-core)))
+       (mv nil fn2-core fn2-sim fn2-own))
+      ((mv first fn2-core fn2-sim fn2-own) (fn2-sad-adopt 600000 fn2-core fn2-sim fn2-own))
+      ((mv current tag checkpoint cut) (fn2-sad-current fn2-core))
+      ((unless (and (eq first :complete) current (posp tag) (posp checkpoint))) (mv nil fn2-core fn2-sim fn2-own))
+      ((mv query reads owner generation fn2-core fn2-sim fn2-own) (fn2-sad-direct-query fn2-core fn2-sim fn2-own))
+      ((unless (and (eq query :productive) (<= (* 2 *fn2-storage-extent-units*) reads)))
+       (mv nil fn2-core fn2-sim fn2-own))
+      ((mv drained fn2-core fn2-sim fn2-own) (fn2-sad-drain-query 100000 owner generation fn2-core fn2-sim fn2-own))
+      ((unless (eq drained :drained)) (mv nil fn2-core fn2-sim fn2-own))
+      ((mv second-held fn2-core fn2-sim fn2-own) (fn2-clc-prefix-to-held fn2-core fn2-sim fn2-own))
+      ((unless (and (eq second-held :held) (fn2-clc-published-held-p fn2-core) (fn2-clc-full-live-source-p fn2-core)))
+       (mv nil fn2-core fn2-sim fn2-own))
+      ((mv second fn2-core fn2-sim fn2-own) (fn2-sad-adopt 600000 fn2-core fn2-sim fn2-own))
+      ((mv newer newtag newcheckpoint newcut) (fn2-sad-current fn2-core)))
+  (mv (and (eq second :complete) newer (< tag newtag) (< checkpoint newcheckpoint) (< cut newcut)
+       (fn2-core-wfp fn2-core) (eq (fn2-check-own fn2-core fn2-own) :pass) (not (fn2-core-stopped-p fn2-core)))
+      fn2-core fn2-sim fn2-own)))
+(assert-event (with-local-stobj fn2-core (with-local-stobj fn2-sim (with-local-stobj fn2-own
+ (mv-let (ok fn2-core fn2-sim fn2-own) (fn2-productive-second-adoption-unit-body fn2-core fn2-sim fn2-own) ok)))))
