@@ -1,6 +1,7 @@
 ; Materialize after checkpoint-writer-events, before checkpoint-master-events.
 (in-package "ACL2")
 (include-book "event-producer")
+(include-book "release-inventory-transfer")
 (include-book "checkpoint-writer")
 (fn2-book-layer :c)
 (defmacro fn2-event-producer-rearm-events ()
@@ -55,7 +56,8 @@
       (gen (fn2-event-build-owner-gen 0 fn2-event-build))
       (cut (fn2-event-build-cut-commit 0 fn2-event-build))
       (row (fn2-b-event-row (fn2-fc-rows fn2-fc)))
-      ((unless (and (fn2-event-producer-donep fn2-event-build fn2-event-read fn2-csnapshot fn2-checkpoints fn2-checkpoint-refs fn2-mk fn2-fc fn2-digests fn2-release-inventory-build)
+      ((unless (and (fn2-release-inventory-transfer-terminal-p fn2-release-inventory-build fn2-csnapshot fn2-checkpoints)
+                     (fn2-event-producer-donep fn2-event-build fn2-event-read fn2-csnapshot fn2-checkpoints fn2-checkpoint-refs fn2-mk fn2-fc fn2-digests fn2-release-inventory-build)
                      (< c (fn2-checkpoints-rows fn2-checkpoints))
                      (equal (fn2-checkpoints-state c fn2-checkpoints) *fn2-checkpoint-state-installed*)
                      (posp (fn2-checkpoints-installation-commit c fn2-checkpoints))
@@ -93,7 +95,8 @@
        (mv :retained fn2-event-build fn2-event-read fn2-journal-members fn2-release-inventory-build))
       (fn2-event-build (fn2-event-build-set-phase 0 *fn2-event-build-phase-idle* fn2-event-build))
       (fn2-event-read (fn2-event-read-set-phase 0 *fn2-event-read-phase-idle* fn2-event-read))
-      (fn2-journal-members (fn2-journal-members-set-phase 0 *fn2-journal-members-phase-idle* fn2-journal-members)))
+      (fn2-journal-members (fn2-journal-members-set-phase 0 *fn2-journal-members-phase-idle* fn2-journal-members))
+      (fn2-release-inventory-build (fn2-release-inventory-build-init 1 fn2-release-inventory-build)))
   (mv :ok fn2-event-build fn2-event-read fn2-journal-members fn2-release-inventory-build)))
 
 (fn2-event-build-preserves fn2-event-producer-rearm
