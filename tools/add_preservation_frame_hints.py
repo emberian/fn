@@ -21,7 +21,7 @@ def add_preservation_frame_hints(text, table="pool"):
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("file", type=Path)
-    parser.add_argument("--table", choices=("pool", "fields"), default="pool")
+    parser.add_argument("--table", choices=("pool", "fields", "cns-edges"), default="pool")
     args = parser.parse_args()
     source = args.file.read_text()
     args.file.write_text(add_preservation_frame_hints(source, args.table))

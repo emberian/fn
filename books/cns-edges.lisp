@@ -71,7 +71,8 @@
                                                (bcur (fn2-cns-edges-bhead b fn2-cns-edges))))
              (fn2-cns-edges (if (fn2-cns-ix top) (fn2-cns-edges-set-bpprev top b fn2-cns-edges) fn2-cns-edges)))
         (update-fn2-cns-pending-head b fn2-cns-edges)))))
-(fn2-cns-edges-preserves fn2-cns-push-bucket (b fn2-cns-edges) :position nil :rows t :raw-rows t)
+(fn2-cns-edges-preserves fn2-cns-push-bucket (b fn2-cns-edges) :position nil :rows t :raw-rows t
+ :hints (("Goal" :in-theory (disable fn2-cns-edges-rows))))
 (defun fn2-cns-remove-bucket (b fn2-cns-edges)
   ; take pending bucket B off the stack, wherever it is
   (declare (xargs :stobjs fn2-cns-edges :guard (fn2-cns-edges-wfp fn2-cns-edges)))
@@ -81,7 +82,8 @@
            (fn2-cns-edges (if (fn2-cns-ix prev) (fn2-cns-edges-set-bpnext prev next fn2-cns-edges)
                             (update-fn2-cns-pending-head next fn2-cns-edges))))
       (fn2-cns-edges-put b (bpend 0) (bpnext *fn2-cns-none*) (bpprev *fn2-cns-none*) (bcur *fn2-cns-none*)))))
-(fn2-cns-edges-preserves fn2-cns-remove-bucket (b fn2-cns-edges) :position nil :rows t :raw-rows t)
+(fn2-cns-edges-preserves fn2-cns-remove-bucket (b fn2-cns-edges) :position nil :rows t :raw-rows t
+ :hints (("Goal" :in-theory (disable fn2-cns-edges-rows))))
 
 ;; ---- link and unlink ----------------------------------------------------
 (defun fn2-cns-alloc-row (fn2-cns-edges)
@@ -100,7 +102,8 @@
         ((and (equal e (fn2-cns-fresh fn2-cns-edges)) (unsigned-byte-p 32 (+ 1 e)))
          (update-fn2-cns-fresh (+ 1 e) fn2-cns-edges))
         (t fn2-cns-edges)))
-(fn2-cns-edges-preserves fn2-cns-take-row (e fn2-cns-edges) :position nil :rows t :raw-rows t)
+(fn2-cns-edges-preserves fn2-cns-take-row (e fn2-cns-edges) :position nil :rows t :raw-rows t
+ :hints (("Goal" :in-theory (disable fn2-cns-edges-rows))))
 (defun fn2-cns-edge-link (stream waiter gen from fn2-cns-edges)
   ; (mv code e fn2-cns-edges): :ok with the edge; :behind (a publish touching
   ; the bucket since the read: read again); :exhausted (every row in use)
@@ -123,7 +126,8 @@
                       (fn2-cns-edges (fn2-cns-edges-set-btail b e fn2-cns-edges))
                       (fn2-cns-edges (update-fn2-cns-used-count count fn2-cns-edges)))
                  (mv :ok e fn2-cns-edges))))))))
-(fn2-cns-edges-preserves fn2-cns-edge-link (stream waiter gen from fn2-cns-edges) :position 2 :rows t :raw-rows t)
+(fn2-cns-edges-preserves fn2-cns-edge-link (stream waiter gen from fn2-cns-edges) :position 2 :rows t :raw-rows t
+ :hints (("Goal" :in-theory (disable fn2-cns-edges-rows))))
 (defun fn2-cns-edge-unlink (e fn2-cns-edges)
   ; release edge E: out of its bucket's chain (its cursor moved past it, the
   ; bucket off the stack if the cursor runs out), onto the free list
@@ -148,7 +152,8 @@
                                                  (eprev *fn2-cns-none*)))
                (fn2-cns-edges (update-fn2-cns-free-head e fn2-cns-edges)))
           (update-fn2-cns-used-count count fn2-cns-edges))))))
-(fn2-cns-edges-preserves fn2-cns-edge-unlink (e fn2-cns-edges) :position nil :rows t :raw-rows t)
+(fn2-cns-edges-preserves fn2-cns-edge-unlink (e fn2-cns-edges) :position nil :rows t :raw-rows t
+ :hints (("Goal" :in-theory (disable fn2-cns-edges-rows))))
 
 ;; ---- the publish hook and the grant source -----------------------------
 (defun fn2-cns-wake-stream (stream position fn2-cns-edges)
@@ -162,7 +167,8 @@
                 (not (fn2-cns-ix (fn2-cns-edges-bhead b fn2-cns-edges))))
             fn2-cns-edges
           (fn2-cns-push-bucket b fn2-cns-edges))))))
-(fn2-cns-edges-preserves fn2-cns-wake-stream (stream position fn2-cns-edges) :position nil :rows t :raw-rows t)
+(fn2-cns-edges-preserves fn2-cns-wake-stream (stream position fn2-cns-edges) :position nil :rows t :raw-rows t
+ :hints (("Goal" :in-theory (disable fn2-cns-edges-rows))))
 (defun fn2-cns-ready-p (fn2-cns-edges)
   ; the top bucket's cursor is an edge in use with a waiter
   (declare (xargs :stobjs fn2-cns-edges :guard (fn2-cns-edges-wfp fn2-cns-edges)))
@@ -182,7 +188,8 @@
            (fn2-cns-edges (if (fn2-cns-ix next) (fn2-cns-edges-set-bcur b next fn2-cns-edges)
                             (fn2-cns-remove-bucket b fn2-cns-edges))))
       (mv w fn2-cns-edges))))
-(fn2-cns-edges-preserves fn2-cns-take-next (fn2-cns-edges) :position 1 :rows t :raw-rows t)
+(fn2-cns-edges-preserves fn2-cns-take-next (fn2-cns-edges) :position 1 :rows t :raw-rows t
+ :hints (("Goal" :in-theory (disable fn2-cns-edges-rows))))
 (defthm fn2-cns-take-next-live
   (implies (fn2-cns-ready-p fn2-cns-edges)
            (not (equal (mv-nth 0 (fn2-cns-take-next fn2-cns-edges)) *fn2-none*)))
@@ -208,7 +215,8 @@
                             fn2-machines)))
         (mv w fn2-cns-edges fn2-machines fn2-control)))))
 (fn2-cns-edges-preserves fn2-cns-grant-one-gen (row-gen fn2-cns-edges fn2-machines fn2-control)
-  :carriers ((fn2-cns-edges 1) (fn2-machines 2 :prefix "-MACHINES") (fn2-control 3 :prefix "-CONTROL")))
+  :carriers ((fn2-cns-edges 1) (fn2-machines 2 :prefix "-MACHINES") (fn2-control 3 :prefix "-CONTROL"))
+ :hints (("Goal" :in-theory (disable fn2-cns-edges-rows))))
 ;; the grant clears a wait reason: the directory's kinds, slots and rows stay
 (make-event `(fn2-machines-keeps-directory fn2-cns-grant-one-gen (row-gen fn2-cns-edges fn2-machines fn2-control) 2 nil
                                            ,(fn2-machines-keeps-directory-hints 'fn2-cns-grant-one-gen (w state))))
@@ -221,7 +229,8 @@
   (let ((g (fn2-cns-next-gen fn2-cns-edges)))
     (fn2-cns-grant-one-gen g fn2-cns-edges fn2-machines fn2-control)))
 (fn2-cns-edges-preserves fn2-cns-grant-one (fn2-cns-edges fn2-machines fn2-control)
-  :carriers ((fn2-cns-edges 1) (fn2-machines 2 :prefix "-MACHINES") (fn2-control 3 :prefix "-CONTROL")))
+  :carriers ((fn2-cns-edges 1) (fn2-machines 2 :prefix "-MACHINES") (fn2-control 3 :prefix "-CONTROL"))
+ :hints (("Goal" :in-theory (disable fn2-cns-edges-rows))))
 (make-event `(fn2-machines-keeps-directory fn2-cns-grant-one (fn2-cns-edges fn2-machines fn2-control) 2 nil
                                            ,(fn2-machines-keeps-directory-hints 'fn2-cns-grant-one (w state))))
 ;; The defwait pair's G-LIVE at the child level: a ready source grants a row.

@@ -8,6 +8,13 @@ from lisp_source import forms, read_sexp
 
 
 class PreservationFrameHintsTest(unittest.TestCase):
+    def test_multiple_carriers_keep_their_projection_options(self):
+        source = '(fn2-cns-edges-preserves grant (e m c) :carriers ((e 1) (m 2 :prefix "-M") (c 3 :prefix "-C")))'
+        result = add_preservation_frame_hints(source, "cns-edges")
+        self.assertEqual(read_sexp(forms(result)[0])[:-2], read_sexp(forms(source)[0]))
+        self.assertIn('(disable fn2-cns-edges-rows)', result)
+        self.assertEqual(add_preservation_frame_hints(result, "cns-edges"), result)
+
     def test_preserves_explicit_hints_and_other_forms(self):
         source = '''; comment survives
 (fn2-pool-preserves a (x fn2-pool) :hints nil)
