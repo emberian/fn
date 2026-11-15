@@ -16,10 +16,10 @@ def tree(node):
         return node.prefix, tree(node.node)
     if isinstance(node, lisp.Lst):
         items = node.items
-        if items and lisp.flat(items[0]) == 'xargs':
+        if items and lisp.flat(items[0]) in {'xargs', 'fn2-fields-preserves'}:
             result, i = [], 0
             while i < len(items):
-                if lisp.flat(items[i]) == ':guard-hints':
+                if lisp.flat(items[i]) in {':guard-hints', ':hints'}:
                     i += 2
                 else:
                     result.append(tree(items[i]))
@@ -37,7 +37,8 @@ class ColumnCallGuards(unittest.TestCase):
     def test_generated_fold_events_change_only_guard_hints(self):
         def factory(forms):
             return [tree(form) for form in forms if isinstance(form, lisp.Lst)
-                    and len(form.items) > 1 and lisp.flat(form.items[1]) == 'fn2-rf-events']
+                    and len(form.items) > 1 and lisp.flat(form.items[1]) in
+                    {'fn2-rf-events', 'fn2-rf-logic-events'}]
         self.assertEqual(factory(before('books/runs-schema.lisp').forms),
                          factory(lisp.parse(ROOT / 'books/runs-schema.lisp').forms))
 
