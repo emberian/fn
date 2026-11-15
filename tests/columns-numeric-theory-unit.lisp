@@ -34,7 +34,9 @@
                  :guard (fn2-numeric-theory-table-wfp fn2-numeric-theory-table)))
  (if (and (natp i) (< i (fn2-numeric-theory-table-rows fn2-numeric-theory-table))
           (unsigned-byte-p 60 v))
-     (mv :ok 0 0 (fn2-numeric-theory-table-set-value i v fn2-numeric-theory-table))
+     (let ((fn2-numeric-theory-table
+            (fn2-numeric-theory-table-set-value i v fn2-numeric-theory-table)))
+      (mv :ok 0 0 fn2-numeric-theory-table))
    (mv :bounds 0 0 fn2-numeric-theory-table)))
 (assert-event
  (let* ((events (fn2-columns-preserves 'fn2-numeric-theory-table
