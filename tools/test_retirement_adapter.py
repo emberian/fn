@@ -14,7 +14,7 @@ ROOT = Path(__file__).resolve().parents[1]
 # Historical receipt, unchanged. STOP_LET is derived from this same historical
 # tree by the narrow normalization below; it is not a new runtime baseline.
 PRE_FACTOR_EVENT_SHA256 = '60b09fe5b1950928c7f71891a64b395e3416ba0dcdbf67741e2acddc57152b55'
-STOP_LET_NORMAL_FORM_SHA256 = 'eff8a6b456d3d3cd7582b66dd31074ac20aa626317062825073918a4ada7cae9' 
+STOP_LET_NORMAL_FORM_SHA256 = 'eff8a6b456d3d3cd7582b66dd31074ac20aa626317062825073918a4ada7cae9'
 
 def value(node):
     if isinstance(node, lr.Pre):
