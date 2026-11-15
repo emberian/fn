@@ -97,7 +97,8 @@
                 (= (fn2-machine-pending id fn2-core) 0))) (mv :state fn2-core)
    (b* (((mv journal epoch allocation & &) (fn2-commit-resource id 0 fn2-core))
         (batch (fn2-machine-batch-no id fn2-core)))
-    (stobj-let ((fn2-checkpoint-publication (fn2-core-checkpoint-publication fn2-core))
+    (stobj-let ((fn2-origin (fn2-core-origin fn2-core))
+                (fn2-checkpoint-publication (fn2-core-checkpoint-publication fn2-core))
                 (fn2-checkpoint-lifecycle (fn2-core-checkpoint-lifecycle fn2-core))
                 (fn2-checkpoints (fn2-core-checkpoints fn2-core))
                 (fn2-checkpoint-refs (fn2-core-checkpoint-refs fn2-core))
@@ -110,9 +111,14 @@
                 (fn2-release-evidence (fn2-core-release-evidence fn2-core))
                 (fn2-release-evidence-candidates (fn2-core-release-evidence-candidates fn2-core)))
      (code fn2-allocation-release fn2-release-evidence fn2-release-evidence-candidates fn2-extents fn2-alloc-edges)
-     (fn2-release-evidence-claim-children journal epoch allocation batch *fn2-commit-kind* kind owner generation
+     (if (not (fn2-origin-physicalp (fn2-origin-history fn2-origin) (fn2-origin-history-incarnation fn2-origin)))
+         (mv :source fn2-allocation-release fn2-release-evidence fn2-release-evidence-candidates fn2-extents fn2-alloc-edges)
+      (let ((fn2-allocation-release (fn2-allocation-release-put 0
+             (journal-history (fn2-origin-history fn2-origin))
+             (journal-incarnation (fn2-origin-history-incarnation fn2-origin)))))
+       (fn2-release-evidence-claim-children journal epoch allocation batch *fn2-commit-kind* kind owner generation
       fn2-checkpoint-publication fn2-checkpoint-lifecycle fn2-checkpoints fn2-checkpoint-refs fn2-checkpoint-bytes
-      fn2-extents fn2-alloc-edges fn2-ops fn2-commit-root fn2-allocation-release fn2-release-evidence fn2-release-evidence-candidates)
+      fn2-extents fn2-alloc-edges fn2-ops fn2-commit-root fn2-allocation-release fn2-release-evidence fn2-release-evidence-candidates)))
      (mv code fn2-core)))))
  (fn2-core-preserves fn2-release-live-claim (id kind owner generation fn2-core) :position 1 :rows nil)
 
@@ -237,7 +243,7 @@
                (fn2-ops (fn2-core-ops fn2-core))
                (fn2-checkpoints (fn2-core-checkpoints fn2-core))
                (fn2-fields (fn2-core-fields fn2-core)) (fn2-pool (fn2-core-pool fn2-core)))
-    (code fn2-allocation-release fn2-fields)
+    (code fn2-allocation-release fn2-release-evidence fn2-fields)
     (b* (((unless (and (natp base) (<= (+ base *fn2-format-release-allocation-num-fields*) (fn2-fields-rows fn2-fields))
                        (unsigned-byte-p 32 next) (natp bytes) (unsigned-byte-p 32 (+ next bytes))
                        (= off 0) (= (+ next bytes) len)
@@ -251,22 +257,25 @@
                        (equal writer-gen (fn2-allocation-release-writer-gen 0 fn2-allocation-release))
                        (equal batch (fn2-allocation-release-batch 0 fn2-allocation-release))
                        (equal event (fn2-allocation-release-event 0 fn2-allocation-release))))
-          (mv :invalid fn2-allocation-release fn2-fields))
+          (mv :invalid fn2-allocation-release fn2-release-evidence fn2-fields))
          (journal (fn2-allocation-release-journal 0 fn2-allocation-release))
          ((unless (and (fn2-release-evidence-row-matches journal fn2-allocation-release fn2-release-evidence)
                         (fn2-release-evidence-row-owned-p journal
                          (fn2-allocation-release-journal-epoch 0 fn2-allocation-release)
                          (fn2-allocation-release-journal-allocation 0 fn2-allocation-release) batch
                          fn2-release-evidence fn2-release-evidence-candidates fn2-extents fn2-alloc-edges fn2-ops fn2-checkpoints)))
-          (mv :invalid fn2-allocation-release fn2-fields))
+          (mv :invalid fn2-allocation-release fn2-release-evidence fn2-fields))
          ((mv decoded end fn2-fields)
           (fn2-format-release-allocation-decode base slot gen next (+ next bytes) kind owner generation fn2-fields fn2-pool))
          ((unless (and (eq decoded :ok) (equal end len)
                         (fn2-release-member-fields-match-p base slot gen kind owner generation fn2-allocation-release fn2-fields fn2-pool)))
-          (mv :invalid fn2-allocation-release fn2-fields))
+          (mv :invalid fn2-allocation-release fn2-release-evidence fn2-fields))
+         ((mv stamped fn2-release-evidence)
+          (fn2-release-evidence-mark-persisted journal fn2-allocation-release fn2-release-evidence))
+         ((unless (eq stamped :persisted)) (mv :invalid fn2-allocation-release fn2-release-evidence fn2-fields))
          ; Persisted typed evidence is established here, never FREE authority.
          (fn2-allocation-release (fn2-allocation-release-set-phase 0 *fn2-allocation-release-phase-persisted* fn2-allocation-release)))
-     (mv :ok fn2-allocation-release fn2-fields)) (mv code fn2-core))))
+     (mv :ok fn2-allocation-release fn2-release-evidence fn2-fields)) (mv code fn2-core))))
  (fn2-core-preserves fn2-allocation-release-install-member
   (base slot gen off next bytes len batch event kind owner generation fn2-core) :position 1 :rows nil)
 
