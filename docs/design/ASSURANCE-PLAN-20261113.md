@@ -43,6 +43,17 @@ passes nonzero-address short Reads, untouched sentinels and error Read capture.
 These supersede the earlier checker source; actual selected-host binding and
 whole-image driver execution remain open.
 
+The scalar device binding interface now consumes the actual device request
+policy and shared terminal normalizer. Exact eleven-book record
+`certify-20261115T043011Z-856572` passes (nine reused, two new; 1.960 seconds);
+root matched all source hashes and both new closure keys. Controls reject
+missing descriptor fields, altered short/error results and Read bytes, and
+missing ordinary physical jobs. The explicit backend determines unsupported
+requests through the production policy. The Post hook is contextual behind
+actual envelope-step validation. Ordered Take/submission correspondence,
+logical Write-loan comparison and complete native replay remain separate;
+matching job identities as an unordered set is insufficient.
+
 Selected cold recovery has two concrete implementation blockers under the
 reclamation owner. Recovery finishes frozen, but ordinary epoch initialization
 refuses that state: the private post-Fence finalization must require complete

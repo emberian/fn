@@ -1,0 +1,57 @@
+{
+  "scope": "Scalar physical/control descriptor and Post normalization interface only; actual core loan/ordered full trace replay remains separate",
+  "source_parent": "2520bafa2 plus actual device policy/backend and typed-field controls",
+  "sha256": {
+    "sim/native-device-bindings.lisp": "f52b0254d47228c11d2a6c9ede99aa4c08011e182a1196247856467558dae9e8",
+    "tests/native-device-bindings-unit.lisp": "6466ef208009b3da68126b196c5961c5542a599342af9396172e7336c6659f87"
+  },
+  "record": {
+    "manifest": "build/acl2/certify-20261115T043011Z-856572/manifest.json",
+    "status": "passed",
+    "seconds": 1.96,
+    "books": {
+      "sim/native-device-bindings": {
+        "key": "4dd6bbbca04f5d9c149d9f096771f0030816c5d145b3ca8d5e10fb3cfdebdf54",
+        "entries": [
+          {
+            "path": "/home/fn/.cache/fn-certs/4dd6bbbca04f5d9c149d9f096771f0030816c5d145b3ca8d5e10fb3cfdebdf54/24812bb86804db98",
+            "compiled": true,
+            "qualified": "qualified"
+          }
+        ]
+      },
+      "tests/native-device-bindings-unit": {
+        "key": "783aedb7d81560223997977970bd0174c7fb652dd8c76011ed4e4749c2ff76a8",
+        "entries": [
+          {
+            "path": "/home/fn/.cache/fn-certs/783aedb7d81560223997977970bd0174c7fb652dd8c76011ed4e4749c2ff76a8/24812bb86804db98",
+            "compiled": true,
+            "qualified": "qualified"
+          }
+        ]
+      }
+    }
+  },
+  "closure": {
+    "books": 11,
+    "reused": 9,
+    "new": 2
+  },
+  "author": "forge:/tmp/stride-device-bindings-author2.log",
+  "first_refusal": "forge:/tmp/stride-device-bindings-author.log: malformed LET* binding list; corrected before passing author and record",
+  "controls": [
+    "full Write take descriptor",
+    "changed generation/offset/span",
+    "all seven removed descriptor fields",
+    "short Write result/count/status",
+    "failed Write reason/count",
+    "short Read bytes",
+    "unsupported FUA via actual fn2-device-request",
+    "missing ordinary physical job/return rejected"
+  ],
+  "limits": [
+    "post-p is contextual behind actual envelope-step validation",
+    "selected backend is an explicit supported-backend input",
+    "whole replay and native image run not established by this gate"
+  ]
+}
