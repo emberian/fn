@@ -1169,7 +1169,7 @@
         ((:let off row-tx-off) (:let len row-tx-len)
          (:set (borrows (fn2-machine-pool-borrows row-rx-slot)))
          (:if (and (or (equal outcome *fn2-outcome-done*) (equal outcome *fn2-outcome-short*))
-                   (natp count) (<= (+ off count) len))
+                   (natp count) (< 0 count) (<= (+ off count) len))
               ((:set (tx-off (+ off count))) (:wake))
               ((:next :closing) (:wake))))))
   (:borrow-released :from (:stream :stream-reply :waiting :reply :closing :draining)
