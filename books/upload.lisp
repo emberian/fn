@@ -44,6 +44,14 @@
       (+ *fn2-upload-page-manifest* (* *fn2-commit-unit-bytes* (fn2-am-units total)))
     *fn2-upload-page-manifest*))
 
+ ;; A block operation reads one storage unit and stores one pool digest.
+;; A short CV copies that digest, so its read/write bound is smaller.
+(defconst *fn2-upload-block-work-bytes*
+ (+ *fn2-commit-unit-bytes* *fn2-upload-digest-octets*))
+(defconst *fn2-upload-digest-copy-bytes* (* 2 *fn2-upload-digest-octets*))
+(assert-event (and (<= *fn2-upload-block-work-bytes* *fn2-upload-run-bytes*)
+                  (<= *fn2-upload-digest-copy-bytes* *fn2-upload-block-work-bytes*)))
+
 ;; The words the store's refusals give (also the transaction's).
 (defconst *fn2-upload-word-unaffordable* (fn2-upload-word-code :unaffordable))
 (defconst *fn2-upload-word-not-stored* (fn2-upload-word-code :not-stored))
@@ -106,13 +114,13 @@
 (defcost fn2-upload-stored-hash :answers (:ok :fault) :faults (:fault) :bytes *fn2-commit-unit-bytes*
   :tables (fn2-core-b3 fn2-core-digests fn2-core-pool)
   :doc "Absorb one bounded storage span into the full stored-representation digest, finalizing only on the last block.")
-(defcost fn2-upload-location-hash :answers (:ok :fault) :faults (:fault) :bytes *fn2-commit-unit-bytes*
+(defcost fn2-upload-location-hash :answers (:ok :fault) :faults (:fault) :bytes *fn2-upload-block-work-bytes*
   :tables (fn2-core-b3 fn2-core-digests fn2-core-pool)
   :doc "Hash one exact location unit into the ordered trusted digest vector.")
-(defcost fn2-upload-block-hash :answers (:ok :fault) :faults (:fault) :bytes *fn2-commit-unit-bytes*
+(defcost fn2-upload-block-hash :answers (:ok :fault) :faults (:fault) :bytes *fn2-upload-block-work-bytes*
   :tables (fn2-core-b3 fn2-core-digests fn2-core-pool)
   :doc "The staged block's BLAKE3 into the store page.")
-(defcost fn2-upload-block-cv :answers (:ok :fault) :faults (:fault) :bytes *fn2-commit-unit-bytes*
+(defcost fn2-upload-block-cv :answers (:ok :fault) :faults (:fault) :bytes *fn2-upload-block-work-bytes*
   :tables (fn2-core-b3 fn2-core-digests fn2-core-pool)
   :doc "The staged block's chaining value (its BLAKE3 for a short final block) into the store page.")
 (defcost fn2-upload-block-entry :answers (:ok :fault) :faults (:fault) :bytes *fn2-upload-entry-bytes*

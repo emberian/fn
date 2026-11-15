@@ -6,7 +6,9 @@ retains the checked header; the actual C1 fill and global FED determine the
 resident source origin. SOURCE hashing and LF counting use that origin. The
 stored-stream context hashes each selected span before the same span is copied
 into the retained block stage. One stage call consumes at most the existing
-2048-byte hash quantum; hash plus copy fits the existing 6144-byte run budget.
+derived 2036-byte stage quantum: one hash read plus copy read/write, four
+header-tail reads and a 32-byte final digest write fit the existing 6144-byte
+run budget. SOURCE hashing retains its separate 2048-byte quantum.
 
 A partial block can be written repeatedly, retaining its page prefix, until
 complete. Only a complete block or final tail receives a canonical provisional

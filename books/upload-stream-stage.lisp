@@ -4,9 +4,20 @@
 (include-book "upload")
 (fn2-book-layer :d)
 
+ ;; Actual byte-array touches: one read for stored B3 plus read/write for
+;; the copy; at most four delimiter reads and 32 final digest writes.
+(defconst *fn2-upload-stream-stage-overhead* (+ 4 *fn2-upload-digest-octets*))
+(defconst *fn2-upload-stream-stage-quantum*
+ (min *fn2-upload-hash-bytes*
+      (floor (nfix (- *fn2-upload-run-bytes* *fn2-upload-stream-stage-overhead*)) 3)))
+(defconst *fn2-upload-stream-stage-work*
+ (+ (* 3 *fn2-upload-stream-stage-quantum*) *fn2-upload-stream-stage-overhead*))
+(assert-event (and (posp *fn2-upload-stream-stage-quantum*)
+                   (<= *fn2-upload-stream-stage-work* *fn2-upload-run-bytes*)))
+
 (defcost fn2-upload-stream-stage :answers (:ok :idle :fault)
   :faults (:fault)
-  :bytes (+ (* 2 *fn2-upload-hash-bytes*) *fn2-upload-digest-octets* 4)
+  :bytes *fn2-upload-stream-stage-work*
   :tables (fn2-core-machines fn2-core-machine-tables fn2-upload-table
            fn2-core-pool fn2-core-b3 fn2-core-digests)
   :own-writes (stored-hashed stream-stage-used stream-stored-finalized)
@@ -89,7 +100,7 @@
        (available (cond (prefix (- ilen cursor))
                         (header (- header-fill source-cursor))
                         (t (- stream-end source-cursor))))
-       (length (min *fn2-upload-hash-bytes* (min (- *fn2-commit-unit-bytes* used) available)))
+       (length (min *fn2-upload-stream-stage-quantum* (min (- *fn2-commit-unit-bytes* used) available)))
        (stage-off (+ *fn2-upload-page-stage* used))
        ((unless (posp length)) (mv :idle 0 fn2-core))
        ;; All handles, ownership, filled source octets and destination range

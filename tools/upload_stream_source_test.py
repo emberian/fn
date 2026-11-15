@@ -28,7 +28,7 @@ class RollingSource(unittest.TestCase):
   p=lr.parse(ROOT/'books/upload.lisp');m=lr.match('(defun fn2-upload-bound ?*body)',p.forms)[0]
   body=p.text[m.start:m.end];self.assertNotIn('min',body);self.assertIn('(nfix max)',body)
   s=(ROOT/'books/upload-stream-stage.lisp').read_text()
-  self.assertIn('(length (min *fn2-upload-hash-bytes*',s)
+  self.assertIn('(length (min *fn2-upload-stream-stage-quantum*',s)
   self.assertIn('(fn2-upload-stored-hasher id fn2-core)',s)
   self.assertIn('(- stream-end body-fill)',s)
  def test_original_identity_and_root_are_distinct(self):
@@ -76,6 +76,28 @@ class RollingSource(unittest.TestCase):
                 'stream-eof','stream-stored-finalized','stream-provisional','stream-repack']:
    self.assertIn('fn2-upload-row-'+field,s)
   self.assertEqual(s.count('(assert-event (fn2-uui-run '),3)
+ def test_actual_stage_byte_accounting_fits_existing_budget(self):
+  s=(ROOT/'books/upload-stream-stage.lisp').read_text()
+  for token in ['(floor (nfix (- *fn2-upload-run-bytes* *fn2-upload-stream-stage-overhead*)) 3)',
+                '(* 3 *fn2-upload-stream-stage-quantum*)', ':bytes *fn2-upload-stream-stage-work*']:
+   self.assertIn(token,s)
+  quantum=min(2048,(6144-32-4)//3)
+  self.assertEqual(quantum,2036)
+  self.assertEqual(3*quantum+32+4,6144)
+  self.assertGreater(3*2048+32+4,6144)
+  source=(ROOT/'books/pool-ranges.lisp').read_text()
+  self.assertIn('(update-fn2-pool-datai dst (fn2-pool-datai src fn2-pool)',source)
+ def test_block_cost_class_is_checked_program_transformation(self):
+  import upload_block_cost_rewrite as rw
+  old=subprocess.check_output(['git','show','522e12181:books/assembly-callbacks-d-upload.lisp'],cwd=ROOT,text=True)
+  expected=rw.arm_charges(old)
+  expected=expected.replace('(:charge :bytes (+ (* 2 *fn2-upload-hash-bytes*) *fn2-upload-digest-octets* 4)',
+                            '(:charge :bytes *fn2-upload-stream-stage-work*')
+  expected=expected.replace('(:set (location-hashed (+ block 1)) (mstep 2)) (:charge :bytes 32',
+                            '(:set (location-hashed (+ block 1)) (mstep 2)) (:charge :bytes *fn2-upload-digest-copy-bytes*')
+  self.assertEqual(expected,(ROOT/'books/assembly-callbacks-d-upload.lisp').read_text())
+  with self.assertRaises(AssertionError):
+   rw.arm_charges(old.replace('fn2-upload-block-cv row-lslot','fn2-removed-call row-lslot',1))
  def test_new_books_parse(self):
   for name in ['upload-stream','upload-stream-stage','upload-stream-reset','upload-stream-manifest','upload-stream-settle']:
    self.assertTrue(lr.parse(ROOT/'books'/f'{name}.lisp').forms)
