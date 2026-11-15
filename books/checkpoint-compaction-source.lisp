@@ -13,6 +13,17 @@
         (mv :ok (fn2-run-installed-schema row fn2-run-installed) (fn2-run-installed-run row fn2-run-installed)))
        (t (mv :absent 0 0))))
 
+(defun fn2-checkpoint-compaction-empty-tuple (kind row fn2-overlays fn2-run-installed)
+ (declare (xargs :stobjs (fn2-overlays fn2-run-installed)
+ :guard (and (fn2-overlays-wfp fn2-overlays) (fn2-run-installed-wfp fn2-run-installed))))
+ (cond ((and (equal kind 0) (fn2-checkpoint-source-retire-overlayp row fn2-overlays)
+             (equal (fn2-overlays-count row fn2-overlays) 0))
+        (mv :ok (fn2-overlays-schema row fn2-overlays) (fn2-overlays-seq row fn2-overlays)))
+       ((and (equal kind 1) (fn2-checkpoint-source-retire-runp row fn2-run-installed)
+             (equal (fn2-run-installed-entries row fn2-run-installed) 0))
+        (mv :ok (fn2-run-installed-schema row fn2-run-installed) (fn2-run-installed-run row fn2-run-installed)))
+       (t (mv :absent 0 0))))
+
 ; A candidate source is still the exact live source selected from this cut.
 ; Physical page identity/hash authentication is the existing cursor loader's
 ; duty; this predicate supplies no substitute physical readiness assertion.
@@ -25,11 +36,16 @@
              (fn2-run-installed-wfp fn2-run-installed))))
  (and (fn2-checkpoint-compaction-ownerp fn2-checkpoint-compaction fn2-checkpoint-build fn2-csnapshot fn2-checkpoints fn2-overlays fn2-run-installed)
       (member (fn2-checkpoint-compaction-phase 0 fn2-checkpoint-compaction)
-       (list *fn2-checkpoint-compaction-phase-seek* *fn2-checkpoint-compaction-phase-compare* *fn2-checkpoint-compaction-phase-equal-lower* *fn2-checkpoint-compaction-phase-source-end* *fn2-checkpoint-compaction-phase-copy*))
+       (list *fn2-checkpoint-compaction-phase-empty-seek* *fn2-checkpoint-compaction-phase-empty-end* *fn2-checkpoint-compaction-phase-seek* *fn2-checkpoint-compaction-phase-compare* *fn2-checkpoint-compaction-phase-equal-lower* *fn2-checkpoint-compaction-phase-source-end* *fn2-checkpoint-compaction-phase-copy*))
       (mv-let (code schema order)
-       (fn2-checkpoint-compaction-source-tuple
-        (fn2-checkpoint-compaction-source-kind 0 fn2-checkpoint-compaction)
-        (fn2-checkpoint-compaction-source-row 0 fn2-checkpoint-compaction) fn2-overlays fn2-run-installed)
+       (if (member (fn2-checkpoint-compaction-phase 0 fn2-checkpoint-compaction)
+            (list *fn2-checkpoint-compaction-phase-empty-seek* *fn2-checkpoint-compaction-phase-empty-end*))
+        (fn2-checkpoint-compaction-empty-tuple
+         (fn2-checkpoint-compaction-source-kind 0 fn2-checkpoint-compaction)
+         (fn2-checkpoint-compaction-source-row 0 fn2-checkpoint-compaction) fn2-overlays fn2-run-installed)
+        (fn2-checkpoint-compaction-source-tuple
+         (fn2-checkpoint-compaction-source-kind 0 fn2-checkpoint-compaction)
+         (fn2-checkpoint-compaction-source-row 0 fn2-checkpoint-compaction) fn2-overlays fn2-run-installed))
        (and (eq code :ok)
             (equal schema (fn2-checkpoint-compaction-schema 0 fn2-checkpoint-compaction))
             (equal order (fn2-checkpoint-compaction-source-order 0 fn2-checkpoint-compaction))))))
@@ -51,6 +67,9 @@
       (phase (fn2-checkpoint-compaction-phase 0 fn2-checkpoint-compaction))
       ((unless (member phase (list *fn2-checkpoint-compaction-phase-schema* *fn2-checkpoint-compaction-phase-sources*)))
        (mv :phase fn2-checkpoint-compaction))
+      ((unless (or (equal phase *fn2-checkpoint-compaction-phase-schema*)
+                   (equal (fn2-checkpoint-compaction-schema-open 0 fn2-checkpoint-compaction) 1)))
+       (mv :schema fn2-checkpoint-compaction))
       (kind (fn2-checkpoint-compaction-scan-kind 0 fn2-checkpoint-compaction))
       (row (fn2-checkpoint-compaction-scan-row 0 fn2-checkpoint-compaction))
       ((unless (<= kind 1)) (mv :invariant fn2-checkpoint-compaction))
@@ -66,7 +85,7 @@
           (let ((fn2-checkpoint-compaction (fn2-checkpoint-compaction-set-phase 0 *fn2-checkpoint-compaction-phase-done* fn2-checkpoint-compaction)))
            (mv :done fn2-checkpoint-compaction))
           (let ((fn2-checkpoint-compaction (fn2-checkpoint-compaction-put 0
-           (phase *fn2-checkpoint-compaction-phase-sources*) (scan-kind 0) (scan-row 0) (best 0) (has-lower 0))))
+           (phase *fn2-checkpoint-compaction-phase-sources*) (schema-open 0) (scan-kind 0) (scan-row 0) (best 0) (has-lower 0))))
            (mv :schema fn2-checkpoint-compaction))))
         (t (let ((fn2-checkpoint-compaction (fn2-checkpoint-compaction-set-phase 0
              (if (equal (fn2-checkpoint-compaction-best 0 fn2-checkpoint-compaction) 0)

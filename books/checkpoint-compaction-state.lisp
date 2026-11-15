@@ -12,12 +12,12 @@
 
 (defcolumns fn2-checkpoint-compaction
  ((phase (:enum fn2-checkpoint-compaction-phase
-   (:idle :schema :sources :seek :compare :equal-lower :source-end :copy :park :selected :retention :append :lower-copy :schema-done :done :uncertain)))
+   (:idle :schema :empty-seek :empty-end :sources :seek :compare :equal-lower :source-end :copy :park :selected :retention :append :lower-copy :schema-done :done :uncertain)))
   (token :u60) (owner-kind :u8) (owner-slot :u32) (owner-gen :u60)
   (candidate :u32) (overlay-rows :u32) (run-rows :u32)
   (scan-kind :u8) (scan-row :u32)
   (schema :u60) (schema-found :bool) (has-last-schema :bool) (last-schema :u60)
-  (output-rank :u60) (source-kind :u8) (source-row :u32) (source-order :u60)
+  (empty-headers :u60) (schema-open :bool) (output-rank :u60) (source-kind :u8) (source-row :u32) (source-order :u60)
   (best :bool) (best-kind :u8) (best-row :u32) (best-order :u60)
   (lower-round :u60) (has-lower :bool) (lower-slot :u32) (lower-gen :u60)
   (configured :bool) (cursor :u32) (reader-base :u32)
@@ -81,5 +81,5 @@
        (owner-kind kind) (owner-slot owner) (owner-gen generation) (candidate c)
        (overlay-rows (fn2-overlays-rows fn2-overlays)) (run-rows (fn2-run-installed-rows fn2-run-installed))
        (scan-kind 0) (scan-row 0) (schema-found 0) (has-last-schema 0)
-       (output-rank 0) (lower-round 0) (configured 0) (best 0) (has-lower 0) (source-started 0) (copy-field 0) (copy-offset 0) (copy-end 0))))
+       (empty-headers 0) (schema-open 0) (output-rank 0) (lower-round 0) (configured 0) (best 0) (has-lower 0) (source-started 0) (copy-field 0) (copy-offset 0) (copy-end 0))))
   (mv :more fn2-checkpoint-compaction)))

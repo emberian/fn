@@ -41,8 +41,10 @@ class CompactionSource(unittest.TestCase):
             self.assertEqual(len(calls(new, p)), 1)
         ov = definition(OLD, "fn2-checkpoint-source-overlayp")
         self.assertTrue(calls(ov, "fn2-overlays-count"))
-        self.assertIn("*fn2-overlay-phase-frozen*", repr(ov))
-        self.assertNotIn("*fn2-overlay-phase-private*", repr(ov))
+        self.assertTrue(calls(ov, "fn2-checkpoint-source-retire-overlayp"))
+        retire = definition(OLD, "fn2-checkpoint-source-retire-overlayp")
+        self.assertIn("*fn2-overlay-phase-frozen*", repr(retire))
+        self.assertNotIn("*fn2-overlay-phase-private*", repr(retire))
 
     def test_begin_requires_actual_build_and_candidate(self):
         t = definition(STATE, "fn2-checkpoint-compaction-begin")
@@ -131,7 +133,8 @@ class CompactionMerge(unittest.TestCase):
 
     def test_actual_identity_gate_is_shared_with_old_rebuild(self):
         t = self.step()
-        self.assertEqual(len(calls(t, "fn2-checkpoint-source-run-headerp")), 1)
+        self.assertEqual(len(calls(t, "fn2-checkpoint-source-run-headerp")), 2)
+        self.assertIn("reading-header", repr(t))
         old = definition("books/checkpoint-metadata.lisp", "fn2-checkpoint-metadata-run-step")
         self.assertEqual(len(calls(old, "fn2-checkpoint-source-run-headerp")), 1)
         h = definition(OLD, "fn2-checkpoint-source-run-headerp")
@@ -180,6 +183,79 @@ class CompactionPark(unittest.TestCase):
         self.assertNotIn("['lease-mode',", repr(macro))
         self.assertFalse(calls(macro, "fn2-pool-release"))
         self.assertFalse(calls(macro, "fn2-pool-reset"))
+
+
+class CompactionOutput(unittest.TestCase):
+    def test_winner_bind_preserves_actual_typed_retention(self):
+        t = definition("books/checkpoint-compaction-output.lisp", "fn2-checkpoint-compaction-selected-bind")
+        self.assertTrue(calls(t, "fn2-checkpoint-compaction-source-tuple"))
+        self.assertIn("*fn2-checkpoint-compaction-phase-selected*", repr(t))
+        self.assertIn("*fn2-checkpoint-compaction-phase-retention*", repr(t))
+        self.assertIn(["retention-stage", "0"], list(nodes(t)))
+        self.assertNotIn(["retention-stage", "1"], list(nodes(t)))
+        self.assertFalse(calls(t, "fn2-run-build-add"))
+
+    def test_append_calls_same_checked_entry_path(self):
+        t = definition("books/checkpoint-compaction-output.lisp", "fn2-checkpoint-compaction-append-step")
+        self.assertEqual(len(calls(t, "fn2-checkpoint-metadata-entry-step")), 1)
+        self.assertIn(["equal", ["fn2-checkpoint-metadata-retention-stage", "0", "fn2-checkpoint-metadata"], "1"], list(nodes(t)))
+        self.assertIn("*fn2-checkpoint-compaction-phase-lower-copy*", repr(t))
+        self.assertIn(["eq", "code", ":ok"], list(nodes(t)))
+        self.assertFalse(calls(t, "fn2-pool-reset"))
+
+    def test_lower_window_changes_only_after_append(self):
+        t = definition("books/checkpoint-compaction-output.lisp", "fn2-checkpoint-compaction-lower-step")
+        self.assertIn("*fn2-checkpoint-compaction-phase-lower-copy*", repr(t))
+        self.assertIn(["equal", ["fn2-checkpoint-metadata-held", "0", "fn2-checkpoint-metadata"], "0"], list(nodes(t)))
+        self.assertEqual(calls(t, "fn2-run-entry-rehome-step")[0][-3], ["floor", "budget", "2"])
+        self.assertIn(["lower-round", ["+", "1", ["fn2-checkpoint-compaction-lower-round", "0", "fn2-checkpoint-compaction"]]], list(nodes(t)))
+        self.assertIn(["best", "0"], list(nodes(t)))
+        self.assertIn(["has-lower", "1"], list(nodes(t)))
+
+    def test_schema_builder_is_one_dense_rank_after_inventory(self):
+        t = definition("books/checkpoint-compaction-schema.lisp", "fn2-checkpoint-compaction-schema-begin")
+        self.assertTrue(calls(t, "fn2-checkpoint-predecessor-ready-p"))
+        self.assertTrue(calls(t, "fn2-run-build-start"))
+        self.assertIn(["rank", ["+", "1", ["fn2-checkpoint-compaction-output-rank", "0", "fn2-checkpoint-compaction"]]], list(nodes(t)))
+        self.assertFalse(calls(t, "fn2-checkpoint-source-set-rank"))
+        self.assertIn(["schema-open", "1"], list(nodes(t)))
+
+
+class CompactionEmpty(unittest.TestCase):
+    def step(self):
+        return definition("books/checkpoint-compaction-empty.lisp", "fn2-checkpoint-compaction-empty-step")
+
+    def test_empty_root_uses_real_full_ref_reader(self):
+        t = self.step()
+        for p in ("fn2-run-cursor-start-installed", "fn2-run-scan-step", "fn2-checkpoint-source-run-headerp"):
+            self.assertEqual(len(calls(t,p)),1)
+        self.assertIn("reading-header", repr(t))
+        self.assertIn("*fn2-run-cursor-phase-end*", repr(t))
+        self.assertIn(["posp", ["fn2-checkpoint-compaction-empty-headers", "0", "fn2-checkpoint-compaction"]], list(nodes(t)))
+        self.assertFalse(calls(t, "fn2-run-build-start"))
+        self.assertFalse(calls(t, "fn2-run-build-add"))
+
+    def test_nonempty_result_cannot_retry_past_rejected_entry(self):
+        t = self.step()
+        self.assertIn([["when", ["eq", "code", ":entry"]], ["fn2-checkpoint-compaction-merge-fail", ":source-count"]], list(nodes(t)))
+        fs = trees("books/checkpoint-compaction-merge.lisp")
+        macro = next(x for x in fs if isinstance(x,list) and x[:2] == ["defmacro","fn2-checkpoint-compaction-merge-fail"])
+        self.assertIn("*fn2-checkpoint-compaction-phase-uncertain*", repr(macro))
+
+    def test_empty_overlay_checks_actual_index_and_source_owner(self):
+        t = self.step()
+        self.assertTrue(calls(t, "fn2-ov-okp"))
+        self.assertTrue(calls(t, "fn2-layout-range-code"))
+        for p in ("fn2-overlays-slot", "fn2-overlays-gen", "fn2-overlays-fill", "fn2-overlays-okind", "fn2-overlays-oslot", "fn2-overlays-ogen"):
+            self.assertTrue(calls(t,p))
+
+    def test_empty_lifecycle_never_manufactures_an_output_rank(self):
+        t = self.step()
+        self.assertFalse(calls(t, "fn2-checkpoint-compaction-set-output-rank"))
+        self.assertIn("*fn2-checkpoint-compaction-phase-empty-end*", repr(t))
+        park = definition("books/checkpoint-compaction-park.lisp", "fn2-checkpoint-compaction-park-source")
+        self.assertIn("*fn2-checkpoint-compaction-phase-schema*", repr(park))
+        self.assertIn("fn2-checkpoint-compaction-schema-open", repr(park))
 
 
 if __name__ == "__main__":

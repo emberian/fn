@@ -15,6 +15,12 @@
 (defmacro fn2-checkpoint-compaction-merge-mv (code)
  `(mv ,code fn2-checkpoint-compaction fn2-run-cursors fn2-run-paths fn2-fields fn2-pool))
 
+; A failure after decoding must not let a later retry advance past the
+; rejected entry. The actual continuation becomes terminal before returning.
+(defmacro fn2-checkpoint-compaction-merge-fail (code)
+ `(let ((fn2-checkpoint-compaction (fn2-checkpoint-compaction-set-phase 0 *fn2-checkpoint-compaction-phase-uncertain* fn2-checkpoint-compaction)))
+   (fn2-checkpoint-compaction-merge-mv ,code)))
+
 ; No decoder or hash readiness argument enters this operation. SEEK invokes
 ; the actual overlay lower-bound/entry or authenticated run cursor itself;
 ; only its successful result can enter COMPARE/COPY. COPY freezes that source.
@@ -82,6 +88,8 @@
             (fn2-checkpoint-compaction (if (eq code :ok)
              (fn2-checkpoint-compaction-set-source-started 0 1 fn2-checkpoint-compaction) fn2-checkpoint-compaction)))
         (fn2-checkpoint-compaction-merge-mv (if (eq code :ok) :more code))))
+      (reading-header (and (equal skind 1)
+                           (equal (fn2-run-cursors-phase c fn2-run-cursors) *fn2-run-cursor-phase-header*)))
       ((mv code fn2-checkpoint-compaction fn2-run-cursors fn2-run-paths fn2-fields)
        (if (equal skind 0)
         (b* (((mv code pos & fn2-fields)
@@ -101,17 +109,24 @@
         (mv-let (code fn2-run-cursors fn2-run-paths fn2-fields)
          (fn2-run-scan-step c budget lb dk ds dg fn2-run-cursors fn2-run-paths fn2-run-cache fn2-fields fn2-pool)
          (mv code fn2-checkpoint-compaction fn2-run-cursors fn2-run-paths fn2-fields))))
+      ((unless (or (not reading-header) (not (eq code :more))
+                   (fn2-checkpoint-source-run-headerp r rb
+                    (fn2-checkpoint-build-history 0 fn2-checkpoint-build)
+                    (fn2-checkpoint-build-history-incarnation 0 fn2-checkpoint-build) fn2-run-installed fn2-fields)))
+       (fn2-checkpoint-compaction-merge-fail :source-identity))
       ((when (eq code :end))
        (let ((fn2-checkpoint-compaction (fn2-checkpoint-compaction-set-phase 0 *fn2-checkpoint-compaction-phase-source-end* fn2-checkpoint-compaction)))
         (fn2-checkpoint-compaction-merge-mv :source-end)))
       ((unless (eq code :entry))
-       (fn2-checkpoint-compaction-merge-mv (if (eq code :miss) :need-read code)))
+       (if (member-eq code '(:more :miss :yield))
+        (fn2-checkpoint-compaction-merge-mv (if (eq code :miss) :need-read code))
+        (fn2-checkpoint-compaction-merge-fail code)))
       ((unless (or (equal skind 0)
                    (and (equal (fn2-run-cursors-phase c fn2-run-cursors) *fn2-run-cursor-phase-at*)
                         (fn2-checkpoint-source-run-headerp r rb
                          (fn2-checkpoint-build-history 0 fn2-checkpoint-build)
                          (fn2-checkpoint-build-history-incarnation 0 fn2-checkpoint-build) fn2-run-installed fn2-fields))))
-       (fn2-checkpoint-compaction-merge-mv :source-identity))
+       (fn2-checkpoint-compaction-merge-fail :source-identity))
       (sk (if (equal skind 0) (fn2-overlays-okind r fn2-overlays) (fn2-run-cursors-okind c fn2-run-cursors)))
       (ss (if (equal skind 0) (fn2-overlays-oslot r fn2-overlays) (fn2-run-cursors-oslot c fn2-run-cursors)))
       (sg (if (equal skind 0) (fn2-overlays-ogen r fn2-overlays) (fn2-run-cursors-ogen c fn2-run-cursors)))
@@ -119,7 +134,7 @@
        (if (equal (fn2-checkpoint-compaction-has-lower 0 fn2-checkpoint-compaction) 1)
         (fn2-run-layout-compare sid ib lb sk ss sg dk ds dg fn2-fields fn2-pool)
         (mv :ok :gt)))
-      ((unless (eq code :ok)) (fn2-checkpoint-compaction-merge-mv code))
+      ((unless (eq code :ok)) (fn2-checkpoint-compaction-merge-fail code))
       ; Reseek is inclusive. Equal heads advance through the same source's
       ; actual NEXT operation; no integer/octet successor parser is invented.
       ((when (eq lower-order :eq))
@@ -127,12 +142,12 @@
         ; The original-source inventory must count this exact emitted key
         ; once before the cursor's next operation may run.
         (fn2-checkpoint-compaction-merge-mv :source-key)))
-      ((unless (eq lower-order :gt)) (fn2-checkpoint-compaction-merge-mv :order))
+      ((unless (eq lower-order :gt)) (fn2-checkpoint-compaction-merge-fail :order))
       ((mv code best-order)
        (if (equal (fn2-checkpoint-compaction-best 0 fn2-checkpoint-compaction) 1)
         (fn2-run-layout-compare sid ib eb sk ss sg dk ds dg fn2-fields fn2-pool)
         (mv :ok :lt)))
-      ((unless (eq code :ok)) (fn2-checkpoint-compaction-merge-mv code))
+      ((unless (eq code :ok)) (fn2-checkpoint-compaction-merge-fail code))
       (replace (or (eq best-order :lt)
                    (and (eq best-order :eq)
                     (fn2-checkpoint-source-beforep sid
@@ -146,9 +161,9 @@
       ((mv code fn2-pool) (fn2-pool-reset
        (fn2-checkpoint-compaction-best-slot 0 fn2-checkpoint-compaction)
        (fn2-checkpoint-compaction-best-gen 0 fn2-checkpoint-compaction) dk ds dg fn2-pool))
-      ((unless (eq code :ok)) (fn2-checkpoint-compaction-merge-mv code))
+      ((unless (eq code :ok)) (fn2-checkpoint-compaction-merge-fail code))
       ((mv code fn2-fields) (fn2-range-copy-rows *fn2-run-entry-rows* ib eb fn2-fields))
-      ((unless (eq code :ok)) (fn2-checkpoint-compaction-merge-mv code))
+      ((unless (eq code :ok)) (fn2-checkpoint-compaction-merge-fail code))
       (fn2-checkpoint-compaction (fn2-checkpoint-compaction-put 0
        (phase *fn2-checkpoint-compaction-phase-copy*) (copy-field 0) (copy-offset 0) (copy-end 0)
        (source-okind sk) (source-oslot ss) (source-ogen sg))))

@@ -37,7 +37,9 @@
       ((unless (eq code :ok))
        (mv code fn2-checkpoint-compaction fn2-run-loads fn2-run-cursors fn2-checkpoint-summary fn2-checkpoint-summary-leases))
       (fn2-checkpoint-compaction (fn2-checkpoint-compaction-put 0
-       (phase *fn2-checkpoint-compaction-phase-sources*) (source-started 0))))
+       (phase (if (equal (fn2-checkpoint-compaction-schema-open 0 fn2-checkpoint-compaction) 0)
+                *fn2-checkpoint-compaction-phase-schema* *fn2-checkpoint-compaction-phase-sources*))
+       (source-started 0))))
   (mv :more fn2-checkpoint-compaction fn2-run-loads fn2-run-cursors fn2-checkpoint-summary fn2-checkpoint-summary-leases)))
 (fn2-run-load-frames fn2-checkpoint-compaction-park-source
  (fn2-checkpoint-compaction fn2-checkpoint-root1 fn2-checkpoint-windows fn2-checkpoint-build fn2-csnapshot fn2-checkpoints

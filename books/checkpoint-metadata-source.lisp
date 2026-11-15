@@ -28,17 +28,23 @@
 ; Canonical held-set eligibility. Both ordered enumeration and compaction's
 ; raw row walk use these exact predicates; neither admits private overlays or
 ; retired installed rows merely because their backing storage still exists.
-(defun fn2-checkpoint-source-overlayp (row fn2-overlays)
+(defun fn2-checkpoint-source-retire-overlayp (row fn2-overlays)
  (declare (xargs :stobjs fn2-overlays :guard (fn2-overlays-wfp fn2-overlays)))
  (and (natp row) (< row (fn2-overlays-rows fn2-overlays))
-      (posp (fn2-overlays-count row fn2-overlays))
       (member (fn2-overlays-phase row fn2-overlays)
               (list *fn2-overlay-phase-active* *fn2-overlay-phase-frozen*))))
-(defun fn2-checkpoint-source-runp (row fn2-run-installed)
+(defun fn2-checkpoint-source-overlayp (row fn2-overlays)
+ (declare (xargs :stobjs fn2-overlays :guard (fn2-overlays-wfp fn2-overlays)))
+ (and (fn2-checkpoint-source-retire-overlayp row fn2-overlays)
+      (posp (fn2-overlays-count row fn2-overlays))))
+(defun fn2-checkpoint-source-retire-runp (row fn2-run-installed)
  (declare (xargs :stobjs fn2-run-installed :guard (fn2-run-installed-wfp fn2-run-installed)))
  (and (natp row) (< row (fn2-run-installed-rows fn2-run-installed))
-      (posp (fn2-run-installed-entries row fn2-run-installed))
       (equal (fn2-run-installed-state row fn2-run-installed) *fn2-run-installed-state-live*)))
+(defun fn2-checkpoint-source-runp (row fn2-run-installed)
+ (declare (xargs :stobjs fn2-run-installed :guard (fn2-run-installed-wfp fn2-run-installed)))
+ (and (fn2-checkpoint-source-retire-runp row fn2-run-installed)
+      (posp (fn2-run-installed-entries row fn2-run-installed))))
 
 ; Shared source header identity after the canonical run cursor decodes it.
 ; This does not authenticate bytes or change cursor/page readiness.
