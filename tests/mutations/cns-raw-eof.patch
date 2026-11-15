@@ -1,0 +1,11 @@
+--- a/books/cns.lisp
++++ b/books/cns.lisp
+@@ -1399,7 +1399,7 @@
+        (mv-let (status start2 mode2 why2 copied fn2-core)
+          (fn2-upload-feed-run start end mode why fed t tx-slot tx-gen *fn2-ctl-kind* ctl ctl-gen u ugen fn2-core)
+          (mv status start2 mode2
+-             (if (and (eq status :need-more) (equal why2 0) (not (equal mode2 *fn2-feed-bol*))) 1 why2)
++             why2
+              copied fn2-core)))
+      (fn2-core-preserves fn2-cns-feed-article (start mode why fed end tx-slot tx-gen ctl ctl-gen u ugen fn2-core)
+        :position 5 :rows nil)
