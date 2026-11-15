@@ -36,9 +36,16 @@ types. Standalone certification exposed an incidental author-world dependency;
 Ribbon now explicitly includes the byte-contract book locally. Runtime bodies,
 guards and theorem statements are unchanged. Its 19.684-second certification
 still leaves proof-cost work open. The composed author run has advanced through
-identity, commit geometry/format, ordered runs and authority schema; its next
-refusal is generated fold guard typing. APPEND/FETCH and native restart remain
-unexecuted.
+identity, commit geometry/format, ordered runs, authority schema, folds and
+run manifests. Its next refusal is the original generated `runs-served`
+assembly event reaching its unchanged 20-second proof limit. APPEND/FETCH and
+native restart remain unexecuted.
+
+Generated fold guards now retain the public field-value and row type contracts
+through a local observer exclusion. The [28-book record](receipts/folds28-record.json)
+reused 27 parents and certified folds; root matched all current source hashes
+and closure keys. Schema declarations, guards and statements are unchanged.
+Its 18.736-second certification leaves proof-cost work open.
 
 The counted upload feeder is integrated through the same six-result slice used
 by the actual core callback and public feeder. Its
