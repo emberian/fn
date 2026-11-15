@@ -2,7 +2,7 @@
 ; authenticate records, grant a release cut, or remember discarded history.
 (in-package "ACL2")
 (include-book "std/util/bstar" :dir :system)
-(include-book "alloc")
+(include-book "alloc-free-carrier")
 ; Proof arithmetic remains local; consumers receive only the HOME bounds.
 (local (include-book "arithmetic-3/floor-mod/floor-mod" :dir :system))
 (fn2-book-layer :b)
