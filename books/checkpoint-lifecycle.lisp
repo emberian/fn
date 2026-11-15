@@ -25,8 +25,9 @@
                (equal (fn2-checkpoint-construction-rows fn2-checkpoint-construction) (fn2-extents-rows fn2-extents))
                (equal (fn2-checkpoint-page-verified-rows fn2-checkpoint-page-verified) (fn2-extents-rows fn2-extents))))
   (mv :state fn2-checkpoint-lifecycle)
-  (mv :more (fn2-checkpoint-lifecycle-put 0 (phase *fn2-checkpoint-lifecycle-phase-construction*)
-    (candidate c) (token token) (owner-kind kind) (owner-slot slot) (owner-gen gen) (cursor 0) (role 0)))))
+  (let* ((fn2-checkpoint-lifecycle (fn2-checkpoint-lifecycle-put 0 (phase *fn2-checkpoint-lifecycle-phase-construction*)
+    (candidate c) (token token) (owner-kind kind) (owner-slot slot) (owner-gen gen) (cursor 0) (role 0))))
+   (mv :more fn2-checkpoint-lifecycle))))
 
 (defun fn2-checkpoint-lifecycle-step-children (fn2-checkpoint-lifecycle fn2-checkpoints fn2-checkpoint-refs fn2-checkpoint-bytes fn2-checkpoint-construction fn2-checkpoint-page-verified fn2-extents fn2-alloc-edges fn2-ops)
  (declare (xargs :stobjs (fn2-checkpoint-lifecycle fn2-checkpoints fn2-checkpoint-refs fn2-checkpoint-bytes fn2-checkpoint-construction fn2-checkpoint-page-verified fn2-extents fn2-alloc-edges fn2-ops) :guard (and (fn2-checkpoint-lifecycle-wfp fn2-checkpoint-lifecycle) (fn2-checkpoints-wfp fn2-checkpoints) (fn2-checkpoint-refs-wfp fn2-checkpoint-refs) (fn2-checkpoint-bytes-wfp fn2-checkpoint-bytes) (fn2-checkpoint-construction-wfp fn2-checkpoint-construction) (fn2-checkpoint-page-verified-wfp fn2-checkpoint-page-verified) (fn2-extents-wfp fn2-extents) (fn2-alloc-edges-wfp fn2-alloc-edges) (fn2-ops-wfp fn2-ops))))
