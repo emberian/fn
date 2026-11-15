@@ -3,10 +3,12 @@
 (include-book "executor-wake")
 (include-book "executor-services")
 (include-book "assembly")
+(include-book "checkpoint-working-credit-init")
 (include-book "executor-reservation")
 (include-book "executor-loop-events")
 
 (fn2-executor-loop-events)
+(fn2-checkpoint-working-credit-init-events)
 
 ;; Genesis (MACHINE-FORM G3, C gap 5): each kind's :genesis arm runs once on
 ;; each of its rows at init, from the row's initial phase, so a row's first
@@ -84,13 +86,25 @@
       (fn2-profile-get :listener-local-target profile)
     (fn2-profile-get :listener-targets profile)))
 
+ ; Image admission is the actual initialized-child boundary. Ordinary mode
+ ; remains unconfigured. A failure is returned before any namespace genesis.
+(defun fn2-init-credit-boundary (profile fn2-core)
+ (declare (xargs :stobjs fn2-core :guard (fn2-core-wfp fn2-core)))
+ (if (not (fn2-profile-get :image-boot profile)) (mv :ok fn2-core)
+  (if (not (fn2-profilep profile)) (mv :profile fn2-core)
+   (fn2-checkpoint-working-credit-init profile fn2-core))))
+(fn2-core-preserves fn2-init-credit-boundary (profile fn2-core) :position 1 :rows nil)
+
 (defun fn2-init-executor (profile mode scribe-p fn2-core)
   (declare (xargs :stobjs fn2-core :guard (fn2-core-profilep profile)
     :guard-hints (("Goal" :use
       (:instance fn2-machine-kind-base-natp (kind *fn2-listener-kind*)
         (fn2-core (fn2-listener-set-mode-all (if (eq mode :null) 0 1)
-                    (fn2-init-engine profile (fn2-core-init profile fn2-core)))))))))
+                    (fn2-init-engine profile
+                     (mv-nth 1 (fn2-init-credit-boundary profile (fn2-core-init profile fn2-core)))))))))))
   (b* ((fn2-core (fn2-core-init profile fn2-core))
+       ((mv credit fn2-core) (fn2-init-credit-boundary profile fn2-core))
+       ((unless (eq credit :ok)) (fn2-core-stop *fn2-stop-reason-engine-genesis* fn2-core))
        (fn2-core (fn2-init-engine profile fn2-core))
        (fn2-core (fn2-listener-set-mode-all (if (eq mode :null) 0 1) fn2-core))
        (fn2-core (fn2-listener-set-target-all
