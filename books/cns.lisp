@@ -833,13 +833,14 @@
 
 ;; The control connection's field stripe and hasher row (interim, 14 item
 ;; 8): the C rows below the format table's top row (B's block read check,
-;; machines-b.lisp), row FC-ROWS - C - 1 + S for control slot S of C. With
+;; machines-b.lisp), the canonical fn2-b-ctl-runtime-row for control slot S of C; the
+;; last five format rows belong to retained source/event/block/checkpoint jobs. With
 ;; :format-slots at its floor that is B's fn2-b-ctl-slot (owed: B's runtime
 ;; accessor for row S).
 (defthm fn2-ctl-fc-row-at-the-floor
   (implies (and (equal fc-rows (fn2-b-format-floor profile)) (equal c (fn2-b-ctl-rows profile)))
-           (equal (+ (- fc-rows c) -1 (nfix s)) (fn2-b-ctl-slot s profile)))
-  :hints (("Goal" :in-theory (enable fn2-b-format-floor fn2-b-ctl-slot))))
+           (equal (fn2-b-ctl-runtime-row s c fc-rows) (fn2-b-ctl-slot s profile)))
+  :hints (("Goal" :in-theory (enable fn2-b-ctl-runtime-row fn2-b-format-floor fn2-b-ctl-slot))))
 
 
 ;; ---------------------------------------------------------------------------
@@ -1926,16 +1927,23 @@
        (declare (xargs :stobjs fn2-core :guard (fn2-core-wfp fn2-core)
                        :guard-hints (("Goal" :in-theory (enable fn2-core-wfp)))))
        (if (not (eq (fn2-ctl-snapshot-read-code ctl fn2-core) :ok)) (mv :bounds 0)
-         (let ((s (fn2-machine-slot ctl fn2-core))
-               (c (stobj-let ((fn2-ctl (fn2-ctl-table fn2-core))) (n) (fn2-ctl-rows fn2-ctl) n))
-               (f (stobj-let ((fn2-fc (fn2-core-fc fn2-core))) (n) (fn2-fc-rows fn2-fc) n))
-               (fr (stobj-let ((fn2-fields (fn2-core-fields fn2-core))) (n) (fn2-fields-rows fn2-fields) n)))
-           (if (and (natp s) (natp c) (natp f) (< s c) (< c f)
-                    (<= (* 128 (+ (- f c) s)) (nfix fr)))
-               (mv :ok (+ (- f c) -1 s))
+         (let* ((s (fn2-machine-slot ctl fn2-core))
+                (c (stobj-let ((fn2-ctl (fn2-ctl-table fn2-core))) (n) (fn2-ctl-rows fn2-ctl) n))
+                (f (stobj-let ((fn2-fc (fn2-core-fc fn2-core))) (n) (fn2-fc-rows fn2-fc) n))
+                (fr (stobj-let ((fn2-fields (fn2-core-fields fn2-core))) (n) (fn2-fields-rows fn2-fields) n))
+                (row (fn2-b-ctl-runtime-row s c f)))
+           (if (and (natp s) (natp c) (natp f) (< s c) (<= (+ c 5) f)
+                    (< row f) (<= (* 128 (+ 1 row)) (nfix fr)))
+               (mv :ok row)
              (mv :bounds 0)))))
      (defthm fn2-ctl-fc-row-natp
        (natp (mv-nth 1 (fn2-ctl-fc-row ctl fn2-core))) :rule-classes :type-prescription)
+     (defthm fn2-ctl-fc-row-ok-room
+       (implies (eq (mv-nth 0 (fn2-ctl-fc-row ctl fn2-core)) :ok)
+                (<= (+ (* 128 (mv-nth 1 (fn2-ctl-fc-row ctl fn2-core))) 128)
+                    (nfix (fn2-fields-rows (fn2-core-fields fn2-core)))))
+       :rule-classes nil
+       :hints (("Goal" :in-theory (e/d (fn2-ctl-fc-row) (fn2-core-wfp)))))
      (in-theory (disable fn2-ctl-fc-row))
      (defun fn2-ctl-open-frame (ctl gen rx-slot rx-gen fn2-core)
        (declare (xargs :stobjs fn2-core :guard (fn2-core-wfp fn2-core)
