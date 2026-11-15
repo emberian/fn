@@ -1019,7 +1019,9 @@
        ; whose keyword stands first, admitted in this state, framed
        ; structurally: :discard (its block follows and is discarded).
        (defun ,(fn2-gram-sym g "-parse-line") (s e mask ,@std)
-         (declare (xargs :stobjs fn2-pool :guard (and ,guard (natp s) (natp e))))
+         (declare (xargs :stobjs fn2-pool :guard (and ,guard (natp s) (natp e))
+                         :guard-hints (("Goal" :in-theory
+                           (disable ,(fn2-gram-sym g "-parse-line-0") nfix)))))
          (mv-let (code tag nargs f0 a0 b0 f1 a1 b1 f2 a2 b2 f3 a3 b3) (,(fn2-gram-sym g "-parse-line-0") s e mask ,@std)
            (if (not (member-eq code '(:malformed :syntax))) (mv code tag nargs f0 a0 b0 f1 a1 b1 f2 a2 b2 f3 a3 b3)
              (let* ((end (nfix (- e 2)))
