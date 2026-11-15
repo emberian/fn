@@ -319,6 +319,7 @@ ACL2_BOOKS = \
   tests/blake3-native \
   tests/blake3-unit \
   tests/fnct-stream-unit \
+  tests/cns-fetch-prefix-unit \
   tests/blake3-vectors \
   tests/boot-unit \
   tests/borrow-conservation-unit \

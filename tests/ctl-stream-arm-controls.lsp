@@ -7,7 +7,7 @@
 (defparameter *vars* nil)
 (defparameter *effects* nil)
 (defun expression (x)
- (eval `(let ,(mapcar (lambda (entry) `(,(car entry) (quote ,(cdr entry)))) *vars*) ,x)))
+ (eval `(let ,(mapcar (lambda (entry) `(,(car entry) (quote ,(cdr entry)))) (remove-duplicates *vars* :key #'car :from-end t)) ,x)))
 (defun execute-steps (steps)
  (dolist (step steps)
   (case (car step)
@@ -31,7 +31,8 @@
        (receive (cdddr (assoc :receive-result observes)))
        (constants '((*fn2-outcome-done* . 1) (*fn2-outcome-short* . 2)
                     (*fn2-ctl-stream-bad* . 7) (*fn2-ctl-stream-none* . 0)
-                    (*fn2-ctl-stream-cancelled* . 8)))
+                    (*fn2-ctl-stream-cancelled* . 8) (*fn2-ctl-output-none* . 0)
+                    (*fn2-ctl-output-cancelled* . 9) (row-ophase . 0)))
        (closing (cdr (assoc :closing arms))))
  ;; EOF and errors at both physical positions must enter cancellation.
  (dolist (position '(:body :trailer))
