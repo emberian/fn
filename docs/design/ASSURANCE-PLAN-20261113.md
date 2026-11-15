@@ -12,6 +12,16 @@ codec fixtures, failed-Send classification, consumed-input accounting and farm
 Git metadata protection. No current whole-system image, full host gate,
 canonical served certificate, or completed assurance claim exists.
 
+The public matcher now has unconditional correspondence to the independent
+language predicate, including original-input domain checks before reversal,
+malformed-input rejection and adequacy of the unchanged runtime budget.
+Record `certify-20261115T041313Z-839288` passes its exact fifteen-book closure
+(nine reused, six new; 3.305 seconds). Root matched all fifteen before/after
+source digests against integration. Concrete controls cover linear and DP paths,
+malformed inputs and removal of the original-domain conjunct. The first clean
+record exposed a missing declared row prerequisite; the corrected include is
+part of this qualified source. Native delivery/refinement remains separate.
+
 The shared columns diagnostic and opt-in guard-hint API are qualified by
 `certify-20261115T034623Z-812141`: six books, two reused and four new,
 3.918 seconds. Root matched all six before/after source hashes. Actual declarations
