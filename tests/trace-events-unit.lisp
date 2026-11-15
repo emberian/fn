@@ -42,7 +42,7 @@
                   '(:ok 1 ((0 8 11 7) (1 9 10)))))
       (not (equal '(:ok 1 ((0 8 7 11) (1 9 10)))
                   (fn2-trace-replay (list *fn2-teu-start* *fn2-teu-enqueue* *fn2-teu-end*)
-                                    0 *fn2-teu-calendar* 0 *fn2-teu-queues*))))))
+                                    0 *fn2-teu-calendar* 0 *fn2-teu-queues*)))))
 (defun fn2-teu-ring ()
  (declare (xargs :verify-guards nil))
  (with-local-stobj fn2-trace
