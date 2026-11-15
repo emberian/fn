@@ -300,6 +300,7 @@ ACL2_BOOKS = \
   tests/checkpoint-plan-unit \
   tests/checkpoint-publication-repeat-unit \
   tests/checkpoint-recovery-census-unit \
+  tests/checkpoint-selected-source-unit \
   tests/checkpoint-recovery-evidence-unit \
   tests/checkpoint-restore-arena-unit \
   tests/checkpoint-restore-semantic-unit \
