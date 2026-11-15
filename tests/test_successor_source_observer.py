@@ -60,6 +60,23 @@ class SuccessorObserver(unittest.TestCase):
   text=FILES[1].read_text().split('(fn2-succ-wrap fn2-successor-stage',1)[1].split('(defun fn2-successor-out',1)[0]
   self.assertLess(text.index('fn2-succ-txns-source-receipt'),text.index('fn2-csnapshot-phase'))
   self.assertIn('(mv :state 0 fn2-succ-txns',text)
+ def test_terminal_close_drains_xl_coordinates_and_resolver_scope(self):
+  x=function('fn2-succ-source-close')
+  for pair in (['lphase','*fn2-succ-lookup-idle*'],['lbound','0'],['lrow','0'],['lver','0']):
+   self.assertIn(pair,list(walk(x)))
+  text=FILES[0].read_text().split('(defun fn2-succ-resolve-observed',1)[1]
+  self.assertLess(text.index('fn2-succ-txns-lphase'),text.index('(fn2-succ-source-acquire'))
+  self.assertLess(text.index('fn2-id-decides-phase'),text.index('(fn2-succ-source-acquire'))
+  self.assertIn('(ri 0) (rstate *fn2-succ-resolve-fresh*) (rbound 0)',text)
+ def test_actual_read_rows_is_readonly_wrapper_input(self):
+  text=FILES[1].read_text()
+  for name,stop in (('resolve','   (in-theory'),('release','   (fn2-succ-wrap fn2-succ-core-publish')):
+   section=text.split('(fn2-succ-wrap fn2-successor-'+name+' ',1)[1].split(stop,1)[0]
+   self.assertIn('(fn2-reads (fn2-core-reads fn2-core))',section)
+   self.assertIn('(fn2-reads-rows fn2-reads)',section)
+  for name in ('fn2-succ-resolve-observed','fn2-succ-release-observed'):
+   self.assertIn('readrows',function(name)[2])
+   self.assertFalse(calls(function(name),'fn2-id-decides-rows') and 'readrows (-' in str(function(name)))
  def test_prepared_actual_wrapper_progress_cancel_and_error(self):
   text=(ROOT/'tests/successor-source-observer-unit.lisp').read_text()
   for name in ('fn2-successor-resolve','fn2-successor-release','fn2-c-source-writer-begin','fn2-c-source-writer-poll','fn2-succ-copy-scalar-row'):
