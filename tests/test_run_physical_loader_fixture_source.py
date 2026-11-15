@@ -36,6 +36,12 @@ class RunPhysicalLoaderFixtureSource(unittest.TestCase):
     def setUp(self):
         self.defs = definitions()
 
+    def test_synthetic_opener_scope_names_actual_preflight_stage(self):
+        seeded = self.defs['fn2-rpl-cold-admission']
+        self.assertIn(['application-stage', '2'], list(walk(seeded)))
+        self.assertIn('does not qualify the cold opener', TEXT)
+        self.assertNotIn('fn2-checkpoint-summary-apply-begin', calls(seeded))
+
     def test_actual_queue_adapter_completion_and_verifier_chain(self):
         done = self.defs['fn2-rpl-complete-read']
         for name in ['fn2-host-outbox-peek', 'fn2-host-action', 'fn2-rpl-input-copy',
