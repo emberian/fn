@@ -128,7 +128,7 @@
             ((when (equal hashed len))
              (let ((fn2-cns-sources (fn2-cns-sources-set-phase s *fn2-cns-source-phase-raw-copy* fn2-cns-sources)))
               (mv :ready fn2-cns-sources fn2-b3 fn2-digests)))
-            (n (min 1024 budget (- len hashed)))
+            (n (min (min 1024 budget) (- len hashed)))
             ((mv code used fn2-b3 fn2-digests) (fn2-cns-source-hash-update row slot gen (+ base hashed) n kind cns cnsgen fn2-b3 fn2-digests fn2-pool))
             ((unless (and (member-eq code '(:ok :more)) (posp used) (<= used n)))
              (let ((fn2-cns-sources (fn2-cns-sources-set-phase s *fn2-cns-source-phase-bad* fn2-cns-sources)))
