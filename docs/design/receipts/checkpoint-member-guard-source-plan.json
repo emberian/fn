@@ -1,0 +1,194 @@
+{
+  "schema": "fn-author-plan-v1",
+  "status": "source-only; no compute launched",
+  "base": "c1c86625e",
+  "source_files": {
+    "books/layout-size-bounds.lisp": "exact95fd; previously reviewed standalone opt-in API",
+    "tests/layout-size-bound-unit.lisp": "exact95fd; previously admitted mixed-layout controls",
+    "books/checkpoint.lisp": "95fd COPY-HASH interface +611 DECODE completefamily and CHECK-STEP computed hint",
+    "books/checkpoint-member.lisp": "95fd SIZEbound/hashframe interface +611 computed packer hint"
+  },
+  "runtime_identity": {
+    "baseline": "c1c86625e",
+    "functions": [
+      {
+        "file": "books/checkpoint.lisp",
+        "function": "fn2-checkpoint-builder-claimp",
+        "entire_definition_except_guard_hints_identical": true
+      },
+      {
+        "file": "books/checkpoint.lisp",
+        "function": "fn2-checkpoint-builder-ownerp",
+        "entire_definition_except_guard_hints_identical": true
+      },
+      {
+        "file": "books/checkpoint.lisp",
+        "function": "fn2-checkpoint-ref-clear-build",
+        "entire_definition_except_guard_hints_identical": true
+      },
+      {
+        "file": "books/checkpoint.lisp",
+        "function": "fn2-checkpoint-slotp",
+        "entire_definition_except_guard_hints_identical": true
+      },
+      {
+        "file": "books/checkpoint.lisp",
+        "function": "fn2-checkpoint-edge",
+        "entire_definition_except_guard_hints_identical": true
+      },
+      {
+        "file": "books/checkpoint.lisp",
+        "function": "fn2-checkpoint-retain",
+        "entire_definition_except_guard_hints_identical": true
+      },
+      {
+        "file": "books/checkpoint.lisp",
+        "function": "fn2-checkpoint-retainedp",
+        "entire_definition_except_guard_hints_identical": true
+      },
+      {
+        "file": "books/checkpoint.lisp",
+        "function": "fn2-checkpoint-location-code",
+        "entire_definition_except_guard_hints_identical": true
+      },
+      {
+        "file": "books/checkpoint.lisp",
+        "function": "fn2-checkpoint-copy-hash",
+        "entire_definition_except_guard_hints_identical": true
+      },
+      {
+        "file": "books/checkpoint.lisp",
+        "function": "fn2-checkpoint-capture-root",
+        "entire_definition_except_guard_hints_identical": true
+      },
+      {
+        "file": "books/checkpoint.lisp",
+        "function": "fn2-checkpoint-decode",
+        "entire_definition_except_guard_hints_identical": true
+      },
+      {
+        "file": "books/checkpoint.lisp",
+        "function": "fn2-checkpoint-copy-expected",
+        "entire_definition_except_guard_hints_identical": true
+      },
+      {
+        "file": "books/checkpoint.lisp",
+        "function": "fn2-checkpoint-prepare-body",
+        "entire_definition_except_guard_hints_identical": true
+      },
+      {
+        "file": "books/checkpoint.lisp",
+        "function": "fn2-checkpoint-prepare",
+        "entire_definition_except_guard_hints_identical": true
+      },
+      {
+        "file": "books/checkpoint.lisp",
+        "function": "fn2-checkpoint-prepare-owned",
+        "entire_definition_except_guard_hints_identical": true
+      },
+      {
+        "file": "books/checkpoint.lisp",
+        "function": "fn2-checkpoint-hash-matchesp",
+        "entire_definition_except_guard_hints_identical": true
+      },
+      {
+        "file": "books/checkpoint.lisp",
+        "function": "fn2-checkpoint-capture-roots",
+        "entire_definition_except_guard_hints_identical": true
+      },
+      {
+        "file": "books/checkpoint.lisp",
+        "function": "fn2-checkpoint-check-step",
+        "entire_definition_except_guard_hints_identical": true
+      },
+      {
+        "file": "books/checkpoint.lisp",
+        "function": "fn2-checkpoint-pool-hash-matchesp",
+        "entire_definition_except_guard_hints_identical": true
+      },
+      {
+        "file": "books/checkpoint.lisp",
+        "function": "fn2-checkpoint-install",
+        "entire_definition_except_guard_hints_identical": true
+      },
+      {
+        "file": "books/checkpoint-member.lisp",
+        "function": "fn2-checkpoint-installation-member-capacity",
+        "entire_definition_except_guard_hints_identical": true
+      },
+      {
+        "file": "books/checkpoint-member.lisp",
+        "function": "fn2-checkpoint-member-hash",
+        "entire_definition_except_guard_hints_identical": true
+      },
+      {
+        "file": "books/checkpoint-member.lisp",
+        "function": "fn2-checkpoint-installation-pack-member",
+        "entire_definition_except_guard_hints_identical": true
+      }
+    ]
+  },
+  "scope": {
+    "shared_prefix_root": "books/format-check",
+    "pending": "Recompute exact keys/cache once upcoming pool-only freeze is integrated; no stale-key qualification.",
+    "source_author_roots": [
+      "books/layout-size-bounds",
+      "tests/layout-size-bound-unit",
+      "books/checkpoint",
+      "books/checkpoint-member"
+    ],
+    "shared_parents_previously_missing": [
+      "books/layout",
+      "books/blake3-pool-spec",
+      "books/blake3",
+      "books/format-base",
+      "books/format-storage",
+      "books/format-events",
+      "books/format-physical",
+      "books/format",
+      "books/format-check"
+    ],
+    "additional_named_proof_source": "books/layout-size-bounds"
+  },
+  "author_sequence": [
+    {
+      "step": "load standalone API",
+      "from": "#4",
+      "skip_includes": true,
+      "parents": "cached current layout"
+    },
+    {
+      "step": "load mixed fixture",
+      "from": "#3",
+      "skip_includes": true,
+      "ld_local": true
+    },
+    {
+      "step": "load genuine current checkpoint source prefix",
+      "through": "fn2-checkpoint-check-step",
+      "cached_only_parents": true,
+      "includes": "new source API loaded explicitly; current cached helper/read contracts"
+    },
+    {
+      "step": "load member helper and exact original pack guard on genuine checkpoint prefix",
+      "from": "fn2-checkpoint-installation-member-capacity",
+      "through": "fn2-checkpoint-installation-pack-member",
+      "skip_includes": true
+    }
+  ],
+  "proposed_bounds": {
+    "outer_seconds": 300,
+    "event_steps": 2000000,
+    "event_seconds": 20,
+    "jobs": 1,
+    "external_memory_bytes": 2147483648,
+    "swap_bytes": 0
+  },
+  "acceptance": [
+    "Original CHECK-STEP guard admitted with unchanged function body/guard.",
+    "Original MEMBER packer guard admitted with unchanged body/guard and public SIZE opaque.",
+    "Standalone API and mixed fixture pass without exploratory ambient arithmetic."
+  ],
+  "stop": "First actual refusal retains checkpoint within hard scope; no wider closure or budget increase.",
+  "excluded": "No full checkpoint book certification claim; no helper repeat record; no layout/pool edits."
+}
