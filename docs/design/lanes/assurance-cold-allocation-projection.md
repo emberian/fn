@@ -62,3 +62,9 @@ revalidation replaces these proofs. TYPE/WFP/ROWS statements use the full actual
 guard domain including readonly sources. Prepared ordinary cold-gate controls
 are in alloc-cold-gate-unit; full actual codec→projection and old-cancel/new-
 reservation controls are being connected before a compute gate is requested.
+
+## Owning boot integration
+
+The actual boot machine now advances validated selected investigation into the shared projection child operations, one map row or FIFO link per turn, then one closure protection and process-C hold per turn. Every stage retains the existing startup windows and charges before rescheduling. No input supplies a selected extent, ready flag or cut. Generic durable protection remains closed in phase4.
+
+The HELD outcome is still stopped before catalog adoption until the bounded empty-C opener and startup NAME selection are composed. Phase4 suffix settlement and persisted epoch closure remain required; this source does not enable FREE or claim executed cold recovery. The live scheduled retirement producer remains owned by reclamation: wire checkpoint teardown submit/poll after actual bank/source hold transfer, retain ambiguous intent, and add actual scheduler crash/refusal controls. Rebase and retained archive obligations must precede any reuse.

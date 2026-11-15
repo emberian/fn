@@ -12,6 +12,9 @@
 (include-book "checkpoint-restore-payload-boot")
 (include-book "checkpoint-restore-events-boot")
 (include-book "checkpoint-selected-finish")
+(include-book "checkpoint-projection-protect")
+(include-book "checkpoint-cbase-acquire")
+(include-book "checkpoint-cbase-release")
 (include-book "machines-a-access")
 (fn2-book-layer :b)
 
@@ -857,7 +860,28 @@
     :case (((:next-candidate) (:set (checkpoint-index candidate)) (:next :checkpoint-root-candidate)
                              (:charge :steps *fn2-work-stage* :runnable t))
            ((:census) (:next :checkpoint-census) (:charge :steps *fn2-work-stage* :runnable t))
-           ((:validated) (:stop :checkpoint))
+           ((:validated) (:next :checkpoint-project-begin) (:charge :steps *fn2-work-stage* :runnable t))
+           (:otherwise (:stop :checkpoint)))))
+
+
+  (:checkpoint-project-begin :on-refusal ((:stop :checkpoint))
+   (:do (code) (fn2-checkpoint-projection-begin-op) :accept (:more))
+   (:next :checkpoint-project-step) (:charge :bytes 256 :steps *fn2-work-stage* :runnable t))
+  (:checkpoint-project-step
+   (:do (code) (fn2-checkpoint-projection-step-op) :accept ()
+    :case (((:more) (:next :checkpoint-project-step) (:charge :bytes 256 :steps *fn2-work-stage* :runnable t))
+           ((:projected) (:next :checkpoint-project-protect) (:charge :steps *fn2-work-stage* :runnable t))
+           (:otherwise (:stop :checkpoint)))))
+  (:checkpoint-project-protect
+   (:do (code) (fn2-checkpoint-projection-protect-op) :accept ()
+    :case (((:more) (:next :checkpoint-project-protect) (:charge :bytes 256 :steps *fn2-work-stage* :runnable t))
+           ((:protected) (:next :checkpoint-cbase-acquire) (:charge :steps *fn2-work-stage* :runnable t))
+           (:otherwise (:stop :checkpoint)))))
+  (:checkpoint-cbase-acquire
+   (:do (code) (fn2-checkpoint-cbase-acquire-op 1) :accept ()
+    :case (((:more) (:next :checkpoint-cbase-acquire) (:charge :bytes 256 :steps *fn2-work-stage* :runnable t))
+           ; Adoption remains closed until the actual empty-C preflight is composed.
+           ((:held) (:stop :checkpoint))
            (:otherwise (:stop :checkpoint)))))
 
 
