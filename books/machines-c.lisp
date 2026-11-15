@@ -8,8 +8,10 @@
 (include-book "range-served")
 (include-book "machines-b")
 (include-book "c-snapshot")
+(include-book "c-source-observer-state")
 (include-book "run-physical-step")
 (include-book "run-physical-release")
+(include-book "run-physical-geometry")
 (include-book "checkpoint-summary-state")
 (fn2-book-layer :c)
 
@@ -122,6 +124,13 @@
  :profilep (unsigned-byte-p 32 (fn2-profile-o profile))
  :harvest (fn2-run-load-harvest ((fn2-core-run-loads fn2-run-loads) (fn2-core-run-load-ops fn2-run-load-ops)))
  :why "Route exact physical read completions before operation finish, without scanning active cursors.")
+(defcorechild fn2-core-run-load-geometry fn2-run-load-geometry
+ :init (fn2-run-load-geometry-profile-init profile fn2-run-load-geometry)
+ :profilep (fn2-run-load-geometry-profilep profile)
+ :why "Readonly profile-derived cursor/checker geometry binds the cold loader capability scan.")
+(defcorechild fn2-core-run-load-readiness fn2-run-load-readiness
+ :init (fn2-run-load-readiness-init 1 fn2-run-load-readiness) :profilep t
+ :why "The cold capability scan retains selected identity, exact EOF and admissions serial across turns.")
 (fn2-idc-child fn2-core-run-paths fn2-run-paths
  (fn2-run-paths-init (* *fn2-run-max-levels* (fn2-b-run-cursor-rows profile)) fn2-run-paths)
  "Each cursor's descent, one row per level.")

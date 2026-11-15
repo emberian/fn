@@ -25,6 +25,7 @@
 ; layout, answers refused frame and never another verb.
 (in-package "ACL2")
 (include-book "cns")
+(include-book "c-actor-loader")
 (fn2-book-layer :e)
 
 (defconst *fn2-auth-op-create* 0)
@@ -255,16 +256,16 @@
 (defcost fn2-auth-known :answers (:ok :absent) :doc "Whether a durable principal id names a live account incarnation.")
 (defcost fn2-auth-identity :answers (:ok :bounds :owner :state) :bytes 64 :tables (fn2-core-pool)
  :doc "Write grant-set's 32-octet request identity at the key range's start.")
-(defcost fn2-auth-find-outcome :answers (:ok :absent :more :state) :bytes 4096
+(defcost fn2-auth-find-outcome :answers (:ok :absent :more :state :miss) :bytes *fn2-c-read-step-bytes*
  :tables (fn2-core-reads fn2-core-succ-txns fn2-core-run-cursors fn2-core-run-paths fn2-core-fields fn2-core-pool)
  :doc "One step of the retry lookup in fn2-outcome: (mv code event same-request).")
-(defcost fn2-auth-find-head :answers (:ok :more :state) :bytes 4096
+(defcost fn2-auth-find-head :answers (:ok :more :state :miss) :bytes *fn2-c-read-step-bytes*
  :tables (fn2-core-reads fn2-core-succ-txns fn2-core-run-cursors fn2-core-run-paths fn2-core-fields)
  :doc "One step of a principal's authority-head lookup (0 when none): (mv code head).")
-(defcost fn2-auth-find-current :answers (:ok :more :state) :bytes 4096
+(defcost fn2-auth-find-current :answers (:ok :more :state :miss) :bytes *fn2-c-read-step-bytes*
  :tables (fn2-core-reads fn2-core-succ-txns fn2-core-run-cursors fn2-core-run-paths fn2-core-fields)
  :doc "One step of a current-grant lookup (0 when none): (mv code grant).")
-(defcost fn2-auth-find-grant :answers (:ok :more :state) :bytes 4096
+(defcost fn2-auth-find-grant :answers (:ok :more :state :miss) :bytes *fn2-c-read-step-bytes*
  :tables (fn2-core-reads fn2-core-succ-txns fn2-core-run-cursors fn2-core-run-paths fn2-core-fields)
  :doc "One step of the immutable grant row's lookup: (mv code grantor enabled previous).")
 (defcost fn2-auth-put-write :answers (:ok :state) :bytes 4096
@@ -317,7 +318,7 @@
    (defun fn2-auth-lookup-step (x sid budget fn2-core)
      (declare (xargs :stobjs fn2-core :guard (fn2-core-wfp fn2-core)))
      (mv-let (lc fn2-core) (fn2-read-lookup x sid budget fn2-core)
-       (if (member-eq lc '(:more :ok))
+       (if (member-eq lc '(:more :miss :ok))
            (mv lc fn2-core)
          (mv-let (rc fn2-core) (fn2-read-release x fn2-core)
            (declare (ignore rc))
@@ -455,23 +456,23 @@
        (cond
         ((equal step 0)
          (mv-let (c h fn2-core) (fn2-auth-find-head x pid budget fn2-core)
-           (cond ((not (eq c :ok)) (mv (if (eq c :more) :more :state) 1 0 0 fn2-core))
+           (cond ((not (eq c :ok)) (mv (if (member-eq c '(:more :miss)) c :state) 1 0 0 fn2-core))
                  ((and (posp h) (unsigned-byte-p 60 h)) (mv :more 2 h 0 fn2-core))
                  (t (mv :access 1 0 0 fn2-core)))))
         ((equal step 1)
          (mv-let (c g fn2-core) (fn2-auth-find-current x pid right scope target budget fn2-core)
-           (cond ((not (eq c :ok)) (mv (if (eq c :more) :more :state) 2 head 0 fn2-core))
+           (cond ((not (eq c :ok)) (mv (if (member-eq c '(:more :miss)) c :state) 2 head 0 fn2-core))
                  ((and (posp g) (unsigned-byte-p 60 g)) (mv :more 3 head g fn2-core))
                  (t (mv :access 2 head 0 fn2-core)))))
         ((equal step 2)
          (mv-let (c grantor en prev fn2-core) (fn2-auth-find-grant x grant budget fn2-core)
            (declare (ignore grantor prev))
-           (cond ((not (eq c :ok)) (mv (if (eq c :more) :more :state) 3 head grant fn2-core))
+           (cond ((not (eq c :ok)) (mv (if (member-eq c '(:more :miss)) c :state) 3 head grant fn2-core))
                  ((equal en 1) (mv :more 4 head grant fn2-core))
                  (t (mv :access 3 head grant fn2-core)))))
         (t
          (mv-let (c h fn2-core) (fn2-auth-find-head x pid budget fn2-core)
-           (cond ((not (eq c :ok)) (mv (if (eq c :more) :more :state) 4 head grant fn2-core))
+           (cond ((not (eq c :ok)) (mv (if (member-eq c '(:more :miss)) c :state) 4 head grant fn2-core))
                  ((equal h head) (mv :ok 4 head grant fn2-core))
                  (t (mv :more 1 0 0 fn2-core))))))))
    (fn2-core-preserves fn2-cns-authority-allows (cns gen right scope target xstep head grant budget fn2-core) :position 4 :rows nil)
@@ -806,7 +807,7 @@
 
 ;; ---------------------------------------------------------------------------
 ;; fn2-auth: one authority request.
-(defmachine-arms fn2-auth :declare
+(fn2-c-actor-loader-arms fn2-auth :declare
  :subarms
  ((answer :on-refusal ((:stop :machine-phase))
    (:do (rcode) (fn2-successor-release row-sx)
@@ -874,22 +875,24 @@
         ((:do (lcode target) (fn2-group-lookup row-sx row-rx-slot row-rx-gen row-noff row-nlen :budget 4096
                                               :okind *fn2-ctl-kind* :oslot row-ctl :ogen row-ctl-gen)
           :accept ()
-          :case (((:more) (:charge :bytes 4096 :steps *fn2-work-transition* :runnable t))
+          :case (((:more :miss) (:charge :bytes (+ *fn2-c-read-callback-bytes* 4096) :steps *fn2-work-transition* :runnable t))
                  ((:ok) (:set (gtarget target) (outcome *fn2-auth-outcome-accepted*)) (:goto answer))
                  ((:absent) (:set (reason *fn2-auth-reason-unknown-stream*)) (:goto refuse))
-                 (:otherwise (:goto fault)))))
+
+             (:otherwise (:goto fault)))))
         ((:do (lcode lpid) (fn2-principal-lookup row-sx row-rx-slot row-rx-gen row-noff row-nlen :budget 4096
                                            :okind *fn2-ctl-kind* :oslot row-ctl :ogen row-ctl-gen)
     :accept ()
-    :case (((:more) (:charge :bytes 4096 :steps *fn2-work-transition* :runnable t))
+    :case (((:more :miss) (:charge :bytes (+ *fn2-c-read-callback-bytes* 4096) :steps *fn2-work-transition* :runnable t))
            ((:ok) (:if (equal row-opcode *fn2-auth-op-bind*)
-                       ((:set (pid lpid)) (:next :bhead) (:charge :bytes 4096 :steps *fn2-work-transition* :runnable t))
+                       ((:set (pid lpid)) (:next :bhead) (:charge :bytes (+ *fn2-c-read-callback-bytes* 4096) :steps *fn2-work-transition* :runnable t))
                        ((:set (pid lpid) (outcome *fn2-auth-outcome-accepted*)) (:goto unclaim))))
            ((:absent)
             (:cond ((equal row-opcode *fn2-auth-op-bind*)
                     (:set (reason *fn2-auth-reason-unknown-principal*)) (:goto refuse))
-                   ((equal row-aslot 0) (:next :allocate) (:charge :bytes 4096 :steps *fn2-work-transition* :runnable t))
-                   (t (:next :ready) (:charge :bytes 4096 :steps *fn2-work-transition* :runnable t)))))))))
+                   ((equal row-aslot 0) (:next :allocate) (:charge :bytes (+ *fn2-c-read-callback-bytes* 4096) :steps *fn2-work-transition* :runnable t))
+                   (t (:next :ready) (:charge :bytes (+ *fn2-c-read-callback-bytes* 4096) :steps *fn2-work-transition* :runnable t))))
+             )))))
   (:allocate :on-refusal ((:stop :machine-phase))
    (:do (ccode cslot cpid) (fn2-auth-claim)
     :case (((:exhausted) (:set (reason *fn2-auth-reason-meter*)) (:goto refuse))))
@@ -899,28 +902,31 @@
   (:outcome :on-refusal ((:stop :machine-phase))
    (:do (ocode oev same) (fn2-auth-find-outcome row-xrow row-principal row-gop row-ks-slot row-ks-gen 4096)
     :accept ()
-    :case (((:more) (:charge :bytes 4096 :steps *fn2-work-transition* :runnable t))
-           ((:absent) (:next :head) (:charge :bytes 4096 :steps *fn2-work-transition* :runnable t))
+    :case (((:more :miss) (:charge :bytes (+ *fn2-c-read-callback-bytes* 4096) :steps *fn2-work-transition* :runnable t))
+           ((:absent) (:next :head) (:charge :bytes (+ *fn2-c-read-callback-bytes* 4096) :steps *fn2-work-transition* :runnable t))
            ((:ok) (:if same
                        ((:set (grant oev) (ahead oev) (outcome *fn2-auth-outcome-accepted*)) (:goto answer))
                        ((:set (reason *fn2-auth-reason-operation-reused*)) (:goto refuse))))
-           (:otherwise (:goto fault)))))
+
+             (:otherwise (:goto fault)))))
   ;; the grantee's head against the request's expected head
   (:head :on-refusal ((:stop :machine-phase))
    (:do (hcode h) (fn2-auth-find-head row-xrow row-grantee 4096)
     :accept ()
-    :case (((:more) (:charge :bytes 4096 :steps *fn2-work-transition* :runnable t))
+    :case (((:more :miss) (:charge :bytes (+ *fn2-c-read-callback-bytes* 4096) :steps *fn2-work-transition* :runnable t))
            ((:ok) (:if (equal h row-ehead)
-                       ((:set (ahead h)) (:next :ready) (:charge :bytes 4096 :steps *fn2-work-transition* :runnable t))
+                       ((:set (ahead h)) (:next :ready) (:charge :bytes (+ *fn2-c-read-callback-bytes* 4096) :steps *fn2-work-transition* :runnable t))
                        ((:set (reason *fn2-auth-reason-stale-revision*)) (:goto refuse))))
-           (:otherwise (:goto fault)))))
+
+             (:otherwise (:goto fault)))))
   ;; principal-bind's answer carries the bound principal's head
   (:bhead :on-refusal ((:stop :machine-phase))
    (:do (hcode h) (fn2-auth-find-head row-xrow row-pid 4096)
     :accept ()
-    :case (((:more) (:charge :bytes 4096 :steps *fn2-work-transition* :runnable t))
+    :case (((:more :miss) (:charge :bytes (+ *fn2-c-read-callback-bytes* 4096) :steps *fn2-work-transition* :runnable t))
            ((:ok) (:set (ahead h) (outcome *fn2-auth-outcome-accepted*)) (:goto answer))
-           (:otherwise (:goto fault)))))
+
+             (:otherwise (:goto fault)))))
   ;; grant-get: current pointer (GSTEP 0), head (1), the immutable row (2),
   ;; at one committed cut: the frontier at the start (CUT) and at the end
   ;; agree, else the reads start again
@@ -929,30 +935,33 @@
     ((equal row-gstep 0)
      (:do (ccode g) (fn2-auth-find-current row-xrow row-grantee row-gright row-gscope row-gtarget 4096)
       :accept ()
-      :case (((:more) (:charge :bytes 4096 :steps *fn2-work-transition* :runnable t))
+      :case (((:more :miss) (:charge :bytes (+ *fn2-c-read-callback-bytes* 4096) :steps *fn2-work-transition* :runnable t))
              ((:ok) (:set (grant g) (gfound (if (equal g 0) 0 1)) (gstep 1))
-                    (:charge :bytes 4096 :steps *fn2-work-transition* :runnable t))
+                    (:charge :bytes (+ *fn2-c-read-callback-bytes* 4096) :steps *fn2-work-transition* :runnable t))
+
              (:otherwise (:goto fault)))))
     ((equal row-gstep 1)
      (:do (hcode h) (fn2-auth-find-head row-xrow row-grantee 4096)
       :accept ()
-      :case (((:more) (:charge :bytes 4096 :steps *fn2-work-transition* :runnable t))
+      :case (((:more :miss) (:charge :bytes (+ *fn2-c-read-callback-bytes* 4096) :steps *fn2-work-transition* :runnable t))
              ((:ok) (:set (ahead h) (gstep (if (equal row-gfound 1) 2 3)))
-                    (:charge :bytes 4096 :steps *fn2-work-transition* :runnable t))
+                    (:charge :bytes (+ *fn2-c-read-callback-bytes* 4096) :steps *fn2-work-transition* :runnable t))
+
              (:otherwise (:goto fault)))))
     ((equal row-gstep 2)
      (:do (rcode gr en pv) (fn2-auth-find-grant row-xrow row-grant 4096)
       :accept ()
-      :case (((:more) (:charge :bytes 4096 :steps *fn2-work-transition* :runnable t))
+      :case (((:more :miss) (:charge :bytes (+ *fn2-c-read-callback-bytes* 4096) :steps *fn2-work-transition* :runnable t))
              ((:ok) (:set (grantor gr) (genabled en) (previous pv) (gstep 3))
-                    (:charge :bytes 4096 :steps *fn2-work-transition* :runnable t))
+                    (:charge :bytes (+ *fn2-c-read-callback-bytes* 4096) :steps *fn2-work-transition* :runnable t))
+
              (:otherwise (:goto fault)))))
     ;; the cut held (no publication between the first read and the last), or the reads start again
     (t
      (:do (fcode fr) (fn2-read-frontier) :case (((:state) (:goto fault))))
      (:if (equal fr row-cut)
           ((:set (outcome *fn2-auth-outcome-accepted*)) (:goto answer))
-          ((:set (gstep 0) (cut fr)) (:charge :bytes 4096 :steps *fn2-work-transition* :runnable t))))))
+          ((:set (gstep 0) (cut fr)) (:charge :bytes (+ *fn2-c-read-callback-bytes* 4096) :steps *fn2-work-transition* :runnable t))))))
   ;; declare and stage the write against the tip, emit it into the workspace,
   ;; admit it to B's batch, bind on :ok (fn2-txn's :ready, one transaction)
   (:ready :on-refusal ((:stop :machine-phase))
@@ -973,13 +982,14 @@
                                                   :okind *fn2-ctl-kind* :oslot row-ctl :ogen row-ctl-gen)
                   :case (((:state) (:goto fault))))
                  (:set (wstep 1))
-                 (:charge :bytes 8192 :steps *fn2-work-transition* :runnable t))
+                 (:charge :bytes (+ *fn2-c-read-callback-bytes* 8192) :steps *fn2-work-transition* :runnable t))
                 ((equal row-wstep 1)
                  (:do (rvcode) (fn2-successor-resolve row-sx 4096 *fn2-auth-kind* id row-generation)
                   :accept ()
-                  :case (((:ok) (:set (wstep 2)) (:charge :bytes 8192 :steps *fn2-work-transition* :runnable t))
-                         ((:more) (:charge :bytes 8192 :steps *fn2-work-transition* :runnable t))
-                         (:otherwise (:goto fault)))))
+                  :case (((:ok) (:set (wstep 2)) (:charge :bytes (+ *fn2-c-read-callback-bytes* 8192) :steps *fn2-work-transition* :runnable t))
+                         ((:more :miss) (:charge :bytes (+ *fn2-c-read-callback-bytes* 8192) :steps *fn2-work-transition* :runnable t))
+
+             (:otherwise (:goto fault)))))
                 (t
                (:do (scode i) (fn2-successor-stage row-sx)
                 :accept ()
@@ -993,18 +1003,18 @@
                                   :case (((:ok)
                                           (:if (and (unsigned-byte-p 60 b) (unsigned-byte-p 60 ev))
                                                ((:do (bcode) (fn2-successor-bind row-sx b ev))
-                                                (:next :batched) (:charge :bytes 8192 :steps *fn2-work-transition* :runnable t))
+                                                (:next :batched) (:charge :bytes (+ *fn2-c-read-callback-bytes* 8192) :steps *fn2-work-transition* :runnable t))
                                                ((:stop :machine-phase))))
                                          ((:exhausted) (:park :batch-membership :steps *fn2-work-transition*))
                                          ((:admission) (:goto fault)))))
                                 ((:room) (:goto fault)))))
-                       ((:full) (:charge :bytes 8192 :steps *fn2-work-transition* :runnable t))
+                       ((:full) (:charge :bytes (+ *fn2-c-read-callback-bytes* 8192) :steps *fn2-work-transition* :runnable t))
                        ;; the tip moved, or another create of this name won: look again
                        ((:stale :duplicate)
                         (:do (rcode) (fn2-successor-release row-sx))
                         (:set (wstep 0))
                         (:next (:if (equal row-opcode *fn2-auth-op-set*) :outcome :lookup))
-                        (:charge :bytes 8192 :steps *fn2-work-transition* :runnable t))
+                        (:charge :bytes (+ *fn2-c-read-callback-bytes* 8192) :steps *fn2-work-transition* :runnable t))
                        ((:refused :capacity) (:goto fault)))))))))))
   (:batched :on-refusal ((:stop :machine-phase))
    (:do (tcode tbatch tevent tout) (fn2-commit-take)
@@ -1158,6 +1168,7 @@
          (:ok (if (and (posp h) (unsigned-byte-p 60 h)) (mv :more 1 h 0 fn2-core) (mv :access 0 0 0 fn2-core)))
          (:absent (mv :access 0 0 0 fn2-core))
          (:more (mv :more 0 0 0 fn2-core))
+         (:miss (mv :miss 0 0 0 fn2-core))
          (otherwise (mv :state 0 0 0 fn2-core)))))
       ((equal step 1)
        (mv-let (c g fn2-core)
@@ -1167,6 +1178,7 @@
          (:ok (if (and (posp g) (unsigned-byte-p 60 g)) (mv :more 2 head g fn2-core) (mv :access 1 head 0 fn2-core)))
          (:absent (mv :access 1 head 0 fn2-core))
          (:more (mv :more 1 head 0 fn2-core))
+         (:miss (mv :miss 1 head 0 fn2-core))
          (otherwise (mv :state 1 head 0 fn2-core)))))
       (t
        (mv-let (c en fn2-core)
@@ -1174,6 +1186,7 @@
         (case c
          (:ok (if (equal en 1) (mv :ok 2 head grant fn2-core) (mv :access 2 head grant fn2-core)))
          (:more (mv :more 2 head grant fn2-core))
+         (:miss (mv :miss 2 head grant fn2-core))
          (otherwise (mv :state 2 head grant fn2-core))))))))
    (fn2-core-preserves fn2-authority-allows (tx pid right target step head grant budget fn2-core) :position 4 :rows nil)
    (defthm fn2-authority-allows-types

@@ -19,7 +19,7 @@
   (state 0 :type fixnum) (gen 0) (kind 0 :type fixnum) (cap 0) (nonce 0)
   (address 0 :type fixnum) (len 0 :type fixnum) (target 0) (target-gen 0)
   (outcome 0) (reason 0) (count 0) (aux0 0) (aux1 0)
-  (tls-started nil) (tls-finished nil) (tls-count 0)
+  (tls-started nil) (tls-record (create-fn2-tls-record))
   (family :none) (port 0) (w0 0) (w1 0) (w2 0) (w3 0) (octets nil) (offset 0) (fua 0))
 
 ;; A capability: index 0 is the listener (its TCP socket, and the owner-only
@@ -136,12 +136,16 @@
           (or (= (fn2-nop-kind op) *fn2-action-receive*) (= (fn2-nop-kind op) *fn2-action-send*)))))
 (defun fn2-n-op-interest (op cap)
  (if (fn2-n-tls-op-p op cap)
-     (if (and cap (fn2-ncap-tls cap)) (fn2-native-tls-interest (fn2-ncap-tls cap)) 1)
+     (if (= (fn2-nop-kind op) *fn2-action-tls-start*)
+         (if (and cap (fn2-ncap-tls cap)) (fn2-native-tls-interest (fn2-ncap-tls cap)) 1)
+       (nth-value 0 (fn2-tls-record-wait (fn2-native-tls-transport (fn2-ncap-tls cap)) (fn2-nop-tls-record op))))
    (if (= (fn2-nop-kind op) *fn2-action-send*) 4 1)))
 (defun fn2-n-tls-kick-p (op cap)
  (and (fn2-n-tls-op-p op cap)
-      (or (not (fn2-nop-tls-started op))
-          (and cap (fn2-ncap-tls cap) (fn2-native-tls-kick (fn2-ncap-tls cap))))))
+      (if (= (fn2-nop-kind op) *fn2-action-tls-start*)
+          (or (not (fn2-nop-tls-started op))
+              (and cap (fn2-ncap-tls cap) (fn2-native-tls-kick (fn2-ncap-tls cap))))
+        (nth-value 1 (fn2-tls-record-wait (fn2-native-tls-transport (fn2-ncap-tls cap)) (fn2-nop-tls-record op))))))
 (defun fn2-n-tls-work-p (host)
  (loop for op across (fn2-nhost-ops host)
        thereis (and (= (fn2-nop-state op) +fn2-n-waiting+)
@@ -170,14 +174,10 @@
      (multiple-value-bind (code copied fed il io ol oo ledger)
          (fn2-tls-transport-handoff (fn2-nop-cap op) (fn2-ncap-nonce cap) slot (fn2-nop-gen op)
                                     (fn2-native-tls-transport tls))
+      (declare (ignore fed il io ol oo))
       (setf (fn2-native-tls-transport tls) ledger)
       (if (eq code :ok)
-          (progn
-           (setf (fn2-native-tls-seed-length tls) copied
-                 (fn2-native-tls-seed-offset tls) fed
-                 (fn2-native-tls-input-length tls) il (fn2-native-tls-input-offset tls) io
-                 (fn2-native-tls-output-length tls) ol (fn2-native-tls-output-offset tls) oo)
-           (fn2-n-complete host slot :ok (fn2-nop-len op)))
+          (fn2-n-complete host slot :ok copied)
         (error "fn2 TLS: handoff epoch refused"))))
     ((:ok :blocked :closing) nil)
     (:failed (fn2-n-complete host slot :failed 0))
@@ -199,63 +199,19 @@
     (return-from fn2-n-tls-ready nil)))
   (when handshake
    (return-from fn2-n-tls-ready (fn2-n-tls-handshake-ready host slot cap)))
-  (let* ((tls (fn2-ncap-tls cap)) (handle (fn2-native-tls-handle tls))
-         (fd (fn2-ncap-fd cap)) (bytes (fn2-nhost-bytes host)) (fed-seed nil))
-   (setf (fn2-nop-tls-started op) t (fn2-native-tls-kick tls) nil)
-   (when (eq (fn2-native-tls-flush tls fd host) :failed)
-    (fn2-n-complete host slot :failed 0)
-    (return-from fn2-n-tls-ready nil))
-   ;; Feed staging before reading the socket, even after handshake completion.
-   ;; A suffix containing encrypted application records belongs to the next
-   ;; Receive; it no longer borrows the connection's mutable RX range.
-   (when (< (fn2-native-tls-seed-offset tls) (fn2-native-tls-seed-length tls))
-    (let* ((seed (fn2-native-tls-seed tls)) (off (fn2-native-tls-seed-offset tls))
-           (n (fn2-native-tls-span (fn2-native-tls-seed-length tls) off
-                   (fn2-tls-%input-room handle) (fn2-nhost-tls-quantum host))))
-     (when (plusp n)
-      (sb-sys:with-pinned-objects (seed)
-       (let ((fed (fn2-tls-%feed handle (sb-sys:sap+ (sb-sys:vector-sap seed) off) n)))
-        (unless (= fed n) (error "fn2 TLS: staged-input BIO capacity contract failed"))
-        (setf fed-seed t)
-        (incf (fn2-native-tls-seed-offset tls) fed))))))
-   (unless (fn2-nop-tls-finished op)
-    (fn2-n-boundary host "tls-record")
-    (multiple-value-bind (code count)
-        (sb-sys:with-pinned-objects (bytes)
-          (fn2-native-tls-record tls (= kind *fn2-action-send*)
-                                 (fn2-n-sap host (fn2-nop-address op)) (fn2-nop-len op)))
-     (case code
-      (0 (setf (fn2-nop-tls-finished op) t (fn2-nop-tls-count op) count))
-      ((1 2)
-       (setf (fn2-native-tls-interest tls) (if (= code 1) 1 4))
-       ;; Consume buffered TLS data before reading the fd: an EOF must not
-       ;; discard an application record already held by OpenSSL.
-       (when (= code 1)
-        (if fed-seed (setf (fn2-native-tls-kick tls) t)
-          (when (= (fn2-native-tls-seed-offset tls) (fn2-native-tls-seed-length tls))
-           (case (fn2-native-tls-fill tls fd host)
-            (:progress (setf (fn2-native-tls-kick tls) t))
-            (:failed (fn2-n-complete host slot :failed 0)
-                     (return-from fn2-n-tls-ready nil)))))))
-      (3 (if (= kind *fn2-action-receive*)
-             (progn (setf (fn2-ncap-eof cap) t) (fn2-n-complete host slot :eof 0))
-           (fn2-n-complete host slot :failed 0))
-         (return-from fn2-n-tls-ready nil))
-      (otherwise (fn2-n-complete host slot :failed 0) (return-from fn2-n-tls-ready nil)))))
-   (cond ((and (fn2-nop-tls-finished op) (fn2-native-tls-output-empty-p tls))
-          (let ((count (fn2-nop-tls-count op)))
-           (cond ((= kind *fn2-action-receive*) (incf (fn2-ncap-rx cap) count))
-                 ((= kind *fn2-action-send*) (incf (fn2-ncap-tx cap) count)))
-           (fn2-n-complete host slot :ok count 0 nil
-             (fn2-n-octets host (fn2-nop-address op) count))))
-         (t
-          (when (fn2-nop-tls-finished op) (setf (fn2-native-tls-interest tls) 4))
-          (when (not (fn2-native-tls-output-empty-p tls))
-           (setf (fn2-native-tls-interest tls) (logior (fn2-native-tls-interest tls) 4)))
-          ;; Retained bytes can progress without a new kernel readability edge.
-          (when (and (< (fn2-native-tls-seed-offset tls) (fn2-native-tls-seed-length tls))
-                     (plusp (fn2-tls-%input-room handle)))
-           (setf (fn2-native-tls-kick tls) t)))))))
+  (let ((tls (fn2-ncap-tls cap)))
+   (multiple-value-bind (status count address)
+       (fn2-native-tls-record-step host slot tls (fn2-ncap-fd cap))
+    (case status
+     (:done
+      (cond ((= kind *fn2-action-receive*) (incf (fn2-ncap-rx cap) count))
+            ((= kind *fn2-action-send*) (incf (fn2-ncap-tx cap) count)))
+      (fn2-n-complete host slot :ok count 0 nil (fn2-n-octets host address count)))
+     (:eof (setf (fn2-ncap-eof cap) t)
+           (fn2-n-complete host slot :eof count 0 nil (fn2-n-octets host address count)))
+     (:failed (fn2-n-complete host slot :failed count 0 nil (fn2-n-octets host address count)))
+     (:progress nil)
+     (otherwise (error "fn2 TLS: record authorization/controller refused: ~S" status)))))))
 
 (defun fn2-n-start-ready (host slot cap)
   (let* ((op (aref (fn2-nhost-ops host) slot)) (kind (fn2-nop-kind op)) (fd (fn2-ncap-fd cap)))

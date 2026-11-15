@@ -12,6 +12,7 @@
   (slot :u32) (gen :u60) (record-slot :u32) (record-gen :u60)
   (owner-kind :u8) (owner-slot :u32) (owner-gen :u60)
   (extent :u32) (epoch :u60) (allocation :u60)
+  (journal-history :u60) (journal-incarnation :u60)
   (commit :u60) (first :u60) (last :u60) (event :u60) (previous-event :u60)
   (seal-off :u32) (seal-len :u32) (cursor :u32) (end :u32) (matches :u32)
   (started :bool) (ready :bool) (checkpoint :u60) (cut-commit :u60) (cut-event :u60)

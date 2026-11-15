@@ -6,13 +6,25 @@
 (fn2-book-layer :c)
 (defcolumns fn2-run-loads
  ((phase (:enum fn2-run-load-phase (:idle :reserved :read :wait :copy :context :verify :header :ready :uncertain)))
+  (lease-mode (:enum fn2-run-load-lease-mode (:owned :root1-borrowed))) (borrow-token :u60)
   (kind :u8) (owner :u32) (generation :u60) (source :u32) (tag :u60)
   (windows :u8) (page :u32) (page-gen :u60) (scratch :u32) (scratch-gen :u60) (checker :u32)
   (unit :u60) (epoch :u60) (allocation :u60) (schema :u60) (run :u60) (level :u8)
   (history :u60) (incarnation :u60) (sector :u8) (copied :u32)
   (pending :bool) (op-slot :u32) (op-gen :u60)
   (hash-0 :u32) (hash-1 :u32) (hash-2 :u32) (hash-3 :u32)
-  (hash-4 :u32) (hash-5 :u32) (hash-6 :u32) (hash-7 :u32)))
+  (hash-4 :u32) (hash-5 :u32) (hash-6 :u32) (hash-7 :u32))
+ :extra-fields
+ ((fn2-run-loads-admissions :type (unsigned-byte 60) :initially 0
+   :why "Every actual IDLE-to-owned admission invalidates a cold initialized-loader scan before allocating.")))
+(defun fn2-run-load-admission-begin (fn2-run-loads)
+ (declare (xargs :stobjs fn2-run-loads :guard (fn2-run-loads-wfp fn2-run-loads)))
+ (let ((next (+ 1 (fn2-run-loads-admissions fn2-run-loads))))
+  (if (not (unsigned-byte-p 60 next)) (mv :generation-exhausted fn2-run-loads)
+   (let ((fn2-run-loads (update-fn2-run-loads-admissions next fn2-run-loads)))
+    (mv :ok fn2-run-loads)))))
+(fn2-run-loads-preserves fn2-run-load-admission-begin (fn2-run-loads) :position 1)
+
 ; Direct operation routing avoids a whole-job scan at host completion. A
 ; stale generation cannot deliver into a reused cursor or clear its pending bit.
 (defcolumns fn2-run-load-ops ((live :bool) (generation :u60) (cursor :u32)))

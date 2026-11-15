@@ -2,6 +2,7 @@
 ; authorize a checkpoint: the producer must require its actual frozen-root/map
 ; builder completion. A checked recovery candidate is not that evidence.
 (in-package "ACL2")
+(include-book "std/util/bstar" :dir :system)
 (include-book "checkpoint")
 (include-book "pool-ranges")
 (fn2-book-layer :b)

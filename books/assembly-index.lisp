@@ -5,6 +5,7 @@
 (include-book "reference-state")
 ; B/C/D registration books go HERE, before either registry is consumed.
 (include-book "machines-b")
+(include-book "checkpoint-catalog-kind")
 (include-book "machines-c-read")
 (include-book "conn-kind")
 (include-book "upload-kind")

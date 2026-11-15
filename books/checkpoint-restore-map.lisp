@@ -146,7 +146,8 @@
                (equal (fn2-checkpoint-restore-reader-retired-count 0 fn2-checkpoint-restore-reader)
                       (fn2-checkpoint-restore-map-control-retired-count 0 fn2-checkpoint-restore-map-control))))
   (mv :coverage fn2-checkpoint-restore-map-control)
-  (mv :map-ready (fn2-checkpoint-restore-map-control-set-phase 0 *fn2-checkpoint-restore-map-phase-complete* fn2-checkpoint-restore-map-control))))
+  (let* ((fn2-checkpoint-restore-map-control (fn2-checkpoint-restore-map-control-set-phase 0 *fn2-checkpoint-restore-map-phase-complete* fn2-checkpoint-restore-map-control)))
+   (mv :map-ready fn2-checkpoint-restore-map-control))))
 
 
 (defcost fn2-boot-checkpoint-map-finish :child fn2-checkpoint-restore-map-finish
@@ -198,11 +199,11 @@
       (count (fn2-checkpoint-restore-map-control-retired-count 0 fn2-checkpoint-restore-map-control))
       ((when (equal e *fn2-alloc-none*))
        (let ((ok (equal seen count)))
-        (mv (if ok :fifo-ready :chain)
-            fn2-checkpoint-restore-map
-            (fn2-checkpoint-restore-map-control-set-phase 0
+        (let* ((fn2-mv-scalar-1 (if ok :fifo-ready :chain))
+                (fn2-checkpoint-restore-map-control (fn2-checkpoint-restore-map-control-set-phase 0
              (if ok *fn2-checkpoint-restore-map-phase-validated* *fn2-checkpoint-restore-map-phase-uncertain*)
-             fn2-checkpoint-restore-map-control))))
+             fn2-checkpoint-restore-map-control)))
+         (mv fn2-mv-scalar-1 fn2-checkpoint-restore-map fn2-checkpoint-restore-map-control))))
       ((unless (and (< e (fn2-checkpoint-restore-map-rows fn2-checkpoint-restore-map))
                      (< seen count) (unsigned-byte-p 32 (+ seen 1))
                      (equal (fn2-checkpoint-restore-map-present e fn2-checkpoint-restore-map) 1)
@@ -210,8 +211,8 @@
                      (equal (fn2-checkpoint-restore-map-visited e fn2-checkpoint-restore-map) 0)
                      (<= (fn2-checkpoint-restore-map-control-last-retirement 0 fn2-checkpoint-restore-map-control)
                          (fn2-checkpoint-restore-map-retirement e fn2-checkpoint-restore-map))))
-       (mv :chain fn2-checkpoint-restore-map
-           (fn2-checkpoint-restore-map-control-set-phase 0 *fn2-checkpoint-restore-map-phase-uncertain* fn2-checkpoint-restore-map-control)))
+       (let* ((fn2-checkpoint-restore-map-control (fn2-checkpoint-restore-map-control-set-phase 0 *fn2-checkpoint-restore-map-phase-uncertain* fn2-checkpoint-restore-map-control)))
+        (mv :chain fn2-checkpoint-restore-map fn2-checkpoint-restore-map-control)))
       (fn2-checkpoint-restore-map (fn2-checkpoint-restore-map-set-visited e 1 fn2-checkpoint-restore-map))
       (fn2-checkpoint-restore-map-control (fn2-checkpoint-restore-map-control-put 0
         (walk-cursor (fn2-checkpoint-restore-map-next-retired e fn2-checkpoint-restore-map))

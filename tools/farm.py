@@ -241,7 +241,7 @@ def run(command: list[str], check: bool = True) -> subprocess.CompletedProcess:
 
 
 def ssh(host: str, script: str, check: bool = True) -> subprocess.CompletedProcess:
-    return run(["ssh", "-n", host, script], check=check)
+    return run(["ssh", "-n", "-o", "ConnectTimeout=10", host, script], check=check)
 
 
 def remote_quote(path: Path | str) -> str:
@@ -595,10 +595,9 @@ def install_from_cache(host: str, remote: Path, books: list[str],
     An incremental install refuses only when it did not run (no count line
     came back): a miss is what the runner certifies.
     """
-    answer = RUN(["ssh", "-n", host, cache_preflight_script(
+    answer = ssh(host, cache_preflight_script(
         host, remote, books, affected_by, closure, cache, acl2,
-        require_origin, recertify, lane, roots)], check=False, stdout=subprocess.PIPE,
-        stderr=subprocess.PIPE, text=True)
+        require_origin, recertify, lane, roots), check=False)
     counts = parse_installed(answer.stdout)
     if counts and answer.returncode == 0:
         return counts
@@ -2039,8 +2038,7 @@ def matching_certificates(keys: list[str]) -> dict[str, int]:
         script = (f"cd {remote_quote(host_settings(host)['cache'])} || exit 9; "
                   f"python3 -c {shlex.quote(COUNT_KEYS)} <<'FN_KEYS'\n"
                   + "\n".join(keys) + "\nFN_KEYS\n")
-        done = RUN(["ssh", "-o", "ConnectTimeout=10", host, script], check=False,
-                   stdout=subprocess.PIPE, stderr=subprocess.DEVNULL, text=True)
+        done = ssh(host, script, check=False)
         words = (done.stdout or "").split()
         if done.returncode == 0 and words and words[-1].isdigit():
             counts[host] = int(words[-1])

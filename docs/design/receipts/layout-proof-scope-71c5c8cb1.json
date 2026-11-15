@@ -1,0 +1,149 @@
+{
+  "schema": "fn-record-receipt-v1",
+  "scope": "Layout library export of local arithmetic rune data, mixed layouts and reused enum generation, and restoration of the caller theory.",
+  "source_commit": "71c5c8cb1a9edb2bccc2f1cc4f651561cd7e1911",
+  "source_change_commits": [
+    "cad405ce29e53a66f570d25816c191647df6d225",
+    "cac47d8b003656340cb46b7a4a48906577aac511"
+  ],
+  "remote_host": "forge",
+  "remote_source": "/build/lanes/assurance-layout-record-71c5c8cb1",
+  "farm_run": "run-20261115T001530Z-80fe",
+  "certify_run": "certify-20261115T001611Z-606256",
+  "manifest": "/build/lanes/assurance-layout-record-71c5c8cb1/build/acl2/certify-20261115T001611Z-606256/manifest.json",
+  "manifest_sha256": "d7169531562713605ac5b87565fb45f267caf49a9014170042311d29fc9ad752",
+  "remote_audits": "/build/lanes/assurance-layout-record-71c5c8cb1/build/layout-record-evidence",
+  "status": "passed",
+  "roots": [
+    "tests/layout-proof-scope-unit"
+  ],
+  "selection": {
+    "lane": true,
+    "affected_by": [
+      "tests/layout-proof-scope-unit"
+    ]
+  },
+  "source_evidence": {
+    "method": "Each planned file SHA256 matched immutable git source_commit bytes and the manifest before/after source digests.",
+    "manifest_git_revision": null,
+    "runner_unchanged": true,
+    "before_equals_after": true,
+    "closure": [
+      {
+        "book": "tests/layout-proof-scope-unit",
+        "sha256": "5a7e5305fc3501e9ee117a4ae583a221e3db8ae887ff35b5eee170e3cbaea795",
+        "key": "737563731cd50a611aec356c7cd7545c12c7e3133d526cc1d84e54a709491541"
+      },
+      {
+        "book": "books/layout",
+        "sha256": "594084601c9996d18b232555ab38ea68aaeab75cc5f09d030de3dce727181548",
+        "key": "2b2fd8126927b669d4b1eb1739a3fab8b5e4771403e83bd58bbeb089088bee70"
+      },
+      {
+        "book": "books/pool",
+        "sha256": "986b80ee5ea418a6f800558682d043825c9bc137d1cb0c99798cc6fe334f342b",
+        "key": "2bfd19c844711f45df57ceb522e3f3e66edbb9438dd0d140ee860fdace4613ed"
+      },
+      {
+        "book": "books/profile",
+        "sha256": "1f216ed6c0505dc1b01ada0f7d3d9482af6da7b7dff8736b5100ef3e3fbc1038",
+        "key": "b8fb593112597395afac6a150c4a4fca81def3095ecd8f7f9be6aa0aec7384fc"
+      },
+      {
+        "book": "books/operations",
+        "sha256": "959da2da147247146a2360e23d2c7d6abd6c581abdf0f6873661f63cee87484f",
+        "key": "bd6bdf7f71b74618b02924c542559dcb99a149c816aeed11f3f5cd82d766483f"
+      },
+      {
+        "book": "books/declare",
+        "sha256": "1c706e559ef3b314fb9bd48171fb2891fad8613bd4eb1c5de5268443833c4bfb",
+        "key": "f1df352dc360553d08906239d267e9371fcb2fe4f19c6581adc1b0b322b30875"
+      },
+      {
+        "book": "books/owed-discharge",
+        "sha256": "53903322be1b79ed081ecfcbfcb9f60649d3fdbf8aa6853b772abf8e6fc69f01",
+        "key": "97e73257b5f4cb3a4ca1b8ba4bf10956295c18ec211c0b297f557e780cd20fd1"
+      },
+      {
+        "book": "books/owed",
+        "sha256": "04104985582a552ad115a0a6adcf2e957597b1b9ca3228bf25900877cbbcb17b",
+        "key": "6f334038cc4bddaaa337357384a139be3700c2c3403094bab3398dacb7fd5a3b"
+      },
+      {
+        "book": "books/columns",
+        "sha256": "df0b05ba3ba125a4b85036d24a721aaa4ce793864409a90e77f978cc1f969fca",
+        "key": "c8e9df5d21df547effaf69baa79db3c4c93eb88b694468b3e20e7684b30d9419"
+      }
+    ]
+  },
+  "toolchain_identity": "8aeb1bea18968c6cd33ac633a80ebf67e4924504db112fd27eb11f16a27b2a8c",
+  "acl2_executable": "/tank/fn/toolchains/w28/acl2-literal-4g-tls64k",
+  "limits": {
+    "jobs": 1,
+    "images": "off",
+    "book_timeout_seconds": 120,
+    "outer_budget_seconds": 600,
+    "wrapper_pid": 606248,
+    "observed_acl2_caps": [
+      {
+        "book": "books/layout",
+        "pid": 606349,
+        "cgroup": "/user.slice/user-1000.slice/user@1000.service/swarm.slice/run-p606254-i29962995.scope",
+        "memory_max": "2147483648",
+        "memory_swap_max": "0"
+      }
+    ]
+  },
+  "reuse": {
+    "qualified_lower_dependencies": 7,
+    "installed_books": {
+      "books/columns": "/build/lanes/assurance-storage-codec-5ca",
+      "books/declare": "/build/lanes/finish-build-row",
+      "books/operations": "/build/lanes/assurance-storage-codec-5ca",
+      "books/owed": "/build/lanes/finish-build-row",
+      "books/owed-discharge": "/build/lanes/finish-names-current",
+      "books/pool": "/build/lanes/assurance-shared-foundation-8ade",
+      "books/profile": "/build/lanes/assurance-storage-codec-5ca"
+    },
+    "new_books": [
+      "books/layout",
+      "tests/layout-proof-scope-unit"
+    ],
+    "unexpected_cold_parents": []
+  },
+  "book_results": {
+    "books/layout": "passed",
+    "tests/layout-proof-scope-unit": "passed"
+  },
+  "book_wall_seconds": {
+    "books/layout": 56.455,
+    "tests/layout-proof-scope-unit": 2.925
+  },
+  "cache_directory": "/home/fn/.cache/fn-certs",
+  "published_entries": [
+    {
+      "book": "books/layout",
+      "key": "2b2fd8126927b669d4b1eb1739a3fab8b5e4771403e83bd58bbeb089088bee70",
+      "entry": "/home/fn/.cache/fn-certs/2b2fd8126927b669d4b1eb1739a3fab8b5e4771403e83bd58bbeb089088bee70/a613d13adedcb373",
+      "origin": "/build/lanes/assurance-layout-record-71c5c8cb1",
+      "evidence": "/build/lanes/assurance-layout-record-71c5c8cb1/build/acl2/certify-20261115T001611Z-606256",
+      "cert_sha256": "3bc167c2214147deda0316a6772ad1e1765cfc20c49ebd9a2b3eecc67192b6b0",
+      "fasl_sha256": "ddd254c3f5c8d515ff7e17552049bfc6f0ec182b7b1535a5fb104cbd75bd17a3",
+      "toolchain_identity": "8aeb1bea18968c6cd33ac633a80ebf67e4924504db112fd27eb11f16a27b2a8c"
+    },
+    {
+      "book": "tests/layout-proof-scope-unit",
+      "key": "737563731cd50a611aec356c7cd7545c12c7e3133d526cc1d84e54a709491541",
+      "entry": "/home/fn/.cache/fn-certs/737563731cd50a611aec356c7cd7545c12c7e3133d526cc1d84e54a709491541/a613d13adedcb373",
+      "origin": "/build/lanes/assurance-layout-record-71c5c8cb1",
+      "evidence": "/build/lanes/assurance-layout-record-71c5c8cb1/build/acl2/certify-20261115T001611Z-606256",
+      "cert_sha256": "5e49952d6fd382b293862b8c3e9fa77ccf4e00037f8d36895f0e7362aa1bebdf",
+      "fasl_sha256": "1467900ebf99e363b38a2eedce859b93a4e7fd7743596fd690ed21822e74e0d5",
+      "toolchain_identity": "8aeb1bea18968c6cd33ac633a80ebf67e4924504db112fd27eb11f16a27b2a8c"
+    }
+  ],
+  "limits_of_claim": [
+    "This record qualifies only the nine-book fixture closure, with seven lower dependencies reused and two books newly certified.",
+    "The 56.455-second layout certification remains D26 proof/build-cost debt; this receipt does not claim that debt is closed."
+  ]
+}

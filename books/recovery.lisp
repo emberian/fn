@@ -19,6 +19,7 @@
 (defcolumns fn2-rec-cand
  ((status (:enum fn2-rec-status (:unread :empty :invalid :unreadable :candidate :chained :payload)))
   (commit :u60) (epoch :u60) (allocation :u60) (first :u60) (last :u60)
+  (history :u60) (history-incarnation :u60)
   (seal-off :u32) (seal-len :u32) (owner-kind :u8) (owner :u60)))
 
 ; Classification and witness outcome vocabularies (ROUND2 §E.4, scholar ch. 4).

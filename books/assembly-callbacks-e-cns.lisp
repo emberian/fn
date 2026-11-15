@@ -6,5 +6,6 @@
 (include-book "assembly-callbacks-d")
 (include-book "cns")
 (include-book "authority")
+(fn2-c-actor-loader-core-events)
 (fn2-auth-read-events)
 (fn2-cns-events)

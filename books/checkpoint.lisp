@@ -1,5 +1,6 @@
 ; Concrete checkpoint candidates. Preparation never grants allocator coverage.
 (in-package "ACL2")
+(include-book "std/util/bstar" :dir :system)
 (include-book "format-check")
 (include-book "alloc")
 (include-book "vocab")
@@ -16,7 +17,8 @@
   (checkpoint :u60) (cut-commit :u60) (cut-event :u60)
   (history :u60) (incarnation :u60) (installation-commit :u60)
   (previous :u60) (bank :u8) (anchor-mask :u8)
-  (builder-token :u60) (builder-owner-kind :u8) (builder-owner-slot :u32) (builder-owner-gen :u60)))
+  (builder-token :u60) (builder-owner-kind :u8) (builder-owner-slot :u32) (builder-owner-gen :u60)
+  (installation-event :u60)))
 
 ; Only the actual descriptor BEGIN installs this claim after real reservation.
 ; It remains nonselectable and cannot be released by a generic caller.
@@ -268,7 +270,7 @@
          ; A reused slot cannot carry anchor/installation authority into a new
          ; descriptor. The verified boot-anchor intake establishes its own mask.
          (fn2-checkpoints (fn2-checkpoints-put c (anchor-mask 0) (bank 0)
-                           (installation-commit 0) (previous 0)))
+                           (installation-commit 0) (installation-event 0) (previous 0)))
          (fn2-checkpoints (fn2-checkpoints-set-state c *fn2-checkpoint-state-preparing* fn2-checkpoints)))
    (mv :ok fn2-checkpoints fn2-checkpoint-refs fn2-checkpoint-bytes))))
 

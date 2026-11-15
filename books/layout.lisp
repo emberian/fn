@@ -978,8 +978,11 @@
         (scanargs '(fuel base phase pos v hi size ref payload next slot gen end okind oslot ogen))
         (stepargs '(base slot gen off end okind oslot ogen budget))
         (decodeargs '(base slot gen off end okind oslot ogen)))
- `(progn
+ `(encapsulate ()
     (local (include-book "arithmetic-3/floor-mod/floor-mod" :dir :system))
+    ;; Earlier generated catalogs are not proof dependencies of this codec.
+    ;; Restore the caller's theory when the complete declaration is admitted.
+    (local (in-theory *fn2-codec-proof-runes*))
     (local (in-theory (disable fn2-fieldsp fn2-poolp fn2-fields-rows fn2-fields-value fn2-fields-ref-slot
        fn2-fields-ref-gen fn2-fields-ref-off fn2-fields-ref-len fn2-fields-status fn2-pool-rows fn2-pool-read fn2-pool-write
        fn2-fields-decode-phase fn2-fields-decode-pos fn2-fields-decode-acc fn2-fields-decode-high
@@ -1142,3 +1145,9 @@
                (no-duplicatesp-eq (fn2-codec-phase-keywords layout)))
           (value (fn2-codec-events ',name layout value-width))
         (er soft 'deflayout "Invalid or empty layout ~x0." ',name)))))
+
+; Keep local arithmetic rune names as data until the codec reimports that
+; library. An exported DEFTHEORY would validate them after they went local.
+(make-event
+ (let ((world (w state)))
+  (value `(defconst *fn2-codec-proof-runes* ',(current-theory :here)))))

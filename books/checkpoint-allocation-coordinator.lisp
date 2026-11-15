@@ -1,7 +1,9 @@
 ; One physical extent is inspected per call. Row zero owns the workspace;
 ; rows 1..the planner-derived capacity retain exact staged identities.
 (in-package "ACL2")
+(include-book "std/util/bstar" :dir :system)
 (include-book "retirement")
+(include-book "checkpoint-allocation")
 (fn2-book-layer :b)
 (defmacro fn2-checkpoint-allocation-coordinator-events ()
  '(progn
@@ -80,7 +82,8 @@
         (e (fn2-retirement-control-scan 0 fn2-retirement-control))
         (n (fn2-retirement-control-count 0 fn2-retirement-control))
         ((when (or (>= n *fn2-checkpoint-allocation-records-per-ticket*) (>= e (fn2-extents-rows fn2-extents))))
-         (mv :staged (fn2-retirement-control-set-state 0 *fn2-retirement-state-staged* fn2-retirement-control) fn2-fields fn2-pool))
+         (let* ((fn2-retirement-control (fn2-retirement-control-set-state 0 *fn2-retirement-state-staged* fn2-retirement-control)))
+          (mv :staged fn2-retirement-control fn2-fields fn2-pool)))
         ((unless (and (unsigned-byte-p 32 (+ 1 e)) (< (+ 1 n) (fn2-retirement-control-rows fn2-retirement-control))))
          (mv :invalid fn2-retirement-control fn2-fields fn2-pool))
         ; Never spend a partially filled ticket by skipping an unfinished owned
@@ -91,7 +94,8 @@
                     (not (fn2-checkpoint-allocation-ready-p e fn2-checkpoint-construction fn2-extents))))
          (mv :pending fn2-retirement-control fn2-fields fn2-pool))
         ((unless (fn2-checkpoint-allocation-ready-p e fn2-checkpoint-construction fn2-extents))
-         (mv :more (fn2-retirement-control-set-scan 0 (+ 1 e) fn2-retirement-control) fn2-fields fn2-pool))
+         (let* ((fn2-retirement-control (fn2-retirement-control-set-scan 0 (+ 1 e) fn2-retirement-control)))
+          (mv :more fn2-retirement-control fn2-fields fn2-pool)))
         ((mv code end fn2-fields fn2-pool)
          (fn2-checkpoint-allocation-pack-member e 0
           (fn2-retirement-control-slot 0 fn2-retirement-control)

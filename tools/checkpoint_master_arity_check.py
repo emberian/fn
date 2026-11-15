@@ -10,7 +10,7 @@ ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0,str(ROOT/'tools'))
 from lisp_source import forms,read_sexp
 from checkpoint_master_source_check import walk,declaration
-files=['checkpoint-master-control','checkpoint-master-rearm','checkpoint-writer','checkpoint-writer-ops','checkpoint-build','checkpoint-plan','checkpoint-map-build','checkpoint-page-worker','checkpoint-metadata-driver','checkpoint-metadata-resources','checkpoint-working-reserve','checkpoint-metadata-release','checkpoint-working-release','event-build-kind','event-build','event-producer','c-snapshot','checkpoint-allocation-coordinator','checkpoint-installation-coordinator','retirement','retirement-coordinator','checkpoint-lifecycle','event-rearm','checkpoint-master-abort']
+files=['checkpoint-teardown','checkpoint-master-control','checkpoint-master-rearm','checkpoint-writer','checkpoint-writer-ops','checkpoint-build','checkpoint-plan','checkpoint-map-build','checkpoint-page-worker','checkpoint-metadata-driver','checkpoint-metadata-resources','checkpoint-working-reserve','checkpoint-metadata-release','checkpoint-working-release','event-build-kind','event-build','event-producer','c-snapshot','checkpoint-allocation-coordinator','checkpoint-installation-coordinator','retirement','retirement-coordinator','checkpoint-lifecycle','event-rearm','checkpoint-master-abort']
 raw={};cost={}
 for name in files:
  for source in forms((ROOT/'books'/(name+'.lisp')).read_text()):

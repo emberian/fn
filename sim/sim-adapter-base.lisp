@@ -12,7 +12,7 @@
 (defun fn2-sim-flight-classes (kind active release)
   (declare (xargs :guard t))
   (cond ((not (equal active 1)) `(,*fn2-fault-delay* ,*fn2-fault-crash* ,*fn2-fault-monotonic-jump* ,*fn2-fault-realtime-back*))
-        ((equal kind *fn2-action-tls-start*)
+        ((fn2-op-upgrade-kindp kind)
          `(,*fn2-fault-delay* ,*fn2-fault-crash* ,*fn2-fault-monotonic-jump* ,*fn2-fault-realtime-back*
            ,*fn2-fault-duplicate* ,*fn2-fault-stale* ,*fn2-fault-forged* ,*fn2-fault-overcount*
            ,*fn2-fault-malformed* ,*fn2-fault-reset*))
@@ -415,15 +415,16 @@
                               (unsigned-byte-p 32 word))
                   :guard-hints (("Goal" :in-theory (enable fn2-core-wfp)))))
   (cond
-   ;; TLS borrows a seed range for negotiation, never for a disk write.
+   ;; Transport upgrades borrow seed ranges, never for a disk write.
    ;; Observe the exact loan before the generic byte-transfer classification.
-   ((equal kind *fn2-action-tls-start*)
+   ((fn2-op-upgrade-kindp kind)
     (stobj-let ((fn2-pool (fn2-core-pool fn2-core))
                 (fn2-ops (fn2-core-ops fn2-core)))
       (fn2-own)
       (fn2-own-observe-output-range-parts slot gen rslot rgen off len
                                         fn2-pool fn2-ops fn2-own)
-      (mv (if (equal fault *fn2-fault-reset*) :handshake :ok)
+      (mv (if (equal fault *fn2-fault-reset*)
+              (if (equal kind *fn2-action-tls-start*) :handshake :io) :ok)
           (if (equal fault *fn2-fault-reset*) 0 len) 0 fn2-core fn2-sim-network fn2-sim-storage fn2-own)))
    ((or (fn2-op-input-kindp kind) (fn2-op-output-kindp kind))
     (let* ((nbytes (fn2-sim-storage-rows fn2-sim-storage))

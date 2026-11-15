@@ -14,4 +14,6 @@
   (role :u8) (ordinal :u60) (pages :u60) (first :u60) (end :u60) (entry :u60)
   (claimed :u60) (zero :u32) (peak :u8) (payload :u32)
   (extent :u32) (epoch :u60) (allocation :u60) (child :u32) (has-child :bool)
-  (directory-completed :u60) (frontier-completed :u60)))
+  (directory-completed :u60) (frontier-completed :u60)
+  ; Physical identity captured from the owner-bound configured origin.
+  (history :u60) (history-incarnation :u60)))

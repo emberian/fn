@@ -1,0 +1,76 @@
+(in-package "ACL2")
+(include-book "../books/pool-initialization")
+(defun fn2-pool-carve-witness (left)
+  (declare (xargs :verify-guards nil))
+  (with-local-stobj fn2-pool
+    (mv-let (snapshot fn2-pool)
+      (let* ((fn2-pool (fn2-pool-columns-init 1 fn2-pool))
+             (fn2-pool (fn2-pool-carve-slots left 0 0 64 0 1 fn2-pool)))
+        (mv (fn2-pool-row-snapshot 0 fn2-pool) fn2-pool))
+      snapshot)))
+; Whole row-span and byte-span hypotheses, plus the formula's conclusion.
+(assert-event
+ (and (natp 1) (natp 0) (posp 64) (<= (+ 0 1) 1)
+      (<= (+ 0 (* 1 64)) 1152921504606846976)
+      (equal (fn2-pool-carve-witness 1)
+             (list 1 0 64 *fn2-pool-state-free* 0 0 0 0 0 0 0 0 0 0 0 0 *fn2-none* 0))))
+; Remove only the allocated-row extent bound: the implementation terminates
+; the chain at the actual array end, rather than naming nonexistent row 1.
+(assert-event
+ (and (natp 2) (natp 0) (posp 64)
+      (not (<= (+ 0 2) 1))
+      (<= (+ 0 (* 2 64)) 1152921504606846976)
+      (not (equal (fn2-pool-carve-witness 2)
+                  (list 1 0 64 *fn2-pool-state-free* 0 0 0 0 0 0 0 0 0 0 0 0 1 0)))))
+
+(defun fn2-pool-init-multiclass-witness ()
+  (declare (xargs :verify-guards nil))
+  (with-local-stobj fn2-pool
+    (mv-let (result fn2-pool)
+      (let* ((classes '((0 . 64) (2 . 128) (1 . 256)))
+             (antecedent (and (fn2-poolp fn2-pool) (fn2-pool-profilep classes)
+                              (unsigned-byte-p 60 7) (unsigned-byte-p 60 9) (<= 7 9)))
+             (fn2-pool (fn2-pool-init classes 7 9 fn2-pool)))
+        (mv (list antecedent (fn2-pool-semanticp fn2-pool)
+                  (fn2-pool-class-snapshot 0 fn2-pool)
+                  (fn2-pool-class-snapshot 1 fn2-pool)
+                  (fn2-pool-class-snapshot 2 fn2-pool)
+                  (list (fn2-pool-base 0 fn2-pool) (fn2-pool-base 1 fn2-pool) (fn2-pool-base 2 fn2-pool))
+                  (list (fn2-pool-next-free 0 fn2-pool) (fn2-pool-next-free 1 fn2-pool) (fn2-pool-next-free 2 fn2-pool))
+                  (fn2-pool-nslots fn2-pool) (fn2-pool-nclasses fn2-pool)
+                  (fn2-pool-gen-limit fn2-pool) (fn2-pool-retired-count fn2-pool)
+                  (fn2-pool-capacity-bytes fn2-pool)) fn2-pool))
+      result)))
+(assert-event
+ (equal (fn2-pool-init-multiclass-witness)
+        (list t t (list *fn2-none* 0 64) '(0 2 128) '(2 1 256)
+              '(0 128 256) (list 1 *fn2-none* *fn2-none*) 3 3 9 0 512)))
+; Removing only generation ordering breaks the whole semantic conclusion.
+(defun fn2-pool-init-generation-control ()
+ (declare (xargs :verify-guards nil))
+ (with-local-stobj fn2-pool
+  (mv-let (answer fn2-pool)
+   (let* ((classes '((2 . 64)))
+          (hyps (and (fn2-poolp fn2-pool) (fn2-pool-profilep classes)
+                     (unsigned-byte-p 60 10) (unsigned-byte-p 60 9) (not (<= 10 9))))
+          (fn2-pool (fn2-pool-init classes 10 9 fn2-pool)))
+    (mv (and hyps (not (fn2-pool-semanticp fn2-pool))) fn2-pool))
+   answer)))
+; Evaluate the logical hypothesis-removal witness outside the runtime guard.
+(assert-event (with-guard-checking :none (fn2-pool-init-generation-control)))
+; A lost free successor leaves row geometry valid but loses class coverage.
+(defun fn2-pool-init-chain-control ()
+ (declare (xargs :verify-guards nil))
+ (with-local-stobj fn2-pool
+  (mv-let (answer fn2-pool)
+   (let* ((classes '((0 . 64) (2 . 128) (1 . 256)))
+          (hyps (and (fn2-poolp fn2-pool) (fn2-pool-profilep classes)
+                     (unsigned-byte-p 60 7) (unsigned-byte-p 60 9) (<= 7 9)))
+          (fn2-pool (fn2-pool-init classes 7 9 fn2-pool))
+          (before (fn2-pool-semanticp fn2-pool))
+          (fn2-pool (fn2-pool-set-next-free 0 *fn2-none* fn2-pool)))
+    (mv (and hyps before (fn2-pool-row-invariantp 3 fn2-pool)
+             (not (fn2-pool-class-accountsp 3 fn2-pool))
+             (not (fn2-pool-semanticp fn2-pool))) fn2-pool))
+   answer)))
+(assert-event (fn2-pool-init-chain-control))

@@ -68,7 +68,10 @@
 ;; anything runs.
 (defun fn2-init-engine (profile fn2-core)
   (declare (xargs :stobjs fn2-core :guard (fn2-core-wfp fn2-core)))
-  (mv-let (genesis fn2-core) (fn2-engine-genesis profile fn2-core)
+  (mv-let (genesis fn2-core)
+    (if (fn2-profile-get :image-boot profile)
+        (fn2-engine-genesis-actors profile fn2-core)
+      (fn2-engine-genesis profile fn2-core))
     (if (eq genesis :ok) fn2-core (fn2-core-stop *fn2-stop-reason-engine-genesis* fn2-core))))
 (defthm fn2-init-engine-type
   (implies (and (fn2-corep fn2-core) (fn2-core-wfp fn2-core)) (fn2-corep (fn2-init-engine profile fn2-core))))

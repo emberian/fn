@@ -26,7 +26,7 @@
    (fn2-alloc-retirement-intent-extent :type (unsigned-byte 32) :initially 0 :why "Exact extent whose durable publication is closed while its retirement journal member is pending.")
    (fn2-alloc-retirement-intent-epoch :type (unsigned-byte 60) :initially 0 :why "Writer epoch binding the pending retirement to its actual physical allocation.")
    (fn2-alloc-retirement-intent-allocation :type (unsigned-byte 60) :initially 0 :why "Allocation generation binding the pending retirement; recycled extents cannot inherit intent.")
-   (fn2-alloc-freeze-phase :type (unsigned-byte 8) :initially 0 :why "0 open, 1 copying a checkpoint map, 2 installing its exact construction set.")
+   (fn2-alloc-freeze-phase :type (unsigned-byte 8) :initially 0 :why "0 open, 1 copying a checkpoint map, 2 installing its exact construction set, 3 owner-scoped exact layout planning, 4 selected cold reconstruction (issuance closed).")
    (fn2-alloc-freeze-token :type (unsigned-byte 60) :initially 0 :why "Exact retained construction token.")
    (fn2-alloc-freeze-owner-kind :type (unsigned-byte 8) :initially 0 :why "Machine kind retaining the physical checkpoint construction gate.")
    (fn2-alloc-freeze-owner-slot :type (unsigned-byte 32) :initially 0 :why "Exact machine row retaining the physical checkpoint construction gate.")
@@ -192,6 +192,12 @@
              (not (equal counter (fn2-extents-counter i fn2-extents)))) :stale)
         ((equal (fn2-extents-state i fn2-extents) *fn2-extent-state-free*) :state)
         (t :ok)))
+; Consumers need the checked slot, not the classifier's representation tests.
+(defthm fn2-alloc-handle-code-ok-slotp
+  (implies (equal (fn2-alloc-handle-code i epoch counter fn2-extents) :ok)
+           (fn2-alloc-slotp i fn2-extents))
+  :rule-classes :forward-chaining
+  :hints (("Goal" :in-theory (enable fn2-alloc-handle-code))))
 (defun fn2-alloc-init-links (n fn2-extents)
   (declare (xargs :stobjs fn2-extents :measure (nfix n)
     :guard (and (fn2-extents-wfp fn2-extents) (natp n) (<= n (fn2-extents-rows fn2-extents)))))
@@ -306,13 +312,11 @@
                   (fn2-extents (update-fn2-alloc-next-counter 0 fn2-extents))
                   (fn2-extents (update-fn2-alloc-epoch-begun 1 fn2-extents)))
              (mv :ok fn2-extents))))))
-(defun fn2-alloc-reserve (fn2-extents)
+(defun fn2-alloc-reserve-transition (fn2-extents)
   (declare (xargs :stobjs fn2-extents :guard (fn2-extents-wfp fn2-extents)))
   ; A broken free-list link is named (:links), never absorbed; the commit
   ; kind's caller stops the core with :alloc-links.
-  (if (fn2-alloc-frozenp fn2-extents)
-      (mv :frozen nil 0 0 0 fn2-extents)
-    (if (and (fn2-alloc-link-statep (fn2-alloc-free-head fn2-extents)
+  (if (and (fn2-alloc-link-statep (fn2-alloc-free-head fn2-extents)
                                       *fn2-extent-state-free* fn2-extents)
        (or (equal (fn2-alloc-free-head fn2-extents) *fn2-alloc-none*)
            (fn2-alloc-link-statep
@@ -332,7 +336,12 @@
                     (fn2-extents (update-fn2-alloc-next-counter (+ 1 counter) fn2-extents))
                     (fn2-extents (fn2-alloc-account i *fn2-extent-state-free* *fn2-alloc-reason-code-live* fn2-extents)))
                (mv :ok nil i epoch counter fn2-extents)))))
-    (mv :links nil 0 0 0 fn2-extents))))
+    (mv :links nil 0 0 0 fn2-extents)))
+(defun fn2-alloc-reserve (fn2-extents)
+ (declare (xargs :stobjs fn2-extents :guard (fn2-extents-wfp fn2-extents)))
+ (if (fn2-alloc-frozenp fn2-extents)
+     (mv :frozen nil 0 0 0 fn2-extents)
+   (fn2-alloc-reserve-transition fn2-extents)))
 ; B5 recovery adopts a replayed allocation identity in arena order. The extent
 ; must be the free head (genesis FIFO order: B6's checkpoint map replaces this
 ; with the recorded map); the identity is the recorded one, never a fresh
@@ -407,7 +416,8 @@
                (eq (fn2-alloc-handle-code i epoch allocation fn2-extents) :ok)
                (equal (fn2-extents-state i fn2-extents) *fn2-extent-state-allocated*)))
      (mv :intent fn2-extents)
-   (mv :ok (update-fn2-alloc-retirement-intent-batch 0 fn2-extents))))
+   (let ((fn2-extents (update-fn2-alloc-retirement-intent-batch 0 fn2-extents)))
+    (mv :ok fn2-extents))))
 (fn2-extents-preserves fn2-alloc-retirement-intent-begin
  (i epoch allocation batch fn2-extents) :position 1)
 (fn2-extents-preserves fn2-alloc-retirement-intent-cancel
@@ -420,6 +430,26 @@
  (declare (xargs :guard t))
  (if (member-eq kind '(:installed-root :selectable-checkpoint :recovery-base
                       :prepared-successor :obligation :recovery-candidate)) t nil))
+; Internal, already-validated edge/count mutation shared by ordinary admission
+; and typed cold reconstruction. No served defcost/interface exports this helper.
+(defun fn2-alloc-edge-add-transition (edge holder i epoch counter kind fn2-extents fn2-alloc-edges)
+ (declare (xargs :stobjs (fn2-extents fn2-alloc-edges)
+  :guard (and (fn2-extents-wfp fn2-extents) (fn2-alloc-edges-wfp fn2-alloc-edges)
+              (fn2-alloc-slotp i fn2-extents) (fn2-alloc-edge-slotp edge fn2-alloc-edges)
+              (unsigned-byte-p 60 holder) (unsigned-byte-p 60 epoch) (unsigned-byte-p 60 counter)
+              (member-eq kind *fn2-alloc-edges*) (not (eq kind :reservation))
+              (< (fn2-alloc-edge-count i kind fn2-extents) *fn2-alloc-edge-count-max*))))
+ (let* ((s (fn2-extents-state i fn2-extents))
+                    (r (fn2-alloc-reason i (fn2-alloc-cut fn2-extents) fn2-extents))
+                    (fn2-alloc-edges (fn2-alloc-edges-set-state edge *fn2-alloc-edge-state-live* fn2-alloc-edges))
+                    (fn2-alloc-edges (fn2-alloc-edges-set-kind edge (fn2-alloc-edge-kind-keyword->code kind) fn2-alloc-edges))
+                    (fn2-alloc-edges (fn2-alloc-edges-set-holder edge holder fn2-alloc-edges))
+                    (fn2-alloc-edges (fn2-alloc-edges-set-extent edge i fn2-alloc-edges))
+                    (fn2-alloc-edges (fn2-alloc-edges-set-epoch edge epoch fn2-alloc-edges))
+                    (fn2-alloc-edges (fn2-alloc-edges-set-counter edge counter fn2-alloc-edges))
+                    (fn2-extents (fn2-alloc-set-edge i kind (+ (fn2-alloc-edge-count i kind fn2-extents) 1) fn2-extents))
+                    (fn2-extents (fn2-alloc-account i s r fn2-extents)))
+               (mv :ok fn2-extents fn2-alloc-edges)))
 (defun fn2-alloc-edge-add (edge holder i epoch counter kind fn2-extents fn2-alloc-edges)
   (declare (xargs :stobjs (fn2-extents fn2-alloc-edges)
     :guard (and (fn2-extents-wfp fn2-extents) (fn2-alloc-edges-wfp fn2-alloc-edges)
@@ -436,23 +466,17 @@
                 (or (fn2-alloc-retirement-intentp i epoch counter fn2-extents)
                     (= (fn2-extents-state i fn2-extents) *fn2-extent-state-retire-pending*)))
            (mv :retirement-pending fn2-extents fn2-alloc-edges))
+          ; Cold projection closes new durable publication. Transient physical
+          ; pins retain their existing behavior; private restoration is typed.
+          ((and (= (fn2-alloc-freeze-phase fn2-extents) 4) (fn2-alloc-durable-edgep kind))
+           (mv :cold-recovery fn2-extents fn2-alloc-edges))
           ((not (fn2-alloc-edge-slotp edge fn2-alloc-edges)) (mv :edge-bounds fn2-extents fn2-alloc-edges))
           ((not (equal (fn2-alloc-edges-state edge fn2-alloc-edges) *fn2-alloc-edge-state-free*))
            (mv :edge-live fn2-extents fn2-alloc-edges))
           ((= (fn2-alloc-edge-count i kind fn2-extents) *fn2-alloc-edge-count-max*)
            (prog2$ (er hard? 'fn2-alloc-edge-add "Free edge row with saturated extent count." nil)
                    (mv :invariant fn2-extents fn2-alloc-edges)))
-          (t (let* ((s (fn2-extents-state i fn2-extents))
-                    (r (fn2-alloc-reason i (fn2-alloc-cut fn2-extents) fn2-extents))
-                    (fn2-alloc-edges (fn2-alloc-edges-set-state edge *fn2-alloc-edge-state-live* fn2-alloc-edges))
-                    (fn2-alloc-edges (fn2-alloc-edges-set-kind edge (fn2-alloc-edge-kind-keyword->code kind) fn2-alloc-edges))
-                    (fn2-alloc-edges (fn2-alloc-edges-set-holder edge holder fn2-alloc-edges))
-                    (fn2-alloc-edges (fn2-alloc-edges-set-extent edge i fn2-alloc-edges))
-                    (fn2-alloc-edges (fn2-alloc-edges-set-epoch edge epoch fn2-alloc-edges))
-                    (fn2-alloc-edges (fn2-alloc-edges-set-counter edge counter fn2-alloc-edges))
-                    (fn2-extents (fn2-alloc-set-edge i kind (+ (fn2-alloc-edge-count i kind fn2-extents) 1) fn2-extents))
-                    (fn2-extents (fn2-alloc-account i s r fn2-extents)))
-               (mv :ok fn2-extents fn2-alloc-edges))))))
+          (t (fn2-alloc-edge-add-transition edge holder i epoch counter kind fn2-extents fn2-alloc-edges)))))
 (defthm fn2-alloc-release-pending-refusal-by-definition
  (implies (and (fn2-extents-wfp p) (fn2-alloc-edges-wfp edges)
                (fn2-alloc-slotp i p)
@@ -484,12 +508,13 @@
 (defthm fn2-alloc-edge-drop-requires-matching-holder
   (implies (equal (mv-nth 0 (fn2-alloc-edge-drop edge holder i epoch counter kind p edges)) :ok)
            (fn2-alloc-edge-matchesp edge holder i epoch counter kind edges))
-  :hints (("Goal" :in-theory (enable fn2-alloc-edge-drop))))
-(defun fn2-alloc-commit-allocation (i epoch counter owner-kind owner-id fn2-extents)
+  :hints (("Goal" :in-theory (e/d (fn2-alloc-edge-drop)
+                                 (fn2-alloc-edge-matchesp)))))
+; Internal shared settlement; callers establish ordinary-open or exact
+; selected cold persisted-evidence authority. No served operation exports it.
+(defun fn2-alloc-commit-allocation-transition (i epoch counter owner-kind owner-id fn2-extents)
   (declare (xargs :stobjs fn2-extents :guard (and (fn2-extents-wfp fn2-extents)
     (unsigned-byte-p 8 owner-kind) (unsigned-byte-p 60 owner-id))))
-  (if (fn2-alloc-frozenp fn2-extents)
-      (mv :frozen fn2-extents)
     (let ((code (fn2-alloc-handle-code i epoch counter fn2-extents)))
     (cond ((not (eq code :ok)) (mv code fn2-extents))
           ((not (= (fn2-extents-state i fn2-extents) *fn2-extent-state-reserved*)) (mv :state fn2-extents))
@@ -499,11 +524,17 @@
                     (fn2-extents (fn2-extents-set-owner-kind i owner-kind fn2-extents))
                     (fn2-extents (fn2-extents-set-owner-id i owner-id fn2-extents))
                     (fn2-extents (fn2-alloc-account i *fn2-extent-state-reserved* r fn2-extents)))
-               (mv :ok fn2-extents)))))))
-(defun fn2-alloc-retire (i epoch counter commit fn2-extents)
-  (declare (xargs :stobjs fn2-extents :guard (and (fn2-extents-wfp fn2-extents) (unsigned-byte-p 60 commit))))
+               (mv :ok fn2-extents))))))
+(defun fn2-alloc-commit-allocation (i epoch counter owner-kind owner-id fn2-extents)
+  (declare (xargs :stobjs fn2-extents :guard (and (fn2-extents-wfp fn2-extents)
+    (unsigned-byte-p 8 owner-kind) (unsigned-byte-p 60 owner-id))))
   (if (fn2-alloc-frozenp fn2-extents)
       (mv :frozen fn2-extents)
+    (fn2-alloc-commit-allocation-transition i epoch counter owner-kind owner-id fn2-extents)))
+; Internal shared settlement; callers establish ordinary-open or exact
+; selected cold persisted-evidence authority. No served operation exports it.
+(defun fn2-alloc-retire-transition (i epoch counter commit fn2-extents)
+  (declare (xargs :stobjs fn2-extents :guard (and (fn2-extents-wfp fn2-extents) (unsigned-byte-p 60 commit))))
     (if (fn2-alloc-link-statep (fn2-alloc-retired-tail fn2-extents)
                                     *fn2-extent-state-retire-pending* fn2-extents)
     (let ((code (fn2-alloc-handle-code i epoch counter fn2-extents)))
@@ -531,7 +562,12 @@
                     (fn2-extents (update-fn2-alloc-last-retirement commit fn2-extents))
                     (fn2-extents (fn2-alloc-account i *fn2-extent-state-allocated* r fn2-extents)))
                (mv :ok fn2-extents)))))
-    (mv :links fn2-extents))))
+    (mv :links fn2-extents)))
+(defun fn2-alloc-retire (i epoch counter commit fn2-extents)
+  (declare (xargs :stobjs fn2-extents :guard (and (fn2-extents-wfp fn2-extents) (unsigned-byte-p 60 commit))))
+  (if (fn2-alloc-frozenp fn2-extents)
+      (mv :frozen fn2-extents)
+    (fn2-alloc-retire-transition i epoch counter commit fn2-extents)))
 (defun fn2-alloc-releasablep (i fn2-extents)
   (declare (xargs :stobjs fn2-extents :guard (and (fn2-extents-wfp fn2-extents) (fn2-alloc-slotp i fn2-extents))))
   (and (= (fn2-extents-state i fn2-extents) *fn2-extent-state-retire-pending*)
@@ -628,17 +664,77 @@
                  (fn2-extents-next-retired i fn2-extents)
                  epoch counter (fn2-extents-retirement i fn2-extents))))))
 ; Cancellation discharges its own reservation; every other protection survives.
-(defun fn2-alloc-cancel-reservation (i epoch counter fn2-extents)
+(defun fn2-alloc-cancel-reservation-transition (i epoch counter fn2-extents)
   (declare (xargs :stobjs fn2-extents :guard (fn2-extents-wfp fn2-extents)))
-  (if (fn2-alloc-frozenp fn2-extents)
-      (mv :frozen fn2-extents)
-    (let ((code (fn2-alloc-handle-code i epoch counter fn2-extents)))
+  (let ((code (fn2-alloc-handle-code i epoch counter fn2-extents)))
     (cond ((not (eq code :ok)) (mv code fn2-extents))
           ((not (= (fn2-extents-state i fn2-extents) *fn2-extent-state-reserved*)) (mv :state fn2-extents))
           ((fn2-alloc-protector i :reservation fn2-extents)
            (mv (fn2-alloc-protector i :reservation fn2-extents) fn2-extents))
           ((not (fn2-alloc-free-linksp i fn2-extents)) (mv :links fn2-extents))
-          (t (let ((fn2-extents (fn2-alloc-free i fn2-extents))) (mv :ok fn2-extents)))))))
+          (t (let ((fn2-extents (fn2-alloc-free i fn2-extents))) (mv :ok fn2-extents))))))
+(defun fn2-alloc-cancel-reservation (i epoch counter fn2-extents)
+ (declare (xargs :stobjs fn2-extents :guard (fn2-extents-wfp fn2-extents)))
+ (if (fn2-alloc-frozenp fn2-extents)
+     (mv :frozen fn2-extents)
+   (fn2-alloc-cancel-reservation-transition i epoch counter fn2-extents)))
+(defun fn2-alloc-planning-ownerp (token kind owner gen fn2-extents)
+ (declare (xargs :stobjs fn2-extents :guard t))
+ (and (posp token) (equal (fn2-alloc-freeze-phase fn2-extents) 3)
+      (equal token (fn2-alloc-freeze-token fn2-extents))
+      (equal kind (fn2-alloc-freeze-owner-kind fn2-extents))
+      (equal owner (fn2-alloc-freeze-owner-slot fn2-extents))
+      (equal gen (fn2-alloc-freeze-owner-gen fn2-extents))))
+(defun fn2-alloc-planning-frontierp (head epoch counter fn2-extents)
+ (declare (xargs :stobjs fn2-extents :guard t))
+ (and (equal head (fn2-alloc-free-head fn2-extents))
+      (equal epoch (fn2-alloc-current-epoch fn2-extents))
+      (equal counter (fn2-alloc-next-counter fn2-extents))))
+; Internal entry: the source coordinator additionally binds actual HELD cut,
+; candidate and reserved working bundle. No caller readiness flag is accepted.
+(defun fn2-alloc-planning-begin (token kind owner gen head epoch counter fn2-extents)
+ (declare (xargs :stobjs fn2-extents :guard (fn2-extents-wfp fn2-extents)))
+ (if (not (and (posp token) (equal (fn2-alloc-freeze-phase fn2-extents) 0)
+               (equal token (fn2-alloc-freeze-token fn2-extents))
+               (equal kind (fn2-alloc-freeze-owner-kind fn2-extents))
+               (equal owner (fn2-alloc-freeze-owner-slot fn2-extents))
+               (equal gen (fn2-alloc-freeze-owner-gen fn2-extents))
+               (equal (fn2-alloc-retirement-intent-batch fn2-extents) 0)
+               (equal (fn2-alloc-epoch-begun fn2-extents) 1)
+               (fn2-alloc-planning-frontierp head epoch counter fn2-extents)))
+     (mv :planning fn2-extents)
+   (let ((fn2-extents (update-fn2-alloc-freeze-phase 3 fn2-extents)))
+    (mv :ok fn2-extents))))
+(defun fn2-alloc-planning-reserve (token kind owner gen extent epoch counter fn2-extents)
+ (declare (xargs :stobjs fn2-extents :guard (fn2-extents-wfp fn2-extents)))
+ (if (not (and (fn2-alloc-planning-ownerp token kind owner gen fn2-extents)
+               (equal (fn2-alloc-retirement-intent-batch fn2-extents) 0)
+               (fn2-alloc-planning-frontierp extent epoch counter fn2-extents)))
+     (mv :planning nil 0 0 0 fn2-extents)
+   (fn2-alloc-reserve-transition fn2-extents)))
+(defun fn2-alloc-planning-cancel (token kind owner gen extent epoch counter fn2-extents)
+ (declare (xargs :stobjs fn2-extents :guard (fn2-extents-wfp fn2-extents)))
+ (if (not (fn2-alloc-planning-ownerp token kind owner gen fn2-extents))
+     (mv :planning fn2-extents)
+   (fn2-alloc-cancel-reservation-transition extent epoch counter fn2-extents)))
+; Internal only: the coordinator must establish an empty candidate reservation
+; ledger before ending planning. Losing an owner never opens generic mutation.
+(defun fn2-alloc-planning-end (token kind owner gen head epoch counter fn2-extents)
+ (declare (xargs :stobjs fn2-extents :guard (fn2-extents-wfp fn2-extents)))
+ (if (not (and (fn2-alloc-planning-ownerp token kind owner gen fn2-extents)
+               (equal (fn2-alloc-retirement-intent-batch fn2-extents) 0)
+               (fn2-alloc-planning-frontierp head epoch counter fn2-extents)))
+     (mv :planning fn2-extents)
+   (let ((fn2-extents (update-fn2-alloc-freeze-phase 0 fn2-extents)))
+    (mv :ok fn2-extents))))
+(fn2-extents-preserves fn2-alloc-planning-begin
+ (token kind owner gen head epoch counter fn2-extents) :position 1)
+(fn2-extents-preserves fn2-alloc-planning-reserve
+ (token kind owner gen extent epoch counter fn2-extents) :position 5)
+(fn2-extents-preserves fn2-alloc-planning-cancel
+ (token kind owner gen extent epoch counter fn2-extents) :position 1)
+(fn2-extents-preserves fn2-alloc-planning-end
+ (token kind owner gen head epoch counter fn2-extents) :position 1)
  ; Each call visits at most budget pending retirements, never unrelated rows.
 ; coverage is the greatest processed retirement, not a requested/staged cut.
 ; Resume with any cut >= coverage; the caller retains its desired target.
@@ -673,11 +769,27 @@
 (defun fn2-alloc-relocate (edge holder i epoch counter j new-epoch new-counter durable fn2-extents fn2-alloc-edges)
   (declare (xargs :stobjs (fn2-extents fn2-alloc-edges)
     :guard (and (fn2-extents-wfp fn2-extents) (fn2-alloc-edges-wfp fn2-alloc-edges)
-                (unsigned-byte-p 60 new-epoch) (unsigned-byte-p 60 new-counter))))
+                (unsigned-byte-p 60 new-epoch) (unsigned-byte-p 60 new-counter))
+    ; Use the checked-slot contract and public numeric reader facts. Keep
+    ; branch-only tests and recursive list access below that proof boundary.
+    :guard-hints (("Goal"
+                  :use ((:instance fn2-alloc-handle-code-ok-slotp)
+                        (:instance fn2-alloc-handle-code-ok-slotp
+                         (i j) (epoch new-epoch) (counter new-counter)))
+                  :in-theory
+                  (disable nth fn2-extents-rows fn2-alloc-edges-rows
+                           fn2-extents-state fn2-extents-owner-kind fn2-extents-owner-id
+                           fn2-extents-installed-root fn2-extents-prepared-successor
+                           fn2-alloc-edges-kind fn2-alloc-handle-code fn2-alloc-edge-matchesp
+                           fn2-alloc-frozenp fn2-alloc-retirement-intentp
+                           fn2-alloc-edge-kind-code->keyword)))))
   (let ((a (fn2-alloc-handle-code i epoch counter fn2-extents))
         (b (fn2-alloc-handle-code j new-epoch new-counter fn2-extents)))
-    (cond ((not (eq a :ok)) (mv a fn2-extents fn2-alloc-edges))
+    (cond ((fn2-alloc-frozenp fn2-extents) (mv :frozen fn2-extents fn2-alloc-edges))
+          ((not (eq a :ok)) (mv a fn2-extents fn2-alloc-edges))
           ((not (eq b :ok)) (mv b fn2-extents fn2-alloc-edges))
+          ((fn2-alloc-retirement-intentp j new-epoch new-counter fn2-extents)
+           (mv :retirement-pending fn2-extents fn2-alloc-edges))
           ((or (= i j) (not (= (fn2-extents-state i fn2-extents) *fn2-extent-state-allocated*))
                (not (= (fn2-extents-state j fn2-extents) *fn2-extent-state-allocated*)))
            (mv :state fn2-extents fn2-alloc-edges))

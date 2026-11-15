@@ -34,6 +34,7 @@
 (fn2-oss-issue fn2-issue-receive (cap-index cap-nonce slot gen len))
 (fn2-oss-issue fn2-issue-send (cap-index cap-nonce slot gen off len may-release))
 (fn2-oss-issue fn2-issue-tls-start (cap-index cap-nonce slot gen off len))
+(fn2-oss-issue fn2-issue-compress-start (cap-index cap-nonce slot gen off len))
 (fn2-oss-issue fn2-issue-read (offset slot gen len))
 (fn2-oss-issue fn2-issue-write (offset slot gen off len fua))
 (fn2-oss-issue fn2-issue-fence ())
@@ -122,10 +123,11 @@
     fn2-op-set-storage fn2-op-set-cancel-target fn2-op-set-wake fn2-op-enqueue fn2-op-finish
     fn2-op-request-cancel fn2-outbox-ack fn2-post-result fn2-post-accept-result fn2-post-clock
     fn2-post-signal fn2-take-clock fn2-take-signal fn2-count-stray fn2-harvest-next
-    fn2-issue-children fn2-issue-receive-children fn2-issue-send-children fn2-issue-tls-start-children fn2-issue-read-children
+    fn2-issue-children fn2-issue-receive-children fn2-issue-send-children fn2-issue-tls-start-children fn2-issue-compress-start-children fn2-issue-read-children
     fn2-issue-write-children fn2-issue-fence-children fn2-issue-accept-children
     fn2-issue-close-children fn2-issue-cancel-children fn2-issue-entropy-children
-    fn2-block-read-children fn2-cursor-sub-art-read-children fn2-cursor-run-render-children
+    fn2-pinned-block-io-children fn2-block-read-children fn2-block-write-children
+    fn2-cursor-sub-art-read-children fn2-cursor-run-render-children
     fn2-echo-run-command-children fn2-echo-run-reply-children fn2-echo-run-closing-children
     fn2-scribe-run-write-children fn2-scribe-run-fence-children fn2-scribe-run-read-children))
 (defmacro fn2-oss-child (name formals position)
@@ -136,6 +138,7 @@
 (fn2-oss-child fn2-issue-receive-children (cap-index cap-nonce slot gen len okind oslot ogen principal fn2-pool fn2-ops fn2-control) 4)
 (fn2-oss-child fn2-issue-send-children (cap-index cap-nonce slot gen off len may-release okind oslot ogen principal fn2-pool fn2-ops fn2-control) 4)
 (fn2-oss-child fn2-issue-tls-start-children (cap-index cap-nonce slot gen off len okind oslot ogen principal fn2-pool fn2-ops fn2-control) 4)
+(fn2-oss-child fn2-issue-compress-start-children (cap-index cap-nonce slot gen off len okind oslot ogen principal fn2-pool fn2-ops fn2-control) 4)
 (fn2-oss-child fn2-issue-read-children (offset slot gen len okind oslot ogen principal fn2-pool fn2-ops fn2-control) 4)
 (fn2-oss-child fn2-issue-write-children (offset slot gen off len fua okind oslot ogen principal fn2-pool fn2-ops fn2-control) 4)
 (fn2-oss-child fn2-issue-fence-children (okind oslot ogen principal fn2-pool fn2-ops fn2-control) 4)
@@ -143,8 +146,21 @@
 (fn2-oss-child fn2-issue-close-children (cap-index cap-nonce okind oslot ogen principal fn2-pool fn2-ops fn2-control) 4)
 (fn2-oss-child fn2-issue-cancel-children (target-slot target-gen okind oslot ogen principal fn2-pool fn2-ops fn2-control) 4)
 (fn2-oss-child fn2-issue-entropy-children (slot gen len okind oslot ogen principal fn2-pool fn2-ops fn2-control) 4)
+; The owning primitive composes the admitted read/write effects; outer faces
+; keep that body closed and consume this operation-semantic interface.
+(encapsulate ()
+ (local (in-theory (disable fn2-alloc-handle-code fn2-alloc-edge-add
+                            fn2-b-read-pin-drop fn2-b-read-pin-edge
+                            fn2-extents-state fn2-ops-free-head fn2-ops-gen
+                            fn2-control-stop fn2-control-record-stop)))
+ (fn2-oss-child fn2-pinned-block-io-children
+  (writep pu epoch alloc off len lslot lgen boff okind oslot ogen principal
+   fn2-extents fn2-alloc-edges fn2-pool fn2-ops fn2-control) 4))
 (fn2-oss-child fn2-block-read-children
   (pu epoch alloc off len lslot lgen okind oslot ogen principal fn2-extents fn2-alloc-edges fn2-pool fn2-ops fn2-control) 4)
+(fn2-oss-child fn2-block-write-children
+  (pu epoch alloc off len lslot lgen boff okind oslot ogen principal
+   fn2-extents fn2-alloc-edges fn2-pool fn2-ops fn2-control) 4)
 (fn2-oss-child fn2-echo-run-command-children
   (id slot kind ordinal budget fn2-echo fn2-machines fn2-pool fn2-ops fn2-control) 7)
 (fn2-oss-child fn2-echo-run-reply-children
@@ -186,7 +202,7 @@
 ;; are A's elements, so the statement is over every argument.
 (defconst *fn2-core-ops-steps*
   ;; (key function arity-of-args values-before-core)
-  '((:receive fn2-issue-receive 9 3) (:send fn2-issue-send 11 3) (:tls-start fn2-issue-tls-start 10 3) (:read fn2-issue-read 8 3)
+  '((:receive fn2-issue-receive 9 3) (:send fn2-issue-send 11 3) (:tls-start fn2-issue-tls-start 10 3) (:compress-start fn2-issue-compress-start 10 3) (:read fn2-issue-read 8 3)
     (:write fn2-issue-write 10 3) (:fence fn2-issue-fence 4 3) (:accept fn2-issue-accept 6 3)
     (:close fn2-issue-close 6 3) (:cancel fn2-issue-cancel 6 3) (:entropy fn2-issue-entropy 7 3)
     (:arm-wake fn2-issue-arm-wake 2 3) (:harvest fn2-harvest-one 0 10) (:mailbox fn2-exec-mailbox 0 5)

@@ -76,6 +76,53 @@ inductive CanonicalEvalArgs (program : CanonicalProgram)
       CanonicalEvalArgs program domain primitiveDomain env (term :: terms) (value :: values)
 end
 
+/-- Extend a finite canonical derivation only when every resolved definition is
+preserved exactly and each reached admission remains valid. This does not widen
+an entry certificate's quantified input domain or identify executable dispatches. -/
+theorem canonical_eval_extend {program target : CanonicalProgram}
+    {domain primitiveDomain targetDomain targetPrimitiveDomain : CallDomain}
+    (definitions : ∀ name definition, program name = some definition →
+      target name = some definition)
+    (calls : ∀ name values, domain name values → targetDomain name values)
+    (primitives : ∀ name values, primitiveDomain name values → targetPrimitiveDomain name values)
+    {env term value} (evaluated : CanonicalEval program domain primitiveDomain env term value) :
+    CanonicalEval target targetDomain targetPrimitiveDomain env term value := by
+  induction evaluated using CanonicalEval.rec
+      (motive_2 := fun env terms values _ =>
+        CanonicalEvalArgs target targetDomain targetPrimitiveDomain env terms values) with
+  | quote => exact .quote
+  | var lookup => exact .var lookup
+  | if_true condition truth selected conditionIH selectedIH =>
+      exact .if_true conditionIH truth selectedIH
+  | if_false condition truth selected conditionIH selectedIH =>
+      exact .if_false conditionIH truth selectedIH
+  | return_last selected selectedIH => exact .return_last selectedIH
+  | lam arguments arity evaluated argumentsIH evaluatedIH =>
+      exact .lam argumentsIH arity evaluatedIH
+  | primitive notIf notReturnLast arguments admitted evaluated argumentsIH =>
+      exact .primitive notIf notReturnLast argumentsIH (primitives _ _ admitted) evaluated
+  | call notIf notReturnLast arguments notNative resolved admitted arity decoded evaluated
+      argumentsIH evaluatedIH =>
+      exact .call notIf notReturnLast argumentsIH notNative (definitions _ _ resolved)
+        (calls _ _ admitted) arity decoded evaluatedIH
+  | nil => exact .nil
+  | cons head tail headIH tailIH => exact .cons headIH tailIH
+
+/-- Argument evaluation transports with the same exact-definition obligations. -/
+theorem canonical_args_extend {program target : CanonicalProgram}
+    {domain primitiveDomain targetDomain targetPrimitiveDomain : CallDomain}
+    (definitions : ∀ name definition, program name = some definition → target name = some definition)
+    (calls : ∀ name values, domain name values → targetDomain name values)
+    (primitives : ∀ name values, primitiveDomain name values → targetPrimitiveDomain name values)
+    {env terms values} (evaluated : CanonicalEvalArgs program domain primitiveDomain env terms values) :
+    CanonicalEvalArgs target targetDomain targetPrimitiveDomain env terms values := by
+  induction terms generalizing values with
+  | nil => cases evaluated; exact .nil
+  | cons term terms ih =>
+      cases evaluated with
+      | cons head tail =>
+          exact .cons (canonical_eval_extend definitions calls primitives head) (ih tail)
+
 /-- The entry body is read from the named canonical record. A finite derivation
 includes every reached callee, even in a recursive component. -/
 def CanonicalExportEval (program : CanonicalProgram) (domain primitiveDomain : CallDomain)
@@ -84,6 +131,19 @@ def CanonicalExportEval (program : CanonicalProgram) (domain primitiveDomain : C
     values.length = definition.formals.length ∧
     readTerm definition.syntaxFuel definition.body = some body ∧
     CanonicalEval program domain primitiveDomain (definition.formals.zip values) body v
+
+/-- Reuse an entry derivation inside an exact extension of its canonical program.
+The original input and result are unchanged; no new inputs are certified. -/
+theorem canonical_export_extend {program target : CanonicalProgram}
+    {domain primitiveDomain targetDomain targetPrimitiveDomain : CallDomain}
+    (definitions : ∀ name definition, program name = some definition → target name = some definition)
+    (calls : ∀ name values, domain name values → targetDomain name values)
+    (primitives : ∀ name values, primitiveDomain name values → targetPrimitiveDomain name values)
+    {name values value} (evaluated : CanonicalExportEval program domain primitiveDomain name values value) :
+    CanonicalExportEval target targetDomain targetPrimitiveDomain name values value := by
+  obtain ⟨definition, body, resolved, admitted, arity, decoded, closed⟩ := evaluated
+  exact ⟨definition, body, definitions _ _ resolved, calls _ _ admitted, arity, decoded,
+    canonical_eval_extend definitions calls primitives closed⟩
 
 /-- A separately exported guard, kept distinct from the logical body. The
 packet emitter must bind both records to the same canonical function subject. -/

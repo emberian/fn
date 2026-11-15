@@ -1,25 +1,16 @@
 ; Checkpoint scratch capacity is an admission profile, not a stored-data cap.
 (in-package "ACL2")
-(include-book "machines-b")
+(include-book "checkpoint-catalog-kind")
 (include-book "checkpoint-installed")
 (include-book "checkpoint-construction")
 (include-book "checkpoint-lifecycle")
+(include-book "checkpoint-summary-authority-state")
+(include-book "checkpoint-directory-rebase-state")
 (fn2-book-layer :b)
-(defun fn2-checkpoint-capacity (profile)
- (declare (xargs :guard t))
- (fn2-b-checkpoint-capacity profile))
-(defcorechild fn2-core-checkpoints fn2-checkpoints
- :init (fn2-checkpoints-init (fn2-checkpoint-capacity profile) fn2-checkpoints)
- :profilep (unsigned-byte-p 32 (+ 96 (* 192 (fn2-checkpoint-capacity profile))))
- :why "Bounded active checkpoint publication and recovery candidates; pressure refuses admission.")
-(defcorechild fn2-core-checkpoint-refs fn2-checkpoint-refs
- :init (fn2-checkpoint-refs-init (* 6 (fn2-checkpoint-capacity profile)) fn2-checkpoint-refs)
- :profilep (unsigned-byte-p 32 (+ 96 (* 192 (fn2-checkpoint-capacity profile))))
- :why "Descriptor plus five root references for each active checkpoint candidate.")
-(defcorechild fn2-core-checkpoint-bytes fn2-checkpoint-bytes
- :init (fn2-checkpoint-bytes-init (+ 96 (* 192 (fn2-checkpoint-capacity profile))) fn2-checkpoint-bytes)
- :profilep (unsigned-byte-p 32 (+ 96 (* 192 (fn2-checkpoint-capacity profile))))
- :why "Immutable owned digest bytes survive reuse of format checker scratch rows.")
+
+
+
+
 
 (defcorechild fn2-core-checkpoint-publication fn2-checkpoint-publication
  :init (fn2-checkpoint-publication-init 1 fn2-checkpoint-publication)
@@ -32,3 +23,11 @@
  :init (fn2-checkpoint-lifecycle-init 1 fn2-checkpoint-lifecycle) :profilep t
  :why "One physical completion/retention cursor binds the live checkpoint owner through publication and thaw.")
 (include-book "checkpoint-writer")
+
+(defcorechild fn2-core-checkpoint-summary-authority fn2-checkpoint-summary-authority
+ :init (fn2-checkpoint-summary-authority-init 2 fn2-checkpoint-summary-authority)
+ :profilep t :why "Exact cold/live sufficient-summary subject, retained frontier and predecessor after the real C consumer completes; distinct from selected-source projection provenance.")
+
+(defcorechild fn2-core-checkpoint-directory-rebase fn2-directory-rebase
+ :init (fn2-directory-rebase-init 1 fn2-directory-rebase) :profilep t
+ :why "One owner-bound bounded scan joins actual summary consumption to the live directory base and preserved suffix.")

@@ -462,14 +462,14 @@
 
 (defcost fn2-group-lookup :answers (:source :reference :hash :source-header :source-index :page-kind :absent :bad-magic :bounds :done :end :entry :format :invariant :length :lost :miss :more
   :noncanonical :ok :owner :part :payload :schema :stale :state :truncated :unknown-tag :wide)
- :bytes 4096
+ :bytes *fn2-c-read-step-bytes*
  :tables (fn2-core-succ-txns fn2-core-run-cursors fn2-core-run-paths fn2-core-fields)
- :doc "One source of a group-name lookup: one overlay search (at most 250-octet compares over 9 probes) or one run step of at most 4,096 pool reads.")
+ :doc "One source of a group-name lookup: one overlay search (under the declared overlay probe and key bounds) or one run step under the generated codec work bound.")
 (defcost fn2-principal-lookup :answers (:source :reference :hash :source-header :source-index :page-kind :absent :bad-magic :bounds :done :end :entry :format :invariant :length :lost :miss :more
   :noncanonical :ok :owner :part :payload :schema :stale :state :truncated :unknown-tag :wide)
- :bytes 4096
+ :bytes *fn2-c-read-step-bytes*
  :tables (fn2-core-succ-txns fn2-core-run-cursors fn2-core-run-paths fn2-core-fields)
- :doc "One source of a principal-name lookup in fn2-principals: one overlay search (at most 64-octet compares) or one run step of at most 4,096 pool reads.")
+ :doc "One source of a principal-name lookup in fn2-principals: one overlay search (at most 64-octet compares) or one run step under the generated codec work bound.")
 (defcost fn2-principal-of-slot :answers (:ok :state)
  :doc "The durable principal id (slot * 2^32 + incarnation) of an account slot: (mv code id).")
 
@@ -555,9 +555,26 @@
    ;; and principal-bind read them, and where the profile must give the
    ;; directory its overlay. A profile serving no authority (the tiny unit
    ;; profiles) has no reader of the names and need not hold the overlay.
-   (defun fn2-principals-genesis (profile fn2-core)
+      ; Read already-bound actor identities. This never increments incarnation.
+   ; The owner slot is trusted startup configuration; IDs come from accounts.
+   (defun fn2-principals-bound-genesis-ids (owner-slot fn2-core)
     (declare (xargs :stobjs fn2-core :guard (fn2-core-wfp fn2-core)))
-    (mv-let (code ids fn2-core) (fn2-principals-bind-genesis profile fn2-core)
+    (stobj-let ((fn2-accounts (fn2-core-accounts fn2-core))) (code ids)
+     (if (and (fn2-accountsp fn2-accounts) (fn2-accounts-wfp fn2-accounts) (fn2-accounts-shapep fn2-accounts)
+              (natp owner-slot) (< 0 (fn2-accounts-rows fn2-accounts)))
+         (let* ((owner (< (+ 1 owner-slot) (fn2-accounts-rows fn2-accounts)))
+                (anonymous (fn2-account-principal-id 0 fn2-accounts))
+                (owner-id (if owner (fn2-account-principal-id owner-slot fn2-accounts) 0)))
+          (if (and (posp (fn2-accounts-incarnation 0 fn2-accounts)) (unsigned-byte-p 60 anonymous)
+                   (or (not owner) (and (posp (fn2-accounts-incarnation owner-slot fn2-accounts))
+                                        (unsigned-byte-p 60 owner-id))))
+              (mv :ok (cons (cons "anonymous" anonymous) (and owner (list (cons "owner" owner-id)))))
+            (mv :state nil)))
+       (mv :state nil))
+     (mv code ids)))
+(defun fn2-principals-name-genesis (profile fn2-core)
+    (declare (xargs :stobjs fn2-core :guard (fn2-core-wfp fn2-core)))
+    (mv-let (code ids) (fn2-principals-bound-genesis-ids (fn2-principals-owner-slot profile) fn2-core)
      (if (or (not (eq code :ok)) (not (posp (nfix (fn2-profile-get :authority profile)))))
          (mv code fn2-core)
       (stobj-let ((fn2-id-engine (fn2-core-id-engine fn2-core)) (fn2-id-decides (fn2-core-id-decides fn2-core))
@@ -570,6 +587,15 @@
                              fn2-id-engine fn2-overlays fn2-overlay-index fn2-fields fn2-pool)
           (mv c fn2-id-engine fn2-overlays fn2-overlay-index fn2-fields fn2-pool)))
        (mv code fn2-core)))))
+   (fn2-core-preserves fn2-principals-name-genesis (profile fn2-core)
+    :position 1 :rows nil :hints (("Goal" :in-theory (enable fn2-core-wfp))))
+   ; Preserve the original nonimage/public operation: bind once, then write
+   ; the authority NAME overlay from those same actual bound identities.
+   (defun fn2-principals-genesis (profile fn2-core)
+    (declare (xargs :stobjs fn2-core :guard (fn2-core-wfp fn2-core)))
+    (mv-let (code ids fn2-core) (fn2-principals-bind-genesis profile fn2-core)
+     (declare (ignore ids))
+     (if (eq code :ok) (fn2-principals-name-genesis profile fn2-core) (mv code fn2-core))))
    (fn2-core-preserves fn2-principals-genesis (profile fn2-core)
     :position 1 :rows nil :hints (("Goal" :in-theory (enable fn2-core-wfp))))
    ;; A connection's durable principal id from its account slot (D7's id).
@@ -583,7 +609,7 @@
        (mv :state 0))
      (mv code (nfix id))))
    (in-theory (disable fn2-group-lookup fn2-groups-genesis fn2-principal-lookup fn2-principals-bind-genesis
-                       fn2-principals-genesis fn2-principal-of-slot))
+                       fn2-principals-genesis fn2-principals-name-genesis fn2-principals-bound-genesis-ids fn2-principal-of-slot))
    (assert-event (fn2-assert-compliant-p '(fn2-group-lookup fn2-groups-genesis fn2-principal-lookup
                                           fn2-principals-genesis fn2-principal-of-slot) (w state)))))
 
@@ -592,9 +618,9 @@
  :doc "Start a transaction's identity decision: its query (five rows) written, its lookup idle.")
 (defcost fn2-identity-decide :child fn2-identity-decide-child :answers (:source :reference :hash :source-header :source-index :page-kind :bad-magic :bounds :conflict :done :duplicate :end :entry :evidence :format :invariant :length
   :lost :miss :more :noncanonical :owner :part :payload :schema :stale :state :stored :truncated :unknown-tag :wide)
- :bytes 4096
+ :bytes *fn2-c-read-step-bytes*
  :tables (fn2-core-succ-txns fn2-core-id-decides fn2-core-run-cursors fn2-core-run-paths fn2-core-fields)
- :doc "One source of an identity decision's two exact reads (the summary, then the candidate): one overlay search or one run step of at most 4,096 pool reads.")
+ :doc "One source of an identity decision's two exact reads (the summary, then the candidate): one overlay search or one run step under the generated codec work bound.")
 (defcost fn2-identity-facts :answers (:ok :state) :child fn2-id-facts
  :doc "Read a done decision's facts: verdict, selection, candidate ordinal, evidence status, coverage.")
 (defmacro fn2-identity-core-events ()

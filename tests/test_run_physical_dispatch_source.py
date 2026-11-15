@@ -38,8 +38,9 @@ class DispatchSource(unittest.TestCase):
         src=text('cursor.lisp'); a=src.index('  (:select :on-refusal'); b=src.index('  (:seek :on-refusal',a); select=src[a:b]
         self.assertLess(select.index('fn2-run-page-bundle-reserve'),select.index('(:next (:if (equal complete 1) :seek :finish))'))
         self.assertIn('(load-refuse (if (equal complete 1) 0 1))',select)
+        self.assertIn('(:if (equal row-query-bundle *fn2-cursor-query-bundle-none*)',select)
         a=src.index('  (:finish :on-refusal');b=src.index('  (:draining',a);finish=src[a:b]
-        self.assertLess(finish.index('fn2-cursor-lease-release'),finish.index('(:goto run-load-drain)'))
+        self.assertLess(finish.index('(lease *fn2-cursor-lease-none*)'),finish.index('(:goto run-load-drain)'))
         self.assertLess(finish.index('(:goto run-load-drain)'),finish.index('((equal row-load-refuse 1)'))
         self.assertIn('*fn2-b-query-loader-jobs*',finish)
     def test_last_member_rank_and_operation_loan(self):
@@ -71,6 +72,28 @@ class DispatchSource(unittest.TestCase):
             self.assertIn(op,src)
         self.assertIn('fn2-run-page-bundle-reserve', text('machines-c-read-loader.lisp'))
         callbacks=text('assembly-callbacks-d-cursor.lisp');self.assertLess(callbacks.index('(fn2-read-loader-core-faces)'),callbacks.index('(defmachine-arms fn2-cursor :wrappers)'))
+    def test_article_borrows_unused_exact_page_without_same_rank_wait(self):
+        src=text('cursor.lisp'); borrow=block(src,'defun','fn2-cursor-query-article-page-children')
+        for evidence in ('fn2-machines-kind', 'fn2-machines-slot', 'fn2-cursor-generation',
+                         'fn2-cursor-state-render', '(fn2-cursor-step row fn2-cursor) 22',
+                         '*fn2-cursor-query-bundle-held*', '(fn2-cursor-load-active row fn2-cursor) 0',
+                         '*fn2-succ-lookup-idle*', '*fn2-read-op-range*', '*fn2-read-op-scan*',
+                         'fn2-run-load-ownerp', '(fn2-run-loads-pending c fn2-run-loads) 0', 'fn2-pool-workspace-code'):
+            self.assertIn(evidence,borrow)
+        self.assertIn('(physical 0)',borrow);self.assertIn('*fn2-run-load-phase-reserved*',borrow)
+        self.assertLess(borrow.index('fn2-succ-txns-lphase'),borrow.index('(fn2-pool-reset'))
+        self.assertNotIn('fn2-pool-reserve',borrow)
+        self.assertNotIn('fn2-cursor-lease-reserve',src);self.assertNotIn('fn2-cursor-lease-release',src)
+        self.assertNotIn('(:park :pool',src)
+        self.assertIn('(fn2-cursor-query-article-page row-slot id row-generation)',src)
+    def test_prepared_article_borrow_fixture(self):
+        fixture=(ROOT/'tests'/'cursor-query-borrow-unit.lisp').read_text()
+        self.assertIn('SYNTHETIC internal premises',fixture)
+        self.assertIn('(fn2-run-load-reserve 1 *fn2-cursor-kind* 10 19',fixture)
+        self.assertIn('(fn2-cursor-query-article-page-children 0 10 19',fixture)
+        for result in ('active-refused','pending-refused','lookup-refused','xl-refused','bundle-refused','old-ready'):
+            self.assertIn(result,fixture)
+        self.assertIn('(equal (fn2-run-cursors-unit 3 fn2-run-cursors) 777)',fixture)
     def test_prepared_adapter_refusal_and_hook_fixture(self):
         fixture=(ROOT/'tests'/'run-physical-dispatch-unit.lisp').read_text()
         self.assertIn('SYNTHETIC internal premises',fixture)

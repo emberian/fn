@@ -1,6 +1,7 @@
 ; B accepts candidate identity only, never caller closure/cut/hash claims. The
 ; actual C worker derives that identity from its completed builder separately.
 (in-package "ACL2")
+(include-book "std/util/bstar" :dir :system)
 (include-book "checkpoint-member")
 (include-book "checkpoint-production")
 (fn2-book-layer :b)
@@ -77,7 +78,8 @@
                (own (and (= (fn2-checkpoint-construction-live e fn2-checkpoint-construction) 1)
                          (= (fn2-checkpoint-construction-token e fn2-checkpoint-construction) token)))
                ((unless own)
-                (mv :more (fn2-retirement-control-set-scan 0 (+ 1 e) fn2-retirement-control) fn2-fields fn2-pool))
+                (let* ((fn2-retirement-control (fn2-retirement-control-set-scan 0 (+ 1 e) fn2-retirement-control)))
+                 (mv :more fn2-retirement-control fn2-fields fn2-pool)))
                (role (fn2-checkpoint-construction-role e fn2-checkpoint-construction))
                (ep (fn2-checkpoint-construction-epoch e fn2-checkpoint-construction))
                (al (fn2-checkpoint-construction-counter e fn2-checkpoint-construction))
@@ -91,7 +93,8 @@
                          (= (fn2-extents-state e fn2-extents) *fn2-extent-state-allocated*)
                          (= (fn2-extents-owner-kind e fn2-extents) okind) (= (fn2-extents-owner-id e fn2-extents) token)
                          (unsigned-byte-p 32 (+ 1 n)))
-                    (mv :more (fn2-retirement-control-put 0 (scan (+ 1 e)) (count (+ 1 n))) fn2-fields fn2-pool)
+                    (let* ((fn2-retirement-control (fn2-retirement-control-put 0 (scan (+ 1 e)) (count (+ 1 n)))))
+                     (mv :more fn2-retirement-control fn2-fields fn2-pool))
                   (mv :pending fn2-retirement-control fn2-fields fn2-pool)))
                (ticket-ordinal (fn2-checkpoint-construction-ordinal e fn2-checkpoint-construction))
                ((unless (and (unsigned-byte-p 32 (+ 1 tickets)) (<= ticket-ordinal ordinal)

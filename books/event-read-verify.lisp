@@ -1,19 +1,48 @@
-; Authenticate actual pinned journal windows before semantic member hashing.
+; Shared actual journal authentication/member engine; source wrappers retain
+; their own concrete provenance and expected-seal derivation.
 (in-package "ACL2")
 (include-book "event-read-source")
 (fn2-book-layer :c)
 
-(defun fn2-event-read-format-step (budget fn2-event-read fn2-csnapshot fn2-commit-root
+; Decode only a bounded namespace hint from the retained seal-frame header.
+; This accepts no authentication flag and grants no records/member transition.
+(defun fn2-event-read-namespace (fn2-event-read fn2-fields fn2-pool)
+ (declare (xargs :stobjs (fn2-event-read fn2-fields fn2-pool) :verify-guards nil
+  :guard (and (fn2-event-read-wfp fn2-event-read) (fn2-fields-wfp fn2-fields) (fn2-pool-wfp fn2-pool))))
+ (b* (((unless (and (< 0 (fn2-event-read-rows fn2-event-read))
+                     (equal (fn2-event-read-phase 0 fn2-event-read) *fn2-event-read-phase-frame-seal*)
+                     (equal (fn2-event-read-pending 0 fn2-event-read) 0)))
+       (mv :state fn2-event-read fn2-fields))
+      (base (fn2-event-read-field-base 0 fn2-event-read))
+      (slot (fn2-event-read-slot 0 fn2-event-read)) (gen (fn2-event-read-gen 0 fn2-event-read))
+      (kind (fn2-event-read-owner-kind 0 fn2-event-read)) (owner (fn2-event-read-owner-slot 0 fn2-event-read))
+      (generation (fn2-event-read-owner-gen 0 fn2-event-read))
+      ((unless (<= (+ base *fn2-format-frame-header-num-fields*) (fn2-fields-rows fn2-fields)))
+       (mv :fields fn2-event-read fn2-fields))
+      ((mv frame off fn2-fields) (fn2-format-frame-header-decode base slot gen 0 4096 kind owner generation fn2-fields fn2-pool))
+      (payload (fn2-fields-value (+ base *fn2-format-frame-header-field-payload-length*) fn2-fields))
+      ((unless (and (eq frame :ok) (natp off) (posp payload) (<= (+ off payload) 4096)
+                     (equal (fn2-fields-value (+ base *fn2-format-frame-header-field-frame-kind*) fn2-fields) *frame-kind-seal*)
+                     (equal (fn2-fields-value (+ base *fn2-format-frame-header-field-ordinal*) fn2-fields) 1)
+                     (equal (fn2-fields-value (+ base *fn2-format-frame-header-field-fragment-offset*) fn2-fields) 0)))
+       (mv :frame fn2-event-read fn2-fields))
+      (history (fn2-fields-value (+ base *fn2-format-frame-header-field-history*) fn2-fields))
+      (incarnation (fn2-fields-value (+ base *fn2-format-frame-header-field-incarnation*) fn2-fields))
+      ((unless (fn2-origin-physicalp history incarnation))
+       (mv :namespace fn2-event-read fn2-fields))
+      (fn2-event-read (fn2-event-read-put 0 (journal-history history) (journal-incarnation incarnation))))
+  (mv :ok fn2-event-read fn2-fields)))
+
+(defun fn2-event-read-format-core (budget expected previous fn2-event-read
                                   fn2-journal-members fn2-fc fn2-fc-context fn2-b3 fn2-fields fn2-pool fn2-digests)
- (declare (xargs :stobjs (fn2-event-read fn2-csnapshot fn2-commit-root fn2-journal-members
+ (declare (xargs :stobjs (fn2-event-read fn2-journal-members
                           fn2-fc fn2-fc-context fn2-b3 fn2-fields fn2-pool fn2-digests)
   :verify-guards nil
-  :guard (and (fn2-event-read-wfp fn2-event-read) (fn2-csnapshot-wfp fn2-csnapshot)
-              (fn2-commit-root-wfp fn2-commit-root)
+  :guard (and (fn2-event-read-wfp fn2-event-read)
               (fn2-journal-members-wfp fn2-journal-members) (fn2-fc-wfp fn2-fc) (fn2-fc-context-wfp fn2-fc-context)
               (fn2-b3-wfp fn2-b3) (fn2-fields-wfp fn2-fields) (fn2-pool-wfp fn2-pool) (fn2-digests-wfp fn2-digests))))
- (b* (((unless (fn2-event-read-ownerp fn2-event-read fn2-csnapshot))
-       (mv :snapshot fn2-event-read fn2-journal-members fn2-fc fn2-fc-context fn2-b3 fn2-fields fn2-pool fn2-digests))
+ (b* (((unless (< 0 (fn2-event-read-rows fn2-event-read)))
+       (mv :state fn2-event-read fn2-journal-members fn2-fc fn2-fc-context fn2-b3 fn2-fields fn2-pool fn2-digests))
       (phase (fn2-event-read-phase 0 fn2-event-read))
       (semantic (equal phase *fn2-event-read-phase-semantic-seal*))
       (sealframe (equal phase *fn2-event-read-phase-frame-seal*))
@@ -22,27 +51,38 @@
       (kind (fn2-event-read-owner-kind 0 fn2-event-read)) (owner (fn2-event-read-owner-slot 0 fn2-event-read))
       (generation (fn2-event-read-owner-gen 0 fn2-event-read))
       (commit (fn2-event-read-commit 0 fn2-event-read))
-      (rootbase (* *fn2-digest-stride* (fn2-fc-rows fn2-fc)))
       (hash (fn2-digest-slot row *fn2-fc-hash*)) (geometry (fn2-digest-slot row *fn2-fc-geometry*))
       ((unless (and (or semantic sealframe (equal phase *fn2-event-read-phase-frame-records*))
                      (equal (fn2-event-read-pending 0 fn2-event-read) 0)
                      (equal row (fn2-b-event-row (fn2-fc-rows fn2-fc)))
                      (< row (fn2-fc-rows fn2-fc)) (< row (fn2-fc-context-rows fn2-fc-context))
                      (fn2-b3-ready row fn2-b3 fn2-digests)
-                     (posp commit) (< commit (fn2-commit-root-rows fn2-commit-root))
-                     (fn2-digest-rowp (+ rootbase commit) fn2-digests)
-                     (fn2-digest-rowp (+ rootbase (- commit 1)) fn2-digests)
+                     (posp commit)
+                     (fn2-digest-rowp expected fn2-digests) (unsigned-byte-p 32 expected)
+                     (fn2-digest-rowp previous fn2-digests) (unsigned-byte-p 32 previous)
+                     (not (equal expected previous))
+                     (<= (* *fn2-digest-stride* (fn2-fc-rows fn2-fc)) expected)
+                     (<= (* *fn2-digest-stride* (fn2-fc-rows fn2-fc)) previous)
                      (fn2-digest-rowp hash fn2-digests) (fn2-digest-rowp geometry fn2-digests)
                      (<= (+ base *fn2-format-sealed-batch-num-fields*) (fn2-fields-rows fn2-fields))
                      (posp budget) (<= budget 4096)))
        (mv :state fn2-event-read fn2-journal-members fn2-fc fn2-fc-context fn2-b3 fn2-fields fn2-pool fn2-digests))
-      ; Reuse the actual recovery context constructor, with this reader's
-      ; exclusive stripe and original physical journal identity. Current first
-      ; checkpoint history/incarnation are the writer's genesis pair (1,1).
-      ; FRAME/SEAL kinds do not consume the anchor-only GEOMETRY digest.
+      ((mv namespace fn2-event-read fn2-fields)
+       (if (and sealframe (equal (fn2-event-read-journal-history 0 fn2-event-read) 0)
+                (equal (fn2-event-read-journal-incarnation 0 fn2-event-read) 0)
+                (equal (fn2-fc-phase row fn2-fc) *fn2-fc-phase-idle*))
+           (fn2-event-read-namespace fn2-event-read fn2-fields fn2-pool)
+         (mv (if (fn2-origin-physicalp (fn2-event-read-journal-history 0 fn2-event-read)
+                                     (fn2-event-read-journal-incarnation 0 fn2-event-read)) :ok :namespace)
+             fn2-event-read fn2-fields)))
+      ((unless (eq namespace :ok))
+       (mv namespace fn2-event-read fn2-journal-members fn2-fc fn2-fc-context fn2-b3 fn2-fields fn2-pool fn2-digests))
+      ; The header-derived namespace is a hint until the expected semantic seal
+      ; authenticates its matching body. Records become readable only afterward.
       (fn2-fc-context (fn2-rec-context row (fn2-event-read-extent 0 fn2-event-read)
         (if (or semantic sealframe) 2 1) (fn2-event-read-epoch 0 fn2-event-read)
-        (fn2-event-read-allocation 0 fn2-event-read) commit hash (+ rootbase (- commit 1)) geometry fn2-fc-context))
+        (fn2-event-read-allocation 0 fn2-event-read) commit hash previous geometry
+        (fn2-event-read-journal-history 0 fn2-event-read) (fn2-event-read-journal-incarnation 0 fn2-event-read) fn2-fc-context))
       ((mv code fn2-fc fn2-b3 fn2-fields fn2-pool fn2-digests)
        (fn2-format-run (if semantic :seal :frame) nil row slot gen
          (if semantic (fn2-event-read-body-off 0 fn2-event-read) 0)
@@ -57,7 +97,7 @@
        (b* ((first (fn2-event-read-first 0 fn2-event-read))
             (members (fn2-event-read-members 0 fn2-event-read))
             (field (+ base *fn2-format-sealed-batch-field-record-stream*))
-            (valid (and (fn2-digest-equal (fn2-digest-slot row *fn2-fc-result*) (+ rootbase commit) fn2-digests)
+            (valid (and (fn2-digest-equal (fn2-digest-slot row *fn2-fc-result*) expected fn2-digests)
                         (equal (fn2-fields-value (+ base *fn2-format-sealed-batch-field-event-first*) fn2-fields) first)
                         (equal (fn2-fields-value (+ base *fn2-format-sealed-batch-field-event-last*) fn2-fields) (+ first members -1))
                         (equal (fn2-fields-ref-len field fn2-fields) 32)))
@@ -86,23 +126,14 @@
        (phase (if (eq begun :ok) (if sealframe *fn2-event-read-phase-semantic-seal* *fn2-event-read-phase-members*)
                 *fn2-event-read-phase-uncertain*)))))
   (mv begun fn2-event-read fn2-journal-members fn2-fc fn2-fc-context fn2-b3 fn2-fields fn2-pool fn2-digests)))
-(fn2-event-read-preserves fn2-event-read-format-step
- (budget fn2-event-read fn2-csnapshot fn2-commit-root fn2-journal-members
-  fn2-fc fn2-fc-context fn2-b3 fn2-fields fn2-pool fn2-digests)
- :carriers ((fn2-event-read 1 :prefix "-READER") (fn2-journal-members 2 :prefix "-MEMBERS")
-            (fn2-fc 3 :prefix "-FORMAT") (fn2-fc-context 4 :prefix "-CONTEXT") (fn2-b3 5 :prefix "-HASHER")
-            (fn2-fields 6 :prefix "-FIELDS") (fn2-pool 7 :prefix "-POOL") (fn2-digests 8 :prefix "-DIGESTS")))
 
-; One call scans one canonical record or advances one existing Merkle step.
-; COMPLETE is reachable only after every physically verified member through
-; the real cut has been appended, including all records sharing each event.
-(defun fn2-event-read-member-step (fn2-event-read fn2-csnapshot fn2-journal-members fn2-mk fn2-b3 fn2-fields fn2-pool fn2-digests)
- (declare (xargs :stobjs (fn2-event-read fn2-csnapshot fn2-journal-members fn2-mk fn2-b3 fn2-fields fn2-pool fn2-digests)
+(defun fn2-event-read-member-core (fn2-event-read fn2-journal-members fn2-mk fn2-b3 fn2-fields fn2-pool fn2-digests)
+ (declare (xargs :stobjs (fn2-event-read fn2-journal-members fn2-mk fn2-b3 fn2-fields fn2-pool fn2-digests)
   :verify-guards nil
-  :guard (and (fn2-event-read-wfp fn2-event-read) (fn2-csnapshot-wfp fn2-csnapshot)
+  :guard (and (fn2-event-read-wfp fn2-event-read)
               (fn2-journal-members-wfp fn2-journal-members) (fn2-mk-wfp fn2-mk) (fn2-b3-wfp fn2-b3)
               (fn2-fields-wfp fn2-fields) (fn2-pool-wfp fn2-pool) (fn2-digests-wfp fn2-digests))))
- (b* (((unless (and (fn2-event-read-ownerp fn2-event-read fn2-csnapshot)
+ (b* (((unless (and (< 0 (fn2-event-read-rows fn2-event-read))
                      (equal (fn2-event-read-phase 0 fn2-event-read) *fn2-event-read-phase-members*)
                      (< 0 (fn2-journal-members-rows fn2-journal-members))))
        (mv :state fn2-event-read fn2-journal-members fn2-mk fn2-b3 fn2-fields fn2-digests))
@@ -127,11 +158,113 @@
                  (equal (fn2-journal-members-next-event 0 fn2-journal-members) next)
                  (equal (+ 1 (fn2-mk-size row fn2-mk)) next)
                  (or (not last) (equal (fn2-mk-size row fn2-mk) (fn2-event-read-cut-event 0 fn2-event-read)))))
-      (fn2-event-read (fn2-event-read-put 0 (next-event next)
+      (fn2-event-read (fn2-event-read-put 0
+        (next-event (if (unsigned-byte-p 60 next) next (fn2-event-read-next-event 0 fn2-event-read)))
         (phase (if good (if last *fn2-event-read-phase-complete* *fn2-event-read-phase-next*) *fn2-event-read-phase-uncertain*)))))
   (mv (if good (if last :complete :next) :invalid) fn2-event-read fn2-journal-members fn2-mk fn2-b3 fn2-fields fn2-digests)))
+
+; Live ownership/expected-digest derivation remains the actual held C cut
+; and installed seal directory. Cold callers use the SAME core below their own
+; exact candidate/map-generation/decoded-directory source gate.
+(defun fn2-event-read-format-step (budget fn2-event-read fn2-csnapshot fn2-commit-root
+                                  fn2-journal-members fn2-fc fn2-fc-context fn2-b3 fn2-fields fn2-pool fn2-digests)
+ (declare (xargs :stobjs (fn2-event-read fn2-csnapshot fn2-commit-root fn2-journal-members fn2-fc fn2-fc-context fn2-b3 fn2-fields fn2-pool fn2-digests)
+  :verify-guards nil :guard (and (fn2-event-read-wfp fn2-event-read) (fn2-csnapshot-wfp fn2-csnapshot) (fn2-commit-root-wfp fn2-commit-root)
+   (fn2-journal-members-wfp fn2-journal-members) (fn2-fc-wfp fn2-fc) (fn2-fc-context-wfp fn2-fc-context) (fn2-b3-wfp fn2-b3) (fn2-fields-wfp fn2-fields) (fn2-pool-wfp fn2-pool) (fn2-digests-wfp fn2-digests))))
+ (b* (((unless (fn2-event-read-ownerp fn2-event-read fn2-csnapshot))
+       (mv :snapshot fn2-event-read fn2-journal-members fn2-fc fn2-fc-context fn2-b3 fn2-fields fn2-pool fn2-digests))
+      (commit (fn2-event-read-commit 0 fn2-event-read))
+      (rootbase (* *fn2-digest-stride* (fn2-fc-rows fn2-fc)))
+      ((unless (and (posp commit) (< commit (fn2-commit-root-rows fn2-commit-root))))
+       (mv :state fn2-event-read fn2-journal-members fn2-fc fn2-fc-context fn2-b3 fn2-fields fn2-pool fn2-digests)))
+  (fn2-event-read-format-core budget (+ rootbase commit) (+ rootbase (- commit 1)) fn2-event-read fn2-journal-members fn2-fc fn2-fc-context fn2-b3 fn2-fields fn2-pool fn2-digests)))
+
+(defun fn2-event-read-member-step (fn2-event-read fn2-csnapshot fn2-journal-members fn2-mk fn2-b3 fn2-fields fn2-pool fn2-digests)
+ (declare (xargs :stobjs (fn2-event-read fn2-csnapshot fn2-journal-members fn2-mk fn2-b3 fn2-fields fn2-pool fn2-digests)
+  :verify-guards nil :guard (and (fn2-event-read-wfp fn2-event-read) (fn2-csnapshot-wfp fn2-csnapshot) (fn2-journal-members-wfp fn2-journal-members)
+   (fn2-mk-wfp fn2-mk) (fn2-b3-wfp fn2-b3) (fn2-fields-wfp fn2-fields) (fn2-pool-wfp fn2-pool) (fn2-digests-wfp fn2-digests))))
+ (if (not (fn2-event-read-ownerp fn2-event-read fn2-csnapshot))
+     (mv :state fn2-event-read fn2-journal-members fn2-mk fn2-b3 fn2-fields fn2-digests)
+   (fn2-event-read-member-core fn2-event-read fn2-journal-members fn2-mk fn2-b3 fn2-fields fn2-pool fn2-digests)))
+
+(fn2-event-read-preserves fn2-event-read-format-step
+ (budget fn2-event-read fn2-csnapshot fn2-commit-root fn2-journal-members
+  fn2-fc fn2-fc-context fn2-b3 fn2-fields fn2-pool fn2-digests)
+ :carriers ((fn2-event-read 1 :prefix "-READER") (fn2-journal-members 2 :prefix "-MEMBERS")
+            (fn2-fc 3 :prefix "-FORMAT") (fn2-fc-context 4 :prefix "-CONTEXT") (fn2-b3 5 :prefix "-HASHER")
+            (fn2-fields 6 :prefix "-FIELDS") (fn2-pool 7 :prefix "-POOL") (fn2-digests 8 :prefix "-DIGESTS")))
 (fn2-event-read-preserves fn2-event-read-member-step
  (fn2-event-read fn2-csnapshot fn2-journal-members fn2-mk fn2-b3 fn2-fields fn2-pool fn2-digests)
  :carriers ((fn2-event-read 1 :prefix "-READER") (fn2-journal-members 2 :prefix "-MEMBERS")
             (fn2-mk 3 :prefix "-TREE") (fn2-b3 4 :prefix "-HASHER")
             (fn2-fields 5 :prefix "-FIELDS") (fn2-digests 6 :prefix "-DIGESTS")))
+
+(fn2-event-read-preserves fn2-event-read-namespace
+ (fn2-event-read fn2-fields fn2-pool)
+ :hyps ((fn2-event-readp fn2-event-read) (fn2-event-read-wfp fn2-event-read) (fn2-fieldsp fn2-fields) (fn2-fields-wfp fn2-fields) (fn2-poolp fn2-pool) (fn2-pool-wfp fn2-pool))
+ :specs (("-EVENT-READ-DOMAIN-TYPE" fn2-event-readp 1)
+         ("-EVENT-READ-DOMAIN-WFP" fn2-event-read-wfp 1)
+         ("-EVENT-READ-DOMAIN-ROWS" fn2-event-read-rows 1 :frame fn2-event-read)
+         ("-FIELDS-DOMAIN-TYPE" fn2-fieldsp 2)
+         ("-FIELDS-DOMAIN-WFP" fn2-fields-wfp 2)
+         ("-FIELDS-DOMAIN-ROWS" fn2-fields-rows 2 :frame fn2-fields)))
+
+(fn2-event-read-preserves fn2-event-read-format-core
+ (budget expected previous fn2-event-read
+                                  fn2-journal-members fn2-fc fn2-fc-context fn2-b3 fn2-fields fn2-pool fn2-digests)
+ :hyps ((fn2-event-readp fn2-event-read) (fn2-event-read-wfp fn2-event-read) (fn2-journal-membersp fn2-journal-members) (fn2-journal-members-wfp fn2-journal-members) (fn2-fcp fn2-fc) (fn2-fc-wfp fn2-fc) (fn2-fc-contextp fn2-fc-context) (fn2-fc-context-wfp fn2-fc-context) (fn2-b3p fn2-b3) (fn2-b3-wfp fn2-b3) (fn2-fieldsp fn2-fields) (fn2-fields-wfp fn2-fields) (fn2-poolp fn2-pool) (fn2-pool-wfp fn2-pool) (fn2-digestsp fn2-digests) (fn2-digests-wfp fn2-digests))
+ :specs (("-EVENT-READ-DOMAIN-TYPE" fn2-event-readp 1)
+         ("-EVENT-READ-DOMAIN-WFP" fn2-event-read-wfp 1)
+         ("-EVENT-READ-DOMAIN-ROWS" fn2-event-read-rows 1 :frame fn2-event-read)
+         ("-JOURNAL-MEMBERS-DOMAIN-TYPE" fn2-journal-membersp 2)
+         ("-JOURNAL-MEMBERS-DOMAIN-WFP" fn2-journal-members-wfp 2)
+         ("-JOURNAL-MEMBERS-DOMAIN-ROWS" fn2-journal-members-rows 2 :frame fn2-journal-members)
+         ("-FC-DOMAIN-TYPE" fn2-fcp 3)
+         ("-FC-DOMAIN-WFP" fn2-fc-wfp 3)
+         ("-FC-DOMAIN-ROWS" fn2-fc-rows 3 :frame fn2-fc)
+         ("-FC-CONTEXT-DOMAIN-TYPE" fn2-fc-contextp 4)
+         ("-FC-CONTEXT-DOMAIN-WFP" fn2-fc-context-wfp 4)
+         ("-FC-CONTEXT-DOMAIN-ROWS" fn2-fc-context-rows 4 :frame fn2-fc-context)
+         ("-B3-DOMAIN-TYPE" fn2-b3p 5)
+         ("-B3-DOMAIN-WFP" fn2-b3-wfp 5)
+         ("-B3-DOMAIN-ROWS" fn2-b3-rows 5 :frame fn2-b3)
+         ("-FIELDS-DOMAIN-TYPE" fn2-fieldsp 6)
+         ("-FIELDS-DOMAIN-WFP" fn2-fields-wfp 6)
+         ("-FIELDS-DOMAIN-ROWS" fn2-fields-rows 6 :frame fn2-fields)
+         ("-POOL-DOMAIN-TYPE" fn2-poolp 7)
+         ("-POOL-DOMAIN-WFP" fn2-pool-wfp 7)
+         ("-POOL-DOMAIN-ROWS" fn2-pool-rows 7 :frame fn2-pool)
+         ("-DIGESTS-DOMAIN-TYPE" fn2-digestsp 8)
+         ("-DIGESTS-DOMAIN-WFP" fn2-digests-wfp 8)
+         ("-DIGESTS-DOMAIN-ROWS" fn2-digests-rows 8 :frame fn2-digests)))
+
+(fn2-event-read-preserves fn2-event-read-member-core
+ (fn2-event-read fn2-journal-members fn2-mk fn2-b3 fn2-fields fn2-pool fn2-digests)
+ :hyps ((fn2-event-readp fn2-event-read) (fn2-event-read-wfp fn2-event-read) (fn2-journal-membersp fn2-journal-members) (fn2-journal-members-wfp fn2-journal-members) (fn2-mkp fn2-mk) (fn2-mk-wfp fn2-mk) (fn2-b3p fn2-b3) (fn2-b3-wfp fn2-b3) (fn2-fieldsp fn2-fields) (fn2-fields-wfp fn2-fields) (fn2-poolp fn2-pool) (fn2-pool-wfp fn2-pool) (fn2-digestsp fn2-digests) (fn2-digests-wfp fn2-digests))
+ :specs (("-EVENT-READ-DOMAIN-TYPE" fn2-event-readp 1)
+         ("-EVENT-READ-DOMAIN-WFP" fn2-event-read-wfp 1)
+         ("-EVENT-READ-DOMAIN-ROWS" fn2-event-read-rows 1 :frame fn2-event-read)
+         ("-JOURNAL-MEMBERS-DOMAIN-TYPE" fn2-journal-membersp 2)
+         ("-JOURNAL-MEMBERS-DOMAIN-WFP" fn2-journal-members-wfp 2)
+         ("-JOURNAL-MEMBERS-DOMAIN-ROWS" fn2-journal-members-rows 2 :frame fn2-journal-members)
+         ("-MK-DOMAIN-TYPE" fn2-mkp 3)
+         ("-MK-DOMAIN-WFP" fn2-mk-wfp 3)
+         ("-MK-DOMAIN-ROWS" fn2-mk-rows 3 :frame fn2-mk)
+         ("-B3-DOMAIN-TYPE" fn2-b3p 4)
+         ("-B3-DOMAIN-WFP" fn2-b3-wfp 4)
+         ("-B3-DOMAIN-ROWS" fn2-b3-rows 4 :frame fn2-b3)
+         ("-FIELDS-DOMAIN-TYPE" fn2-fieldsp 5)
+         ("-FIELDS-DOMAIN-WFP" fn2-fields-wfp 5)
+         ("-FIELDS-DOMAIN-ROWS" fn2-fields-rows 5 :frame fn2-fields)
+         ("-DIGESTS-DOMAIN-TYPE" fn2-digestsp 6)
+         ("-DIGESTS-DOMAIN-WFP" fn2-digests-wfp 6)
+         ("-DIGESTS-DOMAIN-ROWS" fn2-digests-rows 6 :frame fn2-digests)))
+
+; Guard obligations for the shared member consumer, after its actual child
+; preservation facts. These do not assert the format/namespace guard closure.
+(verify-guards fn2-event-read-member-core
+ :hints (("Goal" :in-theory (e/d (fn2-mk-ready)
+  (fn2-event-member-hash-step fn2-journal-members-step fn2-mkp fn2-mk-wfp
+   fn2-event-readp fn2-event-read-wfp fn2-journal-membersp fn2-journal-members-wfp)))))
+(verify-guards fn2-event-read-member-step
+ :hints (("Goal" :in-theory (disable fn2-event-read-member-core fn2-event-read-ownerp))))

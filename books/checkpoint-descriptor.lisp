@@ -45,12 +45,15 @@
     (fn2-checkpoint-descriptor-roots (+ 1 role) c base scratch sgen okind oslot ogen fn2-checkpoint-refs fn2-checkpoint-bytes fn2-fields fn2-pool)))))
 
 (defun fn2-checkpoint-descriptor-pack-page (checkpoint c token extent epoch allocation base slot gen scratch sgen okind oslot ogen
-                                          fn2-csnapshot fn2-checkpoint-construction fn2-extents fn2-checkpoint-refs fn2-checkpoint-bytes fn2-fields fn2-pool)
- (declare (xargs :stobjs (fn2-csnapshot fn2-checkpoint-construction fn2-extents fn2-checkpoint-refs fn2-checkpoint-bytes fn2-fields fn2-pool)
+                                          fn2-csnapshot fn2-checkpoint-construction fn2-extents fn2-checkpoint-refs fn2-checkpoint-bytes fn2-fields fn2-checkpoint-build fn2-pool)
+ (declare (xargs :stobjs (fn2-csnapshot fn2-checkpoint-construction fn2-extents fn2-checkpoint-refs fn2-checkpoint-bytes fn2-fields fn2-checkpoint-build fn2-pool)
   :guard (and (fn2-csnapshot-wfp fn2-csnapshot) (fn2-checkpoint-construction-wfp fn2-checkpoint-construction) (fn2-extents-wfp fn2-extents)
               (fn2-checkpoint-refs-wfp fn2-checkpoint-refs) (fn2-checkpoint-bytes-wfp fn2-checkpoint-bytes)
-              (fn2-fields-wfp fn2-fields) (fn2-pool-wfp fn2-pool))))
- (b* (((unless (and (fn2-csnapshot-ownerp token okind oslot ogen fn2-csnapshot)
+              (fn2-fields-wfp fn2-fields) (fn2-pool-wfp fn2-pool) (fn2-checkpoint-build-wfp fn2-checkpoint-build))))
+ (b* (((unless (and (fn2-checkpoint-build-ownerp token okind oslot ogen fn2-checkpoint-build fn2-csnapshot)
+                     (equal c (fn2-checkpoint-build-candidate 0 fn2-checkpoint-build))
+                     (equal checkpoint (fn2-checkpoint-build-checkpoint 0 fn2-checkpoint-build))
+                     (fn2-csnapshot-ownerp token okind oslot ogen fn2-csnapshot)
                      (equal (fn2-csnapshot-phase 0 fn2-csnapshot) *fn2-csnapshot-phase-held*)
                      (equal (fn2-csnapshot-complete 0 fn2-csnapshot) 1)))
        (mv :snapshot fn2-fields fn2-pool))
@@ -83,7 +86,7 @@
        (mv :format fn2-fields fn2-pool))
       ((mv code fn2-fields fn2-pool)
        (fn2-checkpoint-page-pack-header token okind oslot ogen 0 0 extent epoch allocation
-        *page-kind-checkpoint-descriptor* 1 1 4096 payload base slot gen
+        *page-kind-checkpoint-descriptor* (fn2-checkpoint-build-history 0 fn2-checkpoint-build) (fn2-checkpoint-build-history-incarnation 0 fn2-checkpoint-build) 4096 payload base slot gen
         fn2-checkpoint-construction fn2-extents fn2-fields fn2-pool)))
   (mv code fn2-fields fn2-pool)))
 
@@ -116,8 +119,8 @@
                                                   fn2-checkpoint-refs fn2-checkpoint-bytes fn2-fields fn2-pool)))))
 
 (fn2-fields-preserves fn2-checkpoint-descriptor-pack-page
- (checkpoint c token extent epoch allocation base slot gen scratch sgen okind oslot ogen fn2-csnapshot fn2-checkpoint-construction fn2-extents fn2-checkpoint-refs fn2-checkpoint-bytes fn2-fields fn2-pool)
- :hyps ((fn2-csnapshotp fn2-csnapshot) (fn2-csnapshot-wfp fn2-csnapshot) (fn2-checkpoint-constructionp fn2-checkpoint-construction) (fn2-checkpoint-construction-wfp fn2-checkpoint-construction) (fn2-extentsp fn2-extents) (fn2-extents-wfp fn2-extents) (fn2-checkpoint-refsp fn2-checkpoint-refs) (fn2-checkpoint-refs-wfp fn2-checkpoint-refs) (fn2-checkpoint-bytesp fn2-checkpoint-bytes) (fn2-checkpoint-bytes-wfp fn2-checkpoint-bytes) (fn2-fieldsp fn2-fields) (fn2-fields-wfp fn2-fields) (fn2-poolp fn2-pool) (fn2-pool-wfp fn2-pool))
+ (checkpoint c token extent epoch allocation base slot gen scratch sgen okind oslot ogen fn2-csnapshot fn2-checkpoint-construction fn2-extents fn2-checkpoint-refs fn2-checkpoint-bytes fn2-fields fn2-checkpoint-build fn2-pool)
+ :hyps ((fn2-csnapshotp fn2-csnapshot) (fn2-csnapshot-wfp fn2-csnapshot) (fn2-checkpoint-constructionp fn2-checkpoint-construction) (fn2-checkpoint-construction-wfp fn2-checkpoint-construction) (fn2-extentsp fn2-extents) (fn2-extents-wfp fn2-extents) (fn2-checkpoint-refsp fn2-checkpoint-refs) (fn2-checkpoint-refs-wfp fn2-checkpoint-refs) (fn2-checkpoint-bytesp fn2-checkpoint-bytes) (fn2-checkpoint-bytes-wfp fn2-checkpoint-bytes) (fn2-fieldsp fn2-fields) (fn2-fields-wfp fn2-fields) (fn2-poolp fn2-pool) (fn2-pool-wfp fn2-pool) (fn2-checkpoint-buildp fn2-checkpoint-build) (fn2-checkpoint-build-wfp fn2-checkpoint-build))
  :specs (("-FIELDS-TYPE" fn2-fieldsp 1)
          ("-FIELDS-WFP" fn2-fields-wfp 1)
          ("-FIELDS-ROWS" fn2-fields-rows 1 :frame fn2-fields)

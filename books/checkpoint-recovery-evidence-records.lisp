@@ -28,13 +28,14 @@
  (left dst src fn2-checkpoint-bytes fn2-checkpoint-recovery-evidence) :position 0)
 
 (defun fn2-checkpoint-recovery-evidence-record (fn2-checkpoints fn2-checkpoint-refs fn2-checkpoint-bytes
-                                             fn2-checkpoint-recovery-evidence fn2-fields fn2-pool)
- (declare (xargs :stobjs (fn2-checkpoints fn2-checkpoint-refs fn2-checkpoint-bytes fn2-checkpoint-recovery-evidence fn2-fields fn2-pool)
+                                             fn2-checkpoint-recovery-evidence fn2-fields fn2-origin fn2-pool)
+ (declare (xargs :stobjs (fn2-checkpoints fn2-checkpoint-refs fn2-checkpoint-bytes fn2-checkpoint-recovery-evidence fn2-fields fn2-origin fn2-pool)
   :guard (and (fn2-checkpoints-wfp fn2-checkpoints) (fn2-checkpoint-refs-wfp fn2-checkpoint-refs)
               (fn2-checkpoint-bytes-wfp fn2-checkpoint-bytes) (fn2-checkpoint-recovery-evidence-wfp fn2-checkpoint-recovery-evidence)
-              (fn2-fields-wfp fn2-fields) (fn2-pool-wfp fn2-pool))))
+              (fn2-fields-wfp fn2-fields) (fn2-pool-wfp fn2-pool) (fn2-origin-wfp fn2-origin))))
  (b* ((base *fn2-rec-field-base*)
-      ((unless (and (<= 5 (fn2-checkpoint-recovery-evidence-rows fn2-checkpoint-recovery-evidence))
+      ((unless (and (fn2-origin-tuplep (fn2-origin-lineage fn2-origin) (fn2-origin-domain fn2-origin) (fn2-origin-incarnation fn2-origin))
+                     (<= 5 (fn2-checkpoint-recovery-evidence-rows fn2-checkpoint-recovery-evidence))
                      (= (fn2-cpe phase) *fn2-checkpoint-recovery-evidence-phase-walk*)
                      (< (fn2-cpe candidate) 4)
                      (fn2-checkpoint-slotp (fn2-cpe candidate) fn2-checkpoints fn2-checkpoint-refs fn2-checkpoint-bytes)
@@ -47,6 +48,7 @@
       (c (fn2-cpe candidate)) (r (* 6 c)) (off (fn2-cpe cursor)) (end (fn2-cpe end))
       (slot (fn2-cpe record-slot)) (gen (fn2-cpe record-gen))
       (okind (fn2-cpe owner-kind)) (oslot (fn2-cpe owner-slot)) (ogen (fn2-cpe owner-gen))
+      ; Semantic envelope names are independent of the physical anchor/page pair.
       ; Capture the shared header envelope before the body decoder reuses the
       ; field stripe. Padding still goes through the same canonical decoder.
       ((mv vcode version) (if (< off end)
@@ -58,8 +60,9 @@
       (event (if (= version 0) 0 (fn2-cpe-f *fn2-format-record-header-field-event*)))
       ((unless (or (= version 0)
         (and (= (fn2-cpe-f *fn2-format-record-header-field-schema-version*) 1)
-             (= (fn2-cpe-f *fn2-format-record-header-field-domain*) *fn2-checkpoint-served-storage-domain*)
-             (= (fn2-cpe-f *fn2-format-record-header-field-incarnation*) (fn2-checkpoints-incarnation c fn2-checkpoints))
+             (= (fn2-cpe-f *fn2-format-record-header-field-lineage*) (fn2-origin-lineage fn2-origin))
+             (= (fn2-cpe-f *fn2-format-record-header-field-domain*) (fn2-origin-domain fn2-origin))
+             (= (fn2-cpe-f *fn2-format-record-header-field-incarnation*) (fn2-origin-incarnation fn2-origin))
              (= (fn2-cpe-f *fn2-format-record-header-field-occurrence*) event)
              (<= (fn2-cpe first) event) (<= event (fn2-cpe last))
              (if (= (fn2-cpe previous-event) 0) (= event (fn2-cpe first))
@@ -114,5 +117,6 @@
        (matches (if match 1 (fn2-cpe matches))) (event (if match event (fn2-cpe event))))))
   (mv :more fn2-checkpoint-recovery-evidence fn2-fields)))
 (fn2-checkpoint-recovery-evidence-preserves fn2-checkpoint-recovery-evidence-record
- (fn2-checkpoints fn2-checkpoint-refs fn2-checkpoint-bytes fn2-checkpoint-recovery-evidence fn2-fields fn2-pool)
- :carriers ((fn2-checkpoint-recovery-evidence 1 :prefix "-EVIDENCE") (fn2-fields 2 :prefix "-FIELDS")))
+ (fn2-checkpoints fn2-checkpoint-refs fn2-checkpoint-bytes fn2-checkpoint-recovery-evidence fn2-fields fn2-origin fn2-pool)
+ :carriers ((fn2-checkpoint-recovery-evidence 1 :prefix "-EVIDENCE") (fn2-fields 2 :prefix "-FIELDS"))
+ :hyps ((fn2-checkpoint-recovery-evidencep fn2-checkpoint-recovery-evidence) (fn2-checkpoint-recovery-evidence-wfp fn2-checkpoint-recovery-evidence) (fn2-fieldsp fn2-fields) (fn2-fields-wfp fn2-fields) (fn2-originp fn2-origin) (fn2-origin-wfp fn2-origin)))

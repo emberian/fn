@@ -14,6 +14,8 @@
       ((when (equal (fn2-run-loads-phase c fn2-run-loads) *fn2-run-load-phase-idle*))
        (mv (if (equal (fn2-checkpoint-summary-leases-live c fn2-checkpoint-summary-leases) 0) :ok :source)
         fn2-run-loads fn2-run-cursors fn2-checkpoint-summary fn2-checkpoint-summary-leases fn2-pool))
+      ((unless (equal (fn2-run-loads-lease-mode c fn2-run-loads) *fn2-run-load-lease-mode-owned*))
+       (mv :borrowed fn2-run-loads fn2-run-cursors fn2-checkpoint-summary fn2-checkpoint-summary-leases fn2-pool))
       ((unless (and (fn2-run-load-ownerp c kind owner generation fn2-run-loads)
                     (equal (fn2-run-loads-pending c fn2-run-loads) 0)))
        (mv :pending fn2-run-loads fn2-run-cursors fn2-checkpoint-summary fn2-checkpoint-summary-leases fn2-pool))
@@ -44,3 +46,33 @@
  (c kind owner generation fn2-run-loads fn2-run-cursors fn2-checkpoint-summary fn2-checkpoint-summary-leases fn2-pool)
  (fn2-run-loads fn2-run-cursors fn2-checkpoint-summary fn2-checkpoint-summary-leases fn2-pool)
  ((fn2-run-loads 1) (fn2-run-cursors 2) (fn2-checkpoint-summary 3) (fn2-checkpoint-summary-leases 4) (fn2-pool 5)))
+
+; Resolved C operations may retain the private bytes through stage retries,
+; but must drop old catalog obligations before waiting for a base writer.
+; The actual caller proves its resolve/version boundary; this leaf grants
+; no permission to stage stale RES fields and never releases pool windows.
+(defun fn2-run-load-park-source (c kind owner generation fn2-run-loads fn2-run-cursors
+ fn2-checkpoint-summary fn2-checkpoint-summary-leases fn2-pool)
+ (declare (xargs :stobjs (fn2-run-loads fn2-run-cursors fn2-checkpoint-summary fn2-checkpoint-summary-leases fn2-pool)
+ :guard (and (fn2-run-loads-wfp fn2-run-loads) (fn2-run-cursors-wfp fn2-run-cursors)
+  (fn2-checkpoint-summary-wfp fn2-checkpoint-summary) (fn2-checkpoint-summary-leases-wfp fn2-checkpoint-summary-leases) (fn2-pool-wfp fn2-pool))))
+ (b* (((unless (and (fn2-run-load-ownerp c kind owner generation fn2-run-loads)
+                    (< c (fn2-run-cursors-rows fn2-run-cursors)) (< c (fn2-checkpoint-summary-leases-rows fn2-checkpoint-summary-leases))
+                    (equal (fn2-run-loads-lease-mode c fn2-run-loads) *fn2-run-load-lease-mode-owned*)
+                    (member (fn2-run-loads-phase c fn2-run-loads) (list *fn2-run-load-phase-reserved* *fn2-run-load-phase-ready*))
+                    (equal (fn2-run-loads-windows c fn2-run-loads) 2) (equal (fn2-run-loads-pending c fn2-run-loads) 0)
+                    (eq (fn2-pool-workspace-code (fn2-run-loads-page c fn2-run-loads) (fn2-run-loads-page-gen c fn2-run-loads) kind owner generation fn2-pool) :ok)
+                    (eq (fn2-pool-workspace-code (fn2-run-loads-scratch c fn2-run-loads) (fn2-run-loads-scratch-gen c fn2-run-loads) kind owner generation fn2-pool) :ok)))
+       (mv :source fn2-run-loads fn2-run-cursors fn2-checkpoint-summary fn2-checkpoint-summary-leases))
+      ((mv code fn2-checkpoint-summary fn2-checkpoint-summary-leases)
+       (if (equal (fn2-checkpoint-summary-leases-live c fn2-checkpoint-summary-leases) 1)
+        (fn2-checkpoint-summary-release c kind owner generation fn2-checkpoint-summary fn2-checkpoint-summary-leases)
+        (mv :ok fn2-checkpoint-summary fn2-checkpoint-summary-leases)))
+      ((unless (eq code :ok)) (mv code fn2-run-loads fn2-run-cursors fn2-checkpoint-summary fn2-checkpoint-summary-leases))
+      (fn2-run-cursors (fn2-run-cursors-put c (phase *fn2-run-cursor-phase-idle*) (physical 0)))
+      (fn2-run-loads (fn2-run-loads-put c (phase *fn2-run-load-phase-reserved*) (source *fn2-none*) (tag 0))))
+  (mv :ok fn2-run-loads fn2-run-cursors fn2-checkpoint-summary fn2-checkpoint-summary-leases)))
+(fn2-run-load-frames fn2-run-load-park-source
+ (c kind owner generation fn2-run-loads fn2-run-cursors fn2-checkpoint-summary fn2-checkpoint-summary-leases fn2-pool)
+ (fn2-run-loads fn2-run-cursors fn2-checkpoint-summary fn2-checkpoint-summary-leases fn2-pool)
+ ((fn2-run-loads 1) (fn2-run-cursors 2) (fn2-checkpoint-summary 3) (fn2-checkpoint-summary-leases 4)))

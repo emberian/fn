@@ -19,6 +19,13 @@ class ReachSourceTests(unittest.TestCase):
         src = '; :guard\n(defun other (fn2-x) (declare (xargs :stobjs fn2-x)) fn2-x)\n(defun fn2-checkpoint-restore-reach-x (fn2-x) (declare (xargs :stobjs fn2-x :guard (fn2-x-wfp fn2-x))) fn2-x)'
         self.assertEqual(rewrite(src), (src, 0))
 
+    def test_event_source_class_keeps_readonly_domain(self):
+        src = '(defun fn2-checkpoint-restore-events-step (fn2-source fn2-work) (declare (xargs :stobjs (fn2-source fn2-work) :verify-guards nil)) fn2-work)'
+        out, count = rewrite(src)
+        self.assertEqual(count, 1)
+        self.assertIn('(fn2-source-wfp fn2-source)', out)
+        self.assertEqual(rewrite(out), (out, 0))
+
     def test_alias_refused(self):
         with self.assertRaises(ValueError):
             rewrite('(defun fn2-checkpoint-restore-reach-x (table) (declare (xargs :stobjs table)) table)')

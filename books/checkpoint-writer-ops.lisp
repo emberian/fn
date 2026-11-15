@@ -53,6 +53,9 @@
         (fn2-boot-config-extents fn2-boot-config) (fn2-boot-config-count fn2-boot-config)
         kind owner generation slot0 gen0 slot1 gen1 batch-hash previous geometry
         fn2-checkpoints fn2-checkpoint-publication fn2-checkpoint-bytes fn2-digests))
+      ((unless (eq code :ok)) (mv code fn2-checkpoint-publication fn2-checkpoint-bytes fn2-digests))
+      ((mv code fn2-checkpoint-publication)
+       (fn2-checkpoint-bank-evidence-capture c fn2-checkpoints fn2-commit-root fn2-fc fn2-checkpoint-bytes fn2-digests fn2-checkpoint-publication))
       (fn2-checkpoint-publication (if (eq code :ok)
        (fn2-checkpoint-publication-put 0 (scratch scratch) (scratch-gen sgen)) fn2-checkpoint-publication)))
   (mv code fn2-checkpoint-publication fn2-checkpoint-bytes fn2-digests)))
