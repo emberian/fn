@@ -119,7 +119,7 @@
 (defun fn2-rrd-packet (fuel id fault store fn2-core)
  (declare (xargs :stobjs fn2-core :verify-guards nil))
  (b* ((ogen (fn2-machine-generation id fn2-core))
-      ((unless (and (fn2-recovery-idp id fn2-core)
+      ((unless (and (fn2-core-wfp fn2-core) (fn2-recovery-idp id fn2-core)
              (= (fn2-machine-phase id fn2-core) *fn2-recovery-machine-state-verify*)
              (= (fn2-machine-rc-stage id fn2-core) 11)
              (fn2-rp-release-current-p id ogen fn2-core)

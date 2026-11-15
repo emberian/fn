@@ -39,6 +39,7 @@ class DispatchPacket(unittest.TestCase):
 
     def test_actual_transport_and_whole_positive_result(self):
         for call in ("(fn2-turn fn2-core)", "(fn2-cw-adapter-one 0 nil store fn2-core)",
+                     "(fn2-core-wfp fn2-core)",
                      "(fn2-rp-current-unit-auth-p id ogen fn2-core)",
                      "(fn2-recovery-selected-current-p id fn2-core)"):
             self.assertIn(call, self.source)
