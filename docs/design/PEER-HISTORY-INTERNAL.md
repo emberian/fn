@@ -47,6 +47,9 @@ C resolve/stage/bind/publication, including duplicate and conflicting union
 payloads; this is not a durability or crash test.
 
 Current status is source-only. The shared member verifier and the new member
-consumer still have unverified guards; a compiled guarded serving boundary
-requires that exact leaf-to-wrapper closure to be admitted and exercised.
+consumer now carry explicit pending guard-verification events; a compiled guarded serving boundary
+requires those exact leaf-to-wrapper obligations to be admitted and exercised.
+A typed-domain error-path control also checks that an overflowing event sum
+keeps the prior u60 continuation and marks uncertainty; this malformed reader
+is not claimed reachable from the held-source opener.
 No network or complete-catchup claim follows from these source controls.

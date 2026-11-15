@@ -115,6 +115,11 @@
         (fn2-poolp fn2-pool) (fn2-pool-wfp fn2-pool)
         (fn2-digestsp fn2-digests) (fn2-digests-wfp fn2-digests)))
 
+(verify-guards fn2-peer-history-member
+ :hints (("Goal" :in-theory (disable fn2-event-read-member-step fn2-event-read-ownerp
+  fn2-pool-copy-range fn2-event-readp fn2-event-read-wfp fn2-journal-membersp
+  fn2-journal-members-wfp fn2-mkp fn2-mk-wfp fn2-poolp fn2-pool-wfp))))
+
 ; Materialized beside the existing C core operations. These functions are
 ; internal consumers of C's held snapshot; no protocol handler calls them.
 (defmacro fn2-peer-history-core-events ()

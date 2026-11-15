@@ -158,7 +158,8 @@
                  (equal (fn2-journal-members-next-event 0 fn2-journal-members) next)
                  (equal (+ 1 (fn2-mk-size row fn2-mk)) next)
                  (or (not last) (equal (fn2-mk-size row fn2-mk) (fn2-event-read-cut-event 0 fn2-event-read)))))
-      (fn2-event-read (fn2-event-read-put 0 (next-event next)
+      (fn2-event-read (fn2-event-read-put 0
+        (next-event (if (unsigned-byte-p 60 next) next (fn2-event-read-next-event 0 fn2-event-read)))
         (phase (if good (if last *fn2-event-read-phase-complete* *fn2-event-read-phase-next*) *fn2-event-read-phase-uncertain*)))))
   (mv (if good (if last :complete :next) :invalid) fn2-event-read fn2-journal-members fn2-mk fn2-b3 fn2-fields fn2-digests)))
 
@@ -258,3 +259,12 @@
          ("-DIGESTS-DOMAIN-TYPE" fn2-digestsp 6)
          ("-DIGESTS-DOMAIN-WFP" fn2-digests-wfp 6)
          ("-DIGESTS-DOMAIN-ROWS" fn2-digests-rows 6 :frame fn2-digests)))
+
+; Guard obligations for the shared member consumer, after its actual child
+; preservation facts. These do not assert the format/namespace guard closure.
+(verify-guards fn2-event-read-member-core
+ :hints (("Goal" :in-theory (e/d (fn2-mk-ready)
+  (fn2-event-member-hash-step fn2-journal-members-step fn2-mkp fn2-mk-wfp
+   fn2-event-readp fn2-event-read-wfp fn2-journal-membersp fn2-journal-members-wfp)))))
+(verify-guards fn2-event-read-member-step
+ :hints (("Goal" :in-theory (disable fn2-event-read-member-core fn2-event-read-ownerp))))

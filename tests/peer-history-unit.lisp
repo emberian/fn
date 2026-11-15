@@ -196,3 +196,31 @@
        (mv answer fn2-core fn2-sim))) (mv answer fn2-core))) answer)))
 (assert-event (fn2-phu-test nil))
 (assert-event (fn2-phu-test t))
+
+; Typed-domain removal control, not a reachable held-journal claim: a malformed
+; reader can have individually legal fields whose next-event sum overflows.
+; Error handling must preserve the u60 carrier instead of storing that sum.
+(defun fn2-phu-invalid-next ()
+ (declare (xargs :verify-guards nil))
+ (with-local-stobj fn2-core
+  (mv-let (answer fn2-core)
+   (let ((fn2-core (fn2-core-init *fn2-csu-profile* fn2-core)))
+    (stobj-let ((fn2-event-read (fn2-core-event-read fn2-core))
+                (fn2-journal-members (fn2-core-journal-members fn2-core))
+                (fn2-mk (fn2-core-mk fn2-core)) (fn2-b3 (fn2-core-b3 fn2-core))
+                (fn2-fields (fn2-core-fields fn2-core)) (fn2-pool (fn2-core-pool fn2-core))
+                (fn2-digests (fn2-core-digests fn2-core)))
+     (answer fn2-event-read fn2-journal-members fn2-mk fn2-b3 fn2-fields fn2-digests)
+     (b* ((fn2-event-read (fn2-event-read-put 0
+            (phase *fn2-event-read-phase-members*) (first 1152921504606846975)
+            (members 1) (next-event 1)))
+          (before (and (fn2-event-readp fn2-event-read) (fn2-event-read-wfp fn2-event-read)))
+          ((mv code fn2-event-read fn2-journal-members fn2-mk fn2-b3 fn2-fields fn2-digests)
+           (fn2-event-read-member-core fn2-event-read fn2-journal-members fn2-mk fn2-b3 fn2-fields fn2-pool fn2-digests)))
+      (mv (and before (eq code :invalid)
+               (fn2-event-readp fn2-event-read) (fn2-event-read-wfp fn2-event-read)
+               (equal (fn2-event-read-phase 0 fn2-event-read) *fn2-event-read-phase-uncertain*)
+               (equal (fn2-event-read-next-event 0 fn2-event-read) 1))
+          fn2-event-read fn2-journal-members fn2-mk fn2-b3 fn2-fields fn2-digests))
+     (mv answer fn2-core))) answer)))
+(assert-event (fn2-phu-invalid-next))
