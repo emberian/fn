@@ -1,6 +1,6 @@
 {
   "root": "cadd5bb3b6751fcc96cbe41aea199029de7b0838",
-  "application_source": "157965aef17c6322fe2eee5ae7adc5bc9b41b58a",
+  "application_source": "51770a8bb82257da5363786f41e99ea4a2967fa8",
   "domain_fixture_source": "d6fed39d3",
   "files": [
     {
@@ -137,8 +137,8 @@
     },
     {
       "path": "books/cns-source-raw.lisp",
-      "source": "157965aef17c6322fe2eee5ae7adc5bc9b41b58a",
-      "sha256": "5d954b663273321a40726259325675969f3764fed7753f4c285498a75c227ad6"
+      "source": "51770a8bb82257da5363786f41e99ea4a2967fa8",
+      "sha256": "c9d1c7c8b33890ddf498e875286acb435dccfe07a845f76e92a5f9f7e75fb7a2"
     },
     {
       "path": "books/cns-source-retention.lisp",
@@ -586,8 +586,8 @@
     },
     {
       "path": "tests/test_cns_enum_noop.py",
-      "source": "157965aef17c6322fe2eee5ae7adc5bc9b41b58a",
-      "sha256": "f2cdf373b60b450bd4bdf93470e4a37c0b87e28b50fe39f2c84dfd66aee20a64"
+      "source": "51770a8bb82257da5363786f41e99ea4a2967fa8",
+      "sha256": "e3052ec548b4eafab0ce0a0ad21908db910dd8192b1c22460db0c69d67f18d64"
     },
     {
       "path": "tests/test_cns_phase_source.py",
@@ -639,8 +639,8 @@
     },
     {
       "path": "tests/test_source_raw_call_hints.py",
-      "source": "157965aef17c6322fe2eee5ae7adc5bc9b41b58a",
-      "sha256": "6da8c24eaa0ac4dfe7bbfa1e0a1d26df8d81808d8d639644f75c216217c9f904"
+      "source": "51770a8bb82257da5363786f41e99ea4a2967fa8",
+      "sha256": "4a2e89860c98c0390ca0681a42b53a4b58d3baafa016f1262d79b39d007eaf6e"
     },
     {
       "path": "tests/test_source_retention_call_hints.py",
@@ -908,6 +908,16 @@
       "path": "docs/design/receipts/checkpoint-reader-current-thirty-four-record.json",
       "source": "5a3c9089341e196e51b80725b97225110f569c05",
       "sha256": "b282ffc37a862b49b9041fa65945fdbc4999ef54a9b3fb478fee901a4f8527ac"
+    },
+    {
+      "path": "tests/test_cns_next_observation_frames.py",
+      "source": "51770a8bb82257da5363786f41e99ea4a2967fa8",
+      "sha256": "00bb072ac02b0a15905942dfcfa7f1f128ed2c3c6b366309ee482ae3f6f083c3"
+    },
+    {
+      "path": "tools/cns_next_observation_frames.py",
+      "source": "51770a8bb82257da5363786f41e99ea4a2967fa8",
+      "sha256": "2f8e93be9e3487e222d156cf60279395834fc4bcf734679cbeded56dd9f216a4"
     }
   ],
   "preserve_current_root_exact": [
@@ -1021,7 +1031,9 @@
       "new_ACL2_run": "NONE"
     },
     "observation_frame_join_controls": 10,
-    "enum_fixture_unchanged_after_observation_join": true
+    "enum_fixture_unchanged_after_observation_join": true,
+    "NEXT_observation_frame_controls": 12,
+    "enum_fixture_unchanged_after_NEXT_frames": true
   },
   "qualification": {
     "prior135": "/tmp/served-d55-qualified135-receipt.json; all135 source/key payloads audited; RAW excluded",
@@ -1051,6 +1063,23 @@
       "record_claim": "NONE; current137 not certified",
       "raw_log": "/tmp/served-157-first-refusal-raw.txt",
       "resource_outcome": "Owner reports all handles/scope gone and2Gi released"
+    },
+    "RAW517": {
+      "status": "whole RAW UNPROVED",
+      "NEXT_guard": {
+        "outcome": "PASS",
+        "seconds": 2.24,
+        "steps": 71427
+      },
+      "requested_pair_lemmas": {
+        "outcome": "all14 PASS"
+      },
+      "original_ISSUE_frame_TYPE": {
+        "outcome": "first refusal at original20-second cap",
+        "seconds": 20,
+        "steps": 90413
+      },
+      "record_claim": "NONE; prior135 and root reader34 stay exact separately"
     }
   },
   "enum_fragment_evidence": {
@@ -1094,5 +1123,6 @@
       "FETCH_and_BT_key_change": "NONE; reader remains detached; FETCH243+BT2 unchanged245",
       "BOOT_consumer": "Not connected by this source join; root metadata/reader owners supply actual guarded BOOT consumer separately."
     }
-  }
+  },
+  "pending_source_join": "95354027c optional supplied-p frame hints API in source-state; root review/source plan required, not yet joined; no resident redefinition"
 }
