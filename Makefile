@@ -75,6 +75,9 @@ ACL2_BOOKS = \
   tests/release-allocation-harvest-unit \
   tests/release-allocation-staging-unit \
   tests/release-evidence-unit \
+  tests/seal-release-row-held-unit \
+  tests/seal-draining-sources-unit \
+  tests/seal-draining-pinned-read-unit \
   books/borrow-accounting \
   books/borrow-conservation \
   books/borrow-faces \

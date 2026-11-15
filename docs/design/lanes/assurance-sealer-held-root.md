@@ -127,3 +127,15 @@ Incoming cold/full integration must explicitly refuse DRAINING in preserved
 Do not let it fall through as private. Its exact owned cleanup is an alternative
 only behind actual authority; this focused current-root donor adds neither that
 adopter nor a broader phase bypass. Parent owns this cold-composition change.
+
+Cold destination composition (b7f18ce94): the same publication/cleanup changes
+retain the existing boot-dependent `:busy` park and move the existing physical
+installed-root refusal into `fn2-seal-release-row` before any cache access. The
+ROOT099 exact projection remains a separate fixture; its byte comparison does
+not describe the cold carrier, which has additional physical-source fields.
+DRAINING and nonempty fixture source controls pass (12); the cold full snapshot
+projection needs the schema-aware transformation update. No ACL2 result is claimed.
+The cold destination currently lacks `checkpoint-live-adoption.lisp`; when that
+producer is composed, its retire-overlays transition must explicitly retain and
+refuse DRAINING before its private-overlay skip. HELD quiescence alone is not a
+substitute for that consumer boundary.
