@@ -1,0 +1,13 @@
+{
+  "original_commit": "448c13cfe",
+  "original_book": "books/checkpoint-working-reserve.lisp",
+  "raw_form_sha256": {
+    "*fn2-checkpoint-source-page-window*": "a98611d365a8f6d9d2611a8e5524b5d4ec8513eaf03b26d9594b3ec38b275ec9",
+    "*fn2-checkpoint-source-read-window*": "14405dc8b8676b920e429f55cdfd06a0c081950357c354a629767559d786b425",
+    "*fn2-checkpoint-window-count*": "8feb6c5051c96c454b541716b5c38461255fa37e8375a6fe9f1f653b06bd0f7d",
+    "*fn2-checkpoint-working-window-count*": "d04ecf8030002fbf8ae1b72a29aadb817955a9d5e5557632645b2d7c2bf78853",
+    "fn2-checkpoint-window-length": "600acd1bfea33a4d3ff57e090fd79224a7084060a2bd2f172311a6c48d229d4d",
+    "fn2-checkpoint-window-class-demand": "1e29cd2340d159ac24ba280bfe05a3177a79eafa83ea43ff3f89092419630f11",
+    "fn2-checkpoint-admission-roomp": "421fa6adbbdc464050d4a8fa6220ce55b7caafd4640a87240c4ac45441cdccf7"
+  }
+}
