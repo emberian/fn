@@ -147,6 +147,19 @@ def aligned(source):
  :hints (("Goal" :use ((:instance fn2-rec-fetch-remaining-split))
                  :in-theory (disable fn2-rec-fetch-bytes)))))
 '''
+ # Match the arithmetic normal form used by the final old-fetch induction.
+ for i,label in [(0,'code'),(3,'digests')]:
+  result+='''(local (defthm fn2-rec-fetch-remaining-normal-'''+label+'''
+ (implies '''+guard+'''
+  (equal (mv-nth '''+str(i)+''' (fn2-rec-fetch-bytes (+ 32 (* -4 k)) (* 4 k) 0 dst slot gen off okind oslot ogen fn2-pool fn2-digests))
+         (mv-nth '''+str(i)+'''
+          (mv-let (code next acc fn2-digests) '''+call+'''
+           (if (eq code :more)
+            (fn2-rec-fetch-bytes (- 28 (* 4 k)) next acc dst slot gen off okind oslot ogen fn2-pool fn2-digests)
+            (mv code next acc fn2-digests))))))
+ :hints (("Goal" :use ((:instance fn2-rec-fetch-remaining-'''+label+'''))
+                 :in-theory (disable fn2-rec-fetch-bytes fn2-rec-fetch-remaining-code fn2-rec-fetch-remaining-digests)))))
+'''
  result+='''(local (defthm fn2-rec-fetch-bytes-done-code
  (equal (mv-nth 0 (fn2-rec-fetch-bytes left 32 acc dst slot gen off okind oslot ogen fn2-pool fn2-digests)) :ok)
  :hints (("Goal" :in-theory (enable fn2-rec-fetch-bytes)))))

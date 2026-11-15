@@ -309,6 +309,30 @@
             (mv code next acc fn2-digests))))))
  :hints (("Goal" :use ((:instance fn2-rec-fetch-remaining-split))
                  :in-theory (disable fn2-rec-fetch-bytes)))))
+(local (defthm fn2-rec-fetch-remaining-normal-code
+ (implies (and (fn2-poolp fn2-pool) (fn2-pool-wfp fn2-pool)
+               (fn2-digestsp fn2-digests) (fn2-digest-rowp dst fn2-digests)
+               (natp k) (< k 8) (natp off))
+  (equal (mv-nth 0 (fn2-rec-fetch-bytes (+ 32 (* -4 k)) (* 4 k) 0 dst slot gen off okind oslot ogen fn2-pool fn2-digests))
+         (mv-nth 0
+          (mv-let (code next acc fn2-digests) (fn2-rec-fetch-bytes 4 (* 4 k) 0 dst slot gen off okind oslot ogen fn2-pool fn2-digests)
+           (if (eq code :more)
+            (fn2-rec-fetch-bytes (- 28 (* 4 k)) next acc dst slot gen off okind oslot ogen fn2-pool fn2-digests)
+            (mv code next acc fn2-digests))))))
+ :hints (("Goal" :use ((:instance fn2-rec-fetch-remaining-code))
+                 :in-theory (disable fn2-rec-fetch-bytes fn2-rec-fetch-remaining-code fn2-rec-fetch-remaining-digests)))))
+(local (defthm fn2-rec-fetch-remaining-normal-digests
+ (implies (and (fn2-poolp fn2-pool) (fn2-pool-wfp fn2-pool)
+               (fn2-digestsp fn2-digests) (fn2-digest-rowp dst fn2-digests)
+               (natp k) (< k 8) (natp off))
+  (equal (mv-nth 3 (fn2-rec-fetch-bytes (+ 32 (* -4 k)) (* 4 k) 0 dst slot gen off okind oslot ogen fn2-pool fn2-digests))
+         (mv-nth 3
+          (mv-let (code next acc fn2-digests) (fn2-rec-fetch-bytes 4 (* 4 k) 0 dst slot gen off okind oslot ogen fn2-pool fn2-digests)
+           (if (eq code :more)
+            (fn2-rec-fetch-bytes (- 28 (* 4 k)) next acc dst slot gen off okind oslot ogen fn2-pool fn2-digests)
+            (mv code next acc fn2-digests))))))
+ :hints (("Goal" :use ((:instance fn2-rec-fetch-remaining-digests))
+                 :in-theory (disable fn2-rec-fetch-bytes fn2-rec-fetch-remaining-code fn2-rec-fetch-remaining-digests)))))
 (local (defthm fn2-rec-fetch-bytes-done-code
  (equal (mv-nth 0 (fn2-rec-fetch-bytes left 32 acc dst slot gen off okind oslot ogen fn2-pool fn2-digests)) :ok)
  :hints (("Goal" :in-theory (enable fn2-rec-fetch-bytes)))))
