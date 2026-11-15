@@ -45,12 +45,19 @@ class Source(unittest.TestCase):
         for mode in ['nil',':incomplete',':owner',':interleave',':hold',':seal']:
             self.assertIn('(assert-event (fn2-dcu-run '+mode+'))',fixture)
     def test_cold_constructor_remains_distinct(self):
-        n=definition((ROOT/'books/checkpoint-directory-cold.lisp').read_text(),'fn2-directory-cold-install')
+        source=(ROOT/'books/checkpoint-directory-cold.lisp').read_text()
+        n=definition(source,'fn2-directory-cold-source-p')
         require(n,'(fn2-checkpoint-summary-authority-cold-source-p ?*args)')
         require(n,'(fn2-checkpoint-summary-authority-row-complete-p 0 ?*args)')
         require(n,'(= (fn2-alloc-freeze-phase fn2-extents) 4)')
-        require(n,'(fn2-directory-cold-copy 0 seal ?*args)')
-        require(n,'(fn2-commit-root-put 0 (base-batch cut) ?*args)')
+        install=definition(source,'fn2-directory-cold-install')
+        require(install,'(fn2-directory-cold-source-p ?*args)')
+        require(install,'(fn2-directory-cold-copy 0 seal ?*args)')
+        require(install,'(fn2-commit-root-put 0 (base-batch cut) ?*args)')
+        getter=definition(source,'fn2-directory-cold-base')
+        require(getter,'(fn2-directory-cold-source-p ?*args)')
+        require(getter,'(mv :selected ?*args (fn2-alloc-current-epoch fn2-extents))')
+        require(getter,'(= (fn2-alloc-freeze-phase fn2-extents) 0)')
     def test_runtime_stays_inactive_until_composition(self):
         s=(ROOT/'books/checkpoint-master-state.lisp').read_text()
         self.assertIn('(defconst *fn2-checkpoint-activation-qualified* nil)',s)
