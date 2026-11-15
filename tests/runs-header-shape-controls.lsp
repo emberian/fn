@@ -29,8 +29,11 @@
 (assert (equal (mapcar #'strip-proof-hints *old*)
                (mapcar #'strip-proof-hints *new*)))
 (let ((changed (loop for a in *old* for b in *new* unless (equal a b) collect b)))
- (assert (= (length changed) 1))
- (let* ((fact (car changed)) (hint (car (getf (cdddr fact) :hints)))
+ (assert (= (length changed) 3))
+ (assert (null (set-exclusive-or
+  (mapcar #'cadr changed)
+  '(fn2-run-step-header-shape fn2-run-step-child-shape fn2-run-step-up-shape))))
+ (let* ((fact (find 'fn2-run-step-header-shape changed :key #'cadr)) (hint (car (getf (cdddr fact) :hints)))
         (theory (getf (cdr hint) :in-theory)))
   (assert (eq (cadr fact) 'fn2-run-step-header-shape))
   (assert (eq (car theory) 'disable))

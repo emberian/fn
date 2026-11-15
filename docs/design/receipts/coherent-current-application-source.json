@@ -424,9 +424,9 @@
       "reason": "Additive active application source control or fixture"
     },
     "tests/runs-header-shape-controls.lsp": {
-      "source": "e296b55f26e234e301c54a12a23f9a5d647845b8",
-      "sha256": "e4817bdacd5857dd3801f6b27b6a3a79a13e33064f8fb12af4b248ca0641005b",
-      "reason": "Additive active application source control or fixture"
+      "source": "coherent control update",
+      "sha256": "d1fc3f37748fc9d63146cf32392f0bb8e6543885e2a4f537ede6a563a4aa1169",
+      "reason": "Current approved HEADER/CHILD/UP exact scope, with unchanged runtime/guard/formula comparison and two refusing controls"
     },
     "tests/successor-geometry-unit.lisp": {
       "source": "e296b55f26e234e301c54a12a23f9a5d647845b8",
@@ -449,9 +449,9 @@
       "reason": "Additive active application source control or fixture"
     },
     "tests/test_runs_header_shape_hints.py": {
-      "source": "e296b55f26e234e301c54a12a23f9a5d647845b8",
-      "sha256": "887c5be6cec423192edba8db123199b791adb42f8700fbafac139babae7f5311",
-      "reason": "Additive active application source control or fixture"
+      "source": "coherent control update",
+      "sha256": "ad1e3b184ed9beb628922d9b7fd8db2ec73b1739044c8393b887c0697af9364a",
+      "reason": "Current approved HEADER/CHILD/UP exact scope, with unchanged runtime/guard/formula comparison and two refusing controls"
     },
     "tests/test_trace_replay.py": {
       "source": "e296b55f26e234e301c54a12a23f9a5d647845b8",
@@ -697,8 +697,8 @@
   "verification": {
     "txn_complete_form_identity": "Exact hot4 forms except3 canonical count declarations and their disable; moved declarations identical to root upload-feed",
     "independent_allocator_review": "Scope cleared: query-held waits, six-result wrapper, physical stride/grouping, sole uncertainty owner; no concrete dropped ownership/ABI issue",
-    "strict_lisp_parse": 96,
-    "focused_python_controls": 54,
+    "strict_lisp_parse": 97,
+    "focused_python_controls": 63,
     "host_static": {
       "raw_sources": 6,
       "findings": 0
@@ -709,7 +709,8 @@
       "findings": 0
     },
     "acl2_author": "NOT RUN for this composed source",
-    "certification": "No composed application claim; root44 and hot4 scopes remain exact source-key receipts"
+    "certification": "No composed application claim; root44 and hot4 scopes remain exact source-key receipts",
+    "header_control": "Exactly HEADER/CHILD/UP proof changes; full generated runtime/guards/formulas identity; old baseline and header-only removal both refused"
   },
   "semantic_choices": {
     "txn": "Keep actual hot4 waits, cost tables and16-unit physical stride; relocate unchanged LF worker to root canonical upload-feed; uncertain constant remains in upload only",
@@ -724,5 +725,6 @@
     "q1": "22e31be4ee46798dfb4f14e85daea5c3dc25fe49 structural projection held; physical drop/drain readiness remains open",
     "compress": "held",
     "columns379": "held"
-  }
+  },
+  "proof_repl_warm_entry_api": "Root9c2: next executor must use warm_entry_books(root,intended_global_books), persist returned exports and initialize seen only after successful ENTRY startup. Artifact cache readiness is separate."
 }
