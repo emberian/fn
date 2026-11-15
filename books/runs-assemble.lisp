@@ -7,7 +7,7 @@
 ; certify-time check that refuses any assembled schema whose build or lookup
 ; path reaches a function that is not guard-verified.
 (in-package "ACL2")
-(include-book "overlay")
+(include-book "runs-insertion")
 (fn2-book-layer :c)
 
 ; Dispatch arms over schema rows (NAME . ROW): one case arm per schema id.
@@ -929,7 +929,7 @@
     (declare (xargs :stobjs (fn2-overlays fn2-overlay-index fn2-fields fn2-pool) :guard (fn2-ra-ov-guard)))
     (b* (((unless (and (natp o) (< o (fn2-overlays-rows fn2-overlays)))) (mv :bounds 0 :end fn2-fields))
          ((mv code pos fn2-fields)
-          (fn2-ov-search 40 0 (fn2-overlays-count o fn2-overlays) o eb qbase qk qs qg fn2-overlays fn2-overlay-index fn2-fields fn2-pool))
+          (fn2-ov-search *fn2-ov-search-limit* 0 (fn2-overlays-count o fn2-overlays) o eb qbase qk qs qg fn2-overlays fn2-overlay-index fn2-fields fn2-pool))
          ((unless (eq code :ok)) (mv code pos :end fn2-fields))
          ((mv code order fn2-fields) (fn2-ov-order o pos eb qbase qk qs qg fn2-overlays fn2-overlay-index fn2-fields fn2-pool)))
      (mv code pos order fn2-fields)))
@@ -1254,7 +1254,8 @@
 ; name: (:unverified schema function). The snapshot pairs each schema with
 ; (function . symbol-class) for its path, taken from the world.
 (defconst *fn2-run-glue-generic*
- '(fn2-run-layout-fields fn2-run-layout-keys fn2-run-layout-decode fn2-run-layout-encode
+ '(fn2-ov-insertion-current-p fn2-ov-insertion-begin fn2-ov-insertion-step fn2-ov-insert-start fn2-ov-insert-step
+   fn2-run-layout-max-size fn2-run-layout-fields fn2-run-layout-keys fn2-run-layout-decode fn2-run-layout-encode
    fn2-run-layout-size fn2-run-layout-compare fn2-run-add-ready fn2-run-add-write fn2-run-add fn2-run-seek fn2-run-build-add
    fn2-run-build-promote fn2-run-build-work fn2-run-build-start fn2-run-build-page fn2-run-build-finish
    fn2-run-skip fn2-run-nth fn2-run-step-header fn2-run-step-seek fn2-run-step-child fn2-run-step-deliver fn2-run-step-up fn2-run-phase-header fn2-run-phase-seek fn2-run-phase-child fn2-run-phase-deliver fn2-run-phase-up fn2-run-cursor-step fn2-run-lookup-step fn2-run-scan-step fn2-ov-entry fn2-ov-order fn2-ov-search fn2-ov-locate fn2-ov-write fn2-ov-insert fn2-ov-start fn2-ov-place fn2-ov-reput fn2-ov-insert-at fn2-run-cursor-start fn2-run-cache-install))
@@ -1335,6 +1336,7 @@
    (fn2-ra-build-events)
    (fn2-ra-lookup-events)
    (fn2-ra-overlay-events)
+   (fn2-ra-insertion-events)
    (fn2-ra-adapter-events)
    (fn2-ra-overlay-adapter-events)
    (make-event (value (cons 'progn (fn2-ra-keystone-events (fn2-decl-rows :schema (w state))))))
