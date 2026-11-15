@@ -88,3 +88,5 @@ Writer failures retain work and mark uncertainty; stale context/account identity
 refuses without changing the existing job. There is no retry cleanup or row
 clearing. Parent owns the actual fresh/no-checkpoint branch before full-prefix
 replay and the sealer startup gate; selected checkpoint boot never begins NAME.
+
+The actual fresh stage2 anchor completion now enters the bounded BEGIN/STEP writer and reaches recovery only on COMPLETE. One insertion/open/close transition executes per turn with the declared 4096-byte charge. Stored checkpoint selection never enters these NAME phases. Invalid create-profile NAME content may now refuse after initial image writes but before replay/service, preserving partial state as uncertain; no earlier rejection timing is claimed.

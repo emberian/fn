@@ -80,3 +80,9 @@ Phase4 suffix settlement and persisted epoch closure remain required; this sourc
 
 The boot continuation now follows HELD through actual empty-C preflight, bounded source adoption, and copying the authenticated frontier/cut seal into active authority. Each call uses the declared child operation, including all readonly source inputs; no ready argument selects the outcome. COMPLETE now installs the exact directory base and stops before suffix/epoch closure. Startup actor/NAME separation is being composed so the preflight is reachable on stored images. Source checks only.
 
+
+## Actual recovery origin
+
+Boot now derives the recovery origin through the same cold-source predicate as directory installation. Full recovery uses base0 only with empty authority/open allocator. Selected recovery records exact C/event/source tag and seeds the existing recovery chain digest from the actual mapped C predecessor seal. The unchanged common prepare operation still owns resource acquisition. Discovery, payload and replay origins use the captured base; the source transformation preserves the base0 class.
+
+Cold boot still stops before starting this recovery path until actual phase4 settlement, suffix Merkle reconstruction and persisted epoch closure are composed. The raw source edits and transformation controls do not qualify those operations.
