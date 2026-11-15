@@ -22,7 +22,8 @@
    (installed-root :u32) (selectable-checkpoint :u32) (recovery-base :u32) (prepared-successor :u32) (reservation :u32) (obligation :u32) (promised-read :u32) (borrow :u32) (outstanding-io :u32) (recovery-candidate :u32))
   :init-name fn2-alloc-columns-init
   :extra-fields
-  ((fn2-alloc-retirement-intent-batch :type (unsigned-byte 60) :initially 0 :why "Actual containing batch of the singleton ordinary retirement; zero means no asynchronous intent.")
+  ((fn2-alloc-protection-dirty :type (unsigned-byte 1) :initially 0 :why "Actual edge-count changes coalesce until the singleton retained-debt owner begins a complete bounded sweep; late changes require another whole sweep.")
+   (fn2-alloc-retirement-intent-batch :type (unsigned-byte 60) :initially 0 :why "Actual containing batch of the singleton ordinary retirement; zero means no asynchronous intent.")
    (fn2-alloc-retirement-intent-extent :type (unsigned-byte 32) :initially 0 :why "Exact extent whose durable publication is closed while its retirement journal member is pending.")
    (fn2-alloc-retirement-intent-epoch :type (unsigned-byte 60) :initially 0 :why "Writer epoch binding the pending retirement to its actual physical allocation.")
    (fn2-alloc-retirement-intent-allocation :type (unsigned-byte 60) :initially 0 :why "Allocation generation binding the pending retirement; recycled extents cannot inherit intent.")
@@ -79,7 +80,10 @@
     (otherwise (fn2-extents-recovery-candidate i fn2-extents))))
 (defun fn2-alloc-set-edge (i kind value fn2-extents)
   (declare (xargs :stobjs fn2-extents :guard (and (and (fn2-extents-wfp fn2-extents) (fn2-alloc-slotp i fn2-extents)) (unsigned-byte-p 32 value) (member-eq kind *fn2-alloc-edges*))))
-  (case kind
+  (let ((fn2-extents
+         (if (equal value (fn2-alloc-edge-count i kind fn2-extents)) fn2-extents
+           (update-fn2-alloc-protection-dirty 1 fn2-extents))))
+   (case kind
     (:installed-root (fn2-extents-set-installed-root i value fn2-extents))
     (:selectable-checkpoint (fn2-extents-set-selectable-checkpoint i value fn2-extents))
     (:recovery-base (fn2-extents-set-recovery-base i value fn2-extents))
@@ -90,7 +94,7 @@
     (:borrow (fn2-extents-set-borrow i value fn2-extents))
     (:outstanding-io (fn2-extents-set-outstanding-io i value fn2-extents))
     (:recovery-candidate (fn2-extents-set-recovery-candidate i value fn2-extents))
-    (otherwise (fn2-extents-set-recovery-candidate i value fn2-extents))))
+    (otherwise (fn2-extents-set-recovery-candidate i value fn2-extents)))))
 (defthm fn2-alloc-set-edge-wfp
   (implies (and (fn2-extentsp fn2-extents) (and (fn2-extents-wfp fn2-extents) (fn2-alloc-slotp i fn2-extents)) (unsigned-byte-p 32 value)) (fn2-extents-wfp (fn2-alloc-set-edge i kind value fn2-extents))))
 (defthm fn2-alloc-set-edge-type
