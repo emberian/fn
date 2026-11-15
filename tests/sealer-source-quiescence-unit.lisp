@@ -74,6 +74,8 @@
        (stobj-let ((fn2-seals (fn2-core-seals fn2-core))) (yes)
         (and (equal (fn2-seals-phase 0 fn2-seals) *fn2-seal-phase-build*) (< 0 (fn2-seals-k 0 fn2-seals))
              (equal (fn2-seals-held 0 fn2-seals) 0)) yes)))
+      ((mv early-release & & fn2-core) (fn2-sealer-source-release fn2-core))
+      (retained-after-refusal (fn2-ssq-observed-p fn2-core))
       ((mv begun token fn2-core) (fn2-csnapshot-begin *fn2-checkpoint-master-kind* master mgen fn2-core))
       (allocator-open (stobj-let ((fn2-extents (fn2-core-extents fn2-core))) (yes)
        (and (equal (fn2-alloc-freeze-phase fn2-extents) 0) (fn2-alloc-snapshot-activep fn2-extents)) yes))
@@ -83,6 +85,9 @@
       ; The actual actor finishes its normal merge and retires its old inputs.
       ; Lower IDLE makes its old source cursors nonresumable; no prefix is cancelled.
       ((mv finished fn2-core) (fn2-ssq-finish (* 4 *fn2-format-page-size*) id fn2-core))
+      (retired-free (stobj-let ((fn2-run-installed (fn2-core-run-installed fn2-core))) (yes)
+       (let ((rows (fn2-run-installed-rows fn2-run-installed)))
+        (not (< (fn2-seal-retired-row rows 0 fn2-run-installed) rows))) yes))
       (quiescent (and (fn2-csnapshot-sealer-quiescent-p fn2-core) (not (fn2-ssq-observed-p fn2-core))))
       ; CLOSING also blocks a new observer/source, while overlay1 is pending.
       (pending (stobj-let ((fn2-seals (fn2-core-seals fn2-core)) (fn2-overlays (fn2-core-overlays fn2-core))) (yes)
@@ -90,7 +95,7 @@
       ((mv new-source fn2-core) (fn2-sealer-step 4096 fn2-core))
       ((mv held fn2-core) (fn2-ssq-polls polls token *fn2-checkpoint-master-kind* master mgen fn2-core))
       (good (and (eq genesis :ok) (eq started-row :ok) (eq first :ok) (equal granted id) (eq first-sealed :ok)
-       (eq second :ok) (eq third :ok) (equal granted-again id) active (eq begun :ok) (eq blocked :more) closing allocator-open
-       (eq finished :ok) quiescent pending (eq new-source :busy) (eq held :held) (not (fn2-core-stopped-p fn2-core)))))
+       (eq second :ok) (eq third :ok) (equal granted-again id) active (eq early-release :busy) retained-after-refusal (eq begun :ok) (eq blocked :more) closing allocator-open
+       (eq finished :ok) quiescent retired-free pending (eq new-source :busy) (eq held :held) (not (fn2-core-stopped-p fn2-core)))))
   (mv good fn2-core)))
 (assert-event (with-local-stobj fn2-core (mv-let (good fn2-core) (fn2-ssq-body fn2-core) good)))
