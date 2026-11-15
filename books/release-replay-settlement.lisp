@@ -174,3 +174,10 @@
  fn2-release-target-settlement-refusal-frame-by-definition)
 (fn2-release-replay-settlement-refusal-frame fn2-release-replay-settlement-code fn2-release-replay-settlement-progress
  fn2-release-replay-settlement-refusal-frame-by-definition)
+(defmacro fn2-release-target-settlement-control-frame ()
+ `(defthm fn2-release-target-settlement-control-frame-by-definition
+   (implies (and ,@(fn2-release-replay-settlement-hyps *fn2-release-replay-settlement-children*))
+    (equal (mv-nth 2 (fn2-release-target-settlement-progress ,@*fn2-release-replay-settlement-children*)) fn2-allocation-release))
+   :hints (("Goal" :in-theory (enable fn2-release-target-settlement-progress)))
+   :rule-classes nil))
+(fn2-release-target-settlement-control-frame)
