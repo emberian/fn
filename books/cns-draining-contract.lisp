@@ -143,6 +143,8 @@
   :schema :invariant :claim :semantic
   :teeth (fn2-cns-drain-positive fn2-cns-drain-without-pool-accounting
           fn2-cns-drain-without-reservation
-          fn2-cns-drain-refusal-control fn2-cns-drain-negative)
+          fn2-cns-drain-refusal-control fn2-cns-drain-negative
+          fn2-cns-drain-query-held-positive fn2-cns-drain-query-stale-owner
+          fn2-cns-drain-query-partial-release-mutant)
   :case (:run fn2-cns :draining) :boundary :application-reclamation
-  :doc "Given pool accounting and partition reservations, actual CNS draining releases exactly its owned resources, preserves siblings, clears its incarnation timer and returns reusable credit. Held/draining is defensive unreachable-in-composition input coverage; successful final reclaim is the served case. Universal proof and caller invariant links remain owed.")
+  :doc "Given pool accounting and partition reservations, actual CNS draining retains its complete state non-runnable while either relevant range has query references; after they close, it releases exactly its owned resources, preserves siblings, clears its incarnation timer and returns reusable credit. Held/draining is defensive unreachable-in-composition input coverage; successful final reclaim is the served case. Universal proof and caller invariant links remain owed.")

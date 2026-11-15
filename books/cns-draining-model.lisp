@@ -88,6 +88,18 @@
              (pool (fn2-cns-drain-put-cell 'fn2-pool-class-heads class slot pool)))
         (fn2-cns-drain-put-cell 'fn2-pool-class-counts class (+ 1 count) pool)))))
 
+; Query references are separate from live I/O borrows. The original
+; ownership domain still requires OUT-COUNT=0 and permits query references.
+; This matches only the representation, not the runtime held predicate.
+(defun fn2-cns-drain-query-heldp (slot gen pool)
+  (and (natp slot) (< slot (fn2-cns-drain-get 'fn2-pool-rows pool))
+       (equal gen (fn2-cns-drain-cell 'fn2-pool-gen slot pool))
+       (< 0 (fn2-cns-drain-cell 'fn2-pool-query-ref-count slot pool))))
+(defun fn2-cns-drain-release-pool-effect (slot pool)
+  (if (< 0 (fn2-cns-drain-cell 'fn2-pool-query-ref-count slot pool))
+      pool
+    (fn2-cns-drain-released-pool slot pool)))
+
 (defun fn2-cns-draining-domainp (id before)
   (let* ((dir (fn2-cns-drain-child 'fn2-machines before))
          (own (fn2-cns-drain-child 'fn2-cns before))
@@ -142,7 +154,7 @@
         (fn2-cns-drain-put 'fn2-sched-earliest-deadline *fn2-no-deadline* sched)
       sched)))
 
-(defun fn2-cns-draining-expected (id before)
+(defun fn2-cns-draining-zero-query-expected (id before)
   (let* ((dir (fn2-cns-drain-child 'fn2-machines before))
          (own (fn2-cns-drain-child 'fn2-cns before))
          (pool (fn2-cns-drain-child 'fn2-pool before))
@@ -183,6 +195,58 @@
                         (fn2-cns-drain-put-child 'fn2-pool pool
                           (fn2-cns-drain-put-child 'fn2-cns own before))))))
         (list 0 *fn2-work-release* 0 nil after)))))
+
+; Preflight the whole relevant release set before either final release.
+; A held lease owns a separate release set; final WS/NS are not inspected.
+(defun fn2-cns-draining-query-heldp (id before)
+  (let* ((dir (fn2-cns-drain-child 'fn2-machines before))
+         (own (fn2-cns-drain-child 'fn2-cns before))
+         (pool (fn2-cns-drain-child 'fn2-pool before))
+         (slot (fn2-cns-drain-cell 'fn2-machines-slot id dir)))
+    (if (equal (fn2-cns-drain-cell 'fn2-cns-lease slot own) *fn2-cns-lease-held*)
+        (fn2-cns-drain-query-heldp
+          (fn2-cns-drain-cell 'fn2-cns-lslot slot own)
+          (fn2-cns-drain-cell 'fn2-cns-lgen slot own) pool)
+      (or (fn2-cns-drain-query-heldp
+            (fn2-cns-drain-cell 'fn2-cns-ws-slot slot own)
+            (fn2-cns-drain-cell 'fn2-cns-ws-gen slot own) pool)
+          (fn2-cns-drain-query-heldp
+            (fn2-cns-drain-cell 'fn2-cns-ns-slot slot own)
+            (fn2-cns-drain-cell 'fn2-cns-ns-gen slot own) pool)))))
+(defun fn2-cns-draining-query-clear-p (id before)
+  (let* ((dir (fn2-cns-drain-child 'fn2-machines before))
+         (own (fn2-cns-drain-child 'fn2-cns before))
+         (pool (fn2-cns-drain-child 'fn2-pool before))
+         (slot (fn2-cns-drain-cell 'fn2-machines-slot id dir)))
+    (if (equal (fn2-cns-drain-cell 'fn2-cns-lease slot own) *fn2-cns-lease-held*)
+        (equal (fn2-cns-drain-cell 'fn2-pool-query-ref-count
+                 (fn2-cns-drain-cell 'fn2-cns-lslot slot own) pool) 0)
+      (and (equal (fn2-cns-drain-cell 'fn2-pool-query-ref-count
+                    (fn2-cns-drain-cell 'fn2-cns-ws-slot slot own) pool) 0)
+           (equal (fn2-cns-drain-cell 'fn2-pool-query-ref-count
+                    (fn2-cns-drain-cell 'fn2-cns-ns-slot slot own) pool) 0)))))
+(defun fn2-cns-draining-expected (id before)
+  (if (fn2-cns-draining-query-heldp id before)
+      (list 0 *fn2-work-state* 0 nil before)
+    (fn2-cns-draining-zero-query-expected id before)))
+(defthm fn2-cns-draining-query-held-result-by-definition
+  (implies (fn2-cns-draining-query-heldp id before)
+           (equal (fn2-cns-draining-expected id before)
+                  (list 0 *fn2-work-state* 0 nil before)))
+  :hints (("Goal" :in-theory (enable fn2-cns-draining-expected))))
+(defthm fn2-cns-draining-unheld-equivalence-by-definition
+  (implies (not (fn2-cns-draining-query-heldp id before))
+           (equal (fn2-cns-draining-expected id before)
+                  (fn2-cns-draining-zero-query-expected id before)))
+  :hints (("Goal" :in-theory (enable fn2-cns-draining-expected))))
+
+(defthm fn2-cns-draining-zero-query-equivalence-by-definition
+  (implies (fn2-cns-draining-query-clear-p id before)
+           (equal (fn2-cns-draining-expected id before)
+                  (fn2-cns-draining-zero-query-expected id before)))
+  :hints (("Goal" :in-theory
+           (enable fn2-cns-draining-expected fn2-cns-draining-query-heldp
+                   fn2-cns-draining-query-clear-p fn2-cns-drain-query-heldp))))
 
 (defun fn2-cns-draining-resultp (id before bytes steps descriptors runnable after)
   (equal (list bytes steps descriptors runnable after)

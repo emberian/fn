@@ -238,21 +238,64 @@
 
 ; Start TX's decision for the name [MOFF, MOFF+MLEN) of MSLOT/MGEN and the
 ; digest [DOFF, DOFF+32) of DSLOT/DGEN, both readable under OKIND OSLOT OGEN
-; until the decision is done. The decision must be idle or done and resolve
+; until the decision is done. Two actual pool query references freeze the
+; windows across yields; DONE retains scalar facts and inert key coordinates.
+; The decision must be idle or done and resolve
 ; not inside a run descent (they share the transaction's lookup).
-(defun fn2-id-decide-start (tx mslot mgen moff mlen dslot dgen doff okind oslot ogen b0 fn2-succ-txns fn2-id-decides fn2-fields)
- (declare (xargs :stobjs (fn2-succ-txns fn2-id-decides fn2-fields) :guard t))
- (b* (((unless (and (fn2-succ-txns-wfp fn2-succ-txns) (fn2-id-decides-wfp fn2-id-decides) (fn2-fields-wfp fn2-fields)))
-       (mv :state fn2-succ-txns fn2-id-decides fn2-fields))
+; Rebuild only an ACTIVE key. DONE returns scalar facts without touching
+; either source. Completed key coordinates remain for import/result binding.
+(defun fn2-id-query-rebuild (tx b0 fn2-id-decides fn2-fields)
+ (declare (xargs :stobjs (fn2-id-decides fn2-fields) :guard t))
+ (b* (((unless (and (fn2-id-decides-wfp fn2-id-decides) (fn2-fields-wfp fn2-fields)
+                    (natp tx) (< tx (fn2-id-decides-rows fn2-id-decides))
+                    (natp b0) (<= (+ b0 *fn2-idc-stride*) (fn2-fields-rows fn2-fields))
+                    (equal (fn2-id-decides-qmask tx fn2-id-decides) 3)
+                    (member (fn2-id-decides-phase tx fn2-id-decides)
+                     (list *fn2-id-decide-phase-summary* *fn2-id-decide-phase-candidate*))))
+       (mv :state fn2-fields))
+      (q (+ b0 *fn2-idc-eb*))
+      (fn2-fields (fn2-fields-put q (value (fn2-id-decides-qnamespace tx fn2-id-decides)) (ref-len 0)))
+      (fn2-fields (fn2-fields-put (+ q 1) (value 0)
+       (ref-slot (fn2-id-decides-q1slot tx fn2-id-decides)) (ref-gen (fn2-id-decides-q1gen tx fn2-id-decides))
+       (ref-off (fn2-id-decides-q1off tx fn2-id-decides)) (ref-len (fn2-id-decides-q1len tx fn2-id-decides))))
+      (fn2-fields (fn2-fields-put (+ q 2) (value (fn2-id-decides-qprofile tx fn2-id-decides)) (ref-len 0)))
+      (fn2-fields (fn2-fields-put (+ q 3) (value (fn2-id-decides-qalgorithm tx fn2-id-decides)) (ref-len 0)))
+      (fn2-fields (fn2-fields-put (+ q 4) (value 1)
+       (ref-slot (fn2-id-decides-q2slot tx fn2-id-decides)) (ref-gen (fn2-id-decides-q2gen tx fn2-id-decides))
+       (ref-off (fn2-id-decides-q2off tx fn2-id-decides)) (ref-len (fn2-id-decides-q2len tx fn2-id-decides)))))
+  (mv :ok fn2-fields)))
+(fn2-idc-fn-shape fn2-id-query-rebuild (tx b0 fn2-id-decides fn2-fields)
+ (fn2-fields) (fn2-id-decides fn2-fields) t
+ (fn2-id-decides-phase fn2-id-decides-qmask fn2-id-decides-qnamespace fn2-id-decides-qprofile
+  fn2-id-decides-qalgorithm fn2-id-decides-q1slot fn2-id-decides-q1gen fn2-id-decides-q1off
+  fn2-id-decides-q1len fn2-id-decides-q2slot fn2-id-decides-q2gen fn2-id-decides-q2off fn2-id-decides-q2len))
+
+(defun fn2-id-decide-start (tx mslot mgen moff mlen dslot dgen doff okind oslot ogen b0 fn2-succ-txns fn2-id-decides fn2-fields fn2-pool)
+ (declare (xargs :stobjs (fn2-succ-txns fn2-id-decides fn2-fields fn2-pool) :guard t))
+ (b* (((unless (and (fn2-succ-txns-wfp fn2-succ-txns) (fn2-id-decides-wfp fn2-id-decides) (fn2-fields-wfp fn2-fields) (fn2-pool-wfp fn2-pool)))
+       (mv :state fn2-succ-txns fn2-id-decides fn2-fields fn2-pool))
       ((unless (and (natp tx) (< tx (fn2-succ-txns-rows fn2-succ-txns)) (< tx (fn2-id-decides-rows fn2-id-decides))
                     (natp b0) (<= (+ b0 *fn2-idc-stride*) (fn2-fields-rows fn2-fields))
                     (posp mlen) (<= mlen 250) (unsigned-byte-p 32 mslot) (unsigned-byte-p 60 mgen) (unsigned-byte-p 32 moff)
                     (unsigned-byte-p 32 dslot) (unsigned-byte-p 60 dgen) (unsigned-byte-p 32 doff)
                     (unsigned-byte-p 8 okind) (unsigned-byte-p 32 oslot) (unsigned-byte-p 60 ogen)))
-       (mv :bounds fn2-succ-txns fn2-id-decides fn2-fields))
+       (mv :bounds fn2-succ-txns fn2-id-decides fn2-fields fn2-pool))
       ((unless (and (member (fn2-id-decides-phase tx fn2-id-decides) (list *fn2-id-decide-phase-idle* *fn2-id-decide-phase-done*))
+                    (equal (fn2-id-decides-qmask tx fn2-id-decides) 0)
+                    (equal (fn2-id-decides-qwake tx fn2-id-decides) 0)
                     (not (equal (fn2-succ-txns-rstate tx fn2-succ-txns) *fn2-succ-resolve-look*))))
-       (mv :state fn2-succ-txns fn2-id-decides fn2-fields))
+       (mv :state fn2-succ-txns fn2-id-decides fn2-fields fn2-pool))
+      ; Runtime query incarnation: no wrap and no field/query mutation on exhaustion.
+      (inc (fn2-id-decides-query-incarnation tx fn2-id-decides))
+      ((unless (< inc 1152921504606846975)) (mv :exhausted fn2-succ-txns fn2-id-decides fn2-fields fn2-pool))
+      ; Acquire both windows before committing any query fields or incarnation.
+      ((mv mc fn2-pool) (fn2-pool-query-acquire mslot mgen moff mlen okind oslot ogen fn2-pool))
+      ((unless (eq mc :ok)) (mv mc fn2-succ-txns fn2-id-decides fn2-fields fn2-pool))
+      ((mv dc fn2-pool) (fn2-pool-query-acquire dslot dgen doff 32 okind oslot ogen fn2-pool))
+      ((unless (eq dc :ok))
+       (mv-let (rc last fn2-pool) (fn2-pool-query-release mslot mgen fn2-pool)
+        (declare (ignore last))
+        (mv (if (eq rc :ok) dc :state) fn2-succ-txns fn2-id-decides fn2-fields fn2-pool)))
       (q (+ b0 *fn2-idc-eb*))
       (fn2-fields (fn2-fields-put q (value *fn2-identity-namespace-netnews*) (ref-len 0)))
       (fn2-fields (fn2-fields-put (+ q 1) (value 0) (ref-slot mslot) (ref-gen mgen) (ref-off moff) (ref-len mlen)))
@@ -260,13 +303,18 @@
       (fn2-fields (fn2-fields-put (+ q 3) (value *fn2-identity-algorithm-blake3*) (ref-len 0)))
       (fn2-fields (fn2-fields-put (+ q 4) (value 1) (ref-slot dslot) (ref-gen dgen) (ref-off doff) (ref-len 32)))
       ((mv & fn2-succ-txns) (fn2-xl-done tx :ok fn2-succ-txns))
-      (fn2-id-decides (fn2-id-decides-put tx (phase *fn2-id-decide-phase-summary*) (qk okind) (qs oslot) (qg ogen)
+      (fn2-id-decides (fn2-id-decides-put tx (phase *fn2-id-decide-phase-summary*) (query-incarnation (+ inc 1))
+                                         (qmask 3) (qwake 0)
+                                         (q1slot mslot) (q1gen mgen) (q1off moff) (q1len mlen)
+                                         (q2slot dslot) (q2gen dgen) (q2off doff) (q2len 32)
+                                         (qnamespace *fn2-identity-namespace-netnews*)
+                                         (qprofile *fn2-identity-profile-source*) (qalgorithm *fn2-identity-algorithm-blake3*) (qk okind) (qs oslot) (qg ogen)
                                          (sfound 0) (selected 0) (candidates 0) (gaps 0)
                                          (cfound 0) (h 0) (evidence 0) (qualified 0) (local 0))))
-  (mv :ok fn2-succ-txns fn2-id-decides fn2-fields)))
-(fn2-idc-fn-shape fn2-id-decide-start (tx mslot mgen moff mlen dslot dgen doff okind oslot ogen b0 fn2-succ-txns fn2-id-decides fn2-fields)
- (fn2-succ-txns fn2-id-decides fn2-fields) (fn2-succ-txns fn2-id-decides fn2-fields) t
- (fn2-xl-done fn2-id-decides-phase fn2-succ-txns-rstate))
+  (mv :ok fn2-succ-txns fn2-id-decides fn2-fields fn2-pool)))
+(fn2-idc-fn-shape fn2-id-decide-start (tx mslot mgen moff mlen dslot dgen doff okind oslot ogen b0 fn2-succ-txns fn2-id-decides fn2-fields fn2-pool)
+ (fn2-succ-txns fn2-id-decides fn2-fields fn2-pool) (fn2-succ-txns fn2-id-decides fn2-fields fn2-pool) t
+ (fn2-pool-query-acquire fn2-pool-query-release fn2-id-decides-qmask fn2-id-decides-qwake fn2-xl-done fn2-id-decides-phase fn2-id-decides-query-incarnation fn2-succ-txns-rstate))
 
 ; TX's verdict once done (fn2-id-verdict over what the reads found).
 (defun fn2-id-decided (tx fn2-id-decides)
@@ -287,22 +335,26 @@
                     (fn2-overlay-index-wfp fn2-overlay-index) (fn2-run-installed-wfp fn2-run-installed)
                     (fn2-run-cursors-wfp fn2-run-cursors) (fn2-run-paths-wfp fn2-run-paths) (fn2-run-cache-wfp fn2-run-cache)
                     (fn2-fields-wfp fn2-fields) (fn2-pool-wfp fn2-pool)))
-       (mv :state fn2-succ-txns fn2-id-decides fn2-run-cursors fn2-run-paths fn2-fields))
+       (mv :state fn2-succ-txns fn2-id-decides fn2-run-cursors fn2-run-paths fn2-fields fn2-pool))
       ((unless (and (natp tx) (< tx (fn2-succ-txns-rows fn2-succ-txns)) (< tx (fn2-id-decides-rows fn2-id-decides))
                     (natp b0) (<= (+ b0 *fn2-idc-stride*) (fn2-fields-rows fn2-fields)) (natp budget) (<= budget 4096)))
-       (mv :bounds fn2-succ-txns fn2-id-decides fn2-run-cursors fn2-run-paths fn2-fields))
+       (mv :bounds fn2-succ-txns fn2-id-decides fn2-run-cursors fn2-run-paths fn2-fields fn2-pool))
       (phase (fn2-id-decides-phase tx fn2-id-decides))
       ((when (equal phase *fn2-id-decide-phase-done*))
-       (mv (fn2-id-decided tx fn2-id-decides) fn2-succ-txns fn2-id-decides fn2-run-cursors fn2-run-paths fn2-fields))
+       (mv (if (equal (fn2-id-decides-qmask tx fn2-id-decides) 0)
+               (fn2-id-decided tx fn2-id-decides) :state)
+           fn2-succ-txns fn2-id-decides fn2-run-cursors fn2-run-paths fn2-fields fn2-pool))
       ((unless (member phase (list *fn2-id-decide-phase-summary* *fn2-id-decide-phase-candidate*)))
-       (mv :state fn2-succ-txns fn2-id-decides fn2-run-cursors fn2-run-paths fn2-fields))
+       (mv :state fn2-succ-txns fn2-id-decides fn2-run-cursors fn2-run-paths fn2-fields fn2-pool))
+      ((mv qc fn2-fields) (fn2-id-query-rebuild tx b0 fn2-id-decides fn2-fields))
+      ((unless (eq qc :ok)) (mv qc fn2-succ-txns fn2-id-decides fn2-run-cursors fn2-run-paths fn2-fields fn2-pool))
       (summary (equal phase *fn2-id-decide-phase-summary*))
       ((mv code erow fn2-succ-txns fn2-run-cursors fn2-run-paths fn2-fields)
        (fn2-xl-step tx (if summary *fn2-id-summary-sid* *fn2-id-candidates-sid*) budget (+ b0 *fn2-idc-eb*) (+ b0 *fn2-idc-rb*)
                     (fn2-id-decides-qk tx fn2-id-decides) (fn2-id-decides-qs tx fn2-id-decides) (fn2-id-decides-qg tx fn2-id-decides)
                     fn2-succ-txns fn2-overlays fn2-overlay-index fn2-run-installed fn2-run-cursors fn2-run-paths fn2-run-cache
                     fn2-fields fn2-pool))
-      ((unless (member-eq code '(:ok :absent))) (mv code fn2-succ-txns fn2-id-decides fn2-run-cursors fn2-run-paths fn2-fields))
+      ((unless (member-eq code '(:ok :absent))) (mv code fn2-succ-txns fn2-id-decides fn2-run-cursors fn2-run-paths fn2-fields fn2-pool))
       (hit (if (eq code :ok) 1 0))
       ((when summary)
        (let ((fn2-id-decides
@@ -310,19 +362,21 @@
                                   (selected (if (equal hit 1) (fn2-id-field (+ erow *fn2-identity-summary-entry-field-selected*) fn2-fields) 0))
                                   (candidates (if (equal hit 1) (fn2-id-field (+ erow *fn2-identity-summary-entry-field-candidates*) fn2-fields) 0))
                                   (gaps (if (equal hit 1) (fn2-id-field (+ erow *fn2-identity-summary-entry-field-gaps*) fn2-fields) 0)))))
-        (mv :more fn2-succ-txns fn2-id-decides fn2-run-cursors fn2-run-paths fn2-fields)))
+        (mv :more fn2-succ-txns fn2-id-decides fn2-run-cursors fn2-run-paths fn2-fields fn2-pool)))
+      ((mv rc fn2-id-decides fn2-pool) (fn2-id-query-release tx fn2-id-decides fn2-pool))
+      ((unless (eq rc :ok)) (mv rc fn2-succ-txns fn2-id-decides fn2-run-cursors fn2-run-paths fn2-fields fn2-pool))
       (fn2-id-decides
        (fn2-id-decides-put tx (phase *fn2-id-decide-phase-done*) (cfound hit)
                            (h (if (equal hit 1) (fn2-id-field (+ erow *fn2-identity-candidates-entry-field-h*) fn2-fields) 0))
                            (evidence (if (equal hit 1) (fn2-id-field (+ erow *fn2-identity-candidates-entry-field-evidence*) fn2-fields) 0))
                            (qualified (if (and (equal hit 1) (equal (fn2-id-field (+ erow *fn2-identity-candidates-entry-field-qualified*) fn2-fields) 1)) 1 0))
                            (local (if (and (equal hit 1) (equal (fn2-id-field (+ erow *fn2-identity-candidates-entry-field-local*) fn2-fields) 1)) 1 0)))))
-  (mv (fn2-id-decided tx fn2-id-decides) fn2-succ-txns fn2-id-decides fn2-run-cursors fn2-run-paths fn2-fields)))
+  (mv (fn2-id-decided tx fn2-id-decides) fn2-succ-txns fn2-id-decides fn2-run-cursors fn2-run-paths fn2-fields fn2-pool)))
 (fn2-idc-fn-shape fn2-id-decide-step (tx budget b0 fn2-succ-txns fn2-id-decides fn2-overlays fn2-overlay-index fn2-run-installed
                                       fn2-run-cursors fn2-run-paths fn2-run-cache fn2-fields fn2-pool)
- (fn2-succ-txns fn2-id-decides fn2-run-cursors fn2-run-paths fn2-fields)
+ (fn2-succ-txns fn2-id-decides fn2-run-cursors fn2-run-paths fn2-fields fn2-pool)
  (fn2-succ-txns fn2-id-decides fn2-overlays fn2-overlay-index fn2-run-installed fn2-run-cursors fn2-run-paths fn2-run-cache fn2-fields fn2-pool) t
- (fn2-xl-step fn2-id-decides-phase fn2-id-decides-qk fn2-id-decides-qs fn2-id-decides-qg fn2-id-decided fn2-id-field))
+ (fn2-id-query-rebuild fn2-id-query-release fn2-xl-step fn2-id-decides-phase fn2-id-decides-qk fn2-id-decides-qs fn2-id-decides-qg fn2-id-decided fn2-id-field))
 
 ; TX's separate facts once done (§4a: D's txn reads these, never the verdict
 ; alone): (mv code verdict selection h evidence coverage). SELECTION :none,
@@ -332,7 +386,8 @@
 (defun fn2-id-facts (tx fn2-id-decides)
  (declare (xargs :stobjs fn2-id-decides :guard t))
  (if (not (and (fn2-id-decides-wfp fn2-id-decides) (natp tx) (< tx (fn2-id-decides-rows fn2-id-decides))
-               (equal (fn2-id-decides-phase tx fn2-id-decides) *fn2-id-decide-phase-done*)))
+               (equal (fn2-id-decides-phase tx fn2-id-decides) *fn2-id-decide-phase-done*)
+               (equal (fn2-id-decides-qmask tx fn2-id-decides) 0)))
      (mv :state nil nil 0 nil nil)
   (let ((h (nfix (fn2-id-decides-h tx fn2-id-decides))))
    (mv :ok (fn2-id-decided tx fn2-id-decides) (fn2-id-selection (fn2-id-decides-selected tx fn2-id-decides) h) h
@@ -589,13 +644,13 @@
    (assert-event (fn2-assert-compliant-p '(fn2-group-lookup fn2-groups-genesis fn2-principal-lookup
                                           fn2-principals-genesis fn2-principal-of-slot) (w state)))))
 
-(defcost fn2-identity-decide-start :answers (:bounds :ok :state)
- :tables (fn2-core-succ-txns fn2-core-id-decides fn2-core-fields)
+(defcost fn2-identity-decide-start :enqueues 1 :answers (:bounds :exhausted :ok :owner :stale :state)
+ :tables (fn2-core-succ-txns fn2-core-id-decides fn2-core-fields fn2-core-pool fn2-core-machines fn2-core-control fn2-core-sched fn2-core-trace)
  :doc "Start a transaction's identity decision: its query (five rows) written, its lookup idle.")
-(defcost fn2-identity-decide :child fn2-identity-decide-child :answers (:bad-magic :bounds :conflict :done :duplicate :end :entry :evidence :format :invariant :length
+(defcost fn2-identity-decide :enqueues 1 :child fn2-identity-decide-child :answers (:bad-magic :bounds :conflict :done :duplicate :end :entry :evidence :format :invariant :length
   :lost :miss :more :noncanonical :owner :part :payload :schema :stale :state :stored :truncated :unknown-tag :wide)
  :bytes 4096
- :tables (fn2-core-succ-txns fn2-core-id-decides fn2-core-run-cursors fn2-core-run-paths fn2-core-fields)
+ :tables (fn2-core-succ-txns fn2-core-id-decides fn2-core-run-cursors fn2-core-run-paths fn2-core-fields fn2-core-pool fn2-core-machines fn2-core-control fn2-core-sched fn2-core-trace)
  :doc "One source of an identity decision's two exact reads (the summary, then the candidate): one overlay search or one run step of at most 4,096 pool reads.")
 (defcost fn2-identity-facts :answers (:ok :state) :child fn2-id-facts
  :doc "Read a done decision's facts: verdict, selection, candidate ordinal, evidence status, coverage.")
@@ -603,14 +658,15 @@
  '(progn
    (defun fn2-identity-decide-start (tx mslot mgen moff mlen dslot dgen doff okind oslot ogen fn2-core)
     (declare (xargs :stobjs fn2-core :guard (fn2-core-wfp fn2-core)))
-    (stobj-let ((fn2-succ-txns (fn2-core-succ-txns fn2-core)) (fn2-id-decides (fn2-core-id-decides fn2-core))
-                (fn2-fields (fn2-core-fields fn2-core)) (fn2-fc (fn2-core-fc fn2-core)))
-     (code fn2-succ-txns fn2-id-decides fn2-fields)
+    (let ((fn2-core (fn2-query-ref-flush tx fn2-core)))
+     (stobj-let ((fn2-succ-txns (fn2-core-succ-txns fn2-core)) (fn2-id-decides (fn2-core-id-decides fn2-core))
+                (fn2-fields (fn2-core-fields fn2-core)) (fn2-pool (fn2-core-pool fn2-core)) (fn2-fc (fn2-core-fc fn2-core)))
+     (code fn2-succ-txns fn2-id-decides fn2-fields fn2-pool)
      (mv-let (c b0) (fn2-idc-stripe tx (fn2-fc-rows fn2-fc) fn2-id-decides fn2-fields)
       (if (eq c :ok)
-          (fn2-id-decide-start tx mslot mgen moff mlen dslot dgen doff okind oslot ogen b0 fn2-succ-txns fn2-id-decides fn2-fields)
-        (mv c fn2-succ-txns fn2-id-decides fn2-fields)))
-     (mv code fn2-core)))
+          (fn2-id-decide-start tx mslot mgen moff mlen dslot dgen doff okind oslot ogen b0 fn2-succ-txns fn2-id-decides fn2-fields fn2-pool)
+        (mv c fn2-succ-txns fn2-id-decides fn2-fields fn2-pool)))
+     (mv code fn2-core))))
    (fn2-core-preserves fn2-identity-decide-start (tx mslot mgen moff mlen dslot dgen doff okind oslot ogen fn2-core)
     :position 1 :rows nil :hints (("Goal" :in-theory (enable fn2-core-wfp))))
    (defun fn2-identity-decide (tx budget fn2-core)
@@ -620,13 +676,13 @@
                 (fn2-run-installed (fn2-core-run-installed fn2-core)) (fn2-run-cursors (fn2-core-run-cursors fn2-core))
                 (fn2-run-paths (fn2-core-run-paths fn2-core)) (fn2-run-cache (fn2-core-run-cache fn2-core))
                 (fn2-fields (fn2-core-fields fn2-core)) (fn2-pool (fn2-core-pool fn2-core)) (fn2-fc (fn2-core-fc fn2-core)))
-     (code fn2-succ-txns fn2-id-decides fn2-run-cursors fn2-run-paths fn2-fields)
+     (code fn2-succ-txns fn2-id-decides fn2-run-cursors fn2-run-paths fn2-fields fn2-pool)
      (mv-let (c b0) (fn2-idc-stripe tx (fn2-fc-rows fn2-fc) fn2-id-decides fn2-fields)
       (if (eq c :ok)
           (fn2-id-decide-step tx budget b0 fn2-succ-txns fn2-id-decides fn2-overlays fn2-overlay-index fn2-run-installed
                               fn2-run-cursors fn2-run-paths fn2-run-cache fn2-fields fn2-pool)
-        (mv c fn2-succ-txns fn2-id-decides fn2-run-cursors fn2-run-paths fn2-fields)))
-     (mv code fn2-core)))
+        (mv c fn2-succ-txns fn2-id-decides fn2-run-cursors fn2-run-paths fn2-fields fn2-pool)))
+     (let ((fn2-core (fn2-query-ref-flush tx fn2-core))) (mv code fn2-core))))
    (fn2-core-preserves fn2-identity-decide (tx budget fn2-core)
     :position 1 :rows nil :hints (("Goal" :in-theory (enable fn2-core-wfp))))
    (defun fn2-identity-facts (tx fn2-core)

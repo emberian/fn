@@ -10,14 +10,15 @@
        (equal (subseq (symbol-name fn) 0 14) "FN2-CNS-WRITE+")))
 (defun fn2-cns-draining-effectp (fn)
   (member-eq fn '(fn2-cns-run fn2-core-release fn2-cns-release-ns fn2-cns-lease-release
-                 fn2-cns-clear-wait-timer fn2-cns-reclaim)))
+                 fn2-cns-clear-wait-timer fn2-cns-query-heldp fn2-cns-reclaim)))
 (defun fn2-cns-draining-effect-aritiesp (calls)
   (declare (xargs :verify-guards nil))
   (if (atom calls) t
     (and (case (caar calls)
            ((fn2-core-release fn2-cns-release-ns fn2-cns-lease-release)
             (equal (len (car calls)) 7))
-           (fn2-cns-clear-wait-timer (equal (len (car calls)) 3))
+           ((fn2-cns-clear-wait-timer fn2-cns-query-heldp) (equal (len (car calls))
+              (if (eq (caar calls) 'fn2-cns-query-heldp) 4 3)))
            (fn2-cns-reclaim (equal (len (car calls)) 5))
            (otherwise (fn2-cns-draining-writerp (caar calls))))
          (fn2-cns-draining-effect-aritiesp (cdr calls)))))
@@ -84,6 +85,9 @@
       (append
        (cond ((member-eq fn '(fn2-core-release fn2-cns-release-ns fn2-cns-lease-release))
               (fn2-cns-draining-release-uses call))
+             ((eq fn 'fn2-cns-query-heldp)
+              `((:instance fn2-cns-query-held-independent
+                  (slot ,(nth 0 args)) (gen ,(nth 1 args)) (core ,(nth 2 args)))))
              ((eq fn 'fn2-cns-clear-wait-timer)
               `((:instance fn2-cns-clear-wait-timer-independent
                   (id ,(nth 0 args)) (core ,(nth 1 args)))))
@@ -151,6 +155,7 @@
          (lease (fn2-cns-draining-calls-of 'fn2-cns-lease-release calls))
          (ws (fn2-cns-draining-calls-of 'fn2-core-release calls))
          (ns (fn2-cns-draining-calls-of 'fn2-cns-release-ns calls))
+         (query-reads (fn2-cns-draining-calls-of 'fn2-cns-query-heldp calls))
          (timers (fn2-cns-draining-calls-of 'fn2-cns-clear-wait-timer calls))
          (reclaims (fn2-cns-draining-calls-of 'fn2-cns-reclaim calls))
          (writers (intersection-eq (strip-cars calls) (all-fnnames body)))
@@ -164,6 +169,7 @@
                   (fn2-cns-draining-effect-aritiesp calls)
                   (equal (len lease) 1) (equal (len ws) 1) (equal (len ns) 1)
                   (equal (len timers) 1) (equal (len reclaims) 1)
+                  (equal (len query-reads) 3)
                   (fn2-cns-draining-second-statep (car ws) (car ns))))
         (er hard 'fn2-cns-draining-proof-event
             "Actual draining ABI/effect or WS-to-NS state changed. Calls: ~x0" calls)
@@ -172,13 +178,13 @@
              (direct (fn2-cns-draining-direct-conclusion conclusion))
                (held `(equal (fn2-cns-row-lease id core) *fn2-cns-lease-held*))
                (branch-hyp `(and ,hyp ,(if (eq which :held) held `(not ,held))))
-               (uses (if (eq which :held) (fn2-cns-draining-effect-uses lease)
+               (uses (if (eq which :held) (fn2-cns-draining-effect-uses (append query-reads lease))
                        (append (fn2-cns-draining-effect-uses
-                                (append ws ns timers reclaims))
+                                (append query-reads ws ns timers reclaims))
                                (fn2-cns-draining-second-release-uses (car ws) (car ns)))))
                (open (union-eq readers (set-difference-eq writers
                        '(fn2-core-release fn2-cns-release-ns fn2-cns-lease-release
-                         fn2-cns-clear-wait-timer fn2-cns-reclaim)))))
+                         fn2-cns-clear-wait-timer fn2-cns-query-heldp fn2-cns-reclaim)))))
           (if (not (equal (fn2-cns-draining-call-sites conclusion nil)
                           '((fn2-cns-run id budget core))))
               (er hard 'fn2-cns-draining-proof-event
@@ -197,8 +203,10 @@
                          (theory 'fn2-cns-draining-native-readers)
                          (e/d (fn2-cns-run-draining ,@open
                                fn2-cns-draining-domainp fn2-cns-draining-resultp
-                               fn2-cns-draining-expected fn2-cns-core-release-expected
-                               fn2-cns-owned-pool-release-expected
+                               fn2-cns-draining-expected fn2-cns-draining-zero-query-expected
+                               fn2-cns-draining-query-heldp fn2-cns-drain-query-heldp
+                               fn2-cns-drain-release-pool-effect fn2-cns-core-release-expected
+                               fn2-cns-owned-pool-release-expected fn2-cns-owned-zero-query-pool-release-expected
                                fn2-cns-core-reclaim-expected fn2-machines-reclaim-list-expected
                                fn2-cns-drain-cell fn2-cns-drain-get fn2-cns-drain-index
                                fn2-cns-drain-child fn2-cns-drain-child-index fn2-cns-drain-put-child
@@ -207,7 +215,7 @@
                                fn2-cns-drain-releasablep fn2-cns-draining-reservedp
                                fn2-cns-drain-released-pool fn2-cns-drain-cleared-sched
                                fn2-machines-reservation-put fn2-core-release fn2-cns-release-ns
-                               fn2-cns-lease-release fn2-cns-clear-wait-timer fn2-cns-reclaim)))))))
+                               fn2-cns-lease-release fn2-cns-clear-wait-timer fn2-cns-query-heldp fn2-cns-reclaim)))))))
            (:direct
             `(defthm fn2-cns-draining-direct-independent
                (implies ,hyp ,direct)

@@ -44,6 +44,18 @@
                (fn2-cns-drain-child 'fn2-pool before))))
     (list (car out) (fn2-cns-drain-put-child 'fn2-pool (cadr out) before))))
 
+(defun fn2-cns-core-release-zero-query-expected (slot gen kind id ogen before)
+  (let ((out (fn2-cns-owned-zero-query-pool-release-expected slot gen kind id ogen
+               (fn2-cns-drain-child 'fn2-pool before))))
+    (list (car out) (fn2-cns-drain-put-child 'fn2-pool (cadr out) before))))
+(defthm fn2-cns-core-release-zero-query-equivalence-by-definition
+  (implies (equal (fn2-cns-drain-cell 'fn2-pool-query-ref-count slot
+                    (fn2-cns-drain-child 'fn2-pool before)) 0)
+           (equal (fn2-cns-core-release-expected slot gen kind id ogen before)
+                  (fn2-cns-core-release-zero-query-expected slot gen kind id ogen before)))
+  :hints (("Goal" :in-theory
+           (enable fn2-cns-core-release-expected fn2-cns-core-release-zero-query-expected))))
+
 ; Keep this consequential component visible in the actual obligation store.
 ; Admission of the universal theorem and formula-bound teeth are separate.
 (defthm-owed fn2-cns-core-release-independent (slot gen id ogen core)
@@ -54,8 +66,8 @@
   :schema :invariant :claim :semantic :boundary :ownership-reclamation
   :sides (:concrete fn2-core-release :reference fn2-cns-core-release-expected)
   :teeth (fn2-cns-core-release-positive fn2-cns-core-release-without-generation
-          fn2-cns-core-release-sibling-mutation)
-  :doc "The actual core release returns the independent complete scalar/core result and frames every other child and protected sibling. A stale handle removes releasability without changing the typed/WFP input; actual sibling corruption falsifies the complete result. Component ownership is not a claim of reachable CNS admission.")
+          fn2-cns-core-release-sibling-mutation fn2-cns-core-release-query-held-positive)
+  :doc "The actual core release returns the independent complete scalar/core result and frames every other child and protected sibling. A positive query count retains the complete core with :held; zero query count retains the prior release result. A stale handle removes releasability without changing the typed/WFP input; actual sibling corruption falsifies the complete result. Component ownership is not a claim of reachable CNS admission.")
 
 (defthm fn2-cns-core-release-independent
   (implies (and (fn2-corep core) (fn2-core-wfp core)

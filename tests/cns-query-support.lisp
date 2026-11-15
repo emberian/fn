@@ -1,0 +1,31 @@
+; Shared actual CNS/query setup operations; assertions belong to consumers.
+(in-package "ACL2")
+(include-book "../books/cns-query-lifetime-model")
+; Descriptor-count preservation is a separate gate; this fixture uses the
+; independent CNS whole-result model and actual callback providers below.
+(include-book "cns-draining-count-counterexample")
+
+(defun fn2-cns-query-write (bytes slot gen off owner ogen fn2-core)
+  (declare (xargs :stobjs fn2-core :verify-guards nil))
+  (if (atom bytes) (mv :ok fn2-core)
+    (mv-let (code fn2-core)
+      (fn2-core-write slot gen off (car bytes) *fn2-cns-kind* owner ogen fn2-core)
+      (if (eq code :ok)
+          (fn2-cns-query-write (cdr bytes) slot gen (+ 1 off) owner ogen fn2-core)
+        (mv code fn2-core)))))
+(defun fn2-cns-query-drive (fuel tx fn2-core)
+  (declare (xargs :stobjs fn2-core :verify-guards nil))
+  (if (zp fuel) (mv :fuel fn2-core)
+    (mv-let (code fn2-core) (fn2-identity-decide tx 4096 fn2-core)
+      (if (eq code :more) (fn2-cns-query-drive (- fuel 1) tx fn2-core)
+        (mv code fn2-core)))))
+(defun fn2-cns-query-pop (principal fn2-core)
+  (declare (xargs :stobjs fn2-core :verify-guards nil))
+  (stobj-let ((fn2-sched (fn2-core-sched fn2-core))) (code id fn2-sched)
+    (fn2-sched-pop-head principal fn2-sched) (mv code id fn2-core)))
+(defun fn2-cns-query-whole-h-p (id before fn2-core)
+  (declare (xargs :stobjs fn2-core :verify-guards nil))
+  (and (fn2-corep fn2-core) (fn2-core-wfp fn2-core) (natp 4)
+       (fn2-cns-draining-domainp id before) (fn2-cns-draining-reservedp before)
+       (fn2-cns-drain-pool-semanticp fn2-core)))
+

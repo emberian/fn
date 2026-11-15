@@ -77,6 +77,7 @@ ACL2_BOOKS = \
   books/cns-draining-model \
   books/cns-draining-public \
   books/cns-pool-refinement \
+  books/cns-query-lifetime-model \
   books/cns-release-accounting \
   books/cns-release-refinement \
   books/core-init-projections \
@@ -261,6 +262,11 @@ ACL2_BOOKS = \
   books/stobj-scope \
   books/stop-boundary \
   books/terminal-values \
+  books/core-scheduler-wake \
+  books/enqueue-trace \
+  books/query-ref-wake \
+  books/queue-model \
+  books/trace-events \
   books/trace \
   books/translation-primitives \
   books/translation-validation \
@@ -296,6 +302,8 @@ ACL2_BOOKS = \
   tests/check-history-unit \
   tests/check-own-unit \
   tests/claims-unit \
+  tests/cns-query-support \
+  tests/cns-query-lifetime-unit \
   tests/cns-release-refinement-unit \
   tests/cns-release-evidence-unit \
   tests/cns-decode-unit \
@@ -459,6 +467,12 @@ ACL2_BOOKS = \
   tests/peer-replay-unit \
   tests/pointwise-contracts-unit \
   tests/pool-ranges-unit \
+  tests/enqueue-cost-unit \
+  tests/query-reference-unit \
+  tests/query-two-wake-unit \
+  tests/query-owner-drain-unit \
+  tests/queue-model-unit \
+  tests/trace-events-unit \
   tests/pool-query-ref-unit \
   tests/pool-protected-floor-unit \
   tests/pool-unit \

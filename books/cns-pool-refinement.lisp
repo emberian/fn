@@ -9,11 +9,30 @@
                (fn2-decl-get :columns
                  (cdr (assoc-eq 'fn2-pool (fn2-decl-rows :columns (w state)))))))))
 
-(defun fn2-cns-owned-pool-release-expected (slot gen okind id ogen pool)
+(defun fn2-cns-owned-zero-query-pool-release-expected (slot gen okind id ogen pool)
   (declare (ignore gen okind id ogen) (xargs :verify-guards nil))
   (list (if (>= (fn2-cns-drain-cell 'fn2-pool-gen slot pool)
                  (fn2-cns-drain-get 'fn2-pool-gen-limit pool)) :retired :ok)
         (fn2-cns-drain-released-pool slot pool)))
+
+(defun fn2-cns-owned-pool-release-expected (slot gen okind id ogen pool)
+  (if (< 0 (fn2-cns-drain-cell 'fn2-pool-query-ref-count slot pool))
+      (list :held pool)
+    (fn2-cns-owned-zero-query-pool-release-expected slot gen okind id ogen pool)))
+(defthm fn2-cns-owned-zero-query-release-equivalence-by-definition
+  (implies (equal (fn2-cns-drain-cell 'fn2-pool-query-ref-count slot pool) 0)
+           (equal (fn2-cns-owned-pool-release-expected slot gen kind id ogen pool)
+                  (fn2-cns-owned-zero-query-pool-release-expected slot gen kind id ogen pool)))
+  :hints (("Goal" :in-theory (enable fn2-cns-owned-pool-release-expected))))
+
+(defthm fn2-cns-owned-release-pool-effect-by-definition
+  (equal (cadr (fn2-cns-owned-pool-release-expected slot gen kind id ogen pool))
+         (fn2-cns-drain-release-pool-effect slot pool))
+  :hints (("Goal" :in-theory
+           (e/d (fn2-cns-owned-pool-release-expected
+                 fn2-cns-owned-zero-query-pool-release-expected
+                 fn2-cns-drain-release-pool-effect)
+                (fn2-cns-drain-released-pool)))))
 
 (defthm fn2-cns-owned-pool-release-independent
   (implies (and (fn2-poolp pool) (fn2-pool-wfp pool)
@@ -34,7 +53,7 @@
                  update-fn2-pool-fill$ai update-fn2-pool-next-free$ai
                  update-fn2-pool-class-headsi update-fn2-pool-class-countsi
                  update-fn2-pool-retired-count
-                 fn2-cns-owned-pool-release-expected
+                 fn2-cns-owned-pool-release-expected fn2-cns-owned-zero-query-pool-release-expected
                  fn2-cns-drain-releasablep fn2-cns-drain-released-pool
                  fn2-cns-drain-put-cells fn2-cns-drain-put-cell
                  fn2-cns-drain-put fn2-cns-drain-cell fn2-cns-drain-get

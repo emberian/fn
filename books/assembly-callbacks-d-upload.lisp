@@ -314,7 +314,13 @@
   ;; returns the store page, then releases the second chunk, then the first,
   ;; then the row.
   (:draining :on-refusal ((:stop :pool-release :steps *fn2-work-state*))
-   (:cond ((and (equal row-lease *fn2-upload-lease-held*)
+   (:cond
+          ;; Keep the page and extent state together until its last query
+          ;; reference wakes this owner. No settlement precedes this check.
+          ((and (equal row-lease *fn2-upload-lease-held*)
+                (fn2-core-query-heldp row-lslot row-lgen))
+           (:charge :steps *fn2-work-state*))
+          ((and (equal row-lease *fn2-upload-lease-held*)
                 (< row-mdrain (fn2-upload-manifest-units (+ row-ilen row-hashed) row-mfill)))
            (:let hrow (fn2-upload-hasher id))
            (:do (pcode) (fn2-upload-settle-unit (* 128 hrow) (+ row-ilen row-hashed) row-lslot row-lgen row-mfill
@@ -330,6 +336,11 @@
            (:set (lease *fn2-upload-lease-none*) (lslot *fn2-none*) (lgen 0) (pext *fn2-none*) (cext *fn2-none*)
                  (cfree 0) (mfill 0) (mdrain 0))
            (:charge :steps *fn2-work-transition* :runnable t))
+          ;; Test both chunks before settling or freeing either. A held C0
+          ;; must not leave C1 freed while the row still carries its handle.
+          ((or (fn2-core-query-heldp row-c0-slot row-c0-gen)
+               (fn2-core-query-heldp row-c1-slot row-c1-gen))
+           (:charge :steps *fn2-work-state*))
           (t
          (:do (pcode) (fn2-upload-payload-settle row-pext row-pepoch row-palloc) :accept (:ok))
          (:do (c1code) (fn2-core-release row-c1-slot row-c1-gen)
