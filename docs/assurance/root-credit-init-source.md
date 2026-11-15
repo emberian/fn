@@ -28,3 +28,25 @@ transformation. No pool/API/schema edits and no default capacity increase.
 Static P+F admission does not reserve dynamic foreground service capacity or
 prove physical checkpoint headroom, sustained query/sealer progress, publication,
 RELEASE settlement, or FREE. Those remain separate connected obligations.
+
+Current-root composition follow-on
+
+The clean follow-on starts at06b7b6aa and retains its checkpoint book byte for
+byte. Its actual init/provider closure is61 books (49 unchanged,2 changed,
+10 new). This is the smallest direct configuration prerequisite; its init
+macro is materialized only by the actual executor, so it alone does not test
+startup. The actual node initializer control is237 books (218 unchanged,
+8 changed,11 new). These are source identity counts, not warm-cache claims.
+The source inventory is receipts/root-credit-current-source.json. Existing
+current root application certificates may be reused only at matching keys;
+there is no permission or need here to rebuild the cold lifecycle assembly.
+
+CNS audit: inbound uses existing CTL RX, fields/B3 stripes and upload C0/C1.
+The planned outbound reader retains the already acquired CNS item lease through
+final trailer Send and handback; it requests no extra pool range. Its proposed
+trusted prefix160 comprises location96, SOURCE32 and stored-source32; metadata
+owns the remaining proof that this fits the existing workspace declaration.
+Additional per-CNS hash/format/digest stripes and promised-read source edges are
+typed table/retention obligations, not extra pool leases. No concurrent CNS
+progress claim is added to F. Rolling APPEND sizing remains with its actual
+producer owner; current6KiB still uses the existing two4096 windows.
