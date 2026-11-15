@@ -56,4 +56,12 @@ class ParkedReadiness(unittest.TestCase):
   self.assertLess(text.index('(fn2-run-load-parked-machine-current-p c fn2-core)'),text.index('(fn2-run-load-readiness-step-with-owner'))
   self.assertNotIn('ready-p',text)
   self.assertNotIn('fn2-checkpoint-summary-set-phase',self.core)
+ def test_resource_owner_control_uses_real_constructors(self):
+  s=(ROOT/'tests/run-physical-parked-owner-unit.lisp').read_text()
+  for name in ('fn2-core-init','fn2-machine-take-fn2-auth','fn2-c-actor-loader-plan','fn2-run-load-region-reserve','fn2-run-load-region-park','fn2-rpo-ready-p'):
+   self.assertIn('('+name+' ',s)
+  self.assertIn('(and H refused)',s)
+  self.assertIn('(fn2-run-loads-set-generation b0 (+ 1 gen)',s)
+  self.assertNotIn('summary-set-phase',s)
+  self.assertNotIn('phase-applied',s)
 if __name__=='__main__':unittest.main()

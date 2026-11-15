@@ -1,0 +1,51 @@
+; PREPARED, UNEXECUTED resource/ML ownership control. Actual core init,
+; AUTH take, bounded reserve and canonical park produce the positive tuple.
+; No physical source, APPLIED catalog or successful served lookup is claimed.
+(in-package "ACL2")
+(include-book "../books/assembly-callbacks-e-auth")
+(defconst *fn2-rpo-profile*
+ (put-assoc-equal :authority 1 (put-assoc-equal :t 8
+  (put-assoc-equal :pool-classes '((32 . 4096) (8 . 65536)) *fn2-profile-tiny*))))
+(defun fn2-rpo-ready-p (c fn2-core)
+ (declare (xargs :stobjs fn2-core :verify-guards nil))
+ (and (fn2-run-load-parked-machine-current-p c fn2-core)
+  (stobj-let ((fn2-run-load-geometry (fn2-core-run-load-geometry fn2-core))
+              (fn2-run-loads (fn2-core-run-loads fn2-core)) (fn2-run-cursors (fn2-core-run-cursors fn2-core))
+              (fn2-checkpoint-summary-leases (fn2-core-checkpoint-summary-leases fn2-core))
+              (fn2-fc (fn2-core-fc fn2-core)) (fn2-fc-context (fn2-core-fc-context fn2-core))
+              (fn2-b3 (fn2-core-b3 fn2-core)) (fn2-fields (fn2-core-fields fn2-core))
+              (fn2-digests (fn2-core-digests fn2-core)) (fn2-pool (fn2-core-pool fn2-core))) (ready)
+   (fn2-run-load-readiness-parked-row-p c (fn2-run-loads-kind c fn2-run-loads)
+    (fn2-run-loads-owner c fn2-run-loads) (fn2-run-loads-generation c fn2-run-loads)
+    fn2-run-load-geometry fn2-run-loads fn2-run-cursors fn2-checkpoint-summary-leases
+    fn2-fc fn2-fc-context fn2-b3 fn2-fields fn2-digests fn2-pool) ready)))
+(defun fn2-rpo-body (fn2-core)
+ (declare (xargs :stobjs fn2-core :verify-guards nil))
+ (b* ((fn2-core (fn2-core-init *fn2-rpo-profile* fn2-core))
+      ((mv born id gen fn2-core) (fn2-machine-take-fn2-auth *fn2-none* *fn2-none* 0 7 0 0 *fn2-none* 0 1 0 1 fn2-core))
+      ((mv planned kind b0 n0 b1 n1 b2 n2) (fn2-c-actor-loader-plan id gen fn2-core))
+      ((unless (and (eq born :ok) (eq planned :ok))) (mv nil fn2-core))
+      ((mv reserve complete fn2-core)
+       (stobj-let ((fn2-run-loads (fn2-core-run-loads fn2-core)) (fn2-run-cursors (fn2-core-run-cursors fn2-core))
+                   (fn2-checkpoint-summary (fn2-core-checkpoint-summary fn2-core))
+                   (fn2-checkpoint-summary-leases (fn2-core-checkpoint-summary-leases fn2-core)) (fn2-pool (fn2-core-pool fn2-core)))
+        (code complete fn2-run-loads fn2-run-cursors fn2-checkpoint-summary fn2-checkpoint-summary-leases fn2-pool)
+        (fn2-run-load-region-reserve b0 n0 b1 n1 b2 n2 kind id gen fn2-run-loads fn2-run-cursors fn2-checkpoint-summary fn2-checkpoint-summary-leases fn2-pool)
+        (mv code complete fn2-core)))
+      ((mv parked fn2-core)
+       (stobj-let ((fn2-run-loads (fn2-core-run-loads fn2-core)) (fn2-run-cursors (fn2-core-run-cursors fn2-core))
+                   (fn2-checkpoint-summary (fn2-core-checkpoint-summary fn2-core))
+                   (fn2-checkpoint-summary-leases (fn2-core-checkpoint-summary-leases fn2-core)) (fn2-pool (fn2-core-pool fn2-core)))
+        (code fn2-run-loads fn2-run-cursors fn2-checkpoint-summary fn2-checkpoint-summary-leases)
+        (fn2-run-load-region-park b0 n0 b1 n1 b2 n2 kind id gen fn2-run-loads fn2-run-cursors fn2-checkpoint-summary fn2-checkpoint-summary-leases fn2-pool)
+        (mv code fn2-core)))
+      (H (and (eq reserve :ok) (equal complete 1) (eq parked :ok) (fn2-core-wfp fn2-core)
+              (fn2-rpo-ready-p b0 fn2-core)))
+      ; Hypothesis-removal mutant: retained generation alone cannot authorize
+      ; a parked row after actual owner generation no longer matches it.
+      (fn2-core (stobj-let ((fn2-run-loads (fn2-core-run-loads fn2-core))) (fn2-run-loads)
+       (fn2-run-loads-set-generation b0 (+ 1 gen) fn2-run-loads) fn2-core))
+      (refused (not (fn2-rpo-ready-p b0 fn2-core))))
+  (mv (and H refused) fn2-core)))
+(assert-event (with-local-stobj fn2-core
+ (mv-let (good fn2-core) (fn2-rpo-body fn2-core) good)))
