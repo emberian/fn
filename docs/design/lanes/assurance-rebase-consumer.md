@@ -101,3 +101,14 @@ or a second checkpoint's successful native execution; all ACL2 assertions remain
 unrun. Full-prefix canonical journal retention is still an intermediate format.
 Physical reclamation still needs the parent-owned bank/archive contract and
 actual live C adoption, plus the decisive two-checkpoint reclaim/reuse control.
+
+The canonical-byte archive now composes the immutable physical run loader from
+`8d1c967e8`. Its sector issue and page verification/header transitions are factored
+into `fn2-run-bound-issue` and `fn2-run-bound-step`; catalog wrappers still require
+the exact current catalog lease every turn. `fn2-run-load-boundp` checks only the
+shared physical cursor/fullRef/owner binding and grants no descriptor authority.
+Five structural controls compare both transition bodies with the original source,
+partition every old source predicate clause, and require one physical read and
+one page verifier implementation. These are source controls, not ACL2 admission.
+Schema20 is reserved for internal canonical member bytes and the actual shared
+phase3 leaf digest; schema21 remains reserved for future real carry-node output.
