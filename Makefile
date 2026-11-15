@@ -278,6 +278,7 @@ ACL2_BOOKS = \
   tests/retirement-intent-leaf-unit \
   tests/retirement-intent-core-unit \
   tests/retirement-publish-core-unit \
+  tests/retirement-canonical-core-unit \
   tests/authority-client \
   tests/authority-served \
   tests/authority-stream-resolve \
