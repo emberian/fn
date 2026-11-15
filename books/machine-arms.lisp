@@ -887,6 +887,26 @@
     (let ((c (fn2-arms-bound (fn2-decl-get dim (fn2-arms-op-row (fn2-arm-use-name (car calls)) world)) nil world 8))
           (rest (fn2-arms-calls-cost (cdr calls) dim world)))
       (and c rest (+ c rest)))))
+; Bytes/steps are accounting bounds; descriptors remain the exact issued count.
+(defun fn2-arms-account-floor (term cost)
+  (declare (xargs :verify-guards nil))
+  (if (zp cost) term `(max ,cost ,term)))
+; A subarm public quantity contract includes the work-empty step floor.
+; Carry that same bound through composition without opening its body.
+(defun fn2-arms-prefix-charges (charges bytes steps)
+  (declare (xargs :verify-guards nil))
+  (if (atom charges) nil
+    (cons (list (+ bytes (car (car charges)))
+                (+ steps (max *fn2-work-empty* (cadr (car charges)))) (caddr (car charges)))
+          (fn2-arms-prefix-charges (cdr charges) bytes steps))))
+(defun fn2-arms-prefix-report (call bytes steps env)
+  (declare (xargs :verify-guards nil))
+  (if (and (zp bytes) (zp steps)) call
+    `(mv-let (fn2-arm-goto-bytes fn2-arm-goto-steps fn2-arm-goto-actions
+              fn2-arm-goto-runnable ,@(fn2-arms-tuple env))
+       ,call
+       (mv (+ ,bytes fn2-arm-goto-bytes) (+ ,steps fn2-arm-goto-steps)
+           fn2-arm-goto-actions fn2-arm-goto-runnable ,@(fn2-arms-tuple env)))))
 (defun fn2-arms-charge-form (b s d r env acc fuel)
   ; (mv err (mv ...) acc): the run's report, with the path's loops added; its
   ; bounds and the summed declared costs of the path's sequential calls join the derived cost
@@ -902,7 +922,7 @@
     (if (not (and vb vs vd cb cs cd))
         (mv (msg "charges (~x0 ~x1 ~x2), which has no static bound." b s d) nil acc)
       (mv-let (err xs acc) (fn2-arms-exprs (list b s d r) env acc fuel)
-        (mv err `(mv ,(fn2-arms-loop-add (car xs) loops 0) ,(fn2-arms-loop-add (cadr xs) loops 1)
+        (mv err `(mv ,(fn2-arms-loop-add (fn2-arms-account-floor (car xs) cb) loops 0) ,(fn2-arms-loop-add (fn2-arms-account-floor (cadr xs) cs) loops 1)
                      ,(fn2-arms-loop-add (caddr xs) loops 2) ,(cadddr xs) ,@(fn2-arms-tuple env))
             (fn2-arms-add :charges (list (list (+ (max vb cb) (fn2-arms-loop-dim loops 0))
                                                (+ (max vs cs) (fn2-arms-loop-dim loops 1))
@@ -1042,22 +1062,27 @@
                        (mv err (fn2-arms-wrap-writes env (fn2-arms-stop-form reason form env))
                            (fn2-decl-set :stay t acc)))))))))
      ((eq (car step) :goto)
-      (let ((sub (assoc-eq (car args) (fn2-arm-get :subs env))))
+      (let* ((sub (assoc-eq (car args) (fn2-arm-get :subs env)))
+             (prefix-bytes (fn2-arms-calls-cost (fn2-arm-get :path-calls env) :bytes (fn2-arm-get :world env)))
+             (prefix-steps (fn2-arms-calls-cost (fn2-arm-get :path-calls env) :steps (fn2-arm-get :world env))))
         (cond ((not sub) (mv (msg "~x0: the kind declares no sub-arm ~x1." step (car args)) nil acc))
               ((fn2-arm-get :failed (cdr sub))
                (mv (msg "~x0: sub-arm ~x1 has its own problem (listed with it)." step (car args)) nil acc))
+              ((not (and prefix-bytes prefix-steps))
+               (mv (msg "~x0: preceding calls have no static accounting bound." step) nil acc))
               ((fn2-arm-get :next env) (mv (msg "~x0 follows a :next; the sub-arm decides the phase." step) nil acc))
               ((fn2-arm-get :loops env)
                (mv (msg "~x0 follows a :repeat; the path ends in its own terminal, which charges the loop's passes." step) nil acc))
               (t (let ((d (cdr sub)))
                    (mv nil (fn2-arms-wrap-writes env
-                             (if (fn2-arm-get :children env)
+                             (fn2-arms-prefix-report
+                              (if (fn2-arm-get :children env)
                                  `(,(fn2-arms-sym kind (concatenate 'string "-SUB-" (concatenate 'string (symbol-name (car args)) "-CHILDREN")))
                                    id slot kind ordinal budget ,@(fn2-arms-tuple env))
-                               `(,(fn2-arms-sym kind (concatenate 'string "-SUB-" (symbol-name (car args)))) id budget fn2-core)))
+                               `(,(fn2-arms-sym kind (concatenate 'string "-SUB-" (symbol-name (car args)))) id budget fn2-core)) prefix-bytes prefix-steps env))
                        (fn2-decl-set :stay (or (fn2-arm-get :stay acc) (fn2-arm-get :stay d))
                          (fn2-decl-set :issues (or (fn2-arm-get :issues acc) (fn2-arm-get :issues d))
-                           (fn2-arms-add :charges (fn2-arm-get :charges d)
+                           (fn2-arms-add :charges (fn2-arms-prefix-charges (fn2-arm-get :charges d) prefix-bytes prefix-steps)
                              (fn2-arms-add :nexts (fn2-arm-get :nexts d)
                                (fn2-arms-add :writes (fn2-arm-get :writes d)
                                  (fn2-arms-add :uses (fn2-arm-get :uses d)
@@ -2319,6 +2344,20 @@
   (if (atom children) nil
     (append (fn2-arms-column-readers (car children) (fn2-view-layout (car children) world))
             (fn2-arms-quantity-readers (cdr children) world))))
+; Non-issuing resource reports do not depend on a child operation's private
+; allocation/search cases. Derive the boundary from actual admitted signatures.
+(defun fn2-arms-resource-stobj-callees (fns world)
+  (declare (xargs :verify-guards nil))
+  (if (atom fns) nil
+    (append (and (remove-eq nil (getpropc (car fns) 'stobjs-in nil world))
+                 (list (car fns)))
+            (fn2-arms-resource-stobj-callees (cdr fns) world))))
+(defun fn2-arms-resource-callees (name world)
+  (declare (xargs :verify-guards nil))
+  (if (member-eq 'fn2-ops (car (fn2-arms-sig name world))) nil
+    (remove-eq name
+      (fn2-arms-resource-stobj-callees
+        (all-fnnames (getpropc name 'unnormalized-body nil world)) world))))
 (defun fn2-arms-child-quantities-event-with-residual (name work-limit residual world)
   (declare (xargs :verify-guards nil))
   (let* ((ins (car (fn2-arms-sig name world)))
@@ -2337,7 +2376,8 @@
        :hints (("Goal" :in-theory (e/d (,name fn2-run-quantitiesp)
                        (nfix nth ,@(fn2-arms-shape-fns ins)
                         ,@(fn2-arms-rows-fns ins)
-                        ,@(fn2-arms-quantity-readers ins world))))))))
+                        ,@(fn2-arms-quantity-readers ins world)
+                        ,@(fn2-arms-resource-callees name world))))))))
 ; Public arms account against the caller budget. Internal chain suffixes
 ; account against their static descriptor bound; the outer admission relates
 ; that bound to the budget before any effects run.
@@ -2366,7 +2406,8 @@
     :hints (("Goal" :in-theory (e/d (,name)
        (natp nfix nth unsigned-byte-p min max
         ,@(fn2-arms-shape-fns ins) ,@(fn2-arms-rows-fns ins)
-        ,@(fn2-arms-quantity-readers ins world))))))))
+        ,@(fn2-arms-quantity-readers ins world)
+                        ,@(fn2-arms-resource-callees name world))))))))
 (defun fn2-arms-child-issued-event (name world)
  (declare (xargs :verify-guards nil))
  (let* ((sig (fn2-arms-sig name world)) (ins (car sig)) (outs (cadr sig))
