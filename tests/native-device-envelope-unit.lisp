@@ -9,8 +9,8 @@
 (assert-event
  (let* ((a *fn2-nde-write-take*)
         (b (update-nth 1 5 a))
-        (records '((:submit 1 (17 5 7 :write 100 3 (8 9 10)))
-                   (:submit 2 (17 4 7 :write 100 3 (8 9 10))))))
+        (records '((:submit 1 (17 5 7 :write 100 3 (8 9 10) 0 1 1))
+                   (:submit 2 (17 4 7 :write 100 3 (8 9 10) 0 1 1)))))
   (and (fn2-nde-submit-join-p b records '(1 2) (list a) :fdatasync)
        (not (fn2-nde-submit-join-p a records '(1 2) (list b) :fdatasync)))))
 (assert-event
@@ -22,13 +22,16 @@
 ; Physical return order is independent of submit identity coverage. Refuse a
 ; later completion first; leaving an unposted suffix is a valid terminal cut.
 (assert-event
- (let* ((records '((:submit 1 (17 4 7 :write 100 3 (8 9 10)))
-                   (:submit 2 (17 5 7 :write 100 3 (8 9 10)))
+ (let* ((records '((:submit 1 (17 4 7 :write 100 3 (8 9 10) 0 1 1))
+                   (:submit 2 (17 5 7 :write 100 3 (8 9 10) 0 1 1))
                    (:begin 1) (:return 1 3 0 nil)
                    (:begin 2) (:return 2 3 0 nil)))
-        (unposted (fn2-nde-returned-ids records)))
+        (unposted (fn2-nde-returned-ids records))
+        (a (list :post 0 4 7 *fn2-event-write-result* *fn2-outcome-done*
+                 *fn2-reason-none* 3 0 0 0 '(0 0 0 0 0) nil))
+        (b (update-nth 2 5 a)))
   (and (equal unposted '(1 2))
-       (fn2-nde-post-join-p '(:post 0 4 7) records unposted)
-       (not (fn2-nde-post-join-p '(:post 0 5 7) records unposted))
-       (fn2-nde-post-join-p '(:post 0 5 7) records (cdr unposted))
-       (not (fn2-nde-post-join-p '(:post 0 4 7) records nil)))))
+       (fn2-nde-post-join-p a records unposted)
+       (not (fn2-nde-post-join-p b records unposted))
+       (fn2-nde-post-join-p b records (cdr unposted))
+       (not (fn2-nde-post-join-p a records nil)))))

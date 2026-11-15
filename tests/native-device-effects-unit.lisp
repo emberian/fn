@@ -1,6 +1,6 @@
 (in-package "ACL2")
 (include-book "../sim/native-device-effects")
-(defconst *fn2-nde-test-write* '(:submit 1 (17 4 7 :write 1 3 (8 9 10))))
+(defconst *fn2-nde-test-write* '(:submit 1 (17 4 7 :write 1 3 (8 9 10) 0 1 1)))
 (assert-event
  (mv-let (code effects)
   (fn2-native-device-effects (list *fn2-nde-test-write* '(:begin 1) '(:return 1 2 0 nil)) 17)
@@ -33,7 +33,7 @@
  (mv-let (code effects)
   (fn2-native-device-effects
    (list *fn2-nde-test-write* '(:begin 1) '(:return 1 2 0 nil)
-         '(:submit 2 (17 5 7 :fence 0 0 nil)) '(:begin 2) '(:return 2 0 0 nil)) 17)
+         '(:submit 2 (17 5 7 :fence 0 0 nil 0 1 1)) '(:begin 2) '(:return 2 0 0 nil)) 17)
   (and (eq code :ok) (equal effects '((:write 1 2 (8 9 10)) (:fence 0 0)))
        (fn2-native-device-image-slice-p effects 0 '(0 0 0 0) '(0 8 9 0))
        (not (fn2-native-device-image-slice-p effects 0 '(0 0 0 0) '(0 0 0 0))))))
@@ -70,7 +70,7 @@
 ; Submit order is FIFO, not merely a chosen serial physical order.
 (assert-event
  (eq (fn2-nde-test-verdict
-       (list *fn2-nde-test-write* '(:submit 2 (17 5 7 :read 1 1 nil)) '(:begin 2))) :malformed))
+       (list *fn2-nde-test-write* '(:submit 2 (17 5 7 :read 1 1 nil 0 1 1)) '(:begin 2))) :malformed))
 ; A successful Read constrains an unknown byte until a later effect changes it.
 (assert-event
  (and (fn2-native-device-image-slice-p
