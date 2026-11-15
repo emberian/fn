@@ -58,7 +58,7 @@
 
 
   (let ((c (fn2-checkpoint-build-candidate 0 fn2-checkpoint-build)))
-   (and (fn2-checkpoint-slotp c fn2-checkpoints fn2-checkpoint-refs fn2-checkpoint-bytes)
+   (and (fn2-checkpoint-slotp-carried c fn2-checkpoints fn2-checkpoint-refs fn2-checkpoint-bytes)
         (fn2-event-producer-writer-request-p c (fn2-checkpoint-source-token 0 fn2-checkpoint-source)
          (fn2-checkpoint-source-owner-kind 0 fn2-checkpoint-source) (fn2-checkpoint-source-owner-slot 0 fn2-checkpoint-source)
          (fn2-checkpoint-source-owner-gen 0 fn2-checkpoint-source) fn2-checkpoint-writer fn2-checkpoint-publication fn2-machines)
