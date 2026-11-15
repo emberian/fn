@@ -110,22 +110,24 @@
 (fn2-assert-owed-teeth fn2-evidence-conditional)
 
 ; Independent review's redirect: the table guard binds :translated, but the
-; author :formula is freely mutable.  Its altered H/C must never drive evidence.
+; author :formula is now pinned by the declaration identity too. Its altered H/C
+; must be rejected at TABLE, before any evidence can be proposed.
 (defthm-owed fn2-evidence-source-binding-probe (x)
  (implies (natp x) (equal (fn2-evidence-clamp x) (fn2-evidence-identity x)))
  :sides (:concrete fn2-evidence-clamp :reference fn2-evidence-identity)
  :teeth (fn2-evidence-conditional-control))
-(make-event
+(must-fail
+ (make-event
  (value (list 'table 'fn2-squares ''fn2-evidence-source-binding-probe
   (list 'quote
    (fn2-decl-set :formula
     '(implies (integerp x)
               (equal (fn2-evidence-clamp x) (fn2-evidence-identity (+ 1 x))))
-    (fn2-decl-row '(:square fn2-evidence-source-binding-probe) (w state)))))))
+    (fn2-decl-row '(:square fn2-evidence-source-binding-probe) (w state))))))))
 (must-fail
  (defsquare-evidence fn2-evidence-source-binding-probe :positive ((x '-1))
   :negative (:kind :hypothesis-removal :remove (integerp x) :bindings ((x '1/2)))))
-; Genuine original witnesses still bind even if optional display text lies.
+; Genuine original witnesses still bind after the attempted metadata mutation is refused.
 (defsquare-evidence fn2-evidence-source-binding-probe :positive ((x '3))
  :negative (:kind :hypothesis-removal :remove (natp x) :bindings ((x '-1))))
 (fn2-assert-square-evidence fn2-evidence-source-binding-probe)
@@ -137,7 +139,8 @@
  (let ((row (fn2-decl-row '(:square fn2-evidence-source-binding-probe) (w state))))
   (and (equal (fn2-owed-claim-term row (w state))
               (fn2-decl-statement-body 'fn2-evidence-source-binding-probe$owed (w state)))
-       (not (equal (fn2-owed-claim-term row (w state)) (fn2-decl-get :formula row))))))
+       (equal (fn2-decl-get :formula row)
+              '(implies (natp x) (equal (fn2-evidence-clamp x) (fn2-evidence-identity x)))))))
 ; Canonical conjunction decomposition retains every actual antecedent clause.
 (defthm-owed fn2-evidence-conjunction (x)
  (implies (and (integerp x) (<= 0 x))

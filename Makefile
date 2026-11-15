@@ -475,6 +475,7 @@ ACL2_BOOKS = \
   tests/owed-d-unit \
   tests/owed-reclamation-unit \
   tests/owed-unit \
+  tests/owed-refutation-unit \
   tests/parser-boundary-unit \
   tests/peer-witnesses \
   tests/peer-replay-unit \

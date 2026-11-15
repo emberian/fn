@@ -197,11 +197,21 @@
              (er soft 'fn2-book-layer "Conflicting layer for ~x0: ~x1 versus ~x2."
                  book old ',layer))
             (t (value `(table fn2-book-layers ',book ',',layer)))))))
+ ; Claim identity is an admitted constant, not mutable table metadata. It
+; survives TABLE :clear and supports arbitrary statement names. This is a
+; declaration artifact, not another claim/status store.
+(defun fn2-decl-claim-anchor (name)
+  (declare (xargs :verify-guards nil))
+  (intern-in-package-of-symbol
+   (concatenate 'string "*" (symbol-name name) "$CLAIM-IDENTITY*") name))
+(defun fn2-decl-claim-identity (row)
+  (declare (xargs :verify-guards nil))
+  (list (fn2-decl-get :statement row) (fn2-decl-get :vars row)
+        (fn2-decl-get :formula row) (fn2-decl-get :translated row)))
 (defun fn2-decl-finish (id payload requires events book world)
   (declare (xargs :verify-guards nil))
-  (let ((manifest (fn2-decl-manifests events :exported world)))
-    `(table ,(fn2-decl-table (car id)) ',(cadr id)
-       ',(append payload
+  (let* ((manifest (fn2-decl-manifests events :exported world))
+         (row (append payload
            (append (and (eq (car id) :square)
                         (list :translated (fn2-decl-statement-body
                                             (fn2-decl-get :statement payload) world)))
@@ -210,7 +220,14 @@
                        (cdr (assoc-equal book (table-alist 'fn2-book-layers world)))))
                  :book book :requires requires
                  :generated manifest :signature events
-                 :reuse (fn2-decl-reuses manifest (fn2-decl-all-rows world))))))))
+                 :reuse (fn2-decl-reuses manifest (fn2-decl-all-rows world))))))
+         (write `(table ,(fn2-decl-table (car id)) ',(cadr id) ',row)))
+    (if (and (eq (car id) :square) (fn2-decl-get :statement row))
+        `(progn
+           (defconst ,(fn2-decl-claim-anchor (cadr id))
+             ',(fn2-decl-claim-identity row))
+           ,write)
+      write)))
 (defun fn2-decl-new-events (id payload requires events book)
   (declare (xargs :verify-guards nil))
   `(encapsulate () ,@events

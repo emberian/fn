@@ -283,6 +283,47 @@ leaves. Root matched all 34 source hashes and keys against the qualified entries
 Receipt: [readonly counterexample](receipts/member-readonly-counterexample34-record.json).
 Receipt: [member and actual positive](receipts/checkpoint-member-thirty-three-record.json).
 
+Registry follow-on (`assurance-refuted-claims`) adds status
+`(:refuted counterexample-theorem candidate-replacement-theorem)`. The
+table guard accepts only an admitted negation of a closed instance of the exact
+live `$OWED` statement; raw author formula or a diagnostic predicate name cannot
+bind it. Refuted originals remain in the unfinished export and completion gate,
+with zero admitted proof credit. The replacement locator is explicitly unverified
+as a semantic link; existence of another theorem does not repair the original.
+The new member bridge uses the admitted readonly-removal witness to propose that
+exact negated instance and points to the distinct FIELDS-TYPE-UNDER-GUARD theorem.
+Existing production member and positive/negative witness bytes are unchanged.
+Each bound declaration now also emits an immutable logical claim-identity
+constant (statement, variables, source formula, translated body). Every table
+status must match it; direct retargeting, unbinding, display-formula mutation and
+clear/re-add cannot redirect the established key. Initial unbound requirements
+and custom statement names remain supported. Status/evidence/check/doc updates
+remain separate. Exact four-book record `certify-20261115T180152Z-1647029`
+at `05cb2fa790e5479b75d3713e0eb3eecac50a52c7` qualifies declare/owed/report and
+35-form actual registry controls, including retarget, unbind, clear/re-add,
+wrong/open counterexamples and redundant author/identity replay. Actual report
+readback verifies the target row is REFUTED, unfinished, replacement link
+unverified, with zero proved claims. Four generic structural source tests pass; member-specific controls stay with the separate member packet.
+[Four-book receipt](receipts/refuted-obligations-four-record.json) records exact
+source, cert/FASL/port hashes and toolchain. The square-evidence regression has
+31 local books with only four exact qualified entries; the actual member bridge
+has 34 with only five. These receipts do not qualify those larger closures; the separate member
+source campaign is in progress and its registry bridge remains unadmitted. No
+application world was started for these registry records; the previous member counterexample receipt remains valid for
+its original frozen closure.
+The existing small correspondence consumer subsequently passed all 49 actual
+forms (0.27 seconds, 32,957 steps), then exact four-book record
+`certify-20261115T180639Z-1652106`: two qualified declaration/owed parents reused,
+square-evidence and its unchanged correspondence fixture newly certified.
+[Correspondence receipt](receipts/refuted-correspondence-four-record.json) binds
+those sources and payloads. Together the two records cover six distinct local
+books, including the original-conclusion mutation/domain controls. They do not
+qualify the larger core-lowering regression or the member registry bridge.
+Generic registry integration excludes the new member bridge and its global
+export include until that actual instance theorem is admitted.
+
+
+
 The shared `:type-hints` fix replaces member-specific event surgery. Its original
 six-book record is preserved in the [carrier receipt](receipts/carrier-type-hints-six-record.json).
 The actual installation caller's source consumes the four guarded contracts,
