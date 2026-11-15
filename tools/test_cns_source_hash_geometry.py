@@ -22,6 +22,11 @@ class Geometry(unittest.TestCase):
   self.assertIn('(- (nfix rows) (nfix sources) 5)',s)
   self.assertIn('(* 2 (fn2-b-upload-windows profile))',s)
   self.assertIn('(+ 4 (fn2-b-upload-hash-rows profile) (nfix s))',s)
+ def test_foundation_rows_reserved(self):
+  s=(ROOT/'books/machines-b.lisp').read_text()
+  self.assertIn('(<= (+ sources connections 9) rows)',s)
+  for sources,connections in ((1,1),(0,1),(1,0)):
+   self.assertFalse(5+sources+connections >= 9+sources+connections)
  def test_shared_hash_implementation(self):
   s=(ROOT/'books/cns-source-hash.lisp').read_text()
   self.assertIn('(<= len 1024)',s)
