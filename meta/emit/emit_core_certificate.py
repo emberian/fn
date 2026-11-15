@@ -60,7 +60,7 @@ def lambda_certificates(body, defined, prefix, fuel=512):
     walk(body,fuel)
     return names,lines
 
-def inspect_core_certificate(src, roots=None):
+def inspect_core_certificate(src, roots=None, *, snapshot=None):
     """Read and select the existing core body closure without writing artifacts.
 
     Only the separately proved MEMBER-EQ-EXEC self recursion is admitted.
@@ -68,8 +68,9 @@ def inspect_core_certificate(src, roots=None):
     Returns packet, selected function rows, all function rows by name, selected
     names, and decoded kind, in the same order used by emission.
     """
-    with open(src,newline='') as source:
-        p=fields(read_canonical(source.read())[1:])
+    if snapshot is None:
+        snapshot = Path(src).read_text()
+    p=fields(read_canonical(snapshot)[1:])
     if as_list(p[':REFUSED']):raise ValueError('unresolved export roots')
     allfs=[fn_of(r) for r in p[':FUNCTIONS']]; allf={f.name:(f,d) for f,d in allfs}
     if len(allf) != len(allfs):raise ValueError('duplicate decoded canonical function subject')
@@ -111,14 +112,16 @@ MEMBER_DEFINITIONS = {
 }
 
 
-def closed_member_book(src, roots, output):
+def closed_member_book(src, roots, output, *, snapshot=None):
     """Propose current-world identity/closure checks, not semantic adequacy.
 
     Qualify ALL packet records, including guard and measure dependencies omitted
     from the Lean body program. The selected roots must be the packet's exact
     census: print with INCLUDE-CONTEXT NIL and no extra operation roots.
     """
-    packet = read_canonical(Path(src).read_text())
+    if snapshot is None:
+        snapshot = Path(src).read_text()
+    packet = read_canonical(snapshot)
     if not packet or packet[0] != ':FN2-CERTIFICATE':
         raise ValueError('scoped qualification requires FN2-CERTIFICATE packet')
     p = fields(packet[1:])
@@ -133,7 +136,7 @@ def closed_member_book(src, roots, output):
             set(packet_roots) != set(roots)):
         raise ValueError('explicit roots differ from scoped packet root census')
     # Same selector and rejection policy as the emitted Lean consumer.
-    _, _, allf, _, _ = inspect_core_certificate(src, roots)
+    _, _, allf, _, _ = inspect_core_certificate(src, roots, snapshot=snapshot)
     if not set(roots) <= set(allf):
         raise ValueError('scoped root lacks exported function record')
     base = Path(__file__).resolve().parents[2]
@@ -165,13 +168,13 @@ def closed_member_book(src, roots, output):
     return '\n\n'.join(lines) + '\n'
 
 
-def closed_member_source(src, roots):
+def closed_member_source(src, roots, *, snapshot=None):
     """Propose an exact-record recursive consumer; domain premises stay explicit.
 
     This is a Lean proposal, not packet qualification or a discharge of caller
     guards, primitive correspondence, selected attachments, or MBE equivalence.
     """
-    _, fs, _, names, _ = inspect_core_certificate(src, roots)
+    _, fs, _, names, _ = inspect_core_certificate(src, roots, snapshot=snapshot)
     missing = set(MEMBER_DEFINITIONS) - names
     if missing:
         raise ValueError('member closure missing: ' + ', '.join(sorted(missing)))
@@ -326,8 +329,11 @@ def cli(argv=None):
     if args.closed_member_output:
         if args.inspect or not args.root:
             parser.error('--closed-member-output requires explicit --root and cannot combine with --inspect')
-        proposal = closed_member_source(args.source, args.root)
-        book = closed_member_book(args.source, args.root, args.closed_member_book) if args.closed_member_book else None
+        # One immutable raw snapshot binds both artifacts even if the pathname
+        # is replaced during generation. All selectors consume this same snapshot.
+        snapshot = Path(args.source).read_text()
+        proposal = closed_member_source(args.source, args.root, snapshot=snapshot)
+        book = closed_member_book(args.source, args.root, args.closed_member_book, snapshot=snapshot) if args.closed_member_book else None
         args.closed_member_output.write_text(proposal)
         if book is not None:
             args.closed_member_book.write_text(book)
