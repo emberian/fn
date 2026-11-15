@@ -73,6 +73,7 @@
  (fn2-alloc-edges-wfp fn2-alloc-edges) (fn2-ops-wfp fn2-ops) (fn2-checkpoints-wfp fn2-checkpoints))))
  (and (posp batch) (unsigned-byte-p 60 batch) (< 1 (fn2-checkpoint-restore-events-rows fn2-checkpoint-restore-events))
       (fn2-alloc-slotp e fn2-extents) (eq (fn2-alloc-handle-code e epoch allocation fn2-extents) :ok)
+      (member (fn2-extents-state e fn2-extents) (list *fn2-extent-state-allocated* *fn2-extent-state-retire-pending*))
       (= (fn2-extents-release-pending e fn2-extents) 0)
       (= (fn2-extents-owner-kind e fn2-extents) *fn2-commit-kind*) (= (fn2-extents-owner-id e fn2-extents) batch)
       (let* ((c (fn2-checkpoint-restore-events-candidate 1 fn2-checkpoint-restore-events))
