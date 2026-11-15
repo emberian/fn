@@ -142,6 +142,12 @@ class ActorLoader(unittest.TestCase):
   event=(ROOT/'books/assembly-callbacks-e-cns.lisp').read_text()
   self.assertEqual(event.count('(fn2-c-actor-loader-core-events)'),1)
 
+class ActorPriority(unittest.TestCase):
+ def test_selected_query_priority_is_distinct_from_wire_identity(self):
+  selected=function('fn2-c-actor-tx-missp',parsed('books/c-actor-loader.lisp'))
+  self.assertTrue(calls(selected,'fn2-run-cursors-priority'))
+  self.assertFalse(calls(selected,'fn2-run-cursors-run'))
+
 class ActorPark(unittest.TestCase):
  def test_checked_resolve_boundary_and_real_terminal_scan(self):
   fs=parsed('books/c-actor-loader.lisp')
