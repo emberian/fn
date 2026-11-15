@@ -61,7 +61,7 @@ class Source(unittest.TestCase):
             self.assertTrue(lr.match(p, [fn]), p)
 
     def test_genuinely_absent_fresh_root_only(self):
-        for p in ['(= slot 0)', '(= cursor 0)', '(= create 1)',
+        for p in ['(= slot 0)', '(= cursor 0)', '(= role 0)', '(= create 1)',
                   '(= (fn2-boot-config-anchor-checked-mask fn2-boot-config) 0)',
                   '(= (fn2-boot-config-anchor-empty-mask fn2-boot-config) 15)',
                   '(= (fn2-boot-config-anchor-invalid-mask fn2-boot-config) 0)']:
