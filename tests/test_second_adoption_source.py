@@ -21,6 +21,7 @@ class SecondAdoption(unittest.TestCase):
   text=SUP.read_text();self.assertIn('(fn2-init-executor *fn2-ccp-profile* :node nil fn2-core)',text)
   self.assertIn('(fn2-ccp-live-complete-p t 0 fn2-core)',text)
   self.assertIn('(fn2-clc-full-live-source-p fn2-core)',UNIT.read_text())
+  self.assertIn('TEST-ONLY CATALOG',text);self.assertIn('*fn2-checkpoint-activation-qualified*=NIL',text)
  def test_actual_physical_miss_selection_io_and_verifier_faces(self):
   x=tree(SUP)
   for n in ('fn2-c-actor-loader-plan','fn2-c-actor-loader-reserve','fn2-read-key','fn2-read-lookup','fn2-read-range','fn2-read-next','fn2-c-actor-loader-state','fn2-run-page-bind','fn2-run-page-step','fn2-run-page-read','fn2-sim-take-prefix','fn2-sim-complete','fn2-exec-harvest'):
