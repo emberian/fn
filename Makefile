@@ -63,6 +63,18 @@ ACL2_BOOKS = \
   books/boot-kind \
   books/boot-format \
   books/boot-pack \
+  books/alloc-edge-layout \
+  books/checkpoint-installation-binding \
+  books/recovery-release \
+  books/release-allocation-harvest \
+  books/release-allocation-state \
+  books/release-allocation \
+  books/release-descriptor-check \
+  books/release-evidence-state \
+  books/release-evidence \
+  tests/release-allocation-harvest-unit \
+  tests/release-allocation-staging-unit \
+  tests/release-evidence-unit \
   books/borrow-accounting \
   books/borrow-conservation \
   books/borrow-faces \
