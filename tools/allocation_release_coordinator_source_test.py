@@ -69,5 +69,18 @@ class ReleaseCoordinator(unittest.TestCase):
             elif isinstance(n, lr.Pre): walk(n.node)
         for form in lr.parse(s).forms: walk(form)
 
+    def test_retirement_is_terminal_without_replenishment(self):
+        s = SOURCE.read_text()
+        poll = s[s.index('(defun fn2-allocation-release-poll '):]
+        self.assertIn("(member-eq returned '(:ok :retired))", poll)
+        prestart = s[s.index('(defun fn2-release-live-return-empty '):s.index('(defun fn2-release-live-start-refused-p ')]
+        self.assertLess(prestart.index('(eq returned :retired)'), prestart.index('(fn2-pool-credit-abort-empty '))
+        fixture = Path('tests/allocation-release-credit-retirement-unit.lisp').read_text()
+        lr.parse(fixture)
+        for actual in ['(fn2-cwc-body-with-limit 1 fn2-pool)', '(fn2-release-live-return-empty ',
+                       '(fn2-allocation-release-poll ', '*fn2-pool-credit-depleted*',
+                       '*fn2-pool-state-retired*', '(eq polled :persisted)']:
+            self.assertIn(actual, fixture)
+
 if __name__ == '__main__':
     unittest.main()
