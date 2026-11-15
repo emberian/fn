@@ -5,7 +5,48 @@ Owner: integration. Commissioned by ember on 2026-11-13, following the
 `fn2-squares` remains the obligation store. Reports and public-claim coverage
 must be derived from that store and the actual served call/attachment graph.
 
-## Current integration frontier — 2026-11-15 UTC
+## Current integration frontier — 2026-11-15 22:25 UTC
+
+Upstream `5a3c90893` includes the current-root descriptor reader and its
+[34-book qualification](receipts/checkpoint-reader-current-thirty-four-record.json).
+The six original unrestricted reader claims remain refuted and unfinished;
+the six distinct guarded replacements are qualified. BOOT still needs to consume
+this bounded reader with verified persisted geometry and retained ownership.
+
+The served-family candidate is separate from upstream. Its `d7973ce44` parent
+closure has 136 qualified books (119 reused, 17 newly recorded); the whole RAW
+source is not qualified. All four RAW guards passed in earlier author work, and
+the latest complete-source attempt passed ISSUE TYPE/WFP before refusing its
+unconditional POOL-ROWS frame. The next repair exposes the existing unconditional
+row-count fact through actual issue and storage wrappers. Conditional shape
+contracts cannot substitute for that unconditional statement. READ backing-length
+contracts must respect the recursive helper's valid-state domain and the public
+reader's explicit runtime state check.
+
+The enum repair has three admitted universal whole-carrier fragment equalities
+at `lane/assurance-enum-controls@8d4944ada`, with provenance clarified at
+`6dce9f270`. Root checked all eight actual theorem summaries, timings and steps
+against the raw transcript. These are not whole-function/effect equivalence or
+record certification; the owner is lifting through the actual unchanged calling
+contexts. The family integrator owns bringing this evidence and tooling into
+the coherent application candidate.
+
+The foundation owner has recorded VOCAB at the `e9c7c2e78` source. Its remaining
+eight books are checkpoint, run-geometry, columns-call-guards, pool-ranges,
+runs-page, runs-schema, runs and columns-carried-unit. Each needs a whole-source
+author pass in its actual qualified parent world before recording. The existing
+28 qualified entries and newly recorded VOCAB are reused; the 37-book union is
+not yet qualified.
+
+Completion still requires composed FETCH/cancellation, the native APPEND/STATUS/
+query and NNTP consumers, process-death recovery of accepted data, productive
+physical checkpoint publication and reopen, and the remaining assurance/Lean
+obligations. Physical storage owns the resident-plus-two-bank capacity repair,
+real sealer/MASTER connection and full-resident two-publication fixture; BOOT owns
+the descriptor callback and persisted-bootstrap admission. Checkpoint activation
+remains disabled. No component proof or source integration closes these gates.
+
+## Earlier integration checkpoint — 2026-11-15 UTC
 
 Upstream `ba773befc` changes the shared declaration foundation to bind claim
 identity and retain refuted claims as unfinished. The six-book union of the
