@@ -777,7 +777,7 @@
       ((unless (eq admitted :ok))
        (mv (if (eq admitted :busy) :more :state) fn2-succ-txns fn2-succ-slots fn2-run-cursors fn2-run-paths fn2-fields fn2-c-source-control fn2-c-source-readers))
       ((mv code fn2-succ-txns fn2-succ-slots fn2-run-cursors fn2-run-paths fn2-fields)
-       (fn2-succ-resolve tx budget b0 fn2-succ-txns fn2-succ-slots fn2-id-decides fn2-run-installed fn2-run-cursors fn2-run-paths fn2-run-cache fn2-fields fn2-pool))
+       (fn2-succ-resolve-raw tx budget b0 fn2-succ-txns fn2-succ-slots fn2-id-decides fn2-run-installed fn2-run-cursors fn2-run-paths fn2-run-cache fn2-fields fn2-pool))
       ((when (member-eq code '(:more :miss)))
        (mv code fn2-succ-txns fn2-succ-slots fn2-run-cursors fn2-run-paths fn2-fields fn2-c-source-control fn2-c-source-readers))
       ; RI beyond the slot set is not a completion certificate. All RES rows
@@ -796,4 +796,4 @@
  (tx budget b0 readrows fn2-succ-txns fn2-succ-slots fn2-id-decides fn2-run-installed fn2-run-cursors fn2-run-paths fn2-run-cache fn2-fields fn2-pool fn2-c-source-control fn2-c-source-readers)
  (fn2-succ-txns fn2-succ-slots fn2-run-cursors fn2-run-paths fn2-fields fn2-c-source-control fn2-c-source-readers)
  (fn2-succ-txns fn2-succ-slots fn2-id-decides fn2-run-installed fn2-run-cursors fn2-run-paths fn2-run-cache fn2-fields fn2-pool fn2-c-source-control fn2-c-source-readers) t
- (fn2-succ-source-acquire fn2-succ-resolve fn2-succ-source-close fn2-succ-txns-ri fn2-succ-txns-rstate))
+ (fn2-succ-source-acquire fn2-succ-resolve-raw fn2-succ-source-close fn2-succ-txns-ri fn2-succ-txns-rstate))

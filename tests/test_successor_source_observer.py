@@ -16,10 +16,10 @@ class SuccessorObserver(unittest.TestCase):
  def test_exact_receipt_precedes_same_actual_resolver(self):
   x=function('fn2-succ-resolve-observed');nodes=list(walk(x))
   self.assertEqual(len(calls(x,'fn2-succ-source-acquire')),1)
-  self.assertEqual(len(calls(x,'fn2-succ-resolve')),1)
+  self.assertEqual(len(calls(x,'fn2-succ-resolve-raw')),1)
   self.assertEqual(len(calls(x,'fn2-succ-source-close')),1)
   text=FILES[0].read_text().split('(defun fn2-succ-resolve-observed',1)[1]
-  self.assertLess(text.index('(fn2-succ-source-acquire'),text.index('(fn2-succ-resolve tx'))
+  self.assertLess(text.index('(fn2-succ-source-acquire'),text.index('(fn2-succ-resolve-raw tx'))
   self.assertIn("(member-eq code '(:more :miss))",text)
   self.assertIn('(equal (fn2-succ-txns-ri tx fn2-succ-txns) *fn2-succ-slots*)',text)
   self.assertIn('(equal (fn2-succ-txns-rstate tx fn2-succ-txns) *fn2-succ-resolve-fresh*)',text)
