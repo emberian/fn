@@ -313,3 +313,20 @@ empty, matching, changed descriptor, namespace and reused allocation subjects,
 and refuses COMPLETE. It does not claim physical authentication. Candidate IO
 will reuse actual boot :read/:read-result under snapshot-read-code and exact
 phase/owner checks; the installed pinned loader cannot precede projection.
+
+The private cold manifest cursor now borrows the actual header reader page and
+a disjoint boot-owned scratch handle, records candidate-borrowed ownership,
+and derives its fixed row through the shared archive cursor helper. Its actual
+physical schema10 root cursor uses only the captured manifest Ref/hash. It
+reuses common bound-bind, bound-step and run-scan-step, freezing each returned
+entry before another source page can overwrite its fields. It does not issue
+IO, acknowledge transport completion, verify descendants or reach COMPLETE.
+The boot raw-read adapter and exact manifest entry/member verification remain
+the next required integration. The operation generator now accepts scalar
+handles separately from stobj children while preserving the symbol-only case
+exactly; a runnable generator fixture is unexecuted. Four cursor source controls,
+six header/source controls, four shared-binding controls and twelve existing
+loader/source boundaries pass. The three remaining readiness-slice failures
+are whole-current B/C replay, whole boot extraction replay, and the actual
+no-engine closure assertion; exact updated cursor/state/geometry expectations
+are preserved by explicit transformations, not new baseline fixtures.

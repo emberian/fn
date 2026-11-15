@@ -11,19 +11,21 @@
 ; Project the existing child operation generator over explicit actual inputs
 ; and mutable outputs. The body is the implementation, never a shadow model.
 (defmacro fn2-event-archive-operation (name children outputs &rest body)
+ (let* ((fn (if (consp name) (car name) name))
+        (formals (append (if (consp name) (cdr name) nil) children)))
  `(progn
-   (defun ,name ,children
+   (defun ,fn ,formals
     (declare (xargs :stobjs ,children
      :guard (and ,@(fn2-checkpoint-root1-child-hyps children))))
     ,@body)
-   (fn2-checkpoint-root1-preserves ,name ,children
+   (fn2-checkpoint-root1-preserves ,fn ,formals
     :hyps ,(fn2-checkpoint-root1-child-hyps children)
     :specs ,(append (fn2-checkpoint-root1-child-specs outputs 1)
                    (fn2-checkpoint-root1-extra-specs outputs 1)))
-   (defcost ,(fn2-columns-sym name "-OP") :child ,name :answers t
+   (defcost ,(fn2-columns-sym fn "-OP") :child ,fn :answers t
     :bytes (* 2 *fn2-run-layout-max-entry-bytes*)
     :tables ,(fn2-checkpoint-root1-child-tables children)
-    :doc "Bounded internal canonical-member staging through the actual run writer.")))
+    :doc "Bounded internal canonical-member staging through the actual run writer."))))
 
 (defun fn2-event-archive-sourcep (fn2-checkpoint-root1 fn2-checkpoint-windows fn2-csnapshot
  fn2-checkpoint-build fn2-checkpoint-source fn2-checkpoint-metadata-manifest fn2-checkpoints fn2-run-builds fn2-run-writers)

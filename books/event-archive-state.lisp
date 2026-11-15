@@ -15,7 +15,7 @@
   (manifest-unit :u60) (manifest-epoch :u60) (manifest-allocation :u60) (manifest-height :u8)
   (header-ordinal :u60) (header-slot :u32) (header-gen :u60) (header-zero :u32) (header-payload :u32)
   (header-unit :u60) (header-epoch :u60) (header-allocation :u60)
-  (source-tag :u60) (source-generation :u60) (scan :u60) (next-event :u60))
+  (source-tag :u60) (source-generation :u60) (scan :u60) (next-event :u60) (entry-pending :bool))
  :extra-fields
  ((fn2-event-archive-words :type (array (unsigned-byte 32) (48)) :initially 0
    :why "Per active/pending row: actual completed member root, manifest root and cut-C seal, eight words each.")

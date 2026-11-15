@@ -5,6 +5,7 @@ import lisp_rewrite as lr
 import readiness_slice_rewrite as rw
 import boot_geometry_lower_rewrite as boot
 import commit_root_lower_rewrite as lower
+import event_archive_geometry_rewrite as archive_geometry
 ROOT=Path(__file__).resolve().parents[1];B=ROOT/'books';F=ROOT/'tools/fixtures'
 def canon(n):return n.low if hasattr(n,'low') else tuple(canon(x) for x in n.items)
 def same(a,b):return canon(lr.parse(a).forms[0])==canon(lr.parse(b).forms[0])
@@ -25,11 +26,20 @@ class Slice(unittest.TestCase):
    provider=(F/('readiness-slice-provider-'+name)).read_text()
    # Shared lower state imports runs directly, as exact later ea0 lowering;
    # every declaration, guard and decision body remains the original form.
-   if name=='run-physical-state.lisp':provider=provider.replace('(include-book "checkpoint-summary-leases")','(include-book "runs")')
+   if name=='run-physical-state.lisp':
+    provider=provider.replace('(include-book "checkpoint-summary-leases")','(include-book "runs")')
+    self.assertEqual(provider.count('(:owned :root1-borrowed)'),1)
+    provider=provider.replace('(:owned :root1-borrowed)','(:owned :root1-borrowed :candidate-borrowed)')
+   if name=='run-physical-readiness.lisp':provider=archive_geometry.readiness(provider)
    self.assertEqual((B/name).read_text(),provider)
  def test_same_cursor_declaration(self):
   p='(defcolumns fn2-run-cursors ?*body)'
-  self.assertTrue(same(rw.form((B/'runs.lisp').read_text(),p),rw.form((F/'readiness-slice-provider-runs.lisp').read_text(),p)))
+  provider=rw.form((F/'readiness-slice-provider-runs.lisp').read_text(),p)
+  # Physical priority belongs to installation order; wire run remains the
+  # authenticated physical header ID. Preserve every other original column.
+  self.assertEqual(provider.count('(run :u60) (resume-child :bool)'),1)
+  provider=provider.replace('(run :u60) (resume-child :bool)','(run :u60) (priority :u60) (resume-child :bool)')
+  self.assertTrue(same(rw.form((B/'runs.lisp').read_text(),p),provider))
  def test_geometry_move_preserves_current_boot_fields_and_phases(self):
   for old,new,fn in [('boot-kind.lisp','boot-config-state.lisp',boot.kind),('checkpoint-boot.lisp','boot-geometry-state.lisp',boot.geometry)]:
    rewritten,lower=fn((F/('readiness-slice-before-'+old)).read_text())

@@ -118,5 +118,5 @@
        (header-slot slot) (header-gen gen) (header-payload payload)
        (header-unit (fn2-checkpoint-restore-reader-unit 0 fn2-checkpoint-restore-reader))
        (header-epoch (fn2-checkpoint-restore-reader-epoch 0 fn2-checkpoint-restore-reader)) (header-allocation (fn2-checkpoint-restore-reader-allocation 0 fn2-checkpoint-restore-reader))
-       (owner-kind kind) (owner-slot owner) (owner-gen ogen) (source-tag 0) (source-generation 0) (scan 0) (next-event 1))))
+       (owner-kind kind) (owner-slot owner) (owner-gen ogen) (source-tag 0) (source-generation 0) (scan 0) (next-event 1) (entry-pending 0))))
   (mv :header fn2-event-archive fn2-checkpoint-restore-reader fn2-fc fn2-fc-context fn2-b3 fn2-fields fn2-pool fn2-digests)))
