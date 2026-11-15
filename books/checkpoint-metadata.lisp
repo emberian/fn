@@ -307,6 +307,7 @@
                      (equal (fn2-run-cursors-schema c fn2-run-cursors) (fn2-run-installed-schema r fn2-run-installed))
                      (equal (+ (fn2-run-cursors-rb c fn2-run-cursors) *fn2-run-reader-entry*) eb)
                      (equal (fn2-run-cursors-physical c fn2-run-cursors) (fn2-run-installed-physical r fn2-run-installed))
+                     (equal (fn2-run-cursors-priority c fn2-run-cursors) (fn2-run-installed-run r fn2-run-installed))
                      (or (equal (fn2-run-installed-physical r fn2-run-installed) 0)
                          (and (equal (fn2-run-cursors-source-row c fn2-run-cursors) r)
                               (equal (fn2-run-cursors-catalog-tag c fn2-run-cursors) (fn2-run-installed-catalog-tag r fn2-run-installed))))

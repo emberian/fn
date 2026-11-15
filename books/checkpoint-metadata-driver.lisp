@@ -146,7 +146,7 @@
          (mv code fn2-checkpoint-metadata fn2-run-builds fn2-run-writers fn2-run-cursors fn2-pool))
         (fn2-checkpoint-metadata-run-begin token row *fn2-checkpoint-source-build* (fn2-checkpoint-source-wbase) crow hbase
          (fn2-checkpoint-windows-slot 12 fn2-checkpoint-windows) (fn2-checkpoint-windows-generation 12 fn2-checkpoint-windows)
-         (fn2-checkpoint-work-fbase (fn2-fc-rows fn2-fc)) (- (fn2-run-cursors-rows fn2-run-cursors) 1)
+         (fn2-checkpoint-work-fbase (fn2-fc-rows fn2-fc)) (fn2-b-checkpoint-source-cursor-from-rows (fn2-run-cursors-rows fn2-run-cursors))
          (fn2-checkpoint-source-rbase (fn2-fc-rows fn2-fc))
          (fn2-checkpoint-windows-slot 14 fn2-checkpoint-windows) (fn2-checkpoint-windows-generation 14 fn2-checkpoint-windows)
          *fn2-run-page-size* kind owner gen fn2-checkpoint-metadata fn2-csnapshot fn2-checkpoint-source fn2-run-installed
@@ -392,14 +392,14 @@
  `(mv ,code
    (cond ((and (< 0 (fn2-checkpoint-root1-rows fn2-checkpoint-root1)) (< 0 (fn2-run-loads-rows fn2-run-loads))
                (equal (fn2-checkpoint-root1-read-kind 0 fn2-checkpoint-root1) 3))
-          (fn2-run-loads-op-slot (- (fn2-run-loads-rows fn2-run-loads) 1) fn2-run-loads))
+          (fn2-run-loads-op-slot (fn2-b-checkpoint-source-cursor-from-rows (fn2-run-loads-rows fn2-run-loads)) fn2-run-loads))
          ((and (< 0 (fn2-checkpoint-root1-rows fn2-checkpoint-root1))
                (equal (fn2-checkpoint-root1-read-kind 0 fn2-checkpoint-root1) 1))
           (fn2-checkpoint-semantic-op-slot 0 fn2-checkpoint-semantic))
          (t (fn2-checkpoint-payload-op-slot 0 fn2-checkpoint-payload)))
    (cond ((and (< 0 (fn2-checkpoint-root1-rows fn2-checkpoint-root1)) (< 0 (fn2-run-loads-rows fn2-run-loads))
                (equal (fn2-checkpoint-root1-read-kind 0 fn2-checkpoint-root1) 3))
-          (fn2-run-loads-op-gen (- (fn2-run-loads-rows fn2-run-loads) 1) fn2-run-loads))
+          (fn2-run-loads-op-gen (fn2-b-checkpoint-source-cursor-from-rows (fn2-run-loads-rows fn2-run-loads)) fn2-run-loads))
          ((and (< 0 (fn2-checkpoint-root1-rows fn2-checkpoint-root1))
                (equal (fn2-checkpoint-root1-read-kind 0 fn2-checkpoint-root1) 1))
           (fn2-checkpoint-semantic-op-gen 0 fn2-checkpoint-semantic))
