@@ -40,6 +40,10 @@
         ((mv & fn2-core fn2-sim fn2-own)
          (fn2-sim-advance-selected nil nil t slot *fn2-fault-none* 1 fn2-core fn2-sim fn2-own)))
     (mv :more fn2-core fn2-sim fn2-own)))
+  ((and (not (fn2-b-rec-posted fn2-core)) (= (fn2-sim-wake-pending fn2-sim) 1))
+   (b* (((mv & fn2-core fn2-sim fn2-own)
+         (fn2-sim-advance-selected nil nil nil 0 *fn2-fault-none* 1 fn2-core fn2-sim fn2-own)))
+    (mv :more fn2-core fn2-sim fn2-own)))
   (t (b* (((mv status & fn2-core) (fn2-b-turn fn2-core)))
        (mv (if (eq status :stop) :failed :more) fn2-core fn2-sim fn2-own)))))
 
@@ -81,6 +85,13 @@
                     (= (fn2-sim-gen slot fn2-sim) gen)
                     (= (fn2-sim-kind slot fn2-sim) *fn2-action-fence*)))
        (mv :not-submitted fn2-core fn2-sim fn2-own))
+      ; ADVANCE-SELECTED honors an earlier real Wake before the flight. Drain
+      ; that Wake without the Fence fault; no executor turn runs between it
+      ; and the exact retained flight's physical completion below.
+      ((mv & fn2-core fn2-sim fn2-own)
+       (if (fn2-sim-wake-first-p t slot fn2-sim)
+        (fn2-sim-advance-selected nil nil nil 0 *fn2-fault-none* 1 fn2-core fn2-sim fn2-own)
+        (mv nil fn2-core fn2-sim fn2-own)))
       ((mv posted fn2-core fn2-sim fn2-own)
        (fn2-sim-advance-selected nil nil t slot fault 1 fn2-core fn2-sim fn2-own)))
   (mv (if posted :posted :not-posted) fn2-core fn2-sim fn2-own)))
