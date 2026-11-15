@@ -50,3 +50,21 @@ Additional per-CNS hash/format/digest stripes and promised-read source edges are
 typed table/retention obligations, not extra pool leases. No concurrent CNS
 progress claim is added to F. Rolling APPEND sizing remains with its actual
 producer owner; current6KiB still uses the existing two4096 windows.
+
+Follow-up scope audit
+
+At ROOT86f919, concrete/tiny/node profiles and the image overlay do not override
+format-slots or format-field-slots. The proposed per-CNS hash-row addition uses
+the same nfix(profile:cns) as actual CNS capacity; the declared format-floor,
+field and digest formulas consequently propagate the additional typed rows.
+Explicit smaller custom budgets remain subject to existing profile minima.
+This is a source audit, not an admitted supported-profile proof.
+
+The existing F expression covers upload/storage work, not all protocol actor
+ranges. An actual NNTP connection already holds its admission rx/tx ranges;
+CTL holds its declared input range, and CNS takes two class0 ws/ns ranges.
+These are existing workspace leases, not new streaming leases, but must be
+included before claiming exact-equality P+F supports full served admission.
+The rolling producer owner will expose its actual header/body size declarations;
+F must consume those declarations and cannot retain the old fixed two-window
+formula once that producer changes. No rolling resource change is made here.
