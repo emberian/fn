@@ -382,8 +382,9 @@
             (fn2-range-advance-run s (fn2-ranges-schema g fn2-ranges) budget qbase qk qs qg fn2-range-sources fn2-run-installed
                                    fn2-run-cursors fn2-run-paths fn2-run-cache fn2-fields fn2-pool)))
          ((unless (eq code :ok)) (mv code fn2-range-sources fn2-run-cursors fn2-run-paths fn2-fields)))
-     (fn2-range-advance-all (- n 1) g budget fn2-ranges fn2-range-sources fn2-overlays fn2-overlay-index fn2-run-installed
-                            fn2-run-cursors fn2-run-paths fn2-run-cache fn2-fields fn2-pool)))
+     ; One actual source advance per call. Completed heads/ends are skipped
+     ; on the next turn, which alone may enter selection/delivery.
+     (mv :more fn2-range-sources fn2-run-cursors fn2-run-paths fn2-fields)))
    (fn2-ra-shape fn2-range-advance-all-shape
     (fn2-range-advance-all n g budget fn2-ranges fn2-range-sources fn2-overlays fn2-overlay-index fn2-run-installed
                            fn2-run-cursors fn2-run-paths fn2-run-cache fn2-fields fn2-pool)
