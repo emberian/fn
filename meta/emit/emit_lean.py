@@ -25,7 +25,7 @@ import sys
 
 # ---------------------------------------------------------------- reader
 
-TOKEN = re.compile(r"""\s*(?:(;[^\n]*)|(\()|(\))|(')|("(?:[^"\\]|\\.)*")|(#\\(?:[A-Za-z][A-Za-z0-9]+|\S))|(\|[^|]*\||[^\s()'"]+))""", re.S)
+TOKEN = re.compile(r"""\s*(?:(;[^\n]*)|(\()|(\))|(')|("(?:[^"\\]|\\.)*")|(#\\(?:[A-Za-z][A-Za-z0-9]+|\S))|((?:\|(?:[^|\\]|\\.)*\||\\.|[^\s()'";\\|])+))""", re.S)
 
 
 def read_all(text):
@@ -71,6 +71,29 @@ def read_all(text):
     forms = []
     while i < len(toks):
         forms.append(form())
+    # The live printer records exact home packages separately so syntactic names
+    # retain their historical spelling. Never infer COMMON-LISP imports.
+    if forms and isinstance(forms[-1], List) and forms[-1] and forms[-1][0] == ":FN2-SYMBOL-PACKAGES":
+        trailer = forms.pop()
+        if len(trailer) != 2 or not isinstance(trailer[1], List):
+            die("malformed symbol package table")
+        symbols = {}
+        for row in trailer[1]:
+            if not isinstance(row, List) or len(row) != 3 or not all(isinstance(v, Str) for v in row):
+                die("malformed symbol package row")
+            token, package, name = map(str, row)
+            symbol_value(package, name)  # reject unsupported packages at the boundary
+            if token in symbols and symbols[token] != (package, name):
+                die(f"conflicting symbol package mapping for {token}")
+            symbols[token] = (package, name)
+        def annotate(x):
+            if isinstance(x, List):
+                for child in x:
+                    annotate(child)
+            elif isinstance(x, Atom) and str(x) in symbols:
+                x.symbol_package, x.symbol_name = symbols[str(x)]
+        for value in forms:
+            annotate(value)
     return forms
 
 
@@ -197,6 +220,16 @@ def lean_str(s):
     return '"' + "".join(out) + '"'
 
 
+def symbol_value(package, name):
+    """Lossless data encoding for the supported ACL2 symbol home packages."""
+    if package == "COMMON-LISP" and name in ("NIL", "T"):
+        return "Val.nil" if name == "NIL" else "Val.t"
+    prefixes = {"KEYWORD": ":", "ACL2": "ACL2::", "COMMON-LISP": "COMMON-LISP::"}
+    if package not in prefixes:
+        die(f"unsupported symbol package {package}")
+    return f"(Val.sym {lean_str(prefixes[package] + name)})"
+
+
 def val(x):
     """A quoted ACL2 object as a Lean `Val`."""
     if isinstance(x, List):
@@ -217,6 +250,8 @@ def val(x):
         return out
     if isinstance(x, Str):
         return f"(Val.str {lean_str(str(x))})"
+    if isinstance(x, Atom) and hasattr(x, "symbol_package"):
+        return symbol_value(x.symbol_package, x.symbol_name)
     a = str(x)
     if a.startswith("#\\"):
         c = a[2:]
@@ -233,7 +268,11 @@ def val(x):
         return "Val.nil"
     if a == "T":
         return "Val.t"
-    return f"(Val.sym {lean_str(a)})"
+    # Old snapshots lack package evidence. Only simple keyword spellings and
+    # the reader's distinguished NIL/T above are unambiguous in those files.
+    if re.fullmatch(r":[A-Z0-9*+!$%&/<=>?@^_~.-]+", a):
+        return symbol_value("KEYWORD", a[1:])
+    die(f"symbol literal lacks live package metadata: {a}")
 
 
 def is_lambda(x):
