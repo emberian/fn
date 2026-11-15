@@ -1,0 +1,252 @@
+{
+  "scope": "Unqualified SOURCE packet; no ACL2/native/remote execution and no activation",
+  "parent": "255b5d598e3265c0ebe90a0f6c1e6cacdf97ebea",
+  "source_commit": "e887f9bb402f74a9979842b09ef30e45e1802956",
+  "shared_engine_origin": "798bc89ef7de3380129931d263ebd880965d7be7",
+  "ROOT_comparison_commit": "ad7229772fa008a40677f4176cccb566d2efd69b",
+  "consumer_roots": [
+    "books/checkpoint-master-events",
+    "books/checkpoint-metadata-driver",
+    "books/checkpoint-metadata-release",
+    "books/run-physical-bound-step",
+    "books/run-physical-bound-bind",
+    "books/run-physical-release"
+  ],
+  "literal_include_audit": {
+    "books": 260,
+    "missing": [],
+    "cycles": []
+  },
+  "implementation_commits": {
+    "provider": "ba7c2238b",
+    "fresh_parent_only": "9accfdc38",
+    "fixed_rows_and_wait": "cd9023f93",
+    "byte_quota_only": "e887f9bb4"
+  },
+  "rows": [
+    {
+      "path": "Makefile",
+      "status": "modified",
+      "sha256": "8b2ddbdadba63e823109443957158477f14fc12518152f2e6d7911040258d0e9",
+      "parent_sha256": "fb255e4fe4b64714ae540a5a1b42add3fbbca6ec117806511fe1452d7d51810c",
+      "ROOT_sha256": "ca7f57a74782b11fdc6ceef1598e937cc8523e974cf86b63ce472c99c75e2fd0",
+      "ROOT_comparison": "different"
+    },
+    {
+      "path": "books/checkpoint-master-arms.lisp",
+      "status": "modified",
+      "sha256": "065bed9cb8d85090b81dcb3eadc5f243e3de103a9b043ad2f947ed42c26cc60e",
+      "parent_sha256": "14d415d8f77e563178ba1e51df4c49f5a152aa1e88db01e442e024d4b38908ac",
+      "ROOT_sha256": null,
+      "ROOT_comparison": "new"
+    },
+    {
+      "path": "books/checkpoint-master-state.lisp",
+      "status": "modified",
+      "sha256": "fd826ad62a66500888880a085a0eb44373360106c380ca6348856af2d8904a14",
+      "parent_sha256": "e8a42c109171fcc99082e5f9f6dc5ce7e3c7f8025fa147f70db899d8c4a9fcb1",
+      "ROOT_sha256": null,
+      "ROOT_comparison": "new"
+    },
+    {
+      "path": "books/checkpoint-metadata-driver.lisp",
+      "status": "modified",
+      "sha256": "22430edb6be6bb05554ce78b21262c7688787bea73c048ac0e34de52a3f5e1c7",
+      "parent_sha256": "6133525196a6dbb26f75ed7545fe0fadc57c87837957de5c8dd2ae2a0e77c0fe",
+      "ROOT_sha256": null,
+      "ROOT_comparison": "new"
+    },
+    {
+      "path": "books/checkpoint-metadata-release.lisp",
+      "status": "modified",
+      "sha256": "837db7160097b505edc6fc6e937e5fa479a630ca48cf18f0f454e9e4d0d0eafc",
+      "parent_sha256": "e0913baf1b1b367193cc65e185e7da80b87d564c31723cb03bba8667303addec",
+      "ROOT_sha256": null,
+      "ROOT_comparison": "new"
+    },
+    {
+      "path": "books/checkpoint-metadata.lisp",
+      "status": "modified",
+      "sha256": "75ecc3c7d168716a109929c43c3e2ff8e28a26a5dad579c03649b4512e4deeaf",
+      "parent_sha256": "5efb2a22f981af6b52e97f5bbc178dd08d1b1a4dce755f61ddb91bda75ba118e",
+      "ROOT_sha256": null,
+      "ROOT_comparison": "new"
+    },
+    {
+      "path": "books/checkpoint-source-loader.lisp",
+      "status": "new",
+      "sha256": "f9ebdbc9608a93c56f28c788a15ba1f91b00db8416949097b1f6e6d39a3e61fa",
+      "parent_sha256": null,
+      "ROOT_sha256": null,
+      "ROOT_comparison": "new"
+    },
+    {
+      "path": "books/machines-b.lisp",
+      "status": "modified",
+      "sha256": "f05216d2ce89f9761ecf23181353f3281b2927b19a16306e605c70db43b74a45",
+      "parent_sha256": "eb8e004a01cbe025ece3b05454abb4cdd70c4be13c3fc89dde593611fe7d9f98",
+      "ROOT_sha256": "a29059a34261d157eadd0f8105f48c60cf3b7d6b1179221002bfb0e63818e383",
+      "ROOT_comparison": "different"
+    },
+    {
+      "path": "books/machines-c.lisp",
+      "status": "modified",
+      "sha256": "1e5e2335d391b3981bddf603c8da4e9dd061db2e18215376fed80a956fdd19e8",
+      "parent_sha256": "60bb53e6624e19df201a1884a4cb3a1719da5f0b1c20afdb1aa80df2063eb23b",
+      "ROOT_sha256": "0ff2c7913bcfb24e8d53b13108053f5dcc6ae57da3dd7dc4d3ca5ba2a07cba2e",
+      "ROOT_comparison": "different"
+    },
+    {
+      "path": "books/run-physical-bound-bind.lisp",
+      "status": "new",
+      "sha256": "6b318587cba7533d15b9631e33721418ca7cc1579d1052bae6e1bcf07753f477",
+      "parent_sha256": null,
+      "ROOT_sha256": null,
+      "ROOT_comparison": "new"
+    },
+    {
+      "path": "books/run-physical-bound-io.lisp",
+      "status": "new",
+      "sha256": "de22818b77a630635f9b36eebab4590031b3d9c8bb09e3e5fb44a5aac51d2c6d",
+      "parent_sha256": null,
+      "ROOT_sha256": null,
+      "ROOT_comparison": "new"
+    },
+    {
+      "path": "books/run-physical-bound-step.lisp",
+      "status": "new",
+      "sha256": "e87231bef55bd15072f4aa12520ba2d9b3d0e9c77eb01a8512f787f116dbe100",
+      "parent_sha256": null,
+      "ROOT_sha256": null,
+      "ROOT_comparison": "new"
+    },
+    {
+      "path": "books/run-physical-bound.lisp",
+      "status": "new",
+      "sha256": "86750a64cfd1201ccaf0e317442690d4ed72e90eb1efde76a66f8440e7184a0b",
+      "parent_sha256": null,
+      "ROOT_sha256": null,
+      "ROOT_comparison": "new"
+    },
+    {
+      "path": "books/run-physical-io.lisp",
+      "status": "new",
+      "sha256": "aa2c2986687f8ebda5869f400f04edc718e30503a6d238612f6f1a9e998e06df",
+      "parent_sha256": null,
+      "ROOT_sha256": null,
+      "ROOT_comparison": "new"
+    },
+    {
+      "path": "books/run-physical-readiness.lisp",
+      "status": "modified",
+      "sha256": "f3c09380cbd08340e63a56c2fd6b3bc43cf809292766f06da43cbed5893cb31c",
+      "parent_sha256": "68a04f6a0d757d743c7440774466872509b614c38ee260d7c05ccdcba98a3136",
+      "ROOT_sha256": null,
+      "ROOT_comparison": "new"
+    },
+    {
+      "path": "books/run-physical-release.lisp",
+      "status": "new",
+      "sha256": "84f527a1590499f020e55fdcb9f122cc70f6a2072951fb17500d865a543a9a37",
+      "parent_sha256": null,
+      "ROOT_sha256": null,
+      "ROOT_comparison": "new"
+    },
+    {
+      "path": "books/run-physical-source.lisp",
+      "status": "new",
+      "sha256": "102241d2d215d03b85f05a100359c5e5308164af4f870cdd00334768d357239d",
+      "parent_sha256": null,
+      "ROOT_sha256": null,
+      "ROOT_comparison": "new"
+    },
+    {
+      "path": "books/run-physical-state.lisp",
+      "status": "modified",
+      "sha256": "85bc4aff9c84e5c60c1709a04d32fca19e239627e22e9b94aed8dc2548921d2d",
+      "parent_sha256": "7e1a9f565bd011f0f511fa7f618ccf6662e90655ef2da4952b184e4dcc806206",
+      "ROOT_sha256": null,
+      "ROOT_comparison": "new"
+    },
+    {
+      "path": "books/run-physical-step.lisp",
+      "status": "new",
+      "sha256": "a8ddde305fd9570f59d0202a6ba1297f8cb59743c34d06ac78fe5882655b86ee",
+      "parent_sha256": null,
+      "ROOT_sha256": null,
+      "ROOT_comparison": "new"
+    },
+    {
+      "path": "books/runs-assemble.lisp",
+      "status": "modified",
+      "sha256": "e19e0efa99e21b0f024edae32a01b554f812b6c3fcd5044fcc3709b6b75160f8",
+      "parent_sha256": "7d1a1ae672ff4bf6e591d9adab471daf3c661a8bb808e133744a49a6e743ad64",
+      "ROOT_sha256": "2c05dd758c603053ad4536fac837bb4f192a012430ad3fac17ec4d57139f385f",
+      "ROOT_comparison": "different"
+    },
+    {
+      "path": "books/runs.lisp",
+      "status": "modified",
+      "sha256": "68b21f31008279863082b0f17bd893cef8c99635579319f84cba0d1ad36f8433",
+      "parent_sha256": "2052949d2569baddf914c0d1331ae9f7c9abb02f200130bcaaeff695044c2b80",
+      "ROOT_sha256": "651aa00ccdac9c7b646e8f3fc2ea7051f34f33b5434624f6ed788170af9f6d8e",
+      "ROOT_comparison": "different"
+    },
+    {
+      "path": "tests/loader-fixed-cursor-rows-unit.lisp",
+      "status": "new",
+      "sha256": "33d53c66a7e2919cb6b5a05eb635eda243b250eebbb300bbfd1d66c77d7dc03e",
+      "parent_sha256": null,
+      "ROOT_sha256": null,
+      "ROOT_comparison": "new"
+    },
+    {
+      "path": "tests/loader_actor_cost_source_test.py",
+      "status": "new",
+      "sha256": "b33eda19a7c3386b2748b03fa1341f18e34789333c0fbc74b8a61576464cae65",
+      "parent_sha256": null,
+      "ROOT_sha256": null,
+      "ROOT_comparison": "new"
+    },
+    {
+      "path": "tests/loader_current_packet_source_test.py",
+      "status": "new",
+      "sha256": "43b63217e75107d004744e59f58526d9f82e76bedb0f72528159d63a896c8f84",
+      "parent_sha256": null,
+      "ROOT_sha256": null,
+      "ROOT_comparison": "new"
+    },
+    {
+      "path": "tools/loader_actor_cost_projection.py",
+      "status": "new",
+      "sha256": "be7767a88885e8f4db8fe028476a5d33209e1babd4a06aa04fe9ba8d77dd3ac8",
+      "parent_sha256": null,
+      "ROOT_sha256": null,
+      "ROOT_comparison": "new"
+    },
+    {
+      "path": "tools/loader_fixed_cursor_rows.py",
+      "status": "new",
+      "sha256": "60142581858d692410770b6eb860d08f1c8a42a8bd1c60dbd935c1c33a5fd496",
+      "parent_sha256": null,
+      "ROOT_sha256": null,
+      "ROOT_comparison": "new"
+    }
+  ],
+  "known_explicit_provider_call_arity_audit": {
+    "calls": 95,
+    "unique": 42,
+    "mismatches": [],
+    "scope": "known literal DEFUNs only; not macroexpansion or ACL2 admission"
+  },
+  "tests_run": [
+    "python3 tests/loader_current_packet_source_test.py (10 source controls)",
+    "python3 tests/loader_actor_cost_source_test.py (3 source controls)"
+  ],
+  "ACL2_fixture_unexecuted": "tests/loader-fixed-cursor-rows-unit.lisp",
+  "gaps": [
+    "Root1 defcost currently declares no structural steps (default0); unchanged32 master steps are NOT a proved full leaf/turn work bound.",
+    "Full generated decoder fuel and all wide archive caller charges require the archive/proof-cost packet.",
+    "Archive schema/internal declaration, role3/witness/typed selected-source wrappers remain archive-owned; no full archive activation is claimed."
+  ]
+}
