@@ -1,5 +1,6 @@
 ; Query/loader leases retain exact adopted catalog identity across yields.
 (in-package "ACL2")
+(include-book "std/util/bstar" :dir :system)
 (include-book "checkpoint-summary-state")
 (include-book "runs")
 (fn2-book-layer :c)
