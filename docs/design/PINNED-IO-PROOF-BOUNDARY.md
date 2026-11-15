@@ -88,3 +88,43 @@ and `/tmp/finish-pin-outer-effects.log`. Frozen source fragments and hashes are
 in `/tmp/finish-pin-author/receipt.json`. This is a successful partial-source
 helper author gate, not record certification. Full machines-b/current-core,
 ops-semantic-steps composition, and lifecycle controls remain pending.
+
+## Canonical module frontier (2026-11-15 UTC)
+
+The next retained world used exact `347058fb0fc0e03d73a3506541b5fd5d64fdb218`
+modules: machines-b closure 76, comprising 38 qualified cached books and 37
+explicit source dependencies plus the target. No core/index was materialized.
+Cache artifact set was `f0bb81b49866412fe610b27b83b1f247305eab13676897a11a2b56e23cd1ad2e`.
+
+The initial whole-book format-events wrapper exhausted its aggregate 2M-step
+budget, leaving only 3,884 steps for its final attempted theorem. Replaying exact
+top-level events preserved each DEFLAYOUT's inner local scope and passed all
+66 forms in 34.53 seconds / 5,405,639 total steps; the largest event was 392,836
+steps. Books with top-level LOCAL events retained their complete book scope.
+
+Two actual retirement row-frame proofs needed the observer kept opaque so the
+existing allocator-account/retire row interface could match: retire family
+0.78 seconds / 160,786 steps; install family 0.53 seconds / 109,365 steps.
+The actual packer guard then exposed a missing codec-size upper bound. A total
+coarse varint-size bound proved in 0.16 seconds / 803 steps; the actual retirement
+codec's size-fits-field theorem proved in 0.20 seconds / 3,126 steps. The
+original packer guard passed with explicit size arithmetic in 0.27 seconds /
+7,588 steps; its unchanged carrier family subsequently passed using the named
+size bound in 0.08 seconds / 10,322 steps. The source repair keeps the coarse
+arithmetic lemma local and supplies the named size bound before the unchanged
+packer definition. That final compact ordering still needs a fresh source
+admission; the exploratory guard used explicit hints rather than that ordering.
+
+Twelve source dependencies were admitted through format-check, whose scoped
+book took 34.02 seconds / 1,705,198 steps. The outer deadline then stopped the
+world cleanly (outer 686554, server 686587, ACL2 group 686588 all absent; stop
+returned 0). Supervisor code 75 records the first source-wrapper refusal;
+individual later RPC receipts carry subsequent passes. The next commit-geometry
+send encountered the stopped world: this is not a commit-geometry proof failure.
+No certification occurred. Twenty-five dependencies, machines-b itself, and the
+canonical dispatcher/publish controls remain unrun in this scope.
+
+Forge receipts are `/tmp/finish-pin-modules.log`,
+`/tmp/finish-pin-modules-format-events.log`,
+`/tmp/finish-pin-modules-continue2.log`, and named book/event logs under
+`/tmp/finish-pin-modules/` and `/tmp/finish-pin-*.log`.

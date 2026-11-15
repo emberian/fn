@@ -105,7 +105,10 @@
                        (= (fn2-retirement-control-epoch 0 fn2-retirement-control) (fn2-checkpoint-construction-epoch ticket fn2-checkpoint-construction))
                        (= (fn2-retirement-control-allocation 0 fn2-retirement-control) (fn2-checkpoint-construction-counter ticket fn2-checkpoint-construction))
                        (fn2-checkpoint-builder-claimp c (fn2-retirement-control-token 0 fn2-retirement-control) okind oslot ogen fn2-checkpoints)
-                       (= (fn2-checkpoints-state c fn2-checkpoints) *fn2-checkpoint-state-checked*)))
+                       (= (fn2-checkpoints-state c fn2-checkpoints) *fn2-checkpoint-state-checked*)
+                       (posp event) (unsigned-byte-p 60 event)
+                       (or (= (fn2-checkpoints-installation-event c fn2-checkpoints) 0)
+                           (= (fn2-checkpoints-installation-event c fn2-checkpoints) event))))
          (mv :invalid fn2-retirement-control fn2-checkpoints fn2-fields))
         ((mv decoded end fn2-fields)
          (fn2-format-checkpoint-installation-decode base slot gen next (+ next bytes) okind oslot ogen fn2-fields fn2-pool))
@@ -115,6 +118,9 @@
          (fn2-checkpoint-install c batch base slot gen okind oslot ogen fn2-checkpoints fn2-checkpoint-refs fn2-checkpoint-bytes
           fn2-fields fn2-pool fn2-alloc-edges fn2-extents fn2-ops))
         ((unless (eq code :ok)) (mv code fn2-retirement-control fn2-checkpoints fn2-fields))
+        ; EVENT is the exact persisted member identity already matched above,
+        ; not the directory's first event or a number inferred from its cut.
+        (fn2-checkpoints (fn2-checkpoints-set-installation-event c event fn2-checkpoints))
         (fn2-retirement-control (fn2-retirement-control-put 0 (installed 1) (install-offset end))))
     (mv :ok fn2-retirement-control fn2-checkpoints fn2-fields)) (mv code fn2-core)))
  (fn2-core-preserves fn2-checkpoint-installation-install-member

@@ -300,6 +300,7 @@ ACL2_BOOKS = \
   tests/checkpoint-plan-unit \
   tests/checkpoint-publication-repeat-unit \
   tests/checkpoint-recovery-census-unit \
+  tests/checkpoint-selected-source-unit \
   tests/checkpoint-recovery-evidence-unit \
   tests/checkpoint-restore-arena-unit \
   tests/checkpoint-restore-semantic-unit \
@@ -325,7 +326,9 @@ ACL2_BOOKS = \
   tests/storage-geometry-unit \
   tests/owed-reclamation-unit \
   tests/retirement-intent-core-unit \
+  tests/startup-genesis-unit \
   tests/retirement-publish-core-unit \
+  tests/retirement-canonical-core-unit \
   tests/authority-client \
   tests/authority-served \
   tests/authority-stream-resolve \

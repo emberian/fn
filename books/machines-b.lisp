@@ -401,7 +401,7 @@
  :fields ((pending :u32) (stopped :bool) (pool-slot :u32) (pool-gen :u60)
           (rc-mode :u8) (rc-pos :u32) (rc-role :u8) (rc-stage :u32) (rc-filled :u32)
           (rc-ready :bool) (rc-outcome :u8) (rc-count :u32)
-          (rc-chain :u60) (rc-arena :u32) (rc-high :u32) (rc-dirty :bool) (rc-ambiguous :bool)
+          (rc-chain :u60) (rc-base :u60) (rc-base-event :u60) (rc-base-tag :u60) (rc-arena :u32) (rc-high :u32) (rc-dirty :bool) (rc-ambiguous :bool)
           (rc-class :u8) (rc-witness :u60) (rc-witness-outcome :u8) (rc-assume :u8)
           (rc-epoch :u60) (rc-found :u32)
           ;; the payload pass: the chained commit whose records are read, the

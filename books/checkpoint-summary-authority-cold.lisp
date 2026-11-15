@@ -169,3 +169,15 @@
       (fn2-checkpoint-summary-authority (fn2-checkpoint-summary-authority-put 0
        (cursor (+ 1 i)) (phase (if (= i 487) *fn2-checkpoint-summary-authority-phase-complete* *fn2-checkpoint-summary-authority-phase-copy*)))))
   (mv (if (= i 487) :complete :more) fn2-checkpoint-summary-authority)))
+
+; machine-arms.lisp fn2-arms-op-face-events derives all bindings from the
+; actual child's stobjs-in and mutable projection from stobjs-out. :tables
+; below records every read/write carrier; it is not a substitute for that ABI.
+(defcost fn2-checkpoint-summary-authority-cold-begin-op :child fn2-checkpoint-summary-authority-cold-begin :answers (:source :more)
+ :steps *fn2-work-stage* :bytes 32 :descriptors 0
+ :tables (fn2-core-checkpoint-summary-authority fn2-core-checkpoint-summary fn2-core-checkpoint-cbase-holds fn2-core-checkpoint-selected-source fn2-core-boot-config fn2-core-checkpoints fn2-core-checkpoint-refs fn2-core-checkpoint-bytes fn2-core-origin fn2-core-checkpoint-recovery-evidence fn2-core-checkpoint-recovery-census fn2-core-checkpoint-restore-map fn2-core-checkpoint-restore-map-control fn2-core-checkpoint-restore-semantic fn2-core-checkpoint-restore-reach-control fn2-core-checkpoint-restore-reader fn2-core-checkpoint-restore-events fn2-core-checkpoint-restore-events-work)
+ :doc "Use the existing bounded cold primitive and its complete actual carrier footprint.")
+(defcost fn2-checkpoint-summary-authority-cold-step-op :child fn2-checkpoint-summary-authority-cold-step :answers (:source :bounds :complete :more)
+ :steps *fn2-work-stage* :bytes 4 :descriptors 0
+ :tables (fn2-core-checkpoint-summary-authority fn2-core-checkpoint-summary fn2-core-checkpoint-cbase-holds fn2-core-checkpoint-selected-source fn2-core-boot-config fn2-core-checkpoints fn2-core-checkpoint-refs fn2-core-checkpoint-bytes fn2-core-origin fn2-core-checkpoint-recovery-evidence fn2-core-checkpoint-recovery-census fn2-core-checkpoint-restore-map fn2-core-checkpoint-restore-map-control fn2-core-checkpoint-restore-semantic fn2-core-checkpoint-restore-reach-control fn2-core-checkpoint-restore-reader fn2-core-checkpoint-restore-events fn2-core-checkpoint-restore-events-work)
+ :doc "Use the existing bounded cold primitive and its complete actual carrier footprint.")
