@@ -104,23 +104,23 @@
 ; a line; the last two written octets distinguish empty from ordinary.
 (defun fn2-feed-header-end-p (slot gen kind owner owner-gen fn2-pool)
   (declare (xargs :stobjs fn2-pool :guard (fn2-pool-wfp fn2-pool)))
-  (let ((fill (fn2-gram-fill slot fn2-pool)))
-    (cond ((zp fill) (mv :ok t))
-          ((< fill 2) (mv :ok nil))
-          (t (fn2-feed-crlf-at slot gen (- fill 2) kind owner owner-gen fn2-pool)))))
+  (let ((filled (fn2-gram-fill slot fn2-pool)))
+    (cond ((zp filled) (mv :ok t))
+          ((< filled 2) (mv :ok nil))
+          (t (fn2-feed-crlf-at slot gen (- filled 2) kind owner owner-gen fn2-pool)))))
 ; At a later call, C0's actual filled trailer is the routing authority even
 ; when the separately scheduled header scan has not caught up.  At most four
 ; pool reads recognize the first empty line or CRLF CRLF.
 (defun fn2-feed-header-complete-p (slot gen kind owner owner-gen fn2-pool)
   (declare (xargs :stobjs fn2-pool :guard (fn2-pool-wfp fn2-pool)))
-  (let ((fill (fn2-gram-fill slot fn2-pool)))
-    (if (< fill 2) (mv :ok nil)
-      (mv-let (code tail) (fn2-feed-crlf-at slot gen (- fill 2) kind owner owner-gen fn2-pool)
+  (let ((filled (fn2-gram-fill slot fn2-pool)))
+    (if (< filled 2) (mv :ok nil)
+      (mv-let (code tail) (fn2-feed-crlf-at slot gen (- filled 2) kind owner owner-gen fn2-pool)
         (cond ((not (eq code :ok)) (mv code nil))
               ((not tail) (mv :ok nil))
-              ((= fill 2) (mv :ok t))
-              ((< fill 4) (mv :ok nil))
-              (t (fn2-feed-crlf-at slot gen (- fill 4) kind owner owner-gen fn2-pool)))))))
+              ((= filled 2) (mv :ok t))
+              ((< filled 4) (mv :ok nil))
+              (t (fn2-feed-crlf-at slot gen (- filled 4) kind owner owner-gen fn2-pool)))))))
 
 ; The feed: at most LEFT octets of [i, end) of RX, written into the chunk
 ; DSLOT while it has room. Returns (mv status i mode discard copied lines
