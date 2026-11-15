@@ -141,3 +141,22 @@ not claim actual issuance or descriptor authentication. Assertions remain UNRUN.
 Parent owns VERIFY stage11/12/13 routing and ordinary observer/finish; the private
 issue and worker continuation will derive source/read resources from the exact
 authenticated recovery row, preserving its journal lease throughout.
+
+Source-bound recovery begin/issue now live in recovery-release.lisp. BEGIN accepts
+only the actual authenticated selected recovery row, reparses its current RELEASE
+through shared header/body decoders, captures exact target/Ref/hash and J/event,
+and binds a separate workspace. Direct resident J requires actual CHAINED
+candidate and exact event interval; archived J returns archive-required before
+constructing a ready continuation. No caller supplies identity, coverage or cursor.
+Machine values are captured before borrowing child stores using one source
+rewriter with fixtures. ISSUE requires the same source/actor/journal lease and
+stage11, exact descriptor target and separate workspace, then calls existing
+pinned block I/O and retains the actual op tuple for the canonical pre-finish hook.
+
+Driver/checker binding is unreachable-in-composition until parent VERIFY routing
+and verifier terminal connect. No settled/FREE answer or archive substitute is
+provided. Source READ/structure/known-arity controls pass; guards and actual-path
+controls remain UNRUN. The D include walk on the623 foundation encounters the
+existing boot-kind/selected-source/census cycle; current coherent parent merge
+is required before claiming this new D closure acyclic. No alternate split is
+authored in this lane.

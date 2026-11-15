@@ -19,6 +19,11 @@ def decoded_matches():
                        for i, (target, _) in enumerate(REF_COLUMNS))
     return '\n'.join(emit(form) for form in parse(source).forms)
 
+def decoded_capture_bindings():
+    source = '\n'.join(f'({target} (fn2-fields-value (+ f {i}) fn2-fields))'
+                       for i, (target, _) in enumerate(REF_COLUMNS))
+    return '\n'.join(emit(form) for form in parse(source).forms)
+
 def digest_columns():
     return '\n'.join(emit(form) for form in parse(' '.join(f'(h{i} :u32)' for i in range(8))).forms)
 

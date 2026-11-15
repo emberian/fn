@@ -4,7 +4,7 @@
 (include-book "columns")
 (fn2-book-layer :b)
 (defcolumns fn2-allocation-release
- ((phase (:enum fn2-allocation-release-phase (:idle :staged :prepared :waiting :persisted :blocked :complete :uncertain)))
+ ((phase (:enum fn2-allocation-release-phase (:idle :staged :prepared :waiting :persisted :blocked :complete :uncertain :replaying)))
   (owner-kind :u8) (owner-slot :u32) (owner-gen :u60)
   (bank :bool) (candidate :u32) (checkpoint :u60) (cut-commit :u60) (cut-event :u60)
   (installation-commit :u60) (installation-event :u60) (history :u60) (incarnation :u60)
@@ -15,7 +15,11 @@
   (journal :u32) (journal-epoch :u60) (journal-allocation :u60) (evidence-owned :bool)
   (read-phase (:enum fn2-allocation-release-read-phase (:idle :need :wait :loaded :uncertain)))
   (read-slot :u32) (read-gen :u60) (read-unit :u60) (read-epoch :u60) (read-allocation :u60)
-  (read-length :u32) (read-pending :bool) (read-op-slot :u32) (read-op-gen :u60))
+  (read-length :u32) (read-pending :bool) (read-op-slot :u32) (read-op-gen :u60)
+  (replay-base :u60) (replay-tag :u60) (replay-commit :u60) (replay-position :u32)
+  (replay-roff :u32) (replay-rend :u32) (replay-next :u32) (replay-slot :u32) (replay-gen :u60)
+  (installation-position :u32) (checker-stage :u8)
+  (read-purpose (:enum fn2-allocation-release-read-purpose (:descriptor :installation-records))))
  :extra-fields ((fn2-allocation-release-descriptor :type (array (unsigned-byte 8) (32)) :initially 0
   :why "Exact actual covering-Fence descriptor digest retained while a release packet is staged or uncertain.")))
 
