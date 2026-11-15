@@ -118,3 +118,27 @@ Successor fixture SHA256:
 emitter SHA256:
 `4b1a48b350168c2d803461f55468b015c3b4bb805708f55d93ce65f7256cac1a`.
 This source support recipe has not been admitted; no new compute was started.
+
+## Actual shape support passes; missing rewrite dependency
+
+The `716f4ced` gate proved the actual record LEN lemma in 0.16 ACL2 seconds /
+10,899 steps and the unchanged target-shape lemma in 0.09 seconds / 882 steps.
+The first ISSUE universal law then refused after 0.40 seconds / 51,248 steps,
+with spurious equalities such as `(equal (nfix 30) (nfix 0))` still in its branch
+hypotheses. NTH-UPDATE-NTH introduced NFIX, which the actual-definition dependency
+closure did not include. The checkpoint is not a counterexample: the branch
+hypotheses are already inconsistent after ordinary numeric normalization.
+HARVEST, NEXT/COPY and the negative were not reached; **0/3 universal laws** were
+admitted. The [ISSUE receipt](cns-enum-universal-716-issue-receipt.json) retains exact
+support metrics, refusal hash and terminal cleanup/ledger release.
+
+The source-only successor adds NFIX, NATP, MAX, LEN's type prescription and pure
+executable NFIX/NATP/equality/comparison normalization to the named universal
+theory. This is the existing pool frame-proof recipe, rather than another
+semantic assumption. All seven support, universal and negative theorem
+names/formulas are parsed exactly unchanged; raw stobj executable exclusions
+remain intact. Fixture SHA256:
+`f3228cd68cf39786b1f2f95d399bfc54aca9ee4bb0fd5c056234a62d291a9f36`;
+emitter SHA256:
+`236627959be151c471679f3443c327eb2239c1ffc4df0b7c50669684e00b291c`.
+No successor kernel run or new compute was started.

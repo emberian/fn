@@ -116,7 +116,9 @@ def main():
  (set-difference-theories
   (union-theories (theory 'fn2-cns-enum-logical-theory)
    '(fn2-cns-enum-bounded-update-self
-     nth-update-nth len-update-nth fn2-columns-len-update-nth))
+     nth-update-nth len-update-nth fn2-columns-len-update-nth
+     nfix natp max (:type-prescription len)
+     (:e nfix) (:e natp) (:e equal) (:e <)))
   '((:definition nth) (:definition update-nth)
     (:definition fn2-cns-sourcesp) (:definition fn2-cns-sources-wfp)))))
 ''')
