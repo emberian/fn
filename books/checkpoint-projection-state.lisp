@@ -2,7 +2,7 @@
 ; not serving, summary completion, suffix completion or writer-epoch authority.
 (in-package "ACL2")
 (include-book "std/util/bstar" :dir :system)
-(include-book "checkpoint-selected-source")
+(include-book "checkpoint-selected-source-identity")
 (include-book "checkpoint-restore-map")
 (include-book "checkpoint-restore-reach-state")
 (include-book "alloc")
