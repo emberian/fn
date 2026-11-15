@@ -1,23 +1,17 @@
 ; Actual HELD-cut working-lease admission, independent of source construction.
 (in-package "ACL2")
-(include-book "run-geometry")
 (include-book "c-snapshot-state")
-(include-book "checkpoint-future-working")
+(include-book "checkpoint-working-geometry")
 (fn2-book-layer :c)
 
 ; Dedicated physical-source reader windows follow the original nineteen.
 ; They cannot alias semantic/payload windows across iterator yields.
-(defconst *fn2-checkpoint-source-page-window* 19)
-(defconst *fn2-checkpoint-source-read-window* (+ 1 *fn2-checkpoint-source-page-window*))
-(defconst *fn2-checkpoint-window-count* (+ 1 *fn2-checkpoint-source-read-window*))
-(defconst *fn2-checkpoint-working-window-count*
- (+ *fn2-checkpoint-window-count* *fn2-checkpoint-future-window-count*))
 
-(defun fn2-checkpoint-window-length (i)
- (declare (xargs :guard t))
- (cond ((or (< (nfix i) 12) (equal i 14) (equal i 16) (equal i *fn2-checkpoint-source-page-window*)) *fn2-run-page-size*)
-       ((or (equal i 12) (equal i 13)) (* 32 *fn2-run-max-levels*))
-       ((equal i 15) 64) (t 4096)))
+
+
+
+
+
 
 (defcolumns fn2-checkpoint-windows ((live :bool) (slot :u32) (generation :u60)))
 
@@ -26,12 +20,7 @@
   (owner-kind :u8) (owner-slot :u32) (owner-gen :u60) (token :u60)
   (reserved :u8) (build :u32) (level :u8) (read-kind :u8) (resume-phase :u8)))
 
-(defun fn2-checkpoint-window-class-demand (i class fn2-pool)
- (declare (xargs :stobjs fn2-pool :guard (and (natp i) (<= i *fn2-checkpoint-window-count*))
-                 :measure (nfix (- *fn2-checkpoint-window-count* i))))
- (if (>= i *fn2-checkpoint-window-count*) 0
-  (+ (if (equal class (fn2-pool-class-for (fn2-checkpoint-window-length i) fn2-pool)) 1 0)
-     (fn2-checkpoint-window-class-demand (+ i 1) class fn2-pool))))
+
 
 (defun fn2-checkpoint-window-roomp (i fn2-pool)
  (declare (xargs :stobjs fn2-pool :guard (and (natp i) (<= i *fn2-checkpoint-window-count*))
@@ -60,16 +49,7 @@
        (fn2-checkpoint-root1 (fn2-checkpoint-root1-set-reserved 0 (+ i 1) fn2-checkpoint-root1)))
    (fn2-checkpoint-windows-reserve-loop (+ i 1) kind owner generation fn2-checkpoint-root1 fn2-checkpoint-windows fn2-pool))))
 
-(defun fn2-checkpoint-admission-roomp (i fn2-pool)
- (declare (xargs :stobjs fn2-pool :guard (and (natp i) (<= i *fn2-checkpoint-working-window-count*)) :measure (nfix (- *fn2-checkpoint-working-window-count* i))))
- (if (>= i *fn2-checkpoint-working-window-count*) t
-  (let ((class (fn2-pool-class-for
-                (if (< i *fn2-checkpoint-window-count*) (fn2-checkpoint-window-length i)
-                 (fn2-checkpoint-future-window-length (- i *fn2-checkpoint-window-count*))) fn2-pool)))
-   (and (natp class) (< class (fn2-pool-nclasses fn2-pool))
-        (<= (+ (fn2-checkpoint-window-class-demand 0 class fn2-pool)
-               (fn2-checkpoint-future-class-demand 0 class fn2-pool)) (fn2-pool-free-count class fn2-pool))
-        (fn2-checkpoint-admission-roomp (+ i 1) fn2-pool)))))
+
 
 (defun fn2-checkpoint-root1-reserve (c token kind owner generation fn2-checkpoint-root1 fn2-checkpoint-windows fn2-checkpoint-future fn2-checkpoint-future-windows fn2-csnapshot fn2-pool)
  (declare (xargs :stobjs (fn2-checkpoint-root1 fn2-checkpoint-windows fn2-checkpoint-future fn2-checkpoint-future-windows fn2-csnapshot fn2-pool)
