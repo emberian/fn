@@ -14,6 +14,7 @@
 (include-book "cns-kind")
 (include-book "authority-kind")
 (include-book "boot-kind")
+(include-book "checkpoint-bank-protection-kind")
 ; Actual maintenance/page/writer owners are registered here. Admission in the
 ; maintenance arm remains source-gated until selected-base recovery qualifies.
 (include-book "checkpoint-master-kind")

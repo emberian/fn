@@ -30,9 +30,11 @@ class Slice(unittest.TestCase):
    # The consumer subsequently appends exactly two scan states; the lower
    # extraction must still preserve every preexisting field/state/hold/arm.
    if old=='boot-kind.lisp':
-    rewritten=rewritten.replace(':genesis-begin :genesis-step)', ':genesis-begin :genesis-step :checkpoint-loader-begin :checkpoint-loader-step)')
+    rewritten=rewritten.replace(':genesis-begin :genesis-step)', ':genesis-begin :genesis-step :checkpoint-loader-begin :checkpoint-loader-step :checkpoint-bank-protect)')
     rewritten=rewritten.replace('         (:checkpoint-cbase-acquire :storage-window)', '         (:checkpoint-cbase-acquire :storage-window)\n         (:checkpoint-loader-begin :storage-window)\n         (:checkpoint-loader-step :storage-window)')
     rewritten=rewritten.replace('         (:checkpoint-cbase-acquire)\n', '         (:checkpoint-cbase-acquire)\n         (:checkpoint-loader-begin)\n         (:checkpoint-loader-step)\n')
+    rewritten=rewritten.replace('         (:checkpoint-bank-bind :storage-window)', '         (:checkpoint-bank-bind :storage-window)\n         (:checkpoint-bank-protect :storage-window)')
+    rewritten=rewritten.replace('(:checkpoint-directory-install) (:checkpoint-bank-bind)', '(:checkpoint-directory-install) (:checkpoint-bank-bind) (:checkpoint-bank-protect)')
    self.assertEqual((B/old).read_text(),rewritten);self.assertEqual((B/new).read_text(),lower)
  def test_harvest_same_actual_observer_no_issuer(self):
   exports=(F/'readiness-slice-provider-harvest.lisp').read_text();s=(B/'run-physical-harvest.lisp').read_text()

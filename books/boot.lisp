@@ -1007,7 +1007,7 @@
   (:checkpoint-bank-bind :on-refusal ((:stop :checkpoint))
    (:do (code) (fn2-checkpoint-bank-bind-op budget) :accept ()
     :case (((:more) (:charge :steps *fn2-work-stage* :runnable t))
-           ((:bound) (:next :recover) (:charge :steps *fn2-work-stage* :runnable t))
+           ((:bound) (:next :checkpoint-bank-protect) (:charge :steps *fn2-work-stage* :runnable t))
            ((:yield) (:yield))
            (:otherwise (:stop :checkpoint)))))
 
@@ -1053,6 +1053,14 @@
     :case (((:more) (:next :genesis-step) (:charge :bytes 4096 :steps *fn2-work-stage* :runnable t))
            ((:complete) (:next :recover) (:charge :bytes 4096 :steps *fn2-work-stage* :runnable t))
            (:otherwise (:stop :configuration)))))
+  ; Each step installs one independent retained physical-anchor claim.
+  ; Completion is required before any ordered suffix can change ownership.
+  (:checkpoint-bank-protect
+   (:do (code) (fn2-checkpoint-bank-protection-op) :accept ()
+    :case (((:more) (:next :checkpoint-bank-protect) (:charge :bytes 256 :steps *fn2-work-stage* :runnable t))
+           ((:protected) (:next :recover) (:charge :steps *fn2-work-stage* :runnable t))
+           (:otherwise (:stop :checkpoint)))))
+
   (:recover :on-refusal ((:stop :recovery))
    (:do (code target) (fn2-boot-recover))
    (:wake-row target)
