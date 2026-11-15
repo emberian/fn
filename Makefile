@@ -250,6 +250,8 @@ ACL2_BOOKS = \
   books/checkpoint-bank-closure-capture \
   books/checkpoint-bank-closure-kind \
   books/checkpoint-bank-protection \
+  books/checkpoint-bank-closure-edges \
+  tests/checkpoint-bank-closure-edges-unit \
   books/checkpoint-bank-protection-kind \
   tests/checkpoint-bank-reset-unit \
   books/boot-config-state \

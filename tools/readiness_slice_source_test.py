@@ -12,7 +12,12 @@ class Slice(unittest.TestCase):
  def test_current_b_and_c_replay(self):
   for name,fn in [('machines-b.lisp',rw.machines_b),('machines-c.lisp',rw.machines_c)]:
    expected=fn((F/('readiness-slice-before-'+name)).read_text(),(F/('readiness-slice-provider-'+name)).read_text())
-   if name=='machines-b.lisp':expected=lower.transform(expected,(F/'readiness-slice-before-commit-directory.lisp').read_text())[0]
+   if name=='machines-b.lisp':
+    expected=lower.transform(expected,(F/'readiness-slice-before-commit-directory.lisp').read_text())[0]
+    # Subsequent physical-anchor protection reserves a disjoint region using
+    # the same declared physical-anchor count; old geometry remains exact.
+    expected=expected.replace('(include-book "checkpoint-cbase-state")', '(include-book "checkpoint-cbase-state")\n(include-book "checkpoint-geometry")')
+    expected=expected.replace('    (* 2 (nfix (fn2-b-capacity :extent-slots 16 profile)) (fn2-b-checkpoint-capacity profile))))', '    (* 2 (nfix (fn2-b-capacity :extent-slots 16 profile)) (fn2-b-checkpoint-capacity profile))\n    ; Four independent physical anchors cannot alias canonical source holds.\n    (* *fn2-checkpoint-anchor-slots* (nfix (fn2-b-capacity :extent-slots 16 profile)))))')
    self.assertEqual((B/name).read_text(),expected)
  def test_same_actual_scan_provider_forms(self):
   for name in ['run-physical-state.lisp','run-physical-resources.lisp','run-physical-geometry.lisp','run-physical-readiness.lisp']:
