@@ -1,0 +1,1091 @@
+{
+  "scope": "Carried guarded-body SOURCE SUM binding after ec967 + shared expansion668; emitter gates unexecuted; physical refinement owed",
+  "units": {
+    "metadata": "native scalar-column/ROWS/array-length GET or SET, including only BODY-invoked generated fixed-column WFP",
+    "spine": "bounded literal-list probe/end",
+    "payload": "typed byte/word READ+WRITE octets; native word selector CASE uses max, others sum alternatives",
+    "status": "conservative source-sum upper, not a physical/extraction refinement theorem"
+  },
+  "roots": {
+    "fn2-checkpoint-live-replace-finish": {
+      "face_structural_sum_upper": 662,
+      "payload_sum": 258,
+      "components": [
+        {
+          "provider": "fn2-csnapshot-ownerp",
+          "path": "books/c-snapshot-state.lisp",
+          "body": {
+            "metadata": 6
+          },
+          "expanded": {
+            "metadata": 6,
+            "spine": 0
+          }
+        },
+        {
+          "provider": "fn2-checkpoint-source-ownerp",
+          "path": "books/checkpoint-metadata-source.lisp",
+          "body": {
+            "metadata": 6,
+            "fn2-csnapshot-ownerp": 1
+          },
+          "expanded": {
+            "metadata": 12,
+            "spine": 0
+          }
+        },
+        {
+          "provider": "fn2-run-buildp-carried",
+          "path": "books/runs.lisp",
+          "body": {
+            "metadata": 3
+          },
+          "expanded": {
+            "metadata": 3,
+            "spine": 0
+          }
+        },
+        {
+          "provider": "fn2-checkpoint-metadata-manifest-ownerp",
+          "path": "books/checkpoint-metadata-manifest.lisp",
+          "body": {
+            "metadata": 16,
+            "fn2-csnapshot-ownerp": 1,
+            "fn2-run-buildp-carried": 1
+          },
+          "expanded": {
+            "metadata": 25,
+            "spine": 0
+          }
+        },
+        {
+          "provider": "fn2-origin-physicalp",
+          "path": "books/origin.lisp",
+          "body": {},
+          "expanded": {
+            "metadata": 0,
+            "spine": 0
+          }
+        },
+        {
+          "provider": "fn2-checkpoint-build-ownerp",
+          "path": "books/checkpoint-build-state.lisp",
+          "body": {
+            "metadata": 13,
+            "fn2-origin-physicalp": 1,
+            "fn2-csnapshot-ownerp": 1
+          },
+          "expanded": {
+            "metadata": 19,
+            "spine": 0
+          }
+        },
+        {
+          "provider": "fn2-checkpoint-builder-claimp",
+          "path": "books/checkpoint.lisp",
+          "body": {
+            "metadata": 6
+          },
+          "expanded": {
+            "metadata": 6,
+            "spine": 0
+          }
+        },
+        {
+          "provider": "fn2-event-producer-ownerp",
+          "path": "books/event-producer.lisp",
+          "body": {
+            "metadata": 21,
+            "fn2-csnapshot-ownerp": 1,
+            "fn2-checkpoint-builder-claimp": 1
+          },
+          "expanded": {
+            "metadata": 33,
+            "spine": 0
+          }
+        },
+        {
+          "provider": "fn2-checkpoint-map-page-count",
+          "path": "books/checkpoint-map-format.lisp",
+          "body": {},
+          "expanded": {
+            "metadata": 0,
+            "spine": 0
+          }
+        },
+        {
+          "provider": "fn2-b-event-row",
+          "path": "books/machines-b.lisp",
+          "body": {},
+          "expanded": {
+            "metadata": 0,
+            "spine": 0
+          }
+        },
+        {
+          "provider": "fn2-digest-workspacep",
+          "path": "books/digests.lisp",
+          "body": {
+            "metadata": 19
+          },
+          "expanded": {
+            "metadata": 19,
+            "spine": 0
+          }
+        },
+        {
+          "provider": "fn2-mk-ready",
+          "path": "books/merkle.lisp",
+          "body": {
+            "metadata": 23,
+            "fn2-digest-workspacep": 1
+          },
+          "expanded": {
+            "metadata": 42,
+            "spine": 0
+          }
+        },
+        {
+          "provider": "fn2-event-read-ownerp",
+          "path": "books/event-read-source.lisp",
+          "body": {
+            "metadata": 10,
+            "fn2-csnapshot-ownerp": 1
+          },
+          "expanded": {
+            "metadata": 16,
+            "spine": 0
+          }
+        },
+        {
+          "provider": "fn2-event-frontier-source-p",
+          "path": "books/event-frontier-source.lisp",
+          "body": {
+            "fn2-csnapshot-ownerp": 1,
+            "metadata": 16,
+            "fn2-b-event-row": 1,
+            "fn2-mk-ready": 1,
+            "fn2-event-read-ownerp": 1
+          },
+          "expanded": {
+            "metadata": 80,
+            "spine": 0
+          }
+        },
+        {
+          "provider": "fn2-event-producer-roots-p",
+          "path": "books/event-producer.lisp",
+          "body": {
+            "spine": 9,
+            "metadata": 18
+          },
+          "expanded": {
+            "metadata": 18,
+            "spine": 9
+          }
+        },
+        {
+          "provider": "fn2-event-producer-donep",
+          "path": "books/event-producer.lisp",
+          "body": {
+            "fn2-event-producer-ownerp": 1,
+            "metadata": 15,
+            "fn2-checkpoint-map-page-count": 1,
+            "fn2-event-frontier-source-p": 1,
+            "fn2-event-producer-roots-p": 1
+          },
+          "expanded": {
+            "metadata": 146,
+            "spine": 9
+          }
+        },
+        {
+          "provider": "fn2-checkpoint-slotp-carried",
+          "path": "books/checkpoint.lisp",
+          "body": {
+            "metadata": 3
+          },
+          "expanded": {
+            "metadata": 3,
+            "spine": 0
+          }
+        },
+        {
+          "provider": "fn2-event-producer-writer-request-p",
+          "path": "books/event-rearm.lisp",
+          "body": {
+            "metadata": 21
+          },
+          "expanded": {
+            "metadata": 21,
+            "spine": 0
+          }
+        },
+        {
+          "provider": "fn2-checkpoint-lifecycle-ownerp",
+          "path": "books/checkpoint-lifecycle-state.lisp",
+          "body": {
+            "metadata": 6
+          },
+          "expanded": {
+            "metadata": 6,
+            "spine": 0
+          }
+        },
+        {
+          "provider": "fn2-checkpoint-production-roots-p",
+          "path": "books/checkpoint-production.lisp",
+          "body": {
+            "metadata": 42
+          },
+          "expanded": {
+            "metadata": 42,
+            "spine": 0
+          }
+        },
+        {
+          "provider": "fn2-checkpoint-publication-base-word",
+          "path": "books/checkpoint-publication-state.lisp",
+          "body": {},
+          "expanded": {
+            "metadata": 0,
+            "spine": 0
+          }
+        },
+        {
+          "provider": "fn-b3-w32",
+          "path": "books/blake3-spec.lisp",
+          "body": {},
+          "expanded": {
+            "metadata": 0,
+            "spine": 0
+          }
+        },
+        {
+          "provider": "fn-b3-word",
+          "path": "books/blake3-spec.lisp",
+          "body": {
+            "fn-b3-w32": 1
+          },
+          "expanded": {
+            "metadata": 0,
+            "spine": 0
+          }
+        },
+        {
+          "provider": "fn2-checkpoint-descriptor-identity-word",
+          "path": "books/checkpoint-publication-state.lisp",
+          "body": {
+            "fn-b3-word": 1
+          },
+          "expanded": {
+            "metadata": 0,
+            "spine": 0
+          }
+        },
+        {
+          "provider": "fn2-checkpoint-summary-live-published-hash-p",
+          "path": "books/checkpoint-summary-authority-live.lisp",
+          "body": {
+            "fn2-checkpoint-publication-base-word": 8,
+            "fn2-checkpoint-descriptor-identity-word": 8
+          },
+          "expanded": {
+            "metadata": 0,
+            "spine": 0
+          }
+        },
+        {
+          "provider": "fn2-checkpoint-summary-authority-live-source-p",
+          "path": "books/checkpoint-summary-authority-live.lisp",
+          "body": {
+            "metadata": 40,
+            "fn2-checkpoint-source-ownerp": 1,
+            "fn2-checkpoint-metadata-manifest-ownerp": 1,
+            "fn2-checkpoint-build-ownerp": 1,
+            "fn2-event-producer-donep": 1,
+            "fn2-checkpoint-slotp-carried": 1,
+            "fn2-event-producer-writer-request-p": 1,
+            "fn2-checkpoint-lifecycle-ownerp": 1,
+            "fn2-checkpoint-production-roots-p": 1,
+            "fn2-checkpoint-summary-live-published-hash-p": 1
+          },
+          "expanded": {
+            "metadata": 314,
+            "spine": 9
+          }
+        },
+        {
+          "provider": "fn2-checkpoint-live-catalog-descriptor-p",
+          "path": "books/checkpoint-live-catalog.lisp",
+          "body": {},
+          "expanded": {
+            "metadata": 0,
+            "spine": 0
+          }
+        },
+        {
+          "provider": "fn2-checkpoint-live-catalog-current-p",
+          "path": "books/checkpoint-live-catalog.lisp",
+          "body": {
+            "fn2-checkpoint-summary-authority-live-source-p": 1,
+            "metadata": 25,
+            "fn2-checkpoint-live-catalog-descriptor-p": 1
+          },
+          "expanded": {
+            "metadata": 339,
+            "spine": 9
+          }
+        },
+        {
+          "provider": "fn2-checkpoint-summary-descriptor-word",
+          "path": "books/checkpoint-summary-state.lisp",
+          "body": {},
+          "expanded": {
+            "metadata": 0,
+            "spine": 0
+          }
+        },
+        {
+          "provider": "fn2-checkpoint-cbase-row-summary-word",
+          "path": "books/checkpoint-cbase-identity.lisp",
+          "body": {
+            "fn2-checkpoint-summary-descriptor-word": 1
+          },
+          "expanded": {
+            "metadata": 0,
+            "spine": 0
+          }
+        },
+        {
+          "provider": "fn2-checkpoint-cbase-word",
+          "path": "books/checkpoint-cbase-identity.lisp",
+          "body": {},
+          "expanded": {
+            "metadata": 0,
+            "spine": 0
+          }
+        },
+        {
+          "provider": "fn2-checkpoint-cbase-row-hash-p",
+          "path": "books/checkpoint-cbase-identity.lisp",
+          "body": {
+            "fn2-checkpoint-cbase-row-summary-word": 8,
+            "fn2-checkpoint-cbase-word": 8
+          },
+          "expanded": {
+            "metadata": 0,
+            "spine": 0
+          }
+        },
+        {
+          "provider": "fn2-checkpoint-cbase-row-identity-p",
+          "path": "books/checkpoint-cbase-identity.lisp",
+          "body": {
+            "metadata": 28,
+            "fn2-checkpoint-cbase-row-hash-p": 1
+          },
+          "expanded": {
+            "metadata": 28,
+            "spine": 0
+          }
+        },
+        {
+          "provider": "fn2-c-source-writer-receipt-p",
+          "path": "books/c-source-observer-state.lisp",
+          "body": {
+            "metadata": 8
+          },
+          "expanded": {
+            "metadata": 8,
+            "spine": 0
+          }
+        },
+        {
+          "provider": "fn2-c-source-writer-exclusive-p",
+          "path": "books/c-source-observer-state.lisp",
+          "body": {
+            "fn2-c-source-writer-receipt-p": 1,
+            "metadata": 2
+          },
+          "expanded": {
+            "metadata": 10,
+            "spine": 0
+          }
+        },
+        {
+          "provider": "fn2-run-load-readiness-ownerp",
+          "path": "books/run-physical-readiness.lisp",
+          "body": {
+            "metadata": 7
+          },
+          "expanded": {
+            "metadata": 7,
+            "spine": 0
+          }
+        },
+        {
+          "provider": "fn2-run-load-readiness-live-current-p",
+          "path": "books/run-physical-readiness-live.lisp",
+          "body": {
+            "metadata": 19,
+            "fn2-run-load-readiness-ownerp": 1,
+            "fn2-c-source-writer-exclusive-p": 1
+          },
+          "expanded": {
+            "metadata": 36,
+            "spine": 0
+          }
+        },
+        {
+          "provider": "fn2-b-run-cursor-rows-from-counts",
+          "path": "books/machines-b.lisp",
+          "body": {},
+          "expanded": {
+            "metadata": 0,
+            "spine": 0
+          }
+        },
+        {
+          "provider": "fn2-run-load-geometry-current-p",
+          "path": "books/run-physical-readiness.lisp",
+          "body": {
+            "metadata": 48,
+            "fn2-b-run-cursor-rows-from-counts": 1
+          },
+          "expanded": {
+            "metadata": 48,
+            "spine": 0
+          }
+        },
+        {
+          "provider": "fn2-run-load-readiness-complete-geometry-p",
+          "path": "books/run-physical-readiness.lisp",
+          "body": {
+            "fn2-run-load-readiness-ownerp": 1,
+            "metadata": 7,
+            "fn2-run-load-geometry-current-p": 1
+          },
+          "expanded": {
+            "metadata": 62,
+            "spine": 0
+          }
+        },
+        {
+          "provider": "fn2-run-load-readiness-live-complete-current-p",
+          "path": "books/run-physical-readiness-live.lisp",
+          "body": {
+            "fn2-run-load-readiness-live-current-p": 1,
+            "metadata": 6,
+            "fn2-run-load-readiness-complete-geometry-p": 1
+          },
+          "expanded": {
+            "metadata": 104,
+            "spine": 0
+          }
+        },
+        {
+          "provider": "fn2-checkpoint-summary-authority-descriptor-p",
+          "path": "books/checkpoint-summary-authority-state.lisp",
+          "body": {},
+          "expanded": {
+            "metadata": 0,
+            "spine": 0
+          }
+        },
+        {
+          "provider": "fn2-checkpoint-summary-authority-row-current-p",
+          "path": "books/checkpoint-summary-authority-state.lisp",
+          "body": {
+            "metadata": 16,
+            "spine": 8,
+            "fn2-checkpoint-slotp-carried": 1,
+            "fn2-checkpoint-summary-authority-descriptor-p": 1
+          },
+          "expanded": {
+            "metadata": 19,
+            "spine": 8
+          }
+        },
+        {
+          "provider": "fn2-checkpoint-summary-authority-row-complete-p",
+          "path": "books/checkpoint-summary-authority-state.lisp",
+          "body": {
+            "fn2-checkpoint-summary-authority-row-current-p": 1,
+            "metadata": 2
+          },
+          "expanded": {
+            "metadata": 21,
+            "spine": 8
+          }
+        },
+        {
+          "provider": "fn2-checkpoint-live-copy-query-cell",
+          "path": "books/checkpoint-live-finish.lisp",
+          "body": {},
+          "expanded": {
+            "metadata": 0,
+            "spine": 0
+          }
+        },
+        {
+          "provider": "fn2-checkpoint-live-replace-finish",
+          "path": "books/checkpoint-live-finish.lisp",
+          "body": {
+            "metadata": 99,
+            "fn2-checkpoint-live-catalog-current-p": 1,
+            "fn2-checkpoint-cbase-row-identity-p": 1,
+            "fn2-c-source-writer-exclusive-p": 1,
+            "fn2-run-load-readiness-live-complete-current-p": 1,
+            "fn2-checkpoint-summary-authority-row-complete-p": 1,
+            "fn2-checkpoint-live-copy-query-cell": 1
+          },
+          "expanded": {
+            "metadata": 601,
+            "spine": 17
+          }
+        }
+      ]
+    },
+    "fn2-checkpoint-live-replace-reopen": {
+      "face_structural_sum_upper": 724,
+      "payload_sum": 320,
+      "components": [
+        {
+          "provider": "fn2-csnapshot-ownerp",
+          "path": "books/c-snapshot-state.lisp",
+          "body": {
+            "metadata": 6
+          },
+          "expanded": {
+            "metadata": 6,
+            "spine": 0
+          }
+        },
+        {
+          "provider": "fn2-checkpoint-source-ownerp",
+          "path": "books/checkpoint-metadata-source.lisp",
+          "body": {
+            "metadata": 6,
+            "fn2-csnapshot-ownerp": 1
+          },
+          "expanded": {
+            "metadata": 12,
+            "spine": 0
+          }
+        },
+        {
+          "provider": "fn2-run-buildp-carried",
+          "path": "books/runs.lisp",
+          "body": {
+            "metadata": 3
+          },
+          "expanded": {
+            "metadata": 3,
+            "spine": 0
+          }
+        },
+        {
+          "provider": "fn2-checkpoint-metadata-manifest-ownerp",
+          "path": "books/checkpoint-metadata-manifest.lisp",
+          "body": {
+            "metadata": 16,
+            "fn2-csnapshot-ownerp": 1,
+            "fn2-run-buildp-carried": 1
+          },
+          "expanded": {
+            "metadata": 25,
+            "spine": 0
+          }
+        },
+        {
+          "provider": "fn2-origin-physicalp",
+          "path": "books/origin.lisp",
+          "body": {},
+          "expanded": {
+            "metadata": 0,
+            "spine": 0
+          }
+        },
+        {
+          "provider": "fn2-checkpoint-build-ownerp",
+          "path": "books/checkpoint-build-state.lisp",
+          "body": {
+            "metadata": 13,
+            "fn2-origin-physicalp": 1,
+            "fn2-csnapshot-ownerp": 1
+          },
+          "expanded": {
+            "metadata": 19,
+            "spine": 0
+          }
+        },
+        {
+          "provider": "fn2-checkpoint-builder-claimp",
+          "path": "books/checkpoint.lisp",
+          "body": {
+            "metadata": 6
+          },
+          "expanded": {
+            "metadata": 6,
+            "spine": 0
+          }
+        },
+        {
+          "provider": "fn2-event-producer-ownerp",
+          "path": "books/event-producer.lisp",
+          "body": {
+            "metadata": 21,
+            "fn2-csnapshot-ownerp": 1,
+            "fn2-checkpoint-builder-claimp": 1
+          },
+          "expanded": {
+            "metadata": 33,
+            "spine": 0
+          }
+        },
+        {
+          "provider": "fn2-checkpoint-map-page-count",
+          "path": "books/checkpoint-map-format.lisp",
+          "body": {},
+          "expanded": {
+            "metadata": 0,
+            "spine": 0
+          }
+        },
+        {
+          "provider": "fn2-b-event-row",
+          "path": "books/machines-b.lisp",
+          "body": {},
+          "expanded": {
+            "metadata": 0,
+            "spine": 0
+          }
+        },
+        {
+          "provider": "fn2-digest-workspacep",
+          "path": "books/digests.lisp",
+          "body": {
+            "metadata": 19
+          },
+          "expanded": {
+            "metadata": 19,
+            "spine": 0
+          }
+        },
+        {
+          "provider": "fn2-mk-ready",
+          "path": "books/merkle.lisp",
+          "body": {
+            "metadata": 23,
+            "fn2-digest-workspacep": 1
+          },
+          "expanded": {
+            "metadata": 42,
+            "spine": 0
+          }
+        },
+        {
+          "provider": "fn2-event-read-ownerp",
+          "path": "books/event-read-source.lisp",
+          "body": {
+            "metadata": 10,
+            "fn2-csnapshot-ownerp": 1
+          },
+          "expanded": {
+            "metadata": 16,
+            "spine": 0
+          }
+        },
+        {
+          "provider": "fn2-event-frontier-source-p",
+          "path": "books/event-frontier-source.lisp",
+          "body": {
+            "fn2-csnapshot-ownerp": 1,
+            "metadata": 16,
+            "fn2-b-event-row": 1,
+            "fn2-mk-ready": 1,
+            "fn2-event-read-ownerp": 1
+          },
+          "expanded": {
+            "metadata": 80,
+            "spine": 0
+          }
+        },
+        {
+          "provider": "fn2-event-producer-roots-p",
+          "path": "books/event-producer.lisp",
+          "body": {
+            "spine": 9,
+            "metadata": 18
+          },
+          "expanded": {
+            "metadata": 18,
+            "spine": 9
+          }
+        },
+        {
+          "provider": "fn2-event-producer-donep",
+          "path": "books/event-producer.lisp",
+          "body": {
+            "fn2-event-producer-ownerp": 1,
+            "metadata": 15,
+            "fn2-checkpoint-map-page-count": 1,
+            "fn2-event-frontier-source-p": 1,
+            "fn2-event-producer-roots-p": 1
+          },
+          "expanded": {
+            "metadata": 146,
+            "spine": 9
+          }
+        },
+        {
+          "provider": "fn2-checkpoint-slotp-carried",
+          "path": "books/checkpoint.lisp",
+          "body": {
+            "metadata": 3
+          },
+          "expanded": {
+            "metadata": 3,
+            "spine": 0
+          }
+        },
+        {
+          "provider": "fn2-event-producer-writer-request-p",
+          "path": "books/event-rearm.lisp",
+          "body": {
+            "metadata": 21
+          },
+          "expanded": {
+            "metadata": 21,
+            "spine": 0
+          }
+        },
+        {
+          "provider": "fn2-checkpoint-lifecycle-ownerp",
+          "path": "books/checkpoint-lifecycle-state.lisp",
+          "body": {
+            "metadata": 6
+          },
+          "expanded": {
+            "metadata": 6,
+            "spine": 0
+          }
+        },
+        {
+          "provider": "fn2-checkpoint-production-roots-p",
+          "path": "books/checkpoint-production.lisp",
+          "body": {
+            "metadata": 42
+          },
+          "expanded": {
+            "metadata": 42,
+            "spine": 0
+          }
+        },
+        {
+          "provider": "fn2-checkpoint-publication-base-word",
+          "path": "books/checkpoint-publication-state.lisp",
+          "body": {},
+          "expanded": {
+            "metadata": 0,
+            "spine": 0
+          }
+        },
+        {
+          "provider": "fn-b3-w32",
+          "path": "books/blake3-spec.lisp",
+          "body": {},
+          "expanded": {
+            "metadata": 0,
+            "spine": 0
+          }
+        },
+        {
+          "provider": "fn-b3-word",
+          "path": "books/blake3-spec.lisp",
+          "body": {
+            "fn-b3-w32": 1
+          },
+          "expanded": {
+            "metadata": 0,
+            "spine": 0
+          }
+        },
+        {
+          "provider": "fn2-checkpoint-descriptor-identity-word",
+          "path": "books/checkpoint-publication-state.lisp",
+          "body": {
+            "fn-b3-word": 1
+          },
+          "expanded": {
+            "metadata": 0,
+            "spine": 0
+          }
+        },
+        {
+          "provider": "fn2-checkpoint-summary-live-published-hash-p",
+          "path": "books/checkpoint-summary-authority-live.lisp",
+          "body": {
+            "fn2-checkpoint-publication-base-word": 8,
+            "fn2-checkpoint-descriptor-identity-word": 8
+          },
+          "expanded": {
+            "metadata": 0,
+            "spine": 0
+          }
+        },
+        {
+          "provider": "fn2-checkpoint-summary-authority-live-source-p",
+          "path": "books/checkpoint-summary-authority-live.lisp",
+          "body": {
+            "metadata": 40,
+            "fn2-checkpoint-source-ownerp": 1,
+            "fn2-checkpoint-metadata-manifest-ownerp": 1,
+            "fn2-checkpoint-build-ownerp": 1,
+            "fn2-event-producer-donep": 1,
+            "fn2-checkpoint-slotp-carried": 1,
+            "fn2-event-producer-writer-request-p": 1,
+            "fn2-checkpoint-lifecycle-ownerp": 1,
+            "fn2-checkpoint-production-roots-p": 1,
+            "fn2-checkpoint-summary-live-published-hash-p": 1
+          },
+          "expanded": {
+            "metadata": 314,
+            "spine": 9
+          }
+        },
+        {
+          "provider": "fn2-checkpoint-live-catalog-descriptor-p",
+          "path": "books/checkpoint-live-catalog.lisp",
+          "body": {},
+          "expanded": {
+            "metadata": 0,
+            "spine": 0
+          }
+        },
+        {
+          "provider": "fn2-checkpoint-live-catalog-current-p",
+          "path": "books/checkpoint-live-catalog.lisp",
+          "body": {
+            "fn2-checkpoint-summary-authority-live-source-p": 1,
+            "metadata": 25,
+            "fn2-checkpoint-live-catalog-descriptor-p": 1
+          },
+          "expanded": {
+            "metadata": 339,
+            "spine": 9
+          }
+        },
+        {
+          "provider": "fn2-checkpoint-summary-descriptor-word",
+          "path": "books/checkpoint-summary-state.lisp",
+          "body": {},
+          "expanded": {
+            "metadata": 0,
+            "spine": 0
+          }
+        },
+        {
+          "provider": "fn2-checkpoint-cbase-row-summary-word",
+          "path": "books/checkpoint-cbase-identity.lisp",
+          "body": {
+            "fn2-checkpoint-summary-descriptor-word": 1
+          },
+          "expanded": {
+            "metadata": 0,
+            "spine": 0
+          }
+        },
+        {
+          "provider": "fn2-checkpoint-cbase-word",
+          "path": "books/checkpoint-cbase-identity.lisp",
+          "body": {},
+          "expanded": {
+            "metadata": 0,
+            "spine": 0
+          }
+        },
+        {
+          "provider": "fn2-checkpoint-cbase-row-hash-p",
+          "path": "books/checkpoint-cbase-identity.lisp",
+          "body": {
+            "fn2-checkpoint-cbase-row-summary-word": 8,
+            "fn2-checkpoint-cbase-word": 8
+          },
+          "expanded": {
+            "metadata": 0,
+            "spine": 0
+          }
+        },
+        {
+          "provider": "fn2-checkpoint-cbase-row-identity-p",
+          "path": "books/checkpoint-cbase-identity.lisp",
+          "body": {
+            "metadata": 28,
+            "fn2-checkpoint-cbase-row-hash-p": 1
+          },
+          "expanded": {
+            "metadata": 28,
+            "spine": 0
+          }
+        },
+        {
+          "provider": "fn2-c-source-writer-receipt-p",
+          "path": "books/c-source-observer-state.lisp",
+          "body": {
+            "metadata": 8
+          },
+          "expanded": {
+            "metadata": 8,
+            "spine": 0
+          }
+        },
+        {
+          "provider": "fn2-c-source-writer-exclusive-p",
+          "path": "books/c-source-observer-state.lisp",
+          "body": {
+            "fn2-c-source-writer-receipt-p": 1,
+            "metadata": 2
+          },
+          "expanded": {
+            "metadata": 10,
+            "spine": 0
+          }
+        },
+        {
+          "provider": "fn2-run-load-readiness-ownerp",
+          "path": "books/run-physical-readiness.lisp",
+          "body": {
+            "metadata": 7
+          },
+          "expanded": {
+            "metadata": 7,
+            "spine": 0
+          }
+        },
+        {
+          "provider": "fn2-run-load-readiness-live-current-p",
+          "path": "books/run-physical-readiness-live.lisp",
+          "body": {
+            "metadata": 19,
+            "fn2-run-load-readiness-ownerp": 1,
+            "fn2-c-source-writer-exclusive-p": 1
+          },
+          "expanded": {
+            "metadata": 36,
+            "spine": 0
+          }
+        },
+        {
+          "provider": "fn2-b-run-cursor-rows-from-counts",
+          "path": "books/machines-b.lisp",
+          "body": {},
+          "expanded": {
+            "metadata": 0,
+            "spine": 0
+          }
+        },
+        {
+          "provider": "fn2-run-load-geometry-current-p",
+          "path": "books/run-physical-readiness.lisp",
+          "body": {
+            "metadata": 48,
+            "fn2-b-run-cursor-rows-from-counts": 1
+          },
+          "expanded": {
+            "metadata": 48,
+            "spine": 0
+          }
+        },
+        {
+          "provider": "fn2-run-load-readiness-complete-geometry-p",
+          "path": "books/run-physical-readiness.lisp",
+          "body": {
+            "fn2-run-load-readiness-ownerp": 1,
+            "metadata": 7,
+            "fn2-run-load-geometry-current-p": 1
+          },
+          "expanded": {
+            "metadata": 62,
+            "spine": 0
+          }
+        },
+        {
+          "provider": "fn2-run-load-readiness-live-complete-current-p",
+          "path": "books/run-physical-readiness-live.lisp",
+          "body": {
+            "fn2-run-load-readiness-live-current-p": 1,
+            "metadata": 6,
+            "fn2-run-load-readiness-complete-geometry-p": 1
+          },
+          "expanded": {
+            "metadata": 104,
+            "spine": 0
+          }
+        },
+        {
+          "provider": "fn2-checkpoint-live-query-descriptor-p",
+          "path": "books/checkpoint-live-finish.lisp",
+          "body": {},
+          "expanded": {
+            "metadata": 0,
+            "spine": 0
+          }
+        },
+        {
+          "provider": "fn2-checkpoint-summary-authority-descriptor-p",
+          "path": "books/checkpoint-summary-authority-state.lisp",
+          "body": {},
+          "expanded": {
+            "metadata": 0,
+            "spine": 0
+          }
+        },
+        {
+          "provider": "fn2-checkpoint-summary-authority-row-current-p",
+          "path": "books/checkpoint-summary-authority-state.lisp",
+          "body": {
+            "metadata": 16,
+            "spine": 8,
+            "fn2-checkpoint-slotp-carried": 1,
+            "fn2-checkpoint-summary-authority-descriptor-p": 1
+          },
+          "expanded": {
+            "metadata": 19,
+            "spine": 8
+          }
+        },
+        {
+          "provider": "fn2-checkpoint-summary-authority-row-complete-p",
+          "path": "books/checkpoint-summary-authority-state.lisp",
+          "body": {
+            "fn2-checkpoint-summary-authority-row-current-p": 1,
+            "metadata": 2
+          },
+          "expanded": {
+            "metadata": 21,
+            "spine": 8
+          }
+        },
+        {
+          "provider": "fn2-checkpoint-live-replace-reopen",
+          "path": "books/checkpoint-live-finish.lisp",
+          "body": {
+            "metadata": 158,
+            "fn2-checkpoint-live-catalog-current-p": 1,
+            "fn2-checkpoint-cbase-row-identity-p": 1,
+            "fn2-c-source-writer-exclusive-p": 1,
+            "fn2-run-load-readiness-live-complete-current-p": 1,
+            "fn2-checkpoint-live-query-descriptor-p": 1,
+            "fn2-checkpoint-summary-authority-row-complete-p": 1
+          },
+          "expanded": {
+            "metadata": 660,
+            "spine": 17
+          }
+        }
+      ]
+    }
+  }
+}

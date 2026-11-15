@@ -6,17 +6,16 @@
 (in-package "ACL2")
 (include-book "checkpoint-live-retire")
 (include-book "checkpoint-directory-rebase-state")
+(include-book "checkpoint-live-finish-work")
 (fn2-book-layer :c)
 (defconst *fn2-live-replace-stage-promoting* 6)
 (defconst *fn2-live-replace-stage-promoted* 7)
 ; Digest/reference validation charge retained separately from copy payload.
+; This source charge is not a proved physical-work refinement.
 ; The full physical-work proof for the preflight is a separate owed boundary.
 (defconst *fn2-checkpoint-live-promotion-preflight-bytes* (* 8 *fn2-commit-digest-bytes*))
 (defconst *fn2-checkpoint-live-promotion-bytes* (+ *fn2-checkpoint-live-promotion-preflight-bytes* 2))
 (defconst *fn2-checkpoint-live-reopen-bytes* (+ *fn2-checkpoint-live-promotion-preflight-bytes* (* 2 *fn2-commit-digest-bytes*)))
-; Eight component shape checks + scalar preflight and fixed generated columns.
-; This declares callback charge; it is not a proved physical-work refinement.
-(defconst *fn2-checkpoint-live-promotion-steps* (+ 80 8 (* 2 21) 20))
 (defun fn2-checkpoint-live-copy-query-cell (i fn2-checkpoint-summary)
  (declare (xargs :stobjs fn2-checkpoint-summary
   :guard (and (fn2-checkpoint-summary-wfp fn2-checkpoint-summary) (natp i) (< i 32))))
@@ -222,6 +221,6 @@
  :tables (fn2-core-checkpoint-summary-authority fn2-core-checkpoint-source fn2-core-checkpoint-metadata-manifest fn2-core-checkpoint-build fn2-core-checkpoint-publication fn2-core-csnapshot fn2-core-run-builds fn2-core-run-writers fn2-core-event-build fn2-core-event-read fn2-core-checkpoints fn2-core-checkpoint-refs fn2-core-checkpoint-bytes fn2-core-commit-root fn2-core-mk fn2-core-fc fn2-core-digests fn2-core-checkpoint-lifecycle fn2-core-checkpoint-writer fn2-core-machines fn2-core-checkpoint-summary fn2-core-checkpoint-summary-sources fn2-core-checkpoint-cbase-holds fn2-core-c-source-control fn2-core-extents fn2-core-alloc-edges fn2-core-ops fn2-core-run-installed fn2-core-id-engine fn2-core-seals fn2-core-run-load-readiness fn2-core-run-load-geometry fn2-core-id-decides fn2-core-reads fn2-core-run-loads fn2-core-run-cursors fn2-core-checkpoint-summary-leases fn2-core-run-load-ops fn2-core-fc-context fn2-core-b3 fn2-core-fields fn2-core-pool)
  :doc "Actual exclusive query promotion/reopen; canonical rebase alone transfers authority; no new allocation or IO.")
 (defcost fn2-checkpoint-live-replace-reopen-op :child fn2-checkpoint-live-replace-reopen :answers (:source :applied)
- :steps *fn2-checkpoint-live-promotion-steps* :bytes *fn2-checkpoint-live-reopen-bytes* :descriptors 0
+ :steps *fn2-checkpoint-live-reopen-steps* :bytes *fn2-checkpoint-live-reopen-bytes* :descriptors 0
  :tables (fn2-core-checkpoint-summary-authority fn2-core-checkpoint-source fn2-core-checkpoint-metadata-manifest fn2-core-checkpoint-build fn2-core-checkpoint-publication fn2-core-csnapshot fn2-core-run-builds fn2-core-run-writers fn2-core-event-build fn2-core-event-read fn2-core-checkpoints fn2-core-checkpoint-refs fn2-core-checkpoint-bytes fn2-core-commit-root fn2-core-mk fn2-core-fc fn2-core-digests fn2-core-checkpoint-lifecycle fn2-core-checkpoint-writer fn2-core-machines fn2-core-checkpoint-summary fn2-core-checkpoint-summary-sources fn2-core-checkpoint-cbase-holds fn2-core-c-source-control fn2-core-extents fn2-core-alloc-edges fn2-core-ops fn2-core-run-installed fn2-core-id-engine fn2-core-seals fn2-core-run-load-readiness fn2-core-run-load-geometry fn2-core-id-decides fn2-core-reads fn2-core-run-loads fn2-core-run-cursors fn2-core-checkpoint-summary-leases fn2-core-run-load-ops fn2-core-fc-context fn2-core-b3 fn2-core-fields fn2-core-pool fn2-core-checkpoint-directory-rebase)
  :doc "Actual exclusive query promotion/reopen; canonical rebase alone transfers authority; no new allocation or IO.")

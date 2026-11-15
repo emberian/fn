@@ -41,17 +41,16 @@ s='''; Bounded query-only publication under the actual exclusive source receipt.
 (in-package "ACL2")
 (include-book "checkpoint-live-retire")
 (include-book "checkpoint-directory-rebase-state")
+(include-book "checkpoint-live-finish-work")
 (fn2-book-layer :c)
 (defconst *fn2-live-replace-stage-promoting* 6)
 (defconst *fn2-live-replace-stage-promoted* 7)
 ; Digest/reference validation charge retained separately from copy payload.
+; This source charge is not a proved physical-work refinement.
 ; The full physical-work proof for the preflight is a separate owed boundary.
 (defconst *fn2-checkpoint-live-promotion-preflight-bytes* (* 8 *fn2-commit-digest-bytes*))
 (defconst *fn2-checkpoint-live-promotion-bytes* (+ *fn2-checkpoint-live-promotion-preflight-bytes* 2))
 (defconst *fn2-checkpoint-live-reopen-bytes* (+ *fn2-checkpoint-live-promotion-preflight-bytes* (* 2 *fn2-commit-digest-bytes*)))
-; Eight component shape checks + scalar preflight and fixed generated columns.
-; This declares callback charge; it is not a proved physical-work refinement.
-(defconst *fn2-checkpoint-live-promotion-steps* (+ 80 8 (* 2 21) 20))
 (defun fn2-checkpoint-live-copy-query-cell (i fn2-checkpoint-summary)
  (declare (xargs :stobjs fn2-checkpoint-summary
   :guard (and (fn2-checkpoint-summary-wfp fn2-checkpoint-summary) (natp i) (< i 32))))
@@ -151,5 +150,5 @@ s+='''  ))
 ))
 '''
 for name,params,cost,answers in [('finish',args,'promotion',':source :state :bounds :more :promoted'),('reopen',reopenargs,'reopen',':source :applied')]:
- s+='(defcost fn2-checkpoint-live-replace-'+name+'-op :child fn2-checkpoint-live-replace-'+name+' :answers ('+answers+')\n :steps *fn2-checkpoint-live-promotion-steps* :bytes *fn2-checkpoint-live-'+cost+'-bytes* :descriptors 0\n :tables ('+' '.join(('fn2-core-checkpoint-directory-rebase' if x=='fn2-directory-rebase' else x.replace('fn2-','fn2-core-',1)) for x in params)+')\n :doc "Actual exclusive query promotion/reopen; canonical rebase alone transfers authority; no new allocation or IO.")\n'
+ s+='(defcost fn2-checkpoint-live-replace-'+name+'-op :child fn2-checkpoint-live-replace-'+name+' :answers ('+answers+')\n :steps *fn2-checkpoint-live-'+cost+'-steps* :bytes *fn2-checkpoint-live-'+cost+'-bytes* :descriptors 0\n :tables ('+' '.join(('fn2-core-checkpoint-directory-rebase' if x=='fn2-directory-rebase' else x.replace('fn2-','fn2-core-',1)) for x in params)+')\n :doc "Actual exclusive query promotion/reopen; canonical rebase alone transfers authority; no new allocation or IO.")\n'
 Path('books/checkpoint-live-finish.lisp').write_text(s)

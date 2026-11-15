@@ -1,6 +1,6 @@
 ; PREPARED, UNEXECUTED SAME-generator shape gate. This inspects actual emitted
 ; face definitions/world stobj results, never a handwritten runtime face.
-; The current 150-step charge is NOT qualified by these shape assertions.
+; Source charges are NOT physically qualified by these shape assertions.
 ; Controller/body cost repair and physical refinement are separate boundaries.
 (in-package "ACL2")
 (include-book "../books/assembly-callbacks-e-cns")
