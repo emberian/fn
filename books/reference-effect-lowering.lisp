@@ -63,7 +63,7 @@
        (eq (getpropc fn 'stobj-function nil world) 'fn2-core)
        property (eq fn (access stobj-property property :recognizer))
        (equal (len (getpropc fn 'formals nil world)) 1)
-       (equal (getpropc fn 'stobjs-in nil world) '(nil))
+       (equal (getpropc fn 'stobjs-in nil world) '(fn2-core))
        (equal (getpropc fn 'stobjs-out nil world) '(nil)))))
 (defun fn2-reference-effect-leaf-formula (fn kind relation world)
  (declare (xargs :verify-guards nil))

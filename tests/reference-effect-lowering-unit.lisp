@@ -45,7 +45,9 @@
  (mv (append fifo (list id)) fn2-core))
 (defun fn2-effect-test-leaf (x fn2-effect-extra)
  (declare (xargs :stobjs fn2-effect-extra :verify-guards nil :guard t))
- (mv x (fn2-effect-extra-set-value 0 (if (unsigned-byte-p 8 x) x 0) fn2-effect-extra)))
+ (let ((fn2-effect-extra
+        (fn2-effect-extra-set-value 0 (if (unsigned-byte-p 8 x) x 0) fn2-effect-extra)))
+  (mv x fn2-effect-extra)))
 (defun fn2-effect-test-mv (x fn2-core)
  (declare (xargs :stobjs fn2-core :verify-guards nil :guard t))
  (stobj-let ((fn2-effect-extra (fn2-core-extra fn2-core)))
