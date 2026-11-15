@@ -1,0 +1,31 @@
+; PREPARED, UNEXECUTED SAME-generator shape gate. This inspects actual emitted
+; face definitions/world stobj results, never a handwritten runtime face.
+; The current 150-step charge is NOT qualified by these shape assertions.
+; Controller/body cost repair and physical refinement are separate boundaries.
+(in-package "ACL2")
+(include-book "../books/assembly-callbacks-e-cns")
+(make-event
+ (let* ((world (w state))
+        (promote 'fn2-checkpoint-live-replace-finish)
+        (reopen 'fn2-checkpoint-live-replace-reopen)
+        (pdef (car (fn2-arms-op-face-events 'fn2-checkpoint-live-replace-finish-op promote world)))
+        (rdef (car (fn2-arms-op-face-events 'fn2-checkpoint-live-replace-reopen-op reopen world)))
+        (pbody (car (last pdef))) (rbody (car (last rdef)))
+        (pins (fn2-arms-stobjs-of (getpropc promote 'stobjs-in nil world)))
+        (rins (fn2-arms-stobjs-of (getpropc reopen 'stobjs-in nil world)))
+        (pouts (getpropc promote 'stobjs-out nil world))
+        (routs (getpropc reopen 'stobjs-out nil world)))
+  (if (and (eq (car pbody) 'stobj-let) (eq (car rbody) 'stobj-let)
+           (equal (strip-cars (cadr pbody)) pins) (equal (strip-cars (cadr rbody)) rins)
+           (equal (len pins) 42) (equal (len rins) 43)
+           (equal (len (getpropc promote 'formals nil world)) 42)
+           (equal (len (getpropc reopen 'formals nil world)) 43)
+           (equal (fn2-arms-stobjs-of pouts) '(fn2-checkpoint-summary fn2-checkpoint-summary-authority))
+           (equal (fn2-arms-stobjs-of routs) '(fn2-checkpoint-summary fn2-id-engine fn2-seals fn2-c-source-control))
+           (equal (len pouts) 3) (equal (len routs) 5)
+           (equal (len (caddr pbody)) (len pouts)) (equal (len (caddr rbody)) (len routs))
+           (equal (car (cadddr pbody)) promote) (equal (car (cadddr rbody)) reopen)
+           (equal (cdr (cadddr pbody)) (getpropc promote 'formals nil world))
+           (equal (cdr (cadddr rbody)) (getpropc reopen 'formals nil world)))
+      (value '(value-triple :actual-promotion-reopen-face-shapes))
+    (er soft 'promotion-reopen-face-source-unit "Actual emitted promotion/reopen face geometry changed."))))
