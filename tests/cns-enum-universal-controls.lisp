@@ -54,6 +54,13 @@
  (implies (< (nfix i) (len xs))
           (equal (update-nth i (nth i xs) xs) xs))
  :hints (("Goal" :in-theory (enable update-nth nth)))))
+; Derived matching rule: match UPDATE-NTH first, then discharge value equality
+; through ordinary NTH frame rewriting over intervening distinct-column writes.
+(local (defthm fn2-cns-enum-bounded-update-when-value-same
+ (implies (and (< (nfix i) (len xs)) (equal v (nth i xs)))
+          (equal (update-nth i v xs) xs))
+ :hints (("Goal" :use (fn2-cns-enum-bounded-update-self)
+                 :in-theory (disable fn2-cns-enum-bounded-update-self)))))
 
  ; Actual recognizer uses LENGTH, not LEN. Derive this once from P;
 ; element recognizers stay opaque in the ordinary admitted theory.
@@ -85,7 +92,7 @@
 (local (deftheory fn2-cns-enum-universal-theory
  (set-difference-theories
   (union-theories (theory 'fn2-cns-enum-logical-theory)
-   '(fn2-cns-enum-bounded-update-self
+   '(fn2-cns-enum-bounded-update-self fn2-cns-enum-bounded-update-when-value-same
      nth-update-nth len-update-nth fn2-columns-len-update-nth
      nfix natp max (:type-prescription len)
      (:e nfix) (:e natp) (:e equal) (:e <)))

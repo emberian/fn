@@ -142,3 +142,34 @@ remain intact. Fixture SHA256:
 emitter SHA256:
 `236627959be151c471679f3443c327eb2239c1ffc4df0b7c50669684e00b291c`.
 No successor kernel run or new compute was started.
+
+## Matching a self-write after an unchanged-column prefix
+
+The `f3228cd6` run eliminated the inconsistent NFIX branches, but ISSUE still
+refused after 0.02 ACL2 seconds / 3,113 steps. Its residual term writes
+`(nth stage original)` into `prefix`, which contains writes only to other
+columns. The existing bounded-self rule expects `(nth stage prefix)` syntactically
+and cannot match before the frame rule has a chance to establish their equality.
+All support passed, but **0/3 universal equalities** were admitted; remaining
+functions and the negative were not reached. The
+[matching receipt](cns-enum-universal-f322-match-receipt.json) retains the exact
+checkpoint hash and cleanup.
+
+The source candidate adds one local matching corollary explicitly derived from
+the proved bounded-self law:
+
+```lisp
+(implies (and (< (nfix i) (len xs)) (equal v (nth i xs)))
+         (equal (update-nth i v xs) xs))
+```
+
+Matching UPDATE-NTH first permits the value-equality hypothesis to simplify
+through existing NTH frame rules over unrelated columns. The bound remains
+essential. Backchaining examines smaller value/array terms; it does not open
+array recognizers or add an equality assumption to any universal theorem.
+All seven existing theorem names/formulas remain exactly unchanged; one derived
+support theorem is added. The fixture now has 15 top-level forms. Frozen SHA256:
+`251861111de3bf4d8e2e4dbd4d40f68b7a9d1cf728b52fa47c1049007bb91d7c`;
+emitter SHA256:
+`66079c4e370590e3002e43594bbbe49407895a1eda57ee4cf5d65f6fd2941638`.
+No successor kernel admission or other compute was started.

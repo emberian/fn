@@ -1,0 +1,39 @@
+{
+  "status": "stopped-first-universal-matching-refusal",
+  "fixture_sha256": "f3228cd68cf39786b1f2f95d399bfc54aca9ee4bb0fd5c056234a62d291a9f36",
+  "campaign_exit": 1,
+  "compiled_state_books": 131,
+  "compiled_state_load_acl2_seconds": 9.65,
+  "support": "All bounded-self, actual record-length, target-shape and named theory support passed before enclosing failure",
+  "first_refusal": {
+    "name": "FN2-CNS-SOURCE-ISSUE-CHILDREN-ENUM-FRAGMENT-WHOLE-CARRIER-EQUALITY",
+    "acl2_seconds": 0.02,
+    "steps": 3113,
+    "checkpoint": "UPDATE-NTH(stage, NTH(stage,original), prefix(other-field writes)) = prefix. NFIX numeric branches resolved. Existing bounded-self LHS requires syntactic NTH(stage,prefix), so frame facts cannot relieve its match before it fires.",
+    "classification": "proof search refusal, not counterexample"
+  },
+  "universal_admitted": 0,
+  "universal_requested": 3,
+  "harvest_next_negative": "not reached",
+  "raw_log": "/tmp/enum-universal-f322-first-refusal.txt on forge",
+  "raw_log_sha256": "edf8cfe1b7ea07c8eb05121d343ab0e30d61951d451b2d2b9f42b5d7f87a912c",
+  "cleanup": {
+    "owned_absent_pids": [
+      1886086,
+      1886093,
+      1886138,
+      1886142
+    ],
+    "owned_absent_scope": "run-p1886086-i31242775.scope",
+    "ledger_owner": "enum_universal",
+    "ledger_gib_after": 0,
+    "both_unassigned_fields_recomputed_under_lock": true
+  },
+  "source_only_successor": {
+    "fixture_sha256": "251861111de3bf4d8e2e4dbd4d40f68b7a9d1cf728b52fa47c1049007bb91d7c",
+    "emitter_sha256": "66079c4e370590e3002e43594bbbe49407895a1eda57ee4cf5d65f6fd2941638",
+    "new_helper": "Bounded (equal v (nth i xs)) conditional no-op, derived explicitly from already proved bounded-self law",
+    "all7_existing_names_and_formulas_unchanged": true,
+    "kernel_status": "unrun"
+  }
+}
