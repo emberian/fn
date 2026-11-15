@@ -7,7 +7,7 @@ must be derived from that store and the actual served call/attachment graph.
 
 ## Current integration frontier — 2026-11-15 UTC
 
-Integration source is `8d3ae7eae`. No current whole-system image, full host gate,
+Integration source is `a6723f41c`. No current whole-system image, full host gate,
 canonical served certificate, or completed assurance claim exists.
 
 Allocator refinement `8595723fc` is qualified by twelve-book record
@@ -22,9 +22,12 @@ all before/after digests and the runner. Accepted-observation metadata now retai
 exact serial, action and counts after pending fields clear; input-prefix receipts
 reject stale, rearmed and reset observations. This supersedes the historical
 13/20-book codec scopes, but does not qualify host/native/replay composition.
-A subsequent source-only fix `1e592555d` discharges unused cleanup credit after
-unstarted or failed allocation while preserving pending and live-handle cleanup.
-Its narrow eleven-book gate has eight qualified parents and three misses.
+Cleanup fix `a6723f41c` discharges unused cleanup credit after unstarted or
+failed allocation while preserving pending and live-handle cleanup. Its eleven-book
+record `certify-20261115T015505Z-701805` passed: eight reused, three newly certified
+in 16.229 seconds. Root matched all eleven before/after digests to integration.
+This shared-generator change invalidates the dependent keys of the earlier
+26-book scope; those dependent consumers need fresh qualification.
 
 Canonical composition proceeds from actual production declarations, rather than
 a temporary test-only core instance. Candidate `4faebb39d` includes retirement
