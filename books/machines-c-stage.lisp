@@ -5,6 +5,7 @@
 ; (C-SUCCESSOR-BOOK).
 (in-package "ACL2")
 (include-book "machines-c-successor")
+(include-book "identity-arena-credit")
 (fn2-book-layer :c)
 (local (in-theory (disable fn2-run-layout-fields fn2-run-layout-keys fn2-run-layout-merge fn2-run-layout-size
                            fn2-fold-key-arg fn2-fold-arity fn2-fold-assigned-p fn2-run-layout-octets-max
@@ -427,7 +428,7 @@
 ; One more spare overlay (an engine arena, not yet any batch's): :ok, :full
 ; when no overlay row or arena is free, :capacity when no pool class holds
 ; the arena.
-(defun fn2-idc-add-spare (fn2-id-engine fn2-overlays fn2-overlay-index fn2-pool)
+(defun fn2-idc-add-spare (commitrows fn2-id-engine fn2-overlays fn2-overlay-index fn2-pool)
  (declare (xargs :stobjs (fn2-id-engine fn2-overlays fn2-overlay-index fn2-pool)
   :guard (and (fn2-id-engine-wfp fn2-id-engine) (fn2-overlays-wfp fn2-overlays) (fn2-overlay-index-wfp fn2-overlay-index) (fn2-pool-wfp fn2-pool))
   :guard-hints (("Goal" :in-theory (disable fn2-pool-reserve fn2-pool-release fn2-pool-reset fn2-pool-read fn2-pool-write
@@ -440,21 +441,14 @@
       ((unless (and (< o rows) (< 0 (fn2-id-engine-rows fn2-id-engine)) (posp rows))) (mv :full fn2-overlays fn2-pool))
       (arena (fn2-id-engine-arena 0 fn2-id-engine))
       ((unless (natp arena)) (mv :state fn2-overlays fn2-pool))
-      (class (fn2-pool-class-for arena fn2-pool))
-      ((unless (natp class)) (mv :capacity fn2-overlays fn2-pool))
-      ((mv code slot gen fn2-pool) (fn2-pool-reserve class *fn2-idc-owner-kind* *fn2-idc-owner-slot* *fn2-idc-owner-gen* fn2-pool))
-      ((unless (eq code :ok)) (mv (if (eq code :exhausted) :full code) fn2-overlays fn2-pool))
-      (icap (floor (fn2-overlay-index-rows fn2-overlay-index) rows))
-      ((mv code fn2-overlays fn2-pool)
-       (fn2-ov-start o 0 slot gen (* o icap) icap *fn2-idc-owner-kind* *fn2-idc-owner-slot* *fn2-idc-owner-gen* 0
-                     fn2-overlays fn2-overlay-index fn2-pool))
-      ((unless (eq code :ok)) (mv code fn2-overlays fn2-pool)))
-  (mv-let (code fn2-overlays) (fn2-ov-advance o *fn2-overlay-phase-active* *fn2-overlay-phase-spare* fn2-overlays)
-   (mv code fn2-overlays fn2-pool))))
-(fn2-idc-fn-shape fn2-idc-add-spare (fn2-id-engine fn2-overlays fn2-overlay-index fn2-pool) (fn2-overlays fn2-pool)
+      (icap (floor (fn2-overlay-index-rows fn2-overlay-index) rows)))
+  (fn2-idc-arena-start o commitrows arena (* o icap) icap
+   *fn2-idc-owner-kind* *fn2-idc-owner-slot* *fn2-idc-owner-gen*
+   fn2-overlays fn2-overlay-index fn2-pool)))
+(fn2-idc-fn-shape fn2-idc-add-spare (commitrows fn2-id-engine fn2-overlays fn2-overlay-index fn2-pool) (fn2-overlays fn2-pool)
  (fn2-id-engine fn2-overlays fn2-overlay-index fn2-pool))
 ; At least NEED spares (K tries).
-(defun fn2-idc-hold-spares (k need fn2-id-engine fn2-overlays fn2-overlay-index fn2-pool)
+(defun fn2-idc-hold-spares (commitrows k need fn2-id-engine fn2-overlays fn2-overlay-index fn2-pool)
  (declare (xargs :stobjs (fn2-id-engine fn2-overlays fn2-overlay-index fn2-pool) :measure (nfix k)
   :guard (and (fn2-id-engine-wfp fn2-id-engine) (fn2-overlays-wfp fn2-overlays) (fn2-overlay-index-wfp fn2-overlay-index)
               (fn2-pool-wfp fn2-pool) (natp k))
@@ -462,10 +456,10 @@
  (cond ((<= (nfix need) (fn2-idc-count-overlays (fn2-overlays-rows fn2-overlays) 0 *fn2-overlay-phase-spare* fn2-overlays))
         (mv :ok fn2-overlays fn2-pool))
        ((zp k) (mv :full fn2-overlays fn2-pool))
-       (t (b* (((mv code fn2-overlays fn2-pool) (fn2-idc-add-spare fn2-id-engine fn2-overlays fn2-overlay-index fn2-pool))
+       (t (b* (((mv code fn2-overlays fn2-pool) (fn2-idc-add-spare commitrows fn2-id-engine fn2-overlays fn2-overlay-index fn2-pool))
                ((unless (eq code :ok)) (mv code fn2-overlays fn2-pool)))
-           (fn2-idc-hold-spares (- k 1) need fn2-id-engine fn2-overlays fn2-overlay-index fn2-pool)))))
-(fn2-idc-fn-shape fn2-idc-hold-spares (k need fn2-id-engine fn2-overlays fn2-overlay-index fn2-pool) (fn2-overlays fn2-pool)
+           (fn2-idc-hold-spares commitrows (- k 1) need fn2-id-engine fn2-overlays fn2-overlay-index fn2-pool)))))
+(fn2-idc-fn-shape fn2-idc-hold-spares (commitrows k need fn2-id-engine fn2-overlays fn2-overlay-index fn2-pool) (fn2-overlays fn2-pool)
  (fn2-id-engine fn2-overlays fn2-overlay-index fn2-pool) t (fn2-idc-add-spare fn2-idc-count-overlays))
 
 ; Stage TX: every slot in order against the tip, then room. (mv code i ...):
@@ -474,7 +468,7 @@
 ; :unique key present); :inconsistent (a :union key with another payload);
 ; :full (no room now: backpressure); :capacity; :state (TX not resolved, or
 ; a slot's args incomplete). I names the slot.
-(defun fn2-succ-stage (tx b0 fn2-succ-txns fn2-succ-slots fn2-run-installed fn2-id-engine
+(defun fn2-succ-stage (commitrows tx b0 fn2-succ-txns fn2-succ-slots fn2-run-installed fn2-id-engine
                        fn2-overlays fn2-overlay-index fn2-fields fn2-pool)
  (declare (xargs :stobjs (fn2-succ-txns fn2-succ-slots fn2-run-installed fn2-id-engine
                           fn2-overlays fn2-overlay-index fn2-fields fn2-pool) :guard t
@@ -502,11 +496,11 @@
       ((unless (eq code :ok)) (mv code 0 fn2-succ-txns fn2-succ-slots fn2-id-engine fn2-overlays fn2-fields fn2-pool))
       ((mv code fn2-id-engine fn2-pool) (fn2-idc-scratch fn2-id-engine fn2-pool))
       ((unless (eq code :ok)) (mv code 0 fn2-succ-txns fn2-succ-slots fn2-id-engine fn2-overlays fn2-fields fn2-pool))
-      ((mv code fn2-overlays fn2-pool) (fn2-idc-hold-spares need need fn2-id-engine fn2-overlays fn2-overlay-index fn2-pool))
+      ((mv code fn2-overlays fn2-pool) (fn2-idc-hold-spares commitrows need need fn2-id-engine fn2-overlays fn2-overlay-index fn2-pool))
       ((unless (eq code :ok)) (mv code 0 fn2-succ-txns fn2-succ-slots fn2-id-engine fn2-overlays fn2-fields fn2-pool))
       (fn2-succ-txns (fn2-succ-txns-set-phase tx *fn2-succ-phase-staged* fn2-succ-txns)))
   (mv :ok 0 fn2-succ-txns fn2-succ-slots fn2-id-engine fn2-overlays fn2-fields fn2-pool)))
-(fn2-idc-fn-shape fn2-succ-stage (tx b0 fn2-succ-txns fn2-succ-slots fn2-run-installed fn2-id-engine
+(fn2-idc-fn-shape fn2-succ-stage (commitrows tx b0 fn2-succ-txns fn2-succ-slots fn2-run-installed fn2-id-engine
                                   fn2-overlays fn2-overlay-index fn2-fields fn2-pool)
  ((fn2-succ-txns 2) (fn2-succ-slots 3) (fn2-id-engine 4) (fn2-overlays 5) (fn2-fields 6) (fn2-pool 7))
  (fn2-succ-txns fn2-succ-slots fn2-run-installed fn2-id-engine fn2-overlays fn2-overlay-index fn2-fields fn2-pool) t

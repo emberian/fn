@@ -16,6 +16,7 @@
 ; than every run, which is what the readers' newest-wins rules assume.
 (in-package "ACL2")
 (include-book "machines-c-groups")
+(include-book "identity-arena-credit")
 (fn2-book-layer :c)
 (local (in-theory (disable fn2-run-layout-fields fn2-run-layout-keys fn2-run-layout-merge fn2-run-layout-size
                            fn2-fold-key-arg fn2-fold-arity fn2-fold-assigned-p fn2-run-layout-octets-max
@@ -131,18 +132,19 @@
 (in-theory (disable fn2-seal-older-p fn2-seal-sealable-p fn2-seal-pick fn2-seal-pending-p))
 
 ; Retire overlay O (frozen -> free) and release its arena.
-(defun fn2-seal-retire (o fn2-overlays fn2-pool)
+(defun fn2-seal-retire (commitrows o fn2-overlays fn2-pool)
  (declare (xargs :stobjs (fn2-overlays fn2-pool) :guard (and (fn2-overlays-wfp fn2-overlays) (fn2-pool-wfp fn2-pool))
   :guard-hints (("Goal" :in-theory (disable fn2-ov-retire fn2-ov-advance fn2-pool-release fn2-pool-release-countp)))))
  (b* (((unless (and (natp o) (< o (fn2-overlays-rows fn2-overlays)))) (mv :bounds fn2-overlays fn2-pool))
-      (slot (fn2-overlays-slot o fn2-overlays)) (gen (fn2-overlays-gen o fn2-overlays))
-      (okind (fn2-overlays-okind o fn2-overlays)) (oslot (fn2-overlays-oslot o fn2-overlays)) (ogen (fn2-overlays-ogen o fn2-overlays))
+      ((unless (equal (fn2-overlays-phase o fn2-overlays) *fn2-overlay-phase-frozen*))
+       (mv :state fn2-overlays fn2-pool))
+      (slot (fn2-overlays-slot o fn2-overlays))
       ((unless (fn2-pool-release-countp slot fn2-pool)) (mv :bounds fn2-overlays fn2-pool))
-      ((mv code fn2-overlays) (fn2-ov-advance o *fn2-overlay-phase-frozen* *fn2-overlay-phase-free* fn2-overlays))
-      ((unless (eq code :ok)) (mv code fn2-overlays fn2-pool))
-      ((mv code fn2-pool) (fn2-pool-release slot gen okind oslot ogen fn2-pool)))
-  (mv code fn2-overlays fn2-pool)))
-(fn2-seal-shape fn2-seal-retire (o fn2-overlays fn2-pool) (fn2-overlays fn2-pool) (fn2-overlays fn2-pool) t
+      ((mv returned fn2-pool) (fn2-idc-arena-return o commitrows fn2-overlays fn2-pool))
+      ((unless (member-eq returned '(:ok :retired))) (mv returned fn2-overlays fn2-pool))
+      ((mv code fn2-overlays) (fn2-ov-advance o *fn2-overlay-phase-frozen* *fn2-overlay-phase-free* fn2-overlays)))
+  (mv (if (eq code :ok) returned code) fn2-overlays fn2-pool)))
+(fn2-seal-shape fn2-seal-retire (commitrows o fn2-overlays fn2-pool) (fn2-overlays fn2-pool) (fn2-overlays fn2-pool) t
  (fn2-ov-advance fn2-pool-release-countp fn2-overlays-slot fn2-overlays-gen fn2-overlays-okind fn2-overlays-oslot fn2-overlays-ogen))
 
 ; ---------------------------------------------------------------------------
@@ -290,7 +292,7 @@
 ; (or preemptively when row/page space is urgent and the chosen overlay's
 ; schema has nothing to merge while another schema holds >= 2 live runs).
 ; O = (fn2-overlays-rows fn2-overlays) marks a run-only merge (K >= 2).
-(defun fn2-seal-start (fn2-seals fn2-overlays fn2-run-installed fn2-run-builds fn2-run-writers fn2-pool)
+(defun fn2-seal-start (commitrows fn2-seals fn2-overlays fn2-run-installed fn2-run-builds fn2-run-writers fn2-pool)
  (declare (xargs :stobjs (fn2-seals fn2-overlays fn2-run-installed fn2-run-builds fn2-run-writers fn2-pool)
   :guard (and (fn2-seals-wfp fn2-seals) (fn2-overlays-wfp fn2-overlays) (fn2-run-installed-wfp fn2-run-installed)
               (fn2-run-builds-wfp fn2-run-builds) (fn2-run-writers-wfp fn2-run-writers) (fn2-pool-wfp fn2-pool))
@@ -303,7 +305,7 @@
       (rows (fn2-overlays-rows fn2-overlays))
       (o (fn2-seal-pick rows 0 rows fn2-overlays))
       ((when (and (< o rows) (not (posp (fn2-overlays-count o fn2-overlays)))))
-       (mv-let (code fn2-overlays fn2-pool) (fn2-seal-retire o fn2-overlays fn2-pool)
+       (mv-let (code fn2-overlays fn2-pool) (fn2-seal-retire commitrows o fn2-overlays fn2-pool)
         (mv (if (eq code :ok) :retired code) fn2-seals fn2-overlays fn2-run-builds fn2-run-writers fn2-pool)))
       ((mv csid ck crlo) (fn2-seal-compact-target fn2-run-installed fn2-pool))
       (csid (nfix csid)) (ck (min *fn2-seal-merge-runs* (nfix ck))) (crlo (nfix crlo))
@@ -342,7 +344,7 @@
                                 (runs run) (hslot hslot) (hgen hgen) (filter 0) (entries 0) (k k) (rlo rlo) (ufirst ufirst)
                                 (held 0))))
   (mv :more fn2-seals fn2-overlays fn2-run-builds fn2-run-writers fn2-pool)))
-(fn2-seal-shape fn2-seal-start (fn2-seals fn2-overlays fn2-run-installed fn2-run-builds fn2-run-writers fn2-pool)
+(fn2-seal-shape fn2-seal-start (commitrows fn2-seals fn2-overlays fn2-run-installed fn2-run-builds fn2-run-writers fn2-pool)
  (fn2-seals fn2-overlays fn2-run-builds fn2-run-writers fn2-pool) (fn2-seals fn2-overlays fn2-run-installed fn2-run-builds fn2-run-writers fn2-pool) t
  (fn2-seal-pick fn2-seal-retire fn2-run-build-start fn2-seal-plan fn2-seal-compact-target fn2-seal-urgent-p
   fn2-seals-okind fn2-seals-oslot fn2-seals-ogen fn2-seals-crow fn2-seals-runs
@@ -1017,7 +1019,7 @@
 (fn2-seal-shape fn2-seal-retire-runs (k r sid rlo fn2-run-installed) (fn2-run-installed) (fn2-run-installed) t (fn2-run-retire))
 ; Install, then retire the overlay and release the hash workspace: one step
 ; (no reader sees the run beside its published overlay, nor neither).
-(defun fn2-seal-install (fn2-seals fn2-overlays fn2-run-installed fn2-pool)
+(defun fn2-seal-install (commitrows fn2-seals fn2-overlays fn2-run-installed fn2-pool)
  (declare (xargs :stobjs (fn2-seals fn2-overlays fn2-run-installed fn2-pool)
   :guard (and (fn2-seals-wfp fn2-seals) (fn2-overlays-wfp fn2-overlays) (fn2-run-installed-wfp fn2-run-installed) (fn2-pool-wfp fn2-pool))
   :guard-hints (("Goal" :in-theory (disable fn2-seal-install-run fn2-seal-free-row fn2-seal-retire fn2-seal-retire-runs fn2-seal-inputs
@@ -1046,8 +1048,8 @@
       ((mv code fn2-run-installed) (fn2-seal-install-run fn2-seals fn2-run-installed))
       ((unless (eq code :ok)) (mv code fn2-seals fn2-overlays fn2-run-installed fn2-pool))
       ((mv code fn2-overlays fn2-pool)
-       (if has-ov (fn2-seal-retire o fn2-overlays fn2-pool) (mv :ok fn2-overlays fn2-pool)))
-      ((unless (eq code :ok)) (mv code fn2-seals fn2-overlays fn2-run-installed fn2-pool))
+       (if has-ov (fn2-seal-retire commitrows o fn2-overlays fn2-pool) (mv :ok fn2-overlays fn2-pool)))
+      ((unless (member-eq code '(:ok :retired))) (mv code fn2-seals fn2-overlays fn2-run-installed fn2-pool))
       ((unless (fn2-pool-release-countp hslot fn2-pool)) (mv :bounds fn2-seals fn2-overlays fn2-run-installed fn2-pool))
       ((mv code fn2-pool) (fn2-pool-release hslot (fn2-seals-hgen 0 fn2-seals) (fn2-seals-okind 0 fn2-seals)
                                             (fn2-seals-oslot 0 fn2-seals) (fn2-seals-ogen 0 fn2-seals) fn2-pool))
@@ -1055,7 +1057,7 @@
       (fn2-seals (fn2-seals-put 0 (phase (if (zp k) *fn2-seal-phase-idle* *fn2-seal-phase-release*)) (sub *fn2-seal-sub-open*)
                                 (filter 0) (k 0) (held 0))))
   (mv :done fn2-seals fn2-overlays fn2-run-installed fn2-pool)))
-(fn2-seal-shape fn2-seal-install (fn2-seals fn2-overlays fn2-run-installed fn2-pool)
+(fn2-seal-shape fn2-seal-install (commitrows fn2-seals fn2-overlays fn2-run-installed fn2-pool)
  (fn2-seals fn2-overlays fn2-run-installed fn2-pool) (fn2-seals fn2-overlays fn2-run-installed fn2-pool) t
  (fn2-seal-install-run fn2-seal-free-row fn2-seal-retire fn2-seal-retire-runs fn2-seal-inputs fn2-seals-k fn2-seals-rlo
   fn2-pool-release fn2-pool-release-countp fn2-seals-okind fn2-seals-oslot fn2-seals-ogen fn2-seals-sid fn2-seals-run fn2-seals-top fn2-seals-rslot fn2-seals-rgen
@@ -1117,7 +1119,7 @@
 (defmacro fn2-seal-mv (code) `(mv ,code fn2-seals fn2-overlays fn2-overlay-index fn2-run-installed fn2-run-builds fn2-run-writers
                                   fn2-run-restarts fn2-run-cache fn2-ribbon-builds fn2-ribbon-band fn2-fields fn2-pool
                                   fn2-fc fn2-fc-context fn2-b3 fn2-digests fn2-ranges fn2-range-sources fn2-run-cursors fn2-run-paths))
-(defun fn2-seal-step (budget fn2-seals fn2-overlays fn2-overlay-index fn2-run-installed fn2-run-builds fn2-run-writers
+(defun fn2-seal-step (commitrows budget fn2-seals fn2-overlays fn2-overlay-index fn2-run-installed fn2-run-builds fn2-run-writers
                       fn2-run-restarts fn2-run-cache fn2-ribbon-builds fn2-ribbon-band fn2-fields fn2-pool
                       fn2-fc fn2-fc-context fn2-b3 fn2-digests fn2-ranges fn2-range-sources fn2-run-cursors fn2-run-paths)
  (declare (xargs :stobjs (fn2-seals fn2-overlays fn2-overlay-index fn2-run-installed fn2-run-builds fn2-run-writers
@@ -1138,7 +1140,7 @@
   (cond
    ((equal phase *fn2-seal-phase-idle*)
     (mv-let (code fn2-seals fn2-overlays fn2-run-builds fn2-run-writers fn2-pool)
-      (fn2-seal-start fn2-seals fn2-overlays fn2-run-installed fn2-run-builds fn2-run-writers fn2-pool)
+      (fn2-seal-start commitrows fn2-seals fn2-overlays fn2-run-installed fn2-run-builds fn2-run-writers fn2-pool)
      (fn2-seal-mv code)))
    ((equal phase *fn2-seal-phase-build*)
     (mv-let (code fn2-seals fn2-ranges fn2-range-sources fn2-run-builds fn2-run-writers fn2-run-restarts fn2-run-cursors fn2-run-paths
@@ -1158,14 +1160,14 @@
      (fn2-seal-mv code)))
    ((equal phase *fn2-seal-phase-install*)
     (mv-let (code fn2-seals fn2-overlays fn2-run-installed fn2-pool)
-      (fn2-seal-install fn2-seals fn2-overlays fn2-run-installed fn2-pool)
+      (fn2-seal-install commitrows fn2-seals fn2-overlays fn2-run-installed fn2-pool)
      (fn2-seal-mv code)))
    ((equal phase *fn2-seal-phase-release*)
     (mv-let (code fn2-seals fn2-run-installed fn2-run-cache fn2-pool)
       (fn2-seal-release fn2-seals fn2-run-installed fn2-run-cache fn2-pool)
      (fn2-seal-mv code)))
    (t (fn2-seal-mv :state)))))
-(fn2-seal-shape fn2-seal-step (budget fn2-seals fn2-overlays fn2-overlay-index fn2-run-installed fn2-run-builds fn2-run-writers
+(fn2-seal-shape fn2-seal-step (commitrows budget fn2-seals fn2-overlays fn2-overlay-index fn2-run-installed fn2-run-builds fn2-run-writers
                                  fn2-run-restarts fn2-run-cache fn2-ribbon-builds fn2-ribbon-band fn2-fields fn2-pool
                                  fn2-fc fn2-fc-context fn2-b3 fn2-digests fn2-ranges fn2-range-sources fn2-run-cursors fn2-run-paths)
  (fn2-seals fn2-overlays fn2-overlay-index fn2-run-installed fn2-run-builds fn2-run-writers

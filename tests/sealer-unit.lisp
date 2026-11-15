@@ -98,7 +98,7 @@
   (b* (((mv code fn2-seals fn2-overlays fn2-overlay-index fn2-run-installed fn2-run-builds fn2-run-writers fn2-run-restarts
             fn2-run-cache fn2-ribbon-builds fn2-ribbon-band fn2-fields fn2-pool fn2-fc fn2-fc-context fn2-b3 fn2-digests
             fn2-ranges fn2-range-sources fn2-run-cursors fn2-run-paths)
-        (fn2-seal-step 4096 fn2-seals fn2-overlays fn2-overlay-index fn2-run-installed fn2-run-builds fn2-run-writers
+        (fn2-seal-step 0 4096 fn2-seals fn2-overlays fn2-overlay-index fn2-run-installed fn2-run-builds fn2-run-writers
                        fn2-run-restarts fn2-run-cache fn2-ribbon-builds fn2-ribbon-band fn2-fields fn2-pool
                        fn2-fc fn2-fc-context fn2-b3 fn2-digests fn2-ranges fn2-range-sources fn2-run-cursors fn2-run-paths)))
    (case code
@@ -243,7 +243,7 @@
   (b* (((mv code fn2-seals fn2-overlays fn2-overlay-index fn2-run-installed fn2-run-builds fn2-run-writers fn2-run-restarts
             fn2-run-cache fn2-ribbon-builds fn2-ribbon-band fn2-fields fn2-pool fn2-fc fn2-fc-context fn2-b3 fn2-digests
             fn2-ranges fn2-range-sources fn2-run-cursors fn2-run-paths)
-        (fn2-seal-step 4096 fn2-seals fn2-overlays fn2-overlay-index fn2-run-installed fn2-run-builds fn2-run-writers
+        (fn2-seal-step 0 4096 fn2-seals fn2-overlays fn2-overlay-index fn2-run-installed fn2-run-builds fn2-run-writers
                        fn2-run-restarts fn2-run-cache fn2-ribbon-builds fn2-ribbon-band fn2-fields fn2-pool
                        fn2-fc fn2-fc-context fn2-b3 fn2-digests fn2-ranges fn2-range-sources fn2-run-cursors fn2-run-paths))
        (fn2-su-bind (installed) (fn2-su-call fn2-su-installed 0 16))
@@ -421,7 +421,7 @@
   (b* (((mv code fn2-seals fn2-overlays fn2-overlay-index fn2-run-installed fn2-run-builds fn2-run-writers fn2-run-restarts
             fn2-run-cache fn2-ribbon-builds fn2-ribbon-band fn2-fields fn2-pool fn2-fc fn2-fc-context fn2-b3 fn2-digests
             fn2-ranges fn2-range-sources fn2-run-cursors fn2-run-paths)
-        (fn2-seal-step 4096 fn2-seals fn2-overlays fn2-overlay-index fn2-run-installed fn2-run-builds fn2-run-writers
+        (fn2-seal-step 0 4096 fn2-seals fn2-overlays fn2-overlay-index fn2-run-installed fn2-run-builds fn2-run-writers
                        fn2-run-restarts fn2-run-cache fn2-ribbon-builds fn2-ribbon-band fn2-fields fn2-pool
                        fn2-fc fn2-fc-context fn2-b3 fn2-digests fn2-ranges fn2-range-sources fn2-run-cursors fn2-run-paths)))
    (if (eq code :more) (fn2-su-call fn2-su-step-to-install (- fuel 1)) (fn2-su-mv nil)))))
@@ -475,7 +475,7 @@
       ((mv full-code fn2-seals fn2-overlays fn2-overlay-index fn2-run-installed fn2-run-builds fn2-run-writers fn2-run-restarts
            fn2-run-cache fn2-ribbon-builds fn2-ribbon-band fn2-fields fn2-pool fn2-fc fn2-fc-context fn2-b3 fn2-digests
            fn2-ranges fn2-range-sources fn2-run-cursors fn2-run-paths)
-       (fn2-seal-step 4096 fn2-seals fn2-overlays fn2-overlay-index fn2-run-installed fn2-run-builds fn2-run-writers
+       (fn2-seal-step 0 4096 fn2-seals fn2-overlays fn2-overlay-index fn2-run-installed fn2-run-builds fn2-run-writers
                       fn2-run-restarts fn2-run-cache fn2-ribbon-builds fn2-ribbon-band fn2-fields fn2-pool
                       fn2-fc fn2-fc-context fn2-b3 fn2-digests fn2-ranges fn2-range-sources fn2-run-cursors fn2-run-paths))
       (sid8-still-live (fn2-seal-live-runs 8 0 8 fn2-run-installed))

@@ -36,7 +36,8 @@
    (assert-event (equal *fn2-sealer-kind* *fn2-idc-owner-kind*))
    (defun fn2-sealer-step (budget fn2-core)
     (declare (xargs :stobjs fn2-core :guard (fn2-core-wfp fn2-core)))
-    (stobj-let ((fn2-seals (fn2-core-seals fn2-core)) (fn2-overlays (fn2-core-overlays fn2-core))
+    (stobj-let ((fn2-commit (fn2-commit-table fn2-core))
+                (fn2-seals (fn2-core-seals fn2-core)) (fn2-overlays (fn2-core-overlays fn2-core))
                 (fn2-overlay-index (fn2-core-overlay-index fn2-core)) (fn2-run-installed (fn2-core-run-installed fn2-core))
                 (fn2-run-builds (fn2-core-run-builds fn2-core)) (fn2-run-writers (fn2-core-run-writers fn2-core))
                 (fn2-run-restarts (fn2-core-run-restarts fn2-core)) (fn2-run-cache (fn2-core-run-cache fn2-core))
@@ -48,7 +49,7 @@
      (code fn2-seals fn2-overlays fn2-overlay-index fn2-run-installed fn2-run-builds fn2-run-writers fn2-run-restarts
            fn2-run-cache fn2-ribbon-builds fn2-ribbon-band fn2-fields fn2-pool fn2-fc fn2-fc-context fn2-b3 fn2-digests
            fn2-ranges fn2-range-sources fn2-run-cursors fn2-run-paths)
-     (fn2-seal-step budget fn2-seals fn2-overlays fn2-overlay-index fn2-run-installed fn2-run-builds fn2-run-writers
+     (fn2-seal-step (fn2-commit-rows fn2-commit) budget fn2-seals fn2-overlays fn2-overlay-index fn2-run-installed fn2-run-builds fn2-run-writers
                     fn2-run-restarts fn2-run-cache fn2-ribbon-builds fn2-ribbon-band fn2-fields fn2-pool
                     fn2-fc fn2-fc-context fn2-b3 fn2-digests fn2-ranges fn2-range-sources fn2-run-cursors fn2-run-paths)
      (mv code fn2-core)))

@@ -244,6 +244,7 @@ ACL2_BOOKS = \
   books/allocation-release-geometry \
   books/upload-window-geometry \
   books/identity-workspace-geometry \
+  books/identity-arena-credit \
   books/checkpoint-working-geometry \
   books/checkpoint-service-geometry \
   books/checkpoint-working-credit \
@@ -486,6 +487,7 @@ ACL2_BOOKS = \
   tests/pool-protected-floor-unit \
   tests/pool-credit-unit \
   tests/root-future-totalization-unit \
+  tests/identity-arena-credit-unit \
   tests/root-working-credit-init-unit \
   tests/root-upload-geometry-unit \
   tests/upload-window-geometry-unit \

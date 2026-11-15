@@ -347,7 +347,7 @@
   (fn2-succ-drop-txns (- k 1) (+ 1 tx) b fn2-succ-txns)))
 (fn2-succ-txns-preserves fn2-succ-drop-txns (k tx b fn2-succ-txns) :position nil :raw-rows t)
 (in-theory (disable fn2-succ-drop-txns))
-(defun fn2-succ-drop-overlays (k o b fn2-overlays fn2-pool)
+(defun fn2-succ-drop-overlays (commitrows k o b fn2-overlays fn2-pool)
  (declare (xargs :stobjs (fn2-overlays fn2-pool) :measure (nfix k)
   :guard (and (fn2-overlays-wfp fn2-overlays) (fn2-pool-wfp fn2-pool) (natp k) (natp o)) :guard-hints (("Goal" :in-theory (disable fn2-pool-reserve fn2-pool-release fn2-pool-reset fn2-pool-read fn2-pool-write
                                              fn2-pool-class-for fn2-ov-start fn2-ov-advance fn2-ov-insert
@@ -357,28 +357,28 @@
  (cond ((or (zp k) (not (and (natp o) (< o (fn2-overlays-rows fn2-overlays))))) (mv :ok fn2-overlays fn2-pool))
        ((not (and (equal (fn2-overlays-phase o fn2-overlays) *fn2-overlay-phase-private*)
                   (equal (fn2-overlays-batch o fn2-overlays) b)))
-        (fn2-succ-drop-overlays (- k 1) (+ 1 o) b fn2-overlays fn2-pool))
-       (t (b* ((slot (fn2-overlays-slot o fn2-overlays)) (gen (fn2-overlays-gen o fn2-overlays))
+        (fn2-succ-drop-overlays commitrows (- k 1) (+ 1 o) b fn2-overlays fn2-pool))
+       (t (b* ((slot (fn2-overlays-slot o fn2-overlays))
                ((unless (fn2-pool-release-countp slot fn2-pool)) (mv :bounds fn2-overlays fn2-pool))
-               ((mv code fn2-pool) (fn2-pool-release slot gen *fn2-idc-owner-kind* *fn2-idc-owner-slot* *fn2-idc-owner-gen* fn2-pool))
-               ((unless (eq code :ok)) (mv code fn2-overlays fn2-pool))
+               ((mv code fn2-pool) (fn2-idc-arena-return o commitrows fn2-overlays fn2-pool))
+               ((unless (member-eq code '(:ok :retired))) (mv code fn2-overlays fn2-pool))
                (fn2-overlays (fn2-overlays-put o (phase *fn2-overlay-phase-free*) (batch 0) (count 0) (fill 0) (seq 0))))
-           (fn2-succ-drop-overlays (- k 1) (+ 1 o) b fn2-overlays fn2-pool)))))
-(fn2-overlays-preserves fn2-succ-drop-overlays (k o b fn2-overlays fn2-pool) :position 1 :disable nil
+           (fn2-succ-drop-overlays commitrows (- k 1) (+ 1 o) b fn2-overlays fn2-pool)))))
+(fn2-overlays-preserves fn2-succ-drop-overlays (commitrows k o b fn2-overlays fn2-pool) :position 1 :disable nil
  :hints (("Goal" :in-theory (disable fn2-pool-release fn2-pool-release-countp fn2-pool-rows fn2-overlays-rows))))
-(fn2-pool-preserves fn2-succ-drop-overlays (k o b fn2-overlays fn2-pool) :position 2 :prefix "-POOL-PRESERVES"
+(fn2-pool-preserves fn2-succ-drop-overlays (commitrows k o b fn2-overlays fn2-pool) :position 2 :prefix "-POOL-PRESERVES"
  :hints (("Goal" :in-theory (disable fn2-pool-release fn2-pool-release-countp fn2-pool-rows fn2-overlays-rows))))
 (in-theory (disable fn2-succ-drop-overlays))
-(defun fn2-succ-drop (b fn2-succ-txns fn2-overlays fn2-pool)
+(defun fn2-succ-drop (commitrows b fn2-succ-txns fn2-overlays fn2-pool)
  (declare (xargs :stobjs (fn2-succ-txns fn2-overlays fn2-pool) :guard t))
  (b* (((unless (and (fn2-succ-txns-wfp fn2-succ-txns) (fn2-overlays-wfp fn2-overlays) (fn2-pool-wfp fn2-pool)))
        (mv :state fn2-succ-txns fn2-overlays fn2-pool))
       ((unless (and (posp b) (unsigned-byte-p 60 b))) (mv :bounds fn2-succ-txns fn2-overlays fn2-pool))
       (fn2-succ-txns (fn2-succ-drop-txns (fn2-succ-txns-rows fn2-succ-txns) 0 b fn2-succ-txns))
       (fn2-succ-txns (fn2-succ-unstage (fn2-succ-txns-rows fn2-succ-txns) 0 (fn2-succ-txns-rows fn2-succ-txns) fn2-succ-txns))
-      ((mv code fn2-overlays fn2-pool) (fn2-succ-drop-overlays (fn2-overlays-rows fn2-overlays) 0 b fn2-overlays fn2-pool)))
+      ((mv code fn2-overlays fn2-pool) (fn2-succ-drop-overlays commitrows (fn2-overlays-rows fn2-overlays) 0 b fn2-overlays fn2-pool)))
   (mv code fn2-succ-txns fn2-overlays fn2-pool)))
-(fn2-idc-fn-shape fn2-succ-drop (b fn2-succ-txns fn2-overlays fn2-pool) (fn2-succ-txns fn2-overlays fn2-pool)
+(fn2-idc-fn-shape fn2-succ-drop (commitrows b fn2-succ-txns fn2-overlays fn2-pool) (fn2-succ-txns fn2-overlays fn2-pool)
  (fn2-succ-txns fn2-overlays fn2-pool) t (fn2-succ-drop-txns fn2-succ-drop-overlays fn2-succ-unstage))
 
 ; ---------------------------------------------------------------------------
@@ -560,7 +560,7 @@
       ((unless (eq code :ok))
        (let ((fn2-succ-slots (fn2-succ-release-slots *fn2-succ-slots* (* tx *fn2-succ-slots*) fn2-succ-slots)))
         (mv code fn2-succ-txns fn2-succ-slots fn2-id-engine fn2-overlays fn2-overlay-index fn2-fields fn2-pool)))
-      ((mv code fn2-overlays fn2-pool) (fn2-idc-hold-spares need need fn2-id-engine fn2-overlays fn2-overlay-index fn2-pool))
+      ((mv code fn2-overlays fn2-pool) (fn2-idc-hold-spares commitrows need need fn2-id-engine fn2-overlays fn2-overlay-index fn2-pool))
       ((unless (eq code :ok))
        (let ((fn2-succ-slots (fn2-succ-release-slots *fn2-succ-slots* (* tx *fn2-succ-slots*) fn2-succ-slots)))
         (mv code fn2-succ-txns fn2-succ-slots fn2-id-engine fn2-overlays fn2-overlay-index fn2-fields fn2-pool)))
@@ -759,10 +759,10 @@
  :tables (fn2-core-succ-txns fn2-core-succ-slots fn2-core-run-cursors fn2-core-run-paths fn2-core-fields)
  :doc "One bounded step reading a write slot's key in the installed runs: one run selection or one lookup step of at most 4,096 pool reads.")
 (defcost fn2-successor-stage :child fn2-successor-stage-child :answers (:bounds :capacity :changed :done :duplicate :event :evidence :full :inconsistent :invariant
-  :length :more :noncanonical :ok :owner :part :payload :range :refused :schema :stale :state
+  :exhausted :pending :length :more :noncanonical :ok :owner :part :payload :range :refused :schema :stale :state
   :truncated :unknown-tag :wide)
  :bytes 4096
- :tables (fn2-core-succ-txns fn2-core-succ-slots fn2-core-id-engine fn2-core-overlays fn2-core-fields fn2-core-pool)
+ :tables (fn2-commit-table fn2-core-succ-txns fn2-core-succ-slots fn2-core-id-engine fn2-core-overlays fn2-core-fields fn2-core-pool)
  :doc "Stage every write slot against the tip (one located entry per overlay of its schema), apply its fold step, and hold room (at most one arena per schema written).")
 (defcost fn2-successor-out :answers (:bounds :kind :ok :state)
  :doc "Read one field of a staged write slot's row.")
@@ -1076,7 +1076,8 @@
 (defmacro fn2-successor-commit-events ()
  '(progn
    (fn2-succ-wrap fn2-successor-stage (tx)
-    ((fn2-succ-txns (fn2-core-succ-txns fn2-core)) (fn2-succ-slots (fn2-core-succ-slots fn2-core))
+    ((fn2-commit (fn2-commit-table fn2-core))
+     (fn2-succ-txns (fn2-core-succ-txns fn2-core)) (fn2-succ-slots (fn2-core-succ-slots fn2-core))
      (fn2-id-decides (fn2-core-id-decides fn2-core))
      (fn2-run-installed (fn2-core-run-installed fn2-core)) (fn2-id-engine (fn2-core-id-engine fn2-core))
      (fn2-overlays (fn2-core-overlays fn2-core)) (fn2-overlay-index (fn2-core-overlay-index fn2-core))
@@ -1084,7 +1085,7 @@
     (fn2-succ-txns fn2-succ-slots fn2-id-engine fn2-overlays fn2-fields fn2-pool)
     (mv-let (c b0) (fn2-idc-stripe tx (fn2-fc-rows fn2-fc) fn2-id-decides fn2-fields)
      (if (eq c :ok)
-         (fn2-succ-stage tx b0 fn2-succ-txns fn2-succ-slots fn2-run-installed fn2-id-engine
+         (fn2-succ-stage (fn2-commit-rows fn2-commit) tx b0 fn2-succ-txns fn2-succ-slots fn2-run-installed fn2-id-engine
                          fn2-overlays fn2-overlay-index fn2-fields fn2-pool)
        (mv c 0 fn2-succ-txns fn2-succ-slots fn2-id-engine fn2-overlays fn2-fields fn2-pool)))
     i (code))
@@ -1150,9 +1151,10 @@
     (stobj-let ((fn2-id-engine (fn2-core-id-engine fn2-core)))
      (code position) (fn2-succ-published fn2-id-engine) (mv code position)))
    (fn2-succ-wrap fn2-succ-core-drop (batch)
-    ((fn2-succ-txns (fn2-core-succ-txns fn2-core)) (fn2-overlays (fn2-core-overlays fn2-core)) (fn2-pool (fn2-core-pool fn2-core)))
+    ((fn2-commit (fn2-commit-table fn2-core))
+     (fn2-succ-txns (fn2-core-succ-txns fn2-core)) (fn2-overlays (fn2-core-overlays fn2-core)) (fn2-pool (fn2-core-pool fn2-core)))
     (fn2-succ-txns fn2-overlays fn2-pool)
-    (fn2-succ-drop batch fn2-succ-txns fn2-overlays fn2-pool))
+    (fn2-succ-drop (fn2-commit-rows fn2-commit) batch fn2-succ-txns fn2-overlays fn2-pool))
    ;; Restore account incarnations and :configured state for any replayed
    ;; fn2-principals (sid 16) slot so post-recovery principal-bind and
    ;; principal-create see every durably created principal's slot as live.
