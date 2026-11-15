@@ -12,6 +12,17 @@ recovery of accepted data. Integrated work now goes directly to upstream dev;
 component records alone do not establish this milestone. The shared application
 build owns the coherent current callback/runtime prefix and executable controls.
 
+A dependency-complete part of that application foundation is integrated:
+identity rows carry the query incarnation, mask/wake, retained handles and
+namespace/profile/algorithm fields; decode uses the named unchanged 4,096-byte
+quantum; checkpoint binding helpers explicitly refuse out-of-domain indices.
+The [53-book source union](receipts/query-identity-foundation53-record.json)
+exactly matches qualified source hashes and closure keys after these three
+files land. The new fields prepare query retention but do not establish its
+served behavior. Checkpoint core functions emitted by macros, downstream
+application composition and native execution remain outside this record.
+The remaining machine geometry/ABI changes stay with their actual consumers.
+
 The coherent application candidate is `0b84789e4`, with proof-only BIND repair
 `05d5a14e0` on top. Its [107-book prerequisite record](receipts/coherent-application-prerequisites107-record.json)
 contains 84 reused and 23 newly certified books. Root independently matched all
