@@ -296,9 +296,9 @@
           ;; No primitive is pending here. Only an unused reservation can be
           ;; discharged without selecting and observing the physical free.
           (unused (and (= alive 0) (= handle 0)))
-          (,name (,(fn2-columns-sym name "-PUT") 0 (terminal 4)
-                  (cleanup-credit (if unused 0
-                    (,(fn2-columns-sym name "-CLEANUP-CREDIT") 0 ,name))))))
+          (,name (if unused
+                     (,(fn2-columns-sym name "-PUT") 0 (terminal 4) (cleanup-credit 0))
+                   (,(fn2-columns-sym name "-PUT") 0 (terminal 4)))))
     (mv (if unused :done :closing) ,name)))))
 (defun ,(fn2-columns-sym name "-RETIRED-P") (cap nonce ,name)
  (declare (xargs :stobjs ,name :verify-guards nil :guard (,wfp ,name)))
