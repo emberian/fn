@@ -1324,6 +1324,19 @@
     (implies (and (consp l) (subsetp-equal f l))
              (subsetp-equal (remove-equal (car l) f) (cdr l)))
     :hints (("Goal" :use ((:instance fn2-pool-remove-subsetp (y f) (a (car l)) (x (cdr l)))))))
+  ;; Match the operation's named head directly instead of reopening subset
+  ;; semantics or injecting its complete implication in every update branch.
+  (defthm fn2-pool-subsetp-tail-remove-head
+    (implies (and (consp l) (equal h (car l))
+                  (subsetp-equal l f) (no-duplicatesp-equal l))
+             (subsetp-equal (cdr l) (remove-equal h f)))
+    :hints (("Goal" :in-theory (disable subsetp-equal no-duplicatesp-equal)
+             :use fn2-pool-subsetp-cdr-remove)))
+  (defthm fn2-pool-subsetp-remove-head-tail
+    (implies (and (consp l) (equal h (car l)) (subsetp-equal f l))
+             (subsetp-equal (remove-equal h f) (cdr l)))
+    :hints (("Goal" :in-theory (disable subsetp-equal no-duplicatesp-equal)
+             :use fn2-pool-remove-subsetp-cdr)))
   ; RESERVE: the head leaves its class's chain and free set together.
   (defthm fn2-pool-reserve-body-class-okp
     (implies (and (fn2-poolp fn2-pool) (fn2-pool-wfp fn2-pool)
@@ -1333,16 +1346,7 @@
     :hints (("Goal" :do-not '(generalize eliminate-destructors fertilize)
              :in-theory (e/d (fn2-pool-class-okp)
                              (fn2-pool-class-okp-of-accounts no-duplicatesp-equal subsetp-equal))
-             :cases ((equal class c2))
-             :use ((:instance fn2-pool-subsetp-cdr-remove
-                              (l (fn2-pool-free-chain (fn2-pool-rows fn2-pool)
-                                   (fn2-pool-class-headsi class fn2-pool) fn2-pool))
-                              (f (fn2-pool-free-slots (fn2-pool-rows fn2-pool) class fn2-pool)))
-                   (:instance fn2-pool-remove-subsetp-cdr
-                              (l (fn2-pool-free-chain (fn2-pool-rows fn2-pool)
-                                   (fn2-pool-class-headsi class fn2-pool) fn2-pool))
-                              (f (fn2-pool-free-slots (fn2-pool-rows fn2-pool) class fn2-pool)))
-                   fn2-pool-nclasses-at-most-16
+             :use (fn2-pool-nclasses-at-most-16
                    (:instance fn2-pool-class-headsi-type (c class))
                    (:instance fn2-pool-class-headsi-type (c c2))
                    (:instance fn2-pool-class-countsi-type (c class))
