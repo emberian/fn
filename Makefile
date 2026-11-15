@@ -72,6 +72,7 @@ ACL2_BOOKS = \
   books/codec-profile \
   books/codec-transport \
   books/codec-stack \
+  books/codec-close \
   books/compress-transport-state \
   books/tls-record-policy \
   books/tls-record-state \
@@ -261,6 +262,7 @@ ACL2_BOOKS = \
   tests/columns-unit \
   tests/codec-profile-unit \
   tests/codec-transport-unit \
+  tests/codec-cancel-unit \
   tests/host-codec-unit \
   tests/tls-record-policy-unit \
   tests/tls-record-unit \
