@@ -94,7 +94,7 @@
  (unsigned-byte-p 32 (+ (fn2-overlays-rows fn2-overlays) (fn2-run-installed-rows fn2-run-installed)))
  (= (fn2-checkpoint-predecessors-rows fn2-checkpoint-predecessors) (+ (fn2-overlays-rows fn2-overlays) (fn2-run-installed-rows fn2-run-installed))))) (mv :snapshot fn2-checkpoint-predecessor-control))
  (fn2-checkpoint-predecessor-control (fn2-checkpoint-predecessor-control-put 0
-  (phase *fn2-checkpoint-predecessor-phase-capture*) (cursor 0) (count 0) (checked 0)
+  (phase *fn2-checkpoint-predecessor-phase-capture*) (cursor 0) (count 0) (checked 0) (completed-originals 0)
   (token (fn2-checkpoint-compaction-token 0 fn2-checkpoint-compaction))
   (candidate (fn2-checkpoint-compaction-candidate 0 fn2-checkpoint-compaction))
   (owner-kind (fn2-checkpoint-compaction-owner-kind 0 fn2-checkpoint-compaction))
@@ -275,7 +275,8 @@
  (n (fn2-checkpoint-predecessors-rows fn2-checkpoint-predecessors))
  ((when (= i n))
   (if (not (= (fn2-checkpoint-predecessor-control-checked 0 fn2-checkpoint-predecessor-control) (fn2-checkpoint-predecessor-control-count 0 fn2-checkpoint-predecessor-control))) (mv :count fn2-checkpoint-predecessor-control)
-   (let ((fn2-checkpoint-predecessor-control (fn2-checkpoint-predecessor-control-set-phase 0 *fn2-checkpoint-predecessor-phase-complete* fn2-checkpoint-predecessor-control))) (mv :complete fn2-checkpoint-predecessor-control))))
+   (let ((fn2-checkpoint-predecessor-control (fn2-checkpoint-predecessor-control-put 0 (phase *fn2-checkpoint-predecessor-phase-complete*)
+     (completed-originals (fn2-checkpoint-predecessor-control-checked 0 fn2-checkpoint-predecessor-control))))) (mv :complete fn2-checkpoint-predecessor-control))))
  ((unless (and (< i n) (unsigned-byte-p 32 (+ 1 i)))) (mv :bounds fn2-checkpoint-predecessor-control))
  (kind (if (< i (fn2-overlays-rows fn2-overlays)) 0 1))
  (r (if (= kind 0) i (- i (fn2-overlays-rows fn2-overlays))))
