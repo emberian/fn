@@ -86,7 +86,7 @@
          (cond ((< i 36) (update-fn2-checkpoint-publication-evidence-metai i 0 fn2-checkpoint-publication))
                ((< i 84) (update-fn2-checkpoint-publication-cold-metai (- i 36) 0 fn2-checkpoint-publication))
                (t (update-fn2-checkpoint-publication-cold-catalogi (- i 84) 0 fn2-checkpoint-publication)))))
-   (fn2-checkpoint-publication-reset-metadata (+ i 1) fn2-checkpoint-publication))))
+   (fn2-checkpoint-publication-reset-metadata (+ 1 (nfix i)) fn2-checkpoint-publication))))
 (fn2-checkpoint-publication-preserves fn2-checkpoint-publication-reset-metadata
  (i fn2-checkpoint-publication) :hyps ((fn2-checkpoint-publicationp fn2-checkpoint-publication)
   (fn2-checkpoint-publication-wfp fn2-checkpoint-publication) (natp i) (<= i 88)))
