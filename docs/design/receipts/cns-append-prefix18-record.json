@@ -461,7 +461,7 @@
   },
   "key": "5d6592b17107240634c6f9600ec211871087cdd9e98f222aaaaf2baf725d7cbe",
   "scope": {
-    "actual_factory": "original fn2-fnct-deflayout with prefix-only input layout",
+    "actual_factory": "deflayout, populated from the canonical :append wire-schema row",
     "field_span": 4,
     "article_payload_decode": false,
     "whole_cns_actor": false,
