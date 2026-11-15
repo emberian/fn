@@ -17,7 +17,7 @@
   (let* ((sid (car ids)) (nf (nfix (fn2-run-layout-fields sid 0)))
          (nk (nfix (fn2-run-layout-keys sid)))
          (rest (fn2-successor-schema-bounds (cdr ids))))
-   (list (max nf (fn2-successor-fold-args-max sid *fn2-run-fold-kinds*) (nfix (car rest)))
+   (list (max nf (max (fn2-successor-fold-args-max sid *fn2-run-fold-kinds*) (nfix (car rest))))
          (max (nfix (- nf nk)) (nfix (cadr rest)))
          (max (fn2-succ-octets-total sid 0 nf) (nfix (caddr rest)))))))
 (make-event
