@@ -88,3 +88,11 @@ multiple actual counter increases under each accepted operation's same upload
 identity. This is executed reset-control evidence, not a proof of native disk
 effects. Recovery uses the unmodified launcher. Neither large campaign has been
 run by this source change.
+
+The canonical decimal parser `books/article-limit-text` and its unit are
+record-qualified at source `0c9bf6ea0` on the pinned 8aeb toolchain. Actual
+admission/guards took 0.03 s and 2,745 steps; the twelve syntax assertions
+passed. Both current-key certificate/FASL payloads were verified after
+publication; see [the two-book receipt](receipts/native-article-text-qualified2.json).
+This qualification does not cover the upload-domain projector, rolling
+application, or any native large-article campaign.
