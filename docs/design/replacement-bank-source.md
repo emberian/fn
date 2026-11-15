@@ -32,7 +32,9 @@ physical-work refinement or productive two-adoption evidence.
 
 Remaining connected obligations before this can serve:
 
-- The constructor/C geometry/resident search packet is owned by c_actor_loaders.
+- The constructor/C geometry/resident search packet is composed as4161477a4
+  (donor c789c00f9). Eight source controls pass; its full-R constructor fixture
+  is unexecuted and explicitly uses synthetic Ref scalars, not verified media.
 - A bounded HELD prepublication bank check must reject or yield before durable
   Write/Fence acceptance if the inactive bank is not drained. Postpublication
   FIT alone is a safe refusal but cannot establish useful publication admission.
