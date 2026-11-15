@@ -342,10 +342,49 @@
  (if (fn2-alloc-frozenp fn2-extents)
      (mv :frozen nil 0 0 0 fn2-extents)
    (fn2-alloc-reserve-transition fn2-extents)))
+; Internal closed consistency observation of an evidenced historical identity.
+; Ordinary reserve refuses counter MAX before increment, so a persisted emitted
+; identity also has a representable successor. This never enables issuance.
+(defun fn2-alloc-cold-observe-identity (epoch counter fn2-extents)
+ (declare (xargs :stobjs fn2-extents :guard (and (fn2-extents-wfp fn2-extents)
+  (unsigned-byte-p 60 epoch) (unsigned-byte-p 60 counter))))
+ (if (not (and (= (fn2-alloc-freeze-phase fn2-extents) 4)
+               (= (fn2-alloc-epoch-begun fn2-extents) 0)))
+  (mv :frozen fn2-extents)
+  (if (not (unsigned-byte-p 60 (+ counter 1))) (mv :counter-exhausted fn2-extents)
+   (let* ((old-epoch (fn2-alloc-current-epoch fn2-extents))
+          (fn2-extents (update-fn2-alloc-next-counter
+           (cond ((> epoch old-epoch) (+ counter 1))
+                 ((= epoch old-epoch) (max (+ counter 1) (fn2-alloc-next-counter fn2-extents)))
+                 (t (fn2-alloc-next-counter fn2-extents))) fn2-extents))
+          (fn2-extents (update-fn2-alloc-current-epoch (max epoch old-epoch) fn2-extents)))
+    (mv :ok fn2-extents)))))
 ; B5 recovery adopts a replayed allocation identity in arena order. The extent
 ; must be the free head (genesis FIFO order: B6's checkpoint map replaces this
 ; with the recorded map); the identity is the recorded one, never a fresh
 ; counter, and the internal reservation is discharged by commit or quarantine.
+; Internal exact free-chain unlink. PREVIOUS is proved by a bounded owned
+; cursor (or the ordinary head rule); no caller-supplied absence frees a row.
+(defun fn2-alloc-adopt-transition (i previous epoch counter fn2-extents)
+ (declare (xargs :stobjs fn2-extents
+  :guard (and (fn2-extents-wfp fn2-extents) (unsigned-byte-p 32 previous) (unsigned-byte-p 60 epoch) (unsigned-byte-p 60 counter))))
+ (if (not (and (fn2-alloc-slotp i fn2-extents)
+               (= (fn2-extents-state i fn2-extents) *fn2-extent-state-free*)
+               (fn2-alloc-link-statep (fn2-extents-next-free i fn2-extents) *fn2-extent-state-free* fn2-extents)
+               (if (= previous *fn2-alloc-none*) (= i (fn2-alloc-free-head fn2-extents))
+                (and (fn2-alloc-slotp previous fn2-extents) (not (= previous i))
+                     (= (fn2-extents-state previous fn2-extents) *fn2-extent-state-free*)
+                     (= (fn2-extents-next-free previous fn2-extents) i)))))
+  (mv :state fn2-extents)
+  (let* ((fn2-extents (if (= previous *fn2-alloc-none*)
+           (update-fn2-alloc-free-head (fn2-extents-next-free i fn2-extents) fn2-extents)
+           (fn2-extents-set-next-free previous (fn2-extents-next-free i fn2-extents) fn2-extents)))
+           (fn2-extents (fn2-extents-set-state i *fn2-extent-state-reserved* fn2-extents))
+           (fn2-extents (fn2-extents-set-epoch i epoch fn2-extents))
+           (fn2-extents (fn2-extents-set-counter i counter fn2-extents))
+           (fn2-extents (fn2-extents-set-reservation i 1 fn2-extents))
+           (fn2-extents (fn2-alloc-account i *fn2-extent-state-free* *fn2-alloc-reason-code-live* fn2-extents)))
+   (mv :ok fn2-extents))))
 (defun fn2-alloc-adopt (i epoch counter fn2-extents)
   (declare (xargs :stobjs fn2-extents
     :guard (and (fn2-extents-wfp fn2-extents) (unsigned-byte-p 60 epoch) (unsigned-byte-p 60 counter))))
@@ -355,13 +394,7 @@
                 (equal (fn2-extents-state i fn2-extents) *fn2-extent-state-free*)
                 (fn2-alloc-link-statep (fn2-extents-next-free i fn2-extents) *fn2-extent-state-free* fn2-extents)))
       (mv :state fn2-extents)
-    (let* ((fn2-extents (update-fn2-alloc-free-head (fn2-extents-next-free i fn2-extents) fn2-extents))
-           (fn2-extents (fn2-extents-set-state i *fn2-extent-state-reserved* fn2-extents))
-           (fn2-extents (fn2-extents-set-epoch i epoch fn2-extents))
-           (fn2-extents (fn2-extents-set-counter i counter fn2-extents))
-           (fn2-extents (fn2-extents-set-reservation i 1 fn2-extents))
-           (fn2-extents (fn2-alloc-account i *fn2-extent-state-free* *fn2-alloc-reason-code-live* fn2-extents)))
-      (mv :ok fn2-extents)))))
+    (fn2-alloc-adopt-transition i *fn2-alloc-none* epoch counter fn2-extents))))
 
 ; Edges are individually owned rows. Capacity is a supported-profile resource;
 ; exhaustion is admission pressure, never permission to drop another holder.
