@@ -79,6 +79,8 @@
       (fn2-checkpoints (fn2-checkpoints-put 1 (state *fn2-checkpoint-state-installed*)
        (checkpoint 9) (history 11) (incarnation 13) (cut-commit 3) (cut-event 5)
        (installation-commit 7) (installation-event 8) (builder-token 43)))
+      (fn2-checkpoint-teardown-debt (update-fn2-checkpoint-teardown-debt-last-generation 9 fn2-checkpoint-teardown-debt))
+      (fn2-checkpoint-teardown-debt (update-fn2-checkpoint-teardown-debt-count 1 fn2-checkpoint-teardown-debt))
       (fn2-checkpoint-teardown-debt (fn2-checkpoint-teardown-debt-put 1
        (phase (if (eq mode :uncertain) *fn2-checkpoint-teardown-debt-phase-uncertain* *fn2-checkpoint-teardown-debt-phase-held*))
        (generation 9) (token 41) (owner-kind 0) (owner-slot 3) (owner-gen 2)

@@ -2,6 +2,7 @@
 ; bank/protection change. Notifications never replace the permission checks.
 (in-package "ACL2")
 (include-book "checkpoint-teardown-transfer")
+(include-book "checkpoint-dispose-owner")
 (include-book "checkpoint-bank-obligations-state")
 (fn2-book-layer :c)
 ; Fixed protocol roles, bounded32-field exact comparison/copy. A protection
@@ -41,7 +42,7 @@
 
 (defun fn2-checkpoint-teardown-select (scan kind owner gen fn2-checkpoint-teardown-debt fn2-checkpoints fn2-checkpoint-bytes)
  (declare (xargs :stobjs (fn2-checkpoint-teardown-debt fn2-checkpoints fn2-checkpoint-bytes) :verify-guards nil
-  :guard (and (fn2-checkpoint-teardown-debt-wfp fn2-checkpoint-teardown-debt) (fn2-checkpoints-wfp fn2-checkpoints) (fn2-checkpoint-bytes-wfp fn2-checkpoint-bytes))))
+  :guard (and (fn2-checkpoint-teardown-debtp fn2-checkpoint-teardown-debt) (fn2-checkpoint-teardown-debt-wfp fn2-checkpoint-teardown-debt) (fn2-checkpointsp fn2-checkpoints) (fn2-checkpoints-wfp fn2-checkpoints) (fn2-checkpoint-bytesp fn2-checkpoint-bytes) (fn2-checkpoint-bytes-wfp fn2-checkpoint-bytes))))
  (cond ((not (unsigned-byte-p 32 scan)) (mv :state scan 0 0 0 0 0 0 0))
        ((>= scan (fn2-checkpoint-teardown-debt-rows fn2-checkpoint-teardown-debt)) (mv :done scan 0 0 0 0 0 0 0))
        ((equal (fn2-checkpoint-teardown-debt-phase scan fn2-checkpoint-teardown-debt) *fn2-checkpoint-teardown-debt-phase-empty*)
@@ -50,6 +51,12 @@
               (list *fn2-checkpoint-teardown-debt-phase-held* *fn2-checkpoint-teardown-debt-phase-drop*)))
         ; A WAITING/ambiguous member is never a new source scan or resubmission.
         (mv :state scan 0 0 0 0 0 0 0))
+       ((and (= (fn2-checkpoints-state scan fn2-checkpoints) *fn2-checkpoint-state-disposing*)
+             (fn2-checkpoint-dispose-current-p scan (fn2-checkpoint-teardown-debt-token scan fn2-checkpoint-teardown-debt)
+               kind owner gen (fn2-checkpoint-teardown-debt-generation scan fn2-checkpoint-teardown-debt)
+               fn2-checkpoint-teardown-debt fn2-checkpoints fn2-checkpoint-bytes))
+        (mv :dispose scan (fn2-checkpoint-teardown-debt-token scan fn2-checkpoint-teardown-debt) 0 0 0 0 0
+            (fn2-checkpoint-teardown-debt-phase scan fn2-checkpoint-teardown-debt)))
        ((not (fn2-checkpoint-teardown-admission-ownerp scan (fn2-checkpoint-teardown-debt-token scan fn2-checkpoint-teardown-debt) kind owner gen fn2-checkpoint-teardown-debt fn2-checkpoints fn2-checkpoint-bytes))
         (mv :state scan 0 0 0 0 0 0 0))
        (t (mv (if (equal (fn2-checkpoint-teardown-debt-phase scan fn2-checkpoint-teardown-debt) *fn2-checkpoint-teardown-debt-phase-drop*) :drop :source)

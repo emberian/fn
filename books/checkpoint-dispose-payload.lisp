@@ -32,6 +32,7 @@
               (fn2-event-archivep fn2-event-archive) (fn2-event-archive-wfp fn2-event-archive)
               (fn2-release-evidence-candidatesp fn2-release-evidence-candidates) (fn2-release-evidence-candidates-wfp fn2-release-evidence-candidates))))
  (b* (((unless (and (unsigned-byte-p 60 generation) (< 0 generation)
+                     (<= generation (fn2-checkpoint-teardown-debt-last-generation fn2-checkpoint-teardown-debt))
                      (fn2-checkpoint-teardown-retained-ownerp c token kind slot gen fn2-checkpoint-teardown-debt fn2-checkpoints fn2-checkpoint-bytes)
                      (= generation (fn2-checkpoint-teardown-debt-generation c fn2-checkpoint-teardown-debt))
                      (= (fn2-checkpoint-teardown-debt-phase c fn2-checkpoint-teardown-debt) *fn2-checkpoint-teardown-debt-phase-held*)

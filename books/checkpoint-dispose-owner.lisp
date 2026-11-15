@@ -8,6 +8,7 @@
  (declare (xargs :stobjs (fn2-checkpoint-teardown-debt fn2-checkpoints fn2-checkpoint-bytes) :verify-guards nil
  :guard (and (fn2-checkpoint-teardown-debtp fn2-checkpoint-teardown-debt) (fn2-checkpoint-teardown-debt-wfp fn2-checkpoint-teardown-debt) (fn2-checkpointsp fn2-checkpoints) (fn2-checkpoints-wfp fn2-checkpoints) (fn2-checkpoint-bytesp fn2-checkpoint-bytes) (fn2-checkpoint-bytes-wfp fn2-checkpoint-bytes))))
  (and (unsigned-byte-p 60 generation) (< 0 generation)
+                     (<= generation (fn2-checkpoint-teardown-debt-last-generation fn2-checkpoint-teardown-debt))
       (fn2-checkpoint-teardown-retained-context-ownerp c token kind slot gen fn2-checkpoint-teardown-debt fn2-checkpoints fn2-checkpoint-bytes)
       (= generation (fn2-checkpoint-teardown-debt-generation c fn2-checkpoint-teardown-debt))
       (= (fn2-checkpoint-teardown-debt-phase c fn2-checkpoint-teardown-debt) *fn2-checkpoint-teardown-debt-phase-held*)
@@ -71,6 +72,7 @@
       (resume (fn2-checkpoint-dispose-current-p c token kind slot gen generation fn2-checkpoint-teardown-debt fn2-checkpoints fn2-checkpoint-bytes))
       ((unless (or resume
         (and (unsigned-byte-p 60 generation) (< 0 generation)
+                     (<= generation (fn2-checkpoint-teardown-debt-last-generation fn2-checkpoint-teardown-debt))
              (fn2-checkpoint-teardown-retained-ownerp c token kind slot gen fn2-checkpoint-teardown-debt fn2-checkpoints fn2-checkpoint-bytes)
              (= (fn2-checkpoint-teardown-debt-phase c fn2-checkpoint-teardown-debt) *fn2-checkpoint-teardown-debt-phase-held*)
              (not (= (fn2-checkpoints-state c fn2-checkpoints) *fn2-checkpoint-state-disposing*))

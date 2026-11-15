@@ -34,6 +34,7 @@
    (fn2-checkpoint-teardown-events)
    (fn2-checkpoint-teardown-sweep-events)
    (fn2-checkpoint-owned-retirement-events)
+   (fn2-checkpoint-dispose-events)
    (fn2-checkpoint-master-faces)
    (defmachine-arms fn2-checkpoint-master)
    (defun fn2-checkpoint-needed-ready (fn2-core)
