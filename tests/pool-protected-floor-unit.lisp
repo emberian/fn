@@ -4,7 +4,7 @@
 (include-book "../books/pool")
 (include-book "std/util/bstar" :dir :system)
 (defun-nx fn2-pfu-view (fn2-pool)
- (declare (xargs :stobjs fn2-pool))
+ (declare (xargs :stobjs fn2-pool :verify-guards nil))
  (list (fn2-pool-view fn2-pool) (fn2-pool-class-countsi 0 fn2-pool)
        (fn2-pool-class-headsi 0 fn2-pool) (fn2-pool-credit-configured fn2-pool)
        (fn2-pool-credit-group-count fn2-pool)
