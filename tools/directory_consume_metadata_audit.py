@@ -11,7 +11,7 @@ import sys
 sys.path.insert(0,'tools')
 from pathlib import Path
 from collections import Counter
-from lisp_source import forms,read_sexp
+from lisp_source import forms,read_sexp,generated_definition_expansion
 D={};COL={};GET=set();PUT={};LITERAL_PROVIDERS={};PAYLOAD_MODE=False
 
 def literal_definitions(form):
@@ -32,7 +32,9 @@ for p in Path('books').glob('*.lisp'):
   try:f=read_sexp(raw)
   except:continue
   if not isinstance(f,list) or len(f)<2:continue
-  for definition in literal_definitions(f):
+  generated=generated_definition_expansion(f)
+  candidates=[definition for event in generated for definition in literal_definitions(event)] if generated is not None else literal_definitions(f)
+  for definition in candidates:
    name=definition[1]
    if name in D and D[name][1]!=definition:raise ValueError(('ambiguous source definition',name,D[name][0],p))
    D[name]=(p,definition)

@@ -41,8 +41,10 @@
  (+ (+ 2 (* 2 15)) (+ 2 (* 2 12)) (+ 2 (* 2 1))))
 (defconst *fn2-directory-consume-slot-steps*
  (+ *fn2-directory-consume-slot-shape-steps* 3))
+; Existing caller WFP guards discharge the generated carried equivalence.
+(defconst *fn2-directory-consume-slot-carried-steps* 3)
 (defconst *fn2-directory-consume-authority-current-steps*
- (+ 16 *fn2-directory-consume-slot-steps*))
+ (+ 16 *fn2-directory-consume-slot-carried-steps*))
 (defconst *fn2-directory-consume-authority-complete-steps*
  (+ 2 *fn2-directory-consume-authority-current-steps*))
 (defconst *fn2-directory-consume-event-subject-steps*
@@ -73,4 +75,4 @@
 ; actual registered-kind independent/combined work-limit gate is prepared in
 ; directory-consume-face-source-unit and must join the controller declaration.
 (assert-event (equal *fn2-directory-rebase-consume-bytes* 4288))
-(assert-event (equal *fn2-directory-rebase-consume-steps* 273))
+(assert-event (equal *fn2-directory-rebase-consume-steps* 211))
