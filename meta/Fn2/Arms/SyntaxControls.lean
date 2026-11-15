@@ -44,5 +44,26 @@ example : readDeclaration 8 (Val.ofList [Val.ofList [.sym ":LET", .sym "X", .int
 /-- Matching failures are not successful expansion evidence. -/
 example : expansionAgrees 8 Val.nil Val.nil (fun _ => .error "control") = false := by decide +kernel
 
+/-- Whole antecedent and concrete conclusion for the expansion soundness bridge. -/
+def witnessWord : Val := Val.ofList [.sym ":LET", .sym "ACL2::X", .int 1]
+def witnessInternal : Val := Val.ofList [.sym ":LET", .sym "X", .int 1]
+def echoExpansion (v : Val) : Except String (List Val) := .ok [v]
+
+example : expansionAgrees 8 witnessWord (Val.ofList [witnessWord]) echoExpansion = true ∧
+    readStep 8 witnessWord = .ok witnessInternal ∧
+    readSteps 8 (Val.ofList [witnessWord]) = .ok (Val.ofList [witnessInternal]) ∧
+    echoExpansion witnessInternal = .ok [witnessInternal] := by decide +kernel
+
+/-- Removing successful agreement permits an input with no successful projection. -/
+example : expansionAgrees 8 Val.nil Val.nil echoExpansion = false ∧
+    ¬ ∃ w e, readStep 8 Val.nil = .ok w ∧ readSteps 8 Val.nil = .ok e ∧
+      echoExpansion w = .ok e.toList := by
+  constructor
+  · decide +kernel
+  · rintro ⟨w, e, hw, _, _⟩
+    have bad : readStep 8 Val.nil = .error "step lacks a keyword head" := by decide +kernel
+    rw [bad] at hw
+    cases hw
+
 end Fn2.Arms.SyntaxControls
 end
