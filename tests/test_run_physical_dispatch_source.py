@@ -58,8 +58,13 @@ class DispatchSource(unittest.TestCase):
         lookup=block(text('machines-c-read.lisp'),'defun','fn2-rd-lookup')
         self.assertIn('(equal erow (+ b0 *fn2-read-heads* *fn2-run-reader-entry*))',lookup)
         for f in ('okind','oslot','ogen'): self.assertIn(f'(fn2-run-cursors-{f} tx fn2-run-cursors)',lookup)
-        src=text('machines-c-read-loader.lisp'); self.assertIn('(fn2-arms-op-face-events op child world)',src)
-        for op in ('fn2-run-page-bind','fn2-run-page-step','fn2-run-page-read','fn2-run-page-release','fn2-run-page-bundle-reserve'):
+        src=text('run-physical-core-faces.lisp'); self.assertIn('(fn2-arms-op-face-events op child world)',src)
+        self.assertIn('(not (function-symbolp op world))', src)
+        self.assertIn('(fn2-run-loader-core-face-events *fn2-read-loader-core-operations*', text('machines-c-read-loader.lisp'))
+        c=text('assembly-callbacks-c-prepare.lisp')
+        self.assertLess(c.index('(fn2-run-page-core-faces)'), c.index('(fn2-successor-prepare-events)'))
+        for op in ('fn2-run-page-bind','fn2-run-page-step','fn2-run-page-read','fn2-run-page-release'):
             self.assertIn(op,src)
+        self.assertIn('fn2-run-page-bundle-reserve', text('machines-c-read-loader.lisp'))
         callbacks=text('assembly-callbacks-d-cursor.lisp');self.assertLess(callbacks.index('(fn2-read-loader-core-faces)'),callbacks.index('(defmachine-arms fn2-cursor :wrappers)'))
 if __name__=='__main__': unittest.main()
