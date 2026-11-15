@@ -52,6 +52,15 @@ class RecursionSourceTest(unittest.TestCase):
             self.assertEqual(count, 1, name)
             self.assertEqual(rw.rewrite(after, {name: bound}), (after, 0))
             actual = definition((ROOT / item['file']).read_text(), name)
+            if name=='fn2-checkpoint-summary-authority-live-descriptor':
+                # Independent546 guard repair: the original fixed fixture
+                # had an unbound SUMMARY guard although this helper's only
+                # carriers are authority+bytes. Preserve the original input
+                # and compose that explicit translation repair here.
+                formal=lr.parse(after).forms[0].items[2]
+                self.assertNotIn('fn2-checkpoint-summary',[x.low for x in formal.items])
+                self.assertIn('(fn2-checkpoint-summary-wfp fn2-checkpoint-summary)',after)
+                after=after.replace(' (fn2-checkpoint-summary-wfp fn2-checkpoint-summary)','')
             self.assertEqual(actual, after, name)
 
     def test_whole_file_rewrite_has_no_other_changes(self):

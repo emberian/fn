@@ -50,7 +50,22 @@ def cold_zero(value):
     return parts
 
 
-def check_full_substitution(before, runs, apply):
+def check_full_substitution(before, runs, apply, shared=None):
+    actual_apply = function(apply, 'fn2-checkpoint-summary-apply-step')
+    if lr.match('(fn2-checkpoint-summary-install-source ?*args)',[actual_apply]):
+        calls=lr.match('(fn2-checkpoint-summary-install-source 0 e r fn2-checkpoint-summary fn2-checkpoint-summary-sources fn2-run-installed)',[actual_apply])
+        if len(calls)!=1:raise ValueError('cold apply must use the same source/row binding')
+        shared=shared or (ROOT/'books/checkpoint-summary-install-source.lisp').read_text()
+        helper=function(shared,'fn2-checkpoint-summary-install-source')
+        direct=lr.match('(fn2-run-install-physical ?*args)',[helper])
+        if len(direct)!=1:raise ValueError('shared source constructor must delegate once')
+        call=direct[0].node;text=shared[call.start:call.end]
+        edits=[]
+        for match in lr.match('(?head s fn2-checkpoint-summary)',lr.parse(text).forms):
+            node=match.node;edits.append((node.items[1].start,node.items[1].end,'0'))
+        replacement=lr.write(text,edits)
+        node=calls[0].node
+        apply=lr.write(apply,[(node.start,node.end,replacement)])
     old_write, old_fields = rw.extract(before)
     constructor = function(runs, 'fn2-run-install-physical')
     actual_apply = function(apply, 'fn2-checkpoint-summary-apply-step')
@@ -100,11 +115,13 @@ def check_wire_identity(runs, leases, catalog, metadata):
         raise ValueError('physical constructor accepts zero wire rank')
     if not lr.match('(wire-run run)', [resident]):
         raise ValueError('resident run must retain its own wire rank')
-    source = function(leases, 'fn2-checkpoint-summary-run-source-p')
+    source = function(leases, 'fn2-checkpoint-summary-row-run-source-p')
+    wrapper=function(leases,'fn2-checkpoint-summary-run-source-p')
+    if not lr.match('(fn2-checkpoint-summary-row-run-source-p 0 r fn2-checkpoint-summary fn2-checkpoint-summary-sources fn2-run-installed)',[wrapper]):raise ValueError('active source must delegate row0')
     rank = '(fn2-checkpoint-summary-sources-rank e fn2-checkpoint-summary-sources)'
     if not lr.match(f'(= {rank} (fn2-run-installed-wire-run r fn2-run-installed))', [source]):
         raise ValueError('source identity lost stored wire rank')
-    if not lr.match(f'(= (+ (fn2-checkpoint-summary-priority-base 0 fn2-checkpoint-summary) {rank}) (fn2-run-installed-run r fn2-run-installed))', [source]):
+    if not lr.match(f'(= (+ (fn2-checkpoint-summary-priority-base s fn2-checkpoint-summary) {rank}) (fn2-run-installed-run r fn2-run-installed))', [source]):
         raise ValueError('source identity lost translated query priority')
     begin = function(catalog, 'fn2-checkpoint-summary-begin')
     if not lr.match('(fn2-checkpoint-summary-put 0 ?*before (priority-base 0) ?*after)', [begin]):
@@ -164,7 +181,9 @@ def check_transition_class(runs, apply, retire):
         raise ValueError('logical model must sum full installed-row range')
     if lr.match('(fn2-run-physical-rows-from ?*args)', [function(apply, 'fn2-checkpoint-summary-apply-step')]):
         raise ValueError('served apply uses logical scan')
-    retired = function(retire, 'fn2-checkpoint-summary-retire-row')
+    retired = function(retire, 'fn2-checkpoint-summary-row-retire-row')
+    wrapper=function(retire,'fn2-checkpoint-summary-retire-row')
+    if not lr.match('(fn2-checkpoint-summary-row-retire-row 0 r fn2-checkpoint-summary fn2-checkpoint-summary-sources fn2-checkpoint-cbase-holds fn2-run-installed)',[wrapper]):raise ValueError('active retirement must delegate row0')
     if not lr.match('(fn2-run-free-physical r fn2-run-installed)', [retired]):
         raise ValueError('retirement bypasses counted free')
     if lr.match('(fn2-run-installed-put ?*args)', [retired]):
@@ -208,10 +227,11 @@ class Source(unittest.TestCase):
             check_full_substitution(self.before, mutated, self.apply)
 
     def test_query_rank_replaced_by_wire_rank_refused(self):
-        mutated = self.apply.replace('(+ (fn2-checkpoint-summary-priority-base 0 fn2-checkpoint-summary) rank) rank',
-                                     'rank rank', 1)
+        shared=(ROOT/'books/checkpoint-summary-install-source.lisp').read_text()
+        mutated=shared.replace('(+ (fn2-checkpoint-summary-priority-base s fn2-checkpoint-summary) rank) rank','rank rank',1)
+        self.assertNotEqual(mutated,shared)
         with self.assertRaisesRegex(ValueError, 'query run'):
-            check_full_substitution(self.before, self.runs, mutated)
+            check_full_substitution(self.before, self.runs, self.apply,mutated)
 
     def test_source_identity_using_query_rank_for_wire_refused(self):
         mutated = self.leases.replace('(fn2-run-installed-wire-run r fn2-run-installed)',

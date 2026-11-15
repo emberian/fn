@@ -2,13 +2,15 @@
 from pathlib import Path
 import unittest
 import lisp_rewrite as lr
+import checkpoint_summary_recursion_rewrite as total
 import checkpoint_live_authority_catalog_rewrite as bind
 import checkpoint_live_close_phase_rewrite as phase
+import checkpoint_live_adoption_wire_rewrite as wire
 ROOT=Path(__file__).resolve().parents[1];B=ROOT/'books';F=ROOT/'tools/fixtures'
 def fn(s,name):return lr.match(f'(defun {name} ?*body)',lr.parse(s).forms)[0].node
 class Join(unittest.TestCase):
  def test_existing_authority_class_replay(self):
-  self.assertEqual((B/'checkpoint-summary-authority-live.lisp').read_text(),bind.rewrite((F/'checkpoint-live-catalog-authority-before.lisp').read_text()))
+  self.assertEqual((B/'checkpoint-summary-authority-live.lisp').read_text(),total.rewrite(bind.rewrite((F/'checkpoint-live-catalog-authority-before.lisp').read_text()),total.TARGETS['books/checkpoint-summary-authority-live.lisp'])[0])
  def test_helper_guard_stobjs_are_actual_formals(self):
   s=(B/'checkpoint-summary-authority-live.lisp').read_text()
   for m in lr.match('(defun ?name ?formals ?*body)',lr.parse(s).forms):
@@ -19,6 +21,7 @@ class Join(unittest.TestCase):
      self.assertIn(obj,formals,(n.items[1].low,obj))
  def test_master_uses_actual_close_operation(self):
   a,b=phase.rewrite((F/'checkpoint-live-close-checkpoint-master-state.lisp').read_text(),(F/'checkpoint-live-close-checkpoint-master-arms.lisp').read_text())
+  a,b=wire.rewrite(a,b)
   self.assertEqual(a,(B/'checkpoint-master-state.lisp').read_text());self.assertEqual(b,(B/'checkpoint-master-arms.lisp').read_text())
   self.assertIn('(fn2-checkpoint-summary-live-close-op) :accept (:captured)',b)
  def test_close_requires_full_actual_authority(self):

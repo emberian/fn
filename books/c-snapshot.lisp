@@ -228,7 +228,9 @@
  (fn2-csnapshot-op fn2-csnapshot-release (token okind oslot ogen) 1
   (stobj-let ((fn2-csnapshot (fn2-core-csnapshot fn2-core))
               (fn2-extents (fn2-core-extents fn2-core))) (code fn2-csnapshot fn2-extents)
-   (if (not (fn2-csnapshot-ownerp token okind oslot ogen fn2-csnapshot))
+   (if (not (and (fn2-csnapshot-ownerp token okind oslot ogen fn2-csnapshot)
+                 (member-equal (fn2-csnapshot-phase 0 fn2-csnapshot)
+                  (list *fn2-csnapshot-phase-closing* *fn2-csnapshot-phase-held*))))
        (mv :owner fn2-csnapshot fn2-extents)
      (mv-let (code fn2-extents) (fn2-alloc-snapshot-release token okind oslot ogen fn2-extents)
       (let ((fn2-csnapshot (if (eq code :ok)

@@ -18,7 +18,7 @@ def rewrite(source):
         elif h=='fn2-checkpoint-publication-wfp':
             edits.append((n.end,n.end,' (fn2-checkpoint-writer-wfp fn2-checkpoint-writer) (fn2-machines-wfp fn2-machines)'))
         elif h=='fn2-core-checkpoint-summary-authority':
-            edits.append((n.items[-1].end,n.items[-1].end,' fn2-core-checkpoint-writer fn2-core-machines'))
+            edits.append((n.items[-1].end,n.items[-1].end,' fn2-checkpoint-writer-table fn2-core-machines'))
     source=lr.write(source,edits)
     fn=lr.match(f'(defun {DEFERRED[0]} ?*body)',lr.parse(source).forms,deep=False)[0].node
     edits=[]

@@ -27,13 +27,13 @@
           :admission-refused :refused :uncertain :loan-uncertain
           :summary-authority-begin :summary-authority-copy :rebase-begin :rebase-source :rebase-consume :rebase-archive
           :teardown-transfer-begin :teardown-transfer-copy :teardown-select
-          :teardown-cold-next :teardown-cold-begin :teardown-cold-copy :teardown-cold-ack :live-catalog-close)
+          :teardown-cold-next :teardown-cold-begin :teardown-cold-copy :teardown-cold-ack :live-catalog-close :live-hold :live-preflight-begin :live-preflight :live-writer-begin :live-writer-poll :live-open :live-install :live-versions :live-retire-runs :live-retire-overlays :live-swap :live-release-old)
  :fields ((pending :u32) (stopped :bool) (token :u60)
           (scan :u32) (highest :u60) (candidate :u32) (candidate-found :bool) (checkpoint :u60)
           (page-slot :u32) (page-gen :u60) (scratch-slot :u32) (scratch-gen :u60) (read-slot :u32) (read-gen :u60)
           (source :u8) (field-base :u32) (map-role :u8) (target :u32) (target-gen :u60)
           (teardown-extent :u32) (teardown-epoch :u60) (teardown-allocation :u60)
-          (batch :u60) (event :u60) (covered :u60) (retirement-seen :u60) (attempt-retirement :u60) (debt-scan :u32))
+          (batch :u60) (event :u60) (covered :u60) (retirement-seen :u60) (attempt-retirement :u60) (debt-scan :u32) (source-writer :u60))
  :holds ((:teardown-wait :storage-window) (:teardown-holding-uncertain :storage-window)
          (:workspaces :storage-window :storage-window)
          (:directory :storage-window :storage-window) (:abort-snapshot :storage-window :storage-window)
@@ -50,7 +50,7 @@
          (:retention-begin :storage-window :storage-window) (:retention-source :storage-window :storage-window) (:publish-start :storage-window :storage-window)
          (:publish-wait :storage-window :storage-window) (:release :storage-window :storage-window) (:release-complete :storage-window :storage-window) (:refused :storage-window :storage-window) (:uncertain :storage-window :storage-window) (:loan-uncertain :storage-window)
           (:summary-authority-begin :storage-window :storage-window) (:summary-authority-copy :storage-window :storage-window)
-          (:rebase-begin :storage-window :storage-window) (:rebase-source :storage-window :storage-window) (:rebase-consume :storage-window :storage-window) (:rebase-archive :storage-window :storage-window) (:live-catalog-close :storage-window :storage-window))
+          (:rebase-begin :storage-window :storage-window) (:rebase-source :storage-window :storage-window) (:rebase-consume :storage-window :storage-window) (:rebase-archive :storage-window :storage-window) (:live-catalog-close :storage-window :storage-window) (:live-hold :storage-window :storage-window) (:live-preflight-begin :storage-window :storage-window) (:live-preflight :storage-window :storage-window) (:live-writer-begin :storage-window :storage-window) (:live-writer-poll :storage-window :storage-window) (:live-open :storage-window :storage-window) (:live-install :storage-window :storage-window) (:live-versions :storage-window :storage-window) (:live-retire-runs :storage-window :storage-window) (:live-retire-overlays :storage-window :storage-window) (:live-swap :storage-window :storage-window) (:live-release-old :storage-window :storage-window))
  :budget (:bytes (+ 16384 (* 9 *fn2-c-read-callback-bytes*)) :steps 32 :descriptors 4)
  :stops (:checkpoint :pool :bounds)
  :capacity (if (posp (fn2-b-checkpoint-capacity profile)) 1 0)
@@ -68,5 +68,5 @@
         (:admission-refused) (:refused) (:uncertain) (:loan-uncertain)
           (:summary-authority-begin) (:summary-authority-copy) (:rebase-begin) (:rebase-source) (:rebase-consume) (:rebase-archive)
           (:teardown-transfer-begin) (:teardown-transfer-copy) (:teardown-select)
-          (:teardown-cold-next) (:teardown-cold-begin) (:teardown-cold-copy) (:teardown-cold-ack) (:live-catalog-close))
+          (:teardown-cold-next) (:teardown-cold-begin) (:teardown-cold-copy) (:teardown-cold-ack) (:live-catalog-close) (:live-hold) (:live-preflight-begin) (:live-preflight) (:live-writer-begin) (:live-writer-poll) (:live-open) (:live-install) (:live-versions) (:live-retire-runs) (:live-retire-overlays) (:live-swap) (:live-release-old))
  :observes ((:read-result)))

@@ -26,6 +26,6 @@ def rewrite(s):
  ed.append((tag.end,tag.end,'''
        (= (fn2-checkpoint-summary-authority-catalog-tag 1 fn2-checkpoint-summary-authority)
           (fn2-checkpoint-summary-tag 1 fn2-checkpoint-summary))'''))
- return lr.write(s,ed).replace('(include-book "checkpoint-summary-authority-state")','(include-book "checkpoint-summary-authority-state")\n(include-book "checkpoint-summary-live-catalog")\n(include-book "checkpoint-summary-live-close")')
+ return lr.write(s,ed).replace('fn2-core-checkpoint-writer','fn2-checkpoint-writer-table').replace('(include-book "checkpoint-summary-authority-state")','(include-book "checkpoint-summary-authority-state")\n(include-book "checkpoint-summary-live-catalog")\n(include-book "checkpoint-summary-live-close")')
 if __name__=='__main__':
  p=Path(__file__).resolve().parents[1]/'books/checkpoint-summary-authority-live.lisp';p.write_text(rewrite(p.read_text()))
