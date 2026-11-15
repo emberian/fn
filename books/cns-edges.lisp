@@ -34,6 +34,7 @@
 ; link finds the edge. So no publish between the read and the park is lost.
 (in-package "ACL2")
 (include-book "columns")
+(include-book "columns-guard-hints")
 (include-book "arm-children")
 (fn2-book-layer :e)
 
@@ -46,7 +47,7 @@
            (eq (caadr claim) 'fn2-cns-edges-rows)
            (equal (caddr claim) '(fn2-cns-edges-rows fn2-cns-edges))
            (not (member-eq :hints (cdddr event))))
-      (append event '(:hints (("Goal" :in-theory (disable fn2-cns-edges-rows)))))
+      (append event '(:hints ((fn2-columns-guard-hint '(fn2-cns-edges) '(fn2-cns-bucket) nil world))))
     event)))
 (defun fn2-cns-row-hint-events (events)
  (declare (xargs :verify-guards nil))
@@ -73,7 +74,7 @@
        (equal (caddr before) (take 3 (caddr after)))
        (equal (nthcdr 3 before) (nthcdr 3 after))
        (equal (nthcdr 3 (caddr after))
-              '(:hints (("Goal" :in-theory (disable fn2-cns-edges-rows)))))))))
+              '(:hints ((fn2-columns-guard-hint '(fn2-cns-edges) '(fn2-cns-bucket) nil world))))))))
 (local (assert-event
  (let ((explicit '(defthm sample
                    (equal (fn2-cns-edges-rows (call fn2-cns-edges))
