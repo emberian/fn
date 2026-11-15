@@ -222,6 +222,7 @@ import fcntl
 import fractions
 import hashlib
 import json
+import math
 import os
 from pathlib import Path
 import queue
@@ -2893,6 +2894,10 @@ def send_range(args) -> int:
     """A book's forms from --from to --until/--through into a live session."""
     if getattr(args, "per_event_steps", None) is not None and not args.ld_local:
         raise SystemExit("proof-repl: --per-event-steps requires --ld-local")
+    if getattr(args, "per_event_steps", None) is not None:
+        if args.limit is None or not math.isfinite(args.limit) or args.limit <= 0:
+            raise SystemExit("proof-repl: --per-event-steps requires an explicit "
+                             "positive finite --limit per original event")
     path = book_path(args.book)
     all_forms = forms(path.read_text(encoding="utf-8"))
     chosen = select_range(all_forms, args.start, args.until, args.through)
