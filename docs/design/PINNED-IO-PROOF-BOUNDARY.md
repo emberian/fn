@@ -128,3 +128,48 @@ Forge receipts are `/tmp/finish-pin-modules.log`,
 `/tmp/finish-pin-modules-format-events.log`,
 `/tmp/finish-pin-modules-continue2.log`, and named book/event logs under
 `/tmp/finish-pin-modules/` and `/tmp/finish-pin-*.log`.
+
+## Remaining module wave at clean donor 1a9cf1e3c
+
+All 76 module source files in clean donor `1a9cf1e3c` were byte-identical to
+4faebb39d, giving machines-b key
+`1120aa27bbdbd793107927b4836d2cd2439375fe8c84bc659f5b9034faf28cb4`.
+The next 4 GiB / swap-0 / j1 retained author world installed 50 qualified
+books and FASLs, including all twelve newly recorded prefix entries. Its
+artifact set was `a7da2326c4bd1092a3886499705958279a8b70ec16247554fa5360c177f88783`.
+Three more source dependencies admitted (commit-geometry, commit-format,
+checkpoint-tickets) in 12.56 seconds / 1,972,135 total steps. The next book,
+checkpoint-allocation, refused the actual allocation packer's guard because
+its actual codec SIZE lacked an upper-bound interface. No runtime
+counterexample was established.
+
+The shared layout owner supplied a proof-only producer experiment: new
+functions/theorems only, without redefining existing codec functions or
+metafunctions. The API admitted in 0.21 seconds / 803 steps. Successive bound
+producer attempts exposed missing explicit reader/floor/tail proof facts and
+an overly restrictive frozen arithmetic theory. The final experiment removed
+that theory reset and proved all actual allocation suffix/public size bounds
+in 0.33 seconds / 4,484 steps. Its rule audit also showed dependence on a
+separately proved scalar control:
+
+```
+(implies (unsigned-byte-p 60 v)
+         (<= (fn2-layout-varsize v) 9007199254740992))
+```
+
+That scalar control proved in 0.17 seconds / 272 steps from the unconditional
+coarse varsize theorem with local floor arithmetic. Consequently this is not
+a standalone successful final-generator gate: the reusable producer still
+needs the scalar-width dependency and arithmetic theory organized in source.
+The actual allocation packer guard was not retried after those facts before
+the deadline. No new runtime or theorem statement was weakened or changed.
+
+The 600-second outer scope ended cleanly; recorded outer 709276, server
+709338 and ACL2 group 709342 were absent after stop returned 0. Supervisor
+code 75 retains the initial failed source dependency. Logs are Forge
+`/tmp/finish-pin-modules-current.log`,
+`/tmp/finish-pin-allocation-size-bounds-v3.log`, and
+`/tmp/finish-pin-allocation-bounds-arithmetic.log`. No further record gate ran:
+final reusable size interfaces and affected consumers must be batched before
+recertifying their shared dependency prefix. Canonical materialization and
+retirement controls remain pending.
