@@ -990,6 +990,13 @@
     (fn2-txn-xref-size (- k 1) (+ 1 j) tx (+ off 1 nlen)
                        (+ total 2 nlen digits) c1 g1 okind oslot ogen fn2-core)))
 
+(defthm fn2-txn-xref-size-natp
+  (implies (natp total)
+           (natp (mv-nth 1 (fn2-txn-xref-size k j tx off total c1 g1 okind oslot ogen fn2-core))))
+  :rule-classes :type-prescription
+  :hints (("Goal" :in-theory (enable fn2-txn-xref-size))))
+(in-theory (disable fn2-txn-xref-digits fn2-txn-xref-size))
+
 ;; Cost after preflight: if W appended bytes comprise prefix 7, path P,
 ;; names N, pair punctuation 2K and digits D, W=7+P+N+2K+D.
 ;; Output W + names/path reads N+P + two length reads per group 2K
