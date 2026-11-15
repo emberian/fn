@@ -100,7 +100,8 @@
        (mv :source fn2-checkpoint-restore-reach)))
   (mv-let (code fn2-checkpoint-restore-reach)
    (fn2-checkpoint-restore-reach-name role unit epoch allocation fn2-checkpoint-restore-reach fn2-checkpoint-restore-reach-control)
-   (mv code (if (eq code :ok) (fn2-checkpoint-restore-reach-set-state e *fn2-checkpoint-restore-reach-state-mapped* fn2-checkpoint-restore-reach) fn2-checkpoint-restore-reach)))))
+   (let* ((fn2-checkpoint-restore-reach (if (eq code :ok) (fn2-checkpoint-restore-reach-set-state e *fn2-checkpoint-restore-reach-state-mapped* fn2-checkpoint-restore-reach) fn2-checkpoint-restore-reach)))
+    (mv code fn2-checkpoint-restore-reach)))))
 
 (defun fn2-checkpoint-restore-reach-reader-hash-p (i fn2-checkpoint-restore-reader fn2-checkpoint-restore-reach-control)
  (declare (xargs :stobjs (fn2-checkpoint-restore-reader fn2-checkpoint-restore-reach-control) :measure (nfix (- 32 (nfix i)))
@@ -182,7 +183,8 @@
                      ; may be named. Both are constructor allocations.
                      (equal (fn2-checkpoint-restore-map-state e fn2-checkpoint-restore-map) *fn2-extent-state-reserved*)))
        (mv :identity fn2-checkpoint-restore-reach)))
-  (mv :ok (fn2-checkpoint-restore-reach-set-state e *fn2-checkpoint-restore-reach-state-mapped* fn2-checkpoint-restore-reach))))
+  (let* ((fn2-checkpoint-restore-reach (fn2-checkpoint-restore-reach-set-state e *fn2-checkpoint-restore-reach-state-mapped* fn2-checkpoint-restore-reach)))
+   (mv :ok fn2-checkpoint-restore-reach))))
 
 ; The only early names are produced after the real linked-page verifier.
 (defun fn2-checkpoint-restore-reach-root-page (fn2-checkpoints fn2-checkpoint-refs fn2-checkpoint-bytes fn2-checkpoint-restore-reader fn2-checkpoint-restore-map fn2-checkpoint-restore-map-control fn2-checkpoint-restore-reach fn2-checkpoint-restore-reach-control)
