@@ -14,6 +14,8 @@
       ((when (equal (fn2-run-loads-phase c fn2-run-loads) *fn2-run-load-phase-idle*))
        (mv (if (equal (fn2-checkpoint-summary-leases-live c fn2-checkpoint-summary-leases) 0) :ok :source)
         fn2-run-loads fn2-run-cursors fn2-checkpoint-summary fn2-checkpoint-summary-leases fn2-pool))
+      ((unless (equal (fn2-run-loads-lease-mode c fn2-run-loads) *fn2-run-load-lease-mode-owned*))
+       (mv :borrowed fn2-run-loads fn2-run-cursors fn2-checkpoint-summary fn2-checkpoint-summary-leases fn2-pool))
       ((unless (and (fn2-run-load-ownerp c kind owner generation fn2-run-loads)
                     (equal (fn2-run-loads-pending c fn2-run-loads) 0)))
        (mv :pending fn2-run-loads fn2-run-cursors fn2-checkpoint-summary fn2-checkpoint-summary-leases fn2-pool))

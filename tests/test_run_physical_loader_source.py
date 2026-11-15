@@ -92,11 +92,21 @@ class PhysicalLoaderSource(unittest.TestCase):
         self.assertIn(['<=', '2', ['fn2-pool-class-countsi', 'pc', 'fn2-pool']], list(walk(f)))
         self.assertEqual(len(calls(f, 'fn2-pool-reserve')), 2)
         self.assertEqual(len(calls(f, 'fn2-pool-release')), 1)
+        self.assertEqual(len(calls(f, 'fn2-run-load-admission-begin')), 1)
+        source = (ROOT / 'books/run-physical-resources.lisp').read_text()
+        self.assertLess(source.index('(fn2-run-load-admission-begin fn2-run-loads)'), source.index('(fn2-pool-reserve pc'))
+        begin = self.d['fn2-run-load-admission-begin']
+        self.assertEqual(len(calls(begin, 'update-fn2-run-loads-admissions')), 1)
+        self.assertIn(['unsigned-byte-p', '60', 'next'], list(walk(begin)))
         release = self.d['fn2-run-load-release']
         self.assertTrue(has_equality(release, ['fn2-run-loads-pending', 'c', 'fn2-run-loads'], '0'))
         self.assertEqual(len(calls(release, 'fn2-pool-workspace-code')), 2)
+        self.assertTrue(has_equality(release, ['fn2-run-loads-lease-mode', 'c', 'fn2-run-loads'], '*fn2-run-load-lease-mode-owned*'))
         self.assertEqual(len(calls(release, 'fn2-pool-release')), 2)
         self.assertEqual(len(calls(release, 'fn2-checkpoint-summary-release')), 1)
+        accepted = [x for x in calls(release, 'member-eq') if x[1] == 'code']
+        self.assertEqual(len(accepted), 2)
+        self.assertTrue(all(x[2] == ['quote', [':ok', ':retired']] for x in accepted))
 
     def test_return_frames_match_actual_mutations_and_mv_limit(self):
         frames = {f[1]: f for p in FILES for raw in forms(p.read_text())
