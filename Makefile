@@ -369,6 +369,8 @@ ACL2_BOOKS = \
   books/cns-fetch-prefix-codec \
   tests/cns-fetch-prefix-unit \
   tests/txn-upload-physical-location-unit \
+  tests/upload-manifest-physical-unit \
+  tests/upload-raw-threshold-unit \
   tests/ctl-stripe-map-unit \
   tests/consumer-commit-unit \
   tests/consumer-helm \

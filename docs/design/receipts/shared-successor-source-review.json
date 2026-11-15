@@ -21,7 +21,25 @@
     "entire_AST_equal_except_hint_attributes": true,
     "cache_policy": "All descendants must use new closure keys; old columns certificates cannot be relabelled."
   },
-  "physical_scope": "POST location repaired and nonzeroextent constructor control included; manifest encode/settlement class pending reclamation donor; no executed control claim",
+  "physical_scope": {
+    "source_donors": [
+      "fe9f761ab",
+      "dfc12386f",
+      "0943d496f"
+    ],
+    "status": "Complete source repair class staged; ACL2 runtime controls remain unrun",
+    "actual_roots": [
+      "tests/txn-upload-physical-location-unit",
+      "tests/upload-manifest-physical-unit",
+      "tests/upload-raw-threshold-unit"
+    ],
+    "raw_threshold": {
+      "raw_through": 12288,
+      "manifest_from": 12289
+    },
+    "physical_extent_units": 16,
+    "journal_write_resources": 3
+  },
   "output_runtime": "Excluded: owner has no coherent reviewed outbound packet; prefix-only included.",
   "input_close_before_decode": {
     "books/cns.lisp": {
@@ -33,16 +51,5 @@
       "sha256": "e1f4324851ffd52a9d6157a2f5c3ad6eb062a61936c9b4fcfe739f3131a7a1d6"
     }
   },
-  "pending_output": "excluded: full reader+CNS+four-argument geometry packet remains unfinished",
-  "drain_parent_control": {
-    "origin": "2be67b40d",
-    "path": "tests/cns-drain-parent-controls.lsp",
-    "sha256": "df2ee5fdfc8af48a7093ec11815966907d45ef4fdd9c59ab844570a832658287",
-    "scope": "Actual extracted final wake helpers and draining IF, reader stubbed; no full actor claim"
-  },
-  "pool_proposal": {
-    "origin": "ea7d51a48",
-    "sha256": "999bba0e8a9ea4f7c486dd67e335ab1c304708f7bcccf7ceeb835d8b3bf13361",
-    "status": "Source-only local theory correction; original encapsulate 2M/20 unsplit; no pass claim"
-  }
+  "pending_output": "excluded: full reader+CNS+four-argument geometry packet remains unfinished"
 }
