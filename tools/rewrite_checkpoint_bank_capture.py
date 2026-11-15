@@ -41,7 +41,7 @@ def rewrite(source):
     code=helper[helper.index('(defun '):].rstrip()
     return write(source,[(node.start,node.end,code)])
 if __name__=='__main__':
-    path=Path(__file__).resolve().parents[1]/'books/checkpoint-publication.lisp'
+    path=Path(__file__).resolve().parents[1]/'books/checkpoint-publication-state.lisp'
     source=path.read_text(); updated=rewrite(source)
     if source!=updated:path.write_text(updated)
     print('bank identity capture:', 'unchanged' if source==updated else 'regenerated')
