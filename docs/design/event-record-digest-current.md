@@ -1,6 +1,12 @@
 # Actual journal reader digest continuation
 
-Source candidate on cold `1c70451f05150456c4f8663b22522af5260a11d9`.
+Current candidate descends from cold `1c70451f05150456c4f8663b22522af5260a11d9`.
+Its shared columns, operations, trace, pool and layout files now match integration
+`9c2eabc4c9b94de947c4705f8c7d684eeb61d136` exactly. Source controls compare
+runtime definitions/guards, schemas, constants and codec emitter structures;
+they do not claim executed macro-expansion or guarded caller equivalence.
+The richer cold allocator, reader and fetch remain intact. Behavior-changing
+arms metadata was deliberately excluded. The exact new cache audit is pending.
 The shared fetch leaf is the exact root-integrated `146d3cbcf` implementation;
 its qualification does not qualify this different cold dependency closure.
 
@@ -40,7 +46,8 @@ including up to two eight-word archived seal loads. The eight-word helper now
 returns immediately outside its declared natural-index guard, closing its
 negative-index termination stutter without changing any guarded call.
 
-Nine direct Python source controls pass, including structural transformation
+Fifteen direct Python source controls pass (nine reader, two extra-resizer frames,
+and four shared-foundation controls), including structural transformation
 replay/idempotence and byte-identical legacy fetch. `event-read-verified-unit`
 retains its actual admitted writer, simulated disk and semantic verifier. Its
 new checks cover 32 separate budget-1 visits, no premature READ-RECORDS, zero and
@@ -56,8 +63,23 @@ differ from its prefetch value, and preserve every other digest cell/scalar. Bot
 consumer controls are UNRUN; guards/refinement and composed qualification remain
 required. These are registered certification roots, not execution evidence.
 
-Current literal closures: reader133, live fixture422, cold fixture448; no missing
+Original f5 literal closures were reader133, live fixture422, cold fixture448;
+proof dependency repair adds two books to each. The current reader has135 books; no missing
 local books or literal include cycles. No old whole-lane import, archive authority, hold release or FREE
 activation is included. Lossless original-frame reconstruction, complete-prefix
 LIVE obligation transfer and successive-checkpoint physical reuse remain open
 in the broader D13 work.
+
+The original reader author scope closed at its original internal deadline with
+35 cached books and13 complete source books admitted. The checkpoint book
+remained refused and rolled back; the reader and its fixtures were not reached.
+The accepted allocator repair uses actual registered extra-array descriptors
+and the canonical preservation emitter to export resizer ROWS facts. Existing
+type/WFP exports were sufficient once that frame was available. Checkpoint also
+needed its explicit local pool-read output contract and copier/decoder/capture
+shape interfaces before downstream guard proofs. Passing individual events
+inside a failed capsule does not make that capsule or its book reusable.
+The final raw-row bridge obstruction was already repaired in the current shared
+column generator; the unrun bespoke workaround was removed. The composed
+current-foundation candidate, remaining checkpoint proofs, and the separate
+`2fb03a1f2` reader-guard tranche remain unexecuted at these combined keys.
