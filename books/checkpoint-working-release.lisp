@@ -5,6 +5,19 @@
 (include-book "arm-children")
 (fn2-book-layer :c)
 
+(defun fn2-checkpoint-working-release-pool (slot generation kind owner gen fn2-pool fn2-control)
+ (declare (xargs :stobjs (fn2-pool fn2-control)
+  :guard (and (fn2-pool-wfp fn2-pool) (fn2-control-wfp fn2-control))))
+ (if (and (natp slot) (< slot (fn2-pool-rows fn2-pool))
+          (equal (fn2-pool-credit-group slot fn2-pool) *fn2-checkpoint-working-credit-group*))
+     (mv-let (code fn2-pool)
+      (fn2-pool-release-credit slot generation *fn2-checkpoint-working-credit-group*
+       (fn2-pool-credit-nonce slot fn2-pool) kind owner gen fn2-pool)
+      (let ((fn2-control (if (member-eq code '(:ok :retired)) fn2-control
+                            (fn2-control-record-stop *fn2-stop-reason-pool-release* fn2-control))))
+       (mv code fn2-pool fn2-control)))
+   (fn2-core-release-children slot generation kind owner gen fn2-pool fn2-control)))
+
 (defun fn2-checkpoint-working-release-step (budget c kind owner gen fn2-checkpoint-root1 fn2-checkpoint-windows fn2-checkpoint-metadata-manifest fn2-pool fn2-control fn2-checkpoint-future fn2-checkpoint-future-windows)
  (declare (xargs :stobjs (fn2-checkpoint-root1 fn2-checkpoint-windows fn2-checkpoint-metadata-manifest fn2-pool fn2-control fn2-checkpoint-future fn2-checkpoint-future-windows) :guard (and (fn2-checkpoint-root1-wfp fn2-checkpoint-root1) (fn2-checkpoint-windows-wfp fn2-checkpoint-windows) (fn2-checkpoint-metadata-manifest-wfp fn2-checkpoint-metadata-manifest) (fn2-pool-wfp fn2-pool) (fn2-control-wfp fn2-control) (fn2-checkpoint-future-wfp fn2-checkpoint-future) (fn2-checkpoint-future-windows-wfp fn2-checkpoint-future-windows))))
  (b* (((unless (and (natp budget) (< 0 budget)))
@@ -42,7 +55,7 @@
       ((unless (and (equal (fn2-checkpoint-windows-live i fn2-checkpoint-windows) 1)
                     (eq (fn2-pool-workspace-code slot generation kind owner gen fn2-pool) :ok)))
        (mv :busy fn2-checkpoint-root1 fn2-checkpoint-windows fn2-checkpoint-metadata-manifest fn2-pool fn2-control fn2-checkpoint-future fn2-checkpoint-future-windows))
-      ((mv code fn2-pool fn2-control) (fn2-core-release-children slot generation kind owner gen fn2-pool fn2-control))
+      ((mv code fn2-pool fn2-control) (fn2-checkpoint-working-release-pool slot generation kind owner gen fn2-pool fn2-control))
       ((unless (member-eq code '(:ok :retired)))
        (mv code fn2-checkpoint-root1 fn2-checkpoint-windows fn2-checkpoint-metadata-manifest fn2-pool fn2-control fn2-checkpoint-future fn2-checkpoint-future-windows))
       (fn2-checkpoint-windows (fn2-checkpoint-windows-set-live i 0 fn2-checkpoint-windows))

@@ -5,8 +5,10 @@
 (include-book "assembly")
 (include-book "executor-reservation")
 (include-book "executor-loop-events")
+(include-book "checkpoint-working-credit-init")
 
 (fn2-executor-loop-events)
+(fn2-checkpoint-working-credit-init-events)
 
 ;; Genesis (MACHINE-FORM G3, C gap 5): each kind's :genesis arm runs once on
 ;; each of its rows at init, from the row's initial phase, so a row's first
@@ -92,8 +94,19 @@
     :guard-hints (("Goal" :use
       (:instance fn2-machine-kind-base-natp (kind *fn2-listener-kind*)
         (fn2-core (fn2-listener-set-mode-all (if (eq mode :null) 0 1)
-                    (fn2-init-engine profile (fn2-core-init profile fn2-core)))))))))
+                    (fn2-init-engine profile
+                     (if (fn2-profile-get :image-boot profile)
+                         (mv-nth 1 (fn2-checkpoint-working-credit-init profile (fn2-core-init profile fn2-core)))
+                       (fn2-core-init profile fn2-core))))))))))
   (b* ((fn2-core (fn2-core-init profile fn2-core))
+       ((mv credit fn2-core)
+        (if (fn2-profile-get :image-boot profile)
+            (fn2-checkpoint-working-credit-init profile fn2-core)
+          (mv :ok fn2-core)))
+       ; Refuse before any engine or foreground genesis. Protected capacity
+       ; and the service envelope use exactly the profile passed to core init.
+       ((unless (eq credit :ok))
+        (fn2-core-stop *fn2-stop-reason-engine-genesis* fn2-core))
        (fn2-core (fn2-init-engine profile fn2-core))
        (fn2-core (fn2-listener-set-mode-all (if (eq mode :null) 0 1) fn2-core))
        (fn2-core (fn2-listener-set-target-all

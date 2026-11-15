@@ -15,13 +15,7 @@
 ; windows, the sealer's page workspace and the resident pages of the runs a
 ; seeded POST seals (one per schema it writes, C §4a's five among them).
 ;; One group carried at genesis (S-GROUP): local.test is group 1.
-(defconst *fn2-txn-posting-profile*
- (put-assoc-equal :groups '(("local.test" . 1))
-  (put-assoc-equal :identity-overlays 64
-   (put-assoc-equal :identity-arena-bytes 4096
-     (put-assoc-equal :posting-interim t
-       (put-assoc-equal :large-upload-windows 2
-         (put-assoc-equal :pool-classes '((8 . 1024) (128 . 4096) (64 . 65536)) *fn2-conn-wire-profile*)))))))
+; Shared unchanged serving fixture geometry: wire-fixture-profiles.lisp.
 (defun fn2-txn-wire-solo (octets sizes)
   (declare (xargs :verify-guards nil))
   (car (nth 1 (fn2-conn-wire-run-in *fn2-txn-posting-profile* (list (list octets sizes))))))

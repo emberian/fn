@@ -14,6 +14,7 @@
 ; and the wrappers (C-SUCCESSOR-BOOK).
 (in-package "ACL2")
 (include-book "machines-c-sealer-kind")
+(include-book "identity-workspace-geometry")
 (fn2-book-layer :c)
 ;; The assembly's dispatchers case-split over every schema id when open; the
 ;; successor treats them as opaque (their type facts are the assembly's).
@@ -35,7 +36,7 @@
 (defconst *fn2-idc-owner-gen* 1)
 ; The bind scratch takes one slot's octets at a time: an entry's octet
 ; fields in field order from 0.
-(defconst *fn2-idc-scratch-bytes* 4096)
+
 
 ; A write slot's block of field rows (C-STRIPE): the staged row at +0 (key
 ; fields then value fields, at most 12), the args as given at +12 (a value,
@@ -95,7 +96,7 @@
  (declare (xargs :stobjs fn2-id-engine :guard (unsigned-byte-p 32 bytes)))
  (let ((fn2-id-engine (fn2-id-engine-init 1 fn2-id-engine)))
   (fn2-id-engine-set-arena 0 bytes fn2-id-engine)))
-(fn2-idc-child fn2-core-id-engine fn2-id-engine (fn2-id-engine-init-arena (fn2-b-capacity :identity-arena-bytes 65536 profile) fn2-id-engine)
+(fn2-idc-child fn2-core-id-engine fn2-id-engine (fn2-id-engine-init-arena (fn2-idc-profile-arena profile) fn2-id-engine)
  "The engine's bind scratch, arena size and overlay sequence (C-S3).")
 (defcolumns fn2-succ-txns
  ((phase (:enum fn2-succ-phase (:idle :open :staged :bound :published)))

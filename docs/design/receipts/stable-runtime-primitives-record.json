@@ -1,0 +1,273 @@
+{
+  "scope": "Current stable runtime primitive books, not canonical callbacks or served/native execution",
+  "source_commit": "c455399b3e11555de4841976af07526e726d9bb8",
+  "roots": [
+    "books/read-pins",
+    "books/commit-geometry",
+    "books/commit-alloc",
+    "books/digest-store",
+    "books/pool-digest",
+    "books/merkle",
+    "books/origin"
+  ],
+  "closure_count": 24,
+  "cache": {
+    "toolchain_identity": "8aeb1bea18968c6cd33ac633a80ebf67e4924504db112fd27eb11f16a27b2a8c",
+    "qualified_count": 24,
+    "missing": [],
+    "books": {
+      "books/read-pins": {
+        "key": "c8305a24bc11b3d2e1b35db7462d8083adf0be6f8068e34f3da4b6fe36d1ffed",
+        "raw_sha256": "9c4a95db6c8188791929f924636c615a6408a6a02d2be9777e16009fad2811b6",
+        "eligible_entries": [
+          "/home/fn/.cache/fn-certs/c8305a24bc11b3d2e1b35db7462d8083adf0be6f8068e34f3da4b6fe36d1ffed/beea698841e7c4df"
+        ]
+      },
+      "books/vocab": {
+        "key": "62e162832d46d2a5a864fce7becaf75b86f6f37570c95d5d0d98eb8e7d2d4db8",
+        "raw_sha256": "4099736dd0ecb84952f05cfe2065db89e11432ebb9e65e67d2584ca5f4c2255f",
+        "eligible_entries": [
+          "/home/fn/.cache/fn-certs/62e162832d46d2a5a864fce7becaf75b86f6f37570c95d5d0d98eb8e7d2d4db8/fc621108a3519fc3"
+        ]
+      },
+      "books/profile": {
+        "key": "b8fb593112597395afac6a150c4a4fca81def3095ecd8f7f9be6aa0aec7384fc",
+        "raw_sha256": "1f216ed6c0505dc1b01ada0f7d3d9482af6da7b7dff8736b5100ef3e3fbc1038",
+        "eligible_entries": [
+          "/home/fn/.cache/fn-certs/b8fb593112597395afac6a150c4a4fca81def3095ecd8f7f9be6aa0aec7384fc/84166f8b7b293004"
+        ]
+      },
+      "books/operations": {
+        "key": "bd6bdf7f71b74618b02924c542559dcb99a149c816aeed11f3f5cd82d766483f",
+        "raw_sha256": "959da2da147247146a2360e23d2c7d6abd6c581abdf0f6873661f63cee87484f",
+        "eligible_entries": [
+          "/home/fn/.cache/fn-certs/bd6bdf7f71b74618b02924c542559dcb99a149c816aeed11f3f5cd82d766483f/84166f8b7b293004"
+        ]
+      },
+      "books/declare": {
+        "key": "f1df352dc360553d08906239d267e9371fcb2fe4f19c6581adc1b0b322b30875",
+        "raw_sha256": "1c706e559ef3b314fb9bd48171fb2891fad8613bd4eb1c5de5268443833c4bfb",
+        "eligible_entries": [
+          "/home/fn/.cache/fn-certs/f1df352dc360553d08906239d267e9371fcb2fe4f19c6581adc1b0b322b30875/2c56b9035d330b37",
+          "/home/fn/.cache/fn-certs/f1df352dc360553d08906239d267e9371fcb2fe4f19c6581adc1b0b322b30875/320628fb38da7466",
+          "/home/fn/.cache/fn-certs/f1df352dc360553d08906239d267e9371fcb2fe4f19c6581adc1b0b322b30875/7d5228e73de09114"
+        ]
+      },
+      "books/owed": {
+        "key": "6f334038cc4bddaaa337357384a139be3700c2c3403094bab3398dacb7fd5a3b",
+        "raw_sha256": "04104985582a552ad115a0a6adcf2e957597b1b9ca3228bf25900877cbbcb17b",
+        "eligible_entries": [
+          "/home/fn/.cache/fn-certs/6f334038cc4bddaaa337357384a139be3700c2c3403094bab3398dacb7fd5a3b/2c56b9035d330b37",
+          "/home/fn/.cache/fn-certs/6f334038cc4bddaaa337357384a139be3700c2c3403094bab3398dacb7fd5a3b/320628fb38da7466",
+          "/home/fn/.cache/fn-certs/6f334038cc4bddaaa337357384a139be3700c2c3403094bab3398dacb7fd5a3b/7d5228e73de09114"
+        ]
+      },
+      "books/columns": {
+        "key": "af444dbfcccce7083f99637cc8947a859347bd4d6c8df17f7ab3a91e00d33ca2",
+        "raw_sha256": "d3a58387c7c0dabc4ceaffeeb20672031a04693d8dd52078f50c5fa487c0d5f8",
+        "eligible_entries": [
+          "/home/fn/.cache/fn-certs/af444dbfcccce7083f99637cc8947a859347bd4d6c8df17f7ab3a91e00d33ca2/6add19db01a9c2ec"
+        ]
+      },
+      "books/commit-alloc": {
+        "key": "0b91dc54a134508eb7a5e407530233fdb5c0c46b8f5d0733d3cc421b1f9897b9",
+        "raw_sha256": "ae683093a38107790d4e17ca1c10a5532905eaffa00d9ed96f483f3cf8e63072",
+        "eligible_entries": [
+          "/home/fn/.cache/fn-certs/0b91dc54a134508eb7a5e407530233fdb5c0c46b8f5d0733d3cc421b1f9897b9/beea698841e7c4df"
+        ]
+      },
+      "books/blake3": {
+        "key": "09d40196c7b3445f0d7a51a7d0d7905bb5f7cc77d8e7662f52b16f3c30e6e4af",
+        "raw_sha256": "e228c1eb31f2f764e925e86fa4f0a7b7682810d64a27f7c39b9f416f93bdc1a1",
+        "eligible_entries": [
+          "/home/fn/.cache/fn-certs/09d40196c7b3445f0d7a51a7d0d7905bb5f7cc77d8e7662f52b16f3c30e6e4af/f13b976fed1f0a35"
+        ]
+      },
+      "books/blake3-pool-spec": {
+        "key": "31916f9a328cf19403a5419438c9c1910353805cb20307d911d56ef6c85b2b50",
+        "raw_sha256": "bc160e34839bd2e810cc3aa07f3e73b15e40eeca88a57e0bad90df27e85580bd",
+        "eligible_entries": [
+          "/home/fn/.cache/fn-certs/31916f9a328cf19403a5419438c9c1910353805cb20307d911d56ef6c85b2b50/f13b976fed1f0a35"
+        ]
+      },
+      "books/blake3-spec": {
+        "key": "3944594ba7622d4b4067f30d5dd2faaddf41fc13057a464af1b79f7234e57d81",
+        "raw_sha256": "253babac6e5d9e9df00a655ba6b6595c9e6d85315c9294f05e3d939f19ad5770",
+        "eligible_entries": [
+          "/home/fn/.cache/fn-certs/3944594ba7622d4b4067f30d5dd2faaddf41fc13057a464af1b79f7234e57d81/7d5228e73de09114"
+        ]
+      },
+      "books/digests": {
+        "key": "df33ee880c9e6fe82c2bed8f3b13cb396915d051e1631bbfef6d646d953d3374",
+        "raw_sha256": "e821bfe1ffee392c8019fad513db8a83aaf2448251087f26c9576a3af333a524",
+        "eligible_entries": [
+          "/home/fn/.cache/fn-certs/df33ee880c9e6fe82c2bed8f3b13cb396915d051e1631bbfef6d646d953d3374/f13b976fed1f0a35"
+        ]
+      },
+      "books/pool": {
+        "key": "079b4ac98a0b3d945869386f9e8d2ebecf0a00d8715e247ba18202d4d7fbfc24",
+        "raw_sha256": "3ef26f41207ee64f6121621cc24d7100936e364b5224a4be8ae28292aa4d7fa7",
+        "eligible_entries": [
+          "/home/fn/.cache/fn-certs/079b4ac98a0b3d945869386f9e8d2ebecf0a00d8715e247ba18202d4d7fbfc24/1993641322b8cf2d"
+        ]
+      },
+      "books/owed-discharge": {
+        "key": "97e73257b5f4cb3a4ca1b8ba4bf10956295c18ec211c0b297f557e780cd20fd1",
+        "raw_sha256": "53903322be1b79ed081ecfcbfcb9f60649d3fdbf8aa6853b772abf8e6fc69f01",
+        "eligible_entries": [
+          "/home/fn/.cache/fn-certs/97e73257b5f4cb3a4ca1b8ba4bf10956295c18ec211c0b297f557e780cd20fd1/bab1191b3d08490a"
+        ]
+      },
+      "books/layout": {
+        "key": "ac8c66ce3ffbabd98e48a429e47578b59509dc66edac785bf3f19cfddffa7fad",
+        "raw_sha256": "594084601c9996d18b232555ab38ea68aaeab75cc5f09d030de3dce727181548",
+        "eligible_entries": [
+          "/home/fn/.cache/fn-certs/ac8c66ce3ffbabd98e48a429e47578b59509dc66edac785bf3f19cfddffa7fad/f13b976fed1f0a35"
+        ]
+      },
+      "books/alloc": {
+        "key": "f7f86365aed050f00391e37e3b7d741e99e233c28183ac3cd3ef83e02db61ed3",
+        "raw_sha256": "886dd5c4550a43b78fafa99c02db28edbdc70c7bb1cbe806ce5e40403477a11e",
+        "eligible_entries": [
+          "/home/fn/.cache/fn-certs/f7f86365aed050f00391e37e3b7d741e99e233c28183ac3cd3ef83e02db61ed3/35366d58b1fb2924"
+        ]
+      },
+      "books/tuple": {
+        "key": "b0fe12b03ba9cae656e0a0d40c8ccd699ff47788c2bd5a448903fb0c0401b9c6",
+        "raw_sha256": "c6b895fd566be6b91ba68fb040826b689a5ad4891a65e040773bfb28b90e1978",
+        "eligible_entries": [
+          "/home/fn/.cache/fn-certs/b0fe12b03ba9cae656e0a0d40c8ccd699ff47788c2bd5a448903fb0c0401b9c6/7d5228e73de09114"
+        ]
+      },
+      "books/commit-geometry": {
+        "key": "1493e17ba6b0ea97bda0fbdaea9192817ea2459979b18763feead72bb6dddf9c",
+        "raw_sha256": "e06315c94bcd0d247214377fb33186f14ca1aa2ee6afe1499d69d053ff0134e2",
+        "eligible_entries": [
+          "/home/fn/.cache/fn-certs/1493e17ba6b0ea97bda0fbdaea9192817ea2459979b18763feead72bb6dddf9c/beea698841e7c4df"
+        ]
+      },
+      "books/format-base": {
+        "key": "370dedbb2377662c05b01693d74ad8b38144c927c9ec94d2042692161b748f8a",
+        "raw_sha256": "ead88cb8e7ab67db0c6a06ac400c813f753121c77082825b16016835eb462699",
+        "eligible_entries": [
+          "/home/fn/.cache/fn-certs/370dedbb2377662c05b01693d74ad8b38144c927c9ec94d2042692161b748f8a/f13b976fed1f0a35"
+        ]
+      },
+      "books/digest-store": {
+        "key": "5af9f71cda97f8471edadbf5f794196893906405f44e175121aff7374b50961c",
+        "raw_sha256": "de25fd767c4ad8352ac76153b72b04d7c9246ddb826daf233290aa5e59be8816",
+        "eligible_entries": [
+          "/home/fn/.cache/fn-certs/5af9f71cda97f8471edadbf5f794196893906405f44e175121aff7374b50961c/beea698841e7c4df"
+        ]
+      },
+      "books/pool-digest": {
+        "key": "dc4c862852984abb7be64633a8d30f2e0896e539f14f738ea3396d9077a05896",
+        "raw_sha256": "f7d2dd9f1687703d8df34e771925515c32998325d844bbc05d316e63191c1096",
+        "eligible_entries": [
+          "/home/fn/.cache/fn-certs/dc4c862852984abb7be64633a8d30f2e0896e539f14f738ea3396d9077a05896/beea698841e7c4df"
+        ]
+      },
+      "books/merkle": {
+        "key": "d757ff7d91665c7d719402cb8ce5191af0b5228427b75ae2b06d6d1a9140586b",
+        "raw_sha256": "893f300d6b6ce46640a604ecd6a71ea2195b38cc818f795eae3d96c525eba7f6",
+        "eligible_entries": [
+          "/home/fn/.cache/fn-certs/d757ff7d91665c7d719402cb8ce5191af0b5228427b75ae2b06d6d1a9140586b/beea698841e7c4df"
+        ]
+      },
+      "books/assumptions-integrity": {
+        "key": "d0de1faeb356dc20ecda0024b00e62cec0c5ce23c46642a53bfc35ad19d100ff",
+        "raw_sha256": "3e1131f6b5a9c47bf9b21bec4dffae3ef46940453e4df9f768899c9d0814d06f",
+        "eligible_entries": [
+          "/home/fn/.cache/fn-certs/d0de1faeb356dc20ecda0024b00e62cec0c5ce23c46642a53bfc35ad19d100ff/ad3f6018516232cc"
+        ]
+      },
+      "books/origin": {
+        "key": "7a591da87af0b78c4113526b28b18fbbd627d079cc834cf08cfdc5dfe6aa1d96",
+        "raw_sha256": "7f63d5f31b061c0b9206b82394d70e31fce57ceafc9ec7cd8477a54d538d9c19",
+        "eligible_entries": [
+          "/home/fn/.cache/fn-certs/7a591da87af0b78c4113526b28b18fbbd627d079cc834cf08cfdc5dfe6aa1d96/beea698841e7c4df"
+        ]
+      }
+    }
+  },
+  "author": {
+    "result": "all seven original books admitted",
+    "steps_per_original_event": 2000000,
+    "seconds_per_original_event": 20,
+    "local_scopes": "preserved via original encapsulates and per-book ld-local",
+    "outer_seconds": 1200,
+    "log": "forge:/tmp/finish-stable24-author.log",
+    "outer_pid": 901493,
+    "server_pid": 901528,
+    "acl2_pgid": 901534,
+    "explicit_stop": true
+  },
+  "record": {
+    "status": "passed",
+    "directory": "forge:/build/lanes/finish-stable-runtime-c455/build/acl2/certify-20261115T051622Z-904405",
+    "manifest_sha256": "3e24e13310e520d8465c54d705186cbcf87aa440cae1a7ac8c899aab5fcb4cb9",
+    "reused": 17,
+    "new": 7,
+    "jobs": 1,
+    "images": "off",
+    "book_timeout_seconds": 120,
+    "outer_seconds": 600,
+    "wall_seconds": 18.95,
+    "per_book_wall_seconds": {
+      "books/commit-alloc": 2.072,
+      "books/commit-geometry": 0.718,
+      "books/digest-store": 0.767,
+      "books/merkle": 12.405,
+      "books/origin": 0.668,
+      "books/pool-digest": 0.517,
+      "books/read-pins": 1.674
+    },
+    "costliest_event_by_steps": {
+      "books/commit-alloc": {
+        "form": "( DEFTHM FN2-ALLOC-EDGE-ADD-EDGES-TYPE ...)",
+        "seconds": 0.25,
+        "steps": 33076
+      },
+      "books/digest-store": {
+        "form": "( DEFTHM FN2-DIGEST-STORE-WORDS-OVERWRITE ...)",
+        "seconds": 0.01,
+        "steps": 7084
+      },
+      "books/merkle": {
+        "form": "( DEFTHM FN2-MK-VERIFY-CONSISTENCY-SHAPE ...)",
+        "seconds": 2.57,
+        "steps": 254712
+      },
+      "books/origin": {
+        "form": "( DEFUN FN2-ORIGIN-PREPARE ...)",
+        "seconds": 0.02,
+        "steps": 7860
+      },
+      "books/pool-digest": {
+        "form": "( DEFTHM FN2-REC-FETCH-SHAPE ...)",
+        "seconds": 0.04,
+        "steps": 21048
+      },
+      "books/read-pins": {
+        "form": "( DEFTHM FN2-B-READ-PIN-DROP-EDGES-WFP ...)",
+        "seconds": 0.04,
+        "steps": 6857
+      }
+    },
+    "all_24_sources_before_after_current_equal": true,
+    "runner_unchanged": true,
+    "outer_pid": 904386,
+    "runner_pid": 904405,
+    "triage": "real0 cascade0 must-fail0 limit0 killed0 other0 clean7"
+  },
+  "resource_receipt": {
+    "memory_max": 2147483648,
+    "swap_max": 0,
+    "author_and_record_processes_absent": true,
+    "author_and_record_cgroups_removed": true,
+    "allocation_released": true
+  },
+  "open_cost_defects": [
+    "books/merkle exceeds D26 book-time target; use the recorded event costs without rerunning this batch"
+  ]
+}

@@ -72,6 +72,18 @@ class Source(unittest.TestCase):
                         "(fn2-sim-advance-selected nil nil t slot fault 1 fn2-core fn2-sim fn2-own)"):
             self.assertTrue(lr.match(pattern, [fn]))
 
+    def test_wake_progress_and_fence_fault_are_separate_actual_effects(self):
+        pump = self.fns['fn2-ccp-pump']
+        self.assertTrue(lr.match('(= (fn2-sim-wake-pending fn2-sim) 1)', [pump]))
+        wake = '(fn2-sim-advance-selected nil nil nil 0 *fn2-fault-none* 1 fn2-core fn2-sim fn2-own)'
+        self.assertTrue(lr.match(wake, [pump]))
+        complete = self.fns['fn2-ccp-complete-epoch']
+        before = lr.match(wake, [complete])[0].node
+        after = lr.match('(fn2-sim-advance-selected nil nil t slot fault 1 fn2-core fn2-sim fn2-own)', [complete])[0].node
+        self.assertLess(before.start, after.start)
+        self.assertTrue(lr.match('(fn2-sim-wake-first-p t slot fn2-sim)', [complete]))
+        self.assertFalse(lr.match('(fn2-b-turn ?*args)', [complete]))
+
     def test_connected_fixture_calls_real_producer_and_post_death_boot(self):
         fixture = functions((ROOT / "tests/checkpoint-cold-path-unit.lisp").read_text())
         producer = fixture["fn2-ccp-prefix-and-publication"]

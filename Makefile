@@ -4,6 +4,7 @@ ACL2_BOOKS = \
   books/accounts \
   books/accounts-core \
   books/alloc \
+  books/alloc-identity-index \
   books/arm-children \
   books/arm-issue-effects \
   books/executor-reservation \
@@ -90,6 +91,7 @@ ACL2_BOOKS = \
   tests/cns-draining-direct-events-unit \
   tests/cns-fence-proof-world \
   tests/column-snapshot-support \
+  tests/core-release-held-unit \
   tests/core-snapshot-support \
   tests/machine-reservations-unit \
   tests/pool-initialization-unit \
@@ -111,10 +113,12 @@ ACL2_BOOKS = \
   books/host-codec \
   books/host-compress \
   books/columns \
+  books/columns-guard-hints \
   books/compress-policy \
   books/compress-kind \
   books/compress-operation \
   books/compress-record \
+  books/compress-close \
   books/compress-transport-lifecycle \
   books/compress-transport-ops \
   books/compress \
@@ -214,6 +218,7 @@ ACL2_BOOKS = \
   books/owed \
   books/owed-accounts \
   books/owed-authority \
+  books/wire-fixture-profiles \
   books/owed-conn \
   books/owed-consumer \
   books/owed-cursor \
@@ -226,8 +231,14 @@ ACL2_BOOKS = \
   books/peer-model \
   books/pointwise-contracts \
   books/pool \
+  books/pool-credit \
+  books/pool-credit-contracts \
+  books/checkpoint-working-geometry \
+  books/checkpoint-working-credit \
+  books/checkpoint-working-credit-init \
   books/pool-block \
   books/pool-ranges \
+  books/pool-read-contracts \
   books/port \
   books/profile \
   books/q1 \
@@ -239,12 +250,27 @@ ACL2_BOOKS = \
   books/recovery-frontier \
   books/recovery-selected-adopt \
   tests/recovery-selected-adopt-unit \
+  tests/recovery-fullbase-index-unit \
+  tests/recovery-replay-init-proof \
+  tests/merkle-scanner-result-proof \
+  tests/event-frontier-done-frame \
+  tests/recovery-frontier-done-frame \
+  tests/recovery-replay-init-prefix-proof \
+  tests/recovery-replay-prefix-state \
+  tests/recovery-replay-prefix-identity \
+  tests/recovery-replay-prefix-chain-lemmas \
+  tests/recovery-replay-prefix-frame-lemmas \
+  tests/recovery-replay-prefix-proof \
+  tests/recovery-replay-prefix-unit \
   books/checkpoint-bank-bind \
   books/checkpoint-bank-empty \
   books/checkpoint-bank-boot \
   books/boot-root-release \
   tests/boot-root-release-unit \
   tests/recovery-payload-chain-unit \
+  tests/recovery-payload-chain-proof \
+  tests/checkpoint-cold-path-drive \
+  tests/checkpoint-cold-path-unit \
   books/checkpoint-restore-semantic-source \
   books/checkpoint-bank-closure-state \
   books/checkpoint-bank-closure-capture \
@@ -300,12 +326,17 @@ ACL2_BOOKS = \
   books/upload \
   books/upload-feed \
   books/upload-kind \
+  books/upload-page-geometry \
+  books/identity-workspace-geometry \
+  books/checkpoint-service-geometry \
   books/upload-scan \
   books/vocab \
   books/words \
   tests/accounts-unit \
   tests/alloc-random \
   tests/alloc-unit \
+  tests/alloc-adopt-identity-unit \
+  tests/alloc-identity-index-unit \
   tests/alloc-protection-notification-unit \
   tests/alloc-freeze-unit \
   tests/checkpoint-unit \
@@ -389,17 +420,22 @@ ACL2_BOOKS = \
   tests/columns-cost-unit-10 \
   tests/columns-cost-unit-20 \
   tests/columns-unit \
+  tests/columns-name-unit \
   tests/codec-profile-unit \
   tests/codec-transport-unit \
   tests/host-codec-unit \
   tests/tls-record-policy-unit \
   tests/tls-record-unit \
+  tests/tls-record-progress-unit \
+  tests/send-failure-unit \
+  tests/send-accounting-unit \
   tests/tls-stack-unit \
   tests/compress-policy-unit \
   tests/compress-action-unit \
   tests/compress-settings-unit \
   tests/compress-transport-unit \
   tests/compress-record-unit \
+  tests/compress-cancel-result-unit \
   tests/compress-stage-unit \
   tests/commit-ceiling-unit \
   tests/commit-durable-all-unit \
@@ -469,6 +505,7 @@ ACL2_BOOKS = \
   tests/manifest-binding-served-unit \
   tests/manifest-publication-unit \
   tests/recovery-manifest-binding-unit \
+  tests/recovery-reread-integrity-unit \
   tests/upload-location-hashes-unit \
   tests/upload-stored-source-unit \
   tests/host-unit \
@@ -477,6 +514,7 @@ ACL2_BOOKS = \
   tests/layout-roundtrip \
   tests/layout-teeth-unit \
   tests/layout-unit \
+  tests/columns-guard-hints-unit \
   tests/layout-proof-scope-unit \
   tests/log-model-unit \
   tests/m2-cuts \
@@ -506,8 +544,32 @@ ACL2_BOOKS = \
   tests/storage-cancel-unit \
   tests/native-cut-binding-unit \
   tests/native-envelope-prefix-unit \
+  sim/envelope-output \
+  tests/envelope-output-unit \
+  sim/envelope-output-language \
+  tests/envelope-output-language-unit \
+  sim/envelope-output-row \
+  tests/envelope-output-row-unit \
+  sim/envelope-output-segment \
+  tests/envelope-output-segment-unit \
+  sim/envelope-output-segment-loop \
+  tests/envelope-output-segment-loop-unit \
+  sim/envelope-output-dispatch \
+  sim/envelope-output-dp-loop \
+  tests/envelope-output-dispatch-unit \
+  tests/envelope-output-dp-loop-unit \
+  sim/envelope-output-dp-entry \
+  tests/envelope-output-dp-entry-unit \
+  sim/envelope-output-validation \
+  tests/envelope-output-validation-unit \
+  sim/envelope-output-linear \
+  tests/envelope-output-linear-unit \
+  sim/envelope-output-complete \
+  tests/envelope-output-complete-unit \
   tests/envelope-input-unit \
   tests/envelope-prefix-unit \
+  tests/native-device-effects-unit \
+  tests/native-device-bindings-unit \
   tests/native-unit \
   tests/network-backpressure-unit \
   tests/ops-semantic-steps-unit \
@@ -524,6 +586,12 @@ ACL2_BOOKS = \
   tests/peer-replay-unit \
   tests/pointwise-contracts-unit \
   tests/pool-ranges-unit \
+  tests/pool-query-ref-unit \
+  tests/pool-protected-floor-unit \
+  tests/pool-credit-unit \
+  tests/upload-page-geometry-unit \
+  tests/checkpoint-service-geometry-unit \
+  tests/checkpoint-working-credit-configure-unit \
   tests/pool-unit \
   tests/port-unit \
   tests/primitive-list-domain-unit \

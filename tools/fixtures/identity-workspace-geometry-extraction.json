@@ -1,0 +1,8 @@
+{
+  "original_commit": "728765bd1",
+  "original_book": "books/machines-c-successor.lisp",
+  "scratch_form": "(defconst *fn2-idc-scratch-bytes* 4096)",
+  "scratch_form_sha256": "70714c4af514ef252491261d9d8a5aabe473867592568c6f64ae0247415c02d9",
+  "old_initializer": "(fn2-b-capacity :identity-arena-bytes 65536 profile)",
+  "new_initializer": "(fn2-idc-profile-arena profile)"
+}
