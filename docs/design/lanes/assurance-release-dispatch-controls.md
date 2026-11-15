@@ -9,9 +9,17 @@ current authorization, then actual checker progress. Refusal controls change
 the issued completion generation/count or selected source generation and retain
 the original journal bytes, physical lease, cursor, filled/count and identity.
 
-This support book is not yet the whole positive witness: a missing antecedent
-returns failure. The connected persisted history constructor and positive and
-negative assert-events remain required. No Lisp execution/admission has run.
+The connected constructor in `tests/recovery-release-connected-unit.lisp`
+creates the real image, retires an actual allocation for the frozen map,
+publishes the actual checkpoint, stages/submits/polls RELEASE, crashes, and
+drives actual selected boot to the observed release-begin stage11. It then
+copies the descriptor sector from the same simulator image into the existing
+device adapter view. Four independent full-history assert-events require the
+positive packet and wrong-generation, short-completion and stale-source
+refusals. A missing antecedent returns failure. This source depends on the
+new authenticated submission implementation; the submit/poll API was frozen
+with its owner while implementation was in progress. No Lisp execution or
+admission has run, and these assertions are not claimed as passing witnesses.
 
 Actual producer work is mandatory, not deferred: capacity owner owns the
 source-bound `pack-staged` to B journal admission, persisted lifecycle dispatch
