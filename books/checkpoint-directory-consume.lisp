@@ -4,6 +4,7 @@
 (in-package "ACL2")
 (include-book "checkpoint-directory-rebase")
 (include-book "event-catalog-live")
+(include-book "checkpoint-directory-consume-work")
 (fn2-book-layer :c)
 
 ; A pure guard sharing fact, not a publication/readiness theorem.
@@ -138,7 +139,8 @@
  :tables (fn2-core-checkpoint-directory-rebase fn2-core-csnapshot fn2-core-checkpoint-publication fn2-core-checkpoints fn2-core-checkpoint-bytes fn2-core-commit-root fn2-core-extents))
 (defcost fn2-checkpoint-directory-rebase-step-op :child fn2-directory-rebase-step :answers t :bytes 32
  :tables (fn2-core-checkpoint-directory-rebase fn2-core-csnapshot fn2-core-checkpoint-publication fn2-core-checkpoints fn2-core-checkpoint-bytes fn2-core-commit-root fn2-core-extents fn2-core-alloc-edges fn2-core-ops fn2-core-fc fn2-core-digests))
-(defcost fn2-checkpoint-directory-rebase-consume-op :child fn2-directory-rebase-consume :answers t :bytes 4096
+(defcost fn2-checkpoint-directory-rebase-consume-op :child fn2-directory-rebase-consume :answers t
+ :bytes *fn2-directory-rebase-consume-bytes* :steps *fn2-directory-rebase-consume-steps* :descriptors 0
  :tables (fn2-core-checkpoint-directory-rebase fn2-core-checkpoint-summary-authority fn2-core-csnapshot fn2-core-checkpoint-publication fn2-core-checkpoints fn2-core-checkpoint-refs fn2-core-checkpoint-bytes fn2-core-commit-root fn2-core-extents fn2-core-fc fn2-core-digests fn2-core-checkpoint-restore-events fn2-core-checkpoint-restore-events-work)
  :doc "Publish exact base C and consume pending authority only after held canonical prefix and complete C+1..J suffix scan; retain every allocator/query/archive hold.")
 
