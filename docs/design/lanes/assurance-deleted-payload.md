@@ -42,6 +42,15 @@ no served step revalidates the whole store.
 | `checkpoint-cbase-*` | Physical catalog promises cover the retained full checkpoint closure. | They can protect old physical catalog payloads through query gaps, but cannot stand in for a fresh resident article never checkpointed. |
 | `retirement-coordinator.lisp` | Submit uses the actual selected batch and intent barrier; checkpoint-active admission is refused. Poll distinguishes pending/refused/accepted/uncertain. | A checkpoint-held source cannot simply submit an ordinary retirement while retaining its C token. |
 
+The current article schema also cannot use an existing version-only dependency:
+`fn2-succ-stage-depend` requires every entry field, and the resolve path rejects
+non-scalar source values for dependencies. Article digests and location-hashes
+make that a real refusal. A new selected-scalar/version dependency must extend
+the generator without changing full-dependency semantics, or the withdrawal
+must use an actual held-source atomic stage join. The existing journal packer
+sets expected-prior-version0 for its new inserts; that value is not a deletion
+version witness.
+
 D13 reports a preserved whole-BODY source-observer provider, but explicitly says
 that provider was not composed into current root099/045. It is not retirement
 authority until its actual request-start/final-release hooks and writer drain
