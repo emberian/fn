@@ -1,6 +1,9 @@
 ; Real prefix entrypoint refusal and source-byte binding. These are component
 ; controls, not authenticated prefix acceptance or a nonseeded boot witness.
 ; Nominal COMPLETE/APPLIED counts alone deliberately supply no authority.
+; The local harness returns all 25 scoped stobjs: seven actual mutable
+; outputs plus 18 unchanged inputs. The literal tuple is source-checked
+; against the production child declaration, so its MV count is visible.
 (in-package "ACL2")
 (include-book "../books/checkpoint-release-inventory-apply")
 (include-book "../books/runs-page")
@@ -38,7 +41,7 @@
         ((mv code ,@*fn2-checkpoint-release-inventory-apply-outputs*)
           (fn2-checkpoint-release-inventory-call fn2-checkpoint-release-inventory-step (if (eq mode :bad-id) :bad 0) 1)))
     (mv (and typed (not terminal) (eq code :source) (equal before (fn2-riau-snapshot)))
-     ,@*fn2-checkpoint-release-inventory-apply-children*))))
+     fn2-checkpoints fn2-checkpoint-refs fn2-checkpoint-bytes fn2-checkpoint-restore-map fn2-checkpoint-restore-map-control fn2-checkpoint-restore-reach-control fn2-checkpoint-restore-reader fn2-checkpoint-restore-release-inventory fn2-checkpoint-restore-release-entries fn2-checkpoint-selected-source fn2-boot-config fn2-origin fn2-checkpoint-recovery-evidence fn2-checkpoint-recovery-census fn2-checkpoint-projection fn2-ops fn2-extents fn2-alloc-edges fn2-checkpoint-publication fn2-checkpoint-bank-closures fn2-checkpoint-bank-protection fn2-allocation-release fn2-release-evidence fn2-release-evidence-candidates fn2-checkpoint-construction))))
 (fn2-riau-refusal-definition)
 (defmacro fn2-riau-refusal-test-definition ()
  `(defun fn2-riau-refusal-test (mode)

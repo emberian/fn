@@ -87,6 +87,14 @@ class PrefixApply(unittest.TestCase):
   self.assertLessEqual(1+len(const['*fn2-checkpoint-release-inventory-apply-children*']),32)
   self.assertIn('fn2-checkpoint-release-reader-operation',self.text)
   self.assertNotIn('(defun fn2-checkpoint-release-inventory-preservation-specs',self.text)
+ def test_local_harness_literal_outputs_match_actual_child_scope(self):
+  children=next(read_sexp(r) for r in forms(self.text) if read_sexp(r)[:2]==['defconst','*fn2-checkpoint-release-inventory-apply-children*'])[2][1]
+  unit=(ROOT/'tests/checkpoint-release-inventory-apply-refusal-unit.lisp').read_text()
+  template=next(read_sexp(r) for r in forms(unit) if read_sexp(r)[:2]==['defmacro','fn2-riau-refusal-definition'])
+  result=next(n for n in walk(template) if n and n[0]=='mv' and len(n)>2 and isinstance(n[1],list) and n[1][:2]==['and','typed'])
+  self.assertEqual(result[2:],children)
+  self.assertLessEqual(len(result)-1,32)
+  self.assertNotEqual(result[2:-1],children)
  def test_phase_values_are_appended_and_real_factory_resets_count(self):
   state=(ROOT/'books/checkpoint-restore-release-inventory-state.lisp').read_text()
   self.assertIn('(:idle :captured :pages :complete :installing :installed :uncertain :applying :applied)',state)
