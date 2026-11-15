@@ -50,6 +50,7 @@ ACL2_BOOKS = \
   books/assumptions-integrity \
   books/assumptions-native-span \
   books/assurance-completion \
+  books/assurance-proof-support \
   books/assurance-resource-join \
   books/authority \
   books/authority-codec \
@@ -528,6 +529,8 @@ ACL2_BOOKS = \
   tests/sim-layer-b \
   tests/sim-layer-e \
   tests/sim-replay-controls \
+  tests/assurance-proof-support-unit \
+  tests/assurance-proof-support-import-unit \
   tests/squares-unit \
   tests/square-evidence-unit \
   tests/square-evidence-correspondence-unit \

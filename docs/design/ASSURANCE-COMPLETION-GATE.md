@@ -120,3 +120,43 @@ establish which selection a running process loaded. Durability owns consumption 
 `FN2-A-FENCE-PERSISTS`; the native boundary owner retains raw crypto/span
 correspondence. Actual theorem/rune support extraction remains a separate next step;
 the new report deliberately does not relabel call reachability as that evidence.
+
+
+## Live proof-support projection (source; not yet qualified)
+
+`books/assurance-proof-support.lisp` reads ACL2 8.7's actual
+`proof-supporters-alist`, unions all entries for an event (including grouped
+mutual events), and walks these recorded event edges with a fuel limit. It
+retains exact live theorem/definition terms. It does not use `:depends`, call
+reachability, enabled theories, or theorem formula occurrence as proof edges.
+`fn2-proof-support-export` writes the resulting Lisp object during source
+admission; it must be captured before the final book inclusion.
+
+For requested named assumption subjects, the extractor reads live
+`constraint-info`, including the representative, constraint terms and origin
+tokens. A node is marked `:exact-live-constraint-theorem` only if **both** its
+actual theorem name and exact live formula match a paired constraint/origin.
+Other contexts are explicitly nonmatches or unknown. This connects a recorded
+proof-support edge to a specific live encapsulate constraint; it does not prove
+that a runtime implementation satisfies that constraint. Origin tokens alone
+are advisory, not proof certificates.
+
+Pinned ACL2 source establishes the precise limits: `history-management.lisp`
+5011–5052 collapses rune identities to event names, also collecting `:use`,
+`:by`, and clause-processor names. Its constraint-origin description at
+10795–10815 explicitly gives origins no formal semantics. `doc.lisp`'s
+`DEAD-EVENTS` entry (23456–23531) states that inclusion (including certification's
+final include) loses proof supporters, and that local encapsulate dependencies
+are projected onto surviving events. Empty supporters are not installed.
+Consequently an absent entry is `:absent-or-empty-unknown`, even when the theorem
+exists; every report says `:complete NIL`. This packet does not alter certificate
+format or close the product gate. Exact rune identities, omitted support,
+functional-instantiation substitution details, and attachment/runtime closure
+remain unresolved.
+
+The narrow actual fixtures use the project's `fn2-a-native-span` encapsulate:
+a freshly admitted `:use` consumer must retain its constraint theorem as a
+supporter; a tautology merely mentioning the constrained function must not.
+A second fixture imports the certified first fixture in a fresh world and
+requires the missing supporter state to remain unknown. These ACL2 fixtures
+are source-only until their scoped admission/certification gate runs.

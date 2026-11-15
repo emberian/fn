@@ -110,11 +110,36 @@ def boundary_report(root, package):
                            'Raw/native replacements are a separate runtime boundary.']}
 
 
+def live_support_snapshot(path):
+    """Preserve a live export as partial diagnostic evidence, never authority."""
+    raw = path.read_bytes()
+    forms = ledger.read_forms(raw.decode('latin-1'))
+    if len(forms) != 1 or not isinstance(forms[0], list):
+        raise ValueError('expected one live proof-support report')
+    row = forms[0]
+    if len(row) % 2 or any(not isinstance(k, ledger.Sym) for k in row[::2]):
+        raise ValueError('malformed live proof-support report')
+    fields = {str(k).upper(): v for k, v in zip(row[::2], row[1::2])}
+    if len(fields) != len(row) // 2:
+        raise ValueError('duplicate proof-support report field')
+    if str(fields.get(':KIND')).upper() != ':LIVE-EVENT-PROOF-SUPPORT-PROJECTION':
+        raise ValueError('unsupported proof-support report kind')
+    if not isinstance(fields.get(':COMPLETE'), ledger.Sym) or str(fields[':COMPLETE']).upper() != 'NIL':
+        raise ValueError('partial proof-support snapshot cannot assert completeness')
+    if not all(k in fields for k in (':ROOTS', ':NAMED-ASSUMPTION-SUBJECTS', ':LIMITATIONS', ':NODES')):
+        raise ValueError('incomplete proof-support snapshot shape')
+    return {'kind': 'unqualified-live-event-support-snapshot',
+            'snapshot_sha256': completion.sha(raw), 'payload': tagged(row),
+            'actual_theorem_constraint_dependency_closure': 'unresolved',
+            'provenance': 'Must be paired with the exact admitted world/source receipt; this reader does not qualify it.'}
+
+
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     inputs = parser.add_mutually_exclusive_group(required=True)
     inputs.add_argument('--package', type=Path)
     inputs.add_argument('--source-only', action='store_true')
+    parser.add_argument('--proof-support', type=Path, help='optional partial live-world snapshot; never closes the gate')
     args = parser.parse_args()
     report = (boundary_report(completion.BASE, args.package) if args.package else
               {'kind': 'source-declarations-only',
@@ -123,6 +148,8 @@ def main():
                'actual_theorem_constraint_dependency_closure': 'unresolved',
                'unresolved': ['No canonical packet supplied; selected attachments are unknown.',
                               'Source declarations do not establish actual theorem assumption use.']})
+    if args.proof_support:
+        report['live_proof_support'] = live_support_snapshot(args.proof_support)
     print(json.dumps(report, indent=2))
     return 1  # A boundary report never closes the outstanding proof dependency gate.
 
