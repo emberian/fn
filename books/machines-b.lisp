@@ -7,7 +7,7 @@
 (include-book "sched")
 (include-book "commit-alloc")
 (include-book "read-pins")
-(include-book "retirement-coordinator")
+(include-book "checkpoint-lifecycle-coordinator")
 (include-book "checkpoint-tickets")
 (include-book "format-check")
 (include-book "payload-workspace")
