@@ -100,14 +100,28 @@
 (defconst *fn2-b-query-loader-jobs* (* *fn2-b-query-read-rows* *fn2-b-read-loader-jobs*))
 ; The checkpoint source retains its original row. The archive owns a separate
 ; row/checker; neither worker may borrow the other's in-flight physical cursor.
+(defun fn2-b-checkpoint-source-cursor-parts (transactions reads)
+ (declare (xargs :guard t))
+ (+ (nfix transactions) (* (+ 1 *fn2-b-range-source-cursors*) (nfix reads))
+    *fn2-b-seal-source-cursors*))
+(defun fn2-b-event-archive-cursor-parts (transactions reads)
+ (declare (xargs :guard t))
+ (+ 1 (fn2-b-checkpoint-source-cursor-parts transactions reads)))
+(defun fn2-b-run-cursor-rows-parts (transactions reads)
+ (declare (xargs :guard t))
+ (+ 1 (fn2-b-event-archive-cursor-parts transactions reads)))
+; The initializer and its readonly served check consume the same scalar
+; geometry. The profile supplies T/R at initialization; the check derives
+; those parts from the actual admitted request tables.
 (defun fn2-b-checkpoint-source-cursor (profile)
  (declare (xargs :guard t))
- (+ (nfix (fn2-profile-t profile)) (* (+ 1 *fn2-b-range-source-cursors*) (fn2-b-read-rows profile))
-    *fn2-b-seal-source-cursors*))
+ (fn2-b-checkpoint-source-cursor-parts (fn2-profile-t profile) (fn2-b-read-rows profile)))
 (defun fn2-b-event-archive-cursor (profile)
- (declare (xargs :guard t)) (+ 1 (fn2-b-checkpoint-source-cursor profile)))
+ (declare (xargs :guard t))
+ (fn2-b-event-archive-cursor-parts (fn2-profile-t profile) (fn2-b-read-rows profile)))
 (defun fn2-b-run-cursor-rows (profile)
- (declare (xargs :guard t)) (+ 1 (fn2-b-event-archive-cursor profile)))
+ (declare (xargs :guard t))
+ (fn2-b-run-cursor-rows-parts (fn2-profile-t profile) (fn2-b-read-rows profile)))
 ; Runtime workers derive their fixed admitted row from actual carrier geometry,
 ; without caller-selected indexes or reconstructing T/R from unrelated tables.
 (defun fn2-b-checkpoint-source-cursor-from-rows (rows)
@@ -118,12 +132,16 @@
  (equal (fn2-b-checkpoint-source-cursor-from-rows (fn2-b-run-cursor-rows profile))
         (fn2-b-checkpoint-source-cursor profile))
  :hints (("Goal" :in-theory (enable fn2-b-checkpoint-source-cursor-from-rows fn2-b-run-cursor-rows
-                                  fn2-b-event-archive-cursor fn2-b-checkpoint-source-cursor))))
+                                  fn2-b-event-archive-cursor fn2-b-checkpoint-source-cursor
+                                  fn2-b-run-cursor-rows-parts fn2-b-event-archive-cursor-parts
+                                  fn2-b-checkpoint-source-cursor-parts))))
 (defthm fn2-b-event-archive-cursor-from-profile-rows
  (equal (fn2-b-event-archive-cursor-from-rows (fn2-b-run-cursor-rows profile))
         (fn2-b-event-archive-cursor profile))
  :hints (("Goal" :in-theory (enable fn2-b-event-archive-cursor-from-rows fn2-b-run-cursor-rows
-                                  fn2-b-event-archive-cursor fn2-b-checkpoint-source-cursor))))
+                                  fn2-b-event-archive-cursor fn2-b-checkpoint-source-cursor
+                                  fn2-b-run-cursor-rows-parts fn2-b-event-archive-cursor-parts
+                                  fn2-b-checkpoint-source-cursor-parts))))
 ; Format checker rows (b-durability.md §11): 0-1 the commit kind's, 2
 ; recovery's, 3 .. 2+w D's large-upload windows, 3+w C's sealer, then
 ; K=T+9R+8+2 private physical cursor checker rows follow the sealer.
