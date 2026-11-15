@@ -57,7 +57,50 @@
        (update-fn2-eo-phase 9 fn2-envelope-output-state)))))))
  :hints (("Goal" :in-theory (enable fn2-envelope-output-step))))
 
-; Pending: full-row proof needs row-head congruence through shifted alignment.
+; Alignment facts expose only projections; row membership remains opaque.
+(local
+ (defthm fn2-eo-aligned-row-head
+  (implies (and (equal row (fn2-eo-language-row segments peer))
+                (true-listp peer))
+   (equal (car row) (fn2-envelope-output-language-p segments peer)))
+  :hints (("Goal" :use ((:instance fn2-eo-language-row-head-unfolds))
+           :in-theory (disable fn2-eo-language-row
+                               fn2-eo-language-row-head-unfolds
+                               fn2-envelope-output-language-p)))))
+
+(local
+ (defthm fn2-eo-revappend-row-cons-unfolds
+  (implies (consp peer)
+   (equal (revappend (fn2-eo-language-row segments peer) acc)
+          (revappend (fn2-eo-language-row segments (cdr peer))
+                     (cons (fn2-envelope-output-language-p segments peer) acc))))
+  :hints (("Goal" :expand ((fn2-eo-language-row segments peer))
+           :in-theory (e/d (revappend) (fn2-eo-language-row
+                                        fn2-envelope-output-language-p))))))
+
+(local
+ (defthm fn2-eo-row-empty-unfolds
+  (equal (fn2-eo-language-row segments nil)
+         (list (fn2-envelope-output-language-p segments nil)))
+  :hints (("Goal" :in-theory (e/d (fn2-eo-language-row)
+                                 (fn2-envelope-output-language-p))))))
+
+(local
+ (defthm fn2-eo-language-byte-unfolds
+  (implies (or (equal mode :exact) (equal mode :prefix))
+   (equal (fn2-envelope-output-language-p
+           (cons (cons mode (cons byte rest)) following) peer)
+          (or (and (equal mode :prefix)
+                   (fn2-envelope-output-language-p following peer))
+              (and (consp peer) (equal byte (car peer))
+                   (fn2-envelope-output-language-p
+                    (cons (cons mode rest) following) (cdr peer))))))
+  :hints (("Goal" :expand
+           ((fn2-envelope-output-language-p
+             (cons (cons mode (cons byte rest)) following) peer))
+           :in-theory (disable fn2-envelope-output-language-p)))))
+
+; Pending admission: use row projections instead of expanding row construction.
 (defthm fn2-eo-phase8-builds-whole-row
  (implies
   (and (natp fuel)
@@ -85,4 +128,4 @@
  :rule-classes nil
  :hints (("Goal" :induct (fn2-envelope-output-run fuel fn2-envelope-output-state)
           :expand ((:free (fuel) (fn2-envelope-output-run fuel fn2-envelope-output-state)))
-          :in-theory (e/d ((:induction fn2-envelope-output-run) fn2-eo-language-row) (fn2-envelope-output-language-p (:definition fn2-envelope-output-run) fn2-envelope-output-step)))))
+          :in-theory (e/d ((:induction fn2-envelope-output-run)) (fn2-eo-language-row fn2-envelope-output-language-p (:definition fn2-envelope-output-run) fn2-envelope-output-step)))))
