@@ -156,10 +156,18 @@
 (defun fn2-b-event-root-digest (format-rows extents)
  (declare (xargs :guard (and (natp format-rows) (natp extents))))
  (+ 1 (fn2-b-event-leaf-digest format-rows extents)))
+; Expected and predecessor source seals have dedicated rows; catalog reads
+; never overwrite a live mapped directory or a Merkle/physical checker stripe.
+(defun fn2-b-event-expected-digest (format-rows extents)
+ (declare (xargs :guard (and (natp format-rows) (natp extents))))
+ (+ 2 (fn2-b-event-leaf-digest format-rows extents)))
+(defun fn2-b-event-previous-digest (format-rows extents)
+ (declare (xargs :guard (and (natp format-rows) (natp extents))))
+ (+ 3 (fn2-b-event-leaf-digest format-rows extents)))
 (defun fn2-b-digest-minimum (profile)
  (declare (xargs :guard t))
  (+ (* *fn2-digest-stride* (nfix (fn2-b-format-slots profile)))
-    3 (nfix (fn2-b-capacity :extent-slots 16 profile))
+    5 (nfix (fn2-b-capacity :extent-slots 16 profile))
     (fn2-rec-digest-rows (nfix (fn2-b-capacity :extent-slots 16 profile)))))
 (defthm fn2-b-digest-minimum-natural
  (natp (fn2-b-digest-minimum profile)) :rule-classes :type-prescription)

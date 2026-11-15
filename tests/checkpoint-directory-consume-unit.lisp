@@ -40,7 +40,7 @@
       (fn2-fc (fn2-fc-init 3 fn2-fc))
       (fn2-checkpoint-restore-events (fn2-checkpoint-restore-events-init 2 fn2-checkpoint-restore-events))
       (fn2-checkpoint-restore-events-work (fn2-checkpoint-restore-events-work-init 3 fn2-checkpoint-restore-events-work))
-      (fn2-digests (fn2-digests-init (+ (* *fn2-digest-stride* 3) 4) fn2-digests))
+      (fn2-digests (fn2-digests-init (+ 1 (fn2-b-event-previous-digest 3 3)) fn2-digests))
       ((mv epoch fn2-extents) (fn2-alloc-begin-epoch 1 fn2-extents))
       (fn2-checkpoints (fn2-checkpoints-put 0 (state *fn2-checkpoint-state-installed*) (checkpoint 9)
        (history 37) (incarnation 41) (cut-commit 1) (cut-event 1) (installation-commit 3)

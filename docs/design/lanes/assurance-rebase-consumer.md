@@ -80,3 +80,24 @@ current catalog as well as old source/suffix retention; it remains unrun.
 Actual next-root3 pack/read routing and live C adoption remain outstanding. The
 summary owner owns the C adoption terminal and master stage insertion; activation
 must stay closed until their terminal is part of the consume antecedent.
+
+The actual next-root3 source cone now reads retained canonical rows at or below
+the active base and exact mapped resident rows afterward. The same event-entry
+codec, pinned block-read operation, physical format verifier, member scanner and
+Merkle append primitive remain the source path. Reader and verifier compare the
+retained fullRef with actual allocation identity and exact owned protection.
+Expected and predecessor archive seals use two separately reserved digest rows;
+canonical genesis predecessor zero remains distinct from positive base C's seal.
+Readonly source carriers are explicit through the generated child boundary;
+structural call/guard/projection rewriting and actual arity controls cover the
+changed cone and its existing runnable fixtures.
+
+`tests/event-catalog-read-unit.lisp` uses the real C1/J3 consume/archive fixture,
+aliases the old directory row and replaces its resident seal, then invokes the
+actual packer and verifier seal resolver. It checks exact archived metadata/seal,
+zero genesis predecessor, retained allocation and descriptor/generation refusals.
+These are source/metadata controls, not physical canonical-byte authentication
+or a second checkpoint's successful native execution; all ACL2 assertions remain
+unrun. Full-prefix canonical journal retention is still an intermediate format.
+Physical reclamation still needs the parent-owned bank/archive contract and
+actual live C adoption, plus the decisive two-checkpoint reclaim/reuse control.
