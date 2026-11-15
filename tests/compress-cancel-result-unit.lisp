@@ -1,7 +1,7 @@
 ; A productive receive survives actual host normalization after carrier Close.
 ; This is a logical controller/result control, not a socket byte-effect gate.
 (in-package "ACL2")
-(include-book "../books/host-boundary")
+(include-book "../books/host-result")
 (include-book "compress-record-unit")
 (defun fn2-compress-productive-cancel-control (fn2-compress-operation fn2-compress-transport)
  (declare (xargs :stobjs (fn2-compress-operation fn2-compress-transport) :verify-guards nil))
