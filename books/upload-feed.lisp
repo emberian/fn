@@ -146,3 +146,22 @@
 
 (assert-event
  (fn2-assert-compliant-p '(fn2-feed-step fn2-feed-emit fn2-upload-feed-loop fn2-upload-feed) (w state)))
+
+; Shared LF counter: upload retains counts before source windows can roll;
+; transaction counter controls call this same primitive.
+(defun fn2-txn-count-loop (n slot gen off lines okind oslot ogen fn2-pool)
+  (declare (xargs :stobjs fn2-pool :measure (nfix n)
+                  :guard (and (fn2-pool-wfp fn2-pool) (natp n) (natp off) (natp lines))))
+  (if (zp n) (mv :ok lines)
+    (mv-let (ok byte) (fn2-gram-read slot gen off okind oslot ogen fn2-pool)
+      (if (not ok) (mv :bounds lines)
+        (fn2-txn-count-loop (- n 1) slot gen (+ 1 off) (if (equal byte 10) (+ 1 (nfix lines)) (nfix lines))
+                            okind oslot ogen fn2-pool)))))
+(defthm fn2-txn-count-loop-natp
+  (implies (natp lines) (natp (mv-nth 1 (fn2-txn-count-loop n slot gen off lines okind oslot ogen fn2-pool))))
+  :rule-classes :type-prescription)
+(defthm fn2-txn-count-loop-bound
+  (implies (natp lines) (<= (mv-nth 1 (fn2-txn-count-loop n slot gen off lines okind oslot ogen fn2-pool))
+                            (+ lines (nfix n))))
+  :rule-classes :linear)
+(in-theory (disable fn2-txn-count-loop))

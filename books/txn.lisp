@@ -81,26 +81,6 @@
   (unsigned-byte-p 32 (mv-nth 1 (fn2-txn-hash-pool n slot gen off okind oslot ogen fn2-pool))))
 (in-theory (disable fn2-txn-hash-pool))
 
-;; :prepare. The body's lines first (the article row's `lines`): LF octets of
-;; [body, source) read under the upload's owner, at most
-;; *fn2-txn-count-bytes* per run, COUNTED the continuation.
-(defun fn2-txn-count-loop (n slot gen off lines okind oslot ogen fn2-pool)
-  (declare (xargs :stobjs fn2-pool :measure (nfix n)
-                  :guard (and (fn2-pool-wfp fn2-pool) (natp n) (natp off) (natp lines))))
-  (if (zp n) (mv :ok lines)
-    (mv-let (ok byte) (fn2-gram-read slot gen off okind oslot ogen fn2-pool)
-      (if (not ok) (mv :bounds lines)
-        (fn2-txn-count-loop (- n 1) slot gen (+ 1 off) (if (equal byte 10) (+ 1 (nfix lines)) (nfix lines))
-                            okind oslot ogen fn2-pool)))))
-(defthm fn2-txn-count-loop-natp
-  (implies (natp lines) (natp (mv-nth 1 (fn2-txn-count-loop n slot gen off lines okind oslot ogen fn2-pool))))
-  :rule-classes :type-prescription)
-(defthm fn2-txn-count-loop-bound
-  (implies (natp lines) (<= (mv-nth 1 (fn2-txn-count-loop n slot gen off lines okind oslot ogen fn2-pool))
-                            (+ lines (nfix n))))
-  :rule-classes :linear)
-(in-theory (disable fn2-txn-count-loop))
-
 ;; Newsgroups, a name at a time: the value's names are separated by commas
 ;; and white space (the model's split).
 (defun fn2-txn-sep-p (b) (declare (xargs :guard t)) (member b '(44 32 9 13 10)))
@@ -468,10 +448,12 @@
                (:let nl (:read upload nl))
                (:let counted (max scanned row-counted))
                (:cond ((< counted hashed)
-                       (:do (ccode counted2 lines2)
-                            (fn2-txn-count-next c0 g0 c1 g1 counted hashed row-lines :owner upload))
-                       (:if (and (unsigned-byte-p 60 counted2) (unsigned-byte-p 32 lines2))
-                            ((:set (counted counted2) (lines lines2))
+                       ;; Nlines excludes the terminating blank header line.
+                       ;; SOURCE-LINES counts the exact hashed source, including it.
+                       (:let all-lines (:read upload source-lines))
+                       (:let header-lines (+ 1 (:read upload nlines)))
+                       (:if (and (unsigned-byte-p 32 all-lines) (<= header-lines all-lines))
+                            ((:set (counted hashed) (lines (- all-lines header-lines)))
                              (:charge :bytes 8192 :steps *fn2-work-transition* :runnable t))
                             ((:stop :machine-phase))))
                       ;; the article's slots and its overview line's first
