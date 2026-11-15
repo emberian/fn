@@ -8,7 +8,17 @@ F=json.loads((ROOT/'tools/fixtures/live-fullref/starts.json').read_text())
 class FullRef(unittest.TestCase):
  def test_exact_projection(self):
   for n,s in F['before'].items():
-   self.assertEqual(project(n,s),F['after'][n]);self.assertEqual((ROOT/'books'/n).read_text(),F['after'][n]);check(n,F['after'][n])
+   self.assertEqual(project(n,s),F['after'][n])
+   current=(ROOT/'books'/n).read_text();check(n,current)
+   # Later canonical CLOSE/view-owner changes share these source books.
+   # Preserve the exact installed-start arguments in their actual definitions.
+   name={'machines-c-groups.lisp':'fn2-xl-run-next','machines-c-successor.lisp':'fn2-succ-resolve-next','range.lisp':'fn2-range-advance-run'}[n]
+   def call(text):
+    f=l.match('(defun '+name+' ?*body)',l.parse(text).forms)[0]
+    m=l.match('(fn2-run-cursor-start-installed ?*args)',[f.node])
+    self.assertEqual(len(m),1)
+    return l.emit(m[0].node,drop_comments=True)
+   self.assertEqual(call(current),call(F['after'][n]))
  def test_duplicate_refused(self):
   for n,s in F['after'].items():
    with self.assertRaises(ValueError):project(n,s)
@@ -32,4 +42,31 @@ class FullRef(unittest.TestCase):
   s=F['after']['range.lisp'].replace('fn2-run-cursor-start-installed c r','fn2-run-cursor-start c r',1)
   self.assertNotEqual(s,F['after']['range.lisp'])
   with self.assertRaises(ValueError):check('range.lisp',s)
+ def test_physical_view_projection_is_exact(self):
+  from physical_view_owner_rewrite import project as view
+  for name,fn,fixture in [('range.lisp','fn2-range-advance-run','range-owner-before.lisp'),('machines-c-read.lisp','fn2-rd-lookup','read-owner-before.lisp')]:
+   before=(ROOT/'tools/fixtures/live-fullref'/fixture).read_text().rstrip('\n')
+   source=(ROOT/'books'/name).read_text()
+   m=l.match('(defun '+fn+' ?*body)',l.parse(source).forms)[0]
+   self.assertEqual(view(name,before),source[m.start:m.end])
+   with self.assertRaises(ValueError):view(name,source)
+ def test_physical_range_head_uses_decoded_page_owner(self):
+  source=(ROOT/'books/range.lisp').read_text()
+  f=l.match('(defun fn2-range-advance-run ?*body)',l.parse(source).forms)[0]
+  entry=l.match('(:entry ?*body)',[f.node])[0]
+  text=source[entry.start:entry.end]
+  self.assertIn('(natp c) (< c (fn2-run-cursors-rows fn2-run-cursors))',text)
+  self.assertIn('(equal (fn2-run-cursors-physical c fn2-run-cursors) 1)',text)
+  for field in ('okind','oslot','ogen'):
+   self.assertIn('('+field+' (fn2-run-cursors-'+field+' c fn2-run-cursors))',text)
+  self.assertIn('(fn2-range-sources-set-state s *fn2-range-state-head* fn2-range-sources)',text)
+  self.assertLess(source.index('(fn2-run-scan-step c budget'),entry.start)
+ def test_xl_view_distinguishes_overlay_from_physical_cursor(self):
+  source=(ROOT/'books/machines-c-read.lisp').read_text()
+  f=l.match('(defun fn2-rd-lookup ?*body)',l.parse(source).forms)[0]
+  text=source[f.start:f.end]
+  self.assertIn('(equal erow (+ b0 *fn2-read-heads* *fn2-run-reader-entry*))',text)
+  self.assertIn('(< tx (fn2-run-cursors-rows fn2-run-cursors))',text)
+  for key,field,constant in [('ek','okind','kind'),('es','oslot','slot'),('eg','ogen','gen')]:
+   self.assertIn('('+key+' (if physical-entry (fn2-run-cursors-'+field+' tx fn2-run-cursors) *fn2-idc-owner-'+constant+'*))',text)
 if __name__=='__main__':unittest.main()

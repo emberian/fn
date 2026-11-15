@@ -442,9 +442,12 @@
       (ever (fn2-run-version sid (fn2-run-installed-rows fn2-run-installed) fn2-run-installed))
       ((unless (and (unsigned-byte-p 32 erow) (unsigned-byte-p 60 ever)))
        (mv :bounds fn2-reads fn2-succ-txns fn2-run-cursors fn2-run-paths fn2-fields))
+      (physical-entry (and (eq code :ok) (< tx (fn2-run-cursors-rows fn2-run-cursors))
+                           (equal erow (+ b0 *fn2-read-heads* *fn2-run-reader-entry*))
+                           (equal (fn2-run-cursors-physical tx fn2-run-cursors) 1)))
       (fn2-reads (if (eq code :ok)
                      (fn2-reads-put x (op *fn2-read-op-lookup*) (sid sid) (entry 1) (erow erow)
-                                    (ek *fn2-idc-owner-kind*) (es *fn2-idc-owner-slot*) (eg *fn2-idc-owner-gen*) (ever ever))
+                                    (ek (if physical-entry (fn2-run-cursors-okind tx fn2-run-cursors) *fn2-idc-owner-kind*)) (es (if physical-entry (fn2-run-cursors-oslot tx fn2-run-cursors) *fn2-idc-owner-slot*)) (eg (if physical-entry (fn2-run-cursors-ogen tx fn2-run-cursors) *fn2-idc-owner-gen*)) (ever ever))
                    (fn2-reads-put x (op *fn2-read-op-lookup*) (sid sid) (entry 0)))))
   (mv code fn2-reads fn2-succ-txns fn2-run-cursors fn2-run-paths fn2-fields)))
 (fn2-rd-shape fn2-rd-lookup (x sid budget b0 tn fn2-reads fn2-succ-txns fn2-overlays fn2-overlay-index fn2-run-installed

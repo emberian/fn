@@ -6,17 +6,18 @@ from read_close_park_rewrite import project as project_close, PARK
 ROOT=Path(__file__).resolve().parents[1]
 def formmap(text):
  return {sym(n.items[1]):n for f in lr.parse(text).forms for n in nodes(f) if isinstance(n,lr.Lst) and len(n.items)>2 and sym(n.items[0])=='defun'}
+from physical_view_owner_rewrite import project as project_view
 class Controls(unittest.TestCase):
  @classmethod
  def setUpClass(c):
   c.base=subprocess.check_output(['git','show','f0e1a6132:books/machines-c-read.lisp'],cwd=ROOT,text=True)
   c.now=(ROOT/'books/machines-c-read.lisp').read_text();c.helpers=(ROOT/'tools/fixtures/read-observer/helpers.lisp').read_text();c.frames=(ROOT/'tools/fixtures/read-observer/frames.lisp').read_text();c.f=formmap(c.now)
- def test_exact_actual_projection(self):self.assertEqual(project_close(project(self.base,self.helpers,self.frames),(ROOT/'tools/fixtures/read-close-park/helpers.lisp').read_text()),self.now)
+ def test_exact_actual_projection(self):self.assertEqual(project_view('machines-c-read.lisp',project_close(project(self.base,self.helpers,self.frames),(ROOT/'tools/fixtures/read-close-park/helpers.lisp').read_text())),self.now)
  def test_rejects_duplicate(self):
   with self.assertRaises(ValueError):project(self.now,self.helpers,self.frames)
  def test_resident_lower_algorithms_unchanged(self):
-  # All old RD bodies/APIs/guards remain the SAME implementation.
-  for name,n in formmap(self.base).items():
+  # Same kernels except the exact physical decoded-view owner projection.
+  for name,n in formmap(project_view('machines-c-read.lisp',self.base)).items():
    if name.startswith('fn2-rd-'):self.assertEqual(lr.emit(n,drop_comments=True),lr.emit(self.f[name],drop_comments=True),name)
  def test_every_core_uses_same_child_and_full_carriers(self):
   for op in ALL:

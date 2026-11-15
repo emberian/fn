@@ -332,8 +332,19 @@
           (fn2-run-scan-step c budget qbase qk qs qg fn2-run-cursors fn2-run-paths fn2-run-cache fn2-fields fn2-pool))
          ((unless (and (natp s) (< s (fn2-range-sources-rows fn2-range-sources)))) (mv :bounds fn2-range-sources fn2-run-cursors fn2-run-paths fn2-fields)))
      (case code
-      (:entry (let ((fn2-range-sources (fn2-range-sources-set-state s *fn2-range-state-head* fn2-range-sources)))
-               (mv :ok fn2-range-sources fn2-run-cursors fn2-run-paths fn2-fields)))
+      (:entry
+       (if (not (and (natp c) (< c (fn2-run-cursors-rows fn2-run-cursors))))
+        (mv :bounds fn2-range-sources fn2-run-cursors fn2-run-paths fn2-fields)
+        ; Physical decoded octets belong to this verified cursor page, not
+        ; the immutable installed root's former producer.
+        (let ((fn2-range-sources
+               (if (equal (fn2-run-cursors-physical c fn2-run-cursors) 1)
+                (fn2-range-sources-put s (state *fn2-range-state-head*)
+                (okind (fn2-run-cursors-okind c fn2-run-cursors))
+                (oslot (fn2-run-cursors-oslot c fn2-run-cursors))
+                (ogen (fn2-run-cursors-ogen c fn2-run-cursors)))
+                (fn2-range-sources-set-state s *fn2-range-state-head* fn2-range-sources))))
+         (mv :ok fn2-range-sources fn2-run-cursors fn2-run-paths fn2-fields))))
       (:end (let ((fn2-range-sources (fn2-range-sources-set-state s *fn2-range-state-end* fn2-range-sources)))
              (mv :ok fn2-range-sources fn2-run-cursors fn2-run-paths fn2-fields)))
       (:lost (let ((fn2-range-sources (fn2-range-sources-set-state s *fn2-range-state-seek* fn2-range-sources)))

@@ -5,6 +5,7 @@ ROOT=Path(__file__).resolve().parents[1];sys.path.insert(0,str(ROOT/'tools'))
 import lisp_rewrite as lr
 from read_observer_rewrite import nodes,sym,MUT
 from read_close_park_rewrite import project,project_endpoint_fixture,PARK,MORE
+from physical_view_owner_rewrite import project as view_project
 
 def source(p):return (ROOT/p).read_text()
 def defs(s):return {sym(n.items[1]):n for f in lr.parse(s).forms for n in nodes(f) if isinstance(n,lr.Lst) and len(n.items)>3 and sym(n.items[0])=='defun'}
@@ -17,11 +18,12 @@ class ReadClose(unittest.TestCase):
   cls.now=source('books/machines-c-read.lisp');cls.f=defs(cls.now)
   cls.base=subprocess.check_output(['git','show','a0b13a692:books/machines-c-read.lisp'],cwd=ROOT,text=True)
  def test_exact_actual_projection_and_no_double_apply(self):
-  self.assertEqual(project(self.base,source('tools/fixtures/read-close-park/helpers.lisp')),self.now)
+  self.assertEqual(view_project('machines-c-read.lisp',project(self.base,source('tools/fixtures/read-close-park/helpers.lisp'))),self.now)
   with self.assertRaises(ValueError):project(self.now,'')
- def test_original_rd_kernels_are_identical(self):
-  for name,f in defs(self.base).items():
-   if name.startswith('fn2-rd-'):self.assertEqual(self.base[f.start:f.end],self.now[self.f[name].start:self.f[name].end],name)
+ def test_kernels_only_gain_checked_physical_view_owner(self):
+  expected=view_project('machines-c-read.lisp',self.base)
+  for name,f in defs(expected).items():
+   if name.startswith('fn2-rd-'):self.assertEqual(expected[f.start:f.end],self.now[self.f[name].start:self.f[name].end],name)
  def test_close_derives_actual_read_region_and_retained_owner(self):
   s=emit(self.f['fn2-read-source-close'])
   self.assertIn('(fn2-id-decides-rows fn2-id-decides)',s);self.assertIn('(fn2-reads-rows fn2-reads)',s)
