@@ -24,7 +24,10 @@ then FETCH of the exact original article. It requires intact completed recovery,
 quiet termination and zero stop reason. The shared session helper now accepts
 the existing device; old callers still supply NIL. Execution remains owed.
 This test does not cover native process-death cuts or actual socket restart.
-The native socket restart fixture and public FETCH client are integrated;
+The native socket restart fixture and public FETCH client are integrated.
+The fixture now commits two distinct 6144-byte articles before process death,
+requires exact FETCH of both after restart, and refuses the first real identity
+when paired with the second occurrence. Its two byte-oracle controls pass;
 actual node execution is still pending.
 
 Actual FNCT APPEND boundary controls are now qualified by exact18 record
@@ -50,6 +53,77 @@ qualify the pending CTL/CNS actor integration or socket restart. The combined
 inbound source packet exists; outbound FETCH streaming remains in progress.
 The current upload's two chunks admit at most 8159 bytes despite the configured
 32768-byte article maximum: rolling upload remains required beyond this milestone.
+
+The delivery candidate `86f919a16` admitted the APPEND prefix, borrow-release
+and scheduler books in the retained author world. FETCH prefix decoding and
+its 0/6144/16384-byte unit assertions also passed after the macro/fixture repairs.
+These are source-admission results, not qualification of the full application.
+Checkpoint-member still refuses its generated FIELDS TYPE claim; CNS edges
+hits the RAW-ROWS proof budget. The trace enum conflict is now repaired
+atomically in the foundational vocabulary and consumer, preserving tags 0–4
+and adding MACHINE-START and ENQUEUE. Exact five-book record
+`certify-20261115T102442Z-1200620` passed (one reused parent, four new books);
+root independently matched all five current source hashes and closure keys.
+The same record covers the column generator's RAW-ROWS opacity hint, but does
+not establish its CNS-edge consumer: the twenty-book author run admitted
+operations, columns, profile and trace, then exhausted the unchanged two-million
+step budget in pool's original conservation encapsulate. No full application
+or native claim follows. Subsequent pool repairs preserve the original eleven
+statements and runtime definitions. Candidate `e76a6cdb3` reached a concrete
+RESERVE-BODY-CLASS subset-interface refusal in 4.18 seconds / 666,687 steps.
+The matching direct-interface repair `88a56c131` remains unexecuted; the original
+bounded session ended and all its owned processes and resource scope are gone.
+The original conservation encapsulate and shared two-million-step cap remain intact.
+
+The frozen checkpoint-member diagnostic executed the actual packer successfully
+with its whole stored guard, input recognizers and all four output type/WFP
+checks. This positive witness does not establish the general preservation claims.
+The guarded contract block exhausted its shared budget at POOL TYPE after both
+FIELDS claims passed; POOL WFP was not reached. Per-carrier hints were found to
+route only to WFP. The shared generator is being extended to support distinct
+TYPE hints instead of retaining member-specific generated-event surgery.
+
+Physical address geometry remains an executable blocker. `fe9f761ab` repairs
+POST's root location from three units per extent to the physical sixteen, with
+an unexecuted nonzero-extent constructor control. Root also traced the same
+mismatch through manifest production and settlement: the upload callback writes
+at `extent-bytes * cext` but encodes block-entry locations as `3 * cext + offset`,
+and `fn2-upload-manifest-extents` recovers the extent by dividing by three.
+The actual storage reader divides physical units by sixteen. The coherent
+source repair `dfc12386f` now covers emission, settlement and recovery; its
+nonzero-extent encoder/decoder, leader/nonleader settlement, stale-epoch refusal
+and recovery-entry controls are staged in the successor. Six focused source
+controls across this repair and the threshold correction pass independently;
+ACL2 execution and the complete served path remain owed. The POST-only repair
+does not close this class.
+
+Candidate `0943d496f` selects manifests above 12,288 stored bytes, the actual
+three-unit raw hash-vector capacity, instead of above the 65,536-byte physical
+extent capacity. It preserves the configured article maximum and bounded work;
+it does not enable rolling upload beyond the current two chunks. Three-unit
+raw commitments and the three-unit manifest-root budget are distinct from
+payload grouping. Source review found no requirement for grouping only three
+manifest payload blocks in a sixteen-unit extent. A separate capacity repair
+`1383fb964` uses physical capacity with sixteenth/seventeenth-block controls.
+Independent source review finds the production grouping coherent, but its fixture
+observes global machine IDs 0/1 instead of the upload kind's actual base and rows.
+The owner must correct that observer before execution; no runtime pass is claimed.
+The packet remains separate from the already staged physical-stride repair.
+
+The coalescing source repair `0d6dac6a1` now limits the first receive to the
+remaining fixed header, then uses the generated ACL2 remaining-length decision
+for subsequent reads. Actual helper controls cover coalesced frames, truncated
+input and the 4096-byte loan cap. Their decoder/carrier stubs mean they do not
+establish actual actor or socket execution; the composed coalesced fixture remains owed.
+
+The combined FETCH actor source `d99032d7c` is independently reviewed and ready
+for integration. It connects checked source readers, coverage/Message-ID gating
+and handoff cleanup. Two concrete cancellation deadlocks are repaired: source
+abort directly wakes the exact closing CTL, and native draining wakes its live
+child after outstanding sends/borrows reach zero even before an output prefix
+exists. Source controls pass. ACL2 admission, actual actor execution and the
+native restart roundtrip remain unqualified. Convergence owns composition with
+the physical repairs and current upstream root before the next application gate.
 
 Current served article integration has a concrete workspace mismatch:
 `ordered.lisp` declares 13 article fields including location-hashes, while

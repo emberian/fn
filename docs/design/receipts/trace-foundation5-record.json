@@ -1,0 +1,52 @@
+{
+  "source": "f3657527a27e324006b1da217bca7b54f0de342a",
+  "roots": [
+    "books/operations",
+    "books/columns",
+    "books/trace"
+  ],
+  "keys": {
+    "books/operations": "15da3cfd8dd9976d08f0c8590f6b607f62e664c5cf20fcb68c5525ad2347b53f",
+    "books/columns": "78fd0ddd870b7f00d10301d4494b8e3bc34de31feb359aead6ec1d4f0615836e",
+    "books/trace": "0e38e8720cd0af0fa56c8f55bf0bc0e6fe9be0e1a83d76b5e5c3cb55983f8a6c"
+  },
+  "count": 5,
+  "cgroup": "/sys/fs/cgroup/user.slice/user-1000.slice/user@1000.service/swarm.slice/run-p1200602-i30557293.scope",
+  "memory_max": 2147483648,
+  "swap_max": 0,
+  "source_hashes_before": {
+    "books/operations": "419120e7ae100f400d18cdee2d080d6133523673cac22fae1b05c7201ff97dd8",
+    "books/declare": "1c706e559ef3b314fb9bd48171fb2891fad8613bd4eb1c5de5268443833c4bfb",
+    "books/columns": "425fdb210531572bde2aa57330ff61f2fefb7ea818268aa32f6301f1f11df147",
+    "books/trace": "8659e943d080aa3af080893f5027b2fa752f3803c3471620a5d946646df8065f",
+    "books/profile": "1f216ed6c0505dc1b01ada0f7d3d9482af6da7b7dff8736b5100ef3e3fbc1038"
+  },
+  "status": "passed",
+  "runner_pid": 1200620,
+  "command": [
+    "/usr/bin/python3",
+    "tools/certify_books.py",
+    "--jobs",
+    "1",
+    "--incremental",
+    "--images",
+    "off",
+    "--timeout-seconds",
+    "120",
+    "books/operations",
+    "books/columns",
+    "books/trace"
+  ],
+  "run_dir": "/build/lanes/foundation5-record/build/acl2/certify-20261115T102442Z-1200620",
+  "runner_exit": 0,
+  "source_hashes_after": {
+    "books/operations": "419120e7ae100f400d18cdee2d080d6133523673cac22fae1b05c7201ff97dd8",
+    "books/declare": "1c706e559ef3b314fb9bd48171fb2891fad8613bd4eb1c5de5268443833c4bfb",
+    "books/columns": "425fdb210531572bde2aa57330ff61f2fefb7ea818268aa32f6301f1f11df147",
+    "books/trace": "8659e943d080aa3af080893f5027b2fa752f3803c3471620a5d946646df8065f",
+    "books/profile": "1f216ed6c0505dc1b01ada0f7d3d9482af6da7b7dff8736b5100ef3e3fbc1038"
+  },
+  "source_unchanged": true,
+  "scope": "Five-book operations/columns/profile/trace foundation only; original20 author stopped at pool cumulative2M, cns-edges remains untested; no application or runtime qualification.",
+  "root_verification": "All five source hashes matched both snapshots and current root closure; all three root keys matched independently."
+}
