@@ -104,8 +104,8 @@
 (local (defun fn2-checkpoint-scalar-ground-hint (functions execs minimal world)
  (declare (xargs :verify-guards nil))
  (list :in-theory
-  (set-difference-theories
-   (union-theories functions (union-theories execs minimal))
+  (set-difference-equal
+   (union-equal functions (union-equal execs minimal))
    (cons '(:executable-counterpart fn2-checkpoint-reader-scalar-domain-check)
          (fn2-checkpoint-scalar-table-execs execs world))))))
 
