@@ -10,6 +10,8 @@
 (include-book "checkpoint-recovery-census-state")
 (include-book "checkpoint-restore-arena")
 (include-book "checkpoint-restore-semantic-state")
+(include-book "checkpoint-summary-state")
+(include-book "checkpoint-payload-harvest")
 (include-book "boot-format")
 (fn2-book-layer :b)
 
@@ -117,6 +119,16 @@
  :init (fn2-checkpoint-restore-semantic-init (if (fn2-profile-get :image-boot profile) 1 0) fn2-checkpoint-restore-semantic)
  :profilep t
  :why "One exact descriptor-bound cold semantic page reader; no selected-base or live allocator authority.")
+
+(defcorechild fn2-core-checkpoint-summary fn2-checkpoint-summary
+ :init (fn2-checkpoint-summary-init (if (fn2-profile-get :image-boot profile) 1 0) fn2-checkpoint-summary)
+ :profilep t :why "Exact selected-source catalog intake and bounded C adoption; capture alone is not sufficient-summary authority.")
+(defcorechild fn2-core-checkpoint-summary-sources fn2-checkpoint-summary-sources
+ :init (fn2-checkpoint-summary-sources-init (fn2-b-capacity :extent-slots 16 profile) fn2-checkpoint-summary-sources)
+ :profilep t :why "One authenticated C source root per actual physical extent, tagged by exact descriptor investigation.")
+(defcorechild fn2-core-checkpoint-summary-leases fn2-checkpoint-summary-leases
+ :init (fn2-checkpoint-summary-leases-init (+ (fn2-profile-t profile) (* 9 (fn2-b-read-rows profile)) 1) fn2-checkpoint-summary-leases)
+ :profilep t :why "Exact query/loader owner and generation retain a selected physical C source across yields.")
 
 (defcorechild fn2-core-checkpoint-restore-semantic-work fn2-checkpoint-restore-semantic-work
  :init (fn2-checkpoint-restore-semantic-work-init (fn2-b-capacity :extent-slots 16 profile) fn2-checkpoint-restore-semantic-work)
