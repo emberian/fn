@@ -7,6 +7,11 @@
 (in-package "ACL2")
 (include-book "range-served")
 (include-book "machines-b")
+(include-book "c-snapshot")
+(include-book "checkpoint-summary-state")
+(include-book "run-physical-geometry")
+(include-book "run-physical-harvest")
+(include-book "c-source-observer")
 (fn2-book-layer :c)
 
 ; ---------------------------------------------------------------------------
@@ -51,6 +56,24 @@
 ;; waits, :full, until the sealer catches up: machines-c-stage.lisp).
 (defconst *fn2-idc-run-budget* 4)
 (defconst *fn2-idc-overlay-budget* (- *fn2-idc-seal-cursors* *fn2-idc-run-budget*))
+(defun fn2-c-source-endpoint-rows (profile)
+ (declare (xargs :guard t))
+ (+ 1 (nfix (fn2-profile-t profile)) (* 2 (fn2-b-read-rows profile))
+    (fn2-b-cursor-rows profile) (fn2-b-cns-rows profile)))
+(defun fn2-c-source-successor-endpoint (read-rows tx)
+ (declare (xargs :guard (and (natp read-rows) (natp tx))))
+ (+ read-rows tx))
+(defun fn2-c-source-sealer-endpoint (read-rows successor-rows)
+ (declare (xargs :guard (and (natp read-rows) (natp successor-rows))))
+ (+ read-rows successor-rows))
+(defun fn2-c-source-request-endpoint (read-rows successor-rows cursor-row)
+ (declare (xargs :guard (and (natp read-rows) (natp successor-rows) (natp cursor-row))))
+ (+ 1 read-rows successor-rows cursor-row))
+(defun fn2-c-source-cns-endpoint (read-rows successor-rows cursor-rows cns-row)
+ (declare (xargs :guard (and (natp read-rows) (natp successor-rows) (natp cursor-rows) (natp cns-row))))
+ (+ 1 read-rows successor-rows cursor-rows cns-row))
+(defthm fn2-c-source-endpoint-rows-natp
+ (natp (fn2-c-source-endpoint-rows profile)) :rule-classes :type-prescription)
 (defun fn2-idc-profilep (profile)
  (declare (xargs :guard t))
  (and (unsigned-byte-p 32 (fn2-profile-t profile))
@@ -70,7 +93,11 @@
       (<= (+ (* *fn2-idc-b-stripe* (nfix (fn2-b-format-slots profile)))
              (* *fn2-idc-stride* (nfix (fn2-profile-t profile))) *fn2-b-seal-field-rows*
              (* *fn2-b-read-stride* (fn2-b-read-rows profile)))
-          (nfix (fn2-b-capacity :format-field-slots (fn2-b-field-rows profile) profile)))))
+          (nfix (fn2-b-capacity :format-field-slots (fn2-b-field-rows profile) profile)))
+      (unsigned-byte-p 32 (fn2-c-source-endpoint-rows profile))
+      (unsigned-byte-p 32 (fn2-b-run-cursor-rows profile))
+      (unsigned-byte-p 32 (* *fn2-run-max-levels* (fn2-b-run-cursor-rows profile)))
+      (unsigned-byte-p 32 (+ (fn2-b-capacity :identity-runs 64 profile) (fn2-b-capacity :extent-slots 16 profile)))))
 
 ;; Each child's init is a function whose guard is proved here once, so the
 ;; core init's guard (assembly-init) meets only the opaque profile predicate.
@@ -99,14 +126,40 @@
  (fn2-overlay-index-init (* (nfix (fn2-b-capacity :identity-overlays *fn2-idc-overlays-default* profile))
                             (nfix (fn2-b-capacity :identity-overlay-entries 256 profile))) fn2-overlay-index)
  "Each overlay's key-ordered index of its arena's entries.")
-(fn2-idc-child fn2-core-run-installed fn2-run-installed (fn2-run-installed-init (fn2-b-capacity :identity-runs 64 profile) fn2-run-installed)
+(fn2-idc-child fn2-core-run-installed fn2-run-installed (fn2-run-installed-init (+ (fn2-b-capacity :identity-runs 64 profile) (fn2-b-capacity :extent-slots 16 profile)) fn2-run-installed)
  "The resident view of each schema's sealed runs.")
 (fn2-idc-child fn2-core-run-cursors fn2-run-cursors
- (fn2-run-cursors-init (+ (nfix (fn2-profile-t profile)) (* 9 (fn2-b-read-rows profile)) *fn2-idc-seal-cursors*) fn2-run-cursors)
+ (fn2-run-cursors-init (fn2-b-run-cursor-rows profile) fn2-run-cursors)
  "A decision's resumable run cursor (cursor row = decision row), then each read row's lookup cursor and its range sources' (C-S4).")
 (fn2-idc-child fn2-core-run-paths fn2-run-paths
- (fn2-run-paths-init (* *fn2-run-max-levels* (+ (nfix (fn2-profile-t profile)) (* 9 (fn2-b-read-rows profile)) *fn2-idc-seal-cursors*)) fn2-run-paths)
+ (fn2-run-paths-init (* *fn2-run-max-levels* (fn2-b-run-cursor-rows profile)) fn2-run-paths)
  "Each cursor's descent, one row per level.")
+(fn2-idc-child fn2-core-c-source-control fn2-c-source-control
+ (fn2-c-source-control-init 1 fn2-c-source-control)
+ "Writer preference closes new semantic observers before bounded live source replacement.")
+(fn2-idc-child fn2-core-c-source-readers fn2-c-source-readers
+ (fn2-c-source-readers-init (fn2-c-source-endpoint-rows profile) fn2-c-source-readers)
+ "One exact receipt per read, successor, sealer, complete cursor response, and CNS metadata endpoint survives yields until references are dead.")
+(fn2-idc-child fn2-core-csnapshot fn2-csnapshot (fn2-csnapshot-init 1 fn2-csnapshot)
+ "One exact-owner resident metadata cut excludes staging and materialization until released.")
+(fn2-idc-child fn2-core-checkpoint-summary-leases fn2-checkpoint-summary-leases
+ (fn2-checkpoint-summary-leases-init (fn2-b-run-cursor-rows profile) fn2-checkpoint-summary-leases)
+ "Every actual C cursor can retain one exact selected physical source across yields.")
+(fn2-idc-child fn2-core-run-loads fn2-run-loads
+ (fn2-run-load-profile-init profile fn2-run-loads)
+ "A private authenticated 64KiB page and sector workspace per active physical cursor.")
+(defcorechild fn2-core-run-load-ops fn2-run-load-ops
+ :init (fn2-run-load-ops-init (fn2-profile-o profile) fn2-run-load-ops)
+ :profilep (unsigned-byte-p 32 (fn2-profile-o profile))
+ :harvest (fn2-run-load-harvest ((fn2-core-run-loads fn2-run-loads) (fn2-core-run-load-ops fn2-run-load-ops)))
+ :why "Route exact physical read completions before operation finish, without scanning active cursors.")
+(defcorechild fn2-core-run-load-geometry fn2-run-load-geometry
+ :init (fn2-run-load-geometry-profile-init profile fn2-run-load-geometry)
+ :profilep (fn2-run-load-geometry-profilep profile)
+ :why "Readonly profile-derived cursor/checker geometry binds the cold loader capability scan.")
+(defcorechild fn2-core-run-load-readiness fn2-run-load-readiness
+ :init (fn2-run-load-readiness-init 1 fn2-run-load-readiness) :profilep t
+ :why "The cold capability scan retains selected identity, exact EOF and admissions serial across turns.")
 (fn2-idc-child fn2-core-run-cache fn2-run-cache (fn2-run-cache-init (fn2-b-capacity :run-cache 1024 profile) fn2-run-cache)
  "Verified run pages, keyed by exact (unit, allocation counter).")
 
@@ -126,3 +179,32 @@
 (defun fn2-idc-shape-outs (outs pos)
  (declare (xargs :verify-guards nil))
  (if (atom outs) nil (cons (list (car outs) pos) (fn2-idc-shape-outs (cdr outs) (+ 1 pos)))))
+
+(include-book "run-physical-step")
+(include-book "run-physical-release")
+
+; Included after machines-c registers the actual cursor, catalog lease and
+; loader children. Every issue is explicit in a machine :issue arm.
+(defcost fn2-run-page-reserve :child fn2-run-load-reserve :answers t
+ :tables (fn2-core-run-loads fn2-core-pool) :effects :per-use
+ :doc "Acquire both private cursor windows atomically or refuse without parking.")
+(defcost fn2-run-page-bind :child fn2-run-load-bind :answers t
+ :tables (fn2-core-run-loads fn2-core-run-cursors fn2-core-checkpoint-summary fn2-core-checkpoint-summary-sources fn2-core-checkpoint-summary-leases fn2-core-run-installed fn2-core-pool)
+ :bytes 64
+ :doc "Bind a current physical MISS Ref and exact catalog lease to the request-owned page.")
+(defcost fn2-run-page-step :child fn2-run-load-step :answers t
+ :tables (fn2-core-run-loads fn2-core-run-cursors fn2-core-checkpoint-summary fn2-core-checkpoint-summary-sources fn2-core-checkpoint-summary-leases fn2-core-run-installed fn2-core-boot-config fn2-core-fc fn2-core-fc-context fn2-core-b3 fn2-core-fields fn2-core-pool fn2-core-digests)
+ :bytes 4096
+ :doc "Copy or authenticate one bounded page fragment; expose only after full Ref and typed header verification.")
+(make-event
+ (value (cons 'progn
+  (append (fn2-issue-wrapper-effect-events '(fn2-run-load-issue) (w state))
+          (fn2-issued-wrapper-events '(fn2-run-load-issue) (w state))))))
+(defcost fn2-run-page-read :child fn2-run-load-issue :answers t :descriptors 1
+ :tables (fn2-core-run-loads fn2-core-run-load-ops fn2-core-run-cursors fn2-core-checkpoint-summary fn2-core-checkpoint-summary-sources fn2-core-checkpoint-summary-leases fn2-core-run-installed fn2-core-extents fn2-core-alloc-edges fn2-core-pool fn2-core-ops fn2-core-control)
+ :effects ((:acquire (:operation)))
+ :doc "Pin and issue exactly one 4KiB read, returning its actual operation slot/generation.")
+(defcost fn2-run-page-release :child fn2-run-load-release :answers t
+ :tables (fn2-core-run-loads fn2-core-run-cursors fn2-core-checkpoint-summary fn2-core-checkpoint-summary-leases fn2-core-pool)
+ :effects :per-use
+ :doc "Release request-owned pages only after pending0 and workspace return, then release the catalog lease.")
