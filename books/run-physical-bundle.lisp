@@ -2,7 +2,7 @@
 ; rows. This is resident active-request capacity, not a limit on stored data.
 (in-package "ACL2")
 (include-book "machines-c-read")
-(include-book "run-physical-release")
+(include-book "run-physical-region")
 (fn2-book-layer :c)
 (defconst *fn2-run-query-bundle-count*
  *fn2-b-query-loader-jobs*)
@@ -12,93 +12,18 @@
   (+ (nfix transactions) (nfix read0) (nfix ordinal))
   (+ (nfix transactions) (nfix reads) (* *fn2-b-range-source-cursors* (nfix read0))
      (- (nfix ordinal) *fn2-b-query-read-rows*))))
-(defun fn2-run-query-bundle-freep (i read0 transactions reads fn2-run-loads fn2-checkpoint-summary-leases)
- (declare (xargs :stobjs (fn2-run-loads fn2-checkpoint-summary-leases)
- :measure (nfix (- *fn2-run-query-bundle-count* (nfix i)))
- :guard (and (fn2-run-loads-wfp fn2-run-loads) (fn2-checkpoint-summary-leases-wfp fn2-checkpoint-summary-leases))))
- (or (>= (nfix i) *fn2-run-query-bundle-count*)
-  (let ((c (fn2-run-query-bundle-cursor read0 i transactions reads)))
-   (and (< c (fn2-run-loads-rows fn2-run-loads)) (< c (fn2-checkpoint-summary-leases-rows fn2-checkpoint-summary-leases))
-        (equal (fn2-run-loads-phase c fn2-run-loads) *fn2-run-load-phase-idle*)
-        (equal (fn2-checkpoint-summary-leases-live c fn2-checkpoint-summary-leases) 0)
-        (fn2-run-query-bundle-freep (+ (nfix i) 1) read0 transactions reads fn2-run-loads fn2-checkpoint-summary-leases)))))
-(defmacro fn2-run-query-bundle-mv (code)
- `(mv ,code fn2-run-loads fn2-run-cursors fn2-checkpoint-summary fn2-checkpoint-summary-leases fn2-pool))
-(defun fn2-run-query-bundle-clean (i read0 transactions reads kind owner generation
- fn2-run-loads fn2-run-cursors fn2-checkpoint-summary fn2-checkpoint-summary-leases fn2-pool)
- (declare (xargs :stobjs (fn2-run-loads fn2-run-cursors fn2-checkpoint-summary fn2-checkpoint-summary-leases fn2-pool)
- :measure (nfix (- *fn2-run-query-bundle-count* (nfix i)))
- :guard (and (fn2-run-loads-wfp fn2-run-loads) (fn2-run-cursors-wfp fn2-run-cursors)
-  (fn2-checkpoint-summary-wfp fn2-checkpoint-summary) (fn2-checkpoint-summary-leases-wfp fn2-checkpoint-summary-leases) (fn2-pool-wfp fn2-pool))))
- (b* (((when (>= (nfix i) *fn2-run-query-bundle-count*)) (fn2-run-query-bundle-mv :ok))
-      (c (fn2-run-query-bundle-cursor read0 i transactions reads))
-      ((mv code fn2-run-loads fn2-run-cursors fn2-checkpoint-summary fn2-checkpoint-summary-leases fn2-pool)
-       (fn2-run-load-release c kind owner generation fn2-run-loads fn2-run-cursors fn2-checkpoint-summary fn2-checkpoint-summary-leases fn2-pool))
-      ((unless (eq code :ok)) (fn2-run-query-bundle-mv :recovery-required)))
-  (fn2-run-query-bundle-clean (+ (nfix i) 1) read0 transactions reads kind owner generation
-   fn2-run-loads fn2-run-cursors fn2-checkpoint-summary fn2-checkpoint-summary-leases fn2-pool)))
-(defun fn2-run-query-bundle-fill (i read0 transactions reads kind owner generation
- fn2-run-loads fn2-run-cursors fn2-checkpoint-summary fn2-checkpoint-summary-leases fn2-pool)
- (declare (xargs :stobjs (fn2-run-loads fn2-run-cursors fn2-checkpoint-summary fn2-checkpoint-summary-leases fn2-pool)
- :measure (nfix (- *fn2-run-query-bundle-count* (nfix i)))
- :guard (and (fn2-run-loads-wfp fn2-run-loads) (fn2-run-cursors-wfp fn2-run-cursors)
-  (fn2-checkpoint-summary-wfp fn2-checkpoint-summary) (fn2-checkpoint-summary-leases-wfp fn2-checkpoint-summary-leases) (fn2-pool-wfp fn2-pool))))
- (b* (((when (>= (nfix i) *fn2-run-query-bundle-count*)) (fn2-run-query-bundle-mv :ok))
-      (c (fn2-run-query-bundle-cursor read0 i transactions reads))
-      ((mv code fn2-run-loads fn2-pool) (fn2-run-load-reserve c kind owner generation fn2-run-loads fn2-pool))
-      ((unless (eq code :ok)) (fn2-run-query-bundle-mv code)))
-  (fn2-run-query-bundle-fill (+ (nfix i) 1) read0 transactions reads kind owner generation
-   fn2-run-loads fn2-run-cursors fn2-checkpoint-summary fn2-checkpoint-summary-leases fn2-pool)))
-(defun fn2-run-page-bundle-admit (read0 kind owner generation fn2-reads fn2-id-decides
- fn2-run-loads fn2-run-cursors fn2-checkpoint-summary fn2-checkpoint-summary-leases fn2-pool)
- (declare (xargs :stobjs (fn2-reads fn2-id-decides fn2-run-loads fn2-run-cursors fn2-checkpoint-summary fn2-checkpoint-summary-leases fn2-pool)
- :guard (and (fn2-reads-wfp fn2-reads) (fn2-id-decides-wfp fn2-id-decides) (fn2-run-loads-wfp fn2-run-loads) (fn2-run-cursors-wfp fn2-run-cursors)
-  (fn2-checkpoint-summary-wfp fn2-checkpoint-summary) (fn2-checkpoint-summary-leases-wfp fn2-checkpoint-summary-leases) (fn2-pool-wfp fn2-pool))))
- (b* ((transactions (fn2-id-decides-rows fn2-id-decides)) (reads (fn2-reads-rows fn2-reads))
-      ((unless (and (natp read0) (<= (+ read0 *fn2-b-query-read-rows*) reads)
-                    (fn2-pool-mrefp kind owner generation)
-                    (fn2-run-query-bundle-freep 0 read0 transactions reads fn2-run-loads fn2-checkpoint-summary-leases)))
-       (fn2-run-query-bundle-mv :state))
-      ((unless (fn2-run-load-roomp *fn2-run-query-bundle-count* fn2-pool)) (fn2-run-query-bundle-mv :exhausted))
-      ((mv code fn2-run-loads fn2-run-cursors fn2-checkpoint-summary fn2-checkpoint-summary-leases fn2-pool)
-       (fn2-run-query-bundle-fill 0 read0 transactions reads kind owner generation
-        fn2-run-loads fn2-run-cursors fn2-checkpoint-summary fn2-checkpoint-summary-leases fn2-pool))
-      ((when (eq code :ok)) (fn2-run-query-bundle-mv :ok))
-      ((mv clean fn2-run-loads fn2-run-cursors fn2-checkpoint-summary fn2-checkpoint-summary-leases fn2-pool)
-       (fn2-run-query-bundle-clean 0 read0 transactions reads kind owner generation
-        fn2-run-loads fn2-run-cursors fn2-checkpoint-summary fn2-checkpoint-summary-leases fn2-pool)))
-  (fn2-run-query-bundle-mv (if (eq clean :ok) code :recovery-required))))
-(fn2-run-load-frames fn2-run-page-bundle-admit
- (read0 kind owner generation fn2-reads fn2-id-decides fn2-run-loads fn2-run-cursors fn2-checkpoint-summary fn2-checkpoint-summary-leases fn2-pool)
- (fn2-reads fn2-id-decides fn2-run-loads fn2-run-cursors fn2-checkpoint-summary fn2-checkpoint-summary-leases fn2-pool)
- ((fn2-run-loads 1) (fn2-run-cursors 2) (fn2-checkpoint-summary 3) (fn2-checkpoint-summary-leases 4) (fn2-pool 5)))
-
-(defun fn2-run-query-bundle-retainedp (i read0 transactions reads kind owner generation fn2-run-loads fn2-pool)
- (declare (xargs :stobjs (fn2-run-loads fn2-pool)
- :measure (nfix (- *fn2-run-query-bundle-count* (nfix i)))
- :guard (and (fn2-run-loads-wfp fn2-run-loads) (fn2-pool-wfp fn2-pool))))
- (and (< (nfix i) *fn2-run-query-bundle-count*)
-  (let ((c (fn2-run-query-bundle-cursor read0 i transactions reads)))
-   (or (and (fn2-run-load-ownerp c kind owner generation fn2-run-loads)
-            (or (eq (fn2-pool-workspace-code (fn2-run-loads-page c fn2-run-loads) (fn2-run-loads-page-gen c fn2-run-loads) kind owner generation fn2-pool) :ok)
-                (eq (fn2-pool-workspace-code (fn2-run-loads-scratch c fn2-run-loads) (fn2-run-loads-scratch-gen c fn2-run-loads) kind owner generation fn2-pool) :ok)))
-       (fn2-run-query-bundle-retainedp (+ (nfix i) 1) read0 transactions reads kind owner generation fn2-run-loads fn2-pool)))))
 (defun fn2-run-page-bundle-reserve-children (read0 kind owner generation fn2-reads fn2-id-decides
  fn2-run-loads fn2-run-cursors fn2-checkpoint-summary fn2-checkpoint-summary-leases fn2-pool)
  (declare (xargs :stobjs (fn2-reads fn2-id-decides fn2-run-loads fn2-run-cursors fn2-checkpoint-summary fn2-checkpoint-summary-leases fn2-pool)
  :guard (and (fn2-reads-wfp fn2-reads) (fn2-id-decides-wfp fn2-id-decides) (fn2-run-loads-wfp fn2-run-loads) (fn2-run-cursors-wfp fn2-run-cursors)
   (fn2-checkpoint-summary-wfp fn2-checkpoint-summary) (fn2-checkpoint-summary-leases-wfp fn2-checkpoint-summary-leases) (fn2-pool-wfp fn2-pool))))
- (b* (((mv code fn2-run-loads fn2-run-cursors fn2-checkpoint-summary fn2-checkpoint-summary-leases fn2-pool)
-       (fn2-run-page-bundle-admit read0 kind owner generation fn2-reads fn2-id-decides
-        fn2-run-loads fn2-run-cursors fn2-checkpoint-summary fn2-checkpoint-summary-leases fn2-pool)))
-  ; COMPLETE is the actual all-member reservation result. If unexpected pool
-  ; corruption defeats cleanup, :OK/0 retains the rank and actual windows
-  ; for the actor's bounded cleanup; it cannot enter query interpretation.
-  (mv (if (or (eq code :ok)
-               (fn2-run-query-bundle-retainedp 0 read0 (fn2-id-decides-rows fn2-id-decides) (fn2-reads-rows fn2-reads)
-                kind owner generation fn2-run-loads fn2-pool)) :ok code)
-      (if (eq code :ok) 1 0)
-      fn2-run-loads fn2-run-cursors fn2-checkpoint-summary fn2-checkpoint-summary-leases fn2-pool)))
+ (if (not (and (natp read0) (<= (+ read0 *fn2-b-query-read-rows*) (fn2-reads-rows fn2-reads))))
+  (mv :state 0 fn2-run-loads fn2-run-cursors fn2-checkpoint-summary fn2-checkpoint-summary-leases fn2-pool)
+  (fn2-run-load-region-reserve
+   (+ (fn2-id-decides-rows fn2-id-decides) read0) *fn2-b-query-read-rows*
+   (+ (fn2-id-decides-rows fn2-id-decides) (fn2-reads-rows fn2-reads) (* *fn2-b-range-source-cursors* read0))
+   (* *fn2-b-query-read-rows* *fn2-b-range-source-cursors*) 0 0 kind owner generation
+   fn2-run-loads fn2-run-cursors fn2-checkpoint-summary fn2-checkpoint-summary-leases fn2-pool)))
 (fn2-run-load-frames fn2-run-page-bundle-reserve-children
  (read0 kind owner generation fn2-reads fn2-id-decides fn2-run-loads fn2-run-cursors fn2-checkpoint-summary fn2-checkpoint-summary-leases fn2-pool)
  (fn2-reads fn2-id-decides fn2-run-loads fn2-run-cursors fn2-checkpoint-summary fn2-checkpoint-summary-leases fn2-pool)

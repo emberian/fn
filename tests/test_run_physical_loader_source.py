@@ -97,6 +97,9 @@ class PhysicalLoaderSource(unittest.TestCase):
         self.assertEqual(len(calls(release, 'fn2-pool-workspace-code')), 2)
         self.assertEqual(len(calls(release, 'fn2-pool-release')), 2)
         self.assertEqual(len(calls(release, 'fn2-checkpoint-summary-release')), 1)
+        accepted = [x for x in calls(release, 'member-eq') if x[1] == 'code']
+        self.assertEqual(len(accepted), 2)
+        self.assertTrue(all(x[2] == ['quote', [':ok', ':retired']] for x in accepted))
 
     def test_return_frames_match_actual_mutations_and_mv_limit(self):
         frames = {f[1]: f for p in FILES for raw in forms(p.read_text())
