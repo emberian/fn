@@ -55,7 +55,7 @@
  ;; check (fn2-machine-charge) is proved over every kind's caps, and a kind
  ;; whose cap is below another's charge breaks A's callers' guard proofs,
  ;; which cannot show a row's kind is kept across an issue.
- :fields ((stopped :bool) (bundle (:enum fn2-sealer-bundle (:none :held))) (load-cursor :u32) (drain :u8) (copy-drained :bool))
+ :fields ((stopped :bool) (bundle (:enum fn2-sealer-bundle (:none :held))) (load-cursor :u32) (drain :u8) (copy-drained :bool) (retry-pool :bool))
  :holds ((:sealing (:storage-window :while (bundle :held)))
          (:binding (:storage-window :while (bundle :held)))
          (:loading (:storage-window :while (bundle :held)))

@@ -9,7 +9,7 @@
  (declare (xargs :stobjs fn2-core :verify-guards nil
   :measure (nfix (- *fn2-b-seal-source-cursors* (nfix i)))))
  (if (>= (nfix i) *fn2-b-seal-source-cursors*) (mv :ok fn2-core)
-  (b* (((mv code c fn2-core) (fn2-sealer-load-drain-op i *fn2-sealer-kind* id gen fn2-core))
+  (b* (((mv code c) (fn2-sealer-load-drain-op i *fn2-sealer-kind* id gen fn2-core))
        ((mv released fn2-core)
         (case code (:member (fn2-sealer-load-member-release-op i *fn2-sealer-kind* id gen fn2-core))
                    (:last (fn2-run-page-release c *fn2-sealer-kind* id gen fn2-core))
@@ -26,6 +26,8 @@
       (gen (fn2-machine-generation id fn2-core))
       ((mv observed fn2-core) (fn2-sealer-source-acquire fn2-core))
       ((mv reserve complete fn2-core) (fn2-sealer-load-reserve-op *fn2-sealer-kind* id gen fn2-core))
+      (owned (stobj-let ((fn2-seals (fn2-core-seals fn2-core)) (fn2-pool (fn2-core-pool fn2-core))) (yes)
+               (fn2-seal-prefix-owned-p fn2-seals fn2-pool) yes))
       (idle (stobj-let ((fn2-seals (fn2-core-seals fn2-core))) (yes)
              (= (fn2-seals-phase 0 fn2-seals) *fn2-seal-phase-idle*) yes))
       ((mv early & & fn2-core) (fn2-sealer-source-release fn2-core))
@@ -37,8 +39,8 @@
                        (fn2-checkpoint-summary-leases (fn2-core-checkpoint-summary-leases fn2-core))) (yes)
               (fn2-sealer-loader-free-p fn2-seals fn2-run-loads fn2-checkpoint-summary-leases) yes)))
   (mv (and (eq genesis :ok) (eq started :ok) (eq observed :ok) idle
-           (if expect (and (eq reserve :ok) (= complete 1) (eq early :busy))
-                      (and (eq reserve :exhausted) (= complete 0) (eq early :ok)))
+           (if expect (and (eq reserve :ok) (= complete 1) owned (eq early :busy))
+                      (and (eq reserve :exhausted) (= complete 0) (not owned) (eq early :ok)))
            (eq scratch :ok) (eq drain :ok) (member-eq released '(:ok :absent)) free) fn2-core)))
 (assert-event (with-local-stobj fn2-core
  (mv-let (ok fn2-core) (fn2-spa-body *fn2-spa-profile* t fn2-core) ok)))
