@@ -170,7 +170,7 @@ The first export attempt exposed ACL2 `prin1$`'s atom-only guard. The qualified
 exporter uses the actual `print-object$` object-channel API; theorem, domain,
 and incomplete-report semantics were unchanged.
 
-### Actual native whole-effect capture (source; not yet executed)
+### Actual native whole-effect capture (qualified 17-book scope)
 
 `tools/capture_native_proof_support.py` generates a post-admission hook for the
 unchanged `fn2-native-mk-node-whole-effect` theorem. It reads that actual source
@@ -204,16 +204,21 @@ python3 tools/capture_native_proof_support.py \
   --capture /tmp/native-proof-support-capture.lsp
 ```
 
-The current exact union is 17 books. The metadata/payload audit finds 14 exact
-8aeb cache entries; `digest-store`, `merkle`, and the actual native consumer are
-missing at current keys. No current production admission or capture is claimed
-until that small coherent cut is approved and actually run. The hook's identity
-and stale/substituted report controls are source-tested independently.
+The qualified union is 17 books at code `5e32120c5`. Fourteen existing 8aeb
+entries were reused; `digest-store`, `merkle`, and the actual native consumer
+were source-admitted unchanged and then recorded. The hook's identity and
+stale/substituted report controls also pass. Exact source/key/payload identities
+are in `docs/design/receipts/native-proof-support-seventeen-record.json`; the
+actual captured object is `native-proof-support-capture.sexp` beside it.
 
 The first actual source run admitted all three production books unchanged:
 `digest-store` 0.20 s, `merkle` 14.28 s, and the native consumer 0.15 s.
 The 16-book parent union was recorded at the current keys. Top-level capture
 checks then passed for the actual source formula and crypto-assumption edge.
 The initial hook's export inside MAKE-EVENT was rejected; the source correction
-moves only I/O outside event expansion. Completed export/readback and the final
-17-book receipt remain pending. No malformed snapshot is counted as evidence.
+moves only I/O outside event expansion. The corrected top-level hook then passed against the actual admitted native
+consumer (0.18 s / 437 steps); ordinary export and current-identity readback
+passed. Final record `certify-20261115T234037Z-1971194` reused the qualified
+16 parents and certified only the native book. Its live snapshot exposes both
+native crypto constraint theorems among actual supporters while imported
+intermediate support remains unknown. No malformed snapshot is evidence.
