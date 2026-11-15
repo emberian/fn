@@ -253,6 +253,9 @@
       ((unless (and (member (fn2-id-decides-phase tx fn2-id-decides) (list *fn2-id-decide-phase-idle* *fn2-id-decide-phase-done*))
                     (not (equal (fn2-succ-txns-rstate tx fn2-succ-txns) *fn2-succ-resolve-look*))))
        (mv :state fn2-succ-txns fn2-id-decides fn2-fields))
+      ; Runtime query incarnation: no wrap and no field/query mutation on exhaustion.
+      (inc (fn2-id-decides-query-incarnation tx fn2-id-decides))
+      ((unless (< inc 1152921504606846975)) (mv :exhausted fn2-succ-txns fn2-id-decides fn2-fields))
       (q (+ b0 *fn2-idc-eb*))
       (fn2-fields (fn2-fields-put q (value *fn2-identity-namespace-netnews*) (ref-len 0)))
       (fn2-fields (fn2-fields-put (+ q 1) (value 0) (ref-slot mslot) (ref-gen mgen) (ref-off moff) (ref-len mlen)))
@@ -260,13 +263,13 @@
       (fn2-fields (fn2-fields-put (+ q 3) (value *fn2-identity-algorithm-blake3*) (ref-len 0)))
       (fn2-fields (fn2-fields-put (+ q 4) (value 1) (ref-slot dslot) (ref-gen dgen) (ref-off doff) (ref-len 32)))
       ((mv & fn2-succ-txns) (fn2-xl-done tx :ok fn2-succ-txns))
-      (fn2-id-decides (fn2-id-decides-put tx (phase *fn2-id-decide-phase-summary*) (qk okind) (qs oslot) (qg ogen)
+      (fn2-id-decides (fn2-id-decides-put tx (phase *fn2-id-decide-phase-summary*) (query-incarnation (+ inc 1)) (qk okind) (qs oslot) (qg ogen)
                                          (sfound 0) (selected 0) (candidates 0) (gaps 0)
                                          (cfound 0) (h 0) (evidence 0) (qualified 0) (local 0))))
   (mv :ok fn2-succ-txns fn2-id-decides fn2-fields)))
 (fn2-idc-fn-shape fn2-id-decide-start (tx mslot mgen moff mlen dslot dgen doff okind oslot ogen b0 fn2-succ-txns fn2-id-decides fn2-fields)
  (fn2-succ-txns fn2-id-decides fn2-fields) (fn2-succ-txns fn2-id-decides fn2-fields) t
- (fn2-xl-done fn2-id-decides-phase fn2-succ-txns-rstate))
+ (fn2-xl-done fn2-id-decides-phase fn2-id-decides-query-incarnation fn2-succ-txns-rstate))
 
 ; TX's verdict once done (fn2-id-verdict over what the reads found).
 (defun fn2-id-decided (tx fn2-id-decides)
@@ -589,7 +592,7 @@
    (assert-event (fn2-assert-compliant-p '(fn2-group-lookup fn2-groups-genesis fn2-principal-lookup
                                           fn2-principals-genesis fn2-principal-of-slot) (w state)))))
 
-(defcost fn2-identity-decide-start :answers (:bounds :ok :state)
+(defcost fn2-identity-decide-start :answers (:bounds :exhausted :ok :state)
  :tables (fn2-core-succ-txns fn2-core-id-decides fn2-core-fields)
  :doc "Start a transaction's identity decision: its query (five rows) written, its lookup idle.")
 (defcost fn2-identity-decide :child fn2-identity-decide-child :answers (:bad-magic :bounds :conflict :done :duplicate :end :entry :evidence :format :invariant :length
