@@ -40,8 +40,9 @@ class LiveRoomWriter(unittest.TestCase):
    self.assertTrue(calls(x,n),n)
   text=FIX.read_text()
   self.assertIn('(fn2-machine-connection-count *fn2-cns-admission-ordinal* fn2-core)',text)
-  self.assertIn('(fn2-lrw-pressure population fn2-core)',text)
-  self.assertIn('((not (fn2-lrw-cold-room-p fn2-core)) (mv :pressured 0 fn2-core))',text)
+  self.assertIn('(fn2-lrw-pressure population nil fn2-core)',text)
+  self.assertIn('(fn2-lrw-pressure (1- remaining) t fn2-core)',text)
+  self.assertIn('((and started (not (fn2-lrw-cold-room-p fn2-core))) (mv :pressured 0 fn2-core))',text)
   for n in ('fn2-pool-put','update-fn2-pool-class-countsi','fn2-run-loads-put','fn2-run-load-readiness-put','fn2-checkpoint-summary-put'):
    self.assertFalse(calls(x,n),n)
  def test_actual_exclusive_writer_and_full_scan(self):

@@ -40,11 +40,13 @@
          (mv code fn2-core)))
        ((unless (and (eq code :ok) (fn2-run-load-parked-machine-current-p c fn2-core))) (mv :park fn2-core)))
    (fn2-lrw-park (+ 1 (nfix i)) b0 n0 b1 n1 b2 n2 kind owner generation fn2-core))))
-; At most the actual admitted CNS population; each iteration reserves its real
+; Always acquire and park at least one real job set even if protected
+; credit headroom already makes new-request room false. At most the actual
+; admitted CNS population; each iteration reserves its real
 ; plan's complete class recipe, never edits pool counters or waits partially.
-(defun fn2-lrw-pressure (remaining fn2-core)
+(defun fn2-lrw-pressure (remaining started fn2-core)
  (declare (xargs :stobjs fn2-core :verify-guards nil :measure (nfix remaining)))
- (cond ((not (fn2-lrw-cold-room-p fn2-core)) (mv :pressured 0 fn2-core))
+ (cond ((and started (not (fn2-lrw-cold-room-p fn2-core))) (mv :pressured 0 fn2-core))
        ((zp remaining) (mv :population 0 fn2-core))
        (t
         (b* (((mv taken owner generation fn2-core)
@@ -62,7 +64,7 @@
              ((unless (and (eq reserved :ok) (equal complete 1))) (mv :reservation 0 fn2-core))
              ((mv parked fn2-core) (fn2-lrw-park 0 b0 n0 b1 n1 b2 n2 kind owner generation fn2-core))
              ((unless (eq parked :parked)) (mv parked 0 fn2-core))
-             ((mv code count fn2-core) (fn2-lrw-pressure (1- remaining) fn2-core)))
+             ((mv code count fn2-core) (fn2-lrw-pressure (1- remaining) t fn2-core)))
          (mv code (+ 1 count) fn2-core)))))
 (defun fn2-lrw-source-stage (hold fuel fn2-core)
  (declare (xargs :stobjs fn2-core :verify-guards nil :measure (nfix fuel)))
@@ -97,10 +99,10 @@
  (declare (xargs :stobjs (fn2-core fn2-sim fn2-own) :verify-guards nil))
  (b* (((mv produced fn2-core fn2-sim fn2-own) (fn2-clc-produce-held fn2-core fn2-sim fn2-own))
       ((unless (and (eq produced :held) (fn2-core-wfp fn2-core) (fn2-clc-published-held-p fn2-core)
-                    (fn2-clc-full-live-source-p fn2-core) (fn2-lrw-cold-room-p fn2-core)))
+                    (fn2-clc-full-live-source-p fn2-core)))
        (mv nil fn2-core fn2-sim fn2-own))
       (population (fn2-machine-connection-count *fn2-cns-admission-ordinal* fn2-core))
-      ((mv pressured actors fn2-core) (fn2-lrw-pressure population fn2-core))
+      ((mv pressured actors fn2-core) (fn2-lrw-pressure population nil fn2-core))
       ((unless (and (eq pressured :pressured) (posp actors) (<= actors population)
                     (not (fn2-lrw-cold-room-p fn2-core)))) (mv nil fn2-core fn2-sim fn2-own))
       ((mv begun fn2-core) (fn2-checkpoint-live-catalog-begin-op fn2-core))
