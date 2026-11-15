@@ -117,7 +117,9 @@
    ((assoc-eq fn rows) (mv nil rows))
    ((eq fn boundary) (mv nil (acons fn '(:effect t :boundary t) rows)))
    ((fn2-effect-shape-leaf-p fn leaves world)
-    (mv nil (acons fn (list :effect nil :leaf-contract (cdr (assoc-eq fn leaves))) rows)))
+    (mv nil (acons fn (list :effect nil :leaf-contract (cdr (assoc-eq fn leaves))
+                            :leaf-formula (getpropc (fn2-decl-get :lemma (cdr (assoc-eq fn leaves)))
+                                                   'untranslated-theorem nil world)) rows)))
    ((assoc-eq fn leaves) (mv (list :invalid-leaf-contract fn) rows))
    ((fn2-effect-queue-use-p fn world) (mv (list :native-queue-outside-boundary fn) rows))
    ((fn2-effect-core-lens fn world)
@@ -194,6 +196,66 @@
  (declare (xargs :verify-guards nil))
  (if (equal (len vals) 1) (car vals) (list :tuple vals)))
 
+; Reconstitute nested-STOBJ-LET borrowing before emitting ordinary bindings.
+; A borrowed child may be used only until the next whole-core operation.
+; The matching generated writeback closes a mutable borrow; a read borrow
+; exports scalar values and leaves the parent untouched. Escaping/overlapping
+; borrows are refused rather than emitted as illegal child getter LETs.
+(defun fn2-effect-borrow-prefix (stages)
+ (declare (xargs :verify-guards nil))
+ (if (or (atom stages)
+         (member-eq 'fn2-core (fn2-lower-vars (cadar stages))))
+     (mv nil stages)
+  (mv-let (prefix rest) (fn2-effect-borrow-prefix (cdr stages))
+   (mv (cons (car stages) prefix) rest))))
+(defun fn2-effect-stage-vars (stages)
+ (declare (xargs :verify-guards nil))
+ (if (atom stages) nil
+  (union-eq (caar stages) (fn2-effect-stage-vars (cdr stages)))))
+(defun fn2-effect-stage-free-vars (stages tail)
+ (declare (xargs :verify-guards nil))
+ (if (atom stages) (fn2-lower-vars tail)
+  (union-eq (fn2-lower-vars (cadar stages))
+            (set-difference-eq (fn2-effect-stage-free-vars (cdr stages) tail)
+                               (caar stages)))))
+(defun fn2-effect-block (stages tail world fuel)
+ (declare (xargs :verify-guards nil :measure (nfix fuel)))
+ (cond ((zp fuel) (mv :emission-budget nil))
+       ((atom stages) (mv nil tail))
+       (t
+  (let* ((vars (caar stages)) (call (cadar stages))
+         (registry (fn2-core-child-registry world))
+         (reader (and (consp call) (assoc-eq (car call) registry))))
+   (if (not reader)
+       (if (and (consp call) (assoc-eq (car call) (fn2-product-writers registry)))
+           (mv :unpaired-nested-writeback nil)
+       (mv-let (err rest) (fn2-effect-block (cdr stages) tail world (1- fuel))
+        (mv err (if (equal (len vars) 1)
+                    `(let ((,(car vars) ,call)) (declare (ignorable ,@vars)) ,rest)
+                  `(mv-let ,vars ,call (declare (ignorable ,@vars)) ,rest)))))
+    (let* ((child (fn2-core-child-property reader :stobj))
+           (writer (car (rassoc-equal child (fn2-product-writers registry)))))
+     (mv-let (prefix rest) (fn2-effect-borrow-prefix (cdr stages))
+      (let* ((writep (and (consp rest)
+                         (equal (car rest) (list '(fn2-core) (list writer child 'fn2-core)))))
+             (after (if writep (cdr rest) rest))
+             (exports (intersection-eq (remove-eq child (fn2-effect-stage-vars prefix))
+                                       (fn2-effect-stage-free-vars after tail)))
+             (results (append exports (and writep (list child)))))
+       (cond
+        ((not (and (equal vars (list child)) (equal (cdr call) '(fn2-core))))
+         (mv :nested-getter-abi nil))
+        ((member-eq child (fn2-effect-stage-free-vars after tail))
+         (mv :escaping-nested-child nil))
+        ((or (not results) (member-eq 'fn2-core exports))
+         (mv :unsupported-nested-producer nil))
+        (t
+         (mv-let (err producer)
+          (fn2-effect-block prefix (fn2-arms-mvx results) world (1- fuel))
+          (mv-let (err2 consumer) (fn2-effect-block after tail world (1- fuel))
+           (mv (or err err2)
+            `(stobj-let ((,child ,call)) ,results ,producer ,consumer))))))))))))))
+
 (mutual-recursion
  (defun fn2-effect-compile (term env rows boundary replacement world counter fuel)
   (declare (xargs :verify-guards nil :measure (nfix fuel)))
@@ -224,9 +286,11 @@
            (mv-let (vars final) (fn2-product-bindings flat n2)
             (mv-let (ir rest) (fn2-product-rebind lir vars nil)
              (declare (ignore rest))
-             (mv (or err e1 e2 e3 e4 e5 (and mismatch :branch-mv-shape))
-              (append stages (list (list (append vars (list *fn2-effect-carrier*))
-                `(if ,test ,(fn2-product-block left ltail) ,(fn2-product-block right rtail))))) ir final)))))))))))
+             (mv-let (e6 lbody) (fn2-effect-block left ltail world fuel)
+              (mv-let (e7 rbody) (fn2-effect-block right rtail world fuel)
+               (mv (or err e1 e2 e3 e4 e5 e6 e7 (and mismatch :branch-mv-shape))
+                (append stages (list (list (append vars (list *fn2-effect-carrier*))
+                  `(if ,test ,lbody ,rbody)))) ir final)))))))))))))
    ((member-eq (car term) '(return-last wormhole-eval apply$))
     (mv (list :unsupported-control (car term)) nil nil counter))
    (t
@@ -315,6 +379,35 @@
     :teeth (,(fn2-columns-sym theorem "-POSITIVE") ,(fn2-columns-sym theorem "-NEGATIVE"))
     :doc "The selected actual implementation and its generated reference callback preserve every original scalar result and the complete core/FIFO representation relation.")))
 
+(mutual-recursion
+ (defun fn2-effect-source-graph (fn rows seen fuel)
+  (declare (xargs :verify-guards nil :measure (nfix fuel)))
+  (cond ((zp fuel) (mv :reuse-graph-budget seen))
+        ((or (assoc-eq fn seen) (not (assoc-eq fn rows))) (mv nil seen))
+        (t (fn2-effect-source-graph-list
+             (fn2-decl-get :calls (cdr (assoc-eq fn rows))) rows
+             (acons fn (cdr (assoc-eq fn rows)) seen) (1- fuel)))))
+ (defun fn2-effect-source-graph-list (fns rows seen fuel)
+  (declare (xargs :verify-guards nil :measure (nfix fuel)))
+  (cond ((atom fns) (mv nil seen)) ((zp fuel) (mv :reuse-graph-budget seen))
+   (t (mv-let (err next) (fn2-effect-source-graph (car fns) rows seen (1- fuel))
+        (if err (mv err next)
+         (fn2-effect-source-graph-list (cdr fns) rows next (1- fuel))))))))
+(defun fn2-effect-admitted-image (fn world)
+ (declare (xargs :verify-guards nil))
+ (list :body (getpropc fn 'unnormalized-body nil world)
+       :formals (getpropc fn 'formals nil world)
+       :inputs (getpropc fn 'stobjs-in nil world)
+       :outputs (getpropc fn 'stobjs-out nil world)
+       :guard (getpropc fn 'guard t world)
+       :event (getpropc fn 'absolute-event-number nil world)))
+(defun fn2-effect-reuse-p (stored expected lifted world)
+ (declare (xargs :verify-guards nil))
+ (and stored (equal (fn2-decl-get :source stored) expected)
+      (equal (fn2-decl-get :admitted stored) (fn2-effect-admitted-image lifted world))
+      (equal (fn2-decl-get :whole-row stored)
+             (cdr (assoc-eq (fn2-columns-sym lifted "-WHOLE-RESULT")
+                            (table-alist 'fn2-squares world))))))
 (defun fn2-effect-definition-events (fn row rows boundary replacement relation world)
  (declare (xargs :verify-guards nil))
  (let* ((formals (fn2-decl-get :formals row)) (inputs (fn2-decl-get :inputs row))
@@ -323,22 +416,40 @@
   (mv-let (err stages ir counter)
    (fn2-effect-compile body (fn2-effect-env formals inputs) rows boundary replacement world 0 100000)
    (mv-let (err2 tail) (fn2-effect-tail ir)
-    (let ((problem
-           (or err err2 (and (not (fn2-effect-output-shape-p ir outs)) :result-mv-abi)
-               (and (function-symbolp lifted world) (list :existing-generated-function lifted))
-               (and (intersection-eq (fn2-effect-generated-names counter)
-                       (union-eq formals (fn2-lower-vars body))) :generated-variable-capture))))
-     (if problem (mv (list fn problem) nil)
-      (mv nil
-       `((defun ,lifted (,@formals ,*fn2-effect-carrier*)
-           (declare (xargs :stobjs (fn2-core) :verify-guards nil
-                           :guard ,(fn2-lower-source-form (fn2-decl-get :guard row))
-                           ,@(and measure (list :measure (fn2-lower-source-form measure)))))
-           ,(fn2-product-block stages tail))
-         ,(fn2-effect-whole-event fn lifted row relation world)
-         (table fn2-reference-effect-lowered ',fn
-          ',(append row (list :generated lifted :boundary boundary :replacement replacement
-                             :whole (fn2-columns-sym lifted "-WHOLE-RESULT"))))))))))))
+    (mv-let (emission-error emitted-body) (fn2-effect-block stages tail world 100000)
+     (mv-let (graph-error graph) (fn2-effect-source-graph fn rows nil 100000)
+      (let* ((problem
+              (or err err2 emission-error graph-error
+                  (and (not (fn2-effect-output-shape-p ir outs)) :result-mv-abi)
+                  (and (intersection-eq (fn2-effect-generated-names counter)
+                          (union-eq formals (fn2-lower-vars body))) :generated-variable-capture)))
+             (definition
+              `(defun ,lifted (,@formals ,*fn2-effect-carrier*)
+                (declare (xargs :stobjs (fn2-core) :verify-guards nil
+                          :guard ,(fn2-lower-source-form (fn2-decl-get :guard row))
+                          ,@(and measure (list :measure (fn2-lower-source-form measure)))))
+                ,emitted-body))
+             (whole (fn2-effect-whole-event fn lifted row relation world))
+             (source (list :definition definition :whole whole :graph graph
+                           :boundary boundary :replacement replacement :relation relation
+                           :boundary-image (fn2-effect-admitted-image boundary world)
+                           :replacement-image (fn2-effect-admitted-image replacement world)))
+             (stored (cdr (assoc-eq fn (table-alist 'fn2-reference-effect-lowered world)))))
+       (cond (problem (mv (list fn problem) nil))
+             ((function-symbolp lifted world)
+              (if (fn2-effect-reuse-p stored source lifted world) (mv nil nil)
+               (mv (list fn :stale-generated-function lifted) nil)))
+             (t
+              (mv nil
+               (list definition whole
+                `(make-event
+                  (value
+                   (list 'table 'fn2-reference-effect-lowered '(quote ,fn)
+                    (list 'quote
+                     (list :source ',source :generated ',lifted
+                           :admitted (fn2-effect-admitted-image ',lifted (w state))
+                           :whole-row (cdr (assoc-eq ',(fn2-columns-sym lifted "-WHOLE-RESULT")
+                                                   (table-alist 'fn2-squares (w state))))))))))))))))))))
 ; Validate non-effectful core wrappers as well. They remain shared, but
 ; cannot conceal raw core aliases or native value-context reads behind a
 ; helper that the effectful root calls. Registered lenses/contracts are
