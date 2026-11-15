@@ -4,7 +4,7 @@ import json,sys,unittest
 ROOT=Path(__file__).resolve().parents[1]
 sys.path.insert(0,str(ROOT/'tools'))
 import lisp_rewrite as lr
-from replacement_bank_live_rewrite import project,project_receipt
+from replacement_bank_live_rewrite import project,project_receipt,project_predecessor_geometry
 DATA=json.loads((ROOT/'tools/fixtures/replacement-bank-live-source.json').read_text())
 
 def form(text, name):
@@ -14,6 +14,21 @@ def form(text, name):
     return text[n.start:n.end]
 
 class ReplacementBanks(unittest.TestCase):
+    def test_predecessor_geometry_uses_same_all_rows_helper(self):
+        before=(ROOT/'tools/fixtures/replacement-bank-predecessor-before.lisp').read_text()
+        after=project_predecessor_geometry(before)
+        self.assertEqual(project_predecessor_geometry(after),after)
+        self.assertIn('(fn2-run-installed-row-count',after)
+        self.assertIn('(include-book "run-installed-geometry")',after)
+        a=lr.match('(defun fn2-checkpoint-predecessor-rows ?*args)',lr.parse(before).forms)[0].node
+        b=lr.match('(defun fn2-checkpoint-predecessor-rows ?*args)',lr.parse(after).forms)[0].node
+        for i in (1,2,3):
+            x=a.items[i];y=b.items[i]
+            self.assertEqual(before[x.start:x.end],after[y.start:y.end])
+        # E=1 is not silently reduced to the old one-bank capacity.
+        geometry=(ROOT/'books/run-installed-geometry.lisp').read_text()
+        self.assertIn('(+ resident (* 2 capacity))',geometry)
+
     def test_exact_named_replay_and_idempotence(self):
         for book,before in DATA['before'].items():
             current=(ROOT/'books'/(book+'.lisp')).read_text()

@@ -1,0 +1,6 @@
+(in-package "ACL2")
+(defun fn2-checkpoint-predecessor-rows (profile)
+ (declare (xargs :guard t))
+ (+ (nfix (fn2-b-capacity :identity-overlays *fn2-idc-overlays-default* profile))
+    (nfix (fn2-b-capacity :identity-runs 64 profile))
+    (nfix (fn2-b-capacity :extent-slots 16 profile))))
