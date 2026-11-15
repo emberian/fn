@@ -5,4 +5,6 @@
  (fn2-checkpoint-member-fields-type-readonly-removal-check)
  :rule-classes nil
  :hints (("Goal" :in-theory
-          (enable fn2-checkpoint-member-fields-type-readonly-removal-check))))
+          (union-theories
+           '((:definition fn2-checkpoint-member-fields-type-readonly-removal-check))
+           (executable-counterpart-theory :here)))))
