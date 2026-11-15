@@ -9,6 +9,8 @@
 (in-package "ACL2")
 (include-book "overlay")
 (fn2-book-layer :c)
+; Exact existing lower-bound probe budget, shared with source work bounds.
+(defconst *fn2-ov-search-steps* 40)
 
 ; Dispatch arms over schema rows (NAME . ROW): one case arm per schema id.
 ; Level 0 selects the entry layout, a positive level the index layout.
@@ -904,7 +906,7 @@
     (declare (xargs :stobjs (fn2-overlays fn2-overlay-index fn2-fields fn2-pool) :guard (fn2-ra-ov-guard)))
     (b* (((unless (and (natp o) (< o (fn2-overlays-rows fn2-overlays)))) (mv :bounds 0 :end fn2-fields))
          ((mv code pos fn2-fields)
-          (fn2-ov-search 40 0 (fn2-overlays-count o fn2-overlays) o eb qbase qk qs qg fn2-overlays fn2-overlay-index fn2-fields fn2-pool))
+          (fn2-ov-search *fn2-ov-search-steps* 0 (fn2-overlays-count o fn2-overlays) o eb qbase qk qs qg fn2-overlays fn2-overlay-index fn2-fields fn2-pool))
          ((unless (eq code :ok)) (mv code pos :end fn2-fields))
          ((mv code order fn2-fields) (fn2-ov-order o pos eb qbase qk qs qg fn2-overlays fn2-overlay-index fn2-fields fn2-pool)))
      (mv code pos order fn2-fields)))
