@@ -983,7 +983,28 @@
     "actual_BT_domain_fixture": "UNRUN; queued after actual BT + current predicate provider",
     "full_FETCH_cancel_and_native": "UNRUN",
     "RAW50bb": "UNPROVED; adds selected SOURCES-ROWS getter to actual guard hint; original runtime969 unchanged",
-    "RAW157": "UNPROVED; exact canonical requested observation frame before RAW-STEP, original2015 opaque hint restored; owner pilot active"
+    "RAW157": {
+      "status": "whole book UNPROVED; partial source pilot only",
+      "source": "157965aef17c6322fe2eee5ae7adc5bc9b41b58a",
+      "requested_frame": {
+        "outcome": "PASS",
+        "seconds": 0.11,
+        "steps": 62
+      },
+      "RAW_STEP_guard": {
+        "outcome": "PASS",
+        "seconds": 1.27,
+        "steps": 75622
+      },
+      "NEXT_CHILDREN_guard": {
+        "outcome": "first refusal at original time limit",
+        "seconds": 20.01,
+        "steps": 183696
+      },
+      "record_claim": "NONE; current137 not certified",
+      "raw_log": "/tmp/served-157-first-refusal-raw.txt",
+      "resource_outcome": "Owner reports all handles/scope gone and2Gi released"
+    }
   },
   "enum_fragment_evidence": {
     "donor": "2ebbb5164",
@@ -994,7 +1015,7 @@
     "source": "cc73111c5f326fbc0cd5938670fa040b9c87ddad",
     "book": "books/columns-observation-frames.lisp",
     "scope": "One requested distinct-field unconditional getter-over-setter equality; no global observation matrix or guard premise change",
-    "status": "SOURCE ONLY until actual pilot; previous135 closure remains exact and excludes new RAW/helper."
+    "status": "Requested pair admitted in diagnostic pilot; RAW_STEP guard passed, next guard refused. No current-key helper/RAW record claim."
   },
   "closure_plan": {
     "RAW": 137,
