@@ -6,12 +6,15 @@
 ; producer premise; it is NOT a live semantic lookup or adoption activation.
 (in-package "ACL2")
 (include-book "checkpoint-live-publication-support")
-(include-book "column-snapshot-support")
-(make-event (cons 'progn (fn2-test-column-snapshot-events 'fn2-run-loads (w state))))
-(make-event (cons 'progn (fn2-test-column-snapshot-events 'fn2-run-cursors (w state))))
-(make-event (cons 'progn (fn2-test-column-snapshot-events 'fn2-checkpoint-summary (w state))))
-(make-event (cons 'progn (fn2-test-column-snapshot-events 'fn2-checkpoint-summary-leases (w state))))
-(make-event (cons 'progn (fn2-test-column-snapshot-events 'fn2-pool (w state))))
+ ; Destination-current prerequisites (not supplied by this5d-based lane):
+;42d9281ae live-catalog +assemblyC events/boot summary provider;
+;0e18a52b0 live-cbase +assemblyC events;5064aafc2 live-install,
+;manifest installed-row/summary replacement fields +assemblyC events.
+;Their actual lower functions must be materialized before assembly-init.
+(include-book "../books/checkpoint-live-install")
+(include-book "core-snapshot-support")
+(defcost fn2-tal-stale-harvest-op :child fn2-run-load-harvest :answers t
+ :tables (fn2-core-run-loads fn2-core-run-load-ops))
 (defcost fn2-tal-actor-miss-owner-op :child fn2-c-actor-tx-owner :answers t
  :tables (fn2-core-succ-txns fn2-core-succ-slots fn2-core-run-cursors fn2-core-run-loads fn2-core-checkpoint-summary-leases fn2-core-c-source-readers))
 ; Test-only core projections invoke the actual canonical physical children.
@@ -24,7 +27,7 @@
  :tables (fn2-core-run-loads fn2-core-run-cursors fn2-core-boot-config fn2-core-fc fn2-core-fc-context fn2-core-b3 fn2-core-fields fn2-core-pool fn2-core-digests))
 (make-event
  (mv-let (err events) (fn2-run-loader-core-face-events
-  '(fn2-checkpoint-live-catalog-begin-op fn2-checkpoint-live-catalog-step-op fn2-checkpoint-live-cbase-step-op
+  '(fn2-tal-stale-harvest-op fn2-checkpoint-live-catalog-begin-op fn2-checkpoint-live-catalog-step-op fn2-checkpoint-live-cbase-step-op
     fn2-checkpoint-live-replace-begin-op fn2-checkpoint-live-replace-install-step-op
     fn2-tal-bound-bind-op fn2-tal-bound-read-op fn2-tal-bound-step-op fn2-tal-actor-miss-owner-op) (w state))
   (if err (er soft 'fn2-tal-physical "~@0" err) (value (cons 'progn events)))))
@@ -59,9 +62,18 @@
 ; executor harvest still route the real pin/map/borrow cleanup and AUTH wake.
 (defun fn2-tal-sector (c fn2-core fn2-sim fn2-own)
  (declare (xargs :stobjs (fn2-core fn2-sim fn2-own) :verify-guards nil))
- (b* (((mv code op gen fn2-core) (fn2-tal-bound-read-op c 4096 fn2-core))
-      ((unless (eq code :ok)) (mv nil fn2-core fn2-sim fn2-own))
-      (fn2-own (fn2-own-observe-issue op fn2-core fn2-own))
+ (b* (((mv oldop oldgen) (stobj-let ((fn2-run-loads (fn2-core-run-loads fn2-core))) (o g)
+       (mv (fn2-run-loads-op-slot c fn2-run-loads) (fn2-run-loads-op-gen c fn2-run-loads)) (mv o g)))
+      ((mv code op gen fn2-core) (fn2-tal-bound-read-op c 4096 fn2-core))
+      ((unless (eq code :ok)) (mv nil nil fn2-core fn2-sim fn2-own))
+      ; Replay only a receipt produced by this very job's previous real read.
+      (before-stale (fn2-test-core-snapshot fn2-core))
+      ((mv stale fn2-core) (if (posp oldgen)
+       (fn2-tal-stale-harvest-op oldop oldgen 0 *fn2-event-read-result*
+        *fn2-outcome-done* *fn2-reason-none* *fn2-commit-unit-bytes* 0 0 fn2-core)
+       (mv :ok fn2-core)))
+      (stale-kept (and (eq stale :ok) (equal before-stale (fn2-test-core-snapshot fn2-core))))
+      (reused (and (posp oldgen) (equal oldop op) (< oldgen gen)))
       (pinned (stobj-let ((fn2-extents (fn2-core-extents fn2-core)) (fn2-alloc-edges (fn2-core-alloc-edges fn2-core))
                          (fn2-run-loads (fn2-core-run-loads fn2-core))) (pinned)
        (let* ((e (floor (fn2-run-loads-unit c fn2-run-loads) *fn2-storage-extent-units*)) (edge (fn2-b-read-pin-edge op fn2-extents)))
@@ -77,29 +89,41 @@
       ((mv taken fn2-core fn2-sim fn2-own) (fn2-sim-take-prefix 1 0 fn2-core fn2-sim fn2-own))
       ((mv done fn2-core fn2-sim fn2-own) (fn2-sim-complete op *fn2-fault-none* 1 fn2-core fn2-sim fn2-own))
       ((mv harvested & & & & fn2-core) (fn2-exec-harvest fn2-core))
+      (before-duplicate (fn2-test-core-snapshot fn2-core))
+      ((mv duplicate fn2-core) (fn2-tal-stale-harvest-op op gen 0 *fn2-event-read-result*
+       *fn2-outcome-done* *fn2-reason-none* *fn2-commit-unit-bytes* 0 0 fn2-core))
+      (duplicate-kept (and (eq duplicate :ok) (equal before-duplicate (fn2-test-core-snapshot fn2-core))))
       (settled (stobj-let ((fn2-run-loads (fn2-core-run-loads fn2-core)) (fn2-run-load-ops (fn2-core-run-load-ops fn2-core))
-                          (fn2-extents (fn2-core-extents fn2-core)) (fn2-alloc-edges (fn2-core-alloc-edges fn2-core))) (settled)
+                          (fn2-extents (fn2-core-extents fn2-core)) (fn2-alloc-edges (fn2-core-alloc-edges fn2-core))
+                          (fn2-ops (fn2-core-ops fn2-core))) (settled)
        (let ((e (floor (fn2-run-loads-unit c fn2-run-loads) *fn2-storage-extent-units*)))
         (and (equal (fn2-run-loads-pending c fn2-run-loads) 0)
              (equal (fn2-run-loads-phase c fn2-run-loads) *fn2-run-load-phase-copy*)
              (equal (fn2-run-load-ops-live op fn2-run-load-ops) 0)
+             (posp gen) (posp c)
+             (equal (fn2-run-load-ops-generation op fn2-run-load-ops) gen)
+             (equal (fn2-run-load-ops-cursor op fn2-run-load-ops) c)
+             ; Live quiescence permits historical routing coordinates; cold
+             ; initialization still demands genuinely zeroed unused rows.
+             (fn2-run-load-readiness-op-quiescent-p op fn2-run-load-ops fn2-ops)
+             (not (fn2-run-load-readiness-op-row-p op fn2-run-load-ops fn2-ops))
              (equal (fn2-extents-outstanding-io e fn2-extents) 0)
              (equal (fn2-alloc-edges-state (fn2-b-read-pin-edge op fn2-extents) fn2-alloc-edges) *fn2-alloc-edge-state-free*))) settled)))
-  (mv (and pinned (eq premature :pending) release-kept (equal taken 1) done (equal harvested 1) settled
-       (eq (fn2-check-own fn2-core fn2-own) :pass)) fn2-core fn2-sim fn2-own)))
+  (mv (and stale-kept duplicate-kept pinned (eq premature :pending) release-kept (equal taken 1) done (equal harvested 1) settled
+       (eq (fn2-check-own fn2-core fn2-own) :pass)) reused fn2-core fn2-sim fn2-own)))
 (defun fn2-tal-physical-drive (fuel c fn2-core fn2-sim fn2-own)
  (declare (xargs :stobjs (fn2-core fn2-sim fn2-own) :verify-guards nil :measure (nfix fuel)))
- (if (zp fuel) (mv nil 0 fn2-core fn2-sim fn2-own)
+ (if (zp fuel) (mv nil 0 0 fn2-core fn2-sim fn2-own)
   (b* ((phase (stobj-let ((fn2-run-loads (fn2-core-run-loads fn2-core))) (phase) (fn2-run-loads-phase c fn2-run-loads) phase)))
-   (cond ((equal phase *fn2-run-load-phase-ready*) (mv t 0 fn2-core fn2-sim fn2-own))
+   (cond ((equal phase *fn2-run-load-phase-ready*) (mv t 0 0 fn2-core fn2-sim fn2-own))
          ((equal phase *fn2-run-load-phase-read*)
-          (b* (((mv read fn2-core fn2-sim fn2-own) (fn2-tal-sector c fn2-core fn2-sim fn2-own))
-               ((unless read) (mv nil 0 fn2-core fn2-sim fn2-own))
-               ((mv good n fn2-core fn2-sim fn2-own) (fn2-tal-physical-drive (1- fuel) c fn2-core fn2-sim fn2-own)))
-           (mv good (+ 1 n) fn2-core fn2-sim fn2-own)))
+          (b* (((mv read reused fn2-core fn2-sim fn2-own) (fn2-tal-sector c fn2-core fn2-sim fn2-own))
+               ((unless read) (mv nil 0 0 fn2-core fn2-sim fn2-own))
+               ((mv good n reused-count fn2-core fn2-sim fn2-own) (fn2-tal-physical-drive (1- fuel) c fn2-core fn2-sim fn2-own)))
+           (mv good (+ 1 n) (+ reused-count (if reused 1 0)) fn2-core fn2-sim fn2-own)))
          (t (b* (((mv step fn2-core) (fn2-tal-bound-step-op c 4096 fn2-core)))
              (if (member-eq step '(:more :need-read :ready))
-              (fn2-tal-physical-drive (1- fuel) c fn2-core fn2-sim fn2-own) (mv nil 0 fn2-core fn2-sim fn2-own))))))))
+              (fn2-tal-physical-drive (1- fuel) c fn2-core fn2-sim fn2-own) (mv nil 0 0 fn2-core fn2-sim fn2-own))))))))
 (defun fn2-txn-auth-loader-physical-unit-body (fn2-core fn2-sim fn2-own)
  (declare (xargs :stobjs (fn2-core fn2-sim fn2-own) :verify-guards nil))
  (b* (((mv produced fn2-core fn2-sim fn2-own) (fn2-clc-produce-held fn2-core fn2-sim fn2-own))
@@ -141,7 +165,7 @@
       ((mv refused fn2-core) (fn2-run-page-bind c kind id gen fn2-core))
       (kept (equal before (fn2-tal-physical-snapshot fn2-core)))
       ((mv bound fn2-core) (fn2-tal-bound-bind-op c kind id gen history incarnation fn2-core))
-      ((mv read sectors fn2-core fn2-sim fn2-own) (fn2-tal-physical-drive 20000 c fn2-core fn2-sim fn2-own))
+      ((mv read sectors reused-count fn2-core fn2-sim fn2-own) (fn2-tal-physical-drive 20000 c fn2-core fn2-sim fn2-own))
       (nonempty (stobj-let ((fn2-run-loads (fn2-core-run-loads fn2-core)) (fn2-fields (fn2-core-fields fn2-core))
                            (fn2-run-cursors (fn2-core-run-cursors fn2-core))) (nonempty)
        (let ((base (* 128 (fn2-run-loads-checker c fn2-run-loads))))
@@ -155,7 +179,7 @@
        (and (equal (fn2-run-loads-phase c fn2-run-loads) *fn2-run-load-phase-idle*)
             (equal (fn2-run-loads-windows c fn2-run-loads) 0)
             (equal (fn2-run-cursors-phase c fn2-run-cursors) *fn2-run-cursor-phase-idle*)) clean)))
-  (mv (and H (eq no-receipt :source) owner-kept (eq refused :source) kept (eq bound :need-read) read (equal sectors *fn2-storage-extent-units*) nonempty (eq released :ok) clean
+  (mv (and H (eq no-receipt :source) owner-kept (eq refused :source) kept (eq bound :need-read) read (posp reused-count) (equal sectors *fn2-storage-extent-units*) nonempty (eq released :ok) clean
        (not (fn2-core-stopped-p fn2-core))) fn2-core fn2-sim fn2-own)))
 (assert-event (with-local-stobj fn2-core (with-local-stobj fn2-sim (with-local-stobj fn2-own
  (mv-let (good fn2-core fn2-sim fn2-own) (fn2-txn-auth-loader-physical-unit-body fn2-core fn2-sim fn2-own) good)))))
