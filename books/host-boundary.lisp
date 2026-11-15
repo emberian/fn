@@ -8,6 +8,8 @@
 (include-book "assembly-attach")
 (include-book "terminal-values")
 (include-book "host-ops")
+; Native TLS calls the guarded transport controller and its ownership ledger.
+(include-book "tls-transport-reservation")
 
 (local (in-theory (enable fn2-core-wfp)))
 
@@ -40,8 +42,7 @@
              (input (or (equal kind *fn2-action-receive*)
                         (equal kind *fn2-action-read*)
                         (equal kind *fn2-action-entropy*)))
-             (output (or (equal kind *fn2-action-send*)
-                         (equal kind *fn2-action-write*)))
+             (output (fn2-op-output-kindp kind))
              (slot (fn2-ops-range-slot op fn2-ops))
              (rgen (fn2-ops-range-gen op fn2-ops))
              (off (fn2-ops-range-off op fn2-ops))
@@ -107,6 +108,14 @@
           ((and pathp (not (fn2-host-listener-pathp path))) (mv :listener-path 0 0 nil))
           (t (mv :ok address port (and pathp path))))))
 
+(defun fn2-host-tls-settings (profile)
+ (declare (xargs :guard t))
+ (cond ((not (fn2-tls-profilep profile)) (mv :tls-profile nil nil 0 0 0 0 0))
+       ((not (fn2-tls-requested-p profile)) (mv :off nil nil 0 0 0 0 0))
+       (t (mv :ok (fn2-profile-get :tls-certificate profile) (fn2-profile-get :tls-key profile)
+              (fn2-tls-setting :tls-window 16384 profile) *fn2-tls-io-bytes* *fn2-tls-minimum-version* (fn2-codec-seed-capacity profile)
+              (fn2-tls-setting :tls-handshake-turns 65536 profile)))))
+
 ; The sticky stop (fn2-core-stopped-p): the adapter's test before it touches
 ; a core it did not just turn.
 (defun fn2-host-stopped-p (fn2-core)
@@ -164,4 +173,4 @@
   '(fn2-host-post-result fn2-host-post-accept-result fn2-host-post-clock fn2-host-post-signal
     fn2-host-count-stray fn2-host-stray fn2-host-outbox-ack fn2-host-op-finish
     fn2-host-outbox-queued fn2-host-outbox-peek fn2-host-action
-    fn2-host-op-span fn2-host-result fn2-host-listener-pathp fn2-host-listener-bind fn2-host-stopped-p fn2-host-stop-reason fn2-host-stop-details fn2-host-boot-refusal-class fn2-host-boot-refusal fn2-host-idle-deadline) (w state)))
+    fn2-host-op-span fn2-host-result fn2-host-listener-pathp fn2-host-listener-bind fn2-host-tls-settings fn2-host-tls-span fn2-host-tls-stage-span fn2-host-tls-next-turn fn2-host-stopped-p fn2-host-stop-reason fn2-host-stop-details fn2-host-boot-refusal-class fn2-host-boot-refusal fn2-host-idle-deadline) (w state)))

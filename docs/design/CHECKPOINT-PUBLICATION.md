@@ -617,3 +617,87 @@ and then wait for that same transaction. The master now drains first without
 holding working leases, and never parks on a pool wait while C is held.
 Retirement debt is captured at HELD and marked seen only after successful
 publication; a transient failed TRY therefore remains eligible when room returns.
+
+The revised map roundtrip probe at `c524dc32e` source-admitted the repaired
+readonly map-entry contracts, then refused the actual map packer's guard:
+the encoder's field-capacity bound was not carried through the reader's
+unchanged-row-count theorem. The 20-book attempt used eight cached parents
+and eleven explicit source parents; total ACL2 loading cost was 94.91 seconds
+and 12,973,186 prover steps. The failing guard itself used 0.06 seconds and
+8,463 steps. Restore-reader loading and all target malformed-source and
+roundtrip controls remained unrun. This clears the earlier source-reader
+admission obstruction, not the end-to-end map recovery obligation.
+
+A subsequent retained source session at `40de976fb`, with the proof-only
+changes committed in `5e59fd022` and `0d1d55fcf`, admitted the actual map/arena
+packers and restore reader. The unchanged roundtrip assertion then passed
+after `94382fa6f` declared two unused reserve outputs: actual allocator
+reserve/commit/retire state was packed and read back, with its original stale,
+corruption and FIFO controls. The fixture runs ACL2 logical controls; it is
+not a host crash/recovery or complete checkpoint-selection witness.
+
+The missing-source-shape ground theorem still refused after 0.33 seconds and
+90,203 prover steps; the corresponding missing-source-type theorem was not
+sent. A proof refusal does not establish either malformed-source witness.
+The restore book's 56.44-second, 13,236,134-step source admission also leaves
+a proof-cost defect. The retained session was explicitly stopped and its
+three recorded lifecycle PIDs were absent. No certificate, full recovery,
+reclamation activation or FREE claim follows from these results.
+
+The shared semantic-page decoder was source-admitted in the 24-book `e7c67652f`
+closure with the proof-only row-frame hint committed in `d9959fe21`. This
+covers the actual header/child-Ref predicates, header reader guards, carrier
+frames, reader-context preservation, exact decoded-field/code observations,
+and retained entry-count implication. The seven remaining contract forms
+used 0.21 seconds and 17,516 prover steps after the source-parent load.
+It does not authenticate a cold candidate by itself: the composing binder
+must retain and check the authenticated descriptor and allocation-map
+identity, including replacement of a descriptor in the same candidate slot.
+
+The runtime publication child now retains two fence-owned bank occupants and
+one displaced-candidate debt. Each identity includes the catalog row, checkpoint,
+history, incarnation and all 32 bytes of the descriptor Ref's expected hash.
+The existing BEGIN snapshots those hash words from the actual installed
+candidate; only the matching successful covering Fence transfers that attempt
+into its bank. Replacing an occupied bank first retains its complete old
+identity as debt. Unrelated, failed and ambiguous completions preserve the old
+occupants and attempted identity; no completion may overwrite existing debt.
+Both lower publication BEGIN and actual writer rearm refuse outstanding debt.
+
+This is the first candidate-lifetime connection, not candidate recycling.
+There is deliberately no debt-clear operation. The next bounded post-C-release
+teardown must exclude both banks, persist retirements of exact owned construction
+allocations through the existing journal producer, remove only this candidate's
+root/source edges, and preserve other candidates and read pins. Borrowed sources
+are not retired by this operation. Cold boot must reconstruct both authenticated
+bank occupants and retained installation evidence before teardown is authorized;
+runtime fields do not establish cold authority. Bounded debt inspection/retirement scheduling now exists; terminal
+catalog reuse remains unimplemented. Activation and FREE remain disabled.
+
+The master now reaches a bounded displaced-candidate inspection after normal
+C snapshot release. Each call checks one actual physical row under the retained
+latest lifecycle/candidate owner, published descriptor identity and exact old
+debt identity. An owned role0..5 construction may be eligible only with its exact
+victim source edge, its counted exact six-root edges and no nonvictim durable
+protector. Physical read/I/O pins remain untouched; role6 journal tickets,
+borrowed sources and shared/archive-protected extents are not retirement input.
+The candidate and B lifecycle provenance remain retained across this traversal.
+
+The actual submit wrapper rechecks the full eligibility gate and calls the
+existing ordinary retirement producer in the same ACL2 call. That producer
+binds the actual containing batch and installs the allocator retirement intent
+before txn admission. New durable protectors are refused during the asynchronous
+wait and after persisted retirement; physical pins may still complete. Exact
+accepted/refused settlement releases the staging lease, while uncertainty
+retains it and the intent. The master tracks that one lease separately from the
+already released working27 bundle, including the uncertain-acquisition path.
+
+Only exact accepted batch/event settlement reaches the edge-drop arm. That arm
+checks the same owner/debt, exact allocation and actual RETIRE_PENDING retirement
+commit, then invokes the existing allocator edge-drop for the victim's source
+edge alone. It preserves all six roots, borrowed/shared/archive references,
+other candidates and transient pins. Submit, settlement consumption and edge
+drop have explicit zero-budget no-effect branches. EOF retains debt and catalog
+state: archive/ancestry reachability must be settled before root/source teardown
+or catalog reuse. The source actor and primitive controls remain unadmitted;
+activation and allocator FREE remain disabled.

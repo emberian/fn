@@ -125,6 +125,17 @@
     (xredeem-pass-alone "XREDEEM pass pw" ,*fn2-cau-reader* :none (nil 0 0) :command :none ("482 redemption commands issued out of sequence") t)
     (xredeem-arity "XREDEEM code" ,*fn2-cau-reader* :none (nil 0 0) :command :none (,*fn2-cau-s501*) t)
     (starttls "STARTTLS" ,*fn2-cau-reader* :none (nil 0 0) :command :none ("580 can not initiate TLS negotiation") nil)
+    ; An eligible request transfers to admission without prematurely writing382.
+    (starttls-admission "STARTTLS" ,(logior *fn2-cau-reader* *fn2-nntp-state-tls-available*)
+     :none (nil 0 0) :upgrading :none () t)
+    (starttls-active "STARTTLS" ,(logior *fn2-cau-reader* *fn2-nntp-state-tls-available* *fn2-nntp-state-tls*)
+     :none (nil 0 0) :command :none ("502 TLS negotiation is unavailable in this state") t)
+    (starttls-authenticated "STARTTLS" ,(logior *fn2-cau-authed* *fn2-nntp-state-tls-available*)
+     :none (nil 0 0) :command :none ("502 TLS negotiation is unavailable in this state") t)
+    (starttls-compressed "STARTTLS" ,(logior *fn2-cau-reader* *fn2-nntp-state-tls-available* *fn2-nntp-state-compressed*)
+     :none (nil 0 0) :command :none ("502 TLS negotiation is unavailable in this state") t)
+    (starttls-arity "STARTTLS extra" ,(logior *fn2-cau-reader* *fn2-nntp-state-tls-available*)
+     :none (nil 0 0) :command :none (,*fn2-cau-s501*) nil)
     ; NNT-054, H's ruling: COMPRESS only after authentication.
     (compress-anon "COMPRESS DEFLATE" ,*fn2-cau-reader* :none (nil 0 0) :command :none ("480 authentication required") nil)
     ; RFC 3977 section 7.6, RFC 6048: LIST variants and their arguments.
@@ -204,7 +215,8 @@
 (defconst *fn2-cau-grammar-misses*
   (fn2-cau-check *fn2-cau-fixtures* :grammar))
 (assert-event
- (subsetp-eq '(mode-stream-reader authinfo-pass authinfo-user-arity authinfo-sasl xredeem-pass
+ (subsetp-eq '(starttls-admission starttls-active starttls-authenticated starttls-compressed
+               mode-stream-reader authinfo-pass authinfo-user-arity authinfo-sasl xredeem-pass
                list-overview-arg list-headers-bad list-active-bad hdr-colon xhdr-colon xpat-bad
                zarticle-upper zarticle-short)
              *fn2-cau-grammar-misses*)

@@ -85,6 +85,34 @@ def CanonicalExportEval (program : CanonicalProgram) (domain primitiveDomain : C
     readTerm definition.syntaxFuel definition.body = some body ∧
     CanonicalEval program domain primitiveDomain (definition.formals.zip values) body v
 
+/-- A separately exported guard, kept distinct from the logical body. The
+packet emitter must bind both records to the same canonical function subject. -/
+structure CanonicalGuard where
+  formals : List String
+  guard : Object
+  syntaxFuel : Nat
+
+abbrev CanonicalGuards := String → Option CanonicalGuard
+
+/-- Guard admission uses a finite canonical derivation, including every reached
+callee and primitive domain. An emitted dispatch equation cannot answer a guard.
+This is a domain layer, not ACL2 primitive or executable correspondence. -/
+def CanonicalGuardEval (program : CanonicalProgram) (guards : CanonicalGuards)
+    (domain primitiveDomain : CallDomain) (name : String) (values : List Val) : Prop :=
+  ∃ definition guard term result,
+    program name = some definition ∧ guards name = some guard ∧
+    guard.formals = definition.formals ∧ values.length = definition.formals.length ∧
+    readTerm guard.syntaxFuel guard.guard = some term ∧
+    CanonicalEval program domain primitiveDomain (guard.formals.zip values) term result ∧
+    result.truthy = true
+
+/-- Every admitted call satisfies its exact canonical guard. Nonempty root
+admission and invariant preservation remain separate obligations. -/
+def DomainRespectsGuards (program : CanonicalProgram) (guards : CanonicalGuards)
+    (domain primitiveDomain : CallDomain) : Prop :=
+  ∀ name values, domain name values →
+    CanonicalGuardEval program guards domain primitiveDomain name values
+
 /-- Reuse a callee's body evaluation, not merely its emitted dispatch equation. -/
 theorem canonical_call_of_export {program domain primitiveDomain env name actuals values v}
     (notIf : name ≠ "IF") (notReturnLast : name ≠ "RETURN-LAST")
@@ -106,6 +134,43 @@ def CanonicalBodyCorrect (program : CanonicalProgram) (domain primitiveDomain : 
     emitted name values = some v ∧
     evalExport definition.syntaxFuel definition.body emitted (definition.formals.zip values) = .ok v ∧
     post values v
+
+/-- Compose a proved callee at the actual evaluated arguments. The SAME result
+has a closed body derivation, the actual emitted interpreter equation, and the
+callee postcondition. A CNS child-result postcondition can therefore establish
+the next child's admission facts without replacing either dispatch or its body.
+The non-native premise is essential: native dispatch precedes emitted dispatch. -/
+theorem canonical_call_correct {program domain primitiveDomain emitted name post
+    env actuals values fuel}
+    (notIf : name ≠ "IF") (notReturnLast : name ≠ "RETURN-LAST")
+    (notNative : nativeCall name values = none)
+    (arguments : CanonicalEvalArgs program domain primitiveDomain env actuals values)
+    (interpretedArguments : actuals.mapM (fun term => eval emitted env term fuel) = .ok values)
+    (admitted : domain name values)
+    (callee : CanonicalBodyCorrect program domain primitiveDomain emitted name post) :
+    ∃ result,
+      CanonicalEval program domain primitiveDomain env (.app name actuals) result ∧
+      eval emitted env (.app name actuals) (fuel + 1) = .ok result ∧ post values result := by
+  obtain ⟨definition, result, resolved, arity, closed, dispatched, interpreted, ensures⟩ :=
+    callee values admitted
+  refine ⟨result, canonical_call_of_export notIf notReturnLast arguments notNative closed, ?_, ensures⟩
+  apply eval_app notIf notReturnLast interpretedArguments
+  simp only [notNative, dispatched]
+
+/-- Carry a child's shared result through a lexical lambda continuation. The
+continuation must establish its own closed derivation and interpreter equation
+at that result; no equality of a postcondition name or receipt substitutes for it.
+Arity is explicit even though the executable interpreter itself uses zip. -/
+theorem canonical_lambda_correct {program domain primitiveDomain emitted env
+    formals body actuals values fuel result}
+    (arguments : CanonicalEvalArgs program domain primitiveDomain env actuals values)
+    (interpretedArguments : actuals.mapM (fun term => eval emitted env term fuel) = .ok values)
+    (arity : values.length = formals.length)
+    (continuation : CanonicalEval program domain primitiveDomain (formals.zip values) body result)
+    (interpretedContinuation : eval emitted (formals.zip values) body fuel = .ok result) :
+    CanonicalEval program domain primitiveDomain env (.lam formals body actuals) result ∧
+      eval emitted env (.lam formals body actuals) (fuel + 1) = .ok result :=
+  ⟨.lam arguments arity continuation, eval_lam interpretedArguments interpretedContinuation⟩
 
 /-- A native call is adequate only when its canonical object interpretation
 agrees on every admitted represented input. No missing primitive defaults true. -/

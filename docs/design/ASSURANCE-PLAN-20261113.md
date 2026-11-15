@@ -162,6 +162,20 @@ Every remaining trusted edge is named in the resulting public claim, never hidde
 behind a generic green status. Independent review traces a representative guarantee
 from wire input through persistence and recovery to the wire response.
 
+The [completion gate](ASSURANCE-COMPLETION-GATE.md) now selects required product
+claims from the live `fn2-squares` world, proposes packet-bound checkers with their
+own qualified current closures, and reconstructs the existing semantic requirement
+inventory. The first independent typed descriptor specification now joins actual
+`fn2-machine-run` and public `fn2-turn` proofs by exact formula/domain/ABI checks
+and proof replay, rejecting coherent weakening of claim and proof. Nine local
+source/tempfile controls pass. New ACL2 checker/join admission and current-closure
+certification remain pending; complete semantic discharge and extracted actual
+theorem/constraint dependency closure remain unimplemented. The command reports incomplete, including when build
+or generated-candidate regression passes. Its catalogue retains the unbound
+persistent-reclamation and missing served-progress requirements. These diagnostics
+do not implement those capabilities or establish actual caller-to-specification
+refinement.
+
 ## Coordination
 
 Keep existing native, TLS, compiler and timer work moving; do not discard useful
@@ -309,3 +323,29 @@ Root owns timely integration and targeted composition gates. Source implementati
 proceeds concurrently; expensive proof jobs require named allocations. No lane
 may replace a missing served feature with a model-only completion claim. The
 authorization review block remains explicit and is not reassigned around review.
+
+## Integrated consumer follow-through — 2026-11-14
+
+Root 0be7f6d51 integrates the fixed-array numeric contracts, actual child
+declarations, chain-helper quantity/effect contracts and issuance-index bridge.
+Both callback proof refusals were repaired against unchanged runtime bodies and
+public contracts. Exact canonical callback record qualification is in progress;
+prior core103 qualification belongs to source4400cb995, not this new closure.
+
+Root efe958a82 integrates canonical call/lambda composition. The author's Lean
+controls passed; the current CNS timer-clear instantiation and guard/body packet
+connection remain assigned to recover_lean. No served semantic promotion follows
+from integrating this generic rule.
+
+Root e892441f7 integrates actual raw-startup function binding checks. All29 focused
+host/native-program tests pass on the integrated tree; source audit finds0 issues
+in5 raw sources. The composed qualified --load check remains assigned to
+sol_assumption_assurance with convergence coordinating the necessary artifacts.
+
+Reclamation remains on its own implementation branch. Its actual allocator and
+reservation controls do not qualify the larger checkpoint/boot/upload changes.
+Current priorities are drain-before-working-reservation composition, repaired
+map roundtrip admission, authenticated selected-base restoration, ordered suffix
+replay, dynamic maintenance headroom, and commit-directory/candidate lifetime.
+FREE and checkpoint activation remain disabled until their connected prerequisites
+are implemented and verified. Authorization remains an independent release blocker.

@@ -3,7 +3,7 @@
 ; or live allocator mutation is performed by these operations.
 (in-package "ACL2")
 (include-book "std/util/bstar" :dir :system)
-(include-book "checkpoint-restore-map")
+(include-book "checkpoint-restore-reach")
 (include-book "checkpoint-restore-arena")
 (include-book "machine-arms")
 (fn2-book-layer :b)
@@ -19,8 +19,8 @@
          (t :state)))))
 (defcost fn2-boot-checkpoint-root-state :child fn2-boot-checkpoint-root-state-children :answers t)
 (defcost fn2-boot-checkpoint-root-sector :child fn2-checkpoint-restore-reader-sector :answers t)
-(defcost fn2-boot-checkpoint-root-page-check :child fn2-checkpoint-restore-reader-page-step :answers t :bytes 4096
- :tables (fn2-core-checkpoint-restore-reader fn2-core-fc fn2-core-fc-context fn2-core-b3 fn2-core-fields fn2-core-pool fn2-core-digests))
+(defcost fn2-boot-checkpoint-root-page-check :child fn2-checkpoint-restore-reach-page-step :answers t :bytes 4096
+ :tables (fn2-core-checkpoint-restore-reader fn2-core-checkpoint-restore-reach fn2-core-fc fn2-core-fc-context fn2-core-b3 fn2-core-fields fn2-core-pool fn2-core-digests))
 (defcost fn2-boot-checkpoint-root-padding :child fn2-checkpoint-restore-reader-padding-step :answers t :bytes 4096
  :tables (fn2-core-checkpoint-restore-reader))
 (defcost fn2-boot-checkpoint-root-next :child fn2-checkpoint-restore-reader-next-page :answers t :bytes 32
@@ -29,7 +29,7 @@
 (defcost fn2-boot-checkpoint-root-reserve :answers t
  :tables (fn2-core-pool fn2-core-control) :effects ((:acquire (:storage-window))))
 (defcost fn2-boot-checkpoint-root-begin :answers t :bytes 512
- :tables (fn2-core-checkpoint-restore-reader fn2-core-checkpoint-restore-map-control fn2-core-checkpoint-restore-arena-control fn2-core-fc fn2-core-pool))
+ :tables (fn2-core-checkpoint-restore-reader fn2-core-checkpoint-restore-map-control fn2-core-checkpoint-restore-arena-control fn2-core-checkpoint-restore-reach fn2-core-checkpoint-restore-reach-control fn2-core-fc fn2-core-pool))
 (defcost fn2-boot-checkpoint-root-mark :answers (:ok :state)
  :tables (fn2-core-boot-config))
 
@@ -42,13 +42,13 @@
     (append
      (fn2-arms-op-face-events 'fn2-boot-checkpoint-root-state 'fn2-boot-checkpoint-root-state-children (w state))
      (fn2-arms-op-face-events 'fn2-boot-checkpoint-root-sector 'fn2-checkpoint-restore-reader-sector (w state))
-     (fn2-arms-op-face-events 'fn2-boot-checkpoint-root-page-check 'fn2-checkpoint-restore-reader-page-step (w state))
+     (fn2-arms-op-face-events 'fn2-boot-checkpoint-root-page-check 'fn2-checkpoint-restore-reach-page-step (w state))
      (fn2-arms-op-face-events 'fn2-boot-checkpoint-root-padding 'fn2-checkpoint-restore-reader-padding-step (w state))
      (fn2-arms-op-face-events 'fn2-boot-checkpoint-root-next 'fn2-checkpoint-restore-reader-next-page (w state))
-     (fn2-arms-op-face-events 'fn2-boot-checkpoint-map-consume 'fn2-checkpoint-restore-map-consume (w state))
+     (fn2-arms-op-face-events 'fn2-boot-checkpoint-map-consume 'fn2-checkpoint-restore-reach-map-consume (w state))
      (fn2-arms-op-face-events 'fn2-boot-checkpoint-map-finish 'fn2-checkpoint-restore-map-finish (w state))
      (fn2-arms-op-face-events 'fn2-boot-checkpoint-map-check 'fn2-checkpoint-restore-map-check (w state))
-     (fn2-arms-op-face-events 'fn2-boot-checkpoint-arena-consume 'fn2-checkpoint-restore-arena-consume (w state))
+     (fn2-arms-op-face-events 'fn2-boot-checkpoint-arena-consume 'fn2-checkpoint-restore-reach-arena-consume (w state))
      (fn2-arms-op-face-events 'fn2-boot-checkpoint-arena-target 'fn2-checkpoint-restore-arena-target (w state))
      (fn2-arms-op-face-events 'fn2-boot-checkpoint-arena-finish 'fn2-checkpoint-restore-arena-finish (w state)))))))
 
@@ -82,14 +82,16 @@
                 (fn2-extents (fn2-core-extents fn2-core)) (fn2-pool (fn2-core-pool fn2-core))
                 (fn2-checkpoint-restore-reader (fn2-core-checkpoint-restore-reader fn2-core))
                 (fn2-checkpoint-restore-map (fn2-core-checkpoint-restore-map fn2-core))
+                (fn2-checkpoint-restore-reach (fn2-core-checkpoint-restore-reach fn2-core))
+                (fn2-checkpoint-restore-reach-control (fn2-core-checkpoint-restore-reach-control fn2-core))
                 (fn2-checkpoint-restore-map-control (fn2-core-checkpoint-restore-map-control fn2-core))
                 (fn2-checkpoint-restore-arena (fn2-core-checkpoint-restore-arena fn2-core))
                 (fn2-checkpoint-restore-arena-marks (fn2-core-checkpoint-restore-arena-marks fn2-core))
                 (fn2-checkpoint-restore-arena-control (fn2-core-checkpoint-restore-arena-control fn2-core)) (fn2-fc (fn2-core-fc fn2-core)))
-     (code fn2-checkpoint-restore-reader fn2-checkpoint-restore-map-control fn2-checkpoint-restore-arena-control fn2-fc fn2-pool)
+     (code fn2-checkpoint-restore-reader fn2-checkpoint-restore-map-control fn2-checkpoint-restore-arena-control fn2-checkpoint-restore-reach fn2-checkpoint-restore-reach-control fn2-fc fn2-pool)
      (b* (((unless (and (< 2 (fn2-fc-rows fn2-fc))
                         (eq (fn2-pool-workspace-code slot gen *fn2-boot-kind* id ogen fn2-pool) :ok)))
-           (mv :bounds fn2-checkpoint-restore-reader fn2-checkpoint-restore-map-control fn2-checkpoint-restore-arena-control fn2-fc fn2-pool))
+           (mv :bounds fn2-checkpoint-restore-reader fn2-checkpoint-restore-map-control fn2-checkpoint-restore-arena-control fn2-checkpoint-restore-reach fn2-checkpoint-restore-reach-control fn2-fc fn2-pool))
           ; Singleton resets are bounded. The extent ledger is NOT cleared:
           ; exact intake overwrites every row before this candidate can close.
           (fn2-checkpoint-restore-reader (fn2-checkpoint-restore-reader-init 1 fn2-checkpoint-restore-reader))
@@ -100,14 +102,21 @@
             (fn2-checkpoint-restore-arena-begin c fn2-checkpoint-restore-map fn2-checkpoint-restore-map-control
               fn2-checkpoint-restore-arena fn2-checkpoint-restore-arena-marks fn2-checkpoint-restore-arena-control)
             (mv :ok fn2-checkpoint-restore-arena-control)))
-          ((unless (eq arena-code :ok)) (mv arena-code fn2-checkpoint-restore-reader fn2-checkpoint-restore-map-control fn2-checkpoint-restore-arena-control fn2-fc fn2-pool))
+          ((unless (eq arena-code :ok)) (mv arena-code fn2-checkpoint-restore-reader fn2-checkpoint-restore-map-control fn2-checkpoint-restore-arena-control fn2-checkpoint-restore-reach fn2-checkpoint-restore-reach-control fn2-fc fn2-pool))
           (fn2-fc (fn2-fc-reset 2 fn2-fc))
           ((mv code fn2-pool) (fn2-pool-reset slot gen *fn2-boot-kind* id ogen fn2-pool))
-          ((unless (eq code :ok)) (mv code fn2-checkpoint-restore-reader fn2-checkpoint-restore-map-control fn2-checkpoint-restore-arena-control fn2-fc fn2-pool))
+          ((unless (eq code :ok)) (mv code fn2-checkpoint-restore-reader fn2-checkpoint-restore-map-control fn2-checkpoint-restore-arena-control fn2-checkpoint-restore-reach fn2-checkpoint-restore-reach-control fn2-fc fn2-pool))
           ((mv code fn2-checkpoint-restore-reader)
            (fn2-checkpoint-restore-reader-begin c role slot gen 2 256 *fn2-boot-kind* id ogen
-             fn2-checkpoints fn2-checkpoint-refs fn2-checkpoint-bytes fn2-extents fn2-pool fn2-checkpoint-restore-reader)))
-      (mv code fn2-checkpoint-restore-reader fn2-checkpoint-restore-map-control fn2-checkpoint-restore-arena-control fn2-fc fn2-pool))
+             fn2-checkpoints fn2-checkpoint-refs fn2-checkpoint-bytes fn2-extents fn2-pool fn2-checkpoint-restore-reader))
+          ((unless (eq code :ok))
+           (mv code fn2-checkpoint-restore-reader fn2-checkpoint-restore-map-control fn2-checkpoint-restore-arena-control fn2-checkpoint-restore-reach fn2-checkpoint-restore-reach-control fn2-fc fn2-pool))
+          ((mv code fn2-checkpoint-restore-reach fn2-checkpoint-restore-reach-control fn2-checkpoint-restore-map-control)
+           (if (equal role 2)
+               (fn2-checkpoint-restore-reach-begin fn2-checkpoint-restore-reader fn2-checkpoints fn2-checkpoint-refs fn2-checkpoint-bytes fn2-checkpoint-restore-map fn2-checkpoint-restore-map-control fn2-checkpoint-restore-reach fn2-checkpoint-restore-reach-control)
+             (mv (if (fn2-checkpoint-restore-reach-current-p fn2-checkpoints fn2-checkpoint-refs fn2-checkpoint-bytes fn2-checkpoint-restore-map fn2-checkpoint-restore-map-control fn2-checkpoint-restore-reach-control) :ok :source)
+                 fn2-checkpoint-restore-reach fn2-checkpoint-restore-reach-control fn2-checkpoint-restore-map-control))))
+      (mv code fn2-checkpoint-restore-reader fn2-checkpoint-restore-map-control fn2-checkpoint-restore-arena-control fn2-checkpoint-restore-reach fn2-checkpoint-restore-reach-control fn2-fc fn2-pool))
      (mv code fn2-core))))
   (fn2-core-preserves fn2-boot-checkpoint-root-begin (c role slot gen id ogen fn2-core) :position 1 :rows nil)
   (defun fn2-boot-checkpoint-root-mark (c role id fn2-core)

@@ -7,7 +7,8 @@
 (fn2-book-layer :b)
 (defcolumns fn2-checkpoint-restore-reader
  ((phase (:enum fn2-checkpoint-restore-reader-phase (:idle :page :entries :padding :advance :done :uncertain)))
-  (candidate :u32) (role :u8) (ordinal :u60) (entry-ordinal :u60)
+  (candidate :u32) (source-checkpoint :u60) (source-cut-commit :u60) (source-cut-event :u60)
+  (source-history :u60) (source-incarnation :u60) (role :u8) (ordinal :u60) (entry-ordinal :u60)
   (total :u60) (total-known :bool) (first :u60) (count :u60) (padding :u32)
   (retired-head :u32) (retired-count :u60)
   (slot :u32) (gen :u60) (owner-kind :u8) (owner-slot :u32) (owner-gen :u60)
@@ -15,13 +16,13 @@
   (unit :u60) (epoch :u60) (allocation :u60)
   (has-next :bool) (next-unit :u60) (next-epoch :u60) (next-allocation :u60))
  :extra-fields
- ((fn2-checkpoint-restore-reader-hash :type (array (unsigned-byte 8) (64)) :initially 0
-   :why "Current expected page hash and authenticated next-page hash; neither aliases checker scratch.")))
+ ((fn2-checkpoint-restore-reader-hash :type (array (unsigned-byte 8) (96)) :initially 0
+   :why "Current/next page hashes and immutable descriptor hash; none aliases checker scratch.")))
 
 (defun fn2-checkpoint-restore-reader-root-hash (left dst src fn2-checkpoint-bytes fn2-checkpoint-restore-reader)
  (declare (xargs :stobjs (fn2-checkpoint-bytes fn2-checkpoint-restore-reader) :measure (nfix left)
   :guard (and (fn2-checkpoint-bytes-wfp fn2-checkpoint-bytes) (fn2-checkpoint-restore-reader-wfp fn2-checkpoint-restore-reader)
-              (natp left) (<= left 32) (natp dst) (<= (+ dst left) 32) (natp src)
+              (natp left) (<= left 32) (natp dst) (<= (+ dst left) 96) (natp src)
               (<= (+ src left) (fn2-checkpoint-bytes-rows fn2-checkpoint-bytes)))))
  (if (zp left) fn2-checkpoint-restore-reader
   (let ((fn2-checkpoint-restore-reader (update-fn2-checkpoint-restore-reader-hashi dst
@@ -81,8 +82,14 @@
                      (equal (mod unit *fn2-storage-extent-units*) 0)
                      (< (floor unit *fn2-storage-extent-units*) (fn2-extents-rows fn2-extents)))) (mv :reference fn2-checkpoint-restore-reader))
       (fn2-checkpoint-restore-reader (fn2-checkpoint-restore-reader-root-hash 32 0 (* 32 r) fn2-checkpoint-bytes fn2-checkpoint-restore-reader))
+      (fn2-checkpoint-restore-reader (fn2-checkpoint-restore-reader-root-hash 32 64 (* 192 c) fn2-checkpoint-bytes fn2-checkpoint-restore-reader))
       (fn2-checkpoint-restore-reader (fn2-checkpoint-restore-reader-put 0
-        (phase *fn2-checkpoint-restore-reader-phase-page*) (candidate c) (role role) (ordinal 0) (entry-ordinal 0)
+        (phase *fn2-checkpoint-restore-reader-phase-page*) (candidate c)
+        (source-checkpoint (fn2-checkpoints-checkpoint c fn2-checkpoints))
+        (source-cut-commit (fn2-checkpoints-cut-commit c fn2-checkpoints))
+        (source-cut-event (fn2-checkpoints-cut-event c fn2-checkpoints))
+        (source-history (fn2-checkpoints-history c fn2-checkpoints))
+        (source-incarnation (fn2-checkpoints-incarnation c fn2-checkpoints)) (role role) (ordinal 0) (entry-ordinal 0)
         (total (if (equal role 2) (fn2-extents-rows fn2-extents) 0)) (total-known (if (equal role 2) 1 0))
         (started 0) (slot slot) (gen gen) (owner-kind okind) (owner-slot oslot) (owner-gen ogen) (checker-row row) (field-base base)
         (unit unit) (epoch (fn2-checkpoint-refs-writer-epoch r fn2-checkpoint-refs))
@@ -123,6 +130,11 @@
       (off 0) (len *fn2-format-page-size*) (hash (fn2-digest-slot row *fn2-fc-hash*))
       ((unless (and (< c (fn2-checkpoints-rows fn2-checkpoints))
                      (equal (fn2-checkpoints-state c fn2-checkpoints) *fn2-checkpoint-state-checked*)
+                     (equal (fn2-checkpoint-restore-reader-source-checkpoint 0 fn2-checkpoint-restore-reader) (fn2-checkpoints-checkpoint c fn2-checkpoints))
+                     (equal (fn2-checkpoint-restore-reader-source-cut-commit 0 fn2-checkpoint-restore-reader) (fn2-checkpoints-cut-commit c fn2-checkpoints))
+                     (equal (fn2-checkpoint-restore-reader-source-cut-event 0 fn2-checkpoint-restore-reader) (fn2-checkpoints-cut-event c fn2-checkpoints))
+                     (equal (fn2-checkpoint-restore-reader-source-history 0 fn2-checkpoint-restore-reader) (fn2-checkpoints-history c fn2-checkpoints))
+                     (equal (fn2-checkpoint-restore-reader-source-incarnation 0 fn2-checkpoint-restore-reader) (fn2-checkpoints-incarnation c fn2-checkpoints))
                      (member-equal role '(2 5))
                      (< row (fn2-fc-rows fn2-fc)) (< row (fn2-fc-context-rows fn2-fc-context))
                      (fn2-b3-ready row fn2-b3 fn2-digests) (fn2-digest-rowp hash fn2-digests)

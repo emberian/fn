@@ -1,0 +1,46 @@
+{
+  "formula_hashes": {
+    "fn2-sim-native-finish-is-atomic": "5982be31414f1fcbb1ef0928b278abb23a1a1fe8aa268ce06bfc21f5b9e7738f",
+    "fn2-sim-physical-return-domain": "594d8df5c911ef30cf00692907f835c5025720372cf8e6e28dd0d5d9326015a3"
+  },
+  "qualification": "UNRUN: local scalar contracts, return-domain and guards, mutable Read/Write controls, atomic reproof, combined cancel/storage execution",
+  "root": "8ef3101fa2a27ccb2e78dd77e5d97465991f794e",
+  "roots": {
+    "sim/native-cut-program": {
+      "closure": 122,
+      "key": "32bc98149eb6f16c88fb278125f8875d876564b695059c6a091154e88823e6c3"
+    },
+    "tests/native-cut-binding-unit": {
+      "closure": 125,
+      "key": "85f78dfa3be4f46ce803655627e00b138873507b9c4f1970d7dbc79980703ab2"
+    }
+  },
+  "scope": "unadmitted source proof support; runtime bodies and theorem formulas unchanged",
+  "source_sha256": "7b88fb4a2390868c49bf248e088309bf13c264e2dfe401f81eb19688e33cca41",
+  "unchanged_existing_definitions": {
+    "fn2-sim-advance": "e339ccae47e750978ddfd21e5096f7c9672183428e90479fe403a763648dd762",
+    "fn2-sim-advance-flight": "9affe44a92d0b276924ecb13d969e23024cb121aeecf86b0664331fcf16de339",
+    "fn2-sim-advance-selected": "4edcb462cd3a79ca9ce363f3225f9b80239536323111bb61b99ed1e416a70906",
+    "fn2-sim-advance-with-clients": "ef35b540fbc199e863d0c14d1de88bb7d4a11957cdb0ab1609546b18413fc7d7",
+    "fn2-sim-client-drain": "c91d3eb0a0fa89a979151da4095c46d88a5c065ac43a5f31999d615cfc3f724c",
+    "fn2-sim-complete": "9102bbb1ab0cd851f3be64ff5b3be5c3aa2476207d8ae15962e80a2c80064dd5",
+    "fn2-sim-complete-result": "23f9839a93388f9eadd0f37c44ca47371f38960b2a53918c38f12797e4012284",
+    "fn2-sim-crash": "3a4c6e871d9650e417fb9f0df8eabfb72d227e79f2f2ef49271e1b60a1b890ad",
+    "fn2-sim-crash-flight-one": "e784e0a5a195b7a190ee97b3b05041dccaf99cd5c1b64daf711284dd39988d56",
+    "fn2-sim-crash-flight-writes": "b92575fb12a60336f40e4204b01776f499d701fc26f879e770445a93a898ec0c",
+    "fn2-sim-crash-state": "a3fbc2c99c0f7176f258bf7d731eac3db43347d476008b1153896341f1a0ac9d",
+    "fn2-sim-delay-flight": "c2192e7d524d396ea003803ebe80b7afdf5cd7789d9be53574f383de6316f472",
+    "fn2-sim-echo-accept": "b15ca421f1ef13f9eeedf8ec9e2bdb4f44d6ec474d2adaba3c6d2be61808590d",
+    "fn2-sim-native-cut": "4eaf5eeda7fe2493075f60d2521cdb24fc6143959acd186db43692e531d31de3",
+    "fn2-sim-native-post": "fabd1f9142e3713835d8cace1e7808363f07c9dc3d809d3c0ee4db4fc488b21d",
+    "fn2-sim-native-stage": "babda7c63167da8ec13c2f428ddf55b7b53dfb430ef0bfbcdca5263b585a5d39",
+    "fn2-sim-native-take-cut": "dd85cc83d3b3d2998545cf7ffe1c73af1608e1c069709c5966d2a7238df5f4e6",
+    "fn2-sim-post-clock": "921a8a88b2309e92f63104ebfc476016bcea5b3885acb0b0972c4442e1ffa0af",
+    "fn2-sim-save-return": "435fb36202a23f4835e110457eb74c81dec9274f2c01369bf9cf7c2ed83de7ef",
+    "fn2-sim-save-terminal": "9d80eb62c9a551a7dc2102a9c23ec739ec073a7eac8795d2603a6a656e288735",
+    "fn2-sim-saved-return": "a05bfed31d0d28ac6df36d2da34bb7f2655186fb7fdd0d560987ed65613e3122",
+    "fn2-sim-step-completion": "16d17d8cbc4551d2b6c06f090c06e962269c52a5072f008d1a2612ba6f72e9e0",
+    "fn2-sim-terminal-post": "3700390e85f557f899bd00292f0819b2001e7ea57ac47c13ef48ffa76a572fbe",
+    "fn2-sim-wake-first-p": "b7862a71c65ff147186877ee40e8930c20f220313276c46d55fb24fe89f903ed"
+  }
+}

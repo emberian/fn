@@ -218,8 +218,11 @@
              (fn2-sim-storage (update-fn2-storage-fence-owneri slot (+ 1 fence) fn2-sim-storage)))
         (mv :ok fn2-sim-storage)))))
 
-(defun fn2-storage-fence-complete (fence fail lie fn2-sim-storage)
-  (declare (xargs :stobjs fn2-sim-storage :guard (fn2-sim-storage-wfp fn2-sim-storage)
+; The same captured-image traversal can land a suffix before an error.
+; START=0 is the ordinary full-fence operation. A nonzero start always
+; reports Io: partial persistence never constitutes a successful barrier.
+(defun fn2-storage-fence-complete-from (fence fail lie start fn2-sim-storage)
+  (declare (xargs :stobjs fn2-sim-storage :guard (and (fn2-sim-storage-wfp fn2-sim-storage) (natp start))
                   :guard-hints (("Goal" :use ((:instance fn2-storage-find-fence-bounds
                                                (i 0) (owner (+ 1 fence)) (s fn2-sim-storage)))))))
   (let ((slot (fn2-storage-fence-slot-of fence fn2-sim-storage)))
@@ -227,9 +230,13 @@
       (let* ((failed (or fail (equal (fn2-storage-dead fn2-sim-storage) 1)))
              (fn2-sim-storage
               (if (or failed lie) fn2-sim-storage
-                (fn2-storage-fence-bytes 0 (* slot (fn2-sim-storage-rows fn2-sim-storage)) t fn2-sim-storage)))
+                (fn2-storage-fence-bytes start (* slot (fn2-sim-storage-rows fn2-sim-storage)) t fn2-sim-storage)))
              (fn2-sim-storage (update-fn2-storage-fence-owneri slot 0 fn2-sim-storage)))
-        (mv (if failed :io :ok) fn2-sim-storage)))))
+        (mv (if (or failed (not (equal start 0))) :io :ok) fn2-sim-storage)))))
+
+(defun fn2-storage-fence-complete (fence fail lie fn2-sim-storage)
+  (declare (xargs :stobjs fn2-sim-storage :guard (fn2-sim-storage-wfp fn2-sim-storage)))
+  (fn2-storage-fence-complete-from fence fail lie 0 fn2-sim-storage))
 
 ; A failed barrier leaves pending visible.  Passing revert=t models the other
 ; allowed reopening view (old durable bytes).  The adapter still reports Io;
@@ -370,6 +377,12 @@
   :specs (("-PRESERVES-TYPE" fn2-sim-storagep 1)
           ("-PRESERVES-WFP" fn2-sim-storage-wfp 1 :hyps ((fn2-sim-storage-wfp fn2-sim-storage)))
           ("-PRESERVES-ROWS" fn2-sim-storage-rows 1 :frame fn2-sim-storage :hints (("Goal" :in-theory (e/d (fn2-storage-fence-capture) (fn2-sim-storage-rows)))))))
+(fn2-sim-storage-preserves fn2-storage-fence-complete-from (fence fail lie start fn2-sim-storage) :position 1 :wfp-type nil
+  :hyps ((fn2-sim-storagep fn2-sim-storage) (fn2-sim-storage-wfp fn2-sim-storage) (natp start))
+  :hints (("Goal" :in-theory (enable fn2-storage-fence-complete-from)))
+  :specs (("-PRESERVES-TYPE" fn2-sim-storagep 1)
+          ("-PRESERVES-WFP" fn2-sim-storage-wfp 1 :hyps ((fn2-sim-storage-wfp fn2-sim-storage)))
+          ("-PRESERVES-ROWS" fn2-sim-storage-rows 1 :frame fn2-sim-storage :hints (("Goal" :in-theory (e/d (fn2-storage-fence-complete-from) (fn2-sim-storage-rows)))))))
 (fn2-sim-storage-preserves fn2-storage-fence-complete (fence fail lie fn2-sim-storage) :position 1 :wfp-type nil
   :hyps ((fn2-sim-storagep fn2-sim-storage) (fn2-sim-storage-wfp fn2-sim-storage) t)
   :hints (("Goal" :in-theory (enable fn2-storage-fence-complete)))

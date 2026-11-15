@@ -60,7 +60,7 @@ def lambda_certificates(body, defined, prefix, fuel=512):
     walk(body,fuel)
     return names,lines
 
-def inspect_core_certificate(src):
+def inspect_core_certificate(src, roots=None):
     """Read and select the existing core body closure without writing artifacts.
 
     Only the separately proved MEMBER-EQ-EXEC self recursion is admitted.
@@ -87,7 +87,12 @@ def inspect_core_certificate(src):
             if c==n and n=='MEMBER-EQ-EXEC':continue
             visit(c)
         active.pop()
-    for r in ROOTS:visit(r)
+    for r in (ROOTS if roots is None else roots):visit(r)
+    kd=decode(p[':KIND'])
+    if roots is not None:
+        if not roots:raise ValueError('empty selected core roots')
+        fs=[(f,d)for f,d in allfs if f.name in want]
+        return p,fs,allf,want,kd
     for op in decode(p[':OPERATIONS']):
         child=plist(op[1:])[':CALLEE']
         visit(str(op[0] if str(child)=='NIL' else child))
@@ -212,10 +217,13 @@ def cli(argv=None):
     import argparse
     parser=argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--inspect', action='store_true', help='inspect the selected closure without writing artifacts')
+    parser.add_argument('--root', action='append', help='inspect only this explicit function body closure (repeatable)')
     parser.add_argument('source', help='canonical export packet')
     args=parser.parse_args(argv)
+    if args.root and not args.inspect:
+        parser.error('--root currently requires --inspect; full core emission keeps its declared arm subjects')
     if args.inspect:
-        _,fs,_,_,_=inspect_core_certificate(args.source)
+        _,fs,_,_,_=inspect_core_certificate(args.source, args.root) if args.root else inspect_core_certificate(args.source)
         print('CORE CERTIFICATE INSPECTION',len(fs),'functions (selection only; no kernel gates run)')
         for f,_ in fs:print(f.name)
     else:

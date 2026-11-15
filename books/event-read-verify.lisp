@@ -37,12 +37,12 @@
                      (posp budget) (<= budget 4096)))
        (mv :state fn2-event-read fn2-journal-members fn2-fc fn2-fc-context fn2-b3 fn2-fields fn2-pool fn2-digests))
       ; Reuse the actual recovery context constructor, with this reader's
-      ; exclusive stripe and original physical journal identity. Current first
-      ; checkpoint history/incarnation are the writer's genesis pair (1,1).
+      ; exclusive stripe and the physical pair captured from the actual owned
+      ; checkpoint build before the read was issued.
       ; FRAME/SEAL kinds do not consume the anchor-only GEOMETRY digest.
       (fn2-fc-context (fn2-rec-context row (fn2-event-read-extent 0 fn2-event-read)
         (if (or semantic sealframe) 2 1) (fn2-event-read-epoch 0 fn2-event-read)
-        (fn2-event-read-allocation 0 fn2-event-read) commit hash (+ rootbase (- commit 1)) geometry fn2-fc-context))
+        (fn2-event-read-allocation 0 fn2-event-read) commit hash (+ rootbase (- commit 1)) geometry (fn2-event-read-history 0 fn2-event-read) (fn2-event-read-history-incarnation 0 fn2-event-read) fn2-fc-context))
       ((mv code fn2-fc fn2-b3 fn2-fields fn2-pool fn2-digests)
        (fn2-format-run (if semantic :seal :frame) nil row slot gen
          (if semantic (fn2-event-read-body-off 0 fn2-event-read) 0)

@@ -3,6 +3,7 @@
 (in-package "ACL2")
 (include-book "std/util/bstar" :dir :system)
 (include-book "checkpoint-restore-reader")
+(include-book "checkpoint-restore-reach-state")
 (fn2-book-layer :b)
 (defcolumns fn2-checkpoint-restore-map
  ((present :bool) (state :u8) (owner-kind :u8) (owner :u60)
@@ -10,9 +11,34 @@
   (visited :bool)))
 (defcolumns fn2-checkpoint-restore-map-control
  ((phase (:enum fn2-checkpoint-restore-map-phase (:idle :collect :complete :uncertain :validate :validated)))
-  (candidate :u32) (cursor :u32) (total :u32) (retired-head :u32) (retired-count :u32)
+  (reach-generation :u60) (candidate :u32) (source-checkpoint :u60) (source-cut-commit :u60) (source-cut-event :u60)
+  (source-history :u60) (source-incarnation :u60) (cursor :u32) (total :u32) (retired-head :u32) (retired-count :u32)
   (observed-retired :u32) (maximum-epoch :u60)
-  (walk-cursor :u32) (walked :u32) (last-retirement :u60)))
+  (walk-cursor :u32) (walked :u32) (last-retirement :u60))
+ :extra-fields
+ ((fn2-checkpoint-restore-map-control-descriptor :type (array (unsigned-byte 8) (32)) :initially 0
+   :why "Exact authenticated descriptor identity of this map intake, retained across FIFO validation.")))
+
+(defun fn2-checkpoint-restore-map-copy-source (i fn2-checkpoint-restore-reader fn2-checkpoint-restore-map-control)
+ (declare (xargs :stobjs (fn2-checkpoint-restore-reader fn2-checkpoint-restore-map-control)
+  :measure (nfix (- 32 (nfix i)))
+  :guard (and (fn2-checkpoint-restore-reader-wfp fn2-checkpoint-restore-reader)
+              (fn2-checkpoint-restore-map-control-wfp fn2-checkpoint-restore-map-control) (natp i) (<= i 32))))
+ (if (>= (nfix i) 32) fn2-checkpoint-restore-map-control
+  (let ((fn2-checkpoint-restore-map-control
+         (update-fn2-checkpoint-restore-map-control-descriptori i
+          (fn2-checkpoint-restore-reader-hashi (+ 64 i) fn2-checkpoint-restore-reader) fn2-checkpoint-restore-map-control)))
+   (fn2-checkpoint-restore-map-copy-source (+ i 1) fn2-checkpoint-restore-reader fn2-checkpoint-restore-map-control))))
+
+(defun fn2-checkpoint-restore-map-source-equal (i fn2-checkpoint-restore-reader fn2-checkpoint-restore-map-control)
+ (declare (xargs :stobjs (fn2-checkpoint-restore-reader fn2-checkpoint-restore-map-control)
+  :measure (nfix (- 32 (nfix i)))
+  :guard (and (fn2-checkpoint-restore-reader-wfp fn2-checkpoint-restore-reader)
+              (fn2-checkpoint-restore-map-control-wfp fn2-checkpoint-restore-map-control) (natp i) (<= i 32))))
+ (or (>= (nfix i) 32)
+  (and (equal (fn2-checkpoint-restore-map-control-descriptori i fn2-checkpoint-restore-map-control)
+              (fn2-checkpoint-restore-reader-hashi (+ 64 i) fn2-checkpoint-restore-reader))
+       (fn2-checkpoint-restore-map-source-equal (+ i 1) fn2-checkpoint-restore-reader fn2-checkpoint-restore-map-control))))
 
 ; Consume exactly the reader's retained current row. An ordinal supplied by a
 ; caller cannot skip coverage. The private ledger lets candidate investigation
@@ -42,6 +68,12 @@
                          (and (posp count) (< head total)))
                      (or (and (equal phase *fn2-checkpoint-restore-map-phase-idle*) (equal e 0))
                          (and (equal phase *fn2-checkpoint-restore-map-phase-collect*)
+                              (fn2-checkpoint-restore-map-source-equal 0 fn2-checkpoint-restore-reader fn2-checkpoint-restore-map-control)
+                              (equal (fn2-checkpoint-restore-reader-source-checkpoint 0 fn2-checkpoint-restore-reader) (fn2-checkpoint-restore-map-control-source-checkpoint 0 fn2-checkpoint-restore-map-control))
+                              (equal (fn2-checkpoint-restore-reader-source-cut-commit 0 fn2-checkpoint-restore-reader) (fn2-checkpoint-restore-map-control-source-cut-commit 0 fn2-checkpoint-restore-map-control))
+                              (equal (fn2-checkpoint-restore-reader-source-cut-event 0 fn2-checkpoint-restore-reader) (fn2-checkpoint-restore-map-control-source-cut-event 0 fn2-checkpoint-restore-map-control))
+                              (equal (fn2-checkpoint-restore-reader-source-history 0 fn2-checkpoint-restore-reader) (fn2-checkpoint-restore-map-control-source-history 0 fn2-checkpoint-restore-map-control))
+                              (equal (fn2-checkpoint-restore-reader-source-incarnation 0 fn2-checkpoint-restore-reader) (fn2-checkpoint-restore-map-control-source-incarnation 0 fn2-checkpoint-restore-map-control))
                               (equal e (fn2-checkpoint-restore-map-control-cursor 0 fn2-checkpoint-restore-map-control))
                               (equal candidate (fn2-checkpoint-restore-map-control-candidate 0 fn2-checkpoint-restore-map-control))
                               (equal total (fn2-checkpoint-restore-map-control-total 0 fn2-checkpoint-restore-map-control))
@@ -75,8 +107,14 @@
                           (fn2-checkpoint-restore-map-control-maximum-epoch 0 fn2-checkpoint-restore-map-control))))
       (fn2-checkpoint-restore-map (fn2-checkpoint-restore-map-put e (present 1) (state state) (owner-kind kind) (owner owner)
         (epoch epoch) (allocation allocation) (retirement retirement) (next-retired next) (visited 0)))
+      (fn2-checkpoint-restore-map-control (fn2-checkpoint-restore-map-copy-source 0 fn2-checkpoint-restore-reader fn2-checkpoint-restore-map-control))
       (fn2-checkpoint-restore-map-control (fn2-checkpoint-restore-map-control-put 0
-        (phase *fn2-checkpoint-restore-map-phase-collect*) (candidate candidate) (cursor (+ e 1)) (total total)
+        (phase *fn2-checkpoint-restore-map-phase-collect*) (candidate candidate)
+        (source-checkpoint (fn2-checkpoint-restore-reader-source-checkpoint 0 fn2-checkpoint-restore-reader))
+        (source-cut-commit (fn2-checkpoint-restore-reader-source-cut-commit 0 fn2-checkpoint-restore-reader))
+        (source-cut-event (fn2-checkpoint-restore-reader-source-cut-event 0 fn2-checkpoint-restore-reader))
+        (source-history (fn2-checkpoint-restore-reader-source-history 0 fn2-checkpoint-restore-reader))
+        (source-incarnation (fn2-checkpoint-restore-reader-source-incarnation 0 fn2-checkpoint-restore-reader)) (cursor (+ e 1)) (total total)
         (retired-head head) (retired-count count) (observed-retired seen) (maximum-epoch maximum)))
       (fn2-checkpoint-restore-reader (fn2-checkpoint-restore-reader-put 0 (entry-ordinal (+ e 1))
         (phase (if (equal (+ e 1) (+ (fn2-checkpoint-restore-reader-first 0 fn2-checkpoint-restore-reader)
@@ -110,11 +148,7 @@
   (mv :coverage fn2-checkpoint-restore-map-control)
   (mv :map-ready (fn2-checkpoint-restore-map-control-set-phase 0 *fn2-checkpoint-restore-map-phase-complete* fn2-checkpoint-restore-map-control))))
 
-(defcost fn2-boot-checkpoint-map-consume :child fn2-checkpoint-restore-map-consume
- :answers (:entry :state :coverage :fields :identity :retirement :bounds :format :extent :padding)
- :bytes *fn2-checkpoint-map-entry-width*
- :tables (fn2-core-checkpoint-restore-reader fn2-core-checkpoint-restore-map fn2-core-checkpoint-restore-map-control fn2-core-fields fn2-core-pool)
- :doc "Retain exactly the actual authenticated map entry before advancing its reader; never select or mutate the live allocator.")
+
 (defcost fn2-boot-checkpoint-map-finish :child fn2-checkpoint-restore-map-finish
  :answers (:coverage :map-ready)
  :tables (fn2-core-checkpoint-restore-reader fn2-core-checkpoint-restore-map fn2-core-checkpoint-restore-map-control)
@@ -195,3 +229,6 @@
          ("-MAP-ROWS" fn2-checkpoint-restore-map-rows 1 :frame fn2-checkpoint-restore-map)
          ("-CONTROL-TYPE" fn2-checkpoint-restore-map-controlp 2) ("-CONTROL-WFP" fn2-checkpoint-restore-map-control-wfp 2)
          ("-CONTROL-ROWS" fn2-checkpoint-restore-map-control-rows 2 :frame fn2-checkpoint-restore-map-control)))
+
+(fn2-checkpoint-restore-map-control-preserves fn2-checkpoint-restore-map-copy-source
+ (i fn2-checkpoint-restore-reader fn2-checkpoint-restore-map-control))

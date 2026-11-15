@@ -7,6 +7,7 @@
 ;;; enters the core only when fn2-turn harvests its result.
 (in-package "ACL2")
 (load "host/device.lisp")
+(load "host/tls.lisp")
 
 ;; Op record states.
 (defconstant +fn2-n-free+ 0)
@@ -18,6 +19,7 @@
   (state 0 :type fixnum) (gen 0) (kind 0 :type fixnum) (cap 0) (nonce 0)
   (address 0 :type fixnum) (len 0 :type fixnum) (target 0) (target-gen 0)
   (outcome 0) (reason 0) (count 0) (aux0 0) (aux1 0)
+  (tls-started nil) (tls-finished nil) (tls-count 0)
   (family :none) (port 0) (w0 0) (w1 0) (w2 0) (w3 0) (octets nil) (offset 0) (fua 0))
 
 ;; A capability: index 0 is the listener (its TCP socket, and the owner-only
@@ -25,10 +27,11 @@
 ;; capability, so the listener machine is the same for both); connections from 1.
 (defstruct fn2-ncap
   (fd -1 :type fixnum) (nonce 0) (family :none) (port 0) (w0 0) (w1 0) (w2 0) (w3 0)
-  (rx 0) (eof nil) (tx 0) (closed nil) (seq 0))
+  (rx 0) (eof nil) (tx 0) (closed nil) (seq 0) tls)
 
 (defstruct fn2-nhost
   core bytes ops caps mux (listen-port 0)
+  tls-config (tls-window 0) (tls-quantum 0) (tls-seed-capacity 0) (tls-turns 0)
   ;; Memory device for existing seeded sessions. An image session uses
   ;; STORAGE's FIFO worker instead; the memory table makes no durability claim.
   (device (make-hash-table))
@@ -125,8 +128,140 @@
 ;;; waiting (the simulator's zero-progress would-block); never a failure.
 (defun fn2-n-again-p (errno) (or (= errno 35) (= errno 11) (= errno 4)))
 
+(defun fn2-n-tls-op-p (op cap)
+ (or (= (fn2-nop-kind op) *fn2-action-tls-start*)
+     (and cap (fn2-ncap-tls cap)
+          (fn2-tls-transport-selected-p (fn2-nop-cap op) (fn2-ncap-nonce cap)
+                                        (fn2-native-tls-transport (fn2-ncap-tls cap)))
+          (or (= (fn2-nop-kind op) *fn2-action-receive*) (= (fn2-nop-kind op) *fn2-action-send*)))))
+(defun fn2-n-op-interest (op cap)
+ (if (fn2-n-tls-op-p op cap)
+     (if (and cap (fn2-ncap-tls cap)) (fn2-native-tls-interest (fn2-ncap-tls cap)) 1)
+   (if (= (fn2-nop-kind op) *fn2-action-send*) 4 1)))
+(defun fn2-n-tls-kick-p (op cap)
+ (and (fn2-n-tls-op-p op cap)
+      (or (not (fn2-nop-tls-started op))
+          (and cap (fn2-ncap-tls cap) (fn2-native-tls-kick (fn2-ncap-tls cap))))))
+(defun fn2-n-tls-work-p (host)
+ (loop for op across (fn2-nhost-ops host)
+       thereis (and (= (fn2-nop-state op) +fn2-n-waiting+)
+                    (fn2-n-tls-kick-p op (fn2-n-cap host op)))))
+
+(defun fn2-n-tls-handshake-ready (host slot cap)
+ (let* ((op (aref (fn2-nhost-ops host) slot)) (tls (fn2-ncap-tls cap)))
+  (unless (fn2-nop-tls-started op)
+   (multiple-value-bind (code ledger)
+       (fn2-tls-transport-start (fn2-nop-cap op) (fn2-ncap-nonce cap) slot (fn2-nop-gen op)
+         (fn2-nop-len op) (fn2-nhost-tls-seed-capacity host)
+         (fn2-nhost-tls-quantum host) (fn2-nhost-tls-turns host)
+         (fn2-nhost-tls-window host) (fn2-native-tls-transport tls))
+    (unless (eq code :ok)
+     (fn2-n-complete host slot :failed 0)
+     (return-from fn2-n-tls-handshake-ready nil))
+    (setf (fn2-native-tls-transport tls) ledger (fn2-nop-tls-started op) t)))
+  (multiple-value-bind (status kick interest)
+      (fn2-native-tls-handshake-step tls (fn2-ncap-fd cap) host
+        (fn2-nhost-bytes host) (fn2-nop-address op) (fn2-nop-cap op) (fn2-ncap-nonce cap) slot (fn2-nop-gen op))
+   (setf (fn2-native-tls-kick tls) kick (fn2-native-tls-interest tls) interest)
+   (case status
+    (:done
+     ;; The ledger's completion predicate releases the original RX loan only
+     ;; after copying its entire span. Owned staging survives for records.
+     (multiple-value-bind (code copied fed il io ol oo ledger)
+         (fn2-tls-transport-handoff (fn2-nop-cap op) (fn2-ncap-nonce cap) slot (fn2-nop-gen op)
+                                    (fn2-native-tls-transport tls))
+      (setf (fn2-native-tls-transport tls) ledger)
+      (if (eq code :ok)
+          (progn
+           (setf (fn2-native-tls-seed-length tls) copied
+                 (fn2-native-tls-seed-offset tls) fed
+                 (fn2-native-tls-input-length tls) il (fn2-native-tls-input-offset tls) io
+                 (fn2-native-tls-output-length tls) ol (fn2-native-tls-output-offset tls) oo)
+           (fn2-n-complete host slot :ok (fn2-nop-len op)))
+        (error "fn2 TLS: handoff epoch refused"))))
+    ((:ok :blocked :closing) nil)
+    (:failed (fn2-n-complete host slot :failed 0))
+    (otherwise (error "fn2 TLS: handshake observation or ownership refused"))))))
+
+(defun fn2-n-tls-ready (host slot cap)
+ "One bounded transport turn: at most one feed, drain/send, and SSL call."
+ (let* ((op (aref (fn2-nhost-ops host) slot)) (kind (fn2-nop-kind op))
+        (handshake (= kind *fn2-action-tls-start*)))
+  (unless (fn2-ncap-tls cap)
+   (unless (and handshake (fn2-nhost-tls-config host))
+    (fn2-n-complete host slot :failed 0)
+    (return-from fn2-n-tls-ready nil))
+
+   (setf (fn2-ncap-tls cap)
+         (fn2-native-tls-open (fn2-nhost-tls-quantum host) (fn2-nhost-tls-seed-capacity host)))
+   (unless (fn2-ncap-tls cap)
+    (fn2-n-complete host slot :failed 0)
+    (return-from fn2-n-tls-ready nil)))
+  (when handshake
+   (return-from fn2-n-tls-ready (fn2-n-tls-handshake-ready host slot cap)))
+  (let* ((tls (fn2-ncap-tls cap)) (handle (fn2-native-tls-handle tls))
+         (fd (fn2-ncap-fd cap)) (bytes (fn2-nhost-bytes host)) (fed-seed nil))
+   (setf (fn2-nop-tls-started op) t (fn2-native-tls-kick tls) nil)
+   (when (eq (fn2-native-tls-flush tls fd host) :failed)
+    (fn2-n-complete host slot :failed 0)
+    (return-from fn2-n-tls-ready nil))
+   ;; Feed staging before reading the socket, even after handshake completion.
+   ;; A suffix containing encrypted application records belongs to the next
+   ;; Receive; it no longer borrows the connection's mutable RX range.
+   (when (< (fn2-native-tls-seed-offset tls) (fn2-native-tls-seed-length tls))
+    (let* ((seed (fn2-native-tls-seed tls)) (off (fn2-native-tls-seed-offset tls))
+           (n (fn2-native-tls-span (fn2-native-tls-seed-length tls) off
+                   (fn2-tls-%input-room handle) (fn2-nhost-tls-quantum host))))
+     (when (plusp n)
+      (sb-sys:with-pinned-objects (seed)
+       (let ((fed (fn2-tls-%feed handle (sb-sys:sap+ (sb-sys:vector-sap seed) off) n)))
+        (unless (= fed n) (error "fn2 TLS: staged-input BIO capacity contract failed"))
+        (setf fed-seed t)
+        (incf (fn2-native-tls-seed-offset tls) fed))))))
+   (unless (fn2-nop-tls-finished op)
+    (fn2-n-boundary host "tls-record")
+    (multiple-value-bind (code count)
+        (sb-sys:with-pinned-objects (bytes)
+          (fn2-native-tls-record tls (= kind *fn2-action-send*)
+                                 (fn2-n-sap host (fn2-nop-address op)) (fn2-nop-len op)))
+     (case code
+      (0 (setf (fn2-nop-tls-finished op) t (fn2-nop-tls-count op) count))
+      ((1 2)
+       (setf (fn2-native-tls-interest tls) (if (= code 1) 1 4))
+       ;; Consume buffered TLS data before reading the fd: an EOF must not
+       ;; discard an application record already held by OpenSSL.
+       (when (= code 1)
+        (if fed-seed (setf (fn2-native-tls-kick tls) t)
+          (when (= (fn2-native-tls-seed-offset tls) (fn2-native-tls-seed-length tls))
+           (case (fn2-native-tls-fill tls fd host)
+            (:progress (setf (fn2-native-tls-kick tls) t))
+            (:failed (fn2-n-complete host slot :failed 0)
+                     (return-from fn2-n-tls-ready nil)))))))
+      (3 (if (= kind *fn2-action-receive*)
+             (progn (setf (fn2-ncap-eof cap) t) (fn2-n-complete host slot :eof 0))
+           (fn2-n-complete host slot :failed 0))
+         (return-from fn2-n-tls-ready nil))
+      (otherwise (fn2-n-complete host slot :failed 0) (return-from fn2-n-tls-ready nil)))))
+   (cond ((and (fn2-nop-tls-finished op) (fn2-native-tls-output-empty-p tls))
+          (let ((count (fn2-nop-tls-count op)))
+           (cond ((= kind *fn2-action-receive*) (incf (fn2-ncap-rx cap) count))
+                 ((= kind *fn2-action-send*) (incf (fn2-ncap-tx cap) count)))
+           (fn2-n-complete host slot :ok count 0 nil
+             (fn2-n-octets host (fn2-nop-address op) count))))
+         (t
+          (when (fn2-nop-tls-finished op) (setf (fn2-native-tls-interest tls) 4))
+          (when (not (fn2-native-tls-output-empty-p tls))
+           (setf (fn2-native-tls-interest tls) (logior (fn2-native-tls-interest tls) 4)))
+          ;; Retained bytes can progress without a new kernel readability edge.
+          (when (and (< (fn2-native-tls-seed-offset tls) (fn2-native-tls-seed-length tls))
+                     (plusp (fn2-tls-%input-room handle)))
+           (setf (fn2-native-tls-kick tls) t)))))))
+
 (defun fn2-n-start-ready (host slot cap)
   (let* ((op (aref (fn2-nhost-ops host) slot)) (kind (fn2-nop-kind op)) (fd (fn2-ncap-fd cap)))
+    (when (fn2-n-tls-op-p op cap)
+      (fn2-n-tls-ready host slot cap)
+      (return-from fn2-n-start-ready nil))
     (fn2-n-boundary host "syscall")
     (cond
       ((= kind *fn2-action-accept*)
@@ -226,6 +361,8 @@
          (fn2-n-boundary host "syscall")
          (when cap
            (fn2-native-mux-interest (fn2-nhost-mux host) (fn2-nop-cap op) (fn2-ncap-fd cap) 0)
+           (fn2-native-tls-close (fn2-ncap-tls cap) (fn2-nop-cap op) (fn2-ncap-nonce cap) host)
+
            (fn2-native-close (fn2-ncap-fd cap))
            (setf (fn2-ncap-fd cap) -1 (fn2-ncap-closed cap) t)
            ;; Other waiting uses keep their loans until the core cancels them;
@@ -245,7 +382,16 @@
                   (not (and (fn2-nhost-storage host) (fn2-n-storage-kind (fn2-nop-kind other))))
                   (eql (fn2-nop-gen other) (fn2-nop-target-gen op))
                   (or (= (fn2-nop-state other) +fn2-n-waiting+) (= (fn2-nop-state other) +fn2-n-closed-waiting+)))
-             (progn (fn2-n-complete host target :cancelled 0)
+             (progn
+                    ;; A cancelled SSL read/write may retain library retry
+                    ;; state. The logical retirement keeps TLS selection sticky
+                    ;; after freeing the handle, before releasing the loan.
+                    (let ((cap (fn2-n-cap host other)))
+                      (when (and cap (fn2-n-tls-op-p other cap))
+
+                        (fn2-native-tls-close (fn2-ncap-tls cap) (fn2-nop-cap other) (fn2-ncap-nonce cap) host)
+                        ))
+                    (fn2-n-complete host target :cancelled 0)
                     (fn2-n-complete host slot :ok 0 0 t))
            (fn2-n-complete host slot :ok 0 0 nil))))
       ((= kind *fn2-action-write*)
@@ -261,7 +407,7 @@
       ((= kind *fn2-action-fence*)
        ;; every write completed at take: the fence has nothing outstanding
        (fn2-n-complete host slot :ok 0))
-      ((or (= kind *fn2-action-connect*) (= kind *fn2-action-tls-start*))
+      ((= kind *fn2-action-connect*)
        ;; No facility in layer A: explicit failure, never a simulated success.
        (fn2-n-complete host slot :failed 0))
       (t (error "fn2 native: op kind ~d has no backend" kind)))))
@@ -269,7 +415,8 @@
 (defun fn2-n-resultless-p (kind)
   (or (= kind *fn2-action-arm-wake*) (= kind *fn2-action-trace*) (= kind *fn2-action-service-posture*)))
 (defun fn2-n-readiness-p (kind)
-  (or (= kind *fn2-action-accept*) (= kind *fn2-action-receive*) (= kind *fn2-action-send*)))
+  (or (= kind *fn2-action-accept*) (= kind *fn2-action-receive*) (= kind *fn2-action-send*)
+      (= kind *fn2-action-tls-start*)))
 
 ;;; Take the outbox prefix: peek, copy the descriptor and its validated span,
 ;;; acknowledge (from here the op is submitted and ours to execute).
@@ -347,7 +494,7 @@
             do (let ((cap (fn2-n-cap host op)))
                  (unless cap (error "fn2 native: a waiting op names a dead capability ~d" (fn2-nop-cap op)))
                  (setf (aref masks (fn2-nop-cap op))
-                       (logior (aref masks (fn2-nop-cap op)) (if (= (fn2-nop-kind op) *fn2-action-send*) 4 1)))))
+                       (logior (aref masks (fn2-nop-cap op)) (fn2-n-op-interest op cap)))))
     (dotimes (i (length caps))
       (fn2-native-mux-interest (fn2-nhost-mux host) i (fn2-ncap-fd (aref caps i)) (aref masks i)))
     ;; The Unix-domain socket is capability 0's: it wants what the listener wants.
@@ -369,7 +516,7 @@
         (when (and (= (fn2-nop-state op) +fn2-n-waiting+) (fn2-n-readiness-p (fn2-nop-kind op)))
           (let ((cap (fn2-n-cap host op)) (index (fn2-nop-cap op)))
             (when (and cap (not (aref used index))
-                       (fn2-n-cap-ready-p host index (if (= (fn2-nop-kind op) *fn2-action-send*) 4 1)))
+                       (or (fn2-n-tls-kick-p op cap) (fn2-n-cap-ready-p host index (fn2-n-op-interest op cap))))
               (setf (aref used index) t any t)
               (fn2-n-start-ready host slot cap))))))
     any))
@@ -493,7 +640,7 @@ take reaches it after the stopping turn (the core refuses them all anyway)."
           (fn2-n-take host)
           (fn2-n-interests host)
           (let* ((deadline (fn2-host-idle-deadline core))
-                 (timeout (cond ((or (not (eq status :idle)) (plusp (fn2-nhost-pending host))) 0)
+                 (timeout (cond ((or (not (eq status :idle)) (plusp (fn2-nhost-pending host)) (fn2-n-tls-work-p host)) 0)
                                 ((fn2-nhost-sync host) 2)
                                 ((>= deadline *fn2-no-deadline*) -1)
                                 (t (min 1000 (max 0 (floor (- deadline (fn2-native-clock t)) 1000)))))))
@@ -543,6 +690,19 @@ the image launcher always opens its persisted device instead."
         (setf (fn2-ncap-fd (aref (fn2-nhost-caps host) 0)) lfd)
         (handler-case
           (progn
+        (multiple-value-bind (code certificate key window quantum minimum seed-capacity turns) (fn2-host-tls-settings profile)
+          (case code
+            (:off nil)
+            (:ok
+             (sb-alien:load-shared-object
+               (or (sb-ext:posix-getenv "FN2_TLS_LIBRARY")
+                   #+darwin "build/lib/libfn2-tls.dylib" #-darwin "build/lib/libfn2-tls.so"))
+             (let ((config (fn2-tls-%config certificate key minimum)))
+               (when (zerop (sb-sys:sap-int config)) (error "fn2 native: TLS configuration refused"))
+               (setf (fn2-nhost-tls-config host) config
+                     (fn2-nhost-tls-window host) window (fn2-nhost-tls-quantum host) quantum
+                     (fn2-nhost-tls-seed-capacity host) seed-capacity (fn2-nhost-tls-turns host) turns)))
+            (otherwise (error "fn2 native: TLS profile refused"))))
         (unless device-path (fn2-n-device-put host memory-store))
         (when device-path
           (multiple-value-bind (fd size backend) (fn2-device-open device-path :create-size create-size)
@@ -598,7 +758,13 @@ the image launcher always opens its persisted device instead."
   ;; No completion claims at teardown; socket operations die with the descriptors.
   (setf *fn2-n-signal-mux* nil)
   (when (fn2-nhost-storage host) (fn2-device-stop (fn2-nhost-storage host)))
-  (loop for cap across (fn2-nhost-caps host) when (>= (fn2-ncap-fd cap) 0) do (fn2-native-close (fn2-ncap-fd cap)))
+  (loop for cap across (fn2-nhost-caps host) for cap-index from 0
+        do (fn2-native-tls-close (fn2-ncap-tls cap) cap-index (fn2-ncap-nonce cap) host)
+
+        when (>= (fn2-ncap-fd cap) 0) do (fn2-native-close (fn2-ncap-fd cap)))
+  (when (fn2-nhost-tls-config host)
+    (fn2-tls-%config-free (fn2-nhost-tls-config host))
+    (setf (fn2-nhost-tls-config host) nil))
   (when (>= (fn2-nhost-local-fd host) 0)
     (fn2-native-close (fn2-nhost-local-fd host))
     (fn2-native-unlink-local (fn2-nhost-local-path host)))
