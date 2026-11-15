@@ -46,3 +46,26 @@ and local closure resolution. The unit and simulated-composition closures are
 282 and 365 local books respectively. ACL2 admission, guard/cost/footprint
 qualification and runtime initialization of the configured schedule remain
 pending; the B consumer alone does not activate credit configuration.
+
+## Root d7 projection
+
+The separate `assurance-drain-credit-root-slice` keeps root
+`d7f9c00e0`'s existing canonical C/B assembly and applies only the pool credit
+prerequisites, ordinary B consumer, shared geometry/configuration and staged
+unit. It does not import cold boot/checkpoint workers or change root's directory
+representation. The staged/refusal closure is 165 local books, with seven direct
+form changes and 125 invalidated/new closure keys. Forty closures are unchanged
+from that root; eight have candidates in the author's local cache. These are
+source-key/candidate facts, not an installed warm prefix or ACL2 admission.
+The exact inventory and plain closure keys are recorded in the adjacent JSON.
+The higher simulated-adapter entry stays in the owning cold donor lane; it is
+not registered in this compact root projection. Credit schedule initialization
+and actual C working loans still require the capacity owner's final integration.
+
+The actual commit arm's nineteen direct `:do` operations all have defcost
+declarations. The only changed direct operation is the existing
+`fn2-commit-release-pool`, whose table declaration adds the commit root needed
+for exact FREE-row unwind binding. The new reserve/return helpers are internal
+DEFUN calls under existing admission/release operations, never new arm operands.
+Root's lifecycle cursor predicate declaration is preserved. New capacity arm
+operations must receive their own declaration/face audit when their source lands.
