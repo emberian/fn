@@ -84,11 +84,11 @@
    (:do (code) (fn2-checkpoint-root1-begin-op row-token *fn2-checkpoint-master-kind* id row-generation) :accept (:more)) (:next :root1-source) (:charge :steps *fn2-work-small* :runnable t))
   (:root1-source :on-refusal ((:next :uncertain) (:charge :steps *fn2-work-small* :runnable t))
    (:do (code) (fn2-checkpoint-root1-step-op budget *fn2-checkpoint-master-kind* id row-generation) :accept () :case
-    (((:more) (:charge :bytes 4096 :steps *fn2-work-stage* :runnable t)) ((:yield) (:yield)) ((:wait) (:idle))
-     ((:page) (:set (source 1)) (:next :page-bind) (:charge :bytes 4096 :steps *fn2-work-stage* :runnable t))
-     ((:need-read) (:next :root1-read) (:charge :bytes 4096 :steps *fn2-work-stage* :runnable t))
-     ((:done) (:next :events-begin) (:charge :bytes 4096 :steps *fn2-work-stage* :runnable t))
-     ((:no-space :exhausted) (:next :refused) (:charge :bytes 4096 :steps *fn2-work-stage* :runnable t)) (:otherwise (:next :uncertain) (:charge :steps *fn2-work-small* :runnable t)))))
+    (((:more) (:charge :bytes *fn2-checkpoint-root1-turn-bytes* :steps *fn2-work-stage* :runnable t)) ((:yield) (:yield)) ((:wait) (:idle))
+     ((:page) (:set (source 1)) (:next :page-bind) (:charge :bytes *fn2-checkpoint-root1-turn-bytes* :steps *fn2-work-stage* :runnable t))
+     ((:need-read) (:next :root1-read) (:charge :bytes *fn2-checkpoint-root1-turn-bytes* :steps *fn2-work-stage* :runnable t))
+     ((:done) (:next :events-begin) (:charge :bytes *fn2-checkpoint-root1-turn-bytes* :steps *fn2-work-stage* :runnable t))
+     ((:no-space :exhausted) (:next :refused) (:charge :bytes *fn2-checkpoint-root1-turn-bytes* :steps *fn2-work-stage* :runnable t)) (:otherwise (:next :uncertain) (:charge :steps *fn2-work-small* :runnable t)))))
   (:root1-read :on-refusal ((:next :uncertain) (:charge :steps *fn2-work-small* :runnable t))
    (:if (and (natp budget) (< 0 budget))
     ((:issue (fn2-checkpoint-root1-read-op budget *fn2-checkpoint-master-kind* id row-generation) :ok ((:next :root1-source) (:wait :completion :bytes 4096 :steps *fn2-work-stage*))))
@@ -135,7 +135,7 @@
     ((equal row-source 1)
      (:do (code) (fn2-checkpoint-root1-consume-op budget *fn2-checkpoint-master-kind* id row-generation) :accept () :case
       (((:pending) (:idle)) ((:yield) (:yield))
-       ((:more :done :ready) (:next :root1-source) (:charge :bytes 4096 :steps *fn2-work-stage* :runnable t)) (:otherwise (:next :uncertain) (:charge :steps *fn2-work-small* :runnable t)))))
+       ((:more :done :ready) (:next :root1-source) (:charge :bytes *fn2-checkpoint-root1-turn-bytes* :steps *fn2-work-stage* :runnable t)) (:otherwise (:next :uncertain) (:charge :steps *fn2-work-small* :runnable t)))))
     ((equal row-source 3)
      (:do (code) (fn2-checkpoint-events-consume) :accept () :case
       (((:pending) (:idle)) ((:yield) (:yield))
