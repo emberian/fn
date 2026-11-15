@@ -74,5 +74,47 @@
     "repair": "5f69d871d source only; no retry"
   },
   "resource_release": "children0 reconciled under allocation-ledger lock after handles absent; no live job.",
-  "cap_note": "Parent farm requested2Gi but completed before live cap sample. Author effective2Gi/swap0 measured before ACL2."
+  "cap_note": "Parent farm requested2Gi but completed before live cap sample. Author effective2Gi/swap0 measured before ACL2.",
+  "retry_5f69": {
+    "source": "5f69d871d587d7fb43bc8c96d3c778b0d571e3ee",
+    "driver_sha256": "938096dc839830e719c905d6df0dc8c842de58797babf451dcf825a7f06a102b",
+    "remote_log": "/tmp/b3-word-current-pilot/retry-author.log",
+    "log_sha256": "aabd427027c5805c2ca804f49775c595d21c9570c42bd7e7464da56ff82d233a",
+    "scope": "run-p1932379-i31289068.scope",
+    "effective_memory_max": 2147483648,
+    "effective_memory_swap_max": 0,
+    "handles": [
+      1932378,
+      1932379,
+      1932391,
+      1932395
+    ],
+    "all_absent_scope_inactive_dead": true,
+    "parent_cache": "14 compiled strict-qualified installed, missing0; no parent recertification",
+    "passed": {
+      "STORE": {
+        "seconds": 0.01,
+        "steps": 457
+      },
+      "INIT": {
+        "seconds": 0.01,
+        "steps": 323
+      },
+      "PUSH": {
+        "seconds": 0.03,
+        "steps": 4185
+      }
+    },
+    "first_refusal": {
+      "name": "FN2-B3-FLUSH-WORD-FRAME",
+      "seconds": 0.05,
+      "steps": 5064,
+      "checkpoint": "raw LEN(NTH actual WORDSI (MV-NTH1 PUSH ...)); public observer frame no longer matches normalized goal"
+    },
+    "stop_rc": 0,
+    "exit_rc": 3,
+    "new_record": false,
+    "fixture": "unrun",
+    "source_correction": "ebdea5a71; raw-by-definition projection source only, no retry"
+  }
 }
