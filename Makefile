@@ -94,6 +94,7 @@ ACL2_BOOKS = \
   tests/cns-draining-teeth-unit \
   tests/cns-range-continuation-unit \
   tests/cns-article-slice-unit \
+  tests/cns-terminal-accounting-unit \
   tests/cns-fetch-cancel-unit \
   tests/cns-tall-runs-support \
   tests/cns-tall-runs-unit \

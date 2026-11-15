@@ -93,3 +93,10 @@ controls compare it with kind/body arms and holds, including removal mutants.
 All phase consumers reviewed in the draining/lifetime models use generated
 state constants. Source review and these structural checks do not substitute
 for actual generated-world admission.
+
+`tests/cns-terminal-accounting-unit` checks actual CNS return tuples on six
+end/fault/missing-FETCH paths: held-lease cleanup retains the callback prefix
+charge, and a no-lease reply path adds 512 once. The assertions use the named
+bounds (ADDR 16,568; ARTICLE 14,293), check zero descriptors and at most 32
+steps, and check released READ/XL state and stale lease handles. They remain
+unexecuted alongside the other new application assertions.
