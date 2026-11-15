@@ -15,8 +15,9 @@ pass, but a fresh served packet and its ACL2/Lean checks remain outstanding.
 No current whole-system image, full host gate, canonical served certificate, or
 completed assurance claim exists.
 
-Current executable work is the stable24 runtime frontier, checkpoint/member31
-book completion, and credit11 API contracts. Actual pinned-I/O extraction has a
+The stable24 runtime frontier and credit11 API/primitive-control records now pass
+(18.950s and5.383s respectively); root verified all current source hashes.
+Checkpoint/member31 book completion remains active. Actual pinned-I/O extraction has a
 34-book gate conditional on current qualified parents; its66-book reader fixture
 and larger cold/native compositions follow. The columns carrier-hint default fix
 f2a1a1233 and layout proof-cost donor e8885ffdb are held for a shared convergence
@@ -707,3 +708,16 @@ cost issue; no repeat at two jobs was run. This qualifies the generic compiler
 and actual child boundary, not full CNS/host composition or query-producer
 lifecycle controls. Peer caller audit found no reachable early row reclamation;
 its actual composed execution controls remain pending.
+
+## Qualified credit API — record908176
+
+The credit configuration, begin/reserve/end/release and empty-abort API is now
+integrated with guarded producer contracts and executable primitive controls.
+The exact11-book record reused9 and certified2; all current source hashes match.
+Controls cover protected ordinary capacity, wrong owner/nonce, query-held refusal,
+borrowed range refusal, return/reacquire, retirement depletion and empty no-I/O
+retry. Generated requested frame lemmas come from actual pool declarations;
+original API bodies and guards are unchanged from the reviewed candidate.
+The pool implementation remains at3ef26. This does not qualify actor admission,
+served credit redemption, complete checkpoint progress or a no-I/O history
+guarantee inferred from quota alone. Receipt: receipts/pool-credit-api-691c06f3e.json.
