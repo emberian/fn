@@ -33,4 +33,34 @@ class ParkSource(unittest.TestCase):
   self.assertIn('(source *fn2-none*) (tag 0)',text)
   self.assertNotIn('(windows ',text)
   self.assertNotIn('fn2-pool-release',text)
+ def test_exact_summary_release_extraction(self):
+  text=(ROOT/'books/checkpoint-summary-leases.lisp').read_text()
+  parsed=lr.parse(text)
+  helper=lr.match('(defun fn2-checkpoint-summary-releaseable-p ?*body)',parsed.forms)[0].node
+  condition=helper.items[-1]
+  self.assertEqual(text[condition.start:condition.end],self.saved['release_condition'])
+  fn=lr.match('(defun fn2-checkpoint-summary-release ?*body)',parsed.forms)[0]
+  call=lr.match('(fn2-checkpoint-summary-releaseable-p ?*args)',[fn.node])[0]
+  actual=text[fn.start:fn.end]
+  restored=lr.write(actual,[(call.start-fn.start,call.end-fn.start,self.saved['release_condition'])])
+  self.assertEqual(restored,self.saved['release_original'])
+ def test_region_preflight_precedes_first_mutation(self):
+  text=(ROOT/'books/run-physical-park-region.lisp').read_text()
+  parsed=lr.parse(text)
+  check=lr.match('(defun fn2-run-load-region-park-check ?*body)',parsed.forms)[0]
+  c=text[check.start:check.end]
+  self.assertIn('fn2-run-load-parkable-p',c)
+  self.assertIn('fn2-checkpoint-summary-releaseable-p',c)
+  for mutation in ('-put ','-set-','(fn2-run-load-park-source '):self.assertNotIn(mutation,c)
+  outer=lr.match('(defun fn2-run-load-region-park ?*body)',parsed.forms)[0]
+  t=text[outer.start:outer.end]
+  self.assertLess(t.index('(fn2-run-load-regionp'),t.index('(fn2-run-load-region-park-check'))
+  self.assertLess(t.index('(<= count (fn2-checkpoint-summary-lease-count'),t.index('(fn2-run-load-region-park-apply'))
+  self.assertIn('(mv :source fn2-run-loads fn2-run-cursors fn2-checkpoint-summary fn2-checkpoint-summary-leases)',t)
+ def test_park_region_uses_single_canonical_operation(self):
+  text=(ROOT/'books/run-physical-park-region.lisp').read_text()
+  self.assertEqual(len(lr.match('(fn2-run-load-park-source ?*args)',lr.parse(text).forms)),1)
+  self.assertNotIn('(fn2-checkpoint-summary-release ',text)
+  self.assertNotIn('fn2-c-source-reader-release',text)
+  self.assertNotIn('fn2-pool-release',text)
 if __name__=='__main__':unittest.main()
