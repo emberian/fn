@@ -293,7 +293,7 @@
        (mv :need-read fn2-checkpoint-restore-events fn2-checkpoint-restore-events-work fn2-event-read fn2-journal-members fn2-mk fn2-fc fn2-fc-context fn2-b3 fn2-fields fn2-pool fn2-digests))
       ((when (zp budget))
        (mv :yield fn2-checkpoint-restore-events fn2-checkpoint-restore-events-work fn2-event-read fn2-journal-members fn2-mk fn2-fc fn2-fc-context fn2-b3 fn2-fields fn2-pool fn2-digests))
-      ((when (member-equal phase (list *fn2-event-read-phase-frame-seal* *fn2-event-read-phase-semantic-seal* *fn2-event-read-phase-frame-records*)))
+      ((when (fn2-event-read-format-phase-p phase))
        (b* (((mv code fn2-event-read fn2-journal-members fn2-fc fn2-fc-context fn2-b3 fn2-fields fn2-pool fn2-digests)
              (fn2-event-read-format-core budget
               (fn2-b-event-root-digest (fn2-fc-rows fn2-fc) (fn2-extents-rows fn2-extents))

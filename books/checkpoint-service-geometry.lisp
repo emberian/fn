@@ -4,6 +4,7 @@
 (include-book "pool")
 (include-book "upload-page-geometry")
 (include-book "identity-workspace-geometry")
+(include-book "successor-schema-geometry")
 (include-book "run-geometry")
 (include-book "identity")
 (include-book "ordered")

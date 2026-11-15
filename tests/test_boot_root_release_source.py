@@ -74,7 +74,32 @@ class Source(unittest.TestCase):
             self.assertTrue(lr.match(p, forms), p)
         self.assertNotIn('(fn2-pool-set-state ', src)
         self.assertNotIn('(fn2-pool-set-out-count ', src)
-        self.assertEqual(len(lr.match('(assert-event ?test)', forms)), 12)
+        self.assertEqual(len(lr.match('(assert-event ?test)', forms)), 14)
+
+    def test_query_repeat_and_unrelated_owner_use_actual_pool(self):
+        src = (ROOT/'tests/boot-root-release-unit.lisp').read_text()
+        for p in ['(fn2-pool-query-acquire root gen 0 1 *fn2-boot-kind* id ogen fn2-pool)',
+                  '(fn2-pool-query-release root gen fn2-pool)',
+                  '(fn2-pool-reserve 0 199 29 5 fn2-pool)',
+                  '(fn2-test-table-snapshot-fn2-pool fn2-pool)',
+                  '(whole-antecedent (fn2-boot-root-consumers-settled-p id ogen root claimed-gen fn2-core))',
+                  '(assert-event (fn2-brru-test :query))',
+                  '(assert-event (fn2-brru-test :repeat))']:
+            self.assertIn(p, src)
+        self.assertIn('(eq code :held) (equal before after)', src)
+        self.assertIn('(eq repeated :state)', src)
+
+    def test_connected_cold_completion_checks_once_and_failed_retention(self):
+        src = (ROOT/'tests/checkpoint-cold-path-unit.lisp').read_text()
+        self.assertLess(src.index('(root-gen (fn2-machine-root-gen boot fn2-core))'),
+                        src.index('(fn2-ccp-complete-epoch fault'))
+        self.assertLess(src.index('(fn2-ccp-drive 200000 nil', src.index('(fn2-ccp-complete-epoch fault')),
+                        src.index('(fn2-boot-release-root-window boot owner-generation fn2-core)'))
+        for p in ['(eq repeat :state) repeat-unchanged',
+                  '(fn2-test-table-snapshot-fn2-pool fn2-pool)',
+                  '(posp (nth 1 resource)) (not (nth 2 resource))',
+                  '(nth 5 resource) (nth 6 resource)']:
+            self.assertIn(p, src)
 
 
 class FinalizeSource(unittest.TestCase):
@@ -107,9 +132,11 @@ class FinalizeSource(unittest.TestCase):
             '(fn2-recovery-selected-current-p rid fn2-core)',
             '(= (fn2-machine-root-gen id fn2-core) 0)',
         ]:
-            self.assertIn(old, source)
+            fn = lr.match('(defun fn2-boot-finalize-recovery (id ogen fn2-core) ?*body)', lr.parse(source).forms)[0].node
+            original = source[fn.start:fn.end]
+            self.assertIn(old, original)
             with self.assertRaises(AssertionError):
-                self.check_gate(source.replace(old, 't', 1))
+                self.check_gate(source[:fn.start] + original.replace(old, 't', 1) + source[fn.end:])
 
 
 if __name__ == '__main__': unittest.main()

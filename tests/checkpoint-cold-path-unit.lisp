@@ -8,6 +8,8 @@
 (include-book "std/util/bstar" :dir :system)
 (include-book "checkpoint-cold-path-producer-support")
 
+(include-book "column-snapshot-support")
+(make-event (cons 'progn (fn2-test-column-snapshot-events 'fn2-pool (w state))))
 
 (defun fn2-ccp-body (fault fn2-core fn2-sim fn2-own)
  (declare (xargs :stobjs (fn2-core fn2-sim fn2-own) :verify-guards nil))
@@ -31,6 +33,17 @@
                      (fn2-alloc-current-epoch fn2-extents) epoch))
       ((mv posted fn2-core fn2-sim fn2-own) (fn2-ccp-complete-epoch fault fn2-core fn2-sim fn2-own))
       ((mv finished fn2-core fn2-sim fn2-own) (fn2-ccp-drive 200000 nil fn2-core fn2-sim fn2-own))
+      ; Complete cold source/consumer authority came from the actual image,
+      ; selected roots and replay above, not the isolated terminal fixture.
+      (cleared (and (= (fn2-machine-root-slot boot fn2-core) 0)
+                    (= (fn2-machine-root-gen boot fn2-core) 0)
+                    (= (fn2-machine-root-cursor boot fn2-core) 0)
+                    (= (fn2-machine-root-role boot fn2-core) 0)))
+      (pool-before-repeat (stobj-let ((fn2-pool (fn2-core-pool fn2-core))) (snapshot)
+                           (fn2-test-table-snapshot-fn2-pool fn2-pool) snapshot))
+      ((mv repeat fn2-core) (fn2-boot-release-root-window boot owner-generation fn2-core))
+      (repeat-unchanged (stobj-let ((fn2-pool (fn2-core-pool fn2-core))) (same)
+                        (equal pool-before-repeat (fn2-test-table-snapshot-fn2-pool fn2-pool)) same))
       ((mv phase begun epoch window rebindable)
        (stobj-let ((fn2-extents (fn2-core-extents fn2-core)) (fn2-pool (fn2-core-pool fn2-core))
                    (fn2-checkpoint-payload (fn2-core-checkpoint-payload fn2-core))) (phase begun epoch window rebindable)
@@ -39,9 +52,18 @@
             (fn2-pool-workspace-code root-slot root-gen *fn2-boot-kind* boot owner-generation fn2-pool)
             (fn2-checkpoint-payload-rebindablep fn2-checkpoint-payload))
         (mv phase begun epoch window rebindable)))
+      (released (stobj-let ((fn2-pool (fn2-core-pool fn2-core))) (closed)
+                  (let ((code (fn2-pool-handle-code root-slot root-gen fn2-pool)))
+                   (or (eq code :stale)
+                       (and (eq code :ok)
+                            (= (fn2-pool-state root-slot fn2-pool) *fn2-pool-state-retired*)))) closed))
       (open (if (and (= phase 0) (= begun 1) (< closed-epoch epoch)
-                     (member-eq window '(:stale :state)) rebindable) t nil)))
-  (mv (list posted finished open prefix suffix (list phase begun epoch window rebindable closed-epoch)) fn2-core fn2-sim fn2-own)))
+                     (member-eq window '(:stale :state)) rebindable cleared released
+                     (eq repeat :state) repeat-unchanged) t nil)))
+  (mv (list posted finished open prefix suffix (list phase begun epoch window rebindable closed-epoch)
+            (list root-slot root-gen cleared repeat repeat-unchanged
+                  (= (fn2-machine-root-slot boot fn2-core) root-slot)
+                  (= (fn2-machine-root-gen boot fn2-core) root-gen) released)) fn2-core fn2-sim fn2-own)))
 
 (defun fn2-ccp-test (fault)
  (declare (xargs :verify-guards nil))
@@ -50,15 +72,19 @@
 ; Each assertion constructs its own image, publication, suffix and crash. No
 ; previous synthetic terminal fixture or saved READY core supplies authority.
 (assert-event
- (let* ((result (fn2-ccp-test *fn2-fault-none*)) (facts (nth 5 result)))
+ (let* ((result (fn2-ccp-test *fn2-fault-none*)) (facts (nth 5 result)) (resource (nth 6 result)))
   (and (eq (car result) :posted) (eq (cadr result) :ready) (eq (nth 2 result) t)
        (posp (nth 3 result)) (< (+ 1 (nth 3 result)) (nth 4 result))
        (= (len facts) 6) (= (nth 0 facts) 0) (= (nth 1 facts) 1)
        (< (nth 5 facts) (nth 2 facts)) (member-eq (nth 3 facts) '(:stale :state))
-       (nth 4 facts))))
+       (nth 4 facts) (posp (nth 1 resource)) (nth 2 resource)
+       (eq (nth 3 resource) :state) (nth 4 resource) (nth 7 resource))))
 (assert-event
- (let* ((result (fn2-ccp-test *fn2-fault-flush-io*)) (facts (nth 5 result)))
+ (let* ((result (fn2-ccp-test *fn2-fault-flush-io*)) (facts (nth 5 result)) (resource (nth 6 result)))
   (and (eq (car result) :posted) (eq (cadr result) :failed) (not (nth 2 result))
        (posp (nth 3 result)) (< (+ 1 (nth 3 result)) (nth 4 result))
        (= (len facts) 6) (= (nth 0 facts) 4) (= (nth 1 facts) 0)
-       (= (nth 2 facts) (nth 5 facts)) (eq (nth 3 facts) :ok) (nth 4 facts))))
+       (= (nth 2 facts) (nth 5 facts)) (eq (nth 3 facts) :ok) (nth 4 facts)
+       (posp (nth 1 resource)) (not (nth 2 resource))
+       (eq (nth 3 resource) :state) (nth 4 resource)
+       (nth 5 resource) (nth 6 resource) (not (nth 7 resource)))))

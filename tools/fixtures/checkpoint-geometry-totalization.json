@@ -1,0 +1,61 @@
+{
+  "scope": "Explicit natural-domain totalization of pure scans; original extraction fingerprints remain authoritative after reversing only these two substitutions. No reservation or release transition changed.",
+  "forms": {
+    "fn2-checkpoint-window-class-demand": {
+      "book": "books/checkpoint-working-geometry.lisp",
+      "original_raw_sha256": "1e29cd2340d159ac24ba280bfe05a3177a79eafa83ea43ff3f89092419630f11",
+      "substitutions": [
+        [
+          "(nfix (- *fn2-checkpoint-window-count* i))",
+          "(nfix (- *fn2-checkpoint-window-count* (nfix i)))"
+        ],
+        [
+          "(if (>= i *fn2-checkpoint-window-count*)",
+          "(if (not (and (natp i) (< i *fn2-checkpoint-window-count*)))"
+        ]
+      ]
+    },
+    "fn2-checkpoint-admission-roomp": {
+      "book": "books/checkpoint-working-geometry.lisp",
+      "original_raw_sha256": "421fa6adbbdc464050d4a8fa6220ce55b7caafd4640a87240c4ac45441cdccf7",
+      "substitutions": [
+        [
+          "(nfix (- *fn2-checkpoint-working-window-count* i))",
+          "(nfix (- *fn2-checkpoint-working-window-count* (nfix i)))"
+        ],
+        [
+          "(if (>= i *fn2-checkpoint-working-window-count*)",
+          "(if (not (and (natp i) (< i *fn2-checkpoint-working-window-count*)))"
+        ]
+      ]
+    },
+    "fn2-checkpoint-future-class-demand": {
+      "book": "books/checkpoint-future-working.lisp",
+      "original_raw_sha256": "24516776926b04ab7b87547e343ddd97ae838cfa36a995b4291a0e903151bf5b",
+      "substitutions": [
+        [
+          "(nfix (- 8 i))",
+          "(nfix (- 8 (nfix i)))"
+        ],
+        [
+          "(if (>= i 8)",
+          "(if (not (and (natp i) (< i 8)))"
+        ]
+      ]
+    },
+    "fn2-checkpoint-future-roomp": {
+      "book": "books/checkpoint-future-working.lisp",
+      "original_raw_sha256": "3b9ddb130d095c1d041ef9ce2fa50d48ea0dd9a7a45a97cccfb313c267a59775",
+      "substitutions": [
+        [
+          "(nfix (- 8 i))",
+          "(nfix (- 8 (nfix i)))"
+        ],
+        [
+          "(if (>= i 8)",
+          "(if (not (and (natp i) (< i 8)))"
+        ]
+      ]
+    }
+  }
+}

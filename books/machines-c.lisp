@@ -7,6 +7,7 @@
 (in-package "ACL2")
 (include-book "range-served")
 (include-book "machines-b")
+(include-book "successor-schema-geometry")
 (include-book "c-snapshot")
 (include-book "checkpoint-summary-state")
 (include-book "run-physical-geometry")
@@ -17,7 +18,7 @@
 ; ---------------------------------------------------------------------------
 ; Field rows. B's format work uses a 128-row stripe per format slot from row 0
 ; (commit.lisp: base = 128 * row); transaction T's stripe is the
-; *fn2-b-txn-field-rows*-row stripe ending (transactions - T) stripes before
+; *fn2-b-txn-field-rows*-row supported stripe ending (transactions - T) stripes before
 ; the table's end. machines-b sizes the table for both (fn2-b-field-rows). In
 ; a stripe (C-STRIPE): the successor's 24 write slots from +0, one 48-row
 ; block each (C-S3, machines-c-successor.lisp), then the exact lookup's area
@@ -27,10 +28,14 @@
 (defconst *fn2-idc-stride* *fn2-b-txn-field-rows*)
 (defconst *fn2-idc-b-stripe* 128)
 (defconst *fn2-succ-slots* 24)
-(defconst *fn2-succ-block* 48)
+
 (defconst *fn2-idc-ident* (* *fn2-succ-slots* *fn2-succ-block*))
 (defconst *fn2-idc-eb* (+ *fn2-idc-ident* 4))
 (defconst *fn2-idc-rb* (+ *fn2-idc-eb* *fn2-run-entry-rows*))
+(defconst *fn2-idc-required-fields*
+ (fn2-successor-required-fields *fn2-succ-fields-max* *fn2-succ-values-max*
+  *fn2-succ-slots* *fn2-run-entry-rows* *fn2-run-reader-fields*))
+(assert-event (<= *fn2-idc-required-fields* *fn2-idc-stride*))
 (assert-event (and (<= (+ *fn2-idc-rb* *fn2-run-reader-fields*) *fn2-idc-stride*)
                    (<= (+ *fn2-idc-rb* *fn2-run-entry-rows*) *fn2-idc-stride*)
                    (<= (+ (* (- *fn2-succ-slots* 1) *fn2-succ-block*) *fn2-run-entry-rows*) *fn2-idc-stride*)
@@ -70,8 +75,8 @@
       ;; Layer D's read rows (C-S4, machines-c-read.lisp): R of them, each
       ;; with 8 range sources, a lookup row and cursor after the
       ;; transactions' (t + R) and 8 source cursors after those (t + 9R).
-      (unsigned-byte-p 32 (+ (nfix (fn2-profile-t profile)) (* 9 (fn2-b-read-rows profile)) *fn2-idc-seal-cursors* 1))
-      (unsigned-byte-p 32 (* *fn2-run-max-levels* (+ (nfix (fn2-profile-t profile)) (* 9 (fn2-b-read-rows profile)) *fn2-idc-seal-cursors* 1)))
+      (unsigned-byte-p 32 (fn2-b-run-cursor-rows profile))
+      (unsigned-byte-p 32 (* *fn2-run-max-levels* (fn2-b-run-cursor-rows profile)))
       (<= (+ (* *fn2-idc-b-stripe* (nfix (fn2-b-format-slots profile)))
              (* *fn2-idc-stride* (nfix (fn2-profile-t profile))) *fn2-b-seal-field-rows* *fn2-b-checkpoint-field-rows*
              (* *fn2-b-read-stride* (fn2-b-read-rows profile)))

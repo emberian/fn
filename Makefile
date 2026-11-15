@@ -67,6 +67,22 @@ ACL2_BOOKS = \
   books/boot-kind \
   books/boot-format \
   books/boot-pack \
+  books/alloc-edge-layout \
+  books/checkpoint-installation-binding \
+  books/recovery-release \
+  books/release-allocation-harvest \
+  books/release-allocation-state \
+  books/release-allocation \
+  books/release-descriptor-check \
+  books/release-evidence-state \
+  books/release-evidence \
+  tests/release-allocation-harvest-unit \
+  tests/release-allocation-staging-unit \
+  tests/release-evidence-unit \
+  tests/seal-release-row-held-unit \
+  tests/seal-draining-sources-unit \
+  tests/seal-physical-release-refusal-unit \
+  tests/seal-draining-pinned-read-unit \
   books/borrow-accounting \
   books/borrow-conservation \
   books/borrow-faces \
@@ -239,6 +255,9 @@ ACL2_BOOKS = \
   books/pool-credit \
   books/pool-credit-contracts \
   books/checkpoint-working-geometry \
+  books/allocation-release-geometry \
+  books/release-member-binding \
+  books/allocation-release-coordinator \
   books/checkpoint-working-credit \
   books/checkpoint-working-credit-init \
   books/pool-block \
@@ -276,6 +295,11 @@ ACL2_BOOKS = \
   tests/recovery-payload-chain-proof \
   tests/checkpoint-cold-path-drive \
   tests/checkpoint-cold-path-producer-support \
+  tests/recovery-release-dispatch-support \
+  tests/recovery-release-image-support \
+  tests/recovery-release-connected-unit \
+  tests/recovery-release-producer-support \
+  tests/release-allocation-live-unit \
   tests/checkpoint-cold-path-unit \
   books/checkpoint-restore-semantic-source \
   books/checkpoint-bank-closure-state \
@@ -291,6 +315,15 @@ ACL2_BOOKS = \
   books/commit-root-state \
   books/run-active-geometry \
   books/run-physical-state \
+  books/checkpoint-source-loader \
+  books/run-physical-bound \
+  books/run-physical-bound-bind \
+  books/run-physical-bound-io \
+  books/run-physical-bound-step \
+  books/run-physical-source \
+  books/run-physical-io \
+  books/run-physical-step \
+  books/run-physical-release \
   books/run-physical-resources \
   books/run-physical-geometry \
   books/run-physical-readiness \
@@ -507,6 +540,8 @@ ACL2_BOOKS = \
   tests/event-proof-format-unit \
   tests/event-proof-source-unit \
   tests/event-read-verified-unit \
+  tests/event-read-seal-span-unit \
+  tests/event-read-seal-budget-unit \
   tests/event-build-unit \
   tests/checkpoint-page-header-unit \
   tests/cns-fetch-integrity-unit \
@@ -597,11 +632,22 @@ ACL2_BOOKS = \
   tests/pointwise-contracts-unit \
   tests/pool-ranges-unit \
   tests/pool-query-ref-unit \
+  tests/checkpoint-working-geometry-unit \
   tests/pool-protected-floor-unit \
   tests/pool-credit-unit \
+  tests/checkpoint-worker-totalization-unit \
+  tests/checkpoint-configured-borrow-unit \
+  tests/allocation-release-credit-retirement-unit \
+  tests/loader-fixed-cursor-rows-unit \
+  tests/machine-budget-cost-unit \
   tests/upload-page-geometry-unit \
   tests/checkpoint-service-geometry-unit \
   tests/checkpoint-working-credit-configure-unit \
+  tests/ordinary-drain-credit-unit \
+  tests/ordinary-drain-credit-canonical-unit \
+  tests/ordinary-b-start-quota-removal-unit \
+  tests/ordinary-b-credit-row-reuse-unit \
+  tests/ordinary-drain-credit-live-unit \
   tests/pool-unit \
   tests/port-unit \
   tests/primitive-list-domain-unit \

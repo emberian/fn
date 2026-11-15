@@ -10,6 +10,13 @@
 ; This is a source integration gate, never a startup/caller assertion. Enabling
 ; it requires the real selected semantic/physical base and suffix qualification.
 (defconst *fn2-checkpoint-activation-qualified* nil)
+; Byte quota for the real root1 callback. Structural step accounting remains
+; a separate leaf contract; these inequalities do not establish it.
+(defconst *fn2-checkpoint-root1-turn-bytes* (+ *fn2-c-read-callback-bytes* 4096))
+(defconst *fn2-checkpoint-master-byte-budget* (+ 16384 (* 2 *fn2-c-read-callback-bytes*)))
+(assert-event (<= (+ *fn2-c-read-callback-bytes* *fn2-checkpoint-root1-turn-bytes*)
+                 *fn2-checkpoint-master-byte-budget*))
+
 
 (defwait :checkpoint-needed :ready fn2-checkpoint-needed-ready-p :grant fn2-checkpoint-needed-grant-one
  :tables (fn2-core-machines)
@@ -51,7 +58,7 @@
          (:publish-wait :storage-window :storage-window) (:release :storage-window :storage-window) (:release-complete :storage-window :storage-window) (:refused :storage-window :storage-window) (:uncertain :storage-window :storage-window) (:loan-uncertain :storage-window)
           (:summary-authority-begin :storage-window :storage-window) (:summary-authority-copy :storage-window :storage-window)
           (:rebase-begin :storage-window :storage-window) (:rebase-source :storage-window :storage-window) (:rebase-consume :storage-window :storage-window) (:rebase-archive :storage-window :storage-window))
- :budget (:bytes 16384 :steps 32 :descriptors 4)
+ :budget-cost (:bytes *fn2-checkpoint-master-byte-budget* :steps 32 :descriptors 4)
  :stops (:checkpoint :pool :bounds)
  :capacity (if (posp (fn2-b-checkpoint-capacity profile)) 1 0)
  :initial ((generation fn2-commit-initial-generation) (phase *fn2-checkpoint-master-state-idle*)

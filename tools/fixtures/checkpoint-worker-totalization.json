@@ -1,0 +1,114 @@
+{
+  "base": "63ce021e6",
+  "scope": "Exact original guard implies each inserted domain; original signatures, guards and transition bodies retained. No old function twin.",
+  "functions": [
+    {
+      "path": "books/checkpoint-working-reserve.lisp",
+      "name": "fn2-checkpoint-window-roomp",
+      "original_sha256": "f8f12f8f7c146d4036a91075164973928acc7f8e352737077049550e0e12ec1e",
+      "original_form": "(defun fn2-checkpoint-window-roomp (i fn2-pool)\n (declare (xargs :stobjs fn2-pool :guard (and (natp i) (<= i *fn2-checkpoint-window-count*))\n                 :measure (nfix (- *fn2-checkpoint-window-count* i))))\n (if (>= i *fn2-checkpoint-window-count*) t\n  (let ((class (fn2-pool-class-for (fn2-checkpoint-window-length i) fn2-pool)))\n   (and (natp class) (< class (fn2-pool-nclasses fn2-pool))\n        (<= (fn2-checkpoint-window-class-demand 0 class fn2-pool) (fn2-pool-free-count class fn2-pool))\n        (fn2-checkpoint-window-roomp (+ i 1) fn2-pool)))))",
+      "original_guard": "(and (natp i) (<= i *fn2-checkpoint-window-count*))",
+      "original_measure": "(nfix (- *fn2-checkpoint-window-count* i))",
+      "measure": "(nfix (- *fn2-checkpoint-window-count* (nfix i)))",
+      "clauses": [
+        "(natp i)",
+        "(<= i *fn2-checkpoint-window-count*)"
+      ],
+      "fallback": "nil"
+    },
+    {
+      "path": "books/checkpoint-working-reserve.lisp",
+      "name": "fn2-checkpoint-windows-reserve-loop",
+      "original_sha256": "4803c95089601260e1d9e627827e6730979761bcf177a3555836ef3469eebcd6",
+      "original_form": "(defun fn2-checkpoint-windows-reserve-loop (i nonce kind owner generation fn2-checkpoint-root1 fn2-checkpoint-windows fn2-pool)\n (declare (xargs :stobjs (fn2-checkpoint-root1 fn2-checkpoint-windows fn2-pool)\n  :guard (and (fn2-checkpoint-root1-wfp fn2-checkpoint-root1) (< 0 (fn2-checkpoint-root1-rows fn2-checkpoint-root1))\n              (fn2-checkpoint-windows-wfp fn2-checkpoint-windows) (<= *fn2-checkpoint-window-count* (fn2-checkpoint-windows-rows fn2-checkpoint-windows))\n              (fn2-pool-wfp fn2-pool) (natp i) (<= i *fn2-checkpoint-window-count*))\n  :measure (nfix (- *fn2-checkpoint-window-count* i))))\n (if (>= i *fn2-checkpoint-window-count*)\n  (let ((fn2-checkpoint-root1 (fn2-checkpoint-root1-set-phase 0 *fn2-checkpoint-root1-phase-reserved* fn2-checkpoint-root1)))\n   (mv :ok fn2-checkpoint-root1 fn2-checkpoint-windows fn2-pool))\n  (b* ((class (fn2-pool-class-for (fn2-checkpoint-window-length i) fn2-pool))\n       ((mv code slot gen fn2-pool) (if (posp nonce)\n          (fn2-pool-reserve-credit *fn2-checkpoint-working-credit-group* nonce class kind owner generation fn2-pool)\n        (fn2-pool-reserve class kind owner generation fn2-pool)))\n       ((unless (eq code :ok))\n        (let ((fn2-checkpoint-root1 (fn2-checkpoint-root1-set-phase 0 *fn2-checkpoint-root1-phase-uncertain* fn2-checkpoint-root1)))\n         (mv code fn2-checkpoint-root1 fn2-checkpoint-windows fn2-pool)))\n       (fn2-checkpoint-windows (fn2-checkpoint-windows-put i (live 1) (slot slot) (generation gen)))\n       (fn2-checkpoint-root1 (fn2-checkpoint-root1-set-reserved 0 (+ i 1) fn2-checkpoint-root1)))\n   (fn2-checkpoint-windows-reserve-loop (+ i 1) nonce kind owner generation fn2-checkpoint-root1 fn2-checkpoint-windows fn2-pool))))",
+      "original_guard": "(and (fn2-checkpoint-root1-wfp fn2-checkpoint-root1) (< 0 (fn2-checkpoint-root1-rows fn2-checkpoint-root1))\n              (fn2-checkpoint-windows-wfp fn2-checkpoint-windows) (<= *fn2-checkpoint-window-count* (fn2-checkpoint-windows-rows fn2-checkpoint-windows))\n              (fn2-pool-wfp fn2-pool) (natp i) (<= i *fn2-checkpoint-window-count*))",
+      "original_measure": "(nfix (- *fn2-checkpoint-window-count* i))",
+      "measure": "(nfix (- *fn2-checkpoint-window-count* (nfix i)))",
+      "clauses": [
+        "(natp i)",
+        "(<= i *fn2-checkpoint-window-count*)",
+        "(< 0 (fn2-checkpoint-root1-rows fn2-checkpoint-root1))",
+        "(<= *fn2-checkpoint-window-count* (fn2-checkpoint-windows-rows fn2-checkpoint-windows))"
+      ],
+      "fallback": "(mv :bounds fn2-checkpoint-root1 fn2-checkpoint-windows fn2-pool)"
+    },
+    {
+      "path": "books/checkpoint-working-reserve.lisp",
+      "name": "fn2-checkpoint-working-credit-fitp",
+      "original_sha256": "48c7b6e8e75d928797ab7ce89736d071576ee3eb6d432cc371eebbf301c10525",
+      "original_form": "(defun fn2-checkpoint-working-credit-fitp (class fn2-pool)\n (declare (xargs :stobjs fn2-pool :guard (and (fn2-pool-wfp fn2-pool) (natp class))\n  :measure (nfix (- (fn2-pool-nclasses fn2-pool) (nfix class)))))\n (and (fn2-pool-credit-shapep fn2-pool)\n      (equal (fn2-pool-credit-purposei *fn2-checkpoint-working-credit-group* fn2-pool) *fn2-pool-credit-working*)\n      (member-equal (fn2-pool-credit-phasei *fn2-checkpoint-working-credit-group* fn2-pool)\n       (list *fn2-pool-credit-idle* *fn2-pool-credit-aborted-empty*))\n      (fn2-pool-credit-fullp *fn2-checkpoint-working-credit-group* 0 fn2-pool)\n      (or (>= class (fn2-pool-nclasses fn2-pool))\n          (and (equal (fn2-pool-credit-demandi class fn2-pool)\n                      (+ (fn2-checkpoint-window-class-demand 0 class fn2-pool)\n                         (fn2-checkpoint-future-class-demand 0 class fn2-pool)))\n               (fn2-checkpoint-working-credit-fitp (+ class 1) fn2-pool)))))",
+      "original_guard": "(and (fn2-pool-wfp fn2-pool) (natp class))",
+      "original_measure": "(nfix (- (fn2-pool-nclasses fn2-pool) (nfix class)))",
+      "measure": "(nfix (- (nfix (fn2-pool-nclasses fn2-pool)) (nfix class)))",
+      "clauses": [
+        "(natp class)"
+      ],
+      "fallback": "nil"
+    },
+    {
+      "path": "books/checkpoint-future-working.lisp",
+      "name": "fn2-checkpoint-future-reserve-loop",
+      "original_sha256": "808cf4d8fc49ecfc80d1e99219f6ec8df44601f92cf2017cbe1c0ef40cec2b4c",
+      "original_form": "(defun fn2-checkpoint-future-reserve-loop (i nonce kind owner gen fn2-checkpoint-future fn2-checkpoint-future-windows fn2-pool)\n (declare (xargs :stobjs (fn2-checkpoint-future fn2-checkpoint-future-windows fn2-pool)\n  :guard (and (fn2-checkpoint-future-wfp fn2-checkpoint-future) (< 0 (fn2-checkpoint-future-rows fn2-checkpoint-future))\n              (fn2-checkpoint-future-windows-wfp fn2-checkpoint-future-windows) (<= 8 (fn2-checkpoint-future-windows-rows fn2-checkpoint-future-windows))\n              (fn2-pool-wfp fn2-pool) (natp i) (<= i 8)) :measure (nfix (- 8 i))))\n (if (>= i 8)\n  (let* ((fn2-checkpoint-future (fn2-checkpoint-future-set-phase 0 *fn2-checkpoint-future-phase-reserved* fn2-checkpoint-future)))\n   (mv :ok fn2-checkpoint-future fn2-checkpoint-future-windows fn2-pool))\n  (b* ((class (fn2-pool-class-for (fn2-checkpoint-future-window-length i) fn2-pool))\n       ((mv code slot generation fn2-pool) (if (posp nonce)\n          (fn2-pool-reserve-credit *fn2-checkpoint-working-credit-group* nonce class kind owner gen fn2-pool)\n        (fn2-pool-reserve class kind owner gen fn2-pool)))\n       ((unless (eq code :ok))\n        (let* ((fn2-checkpoint-future (fn2-checkpoint-future-set-phase 0 *fn2-checkpoint-future-phase-uncertain* fn2-checkpoint-future)))\n         (mv :partial fn2-checkpoint-future fn2-checkpoint-future-windows fn2-pool)))\n       (fn2-checkpoint-future-windows (fn2-checkpoint-future-windows-put i (live 1) (slot slot) (generation generation) (borrowed 0)))\n       (fn2-checkpoint-future (fn2-checkpoint-future-set-reserved 0 (+ i 1) fn2-checkpoint-future)))\n   (fn2-checkpoint-future-reserve-loop (+ i 1) nonce kind owner gen fn2-checkpoint-future fn2-checkpoint-future-windows fn2-pool))))",
+      "original_guard": "(and (fn2-checkpoint-future-wfp fn2-checkpoint-future) (< 0 (fn2-checkpoint-future-rows fn2-checkpoint-future))\n              (fn2-checkpoint-future-windows-wfp fn2-checkpoint-future-windows) (<= 8 (fn2-checkpoint-future-windows-rows fn2-checkpoint-future-windows))\n              (fn2-pool-wfp fn2-pool) (natp i) (<= i 8))",
+      "original_measure": "(nfix (- 8 i))",
+      "measure": "(nfix (- 8 (nfix i)))",
+      "clauses": [
+        "(natp i)",
+        "(<= i 8)",
+        "(< 0 (fn2-checkpoint-future-rows fn2-checkpoint-future))",
+        "(<= 8 (fn2-checkpoint-future-windows-rows fn2-checkpoint-future-windows))"
+      ],
+      "fallback": "(mv :bounds fn2-checkpoint-future fn2-checkpoint-future-windows fn2-pool)"
+    },
+    {
+      "path": "books/checkpoint-future-working.lisp",
+      "name": "fn2-checkpoint-future-transfer-readyp",
+      "original_sha256": "ec8681761b3a5d5dc73ee3622b041ada31b1200e2390a42edfc50fb410a96e78",
+      "original_form": "(defun fn2-checkpoint-future-transfer-readyp (i end returning token kind owner gen bkind borrower bgen fn2-checkpoint-future fn2-checkpoint-future-windows fn2-pool)\n (declare (xargs :stobjs (fn2-checkpoint-future fn2-checkpoint-future-windows fn2-pool)\n  :guard (and (fn2-checkpoint-future-wfp fn2-checkpoint-future) (fn2-checkpoint-future-windows-wfp fn2-checkpoint-future-windows) (fn2-pool-wfp fn2-pool)\n              (natp i) (natp end) (<= i end) (<= end 8)) :measure (nfix (- end i))))\n (if (>= i end) t\n  (and (< i (fn2-checkpoint-future-windows-rows fn2-checkpoint-future-windows))\n       (equal (fn2-checkpoint-future-windows-borrowed i fn2-checkpoint-future-windows) (if returning 1 0))\n       (mv-let (code slot generation)\n        (fn2-checkpoint-future-lease i token (if returning bkind kind) (if returning borrower owner) (if returning bgen gen)\n         fn2-checkpoint-future fn2-checkpoint-future-windows fn2-pool)\n        (declare (ignore slot generation)) (eq code :ok))\n       (fn2-checkpoint-future-transfer-readyp (+ i 1) end returning token kind owner gen bkind borrower bgen fn2-checkpoint-future fn2-checkpoint-future-windows fn2-pool))))",
+      "original_guard": "(and (fn2-checkpoint-future-wfp fn2-checkpoint-future) (fn2-checkpoint-future-windows-wfp fn2-checkpoint-future-windows) (fn2-pool-wfp fn2-pool)\n              (natp i) (natp end) (<= i end) (<= end 8))",
+      "original_measure": "(nfix (- end i))",
+      "measure": "(nfix (- (nfix end) (nfix i)))",
+      "clauses": [
+        "(natp i)",
+        "(natp end)",
+        "(<= i end)",
+        "(<= end 8)"
+      ],
+      "fallback": "nil"
+    },
+    {
+      "path": "books/checkpoint-future-working.lisp",
+      "name": "fn2-checkpoint-future-transfer-loop",
+      "original_sha256": "ab7e8303fda520854bfd45bfb9dd217d167343c26773f00d9f0f0e485f8e2b97",
+      "original_form": "(defun fn2-checkpoint-future-transfer-loop (i end returning kind owner gen bkind borrower bgen fn2-checkpoint-future-windows fn2-pool)\n (declare (xargs :stobjs (fn2-checkpoint-future-windows fn2-pool)\n  :guard (and (fn2-checkpoint-future-windows-wfp fn2-checkpoint-future-windows) (fn2-pool-wfp fn2-pool)\n              (natp i) (natp end) (<= i end) (<= end 8) (<= end (fn2-checkpoint-future-windows-rows fn2-checkpoint-future-windows))\n              (fn2-pool-mrefp kind owner gen) (fn2-pool-mrefp bkind borrower bgen))\n  :measure (nfix (- end i))))\n (if (>= i end) (mv :ok fn2-checkpoint-future-windows fn2-pool)\n  (b* ((slot (fn2-checkpoint-future-windows-slot i fn2-checkpoint-future-windows))\n       (generation (fn2-checkpoint-future-windows-generation i fn2-checkpoint-future-windows))\n       ((mv code fn2-pool)\n        (fn2-pool-hand slot generation (if returning bkind kind) (if returning borrower owner) (if returning bgen gen)\n         (if returning kind bkind) (if returning owner borrower) (if returning gen bgen) fn2-pool))\n       ((unless (eq code :ok)) (mv :partial fn2-checkpoint-future-windows fn2-pool))\n       ((mv code fn2-pool)\n        (fn2-pool-accept-hand slot generation (if returning kind bkind) (if returning owner borrower) (if returning gen bgen) fn2-pool))\n       ((unless (eq code :ok)) (mv :partial fn2-checkpoint-future-windows fn2-pool))\n       (fn2-checkpoint-future-windows (fn2-checkpoint-future-windows-put i (borrowed (if returning 0 1))\n        (borrower-kind (if returning 0 bkind)) (borrower-slot (if returning 0 borrower)) (borrower-gen (if returning 0 bgen)))))\n   (fn2-checkpoint-future-transfer-loop (+ i 1) end returning kind owner gen bkind borrower bgen fn2-checkpoint-future-windows fn2-pool))))",
+      "original_guard": "(and (fn2-checkpoint-future-windows-wfp fn2-checkpoint-future-windows) (fn2-pool-wfp fn2-pool)\n              (natp i) (natp end) (<= i end) (<= end 8) (<= end (fn2-checkpoint-future-windows-rows fn2-checkpoint-future-windows))\n              (fn2-pool-mrefp kind owner gen) (fn2-pool-mrefp bkind borrower bgen))",
+      "original_measure": "(nfix (- end i))",
+      "measure": "(nfix (- (nfix end) (nfix i)))",
+      "clauses": [
+        "(natp i)",
+        "(natp end)",
+        "(<= i end)",
+        "(<= end 8)",
+        "(<= end (fn2-checkpoint-future-windows-rows fn2-checkpoint-future-windows))"
+      ],
+      "fallback": "(mv :bounds fn2-checkpoint-future-windows fn2-pool)"
+    },
+    {
+      "path": "books/checkpoint-future-working.lisp",
+      "name": "fn2-checkpoint-future-no-loansp",
+      "original_sha256": "e198d9001eaf9ae23c71f055a9ab7805a998ff966730191c3b8b09346d320bfc",
+      "original_form": "(defun fn2-checkpoint-future-no-loansp (i end fn2-checkpoint-future-windows)\n (declare (xargs :stobjs fn2-checkpoint-future-windows\n  :guard (and (fn2-checkpoint-future-windows-wfp fn2-checkpoint-future-windows) (natp i) (natp end)\n              (<= i end) (<= end (fn2-checkpoint-future-windows-rows fn2-checkpoint-future-windows)))\n  :measure (nfix (- end i))))\n (if (>= i end) t\n  (and (equal (fn2-checkpoint-future-windows-borrowed i fn2-checkpoint-future-windows) 0)\n       (fn2-checkpoint-future-no-loansp (+ i 1) end fn2-checkpoint-future-windows))))",
+      "original_guard": "(and (fn2-checkpoint-future-windows-wfp fn2-checkpoint-future-windows) (natp i) (natp end)\n              (<= i end) (<= end (fn2-checkpoint-future-windows-rows fn2-checkpoint-future-windows)))",
+      "original_measure": "(nfix (- end i))",
+      "measure": "(nfix (- (nfix end) (nfix i)))",
+      "clauses": [
+        "(natp i)",
+        "(natp end)",
+        "(<= i end)",
+        "(<= end (fn2-checkpoint-future-windows-rows fn2-checkpoint-future-windows))"
+      ],
+      "fallback": "nil"
+    }
+  ]
+}
