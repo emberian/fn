@@ -312,6 +312,15 @@ ACL2_BOOKS = \
   tests/cns-decode-unit \
   tests/cns-raw-eof-unit \
   books/cns-source-core \
+  tests/cns-source-capture-unit \
+  tests/cns-source-hash-interleave-unit \
+  tests/cns-source-retention-unit \
+  tests/cns-source-raw-reader-unit \
+  tests/txn-upload-physical-location-unit \
+  tests/upload-manifest-physical-unit \
+  tests/upload-raw-threshold-unit \
+  tests/upload-group16-served-unit \
+  tests/upload-dual-hash-unit \
   tests/cns-stream-fetch-unit \
   tests/cns-recovered-fetch-unit \
   tests/cns-edges-unit \
