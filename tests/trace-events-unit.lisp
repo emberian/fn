@@ -25,6 +25,8 @@
       (equal (fn2-trace-replay (list *fn2-teu-enqueue*) 0 *fn2-teu-calendar* 0 *fn2-teu-queues*)
              '(:ok 0 ((0 7 8) (1 9 10))))
       (not (eq (car (fn2-trace-replay *fn2-teu-trace* 1 *fn2-teu-calendar* 0 *fn2-teu-queues*)) :ok))
+      (not (eq (car (fn2-trace-replay nil 0 *fn2-teu-calendar* 0 '((0 7) (1 7)))) :ok))
+      (not (eq (car (fn2-trace-replay nil 0 '((:principal bad)) 0 nil)) :ok))
       (not (fn2-trace-events-completep (list *fn2-teu-end*)))
       (not (fn2-trace-events-completep (list *fn2-teu-start*)))
       (not (fn2-trace-events-completep (list *fn2-teu-start* *fn2-teu-start* *fn2-teu-end*)))
