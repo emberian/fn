@@ -29,7 +29,8 @@
  fn2-digestsp fn2-digests-wfp fn2-digests-rows
  fn2-fc-context-hash fn2-fc-context-geometry fn2-fc-context-previous-seal
  fn2-rec-cand-status fn2-rec-cand-commit fn2-rec-cand-epoch fn2-rec-cand-allocation
- fn2-rec-cand-first fn2-rec-cand-last fn2-rec-cand-seal-off fn2-rec-cand-seal-len
+ fn2-rec-cand-first fn2-rec-cand-last fn2-rec-cand-history fn2-rec-cand-history-incarnation
+ fn2-rec-cand-seal-off fn2-rec-cand-seal-len
  fn2-rec-cand-owner-kind fn2-rec-cand-owner)))
 ; The commit section disabled the child type/WFP forward rules after its own
 ; proofs; recovery's helpers need them back, locally.
@@ -209,16 +210,29 @@
 (fn2-core-preserves fn2-recovery-decode (seal off end slot gen id ogen fn2-core) :position 2 :rows nil)
 (defun fn2-recovery-header (p fn2-core)
  (declare (xargs :stobjs fn2-core :guard (fn2-core-wfp fn2-core)))
- (stobj-let ((fn2-origin (fn2-core-origin fn2-core)) (fn2-fields (fn2-core-fields fn2-core))) (ok commit epoch allocation payload)
-  (if (and (<= (+ *fn2-rec-field-base* *fn2-format-sealed-batch-num-fields*) (fn2-fields-rows fn2-fields)) (natp p))
-      (fn2-rec-header-check p (fn2-origin-history fn2-origin) (fn2-origin-history-incarnation fn2-origin) fn2-fields) (mv nil 0 0 0 0))
-  (mv ok commit epoch allocation payload)))
+ ; Capture only from the just-decoded physical frame. This is tentative until
+ ; the existing chain :seal check authenticates its body against trusted seal.
+ (stobj-let ((fn2-fields (fn2-core-fields fn2-core)) (fn2-rec-cand (fn2-core-rec-cand fn2-core)))
+  (ok commit epoch allocation payload fn2-rec-cand)
+  (if (and (<= (+ *fn2-rec-field-base* *fn2-format-sealed-batch-num-fields*) (fn2-fields-rows fn2-fields))
+           (natp p) (< p (fn2-rec-cand-rows fn2-rec-cand)))
+   (let ((history (fn2-rec-field *fn2-format-frame-header-field-history* fn2-fields))
+         (incarnation (fn2-rec-field *fn2-format-frame-header-field-incarnation* fn2-fields)))
+    (if (fn2-origin-physicalp history incarnation)
+     (mv-let (ok commit epoch allocation payload) (fn2-rec-header-check p history incarnation fn2-fields)
+      (let ((fn2-rec-cand (if ok (fn2-rec-cand-put p (history history) (history-incarnation incarnation)) fn2-rec-cand)))
+       (mv ok commit epoch allocation payload fn2-rec-cand)))
+     (mv nil 0 0 0 0 fn2-rec-cand)))
+   (mv nil 0 0 0 0 fn2-rec-cand))
+  (mv ok commit epoch allocation payload fn2-core)))
+(fn2-core-preserves fn2-recovery-header (p fn2-core) :position 5 :rows nil)
 (defun fn2-recovery-seal-fields (p commit epoch allocation fn2-core)
  (declare (xargs :stobjs fn2-core :guard (fn2-core-wfp fn2-core)))
- (stobj-let ((fn2-origin (fn2-core-origin fn2-core)) (fn2-fields (fn2-core-fields fn2-core)))
+ (stobj-let ((fn2-rec-cand (fn2-core-rec-cand fn2-core)) (fn2-fields (fn2-core-fields fn2-core)))
   (ok first last prev final records deps)
-  (if (and (<= (+ *fn2-rec-field-base* *fn2-format-sealed-batch-num-fields*) (fn2-fields-rows fn2-fields)) (natp p))
-   (mv-let (ok first last) (fn2-rec-seal-check p commit epoch allocation (fn2-origin-history fn2-origin) (fn2-origin-history-incarnation fn2-origin) fn2-fields)
+  (if (and (<= (+ *fn2-rec-field-base* *fn2-format-sealed-batch-num-fields*) (fn2-fields-rows fn2-fields)) (natp p) (< p (fn2-rec-cand-rows fn2-rec-cand))
+           (fn2-origin-physicalp (fn2-rec-cand-history p fn2-rec-cand) (fn2-rec-cand-history-incarnation p fn2-rec-cand)))
+   (mv-let (ok first last) (fn2-rec-seal-check p commit epoch allocation (fn2-rec-cand-history p fn2-rec-cand) (fn2-rec-cand-history-incarnation p fn2-rec-cand) fn2-fields)
     (mv ok first last
         (fn2-rec-field-off *fn2-format-sealed-batch-field-previous-seal* fn2-fields)
         (fn2-rec-field-off *fn2-format-sealed-batch-field-final-seal* fn2-fields)
@@ -229,15 +243,16 @@
 ; Expected context of the recovery checker row for unit ROLE of position p.
 (defun fn2-recovery-context (p role epoch allocation commit hash previous fn2-core)
  (declare (xargs :stobjs fn2-core :guard (fn2-core-wfp fn2-core)))
- (stobj-let ((fn2-origin (fn2-core-origin fn2-core)) (fn2-fc-context (fn2-core-fc-context fn2-core))) (code fn2-fc-context)
+ (stobj-let ((fn2-rec-cand (fn2-core-rec-cand fn2-core)) (fn2-fc-context (fn2-core-fc-context fn2-core))) (code fn2-fc-context)
   (let ((row *fn2-rec-checker-row*))
    (if (and (< row (fn2-fc-context-rows fn2-fc-context))
-            (unsigned-byte-p 32 p) (natp role) (< role 3) (unsigned-byte-p 60 epoch)
+            (unsigned-byte-p 32 p) (< p (fn2-rec-cand-rows fn2-rec-cand))
+            (fn2-origin-physicalp (fn2-rec-cand-history p fn2-rec-cand) (fn2-rec-cand-history-incarnation p fn2-rec-cand)) (natp role) (< role 3) (unsigned-byte-p 60 epoch)
             (unsigned-byte-p 60 allocation) (unsigned-byte-p 60 commit)
             (unsigned-byte-p 32 hash) (unsigned-byte-p 32 previous)
             (unsigned-byte-p 32 (fn2-digest-slot row *fn2-fc-geometry*)))
     (let ((fn2-fc-context (fn2-rec-context row p role epoch allocation commit hash previous
-                            (fn2-digest-slot row *fn2-fc-geometry*) (fn2-origin-history fn2-origin) (fn2-origin-history-incarnation fn2-origin) fn2-fc-context)))
+                            (fn2-digest-slot row *fn2-fc-geometry*) (fn2-rec-cand-history p fn2-rec-cand) (fn2-rec-cand-history-incarnation p fn2-rec-cand) fn2-fc-context)))
      (mv :ok fn2-fc-context))
     (mv :bounds fn2-fc-context)))
   (mv code fn2-core)))
@@ -325,7 +340,7 @@
    ((equal stage 1)
     (b* (((mv code next fn2-core) (fn2-recovery-decode nil 0 *fn2-commit-unit-bytes* slot gen id ogen fn2-core)))
      (if (not (eq code :ok)) (mv :invalid fn2-core)
-      (b* (((mv ok commit epoch allocation payload) (fn2-recovery-header p fn2-core)))
+      (b* (((mv ok commit epoch allocation payload fn2-core) (fn2-recovery-header p fn2-core)))
        (if (not (and ok (natp next) (<= (+ next payload) *fn2-commit-unit-bytes*)
                      (unsigned-byte-p 32 (+ next payload))))
            (mv :invalid fn2-core)
