@@ -96,4 +96,41 @@ class ArchiveWorkSource(unittest.TestCase):
  def test_staging_refuses_a_frozen_page_writer(self):
   n=form('event-archive-producer.lisp','fn2-event-archive-operation','fn2-event-archive-stage')
   self.assertIn('(equal (fn2-checkpoint-metadata-held 0 fn2-checkpoint-metadata) 0)',text('event-archive-producer.lisp',n))
+class ArchiveControlSource(unittest.TestCase):
+ def test_header_binds_cut_seal_namespace_and_manifest_ref(self):
+  n=form('event-archive-format.lisp','deflayout','fn2-event-archive-header')
+  s=text('event-archive-format.lisp',n)
+  for field in ['(history (:id history))','(incarnation (:id incarnation))','(cut-commit (:id commit))',
+                '(cut-event (:id event))','(cut-seal :digest)','(first-event (:id event))','(last-event (:id event))',
+                '(member-runs :varint)','(manifest-entries :varint)']:
+   self.assertIn(field,s)
+  self.assertIn('(fn2-format-prefix "MANIFEST-" *fn2-format-ref*)',s)
+ def test_fresh_constructor_derives_actual_base_and_retains_active0(self):
+  n=form('event-archive-control.lisp','fn2-event-archive-operation','fn2-event-archive-fresh-start')
+  self.assertTrue(has(n,'fn2-event-archive-begin'))
+  s=text('event-archive-control.lisp',n)
+  self.assertIn('(equal (fn2-commit-root-base-batch 0 fn2-commit-root) 0)',s)
+  self.assertIn('(equal (fn2-commit-root-base-event 0 fn2-commit-root) 0)',s)
+  self.assertIn('(equal (fn2-event-archive-phase 1 fn2-event-archive) *fn2-event-archive-phase-idle*)',s)
+  puts=calls(n,'fn2-event-archive-put')
+  self.assertEqual([x.node.items[1].low for x in puts],['1'])
+ def test_member_capture_requires_real_completed_page_and_exact_C_seal(self):
+  n=form('event-archive-control.lisp','fn2-event-archive-operation','fn2-event-archive-capture-member')
+  for name in ['fn2-event-archive-ownerp','fn2-event-archive-builderp','fn2-event-read-ownerp',
+               'fn2-checkpoint-metadata-page-complete-p','fn2-checkpoint-metadata-page-consume','fn2-event-source-seal']:
+   self.assertTrue(has(n,name),name)
+  self.assertLess(calls(n,'fn2-checkpoint-metadata-page-complete-p')[0].node.start,calls(n,'fn2-event-source-seal')[0].node.start)
+  s=text('event-archive-control.lisp',n)
+  self.assertIn('(member-unit (fn2-run-writers-unit writer fn2-run-writers))',s)
+  self.assertIn('(member-allocation (fn2-run-writers-counter writer fn2-run-writers))',s)
+  self.assertTrue(all(x.low.startswith('fn2-') for x in n.items[2].items))
+  self.assertNotIn('root-source-complete',s)
+ def test_pending_hashes_are_separate_and_no_root_hold_is_discharged(self):
+  s=source('event-archive-state.lisp')
+  self.assertIn('(48)',s);self.assertIn('(* r 24)',s)
+  s=source('event-archive-control.lisp')
+  self.assertNotIn('(fn2-event-archive-put 0',s)
+  self.assertNotIn('(fn2-event-archive-copy-digest 0',s)
+  for name in ['fn2-alloc-edge-drop','fn2-pool-release','fn2-alloc-free','fn2-checkpoint-refs-put']:
+   self.assertNotIn('('+name,s)
 if __name__=='__main__':unittest.main()

@@ -161,3 +161,16 @@ and multiplies that maximum by profile visits, so the new declaration propagates
 into fresh-turn room. Four source controls trace this path; the runnable actual
 registry/tiny/concrete quantum and missing-grant controls are unrun. This is no
 claim about all C accounting or measured native turn latency.
+
+The new generated root3 archive header binds physical namespace, checkpoint,
+C/Cevent/Cseal, exact first/last event coverage and the full schema10 manifest Ref.
+Two active/pending archive controls retain the actual completed member root and
+cut seal while source build1 is later reused for that manifest. The fresh-start
+constructor derives runtime base0 and the held candidate; pending1 must be idle,
+and active0 is untouched. Member capture requires the real reader terminal,
+admitted count and actual physical page completion, then copies its verified
+hash/identity and the exact current C seal. It sets member-complete only; it
+cannot publish root3 or discharge a source. Four more source controls and an
+unrun metadata-isolation fixture cover these boundaries. Root3 manifest/header
+production, selected header reader and old-manifest tail continuation are still
+required before this new format is reachable in the composed machine.
