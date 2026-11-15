@@ -158,7 +158,12 @@
            (result (cond ((not position) call) ((eql position 0) `(car ,call)) (t `(mv-nth ,position ,call))))
            (options (cdddr spec)) (frame (fn2-decl-get :frame options))
            (premise (if (member-eq :hyps options) (fn2-decl-get :hyps options) hyps))
-           (fact-hints (if (member-eq :hints options) (fn2-decl-get :hints options) hints)))
+           ; Compose public observer contracts without exposing raw storage.
+           ; Explicit per-spec hints (including NIL) and caller hints win.
+           (fact-hints (cond ((member-eq :hints options) (fn2-decl-get :hints options))
+                             (hints hints)
+                             (frame `(("Goal" :in-theory (disable ,(cadr spec)))))
+                             (t nil))))
       (cons `(defthm ,(fn2-columns-sym name (car spec))
                ,(if frame `(equal (,(cadr spec) ,result) (,(cadr spec) ,frame))
                   `(implies (and ,@premise) (,(cadr spec) ,result)))
