@@ -126,3 +126,22 @@
                 (fn2-decl-set :evidence
                   (fn2-decl-set :positive-bindings '((x '-1)) e) row)))))
   (fn2-assert-square-evidence fn2-ep-claim)))
+
+ ; Explicit multiplicity cannot drift, and removal never drops other premises.
+(must-fail
+ (defsquare-evidence fn2-ep-duplicate :conclusion-kind :predicate
+  :positive ((x '2))
+  :negative (:kind :hypothesis-removal :remove (fn2-ep-domainp x)
+             :occurrences 3 :bindings ((x '-1)))))
+(must-fail
+ (defsquare-evidence fn2-ep-duplicate :conclusion-kind :predicate
+  :positive ((x '2))
+  :negative (:kind :hypothesis-removal :remove (fn2-ep-domainp x)
+             :occurrences 2 :bindings ((x '-1/2)))))
+; A repeated identical premise is one semantic assumption. Its explicit
+; multiplicity must match the live formula; default1 still refuses above.
+(defsquare-evidence fn2-ep-duplicate :conclusion-kind :predicate
+ :positive ((x '2))
+ :negative (:kind :hypothesis-removal :remove (fn2-ep-domainp x)
+            :occurrences 2 :bindings ((x '-1))))
+(fn2-assert-square-evidence fn2-ep-duplicate)

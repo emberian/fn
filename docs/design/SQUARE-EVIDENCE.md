@@ -134,3 +134,26 @@ and existing correspondence fixture 0.21 seconds. The record reused three qualif
 parents and certified both test leaves under toolchain `8aeb`; see
 [the receipt](receipts/predicate-evidence-five-record.json). The six actual guarded
 checkpoint-reader consumer instances remain pending their separate gate.
+
+## Repeated hypotheses and actual member (source candidate)
+
+Predicate removal defaults to exactly one structural occurrence. An explicit
+`:occurrences 2` removes two identical copies of the selected predicate, while
+proving every other conjunct, the predicate's negation, and the exact false C.
+A changed count or a failed remaining premise refuses admission. This is needed
+when a readonly recognizer occurs both explicitly and inside the stored guard;
+it does not remove the whole guard or weaken the universal statement.
+
+`tests/checkpoint-member-guarded-evidence-unit.lisp` proposes the actual member
+consumer. It checks exact ABI, same original conclusion, retained original
+premises and actual stored guard before registering the distinct admitted
+guarded theorem. It also emits the domain-containment theorem. The positive
+uses the existing actual constructor with only its checkpoint value repaired;
+the negative reuses the admitted readonly-type counterexample. Both bind all
+12 actual arguments. Raw stobj executable counterparts are disabled by live
+signature metadata during proof. The original remains refuted and unfinished.
+
+This proposed leaf and multiplicity extension are unqualified. The generic
+refutation status still labels candidate replacement links unverified: the new
+leaf's narrower checked domain relationship is not a global replacement-status
+upgrade, proof of the original, or proof of served caller reachability.
