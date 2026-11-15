@@ -1,0 +1,121 @@
+; Physical startup/one-POST envelope, independent of runtime admission policy.
+; Existing query references pin their physical slots; they are not extra leases.
+(in-package "ACL2")
+(include-book "pool")
+(include-book "upload-page-geometry")
+(include-book "identity-workspace-geometry")
+(include-book "successor-schema-geometry")
+(include-book "run-geometry")
+(include-book "identity")
+(include-book "ordered")
+(include-book "folds")
+(fn2-book-layer :c)
+
+; These are the actual typed writer families called by the POST producer.
+; IDs come from the existing schema declarations; no independent numeric cap.
+(defconst *fn2-checkpoint-post-schema-families*
+ '(fn2-identity-history fn2-identity-evidence fn2-identity-candidates
+   fn2-identity-summary fn2-identity-article fn2-article fn2-outcome
+   fn2-addr fn2-group-counts fn2-overview))
+(defun fn2-checkpoint-service-schema-ids (families world)
+ (declare (xargs :verify-guards nil :measure (len families)))
+ (if (atom families) nil
+  (let* ((row (fn2-decl-row (list :schema (car families)) world))
+         (id (fn2-decl-get :id row)))
+   (if (not (and row (natp id))) nil
+    (cons id (fn2-checkpoint-service-schema-ids (cdr families) world))))))
+(make-event
+ (let ((ids (fn2-checkpoint-service-schema-ids *fn2-checkpoint-post-schema-families* (w state))))
+  (if (not (and (= (len ids) (len *fn2-checkpoint-post-schema-families*))
+                (equal ids (remove-duplicates-equal ids))))
+      (er soft 'fn2-checkpoint-service-schema-ids "POST writer schema footprint is missing or aliases a schema.")
+    (value `(defconst *fn2-checkpoint-post-schema-ids* ',ids)))))
+
+; Actual current-root startup requests: boot pack/rx overlap the two
+; full-base recovery windows. There is no cold-checkpoint root reader here.
+; A future producer extends this request inventory with its actual role/size;
+; readiness flags do not manufacture a demand or erase an outstanding lease.
+(defconst *fn2-checkpoint-startup-window-requests*
+ `((boot-pack . ,*fn2-format-sector-bytes*) (boot-rx . ,*fn2-format-sector-bytes*)
+   (recovery-window . ,*fn2-format-sector-bytes*) (recovery-workspace . ,*fn2-format-sector-bytes*)))
+(defun fn2-checkpoint-startup-class-demand (requests class fn2-pool)
+ (declare (xargs :stobjs fn2-pool :guard (fn2-pool-wfp fn2-pool) :measure (len requests)))
+ (if (atom requests) 0
+  (+ (if (and (consp (car requests)) (natp (cdar requests))
+              (equal class (fn2-pool-class-for (cdar requests) fn2-pool))) 1 0)
+     (fn2-checkpoint-startup-class-demand (cdr requests) class fn2-pool))))
+(defun fn2-checkpoint-startup-requests-fit-p (requests fn2-pool)
+ (declare (xargs :stobjs fn2-pool :guard (fn2-pool-wfp fn2-pool) :measure (len requests)))
+ (if (atom requests) (null requests)
+  (and (consp (car requests)) (posp (cdar requests))
+       (let ((class (fn2-pool-class-for (cdar requests) fn2-pool)))
+        (and (natp class) (< class (fn2-pool-nclasses fn2-pool))))
+       (fn2-checkpoint-startup-requests-fit-p (cdr requests) fn2-pool))))
+(defun fn2-checkpoint-name-arena-count (profile)
+ (declare (xargs :guard t))
+ (+ (if (consp (fn2-profile-get :groups profile)) 1 0)
+    (if (posp (nfix (fn2-profile-get :authority profile))) 1 0)))
+(defun fn2-checkpoint-service-class-count (class classes)
+ (declare (xargs :guard t :measure (len classes)))
+ (if (atom classes) 0
+  (+ (if (equal class (car classes)) 1 0)
+     (fn2-checkpoint-service-class-count class (cdr classes)))))
+(defun fn2-checkpoint-service-path-demand (class paths)
+ (declare (xargs :guard t :measure (len paths)))
+ (if (atom paths) 0
+  (max (fn2-checkpoint-service-class-count class (car paths))
+       (fn2-checkpoint-service-path-demand class (cdr paths)))))
+(defun fn2-checkpoint-service-classes-fitp (classes fn2-pool)
+ (declare (xargs :stobjs fn2-pool :guard (fn2-pool-wfp fn2-pool) :measure (len classes)))
+ (if (atom classes) (null classes)
+  (and (natp (car classes)) (< (car classes) (fn2-pool-nclasses fn2-pool))
+       (fn2-checkpoint-service-classes-fitp (cdr classes) fn2-pool))))
+(defun fn2-checkpoint-service-paths-fitp (paths fn2-pool)
+ (declare (xargs :stobjs fn2-pool :guard (fn2-pool-wfp fn2-pool) :measure (len paths)))
+ (if (atom paths) (null paths)
+  (and (fn2-checkpoint-service-classes-fitp (car paths) fn2-pool)
+       (fn2-checkpoint-service-paths-fitp (cdr paths) fn2-pool))))
+(defun fn2-checkpoint-service-class-demand (class profile startup scratch-class arena-class page-class paths uploads)
+ (declare (xargs :guard t))
+ (let* ((names (fn2-checkpoint-name-arena-count profile))
+        (scratch (if (equal class scratch-class) 1 0))
+        (arenas (if (equal class arena-class) 1 0))
+        (fresh (+ (nfix startup) (if (posp names) scratch 0) (* names arenas)))
+        (post (+ scratch (* (len *fn2-checkpoint-post-schema-ids*) arenas)
+                 (fn2-checkpoint-service-class-count class uploads)
+                 (if (equal class page-class) 1 0)))
+        (ready-post (+ post (* names arenas)
+                      (fn2-checkpoint-service-path-demand class paths))))
+  (max fresh ready-post)))
+(defun fn2-checkpoint-service-vector-loop (class profile scratch-class arena-class page-class paths uploads fn2-pool)
+ (declare (xargs :stobjs fn2-pool
+  :guard (and (fn2-pool-wfp fn2-pool) (natp class))
+  :measure (nfix (- (nfix (fn2-pool-nclasses fn2-pool)) (nfix class)))))
+ (if (not (and (natp class) (< class (nfix (fn2-pool-nclasses fn2-pool))))) nil
+  (cons (fn2-checkpoint-service-class-demand class profile
+         (fn2-checkpoint-startup-class-demand *fn2-checkpoint-startup-window-requests* class fn2-pool)
+         scratch-class arena-class page-class paths uploads)
+        (fn2-checkpoint-service-vector-loop (+ class 1) profile scratch-class arena-class page-class paths uploads fn2-pool))))
+(defun fn2-checkpoint-service-demand-vector (profile paths uploads fn2-pool)
+ (declare (xargs :stobjs fn2-pool :guard (fn2-pool-wfp fn2-pool)))
+ (let ((arena (fn2-idc-profile-arena profile)))
+  (if (not (and (fn2-upload-article-profilep profile)
+                (posp arena) (unsigned-byte-p 32 arena)
+                (equal (len uploads) 2)
+                (consp paths)
+                (fn2-checkpoint-service-paths-fitp paths fn2-pool)
+                (fn2-checkpoint-service-classes-fitp uploads fn2-pool)))
+      (mv :profile nil)
+   (let* ((capacity0 (fn2-pool-class-sizesi (car uploads) fn2-pool))
+          (capacity1 (fn2-pool-class-sizesi (cadr uploads) fn2-pool))
+          (bound (fn2-upload-input-bound (fn2-upload-profile-article-max profile) capacity0 capacity1))
+          (scratch-class (fn2-pool-class-for *fn2-idc-scratch-bytes* fn2-pool))
+          (arena-class (fn2-pool-class-for arena fn2-pool))
+          (page-class (fn2-pool-class-for (fn2-upload-stream-page-bytes (+ bound *fn2-upload-mid-line-max*)) fn2-pool)))
+    (if (not (and (fn2-checkpoint-startup-requests-fit-p *fn2-checkpoint-startup-window-requests* fn2-pool)
+                  (posp capacity0) (posp capacity1)
+                  (natp scratch-class) (< scratch-class (fn2-pool-nclasses fn2-pool))
+                  (natp arena-class) (< arena-class (fn2-pool-nclasses fn2-pool))
+                  (natp page-class) (< page-class (fn2-pool-nclasses fn2-pool))))
+        (mv :capacity nil)
+      (mv :ok (fn2-checkpoint-service-vector-loop 0 profile scratch-class arena-class page-class paths uploads fn2-pool)))))))
