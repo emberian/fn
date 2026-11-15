@@ -8,7 +8,7 @@
  (if (atom states) nil
   (if (member-eq (car states) '(:free :retired))
       (fn2-query-live-phases name (cdr states))
-    (cons (fn2-machine-phase-constant name (car states))
+    (cons `(equal phase ,(fn2-machine-phase-constant name (car states)))
           (fn2-query-live-phases name (cdr states))))))
 (defun fn2-query-live-clauses (names world)
  (declare (xargs :verify-guards nil))
@@ -18,7 +18,7 @@
          (phases (fn2-query-live-phases name (fn2-machine-property name :states world)))
          (stopped (assoc-eq 'stopped (fn2-machine-property name :columns world))))
    (cons `((equal kind ,kind)
-           (and (member-equal (fn2-machine-phase owner fn2-core) (list ,@phases))
+           (and (or ,@phases)
                 ,(if stopped `(equal (,(fn2-machine-row-reader name 'stopped) owner fn2-core) 0) t)))
          (fn2-query-live-clauses (cdr names) world)))))
 (make-event
@@ -28,8 +28,9 @@
     (and (fn2-machine-idp owner fn2-core)
          (equal (fn2-machine-kind owner fn2-core) kind)
          (equal (fn2-machine-generation owner fn2-core) generation)
-         (cond ,@(fn2-query-live-clauses (fn2-machine-names (w state)) (w state))
-               (t nil))))))
+         (let ((phase (fn2-machine-phase owner fn2-core)))
+          (cond ,@(fn2-query-live-clauses (fn2-machine-names (w state)) (w state))
+                (t nil)))))))
 (in-theory (disable fn2-query-owner-livep))
 
 ; QWAKE is produced only by an actual last-reference release. Consume the

@@ -424,6 +424,7 @@ ACL2_BOOKS = \
   tests/peer-import-unit \
   tests/peer-import-detach-unit \
   tests/pool-query-ref-unit \
+  tests/query-reference-unit \
   tests/peer-replay-unit \
   tests/pointwise-contracts-unit \
   tests/pool-ranges-unit \
