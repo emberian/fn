@@ -31,7 +31,8 @@ class Node:
             stdout=subprocess.PIPE, stderr=subprocess.STDOUT, start_new_session=True,
             env=env,
         )
-        (directory / f"{label}.launcher.pid").write_text(f"{self.proc.pid}\n")
+        self.launcher_pidfile = directory / f"{label}.launcher.pid"
+        self.launcher_pidfile.write_text(f"{self.proc.pid}\n")
         self.selector = selectors.DefaultSelector()
         self.selector.register(self.proc.stdout, selectors.EVENT_READ)
 
@@ -66,15 +67,30 @@ class Node:
         assert rc != 0, rc
 
     def close(self):
-        if self.proc.poll() is None and self.node_pid:
-            try:
-                os.kill(self.node_pid, signal.SIGKILL)
-            except ProcessLookupError:
-                pass
-            self.proc.wait(timeout=30)
-        # Preserve runtime diagnostics emitted after the ready marker.
-        # The child is reaped above, so draining this pipe cannot await it.
-        self.log.write(self.proc.stdout.read())
+        if self.proc.poll() is None:
+            if self.node_pid:
+                try:
+                    os.kill(self.node_pid, signal.SIGKILL)
+                except ProcessLookupError:
+                    pass
+                try:
+                    self.proc.wait(timeout=10)
+                except subprocess.TimeoutExpired:
+                    pass
+            if self.proc.poll() is None:
+                # Popen created this dedicated session. Before NODE-PID there
+                # may still be an ACL2 child holding the output pipe open.
+                # Stop only our recorded launcher's group, never by name.
+                assert int(self.launcher_pidfile.read_text()) == self.proc.pid
+                try:
+                    os.killpg(self.proc.pid, signal.SIGKILL)
+                except ProcessLookupError:
+                    pass
+                self.proc.wait(timeout=10)
+        # Preserve bytes already available without letting an inherited writer
+        # turn failure cleanup into an unbounded pipe read.
+        os.set_blocking(self.proc.stdout.fileno(), False)
+        self.log.write(self.proc.stdout.read() or b"")
         self.log.flush()
         self.selector.close()
         self.proc.stdout.close()

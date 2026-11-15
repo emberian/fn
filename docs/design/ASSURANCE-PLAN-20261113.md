@@ -24,8 +24,8 @@ then FETCH of the exact original article. It requires intact completed recovery,
 quiet termination and zero stop reason. The shared session helper now accepts
 the existing device; old callers still supply NIL. Execution remains owed.
 This test does not cover native process-death cuts or actual socket restart.
-The native owner is connecting those gates; the public FETCH client is now
-integrated, with runtime execution still pending.
+The native socket restart fixture and public FETCH client are integrated;
+actual node execution is still pending.
 
 Current served article integration has a concrete workspace mismatch:
 `ordered.lisp` declares 13 article fields including location-hashes, while
@@ -51,13 +51,18 @@ pass completeness/refusal controls; consumer-codec admits in 41.04 seconds in
 the retained application world. Its whole-book proof cost remains above the
 D26 target. These author loads are not record-toolchain certification.
 
-The application author session admitted 19 source books beyond its 60
-qualified compiled parents, plus three checkpoint proof prerequisites. EDGE-ADD
-then passed; CHECK-STEP candidate typing exposed a missing format-checker
-interface. Eight exact-function frame lemmas passed in the same session without
-changing the checkpoint theorem. The final caller retry did not start because
-its orchestration script referenced a missing path. The bounded session ended
-and all owned processes were released; the application fixtures have not run.
+The current application snapshot `eea3146c1` has 230 books: 81 qualified
+compiled parents and 149 source books. Its bounded Forge session loaded all
+81 parents, admitted `format-check-read-contracts`, and reached the unchanged
+`FN2-CHECKPOINT-CHECK-STEP-CANDIDATES-TYPE` obligation. Full checkpoint admission
+refused after 33.46 seconds; the final obligation used 10,294 steps and 0.32
+seconds. The checker frame interface now rewrites; the residual concerns
+u60 decoded field values supplied to the checkpoint cut setters. This is a
+proof obligation, not a counterexample or a passing checkpoint book. The live
+session is retained for a focused repair; application fixtures remain unrun.
+The standard `must-fail` event classification fix is integrated at `dab9393a0`;
+it preserves the original two-million-step/twenty-second event limits.
+
 The saved seven-root prefix is qualified by record
 `certify-20261115T074148Z-1049303`: 36 reused and 31 newly certified books,
 278.551 seconds at one job. All 67 source hashes now match the integration tree:
@@ -73,6 +78,14 @@ admit; exact eight-book record `certify-20261115T072636Z-1034939` passes
 with seven installed parents and one newly certified book (14.472 seconds at
 one job; D26 cost remains open). Root matched all eight source hashes. These results do not certify
 the application or establish accepted-data recovery.
+
+The native node tail adds 18 books beyond the frozen application plan: 14
+host/profile dependencies and four BLAKE3 evidence dependencies. Current record
+qualification of `node-profile` and `native-b3-evidence` is required before the
+unchanged CLI can execute. Then build BLAKE3, run host/interface gates and run
+the socket restart fixture as specified in `NATIVE-APPEND-FETCH.md`. Cleanup fix
+`5c36665eb` handles failure before NODE-PID; three regression controls and an
+actual isolated launcher check pass. This does not establish node recovery.
 
 Raw APPEND EOF controls from85c0114a3 are integrated as unexecuted regressions:
 seven real wire sessions require a trailing-CR refusal, empty STATUS, successful
