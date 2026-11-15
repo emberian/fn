@@ -728,3 +728,30 @@ schema20 page range. Its assertions remain UNRUN. The first header/body bytes
 come from the real writer codecs under the explicitly synthetic page/reach
 premise. Seal decoding/hash reconstruction, live caller dispatch, root4/prefix
 transfer and physical reuse remain required; this is still unactivated source.
+
+The cold seal source component now calls the actual shared event-reader core.
+It constructs that private reader only from the verified-page/header binding
+and complete copied accumulator, with actual original physical context and
+current common reach generation; it accepts no ready flag or CSNAPSHOT alias.
+The shared generated span decoder must consume the exact archived semantic
+span. Actual decoded event bounds derive the positive member count and final
+seal Ref; a separately rebound quantum-taking digest fetch loads its32 bytes.
+The same semantic verifier recomputes Jseal and then runs its real record-digest
+continuation. Only that successful transition reaches RECORDS-ZERO.
+
+The actual checked Jseal is copied to the existing external root scratch row
+before later canonical leaf validation reuses the expected row. Record-stream
+digest remains in the private FC hash row; previous seal has its existing row.
+No extra digest bank or hash/parser is introduced. Header/copy still require
+FC Idle, while the shared first-page source predicate permits the crypto step
+to resume its own FC work. Source endpoint/namespace/Ref identity remains exact.
+The fresh J1 predecessor is initialized from the format's zero-genesis rule,
+with no caller cut. The original records frame is still unchecked at this
+partial receipt, so no batch, root4 or prefix authority/hold release follows.
+
+These new crypto substeps remain unreachable in the current boot composition
+and unqualified. Six source-provider/projection controls pass, including actual
+provider argument/result counts, zero gate before mutation and unchanged holder
+/old leaf intake. Runnable original-writer crypto controls, normalized frame
+byte relation, all batches/append, real caller dispatch, root4 and unfinished
+prefix ownership transfer remain owed. No compute grant has been used.

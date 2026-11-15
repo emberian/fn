@@ -5,6 +5,7 @@ import lisp_rewrite as lr
 import event_archive_accumulator_rewrite as rw
 import event_archive_test_accumulator_rewrite as tests
 import event_archive_batch_rewrite as batch
+import event_archive_seal_rewrite as seal
 
 ROOT=Path(__file__).resolve().parents[1]
 
@@ -21,7 +22,7 @@ class Accumulator(unittest.TestCase):
                             ('event-archive-cold-cursor.lisp',rw.cursor),
                             ('event-archive-cold-boot.lisp',rw.boot)]:
             after=recipe(before[name])
-            after=batch.state(after) if name=='event-archive-state.lisp' else after
+            after=seal.state(batch.state(after)) if name=='event-archive-state.lisp' else after
             after=batch.project_cursor(after) if name=='event-archive-cold-cursor.lisp' else after
             self.assertEqual(after,(ROOT/'books'/name).read_text())
             self.assertEqual(after,recipe(after))

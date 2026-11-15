@@ -3,6 +3,7 @@ from pathlib import Path
 import unittest
 import lisp_rewrite as lr
 import event_archive_batch_rewrite as rw
+import event_archive_seal_rewrite as seal
 ROOT=Path(__file__).resolve().parents[1]
 def read(p):return (ROOT/p).read_text()
 def calls(s,p):return lr.match(p,lr.parse(s).forms)
@@ -10,7 +11,7 @@ def form(s,p):
  n=calls(s,p)[0].node;return s[n.start:n.end]
 class Batch(unittest.TestCase):
  def test_exact_source_projection_retains_old_holders_and_leaf_consumer(self):
-  for name,fun in [('event-archive-state',rw.state),('event-archive-cold-members',lambda s:rw.seal_copy(rw.members(s))),('event-archive-cold-member-unit',lambda s:rw.copy_fixture(rw.fixture(s)))]:
+  for name,fun in [('event-archive-state',lambda s:seal.state(rw.state(s))),('event-archive-cold-members',lambda s:seal.members(rw.seal_copy(rw.members(s)))),('event-archive-cold-member-unit',lambda s:rw.copy_fixture(rw.fixture(s)))]:
    before=read('tools/fixtures/cold-batch-before-'+name+'.lisp');after=fun(before)
    self.assertEqual(after,read(('tests/' if name.endswith('unit') else 'books/')+name+'.lisp'));self.assertEqual(after,fun(after))
    if name.endswith('unit'):continue
@@ -20,7 +21,7 @@ class Batch(unittest.TestCase):
  def test_saved_page_ref_identity_class(self):
   s=read('books/event-archive-cold-members.lisp')
   begin=form(s,'(fn2-event-archive-operation fn2-event-archive-cold-batch-begin ?*body)')
-  current=form(s,'(defun fn2-event-archive-cold-batch-header-current-p ?*body)')
+  current=form(s,'(defun fn2-event-archive-cold-batch-first-page-p ?*body)')
   for name,value in rw.BIND:
    self.assertTrue(calls(begin,'('+name+' '+value+')'),name)
    self.assertTrue(calls(current,'(equal (fn2-event-archive-'+name+' 1 fn2-event-archive) '+value+')'),name)
@@ -69,7 +70,7 @@ class Batch(unittest.TestCase):
    self.assertTrue(calls(s,p),p)
   self.assertIn("'(:decoder-next :header-off :seal-off)",s)
   self.assertTrue(calls(read('books/event-archive-cold-members.lisp'),
-    '(equal (fn2-fields-decode-next work fn2-fields) (fn2-event-archive-batch-cursor 1 fn2-event-archive))'))
+    '(equal (fn2-fields-decode-next (* 128 row) fn2-fields) (fn2-event-archive-batch-cursor 1 fn2-event-archive))'))
  def test_seal_copy_real_budget_and_captured_accumulator(self):
   s=read('books/event-archive-cold-members.lisp')
   step=form(s,'(fn2-event-archive-operation (fn2-event-archive-cold-batch-seal-copy-step budget) ?*body)')
@@ -88,7 +89,7 @@ class Batch(unittest.TestCase):
             '(fn2-eamcu-test :batch-copy)', '(eq stale :source)', '(eq shifted :source)']:
    self.assertTrue(calls(fixture,p),p)
   cursor=read('books/event-archive-cold-cursor.lisp')
-  self.assertEqual(cursor,rw.cursor_reset(cursor))
+  self.assertEqual(cursor,seal.cursor(rw.cursor_reset(cursor)))
   begin=form(cursor,'(fn2-event-archive-operation (fn2-event-archive-cold-cursor-begin ?*args) ?*body)')
   self.assertTrue(calls(begin,'(batch-phase *fn2-event-archive-batch-phase-idle*)'))
   for name,_ in rw.FIELDS:self.assertTrue(calls(begin,'('+name+' 0)'),name)

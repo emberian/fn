@@ -427,7 +427,8 @@ def cursor_reset(s):
 def project_cursor(s):
  import event_archive_fixed_rows_rewrite as fixed
  import event_archive_accumulator_rewrite as acc
- return cursor_reset(acc.cursor(fixed.rewrite(s)))
+ import event_archive_seal_rewrite as seal
+ return seal.cursor(cursor_reset(acc.cursor(fixed.rewrite(s))))
 
 
 def source_test(s,name):

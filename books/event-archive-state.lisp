@@ -40,6 +40,7 @@
   (batch-incarnation :u60)
   (batch-decode-started :bool)
   (batch-cursor :u32)
+  (batch-reader-started :bool) (batch-fetch-next :u8) (batch-fetch-acc :u32) (batch-fetch-off :u32)
   (batch-copy-started :bool)
   (batch-copy-next :u32)
   (batch-accumulator-slot :u32)
