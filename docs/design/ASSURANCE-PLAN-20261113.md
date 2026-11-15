@@ -63,6 +63,19 @@ choosing a stored checkpoint; reclamation owns moving genesis into the fresh
 branch and tying sealer eligibility to actual boot closure. The autonomous
 retirement submit/poll producer also remains unconnected.
 
+**Selected recovery opening blocker (reclamation deputy).** Actual selected
+`fn2-recovery-install-finish` leaves allocator freeze phase4 and epoch-begun0.
+The current epoch-result path invokes ordinary `fn2-alloc-begin-epoch`, which
+correctly refuses a frozen allocator; the same-epoch shortcut does not open it
+either. Implement a private post-Fence recovery-finalize join that derives the
+actual boot actor/generation, completed epoch write/Fence, selected reconstruction,
+all-bank protection closure and explicit orphan classification. Preserve the
+ordinary begin-epoch refusal and keep physical issuance closed until this join.
+The cold-restore owner is building the connected actual checkpoint/store/crash/
+restart fixture; existing map/projection controls with synthetic premises do not
+establish a selected boot success. The fixture must cover held Fence, stale
+identity and incomplete protection refusal, with no synthetic freeze clearing.
+
 TLS/COMPRESS shared host closure, actual native input-prefix emission, and replay
 receipt consumption are source candidates, not qualified host behavior. Native
 Close/Cancel must retain operation identity and accepted counts; deferred Receive
