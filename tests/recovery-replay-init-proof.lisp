@@ -42,4 +42,8 @@
  :hints (("Goal" :in-theory
   (enable fn2-recovery-frontier-step fn2-rp-current-unit-auth-p
           fn2-rp-current-unit-row-p fn2-rp-auth-hash-current-p
-          fn2-rp-current-source-p fn2-recovery-selected-current-p))))
+          fn2-rp-current-source-p fn2-recovery-selected-current-p)
+  :use (fn2-recovery-frontier-done-initializes-ownership-cursor
+        fn2-recovery-frontier-frames-ownership-carriers
+        fn2-recovery-frontier-done-frames-hash-carriers
+        fn2-recovery-frontier-done-retains-source-binding))))
