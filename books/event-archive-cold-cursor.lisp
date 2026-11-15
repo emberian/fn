@@ -40,8 +40,8 @@
 
 (fn2-event-archive-operation (fn2-event-archive-cold-cursor-begin scratch sgen)
  (fn2-event-archive fn2-checkpoints fn2-checkpoint-refs fn2-checkpoint-bytes fn2-checkpoint-restore-reader
-  fn2-run-loads fn2-run-cursors fn2-fc fn2-fields fn2-pool)
- (fn2-event-archive fn2-run-loads fn2-run-cursors fn2-fields)
+  fn2-run-loads fn2-run-cursors fn2-fc fn2-fields fn2-pool fn2-mk fn2-b3 fn2-digests)
+ (fn2-event-archive fn2-run-loads fn2-run-cursors fn2-fields fn2-mk)
  (b* (((unless (and (fn2-event-archive-cold-source-p fn2-event-archive fn2-checkpoints fn2-checkpoint-refs fn2-checkpoint-bytes)
                     (equal (fn2-event-archive-phase 1 fn2-event-archive) *fn2-event-archive-phase-cold-header*)
                     (< 0 (fn2-checkpoint-restore-reader-rows fn2-checkpoint-restore-reader))
@@ -51,9 +51,10 @@
                     (equal (fn2-checkpoint-restore-reader-gen 0 fn2-checkpoint-restore-reader) (fn2-event-archive-header-gen 1 fn2-event-archive))
                     (< 1 (fn2-run-loads-rows fn2-run-loads))
                     (equal (fn2-run-loads-rows fn2-run-loads) (fn2-run-cursors-rows fn2-run-cursors))))
-       (mv :source fn2-event-archive fn2-run-loads fn2-run-cursors fn2-fields))
+       (mv :source fn2-event-archive fn2-run-loads fn2-run-cursors fn2-fields fn2-mk))
       (c (fn2-b-event-archive-cursor-from-rows (fn2-run-loads-rows fn2-run-loads)))
-      (row (fn2-run-loads-checker c fn2-run-loads)) (base (* 128 row))
+      (row (fn2-run-loads-checker c fn2-run-loads))
+      (event-row (fn2-b-event-row (fn2-fc-rows fn2-fc))) (base (* 128 row))
       (height (fn2-event-archive-manifest-height 1 fn2-event-archive))
       (page (fn2-event-archive-header-slot 1 fn2-event-archive)) (pgen (fn2-event-archive-header-gen 1 fn2-event-archive))
       (kind (fn2-event-archive-owner-kind 1 fn2-event-archive)) (owner (fn2-event-archive-owner-slot 1 fn2-event-archive)) (gen (fn2-event-archive-owner-gen 1 fn2-event-archive))
@@ -68,12 +69,16 @@
                     (<= *fn2-format-page-size* (fn2-pool-cap page fn2-pool))
                     (unsigned-byte-p 32 scratch) (unsigned-byte-p 60 sgen) (not (equal scratch page))
                     (eq (fn2-pool-workspace-code scratch sgen kind owner gen fn2-pool) :ok)
-                    (<= *fn2-commit-unit-bytes* (fn2-pool-cap scratch fn2-pool))))
-       (mv :window fn2-event-archive fn2-run-loads fn2-run-cursors fn2-fields))
+                    (<= *fn2-commit-unit-bytes* (fn2-pool-cap scratch fn2-pool))
+                    (< 0 event-row) (< event-row (fn2-fc-rows fn2-fc))
+                    (equal (fn2-fc-phase event-row fn2-fc) *fn2-fc-phase-idle*)
+                    (fn2-mk-ready event-row fn2-mk fn2-digests) (fn2-b3-ready event-row fn2-b3 fn2-digests)))
+       (mv :window fn2-event-archive fn2-run-loads fn2-run-cursors fn2-fields fn2-mk))
       ((mv code fn2-run-loads) (fn2-run-load-admission-begin fn2-run-loads))
-      ((unless (eq code :ok)) (mv code fn2-event-archive fn2-run-loads fn2-run-cursors fn2-fields))
+      ((unless (eq code :ok)) (mv code fn2-event-archive fn2-run-loads fn2-run-cursors fn2-fields fn2-mk))
+      (fn2-mk (fn2-mk-init event-row fn2-mk))
       ((mv code fn2-run-cursors) (fn2-event-archive-cold-start-root c :manifest base fn2-event-archive fn2-run-cursors))
-      ((unless (eq code :ok)) (mv code fn2-event-archive fn2-run-loads fn2-run-cursors fn2-fields))
+      ((unless (eq code :ok)) (mv code fn2-event-archive fn2-run-loads fn2-run-cursors fn2-fields fn2-mk))
       ; No installed-run/catalog row is fabricated. Source-row is this private
       ; candidate, checked by the archive wrapper, never a catalog capability.
       (fn2-run-loads (fn2-run-loads-put c (phase *fn2-run-load-phase-reserved*)
@@ -84,7 +89,7 @@
       (fn2-fields (fn2-fields-set-value q *fn2-event-archive-schema* fn2-fields))
       (fn2-fields (fn2-fields-set-value (+ q 1) 1 fn2-fields))
       (fn2-event-archive (fn2-event-archive-put 1 (phase *fn2-event-archive-phase-cold-manifest*) (scan 0) (next-event 1) (entry-pending 0) (read-armed 0))))
-  (mv :borrowed fn2-event-archive fn2-run-loads fn2-run-cursors fn2-fields)))
+  (mv :borrowed fn2-event-archive fn2-run-loads fn2-run-cursors fn2-fields fn2-mk)))
 
 (defun fn2-event-archive-cold-cursor-source-p (fn2-event-archive fn2-checkpoints fn2-checkpoint-refs fn2-checkpoint-bytes
  fn2-run-loads fn2-run-cursors fn2-pool)

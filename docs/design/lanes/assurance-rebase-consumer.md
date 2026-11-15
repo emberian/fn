@@ -382,3 +382,10 @@ height-count versus level, both root kinds and refusal. This returns only
 MEMBER-BOUND. Member scanning, event hashing/count validation, outer-manifest
 resume and terminal/root4 closure remain incomplete and cannot reach COMPLETE.
 No witness format declaration was changed.
+
+Archive BEGIN now initializes the actual named private event MK row in the same
+borrow constructor, after readiness/source checks and before starting the
+manifest cursor. Runtime MK0 is excluded. The real core face threads MK/B3/
+digest children and returns the changed MK; no caller frontier-ready flag is
+accepted. The checked constructor/core transformation has three source
+controls and composes with the existing root/reach controls. ACL2 remains unrun.

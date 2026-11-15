@@ -14,7 +14,7 @@
           fn2-core-fc fn2-core-fc-context fn2-core-b3 fn2-core-fields fn2-core-pool fn2-core-digests))
 (defcost fn2-boot-checkpoint-archive-begin :answers t :bytes (* 2 *fn2-run-layout-max-entry-bytes*)
  :tables (fn2-core-event-archive fn2-core-checkpoints fn2-core-checkpoint-refs fn2-core-checkpoint-bytes fn2-core-checkpoint-restore-reader
-          fn2-core-run-loads fn2-core-run-cursors fn2-core-fc fn2-core-fields fn2-core-pool fn2-core-checkpoint-restore-map fn2-core-checkpoint-restore-map-control fn2-core-checkpoint-restore-reach fn2-core-checkpoint-restore-reach-control))
+          fn2-core-run-loads fn2-core-run-cursors fn2-core-fc fn2-core-fields fn2-core-pool fn2-core-checkpoint-restore-map fn2-core-checkpoint-restore-map-control fn2-core-checkpoint-restore-reach fn2-core-checkpoint-restore-reach-control fn2-core-mk fn2-core-b3 fn2-core-digests))
 (defcost fn2-boot-checkpoint-archive-arm :answers t :bytes 512
  :tables (fn2-core-event-archive fn2-core-checkpoints fn2-core-checkpoint-refs fn2-core-checkpoint-bytes fn2-core-run-loads fn2-core-run-cursors fn2-core-pool fn2-core-checkpoint-restore-map fn2-core-checkpoint-restore-map-control fn2-core-checkpoint-restore-reach fn2-core-checkpoint-restore-reach-control))
 (defcost fn2-boot-checkpoint-archive-received :answers t :bytes 512
@@ -70,10 +70,10 @@
      (stobj-let ((fn2-event-archive (fn2-core-event-archive fn2-core)) (fn2-checkpoints (fn2-core-checkpoints fn2-core))
        (fn2-checkpoint-refs (fn2-core-checkpoint-refs fn2-core)) (fn2-checkpoint-bytes (fn2-core-checkpoint-bytes fn2-core))
        (fn2-checkpoint-restore-reader (fn2-core-checkpoint-restore-reader fn2-core)) (fn2-run-loads (fn2-core-run-loads fn2-core))
-       (fn2-run-cursors (fn2-core-run-cursors fn2-core)) (fn2-fc (fn2-core-fc fn2-core)) (fn2-fields (fn2-core-fields fn2-core)) (fn2-pool (fn2-core-pool fn2-core)))
-      (code fn2-event-archive fn2-run-loads fn2-run-cursors fn2-fields)
+       (fn2-run-cursors (fn2-core-run-cursors fn2-core)) (fn2-fc (fn2-core-fc fn2-core)) (fn2-fields (fn2-core-fields fn2-core)) (fn2-pool (fn2-core-pool fn2-core)) (fn2-mk (fn2-core-mk fn2-core)) (fn2-b3 (fn2-core-b3 fn2-core)) (fn2-digests (fn2-core-digests fn2-core)))
+      (code fn2-event-archive fn2-run-loads fn2-run-cursors fn2-fields fn2-mk)
       (fn2-event-archive-cold-cursor-begin scratch sgen fn2-event-archive fn2-checkpoints fn2-checkpoint-refs fn2-checkpoint-bytes
-       fn2-checkpoint-restore-reader fn2-run-loads fn2-run-cursors fn2-fc fn2-fields fn2-pool) (mv code fn2-core)))))
+       fn2-checkpoint-restore-reader fn2-run-loads fn2-run-cursors fn2-fc fn2-fields fn2-pool fn2-mk fn2-b3 fn2-digests) (mv code fn2-core)))))
   (fn2-core-preserves fn2-boot-checkpoint-archive-begin (id ogen fn2-core) :position 1 :rows nil)
   (defun fn2-boot-checkpoint-archive-arm (id ogen fn2-core)
    (declare (xargs :stobjs fn2-core :guard (fn2-core-wfp fn2-core)))
