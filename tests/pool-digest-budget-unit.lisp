@@ -2,6 +2,24 @@
 (in-package "ACL2")
 (include-book "std/util/bstar" :dir :system)
 (include-book "../books/pool-digest")
+; Complete test-only reference faces from each actual schema.
+(make-event
+ (let* ((name 'fn2-digests)
+        (schema (cdr (assoc-eq name (fn2-decl-rows :columns (w state)))))
+        (fields (append (fn2-columns-fields name (fn2-decl-get :columns schema))
+                        (list (list (fn2-columns-sym name "-ROWS") :type
+                                    (list 'integer 0 (- (fn2-decl-get :rows-bound schema) 1)) :initially 0))
+                        (fn2-decl-get :extra-fields schema))))
+   (cons 'progn (fn2-columns-reference-events name (fn2-columns-sym name "-REF") fields))))
+(make-event
+ (let* ((name 'fn2-pool)
+        (schema (cdr (assoc-eq name (fn2-decl-rows :columns (w state)))))
+        (fields (append (fn2-columns-fields name (fn2-decl-get :columns schema))
+                        (list (list (fn2-columns-sym name "-ROWS") :type
+                                    (list 'integer 0 (- (fn2-decl-get :rows-bound schema) 1)) :initially 0))
+                        (fn2-decl-get :extra-fields schema))))
+   (cons 'progn (fn2-columns-reference-events name (fn2-columns-sym name "-REF") fields))))
+
 (deflayout fn2-rec-budget-words
  '((w0 :u32) (w1 :u32) (w2 :u32) (w3 :u32) (w4 :u32) (w5 :u32) (w6 :u32) (w7 :u32)))
 (defconst *fn2-rdb-sentinel* 2863311530)

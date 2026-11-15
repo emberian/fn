@@ -157,4 +157,18 @@ def fixture_totalize(source):
 '''+target,1)
         source=source.replace('wrong-same stale-same incremental full','wrong-same stale-same partial-same incremental full',1)
         source=source.replace("'(t t t t t t t t t)","'(t t t t t t t t t t)",1)
+    if '; Complete test-only reference faces from each actual schema.' not in source:
+        events='; Complete test-only reference faces from each actual schema.\n'
+        for name in ['fn2-digests','fn2-pool']:
+            events+=f"""(make-event
+ (let* ((name '{name})
+        (schema (cdr (assoc-eq name (fn2-decl-rows :columns (w state)))))
+        (fields (append (fn2-columns-fields name (fn2-decl-get :columns schema))
+                        (list (list (fn2-columns-sym name "-ROWS") :type
+                                    (list 'integer 0 (- (fn2-decl-get :rows-bound schema) 1)) :initially 0))
+                        (fn2-decl-get :extra-fields schema))))
+   (cons 'progn (fn2-columns-reference-events name (fn2-columns-sym name "-REF") fields))))
+"""
+        n=lr.match('(deflayout fn2-rec-budget-words ?*body)',lr.parse(source).forms,deep=False)[0].node
+        source=lr.write(source,[(n.start,n.start,events+'\n')])
     return source
