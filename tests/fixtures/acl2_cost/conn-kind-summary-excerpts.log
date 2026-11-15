@@ -1,0 +1,32 @@
+; Forms, times and steps from record1360565; Rules are abbreviated.
+Summary
+Form:  ( DEFTHM
+FN2-ARMS-OK-1-FN2-CONN-FN2-MACHINES-FN2-POOL-FN2-CONTROL-OF-TUPLE ...)
+Rules: NIL
+Time:  0.00 seconds (prove: 0.00, print: 0.00, other: 0.00)
+Prover steps counted:  108
+Summary
+Form:  ( DEFTHM FN2-CONN-INITIALIZE-ROWS-TYPE ...)
+Rules: NIL
+Time:  0.64 seconds (prove: 0.64, print: 0.00, other: 0.00)
+Prover steps counted:  145713
+Summary
+Form:  ( DEFUN FN2-MACHINE-ADMIT-FN2-CONN-CHILDREN ...)
+Rules: NIL
+Time:  1.38 seconds (prove: 1.31, print: 0.00, other: 0.06)
+Prover steps counted:  104595
+Summary
+Form:  ( DEFTHM FN2-MACHINE-ADMIT-FN2-CONN-CHILDREN-SHAPE ...)
+Rules: NIL
+Time:  1.09 seconds (prove: 1.07, print: 0.00, other: 0.02)
+Prover steps counted:  112113
+Summary
+Form:  ( PROGN (DEFUN FN2-MACHINE-ADMIT-FN2-CONN-CHILDREN ...) ...)
+Rules: NIL
+Time:  2.62 seconds (prove: 2.46, print: 0.01, other: 0.15)
+Prover steps counted:  281104
+Summary
+Form:  (CERTIFY-BOOK "books/conn-kind" ...)
+Rules: NIL
+Time:  21.74 seconds (prove: 10.82, print: 0.08, other: 10.84)
+Prover steps counted:  1206838
