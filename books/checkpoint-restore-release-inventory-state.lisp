@@ -7,7 +7,7 @@
 (fn2-book-layer :b)
 (defcolumns fn2-checkpoint-restore-release-inventory
  ((phase (:enum fn2-checkpoint-restore-release-inventory-phase
-    (:idle :captured :pages :complete :installing :installed :uncertain)))
+    (:idle :captured :pages :complete :installing :installed :uncertain :applying :applied)))
   (candidate :u32) (generation :u60) (checkpoint :u60)
   (cut-commit :u60) (cut-event :u60) (history :u60) (incarnation :u60)
   (owner-kind :u8) (owner-slot :u32) (owner-gen :u60)
@@ -15,7 +15,7 @@
   (root-unit :u60) (root-epoch :u60) (root-allocation :u60)
   (unit :u60) (epoch :u60) (allocation :u60)
   (total :u60) (consumed :u60) (materialized :u60)
-  (head :u32) (tail :u32) (cursor :u32))
+  (head :u32) (tail :u32) (cursor :u32) (settled :u60))
  :extra-fields
  ((fn2-checkpoint-restore-release-inventory-identities :type (array (unsigned-byte 8) (96)) :initially 0
    :why "Private descriptor, root4 and inventory-root hashes copied from actual authenticated source; no caller hash or scratch alias.")))

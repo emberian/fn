@@ -113,4 +113,5 @@
  (fn2-checkpoints fn2-checkpoint-refs fn2-checkpoint-bytes fn2-checkpoint-restore-map fn2-checkpoint-restore-map-control fn2-checkpoint-restore-reach-control fn2-checkpoint-restore-reader fn2-checkpoint-restore-release-inventory fn2-checkpoint-restore-release-entries)
  (and (fn2-checkpoint-restore-release-inventory-reader-terminal-p fn2-checkpoints fn2-checkpoint-refs fn2-checkpoint-bytes fn2-checkpoint-restore-map fn2-checkpoint-restore-map-control fn2-checkpoint-restore-reach-control fn2-checkpoint-restore-reader fn2-checkpoint-restore-release-inventory fn2-checkpoint-restore-release-entries)
       (member-equal (fn2-checkpoint-restore-release-inventory-phase 0 fn2-checkpoint-restore-release-inventory)
-       (list *fn2-checkpoint-restore-release-inventory-phase-complete* *fn2-checkpoint-restore-release-inventory-phase-installing* *fn2-checkpoint-restore-release-inventory-phase-installed*))))
+       (list *fn2-checkpoint-restore-release-inventory-phase-complete* *fn2-checkpoint-restore-release-inventory-phase-installing* *fn2-checkpoint-restore-release-inventory-phase-installed*
+             *fn2-checkpoint-restore-release-inventory-phase-applying* *fn2-checkpoint-restore-release-inventory-phase-applied*))))
