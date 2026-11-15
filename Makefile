@@ -320,6 +320,7 @@ ACL2_BOOKS = \
   tests/layout-size-bound-unit \
   tests/checkpoint-descriptor-read-unit \
   tests/checkpoint-carrier-unit \
+  tests/checkpoint-member-interface-unit \
   tests/codec-profile-unit \
   tests/codec-transport-unit \
   tests/host-codec-unit \
