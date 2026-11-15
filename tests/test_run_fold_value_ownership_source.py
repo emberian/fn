@@ -45,6 +45,9 @@ class FoldOwnership(unittest.TestCase):
   self.assertTrue(calls(ctor,'fn2-rs-int-valuesp'))
  def test_prepared_controls_nonvacuous_and_fold_specific(self):
   text=(ROOT/'tests/run-fold-value-ownership-unit.lisp').read_text()
+  controls=[x for f in parsed(ROOT/'tests/run-fold-value-ownership-unit.lisp') for x in walk(f) if x and x[0]=='fn2-defrunschema']
+  self.assertEqual(len(controls),5)
+  self.assertTrue(all(len(x)==9 and x[-1]=='nil' for x in controls))
   self.assertIn('fn2-rf-owned-control',text)
   self.assertIn('fn2-rf-borrowed-control',text)
   self.assertIn('fn2-rf-byte-control',text)
