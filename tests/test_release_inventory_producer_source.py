@@ -22,10 +22,10 @@ class Producer(unittest.TestCase):
   self.assertIn('fn2-alloc-handle-code',str(row))
  def test_real_cut_and_complete_E_scan_dominate_source(self):
   s=(ROOT/'books/release-inventory-source.lisp').read_text()
-  owner=function('release-inventory-source.lisp','fn2-release-inventory-owner-p')
+  owner=[function('release-inventory-source.lisp','fn2-release-inventory-owner-p'),function('release-inventory-source.lisp','fn2-release-inventory-subject-p')]
   for name in ('fn2-csnapshot-ownerp','fn2-checkpoint-builder-ownerp','fn2-alloc-freeze-token','fn2-alloc-freeze-owner-gen'):
    self.assertIn(name,str(owner))
-  done=function('release-inventory-source.lisp','fn2-release-inventory-complete-p')
+  done=[function('release-inventory-source.lisp','fn2-release-inventory-complete-p'),function('release-inventory-source.lisp','fn2-release-inventory-source-terminal-p')]
   for name in ('fn2-release-inventory-build-scan','fn2-release-inventory-build-rows-count','fn2-release-inventory-build-cursor','fn2-release-inventory-build-remaining','fn2-release-inventory-build-completed-pages','fn2-checkpoint-page-completed-extent-p'):
    self.assertIn(name,str(done))
   self.assertNotIn('(defcost fn2-release-inventory-complete-p',s)
