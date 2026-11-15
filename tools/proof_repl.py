@@ -135,6 +135,15 @@ from the cache is dated no earlier than its source (tools/certs.py
 `date_after_source`), so `certify_books.py --pcert` completes over a closure
 `--certify-missing` or an install put in place.
 
+For a cached author prefix, `warm-entry --output build/entry.lisp BOOK ...`
+plans the books intended to be globally present. It removes a root only when
+another root exports it through non-LOCAL include paths. Certification closure
+still includes LOCAL dependencies; cache availability is not world presence.
+The command launches no ACL2 and installs no artifacts. Qualify the artifacts
+separately and mark its `exported_books_after_success` as seen only after the
+entry has actually loaded. Explicitly importing a private LOCAL-only book can
+expose names its parent scopes away; choose the intended global imports.
+
 Round 4 (lane-tools-1, 2026-09-28, the lanes' LANEDUMP asks): `--acl2 PATH`
 (else FN_ACL2) picks the ACL2, also on a --host box (hbox's
 acl2-literal-4g-tls64k when an image world exhausts thread-local storage);
@@ -244,6 +253,7 @@ import acl2_slots  # noqa: E402
 import acl2_toolchain  # noqa: E402
 import box_table  # noqa: E402
 import certs  # noqa: E402
+import ledger  # noqa: E402
 
 SESSIONS = ROOT / "build" / "proof-repl"
 # A session with no `send` for this long stops itself (see the header);
@@ -582,7 +592,11 @@ def attachment_source_refusal(graph: dict[str, list[str]], order: list[str]) -> 
 # --- a book's local include graph ------------------------------------------------
 
 def include_graph(root: Path, book: str, include_books=()) -> dict[str, list[str]]:
-    """The union of the named local closures -> their direct includes."""
+    """Certification dependencies, including ACL2 LOCAL includes.
+
+    Reachability here is not exported world presence; use warm_entry_books
+    when selecting includes that must make named books globally available.
+    """
     graph: dict[str, list[str]] = {}
     pending = [book, *include_books]
     base = root.resolve()
@@ -597,6 +611,89 @@ def include_graph(root: Path, book: str, include_books=()) -> dict[str, list[str
         graph[name] = certs._include_targets(base, name, source, digest, references)
         pending.extend(graph[name])
     return graph
+
+
+def exported_include_graph(root: Path, book: str, include_books=()) -> dict[str, list[str]]:
+    """Only non-LOCAL include paths exported by the named books.
+
+    A LOCAL edge stops the whole path, including that child's public includes.
+    This graph plans presence after a successful include, not cache readiness.
+    Certification still uses include_graph's full dependency closure.
+    """
+    graph: dict[str, list[str]] = {}
+    pending = [book, *include_books]
+    base = root.resolve()
+    while pending:
+        name = pending.pop()
+        if name in graph:
+            continue
+        source = (base / f"{name}.lisp").resolve()
+        if not source.is_relative_to(base) or not source.is_file():
+            raise certs.UnreadableBook(f"{name}.lisp: missing or outside the worktree")
+        try:
+            parsed = ledger.Reader(source.read_text(encoding="utf-8")).top_level()
+        except ledger.ReadError as error:
+            raise certs.UnreadableBook(f"{name}.lisp: {error}") from None
+        targets = []
+        for form, _ in ledger.source_events(parsed, include_local=False):
+            if (ledger.head(form) != "include-book" or len(form) < 2
+                    or not isinstance(form[1], str)
+                    or ledger.include_is_external(form)):
+                continue
+            target = (source.parent / form[1]).with_suffix(".lisp").resolve()
+            if not target.is_relative_to(base):
+                raise certs.UnreadableBook(f"{name}.lisp: include-book escapes the worktree: {form[1]}")
+            targets.append(target.relative_to(base).with_suffix("").as_posix())
+        graph[name] = targets
+        pending.extend(targets)
+    return graph
+
+
+def warm_entry_books(root: Path, books) -> tuple[list[str], set[str]]:
+    """Minimal roots and their exports for books intended to be present.
+
+    BOOKS is the caller's intended global imports, not arbitrary available
+    cache entries: explicitly importing a private LOCAL-only book can expose
+    names its parent scopes away. Artifacts must be qualified separately.
+    Only after the emitted entry loads successfully may exports become seen.
+    """
+    ordered = list(dict.fromkeys(books))
+    wanted = set(ordered)
+    if not wanted:
+        return [], set()
+    graph = exported_include_graph(root, ordered[0], ordered[1:])
+    covered = {child for children in graph.values() for child in children}
+    entry = [name for name in ordered if name not in covered]
+    present, pending = set(), list(entry)
+    while pending:
+        name = pending.pop()
+        if name not in present:
+            present.add(name)
+            pending.extend(graph[name])
+    if not wanted <= present:
+        raise ValueError("include cycle prevents exported entry coverage: "
+                         + ", ".join(sorted(wanted - present)))
+    return entry, present
+
+
+def warm_entry(args) -> int:
+    """Write a definition-free warm entry without launching ACL2."""
+    try:
+        entry, present = warm_entry_books(ROOT, args.books)
+        path = Path(args.output).resolve()
+        dependencies = include_graph(ROOT, args.books[0], args.books[1:])
+        if path in {(ROOT / f"{book}.lisp").resolve() for book in dependencies}:
+            raise ValueError("entry output would overwrite an imported book")
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_text('(in-package "ACL2")\n' + ''.join(
+            '(include-book ' + json.dumps(os.path.relpath(ROOT.resolve() / book, path.parent)) + ')\n'
+            for book in entry), encoding="utf-8")
+    except (certs.UnreadableBook, ValueError) as error:
+        print(f"proof-repl: {error}", file=sys.stderr)
+        return 2
+    print(json.dumps({"entry": str(path), "entry_books": entry,
+                      "exported_books_after_success": sorted(present)}))
+    return 0
 
 
 def dependents_of(graph: dict[str, list[str]], seeds) -> set[str]:
@@ -4409,6 +4506,10 @@ def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description=__doc__,
                                      formatter_class=argparse.RawDescriptionHelpFormatter)
     sub = parser.add_subparsers(dest="command", required=True)
+    p = sub.add_parser("warm-entry", help="plan exported warm imports; no ACL2 or cache installation")
+    p.add_argument("books", nargs="+", help="intended global books, without .lisp; qualify artifacts separately")
+    p.add_argument("--output", required=True, help="definition-free entry .lisp to write")
+    p.set_defaults(run=warm_entry)
     p = sub.add_parser("start", help="load a book's certified closure and its forms",
                        epilog="FN_REPL_STEP_LIMIT=N: positive per-event prover step cap, "
                               "set before source dependencies and target events; "
@@ -4675,6 +4776,8 @@ def main(argv: list[str] | None = None) -> int:
         return run_remote(args, argv)
     if getattr(args, "acl2", None):
         os.environ["FN_ACL2"] = args.acl2
+    if args.command == "warm-entry":
+        return args.run(args)
     if apply_box_defaults() is None:
         apply_local_defaults()
     return args.run(args)
