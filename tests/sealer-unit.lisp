@@ -546,3 +546,47 @@
        (not (equal wrong-order spec)))))
 
 (fn2-assert-owed-teeth fn2-sealer-merge-reclaims)
+
+; Prepared actual source-replacement generation controls; not executed here.
+; The real codec/build/install runs produce both publications. Resource init
+; resets existing run/unit counters but must not erase the publication stamp.
+(fn2-su-defun fn2-su-until-install (fuel) :measure (nfix fuel)
+ (cond ((equal (fn2-seals-phase 0 fn2-seals) *fn2-seal-phase-install*) (fn2-su-mv :ready))
+       ((zp fuel) (fn2-su-mv :fuel))
+       (t (b* (((mv code fn2-seals fn2-overlays fn2-overlay-index fn2-run-installed fn2-run-builds fn2-run-writers fn2-run-restarts
+                    fn2-run-cache fn2-ribbon-builds fn2-ribbon-band fn2-fields fn2-pool fn2-fc fn2-fc-context fn2-b3 fn2-digests
+                    fn2-ranges fn2-range-sources fn2-run-cursors fn2-run-paths)
+                 (fn2-seal-step 4096 fn2-seals fn2-overlays fn2-overlay-index fn2-run-installed fn2-run-builds fn2-run-writers
+                  fn2-run-restarts fn2-run-cache fn2-ribbon-builds fn2-ribbon-band fn2-fields fn2-pool fn2-fc fn2-fc-context fn2-b3 fn2-digests
+                  fn2-ranges fn2-range-sources fn2-run-cursors fn2-run-paths)))
+            (if (member-eq code '(:more :done :retired)) (fn2-su-call fn2-su-until-install (- fuel 1)) (fn2-su-mv code))))))
+(fn2-su-defun fn2-su-publication-stamp ()
+ (b* (((mv setup fn2-seals fn2-overlays fn2-overlay-index fn2-run-installed fn2-run-builds fn2-run-writers fn2-run-restarts fn2-run-cache fn2-ribbon-builds fn2-ribbon-band fn2-fields fn2-pool fn2-fc fn2-fc-context fn2-b3 fn2-digests fn2-run-cursors fn2-run-paths fn2-ranges fn2-range-sources) (fn2-su-call fn2-su-setup 2 *fn2-run-page-size*))
+      ((mv loaded1 fn2-seals fn2-overlays fn2-overlay-index fn2-run-installed fn2-run-builds fn2-run-writers fn2-run-restarts fn2-run-cache fn2-ribbon-builds fn2-ribbon-band fn2-fields fn2-pool fn2-fc fn2-fc-context fn2-b3 fn2-digests fn2-run-cursors fn2-run-paths fn2-ranges fn2-range-sources) (fn2-su-call fn2-su-load 8 *fn2-su-groups* (list (fn2-su-batch 0 1 100)) 0 '(1) nil))
+      ((mv first count1 fn2-seals fn2-overlays fn2-overlay-index fn2-run-installed fn2-run-builds fn2-run-writers fn2-run-restarts fn2-run-cache fn2-ribbon-builds fn2-ribbon-band fn2-fields fn2-pool fn2-fc fn2-fc-context fn2-b3 fn2-digests fn2-run-cursors fn2-run-paths fn2-ranges fn2-range-sources) (fn2-su-call fn2-su-drive 10000 1 0))
+      (stamp1 (fn2-seals-published-source 0 fn2-seals))
+      ((mv reset fn2-seals) (fn2-seal-init 0 *fn2-su-fbase* 0 *fn2-run-page-size* 9 0 1 1 1 fn2-seals))
+      ((unless (and (eq setup :ok) (eq loaded1 :ok) (eq first :limit) (equal count1 1) (equal stamp1 1)
+                    (eq reset :ok) (equal (fn2-seals-published-source 0 fn2-seals) stamp1)
+                    (equal (fn2-seals-runs 0 fn2-seals) 0) (equal (fn2-seals-units 0 fn2-seals) 0))) (fn2-su-mv nil))
+      ((mv loaded2 fn2-seals fn2-overlays fn2-overlay-index fn2-run-installed fn2-run-builds fn2-run-writers fn2-run-restarts fn2-run-cache fn2-ribbon-builds fn2-ribbon-band fn2-fields fn2-pool fn2-fc fn2-fc-context fn2-b3 fn2-digests fn2-run-cursors fn2-run-paths fn2-ranges fn2-range-sources) (fn2-su-call fn2-su-load 8 *fn2-su-groups* (list (fn2-su-batch 0 1 200)) 0 '(2) nil))
+      ((mv second count2 fn2-seals fn2-overlays fn2-overlay-index fn2-run-installed fn2-run-builds fn2-run-writers fn2-run-restarts fn2-run-cache fn2-ribbon-builds fn2-ribbon-band fn2-fields fn2-pool fn2-fc fn2-fc-context fn2-b3 fn2-digests fn2-run-cursors fn2-run-paths fn2-ranges fn2-range-sources) (fn2-su-call fn2-su-drive 10000 1 0))
+      (stamp2 (fn2-seals-published-source 0 fn2-seals))
+      ((mv loaded3 fn2-seals fn2-overlays fn2-overlay-index fn2-run-installed fn2-run-builds fn2-run-writers fn2-run-restarts fn2-run-cache fn2-ribbon-builds fn2-ribbon-band fn2-fields fn2-pool fn2-fc fn2-fc-context fn2-b3 fn2-digests fn2-run-cursors fn2-run-paths fn2-ranges fn2-range-sources) (fn2-su-call fn2-su-load 8 *fn2-su-groups* (list (fn2-su-batch 0 1 300)) 0 '(3) nil))
+      ((mv ready fn2-seals fn2-overlays fn2-overlay-index fn2-run-installed fn2-run-builds fn2-run-writers fn2-run-restarts fn2-run-cache fn2-ribbon-builds fn2-ribbon-band fn2-fields fn2-pool fn2-fc fn2-fc-context fn2-b3 fn2-digests fn2-run-cursors fn2-run-paths fn2-ranges fn2-range-sources) (fn2-su-call fn2-su-until-install 10000))
+      ; Explicit negative premise perturbation: generation exhaustion.
+      (fn2-seals (fn2-seals-set-published-source 0 (- (expt 2 60) 1) fn2-seals))
+      (old-seals (fn2-seals-view fn2-seals)) (old-overlays (fn2-overlays-view fn2-overlays))
+      (old-runs (fn2-run-installed-view fn2-run-installed)) (old-pool (fn2-pool-view fn2-pool))
+      ((mv full fn2-seals fn2-overlays fn2-run-installed fn2-pool) (fn2-seal-install fn2-seals fn2-overlays fn2-run-installed fn2-pool)))
+  (fn2-su-mv (and (eq loaded2 :ok) (eq second :limit) (equal count2 1) (equal stamp2 (+ stamp1 1))
+                  (eq loaded3 :ok) (eq ready :ready) (eq full :bounds)
+                  (equal old-seals (fn2-seals-view fn2-seals)) (equal old-overlays (fn2-overlays-view fn2-overlays))
+                  (equal old-runs (fn2-run-installed-view fn2-run-installed)) (equal old-pool (fn2-pool-view fn2-pool))))))
+(defun fn2-sealer-publication-stamp-control ()
+ (declare (xargs :verify-guards nil))
+ (fn2-run-with-local (fn2-seals fn2-overlays fn2-overlay-index fn2-run-installed fn2-run-builds fn2-run-writers fn2-run-restarts fn2-run-cache fn2-ribbon-builds fn2-ribbon-band fn2-fields fn2-pool fn2-fc fn2-fc-context fn2-b3 fn2-digests fn2-run-cursors fn2-run-paths fn2-ranges fn2-range-sources)
+  (mv-let (ok fn2-seals fn2-overlays fn2-overlay-index fn2-run-installed fn2-run-builds fn2-run-writers fn2-run-restarts fn2-run-cache fn2-ribbon-builds fn2-ribbon-band fn2-fields fn2-pool fn2-fc fn2-fc-context fn2-b3 fn2-digests fn2-run-cursors fn2-run-paths fn2-ranges fn2-range-sources)
+   (fn2-su-publication-stamp fn2-seals fn2-overlays fn2-overlay-index fn2-run-installed fn2-run-builds fn2-run-writers fn2-run-restarts fn2-run-cache fn2-ribbon-builds fn2-ribbon-band fn2-fields fn2-pool fn2-fc fn2-fc-context fn2-b3 fn2-digests fn2-run-cursors fn2-run-paths fn2-ranges fn2-range-sources)
+   (mv ok fn2-seals fn2-overlays fn2-overlay-index fn2-run-installed fn2-run-builds fn2-run-writers fn2-run-restarts fn2-run-cache fn2-ribbon-builds fn2-ribbon-band fn2-fields fn2-pool fn2-fc fn2-fc-context fn2-b3 fn2-digests fn2-run-cursors fn2-run-paths fn2-ranges fn2-range-sources))))
+(assert-event (fn2-sealer-publication-stamp-control))

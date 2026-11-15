@@ -12,7 +12,7 @@
  :arms
  ((:idle :on-refusal ((:next :uncertain) (:charge :steps *fn2-work-small* :runnable t))
    (:if *fn2-checkpoint-activation-qualified*
-    ((:do (code needed retirement) (fn2-checkpoint-master-pressure-op row-retirement-seen))
+    ((:do (code needed retirement) (fn2-checkpoint-master-pressure-op row-retirement-seen *fn2-checkpoint-master-kind* id row-generation))
      (:if needed
       ((:set (scan 0) (highest 0) (candidate 0) (candidate-found 0) (refusal-reason 0))
        (:next :catalog) (:charge :steps *fn2-work-small* :runnable t))

@@ -96,9 +96,10 @@
       (equal (fn2-alloc-free-head fn2-extents) (fn2-checkpoint-retry-free-head 0 fn2-checkpoint-retry))
       (equal (fn2-alloc-total-free fn2-extents) (fn2-checkpoint-retry-free-count 0 fn2-checkpoint-retry))
       (equal (fn2-alloc-last-retirement fn2-extents) (fn2-checkpoint-retry-retirement 0 fn2-checkpoint-retry))
-      (equal (fn2-pool-nclasses fn2-pool) (fn2-checkpoint-retry-pool-classes 0 fn2-checkpoint-retry))
-      (equal (fn2-checkpoint-retry-classes-rows fn2-checkpoint-retry-classes) (fn2-pool-nclasses fn2-pool))
-      (fn2-checkpoint-retry-same-classes (fn2-pool-nclasses fn2-pool) 0 fn2-checkpoint-retry-classes fn2-pool)))
+      (or (not (equal (fn2-checkpoint-retry-reason 0 fn2-checkpoint-retry) *fn2-checkpoint-retry-pool*))
+          (and (equal (fn2-pool-nclasses fn2-pool) (fn2-checkpoint-retry-pool-classes 0 fn2-checkpoint-retry))
+               (equal (fn2-checkpoint-retry-classes-rows fn2-checkpoint-retry-classes) (fn2-pool-nclasses fn2-pool))
+               (fn2-checkpoint-retry-same-classes (fn2-pool-nclasses fn2-pool) 0 fn2-checkpoint-retry-classes fn2-pool)))))
 (fn2-checkpoint-retry-classes-preserves fn2-checkpoint-retry-copy-classes (n i fn2-checkpoint-retry-classes fn2-pool) :position 1)
 (fn2-checkpoint-retry-preserves fn2-checkpoint-retry-record
  (kind owner gen reason fn2-checkpoint-retry fn2-checkpoint-retry-classes fn2-csnapshot fn2-id-engine fn2-seals fn2-extents fn2-commit-root fn2-pool)
