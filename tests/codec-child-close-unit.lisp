@@ -38,6 +38,7 @@
        (fn2-child-lower-observe-spans 7 17 3 9 serial 0 (if writep 2 0) (if writep 0 2) 0 fn2-child-lower))
       ((mv observed fn2-child-operation)
        (fn2-child-operation-observe serial (if writep 2 0) (if writep 0 2) fn2-child-operation))
+      ((mv private-effect & &) (fn2-child-operation-input-prefix serial (if writep 13 12) 12 0 2 fn2-child-operation))
       ((mv live & & & &) (fn2-child-bridge-closed-child 7 17 3 9 fn2-child-upper fn2-child-lower fn2-child-operation))
       ((mv retiring fn2-child-lower) (fn2-child-lower-retire 7 17 fn2-child-lower))
       ((mv cleanup & & & serial fn2-child-lower) (fn2-child-lower-next 0 0 fn2-child-lower))
@@ -52,7 +53,7 @@
       ((mv duplicate & & & &) (fn2-child-bridge-closed-child 7 17 3 9 fn2-child-upper fn2-child-lower fn2-child-operation)))
   (mv (and (equal (list parent-selected begun allocation-observed handed bound selected requested physical observed freed closed settled)
                    '(:ok :ok :ok :ok :ok :ok :ok :ok :ok :ok :ok :ok))
-           (eq allocated :act) (eq ready :done) (eq pending :pending) (eq live :live)
+           (eq private-effect :none) (eq allocated :act) (eq ready :done) (eq pending :pending) (eq live :live)
            (eq retiring :closing) (eq cleanup :cleanup) (eq free-pending :pending) (eq retired :done)
            (eq stale :stale) (= parent-serial epoch) (= action (if writep 5 6))
            (= used (if writep 2 0)) (= made (if writep 0 2)) still-pending
