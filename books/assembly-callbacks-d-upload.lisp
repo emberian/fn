@@ -6,11 +6,13 @@
 (include-book "upload-stream")
 (include-book "upload-stream-reset")
 (include-book "upload-stream-settle")
+(include-book "upload-block-private")
 (fn2-upload-stream-stage-events)
 (fn2-upload-stream-reset-op-events)
 (fn2-upload-stream-manifest-op-events)
 (fn2-upload-stream-op-events)
 (fn2-upload-stream-settle-op-events)
+(fn2-upload-block-private-op-events)
 
 ;; The source manifest's pure decisions the arms read (article-manifest.lisp).
 (defcost fn2-am-fits :doc "Whether stored octets of a length are named by one source manifest.")
@@ -62,7 +64,7 @@
                       (:charge :bytes *fn2-upload-run-bytes* :steps *fn2-work-transition* :runnable t))
                      ;; the verdict is handed over: store the source before
                      ;; the transaction reads the sealed upload
-                     ((:sealed) (:next :store)
+                     ((:sealed) (:next :sealed)
                       (:charge :bytes *fn2-upload-run-bytes* :steps *fn2-work-transition* :runnable t))
                      ((:discard) (:next :discard)
                       (:charge :bytes *fn2-upload-run-bytes* :steps *fn2-work-transition*))
@@ -91,7 +93,11 @@
   (:receiving (:goto work))
   (:validating (:goto work))
   (:discard (:goto work))
-;; :store (S-ARTICLE-LOCATION): a clean verdict's stored octets are
+;; Historical prebuffering states below are unreachable-in-composition:
+  ;; valid headers enter STREAM-INIT; definite old-work verdicts go directly
+  ;; to SEALED without storage. These states stop rather than execute a
+  ;; second producer or exceed the unchanged 4096 run quota.
+  ;; The former path stored octets as follows:
   ;; written to storage (B's allocator, the commit arena's units) and fenced
   ;; before the transaction may read the sealed upload, so the article row's
   ;; location names durable octets before the batch that accepts it writes
@@ -104,207 +110,23 @@
   ;; in an extent of its own, PEXT (article-manifest.lisp). A refused verdict
   ;; stores nothing; a full arena or a failed write refuses the article by
   ;; word.
-  (:store :on-refusal ((:stop :machine-phase))
-   (:let inject (and (equal row-ml 0) (equal row-rule *fn2-upload-rule-post*)))
-   (:let most (+ row-hashed (if inject *fn2-upload-mid-line-max* 0)))
-   (:cond ((not (equal row-word 0)) (:next :sealed) (:charge :steps *fn2-work-transition* :runnable t))
-          ((or (equal row-hashed 0) (not (fn2-am-fits most)))
-           (:set (word *fn2-upload-word-unaffordable*)) (:next :sealed)
-           (:charge :steps *fn2-work-transition* :runnable t))
-          ;; Reserve the digest lifetime, generated field and manifest workspace.
-          ((not (equal row-lease *fn2-upload-lease-held*))
-           (:let class (fn2-upload-lease-class most))
-           (:if (null class)
-                ((:set (word *fn2-upload-word-unaffordable*)) (:next :sealed)
-                 (:charge :steps *fn2-work-transition* :runnable t))
-                ((:do (lcode ls lg) (fn2-core-reserve class) :effects ((:acquire (:storage-window)))
-                  :case (((:exhausted) (:park :pool class :steps *fn2-work-transition*))
-                         (:otherwise (:set (word *fn2-upload-word-unaffordable*)) (:next :sealed)
-                                     (:charge :steps *fn2-work-transition* :runnable t))))
-                 (:set (lslot ls) (lgen lg) (lease *fn2-upload-lease-held*))
-                 (:charge :steps *fn2-work-transition* :runnable t))))
-          (t (:do (rcode e ep al) (fn2-upload-payload-reserve)
-              :accept ()
-              :case (((:ok)
-                      (:if inject
-                           ((:do (mcode mlen) (fn2-upload-put-mid row-lslot row-lgen ep al row-op row-principal-slot) :accept (:ok))
-                            (:set (pext e) (pepoch ep) (palloc al) (pdone 0) (sready 0) (ilen mlen) (mfill 0) (munit 0)
-                                  (cfree 0) (mstep 0) (mdrain 0))
-                            (:next :stored-hash) (:charge :bytes 264 :steps *fn2-work-transition* :runnable t))
-                           ((:set (pext e) (pepoch ep) (palloc al) (pdone 0) (sready 0) (ilen 0) (mfill 0) (munit 0)
-                                  (cfree 0) (mstep 0) (mdrain 0))
-                            (:next :stored-hash) (:charge :steps *fn2-work-transition* :runnable t))))
-                     ((:no-space) (:set (word *fn2-upload-word-unaffordable*)) (:next :sealed)
-                      (:charge :steps *fn2-work-transition* :runnable t)))))))
+  (:store (:stop :machine-phase))
   ;; The same bounded span selector drives this hash, raw writes, and
   ;; manifest staging. Hash prefix+source before block hashing reuses B3.
-  (:stored-hash :on-refusal ((:stop :machine-phase))
-   (:let total (+ row-ilen row-hashed))
-   (:cond ((not (and (natp budget) (< 0 budget))) (:yield))
-          ;; Pool writes may extend at fill, never across an unfilled gap.
-          ;; Reserve the digest prefix in its own bounded transition.
-          ((equal row-mstep 0)
-           (:do (zcode) (fn2-upload-page-zero-to *fn2-upload-page-location-hashes* row-lslot row-lgen)
-            :accept (:ok))
-           (:set (mstep 1)) (:charge :bytes *fn2-commit-unit-bytes* :steps *fn2-work-transition* :runnable t))
-          ((equal row-mstep 1)
-           (:do (scode) (fn2-upload-save-source id row-generation) :accept (:ok))
-           (:set (mstep 2))
-           (:charge :bytes *fn2-upload-digest-octets* :steps *fn2-work-transition* :runnable t))
-          (t (:let hrow (fn2-upload-stored-hasher id))
-             (:do (slot gen off len) (fn2-upload-store-span row-lslot row-lgen row-ilen
-                                    row-c0-slot row-c0-gen row-c1-slot row-c1-gen row-stored-hashed row-hashed))
-             (:let done (+ row-stored-hashed len))
-             (:do (hcode) (fn2-upload-stored-hash hrow slot gen off row-stored-hashed len (equal done total)
-                                               row-lslot row-lgen) :accept (:ok))
-             (:set (stored-hashed done) (mstep (if (equal done total) 0 2)))
-             (:next (:if (equal done total) :location-hash :stored-hash))
-             (:charge :bytes *fn2-commit-unit-bytes* :steps *fn2-work-transition* :runnable t))))
-  (:location-hash :on-refusal ((:stop :machine-phase))
-   (:let total (+ row-ilen row-hashed))
-   (:cond ((fn2-am-manifestp total) (:next :store-write)
-           (:charge :steps *fn2-work-transition* :runnable t))
-          ((not (and (natp budget) (< 0 budget))) (:yield))
-          ((equal row-mstep 0)
-           (:do (zcode) (fn2-upload-page-zero-to *fn2-upload-page-stage* row-lslot row-lgen)
-            :accept ()
-            :case (((:ok) (:set (mstep 1))
-                    (:charge :bytes *fn2-commit-unit-bytes* :steps *fn2-work-transition* :runnable t))
-                   ((:more) (:charge :bytes *fn2-commit-unit-bytes* :steps *fn2-work-transition* :runnable t)))))
-          ((equal row-mstep 1)
-           (:do (gcode glen) (fn2-upload-stage row-lslot row-lgen row-ilen
-                              row-c0-slot row-c0-gen row-c1-slot row-c1-gen
-                              (* row-location-hashed *fn2-commit-unit-bytes*) row-hashed) :accept (:ok))
-           (:set (mstep 2))
-           (:charge :bytes *fn2-commit-unit-bytes* :steps *fn2-work-transition* :runnable t))
-          (t
-           (:let glen (min *fn2-commit-unit-bytes*
-                        (nfix (- total (* row-location-hashed *fn2-commit-unit-bytes*)))))
-           (:let hrow (fn2-upload-hasher id))
-           (:do (hcode) (fn2-upload-location-hash hrow row-lslot row-lgen
-                          *fn2-upload-page-stage* glen row-location-hashed) :accept (:ok))
-           (:let units (+ 1 row-location-hashed))
-           (:set (location-hashed units) (mstep 1))
-           (:next (:if (< (* units *fn2-commit-unit-bytes*) total) :location-hash :store-write))
-           (:charge :bytes *fn2-upload-block-work-bytes* :steps *fn2-work-transition* :runnable t))))
+  (:stored-hash (:stop :machine-phase))
+  (:location-hash (:stop :machine-phase))
   ;; :store-write: the next write (a piece of one extent's octets, a block,
   ;; or a manifest unit); a manifest's header goes into the store page first
   ;; (the page zeroed to it a unit per step, MSTEP 0, then the header), and a
   ;; block at unit 0 of an extent reserves that extent first
-  (:store-write :on-refusal ((:stop :machine-phase))
-   (:let total (+ row-ilen row-hashed))
-   (:let blk (floor row-pdone *fn2-commit-unit-bytes*))
-   (:if (not (and (natp budget) (< 0 budget))) ((:yield))
-        ((:cond
-          ((not (fn2-am-manifestp total))
-           (:do (wslot wgen woff wlen) (fn2-upload-store-span row-lslot row-lgen row-ilen
-                                                              row-c0-slot row-c0-gen row-c1-slot row-c1-gen
-                                                              row-pdone row-hashed))
-           (:issue (fn2-issue-write (+ (* *fn2-commit-extent-bytes* row-pext) row-pdone) wslot wgen woff wlen 0
-                                    :principal row-principal-slot)
-            :ok ((:set (sready 0)) (:next :store-wrote) (:wait :completion :bytes 4096 :steps *fn2-work-small*))))
-          ((and (equal row-mfill 0) (equal row-mstep 0))
-           (:do (zcode) (fn2-upload-page-zero-to *fn2-upload-page-manifest* row-lslot row-lgen)
-            :accept ()
-            :case (((:ok) (:set (mstep 1)) (:charge :bytes *fn2-commit-unit-bytes* :steps *fn2-work-transition* :runnable t))
-                   ((:more) (:charge :bytes *fn2-commit-unit-bytes* :steps *fn2-work-transition* :runnable t)))))
-          ((equal row-mfill 0)
-           (:let hrow (fn2-upload-hasher id))
-           (:do (hcode mf) (fn2-upload-manifest-begin hrow row-lslot row-lgen total)
-            :accept (:ok))
-           (:set (mfill mf) (mstep 0)) (:charge :bytes *fn2-upload-head-bytes* :steps *fn2-work-transition* :runnable t))
-          ((and (< row-pdone total) (equal (mod blk *fn2-storage-extent-units*) 0) (equal row-cfree 0))
-           (:do (rcode e ep al) (fn2-upload-payload-reserve)
-            :accept ()
-            :case (((:ok) (:set (cext e) (cepoch ep) (calloc al) (cfree 1))
-                    (:charge :steps *fn2-work-transition* :runnable t))
-                   ((:no-space) (:set (word *fn2-upload-word-unaffordable*)) (:next :sealed)
-                    (:charge :steps *fn2-work-transition* :runnable t)))))
-          ((< row-pdone total)
-           (:do (gcode glen) (fn2-upload-stage row-lslot row-lgen row-ilen row-c0-slot row-c0-gen row-c1-slot row-c1-gen
-                                               row-pdone row-hashed)
-            :accept (:ok))
-           (:issue (fn2-issue-write (+ (* *fn2-commit-extent-bytes* row-cext)
-                                       (* *fn2-commit-unit-bytes* (mod blk *fn2-storage-extent-units*)))
-                                    row-lslot row-lgen *fn2-upload-page-stage* glen 0
-                                    :principal row-principal-slot)
-            :ok ((:set (sready 0)) (:next :store-wrote) (:wait :completion :bytes 4096 :steps *fn2-work-small*))))
-          (t
-           (:let at (+ *fn2-upload-page-manifest* (* *fn2-commit-unit-bytes* row-munit)))
-           ;; the unit's tail zeroed (a unit of zeros at most), then written
-           (:do (zcode) (fn2-upload-page-zero-to (+ at *fn2-commit-unit-bytes*) row-lslot row-lgen)
-            :accept ()
-            :case (((:ok)
-                    (:if (equal row-mstep 3)
-                         ((:issue (fn2-issue-write (+ (* *fn2-commit-extent-bytes* row-pext) (* *fn2-commit-unit-bytes* row-munit))
-                                             row-lslot row-lgen at *fn2-commit-unit-bytes* 0
-                                             :principal row-principal-slot)
-                      :ok ((:set (sready 0)) (:next :store-wrote) (:wait :completion :bytes 4096 :steps *fn2-work-small*))))
-                         ((:let hrow (fn2-upload-hasher id))
-                          (:do (hcode) (fn2-upload-location-hash hrow row-lslot row-lgen at
-                                         *fn2-commit-unit-bytes* row-munit) :accept (:ok))
-                          (:set (mstep 3) (location-hashed (+ 1 row-munit)))
-                          (:charge :bytes *fn2-upload-block-work-bytes* :steps *fn2-work-transition* :runnable t))))
-                   ((:more) (:charge :bytes *fn2-commit-unit-bytes* :steps *fn2-work-transition* :runnable t)))))))))
-  (:store-wrote :on-refusal ((:stop :machine-phase))
-   (:let total (+ row-ilen row-hashed))
-   (:let blen (min *fn2-commit-unit-bytes* (nfix (- total row-pdone))))
-   (:let blk (floor row-pdone *fn2-commit-unit-bytes*))
-   (:cond ((equal row-sready 0) (:charge :steps *fn2-work-poll*))
-          ((not (and (equal row-sevent *fn2-event-write-result*) (equal row-soutcome *fn2-outcome-done*)))
-           ;; Issued I/O has no safe rollback: retain bytes and reservations for recovery.
-           (:set (word *fn2-upload-word-uncertain*) (sready 0)) (:next :uncertain)
-           (:charge :steps *fn2-work-transition* :runnable t))
-          ((and (not (fn2-am-manifestp total)) (< 0 row-scount) (<= (+ row-pdone row-scount) total))
-           (:let done2 (+ row-pdone row-scount))
-           (:set (pdone done2) (sready 0))
-           (:next (:if (< done2 total) :store-write :store-fence))
-           (:charge :steps *fn2-work-transition* :runnable t))
-          ;; a block stored: its BLAKE3 (MSTEP 0), its chaining value (1),
-          ;; then its entry into the manifest (2), a step each; the write's
-          ;; completion stays ready until the entry is built
-          ((and (fn2-am-manifestp total) (< row-pdone total) (equal row-scount blen) (equal row-mstep 0))
-           (:do (hcode) (fn2-upload-block-hash row-lslot row-lgen blen) :accept (:ok))
-           (:set (mstep 1)) (:charge :bytes *fn2-upload-block-work-bytes* :steps *fn2-work-transition* :runnable t))
-          ((and (fn2-am-manifestp total) (< row-pdone total) (equal row-scount blen) (equal row-mstep 1))
-           (:do (vcode) (fn2-upload-block-cv row-lslot row-lgen blen blk) :accept (:ok))
-           (:set (mstep 2)) (:charge :bytes *fn2-upload-block-work-bytes* :steps *fn2-work-transition* :runnable t))
-          ((and (fn2-am-manifestp total) (< row-pdone total) (equal row-scount blen))
-           (:let hrow (fn2-upload-hasher id))
-           (:do (ecode mf) (fn2-upload-block-entry hrow row-lslot row-lgen blk blen
-                                                   (+ (* *fn2-storage-extent-units* row-cext)
-                                                      (mod blk *fn2-storage-extent-units*))
-                                                   row-cepoch row-calloc row-mfill)
-            :accept (:ok))
-           (:set (pdone (+ row-pdone blen)) (mfill mf) (cfree 0) (sready 0) (mstep 0))
-           (:next :store-write)
-           (:charge :bytes *fn2-upload-entry-bytes* :steps *fn2-work-transition* :runnable t))
-          ;; a manifest unit stored: the next, or the fence after the last
-          ((and (fn2-am-manifestp total) (<= total row-pdone) (equal row-scount *fn2-commit-unit-bytes*))
-           (:let u2 (+ 1 row-munit))
-           (:set (munit u2) (sready 0) (mstep 0))
-           (:next (:if (< (* *fn2-commit-unit-bytes* u2) row-mfill) :store-write :store-fence))
-           (:charge :steps *fn2-work-transition* :runnable t))
-          (t (:set (word *fn2-upload-word-uncertain*) (sready 0)) (:next :uncertain)
-             (:charge :steps *fn2-work-transition* :runnable t))))
-  (:store-fence :on-refusal ((:stop :machine-phase))
-   (:if (not (and (natp budget) (< 0 budget))) ((:yield))
-        ((:issue (fn2-issue-fence :principal row-principal-slot)
-          :ok ((:set (sready 0)) (:next :store-fenced) (:wait :completion :bytes 0 :steps *fn2-work-small*))))))
+  (:store-write (:stop :machine-phase))
+  (:store-wrote (:stop :machine-phase))
+  (:store-fence (:stop :machine-phase))
   ;; fenced: a generated identifier stays in the store page (after the
   ;; field name), where the transaction reads the Message-ID (MO ML) for its
   ;; claim, identity and overview line; chunk 0 keeps the source until the
   ;; transaction has counted its lines
-  (:store-fenced :on-refusal ((:stop :machine-phase))
-   (:cond ((equal row-sready 0) (:charge :steps *fn2-work-poll*))
-          ((not (and (equal row-sevent *fn2-event-fence-result*) (equal row-soutcome *fn2-outcome-done*)))
-           (:set (word *fn2-upload-word-uncertain*) (sready 0)) (:next :uncertain)
-           (:charge :steps *fn2-work-transition* :runnable t))
-          ((equal row-ilen 0)
-           (:set (sready 0)) (:next :sealed) (:charge :steps *fn2-work-transition* :runnable t))
-          (t (:set (mo *fn2-upload-mid-field-octets*) (ml (nfix (- row-ilen (+ *fn2-upload-mid-field-octets* 2))))
-                   (sready 0))
-             (:next :sealed) (:charge :steps *fn2-work-transition* :runnable t))))
+  (:store-fenced (:stop :machine-phase))
   ;; :sealed: wait for the transaction's outcome (relaying any settlement wake
   ;; to the transaction while it still names this upload), then drain.
   (:sealed
@@ -477,17 +299,28 @@
    (:cond
     ((not (fn2-upload-stream-page-ready-p id row-generation)) (:charge :steps *fn2-work-poll*))
     ((equal row-mstep 0)
-     (:do (code) (fn2-upload-block-hash row-lslot row-lgen row-stream-stage-used) :accept (:ok))
-     (:set (mstep 1)) (:charge :bytes *fn2-upload-block-work-bytes* :steps *fn2-work-transition* :runnable t))
+     (:do (code) (fn2-upload-block-hash-keep id row-generation) :accept (:ok))
+     (:set (mstep 1)) (:charge :bytes *fn2-commit-unit-bytes* :steps *fn2-work-transition* :runnable t))
     ((equal row-mstep 1)
+     (:do (code) (fn2-upload-private-result-store id row-generation) :accept (:ok))
+     (:set (mstep 2)) (:charge :bytes *fn2-upload-digest-octets* :steps *fn2-work-transition* :runnable t))
+    ((equal row-mstep 2)
      (:if (< block *fn2-commit-write-resources*)
       ((:do (code) (fn2-core-copy-range row-lslot row-lgen *fn2-upload-page-hash*
                      row-lslot row-lgen (+ *fn2-upload-page-location-hashes* (* 32 block)) 32) :accept (:ok))
-       (:set (location-hashed (+ block 1)) (mstep 2)) (:charge :bytes *fn2-upload-digest-copy-bytes* :steps *fn2-work-transition* :runnable t))
-      ((:set (mstep 2)) (:charge :steps *fn2-work-transition* :runnable t))))
-    ((equal row-mstep 2)
-     (:do (code) (fn2-upload-block-cv row-lslot row-lgen row-stream-stage-used block) :accept (:ok))
-     (:set (mstep 3)) (:charge :bytes *fn2-upload-block-work-bytes* :steps *fn2-work-transition* :runnable t))
+       (:set (location-hashed (+ block 1)) (mstep 3))
+       (:charge :bytes *fn2-upload-digest-copy-bytes* :steps *fn2-work-transition* :runnable t))
+      ((:set (mstep 3)) (:charge :steps *fn2-work-transition* :runnable t))))
+    ((equal row-mstep 3)
+     (:if (equal row-stream-stage-used *fn2-commit-unit-bytes*)
+      ((:do (code) (fn2-upload-block-cv-keep id row-generation) :accept (:ok))
+       (:set (mstep 4)) (:charge :bytes *fn2-commit-unit-bytes* :steps *fn2-work-transition* :runnable t))
+      ((:do (code) (fn2-core-copy-range row-lslot row-lgen *fn2-upload-page-hash*
+                     row-lslot row-lgen (+ *fn2-upload-page-hash* 32) 32) :accept (:ok))
+       (:set (mstep 5)) (:charge :bytes *fn2-upload-digest-copy-bytes* :steps *fn2-work-transition* :runnable t))))
+    ((equal row-mstep 4)
+     (:do (code) (fn2-upload-private-result-store id row-generation) :accept (:ok))
+     (:set (mstep 5)) (:charge :bytes *fn2-upload-digest-octets* :steps *fn2-work-transition* :runnable t))
     (t
      (:let hrow (fn2-upload-hasher id))
      (:do (code end) (fn2-upload-stream-entry hrow row-lslot row-lgen block row-stream-stage-used
@@ -554,10 +387,12 @@
    (:cond
     ((not (fn2-upload-stream-page-ready-p id row-generation)) (:charge :steps *fn2-work-poll*))
     ((equal row-mstep 0)
-     (:let hrow (fn2-upload-hasher id))
-     (:do (code) (fn2-upload-location-hash hrow row-lslot row-lgen at *fn2-commit-unit-bytes* row-munit) :accept (:ok))
-     (:set (mstep 1) (location-hashed (+ row-munit 1)))
-     (:charge :bytes *fn2-upload-block-work-bytes* :steps *fn2-work-transition* :runnable t))
+     (:do (code) (fn2-upload-root-hash-keep id row-generation) :accept (:ok))
+     (:set (mstep 1)) (:charge :bytes *fn2-commit-unit-bytes* :steps *fn2-work-transition* :runnable t))
+    ((equal row-mstep 1)
+     (:do (code) (fn2-upload-private-result-store id row-generation) :accept (:ok))
+     (:set (mstep 2) (location-hashed (+ row-munit 1)))
+     (:charge :bytes *fn2-upload-digest-octets* :steps *fn2-work-transition* :runnable t))
     (t (:issue (fn2-issue-write (+ (* *fn2-commit-extent-bytes* row-rootext) (* row-munit *fn2-commit-unit-bytes*))
                    row-lslot row-lgen at *fn2-commit-unit-bytes* 0 :principal row-principal-slot)
         :ok ((:set (sready 0)) (:next :stream-root-wrote)

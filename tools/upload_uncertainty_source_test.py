@@ -6,11 +6,15 @@ import lisp_rewrite as lr
 ROOT=Path(__file__).resolve().parents[1]
 class UploadUncertainty(unittest.TestCase):
  def test_issued_failures_never_enter_sealed_drain(self):
-  s=(ROOT/'books/assembly-callbacks-d-upload.lisp').read_text()
-  a=s.index('(:store-wrote :on-refusal');b=s.index(';; :sealed:',a);s=s[a:b]
-  self.assertEqual(s.count('(:set (word *fn2-upload-word-uncertain*) (sready 0)) (:next :uncertain)'),3)
-  self.assertNotIn('*fn2-upload-word-not-stored*',s)
   p=lr.parse(ROOT/'books/assembly-callbacks-d-upload.lisp')
+  for phase in ['stream-wrote','stream-fenced','stream-root-wrote','stream-root-fenced','stream-refuse-fenced']:
+   node=lr.match('(:'+phase+' :on-refusal ?*body)',p.forms)[0].node
+   failed=lr.match('((not (and ?*conditions)) (:set (word *fn2-upload-word-uncertain*)) (:next :uncertain) ?*tail)',[node])
+   self.assertEqual(len(failed),1,phase)
+   body=p.text[failed[0].start:failed[0].end]
+   self.assertIn('*fn2-outcome-done*',body)
+   self.assertNotIn('(:next :sealed)',body)
+   self.assertNotIn('fn2-core-release',body)
   self.assertEqual(len(lr.match('(:uncertain (:stop :upload-uncertain))',p.forms)),1)
  def test_kind_retains_all_resources_and_stop(self):
   s=(ROOT/'books/upload-kind.lisp').read_text()
@@ -31,8 +35,8 @@ class UploadUncertainty(unittest.TestCase):
    self.assertIn(fault,text)
  def test_preissue_refusals_still_distinct(self):
   s=(ROOT/'books/assembly-callbacks-d-upload.lisp').read_text()
-  a=s.index('(:store :on-refusal');b=s.index('(:stored-hash :on-refusal',a);s=s[a:b]
+  a=s.index('(:stream-init :on-refusal');b=s.index('(:stream-receiving :on-refusal',a);s=s[a:b]
   self.assertIn('*fn2-upload-word-unaffordable*',s)
-  self.assertIn('(:next :sealed)',s)
+  self.assertIn('fn2-upload-start-discard',s)
   self.assertNotIn('*fn2-upload-word-uncertain*',s)
 if __name__=='__main__':unittest.main()

@@ -214,6 +214,10 @@
        (limit (if in0 *fn2-upload-header-octets* *fn2-upload-body-window-bytes*))
        (discard (not (equal why 0)))
        (left (if discard *fn2-conn-feed-bytes* (min *fn2-conn-feed-bytes* (nfix (- (+ 1 bound) fed)))))
+       ;; Every input iteration emits at most one LF. Refuse a malformed
+       ;; near-overflow counter before any confirmed pool write.
+       ((unless (unsigned-byte-p 32 (+ (fn2-upload-row-source-lines u fn2-core) left)))
+        (mv :bounds start mode why 0 fn2-core))
        ((mv status start2 mode2 discard2 copied lines fn2-core)
         (fn2-upload-feed-pool left start end mode discard raw rslot rgen rk rs rg (if in0 c0 c1) (if in0 g0 g1)
                               limit in0 u ugen fn2-core))

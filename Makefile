@@ -291,6 +291,7 @@ ACL2_BOOKS = \
   books/upload-page-geometry \
   books/source-manifest-codec \
   books/upload-stream \
+  books/upload-block-private \
   books/upload-stream-stage \
   books/upload-stream-manifest \
   books/upload-stream-reset \
@@ -558,6 +559,8 @@ ACL2_BOOKS = \
   tests/upload-uncertainty-served-unit \
   tests/upload-stream-abort-served-unit \
   tests/upload-dual-hash-unit \
+  tests/upload-block-private-unit \
+  tests/upload-feed-lf-unit \
   tests/upload-stream-manifest-unit \
   tests/upload-rolling-feed-component-unit \
   tests/upload-posted-linear-unit \

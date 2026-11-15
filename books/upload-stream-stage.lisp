@@ -13,6 +13,7 @@
       (floor (nfix (- *fn2-upload-run-bytes* *fn2-upload-stream-stage-overhead*)) 3)))
 (defconst *fn2-upload-stream-stage-work*
  (+ (* 3 *fn2-upload-stream-stage-quantum*) *fn2-upload-stream-stage-overhead*))
+(assert-event (equal *fn2-upload-stream-stage-quantum* 1353))
 (assert-event (and (posp *fn2-upload-stream-stage-quantum*)
                    (<= *fn2-upload-stream-stage-work* *fn2-upload-run-bytes*)))
 

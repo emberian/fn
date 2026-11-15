@@ -44,15 +44,17 @@
 (defconst *fn2-upload-block-work-bytes*
  (+ *fn2-commit-unit-bytes* *fn2-upload-digest-octets*))
 (defconst *fn2-upload-digest-copy-bytes* (* 2 *fn2-upload-digest-octets*))
-(assert-event (and (<= *fn2-upload-block-work-bytes* *fn2-upload-run-bytes*)
-                  (<= *fn2-upload-digest-copy-bytes* *fn2-upload-block-work-bytes*)))
+(assert-event (and (<= *fn2-commit-unit-bytes* *fn2-upload-run-bytes*)
+                  (<= *fn2-upload-digest-octets* *fn2-upload-run-bytes*)
+                  (<= *fn2-upload-digest-copy-bytes* *fn2-upload-run-bytes*)))
 
  ;; One-pass Path validation uses two reads per Path octet. Trimming
-;; reads at most twice the MID field; transit comparison replaces the Path
+;; reads disjoint whitespace ends plus at most two boundary octets; transit comparison replaces the Path
 ;; branch. The bounded MID grammar uses at most three MID spans plus four
 ;; delimiter reads. Runtime range bounds below protect this under core WFP.
 (defconst *fn2-upload-verdict-work-bytes*
- (+ (* 4 *fn2-upload-line-max*) (* 3 *fn2-format-message-id-max*) 4))
+ (+ (* 3 *fn2-upload-line-max*) (* 3 *fn2-format-message-id-max*) 6))
+(assert-event (equal *fn2-upload-verdict-work-bytes* 3750))
 (assert-event (<= *fn2-upload-verdict-work-bytes* *fn2-upload-run-bytes*))
 
 ;; The words the store's refusals give (also the transaction's).
@@ -63,7 +65,7 @@
 (defcost fn2-conn-feed-run :bytes *fn2-conn-feed-cost*
   :answers (:terminator :need-more :budget :bounds :fault)
   :faults (:bounds :fault)
-  :tables (fn2-core-pool)
+  :tables (fn2-core-pool fn2-core-machines fn2-core-machine-tables fn2-upload-table)
   :doc "Feed RX into the upload's chunk (upload-feed.lisp).")
 (defcost fn2-upload-gen-of :doc "An upload row's generation.")
 ;; Declared costs of the upload's outside calls (each a thin wrapper below).
@@ -88,7 +90,7 @@
   :answers (:run :idle :identity :receiving :sealed :discard :draining :stop)
   :faults (:stop)
   :tables (fn2-core-b3 fn2-core-digests fn2-core-machines fn2-core-machine-tables fn2-core-pool)
-  :own-writes (hashed source-lines scan-off ofield visible nfields nlines seen mo ml no nl po pl head-status word inj)
+  :own-writes (hashed scan-off ofield visible nfields nlines seen mo ml no nl po pl head-status word inj)
   :doc "One run of an upload's work: hash, scan, and at the end the verdict posted to its connection (or handed to its transaction); returns the phase to move to.")
 (defcost fn2-txn-gen-of :doc "A transaction row's generation.")
 (defcost fn2-upload-conn-live-p :doc "Whether the connection still feeds this upload.")
@@ -316,21 +318,10 @@
        (off (if in0 hashed (- hashed body-base)))
        (room (if in0 (- header hashed) (- filled hashed)))
        (hlen (min *fn2-upload-hash-bytes* (min (- filled hashed) room)))
-       (lines (fn2-upload-row-source-lines id fn2-core))
        ((mv scode consumed fn2-core)
         (fn2-upload-hash-step row (if in0 c0 c1) (if in0 g0 g1) off hlen id gen fn2-core))
        ((unless (and (member-eq scode '(:ok :more)) (natp consumed) (<= consumed hlen)))
-        (mv :bounds hashed fn2-core))
-       ;; Count exactly the span B3 consumed, before any window can be reused.
-       ;; A failed checked read stops the owner; its hash cursor is not retried.
-       ((mv ccode lines2)
-        (stobj-let ((fn2-pool (fn2-core-pool fn2-core))) (code count)
-         (fn2-txn-count-loop consumed (if in0 c0 c1) (if in0 g0 g1)
-          off lines *fn2-upload-kind* id gen fn2-pool)
-         (mv code count)))
-       ((unless (and (eq ccode :ok) (unsigned-byte-p 32 lines2)))
-        (mv :bounds hashed fn2-core))
-       (fn2-core (fn2-machine-write-source-lines id lines2 fn2-core)))
+        (mv :bounds hashed fn2-core)))
     (mv :ok (+ hashed consumed) fn2-core)))
 (fn2-core-preserves fn2-upload-hash-run (id gen row c0 g0 c1 g1 cap0 hashed filled fn2-core) :position 2 :rows nil)
 ;; Advance the header scan over chunk 0 and store its state: (mv status hs fn2-core).

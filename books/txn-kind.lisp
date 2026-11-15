@@ -30,6 +30,13 @@
 (assert-event (and (posp *fn2-txn-groups-max*)
                    (< *fn2-txn-slot-depend* *fn2-succ-slots*)))
 
+ ;; The existing namespace scratch encoding is one u8 length followed by
+;; that many name octets. Its supported group-slot bound fits the rolling
+;; body workspace even before an oversized overview is refused.
+(defconst *fn2-txn-name-span-max* (expt 2 8))
+(defconst *fn2-txn-names-bytes-max* (* *fn2-txn-groups-max* *fn2-txn-name-span-max*))
+(assert-event (<= *fn2-txn-names-bytes-max* *fn2-upload-body-window-bytes*))
+
 ;; Profile-configured cross-post group limit (:max-groups-per-article, D27):
 ;; a D core child read by fn2-txn instead of a compile-time literal.
 (defcolumns fn2-txn-config ((groups-max :u8)))

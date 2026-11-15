@@ -14,13 +14,13 @@
 (fn2-book-layer :d)
 
 ;; The run quantum, split statically: at most *fn2-upload-hash-bytes* hashed
-;; and *fn2-upload-scan-bytes* of header scanned per run; each hashed span
-;; is also counted once for LF octets before its source window can roll.
+;; and *fn2-upload-scan-bytes* of header scanned per run. LF octets are
+;; counted at confirmed source emission, with no second pool traversal.
 (defconst *fn2-upload-hash-bytes* 2048)
 (defconst *fn2-upload-scan-bytes* 2048)
-(defconst *fn2-upload-run-bytes* (+ (* 2 *fn2-upload-hash-bytes*) *fn2-upload-scan-bytes*))
+(defconst *fn2-upload-run-bytes* (+ *fn2-upload-hash-bytes* *fn2-upload-scan-bytes*))
 ;; Defmachine budgets are literal naturals; tie its charge to this derivation.
-(assert-event (equal *fn2-upload-run-bytes* 6144))
+(assert-event (equal *fn2-upload-run-bytes* 4096))
  ; Header and body windows use shared byte requirements at actual TAKE,
 ; resolved by the existing pool class resolver for the configured profile.
 ; The input-profile/constructor fixture class baseline remains unchanged;
@@ -281,7 +281,7 @@
          (:stream-drain :upload-row :chunk-window (:storage-window :while (lease :held)))
          (:stream-refuse-fence :upload-row :chunk-window (:storage-window :while (lease :held)))
          (:stream-refuse-fenced :upload-row :chunk-window (:storage-window :while (lease :held))))
- :budget (:bytes 6144 :steps 32 :descriptors 4)
+ :budget (:bytes 4096 :steps 32 :descriptors 4)
  :capacity (fn2-upload-capacity profile)
  ;; A connection takes the row with its two chunks (A-S7).
  :taken (:phase :head :rows :upload-row
