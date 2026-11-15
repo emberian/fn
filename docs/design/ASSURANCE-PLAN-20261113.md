@@ -275,8 +275,13 @@ as a semantic link; existence of another theorem does not repair the original.
 The new member bridge uses the admitted readonly-removal witness to propose that
 exact negated instance and points to the distinct FIELDS-TYPE-UNDER-GUARD theorem.
 Existing production member and positive/negative witness bytes are unchanged.
-Focused actual ACL2 refusal/export controls and the bridge await a scoped gate;
-four structural source tests pass. No application world was started.
+Each bound declaration now also emits an immutable logical claim-identity
+constant (statement, variables, source formula, translated body). Every table
+status must match it; direct retargeting, unbinding, display-formula mutation and
+clear/re-add cannot redirect the established key. Initial unbound requirements
+and custom statement names remain supported. Status/evidence/check/doc updates
+remain separate. Focused actual ACL2 refusal/export controls and the bridge
+await a scoped gate; five structural source tests pass. No application world was started.
 
 
 The shared `:type-hints` fix replaces member-specific event surgery. Its original

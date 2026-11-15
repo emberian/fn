@@ -30,6 +30,20 @@ class RefutationPlumbing(unittest.TestCase):
         self.assertIn('(include-book "tests/checkpoint-member-refutation-unit")',
                       (ROOT / 'tools/owed-export.lsp').read_text())
         self.assertIn('link unverified', (ROOT / 'books/owed-report.lisp').read_text())
+    def test_identity_survives_table_clear_without_naming_statement(self):
+        declaration = (ROOT / 'books/declare.lisp').read_text()
+        guard = (ROOT / 'books/owed.lisp').read_text()
+        self.assertIn('(defconst ,(fn2-decl-claim-anchor (cadr id))', declaration)
+        self.assertIn('(fn2-decl-get :formula row) (fn2-decl-get :translated row)', declaration)
+        self.assertIn("'const :missing world", guard)
+        self.assertIn('(fn2-square-identity-boundp name row world)', guard)
+        controls = (ROOT / 'tests/owed-refutation-unit.lisp').read_text()
+        self.assertIn('(table fn2-squares nil nil :clear)', controls)
+        self.assertIn('fn2-custom-claim-statement', controls)
+        export = (ROOT / 'tests/owed-refutation-export.lsp').read_text()
+        self.assertIn('| `FN2-REFUTATION-ORIGINAL` | :REFUTED', export)
+        self.assertNotIn('(not (search ":PROVED" text))', export)
+
     def test_adversarial_actual_events_parse(self):
         for path in ['tests/owed-refutation-unit.lisp', 'tests/owed-refutation-export.lsp',
                      'tests/checkpoint-member-refutation-unit.lisp']:

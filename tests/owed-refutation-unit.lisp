@@ -41,3 +41,70 @@
 (assert-event
  (not (fn2-square-refutedp '(:refuted fn2-refutation-ground fn2-refutation-guarded)
                           'fn2-refutation-original$owed '(x y) (w state))))
+
+; Same body/formals cannot redirect an established key to a different subject.
+(make-event
+ (value `(defconst *fn2-refutation-original-row*
+           ',(fn2-decl-row '(:square fn2-refutation-original) (w state)))))
+(defmacro fn2-refutation-retarget (proof)
+ `(make-event
+   (value `(table fn2-squares 'fn2-refutation-original
+     ',(fn2-decl-set :statement 'fn2-refutation-other$owed
+        (fn2-decl-set :proof ',proof *fn2-refutation-original-row*))))))
+(must-fail (fn2-refutation-retarget
+            (:refuted fn2-refutation-wrong-subject fn2-refutation-guarded)) :expected :any)
+(must-fail (fn2-refutation-retarget (:owed)) :expected :any)
+; Test the identity predicate separately with a nominal :proved status: this
+; must fail at identity, independently of proof checking.
+(assert-event
+ (not (fn2-square-identity-boundp 'fn2-refutation-original
+       (fn2-decl-set :statement 'fn2-refutation-other$owed
+        (fn2-decl-set :proof '(:proved fn2-refutation-guarded) *fn2-refutation-original-row*))
+       (w state))))
+(must-fail
+ (make-event
+  (value `(table fn2-squares 'fn2-refutation-original
+    ',(fn2-decl-set :statement nil
+       (fn2-decl-set :vars nil
+        (fn2-decl-set :translated nil
+         (fn2-decl-set :formula nil
+          (fn2-decl-set :checks nil
+           (fn2-decl-set :proof '(:owed) *fn2-refutation-original-row*)))))))))
+ :expected :any)
+(must-fail
+ (make-event
+  (value `(table fn2-squares 'fn2-refutation-original
+    ',(fn2-decl-set :formula '(integerp x) *fn2-refutation-original-row*))))
+ :expected :any)
+; Clearing the table cannot clear the admitted declaration identity. The
+; composite attempt must refuse whether TABLE itself rejects CLEAR or not.
+(must-fail
+ (progn (table fn2-squares nil nil :clear)
+        (fn2-refutation-retarget (:owed)))
+ :expected :any)
+; Status-independent identity also refuses altered variables and translation.
+(assert-event
+ (and
+  (not (fn2-square-identity-boundp 'fn2-refutation-original
+         (fn2-decl-set :vars '(y) *fn2-refutation-original-row*) (w state)))
+  (not (fn2-square-identity-boundp 'fn2-refutation-original
+         (fn2-decl-set :translated ''t *fn2-refutation-original-row*) (w state)))))
+
+; First binding is legitimate, and custom statement names are supported.
+(table fn2-squares 'fn2-refutation-custom
+ '(:schema :assertion :proof (:owed) :checks nil))
+(defun-nx fn2-custom-claim-statement (x) (natp x))
+(make-event
+ (value (fn2-decl-finish '(:square fn2-refutation-custom)
+          '(:schema :assertion :statement fn2-custom-claim-statement :vars (x)
+            :formula (natp x) :teeth (fn2-refutation-positive fn2-refutation-negative)
+            :proof (:owed) :checks nil :doc "Custom first binding fixture.")
+          nil nil "tests/owed-refutation-unit" (w state))))
+(assert-event
+ (fn2-square-rowp 'fn2-refutation-custom
+   (fn2-decl-row '(:square fn2-refutation-custom) (w state)) (w state)))
+; Evidence/check/doc metadata updates preserve identity.
+(make-event
+ (value `(table fn2-squares 'fn2-refutation-original
+   ',(fn2-decl-set :doc "Updated diagnostic text; original identity unchanged."
+      (fn2-decl-set :evidence '(:fixture t) *fn2-refutation-original-row*)))))
