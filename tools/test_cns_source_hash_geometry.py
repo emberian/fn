@@ -34,4 +34,7 @@ class Geometry(unittest.TestCase):
   self.assertIn('(fn2-block-digest-at got scratch slot gen expected',s)
   self.assertNotIn('fn2-block-hash-into',s)  # Would reset paused stream state.
   self.assertNotIn('fn2-fnct',s)  # Frame domain is distinct.
+  finish=s[s.index('(defun fn2-cns-source-hash-finish'):s.index('(defthm fn2-cns-source-hash-begin-shape')]
+  self.assertIn('*fn2-fc-hash*',finish)
+  self.assertNotIn('*fn2-b3-key*',finish)
 if __name__=='__main__': unittest.main()
