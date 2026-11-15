@@ -1,0 +1,479 @@
+{
+  "status": "qualified",
+  "source": "367703a6806a0c8a2482022597003f8187f3fa5b",
+  "roots": [
+    "books/cns-edges",
+    "books/conn-kind"
+  ],
+  "count": 41,
+  "toolchain_identity": "8aeb1bea18968c6cd33ac633a80ebf67e4924504db112fd27eb11f16a27b2a8c",
+  "record_receipt": "/tmp/current-app-passed4-record-receipt.json",
+  "run_dir": "/build/lanes/current-app-cns-row-successor/build/acl2/certify-20261115T193916Z-1742876",
+  "books": {
+    "books/cns-edges": {
+      "key": "a4ced63e916747ebe274d9fb6a3eaaa43c3bf2bd22db76864e4506fa3d39a016",
+      "sha256": "e22d92508c4edb6e2036527d9b7cea7e01681edd0344482067eddfc053150379",
+      "parents": [
+        "books/columns",
+        "books/columns-guard-hints",
+        "books/arm-children"
+      ],
+      "entry": "/home/fn/.cache/fn-certs/a4ced63e916747ebe274d9fb6a3eaaa43c3bf2bd22db76864e4506fa3d39a016/4a0d51cdc9f2c936",
+      "cert_sha256": "892f413d1063479f6013b22dfae41a433ebec433ecc574c6eb62ca3776865532",
+      "fasl_sha256": "25d2922d5920cd88b47b54537793ca7e0bf650f65396a18c2fe7eab00dccc7ea"
+    },
+    "books/arm-children": {
+      "key": "82f4230da30994bed34705ee7a9418977e16f523b2b8353ab4ce7e9f41a86911",
+      "sha256": "102693b7b871c8da5b31649f60ee70f832b5726a9f98caa910d25ca1e3177d07",
+      "parents": [
+        "books/pool-ranges",
+        "books/vocab",
+        "books/exec-state",
+        "books/machines-directory"
+      ],
+      "entry": "/home/fn/.cache/fn-certs/82f4230da30994bed34705ee7a9418977e16f523b2b8353ab4ce7e9f41a86911/25a82fd4fdfa3025",
+      "cert_sha256": "ea26f241c2a59297d4203711602fc275290e6cdff962c02354e76b10159ba36d",
+      "fasl_sha256": "b96a0e91a8e8b7bb7b406c884fafbc4b6147eb617f0495992e931c80f7cd5f6f"
+    },
+    "books/machines-directory": {
+      "key": "bbe3f952226b4554e75f75ad705ac99c222c7c46d704cfe7f1997bb370d0108b",
+      "sha256": "d87c6d169aae1a5c06fd1f31d9047645c8ecae0c444e10ad205958a37e2c83fa",
+      "parents": [
+        "books/machines",
+        "books/profile"
+      ],
+      "entry": "/home/fn/.cache/fn-certs/bbe3f952226b4554e75f75ad705ac99c222c7c46d704cfe7f1997bb370d0108b/25a82fd4fdfa3025",
+      "cert_sha256": "a8ad4154acabf52d7a6c3d4a6cf59f04366a277d2a9340558f7558bb5e2cff22",
+      "fasl_sha256": "e4fb2fffb07d0525517d4bffe765cd88bdc851020f2accce999292246faee1ef"
+    },
+    "books/profile": {
+      "key": "cdaddbd4628aebebc2dea718832e44dfbe07014033d6a8904f137808c9c34744",
+      "sha256": "1f216ed6c0505dc1b01ada0f7d3d9482af6da7b7dff8736b5100ef3e3fbc1038",
+      "parents": [
+        "books/operations"
+      ],
+      "entry": "/home/fn/.cache/fn-certs/cdaddbd4628aebebc2dea718832e44dfbe07014033d6a8904f137808c9c34744/99fac8c12877bc14",
+      "cert_sha256": "fd1e145834d5f72117d430eac3024d3245bd85195d7db2f4b7370195384af8da",
+      "fasl_sha256": "8b9c4cb04cfb916dcec8ad2554c069f97e5311fa8be758ec117e670f853ffcc7"
+    },
+    "books/operations": {
+      "key": "ffaf93d705d08918400704d108e7bffa6a3da8ae5ae2917128974f7d53c9e71b",
+      "sha256": "419120e7ae100f400d18cdee2d080d6133523673cac22fae1b05c7201ff97dd8",
+      "parents": [
+        "books/declare"
+      ],
+      "entry": "/home/fn/.cache/fn-certs/ffaf93d705d08918400704d108e7bffa6a3da8ae5ae2917128974f7d53c9e71b/99fac8c12877bc14",
+      "cert_sha256": "7697d577086d16974a9762298d8c6b389b601afac5988a9114458b5e7b78bfa7",
+      "fasl_sha256": "d3221354ac4e5d685fa3147823f21a2fa4b25045259159d7ec8765ae537f9868"
+    },
+    "books/declare": {
+      "key": "299f7489bcfaeeb7c1a8f777c4a3b4886c5be174761a2f63f69a39599466aba1",
+      "sha256": "54e850788ee821dd90a4d9715e93d319f94846039592c4420fef1bdc5d959569",
+      "parents": [],
+      "entry": "/home/fn/.cache/fn-certs/299f7489bcfaeeb7c1a8f777c4a3b4886c5be174761a2f63f69a39599466aba1/63be0e8165ae7b38",
+      "cert_sha256": "f3a1e4a58cac32474074b9d3ca6a558099a86d2fe66a28ee0670b5c5001bf9dc",
+      "fasl_sha256": "02ceab2d38f5864c70d16e1bfdf77e4450e12aab47bd3d9e3e16ec1319e5c64d"
+    },
+    "books/machines": {
+      "key": "a04ae536bdbde5e999ec92413572ed25fe517f1b46c54f458844b7688a08b6f0",
+      "sha256": "51654708498865d0250bfa94448f46e217000f42d41c12ed642f4d687777af53",
+      "parents": [
+        "books/vocab",
+        "books/arms",
+        "books/columns-call-guards"
+      ],
+      "entry": "/home/fn/.cache/fn-certs/a04ae536bdbde5e999ec92413572ed25fe517f1b46c54f458844b7688a08b6f0/25a82fd4fdfa3025",
+      "cert_sha256": "ac74e3d2149e498c14f8edb8913d92a6f924239a3f22268bdced19364e3fbb9e",
+      "fasl_sha256": "b3865afbf15f8723e8582571a14beb2d981377e043b766c7be2e344f57071429"
+    },
+    "books/columns-call-guards": {
+      "key": "fdb403dff6646e401f0a3e12ea3c0f51d1f439caac7e589adb69c096f783fb46",
+      "sha256": "fd7c2588e6d90338288b484078525799ac261c66013ebe112c3f369870db5a4a",
+      "parents": [
+        "books/columns-guard-hints"
+      ],
+      "entry": "/home/fn/.cache/fn-certs/fdb403dff6646e401f0a3e12ea3c0f51d1f439caac7e589adb69c096f783fb46/25a82fd4fdfa3025",
+      "cert_sha256": "a0d0c91e00304b007ee5ca9aef8ba665a0e5b83a74816eacb2b0d205e7cfb6a8",
+      "fasl_sha256": "65f357a4c748d0d433197aee25e300d5cf709b513d7b80b4e0f29a7dd7a79a60"
+    },
+    "books/columns-guard-hints": {
+      "key": "ea6a91185fa2c379d33672b77b9df624e49f3ddcd9b629ad329ac3fe388061e2",
+      "sha256": "e0a20c5669df681bf75fa5eeae426adc4053010915b3c7657d56e247d5c8440b",
+      "parents": [
+        "books/columns"
+      ],
+      "entry": "/home/fn/.cache/fn-certs/ea6a91185fa2c379d33672b77b9df624e49f3ddcd9b629ad329ac3fe388061e2/99fac8c12877bc14",
+      "cert_sha256": "d3aacc3a496231ea2674da6ac898e03cf1893f5e54b76e0183503e6cf99030ae",
+      "fasl_sha256": "cef213a0cc430eca4cbbb808c5d83d44f0af7da6bbdc17add07bc43278b931b4"
+    },
+    "books/columns": {
+      "key": "aa6c68782cb1c4561c75b848cc14903bc20e35bae5fd91e22227670284bae004",
+      "sha256": "64ace6b1a1caa3ee85262c2848f2c947220a03dcabbfea31481de6fc67ed27ed",
+      "parents": [
+        "books/operations"
+      ],
+      "entry": "/home/fn/.cache/fn-certs/aa6c68782cb1c4561c75b848cc14903bc20e35bae5fd91e22227670284bae004/99fac8c12877bc14",
+      "cert_sha256": "80c4c8e50a092d02fe5a1fd9a24e303589ae0a8004dcd8dae38dd369769daa8f",
+      "fasl_sha256": "241eeb2616d532268ffc60597c9b7d0ceabebf28d53edcad28bd30d5eb4bd38a"
+    },
+    "books/arms": {
+      "key": "e63d576dbab06e30f8e2e249626895e6027fc4e5be405aeee6efb517a99bf148",
+      "sha256": "83825a47c141b16393debcb6dfc98aa7fb54b375e7c12296fa4f25a491c29455",
+      "parents": [
+        "books/run-budget",
+        "books/resources",
+        "books/operations",
+        "books/columns"
+      ],
+      "entry": "/home/fn/.cache/fn-certs/e63d576dbab06e30f8e2e249626895e6027fc4e5be405aeee6efb517a99bf148/25a82fd4fdfa3025",
+      "cert_sha256": "fe86e34c928bfbdddae7f745f0bce377d23c5c20981d62abcb84f7368e85b8b8",
+      "fasl_sha256": "254e207f85f359001d1c2fca6ca6bf042136ee28578f2fb9f9139faa761fe6ce"
+    },
+    "books/resources": {
+      "key": "57890f1c24088db3b37deccce1fe7ae6fa22cc8d9050e853eefd0d3c8b66ee74",
+      "sha256": "019bb017e54237a5304f30598b8842de8f0651b5f92c523ff174f24994fe43c6",
+      "parents": [
+        "books/owed"
+      ],
+      "entry": "/home/fn/.cache/fn-certs/57890f1c24088db3b37deccce1fe7ae6fa22cc8d9050e853eefd0d3c8b66ee74/25a82fd4fdfa3025",
+      "cert_sha256": "e50f7f273d8241f6eea3d3015c8ed1b94225bbb2dd3fb95b4e76e2c19b7fbcec",
+      "fasl_sha256": "a7248770adf76ab03d864dd2ead366828a7601dd4e6353a46f28a25e203bb70b"
+    },
+    "books/owed": {
+      "key": "0025566d809fffa0fb7533fa29b1fb7a9932c97d1510818153a1c1fe3d6bbf08",
+      "sha256": "171950b91e40f4e7d0e94902ce00009adc62d8104e0eecd5db6a59b93bbffb15",
+      "parents": [
+        "books/declare"
+      ],
+      "entry": "/home/fn/.cache/fn-certs/0025566d809fffa0fb7533fa29b1fb7a9932c97d1510818153a1c1fe3d6bbf08/63be0e8165ae7b38",
+      "cert_sha256": "dfd94cb9c2ead45891e01b806f507e2b16ae85cd37570c89fd531bab7d7982fa",
+      "fasl_sha256": "97c17b9a3c61860b138d779461086ccc41487cd250f03509af2c8c6eac0738bd"
+    },
+    "books/run-budget": {
+      "key": "3a840b886d62c892a01f216d5afb084db051700e001a2d55560749153590833f",
+      "sha256": "6c340901483627a433e4de6b7699b684b9949f233ee52ce4c5840774df59a7d0",
+      "parents": [],
+      "entry": "/home/fn/.cache/fn-certs/3a840b886d62c892a01f216d5afb084db051700e001a2d55560749153590833f/a3c8c884f122d50c",
+      "cert_sha256": "8c3914341aafa0fa0a9703bb90fdbc7fbd9698bef3bd701c4c6d2927c38db6d8",
+      "fasl_sha256": "4e48481fd73ac5929f6c3e09663aff2f63612a06a57a1f8b63bb139118874b87"
+    },
+    "books/vocab": {
+      "key": "651a89e4f878d65dd670a9d9c24b618e4b6b1c72b77e274aee6c5c03fa831365",
+      "sha256": "4099736dd0ecb84952f05cfe2065db89e11432ebb9e65e67d2584ca5f4c2255f",
+      "parents": [
+        "books/columns",
+        "books/owed",
+        "books/profile"
+      ],
+      "entry": "/home/fn/.cache/fn-certs/651a89e4f878d65dd670a9d9c24b618e4b6b1c72b77e274aee6c5c03fa831365/99fac8c12877bc14",
+      "cert_sha256": "f444d49bf03972c03faf3f7620efa59a97123efd009de1371c9fc95e657a8455",
+      "fasl_sha256": "1747c59d7c17c8f8c66657534e04b28a74788c5a92bf5d4abeb64281d0c03001"
+    },
+    "books/exec-state": {
+      "key": "919c750db509225702262f3ebba89f5f7e76a1031b8d6b05d9c672af35a4934e",
+      "sha256": "56eb8a81a3cc049c27c1e23dd1930f8184f2c892207169532315184ca141ea3d",
+      "parents": [
+        "books/columns",
+        "books/profile"
+      ],
+      "entry": "/home/fn/.cache/fn-certs/919c750db509225702262f3ebba89f5f7e76a1031b8d6b05d9c672af35a4934e/25a82fd4fdfa3025",
+      "cert_sha256": "3f576891def7d30397cd70ed8ff330043f5dfac0b25e60fc0064f772f5f9c766",
+      "fasl_sha256": "a70cdf614ed6161ab49332a13200bce753552055e67620bd26f8b4ac6a71bb40"
+    },
+    "books/pool-ranges": {
+      "key": "4f21644d38d55f7f777944b63c3decb259019d8f53c12fb24be09b40caa2fc21",
+      "sha256": "2f9e1f0c898ea4f6747f4e8f4942bc7f73be512ed1b90feb2d9cad7a58e3f959",
+      "parents": [
+        "books/pool",
+        "books/fnv",
+        "books/columns-guard-hints"
+      ],
+      "entry": "/home/fn/.cache/fn-certs/4f21644d38d55f7f777944b63c3decb259019d8f53c12fb24be09b40caa2fc21/99fac8c12877bc14",
+      "cert_sha256": "d653d53eb430668abebda7d22b09211867b1956f6b953199954dfb49a9e65f74",
+      "fasl_sha256": "bc296e347261a719b728c6308e5e75565fe3dc04ae7cfc2230359e0c00023171"
+    },
+    "books/fnv": {
+      "key": "9766f6c79c4cdf5a16b932b031c696445c37e8b99d2928da34ea950c8f989321",
+      "sha256": "73d15afc6e1325f03d19ad4b39eeb3adc677ce2b07e9eddbc14141ca8843edde",
+      "parents": [
+        "books/operations"
+      ],
+      "entry": "/home/fn/.cache/fn-certs/9766f6c79c4cdf5a16b932b031c696445c37e8b99d2928da34ea950c8f989321/99fac8c12877bc14",
+      "cert_sha256": "73d8f784533a61e2f4a9f49da7469f050943f1aca78f72e4138b7775ec3b9870",
+      "fasl_sha256": "bbb54f117070b59fb24b93349c6822b215687929c8cca11cc1c78953bba202b8"
+    },
+    "books/pool": {
+      "key": "bc1463b896af44bee5c5bc157069a7d9ef7e31c8f563943a0d41118b7df159eb",
+      "sha256": "32dce8695606e5faa78dbd1d4de70f7ace78436501ad8390a24fe301c2cf07db",
+      "parents": [
+        "books/columns",
+        "books/owed-discharge",
+        "books/profile"
+      ],
+      "entry": "/home/fn/.cache/fn-certs/bc1463b896af44bee5c5bc157069a7d9ef7e31c8f563943a0d41118b7df159eb/99fac8c12877bc14",
+      "cert_sha256": "6b37dad208daf2b1912b8daaad346d85f43e59d8178cf229b90ac8d6c49f3b97",
+      "fasl_sha256": "9ae50a3317c130e9c124c7fd8104767dfd55712efae6cc69ded8e8b5c630af99"
+    },
+    "books/owed-discharge": {
+      "key": "fa84e2e8a4d3eeeda9943ef433f68c9ba4d940ec437c889cdd0be032d29550e5",
+      "sha256": "53903322be1b79ed081ecfcbfcb9f60649d3fdbf8aa6853b772abf8e6fc69f01",
+      "parents": [
+        "books/owed"
+      ],
+      "entry": "/home/fn/.cache/fn-certs/fa84e2e8a4d3eeeda9943ef433f68c9ba4d940ec437c889cdd0be032d29550e5/99fac8c12877bc14",
+      "cert_sha256": "ca8b06e41e862222d681038d9d4df7122c9dca272ee35b0bb44c40f1269c82c4",
+      "fasl_sha256": "25999ed25f94b77a7b701afe86287c1707264f4e50f2f2e143d09f19b4aee454"
+    },
+    "books/conn-kind": {
+      "key": "034cc23d315ebc4a58af5c994a1c83a144083fe0fef18c6e46c237975bbadb40",
+      "sha256": "a50e72520fa6ead2540b308775dd435914317887a4b5afe77b938317e23f0502",
+      "parents": [
+        "books/machines-a",
+        "books/profile",
+        "books/conn-answer",
+        "books/tls-kind",
+        "books/compress-kind",
+        "books/accounts-core",
+        "books/upload-scan",
+        "books/upload-feed",
+        "books/machine-arms",
+        "books/conn-schema"
+      ],
+      "entry": "/home/fn/.cache/fn-certs/034cc23d315ebc4a58af5c994a1c83a144083fe0fef18c6e46c237975bbadb40/4a0d51cdc9f2c936",
+      "cert_sha256": "aa4c861e687561b333fabb03d372ec1069035da667fc1c05b9605ab7840d6721",
+      "fasl_sha256": "f0e0b894e214c3f9fa33278cefb25d7cfbd330114284855a10f1230b27421eca"
+    },
+    "books/conn-schema": {
+      "key": "d0e0d49e7b6103f9ae7a1f14fd0cfcf11c2b81975026d5c30ed1e5cd6eb5c279",
+      "sha256": "e1ff16f42f038d3492271bf618cb80988947125e86af72e5ce79518573ded26f",
+      "parents": [
+        "books/machines-a",
+        "books/profile",
+        "books/conn-answer",
+        "books/tls-schema",
+        "books/compress-kind",
+        "books/accounts-core",
+        "books/upload-scan",
+        "books/upload-feed"
+      ],
+      "entry": "/home/fn/.cache/fn-certs/d0e0d49e7b6103f9ae7a1f14fd0cfcf11c2b81975026d5c30ed1e5cd6eb5c279/25a82fd4fdfa3025",
+      "cert_sha256": "a47ad7cb0aedd9b5aad964455213ae06f861d4217f8723c27a166597d40bf170",
+      "fasl_sha256": "b451548741022930ef854d1a3324a2e8e060b2a4177123551a6006fe437255ec"
+    },
+    "books/upload-feed": {
+      "key": "3c01fbcb787013c0b26e73740ce0e2148a0dd50e83cb811da3a8650b86505e35",
+      "sha256": "01ee2316f12c05b2627f0a8153a4a11a94d4ece16e9dd384668004f67c36cdad",
+      "parents": [
+        "books/grammar"
+      ],
+      "entry": "/home/fn/.cache/fn-certs/3c01fbcb787013c0b26e73740ce0e2148a0dd50e83cb811da3a8650b86505e35/25a82fd4fdfa3025",
+      "cert_sha256": "d4ceceb66478179efa3d48b90e921dae2fe08b97281d72c9d8201fab20122f4e",
+      "fasl_sha256": "a04776e7dc38e4d3437669bdce671da9d604e05beffe2277dfb6bacb75b9a5ba"
+    },
+    "books/grammar": {
+      "key": "d190202b15eb9412e7271872d59fc6ba06fff93e7cc71acbfefb817c93460d91",
+      "sha256": "420739fd67e1f21e86668b986d3f2c81f3d2e6f11de96bd02f20a04d80860a0b",
+      "parents": [
+        "books/pool-ranges"
+      ],
+      "entry": "/home/fn/.cache/fn-certs/d190202b15eb9412e7271872d59fc6ba06fff93e7cc71acbfefb817c93460d91/25a82fd4fdfa3025",
+      "cert_sha256": "facf84d1e4e48556aac67e99b37a05c3397a767e2c350bfd2b4dba5599b1ddcf",
+      "fasl_sha256": "23d395fe74902f705eaf316875f227326bed3d43096a0bbe4cc2fdbd8f5c43de"
+    },
+    "books/upload-scan": {
+      "key": "e3002610995d5f947e262aeca6fe19f021381e3ecd929bc8dd2bed38a2e0585f",
+      "sha256": "5f55444397869d0742e26b699e9aaf3de83bba3f12d22ec59d3d7e2ca78b71e7",
+      "parents": [
+        "books/grammar"
+      ],
+      "entry": "/home/fn/.cache/fn-certs/e3002610995d5f947e262aeca6fe19f021381e3ecd929bc8dd2bed38a2e0585f/25a82fd4fdfa3025",
+      "cert_sha256": "4e3800a99f13f7fd424df321d847f4beea5640ea237332bfbc120d22099cf178",
+      "fasl_sha256": "f32d51327b744e5b5adbf26e3097d24d83a9bce77fa6153daae0a05c0300e607"
+    },
+    "books/accounts-core": {
+      "key": "b41f54b6eae4ec5c1bf06153a3138d3334c0a5c6a8b7b04d324d5b67193d268c",
+      "sha256": "1ca8a1ab641bff91757f0fe7febfd94af47f06b86a51034961bd5cfd5accd772",
+      "parents": [
+        "books/accounts",
+        "books/machines-a",
+        "books/arm-children"
+      ],
+      "entry": "/home/fn/.cache/fn-certs/b41f54b6eae4ec5c1bf06153a3138d3334c0a5c6a8b7b04d324d5b67193d268c/25a82fd4fdfa3025",
+      "cert_sha256": "cdfc8f89f1f4da4c24116e30c368b7ed4218dbf5986b132d51330970ac82190f",
+      "fasl_sha256": "220c861e1e7167409c7a21fc1bde515178fd59bed0b2b4020d01dd5088c1c49e"
+    },
+    "books/machines-a": {
+      "key": "3ea79c7999444674cf0820bc9b7d4131ee9dc9b2bf250e1a4fbf2a719f3476e5",
+      "sha256": "6b27d9f04b788ed2730f2e520770c40f7dd9c06828a15a14dc79db50960adeec",
+      "parents": [
+        "books/machines",
+        "books/profile"
+      ],
+      "entry": "/home/fn/.cache/fn-certs/3ea79c7999444674cf0820bc9b7d4131ee9dc9b2bf250e1a4fbf2a719f3476e5/25a82fd4fdfa3025",
+      "cert_sha256": "fe2c4f8a06974c903ed0cfe88826e2817314ed8679c135c6ba7b84bd13bb7611",
+      "fasl_sha256": "a9bdc56ef7efb31a30005507677038138b4659f63ffb841628202782d13209f2"
+    },
+    "books/accounts": {
+      "key": "da646db922f9cf4e31d8e333f07e0528f1f254051f884302eee0c119c04e68c9",
+      "sha256": "5dd1a927dccb3d24fa31645bcd3b73a0acc0e42a83bac57c45c9d3a7e37f448b",
+      "parents": [
+        "books/core-children",
+        "books/profile",
+        "books/resources"
+      ],
+      "entry": "/home/fn/.cache/fn-certs/da646db922f9cf4e31d8e333f07e0528f1f254051f884302eee0c119c04e68c9/25a82fd4fdfa3025",
+      "cert_sha256": "80aed9b0a0f6419f803a11223cf06f391521c4ee9a1c97709b8440e2abaa8eec",
+      "fasl_sha256": "4877e3bd0667a91a41a80e352e6c536f4fec5d44fc9b839fb1aff4bc1de0443e"
+    },
+    "books/core-children": {
+      "key": "cd2a4b956ea322ca448d6477b3d1e4d0a4244489403f5c810fbf2c5f5d88e094",
+      "sha256": "24a985caf082ff74f72c96638034eba619ce114d611a804d0b4a239721d37e4b",
+      "parents": [
+        "books/machines"
+      ],
+      "entry": "/home/fn/.cache/fn-certs/cd2a4b956ea322ca448d6477b3d1e4d0a4244489403f5c810fbf2c5f5d88e094/25a82fd4fdfa3025",
+      "cert_sha256": "a77f7ed66c87edb2aa3b0d070454ea055a950b05adc1a7987a4740754db437da",
+      "fasl_sha256": "af898b8078dc836745009bed642dfb4a7415ac2d9d12578d914b276d49626ae6"
+    },
+    "books/compress-kind": {
+      "key": "549b906dd1063be3f81fb3ee1c43b9fa598f886dfb84132ff4996aad7eff0c09",
+      "sha256": "05eefc48dbf24297a972c122f3c3dd2b7145f64a43b48bd3f6d8f6d898e8e0ff",
+      "parents": [
+        "books/compress-policy",
+        "books/columns",
+        "books/core-children"
+      ],
+      "entry": "/home/fn/.cache/fn-certs/549b906dd1063be3f81fb3ee1c43b9fa598f886dfb84132ff4996aad7eff0c09/25a82fd4fdfa3025",
+      "cert_sha256": "fd3aedcaa19a2d064ee1810a1eff71b0917920bb10523e15be2821ce408ec189",
+      "fasl_sha256": "9f14a0a462596bbd141ae49dec80bdace8de48be9f4f7ff08064be87f5b37318"
+    },
+    "books/compress-policy": {
+      "key": "5793dadd8f4b13c9b1958e221709b9bcf06c700295619cd6b6450617bcd6f362",
+      "sha256": "bacea68680cb1cad303023723f5fd524cbae06b7dd81bf2cb5ada0fb2973270f",
+      "parents": [
+        "books/profile",
+        "books/owed-discharge"
+      ],
+      "entry": "/home/fn/.cache/fn-certs/5793dadd8f4b13c9b1958e221709b9bcf06c700295619cd6b6450617bcd6f362/25a82fd4fdfa3025",
+      "cert_sha256": "acb18a7319dcc0c33333d6d32b57d2481151b7b86186e600458a3cd111fa013a",
+      "fasl_sha256": "8883b2262899a94de1ceebef1de6af648a790b1c08cd0a78a293bdb882d97f77"
+    },
+    "books/tls-schema": {
+      "key": "35105728bce8defc3b24454c3c86bdc4ef91ca84e569cc585c00f40c5de77053",
+      "sha256": "e0779c15ffe1ceab4133301a8f68e5b8f2a6080ce17ad4a2033e0c81b800d6f8",
+      "parents": [
+        "books/machines-a",
+        "books/codec-profile",
+        "books/core-children",
+        "books/owed-discharge"
+      ],
+      "entry": "/home/fn/.cache/fn-certs/35105728bce8defc3b24454c3c86bdc4ef91ca84e569cc585c00f40c5de77053/25a82fd4fdfa3025",
+      "cert_sha256": "5d284f1814fe850bbde07cd03ae067637f2589a159867e002e5b38ef3824d578",
+      "fasl_sha256": "d0f6e6277363bbbe4ee217592f956824542711df370edba615ff6aa1222ac466"
+    },
+    "books/codec-profile": {
+      "key": "620a63d12e3d05fb341493b6e9c5cafde8d6e37f0c8464925c2cd5284080d947",
+      "sha256": "adb045c7393523346124a11a8959238a94be529354084bb23f9a5ae76cc63213",
+      "parents": [
+        "books/profile"
+      ],
+      "entry": "/home/fn/.cache/fn-certs/620a63d12e3d05fb341493b6e9c5cafde8d6e37f0c8464925c2cd5284080d947/25a82fd4fdfa3025",
+      "cert_sha256": "60a3258bf36e555c5e092c87483b7afbc126ad89e380a086632de33cfc88dc79",
+      "fasl_sha256": "52a4663d33daedf00b79df4dfe16bbc58d049821c5f34267b2575d7e89bbbd53"
+    },
+    "books/conn-answer": {
+      "key": "9f632a0960a652dd4a4cfab9f430f76807c81a5ec18bbd0c0fcbbeffa9733689",
+      "sha256": "2c099d9ad4cd0a5cb905f79fbd3ccecbcc7f09b9dad053c3caf180a9d00b044d",
+      "parents": [
+        "books/nntp-grammar",
+        "books/compress-policy"
+      ],
+      "entry": "/home/fn/.cache/fn-certs/9f632a0960a652dd4a4cfab9f430f76807c81a5ec18bbd0c0fcbbeffa9733689/25a82fd4fdfa3025",
+      "cert_sha256": "42be272bcd51b33f514222f6d3b611715a0aa521d33a291ce3da92272072c068",
+      "fasl_sha256": "3bc0a898bb50cea5ad09bc0d5b89d66fa39e2b06941b4fdd3df6155bb14e7dba"
+    },
+    "books/nntp-grammar": {
+      "key": "b408f24185b9b3771412e4e1ea7124f94d8955f4c13310cdbda3699244371f26",
+      "sha256": "089c0cb3ea1dd851407e42ec0a165696c7db1e85618479dd8c98501f78ea127b",
+      "parents": [
+        "books/grammar"
+      ],
+      "entry": "/home/fn/.cache/fn-certs/b408f24185b9b3771412e4e1ea7124f94d8955f4c13310cdbda3699244371f26/25a82fd4fdfa3025",
+      "cert_sha256": "130d5dca3bdbc88fbd4d75b015e4a11315ab07880ed9981a304e5820c65e97c2",
+      "fasl_sha256": "575ae3c5ba8dbc03c3c0679cfa927f0844527b173b3a31a893e54a14deb5e814"
+    },
+    "books/machine-arms": {
+      "key": "1b15cbcec1350099407454df08c5cd8399c7309df3b72d9d711b6650f48860d1",
+      "sha256": "c31788bd91bb81a1e78eb99b1299166caad9c4c89e3a1b9659a78eb63213efee",
+      "parents": [
+        "books/core-children",
+        "books/arm-issue-effects"
+      ],
+      "entry": "/home/fn/.cache/fn-certs/1b15cbcec1350099407454df08c5cd8399c7309df3b72d9d711b6650f48860d1/4a0d51cdc9f2c936",
+      "cert_sha256": "0f7b5ec22dca3a586e18fdef66b5ab121d69bb60d196888f55416eff2df9cec1",
+      "fasl_sha256": "ceb67836550cb07ff1657ae5e00d0cb349b01b79a71a81a64448a96945951004"
+    },
+    "books/arm-issue-effects": {
+      "key": "327bb7f4c5e1f25958fa39b4e6f153e3e52406174729d8cb4196075ecac1c8c2",
+      "sha256": "a9460bbc8e085b404804d7b82328c1f7a249faeee25380af6586b389d3d5d9fd",
+      "parents": [
+        "books/ops-issued-effects"
+      ],
+      "entry": "/home/fn/.cache/fn-certs/327bb7f4c5e1f25958fa39b4e6f153e3e52406174729d8cb4196075ecac1c8c2/bb5aad9dc4b28150",
+      "cert_sha256": "314338b499a784bf2945a04f1339559f6e440344168b0824056f6727089aa2d6",
+      "fasl_sha256": "8837154d9b4241903693f4bf804da2c68b5d6212b3f65f3c7f4534d2238db47a"
+    },
+    "books/ops-issued-effects": {
+      "key": "11db77399de719cb4efa6894aa8275b90b9cfdef01415742d010fc466eb86967",
+      "sha256": "0d8ca86349858405807ff2cdccffccd71d1c8cef2065186b28aa31aafd35a709",
+      "parents": [
+        "books/ops-issued-count"
+      ],
+      "entry": "/home/fn/.cache/fn-certs/11db77399de719cb4efa6894aa8275b90b9cfdef01415742d010fc466eb86967/bb5aad9dc4b28150",
+      "cert_sha256": "47ceac042b58dc5f11318439f068827ef14e0b436ce54f5a5f5d6b761e4364a8",
+      "fasl_sha256": "6764a13bda3d4afce686214e3a8a729272a0c349f372d41fc4a23d81af4b5314"
+    },
+    "books/ops-issued-count": {
+      "key": "c2206b862087ed88eeb51789c1e77efff045c6a13df102a3de1a2d962c0365d7",
+      "sha256": "2238a6e61e7075984f5cd95519a7dd71bc2d1e6f4da6d0b411e639f27ce7a426",
+      "parents": [
+        "books/ops-heads"
+      ],
+      "entry": "/home/fn/.cache/fn-certs/c2206b862087ed88eeb51789c1e77efff045c6a13df102a3de1a2d962c0365d7/bb5aad9dc4b28150",
+      "cert_sha256": "3d8085c789ab6452a496919e0bd80e3e8ef8314342e8c410467fb469ea015538",
+      "fasl_sha256": "1cdae5f7d5bee3695f5449cf331309abc5cbd29d331ccf482905020e452bfccb"
+    },
+    "books/ops-heads": {
+      "key": "2cbec72da7646111a85b1010c8b21aa44695279537a2a6affbf6fecbc828fd51",
+      "sha256": "17af3696d3ad68f638d8301906cb1ce67152e6fa685a8d7697b5521018359366",
+      "parents": [
+        "books/arm-children"
+      ],
+      "entry": "/home/fn/.cache/fn-certs/2cbec72da7646111a85b1010c8b21aa44695279537a2a6affbf6fecbc828fd51/bb5aad9dc4b28150",
+      "cert_sha256": "3a46329dc4d542af57970ed3f7aa6b97104640102933310b636ec5aae6fdbc75",
+      "fasl_sha256": "5efa5f22ced7dbd2e7c4d7e217716c1092643b959ef88ccf0e5d5c2453fd072d"
+    },
+    "books/tls-kind": {
+      "key": "3f93fb3ac1aea8ee885d17dae1fdf6e96c601f37c76e24576839229b392a5baa",
+      "sha256": "86c5e4fe10ed4e0043c71cd2d09d96ca6af898bb447365db28913a3d7a4ab0df",
+      "parents": [
+        "books/machines-a",
+        "books/codec-profile",
+        "books/core-children",
+        "books/machine-arms",
+        "books/tls-schema"
+      ],
+      "entry": "/home/fn/.cache/fn-certs/3f93fb3ac1aea8ee885d17dae1fdf6e96c601f37c76e24576839229b392a5baa/4a0d51cdc9f2c936",
+      "cert_sha256": "caf8e6c1161dc708f86bdab4be4e9f590f05223bcfe62f8b01c055839bb3798a",
+      "fasl_sha256": "a34a3164bf715a1b78b33942c463924d8f3888d548c49c1913d82870038c3310"
+    }
+  },
+  "reused": 37,
+  "new_count": 4,
+  "current_root_base": "a06b96ace",
+  "root_projection": [
+    "books/cns-edges.lisp"
+  ],
+  "scope_note": "All 41 source hashes and closure keys independently match the current root with this one-file projection. Actual cert/FASL payloads verified on the record toolchain. This does not qualify UPLOAD or the composed FETCH/native paths.",
+  "metadata_correction": "Direct parent list for cns-edges includes columns-guard-hints; the recorded source hash and closure key were already correct."
+}
