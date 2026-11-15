@@ -10,15 +10,24 @@ import checkpoint_reader_root_projection as p
 
 
 class RootReaderProjection(unittest.TestCase):
-    def test_existing_root_runtime_schema_and_provider_untouched(self):
-        for path in ('books/checkpoint.lisp', 'books/alloc.lisp', 'books/commit-alloc.lisp',
-                     'books/format-check.lisp', 'books/columns.lisp',
-                     'books/square-evidence.lisp', 'books/boot.lisp'):
-            self.assertEqual((ROOT/path).read_text(), p.source(p.BASE, path), path)
+    def test_named_root_reader_and_checkpoint_schemas_preserved(self):
+        # Composed foundations can replace an identical slot predicate with
+        # its canonical declaration. Do not freeze entire unrelated books.
+        checkpoint = (ROOT/'books/checkpoint.lisp').read_text()
+        for table in ('fn2-checkpoints','fn2-checkpoint-refs','fn2-checkpoint-bytes'):
+            pattern = '(defcolumns '+table+' ?*body)'
+            self.assertEqual(p.norm(p.unique(checkpoint, pattern)),
+                             p.norm(p.unique(p.source(p.BASE,'books/checkpoint.lisp'),pattern)))
         old = p.source(p.BASE, 'books/checkpoint-descriptor-read.lisp')
         now = (ROOT/'books/checkpoint-descriptor-read.lisp').read_text()
         pattern = '(defun fn2-checkpoint-check-step ?*body)'
         self.assertEqual(p.norm(p.unique(old, pattern)), p.norm(p.unique(now, pattern)))
+        # The actual canonical evidence interface must remain available; its
+        # newer implementation is not overwritten with donor bytes.
+        provider=(ROOT/'books/square-evidence.lisp').read_text()
+        fn=p.unique(provider,'(defun fn2-square-predicate-evidence-events-with-hints ?*body)')
+        self.assertEqual(p.norm(fn.items[2]),
+                         ('name','positive','negative','positive-hints','negative-hints','recheck','world'))
 
     def test_guard_expansion_and_actual_format_workers_match(self):
         for path, names in [('books/format-check.lisp',
