@@ -6,6 +6,7 @@ import lisp_rewrite as lr
 from read_observer_rewrite import nodes,sym
 from nntp_physical_port import port_cursor,port_kind,port_observer,named_lists
 from nntp_physical_admission import port as admission,kind as admission_kind
+from physical_view_owner_rewrite import project as project_view
 BASE='f25d00ef6'
 def src(p):return (ROOT/p).read_text()
 def old(p,ref=BASE):return subprocess.check_output(['git','show',ref+':'+p],cwd=ROOT,text=True)
@@ -79,7 +80,7 @@ class Controls(unittest.TestCase):
    return {sym(m.node.items[1]):text[m.start:m.end]
     for m in lr.match('(defun ?name ?*body)',lr.parse(text).forms,deep=False)
     if sym(m.node.items[1]).startswith('fn2-rd-')}
-  before=kernels(old('books/machines-c-read.lisp'))
+  before=kernels(project_view('machines-c-read.lisp',old('books/machines-c-read.lisp')))
   self.assertTrue(before)
   self.assertEqual(before,kernels(src('books/machines-c-read.lisp')))
   for b in ('run-physical-release','run-physical-bound-bind','run-physical-bound-io','run-physical-bound-step','cns'):
