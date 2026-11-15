@@ -56,10 +56,13 @@ refusal additionally requires no retained journal generation, no pending
 operation, no issued write and no live fence before exact retry.
 
 `ordinary-drain-credit-canonical-unit` is the narrow B-only entry: the existing
-canonical R2 world, actual profile-bearing configuration with initialized B
+canonical R2 world, actual pool-credit configuration with initialized B
 row/I/O geometry, generic exhaustion, actual allocator exhaustion, START
 refusal, exact fixture-reservation cancellation and SAME-batch START success.
-It creates no alternate core or arm implementation and does not claim C stage,
+Its explicit configured antecedent protects the declaration-derived B future8
+bundle plus each B row's journal/scratch demand; it does not represent full C
+working29 or service admission. It creates no alternate core or arm
+implementation and does not claim C stage,
 executor initialization or physical IO. On the cold donor its inherited R2
 closure still includes checkpoint workers; projection onto the current root's
 existing R2 assembly must preserve that root's callback composition rather
