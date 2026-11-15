@@ -4,6 +4,7 @@
 (include-book "commit-durable-all")
 (include-book "pool-initialization")
 (include-book "layout-conservation")
+(include-book "core-ops-initialization")
 
 (defun-nx fn2-env-reach-structure (profile c)
   (and (fn2-core-profilep profile) (fn2-corep c) (fn2-core-wfp c)
@@ -471,3 +472,12 @@
              (:type-prescription fn2-machine-take-wake) mv-nth car-cons cdr-cons (:e zp) (:e binary-+))
            (theory 'minimal-theory)))))
 
+
+(defthm fn2-env-reach-init-ops-semantic
+ (implies (and (fn2-corep c) (fn2-core-profilep profile))
+  (fn2-ops-semanticp (fn2-core-ops
+    (fn2-init-executor profile mode scribe-p c))))
+ :hints (("Goal"
+  :use (fn2-env-reach-core-init-ops-semantic
+        fn2-env-init-executor-commit-children)
+  :in-theory '(fn2-core-ops))))
