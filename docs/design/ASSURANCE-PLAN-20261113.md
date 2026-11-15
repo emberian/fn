@@ -12,6 +12,21 @@ recovery of accepted data. Integrated work now goes directly to upstream dev;
 component records alone do not establish this milestone. The shared application
 build owns the coherent current callback/runtime prefix and executable controls.
 
+The first shared application source blocker, pool-block HASH-LOOP-SHAPE, is
+repaired at `ae6ad572f`: the complete book admits in the retained application
+world in 3.30 seconds / 281,519 steps. Only the induction hint changes; runtime
+definitions, guards and theorem hypotheses/conclusions are unchanged. This is
+an author-load result, not record-toolchain certification of the application.
+
+`d6f73cb84` adds `tests/cns-recovered-fetch-unit.lisp`: accepted wire APPEND,
+discarded live core, fresh-core recovery over the persisted simulator device,
+then FETCH of the exact original article. It requires intact completed recovery,
+quiet termination and zero stop reason. The shared session helper now accepts
+the existing device; old callers still supply NIL. Execution remains owed.
+This test does not cover native process-death cuts or actual socket restart.
+The native owner is connecting those gates and adding the missing public FETCH
+client encoder/decoder to the existing socket client.
+
 Raw APPEND EOF controls from85c0114a3 are integrated as unexecuted regressions:
 seven real wire sessions require a trailing-CR refusal, empty STATUS, successful
 same-Message-ID retry, exactly one published occurrence, successful epoch setup,
