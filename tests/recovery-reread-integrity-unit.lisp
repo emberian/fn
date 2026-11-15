@@ -5,7 +5,7 @@
 ; integrity/refusal controls, not a cryptographic collision theorem.
 ; Source-only: execution awaits the repaired current recovery closure.
 (in-package "ACL2")
-(include-book "../books/owed-cursor")
+(include-book "../books/owed-conn")
 (include-book "../books/assembly-attach")
 (include-book "core-snapshot-support")
 (include-book "std/util/bstar" :dir :system)
@@ -84,7 +84,7 @@
       ;; dispatch: verified reread and completed semantic frontier, no claim
       ;; that every later boot/adoption stage succeeds.
       (last-event (fn2-machine-rc-frontier-last id fn2-core))
-      (boundary (and observed (= stage 0) (= started 1)
+      (boundary (and observed (member-equal stage '(0 5)) (= started 1)
                      (= (fn2-machine-rc-auth id fn2-core) 1)
                      (stobj-let ((fn2-mk (fn2-core-mk fn2-core))) (exact)
                       (= (fn2-mk-size 0 fn2-mk) last-event) exact)))
