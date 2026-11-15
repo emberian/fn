@@ -21,6 +21,15 @@ guards and theorem formulas are unchanged. The structural rewrite has three
 passing controls. The next gate is the composed current APPEND/FETCH consumer;
 this record does not qualify that consumer or the native restart path.
 
+CNS edge preservation is qualified by the [19-book record](receipts/cns-edges19-record.json)
+with 18 reused parents and one new book; root matched all 19 source hashes and
+closure keys. The proof adapter delegates complete statements to the existing
+columns generator and changes only unconditional row-frame hints. TYPE, WFP,
+RAW-ROWS and explicit hints retain their original behavior. Actual generated-form
+controls and the complete source book pass, including ACL2's second pass.
+The composed consumer build has advanced beyond CNS edges into the format and
+hashing dependencies; APPEND/FETCH and native restart remain unexecuted.
+
 Stable connection/TLS schema providers are integrated at `bf2fc57e7` with
 [qualified 39-book evidence](receipts/kind-schema39-record.json): 35 reused,
 four new, and all 39 source hashes and closure keys matched at integration.
