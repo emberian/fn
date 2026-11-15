@@ -302,6 +302,32 @@
                (fn2-alloc-identity-old-bucket-p fn2-extents))) (mv :changed fn2-extents)
   (let ((fn2-extents (fn2-alloc-identity-put (phase *fn2-alloc-identity-phase-idle*) (op *fn2-alloc-identity-op-none*)))) (mv :ok fn2-extents))))
 
+; Shape contracts use the actual typed input carrier domain, including
+; TYPE as well as WFP. Private publication additionally requires its exact
+; row/bucket precondition. These are source obligations, not admission claims.
+(defun fn2-alloc-identity-shape-events (signatures)
+ (declare (xargs :verify-guards nil))
+ (if (atom signatures) nil
+  (let* ((sig (car signatures)) (name (car sig)) (args (cadr sig))
+         (private (eq name 'fn2-alloc-identity-publish-existing-row)))
+   (cons `(fn2-extents-preserves ,name ,args :position ,(if private nil 1)
+           :disable nil :wfp-type t
+           :hyps ((fn2-extentsp fn2-extents) (fn2-extents-wfp fn2-extents)
+                  ,@(and private '((fn2-alloc-identity-publishable-p kind owner ogen source fn2-extents)))))
+         (fn2-alloc-identity-shape-events (cdr signatures))))))
+(make-event (cons 'progn (fn2-alloc-identity-shape-events
+ '((fn2-alloc-identity-begin (kind owner ogen source fn2-extents))
+   (fn2-alloc-identity-clear-step (kind owner ogen source fn2-extents))
+   (fn2-alloc-identity-transfer (kind owner ogen source new-kind new-owner new-gen fn2-extents))
+   (fn2-alloc-identity-end (kind owner ogen source fn2-extents))
+   (fn2-alloc-identity-prepare (kind owner ogen source op i previous state epoch counter cut fn2-extents))
+   (fn2-alloc-identity-step (kind owner ogen source fn2-extents))
+   (fn2-alloc-identity-publish-existing-row (kind owner ogen source fn2-extents))
+   (fn2-alloc-identity-commit-adopt (kind owner ogen source fn2-extents))
+   (fn2-alloc-identity-adopt-progress (kind owner ogen source i previous epoch counter fn2-extents))
+   (fn2-alloc-identity-commit-free (kind owner ogen source fn2-extents))
+   (fn2-alloc-identity-commit-check (kind owner ogen source fn2-extents))))))
+
 ; Logical observation only. No executable admission calls these whole-index
 ; observations; production carries the invariant through the bounded probe.
 (defun fn2-alloc-identity-model-find (fuel at epoch counter fn2-extents)
