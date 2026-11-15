@@ -366,6 +366,9 @@ ACL2_BOOKS = \
   tests/trace-events-unit \
   books/cns-append-prefix-codec \
   tests/cns-stream-append-unit \
+  books/cns-fetch-prefix-codec \
+  tests/cns-fetch-prefix-unit \
+  tests/txn-upload-physical-location-unit \
   tests/ctl-stripe-map-unit \
   tests/consumer-commit-unit \
   tests/consumer-helm \

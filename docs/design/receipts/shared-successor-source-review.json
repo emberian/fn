@@ -1,0 +1,48 @@
+{
+  "base": "86f919a16a606851302690cf6e0547dd3b07319a",
+  "patches": [
+    "fe9f761ab",
+    "4777bf7fc",
+    "1862a4fdf"
+  ],
+  "copied": {
+    "books/cns-fetch-prefix-codec.lisp": {
+      "source": "28efe5d69",
+      "sha256": "7a40b6078faafd9ee0a72fc23ed2065e151bc78ac9f429a38c8755de579b0f56"
+    },
+    "tests/cns-fetch-prefix-unit.lisp": {
+      "source": "7eab5d29d",
+      "sha256": "5f16bd9bd84ac0a6a1c0f56e0a3ee4bace537b632f42a74c389262a462f991a5"
+    }
+  },
+  "columns_audit": {
+    "before_sha256": "d3a58387c7c0dabc4ceaffeeb20672031a04693d8dd52078f50c5fa487c0d5f8",
+    "after_sha256": "425fdb210531572bde2aa57330ff61f2fefb7ea818268aa32f6301f1f11df147",
+    "entire_AST_equal_except_hint_attributes": true,
+    "cache_policy": "All descendants must use new closure keys; old columns certificates cannot be relabelled."
+  },
+  "physical_scope": "POST location repaired and nonzeroextent constructor control included; manifest encode/settlement class pending reclamation donor; no executed control claim",
+  "output_runtime": "Excluded: owner has no coherent reviewed outbound packet; prefix-only included.",
+  "input_close_before_decode": {
+    "books/cns.lisp": {
+      "origin": "76a549656",
+      "sha256": "8a18960dbe6dece279fa11b2802d56761d7555df669a19cd54591ba2e99ea64a"
+    },
+    "books/cns-draining-model.lisp": {
+      "origin": "76a549656",
+      "sha256": "e1f4324851ffd52a9d6157a2f5c3ad6eb062a61936c9b4fcfe739f3131a7a1d6"
+    }
+  },
+  "pending_output": "excluded: full reader+CNS+four-argument geometry packet remains unfinished",
+  "drain_parent_control": {
+    "origin": "2be67b40d",
+    "path": "tests/cns-drain-parent-controls.lsp",
+    "sha256": "df2ee5fdfc8af48a7093ec11815966907d45ef4fdd9c59ab844570a832658287",
+    "scope": "Actual extracted final wake helpers and draining IF, reader stubbed; no full actor claim"
+  },
+  "pool_proposal": {
+    "origin": "ea7d51a48",
+    "sha256": "999bba0e8a9ea4f7c486dd67e335ab1c304708f7bcccf7ceeb835d8b3bf13361",
+    "status": "Source-only local theory correction; original encapsulate 2M/20 unsplit; no pass claim"
+  }
+}
