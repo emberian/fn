@@ -30,9 +30,29 @@ def auth_reply(verb: str, result: bytes) -> bytes:
 
 class ReplyDecoding(unittest.TestCase):
     def test_truncated_accepted_results_never_decode_as_accepted(self) -> None:
-        for verb in ("register", "position", "ack", "status", "read", "wait", "append"):
+        for verb in ("register", "position", "ack", "status", "read", "wait", "append", "fetch"):
             with self.subTest(verb=verb), self.assertRaises(fn_admin.WireError):
                 fn_admin.decode_cns_reply(verb, cns_reply(b""))
+
+    def test_fetch_canonical_widths_and_exact_binary_reply(self) -> None:
+        mid = b"<fetch@example.invalid>"
+        position = 0x123456789ABCDEF0
+        frame = fn_admin.build_cns_request("fetch", message_id=mid, domain=0x12345678, position=position)
+        kind, body = fn_admin.fnct_open(frame)
+        self.assertEqual(kind, fn_admin.KIND_CNS_REQ)
+        self.assertEqual(body, b"\x0d" + len(mid).to_bytes(2, "big") + mid
+                         + bytes.fromhex("12345678123456789abcdef0"))
+        article = b"Header: octets\r\n\r\n\x00\xff.dot\r\n"
+        result = fn_admin.decode_cns_reply("fetch", cns_reply(fn_admin.octets32(article)))
+        self.assertEqual(bytes.fromhex(result["article_hex"]), article)
+        self.assertEqual(result["octets"], len(article))
+        for malformed in (b"", b"\x00\x00\x00", fn_admin.octets32(article)[:-1],
+                          fn_admin.octets32(article) + b"x"):
+            with self.assertRaises(fn_admin.WireError):
+                fn_admin.decode_cns_reply("fetch", cns_reply(malformed))
+        for domain, pos in ((-1, 0), (2**32, 0), (0, -1), (0, 2**64)):
+            with self.assertRaises(ValueError):
+                fn_admin.build_cns_request("fetch", message_id=mid, domain=domain, position=pos)
 
     def test_ack_and_status_require_exact_fixed_results(self) -> None:
         ack = fn_admin.decode_cns_reply("ack", cns_reply(bytes(12)))
@@ -88,7 +108,7 @@ class ReplyDecoding(unittest.TestCase):
 
 
 class InvalidReplyOutcome(unittest.TestCase):
-    def run_command(self, reply: bytes, *args: str, cursor_file: bool = False) -> subprocess.CompletedProcess:
+    def run_command(self, reply: bytes, *args: str, cursor_file: bool = False, json_output: bool = True) -> subprocess.CompletedProcess:
         with tempfile.TemporaryDirectory() as directory:
             path = str(Path(directory) / "ctl.sock")
             ready = threading.Event()
@@ -114,17 +134,29 @@ class InvalidReplyOutcome(unittest.TestCase):
             thread.start()
             self.assertTrue(ready.wait(5))
             proc = subprocess.run(
-                [str(ROOT / "fn"), *args, "--control-sock", path, "--json"]
+                [str(ROOT / "fn"), *args, "--control-sock", path] + (["--json"] if json_output else [])
                 + (["--cursor-file", str(Path(directory) / "cursor")] if cursor_file else []),
                 cwd=ROOT,
                 stdin=subprocess.DEVNULL,
                 capture_output=True,
-                text=True,
+                text=json_output,
                 timeout=10,
             )
             thread.join(5)
             self.assertFalse(thread.is_alive())
             return proc
+
+    def test_fetch_cli_preserves_binary_and_rejects_truncation(self) -> None:
+        article = b"From: a@example.invalid\r\n\r\n\xff\x00.dot\r\n"
+        args = ("stream", "fetch", "<fetch@example.invalid>", "--domain", "0", "--position", "4294967297")
+        raw = self.run_command(cns_reply(fn_admin.octets32(article)), *args, json_output=False)
+        self.assertEqual((raw.returncode, raw.stdout), (0, article), raw.stderr)
+        encoded = self.run_command(cns_reply(fn_admin.octets32(article)), *args)
+        self.assertEqual(encoded.returncode, 0, encoded.stderr)
+        self.assertEqual(bytes.fromhex(json.loads(encoded.stdout)["article_hex"]), article)
+        bad = self.run_command(cns_reply(fn_admin.octets32(article)[:-1]), *args)
+        self.assertEqual(bad.returncode, 2, bad.stderr)
+        self.assertEqual(json.loads(bad.stdout)["outcome"], "error")
 
     def test_invalid_mutating_reply_is_uncertain(self) -> None:
         for args in (
