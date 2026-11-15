@@ -96,7 +96,7 @@
    (root-unit (fn2-checkpoint-restore-reader-unit 0 fn2-checkpoint-restore-reader))
    (root-epoch (fn2-checkpoint-restore-reader-epoch 0 fn2-checkpoint-restore-reader))
    (root-allocation (fn2-checkpoint-restore-reader-allocation 0 fn2-checkpoint-restore-reader))
-   (unit unit) (epoch epoch) (allocation allocation) (total total) (consumed 0) (materialized 0)
+   (unit unit) (epoch epoch) (allocation allocation) (total total) (consumed 0) (materialized 0) (settled 0)
    (head *fn2-alloc-none*) (tail *fn2-alloc-none*) (cursor *fn2-alloc-none*))))
   (mv :captured fn2-checkpoint-restore-release-inventory)))
 (defun fn2-checkpoint-release-load-reader-hashes (i fn2-checkpoint-restore-release-inventory fn2-checkpoint-restore-reader)
@@ -302,5 +302,5 @@
   (mv :source fn2-checkpoint-restore-release-inventory)
   (let ((fn2-checkpoint-restore-release-inventory (fn2-checkpoint-restore-release-inventory-put 0
     (phase *fn2-checkpoint-restore-release-inventory-phase-complete*)
-    (cursor (fn2-checkpoint-restore-release-inventory-head 0 fn2-checkpoint-restore-release-inventory)) (materialized 0))))
+    (cursor (fn2-checkpoint-restore-release-inventory-head 0 fn2-checkpoint-restore-release-inventory)) (materialized 0) (settled 0))))
    (mv :inventory-complete fn2-checkpoint-restore-release-inventory))))
