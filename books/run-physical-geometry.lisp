@@ -5,7 +5,7 @@
 (fn2-book-layer :c)
 (defcolumns fn2-run-load-geometry
  ((version :u8) (cursors :u32) (transactions :u32) (reads :u32) (operations :u32)
-  (uploads :u32) (controls :u32) (prefix :u32) (format-rows :u32) (field-rows :u32) (digest-rows :u32)))
+  (upload-hash-rows :u32) (controls :u32) (prefix :u32) (format-rows :u32) (field-rows :u32) (digest-rows :u32)))
 (defcolumns fn2-run-load-readiness
  ((phase (:enum fn2-run-load-readiness-phase (:idle :cursors :operations :complete :refused)))
   (scope (:enum fn2-run-load-readiness-scope (:cold :live))) (cut-commit :u60) (cut-event :u60)
@@ -21,7 +21,7 @@
       (unsigned-byte-p 32 (fn2-b-run-cursor-rows profile))
       (unsigned-byte-p 32 (fn2-b-upload-windows profile))
       (unsigned-byte-p 32 (fn2-b-ctl-rows profile))
-      (unsigned-byte-p 32 (+ 4 (fn2-b-upload-windows profile)))
+      (and (<= 4 (fn2-b-run-loader-row 0 profile)) (unsigned-byte-p 32 (fn2-b-run-loader-row 0 profile)))
       (unsigned-byte-p 32 (fn2-b-format-slots profile))
       (<= (fn2-b-format-floor profile) (fn2-b-format-slots profile))
       (unsigned-byte-p 32 (fn2-b-capacity :format-field-slots (fn2-b-field-rows profile) profile))
@@ -34,8 +34,8 @@
   (if (not (fn2-run-load-geometry-profilep profile)) fn2-run-load-geometry
    (fn2-run-load-geometry-put 0 (version 1) (cursors (fn2-b-run-cursor-rows profile))
     (transactions (fn2-profile-t profile)) (reads (fn2-b-read-rows profile)) (operations (fn2-profile-o profile))
-    (uploads (fn2-b-upload-windows profile)) (controls (fn2-b-ctl-rows profile))
-    (prefix (+ 4 (fn2-b-upload-windows profile))) (format-rows (fn2-b-format-slots profile))
+    (upload-hash-rows (nfix (- (fn2-b-run-loader-row 0 profile) 4))) (controls (fn2-b-ctl-rows profile))
+    (prefix (fn2-b-run-loader-row 0 profile)) (format-rows (fn2-b-format-slots profile))
     (field-rows (fn2-b-capacity :format-field-slots (fn2-b-field-rows profile) profile))
     (digest-rows (fn2-b-capacity :digest-slots (fn2-b-digest-minimum profile) profile))))))
 ; Only the real core initializer calls PROFILE-INIT. No served operation

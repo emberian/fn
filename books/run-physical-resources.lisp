@@ -46,9 +46,9 @@
 (defun fn2-run-load-profile-init (profile fn2-run-loads)
  (declare (xargs :stobjs fn2-run-loads
  :guard (and (unsigned-byte-p 32 (fn2-b-run-cursor-rows profile))
-             (unsigned-byte-p 32 (+ 4 (fn2-b-upload-windows profile) (fn2-b-run-cursor-rows profile))))))
+             (unsigned-byte-p 32 (+ (fn2-b-run-loader-row 0 profile) (fn2-b-run-cursor-rows profile))))))
  (let ((fn2-run-loads (fn2-run-loads-init (fn2-b-run-cursor-rows profile) fn2-run-loads)))
-  (fn2-run-load-checker-init 0 (+ 4 (fn2-b-upload-windows profile)) fn2-run-loads)))
+  (fn2-run-load-checker-init 0 (fn2-b-run-loader-row 0 profile) fn2-run-loads)))
 
 (fn2-run-load-frames fn2-run-load-reserve
  (c kind owner generation fn2-run-loads fn2-pool)
