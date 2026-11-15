@@ -2,7 +2,7 @@
 ; I/O-row counts must come from their actual initialized children, not flags.
 (in-package "ACL2")
 (include-book "pool-credit")
-(include-book "checkpoint-working-reserve")
+(include-book "checkpoint-working-geometry")
 (fn2-book-layer :c)
 (defun fn2-checkpoint-working-credit-vector (class fn2-pool)
  (declare (xargs :stobjs fn2-pool :guard (and (fn2-pool-wfp fn2-pool) (natp class))

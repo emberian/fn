@@ -226,6 +226,9 @@ ACL2_BOOKS = \
   books/peer-model \
   books/pointwise-contracts \
   books/pool \
+  books/pool-credit \
+  books/checkpoint-working-geometry \
+  books/checkpoint-working-credit \
   books/pool-block \
   books/pool-ranges \
   books/port \
