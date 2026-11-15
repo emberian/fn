@@ -35,16 +35,28 @@ compared with 132 for the cold072 donor. Four source changes alter 14 existing
 closure keys; 90 existing keys remain identical to this actual root baseline.
 No callback assembly/adoption implementation is in the fixture prefix.
 
-Read-only `ssh forge` (user fn, configured `/tank/fn/certcache`) inspected the exact
-plain-world donor and baseline keys. Certificate/port/fasl bytes were hashed
-against their recorded metadata without creating locks or installing artifacts.
-Only `books/declare` and `books/owed` had valid compiled entries: 2/105 donor keys
-and the same 2/104 baseline keys. Current pool, columns and sealer allow only the
-plain certification world under this source's image policy. This is not a
-compatible complete artifact-set or toolchain qualification claim.
+The initial read-only inventory targeted `/tank/fn/certcache` and found two
+matching keys. That is not the designated record cache for the current campaign;
+this earlier result does not describe current qualification readiness.
+
+Corrected read-only `ssh forge` (user fn) inventory used the designated
+`/home/fn/.cache/fn-certs` and exact fingerprint
+`8aeb1bea18968c6cd33ac633a80ebf67e4924504db112fd27eb11f16a27b2a8c`.
+49/105 donor keys and the same 49/104 baseline keys have hash-valid compiled
+entries matching that fingerprint; 56 donor keys and 55 baseline keys do not.
+The qualified pool and columns keys are included. Certificate/port/fasl bytes
+were checked against metadata without creating locks or installing artifacts.
+This is not complete pair compatibility or whole-fixture qualification.
+
+Convergence's actual application source is `08c510c59`, with qualified ENTRY60
+artifact `dd239b3ee6565d2761714e42d6779527867a96c0e572fa8fe650be0629a9cf38`.
+Its additional eleven books are author-admitted, not certified. Read-only
+comparison of its plan/prefix records found 64/105 donor keys identical to the
+plan and 38 of those in known-present; none of the eleven newly author-admitted
+books has the donor's exact key. No reuse is inferred from that author prefix.
 
 Per-book donor/baseline keys, artifact integrity results and retained metadata
-are in `/tmp/reclamation-root-forge-cache.json`. The remote operation only read
+are in `/tmp/reclamation-root-forge-designated-cache.json`. The remote operation only read
 those cache entries; it did not start ACL2, install, certify, upload or publish.
 Parent's current application baseline retains priority. After a resource grant,
 qualification should use its actual compatible prefix/artifact set and execute
