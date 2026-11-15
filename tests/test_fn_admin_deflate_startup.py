@@ -46,6 +46,16 @@ class DeflateStartup(unittest.TestCase):
         self.assertEqual(receipt["source_sha256"], hashlib.sha256(self.source.read_bytes()).hexdigest())
         self.assertEqual(receipt["library_sha256"], hashlib.sha256(b"fresh library").hexdigest())
 
+    def test_selected_basename_cannot_collide_with_build_workspace(self):
+        for name in ("inputs", "artifacts"):
+            with self.subTest(name=name):
+                self.output = self.root / "custom artifacts" / name
+                self.output.write_bytes(b"prior valid library")
+                with mock.patch.object(admin.subprocess, "run", side_effect=self.compiler):
+                    receipt = admin.prepare_native_deflate(self.root, self.output)
+                self.assertEqual(self.output.read_bytes(), b"fresh library")
+                self.assertEqual(receipt["path"], str(self.output))
+
     def test_failed_or_timed_out_build_keeps_selected_artifact(self):
         for error in (subprocess.CalledProcessError(1, "compiler"), subprocess.TimeoutExpired("compiler", 120)):
             with self.subTest(error=type(error).__name__), \
