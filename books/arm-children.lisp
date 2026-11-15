@@ -212,7 +212,7 @@
     (if (fn2-pool-release-countp slot fn2-pool)
         (fn2-pool-release slot gen okind oslot ogen fn2-pool)
       (mv :corrupt fn2-pool))
-    (let ((fn2-control (if (or (eq code :ok) (eq code :retired)) fn2-control
+    (let ((fn2-control (if (member-eq code '(:ok :retired :held)) fn2-control
                          (fn2-control-record-stop *fn2-stop-reason-pool-release* fn2-control))))
       (mv code fn2-pool fn2-control))))
 (fn2-pool-preserves fn2-core-release-children (slot gen okind oslot ogen fn2-pool fn2-control)
