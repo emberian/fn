@@ -65,6 +65,13 @@ class Controls(unittest.TestCase):
   row=lr.emit(self.f['fn2-read-parent-row-p'],drop_comments=True)
   for field in ['fn2-c-source-reader-current-p','fn2-c-source-readers-live','fn2-reads-observer-serial']:
    self.assertIn(field,row)
+ def test_binding_current_does_not_require_child_dead(self):
+  text=lr.emit(self.f['fn2-read-parent-binding-current-p'],drop_comments=True)
+  self.assertIn('fn2-c-source-reader-current-p',text)
+  self.assertNotIn('fn2-reads-observer-serial',text)
+  self.assertNotIn('fn2-c-source-readers-live',text)
+  for name in ['bindable','bound']:
+   self.assertIn('fn2-read-parent-binding-current-p',lr.emit(self.f['fn2-read-parent-'+name+'-p'],drop_comments=True))
  def test_parent_tuple_preserved_across_read_release(self):
   base=formmap(self.base)
   for name in ('fn2-rd-release','fn2-rd-key','fn2-rd-key-octets'):
