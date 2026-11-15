@@ -242,6 +242,7 @@ ACL2_BOOKS = \
   books/pool-credit \
   books/pool-credit-contracts \
   books/allocation-release-geometry \
+  books/upload-window-geometry \
   books/identity-workspace-geometry \
   books/checkpoint-working-geometry \
   books/checkpoint-service-geometry \
@@ -487,6 +488,9 @@ ACL2_BOOKS = \
   tests/root-future-totalization-unit \
   tests/root-working-credit-init-unit \
   tests/root-upload-geometry-unit \
+  tests/upload-window-geometry-unit \
+  tests/machine-taken-byte-class-unit \
+  tests/grant-class-resolution-unit \
   tests/pool-unit \
   tests/port-unit \
   tests/primitive-list-domain-unit \
