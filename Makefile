@@ -533,7 +533,7 @@ ACL2_BOOKS = \
   tests/translation-validation-unit \
   tests/translation-event-results-unit \
   tests/txn-unit \
-  tests/upload-feed-unit \
+  tests/upload-feed-unit tests/upload-feed-lf-unit tests/upload-feed-slice-unit \
   tests/upload-scan-unit \
   tests/upload-unit \
   tests/view-contracts-unit \

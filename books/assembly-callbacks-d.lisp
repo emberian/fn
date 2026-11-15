@@ -157,7 +157,7 @@
   (declare (xargs :stobjs fn2-core :guard (fn2-core-wfp fn2-core)))
   (stobj-let ((fn2-pool (fn2-core-pool fn2-core)))
     (status start2 mode2 discard2 copied fn2-pool)
-    (fn2-upload-feed-loop (max 1 (nfix left)) (nfix start) (nfix end) (nfix mode) discard raw 0 rslot rgen rk rs rg
+    (fn2-upload-feed-slice (max 1 (nfix left)) (nfix start) (nfix end) (nfix mode) discard raw rslot rgen rk rs rg
                           slot sgen *fn2-upload-kind* u ugen fn2-pool)
     (mv status start2 mode2 discard2 copied fn2-core)))
 (fn2-core-preserves fn2-upload-feed-pool (left start end mode discard raw rslot rgen rk rs rg slot sgen u ugen fn2-core)
