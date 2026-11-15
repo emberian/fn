@@ -7,6 +7,10 @@ ACL2_BOOKS = \
   books/checkpoint-descriptor-read \
   books/checkpoint-descriptor-input \
   books/checkpoint-boot-descriptor \
+  books/checkpoint-geometry \
+  books/boot-bootstrap-pack \
+  books/boot-bootstrap-verify \
+  books/boot-bootstrap-receipt \
   books/cns-append-prefix-codec \
   books/arm-children \
   books/arm-issue-effects \

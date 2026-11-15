@@ -10,6 +10,23 @@ the real BOOT kind, CORE and `fn2-boot-bootstrap-current-p`. That gate must chec
 the live machine snapshot/generation and full semantic and physical namespace
 against a receipt minted after persisted-bootstrap verification. Packing an
 expected bootstrap and final startup-Fence readiness cannot mint this receipt.
+The lower shared `fn2-boot-bootstrap-receipt-p` is the owner/full namespace
+comparison used by the descriptor callback and intended CORE gate.
+
+`boot-bootstrap-pack` mechanically extracts the existing generated geometry
+and bootstrap constructors with an explicit owner kind. The bootstrap encoder
+retains its geometry source instead of resetting the owned destination.
+`fn2-boot-bootstrap-pack-pool` uses the first sector of BOOT's existing 64KiB
+page for expected bootstrap bytes and the next 32 octets for its geometry
+hash. It cannot write a receipt. `fn2-boot-bootstrap-verify-pool` rebuilds these
+bytes, compares the entire sector against the separate owned read window,
+saves geometry and the complete namespace, and publishes receipt generation
+last. A mismatch cannot mint authority. It needs no third lease.
+
+The CORE verification wrapper must enforce the actual persisted bootstrap
+read's address, complete count, no pending operation and prior verified genesis
+namespace. The bootstrap wire format itself binds geometry; the earlier
+genesis comparison and actual BOOT phase chain establish namespace provenance.
 
 `fn2-boot-checkpoint-descriptor-target` requires the descriptor phase, matching
 candidate and no pending read. Its lower target uses the authenticated anchor's
@@ -46,6 +63,6 @@ descriptor-step. It must cover the actual routed small grant, zero-grant full
 frame, expected hash and Ref changes on resume, namespace change refusal,
 retained lease and all five captured roots. It must observe the real phase and
 receipt; it cannot initialize them to simulate successful verification. The
-new bootstrap/anchor producer and CORE routing are still being composed by the
-physical-family owner, so this file does not register a fictitious fixture or
+new lower bootstrap producer, anchor admission and CORE routing are still
+being composed, so this file does not register a fictitious fixture or
 claim current served BOOT adoption.
