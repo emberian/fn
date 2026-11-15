@@ -387,7 +387,8 @@
 (defcolumns fn2-run-cursors
  ((phase (:enum fn2-run-cursor-phase (:idle :header :seek :child :miss :found :absent :failed :at :up :end :lost)))
   (schema :u60) (level :u8) (top :u8) (left :bool) (slot :u32) (gen :u60) (lo :u32) (hi :u32) (idx :u32) (off :u32)
-  (unit :u60) (counter :u60) (rb :u32) (okind :u8) (oslot :u32) (ogen :u60)))
+  (unit :u60) (counter :u60) (rb :u32) (okind :u8) (oslot :u32) (ogen :u60)
+  (physical :bool) (source-row :u32) (catalog-tag :u60) (epoch :u60) (run :u60) (resume-child :bool) (hash-0 :u32) (hash-1 :u32) (hash-2 :u32) (hash-3 :u32) (hash-4 :u32) (hash-5 :u32) (hash-6 :u32) (hash-7 :u32)))
 (defun fn2-run-cursor-start (c schema level slot gen unit counter rb okind oslot ogen fn2-run-cursors)
  (declare (xargs :stobjs fn2-run-cursors :guard (fn2-run-cursors-wfp fn2-run-cursors)))
  (if (not (and (natp c) (< c (fn2-run-cursors-rows fn2-run-cursors)) (unsigned-byte-p 60 schema) (unsigned-byte-p 8 level)
@@ -398,7 +399,8 @@
   (let ((fn2-run-cursors (fn2-run-cursors-put c (phase *fn2-run-cursor-phase-header*) (schema schema) (level level) (top level)
                                (left 0) (slot slot) (gen gen)
                                (lo 0) (hi 0) (idx 0) (off 0) (unit unit) (counter counter) (rb rb)
-                               (okind okind) (oslot oslot) (ogen ogen))))
+                               (okind okind) (oslot oslot) (ogen ogen)
+                               (physical 0) (source-row *fn2-none*) (catalog-tag 0) (epoch 0) (run 0) (resume-child 0) (hash-0 0) (hash-1 0) (hash-2 0) (hash-3 0) (hash-4 0) (hash-5 0) (hash-6 0) (hash-7 0))))
    (mv :ok fn2-run-cursors))))
 (fn2-run-cursors-preserves fn2-run-cursor-start (c schema level slot gen unit counter rb okind oslot ogen fn2-run-cursors) :position 1 :raw-rows t)
 (defun fn2-run-cursor-set-left (c fn2-run-cursors)
@@ -452,6 +454,21 @@
                                (idx idx) (off off) (unit unit) (counter counter))))
    (mv :ok fn2-run-cursors))))
 (fn2-run-cursors-preserves fn2-run-cursor-save (c phase level slot gen lo hi idx off unit counter fn2-run-cursors) :position 1 :raw-rows t)
+
+; Exact shared bound-reader digest accessor; no installed/query path is added.
+(defun fn2-run-cursor-hash-word (c i fn2-run-cursors)
+ (declare (xargs :stobjs fn2-run-cursors
+  :guard (and (fn2-run-cursors-wfp fn2-run-cursors) (natp c) (< c (fn2-run-cursors-rows fn2-run-cursors)) (natp i) (< i 8))))
+ (case i
+  (0 (fn2-run-cursors-hash-0 c fn2-run-cursors))
+  (1 (fn2-run-cursors-hash-1 c fn2-run-cursors))
+  (2 (fn2-run-cursors-hash-2 c fn2-run-cursors))
+  (3 (fn2-run-cursors-hash-3 c fn2-run-cursors))
+  (4 (fn2-run-cursors-hash-4 c fn2-run-cursors))
+  (5 (fn2-run-cursors-hash-5 c fn2-run-cursors))
+  (6 (fn2-run-cursors-hash-6 c fn2-run-cursors))
+  (otherwise (fn2-run-cursors-hash-7 c fn2-run-cursors))
+))
 
 ; Fixture plan of the run-level logic adapter (the assembly's fn2-run-run-run).
 (defun fn2-run-run-setup (fn2-run-builds fn2-run-cursors fn2-run-paths fn2-run-cache fn2-run-writers fn2-run-restarts fn2-fields fn2-pool
