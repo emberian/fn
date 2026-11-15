@@ -16,7 +16,7 @@ def named(name):
 def has(x,term):return term in list(walk(x))
 class EndpointBarrier(unittest.TestCase):
  def test_existing_endpoint_requires_exact_saved_serial_before_writer_gate(self):
-  f=named('fn2-c-source-reader-acquire');s=str(f)
+  f=named('fn2-c-source-reader-acquire-core');s=str(f)
   self.assertLess(s.index('fn2-c-source-reader-current-p'),s.index('*fn2-c-source-writer-phase-idle*'))
   self.assertTrue(has(f,['equal','expected-receipt','0']))
   current=named('fn2-c-source-reader-current-p')
@@ -27,7 +27,7 @@ class EndpointBarrier(unittest.TestCase):
    if x and x[0]=='fn2-c-source-readers-serial':x[0]='removed-serial'
   self.assertFalse(has(mutant,['equal',['fn2-c-source-readers-serial','endpoint','fn2-c-source-readers'],'receipt']))
  def test_new_receipt_is_monotone_checked_before_mutation(self):
-  f=named('fn2-c-source-reader-acquire');s=str(f)
+  f=named('fn2-c-source-reader-acquire-core');s=str(f)
   self.assertTrue(has(f,['+','1',['fn2-c-source-control-next-receipt','0','fn2-c-source-control']]))
   self.assertLess(s.index('unsigned-byte-p'),s.index('fn2-c-source-readers-put'))
   self.assertTrue(has(f,['unsigned-byte-p','60','receipt']))
@@ -54,7 +54,7 @@ class EndpointBarrier(unittest.TestCase):
   self.assertNotIn('(defun fn2-c-source-writer-end',source)
   self.assertNotIn('(defun fn2-c-source-writer-publish',source)
  def test_no_model_scan_in_served_leaves_and_invariant_transitions_named(self):
-  for name in ('reader-acquire','reader-release','writer-begin','writer-poll','writer-abort-pending'):
+  for name in ('reader-acquire','reader-acquire-core','reader-acquire-under','reader-release','writer-begin','writer-poll','writer-abort-pending'):
    f=named('fn2-c-source-'+name)
    self.assertNotIn('reader-live-count',str(f));self.assertNotIn('count-invariant-p',str(f))
    theorem=named('fn2-c-source-'+name+'-preserves-count-invariant')
@@ -62,6 +62,18 @@ class EndpointBarrier(unittest.TestCase):
   whole=named('fn2-c-source-exclusive-has-no-live-endpoint')
   self.assertIn('fn2-c-source-count-invariant-p',str(whole))
   self.assertTrue(has(whole,['equal',['fn2-c-source-readers-live','endpoint','fn2-c-source-readers'],'0']))
+ def test_pending_extension_requires_actual_live_parent_not_a_flag(self):
+  under=named('fn2-c-source-reader-acquire-under')
+  self.assertTrue(has(under,['fn2-c-source-reader-current-p','parentendpoint','parentreceipt','fn2-c-source-readers']))
+  self.assertTrue(has(under,['not',['equal','endpoint','parentendpoint']]))
+  core=named('fn2-c-source-reader-acquire-core')
+  gate=next(x for x in walk(core) if x and x[0]=='unless' and 'writer-phase-idle' in str(x))
+  self.assertTrue(has(gate,['equal',['fn2-c-source-control-phase','0','fn2-c-source-control'],'*fn2-c-source-writer-phase-pending*']))
+  self.assertTrue(has(gate,['fn2-c-source-reader-current-p','parentendpoint','parentreceipt','fn2-c-source-readers']))
+  root=named('fn2-c-source-reader-acquire')
+  self.assertTrue(has(root,['fn2-c-source-reader-acquire-core','endpoint','expected-receipt','0','0','fn2-c-source-control','fn2-c-source-readers']))
+  calls=[x for x in walk(core) if x and x[0]=='fn2-c-source-readers-put']
+  self.assertEqual(len(calls),1)
  def test_prepared_actual_nested_endpoint_and_hypothesis_controls(self):
   f=(ROOT/'tests/c-source-endpoint-unit.lisp').read_text()
   for required in ('(equal r 1)','(equal s 2)','(eq partial :waiting)','(equal wake 40)','(equal wakegen 11)',
