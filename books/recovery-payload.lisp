@@ -523,7 +523,9 @@
        (if (and (fn2-alloc-slotp e fn2-extents) (= (fn2-extents-state e fn2-extents) *fn2-extent-state-free*))
         (mv-let (code fn2-checkpoint-suffix-allocation fn2-extents)
          (fn2-checkpoint-suffix-allocation-begin commit *fn2-rec-field-base* fn2-checkpoint-selected-source fn2-boot-config fn2-checkpoints fn2-checkpoint-refs fn2-checkpoint-bytes fn2-origin fn2-checkpoint-recovery-evidence fn2-checkpoint-recovery-census fn2-checkpoint-restore-map fn2-checkpoint-restore-map-control fn2-checkpoint-restore-reach-control fn2-checkpoint-projection fn2-ops fn2-fields fn2-checkpoint-suffix-allocation fn2-extents)
-         (mv (if (eq code :more) :lifecycle code) fn2-extents fn2-alloc-edges fn2-checkpoint-suffix-allocation))
+         (mv (if (eq code :more) :lifecycle code) fn2-extents fn2-alloc-edges
+          (if (eq code :more) (fn2-checkpoint-suffix-allocation-put 0
+            (worker-kind *fn2-recovery-machine-kind*) (worker-slot id) (worker-gen ogen) (classification *record-kind-allocation*)) fn2-checkpoint-suffix-allocation)))
         (mv-let (code fn2-extents fn2-alloc-edges) (fn2-checkpoint-suffix-allocation-existing commit fn2-checkpoint-selected-source fn2-boot-config fn2-checkpoints fn2-checkpoint-refs fn2-checkpoint-bytes fn2-origin fn2-checkpoint-recovery-evidence fn2-checkpoint-recovery-census fn2-checkpoint-restore-map fn2-checkpoint-restore-map-control fn2-checkpoint-restore-reach-control fn2-checkpoint-projection fn2-ops fn2-fields fn2-extents fn2-alloc-edges)
          (mv code fn2-extents fn2-alloc-edges fn2-checkpoint-suffix-allocation)))))
      (t (mv :invalid fn2-extents fn2-alloc-edges fn2-checkpoint-suffix-allocation)))
@@ -542,7 +544,11 @@
    (if (zp (fn2-checkpoint-suffix-allocation-rows fn2-checkpoint-suffix-allocation))
     (mv :invalid fn2-checkpoint-suffix-allocation fn2-extents)
    (let ((commit (fn2-checkpoint-suffix-allocation-commit 0 fn2-checkpoint-suffix-allocation)))
-    (if (not (= commit current-commit))
+    (if (not (and (= commit current-commit)
+      (= (fn2-checkpoint-suffix-allocation-worker-kind 0 fn2-checkpoint-suffix-allocation) *fn2-recovery-machine-kind*)
+      (= (fn2-checkpoint-suffix-allocation-worker-slot 0 fn2-checkpoint-suffix-allocation) id)
+      (= (fn2-checkpoint-suffix-allocation-worker-gen 0 fn2-checkpoint-suffix-allocation) ogen)
+      (= (fn2-checkpoint-suffix-allocation-classification 0 fn2-checkpoint-suffix-allocation) *record-kind-allocation*)))
      (mv :invalid fn2-checkpoint-suffix-allocation fn2-extents)
      (mv-let (code fn2-checkpoint-suffix-allocation fn2-extents) (fn2-checkpoint-suffix-allocation-step fn2-checkpoint-selected-source fn2-boot-config fn2-checkpoints fn2-checkpoint-refs fn2-checkpoint-bytes fn2-origin fn2-checkpoint-recovery-evidence fn2-checkpoint-recovery-census fn2-checkpoint-restore-map fn2-checkpoint-restore-map-control fn2-checkpoint-restore-reach-control fn2-checkpoint-projection fn2-ops fn2-fields fn2-checkpoint-suffix-allocation fn2-extents)
       (mv code (if (eq code :settled)

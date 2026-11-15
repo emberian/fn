@@ -160,3 +160,32 @@ and stale actual lease controls; this lane's source parsing/arity/rewrite contro
 are not a substitute. Lifecycle-specific real persisted checkpoint allocation
 continuation is still a required composed control. No ACL2/host/native/production
 compute has been run for this source milestone.
+
+
+The selected install-adopt bridge is source-driven, not the old full-image
+FREE-head allocator replay. Its actual id/generation/stage/found position and
+selected base are read from the recovery actor. CHAINED/PAYLOAD classifications
+must belong to the suffix above that base. Shared begin-record/walk and existing
+allocation settlement consume only the tuple derived by either the real decoded
+ALLOCATION wrapper or this actual candidate wrapper; no field stripe is forged.
+The cursor captures worker generation/classification and cannot advance the
+actor position before terminal settlement. Exact mapped journal identity and
+installed-root destination are preflighted before allocation changes; journals
+restore only their individually owned installed-root7+2p, while payload ownership
+uses its recorded owner. Stage3 observes the same candidate identity every call.
+
+Terminal codes distinguish actual :adopted from :retained original nonFREE map
+identity and :empty original/current FREE plus a scanned empty candidate. Unknown
+nonempty projected FREE writes return :orphan and remain closed; no synthetic0/p
+identity or numeric-cut disposal is installed. The parent owns the outstanding
+backend-exclusion/orphan policy and later evidence gate. Existing fullbase0
+recovery delegates the unchanged full-image adoption body.
+
+recovery-selected-adopt-unit controls use actual map codec/projection/protection
+and actual recovery-link directory writer, then exercise FREE journal adoption,
+projected reservation classification, payload identity/owner refusal, stale actor,
+candidate or mapped tag, and empty/orphan/retained classifications. Selected
+validation/chain verification are explicit synthetic premises, not a real disk
+or crypto witness. Actual full selected boot/checkpoint continuation remains a
+required composed control; assertions and guards remain UNRUN here. Parent must
+include recovery-selected-adopt before final recovery arms in callbacks.
