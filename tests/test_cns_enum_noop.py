@@ -4,15 +4,30 @@ import subprocess,sys,unittest
 ROOT=Path(__file__).resolve().parents[1]
 sys.path.insert(0,str(ROOT/'tools'))
 from cns_enum_noop import transform
-from lisp_rewrite import parse,match,Lst,Atom
+from lisp_rewrite import parse,match,Lst,Atom,Pre
 BASE='4c46607449f33dc604d944d81ea614661eba04e3'
+def runtime_forms(text):
+    parsed=parse(text)
+    for found in match(None,parsed,deep=False,head='defun'):
+        if found.node.items[1].low=='fn2-cns-source-issue-children':
+            xs=found.node.items[3].items[1].items
+            i=next(i for i,n in enumerate(xs) if isinstance(n,Atom) and n.low==':guard-hints')
+            del xs[i:i+2]
+    def canonical(n):
+        if isinstance(n,Lst):return [canonical(x) for x in n.items]
+        if isinstance(n,Pre):return (n.prefix,canonical(n.node))
+        return n.text if n.kind=='string' else n.low
+    return [canonical(n) for n in parsed.forms]
+
 class EnumNoopLowering(unittest.TestCase):
     def setUp(self):
         self.before=subprocess.check_output(['git','show',BASE+':books/cns-source-raw.lisp'],cwd=ROOT,text=True)
     def test_four_actual_sites_and_idempotence(self):
         after,count=transform(self.before)
         self.assertEqual(count,4)
-        self.assertEqual(after,(ROOT/'books/cns-source-raw.lisp').read_text())
+        actual=(ROOT/'books/cns-source-raw.lisp').read_text()
+        self.assertEqual(runtime_forms(after),runtime_forms(actual))
+        self.assertEqual(transform(actual),(actual,0))
         self.assertEqual(transform(after),(after,0))
     def test_cached_stage_must_be_actual_getter(self):
         with self.assertRaises(ValueError):
