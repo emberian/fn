@@ -138,6 +138,18 @@
      :none (nil 0 0) :command :none (,*fn2-cau-s501*) nil)
     ; NNT-054, H's ruling: COMPRESS only after authentication.
     (compress-anon "COMPRESS DEFLATE" ,*fn2-cau-reader* :none (nil 0 0) :command :none ("480 authentication required") nil)
+    (compress-anon-enabled "COMPRESS DEFLATE" ,(logior *fn2-cau-reader* *fn2-nntp-state-compress-available*)
+     :none (nil 0 0) :command :none ("480 authentication required") nil)
+    (compress-admission "COMPRESS DEFLATE" ,(logior *fn2-cau-authed* *fn2-nntp-state-compress-available*)
+     :none (nil 0 0) :compress-upgrading :none () t)
+    (compress-over-tls "COMPRESS deflate" ,(logior *fn2-cau-authed* *fn2-nntp-state-compress-available* *fn2-nntp-state-tls*)
+     :none (nil 0 0) :compress-upgrading :none () t)
+    (compress-disabled "COMPRESS DEFLATE" ,*fn2-cau-authed*
+     :none (nil 0 0) :command :none ("503 compression algorithm not supported") t)
+    (compress-algorithm "COMPRESS LZ4" ,(logior *fn2-cau-authed* *fn2-nntp-state-compress-available*)
+     :none (nil 0 0) :command :none ("503 compression algorithm not supported") t)
+    (compress-running "COMPRESS DEFLATE" ,(logior *fn2-cau-authed* *fn2-nntp-state-compress-available* *fn2-nntp-state-compressed*)
+     :none (nil 0 0) :command :none ("502 compression is already active") t)
     ; RFC 3977 section 7.6, RFC 6048: LIST variants and their arguments.
     (list-overview "LIST OVERVIEW.FMT" ,*fn2-cau-reader* :none (nil 0 0) :command :none
      ("215 order of fields in overview database" "Subject:" "From:" "Date:" "Message-ID:" "References:"

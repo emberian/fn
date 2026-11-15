@@ -347,6 +347,11 @@
 ;; are in TX; :ok when the octets ran out first.
 (defun fn2-cursor-hscan-loop (n i to st k used a0 b0 rslot rgen lslot lgen okind oslot ogen tslot tgen tk ts tg fn2-pool)
   (declare (xargs :stobjs fn2-pool :measure (nfix n)
+                  :hints (("Goal" :in-theory
+                                 (disable fn2-cursor-hscan-step fn2-gram-upcase
+                                          fn2-pool-slot-capacity)))
+                  :guard-hints (("Goal" :in-theory
+                                 (disable fn2-cursor-hscan-step fn2-gram-upcase)))
                   :guard (and (fn2-pool-wfp fn2-pool) (natp n) (natp i) (natp to) (natp st) (natp k) (natp used)
                               (natp a0) (natp b0))))
   (b* ((i (nfix i)) (st (nfix st)) (k (nfix k)) (used (nfix used))
