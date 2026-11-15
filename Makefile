@@ -66,6 +66,33 @@ ACL2_BOOKS = \
   books/borrow-faces \
   books/claims \
   books/cns \
+  books/cns-accounting-entry \
+  books/cns-core-projections \
+  books/cns-draining-composition \
+  books/cns-draining-contract \
+  books/cns-draining-direct-events \
+  books/cns-draining-direct \
+  books/cns-draining-effects \
+  books/cns-draining-invariant-entry \
+  books/cns-draining-model \
+  books/cns-draining-public \
+  books/cns-pool-refinement \
+  books/cns-release-accounting \
+  books/cns-release-refinement \
+  books/core-init-projections \
+  books/machine-reservations-entry \
+  books/machine-reservations \
+  books/pool-initialization \
+  books/pool-release-admission \
+  tests/cns-draining-composition-unit \
+  tests/cns-draining-contract-unit \
+  tests/cns-draining-count-counterexample \
+  tests/cns-draining-direct-events-unit \
+  tests/cns-fence-proof-world \
+  tests/column-snapshot-support \
+  tests/core-snapshot-support \
+  tests/machine-reservations-unit \
+  tests/pool-initialization-unit \
   books/cns-edges \
   books/cns-kind \
   books/column-contracts \
