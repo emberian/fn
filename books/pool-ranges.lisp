@@ -6,6 +6,7 @@
 (in-package "ACL2")
 (include-book "pool")
 (include-book "fnv")
+(include-book "columns-guard-hints")
 
 (defthm fn2-pool-datai-byte
   (implies (and (fn2-poolp fn2-pool) (natp i) (< i (fn2-pool-data-length fn2-pool)))
@@ -196,7 +197,8 @@
                (mv :ok fn2-pool)))))))
 
 (fn2-pool-preserves fn2-pool-copy-range (src sgen soff dst dgen doff len okind oslot ogen fn2-pool) :position 1 :disable nil)
-(fn2-pool-preserves fn2-pool-drop-prefix (slot gen k cursor limit okind oslot ogen fn2-pool) :position 2 :disable nil)
+(fn2-pool-preserves fn2-pool-drop-prefix (slot gen k cursor limit okind oslot ogen fn2-pool) :position 2 :disable nil
+ :hints ((fn2-columns-guard-hint '(fn2-pool) '(fn2-pool-copy-up fn2-pool-workspace-code) nil world)))
 (fn2-pool-preserves fn2-pool-truncate (slot gen n okind oslot ogen fn2-pool) :position 1)
 (assert-event
  (fn2-assert-compliant-p
