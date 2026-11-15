@@ -67,3 +67,10 @@
  (declare (xargs :guard t))
  (min (nfix article-max)
       (nfix (- (+ (nfix cap0) (nfix cap1)) (+ 1 *fn2-upload-digest-octets*)))))
+
+(defun fn2-upload-article-profilep (profile)
+ (declare (xargs :guard t))
+ (or (null (fn2-profile-get :article-max profile))
+     (and (natp (fn2-profile-get :article-max profile))
+          (<= (+ (fn2-profile-get :article-max profile) *fn2-upload-mid-line-max*)
+              *fn2-am-stored-max*))))
