@@ -3,6 +3,7 @@
 (in-package "ACL2")
 (include-book "std/util/bstar" :dir :system)
 (include-book "successor-state")
+(include-book "successor-claim")
 (include-book "commit-successor-binding-state")
 (fn2-book-layer :b)
 (defmacro fn2-commit-successor-binding-events ()
@@ -31,7 +32,10 @@
                 (fn2-commit-successor-emit-current-p tx txgen slot gen len kind owner ogen fn2-core)))
       (mv :owner fn2-core)
    (stobj-let ((fn2-commit (fn2-commit-table fn2-core))
-               (fn2-commit-member (fn2-core-commit-members fn2-core))) (code fn2-commit fn2-commit-member)
+               (fn2-commit-member (fn2-core-commit-members fn2-core))
+               (fn2-succ-txns (fn2-core-succ-txns fn2-core))
+               (fn2-id-engine (fn2-core-id-engine fn2-core)))
+    (code fn2-commit fn2-commit-member fn2-succ-txns fn2-id-engine)
     (b* (((mv found row r) (fn2-commit-successor-bind-member batch event fn2-commit fn2-commit-member))
          ((unless (and found (= (fn2-commit-phase row fn2-commit) *fn2-commit-state-collect*)
                        (= (fn2-commit-cb-wrote row fn2-commit) 0)
@@ -43,14 +47,22 @@
                        (equal kind (fn2-commit-member-okind r fn2-commit-member))
                        (equal owner (fn2-commit-member-oslot r fn2-commit-member))
                        (equal ogen (fn2-commit-member-ogen r fn2-commit-member))))
-          (mv :owner fn2-commit fn2-commit-member))
+          (mv :owner fn2-commit fn2-commit-member fn2-succ-txns fn2-id-engine))
          (pending (fn2-commit-cb-bind-pending row fn2-commit))
          ((unless (and (< pending (fn2-commit-member-count row fn2-commit))
-                       (< pending *fn2-commit-members-per-batch*))) (mv :state fn2-commit fn2-commit-member))
+                       (< pending *fn2-commit-members-per-batch*))) (mv :state fn2-commit fn2-commit-member fn2-succ-txns fn2-id-engine))
+         ; Reserve the SAME global engine before this typed admission returns.
+         ; B assignment is already exact; an unexpected refusal is retained by
+         ; the actual scanner's post-insertion uncertain/STOP branch.
+         ((mv claim fn2-succ-txns fn2-id-engine)
+          (fn2-successor-bind-claim-reserve tx txgen batch event slot gen len kind owner ogen
+                                           fn2-succ-txns fn2-id-engine))
+         ((unless (eq claim :ok))
+          (mv claim fn2-commit fn2-commit-member fn2-succ-txns fn2-id-engine))
          (fn2-commit-member (fn2-commit-member-put r (bind-state *fn2-commit-bind-state-pending*)
                              (bind-subject tx) (bind-generation txgen)))
          (fn2-commit (fn2-commit-set-cb-bind-pending row (+ 1 pending) fn2-commit)))
-     (mv :ok fn2-commit fn2-commit-member)) (mv code fn2-core))))
+     (mv :ok fn2-commit fn2-commit-member fn2-succ-txns fn2-id-engine)) (mv code fn2-core))))
  (fn2-core-preserves fn2-commit-successor-bind-register
   (batch event tx txgen slot gen len kind owner ogen fn2-core) :position 1 :rows nil)
 
