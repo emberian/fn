@@ -110,22 +110,27 @@ proof-cost work; neither this record nor the generator pilot qualifies member,
 the application, or native restart.
 Receipt: [member parents](receipts/member-parents31-record.json).
 
-The frozen checkpoint-member diagnostic executed the actual packer successfully
-with its whole stored guard, input recognizers and all four output type/WFP
-checks. This positive witness does not establish the general preservation claims.
-The guarded contract block exhausted its shared budget at POOL TYPE after both
-FIELDS claims passed; POOL WFP was not reached. Per-carrier hints were found to
-route only to WFP. The shared generator now accepts opt-in `:type-hints`, keeping
-legacy output unchanged when absent and leaving `:hints` for WFP. Exact six-book
-record `certify-20261115T111450Z-1248612` passed with two reused parents and four
-new books. Root matched all six current source hashes and closure keys to both
-record snapshots and qualified cache entries. The registered fixture exercises
-actual constructor routing and admission; source controls reject the old generator.
-Receipt: [carrier TYPE hints](receipts/carrier-type-hints-six-record.json).
-Member-specific event surgery is removed in reviewed candidate `7b2e2188b`, but
-its current parent closure still requires qualification with the latest shared
-generator before execution. This six-book record does not qualify member
-preservation or the application.
+Checkpoint-member and its actual positive fixture are now qualified by exact
+33-book record `certify-20261115T123301Z-1322739` (31 reused, two new books).
+The member's original author events passed in 7.96 seconds and the actual fixture
+in 0.02 seconds, under unchanged event caps. Root matched all 33 source hashes,
+closure keys, before/after snapshots and qualified payload entries to integration.
+All four served-domain TYPE/WFP contracts and the other three original off-guard
+facets are proved. The actual packer witness asserts its whole stored guard,
+readonly and mutable recognizers, successful packing, exact fill and all four
+output recognizers/invariants. Runtime definitions and guards are unchanged.
+The original stronger off-guard FIELDS-TYPE formula remains explicitly owed,
+not weakened or silently claimed proved; a concrete readonly-hypothesis removal
+candidate is being checked separately.
+Receipt: [member and actual positive](receipts/checkpoint-member-thirty-three-record.json).
+
+The shared `:type-hints` fix replaces member-specific event surgery. Its original
+six-book record is preserved in the [carrier receipt](receipts/carrier-type-hints-six-record.json).
+The actual installation caller's source consumes the four guarded contracts,
+but that proof is emitted later in `assembly-callbacks-bt`; certification of its
+macro declaration alone would not prove composition. That consumer remains in
+the application candidate pending its actual gate. Member qualification does
+not establish checkpoint activation, application correctness or native restart.
 
 Physical address geometry remains an executable blocker. `fe9f761ab` repairs
 POST's root location from three units per extent to the physical sixteen, with
