@@ -12,6 +12,21 @@ recovery of accepted data. Integrated work now goes directly to upstream dev;
 component records alone do not establish this milestone. The shared application
 build owns the coherent current callback/runtime prefix and executable controls.
 
+Current outstanding gate: application candidate `8677da3e9` clears the
+`FN2-RUN-HEAD` guard and stops at `FN2-RUN-SEAL-STEP-SHAPE`, whose raw pool-row
+equality crosses `FN2-FORMAT-RUN`. The whole-book attempt took 24.69 seconds;
+this is a proof refusal, not a counterexample or an application certificate.
+`recover_children` owns the interface/hint repair and `sol_proof_event_budget`
+owns the retained executor. The full reviewed pool/fields hint packet must be
+present; applying only its last guard-hint commit omits required earlier changes.
+
+Stable connection/TLS schema providers are integrated at `bf2fc57e7` with
+[qualified 39-book evidence](receipts/kind-schema39-record.json): 35 reused,
+four new, and all 39 source hashes and closure keys matched at integration.
+Public declaration order and runtime forms are preserved. Arm-generator changes
+now reuse these providers; initial admission still costs 30.973 seconds and
+remains a proof-cost debt. This does not qualify the application or native restart.
+
 The first shared application source blocker, pool-block HASH-LOOP-SHAPE, is
 repaired at `ae6ad572f`: the complete book admits in the retained application
 world in 3.30 seconds / 281,519 steps. Only the induction hint changes; runtime
