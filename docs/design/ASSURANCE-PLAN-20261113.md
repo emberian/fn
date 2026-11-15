@@ -73,7 +73,10 @@ release or mutation set before effects, then retry through checked last-referenc
 wakeups. Peer owns shared pool edits; CNS whole-result semantics retain the old
 operation-borrow assumptions and add held/no-effect behavior without assuming
 query references away. The pool conservation, range and two unit controls passed source-author
-execution; the exact ten-book certification record is pending. The broader
+execution. Exact ten-book record `certify-20261115T024211Z-748010` then passed:
+seven reused, three newly certified in 22.788 seconds. Root matched all ten
+before/after source digests to candidate `0b3475cce`, with unchanged runner and
+qualified toolchain. This pool scope does not qualify the broader callbacks. The broader
 callback changes remain unqualified. Last-query-reference cleanup now uses the
 shared scheduler enqueue primitive in its candidate, preserving an occupied
 ordinary wake. Complete callback effects, reference correspondence and trace
