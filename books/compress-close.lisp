@@ -59,3 +59,22 @@
            (fn2-compress-operation-nonce 0 fn2-compress-operation) fn2-tls-transport))
      (fn2-tls-record-wait fn2-tls-transport fn2-tls-record)
    (fn2-compress-record-wait fn2-compress-operation)))
+
+(make-event
+ (let* ((world (w state))
+        (readers
+         (append
+          '(fn2-compress-operation-rows fn2-compress-transport-rows fn2-tls-transport-rows fn2-tls-record-rows
+            fn2-compress-transport-advance-spans fn2-compress-operation-observe)
+          (fn2-columns-projection-readers 'fn2-compress-operation
+           (fn2-decl-get :columns (fn2-decl-row '(:columns fn2-compress-operation) world)))
+          (fn2-columns-projection-readers 'fn2-compress-transport
+           (fn2-decl-get :columns (fn2-decl-row '(:columns fn2-compress-transport) world)))
+          (fn2-columns-projection-readers 'fn2-tls-transport
+           (fn2-decl-get :columns (fn2-decl-row '(:columns fn2-tls-transport) world)))
+          (fn2-columns-projection-readers 'fn2-tls-record
+           (fn2-decl-get :columns (fn2-decl-row '(:columns fn2-tls-record) world)))))
+        (hints `(("Goal" :in-theory (disable ,@readers)))))
+  (value `(progn
+   (verify-guards fn2-compress-record-close-child :hints ,hints)
+   (verify-guards fn2-compress-record-stack-wait :hints ,hints)))))
