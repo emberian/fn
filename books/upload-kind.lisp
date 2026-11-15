@@ -1,6 +1,7 @@
 ;; Schema, core child, and partition registration for fn2-upload (layer D, quest D4).
 ;; Arm bodies and helper operations live in books/upload.lisp (a leaf book).
 (in-package "ACL2")
+(include-book "upload-window-geometry")
 (include-book "machines-a")
 (include-book "machines-b")
 (include-book "conn-kind")
@@ -17,9 +18,8 @@
 (defconst *fn2-upload-hash-bytes* 2048)
 (defconst *fn2-upload-scan-bytes* 2048)
 (defconst *fn2-upload-run-bytes* (+ *fn2-upload-hash-bytes* *fn2-upload-scan-bytes*))
-;; The pool class of a chunk (the profile's second class: 64 KiB in the
-;; concrete profile) and the article bound when the profile names none
-;; (fn1's source bound, specs/article-parser.md).
+; Actual upload TAKE uses the shared header/body byte requirements below.
+; The current hash quantum and lower input-profile class baseline are unchanged.
 
 ;; Large-upload windows (ROUND2 B.1): an upload holds one while it streams.
 (defconst *fn2-upload-windows* 16)
@@ -243,8 +243,8 @@
  :capacity (fn2-upload-capacity profile)
  ;; A connection takes the row with its two chunks (A-S7).
  :taken (:phase :head :rows :upload-row
-         :ranges ((:chunk-window :slot c0-slot :gen c0-gen :class 1)
-                  (:chunk-window :slot c1-slot :gen c1-gen :class 1))
+         :ranges ((:chunk-window :slot c0-slot :gen c0-gen :class (:bytes *fn2-upload-header-workspace-bytes*))
+                  (:chunk-window :slot c1-slot :gen c1-gen :class (:bytes *fn2-upload-body-window-bytes*)))
          :copy (conn conn-gen request rule principal-slot op)
          :clear (filled hashed scan-off visible nfields nlines seen mo ml no nl po pl
                  head-status word inj txn-gen stopped pepoch palloc pdone sevent soutcome scount sready

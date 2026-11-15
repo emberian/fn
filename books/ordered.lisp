@@ -4,6 +4,7 @@
 ; principal) the entry's commit position grows with the key, so a range
 ; read over one stream stops exactly at a position (range.lisp).
 (in-package "ACL2")
+(include-book "upload-window-geometry")
 (include-book "runs-schema")
 (include-book "commit-format")
 
@@ -41,7 +42,7 @@
 ; Overview, keyed (group, number) from first materialization; the stored
 ; overview line (subject, from, date, message-id, references, bytes,
 ; lines, without the number) is the exact octets the reader serves.
-(defconst *fn2-overview-octets-max* 1024)
+
 (defrunschema fn2-overview :id 3
  :key ((group (:id group)) (number (:id group-number)))
  :value ((article (:id article)) (position (:id position)) (line (:octets 1024)))

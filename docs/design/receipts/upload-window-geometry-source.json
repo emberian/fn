@@ -1,0 +1,20 @@
+{
+  "scope": "exact source-form moves; no ACL2/guard or rolling progress claim",
+  "forms": [
+    {
+      "source": "books/upload-scan.lisp",
+      "symbol": "*fn2-upload-header-octets*",
+      "sha256": "3d839e0626fdb9ac81fb17928b2343462e80b21db0ad1f5d684e53d5181d0e0b"
+    },
+    {
+      "source": "books/upload-kind.lisp",
+      "symbol": "*fn2-upload-digest-octets*",
+      "sha256": "5fa97082af1e35475c9808ad0d0791aacc4b8826df8dbee4e012ff997c674d04"
+    },
+    {
+      "source": "books/ordered.lisp",
+      "symbol": "*fn2-overview-octets-max*",
+      "sha256": "26194e4cd2dd5b304996f12b4cb1ba643f3663f92ff54b9cd647bd650529c02d"
+    }
+  ]
+}

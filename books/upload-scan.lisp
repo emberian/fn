@@ -19,12 +19,13 @@
 ; (tests/model/nntp_model.py, _article_block); the identity, group and
 ; clock checks after it are the transaction's.
 (in-package "ACL2")
+(include-book "upload-window-geometry")
 (include-book "grammar")
 (fn2-book-layer :d)
 
 ; The header limits (specs/article-parser.md's defaults; the store profile's
 ; fields 13-15 in fn1, profile keys here once D7's configuration lands).
-(defconst *fn2-upload-header-octets* 16384)
+
 (defconst *fn2-upload-header-lines* 256)
 (defconst *fn2-upload-header-fields* 64)
 ; RFC 5322 section 2.1.1: a physical line is at most 998 octets before CRLF.
