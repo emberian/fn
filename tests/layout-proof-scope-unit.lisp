@@ -6,7 +6,8 @@
 (encapsulate ()
  (local (in-theory (theory 'minimal-theory)))
  (make-event
-  (value `(defconst *fn2-codec-scope-incoming* ',(current-theory :here))))
+  (let ((world (w state)))
+   (value `(defconst *fn2-codec-scope-incoming* ',(current-theory :here)))))
 
  (deflayout fn2-codec-scope-mixed
    '((kind :u8) (counter :varint)
@@ -14,12 +15,14 @@
      (owner (:id principal)) (hash :digest)
      (payload (:octets16 11)) (padding (:zero 2))))
  (assert-event
-  (equal (intersection-equal (current-theory :here) (theory 'fn2-codec-proof-theory))
-         (intersection-equal *fn2-codec-scope-incoming* (theory 'fn2-codec-proof-theory))))
+  (let ((world (w state)))
+   (equal (intersection-equal (current-theory :here) *fn2-codec-proof-runes*)
+          (intersection-equal *fn2-codec-scope-incoming* *fn2-codec-proof-runes*))))
 
  ;; A repeated enum is already declared outside this codec's local basis.
  (deflayout fn2-codec-scope-shared-enum
    '((state (:enum fn2-codec-scope-state (:open :done))) (marker :u16be)))
  (assert-event
-  (equal (intersection-equal (current-theory :here) (theory 'fn2-codec-proof-theory))
-         (intersection-equal *fn2-codec-scope-incoming* (theory 'fn2-codec-proof-theory)))))
+  (let ((world (w state)))
+   (equal (intersection-equal (current-theory :here) *fn2-codec-proof-runes*)
+          (intersection-equal *fn2-codec-scope-incoming* *fn2-codec-proof-runes*)))))
