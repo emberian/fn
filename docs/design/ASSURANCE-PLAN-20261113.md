@@ -104,17 +104,22 @@ schemas and cannot be loaded into the older assembled application world.
 These source changes and fixtures remain unqualified; no productive served
 lookup or checkpoint reclamation activation is established by their presence.
 
-Live readiness has two further source-level obstructions under investigation.
-`fn2-run-load-readiness-roomp` demands another complete free query-loader bundle
-at begin, completion and current checks, although parked actors retain their
-windows. The writer's actual additional allocation needs must determine the
-capacity contract; geometry validity alone cannot promise future admission.
-Also, `fn2-run-load-readiness-op-row-p` requires zero routing generation and
-cursor, while successful `fn2-run-load-harvest` clears only `live`. A used and
-harvested operation therefore fails this initialization predicate. The live
-quiescence contract must accept safely drained history without accepting pending
-I/O or stale ownership. The metadata lane owns both fixes and real lifecycle
-controls; no runtime verification or liveness proof is claimed here.
+The metadata source lane has corrected the live readiness predicates: drained
+operation history no longer has to resemble a fresh row, and capacity checks
+use the pool's canonical reservable count. Its parked-query pressure fixture
+now requires an actual reserved and parked CNS region; six source checks pass.
+This is a constructor/allocator control, not signed-client ancestry or a
+productive second catalog adoption. Both runtime cases remain required.
+
+Independent review of typed catalog completion found an undercharge in
+`checkpoint-live-finish.lisp`: the declared 2,016 bytes count the promoted
+payload once. Copying reads and writes 4,032 bytes, and the identified preflight
+payload comparisons add 256, for a lower bound of 4,288 bytes. This excludes
+scalar checks, setters and shape validation; it is not the final charge. The
+review also identifies 608 recursive cells including root provenance. The
+metadata owner must derive complete bounded work or split the transition,
+while preserving publication, writer exclusion and old-source drain checks.
+No additional release-order defect was found in that scoped source review.
 
 The counted upload feeder is integrated through the same six-result slice used
 by the actual core callback and public feeder. Its
