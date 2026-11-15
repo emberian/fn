@@ -74,3 +74,22 @@ then a post-base RELEASE, then one later accepted payload incarnation. Physical
 payload authentication and duplicate physical-claim rejection stay intact. A
 second post-base reuse under an unchanged newest selectable base has not been
 established as reachable and is not claimed by this source milestone.
+
+Historical replay provenance frontier: the existing recovery-evidence member
+matcher checks exact checkpoint, descriptor Ref/hash and strict cut-before-
+installation ordering, but requires the actual installation journal identity.
+The current RELEASE wire does not name that journal/event. Descriptor hashing
+alone proves no prior publication. Before replay can settle RELEASE, retain and
+authenticate the actual earlier installation witness (including when J is older
+than selected base C), either by bounded retained-prefix lookup or an explicit
+wire/source binding. This may add an installation-journal obligation alongside
+the current descriptor and self obligations; the two-edge milestone is not
+claimed as complete historical provenance. No generic discharge or FREE face
+exists. Root is reviewing the exact witness representation before schema edits.
+
+Current coherent merge191cc9bf0 includes the parent chronological ownership
+driver62363300e and canonical lower commit-root/readiness extraction. The release
+edge region follows all four physical anchor regions. Literal include traversal
+of machines-b/release-evidence covers95 books with no cycle. Readiness extraction
+retains exact whole-file equality through explicit release registration exports;
+8 extraction controls and4 registration refusal controls pass (source only).
