@@ -6,7 +6,12 @@
 (include-book "../books/owed-txn")
 (include-book "query-reference-unit")
 (include-book "core-snapshot-support")
-(defconst *fn2-qod-profile* (put-assoc-equal :t 4 *fn2-txn-posting-profile*))
+; One actual article needs its resident schema pages and one sealer merge
+; workspace; keep sixteen large slots rather than snapshot unused capacity.
+(defconst *fn2-qod-profile*
+ (put-assoc-equal :t 4
+  (put-assoc-equal :pool-classes '((8 . 1024) (64 . 4096) (16 . 65536))
+    *fn2-txn-posting-profile*)))
 (defun fn2-qod-wire (mode)
  (declare (xargs :verify-guards nil))
  (if (eq mode :conn)
@@ -95,6 +100,11 @@
         (fn2-pool-owner-kind slot fn2-pool) (fn2-pool-owner-slot slot fn2-pool)
         (fn2-pool-owner-gen slot fn2-pool)
         (fn2-pool-logical-octets (fn2-pool-fill slot fn2-pool) (fn2-pool-base slot fn2-pool) fn2-pool)) life))
+(defun fn2-qod-queued-p (id fn2-core)
+ (declare (xargs :stobjs fn2-core :verify-guards nil))
+ (stobj-let ((fn2-sched (fn2-core-sched fn2-core))) (queued)
+  (and (natp id) (< id (fn2-sched-rows fn2-sched))
+       (equal (fn2-sched-in-queue id fn2-sched) 1)) queued))
 (defun fn2-qod-run (mode target fn2-core)
  (declare (xargs :stobjs fn2-core :verify-guards nil))
  (cond ((eq mode :conn) (fn2-conn-run target 4 fn2-core))
@@ -152,22 +162,24 @@
                         (equal life (fn2-qod-life slot gen kind owner generation fn2-core))
                         (equal other-life (fn2-qod-life other othergen kind owner generation fn2-core)))
                  t))
+      (ordinary-wake (fn2-machine-wake-id fn2-core))
       ((mv finished fn2-core)
        (if held
            (if cancel (fn2-successor-release 3 fn2-core) (fn2-qru-drive 100 3 fn2-core))
          (mv :ok fn2-core)))
       (wake (fn2-machine-wake-id fn2-core))
-      (wake-ok (or (not held) (equal wake owner)))
-      ((mv emitted fn2-core) (fn2-machine-take-wake fn2-core))
-      (fn2-core (fn2-exec-wake emitted fn2-core))
-      ; For txn preflight the query wakes its upload source owner. The
-      ; actual SEALED upload arm must explicitly forward the child wake.
+      (wake-ok (or (not held)
+                   (and (equal wake ordinary-wake) (fn2-qod-queued-p owner fn2-core))))
+      ; Query completion directly queues its upload source owner without
+      ; replacing the ordinary wake. The actual SEALED upload arm then
+      ; explicitly forwards its child wake through the ordinary seam.
       ((mv child-wake-ok fn2-core)
        (if (and held (member-eq mode '(:prepare :ready)))
            (b* (((mv & & & & fn2-core) (fn2-upload-run upload 4 fn2-core))
                 ((mv child fn2-core) (fn2-machine-take-wake fn2-core))
                 (fn2-core (fn2-exec-wake child fn2-core)))
-            (mv (equal child target) fn2-core))
+            (mv (and (equal ordinary-wake *fn2-none*) (equal child target)
+                     (fn2-qod-queued-p target fn2-core)) fn2-core))
          (mv t fn2-core)))
       ((mv final-status & & fn2-core) (fn2-cw-loop 40000 0 accepted clients store fn2-core))
       (freed (not (equal (fn2-machine-generation target fn2-core) targetgen)))
