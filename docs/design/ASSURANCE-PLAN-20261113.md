@@ -194,6 +194,18 @@ hint is inside an event macro: this declaration record alone does not certify
 its emitted application theorem. Actual BT composition and native execution
 remain separate gates.
 Receipt: [checkpoint leaf repairs](receipts/checkpoint-leaves46-record.json).
+
+The next actual block-integrity obstruction is repaired without weakening its
+unconditional frame theorem. The opt-in `blake3-row-frames` book derives full
+output projections from admitted function signatures and proves row counts
+unchanged through the actual hashing helpers. The caller consumes these frames
+instead of trying to use a recognizer-dependent shape lemma off guard. All
+existing runtime definitions, guards and six preservation statements remain
+unchanged. Exact 17-book record `certify-20261115T134543Z-1394312` reused 15
+parents and certified the new interface and block-integrity. Root matched all
+17 source hashes and closure keys after integration. This closes these row
+frames, not cryptographic assumptions or the remaining application/native gates.
+Receipt: [block-integrity row frames](receipts/block-integrity17-record.json).
 Receipt: [shared application prerequisites](receipts/bt-ready62-record.json).
 
 Physical address geometry remains an executable blocker. `fe9f761ab` repairs

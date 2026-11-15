@@ -1,6 +1,6 @@
 ; Actual storage-read hash decisions, independent of machine declarations.
 (in-package "ACL2")
-(include-book "blake3")
+(include-book "blake3-row-frames")
 (include-book "pool-digest")
 (include-book "commit-geometry")
 (fn2-book-layer :b)
@@ -50,6 +50,7 @@
  :hints (("Goal" :induct (fn2-block-hash-span fuel row slot gen off left okind oslot ogen fn2-digests fn2-b3 fn2-pool)
                  :in-theory (disable fn2-b3-ready fn2-digestsp fn2-digests-wfp fn2-digests-rows
                                      fn2-b3p fn2-b3-wfp fn2-b3-rows fn2-b3-update-shape))))
+(fn2-hash-row-frames fn2-block-hash-span fn2-digests fn2-b3)
 (in-theory (disable fn2-block-hash-span))
 ;; The LEN octets at BOFF of the lease LSLOT LGEN hashed in hasher row ROW
 ;; into its result slot: (mv code fn2-b3 fn2-digests).
@@ -77,6 +78,7 @@
         (equal (len (nth *fn2-b3-wordsi* b)) (len (nth *fn2-b3-wordsi* fn2-b3))))))
  :hints (("Goal" :in-theory (e/d (fn2-b3-ready) (fn2-digestsp fn2-digests-wfp fn2-digests-rows
                                                    fn2-b3p fn2-b3-wfp fn2-b3-rows)))))
+(fn2-hash-row-frames fn2-block-hash-into fn2-b3 fn2-digests)
 (in-theory (disable fn2-block-hash-into))
 ;; Whether digest row GOT equals the 32 octets at OFF of the lease (loaded
 ;; into digest row SCRATCH): (mv same fn2-digests).
@@ -93,6 +95,7 @@
   (b* (((mv & d) (fn2-block-digest-at got scratch lslot lgen off okind oslot ogen fn2-digests fn2-pool)))
    (and (fn2-digestsp d) (fn2-digests-wfp d) (equal (fn2-digests-rows d) (fn2-digests-rows fn2-digests)))))
  :hints (("Goal" :in-theory (disable fn2-digestsp fn2-digests-wfp fn2-digests-rows))))
+(fn2-hash-row-frames fn2-block-digest-at fn2-digests)
 (in-theory (disable fn2-block-digest-at))
 ;; Digest row CV: the chaining value of the unit at absolute pool octet AT
 ;; (chunk counter COUNTER) when LEN is a whole unit, else row GOT again.
@@ -109,6 +112,7 @@
   (let ((d (fn2-block-cv-into cv got at len counter fn2-digests fn2-pool)))
    (and (fn2-digestsp d) (fn2-digests-wfp d) (equal (fn2-digests-rows d) (fn2-digests-rows fn2-digests)))))
  :hints (("Goal" :in-theory (disable fn2-digestsp fn2-digests-wfp fn2-digests-rows))))
+(fn2-hash-row-frames fn2-block-cv-into fn2-digests)
 (in-theory (disable fn2-block-cv-into))
  ;; A location commitment from a published article/metadata row. BOFF is
 ;; the returned unit and HSLOT/HGEN/HOFF the retained expected digest.
@@ -188,9 +192,13 @@
  (bytes len verify lslot lgen boff proof-slot proof-gen hoff cvoff block okind oslot ogen fn2-b3 fn2-digests fn2-pool)
  :hyps ((fn2-digestsp fn2-digests) (fn2-digests-wfp fn2-digests) (fn2-b3p fn2-b3) (fn2-b3-wfp fn2-b3)
         (fn2-poolp fn2-pool) (fn2-pool-wfp fn2-pool))
- :specs (("-B3-TYPE" fn2-b3p 1) ("-B3-WFP" fn2-b3-wfp 1) ("-B3-ROWS" fn2-b3-rows 1 :frame fn2-b3)
+ :specs (("-B3-TYPE" fn2-b3p 1) ("-B3-WFP" fn2-b3-wfp 1) ("-B3-ROWS" fn2-b3-rows 1 :frame fn2-b3
+          :hints (("Goal" :in-theory (e/d (fn2-block-read-done-from-children)
+                                         (fn2-b3-rows fn2-digests-rows)))))
          ("-DIGESTS-TYPE" fn2-digestsp 2) ("-DIGESTS-WFP" fn2-digests-wfp 2)
-         ("-DIGESTS-ROWS" fn2-digests-rows 2 :frame fn2-digests))
+         ("-DIGESTS-ROWS" fn2-digests-rows 2 :frame fn2-digests
+          :hints (("Goal" :in-theory (e/d (fn2-block-read-done-from-children)
+                                         (fn2-b3-rows fn2-digests-rows))))))
  :hints (("Goal" :use fn2-block-read-done-from-children-shape
           :in-theory (disable fn2-block-read-done-from-children fn2-digestsp fn2-digests-wfp fn2-digests-rows fn2-b3p fn2-b3-wfp fn2-b3-rows))))
 
