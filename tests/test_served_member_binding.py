@@ -68,6 +68,26 @@ class ServedSelection(unittest.TestCase):
         self.assertIn('Val.sym "ACL2:::SIZE"', changed)
         self.assertIn('memberLiteral0 : Object := (.symbol [65, 67, 76, 50]', changed)
 
+    def test_literal_consumer_joins_closed_body_without_rc_symbol_guard(self):
+        source = s.member_context_source(packet())
+        start = source.index('theorem reached_member_call')
+        end = source.index('#print axioms reached_member_call', start)
+        theorem = source[start:end]
+        self.assertIn('(rc : Val)', theorem)
+        self.assertIn('CanonicalEval MemberExecEvaluation.program', theorem)
+        self.assertIn('MemberSymbolListBodyCorrect.literal_values_call rc', theorem)
+        self.assertIn('[(Val.sym ":SIZE"), (Val.sym ":FULL")]', theorem)
+        self.assertIn('33 = .ok result', theorem)
+        self.assertIn('⟨[_, _], rfl⟩', theorem)
+        self.assertNotIn('rc : String', theorem)
+        changed = s.member_context_source(packet().replace(obj('KEYWORD::SIZE'), obj('ACL2:::SIZE')))
+        self.assertIn('Val.sym "ACL2:::SIZE"', changed[changed.index('theorem reached_member_call'):])
+
+    def test_nonsymbol_literal_cannot_borrow_symbol_list_certificate(self):
+        text = packet().replace(obj('KEYWORD::SIZE'), '(:INTEGER 7)')
+        with self.assertRaisesRegex(ValueError, 'not canonical symbols'):
+            s.member_context_source(text)
+
     def test_missing_member_site_does_not_generate_context(self):
         text = packet().replace(obj('MEMBER-EQUAL'), obj('EQUAL'))
         with self.assertRaisesRegex(ValueError, 'exactly one logical MEMBER'):

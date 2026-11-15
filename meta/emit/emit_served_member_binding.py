@@ -192,6 +192,20 @@ def member_context_source(snapshot):
         '#print axioms reached_comparison_domains']
     # Bind canonical operands, not only their decoded spellings. The RC
     # representation premise must be supplied by the actual caller certificate.
+    literals = '[' + ', '.join(val(item) for item in elements) + ']'
+    symbol_witness = '[' + ', '.join('_' for _ in elements) + ']'
+    closed_lines = [
+        'theorem reached_member_call (rc : Val) :',
+        '    ∃ result,',
+        '      CanonicalEval MemberExecEvaluation.program',
+        '        MemberSymbolListBodyCorrect.domain MemberSymbolListBodyCorrect.primitiveDomain',
+        '        [("RC", rc)] (.app "MEMBER-EQ-EXEC" [.var "RC", .quote (Val.ofList ' + literals + ')]) result ∧',
+        '      eval fns [("RC", rc)]',
+        '        (.app "MEMBER-EQ-EXEC" [.var "RC", .quote (Val.ofList ' + literals + ')]) 33 = .ok result ∧',
+        '      MemberSymbolListBodyCorrect.result [rc, Val.ofList ' + literals + '] result := by',
+        '  exact MemberSymbolListBodyCorrect.literal_values_call rc ' + literals +
+            ' ⟨' + symbol_witness + ', rfl⟩',
+        '#print axioms reached_member_call']
     pair_lines = []
     for index, item in enumerate(elements):
         literal = List([Atom(':SYMBOL'),
@@ -217,6 +231,7 @@ def member_context_source(snapshot):
     return '\n'.join([
         'module',
         'public import Fn2.ACL2.MemberBodyCorrect',
+        'public import Fn2.ACL2.MemberSymbolListBodyCorrect',
         'public import Fn2.ACL2.PrimitiveSymbols',
         'public import Fn2.Instances.LayerAEqns4',
         'import all Fn2.Instances.LayerAWorld.KCns_d0to12',
@@ -240,6 +255,7 @@ def member_context_source(snapshot):
         '  rfl',
         '#print axioms member_context',
         *domain_lines,
+        *closed_lines,
         *pair_lines,
         'end Fn2.ACL2.CnsSelectedMember', ''])
 

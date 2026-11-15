@@ -583,3 +583,23 @@ uniform error triples. Exact two-book record
 checks live fn2-tv-codes identity, body-only mutation and actual macro refusals;
 receipt `/tmp/translation-macro-qualified2-receipt.json`. This tooling gate has no
 application or served packet dependency and does not enlarge the scope above.
+
+
+### Complementary served MEMBER domain (source candidate)
+
+`MemberSymbolListBodyCorrect.lean` adds the domain required by actual
+`FN2-CNS-PUT-ANSWER`: arbitrary RC and a proper list of symbols. The existing
+symbol-key/arbitrary-list certificates remain unchanged. The proposed proof
+resolves the same five canonical definitions, derives every reached recursive
+call, and joins the result to the actual generated MEMBER dispatcher and its
+32-fuel body equation. The served packet emitter consumes this certificate for
+its exact selected literal values, with a 33-fuel call equation; Lean infers the
+symbol names from those values. Existing RC Object representation premises and
+per-literal primitive correspondence remain separate and unchanged.
+
+Controls include integer and cons RC inputs, non-symbol list-element and
+improper-list refusals, and rejection of `CanonicalBodyCorrect` for a changed
+actual dispatch. Twelve emitter source controls pass. The new Lean modules are
+not yet kernel checked, and no current attached CNS packet is qualified.
+The old MEMBER warm closure uses a different Val artifact from the qualified
+symbol foundation; those artifacts must not be mixed as current evidence.
