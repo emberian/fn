@@ -52,6 +52,14 @@ class RootGeometry(unittest.TestCase):
         page=(ROOT/'books/upload-page-geometry.lisp').read_text()
         for row in self.receipt['rewrites']:
             form,_,_=unique((ROOT/row['book']).read_text(),'defun',row['name'],deep=True)
+            follow=ROOT/'tools/fixtures/upload-profile-window-composition.json'
+            if follow.exists():
+                change=json.loads(follow.read_text())
+                if row['name']==change['name']:
+                    self.assertEqual(hashlib.sha256(change['old'].encode()).hexdigest(),change['old_sha256'])
+                    self.assertEqual(hashlib.sha256(change['new'].encode()).hexdigest(),change['new_sha256'])
+                    self.assertEqual(form,change['new'])
+                    form=change['old']
             for old,new in reversed(row['substitutions']):
                 if new:
                     self.assertEqual(form.count(new),1)

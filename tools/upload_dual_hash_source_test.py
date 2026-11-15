@@ -18,10 +18,10 @@ class DualHash(unittest.TestCase):
   text,node=function('books/machines-c-sealer.lisp','fn2-seal-genesis')
   self.assertTrue(lr.match('(crow (fn2-b-sealer-hash-row profile))',[node]))
  def test_stored_arm_selects_its_context(self):
-  text=(ROOT/'books/assembly-callbacks-d-upload.lisp').read_text()
-  a=text.index('(:stored-hash :on-refusal');b=text.index('(:location-hash :on-refusal',a);part=text[a:b]
-  self.assertIn('(fn2-upload-stored-hasher id)',part)
-  self.assertNotIn('(fn2-upload-hasher id)',part)
+  text=(ROOT/'books/upload-stream-stage.lisp').read_text()
+  self.assertIn('(fn2-upload-stored-hasher id fn2-core)',text)
+  self.assertIn('(fn2-upload-stored-hash hrow',text)
+  self.assertNotIn('(fn2-upload-hasher id fn2-core)',text)
  def test_block_hash_copies_atomic_scratch(self):
   text,node=function('books/upload.lisp','fn2-upload-block-hash')
   for piece in ['fn2-b-block-read-row','fn2-block-hash-into','fn2-digest-store','*fn2-upload-page-hash*']:

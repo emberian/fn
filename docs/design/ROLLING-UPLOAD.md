@@ -6,8 +6,8 @@ retains the checked header; the actual C1 fill and global FED determine the
 resident source origin. SOURCE hashing and LF counting use that origin. The
 stored-stream context hashes each selected span before the same span is copied
 into the retained block stage. One stage call consumes at most the existing
-derived 2036-byte stage quantum: one hash read plus copy read/write, four
-header-tail reads and a 32-byte final digest write fit the existing 6144-byte
+derived 1353-byte stage quantum: one hash read plus copy read/write, four
+header-tail reads and a 32-byte final digest write fit the existing 4096-byte
 run budget. SOURCE hashing retains its separate 2048-byte quantum.
 
 A partial block can be written repeatedly, retaining its page prefix, until
@@ -50,9 +50,9 @@ The header verdict is its own stream-init transition. Its Path POSTED worker
 uses one read per byte, with a named equality to the original per-start
 predicate and actual pool controls; that theorem and those controls are
 unrun. The actual verdict entry checks MID/Path ranges against the physical
-line bound before reading. Four line spans plus three Message-ID spans and
-four delimiter reads give the separate 4746-byte bound, below the unchanged
-6144-byte run budget. Invalid scan statuses return their verdict before any
+line bound before reading. Three line spans plus three Message-ID spans and
+six boundary reads give the separate 3750-byte bound, below the unchanged
+4096-byte run budget. Invalid scan statuses return their verdict before any
 additional header pool read. None of these source checks certifies a byte
 refinement or runtime execution.
 
@@ -71,3 +71,30 @@ geometry dependency: capacity owns the necessary real initialization/envelope
 composition. This donor is not activation-ready until that dependency joins.
 The exact authored32768/profile32768 ARTICLE readback control is added alongside
 the generated-MID case and both full-readback threshold cases; all remain unrun.
+
+
+## Frozen original-quota controller
+
+The current packet preserves ROOT's original 4096-byte upload declaration.
+LF counts come from successfully emitted original SOURCE octets in the same
+framer iterator, with no extra pool read and no generated-prefix contribution.
+SOURCE hashing no longer traverses each span again to count LF. Stored staging
+uses the derived 1353-byte quantum. Full-unit hash/CV reads consume at most4096
+pool octets, retain eight words in the actual upload SOURCE stripe's declared
+FC-result125 region, and store32 pool octets in the following guarded substep.
+No F-2 result survives a yield; executable interleaving controls exercise that
+private-word lifetime. The original storage arms are unreachable-in-composition
+and stop; their stop behavior is not offered as a durability proof.
+
+The actual successor-slot group limit and u8 name length encoding bound C1
+namespace scratch to at most1792 octets, below its4096-byte window. This
+discharges the proposed scratch-capacity regression; no page enlargement is
+needed. The existing Xref writer's refusal traversal and fill-ov-lines work
+still need an honest compound byte-charge audit/repair as a separate owned
+follow-up. No accepted >4 KiB namespace case is claimed.
+
+All ACL2 guards/refinements and real served assertions are unrun in this
+source-only packet. Qualification should start with the counted-feed leaf and
+private-word book, then use the existing warm application world for the actual
+rolling/uncertainty/abort roots. No additional cold world, native execution,
+activation or deployment is claimed.

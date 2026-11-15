@@ -867,7 +867,7 @@
   (declare (xargs :stobjs fn2-core :guard (and (fn2-core-wfp fn2-core) (natp k))))
   (b* ((ac (fn2-txn-group-slot k))
        (ov (+ 1 ac))
-       ((unless (and (natp noff) (posp nlen) (< nlen 256))) (mv :bounds fn2-core))
+       ((unless (and (natp noff) (posp nlen) (unsigned-byte-p 8 nlen))) (mv :bounds fn2-core))
        ((mv c fn2-core)
         (stobj-let ((fn2-pool (fn2-core-pool fn2-core)))
           (c fn2-pool)

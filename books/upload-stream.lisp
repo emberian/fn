@@ -16,7 +16,7 @@
 (defcost fn2-upload-stream-progress :answers (:run :idle :window :gone :refused :fault)
  :faults (:fault) :bytes *fn2-upload-run-bytes*
  :tables (fn2-core-pool fn2-core-b3 fn2-core-digests fn2-core-machines fn2-core-machine-tables)
- :own-writes (hashed source-lines filled stream-end stream-eof word)
+ :own-writes (hashed filled stream-end stream-eof word)
  :doc "Consume a bounded resident SOURCE span; capture an actual full body window or EOF.")
 (defcost fn2-upload-stream-entry :answers (:ok :fault) :faults (:fault)
  :bytes *fn2-upload-entry-bytes* :tables (fn2-core-pool fn2-core-fields)
