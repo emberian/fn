@@ -76,3 +76,13 @@ including all arrays, row counts and scalar extra fields. The member-generation
 case exercises workspace ownership; the control-event case exercises the deeper
 exact retained-control identity check. The original three submit/poll assertions
 remain unchanged. All ten dispatcher assertions are source prepared and unrun.
+
+## Cursor partition boundary
+
+Both the actual persisted dispatcher and the production publish arm check the
+same scalar `fn2-commit-lifecycle-cursorp` against the declared member partition.
+Counts beyond that partition, cursors beyond the count and nonzero terminal
+offsets refuse before member indexing or publication. Only an exact terminal
+cursor with zero offset can report completion; the dispatcher also requires its
+existing persisted containing-batch envelope for that result. These checks do
+not scan or revalidate the store. Execution qualification remains pending.
