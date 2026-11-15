@@ -635,3 +635,50 @@ map roundtrip admission, authenticated selected-base restoration, ordered suffix
 replay, dynamic maintenance headroom, and commit-directory/candidate lifetime.
 FREE and checkpoint activation remain disabled until their connected prerequisites
 are implemented and verified. Authorization remains an independent release blocker.
+
+## Device loan binding integration — record 876717
+
+Integrated donor0376a63c1's scalar device helpers and raw recorder. Descriptors
+now bind the submitted address and backing-object identity to the slab captured
+at actual host storage submission. Canonical Post shape is checked before field
+access; shifted-address and replacement-buffer controls reject unchanged bytes.
+Exact12 record passed in2.033s (8reused,4new); root verified all12 current closure
+hashes and all3 raw fixture source hashes against the receipt. Raw mocked performer
+controls passed. Actual envelope replay, host image execution and general memory
+noninterference remain unqualified; this gate does not establish disk durability.
+
+## Current consumer gates and restored assurance ownership
+
+At root b8a54b894, exact device envelope composition on donor6fc0926cf has
+227 books:56 matching qualified compiled pairs and171 missing. Assembly-core,
+host-boundary and check-envelope are among the missing current keys. The bounded
+reader candidate de31 has100 books:30 qualified and70 missing. These read-only
+inventories do not qualify either composition; convergence shares their common
+compiler dependencies rather than starting independent cold builds.
+
+The actual CHECK-STEP guard passed in retained author world9abe after adding a
+generic-index integer projection from the existing DECODE carrier contracts.
+Its original body and guard are unchanged; MEMBER and clean record qualification
+remain pending. Q1's old author world is terminal with owned cleanup verified;
+the next same29-book world uses corrected per-original-event budgets.
+
+Audit_bridge resumes the actual CNS canonical body/domain/selected-attachment
+connection, including the pending31b selected-dispatch helper. Audit_claims resumes
+independent stored-content/reread binding and whole-antecedent keystone evidence
+checks against current reclamation source. Their source candidates remain separate
+from current qualified claims; neither task changes authorization activation.
+
+## Current compiler and held-release integration — record 890585
+
+The integrated core child release now treats query-held ownership as retained:
+`:held` leaves pool and control unchanged; only`:ok`/`:retired` complete release.
+Other failures retain the existing sticky stop behavior. Full generated pool and
+control snapshots test held→last-reference close→retry, wrong owner and wrong
+state, with a populated sibling and nonzero counters. The exact two-root29-book
+record passed57.412s (14reused,15new); root matched all29 before/after/current
+source hashes and the owner audited29 current usable compiled cache entries.
+Receipt: CORE-RELEASE-HELD-20261114.json. Arm-children19.793s atj1 remains a proof
+cost issue; no repeat at two jobs was run. This qualifies the generic compiler
+and actual child boundary, not full CNS/host composition or query-producer
+lifecycle controls. Peer caller audit found no reachable early row reclamation;
+its actual composed execution controls remain pending.
