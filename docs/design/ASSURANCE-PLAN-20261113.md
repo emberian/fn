@@ -180,6 +180,20 @@ matched all 35 source hashes and closure keys to the integration tree. This
 qualifies the A-machine consumer, not the remaining application or native gate.
 The next actual BT composition reuses this record.
 Receipt: [actual machine consumer](receipts/machine-run-actual35-record.json).
+
+The checkpoint leaf repairs now pass standalone record certification at source
+`fc1d61483`, run `certify-20261115T133755Z-1386601`: 42 reused parents and four
+new certifications in the 46-book union. Allocation was certified in the prior
+attempt and reused. Both coordinator books now import their DEFCOST owner
+explicitly; the larger author session had masked one missing include. Allocation
+uses the public codec-size interface and row-frame hints. Future-working index
+loops retain their guards and guarded bodies while rejecting invalid logical
+indices before recursion or mutation. Root matched all 46 source hashes and
+closure keys after integrating the four changed files. The installation caller
+hint is inside an event macro: this declaration record alone does not certify
+its emitted application theorem. Actual BT composition and native execution
+remain separate gates.
+Receipt: [checkpoint leaf repairs](receipts/checkpoint-leaves46-record.json).
 Receipt: [shared application prerequisites](receipts/bt-ready62-record.json).
 
 Physical address geometry remains an executable blocker. `fe9f761ab` repairs
