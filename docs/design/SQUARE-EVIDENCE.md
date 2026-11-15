@@ -106,7 +106,7 @@ predicate call, including predicates of `mv-nth` results. It does not invent
 an equality endpoint or claim producer equivalence. Its only negative kind is
 `:hypothesis-removal`: the positive theorem asserts `H and C`; the negative
 asserts every remaining conjunct, `not removed`, and `not C`. The selected
-hypothesis must occur exactly once in the translated conjunction tree. A
+hypothesis must occur exactly once by default in the translated conjunction tree. A
 composite stored guard can be removed as a whole; all outside carrier premises
 remain. A constant-true predicate cannot pass the required false-C theorem.
 
@@ -135,7 +135,7 @@ parents and certified both test leaves under toolchain `8aeb`; see
 [the receipt](receipts/predicate-evidence-five-record.json). The six actual guarded
 checkpoint-reader consumer instances remain pending their separate gate.
 
-## Repeated hypotheses and actual member (source candidate)
+## Repeated hypotheses and actual member
 
 Predicate removal defaults to exactly one structural occurrence. An explicit
 `:occurrences 2` removes two identical copies of the selected predicate, while
@@ -144,7 +144,7 @@ A changed count or a failed remaining premise refuses admission. This is needed
 when a readonly recognizer occurs both explicitly and inside the stored guard;
 it does not remove the whole guard or weaken the universal statement.
 
-`tests/checkpoint-member-guarded-evidence-unit.lisp` proposes the actual member
+`tests/checkpoint-member-guarded-evidence-unit.lisp` binds the actual member
 consumer. It checks exact ABI, same original conclusion, retained original
 premises and actual stored guard before registering the distinct admitted
 guarded theorem. It also emits the domain-containment theorem. The positive
@@ -153,7 +153,11 @@ the negative reuses the admitted readonly-type counterexample. Both bind all
 12 actual arguments. Raw stobj executable counterparts are disabled by live
 signature metadata during proof. The original remains refuted and unfinished.
 
-This proposed leaf and multiplicity extension are unqualified. The generic
-refutation status still labels candidate replacement links unverified: the new
-leaf's narrower checked domain relationship is not a global replacement-status
-upgrade, proof of the original, or proof of served caller reachability.
+The exact 41-book member/predicate/correspondence/report union is qualified at
+source `3bbbca421`; see [the receipt](receipts/member-predicate-forty-one-record.json).
+The member leaf admitted in 7.51 seconds under the original per-event 2M-step/20-second
+budget. The actual export replay preserves the original refutation and prints
+one proved guarded row. The generic refutation status still labels candidate
+replacement links unverified: this leaf's checked domain relationship is not a
+global replacement-status upgrade, proof of the original, or proof of served
+caller reachability. No production member body, guard or theorem changed.
