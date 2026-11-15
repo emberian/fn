@@ -24,6 +24,9 @@ def check(publication, writer):
     evidence = next(v for n,v in bindings if n == 'fn2-checkpoint-publication' and isinstance(v,list) and ['fn2-checkpoint-bank-evidence-record-fence','fn2-checkpoint-publication'] in v)
     assert evidence == ['if',['and','fence','success'],['fn2-checkpoint-bank-evidence-record-fence','fn2-checkpoint-publication'],'fn2-checkpoint-publication']
     assert bindings.index(['fn2-checkpoint-publication', evidence]) < bindings.index(['fn2-checkpoint-publication', capture])
+    cold = next(v for n,v in bindings if n == 'fn2-checkpoint-publication' and isinstance(v,list) and ['fn2-checkpoint-bank-obligations-record-fence','fn2-checkpoint-publication'] in v)
+    assert cold == ['if',['and','fence','success'],['fn2-checkpoint-bank-obligations-record-fence','fn2-checkpoint-publication'],'fn2-checkpoint-publication']
+    assert bindings.index(['fn2-checkpoint-publication', cold]) < bindings.index(['fn2-checkpoint-publication', capture])
     record = definition(publication, 'fn2-checkpoint-publication-record-bank')[-1]
     assert record[:3] == ['if',['or',['zp',['fn2-checkpoint-publication-rows','fn2-checkpoint-publication']],['not',['equal',['fn2-checkpoint-publication-debt-valid','0','fn2-checkpoint-publication'],'0']]],'fn2-checkpoint-publication']
     nodes = list(walk(record))

@@ -68,6 +68,25 @@ def rewrite_evidence_identity(source):
         edits.append((node.start, node.end, code))
     return write(source, edits)
 
+def rewrite_bind_base(source):
+    code = """(defun fn2-checkpoint-bank-bind-base (head fn2-checkpoint-publication)
+ (declare (xargs :stobjs fn2-checkpoint-publication :guard (and (fn2-checkpoint-publication-wfp fn2-checkpoint-publication)
+  (fn2-checkpoint-bank-obligations-capacityp fn2-checkpoint-publication) (natp head) (< head 4))))
+ (fn2-checkpoint-publication-put 0 (cold-bind-phase *fn2-checkpoint-cold-bind-phase-complete*)
+  (cold-bind-cursor 4) (has-base 1) (active-bank (floor head 2))
+  (base-checkpoint (fn2-checkpoint-publication-cold-metai (+ (* 12 head) 2) fn2-checkpoint-publication))
+  (base-history (fn2-checkpoint-publication-cold-metai (+ (* 12 head) 3) fn2-checkpoint-publication))
+  (base-incarnation (fn2-checkpoint-publication-cold-metai (+ (* 12 head) 4) fn2-checkpoint-publication))
+"""
+    for i in range(8):
+        code += f'  (base-hash-{i} (fn2-checkpoint-publication-cold-wordsi (+ (* 48 head) {32+i}) fn2-checkpoint-publication))\n'
+    code += ' ))'
+    parsed = parse(source)
+    hits = match('(defun fn2-checkpoint-bank-bind-base ?*body)', parsed.forms, deep=False)
+    if len(hits) != 1:raise ValueError('expected one cold base binder')
+    node = hits[0].node
+    return write(source, [(node.start, node.end, code)])
+
 if __name__=='__main__':
     path=Path(__file__).resolve().parents[1]/'books/checkpoint-publication-state.lisp'
     source=path.read_text(); updated=rewrite(source)
