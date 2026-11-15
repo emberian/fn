@@ -6,11 +6,13 @@ Run inside a reserved, timed build job. No persisted-effect refinement claim:
 replayed disk Read octets remain observations, never a declared durable prefix.
 """
 import argparse
+import hashlib
 import importlib.util
 import json
 import os
 from pathlib import Path
 import subprocess
+import shutil
 import sys
 import time
 
@@ -21,11 +23,26 @@ spec.loader.exec_module(boundary)
 restart = boundary.restart
 
 
-def captured_env(path, target):
+def captured_env(path, target, device_effects=False):
     env = boundary.environment()
+    env.pop("FN2_TEST_DEVICE_EFFECTS", None)
+    if device_effects:
+        env["FN2_TEST_DEVICE_EFFECTS"] = str(path.with_suffix(".effects"))
     env.update(FN2_TEST_CAPTURE=str(path), FN2_ENVELOPE_TRACE="262144")
     env["FN2_TEST_CAPTURE_TARGET"] = target.hex()
     return env
+
+
+def image_observation(source, destination):
+    """Copy only after our node is reaped; no fsync or storage-prefix inference."""
+    with source.open("rb") as original, destination.open("xb") as snapshot:
+        shutil.copyfileobj(original, snapshot, length=1024 * 1024)
+    digest = hashlib.sha256()
+    with destination.open("rb") as snapshot:
+        for chunk in iter(lambda: snapshot.read(1024 * 1024), b""):
+            digest.update(chunk)
+    return dict(path=str(destination), bytes=destination.stat().st_size,
+                sha256=digest.hexdigest(), scope="post-process-death visible image; persistence not established")
 
 
 def await_recorded(node, received):
@@ -64,6 +81,8 @@ def replay(directory, name):
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--directory", type=Path, required=True)
+    parser.add_argument("--device-effects", action="store_true",
+                        help="capture test-only raw device effects and pre/restart image observations")
     args = parser.parse_args()
     directory = args.directory.resolve()
     directory.mkdir(parents=True, exist_ok=False)
@@ -82,6 +101,10 @@ def main():
         seed.kill()
     finally:
         seed.close()
+    observations = []
+    if args.device_effects:
+        observations.append(image_observation(image, directory / "before-accepted.img"))
+        (directory / "image-observations.json").write_text(json.dumps(observations, indent=2) + "\n")
     mid = b"<control-death@example.invalid>"
     _, article = restart.article(mid, 100)
     receipts = []
@@ -93,7 +116,7 @@ def main():
             target += b"211 1 1 1 local.test\r\n220 1 " + mid + b" article follows\r\n"
             target += restart.wire([b"Xref: fn2.invalid local.test:1"] + restart.stuffed(article) + [b"."])
         node = restart.Node(directory, image, "serve", name,
-                            env=captured_env(directory / f"{name}.trace", target),
+                            env=captured_env(directory / f"{name}.trace", target, args.device_effects),
                             launcher=[sys.executable, str(ROOT / "tests/native-control-launcher.py")])
         try:
             port = int(node.marker(b"LISTENING ").split()[1])
@@ -137,6 +160,9 @@ def main():
                 # The separate evidence stream is flushed; no storage fence is
                 # inserted by the fixture. Reap only our recorded runtime PID.
                 node.kill()
+                if args.device_effects:
+                    observations.append(image_observation(image, directory / f"after-{name}-kill.img"))
+                    (directory / "image-observations.json").write_text(json.dumps(observations, indent=2) + "\n")
                 receipts.append(dict(phase=name, accepted_post=name == "accepted", capture_event=event,
                                      cut="SIGKILL after parent observed peer bytes and post-recorded pause",
                                      node_pid=node.node_pid, exit=node.proc.returncode))

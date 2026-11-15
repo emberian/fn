@@ -1,5 +1,7 @@
 """Narrow evidence insertion and cut/wire controls; no native image launched."""
 import importlib.util
+import hashlib
+import tempfile
 from pathlib import Path
 import unittest
 
@@ -36,6 +38,31 @@ class ControlCapture(unittest.TestCase):
         for bad in (source.replace(main, b""), source + main):
             with self.assertRaises(ValueError):
                 launcher.instrument(bad)
+
+    def test_device_hook_is_optional_and_preserves_selected_main(self):
+        source = (HERE.parent / "tools/image-node.lsp").read_bytes()
+        control = b'(load "tests/native-control-capture.lsp")\n'
+        device = b'(load "tests/native-device-effects-capture.lsp")\n'
+        self.assertNotIn(device, launcher.instrument(source))
+        selected = launcher.instrument(source, device_effects=True)
+        self.assertEqual(selected.count(device), 1)
+        self.assertEqual(selected.replace(control, b"").replace(device, b""), source)
+        env = campaign.captured_env(Path("/tmp/fixture.trace"), b"abc", True)
+        self.assertEqual(env["FN2_TEST_DEVICE_EFFECTS"], "/tmp/fixture.effects")
+        self.assertNotIn("FN2_TEST_DEVICE_EFFECTS", campaign.captured_env(Path("/tmp/fixture.trace"), b"abc"))
+
+    def test_image_observation_retains_exact_bytes_without_overwrite(self):
+        with tempfile.TemporaryDirectory() as directory:
+            source, target = Path(directory) / "node.img", Path(directory) / "snapshot.img"
+            data = bytes(range(256)) * 4097
+            source.write_bytes(data)
+            receipt = campaign.image_observation(source, target)
+            self.assertEqual(source.read_bytes(), data)
+            self.assertEqual(target.read_bytes(), data)
+            self.assertEqual(receipt["sha256"], hashlib.sha256(data).hexdigest())
+            self.assertEqual(receipt["bytes"], len(data))
+            with self.assertRaises(FileExistsError):
+                campaign.image_observation(source, target)
 
     def test_complete_independent_wire_then_exact_cut(self):
         node = Markers([b"CAPTURE-SEND 8 6162", b"CAPTURE-SEND 9 6364",

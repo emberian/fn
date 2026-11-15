@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 """Run the real CLI with a test-only evidence hook in its selected image script."""
 import builtins
+import os
 from pathlib import Path
 import sys
 import tempfile
@@ -11,16 +12,19 @@ sys.path.insert(0, str(ROOT / "tools"))
 import fn_admin
 
 
-def instrument(source):
+def instrument(source, device_effects=False):
     marker = b"(sb-ext:exit :code (fn2-nserve-main))"
     if source.count(marker) != 1:
         raise ValueError("selected image main changed; review evidence insertion")
-    return source.replace(marker, b'(load "tests/native-control-capture.lsp")\n' + marker)
+    hook = b'(load "tests/native-control-capture.lsp")\n'
+    if device_effects:
+        hook += b'(load "tests/native-device-effects-capture.lsp")\n'
+    return source.replace(marker, hook + marker)
 
 
 def main():
     selected = ROOT / "tools/image-node.lsp"
-    source = instrument(selected.read_bytes())
+    source = instrument(selected.read_bytes(), bool(os.environ.get("FN2_TEST_DEVICE_EFFECTS")))
     original = builtins.open
 
     def evidence_script(path, mode="r", *args, **kwargs):

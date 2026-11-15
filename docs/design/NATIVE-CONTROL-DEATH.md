@@ -59,3 +59,14 @@ The directory must be new. It retains the image, process receipts, full wire
 receipts, test-owned Lisp data traces and peer inputs, and fresh replay logs.
 No completed runtime result is claimed by this source change; the current
 canonical node closure and this test root must qualify before execution.
+
+Optional device evidence (`--device-effects`) additionally loads the test-only
+`native-device-effects-capture.lsp` recorder. It records submitted descriptors,
+physical call begins, and raw return/errno values on a separate evidence stream.
+The fixture preserves `before-accepted.img` after its setup process is reaped,
+and `after-accepted-kill.img` before any restart. It also preserves the image
+after the restart observation process is killed. `image-observations.json`
+records exact copy sizes and SHA-256 digests. Copies do not sync the node device.
+These are process-death-visible bytes, not an asserted durable prefix. Missing
+returns and ambiguous errors remain obligations of the separate effect reducer;
+this option alone does not establish persisted-effect refinement.
