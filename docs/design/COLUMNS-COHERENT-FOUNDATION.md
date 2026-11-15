@@ -3,7 +3,8 @@
 This source packet joins canonical carrier hint presence with guarded carried
 row/span predicates on root42aba. It preserves the current column/table runtime
 layouts, checked predicate bodies and all current public theorem statements.
-Only the new carried predicates and their named equivalences are added.
+The new carried predicates/equivalences and guarded producer/frame facts are
+added; an existing peek contract moves beside its producer unchanged.
 No late metadata books or application packet are imported.
 
 `fn2-columns-carrier-specs` distinguishes an omitted WFP hint from explicit NIL.
@@ -30,7 +31,7 @@ and checks refusal at the first out-of-range index. Its assertions are UNRUN.
 
 The exact two-fixture union in `receipts/columns-coherent-source-plan.json` is
 37 books: carried fixture36 and hint fixture6. A read-only Forge lookup found
-nine current-key, 8aeb-toolchain cert/port/FASL integrity matches; 28 union books
+nine current-key, 8aeb-toolchain cert/port/FASL integrity matches at245 preparation; 28 union books
 have no such match. These are cache candidates, not new qualification evidence;
 origin compatibility and coherent selected dependency set must be rechecked at
 installation. The new generator changes the shared columns closure, so old
@@ -55,8 +56,7 @@ equalities (runs316 and checkpoint329 prover steps). They accepted the checked
 DEFUNs as redundant, with actual column layouts and no fake stobj stand-ins.
 Those author results establish only the two new predicates in their respective
 old imported worlds. They do not qualify the three metadata callers, this new
-shared foundation closure, or application behavior. No compute was run for this
-composition.
+shared foundation closure, or application behavior. That preparation ran no compute; subsequent scoped results follow below.
 
 ## First author refusal and focused repair
 
@@ -89,3 +89,45 @@ whole POOL with original2M20. Stop on first refusal; on success continue the
 remaining actual closure and both fixtures. Record only source-READY targets
 within a separately authorized fixed deadline. Later metadata projection and
 physical cost refinement remain separate gates.
+
+## Qualified prefix and next guarded producer interface
+
+The87 follow-up passed the original POOL aggregate in the same broader warm
+world:1,955,464 steps. The localized row equation fell to20,403 steps/0.05s.
+The author gate then stopped at `fn2-harvest-next`'s guard in VOCAB (>2M steps),
+with no retry. Nineteen fully source-READY books were recorded, one at a time;
+their complete qualified parent-closed union is27 books, not the whole37.
+The extra cached TUPLE warm import is outside that accepted prefix ancestry.
+
+`receipts/columns-coherent-prefix87.json` binds all19 manifests and all27
+current closure keys to actual8aeb cert/port/FASL hashes. This includes the
+actual new columns library and carrier hint fixture; it excludes VOCAB, both
+actual carried declarations' containing provider books and the carried fixture.
+Both new carried guards/equalities retain only their prior separate genuine
+old-provider pilot evidence. All four owned PIDs/scope were verified gone and
+the2Gi reservation released. The remaining books need no replay of these19.
+
+The next source candidate moves the existing `fn2-ops-peek-posted-slot` theorem
+unchanged in statement/rules from higher borrow accounting to VOCAB beside its
+actual producer. No circular include or second bounds twin is introduced.
+Additional success facts follow only from the real guarded producer and its
+checks: positive post count, valid typed head, positive FIFO length below the
+existing checked bound. There is no assumed count<=capacity ring invariant.
+
+The actual latch receives a guarded frame for post-head, post-count and FIFO
+length, the posted metadata consumed afterward. The existing WFP/ROWS facts
+supply its row-domain frame. HARVEST's original guard/body stay unchanged;
+its proof uses the existing metadata-driven scalar-frame helper and keeps the
+producer/latch opaque. Source fingerprints cover108 existing function
+bodies/guards and148 existing theorem statements/rule classes across the two
+books. These new proof events/guard hints are UNRUN.
+
+`receipts/vocab-harvest-pilot-plan.json` names an exact minimal cached entry:
+columns-carrier-contracts, OWED and PROFILE export the seven actual parents.
+All seven keys/payloads match the qualified27 prefix. A new grant may load
+those genuine compiled imports and author the entire actual VOCAB at original
+2M20 per event, including its existing aggregates. No source redefinition or
+fake tables are needed. On success record whole VOCAB, then continue the
+remaining two-fixture37 books using the qualified prefix. Borrow accounting's
+unchanged downstream contract is source-checked; its whole book is outside
+this narrow gate.

@@ -1,6 +1,6 @@
 {
   "source_base": "42aba480a6798c657269df04997ba4b466604431",
-  "scope": "Exact coherent foundation plus targeted row proof theory; source plan only, first author245 refusal retained",
+  "scope": "Coherent foundation +owned peek success contract and guard-only harvest proof; source plan only",
   "roots": [
     "tests/columns-carrier-hints-unit",
     "tests/columns-carried-unit"
@@ -28,7 +28,7 @@
       "sha256": "253babac6e5d9e9df00a655ba6b6595c9e6d85315c9294f05e3d939f19ad5770"
     },
     "books/checkpoint": {
-      "key": "90d68a245e2d7a2da76a0a14693b40ae6f0dd3be12b41cbe0cebb479a3a37871",
+      "key": "5c504f5f13db64202282cacb1ea0f95d567924a97eeb3ca7fc0e8dde53f0d508",
       "sha256": "ef8e12b3449c471a750dab489efe2bd2293a69429da6cef873b56f2c2b63eed7"
     },
     "books/columns": {
@@ -144,11 +144,11 @@
       "sha256": "c6b895fd566be6b91ba68fb040826b689a5ad4891a65e040773bfb28b90e1978"
     },
     "books/vocab": {
-      "key": "38ede8dabcf7c825359f1ef0db7606efd8628695fc5c6ba97f0add4381dd18ee",
-      "sha256": "4099736dd0ecb84952f05cfe2065db89e11432ebb9e65e67d2584ca5f4c2255f"
+      "key": "914946ae36afe7d1c993b745f86e7d1ae4653f6ae304821e86b21da52357dea0",
+      "sha256": "e35ee89bcaec7cf40eec722ad9087141b873bd3ef3fba5a0e1ef5534a81e9ceb"
     },
     "tests/columns-carried-unit": {
-      "key": "e9855f9f549649798413211617c7096f973bce07e898ec3af857abc156c11676",
+      "key": "c6e022d59ed0925883bd1a768e158e2677cb3aac407724ba6b92940791a091a2",
       "sha256": "d626533d08e5ed81cdd26705c90a035484c01607aa3cb9de46289e47021fab6c"
     },
     "tests/columns-carrier-hints-unit": {
@@ -156,5 +156,5 @@
       "sha256": "aa490db15be9f725d2b9729b7dd09e71765c0b95e19413f56366129e1ea8b3b3"
     }
   },
-  "source_parent": "245c77b9e"
+  "source_parent": "87f7d4045"
 }

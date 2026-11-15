@@ -1,0 +1,74 @@
+{
+  "scope": "Minimal genuine cached parent entry +actual entire VOCAB originalevents2M20; no caller/body/guard weakening",
+  "entry_roots": [
+    "books/columns-carrier-contracts",
+    "books/owed",
+    "books/profile"
+  ],
+  "parent_count": 7,
+  "parents": {
+    "books/columns": {
+      "key": "240a44b23a63840a436ffbe6b12f9adc6fec80ba1056de0af7b5e666f518a510",
+      "sha256": "8b694caf782c2ce3a29fa109b055c181b54beda214276493f6d9acb9456a881b",
+      "qualified_entry": "/home/fn/.cache/fn-certs/240a44b23a63840a436ffbe6b12f9adc6fec80ba1056de0af7b5e666f518a510/27a248ede9606745",
+      "cert_sha256": "5d02ce7342836753399e5b41e490cb20aabd906f5e5e6fb8212446a055bd1662",
+      "port_sha256": "f4cb7e8160cfa6f41cddb04be508f922aa8e87c4ff126bfaad3379aa92e647e0",
+      "fasl_sha256": "aa583190e0867f7f99dfb23de03a4569a7abd76be2cc0cc45ce500b267ef7d96"
+    },
+    "books/columns-carrier-contracts": {
+      "key": "3f3707eb6a8f0e2f8dd287e1511b79a10bd1384f705be921aa63f824ea9db2b6",
+      "sha256": "36cf411d1119704be488c119243d0aff8006e9babe38bb128f5d627353373c5a",
+      "qualified_entry": "/home/fn/.cache/fn-certs/3f3707eb6a8f0e2f8dd287e1511b79a10bd1384f705be921aa63f824ea9db2b6/27a248ede9606745",
+      "cert_sha256": "6f68297b050a3e21d6b9b400a14084c97d4ccadae91279df14bd340ae3c3eced",
+      "port_sha256": "f4cb7e8160cfa6f41cddb04be508f922aa8e87c4ff126bfaad3379aa92e647e0",
+      "fasl_sha256": "d6207971d45e9f5e8377d2756c7e0b03c8813c103c1598bbf290ecfce6fdd38d"
+    },
+    "books/columns-guard-hints": {
+      "key": "bf3898263ea2cef72898280e78731227844bb1a3d6743342239c17372e5d8caf",
+      "sha256": "e0a20c5669df681bf75fa5eeae426adc4053010915b3c7657d56e247d5c8440b",
+      "qualified_entry": "/home/fn/.cache/fn-certs/bf3898263ea2cef72898280e78731227844bb1a3d6743342239c17372e5d8caf/27a248ede9606745",
+      "cert_sha256": "1cef6b0a6282faa9a0317a79d1424881804df9df2fd8905872a7471498c940c1",
+      "port_sha256": "f4cb7e8160cfa6f41cddb04be508f922aa8e87c4ff126bfaad3379aa92e647e0",
+      "fasl_sha256": "ccc0a321bd5a718dbbfa3591f1d660af14083a54cb7ce4e4337c66f06051dc08"
+    },
+    "books/declare": {
+      "key": "299f7489bcfaeeb7c1a8f777c4a3b4886c5be174761a2f63f69a39599466aba1",
+      "sha256": "54e850788ee821dd90a4d9715e93d319f94846039592c4420fef1bdc5d959569",
+      "qualified_entry": "/home/fn/.cache/fn-certs/299f7489bcfaeeb7c1a8f777c4a3b4886c5be174761a2f63f69a39599466aba1/63be0e8165ae7b38",
+      "cert_sha256": "f3a1e4a58cac32474074b9d3ca6a558099a86d2fe66a28ee0670b5c5001bf9dc",
+      "port_sha256": "f4cb7e8160cfa6f41cddb04be508f922aa8e87c4ff126bfaad3379aa92e647e0",
+      "fasl_sha256": "02ceab2d38f5864c70d16e1bfdf77e4450e12aab47bd3d9e3e16ec1319e5c64d"
+    },
+    "books/operations": {
+      "key": "ffaf93d705d08918400704d108e7bffa6a3da8ae5ae2917128974f7d53c9e71b",
+      "sha256": "419120e7ae100f400d18cdee2d080d6133523673cac22fae1b05c7201ff97dd8",
+      "qualified_entry": "/home/fn/.cache/fn-certs/ffaf93d705d08918400704d108e7bffa6a3da8ae5ae2917128974f7d53c9e71b/99fac8c12877bc14",
+      "cert_sha256": "7697d577086d16974a9762298d8c6b389b601afac5988a9114458b5e7b78bfa7",
+      "port_sha256": "f4cb7e8160cfa6f41cddb04be508f922aa8e87c4ff126bfaad3379aa92e647e0",
+      "fasl_sha256": "d3221354ac4e5d685fa3147823f21a2fa4b25045259159d7ec8765ae537f9868"
+    },
+    "books/owed": {
+      "key": "0025566d809fffa0fb7533fa29b1fb7a9932c97d1510818153a1c1fe3d6bbf08",
+      "sha256": "171950b91e40f4e7d0e94902ce00009adc62d8104e0eecd5db6a59b93bbffb15",
+      "qualified_entry": "/home/fn/.cache/fn-certs/0025566d809fffa0fb7533fa29b1fb7a9932c97d1510818153a1c1fe3d6bbf08/63be0e8165ae7b38",
+      "cert_sha256": "dfd94cb9c2ead45891e01b806f507e2b16ae85cd37570c89fd531bab7d7982fa",
+      "port_sha256": "f4cb7e8160cfa6f41cddb04be508f922aa8e87c4ff126bfaad3379aa92e647e0",
+      "fasl_sha256": "97c17b9a3c61860b138d779461086ccc41487cd250f03509af2c8c6eac0738bd"
+    },
+    "books/profile": {
+      "key": "cdaddbd4628aebebc2dea718832e44dfbe07014033d6a8904f137808c9c34744",
+      "sha256": "1f216ed6c0505dc1b01ada0f7d3d9482af6da7b7dff8736b5100ef3e3fbc1038",
+      "qualified_entry": "/home/fn/.cache/fn-certs/cdaddbd4628aebebc2dea718832e44dfbe07014033d6a8904f137808c9c34744/99fac8c12877bc14",
+      "cert_sha256": "fd1e145834d5f72117d430eac3024d3245bd85195d7db2f4b7370195384af8da",
+      "port_sha256": "f4cb7e8160cfa6f41cddb04be508f922aa8e87c4ff126bfaad3379aa92e647e0",
+      "fasl_sha256": "8b9c4cb04cfb916dcec8ad2554c069f97e5311fa8be758ec117e670f853ffcc7"
+    }
+  },
+  "target": {
+    "book": "books/vocab",
+    "key": "914946ae36afe7d1c993b745f86e7d1ae4653f6ae304821e86b21da52357dea0",
+    "sha256": "e35ee89bcaec7cf40eec722ad9087141b873bd3ef3fba5a0e1ef5534a81e9ceb"
+  },
+  "then": "Record only entire VOCAB if READY, continue remaining two-fixture37 using qualified27 parent-closedprefix. Borrow-accounting sourcecontract unchanged but wholebook notqualified here.",
+  "toolchain": "8aeb1bea18968c6cd33ac633a80ebf67e4924504db112fd27eb11f16a27b2a8c"
+}
