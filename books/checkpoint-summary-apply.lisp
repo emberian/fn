@@ -60,3 +60,11 @@
       (fn2-checkpoint-summary (fn2-checkpoint-summary-put 0 (cursor (+ 1 e))
        (installed (+ 1 (fn2-checkpoint-summary-installed 0 fn2-checkpoint-summary))))))
   (mv :more fn2-checkpoint-summary fn2-run-installed fn2-id-engine fn2-seals)))
+
+; machine-arms.lisp fn2-arms-op-face-events derives all bindings from the
+; actual child's stobjs-in and mutable projection from stobjs-out. :tables
+; below records every read/write carrier; it is not a substitute for that ABI.
+(defcost fn2-checkpoint-summary-apply-step-op :child fn2-checkpoint-summary-apply-step :answers (:source :coverage :bounds :directory :applied :more)
+ :steps *fn2-work-stage* :bytes 0 :descriptors 0
+ :tables (fn2-core-checkpoint-summary fn2-core-checkpoint-summary-sources fn2-core-run-installed fn2-core-id-engine fn2-core-seals)
+ :doc "Use the existing bounded cold primitive and its complete actual carrier footprint.")
