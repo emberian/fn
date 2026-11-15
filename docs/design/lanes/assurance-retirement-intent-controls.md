@@ -111,3 +111,38 @@ window used a per-event 60-second/2,000,000-step limit. Explicit session cleanup
 completed and all three recorded handles were absent; the cgroup disappeared.
 Wrapper status 75 preserves the original startup refusal, separately from the
 later successful retained-world results. The named 2 GiB allocation was released.
+
+## Existing-control regression gate (2026-11-14)
+
+The narrow integration branch now includes the existing `alloc-unit` controls.
+Its final source is `58b4e89f5`, and the 12-book lifecycle closure key is
+`2a03cf3072673dab9921831a09dd525ab8a1d8c8fa4466793076b6ced8512f70`.
+Five cached foundational books were unchanged. Seven source books cover alloc,
+the declaration-generated test projections, the independent reclaim checker,
+existing allocator controls, planning, retirement intent and the umbrella.
+
+Review found five old setups that acquired durable protection after retirement.
+Their valid ordering now acquires it beforehand; transient post-retirement races
+remain. The first retained-world attempt exposed the fifth case in pressure
+teeth. Its LIVE, QUARANTINE, CHECKPOINT-BLOCKED and OK observations were preserved
+by dropping the pre-existing protection before checking checkpoint pressure.
+All original protector scenarios and corresponding model traces remain.
+
+The final existing allocator target's 66 forms passed source admission and actual
+assertions in 0.11 seconds / 103 prover steps. New controls exercise actual
+release-prepare refusal/preservation, marker publication closure, transient pin
+interleaving, release recheck and stale reuse. Both fixtures now use the existing
+column-reference generator for every actual column and scalar extra, avoiding a
+hand-maintained inventory. Planning and intent controls also passed in this same
+world; no format/core book or physical writer was loaded.
+
+Forge run prefix: `/tmp/reclamation-alloc-existing`; `-controls1.log` records the
+successful resumed allocator/umbrella, while `.log` preserves the pressure setup
+refusal and prior admitted source dependencies. Source hash of the repaired
+`alloc-unit` is `c9e20c26e181530bfc64477839907cd64de9e811c7c33f217e966cd00705d1d4`.
+Outer PID 619697, server 619764 and ACL2 process group 619765 were explicitly
+stopped and absent; the cgroup disappeared. External memory.max was 2147483648,
+swap.max 0, outer deadline 600 seconds and per-event budget 60 seconds / 2,000,000
+steps. Status 75 retains the initial refusal separately from resumed success.
+The named allocation was released. This remains an author source/assertion gate,
+not record certification or actual composed persistence/ACK qualification.
