@@ -1290,6 +1290,9 @@
     (implies (and (consp l) (subsetp-equal f l))
              (subsetp-equal (remove-equal (car l) f) (cdr l)))
     :hints (("Goal" :use ((:instance fn2-pool-remove-subsetp (y f) (a (car l)) (x (cdr l)))))))
+  ;; The direct subset interfaces above supply the chain-tail/remove steps.
+  ;; Do not search for an unconstrained intermediate set during every rewrite.
+  (in-theory (disable fn2-pool-subsetp-trans))
   ; RESERVE: the head leaves its class's chain and free set together.
   (defthm fn2-pool-reserve-class-okp
     (implies (and (fn2-poolp fn2-pool) (fn2-pool-wfp fn2-pool)
@@ -1387,6 +1390,9 @@
       (defthm ,(fn2-pool-op-sym op "-CONSERVATION")
         (implies (fn2-pool-semanticp fn2-pool) (fn2-pool-semanticp ,q))
         :hints (("Goal" :do-not '(generalize eliminate-destructors fertilize)
+                 :in-theory (disable ,(fn2-pool-op-sym op "-ROW-OKP")
+                                     ,(fn2-pool-op-sym op "-PRESERVES-TYPE")
+                                     ,(fn2-pool-op-sym op "-PRESERVES-WFP"))
                  :use (fn2-pool-semanticp-elim ,(fn2-pool-op-sym op "-ROW-OKP") ,(fn2-pool-op-sym op "-PRESERVES-TYPE")
                        ,(fn2-pool-op-sym op "-PRESERVES-WFP")
                        (:instance fn2-pool-semanticp-intro (s ,slot) (fn2-pool ,q)))))))))
