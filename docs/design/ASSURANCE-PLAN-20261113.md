@@ -53,6 +53,17 @@ separately from chronological authenticated ownership changes. Ordinary frozen
 state refusals remain intact; physical reuse stays closed until finalization.
 
 
+The compression sibling-wait repair and TLS progress regressions pass current
+joint record `certify-20261115T041953Z-845993`: thirty-two books, eight reused,
+twenty-four newly certified, 96.572 seconds. Root matched all before/after
+source hashes to the integration candidate. A fresh or bound sibling no longer
+requests an immediate wake while another operation owns a pending TLS child;
+the owner retains socket readiness and the sibling becomes runnable after
+settlement. Actual operation controls and the original-wait mutation pass.
+The suspected TLS progress defect was refuted: actual NEXT already uses the SSL
+progress epoch. Full Receive/Send controls and an epoch-conflation mutation
+protect that behavior. Native host delivery remains a separate unqualified gate.
+
 The shared columns diagnostic and opt-in guard-hint API are qualified by
 `certify-20261115T034623Z-812141`: six books, two reused and four new,
 3.918 seconds. Root matched all six before/after source hashes. Actual declarations
