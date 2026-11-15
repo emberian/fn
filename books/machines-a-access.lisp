@@ -213,13 +213,16 @@
 (defun fn2-machine-pool-class-need (class needs)
   (declare (xargs :guard t))
   (if (atom needs) 0
-    (+ (if (equal class (caar needs)) (nfix (cdar needs)) 0)
+    (+ (if (and (consp (car needs)) (equal class (caar needs)))
+           (nfix (cdar needs)) 0)
        (fn2-machine-pool-class-need class (cdr needs)))))
 (defun fn2-machine-pool-resolved-has-p (needs all fn2-pool)
   (declare (xargs :stobjs fn2-pool
                   :guard (fn2-pool-wfp fn2-pool)))
-  (if (atom needs) t
-    (and (<= (fn2-machine-pool-class-need (caar needs) all)
+  (if (atom needs) (null needs)
+    (and (consp (car needs)) (natp (caar needs)) (natp (cdar needs))
+         (< (caar needs) (fn2-pool-nclasses fn2-pool))
+         (<= (fn2-machine-pool-class-need (caar needs) all)
              (fn2-pool-reservable-count (caar needs) fn2-pool))
          (fn2-machine-pool-resolved-has-p (cdr needs) all fn2-pool))))
 (defun fn2-machine-pool-has-p (needs fn2-core)
