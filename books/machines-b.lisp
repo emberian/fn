@@ -126,7 +126,7 @@
 (defun fn2-b-cns-source-geometry-p (sources connections rows)
  (declare (xargs :guard t))
  (and (natp sources) (natp connections) (natp rows)
-      (<= (+ sources connections 5) rows)))
+      (<= (+ sources connections 9) rows)))
 (defthm fn2-b-cns-source-row-disjoint-from-control
  (implies (and (fn2-b-cns-source-geometry-p sources connections rows)
                (natp c) (< c connections) (natp s) (< s sources))
