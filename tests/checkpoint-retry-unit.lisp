@@ -12,7 +12,7 @@
       (fn2-commit-root (fn2-commit-root-init (+ 1 (fn2-extents-rows fn2-extents)) fn2-commit-root))
       (fn2-id-engine (fn2-id-engine-init 1 fn2-id-engine)) (fn2-seals (fn2-seals-init 1 fn2-seals))
       (fn2-checkpoint-retry (fn2-checkpoint-retry-init 1 fn2-checkpoint-retry))
-      (fn2-pool (fn2-pool-init (list (cons 29 (max *fn2-run-page-size* (fn2-checkpoint-future-window-length 0)))) 1 100 fn2-pool))
+      (fn2-pool (fn2-pool-init (list (cons (+ *fn2-checkpoint-working-window-count* 2) (max *fn2-run-page-size* (fn2-checkpoint-future-window-length 0)))) 1 100 fn2-pool))
       (fn2-checkpoint-retry-classes (fn2-checkpoint-retry-classes-init (fn2-pool-nclasses fn2-pool) fn2-checkpoint-retry-classes))
       (fn2-boot-config (fn2-boot-config-empty 0 fn2-boot-config))
       (fn2-boot-config (update-fn2-boot-config-checkpoint-layout-ready 1 fn2-boot-config))
