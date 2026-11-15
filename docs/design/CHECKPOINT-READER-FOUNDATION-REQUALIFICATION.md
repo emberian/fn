@@ -33,3 +33,12 @@ its complete original events at2M20, then a whole record only after whole
 AUTHOR success. Stop at the first refusal; no provider or prior34 replay.
 After all four pass, check the exact current34 keys and payload bytes. This
 qualifies the reader closure only; late physical callers remain separate.
+
+## Current record
+
+The planned four whole books passed AUTHOR original2M20 and whole records.
+The exact34 current keys and actual8aeb cert/port/FASL bytes were verified;
+`receipts/checkpoint-reader-foundation-thirty-four-record.json` includes every
+raw source hash. No reader or fixture source changed. The final four owned
+PIDs and scope were absent before ledger release. BOOT adoption and late
+physical consumers remain outside this qualification.
