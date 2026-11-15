@@ -4,17 +4,31 @@
 
 ; The production-shaped collision is refused by the generator before emitting
 ; a defstobj or trying either of the incompatible raw-NTH facts.
+(assert-event
+ (equal
+  (fn2-columns-duplicate-name
+   (append
+    (fn2-columns-event-list-names
+     (fn2-columns-accessor-events 'fn2-name-control '((credit-nonce :u60)) 0 1))
+    (fn2-columns-event-list-names
+     (fn2-columns-all-field-facts
+      'fn2-name-control
+      '((fn2-name-control-credit-nonce
+         :type (array (unsigned-byte 60) (0)) :initially 0 :resizable t))
+      2 nil))))
+  'fn2-name-control-credit-nonce-raw-nth-natp))
+
 (must-fail
  (defcolumns fn2-name-control ((credit-nonce :u60)) :rows-bound 8
   :extra-fields
   ((fn2-name-control-credit-nonce
     :type (array (unsigned-byte 60) (0)) :initially 0 :resizable t
     :why "Control-only group storage.")))
- :expected :hard :with-output-off nil :check-expansion t)
+ :expected :soft :with-output-off nil :check-expansion t)
 (must-fail
  (defcolumns fn2-name-control-init ((value :u8)) :rows-bound 8
   :init-name fn2-name-control-init-value)
- :expected :hard :with-output-off nil :check-expansion t)
+ :expected :soft :with-output-off nil :check-expansion t)
 
 (defcolumns fn2-name-control-valid ((credit-nonce :u60)) :rows-bound 8
  :extra-fields
