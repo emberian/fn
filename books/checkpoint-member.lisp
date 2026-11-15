@@ -5,7 +5,10 @@
 (include-book "std/util/bstar" :dir :system)
 (include-book "checkpoint")
 (include-book "pool-ranges")
+(include-book "layout-size-bounds")
+(include-book "columns-guard-hints")
 (fn2-book-layer :b)
+(defcodec-size-bounds fn2-format-checkpoint-installation)
 
 (defun fn2-checkpoint-installation-member-capacity ()
  (declare (xargs :guard t))
@@ -22,7 +25,8 @@
    (if (not (eq code :ok)) (mv code fn2-pool)
     (fn2-checkpoint-member-hash (- left 1) (+ at 1) (+ source 1) slot gen okind oslot ogen fn2-checkpoint-bytes fn2-pool)))))
 (fn2-pool-preserves fn2-checkpoint-member-hash
- (left at source slot gen okind oslot ogen fn2-checkpoint-bytes fn2-pool) :position 1)
+ (left at source slot gen okind oslot ogen fn2-checkpoint-bytes fn2-pool) :position 1
+ :hints (("Goal" :in-theory (disable fn2-pool-write fn2-pool-rows))))
 (in-theory (disable fn2-checkpoint-member-hash))
 
 ; One owned workspace, including 32 temporary digest bytes. Encode at offset32,
@@ -33,6 +37,11 @@
                                               fn2-checkpoints fn2-checkpoint-refs fn2-checkpoint-bytes
                                               fn2-fields fn2-pool)
  (declare (xargs :stobjs (fn2-checkpoints fn2-checkpoint-refs fn2-checkpoint-bytes fn2-fields fn2-pool)
+  :guard-hints ((fn2-columns-guard-hint
+                 '(fn2-checkpoints fn2-checkpoint-refs fn2-checkpoint-bytes fn2-fields fn2-pool)
+                 '(fn2-pool-reset fn2-pool-copy-range fn2-pool-truncate
+                   fn2-checkpoint-member-hash fn2-format-checkpoint-installation-size)
+                 nil world))
   :guard (and (fn2-checkpoints-wfp fn2-checkpoints) (fn2-checkpoint-refs-wfp fn2-checkpoint-refs)
               (fn2-checkpoint-bytes-wfp fn2-checkpoint-bytes) (fn2-fields-wfp fn2-fields)
               (fn2-pool-wfp fn2-pool))))
