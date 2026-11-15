@@ -169,3 +169,40 @@ No application or complete proof-dependency closure is covered.
 The first export attempt exposed ACL2 `prin1$`'s atom-only guard. The qualified
 exporter uses the actual `print-object$` object-channel API; theorem, domain,
 and incomplete-report semantics were unchanged.
+
+### Actual native whole-effect capture (source; not yet executed)
+
+`tools/capture_native_proof_support.py` generates a post-admission hook for the
+unchanged `fn2-native-mk-node-whole-effect` theorem. It reads that actual source
+DEFTHM and asks ACL2 to translate the same formula through a temporary logical
+function. The hook requires its translated body to equal the live theorem,
+requires the real recorded `fn2-a-crypto-native-correspondence` support edge,
+and requires that edge's live formula and origin to match the actual
+`fn2-a-crypto-native` encapsulate. This temporary function is a source identity
+check, not a replacement semantic model or an alternative theorem.
+
+Capture must follow source admission of the whole unchanged consumer book;
+loading its certificate alone does not supply the recorded support edge. The
+capture names the consumer's raw source hash and closure key, exact theorem,
+support theorem, assumption subject, extractor closure key, and generator
+source hash. `assurance_dependencies.py --source-only --proof-support CAPTURE`
+checks these against the current tree and checks the nested subject/support
+and constraint binding. It still labels the snapshot unqualified; a separate actual admission
+receipt must establish its provenance. This packet does not add a
+certificate trust path or turn that label into proof completion. Imported
+intermediate theorem support remains unknown. In particular the C BLAKE3/FFI
+premise is exposed, not established by this extraction.
+
+Example source generation (does not start ACL2):
+
+```
+python3 tools/capture_native_proof_support.py \
+  --output /tmp/native-proof-support-hook.lisp \
+  --capture /tmp/native-proof-support-capture.lsp
+```
+
+The current exact union is 17 books. The metadata/payload audit finds 14 exact
+8aeb cache entries; `digest-store`, `merkle`, and the actual native consumer are
+missing at current keys. No current production admission or capture is claimed
+until that small coherent cut is approved and actually run. The hook's identity
+and stale/substituted report controls are source-tested independently.
