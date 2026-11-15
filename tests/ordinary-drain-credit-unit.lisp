@@ -13,7 +13,9 @@
 (defconst *fn2-odc-profile*
  (fn2-b-test-profile
   (put-assoc-equal :identity-arena-bytes 4096
-   (put-assoc-equal :pool-classes '((16 . 64) (8 . 256) (48 . 4096)) *fn2-profile-tiny*)) 0))
+   (put-assoc-equal :pool-classes
+    (list (cons 16 64) (cons 8 256) (cons 48 *fn2-format-sector-bytes*)
+          (cons *fn2-checkpoint-window-count* *fn2-run-page-size*)) *fn2-profile-tiny*)) 0))
 (defun fn2-odc-pool (fn2-core)
  (declare (xargs :stobjs fn2-core :verify-guards nil))
  (stobj-let ((fn2-pool (fn2-core-pool fn2-core))
