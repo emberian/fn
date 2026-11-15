@@ -39,3 +39,24 @@ The public recovery release checker remains blocked at private stage8. Prefix
 obligation reconstruction, archived installation-J authentication and actual
 final identity/protection/epoch ownership joins still gate physical reuse.
 Neither this packet nor producer submission grants FREE permission.
+
+The narrower LIVE root is `tests/release-allocation-live-unit.lisp`. It calls
+the same extracted `fn2-rrc-producer` once and stops before process death. Its
+strict assertion requires actual persisted typed dispatch and accepted poll,
+the exact three stamped evidence obligations, returned or retired workspace
+ownership, and the unchanged RETIRE_PENDING target. A second real poll must
+retain the same persisted batch/event and evidence. It does not force the
+generation-retirement branch; that separate capacity fixture has its stated
+synthetic authorization scope. The four recovery assertions and every original
+producer binding are preserved by the AST extraction recipe and its controls.
+
+This narrows runtime, not the production compilation world. Actual image
+creation and the executor import the recovery/assembly core even without
+running cold restart. The frozen static local include graph contains 440
+files, with no missing local include; system books and macro-generated
+dependencies are outside this count. Compared with root `5c36665eb`, 194 source
+blobs match, 50 differ and 196 are new. All ten listed producer/coordinator/
+dispatcher runtime books match coherent cold `608ad5b50` byte for byte.
+`tools/fixtures/release_live_closure.json` records those exact source blobs;
+it is not an admission result or certificate/cache key. Retired-return fix
+`7a8b3a1bb` is composed. No Lisp assertion, guard or runtime gate has run.

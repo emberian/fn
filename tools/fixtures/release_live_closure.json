@@ -1,0 +1,2667 @@
+{
+  "root": "tests/release-allocation-live-unit.lisp",
+  "scope": "Static local include-book graph; system books excluded; not macro expansion, admission, certification or cache key. Runtime omits crash and recovery, production assembly still imported.",
+  "comparison_root": "5c36665eb7237503d69cbd26fd28c73bf50507a6",
+  "cold_runtime_reference": "608ad5b5070b73dd6288b817a92be8cbc75e12d0",
+  "missing_local_files": [],
+  "file_count": 440,
+  "root5c_counts": {
+    "same": 194,
+    "changed": 50,
+    "new": 196
+  },
+  "critical_runtime_byte_equal_cold": {
+    "books/allocation-release-coordinator.lisp": true,
+    "books/release-evidence.lisp": true,
+    "books/release-allocation.lisp": true,
+    "books/release-allocation-state.lisp": true,
+    "books/allocation-release-geometry.lisp": true,
+    "books/checkpoint-working-credit.lisp": true,
+    "books/retirement-coordinator.lisp": true,
+    "books/checkpoint-lifecycle-coordinator.lisp": true,
+    "books/commit.lisp": true,
+    "books/commit-arms.lisp": true
+  },
+  "files": [
+    {
+      "path": "books/accounts-core.lisp",
+      "source_blob": "ee9578ecb54ed7943a877160a340d8b06b5763a5",
+      "root5c_status": "same",
+      "root5c_blob": "ee9578ecb54ed7943a877160a340d8b06b5763a5"
+    },
+    {
+      "path": "books/accounts.lisp",
+      "source_blob": "e558b7d7d9babcad51c2a431f2d79c7f1dbfe3e7",
+      "root5c_status": "changed",
+      "root5c_blob": "eaf155409b59b5438ea9e45e1f958c4546acd8ed"
+    },
+    {
+      "path": "books/alloc-edge-layout.lisp",
+      "source_blob": "ddd6ccdfbadaeb65635f64ff9f4a0989b18ccb30",
+      "root5c_status": "new",
+      "root5c_blob": null
+    },
+    {
+      "path": "books/alloc-free-carrier.lisp",
+      "source_blob": "edd41839162568ed1c06b6b4c8d65bfeb6a42a6c",
+      "root5c_status": "new",
+      "root5c_blob": null
+    },
+    {
+      "path": "books/alloc-identity-index.lisp",
+      "source_blob": "14ce9180d88cc095fdf09ef92fd3e4f262e250db",
+      "root5c_status": "new",
+      "root5c_blob": null
+    },
+    {
+      "path": "books/alloc.lisp",
+      "source_blob": "a40aef294fd217031c4d7cc1f628c11368c10f5a",
+      "root5c_status": "changed",
+      "root5c_blob": "e0ee1c38599cba9a9a745a7f9ce34ddefd1d6867"
+    },
+    {
+      "path": "books/allocation-release-coordinator.lisp",
+      "source_blob": "55f255436b4a7a368f374fd74c84de56ef304981",
+      "root5c_status": "new",
+      "root5c_blob": null
+    },
+    {
+      "path": "books/allocation-release-geometry.lisp",
+      "source_blob": "09d5910dabf65abd662d9f6c78f0176846373215",
+      "root5c_status": "new",
+      "root5c_blob": null
+    },
+    {
+      "path": "books/arm-children.lisp",
+      "source_blob": "a4f22518c746164f83ef0d1ebf4afe5a48de9c63",
+      "root5c_status": "same",
+      "root5c_blob": "a4f22518c746164f83ef0d1ebf4afe5a48de9c63"
+    },
+    {
+      "path": "books/arm-issue-effects.lisp",
+      "source_blob": "713b092f47ab1b39d68029822e480850a7048d3d",
+      "root5c_status": "same",
+      "root5c_blob": "713b092f47ab1b39d68029822e480850a7048d3d"
+    },
+    {
+      "path": "books/arms.lisp",
+      "source_blob": "c06f42f16ff3ef78681e164ae7aec4726f814b7a",
+      "root5c_status": "changed",
+      "root5c_blob": "6d5853b3d18c0c6e317e1b6f2793e8f04ea11925"
+    },
+    {
+      "path": "books/article-manifest.lisp",
+      "source_blob": "a22417a67078abd5f25f4089977294461d0ad8c9",
+      "root5c_status": "changed",
+      "root5c_blob": "ff7534bdd4a1eeccfc4b68ca69209127891fa09e"
+    },
+    {
+      "path": "books/assembly-access-a.lisp",
+      "source_blob": "9f39ad134b9cf29d7e886957f4be58a7f2cff1ce",
+      "root5c_status": "same",
+      "root5c_blob": "9f39ad134b9cf29d7e886957f4be58a7f2cff1ce"
+    },
+    {
+      "path": "books/assembly-access.lisp",
+      "source_blob": "9457a6b16145e5748b61335720840de4b82d9731",
+      "root5c_status": "same",
+      "root5c_blob": "9457a6b16145e5748b61335720840de4b82d9731"
+    },
+    {
+      "path": "books/assembly-attach.lisp",
+      "source_blob": "a36bd919768db9a01cf1402027f37d662a983b41",
+      "root5c_status": "same",
+      "root5c_blob": "a36bd919768db9a01cf1402027f37d662a983b41"
+    },
+    {
+      "path": "books/assembly-callbacks-a.lisp",
+      "source_blob": "a68b53eea63a13bc8bfe41208261adf52e397ec2",
+      "root5c_status": "same",
+      "root5c_blob": "a68b53eea63a13bc8bfe41208261adf52e397ec2"
+    },
+    {
+      "path": "books/assembly-callbacks-b.lisp",
+      "source_blob": "bb55a87f3c82c372705b6a2bc417ced9e97b6e9f",
+      "root5c_status": "same",
+      "root5c_blob": "bb55a87f3c82c372705b6a2bc417ced9e97b6e9f"
+    },
+    {
+      "path": "books/assembly-callbacks-b2.lisp",
+      "source_blob": "fc15d95d8c3c03b3def5c47d254d88b07011e77c",
+      "root5c_status": "same",
+      "root5c_blob": "fc15d95d8c3c03b3def5c47d254d88b07011e77c"
+    },
+    {
+      "path": "books/assembly-callbacks-bt.lisp",
+      "source_blob": "00c007e886a2f3cd2a60be92a05614bb6db5a216",
+      "root5c_status": "same",
+      "root5c_blob": "00c007e886a2f3cd2a60be92a05614bb6db5a216"
+    },
+    {
+      "path": "books/assembly-callbacks-c-commit.lisp",
+      "source_blob": "f83bd96299eaf0458580990f32f112df6c4492fa",
+      "root5c_status": "same",
+      "root5c_blob": "f83bd96299eaf0458580990f32f112df6c4492fa"
+    },
+    {
+      "path": "books/assembly-callbacks-c-prepare.lisp",
+      "source_blob": "1c0aa5cf5abd56b24ba88d32ab97f719a383896b",
+      "root5c_status": "same",
+      "root5c_blob": "1c0aa5cf5abd56b24ba88d32ab97f719a383896b"
+    },
+    {
+      "path": "books/assembly-callbacks-c.lisp",
+      "source_blob": "be825f392a2abc8356a48b5a141528a1f3ad10b3",
+      "root5c_status": "changed",
+      "root5c_blob": "6e52da0b6c270344e3b1100c3a821622938ac9f9"
+    },
+    {
+      "path": "books/assembly-callbacks-d-conn.lisp",
+      "source_blob": "94fab347381c7d026f008cae47749024c2c6251f",
+      "root5c_status": "same",
+      "root5c_blob": "94fab347381c7d026f008cae47749024c2c6251f"
+    },
+    {
+      "path": "books/assembly-callbacks-d-cursor.lisp",
+      "source_blob": "e531b145121150bbf44893e0b815179f78ed9733",
+      "root5c_status": "same",
+      "root5c_blob": "e531b145121150bbf44893e0b815179f78ed9733"
+    },
+    {
+      "path": "books/assembly-callbacks-d-txn.lisp",
+      "source_blob": "66188f2f1b2b0ed4bea840c26cb540b5893d2546",
+      "root5c_status": "same",
+      "root5c_blob": "66188f2f1b2b0ed4bea840c26cb540b5893d2546"
+    },
+    {
+      "path": "books/assembly-callbacks-d-upload.lisp",
+      "source_blob": "4d6fb1fb4e85054467cb022c2577c2d4833786b7",
+      "root5c_status": "changed",
+      "root5c_blob": "b5fc98ed28bedd40b8034d3a88cd6040f454f161"
+    },
+    {
+      "path": "books/assembly-callbacks-d.lisp",
+      "source_blob": "ebf8b547a799bc7330ed3da6db7cbba35305372a",
+      "root5c_status": "same",
+      "root5c_blob": "ebf8b547a799bc7330ed3da6db7cbba35305372a"
+    },
+    {
+      "path": "books/assembly-callbacks-e-auth.lisp",
+      "source_blob": "4fdfcfcfb8ae57c516e49f1eb85f83612d723060",
+      "root5c_status": "same",
+      "root5c_blob": "4fdfcfcfb8ae57c516e49f1eb85f83612d723060"
+    },
+    {
+      "path": "books/assembly-callbacks-e-cns.lisp",
+      "source_blob": "9a0b9fb6d98f15bcffe2ace8f5723b670dacc54e",
+      "root5c_status": "same",
+      "root5c_blob": "9a0b9fb6d98f15bcffe2ace8f5723b670dacc54e"
+    },
+    {
+      "path": "books/assembly-callbacks-r.lisp",
+      "source_blob": "08270f905629d21ef1e617ae3d9e8013a34097bb",
+      "root5c_status": "same",
+      "root5c_blob": "08270f905629d21ef1e617ae3d9e8013a34097bb"
+    },
+    {
+      "path": "books/assembly-callbacks-r2.lisp",
+      "source_blob": "3c2c7fc8053b1a80871fcc13044b494c2441f9d8",
+      "root5c_status": "same",
+      "root5c_blob": "3c2c7fc8053b1a80871fcc13044b494c2441f9d8"
+    },
+    {
+      "path": "books/assembly-callbacks-s.lisp",
+      "source_blob": "3522e8b5f25c8ed4035e6d8f0809a3bedf643f17",
+      "root5c_status": "same",
+      "root5c_blob": "3522e8b5f25c8ed4035e6d8f0809a3bedf643f17"
+    },
+    {
+      "path": "books/assembly-callbacks.lisp",
+      "source_blob": "24e9b9b3a8d71dee38cf55ad685c52919860d018",
+      "root5c_status": "changed",
+      "root5c_blob": "b4d110b04ad8217d80d6da9de06e665beb4130b2"
+    },
+    {
+      "path": "books/assembly-core.lisp",
+      "source_blob": "5b552e8aa279a2aa5d8fac749e79ef151ca0bafe",
+      "root5c_status": "same",
+      "root5c_blob": "5b552e8aa279a2aa5d8fac749e79ef151ca0bafe"
+    },
+    {
+      "path": "books/assembly-dispatch.lisp",
+      "source_blob": "eb3e59d1df2a3ca7b8b9d058deadabc80279c87a",
+      "root5c_status": "same",
+      "root5c_blob": "eb3e59d1df2a3ca7b8b9d058deadabc80279c87a"
+    },
+    {
+      "path": "books/assembly-index.lisp",
+      "source_blob": "7b9e480ddfc680335189f6a7cb47c043d85bf336",
+      "root5c_status": "changed",
+      "root5c_blob": "6b90c74dc932abd2f090a409f78606cdb6e89aed"
+    },
+    {
+      "path": "books/assembly-init.lisp",
+      "source_blob": "8bc717d43e8fa638a7dd46cfcf6b0e12a46b76df",
+      "root5c_status": "same",
+      "root5c_blob": "8bc717d43e8fa638a7dd46cfcf6b0e12a46b76df"
+    },
+    {
+      "path": "books/assembly-reference-children-b.lisp",
+      "source_blob": "913e19c428f21438732c61130779c60078372d0c",
+      "root5c_status": "same",
+      "root5c_blob": "913e19c428f21438732c61130779c60078372d0c"
+    },
+    {
+      "path": "books/assembly-reference-children.lisp",
+      "source_blob": "cbb2eeb1ffc7384d4ab6b6795b97a4b9df327b39",
+      "root5c_status": "same",
+      "root5c_blob": "cbb2eeb1ffc7384d4ab6b6795b97a4b9df327b39"
+    },
+    {
+      "path": "books/assembly-reference.lisp",
+      "source_blob": "339b93f2aeeaa7bf7b8badff839a483f033e308a",
+      "root5c_status": "same",
+      "root5c_blob": "339b93f2aeeaa7bf7b8badff839a483f033e308a"
+    },
+    {
+      "path": "books/assembly-rows-a.lisp",
+      "source_blob": "e5ccc47f163c03dfc67c9e04ff6778610243a521",
+      "root5c_status": "same",
+      "root5c_blob": "e5ccc47f163c03dfc67c9e04ff6778610243a521"
+    },
+    {
+      "path": "books/assembly-rows-b.lisp",
+      "source_blob": "c0f3399e9a2778dd991647b6e20a71122af76e94",
+      "root5c_status": "same",
+      "root5c_blob": "c0f3399e9a2778dd991647b6e20a71122af76e94"
+    },
+    {
+      "path": "books/assembly-rows-c.lisp",
+      "source_blob": "8a2bf91a7e72c13e74890473443a983557e091bc",
+      "root5c_status": "same",
+      "root5c_blob": "8a2bf91a7e72c13e74890473443a983557e091bc"
+    },
+    {
+      "path": "books/assembly-rows-other-2.lisp",
+      "source_blob": "55d98ea00017558df02f92117ce096ffbeb8368f",
+      "root5c_status": "same",
+      "root5c_blob": "55d98ea00017558df02f92117ce096ffbeb8368f"
+    },
+    {
+      "path": "books/assembly-rows-other.lisp",
+      "source_blob": "66e16605cdf679de1f0ea99a75d6a2d10e39ef51",
+      "root5c_status": "same",
+      "root5c_blob": "66e16605cdf679de1f0ea99a75d6a2d10e39ef51"
+    },
+    {
+      "path": "books/assembly.lisp",
+      "source_blob": "f832dba22e8a2bbd4fa40e803203c9b42bf65ee5",
+      "root5c_status": "same",
+      "root5c_blob": "f832dba22e8a2bbd4fa40e803203c9b42bf65ee5"
+    },
+    {
+      "path": "books/assumptions-integrity.lisp",
+      "source_blob": "a7bd1d68082ca032bfb2e218024262956d74ce1c",
+      "root5c_status": "same",
+      "root5c_blob": "a7bd1d68082ca032bfb2e218024262956d74ce1c"
+    },
+    {
+      "path": "books/assumptions-native-span.lisp",
+      "source_blob": "16a666b9a8b34619eec33100e3835442d5bb4f58",
+      "root5c_status": "same",
+      "root5c_blob": "16a666b9a8b34619eec33100e3835442d5bb4f58"
+    },
+    {
+      "path": "books/authority-codec.lisp",
+      "source_blob": "44766a1ad70e76e9e662cf24a209e6ada40ae970",
+      "root5c_status": "same",
+      "root5c_blob": "44766a1ad70e76e9e662cf24a209e6ada40ae970"
+    },
+    {
+      "path": "books/authority-kind.lisp",
+      "source_blob": "d259716ef4573d0fcf9bef020f50d57d758eefcf",
+      "root5c_status": "same",
+      "root5c_blob": "d259716ef4573d0fcf9bef020f50d57d758eefcf"
+    },
+    {
+      "path": "books/authority-port.lisp",
+      "source_blob": "e22851effdf768a4f3288e8c069ab958d5becffb",
+      "root5c_status": "same",
+      "root5c_blob": "e22851effdf768a4f3288e8c069ab958d5becffb"
+    },
+    {
+      "path": "books/authority-schema.lisp",
+      "source_blob": "cebfd9c69dc43cde843e0d44741180bfd2d7294a",
+      "root5c_status": "same",
+      "root5c_blob": "cebfd9c69dc43cde843e0d44741180bfd2d7294a"
+    },
+    {
+      "path": "books/authority.lisp",
+      "source_blob": "46c9e9357eba78c31353a86c825b2fcc0f284942",
+      "root5c_status": "same",
+      "root5c_blob": "46c9e9357eba78c31353a86c825b2fcc0f284942"
+    },
+    {
+      "path": "books/blake3-pool-spec.lisp",
+      "source_blob": "11e1ab37b0051699c1e8426f348ed0ac032e9153",
+      "root5c_status": "same",
+      "root5c_blob": "11e1ab37b0051699c1e8426f348ed0ac032e9153"
+    },
+    {
+      "path": "books/blake3-spec.lisp",
+      "source_blob": "5e866df5c26ca817a6d1455d57f03e4b6e32feb8",
+      "root5c_status": "same",
+      "root5c_blob": "5e866df5c26ca817a6d1455d57f03e4b6e32feb8"
+    },
+    {
+      "path": "books/blake3.lisp",
+      "source_blob": "a130ee9a6aa7be076e6c9fa6512af97bad021cb7",
+      "root5c_status": "same",
+      "root5c_blob": "a130ee9a6aa7be076e6c9fa6512af97bad021cb7"
+    },
+    {
+      "path": "books/block-integrity.lisp",
+      "source_blob": "fe5383c8b0aef0d0cb478bb3140bf47ba2a1eda8",
+      "root5c_status": "same",
+      "root5c_blob": "fe5383c8b0aef0d0cb478bb3140bf47ba2a1eda8"
+    },
+    {
+      "path": "books/boot-config-state.lisp",
+      "source_blob": "22dddb429fd96bb2c009767275c3869a2eee9e4d",
+      "root5c_status": "new",
+      "root5c_blob": null
+    },
+    {
+      "path": "books/boot-format.lisp",
+      "source_blob": "bfcc62b758f3284da61e2a8e9e00c8a55a828289",
+      "root5c_status": "same",
+      "root5c_blob": "bfcc62b758f3284da61e2a8e9e00c8a55a828289"
+    },
+    {
+      "path": "books/boot-geometry-state.lisp",
+      "source_blob": "547797e32d9c340f4e5571aa6875e11c0a3228d5",
+      "root5c_status": "new",
+      "root5c_blob": null
+    },
+    {
+      "path": "books/boot-kind.lisp",
+      "source_blob": "c7e6a455a40f53a1373570796a08faabd4fc196d",
+      "root5c_status": "changed",
+      "root5c_blob": "def28ecdabf9fca07ba654e78fc2c283fcf4c1b6"
+    },
+    {
+      "path": "books/boot-pack.lisp",
+      "source_blob": "9c3244bc8d9612b03374126d9ba5043f32c7f794",
+      "root5c_status": "same",
+      "root5c_blob": "9c3244bc8d9612b03374126d9ba5043f32c7f794"
+    },
+    {
+      "path": "books/boot-root-release.lisp",
+      "source_blob": "f8ec9077ff64e8080e619b57f67255ddb2cd8527",
+      "root5c_status": "new",
+      "root5c_blob": null
+    },
+    {
+      "path": "books/boot.lisp",
+      "source_blob": "2ffb4b89dc1da11fd71f2fc09587d1c04502a8a4",
+      "root5c_status": "changed",
+      "root5c_blob": "539ef26562dee1b8c8bc081079b4afdeab142fa7"
+    },
+    {
+      "path": "books/borrow-release.lisp",
+      "source_blob": "00582e611e227d47a329dd622a582134f97fde11",
+      "root5c_status": "same",
+      "root5c_blob": "00582e611e227d47a329dd622a582134f97fde11"
+    },
+    {
+      "path": "books/c-snapshot-state.lisp",
+      "source_blob": "e97ab4d4c46e6cdd787348fb00b5b89b90cd625c",
+      "root5c_status": "new",
+      "root5c_blob": null
+    },
+    {
+      "path": "books/c-snapshot.lisp",
+      "source_blob": "3b21af86a2ddf41efa693758c1bf7b2cbcf7b850",
+      "root5c_status": "new",
+      "root5c_blob": null
+    },
+    {
+      "path": "books/checkpoint-allocation-coordinator.lisp",
+      "source_blob": "15fb98e07e51c7fc85c0cd7a9ae22b4491935ce4",
+      "root5c_status": "same",
+      "root5c_blob": "15fb98e07e51c7fc85c0cd7a9ae22b4491935ce4"
+    },
+    {
+      "path": "books/checkpoint-allocation.lisp",
+      "source_blob": "00e7d9b4a16dbdf0aac3a20ba294e6a62b72dced",
+      "root5c_status": "same",
+      "root5c_blob": "00e7d9b4a16dbdf0aac3a20ba294e6a62b72dced"
+    },
+    {
+      "path": "books/checkpoint-bank-bind.lisp",
+      "source_blob": "9d120863be95204ad34c5e868291a16a7fe92705",
+      "root5c_status": "new",
+      "root5c_blob": null
+    },
+    {
+      "path": "books/checkpoint-bank-boot.lisp",
+      "source_blob": "2165a0dec5c8357bab1e65f9ec87c660c4d8cdec",
+      "root5c_status": "new",
+      "root5c_blob": null
+    },
+    {
+      "path": "books/checkpoint-bank-closure-capture.lisp",
+      "source_blob": "58796d00e2be2270feb1faa4e34dbfc47195f2d8",
+      "root5c_status": "new",
+      "root5c_blob": null
+    },
+    {
+      "path": "books/checkpoint-bank-closure-edges.lisp",
+      "source_blob": "a96e66f8c97380d65e1294be8763127d3e4a0b45",
+      "root5c_status": "new",
+      "root5c_blob": null
+    },
+    {
+      "path": "books/checkpoint-bank-closure-kind.lisp",
+      "source_blob": "5430070efb55031de41e0f9cd5cc534d9073b957",
+      "root5c_status": "new",
+      "root5c_blob": null
+    },
+    {
+      "path": "books/checkpoint-bank-closure-state.lisp",
+      "source_blob": "df2f399b9988bb65da48a7b4d192a9124d084ef5",
+      "root5c_status": "new",
+      "root5c_blob": null
+    },
+    {
+      "path": "books/checkpoint-bank-cold.lisp",
+      "source_blob": "fcacfa42add0c8b02385a42e7054205b263a741d",
+      "root5c_status": "new",
+      "root5c_blob": null
+    },
+    {
+      "path": "books/checkpoint-bank-empty.lisp",
+      "source_blob": "f4754801fd3aaf5fb20c9a2c02c37ff72b22145d",
+      "root5c_status": "new",
+      "root5c_blob": null
+    },
+    {
+      "path": "books/checkpoint-bank-evidence.lisp",
+      "source_blob": "6321f7518a573d27d0b6ee4621d225dce6c6d69e",
+      "root5c_status": "new",
+      "root5c_blob": null
+    },
+    {
+      "path": "books/checkpoint-bank-obligations-state.lisp",
+      "source_blob": "0b029c1696f6025d9fa39e48473f5d141511d0b1",
+      "root5c_status": "new",
+      "root5c_blob": null
+    },
+    {
+      "path": "books/checkpoint-bank-protection-kind.lisp",
+      "source_blob": "4edaf6fdfcdbb0577650d7797d0149c762535967",
+      "root5c_status": "new",
+      "root5c_blob": null
+    },
+    {
+      "path": "books/checkpoint-bank-protection.lisp",
+      "source_blob": "de098e7166a1bb80fcf62f81dc0255c372c30f87",
+      "root5c_status": "new",
+      "root5c_blob": null
+    },
+    {
+      "path": "books/checkpoint-bank-transfer.lisp",
+      "source_blob": "d7fc00fd75ef202711c438044b0a1322893b5a51",
+      "root5c_status": "new",
+      "root5c_blob": null
+    },
+    {
+      "path": "books/checkpoint-boot.lisp",
+      "source_blob": "48f27438517d22f4c264a2af808ffb909d593bc1",
+      "root5c_status": "new",
+      "root5c_blob": null
+    },
+    {
+      "path": "books/checkpoint-build-state.lisp",
+      "source_blob": "0f6cb455c88951dd9098381cf2b0a9051c9e3ab9",
+      "root5c_status": "new",
+      "root5c_blob": null
+    },
+    {
+      "path": "books/checkpoint-build.lisp",
+      "source_blob": "dfb82a877ef1d7b2d0bd3437b36c2cfb819eb573",
+      "root5c_status": "new",
+      "root5c_blob": null
+    },
+    {
+      "path": "books/checkpoint-capacity.lisp",
+      "source_blob": "e817388b4ed3689d4f5042130bfbc75223ca2f1a",
+      "root5c_status": "new",
+      "root5c_blob": null
+    },
+    {
+      "path": "books/checkpoint-catalog-kind.lisp",
+      "source_blob": "4ebe049e35bdf252e3c2bb57ad942b11fe57e4e5",
+      "root5c_status": "same",
+      "root5c_blob": "4ebe049e35bdf252e3c2bb57ad942b11fe57e4e5"
+    },
+    {
+      "path": "books/checkpoint-cbase-acquire.lisp",
+      "source_blob": "1771b02fe8fce16198007c9a8cbd9e6026734b46",
+      "root5c_status": "new",
+      "root5c_blob": null
+    },
+    {
+      "path": "books/checkpoint-cbase-identity.lisp",
+      "source_blob": "52d1bae645c027e303f8ac508bd49b8e14a913c7",
+      "root5c_status": "new",
+      "root5c_blob": null
+    },
+    {
+      "path": "books/checkpoint-cbase-release.lisp",
+      "source_blob": "a21dfd38bb88141f38702d7b299a753197c9d94c",
+      "root5c_status": "new",
+      "root5c_blob": null
+    },
+    {
+      "path": "books/checkpoint-cbase-state.lisp",
+      "source_blob": "1b2341c833f26e6db00e44a693777f2742490ad2",
+      "root5c_status": "new",
+      "root5c_blob": null
+    },
+    {
+      "path": "books/checkpoint-commit-leases.lisp",
+      "source_blob": "1e238217064cc156891ee6f1afc4221d8bf7109a",
+      "root5c_status": "same",
+      "root5c_blob": "1e238217064cc156891ee6f1afc4221d8bf7109a"
+    },
+    {
+      "path": "books/checkpoint-construction-owner.lisp",
+      "source_blob": "2b0d13c87817009df45c1f9e6fbdb926224f6a5a",
+      "root5c_status": "new",
+      "root5c_blob": null
+    },
+    {
+      "path": "books/checkpoint-construction.lisp",
+      "source_blob": "ec11d4a7622a9b90741af36be0636b9e212513d0",
+      "root5c_status": "changed",
+      "root5c_blob": "22716404f390a3c3a4b6fc696c495fc5a3e9b8a0"
+    },
+    {
+      "path": "books/checkpoint-descriptor.lisp",
+      "source_blob": "542734f106113bb8574f2a12d097f99db4c8d353",
+      "root5c_status": "new",
+      "root5c_blob": null
+    },
+    {
+      "path": "books/checkpoint-directory-cold.lisp",
+      "source_blob": "0c88735940d261111fb63ddecae939c7e0d212f5",
+      "root5c_status": "new",
+      "root5c_blob": null
+    },
+    {
+      "path": "books/checkpoint-directory-consume.lisp",
+      "source_blob": "3633daeb4eb98e40cc6d1e4e59dec2b5668fdf51",
+      "root5c_status": "new",
+      "root5c_blob": null
+    },
+    {
+      "path": "books/checkpoint-directory-rebase-state.lisp",
+      "source_blob": "51e82206f47edfdd674bee9468205ea1ec17263c",
+      "root5c_status": "new",
+      "root5c_blob": null
+    },
+    {
+      "path": "books/checkpoint-directory-rebase.lisp",
+      "source_blob": "9790c9c988b6b527b5f93ada441c3b7b096638b4",
+      "root5c_status": "new",
+      "root5c_blob": null
+    },
+    {
+      "path": "books/checkpoint-future-resources.lisp",
+      "source_blob": "dbecfcf3393110edbe79f448421fbbb28c4b0684",
+      "root5c_status": "same",
+      "root5c_blob": "dbecfcf3393110edbe79f448421fbbb28c4b0684"
+    },
+    {
+      "path": "books/checkpoint-future-working.lisp",
+      "source_blob": "af32185c97c85c7b5f26b1d55e84b9254de8148b",
+      "root5c_status": "changed",
+      "root5c_blob": "bc953d584acee3f3244f31be42139d1b42f24a34"
+    },
+    {
+      "path": "books/checkpoint-geometry.lisp",
+      "source_blob": "710e0df91495dbafe056adc544db18e32d0be24d",
+      "root5c_status": "new",
+      "root5c_blob": null
+    },
+    {
+      "path": "books/checkpoint-installation-binding.lisp",
+      "source_blob": "56a88d3400cc74bce23d05af66b73cee49f04e02",
+      "root5c_status": "new",
+      "root5c_blob": null
+    },
+    {
+      "path": "books/checkpoint-installation-coordinator.lisp",
+      "source_blob": "dabd6d387c7e5e5bf74b15f9755958e3330e72e9",
+      "root5c_status": "changed",
+      "root5c_blob": "598a1fe8b9a2f06ecd28076eaee97b5cd3461575"
+    },
+    {
+      "path": "books/checkpoint-installed.lisp",
+      "source_blob": "b56e9fae99fe92d3b124570c593b8c4613947fd8",
+      "root5c_status": "new",
+      "root5c_blob": null
+    },
+    {
+      "path": "books/checkpoint-kind-b.lisp",
+      "source_blob": "9ff7199040ac2860e47022ab93f02d356292103e",
+      "root5c_status": "new",
+      "root5c_blob": null
+    },
+    {
+      "path": "books/checkpoint-kind.lisp",
+      "source_blob": "408ad337e35625c5f528e0a4a48b7382ece1ce9d",
+      "root5c_status": "new",
+      "root5c_blob": null
+    },
+    {
+      "path": "books/checkpoint-lifecycle-coordinator.lisp",
+      "source_blob": "540f5c558e97bf716363c0c97ca39c97ff7d518e",
+      "root5c_status": "changed",
+      "root5c_blob": "3d4c711a01981d18cfdc550cf6daffaa40007c94"
+    },
+    {
+      "path": "books/checkpoint-lifecycle-state.lisp",
+      "source_blob": "34d0e869480aca58709aafdfe8e6e85318fe4746",
+      "root5c_status": "new",
+      "root5c_blob": null
+    },
+    {
+      "path": "books/checkpoint-lifecycle.lisp",
+      "source_blob": "5f62688d44a5fb279e6e757e765c7a801d509e75",
+      "root5c_status": "new",
+      "root5c_blob": null
+    },
+    {
+      "path": "books/checkpoint-linked-header.lisp",
+      "source_blob": "6b2231c18a8fbddbe6fdc65e07b5ef08f6923343",
+      "root5c_status": "new",
+      "root5c_blob": null
+    },
+    {
+      "path": "books/checkpoint-maintenance-staging.lisp",
+      "source_blob": "ff97a6af9d5550cd6821049720b15e7e467c5edf",
+      "root5c_status": "same",
+      "root5c_blob": "ff97a6af9d5550cd6821049720b15e7e467c5edf"
+    },
+    {
+      "path": "books/checkpoint-map-build.lisp",
+      "source_blob": "9009d64067630e5877af6923829d9b2ce12ef5f1",
+      "root5c_status": "new",
+      "root5c_blob": null
+    },
+    {
+      "path": "books/checkpoint-map-format.lisp",
+      "source_blob": "711cfb16392533160c2b675c5ea1f60ff34c4a28",
+      "root5c_status": "new",
+      "root5c_blob": null
+    },
+    {
+      "path": "books/checkpoint-map-pack.lisp",
+      "source_blob": "cd1454b61a7023757e5dbf0831d22e50f0756553",
+      "root5c_status": "new",
+      "root5c_blob": null
+    },
+    {
+      "path": "books/checkpoint-map-read.lisp",
+      "source_blob": "346d3ba702e3b55ffeadbf7957aedc1e3b455936",
+      "root5c_status": "new",
+      "root5c_blob": null
+    },
+    {
+      "path": "books/checkpoint-master-abort.lisp",
+      "source_blob": "6f3e42c067b8f30de85c46d369b84e90396db6e7",
+      "root5c_status": "new",
+      "root5c_blob": null
+    },
+    {
+      "path": "books/checkpoint-master-arms.lisp",
+      "source_blob": "cc11c3c5da5cd5f7a107d2eb58ff85eab91b0344",
+      "root5c_status": "new",
+      "root5c_blob": null
+    },
+    {
+      "path": "books/checkpoint-master-control.lisp",
+      "source_blob": "1249ee1478a05e380523ad830ae301dfc199a456",
+      "root5c_status": "new",
+      "root5c_blob": null
+    },
+    {
+      "path": "books/checkpoint-master-events.lisp",
+      "source_blob": "bc20e5e53bbe1dce87401e4871d3da8e2e0616e9",
+      "root5c_status": "new",
+      "root5c_blob": null
+    },
+    {
+      "path": "books/checkpoint-master-kind.lisp",
+      "source_blob": "7de53928d7412832bdafd3a2302bbe440cd2a507",
+      "root5c_status": "new",
+      "root5c_blob": null
+    },
+    {
+      "path": "books/checkpoint-master-rearm.lisp",
+      "source_blob": "e98f59d3051163a5ea5bc7db027b1c0793d87534",
+      "root5c_status": "new",
+      "root5c_blob": null
+    },
+    {
+      "path": "books/checkpoint-master-state.lisp",
+      "source_blob": "ba8454cd72f3efb2aa9b892acefd550ac5ff74f6",
+      "root5c_status": "new",
+      "root5c_blob": null
+    },
+    {
+      "path": "books/checkpoint-member.lisp",
+      "source_blob": "b2322387824fd4394b7a85cecbed3e8954b69f5e",
+      "root5c_status": "same",
+      "root5c_blob": "b2322387824fd4394b7a85cecbed3e8954b69f5e"
+    },
+    {
+      "path": "books/checkpoint-metadata-driver.lisp",
+      "source_blob": "eeb9c603e0c7402652279627326de201f85dd575",
+      "root5c_status": "new",
+      "root5c_blob": null
+    },
+    {
+      "path": "books/checkpoint-metadata-manifest-state.lisp",
+      "source_blob": "f70afc111ae895e659453124a814c70440e9fccf",
+      "root5c_status": "new",
+      "root5c_blob": null
+    },
+    {
+      "path": "books/checkpoint-metadata-manifest.lisp",
+      "source_blob": "7ba61e943c447c97d4649cb967296eadf42b355b",
+      "root5c_status": "new",
+      "root5c_blob": null
+    },
+    {
+      "path": "books/checkpoint-metadata-page.lisp",
+      "source_blob": "6af04ab84959ddb55b1a5e035c439cac57ec9bc3",
+      "root5c_status": "new",
+      "root5c_blob": null
+    },
+    {
+      "path": "books/checkpoint-metadata-release.lisp",
+      "source_blob": "aa830f059e7659e59db42d057fcb1cc02e7c6e48",
+      "root5c_status": "new",
+      "root5c_blob": null
+    },
+    {
+      "path": "books/checkpoint-metadata-resources.lisp",
+      "source_blob": "98ec2feb41b0641405bbdc73dfcbf2e8c528c7c3",
+      "root5c_status": "new",
+      "root5c_blob": null
+    },
+    {
+      "path": "books/checkpoint-metadata-retention.lisp",
+      "source_blob": "4cd2109d335cf651a1ef51ba6efdbab38365f3b0",
+      "root5c_status": "new",
+      "root5c_blob": null
+    },
+    {
+      "path": "books/checkpoint-metadata-source.lisp",
+      "source_blob": "6a0dc1006fc1e0c1c90d274764c4cfb3335d3499",
+      "root5c_status": "new",
+      "root5c_blob": null
+    },
+    {
+      "path": "books/checkpoint-metadata-state.lisp",
+      "source_blob": "d4ee3105231abbb65b37e43c1b0f7cd114900bd7",
+      "root5c_status": "new",
+      "root5c_blob": null
+    },
+    {
+      "path": "books/checkpoint-metadata.lisp",
+      "source_blob": "749e235fb5d08d4e877e21d4af96bda5def1d9e1",
+      "root5c_status": "new",
+      "root5c_blob": null
+    },
+    {
+      "path": "books/checkpoint-owned-projection.lisp",
+      "source_blob": "393be70d7e9b103bf33f221a48c2bfb8e3ca32c7",
+      "root5c_status": "new",
+      "root5c_blob": null
+    },
+    {
+      "path": "books/checkpoint-owned-release.lisp",
+      "source_blob": "0316a7f74be61c80d7139529d70b48360362595f",
+      "root5c_status": "new",
+      "root5c_blob": null
+    },
+    {
+      "path": "books/checkpoint-page-header.lisp",
+      "source_blob": "1c82ed808a4181a71084878c01dbc4538edb22d5",
+      "root5c_status": "new",
+      "root5c_blob": null
+    },
+    {
+      "path": "books/checkpoint-page-io.lisp",
+      "source_blob": "f04460b09da9c6f5b4e0262ae3a11b3adaefd3b9",
+      "root5c_status": "new",
+      "root5c_blob": null
+    },
+    {
+      "path": "books/checkpoint-page-kind.lisp",
+      "source_blob": "47ea794814ec0f0653e8066e7957f34c333238b8",
+      "root5c_status": "new",
+      "root5c_blob": null
+    },
+    {
+      "path": "books/checkpoint-page-state.lisp",
+      "source_blob": "61f8e706bf06dd626d335ff181f1761f4b922a87",
+      "root5c_status": "new",
+      "root5c_blob": null
+    },
+    {
+      "path": "books/checkpoint-page-worker.lisp",
+      "source_blob": "7589f5cfeb89fd97116cc3f461b530a9d12cfc8e",
+      "root5c_status": "new",
+      "root5c_blob": null
+    },
+    {
+      "path": "books/checkpoint-payload-carrier.lisp",
+      "source_blob": "87b6ab1f0ce854746526fac20e9bc0ee1c867d4a",
+      "root5c_status": "new",
+      "root5c_blob": null
+    },
+    {
+      "path": "books/checkpoint-payload-format.lisp",
+      "source_blob": "2d97c6b17dbbb6597ad2f5411e51dced87f94014",
+      "root5c_status": "new",
+      "root5c_blob": null
+    },
+    {
+      "path": "books/checkpoint-payload-harvest.lisp",
+      "source_blob": "b6d85577a338b10e2fda6890798dcd1ba9b04f27",
+      "root5c_status": "new",
+      "root5c_blob": null
+    },
+    {
+      "path": "books/checkpoint-payload-io.lisp",
+      "source_blob": "9c26139ce243188f2eaf77178b620a9b3af9a30b",
+      "root5c_status": "new",
+      "root5c_blob": null
+    },
+    {
+      "path": "books/checkpoint-payload-physical-step.lisp",
+      "source_blob": "df1585438735ba8bf3c2b6ce6e7dd938859088c0",
+      "root5c_status": "new",
+      "root5c_blob": null
+    },
+    {
+      "path": "books/checkpoint-payload-physical.lisp",
+      "source_blob": "8713bf35900a37f190a5484890a80110b03fd8b4",
+      "root5c_status": "new",
+      "root5c_blob": null
+    },
+    {
+      "path": "books/checkpoint-payload-state.lisp",
+      "source_blob": "4f02f5f795b96955f0cb028b2f00d212004362fb",
+      "root5c_status": "new",
+      "root5c_blob": null
+    },
+    {
+      "path": "books/checkpoint-payload.lisp",
+      "source_blob": "18a7d872dd14c12e229bf29661b87ea76d0d3fc6",
+      "root5c_status": "new",
+      "root5c_blob": null
+    },
+    {
+      "path": "books/checkpoint-plan.lisp",
+      "source_blob": "ba17f46981cbddbeefc76ae7f389b3be4731fff7",
+      "root5c_status": "new",
+      "root5c_blob": null
+    },
+    {
+      "path": "books/checkpoint-production.lisp",
+      "source_blob": "980ff55fec46c94358e68e7ebb903a0a3d297e12",
+      "root5c_status": "same",
+      "root5c_blob": "980ff55fec46c94358e68e7ebb903a0a3d297e12"
+    },
+    {
+      "path": "books/checkpoint-projection-protect.lisp",
+      "source_blob": "2238336f2fa38fa5a8165122ced8eaf6cdbaee9e",
+      "root5c_status": "new",
+      "root5c_blob": null
+    },
+    {
+      "path": "books/checkpoint-projection-state.lisp",
+      "source_blob": "9a5b855e1d6a0f3583f74859d413d20804d539ff",
+      "root5c_status": "new",
+      "root5c_blob": null
+    },
+    {
+      "path": "books/checkpoint-projection.lisp",
+      "source_blob": "55075c0133667af902f137756b65d4aa42a7a57f",
+      "root5c_status": "new",
+      "root5c_blob": null
+    },
+    {
+      "path": "books/checkpoint-publication-state.lisp",
+      "source_blob": "8ae2e0e58945ddd8826323a009dfbcf8a5093de8",
+      "root5c_status": "new",
+      "root5c_blob": null
+    },
+    {
+      "path": "books/checkpoint-publication.lisp",
+      "source_blob": "67cd00218832d67478830a5eea18cad935b6946a",
+      "root5c_status": "new",
+      "root5c_blob": null
+    },
+    {
+      "path": "books/checkpoint-recovery-census-state.lisp",
+      "source_blob": "49e4dc4be4fab860031a558d3fa07f8973e81d8a",
+      "root5c_status": "new",
+      "root5c_blob": null
+    },
+    {
+      "path": "books/checkpoint-recovery-census.lisp",
+      "source_blob": "37c71f27f57755ac5274dc45a4cc305c03602ba1",
+      "root5c_status": "new",
+      "root5c_blob": null
+    },
+    {
+      "path": "books/checkpoint-recovery-evidence-boot.lisp",
+      "source_blob": "b17961c962c3f9e08975fcd5f071323af44db289",
+      "root5c_status": "new",
+      "root5c_blob": null
+    },
+    {
+      "path": "books/checkpoint-recovery-evidence-records.lisp",
+      "source_blob": "8be4a676d2af6861b6c69a7d341ec4e01c7f935a",
+      "root5c_status": "new",
+      "root5c_blob": null
+    },
+    {
+      "path": "books/checkpoint-recovery-evidence-state.lisp",
+      "source_blob": "d17f9e6d2126799362d7edcaa42c4f1a10740d7e",
+      "root5c_status": "new",
+      "root5c_blob": null
+    },
+    {
+      "path": "books/checkpoint-recovery-evidence.lisp",
+      "source_blob": "ea8e1c7ef53738216ec772e019701c8504673c11",
+      "root5c_status": "new",
+      "root5c_blob": null
+    },
+    {
+      "path": "books/checkpoint-restore-arena.lisp",
+      "source_blob": "ee0931bb28b79f11629798c6a26d123219e6482c",
+      "root5c_status": "new",
+      "root5c_blob": null
+    },
+    {
+      "path": "books/checkpoint-restore-boot.lisp",
+      "source_blob": "d49a920517b6a554c80cd451b1d1a780e7cc72b6",
+      "root5c_status": "new",
+      "root5c_blob": null
+    },
+    {
+      "path": "books/checkpoint-restore-events-boot.lisp",
+      "source_blob": "b06d006a1fcc5de1f4f9258ea3b147c06a3c93eb",
+      "root5c_status": "new",
+      "root5c_blob": null
+    },
+    {
+      "path": "books/checkpoint-restore-events-source.lisp",
+      "source_blob": "7f28b2c335f0f1b435b205a443546508666d8d72",
+      "root5c_status": "new",
+      "root5c_blob": null
+    },
+    {
+      "path": "books/checkpoint-restore-events-state.lisp",
+      "source_blob": "7eaced90e811bad1e621ec174be429dc7c1e94cc",
+      "root5c_status": "new",
+      "root5c_blob": null
+    },
+    {
+      "path": "books/checkpoint-restore-events.lisp",
+      "source_blob": "d472a04aca6a2c7969629e4dbffb1d186c51cc45",
+      "root5c_status": "new",
+      "root5c_blob": null
+    },
+    {
+      "path": "books/checkpoint-restore-map.lisp",
+      "source_blob": "a438025611d2ecf739d607b877471ba7c1197bda",
+      "root5c_status": "new",
+      "root5c_blob": null
+    },
+    {
+      "path": "books/checkpoint-restore-payload-boot.lisp",
+      "source_blob": "a14a73ee0bae39307f9988e687a7394eb11d21a9",
+      "root5c_status": "new",
+      "root5c_blob": null
+    },
+    {
+      "path": "books/checkpoint-restore-payload.lisp",
+      "source_blob": "dbbb95baebdb76919c72f811296f570f10f722a4",
+      "root5c_status": "new",
+      "root5c_blob": null
+    },
+    {
+      "path": "books/checkpoint-restore-provenance.lisp",
+      "source_blob": "d1c427263daa1a19d28b6f1b47a1e56016186a3d",
+      "root5c_status": "new",
+      "root5c_blob": null
+    },
+    {
+      "path": "books/checkpoint-restore-reach-state.lisp",
+      "source_blob": "bec16a612cfd994c37545296b125ec5f88964a52",
+      "root5c_status": "new",
+      "root5c_blob": null
+    },
+    {
+      "path": "books/checkpoint-restore-reach.lisp",
+      "source_blob": "9b85c47e558c51e73431045a9ebf6483446907b0",
+      "root5c_status": "new",
+      "root5c_blob": null
+    },
+    {
+      "path": "books/checkpoint-restore-read.lisp",
+      "source_blob": "52574ca1d59ce068dbb0ed713ad5f6b9e401da8c",
+      "root5c_status": "new",
+      "root5c_blob": null
+    },
+    {
+      "path": "books/checkpoint-restore-reader.lisp",
+      "source_blob": "969ba03f12d627fb6352ac3a9c7ae7e40db1ac6f",
+      "root5c_status": "new",
+      "root5c_blob": null
+    },
+    {
+      "path": "books/checkpoint-restore-semantic-boot.lisp",
+      "source_blob": "afcd85b0936ba5517e637ccbaadf1b83387dacce",
+      "root5c_status": "new",
+      "root5c_blob": null
+    },
+    {
+      "path": "books/checkpoint-restore-semantic-reach.lisp",
+      "source_blob": "87602be4eb8fc5fba1805ffddeec841adaa5bd7a",
+      "root5c_status": "new",
+      "root5c_blob": null
+    },
+    {
+      "path": "books/checkpoint-restore-semantic-source.lisp",
+      "source_blob": "bc328e3a09fc54f9039f997601ccd3599ba91a87",
+      "root5c_status": "new",
+      "root5c_blob": null
+    },
+    {
+      "path": "books/checkpoint-restore-semantic-state.lisp",
+      "source_blob": "47b90a26aafbd65aa822f21744a6dbb3d9f33826",
+      "root5c_status": "new",
+      "root5c_blob": null
+    },
+    {
+      "path": "books/checkpoint-restore-semantic-work.lisp",
+      "source_blob": "881c88fecf08974cb11c13a862b26978a3e429dd",
+      "root5c_status": "new",
+      "root5c_blob": null
+    },
+    {
+      "path": "books/checkpoint-restore-semantic.lisp",
+      "source_blob": "2c6719f2e1609794cfca294fd17aa76e567b7d39",
+      "root5c_status": "new",
+      "root5c_blob": null
+    },
+    {
+      "path": "books/checkpoint-restore.lisp",
+      "source_blob": "2cf9abf2297bd0184e1613bac69baeadd6868336",
+      "root5c_status": "new",
+      "root5c_blob": null
+    },
+    {
+      "path": "books/checkpoint-retained-entry.lisp",
+      "source_blob": "820bfcc42cd91193a80ea932444e6cd47e54ee44",
+      "root5c_status": "new",
+      "root5c_blob": null
+    },
+    {
+      "path": "books/checkpoint-selected-finish.lisp",
+      "source_blob": "6f24694fffe6e8057e5b4178bae9f670b7fc01f3",
+      "root5c_status": "new",
+      "root5c_blob": null
+    },
+    {
+      "path": "books/checkpoint-selected-source-state.lisp",
+      "source_blob": "59cfe702add7e35434dea54261561a9c0c0c49b2",
+      "root5c_status": "new",
+      "root5c_blob": null
+    },
+    {
+      "path": "books/checkpoint-selected-source.lisp",
+      "source_blob": "cfb8058edb0021050fe59389a15587ad2593df6a",
+      "root5c_status": "new",
+      "root5c_blob": null
+    },
+    {
+      "path": "books/checkpoint-semantic-page.lisp",
+      "source_blob": "d541fcebcd8f5a164184e6c6866d4616a3014e03",
+      "root5c_status": "new",
+      "root5c_blob": null
+    },
+    {
+      "path": "books/checkpoint-semantic-retention.lisp",
+      "source_blob": "c2b50b3babd6e925fe9e81bb9d122fe0f3c69667",
+      "root5c_status": "new",
+      "root5c_blob": null
+    },
+    {
+      "path": "books/checkpoint-service-geometry.lisp",
+      "source_blob": "d0f90dfbd2efa3add9222cf9baa9040542b6b855",
+      "root5c_status": "new",
+      "root5c_blob": null
+    },
+    {
+      "path": "books/checkpoint-source-retention.lisp",
+      "source_blob": "6074abba13e4f7a6e103d67c8370b51a28e1fc6f",
+      "root5c_status": "new",
+      "root5c_blob": null
+    },
+    {
+      "path": "books/checkpoint-suffix-allocation.lisp",
+      "source_blob": "b4df7a942597a9438520e6efb4faf8534cdd945b",
+      "root5c_status": "new",
+      "root5c_blob": null
+    },
+    {
+      "path": "books/checkpoint-suffix-settlement.lisp",
+      "source_blob": "d647d31584c53588dd87ec28f9839008adb029b5",
+      "root5c_status": "new",
+      "root5c_blob": null
+    },
+    {
+      "path": "books/checkpoint-summary-adoption.lisp",
+      "source_blob": "0728dde3a8d9c304c506b9fd53f3dfa222bffa8b",
+      "root5c_status": "new",
+      "root5c_blob": null
+    },
+    {
+      "path": "books/checkpoint-summary-apply.lisp",
+      "source_blob": "0303b3402c19675479b4a05befa4495f88a0a847",
+      "root5c_status": "new",
+      "root5c_blob": null
+    },
+    {
+      "path": "books/checkpoint-summary-authority-cold.lisp",
+      "source_blob": "df6b90a96c1d46b2c57d6cc788972eb85c72ae69",
+      "root5c_status": "new",
+      "root5c_blob": null
+    },
+    {
+      "path": "books/checkpoint-summary-authority-live.lisp",
+      "source_blob": "84495022ea3ab70ed8b5a8cbe4fa57ac19fb153c",
+      "root5c_status": "new",
+      "root5c_blob": null
+    },
+    {
+      "path": "books/checkpoint-summary-authority-state.lisp",
+      "source_blob": "8b9e253ac18091a83db51496b8a03462a980cd15",
+      "root5c_status": "new",
+      "root5c_blob": null
+    },
+    {
+      "path": "books/checkpoint-summary-boot.lisp",
+      "source_blob": "7594a2ef31073c4a24a78dc9b922d09e6749f652",
+      "root5c_status": "new",
+      "root5c_blob": null
+    },
+    {
+      "path": "books/checkpoint-summary-catalog.lisp",
+      "source_blob": "df835815697eed533d6a968b321f79368f2fd9a0",
+      "root5c_status": "new",
+      "root5c_blob": null
+    },
+    {
+      "path": "books/checkpoint-summary-leases.lisp",
+      "source_blob": "a390c63ff576f4778fbbe8c7514cc42c0a800cbc",
+      "root5c_status": "new",
+      "root5c_blob": null
+    },
+    {
+      "path": "books/checkpoint-summary-loader-readiness.lisp",
+      "source_blob": "5486be35e1fad6752484a0302d0650dcdf1c7a69",
+      "root5c_status": "new",
+      "root5c_blob": null
+    },
+    {
+      "path": "books/checkpoint-summary-retire.lisp",
+      "source_blob": "4bc1cd2a0acc48b944eccd63d4ea5e1713819d93",
+      "root5c_status": "new",
+      "root5c_blob": null
+    },
+    {
+      "path": "books/checkpoint-summary-state.lisp",
+      "source_blob": "070e7d493a98422a9d08dd01ced17346e7d1daaf",
+      "root5c_status": "new",
+      "root5c_blob": null
+    },
+    {
+      "path": "books/checkpoint-teardown-cold-evidence.lisp",
+      "source_blob": "06e4780c4ed06987f36956e9ae58fd5c22196fc4",
+      "root5c_status": "new",
+      "root5c_blob": null
+    },
+    {
+      "path": "books/checkpoint-teardown-cold-transfer.lisp",
+      "source_blob": "c2a1b8e9ac1d1ad1246456afec2e307f2e27a801",
+      "root5c_status": "new",
+      "root5c_blob": null
+    },
+    {
+      "path": "books/checkpoint-teardown-owner.lisp",
+      "source_blob": "151baf892c98acd35c68ce7d5caa8c17af89c0e1",
+      "root5c_status": "new",
+      "root5c_blob": null
+    },
+    {
+      "path": "books/checkpoint-teardown-state.lisp",
+      "source_blob": "9ab66c3a32d59553324221112fe9624ffd6acac0",
+      "root5c_status": "new",
+      "root5c_blob": null
+    },
+    {
+      "path": "books/checkpoint-teardown-sweep.lisp",
+      "source_blob": "586d8459fda7cfd9261f3582eba9aaa0f2109cdf",
+      "root5c_status": "new",
+      "root5c_blob": null
+    },
+    {
+      "path": "books/checkpoint-teardown-transfer.lisp",
+      "source_blob": "a8e70d4c66dfab76cd192aad2083245f11085a43",
+      "root5c_status": "new",
+      "root5c_blob": null
+    },
+    {
+      "path": "books/checkpoint-teardown.lisp",
+      "source_blob": "e1925adb633b7e40a7fa3b5283ad047e4d870fe9",
+      "root5c_status": "new",
+      "root5c_blob": null
+    },
+    {
+      "path": "books/checkpoint-tickets.lisp",
+      "source_blob": "64e20deead2876bdb7956fc531d8d7c616f9458e",
+      "root5c_status": "changed",
+      "root5c_blob": "73fb87e2514cc9fb5a73aaf22993d72ed6bd2509"
+    },
+    {
+      "path": "books/checkpoint-working-credit-init.lisp",
+      "source_blob": "a392f2f27f2939e85030f1eff94163e7e6262855",
+      "root5c_status": "new",
+      "root5c_blob": null
+    },
+    {
+      "path": "books/checkpoint-working-credit.lisp",
+      "source_blob": "1ef97fb8e466b3cac8de4ae6e8b363e8d0dce141",
+      "root5c_status": "new",
+      "root5c_blob": null
+    },
+    {
+      "path": "books/checkpoint-working-geometry.lisp",
+      "source_blob": "b8ed543c7352f221f62f61b8d9471c5691fbff8d",
+      "root5c_status": "new",
+      "root5c_blob": null
+    },
+    {
+      "path": "books/checkpoint-working-release.lisp",
+      "source_blob": "9da5c651e370901efc998c34faec5f650c682638",
+      "root5c_status": "new",
+      "root5c_blob": null
+    },
+    {
+      "path": "books/checkpoint-working-reserve.lisp",
+      "source_blob": "d52fb2be9b3bbb5dd4b23bfca11f2bf937940c8c",
+      "root5c_status": "new",
+      "root5c_blob": null
+    },
+    {
+      "path": "books/checkpoint-writer-ops.lisp",
+      "source_blob": "4693e88369d87f131a0e0d2985e2427338f73457",
+      "root5c_status": "new",
+      "root5c_blob": null
+    },
+    {
+      "path": "books/checkpoint-writer.lisp",
+      "source_blob": "b220cdbf31f6ccb94281e701f042ec8b8397f4f9",
+      "root5c_status": "new",
+      "root5c_blob": null
+    },
+    {
+      "path": "books/checkpoint.lisp",
+      "source_blob": "6b7a1130c7a0b43db898d6c671d4f31a94c51af8",
+      "root5c_status": "changed",
+      "root5c_blob": "1ef9a7fe0e30ebfbb4932061ccb9ea0b024801d4"
+    },
+    {
+      "path": "books/claims.lisp",
+      "source_blob": "622a498144b2aa859de60c909d9a0dae0f823ee8",
+      "root5c_status": "same",
+      "root5c_blob": "622a498144b2aa859de60c909d9a0dae0f823ee8"
+    },
+    {
+      "path": "books/cns-edges.lisp",
+      "source_blob": "76bbd03400fc740aa61b7ce0d834e0859007fc95",
+      "root5c_status": "same",
+      "root5c_blob": "76bbd03400fc740aa61b7ce0d834e0859007fc95"
+    },
+    {
+      "path": "books/cns-kind.lisp",
+      "source_blob": "ffca6bc7b638a5554b92acf9d0d1e7cc2f247416",
+      "root5c_status": "same",
+      "root5c_blob": "ffca6bc7b638a5554b92acf9d0d1e7cc2f247416"
+    },
+    {
+      "path": "books/cns.lisp",
+      "source_blob": "820ed6b9d29e7ed8cc9784e04ed08e44e8b97e1f",
+      "root5c_status": "changed",
+      "root5c_blob": "0cab41f4d968fea3f897058480fa112b4e6f624e"
+    },
+    {
+      "path": "books/codec-profile.lisp",
+      "source_blob": "2825cbff0878b325259b7d9ba6970414b40f8ae9",
+      "root5c_status": "same",
+      "root5c_blob": "2825cbff0878b325259b7d9ba6970414b40f8ae9"
+    },
+    {
+      "path": "books/codec-stack.lisp",
+      "source_blob": "38bb894a1d49a6a3aa56b50c9cec3a112b2a8644",
+      "root5c_status": "same",
+      "root5c_blob": "38bb894a1d49a6a3aa56b50c9cec3a112b2a8644"
+    },
+    {
+      "path": "books/codec-transport.lisp",
+      "source_blob": "bb724a29c6bc304a89ba57c75af306ff012049a0",
+      "root5c_status": "same",
+      "root5c_blob": "bb724a29c6bc304a89ba57c75af306ff012049a0"
+    },
+    {
+      "path": "books/columns-guard-hints.lisp",
+      "source_blob": "1992c273b92aec4448521b9ecf0b87b04e693596",
+      "root5c_status": "same",
+      "root5c_blob": "1992c273b92aec4448521b9ecf0b87b04e693596"
+    },
+    {
+      "path": "books/columns.lisp",
+      "source_blob": "65dba7fcfe3c8fad137b51af84fedf539a91ccd5",
+      "root5c_status": "same",
+      "root5c_blob": "65dba7fcfe3c8fad137b51af84fedf539a91ccd5"
+    },
+    {
+      "path": "books/commit-alloc.lisp",
+      "source_blob": "62f366e34fdc734f41a2e53a37a352a77dd758d5",
+      "root5c_status": "same",
+      "root5c_blob": "62f366e34fdc734f41a2e53a37a352a77dd758d5"
+    },
+    {
+      "path": "books/commit-arms.lisp",
+      "source_blob": "c0edce85a45dce2f02b29d8d91eaadfe1996000b",
+      "root5c_status": "changed",
+      "root5c_blob": "d9523eeb9b57eacedef9640e642db5c5b021fbd6"
+    },
+    {
+      "path": "books/commit-directory.lisp",
+      "source_blob": "4b24594b246befa23d45b4b2bc10d9d99e626628",
+      "root5c_status": "new",
+      "root5c_blob": null
+    },
+    {
+      "path": "books/commit-format.lisp",
+      "source_blob": "775c950d1525cc2a99862430b05ec0f0093f4047",
+      "root5c_status": "same",
+      "root5c_blob": "775c950d1525cc2a99862430b05ec0f0093f4047"
+    },
+    {
+      "path": "books/commit-geometry.lisp",
+      "source_blob": "ed69ee0c56f1d7d7212153ff7c8321095ee37605",
+      "root5c_status": "same",
+      "root5c_blob": "ed69ee0c56f1d7d7212153ff7c8321095ee37605"
+    },
+    {
+      "path": "books/commit-members.lisp",
+      "source_blob": "a30c8b5fb2c4a86c612b41c6b2b7670669ee28e5",
+      "root5c_status": "same",
+      "root5c_blob": "a30c8b5fb2c4a86c612b41c6b2b7670669ee28e5"
+    },
+    {
+      "path": "books/commit-root-state.lisp",
+      "source_blob": "9db84e6416eff2bcb761f046dbe9282176659e26",
+      "root5c_status": "new",
+      "root5c_blob": null
+    },
+    {
+      "path": "books/commit.lisp",
+      "source_blob": "06cd88439a0e724d54b9df49cfe793182f753eb0",
+      "root5c_status": "changed",
+      "root5c_blob": "31f9458e75a7f572cc55de2d5eb5ac3cf6551ceb"
+    },
+    {
+      "path": "books/compress-kind.lisp",
+      "source_blob": "d2d38af8b81c246e315cc487c9d8906a65803616",
+      "root5c_status": "same",
+      "root5c_blob": "d2d38af8b81c246e315cc487c9d8906a65803616"
+    },
+    {
+      "path": "books/compress-policy.lisp",
+      "source_blob": "987c8300a97812fdd9a29a2b893d2aeeae30632b",
+      "root5c_status": "same",
+      "root5c_blob": "987c8300a97812fdd9a29a2b893d2aeeae30632b"
+    },
+    {
+      "path": "books/compress-transport-state.lisp",
+      "source_blob": "24cacacd6e7100015fa1e7695fc0605a2e273bf8",
+      "root5c_status": "same",
+      "root5c_blob": "24cacacd6e7100015fa1e7695fc0605a2e273bf8"
+    },
+    {
+      "path": "books/compress.lisp",
+      "source_blob": "436a580ac06659eb1bb42febb83c02dbc166c2ce",
+      "root5c_status": "same",
+      "root5c_blob": "436a580ac06659eb1bb42febb83c02dbc166c2ce"
+    },
+    {
+      "path": "books/conn-answer.lisp",
+      "source_blob": "6409059c9f83b2980954e444ef23694dca7974ac",
+      "root5c_status": "changed",
+      "root5c_blob": "b746f8394b92b8a82bdf4bdedf6fdd65afc8390b"
+    },
+    {
+      "path": "books/conn-kind.lisp",
+      "source_blob": "6ee644bd94b019b877b27accb176da49a24be6cf",
+      "root5c_status": "same",
+      "root5c_blob": "6ee644bd94b019b877b27accb176da49a24be6cf"
+    },
+    {
+      "path": "books/conn.lisp",
+      "source_blob": "d5a51c3f73b1f5894d4871de0ae365926c7cb1d5",
+      "root5c_status": "same",
+      "root5c_blob": "d5a51c3f73b1f5894d4871de0ae365926c7cb1d5"
+    },
+    {
+      "path": "books/consumer-codec.lisp",
+      "source_blob": "2de6aaa8762ef8ce9d83f2babad9c1726fe9f8cb",
+      "root5c_status": "changed",
+      "root5c_blob": "4a30e7e3af103e71a5e433434e863656a2b5fe5f"
+    },
+    {
+      "path": "books/consumer-port.lisp",
+      "source_blob": "cd2bfcdc4d251ee5817a63c56dfb3e06d168476e",
+      "root5c_status": "same",
+      "root5c_blob": "cd2bfcdc4d251ee5817a63c56dfb3e06d168476e"
+    },
+    {
+      "path": "books/core-children-a.lisp",
+      "source_blob": "3acee18bc0b6637878ebb142e903bafb9ed0798f",
+      "root5c_status": "same",
+      "root5c_blob": "3acee18bc0b6637878ebb142e903bafb9ed0798f"
+    },
+    {
+      "path": "books/core-children.lisp",
+      "source_blob": "59a0da3cc3f7b012be7deb481050b43805d278f1",
+      "root5c_status": "same",
+      "root5c_blob": "59a0da3cc3f7b012be7deb481050b43805d278f1"
+    },
+    {
+      "path": "books/core-harvest.lisp",
+      "source_blob": "d4c49221674b85437430418777ba5fb6c3361ed4",
+      "root5c_status": "same",
+      "root5c_blob": "d4c49221674b85437430418777ba5fb6c3361ed4"
+    },
+    {
+      "path": "books/core-walk.lisp",
+      "source_blob": "27efd990a0a74d4f7d8b6446e51d2b9bfeefeb69",
+      "root5c_status": "same",
+      "root5c_blob": "27efd990a0a74d4f7d8b6446e51d2b9bfeefeb69"
+    },
+    {
+      "path": "books/core.lisp",
+      "source_blob": "7189fcd17ee1c228c4e370f5405fec805f976841",
+      "root5c_status": "same",
+      "root5c_blob": "7189fcd17ee1c228c4e370f5405fec805f976841"
+    },
+    {
+      "path": "books/crash-model.lisp",
+      "source_blob": "e22a5b967c98c06284cc6eadd5e2a4351b9b3de3",
+      "root5c_status": "same",
+      "root5c_blob": "e22a5b967c98c06284cc6eadd5e2a4351b9b3de3"
+    },
+    {
+      "path": "books/cursor-kind.lisp",
+      "source_blob": "d4c4cd9254d72c5890c034af38b3a64ee54a3e98",
+      "root5c_status": "same",
+      "root5c_blob": "d4c4cd9254d72c5890c034af38b3a64ee54a3e98"
+    },
+    {
+      "path": "books/cursor.lisp",
+      "source_blob": "5ae1e0312492ab84e07278e4ce80e9ca0cf2b86f",
+      "root5c_status": "same",
+      "root5c_blob": "5ae1e0312492ab84e07278e4ce80e9ca0cf2b86f"
+    },
+    {
+      "path": "books/declare.lisp",
+      "source_blob": "8f40264afc0dbbdd5f2338ade7821e89d5807d2a",
+      "root5c_status": "same",
+      "root5c_blob": "8f40264afc0dbbdd5f2338ade7821e89d5807d2a"
+    },
+    {
+      "path": "books/device-boundary.lisp",
+      "source_blob": "c71393da5f1366853a78eabca79ede8b278556cb",
+      "root5c_status": "same",
+      "root5c_blob": "c71393da5f1366853a78eabca79ede8b278556cb"
+    },
+    {
+      "path": "books/digest-store.lisp",
+      "source_blob": "c460fecedc00d98d1eb62ec855230725047dc376",
+      "root5c_status": "same",
+      "root5c_blob": "c460fecedc00d98d1eb62ec855230725047dc376"
+    },
+    {
+      "path": "books/digests.lisp",
+      "source_blob": "ba4919c647970a9e9b0d6318b4aedd4e564e1fc4",
+      "root5c_status": "same",
+      "root5c_blob": "ba4919c647970a9e9b0d6318b4aedd4e564e1fc4"
+    },
+    {
+      "path": "books/dispatch-heads.lisp",
+      "source_blob": "2b25e8b4a49122ea82db568f4d18f96b66f28d6a",
+      "root5c_status": "same",
+      "root5c_blob": "2b25e8b4a49122ea82db568f4d18f96b66f28d6a"
+    },
+    {
+      "path": "books/dispatch-held-chain.lisp",
+      "source_blob": "580de0774e4787f829e7fb79ff5d3c78d7bbe2cd",
+      "root5c_status": "same",
+      "root5c_blob": "580de0774e4787f829e7fb79ff5d3c78d7bbe2cd"
+    },
+    {
+      "path": "books/dispatch-held.lisp",
+      "source_blob": "5aeb43110e0e0406c1fd7b805068b6633d6d2dab",
+      "root5c_status": "same",
+      "root5c_blob": "5aeb43110e0e0406c1fd7b805068b6633d6d2dab"
+    },
+    {
+      "path": "books/dispatch-owners.lisp",
+      "source_blob": "506aee3c3b18ed41fcbed5007a89b5e87dd1c315",
+      "root5c_status": "same",
+      "root5c_blob": "506aee3c3b18ed41fcbed5007a89b5e87dd1c315"
+    },
+    {
+      "path": "books/event-build-kind.lisp",
+      "source_blob": "9ffdc29e62998c723b60f46b05d25ba49a75ca93",
+      "root5c_status": "new",
+      "root5c_blob": null
+    },
+    {
+      "path": "books/event-build-state.lisp",
+      "source_blob": "d24cc99adebe87c8da44748e5e929a3423d7c63e",
+      "root5c_status": "new",
+      "root5c_blob": null
+    },
+    {
+      "path": "books/event-build.lisp",
+      "source_blob": "ceded72a0fa4bffe54c5f39f3cc1fa6ab6aa6959",
+      "root5c_status": "new",
+      "root5c_blob": null
+    },
+    {
+      "path": "books/event-catalog-cold.lisp",
+      "source_blob": "17934f08878cd1e87402e94b6f6eaf6a004be942",
+      "root5c_status": "new",
+      "root5c_blob": null
+    },
+    {
+      "path": "books/event-catalog-live.lisp",
+      "source_blob": "2447d8bab1dcfdc7087248669b59f4f5f5a31dae",
+      "root5c_status": "new",
+      "root5c_blob": null
+    },
+    {
+      "path": "books/event-catalog.lisp",
+      "source_blob": "e4bc7b3dd57d171f308e22258bb648bc2e173aac",
+      "root5c_status": "new",
+      "root5c_blob": null
+    },
+    {
+      "path": "books/event-frontier-source.lisp",
+      "source_blob": "aa8a7d60e6ff82d28faaee6b8876483b9a7991dd",
+      "root5c_status": "new",
+      "root5c_blob": null
+    },
+    {
+      "path": "books/event-frontier.lisp",
+      "source_blob": "b620e8e4ff1de652eb00e90e0be452670aa714a0",
+      "root5c_status": "new",
+      "root5c_blob": null
+    },
+    {
+      "path": "books/event-producer.lisp",
+      "source_blob": "165e6885410fb10d277dadd66598e28afb84b1a8",
+      "root5c_status": "new",
+      "root5c_blob": null
+    },
+    {
+      "path": "books/event-proof-format.lisp",
+      "source_blob": "99f434739542489dc0f40eba4fa454c2120020af",
+      "root5c_status": "new",
+      "root5c_blob": null
+    },
+    {
+      "path": "books/event-proof-source.lisp",
+      "source_blob": "49082f2583d149b4215f4301f550c3bffb6598d0",
+      "root5c_status": "new",
+      "root5c_blob": null
+    },
+    {
+      "path": "books/event-read-source.lisp",
+      "source_blob": "376d6841ebda06ca98b26979ac0ce58b519c8fc7",
+      "root5c_status": "new",
+      "root5c_blob": null
+    },
+    {
+      "path": "books/event-read-state.lisp",
+      "source_blob": "732a5c2bba3a5960ed9677e69e851db52349c886",
+      "root5c_status": "changed",
+      "root5c_blob": "156c9d2f967ba888cf366909e7d3b99374fd24bc"
+    },
+    {
+      "path": "books/event-read-verify.lisp",
+      "source_blob": "c6643b78b414101c304a45dcde371b19a310a9d4",
+      "root5c_status": "new",
+      "root5c_blob": null
+    },
+    {
+      "path": "books/event-rearm.lisp",
+      "source_blob": "c3f8e7f32efb7b12b13cbdfdfa8221c1648f444b",
+      "root5c_status": "new",
+      "root5c_blob": null
+    },
+    {
+      "path": "books/exec-state.lisp",
+      "source_blob": "5f8c4546d9c1ef5ce7fe61890bbe6b9041c5e9b0",
+      "root5c_status": "same",
+      "root5c_blob": "5f8c4546d9c1ef5ce7fe61890bbe6b9041c5e9b0"
+    },
+    {
+      "path": "books/executor-access-events.lisp",
+      "source_blob": "7e82690f9a7295c31917ab9ffaf52fc4ebaaac6a",
+      "root5c_status": "same",
+      "root5c_blob": "7e82690f9a7295c31917ab9ffaf52fc4ebaaac6a"
+    },
+    {
+      "path": "books/executor-access.lisp",
+      "source_blob": "c83d10d171b1093e6dedb0e3cb742fd549e90885",
+      "root5c_status": "same",
+      "root5c_blob": "c83d10d171b1093e6dedb0e3cb742fd549e90885"
+    },
+    {
+      "path": "books/executor-loop-events.lisp",
+      "source_blob": "8c364b6992801b0fcf22c4073fbea8673c0e195d",
+      "root5c_status": "same",
+      "root5c_blob": "8c364b6992801b0fcf22c4073fbea8673c0e195d"
+    },
+    {
+      "path": "books/executor-reservation-events.lisp",
+      "source_blob": "59d072b7000c53cd465cdcd1f57e71dce495daaa",
+      "root5c_status": "same",
+      "root5c_blob": "59d072b7000c53cd465cdcd1f57e71dce495daaa"
+    },
+    {
+      "path": "books/executor-reservation.lisp",
+      "source_blob": "1775bc6aa8e51d6d110239a3abfe42bbc784eb39",
+      "root5c_status": "same",
+      "root5c_blob": "1775bc6aa8e51d6d110239a3abfe42bbc784eb39"
+    },
+    {
+      "path": "books/executor-services-events.lisp",
+      "source_blob": "f3485e8cc767f8674853f83485d060ded4648221",
+      "root5c_status": "same",
+      "root5c_blob": "f3485e8cc767f8674853f83485d060ded4648221"
+    },
+    {
+      "path": "books/executor-services.lisp",
+      "source_blob": "3985ab020797b8f7c7809ed2261a7c9887bdda6f",
+      "root5c_status": "same",
+      "root5c_blob": "3985ab020797b8f7c7809ed2261a7c9887bdda6f"
+    },
+    {
+      "path": "books/executor-wake-events.lisp",
+      "source_blob": "2f72f0161d230f3a4f617aa128623730c31c6720",
+      "root5c_status": "same",
+      "root5c_blob": "2f72f0161d230f3a4f617aa128623730c31c6720"
+    },
+    {
+      "path": "books/executor-wake.lisp",
+      "source_blob": "9b3ac340fa86e819072109dd62717d0cbb5a47a2",
+      "root5c_status": "same",
+      "root5c_blob": "9b3ac340fa86e819072109dd62717d0cbb5a47a2"
+    },
+    {
+      "path": "books/executor.lisp",
+      "source_blob": "5c35687db3dfc7b1eb97b2c2939a3ba8d1d676a5",
+      "root5c_status": "changed",
+      "root5c_blob": "06eaa6f9c556063bf47d2549d62354b94735bdd8"
+    },
+    {
+      "path": "books/fnct-pool.lisp",
+      "source_blob": "bf07adb38960f6940368a4ced1b8b2fa08e16944",
+      "root5c_status": "same",
+      "root5c_blob": "bf07adb38960f6940368a4ced1b8b2fa08e16944"
+    },
+    {
+      "path": "books/fnv.lisp",
+      "source_blob": "44a899e65271e077b1cca447cc6a43d10390bbd4",
+      "root5c_status": "same",
+      "root5c_blob": "44a899e65271e077b1cca447cc6a43d10390bbd4"
+    },
+    {
+      "path": "books/folds.lisp",
+      "source_blob": "9c85dc589d64c82e06fc05b823671ae9f6027c32",
+      "root5c_status": "same",
+      "root5c_blob": "9c85dc589d64c82e06fc05b823671ae9f6027c32"
+    },
+    {
+      "path": "books/format-base.lisp",
+      "source_blob": "fd3e364537b1ed34078aa9430972c4e1de95edac",
+      "root5c_status": "same",
+      "root5c_blob": "fd3e364537b1ed34078aa9430972c4e1de95edac"
+    },
+    {
+      "path": "books/format-check.lisp",
+      "source_blob": "bb2534b33d5e0d8d8032accf52b6fe6178403f64",
+      "root5c_status": "same",
+      "root5c_blob": "bb2534b33d5e0d8d8032accf52b6fe6178403f64"
+    },
+    {
+      "path": "books/format-context.lisp",
+      "source_blob": "e57556ab3b3c494cfe4edba48392608599769351",
+      "root5c_status": "same",
+      "root5c_blob": "e57556ab3b3c494cfe4edba48392608599769351"
+    },
+    {
+      "path": "books/format-events.lisp",
+      "source_blob": "4a066dca57cddeccadbdd5f8f305b340ad4ad0ad",
+      "root5c_status": "changed",
+      "root5c_blob": "43b1764445ba0bc477005a765810c01e028514e4"
+    },
+    {
+      "path": "books/format-physical.lisp",
+      "source_blob": "59a7808b2cd4bb1434e53c3ebf13bd08cda9d371",
+      "root5c_status": "same",
+      "root5c_blob": "59a7808b2cd4bb1434e53c3ebf13bd08cda9d371"
+    },
+    {
+      "path": "books/format-storage.lisp",
+      "source_blob": "653b36fe2b82cb8c40a12b4b1d3b62bf9113d741",
+      "root5c_status": "same",
+      "root5c_blob": "653b36fe2b82cb8c40a12b4b1d3b62bf9113d741"
+    },
+    {
+      "path": "books/format.lisp",
+      "source_blob": "e93b91a9519387ab547f5f2b5047a9d8a9542bab",
+      "root5c_status": "same",
+      "root5c_blob": "e93b91a9519387ab547f5f2b5047a9d8a9542bab"
+    },
+    {
+      "path": "books/grammar.lisp",
+      "source_blob": "82f173b3b0c690771c5eaeef17c80d655312a2d9",
+      "root5c_status": "changed",
+      "root5c_blob": "a4a05bd8b942be9a3de3566a41ec0a2c53dd9014"
+    },
+    {
+      "path": "books/host-boundary.lisp",
+      "source_blob": "e6f097586018fd9823f3379b6f258fc914c3dd86",
+      "root5c_status": "same",
+      "root5c_blob": "e6f097586018fd9823f3379b6f258fc914c3dd86"
+    },
+    {
+      "path": "books/host-codec.lisp",
+      "source_blob": "07a8fab5d3afeb3754bb5a416a40e483b7d1265e",
+      "root5c_status": "same",
+      "root5c_blob": "07a8fab5d3afeb3754bb5a416a40e483b7d1265e"
+    },
+    {
+      "path": "books/host-loan.lisp",
+      "source_blob": "22c1ce3e51b1919faa110e444939dae3ab350d31",
+      "root5c_status": "same",
+      "root5c_blob": "22c1ce3e51b1919faa110e444939dae3ab350d31"
+    },
+    {
+      "path": "books/host-ops.lisp",
+      "source_blob": "51714224eda51948062b6ef125428cff10140b9e",
+      "root5c_status": "same",
+      "root5c_blob": "51714224eda51948062b6ef125428cff10140b9e"
+    },
+    {
+      "path": "books/host-result.lisp",
+      "source_blob": "fd6c904c7301e0974873f477fe70e3417b1d146f",
+      "root5c_status": "same",
+      "root5c_blob": "fd6c904c7301e0974873f477fe70e3417b1d146f"
+    },
+    {
+      "path": "books/identity-workspace-geometry.lisp",
+      "source_blob": "3aab6d71678aa4a802dda273d30d854dd3865103",
+      "root5c_status": "new",
+      "root5c_blob": null
+    },
+    {
+      "path": "books/identity.lisp",
+      "source_blob": "8a9510055add833886f962b9ba1be2c38eabe2c7",
+      "root5c_status": "same",
+      "root5c_blob": "8a9510055add833886f962b9ba1be2c38eabe2c7"
+    },
+    {
+      "path": "books/journal-members-state.lisp",
+      "source_blob": "c2aabd51e5331d86d1ab18b765eb443a60f8ac01",
+      "root5c_status": "same",
+      "root5c_blob": "c2aabd51e5331d86d1ab18b765eb443a60f8ac01"
+    },
+    {
+      "path": "books/journal-members.lisp",
+      "source_blob": "048ee3d06e80fd2e37507b1494872695a2738301",
+      "root5c_status": "new",
+      "root5c_blob": null
+    },
+    {
+      "path": "books/journal-record-body.lisp",
+      "source_blob": "c31e60c350934b8ea98835113283b859aaa19296",
+      "root5c_status": "new",
+      "root5c_blob": null
+    },
+    {
+      "path": "books/layout.lisp",
+      "source_blob": "475ca17cc057a25f067791aece515c90ab1ecaaf",
+      "root5c_status": "changed",
+      "root5c_blob": "14a7619c25063ed0fe5a43031156e7e2645cb8cc"
+    },
+    {
+      "path": "books/log-model.lisp",
+      "source_blob": "305381161dd49fbe0938bb3b8ca19c3113e73c5d",
+      "root5c_status": "same",
+      "root5c_blob": "305381161dd49fbe0938bb3b8ca19c3113e73c5d"
+    },
+    {
+      "path": "books/machine-arms.lisp",
+      "source_blob": "ef7eb26d6b0f4c2bc625168217544a6705f05ac1",
+      "root5c_status": "changed",
+      "root5c_blob": "050e326bff3990e81e2018a717fe755d994a63d8"
+    },
+    {
+      "path": "books/machine-dispatch.lisp",
+      "source_blob": "ac64648e5e1c97c9529d5b73b02b61256ceb233a",
+      "root5c_status": "same",
+      "root5c_blob": "ac64648e5e1c97c9529d5b73b02b61256ceb233a"
+    },
+    {
+      "path": "books/machines-a-access.lisp",
+      "source_blob": "588a05287a4c150cd0a63f9e95e76a64a217365d",
+      "root5c_status": "same",
+      "root5c_blob": "588a05287a4c150cd0a63f9e95e76a64a217365d"
+    },
+    {
+      "path": "books/machines-a-costs.lisp",
+      "source_blob": "69ca197b8ffaebfdc4a90feb98e124cee8527a01",
+      "root5c_status": "same",
+      "root5c_blob": "69ca197b8ffaebfdc4a90feb98e124cee8527a01"
+    },
+    {
+      "path": "books/machines-a-run.lisp",
+      "source_blob": "c47c281f44dbed3a70f40c139129b2faafa71b18",
+      "root5c_status": "same",
+      "root5c_blob": "c47c281f44dbed3a70f40c139129b2faafa71b18"
+    },
+    {
+      "path": "books/machines-a-scribe.lisp",
+      "source_blob": "9652260c5b61bbdcd45a8fe8f55baf435c6846f7",
+      "root5c_status": "same",
+      "root5c_blob": "9652260c5b61bbdcd45a8fe8f55baf435c6846f7"
+    },
+    {
+      "path": "books/machines-a.lisp",
+      "source_blob": "8dbe1f0d352f6c6f0eeb561da3d117c71ffa9542",
+      "root5c_status": "same",
+      "root5c_blob": "8dbe1f0d352f6c6f0eeb561da3d117c71ffa9542"
+    },
+    {
+      "path": "books/machines-all.lisp",
+      "source_blob": "7a5a40572a64cfd2e055a8d2b3a332fca0ebe9de",
+      "root5c_status": "same",
+      "root5c_blob": "7a5a40572a64cfd2e055a8d2b3a332fca0ebe9de"
+    },
+    {
+      "path": "books/machines-b.lisp",
+      "source_blob": "45e0906dc15a3ccc35e857077548c11f7c61014f",
+      "root5c_status": "changed",
+      "root5c_blob": "dc75568cf456a9c6abf04c1bef2d8a34cf749ad6"
+    },
+    {
+      "path": "books/machines-c-bind.lisp",
+      "source_blob": "2d2e17990ac088c229385caf298b1fe3e4a4d4da",
+      "root5c_status": "changed",
+      "root5c_blob": "d91ad21ce9cfbfbf4313707333e7fd4d4159346f"
+    },
+    {
+      "path": "books/machines-c-groups.lisp",
+      "source_blob": "a0a4c599794e658d247eea962b654d002c717d3d",
+      "root5c_status": "changed",
+      "root5c_blob": "d168e03043b2142e4e87690d882a8b6643722c85"
+    },
+    {
+      "path": "books/machines-c-read.lisp",
+      "source_blob": "66320bed6e049552721aadea43c615d19b2ee143",
+      "root5c_status": "same",
+      "root5c_blob": "66320bed6e049552721aadea43c615d19b2ee143"
+    },
+    {
+      "path": "books/machines-c-sealer-events.lisp",
+      "source_blob": "eefb9614e12b293eff7eed10ea938c0441d168a7",
+      "root5c_status": "changed",
+      "root5c_blob": "2e4bf6d7142efff10038736a938a7214bfa53e00"
+    },
+    {
+      "path": "books/machines-c-sealer-kind.lisp",
+      "source_blob": "87322ab21c0797daa91d05dcf26ee6820e1e83de",
+      "root5c_status": "changed",
+      "root5c_blob": "4534f9bd1034c108035824ac71fddf6cff402ca5"
+    },
+    {
+      "path": "books/machines-c-sealer.lisp",
+      "source_blob": "bbc7a0245aeab4586cbf809b1aa3f4db406ad1e8",
+      "root5c_status": "changed",
+      "root5c_blob": "0b0eec17c6e4fd48410166e7f21333de9fa8074c"
+    },
+    {
+      "path": "books/machines-c-stage.lisp",
+      "source_blob": "89c130d020883f02cf8ff868e7bafecf71b8a1aa",
+      "root5c_status": "changed",
+      "root5c_blob": "ea62b3e8086892cb2dd5ae02bba573963a230c0f"
+    },
+    {
+      "path": "books/machines-c-successor.lisp",
+      "source_blob": "cd9b78fe89c9086a8ed080b9f3b9866f328ccf0c",
+      "root5c_status": "changed",
+      "root5c_blob": "993244877940f7065b15eb79ce65b1c28467ea7f"
+    },
+    {
+      "path": "books/machines-c.lisp",
+      "source_blob": "b310015277d8912d6549ae585c67b872675a016f",
+      "root5c_status": "changed",
+      "root5c_blob": "040062e7b79a2c0cf5df4121694899eea77a1e2c"
+    },
+    {
+      "path": "books/machines-directory.lisp",
+      "source_blob": "ae9cdff3b0c3de1c8b1648395d15bcb14f9fc372",
+      "root5c_status": "same",
+      "root5c_blob": "ae9cdff3b0c3de1c8b1648395d15bcb14f9fc372"
+    },
+    {
+      "path": "books/machines.lisp",
+      "source_blob": "135c46d16020ca5e91642dc62d279a15c8bf92d1",
+      "root5c_status": "same",
+      "root5c_blob": "135c46d16020ca5e91642dc62d279a15c8bf92d1"
+    },
+    {
+      "path": "books/merkle.lisp",
+      "source_blob": "c410b3cd4b5f2998d14969fa15ba76eb87da2d57",
+      "root5c_status": "same",
+      "root5c_blob": "c410b3cd4b5f2998d14969fa15ba76eb87da2d57"
+    },
+    {
+      "path": "books/name-directory-geometry.lisp",
+      "source_blob": "09d8e082e93d69c43ee20cf1c92cce3e9a34fdfc",
+      "root5c_status": "new",
+      "root5c_blob": null
+    },
+    {
+      "path": "books/nntp-grammar.lisp",
+      "source_blob": "7ceda825c6b5638ce0dbe904f95ef4adc46f9cf1",
+      "root5c_status": "same",
+      "root5c_blob": "7ceda825c6b5638ce0dbe904f95ef4adc46f9cf1"
+    },
+    {
+      "path": "books/node-profile.lisp",
+      "source_blob": "8529ee96c8006ea5722e7bb0bf0512db67c9c8e3",
+      "root5c_status": "same",
+      "root5c_blob": "8529ee96c8006ea5722e7bb0bf0512db67c9c8e3"
+    },
+    {
+      "path": "books/operations.lisp",
+      "source_blob": "3486bbd38275f21aff740a984235f7eb68088efe",
+      "root5c_status": "same",
+      "root5c_blob": "3486bbd38275f21aff740a984235f7eb68088efe"
+    },
+    {
+      "path": "books/ops-heads.lisp",
+      "source_blob": "657b2dd790156e81eab7586139adad786866ff15",
+      "root5c_status": "same",
+      "root5c_blob": "657b2dd790156e81eab7586139adad786866ff15"
+    },
+    {
+      "path": "books/ops-issued-count.lisp",
+      "source_blob": "a20bb05fcd68190cebd35a257c8a70f9962c27a3",
+      "root5c_status": "same",
+      "root5c_blob": "a20bb05fcd68190cebd35a257c8a70f9962c27a3"
+    },
+    {
+      "path": "books/ops-issued-effects.lisp",
+      "source_blob": "2b12f264a9a575e6962d50537b65f8844a1d39c5",
+      "root5c_status": "same",
+      "root5c_blob": "2b12f264a9a575e6962d50537b65f8844a1d39c5"
+    },
+    {
+      "path": "books/ordered.lisp",
+      "source_blob": "2ddc73d3d6a6e71d71d4ce4e80258cbd81007d21",
+      "root5c_status": "changed",
+      "root5c_blob": "3c4acafb51b2d6ffe4e60a9f63da549ccbd63c11"
+    },
+    {
+      "path": "books/origin.lisp",
+      "source_blob": "d10c2c00d2cc2c2e8c548b00183eda1aa40e4c3f",
+      "root5c_status": "same",
+      "root5c_blob": "d10c2c00d2cc2c2e8c548b00183eda1aa40e4c3f"
+    },
+    {
+      "path": "books/overlay.lisp",
+      "source_blob": "82cfd09135cd91d8d7c98e74ea5dbfd0b16a2c8e",
+      "root5c_status": "changed",
+      "root5c_blob": "910754d5e31317a04e55bbef692e3c1bb28953d5"
+    },
+    {
+      "path": "books/owed-discharge.lisp",
+      "source_blob": "8d51c79ce5f41325bfd3bdcda62178a2d1a2301c",
+      "root5c_status": "same",
+      "root5c_blob": "8d51c79ce5f41325bfd3bdcda62178a2d1a2301c"
+    },
+    {
+      "path": "books/owed.lisp",
+      "source_blob": "0d987123377c81ff7350eaa5c6c3a8b08b8f87f5",
+      "root5c_status": "same",
+      "root5c_blob": "0d987123377c81ff7350eaa5c6c3a8b08b8f87f5"
+    },
+    {
+      "path": "books/payload-workspace.lisp",
+      "source_blob": "f1524ce40235c199c36a60e7c8de3fae46bc0105",
+      "root5c_status": "same",
+      "root5c_blob": "f1524ce40235c199c36a60e7c8de3fae46bc0105"
+    },
+    {
+      "path": "books/pool-block.lisp",
+      "source_blob": "f06e7600a82fc2343d76235da216bfcfe83a055c",
+      "root5c_status": "changed",
+      "root5c_blob": "adf0682b664307bae85a7f9fc84d3e9583c889db"
+    },
+    {
+      "path": "books/pool-credit-contracts.lisp",
+      "source_blob": "34719ac5b09c8315145bd791cd7e1fae2594fd5c",
+      "root5c_status": "same",
+      "root5c_blob": "34719ac5b09c8315145bd791cd7e1fae2594fd5c"
+    },
+    {
+      "path": "books/pool-credit.lisp",
+      "source_blob": "9233f5ae25f5645326b8658f0923d62a0479adac",
+      "root5c_status": "same",
+      "root5c_blob": "9233f5ae25f5645326b8658f0923d62a0479adac"
+    },
+    {
+      "path": "books/pool-digest.lisp",
+      "source_blob": "d1e67d1c69ed93f48841082bb5517fe8193e9f87",
+      "root5c_status": "same",
+      "root5c_blob": "d1e67d1c69ed93f48841082bb5517fe8193e9f87"
+    },
+    {
+      "path": "books/pool-ranges.lisp",
+      "source_blob": "c6364d77164a45f9fa9f56eebfc0648b2b70c86c",
+      "root5c_status": "same",
+      "root5c_blob": "c6364d77164a45f9fa9f56eebfc0648b2b70c86c"
+    },
+    {
+      "path": "books/pool.lisp",
+      "source_blob": "8d4bac2eb47d863cc3529c4c58c09a32b0edb431",
+      "root5c_status": "same",
+      "root5c_blob": "8d4bac2eb47d863cc3529c4c58c09a32b0edb431"
+    },
+    {
+      "path": "books/port.lisp",
+      "source_blob": "b0f25ddd38e20bd80a52e061be8580427eb9dcb1",
+      "root5c_status": "same",
+      "root5c_blob": "b0f25ddd38e20bd80a52e061be8580427eb9dcb1"
+    },
+    {
+      "path": "books/profile.lisp",
+      "source_blob": "c95ccae08cb64bdc2ad5a3a63c4f3b9f68e9c7f3",
+      "root5c_status": "same",
+      "root5c_blob": "c95ccae08cb64bdc2ad5a3a63c4f3b9f68e9c7f3"
+    },
+    {
+      "path": "books/range-served.lisp",
+      "source_blob": "39385e607d0909748c1f7fcbacb3e1f7ba0b43b3",
+      "root5c_status": "same",
+      "root5c_blob": "39385e607d0909748c1f7fcbacb3e1f7ba0b43b3"
+    },
+    {
+      "path": "books/range.lisp",
+      "source_blob": "b57fd4d977335dcd04d1ff078a9bcc55d16ec170",
+      "root5c_status": "same",
+      "root5c_blob": "b57fd4d977335dcd04d1ff078a9bcc55d16ec170"
+    },
+    {
+      "path": "books/read-pins.lisp",
+      "source_blob": "87e50a732414f4e659ba0fcc0045fc7b2901e6fb",
+      "root5c_status": "same",
+      "root5c_blob": "87e50a732414f4e659ba0fcc0045fc7b2901e6fb"
+    },
+    {
+      "path": "books/recovery-frontier.lisp",
+      "source_blob": "08df8e4045bb08033a0d4ee7e0a2dce94c8d4691",
+      "root5c_status": "new",
+      "root5c_blob": null
+    },
+    {
+      "path": "books/recovery-machine.lisp",
+      "source_blob": "33675823ca3e68e7e344a43b9e6e7d4dbfe85221",
+      "root5c_status": "changed",
+      "root5c_blob": "c9a9dba7e53530d44db96ff78dea4fde9fec0f3c"
+    },
+    {
+      "path": "books/recovery-payload.lisp",
+      "source_blob": "24bdb437f8e8d949858c9e02f0729a11c67cd562",
+      "root5c_status": "changed",
+      "root5c_blob": "062603ab19ace00071e2678ef4ff86736f0faa81"
+    },
+    {
+      "path": "books/recovery-release.lisp",
+      "source_blob": "f2865c7686f69f6616c0a13e405c52a4cbab522f",
+      "root5c_status": "new",
+      "root5c_blob": null
+    },
+    {
+      "path": "books/recovery-selected-adopt.lisp",
+      "source_blob": "194d22eceda4998583cd0e68dc72c4e32a4350f0",
+      "root5c_status": "new",
+      "root5c_blob": null
+    },
+    {
+      "path": "books/recovery.lisp",
+      "source_blob": "74b19fa7a86aad2657f70ccaf86f7ec67c4db603",
+      "root5c_status": "changed",
+      "root5c_blob": "b9bd08986be5420f55924750c1c41596e1c6166c"
+    },
+    {
+      "path": "books/reference-state.lisp",
+      "source_blob": "f75cad507d668ee2e7b84701d48e286932a3fa97",
+      "root5c_status": "same",
+      "root5c_blob": "f75cad507d668ee2e7b84701d48e286932a3fa97"
+    },
+    {
+      "path": "books/release-allocation-harvest.lisp",
+      "source_blob": "b7f668772052b5fa503defe6a14d205c55ccab9d",
+      "root5c_status": "new",
+      "root5c_blob": null
+    },
+    {
+      "path": "books/release-allocation-state.lisp",
+      "source_blob": "088bce608779094e6788fc6e61a4791b748ac37a",
+      "root5c_status": "new",
+      "root5c_blob": null
+    },
+    {
+      "path": "books/release-allocation.lisp",
+      "source_blob": "a67371a484b59f3e491ca7078bb0a008e7c1607b",
+      "root5c_status": "new",
+      "root5c_blob": null
+    },
+    {
+      "path": "books/release-descriptor-check.lisp",
+      "source_blob": "a669a80db195e0d27fbc890db1e29dc7e71c9075",
+      "root5c_status": "new",
+      "root5c_blob": null
+    },
+    {
+      "path": "books/release-evidence-state.lisp",
+      "source_blob": "02dd226ebdf70bf68b38699b85508d6751869af7",
+      "root5c_status": "new",
+      "root5c_blob": null
+    },
+    {
+      "path": "books/release-evidence.lisp",
+      "source_blob": "79fbaab5d579b531ba634d079a60015f9257596b",
+      "root5c_status": "new",
+      "root5c_blob": null
+    },
+    {
+      "path": "books/release-member-binding.lisp",
+      "source_blob": "ccd0664ec74b7aa2609b2c61a889c91835e94bd2",
+      "root5c_status": "new",
+      "root5c_blob": null
+    },
+    {
+      "path": "books/resources.lisp",
+      "source_blob": "9bda08ce9307a33ba10a48568f183ced8c7d749a",
+      "root5c_status": "same",
+      "root5c_blob": "9bda08ce9307a33ba10a48568f183ced8c7d749a"
+    },
+    {
+      "path": "books/retirement-coordinator.lisp",
+      "source_blob": "0817f147f73cfc1414d743779a19c0a4de51cb4e",
+      "root5c_status": "changed",
+      "root5c_blob": "4408ef76d846244a89b155b7e0680c895704b9fb"
+    },
+    {
+      "path": "books/retirement.lisp",
+      "source_blob": "8d8041a8dbc3c9e945bbfad132bf53ed2e2c5b85",
+      "root5c_status": "same",
+      "root5c_blob": "8d8041a8dbc3c9e945bbfad132bf53ed2e2c5b85"
+    },
+    {
+      "path": "books/ribbon.lisp",
+      "source_blob": "749f0c0974910994d5e8f7fc48547199200c2761",
+      "root5c_status": "same",
+      "root5c_blob": "749f0c0974910994d5e8f7fc48547199200c2761"
+    },
+    {
+      "path": "books/run-active-geometry.lisp",
+      "source_blob": "b5346290b6f2f920c83425f46c923838938d128b",
+      "root5c_status": "new",
+      "root5c_blob": null
+    },
+    {
+      "path": "books/run-budget.lisp",
+      "source_blob": "f158e73640878f0d5b89be736aa0c575afe660ea",
+      "root5c_status": "same",
+      "root5c_blob": "f158e73640878f0d5b89be736aa0c575afe660ea"
+    },
+    {
+      "path": "books/run-entry-rehome.lisp",
+      "source_blob": "36c5884400b3e2764f71b7de8bc9dde7498c8847",
+      "root5c_status": "new",
+      "root5c_blob": null
+    },
+    {
+      "path": "books/run-geometry.lisp",
+      "source_blob": "3f8735ff33f73efd96ba6aa3b36201aac30e2dac",
+      "root5c_status": "same",
+      "root5c_blob": "3f8735ff33f73efd96ba6aa3b36201aac30e2dac"
+    },
+    {
+      "path": "books/run-physical-geometry.lisp",
+      "source_blob": "6e802c6fe6b4c39919bb30665844d5961531bbfd",
+      "root5c_status": "new",
+      "root5c_blob": null
+    },
+    {
+      "path": "books/run-physical-harvest.lisp",
+      "source_blob": "92f72cd4fc12075527ef054d89253b0d3b83825c",
+      "root5c_status": "new",
+      "root5c_blob": null
+    },
+    {
+      "path": "books/run-physical-readiness.lisp",
+      "source_blob": "55e9bb1a0aa6c710ac87818c2853417c31fd0367",
+      "root5c_status": "new",
+      "root5c_blob": null
+    },
+    {
+      "path": "books/run-physical-resources.lisp",
+      "source_blob": "caa01e0549140fb6d45c2f81ec29240f47eda973",
+      "root5c_status": "new",
+      "root5c_blob": null
+    },
+    {
+      "path": "books/run-physical-state.lisp",
+      "source_blob": "455c8124e263b2165914b6bf9f21d9273a02859d",
+      "root5c_status": "new",
+      "root5c_blob": null
+    },
+    {
+      "path": "books/runs-assemble.lisp",
+      "source_blob": "756834a1d8c7d665afcb08087a85b9ea6a447ebb",
+      "root5c_status": "changed",
+      "root5c_blob": "1f416271c38800e41153d56869c8fc7d77d60645"
+    },
+    {
+      "path": "books/runs-manifest.lisp",
+      "source_blob": "6b3af372c98c0824d230421edd95e6ca9c1ed931",
+      "root5c_status": "same",
+      "root5c_blob": "6b3af372c98c0824d230421edd95e6ca9c1ed931"
+    },
+    {
+      "path": "books/runs-page.lisp",
+      "source_blob": "9f10a16da5f243fc22f2d0349425b26185270d2d",
+      "root5c_status": "same",
+      "root5c_blob": "9f10a16da5f243fc22f2d0349425b26185270d2d"
+    },
+    {
+      "path": "books/runs-schema.lisp",
+      "source_blob": "cdb1c98611b099e11f06ae7e7b8c892d78923822",
+      "root5c_status": "same",
+      "root5c_blob": "cdb1c98611b099e11f06ae7e7b8c892d78923822"
+    },
+    {
+      "path": "books/runs-served.lisp",
+      "source_blob": "5ee80e9f9df1dd730ab1cfb4da16b5a4864509e7",
+      "root5c_status": "same",
+      "root5c_blob": "5ee80e9f9df1dd730ab1cfb4da16b5a4864509e7"
+    },
+    {
+      "path": "books/runs.lisp",
+      "source_blob": "b5af4f267ee482f3f5a0b707084ad167bd099240",
+      "root5c_status": "changed",
+      "root5c_blob": "fe880d80503a7f36dfe6f85b80f186935ac7b4a1"
+    },
+    {
+      "path": "books/sched-timers.lisp",
+      "source_blob": "e55c552ae3412ef7e97f886dccf501f7afd1ab25",
+      "root5c_status": "same",
+      "root5c_blob": "e55c552ae3412ef7e97f886dccf501f7afd1ab25"
+    },
+    {
+      "path": "books/sched.lisp",
+      "source_blob": "3d998cf52cb35c75fcd1cb085933a9d93391f6c5",
+      "root5c_status": "same",
+      "root5c_blob": "3d998cf52cb35c75fcd1cb085933a9d93391f6c5"
+    },
+    {
+      "path": "books/sealer.lisp",
+      "source_blob": "a2eaa894e4aa3c097dfa9703388ec680c6797fa9",
+      "root5c_status": "changed",
+      "root5c_blob": "d75ad911b7162b2ed6a8fc095fc929d5a107ea6e"
+    },
+    {
+      "path": "books/source-manifest-codec.lisp",
+      "source_blob": "bf28c45828fe883d1ab16b2b1e05de98d3d0faa6",
+      "root5c_status": "new",
+      "root5c_blob": null
+    },
+    {
+      "path": "books/startup-genesis-state.lisp",
+      "source_blob": "e2bcd37d922e8509202ffb272296bbabafa4044d",
+      "root5c_status": "new",
+      "root5c_blob": null
+    },
+    {
+      "path": "books/startup-genesis.lisp",
+      "source_blob": "7cde0c11e222c171c4be2a8f012f68439cad58c5",
+      "root5c_status": "new",
+      "root5c_blob": null
+    },
+    {
+      "path": "books/successor-schema-geometry.lisp",
+      "source_blob": "48e2f508c2ab84b85fb08b8e4a224510647fc619",
+      "root5c_status": "new",
+      "root5c_blob": null
+    },
+    {
+      "path": "books/successor-workspace-geometry.lisp",
+      "source_blob": "b22a82a861f98ec68d4675ce95eb1fa88cc5ffc5",
+      "root5c_status": "new",
+      "root5c_blob": null
+    },
+    {
+      "path": "books/terminal-values.lisp",
+      "source_blob": "bacad427cab0a443342df43fbc30bbd15b440829",
+      "root5c_status": "same",
+      "root5c_blob": "bacad427cab0a443342df43fbc30bbd15b440829"
+    },
+    {
+      "path": "books/tls-kind.lisp",
+      "source_blob": "125fe357244045e36147c9b2722868a023701a46",
+      "root5c_status": "same",
+      "root5c_blob": "125fe357244045e36147c9b2722868a023701a46"
+    },
+    {
+      "path": "books/tls-record-policy.lisp",
+      "source_blob": "c384e88e49d2ea61607772453bf3f86f2e635834",
+      "root5c_status": "same",
+      "root5c_blob": "c384e88e49d2ea61607772453bf3f86f2e635834"
+    },
+    {
+      "path": "books/tls-record-state.lisp",
+      "source_blob": "de69315e91c93f74566b9e9466e648aa9c17d565",
+      "root5c_status": "same",
+      "root5c_blob": "de69315e91c93f74566b9e9466e648aa9c17d565"
+    },
+    {
+      "path": "books/tls-record.lisp",
+      "source_blob": "01cbbcfb62b1534c372b3b82b3066995a626c4a6",
+      "root5c_status": "same",
+      "root5c_blob": "01cbbcfb62b1534c372b3b82b3066995a626c4a6"
+    },
+    {
+      "path": "books/tls-stack.lisp",
+      "source_blob": "9b653859dfd593fe3ce2da5bf16995ecdb899c4c",
+      "root5c_status": "same",
+      "root5c_blob": "9b653859dfd593fe3ce2da5bf16995ecdb899c4c"
+    },
+    {
+      "path": "books/tls-transport-lifecycle.lisp",
+      "source_blob": "cccbcd58460ffe2ebb6fd35c1df6fe92e9c35be2",
+      "root5c_status": "same",
+      "root5c_blob": "cccbcd58460ffe2ebb6fd35c1df6fe92e9c35be2"
+    },
+    {
+      "path": "books/tls-transport-ops.lisp",
+      "source_blob": "87638dc6480613be9ed1792d3ba7bf0996c383be",
+      "root5c_status": "same",
+      "root5c_blob": "87638dc6480613be9ed1792d3ba7bf0996c383be"
+    },
+    {
+      "path": "books/tls-transport-reservation.lisp",
+      "source_blob": "1d1569a7c8dc5e452d369c14aeece9742f28606d",
+      "root5c_status": "same",
+      "root5c_blob": "1d1569a7c8dc5e452d369c14aeece9742f28606d"
+    },
+    {
+      "path": "books/tls-transport-state.lisp",
+      "source_blob": "a2adb28a2ff0affbc7aac3aa899632c4edd44e12",
+      "root5c_status": "same",
+      "root5c_blob": "a2adb28a2ff0affbc7aac3aa899632c4edd44e12"
+    },
+    {
+      "path": "books/tls-transport.lisp",
+      "source_blob": "c906db93752a72072ff28184aa104bf3d0df8dc5",
+      "root5c_status": "same",
+      "root5c_blob": "c906db93752a72072ff28184aa104bf3d0df8dc5"
+    },
+    {
+      "path": "books/tls.lisp",
+      "source_blob": "8b5f5502a980bd56912b2d801538bec144befe65",
+      "root5c_status": "same",
+      "root5c_blob": "8b5f5502a980bd56912b2d801538bec144befe65"
+    },
+    {
+      "path": "books/trace.lisp",
+      "source_blob": "013f747feb9d1600999689e810493c2a4c6a770d",
+      "root5c_status": "same",
+      "root5c_blob": "013f747feb9d1600999689e810493c2a4c6a770d"
+    },
+    {
+      "path": "books/tuple.lisp",
+      "source_blob": "c6d8246d1cfb601e44e3083045d78c156a4660ef",
+      "root5c_status": "same",
+      "root5c_blob": "c6d8246d1cfb601e44e3083045d78c156a4660ef"
+    },
+    {
+      "path": "books/txn-kind.lisp",
+      "source_blob": "34bd2b762ffb58cb76c07a1d3f44e3f851a9be64",
+      "root5c_status": "same",
+      "root5c_blob": "34bd2b762ffb58cb76c07a1d3f44e3f851a9be64"
+    },
+    {
+      "path": "books/txn.lisp",
+      "source_blob": "c448cada588b3c8841ef45b5db30488e8a75b072",
+      "root5c_status": "changed",
+      "root5c_blob": "220efa7ae44c584582bb450c498e881bc53d9627"
+    },
+    {
+      "path": "books/upload-feed.lisp",
+      "source_blob": "eff82247ed93ce5316623f4d54a46f000f0fcfda",
+      "root5c_status": "same",
+      "root5c_blob": "eff82247ed93ce5316623f4d54a46f000f0fcfda"
+    },
+    {
+      "path": "books/upload-kind.lisp",
+      "source_blob": "6d65173c5d2bc916da44533f825edc3858b4229c",
+      "root5c_status": "changed",
+      "root5c_blob": "680f6b7dd803e323cb4875b73f70dc101c85f7b4"
+    },
+    {
+      "path": "books/upload-page-geometry.lisp",
+      "source_blob": "1bab0cfd3d2fc0617eca089d27e67f406df1ecf8",
+      "root5c_status": "new",
+      "root5c_blob": null
+    },
+    {
+      "path": "books/upload-scan.lisp",
+      "source_blob": "93cab7bf799b8c566428687cfd3d228972c714e8",
+      "root5c_status": "same",
+      "root5c_blob": "93cab7bf799b8c566428687cfd3d228972c714e8"
+    },
+    {
+      "path": "books/upload.lisp",
+      "source_blob": "b80edb0562cc234ae5705f4439009b031a862a67",
+      "root5c_status": "changed",
+      "root5c_blob": "68b0227bfe356b0657a55a164519f0c7692afa63"
+    },
+    {
+      "path": "books/vocab.lisp",
+      "source_blob": "a038fbf85ef0703469cdba4951ccd8feeb9adee3",
+      "root5c_status": "same",
+      "root5c_blob": "a038fbf85ef0703469cdba4951ccd8feeb9adee3"
+    },
+    {
+      "path": "books/words.lisp",
+      "source_blob": "7e9f11fc82ec48f6481b615f53907c26ebb36017",
+      "root5c_status": "same",
+      "root5c_blob": "7e9f11fc82ec48f6481b615f53907c26ebb36017"
+    },
+    {
+      "path": "sim/check-death.lisp",
+      "source_blob": "b1aed25691b4b2a855a961ebaf734cd8e78ce7b1",
+      "root5c_status": "same",
+      "root5c_blob": "b1aed25691b4b2a855a961ebaf734cd8e78ce7b1"
+    },
+    {
+      "path": "sim/check-history.lisp",
+      "source_blob": "490827fcb0d477e01e38f419a92c9e1af50328a5",
+      "root5c_status": "same",
+      "root5c_blob": "490827fcb0d477e01e38f419a92c9e1af50328a5"
+    },
+    {
+      "path": "sim/check-own.lisp",
+      "source_blob": "fad8126510741ceada08816a2a0bb9a6dad6830c",
+      "root5c_status": "same",
+      "root5c_blob": "fad8126510741ceada08816a2a0bb9a6dad6830c"
+    },
+    {
+      "path": "sim/check-recovery.lisp",
+      "source_blob": "26c771410652635df96fe48c949906d0a290390b",
+      "root5c_status": "same",
+      "root5c_blob": "26c771410652635df96fe48c949906d0a290390b"
+    },
+    {
+      "path": "sim/commit-history.lisp",
+      "source_blob": "175bd0f1d2f8bb73431ae04fde8a6e16931bd500",
+      "root5c_status": "changed",
+      "root5c_blob": "5a9d3e33019e2e7b665b8cc73e4a12bbe7b2c5f4"
+    },
+    {
+      "path": "sim/commit-test-profile.lisp",
+      "source_blob": "33e1043f126bf7eecc29072c429aaee4cf2a301a",
+      "root5c_status": "same",
+      "root5c_blob": "33e1043f126bf7eecc29072c429aaee4cf2a301a"
+    },
+    {
+      "path": "sim/faults.lisp",
+      "source_blob": "6765e667579048b4bf71c9bfa696a01d76f73a37",
+      "root5c_status": "same",
+      "root5c_blob": "6765e667579048b4bf71c9bfa696a01d76f73a37"
+    },
+    {
+      "path": "sim/native-cut-state.lisp",
+      "source_blob": "514da6c554d6a6d297239f2618abc90e8127092e",
+      "root5c_status": "same",
+      "root5c_blob": "514da6c554d6a6d297239f2618abc90e8127092e"
+    },
+    {
+      "path": "sim/network.lisp",
+      "source_blob": "fbe31d9fdcdaf209ad9f923e7fe21e77d8a51bb7",
+      "root5c_status": "same",
+      "root5c_blob": "fbe31d9fdcdaf209ad9f923e7fe21e77d8a51bb7"
+    },
+    {
+      "path": "sim/prng.lisp",
+      "source_blob": "0307679987118e08fa8921ce484ea5403e10a7d1",
+      "root5c_status": "same",
+      "root5c_blob": "0307679987118e08fa8921ce484ea5403e10a7d1"
+    },
+    {
+      "path": "sim/sim-adapter-base.lisp",
+      "source_blob": "fd34fe4d6e1993f46531ccda9cc78d3928f009ee",
+      "root5c_status": "same",
+      "root5c_blob": "fd34fe4d6e1993f46531ccda9cc78d3928f009ee"
+    },
+    {
+      "path": "sim/sim-state-data.lisp",
+      "source_blob": "9542b084adfeab87296a9f7e285078b8d9913e45",
+      "root5c_status": "same",
+      "root5c_blob": "9542b084adfeab87296a9f7e285078b8d9913e45"
+    },
+    {
+      "path": "sim/sim-state.lisp",
+      "source_blob": "5cae74b40c3b96d733feed76b2dee2110600419b",
+      "root5c_status": "same",
+      "root5c_blob": "5cae74b40c3b96d733feed76b2dee2110600419b"
+    },
+    {
+      "path": "sim/sim-transfer.lisp",
+      "source_blob": "fc36b1fe24b5d928bec954628c1276e70970b5f0",
+      "root5c_status": "same",
+      "root5c_blob": "fc36b1fe24b5d928bec954628c1276e70970b5f0"
+    },
+    {
+      "path": "sim/sim.lisp",
+      "source_blob": "df1c0f1fd87c2fe843cb7f1b9a096a5043785ebd",
+      "root5c_status": "same",
+      "root5c_blob": "df1c0f1fd87c2fe843cb7f1b9a096a5043785ebd"
+    },
+    {
+      "path": "sim/storage.lisp",
+      "source_blob": "b1787f3bd139f7ba89977d81659371b8d5cc0ea3",
+      "root5c_status": "same",
+      "root5c_blob": "b1787f3bd139f7ba89977d81659371b8d5cc0ea3"
+    },
+    {
+      "path": "tests/checkpoint-cold-path-drive.lisp",
+      "source_blob": "58434ea1754e3e364c999c3889d88589019a9e29",
+      "root5c_status": "new",
+      "root5c_blob": null
+    },
+    {
+      "path": "tests/checkpoint-cold-path-producer-support.lisp",
+      "source_blob": "a0bd01b188e20f541a3852a696a6060fab477c47",
+      "root5c_status": "new",
+      "root5c_blob": null
+    },
+    {
+      "path": "tests/recovery-release-producer-support.lisp",
+      "source_blob": "f0316c3a1888317bf4e37ef7e6c80bd77854e48f",
+      "root5c_status": "new",
+      "root5c_blob": null
+    },
+    {
+      "path": "tests/release-allocation-live-unit.lisp",
+      "source_blob": "4fbdfdcb08393db297de986c3de6f9339cbfe2d0",
+      "root5c_status": "new",
+      "root5c_blob": null
+    }
+  ]
+}
