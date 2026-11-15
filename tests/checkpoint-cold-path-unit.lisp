@@ -7,9 +7,9 @@
 (in-package "ACL2")
 (include-book "std/util/bstar" :dir :system)
 (include-book "checkpoint-cold-path-producer-support")
+
 (include-book "column-snapshot-support")
 (make-event (cons 'progn (fn2-test-column-snapshot-events 'fn2-pool (w state))))
-
 
 (defun fn2-ccp-body (fault fn2-core fn2-sim fn2-own)
  (declare (xargs :stobjs (fn2-core fn2-sim fn2-own) :verify-guards nil))

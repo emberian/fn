@@ -4,12 +4,14 @@ import lisp_rewrite as lr
 from checkpoint_cold_producer_extract import extract,HELPER
 ROOT=Path(__file__).resolve().parents[1]
 class Producer(unittest.TestCase):
+ before_path='tools/fixtures/checkpoint-cold-path-unit-before-producer.lisp'
+ after_path='tools/fixtures/checkpoint-cold-path-unit-after-producer-original.lisp'
  def setUp(self):
-  self.before=(ROOT/'tools/fixtures/checkpoint-cold-path-unit-before-producer.lisp').read_text()
+  self.before=(ROOT/self.before_path).read_text()
   self.helper,self.unit=extract(self.before)
  def test_actual_sources_equal_exact_extraction(self):
   self.assertEqual(self.helper,(ROOT/f'tests/{HELPER}.lisp').read_text())
-  self.assertEqual(self.unit,(ROOT/'tests/checkpoint-cold-path-unit.lisp').read_text())
+  self.assertEqual(self.unit,(ROOT/self.after_path).read_text())
  def test_helpers_byte_unchanged_and_no_assertions(self):
   old=lr.parse(self.before).forms;new=lr.parse(self.helper).forms
   for node in old:
@@ -26,4 +28,7 @@ class Producer(unittest.TestCase):
  def test_repeat_and_missing_dependency_refuse(self):
   with self.assertRaises(ValueError):extract(self.unit)
   with self.assertRaises(ValueError):extract(self.before.replace('(include-book "checkpoint-cold-path-drive")',''))
+class CurrentProducer(Producer):
+ before_path='tools/fixtures/checkpoint-cold-path-unit-before-producer-current.lisp'
+ after_path='tests/checkpoint-cold-path-unit.lisp'
 if __name__=='__main__':unittest.main()
