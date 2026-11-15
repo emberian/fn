@@ -1,0 +1,8 @@
+{
+  "original_body_sha256": "8ba3e6f5ed83e5ec711fda18f12629c8464a9543125589555061288fab36ff72",
+  "original_consumer_tail_sha256": "ba87fb74fea74ac72f7ddbf018b1aa4bcc5394e33255ab874baf4e51c2a49d0c",
+  "normalizations": {
+    "(equal (fn2-pool-free-count 0 fn2-pool) 0)": "(equal (fn2-cafu-free-counts 0 fn2-pool) free-before)",
+    "(equal (fn2-pool-rows fn2-pool) 8)": "(equal (fn2-pool-rows fn2-pool) rows-before)"
+  }
+}
