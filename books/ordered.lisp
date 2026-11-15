@@ -6,7 +6,8 @@
 (in-package "ACL2")
 (include-book "runs-schema")
 (include-book "commit-format")
-(defconst *fn2-article-location-hashes-max* (* 32 *fn2-commit-write-resources*))
+
+(include-book "upload-page-geometry")
 (fn2-book-layer :c)
 
 ; Article metadata, latest-only: the article's birth event, its state, the
