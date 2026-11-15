@@ -331,3 +331,63 @@
         (rows (fn2-decl-rows :square (w state))))
   (and (subsetp-eq names (fn2-owed-names (w state)))
        (equal (nth 2 (fn2-square-counts (fn2-checkpoint-reader-original-rows names rows))) 0))))
+
+
+; Bind predicate conclusions directly in the ONE canonical evidence store.
+; All indices/cases are quoted because these are translated closed terms.
+(local (defun fn2-checkpoint-reader-evidence-bindings (args which i)
+ (declare (xargs :verify-guards nil))
+ (if (atom args) nil
+  (cons (list (car args)
+              `(nth ',i (fn2-checkpoint-reader-refutation-arguments ',which)))
+        (fn2-checkpoint-reader-evidence-bindings (cdr args) which (+ 1 i))))))
+(local (defun fn2-checkpoint-reader-evidence-hints (ground)
+ (declare (xargs :verify-guards nil))
+ `(("Goal" :use ,ground
+    :in-theory (e/d (fn2-checkpoint-reader-refutation-arguments
+                      fn2-checkpoint-reader-scalar-domain-check)
+                     (fn2-checkpoint-check-step))))))
+(local (defun fn2-checkpoint-reader-evidence-events (specs facts args guard world)
+ (declare (xargs :verify-guards nil))
+ (if (atom specs) nil
+  (let* ((claim (fn2-columns-sym (cadar facts) "-CLAIM"))
+         (case (cdr (assoc-equal (caddar specs)
+                                '((4 . :checker) (5 . :hasher) (8 . :digests)))))
+         (ground (cdr (assoc-eq case
+                    '((:checker . fn2-checkpoint-reader-checker-scalar-domain-ground)
+                      (:hasher . fn2-checkpoint-reader-hasher-scalar-domain-ground)
+                      (:digests . fn2-checkpoint-reader-digests-scalar-domain-ground)))))
+         (row (fn2-decl-row (list :square claim) world))
+         (statement (fn2-decl-get :statement row))
+         (formula (fn2-decl-statement-body statement world)))
+   (mv-let (hyp conclusion) (fn2-evidence-parts formula)
+    (declare (ignore conclusion))
+    (mv-let (count remaining) (fn2-evidence-hypothesis-cut hyp guard)
+     (declare (ignore remaining))
+     (if (not (and case ground row (equal count 1)
+                    (equal args (fn2-decl-get :vars row))))
+         (er hard 'checkpoint-reader-evidence
+             "Stored guard must occur exactly once in actual live claim ~x0." claim)
+       (cons
+        (fn2-square-predicate-evidence-events-with-hints
+         claim (fn2-checkpoint-reader-evidence-bindings args :positive 0)
+         (list :kind :hypothesis-removal :remove guard
+               :bindings (fn2-checkpoint-reader-evidence-bindings args case 0))
+         (fn2-checkpoint-reader-evidence-hints
+          'fn2-checkpoint-reader-positive-scalar-domain-ground)
+         (fn2-checkpoint-reader-evidence-hints ground) nil world)
+        (cons `(fn2-assert-square-evidence ,claim)
+         (fn2-checkpoint-reader-evidence-events (cdr specs) (cdr facts) args guard world))))))))))
+(make-event
+ (let* ((world (w state)) (name 'fn2-checkpoint-check-step)
+        (args (getpropc name 'formals :missing world))
+        (guard (getpropc name 'guard :missing world))
+        (carriers '((fn2-fc 4 :prefix "-CHECKER")
+                    (fn2-b3 5 :prefix "-HASHER")
+                    (fn2-digests 8 :prefix "-DIGESTS")))
+        (specs (fn2-columns-guard-domain-specs (fn2-columns-carrier-specs carriers)))
+        (facts (fn2-columns-preservation-facts name (cons name args) specs nil nil)))
+  (if (or (eq args :missing) (eq guard :missing))
+      (er soft 'checkpoint-reader-evidence "No actual reader guard/signature.")
+    (value (cons 'progn
+            (fn2-checkpoint-reader-evidence-events specs facts args guard world))))))

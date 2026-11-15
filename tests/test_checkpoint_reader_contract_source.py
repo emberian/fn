@@ -90,6 +90,27 @@ class ReaderContracts(unittest.TestCase):
         self.assertIn('(fn2-digests 9 :prefix "-DIGESTS")', text)
         self.assertIn('fn2-checkpoint-check-step fn2-checkpoint-restore-load-hash', text)
 
+    def test_predicate_evidence_uses_canonical_closed_domain_path(self):
+        self.assertEqual((ROOT / 'books/square-evidence.lisp').read_text(),
+                         rw.source(ROOT, '4d86318352248e5e22d4bdaec8b6de7475ed1090',
+                                   'books/square-evidence.lisp'))
+        text = (ROOT / 'tests/checkpoint-reader-refutation-unit.lisp').read_text()
+        helper = rw.unique(text, '(local (defun fn2-checkpoint-reader-evidence-events ?*body))')
+        source = text[helper.start:helper.end]
+        self.assertIn('(fn2-evidence-hypothesis-cut hyp guard)', source)
+        self.assertIn('(equal count 1)', source)
+        self.assertIn('(fn2-square-predicate-evidence-events-with-hints', source)
+        self.assertIn(':kind :hypothesis-removal :remove guard', source)
+        self.assertIn('(fn2-checkpoint-reader-evidence-bindings args :positive 0)', source)
+        self.assertIn('(fn2-checkpoint-reader-evidence-bindings args case 0)', source)
+        self.assertIn('`(fn2-assert-square-evidence ,claim)', source)
+        # Bindings are actual closed constructor terms in translated grammar;
+        # they are never host-computed quotations of mutable reader snapshots.
+        self.assertIn("`(nth ',i (fn2-checkpoint-reader-refutation-arguments ',which))", text)
+        hint = rw.unique(text, '(local (defun fn2-checkpoint-reader-evidence-hints ?*body))')
+        self.assertIn(':use ,ground', text[hint.start:hint.end])
+        self.assertIn('(fn2-checkpoint-check-step)', text[hint.start:hint.end])
+
 
 if __name__ == '__main__':
     unittest.main()

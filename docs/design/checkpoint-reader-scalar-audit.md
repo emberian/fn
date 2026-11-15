@@ -43,8 +43,13 @@ never discharges an original.
 These new refutation links, guarded theorems and critical registrations are
 SOURCE ONLY / UNRUN. Their zero-argument logical teeth reuse the whole-domain
 positive and real domain-removal controls. The shared predicate-conclusion
-formula-evidence extension is being implemented by the canonical evidence
-owner; no invented equality endpoints or assurance-complete status is used.
+formula-evidence extension is the canonical owner's `4d8631835` source. The
+reader connection passes actual closed constructor terms, removes exactly one
+occurrence of the stored logical guard in the live antecedent, and regenerates
+the whole positive H+C and remaining-H/false-C proofs. Hints use the admitted
+controls while keeping actual CHECK-STEP opaque, including raw execution.
+All these new evidence events remain UNRUN; no invented equality endpoints
+or assurance-complete status is used.
 Both test books are registered certification roots, whose dependency on the
 unqualified checkpoint book remains explicit.
 
