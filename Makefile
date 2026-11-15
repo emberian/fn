@@ -227,6 +227,7 @@ ACL2_BOOKS = \
   books/peer-model \
   books/pointwise-contracts \
   books/pool \
+  books/pool-credit \
   books/pool-block \
   books/pool-ranges \
   books/pool-read-contracts \
@@ -441,6 +442,7 @@ ACL2_BOOKS = \
   tests/pointwise-contracts-unit \
   tests/pool-ranges-unit \
   tests/pool-query-ref-unit \
+  tests/pool-credit-unit \
   tests/pool-unit \
   tests/port-unit \
   tests/primitive-list-domain-unit \
