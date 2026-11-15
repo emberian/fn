@@ -360,6 +360,14 @@
          (fn2-checkpoint-bytes (fn2-checkpoint-bytes-set-value (+ dst i) byte fn2-checkpoint-bytes)))
    (fn2-checkpoint-copy-expected (+ 1 i) dst hash fn2-digests fn2-checkpoint-bytes)))))
 
+; Preserve the byte-copy result through its actual stored guard.
+(defcolumns-guarded-contracts fn2-checkpoint-copy-expected
+ :carriers ((fn2-checkpoint-bytes nil :prefix "-BYTES")) :rows t
+ :hints ((fn2-columns-guard-hint
+          '(fn2-digests fn2-checkpoint-bytes)
+          '(fn2-digest-word fn2-fc-word-byte floor mod)
+          '(fn2-checkpoint-copy-expected) world)))
+
 ; A locator is only a candidate. Neither preparation nor a valid descriptor
 ; grants publication, retirement coverage, or permission to drop an old root.
 (defun fn2-checkpoint-prepare-body (c checkpoint history incarnation domain unit epoch allocation kind len hash
@@ -550,7 +558,10 @@
          ("-CHECKPOINT-REFS-ROWS" fn2-checkpoint-refs-rows 2 :frame fn2-checkpoint-refs)
          ("-CHECKPOINT-BYTES-TYPE" fn2-checkpoint-bytesp 3)
          ("-CHECKPOINT-BYTES-WFP" fn2-checkpoint-bytes-wfp 3)
-         ("-CHECKPOINT-BYTES-ROWS" fn2-checkpoint-bytes-rows 3 :frame fn2-checkpoint-bytes)))
+         ("-CHECKPOINT-BYTES-ROWS" fn2-checkpoint-bytes-rows 3 :frame fn2-checkpoint-bytes))
+ :hints ((fn2-columns-guard-hint
+          '(fn2-checkpoints fn2-checkpoint-refs fn2-checkpoint-bytes fn2-digests)
+          '(fn2-checkpoint-copy-expected fn2-checkpoint-ref-clear-build fn2-digest-rowp) '(fn2-checkpoint-prepare-body) world)))
 
 (fn2-checkpoints-preserves fn2-checkpoint-prepare
  (c checkpoint history incarnation domain unit epoch allocation kind len hash fn2-checkpoints fn2-checkpoint-refs fn2-checkpoint-bytes fn2-digests)
@@ -563,7 +574,10 @@
          ("-CHECKPOINT-REFS-ROWS" fn2-checkpoint-refs-rows 2 :frame fn2-checkpoint-refs)
          ("-CHECKPOINT-BYTES-TYPE" fn2-checkpoint-bytesp 3)
          ("-CHECKPOINT-BYTES-WFP" fn2-checkpoint-bytes-wfp 3)
-         ("-CHECKPOINT-BYTES-ROWS" fn2-checkpoint-bytes-rows 3 :frame fn2-checkpoint-bytes)))
+         ("-CHECKPOINT-BYTES-ROWS" fn2-checkpoint-bytes-rows 3 :frame fn2-checkpoint-bytes))
+ :hints ((fn2-columns-guard-hint
+          '(fn2-checkpoints fn2-checkpoint-refs fn2-checkpoint-bytes fn2-digests)
+          '(fn2-checkpoint-prepare-body) '(fn2-checkpoint-prepare) world)))
 
 (fn2-checkpoints-preserves fn2-checkpoint-prepare-owned
  (c token okind oslot ogen checkpoint history incarnation domain unit epoch allocation kind len hash fn2-checkpoints fn2-checkpoint-refs fn2-checkpoint-bytes fn2-digests)
@@ -576,4 +590,7 @@
          ("-CHECKPOINT-REFS-ROWS" fn2-checkpoint-refs-rows 2 :frame fn2-checkpoint-refs)
          ("-CHECKPOINT-BYTES-TYPE" fn2-checkpoint-bytesp 3)
          ("-CHECKPOINT-BYTES-WFP" fn2-checkpoint-bytes-wfp 3)
-         ("-CHECKPOINT-BYTES-ROWS" fn2-checkpoint-bytes-rows 3 :frame fn2-checkpoint-bytes)))
+         ("-CHECKPOINT-BYTES-ROWS" fn2-checkpoint-bytes-rows 3 :frame fn2-checkpoint-bytes))
+ :hints ((fn2-columns-guard-hint
+          '(fn2-checkpoints fn2-checkpoint-refs fn2-checkpoint-bytes fn2-digests)
+          '(fn2-checkpoint-prepare-body fn2-checkpoint-builder-ownerp) '(fn2-checkpoint-prepare-owned) world)))
