@@ -375,6 +375,7 @@ ACL2_BOOKS = \
   tests/layout-teeth-unit \
   tests/layout-unit \
   tests/layout-proof-scope-unit \
+  tests/layout-size-bound-unit \
   tests/log-model-unit \
   tests/m2-cuts \
   tests/machine-arms-probe-fixture \

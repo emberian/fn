@@ -79,6 +79,13 @@
 (defun fn2-layout-varsize (v)
   (declare (xargs :guard (natp v) :measure (nfix v)))
   (if (< (nfix v) 128) 1 (+ 1 (fn2-layout-varsize (floor v 128)))))
+; A representation bound does not assume the value passed a codec checker.
+; Generated sizer proofs instantiate this once for their current field.
+(defthm fn2-layout-varsize-coarse-bound
+  (<= (fn2-layout-varsize v) (+ 1 (floor (nfix v) 128)))
+  :rule-classes nil
+  :hints (("Goal" :induct (fn2-layout-varsize v)
+           :in-theory (e/d (fn2-layout-varsize) (floor)))))
 (defun fn2-layout-max-size (layout)
   (declare (xargs :guard (fn2-layoutp layout)))
   (if (atom layout) 0
@@ -764,7 +771,21 @@
 (defun fn2-codec-sizer-name (name field)
   (declare (xargs :verify-guards nil))
   (fn2-codec-symbol name (concatenate 'string "-SIZE-" (symbol-name field))))
-(defun fn2-codec-sizer-events (name layout count)
+(defun fn2-codec-storage-field-bound (kind value-width ref-width)
+  (declare (xargs :verify-guards nil))
+  (let* ((width (fn2-layout-width kind))
+         (tag (fn2-layout-kind-code kind))
+         (ref-max (- (expt 2 ref-width) 1)))
+    (cond (width width)
+          ((= tag 10) (+ 1 (floor ref-max 128) ref-max))
+          ((member-equal tag '(15 16)) (+ (if (= tag 15) 2 4) ref-max))
+          (t (+ 1 (floor (- (expt 2 value-width) 1) 128))))))
+(defun fn2-codec-storage-bound (layout value-width ref-width)
+  (declare (xargs :verify-guards nil))
+  (if (atom layout) 0
+    (+ (fn2-codec-storage-field-bound (cadar layout) value-width ref-width)
+       (fn2-codec-storage-bound (cdr layout) value-width ref-width))))
+(defun fn2-codec-sizer-events (name layout count value-width ref-width)
   (declare (xargs :verify-guards nil))
   (if (atom layout) nil
     (let* ((step (fn2-codec-sizer-name name (caar layout)))
@@ -772,7 +793,7 @@
                        (<= (+ base ,count) (fn2-fields-rows fn2-fields))))
            (tail (if (consp (cdr layout))
                      `(,(fn2-codec-sizer-name name (caadr layout)) base fn2-fields) 0)))
-      (append (fn2-codec-sizer-events name (cdr layout) count)
+      (append (fn2-codec-sizer-events name (cdr layout) count value-width ref-width)
         `((defun ,step (base fn2-fields)
             (declare (ignorable base fn2-fields)
                      (xargs :stobjs fn2-fields :guard ,room))
@@ -787,6 +808,21 @@
             :rule-classes :linear
             :hints (("Goal" :use ,(fn2-codec-symbol step "-NATP")
                      :in-theory (disable ,step))))
+          (defthm ,(fn2-codec-symbol step "-BOUND")
+            (implies (and (fn2-fieldsp fn2-fields) ,room)
+                     (<= (,step base fn2-fields)
+                         ,(fn2-codec-storage-bound layout value-width ref-width)))
+            :rule-classes :linear
+            :hints (("Goal"
+                     ,@(let* ((kind (cadar layout))
+                              (tag (fn2-layout-kind-code kind))
+                              (i `(+ base ,(fn2-codec-field name (caar layout)))))
+                         (and (not (fn2-layout-width kind))
+                              (not (member-equal tag '(15 16)))
+                              `(:use ((:instance fn2-layout-varsize-coarse-bound
+                                       (v (,(if (= tag 10) 'fn2-fields-ref-len 'fn2-fields-value)
+                                           ,i fn2-fields)))))))
+                     :in-theory (e/d (,step) (fn2-layout-varsize floor)))))
           (in-theory (disable ,step)))))))
 (defun fn2-codec-check-bindings (name layout)
   (declare (xargs :verify-guards nil))
@@ -955,12 +991,13 @@
        :sides (:concrete (,decode) :reference (fn2-layout-values fn2-layout-octets))
        :doc "Actual generated decoder's accepted consumed prefix equals the specification encoding of its decoded values. General proof owed."))))
 
-(defun fn2-codec-events (name layout value-width)
+(defun fn2-codec-events (name layout value-width ref-width)
  (declare (xargs :verify-guards nil))
  (let* ((count (len layout))
         (constant (fn2-codec-constant name ""))
         (count-name (fn2-codec-constant name "-NUM-FIELDS"))
         (max-name (fn2-codec-constant name "-MAX-SIZE"))
+        (storage-max-name (fn2-codec-constant name "-STORAGE-MAX-SIZE"))
         (done (fn2-codec-phase name 'done))
         (bytefn (fn2-codec-symbol name "-BYTE"))
         (emptyfn (fn2-codec-symbol name "-EMPTY-P"))
@@ -990,6 +1027,8 @@
     (defconst ,constant ',layout)
     (defconst ,count-name ,count)
     (defconst ,max-name ,(fn2-layout-max-size layout))
+    ; Unlike MAX-SIZE, this covers unchecked values in the actual field store.
+    (defconst ,storage-max-name ,(fn2-codec-storage-bound layout value-width ref-width))
     ,@(fn2-codec-index-events name layout 0)
     ,@(fn2-columns-enum-events
         `((phase (:enum ,(fn2-codec-symbol name "-PHASE") ,(fn2-codec-phase-keywords layout)))))
@@ -1095,12 +1134,16 @@
         (,step base slot gen off end okind oslot ogen 4096 fn2-fields fn2-pool)))
     ,@(fn2-codec-fields-facts decode decodeargs 2)
     (in-theory (disable ,decode))
-    ,@(fn2-codec-sizer-events name layout count)
+    ,@(fn2-codec-sizer-events name layout count value-width ref-width)
     (defun ,sizefn (base fn2-fields)
       (declare (ignorable base fn2-fields) (xargs :stobjs fn2-fields :guard ,room))
       (,(fn2-codec-sizer-name name (caar layout)) base fn2-fields))
     (defthm ,(fn2-codec-symbol sizefn "-NATP")
       (implies (and (fn2-fieldsp fn2-fields) ,room) (natp (,sizefn base fn2-fields))) :rule-classes :type-prescription)
+    (defthm ,(fn2-codec-symbol sizefn "-BOUND")
+      (implies (and (fn2-fieldsp fn2-fields) ,room)
+               (<= (,sizefn base fn2-fields) ,storage-max-name))
+      :rule-classes :linear)
     (in-theory (disable ,sizefn))
     ,@(fn2-codec-checker-events name layout count)
     (defun ,check (base slot off end okind oslot ogen fn2-fields fn2-pool)
@@ -1140,10 +1183,11 @@
            (row (cdr (assoc-eq 'fn2-fields
                               (table-alist 'fn2-columns (w state)))))
            (columns (cadr (member-eq :columns row)))
-           (value-width (fn2-columns-width (cadr (assoc-eq 'value columns)))))
+           (value-width (fn2-columns-width (cadr (assoc-eq 'value columns))))
+           (ref-width (fn2-columns-width (cadr (assoc-eq 'ref-len columns)))))
       (if (and (fn2-layoutp layout) (consp layout)
                (no-duplicatesp-eq (fn2-codec-phase-keywords layout)))
-          (value (fn2-codec-events ',name layout value-width))
+          (value (fn2-codec-events ',name layout value-width ref-width))
         (er soft 'deflayout "Invalid or empty layout ~x0." ',name)))))
 
 ; Keep local arithmetic rune names as data until the codec reimports that
