@@ -15,4 +15,22 @@ class Terminal(unittest.TestCase):
   s=(ROOT/'books/run-physical-readiness.lisp').read_text()
   for f in ['kind','owner','generation']:
    self.assertIn(f'(equal (fn2-run-loads-{f} c fn2-run-loads) 0)',s)
+ def test_source_detach_uses_same_accepted_boundary(self):
+  s=(ROOT/'books/checkpoint-source-loader.lisp').read_text()
+  body=s[s.index('(defmacro fn2-checkpoint-source-reader-detach-owned-body'):s.index('(defun fn2-checkpoint-source-reader-finish')]
+  clear=body.index('(kind 0) (owner 0) (generation 0)')
+  self.assertLess(body.index('(fn2-checkpoint-summary-release c'),clear)
+  self.assertLess(body.index('((unless (eq code :ok))'),clear)
+  self.assertNotIn('((unless',body[clear:])
+  self.assertNotIn('fn2-pool-put',body)
+  detached=s[s.index('(defun fn2-checkpoint-source-reader-detachedp'):s.index('(defmacro fn2-checkpoint-source-reader-detach-mv')]
+  for f in ('kind','owner','generation'):
+   self.assertIn(f'(equal (fn2-run-loads-{f} c fn2-run-loads) 0)',detached)
+ def test_connected_detach_readiness_control_keeps_real_producer(self):
+  s=(ROOT/'tests/checkpoint-source-detach-readiness-unit.lisp').read_text()
+  self.assertIn('(fn2-clc-produce-held fn2-core fn2-sim fn2-own)',s)
+  self.assertIn('(fn2-checkpoint-source-reader-finish',s)
+  self.assertIn('(fn2-run-load-readiness-one-row-p',s)
+  self.assertIn('(eq refused :source) unchanged (eq accepted :ok)',s)
+  self.assertNotIn('-put ',s)
 if __name__=='__main__':unittest.main()
