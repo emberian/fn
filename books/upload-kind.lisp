@@ -209,7 +209,7 @@
 
 (defmachine fn2-upload
  :states (:free :head :identity :receiving :validating :discard :store :stored-hash :location-hash :store-write :store-wrote
-          :store-fence :store-fenced :sealed :aborting :draining :retired)
+          :store-fence :store-fenced :sealed :aborting :draining :retired :uncertain)
  ;; CONN is the owner the source comes from and the word goes to: a
  ;; connection (POST, IHAVE, TAKETHIS) or a consumer request (an append,
  ;; e-surface.md 3.3: the same upload and transaction as a POST). OP is the
@@ -248,6 +248,7 @@
          (cns :kind fn2-cns :slot conn :gen conn-gen :back (upload upload-gen)
               :reads (fed feed-mode feed-discard))
          (child-txn :kind fn2-txn :slot txn :gen txn-gen :back (upload upload-gen)))
+ :stops (:upload-uncertain)
  :holds ((:head :upload-row :chunk-window) (:identity :upload-row :chunk-window)
          (:receiving :upload-row :chunk-window) (:validating :upload-row :chunk-window)
          (:discard :upload-row :chunk-window)
@@ -260,6 +261,7 @@
          (:store-fenced :upload-row :chunk-window (:storage-window :while (lease :held)))
          (:sealed :upload-row :chunk-window (:storage-window :while (lease :held)))
          (:aborting :upload-row :chunk-window)
+         (:uncertain :upload-row :chunk-window (:storage-window :while (lease :held)))
          (:draining :upload-row :chunk-window (:storage-window :while (lease :held))))
  :budget (:bytes 4096 :steps 32 :descriptors 4)
  :capacity (fn2-upload-capacity profile)
@@ -276,7 +278,7 @@
            (pext *fn2-none*) (lslot *fn2-none*) (cext *fn2-none*)
            (ofield 12) (next-free fn2-machine-initial-next-free))
  :arms ((:free) (:head) (:identity) (:receiving) (:validating) (:discard) (:store) (:stored-hash) (:location-hash) (:store-write) (:store-wrote)
-        (:store-fence) (:store-fenced) (:sealed) (:aborting) (:draining) (:retired))
+        (:store-fence) (:store-fenced) (:sealed) (:aborting) (:draining) (:retired) (:uncertain))
  :observes ((:write-result) (:fence-result) (:borrow-released)))
 
 ; MACHINE-FORM 6.5 P4: the kind's take in child form, proved here;
