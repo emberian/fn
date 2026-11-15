@@ -674,3 +674,18 @@ connection, including the pending31b selected-dispatch helper. Audit_claims resu
 independent stored-content/reread binding and whole-antecedent keystone evidence
 checks against current reclamation source. Their source candidates remain separate
 from current qualified claims; neither task changes authorization activation.
+
+## Current compiler and held-release integration — record 890585
+
+The integrated core child release now treats query-held ownership as retained:
+`:held` leaves pool and control unchanged; only`:ok`/`:retired` complete release.
+Other failures retain the existing sticky stop behavior. Full generated pool and
+control snapshots test held→last-reference close→retry, wrong owner and wrong
+state, with a populated sibling and nonzero counters. The exact two-root29-book
+record passed57.412s (14reused,15new); root matched all29 before/after/current
+source hashes and the owner audited29 current usable compiled cache entries.
+Receipt: CORE-RELEASE-HELD-20261114.json. Arm-children19.793s atj1 remains a proof
+cost issue; no repeat at two jobs was run. This qualifies the generic compiler
+and actual child boundary, not full CNS/host composition or query-producer
+lifecycle controls. Peer caller audit found no reachable early row reclamation;
+its actual composed execution controls remain pending.

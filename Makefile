@@ -90,6 +90,7 @@ ACL2_BOOKS = \
   tests/cns-draining-direct-events-unit \
   tests/cns-fence-proof-world \
   tests/column-snapshot-support \
+  tests/core-release-held-unit \
   tests/core-snapshot-support \
   tests/machine-reservations-unit \
   tests/pool-initialization-unit \
