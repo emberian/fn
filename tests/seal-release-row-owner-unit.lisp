@@ -1,0 +1,62 @@
+; Prepared operation fixture: two real pool workspaces belong to an older run
+; owner, while the active sealer row names a different owner. Unexecuted here.
+(in-package "ACL2")
+(include-book "std/util/bstar" :dir :system)
+(include-book "../books/sealer")
+
+(defun fn2-srr-owner-body (fn2-seals fn2-run-installed fn2-run-cache fn2-pool)
+ (declare (xargs :stobjs (fn2-seals fn2-run-installed fn2-run-cache fn2-pool)
+                  :verify-guards nil))
+ (b* ((fn2-seals (fn2-seals-init 1 fn2-seals))
+      (fn2-run-installed (fn2-run-installed-init 2 fn2-run-installed))
+      (fn2-run-cache (fn2-run-cache-init 8 fn2-run-cache))
+      (fn2-pool (fn2-pool-init '((2 . 64)) 5 20 fn2-pool))
+      ((mv reserve-0 slot-0 gen-0 fn2-pool) (fn2-pool-reserve 0 1 10 3 fn2-pool))
+      ((mv reserve-1 slot-1 gen-1 fn2-pool) (fn2-pool-reserve 0 1 10 3 fn2-pool))
+      ((mv cached-0 fn2-run-cache) (fn2-run-cache-install 0 1 slot-0 gen-0 fn2-run-cache))
+      ((mv cached-1 fn2-run-cache) (fn2-run-cache-install 1 2 slot-1 gen-1 fn2-run-cache))
+      (fn2-run-installed (fn2-run-installed-put 0
+       (state *fn2-run-installed-state-retired*) (physical 0) (ufirst 0) (ulast 0)
+       (okind 1) (oslot 10) (ogen 3)))
+      (fn2-run-installed (fn2-run-installed-put 1
+       (state *fn2-run-installed-state-retired*) (physical 0) (ufirst 1) (ulast 1)
+       (okind 1) (oslot 10) (ogen 3)))
+      (fn2-seals (fn2-seals-put 0 (phase *fn2-seal-phase-release*)
+       (okind 2) (oslot 11) (ogen 4)))
+      ; This is the old global-sealer-owner release, which the pool refuses.
+      ((mv wrong-owner fn2-pool) (fn2-pool-release slot-0 gen-0
+       (fn2-seals-okind 0 fn2-seals) (fn2-seals-oslot 0 fn2-seals)
+       (fn2-seals-ogen 0 fn2-seals) fn2-pool))
+      (wrong-retains (and (eq wrong-owner :owner)
+       (eq (fn2-pool-slot-state slot-0 fn2-pool) :workspace)
+       (= (fn2-run-installed-ufirst 0 fn2-run-installed) 0)))
+      ; The direct bounded row operation uses the stored installed-row owner.
+      ((mv direct fn2-run-installed fn2-run-cache fn2-pool)
+       (fn2-seal-release-row 0 fn2-run-installed fn2-run-cache fn2-pool))
+      (direct-freed (and (eq direct :more)
+       (= (fn2-run-installed-state 0 fn2-run-installed) *fn2-run-installed-state-free*)
+       (= (fn2-run-installed-ufirst 0 fn2-run-installed) 1)
+       (= (fn2-run-cache-state 0 fn2-run-cache) *fn2-run-cache-state-empty*)
+       (= (fn2-pool-free-count 0 fn2-pool) 1)))
+      ; The ordinary sealer still selects a retired row and delegates it.
+      ((mv selected fn2-seals fn2-run-installed fn2-run-cache fn2-pool)
+       (fn2-seal-release fn2-seals fn2-run-installed fn2-run-cache fn2-pool))
+      (selected-freed (and (eq selected :more)
+       (= (fn2-run-installed-state 1 fn2-run-installed) *fn2-run-installed-state-free*)
+       (= (fn2-run-installed-ufirst 1 fn2-run-installed) 2)
+       (= (fn2-run-cache-state 1 fn2-run-cache) *fn2-run-cache-state-empty*)
+       (= (fn2-pool-free-count 0 fn2-pool) 2)))
+      ((mv idle fn2-seals fn2-run-installed fn2-run-cache fn2-pool)
+       (fn2-seal-release fn2-seals fn2-run-installed fn2-run-cache fn2-pool)))
+  (mv (and (eq reserve-0 :ok) (eq reserve-1 :ok)
+           (eq cached-0 :ok) (eq cached-1 :ok)
+           wrong-retains direct-freed selected-freed
+           (eq idle :done)
+           (= (fn2-seals-phase 0 fn2-seals) *fn2-seal-phase-idle*))
+      fn2-seals fn2-run-installed fn2-run-cache fn2-pool)))
+
+(defun fn2-srr-owner-test ()
+ (declare (xargs :verify-guards nil))
+ (fn2-run-with-local (fn2-seals fn2-run-installed fn2-run-cache fn2-pool)
+  (fn2-srr-owner-body fn2-seals fn2-run-installed fn2-run-cache fn2-pool)))
+(assert-event (fn2-srr-owner-test))
