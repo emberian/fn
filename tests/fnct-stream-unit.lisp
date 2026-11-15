@@ -13,13 +13,13 @@
  (declare (xargs :stobjs (fn2-digests fn2-pool) :verify-guards nil :measure (nfix (- 32 (nfix i)))))
  (if (or (not (natp i)) (>= i 32)) fn2-pool
   (mv-let (code fn2-pool)
-   (fn2-pool-write 0 1 i (fn2-fc-word-byte (fn2-digest-word 137 (floor i 4) fn2-digests) (mod i 4))
+   (fn2-pool-write 0 1 i (fn2-fc-word-byte (fn2-digest-word (fn2-digest-slot 0 *fn2-b3-result*) (floor i 4) fn2-digests) (mod i 4))
                    1 0 1 fn2-pool)
    (declare (ignore code)) (fn2-stream-unit-trailer-fill (+ i 1) fn2-digests fn2-pool))))
 
 (defun fn2-stream-unit-run (fn2-digests fn2-b3 fn2-pool)
  (declare (xargs :stobjs (fn2-digests fn2-b3 fn2-pool) :verify-guards nil))
- (b* ((fn2-digests (fn2-digests-init 144 fn2-digests))
+ (b* ((fn2-digests (fn2-digests-init *fn2-digest-stride* fn2-digests))
       (fn2-b3 (fn2-b3-table-init 1 fn2-b3))
       (fn2-pool (fn2-pool-init '((1 . 4096)) 1 100 fn2-pool))
       ((mv reserve slot gen fn2-pool) (fn2-pool-reserve 0 1 0 1 fn2-pool))
@@ -44,7 +44,7 @@
            (eq reset2 :ok) (eq partial :more) (equal pc 17)
            (eq verified :verified) (equal vc 15) (eq corrupt :ok)
            (eq rejected :frame) (equal rc 0)
-           (equal (fn2-digest-list 137 fn2-digests)
+           (equal (fn2-digest-list (fn2-digest-slot 0 *fn2-b3-result*) fn2-digests)
             '(1952132670 2918402272 2854212310 2755328179 2015509325 2151397551 1683080115 94563563))) fn2-digests fn2-b3 fn2-pool)))
 
 (defun fn2-stream-unit ()
