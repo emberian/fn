@@ -58,8 +58,8 @@
    fn2-overlays fn2-overlay-index fn2-fields fn2-pool)))
 ; This checks the full eight-source premise before the single-call assertion:
 ; actual enumeration, eight nonempty frozen overlays and all pending SEEK.
-(defun fn2-ros-pending-p (n fn2-ranges fn2-range-sources fn2-overlays)
- (declare (xargs :stobjs (fn2-ranges fn2-range-sources fn2-overlays) :verify-guards nil :measure (nfix n)))
+(defun fn2-ros-pending-p (n fn2-range-sources fn2-overlays)
+ (declare (xargs :stobjs (fn2-range-sources fn2-overlays) :verify-guards nil :measure (nfix n)))
  (or (zp n)
   (let* ((s (- n 1)) (o (fn2-range-sources-src s fn2-range-sources)))
    (and (equal (fn2-range-sources-kind s fn2-range-sources) *fn2-range-kind-overlay*)
@@ -68,7 +68,7 @@
         (equal o (- *fn2-ros-count* 1 s))
         (equal (fn2-overlays-phase o fn2-overlays) *fn2-overlay-phase-frozen*)
         (< 0 (fn2-overlays-count o fn2-overlays))
-        (fn2-ros-pending-p (- n 1) fn2-ranges fn2-range-sources fn2-overlays)))))
+        (fn2-ros-pending-p (- n 1) fn2-range-sources fn2-overlays)))))
 (defun fn2-ros-one-head-p (n fn2-range-sources)
  (declare (xargs :stobjs fn2-range-sources :verify-guards nil :measure (nfix n)))
  (or (zp n)
@@ -120,7 +120,7 @@
         fn2-ranges fn2-range-sources fn2-overlays fn2-run-installed))
       (premise (and (eq reserved :ok) (eq built :ok) (eq started :ok)
                     (equal (fn2-ranges-scount 0 fn2-ranges) *fn2-ros-count*)
-                    (fn2-ros-pending-p *fn2-ros-count* fn2-ranges fn2-range-sources fn2-overlays)))
+                    (fn2-ros-pending-p *fn2-ros-count* fn2-range-sources fn2-overlays)))
       ((mv advanced fn2-range-sources fn2-run-cursors fn2-run-paths fn2-fields)
        (fn2-range-advance-all *fn2-ros-count* 0 budget fn2-ranges fn2-range-sources fn2-overlays fn2-overlay-index fn2-run-installed
         fn2-run-cursors fn2-run-paths fn2-run-cache fn2-fields fn2-pool))
