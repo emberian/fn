@@ -191,6 +191,8 @@
      (:set (cb-cursor (+ 1 row-cb-cursor))) ,*fn2-commit-arm-advance-run*)
     ((not (and (equal row-pending 0) (equal row-cb-fence-live 0))) ,*fn2-commit-arm-mailbox*)
     ((equal row-phase *fn2-commit-state-uncertain*) (:set (stopped 1)) ,*fn2-commit-arm-mailbox*)
+    ;; No accepted/refused drain may discard an unresolved C bind owner.
+    ((not (equal row-cb-bind-pending 0)) (:stop :commit-settle))
     ;; the last range's release frees the row on its own path
     ((>= row-cb-stage 4) (:stop :machine-phase))
     ((equal row-cb-stage 3)
@@ -296,17 +298,17 @@
                                       '(:charge :steps *fn2-work-transition* :runnable t))))))))))
    (:install
     ,@(fn2-commit-arm-partner t
-       '((:do (ok) (fn2-commit-root-swap id nil))
+       '((:if (not (equal row-cb-bind-pending 0)) ((:yield)) ((:do (ok) (fn2-commit-root-swap id nil))
          (:if (not ok)
               ((:charge :steps *fn2-work-mailbox* :runnable t))
               ((:do (code) (fn2-commit-root-edge id t)
                 :accept ()
                 :case (((:ok) (:set (cb-life-member 0) (cb-life-off 0)) (:next :publish) (:charge :steps *fn2-work-stage* :runnable t))
-                       (:otherwise (:stop :commit-edge)))))))))
+                       (:otherwise (:stop :commit-edge)))))))))))
    ;; b54 M6: C publishes the batch's private successor before any outcome
    (:publish
     ,@(fn2-commit-arm-partner t
-       `((:if (not (fn2-commit-lifecycle-cursorp row-member-count row-cb-life-member row-cb-life-off))
+       `((:if (not (equal row-cb-bind-pending 0)) ((:yield)) ((:if (not (fn2-commit-lifecycle-cursorp row-member-count row-cb-life-member row-cb-life-off))
           ((:stop :commit-publish))
           ((:if (< row-cb-life-member row-member-count)
           ((:do (code member off) (fn2-commit-lifecycle-step id row-cb-life-member row-cb-life-off)
@@ -326,7 +328,7 @@
                            :accept ()
                            :case (((:ok :unregistered) (:set (cb-published 1)) (:next :notify) ,*fn2-commit-arm-advance-run*)
                                   (:otherwise (:stop :commit-publish)))))
-                         (:otherwise (:stop :commit-publish :steps *fn2-work-mailbox*)))))))))))))
+                         (:otherwise (:stop :commit-publish :steps *fn2-work-mailbox*)))))))))))))))
    (:notify
     ,@(fn2-commit-arm-partner t
        `((:if (< row-cb-acks row-member-count)
@@ -350,6 +352,8 @@
                 :accept ()
                 :case (((:ok) (:set (cb-stage 1)) ,*fn2-commit-arm-advance-run*)
                        (:otherwise (:stop :commit-drop :steps *fn2-work-advance*)))))
+              ((:more) (:charge :steps *fn2-work-stage* :runnable t))
+              ((:busy) (:yield))
               (:otherwise (:stop :commit-drop :steps *fn2-work-mailbox*)))))
      ((< row-cb-cursor row-member-count)
       (:do () (fn2-commit-settle-member id row-cb-cursor *fn2-commit-outcome-refused* 0))

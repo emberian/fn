@@ -130,6 +130,8 @@ ACL2_BOOKS = \
   books/commit-durable-children \
   books/commit-format \
   books/commit-members \
+  books/commit-successor-binding-state \
+  books/commit-successor-binding \
   books/commit-proof \
   books/commit-proof-theory \
   books/commit-turn-frame \
@@ -602,6 +604,7 @@ ACL2_BOOKS = \
   tests/checkpoint-working-credit-configure-unit \
   tests/ordinary-drain-credit-unit \
   tests/ordinary-drain-credit-canonical-unit \
+  tests/commit-successor-binding-unit \
   tests/ordinary-drain-credit-live-unit \
   tests/pool-unit \
   tests/port-unit \
