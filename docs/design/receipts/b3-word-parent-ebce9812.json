@@ -1,0 +1,78 @@
+{
+  "scope": "Current ebce parent14 record; new word-frame leaf author refused at INIT, not certified.",
+  "source": "ebce9812bf97ea5222a855755aa22e0e9918d2fa",
+  "parent_record": {
+    "farm_run": "run-20261115T225523Z-d1f0",
+    "manifest": "build/acl2/certify-20261115T225539Z-1927141/manifest.json",
+    "remote_manifest": "/build/lanes/b3-word-current-ebce9812/build/acl2/certify-20261115T225539Z-1927141/manifest.json",
+    "manifest_sha256": "2b8911df8448c39ea660355cfeda1dbb02359c10ed772232445feeec5356f497",
+    "status": "passed",
+    "toolchain": "8aeb1bea18968c6cd33ac633a80ebf67e4924504db112fd27eb11f16a27b2a8c",
+    "runner_unchanged": true,
+    "book_results": {
+      "books/blake3-row-frames": "passed",
+      "books/pool-digest": "passed"
+    },
+    "book_wall_seconds": {
+      "books/blake3-row-frames": 3.377,
+      "books/pool-digest": 3.929
+    },
+    "sources_before_after_identical": true,
+    "source_hashes": {
+      "books/blake3-pool-spec.lisp": "2775bf744b6ed52fd098fe329b0b183d62c0857a5a2a989cf80e968f5a366e2b",
+      "books/blake3-row-frames.lisp": "2e2386ed36d8d7869186f83f0ce698faf56f3e02de8f30585d817f231e16f9d7",
+      "books/blake3-spec.lisp": "253babac6e5d9e9df00a655ba6b6595c9e6d85315c9294f05e3d939f19ad5770",
+      "books/blake3.lisp": "e228c1eb31f2f764e925e86fa4f0a7b7682810d64a27f7c39b9f416f93bdc1a1",
+      "books/columns.lisp": "8b694caf782c2ce3a29fa109b055c181b54beda214276493f6d9acb9456a881b",
+      "books/declare.lisp": "54e850788ee821dd90a4d9715e93d319f94846039592c4420fef1bdc5d959569",
+      "books/digests.lisp": "e821bfe1ffee392c8019fad513db8a83aaf2448251087f26c9576a3af333a524",
+      "books/layout.lisp": "2bc995f6bb70ec17862c5b535a4734e90a7a5dfd6312ebdee7d06877b0fbb4d8",
+      "books/operations.lisp": "419120e7ae100f400d18cdee2d080d6133523673cac22fae1b05c7201ff97dd8",
+      "books/owed-discharge.lisp": "53903322be1b79ed081ecfcbfcb9f60649d3fdbf8aa6853b772abf8e6fc69f01",
+      "books/owed.lisp": "171950b91e40f4e7d0e94902ce00009adc62d8104e0eecd5db6a59b93bbffb15",
+      "books/pool-digest.lisp": "f466162c376f983c3fedacf17dd4c7f89529153caf27aaca30d81a411dd14197",
+      "books/pool.lisp": "9a31c8d38d309862369091a2c8019ccc3da16920742ff01040899b8f395f2fe9",
+      "books/profile.lisp": "1f216ed6c0505dc1b01ada0f7d3d9482af6da7b7dff8736b5100ef3e3fbc1038"
+    },
+    "parent_keys": {
+      "books/blake3-row-frames": "8f98b4d7fd2927432a18034060dcaa2276e77d44c533ffd0cead963385396c87",
+      "books/pool-digest": "d4f13b359ae5d2edcf0db0a23497e504a6fb127f2c8989dd243a6e9c0ef06ee1",
+      "books/layout": "92461e82c5228c9fee8e155ec9bb581b9da1b10d627da4d23cab22e6e3983263",
+      "books/pool": "02c8ba50750b243b9b79bc6be0ff2339fad1531234575313c815e7d6fbfba72b",
+      "books/profile": "cdaddbd4628aebebc2dea718832e44dfbe07014033d6a8904f137808c9c34744",
+      "books/operations": "ffaf93d705d08918400704d108e7bffa6a3da8ae5ae2917128974f7d53c9e71b",
+      "books/declare": "299f7489bcfaeeb7c1a8f777c4a3b4886c5be174761a2f63f69a39599466aba1",
+      "books/owed-discharge": "fa84e2e8a4d3eeeda9943ef433f68c9ba4d940ec437c889cdd0be032d29550e5",
+      "books/owed": "0025566d809fffa0fb7533fa29b1fb7a9932c97d1510818153a1c1fe3d6bbf08",
+      "books/columns": "240a44b23a63840a436ffbe6b12f9adc6fec80ba1056de0af7b5e666f518a510",
+      "books/digests": "457e0b062bf007b8abb9a5d4be75bdd02639c47e9ae03de0a8c59239915ad76f",
+      "books/blake3": "1adc95a81d414f9641c61117d1943a846ef5284586b2ede28c5f337a598e9d67",
+      "books/blake3-pool-spec": "614588be690316ba29f344415e5e3b5d02419246f895182ba91dd1a7c9f63576",
+      "books/blake3-spec": "3944594ba7622d4b4067f30d5dd2faaddf41fc13057a464af1b79f7234e57d81"
+    },
+    "publication": "2 new compiled pairs published; author strict install-set verified all14 compiled parents, missing0. Initial collection rsync23 from absent empty tests/acl2; directory created and collection retried without reproof."
+  },
+  "author": {
+    "driver_sha256": "616ebb64e5c2aa314410a6e63c35ae73032a2362aed853b462517c8c464cd2d4",
+    "remote_log": "/tmp/b3-word-current-pilot/author.log",
+    "scope": "run-p1928786-i31285475.scope",
+    "effective_memory_max": 2147483648,
+    "effective_memory_swap_max": 0,
+    "handles": [
+      1928785,
+      1928786,
+      1928821,
+      1928825
+    ],
+    "prover_steps_limit": 2000000,
+    "seconds_per_event": 20,
+    "store_frame": "PASS .01s 457 steps",
+    "first_refusal": "INIT-WORD-FRAME .01s 295 steps; WORDS-LENGTH of scalar setter chain opaque",
+    "stop_rc": 0,
+    "handles_absent": true,
+    "fixture": "unrun",
+    "repair": "5f69d871d source only; no retry"
+  },
+  "resource_release": "children0 reconciled under allocation-ledger lock after handles absent; no live job.",
+  "cap_note": "Parent farm requested2Gi but completed before live cap sample. Author effective2Gi/swap0 measured before ACL2."
+}
