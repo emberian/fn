@@ -75,11 +75,11 @@ class Root1SourceBoundary(unittest.TestCase):
         self.assertIn("fn2-checkpoint-metadata-manifest-scan-step", str(ops[setters[0]]))
 
     def test_exact_harvest_hooks_and_issue_success_abi(self):
-        resources = (ROOT / "books/checkpoint-metadata-resources.lisp").read_text()
+        resources = (ROOT / "books/checkpoint-metadata-resources.lisp").read_text() + (ROOT / "books/boot-kind.lisp").read_text()
         driver = (ROOT / "books/checkpoint-metadata-driver.lisp").read_text()
         children = {tree[1]: tree for text in forms(resources)
                     if isinstance((tree := read_sexp(text)), list) and tree
-                    and tree[0] == "fn2-sealer-child"}
+                    and tree[0] in ("fn2-sealer-child", "defcorechild")}
         hooks = []
         for field in ("fn2-core-checkpoint-semantic", "fn2-core-checkpoint-payload"):
             declaration = children[field]
@@ -97,7 +97,7 @@ class Root1SourceBoundary(unittest.TestCase):
         for name, op in operations(source).items():
             self.assertEqual(assigned_carriers(op, outputs), outputs[name], name)
             self.assertLessEqual(1 + len(outputs[name]), 32, name)
-        self.assertEqual(1 + len(outputs["fn2-checkpoint-root1-step"]), 28)
+        self.assertEqual(1 + len(outputs["fn2-checkpoint-root1-step"]), 29)
         self.assertEqual(3 + len(outputs["fn2-checkpoint-root1-read"]), 17)
         # A real output from the manifest scan must survive closure dispatch.
         damaged = {name: set(values) for name, values in outputs.items()}
