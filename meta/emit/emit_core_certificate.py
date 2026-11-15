@@ -174,10 +174,20 @@ def closed_member_source(src, roots, *, snapshot=None):
     This is a Lean proposal, not packet qualification or a discharge of caller
     guards, primitive correspondence, selected attachments, or MBE equivalence.
     """
-    _, fs, _, names, _ = inspect_core_certificate(src, roots, snapshot=snapshot)
+    _, _, allf, names, _ = inspect_core_certificate(src, roots, snapshot=snapshot)
     missing = set(MEMBER_DEFINITIONS) - names
     if missing:
         raise ValueError('member closure missing: ' + ', '.join(sorted(missing)))
+    # Closed guard derivations use the same program as body derivations. Keep
+    # guard/measure-only records instead of dropping them at body selection.
+    fs = list(allf.values())
+    for f, d in fs:
+        dependencies = calls_of(f.body, set()) | calls_of(decode(d[':GUARD']), set())
+        absent = dependencies - set(allf) - set(NATIVE) - set(SPECIAL)
+        if absent:
+            raise ValueError('missing canonical body/guard callees for ' + f.name + ': ' + ', '.join(sorted(absent)))
+        if decode(d[':ATTACHMENT']) != Atom('NIL'):
+            raise ValueError('attached canonical body/guard callee ' + f.name)
     lines = ['module', 'public import Fn2.ACL2.MemberExecEvaluation',
              '@[expose] public section', 'namespace Fn2.Instances.CoreCanonical',
              'open Fn2.ACL2 Fn2.ACL2.Translation',
@@ -187,6 +197,11 @@ def closed_member_source(src, roots, *, snapshot=None):
         formals = '[' + ', '.join(lean_str(a) for a in f.formals) + ']'
         lines.append('  | ' + lean_str(f.name) + ' => some ⟨' + formals + ', ' +
                      lean_object(d[':LOGICAL-BODY']) + ', ' + str(fuel) + '⟩')
+    lines += ['  | _ => none', 'def guards : CanonicalGuards']
+    for f, d in fs:
+        formals = '[' + ', '.join(lean_str(a) for a in f.formals) + ']'
+        lines.append('  | ' + lean_str(f.name) + ' => some ⟨' + formals + ', ' +
+                     lean_object(d[':GUARD']) + ', 512⟩')
     lines += ['  | _ => none',
               'theorem member_records : ∀ name definition,',
               '    MemberExecEvaluation.program name = some definition →',

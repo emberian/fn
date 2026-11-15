@@ -116,7 +116,50 @@ class ScopedQualification(unittest.TestCase):
         with tempfile.TemporaryDirectory() as directory:
             src = Path(directory) / 'fixture.sexp'
             src.write_text(text)
-            self.assertNotIn('GUARD-ONLY', c.closed_member_source(src, ['FN2-ACCEPT-ROUTE']))
+            lean = c.closed_member_source(src, ['FN2-ACCEPT-ROUTE'])
+            self.assertEqual(lean.count('  | "GUARD-ONLY" => some'), 2)
+            self.assertIn('def guards : CanonicalGuards', lean)
+
+    def guarded_packet(self, *, missing=False, attached=False, false_guard=False):
+        parsed = c.read_canonical(self.source())
+        packet_fields = c.fields(parsed[1:])
+        rows = packet_fields[':FUNCTIONS']
+        root = rows[-1]
+        root[root.index(c.Atom(':GUARD')) + 1] = c.read_canonical(
+            obj(['GUARD-ONLY', 'X']) if not false_guard else obj(['COMMON-LISP::QUOTE', 'COMMON-LISP::NIL']))
+        if not missing:
+            helper = c.read_canonical('(:FUNCTION ' + obj('GUARD-ONLY') +
+                ' :FORMALS ' + obj(['X']) + ' :LOGICAL-BODY ' + obj(['COMMON-LISP::INTEGERP', 'X']) +
+                ' :GUARD ' + obj('COMMON-LISP::T') + ' :ATTACHMENT ' +
+                obj('GUARD-IMPLEMENTATION' if attached else 'COMMON-LISP::NIL') + ')')
+            rows.append(helper)
+        return c.canonical_text(parsed)
+
+    def guarded_lean(self, **kw):
+        with tempfile.TemporaryDirectory() as directory:
+            src = Path(directory) / 'fixture.sexp'
+            src.write_text(self.guarded_packet(**kw))
+            return c.closed_member_source(src, ['FN2-ACCEPT-ROUTE'])
+
+    def test_reached_guard_helper_has_body_and_exact_guard(self):
+        source = self.guarded_lean()
+        program, guards = source.split('def guards : CanonicalGuards')
+        self.assertIn('  | "GUARD-ONLY" => some', program)
+        self.assertIn('  | "GUARD-ONLY" => some', guards)
+        expected = c.lean_object(c.read_canonical(obj(['GUARD-ONLY', 'X'])))
+        self.assertIn('  | "FN2-ACCEPT-ROUTE" => some ⟨["X", "LST"], ' + expected, guards)
+        # Changing ONLY the canonical root guard must change the Lean subject.
+        changed = self.guarded_lean(false_guard=True)
+        self.assertEqual(program, changed.split('def guards : CanonicalGuards')[0])
+        self.assertNotEqual(source, changed)
+
+    def test_missing_guard_dependency_refused(self):
+        with self.assertRaisesRegex(ValueError, 'missing canonical body/guard callees.*GUARD-ONLY'):
+            self.guarded_lean(missing=True)
+
+    def test_attached_guard_helper_not_treated_as_logical_body(self):
+        with self.assertRaisesRegex(ValueError, 'attached canonical body/guard callee GUARD-ONLY'):
+            self.guarded_lean(attached=True)
 
     def test_wrong_or_duplicate_root_census_refused(self):
         for roots in (['NOT'], ['FN2-ACCEPT-ROUTE', 'NOT'],
