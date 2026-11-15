@@ -5,7 +5,7 @@
 (fn2-book-layer :b)
 (defcolumns fn2-id-engine
  ((scratch :bool) (slot :u32) (gen :u60) (arena :u32) (seq :u60) (published :u60)
-  (binding-phase (:enum fn2-succ-binder-phase (:idle :prepare :insert :unstage :uncertain :target :target-finish :failed)))
+  (binding-phase (:enum fn2-succ-binder-phase (:idle :prepare :insert :unstage :uncertain :target :target-finish :failed :admitted)))
   (binding-tx :u32) (binding-generation :u60) (binding-batch :u60) (binding-event :u60)
   (binding-base :u32) (binding-slot :u32) (binding-scan :u32) (binding-overlay :u32)
   (binding-sid :u60) (binding-size :u32) (binding-target-cursor :u32) (binding-best :u32) (binding-spare :u32)))
