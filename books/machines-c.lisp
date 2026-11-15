@@ -9,6 +9,7 @@
 (include-book "machines-b")
 (include-book "c-snapshot")
 (include-book "c-source-observer-state")
+(include-book "run-physical-profile")
 (include-book "run-physical-step")
 (include-book "run-physical-release")
 (include-book "run-physical-geometry")
