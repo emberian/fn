@@ -1,6 +1,7 @@
 ;; Schema, core child, and partition registration for fn2-upload (layer D, quest D4).
 ;; Arm bodies and helper operations live in books/upload.lisp (a leaf book).
 (in-package "ACL2")
+(include-book "upload-window-geometry")
 (include-book "machines-a")
 (include-book "machines-b")
 (include-book "conn-kind")
@@ -19,9 +20,10 @@
 (defconst *fn2-upload-run-bytes* (+ (* 2 *fn2-upload-hash-bytes*) *fn2-upload-scan-bytes*))
 ;; Defmachine budgets are literal naturals; tie its charge to this derivation.
 (assert-event (equal *fn2-upload-run-bytes* 6144))
-;; The pool class of a chunk (the profile's second class: 64 KiB in the
-;; concrete profile) and the article bound when the profile names none
-;; (fn1's source bound, specs/article-parser.md).
+ ; Header and body windows use shared byte requirements at actual TAKE,
+; resolved by the existing pool class resolver for the configured profile.
+; The input-profile/constructor fixture class baseline remains unchanged;
+; actual upload TAKE uses the byte requirements below.
 (defconst *fn2-upload-chunk-class* 1)
 ;; Large-upload windows (ROUND2 B.1): an upload holds one while it streams.
 (defconst *fn2-upload-windows* 16)
@@ -30,7 +32,7 @@
 ;; window right after the source at the verdict, for C's offer and the
 ;; article row (a pool workspace is written at its fill): in chunk 0 when it
 ;; fits there, else in chunk 1. The bound leaves its room in chunk 1.
-(defconst *fn2-upload-digest-octets* 32)
+
 ;; Where it goes for a source of FILLED octets: (mv in1 off), IN1 true for
 ;; chunk 1.
 (defun fn2-upload-digest-at (filled cap0)
@@ -268,8 +270,8 @@
  :capacity (fn2-upload-capacity profile)
  ;; A connection takes the row with its two chunks (A-S7).
  :taken (:phase :head :rows :upload-row
-         :ranges ((:chunk-window :slot c0-slot :gen c0-gen :class 1)
-                  (:chunk-window :slot c1-slot :gen c1-gen :class 1))
+         :ranges ((:chunk-window :slot c0-slot :gen c0-gen :class (:bytes *fn2-upload-header-workspace-bytes*))
+                  (:chunk-window :slot c1-slot :gen c1-gen :class (:bytes *fn2-upload-body-window-bytes*)))
          :copy (conn conn-gen request rule principal-slot op)
          :clear (filled hashed source-lines scan-off visible nfields nlines seen mo ml no nl po pl
                  head-status word inj txn-gen stopped pepoch palloc pdone sevent soutcome scount sready
