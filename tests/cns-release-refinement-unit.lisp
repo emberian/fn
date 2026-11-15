@@ -45,6 +45,9 @@
        (conclusion (equal (list code after) expected)))
     (mv (and base
              (case control
+               ; The evidence payload is the actual constructor's before
+               ; snapshot. The release above cannot change that value.
+               (:snapshot (list slot gen sibling sibling-gen before))
                (:positive (and whole-h original-c conclusion
                                (member-eq code '(:ok :retired))))
                (:without-generation
@@ -79,3 +82,5 @@
 (assert-event (and (fn2-cns-core-release-positive)
                    (fn2-cns-core-release-without-generation)
                    (fn2-cns-core-release-sibling-mutation)))
+
+(fn2-assert-owed-teeth fn2-cns-core-release-independent)
