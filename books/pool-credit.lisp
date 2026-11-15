@@ -303,10 +303,28 @@
          (fn2-pool (update-fn2-pool-credit-group-noncei group nonce fn2-pool))
          (fn2-pool (update-fn2-pool-credit-phasei group *fn2-pool-credit-redeeming* fn2-pool)))
    (mv :ok fn2-pool))))
+; Request producer contracts from the existing shared columns emitter.
+(fn2-pool-preserves fn2-pool-reserve-body
+ (class kind owner generation fn2-pool) :position 3 :disable nil)
+(fn2-pool-preserves fn2-pool-reserve-body
+ (class kind owner generation fn2-pool) :position 3 :disable t
+ :specs (("-CREDIT-NCLASSES" fn2-pool-nclasses 3 :frame fn2-pool
+           :hints (("Goal" :in-theory (enable fn2-pool-reserve-body fn2-pool-nclasses))))
+         ("-CREDIT-AVAILABLE-LENGTH" fn2-pool-credit-available-length 3 :frame fn2-pool
+           :hints (("Goal" :in-theory (enable fn2-pool-reserve-body fn2-pool-credit-available-length))))
+         ("-CREDIT-PROTECTED-LENGTH" fn2-pool-credit-protected-length 3 :frame fn2-pool
+           :hints (("Goal" :in-theory (enable fn2-pool-reserve-body fn2-pool-credit-protected-length))))))
+(defthm fn2-pool-reserve-body-success-slot
+ (implies (and (fn2-poolp fn2-pool) (fn2-pool-wfp fn2-pool)
+               (equal (mv-nth 0 (fn2-pool-reserve-body class kind owner generation fn2-pool)) :ok))
+          (and (natp (mv-nth 1 (fn2-pool-reserve-body class kind owner generation fn2-pool)))
+               (< (mv-nth 1 (fn2-pool-reserve-body class kind owner generation fn2-pool))
+                  (fn2-pool-rows fn2-pool))))
+ :hints (("Goal" :in-theory (enable fn2-pool-reserve-body))))
 (defun fn2-pool-reserve-credit (group nonce class kind owner generation fn2-pool)
  (declare (xargs :stobjs fn2-pool :guard (fn2-pool-wfp fn2-pool)
  :guard-hints (("Goal" :use (fn2-pool-credit-shaped-index-bound))
-   (fn2-columns-guard-hint '(fn2-pool) nil nil world))))
+   (fn2-columns-guard-hint '(fn2-pool) '(fn2-pool-reserve-body) nil world))))
  (b* (((unless (and (fn2-pool-credit-ownerp group nonce kind owner generation fn2-pool)
                     (equal (fn2-pool-credit-phasei group fn2-pool) *fn2-pool-credit-redeeming*)
                     (natp class) (< class (fn2-pool-nclasses fn2-pool)))) (mv :owner 0 0 fn2-pool))
