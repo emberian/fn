@@ -132,6 +132,15 @@ macro declaration alone would not prove composition. That consumer remains in
 the application candidate pending its actual gate. Member qualification does
 not establish checkpoint activation, application correctness or native restart.
 
+Checkpoint-ticket installation is also qualified: exact 27-book record
+`certify-20261115T123506Z-1324806` reused 26 parents and certified tickets.
+Two local unconditional allocator row-frame lemmas close the original INSTALL-ROWS
+proof obstruction; all original runtime and preservation statements are unchanged.
+The actual ticket author events passed in 3.39 seconds. Root matched all 27
+source hashes and closure keys against the qualified receipt. The remaining
+consumer gate is the emitted application composition, not a macro declaration.
+Receipt: [checkpoint tickets](receipts/checkpoint-tickets27-record.json).
+
 Physical address geometry remains an executable blocker. `fe9f761ab` repairs
 POST's root location from three units per extent to the physical sixteen, with
 an unexecuted nonzero-extent constructor control. Root also traced the same
