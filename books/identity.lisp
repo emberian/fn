@@ -92,6 +92,7 @@
 ; the candidate (CFOUND, H, EVIDENCE, QUALIFIED, LOCAL).
 (defcolumns fn2-id-decides
  ((phase (:enum fn2-id-decide-phase (:idle :summary :candidate :done)))
+  (query-incarnation :u60)
   (qk :u8) (qs :u32) (qg :u60)
   (sfound :bool) (selected :u60) (candidates :u60) (gaps :u60)
   (cfound :bool) (h :u60) (evidence :u60) (qualified :bool) (local :bool)))
