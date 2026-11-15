@@ -327,16 +327,21 @@
           (fn2-fields (mv-nth 1 (fn2-checkpoint-decode base slot gen off len okind oslot ogen fn2-fields fn2-pool)))))
   :in-theory (disable fn2-checkpoint-decode fn2-fields-value fn2-fields-rows)))))
 
+(encapsulate ()
+ (local (include-book "arithmetic-3/floor-mod/floor-mod" :dir :system))
 (defun fn2-checkpoint-copy-expected (i dst hash fn2-digests fn2-checkpoint-bytes)
  (declare (xargs :stobjs (fn2-digests fn2-checkpoint-bytes)
   :measure (nfix (- 32 (nfix i)))
+  :guard-hints ((fn2-columns-guard-hint
+                 '(fn2-digests fn2-checkpoint-bytes)
+                 '(floor mod fn2-digest-word fn2-fc-word-byte) nil world))
   :guard (and (natp i) (<= i 32) (natp dst)
               (fn2-digest-rowp hash fn2-digests) (fn2-checkpoint-bytes-wfp fn2-checkpoint-bytes)
               (<= (+ dst 32) (fn2-checkpoint-bytes-rows fn2-checkpoint-bytes)))))
  (if (or (not (natp i)) (>= i 32)) fn2-checkpoint-bytes
   (let* ((byte (fn2-fc-word-byte (fn2-digest-word hash (floor i 4) fn2-digests) (mod i 4)))
          (fn2-checkpoint-bytes (fn2-checkpoint-bytes-set-value (+ dst i) byte fn2-checkpoint-bytes)))
-   (fn2-checkpoint-copy-expected (+ 1 i) dst hash fn2-digests fn2-checkpoint-bytes))))
+   (fn2-checkpoint-copy-expected (+ 1 i) dst hash fn2-digests fn2-checkpoint-bytes)))))
 
 ; A locator is only a candidate. Neither preparation nor a valid descriptor
 ; grants publication, retirement coverage, or permission to drop an old root.
@@ -395,16 +400,21 @@
   (mv :owner fn2-checkpoints fn2-checkpoint-refs fn2-checkpoint-bytes)
   (fn2-checkpoint-prepare-body c checkpoint history incarnation domain unit epoch allocation kind len hash fn2-checkpoints fn2-checkpoint-refs fn2-checkpoint-bytes fn2-digests)))
 
+(encapsulate ()
+ (local (include-book "arithmetic-3/floor-mod/floor-mod" :dir :system))
 (defun fn2-checkpoint-hash-matchesp (i dst hash fn2-digests fn2-checkpoint-bytes)
  (declare (xargs :stobjs (fn2-digests fn2-checkpoint-bytes)
   :measure (nfix (- 32 (nfix i)))
+  :guard-hints ((fn2-columns-guard-hint
+                 '(fn2-digests fn2-checkpoint-bytes)
+                 '(floor mod fn2-digest-word fn2-fc-word-byte) nil world))
   :guard (and (natp i) (<= i 32) (natp dst)
               (fn2-digest-rowp hash fn2-digests) (fn2-checkpoint-bytes-wfp fn2-checkpoint-bytes)
               (<= (+ dst 32) (fn2-checkpoint-bytes-rows fn2-checkpoint-bytes)))))
  (if (or (not (natp i)) (>= i 32)) t
   (and (equal (fn2-checkpoint-bytes-value (+ dst i) fn2-checkpoint-bytes)
               (fn2-fc-word-byte (fn2-digest-word hash (floor i 4) fn2-digests) (mod i 4)))
-       (fn2-checkpoint-hash-matchesp (+ 1 i) dst hash fn2-digests fn2-checkpoint-bytes))))
+       (fn2-checkpoint-hash-matchesp (+ 1 i) dst hash fn2-digests fn2-checkpoint-bytes)))))
 
 (defun fn2-checkpoint-capture-roots (role c base slot gen okind oslot ogen
                                    fn2-fields fn2-pool fn2-checkpoint-refs fn2-checkpoint-bytes)
