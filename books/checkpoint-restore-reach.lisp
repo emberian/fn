@@ -55,11 +55,13 @@
 (defun fn2-checkpoint-restore-reach-map-state-p (role state)
  (declare (xargs :guard t))
  (and (natp role) (< role *fn2-checkpoint-restore-reach-role-count*)
-      (if (member-equal role (list *fn2-checkpoint-restore-reach-role-payload-manifest* *fn2-checkpoint-restore-reach-role-payload-raw* *fn2-checkpoint-restore-reach-role-payload-block* *fn2-checkpoint-restore-reach-role-semantic-source*))
+      (if (equal role *fn2-checkpoint-restore-reach-role-event-archive*)
+          (member-equal state (list *fn2-extent-state-reserved* *fn2-extent-state-allocated* *fn2-extent-state-retire-pending*))
+        (if (member-equal role (list *fn2-checkpoint-restore-reach-role-payload-manifest* *fn2-checkpoint-restore-reach-role-payload-raw* *fn2-checkpoint-restore-reach-role-payload-block* *fn2-checkpoint-restore-reach-role-semantic-source*))
           (member-equal state (list *fn2-extent-state-allocated* *fn2-extent-state-retire-pending*))
         (if (equal role *fn2-checkpoint-restore-reach-role-journal*)
             (member-equal state (list *fn2-extent-state-allocated* *fn2-extent-state-retire-pending*))
-          (equal state *fn2-extent-state-reserved*)))))
+          (equal state *fn2-extent-state-reserved*))))))
 
 ; Internal identity merge, used only after a typed actual source adapter.
 ; Different unit offsets of one allocation share an extent row. Page hashes

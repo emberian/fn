@@ -354,3 +354,18 @@ between issue and completion, fills the actual loan, posts/harvests through
 the real protocol, and distinguishes matching from substituted subjects. The
 fixture's candidate is synthetic and does not claim physical header admission.
 The actual full boot-phase/callback fixture is still owed at parent composition.
+
+Authenticated archive pages now join the actual common cold reach/map
+generation through the existing typed claim primitive. The cold-only archive
+role admits constructor RESERVED pages and retained ALLOCATED/RETIRE_PENDING
+archive pages; every previous role policy is structurally unchanged and the
+existing u16 role field fits the new role. This does not alter allocator policy.
+The real header adapter records reach only after physical/layout verification
+and captures the actual positive generation. Every boot archive face checks
+that same current candidate/descriptor/map generation. A verified READY page
+is claimed before the shared cursor may parse it; repeated root seeks use
+idempotent claims. Four class/claim source controls pass, and an unrun actual
+role/ledger fixture covers generation, role and allocation refusal. The new
+real header core face runs under existing root-verify/role3/full-page/owner
+checks; parent routing is still absent. These claims establish authenticated
+page retention, not contiguous canonical coverage or events-complete.

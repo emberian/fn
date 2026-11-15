@@ -2,37 +2,67 @@
 ; Parent owns stage12 routing through the existing :read/:read-result machine.
 (in-package "ACL2")
 (include-book "boot-kind")
-(include-book "event-archive-cold-read")
+(include-book "event-archive-cold-reach")
 (fn2-book-layer :c)
+(defcost fn2-boot-checkpoint-archive-header-raw :child fn2-event-archive-cold-header-reach :answers t :bytes (* 2 *fn2-run-layout-max-entry-bytes*)
+ :tables (fn2-core-event-archive fn2-core-checkpoints fn2-core-checkpoint-refs fn2-core-checkpoint-bytes fn2-core-extents fn2-core-checkpoint-restore-reader
+          fn2-core-checkpoint-restore-map fn2-core-checkpoint-restore-map-control fn2-core-checkpoint-restore-reach fn2-core-checkpoint-restore-reach-control
+          fn2-core-fc fn2-core-fc-context fn2-core-b3 fn2-core-fields fn2-core-pool fn2-core-digests))
+(defcost fn2-boot-checkpoint-archive-header :answers t :bytes (* 2 *fn2-run-layout-max-entry-bytes*)
+ :tables (fn2-core-event-archive fn2-core-checkpoints fn2-core-checkpoint-refs fn2-core-checkpoint-bytes fn2-core-extents fn2-core-checkpoint-restore-reader
+          fn2-core-checkpoint-restore-map fn2-core-checkpoint-restore-map-control fn2-core-checkpoint-restore-reach fn2-core-checkpoint-restore-reach-control
+          fn2-core-fc fn2-core-fc-context fn2-core-b3 fn2-core-fields fn2-core-pool fn2-core-digests))
 (defcost fn2-boot-checkpoint-archive-begin :answers t :bytes (* 2 *fn2-run-layout-max-entry-bytes*)
  :tables (fn2-core-event-archive fn2-core-checkpoints fn2-core-checkpoint-refs fn2-core-checkpoint-bytes fn2-core-checkpoint-restore-reader
-          fn2-core-run-loads fn2-core-run-cursors fn2-core-fc fn2-core-fields fn2-core-pool))
+          fn2-core-run-loads fn2-core-run-cursors fn2-core-fc fn2-core-fields fn2-core-pool fn2-core-checkpoint-restore-map fn2-core-checkpoint-restore-map-control fn2-core-checkpoint-restore-reach fn2-core-checkpoint-restore-reach-control))
 (defcost fn2-boot-checkpoint-archive-arm :answers t :bytes 512
- :tables (fn2-core-event-archive fn2-core-checkpoints fn2-core-checkpoint-refs fn2-core-checkpoint-bytes fn2-core-run-loads fn2-core-run-cursors fn2-core-pool))
+ :tables (fn2-core-event-archive fn2-core-checkpoints fn2-core-checkpoint-refs fn2-core-checkpoint-bytes fn2-core-run-loads fn2-core-run-cursors fn2-core-pool fn2-core-checkpoint-restore-map fn2-core-checkpoint-restore-map-control fn2-core-checkpoint-restore-reach fn2-core-checkpoint-restore-reach-control))
 (defcost fn2-boot-checkpoint-archive-received :answers t :bytes 512
- :tables (fn2-core-event-archive fn2-core-checkpoints fn2-core-checkpoint-refs fn2-core-checkpoint-bytes fn2-core-run-loads fn2-core-run-cursors fn2-core-pool))
-(defcost fn2-boot-checkpoint-archive-check-raw :child fn2-event-archive-cold-cursor-step :answers t :bytes (* 2 *fn2-run-layout-max-entry-bytes*)
+ :tables (fn2-core-event-archive fn2-core-checkpoints fn2-core-checkpoint-refs fn2-core-checkpoint-bytes fn2-core-run-loads fn2-core-run-cursors fn2-core-pool fn2-core-checkpoint-restore-map fn2-core-checkpoint-restore-map-control fn2-core-checkpoint-restore-reach fn2-core-checkpoint-restore-reach-control))
+(defcost fn2-boot-checkpoint-archive-check-raw :child fn2-event-archive-cold-step-reach :answers t :bytes (* 2 *fn2-run-layout-max-entry-bytes*)
  :tables (fn2-core-event-archive fn2-core-checkpoints fn2-core-checkpoint-refs fn2-core-checkpoint-bytes fn2-core-run-loads fn2-core-run-cursors
-          fn2-core-run-paths fn2-core-run-cache fn2-core-boot-config fn2-core-fc fn2-core-fc-context fn2-core-b3 fn2-core-fields fn2-core-pool fn2-core-digests))
+          fn2-core-run-paths fn2-core-run-cache fn2-core-boot-config fn2-core-fc fn2-core-fc-context fn2-core-b3 fn2-core-fields fn2-core-pool fn2-core-digests fn2-core-checkpoint-restore-map fn2-core-checkpoint-restore-map-control fn2-core-checkpoint-restore-reach fn2-core-checkpoint-restore-reach-control))
 (defcost fn2-boot-checkpoint-archive-check :answers t :bytes (* 2 *fn2-run-layout-max-entry-bytes*)
  :tables (fn2-core-event-archive fn2-core-checkpoints fn2-core-checkpoint-refs fn2-core-checkpoint-bytes fn2-core-run-loads fn2-core-run-cursors
-          fn2-core-run-paths fn2-core-run-cache fn2-core-boot-config fn2-core-fc fn2-core-fc-context fn2-core-b3 fn2-core-fields fn2-core-pool fn2-core-digests))
+          fn2-core-run-paths fn2-core-run-cache fn2-core-boot-config fn2-core-fc fn2-core-fc-context fn2-core-b3 fn2-core-fields fn2-core-pool fn2-core-digests fn2-core-checkpoint-restore-map fn2-core-checkpoint-restore-map-control fn2-core-checkpoint-restore-reach fn2-core-checkpoint-restore-reach-control))
 
 (defmacro fn2-boot-checkpoint-archive-operations ()
  '(progn
-  (make-event (value (cons 'progn (fn2-arms-op-face-events 'fn2-boot-checkpoint-archive-check-raw 'fn2-event-archive-cold-cursor-step (w state)))))
+  (make-event (value (cons 'progn (append
+   (fn2-arms-op-face-events 'fn2-boot-checkpoint-archive-header-raw 'fn2-event-archive-cold-header-reach (w state))
+   (fn2-arms-op-face-events 'fn2-boot-checkpoint-archive-check-raw 'fn2-event-archive-cold-step-reach (w state))))))
+  (defun fn2-boot-checkpoint-archive-header (id ogen fn2-core)
+   (declare (xargs :stobjs fn2-core :guard (fn2-core-wfp fn2-core)))
+   (if (not (and (eq (fn2-boot-snapshot-read-code id fn2-core) :ok)
+                  (equal (fn2-machine-phase id fn2-core) *fn2-boot-state-checkpoint-root-verify*)
+                  (equal (fn2-machine-generation id fn2-core) ogen)
+                  (equal (fn2-machine-root-role id fn2-core) 3)
+                  (equal (fn2-machine-root-cursor id fn2-core) *fn2-format-page-size*)
+                  (stobj-let ((fn2-checkpoint-restore-reader (fn2-core-checkpoint-restore-reader fn2-core))) (answer)
+                   (and (< 0 (fn2-checkpoint-restore-reader-rows fn2-checkpoint-restore-reader))
+                        (equal (fn2-checkpoint-restore-reader-candidate 0 fn2-checkpoint-restore-reader) (fn2-machine-checkpoint-index id fn2-core))
+                        (equal (fn2-checkpoint-restore-reader-role 0 fn2-checkpoint-restore-reader) 3)
+                        (equal (fn2-checkpoint-restore-reader-slot 0 fn2-checkpoint-restore-reader) (fn2-machine-root-slot id fn2-core))
+                        (equal (fn2-checkpoint-restore-reader-gen 0 fn2-checkpoint-restore-reader) (fn2-machine-root-gen id fn2-core))
+                        (equal (fn2-checkpoint-restore-reader-owner-kind 0 fn2-checkpoint-restore-reader) *fn2-boot-kind*)
+                        (equal (fn2-checkpoint-restore-reader-owner-slot 0 fn2-checkpoint-restore-reader) id)
+                        (equal (fn2-checkpoint-restore-reader-owner-gen 0 fn2-checkpoint-restore-reader) ogen)) answer))) (mv :state fn2-core)
+    (fn2-boot-checkpoint-archive-header-raw fn2-core)))
+  (fn2-core-preserves fn2-boot-checkpoint-archive-header (id ogen fn2-core) :position 1 :rows nil)
   (defun fn2-boot-checkpoint-archive-owner-p (id ogen phase fn2-core)
    (declare (xargs :stobjs fn2-core :guard (fn2-core-wfp fn2-core)))
    (and (eq (fn2-boot-snapshot-read-code id fn2-core) :ok)
         (equal (fn2-machine-phase id fn2-core) phase) (equal (fn2-machine-generation id fn2-core) ogen)
-        (stobj-let ((fn2-event-archive (fn2-core-event-archive fn2-core))) (answer)
+        (stobj-let ((fn2-event-archive (fn2-core-event-archive fn2-core)) (fn2-checkpoints (fn2-core-checkpoints fn2-core)) (fn2-checkpoint-refs (fn2-core-checkpoint-refs fn2-core)) (fn2-checkpoint-bytes (fn2-core-checkpoint-bytes fn2-core)) (fn2-checkpoint-restore-map (fn2-core-checkpoint-restore-map fn2-core)) (fn2-checkpoint-restore-map-control (fn2-core-checkpoint-restore-map-control fn2-core)) (fn2-checkpoint-restore-reach-control (fn2-core-checkpoint-restore-reach-control fn2-core))) (answer)
          (and (< 1 (fn2-event-archive-rows fn2-event-archive))
               (equal (fn2-event-archive-candidate 1 fn2-event-archive) (fn2-machine-checkpoint-index id fn2-core))
               (equal (fn2-event-archive-header-slot 1 fn2-event-archive) (fn2-machine-root-slot id fn2-core))
               (equal (fn2-event-archive-header-gen 1 fn2-event-archive) (fn2-machine-root-gen id fn2-core))
               (equal (fn2-event-archive-owner-kind 1 fn2-event-archive) *fn2-boot-kind*)
               (equal (fn2-event-archive-owner-slot 1 fn2-event-archive) id)
-              (equal (fn2-event-archive-owner-gen 1 fn2-event-archive) ogen)) answer)))
+              (equal (fn2-event-archive-owner-gen 1 fn2-event-archive) ogen)
+              (fn2-event-archive-cold-reach-current-p fn2-event-archive fn2-checkpoints fn2-checkpoint-refs fn2-checkpoint-bytes
+               fn2-checkpoint-restore-map fn2-checkpoint-restore-map-control fn2-checkpoint-restore-reach-control)) answer)))
   (defun fn2-boot-checkpoint-archive-begin (id ogen fn2-core)
    (declare (xargs :stobjs fn2-core :guard (fn2-core-wfp fn2-core)))
    (if (not (fn2-boot-checkpoint-archive-owner-p id ogen *fn2-boot-state-checkpoint-archive-begin* fn2-core)) (mv :state fn2-core)

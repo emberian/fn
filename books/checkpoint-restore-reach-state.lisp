@@ -8,7 +8,7 @@
   (state (:enum fn2-checkpoint-restore-reach-state (:empty :named :mapped)))
   (last-role (:enum fn2-checkpoint-restore-reach-role
     (:descriptor :semantic :allocation-map :event-directory :frontier :arena
-     :journal :journal-ticket :payload-manifest :payload-raw :payload-block :semantic-source)))))
+     :journal :journal-ticket :payload-manifest :payload-raw :payload-block :semantic-source :event-archive)))))
 (defcolumns fn2-checkpoint-restore-reach-control
  ((generation :u60) (candidate :u32) (source-checkpoint :u60)
   (source-cut-commit :u60) (source-cut-event :u60)
@@ -16,3 +16,5 @@
  :extra-fields
  ((fn2-checkpoint-restore-reach-control-descriptor :type (array (unsigned-byte 8) (32)) :initially 0
    :why "Exact authenticated descriptor identity shared by map, roots, semantic and payload reach investigations.")))
+
+(assert-event (<= *fn2-checkpoint-restore-reach-role-count* 16))
