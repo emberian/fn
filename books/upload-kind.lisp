@@ -1,6 +1,8 @@
 ;; Schema, core child, and partition registration for fn2-upload (layer D, quest D4).
 ;; Arm bodies and helper operations live in books/upload.lisp (a leaf book).
 (in-package "ACL2")
+(include-book "upload-window-geometry")
+(include-book "upload-page-geometry")
 (include-book "machines-a")
 (include-book "machines-b")
 (include-book "conn-kind")
@@ -9,17 +11,20 @@
 (include-book "upload-feed")
 (include-book "blake3")
 (include-book "machine-arms") ; defmachine-registry (MACHINE-FORM 6.5 P4)
-(include-book "upload-page-geometry")
 (fn2-book-layer :d)
 
 ;; The run quantum, split statically: at most *fn2-upload-hash-bytes* hashed
-;; and *fn2-upload-scan-bytes* of header scanned per run.
+;; and *fn2-upload-scan-bytes* of header scanned per run; each hashed span
+;; is also counted once for LF octets before its source window can roll.
 (defconst *fn2-upload-hash-bytes* 2048)
 (defconst *fn2-upload-scan-bytes* 2048)
-(defconst *fn2-upload-run-bytes* (+ *fn2-upload-hash-bytes* *fn2-upload-scan-bytes*))
-;; The pool class of a chunk (the profile's second class: 64 KiB in the
-;; concrete profile) and the article bound when the profile names none
-;; (fn1's source bound, specs/article-parser.md).
+(defconst *fn2-upload-run-bytes* (+ (* 2 *fn2-upload-hash-bytes*) *fn2-upload-scan-bytes*))
+;; Defmachine budgets are literal naturals; tie its charge to this derivation.
+(assert-event (equal *fn2-upload-run-bytes* 6144))
+ ; Header and body windows use shared byte requirements at actual TAKE,
+; resolved by the existing pool class resolver for the configured profile.
+; The input-profile/constructor fixture class baseline remains unchanged;
+; actual upload TAKE uses the byte requirements below.
 
 ;; Large-upload windows (ROUND2 B.1): an upload holds one while it streams.
 (defconst *fn2-upload-windows* 16)
@@ -49,13 +54,18 @@
 ;; identity are unchanged. The template runs to the "@"; the path identity
 ;; and *fn2-upload-mid-close* follow it.
 
+
+
 ;; A consumer's append with an operation identity (e-surface.md 3.3) that
 ;; names no Message-ID gets <op-PRINCIPAL-OP@P> instead, so a retry of the
 ;; same operation is the same article on every carrier: the template's two
 ;; counters are the upload's principal and its operation.
 
+
 ;; Its longest form: two 20-digit counters and the longest path identity, a
 ;; 250-octet Message-ID (RFC 5536 3.1.3).
+
+
 
 ;; A source manifest (article-manifest.lisp) names stored octets one 4 KiB
 ;; block per entry; its header and the entries of the largest size fill one
@@ -63,7 +73,16 @@
 ;; blocks, 380,928 octets) and the profile's article bound, with the
 ;; generated Message-ID field, stays within it (fn2-input-config-profilep).
 
+;; Raw articles carry one trusted digest per write resource. Larger sources
+;; use manifests even though a physical extent has more storage units.
+
+
+
 ;; entries of the largest size one unit holds (the first holds the header too)
+
+
+
+
 
 ;; Words an upload or a transaction posts to its connection (section 14.5),
 ;; by name; 0 is none.
@@ -187,7 +206,7 @@
 
 (defmachine fn2-upload
  :states (:free :head :identity :receiving :validating :discard :store :stored-hash :location-hash :store-write :store-wrote
-          :store-fence :store-fenced :sealed :aborting :draining :retired)
+          :store-fence :store-fenced :sealed :aborting :draining :retired :uncertain :stream-init :stream-receiving :stream-stage :stream-write :stream-wrote :stream-block :stream-fence :stream-fenced :stream-final :stream-repack :stream-root-write :stream-root-wrote :stream-root-fence :stream-root-fenced :stream-drain :stream-refuse-fence :stream-refuse-fenced)
  ;; CONN is the owner the source comes from and the word goes to: a
  ;; connection (POST, IHAVE, TAKETHIS) or a consumer request (an append,
  ;; e-surface.md 3.3: the same upload and transaction as a POST). OP is the
@@ -195,7 +214,7 @@
  :fields ((conn :link) (conn-gen :u60) (request :u32)
           (rule (:enum fn2-upload-rule (:post :ihave :takethis))) (op :u60)
           (c0-slot :link) (c0-gen :u60) (c1-slot :link) (c1-gen :u60)
-          (filled :u60) (hashed :u60)
+          (filled :u60) (hashed :u60) (source-lines :u32)
           (scan-off :u32) (ofield :u8) (visible :bool) (nfields :u16) (nlines :u16) (seen :u32)
           (mo :u32) (ml :u32) (no :u32) (nl :u32) (po :u32) (pl :u32)
           (head-status (:enum fn2-upload-head (:scanning :done :malformed :line-length :header-fields
@@ -220,12 +239,18 @@
           ;; bounded operation each, and MDRAIN the manifest units the drain
           ;; has settled
           (cext :link) (cepoch :u60) (calloc :u60) (cfree :bool) (mfill :u32) (munit :u8)
-          (mstep :u8) (mdrain :u8) (stored-hashed :u60) (location-hashed :u8))
+          (mstep :u8) (mdrain :u8) (stored-hashed :u60) (location-hashed :u8)
+              ;; PEXT is the immutable first payload identity. ROOT is allocated
+              ;; only for the final source manifest; promotion never changes MID.
+              (rootext :link) (rootepoch :u60) (rootalloc :u60)
+              (stream-active :bool) (stream-end :u60) (stream-resets :u60) (stream-stage-used :u32)
+              (stream-eof :bool) (stream-stored-finalized :bool) (stream-provisional :u32) (stream-repack :u32))
  :links ((conn :kind fn2-conn :slot conn :gen conn-gen :back (upload upload-gen)
                :reads (fed feed-mode feed-discard))
          (cns :kind fn2-cns :slot conn :gen conn-gen :back (upload upload-gen)
               :reads (fed feed-mode feed-discard))
          (child-txn :kind fn2-txn :slot txn :gen txn-gen :back (upload upload-gen)))
+ :stops (:upload-uncertain)
  :holds ((:head :upload-row :chunk-window) (:identity :upload-row :chunk-window)
          (:receiving :upload-row :chunk-window) (:validating :upload-row :chunk-window)
          (:discard :upload-row :chunk-window)
@@ -237,24 +262,42 @@
          (:store-fence :upload-row :chunk-window (:storage-window :while (lease :held)))
          (:store-fenced :upload-row :chunk-window (:storage-window :while (lease :held)))
          (:sealed :upload-row :chunk-window (:storage-window :while (lease :held)))
-         (:aborting :upload-row :chunk-window)
-         (:draining :upload-row :chunk-window (:storage-window :while (lease :held))))
- :budget (:bytes 4096 :steps 32 :descriptors 4)
+         (:aborting :upload-row :chunk-window (:storage-window :while (lease :held)))
+         (:uncertain :upload-row :chunk-window (:storage-window :while (lease :held)))
+         (:draining :upload-row :chunk-window (:storage-window :while (lease :held)))
+         (:stream-init :upload-row :chunk-window (:storage-window :while (lease :held)))
+         (:stream-receiving :upload-row :chunk-window (:storage-window :while (lease :held)))
+         (:stream-stage :upload-row :chunk-window (:storage-window :while (lease :held)))
+         (:stream-write :upload-row :chunk-window (:storage-window :while (lease :held)))
+         (:stream-wrote :upload-row :chunk-window (:storage-window :while (lease :held)))
+         (:stream-block :upload-row :chunk-window (:storage-window :while (lease :held)))
+         (:stream-fence :upload-row :chunk-window (:storage-window :while (lease :held)))
+         (:stream-fenced :upload-row :chunk-window (:storage-window :while (lease :held)))
+         (:stream-final :upload-row :chunk-window (:storage-window :while (lease :held)))
+         (:stream-repack :upload-row :chunk-window (:storage-window :while (lease :held)))
+         (:stream-root-write :upload-row :chunk-window (:storage-window :while (lease :held)))
+         (:stream-root-wrote :upload-row :chunk-window (:storage-window :while (lease :held)))
+         (:stream-root-fence :upload-row :chunk-window (:storage-window :while (lease :held)))
+         (:stream-root-fenced :upload-row :chunk-window (:storage-window :while (lease :held)))
+         (:stream-drain :upload-row :chunk-window (:storage-window :while (lease :held)))
+         (:stream-refuse-fence :upload-row :chunk-window (:storage-window :while (lease :held)))
+         (:stream-refuse-fenced :upload-row :chunk-window (:storage-window :while (lease :held))))
+ :budget (:bytes 6144 :steps 32 :descriptors 4)
  :capacity (fn2-upload-capacity profile)
  ;; A connection takes the row with its two chunks (A-S7).
  :taken (:phase :head :rows :upload-row
-         :ranges ((:chunk-window :slot c0-slot :gen c0-gen :class 1)
-                  (:chunk-window :slot c1-slot :gen c1-gen :class 1))
+         :ranges ((:chunk-window :slot c0-slot :gen c0-gen :class (:bytes *fn2-upload-header-workspace-bytes*))
+                  (:chunk-window :slot c1-slot :gen c1-gen :class (:bytes *fn2-upload-body-window-bytes*)))
          :copy (conn conn-gen request rule principal-slot op)
-         :clear (filled hashed scan-off visible nfields nlines seen mo ml no nl po pl
+         :clear (filled hashed source-lines scan-off visible nfields nlines seen mo ml no nl po pl
                  head-status word inj txn-gen stopped pepoch palloc pdone sevent soutcome scount sready
-                 lgen lease ilen cepoch calloc cfree mfill munit mstep mdrain stored-hashed location-hashed))
+                 lgen lease ilen cepoch calloc cfree mfill munit mstep mdrain stored-hashed location-hashed rootepoch rootalloc stream-active stream-end stream-resets stream-stage-used stream-eof stream-stored-finalized stream-provisional stream-repack))
  :initial ((generation fn2-machine-initial-generation) (ready-prev *fn2-none*) (ready-next *fn2-none*)
            (c0-slot *fn2-none*) (c1-slot *fn2-none*) (conn *fn2-none*) (txn *fn2-none*) (account-ref *fn2-none*)
-           (pext *fn2-none*) (lslot *fn2-none*) (cext *fn2-none*)
+           (pext *fn2-none*) (lslot *fn2-none*) (cext *fn2-none*) (rootext *fn2-none*)
            (ofield 12) (next-free fn2-machine-initial-next-free))
  :arms ((:free) (:head) (:identity) (:receiving) (:validating) (:discard) (:store) (:stored-hash) (:location-hash) (:store-write) (:store-wrote)
-        (:store-fence) (:store-fenced) (:sealed) (:aborting) (:draining) (:retired))
+        (:store-fence) (:store-fenced) (:sealed) (:aborting) (:draining) (:retired) (:uncertain) (:stream-init) (:stream-receiving) (:stream-stage) (:stream-write) (:stream-wrote) (:stream-block) (:stream-fence) (:stream-fenced) (:stream-final) (:stream-repack) (:stream-root-write) (:stream-root-wrote) (:stream-root-fence) (:stream-root-fenced) (:stream-drain) (:stream-refuse-fence) (:stream-refuse-fenced))
  :observes ((:write-result) (:fence-result) (:borrow-released)))
 
 ; MACHINE-FORM 6.5 P4: the kind's take in child form, proved here;

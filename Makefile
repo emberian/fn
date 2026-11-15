@@ -278,6 +278,14 @@ ACL2_BOOKS = \
   books/txn \
   books/txn-kind \
   books/upload \
+  books/upload-window-geometry \
+  books/upload-page-geometry \
+  books/source-manifest-codec \
+  books/upload-stream \
+  books/upload-stream-stage \
+  books/upload-stream-manifest \
+  books/upload-stream-reset \
+  books/upload-stream-settle \
   books/upload-feed \
   books/upload-kind \
   books/upload-scan \
@@ -532,6 +540,18 @@ ACL2_BOOKS = \
   tests/upload-feed-unit \
   tests/upload-scan-unit \
   tests/upload-unit \
+  tests/machine-taken-byte-class-unit \
+  tests/grant-class-resolution-unit \
+  tests/root-upload-geometry-unit \
+  tests/upload-rolling-served-unit \
+  tests/upload-uncertainty-served-unit \
+  tests/upload-stream-abort-served-unit \
+  tests/upload-dual-hash-unit \
+  tests/upload-stream-manifest-unit \
+  tests/upload-rolling-feed-component-unit \
+  tests/upload-posted-linear-unit \
+  tests/txn-retained-source-served-unit \
+  tests/txn-upload-physical-location-unit \
   tests/view-contracts-unit \
   tests/vocab-unit \
   tests/wake-unit \

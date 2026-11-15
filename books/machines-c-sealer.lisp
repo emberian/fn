@@ -10,7 +10,7 @@
 ; and its band (sized for one overlay's entries) are C's own children. The
 ; field rows are the sealer's stripe of B's fields table (*fn2-b-seal-field-rows*,
 ; just below the transactions' stripes, which are anchored at the table's
-; end); the checker row is 3 + :large-upload-windows of B's format-check
+; end); the checker row is the derived fn2-b-sealer-hash-row of B's format-check
 ; tables, its digest regions 129-135 (B's named regions are 0-128).
 (in-package "ACL2")
 (include-book "sealer")
@@ -18,15 +18,11 @@
 
 (assert-event (<= *fn2-seal-field-rows* *fn2-b-seal-field-rows*))
 (defconst *fn2-sealer-fill* *fn2-run-page-size*)
-(defun fn2-sealer-windows (profile)
- (declare (xargs :guard t))
- (fn2-b-upload-windows profile))
 (defun fn2-sealer-profilep (profile)
  (declare (xargs :guard t))
  (and (unsigned-byte-p 32 (fn2-b-capacity :identity-overlay-entries 256 profile))
       (natp (fn2-b-capacity :identity-overlay-entries 256 profile))
       (unsigned-byte-p 32 (fn2-ribbon-slots (nfix (fn2-b-capacity :identity-overlay-entries 256 profile))))))
-(in-theory (disable fn2-sealer-windows))
 
 (defmacro fn2-sealer-child (field stobj init why)
  (let ((fn (fn2-columns-sym stobj "-INIT-FOR")))
@@ -78,7 +74,7 @@
 (defun fn2-seal-genesis (profile fcrows trows frows fn2-seals)
  (declare (xargs :stobjs fn2-seals :guard (fn2-seals-wfp fn2-seals)
                  :guard-hints (("Goal" :in-theory (disable fn2-seal-init fn2-seal-merge-rows)))))
- (b* ((crow (+ 3 (fn2-sealer-windows profile)))
+ (b* ((crow (fn2-b-sealer-hash-row profile))
       ((unless (< crow (nfix fcrows))) (mv :no-row fn2-seals))
       ((mv c fbase) (fn2-sealer-fbase fcrows trows frows))
       ((unless (eq c :ok)) (mv c fn2-seals))
