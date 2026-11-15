@@ -33,6 +33,21 @@ The raw gate substitutes the performer and proves only recorder behavior.
 The selected single-submitter/initial direct-setup premise, actual Take/Post
 binding, whole-image driver execution and crash recovery correspondence remain
 open. A successful Fence observation does not prove power-loss persistence.
+Root review of the pending whole-image driver also found that successful effect
+spans outside the observed image evade per-byte checks. Whole-effect extent
+validation, including crossing EOF and empty images, is required before that
+driver can claim complete observation consistency; the two-book record above
+does not establish this additional obligation.
+
+Selected cold recovery has two concrete implementation blockers under the
+reclamation owner. Recovery finishes frozen, but ordinary epoch initialization
+refuses that state: the private post-Fence finalization must require complete
+bank-protection reconstruction and orphan classification. In addition, eagerly
+adopting all suffix physical candidates can reject legitimate extent reuse before
+its preceding RELEASE is replayed. Directory/read provenance must be installed
+separately from chronological authenticated ownership changes. Ordinary frozen
+state refusals remain intact; physical reuse stays closed until finalization.
+
 
 The shared columns diagnostic and opt-in guard-hint API are qualified by
 `certify-20261115T034623Z-812141`: six books, two reused and four new,
