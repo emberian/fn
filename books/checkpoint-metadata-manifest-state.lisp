@@ -11,7 +11,7 @@
   (scan-row :u32) (seen :u60) (intended-bytes :u60) (completed-bytes :u60)
   ; Disjoint extent-indexed pending catalog; control uses the original row0 fields.
   ; A producer token names only accepted directory emits, never publication.
-  (catalog-installed-tag :u60) (catalog-installed-row :u32) (catalog-token :u60) (catalog-rank :u60) (catalog-source-kind :u8)
+  (catalog-old-stage :u8) (catalog-installed-tag :u60) (catalog-installed-row :u32) (catalog-token :u60) (catalog-rank :u60) (catalog-source-kind :u8)
   (catalog-source-row :u32) (catalog-source-order :u60) (catalog-schema :u60)
   (catalog-top :u8) (catalog-entries :u60) (catalog-epoch :u60) (catalog-allocation :u60)
   (catalog-hash-0 :u32) (catalog-hash-1 :u32) (catalog-hash-2 :u32) (catalog-hash-3 :u32) (catalog-hash-4 :u32) (catalog-hash-5 :u32) (catalog-hash-6 :u32) (catalog-hash-7 :u32)

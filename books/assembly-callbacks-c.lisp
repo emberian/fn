@@ -21,4 +21,5 @@
 (fn2-checkpoint-live-catalog-events)
 (fn2-checkpoint-live-cbase-events)
 (fn2-checkpoint-live-install-events)
+(fn2-checkpoint-live-retire-events)
 (fn2-checkpoint-master-events)

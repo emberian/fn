@@ -15,6 +15,7 @@
 (make-event (cons 'progn (fn2-arms-op-face-events 'fn2-checkpoint-live-cbase-step-op 'fn2-checkpoint-live-cbase-step (w state))))
 (make-event (cons 'progn (fn2-arms-op-face-events 'fn2-checkpoint-live-replace-begin-op 'fn2-checkpoint-live-replace-begin (w state))))
 (make-event (cons 'progn (fn2-arms-op-face-events 'fn2-checkpoint-live-replace-install-step-op 'fn2-checkpoint-live-replace-install-step (w state))))
+(make-event (cons 'progn (fn2-arms-op-face-events 'fn2-checkpoint-live-replace-retire-step-op 'fn2-checkpoint-live-replace-retire-step (w state))))
 
 
 
@@ -35,6 +36,12 @@
  (if (zp fuel) (mv :fuel progress fn2-core)
   (b* (((mv code fn2-core) (fn2-checkpoint-live-replace-install-step-op 4096 fn2-core)))
    (if (eq code :more) (fn2-clc-install-drain (- fuel 1) (+ 1 (nfix progress)) fn2-core)
+    (mv code progress fn2-core)))))
+(defun fn2-clc-retire-drain (fuel progress fn2-core)
+ (declare (xargs :stobjs fn2-core :verify-guards nil :measure (nfix fuel)))
+ (if (zp fuel) (mv :fuel progress fn2-core)
+  (b* (((mv code fn2-core) (fn2-checkpoint-live-replace-retire-step-op 4096 fn2-core)))
+   (if (eq code :more) (fn2-clc-retire-drain (- fuel 1) (+ 1 (nfix progress)) fn2-core)
     (mv code progress fn2-core)))))
 ; Logical fixture observation only: production consumes one current row/turn.
 (defun fn2-clc-installed-roots-p (e fn2-checkpoint-summary fn2-checkpoint-summary-sources fn2-checkpoint-metadata-manifest fn2-run-installed)
@@ -120,8 +127,15 @@
             (posp (fn2-checkpoint-summary-installed 1 fn2-checkpoint-summary))
             (= (fn2-checkpoint-summary-installed 1 fn2-checkpoint-summary) (fn2-checkpoint-summary-count 1 fn2-checkpoint-summary))
             (= (fn2-c-source-control-phase 0 fn2-c-source-control) *fn2-c-source-writer-phase-exclusive*)
-            (fn2-clc-installed-roots-p 0 fn2-checkpoint-summary fn2-checkpoint-summary-sources fn2-checkpoint-metadata-manifest fn2-run-installed)) ok)))
-  (mv (and (eq installed :installed) (posp install-progress) exact) fn2-core fn2-sim fn2-own)))
+            (fn2-clc-installed-roots-p 0 fn2-checkpoint-summary fn2-checkpoint-summary-sources fn2-checkpoint-metadata-manifest fn2-run-installed)) ok))
+      ((unless (and (eq installed :installed) (posp install-progress) exact)) (mv nil fn2-core fn2-sim fn2-own))
+      ((mv retired retire-progress fn2-core) (fn2-clc-retire-drain 100000 0 fn2-core))
+      (retained (stobj-let ((fn2-checkpoint-summary (fn2-core-checkpoint-summary fn2-core))
+                           (fn2-c-source-control (fn2-core-c-source-control fn2-core))) (ok)
+       (and (= (fn2-checkpoint-summary-phase 1 fn2-checkpoint-summary) *fn2-checkpoint-summary-phase-applying*)
+            (= (fn2-checkpoint-summary-application-stage 1 fn2-checkpoint-summary) *fn2-live-replace-stage-resources*)
+            (= (fn2-c-source-control-phase 0 fn2-c-source-control) *fn2-c-source-writer-phase-exclusive*)) ok)))
+  (mv (and (eq retired :resources) (posp retire-progress) retained) fn2-core fn2-sim fn2-own)))
 (defun fn2-clc-test (mode)
  (declare (xargs :verify-guards nil))
  (with-local-stobj fn2-core

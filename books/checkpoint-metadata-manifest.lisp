@@ -170,7 +170,7 @@
       ; refusal follows this capture. A later exact covering Fence is still owed.
       (fn2-checkpoint-metadata-manifest
        (fn2-checkpoint-metadata-manifest-put extent
-        (catalog-installed-tag 0) (catalog-installed-row 0)
+        (catalog-old-stage 0) (catalog-installed-tag 0) (catalog-installed-row 0)
         (catalog-token token) (catalog-rank (fn2-checkpoint-metadata-run-rank 0 fn2-checkpoint-metadata))
         (catalog-old-slot (fn2-checkpoint-metadata-old-slot 0 fn2-checkpoint-metadata))
         (catalog-old-gen (fn2-checkpoint-metadata-old-gen 0 fn2-checkpoint-metadata))
