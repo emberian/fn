@@ -61,7 +61,7 @@
            :layer :b :boundary :extraction
            :contract (:domain-restriction-of ,old
                       :domain-theorem fn2-checkpoint-member-guarded-domain-implies-original-domain)
-           :shared ((:function ,fn))
+           :origin (:function ,fn)
            :doc "Exact admitted guarded FIELDS-TYPE interface of the actual member. Same conclusion and original carrier premises; adds actual stored guard and input recognizers. Original off-guard claim remains refuted and unfinished.")
           (fn2-owed-discharge ,claim ,theorem)))))))))
 
