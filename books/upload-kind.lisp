@@ -207,6 +207,12 @@
 (defthm fn2-upload-capacity-natp (natp (fn2-upload-capacity profile)) :rule-classes :type-prescription)
 (in-theory (disable fn2-upload-capacity))
 
+; Keep the original declaration's proof independent of unrelated enabled
+; consumer rules. Pure initial-value functions remain available explicitly.
+(encapsulate ()
+ (local (in-theory
+  (union-theories '(fn2-machine-initial-generation fn2-machine-initial-next-free)
+                  (theory 'fn2-columns-proof-theory))))
 (defmachine fn2-upload
  :states (:free :head :identity :receiving :validating :discard :store :stored-hash :location-hash :store-write :store-wrote
           :store-fence :store-fenced :sealed :aborting :draining :retired :uncertain)
@@ -279,7 +285,7 @@
            (ofield 12) (next-free fn2-machine-initial-next-free))
  :arms ((:free) (:head) (:identity) (:receiving) (:validating) (:discard) (:store) (:stored-hash) (:location-hash) (:store-write) (:store-wrote)
         (:store-fence) (:store-fenced) (:sealed) (:aborting) (:draining) (:retired) (:uncertain))
- :observes ((:write-result) (:fence-result) (:borrow-released)))
+ :observes ((:write-result) (:fence-result) (:borrow-released))))
 
 ; MACHINE-FORM 6.5 P4: the kind's take in child form, proved here;
 ; the admission section (assembly-callbacks-a) makes its core face.
