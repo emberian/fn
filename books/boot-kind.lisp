@@ -12,6 +12,7 @@
 (include-book "checkpoint-restore-semantic-state")
 (include-book "checkpoint-summary-state")
 (include-book "checkpoint-payload-harvest")
+(include-book "checkpoint-restore-events-state")
 (include-book "boot-format")
 (fn2-book-layer :b)
 
@@ -101,6 +102,15 @@
  :init (fn2-checkpoint-restore-reach-control-init (if (fn2-profile-get :image-boot profile) 1 0) fn2-checkpoint-restore-reach-control)
  :profilep t
  :why "A nonwrapping investigation generation binds every cold reach to the same authenticated descriptor and map intake.")
+
+(defcorechild fn2-core-checkpoint-restore-events fn2-checkpoint-restore-events
+ :init (fn2-checkpoint-restore-events-init (if (fn2-profile-get :image-boot profile) 1 0) fn2-checkpoint-restore-events)
+ :profilep t
+ :why "One exact candidate/map-generation event-directory, historical-journal and frontier continuation; never a caller cut flag.")
+(defcorechild fn2-core-checkpoint-restore-events-work fn2-checkpoint-restore-events-work
+ :init (fn2-checkpoint-restore-events-work-init (if (fn2-profile-get :image-boot profile) (fn2-b-capacity :extent-slots 16 profile) 0) fn2-checkpoint-restore-events-work)
+ :profilep (unsigned-byte-p 32 (fn2-b-capacity :extent-slots 16 profile))
+ :why "Extent-tagged ordered historical journal identities and semantic seals survive root buffer reuse without an arbitrary event or history ceiling.")
 
 (defcorechild fn2-core-checkpoint-restore-arena fn2-checkpoint-restore-arena
  :init (fn2-checkpoint-restore-arena-init (fn2-b-capacity :extent-slots 16 profile) fn2-checkpoint-restore-arena)
