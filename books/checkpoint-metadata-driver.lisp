@@ -4,15 +4,17 @@
 (in-package "ACL2")
 (include-book "checkpoint-metadata-resources")
 (include-book "checkpoint-planning-page")
+(include-book "checkpoint-planning-cancel")
 (fn2-book-layer :c)
 
 (defconst *fn2-checkpoint-root1-children*
  '(fn2-checkpoint-root1 fn2-checkpoint-windows fn2-checkpoint-metadata fn2-checkpoint-source fn2-checkpoint-metadata-manifest fn2-checkpoint-retained-entry fn2-checkpoint-payload fn2-checkpoint-semantic fn2-checkpoint-semantic-work fn2-checkpoint-build fn2-csnapshot fn2-checkpoints fn2-checkpoint-construction fn2-extents fn2-alloc-edges fn2-ops fn2-control fn2-checkpoint-refs fn2-checkpoint-bytes fn2-checkpoint-page fn2-checkpoint-page-verified fn2-overlays fn2-overlay-index fn2-run-installed fn2-run-builds fn2-run-writers fn2-run-restarts fn2-run-cursors fn2-run-paths fn2-run-cache fn2-boot-config fn2-fc fn2-fc-context fn2-b3 fn2-fields fn2-pool fn2-digests fn2-checkpoint-planning fn2-checkpoint-recipe fn2-checkpoint-recipe-order))
 (defconst *fn2-checkpoint-root1-outputs*
- '((fn2-checkpoint-root1-planning-start fn2-checkpoint-root1 fn2-checkpoint-metadata fn2-checkpoint-source fn2-checkpoint-metadata-manifest fn2-run-builds fn2-run-writers fn2-pool fn2-checkpoint-planning fn2-checkpoint-recipe fn2-extents)
+ '((fn2-checkpoint-root1-planning-cancel fn2-checkpoint-planning fn2-checkpoint-construction fn2-extents fn2-control)
+   (fn2-checkpoint-root1-planning-start fn2-checkpoint-root1 fn2-checkpoint-metadata fn2-checkpoint-source fn2-checkpoint-metadata-manifest fn2-run-builds fn2-run-writers fn2-pool fn2-checkpoint-planning fn2-checkpoint-recipe fn2-extents)
    (fn2-checkpoint-root1-begin fn2-checkpoint-root1 fn2-checkpoint-metadata fn2-checkpoint-source fn2-checkpoint-metadata-manifest fn2-run-builds fn2-run-writers fn2-pool)
    (fn2-checkpoint-root1-select fn2-checkpoint-root1 fn2-checkpoint-source fn2-checkpoint-metadata fn2-run-builds fn2-run-writers fn2-run-cursors fn2-pool)
-   (fn2-checkpoint-root1-bind fn2-checkpoint-page)
+   (fn2-checkpoint-root1-bind fn2-checkpoint-page fn2-checkpoint-recipe)
    (fn2-checkpoint-root1-consume fn2-checkpoint-root1 fn2-digests)
    (fn2-checkpoint-root1-work fn2-checkpoint-root1 fn2-checkpoint-metadata fn2-checkpoint-source fn2-checkpoint-metadata-manifest fn2-checkpoint-construction fn2-extents fn2-control fn2-run-builds fn2-run-writers fn2-run-restarts fn2-run-cursors fn2-run-paths fn2-fields fn2-pool fn2-fc fn2-fc-context fn2-b3 fn2-digests fn2-checkpoint-planning fn2-checkpoint-recipe fn2-checkpoint-recipe-order)
    (fn2-checkpoint-root1-payload-start fn2-checkpoint-root1 fn2-checkpoint-retained-entry fn2-checkpoint-semantic fn2-checkpoint-payload fn2-digests fn2-b3 fn2-extents fn2-alloc-edges)
@@ -158,6 +160,30 @@
        (fn2-checkpoint-root1-mv :owner)))
   (fn2-checkpoint-root1-call fn2-checkpoint-root1-begin token kind owner gen)))
 
+; Fail-closed cancellation consumer. A possibly issued reservation stops the
+; core for recovery; this operation never thaws or recycles a candidate.
+(fn2-checkpoint-root1-operation fn2-checkpoint-root1-planning-cancel (kind owner gen)
+ (b* (((unless (equal (fn2-control-stop fn2-control) 0)) (fn2-checkpoint-root1-mv :stopped))
+      ((unless (and (< 0 (fn2-checkpoint-planning-rows fn2-checkpoint-planning))
+                    (< 0 (fn2-checkpoint-build-rows fn2-checkpoint-build)))) (fn2-checkpoint-root1-mv :bounds))
+      (c (fn2-checkpoint-planning-candidate 0 fn2-checkpoint-planning))
+      (token (fn2-checkpoint-planning-token 0 fn2-checkpoint-planning))
+      ((unless (and (equal c (fn2-checkpoint-build-candidate 0 fn2-checkpoint-build))
+                    (equal token (fn2-checkpoint-build-snapshot-token 0 fn2-checkpoint-build))
+                    (equal kind (fn2-checkpoint-build-owner-kind 0 fn2-checkpoint-build))
+                    (equal owner (fn2-checkpoint-build-owner-slot 0 fn2-checkpoint-build))
+                    (equal gen (fn2-checkpoint-build-owner-gen 0 fn2-checkpoint-build)))) (fn2-checkpoint-root1-mv :owner))
+      ((unless (fn2-checkpoint-planning-cancel-ownerp c token kind owner gen fn2-checkpoint-planning fn2-extents)) (fn2-checkpoint-root1-mv :owner))
+      (phase (fn2-checkpoint-planning-phase 0 fn2-checkpoint-planning))
+      ((when (equal phase *fn2-checkpoint-planning-phase-cancel-empty*)) (fn2-checkpoint-root1-mv :ledger-empty))
+      ((unless (equal phase *fn2-checkpoint-planning-phase-cancel*))
+       (b* (((mv code fn2-checkpoint-planning) (fn2-checkpoint-planning-cancel-begin c token kind owner gen fn2-checkpoint-planning fn2-extents)))
+        (fn2-checkpoint-root1-mv (if (eq code :ok) :more code))))
+      ((mv code fn2-checkpoint-planning fn2-checkpoint-construction fn2-extents)
+       (fn2-checkpoint-planning-cancel-step c token kind owner gen fn2-checkpoint-planning fn2-checkpoint-recipe fn2-checkpoint-construction fn2-checkpoint-page fn2-extents))
+      (fn2-control (if (eq code :recovery-required) (fn2-control-record-stop *fn2-stop-reason-commit-io* fn2-control) fn2-control)))
+  (fn2-checkpoint-root1-mv code)))
+
 (fn2-checkpoint-root1-operation fn2-checkpoint-root1-select (budget kind owner gen)
  (b* (((unless (and (< 0 (fn2-checkpoint-root1-rows fn2-checkpoint-root1))
                     (fn2-checkpoint-root1-ownerp (fn2-checkpoint-root1-token 0 fn2-checkpoint-root1) kind owner gen
@@ -206,7 +232,12 @@
       ((mv code fn2-checkpoint-page)
        (fn2-checkpoint-metadata-page-bind (fn2-checkpoint-root1-build 0 fn2-checkpoint-root1) (fn2-checkpoint-root1-level 0 fn2-checkpoint-root1)
         fn2-checkpoint-metadata fn2-csnapshot fn2-run-builds fn2-run-writers fn2-checkpoint-page fn2-checkpoint-page-verified
-        fn2-checkpoint-construction fn2-extents fn2-pool fn2-fc fn2-fields)))
+        fn2-checkpoint-construction fn2-extents fn2-pool fn2-fc fn2-fields))
+      ((unless (eq code :ok)) (fn2-checkpoint-root1-mv code))
+      ((mv code fn2-checkpoint-recipe)
+       (if (equal (fn2-alloc-freeze-phase fn2-extents) 3)
+        (fn2-checkpoint-planning-note-bind fn2-checkpoint-planning fn2-checkpoint-recipe fn2-checkpoint-page fn2-csnapshot fn2-extents)
+        (mv :ok fn2-checkpoint-recipe))))
   (fn2-checkpoint-root1-mv code)))
 
 (fn2-checkpoint-root1-operation fn2-checkpoint-root1-consume (budget kind owner gen)

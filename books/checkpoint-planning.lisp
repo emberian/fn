@@ -31,7 +31,7 @@
        (cut-commit (fn2-csnapshot-cut-commit 0 fn2-csnapshot)) (cut-event (fn2-csnapshot-cut-event 0 fn2-csnapshot))
        (first-free (fn2-alloc-free-head fn2-extents)) (next-free (fn2-alloc-free-head fn2-extents))
        (epoch (fn2-alloc-current-epoch fn2-extents)) (first-counter (fn2-alloc-next-counter fn2-extents))
-       (clear-row 0) (count 0) (sealed 0) (position 0) (reserved 0))))
+       (clear-row 0) (abort-row 0) (count 0) (sealed 0) (position 0) (reserved 0))))
   (mv :ok fn2-checkpoint-planning)))
 
 ; Clear one recipe marker per charged caller turn. No old planning-token
@@ -83,7 +83,7 @@
        (mv :links 0 0 0 fn2-checkpoint-planning fn2-checkpoint-recipe fn2-checkpoint-recipe-order))
       (next (fn2-extents-next-free e fn2-extents))
       (fn2-checkpoint-recipe (fn2-checkpoint-recipe-put e (used 1) (creation-index n) (extent e) (epoch epoch) (allocation counter) (next-free next)
-       (role role) (ordinal ordinal) (intended intended) (kind page-kind) (level level) (sealed 0)))
+       (role role) (ordinal ordinal) (intended intended) (kind page-kind) (level level) (sealed 0) (issued 0)))
       (fn2-checkpoint-recipe-order (fn2-checkpoint-recipe-order-set-extent n e fn2-checkpoint-recipe-order))
       (fn2-checkpoint-planning (fn2-checkpoint-planning-put 0 (next-free next) (count (+ n 1)))))
   (mv :ok e epoch counter fn2-checkpoint-planning fn2-checkpoint-recipe fn2-checkpoint-recipe-order)))

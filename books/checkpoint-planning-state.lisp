@@ -7,16 +7,16 @@
 (fn2-book-layer :c)
 
 (defcolumns fn2-checkpoint-planning
- ((phase (:enum fn2-checkpoint-planning-phase (:idle :clear :preview :materialize :cancel :uncertain :complete)))
+ ((phase (:enum fn2-checkpoint-planning-phase (:idle :clear :preview :materialize :cancel :cancel-empty :uncertain :complete)))
   (candidate :u32) (token :u60) (owner-kind :u8) (owner-slot :u32) (owner-gen :u60)
   (cut-commit :u60) (cut-event :u60)
   (first-free :u32) (epoch :u60) (first-counter :u60) (next-free :u32)
-  (clear-row :u32) (count :u32) (sealed :u32) (position :u32) (reserved :u32)))
+  (clear-row :u32) (abort-row :u32) (count :u32) (sealed :u32) (position :u32) (reserved :u32)))
 
 (defcolumns fn2-checkpoint-recipe
  ((used :bool) (creation-index :u32) (extent :u32) (epoch :u60) (allocation :u60) (next-free :u32)
   (role :u8) (ordinal :u60) (intended :u60) (kind :u8) (level :u8)
-  (sealed :bool) (cursor :u32) (entries :u60) (restarts :u32)
+  (sealed :bool) (issued :bool) (cursor :u32) (entries :u60) (restarts :u32)
   (word0 :u32) (word1 :u32) (word2 :u32) (word3 :u32)
   (word4 :u32) (word5 :u32) (word6 :u32) (word7 :u32)))
 
