@@ -51,10 +51,22 @@ pass completeness/refusal controls; consumer-codec admits in 41.04 seconds in
 the retained application world. Its whole-book proof cost remains above the
 D26 target. These author loads are not record-toolchain certification.
 
-The retained application world has admitted 19 source books beyond its 60
-qualified compiled parents, plus three checkpoint proof prerequisites. It is
-currently at the checkpoint EDGE-ADD producer contract; the application fixtures
-have not executed. Accounts (`3f7b07618`) and answer preservation (`00e04f000`)
+The application author session admitted 19 source books beyond its 60
+qualified compiled parents, plus three checkpoint proof prerequisites. EDGE-ADD
+then passed; CHECK-STEP candidate typing exposed a missing format-checker
+interface. Eight exact-function frame lemmas passed in the same session without
+changing the checkpoint theorem. The final caller retry did not start because
+its orchestration script referenced a missing path. The bounded session ended
+and all owned processes were released; the application fixtures have not run.
+The saved seven-root prefix is qualified by record
+`certify-20261115T074148Z-1049303`: 36 reused and 31 newly certified books,
+278.551 seconds at one job. All 67 source hashes now match the integration tree:
+the two enqueue-metadata generator files and two proof helpers are integrated.
+The compiler change derives enqueue bounds from declared calls and repeat
+counts; it does not size a runtime queue or establish query completion.
+The prefix certificate excludes checkpoint/member, the full application and
+native execution. Its artifacts allow the next run to start at the caller
+repair without replaying the already accepted source prefix. Accounts (`3f7b07618`) and answer preservation (`00e04f000`)
 repair only hints. The layout interface candidate disables an overly broad
 structural rewrite and explicitly supplies it to SCAN/EMIT guards; all 136 forms
 admit; exact eight-book record `certify-20261115T072636Z-1034939` passes

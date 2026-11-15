@@ -113,6 +113,7 @@ ACL2_BOOKS = \
   books/host-compress \
   books/columns \
   books/columns-guard-hints \
+  books/columns-carrier-contracts \
   books/compress-policy \
   books/compress-kind \
   books/compress-operation \
@@ -182,6 +183,7 @@ ACL2_BOOKS = \
   books/host-ops \
   books/identity \
   books/layout \
+  books/layout-size-bounds \
   books/log-model \
   books/machine-arms \
   books/machine-dispatch \
