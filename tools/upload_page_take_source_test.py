@@ -65,6 +65,25 @@ class AtomicPage(unittest.TestCase):
   t=s[branch.start:branch.end]
   self.assertIn('fn2-upload-page-release',t);self.assertNotIn('settle',t);self.assertNotIn('extents-close',t)
   self.assertEqual(len(lr.match('(:uncertain (:stop :upload-uncertain))',lr.parse(s).forms)),1)
+ def test_input_init_precedes_f_and_take_atomic_marker(self):
+  k=(ROOT/'books/upload-kind.lisp').read_text()
+  self.assertIn('(defcorechild fn2-core-input-config fn2-input-config',k)
+  self.assertIn(':init (fn2-input-config-from profile fn2-input-config)',k)
+  core=(ROOT/'books/core.lisp').read_text()
+  self.assertIn('(let* ,(fn2-core-init-child-chain *fn2-core-children*) fn2-core)',core)
+  self.assertIn('(fn2-core-registered-inits (fn2-core-child-registry (w state)))',core)
+  e=form((ROOT/'books/executor.lisp').read_text(),'fn2-init-executor')
+  body=e[e.index('  (b*'):]
+  self.assertLess(body.index('(fn2-core-init profile fn2-core)'),body.index('(fn2-init-credit-boundary profile fn2-core)'))
+  self.assertLess(body.index('(fn2-init-credit-boundary profile fn2-core)'),body.index('(fn2-init-engine profile fn2-core)'))
+  g=form((ROOT/'books/machine-arms.lisp').read_text(),'fn2-arms-registry-events')
+  self.assertLess(g.index(',@(fn2-machine-range-puts specs 0)'),g.index(',@(fn2-arm-get :set spec)'))
+  self.assertIn('(fn2-arms-registry-reserves specs 0 install fail)',g)
+  self.assertIn('(mv-let (,kind fn2-machines fn2-control) ,put',g)
+  # No row installation occurs in the pool-only reserve/unwind producer.
+  reserve=form((ROOT/'books/machine-arms.lisp').read_text(),'fn2-arms-registry-reserves')
+  self.assertNotIn('fn2-machines-partition-install',reserve)
+  self.assertNotIn('fn2-upload-put',reserve)
  def test_same_f_input_and_no_double_count(self):
   s=(ROOT/'books/checkpoint-working-credit-init.lisp').read_text()
   self.assertIn('(fn2-input-config (fn2-core-input-config fn2-core))',s)

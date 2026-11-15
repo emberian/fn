@@ -40,3 +40,18 @@ This removes one specific header/body-held/page-wait cycle. Other holders can
 still consume foreground workspace before an upload request; independent C-slot,
 sealer output, physical adoption and broader concurrency guarantees are not
 established by this change.
+
+Integration ordering: retain rolling11dc53 and the later SOURCE-lifetime885
+producer plus eager b023 initialization; preserve the independent Xref3808c908
+result-type theorem in txn.lisp; then apply this atomic-page donor. The donor
+changes no txn.lisp or upload-feed.lisp source. Keep feed20ed out until its own
+adapter author gate passes. This is a subsequent generator batch, not an edit
+to the frozen BT source.
+
+Initialization is the existing full core-init child chain, including actual
+input-config-from(profile), followed by credit/F projection and then engine/
+genesis. Runtime writes to article-max occur only in that initializer. TAKE and
+F read the identical retained row0 value. All successful handle fields and HELD
+are installed by one generated row put after all three reservations succeed;
+the pool-only reserve/unwind body never installs a partial row or yields to an
+actor that could cancel it.
