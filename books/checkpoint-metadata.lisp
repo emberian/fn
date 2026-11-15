@@ -335,7 +335,7 @@
                           (equal (fn2-fields-value (+ rb *fn2-format-page-header-field-history*) fn2-fields) (fn2-checkpoint-metadata-history 0 fn2-checkpoint-metadata))
                           (equal (fn2-fields-value (+ rb *fn2-format-page-header-field-incarnation*) fn2-fields) (fn2-checkpoint-metadata-history-incarnation 0 fn2-checkpoint-metadata))
                           (equal (fn2-run-hdr rb schema) (fn2-run-installed-schema r fn2-run-installed))
-                          (equal (fn2-run-hdr rb run) (fn2-run-installed-run r fn2-run-installed))))))
+                          (equal (fn2-run-hdr rb run) (fn2-run-installed-wire-run r fn2-run-installed))))))
        (let ((fn2-checkpoint-metadata (fn2-checkpoint-metadata-set-phase 0 *fn2-checkpoint-metadata-phase-uncertain* fn2-checkpoint-metadata)))
         (fn2-checkpoint-metadata-run-mv :source-identity)))
       ((when (eq code :end))

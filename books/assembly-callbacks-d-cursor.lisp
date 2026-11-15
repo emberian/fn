@@ -6,5 +6,9 @@
 (include-book "assembly-callbacks-d")
 (include-book "cursor")
 
+(fn2-read-loader-core-faces)
+(make-event
+ (mv-let (err events) (fn2-run-loader-core-face-events '(fn2-cursor-query-article-page) (w state))
+  (if err (er soft 'fn2-cursor-query-article-page "~@0" err) (value (cons 'progn events)))))
 (defmachine-arms fn2-cursor :wrappers)
 (defmachine-run fn2-cursor)

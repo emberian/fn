@@ -1,7 +1,7 @@
 ; The query cursor machine fn2-cursor (layer D, quest D6; docs/d-machines-
 ; nntp.md section 15), the first kind written in the machine form's child form
 ; (MACHINE-FORM 6.10): its arms are generated and proved here over its table,
-; the five arm children and the children of the operations it calls (C-S4's
+; its arm children and the children of the operations it calls (C-S4's
 ; reads, the pool); their core faces are made in its callbacks section
 ; (assembly-callbacks-d-cursor.lisp).
 ;
@@ -9,7 +9,7 @@
 ; STAT, OVER, XOVER) moves to :query and takes a cursor row, copying the
 ; line's place in RX, its TX range, its selection (group, current article,
 ; view) and its own owner triple. The cursor reads the line, reads the store
-; through read row X = its own slot (C-S4), and renders the reply into the
+; through read rows 2S and 2S+1 for its own slot S (C-S4), and renders into the
 ; connection's TX under the connection's owner (the connection does not
 ; touch TX or RX while it is in :query), one page at a time. TURN says whose
 ; move it is: the cursor clears it and wakes the connection when a page is
@@ -21,6 +21,7 @@
 (in-package "ACL2")
 (include-book "cursor-kind")
 (include-book "article-manifest")
+(include-book "machines-c-read-loader")
 (fn2-book-layer :d)
 
 (defconst *fn2-cursor-overview-sid* 3)
@@ -393,12 +394,50 @@
        (natp (mv-nth 3 (fn2-cursor-pool-hscan from to st k a0 b0 rslot rgen lslot lgen tslot tgen tk ts tg okind oslot ogen fn2-pool))))
   :hints (("Goal" :in-theory (enable fn2-cursor-pool-hscan))))
 (in-theory (disable fn2-cursor-hscan-step fn2-cursor-hscan-loop fn2-cursor-pool-hscan))
-;; The lease's pool class: the trusted digest prefix plus two storage units (a
-;; block named through a source manifest is read at the lease's fill, after
-;; the manifest unit that names it, and checked against that entry there).
-(defun fn2-cursor-lease-class-of (fn2-pool)
-  (declare (xargs :stobjs fn2-pool :guard (fn2-pool-wfp fn2-pool)))
-  (fn2-pool-class-for (+ *fn2-article-location-hashes-max* (* 2 *fn2-commit-unit-bytes*)) fn2-pool))
+
+; Article I/O borrows the unused exact-lookup page of read0. Its range
+; heads use different cursor rows; the actual actor/XL gates below are the
+; authority to invalidate this page, not a caller-provided free flag.
+(assert-event (<= (+ *fn2-article-location-hashes-max* (* 2 *fn2-commit-unit-bytes*)) *fn2-format-page-size*))
+(defun fn2-cursor-query-article-page-children (row owner generation fn2-cursor fn2-machines fn2-reads fn2-id-decides fn2-succ-txns
+ fn2-run-loads fn2-run-cursors fn2-pool)
+ (declare (xargs :stobjs (fn2-cursor fn2-machines fn2-reads fn2-id-decides fn2-succ-txns fn2-run-loads fn2-run-cursors fn2-pool)
+ :guard (and (fn2-cursor-wfp fn2-cursor) (fn2-machines-wfp fn2-machines) (fn2-reads-wfp fn2-reads)
+  (fn2-id-decides-wfp fn2-id-decides) (fn2-succ-txns-wfp fn2-succ-txns) (fn2-run-loads-wfp fn2-run-loads)
+  (fn2-run-cursors-wfp fn2-run-cursors) (fn2-pool-wfp fn2-pool))))
+ (b* (((unless (and (natp row) (< row (fn2-cursor-rows fn2-cursor)) (natp owner) (< owner (fn2-machines-rows fn2-machines))
+                    (equal (fn2-machines-kind owner fn2-machines) *fn2-cursor-kind*)
+                    (equal (fn2-machines-slot owner fn2-machines) row)
+                    (equal (fn2-cursor-generation row fn2-cursor) generation)
+                    (equal (fn2-cursor-phase row fn2-cursor) *fn2-cursor-state-render*)
+                    (equal (fn2-cursor-step row fn2-cursor) 22)
+                    (equal (fn2-cursor-query-bundle row fn2-cursor) *fn2-cursor-query-bundle-held*)
+                    (equal (fn2-cursor-load-active row fn2-cursor) 0)))
+       (mv :owner 0 0 fn2-run-loads fn2-run-cursors fn2-pool))
+      (read0 (* *fn2-b-query-read-rows* row))
+      (c (+ (fn2-id-decides-rows fn2-id-decides) read0))
+      ((unless (and (< read0 (fn2-reads-rows fn2-reads)) (< c (fn2-succ-txns-rows fn2-succ-txns))
+                    (< c (fn2-run-cursors-rows fn2-run-cursors))
+                    (member (fn2-reads-op read0 fn2-reads) (list *fn2-read-op-idle* *fn2-read-op-range* *fn2-read-op-seek* *fn2-read-op-scan*))
+                    (equal (fn2-succ-txns-lphase c fn2-succ-txns) *fn2-succ-lookup-idle*)
+                    (fn2-run-load-ownerp c *fn2-cursor-kind* owner generation fn2-run-loads)
+                    (member (fn2-run-loads-phase c fn2-run-loads) (list *fn2-run-load-phase-reserved* *fn2-run-load-phase-ready*))
+                    (equal (fn2-run-loads-windows c fn2-run-loads) 2)
+                    (equal (fn2-run-loads-pending c fn2-run-loads) 0)))
+       (mv :active 0 0 fn2-run-loads fn2-run-cursors fn2-pool))
+      (page (fn2-run-loads-page c fn2-run-loads)) (gen (fn2-run-loads-page-gen c fn2-run-loads))
+      ((unless (and (eq (fn2-pool-workspace-code page gen *fn2-cursor-kind* owner generation fn2-pool) :ok)
+                    (<= *fn2-format-page-size* (fn2-pool-cap page fn2-pool))))
+       (mv :active 0 0 fn2-run-loads fn2-run-cursors fn2-pool))
+      ((mv code fn2-pool) (fn2-pool-reset page gen *fn2-cursor-kind* owner generation fn2-pool))
+      ((unless (eq code :ok)) (mv code 0 0 fn2-run-loads fn2-run-cursors fn2-pool))
+      (fn2-run-cursors (fn2-run-cursors-put c (phase *fn2-run-cursor-phase-idle*) (physical 0)))
+      (fn2-run-loads (fn2-run-loads-set-phase c *fn2-run-load-phase-reserved* fn2-run-loads)))
+  (mv :ok page gen fn2-run-loads fn2-run-cursors fn2-pool)))
+(fn2-run-load-frames fn2-cursor-query-article-page-children
+ (row owner generation fn2-cursor fn2-machines fn2-reads fn2-id-decides fn2-succ-txns fn2-run-loads fn2-run-cursors fn2-pool)
+ (fn2-cursor fn2-machines fn2-reads fn2-id-decides fn2-succ-txns fn2-run-loads fn2-run-cursors fn2-pool)
+ ((fn2-run-loads 3) (fn2-run-cursors 4) (fn2-pool 5)))
 
 ;; The expected digest bytes are copied from the published article row into
 ;; the lease prefix; device reads append after that prefix. This operation
@@ -852,14 +891,12 @@
 (defcost fn2-cursor-hscan :child fn2-cursor-pool-hscan :answers (:ok :done :full :fault) :faults (:fault) :bytes 8192
  :tables (fn2-core-pool)
  :doc "Scan at most 4,096 stored octets of the lease for HDR's field, its value appended to TX; (mv code used st k).")
-(defcost fn2-cursor-lease-reserve :child fn2-pool-reserve :answers (:ok :exhausted :bounds :state) :tables (fn2-core-pool)
- :doc "Reserve the cursor's read lease (two storage units) under its own owner: (mv code slot gen).")
-(defcost fn2-cursor-lease-release :child fn2-core-release-children :answers t :tables (fn2-core-pool fn2-core-control)
- :doc "Return the cursor's read lease.")
+(defcost fn2-cursor-query-article-page :child fn2-cursor-query-article-page-children :answers t
+ :tables (fn2-cursor-table fn2-core-machines fn2-core-reads fn2-core-id-decides fn2-core-succ-txns fn2-core-run-loads fn2-core-run-cursors fn2-core-pool)
+ :doc "Borrow the preadmitted read0 exact-lookup page only when its actual actor and XL continuations are quiescent.")
 (defcost fn2-cursor-manifest-entry :child fn2-cursor-manifest-entry-of :answers (:ok :bounds)
  :bytes 512 :tables (fn2-core-reads fn2-core-id-decides fn2-core-fc fn2-core-fields fn2-core-pool)
  :doc "Decode the next block's source-manifest entry from the manifest unit in the lease: (mv code mpos lo len unit epoch alloc hoff cvoff).")
-(defcost fn2-cursor-lease-class :child fn2-cursor-lease-class-of :doc "The pool class of the cursor's read lease (nil: none).")
 (defcost fn2-cursor-copy-span :child fn2-gram-put-span :answers t :bytes 256 :tables (fn2-core-pool)
  :doc "Copy a Message-ID span from RX into TX.")
 
@@ -869,7 +906,44 @@
 ; :capacity is (fn2-b-cursor-rows profile)).
 (defmachine-arms fn2-cursor :children
  :subarms
- (;; the page is ready: TX is the connection's move; wake it and wait
+ (
+  ;; These subarms retain the invoking seek/render phase. The real read
+  ;; callback routes exact op identity; the observer only schedules us.
+  (run-load-start :on-refusal ((:stop :machine-phase))
+   (:do (selected c load-phase) (fn2-read-loader-owner-op row-load-read *fn2-cursor-kind* id row-generation) :accept (:ok))
+   (:set (load-active 1) (load-cursor c))
+   (:if (or (equal load-phase *fn2-run-load-phase-reserved*) (equal load-phase *fn2-run-load-phase-ready*))
+        ((:do (bound) (fn2-run-page-bind c *fn2-cursor-kind* id row-generation) :accept (:need-read))) ())
+   (:charge :bytes 4160 :steps *fn2-work-transition* :runnable t))
+  (run-load-step :on-refusal ((:stop :machine-phase))
+   (:if (not (and (natp budget) (< 0 budget))) ((:yield))
+    ((:do (progress) (fn2-run-page-step row-load-cursor (min budget *fn2-commit-unit-bytes*))
+      :accept () :case
+      (((:ready) (:set (load-active 0)) (:charge :bytes 4096 :steps *fn2-work-transition* :runnable t))
+       ((:more) (:charge :bytes 4096 :steps *fn2-work-transition* :runnable t))
+       ((:need-read) (:goto run-load-read))
+       ((:wait) (:wait :completion :steps *fn2-work-small*))
+       ((:yield) (:yield))
+       (:otherwise (:stop :machine-phase)))))))
+  (run-load-read :on-refusal ((:stop :machine-phase))
+   (:if (not (and (natp budget) (< 0 budget))) ((:yield))
+    ((:issue (fn2-run-page-read row-load-cursor (min budget *fn2-commit-unit-bytes*))
+      :ok ((:set (rready 0)) (:wait :completion :bytes 4096 :steps *fn2-work-small*))))))
+  (run-load-drain :on-refusal ((:stop :machine-phase))
+   (:do (drain-code c) (fn2-read-loader-drain-op (* *fn2-b-query-read-rows* row-slot) row-load-release *fn2-cursor-kind* id row-generation)
+    :accept () :case
+    (((:member) (:do (released) (fn2-read-loader-member-release-op (* *fn2-b-query-read-rows* row-slot) row-load-release
+                                 *fn2-cursor-kind* id row-generation) :accept (:ok))
+                (:set (load-release (+ row-load-release 1)))
+                (:charge :steps *fn2-work-transition* :runnable t))
+     ((:last) (:do (released) (fn2-run-page-release c *fn2-cursor-kind* id row-generation)
+                :effects ((:release (:storage-window))) :accept (:ok))
+              (:set (query-bundle *fn2-cursor-query-bundle-none*) (load-active 0))
+              (:charge :steps *fn2-work-transition* :runnable t))
+     ((:absent) (:set (load-release (+ row-load-release 1))) (:charge :steps *fn2-work-transition* :runnable t))
+     ((:wait) (:wait :completion :steps *fn2-work-small*))
+     (:otherwise (:stop :machine-phase)))))
+  ;; the page is ready: TX is the connection's move; wake it and wait
   (hand (:set (turn 0)) (:wake-row row-conn) (:next :send) (:charge :steps *fn2-work-transition*))
   ;; a status line alone (REPLY), the last page
   (refuse :on-refusal ((:stop :machine-phase))
@@ -913,6 +987,7 @@
              ((:more) (:charge :bytes 4096 :steps *fn2-work-transition* :runnable t))
              ((:absent) (:do (rc) (fn2-read-release (* 2 row-slot)) :accept (:ok))
                         (:set (reply (fn2-cursor-reply-of row-tag :no-group))) (:goto refuse))
+             ((:miss) (:set (load-read (* 2 row-slot))) (:goto run-load-start))
              (:otherwise (:stop :machine-phase)))))
   (seek-counts-key :on-refusal ((:stop :machine-phase))
      (:do (kc) (fn2-read-key (* 2 row-slot) ':lo 0 row-sel) :accept (:ok))
@@ -930,6 +1005,7 @@
              ((:absent) (:do (rc) (fn2-read-release (* 2 row-slot)) :accept (:ok))
                         (:set (count 0) (low 1) (high 0) (step 4))
                         (:charge :bytes 4096 :steps *fn2-work-transition* :runnable t))
+             ((:miss) (:set (load-read (* 2 row-slot))) (:goto run-load-start))
              (:otherwise (:stop :machine-phase)))))
   (seek-selected :on-refusal ((:stop :machine-phase))
      ;; the group's name: the argument in RX, or (LISTGROUP with no name) the
@@ -998,6 +1074,7 @@
                                           (:set (done 1) (roff row-b0) (update *fn2-cursor-update-ihave*) (ncurrent row-b0))
                                           (:goto hand))
                                          (t (:set (reply (fn2-cursor-reply-of row-tag :no-msgid))) (:goto refuse))))
+             ((:miss) (:set (load-read (* 2 row-slot))) (:goto run-load-start))
              (:otherwise (:stop :machine-phase)))))
   ;; the range's end, by what was read (render-step's :end, one sub-arm a branch)
   (end-last :on-refusal ((:stop :machine-phase))
@@ -1067,6 +1144,7 @@
                                                  :ogen row-conn-gen)
                       :accept (:ok))
                      (:set (reply (fn2-cursor-reply-of row-tag :no-projection))) (:goto refuse))
+             ((:miss) (:set (load-read (* 2 row-slot))) (:goto run-load-start))
              (:otherwise (:stop :machine-phase)))))
   (lg-found :on-refusal ((:stop :machine-phase))
      (:do (fc v) (fn2-read-frontier) :accept (:ok))
@@ -1116,6 +1194,7 @@
                          ((:set (lgroup g) (have 1) (seen 1))
                           (:charge :bytes 4096 :steps *fn2-work-transition* :runnable t))))))
              ((:end) (:goto end-list))
+             ((:miss) (:set (load-read (* 2 row-slot))) (:goto run-load-start))
              (:otherwise (:stop :machine-phase)))))
   ;; the group's counts through the second read row: its key, then the lookup
   (list-key :on-refusal ((:stop :machine-phase))
@@ -1142,6 +1221,7 @@
                                                    :okind row-conn-kind :oslot row-conn :ogen row-conn-gen)
                          :accept (:ok))
                         (:set (have 0)) (:charge :bytes 4096 :steps *fn2-work-transition* :runnable t))
+             ((:miss) (:set (load-read (+ 1 (* 2 row-slot)))) (:goto run-load-start))
              (:otherwise (:stop :machine-phase)))))
   ;; LIST's page: a row needs its room (a page with rows breaks before one)
   (list-render :on-refusal ((:stop :machine-phase))
@@ -1195,6 +1275,7 @@
                     (:charge :bytes 4096 :steps *fn2-work-transition* :runnable t))
                    ((:charge :bytes 4096 :steps *fn2-work-transition* :runnable t))))
              ((:end) (:goto end-list))
+             ((:miss) (:set (load-read (* 2 row-slot))) (:goto run-load-start))
              (:otherwise (:stop :machine-phase)))))
   (newnews-ov-start :on-refusal ((:stop :machine-phase))
      (:do (c1) (fn2-read-key (+ 1 (* 2 row-slot)) ':lo 0 row-lgroup) :accept (:ok))
@@ -1213,6 +1294,7 @@
              ((:entry) (:set (have 3)) (:charge :bytes 4096 :steps *fn2-work-transition* :runnable t))
              ((:end) (:do (rc) (fn2-read-release (+ 1 (* 2 row-slot))) :accept (:ok))
                      (:set (have 0)) (:charge :bytes 4096 :steps *fn2-work-transition* :runnable t))
+             ((:miss) (:set (load-read (+ 1 (* 2 row-slot)))) (:goto run-load-start))
              (:otherwise (:stop :machine-phase)))))
   (newnews-ov-emit :on-refusal ((:stop :machine-phase))
      (:let at (nfix (fn2-cursor-tx-fill row-tx-slot)))
@@ -1251,6 +1333,7 @@
                             ((fn2-cursor-single-p row-tag) (:goto end-single))
                             ((and (equal row-seen 0) (not (equal row-tag *fn2-nntp-command-xpat*))) (:goto end-empty))
                             (t (:goto end-list))))
+             ((:miss) (:set (load-read (* 2 row-slot))) (:goto run-load-start))
              (:otherwise (:stop :machine-phase)))))
   (render-walk :on-refusal ((:stop :machine-phase))
      (:do (vc n) (fn2-read-value (* 2 row-slot) *fn2-overview-entry-field-number*) :accept (:ok :stale)
@@ -1345,8 +1428,8 @@
   ;; storage unit, B's block read of each unit into it, and the octets
   ;; dot-stuffed onto TX page by page; the terminator, the lease returned.
   (art-key :on-refusal ((:stop :machine-phase))
-     ;; Acquire the bounded lease before retaining C's article read. Never
-     ;; park for pool capacity while holding a published run/cache row.
+     ;; Borrow the preadmitted exact-lookup page before retaining the
+     ;; article read; range heads remain in their own cursor pages.
      (:if (equal row-lease *fn2-cursor-lease-held*)
           ((:do (kc) (fn2-read-key (+ 1 (* 2 row-slot)) ':lo *fn2-article-entry-field-article* row-art) :accept (:ok))
            (:set (step 21)) (:charge :steps *fn2-work-transition* :runnable t))
@@ -1381,16 +1464,12 @@
                           (:goto art-refuse))))
              ((:more) (:charge :bytes 4096 :steps *fn2-work-transition* :runnable t))
              ((:absent) (:do (rc) (fn2-read-release (+ 1 (* 2 row-slot))) :accept (:ok)) (:goto art-refuse))
+             ((:miss) (:set (load-read (+ 1 (* 2 row-slot)))) (:goto run-load-start))
              (:otherwise (:stop :machine-phase)))))
   (art-lease :on-refusal ((:stop :machine-phase))
-     (:let class (fn2-cursor-lease-class))
-     (:cond ((equal row-lease *fn2-cursor-lease-held*)
-             (:set (step 20)) (:charge :steps *fn2-work-transition* :runnable t))
-            ((null class) (:goto art-refuse))
-            (t
-           (:do (code ls lg) (fn2-cursor-lease-reserve class) :effects ((:acquire (:storage-window)))
-            :case (((:exhausted) (:park :pool class :steps *fn2-work-transition*))
-                   (:otherwise (:goto art-refuse))))
+     (:if (equal row-lease *fn2-cursor-lease-held*)
+          ((:set (step 20)) (:charge :steps *fn2-work-transition* :runnable t))
+          ((:do (borrowed ls lg) (fn2-cursor-query-article-page row-slot id row-generation) :accept (:ok))
            (:set (lslot ls) (lgen lg) (lease *fn2-cursor-lease-held*) (step 20))
            (:charge :steps *fn2-work-transition* :runnable t))))
   ;; Copy the commitment from the still-live published article row before
@@ -1409,14 +1488,13 @@
                   (or (equal row-mkind 1) (equal copied (* 32 (ceiling row-alen *fn2-commit-unit-bytes*)))))
              (:set (lhashlen copied) (step 23)) (:charge :bytes 256 :steps *fn2-work-transition* :runnable t))
             (t (:set (step 25)) (:goto art-fail))))
-  ;; a failed read: the lease returned; before the 22x line the reply is
+  ;; a failed read: the borrowed handle cleared; before the 22x line the reply is
   ;; refused; after it the reply cannot be completed, so what TX holds is
   ;; dropped and the connection closes (UPDATE close; this replaced the
   ;; core's stop :machine-phase)
   (art-fail :on-refusal ((:stop :machine-phase))
      (:cond ((equal row-lease *fn2-cursor-lease-held*)
-             (:do (lc) (fn2-cursor-lease-release row-lslot row-lgen) :effects ((:release (:storage-window))) :accept (:ok :retired)
-              :why ":retired: the lease's slot reached its generation limit and leaves the pool")
+
              (:set (lease *fn2-cursor-lease-none*) (lslot *fn2-none*) (lgen 0))
              (:charge :steps *fn2-work-transition* :runnable t))
             ((equal row-said 0) (:goto art-refuse))
@@ -1469,8 +1547,7 @@
      (:do (tc) (fn2-cursor-put-line 3 0 row-tx-slot row-tx-gen :okind row-conn-kind :oslot row-conn :ogen row-conn-gen)
       :accept (:ok))
      (:if (equal row-lease *fn2-cursor-lease-held*)
-          ((:do (lc) (fn2-cursor-lease-release row-lslot row-lgen) :effects ((:release (:storage-window))) :accept (:ok :retired)
-            :why ":retired: the lease's slot reached its generation limit and leaves the pool")
+          (
            (:set (lease *fn2-cursor-lease-none*) (lslot *fn2-none*) (lgen 0) (done 1) (step 0))
            (:goto hand))
           ((:set (done 1) (step 0))
@@ -1585,14 +1662,26 @@
  ((:free (:idle))
   ;; the line, parsed again under the connection's owner
   (:select :on-refusal ((:stop :machine-phase))
-   (:do (pcode ptag pk0 pa0 pb0 pk1 pa1 pb1 pa2 pb2)
+   (:if (equal row-query-bundle *fn2-cursor-query-bundle-none*)
+    ((:do (pcode ptag pk0 pa0 pb0 pk1 pa1 pb1 pa2 pb2)
         (fn2-cursor-parse row-line-s row-line-e row-mask row-rx-slot row-rx-gen
                           :okind row-conn-kind :oslot row-conn :ogen row-conn-gen)
     :accept (:ok))
    (:set (tag ptag) (k0 pk0) (a0 pa0) (b0 pb0) (k1 pk1) (a1 pa1) (b1 pb1) (a2 pa2) (b2 pb2) (step 0) (turn 1))
-   (:next :seek) (:charge :bytes 512 :steps *fn2-work-transition* :runnable t))
+   ;; Admit every physical cursor page before the first status or multiline
+   ;; prefix. Ordinary capacity refusal never parks with a partial reply.
+   (:do (admit complete) (fn2-run-page-bundle-reserve (* *fn2-b-query-read-rows* row-slot) *fn2-cursor-kind* id row-generation)
+    :effects ((:acquire (:storage-window))) :accept () :case
+    (((:ok) (:set (query-bundle *fn2-cursor-query-bundle-held*) (load-release 0) (load-refuse (if (equal complete 1) 0 1)))
+             (:next (:if (equal complete 1) :seek :finish))
+             (:charge :bytes 512 :steps *fn2-work-transition* :runnable t))
+     ((:exhausted) (:set (reply (fn2-cursor-reply-of ptag :no-projection))) (:goto refuse))
+     (:otherwise (:stop :machine-phase)))))
+    ((:stop :machine-phase))))
   (:seek :on-refusal ((:stop :machine-phase))
    (:cond
+    ((and (equal row-load-active 1) (equal row-cancel 1)) (:next :finish) (:charge :steps *fn2-work-transition* :runnable t))
+    ((equal row-load-active 1) (:goto run-load-step))
     ;; LIST ACTIVE, ACTIVE.TIMES, COUNTS, NEWSGROUPS, SUBSCRIPTIONS: the group directory
     ((equal row-tag *fn2-nntp-command-list*) (:goto list-start))
     ((equal row-tag *fn2-nntp-command-newgroups*) (:goto newgroups-done))
@@ -1646,6 +1735,8 @@
   ;; row TX has no room for)
   (:render :on-refusal ((:stop :machine-phase))
    (:cond
+    ((and (equal row-load-active 1) (equal row-cancel 1)) (:next :finish) (:charge :steps *fn2-work-transition* :runnable t))
+    ((equal row-load-active 1) (:goto run-load-step))
     ((equal row-step 20) (:goto art-key))
     ((equal row-step 21) (:goto art-lookup))
     ((equal row-step 22) (:goto art-lease))
@@ -1708,14 +1799,21 @@
            (:set (rready 0) (step (if (eq dc :ok) 24 25))) (:next :render)
            (:charge :bytes 8192 :steps *fn2-work-transition* :runnable t))))
   (:finish :on-refusal ((:stop :machine-phase))
-   (:do (rc1) (fn2-read-release (* 2 row-slot)) :accept (:ok))
-   (:do (rc2) (fn2-read-release (+ 1 (* 2 row-slot))) :accept (:ok))
-   (:if (equal row-lease *fn2-cursor-lease-held*)
-        ((:do (lc) (fn2-cursor-lease-release row-lslot row-lgen) :effects ((:release (:storage-window))) :accept (:ok :retired)
-      :why ":retired: the lease's slot reached its generation limit and leaves the pool")
-         (:set (lease *fn2-cursor-lease-none*) (lslot *fn2-none*) (lgen 0))
-         (:next :draining) (:charge :steps *fn2-work-transition* :runnable t))
-        ((:next :draining) (:charge :steps *fn2-work-transition* :runnable t))))
+   (:do (rc1) (fn2-read-release (* *fn2-b-query-read-rows* row-slot)) :accept (:ok))
+   (:do (rc2) (fn2-read-release (+ 1 (* *fn2-b-query-read-rows* row-slot))) :accept (:ok))
+   (:cond
+    ;; The main query bundle retains storage-window rank while this
+    ;; borrowed article page handle is cleared.
+    ((equal row-lease *fn2-cursor-lease-held*)
+
+     (:set (lease *fn2-cursor-lease-none*) (lslot *fn2-none*) (lgen 0))
+     (:charge :steps *fn2-work-transition* :runnable t))
+    ((equal row-query-bundle *fn2-cursor-query-bundle-held*)
+     (:if (< row-load-release *fn2-b-query-loader-jobs*) ((:goto run-load-drain)) ((:stop :machine-phase))))
+    ((equal row-load-refuse 1)
+     ;; A partial failed admission must finish owned cleanup before503.
+     (:set (load-refuse 0) (reply (fn2-cursor-reply-of row-tag :no-projection))) (:goto refuse))
+    (t (:next :draining) (:charge :steps *fn2-work-transition* :runnable t))))
   (:draining
    (:let next (fn2-cursor-free-head *fn2-cursor-admission-ordinal*))
    (:let retire (>= row-generation (fn2-cursor-gen-limit)))

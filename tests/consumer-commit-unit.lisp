@@ -70,6 +70,35 @@
        ((mv status clients store fn2-core) (fn2-cw-loop 40000 0 (+ 1 cap) clients nil fn2-core)))
     (mv status (car (nth cap (fn2-cw-results clients))) store fn2-core)))
 
+; The direct frontier probe uses an actually taken request and its own read
+; row, then drains that request normally. It does not impersonate read row0.
+; Query fields are fixture inputs; no network/authentication claim is added.
+(defun fn2-ccu-frontier-drive (fuel principal x fn2-core)
+ (declare (xargs :stobjs fn2-core :verify-guards nil :measure (nfix fuel)))
+ (if (zp fuel) (mv :budget 0 fn2-core)
+  (mv-let (code frontier fn2-core) (fn2-cns-stream-frontier principal x fn2-core)
+   (if (eq code :more) (fn2-ccu-frontier-drive (- fuel 1) principal x fn2-core)
+    (mv code frontier fn2-core)))))
+(defun fn2-ccu-frontier-probe (principal fn2-core)
+ (declare (xargs :stobjs fn2-core :verify-guards nil))
+ (b* (((mv taken id & fn2-core)
+       (fn2-machine-take-fn2-cns *fn2-none* 0 0 0 0 0 0 0 0 fn2-core))
+      ((unless (eq taken :ok)) (mv taken 0 fn2-core))
+      ((mv row-code x) (fn2-cns-read-row id fn2-core))
+      ((unless (eq row-code :ok)) (mv row-code 0 fn2-core))
+      (fn2-core (fn2-cns-put-core id (xrow x)))
+      ((mv code frontier fn2-core) (fn2-ccu-frontier-drive 512 principal x fn2-core))
+      ((mv & fn2-core) (fn2-read-release x fn2-core))
+      (fn2-core (fn2-cns-put-core id (phase *fn2-cns-state-draining*)))
+      ((mv wake fn2-core) (fn2-machine-take-wake fn2-core))
+      (fn2-core (fn2-exec-wake wake fn2-core))
+      ((mv drained & & fn2-core) (fn2-cw-loop 512 0 0 nil nil fn2-core)))
+  (mv (if (and (eq drained :quiet)
+                (member (fn2-cns-row-phase id fn2-core) (list *fn2-cns-state-free* *fn2-cns-state-retired*))
+                (equal (fn2-cns-row-ws-slot id fn2-core) *fn2-none*)
+                (equal (fn2-cns-row-ns-slot id fn2-core) *fn2-none*)) code :drain)
+      frontier fn2-core)))
+
 ; The cursor register issues consumer 1 (version 1, epoch 1, at 0), and the
 ; mutations of a prefix, each (verb frame reply position): the register at
 ; 0, the append (operation 9) at commit position 2, then the ack to 2.
@@ -213,7 +242,7 @@
 ;; append (the principal's addr entry at 2), ack to 2 (B's commit 3), then
 ;; status and an ack to 3 on the same connection; then principal 1's addr
 ;; entry at 4 and status on a second connection, and the frontiers the
-;; host's fn2-cns-stream-frontier answers for both principals over read row 0.
+;; fn2-cns-stream-frontier answers for both principals over each taken request's own read row.
 (defun fn2-ccu-frontier-run (prof)
   (declare (xargs :verify-guards nil))
   (with-local-stobj fn2-core
@@ -230,8 +259,8 @@
            ((mv sd fn2-core) (fn2-ccu-seed-addr 1 4 fn2-core))
            ((mv s2 w2 & fn2-core) (fn2-ccu-session 1 (list (fnc-status 1) (fnc-control 5)) fn2-core))
            ((mv & pub2) (fn2-successor-published fn2-core))
-           ((mv c0 f0 fn2-core) (fn2-cns-stream-frontier 0 0 fn2-core))
-           ((mv c1 f1 fn2-core) (fn2-cns-stream-frontier 1 0 fn2-core)))
+           ((mv c0 f0 fn2-core) (fn2-ccu-frontier-probe 0 fn2-core))
+           ((mv c1 f1 fn2-core) (fn2-ccu-frontier-probe 1 fn2-core)))
         (mv (list (fnc-replies (append (fn2-ccu-verbs *fn2-ccu-mutations*) '(status ack)) w1)
                   (fnc-replies '(status) w2)
                   (list pub1 pub2) (list c0 f0 c1 f1)

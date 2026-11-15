@@ -7,4 +7,6 @@
 (in-package "ACL2")
 (include-book "assembly-callbacks-b2")
 (include-book "machines-c-bind")
+(include-book "run-physical-core-faces")
+(fn2-run-page-core-faces)
 (fn2-successor-prepare-events)

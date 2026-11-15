@@ -15,7 +15,6 @@
 (include-book "checkpoint-restore-events-state")
 (include-book "checkpoint-summary-state")
 (include-book "checkpoint-payload-harvest")
-(include-book "checkpoint-restore-events-state")
 (include-book "boot-format")
 (fn2-book-layer :b)
 

@@ -7,7 +7,7 @@ TARGETS={
   ('fn2-checkpoint-summary-apply-begin',32,':source :more'),
   ('fn2-checkpoint-summary-apply-preflight',0,':source :copy :occupied :bounds :more')],
  'checkpoint-summary-apply.lisp':[
-  ('fn2-checkpoint-summary-apply-step',0,':source :coverage :bounds :directory :applied :more')],
+  ('fn2-checkpoint-summary-apply-step',0,':source :coverage :bounds :directory :applied :more :state :exhausted')],
  'checkpoint-summary-authority-cold.lisp':[
   ('fn2-checkpoint-summary-authority-cold-begin',32,':source :more'),
   ('fn2-checkpoint-summary-authority-cold-step',4,':source :bounds :complete :more')]

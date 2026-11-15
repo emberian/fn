@@ -10,6 +10,7 @@
 (include-book "txn-kind")
 (include-book "authority-codec")
 (include-book "machine-arms")
+(include-book "c-actor-loader-form")
 (fn2-book-layer :e)
 
 (defun fn2-auth-capacity (profile)
@@ -18,7 +19,7 @@
 (defthm fn2-auth-capacity-natp (natp (fn2-auth-capacity profile)) :rule-classes :type-prescription)
 (in-theory (disable fn2-auth-capacity))
 
-(defmachine fn2-auth
+(fn2-c-actor-loader-kind fn2-auth
  :phases (:free :decode :lookup :allocate :bhead :outcome :head :get :ready :batched :draining :retired)
  :fields ((ctl :link) (ctl-gen :u60) (request :u32) (fpos :u32) (flen :u32) (rx-slot :link) (rx-gen :u60)
           (admin :bool) (worked :bool) (principal :u60)

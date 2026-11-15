@@ -6,6 +6,8 @@
 (include-book "machines-a")
 (include-book "machines-a-costs")
 (include-book "machine-arms")
+(include-book "c-actor-loader-form")
+(include-book "cns-read-state")
 (fn2-book-layer :e)
 
 (defconst *fn2-cns-esub-dimension*
@@ -104,7 +106,7 @@
 
 (defmachine-registry fn2-ctl)
 
-(defmachine fn2-cns
+(fn2-c-actor-loader-kind fn2-cns
  :phases (:free :decode :check :lookup :read :page :fetch :park :commit :committed :append :draining :retired)
  :fields ((ctl :link) (ctl-gen :u60) (request :u32) (fpos :u32) (flen :u32) (fkind :u8)
           (verb (:enum fn2-cns-verb (:none :register :read :wait :ack :position :status :append :fetch

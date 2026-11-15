@@ -16,6 +16,7 @@
 (in-package "ACL2")
 (include-book "txn-kind")
 (include-book "upload")
+(include-book "c-actor-loader")
 (fn2-book-layer :d)
 
 ;; The claim walk's chain steps per run: each step compares at most one
@@ -288,7 +289,7 @@
 (defcost fn2-txn-prebind :answers (:ok) :tables (fn2-core-fields)
   :doc "Pre-fill prospective event numbers into staged insert slots before emitting journal records.")
 (defconst *fn2-authority-right-append* 2)
-(defcost fn2-authority-allows :answers (:ok :access :more :state) :faults (:state) :bytes 4096
+(defcost fn2-authority-allows :answers (:ok :access :more :state :miss) :faults (:state) :bytes 4096
   :tables (fn2-core-succ-txns fn2-core-run-cursors fn2-core-run-paths fn2-core-fields)
   :doc "One bounded step of the append check (books/authority.lisp, AUTHORITY-20261105 section 4): (fn2-authority-allows tx principal-slot right target step head grant budget) -> (mv code step head grant), one exact lookup source per call (the head, the current grant, the grant row).")
 (defcost fn2-txn-principal :answers (:ok :state)
@@ -306,7 +307,7 @@
 (defcost fn2-txn-groups-limit
   :doc "Profile-configured cross-post group limit (:max-groups-per-article, D27).")
 
-(defmachine-arms fn2-txn :declare
+(fn2-c-actor-loader-arms fn2-txn :declare
  :subarms
  (;; one Newsgroups name: look it up, declare its group-count accept, overview and addr
   (group :on-refusal ((:stop :machine-phase))
@@ -323,7 +324,7 @@
           ((eq status :end) (:set (gcur next)) (:charge :bytes 8192 :steps *fn2-work-transition* :runnable t))
           (t (:do (code group) (fn2-txn-group-of gslot row-xstep row-xgroup c0 g0 (+ no start) len :budget 4096 :owner upload)
               :accept ()
-              :case (((:more) (:charge :bytes 8192 :steps *fn2-work-transition* :runnable t))
+              :case (((:more :miss) (:charge :bytes 8192 :steps *fn2-work-transition* :runnable t))
                      ((:absent) (:set (gcur next)) (:charge :bytes 8192 :steps *fn2-work-transition* :runnable t))
                      ((:ok)
                       (:cond ((>= row-ngroups (fn2-txn-groups-limit))
@@ -339,13 +340,14 @@
                                      (fn2-authority-allows gslot pid *fn2-authority-right-append* group
                                                            (if (equal row-xstep 0) 0 (- row-xstep 1)) row-xhead row-xgrant 4096)
                                  :accept (:ok)
-                                 :case (((:more)
+                                 :case (((:more :miss)
                                          (:cond ((< astep 255)
                                                  (:set (xstep (+ 1 astep)) (xgroup group) (xhead ahead) (xgrant agrant))
                                                  (:charge :bytes 8192 :steps *fn2-work-transition* :runnable t))
                                                 (t (:stop :machine-phase))))
                                         ((:access) (:set (word *fn2-upload-word-refused*) (xstep 0)) (:next :refused)
-                                         (:charge :bytes 8192 :steps *fn2-work-transition* :runnable t))))
+                                         (:charge :bytes 8192 :steps *fn2-work-transition* :runnable t))
+             ))
                                 (:do (dcode) (fn2-authority-depend gslot pid agrant ahead) :accept (:ok))
                                 (:do (pcode) (fn2-txn-add-group gslot row-ngroups group row-principal-slot c0 g0 c1 g1
                                                                  (+ no start) len :owner upload))
@@ -353,7 +355,8 @@
                                      ((:set (ngroups (+ 1 row-ngroups)) (gcur next) (xstep 0))
                                       (:charge :bytes 8192 :steps *fn2-work-transition* :runnable t))
                                      ((:set (word *fn2-upload-word-unaffordable*)) (:next :refused)
-                                      (:charge :bytes 8192 :steps *fn2-work-transition* :runnable t)))))))))))
+                                      (:charge :bytes 8192 :steps *fn2-work-transition* :runnable t))))))
+             )))))
   ;; the outcome: the word to the owner (waking it; a consumer request also
   ;; gets an accepted article's commit position), the successor released
   (reply :on-refusal ((:stop :machine-phase))
@@ -427,7 +430,7 @@
                      (:set (offered 1)) (:charge :bytes 4096 :steps *fn2-work-transition* :runnable t))
                     (t (:do (answer) (fn2-identity-decide lslot 4096)
                         :accept ()
-                        :case (((:more) (:charge :bytes 4096 :steps *fn2-work-transition* :runnable t))
+                        :case (((:more :miss) (:charge :bytes 4096 :steps *fn2-work-transition* :runnable t))
                                ((:stored :duplicate :conflict :evidence)
                                 (:do (fcode verdict selection h evidence coverage) (fn2-identity-facts lslot))
                                 (:cond ((eq selection :same)
@@ -438,15 +441,17 @@
                                         (:charge :bytes 4096 :steps *fn2-work-transition* :runnable t))
                                        (t (:set (tmode *fn2-txn-mode-evidence*) (word *fn2-upload-word-conflict*))
                                           (:next :prepare)
-                                          (:charge :bytes 4096 :steps *fn2-work-transition* :runnable t)))))))))))
+                                          (:charge :bytes 4096 :steps *fn2-work-transition* :runnable t))))
+             )))))))
   ;; count the body's lines, look each group up, refuse :group or the injected
   ;; fields, declare the slots (evidence or article); then resolve them
   (:prepare :on-refusal ((:stop :machine-phase))
    (:if (equal row-prepared 1)
-        ((:do (answer) (fn2-successor-resolve row-slot 4096)
+        ((:do (answer) (fn2-successor-resolve row-slot 4096 *fn2-txn-kind* id row-generation)
           :accept ()
           :case (((:ok) (:next :ready) (:charge :bytes 8192 :steps *fn2-work-transition* :runnable t))
-                 ((:more) (:charge :bytes 8192 :steps *fn2-work-transition* :runnable t)))))
+                 ((:more :miss) (:charge :bytes 8192 :steps *fn2-work-transition* :runnable t))
+             )))
         ((:if (equal row-tmode *fn2-txn-mode-evidence*)
               ((:do (fcode verdict selection h evidence coverage) (fn2-identity-facts row-slot))
                (:do (pcode) (fn2-txn-put-evidence-for row-slot
