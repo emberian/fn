@@ -69,8 +69,23 @@
  ; OPEN rows are unadmitted work and cannot alter the held visible view.
  ; A disconnected upload retains/wakes its child txn until that drain ends.
  ; A stopped owner/core is recovery work, never a valid acquired snapshot.
+ ; CLOSING is an earlier true quiescence boundary for the sealer. Existing
+ ; observer-owned work may finish; no new seal starts. HELD must never pause
+ ; an unpublished prefix whose observer a later source writer must drain.
+ (defun fn2-csnapshot-sealer-quiescent-p (fn2-core)
+  (declare (xargs :stobjs fn2-core :guard (fn2-core-wfp fn2-core)))
+  (let ((id (fn2-machine-kind-base *fn2-sealer-kind* fn2-core)))
+   (or (equal id *fn2-none*)
+    (and (eq (fn2-sealer-snapshot-read-code id fn2-core) :ok)
+     (equal (fn2-machine-stopped id fn2-core) 0)
+     (stobj-let ((fn2-seals (fn2-core-seals fn2-core)) (fn2-c-source-observers (fn2-core-c-source-observers fn2-core))) (yes)
+      (and (< 0 (fn2-seals-rows fn2-seals)) (< id (fn2-c-source-observers-rows fn2-c-source-observers))
+           (member (fn2-seals-phase 0 fn2-seals) (list *fn2-seal-phase-idle* *fn2-seal-phase-release*))
+           (equal (fn2-seals-held 0 fn2-seals) 0) (equal (fn2-seals-copy-live 0 fn2-seals) 0)
+           (equal (fn2-c-source-observers-live id fn2-c-source-observers) 0)) yes)))))
  (fn2-csnapshot-op fn2-csnapshot-poll (token okind oslot ogen) 3
   (if (fn2-core-stopped-p fn2-core) (mv :stopped 0 0 fn2-core)
+  (let ((sealer-quiescent (fn2-csnapshot-sealer-quiescent-p fn2-core)))
   (stobj-let ((fn2-csnapshot (fn2-core-csnapshot fn2-core))
               (fn2-succ-txns (fn2-core-succ-txns fn2-core))
               (fn2-commit-root (fn2-core-commit-root fn2-core)))
@@ -98,13 +113,16 @@
                       (fn2-commit-root-published 0 fn2-commit-root))))
           (let ((fn2-csnapshot (fn2-csnapshot-put 0 (scan 0) (blocked 0))))
            (mv :more 0 0 fn2-csnapshot)))
+         ((not sealer-quiescent)
+          (let ((fn2-csnapshot (fn2-csnapshot-put 0 (scan 0) (blocked 0))))
+           (mv :more 0 0 fn2-csnapshot)))
          (t (let* ((cut (fn2-commit-root-published 0 fn2-commit-root))
                    (event (if (zp (fn2-commit-root-first-key 0 fn2-commit-root)) 0
                             (- (fn2-commit-root-first-key 0 fn2-commit-root) 1)))
                    (fn2-csnapshot (fn2-csnapshot-put 0 (phase *fn2-csnapshot-phase-held*)
                                     (cut-commit cut) (cut-event event) (source 0) (row 0) (complete 0))))
               (mv :held cut event fn2-csnapshot))))
-   (mv code cut event fn2-core))))
+   (mv code cut event fn2-core)))))
 
  ; Enumerate the complete resident source set without silently truncating it.
  ; Overlay SEQ and run RUN preserve the served merge precedence. A source is

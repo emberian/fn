@@ -38,7 +38,7 @@ class SealerPhysicalSource(unittest.TestCase):
   self.assertFalse(calls(f,'fn2-run-cache-lookup'))
  def test_readiness_keeps_active_seal_and_capacity_distinct(self):
   fs=tree('machines-c-sealer-events.lisp')
-  self.assertTrue(calls(fs,'fn2-sealer-copy-roomp'))
+  self.assertTrue(calls(tree('sealer-physical-loader.lisp'),'fn2-sealer-copy-roomp'))
   self.assertTrue(calls(fs,'fn2-sealer-load-status'))
   kind=tree('machines-c-sealer-kind.lisp')
   self.assertIn([':read-result',[':wake']],list(walk(kind)))
@@ -72,4 +72,17 @@ class SealerPhysicalSource(unittest.TestCase):
   self.assertEqual(len(calls(f,'fn2-pool-read')),2)
   self.assertIn(['equal','byte','120'],list(walk(f)))
   self.assertIn(['equal','original','120'],list(walk(f)))
+ def test_observer_closes_after_continuations_and_snapshot_waits(self):
+  fs=tree('machines-c-sealer-events.lisp')
+  self.assertTrue(calls(fs,'fn2-c-source-read-acquire'))
+  self.assertTrue(calls(fs,'fn2-sealer-source-clear-op'))
+  self.assertTrue(calls(fs,'fn2-sealer-source-quiescent-p'))
+  snapshot=tree('c-snapshot.lisp')
+  self.assertTrue(calls(snapshot,'fn2-csnapshot-sealer-quiescent-p'))
+  self.assertTrue(calls(snapshot,'fn2-c-source-observers-live'))
+  self.assertTrue(calls(snapshot,'fn2-seals-phase'))
+  # Physical admission occurs only in the actual plan's NEED-LOADER case.
+  f=next(f for f in tree('sealer.lisp') if isinstance(f,list) and f[:2]==['defun','fn2-seal-start'])
+  self.assertTrue(calls(f,'fn2-seal-physical-inputs'))
+  self.assertTrue(any(x and x[0]=='mv' and ':need-loader' in x for x in walk(f)))
 if __name__=='__main__':unittest.main()

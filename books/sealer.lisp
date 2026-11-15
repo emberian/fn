@@ -292,6 +292,16 @@
                     fn2-seal-most-runs fn2-seal-pressured-p fn2-seal-urgent-p
                     fn2-seal-plan fn2-seal-compact-target fn2-seal-compact-pending-p))
 
+(defun fn2-seal-physical-inputs (n r sid rlo fn2-run-installed)
+ (declare (xargs :stobjs fn2-run-installed :measure (nfix n)
+ :guard (and (fn2-run-installed-wfp fn2-run-installed) (natp r))))
+ (if (or (zp n) (<= (fn2-run-installed-rows fn2-run-installed) r)) 0
+  (+ (if (and (equal (fn2-run-installed-state r fn2-run-installed) *fn2-run-installed-state-live*)
+              (equal (fn2-run-installed-physical r fn2-run-installed) 1)
+              (equal (fn2-run-installed-schema r fn2-run-installed) sid)
+              (<= (nfix rlo) (fn2-run-installed-run r fn2-run-installed))) 1 0)
+     (fn2-seal-physical-inputs (- n 1) (+ r 1) sid rlo fn2-run-installed))))
+
 ; Start: pick the next overlay, or a run-only compaction when none is sealable
 ; (or preemptively when row/page space is urgent and the chosen overlay's
 ; schema has nothing to merge while another schema holds >= 2 live runs).
@@ -334,6 +344,12 @@
       ((unless (and (unsigned-byte-p 60 run) (unsigned-byte-p 32 hbase) (unsigned-byte-p 32 use-o)
                     (unsigned-byte-p 60 sid) (unsigned-byte-p 8 k) (unsigned-byte-p 60 rlo) (unsigned-byte-p 60 ufirst)))
        (mv :bounds fn2-seals fn2-overlays fn2-run-builds fn2-run-writers fn2-pool))
+      ; The actual plan, not an observer's guess, determines whether any
+      ; physical input must be fetched. Refuse before allocating a prefix.
+      ((when (and (posp k)
+                  (posp (fn2-seal-physical-inputs (fn2-run-installed-rows fn2-run-installed) 0 sid rlo fn2-run-installed))
+                  (not (equal (fn2-seals-copy-live 0 fn2-seals) 1))))
+       (mv :need-loader fn2-seals fn2-overlays fn2-run-builds fn2-run-writers fn2-pool))
       (class (fn2-pool-class-for *fn2-seal-hash-bytes* fn2-pool))
       ((unless (natp class)) (mv :capacity fn2-seals fn2-overlays fn2-run-builds fn2-run-writers fn2-pool))
       ((mv code hslot hgen fn2-pool) (fn2-pool-reserve class okind oslot ogen fn2-pool))
