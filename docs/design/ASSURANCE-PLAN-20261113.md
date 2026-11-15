@@ -68,12 +68,28 @@ The same record covers the column generator's RAW-ROWS opacity hint, but does
 not establish its CNS-edge consumer: the twenty-book author run admitted
 operations, columns, profile and trace, then exhausted the unchanged two-million
 step budget in pool's original conservation encapsulate. No full application
-or native claim follows. Subsequent pool repairs preserve the original eleven
-statements and runtime definitions. Candidate `e76a6cdb3` reached a concrete
-RESERVE-BODY-CLASS subset-interface refusal in 4.18 seconds / 666,687 steps.
-The matching direct-interface repair `88a56c131` remains unexecuted; the original
-bounded session ended and all its owned processes and resource scope are gone.
-The original conservation encapsulate and shared two-million-step cap remain intact.
+or native claim follows.
+
+The pool conservation repair and BLAKE3 pool type repair are now qualified by
+exact ten-book record `certify-20261115T114609Z-1278115` (seven reused, three
+new books). Root matched all ten current source hashes and closure keys to both
+record snapshots and the qualified entries. Pool preserves its original eleven
+operation statements, runtime definitions and unsplit conservation event. Its
+author event passed in 14.53 seconds / 1,895,747 steps within the unchanged
+20-second / two-million-step cap; proof cost remains an open D26 issue.
+The BLAKE3 pool repair changes only two induction/theory hints, preserving
+statements and guards; its whole-book author run passed in 0.75 seconds / 2,063
+steps after the previous type proof exhausted two million steps.
+Receipt: [pool and BLAKE3 pool](receipts/pool-b3-ten-record.json).
+
+The coherent application author run advanced through the format books, BLAKE3,
+allocator and commit allocator, then stopped at the original `FN2-OPS` column
+macro in `vocab`: 20.02 seconds / 695,400 steps, before member execution.
+Many small generated admissions accumulate under the macro's shared time cap;
+this is not a counterexample. The generator owner is testing use of the existing
+small proof theory for entirely numeric extra fields, retaining the original
+path for nested/raw extras. No larger cap or split macro is authorized by this
+repair. Member and actual application/restart qualification remain open.
 
 The frozen checkpoint-member diagnostic executed the actual packer successfully
 with its whole stored guard, input recognizers and all four output type/WFP

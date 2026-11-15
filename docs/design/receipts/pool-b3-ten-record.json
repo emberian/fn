@@ -1,0 +1,203 @@
+{
+  "source": "7e0de36f5dceaec83358702ec5dc88261dbf6043",
+  "roots": [
+    "books/pool",
+    "books/blake3-pool-spec"
+  ],
+  "count": 10,
+  "record": {
+    "source": "7e0de36f5dceaec83358702ec5dc88261dbf6043",
+    "roots": [
+      "books/pool",
+      "books/blake3-pool-spec"
+    ],
+    "keys": {
+      "books/pool": "bd9b5010608fbb77fe9a1e464dce89bf046514e14d596f821492a5ab364e67c9",
+      "books/blake3-pool-spec": "c8d3d6e3ca5a6c7b332613b2f119359cacbfb75e1c135773ccf7f91956b8bb8d"
+    },
+    "count": 10,
+    "cgroup": "/sys/fs/cgroup/user.slice/user-1000.slice/user@1000.service/swarm.slice/run-p1278098-i30634789.scope",
+    "memory_max": 2147483648,
+    "swap_max": 0,
+    "source_hashes_before": {
+      "books/pool": "32dce8695606e5faa78dbd1d4de70f7ace78436501ad8390a24fe301c2cf07db",
+      "books/profile": "1f216ed6c0505dc1b01ada0f7d3d9482af6da7b7dff8736b5100ef3e3fbc1038",
+      "books/operations": "419120e7ae100f400d18cdee2d080d6133523673cac22fae1b05c7201ff97dd8",
+      "books/declare": "1c706e559ef3b314fb9bd48171fb2891fad8613bd4eb1c5de5268443833c4bfb",
+      "books/owed-discharge": "53903322be1b79ed081ecfcbfcb9f60649d3fdbf8aa6853b772abf8e6fc69f01",
+      "books/owed": "04104985582a552ad115a0a6adcf2e957597b1b9ca3228bf25900877cbbcb17b",
+      "books/columns": "f21583e2e5471fb1d44dd5bdc34158b32e13e43146950b72abee4c57ac9d8e5b",
+      "books/blake3-pool-spec": "2775bf744b6ed52fd098fe329b0b183d62c0857a5a2a989cf80e968f5a366e2b",
+      "books/blake3-spec": "253babac6e5d9e9df00a655ba6b6595c9e6d85315c9294f05e3d939f19ad5770",
+      "books/digests": "e821bfe1ffee392c8019fad513db8a83aaf2448251087f26c9576a3af333a524"
+    },
+    "status": "passed",
+    "runner_pid": 1278115,
+    "command": [
+      "/usr/bin/python3",
+      "tools/certify_books.py",
+      "--jobs",
+      "1",
+      "--incremental",
+      "--images",
+      "off",
+      "--timeout-seconds",
+      "120",
+      "books/pool",
+      "books/blake3-pool-spec"
+    ],
+    "run_dir": "/build/lanes/proof-event-pool-b3-record-7e0de36f5/build/acl2/certify-20261115T114609Z-1278115",
+    "runner_exit": 0,
+    "source_hashes_after": {
+      "books/pool": "32dce8695606e5faa78dbd1d4de70f7ace78436501ad8390a24fe301c2cf07db",
+      "books/profile": "1f216ed6c0505dc1b01ada0f7d3d9482af6da7b7dff8736b5100ef3e3fbc1038",
+      "books/operations": "419120e7ae100f400d18cdee2d080d6133523673cac22fae1b05c7201ff97dd8",
+      "books/declare": "1c706e559ef3b314fb9bd48171fb2891fad8613bd4eb1c5de5268443833c4bfb",
+      "books/owed-discharge": "53903322be1b79ed081ecfcbfcb9f60649d3fdbf8aa6853b772abf8e6fc69f01",
+      "books/owed": "04104985582a552ad115a0a6adcf2e957597b1b9ca3228bf25900877cbbcb17b",
+      "books/columns": "f21583e2e5471fb1d44dd5bdc34158b32e13e43146950b72abee4c57ac9d8e5b",
+      "books/blake3-pool-spec": "2775bf744b6ed52fd098fe329b0b183d62c0857a5a2a989cf80e968f5a366e2b",
+      "books/blake3-spec": "253babac6e5d9e9df00a655ba6b6595c9e6d85315c9294f05e3d939f19ad5770",
+      "books/digests": "e821bfe1ffee392c8019fad513db8a83aaf2448251087f26c9576a3af333a524"
+    },
+    "source_unchanged": true
+  },
+  "artifact_verification": [
+    {
+      "book": "books/blake3-pool-spec",
+      "key": "c8d3d6e3ca5a6c7b332613b2f119359cacbfb75e1c135773ccf7f91956b8bb8d",
+      "sha256": "2775bf744b6ed52fd098fe329b0b183d62c0857a5a2a989cf80e968f5a366e2b",
+      "cache_entry": "/home/fn/.cache/fn-certs/c8d3d6e3ca5a6c7b332613b2f119359cacbfb75e1c135773ccf7f91956b8bb8d/5a7ff5fdbf9cfc07",
+      "toolchain_identity": "8aeb1bea18968c6cd33ac633a80ebf67e4924504db112fd27eb11f16a27b2a8c",
+      "artifact_hashes": {
+        "cert_sha256": "44625ce6690e1f450369459b03b54ba910120e0e665abf855dc0e9f223e365b6",
+        "fasl_sha256": "2a5292bd8744a890f61caecfae62c0f48187715f55aaaf83363c9101737300f8",
+        "port_sha256": "f4cb7e8160cfa6f41cddb04be508f922aa8e87c4ff126bfaad3379aa92e647e0",
+        "source_sha256": "2775bf744b6ed52fd098fe329b0b183d62c0857a5a2a989cf80e968f5a366e2b"
+      }
+    },
+    {
+      "book": "books/blake3-spec",
+      "key": "3944594ba7622d4b4067f30d5dd2faaddf41fc13057a464af1b79f7234e57d81",
+      "sha256": "253babac6e5d9e9df00a655ba6b6595c9e6d85315c9294f05e3d939f19ad5770",
+      "cache_entry": "/home/fn/.cache/fn-certs/3944594ba7622d4b4067f30d5dd2faaddf41fc13057a464af1b79f7234e57d81/7d5228e73de09114",
+      "toolchain_identity": "8aeb1bea18968c6cd33ac633a80ebf67e4924504db112fd27eb11f16a27b2a8c",
+      "artifact_hashes": {
+        "cert_sha256": "7857694c18ad6214f37670ba28050ccc3203e00ac56f158064d7130341ffec49",
+        "fasl_sha256": "ea3181e0e6594e2c3d28216f329e085f0bb388d313f33a9f0831e0aa77b18aab",
+        "port_sha256": "f4cb7e8160cfa6f41cddb04be508f922aa8e87c4ff126bfaad3379aa92e647e0",
+        "source_sha256": "253babac6e5d9e9df00a655ba6b6595c9e6d85315c9294f05e3d939f19ad5770"
+      }
+    },
+    {
+      "book": "books/columns",
+      "key": "a18eca87d67ac59cf27b0b9c11cd578acd923038e3e51914e0bf8536c0ad8598",
+      "sha256": "f21583e2e5471fb1d44dd5bdc34158b32e13e43146950b72abee4c57ac9d8e5b",
+      "cache_entry": "/home/fn/.cache/fn-certs/a18eca87d67ac59cf27b0b9c11cd578acd923038e3e51914e0bf8536c0ad8598/c5dbe20cc7e045ae",
+      "toolchain_identity": "8aeb1bea18968c6cd33ac633a80ebf67e4924504db112fd27eb11f16a27b2a8c",
+      "artifact_hashes": {
+        "cert_sha256": "d9e45565f4feeadd491aad47063200c1cfc04e5614bef5e1f517ea2cae5ce1f9",
+        "fasl_sha256": "857bda0e8e2ad23deb3f538ec4742d7700196fe8744830f1d8e4444b909a0093",
+        "port_sha256": "f4cb7e8160cfa6f41cddb04be508f922aa8e87c4ff126bfaad3379aa92e647e0",
+        "source_sha256": "f21583e2e5471fb1d44dd5bdc34158b32e13e43146950b72abee4c57ac9d8e5b"
+      }
+    },
+    {
+      "book": "books/declare",
+      "key": "f1df352dc360553d08906239d267e9371fcb2fe4f19c6581adc1b0b322b30875",
+      "sha256": "1c706e559ef3b314fb9bd48171fb2891fad8613bd4eb1c5de5268443833c4bfb",
+      "cache_entry": "/home/fn/.cache/fn-certs/f1df352dc360553d08906239d267e9371fcb2fe4f19c6581adc1b0b322b30875/2c56b9035d330b37",
+      "toolchain_identity": "8aeb1bea18968c6cd33ac633a80ebf67e4924504db112fd27eb11f16a27b2a8c",
+      "artifact_hashes": {
+        "cert_sha256": "202d9dd8bfa5eb1d5c2f705fc7dd054f87014e5263da1f80bbafef057ce68971",
+        "fasl_sha256": "949ada9e4b8673d8401f9a6d053f5f11b1e373f28b38638cc3fae79c3b469db6",
+        "port_sha256": "f4cb7e8160cfa6f41cddb04be508f922aa8e87c4ff126bfaad3379aa92e647e0",
+        "source_sha256": "1c706e559ef3b314fb9bd48171fb2891fad8613bd4eb1c5de5268443833c4bfb"
+      }
+    },
+    {
+      "book": "books/digests",
+      "key": "4feb9269a7daa79d94dc06ad4a610babfaa5e54344dd3438c7960d6d005b1cb5",
+      "sha256": "e821bfe1ffee392c8019fad513db8a83aaf2448251087f26c9576a3af333a524",
+      "cache_entry": "/home/fn/.cache/fn-certs/4feb9269a7daa79d94dc06ad4a610babfaa5e54344dd3438c7960d6d005b1cb5/5a7ff5fdbf9cfc07",
+      "toolchain_identity": "8aeb1bea18968c6cd33ac633a80ebf67e4924504db112fd27eb11f16a27b2a8c",
+      "artifact_hashes": {
+        "cert_sha256": "3ebe91650288832305e145a30ca523d54b1818c298e09c4fde74afd32f2154cc",
+        "fasl_sha256": "4cec2716a3b76953c7bfc3da7ca9ff02ce5ac1f4cddd6473123deb9709009e81",
+        "port_sha256": "f4cb7e8160cfa6f41cddb04be508f922aa8e87c4ff126bfaad3379aa92e647e0",
+        "source_sha256": "e821bfe1ffee392c8019fad513db8a83aaf2448251087f26c9576a3af333a524"
+      }
+    },
+    {
+      "book": "books/operations",
+      "key": "15da3cfd8dd9976d08f0c8590f6b607f62e664c5cf20fcb68c5525ad2347b53f",
+      "sha256": "419120e7ae100f400d18cdee2d080d6133523673cac22fae1b05c7201ff97dd8",
+      "cache_entry": "/home/fn/.cache/fn-certs/15da3cfd8dd9976d08f0c8590f6b607f62e664c5cf20fcb68c5525ad2347b53f/4847be3c35763d2d",
+      "toolchain_identity": "8aeb1bea18968c6cd33ac633a80ebf67e4924504db112fd27eb11f16a27b2a8c",
+      "artifact_hashes": {
+        "cert_sha256": "909cbcb30de1e31131cb08690f9ecc4776de3463b6c17538281a7ea613d7b233",
+        "fasl_sha256": "9fa565c104e04b0c33a2fdab4662e711829a5ef88e02b7173d99c2f667a406d8",
+        "port_sha256": "f4cb7e8160cfa6f41cddb04be508f922aa8e87c4ff126bfaad3379aa92e647e0",
+        "source_sha256": "419120e7ae100f400d18cdee2d080d6133523673cac22fae1b05c7201ff97dd8"
+      }
+    },
+    {
+      "book": "books/owed",
+      "key": "6f334038cc4bddaaa337357384a139be3700c2c3403094bab3398dacb7fd5a3b",
+      "sha256": "04104985582a552ad115a0a6adcf2e957597b1b9ca3228bf25900877cbbcb17b",
+      "cache_entry": "/home/fn/.cache/fn-certs/6f334038cc4bddaaa337357384a139be3700c2c3403094bab3398dacb7fd5a3b/2c56b9035d330b37",
+      "toolchain_identity": "8aeb1bea18968c6cd33ac633a80ebf67e4924504db112fd27eb11f16a27b2a8c",
+      "artifact_hashes": {
+        "cert_sha256": "148bd33abdf09c514975bdd7296425acfe710d0e9dddf2d21643a0ec4f544a20",
+        "fasl_sha256": "1d0f0a9a82c7ec001a440ba127e28c15abc35f50fd46a2b6070e86c509f910df",
+        "port_sha256": "f4cb7e8160cfa6f41cddb04be508f922aa8e87c4ff126bfaad3379aa92e647e0",
+        "source_sha256": "04104985582a552ad115a0a6adcf2e957597b1b9ca3228bf25900877cbbcb17b"
+      }
+    },
+    {
+      "book": "books/owed-discharge",
+      "key": "97e73257b5f4cb3a4ca1b8ba4bf10956295c18ec211c0b297f557e780cd20fd1",
+      "sha256": "53903322be1b79ed081ecfcbfcb9f60649d3fdbf8aa6853b772abf8e6fc69f01",
+      "cache_entry": "/home/fn/.cache/fn-certs/97e73257b5f4cb3a4ca1b8ba4bf10956295c18ec211c0b297f557e780cd20fd1/bab1191b3d08490a",
+      "toolchain_identity": "8aeb1bea18968c6cd33ac633a80ebf67e4924504db112fd27eb11f16a27b2a8c",
+      "artifact_hashes": {
+        "cert_sha256": "63fa5a7ba08f6bc849d0e15c642697cbba02fff367b763fcc28d6b7a7927dc53",
+        "fasl_sha256": "17a2fbf13ba55900448433c8f1d8ca53d95088dd0db4411c7ee827de680410b7",
+        "port_sha256": "f4cb7e8160cfa6f41cddb04be508f922aa8e87c4ff126bfaad3379aa92e647e0",
+        "source_sha256": "53903322be1b79ed081ecfcbfcb9f60649d3fdbf8aa6853b772abf8e6fc69f01"
+      }
+    },
+    {
+      "book": "books/pool",
+      "key": "bd9b5010608fbb77fe9a1e464dce89bf046514e14d596f821492a5ab364e67c9",
+      "sha256": "32dce8695606e5faa78dbd1d4de70f7ace78436501ad8390a24fe301c2cf07db",
+      "cache_entry": "/home/fn/.cache/fn-certs/bd9b5010608fbb77fe9a1e464dce89bf046514e14d596f821492a5ab364e67c9/5a7ff5fdbf9cfc07",
+      "toolchain_identity": "8aeb1bea18968c6cd33ac633a80ebf67e4924504db112fd27eb11f16a27b2a8c",
+      "artifact_hashes": {
+        "cert_sha256": "7d3b24ad137d6052d283c861771c1ef92f156c7a149d7410eabefc8ad6b9d797",
+        "fasl_sha256": "fac0df480f0b74cd6b3fa6d4e8a8942f86941526ab383ae60902c698becc6669",
+        "port_sha256": "f4cb7e8160cfa6f41cddb04be508f922aa8e87c4ff126bfaad3379aa92e647e0",
+        "source_sha256": "32dce8695606e5faa78dbd1d4de70f7ace78436501ad8390a24fe301c2cf07db"
+      }
+    },
+    {
+      "book": "books/profile",
+      "key": "7454f7f3ee8237c090ab16a0fc46151c7f2c76878581f05b6edb786cb2f8af6e",
+      "sha256": "1f216ed6c0505dc1b01ada0f7d3d9482af6da7b7dff8736b5100ef3e3fbc1038",
+      "cache_entry": "/home/fn/.cache/fn-certs/7454f7f3ee8237c090ab16a0fc46151c7f2c76878581f05b6edb786cb2f8af6e/4847be3c35763d2d",
+      "toolchain_identity": "8aeb1bea18968c6cd33ac633a80ebf67e4924504db112fd27eb11f16a27b2a8c",
+      "artifact_hashes": {
+        "cert_sha256": "feddf6abab4c1a657e8ffe20a6949c87f4fc47438ca58283c70797d34af86879",
+        "fasl_sha256": "5b253d0be64c629360c4967a6f28ed616a390521fa7c3fd0dd0cd4638c38e2e5",
+        "port_sha256": "f4cb7e8160cfa6f41cddb04be508f922aa8e87c4ff126bfaad3379aa92e647e0",
+        "source_sha256": "1f216ed6c0505dc1b01ada0f7d3d9482af6da7b7dff8736b5100ef3e3fbc1038"
+      }
+    }
+  ],
+  "owned_pids_absent": [
+    1278098,
+    1278115
+  ],
+  "scope_absent": "/sys/fs/cgroup/user.slice/user-1000.slice/user@1000.service/swarm.slice/run-p1278098-i30634789.scope",
+  "released": true
+}
