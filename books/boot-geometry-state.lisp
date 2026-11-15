@@ -5,7 +5,10 @@
 (fn2-book-layer :b)
 (defun fn2-checkpoint-boot-geometry-word (i fn2-boot-config)
  (declare (xargs :stobjs fn2-boot-config
-  :guard (and (fn2-boot-config-wfp fn2-boot-config) (natp i) (< i 8))))
+  :guard (and (fn2-boot-config-wfp fn2-boot-config) (natp i) (< i 8))
+  :guard-hints (("Goal" :in-theory
+                 (disable fn2-boot-config-geometryi
+                          fn2-boot-config-geometry-length nth)))))
  (let ((at (* 4 i)))
   (fn-b3-word (+ (fn2-boot-config-geometryi at fn2-boot-config)
                 (* 256 (fn2-boot-config-geometryi (+ at 1) fn2-boot-config))
