@@ -102,7 +102,7 @@
  (fn2-overlay-index-init (* (nfix (fn2-b-capacity :identity-overlays *fn2-idc-overlays-default* profile))
                             (nfix (fn2-b-capacity :identity-overlay-entries 256 profile))) fn2-overlay-index)
  "Each overlay's key-ordered index of its arena's entries.")
-(fn2-idc-child fn2-core-run-installed fn2-run-installed (fn2-run-installed-init (fn2-b-capacity :identity-runs 64 profile) fn2-run-installed)
+(fn2-idc-child fn2-core-run-installed fn2-run-installed (fn2-run-installed-init (+ (fn2-b-capacity :identity-runs 64 profile) (fn2-b-capacity :extent-slots 16 profile)) fn2-run-installed)
  "The resident view of each schema's sealed runs.")
 (fn2-idc-child fn2-core-run-cursors fn2-run-cursors
  (fn2-run-cursors-init (+ (nfix (fn2-profile-t profile)) (* 9 (fn2-b-read-rows profile)) *fn2-idc-seal-cursors* 1) fn2-run-cursors)
