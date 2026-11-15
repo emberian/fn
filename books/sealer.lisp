@@ -1089,6 +1089,10 @@
       ((unless (< r rows))
        (let ((fn2-seals (fn2-seals-set-phase 0 *fn2-seal-phase-idle* fn2-seals)))
         (mv :done fn2-seals fn2-run-installed fn2-run-cache fn2-pool)))
+      ;; Physical roots have no resident-cache unit interval. Their catalog
+      ;; promise and query leases must drain through summary retirement.
+      ((when (= (fn2-run-installed-physical r fn2-run-installed) 1))
+       (mv :cache fn2-seals fn2-run-installed fn2-run-cache fn2-pool))
       (u (fn2-run-installed-ufirst r fn2-run-installed))
       ((mv code fn2-run-cache fn2-pool)
        (if (<= (nfix u) (nfix (fn2-run-installed-ulast r fn2-run-installed)))
