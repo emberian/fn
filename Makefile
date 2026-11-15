@@ -111,10 +111,12 @@ ACL2_BOOKS = \
   books/host-codec \
   books/host-compress \
   books/columns \
+  books/columns-guard-hints \
   books/compress-policy \
   books/compress-kind \
   books/compress-operation \
   books/compress-record \
+  books/compress-close \
   books/compress-transport-lifecycle \
   books/compress-transport-ops \
   books/compress \
@@ -228,6 +230,7 @@ ACL2_BOOKS = \
   books/pool \
   books/pool-block \
   books/pool-ranges \
+  books/pool-read-contracts \
   books/port \
   books/profile \
   books/q1 \
@@ -301,18 +304,22 @@ ACL2_BOOKS = \
   tests/columns-cost-unit-10 \
   tests/columns-cost-unit-20 \
   tests/columns-unit \
+  tests/columns-name-unit \
   tests/codec-profile-unit \
   tests/codec-transport-unit \
   tests/host-codec-unit \
   tests/tls-record-policy-unit \
   tests/tls-record-unit \
+  tests/tls-record-progress-unit \
   tests/send-failure-unit \
+  tests/send-accounting-unit \
   tests/tls-stack-unit \
   tests/compress-policy-unit \
   tests/compress-action-unit \
   tests/compress-settings-unit \
   tests/compress-transport-unit \
   tests/compress-record-unit \
+  tests/compress-cancel-result-unit \
   tests/compress-stage-unit \
   tests/commit-ceiling-unit \
   tests/commit-durable-all-unit \
@@ -380,6 +387,7 @@ ACL2_BOOKS = \
   tests/layout-roundtrip \
   tests/layout-teeth-unit \
   tests/layout-unit \
+  tests/columns-guard-hints-unit \
   tests/layout-proof-scope-unit \
   tests/log-model-unit \
   tests/m2-cuts \
@@ -409,8 +417,32 @@ ACL2_BOOKS = \
   tests/storage-cancel-unit \
   tests/native-cut-binding-unit \
   tests/native-envelope-prefix-unit \
+  sim/envelope-output \
+  tests/envelope-output-unit \
+  sim/envelope-output-language \
+  tests/envelope-output-language-unit \
+  sim/envelope-output-row \
+  tests/envelope-output-row-unit \
+  sim/envelope-output-segment \
+  tests/envelope-output-segment-unit \
+  sim/envelope-output-segment-loop \
+  tests/envelope-output-segment-loop-unit \
+  sim/envelope-output-dispatch \
+  sim/envelope-output-dp-loop \
+  tests/envelope-output-dispatch-unit \
+  tests/envelope-output-dp-loop-unit \
+  sim/envelope-output-dp-entry \
+  tests/envelope-output-dp-entry-unit \
+  sim/envelope-output-validation \
+  tests/envelope-output-validation-unit \
+  sim/envelope-output-linear \
+  tests/envelope-output-linear-unit \
+  sim/envelope-output-complete \
+  tests/envelope-output-complete-unit \
   tests/envelope-input-unit \
   tests/envelope-prefix-unit \
+  tests/native-device-effects-unit \
+  tests/native-device-bindings-unit \
   tests/native-unit \
   tests/network-backpressure-unit \
   tests/ops-semantic-steps-unit \
@@ -427,6 +459,8 @@ ACL2_BOOKS = \
   tests/peer-replay-unit \
   tests/pointwise-contracts-unit \
   tests/pool-ranges-unit \
+  tests/pool-query-ref-unit \
+  tests/pool-protected-floor-unit \
   tests/pool-unit \
   tests/port-unit \
   tests/primitive-list-domain-unit \

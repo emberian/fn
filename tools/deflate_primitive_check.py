@@ -1,18 +1,34 @@
 #!/usr/bin/env python3
 """Narrow independent raw-DEFLATE controls; this is not served-path evidence."""
 import ctypes as c
+import argparse
+import hashlib
 import pathlib
-import subprocess
 import tempfile
 import zlib
 
 
-def main():
+def selected_library(root, library, scratch):
+    if library is not None:
+        selected = pathlib.Path(library).resolve(strict=True)
+        if not selected.is_file():
+            raise ValueError("selected library is not a file")
+        return selected
+    from fn_admin import prepare_native_deflate
+    selected = pathlib.Path(scratch) / "deflate.so"
+    prepare_native_deflate(root, selected)
+    return selected
+
+
+def main(argv=None):
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument("--library", type=pathlib.Path,
+                        help="test this exact existing artifact without compiling another")
+    args = parser.parse_args(argv)
     root = pathlib.Path(__file__).resolve().parents[1]
     with tempfile.TemporaryDirectory(prefix="fn2-deflate-") as tmp:
-        lib = pathlib.Path(tmp) / "deflate.so"
-        subprocess.run(["cc", "-shared", "-fPIC", "-Wall", "-Wextra", "-Werror",
-                        str(root / "host/fn2-deflate.c"), "-lz", "-o", str(lib)], check=True)
+        lib = selected_library(root, args.library, tmp)
+        before = hashlib.sha256(lib.read_bytes()).hexdigest()
         dll = c.CDLL(str(lib))
         dll.fn2_deflate_new.restype = c.c_void_p
         dll.fn2_deflate_free.argtypes = [c.c_void_p]
@@ -73,6 +89,8 @@ def main():
             status, used, out = step(s, 0, wire, 11)
             assert status == 0 and len(out) == 11 and used < len(wire)
         finally: dll.fn2_deflate_free(s)
+        assert hashlib.sha256(lib.read_bytes()).hexdigest() == before, "selected library changed during controls"
+        print(f"artifact {lib} sha256={before}")
     print("PASS raw DEFLATE: fragmentation, backpressure, persistent duplex roundtrip, malformed, BFINAL, output budget")
 
 
