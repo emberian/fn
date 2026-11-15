@@ -251,6 +251,10 @@ ACL2_BOOKS = \
   books/recovery-selected-adopt \
   tests/recovery-selected-adopt-unit \
   tests/recovery-replay-init-proof \
+  tests/merkle-scanner-result-proof \
+  tests/event-frontier-done-frame \
+  tests/recovery-frontier-done-frame \
+  tests/recovery-replay-init-prefix-proof \
   tests/recovery-replay-prefix-state \
   tests/recovery-replay-prefix-identity \
   tests/recovery-replay-prefix-chain-lemmas \
