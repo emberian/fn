@@ -7,7 +7,7 @@ must be derived from that store and the actual served call/attachment graph.
 
 ## Current integration frontier — 2026-11-15 UTC
 
-Current integration source is `9e35f6916`, including retirement dispatch, actual-type
+Current integration source is `b88e96190`, including retirement dispatch, actual-type
 codec fixtures, failed-Send classification, consumed-input accounting and farm
 Git metadata protection. No current whole-system image, full host gate,
 canonical served certificate, or completed assurance claim exists.
@@ -149,8 +149,13 @@ whole composition antecedent and exercise insufficient fuel. The actual source-b
 `9e35f6916`. Seven-book record `certify-20261115T032116Z-787638` passed
 in 1.041 seconds (three reused, four new); root matched all seven before/after
 source hashes. Controls assert the whole antecedent and falsify the result when
-the fixed-suffix hypothesis is removed. Segment dispatch/reversal, initial-row
-alignment, validation/linear-path refinement and global fuel adequacy remain open.
+the fixed-suffix hypothesis is removed. Segment dispatch/reversal, initial-row construction and complete DP traversal
+are integrated at `b88e96190`. Nine-book record
+`certify-20261115T034008Z-805948` passed in 0.948 seconds (five reused, four new);
+root matched all nine before/after hashes to the composed tree. The exact fuel
+theorem starts from the specified phase-4 state and has whole-antecedent controls
+plus a corrupted-base-row falsifier. Phase-3 ordering, initial validation, linear
+paths and full-wrapper fuel adequacy remain open.
 
 Farm transport repair `0dda1d6ac` protects both Git pointer files and directories
 during source sync. Five transport and three budget controls pass.

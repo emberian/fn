@@ -425,6 +425,10 @@ ACL2_BOOKS = \
   sim/envelope-output-segment-loop \
   tests/envelope-output-segment-loop-unit \
   tests/send-envelope-unit \
+  sim/envelope-output-dispatch \
+  sim/envelope-output-dp-loop \
+  tests/envelope-output-dispatch-unit \
+  tests/envelope-output-dp-loop-unit \
   tests/envelope-input-unit \
   tests/envelope-prefix-unit \
   tests/input-prefix-unit \
