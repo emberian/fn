@@ -305,6 +305,22 @@
        (<= (+ base *fn2-format-checkpoint-descriptor-num-fields*) (fn2-fields-rows fn2-fields))))
  :hints (("Goal" :in-theory (enable fn2-checkpoint-decode))))
 
+; Preserve the stored field width through the complete decoder carrier API.
+(defthm fn2-checkpoint-decode-value-type
+ (implies
+  (and (fn2-fieldsp fn2-fields) (fn2-fields-wfp fn2-fields)
+       (fn2-poolp fn2-pool) (fn2-pool-wfp fn2-pool)
+       (natp i) (< i (fn2-fields-rows fn2-fields)))
+  (unsigned-byte-p 60
+   (fn2-fields-value i
+    (mv-nth 1 (fn2-checkpoint-decode base slot gen off len okind oslot ogen fn2-fields fn2-pool)))))
+ :hints (("Goal"
+  :use ((:instance fn2-fields-value-natp
+          (fn2-fields (mv-nth 1 (fn2-checkpoint-decode base slot gen off len okind oslot ogen fn2-fields fn2-pool))))
+        (:instance fn2-fields-value-bound
+          (fn2-fields (mv-nth 1 (fn2-checkpoint-decode base slot gen off len okind oslot ogen fn2-fields fn2-pool)))))
+  :in-theory (disable fn2-checkpoint-decode fn2-fields-value fn2-fields-rows))))
+
 (defthm fn2-checkpoint-decode-value-integer
  (implies
   (and (fn2-fieldsp fn2-fields) (fn2-fields-wfp fn2-fields)
@@ -550,12 +566,15 @@
             (fn2-checkpoint-refs 2 :prefix "-REFS" ) (fn2-checkpoint-bytes 3 :prefix "-BYTES" )
             (fn2-fc 4 :prefix "-CHECKER" ) (fn2-b3 5 :prefix "-HASHER" )
             (fn2-fields 6 :prefix "-FIELDS" ) (fn2-pool 7 :prefix "-POOL" ) (fn2-digests 8 :prefix "-DIGESTS" ))
- :hints ((fn2-columns-guard-hint
+ :hints ((append (fn2-columns-guard-hint
                  '(fn2-checkpoints fn2-checkpoint-refs fn2-checkpoint-bytes
                    fn2-fc fn2-fc-context fn2-b3 fn2-fields fn2-pool fn2-digests)
                  '(fn2-checkpoint-decode fn2-checkpoint-hash-matchesp
                    fn2-checkpoint-capture-roots fn2-b3-ready fn2-digest-rowp)
-                 nil world)))
+                 nil world)
+          '(:use ((:instance fn2-checkpoint-decode-ok-room-by-definition)
+                  (:instance fn2-checkpoint-decode-value-type (i (+ base 1)))
+                  (:instance fn2-checkpoint-decode-value-type (i (+ base 2))))))))
 
 (fn2-checkpoints-preserves fn2-checkpoint-prepare-body
  (c checkpoint history incarnation domain unit epoch allocation kind len hash fn2-checkpoints fn2-checkpoint-refs fn2-checkpoint-bytes fn2-digests)
