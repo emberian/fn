@@ -1,0 +1,110 @@
+{
+  "scope": "Public TYPE/WFP/ROWS carrier contracts used by actual credit consumers; not a whole credit-accounting invariant or served redemption qualification.",
+  "source_commit": "6f039cca8cdf0bd73376b36616810268c0ec09ec",
+  "author": {
+    "final_log": "/tmp/assurance-credit-public-contracts-fix6.log",
+    "initial_refusal_log": "/tmp/assurance-credit-public-contracts-author.log",
+    "source_book_sha256": "3fcc2b77a4ee34e898f8694e72d441eff4a745f3918a8cd5b5fa02bc47c7e3ec",
+    "source_match": "Local frozen book and remote final-fix6 book SHA were compared equal before commit.",
+    "result": "PASS, all22 original source forms",
+    "seconds": 15.04,
+    "reported_last_macro_steps": 1478687,
+    "step_scope": "Fresh2M/20s per original event. Encapsulate summary counter is not aggregate book work."
+  },
+  "record": {
+    "path": "/build/lanes/assurance-credit-public-record/build/acl2/certify-20261115T060311Z-952201",
+    "result": "PASS",
+    "seconds": 8.704,
+    "book_seconds": 8.694,
+    "aggregate_book_steps": 1529269,
+    "costliest_event": {
+      "name": "FN2-POOL-RELEASE-CREDIT-PRESERVES-TYPE",
+      "seconds": 3.71,
+      "steps": 739346
+    },
+    "reused": 9,
+    "certified": [
+      "books/pool-credit-contracts"
+    ]
+  },
+  "toolchain_identity": "8aeb1bea18968c6cd33ac633a80ebf67e4924504db112fd27eb11f16a27b2a8c",
+  "source_files": {
+    "books/pool-credit-contracts": "3fcc2b77a4ee34e898f8694e72d441eff4a745f3918a8cd5b5fa02bc47c7e3ec",
+    "books/pool-credit": "609d174df4cf986d80463f929bc7145fff9e24e8828fdab3aa94fdddb6fc218f",
+    "books/columns-guard-hints": "e0a20c5669df681bf75fa5eeae426adc4053010915b3c7657d56e247d5c8440b",
+    "books/columns": "d3a58387c7c0dabc4ceaffeeb20672031a04693d8dd52078f50c5fa487c0d5f8",
+    "books/operations": "959da2da147247146a2360e23d2c7d6abd6c581abdf0f6873661f63cee87484f",
+    "books/declare": "1c706e559ef3b314fb9bd48171fb2891fad8613bd4eb1c5de5268443833c4bfb",
+    "books/pool": "3ef26f41207ee64f6121621cc24d7100936e364b5224a4be8ae28292aa4d7fa7",
+    "books/profile": "1f216ed6c0505dc1b01ada0f7d3d9482af6da7b7dff8736b5100ef3e3fbc1038",
+    "books/owed-discharge": "53903322be1b79ed081ecfcbfcb9f60649d3fdbf8aa6853b772abf8e6fc69f01",
+    "books/owed": "04104985582a552ad115a0a6adcf2e957597b1b9ca3228bf25900877cbbcb17b"
+  },
+  "qualified_cache": {
+    "books/pool-credit-contracts": {
+      "key": "6de026b2c2d66160d995ff108b171ecacdb8068a7ca3c3ada5f2f55edf396b60",
+      "entry": "/home/fn/.cache/fn-certs/6de026b2c2d66160d995ff108b171ecacdb8068a7ca3c3ada5f2f55edf396b60/684860f32ac63759",
+      "fasl_sha256": "0bdb554875277cc300de2136fb7a27046554ae63b045ad2cd18875f4a8fafd21"
+    },
+    "books/pool-credit": {
+      "key": "f4097815322ad17907c9519eec934aec68a7e1932861b5dc314c5aa9e7edcb6f",
+      "entry": "/home/fn/.cache/fn-certs/f4097815322ad17907c9519eec934aec68a7e1932861b5dc314c5aa9e7edcb6f/eb821fcc44507874",
+      "fasl_sha256": "b54fe317534e571eaffe9536e51945e1d289934ff9e86266c57f3a2fc71bc3d3"
+    },
+    "books/columns-guard-hints": {
+      "key": "af9c914f286c284146d84a134fc9b973a4de2703fd4b21e9bebeca994b4bd62c",
+      "entry": "/home/fn/.cache/fn-certs/af9c914f286c284146d84a134fc9b973a4de2703fd4b21e9bebeca994b4bd62c/6add19db01a9c2ec",
+      "fasl_sha256": "e2879e1b3201b7bb7663e28e1042e762767cb2e0d5e22ea07656605babd404b3"
+    },
+    "books/columns": {
+      "key": "af444dbfcccce7083f99637cc8947a859347bd4d6c8df17f7ab3a91e00d33ca2",
+      "entry": "/home/fn/.cache/fn-certs/af444dbfcccce7083f99637cc8947a859347bd4d6c8df17f7ab3a91e00d33ca2/6add19db01a9c2ec",
+      "fasl_sha256": "92347805c6e7821996c5598450f69fb58879c1635f2645f5c900f296ab86223e"
+    },
+    "books/operations": {
+      "key": "bd6bdf7f71b74618b02924c542559dcb99a149c816aeed11f3f5cd82d766483f",
+      "entry": "/home/fn/.cache/fn-certs/bd6bdf7f71b74618b02924c542559dcb99a149c816aeed11f3f5cd82d766483f/84166f8b7b293004",
+      "fasl_sha256": "d8ee889a9ed62314ef52fbef89daa3a40e379c48794ab076eddb5897d295b48d"
+    },
+    "books/declare": {
+      "key": "f1df352dc360553d08906239d267e9371fcb2fe4f19c6581adc1b0b322b30875",
+      "entry": "/home/fn/.cache/fn-certs/f1df352dc360553d08906239d267e9371fcb2fe4f19c6581adc1b0b322b30875/2c56b9035d330b37",
+      "fasl_sha256": "949ada9e4b8673d8401f9a6d053f5f11b1e373f28b38638cc3fae79c3b469db6"
+    },
+    "books/pool": {
+      "key": "079b4ac98a0b3d945869386f9e8d2ebecf0a00d8715e247ba18202d4d7fbfc24",
+      "entry": "/home/fn/.cache/fn-certs/079b4ac98a0b3d945869386f9e8d2ebecf0a00d8715e247ba18202d4d7fbfc24/1993641322b8cf2d",
+      "fasl_sha256": "2f7226f08f4e4a072070706bf6cfa8f6bcb4df98f4d9e333247ca9c99f4b37cc"
+    },
+    "books/profile": {
+      "key": "b8fb593112597395afac6a150c4a4fca81def3095ecd8f7f9be6aa0aec7384fc",
+      "entry": "/home/fn/.cache/fn-certs/b8fb593112597395afac6a150c4a4fca81def3095ecd8f7f9be6aa0aec7384fc/84166f8b7b293004",
+      "fasl_sha256": "db84531b9954255cc27ca4c79c47c4c43f56a50e09c4f002731f9aa8fbab52f8"
+    },
+    "books/owed-discharge": {
+      "key": "97e73257b5f4cb3a4ca1b8ba4bf10956295c18ec211c0b297f557e780cd20fd1",
+      "entry": "/home/fn/.cache/fn-certs/97e73257b5f4cb3a4ca1b8ba4bf10956295c18ec211c0b297f557e780cd20fd1/bab1191b3d08490a",
+      "fasl_sha256": "17a2fbf13ba55900448433c8f1d8ca53d95088dd0db4411c7ee827de680410b7"
+    },
+    "books/owed": {
+      "key": "6f334038cc4bddaaa337357384a139be3700c2c3403094bab3398dacb7fd5a3b",
+      "entry": "/home/fn/.cache/fn-certs/6f334038cc4bddaaa337357384a139be3700c2c3403094bab3398dacb7fd5a3b/2c56b9035d330b37",
+      "fasl_sha256": "1d0f0a9a82c7ec001a440ba127e28c15abc35f50fd46a2b6070e86c509f910df"
+    }
+  },
+  "cleanup": {
+    "author_pids_absent": [
+      936367,
+      936371,
+      936395,
+      936399
+    ],
+    "author_scope_released": "run-p936367-i30293058.scope",
+    "record_pids_absent": [
+      952187,
+      952188,
+      952201
+    ],
+    "record_scope_released": "run-p952187-i30308878.scope"
+  }
+}
