@@ -335,6 +335,24 @@ def line_of(text: str, offset: int) -> int:
     return text.count("\n", 0, offset) + 1
 
 
+def generated_definition_expansion(form):
+    """Use the shared ledger mirror with this module's string-symbol AST.
+
+    Returns None for an unregistered declaration. No Lisp is evaluated.
+    Inventories and advisory cost walkers must share this generator model.
+    """
+    import ledger
+    if not isinstance(form, list) or not form:
+        return None
+    if form[0] != "defcolumns-predicate":
+        return None
+    # lisp_source atoms are already readable source spellings.
+    def source(x):
+        return "(" + " ".join(source(v) for v in x) + ")" if isinstance(x, list) else str(x)
+    event = ledger.read_forms(source(form))[0]
+    return [read_sexp(ledger.source_text(x)) for x in ledger.generated_expansion(event)]
+
+
 def main(argv: list[str]) -> int:
     for path in argv:
         with open(path, encoding="utf-8", errors="surrogateescape") as handle:

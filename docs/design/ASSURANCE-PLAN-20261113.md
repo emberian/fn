@@ -31,12 +31,19 @@ record certification; the owner is lifting through the actual unchanged calling
 contexts. The family integrator owns bringing this evidence and tooling into
 the coherent application candidate.
 
-The foundation owner has recorded VOCAB at the `e9c7c2e78` source. Its remaining
-eight books are checkpoint, run-geometry, columns-call-guards, pool-ranges,
-runs-page, runs-schema, runs and columns-carried-unit. Each needs a whole-source
-author pass in its actual qualified parent world before recording. The existing
-28 qualified entries and newly recorded VOCAB are reused; the 37-book union is
-not yet qualified.
+The carried-predicate foundation now has a qualified 37-book union at
+`b549c158d`. All 37 closure keys match this integration; root independently
+verified the actual certificate payloads and the final fixture's source hash.
+The shared generator preserves the checked predicates and derives guarded
+carried variants from the same declarations. VOCAB owns its posted-slot contract
+and exposes the latch fields needed by HARVEST's unchanged guard. The final
+production-constructor fixture passed after repairing its local-state binding
+syntax; its assertions were retained.
+
+This foundation changes downstream closure keys. The reader34 and served-family
+records above remain evidence at their named sources, not certification of the
+new foundation combined with those consumers. Requalification and actual use of
+the carried predicates by the physical metadata callers remain outstanding.
 
 Completion still requires composed FETCH/cancellation, the native APPEND/STATUS/
 query and NNTP consumers, process-death recovery of accepted data, productive

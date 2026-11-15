@@ -33,10 +33,22 @@
 (load-columns-functions "books/columns.lisp")
 (loop for carriers in *legacy-cases* for old in *legacy-output* do
  (let ((specs (fn2-columns-carrier-specs carriers)))
-  (assert (equal specs (car old)))
-  (assert (equal (fn2-columns-preservation-facts
-                  'subject '(subject x left right) specs '(hypothesis) *outer-hints*)
-                 (cadr old)))))
+  (let ((facts (fn2-columns-preservation-facts
+                'subject '(subject x left right) specs '(hypothesis) *outer-hints*)))
+   ; This repair intentionally changes absent WFP hint routing, not claims.
+   (assert (equal (formulas facts) (formulas (cadr old))))
+   (loop for carrier in carriers for index from 0 do
+    (let* ((at (* 2 index)) (options (cddr carrier))
+           (old-type (nth at (cadr old))) (old-wfp (nth (1+ at) (cadr old)))
+           (old-spec (nth (1+ at) (car old))))
+     (assert (equal (nth at facts) old-type))
+     (if (member-eq :hints options)
+         (progn (assert (equal (nth (1+ at) facts) old-wfp))
+                (assert (equal (nth (1+ at) specs) old-spec)))
+       (progn
+        (assert (not (member-eq :hints (cdddr (nth (1+ at) specs)))))
+        (assert (equal (nth (1+ at) facts)
+                       (append old-wfp (list :hints *outer-hints*)))))))))))
 
 (let* ((plain '((left 1 :prefix "-L") (right 2 :prefix "-R")))
        (carriers `((left 1 :prefix "-L" :type-hints ,*type-hints* :hints ,*wfp-hints*)
@@ -54,6 +66,17 @@
  (assert (not (member-eq :hints (cdddr (third facts)))))
  (assert (equal (fact-hints (fourth facts)) *wfp-hints*))
  (assert (equal (fact-hints (first plain-facts)) *outer-hints*))
+ (assert (equal (fact-hints (second plain-facts)) *outer-hints*))
+ (assert (equal (fact-hints (fourth plain-facts)) *outer-hints*))
  ; Names, whole antecedents, output predicates and MV projections unchanged.
  (assert (equal (formulas facts) (formulas plain-facts))))
+; Explicit WFP NIL must still suppress a nonempty common hint.
+(let* ((specs (fn2-columns-carrier-specs '((left 0 :hints nil))))
+       (facts (fn2-columns-preservation-facts 'subject '(subject left) specs
+                '((full-input-hyp left)) *outer-hints*)))
+ (assert (member-eq :hints (cdddr (second specs))))
+ (assert (equal (fact-hints (first facts)) *outer-hints*))
+ (assert (not (member-eq :hints (cdddr (second facts)))))
+ (assert (equal (caddr (second facts))
+                '(implies (and (full-input-hyp left)) (left-wfp (car (subject left)))))))
 (format t "COLUMNS CARRIER HINT CONTROLS PASS~%")
