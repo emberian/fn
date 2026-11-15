@@ -62,4 +62,11 @@ class Controls(unittest.TestCase):
   current=lr.emit(self.f['fn2-read-observer-current-p'],drop_comments=True)
   self.assertIn('fn2-reads-observer-parent-serial',current)
   self.assertEqual(current.count('fn2-c-source-reader-current-p'),2)
+ def test_prepared_local_mv_bound(self):
+  s=(ROOT/'tests/read-observer-endpoint-unit.lisp').read_text()
+  p=lr.parse(s)
+  decl=next(n for n in p.forms if isinstance(n,lr.Lst) and len(n.items)>2 and sym(n.items[0])=='defconst' and sym(n.items[1])=='*fn2-rdo-stobjs*')
+  self.assertIsInstance(decl.items[2],lr.Pre)
+  self.assertEqual(len(decl.items[2].node.items),6)
+  self.assertLessEqual(1+len(decl.items[2].node.items),32)
 if __name__=='__main__':unittest.main()
