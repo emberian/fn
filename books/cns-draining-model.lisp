@@ -168,6 +168,25 @@
         (fn2-cns-drain-put 'fn2-sched-earliest-deadline *fn2-no-deadline* sched)
       sched)))
 
+; Stream cleanup hands ownership back to the same live CTL incarnation.
+; This is a schema-level predicate, independent of production readers.
+(defun fn2-cns-drain-stream-parent (id before)
+  (let* ((dir (fn2-cns-drain-child 'fn2-machines before))
+         (own (fn2-cns-drain-child 'fn2-cns before))
+         (ctl (fn2-cns-drain-child 'fn2-ctl before))
+         (row (fn2-cns-drain-cell 'fn2-machines-slot id dir))
+         (parent (fn2-cns-drain-cell 'fn2-cns-ctl row own))
+         (slot (fn2-cns-drain-cell 'fn2-machines-slot parent dir)))
+    (if (and (equal (fn2-cns-drain-cell 'fn2-cns-stream row own) 1)
+             (natp parent) (< parent (fn2-cns-drain-get 'fn2-machines-rows dir))
+             (equal (fn2-cns-drain-cell 'fn2-machines-kind parent dir) *fn2-ctl-kind*)
+             (natp slot) (< slot (fn2-cns-drain-get 'fn2-ctl-rows ctl))
+             (equal (fn2-cns-drain-cell 'fn2-ctl-generation slot ctl)
+                    (fn2-cns-drain-cell 'fn2-cns-ctl-gen row own))
+             (not (member-equal (fn2-cns-drain-cell 'fn2-ctl-phase slot ctl)
+                               (list *fn2-ctl-state-free* *fn2-ctl-state-retired*))))
+        parent *fn2-none*)))
+
 (defun fn2-cns-draining-uncredited-zero-query-expected (id before)
   (let* ((dir (fn2-cns-drain-child 'fn2-machines before))
          (own (fn2-cns-drain-child 'fn2-cns before))
@@ -197,6 +216,9 @@
                           (list 'fn2-cns-ns-slot *fn2-none*) (list 'fn2-cns-ns-gen 0)
                           (list 'fn2-cns-next-free head) (list 'fn2-cns-deadline 0)) slot own))
              (dir (fn2-cns-drain-put-cell 'fn2-machines-wait-reason id *fn2-wait-none* dir))
+             (parent (fn2-cns-drain-stream-parent id before))
+             (dir (if (equal parent *fn2-none*) dir
+                    (fn2-cns-drain-put 'fn2-machines-wake-id parent dir)))
              (dir (fn2-cns-drain-put-cell 'fn2-machines-active-count *fn2-cns-admission-ordinal*
                     (- (fn2-cns-drain-cell 'fn2-machines-active-count *fn2-cns-admission-ordinal* dir) 1) dir))
              (dir (if retire dir
