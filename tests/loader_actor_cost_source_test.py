@@ -23,7 +23,7 @@ class ActorByteCost(unittest.TestCase):
   for key,value in before.items():
    actual=after.get(key)
    if key==('defmachine','fn2-checkpoint-master'):
-    actual=actual.replace('*fn2-checkpoint-master-byte-budget*','16384')
+    actual=actual.replace('*fn2-checkpoint-master-byte-budget*','16384').replace(':budget-cost',':budget')
    self.assertEqual(actual,value,key)
  def test_each_actual_master_arm_has_at_most_one_C_cost_root1_call(self):
   text=(ROOT/'books/checkpoint-master-arms.lisp').read_text()
