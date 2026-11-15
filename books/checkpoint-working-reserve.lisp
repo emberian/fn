@@ -1,23 +1,17 @@
 ; Actual HELD-cut working-lease admission, independent of source construction.
 (in-package "ACL2")
-(include-book "run-geometry")
 (include-book "c-snapshot-state")
-(include-book "checkpoint-future-working")
+(include-book "checkpoint-working-geometry")
 (fn2-book-layer :c)
 
 ; Dedicated physical-source reader windows follow the original nineteen.
 ; They cannot alias semantic/payload windows across iterator yields.
-(defconst *fn2-checkpoint-source-page-window* 19)
-(defconst *fn2-checkpoint-source-read-window* (+ 1 *fn2-checkpoint-source-page-window*))
-(defconst *fn2-checkpoint-window-count* (+ 1 *fn2-checkpoint-source-read-window*))
-(defconst *fn2-checkpoint-working-window-count*
- (+ *fn2-checkpoint-window-count* *fn2-checkpoint-future-window-count*))
 
-(defun fn2-checkpoint-window-length (i)
- (declare (xargs :guard t))
- (cond ((or (< (nfix i) 12) (equal i 14) (equal i 16) (equal i *fn2-checkpoint-source-page-window*)) *fn2-run-page-size*)
-       ((or (equal i 12) (equal i 13)) (* 32 *fn2-run-max-levels*))
-       ((equal i 15) 64) (t 4096)))
+
+
+
+
+
 
 (defcolumns fn2-checkpoint-windows ((live :bool) (slot :u32) (generation :u60)))
 
@@ -26,12 +20,7 @@
   (owner-kind :u8) (owner-slot :u32) (owner-gen :u60) (token :u60)
   (reserved :u8) (build :u32) (level :u8) (read-kind :u8) (resume-phase :u8)))
 
-(defun fn2-checkpoint-window-class-demand (i class fn2-pool)
- (declare (xargs :stobjs fn2-pool :guard (and (natp i) (<= i *fn2-checkpoint-window-count*))
-                 :measure (nfix (- *fn2-checkpoint-window-count* i))))
- (if (>= i *fn2-checkpoint-window-count*) 0
-  (+ (if (equal class (fn2-pool-class-for (fn2-checkpoint-window-length i) fn2-pool)) 1 0)
-     (fn2-checkpoint-window-class-demand (+ i 1) class fn2-pool))))
+
 
 (defun fn2-checkpoint-window-roomp (i fn2-pool)
  (declare (xargs :stobjs fn2-pool :guard (and (natp i) (<= i *fn2-checkpoint-window-count*))
@@ -42,7 +31,7 @@
         (<= (fn2-checkpoint-window-class-demand 0 class fn2-pool) (fn2-pool-free-count class fn2-pool))
         (fn2-checkpoint-window-roomp (+ i 1) fn2-pool)))))
 
-(defun fn2-checkpoint-windows-reserve-loop (i kind owner generation fn2-checkpoint-root1 fn2-checkpoint-windows fn2-pool)
+(defun fn2-checkpoint-windows-reserve-loop (i nonce kind owner generation fn2-checkpoint-root1 fn2-checkpoint-windows fn2-pool)
  (declare (xargs :stobjs (fn2-checkpoint-root1 fn2-checkpoint-windows fn2-pool)
   :guard (and (fn2-checkpoint-root1-wfp fn2-checkpoint-root1) (< 0 (fn2-checkpoint-root1-rows fn2-checkpoint-root1))
               (fn2-checkpoint-windows-wfp fn2-checkpoint-windows) (<= *fn2-checkpoint-window-count* (fn2-checkpoint-windows-rows fn2-checkpoint-windows))
@@ -52,24 +41,46 @@
   (let ((fn2-checkpoint-root1 (fn2-checkpoint-root1-set-phase 0 *fn2-checkpoint-root1-phase-reserved* fn2-checkpoint-root1)))
    (mv :ok fn2-checkpoint-root1 fn2-checkpoint-windows fn2-pool))
   (b* ((class (fn2-pool-class-for (fn2-checkpoint-window-length i) fn2-pool))
-       ((mv code slot gen fn2-pool) (fn2-pool-reserve class kind owner generation fn2-pool))
+       ((mv code slot gen fn2-pool) (if (posp nonce)
+          (fn2-pool-reserve-credit *fn2-checkpoint-working-credit-group* nonce class kind owner generation fn2-pool)
+        (fn2-pool-reserve class kind owner generation fn2-pool)))
        ((unless (eq code :ok))
         (let ((fn2-checkpoint-root1 (fn2-checkpoint-root1-set-phase 0 *fn2-checkpoint-root1-phase-uncertain* fn2-checkpoint-root1)))
          (mv code fn2-checkpoint-root1 fn2-checkpoint-windows fn2-pool)))
        (fn2-checkpoint-windows (fn2-checkpoint-windows-put i (live 1) (slot slot) (generation gen)))
        (fn2-checkpoint-root1 (fn2-checkpoint-root1-set-reserved 0 (+ i 1) fn2-checkpoint-root1)))
-   (fn2-checkpoint-windows-reserve-loop (+ i 1) kind owner generation fn2-checkpoint-root1 fn2-checkpoint-windows fn2-pool))))
+   (fn2-checkpoint-windows-reserve-loop (+ i 1) nonce kind owner generation fn2-checkpoint-root1 fn2-checkpoint-windows fn2-pool))))
 
-(defun fn2-checkpoint-admission-roomp (i fn2-pool)
- (declare (xargs :stobjs fn2-pool :guard (and (natp i) (<= i *fn2-checkpoint-working-window-count*)) :measure (nfix (- *fn2-checkpoint-working-window-count* i))))
- (if (>= i *fn2-checkpoint-working-window-count*) t
-  (let ((class (fn2-pool-class-for
-                (if (< i *fn2-checkpoint-window-count*) (fn2-checkpoint-window-length i)
-                 (fn2-checkpoint-future-window-length (- i *fn2-checkpoint-window-count*))) fn2-pool)))
-   (and (natp class) (< class (fn2-pool-nclasses fn2-pool))
-        (<= (+ (fn2-checkpoint-window-class-demand 0 class fn2-pool)
-               (fn2-checkpoint-future-class-demand 0 class fn2-pool)) (fn2-pool-free-count class fn2-pool))
-        (fn2-checkpoint-admission-roomp (+ i 1) fn2-pool)))))
+
+
+(defun fn2-checkpoint-working-credit-fitp (class fn2-pool)
+ (declare (xargs :stobjs fn2-pool :guard (and (fn2-pool-wfp fn2-pool) (natp class))
+  :measure (nfix (- (fn2-pool-nclasses fn2-pool) (nfix class)))))
+ (and (fn2-pool-credit-shapep fn2-pool)
+      (equal (fn2-pool-credit-purposei *fn2-checkpoint-working-credit-group* fn2-pool) *fn2-pool-credit-working*)
+      (member-equal (fn2-pool-credit-phasei *fn2-checkpoint-working-credit-group* fn2-pool)
+       (list *fn2-pool-credit-idle* *fn2-pool-credit-aborted-empty*))
+      (fn2-pool-credit-fullp *fn2-checkpoint-working-credit-group* 0 fn2-pool)
+      (or (>= class (fn2-pool-nclasses fn2-pool))
+          (and (equal (fn2-pool-credit-demandi class fn2-pool)
+                      (+ (fn2-checkpoint-window-class-demand 0 class fn2-pool)
+                         (fn2-checkpoint-future-class-demand 0 class fn2-pool)))
+               (fn2-checkpoint-working-credit-fitp (+ class 1) fn2-pool)))))
+
+(defun fn2-checkpoint-root1-credit-abort-empty (token kind owner gen fn2-checkpoint-root1 fn2-checkpoint-future fn2-csnapshot fn2-pool)
+ (declare (xargs :stobjs (fn2-checkpoint-root1 fn2-checkpoint-future fn2-csnapshot fn2-pool)
+  :guard (and (fn2-checkpoint-root1-wfp fn2-checkpoint-root1) (fn2-checkpoint-future-wfp fn2-checkpoint-future)
+              (fn2-csnapshot-wfp fn2-csnapshot) (fn2-pool-wfp fn2-pool))))
+ (if (not (and (< 0 (fn2-checkpoint-root1-rows fn2-checkpoint-root1))
+               (< 0 (fn2-checkpoint-future-rows fn2-checkpoint-future))
+               (< 0 (fn2-csnapshot-rows fn2-csnapshot))
+               (equal (fn2-csnapshot-phase 0 fn2-csnapshot) *fn2-csnapshot-phase-held*)
+               (fn2-csnapshot-ownerp token kind owner gen fn2-csnapshot)
+               (equal (fn2-checkpoint-root1-phase 0 fn2-checkpoint-root1) *fn2-checkpoint-root1-phase-idle*)
+               (equal (fn2-checkpoint-root1-reserved 0 fn2-checkpoint-root1) 0)
+               (equal (fn2-checkpoint-future-reserved 0 fn2-checkpoint-future) 0))) (mv :owner fn2-pool)
+  (if (equal (fn2-pool-credit-configured fn2-pool) 0) (mv :ok fn2-pool)
+   (fn2-pool-credit-abort-empty *fn2-checkpoint-working-credit-group* token kind owner gen fn2-pool))))
 
 (defun fn2-checkpoint-root1-reserve (c token kind owner generation fn2-checkpoint-root1 fn2-checkpoint-windows fn2-checkpoint-future fn2-checkpoint-future-windows fn2-csnapshot fn2-pool)
  (declare (xargs :stobjs (fn2-checkpoint-root1 fn2-checkpoint-windows fn2-checkpoint-future fn2-checkpoint-future-windows fn2-csnapshot fn2-pool)
@@ -90,16 +101,45 @@
                     (equal (fn2-checkpoint-future-reserved 0 fn2-checkpoint-future) 0)
                     (fn2-pool-mrefp kind owner generation)))
        (mv :owner fn2-checkpoint-root1 fn2-checkpoint-windows fn2-checkpoint-future fn2-checkpoint-future-windows fn2-pool))
-      ((unless (fn2-checkpoint-admission-roomp 0 fn2-pool))
+      (nonce (if (equal (fn2-pool-credit-configured fn2-pool) 1) token 0))
+      ((unless (and (fn2-checkpoint-admission-roomp 0 fn2-pool)
+                    (or (equal nonce 0) (fn2-checkpoint-working-credit-fitp 0 fn2-pool))))
        (mv :exhausted fn2-checkpoint-root1 fn2-checkpoint-windows fn2-checkpoint-future fn2-checkpoint-future-windows fn2-pool))
+      (old-future-phase (fn2-checkpoint-future-phase 0 fn2-checkpoint-future))
+      (old-future-candidate (fn2-checkpoint-future-candidate 0 fn2-checkpoint-future))
+      (old-future-owner-kind (fn2-checkpoint-future-owner-kind 0 fn2-checkpoint-future))
+      (old-future-owner-slot (fn2-checkpoint-future-owner-slot 0 fn2-checkpoint-future))
+      (old-future-owner-gen (fn2-checkpoint-future-owner-gen 0 fn2-checkpoint-future))
+      (old-future-token (fn2-checkpoint-future-token 0 fn2-checkpoint-future))
+      ((mv credit-code fn2-pool)
+       (if (equal nonce 0) (mv :ok fn2-pool)
+         (fn2-pool-credit-begin *fn2-checkpoint-working-credit-group* *fn2-pool-credit-working*
+          nonce kind owner generation fn2-pool)))
+      ((unless (eq credit-code :ok))
+       (mv credit-code fn2-checkpoint-root1 fn2-checkpoint-windows fn2-checkpoint-future fn2-checkpoint-future-windows fn2-pool))
       ((mv code fn2-checkpoint-future fn2-checkpoint-future-windows fn2-pool)
-       (fn2-checkpoint-future-reserve c kind owner generation fn2-checkpoint-future fn2-checkpoint-future-windows fn2-pool))
+       (fn2-checkpoint-future-reserve-with-credit c nonce kind owner generation fn2-checkpoint-future fn2-checkpoint-future-windows fn2-pool))
       ((unless (eq code :ok))
-       (mv :partial fn2-checkpoint-root1 fn2-checkpoint-windows fn2-checkpoint-future fn2-checkpoint-future-windows fn2-pool))
+       ; This operation has called only pool transitions, never an I/O issue.
+       ; With zero acquisitions, derive cancellation from the HELD actor and
+       ; bound group, not a nonexistent first lease. Preserve old metadata.
+       (if (equal (fn2-checkpoint-future-reserved 0 fn2-checkpoint-future) 0)
+           (mv-let (aborted fn2-pool)
+            (fn2-checkpoint-root1-credit-abort-empty token kind owner generation
+             fn2-checkpoint-root1 fn2-checkpoint-future fn2-csnapshot fn2-pool)
+            (if (eq aborted :ok)
+                (let ((fn2-checkpoint-future (fn2-checkpoint-future-put 0 (phase old-future-phase) (candidate old-future-candidate) (owner-kind old-future-owner-kind) (owner-slot old-future-owner-slot) (owner-gen old-future-owner-gen) (token old-future-token) (reserved 0))))
+                 (mv (if (eq code :exhausted) :exhausted :partial) fn2-checkpoint-root1 fn2-checkpoint-windows
+                     fn2-checkpoint-future fn2-checkpoint-future-windows fn2-pool))
+              (mv :partial fn2-checkpoint-root1 fn2-checkpoint-windows fn2-checkpoint-future fn2-checkpoint-future-windows fn2-pool)))
+         (mv :partial fn2-checkpoint-root1 fn2-checkpoint-windows fn2-checkpoint-future fn2-checkpoint-future-windows fn2-pool)))
       (fn2-checkpoint-root1 (fn2-checkpoint-root1-put 0 (owner-kind kind) (owner-slot owner) (owner-gen generation)))
       ((mv code fn2-checkpoint-root1 fn2-checkpoint-windows fn2-pool)
-       (fn2-checkpoint-windows-reserve-loop 0 kind owner generation fn2-checkpoint-root1 fn2-checkpoint-windows fn2-pool)))
-  (mv (if (eq code :ok) :ok :partial) fn2-checkpoint-root1 fn2-checkpoint-windows fn2-checkpoint-future fn2-checkpoint-future-windows fn2-pool)))
+       (fn2-checkpoint-windows-reserve-loop 0 nonce kind owner generation fn2-checkpoint-root1 fn2-checkpoint-windows fn2-pool))
+      ((mv end-code fn2-pool)
+       (if (or (not (eq code :ok)) (equal nonce 0)) (mv code fn2-pool)
+         (fn2-pool-credit-end *fn2-checkpoint-working-credit-group* nonce kind owner generation fn2-pool))))
+  (mv (if (and (eq code :ok) (eq end-code :ok)) :ok :partial) fn2-checkpoint-root1 fn2-checkpoint-windows fn2-checkpoint-future fn2-checkpoint-future-windows fn2-pool)))
 
 (defun fn2-checkpoint-root1-workspaces (kind owner generation fn2-checkpoint-root1 fn2-checkpoint-windows fn2-pool)
  (declare (xargs :stobjs (fn2-checkpoint-root1 fn2-checkpoint-windows fn2-pool)

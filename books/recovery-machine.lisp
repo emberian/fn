@@ -4,6 +4,7 @@
 (include-book "machines-a-access")
 (include-book "recovery")
 (include-book "commit-directory")
+(include-book "alloc-identity-index")
 (include-book "machine-arms")
 (fn2-book-layer :b)
 
@@ -652,33 +653,83 @@
 ; :batched made it, fn2-upload-extent-commit), so a stored reference to it
 ; reads again; every other position below the high water is quarantined
 ; with a recovery-candidate edge, never reused.
-(defun fn2-recovery-adopt (p fn2-core)
+; Only the actual full-base INSTALL lifetime may acquire this private index.
+; SOURCE is the real spawn generation, retained until the post-Fence join.
+(defun fn2-recovery-fullbase-index (id ogen fn2-core)
  (declare (xargs :stobjs fn2-core :guard (fn2-core-wfp fn2-core)))
- (let ((status (fn2-recovery-cand-status p fn2-core)) (commit (fn2-recovery-cand-commit p fn2-core))
-       (epoch (fn2-recovery-cand-epoch p fn2-core)) (allocation (fn2-recovery-cand-allocation p fn2-core))
-       (okind (fn2-recovery-cand-owner-kind p fn2-core)) (owner (fn2-recovery-cand-owner p fn2-core)))
-  (let* ((chained (equal status *fn2-rec-status-chained*))
-         (payload (equal status *fn2-rec-status-payload*))
-         (known (member-equal status (list *fn2-rec-status-chained* *fn2-rec-status-candidate* *fn2-rec-status-payload*)))
-         (epoch (if known epoch 0)) (allocation (if known allocation p)))
-   (stobj-let ((fn2-extents (fn2-core-extents fn2-core)) (fn2-alloc-edges (fn2-core-alloc-edges fn2-core)))
-    (code fn2-extents fn2-alloc-edges)
-    (if (not (and (unsigned-byte-p 32 p) (unsigned-byte-p 60 allocation)
-                  (unsigned-byte-p 60 (+ 7 (* 2 p)))))
-        (mv :bounds fn2-extents fn2-alloc-edges)
-     (mv-let (code fn2-extents) (fn2-alloc-adopt p epoch allocation fn2-extents)
-      (cond ((not (eq code :ok)) (mv code fn2-extents fn2-alloc-edges))
-            (chained
-             (mv-let (code fn2-extents)
-              (fn2-alloc-commit-allocation p epoch allocation *fn2-commit-kind* commit fn2-extents)
-              (if (not (eq code :ok)) (mv code fn2-extents fn2-alloc-edges)
-               (fn2-alloc-edge-add (+ 7 (* 2 p)) commit p epoch allocation :installed-root fn2-extents fn2-alloc-edges))))
-            (payload
-             (mv-let (code fn2-extents) (fn2-alloc-commit-allocation p epoch allocation okind owner fn2-extents)
-              (mv code fn2-extents fn2-alloc-edges)))
-            (t (fn2-alloc-edge-add (+ 6 (* 2 p)) 0 p epoch allocation :recovery-candidate fn2-extents fn2-alloc-edges)))))
-    (mv code fn2-core)))))
-(fn2-core-preserves fn2-recovery-adopt (p fn2-core) :position 1 :rows nil)
+ (b* (((unless (and (fn2-recovery-idp id fn2-core)
+                    (posp ogen) (unsigned-byte-p 60 ogen)
+                    (= ogen (fn2-machine-generation id fn2-core))
+                    (= (fn2-machine-phase id fn2-core) *fn2-recovery-machine-state-install*)
+                    (= (fn2-machine-stopped id fn2-core) 0)
+                    (= (fn2-machine-pending id fn2-core) 0)
+                    (= (fn2-machine-rc-stage id fn2-core) 2)
+                    (member-equal (fn2-machine-rc-class id fn2-core)
+                     (list *fn2-rec-class-intact* *fn2-rec-class-torn-tail*))
+                    (= (fn2-machine-rc-base id fn2-core) 0)
+                    (= (fn2-machine-rc-base-tag id fn2-core) 0))) (mv :state fn2-core))
+      (first (= (fn2-machine-rc-found id fn2-core) 0)))
+  (stobj-let ((fn2-extents (fn2-core-extents fn2-core))) (code fn2-extents)
+   (cond
+    ((= (fn2-alloc-identity-active fn2-extents) 0)
+     (if first (fn2-alloc-identity-begin *fn2-recovery-machine-kind* id ogen ogen fn2-extents)
+      (mv :owner fn2-extents)))
+    ((not (fn2-alloc-identity-owner-p *fn2-recovery-machine-kind* id ogen ogen fn2-extents))
+     (mv :owner fn2-extents))
+    ((= (fn2-alloc-identity-phase fn2-extents) *fn2-alloc-identity-phase-clearing*)
+     (if first (fn2-alloc-identity-clear-step *fn2-recovery-machine-kind* id ogen ogen fn2-extents)
+      (mv :cursor fn2-extents)))
+    (t (mv :active fn2-extents)))
+   (mv code fn2-core))))
+(fn2-core-preserves fn2-recovery-fullbase-index (id ogen fn2-core) :position 1 :rows nil)
+
+(defun fn2-recovery-adopt (id ogen p fn2-core)
+ (declare (xargs :stobjs fn2-core :guard (fn2-core-wfp fn2-core)))
+ (b* (((unless (and (fn2-recovery-idp id fn2-core) (unsigned-byte-p 32 p)
+                    (= p (fn2-machine-rc-found id fn2-core))
+                    (< p (fn2-machine-rc-high id fn2-core)))) (mv :state fn2-core))
+      ((mv index fn2-core) (fn2-recovery-fullbase-index id ogen fn2-core))
+      ((unless (eq index :active)) (mv index fn2-core))
+      (status (fn2-recovery-cand-status p fn2-core))
+      (commit (fn2-recovery-cand-commit p fn2-core))
+      (epoch (fn2-recovery-cand-epoch p fn2-core))
+      (allocation (fn2-recovery-cand-allocation p fn2-core))
+      (okind (fn2-recovery-cand-owner-kind p fn2-core))
+      (owner (fn2-recovery-cand-owner p fn2-core))
+      (chained (= status *fn2-rec-status-chained*))
+      (payload (= status *fn2-rec-status-payload*))
+      (known (member-equal status (list *fn2-rec-status-chained* *fn2-rec-status-candidate* *fn2-rec-status-payload*)))
+      (epoch (if known epoch 0)) (allocation (if known allocation p))
+      (edge (+ (if chained 7 6) (* 2 p)))
+      (kind (if chained :installed-root :recovery-candidate)))
+  (stobj-let ((fn2-extents (fn2-core-extents fn2-core))
+              (fn2-alloc-edges (fn2-core-alloc-edges fn2-core)))
+   (code fn2-extents fn2-alloc-edges)
+   (b* (((unless (and (fn2-alloc-slotp p fn2-extents)
+                      (unsigned-byte-p 60 epoch) (unsigned-byte-p 60 allocation)
+                      (unsigned-byte-p 8 okind) (unsigned-byte-p 60 owner)
+                      (unsigned-byte-p 60 commit)
+                      (or payload
+                       (and (fn2-alloc-edge-slotp edge fn2-alloc-edges)
+                            (= (fn2-alloc-edges-state edge fn2-alloc-edges) *fn2-alloc-edge-state-free*)
+                            (< (fn2-alloc-edge-count p kind fn2-extents) *fn2-alloc-edge-count-max*)))))
+         (mv :bounds fn2-extents fn2-alloc-edges))
+        ((mv code fn2-extents)
+         (fn2-alloc-identity-adopt-progress *fn2-recovery-machine-kind* id ogen ogen
+          p *fn2-alloc-none* epoch allocation fn2-extents))
+        ((unless (eq code :ok)) (mv code fn2-extents fn2-alloc-edges))
+        ; The index owns the exact new RESERVED identity. The private original
+        ; transitions change state/holders without changing its indexed tuple.
+        ((mv code fn2-extents)
+         (if (or chained payload)
+          (fn2-alloc-commit-allocation-transition p epoch allocation
+           (if chained *fn2-commit-kind* okind) (if chained commit owner) fn2-extents)
+          (mv :ok fn2-extents)))
+        ((unless (eq code :ok)) (mv code fn2-extents fn2-alloc-edges)))
+    (if payload (mv :ok fn2-extents fn2-alloc-edges)
+     (fn2-alloc-edge-add-transition edge (if chained commit 0) p epoch allocation kind fn2-extents fn2-alloc-edges)))
+   (mv code fn2-core))))
+(fn2-core-preserves fn2-recovery-adopt (id ogen p fn2-core) :position 1 :rows nil)
 
 ; Install once (part I step 10): the commit frontier and a fresh writer epoch
 ; above every adopted identity. The journaled BEGIN_WRITER_EPOCH batch is owed.
@@ -686,7 +737,8 @@
  (declare (xargs :stobjs fn2-core :guard (fn2-core-wfp fn2-core)))
  (stobj-let ((fn2-commit-root (fn2-core-commit-root fn2-core)) (fn2-extents (fn2-core-extents fn2-core)))
   (code fn2-commit-root fn2-extents)
-  (if (not (and (natp epoch) (fn2-commit-directory-recovery-terminal-p chain fn2-commit-root)
+  (if (not (and (= (fn2-alloc-identity-active fn2-extents) 0)
+                (natp epoch) (fn2-commit-directory-recovery-terminal-p chain fn2-commit-root)
                 (unsigned-byte-p 60 (+ 1 epoch))))
       (mv :bounds fn2-commit-root fn2-extents)
    (let* ((fn2-commit-root (fn2-commit-root-set-installed 0 chain fn2-commit-root))
@@ -908,6 +960,7 @@
     :accept ()
     :case (((:adopted :retained :empty :deferred) (:set (rc-found (+ 1 row-rc-found)) (rc-stage 2))
             (:charge :steps *fn2-work-advance* :runnable t))
+           ((:more :active) (:charge :steps *fn2-work-advance* :runnable t))
            (:otherwise (:stop :recovery-bounds)))))
   ;; the recovery bundle released: the workspace, then the window
   (replay-release
@@ -919,23 +972,20 @@
              :case (((:ok :retired) (:set (stopped 1)) (:next :done) (:charge :steps *fn2-work-transition*))
                     (:otherwise (:stop :recovery-release)))))
            (:otherwise (:stop :recovery-release)))))
-  ;; stage 2 at the high water: the frontier and the writer epoch, then the
-  ;; replay of every chained commit's members (M7)
+  ;; Publish the directory terminal before replay, retaining the live index.
+  ;; An empty full base still initializes/clears its index one step at a time.
   (install-finish :on-refusal ((:stop :recovery-bounds))
-   (:do (code) (fn2-recovery-install-finish id))
-   (:if (< row-rc-base row-rc-chain)
-        ((:do (pcode p) (fn2-recovery-commit-extent (+ 1 row-rc-base)) :accept (:ok))
-         (:set (rc-mode *fn2-rec-mode-replay*) (rc-commit (+ 1 row-rc-base)) (rc-pos p) (rc-role 1) (rc-roff 0) (rc-rend 0)
-               (rc-wlen 0) (rc-wevent 0) (rc-wmembers 0) (rc-filled 0) (rc-stage 0) (rc-ready 0))
-         (:next :read) (:charge :steps *fn2-work-advance* :runnable t))
-        ((:goto replay-release))))
-  ;; M7's replay (b-durability.md M7): classification is done and the
-  ;; allocator installed; every chained commit's records unit is read again
-  ;; and its stream walked one record per step, each transaction member's
-  ;; records rebuilt into the workspace as admission took them and handed to
-  ;; C's fn2-member-replay in member order, then the commit's batch
-  ;; published (fn2-successor-publish). A hook's refusal stops the core
-  ;; :recovery-replay after the replayed prefix; keyed members replay nothing.
+   (:do (code) (fn2-recovery-install-finish id) :accept ()
+    :case (((:more :active) (:charge :steps *fn2-work-advance* :runnable t))
+           ((:ok)
+            (:if (< row-rc-base row-rc-chain)
+             ((:do (pcode p) (fn2-recovery-commit-extent (+ 1 row-rc-base)) :accept (:ok))
+              (:set (rc-mode *fn2-rec-mode-replay*) (rc-commit (+ 1 row-rc-base)) (rc-pos p) (rc-role 1) (rc-roff 0) (rc-rend 0)
+                    (rc-wlen 0) (rc-wevent 0) (rc-wmembers 0) (rc-filled 0) (rc-stage 0) (rc-ready 0))
+              (:next :read) (:charge :steps *fn2-work-advance* :runnable t))
+             ((:goto replay-release))))
+           (:otherwise (:stop :recovery-bounds)))))
+  ;; M7 replays every authenticated chained member after allocator adoption.
   (replay-frontier :on-refusal ((:stop :recovery-replay))
    (:do (code) (fn2-recovery-frontier-step id) :accept ()
     :case (((:more) (:charge :bytes 4096 :steps *fn2-work-stage* :runnable t))

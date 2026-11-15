@@ -235,6 +235,10 @@ ACL2_BOOKS = \
   books/pointwise-contracts \
   books/pool \
   books/pool-credit \
+  books/pool-credit-contracts \
+  books/checkpoint-working-geometry \
+  books/checkpoint-working-credit \
+  books/checkpoint-working-credit-init \
   books/pool-block \
   books/pool-ranges \
   books/pool-read-contracts \
@@ -249,7 +253,12 @@ ACL2_BOOKS = \
   books/recovery-frontier \
   books/recovery-selected-adopt \
   tests/recovery-selected-adopt-unit \
+  tests/recovery-fullbase-index-unit \
   tests/recovery-replay-init-proof \
+  tests/merkle-scanner-result-proof \
+  tests/event-frontier-done-frame \
+  tests/recovery-frontier-done-frame \
+  tests/recovery-replay-init-prefix-proof \
   tests/recovery-replay-prefix-state \
   tests/recovery-replay-prefix-identity \
   tests/recovery-replay-prefix-chain-lemmas \
@@ -320,6 +329,9 @@ ACL2_BOOKS = \
   books/upload \
   books/upload-feed \
   books/upload-kind \
+  books/upload-page-geometry \
+  books/identity-workspace-geometry \
+  books/checkpoint-service-geometry \
   books/upload-scan \
   books/vocab \
   books/words \
@@ -329,6 +341,7 @@ ACL2_BOOKS = \
   tests/alloc-identity-index-unit \
   tests/alloc-identity-index-provenance-unit \
   tests/alloc-adopt-identity-unit \
+  tests/alloc-identity-index-unit \
   tests/alloc-protection-notification-unit \
   tests/alloc-freeze-unit \
   tests/checkpoint-unit \
@@ -581,6 +594,9 @@ ACL2_BOOKS = \
   tests/pool-query-ref-unit \
   tests/pool-protected-floor-unit \
   tests/pool-credit-unit \
+  tests/upload-page-geometry-unit \
+  tests/checkpoint-service-geometry-unit \
+  tests/checkpoint-working-credit-configure-unit \
   tests/pool-unit \
   tests/port-unit \
   tests/primitive-list-domain-unit \

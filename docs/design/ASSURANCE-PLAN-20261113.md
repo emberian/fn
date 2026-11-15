@@ -7,6 +7,30 @@ must be derived from that store and the actual served call/attachment graph.
 
 ## Current integration frontier — 2026-11-15 UTC
 
+### Cold live-identity integration (owned source, not qualification)
+
+The seven-book primitive witness now executes the duplicate historical identity
+counterexample (record920695): whole initial allocator invariant and original API
+guards hold, but private adoption can create duplicate identities. This is not a
+reachable authenticated replay counterexample. The repair uses a recovery-owned
+index of current nonFREE rows, bounded by the actual extent count, with explicit
+USED state, tombstone reuse, and one bucket probe per step.
+
+Cold source now connects index begin/clear/prepare/publication to the actual
+selected projection. Each nonFREE row waits for an exact owner/source/tuple
+receipt before the row and index are published together. The existing projection
+fixture adds a duplicate initial-map control; its synthetic selected-validation
+antecedent remains explicit. The positive control additionally checks exact
+row/index correspondence. These new operations and assertions remain unadmitted.
+
+Remaining connected work: exact BOOT-to-recovery owner transfer; maintained full
+base adoption and ordered suffix adoption/RELEASE; index correspondence and
+initialization/preservation proofs; post-Fence index finalization. Physical reuse
+remains disabled. The index does not grant release authority or replace historical
+installation evidence. Parent and restore owner retain these implementation and
+execution obligations.
+
+
 Current integration includes qualified held child release and generic compiler
 record890585 (29 books, root0bcf7ee29), device loan bindings record876717
 (12 books), and the earlier matcher/codec/pool scopes below. Root059ec5264 adds
