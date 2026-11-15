@@ -67,14 +67,10 @@
                     (eq (fn2-pool-workspace-code (fn2-run-loads-page c fn2-run-loads) (fn2-run-loads-page-gen c fn2-run-loads) kind owner generation fn2-pool) :ok)
                     (eq (fn2-pool-workspace-code (fn2-run-loads-scratch c fn2-run-loads) (fn2-run-loads-scratch-gen c fn2-run-loads) kind owner generation fn2-pool) :ok)))
 
-(defun fn2-run-load-park-source (c kind owner generation fn2-run-loads fn2-run-cursors
- fn2-checkpoint-summary fn2-checkpoint-summary-leases fn2-pool)
- (declare (xargs :stobjs (fn2-run-loads fn2-run-cursors fn2-checkpoint-summary fn2-checkpoint-summary-leases fn2-pool)
- :guard (and (fn2-run-loads-wfp fn2-run-loads) (fn2-run-cursors-wfp fn2-run-cursors)
-  (fn2-checkpoint-summary-wfp fn2-checkpoint-summary) (fn2-checkpoint-summary-leases-wfp fn2-checkpoint-summary-leases) (fn2-pool-wfp fn2-pool))))
- (b* (((unless (fn2-run-load-parkable-p c kind owner generation fn2-run-loads fn2-run-cursors fn2-checkpoint-summary-leases fn2-pool))
-       (mv :source fn2-run-loads fn2-run-cursors fn2-checkpoint-summary fn2-checkpoint-summary-leases))
-      ((mv code fn2-checkpoint-summary fn2-checkpoint-summary-leases)
+; Shared static mutations, after each actual owner proves its own
+; terminal source-view/pending/workspace boundary. No pool lease is freed.
+(defmacro fn2-run-load-park-source-mutations ()
+ `(b* (((mv code fn2-checkpoint-summary fn2-checkpoint-summary-leases)
        (if (equal (fn2-checkpoint-summary-leases-live c fn2-checkpoint-summary-leases) 1)
         (fn2-checkpoint-summary-release c kind owner generation fn2-checkpoint-summary fn2-checkpoint-summary-leases)
         (mv :ok fn2-checkpoint-summary fn2-checkpoint-summary-leases)))
@@ -82,6 +78,15 @@
       (fn2-run-cursors (fn2-run-cursors-put c (phase *fn2-run-cursor-phase-idle*) (physical 0)))
       (fn2-run-loads (fn2-run-loads-put c (phase *fn2-run-load-phase-reserved*) (source *fn2-none*) (tag 0))))
   (mv :ok fn2-run-loads fn2-run-cursors fn2-checkpoint-summary fn2-checkpoint-summary-leases)))
+
+(defun fn2-run-load-park-source (c kind owner generation fn2-run-loads fn2-run-cursors
+ fn2-checkpoint-summary fn2-checkpoint-summary-leases fn2-pool)
+ (declare (xargs :stobjs (fn2-run-loads fn2-run-cursors fn2-checkpoint-summary fn2-checkpoint-summary-leases fn2-pool)
+ :guard (and (fn2-run-loads-wfp fn2-run-loads) (fn2-run-cursors-wfp fn2-run-cursors)
+  (fn2-checkpoint-summary-wfp fn2-checkpoint-summary) (fn2-checkpoint-summary-leases-wfp fn2-checkpoint-summary-leases) (fn2-pool-wfp fn2-pool))))
+ (b* (((unless (fn2-run-load-parkable-p c kind owner generation fn2-run-loads fn2-run-cursors fn2-checkpoint-summary-leases fn2-pool))
+       (mv :source fn2-run-loads fn2-run-cursors fn2-checkpoint-summary fn2-checkpoint-summary-leases)))
+  (fn2-run-load-park-source-mutations)))
 (fn2-run-load-frames fn2-run-load-park-source
  (c kind owner generation fn2-run-loads fn2-run-cursors fn2-checkpoint-summary fn2-checkpoint-summary-leases fn2-pool)
  (fn2-run-loads fn2-run-cursors fn2-checkpoint-summary fn2-checkpoint-summary-leases fn2-pool)

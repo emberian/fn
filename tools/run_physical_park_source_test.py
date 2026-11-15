@@ -3,6 +3,8 @@ import json
 from pathlib import Path
 import unittest
 import lisp_rewrite as lr
+from lisp_source import read_sexp
+from run_physical_park_recipe import expanded_function, project as park_project, require_recipe
 ROOT=Path(__file__).resolve().parents[1]
 class ParkSource(unittest.TestCase):
  def setUp(self):
@@ -16,9 +18,14 @@ class ParkSource(unittest.TestCase):
   fn=lr.match('(defun fn2-run-load-park-source ?*body)',lr.parse(self.source).forms)[0]
   call=lr.match('(fn2-run-load-parkable-p ?*args)',[fn.node])
   self.assertEqual(len(call),1)
-  text=self.source[fn.start:fn.end]
-  restored=lr.write(text,[(call[0].start-fn.start,call[0].end-fn.start,self.saved['condition'])])
-  self.assertEqual(restored,self.saved['original_function'])
+  actual=expanded_function(self.source)
+  condition=read_sexp(self.saved['condition'])
+  def substitute(t):
+   if isinstance(t,list):
+    if t and t[0]=='fn2-run-load-parkable-p':return condition
+    return [substitute(x) for x in t]
+   return t
+  self.assertEqual(substitute(actual),read_sexp(self.saved['original_function']))
  def test_preflight_has_no_effects(self):
   fn=lr.match('(defun fn2-run-load-parkable-p ?*body)',lr.parse(self.source).forms)[0]
   text=self.source[fn.start:fn.end]
@@ -28,11 +35,22 @@ class ParkSource(unittest.TestCase):
    self.assertIn(required,text)
  def test_park_retains_windows_and_releases_before_reset(self):
   fn=lr.match('(defun fn2-run-load-park-source ?*body)',lr.parse(self.source).forms)[0]
-  text=self.source[fn.start:fn.end]
-  self.assertLess(text.index('(fn2-checkpoint-summary-release'),text.index('(fn2-run-cursors-put'))
-  self.assertIn('(source *fn2-none*) (tag 0)',text)
-  self.assertNotIn('(windows ',text)
+  text=repr(expanded_function(self.source))
+  self.assertLess(text.index('fn2-checkpoint-summary-release'),text.index('fn2-run-cursors-put'))
+  self.assertIn("['source', '*fn2-none*']",text)
+  self.assertIn("['tag', '0']",text)
+  self.assertNotIn("['windows',",text)
   self.assertNotIn('fn2-pool-release',text)
+ def test_exact_recipe_and_negative_mutations(self):
+  require_recipe(self.source)
+  for before,after in (('(physical 0)', '(physical 1)'),
+                       ('(source *fn2-none*)', '(source 0)'),
+                       ('(fn2-checkpoint-summary-release c kind owner generation', '(fn2-checkpoint-summary-release c 0 owner generation'),
+                       ('(fn2-run-load-parkable-p c kind owner generation', '(fn2-run-load-parkable-p c 0 owner generation')):
+   self.assertIn(before,self.source)
+   start=self.source.index('(defmacro fn2-run-load-park-source-mutations')
+   candidate=self.source[:start]+self.source[start:].replace(before,after,1)
+   with self.assertRaises(ValueError):require_recipe(candidate)
  def test_exact_summary_release_extraction(self):
   text=(ROOT/'books/checkpoint-summary-leases.lisp').read_text()
   parsed=lr.parse(text)

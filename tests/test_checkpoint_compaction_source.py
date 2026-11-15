@@ -159,5 +159,28 @@ class CompactionMerge(unittest.TestCase):
             self.assertTrue(calls(step, p))
 
 
+class CompactionPark(unittest.TestCase):
+    def test_borrowed_park_has_real_cut_and_pending_gate(self):
+        t = definition("books/checkpoint-compaction-park.lisp", "fn2-checkpoint-compaction-park-source")
+        for p in ("fn2-checkpoint-compaction-ownerp", "fn2-checkpoint-compaction-windowsp",
+                  "fn2-checkpoint-source-reader-attachedp", "fn2-checkpoint-source-reader-windowsp"):
+            self.assertTrue(calls(t, p))
+        self.assertIn(["equal", ["fn2-run-loads-pending", "c", "fn2-run-loads"], "0"], list(nodes(t)))
+        self.assertIn("*fn2-checkpoint-compaction-phase-park*", repr(t))
+        self.assertEqual(len(calls(t, "fn2-run-load-park-source-mutations")), 1)
+        self.assertFalse(calls(t, "fn2-pool-release"))
+        self.assertFalse(calls(t, "fn2-run-load-admission-begin"))
+        self.assertIn("*fn2-checkpoint-compaction-phase-sources*", repr(t))
+
+    def test_shared_recipe_preserves_borrow_mode_and_windows(self):
+        trees0 = trees("books/run-physical-release.lisp")
+        macro = next(t for t in trees0 if isinstance(t,list) and t[:2] == ["defmacro", "fn2-run-load-park-source-mutations"])
+        self.assertTrue(calls(macro, "fn2-checkpoint-summary-release"))
+        self.assertNotIn("['windows',", repr(macro))
+        self.assertNotIn("['lease-mode',", repr(macro))
+        self.assertFalse(calls(macro, "fn2-pool-release"))
+        self.assertFalse(calls(macro, "fn2-pool-reset"))
+
+
 if __name__ == "__main__":
     unittest.main()

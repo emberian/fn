@@ -7,6 +7,7 @@ from read_observer_rewrite import nodes,sym
 from nntp_physical_port import port_cursor,port_kind,port_observer,named_lists
 from nntp_physical_admission import port as admission,kind as admission_kind
 from physical_view_owner_rewrite import project as project_view
+from run_physical_park_recipe import project as repair_park
 from physical_loader_repair import project as repair_loader
 BASE='f25d00ef6'
 def src(p):return (ROOT/p).read_text()
@@ -87,7 +88,7 @@ class Controls(unittest.TestCase):
   self.assertEqual(before,kernels(src('books/machines-c-read.lisp')))
   for b in ('run-physical-release','run-physical-bound-bind','run-physical-bound-io','run-physical-bound-step','cns'):
    original=old('books/'+b+'.lisp')
-   expected=repair_loader(b+'.lisp',original) if b=='run-physical-bound-step' else original
+   expected=repair_loader(b+'.lisp',original) if b=='run-physical-bound-step' else (repair_park(original) if b=='run-physical-release' else original)
    self.assertEqual(expected,src('books/'+b+'.lisp'))
  def test_duplicate_projection_refuses(self):
   with self.assertRaises(ValueError):port_cursor(src('books/cursor.lisp'),old('books/cursor.lisp','bdbf7e9bb'))
