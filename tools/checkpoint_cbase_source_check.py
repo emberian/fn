@@ -27,6 +27,7 @@ def check(acquire, release):
     assert ['equal', ['fn2-checkpoint-summary-lease-count', 's', 'fn2-checkpoint-summary'], '0'] in closing
     assert ['fn2-checkpoint-summary-row-retire-row', 's', 'r', 'fn2-checkpoint-summary', 'fn2-checkpoint-summary-sources', 'fn2-checkpoint-cbase-holds', 'fn2-run-installed'] in closing
     assert ['equal', ['fn2-checkpoint-summary-installed', 's', 'fn2-checkpoint-summary'], '0'] in closing
+    assert ['update-fn2-alloc-protection-dirty', '1', 'fn2-extents'] in closing
     drops = [n for n in closing if n and n[0] == 'fn2-alloc-edge-drop']
     assert len(drops) == 1 and drops[0][-3:] == [':promised-read', 'fn2-extents', 'fn2-alloc-edges']
     assert not any(n and n[0] in ('fn2-alloc-release', 'fn2-run-retired-next', 'fn2-cache-drop') for n in closing)
@@ -43,6 +44,7 @@ if __name__ == '__main__':
                   (a, r.replace('(equal (fn2-checkpoint-summary-lease-count s fn2-checkpoint-summary) 0)', 't')),
                   (a, r.replace('(fn2-checkpoint-summary-row-retire-row s r ', '(fn2-run-retired-next r ', 1)),
                   (a, r.replace('(equal (fn2-checkpoint-summary-installed s fn2-checkpoint-summary) 0)', 't'))]
+    mutations.append((a, r.replace('(update-fn2-alloc-protection-dirty 1 fn2-extents)', 'fn2-extents', 1)))
     for x, y in mutations:
         try:
             check(x, y)
