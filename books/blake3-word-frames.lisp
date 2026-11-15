@@ -1,8 +1,13 @@
 ; Buffered-word dimensions, independent of word values and digest typing.
 (in-package "ACL2")
 (include-book "blake3-row-frames")
+(include-book "columns-observation-frames")
 (fn2-book-layer :b)
 (local (include-book "arithmetic-3/floor-mod/floor-mod" :dir :system))
+
+; Public observation rules reuse each actual setter's unconditional NTH
+; interface, so bounded writers can keep WORDS-LENGTH opaque.
+(defcolumns-array-length-frames fn2-b3 fn2-b3-words)
 
 ; Only STORE writes this array. Its physical stripe bound is deliberately
 ; weaker than READY or a stobj recognizer, and is preserved by scalar writes.

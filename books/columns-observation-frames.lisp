@@ -36,3 +36,45 @@
  `(make-event
    (value (fn2-columns-observation-frame-event
            ',name ',table ',read-field ',write-field (w state)))))
+
+; A requested extra-array LENGTH observer across this table's column setters.
+; This is one linear family for the requested observer, not a field matrix.
+(defun fn2-columns-array-length-column-frames (table observer columns world)
+ (declare (xargs :verify-guards nil))
+ (if (atom columns) nil
+  (let* ((writer (fn2-columns-col-name table (fn2-columns-pre "SET-" (caar columns))))
+         (frame (fn2-columns-sym writer "-NTH"))
+         (name (fn2-columns-sym observer
+                 (concatenate 'string "-AFTER-" (symbol-name writer)))))
+   (if (not (and (getpropc writer 'unnormalized-body nil world)
+                 (not (eq (getpropc writer 'symbol-class nil world) :program))
+                 (equal (getpropc writer 'stobjs-in :missing world) (list nil nil table))
+                 (equal (getpropc writer 'stobjs-out :missing world) (list table))
+                 (getpropc frame 'theorem nil world)))
+       (er hard 'fn2-columns-array-length-column-frames
+           "Missing actual setter-NTH interface for ~x0." writer)
+    (cons
+     `(defthm ,name
+       (equal (,observer (,writer i v ,table)) (,observer ,table))
+       :hints (("Goal" :in-theory (e/d (,observer ,frame) (,writer nth)))))
+     (fn2-columns-array-length-column-frames table observer (cdr columns) world))))))
+
+(defun fn2-columns-array-length-frame-events (table field world)
+ (declare (xargs :verify-guards nil))
+ (let* ((row (fn2-decl-row (list :columns table) world))
+        (extra (assoc-eq field (fn2-decl-get :extra-fields row)))
+        (observer (fn2-columns-sym field "-LENGTH")))
+  (if (not (and extra (fn2-columns-arrayp extra)
+                (not (assoc-eq field (fn2-decl-get :columns row)))
+                (getpropc observer 'unnormalized-body nil world)
+                (not (eq (getpropc observer 'symbol-class nil world) :program))
+                (equal (getpropc observer 'stobjs-in :missing world) (list table))
+                (equal (getpropc observer 'stobjs-out :missing world) '(nil))))
+      (er hard 'fn2-columns-array-length-frame-events
+          "No actual extra-array LENGTH observer for ~x0 in ~x1." field table)
+   `(progn ,@(fn2-columns-array-length-column-frames
+               table observer (fn2-decl-get :columns row) world)))))
+
+(defmacro defcolumns-array-length-frames (table field)
+ `(make-event
+   (value (fn2-columns-array-length-frame-events ',table ',field (w state)))))
