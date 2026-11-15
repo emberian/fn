@@ -103,6 +103,21 @@
 (assert-event
  (fn2-square-rowp 'fn2-refutation-custom
    (fn2-decl-row '(:square fn2-refutation-custom) (w state)) (w state)))
+; Author replay preserves refutation evidence, and an identical declaration
+; identity constant is an ACL2 redundant event rather than a new claim.
+(defthm-owed fn2-refutation-original (x) (natp x)
+ :teeth (fn2-refutation-positive fn2-refutation-negative)
+ :doc "False universal fixture; its stronger guarded replacement is distinct.")
+(make-event
+ (value (fn2-decl-finish '(:square fn2-refutation-custom)
+          '(:schema :assertion :statement fn2-custom-claim-statement :vars (x)
+            :formula (natp x) :teeth (fn2-refutation-positive fn2-refutation-negative)
+            :proof (:owed) :checks nil :doc "Custom first binding fixture.")
+          nil nil "tests/owed-refutation-unit" (w state))))
+(assert-event
+ (equal (fn2-decl-get :proof
+          (fn2-decl-row '(:square fn2-refutation-original) (w state)))
+        '(:refuted fn2-refutation-ground fn2-refutation-guarded)))
 ; Evidence/check/doc metadata updates preserve identity.
 (make-event
  (value `(table fn2-squares 'fn2-refutation-original
