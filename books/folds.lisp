@@ -8,6 +8,9 @@
 (include-book "runs-schema")
 (fn2-book-layer :c)
 
+; Keep generated field type contracts visible to fold guard verification.
+(local (in-theory (disable fn2-fields-value fn2-fields-rows)))
+
 ; Group counts and watermarks: GROUP's COUNT LOW HIGH (RFC 3977 §6.1.1). An
 ; accepted article is numbered by the group; a withdrawal lowers the count and
 ; leaves the watermarks (the reply's low and high are bounds, not exact).
