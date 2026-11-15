@@ -35,6 +35,17 @@ class CanonicalSymbolValues(unittest.TestCase):
         proper = c.List([c.Atom(':CONS'), symbol('KEYWORD', 'OK'), symbol('COMMON-LISP', 'NIL')])
         self.assertEqual(len(c.object_list(proper)), 1)
 
+    def test_literal_dot_is_not_a_dotted_tail_marker(self):
+        proper = c.List([c.Atom(':CONS'), symbol('ACL2', '.'),
+                        c.List([c.Atom(':CONS'), c.List([c.Atom(':INTEGER'), c.Atom('7')]),
+                                symbol('COMMON-LISP', 'NIL')])])
+        self.assertEqual(c.val(c.decode(proper)),
+                         '(Val.ofList [(Val.sym "ACL2::."), (Val.int 7)])')
+        dotted = c.List([c.Atom(':CONS'), symbol('ACL2', '.'),
+                        c.List([c.Atom(':INTEGER'), c.Atom('7')])])
+        self.assertEqual(c.val(c.decode(dotted)),
+                         '(Val.cons (Val.sym "ACL2::.") (Val.int 7))')
+
     def test_unknown_package_fails_closed(self):
         with self.assertRaisesRegex(ValueError, 'unsupported package'):
             c.decode(symbol('UNKNOWN', 'SIZE'))

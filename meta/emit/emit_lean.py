@@ -237,7 +237,8 @@ def val(x):
         xs = list(x)
         i = 0
         while i < len(xs):
-            if isinstance(xs[i], Atom) and xs[i] == "." and i == len(xs) - 2:
+            if (isinstance(xs[i], Atom) and xs[i] == "." and
+                    not hasattr(xs[i], "symbol_package") and i == len(xs) - 2):
                 tail = xs[i + 1]
                 break
             items.append(xs[i])
