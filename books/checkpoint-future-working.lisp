@@ -1,6 +1,7 @@
 ; B-owned future leases and exact pool handback; live registration is separate.
 (in-package "ACL2")
 (include-book "std/util/bstar" :dir :system)
+(include-book "pool-credit-contracts")
 (include-book "checkpoint-member")
 (include-book "commit-format")
 (fn2-book-layer :b)
