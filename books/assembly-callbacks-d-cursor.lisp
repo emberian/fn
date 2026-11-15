@@ -6,5 +6,6 @@
 (include-book "assembly-callbacks-d")
 (include-book "cursor")
 
+(fn2-read-loader-core-faces)
 (defmachine-arms fn2-cursor :wrappers)
 (defmachine-run fn2-cursor)
