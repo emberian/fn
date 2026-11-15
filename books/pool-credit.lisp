@@ -52,24 +52,41 @@
      (fn2-pool-credit-request class (cdr groups)))))
 (defun fn2-pool-credit-config-roomp (class groups fn2-pool)
  (declare (xargs :stobjs fn2-pool :guard (and (fn2-pool-wfp fn2-pool) (natp class))
-  :measure (nfix (- (fn2-pool-nclasses fn2-pool) (nfix class)))))
- (if (>= class (fn2-pool-nclasses fn2-pool)) t
+  :measure (nfix (- (nfix (fn2-pool-nclasses fn2-pool)) (nfix class)))))
+ (if (not (and (natp class) (< class (nfix (fn2-pool-nclasses fn2-pool))))) t
   (and (<= (fn2-pool-credit-request class groups) (fn2-pool-class-countsi class fn2-pool))
        (fn2-pool-credit-config-roomp (+ 1 class) groups fn2-pool))))
 (defun fn2-pool-credit-store-demands (xs i fn2-pool)
  (declare (xargs :stobjs fn2-pool :guard (and (fn2-pool-wfp fn2-pool) (true-listp xs) (natp i))))
  (if (atom xs) fn2-pool
-  (if (not (and (< i (fn2-pool-credit-demand-length fn2-pool))
+  (if (not (and (natp i) (< i (fn2-pool-credit-demand-length fn2-pool))
                 (< i (fn2-pool-credit-available-length fn2-pool))
                 (unsigned-byte-p 32 (car xs)))) fn2-pool
    (let* ((fn2-pool (update-fn2-pool-credit-demandi i (car xs) fn2-pool))
           (fn2-pool (update-fn2-pool-credit-availablei i (car xs) fn2-pool)))
     (fn2-pool-credit-store-demands (cdr xs) (+ i 1) fn2-pool)))))
+(defthm fn2-pool-credit-demandsp-true-listp
+ (implies (fn2-pool-credit-demandsp xs n) (true-listp xs))
+ :hints (("Goal" :induct (fn2-pool-credit-demandsp xs n)
+                 :in-theory (enable fn2-pool-credit-demandsp))))
+(defthm fn2-pool-credit-store-demands-nclasses
+ (equal (fn2-pool-nclasses (fn2-pool-credit-store-demands xs i fn2-pool))
+        (fn2-pool-nclasses fn2-pool))
+ :hints (("Goal" :induct (fn2-pool-credit-store-demands xs i fn2-pool)
+  :in-theory (enable fn2-pool-credit-store-demands fn2-pool-nclasses))))
+(defthm fn2-pool-credit-store-demands-wfp
+ (implies (fn2-pool-wfp fn2-pool)
+          (fn2-pool-wfp (fn2-pool-credit-store-demands xs i fn2-pool)))
+ :hints (("Goal" :induct (fn2-pool-credit-store-demands xs i fn2-pool)
+  :in-theory (enable fn2-pool-credit-store-demands fn2-pool-wfp))))
+
+
 (defun fn2-pool-credit-store-groups (groups i fn2-pool)
  (declare (xargs :stobjs fn2-pool :guard (and (fn2-pool-wfp fn2-pool) (natp i)
-  (fn2-pool-credit-groupsp groups (fn2-pool-nclasses fn2-pool)))))
+  (fn2-pool-credit-groupsp groups (fn2-pool-nclasses fn2-pool)))
+  :guard-hints (("Goal" :in-theory (disable fn2-pool-credit-store-demands)))))
  (if (atom groups) fn2-pool
-  (if (not (and (< i (fn2-pool-credit-purpose-length fn2-pool))
+  (if (not (and (natp i) (< i (fn2-pool-credit-purpose-length fn2-pool))
                 (< i (fn2-pool-credit-phase-length fn2-pool))
                 (< i (fn2-pool-credit-group-nonce-length fn2-pool))
                 (< i (fn2-pool-credit-group-owner-kind-length fn2-pool))
@@ -86,8 +103,8 @@
     (fn2-pool-credit-store-groups (cdr groups) (+ 1 i) fn2-pool)))))
 (defun fn2-pool-credit-store-protected (class groups fn2-pool)
  (declare (xargs :stobjs fn2-pool :guard (and (fn2-pool-wfp fn2-pool) (natp class))
-  :measure (nfix (- (fn2-pool-nclasses fn2-pool) (nfix class)))))
- (if (>= class (fn2-pool-nclasses fn2-pool)) fn2-pool
+  :measure (nfix (- (nfix (fn2-pool-nclasses fn2-pool)) (nfix class)))))
+ (if (not (and (natp class) (< class (nfix (fn2-pool-nclasses fn2-pool))))) fn2-pool
   (if (not (and (< class (fn2-pool-credit-protected-length fn2-pool))
                 (unsigned-byte-p 32 (fn2-pool-credit-request class groups)))) fn2-pool
    (let ((fn2-pool (update-fn2-pool-credit-protectedi class (fn2-pool-credit-request class groups) fn2-pool)))
@@ -127,17 +144,17 @@
       (equal generation (fn2-pool-credit-group-owner-geni group fn2-pool))))
 (defun fn2-pool-credit-fullp (group class fn2-pool)
  (declare (xargs :stobjs fn2-pool :guard (and (fn2-pool-wfp fn2-pool) (natp class))
-  :measure (nfix (- (fn2-pool-nclasses fn2-pool) (nfix class)))))
+  :measure (nfix (- (nfix (fn2-pool-nclasses fn2-pool)) (nfix class)))))
  (if (not (and (fn2-pool-credit-shapep fn2-pool) (natp group) (< group (fn2-pool-credit-group-count fn2-pool)))) nil
-  (if (>= class (fn2-pool-nclasses fn2-pool)) t
+  (if (not (and (natp class) (< class (nfix (fn2-pool-nclasses fn2-pool))))) t
    (let ((i (+ (* group (fn2-pool-nclasses fn2-pool)) class)))
     (and (equal (fn2-pool-credit-availablei i fn2-pool) (fn2-pool-credit-demandi i fn2-pool))
          (fn2-pool-credit-fullp group (+ class 1) fn2-pool))))))
 (defun fn2-pool-credit-emptyp (group class fn2-pool)
  (declare (xargs :stobjs fn2-pool :guard (and (fn2-pool-wfp fn2-pool) (natp class))
-  :measure (nfix (- (fn2-pool-nclasses fn2-pool) (nfix class)))))
+  :measure (nfix (- (nfix (fn2-pool-nclasses fn2-pool)) (nfix class)))))
  (if (not (and (fn2-pool-credit-shapep fn2-pool) (natp group) (< group (fn2-pool-credit-group-count fn2-pool)))) nil
-  (if (>= class (fn2-pool-nclasses fn2-pool)) t
+  (if (not (and (natp class) (< class (nfix (fn2-pool-nclasses fn2-pool))))) t
    (let ((i (+ (* group (fn2-pool-nclasses fn2-pool)) class)))
     (and (equal (fn2-pool-credit-availablei i fn2-pool) 0)
          (fn2-pool-credit-emptyp group (+ class 1) fn2-pool))))))
