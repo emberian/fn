@@ -7,6 +7,7 @@
 (include-book "sched")
 (include-book "commit-alloc")
 (include-book "read-pins")
+(include-book "checkpoint-cbase-state")
 (include-book "checkpoint-lifecycle-coordinator")
 (include-book "checkpoint-tickets")
 (include-book "format-check")
@@ -48,12 +49,17 @@
  (nfix (fn2-b-capacity :checkpoint-candidates 4 profile)))
 ; Dedicated regions: six commit I/O edges, two roots per extent, one pin per
 ; operation, six direct references per candidate, then one source-retention
-; edge per extent per active candidate. These are dedicated resident resources.
+; edge per extent per active candidate, then a disjoint C-base promise region
+; of the same derived size. These are dedicated resident resources.
 (defun fn2-b-alloc-edge-floor (profile)
  (declare (xargs :guard t))
  (+ 6 (* 2 (nfix (fn2-b-capacity :extent-slots 16 profile)))
     (nfix (fn2-profile-o profile)) (* 6 (fn2-b-checkpoint-capacity profile))
-    (* (nfix (fn2-b-capacity :extent-slots 16 profile)) (fn2-b-checkpoint-capacity profile))))
+    (* 2 (nfix (fn2-b-capacity :extent-slots 16 profile)) (fn2-b-checkpoint-capacity profile))))
+(defcorechild fn2-core-checkpoint-cbase-holds fn2-checkpoint-cbase-holds
+ :init (fn2-checkpoint-cbase-holds-init (fn2-b-checkpoint-capacity profile) fn2-checkpoint-cbase-holds)
+ :profilep (unsigned-byte-p 32 (fn2-b-checkpoint-capacity profile))
+ :why "One exact candidate/catalog C-source promise retains its actual closure through replacement and query drain.")
 (defcorechild fn2-core-alloc-edges fn2-alloc-edges
  :init (fn2-alloc-edges-init (fn2-b-capacity :alloc-edge-slots (fn2-b-alloc-edge-floor profile) profile) fn2-alloc-edges)
  :profilep (and
