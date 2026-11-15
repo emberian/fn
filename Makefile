@@ -4,6 +4,7 @@ ACL2_BOOKS = \
   books/accounts \
   books/accounts-core \
   books/alloc \
+  books/checkpoint-descriptor-read \
   books/arm-children \
   books/arm-issue-effects \
   books/executor-reservation \
