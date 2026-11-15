@@ -19,7 +19,11 @@
    (fn-b3-pool-blocks (+ off 64) counter (- count 1) (+ j 1) c0 c1 c2 c3 c4 c5 c6 c7 fn2-pool))))
 (defthm fn-b3-pool-blocks-type
  (implies (and (unsigned-byte-p 32 c0) (unsigned-byte-p 32 c1) (unsigned-byte-p 32 c2) (unsigned-byte-p 32 c3) (unsigned-byte-p 32 c4) (unsigned-byte-p 32 c5) (unsigned-byte-p 32 c6) (unsigned-byte-p 32 c7)) (and (unsigned-byte-p 32 (mv-nth 0 (fn-b3-pool-blocks off counter count j c0 c1 c2 c3 c4 c5 c6 c7 fn2-pool))) (unsigned-byte-p 32 (mv-nth 1 (fn-b3-pool-blocks off counter count j c0 c1 c2 c3 c4 c5 c6 c7 fn2-pool))) (unsigned-byte-p 32 (mv-nth 2 (fn-b3-pool-blocks off counter count j c0 c1 c2 c3 c4 c5 c6 c7 fn2-pool))) (unsigned-byte-p 32 (mv-nth 3 (fn-b3-pool-blocks off counter count j c0 c1 c2 c3 c4 c5 c6 c7 fn2-pool))) (unsigned-byte-p 32 (mv-nth 4 (fn-b3-pool-blocks off counter count j c0 c1 c2 c3 c4 c5 c6 c7 fn2-pool))) (unsigned-byte-p 32 (mv-nth 5 (fn-b3-pool-blocks off counter count j c0 c1 c2 c3 c4 c5 c6 c7 fn2-pool))) (unsigned-byte-p 32 (mv-nth 6 (fn-b3-pool-blocks off counter count j c0 c1 c2 c3 c4 c5 c6 c7 fn2-pool))) (unsigned-byte-p 32 (mv-nth 7 (fn-b3-pool-blocks off counter count j c0 c1 c2 c3 c4 c5 c6 c7 fn2-pool)))))
- :hints (("Goal" :in-theory (disable mv-nth))))
+ :hints (("Goal" :induct (fn-b3-pool-blocks off counter count j c0 c1 c2 c3 c4 c5 c6 c7 fn2-pool)
+           :in-theory (e/d (fn-b3-pool-blocks)
+                           (mv-nth fn-b3-compress-core fn-b3-pool-word
+                            (:definition unsigned-byte-p)
+                            (:definition integer-range-p))))))
 (verify-guards fn-b3-pool-blocks :hints (("Goal" :in-theory (disable mv-nth))))
 (in-theory (disable fn-b3-pool-blocks))
 (defun fn-b3-pool-tree (off chunks counter fn2-pool)
@@ -32,7 +36,11 @@
      (fn-b3-compress-core (nth 0 *fn2-b3-iv*) (nth 1 *fn2-b3-iv*) (nth 2 *fn2-b3-iv*) (nth 3 *fn2-b3-iv*) (nth 4 *fn2-b3-iv*) (nth 5 *fn2-b3-iv*) (nth 6 *fn2-b3-iv*) (nth 7 *fn2-b3-iv*) l0 l1 l2 l3 l4 l5 l6 l7 r0 r1 r2 r3 r4 r5 r6 r7 0 64 4))))))
 (defthm fn-b3-pool-tree-type
  (and (unsigned-byte-p 32 (mv-nth 0 (fn-b3-pool-tree off chunks counter fn2-pool))) (unsigned-byte-p 32 (mv-nth 1 (fn-b3-pool-tree off chunks counter fn2-pool))) (unsigned-byte-p 32 (mv-nth 2 (fn-b3-pool-tree off chunks counter fn2-pool))) (unsigned-byte-p 32 (mv-nth 3 (fn-b3-pool-tree off chunks counter fn2-pool))) (unsigned-byte-p 32 (mv-nth 4 (fn-b3-pool-tree off chunks counter fn2-pool))) (unsigned-byte-p 32 (mv-nth 5 (fn-b3-pool-tree off chunks counter fn2-pool))) (unsigned-byte-p 32 (mv-nth 6 (fn-b3-pool-tree off chunks counter fn2-pool))) (unsigned-byte-p 32 (mv-nth 7 (fn-b3-pool-tree off chunks counter fn2-pool))))
- :hints (("Goal" :in-theory (disable mv-nth))))
+ :hints (("Goal" :induct (fn-b3-pool-tree off chunks counter fn2-pool)
+           :in-theory (e/d (fn-b3-pool-tree)
+                           (mv-nth fn-b3-compress-core fn-b3-pool-word
+                            (:definition unsigned-byte-p)
+                            (:definition integer-range-p))))))
 (verify-guards fn-b3-pool-tree :hints (("Goal" :in-theory (disable mv-nth))))
 (in-theory (disable fn-b3-pool-tree))
 (defthm fn-b3-pool-tree-car-type

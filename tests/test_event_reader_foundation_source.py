@@ -25,7 +25,7 @@ def tree(node,drop_guard_hint=False):
 def functions(text):return {node.items[1].low:node for form in r.parse(text).forms for node in walk(form)}
 class CurrentFoundation(unittest.TestCase):
  def test_exact_current_shared_basis(self):
-  for name in ['columns','operations','trace','layout','pool']:
+  for name in ['columns','operations','trace','layout','pool','blake3-pool-spec']:
    self.assertEqual((ROOT/'books'/f'{name}.lisp').read_text(),source(CURRENT,name),name)
  def test_runtime_and_guard_identity(self):
   for name in ['pool','layout']:
@@ -42,6 +42,14 @@ class CurrentFoundation(unittest.TestCase):
    self.assertEqual(declarations(source(BASE,name)),declarations((ROOT/'books'/f'{name}.lisp').read_text()),name)
   # The codec emitters are among the identical common definitions above;
   # this checks source structure, not executed macro-expansion equivalence.
+ def test_blake_pool_runtime_and_theorem_claims_unchanged(self):
+  old=source(BASE,'blake3-pool-spec');new=(ROOT/'books/blake3-pool-spec.lisp').read_text()
+  self.assertEqual({name:tree(fn) for name,fn in functions(old).items()},
+                   {name:tree(fn) for name,fn in functions(new).items()})
+  def claims(text):
+   return [tuple(tree(x) for x in node.items[:3]) for node in r.parse(text).forms
+           if isinstance(node,r.Lst) and node.items and getattr(node.items[0],'low',None)=='defthm']
+  self.assertEqual(claims(old),claims(new))
  def test_preserve_cold_and_avoid_behavior_parent_import(self):
   for name in ['alloc','arms','event-read-state','event-read-source','event-read-verify','pool-digest']:
    self.assertEqual((ROOT/'books'/f'{name}.lisp').read_text(),source(BASE,name),name)
