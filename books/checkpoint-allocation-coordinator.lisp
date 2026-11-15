@@ -4,6 +4,7 @@
 (include-book "std/util/bstar" :dir :system)
 (include-book "retirement")
 (include-book "checkpoint-allocation")
+(include-book "arms")
 (fn2-book-layer :b)
 (defmacro fn2-checkpoint-allocation-coordinator-events ()
  '(progn
