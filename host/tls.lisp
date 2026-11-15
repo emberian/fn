@@ -211,7 +211,10 @@
    (setf (fn2-nop-tls-record other) record)
    (case decision
     ((:productive :cancelled)
-     (fn2-n-complete host target code count 0 nil (fn2-n-octets host address count))
+     ;; Only productive input carries pool effects. Cancelled Send retains
+     ;; accepted application count, not evidence of ciphertext delivery.
+     (fn2-n-complete host target code count 0 nil
+      (and (eq decision :productive) (fn2-n-octets host address count)))
      (fn2-n-complete host slot :ok 0 0 won)
      t)
     ((:unbound :kind) nil)
