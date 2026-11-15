@@ -116,3 +116,13 @@
            (fn2-effect-raw-core-use-p '(nth '0 fn2-core))
            (fn2-effect-raw-core-use-p '(update-nth '0 x fn2-core))
            (not (fn2-effect-raw-core-use-p '(cons x (cons fn2-core 'nil)))))))))
+
+; A lambda alias cannot smuggle the core into an ordinary list primitive.
+; This validates opaque core helpers too, even if they have no enqueue path.
+(make-event
+ (mv-let (err stages ir counter)
+  (fn2-effect-compile '((lambda (alias) (nth '0 alias)) fn2-core)
+   '((fn2-core . (:child fn2-core))) nil
+   'fn2-effect-test-boundary 'fn2-effect-test-replacement (w state) 0 1000)
+  (declare (ignore stages ir counter))
+  (value `(assert-event ',(consp err)))))
