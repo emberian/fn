@@ -56,7 +56,11 @@ def interfaces(donor):
     text = raw(donor, node)
     at = next(n.start-node.start for n in node.items if getattr(n, 'low', None) == ':raw-rows')
     text = text[:at]+':prefix "-FIELDS-ONLY" '+text[at:]
-    forms = [text]
+    # The root already exports the same public ROWS equation under its old
+    # name. Keep it from rewriting the generated :USE premise to T before
+    # RAW-ROWS opens the getter. Every generated statement stays identical.
+    forms = ['(encapsulate ()\n (local (in-theory (disable fn2-checkpoint-decode-preserves-rows)))\n'
+             +text+'\n)']
     for name in ('fn2-checkpoint-decode-fields-domain-value-type',
                  'fn2-checkpoint-decode-fields-domain-value-integer'):
         forms.append(export_local(donor, '(defthm '+name+' ?*body)'))
