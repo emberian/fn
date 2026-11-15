@@ -1,0 +1,32 @@
+; Prepared concrete retained-carrier control. OWNER/GEN are SYNTHETIC lower
+; leaf premises; the real core wrapper obtains them from the admitted CNS
+; directory and xrow. This is not a whole actor, disk or authorization witness.
+(in-package "ACL2")
+(include-book "../books/cns-read-state")
+(include-book "std/util/bstar" :dir :system)
+(defun fn2-cns-continuation-carrier-unit (fn2-cns-read-work)
+ (declare (xargs :stobjs fn2-cns-read-work :verify-guards nil))
+ (b* ((fn2-cns-read-work (fn2-cns-read-work-init *fn2-cns-read-work-stride* fn2-cns-read-work))
+      ((mv opened phase & & & & & & fn2-cns-read-work)
+       (fn2-cns-read-work-open 0 2 7 9 11 2 8 0 0 1 fn2-cns-read-work))
+      ((mv saved fn2-cns-read-work) (fn2-cns-read-work-save 0 2 7 9 3 5 17 3 0 0 0 fn2-cns-read-work))
+      ((mv resumed phase2 position article stream & & & fn2-cns-read-work)
+       (fn2-cns-read-work-open 0 2 7 9 11 2 8 0 0 1 fn2-cns-read-work))
+      (positive (and (eq opened :ok) (equal phase 1) (eq saved :ok) (eq resumed :ok)
+                     (equal phase2 3) (equal position 5) (equal article 17) (equal stream 3)))
+      ((mv changed & & & & & & & fn2-cns-read-work)
+       (fn2-cns-read-work-open 0 2 7 9 11 3 8 0 0 1 fn2-cns-read-work))
+      ((mv foreign fn2-cns-read-work) (fn2-cns-read-work-save 0 2 8 9 0 0 0 0 0 0 0 fn2-cns-read-work))
+      ((mv stale fn2-cns-read-work) (fn2-cns-read-work-save 0 2 7 10 0 0 0 0 0 0 0 fn2-cns-read-work))
+      (negative (and (eq changed :state) (eq foreign :state) (eq stale :state)
+                     (equal (fn2-cns-read-work-phase 2 fn2-cns-read-work) 3)
+                     (equal (fn2-cns-read-work-v0 2 fn2-cns-read-work) 5)
+                     (equal (fn2-cns-read-work-v1 2 fn2-cns-read-work) 17)))
+      ((mv renewed phase3 p a s & & & fn2-cns-read-work)
+       (fn2-cns-read-work-open 0 2 7 10 11 3 8 0 0 1 fn2-cns-read-work))
+      (generation (and (eq renewed :ok) (equal phase3 1) (equal p 0) (equal a 0) (equal s 0)
+                       (equal (fn2-cns-read-work-generation 2 fn2-cns-read-work) 10))))
+  (mv (and positive negative generation) fn2-cns-read-work)))
+(assert-event
+ (with-local-stobj fn2-cns-read-work
+  (mv-let (ok fn2-cns-read-work) (fn2-cns-continuation-carrier-unit fn2-cns-read-work) ok)))

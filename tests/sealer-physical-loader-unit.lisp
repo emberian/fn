@@ -1,0 +1,180 @@
+; Prepared controller controls. Seal/range/promise identity is explicitly a
+; SYNTHETIC internal admission premise. Actual pool reserve/release and actual
+; callback guards run below; this is not a persisted sealer merge witness or
+; a proof that the promised carrier's B edges were acquired.
+(in-package "ACL2")
+(include-book "../books/sealer-physical-loader")
+(defconst *fn2-spl-stobjs*
+ '(fn2-seals fn2-csnapshot fn2-ranges fn2-range-sources fn2-run-cursors fn2-run-loads
+   fn2-checkpoint-summary fn2-checkpoint-summary-leases fn2-pool fn2-overlays fn2-run-installed))
+(defmacro fn2-spl-local (names form)
+ (if (atom names) form `(with-local-stobj ,(car names) (fn2-spl-local ,(cdr names) ,form))))
+(defun fn2-sealer-physical-admission-unit (fn2-seals fn2-csnapshot fn2-ranges fn2-range-sources fn2-run-cursors fn2-run-loads
+ fn2-checkpoint-summary fn2-checkpoint-summary-leases fn2-pool fn2-overlays fn2-run-installed)
+ (declare (xargs :stobjs (fn2-seals fn2-csnapshot fn2-ranges fn2-range-sources fn2-run-cursors fn2-run-loads
+ fn2-checkpoint-summary fn2-checkpoint-summary-leases fn2-pool fn2-overlays fn2-run-installed) :verify-guards nil))
+ (b* ((n *fn2-b-seal-source-cursors*)
+      (fn2-seals (fn2-seals-init 1 fn2-seals)) (fn2-csnapshot (fn2-csnapshot-init 1 fn2-csnapshot))
+      (fn2-ranges (fn2-ranges-init 1 fn2-ranges)) (fn2-range-sources (fn2-range-sources-init n fn2-range-sources))
+      (fn2-run-cursors (fn2-run-cursors-init n fn2-run-cursors)) (fn2-run-loads (fn2-run-loads-init n fn2-run-loads))
+      (fn2-checkpoint-summary (fn2-checkpoint-summary-init 1 fn2-checkpoint-summary))
+      (fn2-checkpoint-summary-leases (fn2-checkpoint-summary-leases-init n fn2-checkpoint-summary-leases))
+      (fn2-overlays (fn2-overlays-init 1 fn2-overlays)) (fn2-run-installed (fn2-run-installed-init 1 fn2-run-installed))
+      (fn2-pool (fn2-pool-init (list (cons (+ n 1) 4096) (cons (+ n 1) 65536) (cons 1 *fn2-run-layout-max-entry-bytes*)) 1 100 fn2-pool))
+      (fn2-seals (fn2-seals-put 0 (phase *fn2-seal-phase-idle*) (okind *fn2-idc-owner-kind*) (oslot 0) (ogen 1) (cbase 0) (rg 0) (sbase 0) (rbase 64) (sid 3)))
+      ((mv admitted complete fn2-seals fn2-run-loads fn2-run-cursors fn2-checkpoint-summary fn2-checkpoint-summary-leases fn2-pool)
+       (fn2-sealer-load-reserve *fn2-idc-owner-kind* 11 1 fn2-seals fn2-csnapshot fn2-run-loads fn2-run-cursors fn2-checkpoint-summary fn2-checkpoint-summary-leases fn2-pool))
+      ; Admission leaves insufficient room for a second complete region.
+      ; It must still start the pending source rather than demand a second set.
+      ((mv reset-refused fn2-seals) (fn2-seal-init 0 0 0 *fn2-run-page-size* *fn2-idc-owner-kind* 0 1 1 1 fn2-seals))
+      (fn2-overlays (fn2-overlays-put 0 (phase *fn2-overlay-phase-frozen*) (schema 3) (seq 1) (count 1)))
+      (start-status (fn2-sealer-load-status fn2-seals fn2-overlays fn2-run-installed fn2-pool fn2-csnapshot))
+      (fn2-seals (fn2-seals-put 0 (phase *fn2-seal-phase-build*) (k 1)))
+      (fn2-ranges (fn2-ranges-put 0 (phase *fn2-range-phase-seek*) (schema 3) (cbase 0) (sbase 0) (rbase 64) (smax n) (scount 1)))
+      (fn2-range-sources (fn2-range-sources-put 0 (kind *fn2-range-kind-run*) (src 0) (cursor 0)))
+      (fn2-run-cursors (fn2-run-cursors-put 0 (phase *fn2-run-cursor-phase-miss*) (physical 1) (schema 3) (source-row 0)))
+      ((mv foreign & & fn2-run-cursors) (fn2-sealer-load-owner *fn2-idc-owner-kind* 12 1 fn2-seals fn2-ranges fn2-range-sources fn2-run-cursors fn2-run-loads fn2-checkpoint-summary-leases))
+      ((mv owned c load-phase fn2-run-cursors) (fn2-sealer-load-owner *fn2-idc-owner-kind* 11 1 fn2-seals fn2-ranges fn2-range-sources fn2-run-cursors fn2-run-loads fn2-checkpoint-summary-leases))
+      ((mv active-drain &) (fn2-sealer-load-drain 0 *fn2-idc-owner-kind* 11 1 fn2-seals fn2-run-loads))
+      (fn2-ranges (fn2-ranges-set-cbase 0 1 fn2-ranges))
+      ((mv bad-geometry & & fn2-run-cursors) (fn2-sealer-load-owner *fn2-idc-owner-kind* 11 1 fn2-seals fn2-ranges fn2-range-sources fn2-run-cursors fn2-run-loads fn2-checkpoint-summary-leases))
+      (fn2-seals (fn2-seals-set-phase 0 *fn2-seal-phase-release* fn2-seals))
+      ; Pending is synthetic here; real exact event completion is covered by
+      ; run-physical-loader-unit, not manufactured by this controller test.
+      (fn2-run-loads (fn2-run-loads-put 0 (pending 1) (phase *fn2-run-load-phase-wait*)))
+      ((mv pending &) (fn2-sealer-load-drain 0 *fn2-idc-owner-kind* 11 1 fn2-seals fn2-run-loads))
+      (fn2-run-loads (fn2-run-loads-put 0 (pending 0) (phase *fn2-run-load-phase-reserved*)))
+      ((mv scratch-released fn2-seals fn2-pool) (fn2-sealer-copy-release *fn2-idc-owner-kind* 11 1 fn2-seals fn2-run-loads fn2-pool))
+      ((mv cleaned fn2-run-loads fn2-run-cursors fn2-checkpoint-summary fn2-checkpoint-summary-leases fn2-pool)
+       (fn2-run-load-region-clean 0 0 n 0 0 0 0 *fn2-idc-owner-kind* 11 1 fn2-run-loads fn2-run-cursors fn2-checkpoint-summary fn2-checkpoint-summary-leases fn2-pool))
+      (good (and (eq admitted :ok) (equal complete 1) (eq reset-refused :bounds) (eq start-status :admit)
+       (eq foreign :source) (eq owned :ok) (equal c 0) (equal load-phase *fn2-run-load-phase-reserved*)
+       (eq active-drain :owner) (eq bad-geometry :source) (eq pending :wait) (eq scratch-released :ok) (eq cleaned :ok)
+       (equal (fn2-pool-class-countsi 0 fn2-pool) (+ n 1)) (equal (fn2-pool-class-countsi 1 fn2-pool) (+ n 1)) (equal (fn2-pool-class-countsi 2 fn2-pool) 1)
+       (fn2-run-load-region-freep 0 0 n 0 0 0 0 fn2-run-loads fn2-checkpoint-summary-leases))))
+  (mv good fn2-seals fn2-csnapshot fn2-ranges fn2-range-sources fn2-run-cursors fn2-run-loads
+   fn2-checkpoint-summary fn2-checkpoint-summary-leases fn2-pool fn2-overlays fn2-run-installed)))
+(assert-event
+ (fn2-spl-local (fn2-seals fn2-csnapshot fn2-ranges fn2-range-sources fn2-run-cursors fn2-run-loads
+                fn2-checkpoint-summary fn2-checkpoint-summary-leases fn2-pool fn2-overlays fn2-run-installed)
+  (mv-let (good fn2-seals fn2-csnapshot fn2-ranges fn2-range-sources fn2-run-cursors fn2-run-loads
+           fn2-checkpoint-summary fn2-checkpoint-summary-leases fn2-pool fn2-overlays fn2-run-installed)
+   (fn2-sealer-physical-admission-unit fn2-seals fn2-csnapshot fn2-ranges fn2-range-sources fn2-run-cursors fn2-run-loads
+    fn2-checkpoint-summary fn2-checkpoint-summary-leases fn2-pool fn2-overlays fn2-run-installed) good)))
+
+; The catalog/promise carrier is synthetic admission, not edge acquisition.
+; This witnesses only the actual RELEASE callback's identity/C-cut boundary
+; and preservation of an independent query lease across mutable row reuse.
+(defun fn2-sealer-physical-retire-unit (fn2-seals fn2-csnapshot fn2-checkpoint-summary fn2-checkpoint-summary-sources
+ fn2-checkpoint-cbase-holds fn2-run-installed fn2-checkpoint-summary-leases)
+ (declare (xargs :stobjs (fn2-seals fn2-csnapshot fn2-checkpoint-summary fn2-checkpoint-summary-sources
+ fn2-checkpoint-cbase-holds fn2-run-installed fn2-checkpoint-summary-leases) :verify-guards nil))
+ (b* ((fn2-seals (fn2-seals-init 1 fn2-seals)) (fn2-csnapshot (fn2-csnapshot-init 1 fn2-csnapshot))
+      (fn2-checkpoint-summary (fn2-checkpoint-summary-init 1 fn2-checkpoint-summary))
+      (fn2-checkpoint-summary-sources (fn2-checkpoint-summary-sources-init 2 fn2-checkpoint-summary-sources))
+      (fn2-checkpoint-cbase-holds (fn2-checkpoint-cbase-holds-init 1 fn2-checkpoint-cbase-holds))
+      (fn2-run-installed (fn2-run-installed-init 1 fn2-run-installed))
+      (fn2-checkpoint-summary-leases (fn2-checkpoint-summary-leases-init 1 fn2-checkpoint-summary-leases))
+      (fn2-seals (fn2-seals-set-phase 0 *fn2-seal-phase-release* fn2-seals))
+      (fn2-checkpoint-summary (fn2-checkpoint-summary-put 0 (phase *fn2-checkpoint-summary-phase-applied*) (candidate 0)
+       (tag 17) (checkpoint 1) (generation 3) (history 1) (incarnation 1) (owner-kind *fn2-idc-owner-kind*) (owner-slot 11) (owner-gen 1)
+       (count 1) (installed 1) (lease-count 1)))
+      (fn2-checkpoint-cbase-holds (fn2-checkpoint-cbase-holds-put 0 (phase *fn2-checkpoint-cbase-phase-held*)
+       (tag 17) (checkpoint 1) (generation 3) (history 1) (incarnation 1) (owner-kind *fn2-idc-owner-kind*) (owner-slot 11) (owner-gen 1)
+       (limit 1) (cursor 1) (seen 1)))
+      (fn2-checkpoint-summary-sources (fn2-checkpoint-summary-sources-put 1 (tag 17) (schema 3) (rank 7) (top 0) (entries 0)
+       (unit *fn2-storage-extent-units*) (epoch 4) (allocation 5)))
+      (fn2-run-installed (fn2-run-installed-put 0 (state *fn2-run-installed-state-retired*) (physical 1) (catalog-tag 17)
+       (schema 3) (run 7) (top 0) (entries 0) (unit *fn2-storage-extent-units*) (epoch 4) (counter 5)))
+      (fn2-checkpoint-summary-leases (fn2-checkpoint-summary-leases-put 0 (live 1) (tag 17) (extent 1) (run-row 0)
+       (owner-kind *fn2-idc-owner-kind*) (owner-slot 11) (owner-gen 1)))
+      (whole-premise (and (fn2-checkpoint-cbase-promised-p fn2-checkpoint-summary fn2-checkpoint-cbase-holds)
+       (fn2-checkpoint-summary-run-source-p 0 fn2-checkpoint-summary fn2-checkpoint-summary-sources fn2-run-installed)))
+      (fn2-csnapshot (fn2-csnapshot-set-phase 0 *fn2-csnapshot-phase-held* fn2-csnapshot))
+      ((mv held fn2-checkpoint-summary fn2-run-installed) (fn2-sealer-load-retire fn2-seals fn2-csnapshot fn2-checkpoint-summary
+       fn2-checkpoint-summary-sources fn2-checkpoint-cbase-holds fn2-run-installed))
+      (fn2-csnapshot (fn2-csnapshot-set-phase 0 *fn2-csnapshot-phase-idle* fn2-csnapshot))
+      (fn2-checkpoint-cbase-holds (fn2-checkpoint-cbase-holds-set-tag 0 16 fn2-checkpoint-cbase-holds))
+      ((mv mismatch fn2-checkpoint-summary fn2-run-installed) (fn2-sealer-load-retire fn2-seals fn2-csnapshot fn2-checkpoint-summary
+       fn2-checkpoint-summary-sources fn2-checkpoint-cbase-holds fn2-run-installed))
+      (unchanged (and (equal (fn2-checkpoint-summary-installed 0 fn2-checkpoint-summary) 1)
+       (equal (fn2-run-installed-state 0 fn2-run-installed) *fn2-run-installed-state-retired*)))
+      (fn2-checkpoint-cbase-holds (fn2-checkpoint-cbase-holds-set-tag 0 17 fn2-checkpoint-cbase-holds))
+      ((mv retired fn2-checkpoint-summary fn2-run-installed) (fn2-sealer-load-retire fn2-seals fn2-csnapshot fn2-checkpoint-summary
+       fn2-checkpoint-summary-sources fn2-checkpoint-cbase-holds fn2-run-installed))
+      (good (and whole-premise (eq held :busy) (eq mismatch :source) unchanged (eq retired :retired)
+       (equal (fn2-run-installed-state 0 fn2-run-installed) *fn2-run-installed-state-free*)
+       (equal (fn2-checkpoint-summary-installed 0 fn2-checkpoint-summary) 0)
+       (equal (fn2-checkpoint-summary-lease-count 0 fn2-checkpoint-summary) 1)
+       (equal (fn2-checkpoint-cbase-holds-phase 0 fn2-checkpoint-cbase-holds) *fn2-checkpoint-cbase-phase-held*)
+       (fn2-checkpoint-summary-lease-current-p 0 *fn2-idc-owner-kind* 11 1 fn2-checkpoint-summary
+        fn2-checkpoint-summary-sources fn2-checkpoint-summary-leases fn2-run-installed))))
+  (mv good fn2-seals fn2-csnapshot fn2-checkpoint-summary fn2-checkpoint-summary-sources
+   fn2-checkpoint-cbase-holds fn2-run-installed fn2-checkpoint-summary-leases)))
+(assert-event
+ (fn2-spl-local (fn2-seals fn2-csnapshot fn2-checkpoint-summary fn2-checkpoint-summary-sources fn2-checkpoint-cbase-holds fn2-run-installed fn2-checkpoint-summary-leases)
+  (mv-let (good fn2-seals fn2-csnapshot fn2-checkpoint-summary fn2-checkpoint-summary-sources fn2-checkpoint-cbase-holds fn2-run-installed fn2-checkpoint-summary-leases)
+   (fn2-sealer-physical-retire-unit fn2-seals fn2-csnapshot fn2-checkpoint-summary fn2-checkpoint-summary-sources fn2-checkpoint-cbase-holds fn2-run-installed fn2-checkpoint-summary-leases) good)))
+
+; Real byte-ownership crossing through FN2-SEAL-MERGE-ADD, not a parallel
+; encoder. Controller/source identity is synthetic; the concrete source
+; bytes, shared rehome, output writer and generated decoder are actual.
+(defun fn2-spl-copy-drive (fuel fn2-seals fn2-run-builds fn2-run-writers fn2-run-restarts fn2-run-cache fn2-fields fn2-pool)
+ (declare (xargs :stobjs (fn2-seals fn2-run-builds fn2-run-writers fn2-run-restarts fn2-run-cache fn2-fields fn2-pool)
+ :verify-guards nil :measure (nfix fuel)))
+ (cond ((equal (fn2-seals-held 0 fn2-seals) 0)
+        (mv :ok fn2-seals fn2-run-builds fn2-run-writers fn2-run-restarts fn2-run-cache fn2-fields fn2-pool))
+       ((zp fuel) (mv :fuel fn2-seals fn2-run-builds fn2-run-writers fn2-run-restarts fn2-run-cache fn2-fields fn2-pool))
+       (t (b* (((mv code fn2-seals fn2-run-builds fn2-run-writers fn2-run-restarts fn2-fields fn2-pool)
+                 (fn2-seal-merge-add 4096 fn2-seals fn2-run-builds fn2-run-writers fn2-run-restarts fn2-run-cache fn2-fields fn2-pool))
+                ((unless (member-eq code '(:ok :more)))
+                 (mv code fn2-seals fn2-run-builds fn2-run-writers fn2-run-restarts fn2-run-cache fn2-fields fn2-pool)))
+            (fn2-spl-copy-drive (- fuel 1) fn2-seals fn2-run-builds fn2-run-writers fn2-run-restarts fn2-run-cache fn2-fields fn2-pool)))))
+(defun fn2-sealer-physical-copy-unit (fn2-seals fn2-run-builds fn2-run-writers fn2-run-restarts fn2-run-cache fn2-fields fn2-pool)
+ (declare (xargs :stobjs (fn2-seals fn2-run-builds fn2-run-writers fn2-run-restarts fn2-run-cache fn2-fields fn2-pool) :verify-guards nil))
+ (b* ((fn2-seals (fn2-seals-init 1 fn2-seals)) (fn2-run-builds (fn2-run-builds-init 1 fn2-run-builds))
+      (fn2-run-writers (fn2-run-writers-init *fn2-run-max-levels* fn2-run-writers))
+      (fn2-run-restarts (fn2-run-restarts-init (* *fn2-run-max-levels* *fn2-run-restart-capacity*) fn2-run-restarts))
+      (fn2-run-cache (fn2-run-cache-init 16 fn2-run-cache))
+      (fn2-fields (fn2-fields-init (+ *fn2-seal-field-rows* *fn2-run-entry-rows*) fn2-fields))
+      (fn2-pool (fn2-pool-init '((4 . 4096) (3 . 65536)) 1 100 fn2-pool))
+      ((mv hash-code hash hgen fn2-pool) (fn2-pool-reserve 0 *fn2-idc-owner-kind* 0 1 fn2-pool))
+      ((mv copy-code scratch sgen fn2-pool) (fn2-pool-reserve 0 *fn2-idc-owner-kind* 0 1 fn2-pool))
+      ((mv src-code source source-gen fn2-pool) (fn2-pool-reserve 1 *fn2-idc-owner-kind* 11 1 fn2-pool))
+      ((mv wrote fn2-pool) (fn2-pool-write source source-gen 0 120 *fn2-idc-owner-kind* 11 1 fn2-pool))
+      (fn2-seals (fn2-seals-put 0 (phase *fn2-seal-phase-build*) (held 1) (sid 3) (run 1) (runs 1) (units 0)
+       (okind *fn2-idc-owner-kind*) (oslot 0) (ogen 1) (history 1) (history-incarnation 1)
+       (wbase 0) (fbase 0) (crow 0) (fill *fn2-run-page-size*) (hslot hash) (hgen hgen)
+       (source-kind *fn2-idc-owner-kind*) (source-slot 11) (source-gen 1)))
+      ((mv started fn2-run-builds fn2-run-writers fn2-pool)
+       (fn2-run-build-start 0 3 1 0 0 0 hash hgen 0 *fn2-run-page-size* 1 1 *fn2-idc-owner-kind* 0 1 fn2-run-builds fn2-run-writers fn2-pool))
+      (base *fn2-seal-eb*)
+      (fn2-fields (fn2-fields-put (+ base *fn2-overview-entry-field-group*) (value 1) (ref-len 0)))
+      (fn2-fields (fn2-fields-put (+ base *fn2-overview-entry-field-number*) (value 1) (ref-len 0)))
+      (fn2-fields (fn2-fields-put (+ base *fn2-overview-entry-field-article*) (value 42) (ref-len 0)))
+      (fn2-fields (fn2-fields-put (+ base *fn2-overview-entry-field-position*) (value 1) (ref-len 0)))
+      (fn2-fields (fn2-fields-put (+ base *fn2-overview-entry-field-line*) (ref-slot source) (ref-gen source-gen) (ref-off 0) (ref-len 1)))
+      ((mv no-scratch fn2-seals fn2-run-builds fn2-run-writers fn2-run-restarts fn2-fields fn2-pool)
+       (fn2-seal-merge-add 4096 fn2-seals fn2-run-builds fn2-run-writers fn2-run-restarts fn2-run-cache fn2-fields fn2-pool))
+      (refused (and (eq no-scratch :owner) (equal (fn2-run-builds-entries 0 fn2-run-builds) 0) (equal (fn2-seals-held 0 fn2-seals) 1)))
+      (fn2-seals (fn2-seals-put 0 (copy-live 1) (copy-slot scratch) (copy-gen sgen)))
+      ((mv copied fn2-seals fn2-run-builds fn2-run-writers fn2-run-restarts fn2-run-cache fn2-fields fn2-pool)
+       (fn2-spl-copy-drive (+ 6 (fn2-run-layout-fields 3 0)) fn2-seals fn2-run-builds fn2-run-writers fn2-run-restarts fn2-run-cache fn2-fields fn2-pool))
+      (slot (fn2-run-writers-slot 0 fn2-run-writers)) (gen (fn2-run-writers-gen 0 fn2-run-writers))
+      (decoded-base *fn2-seal-field-rows*)
+      ((mv decoded & fn2-fields) (fn2-run-layout-decode 3 0 decoded-base slot gen *fn2-run-entries-base*
+       (fn2-run-writers-cursor 0 fn2-run-writers) *fn2-idc-owner-kind* 0 1 fn2-fields fn2-pool))
+      (line (+ decoded-base *fn2-overview-entry-field-line*))
+      ((mv byte-code byte) (fn2-pool-read (fn2-fields-ref-slot line fn2-fields) (fn2-fields-ref-gen line fn2-fields)
+       (fn2-fields-ref-off line fn2-fields) *fn2-idc-owner-kind* 0 1 fn2-pool))
+      ((mv original-code original) (fn2-pool-read source source-gen 0 *fn2-idc-owner-kind* 11 1 fn2-pool))
+      (good (and (eq hash-code :ok) (eq copy-code :ok) (eq src-code :ok) (eq wrote :ok) (eq started :ok)
+       refused (eq copied :ok) (equal (fn2-run-builds-entries 0 fn2-run-builds) 1) (equal (fn2-seals-held 0 fn2-seals) 0)
+       (eq decoded :ok) (equal (fn2-fields-value (+ decoded-base *fn2-overview-entry-field-article*) fn2-fields) 42)
+       (eq byte-code :ok) (equal byte 120) (eq original-code :ok) (equal original 120)
+       (equal (fn2-fields-ref-slot line fn2-fields) slot))))
+  (mv good fn2-seals fn2-run-builds fn2-run-writers fn2-run-restarts fn2-run-cache fn2-fields fn2-pool)))
+(assert-event
+ (fn2-spl-local (fn2-seals fn2-run-builds fn2-run-writers fn2-run-restarts fn2-run-cache fn2-fields fn2-pool)
+  (mv-let (good fn2-seals fn2-run-builds fn2-run-writers fn2-run-restarts fn2-run-cache fn2-fields fn2-pool)
+   (fn2-sealer-physical-copy-unit fn2-seals fn2-run-builds fn2-run-writers fn2-run-restarts fn2-run-cache fn2-fields fn2-pool) good)))

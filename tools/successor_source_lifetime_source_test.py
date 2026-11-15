@@ -32,7 +32,18 @@ class Source(unittest.TestCase):
     def test_raw_expression_identity(self):
         old=(ROOT/'tools/fixtures/successor-source-before.lisp').read_text()
         for name,source in [('fn2-succ-resolve',self.resolve),('fn2-succ-stage',self.stage)]:
-            self.assertEqual(canon(node(old,name).items[-1]),canon(node(source,name+'-raw').items[-1]))
+            expected=canon(node(old,name).items[-1])
+            if name=='fn2-succ-resolve':
+                # The physical loader adds the actual query owner tuple to
+                # the same sole step call; retain the fixed original kernel.
+                def owner_abi(form):
+                    if not isinstance(form,tuple):return form
+                    if form[:4]==('fn2-succ-resolve-step','tx','budget','b0'):
+                        return form[:4]+('qk','qs','qg')+form[4:]
+                    return tuple(owner_abi(x) for x in form)
+                expected=owner_abi(expected)
+                self.assertEqual(len(lr.match('(fn2-succ-resolve-step tx budget b0 qk qs qg ?*rest)',[node(source,name+'-raw')])),1)
+            self.assertEqual(expected,canon(node(source,name+'-raw').items[-1]))
     def test_removed_reference_strip_refused(self):
         with self.assertRaises(ValueError):check_resolve(self.resolve.replace('(ref-gen 0)','(ref-gen (fn2-fields-ref-gen from fn2-fields))'))
     def test_failed_stage_without_cleanup_refused(self):

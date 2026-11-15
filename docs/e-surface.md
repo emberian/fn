@@ -157,7 +157,18 @@ unread, an ack past what the reader could see is refused, and another principal'
 it (the global frontier would disclose other writers' activity). Served as one positioned seek over the
 addr key (principal, position), at most 61 probes over u60 positions (`fn2-cns-stream-frontier`, at both
 sites: `fn2-cns-lookup-cursor` and `fn2-cns-decode-port`); a frontier the store cannot answer refuses
-the request `unavailable`. Fixture: `tests/consumer-commit-unit.lisp`. An `:unchanged` after the stage (another ack won the race) re-reads the
+the request `unavailable`. The physical-source continuation is retained in
+`fn2-cns-read-work`, bound to the actual admitted consumer request generation and
+its exact query inputs. Each callback initializes or advances one C step;
+`:more` yields and `:miss` waits for the shared authenticated page loader, without
+releasing the read or advancing the proposal. Addr selection retains its position,
+article and stream through the article lookup. Overview Message-ID and reference
+lookups finish before reply encoding; a copied span is reused only for the same
+owned request lease and unchanged publication stamp. These are source changes;
+actor routing, shared byte-cost integration and runtime qualification are separate
+gates. The prepared lower-carrier control has explicit synthetic owner/generation
+premises and is not an admitted-actor or physical-read witness.
+Fixture: `tests/consumer-commit-unit.lisp`. An `:unchanged` after the stage (another ack won the race) re-reads the
 position and answers by the same rule. Delivery is at-least-once until ack; exactly-once is the consumer's (§10.1).
 A rebase is a new registration epoch: `:keep` keeps the recorded position and the starts of the streams
 that stay, a new stream added from now (INBOX §4.3, so joining a room never rescans); `:now` moves to the
@@ -712,7 +723,7 @@ Outbound feeding and catchup coverage remain the implementation frontier in
    count and source digest); a record's octets are read by B's block read into the request's lease (:fetch),
    the Message-ID is the overview row's sought by position in the group, and `fn2-cns-put-item` encodes the
    item (`fn2-fnct-item`) and appends it after the request, so the items are contiguous and the page's next
-   is the position through which the walk is complete (MORE when the client's limit, the walk's step bound or
+   is the position through which the walk is complete (MORE when the client's limit or
    the range's room stopped it; the range holds the items three times, `fn2-cns-item-fits`). The control connection's one range is the profile's smallest pool class of at least `*fn2-ctl-io-bytes*` (4096) octets (admission class `(:bytes B)`, machines.lisp), so a page carries records whatever the class numbering; each request row reads on its own read row (`fn2-cns-read-row`: the `:cns` rows before the authority block). `fetch` (code
    13) answers the occurrence's stored octets when its Message-ID is the request's and they fit one reply,
    `withdrawn`, else `unavailable` (never another selection). Owed: an item's streams and reasons (the one

@@ -94,10 +94,10 @@
 
 ; The run leg, between runs: start the cursor in the newest live run of SID
 ; below the bound, or answer :absent past the last.
-(defun fn2-xl-run-next (tx sid rb fn2-succ-txns fn2-run-installed fn2-run-cursors)
+(defun fn2-xl-run-next (tx sid rb qk qs qg fn2-succ-txns fn2-run-installed fn2-run-cursors)
  (declare (xargs :stobjs (fn2-succ-txns fn2-run-installed fn2-run-cursors)
   :guard (and (fn2-succ-txns-wfp fn2-succ-txns) (fn2-run-installed-wfp fn2-run-installed) (fn2-run-cursors-wfp fn2-run-cursors))
-  :guard-hints (("Goal" :in-theory (disable fn2-run-cursor-start fn2-xl-done)))))
+  :guard-hints (("Goal" :in-theory (disable fn2-run-cursor-start-installed fn2-xl-done)))))
  (b* (((unless (and (natp tx) (< tx (fn2-succ-txns-rows fn2-succ-txns)) (natp rb)))
        (mv :bounds fn2-succ-txns fn2-run-cursors))
       (rows (fn2-run-installed-rows fn2-run-installed))
@@ -105,19 +105,15 @@
       ((unless (and (natp r) (< r rows)))
        (mv-let (code fn2-succ-txns) (fn2-xl-done tx :absent fn2-succ-txns) (mv code fn2-succ-txns fn2-run-cursors)))
       ((mv code fn2-run-cursors)
-       (fn2-run-cursor-start tx sid (fn2-run-installed-top r fn2-run-installed) (fn2-run-installed-slot r fn2-run-installed)
-                             (fn2-run-installed-gen r fn2-run-installed) (fn2-run-installed-unit r fn2-run-installed)
-                             (fn2-run-installed-counter r fn2-run-installed) rb
-                             (fn2-run-installed-okind r fn2-run-installed) (fn2-run-installed-oslot r fn2-run-installed)
-                             (fn2-run-installed-ogen r fn2-run-installed) fn2-run-cursors))
+       (fn2-run-cursor-start-installed tx r rb qk qs qg fn2-run-installed fn2-run-cursors))
       ((unless (eq code :ok)) (mv code fn2-succ-txns fn2-run-cursors))
       (run (fn2-run-installed-run r fn2-run-installed))
       ((unless (and (unsigned-byte-p 60 run) (unsigned-byte-p 32 r))) (mv :bounds fn2-succ-txns fn2-run-cursors))
       (fn2-succ-txns (fn2-succ-txns-put tx (lphase *fn2-succ-lookup-scan*) (lbound run) (lrow r))))
   (mv :more fn2-succ-txns fn2-run-cursors)))
-(fn2-idc-fn-shape fn2-xl-run-next (tx sid rb fn2-succ-txns fn2-run-installed fn2-run-cursors)
+(fn2-idc-fn-shape fn2-xl-run-next (tx sid rb qk qs qg fn2-succ-txns fn2-run-installed fn2-run-cursors)
  (fn2-succ-txns fn2-run-cursors) (fn2-succ-txns fn2-run-installed fn2-run-cursors) t
- (fn2-succ-newest-run fn2-run-cursor-start fn2-xl-done fn2-succ-txns-lbound fn2-run-installed-run
+ (fn2-succ-newest-run fn2-run-cursor-start-installed fn2-xl-done fn2-succ-txns-lbound fn2-run-installed-run
   fn2-run-installed-top fn2-run-installed-slot fn2-run-installed-gen fn2-run-installed-unit fn2-run-installed-counter
   fn2-run-installed-okind fn2-run-installed-oslot fn2-run-installed-ogen))
 
@@ -154,7 +150,7 @@
     (mv-let (code fn2-succ-txns) (fn2-xl-restart tx sid fn2-succ-txns fn2-run-installed)
      (mv code 0 fn2-succ-txns fn2-run-cursors fn2-run-paths fn2-fields)))
    ((equal lphase *fn2-succ-lookup-runs*)
-    (mv-let (code fn2-succ-txns fn2-run-cursors) (fn2-xl-run-next tx sid rb fn2-succ-txns fn2-run-installed fn2-run-cursors)
+    (mv-let (code fn2-succ-txns fn2-run-cursors) (fn2-xl-run-next tx sid rb qk qs qg fn2-succ-txns fn2-run-installed fn2-run-cursors)
      (mv code 0 fn2-succ-txns fn2-run-cursors fn2-run-paths fn2-fields)))
    (t
     (b* (((mv code fn2-run-cursors fn2-run-paths fn2-fields)
@@ -504,16 +500,16 @@
  (declare (xargs :guard t))
  (fn2-profile-owner-account profile))
 
-(defcost fn2-group-lookup :answers (:absent :bad-magic :bounds :done :end :entry :format :invariant :length :lost :miss :more
+(defcost fn2-group-lookup :answers (:source :reference :hash :source-header :source-index :page-kind :absent :bad-magic :bounds :done :end :entry :format :invariant :length :lost :miss :more
   :noncanonical :ok :owner :part :payload :schema :stale :state :truncated :unknown-tag :wide)
- :bytes 4096
+ :bytes *fn2-c-read-step-bytes*
  :tables (fn2-core-succ-txns fn2-core-run-cursors fn2-core-run-paths fn2-core-fields)
- :doc "One source of a group-name lookup: one overlay search (at most 250-octet compares over 9 probes) or one run step of at most 4,096 pool reads.")
-(defcost fn2-principal-lookup :answers (:absent :bad-magic :bounds :done :end :entry :format :invariant :length :lost :miss :more
+ :doc "One source of a group-name lookup: one overlay search (under the declared overlay probe and key bounds) or one run step under the generated codec work bound.")
+(defcost fn2-principal-lookup :answers (:source :reference :hash :source-header :source-index :page-kind :absent :bad-magic :bounds :done :end :entry :format :invariant :length :lost :miss :more
   :noncanonical :ok :owner :part :payload :schema :stale :state :truncated :unknown-tag :wide)
- :bytes 4096
+ :bytes *fn2-c-read-step-bytes*
  :tables (fn2-core-succ-txns fn2-core-run-cursors fn2-core-run-paths fn2-core-fields)
- :doc "One source of a principal-name lookup in fn2-principals: one overlay search (at most 64-octet compares) or one run step of at most 4,096 pool reads.")
+ :doc "One source of a principal-name lookup in fn2-principals: one overlay search (at most 64-octet compares) or one run step under the generated codec work bound.")
 (defcost fn2-principal-of-slot :answers (:ok :state)
  :doc "The durable principal id (slot * 2^32 + incarnation) of an account slot: (mv code id).")
 
@@ -660,11 +656,11 @@
 (defcost fn2-identity-decide-start :answers (:bounds :ok :state)
  :tables (fn2-core-succ-txns fn2-core-id-decides fn2-core-fields)
  :doc "Start a transaction's identity decision: its query (five rows) written, its lookup idle.")
-(defcost fn2-identity-decide :child fn2-identity-decide-child :answers (:bad-magic :bounds :conflict :done :duplicate :end :entry :evidence :format :invariant :length
+(defcost fn2-identity-decide :child fn2-identity-decide-child :answers (:source :reference :hash :source-header :source-index :page-kind :bad-magic :bounds :conflict :done :duplicate :end :entry :evidence :format :invariant :length
   :lost :miss :more :noncanonical :owner :part :payload :schema :stale :state :stored :truncated :unknown-tag :wide)
- :bytes 4096
+ :bytes *fn2-c-read-step-bytes*
  :tables (fn2-core-succ-txns fn2-core-id-decides fn2-core-run-cursors fn2-core-run-paths fn2-core-fields)
- :doc "One source of an identity decision's two exact reads (the summary, then the candidate): one overlay search or one run step of at most 4,096 pool reads.")
+ :doc "One source of an identity decision's two exact reads (the summary, then the candidate): one overlay search or one run step under the generated codec work bound.")
 (defcost fn2-identity-facts :answers (:ok :state) :child fn2-id-facts
  :doc "Read a done decision's facts: verdict, selection, candidate ordinal, evidence status, coverage.")
 (defmacro fn2-identity-core-events ()

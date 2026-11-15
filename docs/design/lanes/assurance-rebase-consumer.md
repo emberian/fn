@@ -101,3 +101,35 @@ or a second checkpoint's successful native execution; all ACL2 assertions remain
 unrun. Full-prefix canonical journal retention is still an intermediate format.
 Physical reclamation still needs the parent-owned bank/archive contract and
 actual live C adoption, plus the decisive two-checkpoint reclaim/reuse control.
+
+The canonical-byte archive now composes the immutable physical run loader from
+`8d1c967e8`. Its sector issue and page verification/header transitions are factored
+into `fn2-run-bound-issue` and `fn2-run-bound-step`; catalog wrappers still require
+the exact current catalog lease every turn. `fn2-run-load-boundp` checks only the
+shared physical cursor/fullRef/owner binding and grants no descriptor authority.
+Five structural controls compare both transition bodies with the original source,
+partition every old source predicate clause, and require one physical read and
+one page verifier implementation. These are source controls, not ACL2 admission.
+Schema20 is reserved for internal canonical member bytes and the actual shared
+phase3 leaf digest; schema21 remains reserved for future real carry-node output.
+
+The common physical engine no longer imports cold catalogs or boot orchestration.
+Its actual harvest observer moved unchanged into the lower I/O book. Boot's whole
+configuration declaration and geometry word/copy/load bodies moved unchanged into
+`boot-config-state` / `boot-geometry-state`; publication and boot keep those same
+exports. The structural extraction accepts the integrator's current declaration,
+including future fields, and preserves unrelated bank/recovery forms. Four source
+controls compare the parent2aed declaration, added-field preservation, helper
+ASTs, and the real include closure; six engine controls also compare harvest.
+No loader body, source authority, parser, hash, or completion semantics changed.
+
+Schema20's generated restart-decode maximum exceeds the former32768 boot bound.
+The actual stored restart interval is now shared B geometry; boot's named byte
+budget is `(restart-interval+2)*page-size`. The sole C assembly asserts entryMAX
+fits one page, header/directory/hash overhead fits two pages, and the exact
+assembled decode bound fits this envelope. Boot still charges exact assembled
+cost. The actual executor takes its work grant from registered machine budgets
+and multiplies that maximum by profile visits, so the new declaration propagates
+into fresh-turn room. Four source controls trace this path; the runnable actual
+registry/tiny/concrete quantum and missing-grant controls are unrun. This is no
+claim about all C accounting or measured native turn latency.

@@ -77,14 +77,15 @@ class Root1SourceBoundary(unittest.TestCase):
     def test_exact_harvest_hooks_and_issue_success_abi(self):
         resources = (ROOT / "books/checkpoint-metadata-resources.lisp").read_text()
         driver = (ROOT / "books/checkpoint-metadata-driver.lisp").read_text()
-        children = {tree[1]: tree for text in forms(resources)
+        declarations = resources + "\n" + (ROOT / "books/boot-kind.lisp").read_text() + "\n" + (ROOT / "books/machines-c.lisp").read_text()
+        children = {tree[1]: tree for text in forms(declarations)
                     if isinstance((tree := read_sexp(text)), list) and tree
-                    and tree[0] == "fn2-sealer-child"}
+                    and tree[0] in ("fn2-sealer-child", "defcorechild")}
         hooks = []
-        for field in ("fn2-core-checkpoint-semantic", "fn2-core-checkpoint-payload"):
+        for field in ("fn2-core-checkpoint-semantic", "fn2-core-checkpoint-payload", "fn2-core-run-load-ops"):
             declaration = children[field]
             hooks.append(declaration[declaration.index(":harvest") + 1][0])
-        self.assertEqual(hooks, ["fn2-checkpoint-semantic-harvest", "fn2-checkpoint-payload-harvest-children"])
+        self.assertEqual(hooks, ["fn2-checkpoint-semantic-harvest", "fn2-checkpoint-payload-harvest-children", "fn2-run-load-harvest"])
         self.assertNotIn("fn2-checkpoint-root1-harvest", operations(driver))
         normalized = [n for text in forms(driver) for n in nodes(read_sexp(text))
                       if n and n[0] == "fn2-checkpoint-root1-read-mv"
@@ -97,8 +98,10 @@ class Root1SourceBoundary(unittest.TestCase):
         for name, op in operations(source).items():
             self.assertEqual(assigned_carriers(op, outputs), outputs[name], name)
             self.assertLessEqual(1 + len(outputs[name]), 32, name)
-        self.assertEqual(1 + len(outputs["fn2-checkpoint-root1-step"]), 28)
-        self.assertEqual(3 + len(outputs["fn2-checkpoint-root1-read"]), 17)
+        self.assertEqual(1 + len(outputs["fn2-checkpoint-root1-step"]), 31)
+        self.assertEqual(3 + len(outputs["fn2-checkpoint-root1-read"]), 19)
+        self.assertTrue({"fn2-run-loads", "fn2-checkpoint-summary", "fn2-checkpoint-summary-leases"}.issubset(outputs["fn2-checkpoint-root1-work"]))
+        self.assertTrue({"fn2-run-loads", "fn2-run-load-ops"}.issubset(outputs["fn2-checkpoint-root1-read"]))
         # A real output from the manifest scan must survive closure dispatch.
         damaged = {name: set(values) for name, values in outputs.items()}
         damaged["fn2-checkpoint-root1-closure"].remove("fn2-checkpoint-metadata-manifest")

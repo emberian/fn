@@ -28,7 +28,7 @@
 ;     version move (fn2-xl-step). A delivered entry is read (fn2-read-value,
 ;     fn2-read-octets) only while its schema's run version is the one it was
 ;     delivered under, else :stale: no read touches a freed arena. :miss
-;     keeps its word though resident pages cannot raise it before M2.
+;     names the actual physical cursor awaiting the request's bounded loader.
 ; (c) fn2-read-frontier: the view a connection pins, C's :published
 ;     position (fn2-id-engine, written by fn2-succ-publish as max(published,
 ;     batch cov)), read through C's fn2-successor-published; (mv code
@@ -53,7 +53,7 @@
 
 ; ---------------------------------------------------------------------------
 ; The stripe.
-(defconst *fn2-read-sources* 8)
+(defconst *fn2-read-sources* *fn2-b-range-source-cursors*)
 (defconst *fn2-read-lo* 0)
 (defconst *fn2-read-hi* *fn2-run-entry-rows*)
 (defconst *fn2-read-heads* (* 2 *fn2-run-entry-rows*))
@@ -62,7 +62,7 @@
                    (equal (fn2-b-read-rows '((:x . 4))) 0) (equal (fn2-b-read-rows '((:x . 4) (:reading . t))) 8)
                    (equal (fn2-b-read-rows '((:x . 4) (:reading . t) (:cns . 3))) 11)
                    (equal (fn2-b-field-rows '((:t . 3) (:x . 2) (:reading . t) (:format-slots . 3)))
-                          (+ (* 3 *fn2-idc-b-stripe*) (* 3 *fn2-idc-stride*) *fn2-b-seal-field-rows* (* 4 *fn2-b-read-stride*)))))
+                          (+ (* 3 *fn2-idc-b-stripe*) (* 3 *fn2-idc-stride*) *fn2-b-seal-field-rows* *fn2-b-checkpoint-field-rows* (* 4 *fn2-b-read-stride*)))))
 
 ; A read row: the operation it holds (one at a time), the schema, the
 ; owner its octet key fields are read under (QSET once given), and the
@@ -253,9 +253,16 @@
       (ever (fn2-run-version sid (fn2-run-installed-rows fn2-run-installed) fn2-run-installed))
       ((unless (and (unsigned-byte-p 32 erow) (unsigned-byte-p 60 ever)))
        (mv :bounds fn2-reads fn2-succ-txns fn2-run-cursors fn2-run-paths fn2-fields))
+      ; Overlay results use the shared C arena. A physical run result's
+      ; octet references name the request-owned authenticated cursor page.
+      (physical (and (< tx (fn2-run-cursors-rows fn2-run-cursors))
+                     (equal erow (+ b0 *fn2-read-heads* *fn2-run-reader-entry*))
+                     (equal (fn2-run-cursors-physical tx fn2-run-cursors) 1)))
       (fn2-reads (if (eq code :ok)
                      (fn2-reads-put x (op *fn2-read-op-lookup*) (sid sid) (entry 1) (erow erow)
-                                    (ek *fn2-idc-owner-kind*) (es *fn2-idc-owner-slot*) (eg *fn2-idc-owner-gen*) (ever ever))
+                                    (ek (if physical (fn2-run-cursors-okind tx fn2-run-cursors) *fn2-idc-owner-kind*))
+                                    (es (if physical (fn2-run-cursors-oslot tx fn2-run-cursors) *fn2-idc-owner-slot*))
+                                    (eg (if physical (fn2-run-cursors-ogen tx fn2-run-cursors) *fn2-idc-owner-gen*)) (ever ever))
                    (fn2-reads-put x (op *fn2-read-op-lookup*) (sid sid) (entry 0)))))
   (mv code fn2-reads fn2-succ-txns fn2-run-cursors fn2-run-paths fn2-fields)))
 (fn2-rd-shape fn2-rd-lookup (x sid budget b0 tn fn2-reads fn2-succ-txns fn2-overlays fn2-overlay-index fn2-run-installed
@@ -891,26 +898,26 @@
  :tables (fn2-core-reads fn2-core-fields)
  :doc "Point one octet key field of a read row's lo key at a caller's workspace.")
 (defcost fn2-read-lookup :child fn2-read-lookup-children :answers (:absent :bad-magic :bounds :done :end :entry :format :invariant :length :lost :miss :more
-  :noncanonical :ok :owner :part :payload :schema :stale :state :truncated :unknown-tag :wide)
- :bytes 4096
+  :noncanonical :ok :owner :part :payload :schema :stale :state :truncated :unknown-tag :wide :source :reference :hash :source-header :source-index :page-kind)
+ :bytes *fn2-c-read-step-bytes*
  :tables (fn2-core-reads fn2-core-succ-txns fn2-core-run-cursors fn2-core-run-paths fn2-core-fields)
- :doc "One source of a read row's exact lookup: one overlay search or one run step of at most 4,096 pool reads.")
+ :doc "One source of a read row's exact lookup: one overlay search or one run step under the generated codec work bound.")
 (defcost fn2-read-range :child fn2-read-range-children :answers (:bounds :key-kind :ok :sources :state)
  :bytes 256 :tables (fn2-core-reads fn2-core-ranges fn2-core-range-sources)
  :doc "Start a read row's range read: enumerate the schema's overlays and live runs into at most eight sources.")
 (defcost fn2-read-next :child fn2-read-next-children :answers (:absent :bad-magic :bounds :done :end :entry :format :found :invariant :key-kind :length :miss
   :more :noncanonical :owner :part :payload :schema :sources :stale :state :truncated :unknown-tag
-  :wide)
- :bytes 4096
+  :wide :source :reference :hash :source-header :source-index :page-kind)
+ :bytes *fn2-c-read-step-bytes*
  :tables (fn2-core-reads fn2-core-ranges fn2-core-range-sources fn2-core-run-cursors fn2-core-run-paths fn2-core-fields)
- :doc "One range step: each of at most eight sources advanced by at most the budget's pool reads, one entry delivered.")
+ :doc "One range step: at most one actual source advanced under the generated codec work bound, one entry delivered.")
 (defcost fn2-read-seek :child fn2-read-seek-children :answers (:bounds :key-kind :ok :sources :state)
  :bytes 256 :tables (fn2-core-reads fn2-core-seeks fn2-core-ranges fn2-core-range-sources)
  :doc "Start a read row's positioned seek over its range row.")
 (defcost fn2-read-seek-step :child fn2-read-seek-step-children :answers (:absent :bad-magic :bounds :done :end :entry :format :found :invariant :key-kind :length :miss
   :more :noncanonical :owner :part :payload :schema :sources :stale :state :truncated :unknown-tag
-  :wide)
- :bytes 4096
+  :wide :source :reference :hash :source-header :source-index :page-kind)
+ :bytes *fn2-c-read-step-bytes*
  :tables (fn2-core-seeks fn2-core-ranges fn2-core-range-sources fn2-core-run-cursors fn2-core-run-paths fn2-core-fields)
  :doc "One step of a positioned seek: a probe's range start or one range step.")
 (defcost fn2-read-value :child fn2-read-value-children :answers (:bounds :ok :stale :state)
@@ -922,15 +929,15 @@
  :bytes 256 :tables (fn2-core-reads fn2-core-ranges fn2-core-range-sources fn2-core-fields)
  :doc "Start a read row's whole-schema ordered scan: the least key, the schema's overlays and live runs into at most eight sources.")
 (defcost fn2-read-scan-next :child fn2-read-scan-next-children :answers (:absent :bad-magic :bounds :done :end :entry :format :found :invariant :length :miss :more
-  :noncanonical :owner :part :payload :schema :sources :stale :state :truncated :unknown-tag :wide)
- :bytes 4096
+  :noncanonical :owner :part :payload :schema :sources :stale :state :truncated :unknown-tag :wide :source :reference :hash :source-header :source-index :page-kind)
+ :bytes *fn2-c-read-step-bytes*
  :tables (fn2-core-reads fn2-core-ranges fn2-core-range-sources fn2-core-run-cursors fn2-core-run-paths fn2-core-fields fn2-core-pool)
- :doc "One scan step: each of at most eight sources advanced by at most the budget's pool reads, one entry delivered and its key (at most 512 octets a field) saved.")
+ :doc "One scan step: at most one actual source advanced under the generated codec work bound, one entry delivered and its key (at most 512 octets a field) saved.")
 (defcost fn2-read-identity :child fn2-read-identity-children :answers (:absent :bad-magic :bounds :done :end :entry :evidence :format :found
-  :invariant :length :lost :miss :more :noncanonical :owner :part :payload :schema :stale :state :truncated :unknown-tag :wide)
- :bytes 4096
+  :invariant :length :lost :miss :more :noncanonical :owner :part :payload :schema :stale :state :truncated :unknown-tag :wide :source :reference :hash :source-header :source-index :page-kind)
+ :bytes *fn2-c-read-step-bytes*
  :tables (fn2-core-reads fn2-core-succ-txns fn2-core-run-cursors fn2-core-run-paths fn2-core-fields)
- :doc "One source of an identity read's two exact lookups (the article index, then the summary): one overlay search or one run step of at most 4,096 pool reads; the answer is (code article candidates).")
+ :doc "One source of an identity read's two exact lookups (the article index, then the summary): one overlay search or one run step under the generated codec work bound; the answer is (code article candidates).")
 (defcost fn2-read-frontier :child fn2-succ-published :answers (:ok :state) :tables (fn2-core-id-engine)
  :doc "The served frontier, C's :published position: (mv code position). Pure: reads the engine, writes nothing.")
 (defcost fn2-read-release :child fn2-read-release-children :answers (:bounds :ok :state)

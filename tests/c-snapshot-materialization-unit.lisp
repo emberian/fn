@@ -13,7 +13,7 @@
 (defun fn2-csm-resolve (fuel fn2-core)
  (declare (xargs :stobjs fn2-core :verify-guards nil :measure (nfix fuel)))
  (if (zp fuel) (mv :fuel fn2-core)
-  (mv-let (code fn2-core) (fn2-successor-resolve 0 4096 fn2-core)
+  (mv-let (code fn2-core) (fn2-successor-resolve 0 4096 *fn2-idc-owner-kind* *fn2-idc-owner-slot* *fn2-idc-owner-gen* fn2-core)
    (if (eq code :more) (fn2-csm-resolve (- fuel 1) fn2-core) (mv code fn2-core)))))
 
 ; The real B writer publishes a real C member, but its fixture owner delays

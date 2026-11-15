@@ -568,11 +568,11 @@
 
 ;; Slot S at RI, its run search in state :next: start the lookup in the
 ;; newest run below the bound, or resolve the slot absent.
-(defun fn2-succ-resolve-next (tx s b0 fn2-succ-txns fn2-succ-slots fn2-run-installed fn2-run-cursors)
+(defun fn2-succ-resolve-next (tx s b0 qk qs qg fn2-succ-txns fn2-succ-slots fn2-run-installed fn2-run-cursors)
  (declare (xargs :stobjs (fn2-succ-txns fn2-succ-slots fn2-run-installed fn2-run-cursors)
   :guard (and (fn2-succ-txns-wfp fn2-succ-txns) (fn2-succ-slots-wfp fn2-succ-slots) (fn2-run-installed-wfp fn2-run-installed)
               (fn2-run-cursors-wfp fn2-run-cursors) (natp s) (< s (fn2-succ-slots-rows fn2-succ-slots)) (natp b0))
-  :guard-hints (("Goal" :in-theory (disable fn2-run-cursor-start fn2-succ-resolved)))))
+  :guard-hints (("Goal" :in-theory (disable fn2-run-cursor-start-installed fn2-succ-resolved)))))
  (b* (((unless (and (natp tx) (< tx (fn2-succ-txns-rows fn2-succ-txns)) (natp s) (< s (fn2-succ-slots-rows fn2-succ-slots)) (natp b0)))
        (mv :bounds fn2-succ-txns fn2-succ-slots fn2-run-cursors))
       (sid (fn2-succ-slots-sid s fn2-succ-slots))
@@ -582,29 +582,25 @@
        (mv-let (code fn2-succ-txns fn2-succ-slots) (fn2-succ-resolved tx s nil t fn2-succ-txns fn2-succ-slots)
         (mv code fn2-succ-txns fn2-succ-slots fn2-run-cursors)))
       ((mv code fn2-run-cursors)
-       (fn2-run-cursor-start tx sid (fn2-run-installed-top r fn2-run-installed) (fn2-run-installed-slot r fn2-run-installed)
-                             (fn2-run-installed-gen r fn2-run-installed) (fn2-run-installed-unit r fn2-run-installed)
-                             (fn2-run-installed-counter r fn2-run-installed) (+ b0 *fn2-idc-rb*)
-                             (fn2-run-installed-okind r fn2-run-installed) (fn2-run-installed-oslot r fn2-run-installed)
-                             (fn2-run-installed-ogen r fn2-run-installed) fn2-run-cursors))
+       (fn2-run-cursor-start-installed tx r (+ b0 *fn2-idc-rb*) qk qs qg fn2-run-installed fn2-run-cursors))
       ((unless (eq code :ok)) (mv code fn2-succ-txns fn2-succ-slots fn2-run-cursors))
       (run (fn2-run-installed-run r fn2-run-installed))
       ((unless (unsigned-byte-p 60 run)) (mv :bounds fn2-succ-txns fn2-succ-slots fn2-run-cursors))
       (fn2-succ-txns (fn2-succ-txns-put tx (rstate *fn2-succ-resolve-look*) (rbound run))))
   (mv :more fn2-succ-txns fn2-succ-slots fn2-run-cursors)))
-(fn2-idc-fn-shape fn2-succ-resolve-next (tx s b0 fn2-succ-txns fn2-succ-slots fn2-run-installed fn2-run-cursors)
+(fn2-idc-fn-shape fn2-succ-resolve-next (tx s b0 qk qs qg fn2-succ-txns fn2-succ-slots fn2-run-installed fn2-run-cursors)
  (fn2-succ-txns fn2-succ-slots fn2-run-cursors) (fn2-succ-txns fn2-succ-slots fn2-run-installed fn2-run-cursors) t
- (fn2-succ-newest-run fn2-run-cursor-start fn2-succ-resolved fn2-succ-slots-sid fn2-succ-txns-rbound fn2-run-installed-run
+ (fn2-succ-newest-run fn2-run-cursor-start-installed fn2-succ-resolved fn2-succ-slots-sid fn2-succ-txns-rbound fn2-run-installed-run
   fn2-run-installed-top fn2-run-installed-slot fn2-run-installed-gen fn2-run-installed-unit fn2-run-installed-counter
   fn2-run-installed-okind fn2-run-installed-oslot fn2-run-installed-ogen))
 
-(defun fn2-succ-resolve-step (tx budget b0 fn2-succ-txns fn2-succ-slots fn2-run-installed fn2-run-cursors fn2-run-paths fn2-run-cache fn2-fields fn2-pool)
+(defun fn2-succ-resolve-step (tx budget b0 qk qs qg fn2-succ-txns fn2-succ-slots fn2-run-installed fn2-run-cursors fn2-run-paths fn2-run-cache fn2-fields fn2-pool)
  (declare (xargs :stobjs (fn2-succ-txns fn2-succ-slots fn2-run-installed fn2-run-cursors fn2-run-paths fn2-run-cache fn2-fields fn2-pool)
   :guard (and (fn2-succ-txns-wfp fn2-succ-txns) (fn2-succ-slots-wfp fn2-succ-slots) (fn2-run-installed-wfp fn2-run-installed)
               (fn2-run-cursors-wfp fn2-run-cursors) (fn2-run-paths-wfp fn2-run-paths) (fn2-run-cache-wfp fn2-run-cache)
               (fn2-fields-wfp fn2-fields) (fn2-pool-wfp fn2-pool) (natp budget) (natp b0)
               (natp tx) (< tx (fn2-succ-txns-rows fn2-succ-txns)) (<= (+ b0 *fn2-idc-stride*) (fn2-fields-rows fn2-fields)))
-  :guard-hints (("Goal" :in-theory (disable fn2-run-cursor-start fn2-succ-resolved fn2-succ-resolve-next fn2-run-lookup-step
+  :guard-hints (("Goal" :in-theory (disable fn2-run-cursor-start-installed fn2-succ-resolved fn2-succ-resolve-next fn2-run-lookup-step
                                             fn2-succ-key-rows fn2-succ-copy-scalar-rows fn2-fields-rows fn2-succ-slots-rows)))))
  (b* (((unless (and (natp tx) (< tx (fn2-succ-txns-rows fn2-succ-txns)) (natp b0)))
        (mv :bounds fn2-succ-txns fn2-succ-slots fn2-run-cursors fn2-run-paths fn2-fields))
@@ -641,7 +637,7 @@
      (mv :more fn2-succ-txns fn2-succ-slots fn2-run-cursors fn2-run-paths fn2-fields)))
    ((equal rstate *fn2-succ-resolve-next*)
     (mv-let (c fn2-succ-txns fn2-succ-slots fn2-run-cursors)
-      (fn2-succ-resolve-next tx s b0 fn2-succ-txns fn2-succ-slots fn2-run-installed fn2-run-cursors)
+      (fn2-succ-resolve-next tx s b0 qk qs qg fn2-succ-txns fn2-succ-slots fn2-run-installed fn2-run-cursors)
      (mv c fn2-succ-txns fn2-succ-slots fn2-run-cursors fn2-run-paths fn2-fields)))
    (t
     (b* (((mv c fn2-run-cursors fn2-run-paths fn2-fields)
@@ -664,7 +660,7 @@
                                                 (+ entry *fn2-succ-res*) fn2-fields))
          ((mv c fn2-succ-txns fn2-succ-slots) (fn2-succ-resolved tx s t t fn2-succ-txns fn2-succ-slots)))
      (mv c fn2-succ-txns fn2-succ-slots fn2-run-cursors fn2-run-paths fn2-fields))))))
-(fn2-idc-fn-shape fn2-succ-resolve-step (tx budget b0 fn2-succ-txns fn2-succ-slots fn2-run-installed fn2-run-cursors fn2-run-paths fn2-run-cache fn2-fields fn2-pool)
+(fn2-idc-fn-shape fn2-succ-resolve-step (tx budget b0 qk qs qg fn2-succ-txns fn2-succ-slots fn2-run-installed fn2-run-cursors fn2-run-paths fn2-run-cache fn2-fields fn2-pool)
  (fn2-succ-txns fn2-succ-slots fn2-run-cursors fn2-run-paths fn2-fields)
  (fn2-succ-txns fn2-succ-slots fn2-run-installed fn2-run-cursors fn2-run-paths fn2-run-cache fn2-fields fn2-pool) t
  (fn2-succ-txns-ri fn2-succ-txns-rstate fn2-succ-slots-sid fn2-succ-slots-kind fn2-succ-slots-phase fn2-run-version
@@ -676,7 +672,7 @@
 ; (a run page to load, as C-S1), or :ok when every slot is resolved. A
 ; transaction whose decision is in progress (it shares the run cursor) is
 ; refused :state.
-(defun fn2-succ-resolve-raw (tx budget b0 fn2-succ-txns fn2-succ-slots fn2-id-decides fn2-run-installed fn2-run-cursors fn2-run-paths
+(defun fn2-succ-resolve-raw (tx budget b0 qk qs qg fn2-succ-txns fn2-succ-slots fn2-id-decides fn2-run-installed fn2-run-cursors fn2-run-paths
                          fn2-run-cache fn2-fields fn2-pool)
  (declare (xargs :stobjs (fn2-succ-txns fn2-succ-slots fn2-id-decides fn2-run-installed fn2-run-cursors fn2-run-paths fn2-run-cache
                           fn2-fields fn2-pool) :guard t
@@ -693,8 +689,8 @@
                             (list *fn2-id-decide-phase-idle* *fn2-id-decide-phase-done*))))
        (mv :state fn2-succ-txns fn2-succ-slots fn2-run-cursors fn2-run-paths fn2-fields))
       (fn2-succ-txns (fn2-succ-txns-set-phase tx *fn2-succ-phase-open* fn2-succ-txns)))
-  (fn2-succ-resolve-step tx budget b0 fn2-succ-txns fn2-succ-slots fn2-run-installed fn2-run-cursors fn2-run-paths fn2-run-cache fn2-fields fn2-pool)))
-(fn2-idc-fn-shape fn2-succ-resolve-raw (tx budget b0 fn2-succ-txns fn2-succ-slots fn2-id-decides fn2-run-installed fn2-run-cursors fn2-run-paths
+  (fn2-succ-resolve-step tx budget b0 qk qs qg fn2-succ-txns fn2-succ-slots fn2-run-installed fn2-run-cursors fn2-run-paths fn2-run-cache fn2-fields fn2-pool)))
+(fn2-idc-fn-shape fn2-succ-resolve-raw (tx budget b0 qk qs qg fn2-succ-txns fn2-succ-slots fn2-id-decides fn2-run-installed fn2-run-cursors fn2-run-paths
                                     fn2-run-cache fn2-fields fn2-pool)
  (fn2-succ-txns fn2-succ-slots fn2-run-cursors fn2-run-paths fn2-fields)
  (fn2-succ-txns fn2-succ-slots fn2-id-decides fn2-run-installed fn2-run-cursors fn2-run-paths fn2-run-cache fn2-fields fn2-pool) t
@@ -703,20 +699,20 @@
 ; A completed resolve has no further use for the run reader's decoded page
 ; references. The caller may now release its source-read observer before C
 ; staging or B admission can park.
-(defun fn2-succ-resolve (tx budget b0 fn2-succ-txns fn2-succ-slots fn2-id-decides fn2-run-installed fn2-run-cursors fn2-run-paths
+(defun fn2-succ-resolve (tx budget b0 qk qs qg fn2-succ-txns fn2-succ-slots fn2-id-decides fn2-run-installed fn2-run-cursors fn2-run-paths
                          fn2-run-cache fn2-fields fn2-pool)
  (declare (xargs :stobjs (fn2-succ-txns fn2-succ-slots fn2-id-decides fn2-run-installed fn2-run-cursors fn2-run-paths fn2-run-cache
                           fn2-fields fn2-pool) :guard t
                  :guard-hints (("Goal" :in-theory (disable fn2-succ-resolve-raw fn2-succ-clear-ref-rows fn2-fields-rows)))))
  (b* (((mv code fn2-succ-txns fn2-succ-slots fn2-run-cursors fn2-run-paths fn2-fields)
-       (fn2-succ-resolve-raw tx budget b0 fn2-succ-txns fn2-succ-slots fn2-id-decides fn2-run-installed fn2-run-cursors fn2-run-paths
+       (fn2-succ-resolve-raw tx budget b0 qk qs qg fn2-succ-txns fn2-succ-slots fn2-id-decides fn2-run-installed fn2-run-cursors fn2-run-paths
                              fn2-run-cache fn2-fields fn2-pool))
       (fn2-fields (if (and (eq code :ok) (fn2-fields-wfp fn2-fields) (natp b0)
                            (<= (+ b0 *fn2-idc-stride*) (fn2-fields-rows fn2-fields)))
                      (fn2-succ-clear-ref-rows *fn2-run-reader-fields* (+ b0 *fn2-idc-rb*) fn2-fields)
                    fn2-fields)))
   (mv code fn2-succ-txns fn2-succ-slots fn2-run-cursors fn2-run-paths fn2-fields)))
-(fn2-idc-fn-shape fn2-succ-resolve (tx budget b0 fn2-succ-txns fn2-succ-slots fn2-id-decides fn2-run-installed fn2-run-cursors fn2-run-paths
+(fn2-idc-fn-shape fn2-succ-resolve (tx budget b0 qk qs qg fn2-succ-txns fn2-succ-slots fn2-id-decides fn2-run-installed fn2-run-cursors fn2-run-paths
                                     fn2-run-cache fn2-fields fn2-pool)
  (fn2-succ-txns fn2-succ-slots fn2-run-cursors fn2-run-paths fn2-fields)
  (fn2-succ-txns fn2-succ-slots fn2-id-decides fn2-run-installed fn2-run-cursors fn2-run-paths fn2-run-cache fn2-fields fn2-pool) t
