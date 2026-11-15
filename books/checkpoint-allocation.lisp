@@ -2,6 +2,7 @@
 ; The persisted live control must bind the containing commit, batch and workspace
 ; before calling INSTALL. This primitive alone makes no durable-acceptance claim.
 (in-package "ACL2")
+(include-book "std/util/bstar" :dir :system)
 (include-book "checkpoint-tickets")
 (include-book "format-events")
 (fn2-book-layer :b)

@@ -78,6 +78,48 @@ class TlsStartup(unittest.TestCase):
             admin.cmd_serve(self.args, self.root)
             start.assert_called_once()
 
+    def test_init_selects_built_tls_library_over_inherited_override(self):
+        inherited = {"FN2_TLS_CERTIFICATE": "local.pem",
+                     "FN2_TLS_LIBRARY": str(self.root / "unrelated.so")}
+        with mock.patch.dict(os.environ, inherited, clear=True), \
+             mock.patch.object(admin, "prepare_native_crypto"), \
+             mock.patch.object(admin.subprocess, "run") as build, \
+             mock.patch.object(admin.subprocess, "call", return_value=1) as start:
+            self.assertEqual(admin.cmd_init(self.args, self.root), 1)
+            build.assert_called_once()
+            selected = start.call_args.kwargs["env"]["FN2_TLS_LIBRARY"]
+            name = "libfn2-tls.dylib" if sys.platform == "darwin" else "libfn2-tls.so"
+            self.assertEqual(selected, str((self.root / "build/lib" / name).resolve()))
+            self.assertNotEqual(selected, inherited["FN2_TLS_LIBRARY"])
+
+    def test_serve_ignores_inherited_library_override_symlink(self):
+        self.args.image.touch()
+        self.args.tls_certificate = "cli.pem"
+        unrelated = self.root / "other.so"
+        unrelated.write_bytes(b"unrelated native artifact")
+        alias = self.root / "inherited.so"
+        alias.symlink_to(unrelated)
+        with mock.patch.dict(os.environ, {"FN2_TLS_LIBRARY": str(alias)}, clear=True), \
+             mock.patch.object(admin, "prepare_native_crypto"), \
+             mock.patch.object(admin.subprocess, "run") as build, \
+             mock.patch.object(admin.os, "chdir"), mock.patch.object(admin.os, "dup2"), \
+             mock.patch.object(admin.os, "execve") as start:
+            admin.cmd_serve(self.args, self.root)
+            build.assert_called_once()
+            selected = Path(start.call_args.args[2]["FN2_TLS_LIBRARY"])
+            name = "libfn2-tls.dylib" if sys.platform == "darwin" else "libfn2-tls.so"
+            self.assertEqual(selected, (self.root / "build/lib" / name).resolve())
+            self.assertNotEqual(selected, alias.resolve())
+
+    def test_failed_build_does_not_select_an_inherited_library(self):
+        inherited = str(self.root / "unrelated.so")
+        env = {"FN2_TLS_CERTIFICATE": "local.pem", "FN2_TLS_LIBRARY": inherited}
+        with mock.patch.object(admin.subprocess, "run",
+                               side_effect=subprocess.CalledProcessError(1, "build")):
+            with self.assertRaisesRegex(OSError, "native TLS build failed"):
+                admin.prepare_native_tls(self.root, env)
+        self.assertEqual(env["FN2_TLS_LIBRARY"], inherited)
+
 
 if __name__ == "__main__":
     unittest.main()

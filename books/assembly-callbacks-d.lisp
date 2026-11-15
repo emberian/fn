@@ -8,7 +8,9 @@
 (include-book "assembly-callbacks-c")
 (include-book "upload")
 (include-book "tls")
+(include-book "compress")
 (fn2-tls-op-events)
+(fn2-compress-op-events)
 (fn2-upload-op-events)
 (fn2-book-layer :d)
 (defcost fn2-conn-greet-op :bytes 512
@@ -56,6 +58,7 @@
     ((:article-input :ihave :takethis :discard) *fn2-conn-after-article-input*)
     (:query *fn2-conn-after-query*)
     (:upgrading *fn2-conn-after-upgrading*)
+    (:compress-upgrading *fn2-conn-after-compress-upgrading*)
     (otherwise *fn2-conn-after-command*)))
 (defun fn2-conn-rule-code (after)
   (declare (xargs :guard t))

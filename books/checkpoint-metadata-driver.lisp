@@ -83,8 +83,8 @@
     (fn2-checkpoint-root1-preserves ,name (,@args ,@children)
      :hyps ,hyps :specs ,(append (fn2-checkpoint-root1-child-specs outputs 1)
        (fn2-checkpoint-root1-extra-specs outputs 1)))
-    (defcost ,(fn2-columns-sym name "-OP") :child ,name :answers t :bytes 4096
-     :tables ,tables :doc "One actual bounded checkpoint root1 source transition.")))))
+    (defcost ,(fn2-columns-sym name "-OP") :child ,name :answers t :bytes *fn2-c-read-callback-bytes*
+     :tables ,tables :doc "One actual codec-bounded checkpoint root1 source transition, including restart entry decoding and owned copying.")))))
 
 (defun fn2-checkpoint-root1-ownerp (token kind owner gen fn2-checkpoint-root1 fn2-checkpoint-windows fn2-csnapshot)
  (declare (xargs :stobjs (fn2-checkpoint-root1 fn2-checkpoint-windows fn2-csnapshot)
@@ -152,7 +152,7 @@
                (fn2-checkpoint-work-fbase (fn2-fc-rows fn2-fc)) (fn2-checkpoint-source-ebase (fn2-fc-rows fn2-fc))
                (fn2-checkpoint-windows-slot 14 fn2-checkpoint-windows) (fn2-checkpoint-windows-generation 14 fn2-checkpoint-windows)
                *fn2-run-page-size* kind owner gen fn2-checkpoint-metadata fn2-csnapshot fn2-checkpoint-source fn2-overlays
-               fn2-run-builds fn2-run-writers fn2-fields fn2-pool)))
+               fn2-run-builds fn2-run-writers fn2-fields fn2-checkpoint-build fn2-pool)))
          (mv code fn2-checkpoint-metadata fn2-run-builds fn2-run-writers fn2-run-cursors fn2-pool))
         (fn2-checkpoint-metadata-run-begin token row *fn2-checkpoint-source-build* (fn2-checkpoint-source-wbase) crow hbase
          (fn2-checkpoint-windows-slot 12 fn2-checkpoint-windows) (fn2-checkpoint-windows-generation 12 fn2-checkpoint-windows)
@@ -160,7 +160,7 @@
          (fn2-checkpoint-source-rbase (fn2-fc-rows fn2-fc))
          (fn2-checkpoint-windows-slot 14 fn2-checkpoint-windows) (fn2-checkpoint-windows-generation 14 fn2-checkpoint-windows)
          *fn2-run-page-size* kind owner gen fn2-checkpoint-metadata fn2-csnapshot fn2-checkpoint-source fn2-run-installed
-         fn2-run-builds fn2-run-writers fn2-run-cursors fn2-fields fn2-pool)))
+         fn2-run-builds fn2-run-writers fn2-run-cursors fn2-fields fn2-checkpoint-build fn2-pool)))
       (fn2-checkpoint-root1 (if (eq code :ok) (fn2-checkpoint-root1-put 0 (build *fn2-checkpoint-source-build*)
        (phase *fn2-checkpoint-root1-phase-source*)) fn2-checkpoint-root1)))
   (fn2-checkpoint-root1-mv (if (eq code :ok) :more code))))

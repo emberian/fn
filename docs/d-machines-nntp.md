@@ -2121,6 +2121,16 @@ shared checker accepts explicit data/digest slots and offsets for checkpoint con
 the caller must establish the expected digest's trusted provenance and keep
 its span separate from device input.
 
+Recovery snapshots the journal-decoded location reference in the decoding
+step, then copies the vector from its still-owned records window into a
+separate workspace. Each manifest unit must match that retained vector before
+its entries can contribute child allocation claims. The exact vector count
+also bounds traversal. This payload ownership pass does not newly read or
+hash raw article bodies; stored-stream checkpoint verification remains a
+separate consumer. `tests/recovery-manifest-binding-unit.lisp` cold-recovers
+the actual POST store and requires ambiguity after the same coherent foreign
+manifest substitution; the clean store must recover intact.
+
 Qualification is outstanding for this change. The prepared controls are
 `tests/location-commitment-unit.lisp` (child-only literal vector and short-read
 control), `tests/upload-location-hashes-unit.lisp` (stored-prefix/tail hashing),

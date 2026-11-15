@@ -66,13 +66,58 @@ ACL2_BOOKS = \
   books/borrow-faces \
   books/claims \
   books/cns \
+  books/cns-accounting-entry \
+  books/cns-core-projections \
+  books/cns-draining-composition \
+  books/cns-draining-contract \
+  books/cns-draining-direct-events \
+  books/cns-draining-direct \
+  books/cns-draining-effects \
+  books/cns-draining-invariant-entry \
+  books/cns-draining-model \
+  books/cns-draining-public \
+  books/cns-pool-refinement \
+  books/cns-release-accounting \
+  books/cns-release-refinement \
+  books/core-init-projections \
+  books/machine-reservations-entry \
+  books/machine-reservations \
+  books/pool-initialization \
+  books/pool-release-admission \
+  tests/cns-draining-composition-unit \
+  tests/cns-draining-contract-unit \
+  tests/cns-draining-count-counterexample \
+  tests/cns-draining-direct-events-unit \
+  tests/cns-fence-proof-world \
+  tests/column-snapshot-support \
+  tests/core-snapshot-support \
+  tests/machine-reservations-unit \
+  tests/pool-initialization-unit \
   books/cns-edges \
   books/cns-kind \
   books/column-contracts \
   books/codec-profile \
   books/codec-transport \
+  books/codec-stack \
+  books/codec-close \
+  tests/codec-cancel-unit \
+  tests/codec-child-close-unit \
+  books/compress-transport-state \
+  books/tls-record-policy \
+  books/tls-record-state \
+  books/tls-record \
+  books/tls-stack \
+  books/host-loan \
+  books/host-codec \
+  books/host-compress \
   books/columns \
   books/compress-policy \
+  books/compress-kind \
+  books/compress-operation \
+  books/compress-record \
+  books/compress-transport-lifecycle \
+  books/compress-transport-ops \
+  books/compress \
   books/commit \
   books/commit-alloc \
   books/commit-arms \
@@ -100,6 +145,7 @@ ACL2_BOOKS = \
   books/cursor-kind \
   books/declare \
   books/device-boundary \
+  books/digest-store \
   books/digests \
   books/dispatch-fresh \
   books/dispatch-heads \
@@ -125,6 +171,7 @@ ACL2_BOOKS = \
   books/format-physical \
   books/format-storage \
   books/grammar \
+  books/host-result \
   books/host-boundary \
   books/host-ops \
   books/identity \
@@ -151,6 +198,8 @@ ACL2_BOOKS = \
   books/machines-c-successor \
   books/machines-directory \
   books/merkle \
+  books/native-b3-correspondence \
+  books/native-b3-evidence \
   books/nntp-grammar \
   books/node-profile \
   books/operations \
@@ -225,6 +274,44 @@ ACL2_BOOKS = \
   tests/alloc-unit \
   tests/alloc-freeze-unit \
   tests/checkpoint-unit \
+  tests/alloc-planning-unit \
+  tests/alloc-lifecycle-unit \
+  tests/retirement-intent-allocator-unit \
+  tests/retirement-intent-leaf-unit \
+  tests/block-workspace-interleaving-unit \
+  tests/checkpoint-aggregate-unit \
+  tests/checkpoint-allocation-coordinator-unit \
+  tests/checkpoint-allocation-unit \
+  tests/checkpoint-anchor-future-unit \
+  tests/checkpoint-bank-unit \
+  tests/checkpoint-builder-claim-unit \
+  tests/checkpoint-clear-build-unit \
+  tests/checkpoint-directory-budget-unit \
+  tests/checkpoint-directory-headroom-unit \
+  tests/checkpoint-future-resources-unit \
+  tests/checkpoint-installation-coordinator-unit \
+  tests/checkpoint-lifecycle-unit \
+  tests/checkpoint-maintenance-leases-unit \
+  tests/checkpoint-map-format-unit \
+  tests/checkpoint-map-roundtrip-unit \
+  tests/checkpoint-master-catalog-unit \
+  tests/checkpoint-page-handoff-unit \
+  tests/checkpoint-payload-physical-unit \
+  tests/checkpoint-plan-unit \
+  tests/checkpoint-publication-repeat-unit \
+  tests/checkpoint-recovery-census-unit \
+  tests/checkpoint-selected-source-unit \
+  tests/checkpoint-recovery-evidence-unit \
+  tests/checkpoint-restore-arena-unit \
+  tests/checkpoint-restore-semantic-unit \
+  tests/checkpoint-restore-semantic-work-unit \
+  tests/checkpoint-restore-unit \
+  tests/checkpoint-retention-profile-unit \
+  tests/checkpoint-semantic-unit \
+  tests/checkpoint-teardown-unit \
+  tests/checkpoint-working-release-unit \
+  tests/retirement-intent-unit \
+  tests/run-packing-unit \
   tests/checkpoint-member-unit \
   tests/checkpoint-tickets-unit \
   tests/checkpoint-provenance-unit \
@@ -238,6 +325,10 @@ ACL2_BOOKS = \
   tests/storage-write-pins-unit \
   tests/storage-geometry-unit \
   tests/owed-reclamation-unit \
+  tests/retirement-intent-core-unit \
+  tests/startup-genesis-unit \
+  tests/retirement-publish-core-unit \
+  tests/retirement-canonical-core-unit \
   tests/authority-client \
   tests/authority-served \
   tests/authority-stream-resolve \
@@ -251,6 +342,8 @@ ACL2_BOOKS = \
   tests/check-history-unit \
   tests/check-own-unit \
   tests/claims-unit \
+  tests/cns-release-refinement-unit \
+  tests/cns-release-evidence-unit \
   tests/cns-decode-unit \
   tests/cns-edges-unit \
   tests/columns-cost-unit \
@@ -259,7 +352,16 @@ ACL2_BOOKS = \
   tests/columns-unit \
   tests/codec-profile-unit \
   tests/codec-transport-unit \
+  tests/host-codec-unit \
+  tests/tls-record-policy-unit \
+  tests/tls-record-unit \
+  tests/tls-stack-unit \
   tests/compress-policy-unit \
+  tests/compress-action-unit \
+  tests/compress-settings-unit \
+  tests/compress-transport-unit \
+  tests/compress-record-unit \
+  tests/compress-stage-unit \
   tests/commit-ceiling-unit \
   tests/commit-durable-all-unit \
   tests/commit-executor-contracts-unit \
@@ -322,12 +424,21 @@ ACL2_BOOKS = \
   tests/event-read-verified-unit \
   tests/event-build-unit \
   tests/checkpoint-page-header-unit \
+  tests/cns-fetch-integrity-unit \
+  tests/cursor-location-integrity-unit \
+  tests/location-commitment-unit \
+  tests/manifest-binding-served-unit \
+  tests/manifest-publication-unit \
+  tests/recovery-manifest-binding-unit \
+  tests/upload-location-hashes-unit \
+  tests/upload-stored-source-unit \
   tests/host-unit \
   tests/identity-core-unit \
   tests/identity-served-unit \
   tests/layout-roundtrip \
   tests/layout-teeth-unit \
   tests/layout-unit \
+  tests/layout-proof-scope-unit \
   tests/log-model-unit \
   tests/m2-cuts \
   tests/machine-arms-probe-fixture \
@@ -343,6 +454,7 @@ ACL2_BOOKS = \
   tests/machine-success-charge-context-unit \
   tests/issue-history-context-unit \
   tests/issue-wrapper-boundary-unit \
+  tests/machine-issue-domain-unit \
   tests/machine-child-tables-unit \
   tests/machines-a-unit \
   tests/shape-one-unit \

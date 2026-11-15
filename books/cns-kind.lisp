@@ -163,7 +163,7 @@
          (:commit :tx-range :wait-row (:storage-window :while (lease :held)))
          (:committed :tx-range :wait-row :batch-membership (:storage-window :while (lease :held))) (:append :tx-range :wait-row (:storage-window :while (lease :held))) (:draining :tx-range :wait-row (:storage-window :while (lease :held))))
  ;; :commit's submitting run stages, emits, admits and binds (24,576 bytes, as fn2-txn's :ready)
- :budget (:bytes 32768 :steps 32 :descriptors 4)
+ :budget (:bytes (+ 32768 (* 17 *fn2-c-read-callback-bytes*)) :steps 32 :descriptors 4)
  :capacity (fn2-cns-capacity profile)
  :taken (:phase :decode :rows :wait-row :ranges ((:tx-range :slot ws-slot :gen ws-gen :class 0) (:tx-range :slot ns-slot :gen ns-gen :class 0))
          :copy (ctl ctl-gen request fpos flen fkind tx-slot tx-gen)

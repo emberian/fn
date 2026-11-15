@@ -16,4 +16,3 @@
         (equal (fn2-checkpoint-refs-root-intended-bytes r fn2-checkpoint-refs)
                (fn2-checkpoint-refs-root-completed-bytes r fn2-checkpoint-refs))
         (fn2-checkpoint-production-roots-p (+ 1 role) c token fn2-checkpoint-refs)))))
-

@@ -26,4 +26,5 @@
          (fn2-format-prefix "DIRECTORY-" *fn2-format-ref*)))
 (defconst *fn2-event-frontier-peaks-start*
  (+ *fn2-checkpoint-map-body-start* (* 32 (ceiling *fn2-event-frontier-header-max-size* 32))))
-(assert-event (<= (+ *fn2-event-frontier-peaks-start* (* 60 32)) *fn2-format-page-size*))
+(defconst *fn2-event-frontier-bytes* (* 60 32))
+(assert-event (<= (+ *fn2-event-frontier-peaks-start* *fn2-event-frontier-bytes*) *fn2-format-page-size*))

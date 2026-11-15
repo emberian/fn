@@ -114,6 +114,15 @@ under books/ (item 78).  A `send` that loads a host file (`(ld "host/x.lisp")`)
 syncs it to the box first, and a second host load in one session is refused
 by name, since such a session died in a fasl load (item 84).
 
+`FN_REPL_STEP_LIMIT=N` sets ACL2's per-event prover step limit at startup,
+before admitting any from-source dependency or target-book event. N must be
+a positive decimal integer; an invalid value, refused setup command, or
+setup timeout aborts startup without loading books or exposing a session
+socket. The limit persists until a later ACL2 command changes it; it is
+not a total session budget or a replacement for `--load-timeout`.
+
+    FN_REPL_STEP_LIMIT=1000000 proof_repl.py start NAME BOOK --ld DEPENDENCY
+
 Round 3 (lane tooling-leftovers, 2026-09-27): `start` sends each of the
 book's events under `with-prover-time-limit` too (`--load-limit S`, default
 `--limit`, 0 = none), so a runaway lemma is refused with its checkpoints in
@@ -1436,6 +1445,15 @@ def serve(name: str, book: str, upto: str | None, through: str | None,
         acl2 = Acl2(f"proof-repl {name}" + (f" lane {lane}" if lane else ""),
                     directory / "log")
         state["acl2_pgid"] = acl2.pgid
+        step_limit = os.environ.get("FN_REPL_STEP_LIMIT")
+        if step_limit is not None:
+            if not step_limit.isdecimal() or int(step_limit) <= 0:
+                raise ValueError("FN_REPL_STEP_LIMIT must be a positive integer")
+            output, timed_out = acl2.send(
+                f"(set-prover-step-limit {int(step_limit)})", load_timeout)
+            if timed_out or errored(output):
+                raise RuntimeError("ACL2 refused the startup prover step limit: " + output)
+            state["prover_step_limit"] = int(step_limit)
         skip = set(ld)
         per_form = state["load_limit"] or None
         loaded = True
@@ -2247,7 +2265,7 @@ def status(args) -> int:
         print("  " + stop_note_words(args.name, note))
     load = state.get("load_cost")
     if load:
-        print(f"  loading cost ACL2 time {load['time']:.2f} s, prover steps {load['steps']:,}"
+        print(f"  successful load summaries only (excludes refused attempts): ACL2 time {load['time']:.2f} s, prover steps {load['steps']:,}"
               + ("; most steps: " + ", ".join(f"{label} ({steps:,})"
                                                for label, _, steps in load["slowest"])
                  if load.get("slowest") else ""))
@@ -4238,7 +4256,10 @@ def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description=__doc__,
                                      formatter_class=argparse.RawDescriptionHelpFormatter)
     sub = parser.add_subparsers(dest="command", required=True)
-    p = sub.add_parser("start", help="load a book's certified closure and its forms")
+    p = sub.add_parser("start", help="load a book's certified closure and its forms",
+                       epilog="FN_REPL_STEP_LIMIT=N: positive per-event prover step cap, "
+                              "set before source dependencies and target events; "
+                              "invalid or refused setup aborts startup.")
     p.add_argument("name")
     p.add_argument("book", help="books/NAME or tests/acl2/NAME, no .lisp")
     p.add_argument("--upto", default=None, help="stop before this event")

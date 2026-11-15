@@ -2,112 +2,23 @@
 ; Completion consumes exact issued operation identities through defcorechild's
 ; harvest extension. No caller-provided durability flag is accepted.
 (in-package "ACL2")
-(include-book "checkpoint")
+(include-book "checkpoint-bank-evidence")
 (include-book "checkpoint-geometry")
 (include-book "arm-children")
 (fn2-book-layer :b)
-(defcolumns fn2-checkpoint-publication
- ((phase (:enum fn2-checkpoint-publication-phase
-    (:idle :prepare :write-first :wait-first :write-second :wait-second :fence :wait-fence :complete :uncertain)))
-  (candidate :u32) (bank :bool) (packet-mask :u8)
-  (layout-ready :bool) (image-size :u60) (extents :u32) (groups :u32)
-  (has-base :bool) (active-bank :bool) (bundle-released :bool)
-  ; Fence-owned bank identities and one retained displaced-candidate debt.
-  (bank0-valid :bool) (bank0-candidate :u32) (bank0-checkpoint :u60)
-  (bank0-history :u60) (bank0-incarnation :u60)
-  (bank0-hash-0 :u32)
-  (bank0-hash-1 :u32)
-  (bank0-hash-2 :u32)
-  (bank0-hash-3 :u32)
-  (bank0-hash-4 :u32)
-  (bank0-hash-5 :u32)
-  (bank0-hash-6 :u32)
-  (bank0-hash-7 :u32)
-  (bank1-valid :bool) (bank1-candidate :u32) (bank1-checkpoint :u60)
-  (bank1-history :u60) (bank1-incarnation :u60)
-  (bank1-hash-0 :u32)
-  (bank1-hash-1 :u32)
-  (bank1-hash-2 :u32)
-  (bank1-hash-3 :u32)
-  (bank1-hash-4 :u32)
-  (bank1-hash-5 :u32)
-  (bank1-hash-6 :u32)
-  (bank1-hash-7 :u32)
-  (debt-valid :bool) (debt-candidate :u32) (debt-checkpoint :u60)
-  (debt-history :u60) (debt-incarnation :u60)
-  (debt-hash-0 :u32)
-  (debt-hash-1 :u32)
-  (debt-hash-2 :u32)
-  (debt-hash-3 :u32)
-  (debt-hash-4 :u32)
-  (debt-hash-5 :u32)
-  (debt-hash-6 :u32)
-  (debt-hash-7 :u32)
-  (attempt-checkpoint :u60) (attempt-history :u60) (attempt-incarnation :u60)
-  (base-checkpoint :u60) (base-history :u60) (base-incarnation :u60)
-  (attempt-hash-0 :u32) (base-hash-0 :u32)
-  (attempt-hash-1 :u32) (base-hash-1 :u32)
-  (attempt-hash-2 :u32) (base-hash-2 :u32)
-  (attempt-hash-3 :u32) (base-hash-3 :u32)
-  (attempt-hash-4 :u32) (base-hash-4 :u32)
-  (attempt-hash-5 :u32) (base-hash-5 :u32)
-  (attempt-hash-6 :u32) (base-hash-6 :u32)
-  (attempt-hash-7 :u32) (base-hash-7 :u32)
-  (owner-kind :u8) (owner-slot :u32) (owner-gen :u60)
-  (slot0 :u32) (gen0 :u60) (slot1 :u32) (gen1 :u60) (scratch :u32) (scratch-gen :u60)
-  (len0 :u32) (len1 :u32) (stage0 :u8) (stage1 :u8)
-  (checker-live :bool) (checker-row :u32) (checker-base :u32) (checker-packet :bool)
-  (offset0 :u60) (offset1 :u60) (op-slot :u32) (op-gen :u60)))
+
 
 ; CHECKPOINT-PUBLICATION-DESCRIPTOR-IDENTITY: the previous-checkpoint wire
 ; digest is the prior successfully published descriptor Ref expected hash.
 ; Snapshot its bytes at BEGIN; only exact covering Fence completion makes it
 ; the next base. This is publication identity, never allocator cut authority.
-(defun fn2-checkpoint-descriptor-identity-word (c i fn2-checkpoint-bytes)
- (declare (xargs :stobjs fn2-checkpoint-bytes
-  :guard (and (fn2-checkpoint-bytes-wfp fn2-checkpoint-bytes) (natp c) (natp i) (< i 8)
-              (<= (+ (* 192 c) 32) (fn2-checkpoint-bytes-rows fn2-checkpoint-bytes)))))
- (let ((at (+ (* 192 c) (* 4 i))))
-  (fn-b3-word (+ (fn2-checkpoint-bytes-value at fn2-checkpoint-bytes)
-                (* 256 (fn2-checkpoint-bytes-value (+ at 1) fn2-checkpoint-bytes))
-                (* 65536 (fn2-checkpoint-bytes-value (+ at 2) fn2-checkpoint-bytes))
-                (* 16777216 (fn2-checkpoint-bytes-value (+ at 3) fn2-checkpoint-bytes))))))
 
-(defun fn2-checkpoint-publication-base-word (i fn2-checkpoint-publication)
- (declare (xargs :stobjs fn2-checkpoint-publication
-  :guard (and (fn2-checkpoint-publication-wfp fn2-checkpoint-publication)
-              (< 0 (fn2-checkpoint-publication-rows fn2-checkpoint-publication)) (natp i) (< i 8))))
- (case i
-  (0 (fn2-checkpoint-publication-base-hash-0 0 fn2-checkpoint-publication))
-  (1 (fn2-checkpoint-publication-base-hash-1 0 fn2-checkpoint-publication))
-  (2 (fn2-checkpoint-publication-base-hash-2 0 fn2-checkpoint-publication))
-  (3 (fn2-checkpoint-publication-base-hash-3 0 fn2-checkpoint-publication))
-  (4 (fn2-checkpoint-publication-base-hash-4 0 fn2-checkpoint-publication))
-  (5 (fn2-checkpoint-publication-base-hash-5 0 fn2-checkpoint-publication))
-  (6 (fn2-checkpoint-publication-base-hash-6 0 fn2-checkpoint-publication))
-  (otherwise (fn2-checkpoint-publication-base-hash-7 0 fn2-checkpoint-publication))))
 
-(defun fn2-checkpoint-publication-previous-matchesp (i row fn2-checkpoint-publication fn2-digests)
- (declare (xargs :stobjs (fn2-checkpoint-publication fn2-digests) :measure (nfix (- 8 (nfix i)))
-  :guard (and (fn2-checkpoint-publication-wfp fn2-checkpoint-publication)
-              (< 0 (fn2-checkpoint-publication-rows fn2-checkpoint-publication))
-              (fn2-digest-rowp row fn2-digests) (natp i) (<= i 8))))
- (if (or (not (natp i)) (>= i 8)) t
-  (and (equal (fn2-digest-word row i fn2-digests)
-              (if (equal (fn2-checkpoint-publication-has-base 0 fn2-checkpoint-publication) 1)
-                  (fn2-checkpoint-publication-base-word i fn2-checkpoint-publication) 0))
-       (fn2-checkpoint-publication-previous-matchesp (+ i 1) row fn2-checkpoint-publication fn2-digests))))
 
-(defun fn2-checkpoint-publication-previous-load (i row fn2-checkpoint-publication fn2-digests)
- (declare (xargs :stobjs (fn2-checkpoint-publication fn2-digests) :measure (nfix (- 8 (nfix i)))
-  :guard (and (fn2-checkpoint-publication-wfp fn2-checkpoint-publication)
-              (< 0 (fn2-checkpoint-publication-rows fn2-checkpoint-publication))
-              (fn2-digest-rowp row fn2-digests) (natp i) (<= i 8))))
- (if (or (not (natp i)) (>= i 8)) fn2-digests
-  (let ((fn2-digests (fn2-digest-set-word row i
-         (if (equal (fn2-checkpoint-publication-has-base 0 fn2-checkpoint-publication) 1)
-             (fn2-checkpoint-publication-base-word i fn2-checkpoint-publication) 0) fn2-digests)))
-   (fn2-checkpoint-publication-previous-load (+ i 1) row fn2-checkpoint-publication fn2-digests))))
+
+
+
+
 
 ; Begin only reserves publication state. Packet verification must still fill
 ; both mask bits. The geometry decision has no legacy two-slot fallback.
@@ -155,6 +66,9 @@
       (fn2-checkpoint-bytes (fn2-checkpoint-copy-expected 0 evidence batch-hash fn2-digests fn2-checkpoint-bytes))
       (fn2-checkpoint-bytes (fn2-checkpoint-copy-expected 0 (+ evidence 32) previous-hash fn2-digests fn2-checkpoint-bytes))
       (fn2-checkpoint-bytes (fn2-checkpoint-copy-expected 0 (+ evidence 64) geometry-hash fn2-digests fn2-checkpoint-bytes))
+      ; A new attempt cannot inherit a prior attempt's directory evidence.
+      (fn2-checkpoint-publication (if (fn2-checkpoint-bank-evidence-capacityp fn2-checkpoint-publication)
+       (update-fn2-checkpoint-publication-evidence-metai 18 0 fn2-checkpoint-publication) fn2-checkpoint-publication))
       (fn2-checkpoint-publication (fn2-checkpoint-publication-put 0
         (phase *fn2-checkpoint-publication-phase-prepare*) (candidate c) (bank bank) (packet-mask 0)
         (bundle-released 0) (len0 0) (len1 0) (stage0 0) (stage1 0)
@@ -228,76 +142,7 @@
 ; Only HARVEST calls this after the exact successful covering Fence. Debt has
 ; no clear operation: later teardown must prove bank exclusion and durable
 ; descendant retirement before it can discharge this retained identity.
-(defun fn2-checkpoint-publication-record-bank (fn2-checkpoint-publication)
- (declare (xargs :stobjs fn2-checkpoint-publication
-  :guard (and (fn2-checkpoint-publication-wfp fn2-checkpoint-publication)
-              (< 0 (fn2-checkpoint-publication-rows fn2-checkpoint-publication)))))
- (if (or (zp (fn2-checkpoint-publication-rows fn2-checkpoint-publication))
-         (not (equal (fn2-checkpoint-publication-debt-valid 0 fn2-checkpoint-publication) 0)))
-     fn2-checkpoint-publication
-  (if (equal (fn2-checkpoint-publication-bank 0 fn2-checkpoint-publication) 0)
-  (let* ((fn2-checkpoint-publication
-           (if (equal (fn2-checkpoint-publication-bank0-valid 0 fn2-checkpoint-publication) 1)
-            (fn2-checkpoint-publication-put 0 (debt-valid 1)
-             (debt-candidate (fn2-checkpoint-publication-bank0-candidate 0 fn2-checkpoint-publication))
-             (debt-checkpoint (fn2-checkpoint-publication-bank0-checkpoint 0 fn2-checkpoint-publication))
-             (debt-history (fn2-checkpoint-publication-bank0-history 0 fn2-checkpoint-publication))
-             (debt-incarnation (fn2-checkpoint-publication-bank0-incarnation 0 fn2-checkpoint-publication))
-             (debt-hash-0 (fn2-checkpoint-publication-bank0-hash-0 0 fn2-checkpoint-publication))
-             (debt-hash-1 (fn2-checkpoint-publication-bank0-hash-1 0 fn2-checkpoint-publication))
-             (debt-hash-2 (fn2-checkpoint-publication-bank0-hash-2 0 fn2-checkpoint-publication))
-             (debt-hash-3 (fn2-checkpoint-publication-bank0-hash-3 0 fn2-checkpoint-publication))
-             (debt-hash-4 (fn2-checkpoint-publication-bank0-hash-4 0 fn2-checkpoint-publication))
-             (debt-hash-5 (fn2-checkpoint-publication-bank0-hash-5 0 fn2-checkpoint-publication))
-             (debt-hash-6 (fn2-checkpoint-publication-bank0-hash-6 0 fn2-checkpoint-publication))
-             (debt-hash-7 (fn2-checkpoint-publication-bank0-hash-7 0 fn2-checkpoint-publication))
-             ) fn2-checkpoint-publication))
-         (fn2-checkpoint-publication (fn2-checkpoint-publication-put 0
-          (bank0-valid 1)
-          (bank0-candidate (fn2-checkpoint-publication-candidate 0 fn2-checkpoint-publication))
-          (bank0-checkpoint (fn2-checkpoint-publication-attempt-checkpoint 0 fn2-checkpoint-publication))
-          (bank0-history (fn2-checkpoint-publication-attempt-history 0 fn2-checkpoint-publication))
-          (bank0-incarnation (fn2-checkpoint-publication-attempt-incarnation 0 fn2-checkpoint-publication))
-          (bank0-hash-0 (fn2-checkpoint-publication-attempt-hash-0 0 fn2-checkpoint-publication))
-          (bank0-hash-1 (fn2-checkpoint-publication-attempt-hash-1 0 fn2-checkpoint-publication))
-          (bank0-hash-2 (fn2-checkpoint-publication-attempt-hash-2 0 fn2-checkpoint-publication))
-          (bank0-hash-3 (fn2-checkpoint-publication-attempt-hash-3 0 fn2-checkpoint-publication))
-          (bank0-hash-4 (fn2-checkpoint-publication-attempt-hash-4 0 fn2-checkpoint-publication))
-          (bank0-hash-5 (fn2-checkpoint-publication-attempt-hash-5 0 fn2-checkpoint-publication))
-          (bank0-hash-6 (fn2-checkpoint-publication-attempt-hash-6 0 fn2-checkpoint-publication))
-          (bank0-hash-7 (fn2-checkpoint-publication-attempt-hash-7 0 fn2-checkpoint-publication))
-          ))) fn2-checkpoint-publication)
-  (let* ((fn2-checkpoint-publication
-           (if (equal (fn2-checkpoint-publication-bank1-valid 0 fn2-checkpoint-publication) 1)
-            (fn2-checkpoint-publication-put 0 (debt-valid 1)
-             (debt-candidate (fn2-checkpoint-publication-bank1-candidate 0 fn2-checkpoint-publication))
-             (debt-checkpoint (fn2-checkpoint-publication-bank1-checkpoint 0 fn2-checkpoint-publication))
-             (debt-history (fn2-checkpoint-publication-bank1-history 0 fn2-checkpoint-publication))
-             (debt-incarnation (fn2-checkpoint-publication-bank1-incarnation 0 fn2-checkpoint-publication))
-             (debt-hash-0 (fn2-checkpoint-publication-bank1-hash-0 0 fn2-checkpoint-publication))
-             (debt-hash-1 (fn2-checkpoint-publication-bank1-hash-1 0 fn2-checkpoint-publication))
-             (debt-hash-2 (fn2-checkpoint-publication-bank1-hash-2 0 fn2-checkpoint-publication))
-             (debt-hash-3 (fn2-checkpoint-publication-bank1-hash-3 0 fn2-checkpoint-publication))
-             (debt-hash-4 (fn2-checkpoint-publication-bank1-hash-4 0 fn2-checkpoint-publication))
-             (debt-hash-5 (fn2-checkpoint-publication-bank1-hash-5 0 fn2-checkpoint-publication))
-             (debt-hash-6 (fn2-checkpoint-publication-bank1-hash-6 0 fn2-checkpoint-publication))
-             (debt-hash-7 (fn2-checkpoint-publication-bank1-hash-7 0 fn2-checkpoint-publication))
-             ) fn2-checkpoint-publication))
-         (fn2-checkpoint-publication (fn2-checkpoint-publication-put 0
-          (bank1-valid 1)
-          (bank1-candidate (fn2-checkpoint-publication-candidate 0 fn2-checkpoint-publication))
-          (bank1-checkpoint (fn2-checkpoint-publication-attempt-checkpoint 0 fn2-checkpoint-publication))
-          (bank1-history (fn2-checkpoint-publication-attempt-history 0 fn2-checkpoint-publication))
-          (bank1-incarnation (fn2-checkpoint-publication-attempt-incarnation 0 fn2-checkpoint-publication))
-          (bank1-hash-0 (fn2-checkpoint-publication-attempt-hash-0 0 fn2-checkpoint-publication))
-          (bank1-hash-1 (fn2-checkpoint-publication-attempt-hash-1 0 fn2-checkpoint-publication))
-          (bank1-hash-2 (fn2-checkpoint-publication-attempt-hash-2 0 fn2-checkpoint-publication))
-          (bank1-hash-3 (fn2-checkpoint-publication-attempt-hash-3 0 fn2-checkpoint-publication))
-          (bank1-hash-4 (fn2-checkpoint-publication-attempt-hash-4 0 fn2-checkpoint-publication))
-          (bank1-hash-5 (fn2-checkpoint-publication-attempt-hash-5 0 fn2-checkpoint-publication))
-          (bank1-hash-6 (fn2-checkpoint-publication-attempt-hash-6 0 fn2-checkpoint-publication))
-          (bank1-hash-7 (fn2-checkpoint-publication-attempt-hash-7 0 fn2-checkpoint-publication))
-          ))) fn2-checkpoint-publication))))
+
 
 (fn2-checkpoint-publication-preserves fn2-checkpoint-publication-record-bank
  (fn2-checkpoint-publication))
@@ -324,6 +169,10 @@
       (success (and (or (not fence)
                         (equal (fn2-checkpoint-publication-debt-valid 0 fn2-checkpoint-publication) 0))
                     (equal outcome *fn2-outcome-done*) (equal count (if fence 0 4096))))
+      ; Snapshot displaced evidence before replacing its bank identity. Both
+      ; transfers are inside the same exact validated covering-Fence callback.
+      (fn2-checkpoint-publication (if (and fence success)
+        (fn2-checkpoint-bank-evidence-record-fence fn2-checkpoint-publication) fn2-checkpoint-publication))
       (fn2-checkpoint-publication (if (and fence success)
         (fn2-checkpoint-publication-record-bank fn2-checkpoint-publication) fn2-checkpoint-publication))
       (fn2-checkpoint-publication (if (and fence success)

@@ -304,7 +304,9 @@
    ;; b54 M6: C publishes the batch's private successor before any outcome
    (:publish
     ,@(fn2-commit-arm-partner t
-       `((:if (< row-cb-life-member row-member-count)
+       `((:if (not (fn2-commit-lifecycle-cursorp row-member-count row-cb-life-member row-cb-life-off))
+          ((:stop :commit-publish))
+          ((:if (< row-cb-life-member row-member-count)
           ((:do (code member off) (fn2-commit-lifecycle-step id row-cb-life-member row-cb-life-off)
             :accept ()
             :case (((:more) (:set (cb-life-member member) (cb-life-off off))
@@ -322,7 +324,7 @@
                            :accept ()
                            :case (((:ok :unregistered) (:set (cb-published 1)) (:next :notify) ,*fn2-commit-arm-advance-run*)
                                   (:otherwise (:stop :commit-publish)))))
-                         (:otherwise (:stop :commit-publish :steps *fn2-work-mailbox*)))))))))))
+                         (:otherwise (:stop :commit-publish :steps *fn2-work-mailbox*)))))))))))))
    (:notify
     ,@(fn2-commit-arm-partner t
        `((:if (< row-cb-acks row-member-count)

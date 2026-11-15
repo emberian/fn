@@ -16,8 +16,19 @@
   (fn2-digests (fn2-core-digests fn2-core)) (fn2-mk (fn2-core-mk fn2-core))
   (fn2-fields (fn2-core-fields fn2-core)) (fn2-pool (fn2-core-pool fn2-core)))
  (code fn2-event-read fn2-mk fn2-fields fn2-pool)
- (fn2-event-read-open token 0 slot gen dslot dgen *fn2-checkpoint-map-entries-start* scratch sgen 7 0 1
-  fn2-event-read fn2-csnapshot fn2-commit-root fn2-extents fn2-alloc-edges fn2-fc fn2-digests fn2-mk fn2-fields fn2-pool))
+ ; Reader-only fixture premise: an owner-bound build carrying the configured
+        ; physical pair. Actual build BEGIN capture is checked by the budget fixture.
+        (with-local-stobj fn2-origin
+         (with-local-stobj fn2-checkpoint-build
+          (let* ((fn2-origin (fn2-origin-prepare '((:origin-lineage . 101) (:origin-domain . 103) (:origin-incarnation . 107) (:history-id . 1) (:history-incarnation . 1)) fn2-origin))
+                 (fn2-checkpoint-build (fn2-checkpoint-build-init 1 fn2-checkpoint-build))
+                 (fn2-checkpoint-build (fn2-checkpoint-build-put 0
+                  (phase *fn2-checkpoint-build-phase-await-roots*) (snapshot-token token)
+                  (owner-kind 7) (owner-slot 0) (owner-gen 1)
+                  (cut-commit (fn2-csnapshot-cut-commit 0 fn2-csnapshot)) (cut-event (fn2-csnapshot-cut-event 0 fn2-csnapshot))
+                  (history (fn2-origin-history fn2-origin)) (history-incarnation (fn2-origin-history-incarnation fn2-origin)))))
+           (fn2-event-read-open token 0 slot gen dslot dgen *fn2-checkpoint-map-entries-start* scratch sgen 7 0 1
+  fn2-event-read fn2-csnapshot fn2-commit-root fn2-extents fn2-alloc-edges fn2-fc fn2-digests fn2-mk fn2-fields fn2-checkpoint-build fn2-pool)))))
 (fn2-epv-wrapper fn2-epv-issue nil
  ((fn2-event-read (fn2-core-event-read fn2-core)) (fn2-csnapshot (fn2-core-csnapshot fn2-core))
   (fn2-extents (fn2-core-extents fn2-core)) (fn2-alloc-edges (fn2-core-alloc-edges fn2-core))

@@ -36,8 +36,14 @@ class RegionSource(unittest.TestCase):
  def test_member_release_requires_owned_suffix_and_pending_zero(self):
   d=defs('run-physical-region.lisp')
   self.assertEqual(len(calls(d['fn2-run-load-region-member-release'],'fn2-run-load-region-drain')),1)
+  self.assertEqual(len(calls(d['fn2-run-load-region-drain'],'fn2-run-load-regionp')),1)
   self.assertIn(['equal',['fn2-run-loads-pending','c','fn2-run-loads'],'1'],list(walk(d['fn2-run-load-region-drain'])))
   self.assertEqual(len(calls(d['fn2-run-load-region-suffix'],'fn2-run-load-ownerp')),1)
+ def test_query_bundle_delegates_same_region_implementation(self):
+  d=defs('run-physical-bundle.lisp')
+  self.assertEqual(len(calls(d['fn2-run-page-bundle-reserve-children'],'fn2-run-load-region-reserve')),1)
+  for name in ('fn2-run-query-bundle-fill','fn2-run-query-bundle-clean','fn2-run-query-bundle-retainedp'):
+   self.assertNotIn(name,d)
  def test_range_selection_uses_actual_retained_source_and_identity(self):
   f=defs('run-physical-range.lisp')['fn2-run-load-range-miss']
   terms=list(walk(f))

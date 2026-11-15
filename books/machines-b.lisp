@@ -8,6 +8,7 @@
 (include-book "sched")
 (include-book "commit-alloc")
 (include-book "read-pins")
+(include-book "checkpoint-cbase-state")
 (include-book "retirement-coordinator")
 (include-book "checkpoint-tickets")
 (include-book "format-check")
@@ -49,12 +50,17 @@
  (nfix (fn2-b-capacity :checkpoint-candidates 4 profile)))
 ; Dedicated regions: six commit I/O edges, two roots per extent, one pin per
 ; operation, six direct references per candidate, then one source-retention
-; edge per extent per active candidate. These are dedicated resident resources.
+; edge per extent per active candidate, then a disjoint C-base promise region
+; of the same derived size. These are dedicated resident resources.
 (defun fn2-b-alloc-edge-floor (profile)
  (declare (xargs :guard t))
  (+ 6 (* 2 (nfix (fn2-b-capacity :extent-slots 16 profile)))
     (nfix (fn2-profile-o profile)) (* 6 (fn2-b-checkpoint-capacity profile))
-    (* (nfix (fn2-b-capacity :extent-slots 16 profile)) (fn2-b-checkpoint-capacity profile))))
+    (* 2 (nfix (fn2-b-capacity :extent-slots 16 profile)) (fn2-b-checkpoint-capacity profile))))
+(defcorechild fn2-core-checkpoint-cbase-holds fn2-checkpoint-cbase-holds
+ :init (fn2-checkpoint-cbase-holds-init (fn2-b-checkpoint-capacity profile) fn2-checkpoint-cbase-holds)
+ :profilep (unsigned-byte-p 32 (fn2-b-checkpoint-capacity profile))
+ :why "One exact candidate/catalog C-source promise retains its actual closure through replacement and query drain.")
 (defcorechild fn2-core-alloc-edges fn2-alloc-edges
  :init (fn2-alloc-edges-init (fn2-b-capacity :alloc-edge-slots (fn2-b-alloc-edge-floor profile) profile) fn2-alloc-edges)
  :profilep (and
@@ -255,6 +261,8 @@
  :why "Three reserved resources per batch, including operation-owned edges.")
 (defcolumns fn2-commit-root
  ((installed :u60) (published :u60) (proposed :u60)
+  ; Row0 retained recovery boundary; positive base requires separate authority.
+  (base-batch :u60) (base-event :u60) (base-ready :bool)
   (parent :u60) (extent :u32) (first-key :u60) (members :u32) (seal-ready :bool) (barrier-mode :bool)
   ; Row 0 only: the first refused batch of an abort in progress (0: none)
   ; and the event it began at (b54 M3).
@@ -471,9 +479,51 @@
 ; name the unit's extent (:stale otherwise); the read is one storage job, and
 ; its result arrives as the caller's :read-result. (mv code slot gen ...),
 ; as fn2-issue-read's.
+; The physical pin is acquired for the exact row/gen that OP-RESERVE will
+; choose. Derive that interface from the existing reserve theorem, then lift
+; it through the actual issue wrappers. No operation or allocation body needs
+; to be reopened by the pinned-I/O effect proofs below.
+(defun fn2-block-issue-identity-events (names world)
+ (declare (xargs :verify-guards nil))
+ (if (atom names) nil
+  (let* ((name (car names))
+         (call (cons name (getpropc name 'formals nil world))))
+   (if (not (fn2-issued-wrapper-ops-position name world))
+       `((make-event (er soft 'fn2-block-issue-identity-events
+                        "Unsupported issue identity ABI for ~x0." ',name)))
+    (cons
+     `(defthm ,(fn2-columns-sym name "-RESERVED-IDENTITY")
+       (implies (equal (car ,call) :ok)
+        (and (equal (mv-nth 1 ,call) (fn2-ops-free-head fn2-ops))
+             (equal (mv-nth 2 ,call)
+                    (fn2-ops-gen (fn2-ops-free-head fn2-ops) fn2-ops))))
+       :hints (("Goal"
+         ,@(and (eq name 'fn2-issue-children)
+                '(:use ((:instance fn2-env-op-reserve-ok-facts (o fn2-ops)))))
+         :in-theory (e/d (,name)
+           (,@(and (not (eq name 'fn2-issue-children)) '(fn2-issue-children))
+            fn2-op-reserve fn2-op-unreserve fn2-op-set-range
+            fn2-op-set-capability fn2-op-set-storage fn2-op-set-cancel-target
+            fn2-op-enqueue fn2-core-lease fn2-core-outbox-ready
+            fn2-control-record-stop fn2-ops-free-head fn2-ops-gen)))))
+     (fn2-block-issue-identity-events (cdr names) world))))))
+(make-event
+ (value (cons 'progn (fn2-block-issue-identity-events
+          '(fn2-issue-children fn2-issue-read-children fn2-issue-write-children)
+          (w state)))))
+
 (defun fn2-pinned-block-io-children (writep pu epoch alloc off len lslot lgen boff okind oslot ogen principal
                                    fn2-extents fn2-alloc-edges fn2-pool fn2-ops fn2-control)
  (declare (xargs :stobjs (fn2-extents fn2-alloc-edges fn2-pool fn2-ops fn2-control)
+                 :guard-hints
+                 (("Goal" :in-theory
+                   (e/d (fn2-alloc-handle-code fn2-alloc-slotp)
+                    (fn2-ops-rows fn2-extents-rows fn2-alloc-edges-rows fn2-pool-rows
+                     fn2-extentsp fn2-extents-wfp fn2-alloc-edgesp fn2-alloc-edges-wfp
+                     fn2-poolp fn2-pool-wfp fn2-opsp fn2-ops-wfp
+                     fn2-controlp fn2-control-wfp fn2-control-stop fn2-extents-state
+                     fn2-ops-free-head fn2-ops-gen fn2-issue-read-children
+                     fn2-issue-write-children fn2-alloc-edge-add fn2-b-read-pin-drop))))
                  :guard (and (fn2-extents-wfp fn2-extents) (fn2-alloc-edges-wfp fn2-alloc-edges)
                              (fn2-pool-wfp fn2-pool) (fn2-ops-wfp fn2-ops)
                              (fn2-control-wfp fn2-control))))
@@ -523,10 +573,33 @@
                      (fn2-control-record-stop *fn2-stop-reason-issue-storage* fn2-control))))
   (mv (if (eq code :exhausted) :exhausted :bounds) slot gen
       fn2-pool fn2-ops fn2-control fn2-extents fn2-alloc-edges)))
+(encapsulate ()
+ ; Carrier WFP specs supply their own hints; the shared opaque theory must
+ ; surround the whole generated family, not only its TYPE theorem hints.
+ (local (in-theory (disable
+   fn2-ops-rows fn2-extents-rows fn2-alloc-edges-rows fn2-pool-rows
+   fn2-extentsp fn2-extents-wfp fn2-alloc-edgesp fn2-alloc-edges-wfp
+   fn2-poolp fn2-pool-wfp fn2-opsp fn2-ops-wfp fn2-controlp fn2-control-wfp
+   fn2-control-stop fn2-extents-state fn2-ops-free-head fn2-ops-gen
+   fn2-issue-read-children fn2-issue-write-children fn2-alloc-edge-add
+   fn2-b-read-pin-drop fn2-b-read-pin-edge fn2-alloc-handle-code
+   fn2-control-record-stop)))
 (fn2-pool-preserves fn2-pinned-block-io-children (writep pu epoch alloc off len lslot lgen boff okind oslot ogen principal
                                              fn2-extents fn2-alloc-edges fn2-pool fn2-ops fn2-control)
   :carriers ((fn2-pool 3 :prefix "-POOL") (fn2-ops 4 :prefix "-OPS") (fn2-control 5 :prefix "-CONTROL")
              (fn2-extents 6 :prefix "-EXTENTS") (fn2-alloc-edges 7 :prefix "-EDGES")))
+(assert-event
+ (equal (getpropc 'fn2-pinned-block-io-children 'stobjs-out nil (w state))
+        '(nil nil nil fn2-pool fn2-ops fn2-control fn2-extents fn2-alloc-edges)))
+; Prove the owning eight-result primitive before closing it. These shared
+; producers bind the operation carrier from its actual ABI (position 4), and
+; retain the original queue/history equations on success and every refusal.
+ (make-event
+  (value (cons 'progn
+   (append
+    (fn2-block-issue-identity-events '(fn2-pinned-block-io-children) (w state))
+    (fn2-issue-wrapper-effect-events '(fn2-pinned-block-io-children) (w state))
+    (fn2-issued-wrapper-events '(fn2-pinned-block-io-children) (w state)))))))
 (in-theory (disable fn2-pinned-block-io-children))
 
 (defun fn2-block-read-children (pu epoch alloc off len lslot lgen okind oslot ogen principal
@@ -579,8 +652,8 @@
 
 (make-event
  (value (cons 'progn
-   (append (fn2-issue-wrapper-effect-events '(fn2-block-read-children) (w state))
-           (fn2-issued-wrapper-events '(fn2-block-read-children) (w state))))))
+   (append (fn2-issue-wrapper-effect-events '(fn2-block-read-children fn2-block-write-children) (w state))
+           (fn2-issued-wrapper-events '(fn2-block-read-children fn2-block-write-children) (w state))))))
 (defcost fn2-block-read :child fn2-block-read-children :answers (:ok :exhausted :stale :bounds)
  :tables (fn2-core-extents fn2-core-alloc-edges fn2-core-pool fn2-core-ops fn2-core-control)
  :descriptors 1 :doc "Pin a stored reference through physical completion and read it into the caller's lease.")

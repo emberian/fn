@@ -7,7 +7,7 @@
  ((phase (:enum fn2-checkpoint-summary-phase (:idle :capture :captured :applying :applied :retiring :retired :uncertain)))
   (tag :u60) (candidate :u32) (checkpoint :u60) (cut-commit :u60) (cut-event :u60)
   (history :u60) (incarnation :u60) (generation :u60) (semantic-tag :u60) (owner-kind :u8) (owner-slot :u32) (owner-gen :u60)
-  (count :u60) (cursor :u32) (installed :u60) (lease-count :u32))
+  (priority-base :u60) (application-stage :u8) (count :u60) (cursor :u32) (installed :u60) (lease-count :u32))
  :extra-fields
  ((fn2-checkpoint-summary-descriptor :type (array (unsigned-byte 8) (32)) :initially 0
    :why "Exact source descriptor retained independently of the mutable cold investigation.")))

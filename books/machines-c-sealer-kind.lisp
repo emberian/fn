@@ -28,7 +28,7 @@
   :sources :miss :wide :wrong-allocation :wrong-commit :wrong-epoch :wrong-extent :wrong-geometry :wrong-history
   :wrong-incarnation :wrong-kind :wrong-length :wrong-location :wrong-previous-commit
   :wrong-previous-seal :wrong-slot)
- :bytes 4096
+ :bytes *fn2-c-read-callback-bytes*
  :tables (fn2-core-seals fn2-core-overlays fn2-core-overlay-index fn2-core-run-installed fn2-core-run-builds
           fn2-core-run-writers fn2-core-run-restarts fn2-core-run-cache fn2-core-ribbon-builds fn2-core-ribbon-band
           fn2-core-fields fn2-core-pool fn2-core-fc fn2-core-fc-context fn2-core-b3 fn2-core-digests
@@ -42,17 +42,23 @@
 (defwait :sealable :ready fn2-sealable-ready-p :grant fn2-sealable-grant-one :tables (fn2-core-machines)
   :doc "The parked sealer, woken once a published overlay is sealable.")
 (defmachine fn2-sealer
- :states (:sealing :stopped)
+ :states (:sealing :binding :loading :reading :draining :stopped)
  ;; stopped: 1 once the row is :stopped. The budget's descriptor cap is the
  ;; other kinds' (4), though the sealer issues nothing: the run's charge
  ;; check (fn2-machine-charge) is proved over every kind's caps, and a kind
  ;; whose cap is below another's charge breaks A's callers' guard proofs,
  ;; which cannot show a row's kind is kept across an issue.
- :fields ((stopped :bool))
- :budget (:bytes 4096 :steps 32 :descriptors 4)
+ :fields ((stopped :bool) (bundle (:enum fn2-sealer-bundle (:none :held))) (load-cursor :u32) (drain :u8) (copy-drained :bool))
+ :holds ((:sealing (:storage-window :while (bundle :held)))
+         (:binding (:storage-window :while (bundle :held)))
+         (:loading (:storage-window :while (bundle :held)))
+         (:reading (:storage-window :while (bundle :held)))
+         (:draining (:storage-window :while (bundle :held)))
+         (:stopped (:storage-window :while (bundle :held))))
+ :budget (:bytes (+ 4096 (* 3 *fn2-c-read-callback-bytes*)) :steps 32 :descriptors 4)
  :capacity 1
  :initial ((generation 1) (ready-prev *fn2-none*) (ready-next *fn2-none*))
  ;; The arms are in the arm language (machines-c-sealer-events.lisp), their
  ;; contracts derived where the core exists (assembly-callbacks-c.lisp).
- :arms ((:sealing) (:stopped))
- :observes ())
+ :arms ((:sealing) (:binding) (:loading) (:reading) (:draining) (:stopped))
+ :observes ((:read-result (:wake))))

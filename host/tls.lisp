@@ -28,7 +28,7 @@
  (length sb-alien:unsigned-long) (count (* sb-alien:unsigned-long)))
 
 (defstruct fn2-native-tls
- input output seed transport (input-length 0) (input-offset 0) (seed-length 0) (seed-offset 0) (output-offset 0) (output-length 0)
+ input output seed transport
  ;; The external library's requested readiness; KICK schedules a bounded
  ;; first call or a call that can consume already-buffered transport data.
  (interest 1) (kick t))
@@ -72,15 +72,9 @@
          (unless (eq closed :done) (error "fn2 TLS: handle remained live after free")))))))
     (otherwise (error "fn2 TLS: retiring a stale or pending capability refused"))))))
 
-(defun fn2-native-tls-span (total offset room quantum)
- (multiple-value-bind (code count) (fn2-host-tls-span total offset room quantum)
-  (unless (eq code :ok) (error "fn2 TLS: transport span observation refused"))
-  count))
 
-(defun fn2-native-tls-stage-span (total offset capacity quantum)
- (multiple-value-bind (code count) (fn2-host-tls-stage-span total offset capacity quantum)
-  (unless (eq code :ok) (error "fn2 TLS: staging span observation refused"))
-  count))
+
+
 
 (defun fn2-native-tls-record (tls writep address length)
  (sb-alien:with-alien ((count sb-alien:unsigned-long))
@@ -90,48 +84,13 @@
                (fn2-tls-%read (fn2-native-tls-handle tls) address length (sb-alien:addr count)))))
    (values code count))))
 
-(defun fn2-native-tls-output-empty-p (tls)
- (and (= (fn2-native-tls-output-offset tls) (fn2-native-tls-output-length tls))
-      (zerop (fn2-tls-%output-pending (fn2-native-tls-handle tls)))))
 
-(defun fn2-native-tls-flush (tls fd host)
- "At most one bounded BIO drain and one nonblocking send. Retain short writes."
- (let ((buffer (fn2-native-tls-output tls)))
-  (sb-sys:with-pinned-objects (buffer)
-   (when (= (fn2-native-tls-output-offset tls) (fn2-native-tls-output-length tls))
-    (let ((n (fn2-tls-%drain (fn2-native-tls-handle tls) (sb-sys:vector-sap buffer) (length buffer))))
-     (when (minusp n) (return-from fn2-native-tls-flush :failed))
-     (setf (fn2-native-tls-output-offset tls) 0 (fn2-native-tls-output-length tls) n)))
-   (let* ((off (fn2-native-tls-output-offset tls))
-          (remaining (fn2-native-tls-span (fn2-native-tls-output-length tls) off (length buffer) (length buffer))))
-    (when (zerop remaining) (return-from fn2-native-tls-flush :empty))
-    (fn2-n-boundary host "tls-send")
-    (multiple-value-bind (n errno) (fn2-native-send fd (sb-sys:sap+ (sb-sys:vector-sap buffer) off) remaining)
-     (cond ((and (minusp n) (fn2-n-again-p errno)) :blocked)
-           ((<= n 0) :failed)
-           (t (incf (fn2-native-tls-output-offset tls) n) :progress)))))))
 
-(defun fn2-native-tls-fill (tls fd host)
- "Retain ciphertext until BIO accepts it; never overwrite pending input."
- (let* ((buffer (fn2-native-tls-input tls))
-        (room (fn2-native-tls-span (length buffer) 0
-                 (fn2-tls-%input-room (fn2-native-tls-handle tls)) (length buffer))))
-  (when (zerop room) (return-from fn2-native-tls-fill :blocked))
-  (sb-sys:with-pinned-objects (buffer)
-   (when (= (fn2-native-tls-input-offset tls) (fn2-native-tls-input-length tls))
-    (fn2-n-boundary host "tls-receive")
-    (multiple-value-bind (n errno) (fn2-native-recv fd (sb-sys:vector-sap buffer) room)
-     (cond ((and (minusp n) (fn2-n-again-p errno)) (return-from fn2-native-tls-fill :blocked))
-           ((<= n 0) (return-from fn2-native-tls-fill :failed))
-           (t (setf (fn2-native-tls-input-length tls) n (fn2-native-tls-input-offset tls) 0)))))
-   (let* ((off (fn2-native-tls-input-offset tls))
-          (n (fn2-native-tls-span (fn2-native-tls-input-length tls) off room (length buffer)))
-          (fed (fn2-tls-%feed (fn2-native-tls-handle tls)
-                 (sb-sys:sap+ (sb-sys:vector-sap buffer) off) n)))
-    (unless (and (<= 0 fed) (<= fed n))
-     (error "fn2 TLS: physical BIO input count contract failed"))
-    (incf (fn2-native-tls-input-offset tls) fed)
-    (if (plusp fed) :progress :blocked)))))
+
+
+
+
+
 
 (defun fn2-native-tls-perform (tls action offset count fd host bytes address)
  "One physical action; its tag and bounded arguments came from ACL2."
@@ -177,3 +136,56 @@
         (fn2-tls-transport-observe cap-index nonce slot generation serial raw 0 errno ledger)
      (setf (fn2-native-tls-transport tls) updated)
      (values observed kick (fn2-tls-transport-action-interest action)))))))
+
+(defun fn2-native-tls-record-perform (host tls fd action bytes address offset count)
+ ;; BYTES and ADDRESS are the selected pool or private window, never a guessed loan.
+ (sb-sys:with-pinned-objects (bytes)
+  (case action
+   ((12 13)
+    (fn2-n-boundary host "tls-record")
+    (multiple-value-bind (raw moved)
+        (fn2-native-tls-record tls (= action 13)
+         (sb-sys:sap+ (sb-sys:vector-sap bytes) address) count)
+     (values raw moved 0)))
+   (otherwise
+    (multiple-value-bind (raw errno)
+        (fn2-native-tls-perform tls action offset count fd host bytes address)
+     (values raw 0 errno))))))
+
+(defun fn2-native-tls-record-step (host slot tls fd)
+ (let* ((op (aref (fn2-nhost-ops host) slot)) (bytes (fn2-nhost-bytes host))
+        (handle (fn2-native-tls-handle tls)))
+  (multiple-value-bind (status action address offset count serial transport record)
+      (fn2-host-tls-record-next slot (fn2-nop-gen op)
+       (fn2-tls-%input-room handle) (fn2-tls-%output-pending handle)
+       (fn2-native-tls-transport tls) (fn2-nop-tls-record op) (fn2-nhost-core host))
+   (setf (fn2-native-tls-transport tls) transport (fn2-nop-tls-record op) record)
+   (unless (eq status :act) (return-from fn2-native-tls-record-step (values status count address)))
+   (multiple-value-bind (raw moved errno)
+       (fn2-native-tls-record-perform host tls fd action bytes address offset count)
+    (multiple-value-bind (observed next-transport next-record)
+        (fn2-tls-record-step-observe serial raw moved errno transport record)
+     (setf (fn2-native-tls-transport tls) next-transport (fn2-nop-tls-record op) next-record)
+     (unless (member observed '(:ok :blocked))
+      (error "fn2 TLS: selected record observation refused: ~S" observed))
+     (values :progress 0 0))))))
+
+(defun fn2-native-tls-child-step (host slot tls fd upper input output)
+ ;; Upper remains pending until this child returns its logical terminal result.
+ (let* ((op (aref (fn2-nhost-ops host) slot)) (handle (fn2-native-tls-handle tls)))
+  (multiple-value-bind (status action channel offset count serial transport record)
+      (fn2-host-tls-child-next slot (fn2-nop-gen op)
+       (fn2-tls-%input-room handle) (fn2-tls-%output-pending handle)
+       upper (fn2-native-tls-transport tls) (fn2-nop-tls-record op) (fn2-nhost-core host))
+   (setf (fn2-native-tls-transport tls) transport (fn2-nop-tls-record op) record)
+   (unless (eq status :act) (return-from fn2-native-tls-child-step (values status count)))
+   (let ((bytes (case channel (2 input) (3 output) (0 (fn2-nhost-bytes host))
+                 (otherwise (error "fn2 TLS: refused private channel")))))
+    (multiple-value-bind (raw moved errno)
+        (fn2-native-tls-record-perform host tls fd action bytes offset offset count)
+     (multiple-value-bind (observed next-transport next-record)
+         (fn2-tls-record-step-observe serial raw moved errno transport record)
+      (setf (fn2-native-tls-transport tls) next-transport (fn2-nop-tls-record op) next-record)
+      (unless (member observed '(:ok :blocked))
+       (error "fn2 TLS: selected child observation refused: ~S" observed))
+      (values :progress 0)))))))

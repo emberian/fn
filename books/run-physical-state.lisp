@@ -6,7 +6,7 @@
 (fn2-book-layer :c)
 (defcolumns fn2-run-loads
  ((phase (:enum fn2-run-load-phase (:idle :reserved :read :wait :copy :context :verify :header :ready :uncertain)))
-  (lease-mode (:enum fn2-run-load-lease-mode (:owned :root1-borrowed)))
+  (lease-mode (:enum fn2-run-load-lease-mode (:owned :root1-borrowed))) (borrow-token :u60)
   (kind :u8) (owner :u32) (generation :u60) (source :u32) (tag :u60)
   (windows :u8) (page :u32) (page-gen :u60) (scratch :u32) (scratch-gen :u60) (checker :u32)
   (unit :u60) (epoch :u60) (allocation :u60) (schema :u60) (run :u60) (level :u8)

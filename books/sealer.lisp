@@ -16,6 +16,7 @@
 ; than every run, which is what the readers' newest-wins rules assume.
 (in-package "ACL2")
 (include-book "machines-c-groups")
+(include-book "run-entry-rehome")
 (fn2-book-layer :c)
 (local (in-theory (disable fn2-run-layout-fields fn2-run-layout-keys fn2-run-layout-merge fn2-run-layout-size
                            fn2-fold-key-arg fn2-fold-arity fn2-fold-assigned-p fn2-run-layout-octets-max
@@ -48,7 +49,11 @@
   (top :u8) (rslot :u32) (rgen :u60) (runit :u60) (rcounter :u60) (entries :u60)
   (hslot :u32) (hgen :u60) (filter :bool) (funit :u60) (fcounter :u60)
   (wbase :u32) (fbase :u32) (crow :u32) (fill :u32) (okind :u8) (oslot :u32) (ogen :u60)
-  (k :u8) (rlo :u60) (ufirst :u60) (held :bool) (rg :u32) (sbase :u32) (cbase :u32) (qbase :u32) (rbase :u32)))
+  (k :u8) (rlo :u60) (ufirst :u60) (held :bool)
+  (copy-live :bool) (copy-slot :u32) (copy-gen :u60) (copy-state :u8)
+  (copy-field :u32) (copy-offset :u32) (copy-end :u32)
+  (source-kind :u8) (source-slot :u32) (source-gen :u60)
+  (rg :u32) (sbase :u32) (cbase :u32) (qbase :u32) (rbase :u32)))
 
 ; Shapes (type, wfp, rows of every stobj returned), with every table's rows
 ; accessor folded (the shape lemmas of the callees are stated over them).
@@ -62,7 +67,8 @@
 ; Set the seal row's resources: idle, no run or unit handed out yet.
 (defun fn2-seal-init (wbase fbase crow pagefill okind oslot ogen history history-incarnation fn2-seals)
  (declare (xargs :stobjs fn2-seals :guard (fn2-seals-wfp fn2-seals)))
- (if (not (and (fn2-origin-physicalp history history-incarnation) (< 0 (fn2-seals-rows fn2-seals)) (unsigned-byte-p 32 wbase) (unsigned-byte-p 32 fbase)
+ (if (not (and (fn2-origin-physicalp history history-incarnation) (< 0 (fn2-seals-rows fn2-seals))
+               (equal (fn2-seals-copy-live 0 fn2-seals) 0) (unsigned-byte-p 32 wbase) (unsigned-byte-p 32 fbase)
                (unsigned-byte-p 32 crow) (unsigned-byte-p 32 pagefill) (unsigned-byte-p 8 okind)
                (unsigned-byte-p 32 oslot) (unsigned-byte-p 60 ogen)))
      (mv :bounds fn2-seals)
@@ -669,7 +675,7 @@
 (defmacro fn2-seal-merge-mv (code)
  `(mv ,code fn2-seals fn2-ranges fn2-range-sources fn2-run-builds fn2-run-writers fn2-run-restarts fn2-run-cursors
       fn2-run-paths fn2-fields fn2-pool))
-(defun fn2-seal-merge-add (fn2-seals fn2-run-builds fn2-run-writers fn2-run-restarts fn2-run-cache fn2-fields fn2-pool)
+(defun fn2-seal-merge-add (budget fn2-seals fn2-run-builds fn2-run-writers fn2-run-restarts fn2-run-cache fn2-fields fn2-pool)
  (declare (xargs :stobjs (fn2-seals fn2-run-builds fn2-run-writers fn2-run-restarts fn2-run-cache fn2-fields fn2-pool)
   :guard (and (fn2-seals-wfp fn2-seals) (fn2-run-builds-wfp fn2-run-builds) (fn2-run-writers-wfp fn2-run-writers)
               (fn2-run-restarts-wfp fn2-run-restarts) (fn2-run-cache-wfp fn2-run-cache) (fn2-fields-wfp fn2-fields)
@@ -681,6 +687,28 @@
                     (fn2-run-buildp 0 fn2-run-builds fn2-run-writers)))
        (mv :bounds fn2-seals fn2-run-builds fn2-run-writers fn2-run-restarts fn2-fields fn2-pool))
       (eb (+ (nfix (fn2-seals-fbase 0 fn2-seals)) *fn2-seal-eb*))
+      ((when (and (not (equal (fn2-seals-copy-state 0 fn2-seals) 2))
+                   (or (not (equal (fn2-seals-source-kind 0 fn2-seals) (fn2-seals-okind 0 fn2-seals)))
+                       (not (equal (fn2-seals-source-slot 0 fn2-seals) (fn2-seals-oslot 0 fn2-seals)))
+                       (not (equal (fn2-seals-source-gen 0 fn2-seals) (fn2-seals-ogen 0 fn2-seals))))))
+       (b* (((unless (equal (fn2-seals-copy-live 0 fn2-seals) 1))
+             (mv :owner fn2-seals fn2-run-builds fn2-run-writers fn2-run-restarts fn2-fields fn2-pool))
+            ((mv code fn2-pool)
+             (if (equal (fn2-seals-copy-state 0 fn2-seals) 0)
+              (fn2-pool-reset (fn2-seals-copy-slot 0 fn2-seals) (fn2-seals-copy-gen 0 fn2-seals)
+               (fn2-seals-okind 0 fn2-seals) (fn2-seals-oslot 0 fn2-seals) (fn2-seals-ogen 0 fn2-seals) fn2-pool)
+              (mv :ok fn2-pool)))
+            ((unless (eq code :ok)) (mv code fn2-seals fn2-run-builds fn2-run-writers fn2-run-restarts fn2-fields fn2-pool))
+            ((mv code field copied end fn2-fields fn2-pool)
+             (fn2-run-entry-rehome-step (fn2-seals-sid 0 fn2-seals) eb
+              (fn2-seals-copy-field 0 fn2-seals) (fn2-seals-copy-offset 0 fn2-seals) (fn2-seals-copy-end 0 fn2-seals)
+              (fn2-seals-copy-slot 0 fn2-seals) (fn2-seals-copy-gen 0 fn2-seals)
+              (fn2-seals-source-kind 0 fn2-seals) (fn2-seals-source-slot 0 fn2-seals) (fn2-seals-source-gen 0 fn2-seals)
+              (fn2-seals-okind 0 fn2-seals) (fn2-seals-oslot 0 fn2-seals) (fn2-seals-ogen 0 fn2-seals)
+              budget fn2-fields fn2-pool))
+            (fn2-seals (if (member-eq code '(:more :done))
+              (fn2-seals-put 0 (copy-state (if (eq code :done) 2 1)) (copy-field field) (copy-offset copied) (copy-end end)) fn2-seals)))
+        (mv (if (member-eq code '(:more :done)) :more code) fn2-seals fn2-run-builds fn2-run-writers fn2-run-restarts fn2-fields fn2-pool)))
       ((mv c fn2-run-builds fn2-run-writers fn2-run-restarts fn2-fields fn2-pool)
        (fn2-run-build-add 0 eb fn2-run-builds fn2-run-writers fn2-run-restarts fn2-fields fn2-pool))
       ((when (eq c :ok))
@@ -692,7 +720,7 @@
       ((mv c fn2-seals fn2-run-builds fn2-run-writers fn2-pool)
        (fn2-seal-page 0 fn2-seals fn2-run-builds fn2-run-writers fn2-run-cache fn2-pool)))
   (mv (if (eq c :ok) :more c) fn2-seals fn2-run-builds fn2-run-writers fn2-run-restarts fn2-fields fn2-pool)))
-(fn2-seal-shape fn2-seal-merge-add (fn2-seals fn2-run-builds fn2-run-writers fn2-run-restarts fn2-run-cache fn2-fields fn2-pool)
+(fn2-seal-shape fn2-seal-merge-add (budget fn2-seals fn2-run-builds fn2-run-writers fn2-run-restarts fn2-run-cache fn2-fields fn2-pool)
  (fn2-seals fn2-run-builds fn2-run-writers fn2-run-restarts fn2-fields fn2-pool)
  (fn2-seals fn2-run-builds fn2-run-writers fn2-run-restarts fn2-run-cache fn2-fields fn2-pool) t
  (fn2-run-build-add fn2-seal-page fn2-run-buildp fn2-seals-fbase))
@@ -719,7 +747,7 @@
         (fn2-seal-merge-mv code)))
       ((when (equal (fn2-seals-held 0 fn2-seals) 1))
        (mv-let (code fn2-seals fn2-run-builds fn2-run-writers fn2-run-restarts fn2-fields fn2-pool)
-         (fn2-seal-merge-add fn2-seals fn2-run-builds fn2-run-writers fn2-run-restarts fn2-run-cache fn2-fields fn2-pool)
+         (fn2-seal-merge-add budget fn2-seals fn2-run-builds fn2-run-writers fn2-run-restarts fn2-run-cache fn2-fields fn2-pool)
         (fn2-seal-merge-mv code)))
       (g (fn2-seals-rg 0 fn2-seals)) (sid (fn2-seals-sid 0 fn2-seals))
       ((unless (and (natp g) (< g (fn2-ranges-rows fn2-ranges)) (natp budget))) (fn2-seal-merge-mv :bounds))
@@ -738,11 +766,15 @@
       (eb (+ (nfix (fn2-seals-fbase 0 fn2-seals)) *fn2-seal-eb*))
       ((mv code fn2-fields) (fn2-range-copy-rows *fn2-run-entry-rows* from eb fn2-fields))
       ((unless (eq code :ok)) (fn2-seal-merge-mv code))
+      (source-kind (fn2-range-sources-okind best fn2-range-sources))
+      (source-slot (fn2-range-sources-oslot best fn2-range-sources))
+      (source-gen (fn2-range-sources-ogen best fn2-range-sources))
       ((mv code fn2-range-sources) (fn2-range-consume n sbase sid best fn2-range-sources fn2-fields fn2-pool))
       ((unless (and (eq code :ok) (< 0 (fn2-seals-rows fn2-seals)))) (fn2-seal-merge-mv (if (eq code :ok) :bounds code)))
-      (fn2-seals (fn2-seals-set-held 0 1 fn2-seals))
+      (fn2-seals (fn2-seals-put 0 (held 1) (copy-state 0) (copy-field 0) (copy-offset 0) (copy-end 0)
+       (source-kind source-kind) (source-slot source-slot) (source-gen source-gen)))
       ((mv code fn2-seals fn2-run-builds fn2-run-writers fn2-run-restarts fn2-fields fn2-pool)
-       (fn2-seal-merge-add fn2-seals fn2-run-builds fn2-run-writers fn2-run-restarts fn2-run-cache fn2-fields fn2-pool)))
+       (fn2-seal-merge-add budget fn2-seals fn2-run-builds fn2-run-writers fn2-run-restarts fn2-run-cache fn2-fields fn2-pool)))
   (fn2-seal-merge-mv code)))
 (fn2-seal-shape fn2-seal-merge-next (budget fn2-seals fn2-ranges fn2-range-sources fn2-overlays fn2-overlay-index fn2-run-installed
                                      fn2-run-builds fn2-run-writers fn2-run-restarts fn2-run-cache fn2-run-cursors fn2-run-paths
@@ -1089,6 +1121,10 @@
       ((unless (< r rows))
        (let ((fn2-seals (fn2-seals-set-phase 0 *fn2-seal-phase-idle* fn2-seals)))
         (mv :done fn2-seals fn2-run-installed fn2-run-cache fn2-pool)))
+      ;; Physical roots have no resident-cache unit interval. Their catalog
+      ;; promise and query leases must drain through summary retirement.
+      ((when (= (fn2-run-installed-physical r fn2-run-installed) 1))
+       (mv :cache fn2-seals fn2-run-installed fn2-run-cache fn2-pool))
       (u (fn2-run-installed-ufirst r fn2-run-installed))
       ((mv code fn2-run-cache fn2-pool)
        (if (<= (nfix u) (nfix (fn2-run-installed-ulast r fn2-run-installed)))

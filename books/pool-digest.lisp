@@ -2,6 +2,7 @@
 (in-package "ACL2")
 (include-book "digests")
 (include-book "pool")
+(include-book "std/util/bstar" :dir :system)
 (fn2-book-layer :b)
 (local (in-theory (disable fn2-digests-rows fn2-digestsp fn2-digests-wfp fn2-poolp fn2-pool-wfp)))
 (defun fn2-rec-byte-at (slot gen off okind oslot ogen fn2-pool)

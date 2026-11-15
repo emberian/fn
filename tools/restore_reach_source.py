@@ -8,7 +8,7 @@ def rewrite(text):
     edits = []
     for match in lr.match('(defun ?name ?args ?*body)', lr.parse(text).forms, deep=False):
         name = match.captures['name']
-        if not isinstance(name, lr.Atom) or not name.low.startswith('fn2-checkpoint-restore-reach-'):
+        if not isinstance(name, lr.Atom) or not name.low.startswith(('fn2-checkpoint-restore-reach-', 'fn2-checkpoint-restore-events-')):
             continue
         for decl in match.captures['body']:
             if not isinstance(decl, lr.Lst) or not decl.items or getattr(decl.items[0], 'low', '') != 'declare':
@@ -31,8 +31,10 @@ def rewrite(text):
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--write', action='store_true')
+    parser.add_argument('--events', action='store_true')
+    parser.add_argument('--events-source', action='store_true')
     args = parser.parse_args()
-    path = Path(__file__).resolve().parents[1] / 'books/checkpoint-restore-reach.lisp'
+    path = Path(__file__).resolve().parents[1] / ('books/checkpoint-restore-events-source.lisp' if args.events_source else ('books/checkpoint-restore-events.lisp' if args.events else 'books/checkpoint-restore-reach.lisp'))
     result, count = rewrite(path.read_text())
     print(f'{path.name}: {count} concrete guard declarations')
     if args.write:

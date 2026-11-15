@@ -29,7 +29,22 @@ def phase_check(source):
         phase = ':checkpoint-payload-' + suffix
         if phase not in states or holds.get(phase) != [':storage-window']:
             raise ValueError('missing actual owned-window custody')
+def resumed_tuple_check(source):
+    forms = lr.parse(source).forms
+    fn = lr.match('(defun fn2-boot-checkpoint-payload-bound-p ?*body)', forms)[0].node
+    # Compare actual predicates as parsed forms, not a comment/token mention.
+    for field, expected in [('mode','*fn2-checkpoint-payload-mode-cold*'),
+                            ('owner-kind','*fn2-boot-kind*'), ('owner-slot','id'), ('owner-gen','ogen'),
+                            ('manifest-slot','mslot'), ('manifest-gen','mgen'), ('data-slot','dslot'), ('data-gen','dgen')]:
+        pattern = f'(equal (fn2-checkpoint-payload-{field} 0 fn2-checkpoint-payload) {expected})'
+        if not lr.match(pattern, [fn]):
+            raise ValueError('missing resumed payload '+field+' binding')
 class Source(unittest.TestCase):
+    def test_resumed_boot_tuple_is_bound_before_copy(self):
+        src = (ROOT/'books/checkpoint-restore-payload-boot.lisp').read_text()
+        resumed_tuple_check(src)
+        with self.assertRaises(ValueError):
+            resumed_tuple_check(src.replace('(equal (fn2-checkpoint-payload-data-gen 0 fn2-checkpoint-payload) dgen)', 't', 1))
     def test_single_carrier_and_mode_specific_admission(self):
         boot = (ROOT/'books/boot-kind.lisp').read_text()
         resources = (ROOT/'books/checkpoint-metadata-resources.lisp').read_text()

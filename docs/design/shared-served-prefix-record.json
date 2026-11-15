@@ -1,0 +1,156 @@
+{
+  "source": "7f93278d54db2ae5227d26eab360af573e06ae84",
+  "roots": [
+    "books/arms",
+    "books/borrow-release",
+    "books/claims",
+    "books/codec-profile",
+    "books/commit-members",
+    "books/exec-state",
+    "books/grammar",
+    "books/terminal-values",
+    "books/trace"
+  ],
+  "count": 21,
+  "books": [
+    {
+      "book": "books/arms",
+      "key": "45ca0e4bc955a1379baa3dcad1933f20d3f90bf04d9f431703ab02b4089f59ec",
+      "sha256": "e4db8e6386c430b64bd9227cf801798f1dc35bfd6428ebb05bf2ac20248a102a"
+    },
+    {
+      "book": "books/columns",
+      "key": "c8e9df5d21df547effaf69baa79db3c4c93eb88b694468b3e20e7684b30d9419",
+      "sha256": "df0b05ba3ba125a4b85036d24a721aaa4ce793864409a90e77f978cc1f969fca"
+    },
+    {
+      "book": "books/operations",
+      "key": "bd6bdf7f71b74618b02924c542559dcb99a149c816aeed11f3f5cd82d766483f",
+      "sha256": "959da2da147247146a2360e23d2c7d6abd6c581abdf0f6873661f63cee87484f"
+    },
+    {
+      "book": "books/declare",
+      "key": "f1df352dc360553d08906239d267e9371fcb2fe4f19c6581adc1b0b322b30875",
+      "sha256": "1c706e559ef3b314fb9bd48171fb2891fad8613bd4eb1c5de5268443833c4bfb"
+    },
+    {
+      "book": "books/resources",
+      "key": "fd08a4d6bcf5e55baeef11a96eb733b302158ae8fe828275efc59c441da58ff2",
+      "sha256": "019bb017e54237a5304f30598b8842de8f0651b5f92c523ff174f24994fe43c6"
+    },
+    {
+      "book": "books/owed",
+      "key": "6f334038cc4bddaaa337357384a139be3700c2c3403094bab3398dacb7fd5a3b",
+      "sha256": "04104985582a552ad115a0a6adcf2e957597b1b9ca3228bf25900877cbbcb17b"
+    },
+    {
+      "book": "books/run-budget",
+      "key": "3a840b886d62c892a01f216d5afb084db051700e001a2d55560749153590833f",
+      "sha256": "6c340901483627a433e4de6b7699b684b9949f233ee52ce4c5840774df59a7d0"
+    },
+    {
+      "book": "books/borrow-release",
+      "key": "f78f3586576c234c26542a29d3529d6c5c7f5a826c9819db34cd33f10194c72d",
+      "sha256": "08d68878eaf8c50f39552a34ab9cfce8c070b2bd21a71f4f452256f1cd2559cf"
+    },
+    {
+      "book": "books/vocab",
+      "key": "4f478aaef0024129b418a923520de2af512e629fea4349936077db24e9777d55",
+      "sha256": "c264122f29578a8c58f4d7055ac36fc27324ef7213e34a109782f25020528f95"
+    },
+    {
+      "book": "books/profile",
+      "key": "b8fb593112597395afac6a150c4a4fca81def3095ecd8f7f9be6aa0aec7384fc",
+      "sha256": "1f216ed6c0505dc1b01ada0f7d3d9482af6da7b7dff8736b5100ef3e3fbc1038"
+    },
+    {
+      "book": "books/claims",
+      "key": "6074edcdb75958e2ce8c18dba2928015ad75abb89c38eedaf085926a55eef38b",
+      "sha256": "492a1272a9b0bfa63598517d3e087a352fb02b5b921691a7d4b758a1fc1bc006"
+    },
+    {
+      "book": "books/pool-ranges",
+      "key": "f8fcb975b9a17a3517e33a4c238fade1ed41f8734a7d4c49b9fb8924efdfd471",
+      "sha256": "65cb85cbdc4b0e1e7f4e32450748eebc4235e877f4b126fd96ee9e023b4e53f0"
+    },
+    {
+      "book": "books/fnv",
+      "key": "dd5e72b52715b8e5d826a306730b8315e9c2c0a45bee6e2d37b8fdb8429ea2af",
+      "sha256": "73d15afc6e1325f03d19ad4b39eeb3adc677ce2b07e9eddbc14141ca8843edde"
+    },
+    {
+      "book": "books/pool",
+      "key": "2bfd19c844711f45df57ceb522e3f3e66edbb9438dd0d140ee860fdace4613ed",
+      "sha256": "986b80ee5ea418a6f800558682d043825c9bc137d1cb0c99798cc6fe334f342b"
+    },
+    {
+      "book": "books/owed-discharge",
+      "key": "97e73257b5f4cb3a4ca1b8ba4bf10956295c18ec211c0b297f557e780cd20fd1",
+      "sha256": "53903322be1b79ed081ecfcbfcb9f60649d3fdbf8aa6853b772abf8e6fc69f01"
+    },
+    {
+      "book": "books/codec-profile",
+      "key": "9a6ef3aa0305971d3d7e9e478105dd985b75741515fca5c8501eff12b1b0c6ea",
+      "sha256": "adb045c7393523346124a11a8959238a94be529354084bb23f9a5ae76cc63213"
+    },
+    {
+      "book": "books/commit-members",
+      "key": "0d5f8f2d02c9eb03aac90d0020240886e6c7682452c25d87c9f691d268e1c9bb",
+      "sha256": "a41a3406ff9874b2be67b182bb53aef10acf75686c9d072bed388fed38137d31"
+    },
+    {
+      "book": "books/exec-state",
+      "key": "6be71c898142f221b9f3e6cf4b51a83c69fe217de81c31f6240d778a77accd7a",
+      "sha256": "56eb8a81a3cc049c27c1e23dd1930f8184f2c892207169532315184ca141ea3d"
+    },
+    {
+      "book": "books/grammar",
+      "key": "d08c8a6e15ee291f37736fe3ff2179c72abcf62d5b5fd6997b8afceef4484e74",
+      "sha256": "1ef477486625c483e64ecc7cd5573608901b74a9e5503506987e8a15a242c8f7"
+    },
+    {
+      "book": "books/terminal-values",
+      "key": "6772bcf0a00a24cf01abff1d2d5d6689acd1655e1add2e7a0435512fa76efaeb",
+      "sha256": "afdd62209a171b2ed09652b0fa332c6829a62c5c9c270488f2c7a320ef35292c"
+    },
+    {
+      "book": "books/trace",
+      "key": "f35a80e5a601b0eb1a2f7fdd65422204dd4216f459abd507faee140f2acf6e3a",
+      "sha256": "7dc3a059880534fbfc22ce3dd3a4eb52afdc28f06bbdf406dc902da85af770b0"
+    }
+  ],
+  "record": "certify-20261114T235657Z-586600",
+  "farm_run": "run-20261114T235631Z-25e0",
+  "toolchain": "8aeb1bea18968c6cd33ac633a80ebf67e4924504db112fd27eb11f16a27b2a8c",
+  "remote_root": "/build/lanes/assurance-shared-served-prefix-7f932",
+  "status": "passed",
+  "reused": 12,
+  "newly_certified": 9,
+  "wall_seconds": 25.296,
+  "book_wall_seconds": {
+    "books/arms": 1.47,
+    "books/borrow-release": 0.467,
+    "books/claims": 8.85,
+    "books/codec-profile": 0.165,
+    "books/commit-members": 3.985,
+    "books/exec-state": 1.672,
+    "books/grammar": 3.228,
+    "books/terminal-values": 1.07,
+    "books/trace": 4.082
+  },
+  "source_before_after_equal": true,
+  "vocab_dependent_roots": [
+    "books/borrow-release",
+    "books/terminal-values"
+  ],
+  "scope": "Shared served prerequisites only, not the connected 181-book manifest substitution fixture.",
+  "resource_evidence": {
+    "requested_memory_max": "2G",
+    "requested_swap_max": 0,
+    "wrapper": "swarm-build",
+    "live_cgroup_readback": "Not captured: all ACL2 children completed before readback.",
+    "supervisor_pid": 586595,
+    "watchdog_pid": 587083,
+    "supervisor_group_empty": true
+  }
+}

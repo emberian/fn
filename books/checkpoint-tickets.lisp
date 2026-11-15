@@ -1,6 +1,7 @@
 ; Real pre-reserved journal identities. No free-row or caller-chosen handle
 ; can become a ticket; the construction reservation adapter creates the ledger.
 (in-package "ACL2")
+(include-book "std/util/bstar" :dir :system)
 (include-book "checkpoint-construction")
 (include-book "commit-format")
 (fn2-book-layer :b)

@@ -90,6 +90,14 @@ class CNSContinuationSource(unittest.TestCase):
   self.assertFalse(calls(f,'fn2-cns-lookup-loop'))
   self.assertEqual(len(calls(f,'fn2-successor-published')),2)
   self.assertIn(['equal','stamp',['nfix','published']],list(walk(f)))
+  self.assertIn(['<=',['+','ms','ml'],'fill'],list(walk(f)))
+  self.assertIn(['unsigned-byte-p','32','ms'],list(walk(f)))
+  self.assertIn(['if','terminal',':more',':fault'],list(walk(f)))
+  bad=copy.deepcopy(f)
+  for x in walk(bad):
+   if x==['if','terminal',':more',':fault']:x[2]=':ok'
+  self.assertNotIn(['if','terminal',':more',':fault'],list(walk(bad)))
+  self.assertIn(['if',['equal','absent','1'],':absent',':ok'],list(walk(f)))
   for term in ('opos','oart','*fn2-cns-read-work-done*','fn2-cns-core-mid-span'):
    self.assertIn(term,src)
  def test_actual_reply_callbacks_do_not_encode_on_miss(self):
@@ -112,4 +120,10 @@ class CNSContinuationSource(unittest.TestCase):
    self.assertEqual(len(calls(f,name)),1)
   self.assertIn('*fn2-cns-state-draining*',str(f))
   self.assertIn('*fn2-cns-state-free*',str(f))
+ def test_public_callbacks_use_shared_codec_byte_bound(self):
+  src=(ROOT/'books/cns.lisp').read_text()
+  for name in ('lookup-cursor','decode-port','item-next','put-item','put-article'):
+   start=src.index('(defcost fn2-cns-'+name+' ')
+   end=src.index('\n :tables',start)
+   self.assertIn(':bytes *fn2-c-read-callback-bytes*',src[start:end])
 if __name__=='__main__':unittest.main()
