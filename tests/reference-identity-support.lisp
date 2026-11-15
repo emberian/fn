@@ -1,7 +1,7 @@
 ; Admit real live owners without loading an unrelated machine callback.
 ; No phase, generation, query-reference count or queue link is fabricated.
 (in-package "ACL2")
-(include-book "../books/reference-effect-query")
+(include-book "../books/identity-query-callback")
 (include-book "../books/cns-query-lifetime-model")
 (include-book "core-snapshot-support")
 (defconst *fn2-cns-drain-profile*

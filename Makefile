@@ -97,6 +97,7 @@ ACL2_BOOKS = \
   books/reference-effect-query \
   tests/reference-identity-support \
   tests/reference-effect-query-unit \
+  tests/reference-effect-query-last-unit \
   tests/cns-draining-direct-events-unit \
   tests/cns-fence-proof-world \
   tests/column-snapshot-support \
