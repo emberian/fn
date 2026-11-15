@@ -87,7 +87,7 @@
 (defcolumns fn2-succ-txns
  ((phase (:enum fn2-succ-phase (:idle :open :staged :bound :published)))
   (batch :u60) (event :u60)
-  (ri :u32) (rstate (:enum fn2-succ-resolve (:fresh :next :look))) (rbound :u60)
+  (ri :u32) (rstate (:enum fn2-succ-resolve (:fresh :next :look))) (rbound :u60) (source-receipt :u60)
   (lphase (:enum fn2-succ-lookup (:idle :overlays :runs :scan))) (lbound :u60) (lrow :u32) (lver :u60)))
 (make-event
  `(defcolumns fn2-succ-slots
@@ -709,3 +709,84 @@
  (fn2-succ-txns fn2-succ-slots fn2-id-decides fn2-run-installed fn2-run-cursors fn2-run-paths fn2-run-cache fn2-fields fn2-pool) t
  (fn2-succ-resolve-raw fn2-succ-clear-ref-rows fn2-fields-wfp fn2-fields-rows))
 
+
+; One receipt per actual successor continuation, distinct from its caller's
+; READ endpoint. No machine kind/id/generation is fabricated at this seam.
+(defun fn2-succ-source-acquire (tx readrows fn2-succ-txns fn2-c-source-control fn2-c-source-readers)
+ (declare (xargs :stobjs (fn2-succ-txns fn2-c-source-control fn2-c-source-readers) :guard t))
+ (b* (((unless (and (fn2-succ-txns-wfp fn2-succ-txns) (fn2-c-source-control-wfp fn2-c-source-control)
+                    (fn2-c-source-readers-wfp fn2-c-source-readers)
+                    (natp tx) (< tx (fn2-succ-txns-rows fn2-succ-txns)) (natp readrows)))
+       (mv :bounds fn2-succ-txns fn2-c-source-control fn2-c-source-readers))
+      ((mv code receipt fn2-c-source-control fn2-c-source-readers)
+       (fn2-c-source-reader-acquire (fn2-c-source-successor-endpoint readrows tx)
+        (fn2-succ-txns-source-receipt tx fn2-succ-txns) fn2-c-source-control fn2-c-source-readers))
+      (fn2-succ-txns (if (eq code :ok) (fn2-succ-txns-set-source-receipt tx receipt fn2-succ-txns) fn2-succ-txns)))
+  (mv code fn2-succ-txns fn2-c-source-control fn2-c-source-readers)))
+(fn2-idc-fn-shape fn2-succ-source-acquire (tx readrows fn2-succ-txns fn2-c-source-control fn2-c-source-readers)
+ (fn2-succ-txns fn2-c-source-control fn2-c-source-readers) (fn2-succ-txns fn2-c-source-control fn2-c-source-readers) t
+ (fn2-succ-txns-source-receipt fn2-c-source-reader-acquire fn2-c-source-successor-endpoint))
+
+; Shared by scalar group/principal reads and actual successor resolution.
+; Preserve values/status, kill only the decoded reader's borrowed octet
+; coordinates, and invalidate its cursor before dropping the exact receipt.
+; The real writer polls/yields on its retained wake-pending control bit;
+; release's scalar target does not create an imaginary reader machine owner.
+(defun fn2-succ-source-close (tx readrows b0 fn2-succ-txns fn2-run-cursors fn2-fields fn2-c-source-control fn2-c-source-readers)
+ (declare (xargs :stobjs (fn2-succ-txns fn2-run-cursors fn2-fields fn2-c-source-control fn2-c-source-readers) :guard t))
+ (b* (((unless (and (fn2-succ-txns-wfp fn2-succ-txns) (fn2-run-cursors-wfp fn2-run-cursors) (fn2-fields-wfp fn2-fields)
+                    (fn2-c-source-control-wfp fn2-c-source-control) (fn2-c-source-readers-wfp fn2-c-source-readers)
+                    (natp tx) (< tx (fn2-succ-txns-rows fn2-succ-txns)) (< tx (fn2-run-cursors-rows fn2-run-cursors))
+                    (natp readrows) (natp b0) (<= (+ b0 *fn2-idc-stride*) (fn2-fields-rows fn2-fields))))
+       (mv :bounds fn2-succ-txns fn2-run-cursors fn2-fields fn2-c-source-control fn2-c-source-readers))
+      (endpoint (fn2-c-source-successor-endpoint readrows tx))
+      (receipt (fn2-succ-txns-source-receipt tx fn2-succ-txns))
+      ((unless (< endpoint (fn2-c-source-readers-rows fn2-c-source-readers)))
+       (mv :bounds fn2-succ-txns fn2-run-cursors fn2-fields fn2-c-source-control fn2-c-source-readers))
+      ((when (equal receipt 0))
+       (mv (if (equal (fn2-c-source-readers-live endpoint fn2-c-source-readers) 0) :ok :stale)
+        fn2-succ-txns fn2-run-cursors fn2-fields fn2-c-source-control fn2-c-source-readers))
+      ((unless (fn2-c-source-reader-current-p endpoint receipt fn2-c-source-readers))
+       (mv :stale fn2-succ-txns fn2-run-cursors fn2-fields fn2-c-source-control fn2-c-source-readers))
+      (fn2-fields (fn2-succ-clear-ref-rows *fn2-run-reader-fields* (+ b0 *fn2-idc-rb*) fn2-fields))
+      (fn2-run-cursors (fn2-run-cursors-set-phase tx *fn2-run-cursor-phase-idle* fn2-run-cursors))
+      ((mv code & & fn2-c-source-control fn2-c-source-readers)
+       (fn2-c-source-reader-release endpoint receipt fn2-c-source-control fn2-c-source-readers))
+      (fn2-succ-txns (if (eq code :ok) (fn2-succ-txns-set-source-receipt tx 0 fn2-succ-txns) fn2-succ-txns)))
+  (mv code fn2-succ-txns fn2-run-cursors fn2-fields fn2-c-source-control fn2-c-source-readers)))
+(fn2-idc-fn-shape fn2-succ-source-close
+ (tx readrows b0 fn2-succ-txns fn2-run-cursors fn2-fields fn2-c-source-control fn2-c-source-readers)
+ (fn2-succ-txns fn2-run-cursors fn2-fields fn2-c-source-control fn2-c-source-readers)
+ (fn2-succ-txns fn2-run-cursors fn2-fields fn2-c-source-control fn2-c-source-readers) t
+ (fn2-c-source-reader-current-p fn2-c-source-reader-release fn2-succ-clear-ref-rows fn2-run-cursors-set-phase
+  fn2-c-source-readers-live fn2-succ-txns-source-receipt))
+
+(defun fn2-succ-resolve-observed (tx budget b0 fn2-succ-txns fn2-succ-slots fn2-id-decides fn2-run-installed fn2-run-cursors fn2-run-paths
+ fn2-run-cache fn2-fields fn2-pool fn2-c-source-control fn2-c-source-readers)
+ (declare (xargs :stobjs (fn2-succ-txns fn2-succ-slots fn2-id-decides fn2-run-installed fn2-run-cursors fn2-run-paths fn2-run-cache fn2-fields fn2-pool fn2-c-source-control fn2-c-source-readers) :guard t))
+ (b* (((unless (and (fn2-succ-txns-wfp fn2-succ-txns) (fn2-id-decides-wfp fn2-id-decides)
+                    (natp tx) (< tx (fn2-id-decides-rows fn2-id-decides)) (< tx (fn2-succ-txns-rows fn2-succ-txns))
+                    (<= (fn2-id-decides-rows fn2-id-decides) (fn2-succ-txns-rows fn2-succ-txns))))
+       (mv :bounds fn2-succ-txns fn2-succ-slots fn2-run-cursors fn2-run-paths fn2-fields fn2-c-source-control fn2-c-source-readers))
+      (readrows (- (fn2-succ-txns-rows fn2-succ-txns) (fn2-id-decides-rows fn2-id-decides)))
+      ((mv admitted fn2-succ-txns fn2-c-source-control fn2-c-source-readers)
+       (fn2-succ-source-acquire tx readrows fn2-succ-txns fn2-c-source-control fn2-c-source-readers))
+      ((unless (eq admitted :ok))
+       (mv (if (eq admitted :busy) :more :state) fn2-succ-txns fn2-succ-slots fn2-run-cursors fn2-run-paths fn2-fields fn2-c-source-control fn2-c-source-readers))
+      ((mv code fn2-succ-txns fn2-succ-slots fn2-run-cursors fn2-run-paths fn2-fields)
+       (fn2-succ-resolve tx budget b0 fn2-succ-txns fn2-succ-slots fn2-id-decides fn2-run-installed fn2-run-cursors fn2-run-paths fn2-run-cache fn2-fields fn2-pool))
+      ((when (member-eq code '(:more :miss)))
+       (mv code fn2-succ-txns fn2-succ-slots fn2-run-cursors fn2-run-paths fn2-fields fn2-c-source-control fn2-c-source-readers))
+      ; RI beyond the slot set is not a completion certificate. All RES rows
+      ; came through the scalar-only copy above; no borrowed value is emitted.
+      (code (if (and (eq code :ok)
+                     (not (and (equal (fn2-succ-txns-ri tx fn2-succ-txns) *fn2-succ-slots*)
+                               (equal (fn2-succ-txns-rstate tx fn2-succ-txns) *fn2-succ-resolve-fresh*)))) :state code))
+      ((mv closed fn2-succ-txns fn2-run-cursors fn2-fields fn2-c-source-control fn2-c-source-readers)
+       (fn2-succ-source-close tx readrows b0 fn2-succ-txns fn2-run-cursors fn2-fields fn2-c-source-control fn2-c-source-readers)))
+  (mv (if (eq closed :ok) code :state) fn2-succ-txns fn2-succ-slots fn2-run-cursors fn2-run-paths fn2-fields fn2-c-source-control fn2-c-source-readers)))
+(fn2-idc-fn-shape fn2-succ-resolve-observed
+ (tx budget b0 fn2-succ-txns fn2-succ-slots fn2-id-decides fn2-run-installed fn2-run-cursors fn2-run-paths fn2-run-cache fn2-fields fn2-pool fn2-c-source-control fn2-c-source-readers)
+ (fn2-succ-txns fn2-succ-slots fn2-run-cursors fn2-run-paths fn2-fields fn2-c-source-control fn2-c-source-readers)
+ (fn2-succ-txns fn2-succ-slots fn2-id-decides fn2-run-installed fn2-run-cursors fn2-run-paths fn2-run-cache fn2-fields fn2-pool fn2-c-source-control fn2-c-source-readers) t
+ (fn2-succ-source-acquire fn2-succ-resolve fn2-succ-source-close fn2-succ-txns-ri fn2-succ-txns-rstate))
