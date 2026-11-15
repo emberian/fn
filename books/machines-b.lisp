@@ -375,7 +375,7 @@
           (cb-failed :bool) (outcome :u8) (cb-reason :u8)
           (cb-fence-live :bool) (cb-fence-ok :bool) (cb-deps-ok :bool)
           (cb-log-ok :bool) (cb-published :bool) (cb-acks :u32)
-          (cb-life-member :u32) (cb-life-off :u32)
+          (cb-life-member :u32) (cb-life-off :u32) (cb-bind-pending :u32)
           (cb-seal-len :u32) (cb-wrote :bool) (cb-open :bool) (dep-bytes :u32) (rec-bytes :u32))
 
  ;; b-durability 11: the journal IO is the row's own commit-io rows (no shared
@@ -402,6 +402,8 @@
 (make-event (value `(assert-event
  (equal ',(strip-cars *fn2-commit-holds*)
         ',(fn2-machine-property 'fn2-commit :states (w state))))))
+(include-book "commit-successor-binding-state")
+(fn2-commit-successor-binding-state-events)
 (include-book "commit")
 ;
 ; B5 recovery (STORAGE-DESIGN-ASTRA parts G and I over the genesis arena): one

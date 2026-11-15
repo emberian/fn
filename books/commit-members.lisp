@@ -22,7 +22,9 @@
   (slot :u32) (gen :u60) (len :u32)
   (okind :u8) (oslot :u32) (ogen :u60)
   (entries :u32) (entry-bytes :u32) (schema :u32) (event :u60)
-  (settled :u32)))
+  (settled :u32)
+  (bind-state (:enum fn2-commit-bind-state (:none :pending :complete :cancelled)))
+  (bind-subject :u32) (bind-generation :u60)))
 (defcolumns fn2-commit-settled
  ((state (:enum fn2-commit-settled-state (:free :reserved :settled)))
   (okind :u8) (oslot :u32) (ogen :u60) (batch :u60) (event :u60)
