@@ -1,0 +1,140 @@
+{
+  "source": "f11e3ba9d",
+  "target": "tests/upload-feed-slice-unit",
+  "scope": "15 books,11 reused,4 new; no core/callback admission",
+  "record": "certify-20261115T152010Z-1490144",
+  "status": "passed",
+  "seconds": 11.017,
+  "toolchain": "8aeb1bea18968c6cd33ac633a80ebf67e4924504db112fd27eb11f16a27b2a8c",
+  "source_before_after_verified": true,
+  "qualified_entries": [
+    {
+      "book": "tests/upload-feed-slice-unit",
+      "key": "e2cd47ccd0d6988f36cad84e3b857722a5a15f0876b6b17bb0ba75fabb4ead88",
+      "entry": "/home/fn/.cache/fn-certs/e2cd47ccd0d6988f36cad84e3b857722a5a15f0876b6b17bb0ba75fabb4ead88/7d0c14dbb3aad77a",
+      "cert": "7b0669c9140bc9afa3227b3b0752b7936b14d6d2250c1e8da6c37e136340a217",
+      "fasl": "ee12486e7167cc5fc42c625a2e93598eecb11811c4572d2b4cdd470eb37013dc"
+    },
+    {
+      "book": "tests/upload-feed-lf-unit",
+      "key": "1fc04b9400b7f1176afcadc4dc931438af984d422aeb738676bb2e81365e8773",
+      "entry": "/home/fn/.cache/fn-certs/1fc04b9400b7f1176afcadc4dc931438af984d422aeb738676bb2e81365e8773/7d0c14dbb3aad77a",
+      "cert": "f20de86b9f21fc72cc047a9a8fe7830dcbb2a2ebf978d49f00f75c36de7b72f1",
+      "fasl": "520849531b9c57dfcb5e18fbc1037fda7923c76388c51055438bdb971874f794"
+    },
+    {
+      "book": "tests/upload-feed-unit",
+      "key": "6ee7fb51ed2a7816bb8e7acb0ef6028d610ab37db9e8621b368b2120d5144840",
+      "entry": "/home/fn/.cache/fn-certs/6ee7fb51ed2a7816bb8e7acb0ef6028d610ab37db9e8621b368b2120d5144840/7d0c14dbb3aad77a",
+      "cert": "bed39c9c276b54322fe6585c22554a1d45ec14242d7f141faecce7b6fce05f77",
+      "fasl": "ef4fe5f735eaadf2aaaaf2fd301926071cb14dfc70dad9be3a9ccb2b11dd0ee1"
+    },
+    {
+      "book": "books/upload-feed",
+      "key": "f06ee83fe0ca133ea18e14c7086bb43b27836fd17e04b0639fa42a5a82721b57",
+      "entry": "/home/fn/.cache/fn-certs/f06ee83fe0ca133ea18e14c7086bb43b27836fd17e04b0639fa42a5a82721b57/7d0c14dbb3aad77a",
+      "cert": "d7561a4c53c065c60f270355716d1fc3f5b00b2efae3bdbfc9859460f81a2ea2",
+      "fasl": "8fe5cac46c9166c3c0a495c0b778d8ca60bef8774ae3d5bf0262b94c3c99c4cf"
+    },
+    {
+      "book": "books/grammar",
+      "key": "417c0d1fe35334a95140b5959a3c4ee2b61d934049d34876cfb925e4cab33459",
+      "entry": "/home/fn/.cache/fn-certs/417c0d1fe35334a95140b5959a3c4ee2b61d934049d34876cfb925e4cab33459/c66daff0df99fefa",
+      "cert": "41eae2275c6641862f6e33a4798b7ed3e4c1b555b26dd7729b610331777083f9",
+      "fasl": "c28225316a4a07b0db4bd71086309c992183546e7422b1cf0739bb949d01686f"
+    },
+    {
+      "book": "books/pool-ranges",
+      "key": "dcb427f41784a0ef8efffb1df2049322c2ecd24612499cfd490a4af956a9d775",
+      "entry": "/home/fn/.cache/fn-certs/dcb427f41784a0ef8efffb1df2049322c2ecd24612499cfd490a4af956a9d775/94fe1cb4ac7e6113",
+      "cert": "61791cfdd080e026f75c31e6a4e7b630846d0ece9d954a5027d6d8fbe7d6e4c4",
+      "fasl": "fece40a367c191e4ce36af8851fbf3c662df49f63b2928716023486eac779a88"
+    },
+    {
+      "book": "books/columns-guard-hints",
+      "key": "22ecddd308ae2fa4d38e661b634bbebd2fee8ca94fc0d1ef5e32882eaff2d1b6",
+      "entry": "/home/fn/.cache/fn-certs/22ecddd308ae2fa4d38e661b634bbebd2fee8ca94fc0d1ef5e32882eaff2d1b6/94fe1cb4ac7e6113",
+      "cert": "b5d3d2f937f82211b2b3823e0a0e81ecc4437057ad5c38d66890bdc096e862a6",
+      "fasl": "8bff7e47fdfa4ba6fbc0dd3f97bbd83d241a8491fedd10851bcd353f9a4a6bfb"
+    },
+    {
+      "book": "books/columns",
+      "key": "38095288d423070f6cab7e1e92efd69bb141da6e50f57a4c338b88872f52321c",
+      "entry": "/home/fn/.cache/fn-certs/38095288d423070f6cab7e1e92efd69bb141da6e50f57a4c338b88872f52321c/fd18e79203637b8c",
+      "cert": "375390d9fe57d9269d267f9ce6a740f5e31ca710ccc81ceeff06efeab4662334",
+      "fasl": "32d263266c11cd3d2b100f8cb141052825a7404806629bc3e1e27ed92767bc6c"
+    },
+    {
+      "book": "books/operations",
+      "key": "15da3cfd8dd9976d08f0c8590f6b607f62e664c5cf20fcb68c5525ad2347b53f",
+      "entry": "/home/fn/.cache/fn-certs/15da3cfd8dd9976d08f0c8590f6b607f62e664c5cf20fcb68c5525ad2347b53f/4847be3c35763d2d",
+      "cert": "909cbcb30de1e31131cb08690f9ecc4776de3463b6c17538281a7ea613d7b233",
+      "fasl": "9fa565c104e04b0c33a2fdab4662e711829a5ef88e02b7173d99c2f667a406d8"
+    },
+    {
+      "book": "books/declare",
+      "key": "f1df352dc360553d08906239d267e9371fcb2fe4f19c6581adc1b0b322b30875",
+      "entry": "/home/fn/.cache/fn-certs/f1df352dc360553d08906239d267e9371fcb2fe4f19c6581adc1b0b322b30875/2c56b9035d330b37",
+      "cert": "202d9dd8bfa5eb1d5c2f705fc7dd054f87014e5263da1f80bbafef057ce68971",
+      "fasl": "949ada9e4b8673d8401f9a6d053f5f11b1e373f28b38638cc3fae79c3b469db6"
+    },
+    {
+      "book": "books/fnv",
+      "key": "4ee17d0aaaf580facb4b97aee92ee68c38643ce1b18d31abd7b1ba7fb6d40ae2",
+      "entry": "/home/fn/.cache/fn-certs/4ee17d0aaaf580facb4b97aee92ee68c38643ce1b18d31abd7b1ba7fb6d40ae2/94fe1cb4ac7e6113",
+      "cert": "1f793b94a3998d374198c0c665dbacbf014bd27510904fbf02c6479f13cba35a",
+      "fasl": "d7aac47377ff92f5afe19e7620cb49a7cced1c00bab1f91ea3246da54faff336"
+    },
+    {
+      "book": "books/pool",
+      "key": "1baf66f05cb3d8ae989b6fb67dcde117135c53c4b3ea84e6e5bc5c538f267956",
+      "entry": "/home/fn/.cache/fn-certs/1baf66f05cb3d8ae989b6fb67dcde117135c53c4b3ea84e6e5bc5c538f267956/fd18e79203637b8c",
+      "cert": "a171af2f7817d0d0ad60368f1625ddf5f5bcbdb5c78b95f56a2f102f92760bae",
+      "fasl": "b052223bea2c19748b77a0cf55eac8622c484e3d576a13acfdc1c5e50095a0cc"
+    },
+    {
+      "book": "books/profile",
+      "key": "7454f7f3ee8237c090ab16a0fc46151c7f2c76878581f05b6edb786cb2f8af6e",
+      "entry": "/home/fn/.cache/fn-certs/7454f7f3ee8237c090ab16a0fc46151c7f2c76878581f05b6edb786cb2f8af6e/4847be3c35763d2d",
+      "cert": "feddf6abab4c1a657e8ffe20a6949c87f4fc47438ca58283c70797d34af86879",
+      "fasl": "5b253d0be64c629360c4967a6f28ed616a390521fa7c3fd0dd0cd4638c38e2e5"
+    },
+    {
+      "book": "books/owed-discharge",
+      "key": "97e73257b5f4cb3a4ca1b8ba4bf10956295c18ec211c0b297f557e780cd20fd1",
+      "entry": "/home/fn/.cache/fn-certs/97e73257b5f4cb3a4ca1b8ba4bf10956295c18ec211c0b297f557e780cd20fd1/bab1191b3d08490a",
+      "cert": "63fa5a7ba08f6bc849d0e15c642697cbba02fff367b763fcc28d6b7a7927dc53",
+      "fasl": "17a2fbf13ba55900448433c8f1d8ca53d95088dd0db4411c7ee827de680410b7"
+    },
+    {
+      "book": "books/owed",
+      "key": "6f334038cc4bddaaa337357384a139be3700c2c3403094bab3398dacb7fd5a3b",
+      "entry": "/home/fn/.cache/fn-certs/6f334038cc4bddaaa337357384a139be3700c2c3403094bab3398dacb7fd5a3b/2c56b9035d330b37",
+      "cert": "148bd33abdf09c514975bdd7296425acfe710d0e9dddf2d21643a0ec4f544a20",
+      "fasl": "1d0f0a9a82c7ec001a440ba127e28c15abc35f50fd46a2b6070e86c509f910df"
+    }
+  ],
+  "author": {
+    "source_guards_projection": "PASS6.10s",
+    "existing_and_LF_assertions": "PASS",
+    "slice_assertions": "PASS1.66s",
+    "first_refusal": "unmaterialized test-only logical snapshot; repaired via existing schema reference generator",
+    "outer": 1486827,
+    "server": 1486870,
+    "acl2_pgid": 1486874,
+    "all_handles_and_scope_absent": true,
+    "memory_max": 2147483648,
+    "swap_max": 0
+  },
+  "record_handles": {
+    "supervisor": 1490136,
+    "runner": 1490144,
+    "both_absent": true,
+    "cap": "FN_FARM_MEM_MAX=2G configured; live cgroup not sampled before fast exit"
+  },
+  "limitations": [
+    "Actual core wrapper AST change checked; composed callback guard/execution pending.",
+    "Full rolling upload,32KiB readback and failure paths unrun."
+  ],
+  "triage": "4 clean logs,zero real/cascade/limit/killed/other"
+}
