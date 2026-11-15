@@ -128,3 +128,29 @@
  (declare (ignore vars))
  (assert (member '(:next :closing) effects :test #'equal)))
 (format t "CTL SEND SOURCE CONTROL PASS: zero-progress terminal closes~%")
+
+;; Captured source, both phases NONE: Read returns before Close and parks on
+;; :aborting. Actual Close observer then schedules CTL draining, which must
+;; re-notify that child even though no output prefix was ever started.
+(assert (eq (fn2-ctl-stream-reply-status 1 2 3 4 5
+                  '(:phase 10 :output 0 :pending 1)) :aborting))
+(let ((observes (getf (cdddr *ctl*) :observes))
+      (draining (cdr (assoc :draining (getf (cdddr *ctl*) :arms)))))
+ (multiple-value-bind (effects vars) (run (cdddr (assoc :close-result observes)) nil)
+  (declare (ignore vars))
+  (assert (member '(:next :draining) effects :test #'equal))
+  (assert (member '(:wake) effects :test #'equal)))
+ (multiple-value-bind (effects vars)
+  (run draining '((row-pending . 0) (row-borrows . 0) (row-cns . 4)
+                  (row-cns-gen . 5) (row-ophase . 0) (row-sphase . 0)))
+  (declare (ignore vars))
+  (assert (member '(:wake-row row-cns) effects :test #'equal)))
+ ;; Pending Close or a retained transport loan still prevents the wake.
+ (dolist (counts '((1 0) (0 1)))
+  (multiple-value-bind (effects vars)
+   (run draining `((row-pending . ,(first counts)) (row-borrows . ,(second counts))
+                   (row-cns . 4) (row-cns-gen . 5) (row-ophase . 0)))
+   (declare (ignore vars))
+   (assert (not (member '(:wake-row row-cns) effects :test #'equal))))))
+(assert (eq (fn2-ctl-stream-reply-status 1 2 3 4 5 '(:phase 11 :output 0)) :cancelled))
+(format t "CTL PRE-PREFIX CLOSE SOURCE CONTROL PASS: Read-before-Close, terminal re-notify, pending/loan holds~%")
