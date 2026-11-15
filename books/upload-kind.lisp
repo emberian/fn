@@ -9,6 +9,7 @@
 (include-book "upload-feed")
 (include-book "blake3")
 (include-book "machine-arms") ; defmachine-registry (MACHINE-FORM 6.5 P4)
+(include-book "upload-page-geometry")
 (fn2-book-layer :d)
 
 ;; The run quantum, split statically: at most *fn2-upload-hash-bytes* hashed
@@ -19,15 +20,15 @@
 ;; The pool class of a chunk (the profile's second class: 64 KiB in the
 ;; concrete profile) and the article bound when the profile names none
 ;; (fn1's source bound, specs/article-parser.md).
-(defconst *fn2-upload-chunk-class* 1)
+
 ;; Large-upload windows (ROUND2 B.1): an upload holds one while it streams.
 (defconst *fn2-upload-windows* 16)
-(defconst *fn2-upload-article-max* 32768)
+
 ;; The source's content identity (BLAKE3, 32 octets) is appended to the
 ;; window right after the source at the verdict, for C's offer and the
 ;; article row (a pool workspace is written at its fill): in chunk 0 when it
 ;; fits there, else in chunk 1. The bound leaves its room in chunk 1.
-(defconst *fn2-upload-digest-octets* 32)
+
 ;; Where it goes for a source of FILLED octets: (mv in1 off), IN1 true for
 ;; chunk 1.
 (defun fn2-upload-digest-at (filled cap0)
@@ -47,38 +48,22 @@
 ;; ("Message-ID: " then the identifier, CR LF); the source and its content
 ;; identity are unchanged. The template runs to the "@"; the path identity
 ;; and *fn2-upload-mid-close* follow it.
-(defconst *fn2-upload-mid-field-octets* 12)
-(defconst *fn2-upload-mid-template*
-  (concatenate 'string "Message-ID: <fn2." (string (code-char 1)) "." (string (code-char 1)) "@"))
-(defconst *fn2-upload-mid-close* (coerce (list #\> (code-char 13) (code-char 10)) 'string))
+
 ;; A consumer's append with an operation identity (e-surface.md 3.3) that
 ;; names no Message-ID gets <op-PRINCIPAL-OP@P> instead, so a retry of the
 ;; same operation is the same article on every carrier: the template's two
 ;; counters are the upload's principal and its operation.
-(defconst *fn2-upload-op-mid-template*
-  (concatenate 'string "Message-ID: <op-" (string (code-char 1)) "-" (string (code-char 1)) "@"))
-(assert-event (<= (length *fn2-upload-op-mid-template*) (length *fn2-upload-mid-template*)))
+
 ;; Its longest form: two 20-digit counters and the longest path identity, a
 ;; 250-octet Message-ID (RFC 5536 3.1.3).
-(defconst *fn2-upload-mid-line-max*
-  (+ (- (length *fn2-upload-mid-template*) 2) 40 *fn2-profile-path-identity-max* (length *fn2-upload-mid-close*)))
-(assert-event (equal (- *fn2-upload-mid-line-max* (+ *fn2-upload-mid-field-octets* 2)) 250))
 
 ;; A source manifest (article-manifest.lisp) names stored octets one 4 KiB
 ;; block per entry; its header and the entries of the largest size fill one
 ;; extent at most, so one manifest names *fn2-am-stored-max* octets (93
 ;; blocks, 380,928 octets) and the profile's article bound, with the
 ;; generated Message-ID field, stays within it (fn2-input-config-profilep).
-(defconst *fn2-am-block-bytes* *fn2-commit-unit-bytes*)
-(defconst *fn2-am-header-max* (fn2-layout-max-size *fn2-format-source-manifest-header*))
-(defconst *fn2-am-entry-max* (fn2-layout-max-size *fn2-format-source-manifest-entry*))
+
 ;; entries of the largest size one unit holds (the first holds the header too)
-(defconst *fn2-am-entries-per-unit*
-  (floor (- *fn2-commit-unit-bytes* *fn2-am-header-max*) *fn2-am-entry-max*))
-(defconst *fn2-am-stored-max*
-  (* *fn2-am-block-bytes* *fn2-am-entries-per-unit* *fn2-commit-write-resources*))
-(assert-event (equal *fn2-am-stored-max* 380928))
-(assert-event (<= (+ *fn2-upload-article-max* *fn2-upload-mid-line-max*) *fn2-am-stored-max*))
 
 ;; Words an upload or a transaction posts to its connection (section 14.5),
 ;; by name; 0 is none.
@@ -166,13 +151,10 @@
            (and (true-listp (fn2-profile-get :pool-classes profile))
                 (< *fn2-upload-chunk-class* (len (fn2-profile-get :pool-classes profile)))
                 (< 0 (fn2-b-upload-windows profile))))
-       (or (null (fn2-profile-get :article-max profile))
-           (and (natp (fn2-profile-get :article-max profile))
-                (<= (+ (fn2-profile-get :article-max profile) *fn2-upload-mid-line-max*) *fn2-am-stored-max*)))))
+       (fn2-upload-article-profilep profile)))
 (defun fn2-input-config-from (profile fn2-input-config)
   (declare (xargs :stobjs fn2-input-config :guard (fn2-input-config-profilep profile)))
-  (let* ((fn2-input-config (fn2-input-config-init 1 fn2-input-config))
-         (max (fn2-profile-get :article-max profile)))
+  (let* ((fn2-input-config (fn2-input-config-init 1 fn2-input-config)))
     ;; posting is served only when a POST can succeed: under the interim and
     ;; with a row of fn2-txn in the profile's T share (else an upload would
     ;; park on a transaction row that never exists, its request unanswered)
@@ -180,7 +162,7 @@
                                               (< 0 (fn2-txn-capacity profile)))
                                          1 0))
                           (peering (if (fn2-profile-get :peering-interim profile) 1 0))
-                          (article-max (if (unsigned-byte-p 32 max) max *fn2-upload-article-max*)))))
+                          (article-max (fn2-upload-profile-article-max profile)))))
 (defthm fn2-input-config-from-type
   (implies (fn2-input-configp fn2-input-config)
            (fn2-input-configp (fn2-input-config-from profile fn2-input-config))))
