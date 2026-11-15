@@ -33,3 +33,10 @@
 (defcost fn2-checkpoint-events-rearm :child fn2-event-producer-rearm :answers (:ok :state :retained)
  :tables (fn2-core-event-build fn2-core-event-read fn2-core-journal-members fn2-core-release-inventory-build)
  :doc "Rearm finished source cursors only after exact successful publication, bundle release and actual B thaw; preserve frontier and root provenance.")
+
+(defcost fn2-checkpoint-events-transfer :child fn2-release-inventory-transfer-step :answers t
+ :tables (fn2-core-release-inventory-build fn2-core-event-build fn2-core-event-read fn2-core-csnapshot fn2-core-checkpoints
+          fn2-core-checkpoint-refs fn2-core-checkpoint-bytes fn2-core-checkpoint-construction fn2-core-extents fn2-core-alloc-edges
+          fn2-core-ops fn2-core-checkpoint-page-verified fn2-core-checkpoint-publication fn2-core-checkpoint-lifecycle fn2-core-mk
+          fn2-core-fc fn2-core-digests fn2-core-release-evidence fn2-core-release-evidence-candidates)
+ :doc "After exact covering publication and thaw, inspect one proof row and transfer settled obligations to the authenticated pending inventory; preserve every foreign source claim.")
