@@ -533,6 +533,12 @@
     (cond ((not (eq code :ok)) (mv code fn2-extents fn2-alloc-edges))
           ((not (member-eq kind *fn2-alloc-edges*)) (mv :edge-kind fn2-extents fn2-alloc-edges))
           ((eq kind :reservation) (mv :reservation-owned fn2-extents fn2-alloc-edges))
+          ; A completed cold protection scan remains valid through suffix
+          ; replay. Only the final private recovery join may open phase4;
+          ; ordinary drops cannot erase its reconstructed source claims.
+          ((and (= (fn2-alloc-freeze-phase fn2-extents) 4)
+                (eq kind :recovery-base))
+           (mv :cold-recovery fn2-extents fn2-alloc-edges))
           ((not (fn2-alloc-edge-slotp edge fn2-alloc-edges)) (mv :edge-bounds fn2-extents fn2-alloc-edges))
           ((not (fn2-alloc-edge-matchesp edge holder i epoch counter kind fn2-alloc-edges))
            (mv :edge-holder fn2-extents fn2-alloc-edges))
@@ -550,6 +556,13 @@
            (fn2-alloc-edge-matchesp edge holder i epoch counter kind edges))
   :hints (("Goal" :in-theory (e/d (fn2-alloc-edge-drop)
                                  (fn2-alloc-edge-matchesp)))))
+(defthm fn2-alloc-edge-drop-cold-base-frame
+ (implies (and (equal (fn2-alloc-freeze-phase p) 4)
+               (equal kind :recovery-base))
+  (and (equal (mv-nth 1 (fn2-alloc-edge-drop edge holder i epoch counter kind p edges)) p)
+       (equal (mv-nth 2 (fn2-alloc-edge-drop edge holder i epoch counter kind p edges)) edges)))
+ :hints (("Goal" :in-theory (e/d (fn2-alloc-edge-drop)
+                               (fn2-alloc-handle-code)))))
 ; Internal shared settlement; callers establish ordinary-open or exact
 ; selected cold persisted-evidence authority. No served operation exports it.
 (defun fn2-alloc-commit-allocation-transition (i epoch counter owner-kind owner-id fn2-extents)
