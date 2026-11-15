@@ -23,21 +23,16 @@
 ;; extent). Its size is derived from the stored octets (fn2-upload-page-bytes).
 ;; The full stored digest stays before the stage, after the generated field.
 ;; The location vector follows it; raw uploads also stage one complete unit.
-(defconst *fn2-upload-page-stored-source* (* 64 (ceiling *fn2-upload-mid-line-max* 64)))
-(defconst *fn2-upload-page-location-hashes* (+ *fn2-upload-page-stored-source* 64))
-(defconst *fn2-upload-page-stage*
-  (+ *fn2-upload-page-location-hashes* (* 64 (ceiling *fn2-article-location-hashes-max* 64))))
-(defconst *fn2-upload-page-hash* (+ *fn2-upload-page-stage* *fn2-commit-unit-bytes*))
-(defconst *fn2-upload-page-manifest* (+ *fn2-upload-page-hash* 64))
+
+
+
+
+
 ;; The octets the manifest's header and one entry touch (each encoded with
 ;; the 32-octet digests it names; an entry after the zeros that pad its unit).
-(defconst *fn2-upload-head-bytes* (+ 32 *fn2-am-header-max*))
-(defconst *fn2-upload-entry-bytes* (+ 64 (* 2 *fn2-am-entry-max*)))
-(defun fn2-upload-page-bytes (total)
-  (declare (xargs :guard t))
-  (if (fn2-am-manifestp total)
-      (+ *fn2-upload-page-manifest* (* *fn2-commit-unit-bytes* (fn2-am-units total)))
-    *fn2-upload-page-manifest*))
+
+
+
 
 ;; The words the store's refusals give (also the transaction's).
 (defconst *fn2-upload-word-unaffordable* (fn2-upload-word-code :unaffordable))
@@ -175,7 +170,7 @@
     (if (and (fn2-input-config-wfp fn2-input-config) (natp (fn2-input-config-rows fn2-input-config))
              (< 0 (fn2-input-config-rows fn2-input-config)))
         (fn2-input-config-article-max 0 fn2-input-config) 0)
-    (min (nfix max) (nfix (- (+ (nfix cap0) (nfix cap1)) (+ 1 *fn2-upload-digest-octets*))))))
+    (fn2-upload-input-bound max cap0 cap1)))
 (defun fn2-upload-scan-step (slot gen off field visible fields lines seen mo ml no nl po pl id ogen fn2-core)
   (declare (xargs :stobjs fn2-core :guard (fn2-core-wfp fn2-core)))
   (stobj-let ((fn2-pool (fn2-core-pool fn2-core)))
