@@ -23,9 +23,10 @@ functions in SBCL, without ACL2 admission:
 
 The existing ACL2 fixture adds exact expansion assertions for common WFP
 inheritance and independent explicit-NIL suppression. It retains actual
-constructor admission. These ACL2 assertions have not run. Parsing, secrets
-and whitespace checks pass. No remote compute or active-candidate edits were
-performed.
+constructor admission. These ACL2 assertions subsequently passed author admission and the exact
+six-book record gate at source `0100183d6`; see the receipt below. Parsing,
+secrets and whitespace checks pass. The active application candidate was not
+changed.
 
 ## Narrow qualification plan
 
@@ -54,17 +55,35 @@ previously absent WFP hint now inherits a common hint need their original
 composed admission gate at that later freeze; the fixture alone does not
 qualify those consumers.
 
-Read-only Forge cache inventory at source `481facac5` found two integrity-checked
+The pre-gate read-only Forge cache inventory at source `481facac5` found two integrity-checked
 compiled entries with toolchain identity `8aeb1bea18968c6cd33ac633a80ebf67e4924504db112fd27eb11f16a27b2a8c`:
 
 - declare: `299f7489bcfaeeb7c1a8f777c4a3b4886c5be174761a2f63f69a39599466aba1`
 - operations: `ffaf93d705d08918400704d108e7bffa6a3da8ae5ae2917128974f7d53c9e71b`
 
-The four exact misses are columns, columns-guard-hints,
+The four pre-gate exact misses were columns, columns-guard-hints,
 columns-carrier-contracts and the fixture. The fixture closure key is
 `c54a3d3abb11079eb6a5c0817bc063d8b2cf6cf33cdada3d64b84a179e9dc34c`.
-All six books permit only the plain certification world. No install, ACL2
-process or record run occurred. Plan and cache-query details are retained in
+All six books permit only the plain certification world. The inventory itself
+launched no ACL2 process. Plan and cache-query details are retained in
 `/tmp/carrier-hint-presence-plan.json` and
 `/tmp/carrier-hint-presence-cache.json` locally and on Forge; installation must
 revalidate entries and their compatibility when a gate is authorized.
+
+
+## Qualified narrow result
+
+Author admission passed in 2.39 seconds under measured 2 GiB / zero swap,
+with the original 2M-step / 20-second event limits. Exact record run
+`certify-20261115T204440Z-1804965` passed four new books with two cached parents
+in 1.984 seconds; all six source hashes remained identical. All six current
+closure entries have integrity-checked compiled artifacts at toolchain 8aeb.
+The record requested the same 2 GiB cap but ended before a live record-cgroup
+sample; the receipt does not claim that sample was taken.
+
+The manifest's Git revision is null. Its six raw source hashes were independently
+matched to authenticated source commit `0100183d63d830ec4f3de05535bc0966d8a65309`
+and the lane files. Owned handles are gone and the allocation is released.
+[Exact receipt](receipts/carrier-hint-presence-0100183.json) includes source keys,
+payload verification, setup refusal, bounds and collection status. This is READY
+for the deliberate foundation batch, not application descendant qualification.

@@ -1,0 +1,128 @@
+{
+  "scope": "Exact six-book carrier hint fixture; no application descendant qualification",
+  "source_commit": "0100183d63d830ec4f3de05535bc0966d8a65309",
+  "implementation_commit": "527f4836f",
+  "farm_run": "run-20261115T204416Z-2001",
+  "record": {
+    "manifest": "/build/lanes/carrier-hint-presence-record-0100183/build/acl2/certify-20261115T204440Z-1804965/manifest.json",
+    "manifest_sha256": "36c987960a83aa4cfcaefb4b4f15b67b797eb212580fb8cbd1a03eba578e2b79",
+    "status": "passed",
+    "book_results": {
+      "books/columns": "passed",
+      "books/columns-carrier-contracts": "passed",
+      "books/columns-guard-hints": "passed",
+      "tests/columns-carrier-hints-unit": "passed"
+    },
+    "book_failures": {},
+    "book_wall_seconds": {
+      "books/columns": 1.021,
+      "books/columns-carrier-contracts": 0.267,
+      "books/columns-guard-hints": 0.166,
+      "tests/columns-carrier-hints-unit": 0.466
+    },
+    "certify_wall_seconds": 1.984,
+    "toolchain": "8aeb1bea18968c6cd33ac633a80ebf67e4924504db112fd27eb11f16a27b2a8c",
+    "runner_unchanged": true,
+    "git_revision": null,
+    "sources_equal": true,
+    "source_count": 6,
+    "entries": [
+      {
+        "book": "books/operations",
+        "key": "ffaf93d705d08918400704d108e7bffa6a3da8ae5ae2917128974f7d53c9e71b",
+        "integrity_checked": 1,
+        "compiled": 1
+      },
+      {
+        "book": "books/declare",
+        "key": "299f7489bcfaeeb7c1a8f777c4a3b4886c5be174761a2f63f69a39599466aba1",
+        "integrity_checked": 1,
+        "compiled": 1
+      },
+      {
+        "book": "books/columns",
+        "key": "a4276bffaccccc016d96e4092feed4c661817b9dd3944578bfa4050a215f3249",
+        "integrity_checked": 1,
+        "compiled": 1
+      },
+      {
+        "book": "books/columns-guard-hints",
+        "key": "8c845cf33d20a26aa4f1ec62392b01b5f7994912723d8b75ebf8594097c01cdd",
+        "integrity_checked": 1,
+        "compiled": 1
+      },
+      {
+        "book": "books/columns-carrier-contracts",
+        "key": "f1868d314c771191056411a5933cad4c137e077450fa198c4e60c9c80ccb52f4",
+        "integrity_checked": 1,
+        "compiled": 1
+      },
+      {
+        "book": "tests/columns-carrier-hints-unit",
+        "key": "c54a3d3abb11079eb6a5c0817bc063d8b2cf6cf33cdada3d64b84a179e9dc34c",
+        "integrity_checked": 1,
+        "compiled": 1
+      }
+    ]
+  },
+  "source_binding": {
+    "manifest_git_revision": null,
+    "method": "All six manifest raw source hashes equal authenticated Git commit and current lane files",
+    "sha256": {
+      "books/columns-carrier-contracts.lisp": "36cf411d1119704be488c119243d0aff8006e9babe38bb128f5d627353373c5a",
+      "books/columns-guard-hints.lisp": "e0a20c5669df681bf75fa5eeae426adc4053010915b3c7657d56e247d5c8440b",
+      "books/columns.lisp": "c9ef6233e6c8b25ce0fe801f19a30e2f877670bceb158c461d3f36878a93c09d",
+      "books/declare.lisp": "54e850788ee821dd90a4d9715e93d319f94846039592c4420fef1bdc5d959569",
+      "books/operations.lisp": "419120e7ae100f400d18cdee2d080d6133523673cac22fae1b05c7201ff97dd8",
+      "tests/columns-carrier-hints-unit.lisp": "aa490db15be9f725d2b9729b7dd09e71765c0b95e19413f56366129e1ea8b3b3"
+    }
+  },
+  "author": {
+    "passed": true,
+    "elapsed_seconds": 2.394,
+    "prover_step_limit": 2000000,
+    "per_event_seconds": 20,
+    "installed_compiled_parents": 2,
+    "source_dependencies": [
+      "books/columns",
+      "books/columns-guard-hints",
+      "books/columns-carrier-contracts"
+    ],
+    "target": "tests/columns-carrier-hints-unit",
+    "driver_sha256": "9c3a362ee20db9c55d8cad6ace949267cf3dcc4fa24a1a5581b379dc258b47fb",
+    "log_sha256": "32cad8f808c41eb40e297bad71946478ff968504073848ae213d2284fa9ca84c",
+    "effective_memory_max": 2147483648,
+    "effective_swap_max": 0,
+    "scope": "run-p1803333-i31160022.scope"
+  },
+  "setup_refusal": {
+    "phase": "before ACL2 startup",
+    "reason": "CLI rejects cached-only combined with explicit ld",
+    "returncode": 2,
+    "correction": "remove cached-only; explicit sole source ancestor columns selects source mode; exact two remaining parents cache installed missing0"
+  },
+  "record_resource_scope": {
+    "requested_memory_max": "2G",
+    "requested_swap_max": 0,
+    "effective_cap_sampled_live": false,
+    "reason": "record completed before live cgroup sample; author cap measured separately"
+  },
+  "cleanup": {
+    "owned_pids_confirmed_absent": [
+      1802970,
+      1803333,
+      1803347,
+      1803351,
+      1804961,
+      1804965
+    ],
+    "allocation_released": true
+  },
+  "collection": {
+    "farm_exit": 0,
+    "collected": true,
+    "remote_four_new_entries_cached": true,
+    "local_four_new_entries_published": true
+  },
+  "integration": "READY held for deliberate foundation/application convergence; active application source unchanged"
+}
