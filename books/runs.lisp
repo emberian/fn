@@ -110,7 +110,7 @@
  (declare (xargs :stobjs (fn2-run-builds fn2-run-writers fn2-pool)
   :guard (and (fn2-run-buildp b fn2-run-builds fn2-run-writers) (fn2-pool-wfp fn2-pool))))
  (fn2-run-build-page-kind b level slot gen unit epoch counter
-  (if (zp level) *page-kind-run-data* *page-kind-run-index*) fn2-run-builds fn2-run-writers fn2-pool))
+  (if (zp (nfix level)) *page-kind-run-data* *page-kind-run-index*) fn2-run-builds fn2-run-writers fn2-pool))
 (fn2-run-builds-preserves fn2-run-build-page (b level slot gen unit epoch counter fn2-run-builds fn2-run-writers fn2-pool)
  :position 1 :disable nil)
 (fn2-run-writers-preserves fn2-run-build-page (b level slot gen unit epoch counter fn2-run-builds fn2-run-writers fn2-pool)
