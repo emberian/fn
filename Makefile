@@ -490,6 +490,7 @@ ACL2_BOOKS = \
   tests/peer-replay-unit \
   tests/pointwise-contracts-unit \
   tests/pool-ranges-unit \
+  tests/pool-query-ref-unit \
   tests/pool-unit \
   tests/port-unit \
   tests/primitive-list-domain-unit \
