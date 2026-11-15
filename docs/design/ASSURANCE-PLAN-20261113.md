@@ -12,6 +12,17 @@ recovery of accepted data. Integrated work now goes directly to upstream dev;
 component records alone do not establish this milestone. The shared application
 build owns the coherent current callback/runtime prefix and executable controls.
 
+The native acceptance sequence uses both existing real-socket tests after
+current `node-profile` and `native-b3-evidence` qualification and host/interface
+checks. `tests/native-append-fetch-restart.py` requires two committed FNCT replies,
+process death, exact retrieval of both distinct 6,144-byte articles and refusal
+of a real Message-ID paired with the other article's position.
+`tests/native-image-restart.py` requires pre-grant POST refusal, two observed
+NNTP `240` replies, process death, and exact GROUP/ARTICLE/HEAD across two fresh
+opens. Its 6,297- and 15,745-byte articles cross an extent boundary; they do not
+establish 64 KiB upload-window recycling. Both gates use separate disposable
+images and remain unrun. These are process-death tests, not power-loss proofs.
+
 Run-page source `f3a8f5668` is now qualified by the
 [26-book record](receipts/runs-page26-record.json): 25 reused and one new book.
 Root matched all 26 source hashes and closure keys. The complete book passes
@@ -32,10 +43,17 @@ overlay and run assembly. Ribbon's earlier standalone certification exposed
 an incidental author-world dependency; it now explicitly includes the byte-contract
 book locally. The composed author run advanced through identity, commit
 geometry/format, ordered runs, authority schema, folds and run manifests. Its
-next refusal is the original generated `runs-served` assembly event reaching
-its unchanged 20-second proof limit. A targeted assembly-generator hint is
-queued in the separate application source. APPEND/FETCH and native restart
-remain unexecuted.
+original generated `runs-served` assembly now passes after call-derived guard
+and shape hints, with runtime bodies and theorem statements preserved. Range
+assembly passes in 14.43 seconds; checkpoint and resource books also pass their
+author checks. The application build continues downstream. The current
+integration tree's nine changed run/range books passed author checks, followed
+by the [44-book record](receipts/root-run-range44-record.json): 35 reused and
+nine newly certified. Root matched all current source hashes and closure keys
+and all 44 actual cert/FASL payload hashes. The record covers `runs-served` and
+`range`, not `range-served` or application composition. Identity at 39.466 seconds,
+ordered at 34.285, runs at 23.594 and runs-served at 20.284 leave proof-cost work
+open. APPEND/FETCH and native restart remain unexecuted.
 
 The shared call-derived proof helper now replaces repeated fold and Ribbon
 hints, including the temporary local fold observer exclusion. It derives column
