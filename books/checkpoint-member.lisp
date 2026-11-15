@@ -127,7 +127,15 @@
         (args (getpropc name 'formals :missing world))
         (inputs (getpropc name 'stobjs-in nil world))
         (outputs (getpropc name 'stobjs-out nil world))
-        (carriers '((fn2-fields 2 :prefix "-FIELDS") (fn2-pool 3 :prefix "-POOL")))
+        (carriers '((fn2-fields 2 :prefix "-FIELDS")
+            (fn2-pool 3 :prefix "-POOL"
+             :hints ((fn2-columns-guard-hint
+                      '(fn2-checkpoints fn2-checkpoint-refs fn2-checkpoint-bytes fn2-fields fn2-pool)
+                      '(fn2-pool-reset fn2-pool-copy-range fn2-pool-truncate
+                        fn2-checkpoint-member-hash fn2-format-checkpoint-installation-size
+                        fn2-format-txn-record-encode fn2-format-checkpoint-installation-encode
+                        fn2-checkpoint-slotp unsigned-byte-p integer-range-p natp member-equal)
+                      '(fn2-checkpoint-installation-pack-member) world)))))
         (hints '((fn2-columns-guard-hint
                   '(fn2-checkpoints fn2-checkpoint-refs fn2-checkpoint-bytes fn2-fields fn2-pool)
                   '(fn2-pool-reset fn2-pool-copy-range fn2-pool-truncate
