@@ -2,7 +2,8 @@
 (in-package "ACL2")
 (include-book "profile")
 (fn2-book-layer :b)
-(defconst *fn2-idc-scratch-bytes* 4096)
+; The C schema inventory owns actual bind scratch capacity. This B leaf
+; owns only the arena/profile geometry and must not shadow that decision.
 (defconst *fn2-idc-arena-default* 65536)
 (defun fn2-idc-profile-arena (profile)
  (declare (xargs :guard t))
