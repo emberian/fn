@@ -66,4 +66,3 @@
                          fn2-cns-table fn2-core-machines fn2-core-pool fn2-core-control
                          fn2-corep fn2-core-wfp)))))))))
 (make-event (value (cons 'progn (fn2-cns-take-reservation-events (w state)))))
-

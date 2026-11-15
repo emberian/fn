@@ -187,4 +187,3 @@
 (defun fn2-cns-draining-resultp (id before bytes steps descriptors runnable after)
   (equal (list bytes steps descriptors runnable after)
          (fn2-cns-draining-expected id before)))
-

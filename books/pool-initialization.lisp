@@ -664,4 +664,3 @@
              (fn2-pool-init fn2-pool-row-invariantp fn2-pool-class-accountsp fn2-pool-retired-slots
               fn2-pool-nslots fn2-pool-nclasses fn2-pool-retired-count fn2-pool-capacity-bytes
               fn2-pool-base fn2-pool-cap fn2-pool-init-row-readers)))))
-
