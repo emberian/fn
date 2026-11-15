@@ -46,7 +46,9 @@ class EventBootSourceTests(unittest.TestCase):
             ':checkpoint-project-begin': ':checkpoint-project-step',
             ':checkpoint-project-step': ':checkpoint-project-protect',
             ':checkpoint-project-protect': ':checkpoint-cbase-acquire',
-            ':checkpoint-cbase-acquire': ':checkpoint-adopt-begin',
+            ':checkpoint-cbase-acquire': ':checkpoint-loader-begin',
+            ':checkpoint-loader-begin': ':checkpoint-loader-step',
+            ':checkpoint-loader-step': ':checkpoint-adopt-begin',
             ':checkpoint-authority-copy': ':checkpoint-catalog-begin',
             ':checkpoint-catalog-copy': ':checkpoint-directory-install',
             ':checkpoint-directory-install': ':checkpoint-bank-bind',
@@ -90,7 +92,13 @@ class EventBootSourceTests(unittest.TestCase):
         route(':checkpoint-events-finish', 'validated', ':checkpoint-project-begin', 'fn2-boot-checkpoint-investigation-finish')
         route(':checkpoint-project-step', 'projected', ':checkpoint-project-protect', 'fn2-checkpoint-projection-step-op')
         route(':checkpoint-project-protect', 'protected', ':checkpoint-cbase-acquire', 'fn2-checkpoint-projection-protect-op')
-        route(':checkpoint-cbase-acquire', 'held', ':checkpoint-adopt-begin', 'fn2-checkpoint-cbase-acquire-op')
+        route(':checkpoint-cbase-acquire', 'held', ':checkpoint-loader-begin', 'fn2-checkpoint-cbase-acquire-op')
+        route(':checkpoint-loader-step', 'complete', ':checkpoint-adopt-begin', 'fn2-checkpoint-summary-loader-step-op')
+        route(':checkpoint-loader-step', 'changed', ':checkpoint-loader-begin', 'fn2-checkpoint-summary-loader-step-op')
+        scan = arm(':checkpoint-loader-step')
+        self.assertTrue(lr.match('((:more :yield) ?*rest)', [scan], deep=True))
+        self.assertTrue(lr.match('(:otherwise (:stop :checkpoint))', [scan], deep=True))
+        self.assertFalse(lr.match('((:row ?*codes) ?*rest)', [scan], deep=True))
         route(':checkpoint-adopt-preflight', 'copy', ':checkpoint-adopt-copy', 'fn2-checkpoint-summary-apply-preflight-op')
         route(':checkpoint-adopt-copy', 'applied', ':checkpoint-authority-begin', 'fn2-checkpoint-summary-apply-step-op')
         route(':checkpoint-authority-copy', 'complete', ':checkpoint-catalog-begin', 'fn2-checkpoint-summary-authority-cold-step-op')
@@ -114,21 +122,24 @@ class EventBootSourceTests(unittest.TestCase):
             return False
         self.assertTrue(reaches(':recover', set()))
         self.assertTrue(reaches(':checkpoint-events-finish', set()))
+        self.assertFalse(reaches(':checkpoint-project-begin', {':checkpoint-loader-step'}))
         self.assertFalse(reaches(':recover', {':epoch-result'}))
         self.assertFalse(reaches(':checkpoint-events-finish', {':epoch-result'}))
         self.assertTrue(lr.match('(:issue (fn2-issue-fence :principal 0) ?*rest)', [arm(':epoch-fence')], deep=True))
         self.assertTrue(lr.match('(:cond ((equal row-event-ready 0) (:idle)) ((not (equal row-outcome *fn2-outcome-done*)) (:stop :io)) (t ?*success))', [arm(':epoch-result')], deep=True))
         self.assertTrue(lr.match('(fn2-boot-adopt-epoch row-next-epoch)', [arm(':epoch-result')], deep=True))
         # Listeners are woken only in post-Fence release/ready arms.
-        for phase in (':checkpoint-events-finish', ':checkpoint-project-begin', ':checkpoint-project-step', ':checkpoint-project-protect', ':checkpoint-cbase-acquire', ':checkpoint-adopt-begin', ':checkpoint-adopt-copy', ':checkpoint-authority-copy', ':checkpoint-directory-install', ':checkpoint-bank-bind', ':recover-wait', ':epoch', ':epoch-fence'):
+        for phase in (':checkpoint-events-finish', ':checkpoint-project-begin', ':checkpoint-project-step', ':checkpoint-project-protect', ':checkpoint-cbase-acquire', ':checkpoint-loader-begin', ':checkpoint-loader-step', ':checkpoint-adopt-begin', ':checkpoint-adopt-copy', ':checkpoint-authority-copy', ':checkpoint-directory-install', ':checkpoint-bank-bind', ':recover-wait', ':epoch', ':epoch-fence'):
             self.assertFalse(lr.match('(:wake-row ?target)', [arm(phase)], deep=True), phase)
 
     def test_real_forward_gates_reject_bypasses(self):
         src = (Path(__file__).resolve().parents[1] / 'books/boot.lisp').read_text()
         mutations = (
+            ('((:complete) (:next :checkpoint-adopt-begin)', '((:complete) (:next :checkpoint-authority-begin)'),
+            ('((:more :yield) (:next :checkpoint-loader-step)', '((:more :yield :row) (:next :checkpoint-loader-step)'),
             ('((:validated) (:next :checkpoint-project-begin)', '((:validated) (:next :ready)'),
             ('((:protected) (:next :checkpoint-cbase-acquire)', '((:protected) (:next :checkpoint-adopt-begin)'),
-            ('((:held) (:next :checkpoint-adopt-begin)', '((:held) (:next :checkpoint-authority-begin)'),
+            ('((:held) (:next :checkpoint-loader-begin)', '((:held) (:next :checkpoint-authority-begin)'),
         )
         for old, new in mutations:
             self.assertIn(old, src)

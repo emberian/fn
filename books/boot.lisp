@@ -953,9 +953,21 @@
   (:checkpoint-cbase-acquire
    (:do (code) (fn2-checkpoint-cbase-acquire-op 1) :accept ()
     :case (((:more) (:next :checkpoint-cbase-acquire) (:charge :bytes 256 :steps *fn2-work-stage* :runnable t))
-           ((:held) (:next :checkpoint-adopt-begin) (:charge :steps *fn2-work-stage* :runnable t))
+           ((:held) (:next :checkpoint-loader-begin) (:charge :steps *fn2-work-stage* :runnable t))
            (:otherwise (:stop :checkpoint)))))
 
+
+  ; The scan checks one real loader cursor/operation per bounded turn.
+  ; Its COMPLETE receipt is a resource prerequisite, not source authority.
+  (:checkpoint-loader-begin :on-refusal ((:stop :checkpoint))
+   (:do (code) (fn2-checkpoint-summary-loader-begin-op) :accept (:more))
+   (:next :checkpoint-loader-step) (:charge :steps *fn2-work-stage* :runnable t))
+  (:checkpoint-loader-step
+   (:do (code) (fn2-checkpoint-summary-loader-step-op budget) :accept ()
+    :case (((:more :yield) (:next :checkpoint-loader-step) (:charge :steps *fn2-work-stage* :runnable t))
+           ((:changed) (:next :checkpoint-loader-begin) (:charge :steps *fn2-work-stage* :runnable t))
+           ((:complete) (:next :checkpoint-adopt-begin) (:charge :steps *fn2-work-stage* :runnable t))
+           (:otherwise (:stop :checkpoint)))))
 
   (:checkpoint-adopt-begin :on-refusal ((:stop :checkpoint))
    (:do (code) (fn2-checkpoint-summary-apply-begin-op) :accept (:more))

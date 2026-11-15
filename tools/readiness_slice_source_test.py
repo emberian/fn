@@ -27,6 +27,12 @@ class Slice(unittest.TestCase):
  def test_geometry_move_preserves_current_boot_fields_and_phases(self):
   for old,new,fn in [('boot-kind.lisp','boot-config-state.lisp',boot.kind),('checkpoint-boot.lisp','boot-geometry-state.lisp',boot.geometry)]:
    rewritten,lower=fn((F/('readiness-slice-before-'+old)).read_text())
+   # The consumer subsequently appends exactly two scan states; the lower
+   # extraction must still preserve every preexisting field/state/hold/arm.
+   if old=='boot-kind.lisp':
+    rewritten=rewritten.replace(':genesis-begin :genesis-step)', ':genesis-begin :genesis-step :checkpoint-loader-begin :checkpoint-loader-step)')
+    rewritten=rewritten.replace('         (:checkpoint-cbase-acquire :storage-window)', '         (:checkpoint-cbase-acquire :storage-window)\n         (:checkpoint-loader-begin :storage-window)\n         (:checkpoint-loader-step :storage-window)')
+    rewritten=rewritten.replace('         (:checkpoint-cbase-acquire)\n', '         (:checkpoint-cbase-acquire)\n         (:checkpoint-loader-begin)\n         (:checkpoint-loader-step)\n')
    self.assertEqual((B/old).read_text(),rewritten);self.assertEqual((B/new).read_text(),lower)
  def test_harvest_same_actual_observer_no_issuer(self):
   exports=(F/'readiness-slice-provider-harvest.lisp').read_text();s=(B/'run-physical-harvest.lisp').read_text()
