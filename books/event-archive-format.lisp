@@ -3,6 +3,7 @@
 ; member runs. There is no alternate raw-journal fallback in this layout.
 (in-package "ACL2")
 (include-book "checkpoint-map-format")
+(include-book "layout-bind")
 (fn2-book-layer :b)
 (deflayout fn2-event-archive-header
  (append
@@ -17,3 +18,5 @@
 (defconst *fn2-event-archive-header-limit*
  (+ *fn2-event-archive-header-start* *fn2-event-archive-header-max-size*))
 (assert-event (<= *fn2-event-archive-header-limit* *fn2-format-page-size*))
+
+(deflayout-binder fn2-event-archive-header-bind fn2-event-archive-header)

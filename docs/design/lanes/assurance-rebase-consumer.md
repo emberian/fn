@@ -205,3 +205,11 @@ page kind derives from the sole schema/level dispatcher and whose promotion
 requires the real physical completion. Root3's header retains the existing
 manifest envelope. Two source controls and unrun actual class/refusal assertions
 cover this distinction; the class predicate grants no coverage or completion.
+
+Header construction now uses a concrete field binder generated from the actual
+DEFLAYOUT registry, avoiding another hand-written setter class. `layout-bind`
+generates only row assignments and type/extent guards; it adds no parser/encoder
+or source authority. The existing codec still checks wire-kind validity and
+framing. Four source controls cover declaration lookup, actual field offsets,
+guards/effects and header use; an unrun eight-field mixed scalar/reference/zero
+fixture checks the emitted concrete binder.
