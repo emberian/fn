@@ -486,7 +486,7 @@
 ; through the verified-page cache under the run's owner.
 (defcolumns fn2-run-installed
  ((state (:enum fn2-run-installed-state (:free :live :retired)))
-  (schema :u60) (run :u60) (top :u8) (slot :u32) (gen :u60) (unit :u60) (counter :u60) (entries :u60)
+  (schema :u60) (run :u60) (wire-run :u60) (top :u8) (slot :u32) (gen :u60) (unit :u60) (counter :u60) (entries :u60)
   (okind :u8) (oslot :u32) (ogen :u60) (filter :bool) (funit :u60) (fcounter :u60) (ufirst :u60) (ulast :u60)
   ;; Resident runs use their pool lease; selected checkpoint sources load by Ref.
   (physical :bool) (epoch :u60) (catalog-tag :u60)
@@ -509,18 +509,18 @@
  (= (fn2-run-installed-physical-count fn2-run-installed)
     (fn2-run-physical-rows-from (fn2-run-installed-rows fn2-run-installed) 0 fn2-run-installed)))
 
-(defun fn2-run-install-physical (r schema run top entries unit epoch counter catalog-tag hash-0 hash-1 hash-2 hash-3 hash-4 hash-5 hash-6 hash-7 fn2-run-installed)
+(defun fn2-run-install-physical (r schema run wire-run top entries unit epoch counter catalog-tag hash-0 hash-1 hash-2 hash-3 hash-4 hash-5 hash-6 hash-7 fn2-run-installed)
  (declare (xargs :stobjs fn2-run-installed :guard (fn2-run-installed-wfp fn2-run-installed)))
- (b* (((unless (and (natp r) (< r (fn2-run-installed-rows fn2-run-installed)) (unsigned-byte-p 60 schema) (unsigned-byte-p 60 run) (unsigned-byte-p 8 top) (unsigned-byte-p 60 entries) (unsigned-byte-p 60 unit) (unsigned-byte-p 60 epoch) (unsigned-byte-p 60 counter) (unsigned-byte-p 60 catalog-tag) (unsigned-byte-p 32 hash-0) (unsigned-byte-p 32 hash-1) (unsigned-byte-p 32 hash-2) (unsigned-byte-p 32 hash-3) (unsigned-byte-p 32 hash-4) (unsigned-byte-p 32 hash-5) (unsigned-byte-p 32 hash-6) (unsigned-byte-p 32 hash-7) (< top *fn2-run-max-levels*) (posp run) (posp catalog-tag) (= (mod unit *fn2-storage-extent-units*) 0))) (mv :bounds fn2-run-installed))
+ (b* (((unless (and (natp r) (< r (fn2-run-installed-rows fn2-run-installed)) (unsigned-byte-p 60 schema) (unsigned-byte-p 60 run) (unsigned-byte-p 60 wire-run) (posp wire-run) (<= wire-run run) (unsigned-byte-p 8 top) (unsigned-byte-p 60 entries) (unsigned-byte-p 60 unit) (unsigned-byte-p 60 epoch) (unsigned-byte-p 60 counter) (unsigned-byte-p 60 catalog-tag) (unsigned-byte-p 32 hash-0) (unsigned-byte-p 32 hash-1) (unsigned-byte-p 32 hash-2) (unsigned-byte-p 32 hash-3) (unsigned-byte-p 32 hash-4) (unsigned-byte-p 32 hash-5) (unsigned-byte-p 32 hash-6) (unsigned-byte-p 32 hash-7) (< top *fn2-run-max-levels*) (posp run) (posp catalog-tag) (= (mod unit *fn2-storage-extent-units*) 0))) (mv :bounds fn2-run-installed))
       ((unless (and (= (fn2-run-installed-state r fn2-run-installed) *fn2-run-installed-state-free*)
                     (= (fn2-run-installed-physical r fn2-run-installed) 0)))
        (mv :state fn2-run-installed))
       (count (+ 1 (fn2-run-installed-physical-count fn2-run-installed)))
       ((unless (unsigned-byte-p 32 count)) (mv :exhausted fn2-run-installed))
-      (fn2-run-installed (fn2-run-installed-put r (state *fn2-run-installed-state-live*) (schema schema) (run run) (top top) (entries entries) (physical 1) (epoch epoch) (catalog-tag catalog-tag) (slot *fn2-none*) (gen 0) (unit unit) (counter counter) (okind 0) (oslot 0) (ogen 0) (filter 0) (funit 0) (fcounter 0) (ufirst 0) (ulast 0) (hash-0 hash-0) (hash-1 hash-1) (hash-2 hash-2) (hash-3 hash-3) (hash-4 hash-4) (hash-5 hash-5) (hash-6 hash-6) (hash-7 hash-7)))
+      (fn2-run-installed (fn2-run-installed-put r (state *fn2-run-installed-state-live*) (schema schema) (run run) (wire-run wire-run) (top top) (entries entries) (physical 1) (epoch epoch) (catalog-tag catalog-tag) (slot *fn2-none*) (gen 0) (unit unit) (counter counter) (okind 0) (oslot 0) (ogen 0) (filter 0) (funit 0) (fcounter 0) (ufirst 0) (ulast 0) (hash-0 hash-0) (hash-1 hash-1) (hash-2 hash-2) (hash-3 hash-3) (hash-4 hash-4) (hash-5 hash-5) (hash-6 hash-6) (hash-7 hash-7)))
       (fn2-run-installed (update-fn2-run-installed-physical-count count fn2-run-installed)))
   (mv :ok fn2-run-installed)))
-(fn2-run-installed-preserves fn2-run-install-physical (r schema run top entries unit epoch counter catalog-tag hash-0 hash-1 hash-2 hash-3 hash-4 hash-5 hash-6 hash-7 fn2-run-installed) :position 1 :raw-rows t)
+(fn2-run-installed-preserves fn2-run-install-physical (r schema run wire-run top entries unit epoch counter catalog-tag hash-0 hash-1 hash-2 hash-3 hash-4 hash-5 hash-6 hash-7 fn2-run-installed) :position 1 :raw-rows t)
 
 (defun fn2-run-install (r schema run top slot gen unit counter entries okind oslot ogen fn2-run-installed)
  (declare (xargs :stobjs fn2-run-installed :guard (fn2-run-installed-wfp fn2-run-installed)))
@@ -533,7 +533,7 @@
       ((unless (and (equal (fn2-run-installed-state r fn2-run-installed) *fn2-run-installed-state-free*)
                     (= (fn2-run-installed-physical r fn2-run-installed) 0)))
        (mv :state fn2-run-installed))
-      (fn2-run-installed (fn2-run-installed-put r (state *fn2-run-installed-state-live*) (schema schema) (run run)
+      (fn2-run-installed (fn2-run-installed-put r (state *fn2-run-installed-state-live*) (schema schema) (run run) (wire-run run)
                            (top top) (slot slot) (gen gen) (unit unit) (counter counter) (entries entries)
                            (okind okind) (oslot oslot) (ogen ogen) (filter 0) (funit 0) (fcounter 0)
                            (physical 0) (epoch 0) (catalog-tag 0)

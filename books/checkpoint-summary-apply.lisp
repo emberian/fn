@@ -25,9 +25,9 @@
        (if (not (= (fn2-checkpoint-summary-installed 0 fn2-checkpoint-summary) (fn2-checkpoint-summary-count 0 fn2-checkpoint-summary)))
            (mv :coverage fn2-checkpoint-summary fn2-run-installed fn2-id-engine fn2-seals)
         (let* ((fn2-id-engine (fn2-id-engine-put 0
-                (seq (fn2-checkpoint-summary-count 0 fn2-checkpoint-summary))
+                (seq (+ (fn2-checkpoint-summary-priority-base 0 fn2-checkpoint-summary) (fn2-checkpoint-summary-count 0 fn2-checkpoint-summary)))
                 (published (fn2-checkpoint-summary-cut-event 0 fn2-checkpoint-summary))))
-               (fn2-seals (fn2-seals-set-runs 0 (fn2-checkpoint-summary-count 0 fn2-checkpoint-summary) fn2-seals))
+               (fn2-seals (fn2-seals-set-runs 0 (+ (fn2-checkpoint-summary-priority-base 0 fn2-checkpoint-summary) (fn2-checkpoint-summary-count 0 fn2-checkpoint-summary)) fn2-seals))
                (fn2-checkpoint-summary (fn2-checkpoint-summary-set-phase 0 *fn2-checkpoint-summary-phase-applied* fn2-checkpoint-summary)))
          (mv :applied fn2-checkpoint-summary fn2-run-installed fn2-id-engine fn2-seals))))
       ((unless (unsigned-byte-p 32 (+ 1 e))) (mv :bounds fn2-checkpoint-summary fn2-run-installed fn2-id-engine fn2-seals))
@@ -42,7 +42,7 @@
                     (< (fn2-checkpoint-summary-sources-top e fn2-checkpoint-summary-sources) *fn2-run-max-levels*)))
        (mv :directory fn2-checkpoint-summary fn2-run-installed fn2-id-engine fn2-seals))
       ((mv install-code fn2-run-installed) (fn2-run-install-physical r (fn2-checkpoint-summary-sources-schema e fn2-checkpoint-summary-sources)
-       rank
+       (+ (fn2-checkpoint-summary-priority-base 0 fn2-checkpoint-summary) rank) rank
        (fn2-checkpoint-summary-sources-top e fn2-checkpoint-summary-sources)
        (fn2-checkpoint-summary-sources-entries e fn2-checkpoint-summary-sources)
        (fn2-checkpoint-summary-sources-unit e fn2-checkpoint-summary-sources)
