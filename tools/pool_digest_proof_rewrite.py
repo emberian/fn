@@ -36,6 +36,10 @@ SUPPORT='''; Local proof support: a backend pool read never uses the continuatio
 (local (defthm fn2-rec-fetch-aligned-state
  (implies (and (natp k) (<= k 8)) (fn2-rec-fetch-state-p (* 4 k) 0))
  :hints (("Goal" :in-theory (enable fn2-rec-fetch-state-p)))))
+(local (defthm fn2-rec-fetch-aligned-next-state
+ (implies (and (natp k) (< k 8)) (fn2-rec-fetch-state-p (+ 4 (* 4 k)) 0))
+ :hints (("Goal" :use ((:instance fn2-rec-fetch-aligned-state (k (+ 1 k))))
+                 :in-theory (disable fn2-rec-fetch-state-p fn2-rec-fetch-aligned-state)))))
 (local (defthm fn2-rec-fetch-bytes-shape
  (implies (and (fn2-digestsp fn2-digests) (fn2-digest-rowp dst fn2-digests))
   (and (fn2-digestsp (mv-nth 3 (fn2-rec-fetch-bytes left next acc dst slot gen off okind oslot ogen fn2-pool fn2-digests)))
