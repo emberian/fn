@@ -488,6 +488,7 @@ ACL2_BOOKS = \
   tests/layout-teeth-unit \
   tests/layout-unit \
   tests/layout-payload-span-unit \
+  tests/pool-digest-budget-unit \
   tests/layout-proof-scope-unit \
   tests/log-model-unit \
   tests/m2-cuts \
