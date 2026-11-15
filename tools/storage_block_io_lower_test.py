@@ -15,7 +15,33 @@ def read(p):return (ROOT/p).read_text()
 def tree(n):
  if isinstance(n,lr.Pre):return (n.prefix,tree(n.node))
  return tuple(tree(x) for x in n.items) if hasattr(n,'items') else n.low
+
+MOVED_FUNCTIONS=('fn2-block-issue-identity-events','fn2-pinned-block-io-children',
+                 'fn2-block-read-children','fn2-block-write-children')
+
 class StorageBlockLower(unittest.TestCase):
+ def check_current_registry_contract(self,registry,leaf):
+  before=subprocess.check_output(['git','show',BASE+':books/machines-b.lisp'],cwd=ROOT,text=True)
+  _,resources,original_leaf=rw.transform(before,'(include-book "machines-b")\n')
+  # The extracted implementation, guards, contracts and resource import are
+  # still exact. Later registry layout changes do not belong to this move.
+  self.assertEqual(resources,'(include-book "storage-block-io")\n')
+  self.assertEqual(leaf,original_leaf+IDENTITY_ADDITION)
+  parsed=lr.parse(registry).forms
+  self.assertEqual(len(lr.match('(include-book "storage-block-io")',parsed,deep=False)),1)
+  self.assertEqual(len(lr.match('(include-book "storage-block-io")',parsed,deep=True)),1)
+  for name in MOVED_FUNCTIONS:
+   # Deep matching rejects a hidden LOCAL copy as well as a public twin.
+   self.assertFalse(lr.match('(defun '+name+' ?*body)',parsed,deep=True),name)
+  original=lr.parse(before).forms
+  for operation,child in [('fn2-block-read','fn2-block-read-children'),
+                          ('fn2-block-write','fn2-block-write-children')]:
+   old=lr.match('(defcost '+operation+' ?*body)',original,deep=False)
+   new=lr.match('(defcost '+operation+' ?*body)',parsed,deep=False)
+   self.assertEqual(len(old),1);self.assertEqual(len(new),1)
+   self.assertEqual(tree(old[0].node),tree(new[0].node))
+   self.assertIn(':child '+child,registry[new[0].start:new[0].end])
+   self.assertEqual(len(lr.match('(defun '+child+' ?*body)',lr.parse(leaf).forms,deep=True)),1)
  def test_every_original_function_guard_and_contract_is_exact(self):
   before=read('tools/fixtures/storage-block-io-before.lisp');a,b,c=rw.transform(before,'(include-book "machines-b")\n(defun unchanged () 1)')
   originals=[tree(n) for n in rw.selected(before)]
@@ -28,7 +54,26 @@ class StorageBlockLower(unittest.TestCase):
   before=subprocess.check_output(['git','show',BASE+':books/machines-b.lisp'],cwd=ROOT,text=True)
   resources='(include-book \"machines-b\")\n'
   a,b,c=rw.transform(before,resources)
-  self.assertEqual(a,read('books/machines-b.lisp'));self.assertEqual(b,'(include-book \"storage-block-io\")\n');self.assertEqual(c,without_identity_addition(read('books/storage-block-io.lisp')))
+  self.assertEqual(b,'(include-book \"storage-block-io\")\n');self.assertEqual(c,without_identity_addition(read('books/storage-block-io.lisp')))
+  self.assertFalse(lr.match('(defun fn2-pinned-block-io-children ?*body)',lr.parse(a).forms,deep=True))
+  self.check_current_registry_contract(read('books/machines-b.lisp'),read('books/storage-block-io.lisp'))
+ def test_current_registry_hidden_twins_missing_import_and_changed_child_fail(self):
+  registry=read('books/machines-b.lisp');leaf=read('books/storage-block-io.lisp')
+  moved=rw.one(leaf,'(defun fn2-block-read-children ?*body)')
+  definition=leaf[moved.start:moved.end]
+  damaged=(registry+'\n'+definition,
+           registry+'\n(local '+definition+')',
+           registry+'\n(encapsulate () (local '+definition+'))',
+           registry.replace('(include-book "storage-block-io")','',1),
+           registry.replace(':child fn2-block-read-children',':child fn2-block-write-children',1))
+  for mutation in damaged:
+   with self.assertRaises(AssertionError):self.check_current_registry_contract(mutation,leaf)
+ def test_changed_extracted_body_or_guard_fails(self):
+  registry=read('books/machines-b.lisp');leaf=read('books/storage-block-io.lisp')
+  for mutation in (leaf.replace('(fn2-pinned-block-io-children nil','(fn2-pinned-block-io-children t',1),
+                   leaf.replace(':guard (and',':guard (or',1)):
+   self.assertNotEqual(mutation,leaf)
+   with self.assertRaises(AssertionError):self.check_current_registry_contract(registry,mutation)
  def test_only_exact_appended_wrapper_identity_registration_allowed(self):
   leaf=read('books/storage-block-io.lisp')
   original=without_identity_addition(leaf)

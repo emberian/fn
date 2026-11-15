@@ -932,8 +932,9 @@
       "pass": 5,
       "fail": 1,
       "failure": "historical whole machines-b equality against de31; unchanged owning candidate also fails after legitimate CNS/CTL row-family changes",
-      "resolution": "Preserved red; extraction-contract control repair follows separately without snapshot rebaseline"
-    }
+      "resolution": "Follow-up contract control passes8tests: exact original leaf/guard/H-C/ABI and resource import; exactly one global leaf import; no public/LOCAL moved twins; exact original defcost children; mutations reject missing import/changed child/damaged body or guard. Historical whole-registry baseline is not rebaselined."
+    },
+    "storage_extraction_current_controls": 8
   },
   "qualification": {
     "prior135": "/tmp/served-d55-qualified135-receipt.json; all135 source/key payloads audited; RAW excluded",
