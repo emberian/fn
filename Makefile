@@ -90,6 +90,13 @@ ACL2_BOOKS = \
   tests/cns-draining-count-counterexample \
   tests/cns-draining-credit-unit \
   tests/cns-draining-teeth-unit \
+  books/identity-query-callback \
+  books/reference-state-model \
+  books/reference-effect-semantics \
+  books/reference-effect-leaves \
+  books/reference-effect-query \
+  tests/reference-identity-support \
+  tests/reference-effect-query-unit \
   tests/cns-draining-direct-events-unit \
   tests/cns-fence-proof-world \
   tests/column-snapshot-support \
