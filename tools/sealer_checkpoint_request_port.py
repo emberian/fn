@@ -13,7 +13,15 @@ def project_kind(s):
  s=once(s,'(retry-pool :bool))','(retry-pool :bool) (checkpoint-tag :u60))')
  s=once(s,':arms ((:sealing) (:binding) (:loading) (:reading) (:draining) (:stopped))',':arms ((:sealing) (:binding) (:loading) (:reading) (:draining) (:stopped) (:checkpointing))')
  at=s.index('(defcost fn2-sealer-refuse')
- s=s[:at]+'''(defcost fn2-sealer-checkpoint-request :answers (:ok :busy :owner)
+ s=s[:at]+'''(defcost fn2-sealer-checkpoint-pending-op :answers (:ok)
+ :tables (fn2-core-machines fn2-core-sealer)
+ :doc "Readonly actual sealer namespace hint; actual maintenance headroom and held admission remain separate gates.")
+(defcost fn2-sealer-checkpoint-wake-target :answers (:ok :absent)
+ :tables (fn2-core-machines fn2-core-sealer fn2-core-seals fn2-core-run-loads
+          fn2-core-checkpoint-summary-leases fn2-core-checkpoint-summary fn2-core-checkpoint-predecessor-control
+          fn2-core-csnapshot fn2-core-c-source-control)
+ :doc "Readonly wake target only after actual adopted source/retirement/cut-release continuation can resume.")
+(defcost fn2-sealer-checkpoint-request :answers (:ok :busy :owner)
  :tables (fn2-core-machines fn2-core-sealer fn2-core-checkpoint-master fn2-core-seals fn2-core-overlays fn2-core-run-installed fn2-core-pool
           fn2-core-run-loads fn2-core-checkpoint-summary-leases fn2-core-checkpoint-summary
           fn2-core-csnapshot fn2-core-c-source-control)
@@ -73,6 +81,41 @@ CORE='''
      (mv (if yes :ok :wait) fn2-core)))
    (fn2-core-preserves fn2-sealer-checkpoint-resume (fn2-core) :position 1 :rows nil)
 '''
+# One actual namespace predicate supplies pressure and validated wake routing.
+PENDING = """
+   (defun fn2-sealer-checkpoint-pending-p (fn2-core)
+    (declare (xargs :stobjs fn2-core :guard (fn2-core-wfp fn2-core)))
+    (let ((id (fn2-machine-kind-base *fn2-sealer-kind* fn2-core)))
+     (and (not (= id *fn2-none*)) (fn2-machine-idp id fn2-core)
+          (eq (fn2-sealer-snapshot-read-code id fn2-core) :ok)
+          (= (fn2-machine-kind id fn2-core) *fn2-sealer-kind*)
+          (= (fn2-machine-phase id fn2-core) *fn2-sealer-state-checkpointing*)
+          (eq (fn2-machine-generation-read-code id fn2-core) :ok)
+          (posp (fn2-machine-generation id fn2-core))
+          (= (fn2-machine-stopped id fn2-core) 0))))
+   (defun fn2-sealer-checkpoint-pending-op (fn2-core)
+    (declare (xargs :stobjs fn2-core :guard (fn2-core-wfp fn2-core)))
+    (mv :ok (fn2-sealer-checkpoint-pending-p fn2-core)))
+"""
+WAKE = """
+   (defun fn2-sealer-checkpoint-wake-target (fn2-core)
+    (declare (xargs :stobjs fn2-core :guard (fn2-core-wfp fn2-core)))
+    (if (and (fn2-sealer-checkpoint-pending-p fn2-core)
+             (fn2-sealer-checkpoint-resumable-p fn2-core))
+        (mv :ok (fn2-machine-kind-base *fn2-sealer-kind* fn2-core))
+      (mv :absent *fn2-none*)))
+"""
+# Reuse the same pure actual adoption test for resume and postrelease wake.
+_core_at=CORE.index('   (defun fn2-sealer-checkpoint-resume ')
+_core_frame=CORE.index('   (fn2-core-preserves fn2-sealer-checkpoint-resume',_core_at)
+_resumable=CORE[_core_at:_core_frame].replace('fn2-sealer-checkpoint-resume (','fn2-sealer-checkpoint-resumable-p (').replace('(mv :owner fn2-core)','nil').replace('(mv (if yes :ok :wait) fn2-core)','yes')
+CORE=CORE[:_core_at]+PENDING+_resumable+"""
+   (defun fn2-sealer-checkpoint-resume (fn2-core)
+    (declare (xargs :stobjs fn2-core :guard (fn2-core-wfp fn2-core)))
+    (mv (cond ((not (fn2-sealer-checkpoint-pending-p fn2-core)) :owner)
+              ((fn2-sealer-checkpoint-resumable-p fn2-core) :ok)
+              (t :wait)) fn2-core))
+"""+CORE[_core_frame:]+WAKE
 def project_events(s):
  s=once(s,'(include-book "sealer-physical-loader")','(include-book "sealer-physical-loader")\n(include-book "sealer-checkpoint-request")')
  s=once(s,'     ((:need-loader)', '''     ((:checkpoint-required)

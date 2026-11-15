@@ -33,6 +33,16 @@ class Request(unittest.TestCase):
   self.assertNotIn(':checkpointing',lr.emit(items[at+1],drop_comments=True))
   self.assertIn('(:wake-row target)',EXPECTED['machines-c-sealer-events'])
   self.assertIn('fn2-checkpoint-master-snapshot-read-code',CORE)
+ def test_pressure_and_wake_read_actual_namespace_not_host_flags(self):
+  d=defs(EXPECTED['machines-c-sealer-events'])
+  pending=d['fn2-sealer-checkpoint-pending-p']
+  for x in ('fn2-sealer-snapshot-read-code','fn2-machine-kind','fn2-machine-generation-read-code',
+            '(posp (fn2-machine-generation','fn2-machine-stopped','*fn2-sealer-state-checkpointing*'):
+   self.assertIn(x,pending)
+  for name in ('fn2-sealer-checkpoint-resume','fn2-sealer-checkpoint-wake-target'):
+   self.assertIn('fn2-sealer-checkpoint-pending-p',d[name])
+   self.assertIn('fn2-sealer-checkpoint-resumable-p',d[name])
+  self.assertIn('(mv :ok (fn2-sealer-checkpoint-pending-p fn2-core))',d['fn2-sealer-checkpoint-pending-op'])
  def test_negative_reordered_acquire_and_removed_resume_gates_refused(self):
   for book,a,b in [('machines-c-sealer-events','(fn2-sealer-checkpoint-needed fn2-core)','(fn2-sealer-pending-p fn2-core)'),
                    ('machines-c-sealer-events','fn2-sealer-checkpoint-resume','fn2-sealer-source-acquire'),

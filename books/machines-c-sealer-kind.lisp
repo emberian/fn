@@ -41,6 +41,14 @@
 (defcost fn2-sealer-source-release :answers (:ok :absent :owner :busy :bounds :stale :invariant)
  :tables (fn2-core-seals fn2-core-c-source-control fn2-core-c-source-readers fn2-core-reads fn2-core-succ-txns fn2-core-run-loads fn2-core-checkpoint-summary-leases)
  :doc "Release the exact observer only after actual publication and retired input drain reach lower IDLE.")
+(defcost fn2-sealer-checkpoint-pending-op :answers (:ok)
+ :tables (fn2-core-machines fn2-core-sealer)
+ :doc "Readonly actual sealer namespace hint; actual maintenance headroom and held admission remain separate gates.")
+(defcost fn2-sealer-checkpoint-wake-target :answers (:ok :absent)
+ :tables (fn2-core-machines fn2-core-sealer fn2-core-seals fn2-core-run-loads
+          fn2-core-checkpoint-summary-leases fn2-core-checkpoint-summary fn2-core-checkpoint-predecessor-control
+          fn2-core-csnapshot fn2-core-c-source-control)
+ :doc "Readonly wake target only after actual adopted source/retirement/cut-release continuation can resume.")
 (defcost fn2-sealer-checkpoint-request :answers (:ok :busy :owner)
  :tables (fn2-core-machines fn2-core-sealer fn2-core-checkpoint-master fn2-core-seals fn2-core-overlays fn2-core-run-installed fn2-core-pool
           fn2-core-run-loads fn2-core-checkpoint-summary-leases fn2-core-checkpoint-summary
