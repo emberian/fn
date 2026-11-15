@@ -411,6 +411,8 @@ ACL2_BOOKS = \
   tests/native-envelope-prefix-unit \
   sim/envelope-output \
   tests/envelope-output-unit \
+  sim/envelope-output-language \
+  tests/envelope-output-language-unit \
   tests/envelope-input-unit \
   tests/envelope-prefix-unit \
   tests/native-unit \
