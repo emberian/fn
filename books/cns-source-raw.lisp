@@ -95,7 +95,8 @@
  :guard-hints ((fn2-columns-call-guard-hint 'fn2-cns-source-raw-step-children
                 '(fn2-pool-workspace-code fn2-block-read-commitment-children
                   fn2-cns-source-hash-begin fn2-cns-source-hash-update
-                  fn2-cns-source-hash-finish) nil world))))
+                  fn2-cns-source-hash-finish)
+                '(fn2-cns-sources-hash-offset) world))))
  (b* (((unless (and (fn2-cns-source-ownerp s cns cnsgen ctl ctlgen request fn2-cns-sources)
                     (equal kind (fn2-cns-sources-owner-kind s fn2-cns-sources))
                     (equal (fn2-cns-sources-pending s fn2-cns-sources) 0) (equal (fn2-cns-sources-borrow-count s fn2-cns-sources) 0)
