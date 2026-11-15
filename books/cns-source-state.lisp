@@ -1,9 +1,8 @@
 ; One retained published-article stream per actual CNS row. The copied
 ; commitments are from a live typed READ; physical input cannot replace them.
 (in-package "ACL2")
-(include-book "machines-c-read")
-(include-book "article-manifest")
-(include-book "cns-source-workspace")
+(include-book "columns")
+(include-book "commit-geometry")
 (fn2-book-layer :d)
 (defconst *fn2-cns-source-next-bytes* (+ 1024 1024))
 (defcolumns fn2-cns-sources

@@ -1160,6 +1160,15 @@
       },
       "reason": "Unconditional frame requires lower unconditional row equation; typed preservation contracts do not supply it",
       "whole_RAW_record": "NONE"
+    },
+    "RAW316": {
+      "status": "WholeRAW UNPROVED",
+      "prior_foundation_parent_record": "/tmp/served-316-qualified136-receipt.json;111reuse25new",
+      "source": "31635689e152fa20aa3e9eb18ae456ebe2397b64",
+      "ROWS": "PASS0.42s83685steps",
+      "first_refusal": "ISSUE-POOL-DATA0.20s23134steps",
+      "scope": "Separate prior foundation/source scope; no current wholeRAW/FETCH record",
+      "cleanup": "Executor reports allownedhandles/scopegone and2Gi released"
     }
   },
   "enum_fragment_evidence": {
@@ -1196,13 +1205,13 @@
     "status": "Helper is included in qualified current parent136; RAW wholebook remains UNPROVED"
   },
   "closure_plan": {
-    "RAW": 137,
-    "FETCH": 243,
-    "FETCH_plus_actual_BT_fixture": 245,
+    "RAW": 134,
+    "FETCH": 244,
+    "FETCH_plus_actual_BT_fixture": 246,
     "native_tail_after_combined": 17,
     "prior135_current_key_matches": 119,
     "prior135_rekeyed_by_storage_append": 16,
-    "scope": "Current source/key metadata only;47 exact existing application bindings; prior ready136 rekeyed120books; wholeRAW/FETCH/native remain unqualified",
+    "scope": "Source-only dependency cut; final key/cacheplan pending DATA packet; prior136/reader scopes remain exact separately",
     "receipt_backed_current_application_bindings": 47
   },
   "root_reader_projection": {
@@ -1230,7 +1239,7 @@
     "current_foundation_raw_keys_match": 34,
     "old_receipt_scope": "Original prefoundation reader34 remains historical; only10oldkeys unchanged"
   },
-  "pending_source_join": "Await actual316 terminal and lower dimensions before one current cache/READY audit; universal whole-function lifting remains separately source-only",
+  "pending_source_join": "Executor-owned DATA backinglength chain pending; batch before freshcurrent cache/READYaudit",
   "foundation_join": {
     "source": "6e7a1a9c105f2ccfeb0b06f32c0c566378cf62d9",
     "rows_source": "31635689e152fa20aa3e9eb18ae456ebe2397b64",
@@ -1257,5 +1266,16 @@
     "new_exact_app_receipt_bindings": 47,
     "next_gate": "Await actual316 terminal, then one current cache+READY union audit before convergence scope; no job/grant from this source join",
     "current_reader_requalification": "rootc48 reader34 allcurrent raw/keys match new receipt, no duplicate job"
+  },
+  "source_dependency_cut": {
+    "source": "c1839fde03763290da67ed0bf87dcf28c8ae58b1",
+    "receipt": "docs/design/receipts/cns-source-leaf-closure-cut.json",
+    "scope": "Source-only reviewed ownership extraction; exact sole fn2-rd-copy DEFUN+preserves move,9consumer noninclude runtime/guard/claim ASTs unchanged",
+    "state_closure": 11,
+    "pool_copy_closure": 8,
+    "RAW_closure": 134,
+    "capture_closure": 136,
+    "controls": "5source testsPASS; wholelift fixture regenerates exactf893333a...12eb",
+    "qualification": "New leaf and changed consumer composition UNRUN; no old136 transfer claim"
   }
 }

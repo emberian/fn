@@ -46,6 +46,7 @@
 ; fn2-read-core-events, materialized in assembly-callbacks-c.lisp.
 (in-package "ACL2")
 (include-book "machines-c-sealer")
+(include-book "pool-copy")
 (fn2-book-layer :c)
 (local (in-theory (disable fn2-run-layout-fields fn2-run-layout-keys fn2-run-layout-merge fn2-run-layout-size
                            fn2-fold-key-arg fn2-fold-arity fn2-fold-assigned-p fn2-run-layout-octets-max
@@ -500,17 +501,6 @@
 ; Copy at most N octets of the entry's octet field F, from octet FROM, to
 ; DSLOT/DGEN at DOFF (written under DK DS DG): (mv code copied left), LEFT
 ; the field's octets after the copied ones.
-(defun fn2-rd-copy (n sslot sgen soff sk ss sg dslot dgen doff dk ds dg fn2-pool)
- (declare (xargs :stobjs fn2-pool :measure (nfix n) :guard (and (fn2-pool-wfp fn2-pool) (natp n) (natp soff) (natp doff))
-  :guard-hints (("Goal" :in-theory (disable fn2-pool-read fn2-pool-write)))))
- (if (zp n) (mv :ok fn2-pool)
-  (b* (((mv code byte) (fn2-pool-read sslot sgen soff sk ss sg fn2-pool))
-       ((unless (eq code :ok)) (mv code fn2-pool))
-       ((mv code fn2-pool) (fn2-pool-write dslot dgen doff byte dk ds dg fn2-pool))
-       ((unless (eq code :ok)) (mv code fn2-pool)))
-   (fn2-rd-copy (- n 1) sslot sgen (+ 1 soff) sk ss sg dslot dgen (+ 1 doff) dk ds dg fn2-pool))))
-(fn2-pool-preserves fn2-rd-copy (n sslot sgen soff sk ss sg dslot dgen doff dk ds dg fn2-pool) :position 1
- :hints (("Goal" :in-theory (disable fn2-pool-read fn2-pool-write fn2-pool-rows))))
 (defun fn2-rd-octets (x f from n dslot dgen doff dk ds dg fn2-reads fn2-run-installed fn2-fields fn2-pool)
  (declare (xargs :stobjs (fn2-reads fn2-run-installed fn2-fields fn2-pool) :guard t
   :guard-hints (("Goal" :in-theory (disable fn2-rd-copy fn2-rd-entry-row fn2-fields-ref-len fn2-fields-ref-slot fn2-fields-ref-gen
@@ -531,7 +521,7 @@
   (mv :ok k (- len (+ from k)) fn2-pool)))
 (fn2-pool-preserves fn2-rd-octets (x f from n dslot dgen doff dk ds dg fn2-reads fn2-run-installed fn2-fields fn2-pool) :position 3
  :hints (("Goal" :in-theory (disable fn2-rd-copy fn2-rd-entry-row fn2-pool-rows))))
-(in-theory (disable fn2-rd-copy fn2-rd-octets fn2-rd-value))
+(in-theory (disable fn2-rd-octets fn2-rd-value))
 
 ; ---------------------------------------------------------------------------
 ; Release read row X: its range, seek and lookup idle, its query owner and

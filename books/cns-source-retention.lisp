@@ -1,6 +1,7 @@
 ; A streamed query retains its complete immutable source closure independently
 ; of per-operation pins. This book grants no decoder or SEND-completion flag.
 (in-package "ACL2")
+(include-book "article-manifest")
 (include-book "cns-source-state")
 (include-book "checkpoint")
 (include-book "txn-kind")

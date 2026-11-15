@@ -1,0 +1,17 @@
+; Exact shared owner-checked pool copy, independent of ordered read machines.
+(in-package "ACL2")
+(include-book "pool")
+(include-book "std/util/bstar" :dir :system)
+(fn2-book-layer :c)
+(defun fn2-rd-copy (n sslot sgen soff sk ss sg dslot dgen doff dk ds dg fn2-pool)
+ (declare (xargs :stobjs fn2-pool :measure (nfix n) :guard (and (fn2-pool-wfp fn2-pool) (natp n) (natp soff) (natp doff))
+  :guard-hints (("Goal" :in-theory (disable fn2-pool-read fn2-pool-write)))))
+ (if (zp n) (mv :ok fn2-pool)
+  (b* (((mv code byte) (fn2-pool-read sslot sgen soff sk ss sg fn2-pool))
+       ((unless (eq code :ok)) (mv code fn2-pool))
+       ((mv code fn2-pool) (fn2-pool-write dslot dgen doff byte dk ds dg fn2-pool))
+       ((unless (eq code :ok)) (mv code fn2-pool)))
+   (fn2-rd-copy (- n 1) sslot sgen (+ 1 soff) sk ss sg dslot dgen (+ 1 doff) dk ds dg fn2-pool))))
+(fn2-pool-preserves fn2-rd-copy (n sslot sgen soff sk ss sg dslot dgen doff dk ds dg fn2-pool) :position 1
+ :hints (("Goal" :in-theory (disable fn2-pool-read fn2-pool-write fn2-pool-rows))))
+(in-theory (disable fn2-rd-copy))

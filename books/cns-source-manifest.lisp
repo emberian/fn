@@ -2,6 +2,7 @@
 ;; units are authenticated before either header or entry decoding. The manifest
 ;; occupies one unit; referenced data uses the following, disjoint unit.
 (in-package "ACL2")
+(include-book "cns-source-workspace")
 (include-book "cns-source-state")
 (include-book "source-manifest-entry")
 (include-book "block-integrity")

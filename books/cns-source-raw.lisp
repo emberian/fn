@@ -1,6 +1,8 @@
 ; Real source I/O is an actor transition. NEXT below only copies already
 ; verified and hashed bytes; it never issues or verifies a storage unit.
 (in-package "ACL2")
+(include-book "pool-copy")
+(include-book "cns-source-workspace")
 (include-book "cns-source-state")
 (include-book "cns-source-hash")
 (include-book "cns-source-retention")
