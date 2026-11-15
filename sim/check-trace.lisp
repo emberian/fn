@@ -1,16 +1,21 @@
 ; TRACE compares independent selection first, then the resulting projection.
 (in-package "ACL2")
 (include-book "../books/q1")
+(include-book "../books/trace-events")
 
 (defun fn2-trace-selections (records)
   (declare (xargs :verify-guards nil))
   (if (atom records) nil
     (let* ((r (car records)) (kind (fn2-trace-record-kind r))
-           (visit (member-equal kind (list *fn2-trace-kind-machine* *fn2-trace-kind-service*))))
-      (cons (list kind (and (= kind *fn2-trace-kind-machine*) (fn2-trace-record-machine r))
-                  (and visit (fn2-trace-record-principal r))
-                  (and visit (fn2-trace-record-position r)))
-            (fn2-trace-selections (cdr records))))))
+           (start (equal kind *fn2-trace-kind-machine-start*))
+           (visit (or start (equal kind *fn2-trace-kind-service*))))
+      (if (member-equal kind (list *fn2-trace-kind-machine* *fn2-trace-kind-enqueue*))
+          (fn2-trace-selections (cdr records))
+        (cons (list (if start *fn2-trace-kind-machine* kind)
+                    (and start (fn2-trace-record-machine r))
+                    (and visit (fn2-trace-record-principal r))
+                    (and visit (fn2-trace-record-position r)))
+              (fn2-trace-selections (cdr records)))))))
 (defun fn2-trace-field-difference (fields actual expected)
   (declare (xargs :verify-guards nil))
   (if (atom fields) nil
@@ -42,7 +47,13 @@
        ((mv records lost) (stobj-let ((fn2-trace (fn2-core-trace fn2-core)))
                            (records lost) (mv (fn2-trace-records fn2-trace) (fn2-trace-lost fn2-trace))
                            (mv records lost)))
-       (selection (fn2-trace-selection-difference (fn2-trace-selections records) (fn2-ref-selections lists)))
+       (replay (fn2-trace-replay records lost (car lists) cursor queues))
+       (selection
+        (cond ((not (fn2-trace-events-completep records)) '(:incomplete-trace))
+              ((not (eq (car replay) :ok)) (list :queue-replay replay))
+              ((not (equal (cdr replay) (list (nth 1 lists) (nth 2 lists))))
+               (list :queue-effects (cdr replay) (list (nth 1 lists) (nth 2 lists))))
+              (t (fn2-trace-selection-difference (fn2-trace-selections records) (fn2-ref-selections lists)))))
        (difference (fn2-trace-classify lost selection before
                       (or (fn2-ref-difference fn2-core fn2-ref-core lists)
                           (fn2-trace-field-difference '(:status :observations :visits :actions)
@@ -140,7 +151,13 @@
        ((mv records lost) (stobj-let ((fn2-trace (fn2-core-trace fn2-core)))
                            (records lost) (mv (fn2-trace-records fn2-trace) (fn2-trace-lost fn2-trace))
                            (mv records lost)))
-       (selection (fn2-trace-selection-difference (fn2-trace-selections records) (fn2-ref-selections lists)))
+       (replay (fn2-trace-replay records lost (car lists) cursor queues))
+       (selection
+        (cond ((not (fn2-trace-events-completep records)) '(:incomplete-trace))
+              ((not (eq (car replay) :ok)) (list :queue-replay replay))
+              ((not (equal (cdr replay) (list (nth 1 lists) (nth 2 lists))))
+               (list :queue-effects (cdr replay) (list (nth 1 lists) (nth 2 lists))))
+              (t (fn2-trace-selection-difference (fn2-trace-selections records) (fn2-ref-selections lists)))))
        (difference (if failure (list :q1 failure)
                      (fn2-trace-classify lost selection before
                         (or (fn2-ref-difference fn2-core fn2-ref-core lists)
