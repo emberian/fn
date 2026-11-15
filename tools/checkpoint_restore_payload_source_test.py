@@ -30,6 +30,20 @@ def phase_check(source):
         if phase not in states or holds.get(phase) != [':storage-window']:
             raise ValueError('missing actual owned-window custody')
 class Source(unittest.TestCase):
+    def test_single_carrier_and_mode_specific_admission(self):
+        boot = (ROOT/'books/boot-kind.lisp').read_text()
+        resources = (ROOT/'books/checkpoint-metadata-resources.lisp').read_text()
+        self.assertEqual(boot.count('(defcorechild fn2-core-checkpoint-payload '), 1)
+        self.assertNotIn('(fn2-sealer-child fn2-core-checkpoint-payload ', resources)
+        for book, mode in [('checkpoint-payload-state','live'), ('checkpoint-restore-payload','cold')]:
+            src = (ROOT/'books'/(book+'.lisp')).read_text()
+            self.assertIn('(fn2-checkpoint-payload-rebindablep fn2-checkpoint-payload)', src)
+            self.assertIn('(mode *fn2-checkpoint-payload-mode-'+mode+'*)', src)
+            self.assertIn('(equal (fn2-checkpoint-payload-mode 0 fn2-checkpoint-payload) *fn2-checkpoint-payload-mode-'+mode+'*)', src)
+        harvest = (ROOT/'books/checkpoint-payload-harvest.lisp').read_text()
+        self.assertIn('*fn2-checkpoint-payload-mode-live*', harvest)
+        self.assertNotIn('(fn2-op-finish ', harvest)
+        self.assertNotIn('(fn2-pool-release ', harvest)
     def test_actual_mutable_outputs_and_complete_phase_custody(self):
         projection_check((ROOT/'books/checkpoint-restore-payload-boot.lisp').read_text())
         phase_check((ROOT/'books/boot-kind.lisp').read_text())
@@ -54,7 +68,7 @@ class Source(unittest.TestCase):
         names = ('checkpoint-restore-payload', 'checkpoint-restore-payload-boot',
                  'checkpoint-payload', 'checkpoint-payload-state', 'checkpoint-payload-io',
                  'checkpoint-payload-physical', 'checkpoint-payload-physical-step',
-                 'checkpoint-payload-format', 'checkpoint-restore-semantic',
+                 'checkpoint-payload-format', 'checkpoint-payload-harvest', 'checkpoint-restore-semantic',
                  'checkpoint-restore-semantic-work', 'checkpoint-restore-reach', 'payload-workspace')
         parsed = [lr.parse((ROOT/'books'/(name+'.lisp')).read_text()).forms for name in names]
         arities = {}
