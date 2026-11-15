@@ -115,6 +115,7 @@ ACL2_BOOKS = \
   books/compress-kind \
   books/compress-operation \
   books/compress-record \
+  books/compress-close \
   books/compress-transport-lifecycle \
   books/compress-transport-ops \
   books/compress \
@@ -314,6 +315,7 @@ ACL2_BOOKS = \
   tests/compress-settings-unit \
   tests/compress-transport-unit \
   tests/compress-record-unit \
+  tests/compress-cancel-result-unit \
   tests/compress-stage-unit \
   tests/commit-ceiling-unit \
   tests/commit-durable-all-unit \
@@ -416,6 +418,10 @@ ACL2_BOOKS = \
   tests/envelope-output-language-unit \
   sim/envelope-output-row \
   tests/envelope-output-row-unit \
+  sim/envelope-output-segment \
+  tests/envelope-output-segment-unit \
+  sim/envelope-output-segment-loop \
+  tests/envelope-output-segment-loop-unit \
   tests/envelope-input-unit \
   tests/envelope-prefix-unit \
   tests/native-unit \
