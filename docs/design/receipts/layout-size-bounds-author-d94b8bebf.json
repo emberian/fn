@@ -1,0 +1,301 @@
+{
+  "status": "partial author gate; not READY or certified",
+  "source_commit": "d94b8bebf19a42c8ac8acd80ffcc7ee181eb9d57",
+  "library_sha256": "242f55370eff42c596962722a3404058a48dae5215bbf9d39b82f198b07e45b7",
+  "layout_unchanged": {
+    "base": "ccab6157171e77ee772081a1a49f1b1be557c38b",
+    "sha256": "594084601c9996d18b232555ab38ea68aaeab75cc5f09d030de3dce727181548"
+  },
+  "remote_host": "fn@dregg-forge",
+  "initial_snapshot": "/build/lanes/codec-size-author-fd8441ad6",
+  "initial_snapshot_commit": "fd8441ad66b0e01c75cbdaa9960f095f8bcef13e",
+  "final_exact_api_payload": {
+    "path": "/tmp/codec-size-api-inclusive.lsp",
+    "sha256": "21e75bfd36b9ee19c26ccfefaa92ca4ba748186bc6dfbde9918799f06299413f",
+    "control": "Final changed helper definitions structurally match this payload. Unchanged prefix came from the initial source. Targeted undo removed the previous helpers, dependent fixtures and scratch probe before the final definitions were admitted."
+  },
+  "actual_sources": [
+    {
+      "file": "books/checkpoint-construction.lisp",
+      "name": "fn2-checkpoint-construction",
+      "head": "defcolumns",
+      "sha256": "d19e5ab47dfc7bb59306b03941f10338e070ab945a6c5617a5878acfdd9d116d",
+      "byte_identity_verified": true
+    },
+    {
+      "file": "books/checkpoint-tickets.lisp",
+      "name": "fn2-checkpoint-construction-ownerp",
+      "head": "defun",
+      "sha256": "675c3a1653550ff11329daa4cf365bad2c38353c05fa6900aa9d18c68553fccc",
+      "byte_identity_verified": true
+    },
+    {
+      "file": "books/checkpoint-allocation.lisp",
+      "name": "fn2-checkpoint-allocation-ready-p",
+      "head": "defun",
+      "sha256": "dda2528f54fe56563a187ea832020d7c58d319075121e82b5b0a7a2481d1f7d5",
+      "byte_identity_verified": true
+    },
+    {
+      "file": "books/format-base.lisp",
+      "name": "*fn2-format-record-kind*",
+      "head": "defconst",
+      "sha256": "3657adbd9d3d90aa1f9be8422c6d780067f941a2059ef32065b03275754ebea4",
+      "byte_identity_verified": true
+    },
+    {
+      "file": "books/format-events.lisp",
+      "name": "fn2-format-txn-record",
+      "head": "deflayout",
+      "sha256": "c00aef070dcd1fbbc5d8e00c70b582ccf9d6468ef08074d6c3fc67d199753609",
+      "byte_identity_verified": true
+    },
+    {
+      "file": "books/format-events.lisp",
+      "name": "fn2-format-allocation",
+      "head": "deflayout",
+      "sha256": "f4495c2b073f6c0a1044de8e50780628c4ec31053c56320a56be3a54615a9e14",
+      "byte_identity_verified": true
+    },
+    {
+      "file": "books/format-events.lisp",
+      "name": "fn2-format-retirement",
+      "head": "deflayout",
+      "sha256": "fcd1400fe3e7ca58307733e5a88cc3e4f60b610209aaeee1a8a9c9e074c42c7d",
+      "byte_identity_verified": true
+    },
+    {
+      "file": "books/checkpoint-allocation.lisp",
+      "name": "fn2-checkpoint-allocation-pack-member",
+      "head": "defun",
+      "sha256": "5a1003d25757944b343e529b41ef9b1d8f762aa10542b8cb59978402dd979691",
+      "byte_identity_verified": true
+    },
+    {
+      "file": "books/checkpoint-allocation.lisp",
+      "name": "fn2-checkpoint-allocation-pack-member",
+      "head": "fn2-pool-preserves",
+      "sha256": "4b010c08a46cc592e1af282eb626bc550b8c1d66dcee68553bb57e393a1aa722",
+      "byte_identity_verified": true
+    },
+    {
+      "file": "books/retirement.lisp",
+      "name": "fn2-retirement-pack-member",
+      "head": "defun",
+      "sha256": "ebb16a6f98bcf0adc4bfb234e3d428dbe6d9083622b897e5b6a36ff15e345758",
+      "byte_identity_verified": true
+    },
+    {
+      "file": "books/retirement.lisp",
+      "name": "fn2-retirement-pack-member",
+      "head": "fn2-pool-preserves",
+      "sha256": "02176c19cbcfea0c95a8fd1e4bf11724bfc402a956b8c7418eb65f15a39cc4a7",
+      "byte_identity_verified": true
+    }
+  ],
+  "qualified_parent_scope": [
+    {
+      "book": "books/alloc",
+      "key": "ba94a7520419a551b395a319c8d8c0f35f301a2f313367256c6a3800afc4b28e",
+      "sha256": "886dd5c4550a43b78fafa99c02db28edbdc70c7bb1cbe806ce5e40403477a11e",
+      "qualified_entries": 1
+    },
+    {
+      "book": "books/columns",
+      "key": "c8e9df5d21df547effaf69baa79db3c4c93eb88b694468b3e20e7684b30d9419",
+      "sha256": "df0b05ba3ba125a4b85036d24a721aaa4ce793864409a90e77f978cc1f969fca",
+      "qualified_entries": 1
+    },
+    {
+      "book": "books/declare",
+      "key": "f1df352dc360553d08906239d267e9371fcb2fe4f19c6581adc1b0b322b30875",
+      "sha256": "1c706e559ef3b314fb9bd48171fb2891fad8613bd4eb1c5de5268443833c4bfb",
+      "qualified_entries": 3
+    },
+    {
+      "book": "books/layout",
+      "key": "2b2fd8126927b669d4b1eb1739a3fab8b5e4771403e83bd58bbeb089088bee70",
+      "sha256": "594084601c9996d18b232555ab38ea68aaeab75cc5f09d030de3dce727181548",
+      "qualified_entries": 1
+    },
+    {
+      "book": "books/operations",
+      "key": "bd6bdf7f71b74618b02924c542559dcb99a149c816aeed11f3f5cd82d766483f",
+      "sha256": "959da2da147247146a2360e23d2c7d6abd6c581abdf0f6873661f63cee87484f",
+      "qualified_entries": 1
+    },
+    {
+      "book": "books/owed",
+      "key": "6f334038cc4bddaaa337357384a139be3700c2c3403094bab3398dacb7fd5a3b",
+      "sha256": "04104985582a552ad115a0a6adcf2e957597b1b9ca3228bf25900877cbbcb17b",
+      "qualified_entries": 3
+    },
+    {
+      "book": "books/owed-discharge",
+      "key": "97e73257b5f4cb3a4ca1b8ba4bf10956295c18ec211c0b297f557e780cd20fd1",
+      "sha256": "53903322be1b79ed081ecfcbfcb9f60649d3fdbf8aa6853b772abf8e6fc69f01",
+      "qualified_entries": 1
+    },
+    {
+      "book": "books/pool",
+      "key": "2bfd19c844711f45df57ceb522e3f3e66edbb9438dd0d140ee860fdace4613ed",
+      "sha256": "986b80ee5ea418a6f800558682d043825c9bc137d1cb0c99798cc6fe334f342b",
+      "qualified_entries": 1
+    },
+    {
+      "book": "books/profile",
+      "key": "b8fb593112597395afac6a150c4a4fca81def3095ecd8f7f9be6aa0aec7384fc",
+      "sha256": "1f216ed6c0505dc1b01ada0f7d3d9482af6da7b7dff8736b5100ef3e3fbc1038",
+      "qualified_entries": 1
+    },
+    {
+      "book": "books/tuple",
+      "key": "b0fe12b03ba9cae656e0a0d40c8ccd699ff47788c2bd5a448903fb0c0401b9c6",
+      "sha256": "c6b895fd566be6b91ba68fb040826b689a5ad4891a65e040773bfb28b90e1978",
+      "qualified_entries": 1
+    }
+  ],
+  "toolchain_identity": "8aeb1bea18968c6cd33ac633a80ebf67e4924504db112fd27eb11f16a27b2a8c",
+  "api_results": {
+    "scope": "Standalone generated bounds for registered actual ALLOCATION and RETIREMENT codecs under their own local arithmetic and frozen codec theory. No exploratory scalar lemma appears in the final proof log.",
+    "bound_events": [
+      {
+        "form": "( DEFTHM FN2-FORMAT-ALLOCATION-VARSIZE-VALUE-STORAGE-BOUND ...)",
+        "seconds": 0.01,
+        "steps": 272
+      },
+      {
+        "form": "( DEFTHM FN2-FORMAT-ALLOCATION-SIZE-ALLOCATION-BOUND ...)",
+        "seconds": 0.01,
+        "steps": 795
+      },
+      {
+        "form": "( DEFTHM FN2-FORMAT-ALLOCATION-SIZE-WRITER-EPOCH-BOUND ...)",
+        "seconds": 0.01,
+        "steps": 1083
+      },
+      {
+        "form": "( DEFTHM FN2-FORMAT-ALLOCATION-SIZE-OWNER-BOUND ...)",
+        "seconds": 0.01,
+        "steps": 1083
+      },
+      {
+        "form": "( DEFTHM FN2-FORMAT-ALLOCATION-SIZE-OWNER-KIND-BOUND ...)",
+        "seconds": 0.01,
+        "steps": 248
+      },
+      {
+        "form": "( DEFTHM FN2-FORMAT-ALLOCATION-SIZE-EXTENT-BOUND ...)",
+        "seconds": 0.02,
+        "steps": 1058
+      },
+      {
+        "form": "( DEFTHM FN2-FORMAT-ALLOCATION-SIZE-BOUND ...)",
+        "seconds": 0.01,
+        "steps": 118
+      },
+      {
+        "form": "( DEFTHM FN2-FORMAT-RETIREMENT-VARSIZE-VALUE-STORAGE-BOUND ...)",
+        "seconds": 0.01,
+        "steps": 272
+      },
+      {
+        "form": "( DEFTHM FN2-FORMAT-RETIREMENT-SIZE-RETIREMENT-COMMIT-BOUND",
+        "seconds": 0.01,
+        "steps": 795
+      },
+      {
+        "form": "( DEFTHM FN2-FORMAT-RETIREMENT-SIZE-ALLOCATION-BOUND ...)",
+        "seconds": 0.01,
+        "steps": 1083
+      },
+      {
+        "form": "( DEFTHM FN2-FORMAT-RETIREMENT-SIZE-WRITER-EPOCH-BOUND ...)",
+        "seconds": 0.01,
+        "steps": 1083
+      },
+      {
+        "form": "( DEFTHM FN2-FORMAT-RETIREMENT-SIZE-EXTENT-BOUND ...)",
+        "seconds": 0.01,
+        "steps": 1058
+      },
+      {
+        "form": "( DEFTHM FN2-FORMAT-RETIREMENT-SIZE-BOUND ...)",
+        "seconds": 0.01,
+        "steps": 118
+      }
+    ],
+    "actual_allocation_guard": {
+      "status": "proof passed inside an encapsulate subsequently rolled back by carrier refusal",
+      "seconds": 0.25,
+      "steps": 30953,
+      "controls": "Original AST-extracted arguments, body and guard; public SIZE and all private sizers disabled."
+    }
+  },
+  "remaining": {
+    "carrier_family": "Original ALLOCATION FIELDS-TYPE and POOL-ROWS refused. Checkpoint is raw NTH row observation across the actual nested encoders. Consumer owner is adding public row opacity hints without formula or guard change.",
+    "retirement_guard": "Not reached after carrier refusal.",
+    "fixture": "All value/mixed bounds and the length-writer guard passed. The full fixture guard refused on RATIONALP of the observed mixed SIZE after helper mutation. Final source strengthens the observation to exact expected size plus static inequalities; this final refinement is unrun.",
+    "actual_book_record": "None attempted; a current-key record remains required."
+  },
+  "refusal_log": {
+    "path": "/tmp/codec-size-author-consumers.log",
+    "sha256": "7bdd972e8bc4f11b05d8b78b6d7a42998e1788978187cb856c7085285d83124c",
+    "checkpoint": "NTH *FN2-POOL-ROWS* of nested FORMAT-ALLOCATION-ENCODE/FORMAT-TXN-RECORD-ENCODE result must equal original NTH row observation; public row frame facts were bypassed by reader expansion."
+  },
+  "resources": {
+    "wrapper_pid": 732856,
+    "per_event_steps": 2000000,
+    "per_event_seconds": 60,
+    "outer_seconds": 600,
+    "effective_cap": {
+      "acl2_ancestor_pid": 732878,
+      "server_pid": 732874,
+      "cgroup": "/user.slice/user-1000.slice/user@1000.service/swarm.slice/run-p732856-i30089548.scope",
+      "memory_max": "2147483648",
+      "memory_swap_max": "0"
+    },
+    "released": true,
+    "absent_pids": [
+      732856,
+      732874,
+      732878,
+      734953,
+      737070,
+      737876,
+      739825,
+      741158,
+      742795
+    ],
+    "cgroup_removed": true,
+    "cleanup": "The outer timeout ended before the detached REPL daemon. The owned session was explicitly stopped on observation; all recorded processes and its cgroup are absent. Future supervisor must trap TERM and stop the recorded session, not rely on EXIT alone."
+  },
+  "logs": [
+    {
+      "path": "/tmp/codec-size-author-fixture-rawrows.log",
+      "sha256": "9009e22104a5cafb135ece4b3a814a37a91732ff2c9a091584888c50ed975fe0"
+    },
+    {
+      "path": "/tmp/codec-size-author-reader-natp.log",
+      "sha256": "cffe4a9536336b44caa8b9448f61350a47c81df002d1fc9208811b47dc049d32"
+    },
+    {
+      "path": "/tmp/codec-size-author-consumers.log",
+      "sha256": "7bdd972e8bc4f11b05d8b78b6d7a42998e1788978187cb856c7085285d83124c"
+    },
+    {
+      "path": "/tmp/codec-size-author-fd.log",
+      "sha256": "b29f955e7a5cf1eee6f9c723a535729d7ac30247acd78d980cb9f50891747461"
+    },
+    {
+      "path": "/tmp/codec-size-author-inclusive.log",
+      "sha256": "f20976fa10fbeca423c6ead8eca31923aa21aacd9d82bf8684fe0c353eed1b98"
+    },
+    {
+      "path": "/tmp/codec-size-author-fixture-final.log",
+      "sha256": "0841f20718da2bbb412244609f0ef67e4419ed8bb12d0a6a7f76afb69011c8b6"
+    }
+  ],
+  "next_gate": "Fresh exact final library + strengthened mixed fixture, followed by original allocation and retirement consumers with carrier row opacity hints. Reuse current qualified parents; no layout replay, old76 build, baseline rerun or broad certification.",
+  "actual_consumer_source_commit": "4faebb39d617a653eac6b125fe2c2cadab79c518"
+}
