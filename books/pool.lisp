@@ -904,6 +904,20 @@
   (in-theory (disable fn2-pool-reservable-count fn2-pool-credit-group
                       fn2-pool-ownerp fn2-pool-mrefp fn2-pool-release-countp))
 
+  ;; Expose the successful release admission bounds once, without reopening
+  ;; the admission decision in every class, row and whole-invariant proof.
+  (defthm fn2-pool-release-countp-workspace-bounds
+    (implies (and (fn2-pool-release-countp slot fn2-pool)
+                  (natp slot) (< slot (fn2-pool-rows fn2-pool))
+                  (equal (fn2-pool-state slot fn2-pool) *fn2-pool-state-workspace*))
+             (and (< (fn2-pool-rows fn2-pool) 4294967296)
+                  (< (fn2-pool-retired-count fn2-pool) (fn2-pool-rows fn2-pool))
+                  (implies (< (fn2-pool-class slot fn2-pool) (fn2-pool-nclasses fn2-pool))
+                           (< (fn2-pool-class-countsi (fn2-pool-class slot fn2-pool) fn2-pool)
+                              (fn2-pool-rows fn2-pool)))))
+    :rule-classes :forward-chaining
+    :hints (("Goal" :in-theory (enable fn2-pool-release-countp))))
+
   ;; Row invariant: one row's clause, and all rows but one.
   (defun fn2-pool-row-okp (i fn2-pool)
     (declare (xargs :stobjs fn2-pool :verify-guards nil))
