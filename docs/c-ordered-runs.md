@@ -51,6 +51,20 @@ before the reply; partially acquired ownership must be cleaned before a refusal
 is sent. Final/cancel drain releases each private pair after pending zero and
 actual workspace return, then releases its catalog lease.
 
+The sealer owns a source observer before inspecting a retained merge. Snapshot
+CLOSING closes new sealer jobs while existing observer-owned work finishes,
+clears its private continuations, and releases retired inputs. HELD requires the
+actual lower sealer to be IDLE with no source observer. This earlier quiescence
+boundary prevents a later source writer from waiting on a merge paused by that
+same held cut. Ordinary query observers remain available during construction.
+
+Resident-only seal plans keep their existing resource path. Only an actual plan
+containing physical roots requests the private page region and dedicated entry
+scratch, before allocating an unpublished prefix. The current output builder
+still produces resident cached runs. A bounded streaming physical publisher is
+required before physical sealer output or maintenance over arbitrary stored
+histories can be called complete; the input loader does not establish that.
+
 The loader and cursor changes are source integration, not ACL2 admission or
 runtime qualification. Physical catalog activation still requires the C-base
 closure hold, every actual reader's issue/wake/drain consumer, and composed

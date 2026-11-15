@@ -85,4 +85,17 @@ class SealerPhysicalSource(unittest.TestCase):
   f=next(f for f in tree('sealer.lisp') if isinstance(f,list) and f[:2]==['defun','fn2-seal-start'])
   self.assertTrue(calls(f,'fn2-seal-physical-inputs'))
   self.assertTrue(any(x and x[0]=='mv' and ':need-loader' in x for x in walk(f)))
+ def test_actual_quiescence_control_has_no_ready_or_observer_seed(self):
+  fixture=tree('../tests/sealer-source-quiescence-unit.lisp')
+  self.assertTrue(calls(fixture,'fn2-sealer-run'))
+  self.assertTrue(calls(fixture,'fn2-csnapshot-begin'))
+  self.assertTrue(calls(fixture,'fn2-csnapshot-poll'))
+  self.assertTrue(calls(fixture,'fn2-seal-pending-p'))
+  self.assertTrue(calls(fixture,'fn2-ov-write'))
+  self.assertTrue(calls(fixture,'fn2-ov-freeze'))
+  for setter in ('fn2-csnapshot-put','fn2-c-source-observers-put','fn2-sealer-put-core','fn2-seals-put'):
+   self.assertFalse(calls(fixture,setter))
+  f=next(f for f in fixture if isinstance(f,list) and f[:2]==['defun','fn2-ssq-body'])
+  for term in (['eq','blocked',':more'],['eq','finished',':ok'],['eq','new-source',':busy'],['eq','held',':held']):
+   self.assertIn(term,list(walk(f)))
 if __name__=='__main__':unittest.main()

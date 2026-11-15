@@ -5,6 +5,7 @@
 (include-book "run-physical-region")
 (include-book "run-physical-range")
 (include-book "run-physical-core-faces")
+(include-book "c-source-observer")
 (include-book "checkpoint-summary-retire")
 (fn2-book-layer :c)
 (assert-event (<= *fn2-b-seal-source-cursors* *fn2-b-range-source-cursors*))
@@ -251,8 +252,39 @@
  :tables (fn2-core-c-source-control fn2-core-c-source-observers)
  :doc "Release the actual observer only after completed source continuation and private resource quiescence.")
 
+(defun fn2-sealer-source-reap (kind owner generation fn2-seals fn2-csnapshot fn2-ranges fn2-range-sources fn2-run-cursors fn2-run-loads fn2-checkpoint-summary-leases fn2-c-source-observers
+ fn2-run-installed fn2-run-cache fn2-checkpoint-summary fn2-checkpoint-summary-sources fn2-checkpoint-cbase-holds fn2-pool)
+ (declare (xargs :stobjs (fn2-seals fn2-csnapshot fn2-ranges fn2-range-sources fn2-run-cursors fn2-run-loads fn2-checkpoint-summary-leases fn2-c-source-observers
+ fn2-run-installed fn2-run-cache fn2-checkpoint-summary fn2-checkpoint-summary-sources fn2-checkpoint-cbase-holds fn2-pool)
+ :guard (and (fn2-seals-wfp fn2-seals) (fn2-csnapshot-wfp fn2-csnapshot) (fn2-ranges-wfp fn2-ranges) (fn2-range-sources-wfp fn2-range-sources)
+  (fn2-run-cursors-wfp fn2-run-cursors) (fn2-run-loads-wfp fn2-run-loads) (fn2-checkpoint-summary-leases-wfp fn2-checkpoint-summary-leases)
+  (fn2-c-source-observers-wfp fn2-c-source-observers) (fn2-run-installed-wfp fn2-run-installed) (fn2-run-cache-wfp fn2-run-cache)
+  (fn2-checkpoint-summary-wfp fn2-checkpoint-summary) (fn2-checkpoint-summary-sources-wfp fn2-checkpoint-summary-sources)
+  (fn2-checkpoint-cbase-holds-wfp fn2-checkpoint-cbase-holds) (fn2-pool-wfp fn2-pool))))
+ (b* (((unless (and (fn2-sealer-source-quiescent-p fn2-seals fn2-ranges fn2-range-sources fn2-run-cursors fn2-run-loads fn2-checkpoint-summary-leases)
+                    (equal (fn2-seals-phase 0 fn2-seals) *fn2-seal-phase-release*)
+                    (equal kind *fn2-idc-owner-kind*) (equal generation (fn2-seals-ogen 0 fn2-seals))
+                    (fn2-c-source-observer-ownerp kind owner generation fn2-c-source-observers)
+                    (< 0 (fn2-csnapshot-rows fn2-csnapshot))
+                    (not (equal (fn2-csnapshot-phase 0 fn2-csnapshot) *fn2-csnapshot-phase-held*))))
+       (mv :source fn2-seals fn2-run-installed fn2-run-cache fn2-checkpoint-summary fn2-pool))
+      (rows (fn2-run-installed-rows fn2-run-installed)) (r (fn2-seal-retired-row rows 0 fn2-run-installed))
+      ((when (and (< r rows) (equal (fn2-run-installed-physical r fn2-run-installed) 1)))
+       (mv-let (code fn2-checkpoint-summary fn2-run-installed)
+        (fn2-checkpoint-summary-retire-row r fn2-checkpoint-summary fn2-checkpoint-summary-sources fn2-checkpoint-cbase-holds fn2-run-installed)
+        (mv code fn2-seals fn2-run-installed fn2-run-cache fn2-checkpoint-summary fn2-pool)))
+      ((mv code fn2-seals fn2-run-installed fn2-run-cache fn2-pool) (fn2-seal-release fn2-seals fn2-run-installed fn2-run-cache fn2-pool)))
+  (mv code fn2-seals fn2-run-installed fn2-run-cache fn2-checkpoint-summary fn2-pool)))
+(fn2-run-load-frames fn2-sealer-source-reap
+ (kind owner generation fn2-seals fn2-csnapshot fn2-ranges fn2-range-sources fn2-run-cursors fn2-run-loads fn2-checkpoint-summary-leases fn2-c-source-observers fn2-run-installed fn2-run-cache fn2-checkpoint-summary fn2-checkpoint-summary-sources fn2-checkpoint-cbase-holds fn2-pool)
+ (fn2-seals fn2-csnapshot fn2-ranges fn2-range-sources fn2-run-cursors fn2-run-loads fn2-checkpoint-summary-leases fn2-c-source-observers fn2-run-installed fn2-run-cache fn2-checkpoint-summary fn2-checkpoint-summary-sources fn2-checkpoint-cbase-holds fn2-pool)
+ ((fn2-seals 1) (fn2-run-installed 2) (fn2-run-cache 3) (fn2-checkpoint-summary 4) (fn2-pool 5)))
+(defcost fn2-sealer-source-reap-op :child fn2-sealer-source-reap :answers t
+ :tables (fn2-core-seals fn2-core-csnapshot fn2-core-ranges fn2-core-range-sources fn2-core-run-cursors fn2-core-run-loads fn2-core-checkpoint-summary-leases fn2-core-c-source-observers fn2-core-run-installed fn2-core-run-cache fn2-core-checkpoint-summary fn2-core-checkpoint-summary-sources fn2-core-checkpoint-cbase-holds fn2-core-pool)
+ :doc "Finish one actual retired-source release while retaining the observer; CLOSING never freezes unpublished or unreleased source work.")
+
 (defconst *fn2-sealer-loader-operations*
- '(fn2-sealer-load-status-op fn2-sealer-load-reserve-op fn2-sealer-load-owner-op fn2-sealer-load-drain-op fn2-sealer-load-member-release-op fn2-sealer-load-retire-op fn2-sealer-copy-release-op fn2-sealer-source-clear-op))
+ '(fn2-sealer-load-status-op fn2-sealer-load-reserve-op fn2-sealer-load-owner-op fn2-sealer-load-drain-op fn2-sealer-load-member-release-op fn2-sealer-load-retire-op fn2-sealer-copy-release-op fn2-sealer-source-clear-op fn2-sealer-source-reap-op))
 (defmacro fn2-sealer-loader-core-faces ()
  '(make-event
    (mv-let (err events) (fn2-run-loader-core-face-events *fn2-sealer-loader-operations* (w state))
