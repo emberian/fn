@@ -27,6 +27,18 @@ class Capture(unittest.TestCase):
   self.assertIn('(not (equal (fn2-checkpoint-metadata-manifest-catalog-token extent fn2-checkpoint-metadata-manifest) token))',s)
   self.assertIn('(catalog-source-row (fn2-checkpoint-source-row 0 fn2-checkpoint-source))',s)
   self.assertIn('(catalog-source-order (fn2-checkpoint-source-order 0 fn2-checkpoint-source))',s)
+ def test_actual_constructor_uses_whole_fresh_extent(self):
+  m=(ROOT/'books/checkpoint-metadata.lisp').read_text()
+  c=(ROOT/'books/checkpoint-construction-owner.lisp').read_text()
+  self.assertIn('*fn2-run-page-size* fn2-csnapshot fn2-checkpoint-construction',m)
+  self.assertIn('(fn2-run-build-page-kind b level slot gen (* extent *fn2-storage-extent-units*)',m)
+  self.assertIn('(equal (fn2-checkpoint-construction-live next fn2-checkpoint-construction) 0)',c)
+  self.assertIn('(equal (fn2-extents-state next fn2-extents) *fn2-extent-state-free*)',c)
+  self.assertIn('(live 1) (token token)',c)
+  geometry=(ROOT/'books/run-geometry.lisp').read_text()
+  storage=(ROOT/'books/format-base.lisp').read_text()
+  self.assertIn('(defconst *fn2-run-page-size* *fn2-format-page-size*)',geometry)
+  self.assertIn('(defconst *fn2-storage-extent-bytes* *fn2-format-page-size*)',storage)
  def test_capacity_tracks_actual_extent_geometry(self):
   s=(ROOT/'books/checkpoint-metadata-resources.lisp').read_text()
   self.assertIn('(fn2-checkpoint-metadata-manifest-init (fn2-b-capacity :extent-slots 16 profile)',s)
