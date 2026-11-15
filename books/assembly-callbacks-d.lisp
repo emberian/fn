@@ -156,12 +156,13 @@
 (defun fn2-upload-feed-pool (left start end mode discard raw rslot rgen rk rs rg slot sgen limit stop-header u ugen fn2-core)
   (declare (xargs :stobjs fn2-core :guard (fn2-core-wfp fn2-core)))
   (stobj-let ((fn2-pool (fn2-core-pool fn2-core)))
-    (status start2 mode2 discard2 copied fn2-pool)
-    (fn2-upload-feed-loop (max 1 (nfix left)) (nfix start) (nfix end) (nfix mode) discard raw 0 rslot rgen rk rs rg
-                          slot sgen *fn2-upload-kind* u ugen limit stop-header fn2-pool)
-    (mv status start2 mode2 discard2 copied fn2-core)))
-(fn2-core-preserves fn2-upload-feed-pool (left start end mode discard raw rslot rgen rk rs rg slot sgen u ugen fn2-core)
-  :position 5 :rows nil)
+    (status start2 mode2 discard2 copied lines fn2-pool)
+    (fn2-upload-feed-counted (max 1 (nfix left)) (nfix start) (nfix end) (nfix mode) discard raw
+                             rslot rgen rk rs rg slot sgen *fn2-upload-kind* u ugen
+                             limit stop-header fn2-pool)
+    (mv status start2 mode2 discard2 copied lines fn2-core)))
+(fn2-core-preserves fn2-upload-feed-pool (left start end mode discard raw rslot rgen rk rs rg slot sgen limit stop-header u ugen fn2-core)
+  :position 6 :rows nil)
 (in-theory (disable fn2-upload-feed-pool))
 ;; Feed [start, end) of the owner's range RSLOT (read under RK RS RG) into
 ;; upload U's current chunk (the first while it has room), at most
@@ -169,7 +170,7 @@
 ;; article bound (so a too-large block is refused, never buffered). RAW:
 ;; the octets are the article itself (a consumer's append), not a
 ;; dot-stuffed block. (mv status start mode why copied fn2-core), WHY 1 a
-;; framing error, 2 too large.
+;; framing error, 2 article too large, 3 header limit reached.
 (defun fn2-upload-feed-run (start end mode why fed raw rslot rgen rk rs rg u ugen fn2-core)
   (declare (xargs :stobjs fn2-core :guard (fn2-core-wfp fn2-core)))
   (b* (((unless (and (eq (fn2-upload-snapshot-read-code u fn2-core) :ok)
@@ -213,9 +214,14 @@
        (limit (if in0 *fn2-upload-header-octets* *fn2-upload-body-window-bytes*))
        (discard (not (equal why 0)))
        (left (if discard *fn2-conn-feed-bytes* (min *fn2-conn-feed-bytes* (nfix (- (+ 1 bound) fed)))))
-       ((mv status start2 mode2 discard2 copied fn2-core)
+       ((mv status start2 mode2 discard2 copied lines fn2-core)
         (fn2-upload-feed-pool left start end mode discard raw rslot rgen rk rs rg (if in0 c0 c1) (if in0 g0 g1)
                               limit in0 u ugen fn2-core))
+       ((when (eq status :fault)) (mv :fault start2 mode2 why (nfix copied) fn2-core))
+       (source-lines (+ (fn2-upload-row-source-lines u fn2-core) (nfix lines)))
+       ((unless (unsigned-byte-p 32 source-lines))
+        (mv :fault start2 mode2 why (nfix copied) fn2-core))
+       (fn2-core (fn2-machine-write-source-lines u source-lines fn2-core))
        (fed2 (+ fed (nfix copied)))
        (too-large (and (not discard2) (< bound fed2)))
        (why2 (cond (discard why) (too-large 2) (discard2 1)

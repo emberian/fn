@@ -74,6 +74,11 @@
         (t (mv :ok fn2-pool))))
 (fn2-pool-preserves fn2-feed-emit (n b dslot dgen dk ds dg fn2-pool) :position 1 :rows nil)
 
+; The exact octets fn2-feed-emit writes: two are CR LF, one is B.
+(defun fn2-feed-emitted-lf (n b)
+  (declare (xargs :guard (and (natp n) (natp b))))
+  (if (or (equal n 2) (and (equal n 1) (equal b 10))) 1 0))
+
 ; The state a raw feed steps from: a dot at a line start is data.
 (defun fn2-feed-in (raw mode b)
   (declare (xargs :guard t))
@@ -118,7 +123,7 @@
               (t (fn2-feed-crlf-at slot gen (- fill 4) kind owner owner-gen fn2-pool)))))))
 
 ; The feed: at most LEFT octets of [i, end) of RX, written into the chunk
-; DSLOT while it has room. Returns (mv status i mode discard copied
+; DSLOT while it has room. Returns (mv status i mode discard copied lines
 ; fn2-pool):
 ;   :terminator  the terminator's LF was consumed; I is the octet after it;
 ;   :need-more   every octet up to END is consumed;
@@ -128,68 +133,88 @@
 ;                (I is that octet, not consumed: switch chunks and resume);
 ;   :fault       the pool refused a read or a write.
 ; DISCARD becomes t at a framing error; from then nothing is written.
-; COPIED counts the octets written by this call. RAW reads [i, end) as the
+; COPIED counts octets written and LINES counts LF octets emitted by this
+; call. RAW reads [i, end) as the
 ; article's own octets (a consumer's append frame, e-surface.md 3.3): a dot
 ; at a line start is data, so no terminator is framed and the caller ends
 ; the block at END; the line framing (CR LF; no bare CR, LF or NUL) is the
 ; same.  LIMIT is the caller's logical destination bound, independently of
 ; the pool slot's physical capacity; STOP-HEADER chooses the header cut.
-(defun fn2-upload-feed-loop (left i end mode discard raw copied rslot rgen rk rs rg dslot dgen dk ds dg limit stop-header fn2-pool)
+(defun fn2-upload-feed-loop (left i end mode discard raw copied lines rslot rgen rk rs rg dslot dgen dk ds dg limit stop-header fn2-pool)
   (declare (xargs :stobjs fn2-pool :measure (nfix left)
                   :guard (and (fn2-pool-wfp fn2-pool) (natp left) (natp i) (natp end)
-                              (natp mode) (natp copied) (natp limit))
+                              (natp mode) (natp copied) (natp lines) (natp limit))
                   :guard-hints (("Goal" :in-theory (disable fn2-gram-read fn2-feed-emit fn2-gram-fill)))))
-  (cond ((zp left) (mv :budget (nfix i) mode discard (nfix copied) fn2-pool))
-        ((<= (nfix end) (nfix i)) (mv :need-more (nfix i) mode discard (nfix copied) fn2-pool))
+  (cond ((zp left) (mv :budget (nfix i) mode discard (nfix copied) (nfix lines) fn2-pool))
+        ((<= (nfix end) (nfix i)) (mv :need-more (nfix i) mode discard (nfix copied) (nfix lines) fn2-pool))
         (t
          (mv-let (ok b) (fn2-gram-read rslot rgen (nfix i) rk rs rg fn2-pool)
-           (if (not ok) (mv :fault (nfix i) mode discard (nfix copied) fn2-pool)
+           (if (not ok) (mv :fault (nfix i) mode discard (nfix copied) (nfix lines) fn2-pool)
              (mv-let (next emit err term)
                (fn2-feed-step (fn2-feed-in raw mode b) b)
                (let* ((discard (or discard err))
                       (emit (if (or discard (equal (nfix dslot) *fn2-none*)) 0 emit)))
                  (cond
-                  (term (mv :terminator (+ 1 (nfix i)) next discard (nfix copied) fn2-pool))
+                  (term (mv :terminator (+ 1 (nfix i)) next discard (nfix copied) (nfix lines) fn2-pool))
                   ((< (min (nfix limit) (fn2-feed-cap dslot fn2-pool))
                       (+ (fn2-gram-fill dslot fn2-pool) emit))
-                   (mv :full (nfix i) mode discard (nfix copied) fn2-pool))
+                   (mv :full (nfix i) mode discard (nfix copied) (nfix lines) fn2-pool))
                   (t (mv-let (hcode header)
                        (if (and stop-header (equal emit 2) (equal next *fn2-feed-bol*))
                            (fn2-feed-header-end-p dslot dgen dk ds dg fn2-pool)
                          (mv :ok nil))
                        (if (not (eq hcode :ok))
-                           (mv :fault (nfix i) mode discard (nfix copied) fn2-pool)
+                           (mv :fault (nfix i) mode discard (nfix copied) (nfix lines) fn2-pool)
                          (mv-let (code fn2-pool) (fn2-feed-emit emit b dslot dgen dk ds dg fn2-pool)
-                           (if (not (eq code :ok)) (mv :fault (nfix i) mode discard (nfix copied) fn2-pool)
-                             (if header
-                                 (mv :header (+ 1 (nfix i)) next discard (+ (nfix copied) emit) fn2-pool)
-                               (fn2-upload-feed-loop (- left 1) (+ 1 (nfix i)) end next discard raw (+ (nfix copied) emit)
-                                                     rslot rgen rk rs rg dslot dgen dk ds dg limit stop-header fn2-pool)))))))))))))))
+                           (if (not (eq code :ok)) (mv :fault (nfix i) mode discard (nfix copied) (nfix lines) fn2-pool)
+                             (let ((lines2 (+ (nfix lines) (fn2-feed-emitted-lf emit b))))
+                               (if header
+                                   (mv :header (+ 1 (nfix i)) next discard (+ (nfix copied) emit) lines2 fn2-pool)
+                                 (fn2-upload-feed-loop (- left 1) (+ 1 (nfix i)) end next discard raw (+ (nfix copied) emit)
+                                                       lines2 rslot rgen rk rs rg dslot dgen dk ds dg limit stop-header fn2-pool))))))))))))))))
 (defthm fn2-upload-feed-loop-types
-  (and (natp (mv-nth 1 (fn2-upload-feed-loop left i end mode discard raw copied rslot rgen rk rs rg dslot dgen dk ds dg limit stop-header fn2-pool)))
-       (natp (mv-nth 4 (fn2-upload-feed-loop left i end mode discard raw copied rslot rgen rk rs rg dslot dgen dk ds dg limit stop-header fn2-pool))))
-  :rule-classes ((:type-prescription :corollary (natp (mv-nth 1 (fn2-upload-feed-loop left i end mode discard raw copied rslot rgen rk rs rg dslot dgen dk ds dg limit stop-header fn2-pool))))
-                 (:type-prescription :corollary (natp (mv-nth 4 (fn2-upload-feed-loop left i end mode discard raw copied rslot rgen rk rs rg dslot dgen dk ds dg limit stop-header fn2-pool))))))
+  (and (natp (mv-nth 1 (fn2-upload-feed-loop left i end mode discard raw copied lines rslot rgen rk rs rg dslot dgen dk ds dg limit stop-header fn2-pool)))
+       (natp (mv-nth 4 (fn2-upload-feed-loop left i end mode discard raw copied lines rslot rgen rk rs rg dslot dgen dk ds dg limit stop-header fn2-pool))))
+  :rule-classes ((:type-prescription :corollary (natp (mv-nth 1 (fn2-upload-feed-loop left i end mode discard raw copied lines rslot rgen rk rs rg dslot dgen dk ds dg limit stop-header fn2-pool))))
+                 (:type-prescription :corollary (natp (mv-nth 4 (fn2-upload-feed-loop left i end mode discard raw copied lines rslot rgen rk rs rg dslot dgen dk ds dg limit stop-header fn2-pool))))))
 (defthm fn2-upload-feed-loop-mode
   (implies (natp mode)
-           (natp (mv-nth 2 (fn2-upload-feed-loop left i end mode discard raw copied rslot rgen rk rs rg dslot dgen dk ds dg limit stop-header fn2-pool))))
+           (natp (mv-nth 2 (fn2-upload-feed-loop left i end mode discard raw copied lines rslot rgen rk rs rg dslot dgen dk ds dg limit stop-header fn2-pool))))
   :rule-classes :type-prescription)
-(fn2-pool-preserves fn2-upload-feed-loop (left i end mode discard raw copied rslot rgen rk rs rg dslot dgen dk ds dg limit stop-header fn2-pool)
-  :position 5 :rows nil)
+(defthm fn2-upload-feed-loop-lines-natp
+  (natp (mv-nth 5 (fn2-upload-feed-loop left i end mode discard raw copied lines rslot rgen rk rs rg dslot dgen dk ds dg limit stop-header fn2-pool)))
+  :rule-classes :type-prescription)
+(fn2-pool-preserves fn2-upload-feed-loop (left i end mode discard raw copied lines rslot rgen rk rs rg dslot dgen dk ds dg limit stop-header fn2-pool)
+  :position 6 :rows nil)
+
+; Counted public feed for the actual upload row.  A call reports only its
+; own copied octets and emitted LF octets; the caller retains both totals.
+(defun fn2-upload-feed-counted (left i end mode discard raw rslot rgen rk rs rg dslot dgen dk ds dg limit stop-header fn2-pool)
+  (declare (xargs :stobjs fn2-pool
+                  :guard (and (fn2-pool-wfp fn2-pool) (natp left) (natp i)
+                              (natp end) (natp mode) (natp limit))))
+  (fn2-upload-feed-loop left i end mode discard raw 0 0 rslot rgen rk rs rg
+                        dslot dgen dk ds dg limit stop-header fn2-pool))
+(fn2-pool-preserves fn2-upload-feed-counted (left i end mode discard raw rslot rgen rk rs rg dslot dgen dk ds dg limit stop-header fn2-pool)
+  :position 6 :rows nil)
 
 ; One call from the connection's continuation: [i, fill) of RX.
 (defun fn2-upload-feed (left i mode discard rslot rgen rk rs rg dslot dgen dk ds dg fn2-pool)
   (declare (xargs :stobjs fn2-pool
                   :guard (and (fn2-pool-wfp fn2-pool) (natp left) (natp i) (natp mode))))
-  (fn2-upload-feed-loop left i (fn2-gram-fill rslot fn2-pool) mode discard nil 0
-                        rslot rgen rk rs rg dslot dgen dk ds dg (fn2-feed-cap dslot fn2-pool) nil fn2-pool))
+  (mv-let (status next mode2 discard2 copied lines fn2-pool)
+    (fn2-upload-feed-counted left i (fn2-gram-fill rslot fn2-pool) mode discard nil
+                             rslot rgen rk rs rg dslot dgen dk ds dg
+                             (fn2-feed-cap dslot fn2-pool) nil fn2-pool)
+    (declare (ignore lines))
+    (mv status next mode2 discard2 copied fn2-pool)))
 (fn2-pool-preserves fn2-upload-feed (left i mode discard rslot rgen rk rs rg dslot dgen dk ds dg fn2-pool)
   :position 5 :rows nil)
 
 (assert-event
- (fn2-assert-compliant-p '(fn2-feed-step fn2-feed-emit fn2-feed-crlf-at
+ (fn2-assert-compliant-p '(fn2-feed-step fn2-feed-emit fn2-feed-emitted-lf fn2-feed-crlf-at
                            fn2-feed-header-end-p fn2-feed-header-complete-p
-                           fn2-upload-feed-loop fn2-upload-feed) (w state)))
+                           fn2-upload-feed-loop fn2-upload-feed-counted fn2-upload-feed) (w state)))
 
 ; Shared LF counter: upload retains counts before source windows can roll;
 ; transaction counter controls call this same primitive.
