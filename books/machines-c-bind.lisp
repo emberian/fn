@@ -282,6 +282,14 @@
       (fn2-id-decides (fn2-id-decides-put tx (qmask 0)
        (qwake (if last 1 (fn2-id-decides-qwake tx fn2-id-decides))))))
   (mv :ok fn2-id-decides fn2-pool)))
+; The checked mask stays a byte after consuming the first query reference.
+(local (defthm fn2-id-query-mask-byte
+ (implies (and (natp mask) (<= mask 3))
+          (and (integerp (logand 2 mask))
+               (<= 0 (logand 2 mask))
+               (< (logand 2 mask) 256)))
+ :hints (("Goal" :cases ((equal mask 0) (equal mask 1)
+                         (equal mask 2) (equal mask 3))))))
 (fn2-idc-fn-shape fn2-id-query-release (tx fn2-id-decides fn2-pool)
  (fn2-id-decides fn2-pool) (fn2-id-decides fn2-pool) t
  (fn2-pool-query-release fn2-id-decides-qmask fn2-id-decides-qwake fn2-id-decides-q1slot
