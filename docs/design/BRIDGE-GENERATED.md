@@ -434,6 +434,26 @@ the stated membership theorem with domain premises: reached caller domains,
 primitive correspondence, MBE and the selected-dispatch/host binding chain
 still need their own proofs. This printer does not substitute the proposed
 selected dispatcher for the production dispatcher or treat defattach as an
-ACL2 equality. Eleven Python source-generation controls and six existing
+ACL2 equality. Fourteen Python source-generation controls and six existing
 inspection controls pass; no current packet or ACL2 admission was obtained by
 those controls.
+
+The Lean consumer now retains the complete packet definition inventory and
+emits `guards : CanonicalGuards` from each same function record's exact guard
+and formals. Previously it kept only the root body closure and discarded all
+guards; a guard-only nonnative helper consequently had no definition available
+to `CanonicalGuardEval`. The root body still must actually reach the membership
+closure. Missing body/guard callees and attachment-backed helpers refuse
+emission; attachment selection is not a logical-body substitution. The ACL2
+companion remains responsible for exact live measures and full live closure.
+
+A seven-record generation control has a root guard that calls a helper absent
+from the root body. Both its canonical body and guard now appear in the emitted
+program. Changing only the root guard leaves the emitted body program identical
+but changes the guard table. Removing the helper or attaching it refuses. These
+are source-generation controls, not proofs of `DomainRespectsGuards` or guard
+satisfaction. The next bounded Lean gate is the existing warm-import membership
+fixture plus this guard-bearing emission (2 GiB, one job, 120 seconds); no Lean
+or ACL2 job was run for this change. The current served CNS packet still waits
+for its qualified callback world; the earlier six-record gate does not cover
+this new emission.
