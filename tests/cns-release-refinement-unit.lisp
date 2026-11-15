@@ -49,6 +49,12 @@
                                (member-eq code '(:ok :retired))))
                (:without-generation
                 (and (not ownership) (not whole-h) (eq code :stale)
+                     (equal (fn2-cns-drain-child 'fn2-pool released) pool)
+                     (equal (fn2-cns-drain-get 'fn2-control-stop
+                              (fn2-cns-drain-child 'fn2-control released)) 1)
+                     (equal (fn2-cns-drain-get 'fn2-control-stop-reason
+                              (fn2-cns-drain-child 'fn2-control released))
+                            *fn2-stop-reason-pool-release*)
                      (not original-c) (not conclusion)))
                (:sibling-write
                 (and whole-h original-c (eq mc :ok) (not conclusion)
