@@ -5,17 +5,17 @@
 (include-book "checkpoint-page-header")
 (fn2-book-layer :b)
 
-(defun fn2-checkpoint-linked-hash-buffer (left i extent slot gen okind oslot ogen zero-p fn2-checkpoint-page-verified fn2-pool)
+(defun fn2-checkpoint-linked-hash-buffer (left i off extent slot gen okind oslot ogen zero-p fn2-checkpoint-page-verified fn2-pool)
  (declare (xargs :stobjs (fn2-checkpoint-page-verified fn2-pool) :measure (nfix left)
   :guard (and (fn2-checkpoint-page-verified-wfp fn2-checkpoint-page-verified) (fn2-pool-wfp fn2-pool)
               (or zero-p (and (natp extent) (< extent (fn2-checkpoint-page-verified-rows fn2-checkpoint-page-verified))))
-              (natp left) (natp i) (<= (+ i left) 32))))
+              (natp left) (natp i) (natp off) (unsigned-byte-p 32 (+ off i left)) (<= (+ i left) 32))))
  (if (zp left) (mv :ok fn2-pool)
   (b* ((word (if zero-p 0 (fn2-checkpoint-page-verified-word extent (floor i 4) fn2-checkpoint-page-verified)))
        (byte (logand 255 (ash word (- (* 8 (mod i 4))))))
-       ((mv code fn2-pool) (fn2-pool-write slot gen i byte okind oslot ogen fn2-pool)))
+       ((mv code fn2-pool) (fn2-pool-write slot gen (+ off i) byte okind oslot ogen fn2-pool)))
    (if (eq code :ok)
-    (fn2-checkpoint-linked-hash-buffer (- left 1) (+ i 1) extent slot gen okind oslot ogen zero-p fn2-checkpoint-page-verified fn2-pool)
+    (fn2-checkpoint-linked-hash-buffer (- left 1) (+ i 1) off extent slot gen okind oslot ogen zero-p fn2-checkpoint-page-verified fn2-pool)
     (mv code fn2-pool)))))
 
 (defun fn2-checkpoint-linked-header-pack (token okind oslot ogen role ordinal extent epoch allocation history incarnation
@@ -53,7 +53,7 @@
       ((mv code fn2-pool) (fn2-pool-reset scratch sgen okind oslot ogen fn2-pool))
       ((unless (eq code :ok)) (mv code fn2-fields fn2-pool))
       ; Zero terminal digest uses the same bounded copier over a constant word.
-      ((mv code fn2-pool) (fn2-checkpoint-linked-hash-buffer 32 0 child scratch sgen okind oslot ogen (equal has-next 0) fn2-checkpoint-page-verified fn2-pool))
+      ((mv code fn2-pool) (fn2-checkpoint-linked-hash-buffer 32 0 0 child scratch sgen okind oslot ogen (equal has-next 0) fn2-checkpoint-page-verified fn2-pool))
       ((unless (eq code :ok)) (mv code fn2-fields fn2-pool))
       (fn2-fields (fn2-fields-set-value (+ base *fn2-checkpoint-map-header-field-kind*) (case role (2 *checkpoint-map-body-kind-allocation-map*) (3 *checkpoint-map-body-kind-event-proof-directory*) (4 *checkpoint-map-body-kind-release-inventory*) (otherwise *checkpoint-map-body-kind-recovery-arena*)) fn2-fields))
       (fn2-fields (fn2-fields-set-value (+ base *fn2-checkpoint-map-header-field-version*) *fn2-format-version* fn2-fields))
@@ -83,7 +83,7 @@
   (mv (if (and (eq code :ok) (natp next) (<= *fn2-checkpoint-map-body-start* next) (<= next *fn2-checkpoint-map-entries-start*)) :ok :format) fn2-fields fn2-pool)))
 
 (fn2-pool-preserves fn2-checkpoint-linked-hash-buffer
- (left i extent slot gen okind oslot ogen zero-p fn2-checkpoint-page-verified fn2-pool)
+ (left i off extent slot gen okind oslot ogen zero-p fn2-checkpoint-page-verified fn2-pool)
  :hyps ((fn2-checkpoint-page-verifiedp fn2-checkpoint-page-verified) (fn2-checkpoint-page-verified-wfp fn2-checkpoint-page-verified) (fn2-poolp fn2-pool) (fn2-pool-wfp fn2-pool))
  :specs (("-POOL-TYPE" fn2-poolp 1)
          ("-POOL-WFP" fn2-pool-wfp 1)
