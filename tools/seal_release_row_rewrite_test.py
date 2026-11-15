@@ -4,6 +4,7 @@ import unittest
 
 import lisp_rewrite as lr
 import seal_release_row_rewrite as rw
+import seal_release_held_rewrite as held
 
 ROOT = Path(__file__).resolve().parents[1]
 BEFORE = ROOT / 'tools/fixtures/seal-release-before.lisp'
@@ -44,18 +45,23 @@ def check_release(source):
         '(= (fn2-run-installed-physical r fn2-run-installed) 1)',
         '(fn2-run-installed-ufirst r fn2-run-installed)',
         '(fn2-run-installed-ulast r fn2-run-installed)',
+        '(fn2-run-cache-peek (nfix u) fn2-run-cache)',
         '(fn2-run-cache-drop (nfix u) fn2-run-cache)',
         '(fn2-pool-release-countp slot fn2-pool)',
         '(fn2-run-retired-next r fn2-run-installed)',
     ]:
         if len(lr.match(pattern, [row])) != 1:
             raise ValueError(f'actual row release lost {pattern}')
+    peek = lr.match('(fn2-run-cache-peek ?*args)', [row])[0]
     drop = lr.match('(fn2-run-cache-drop ?*args)', [row])[0]
     count = lr.match('(fn2-pool-release-countp ?*args)', [row])[0]
     release = lr.match('(fn2-pool-release ?*args)', [row])
     next_row = lr.match('(fn2-run-retired-next ?*args)', [row])[0]
     physical = lr.match('(= (fn2-run-installed-physical r fn2-run-installed) 1)', [row])[0]
-    if len(release) != 1 or not (physical.start < drop.start < count.start < release[0].start < next_row.start):
+    accepted = lr.match('(or (eq released :ok) (eq released :retired))', [row])
+    if len(release) != 1 or len(accepted) != 1 or not (
+            physical.start < peek.start < count.start < release[0].start
+            < accepted[0].start < drop.start < next_row.start):
         raise ValueError('bounded release effect order or physical fence changed')
     expected_release = ('(fn2-pool-release slot gen '
                         '(fn2-run-installed-okind r fn2-run-installed) '
@@ -67,6 +73,9 @@ def check_release(source):
         raise ValueError('row release still reads mutable global sealer owner')
     if lr.match('(fn2-seal-retired-row ?*args)', [row]):
         raise ValueError('row release performs whole installed scan')
+    if not lr.match('((unless (or (eq released :ok) (eq released :retired))) '
+                    '(mv released fn2-run-cache fn2-pool))', [row]):
+        raise ValueError('held or credit refusal must retain cache and row')
     if not lr.match('(fn2-seal-retired-row rows 0 fn2-run-installed)', [wrapper]):
         raise ValueError('ordinary sealer lost retired-row selection')
     if not lr.match('(fn2-seals-set-phase 0 *fn2-seal-phase-idle* fn2-seals)', [wrapper]):
@@ -84,7 +93,14 @@ class Source(unittest.TestCase):
         cls.actual = SEALER.read_text()
 
     def test_original_operation_extracts_exact_current_functions(self):
-        expected = rw.transform(self.before)
+        overlay = '\n'.join(held.BEFORE['books/sealer.lisp'][pattern]
+                            for pattern in ('(defun fn2-seal-retire ?*body)',
+                                            '(fn2-seal-shape fn2-seal-retire ?*body)'))
+        callers = '\n'.join(held.BEFORE['books/sealer.lisp'][pattern]
+                            for pattern in held.CALLERS)
+        expected, count = held.transform('books/sealer.lisp',
+                                         overlay + '\n' + callers + '\n' + rw.transform(self.before))
+        self.assertEqual(count, 6)
         for pattern in ['(defun fn2-seal-release-row ?*body)',
                         '(defun fn2-seal-release ?*body)',
                         '(fn2-seal-shape fn2-seal-release-row ?*body)',
