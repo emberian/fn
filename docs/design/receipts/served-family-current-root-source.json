@@ -30,8 +30,10 @@
     {
       "path": "books/authority.lisp",
       "source": "2015b9ed65eec4ebde0036a51bda35726a85be1e",
-      "sha256": "bd2d771bb2c4ffb8333461b1e3e9e7894c4a9216a922ebb47cf2f1b7fe5e8c33",
-      "root_sha256": "2c8389ed2b6d49c8312e6ef1f864fe5a90be739e0f564d7dcb78b6fea5e84927"
+      "sha256": "a46dc9f11ba4c9d510e10c026cbc4d131289840c48ed31c7c16b00941b54d0b5",
+      "root_sha256": "2c8389ed2b6d49c8312e6ef1f864fe5a90be739e0f564d7dcb78b6fea5e84927",
+      "prior_join_sha256": "bd2d771bb2c4ffb8333461b1e3e9e7894c4a9216a922ebb47cf2f1b7fe5e8c33",
+      "source_scope": "Current family after reviewed foundation/dependency/dimension overlays; original donor records runtime origin, not exact final bytes"
     },
     {
       "path": "books/cns-draining-contract.lisp",
@@ -114,8 +116,10 @@
     {
       "path": "books/cns-source-capture.lisp",
       "source": "2015b9ed65eec4ebde0036a51bda35726a85be1e",
-      "sha256": "e35334278e92c3209a3b67d08e99388879aa66f1fd160499e6ee9c7de85d5727",
-      "root_sha256": null
+      "sha256": "3c7dfa3706a90b0c210d56b7b04b9abf06261cbe2fac127e9df329328f660c53",
+      "root_sha256": null,
+      "prior_join_sha256": "e35334278e92c3209a3b67d08e99388879aa66f1fd160499e6ee9c7de85d5727",
+      "source_scope": "Current family after reviewed foundation/dependency/dimension overlays; original donor records runtime origin, not exact final bytes"
     },
     {
       "path": "books/cns-source-core.lisp",
@@ -126,30 +130,40 @@
     {
       "path": "books/cns-source-hash.lisp",
       "source": "2015b9ed65eec4ebde0036a51bda35726a85be1e",
-      "sha256": "7995594a0fd59187ab96a932dfec35470b8924d975389ba1e10a7542f9a55939",
-      "root_sha256": null
+      "sha256": "7a31fd062972a0f53719143cb362d803c4235d2c05e5d37fe9624a592ebb6c3b",
+      "root_sha256": null,
+      "prior_join_sha256": "7995594a0fd59187ab96a932dfec35470b8924d975389ba1e10a7542f9a55939",
+      "source_scope": "Current family after reviewed foundation/dependency/dimension overlays; original donor records runtime origin, not exact final bytes"
     },
     {
       "path": "books/cns-source-manifest.lisp",
       "source": "2015b9ed65eec4ebde0036a51bda35726a85be1e",
-      "sha256": "63e9e4f974f3012778ac705d16b4d1fcb471196eacb420e8e9b648e96a5e4543",
-      "root_sha256": null
+      "sha256": "e090e38f2c373ae60fb6303fa74c23d11ec1e9c2ab2f16d10458bc5aa9a0af4a",
+      "root_sha256": null,
+      "prior_join_sha256": "63e9e4f974f3012778ac705d16b4d1fcb471196eacb420e8e9b648e96a5e4543",
+      "source_scope": "Current family after reviewed foundation/dependency/dimension overlays; original donor records runtime origin, not exact final bytes"
     },
     {
       "path": "books/cns-source-raw.lisp",
       "source": "d7973ce449dfaa3ff4e5c45864a24d3f534018ca",
-      "sha256": "2b8c32ea4f65ab5fe5be512f7d6511b1a58b45ff707e3da31923461d8bae9b9e"
+      "sha256": "57c5239a03ea64f1878db2778f200baf0460a11532845bbd07a44a0a038fb097",
+      "prior_join_sha256": "2b8c32ea4f65ab5fe5be512f7d6511b1a58b45ff707e3da31923461d8bae9b9e",
+      "source_scope": "Current family after reviewed foundation/dependency/dimension overlays; original donor records runtime origin, not exact final bytes"
     },
     {
       "path": "books/cns-source-retention.lisp",
       "source": "2015b9ed65eec4ebde0036a51bda35726a85be1e",
-      "sha256": "97a052c9f8225681849d70402bb8f8a83c99be7ebbba15e593cbf4d942bbdb22",
-      "root_sha256": null
+      "sha256": "f7a26028343111d99129e67c6a3e7970759ac014a79b85225896f6af4d12db2b",
+      "root_sha256": null,
+      "prior_join_sha256": "97a052c9f8225681849d70402bb8f8a83c99be7ebbba15e593cbf4d942bbdb22",
+      "source_scope": "Current family after reviewed foundation/dependency/dimension overlays; original donor records runtime origin, not exact final bytes"
     },
     {
       "path": "books/cns-source-state.lisp",
       "source": "d7973ce449dfaa3ff4e5c45864a24d3f534018ca",
-      "sha256": "49e2cd0b868355ea73ad23bf2ecc62b7fb78abf6fae7a77688f9960386452513"
+      "sha256": "23174fe5fedaec982ab0203e83a0ff70f472ca4bdbc48705f4c7fbe25e92cd95",
+      "prior_join_sha256": "49e2cd0b868355ea73ad23bf2ecc62b7fb78abf6fae7a77688f9960386452513",
+      "source_scope": "Current family after reviewed foundation/dependency/dimension overlays; original donor records runtime origin, not exact final bytes"
     },
     {
       "path": "books/cns-source-workspace.lisp",
@@ -160,8 +174,10 @@
     {
       "path": "books/cns.lisp",
       "source": "2015b9ed65eec4ebde0036a51bda35726a85be1e",
-      "sha256": "40a64e298479cc40c0310e2dc033f90a4dc4c2dead1e8514680e945d1cdf32d9",
-      "root_sha256": "cd90bbe43d1d09d657d15d05dbe474c567e46aab7c68709c84aba4c7befa04fe"
+      "sha256": "b4de9bcafd707040ad9b8ed7564def9628a5f5b60263fb6cf8eff740e4a5f09c",
+      "root_sha256": "cd90bbe43d1d09d657d15d05dbe474c567e46aab7c68709c84aba4c7befa04fe",
+      "prior_join_sha256": "40a64e298479cc40c0310e2dc033f90a4dc4c2dead1e8514680e945d1cdf32d9",
+      "source_scope": "Current family after reviewed foundation/dependency/dimension overlays; original donor records runtime origin, not exact final bytes"
     },
     {
       "path": "books/core-scheduler-wake.lisp",
@@ -226,8 +242,10 @@
     {
       "path": "books/machines-c-read.lisp",
       "source": "2015b9ed65eec4ebde0036a51bda35726a85be1e",
-      "sha256": "693af05503342474822b31d844aab7aed653a63151a910f47927c73d90d91f15",
-      "root_sha256": "561bae3856e59b753136e657df7d8960154e0618208954ed8e49a151bde3964d"
+      "sha256": "2db84b3b950eb5e955c90eef6cb935e8b765f337feafdc432a0858c3df738b4e",
+      "root_sha256": "561bae3856e59b753136e657df7d8960154e0618208954ed8e49a151bde3964d",
+      "prior_join_sha256": "693af05503342474822b31d844aab7aed653a63151a910f47927c73d90d91f15",
+      "source_scope": "Current family after reviewed foundation/dependency/dimension overlays; original donor records runtime origin, not exact final bytes"
     },
     {
       "path": "books/machines-c-stage.lisp",
@@ -292,8 +310,10 @@
     {
       "path": "books/storage-block-io.lisp",
       "source": "31635689e152fa20aa3e9eb18ae456ebe2397b64",
-      "sha256": "a96c68cc83524c3eac6a4eea32f220cda79ff23d54a887e18fa8d41020ec150c",
-      "root_sha256": "4886fb553552d6155691068f5e9a351eebbb1f3583c113e47ada2701692116f7"
+      "sha256": "ecd56a67afd5efc4acf9a7d57d7e24f1b68692707cec3dbc79b188f703c5bdd2",
+      "root_sha256": "4886fb553552d6155691068f5e9a351eebbb1f3583c113e47ada2701692116f7",
+      "prior_join_sha256": "a96c68cc83524c3eac6a4eea32f220cda79ff23d54a887e18fa8d41020ec150c",
+      "source_scope": "Current family after reviewed foundation/dependency/dimension overlays; original donor records runtime origin, not exact final bytes"
     },
     {
       "path": "books/successor-schema-geometry.lisp",
@@ -418,8 +438,10 @@
     {
       "path": "tests/cns-source-hash-interleave-unit.lisp",
       "source": "2015b9ed65eec4ebde0036a51bda35726a85be1e",
-      "sha256": "b11836a2e959ada702216c8e177fe5198ab8ec1108000b6ef06e1547de73c06a",
-      "root_sha256": null
+      "sha256": "b9a65d55f75e91f25e567ffe82ab1b24199dd325c0fd1b0d03a8222b66f78ac7",
+      "root_sha256": null,
+      "prior_join_sha256": "b11836a2e959ada702216c8e177fe5198ab8ec1108000b6ef06e1547de73c06a",
+      "source_scope": "Current family after reviewed foundation/dependency/dimension overlays; original donor records runtime origin, not exact final bytes"
     },
     {
       "path": "tests/cns-source-retention-unit.lisp",
@@ -752,8 +774,10 @@
     {
       "path": "tools/storage_block_io_lower_test.py",
       "source": "2015b9ed65eec4ebde0036a51bda35726a85be1e",
-      "sha256": "14cbddaa44b2a4b9c1509153c76747788303c1e8beb3138b2cbc0758964e2ce7",
-      "root_sha256": "a7a26018d702547d55c571eab0876cba7e43a28c4a8915bbae4a205889fc2bc9"
+      "sha256": "f38c83c411d2a7751c0bd3f8ac933f438ebbeaa8d36aadc344c4e451dabfcea7",
+      "root_sha256": "a7a26018d702547d55c571eab0876cba7e43a28c4a8915bbae4a205889fc2bc9",
+      "prior_join_sha256": "14cbddaa44b2a4b9c1509153c76747788303c1e8beb3138b2cbc0758964e2ce7",
+      "source_scope": "Current family after reviewed foundation/dependency/dimension overlays; original donor records runtime origin, not exact final bytes"
     },
     {
       "path": "tools/successor_geometry_source_check.py",
@@ -841,7 +865,9 @@
     {
       "path": "docs/assurance/cns-enum-controls.md",
       "source": "2ebbb5164",
-      "sha256": "9586704ff687dd2a06fa73d485f421b90576d20fe137fa0f1dc9554034203629"
+      "sha256": "44e0c4045cbe48e437da3633a921b6069c8e2117cc0e8a0a0c98b3dca1decc98",
+      "prior_join_sha256": "9586704ff687dd2a06fa73d485f421b90576d20fe137fa0f1dc9554034203629",
+      "source_scope": "Current family after reviewed foundation/dependency/dimension overlays; original donor records runtime origin, not exact final bytes"
     },
     {
       "path": "docs/assurance/cns-enum-fragment-author-61bbea7a.json",
@@ -968,7 +994,9 @@
       "path": "books/arm-children.lisp",
       "root_sha256": "102693b7b871c8da5b31649f60ee70f832b5726a9f98caa910d25ca1e3177d07",
       "source": "31635689e152fa20aa3e9eb18ae456ebe2397b64",
-      "sha256": "3ca3f6a79a26a314d52d189f54593f7f83db42ec5a0d463e8c5758f1c3d32c73"
+      "sha256": "1d444bdc958c877682a8bb75f688ecd191b741147ee853c646a8ec54e2fa343f",
+      "prior_join_sha256": "3ca3f6a79a26a314d52d189f54593f7f83db42ec5a0d463e8c5758f1c3d32c73",
+      "source_scope": "Current family after reviewed foundation/dependency/dimension overlays; original donor records runtime origin, not exact final bytes"
     }
   ],
   "preserve_current_root_exact": [
@@ -1240,7 +1268,7 @@
     "current_foundation_raw_keys_match": 34,
     "old_receipt_scope": "Original prefoundation reader34 remains historical; only10oldkeys unchanged"
   },
-  "pending_source_join": "None required for granted leafpilots. Actual pool/B3leaf results pending; metadata/rolling/COMPRESS held.",
+  "pending_source_join": "None required for granted B3retry or ARM/storage37 pilot. Both future wholebook results pending; no RAW/app grant.",
   "foundation_join": {
     "source": "6e7a1a9c105f2ccfeb0b06f32c0c566378cf62d9",
     "rows_source": "31635689e152fa20aa3e9eb18ae456ebe2397b64",
@@ -1283,7 +1311,7 @@
   },
   "dimension_interfaces_join": {
     "pool_source": "2c5e7b6daa6da6044e1a0f688d0208d917df45d1",
-    "B3_source": "84fd211467636762b9e2d40d85dc9f0176f58bd4",
+    "B3_source": "5f69d871d587d7fb43bc8c96d3c778b0d571e3ee",
     "ground_fixture_source": "4d6b4ba6d",
     "scope": "Reviewed source-only producer interfaces; all existing runtime/guards/H+C unchanged, new claims UNADMITTED. No wholeRAW/FETCH claim.",
     "pool_domain": "Unconditional metadata-only ROWS/backing-DATA equations derived from actual admitted ABI; no borrowed recognizer",
@@ -1299,6 +1327,17 @@
         "books/blake3-word-frames"
       ]
     },
-    "focused_controls": "8DATA/B3 tests+5dependency-cut testsPASS; whole-result fixture still exactf893; no prover by integrationowner"
-  }
+    "focused_controls": "8DATA/B3 tests+5dependency-cut testsPASS; whole-result fixture still exactf893; no prover by integrationowner",
+    "pool_qualified_receipt": "/tmp/pool-dim-current-qualified12-receipt.json",
+    "pool_status": "Current wholeleaf AUTHORPASS0.06s289steps+record12qualified11reuse1new; no ARM/RAW inference",
+    "B3_parent_status": "Current14parent recordqualified12reuse2new; newwordleaf unproved, INIT firstrefusal0.01s295, reviewed scalarobserver hintfix pendingfreshpilot",
+    "B3_parent_receipt": "docs/design/receipts/b3-word-parent-ebce9812.json"
+  },
+  "current_source_overlays": [
+    "6e7a1a9c1",
+    "c1839fde0",
+    "2c5e7b6da",
+    "84fd21146",
+    "5f69d871d"
+  ]
 }
