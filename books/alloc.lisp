@@ -410,7 +410,8 @@
                (eq (fn2-alloc-handle-code i epoch allocation fn2-extents) :ok)
                (equal (fn2-extents-state i fn2-extents) *fn2-extent-state-allocated*)))
      (mv :intent fn2-extents)
-   (mv :ok (update-fn2-alloc-retirement-intent-batch 0 fn2-extents))))
+   (let ((fn2-extents (update-fn2-alloc-retirement-intent-batch 0 fn2-extents)))
+    (mv :ok fn2-extents))))
 (fn2-extents-preserves fn2-alloc-retirement-intent-begin
  (i epoch allocation batch fn2-extents) :position 1)
 (fn2-extents-preserves fn2-alloc-retirement-intent-cancel
@@ -670,7 +671,8 @@
                (equal (fn2-alloc-epoch-begun fn2-extents) 1)
                (fn2-alloc-planning-frontierp head epoch counter fn2-extents)))
      (mv :planning fn2-extents)
-   (mv :ok (update-fn2-alloc-freeze-phase 3 fn2-extents))))
+   (let ((fn2-extents (update-fn2-alloc-freeze-phase 3 fn2-extents)))
+    (mv :ok fn2-extents))))
 (defun fn2-alloc-planning-reserve (token kind owner gen extent epoch counter fn2-extents)
  (declare (xargs :stobjs fn2-extents :guard (fn2-extents-wfp fn2-extents)))
  (if (not (and (fn2-alloc-planning-ownerp token kind owner gen fn2-extents)
@@ -691,7 +693,8 @@
                (equal (fn2-alloc-retirement-intent-batch fn2-extents) 0)
                (fn2-alloc-planning-frontierp head epoch counter fn2-extents)))
      (mv :planning fn2-extents)
-   (mv :ok (update-fn2-alloc-freeze-phase 0 fn2-extents))))
+   (let ((fn2-extents (update-fn2-alloc-freeze-phase 0 fn2-extents)))
+    (mv :ok fn2-extents))))
 (fn2-extents-preserves fn2-alloc-planning-begin
  (token kind owner gen head epoch counter fn2-extents) :position 1)
 (fn2-extents-preserves fn2-alloc-planning-reserve
