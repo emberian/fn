@@ -93,6 +93,8 @@
 ; Pool range operations: the resource kind is the caller's (:rx-range for a
 ; connection, :storage-window for the scribe), given in its :uses entry.
 (defcost fn2-core-reserve :child fn2-pool-reserve :answers t :tables (fn2-core-pool) :effects :per-use :doc "Reserve a pool range.")
+(defcost fn2-core-query-heldp :child fn2-pool-query-heldp :tables (fn2-core-pool)
+ :doc "A matching range has active query readers; bounded readonly preflight.")
 (defcost fn2-core-release :child fn2-core-release-children :answers t :tables (fn2-core-pool) :effects :per-use :doc "Release a pool range.")
 (defcost fn2-core-reset :child fn2-pool-reset :answers t :tables (fn2-core-pool) :doc "Reset a held range to empty.")
 (defcost fn2-scribe-fill :child fn2-scribe-fill :answers t :bytes *fn2-scribe-chunk-bytes* :tables (fn2-core-pool)

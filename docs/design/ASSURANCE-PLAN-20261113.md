@@ -169,6 +169,17 @@ ended and resources are released. This diagnostic is not source qualification.
 The actual application candidate must consume the qualified generator and
 reviewed leaf repairs before the native two-article restart/FETCH gate.
 Receipt: [resource proof boundary](receipts/arm-resource37-record.json).
+
+The real `machines-a-run` consumer now passes record certification at source
+`9fabbb99d`, run `certify-20261115T132706Z-1375558`. The 35-book closure first
+qualified its six missing parents, then reused all 34 parents to certify the
+actual consumer. Echo and Scribe original macros passed in 10.22 and 9.12
+seconds under unchanged 20-second/2M-step limits; no trial helpers were used.
+The readonly query-held cost declaration is integrated, and root independently
+matched all 35 source hashes and closure keys to the integration tree. This
+qualifies the A-machine consumer, not the remaining application or native gate.
+The next actual BT composition reuses this record.
+Receipt: [actual machine consumer](receipts/machine-run-actual35-record.json).
 Receipt: [shared application prerequisites](receipts/bt-ready62-record.json).
 
 Physical address geometry remains an executable blocker. `fe9f761ab` repairs
