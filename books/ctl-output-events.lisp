@@ -63,3 +63,30 @@
   (fn2-core-preserves fn2-ctl-stream-output-trailer
    (ctl gen slot sgen fn2-core) :position 1 :rows nil)
  ))
+
+; Expanded before CNS source wrappers so cancellation uses the transport's
+; actual row and loan state, not caller-supplied readiness flags.
+(defmacro fn2-ctl-output-status-events ()
+ '(defun fn2-ctl-stream-reply-status (ctl gen request child cgen fn2-core)
+   (declare (xargs :stobjs fn2-core :guard (fn2-core-wfp fn2-core)
+                   :guard-hints (("Goal" :in-theory (enable fn2-core-wfp)))))
+   (if (not (and (fn2-ctl-stream-live-p ctl gen request fn2-core)
+                 (equal (fn2-ctl-row-cns ctl fn2-core) child)
+                 (equal (fn2-ctl-row-cns-gen ctl fn2-core) cgen)
+                 (fn2-ctl-stream-child-live-p child cgen fn2-core))) :stale
+    (let* ((phase (fn2-ctl-row-phase ctl fn2-core))
+           (out (fn2-ctl-row-ophase ctl fn2-core))
+           (slot (fn2-ctl-row-rx-slot ctl fn2-core))
+           (sgen (fn2-ctl-row-rx-gen ctl fn2-core))
+           (quiet (and (equal (fn2-ctl-row-pending ctl fn2-core) 0)
+                       (equal (fn2-ctl-row-borrows ctl fn2-core) 0)
+                       (eq (fn2-machine-pool-borrows-read-code slot fn2-core) :ok)
+                       (equal (fn2-machine-pool-borrows slot fn2-core) 0)
+                       (not (fn2-core-query-heldp slot sgen fn2-core)))))
+     (cond ((or (member-equal phase (list *fn2-ctl-state-closing* *fn2-ctl-state-draining*))
+                (equal out *fn2-ctl-output-cancelled*))
+            (if (and (equal phase *fn2-ctl-state-draining*) quiet) :cancelled :aborting))
+           ((and (equal phase *fn2-ctl-state-stream-reply*)
+                 (equal out *fn2-ctl-output-done*) quiet) :handback)
+           ((member-equal phase (list *fn2-ctl-state-waiting* *fn2-ctl-state-stream-reply*)) :active)
+           (t :stale))))))
