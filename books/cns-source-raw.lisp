@@ -6,6 +6,7 @@
 (include-book "cns-source-retention")
 (include-book "storage-block-io")
 (include-book "machines-b")
+(include-book "columns-call-guards")
 (fn2-book-layer :d)
 (defcolumns fn2-cns-source-operations ((live :bool) (generation :u60) (source-row :u32)))
 
@@ -13,7 +14,9 @@
  fn2-cns-sources fn2-cns-source-operations fn2-extents fn2-alloc-edges fn2-pool fn2-ops fn2-control fn2-checkpoints)
  (declare (xargs :stobjs (fn2-cns-sources fn2-cns-source-operations fn2-extents fn2-alloc-edges fn2-pool fn2-ops fn2-control fn2-checkpoints)
  :guard (and (fn2-cns-sources-wfp fn2-cns-sources) (fn2-cns-source-operations-wfp fn2-cns-source-operations)
- (fn2-checkpoints-wfp fn2-checkpoints) (fn2-extents-wfp fn2-extents) (fn2-alloc-edges-wfp fn2-alloc-edges) (fn2-pool-wfp fn2-pool) (fn2-ops-wfp fn2-ops) (fn2-control-wfp fn2-control))))
+ (fn2-checkpoints-wfp fn2-checkpoints) (fn2-extents-wfp fn2-extents) (fn2-alloc-edges-wfp fn2-alloc-edges) (fn2-pool-wfp fn2-pool) (fn2-ops-wfp fn2-ops) (fn2-control-wfp fn2-control))
+ :guard-hints ((fn2-columns-call-guard-hint 'fn2-cns-source-issue-children
+                '(fn2-pool-truncate fn2-block-read-children) nil world))))
  (b* (((unless (and (fn2-cns-source-ownerp s cns cnsgen ctl ctlgen request fn2-cns-sources)
                     (equal kind (fn2-cns-sources-owner-kind s fn2-cns-sources))
                     (equal (fn2-cns-sources-pending s fn2-cns-sources) 0) (equal (fn2-cns-sources-borrow-count s fn2-cns-sources) 0)
