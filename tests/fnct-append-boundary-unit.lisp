@@ -10,7 +10,7 @@
  (declare (xargs :stobjs fn2-pool :verify-guards nil :measure (nfix (- (nfix n) (nfix i)))))
  (if (>= (nfix i) (nfix n)) (mv :ok fn2-pool)
   (mv-let (code fn2-pool) (fn2-pool-write slot gen i 65 1 0 1 fn2-pool)
-   (if (eq code :ok) (fn2-fab-fill (+ 1 i) n slot gen fn2-pool) (mv code fn2-pool)))))
+   (if (eq code :ok) (fn2-fab-fill (+ 1 (nfix i)) n slot gen fn2-pool) (mv code fn2-pool)))))
 
 (defun fn2-fab-ref (i n slot gen fn2-fields)
  (declare (xargs :stobjs fn2-fields :verify-guards nil))
@@ -26,7 +26,7 @@
    (and (eq code :ok)
     (= byte (cond ((= i 0) 11) ((< i 4) 0)
                   ((< i 8) (mod (ash n (- (* 8 (- 7 i)))) 256)) (t 65)))
-    (fn2-fab-bytes-p (+ 1 i) end n slot gen fn2-pool)))))
+    (fn2-fab-bytes-p (+ 1 (nfix i)) end n slot gen fn2-pool)))))
 
 (defun fn2-fab-resume (fuel slot gen end fn2-fields fn2-pool)
  (declare (xargs :stobjs (fn2-fields fn2-pool) :verify-guards nil :measure (nfix fuel)))
