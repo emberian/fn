@@ -129,3 +129,15 @@ and occupied third-edge controls require unchanged release ownership/aggregate
 and unrelated edge preservation. ACL2 assertions remain UNRUN. Readonly directory
 threading through all five frame declarations is one checked source transform
 with discriminating fixtures; its actual guard domain is retained.
+
+The canonical release child now registers a control-only pre-finish harvest
+callback. The core supplies the validated exact operation tuple; only matching
+slot/generation/cell0/read-result can settle the retained wait. Exact-length done
+loads the private evidence window; short/failure becomes uncertain. Stale tuple,
+wrong cell or wrong event leaves the wait unchanged. The hook enlists no ops,
+pool or control child, so generated core-ops frame is unconditional. Waiting-row
+completion fixtures state their synthetic wait antecedent explicitly; they do
+not claim actual issuance or descriptor authentication. Assertions remain UNRUN.
+Parent owns VERIFY stage11/12/13 routing and ordinary observer/finish; the private
+issue and worker continuation will derive source/read resources from the exact
+authenticated recovery row, preserving its journal lease throughout.

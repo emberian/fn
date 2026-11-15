@@ -2,6 +2,8 @@
 (defcorechild fn2-core-allocation-release fn2-allocation-release
  :init (fn2-allocation-release-init 1 fn2-allocation-release)
  :profilep t
+ :harvest (fn2-allocation-release-harvest
+  ((fn2-core-allocation-release fn2-allocation-release)))
  :why "One actual staged/pending RELEASE_ALLOCATION owns exact checkpoint evidence and target across yields; no FREE admission is granted by staging.")
 
 (defun fn2-b-alloc-edge-floor (profile)

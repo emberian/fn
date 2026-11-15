@@ -9,12 +9,12 @@ def one(source, head, name):
     return matches[0].node
 
 def transform(source, exports):
-    if '(include-book "release-allocation-state")' in source:
+    if any(f'(include-book "{book}")' in source for book in ['release-allocation-state', 'release-allocation-harvest']):
         raise ValueError('release registration already present')
     anchor = '(include-book "checkpoint-lifecycle-coordinator")'
     if source.count(anchor) != 1:
         raise ValueError('expected lifecycle include')
-    source = source.replace(anchor, anchor + '\n(include-book "release-allocation-state")\n(include-book "release-evidence-state")')
+    source = source.replace(anchor, anchor + '\n(include-book "release-allocation-harvest")\n(include-book "release-evidence-state")')
     edits = []
     for head, name in [('defun', 'fn2-b-alloc-edge-floor'), ('defcorechild', 'fn2-core-alloc-edges')]:
         old, new = one(source, head, name), one(exports, head, name)

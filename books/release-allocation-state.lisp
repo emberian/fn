@@ -12,7 +12,10 @@
   (storage-domain :u60) (physical-unit :u60) (descriptor-epoch :u60) (descriptor-allocation :u60)
   (page-kind :u60) (encoded-length :u60)
   (slot :u32) (gen :u60) (batch :u60) (event :u60)
-  (journal :u32) (journal-epoch :u60) (journal-allocation :u60) (evidence-owned :bool))
+  (journal :u32) (journal-epoch :u60) (journal-allocation :u60) (evidence-owned :bool)
+  (read-phase (:enum fn2-allocation-release-read-phase (:idle :need :wait :loaded :uncertain)))
+  (read-slot :u32) (read-gen :u60) (read-unit :u60) (read-epoch :u60) (read-allocation :u60)
+  (read-length :u32) (read-pending :bool) (read-op-slot :u32) (read-op-gen :u60))
  :extra-fields ((fn2-allocation-release-descriptor :type (array (unsigned-byte 8) (32)) :initially 0
   :why "Exact actual covering-Fence descriptor digest retained while a release packet is staged or uncertain.")))
 

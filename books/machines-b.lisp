@@ -11,7 +11,7 @@
 (include-book "checkpoint-cbase-state")
 (include-book "checkpoint-geometry")
 (include-book "checkpoint-lifecycle-coordinator")
-(include-book "release-allocation-state")
+(include-book "release-allocation-harvest")
 (include-book "release-evidence-state")
 (include-book "checkpoint-tickets")
 (include-book "format-check")
@@ -51,6 +51,8 @@
 (defcorechild fn2-core-allocation-release fn2-allocation-release
  :init (fn2-allocation-release-init 1 fn2-allocation-release)
  :profilep t
+ :harvest (fn2-allocation-release-harvest
+  ((fn2-core-allocation-release fn2-allocation-release)))
  :why "One actual staged/pending RELEASE_ALLOCATION owns exact checkpoint evidence and target across yields; no FREE admission is granted by staging.")
 (defun fn2-b-checkpoint-capacity (profile)
  (declare (xargs :guard t))
