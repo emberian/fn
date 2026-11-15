@@ -1,0 +1,199 @@
+{
+  "schema": "fn-record-receipt-v1",
+  "scope": "Exact alloc and pool-read-contracts prerequisite union for actual checkpoint/member guard pilot; no consumers or ranges included.",
+  "source_commit": "20cd2a966cc4f335679f887bf97dfe55b43afcbc",
+  "current_root_source": "a9a98f8a0370546dbed36df0ef74669b11ded7fd",
+  "source_evidence": "All10 source file SHA256 values match immutable source_commit, canonical a9 root, and manifest before/after; runner unchanged.",
+  "remote_host": "fn@dregg-forge",
+  "remote_source": "/build/lanes/checkpoint-parent-record-20cd2a966",
+  "manifest": "/build/lanes/checkpoint-parent-record-20cd2a966/build/acl2/certify-20261115T042507Z-851291/manifest.json",
+  "manifest_sha256": "1ef07ffbcd18acec15a55107c809044b9ee4e1a7795f5b0b6ab6631ad2147bf1",
+  "status": "passed",
+  "roots": [
+    "books/alloc",
+    "books/pool-read-contracts"
+  ],
+  "new": 2,
+  "reused": 8,
+  "toolchain_identity": "8aeb1bea18968c6cd33ac633a80ebf67e4924504db112fd27eb11f16a27b2a8c",
+  "cache_entries": [
+    {
+      "book": "books/alloc",
+      "key": "f7f86365aed050f00391e37e3b7d741e99e233c28183ac3cd3ef83e02db61ed3",
+      "sha256": "886dd5c4550a43b78fafa99c02db28edbdc70c7bb1cbe806ce5e40403477a11e",
+      "cache_path": "/home/fn/.cache/fn-certs/f7f86365aed050f00391e37e3b7d741e99e233c28183ac3cd3ef83e02db61ed3/35366d58b1fb2924",
+      "origin_root": "/build/lanes/checkpoint-parent-record-20cd2a966",
+      "origin_kind": "run",
+      "cert_sha256": "796e152c3e02d5345b2e859079d7b45fbf41ab135ec9d1dfb3be31331c7e51d7",
+      "fasl_sha256": "1a384587dbce071474712accde50ec3c04542fb1804b8faba7b2613ec1dce60e",
+      "owners": {
+        "book.cert": "fn",
+        "book.fasl": "fn",
+        "meta.json": "fn"
+      }
+    },
+    {
+      "book": "books/columns",
+      "key": "af444dbfcccce7083f99637cc8947a859347bd4d6c8df17f7ab3a91e00d33ca2",
+      "sha256": "d3a58387c7c0dabc4ceaffeeb20672031a04693d8dd52078f50c5fa487c0d5f8",
+      "cache_path": "/home/fn/.cache/fn-certs/af444dbfcccce7083f99637cc8947a859347bd4d6c8df17f7ab3a91e00d33ca2/6add19db01a9c2ec",
+      "origin_root": "/build/lanes/columns-combined-record-2bc79fcef",
+      "origin_kind": "run",
+      "cert_sha256": "10a910e567c7c324d786687cc0fffc9fa915d9af40f23973191278538915042f",
+      "fasl_sha256": "92347805c6e7821996c5598450f69fb58879c1635f2645f5c900f296ab86223e",
+      "owners": {
+        "book.cert": "fn",
+        "book.fasl": "fn",
+        "meta.json": "fn"
+      }
+    },
+    {
+      "book": "books/declare",
+      "key": "f1df352dc360553d08906239d267e9371fcb2fe4f19c6581adc1b0b322b30875",
+      "sha256": "1c706e559ef3b314fb9bd48171fb2891fad8613bd4eb1c5de5268443833c4bfb",
+      "cache_path": "/home/fn/.cache/fn-certs/f1df352dc360553d08906239d267e9371fcb2fe4f19c6581adc1b0b322b30875/2c56b9035d330b37",
+      "origin_root": "/build/lanes/finish-build-row",
+      "origin_kind": "run",
+      "cert_sha256": "202d9dd8bfa5eb1d5c2f705fc7dd054f87014e5263da1f80bbafef057ce68971",
+      "fasl_sha256": "949ada9e4b8673d8401f9a6d053f5f11b1e373f28b38638cc3fae79c3b469db6",
+      "owners": {
+        "book.cert": "fn",
+        "book.fasl": "fn",
+        "meta.json": "fn"
+      }
+    },
+    {
+      "book": "books/operations",
+      "key": "bd6bdf7f71b74618b02924c542559dcb99a149c816aeed11f3f5cd82d766483f",
+      "sha256": "959da2da147247146a2360e23d2c7d6abd6c581abdf0f6873661f63cee87484f",
+      "cache_path": "/home/fn/.cache/fn-certs/bd6bdf7f71b74618b02924c542559dcb99a149c816aeed11f3f5cd82d766483f/84166f8b7b293004",
+      "origin_root": "/build/lanes/assurance-storage-codec-5ca",
+      "origin_kind": "run",
+      "cert_sha256": "498648c5b419b4b8b83b2167dbdc831bf513629e10dc1b764bf7a314b73e1e5d",
+      "fasl_sha256": "d8ee889a9ed62314ef52fbef89daa3a40e379c48794ab076eddb5897d295b48d",
+      "owners": {
+        "book.cert": "fn",
+        "book.fasl": "fn",
+        "meta.json": "fn"
+      }
+    },
+    {
+      "book": "books/owed",
+      "key": "6f334038cc4bddaaa337357384a139be3700c2c3403094bab3398dacb7fd5a3b",
+      "sha256": "04104985582a552ad115a0a6adcf2e957597b1b9ca3228bf25900877cbbcb17b",
+      "cache_path": "/home/fn/.cache/fn-certs/6f334038cc4bddaaa337357384a139be3700c2c3403094bab3398dacb7fd5a3b/2c56b9035d330b37",
+      "origin_root": "/build/lanes/finish-build-row",
+      "origin_kind": "run",
+      "cert_sha256": "148bd33abdf09c514975bdd7296425acfe710d0e9dddf2d21643a0ec4f544a20",
+      "fasl_sha256": "1d0f0a9a82c7ec001a440ba127e28c15abc35f50fd46a2b6070e86c509f910df",
+      "owners": {
+        "book.cert": "fn",
+        "book.fasl": "fn",
+        "meta.json": "fn"
+      }
+    },
+    {
+      "book": "books/owed-discharge",
+      "key": "97e73257b5f4cb3a4ca1b8ba4bf10956295c18ec211c0b297f557e780cd20fd1",
+      "sha256": "53903322be1b79ed081ecfcbfcb9f60649d3fdbf8aa6853b772abf8e6fc69f01",
+      "cache_path": "/home/fn/.cache/fn-certs/97e73257b5f4cb3a4ca1b8ba4bf10956295c18ec211c0b297f557e780cd20fd1/bab1191b3d08490a",
+      "origin_root": "/build/lanes/finish-names-current",
+      "origin_kind": "run",
+      "cert_sha256": "63fa5a7ba08f6bc849d0e15c642697cbba02fff367b763fcc28d6b7a7927dc53",
+      "fasl_sha256": "17a2fbf13ba55900448433c8f1d8ca53d95088dd0db4411c7ee827de680410b7",
+      "owners": {
+        "book.cert": "fn",
+        "book.fasl": "fn",
+        "meta.json": "fn"
+      }
+    },
+    {
+      "book": "books/pool",
+      "key": "079b4ac98a0b3d945869386f9e8d2ebecf0a00d8715e247ba18202d4d7fbfc24",
+      "sha256": "3ef26f41207ee64f6121621cc24d7100936e364b5224a4be8ae28292aa4d7fa7",
+      "cache_path": "/home/fn/.cache/fn-certs/079b4ac98a0b3d945869386f9e8d2ebecf0a00d8715e247ba18202d4d7fbfc24/1993641322b8cf2d",
+      "origin_root": "/build/lanes/assurance-pool-floor-318",
+      "origin_kind": "worktree",
+      "cert_sha256": "4ae2d8ad424e4d785cc387d7b23074d317a75eee1d69f1e428993bc9dcb8d6d5",
+      "fasl_sha256": "2f7226f08f4e4a072070706bf6cfa8f6bcb4df98f4d9e333247ca9c99f4b37cc",
+      "owners": {
+        "book.cert": "fn",
+        "book.fasl": "fn",
+        "meta.json": "fn"
+      }
+    },
+    {
+      "book": "books/pool-read-contracts",
+      "key": "661f99a30cd5794f935b94eb0410a7df2d71a362b379bc0e240c1565d987d4d4",
+      "sha256": "f51f92ce9bfcd7af93e6ba47bb5a4c43fbb5ac79424ef34ecf489b8f92e9e852",
+      "cache_path": "/home/fn/.cache/fn-certs/661f99a30cd5794f935b94eb0410a7df2d71a362b379bc0e240c1565d987d4d4/35366d58b1fb2924",
+      "origin_root": "/build/lanes/checkpoint-parent-record-20cd2a966",
+      "origin_kind": "run",
+      "cert_sha256": "49350bcfef71449a82a9123870a4c8d15051e3168c8c82e0d91b82bd0005d6c5",
+      "fasl_sha256": "6101aef622d017fa168f502ebbd156f618ccbfe19734d7c9f2981f7bf3580281",
+      "owners": {
+        "book.cert": "fn",
+        "book.fasl": "fn",
+        "meta.json": "fn"
+      }
+    },
+    {
+      "book": "books/profile",
+      "key": "b8fb593112597395afac6a150c4a4fca81def3095ecd8f7f9be6aa0aec7384fc",
+      "sha256": "1f216ed6c0505dc1b01ada0f7d3d9482af6da7b7dff8736b5100ef3e3fbc1038",
+      "cache_path": "/home/fn/.cache/fn-certs/b8fb593112597395afac6a150c4a4fca81def3095ecd8f7f9be6aa0aec7384fc/84166f8b7b293004",
+      "origin_root": "/build/lanes/assurance-storage-codec-5ca",
+      "origin_kind": "run",
+      "cert_sha256": "df0b72c291ce96c36e816e6fc4fa9122d0f2f98ada638baec0dab62139ce9a85",
+      "fasl_sha256": "db84531b9954255cc27ca4c79c47c4c43f56a50e09c4f002731f9aa8fbab52f8",
+      "owners": {
+        "book.cert": "fn",
+        "book.fasl": "fn",
+        "meta.json": "fn"
+      }
+    },
+    {
+      "book": "books/tuple",
+      "key": "b0fe12b03ba9cae656e0a0d40c8ccd699ff47788c2bd5a448903fb0c0401b9c6",
+      "sha256": "c6b895fd566be6b91ba68fb040826b689a5ad4891a65e040773bfb28b90e1978",
+      "cache_path": "/home/fn/.cache/fn-certs/b0fe12b03ba9cae656e0a0d40c8ccd699ff47788c2bd5a448903fb0c0401b9c6/7d5228e73de09114",
+      "origin_root": "/build/lanes/review-kimi",
+      "origin_kind": "worktree",
+      "cert_sha256": "5bc1f843ca0a0b5b2b3752c1a98e646fe2d0d62dd1593a120e011984e152f52c",
+      "fasl_sha256": "ee95b45960a86f6508492a853a7dc9a3629c5f80697c3019462d598d077c85b4",
+      "owners": {
+        "book.cert": "fn",
+        "book.fasl": "fn",
+        "meta.json": "fn"
+      }
+    }
+  ],
+  "launcher": {
+    "selection": "Exact explicit2roots; farm --affected-by dry-run refused9consumerfanout beforelaunch.",
+    "jobs": 1,
+    "images": "off",
+    "book_seconds": 120,
+    "outer_seconds": 300,
+    "outer_pid": 851281,
+    "runner_pid": 851291,
+    "cgroup": "/sys/fs/cgroup/user.slice/user-1000.slice/user@1000.service/swarm.slice/run-p851281-i30207973.scope",
+    "memory_max": 2147483648,
+    "swap_max": 0
+  },
+  "book_wall_seconds": {
+    "books/alloc": 10.108,
+    "books/pool-read-contracts": 0.316
+  },
+  "book_prover_steps": {
+    "books/alloc": 1145528,
+    "books/pool-read-contracts": 10089
+  },
+  "release": {
+    "pids_absent": [
+      851281,
+      851291
+    ],
+    "cgroup_absent": true
+  },
+  "remaining": "Only current pool-ranges prerequisite remains before actual guard source pilot. Alloc10.108s at j1 remains explicit D26 cost debt; no baseline rerun."
+}
