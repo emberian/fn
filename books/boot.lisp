@@ -18,6 +18,7 @@
 (include-book "checkpoint-summary-adoption")
 (include-book "checkpoint-summary-apply")
 (include-book "checkpoint-directory-cold")
+(include-book "event-catalog-cold")
 (include-book "checkpoint-bank-cold")
 (include-book "machines-a-access")
 (fn2-book-layer :b)
@@ -958,9 +959,19 @@
   (:checkpoint-authority-copy
    (:do (code) (fn2-checkpoint-summary-authority-cold-step-op) :accept ()
     :case (((:more) (:next :checkpoint-authority-copy) (:charge :bytes 4 :steps *fn2-work-stage* :runnable t))
-           ((:complete) (:next :checkpoint-directory-install) (:charge :bytes 4 :steps *fn2-work-stage* :runnable t))
+           ((:complete) (:next :checkpoint-catalog-begin) (:charge :bytes 4 :steps *fn2-work-stage* :runnable t))
            (:otherwise (:stop :checkpoint)))))
 
+  (:checkpoint-catalog-begin
+   (:do (code) (fn2-event-catalog-cold-begin-op) :accept ()
+    :case (((:more) (:next :checkpoint-catalog-copy) (:charge :bytes 256 :steps *fn2-work-stage* :runnable t))
+           ((:complete) (:next :checkpoint-directory-install) (:charge :steps *fn2-work-stage* :runnable t))
+           (:otherwise (:stop :checkpoint)))))
+  (:checkpoint-catalog-copy
+   (:do (code) (fn2-event-catalog-cold-step-op) :accept ()
+    :case (((:more) (:next :checkpoint-catalog-copy) (:charge :bytes 256 :steps *fn2-work-stage* :runnable t))
+           ((:complete) (:next :checkpoint-directory-install) (:charge :bytes 256 :steps *fn2-work-stage* :runnable t))
+           (:otherwise (:stop :checkpoint)))))
   (:checkpoint-directory-install :on-refusal ((:stop :checkpoint))
    (:do (code) (fn2-directory-cold-install-op) :accept (:installed))
    ; The selected suffix and persisted epoch transition must complete before serving.
