@@ -535,6 +535,10 @@
     (code ,result fn2-succ-txns fn2-run-cursors fn2-run-paths fn2-fields fn2-c-source-control fn2-c-source-readers)
     (b* (((unless (and (natp tx) (< tx (fn2-succ-txns-rows fn2-succ-txns)) (< tx (fn2-id-decides-rows fn2-id-decides))
                        (member (fn2-id-decides-phase tx fn2-id-decides) (list *fn2-id-decide-phase-idle* *fn2-id-decide-phase-done*))
+                       ; Resolver holds span every slot, including FRESH/NEXT.
+                       ; Only a live direct XL continuation may reuse this hold.
+                       (or (equal (fn2-succ-txns-source-receipt tx fn2-succ-txns) 0)
+                           (not (equal (fn2-succ-txns-lphase tx fn2-succ-txns) *fn2-succ-lookup-idle*)))
                        (not (equal (fn2-succ-txns-rstate tx fn2-succ-txns) *fn2-succ-resolve-look*))))
           (mv :state 0 fn2-succ-txns fn2-run-cursors fn2-run-paths fn2-fields fn2-c-source-control fn2-c-source-readers))
          ((mv c b0) (fn2-idc-stripe tx (fn2-fc-rows fn2-fc) fn2-id-decides fn2-fields))
