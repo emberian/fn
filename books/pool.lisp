@@ -1331,7 +1331,8 @@
                   (natp c2) (< c2 (fn2-pool-nclasses fn2-pool)))
              (fn2-pool-class-okp c2 (mv-nth 3 (fn2-pool-reserve-body class okind oslot ogen fn2-pool))))
     :hints (("Goal" :do-not '(generalize eliminate-destructors fertilize)
-             :in-theory (e/d (fn2-pool-class-okp) (fn2-pool-class-okp-of-accounts))
+             :in-theory (e/d (fn2-pool-class-okp)
+                             (fn2-pool-class-okp-of-accounts no-duplicatesp-equal subsetp-equal))
              :cases ((equal class c2))
              :use (fn2-pool-nclasses-at-most-16
                    (:instance fn2-pool-class-headsi-type (c class))
