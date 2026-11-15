@@ -1,6 +1,6 @@
 {
   "root": "cadd5bb3b6751fcc96cbe41aea199029de7b0838",
-  "application_source": "1518fcab10af076e3f962d676849e76b0d7c98dc",
+  "application_source": "50bb1d772e16886db3bb1d32d611aeba46e3e930",
   "domain_fixture_source": "d6fed39d3",
   "files": [
     {
@@ -137,9 +137,8 @@
     },
     {
       "path": "books/cns-source-raw.lisp",
-      "source": "1518fcab10af076e3f962d676849e76b0d7c98dc",
-      "sha256": "1b95e96c5ea67584b29a517d5adba28dc8f98e8bb1a1452c0f251e8d0892f1d9",
-      "root_sha256": null
+      "source": "50bb1d772e16886db3bb1d32d611aeba46e3e930",
+      "sha256": "7c146d6ba459a4fc09416e0affbab7e097c22beca53810075c50754cc3b37bb2"
     },
     {
       "path": "books/cns-source-retention.lisp",
@@ -836,6 +835,21 @@
       "source": "d6fed39d3",
       "sha256": "932abaae04d7c0583a7cafbd9422de6a78a0c5f44282ec30c5094b034fdb5b10",
       "status": "UNRUN actual emitted BT domain fixture; no activation or staging claim"
+    },
+    {
+      "path": "tools/cns_enum_controls.py",
+      "source": "2ebbb5164",
+      "sha256": "539194c4c64a95f9b0ffc77c0d8f0279c524a8ecab9f02be50d580ae8da956ff"
+    },
+    {
+      "path": "docs/assurance/cns-enum-controls.md",
+      "source": "2ebbb5164",
+      "sha256": "9586704ff687dd2a06fa73d485f421b90576d20fe137fa0f1dc9554034203629"
+    },
+    {
+      "path": "docs/assurance/cns-enum-fragment-author-61bbea7a.json",
+      "source": "2ebbb5164",
+      "sha256": "d8615ce14e0e834515b5fd897d07dba93d7e926c0ac04cda4c85a2a8577353bf"
     }
   ],
   "preserve_current_root_exact": [
@@ -898,7 +912,8 @@
   "held": [
     "physical metadata/reader loader dispatch",
     "rolling directory/RELEASE/stale-row reset",
-    "COMPRESS"
+    "COMPRESS",
+    "shared helper0abc0a9b2 unvalidated"
   ],
   "next_targets": [
     "tests/cns-fetch-cancel-unit",
@@ -934,13 +949,28 @@
       "failure": "historical whole machines-b equality against de31; unchanged owning candidate also fails after legitimate CNS/CTL row-family changes",
       "resolution": "Follow-up contract control passes8tests: exact original leaf/guard/H-C/ABI and resource import; exactly one global leaf import; no public/LOCAL moved twins; exact original defcost children; mutations reject missing import/changed child/damaged body or guard. Historical whole-registry baseline is not rebaselined."
     },
-    "storage_extraction_current_controls": 8
+    "storage_extraction_current_controls": 8,
+    "enum_fragment_controls": {
+      "full_table_AST_comparisons": 9216,
+      "dropped_transition_mutants_rejected": 4,
+      "missing_row_negative": "PASS",
+      "emitted_witnesses": 226,
+      "fixture_sha256": "61bbea7a3030a9a7abe49ec13cb6cb1326b19d0bd2cfec532d10e9d26bcbbf21",
+      "matches_scoped_author_receipt": true,
+      "new_ACL2_run": "NONE"
+    }
   },
   "qualification": {
     "prior135": "/tmp/served-d55-qualified135-receipt.json; all135 source/key payloads audited; RAW excluded",
     "storage_wrapper_identity": "f80 appended events PASS; current-key provider not yet recorded",
     "RAW1518": "UNPROVED; sole owner pilot active",
     "actual_BT_domain_fixture": "UNRUN; queued after actual BT + current predicate provider",
-    "full_FETCH_cancel_and_native": "UNRUN"
+    "full_FETCH_cancel_and_native": "UNRUN",
+    "RAW50bb": "UNPROVED; adds selected SOURCES-ROWS getter to actual guard hint; original runtime969 unchanged"
+  },
+  "enum_fragment_evidence": {
+    "donor": "2ebbb5164",
+    "receipt": "docs/assurance/cns-enum-fragment-author-61bbea7a.json",
+    "scope": "226 exact closed fragment whole-carrier witnesses under explicit P/WFP/valid-row antecedents and missing-row negative; author admission only, no universal/composed runtime equivalence or RAW record claim"
   }
 }
