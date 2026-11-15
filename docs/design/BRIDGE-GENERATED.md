@@ -495,3 +495,31 @@ served-root composition with whole-antecedent and hypothesis-removal witnesses.
 The historical `tools/keystone_critical_map.json` is absent in this tree;
 `docs/OWED.md` exists but has no Lean bridge registration. This local helper
 and dispatch mutation control do not discharge that top-level package.
+
+### Served CNS MEMBER selection proposal (2026-11-15)
+
+`meta/emit/emit_served_member_binding.py` now generates a scoped current-world
+qualification book for the actual `FN2-CNS-RUN-STUB` selection of `FN2-CNS-RUN`
+and its logical call path through `FN2-CNS-PUT-ITEM` to `FN2-CNS-PUT-ANSWER`.
+The book checks every canonical function record (including attachment, guard,
+measure and stobj ABI), manifest, native census and dependency closure. The
+selection is not substituted for a constrained function's logical body.
+`print-cns-selected-member.lsp` requests this packet in the shared attached
+world; no second application world is required.
+
+Optional `--lean-output` generates the reply helper's exact canonical body and
+an equation between the actual emitted helper and the same expression with its
+single `MEMBER-EQUAL` replaced by actual `MEMBER-EQ-EXEC`. The existing
+unconditional `emitted_eq_native` proves that local substitution for arbitrary
+Val inputs; no unsupported symbol-key premise is inserted. This is not yet a
+canonical primitive correspondence or an ACL2-to-served behavior theorem.
+
+Seven direct Python controls pass, including same-ABI selector redirection,
+package alias, disconnected helper, wrong ABI and missing MEMBER site. These
+packets are synthetic controls. The current served packet, generated Lean
+checking and current-world qualification remain pending the sole shared world.
+A logical call graph path is not a reachability proof. Canonical equality still
+requires a package-preserving input domain: the current Val symbol presentation
+can conflate a keyword with an ACL2 symbol whose name begins with a colon.
+Neither selection qualification nor the all-Val helper equation discharges that
+premise or the full extraction-keystone evidence package above.
