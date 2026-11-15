@@ -96,8 +96,9 @@
                    (fn2-envelope-output-language-p
                     (cons (cons mode rest) following) (cdr peer))))))
   :hints (("Goal" :expand
-           ((fn2-envelope-output-language-p
-             (cons (cons mode (cons byte rest)) following) peer))
+           ((:free (mode byte rest following peer)
+             (fn2-envelope-output-language-p
+              (cons (cons mode (cons byte rest)) following) peer)))
            :in-theory (disable fn2-envelope-output-language-p)))))
 
 ; Pending admission: use row projections instead of expanding row construction.
@@ -128,4 +129,59 @@
  :rule-classes nil
  :hints (("Goal" :induct (fn2-envelope-output-run fuel fn2-envelope-output-state)
           :expand ((:free (fuel) (fn2-envelope-output-run fuel fn2-envelope-output-state)))
-          :in-theory (e/d ((:induction fn2-envelope-output-run)) (fn2-eo-language-row fn2-envelope-output-language-p (:definition fn2-envelope-output-run) fn2-envelope-output-step)))))
+          :in-theory (e/d ((:induction fn2-envelope-output-run)) (fn2-eo-language-row fn2-envelope-output-language-p (:definition fn2-envelope-output-run) fn2-envelope-output-step)))))(defthm fn2-eo-revappend-length
+ (equal (len (revappend xs ys)) (+ (len xs) (len ys)))
+ :hints (("Goal" :induct (revappend xs ys))))
+(defthm fn2-eo-revappend-twice
+ (implies (true-listp xs)
+  (equal (revappend (revappend xs ys) zs)
+         (revappend ys (append xs zs))))
+ :hints (("Goal" :induct (revappend xs ys))))
+(defthm fn2-eo-row-proper
+ (true-listp (fn2-eo-language-row segments peer))
+ :hints (("Goal" :induct (fn2-eo-language-row segments peer)
+          :in-theory (e/d (fn2-eo-language-row) (fn2-envelope-output-language-p)))))
+(defthm fn2-eo-row-length
+ (equal (len (fn2-eo-language-row segments peer)) (+ 1 (len peer)))
+ :hints (("Goal" :induct (fn2-eo-language-row segments peer)
+          :in-theory (e/d (fn2-eo-language-row) (fn2-envelope-output-language-p)))))
+(defthm fn2-eo-phase8-9-completes-semantic-row
+ (implies
+  (and (equal (fn2-eo-acc fn2-envelope-output-state) nil)
+       (equal (fn2-eo-phase fn2-envelope-output-state) 8)
+       (fn2-eo-octets-p (fn2-eo-scan fn2-envelope-output-state))
+       (unsigned-byte-p 8 (fn2-eo-byte fn2-envelope-output-state))
+       (fn2-eo-octets-p rest) (fn2-eo-segments-p following)
+       (equal (fn2-eo-suffix-scan fn2-envelope-output-state)
+              (fn2-eo-language-row following (fn2-eo-scan fn2-envelope-output-state)))
+       (equal (fn2-eo-shifted fn2-envelope-output-state)
+        (cdr (fn2-eo-language-row
+         (cons (cons (if (fn2-eo-prefix fn2-envelope-output-state) :prefix :exact) rest) following)
+         (fn2-eo-scan fn2-envelope-output-state)))))
+  (let ((finished (fn2-envelope-output-run
+                    (+ 3 (len (fn2-eo-scan fn2-envelope-output-state))
+                         (len (fn2-eo-scan fn2-envelope-output-state)))
+                    fn2-envelope-output-state)))
+   (and (equal (fn2-eo-phase finished) 7)
+        (equal (fn2-eo-row finished)
+         (fn2-eo-language-row
+          (cons (cons (if (fn2-eo-prefix fn2-envelope-output-state) :prefix :exact)
+                      (cons (fn2-eo-byte fn2-envelope-output-state) rest)) following)
+          (fn2-eo-scan fn2-envelope-output-state))))))
+ :rule-classes nil
+ :hints (("Goal"
+  :use ((:instance fn2-eo-phase8-builds-whole-row
+         (fuel (+ 1 (len (fn2-eo-scan fn2-envelope-output-state)))))
+        (:instance fn2-eo-phase9-finishes-row
+         (fuel (+ 2 (len (fn2-eo-scan fn2-envelope-output-state))))
+         (fn2-envelope-output-state
+          (fn2-envelope-output-run (+ 1 (len (fn2-eo-scan fn2-envelope-output-state)))
+                                   fn2-envelope-output-state)))
+        (:instance fn2-envelope-output-run-resume
+         (a (+ 1 (len (fn2-eo-scan fn2-envelope-output-state))))
+         (b (+ 2 (len (fn2-eo-scan fn2-envelope-output-state))))))
+  :in-theory (disable fn2-envelope-output-run fn2-envelope-output-step
+                      fn2-eo-language-row fn2-envelope-output-language-p
+                      fn2-eo-phase fn2-eo-row fn2-eo-scan fn2-eo-acc
+                      fn2-eo-reversed fn2-eo-prefix fn2-eo-byte
+                      fn2-eo-suffix-scan fn2-eo-shifted))))
