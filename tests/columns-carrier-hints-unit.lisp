@@ -28,6 +28,7 @@
    (equal (fn2-decl-get :hints (cdddr (cadr events))) type-hints)
    (equal (fn2-decl-get :hints (cdddr (caddr events))) wfp-hints)
    (equal (fn2-decl-get :hints (cdddr (cadr plain))) outer)
+   (equal (fn2-decl-get :hints (cdddr (caddr plain))) outer)
    (not (member-eq :hints (cdddr (cadr without))))
    ; The whole generated H and output predicate/projection stay identical.
    (equal (take 3 (cadr plain)) (take 3 (cadr events)))
@@ -42,3 +43,24 @@
              :hints (("Goal" :in-theory (enable fn2-carrier-hint-identity)
                               :do-not '(fertilize)))))
  :hints (("Goal" :do-not '(eliminate-destructors))))
+
+; Actual low-level expansion keeps absent and explicit NIL distinct for WFP,
+; including custom invariant names, direct output and MV zero projections.
+(assert-event
+ (let* ((outer '(("Goal" :use caller-fact)))
+        (absent (fn2-columns-carrier-specs
+                  '((left nil :prefix "-L") (right 0 :invariant right-shape :suffix "-SHAPE"))))
+        (explicit (fn2-columns-carrier-specs
+                    '((left nil :prefix "-L" :hints nil)
+                      (right 0 :invariant right-shape :suffix "-SHAPE" :hints nil))))
+        (a (fn2-columns-preservation-facts 'subject '(subject left right) absent '((whole-hyp left right)) outer))
+        (e (fn2-columns-preservation-facts 'subject '(subject left right) explicit '((whole-hyp left right)) outer)))
+  (and (equal (fn2-decl-get :hints (cdddr (cadr a))) outer)
+       (equal (fn2-decl-get :hints (cdddr (cadddr a))) outer)
+       (not (member-eq :hints (cdddr (cadr e))))
+       (not (member-eq :hints (cdddr (cadddr e))))
+       (equal (take 3 (cadr a)) (take 3 (cadr e)))
+       (equal (take 3 (cadddr a)) (take 3 (cadddr e)))
+       (equal (caddr (cadddr a))
+              '(implies (and (whole-hyp left right))
+                        (right-shape (car (subject left right))))))))

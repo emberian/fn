@@ -2197,7 +2197,34 @@ def def_generic_expansion(form: list) -> list:
                                       ("correspondence", "guard-thm", "preserved"))
 
 
+def defcolumns_predicate_expansion(form: list) -> list:
+    """Exact non-evaluating mirror of columns' compound shape predicate."""
+    if not (len(form) >= 3 and isinstance(form[1], Sym) and isinstance(form[2], list)):
+        return []
+    name, args = form[1:3]
+    options = keyword_plist(form[3:])
+    shape, tests = options.get(":shape"), options.get(":tests")
+    stobjs = options.get(":stobjs")
+    if not all(isinstance(x, list) for x in (shape, tests, stobjs)):
+        return []
+    carried = _gen_sym(name, "-carried")
+    guard = [Sym("and"), *shape]
+    return [
+        [Sym("defun"), name, args,
+         [Sym("declare"), [Sym("xargs"), Sym(":stobjs"), stobjs, Sym(":guard"), Sym("t")]],
+         [Sym("and"), *shape, *tests]],
+        [Sym("defun"), carried, args,
+         [Sym("declare"), [Sym("xargs"), Sym(":stobjs"), stobjs, Sym(":guard"), guard]],
+         [Sym("and"), *tests]],
+        [Sym("defthm"), _gen_sym(name, "-carried-equivalence"),
+         [Sym("implies"), guard, [Sym("equal"), [name, *args], [carried, *args]]],
+         Sym(":rule-classes"), Sym("nil"),
+         Sym(":hints"), [["Goal", Sym(":in-theory"), [Sym("enable"), name, carried]]]],
+    ]
+
+
 GENERATOR_EXPANSIONS = {
+    "defcolumns-predicate": defcolumns_predicate_expansion,
     "def-representation-index": def_representation_index_expansion,
     "def-generic": def_generic_expansion,
     "fn-defrecord": defrecord_expansion,
