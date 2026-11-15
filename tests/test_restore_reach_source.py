@@ -26,6 +26,15 @@ class ReachSourceTests(unittest.TestCase):
         self.assertIn('(fn2-source-wfp fn2-source)', out)
         self.assertEqual(rewrite(out), (out, 0))
 
+    def test_explicit_owned_class_uses_the_same_guard_transform(self):
+        src = '(defun fn2-checkpoint-teardown-cold-step (fn2-source fn2-debt) (declare (xargs :stobjs (fn2-source fn2-debt) :verify-guards nil)) fn2-debt)'
+        self.assertEqual(rewrite(src), (src, 0))
+        out, count = rewrite(src, ('fn2-checkpoint-teardown-',))
+        self.assertEqual(count, 1)
+        self.assertIn('(fn2-source-wfp fn2-source)', out)
+        self.assertIn('(fn2-debt-wfp fn2-debt)', out)
+        self.assertEqual(rewrite(out, ('fn2-checkpoint-teardown-',)), (out, 0))
+
     def test_alias_refused(self):
         with self.assertRaises(ValueError):
             rewrite('(defun fn2-checkpoint-restore-reach-x (table) (declare (xargs :stobjs table)) table)')

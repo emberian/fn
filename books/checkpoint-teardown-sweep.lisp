@@ -7,22 +7,26 @@
 ; Fixed protocol roles, bounded32-field exact comparison/copy. A protection
 ; change during this whole sweep remains latched for another whole sweep.
 (defun fn2-checkpoint-teardown-bank-fields-samep (i fn2-checkpoint-teardown-debt fn2-checkpoint-publication)
- (declare (xargs :stobjs (fn2-checkpoint-teardown-debt fn2-checkpoint-publication) :verify-guards nil :measure (nfix (- 32 (nfix i)))))
+ (declare (xargs :stobjs (fn2-checkpoint-teardown-debt fn2-checkpoint-publication) :verify-guards nil :measure (nfix (- 32 (nfix i)))
+  :guard (and (natp i) (<= i 32) (and (fn2-checkpoint-teardown-debt-wfp fn2-checkpoint-teardown-debt) (fn2-checkpoint-publication-wfp fn2-checkpoint-publication)))))
  (or (>= (nfix i) 32)
      (and (equal (fn2-checkpoint-teardown-debt-observedi i fn2-checkpoint-teardown-debt)
                  (fn2-checkpoint-bank-obligations-observe i fn2-checkpoint-publication))
           (fn2-checkpoint-teardown-bank-fields-samep (+ 1 i) fn2-checkpoint-teardown-debt fn2-checkpoint-publication))))
 (defun fn2-checkpoint-teardown-banks-samep (fn2-checkpoint-teardown-debt fn2-checkpoint-publication)
- (declare (xargs :stobjs (fn2-checkpoint-teardown-debt fn2-checkpoint-publication) :verify-guards nil))
+ (declare (xargs :stobjs (fn2-checkpoint-teardown-debt fn2-checkpoint-publication) :verify-guards nil
+  :guard (and (fn2-checkpoint-teardown-debt-wfp fn2-checkpoint-teardown-debt) (fn2-checkpoint-publication-wfp fn2-checkpoint-publication))))
  (fn2-checkpoint-teardown-bank-fields-samep 0 fn2-checkpoint-teardown-debt fn2-checkpoint-publication))
 (defun fn2-checkpoint-teardown-bank-fields-observe (i fn2-checkpoint-teardown-debt fn2-checkpoint-publication)
- (declare (xargs :stobjs (fn2-checkpoint-teardown-debt fn2-checkpoint-publication) :verify-guards nil :measure (nfix (- 32 (nfix i)))))
+ (declare (xargs :stobjs (fn2-checkpoint-teardown-debt fn2-checkpoint-publication) :verify-guards nil :measure (nfix (- 32 (nfix i)))
+  :guard (and (natp i) (<= i 32) (and (fn2-checkpoint-teardown-debt-wfp fn2-checkpoint-teardown-debt) (fn2-checkpoint-publication-wfp fn2-checkpoint-publication)))))
  (if (>= (nfix i) 32) fn2-checkpoint-teardown-debt
   (let ((fn2-checkpoint-teardown-debt (update-fn2-checkpoint-teardown-debt-observedi i
          (fn2-checkpoint-bank-obligations-observe i fn2-checkpoint-publication) fn2-checkpoint-teardown-debt)))
    (fn2-checkpoint-teardown-bank-fields-observe (+ 1 i) fn2-checkpoint-teardown-debt fn2-checkpoint-publication))))
 (defun fn2-checkpoint-teardown-banks-observe (fn2-checkpoint-teardown-debt fn2-checkpoint-publication)
- (declare (xargs :stobjs (fn2-checkpoint-teardown-debt fn2-checkpoint-publication) :verify-guards nil))
+ (declare (xargs :stobjs (fn2-checkpoint-teardown-debt fn2-checkpoint-publication) :verify-guards nil
+  :guard (and (fn2-checkpoint-teardown-debt-wfp fn2-checkpoint-teardown-debt) (fn2-checkpoint-publication-wfp fn2-checkpoint-publication))))
  (fn2-checkpoint-teardown-bank-fields-observe 0 fn2-checkpoint-teardown-debt fn2-checkpoint-publication))
 (defun fn2-checkpoint-teardown-needed (fn2-checkpoint-teardown-debt fn2-checkpoint-publication fn2-extents)
  (declare (xargs :stobjs (fn2-checkpoint-teardown-debt fn2-checkpoint-publication fn2-extents) :verify-guards nil
@@ -35,7 +39,8 @@
  :doc "Constant-work notification from actual complete debt transfer, bank exclusion tuple change or actual allocator protector-count mutation.")
 
 (defun fn2-checkpoint-teardown-select (scan kind owner gen fn2-checkpoint-teardown-debt fn2-checkpoints fn2-checkpoint-bytes)
- (declare (xargs :stobjs (fn2-checkpoint-teardown-debt fn2-checkpoints fn2-checkpoint-bytes) :verify-guards nil))
+ (declare (xargs :stobjs (fn2-checkpoint-teardown-debt fn2-checkpoints fn2-checkpoint-bytes) :verify-guards nil
+  :guard (and (fn2-checkpoint-teardown-debt-wfp fn2-checkpoint-teardown-debt) (fn2-checkpoints-wfp fn2-checkpoints) (fn2-checkpoint-bytes-wfp fn2-checkpoint-bytes))))
  (cond ((not (unsigned-byte-p 32 scan)) (mv :state scan 0 0 0 0 0 0 0))
        ((>= scan (fn2-checkpoint-teardown-debt-rows fn2-checkpoint-teardown-debt)) (mv :done scan 0 0 0 0 0 0 0))
        ((equal (fn2-checkpoint-teardown-debt-phase scan fn2-checkpoint-teardown-debt) *fn2-checkpoint-teardown-debt-phase-empty*)
