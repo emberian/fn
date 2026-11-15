@@ -117,6 +117,25 @@ def project_receipt(text):
     return once(text,'(include-book "c-source-observer")',
       '(include-book "c-source-observer")\n(include-book "checkpoint-bank-admission")')
 
+def project_predecessor_geometry(text):
+    """All original rows include both physical banks, not only outputs."""
+    matches=lr.match('(defun fn2-checkpoint-predecessor-rows ?*body)',lr.parse(text).forms,deep=False)
+    if len(matches)!=1:raise ValueError('one actual predecessor capacity helper')
+    f=matches[0].node;n=f.items[-1];body=text[n.start:n.end]
+    if 'fn2-run-installed-row-count' not in body:
+        old='''(+ (nfix (fn2-b-capacity :identity-overlays *fn2-idc-overlays-default* profile))
+    (nfix (fn2-b-capacity :identity-runs 64 profile))
+    (nfix (fn2-b-capacity :extent-slots 16 profile)))'''
+        new='''(+ (nfix (fn2-b-capacity :identity-overlays *fn2-idc-overlays-default* profile))
+    (fn2-run-installed-row-count
+     (nfix (fn2-b-capacity :identity-runs 64 profile))
+     (nfix (fn2-b-capacity :extent-slots 16 profile))))'''
+        text=lr.write(text,[(n.start,n.end,once(body,old,new))])
+    if '(include-book "run-installed-geometry")' not in text:
+        text=once(text,'(in-package "ACL2")',
+          '(in-package "ACL2")\n(include-book "run-installed-geometry")')
+    return text
+
 if __name__ == '__main__':
     import argparse
     p=argparse.ArgumentParser();p.add_argument('root',type=Path);a=p.parse_args()
