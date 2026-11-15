@@ -227,6 +227,7 @@ ACL2_BOOKS = \
   books/peer-model \
   books/peer-import \
   books/peer-import-state \
+  books/core-scheduler-wake \
   books/query-ref-wake \
   books/pointwise-contracts \
   books/pool \
