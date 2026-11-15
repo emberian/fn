@@ -31,6 +31,17 @@ class InventoryWire(unittest.TestCase):
         self.assertFalse(linked_contract(text.replace('total sequence-ordinal first','total ordinal first',1)))
         self.assertIn('(4 *page-kind-merkle-node*)',text)
         self.assertIn('(4 *checkpoint-map-body-kind-release-inventory*)',text)
+    def test_two_ref_hash_windows_use_one_shared_declaration(self):
+        text=(ROOT/'books/event-frontier-ref-fields.lisp').read_text()
+        self.assertIn('(fn2-event-frontier-ref-bindings *fn2-format-ref* prefix)',text)
+        self.assertIn('(ref-off frontier-ref-offset)',text)
+        self.assertIn('(fn2-checkpoint-page-verified-allocation frontier-ref-extent fn2-checkpoint-page-verified)',text)
+        linked=(ROOT/'books/checkpoint-linked-header.lisp').read_text()
+        self.assertIn('(fn2-pool-write slot gen (+ off i) byte',linked)
+        self.assertIn('(- left 1) (+ i 1) off extent',linked)
+        self.assertIn('(unsigned-byte-p 32 (+ off i left))',linked)
+        build=(ROOT/'books/event-build.lisp').read_text()
+        self.assertIn('(fn2-event-frontier-put-ref "DIRECTORY-" base child 0 scratch sgen)',build)
     def test_existing_linked_tags_and_root_convention_are_preserved(self):
         text=(ROOT/'books/checkpoint-map-format.lisp').read_text()
         self.assertIn('(:allocation-map :recovery-arena :event-proof-directory :release-inventory)',text)
