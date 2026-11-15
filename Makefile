@@ -7,6 +7,7 @@ ACL2_BOOKS = \
   books/alloc-free-carrier \
   books/alloc-identity-index \
   books/alloc-identity-index-invariant \
+  books/alloc-identity-index-initialization \
   books/alloc-identity-index-preservation \
   books/arm-children \
   books/arm-issue-effects \
@@ -340,6 +341,7 @@ ACL2_BOOKS = \
   tests/alloc-unit \
   tests/alloc-identity-index-unit \
   tests/alloc-identity-index-provenance-unit \
+  tests/alloc-identity-index-initialization-unit \
   tests/alloc-adopt-identity-unit \
   tests/alloc-identity-index-unit \
   tests/alloc-protection-notification-unit \
