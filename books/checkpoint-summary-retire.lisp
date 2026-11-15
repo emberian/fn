@@ -22,7 +22,8 @@
        (mv :source fn2-checkpoint-summary fn2-run-installed))
       ((unless (posp (fn2-checkpoint-summary-installed 0 fn2-checkpoint-summary)))
        (mv :coverage fn2-checkpoint-summary fn2-run-installed))
-      (fn2-run-installed (fn2-run-installed-put r (state *fn2-run-installed-state-free*) (physical 0) (catalog-tag 0)))
+      ((mv free-code fn2-run-installed) (fn2-run-free-physical r fn2-run-installed))
+      ((unless (eq free-code :ok)) (mv free-code fn2-checkpoint-summary fn2-run-installed))
       (fn2-checkpoint-summary (fn2-checkpoint-summary-set-installed 0
        (- (fn2-checkpoint-summary-installed 0 fn2-checkpoint-summary) 1) fn2-checkpoint-summary)))
   (mv :retired fn2-checkpoint-summary fn2-run-installed)))
