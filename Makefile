@@ -413,6 +413,7 @@ ACL2_BOOKS = \
   tests/native-cut-state-unit \
   tests/native-cut-program-unit \
   tests/native-device-effects-unit \
+  tests/native-device-bindings-unit \
   tests/storage-cancel-unit \
   tests/native-cut-binding-unit \
   tests/native-envelope-prefix-unit \
@@ -441,6 +442,7 @@ ACL2_BOOKS = \
   tests/envelope-input-unit \
   tests/envelope-prefix-unit \
   tests/native-device-effects-unit \
+  tests/native-device-bindings-unit \
   tests/native-unit \
   tests/network-backpressure-unit \
   tests/ops-semantic-steps-unit \

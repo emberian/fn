@@ -30,13 +30,15 @@
   (if (and (eq (caar trace) :take) (equal (nth 1 (car trace)) slot)
            (equal (nth 2 (car trace)) gen))
       (car trace) (fn2-nde-take slot gen (cdr trace)))))
-(defun fn2-nde-take-descriptor-p (take descriptor)
- (and (eq (nth 3 descriptor) (fn2-nde-kind (nth 3 take)))
+(defun fn2-nde-take-descriptor-p (take descriptor backend)
+ (and (natp (nth 0 descriptor))
+      (fn2-nde-descriptorp descriptor (nth 0 descriptor))
+      (eq (nth 3 descriptor) (fn2-nde-kind (nth 3 take)))
       (equal (nth 1 descriptor) (nth 1 take))
       (equal (nth 2 descriptor) (nth 2 take))
       (equal (nth 4 descriptor) (nth 10 take))
       (equal (nth 5 descriptor) (nth 9 take))
-      (equal (nth 11 take) 0)))
+      (eq (fn2-device-request (fn2-nde-kind (nth 3 take)) (nth 11 take) backend) :perform)))
 (defun fn2-nde-post-normalized-p (take post code count read-bytes)
  (declare (xargs :verify-guards nil))
  (mv-let (outcome reason n aux0 aux1)
@@ -46,10 +48,12 @@
        (equal (nth 5 post) outcome) (equal (nth 6 post) reason)
        (equal (nth 7 post) n) (equal (nth 8 post) aux0) (equal (nth 9 post) aux1)
        (equal (nth 12 post) (if (eq (fn2-nde-kind (nth 3 take)) :read) read-bytes nil)))))
-(defun fn2-nde-post-p (post trace records)
+; Contextual hook: the actual envelope step has already validated the event.
+; Unknown/non-device takes return T here, not a standalone trace verdict.
+(defun fn2-nde-post-p (post trace records backend)
  (declare (xargs :verify-guards nil))
  (let* ((take (fn2-nde-take (nth 2 post) (nth 3 post) trace))
-        (kind (fn2-nde-kind (nth 3 take)))
+        (kind (fn2-nde-kind (nth 3 take))))
   (if (not kind) t
    (let* ((job (fn2-nde-job (nth 2 post) (nth 3 post) records))
           (returned (and job (fn2-nde-return (nth 1 job) records))))
@@ -59,6 +63,7 @@
           (fn2-nde-post-normalized-p take post code count (nth 4 returned))))
       ; The selected file backend refuses FUA before queueing. Never use a
       ; failed ordinary Write as an excuse for missing physical evidence.
-      (and (not (equal (nth 11 take) 0))
-           (fn2-nde-post-normalized-p take post :unsupported 0 nil))))))))
+      (and (member-eq backend '(:fdatasync :fullfsync))
+           (eq (fn2-device-request kind (nth 11 take) backend) :unsupported)
+           (fn2-nde-post-normalized-p take post :unsupported 0 nil)))))))
 
