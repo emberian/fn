@@ -5,6 +5,7 @@
 (in-package "ACL2")
 (include-book "machines-c-read")
 (include-book "run-physical-geometry")
+(include-book "run-physical-release")
 (fn2-book-layer :c)
 (defmacro fn2-run-load-readiness-guard ()
  '(and (fn2-run-load-readiness-wfp fn2-run-load-readiness) (fn2-run-load-geometry-wfp fn2-run-load-geometry)
@@ -48,6 +49,25 @@
       (<= (* 128 (fn2-fc-rows fn2-fc)) (fn2-fields-rows fn2-fields))
       (<= (* *fn2-digest-stride* (fn2-fc-rows fn2-fc)) (fn2-digests-rows fn2-digests))))
 
+; Shared private-stripe check for initialized IDLE and actual owned PARKED
+; jobs. Neither branch permits decoded physical bytes to remain exposed.
+(defun fn2-run-load-readiness-stripe-p (c fn2-run-load-geometry fn2-run-loads fn2-fc fn2-fc-context fn2-b3 fn2-fields fn2-digests)
+ (declare (xargs :stobjs (fn2-run-load-geometry fn2-run-loads fn2-fc fn2-fc-context fn2-b3 fn2-fields fn2-digests)
+ :guard (and (fn2-run-load-geometry-wfp fn2-run-load-geometry) (fn2-run-loads-wfp fn2-run-loads)
+  (fn2-fc-wfp fn2-fc) (fn2-fc-context-wfp fn2-fc-context) (fn2-b3-wfp fn2-b3) (fn2-fields-wfp fn2-fields) (fn2-digests-wfp fn2-digests)
+  (equal (fn2-run-load-geometry-rows fn2-run-load-geometry) 1) (natp c) (< c (fn2-run-loads-rows fn2-run-loads)))))
+ (let* ((row (+ (fn2-run-load-geometry-prefix 0 fn2-run-load-geometry) c)) (base (* 128 row)))
+       (and (equal (fn2-run-loads-checker c fn2-run-loads) row)
+            (< row (fn2-fc-rows fn2-fc)) (< row (fn2-fc-context-rows fn2-fc-context))
+            (equal (fn2-fc-phase row fn2-fc) *fn2-fc-phase-idle*)
+            (fn2-b3-ready row fn2-b3 fn2-digests)
+            (fn2-run-readerp base fn2-fields)
+            (<= (+ base *fn2-format-sealed-batch-num-fields*) (* 128 (+ row 1)))
+            (<= (+ base *fn2-run-reader-fields*) (* 128 (+ row 1)))
+            (fn2-digest-rowp (fn2-digest-slot row *fn2-fc-hash*) fn2-digests)
+            (fn2-digest-rowp (fn2-digest-slot row *fn2-fc-geometry*) fn2-digests)
+            (fn2-digest-rowp (fn2-digest-slot row *fn2-fc-previous-seal*) fn2-digests))))
+
 (defun fn2-run-load-readiness-one-row-p (c fn2-run-load-geometry fn2-run-loads fn2-run-cursors
  fn2-checkpoint-summary-leases fn2-fc fn2-fc-context fn2-b3 fn2-fields fn2-digests)
  (declare (xargs :stobjs (fn2-run-load-geometry fn2-run-loads fn2-run-cursors fn2-checkpoint-summary-leases fn2-fc fn2-fc-context fn2-b3 fn2-fields fn2-digests)
@@ -64,17 +84,29 @@
       (equal (fn2-run-cursors-phase c fn2-run-cursors) *fn2-run-cursor-phase-idle*)
       (equal (fn2-run-cursors-physical c fn2-run-cursors) 0)
       (equal (fn2-checkpoint-summary-leases-live c fn2-checkpoint-summary-leases) 0)
-      (let* ((row (+ (fn2-run-load-geometry-prefix 0 fn2-run-load-geometry) c)) (base (* 128 row)))
-       (and (equal (fn2-run-loads-checker c fn2-run-loads) row)
-            (< row (fn2-fc-rows fn2-fc)) (< row (fn2-fc-context-rows fn2-fc-context))
-            (equal (fn2-fc-phase row fn2-fc) *fn2-fc-phase-idle*)
-            (fn2-b3-ready row fn2-b3 fn2-digests)
-            (fn2-run-readerp base fn2-fields)
-            (<= (+ base *fn2-format-sealed-batch-num-fields*) (* 128 (+ row 1)))
-            (<= (+ base *fn2-run-reader-fields*) (* 128 (+ row 1)))
-            (fn2-digest-rowp (fn2-digest-slot row *fn2-fc-hash*) fn2-digests)
-            (fn2-digest-rowp (fn2-digest-slot row *fn2-fc-geometry*) fn2-digests)
-            (fn2-digest-rowp (fn2-digest-slot row *fn2-fc-previous-seal*) fn2-digests)))))
+      (fn2-run-load-readiness-stripe-p c fn2-run-load-geometry fn2-run-loads fn2-fc fn2-fc-context fn2-b3 fn2-fields fn2-digests)))
+; The caller must additionally validate this retained tuple against the
+; actual machine table. This lower predicate validates concrete resources,
+; not a caller-supplied readiness bit or publication authority.
+(defun fn2-run-load-readiness-parked-row-p (c kind owner generation fn2-run-load-geometry fn2-run-loads fn2-run-cursors
+ fn2-checkpoint-summary-leases fn2-fc fn2-fc-context fn2-b3 fn2-fields fn2-digests fn2-pool)
+ (declare (xargs :stobjs (fn2-run-load-geometry fn2-run-loads fn2-run-cursors fn2-checkpoint-summary-leases fn2-fc fn2-fc-context fn2-b3 fn2-fields fn2-digests fn2-pool)
+ :guard (and (fn2-run-load-geometry-wfp fn2-run-load-geometry) (fn2-run-loads-wfp fn2-run-loads)
+  (fn2-run-cursors-wfp fn2-run-cursors) (fn2-checkpoint-summary-leases-wfp fn2-checkpoint-summary-leases)
+  (fn2-fc-wfp fn2-fc) (fn2-fc-context-wfp fn2-fc-context) (fn2-b3-wfp fn2-b3) (fn2-fields-wfp fn2-fields) (fn2-digests-wfp fn2-digests) (fn2-pool-wfp fn2-pool))))
+ (and (equal (fn2-run-load-geometry-rows fn2-run-load-geometry) 1)
+      (posp kind) (posp generation)
+      (fn2-run-load-parkable-p c kind owner generation fn2-run-loads fn2-run-cursors fn2-checkpoint-summary-leases fn2-pool)
+      (equal (fn2-run-loads-phase c fn2-run-loads) *fn2-run-load-phase-reserved*)
+      (equal (fn2-run-loads-source c fn2-run-loads) *fn2-none*) (equal (fn2-run-loads-tag c fn2-run-loads) 0)
+      (equal (fn2-run-cursors-phase c fn2-run-cursors) *fn2-run-cursor-phase-idle*)
+      (equal (fn2-run-cursors-physical c fn2-run-cursors) 0)
+      (equal (fn2-checkpoint-summary-leases-live c fn2-checkpoint-summary-leases) 0)
+      (not (equal (fn2-run-loads-page c fn2-run-loads) (fn2-run-loads-scratch c fn2-run-loads)))
+      (<= *fn2-format-page-size* (fn2-pool-cap (fn2-run-loads-page c fn2-run-loads) fn2-pool))
+      (<= *fn2-commit-unit-bytes* (fn2-pool-cap (fn2-run-loads-scratch c fn2-run-loads) fn2-pool))
+      (fn2-run-load-readiness-stripe-p c fn2-run-load-geometry fn2-run-loads fn2-fc fn2-fc-context fn2-b3 fn2-fields fn2-digests)))
+
 ; Generic boot I/O may occupy an operation row without touching this routing
 ; map. We check the map's initialization here; ROOMP independently checks an
 ; actually free descriptor/credit, rather than claiming all operations idle.
@@ -128,7 +160,7 @@
        (tag tag) (selected-generation selected-generation) (candidate candidate) (owner-kind kind) (owner-slot owner) (owner-gen generation)
        (admissions (fn2-run-loads-admissions fn2-run-loads)) (row 0) (cursor-end 0))))
   (mv :more fn2-run-load-readiness)))
-(defun fn2-run-load-readiness-step (budget fn2-run-load-readiness fn2-run-load-geometry fn2-id-decides fn2-reads fn2-run-loads fn2-run-cursors
+(defun fn2-run-load-readiness-step-with-owner (budget expected-kind expected-owner expected-generation fn2-run-load-readiness fn2-run-load-geometry fn2-id-decides fn2-reads fn2-run-loads fn2-run-cursors
  fn2-checkpoint-summary-leases fn2-run-load-ops fn2-ops fn2-fc fn2-fc-context fn2-b3 fn2-fields fn2-digests fn2-pool)
  (declare (xargs :stobjs (fn2-run-load-readiness fn2-run-load-geometry fn2-id-decides fn2-reads fn2-run-loads fn2-run-cursors fn2-checkpoint-summary-leases fn2-run-load-ops fn2-ops fn2-fc fn2-fc-context fn2-b3 fn2-fields fn2-digests fn2-pool)
  :guard (fn2-run-load-readiness-guard)))
@@ -146,8 +178,11 @@
     (cond
      ((< row (fn2-run-loads-rows fn2-run-loads))
       (if (and (unsigned-byte-p 32 (+ 1 row))
-               (fn2-run-load-readiness-one-row-p row fn2-run-load-geometry fn2-run-loads fn2-run-cursors
-                fn2-checkpoint-summary-leases fn2-fc fn2-fc-context fn2-b3 fn2-fields fn2-digests))
+               (or (fn2-run-load-readiness-one-row-p row fn2-run-load-geometry fn2-run-loads fn2-run-cursors
+                fn2-checkpoint-summary-leases fn2-fc fn2-fc-context fn2-b3 fn2-fields fn2-digests)
+                   (fn2-run-load-readiness-parked-row-p row expected-kind expected-owner expected-generation
+                    fn2-run-load-geometry fn2-run-loads fn2-run-cursors fn2-checkpoint-summary-leases
+                    fn2-fc fn2-fc-context fn2-b3 fn2-fields fn2-digests fn2-pool)))
        (let ((fn2-run-load-readiness (fn2-run-load-readiness-set-row 0 (+ 1 row) fn2-run-load-readiness)))
         (mv :more fn2-run-load-readiness))
        (let ((fn2-run-load-readiness (fn2-run-load-readiness-set-phase 0 *fn2-run-load-readiness-phase-refused* fn2-run-load-readiness)))
@@ -169,6 +204,14 @@
      (let ((fn2-run-load-readiness (fn2-run-load-readiness-set-phase 0 *fn2-run-load-readiness-phase-complete* fn2-run-load-readiness)))
       (mv :complete fn2-run-load-readiness))))
    (t (mv :bounds fn2-run-load-readiness)))))
+; Cold callers have no retained parked ML owner. Preserve their old strict
+; initialization contract and ABI through the sole scan implementation.
+(defun fn2-run-load-readiness-step (budget fn2-run-load-readiness fn2-run-load-geometry fn2-id-decides fn2-reads fn2-run-loads fn2-run-cursors
+ fn2-checkpoint-summary-leases fn2-run-load-ops fn2-ops fn2-fc fn2-fc-context fn2-b3 fn2-fields fn2-digests fn2-pool)
+ (declare (xargs :stobjs (fn2-run-load-readiness fn2-run-load-geometry fn2-id-decides fn2-reads fn2-run-loads fn2-run-cursors fn2-checkpoint-summary-leases fn2-run-load-ops fn2-ops fn2-fc fn2-fc-context fn2-b3 fn2-fields fn2-digests fn2-pool)
+ :guard (fn2-run-load-readiness-guard)))
+ (fn2-run-load-readiness-step-with-owner budget 0 0 0 fn2-run-load-readiness fn2-run-load-geometry fn2-id-decides fn2-reads fn2-run-loads fn2-run-cursors fn2-checkpoint-summary-leases fn2-run-load-ops fn2-ops fn2-fc fn2-fc-context fn2-b3 fn2-fields fn2-digests fn2-pool))
+
 
 ; O(1): every cursor and routing row was checked before the two exact EOFs.
 ; The real reserve constructor advances ADMISSIONS before taking capacity,
@@ -190,6 +233,11 @@
 
 (fn2-run-load-readiness-preserves fn2-run-load-readiness-begin
  (tag selected-generation candidate kind owner generation fn2-run-load-readiness fn2-run-load-geometry fn2-id-decides fn2-reads fn2-run-loads fn2-run-cursors fn2-checkpoint-summary-leases fn2-run-load-ops fn2-ops fn2-fc fn2-fc-context fn2-b3 fn2-fields fn2-digests fn2-pool)
+ :position 1 :hyps ((fn2-run-load-readinessp fn2-run-load-readiness) (fn2-run-load-readiness-guard))
+ :specs (("-TYPE" fn2-run-load-readinessp 1) ("-WFP" fn2-run-load-readiness-wfp 1)
+         ("-ROWS" fn2-run-load-readiness-rows 1 :frame fn2-run-load-readiness)))
+(fn2-run-load-readiness-preserves fn2-run-load-readiness-step-with-owner
+ (budget expected-kind expected-owner expected-generation fn2-run-load-readiness fn2-run-load-geometry fn2-id-decides fn2-reads fn2-run-loads fn2-run-cursors fn2-checkpoint-summary-leases fn2-run-load-ops fn2-ops fn2-fc fn2-fc-context fn2-b3 fn2-fields fn2-digests fn2-pool)
  :position 1 :hyps ((fn2-run-load-readinessp fn2-run-load-readiness) (fn2-run-load-readiness-guard))
  :specs (("-TYPE" fn2-run-load-readinessp 1) ("-WFP" fn2-run-load-readiness-wfp 1)
          ("-ROWS" fn2-run-load-readiness-rows 1 :frame fn2-run-load-readiness)))

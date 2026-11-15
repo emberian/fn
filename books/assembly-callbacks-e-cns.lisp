@@ -7,6 +7,8 @@
 (include-book "cns")
 (include-book "authority")
 (include-book "c-actor-loader")
+(include-book "run-physical-readiness-core")
 (fn2-c-actor-loader-core-events)
+(fn2-run-load-readiness-core-events)
 (fn2-auth-read-events)
 (fn2-cns-events)
