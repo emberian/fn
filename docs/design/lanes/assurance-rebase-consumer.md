@@ -301,3 +301,15 @@ moves the unchanged actual read-count providers before their first use. Four
 replay and four geometry controls plus six readiness controls pass. The existing
 actual-initializer COMPLETE/partial/wrong-row/foreign-owner/serial fixture remains
 runnable and unexecuted; it now reaches the consistent runtime equality.
+
+Private cold archive source continuation now rebinds the saved descriptor and
+root3 fullRef to the actual CHECKED anchor candidate, physical namespace and
+cut on every invocation. COLD-HEADER/MANIFEST/MEMBERS are private discovery
+phases; COMPLETE and active0 cannot satisfy this predicate. No numeric tag or
+generation zero acts as authority. Header discovery also captures the actual
+reader workspace handle for the later boot-owned borrowing protocol. Six cold
+source/header controls pass; a synthetic-candidate runnable fixture covers
+empty, matching, changed descriptor, namespace and reused allocation subjects,
+and refuses COMPLETE. It does not claim physical authentication. Candidate IO
+will reuse actual boot :read/:read-result under snapshot-read-code and exact
+phase/owner checks; the installed pinned loader cannot precede projection.

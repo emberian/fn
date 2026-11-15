@@ -115,6 +115,7 @@
        (manifest-unit (fn2-fields-value (+ base *fn2-event-archive-header-field-manifest-physical-unit*) fn2-fields))
        (manifest-epoch (fn2-fields-value (+ base *fn2-event-archive-header-field-manifest-writer-epoch*) fn2-fields))
        (manifest-allocation (fn2-fields-value (+ base *fn2-event-archive-header-field-manifest-allocation*) fn2-fields))
+       (header-slot slot) (header-gen gen) (header-payload payload)
        (header-unit (fn2-checkpoint-restore-reader-unit 0 fn2-checkpoint-restore-reader))
        (header-epoch (fn2-checkpoint-restore-reader-epoch 0 fn2-checkpoint-restore-reader)) (header-allocation (fn2-checkpoint-restore-reader-allocation 0 fn2-checkpoint-restore-reader))
        (owner-kind kind) (owner-slot owner) (owner-gen ogen) (source-tag 0) (source-generation 0) (scan 0) (next-event 1))))
