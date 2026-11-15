@@ -136,6 +136,8 @@ ACL2_BOOKS = \
   books/commit-turn-frame \
   books/conn \
   books/conn-answer \
+  books/tls-schema \
+  books/conn-schema \
   books/conn-kind \
   books/consumer-codec \
   books/consumer-model \
