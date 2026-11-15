@@ -51,10 +51,18 @@ pass completeness/refusal controls; consumer-codec admits in 41.04 seconds in
 the retained application world. Its whole-book proof cost remains above the
 D26 target. These author loads are not record-toolchain certification.
 
-The retained application world has admitted 19 source books beyond its 60
-qualified compiled parents, plus three checkpoint proof prerequisites. It is
-currently at the checkpoint EDGE-ADD producer contract; the application fixtures
-have not executed. Accounts (`3f7b07618`) and answer preservation (`00e04f000`)
+The application author session admitted 19 source books beyond its 60
+qualified compiled parents, plus three checkpoint proof prerequisites. EDGE-ADD
+then passed; CHECK-STEP candidate typing exposed a missing format-checker
+interface. Eight exact-function frame lemmas passed in the same session without
+changing the checkpoint theorem. The final caller retry did not start because
+its orchestration script referenced a missing path. The bounded session ended
+and all owned processes were released; the application fixtures have not run.
+The saved seven-root prefix spans 67 books. With the current layout source,
+36 have qualified artifacts and 31 need certification; the next narrow record
+will make this accepted prefix reusable. This composition still includes the
+08c enqueue metadata and two proof helpers absent from upstream, so it is not
+yet a certificate for the complete upstream tree. Accounts (`3f7b07618`) and answer preservation (`00e04f000`)
 repair only hints. The layout interface candidate disables an overly broad
 structural rewrite and explicitly supplies it to SCAN/EMIT guards; all 136 forms
 admit; exact eight-book record `certify-20261115T072636Z-1034939` passes
