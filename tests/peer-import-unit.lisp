@@ -51,28 +51,18 @@
  (if (zp n) (mv :fuel fn2-core)
   (mv-let (code fn2-core) (fn2-successor-resolve tx 4096 fn2-core)
    (if (eq code :more) (fn2-piu-resolve (- n 1) tx fn2-core) (mv code fn2-core)))))
+(defun fn2-piu-tag (row value fn2-core)
+ (declare (xargs :stobjs fn2-core :verify-guards nil))
+ (stobj-let ((fn2-fields (fn2-core-fields fn2-core))) (fn2-fields)
+  (fn2-fields-set-value row value fn2-fields) fn2-core))
 (defun fn2-piu-stage (receipt fn2-core)
  (declare (xargs :stobjs fn2-core :verify-guards nil))
- (b* (((mv start fn2-core) (fn2-peer-import-start 0 0 5 1 1 fn2-core))
+ (b* (((mv start fn2-core) (fn2-peer-import-start 0 0 16 receipt 5 1 1 fn2-core))
       ((mv decide fn2-core) (fn2-piu-drive 100 0 fn2-core))
       ((mv declare fn2-core) (fn2-peer-import-declare 0 0 16 receipt 5 1 1 fn2-core))
       ((mv resolve fn2-core) (fn2-piu-resolve 100 0 fn2-core))
       ((mv stage at fn2-core) (fn2-successor-stage 0 fn2-core)))
   (mv (list start decide declare resolve stage at) fn2-core)))
-(defun fn2-piu-tag (row value fn2-core)
- (declare (xargs :stobjs fn2-core :verify-guards nil))
- (stobj-let ((fn2-fields (fn2-core-fields fn2-core))) (fn2-fields)
-  (fn2-fields-set-value row value fn2-fields) fn2-core))
-; A refused malformed source must neither start a decision nor declare slots.
-(defun fn2-piu-progress (fn2-core)
- (declare (xargs :stobjs fn2-core :verify-guards nil))
- (stobj-let ((fn2-id-decides (fn2-core-id-decides fn2-core))
-             (fn2-succ-txns (fn2-core-succ-txns fn2-core))
-             (fn2-succ-slots (fn2-core-succ-slots fn2-core))) (result)
-  (list (fn2-id-decides-phase 0 fn2-id-decides) (fn2-succ-txns-phase 0 fn2-succ-txns)
-        (fn2-succ-txns-ri 0 fn2-succ-txns)
-        (fn2-succ-slots-set 0 fn2-succ-slots) (fn2-succ-slots-set 1 fn2-succ-slots)
-        (fn2-succ-slots-set 2 fn2-succ-slots) (fn2-succ-slots-set 3 fn2-succ-slots)) result))
 (defun fn2-piu-run (fn2-core)
  (declare (xargs :stobjs fn2-core :verify-guards nil))
  (b* ((fn2-core (fn2-core-init *fn2-piu-profile* fn2-core))
@@ -82,22 +72,6 @@
       ((mv & fn2-core) (fn2-piu-write 32 7 ds dg 0 fn2-core))
       (fn2-core (fn2-piu-input ms mg ds dg 95 0 fn2-core))
       ((mv premature fn2-core) (fn2-peer-import-declare 0 0 16 t 5 1 1 fn2-core))
-      (fn2-core (fn2-piu-tag 4 0 fn2-core))
-      (before-start (fn2-piu-progress fn2-core))
-      ((mv bad-start fn2-core) (fn2-peer-import-start 0 0 5 1 1 fn2-core))
-      (start-unchanged (equal before-start (fn2-piu-progress fn2-core)))
-      (fn2-core (fn2-piu-tag 4 1 fn2-core))
-      ((mv & fn2-core) (fn2-peer-import-start 0 0 5 1 1 fn2-core))
-      ((mv & fn2-core) (fn2-piu-drive 100 0 fn2-core))
-      (fn2-core (fn2-piu-tag 4 0 fn2-core))
-      (before-declare (fn2-piu-progress fn2-core))
-      ((mv bad-declare fn2-core) (fn2-peer-import-declare 0 0 16 t 5 1 1 fn2-core))
-      (declare-unchanged (equal before-declare (fn2-piu-progress fn2-core)))
-      (fn2-core (fn2-piu-tag 4 1 fn2-core))
-      (fn2-core (fn2-piu-tag 20 0 fn2-core))
-      ((mv bad-receipt fn2-core) (fn2-peer-import-declare 0 0 16 t 5 1 1 fn2-core))
-      (receipt-unchanged (equal before-declare (fn2-piu-progress fn2-core)))
-      (fn2-core (fn2-piu-tag 20 1 fn2-core))
       ((mv first fn2-core) (fn2-piu-stage t fn2-core))
       ((mv & fresh) (fn2-successor-applied 0 0 fn2-core))
       ((mv & lineage) (fn2-successor-out 0 0 *fn2-identity-evidence-entry-field-lineage* fn2-core))
@@ -106,35 +80,214 @@
       ((mv & selected) (fn2-successor-out 0 2 *fn2-identity-summary-entry-field-selected* fn2-core))
       ((mv & local) (fn2-successor-out 0 3 *fn2-identity-candidates-entry-field-local* fn2-core))
       ((mv bind fn2-core) (fn2-successor-bind 0 4 10 fn2-core))
+      ((mv bound-abort fn2-core) (fn2-peer-import-abort 0 5 1 1 fn2-core))
+      ((mv bound-release fn2-core) (fn2-peer-import-release 0 5 1 1 fn2-core))
+      (retained (fn2-peer-import-owned-p 0 5 1 1 fn2-core))
       ((mv publish fn2-core) (fn2-successor-publish 4 fn2-core))
-      ((mv & fn2-core) (fn2-successor-release 0 fn2-core))
+      ((mv release fn2-core) (fn2-peer-import-release 0 5 1 1 fn2-core))
       ((mv second fn2-core) (fn2-piu-stage t fn2-core))
       ((mv & repeated) (fn2-successor-applied 0 0 fn2-core))
       ((mv & repeated-history) (fn2-successor-applied 0 1 fn2-core))
       ((mv & evidence-count) (fn2-successor-out 0 2 *fn2-identity-summary-entry-field-evidence* fn2-core))
       ((mv & history-count) (fn2-successor-out 0 2 *fn2-identity-summary-entry-field-history* fn2-core))
-      ((mv & fn2-core) (fn2-successor-release 0 fn2-core))
+      ((mv & fn2-core) (fn2-successor-bind 0 5 11 fn2-core))
+      ((mv & fn2-core) (fn2-successor-publish 5 fn2-core))
+      ((mv & fn2-core) (fn2-peer-import-release 0 5 1 1 fn2-core))
       (fn2-core (fn2-piu-input ms mg ds dg 96 0 fn2-core))
       ((mv inconsistent fn2-core) (fn2-piu-stage t fn2-core))
-      ((mv & fn2-core) (fn2-successor-release 0 fn2-core))
-      ((mv sc fn2-core) (fn2-peer-import-start 0 0 5 1 1 fn2-core))
-      ((mv dc fn2-core) (fn2-piu-drive 100 0 fn2-core))
-      (fn2-core (fn2-piu-input ms mg ds dg 96 0 fn2-core))
-      (fn2-core (stobj-let ((fn2-fields (fn2-core-fields fn2-core))) (fn2-fields)
-                  (fn2-fields-set-value 0 10 fn2-fields) fn2-core))
-      ((mv mismatch fn2-core) (fn2-peer-import-declare 0 0 16 t 5 1 1 fn2-core))
-      (fn2-core (stobj-let ((fn2-fields (fn2-core-fields fn2-core))) (fn2-fields)
-                  (fn2-fields-set-value 9 *fn2-identity-evidence-kind-invalid-signature* fn2-fields) fn2-core))
+      ((mv & fn2-core) (fn2-peer-import-abort 0 5 1 1 fn2-core))
+      (fn2-core (fn2-piu-tag 0 10 fn2-core))
+      (fn2-core (fn2-piu-tag 9 *fn2-identity-evidence-kind-invalid-signature* fn2-core))
       ((mv nonbinding fn2-core) (fn2-piu-stage nil fn2-core))
       ((mv & qualified) (fn2-successor-out 0 3 *fn2-identity-candidates-entry-field-qualified* fn2-core)))
-  (mv (list bad-start start-unchanged bad-declare declare-unchanged bad-receipt receipt-unchanged
-            premature first fresh lineage occurrence position selected local bind publish
-            second repeated repeated-history evidence-count history-count inconsistent sc dc mismatch nonbinding qualified) fn2-core)))
+  (mv (list premature first fresh lineage occurrence position selected local bind bound-abort bound-release retained publish release
+            second repeated repeated-history evidence-count history-count inconsistent nonbinding qualified) fn2-core)))
 (defun fn2-piu-result ()
  (declare (xargs :verify-guards nil))
  (with-local-stobj fn2-core (mv-let (result fn2-core) (fn2-piu-run fn2-core) result)))
 (assert-event
  (equal (fn2-piu-result)
-  '(:bounds t :state t :inconsistent t :state (:ok :stored :ok :ok :ok 0) :applied 91 94 101 0 0 :ok :ok
+  '(:state (:ok :stored :ok :ok :ok 0) :applied 91 94 101 0 0 :ok :state :state t :ok :ok
     (:ok :evidence :ok :ok :ok 0) :unchanged :unchanged 1 1
-    (:ok :evidence :ok :ok :inconsistent 0) :ok :evidence :state (:ok :stored :ok :ok :ok 0) 0)))
+    (:ok :evidence :ok :ok :inconsistent 0) (:ok :stored :ok :ok :ok 0) 0)))
+
+; Authoritative absence is checked through C's actual ordered reader, for
+; evidence, foreign history, summary and candidate, after attempted publication.
+(defun fn2-piu-scan-next (n fn2-core)
+ (declare (xargs :stobjs fn2-core :verify-guards nil))
+ (if (zp n) (mv :fuel fn2-core)
+  (mv-let (code fn2-core) (fn2-read-scan-next 0 4096 fn2-core)
+   (if (eq code :more) (fn2-piu-scan-next (- n 1) fn2-core) (mv code fn2-core)))))
+(defun fn2-piu-absent (sid slot gen fn2-core)
+ (declare (xargs :stobjs fn2-core :verify-guards nil))
+ (b* (((mv start fn2-core) (fn2-read-scan 0 sid slot gen 5 1 1 fn2-core))
+      ((mv result fn2-core) (fn2-piu-scan-next 100 fn2-core))
+      ((mv release fn2-core) (fn2-read-release 0 fn2-core)))
+  (mv (list start result release) fn2-core)))
+
+(defun fn2-piu-mutation (which fn2-core)
+ (declare (xargs :stobjs fn2-core :verify-guards nil))
+ (b* ((fn2-core (fn2-core-init *fn2-piu-profile* fn2-core))
+      ((mv & ms mg fn2-core) (fn2-core-reserve 0 5 1 1 fn2-core))
+      ((mv & ds dg fn2-core) (fn2-core-reserve 0 5 1 1 fn2-core))
+      ((mv & fn2-core) (fn2-piu-write 1 109 ms mg 0 fn2-core))
+      ((mv & fn2-core) (fn2-piu-write 32 7 ds dg 0 fn2-core))
+      (fn2-core (fn2-piu-input ms mg ds dg 95 0 fn2-core))
+      ((mv start fn2-core) (fn2-peer-import-start 0 0 16 t 5 1 1 fn2-core))
+      ((mv decide fn2-core) (fn2-piu-drive 100 0 fn2-core))
+      ; Repeated start must preserve the first taking and its private copy.
+      ((mv repeated-start fn2-core) (fn2-peer-import-start 0 0 16 t 5 1 1 fn2-core))
+      (still-owned (fn2-peer-import-owned-p 0 5 1 1 fn2-core))
+      (fn2-core (case which
+        (:lineage (fn2-piu-tag 5 191 fn2-core)) (:domain (fn2-piu-tag 6 192 fn2-core))
+        (:incarnation (fn2-piu-tag 7 193 fn2-core)) (:occurrence (fn2-piu-tag 8 194 fn2-core))
+        (:kind (fn2-piu-tag 9 1 fn2-core)) (:issuer (fn2-piu-tag 10 195 fn2-core))
+        (:receipt-position (fn2-piu-tag 24 201 fn2-core))
+        (:receipt-evidence (fn2-piu-tag 25 194 fn2-core)) (:receipt-article (fn2-piu-tag 26 202 fn2-core))
+        (:tag (fn2-piu-tag 4 0 fn2-core)) (:receipt-tag (fn2-piu-tag 20 0 fn2-core))
+        (:partial
+         ; Hypothesis-removal control: corrupt captured state AND matching input.
+         ; Valid START rejects kind 255; no production fault flag is introduced.
+         (let ((fn2-core (fn2-piu-tag 9 255 fn2-core)))
+          (stobj-let ((fn2-peer-imports (fn2-core-peer-imports fn2-core))) (fn2-peer-imports)
+           (fn2-peer-imports-set-kind 0 255 fn2-peer-imports) fn2-core)))
+        (otherwise fn2-core)))
+      ((mv & fn2-core) (if (eq which :name) (fn2-core-write ms mg 0 110 5 1 1 fn2-core) (mv :ok fn2-core)))
+      ((mv & fn2-core) (if (eq which :digest) (fn2-core-write ds dg 0 8 5 1 1 fn2-core) (mv :ok fn2-core)))
+      ((mv refused fn2-core) (fn2-peer-import-declare 0 0 16 t 5 1 1 fn2-core))
+      (idle (fn2-peer-import-idle-p 0 fn2-core))
+      ((mv & fn2-core) (fn2-piu-resolve 100 0 fn2-core))
+      ((mv stage & fn2-core) (fn2-successor-stage 0 fn2-core))
+      ((mv bind fn2-core) (fn2-successor-bind 0 4 10 fn2-core))
+      ((mv & fn2-core) (fn2-successor-publish 4 fn2-core))
+      ((mv evidence fn2-core) (fn2-piu-absent 1 ms mg fn2-core))
+      ((mv history fn2-core) (fn2-piu-absent 11 ms mg fn2-core))
+      ((mv summary fn2-core) (fn2-piu-absent 13 ms mg fn2-core))
+      ((mv candidate fn2-core) (fn2-piu-absent 12 ms mg fn2-core)))
+  (mv (list start decide repeated-start still-owned refused idle (not (eq stage :ok)) (not (eq bind :ok))
+            evidence history summary candidate) fn2-core)))
+(defun fn2-piu-mutation-result (which)
+ (declare (xargs :verify-guards nil))
+ (with-local-stobj fn2-core (mv-let (result fn2-core) (fn2-piu-mutation which fn2-core) result)))
+(assert-event
+ (equal (fn2-piu-mutation-result :lineage)
+  '(:ok :stored :state t :state t t t
+    (:ok :end :ok) (:ok :end :ok) (:ok :end :ok) (:ok :end :ok))))
+(assert-event
+ (equal (fn2-piu-mutation-result :domain)
+  '(:ok :stored :state t :state t t t
+    (:ok :end :ok) (:ok :end :ok) (:ok :end :ok) (:ok :end :ok))))
+(assert-event
+ (equal (fn2-piu-mutation-result :incarnation)
+  '(:ok :stored :state t :state t t t
+    (:ok :end :ok) (:ok :end :ok) (:ok :end :ok) (:ok :end :ok))))
+(assert-event
+ (equal (fn2-piu-mutation-result :occurrence)
+  '(:ok :stored :state t :state t t t
+    (:ok :end :ok) (:ok :end :ok) (:ok :end :ok) (:ok :end :ok))))
+(assert-event
+ (equal (fn2-piu-mutation-result :kind)
+  '(:ok :stored :state t :state t t t
+    (:ok :end :ok) (:ok :end :ok) (:ok :end :ok) (:ok :end :ok))))
+(assert-event
+ (equal (fn2-piu-mutation-result :issuer)
+  '(:ok :stored :state t :state t t t
+    (:ok :end :ok) (:ok :end :ok) (:ok :end :ok) (:ok :end :ok))))
+(assert-event
+ (equal (fn2-piu-mutation-result :receipt-position)
+  '(:ok :stored :state t :inconsistent t t t
+    (:ok :end :ok) (:ok :end :ok) (:ok :end :ok) (:ok :end :ok))))
+(assert-event
+ (equal (fn2-piu-mutation-result :receipt-evidence)
+  '(:ok :stored :state t :inconsistent t t t
+    (:ok :end :ok) (:ok :end :ok) (:ok :end :ok) (:ok :end :ok))))
+(assert-event
+ (equal (fn2-piu-mutation-result :receipt-article)
+  '(:ok :stored :state t :inconsistent t t t
+    (:ok :end :ok) (:ok :end :ok) (:ok :end :ok) (:ok :end :ok))))
+(assert-event
+ (equal (fn2-piu-mutation-result :tag)
+  '(:ok :stored :state t :state t t t
+    (:ok :end :ok) (:ok :end :ok) (:ok :end :ok) (:ok :end :ok))))
+(assert-event
+ (equal (fn2-piu-mutation-result :receipt-tag)
+  '(:ok :stored :state t :inconsistent t t t
+    (:ok :end :ok) (:ok :end :ok) (:ok :end :ok) (:ok :end :ok))))
+(assert-event
+ (equal (fn2-piu-mutation-result :name)
+  '(:ok :stored :state t :state t t t
+    (:ok :end :ok) (:ok :end :ok) (:ok :end :ok) (:ok :end :ok))))
+(assert-event
+ (equal (fn2-piu-mutation-result :digest)
+  '(:ok :stored :state t :state t t t
+    (:ok :end :ok) (:ok :end :ok) (:ok :end :ok) (:ok :end :ok))))
+(assert-event
+ (equal (fn2-piu-mutation-result :partial)
+  '(:ok :stored :state t :value t t t
+    (:ok :end :ok) (:ok :end :ok) (:ok :end :ok) (:ok :end :ok))))
+
+; Initial malformed tags cannot acquire an import taking or begin a decision.
+(defun fn2-piu-initial-tag (fn2-core)
+ (declare (xargs :stobjs fn2-core :verify-guards nil))
+ (b* ((fn2-core (fn2-core-init *fn2-piu-profile* fn2-core))
+      ((mv & ms mg fn2-core) (fn2-core-reserve 0 5 1 1 fn2-core))
+      ((mv & ds dg fn2-core) (fn2-core-reserve 0 5 1 1 fn2-core))
+      ((mv & fn2-core) (fn2-piu-write 1 109 ms mg 0 fn2-core))
+      ((mv & fn2-core) (fn2-piu-write 32 7 ds dg 0 fn2-core))
+      (fn2-core (fn2-piu-input ms mg ds dg 95 0 fn2-core))
+      (fn2-core (fn2-piu-tag 4 0 fn2-core))
+      ((mv malformed fn2-core) (fn2-peer-import-start 0 0 16 t 5 1 1 fn2-core))
+      (idle (fn2-peer-import-idle-p 0 fn2-core))
+      (progress (stobj-let ((fn2-id-decides (fn2-core-id-decides fn2-core))
+                           (fn2-succ-txns (fn2-core-succ-txns fn2-core))) (result)
+                  (list (fn2-id-decides-phase 0 fn2-id-decides) (fn2-succ-txns-phase 0 fn2-succ-txns)) result)))
+  (mv (list malformed idle progress) fn2-core)))
+(defun fn2-piu-initial-tag-result ()
+ (declare (xargs :verify-guards nil))
+ (with-local-stobj fn2-core (mv-let (result fn2-core) (fn2-piu-initial-tag fn2-core) result)))
+(assert-event (equal (fn2-piu-initial-tag-result)
+ (list :bounds t (list *fn2-id-decide-phase-idle* *fn2-succ-phase-idle*))))
+
+; Independent source-bounds hypothesis removal: after complete evidence and
+; a declared receipt, copy only the receipt's first arg from a deliberately
+; short row. This is not reachable from a validated retained snapshot.
+(defun fn2-piu-partial-receipt (fn2-core)
+ (declare (xargs :stobjs fn2-core :verify-guards nil))
+ (b* ((fn2-core (fn2-core-init *fn2-piu-profile* fn2-core))
+      ((mv & ms mg fn2-core) (fn2-core-reserve 0 5 1 1 fn2-core))
+      ((mv & ds dg fn2-core) (fn2-core-reserve 0 5 1 1 fn2-core))
+      ((mv & fn2-core) (fn2-piu-write 1 109 ms mg 0 fn2-core))
+      ((mv & fn2-core) (fn2-piu-write 32 7 ds dg 0 fn2-core))
+      (fn2-core (fn2-piu-input ms mg ds dg 95 0 fn2-core))
+      ((mv start fn2-core) (fn2-peer-import-start 0 0 16 t 5 1 1 fn2-core))
+      ((mv decide fn2-core) (fn2-piu-drive 100 0 fn2-core))
+      (b0 (stobj-let ((fn2-id-decides (fn2-core-id-decides fn2-core))
+                      (fn2-fields (fn2-core-fields fn2-core)) (fn2-fc (fn2-core-fc fn2-core))) (base)
+            (mv-let (code base) (fn2-idc-stripe 0 (fn2-fc-rows fn2-fc) fn2-id-decides fn2-fields)
+             (declare (ignore code)) base) base))
+      ((mv sentinel fn2-core) (fn2-successor-put 0 2 13 :admit fn2-core))
+      ((mv evidence-put fn2-core) (fn2-successor-put 0 0 1 :insert fn2-core))
+      ((mv evidence-copy fn2-core) (fn2-peer-import-copy-args 11 0 0 0 (+ b0 *fn2-peer-import-e*) 5 1 1 fn2-core))
+      ((mv receipt-put fn2-core) (fn2-successor-put 0 1 11 :insert fn2-core))
+      (short (stobj-let ((fn2-fields (fn2-core-fields fn2-core))) (last)
+               (- (fn2-fields-rows fn2-fields) 1) last))
+      (fn2-core (fn2-piu-tag short 9 fn2-core))
+      ((mv copy-failed fn2-core) (fn2-peer-import-copy-args 11 0 0 1 short 5 1 1 fn2-core))
+      ((mv & fn2-core) (fn2-piu-resolve 100 0 fn2-core))
+      ((mv stage & fn2-core) (fn2-successor-stage 0 fn2-core))
+      ((mv bind fn2-core) (fn2-successor-bind 0 4 10 fn2-core))
+      ((mv abort fn2-core) (fn2-peer-import-abort 0 5 1 1 fn2-core))
+      ((mv & fn2-core) (fn2-successor-publish 4 fn2-core))
+      ((mv evidence fn2-core) (fn2-piu-absent 1 ms mg fn2-core))
+      ((mv history fn2-core) (fn2-piu-absent 11 ms mg fn2-core))
+      ((mv summary fn2-core) (fn2-piu-absent 13 ms mg fn2-core))
+      ((mv candidate fn2-core) (fn2-piu-absent 12 ms mg fn2-core)))
+  (mv (list start decide sentinel evidence-put evidence-copy receipt-put copy-failed
+            (not (eq stage :ok)) (not (eq bind :ok)) abort evidence history summary candidate) fn2-core)))
+(defun fn2-piu-partial-receipt-result ()
+ (declare (xargs :verify-guards nil))
+ (with-local-stobj fn2-core (mv-let (result fn2-core) (fn2-piu-partial-receipt fn2-core) result)))
+(assert-event
+ (equal (fn2-piu-partial-receipt-result)
+  '(:ok :stored :ok :ok :ok :ok :bounds t t :ok
+    (:ok :end :ok) (:ok :end :ok) (:ok :end :ok) (:ok :end :ok))))
