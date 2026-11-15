@@ -96,6 +96,14 @@ class ScopedQualification(unittest.TestCase):
             return c.closed_member_book(source, roots or ['FN2-ACCEPT-ROUTE'],
                                         Path(directory) / 'scoped.lisp')
 
+    def test_scoped_make_event_has_uniform_error_triple_results(self):
+        forms = c.read_all(self.book(self.source()))
+        event = next(f for f in forms if f[0] == 'make-event')
+        branch = event[1][2]  # LET body
+        self.assertEqual(branch[0], 'if')
+        self.assertEqual(branch[2][0], 'value')
+        self.assertEqual(branch[3][:2], ['er', 'soft'])
+
     def test_all_records_qualified_with_correct_macro_abi(self):
         book = self.book(self.source())
         forms = c.read_all(book)

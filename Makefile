@@ -550,6 +550,7 @@ ACL2_BOOKS = \
   tests/translation-domain-unit \
   tests/translation-inventory-unit \
   tests/translation-validation-unit \
+  tests/translation-event-results-unit \
   tests/txn-unit \
   tests/upload-feed-unit \
   tests/upload-scan-unit \

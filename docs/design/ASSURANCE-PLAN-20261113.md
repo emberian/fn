@@ -12,13 +12,41 @@ recovery of accepted data. Integrated work now goes directly to upstream dev;
 component records alone do not establish this milestone. The shared application
 build owns the coherent current callback/runtime prefix and executable controls.
 
-Current outstanding gate: application candidate `8677da3e9` clears the
-`FN2-RUN-HEAD` guard and stops at `FN2-RUN-SEAL-STEP-SHAPE`, whose raw pool-row
-equality crosses `FN2-FORMAT-RUN`. The whole-book attempt took 24.69 seconds;
-this is a proof refusal, not a counterexample or an application certificate.
-`recover_children` owns the interface/hint repair and `sol_proof_event_budget`
-owns the retained executor. The full reviewed pool/fields hint packet must be
-present; applying only its last guard-hint commit omits required earlier changes.
+Run-page source `f3a8f5668` is now qualified by the
+[26-book record](receipts/runs-page26-record.json): 25 reused and one new book.
+Root matched all 26 source hashes and closure keys. The complete book passes
+with the existing pool/fields observer hints, the HEAD guard hint, and the
+missing local pool-row exclusion at `FN2-RUN-SEAL-STEP-SHAPE`. Runtime bodies,
+guards and theorem formulas are unchanged. The structural rewrite has three
+passing controls. The next gate is the composed current APPEND/FETCH consumer;
+this record does not qualify that consumer or the native restart path.
+
+CNS edge preservation is qualified by the [19-book record](receipts/cns-edges19-record.json)
+with 18 reused parents and one new book; root matched all 19 source hashes and
+closure keys. The proof adapter delegates complete statements to the existing
+columns generator and changes only unconditional row-frame hints. TYPE, WFP,
+RAW-ROWS and explicit hints retain their original behavior. Actual generated-form
+controls and the complete source book pass, including ACL2's second pass.
+The composed consumer author build advanced through format, hashing, runs,
+overlay and run assembly. Its next refusal is the Ribbon HASH-LOOP guard:
+rewriting the pool-byte predicate discards the explicit eight-bit premise needed
+by the FNV step. A proof-only hint candidate retains that premise; admission is
+pending. The original timed world is terminal and its completed prefix is being
+recorded for reuse. APPEND/FETCH and native restart remain unexecuted.
+
+The same consumer needed `RUN-BUILD-PAGE` to use `(zp (nfix level))` before
+its checked page-kind call. This preserves logical ZP behavior on arbitrary
+inputs and is qualified by the [exact 28-book record](receipts/runs28-record.json):
+26 reused parents and two newly certified books. Root matched all current source
+hashes and closure keys. Runs took 21.75 seconds, leaving proof-cost work open.
+The callee still receives the original level and rejects invalid input.
+
+SOURCE routing now has a reviewed structural repair for sixteen findings in the
+frozen consumer: finite returned statuses reach their explicit continuation or
+cleanup branches, and operation acquisition remains conditional on successful
+issue. Six source controls cover both frozen implementations, status closure,
+idempotence and preservation of injected ownership effects. This is not executed
+actor evidence. The approved consumer overlay still awaits composed admission.
 
 Stable connection/TLS schema providers are integrated at `bf2fc57e7` with
 [qualified 39-book evidence](receipts/kind-schema39-record.json): 35 reused,
