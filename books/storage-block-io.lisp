@@ -115,6 +115,12 @@
                                              fn2-extents fn2-alloc-edges fn2-pool fn2-ops fn2-control)
   :carriers ((fn2-pool 3 :prefix "-POOL") (fn2-ops 4 :prefix "-OPS") (fn2-control 5 :prefix "-CONTROL")
              (fn2-extents 6 :prefix "-EXTENTS") (fn2-alloc-edges 7 :prefix "-EDGES")))
+(assert-event (eq (nth 3 (getpropc 'fn2-pinned-block-io-children 'stobjs-out nil (w state))) 'fn2-pool))
+(fn2-pool-preserves fn2-pinned-block-io-children (writep pu epoch alloc off len lslot lgen boff okind oslot ogen principal
+                                             fn2-extents fn2-alloc-edges fn2-pool fn2-ops fn2-control)
+ :specs (("-DIMENSION-ROWS" fn2-pool-rows 3 :frame fn2-pool))
+ :disable nil
+ :hints (("Goal" :in-theory (e/d (fn2-pinned-block-io-children) (fn2-pool-rows fn2-issue-read-children fn2-issue-write-children fn2-alloc-handle-code fn2-alloc-edge-add fn2-b-read-pin-drop fn2-control-record-stop fn2-control-stop fn2-op-slotp fn2-ops-free-head fn2-ops-gen fn2-extents-state)))))
 (assert-event
  (equal (getpropc 'fn2-pinned-block-io-children 'stobjs-out nil (w state))
         '(nil nil nil fn2-pool fn2-ops fn2-control fn2-extents fn2-alloc-edges)))
@@ -143,6 +149,12 @@
                                              fn2-extents fn2-alloc-edges fn2-pool fn2-ops fn2-control)
   :carriers ((fn2-pool 3 :prefix "-POOL") (fn2-ops 4 :prefix "-OPS") (fn2-control 5 :prefix "-CONTROL")
              (fn2-extents 6 :prefix "-EXTENTS") (fn2-alloc-edges 7 :prefix "-EDGES")))
+(assert-event (eq (nth 3 (getpropc 'fn2-block-read-children 'stobjs-out nil (w state))) 'fn2-pool))
+(fn2-pool-preserves fn2-block-read-children (pu epoch alloc off len lslot lgen okind oslot ogen principal
+                                             fn2-extents fn2-alloc-edges fn2-pool fn2-ops fn2-control)
+ :specs (("-DIMENSION-ROWS" fn2-pool-rows 3 :frame fn2-pool))
+ :disable nil
+ :hints (("Goal" :in-theory (e/d (fn2-block-read-children) (fn2-pool-rows fn2-pinned-block-io-children)))))
 
 (defun fn2-block-write-children (pu epoch alloc off len lslot lgen boff okind oslot ogen principal
                                    fn2-extents fn2-alloc-edges fn2-pool fn2-ops fn2-control)
@@ -157,6 +169,12 @@
                                              fn2-extents fn2-alloc-edges fn2-pool fn2-ops fn2-control)
   :carriers ((fn2-pool 3 :prefix "-POOL") (fn2-ops 4 :prefix "-OPS") (fn2-control 5 :prefix "-CONTROL")
              (fn2-extents 6 :prefix "-EXTENTS") (fn2-alloc-edges 7 :prefix "-EDGES")))
+(assert-event (eq (nth 3 (getpropc 'fn2-block-write-children 'stobjs-out nil (w state))) 'fn2-pool))
+(fn2-pool-preserves fn2-block-write-children (pu epoch alloc off len lslot lgen boff okind oslot ogen principal
+                                             fn2-extents fn2-alloc-edges fn2-pool fn2-ops fn2-control)
+ :specs (("-DIMENSION-ROWS" fn2-pool-rows 3 :frame fn2-pool))
+ :disable nil
+ :hints (("Goal" :in-theory (e/d (fn2-block-write-children) (fn2-pool-rows fn2-pinned-block-io-children)))))
 
 (make-event
  (value (cons 'progn

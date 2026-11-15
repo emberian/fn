@@ -107,10 +107,19 @@
         may-release target-slot target-gen okind oslot ogen principal fn2-pool fn2-ops fn2-control)
   :carriers ((fn2-pool 3 :prefix "-POOL") (fn2-ops 4 :prefix "-OPS") (fn2-control 5 :prefix "-CONTROL")))
 
+; Explicit unconditional dimension interface: the only pool-producing call in
+; ISSUE is CORE-LEASE, whose existing public ROWS equation is unconditional.
+(assert-event (eq (nth 3 (getpropc 'fn2-issue-children 'stobjs-out nil (w state))) 'fn2-pool))
+(fn2-pool-preserves fn2-issue-children (kind cap-index cap-nonce offset fua slot gen off len
+        may-release target-slot target-gen okind oslot ogen principal fn2-pool fn2-ops fn2-control)
+ :specs (("-DIMENSION-ROWS" fn2-pool-rows 3 :frame fn2-pool))
+ :disable nil
+ :hints (("Goal" :in-theory (e/d (fn2-issue-children) (fn2-core-lease fn2-pool-rows)))))
+
 ; One per action, with the action's own descriptor fields (core.lisp's
 ; fn2-core-issue-wrapper makes each one's core face).
 (defmacro fn2-issue-children-wrapper (name args kind cap-index cap-nonce offset fua
-                                           slot gen off len may-release target-slot target-gen)
+                                           slot gen off len may-release target-slot target-gen &key (rows 'nil))
   `(progn
      (defun ,name (,@args okind oslot ogen principal fn2-pool fn2-ops fn2-control)
        (declare (xargs :stobjs (fn2-pool fn2-ops fn2-control)
@@ -120,6 +129,12 @@
                            fn2-pool fn2-ops fn2-control))
      (fn2-pool-preserves ,name (,@args okind oslot ogen principal fn2-pool fn2-ops fn2-control)
        :carriers ((fn2-pool 3 :prefix "-POOL") (fn2-ops 4 :prefix "-OPS") (fn2-control 5 :prefix "-CONTROL")))
+     ,@(and rows
+       `((assert-event (eq (nth 3 (getpropc ',name 'stobjs-out nil (w state))) 'fn2-pool))
+         (fn2-pool-preserves ,name (,@args okind oslot ogen principal fn2-pool fn2-ops fn2-control)
+          :specs (("-DIMENSION-ROWS" fn2-pool-rows 3 :frame fn2-pool))
+          :disable nil
+          :hints (("Goal" :in-theory (e/d (,name) (fn2-issue-children fn2-pool-rows)))))))
      (table fn2-issue-child-wrappers ',name t)))
 (fn2-issue-children-wrapper fn2-issue-receive-children (cap-index cap-nonce slot gen len)
   *fn2-action-receive* cap-index cap-nonce 0 0 slot gen 0 len 0 0 0)
@@ -130,9 +145,9 @@
 (fn2-issue-children-wrapper fn2-issue-compress-start-children (cap-index cap-nonce slot gen off len)
   *fn2-action-compress-start* cap-index cap-nonce 0 0 slot gen off len 0 0 0)
 (fn2-issue-children-wrapper fn2-issue-read-children (offset slot gen len)
-  *fn2-action-read* 0 0 offset 0 slot gen 0 len 0 0 0)
+  *fn2-action-read* 0 0 offset 0 slot gen 0 len 0 0 0 :rows t)
 (fn2-issue-children-wrapper fn2-issue-write-children (offset slot gen off len fua)
-  *fn2-action-write* 0 0 offset fua slot gen off len 0 0 0)
+  *fn2-action-write* 0 0 offset fua slot gen off len 0 0 0 :rows t)
 (fn2-issue-children-wrapper fn2-issue-fence-children ()
   *fn2-action-fence* 0 0 0 0 0 0 0 0 0 0 0)
 (fn2-issue-children-wrapper fn2-issue-accept-children (cap-index cap-nonce)

@@ -1,0 +1,160 @@
+{
+  "source_base": "42aba480a6798c657269df04997ba4b466604431",
+  "scope": "Coherent foundation +owned peek success contract and guard-only harvest proof; source plan only",
+  "roots": [
+    "tests/columns-carrier-hints-unit",
+    "tests/columns-carried-unit"
+  ],
+  "source_count": 37,
+  "books": {
+    "books/alloc": {
+      "key": "f1ac7b6847026b4bae87b8a89f76a2dac5bc855084b92dc4282e9b4c39dc2218",
+      "sha256": "886dd5c4550a43b78fafa99c02db28edbdc70c7bb1cbe806ce5e40403477a11e"
+    },
+    "books/assumptions-native-span": {
+      "key": "396a2090bb4cc77a45075b0729da44fd08cb8f62e9751edfe98943a9d53b8a28",
+      "sha256": "3fd43c5b3c3d0ea553afb41fa99f6f7136918ecbf22921eac878cde96439def8"
+    },
+    "books/blake3": {
+      "key": "1adc95a81d414f9641c61117d1943a846ef5284586b2ede28c5f337a598e9d67",
+      "sha256": "e228c1eb31f2f764e925e86fa4f0a7b7682810d64a27f7c39b9f416f93bdc1a1"
+    },
+    "books/blake3-pool-spec": {
+      "key": "614588be690316ba29f344415e5e3b5d02419246f895182ba91dd1a7c9f63576",
+      "sha256": "2775bf744b6ed52fd098fe329b0b183d62c0857a5a2a989cf80e968f5a366e2b"
+    },
+    "books/blake3-spec": {
+      "key": "3944594ba7622d4b4067f30d5dd2faaddf41fc13057a464af1b79f7234e57d81",
+      "sha256": "253babac6e5d9e9df00a655ba6b6595c9e6d85315c9294f05e3d939f19ad5770"
+    },
+    "books/checkpoint": {
+      "key": "474304ef29e8fc03db8d730510086850e592d6a2b96ae5cd12e6288da6c68839",
+      "sha256": "ef8e12b3449c471a750dab489efe2bd2293a69429da6cef873b56f2c2b63eed7"
+    },
+    "books/columns": {
+      "key": "240a44b23a63840a436ffbe6b12f9adc6fec80ba1056de0af7b5e666f518a510",
+      "sha256": "8b694caf782c2ce3a29fa109b055c181b54beda214276493f6d9acb9456a881b"
+    },
+    "books/columns-call-guards": {
+      "key": "e6f7e573b9fc9532c8fb4a5184d2c7967d5836db791268f1e82a9ea4518d2da6",
+      "sha256": "fd7c2588e6d90338288b484078525799ac261c66013ebe112c3f369870db5a4a"
+    },
+    "books/columns-carrier-contracts": {
+      "key": "3f3707eb6a8f0e2f8dd287e1511b79a10bd1384f705be921aa63f824ea9db2b6",
+      "sha256": "36cf411d1119704be488c119243d0aff8006e9babe38bb128f5d627353373c5a"
+    },
+    "books/columns-guard-hints": {
+      "key": "bf3898263ea2cef72898280e78731227844bb1a3d6743342239c17372e5d8caf",
+      "sha256": "e0a20c5669df681bf75fa5eeae426adc4053010915b3c7657d56e247d5c8440b"
+    },
+    "books/commit-alloc": {
+      "key": "0d5af5d53ad5ddce5fd450fce4a37d52bbb082723129840d3ed5e561266a03be",
+      "sha256": "ae683093a38107790d4e17ca1c10a5532905eaffa00d9ed96f483f3cf8e63072"
+    },
+    "books/declare": {
+      "key": "299f7489bcfaeeb7c1a8f777c4a3b4886c5be174761a2f63f69a39599466aba1",
+      "sha256": "54e850788ee821dd90a4d9715e93d319f94846039592c4420fef1bdc5d959569"
+    },
+    "books/digests": {
+      "key": "457e0b062bf007b8abb9a5d4be75bdd02639c47e9ae03de0a8c59239915ad76f",
+      "sha256": "e821bfe1ffee392c8019fad513db8a83aaf2448251087f26c9576a3af333a524"
+    },
+    "books/fnv": {
+      "key": "9766f6c79c4cdf5a16b932b031c696445c37e8b99d2928da34ea950c8f989321",
+      "sha256": "73d15afc6e1325f03d19ad4b39eeb3adc677ce2b07e9eddbc14141ca8843edde"
+    },
+    "books/format": {
+      "key": "4b663418581b6239fca1086370eb6e14fd90a2590ae36919a319c7112e80a1a7",
+      "sha256": "01bd400412d667e203d105b8dd7d69563c174c02f5b23d58f9d57bdb4ae5ab1a"
+    },
+    "books/format-base": {
+      "key": "9115f43e1c05b24a1afb21fb292fb5584831d496553a81380ce2d53891a2651b",
+      "sha256": "ead88cb8e7ab67db0c6a06ac400c813f753121c77082825b16016835eb462699"
+    },
+    "books/format-check": {
+      "key": "e10aa3855445168414eb40a3db140159ef0064a6b3388ce373e29abe471567af",
+      "sha256": "c98f35c7c74d009ab24dbd5b87b1859dbba46be77b31a3585e252d3084ca4951"
+    },
+    "books/format-context": {
+      "key": "87381ab93b3205f1d92047b96406cfc396acec6814289d04be0ccf26106fa23e",
+      "sha256": "16c2a00f17df2e53d055137f80eedcbb8c87b673ab7ae13e7a31246222ad008f"
+    },
+    "books/format-events": {
+      "key": "03a5b6bf63a347f9f37f11e28f269b8ef77b0f86b0a791c96432998c295b11d8",
+      "sha256": "10be8e61d3746b6094d4b1ac5a2d6006c4d8901a3744b6ca1b4959836812a62b"
+    },
+    "books/format-physical": {
+      "key": "511bb9864b3228a10284a127f9abddc149473ead1ab10651c6522570684c5f63",
+      "sha256": "818642d11e9638333f30fa6f60e3ee8db1ce39d1d040c76ed7ab58df781c1d19"
+    },
+    "books/format-storage": {
+      "key": "dc190c56c4db7d223e5c02ebc41aa40f46ce804045dac1bff2946abd0d2947b6",
+      "sha256": "ddb445f4a77de9462de3b4df0dc5111f381c7b73f94812cb2fa2096852adc68f"
+    },
+    "books/layout": {
+      "key": "92461e82c5228c9fee8e155ec9bb581b9da1b10d627da4d23cab22e6e3983263",
+      "sha256": "2bc995f6bb70ec17862c5b535a4734e90a7a5dfd6312ebdee7d06877b0fbb4d8"
+    },
+    "books/operations": {
+      "key": "ffaf93d705d08918400704d108e7bffa6a3da8ae5ae2917128974f7d53c9e71b",
+      "sha256": "419120e7ae100f400d18cdee2d080d6133523673cac22fae1b05c7201ff97dd8"
+    },
+    "books/owed": {
+      "key": "0025566d809fffa0fb7533fa29b1fb7a9932c97d1510818153a1c1fe3d6bbf08",
+      "sha256": "171950b91e40f4e7d0e94902ce00009adc62d8104e0eecd5db6a59b93bbffb15"
+    },
+    "books/owed-discharge": {
+      "key": "fa84e2e8a4d3eeeda9943ef433f68c9ba4d940ec437c889cdd0be032d29550e5",
+      "sha256": "53903322be1b79ed081ecfcbfcb9f60649d3fdbf8aa6853b772abf8e6fc69f01"
+    },
+    "books/pool": {
+      "key": "02c8ba50750b243b9b79bc6be0ff2339fad1531234575313c815e7d6fbfba72b",
+      "sha256": "9a31c8d38d309862369091a2c8019ccc3da16920742ff01040899b8f395f2fe9"
+    },
+    "books/pool-ranges": {
+      "key": "fdecdd51e2030aa983d403457a236f21b3ad5fc4d49ab72d3b5b04b125cefa0c",
+      "sha256": "2f9e1f0c898ea4f6747f4e8f4942bc7f73be512ed1b90feb2d9cad7a58e3f959"
+    },
+    "books/pool-read-contracts": {
+      "key": "523bbc85583665c5bef2126a28376536cb3a754146a33c58d94b85e48886ddd5",
+      "sha256": "f51f92ce9bfcd7af93e6ba47bb5a4c43fbb5ac79424ef34ecf489b8f92e9e852"
+    },
+    "books/profile": {
+      "key": "cdaddbd4628aebebc2dea718832e44dfbe07014033d6a8904f137808c9c34744",
+      "sha256": "1f216ed6c0505dc1b01ada0f7d3d9482af6da7b7dff8736b5100ef3e3fbc1038"
+    },
+    "books/run-geometry": {
+      "key": "c1e6bfe5d7be1bd8c153e78e3d3dac1a4f02d4dc52ff2344f2aa40170e8de30c",
+      "sha256": "0fc26f99e532df4e3d9d4bbae298eadb6414799da646d276afedd07149b287cb"
+    },
+    "books/runs": {
+      "key": "ecf53f0b3873eefbe92b49dca53dbc0cf2e1d2d32e157047f99b4f43ea887eba",
+      "sha256": "defa57eea42330aa556f7608ec885bfac3b16f5344caab7d42674a96a36b4324"
+    },
+    "books/runs-page": {
+      "key": "9524fb301823660691757822ed01fba083df537b6d765a87819641fc162b04bc",
+      "sha256": "3c05d886f028eeb7ed874de5a2d6463c64f6853ac6499de30a4f7e91bde0df16"
+    },
+    "books/runs-schema": {
+      "key": "b0957ddabe8603b5bd0e2b25958a77f661326314db4b5c664aaed3f6a15313e1",
+      "sha256": "bb34fee128ac49657d77e6fc46ee4a85e602695eccf067f1e7f89d17cc32ab4f"
+    },
+    "books/tuple": {
+      "key": "b0fe12b03ba9cae656e0a0d40c8ccd699ff47788c2bd5a448903fb0c0401b9c6",
+      "sha256": "c6b895fd566be6b91ba68fb040826b689a5ad4891a65e040773bfb28b90e1978"
+    },
+    "books/vocab": {
+      "key": "f25b0db226005357f44bbfcf8f986e2193b041da652b95420a3fc290e78099df",
+      "sha256": "96606555ca9b71fcc9d3e5b955deb5052300526347dbb5f5f8e74545813b1c53"
+    },
+    "tests/columns-carried-unit": {
+      "key": "b0429d769fee224453bf6a5490c9fc14a82d55f0af4ebe8800cbe03de91aba54",
+      "sha256": "aa13fc5eee7cfc9ef34764e2eb20afbeebf250dba06cc7da69ba9644a3a1a2e4"
+    },
+    "tests/columns-carrier-hints-unit": {
+      "key": "1030784c691fe4eda8b4918926d49e8e6545689dc9ce6dd366d70b5daf8aafbe",
+      "sha256": "aa490db15be9f725d2b9729b7dd09e71765c0b95e19413f56366129e1ea8b3b3"
+    }
+  },
+  "source_parent": "be1366816"
+}

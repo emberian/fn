@@ -946,7 +946,11 @@
              (and (fn2-pool-row-okp (- n 1) fn2-pool)
                   (fn2-pool-row-invariantp (- n 1) fn2-pool))))
     :rule-classes ((:definition :controller-alist ((fn2-pool-row-invariantp t nil))))
-    :hints (("Goal" :in-theory (enable fn2-pool-row-invariantp fn2-pool-row-okp))))
+    ; This is one unfolding/folding equation. Keep unrelated caller arithmetic
+    ; and column/frame rewrite rules out of the proof's ambient theory.
+    :hints (("Goal" :in-theory
+             (union-theories '(fn2-pool-row-invariantp fn2-pool-row-okp zp)
+                             (theory 'minimal-theory)))))
   (in-theory (disable fn2-pool-row-invariantp fn2-pool-row-okp fn2-pool-row-invariantp-step))
 
   (defun fn2-pool-rows-ok-except (n s fn2-pool)
