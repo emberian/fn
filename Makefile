@@ -82,6 +82,9 @@ ACL2_BOOKS = \
   books/queue-model \
   books/reference-state-model \
   books/reference-effect-semantics \
+  books/reference-effect-leaves \
+  books/reference-effect-lowering \
+  tests/reference-effect-lowering-unit \
   books/cns-release-refinement \
   books/core-init-projections \
   books/machine-reservations-entry \
