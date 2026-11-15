@@ -35,8 +35,11 @@ def rewrite(text):
       out=out.replace('((:busy :exhausted) (:yield))','((:busy :exhausted) (:park :checkpoint-needed))')
      elif phase==':teardown-wait':out=out.replace('fn2-checkpoint-teardown-poll *fn2-checkpoint-master-kind*','fn2-checkpoint-teardown-poll row-debt-scan row-token *fn2-checkpoint-master-kind*')
      elif phase==':teardown-drop':out=out.replace('fn2-checkpoint-teardown-drop-op row-token','fn2-checkpoint-teardown-drop-op row-debt-scan row-token')
-     elif phase==':teardown-retained':out='''(:teardown-retained (:set (debt-scan (+ 1 row-debt-scan)) (scan 0))
-       (:next :teardown-select) (:charge :steps *fn2-work-small* :runnable t))'''
+     elif phase==':teardown-retained':out='''(:teardown-retained
+       (:if (< row-debt-scan *fn2-alloc-none*)
+        ((:set (debt-scan (+ 1 row-debt-scan)) (scan 0)) (:next :teardown-select)
+         (:charge :steps *fn2-work-small* :runnable t))
+        ((:next :teardown-uncertain) (:charge :steps *fn2-work-small* :runnable t))))'''
      edits.append((m.node.start,m.node.end,out))
     addition='''
       (:teardown-transfer-begin :on-refusal ((:next :teardown-uncertain) (:charge :steps *fn2-work-small* :runnable t))

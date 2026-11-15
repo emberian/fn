@@ -2,39 +2,28 @@
 ; bank/protection change. Notifications never replace the permission checks.
 (in-package "ACL2")
 (include-book "checkpoint-teardown-transfer")
+(include-book "checkpoint-bank-obligations-state")
 (fn2-book-layer :c)
-; The complete exclusion fingerprint has ten typed fields, not a colliding
-; digest or numeric version. Generate observation/comparison from one schema.
-(defun fn2-checkpoint-teardown-bank-observation-fields (bank fields)
- (declare (xargs :verify-guards nil))
- (if (atom fields) nil
-  (cons (let ((name (concatenate 'string "-BANK" (if (equal bank 0) "0-" "1-") (symbol-name (car fields)))))
-          (list (fn2-columns-sym 'fn2-checkpoint-teardown-debt name)
-                (fn2-columns-sym 'fn2-checkpoint-publication name)))
-        (fn2-checkpoint-teardown-bank-observation-fields bank (cdr fields)))))
-(defun fn2-checkpoint-teardown-bank-comparisons (fields)
- (declare (xargs :verify-guards nil))
- (if (atom fields) nil
-  (cons `(equal (,(caar fields) fn2-checkpoint-teardown-debt) (,(cadar fields) 0 fn2-checkpoint-publication))
-        (fn2-checkpoint-teardown-bank-comparisons (cdr fields)))))
-(defun fn2-checkpoint-teardown-bank-updates (fields)
- (declare (xargs :verify-guards nil))
- (if (atom fields) nil
-  (cons `(fn2-checkpoint-teardown-debt (,(fn2-columns-pre "UPDATE-" (caar fields))
-          (,(cadar fields) 0 fn2-checkpoint-publication) fn2-checkpoint-teardown-debt))
-        (fn2-checkpoint-teardown-bank-updates (cdr fields)))))
-(make-event
- (let ((fields (append (fn2-checkpoint-teardown-bank-observation-fields 0 '(valid candidate checkpoint history incarnation))
-                       (fn2-checkpoint-teardown-bank-observation-fields 1 '(valid candidate checkpoint history incarnation)))))
-  (value `(progn
-   (defun fn2-checkpoint-teardown-banks-samep (fn2-checkpoint-teardown-debt fn2-checkpoint-publication)
-    (declare (xargs :stobjs (fn2-checkpoint-teardown-debt fn2-checkpoint-publication) :verify-guards nil))
-    (and (< 0 (fn2-checkpoint-publication-rows fn2-checkpoint-publication))
-         ,@(fn2-checkpoint-teardown-bank-comparisons fields)))
-   (defun fn2-checkpoint-teardown-banks-observe (fn2-checkpoint-teardown-debt fn2-checkpoint-publication)
-    (declare (xargs :stobjs (fn2-checkpoint-teardown-debt fn2-checkpoint-publication) :verify-guards nil))
-    (if (not (< 0 (fn2-checkpoint-publication-rows fn2-checkpoint-publication))) fn2-checkpoint-teardown-debt
-     (let* ,(fn2-checkpoint-teardown-bank-updates fields) fn2-checkpoint-teardown-debt)))))))
+; Fixed protocol roles, bounded32-field exact comparison/copy. A protection
+; change during this whole sweep remains latched for another whole sweep.
+(defun fn2-checkpoint-teardown-bank-fields-samep (i fn2-checkpoint-teardown-debt fn2-checkpoint-publication)
+ (declare (xargs :stobjs (fn2-checkpoint-teardown-debt fn2-checkpoint-publication) :verify-guards nil :measure (nfix (- 32 (nfix i)))))
+ (or (>= (nfix i) 32)
+     (and (equal (fn2-checkpoint-teardown-debt-observedi i fn2-checkpoint-teardown-debt)
+                 (fn2-checkpoint-bank-obligations-observe i fn2-checkpoint-publication))
+          (fn2-checkpoint-teardown-bank-fields-samep (+ 1 i) fn2-checkpoint-teardown-debt fn2-checkpoint-publication))))
+(defun fn2-checkpoint-teardown-banks-samep (fn2-checkpoint-teardown-debt fn2-checkpoint-publication)
+ (declare (xargs :stobjs (fn2-checkpoint-teardown-debt fn2-checkpoint-publication) :verify-guards nil))
+ (fn2-checkpoint-teardown-bank-fields-samep 0 fn2-checkpoint-teardown-debt fn2-checkpoint-publication))
+(defun fn2-checkpoint-teardown-bank-fields-observe (i fn2-checkpoint-teardown-debt fn2-checkpoint-publication)
+ (declare (xargs :stobjs (fn2-checkpoint-teardown-debt fn2-checkpoint-publication) :verify-guards nil :measure (nfix (- 32 (nfix i)))))
+ (if (>= (nfix i) 32) fn2-checkpoint-teardown-debt
+  (let ((fn2-checkpoint-teardown-debt (update-fn2-checkpoint-teardown-debt-observedi i
+         (fn2-checkpoint-bank-obligations-observe i fn2-checkpoint-publication) fn2-checkpoint-teardown-debt)))
+   (fn2-checkpoint-teardown-bank-fields-observe (+ 1 i) fn2-checkpoint-teardown-debt fn2-checkpoint-publication))))
+(defun fn2-checkpoint-teardown-banks-observe (fn2-checkpoint-teardown-debt fn2-checkpoint-publication)
+ (declare (xargs :stobjs (fn2-checkpoint-teardown-debt fn2-checkpoint-publication) :verify-guards nil))
+ (fn2-checkpoint-teardown-bank-fields-observe 0 fn2-checkpoint-teardown-debt fn2-checkpoint-publication))
 (defun fn2-checkpoint-teardown-needed (fn2-checkpoint-teardown-debt fn2-checkpoint-publication fn2-extents)
  (declare (xargs :stobjs (fn2-checkpoint-teardown-debt fn2-checkpoint-publication fn2-extents) :verify-guards nil
   :guard (and (fn2-checkpoint-teardown-debt-wfp fn2-checkpoint-teardown-debt) (fn2-checkpoint-publication-wfp fn2-checkpoint-publication) (fn2-extents-wfp fn2-extents))))
@@ -66,7 +55,7 @@
               (fn2-checkpoint-teardown-debt-event scan fn2-checkpoint-teardown-debt)
               (fn2-checkpoint-teardown-debt-phase scan fn2-checkpoint-teardown-debt)))))
 (defcost fn2-checkpoint-teardown-select-op :child fn2-checkpoint-teardown-select :answers t :bytes 32)
-(defcost fn2-checkpoint-teardown-sweep-begin-op :answers (:more :state)
+(defcost fn2-checkpoint-teardown-sweep-begin-op :answers (:more :state) :bytes 256
  :tables (fn2-core-checkpoint-teardown-debt fn2-core-extents))
 (defcost fn2-checkpoint-teardown-submission-ready-op :answers (:ok))
 (defmacro fn2-checkpoint-teardown-sweep-events ()
