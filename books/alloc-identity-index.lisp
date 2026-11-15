@@ -12,8 +12,14 @@
 (defun fn2-alloc-identity-bindings (fields)
  (declare (xargs :verify-guards nil))
  (if (atom fields) nil
-  (cons `(fn2-extents (,(fn2-columns-pre "UPDATE-" (fn2-columns-pre "FN2-ALLOC-IDENTITY-" (caar fields))) ,(cadar fields) fn2-extents))
+  (cons `(fn2-extents (,(fn2-columns-sym 'update-fn2-alloc-identity- (symbol-name (caar fields))) ,(cadar fields) fn2-extents))
         (fn2-alloc-identity-bindings (cdr fields)))))
+; PHASE and COUNT are inherited Common Lisp symbols. Mint actual allocator
+; updater names in ACL2, rather than inheriting a field token's package.
+(assert-event (equal (car (cadar (fn2-alloc-identity-bindings '((phase 0)))))
+                     'update-fn2-alloc-identity-phase))
+(assert-event (equal (car (cadar (fn2-alloc-identity-bindings '((count 0)))))
+                     'update-fn2-alloc-identity-count))
 (defmacro fn2-alloc-identity-put (&rest fields)
  `(let* ,(fn2-alloc-identity-bindings fields) fn2-extents))
 
