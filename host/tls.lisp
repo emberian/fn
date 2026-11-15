@@ -189,3 +189,31 @@
       (unless (member observed '(:ok :blocked))
        (error "fn2 TLS: selected child observation refused: ~S" observed))
       (values :progress 0)))))))
+
+
+(defun fn2-native-tls-mark-closed (host slot tls)
+ ;; Core authorization binds even a never-started sibling before the carrier
+ ;; disappears; a private child is settled by its upper codec instead.
+ (let ((op (aref (fn2-nhost-ops host) slot)))
+  (multiple-value-bind (code record)
+      (fn2-host-tls-mark-closed slot (fn2-nop-gen op)
+       (fn2-native-tls-transport tls) (fn2-nop-tls-record op) (fn2-nhost-core host))
+   (setf (fn2-nop-tls-record op) record)
+   (unless (member code '(:ok :kind :child :too-late))
+    (error "fn2 TLS: closed carrier loan authorization refused: ~S" code)))))
+
+(defun fn2-native-tls-cancel-result (host slot other)
+ ;; Works for closed-waiting operations without looking up a live capability.
+ (let ((cancel (aref (fn2-nhost-ops host) slot)))
+  (multiple-value-bind (decision target code count won address record)
+      (fn2-host-tls-cancel-result slot (fn2-nop-gen cancel)
+       (fn2-nop-tls-record other) (fn2-nhost-core host))
+   (setf (fn2-nop-tls-record other) record)
+   (case decision
+    ((:productive :cancelled)
+     (fn2-n-complete host target code count 0 nil (fn2-n-octets host address count))
+     (fn2-n-complete host slot :ok 0 0 won)
+     t)
+    ((:unbound :kind) nil)
+    (:too-late (fn2-n-complete host slot :ok 0 0 nil) t)
+    (otherwise (error "fn2 TLS: cancellation authorization refused: ~S" decision))))))

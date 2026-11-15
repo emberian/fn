@@ -323,10 +323,12 @@
            (setf (fn2-ncap-fd cap) -1 (fn2-ncap-closed cap) t)
            ;; Other waiting uses keep their loans until the core cancels them;
            ;; no syscall ran for them, so no result is invented.
-           (loop for other across (fn2-nhost-ops host)
+           (loop for other across (fn2-nhost-ops host) for other-slot from 0
                  when (and (not (eq other op)) (= (fn2-nop-state other) +fn2-n-waiting+)
                            (eql (fn2-nop-cap other) (fn2-nop-cap op)) (eql (fn2-nop-nonce other) (fn2-nop-nonce op)))
-                   do (setf (fn2-nop-state other) +fn2-n-closed-waiting+)))
+                   do (when (fn2-ncap-tls cap)
+                        (fn2-native-tls-mark-closed host other-slot (fn2-ncap-tls cap)))
+                      (setf (fn2-nop-state other) +fn2-n-closed-waiting+)))
          ;; Close always completes (the vocabulary has no failure for it).
          (fn2-n-complete host slot :ok 0)))
       ((= kind *fn2-action-cancel*)
@@ -346,9 +348,10 @@
                       (when (and cap (fn2-n-tls-op-p other cap))
 
                         (fn2-native-tls-close (fn2-ncap-tls cap) (fn2-nop-cap other) (fn2-ncap-nonce cap) host)
-                        ))
-                    (fn2-n-complete host target :cancelled 0)
-                    (fn2-n-complete host slot :ok 0 0 t))
+                        (fn2-native-tls-mark-closed host target (fn2-ncap-tls cap))))
+                    (unless (fn2-native-tls-cancel-result host slot other)
+                     (fn2-n-complete host target :cancelled 0)
+                     (fn2-n-complete host slot :ok 0 0 t)))
            (fn2-n-complete host slot :ok 0 0 nil))))
       ((= kind *fn2-action-write*)
        ;; the loaned octets onto the device at the storage offset
