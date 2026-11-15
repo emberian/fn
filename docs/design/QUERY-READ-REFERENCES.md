@@ -103,3 +103,12 @@ evidence without stopping legitimate scheduling. Runtime changes and a concrete 
 Independent trace replay and reference FIFO semantics are under construction;
 current lifecycle fixtures remain source controls awaiting composition and
 execution.
+
+The reference correspondence subject is still open. An ACL2 `defattach`
+does not establish logical equality between a constrained machine-run stub
+and its selected callback. Generated obligations must name the selected
+implementation and an explicit attachment-resolution/binding semantics or
+paired relational hook contract. The first callback control must assert the
+full initial relation, compare every result and post-state carrier, and
+reject an omitted-enqueue mutation. The direct two-wake seam controls do not
+establish served callback reachability.
