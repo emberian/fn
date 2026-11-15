@@ -82,6 +82,56 @@
   :in-theory (enable fn2-pool-credit-store-demands fn2-pool-wfp))))
 
 
+; Public frame class generated from the six actual group-array setters.
+(defthm fn2-pool-credit-purpose-keeps-group-geometry
+ (and (equal (fn2-pool-nclasses (update-fn2-pool-credit-purposei i value fn2-pool)) (fn2-pool-nclasses fn2-pool))
+      (equal (fn2-pool-credit-phase-length (update-fn2-pool-credit-purposei i value fn2-pool)) (fn2-pool-credit-phase-length fn2-pool))
+      (equal (fn2-pool-credit-group-nonce-length (update-fn2-pool-credit-purposei i value fn2-pool)) (fn2-pool-credit-group-nonce-length fn2-pool))
+      (equal (fn2-pool-credit-group-owner-kind-length (update-fn2-pool-credit-purposei i value fn2-pool)) (fn2-pool-credit-group-owner-kind-length fn2-pool))
+      (equal (fn2-pool-credit-group-owner-slot-length (update-fn2-pool-credit-purposei i value fn2-pool)) (fn2-pool-credit-group-owner-slot-length fn2-pool))
+      (equal (fn2-pool-credit-group-owner-gen-length (update-fn2-pool-credit-purposei i value fn2-pool)) (fn2-pool-credit-group-owner-gen-length fn2-pool)))
+ :hints (("Goal" :in-theory (enable fn2-pool-nclasses fn2-pool-credit-phase-length fn2-pool-credit-group-nonce-length fn2-pool-credit-group-owner-kind-length fn2-pool-credit-group-owner-slot-length fn2-pool-credit-group-owner-gen-length update-fn2-pool-credit-purposei))))
+(defthm fn2-pool-credit-phase-keeps-group-geometry
+ (and (equal (fn2-pool-nclasses (update-fn2-pool-credit-phasei i value fn2-pool)) (fn2-pool-nclasses fn2-pool))
+      (equal (fn2-pool-credit-purpose-length (update-fn2-pool-credit-phasei i value fn2-pool)) (fn2-pool-credit-purpose-length fn2-pool))
+      (equal (fn2-pool-credit-group-nonce-length (update-fn2-pool-credit-phasei i value fn2-pool)) (fn2-pool-credit-group-nonce-length fn2-pool))
+      (equal (fn2-pool-credit-group-owner-kind-length (update-fn2-pool-credit-phasei i value fn2-pool)) (fn2-pool-credit-group-owner-kind-length fn2-pool))
+      (equal (fn2-pool-credit-group-owner-slot-length (update-fn2-pool-credit-phasei i value fn2-pool)) (fn2-pool-credit-group-owner-slot-length fn2-pool))
+      (equal (fn2-pool-credit-group-owner-gen-length (update-fn2-pool-credit-phasei i value fn2-pool)) (fn2-pool-credit-group-owner-gen-length fn2-pool)))
+ :hints (("Goal" :in-theory (enable fn2-pool-nclasses fn2-pool-credit-purpose-length fn2-pool-credit-group-nonce-length fn2-pool-credit-group-owner-kind-length fn2-pool-credit-group-owner-slot-length fn2-pool-credit-group-owner-gen-length update-fn2-pool-credit-phasei))))
+(defthm fn2-pool-credit-group-nonce-keeps-group-geometry
+ (and (equal (fn2-pool-nclasses (update-fn2-pool-credit-group-noncei i value fn2-pool)) (fn2-pool-nclasses fn2-pool))
+      (equal (fn2-pool-credit-purpose-length (update-fn2-pool-credit-group-noncei i value fn2-pool)) (fn2-pool-credit-purpose-length fn2-pool))
+      (equal (fn2-pool-credit-phase-length (update-fn2-pool-credit-group-noncei i value fn2-pool)) (fn2-pool-credit-phase-length fn2-pool))
+      (equal (fn2-pool-credit-group-owner-kind-length (update-fn2-pool-credit-group-noncei i value fn2-pool)) (fn2-pool-credit-group-owner-kind-length fn2-pool))
+      (equal (fn2-pool-credit-group-owner-slot-length (update-fn2-pool-credit-group-noncei i value fn2-pool)) (fn2-pool-credit-group-owner-slot-length fn2-pool))
+      (equal (fn2-pool-credit-group-owner-gen-length (update-fn2-pool-credit-group-noncei i value fn2-pool)) (fn2-pool-credit-group-owner-gen-length fn2-pool)))
+ :hints (("Goal" :in-theory (enable fn2-pool-nclasses fn2-pool-credit-purpose-length fn2-pool-credit-phase-length fn2-pool-credit-group-owner-kind-length fn2-pool-credit-group-owner-slot-length fn2-pool-credit-group-owner-gen-length update-fn2-pool-credit-group-noncei))))
+(defthm fn2-pool-credit-group-owner-kind-keeps-group-geometry
+ (and (equal (fn2-pool-nclasses (update-fn2-pool-credit-group-owner-kindi i value fn2-pool)) (fn2-pool-nclasses fn2-pool))
+      (equal (fn2-pool-credit-purpose-length (update-fn2-pool-credit-group-owner-kindi i value fn2-pool)) (fn2-pool-credit-purpose-length fn2-pool))
+      (equal (fn2-pool-credit-phase-length (update-fn2-pool-credit-group-owner-kindi i value fn2-pool)) (fn2-pool-credit-phase-length fn2-pool))
+      (equal (fn2-pool-credit-group-nonce-length (update-fn2-pool-credit-group-owner-kindi i value fn2-pool)) (fn2-pool-credit-group-nonce-length fn2-pool))
+      (equal (fn2-pool-credit-group-owner-slot-length (update-fn2-pool-credit-group-owner-kindi i value fn2-pool)) (fn2-pool-credit-group-owner-slot-length fn2-pool))
+      (equal (fn2-pool-credit-group-owner-gen-length (update-fn2-pool-credit-group-owner-kindi i value fn2-pool)) (fn2-pool-credit-group-owner-gen-length fn2-pool)))
+ :hints (("Goal" :in-theory (enable fn2-pool-nclasses fn2-pool-credit-purpose-length fn2-pool-credit-phase-length fn2-pool-credit-group-nonce-length fn2-pool-credit-group-owner-slot-length fn2-pool-credit-group-owner-gen-length update-fn2-pool-credit-group-owner-kindi))))
+(defthm fn2-pool-credit-group-owner-slot-keeps-group-geometry
+ (and (equal (fn2-pool-nclasses (update-fn2-pool-credit-group-owner-sloti i value fn2-pool)) (fn2-pool-nclasses fn2-pool))
+      (equal (fn2-pool-credit-purpose-length (update-fn2-pool-credit-group-owner-sloti i value fn2-pool)) (fn2-pool-credit-purpose-length fn2-pool))
+      (equal (fn2-pool-credit-phase-length (update-fn2-pool-credit-group-owner-sloti i value fn2-pool)) (fn2-pool-credit-phase-length fn2-pool))
+      (equal (fn2-pool-credit-group-nonce-length (update-fn2-pool-credit-group-owner-sloti i value fn2-pool)) (fn2-pool-credit-group-nonce-length fn2-pool))
+      (equal (fn2-pool-credit-group-owner-kind-length (update-fn2-pool-credit-group-owner-sloti i value fn2-pool)) (fn2-pool-credit-group-owner-kind-length fn2-pool))
+      (equal (fn2-pool-credit-group-owner-gen-length (update-fn2-pool-credit-group-owner-sloti i value fn2-pool)) (fn2-pool-credit-group-owner-gen-length fn2-pool)))
+ :hints (("Goal" :in-theory (enable fn2-pool-nclasses fn2-pool-credit-purpose-length fn2-pool-credit-phase-length fn2-pool-credit-group-nonce-length fn2-pool-credit-group-owner-kind-length fn2-pool-credit-group-owner-gen-length update-fn2-pool-credit-group-owner-sloti))))
+(defthm fn2-pool-credit-group-owner-gen-keeps-group-geometry
+ (and (equal (fn2-pool-nclasses (update-fn2-pool-credit-group-owner-geni i value fn2-pool)) (fn2-pool-nclasses fn2-pool))
+      (equal (fn2-pool-credit-purpose-length (update-fn2-pool-credit-group-owner-geni i value fn2-pool)) (fn2-pool-credit-purpose-length fn2-pool))
+      (equal (fn2-pool-credit-phase-length (update-fn2-pool-credit-group-owner-geni i value fn2-pool)) (fn2-pool-credit-phase-length fn2-pool))
+      (equal (fn2-pool-credit-group-nonce-length (update-fn2-pool-credit-group-owner-geni i value fn2-pool)) (fn2-pool-credit-group-nonce-length fn2-pool))
+      (equal (fn2-pool-credit-group-owner-kind-length (update-fn2-pool-credit-group-owner-geni i value fn2-pool)) (fn2-pool-credit-group-owner-kind-length fn2-pool))
+      (equal (fn2-pool-credit-group-owner-slot-length (update-fn2-pool-credit-group-owner-geni i value fn2-pool)) (fn2-pool-credit-group-owner-slot-length fn2-pool)))
+ :hints (("Goal" :in-theory (enable fn2-pool-nclasses fn2-pool-credit-purpose-length fn2-pool-credit-phase-length fn2-pool-credit-group-nonce-length fn2-pool-credit-group-owner-kind-length fn2-pool-credit-group-owner-slot-length update-fn2-pool-credit-group-owner-geni))))
+
 (defun fn2-pool-credit-store-groups (groups i fn2-pool)
  (declare (xargs :stobjs fn2-pool :guard (and (fn2-pool-wfp fn2-pool) (natp i)
   (fn2-pool-credit-groupsp groups (fn2-pool-nclasses fn2-pool)))
@@ -103,6 +153,18 @@
           (fn2-pool (update-fn2-pool-credit-group-owner-geni i 0 fn2-pool))
           (fn2-pool (fn2-pool-credit-store-demands (cdar groups) (* i (fn2-pool-nclasses fn2-pool)) fn2-pool)))
     (fn2-pool-credit-store-groups (cdr groups) (+ 1 i) fn2-pool)))))
+(defthm fn2-pool-credit-store-groups-wfp
+ (implies (fn2-pool-wfp fn2-pool)
+          (fn2-pool-wfp (fn2-pool-credit-store-groups groups i fn2-pool)))
+ :hints (("Goal" :induct (fn2-pool-credit-store-groups groups i fn2-pool))
+         (fn2-columns-guard-hint '(fn2-pool) '(fn2-pool-credit-store-demands)
+                                 '(fn2-pool-credit-store-groups) world)))
+(defthm fn2-pool-credit-store-groups-nclasses
+ (equal (fn2-pool-nclasses (fn2-pool-credit-store-groups groups i fn2-pool))
+        (fn2-pool-nclasses fn2-pool))
+ :hints (("Goal" :induct (fn2-pool-credit-store-groups groups i fn2-pool))
+         (fn2-columns-guard-hint '(fn2-pool) '(fn2-pool-credit-store-demands)
+                                 '(fn2-pool-credit-store-groups) world)))
 (defun fn2-pool-credit-store-protected (class groups fn2-pool)
  (declare (xargs :stobjs fn2-pool :guard (and (fn2-pool-wfp fn2-pool) (natp class))
   :measure (nfix (- (nfix (fn2-pool-nclasses fn2-pool)) (nfix class)))))
@@ -112,8 +174,50 @@
    (let ((fn2-pool (update-fn2-pool-credit-protectedi class (fn2-pool-credit-request class groups) fn2-pool)))
     (fn2-pool-credit-store-protected (+ class 1) groups fn2-pool)))))
 
+(defthm fn2-pool-credit-store-protected-wfp
+ (implies (fn2-pool-wfp fn2-pool)
+          (fn2-pool-wfp (fn2-pool-credit-store-protected class groups fn2-pool)))
+ :hints (("Goal" :induct (fn2-pool-credit-store-protected class groups fn2-pool))
+         (fn2-columns-guard-hint '(fn2-pool) '(fn2-pool-credit-store-demands)
+                                 '(fn2-pool-credit-store-protected) world)))
+(defthm fn2-pool-credit-store-protected-nclasses
+ (equal (fn2-pool-nclasses (fn2-pool-credit-store-protected class groups fn2-pool))
+        (fn2-pool-nclasses fn2-pool))
+ :hints (("Goal" :induct (fn2-pool-credit-store-protected class groups fn2-pool)
+  :in-theory (enable fn2-pool-credit-store-protected fn2-pool-nclasses))))
+; Public scalar frames for the actual configuration resizers.
+(defthm resize-fn2-pool-credit-protected-keeps-nclasses
+ (equal (fn2-pool-nclasses (resize-fn2-pool-credit-protected n fn2-pool)) (fn2-pool-nclasses fn2-pool))
+ :hints (("Goal" :in-theory (enable fn2-pool-nclasses resize-fn2-pool-credit-protected))))
+(defthm resize-fn2-pool-credit-purpose-keeps-nclasses
+ (equal (fn2-pool-nclasses (resize-fn2-pool-credit-purpose n fn2-pool)) (fn2-pool-nclasses fn2-pool))
+ :hints (("Goal" :in-theory (enable fn2-pool-nclasses resize-fn2-pool-credit-purpose))))
+(defthm resize-fn2-pool-credit-phase-keeps-nclasses
+ (equal (fn2-pool-nclasses (resize-fn2-pool-credit-phase n fn2-pool)) (fn2-pool-nclasses fn2-pool))
+ :hints (("Goal" :in-theory (enable fn2-pool-nclasses resize-fn2-pool-credit-phase))))
+(defthm resize-fn2-pool-credit-group-nonce-keeps-nclasses
+ (equal (fn2-pool-nclasses (resize-fn2-pool-credit-group-nonce n fn2-pool)) (fn2-pool-nclasses fn2-pool))
+ :hints (("Goal" :in-theory (enable fn2-pool-nclasses resize-fn2-pool-credit-group-nonce))))
+(defthm resize-fn2-pool-credit-group-owner-kind-keeps-nclasses
+ (equal (fn2-pool-nclasses (resize-fn2-pool-credit-group-owner-kind n fn2-pool)) (fn2-pool-nclasses fn2-pool))
+ :hints (("Goal" :in-theory (enable fn2-pool-nclasses resize-fn2-pool-credit-group-owner-kind))))
+(defthm resize-fn2-pool-credit-group-owner-slot-keeps-nclasses
+ (equal (fn2-pool-nclasses (resize-fn2-pool-credit-group-owner-slot n fn2-pool)) (fn2-pool-nclasses fn2-pool))
+ :hints (("Goal" :in-theory (enable fn2-pool-nclasses resize-fn2-pool-credit-group-owner-slot))))
+(defthm resize-fn2-pool-credit-group-owner-gen-keeps-nclasses
+ (equal (fn2-pool-nclasses (resize-fn2-pool-credit-group-owner-gen n fn2-pool)) (fn2-pool-nclasses fn2-pool))
+ :hints (("Goal" :in-theory (enable fn2-pool-nclasses resize-fn2-pool-credit-group-owner-gen))))
+(defthm resize-fn2-pool-credit-demand-keeps-nclasses
+ (equal (fn2-pool-nclasses (resize-fn2-pool-credit-demand n fn2-pool)) (fn2-pool-nclasses fn2-pool))
+ :hints (("Goal" :in-theory (enable fn2-pool-nclasses resize-fn2-pool-credit-demand))))
+(defthm resize-fn2-pool-credit-available-keeps-nclasses
+ (equal (fn2-pool-nclasses (resize-fn2-pool-credit-available n fn2-pool)) (fn2-pool-nclasses fn2-pool))
+ :hints (("Goal" :in-theory (enable fn2-pool-nclasses resize-fn2-pool-credit-available))))
 (defun fn2-pool-credit-configure (groups fn2-pool)
- (declare (xargs :stobjs fn2-pool :guard (fn2-pool-wfp fn2-pool)))
+ (declare (xargs :stobjs fn2-pool :guard (fn2-pool-wfp fn2-pool)
+ :guard-hints ((fn2-columns-guard-hint '(fn2-pool)
+  '(fn2-pool-credit-store-groups fn2-pool-credit-store-protected
+    fn2-pool-credit-config-roomp fn2-pool-credit-groupsp) nil world))))
  (b* (((unless (and (equal (fn2-pool-credit-configured fn2-pool) 0)
                     (true-listp groups) (posp (len groups)) (posp (fn2-pool-nclasses fn2-pool))
                     (< (len groups) *fn2-none*) (<= (len groups) (fn2-pool-rows fn2-pool))
@@ -144,9 +248,29 @@
       (equal kind (fn2-pool-credit-group-owner-kindi group fn2-pool))
       (equal owner (fn2-pool-credit-group-owner-sloti group fn2-pool))
       (equal generation (fn2-pool-credit-group-owner-geni group fn2-pool))))
+(defthm fn2-pool-credit-flat-index-bound
+ (implies (and (natp group) (natp groups) (natp class) (natp classes)
+               (< group groups) (< class classes))
+          (< (+ (* group classes) class) (* groups classes)))
+ :hints (("Goal" :nonlinearp t))
+ :rule-classes nil)
+(defthm fn2-pool-credit-shaped-index-bound
+ (implies (and (fn2-poolp fn2-pool) (fn2-pool-credit-shapep fn2-pool)
+               (natp group) (< group (fn2-pool-credit-group-count fn2-pool))
+               (natp class) (< class (fn2-pool-nclasses fn2-pool)))
+          (and (< (+ (* group (fn2-pool-nclasses fn2-pool)) class)
+                  (fn2-pool-credit-available-length fn2-pool))
+               (< (+ (* group (fn2-pool-nclasses fn2-pool)) class)
+                  (fn2-pool-credit-demand-length fn2-pool))))
+ :hints (("Goal" :in-theory (enable fn2-pool-credit-shapep)
+  :use ((:instance fn2-pool-credit-flat-index-bound
+          (groups (fn2-pool-credit-group-count fn2-pool))
+          (classes (fn2-pool-nclasses fn2-pool)))))))
 (defun fn2-pool-credit-fullp (group class fn2-pool)
  (declare (xargs :stobjs fn2-pool :guard (and (fn2-pool-wfp fn2-pool) (natp class))
-  :measure (nfix (- (nfix (fn2-pool-nclasses fn2-pool)) (nfix class)))))
+  :measure (nfix (- (nfix (fn2-pool-nclasses fn2-pool)) (nfix class)))
+  :guard-hints (("Goal" :use (fn2-pool-credit-shaped-index-bound))
+   (fn2-columns-guard-hint '(fn2-pool) '(fn2-pool-credit-shapep) nil world))))
  (if (not (and (fn2-pool-credit-shapep fn2-pool) (natp group) (< group (fn2-pool-credit-group-count fn2-pool)))) nil
   (if (not (and (natp class) (< class (nfix (fn2-pool-nclasses fn2-pool))))) t
    (let ((i (+ (* group (fn2-pool-nclasses fn2-pool)) class)))
@@ -154,7 +278,9 @@
          (fn2-pool-credit-fullp group (+ class 1) fn2-pool))))))
 (defun fn2-pool-credit-emptyp (group class fn2-pool)
  (declare (xargs :stobjs fn2-pool :guard (and (fn2-pool-wfp fn2-pool) (natp class))
-  :measure (nfix (- (nfix (fn2-pool-nclasses fn2-pool)) (nfix class)))))
+  :measure (nfix (- (nfix (fn2-pool-nclasses fn2-pool)) (nfix class)))
+  :guard-hints (("Goal" :use (fn2-pool-credit-shaped-index-bound))
+   (fn2-columns-guard-hint '(fn2-pool) '(fn2-pool-credit-shapep) nil world))))
  (if (not (and (fn2-pool-credit-shapep fn2-pool) (natp group) (< group (fn2-pool-credit-group-count fn2-pool)))) nil
   (if (not (and (natp class) (< class (nfix (fn2-pool-nclasses fn2-pool))))) t
    (let ((i (+ (* group (fn2-pool-nclasses fn2-pool)) class)))
@@ -178,7 +304,9 @@
          (fn2-pool (update-fn2-pool-credit-phasei group *fn2-pool-credit-redeeming* fn2-pool)))
    (mv :ok fn2-pool))))
 (defun fn2-pool-reserve-credit (group nonce class kind owner generation fn2-pool)
- (declare (xargs :stobjs fn2-pool :guard (fn2-pool-wfp fn2-pool)))
+ (declare (xargs :stobjs fn2-pool :guard (fn2-pool-wfp fn2-pool)
+ :guard-hints (("Goal" :use (fn2-pool-credit-shaped-index-bound))
+   (fn2-columns-guard-hint '(fn2-pool) nil nil world))))
  (b* (((unless (and (fn2-pool-credit-ownerp group nonce kind owner generation fn2-pool)
                     (equal (fn2-pool-credit-phasei group fn2-pool) *fn2-pool-credit-redeeming*)
                     (natp class) (< class (fn2-pool-nclasses fn2-pool)))) (mv :owner 0 0 fn2-pool))
