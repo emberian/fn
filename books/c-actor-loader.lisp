@@ -35,7 +35,7 @@
            (and (equal (fn2-succ-txns-rstate tx fn2-succ-txns) *fn2-succ-resolve-look*)
                 (< (fn2-succ-txns-ri tx fn2-succ-txns) *fn2-succ-slots*) (< s (fn2-succ-slots-rows fn2-succ-slots))
                 (equal (fn2-run-cursors-schema tx fn2-run-cursors) (fn2-succ-slots-sid s fn2-succ-slots))
-                (equal (fn2-run-cursors-run tx fn2-run-cursors) (fn2-succ-txns-rbound tx fn2-succ-txns)))))))
+                (equal (fn2-run-cursors-priority tx fn2-run-cursors) (fn2-succ-txns-rbound tx fn2-succ-txns)))))))
 (defun fn2-c-actor-tx-owner (tx kind owner generation fn2-succ-txns fn2-succ-slots fn2-run-cursors fn2-run-loads fn2-checkpoint-summary-leases)
  (declare (xargs :stobjs (fn2-succ-txns fn2-succ-slots fn2-run-cursors fn2-run-loads fn2-checkpoint-summary-leases)
  :guard (and (fn2-succ-txns-wfp fn2-succ-txns) (fn2-succ-slots-wfp fn2-succ-slots) (fn2-run-cursors-wfp fn2-run-cursors)
