@@ -52,3 +52,9 @@ frozen overlays after actual trusted writes, and unchanged full accounts/IDs
 through NAME writing. Source prepared only; no ACL2 or physical boot execution.
 The split alone does not alter the current executor startup ordering; the parent
 must connect it and the bounded fresh branch before claiming the startup repair.
+
+## Actual executor and sealer gate
+
+Image-profile executor initialization now binds accounts and initializes the parked sealer through the actor-only helper. It creates no NAME overlays; non-image initialization keeps its existing full genesis path. The actual sealer grant predicate and direct step both require either absence of a boot actor in the kind directory or a readable, unstopped READY boot actor. An unreadable present actor is refusal, not absence. This prevents fresh NAME and recovered source mutations from racing sealer work before replay/epoch closure.
+
+The bounded fresh NAME continuation and actual fresh boot branch wiring remain pending in this source checkpoint; source parsing passed, not ACL2 execution.
