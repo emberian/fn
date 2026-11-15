@@ -3,7 +3,7 @@
 (include-book "machines-a-access")
 (include-book "commit-format")
 (include-book "checkpoint-commit-leases")
-(include-book "pool-credit")
+(include-book "pool-credit-contracts")
 (fn2-book-layer :b)
 ; Named stops (review ruling 3): a commit helper that finds a state its callers
 ; rule out stops the core with a named reason instead of absorbing it
