@@ -12,7 +12,7 @@ def event(text,head,name):
  if len(ms)!=1:raise ValueError('one event '+name)
  return ms[0].node
 
-def project(book,text):
+def _project_banks(book,text):
  if book=='runs':
   extras='''
  (fn2-run-installed-resident-limit :type (unsigned-byte 32) :initially 0 :why "Configured resident-only prefix R; never derived from physical bank occupancy.")
@@ -40,6 +40,7 @@ def project(book,text):
   text=once(text,old,new)
   old='(unsigned-byte-p 32 (+ (fn2-b-capacity :identity-runs 64 profile) (fn2-b-capacity :extent-slots 16 profile)))'
   new='(and (posp (fn2-b-capacity :extent-slots 16 profile)) (unsigned-byte-p 32 (fn2-b-capacity :extent-slots 16 profile)) (unsigned-byte-p 32 (+ (fn2-b-capacity :identity-runs 64 profile) (* 2 (fn2-b-capacity :extent-slots 16 profile)))))'
+  if '(fn2-run-installed-row-count (fn2-b-capacity :identity-runs 64 profile)' in text:return text
   return once(text,old,new)
  if book=='sealer':
   for name in ('fn2-seal-free-rows','fn2-seal-free-row','fn2-seal-retired-row'):
@@ -62,7 +63,21 @@ def project(book,text):
    edits.append((m.node.start,m.node.end,'(fn2-run-installed-init-configured '+resident+' 1 fn2-run-installed)'))
   return lr.write(text,edits)
  raise ValueError(book)
+def project_row_count(book,text):
+ if book=='run-geometry':
+  return once(text,'(include-book "format-base")','(include-book "format-base")\n(include-book "run-installed-geometry")')
+ names={'runs':('fn2-run-installed-bank-geometry-p','fn2-run-installed-init-configured'),'machines-c':('fn2-idc-profilep',)}.get(book,())
+ edits=[]
+ for name in names:
+  f=event(text,'defun',name)
+  for m in lr.match('(+ ?resident (* 2 ?capacity))',[f],deep=True):
+   r=m.captures['resident'];e=m.captures['capacity']
+   edits.append((m.node.start,m.node.end,'(fn2-run-installed-row-count '+text[r.start:r.end]+' '+text[e.start:e.end]+')'))
+ return lr.write(text,edits)
+def project(book,text):
+ if book=='run-geometry':return project_row_count(book,text)
+ return project_row_count(book,_project_banks(book,text))
 if __name__=='__main__':
- for book in ('runs','machines-c','sealer','range'):
+ for book in ('run-geometry','runs','machines-c','sealer','range'):
   p=Path(__file__).resolve().parents[1]/'books'/(book+'.lisp');text=p.read_text();p.write_text(project(book,text))
  p=Path(__file__).resolve().parents[1]/'tests/sealer-unit.lisp';text=p.read_text();p.write_text(project('sealer-unit',text))

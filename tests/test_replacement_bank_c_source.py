@@ -16,9 +16,9 @@ class ReplacementBank(unittest.TestCase):
  def test_no_wfp_scan_or_inferred_resident_region(self):
   t=(ROOT/'books/runs.lisp').read_text();p=body(t,'fn2-run-installed-bank-geometry-p')
   self.assertNotIn('wfp',p);self.assertNotIn('from',p)
-  self.assertIn('bank-configured',p);self.assertIn('resident-limit',p);self.assertIn('(* 2 ',p)
+  self.assertIn('bank-configured',p);self.assertIn('resident-limit',p);self.assertIn('(fn2-run-installed-row-count ',p)
   init=body(t,'fn2-run-installed-init-configured')
-  self.assertIn('(fn2-run-installed-init (+ resident (* 2 capacity))',init)
+  self.assertIn('(fn2-run-installed-init (fn2-run-installed-row-count resident capacity)',init)
   for f in ('resident-limit','bank-capacity','bank-configured'):self.assertIn('update-fn2-run-installed-'+f,init)
  def test_constructor_regions_and_guard_hints_preserved(self):
   t=(ROOT/'books/runs.lisp').read_text()
@@ -40,13 +40,23 @@ class ReplacementBank(unittest.TestCase):
  def test_actual_profile_initializes_two_banks(self):
   t=(ROOT/'books/machines-c.lisp').read_text()
   self.assertIn('(fn2-run-installed-init-configured (fn2-b-capacity :identity-runs 64 profile) (fn2-b-capacity :extent-slots 16 profile)',t)
-  self.assertIn('(* 2 (fn2-b-capacity :extent-slots 16 profile))',t)
+  self.assertIn('(fn2-run-installed-row-count (fn2-b-capacity :identity-runs 64 profile) (fn2-b-capacity :extent-slots 16 profile))',t)
  def test_cold_named_projection_is_bank_zero_only(self):
   s=project('checkpoint-summary-apply',DATA['cold-source'])
   self.assertIn('(fn2-run-installed-bank-start 0 fn2-run-installed)',s)
   self.assertIn('(= (fn2-checkpoint-summary-bank 0 fn2-checkpoint-summary) 0)',s)
   self.assertIn('(fn2-run-installed-bank-capacity fn2-run-installed)',s)
   self.assertEqual(project('checkpoint-summary-apply',s),s)
+ def test_shared_row_count_stage_preserves_frozen_bank_inputs(self):
+  from replacement_bank_c_rewrite import _project_banks,project_row_count
+  for b in ('runs','machines-c'):
+   self.assertEqual(project(b,DATA['before'][b]),project_row_count(b,_project_banks(b,DATA['before'][b])))
+  t=(ROOT/'books/run-installed-geometry.lisp').read_text()
+  self.assertIn('(fn2-book-layer :b)',t)
+  self.assertEqual(body(t,'fn2-run-installed-row-count'),'(+ resident (* 2 capacity))')
+  t=(ROOT/'books/run-geometry.lisp').read_text()
+  self.assertEqual(project('run-geometry',DATA['row-helper-stage-before']['run-geometry']),t)
+  self.assertEqual(project('run-geometry',t),t)
  def test_bare_initializer_census(self):
   calls=[]
   for directory in ('books','tests'):
