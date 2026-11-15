@@ -4,6 +4,7 @@ import sys,unittest
 from pathlib import Path
 ROOT=Path(__file__).resolve().parents[1];sys.path.insert(0,str(ROOT/'tools'))
 import lisp_rewrite as lr
+import lisp_source as ls
 def text(p):return (ROOT/p).read_text()
 def fun(p,n):
  s=text(p);m=lr.match('(defun '+n+' ?*b)',lr.parse(s).forms,deep=True)
@@ -64,6 +65,12 @@ class SealerPhysical(unittest.TestCase):
    m=lr.match('(fn2-run-build-start ?*args)',lr.parse(source).forms,deep=True)
    self.assertEqual(len(m),1);n=m[0].node;return source[n.start:n.end]
   self.assertEqual(call(old),call(owned))
+  oldtree=ls.read_sexp(ls.forms(old)[0]);newtree=ls.read_sexp(ls.forms(owned)[0])
+  def consume_claim(x):
+   if not isinstance(x,list):return x
+   return [consume_claim(v) for v in x if v!=['prefix-hash-live','0']]
+  self.assertEqual(oldtree[-1][1][-3:],consume_claim(newtree[-1][1][-3:]))
+  self.assertEqual(oldtree[-1][-1],newtree[-1][-1])
   self.assertIn('(prefix-hash-live 0)',owned)
   self.assertIn('(fn2-seal-prefix-owned-p fn2-seals fn2-pool)',start)
   proof=fun('books/sealer.lisp','fn2-seal-prefix-owned-p')
@@ -116,6 +123,20 @@ class SealerPhysical(unittest.TestCase):
   book=text('books/sealer-physical-loader.lisp')
   self.assertIn("(getpropc 'fn2-sealer-load-retire 'stobjs-out",book)
   self.assertNotIn('(fn2-checkpoint-cbase-release',book)
+ def test_direct_snapshot_guard_checks_owned_and_pending_windows(self):
+  s=fun('books/c-snapshot.lisp','fn2-csnapshot-sealer-quiescent-p')
+  for x in ('fn2-seals-copy-live','fn2-seals-prefix-hash-live','fn2-seals-prefix-page-live','fn2-run-load-region-freep'):self.assertIn(x,s)
+  s=fun('books/run-physical-region.lisp','fn2-run-load-region-freep')
+  for x in ('(fn2-run-loads-pending c fn2-run-loads) 0','(fn2-run-loads-windows c fn2-run-loads) 0'):self.assertIn(x,s)
+ def test_actual_copy_budget_accounts_read_and_write(self):
+  s=fun('books/run-physical-bound-step.lisp','fn2-run-load-copy-count')
+  self.assertIn('(min (floor budget 2) (- *fn2-commit-unit-bytes* copied))',s)
+  s=fun('books/run-physical-bound-step.lisp','fn2-run-bound-step')
+  self.assertIn('((when (< budget 2)) (fn2-run-load-step-mv :yield))',s)
+  self.assertIn('(n (fn2-run-load-copy-count budget copied))',s)
+  self.assertIn('(copied (+ copied n))',s)
+  fixture=text('tests/run-physical-copy-budget-unit.lisp')
+  for x in ('(= one 2048)','(= two 2048)','fn2-rpcb-equal','fn2-pool-copy-range','(<= (* 2 one) 4096)'):self.assertIn(x,fixture)
  def test_readonly_drain_face_has_no_fabricated_core_result(self):
   fixture=text('tests/sealer-physical-admission-unit.lisp')
   self.assertIn('((mv code c) (fn2-sealer-load-drain-op',fixture)

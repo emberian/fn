@@ -40,6 +40,17 @@ times the existing codec-derived read callback bound, plus one 4096-byte copy
 fragment. It does not reuse the old 4096-byte merge charge. The physical engine
 continues to use its separate sector quantum.
 
+The shared loader COPY count now charges both pool read and write: a 4096
+budget copies 2048 payload bytes, and a second turn completes the sector.
+Budget 1 explicitly yields without changing the continuation. VERIFY and
+CONTEXT phase charge qualification is separate and remains open; this repair
+does not establish a whole physical-step cost theorem.
+
+The final snapshot guard directly checks all three unused recipe live bits
+and the same region predicate used for admission. Each region row must be
+IDLE with pending0, windows0, and no live catalog lease. A zero observer receipt
+alone cannot advertise quiescence from an otherwise well-formed dirty row.
+
 This is source-only. The admission fixture is prepared and unexecuted; it
 checks actual actor receipt, whole-region admission, early-release refusal and
 cleanup, without planting a catalog or claiming a physical merge. Static

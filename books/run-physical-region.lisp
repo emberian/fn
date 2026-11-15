@@ -30,6 +30,7 @@
   (let ((c (fn2-run-load-region-cursor i b0 n0 b1 n1 b2 n2)))
    (and (< c (fn2-run-loads-rows fn2-run-loads)) (< c (fn2-checkpoint-summary-leases-rows fn2-checkpoint-summary-leases))
         (equal (fn2-run-loads-phase c fn2-run-loads) *fn2-run-load-phase-idle*)
+        (equal (fn2-run-loads-pending c fn2-run-loads) 0) (equal (fn2-run-loads-windows c fn2-run-loads) 0)
         (equal (fn2-checkpoint-summary-leases-live c fn2-checkpoint-summary-leases) 0)
         (fn2-run-load-region-freep (+ (nfix i) 1) b0 n0 b1 n1 b2 n2 fn2-run-loads fn2-checkpoint-summary-leases)))))
 (defmacro fn2-run-load-region-mv (code)

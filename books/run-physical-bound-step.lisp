@@ -14,6 +14,17 @@
    (fn2-run-load-digest c (+ i 1) row fn2-run-loads fn2-digests))))
 (defmacro fn2-run-load-step-mv (code)
  `(mv ,code fn2-run-loads fn2-run-cursors fn2-fc fn2-fc-context fn2-b3 fn2-fields fn2-pool fn2-digests))
+ ; COPY charges both the source read and destination write. This is the
+ ; actual payload count used below, not a second phase implementation.
+(defun fn2-run-load-copy-count (budget copied)
+ (declare (xargs :guard (and (natp budget) (natp copied) (< copied *fn2-commit-unit-bytes*))))
+ (min (floor budget 2) (- *fn2-commit-unit-bytes* copied)))
+(defthm fn2-run-load-copy-count-bound
+ (implies (and (natp budget) (natp copied) (< copied *fn2-commit-unit-bytes*))
+  (and (natp (fn2-run-load-copy-count budget copied))
+       (<= (* 2 (fn2-run-load-copy-count budget copied)) budget)
+       (<= (+ copied (fn2-run-load-copy-count budget copied)) *fn2-commit-unit-bytes*)))
+ :hints (("Goal" :in-theory (enable fn2-run-load-copy-count))) :rule-classes nil)
 (defun fn2-run-bound-step (c budget fn2-run-loads fn2-run-cursors
  fn2-boot-config
  fn2-fc fn2-fc-context fn2-b3 fn2-fields fn2-pool fn2-digests)
@@ -40,11 +51,12 @@
        (fn2-run-load-step-mv :window)))
   (cond
    ((equal phase *fn2-run-load-phase-copy*)
-    (b* ((copied (fn2-run-loads-copied c fn2-run-loads)) (sector (fn2-run-loads-sector c fn2-run-loads))
+    (b* (((when (< budget 2)) (fn2-run-load-step-mv :yield))
+         (copied (fn2-run-loads-copied c fn2-run-loads)) (sector (fn2-run-loads-sector c fn2-run-loads))
          ((unless (and (< copied *fn2-commit-unit-bytes*) (< sector *fn2-storage-extent-units*)
                         (equal (fn2-pool-fill scratch fn2-pool) *fn2-commit-unit-bytes*)))
           (fn2-run-load-step-mv :window))
-         (n (min budget (- *fn2-commit-unit-bytes* copied)))
+         (n (fn2-run-load-copy-count budget copied))
          ((mv code fn2-pool) (fn2-pool-copy-range scratch sgen copied page pgen (+ (* sector *fn2-commit-unit-bytes*) copied) n kind owner generation fn2-pool))
          ((unless (eq code :ok)) (fn2-run-load-step-mv code))
          (copied (+ copied n))
