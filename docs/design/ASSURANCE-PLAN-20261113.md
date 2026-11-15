@@ -348,10 +348,15 @@ records every source/cert/FASL/port hash and the real export digest.
 The minimal source packet is projected onto integration `11456b2cc`: only
 `books/layout.lisp` differs among the existing closure sources, replacing the
 literal 4096 with its named constant. Exactly 23 closure keys are unchanged and
-14 layout-dependent keys differ. The frozen receipt does not certify those 14
-current keys; no unchanged proof or full application world was replayed for this
-projection. The member test/export hook and two member-specific source controls
-are separate from the already integrated generic registry packet.
+14 layout-dependent keys differ. A separate current-projection record now qualifies those 14 changed keys:
+`certify-20261115T183153Z-1678964` at `eb7bdc5aa2e19e5f2ec9a534dc297bcd88b237c6`,
+reusing the other 23 genuine qualified entries without author replay. Actual
+member-row export/readback passed again. The
+[current 37-book receipt](receipts/member-refutation-current-thirty-seven-record.json)
+binds all current source and cert/FASL/port hashes; the frozen receipt remains
+separate. The member test/export hook and two member-specific source controls
+are now connected to the integrated generic registry. No full application or
+core-lowering 31-book regression qualification is claimed.
 
 
 
