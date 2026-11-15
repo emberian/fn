@@ -175,6 +175,11 @@ export FN2_HISTORY_INCARNATION="${ALLOCATED_HISTORY_INCARNATION:?set physical in
 ./fn article ops.alerts 1 --port 1119
 ```
 
+To retrieve exact stored article bytes through the consumer port, use
+`./fn stream fetch MESSAGE_ID --domain DOMAIN --position POSITION --as watcher --control-sock /tmp/fn2-ctl.sock`
+with the occurrence reported by APPEND or READ. Redirect stdout to save the
+article; `--json` returns lossless `article_hex` and its `octets` count.
+
 Recovery defaults to the `broad` storage fault model with honest persistence
 fences. An unexplained dirty tail can therefore leave recovery uncertain and
 prevent startup. For a deployment whose fault model additionally excludes later
