@@ -90,3 +90,43 @@ that asynchronous interval; no caller assertion substitutes for this join.
   ambiguous persistence retains intent and requires recovery.
 - No accepted submission permits FREE until the separate persisted release and
   backend/epoch exclusion protocol succeeds.
+
+
+## Bind work continuation (source design, 2026-11-14)
+
+The geometry repair does not establish the cost of atomic bind. The byte
+inventory now derives a per-schema pool bound from the actual generated entry
+maximum E, octet-key maximum K, total octets O, and the actual search limit S:
+`3O + (S+2)E + 2(S+1)K`, multiplied by the actual successor slot count. Decoder
+ranges and pre-copy value checks enforce the relevant local consumption bounds.
+These are unadmitted source contracts, not a completed work theorem.
+
+The table work is separately profile-dependent: `fn2-ov-place` invokes
+`fn2-ov-insert-at(count-pos,...)`, moving one index row per recursive step.
+`fn2-idc-profilep` currently accepts capacities beyond a static one-turn quota.
+The existing bind defcost has no step charge. A default256 calculation would
+therefore fail to cover other admitted profiles.
+
+The proposed shared primitive retains an insertion continuation and moves a
+bounded number of rows per call. Live and recovery bind must drive this SAME
+primitive. Startup group insertion must complete it before exposing its active
+overlay; logic adapters can drive it to termination outside the served path.
+It must keep count/fill unpublished until the sorted index is complete.
+
+Live integration requires a retained binder claim before the admission turn
+yields. The claim binds the actual successor transaction, admitted batch/event,
+slot and insertion cursor; callers must resume without re-admitting. Public C
+queries already exclude PRIVATE overlays, but successor stage/tip readers include
+them, so a binder must exclude those readers and shared scratch mutation during
+an unfinished shift. B must refuse its pre-root-swap transition while an actual
+member of that batch is binding; checking only at successor-publish is too late.
+C snapshot drain must include the retained binding state.
+
+An admitted or possibly persisted batch cannot use pre-admission cancellation.
+Exact refusal may drive the existing batch-drop path after binder exclusion;
+ambiguity retains private overlays, staging fields and the claim for recovery.
+No caller may release the successor or scratch while insertion is pending.
+The existing replay wrapper must resume the same retained binding operation
+rather than resetting/redecoding an already partially inserted transaction.
+This architecture awaits integration review; no resumable implementation or
+caller quota changes are claimed by the present source milestones.

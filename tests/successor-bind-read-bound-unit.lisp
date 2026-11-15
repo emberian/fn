@@ -3,6 +3,7 @@
 (in-package "ACL2")
 (include-book "std/util/bstar" :dir :system)
 (include-book "../books/runs-schema")
+(include-book "../books/runs-assemble")
 (defrunschema fn2-sbr-tiny :id 1 :key ((key :u8)) :value ((payload (:octets 1))) :merge :unique)
 (fn2-run-assemble)
 (defun fn2-sbr-repeat (n pos slot gen fn2-pool)
