@@ -67,7 +67,7 @@
 
 (defun fn2-allocation-release-stage (kind owner generation fn2-checkpoint-publication fn2-checkpoint-lifecycle fn2-checkpoints fn2-checkpoint-refs fn2-checkpoint-bytes fn2-extents fn2-alloc-edges fn2-ops fn2-allocation-release)
  (declare (xargs :stobjs (fn2-checkpoint-publication fn2-checkpoint-lifecycle fn2-checkpoints fn2-checkpoint-refs fn2-checkpoint-bytes fn2-extents fn2-alloc-edges fn2-ops fn2-allocation-release) :guard (and (fn2-checkpoint-publication-wfp fn2-checkpoint-publication) (fn2-checkpoint-lifecycle-wfp fn2-checkpoint-lifecycle) (fn2-checkpoints-wfp fn2-checkpoints) (fn2-checkpoint-refs-wfp fn2-checkpoint-refs) (fn2-checkpoint-bytes-wfp fn2-checkpoint-bytes) (fn2-extents-wfp fn2-extents) (fn2-alloc-edges-wfp fn2-alloc-edges) (fn2-ops-wfp fn2-ops) (fn2-allocation-release-wfp fn2-allocation-release))))
- (b* (((unless (and (unsigned-byte-p 8 kind) (posp kind) (unsigned-byte-p 32 owner) (unsigned-byte-p 60 generation)
+ (b* (((unless (and (unsigned-byte-p 8 kind) (unsigned-byte-p 32 owner) (unsigned-byte-p 60 generation)
    (< 0 (fn2-allocation-release-rows fn2-allocation-release))
    (= (fn2-allocation-release-phase 0 fn2-allocation-release) *fn2-allocation-release-phase-idle*)))
    (mv :state fn2-allocation-release))

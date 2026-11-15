@@ -453,10 +453,17 @@
       (not (= e journal)) (not (= e installation))
       (not (= e (floor (fn2-allocation-release-physical-unit 0 fn2-allocation-release) *fn2-storage-extent-units*)))))
      (mv :invalid fn2-allocation-release fn2-release-evidence fn2-release-evidence-candidates fn2-extents fn2-alloc-edges))
+    (fn2-allocation-release (fn2-allocation-release-put 0
+     (journal-history (fn2-allocation-release-replay-history 0 fn2-allocation-release))
+     (journal-incarnation (fn2-allocation-release-replay-incarnation 0 fn2-allocation-release))))
     ((mv code fn2-allocation-release fn2-release-evidence fn2-release-evidence-candidates fn2-extents fn2-alloc-edges)
      (fn2-release-evidence-claim-transition journal jepoch jallocation batch installation
       (fn2-allocation-release-installation-epoch 0 fn2-allocation-release) (fn2-allocation-release-installation-allocation 0 fn2-allocation-release)
-      fn2-allocation-release fn2-release-evidence fn2-release-evidence-candidates fn2-extents fn2-alloc-edges fn2-ops fn2-checkpoints)))
+      fn2-allocation-release fn2-release-evidence fn2-release-evidence-candidates fn2-extents fn2-alloc-edges fn2-ops fn2-checkpoints))
+    ((mv stamped fn2-release-evidence)
+     (if (eq code :owned) (fn2-release-evidence-mark-persisted journal fn2-allocation-release fn2-release-evidence)
+      (mv :invalid fn2-release-evidence)))
+    (code (if (and (eq code :owned) (eq stamped :persisted)) :owned :invalid)))
     (mv code (if (eq code :owned) (fn2-allocation-release-put 0 (checker-stage 8)) fn2-allocation-release)
      fn2-release-evidence fn2-release-evidence-candidates fn2-extents fn2-alloc-edges))
    (mv code fn2-core))))
