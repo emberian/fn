@@ -106,7 +106,7 @@
 (defcost fn2-cns-stream-source-finish :answers (:ok :wait :stale)
  :tables (fn2-core-cns-sources)
  :doc "Acknowledge final Send handback or a terminal, borrow-free cancelled transport.")
-(defcost fn2-cns-stream-source-step :answers t :bytes *fn2-cns-source-unit-work-bytes*
+(defcost fn2-cns-stream-source-step :answers (:more :wait :need-read :ready :complete :bad :bounds :released :handoff :stale :uncertain :covered :claim) :bytes *fn2-cns-source-unit-work-bytes*
  :tables (fn2-core-cns-sources fn2-core-fields fn2-core-b3 fn2-core-digests fn2-core-extents fn2-core-alloc-edges)
  :doc "One source verification/hash/manifest claim or one owned-edge cleanup step; never hidden I/O.")
 (defcost fn2-cns-stream-source-issue :answers (:ok :wait :bad) :descriptors 1
@@ -926,7 +926,7 @@
            (:cond ((eq ocode :need-more) (:set (flen 0)) (:charge :bytes 4096 :steps *fn2-work-transition* :runnable t))
                   ((eq ocode :size)
                    (:do (sc op alen start remaining) (fn2-ctl-stream-begin id row-generation row-rx-slot row-rx-gen)
-                    :accept (:ok :need-more :frame :bounds))
+                    :accept (:ok :need-more :frame :bounds) :why "the following bounded stream dispatch waits or closes on refusal and never accepts a provisional frame as complete")
                    (:cond ((eq sc :need-more) (:set (flen 0))
                            (:charge :bytes 4096 :steps *fn2-work-transition* :runnable t))
                           ((eq sc :ok)
@@ -1026,7 +1026,7 @@
         ((:charge :steps *fn2-work-poll*))))
       (t (:do (tc copied) (fn2-ctl-stream-trailer id row-generation row-strailer row-rx-slot row-rx-gen
                                                  row-shash row-fill)
-          :accept (:verified :more :frame :bounds))
+          :accept (:verified :more :frame :bounds) :why "the following bounded stream dispatch waits or closes on refusal and never accepts a provisional frame as complete")
          (:cond
           ((and (eq tc :verified)
                 (equal (+ row-shash copied) row-fill)
@@ -1080,7 +1080,7 @@
     ((equal row-ophase *fn2-ctl-output-prefix*)
      (:do (reset) (fn2-core-reset row-rx-slot row-rx-gen) :accept (:ok))
      (:do (code end) (fn2-ctl-stream-output-prefix id row-generation row-ototal row-rx-slot row-rx-gen)
-      :accept (:ok :bounds :size))
+      :accept (:ok :bounds :size) :why "the following bounded stream dispatch waits or closes on refusal and never accepts a provisional frame as complete")
      (:if (and (eq code :ok) (unsigned-byte-p 32 end) (<= end *fn2-ctl-io-bytes*))
       ((:set (fill end) (shash 0) (tx-off 0) (tx-len 0) (ophase *fn2-ctl-output-fill*))
        (:charge :bytes 128 :steps *fn2-work-transition* :runnable t))
@@ -1092,7 +1092,7 @@
        (:do (code copied eof)
         (fn2-cns-stream-source-next row-cns row-cns-gen id row-generation row-request
                                    row-rx-slot row-rx-gen row-fill cap)
-        :accept (:ok :wait :bad))
+        :accept (:ok :wait :bad) :why "wait retains the source; bad closes the provisional frame; only checked EOF permits a trailer")
        (:cond
         ((eq code :wait) (:wake-row row-cns) (:charge :bytes *fn2-cns-source-next-cost* :steps *fn2-work-transition*))
         ((and (eq code :ok) (natp copied) (<= copied cap)
@@ -1104,7 +1104,7 @@
         (t (:next :closing) (:charge :bytes *fn2-cns-source-next-cost* :steps *fn2-work-transition* :runnable t))))))
     ((equal row-ophase *fn2-ctl-output-hash*)
      (:do (code copied) (fn2-ctl-stream-hash id row-generation row-rx-slot row-rx-gen 0 row-fill
-                                           (equal row-ochecked 1)) :accept (:ok :more :bounds))
+                                           (equal row-ochecked 1)) :accept (:ok :more :bounds) :why "the following bounded stream dispatch waits or closes on refusal and never accepts a provisional frame as complete")
      (:if (and (eq code :ok) (equal copied row-fill))
       ((:set (tx-off 0) (tx-len row-fill) (ophase *fn2-ctl-output-send*))
        (:charge :bytes 4096 :steps *fn2-work-transition* :runnable t))
@@ -1124,14 +1124,14 @@
          (:charge :steps *fn2-work-transition* :runnable t))))
     ((equal row-ophase *fn2-ctl-output-trailer*)
      ;; This state is reachable only after checked EOF and final BLAKE3 update.
-     (:do (code) (fn2-ctl-stream-output-trailer id row-generation row-rx-slot row-rx-gen) :accept (:ok :bounds))
+     (:do (code) (fn2-ctl-stream-output-trailer id row-generation row-rx-slot row-rx-gen) :accept (:ok :bounds) :why "the following bounded stream dispatch waits or closes on refusal and never accepts a provisional frame as complete")
      (:if (eq code :ok)
       ((:set (tx-off 0) (tx-len 32) (ophase *fn2-ctl-output-last*))
        (:charge :bytes 32 :steps *fn2-work-transition* :runnable t))
       ((:next :closing) (:charge :bytes 32 :steps *fn2-work-transition* :runnable t))))
     ((equal row-ophase *fn2-ctl-output-done*)
      (:do (code) (fn2-cns-stream-source-finish row-cns row-cns-gen id row-generation row-request)
-      :accept (:ok :wait :stale))
+      :accept (:ok :wait :stale) :why "wait retains ownership; the following dispatch handles checked handback or a stale transport tuple")
      (:cond ((eq code :wait) (:wake-row row-cns) (:charge :steps *fn2-work-transition*))
             ((eq code :ok)
              ;; The source marks handback; CNS releases its own lease through
@@ -1541,7 +1541,7 @@
   ; Published FETCH uses retained source jobs. No whole article is copied
   ; into a request/reply range, and no accepted trailer precedes checked EOF.
   (:source :on-refusal ((:stop :machine-phase))
-   (:do (sc) (fn2-cns-stream-source-step id row-generation row-ctl row-ctl-gen row-request (equal row-stream 1)))
+   (:do (sc) (fn2-cns-stream-source-step id row-generation row-ctl row-ctl-gen row-request (equal row-stream 1)) :accept (:more :wait :need-read :ready :complete :bad :bounds :released :handoff :stale :uncertain :covered :claim) :why "the following source-state dispatch handles bounded continuation, read admission, checked data/EOF, handoff and explicit fault states")
    (:case sc
     ((:uncertain :stale) (:stop :machine-observation :steps *fn2-work-state*))
     ((:bad :bounds)
@@ -1549,15 +1549,11 @@
      (:charge :bytes *fn2-cns-source-unit-work-bytes* :steps *fn2-work-transition* :runnable t))
     ((:wait) (:charge :bytes *fn2-cns-source-unit-work-bytes* :steps *fn2-work-poll*))
     ((:need-read)
-     (:do (rc op og) (fn2-cns-stream-source-issue id row-generation row-ctl row-ctl-gen row-request row-principal-slot))
-     (:case rc
-      ((:ok) (:charge :bytes *fn2-cns-source-unit-work-bytes* :descriptors 1 :steps *fn2-work-transition*))
-      ((:wait) (:charge :bytes *fn2-cns-source-unit-work-bytes* :descriptors 1 :steps *fn2-work-poll* :runnable t))
-      (:otherwise
+     (:do (rc op og) (fn2-cns-stream-source-issue id row-generation row-ctl row-ctl-gen row-request row-principal-slot) :accept () :case (((:ok) (:charge :bytes *fn2-cns-source-unit-work-bytes* :descriptors 1 :steps *fn2-work-transition*)) ((:wait) (:charge :bytes *fn2-cns-source-unit-work-bytes* :descriptors 1 :steps *fn2-work-poll* :runnable t)) (:otherwise
        (:do () (fn2-cns-stream-source-abort id row-generation row-ctl row-ctl-gen row-request))
-       (:charge :bytes *fn2-cns-source-unit-work-bytes* :descriptors 1 :steps *fn2-work-transition* :runnable t))))
+       (:charge :bytes *fn2-cns-source-unit-work-bytes* :descriptors 1 :steps *fn2-work-transition* :runnable t)))))
     ((:covered)
-     (:do (oc) (fn2-cns-stream-source-open id row-generation))
+     (:do (oc) (fn2-cns-stream-source-open id row-generation) :accept (:ok :bad :wait) :why "the following dispatch starts output only when ready, waits for transport, or cleans the retained source on refusal")
      (:case oc
       ((:ok) (:set (stream 1)) (:charge :bytes (+ *fn2-cns-source-unit-work-bytes* 4096) :steps *fn2-work-transition* :runnable t))
       ((:wait) (:charge :bytes (+ *fn2-cns-source-unit-work-bytes* 4096) :steps *fn2-work-poll*))
@@ -1569,23 +1565,23 @@
     ((:released)
      (:cond
       ((equal row-stream 1)
-       (:do (ts) (fn2-ctl-stream-reply-status row-ctl row-ctl-gen row-request id row-generation))
+       (:do (ts) (fn2-ctl-stream-reply-status row-ctl row-ctl-gen row-request id row-generation) :accept (:active :handback :aborting :cancelled :stale) :why "the exact transport state selects cancellation handoff or the checked owner wake")
        (:if (eq ts :cancelled)
             ((:do (fc) (fn2-cns-stream-source-finish id row-generation row-ctl row-ctl-gen row-request)
-              :accept (:ok :wait))
+              :accept (:ok :wait) :case (((:stale) (:stop :machine-phase))) :why "wait retains ownership; the following dispatch handles checked handback or a stale transport tuple")
              (:charge :bytes *fn2-cns-source-unit-work-bytes* :steps *fn2-work-transition* :runnable (eq fc :ok)))
             ((:wake-row row-ctl) (:charge :bytes *fn2-cns-source-unit-work-bytes* :steps *fn2-work-poll*))))
       (t
        (:do (fc) (fn2-cns-stream-source-finish id row-generation row-ctl row-ctl-gen row-request)
-        :accept (:ok :wait))
+        :accept (:ok :wait) :case (((:stale) (:stop :machine-phase))) :why "wait retains ownership; the following dispatch handles checked handback or a stale transport tuple")
        (:charge :bytes *fn2-cns-source-unit-work-bytes* :steps *fn2-work-transition* :runnable t))))
     ((:handoff)
      (:if (equal row-lease *fn2-cns-lease-held*)
           ((:do (lc) (fn2-cns-lease-release row-lslot row-lgen)
-            :effects ((:release (:storage-window))) :accept (:ok :retired))
+            :effects ((:release (:storage-window))) :accept (:ok :retired) :why "a slot at its generation limit retires instead of returning to the free chain")
            (:set (lease *fn2-cns-lease-none*) (lslot *fn2-none*) (lgen 0))
            (:charge :bytes *fn2-cns-source-unit-work-bytes* :steps *fn2-work-transition* :runnable t))
-          ((:do (cc) (fn2-cns-stream-source-clear id row-generation row-ctl row-ctl-gen row-request) :accept (:ok))
+          ((:do (cc) (fn2-cns-stream-source-clear id row-generation row-ctl row-ctl-gen row-request) :accept (:ok) :case (((:stale) (:stop :machine-phase))))
            (:if (equal row-stream 1)
                 ((:next :draining) (:charge :bytes *fn2-cns-source-unit-work-bytes* :steps *fn2-work-transition* :runnable t))
                 ((:set (reason *fn2-cns-reason-unavailable*)) (:goto refuse))))))
