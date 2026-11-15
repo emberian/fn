@@ -23,7 +23,7 @@
  ((:sealing
    (:do (code) (fn2-sealer-step 4096)
     :accept ()
-    :case (((:more :retired :done) (:charge :bytes 4096 :steps *fn2-work-transition* :runnable t))
+    :case (((:more :retired :done :held) (:charge :bytes 4096 :steps *fn2-work-transition* :runnable t))
            ((:idle) (:park :sealable :steps *fn2-work-transition*))
            (:otherwise
             (:do () (fn2-sealer-refuse code))

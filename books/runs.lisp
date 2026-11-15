@@ -362,15 +362,29 @@
 ; The page cached under exactly UNIT leaves the cache: (mv code slot gen
 ; cache), :ok with the workspace it was held in (its owner releases it), or
 ; :absent when UNIT's row holds no page of that unit.
-(defun fn2-run-cache-drop (unit fn2-run-cache)
+; Read the exact resident handle without consuming it. A held pool release
+; must leave this cache entry available for the next bounded retry.
+(defun fn2-run-cache-peek (unit fn2-run-cache)
  (declare (xargs :stobjs fn2-run-cache :guard (fn2-run-cache-wfp fn2-run-cache)))
- (b* (((unless (and (natp unit) (< 0 (fn2-run-cache-rows fn2-run-cache)))) (mv :bounds 0 0 fn2-run-cache))
+ (b* (((unless (and (natp unit) (< 0 (fn2-run-cache-rows fn2-run-cache)))) (mv :bounds 0 0))
       (i (nfix (fn2-run-cache-row unit fn2-run-cache)))
-      ((unless (< i (fn2-run-cache-rows fn2-run-cache))) (mv :bounds 0 0 fn2-run-cache))
+      ((unless (< i (fn2-run-cache-rows fn2-run-cache))) (mv :bounds 0 0))
       ((unless (and (equal (fn2-run-cache-state i fn2-run-cache) *fn2-run-cache-state-ready*)
                     (equal (fn2-run-cache-unit i fn2-run-cache) unit)))
-       (mv :absent 0 0 fn2-run-cache))
-      (slot (nfix (fn2-run-cache-slot i fn2-run-cache))) (gen (nfix (fn2-run-cache-gen i fn2-run-cache)))
+       (mv :absent 0 0)))
+  (mv :ok (nfix (fn2-run-cache-slot i fn2-run-cache))
+          (nfix (fn2-run-cache-gen i fn2-run-cache)))))
+(defthm fn2-run-cache-peek-types
+ (and (natp (mv-nth 1 (fn2-run-cache-peek unit fn2-run-cache)))
+      (natp (mv-nth 2 (fn2-run-cache-peek unit fn2-run-cache))))
+ :hints (("Goal" :in-theory (enable fn2-run-cache-peek))))
+
+(defun fn2-run-cache-drop (unit fn2-run-cache)
+ (declare (xargs :stobjs fn2-run-cache :guard (fn2-run-cache-wfp fn2-run-cache)))
+ (b* (((mv code slot gen) (fn2-run-cache-peek unit fn2-run-cache))
+      ((unless (eq code :ok)) (mv code 0 0 fn2-run-cache))
+      (i (nfix (fn2-run-cache-row unit fn2-run-cache)))
+      ((unless (< i (fn2-run-cache-rows fn2-run-cache))) (mv :bounds 0 0 fn2-run-cache))
       (fn2-run-cache (fn2-run-cache-put i (state *fn2-run-cache-state-empty*))))
   (mv :ok slot gen fn2-run-cache)))
 (fn2-run-cache-preserves fn2-run-cache-drop (unit fn2-run-cache) :position 3 :raw-rows t)

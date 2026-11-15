@@ -22,7 +22,7 @@
    fn2-core-fields fn2-core-pool fn2-core-fc fn2-core-fc-context fn2-core-b3 fn2-core-digests
    fn2-core-ranges fn2-core-range-sources fn2-core-run-cursors fn2-core-run-paths))
 (defcost fn2-sealer-step :answers (:bad-hash :bad-magic :bounds :busy :cache :capacity :done :empty :exhausted :failed
-  :filter-capacity :filter-keys :format :full :idle :invariant :kind :length :levels :more
+  :filter-capacity :filter-keys :format :full :idle :invariant :kind :length :levels :more :held :credit
   :need-page :noncanonical :nonzero-padding :ok :order :overlap :owner :part :payload :pending
   :ready :redundant :retired :schema :sealed :stale :state :truncated :unknown-tag :value :version
   :sources :miss :wide :wrong-allocation :wrong-commit :wrong-epoch :wrong-extent :wrong-geometry :wrong-history
