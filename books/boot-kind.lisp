@@ -3,6 +3,7 @@
 (in-package "ACL2")
 (include-book "machines-b")
 (include-book "machine-arms")
+(include-book "boot-config-state")
 (include-book "checkpoint-geometry")
 (include-book "checkpoint-restore-reader")
 (include-book "checkpoint-restore-map")
@@ -27,27 +28,8 @@
 ; most fn2-boot-pack-pool writes) and a u60 value in 8 bytes; the path at
 ; *fn2-profile-path-identity-max* octets. COUNT is fixed at init, so the
 ; measure is too while the cursor advances.
-(defconst *fn2-boot-group-entry-bytes* (+ 250 8))
-(defcolumns fn2-boot-config nil :init-name fn2-boot-config-empty
- :extra-fields
- ((fn2-boot-config-checkpoint-layout-ready :type (unsigned-byte 1) :initially 0 :why "Set only after checked bootstrap/empty anchor scan and the final startup fence.")
-  (fn2-boot-config-image-size :type (unsigned-byte 60) :initially 0 :why "Actual image size checked by ACL2 startup geometry.")
-  (fn2-boot-config-geometry :type (array (unsigned-byte 8) (32)) :initially 0 :why "Owned bootstrap geometry hash; not checker scratch.")
-  (fn2-boot-config-anchor-checked-mask :type (unsigned-byte 8) :initially 0 :why "Actual per-slot anchor authentication results; retained separately from empty and malformed sectors.")
-  (fn2-boot-config-anchor-empty-mask :type (unsigned-byte 8) :initially 0 :why "Actual canonical-zero anchor sectors observed during this cold scan.")
-  (fn2-boot-config-anchor-invalid-mask :type (unsigned-byte 8) :initially 0 :why "Observed nonempty anchor failures remain explicit census evidence; never silently relabelled empty.")
-  (fn2-boot-config-arena-mask :type (unsigned-byte 8) :initially 0 :why "Per-anchor authenticated arena tuple/uniqueness evidence only; never selected-base authority.")
-  (fn2-boot-config-map-fifo-mask :type (unsigned-byte 8) :initially 0 :why "Per-anchor allocation-map/FIFO investigation evidence only; never a selected-base or serving bit.")
-  (fn2-boot-config-anchor-evidence :type (array (unsigned-byte 8) (384)) :initially 0 :why "Three checked digests per physical anchor slot: batch, predecessor, anchor hash; retained across rx window reuse.")
-  (fn2-boot-config-groups :type t :initially nil :why "Unconsumed trusted startup group configuration; one group per boot visit."
-   :resident (* *fn2-boot-group-entry-bytes* (fn2-boot-config-count fn2-boot-config)))
-  (fn2-boot-config-path :type t :initially nil :why "Trusted startup path identity, checked against the immutable image record."
-   :resident *fn2-profile-path-identity-max*)
-  (fn2-boot-config-count :type (unsigned-byte 32) :initially 0 :why "Number of immutable genesis group records.")
-  (fn2-boot-config-extents :type (unsigned-byte 32) :initially 0 :why "The image's arena geometry, checked before recovery.")
-  (fn2-boot-config-owner :type (unsigned-byte 32) :initially 0 :why "Persisted initial owner account binding.")
-  (fn2-boot-config-recovery-assumptions :type (unsigned-byte 8) :initially 2 :why "Declared startup storage fault contract; never inferred from image bytes.")
-  (fn2-boot-config-authority :type (unsigned-byte 1) :initially 0 :why "Whether genesis includes the principal directory.")))
+
+
 
 (defun fn2-boot-config-prepare (profile fn2-boot-config)
  (declare (xargs :stobjs fn2-boot-config :guard t))
@@ -174,7 +156,7 @@
 (defmachine fn2-boot
  :states (:free :prepare :write :write-result :read :read-result :verify :advance
           :anchor :bootstrap :bootstrap-verify :checkpoint-anchor :checkpoint-check :checkpoint-descriptor :checkpoint-verify :checkpoint-root-candidate :checkpoint-root-reserve :checkpoint-root-begin :checkpoint-root-load :checkpoint-root-copy :checkpoint-root-verify :checkpoint-root-dispatch :checkpoint-root-padding :checkpoint-root-next :checkpoint-root-finish :checkpoint-root-fifo :checkpoint-evidence-begin :checkpoint-evidence-target :checkpoint-evidence-load :checkpoint-evidence-copy :checkpoint-evidence-check :checkpoint-evidence-record :checkpoint-evidence-next :checkpoint-semantic-begin :checkpoint-semantic-load :checkpoint-semantic-copy :checkpoint-semantic-check :checkpoint-summary-capture :checkpoint-semantic-entries :checkpoint-semantic-find :checkpoint-summary-close :checkpoint-payload-begin :checkpoint-payload-load :checkpoint-payload-copy :checkpoint-payload-step :checkpoint-census :recover :recover-wait :epoch :epoch-fence :epoch-result :release :ready :failed
-         :checkpoint-events-begin :checkpoint-events-journal-bind :checkpoint-events-journal-load :checkpoint-events-journal-received :checkpoint-events-journal-check :checkpoint-events-frontier-begin :checkpoint-events-frontier-check :checkpoint-events-frontier-peaks :checkpoint-events-frontier-padding :checkpoint-events-frontier-finish :checkpoint-events-finish :checkpoint-events-seed :checkpoint-project-begin :checkpoint-project-step :checkpoint-project-protect :checkpoint-cbase-acquire :checkpoint-adopt-begin :checkpoint-adopt-preflight :checkpoint-adopt-copy :checkpoint-authority-begin :checkpoint-authority-copy :checkpoint-directory-install :checkpoint-bank-bind :checkpoint-catalog-begin :checkpoint-catalog-copy :genesis-begin :genesis-step)
+         :checkpoint-events-begin :checkpoint-events-journal-bind :checkpoint-events-journal-load :checkpoint-events-journal-received :checkpoint-events-journal-check :checkpoint-events-frontier-begin :checkpoint-events-frontier-check :checkpoint-events-frontier-peaks :checkpoint-events-frontier-padding :checkpoint-events-frontier-finish :checkpoint-events-finish :checkpoint-events-seed :checkpoint-project-begin :checkpoint-project-step :checkpoint-project-protect :checkpoint-cbase-acquire :checkpoint-adopt-begin :checkpoint-adopt-preflight :checkpoint-adopt-copy :checkpoint-authority-begin :checkpoint-authority-copy :checkpoint-directory-install :checkpoint-bank-bind :checkpoint-catalog-begin :checkpoint-catalog-copy :genesis-begin :genesis-step :checkpoint-loader-begin :checkpoint-loader-step :checkpoint-bank-protect)
  :fields ((pending :u32) (stopped :bool) (pool-slot :u32) (pool-gen :u60)
           (rx-slot :u32) (rx-gen :u60) (create :bool) (image-size :u60)
           (base :u60) (total :u32) (index :u32) (stage :u8) (offset :u60)
@@ -224,6 +206,8 @@
          (:checkpoint-project-step :storage-window)
          (:checkpoint-project-protect :storage-window)
          (:checkpoint-cbase-acquire :storage-window)
+         (:checkpoint-loader-begin :storage-window)
+         (:checkpoint-loader-step :storage-window)
          (:checkpoint-adopt-begin :storage-window)
          (:checkpoint-adopt-preflight :storage-window)
          (:checkpoint-adopt-copy :storage-window)
@@ -231,6 +215,7 @@
          (:checkpoint-authority-copy :storage-window)
          (:checkpoint-directory-install :storage-window)
          (:checkpoint-bank-bind :storage-window)
+         (:checkpoint-bank-protect :storage-window)
          (:checkpoint-catalog-begin :storage-window)
          (:checkpoint-catalog-copy :storage-window)
          (:genesis-begin :storage-window)
@@ -277,12 +262,14 @@
          (:checkpoint-project-step)
          (:checkpoint-project-protect)
          (:checkpoint-cbase-acquire)
+         (:checkpoint-loader-begin)
+         (:checkpoint-loader-step)
          (:checkpoint-adopt-begin)
          (:checkpoint-adopt-preflight)
          (:checkpoint-adopt-copy)
          (:checkpoint-authority-begin)
          (:checkpoint-authority-copy)
-         (:checkpoint-directory-install) (:checkpoint-bank-bind)
+         (:checkpoint-directory-install) (:checkpoint-bank-bind) (:checkpoint-bank-protect)
          (:checkpoint-catalog-begin)
          (:checkpoint-catalog-copy)
          (:genesis-begin)

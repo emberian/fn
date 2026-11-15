@@ -3,11 +3,13 @@
 (include-book "machines")
 (include-book "core-children")
 (include-book "profile")
+(include-book "run-active-geometry")
 (include-book "origin")
 (include-book "sched")
 (include-book "commit-alloc")
 (include-book "read-pins")
 (include-book "checkpoint-cbase-state")
+(include-book "checkpoint-geometry")
 (include-book "checkpoint-lifecycle-coordinator")
 (include-book "release-allocation")
 (include-book "checkpoint-tickets")
@@ -60,7 +62,9 @@
  (declare (xargs :guard t))
  (+ 6 (* 2 (nfix (fn2-b-capacity :extent-slots 16 profile)))
     (nfix (fn2-profile-o profile)) (* 6 (fn2-b-checkpoint-capacity profile))
-    (* 2 (nfix (fn2-b-capacity :extent-slots 16 profile)) (fn2-b-checkpoint-capacity profile))))
+    (* 2 (nfix (fn2-b-capacity :extent-slots 16 profile)) (fn2-b-checkpoint-capacity profile))
+    ; Four independent physical anchors cannot alias canonical source holds.
+    (* *fn2-checkpoint-anchor-slots* (nfix (fn2-b-capacity :extent-slots 16 profile)))))
 (defcorechild fn2-core-checkpoint-cbase-holds fn2-checkpoint-cbase-holds
  :init (fn2-checkpoint-cbase-holds-init (fn2-b-checkpoint-capacity profile) fn2-checkpoint-cbase-holds)
  :profilep (unsigned-byte-p 32 (fn2-b-checkpoint-capacity profile))
@@ -87,18 +91,29 @@
 ; row (main's ruling, 2026-10-30); w's default is resources.lisp's round-2
 ; bound (16), c's the tiny profile's 2; D's upload capacity, C's sealer row
 ; and E's control capacity read these functions.
+(defconst *fn2-b-seal-source-cursors* *fn2-run-active-source-cursors*)
+(defconst *fn2-b-range-source-cursors* *fn2-b-seal-source-cursors*)
+(defconst *fn2-b-read-loader-jobs* (+ 1 *fn2-b-range-source-cursors*))
+(defconst *fn2-b-query-loader-jobs* (* *fn2-b-query-read-rows* *fn2-b-read-loader-jobs*))
+(defun fn2-b-run-cursor-rows (profile)
+ (declare (xargs :guard t))
+ (+ (nfix (fn2-profile-t profile)) (* (+ 1 *fn2-b-range-source-cursors*) (fn2-b-read-rows profile))
+    *fn2-b-seal-source-cursors* 1))
 (defun fn2-b-upload-windows (profile)
  (declare (xargs :guard t))
  (nfix (fn2-b-capacity :large-upload-windows 16 profile)))
+(defun fn2-b-run-loader-row (cursor profile)
+ (declare (xargs :guard t))
+ (+ 4 (fn2-b-upload-windows profile) (nfix cursor)))
 (defun fn2-b-ctl-rows (profile)
  (declare (xargs :guard t))
  (nfix (fn2-b-capacity :control-connections 2 profile)))
 (defun fn2-b-ctl-slot (s profile)
  (declare (xargs :guard t))
- (+ 4 (fn2-b-upload-windows profile) (nfix s)))
+ (+ 4 (fn2-b-upload-windows profile) (fn2-b-run-cursor-rows profile) (nfix s)))
 (defun fn2-b-format-floor (profile)
  (declare (xargs :guard t))
- (+ 9 (fn2-b-upload-windows profile) (fn2-b-ctl-rows profile)))
+ (+ 9 (fn2-b-upload-windows profile) (fn2-b-run-cursor-rows profile) (fn2-b-ctl-rows profile)))
 (defun fn2-b-format-slots (profile)
  (declare (xargs :guard t))
  (fn2-b-capacity :format-slots (fn2-b-format-floor profile) profile))
@@ -217,9 +232,10 @@
 (defun fn2-b-auth-rows (profile)
  (declare (xargs :guard t))
  (nfix (fn2-profile-get :authority profile)))
+(defconst *fn2-b-query-read-rows* 2)
 (defun fn2-b-read-rows (profile)
  (declare (xargs :guard t))
- (+ (* 2 (fn2-b-cursor-rows profile)) (fn2-b-cns-rows profile) (fn2-b-auth-rows profile)))
+ (+ (* *fn2-b-query-read-rows* (fn2-b-cursor-rows profile)) (fn2-b-cns-rows profile) (fn2-b-auth-rows profile)))
 (defthm fn2-b-cursor-rows-natp (natp (fn2-b-cursor-rows profile)) :rule-classes :type-prescription)
 (defthm fn2-b-cns-rows-natp (natp (fn2-b-cns-rows profile)) :rule-classes :type-prescription)
 (defthm fn2-b-auth-rows-natp (natp (fn2-b-auth-rows profile)) :rule-classes :type-prescription)
@@ -258,15 +274,7 @@
 (defcorechild fn2-core-commit-io fn2-commit-io
  :init (fn2-commit-io-init 6 fn2-commit-io) :profilep t
  :why "Three reserved resources per batch, including operation-owned edges.")
-(defcolumns fn2-commit-root
- ((installed :u60) (published :u60) (proposed :u60)
-  ; Row0 retained recovery boundary; positive base requires separate authority.
-  (base-batch :u60) (base-event :u60) (base-ready :bool)
-  (parent :u60) (extent :u32) (first-key :u60) (members :u32) (seal-ready :bool) (barrier-mode :bool)
-  ; Row 0 only: the first refused batch of an abort in progress (0: none)
-  ; and the event it began at (b54 M3).
-  (aborting :u60) (abort-event :u60)
- ))
+(include-book "commit-root-state")
 ; Resident occupancy is the proposed suffix above the actual installed base.
 ; In-flight proposals count; publication lag or hoped-for physical release does
 ; not grant extra credit. The allocator independently refuses protected extents.

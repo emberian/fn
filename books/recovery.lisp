@@ -20,7 +20,11 @@
  ((status (:enum fn2-rec-status (:unread :empty :invalid :unreadable :candidate :chained :payload)))
   (commit :u60) (epoch :u60) (allocation :u60) (first :u60) (last :u60)
   (history :u60) (history-incarnation :u60)
-  (seal-off :u32) (seal-len :u32) (owner-kind :u8) (owner :u60)))
+  (seal-off :u32) (seal-len :u32) (owner-kind :u8) (owner :u60)
+  ; Zero is the empty link; nonzero links encode physical index + 1.
+  ; Rank/count are construction certificates, checked at every replay step.
+  (payload-head :u32) (payload-next :u32)
+  (payload-count :u32) (payload-rank :u32)))
 
 ; Classification and witness outcome vocabularies (ROUND2 §E.4, scholar ch. 4).
 (make-event (value (cons 'progn (fn2-columns-enum-constants

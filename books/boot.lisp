@@ -22,6 +22,7 @@
 (include-book "checkpoint-bank-bind")
 (include-book "checkpoint-bank-empty")
 (include-book "checkpoint-bank-boot")
+(include-book "boot-root-release")
 (include-book "event-catalog-cold")
 (include-book "checkpoint-bank-cold")
 (include-book "machines-a-access")
@@ -521,9 +522,22 @@
               (fn2-extents (fn2-core-extents fn2-core))
               (fn2-fc (fn2-core-fc fn2-core))
               (fn2-digests (fn2-core-digests fn2-core))
-              (fn2-mk (fn2-core-mk fn2-core)))
+              (fn2-mk (fn2-core-mk fn2-core))
+              (fn2-run-load-readiness (fn2-core-run-load-readiness fn2-core))
+              (fn2-run-load-geometry (fn2-core-run-load-geometry fn2-core))
+              (fn2-id-decides (fn2-core-id-decides fn2-core))
+              (fn2-reads (fn2-core-reads fn2-core))
+              (fn2-run-loads (fn2-core-run-loads fn2-core))
+              (fn2-run-cursors (fn2-core-run-cursors fn2-core))
+              (fn2-checkpoint-summary-leases (fn2-core-checkpoint-summary-leases fn2-core))
+              (fn2-run-load-ops (fn2-core-run-load-ops fn2-core))
+              (fn2-ops (fn2-core-ops fn2-core))
+              (fn2-fc-context (fn2-core-fc-context fn2-core))
+              (fn2-b3 (fn2-core-b3 fn2-core))
+              (fn2-fields (fn2-core-fields fn2-core))
+              (fn2-pool (fn2-core-pool fn2-core)))
    (code base event epoch tag)
-   (mv-let (code base event epoch) (fn2-directory-cold-base fn2-checkpoint-summary-authority fn2-checkpoint-summary fn2-checkpoint-cbase-holds fn2-checkpoint-selected-source fn2-boot-config fn2-checkpoints fn2-checkpoint-refs fn2-checkpoint-bytes fn2-origin fn2-checkpoint-recovery-evidence fn2-checkpoint-recovery-census fn2-checkpoint-restore-map fn2-checkpoint-restore-map-control fn2-checkpoint-restore-semantic fn2-checkpoint-restore-reach-control fn2-checkpoint-restore-reader fn2-checkpoint-restore-events fn2-checkpoint-restore-events-work fn2-commit-root fn2-extents fn2-fc fn2-digests fn2-mk)
+   (mv-let (code base event epoch) (fn2-directory-cold-base fn2-checkpoint-summary-authority fn2-checkpoint-summary fn2-checkpoint-cbase-holds fn2-checkpoint-selected-source fn2-boot-config fn2-checkpoints fn2-checkpoint-refs fn2-checkpoint-bytes fn2-origin fn2-checkpoint-recovery-evidence fn2-checkpoint-recovery-census fn2-checkpoint-restore-map fn2-checkpoint-restore-map-control fn2-checkpoint-restore-semantic fn2-checkpoint-restore-reach-control fn2-checkpoint-restore-reader fn2-checkpoint-restore-events fn2-checkpoint-restore-events-work fn2-commit-root fn2-extents fn2-fc fn2-digests fn2-mk fn2-run-load-readiness fn2-run-load-geometry fn2-id-decides fn2-reads fn2-run-loads fn2-run-cursors fn2-checkpoint-summary-leases fn2-run-load-ops fn2-ops fn2-fc-context fn2-b3 fn2-fields fn2-pool)
     (mv code base event epoch (if (eq code :selected) (fn2-checkpoint-selected-source-tag 0 fn2-checkpoint-selected-source) 0)))
    (mv code base event epoch tag)))
  (defun fn2-boot-recover (fn2-core)
@@ -940,9 +954,21 @@
   (:checkpoint-cbase-acquire
    (:do (code) (fn2-checkpoint-cbase-acquire-op 1) :accept ()
     :case (((:more) (:next :checkpoint-cbase-acquire) (:charge :bytes 256 :steps *fn2-work-stage* :runnable t))
-           ((:held) (:next :checkpoint-adopt-begin) (:charge :steps *fn2-work-stage* :runnable t))
+           ((:held) (:next :checkpoint-loader-begin) (:charge :steps *fn2-work-stage* :runnable t))
            (:otherwise (:stop :checkpoint)))))
 
+
+  ; The scan checks one real loader cursor/operation per bounded turn.
+  ; Its COMPLETE receipt is a resource prerequisite, not source authority.
+  (:checkpoint-loader-begin :on-refusal ((:stop :checkpoint))
+   (:do (code) (fn2-checkpoint-summary-loader-begin-op) :accept (:more))
+   (:next :checkpoint-loader-step) (:charge :steps *fn2-work-stage* :runnable t))
+  (:checkpoint-loader-step
+   (:do (code) (fn2-checkpoint-summary-loader-step-op budget) :accept ()
+    :case (((:more :yield) (:next :checkpoint-loader-step) (:charge :steps *fn2-work-stage* :runnable t))
+           ((:changed) (:next :checkpoint-loader-begin) (:charge :steps *fn2-work-stage* :runnable t))
+           ((:complete) (:next :checkpoint-adopt-begin) (:charge :steps *fn2-work-stage* :runnable t))
+           (:otherwise (:stop :checkpoint)))))
 
   (:checkpoint-adopt-begin :on-refusal ((:stop :checkpoint))
    (:do (code) (fn2-checkpoint-summary-apply-begin-op) :accept (:more))
@@ -982,7 +1008,7 @@
   (:checkpoint-bank-bind :on-refusal ((:stop :checkpoint))
    (:do (code) (fn2-checkpoint-bank-bind-op budget) :accept ()
     :case (((:more) (:charge :steps *fn2-work-stage* :runnable t))
-           ((:bound) (:next :recover) (:charge :steps *fn2-work-stage* :runnable t))
+           ((:bound) (:next :checkpoint-bank-protect) (:charge :steps *fn2-work-stage* :runnable t))
            ((:yield) (:yield))
            (:otherwise (:stop :checkpoint)))))
 
@@ -1028,6 +1054,14 @@
     :case (((:more) (:next :genesis-step) (:charge :bytes 4096 :steps *fn2-work-stage* :runnable t))
            ((:complete) (:next :recover) (:charge :bytes 4096 :steps *fn2-work-stage* :runnable t))
            (:otherwise (:stop :configuration)))))
+  ; Each step installs one independent retained physical-anchor claim.
+  ; Completion is required before any ordered suffix can change ownership.
+  (:checkpoint-bank-protect
+   (:do (code) (fn2-checkpoint-bank-protection-op) :accept ()
+    :case (((:more) (:next :checkpoint-bank-protect) (:charge :bytes 256 :steps *fn2-work-stage* :runnable t))
+           ((:protected) (:next :recover) (:charge :steps *fn2-work-stage* :runnable t))
+           (:otherwise (:stop :checkpoint)))))
+
   (:recover :on-refusal ((:stop :recovery))
    (:do (code target) (fn2-boot-recover))
    (:wake-row target)
@@ -1052,9 +1086,11 @@
   (:epoch-result :on-refusal ((:stop :epoch))
    (:cond ((equal row-event-ready 0) (:idle))
           ((not (equal row-outcome *fn2-outcome-done*)) (:stop :io))
-          (t (:do (code) (fn2-boot-adopt-epoch row-next-epoch))
-             (:do (code) (fn2-boot-bind-checkpoint-layout id))
+          (t (:do (code) (fn2-boot-bind-checkpoint-layout id))
              (:do (code) (fn2-boot-finish-bank-obligations id row-generation) :accept (:ok))
+             (:do (rcode) (fn2-boot-release-root-window id row-generation) :accept (:ok :retired)
+              :why ":retired: terminal root workspace reached its generation limit and is no longer reusable")
+             (:do (code) (fn2-boot-finalize-recovery id row-generation) :accept (:ok))
              (:do (rcode) (fn2-boot-release-windows row-pool-slot row-pool-gen row-rx-slot row-rx-gen id row-generation))
              (:set (release-index 0)) (:next :release) (:charge :steps *fn2-work-stage* :runnable t))))
   (:release :on-refusal ((:stop :bounds))
@@ -1073,4 +1109,4 @@
   (:fence-result (:set (event-ready 1) (outcome outcome) (count count)) (:wake))))
 
 (defmacro fn2-boot-events ()
- '(progn (fn2-boot-operations) (fn2-checkpoint-bank-empty-core-events) (fn2-boot-bank-finish-events) (defmachine-arms fn2-boot) (defmachine-run fn2-boot)))
+ '(progn (fn2-boot-operations) (fn2-boot-root-release-events) (fn2-checkpoint-bank-empty-core-events) (fn2-boot-bank-finish-events) (defmachine-arms fn2-boot) (defmachine-run fn2-boot)))
