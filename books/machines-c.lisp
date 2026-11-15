@@ -75,8 +75,8 @@
       ;; Layer D's read rows (C-S4, machines-c-read.lisp): R of them, each
       ;; with 8 range sources, a lookup row and cursor after the
       ;; transactions' (t + R) and 8 source cursors after those (t + 9R).
-      (unsigned-byte-p 32 (+ (nfix (fn2-profile-t profile)) (* 9 (fn2-b-read-rows profile)) *fn2-idc-seal-cursors* 1))
-      (unsigned-byte-p 32 (* *fn2-run-max-levels* (+ (nfix (fn2-profile-t profile)) (* 9 (fn2-b-read-rows profile)) *fn2-idc-seal-cursors* 1)))
+      (unsigned-byte-p 32 (fn2-b-run-cursor-rows profile))
+      (unsigned-byte-p 32 (* *fn2-run-max-levels* (fn2-b-run-cursor-rows profile)))
       (<= (+ (* *fn2-idc-b-stripe* (nfix (fn2-b-format-slots profile)))
              (* *fn2-idc-stride* (nfix (fn2-profile-t profile))) *fn2-b-seal-field-rows* *fn2-b-checkpoint-field-rows*
              (* *fn2-b-read-stride* (fn2-b-read-rows profile)))
