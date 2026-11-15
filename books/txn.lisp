@@ -58,7 +58,7 @@
 (defconst *fn2-txn-scan-bytes* 1024)
 
 ;; The :ready transition's byte bound: C-S3's stage, the overview line's
-;; Xref field (fn2-txn-xref, 2 KiB), emit and bind and B's admission happen
+;; Xref field (fn2-txn-xref, preflighted 2 KiB), emit and bind and B's admission happen
 ;; in one run (nothing may stage or bind between a transaction's stage and
 ;; its bind), so the run's bound is their sum, above ROUND2 B.3's 4 KiB (a
 ;; departure recorded in the layer doc, 14.4).
@@ -498,7 +498,7 @@
    (:let sslot row-slot)
    (:if (eq (fn2-commit-posture) :draining)
         ((:set (word *fn2-upload-word-unaffordable*)) (:next :refused)
-         (:charge :bytes 24576 :steps *fn2-work-transition* :runnable t))
+         (:charge :bytes *fn2-txn-ready-bytes* :steps *fn2-work-transition* :runnable t))
         ((:do (scode i) (fn2-successor-stage sslot)
           :accept ()
           :case (((:ok)
@@ -507,13 +507,13 @@
                   (:let scanned (:read upload scan-off))
                   (:if (not (<= (+ scanned *fn2-upload-digest-octets*) (fn2-upload-chunk-cap c0)))
                        ((:set (word *fn2-upload-word-unaffordable*)) (:next :refused)
-                        (:charge :bytes 24576 :steps *fn2-work-transition* :runnable t))
+                        (:charge :bytes *fn2-txn-ready-bytes* :steps *fn2-work-transition* :runnable t))
                        ((:do (pcode) (fn2-txn-prebind sslot))
                         (:do (xcode) (fn2-txn-xref sslot row-ngroups c0 (:read upload c0-gen) c1 g1
                                                    (+ scanned *fn2-upload-digest-octets*) :owner upload))
                         (:if (not (eq xcode :ok))
                              ((:set (word *fn2-upload-word-unaffordable*)) (:next :refused)
-                              (:charge :bytes 24576 :steps *fn2-work-transition* :runnable t))
+                              (:charge :bytes *fn2-txn-ready-bytes* :steps *fn2-work-transition* :runnable t))
                              ((:do (ecode elen)
                              (fn2-successor-emit sslot c1 g1 0 (fn2-upload-chunk-cap c1) :owner upload)
                          :accept ()
@@ -526,37 +526,37 @@
                                           (:if (and (unsigned-byte-p 60 b) (unsigned-byte-p 60 ev))
                                                ((:do (bcode) (fn2-successor-bind sslot b ev))
                                                 (:set (batch b) (bevent ev))
-                                                (:next :batched) (:charge :bytes 24576 :steps *fn2-work-transition* :runnable t))
+                                                (:next :batched) (:charge :bytes *fn2-txn-ready-bytes* :steps *fn2-work-transition* :runnable t))
                                                ((:stop :machine-phase))))
                                          ((:exhausted) (:park :batch-membership :steps *fn2-work-transition*))
                                          ((:admission)
                                           (:if (equal row-tmode *fn2-txn-mode-evidence*)
                                                ((:set (ecommit *fn2-txn-ecommit-refused*) (word *fn2-upload-word-conflict*))
-                                                (:next :refused) (:charge :bytes 24576 :steps *fn2-work-transition* :runnable t))
+                                                (:next :refused) (:charge :bytes *fn2-txn-ready-bytes* :steps *fn2-work-transition* :runnable t))
                                                ((:set (word *fn2-upload-word-not-stored*))
-                                                (:next :refused) (:charge :bytes 24576 :steps *fn2-work-transition* :runnable t)))))))
+                                                (:next :refused) (:charge :bytes *fn2-txn-ready-bytes* :steps *fn2-work-transition* :runnable t)))))))
                                 ((:room)
                                  (:set (word *fn2-upload-word-unaffordable*)) (:next :refused)
-                                 (:charge :bytes 24576 :steps *fn2-work-transition* :runnable t)))))))))
-                 ((:full) (:charge :bytes 24576 :steps *fn2-work-transition* :runnable t))
+                                 (:charge :bytes *fn2-txn-ready-bytes* :steps *fn2-work-transition* :runnable t)))))))))
+                 ((:full) (:charge :bytes *fn2-txn-ready-bytes* :steps *fn2-work-transition* :runnable t))
                  ((:stale)
                   (:do (rcode) (fn2-successor-release sslot))
                   (:set (offered 0) (prepared 0) (filed 0) (gcur 0) (gskip 0) (ngroups 0) (xstep 0))
-                  (:next :lookup) (:charge :bytes 24576 :steps *fn2-work-transition* :runnable t))
+                  (:next :lookup) (:charge :bytes *fn2-txn-ready-bytes* :steps *fn2-work-transition* :runnable t))
                  ;; the read dependency moved (a grant event of the principal
                  ;; ordered before this member): decide again, nothing submitted
                  ((:changed)
                   (:do (rcode) (fn2-successor-release sslot))
                   (:set (offered 0) (prepared 0) (filed 0) (gcur 0) (gskip 0) (ngroups 0) (xstep 0))
-                  (:next :lookup) (:charge :bytes 24576 :steps *fn2-work-transition* :runnable t))
+                  (:next :lookup) (:charge :bytes *fn2-txn-ready-bytes* :steps *fn2-work-transition* :runnable t))
                  ((:refused :evidence)
                   (:do (rcode) (fn2-successor-release sslot))
                   (:set (tmode *fn2-txn-mode-evidence*) (word *fn2-upload-word-conflict*) (offered 0) (prepared 0))
-                  (:next :lookup) (:charge :bytes 24576 :steps *fn2-work-transition* :runnable t))
+                  (:next :lookup) (:charge :bytes *fn2-txn-ready-bytes* :steps *fn2-work-transition* :runnable t))
                  ((:duplicate) (:set (word *fn2-upload-word-duplicate*)) (:next :refused)
-                               (:charge :bytes 24576 :steps *fn2-work-transition* :runnable t))
+                               (:charge :bytes *fn2-txn-ready-bytes* :steps *fn2-work-transition* :runnable t))
                  ((:capacity) (:set (word *fn2-upload-word-unaffordable*)) (:next :refused)
-                              (:charge :bytes 24576 :steps *fn2-work-transition* :runnable t)))))))))
+                              (:charge :bytes *fn2-txn-ready-bytes* :steps *fn2-work-transition* :runnable t)))))))))
   (:batched :on-refusal ((:stop :machine-phase))
    (:do (tcode tbatch tevent tout)
         (fn2-commit-take :owner upload)
@@ -959,6 +959,42 @@
 (fn2-core-preserves fn2-txn-xref-pairs (k j tx off c0 g0 c1 g1 okind oslot ogen fn2-core) :position 1 :rows nil
   :hints (("Goal" :in-theory (disable nfix))))
 (in-theory (disable fn2-txn-xref-pairs))
+;; Count exactly the digits the existing bounded number renderer emits.
+;; In particular this uses its power selection and its twenty-step fuel;
+;; it does not introduce a separate decimal formatting policy.
+(defun fn2-txn-xref-digits (left power)
+  (declare (xargs :guard (and (natp left) (natp power)) :measure (nfix left)))
+  (if (or (zp left) (zp power)) 0
+    (+ 1 (fn2-txn-xref-digits (- left 1) (fn2-gram-next-power power)))))
+(defthm fn2-txn-xref-digits-natp
+  (natp (fn2-txn-xref-digits left power)) :rule-classes :type-prescription)
+
+;; Before any output, inspect only each saved length octet and actual staged
+;; number. Oversized/refused work never traverses the names. TOTAL includes
+;; the existing overview, TAB/Xref prefix and actual path identity length.
+(defun fn2-txn-xref-size (k j tx off total c1 g1 okind oslot ogen fn2-core)
+  (declare (xargs :stobjs fn2-core :measure (nfix k)
+                  :guard (and (fn2-core-wfp fn2-core) (natp k) (natp j)
+                              (natp off) (natp total))))
+  (b* (((when (> total *fn2-overview-octets-max*)) (mv :bounds total))
+       ((when (zp k)) (mv :ok total))
+       ((mv vcode number)
+        (fn2-successor-out tx (+ 1 (fn2-txn-group-slot j)) *fn2-overview-entry-field-number* fn2-core))
+       ((unless (and (eq vcode :ok) (natp number))) (mv :bounds total))
+       ((mv readable nlen)
+        (stobj-let ((fn2-pool (fn2-core-pool fn2-core)))
+          (readable nlen) (fn2-gram-read c1 g1 off okind oslot ogen fn2-pool)
+          (mv readable nlen)))
+       ((unless readable) (mv :bounds total))
+       (digits (fn2-txn-xref-digits 20 (fn2-gram-pow10 20 number 1))))
+    (fn2-txn-xref-size (- k 1) (+ 1 j) tx (+ off 1 nlen)
+                       (+ total 2 nlen digits) c1 g1 okind oslot ogen fn2-core)))
+
+;; Cost after preflight: if W appended bytes comprise prefix 7, path P,
+;; names N, pair punctuation 2K and digits D, W=7+P+N+2K+D.
+;; Output W + names/path reads N+P + two length reads per group 2K
+;; is 2W-7-D <= 2041. Refusal before output reads at most K length
+;; octets. Filling the staged overview rows below binds references only.
 ;; The overview line's Xref field (PRF-206, RFC 5536 3.2.14), after stage:
 ;; TAB "Xref: " the node's path identity, then " NAME:NUMBER" for each of the
 ;; K groups, appended to the line synthesized at OV-OFF of chunk 0 (it ends
@@ -967,7 +1003,18 @@
 ;; refuses it as unaffordable).
 (defun fn2-txn-xref (tx k c0 g0 c1 g1 ov-off okind oslot ogen fn2-core)
   (declare (xargs :stobjs fn2-core :guard (and (fn2-core-wfp fn2-core) (natp k) (natp ov-off))))
-  (b* (((mv code fn2-core)
+  (b* (((unless (<= k *fn2-txn-groups-max*)) (mv :bounds fn2-core))
+       ((mv before path-length)
+        (stobj-let ((fn2-pool (fn2-core-pool fn2-core)) (fn2-control (fn2-core-control fn2-core)))
+          (before path-length)
+          (mv (fn2-gram-fill c0 fn2-pool) (fn2-control-path-identity-length fn2-control))
+          (mv before path-length)))
+       ((unless (<= ov-off before)) (mv :bounds fn2-core))
+       ((mv size-code expected)
+        (fn2-txn-xref-size k 0 tx 0 (+ (- before ov-off) 1 (length "Xref: ") path-length)
+                           c1 g1 okind oslot ogen fn2-core))
+       ((unless (eq size-code :ok)) (mv :bounds fn2-core))
+       ((mv code fn2-core)
         (stobj-let ((fn2-pool (fn2-core-pool fn2-core)) (fn2-control (fn2-core-control fn2-core)))
           (code fn2-pool)
           (fn2-gram-put-chain
@@ -979,7 +1026,8 @@
        ((mv code fn2-core) (fn2-txn-xref-pairs k 0 tx 0 c0 g0 c1 g1 okind oslot ogen fn2-core))
        ((unless (eq code :ok)) (mv code fn2-core))
        (ov-end (stobj-let ((fn2-pool (fn2-core-pool fn2-core))) (f) (fn2-gram-fill c0 fn2-pool) f))
-       ((unless (and (<= ov-off ov-end) (<= (- ov-end ov-off) *fn2-overview-octets-max*))) (mv :bounds fn2-core)))
+       ((unless (and (<= ov-off ov-end) (equal (- ov-end ov-off) expected)
+                     (<= expected *fn2-overview-octets-max*))) (mv :bounds fn2-core)))
     (fn2-txn-fill-ov-lines k 0 tx c0 g0 ov-off (- ov-end ov-off) okind oslot ogen fn2-core)))
 (fn2-core-preserves fn2-txn-xref (tx k c0 g0 c1 g1 ov-off okind oslot ogen fn2-core) :position 1 :rows nil
   :hints (("Goal" :in-theory (disable nfix))))
