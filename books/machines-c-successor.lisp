@@ -750,6 +750,7 @@
        (mv :stale fn2-succ-txns fn2-run-cursors fn2-fields fn2-c-source-control fn2-c-source-readers))
       (fn2-fields (fn2-succ-clear-ref-rows *fn2-run-reader-fields* (+ b0 *fn2-idc-rb*) fn2-fields))
       (fn2-run-cursors (fn2-run-cursors-set-phase tx *fn2-run-cursor-phase-idle* fn2-run-cursors))
+      (fn2-succ-txns (fn2-succ-txns-put tx (lphase *fn2-succ-lookup-idle*) (lbound 0) (lrow 0) (lver 0)))
       ((mv code & & fn2-c-source-control fn2-c-source-readers)
        (fn2-c-source-reader-release endpoint receipt fn2-c-source-control fn2-c-source-readers))
       (fn2-succ-txns (if (eq code :ok) (fn2-succ-txns-set-source-receipt tx 0 fn2-succ-txns) fn2-succ-txns)))
@@ -761,14 +762,20 @@
  (fn2-c-source-reader-current-p fn2-c-source-reader-release fn2-succ-clear-ref-rows fn2-run-cursors-set-phase
   fn2-c-source-readers-live fn2-succ-txns-source-receipt))
 
-(defun fn2-succ-resolve-observed (tx budget b0 fn2-succ-txns fn2-succ-slots fn2-id-decides fn2-run-installed fn2-run-cursors fn2-run-paths
+(defun fn2-succ-resolve-observed (tx budget b0 readrows fn2-succ-txns fn2-succ-slots fn2-id-decides fn2-run-installed fn2-run-cursors fn2-run-paths
  fn2-run-cache fn2-fields fn2-pool fn2-c-source-control fn2-c-source-readers)
  (declare (xargs :stobjs (fn2-succ-txns fn2-succ-slots fn2-id-decides fn2-run-installed fn2-run-cursors fn2-run-paths fn2-run-cache fn2-fields fn2-pool fn2-c-source-control fn2-c-source-readers) :guard t))
  (b* (((unless (and (fn2-succ-txns-wfp fn2-succ-txns) (fn2-id-decides-wfp fn2-id-decides)
                     (natp tx) (< tx (fn2-id-decides-rows fn2-id-decides)) (< tx (fn2-succ-txns-rows fn2-succ-txns))
-                    (<= (fn2-id-decides-rows fn2-id-decides) (fn2-succ-txns-rows fn2-succ-txns))))
+                    (natp readrows)))
        (mv :bounds fn2-succ-txns fn2-succ-slots fn2-run-cursors fn2-run-paths fn2-fields fn2-c-source-control fn2-c-source-readers))
-      (readrows (- (fn2-succ-txns-rows fn2-succ-txns) (fn2-id-decides-rows fn2-id-decides)))
+      ; The same endpoint cannot be borrowed from an active XL or identity
+      ; continuation merely because its transaction row happens to match.
+      ((unless (and (or (equal (fn2-succ-txns-source-receipt tx fn2-succ-txns) 0)
+                            (equal (fn2-succ-txns-lphase tx fn2-succ-txns) *fn2-succ-lookup-idle*))
+                    (member (fn2-id-decides-phase tx fn2-id-decides)
+                     (list *fn2-id-decide-phase-idle* *fn2-id-decide-phase-done*))))
+       (mv :state fn2-succ-txns fn2-succ-slots fn2-run-cursors fn2-run-paths fn2-fields fn2-c-source-control fn2-c-source-readers))
       ((mv admitted fn2-succ-txns fn2-c-source-control fn2-c-source-readers)
        (fn2-succ-source-acquire tx readrows fn2-succ-txns fn2-c-source-control fn2-c-source-readers))
       ((unless (eq admitted :ok))
@@ -782,11 +789,15 @@
       (code (if (and (eq code :ok)
                      (not (and (equal (fn2-succ-txns-ri tx fn2-succ-txns) *fn2-succ-slots*)
                                (equal (fn2-succ-txns-rstate tx fn2-succ-txns) *fn2-succ-resolve-fresh*)))) :state code))
+      ; An error retry starts all slots under its new receipt. Cached RES
+      ; values remain scalar, but cannot pass the OPEN-stage RI gate below.
+      (fn2-succ-txns (if (eq code :ok) fn2-succ-txns
+       (fn2-succ-txns-put tx (ri 0) (rstate *fn2-succ-resolve-fresh*) (rbound 0))))
       ((mv closed fn2-succ-txns fn2-run-cursors fn2-fields fn2-c-source-control fn2-c-source-readers)
        (fn2-succ-source-close tx readrows b0 fn2-succ-txns fn2-run-cursors fn2-fields fn2-c-source-control fn2-c-source-readers)))
   (mv (if (eq closed :ok) code :state) fn2-succ-txns fn2-succ-slots fn2-run-cursors fn2-run-paths fn2-fields fn2-c-source-control fn2-c-source-readers)))
 (fn2-idc-fn-shape fn2-succ-resolve-observed
- (tx budget b0 fn2-succ-txns fn2-succ-slots fn2-id-decides fn2-run-installed fn2-run-cursors fn2-run-paths fn2-run-cache fn2-fields fn2-pool fn2-c-source-control fn2-c-source-readers)
+ (tx budget b0 readrows fn2-succ-txns fn2-succ-slots fn2-id-decides fn2-run-installed fn2-run-cursors fn2-run-paths fn2-run-cache fn2-fields fn2-pool fn2-c-source-control fn2-c-source-readers)
  (fn2-succ-txns fn2-succ-slots fn2-run-cursors fn2-run-paths fn2-fields fn2-c-source-control fn2-c-source-readers)
  (fn2-succ-txns fn2-succ-slots fn2-id-decides fn2-run-installed fn2-run-cursors fn2-run-paths fn2-run-cache fn2-fields fn2-pool fn2-c-source-control fn2-c-source-readers) t
  (fn2-succ-source-acquire fn2-succ-resolve fn2-succ-source-close fn2-succ-txns-ri fn2-succ-txns-rstate))
