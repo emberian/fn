@@ -35,7 +35,7 @@
        (and (or cold
                 (and (equal (fn2-checkpoint-teardown-debt-installation-commit c fn2-checkpoint-teardown-debt) (fn2-checkpoints-installation-commit c fn2-checkpoints))
                      (equal (fn2-checkpoint-teardown-debt-installation-event c fn2-checkpoint-teardown-debt) (fn2-checkpoints-installation-event c fn2-checkpoints))))
-            (or (member-equal (fn2-checkpoints-state c fn2-checkpoints) (list *fn2-checkpoint-state-installed* *fn2-checkpoint-state-promoting* *fn2-checkpoint-state-promoted*))
+            (or (member-equal (fn2-checkpoints-state c fn2-checkpoints) (list *fn2-checkpoint-state-installed* *fn2-checkpoint-state-promoting* *fn2-checkpoint-state-promoted* *fn2-checkpoint-state-disposing*))
                 (and cold (equal (fn2-checkpoints-state c fn2-checkpoints) *fn2-checkpoint-state-checked*)))))
       (equal (fn2-checkpoint-teardown-debt-word-cursor c fn2-checkpoint-teardown-debt) 40)
       (fn2-checkpoint-teardown-retained-hash-p 0 c fn2-checkpoint-teardown-debt fn2-checkpoint-bytes)))

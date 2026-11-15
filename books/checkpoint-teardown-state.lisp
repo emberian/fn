@@ -10,6 +10,10 @@
   (cut-commit :u60) (cut-event :u60) (installation-commit :u60) (installation-event :u60)
   (word-cursor :u8) (anchor-mask :u8)
   (cold-copy :bool) (cold-slot :u8) (cold-pos :u8) (cold-new :bool)
+  ; Disposal is a separate retained continuation; accepted retirement tuple
+  ; fields below remain immutable until their actual DROP finishes.
+  (dispose-phase (:enum fn2-checkpoint-dispose-phase (:idle :sources :roots :refs :bytes :finish)))
+  (dispose-cursor :u32)
   (cold-token :u60) (cold-owner-kind :u8) (cold-owner-slot :u32) (cold-owner-gen :u60)
   (extent :u32) (epoch :u60) (allocation :u60) (batch :u60) (event :u60))
  :init-name fn2-checkpoint-teardown-debt-columns-init
