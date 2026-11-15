@@ -13,7 +13,7 @@
   (location-kind :u8) (unit :u60) (epoch :u60) (allocation :u60) (hashes :u32)
   (root-unit :u60) (root-epoch :u60) (root-allocation :u60)
   (offset :u60) (unit-index :u32) (unit-length :u32) (unit-copied :u32) (unit-hashed :u32)
-  (hash-offset :u60) (hash-phase :u8) (pending :bool) (borrow-count :u32)
+  (hash-offset :u60) (hash-phase :u8) (pending :bool) (uncertain :bool) (borrow-count :u32)
   (op-slot :u32) (op-gen :u60) (result-kind :u8) (result-outcome :u8) (result-reason :u8) (result-count :u32)
   (retention-phase :u8) (retain-row :u32) (release-row :u32)
   (retain-entry-index :u32) (retain-entry-count :u32) (manifest-position :u32)

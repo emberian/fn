@@ -4,7 +4,7 @@
 (in-package "ACL2")
 (include-book "cns-source-state")
 (include-book "txn-kind")
-(fn2-book-layer :c)
+(fn2-book-layer :d)
 (defmacro fn2-cns-source-capture-mv (code total)
  `(mv ,code ,total fn2-cns-sources fn2-pool))
 (defun fn2-cns-source-capture-read-children (s cns cnsgen ctl ctlgen request x lslot lgen kind
@@ -54,7 +54,7 @@
        (article article) (version version) (total total) (location-kind loc) (unit unit) (epoch epoch) (allocation allocation)
        (root-unit unit) (root-epoch epoch) (root-allocation allocation) (hashes hashes)
        (offset 0) (unit-index 0) (unit-length 0) (unit-copied 0) (unit-hashed 0) (hash-offset 0) (hash-phase 0)
-       (pending 0) (borrow-count 0) (retention-phase 0) (retain-row 0) (release-row 0)
+       (pending 0) (uncertain 0) (borrow-count 0) (retention-phase 0) (retain-row 0) (release-row 0)
        (retain-entry-index 0) (retain-entry-count 0) (manifest-position 0) (manifest-index 0) (manifest-count (fn2-am-units total)) (manifest-seen 0)))
       ((mv reset fn2-pool) (fn2-pool-reset lslot lgen kind cns cnsgen fn2-pool))
       ((mv v copied left fn2-pool) (if (eq reset :ok)

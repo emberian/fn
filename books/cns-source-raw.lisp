@@ -5,7 +5,7 @@
 (include-book "cns-source-hash")
 (include-book "storage-block-io")
 (include-book "machines-b")
-(fn2-book-layer :c)
+(fn2-book-layer :d)
 (defcolumns fn2-cns-source-operations ((live :bool) (generation :u60) (source-row :u32)))
 
 (defun fn2-cns-source-issue-children (s cns cnsgen ctl ctlgen request kind principal
@@ -48,7 +48,7 @@
         (mv :bounds 0 0 fn2-pool fn2-ops fn2-control fn2-extents fn2-alloc-edges)))
       ((unless (eq code :ok))
        (let ((fn2-cns-sources (if (equal (fn2-control-stop fn2-control) 1)
-              (fn2-cns-sources-put s (phase *fn2-cns-source-phase-bad*) (borrow-count 1)) fn2-cns-sources)))
+              (fn2-cns-sources-put s (phase *fn2-cns-source-phase-bad*) (uncertain 1)) fn2-cns-sources)))
         (mv (if (eq code :exhausted) :wait :bad) op opgen fn2-cns-sources fn2-cns-source-operations fn2-pool fn2-ops fn2-control fn2-extents fn2-alloc-edges)))
       (fn2-cns-source-operations (fn2-cns-source-operations-put op (live 1) (generation opgen) (source-row s)))
       (fn2-cns-sources (fn2-cns-sources-put s (pending 1) (op-slot op) (op-gen opgen) (unit-length len) (unit-copied 0) (unit-hashed 0)
@@ -58,10 +58,11 @@
 
 (defun fn2-cns-source-harvest (op opgen cell event outcome reason count aux0 aux1 fn2-cns-sources fn2-cns-source-operations)
  (declare (xargs :stobjs (fn2-cns-sources fn2-cns-source-operations)
- :guard (and (fn2-cns-sources-wfp fn2-cns-sources) (fn2-cns-source-operations-wfp fn2-cns-source-operations))) (ignore cell aux0 aux1))
+ :guard (and (fn2-cns-sources-wfp fn2-cns-sources) (fn2-cns-source-operations-wfp fn2-cns-source-operations))) (ignore aux0 aux1))
  (b* (((unless (and (natp op) (< op (fn2-cns-source-operations-rows fn2-cns-source-operations))
                     (equal (fn2-cns-source-operations-live op fn2-cns-source-operations) 1)
-                    (equal opgen (fn2-cns-source-operations-generation op fn2-cns-source-operations))))
+                    (equal opgen (fn2-cns-source-operations-generation op fn2-cns-source-operations))
+                    (equal cell 0) (equal event *fn2-event-read-result*)))
        (mv :ok fn2-cns-sources fn2-cns-source-operations))
       (s (fn2-cns-source-operations-source-row op fn2-cns-source-operations))
       ((unless (and (< s (fn2-cns-sources-rows fn2-cns-sources)) (equal (fn2-cns-sources-pending s fn2-cns-sources) 1)
