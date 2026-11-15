@@ -78,6 +78,22 @@
     (update-fn2-eo-phase 5 fn2-envelope-output-state))))
  :hints (("Goal" :in-theory (enable fn2-envelope-output-step))))
 
+(defthm fn2-eo-phase7-launch-frame
+ (implies (and (equal (fn2-eo-phase fn2-envelope-output-state) 7) (consp (fn2-eo-bytes fn2-envelope-output-state)))
+  (and (equal (fn2-eo-phase (fn2-envelope-output-step fn2-envelope-output-state)) 8)
+       (equal (fn2-eo-acc (fn2-envelope-output-step fn2-envelope-output-state)) nil)
+       (equal (fn2-eo-scan (fn2-envelope-output-step fn2-envelope-output-state)) (fn2-eo-peer fn2-envelope-output-state))
+       (equal (fn2-eo-shifted (fn2-envelope-output-step fn2-envelope-output-state)) (cdr (fn2-eo-row fn2-envelope-output-state)))
+       (equal (fn2-eo-suffix-scan (fn2-envelope-output-step fn2-envelope-output-state)) (fn2-eo-suffix fn2-envelope-output-state))
+       (equal (fn2-eo-byte (fn2-envelope-output-step fn2-envelope-output-state)) (car (fn2-eo-bytes fn2-envelope-output-state)))
+       (equal (fn2-eo-bytes (fn2-envelope-output-step fn2-envelope-output-state)) (cdr (fn2-eo-bytes fn2-envelope-output-state)))
+       (equal (fn2-eo-peer (fn2-envelope-output-step fn2-envelope-output-state)) (fn2-eo-peer fn2-envelope-output-state))
+       (equal (fn2-eo-prefix (fn2-envelope-output-step fn2-envelope-output-state)) (fn2-eo-prefix fn2-envelope-output-state))
+       (equal (fn2-eo-suffix (fn2-envelope-output-step fn2-envelope-output-state)) (fn2-eo-suffix fn2-envelope-output-state))
+       (equal (fn2-eo-segments (fn2-envelope-output-step fn2-envelope-output-state)) (fn2-eo-segments fn2-envelope-output-state))
+       (equal (fn2-eo-row (fn2-envelope-output-step fn2-envelope-output-state)) (fn2-eo-row fn2-envelope-output-state))))
+ :hints (("Goal" :in-theory (disable fn2-envelope-output-step))))
+
 (defthm fn2-eo-phase7-prepends-source-byte
  (implies
   (and (equal (fn2-eo-phase fn2-envelope-output-state) 7)
@@ -116,4 +132,5 @@
          (a 1) (b (+ 3 (len (fn2-eo-peer fn2-envelope-output-state))
                        (len (fn2-eo-peer fn2-envelope-output-state))))))
   :in-theory (disable fn2-envelope-output-run fn2-envelope-output-step
-                      fn2-eo-language-row fn2-envelope-output-language-p))))
+                      fn2-eo-language-row fn2-envelope-output-language-p fn2-eo-phase7-step-unfolds
+                      fn2-eo-phase fn2-eo-acc fn2-eo-scan fn2-eo-shifted fn2-eo-suffix-scan fn2-eo-byte fn2-eo-bytes fn2-eo-peer fn2-eo-prefix fn2-eo-suffix fn2-eo-segments fn2-eo-row))))
