@@ -261,6 +261,18 @@
        (<= (+ base *fn2-format-checkpoint-descriptor-num-fields*) (fn2-fields-rows fn2-fields))))
  :hints (("Goal" :in-theory (enable fn2-checkpoint-decode))))
 
+; Successful decoding establishes this room even for the original off-guard
+; carrier claim. Make that actual call's postcondition available forward.
+(local (defthm fn2-checkpoint-decode-ok-room-forward
+ (implies
+  (equal (car (fn2-checkpoint-decode base slot gen off len okind oslot ogen fn2-fields fn2-pool)) :ok)
+  (and (natp base)
+       (<= (+ base *fn2-format-checkpoint-descriptor-num-fields*) (fn2-fields-rows fn2-fields))))
+ :rule-classes ((:forward-chaining
+   :trigger-terms ((fn2-checkpoint-decode base slot gen off len okind oslot ogen fn2-fields fn2-pool))))
+ :hints (("Goal" :use fn2-checkpoint-decode-ok-room-by-definition
+          :in-theory (disable fn2-checkpoint-decode)))))
+
 (defthm fn2-checkpoint-decode-value-type
  (implies
   (and (fn2-fieldsp fn2-fields) (fn2-fields-wfp fn2-fields)
