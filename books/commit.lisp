@@ -2,6 +2,7 @@
 (in-package "ACL2")
 (include-book "machines-a-access")
 (include-book "commit-format")
+(include-book "checkpoint-commit-leases")
 (fn2-book-layer :b)
 ; Named stops (review ruling 3): a commit helper that finds a state its callers
 ; rule out stops the core with a named reason instead of absorbing it
@@ -9,12 +10,6 @@
 ; *fn2-commit-no-extent* is the resource reader's not-u32 extent, which every
 ; caller's u32 check turns into its own stop.
 (defconst *fn2-commit-no-extent* 4294967296)
-; B-S2 (§11b S1-S2): a transaction member's workspace holds at most this many
-; record frames; the records frame's payload bounds a batch's records, each
-; counted at its largest sealed size (header 83 octets plus its body).
-(defconst *fn2-commit-txn-records-max* 25)
-(defconst *fn2-commit-records-room* 3900)
-(defconst *fn2-commit-txn-header-room* 83)
 (defmacro fn2-commit-require (ok reason)
  `(if ,ok fn2-core (fn2-core-stop ,reason fn2-core)))
 (defmacro fn2-commit-stop-arm (reason)
@@ -271,6 +266,38 @@
  (implies (fn2-corep fn2-core) (natp (fn2-commit-now fn2-core)))
  :rule-classes :type-prescription)
 (in-theory (disable fn2-commit-now))
+; Shared reservation for payload and checkpoint construction. Physical writes
+; require this exact reserved identity; reservation alone is not durability.
+(defun fn2-storage-checkpoint-active (fn2-core)
+ (declare (xargs :stobjs fn2-core :guard (fn2-core-wfp fn2-core)))
+ (stobj-let ((fn2-extents (fn2-core-extents fn2-core))) (active)
+  (fn2-alloc-snapshot-activep fn2-extents) active))
+(defun fn2-storage-frozen (fn2-core)
+ (declare (xargs :stobjs fn2-core :guard (fn2-core-wfp fn2-core)))
+ (stobj-let ((fn2-extents (fn2-core-extents fn2-core))) (frozen)
+  (fn2-alloc-frozenp fn2-extents) frozen))
+(defun fn2-storage-reserve (fn2-core)
+ (declare (xargs :stobjs fn2-core :guard (fn2-core-wfp fn2-core)
+                 :guard-hints (("Goal" :in-theory (enable fn2-core-wfp)))))
+ (stobj-let ((fn2-extents (fn2-core-extents fn2-core))
+             (fn2-control (fn2-core-control fn2-core)))
+  (code extent epoch counter fn2-extents fn2-control)
+  (fn2-storage-reserve-children fn2-extents fn2-control)
+  (mv code extent epoch counter fn2-core)))
+(fn2-core-preserves fn2-storage-reserve (fn2-core) :position 4 :rows nil)
+; Both fresh and pre-reserved journal identities bind the same three roles.
+(defun fn2-commit-bind-extent (r e epoch counter fn2-commit-io)
+ (declare (xargs :stobjs fn2-commit-io
+  :guard (and (fn2-commit-io-wfp fn2-commit-io) (natp r)
+              (< (+ r 2) (fn2-commit-io-rows fn2-commit-io))
+              (unsigned-byte-p 32 e) (unsigned-byte-p 60 epoch) (unsigned-byte-p 60 counter))))
+ (let* ((fn2-commit-io (fn2-commit-io-put r (extent e) (epoch epoch) (counter counter)))
+        (fn2-commit-io (fn2-commit-io-put (+ r 1) (extent e) (epoch epoch) (counter counter)))
+        (fn2-commit-io (fn2-commit-io-put (+ r 2) (extent e) (epoch epoch) (counter counter))))
+  fn2-commit-io))
+(fn2-commit-io-preserves fn2-commit-bind-extent (r e epoch counter fn2-commit-io)
+ :hyps ((natp r) (< (+ r 2) (fn2-commit-io-rows fn2-commit-io))
+        (unsigned-byte-p 32 e) (unsigned-byte-p 60 epoch) (unsigned-byte-p 60 counter)))
 ; Reserve the extent before preparing any effects; all three writes share it.
 (defun fn2-commit-reserve-extent (id fn2-core)
  (declare (xargs :stobjs fn2-core :guard (fn2-core-wfp fn2-core)))
@@ -286,21 +313,36 @@
     (if (not (and (eq code :ok) (unsigned-byte-p 32 e)
                   (unsigned-byte-p 60 epoch) (unsigned-byte-p 60 counter)))
         (mv code fn2-extents fn2-commit-io)
-     (let* ((fn2-commit-io (fn2-commit-io-set-extent r e fn2-commit-io))
-            (fn2-commit-io (fn2-commit-io-set-epoch r epoch fn2-commit-io))
-            (fn2-commit-io (fn2-commit-io-set-counter r counter fn2-commit-io))
-            (fn2-commit-io (fn2-commit-io-set-extent (+ r 1) e fn2-commit-io))
-            (fn2-commit-io (fn2-commit-io-set-epoch (+ r 1) epoch fn2-commit-io))
-            (fn2-commit-io (fn2-commit-io-set-counter (+ r 1) counter fn2-commit-io))
-            (fn2-commit-io (fn2-commit-io-set-extent (+ r 2) e fn2-commit-io))
-            (fn2-commit-io (fn2-commit-io-set-epoch (+ r 2) epoch fn2-commit-io))
-            (fn2-commit-io (fn2-commit-io-set-counter (+ r 2) counter fn2-commit-io)))
+     (let ((fn2-commit-io (fn2-commit-bind-extent r e epoch counter fn2-commit-io)))
        (mv :ok fn2-extents fn2-commit-io)))))
   (let ((fn2-core (cond ((eq code :shape) (fn2-core-stop *fn2-stop-reason-commit-resource* fn2-core))
                         ((eq code :links) (fn2-core-stop *fn2-stop-reason-alloc-links* fn2-core))
                         (t fn2-core))))
    (mv code fn2-core))))))
 (fn2-core-preserves fn2-commit-reserve-extent (id fn2-core) :position 1 :rows nil)
+; The frozen installation path consumes only the next retained journal
+; ticket. A one-row scan may yield; no new extent is reserved after map seal.
+(defun fn2-commit-reserve-ticket (id batch fn2-core)
+ (declare (xargs :stobjs fn2-core :guard (fn2-core-wfp fn2-core)))
+ (fn2-commit-checked id (mv :bounds fn2-core)
+  (let ((r (* 3 (fn2-commit-row id fn2-core))))
+   (stobj-let ((fn2-extents (fn2-core-extents fn2-core))
+               (fn2-checkpoint-construction (fn2-core-checkpoint-construction fn2-core))
+               (fn2-commit-io (fn2-core-commit-io fn2-core)))
+    (code fn2-checkpoint-construction fn2-commit-io)
+    (b* (((unless (and (natp r) (< (+ r 2) (fn2-commit-io-rows fn2-commit-io))))
+          (mv :shape fn2-checkpoint-construction fn2-commit-io))
+         ((mv code e epoch counter fn2-checkpoint-construction)
+          (fn2-checkpoint-ticket-take batch fn2-checkpoint-construction fn2-extents))
+         ((unless (eq code :ok))
+          (mv (if (eq code :more) :exhausted code) fn2-checkpoint-construction fn2-commit-io))
+         ((unless (and (unsigned-byte-p 32 e) (unsigned-byte-p 60 epoch) (unsigned-byte-p 60 counter)))
+          (mv :shape fn2-checkpoint-construction fn2-commit-io))
+         (fn2-commit-io (fn2-commit-bind-extent r e epoch counter fn2-commit-io)))
+     (mv :ok fn2-checkpoint-construction fn2-commit-io))
+    (let ((fn2-core (if (eq code :shape) (fn2-core-stop *fn2-stop-reason-commit-resource* fn2-core) fn2-core)))
+     (mv code fn2-core))))))
+(fn2-core-preserves fn2-commit-reserve-ticket (id batch fn2-core) :position 1 :rows nil)
 (defun fn2-commit-save-pool (id role slot gen fn2-core)
  (declare (xargs :stobjs fn2-core :guard (fn2-core-wfp fn2-core)))
  (fn2-commit-checked id fn2-core
@@ -313,12 +355,20 @@
        (let ((fn2-commit-io (fn2-commit-io-set-ready r 1 fn2-commit-io))) (mv t fn2-commit-io))) (mv nil fn2-commit-io))
   (fn2-commit-require ok *fn2-stop-reason-commit-pool*)))))
 (fn2-core-preserves fn2-commit-save-pool (id role slot gen fn2-core) :rows nil :prefix "")
- ; Admission is bounded by four pool reservations. On refusal unwind only
-; the newly acquired workspaces; no sequence/root or storage effect exists yet.
+ ; Foreground admission reserves four pool ranges; checkpoint admission borrows
+; the pre-cut four-range bundle. Refusal returns only these volatile resources
+; before a sequence/root or storage effect exists.
+(fn2-checkpoint-commit-loan-events)
 (defun fn2-commit-release-pool (id role owner-gen fn2-core)
  (declare (xargs :stobjs fn2-core :guard (fn2-core-wfp fn2-core)))
  (fn2-commit-checked id (mv :bounds fn2-core)
- (b* ((scratch (equal role 3))
+ (b* ((loan (fn2-checkpoint-commit-loan-state id owner-gen fn2-core))
+      ((when (eq loan :broken))
+       (let ((fn2-core (fn2-core-stop *fn2-stop-reason-commit-pool* fn2-core))) (mv :uncertain fn2-core)))
+      ((when (eq loan :borrowed))
+       (if (not (and (natp role) (< role 4))) (mv :bounds fn2-core)
+        (if (= role 3) (fn2-checkpoint-commit-return-pools id owner-gen fn2-core) (mv :ok fn2-core))))
+      (scratch (equal role 3))
       ((mv & & & slot gen) (fn2-commit-resource id (if scratch 0 role) fn2-core))
       (r (+ (* 3 (fn2-commit-row id fn2-core)) (nfix role)))
       ((mv code fn2-core)
@@ -343,6 +393,7 @@
  (if (and (natp role) (< role 3)) (fn2-commit-save-pool id role slot gen fn2-core)
   (fn2-commit-put-core id (pool-slot slot) (pool-gen gen))))
 (fn2-core-preserves fn2-commit-keep-pool (id role slot gen fn2-core) :rows nil :prefix "")
+(fn2-checkpoint-commit-reserve-events)
 (defun fn2-commit-unwind-pool (id role owner-gen fn2-core)
  (declare (xargs :stobjs fn2-core :guard (fn2-core-wfp fn2-core)))
  (mv-let (released fn2-core) (fn2-commit-release-pool id role owner-gen fn2-core)
@@ -452,11 +503,22 @@
           ((unless (and (< batch capacity) (or (not again) (< gen (fn2-machine-gen-limit fn2-core)))))
            (mv :exhausted fn2-core))
           (owner-gen (if again (+ 1 gen) gen))
-          ((mv code fn2-core) (fn2-commit-reserve-pools 4 id owner-gen fn2-core))
+          (maintenance (fn2-storage-frozen fn2-core))
+          ((mv code fn2-core)
+           (if maintenance (fn2-checkpoint-commit-reserve-pools id owner-gen fn2-core)
+             (fn2-commit-reserve-pools 4 id owner-gen fn2-core)))
           ((unless (eq code :ok)) (mv code fn2-core))
-          ((mv code fn2-core) (fn2-commit-reserve-extent id fn2-core))
+          ((mv code fn2-core)
+           (if maintenance
+               (fn2-commit-reserve-ticket id batch fn2-core)
+             (fn2-commit-reserve-extent id fn2-core)))
           ((unless (eq code :ok))
-           (let ((fn2-core (fn2-commit-release-pools 4 id owner-gen fn2-core))) (mv code fn2-core)))
+           (if maintenance
+               (mv-let (returned fn2-core) (fn2-checkpoint-commit-return-pools id owner-gen fn2-core)
+                (let ((fn2-core (if (eq returned :ok) fn2-core
+                                 (fn2-core-stop *fn2-stop-reason-commit-pool* fn2-core))))
+                 (mv (if (eq returned :ok) code :uncertain) fn2-core)))
+             (let ((fn2-core (fn2-commit-release-pools 4 id owner-gen fn2-core))) (mv code fn2-core))))
           (fn2-core (fn2-commit-put-core id (phase *fn2-commit-state-collect*)
             (member-count members) (first-key first-key) (cb-mode mode)
             (batch-no batch) (partner partner) (principal-slot 0) (stopped 0) (generation owner-gen)
@@ -528,6 +590,8 @@
 (defun fn2-commit-admit-keyed (n mode okind oslot ogen fn2-core)
  (declare (xargs :stobjs fn2-core :guard (fn2-core-wfp fn2-core)))
  (b* (((when (fn2-core-stopped-p fn2-core)) (mv :stopped 0 0 0 fn2-core))
+      ;; Maintenance tickets belong only to validated lifecycle producers.
+      ((when (fn2-storage-frozen fn2-core)) (mv :exhausted 0 0 0 fn2-core))
       ((mv pick id partner) (fn2-commit-pick fn2-core))
       ((unless (eq pick :open)) (mv :exhausted 0 0 0 fn2-core))
       ((unless (and (posp n) (<= n *fn2-commit-members-per-batch*))) (mv :admission 0 0 0 fn2-core))
@@ -555,6 +619,14 @@
   (code batch event outcome fn2-commit-settled) (fn2-cs-take okind oslot ogen fn2-commit-settled)
   (mv code batch event outcome fn2-core)))
 (fn2-core-preserves fn2-commit-take (okind oslot ogen fn2-core) :position 4 :rows nil)
+(defun fn2-commit-take-exact (okind oslot ogen batch event fn2-core)
+ (declare (xargs :stobjs fn2-core :guard (fn2-core-wfp fn2-core)))
+ (stobj-let ((fn2-commit-settled (fn2-core-commit-settled fn2-core)))
+  (code actual-batch actual-event outcome fn2-commit-settled)
+  (fn2-cs-take-exact okind oslot ogen batch event fn2-commit-settled)
+  (mv code actual-batch actual-event outcome fn2-core)))
+(fn2-core-preserves fn2-commit-take-exact
+ (okind oslot ogen batch event fn2-core) :position 4 :rows nil)
 ; B-S2 S11 (Argon 9.7): the node's serving posture, computed from the two
 ; commit rows' phases and never stored: :draining while either row is
 ; :uncertain (its batch holds rows, windows, reservations and claims until
@@ -757,7 +829,8 @@
 ; does not decode; nothing changed).
 (defun fn2-commit-admit-txn (slot gen len okind oslot ogen fn2-core)
  (declare (xargs :stobjs fn2-core :guard (fn2-core-wfp fn2-core)))
- (b* (((unless (and (posp len) (<= len *fn2-commit-records-room*) (unsigned-byte-p 32 slot)
+ (b* (((when (fn2-storage-frozen fn2-core)) (mv :exhausted 0 0 fn2-core))
+      ((unless (and (posp len) (<= len *fn2-commit-records-room*) (unsigned-byte-p 32 slot)
                     (unsigned-byte-p 60 gen) (posp okind) (unsigned-byte-p 8 okind)
                     (unsigned-byte-p 32 oslot) (unsigned-byte-p 60 ogen)))
        (mv :admission 0 0 fn2-core))
@@ -773,6 +846,9 @@
   (if (eq pick :open) (fn2-commit-txn-open id partner slot gen len okind oslot ogen need fn2-core)
    (fn2-commit-txn-join id slot gen len okind oslot ogen need fn2-core))))
 (fn2-core-preserves fn2-commit-admit-txn (slot gen len okind oslot ogen fn2-core) :position 3 :rows nil)
+(fn2-checkpoint-retirement-coordinator-events)
+(fn2-checkpoint-allocation-coordinator-events)
+(fn2-checkpoint-installation-coordinator-events)
 ; B-S2 S9: the article's source reference from an admitted workspace's first
 ; :article-acceptance record, for the transaction to bind into fn2-article's
 ; location: (mv code physical-unit writer-epoch allocation encoded-length).
@@ -805,13 +881,26 @@
 (defun fn2-block-read (pu epoch alloc off len lslot lgen okind oslot ogen principal fn2-core)
  (declare (xargs :stobjs fn2-core :guard (fn2-core-wfp fn2-core)
                  :guard-hints (("Goal" :in-theory (enable fn2-core-wfp)))))
- (stobj-let ((fn2-extents (fn2-core-extents fn2-core)) (fn2-pool (fn2-core-pool fn2-core))
+ (stobj-let ((fn2-extents (fn2-core-extents fn2-core)) (fn2-alloc-edges (fn2-core-alloc-edges fn2-core)) (fn2-pool (fn2-core-pool fn2-core))
              (fn2-ops (fn2-core-ops fn2-core)) (fn2-control (fn2-core-control fn2-core)))
-  (code slot gen fn2-pool fn2-ops fn2-control)
+  (code slot gen fn2-pool fn2-ops fn2-control fn2-extents fn2-alloc-edges)
   (fn2-block-read-children pu epoch alloc off len lslot lgen okind oslot ogen principal
-                           fn2-extents fn2-pool fn2-ops fn2-control)
+                           fn2-extents fn2-alloc-edges fn2-pool fn2-ops fn2-control)
   (mv code slot gen fn2-core)))
 (fn2-core-preserves fn2-block-read (pu epoch alloc off len lslot lgen okind oslot ogen principal fn2-core)
+ :position 3 :rows nil :hints (("Goal" :in-theory (enable fn2-core-wfp))))
+; Physical-unit construction over the same pin/issue primitive. A write
+; completion alone grants no journal publication or durability claim.
+(defun fn2-block-write (pu epoch alloc off len lslot lgen boff okind oslot ogen principal fn2-core)
+ (declare (xargs :stobjs fn2-core :guard (fn2-core-wfp fn2-core)
+                 :guard-hints (("Goal" :in-theory (enable fn2-core-wfp)))))
+ (stobj-let ((fn2-extents (fn2-core-extents fn2-core)) (fn2-alloc-edges (fn2-core-alloc-edges fn2-core)) (fn2-pool (fn2-core-pool fn2-core))
+             (fn2-ops (fn2-core-ops fn2-core)) (fn2-control (fn2-core-control fn2-core)))
+  (code slot gen fn2-pool fn2-ops fn2-control fn2-extents fn2-alloc-edges)
+  (fn2-block-write-children pu epoch alloc off len lslot lgen boff okind oslot ogen principal
+                           fn2-extents fn2-alloc-edges fn2-pool fn2-ops fn2-control)
+  (mv code slot gen fn2-core)))
+(fn2-core-preserves fn2-block-write (pu epoch alloc off len lslot lgen boff okind oslot ogen principal fn2-core)
  :position 3 :rows nil :hints (("Goal" :in-theory (enable fn2-core-wfp))))
 ; Shared location commitment check, also used by checkpoint payload reads.
 (defun fn2-block-read-commitment (bytes len lslot lgen boff hslot hgen hoff okind oslot ogen fn2-core)
@@ -1089,7 +1178,7 @@
            (unsigned-byte-p 32 (fn2-digest-slot row *fn2-fc-geometry*)))
    (let* ((fn2-fc-context (fn2-fc-context-set-hash row (fn2-digest-slot row *fn2-fc-hash*) fn2-fc-context))
           (fn2-fc-context (fn2-fc-context-set-geometry row (fn2-digest-slot row *fn2-fc-geometry*) fn2-fc-context))
-          (fn2-fc-context (fn2-fc-context-set-location row (+ (* 3 e) role) fn2-fc-context))
+          (fn2-fc-context (fn2-fc-context-set-location row (+ (* *fn2-storage-extent-units* e) role) fn2-fc-context))
           (fn2-fc-context (fn2-fc-context-set-history row (fn2-origin-history fn2-origin) fn2-fc-context))
           (fn2-fc-context (fn2-fc-context-set-incarnation row (fn2-origin-history-incarnation fn2-origin) fn2-fc-context))
           (fn2-fc-context (fn2-fc-context-set-extent row e fn2-fc-context))
@@ -1359,8 +1448,11 @@
   (mv-let (e epoch counter slot gen) (fn2-commit-resource id 0 fn2-core)
    (declare (ignore slot gen))
    (let ((batch (fn2-machine-batch-no id fn2-core)))
-    (stobj-let ((fn2-extents (fn2-core-extents fn2-core))) (code fn2-extents)
-     (fn2-alloc-commit-allocation e epoch counter *fn2-commit-kind* batch fn2-extents)
+    (stobj-let ((fn2-extents (fn2-core-extents fn2-core))
+                (fn2-checkpoint-construction (fn2-core-checkpoint-construction fn2-core))) (code fn2-extents)
+     (if (fn2-alloc-frozenp fn2-extents)
+         (fn2-checkpoint-ticket-install e epoch counter batch *fn2-commit-kind* fn2-checkpoint-construction fn2-extents)
+       (fn2-alloc-commit-allocation e epoch counter *fn2-commit-kind* batch fn2-extents))
      (mv code fn2-core))))))
 (fn2-core-preserves fn2-commit-allocate (id fn2-core) :position 1 :rows nil)
 (in-theory (disable fn2-commit-allocate))
@@ -1381,6 +1473,7 @@
 ; publish, settlement, drop, notify and drain, then the kind's run.
 (defun fn2-commit-event-forms-2b ()
  (list* 'progn (fn2-commit-local-theory) (fn2-commit-local-forward) (fn2-commit-local-idp) '(
+(fn2-checkpoint-retirement-install-events)
 (defun fn2-commit-root-swap (id publish fn2-core)
  (declare (xargs :stobjs fn2-core :guard (fn2-core-wfp fn2-core)))
  (fn2-commit-checked id (mv nil fn2-core)

@@ -277,6 +277,10 @@ ACL2_BOOKS = \
   tests/alloc-lifecycle-unit \
   tests/alloc-planning-unit \
   tests/retirement-intent-allocator-unit \
+  tests/retirement-intent-leaf-unit \
+  tests/retirement-intent-core-unit \
+  tests/retirement-publish-core-unit \
+  tests/retirement-canonical-core-unit \
   tests/authority-client \
   tests/authority-served \
   tests/authority-stream-resolve \
@@ -304,6 +308,8 @@ ACL2_BOOKS = \
   tests/host-codec-cancel-unit \
   tests/tls-record-policy-unit \
   tests/tls-record-unit \
+  tests/send-failure-unit \
+  tests/send-accounting-unit \
   tests/tls-stack-unit \
   tests/compress-policy-unit \
   tests/compress-action-unit \

@@ -126,7 +126,8 @@
     fn2-issue-children fn2-issue-receive-children fn2-issue-send-children fn2-issue-tls-start-children fn2-issue-compress-start-children fn2-issue-read-children
     fn2-issue-write-children fn2-issue-fence-children fn2-issue-accept-children
     fn2-issue-close-children fn2-issue-cancel-children fn2-issue-entropy-children
-    fn2-block-read-children fn2-cursor-sub-art-read-children fn2-cursor-run-render-children
+    fn2-pinned-block-io-children fn2-block-read-children fn2-block-write-children
+    fn2-cursor-sub-art-read-children fn2-cursor-run-render-children
     fn2-echo-run-command-children fn2-echo-run-reply-children fn2-echo-run-closing-children
     fn2-scribe-run-write-children fn2-scribe-run-fence-children fn2-scribe-run-read-children))
 (defmacro fn2-oss-child (name formals position)
@@ -145,8 +146,21 @@
 (fn2-oss-child fn2-issue-close-children (cap-index cap-nonce okind oslot ogen principal fn2-pool fn2-ops fn2-control) 4)
 (fn2-oss-child fn2-issue-cancel-children (target-slot target-gen okind oslot ogen principal fn2-pool fn2-ops fn2-control) 4)
 (fn2-oss-child fn2-issue-entropy-children (slot gen len okind oslot ogen principal fn2-pool fn2-ops fn2-control) 4)
+; The owning primitive composes the admitted read/write effects; outer faces
+; keep that body closed and consume this operation-semantic interface.
+(encapsulate ()
+ (local (in-theory (disable fn2-alloc-handle-code fn2-alloc-edge-add
+                            fn2-b-read-pin-drop fn2-b-read-pin-edge
+                            fn2-extents-state fn2-ops-free-head fn2-ops-gen
+                            fn2-control-stop fn2-control-record-stop)))
+ (fn2-oss-child fn2-pinned-block-io-children
+  (writep pu epoch alloc off len lslot lgen boff okind oslot ogen principal
+   fn2-extents fn2-alloc-edges fn2-pool fn2-ops fn2-control) 4))
 (fn2-oss-child fn2-block-read-children
-  (pu epoch alloc off len lslot lgen okind oslot ogen principal fn2-extents fn2-pool fn2-ops fn2-control) 4)
+  (pu epoch alloc off len lslot lgen okind oslot ogen principal fn2-extents fn2-alloc-edges fn2-pool fn2-ops fn2-control) 4)
+(fn2-oss-child fn2-block-write-children
+  (pu epoch alloc off len lslot lgen boff okind oslot ogen principal
+   fn2-extents fn2-alloc-edges fn2-pool fn2-ops fn2-control) 4)
 (fn2-oss-child fn2-echo-run-command-children
   (id slot kind ordinal budget fn2-echo fn2-machines fn2-pool fn2-ops fn2-control) 7)
 (fn2-oss-child fn2-echo-run-reply-children
