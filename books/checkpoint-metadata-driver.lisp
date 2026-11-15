@@ -2,22 +2,22 @@
 ; held-source constructors and authenticated closure walkers. Physical reads
 ; have a separate issue operation; PAGE freezes source mutation until handback.
 (in-package "ACL2")
-(include-book "checkpoint-metadata-resources")
+(include-book "checkpoint-source-loader")
 (fn2-book-layer :c)
 
 (defconst *fn2-checkpoint-root1-children*
- '(fn2-checkpoint-root1 fn2-checkpoint-windows fn2-checkpoint-metadata fn2-checkpoint-source fn2-checkpoint-metadata-manifest fn2-checkpoint-retained-entry fn2-checkpoint-payload fn2-checkpoint-semantic fn2-checkpoint-semantic-work fn2-checkpoint-build fn2-csnapshot fn2-checkpoints fn2-checkpoint-construction fn2-extents fn2-alloc-edges fn2-ops fn2-control fn2-checkpoint-refs fn2-checkpoint-bytes fn2-checkpoint-page fn2-checkpoint-page-verified fn2-overlays fn2-overlay-index fn2-run-installed fn2-run-builds fn2-run-writers fn2-run-restarts fn2-run-cursors fn2-run-paths fn2-run-cache fn2-boot-config fn2-fc fn2-fc-context fn2-b3 fn2-fields fn2-pool fn2-digests))
+ '(fn2-checkpoint-root1 fn2-checkpoint-windows fn2-checkpoint-metadata fn2-checkpoint-source fn2-checkpoint-metadata-manifest fn2-checkpoint-retained-entry fn2-checkpoint-payload fn2-checkpoint-semantic fn2-checkpoint-semantic-work fn2-checkpoint-build fn2-csnapshot fn2-checkpoints fn2-checkpoint-construction fn2-extents fn2-alloc-edges fn2-ops fn2-control fn2-checkpoint-refs fn2-checkpoint-bytes fn2-checkpoint-page fn2-checkpoint-page-verified fn2-overlays fn2-overlay-index fn2-run-installed fn2-run-builds fn2-run-writers fn2-run-restarts fn2-run-cursors fn2-run-paths fn2-run-cache fn2-boot-config fn2-fc fn2-fc-context fn2-b3 fn2-fields fn2-pool fn2-digests fn2-run-loads fn2-run-load-ops fn2-checkpoint-summary fn2-checkpoint-summary-sources fn2-checkpoint-summary-leases))
 (defconst *fn2-checkpoint-root1-outputs*
- '((fn2-checkpoint-root1-begin fn2-checkpoint-root1 fn2-checkpoint-metadata fn2-checkpoint-source fn2-checkpoint-metadata-manifest fn2-run-builds fn2-run-writers fn2-pool)
+ '((fn2-checkpoint-root1-begin fn2-checkpoint-root1 fn2-checkpoint-metadata fn2-checkpoint-source fn2-checkpoint-metadata-manifest fn2-run-builds fn2-run-writers fn2-pool fn2-run-loads)
    (fn2-checkpoint-root1-select fn2-checkpoint-root1 fn2-checkpoint-source fn2-checkpoint-metadata fn2-run-builds fn2-run-writers fn2-run-cursors fn2-pool)
    (fn2-checkpoint-root1-bind fn2-checkpoint-page)
    (fn2-checkpoint-root1-consume fn2-checkpoint-root1 fn2-digests)
-   (fn2-checkpoint-root1-work fn2-checkpoint-root1 fn2-checkpoint-metadata fn2-checkpoint-source fn2-checkpoint-metadata-manifest fn2-checkpoint-construction fn2-extents fn2-control fn2-run-builds fn2-run-writers fn2-run-restarts fn2-run-cursors fn2-run-paths fn2-fields fn2-pool fn2-fc fn2-fc-context fn2-b3 fn2-digests)
+   (fn2-checkpoint-root1-work fn2-checkpoint-root1 fn2-checkpoint-metadata fn2-checkpoint-source fn2-checkpoint-metadata-manifest fn2-checkpoint-construction fn2-extents fn2-control fn2-run-builds fn2-run-writers fn2-run-restarts fn2-run-cursors fn2-run-paths fn2-fields fn2-pool fn2-fc fn2-fc-context fn2-b3 fn2-digests fn2-run-loads fn2-checkpoint-summary fn2-checkpoint-summary-leases)
    (fn2-checkpoint-root1-payload-start fn2-checkpoint-root1 fn2-checkpoint-retained-entry fn2-checkpoint-semantic fn2-checkpoint-payload fn2-digests fn2-b3 fn2-extents fn2-alloc-edges)
    (fn2-checkpoint-root1-retention fn2-checkpoint-root1 fn2-checkpoint-metadata fn2-extents fn2-alloc-edges fn2-checkpoint-semantic)
-   (fn2-checkpoint-root1-closure fn2-checkpoint-root1 fn2-checkpoint-metadata-manifest fn2-checkpoint-semantic fn2-checkpoint-semantic-work fn2-checkpoint-metadata fn2-extents fn2-alloc-edges fn2-ops fn2-control fn2-fc fn2-fc-context fn2-b3 fn2-fields fn2-pool fn2-digests fn2-checkpoint-payload fn2-checkpoint-retained-entry fn2-checkpoint-refs fn2-checkpoint-bytes fn2-csnapshot)
-   (fn2-checkpoint-root1-read fn2-checkpoint-semantic fn2-checkpoint-semantic-work fn2-checkpoint-metadata fn2-extents fn2-alloc-edges fn2-ops fn2-control fn2-fc fn2-fc-context fn2-b3 fn2-fields fn2-pool fn2-digests fn2-checkpoint-payload)
-   (fn2-checkpoint-root1-step fn2-checkpoint-root1 fn2-checkpoint-metadata fn2-checkpoint-source fn2-checkpoint-metadata-manifest fn2-checkpoint-retained-entry fn2-checkpoint-payload fn2-checkpoint-semantic fn2-checkpoint-semantic-work fn2-csnapshot fn2-checkpoint-construction fn2-extents fn2-alloc-edges fn2-ops fn2-control fn2-checkpoint-refs fn2-checkpoint-bytes fn2-run-builds fn2-run-writers fn2-run-restarts fn2-run-cursors fn2-run-paths fn2-fc fn2-fc-context fn2-b3 fn2-fields fn2-pool fn2-digests)))
+   (fn2-checkpoint-root1-closure fn2-checkpoint-root1 fn2-checkpoint-metadata-manifest fn2-checkpoint-semantic fn2-checkpoint-semantic-work fn2-checkpoint-metadata fn2-extents fn2-alloc-edges fn2-ops fn2-control fn2-fc fn2-fc-context fn2-b3 fn2-fields fn2-pool fn2-digests fn2-checkpoint-payload fn2-checkpoint-retained-entry fn2-checkpoint-refs fn2-checkpoint-bytes fn2-csnapshot fn2-run-loads fn2-run-cursors fn2-checkpoint-summary fn2-checkpoint-summary-leases)
+   (fn2-checkpoint-root1-read fn2-checkpoint-semantic fn2-checkpoint-semantic-work fn2-checkpoint-metadata fn2-extents fn2-alloc-edges fn2-ops fn2-control fn2-fc fn2-fc-context fn2-b3 fn2-fields fn2-pool fn2-digests fn2-checkpoint-payload fn2-run-loads fn2-run-load-ops)
+   (fn2-checkpoint-root1-step fn2-checkpoint-root1 fn2-checkpoint-metadata fn2-checkpoint-source fn2-checkpoint-metadata-manifest fn2-checkpoint-retained-entry fn2-checkpoint-payload fn2-checkpoint-semantic fn2-checkpoint-semantic-work fn2-csnapshot fn2-checkpoint-construction fn2-extents fn2-alloc-edges fn2-ops fn2-control fn2-checkpoint-refs fn2-checkpoint-bytes fn2-run-builds fn2-run-writers fn2-run-restarts fn2-run-cursors fn2-run-paths fn2-fc fn2-fc-context fn2-b3 fn2-fields fn2-pool fn2-digests fn2-run-loads fn2-checkpoint-summary fn2-checkpoint-summary-leases)))
 ; The declaration is the return contract, not an alternate state machine.
 ; Projection keeps every assigned lower carrier and every family callee result.
 (defun fn2-checkpoint-root1-project (tree outputs)
@@ -86,19 +86,6 @@
     (defcost ,(fn2-columns-sym name "-OP") :child ,name :answers t :bytes *fn2-c-read-callback-bytes*
      :tables ,tables :doc "One actual codec-bounded checkpoint root1 source transition, including restart entry decoding and owned copying.")))))
 
-(defun fn2-checkpoint-root1-ownerp (token kind owner gen fn2-checkpoint-root1 fn2-checkpoint-windows fn2-csnapshot)
- (declare (xargs :stobjs (fn2-checkpoint-root1 fn2-checkpoint-windows fn2-csnapshot)
-  :guard (and (fn2-checkpoint-root1-wfp fn2-checkpoint-root1) (fn2-checkpoint-windows-wfp fn2-checkpoint-windows) (fn2-csnapshot-wfp fn2-csnapshot))))
- (and (< 0 (fn2-checkpoint-root1-rows fn2-checkpoint-root1))
-      (<= *fn2-checkpoint-window-count* (fn2-checkpoint-windows-rows fn2-checkpoint-windows))
-      (equal (fn2-checkpoint-root1-reserved 0 fn2-checkpoint-root1) *fn2-checkpoint-window-count*)
-      (equal token (fn2-checkpoint-root1-token 0 fn2-checkpoint-root1))
-      (equal kind (fn2-checkpoint-root1-owner-kind 0 fn2-checkpoint-root1))
-      (equal owner (fn2-checkpoint-root1-owner-slot 0 fn2-checkpoint-root1))
-      (equal gen (fn2-checkpoint-root1-owner-gen 0 fn2-checkpoint-root1))
-      (fn2-csnapshot-ownerp token kind owner gen fn2-csnapshot)
-      (equal (fn2-csnapshot-phase 0 fn2-csnapshot) *fn2-csnapshot-phase-held*)))
-
 (fn2-checkpoint-root1-operation fn2-checkpoint-root1-begin (token kind owner gen)
  (b* (((unless (and (< 0 (fn2-checkpoint-root1-rows fn2-checkpoint-root1))
                     (equal (fn2-checkpoint-root1-phase 0 fn2-checkpoint-root1) *fn2-checkpoint-root1-phase-reserved*)
@@ -122,7 +109,10 @@
         *fn2-run-page-size* fn2-checkpoint-metadata-manifest fn2-checkpoint-metadata fn2-checkpoint-source
         fn2-checkpoint-build fn2-csnapshot fn2-checkpoints fn2-run-builds fn2-run-writers fn2-fields fn2-pool))
       (fn2-checkpoint-root1 (fn2-checkpoint-root1-put 0 (token token)
-       (phase (if (eq code :ok) *fn2-checkpoint-root1-phase-select* *fn2-checkpoint-root1-phase-uncertain*)))))
+       (phase (if (eq code :ok) *fn2-checkpoint-root1-phase-select* *fn2-checkpoint-root1-phase-uncertain*))))
+      ((unless (eq code :ok)) (fn2-checkpoint-root1-mv code))
+      ((mv code fn2-run-loads) (fn2-checkpoint-source-reader-borrow token kind owner gen fn2-checkpoint-root1 fn2-checkpoint-windows fn2-csnapshot
+       fn2-run-loads fn2-run-cursors fn2-checkpoint-summary-leases fn2-pool)))
   (fn2-checkpoint-root1-mv (if (eq code :ok) :more code))))
 
 (fn2-checkpoint-root1-operation fn2-checkpoint-root1-select (budget kind owner gen)
@@ -156,7 +146,7 @@
          (mv code fn2-checkpoint-metadata fn2-run-builds fn2-run-writers fn2-run-cursors fn2-pool))
         (fn2-checkpoint-metadata-run-begin token row *fn2-checkpoint-source-build* (fn2-checkpoint-source-wbase) crow hbase
          (fn2-checkpoint-windows-slot 12 fn2-checkpoint-windows) (fn2-checkpoint-windows-generation 12 fn2-checkpoint-windows)
-         (fn2-checkpoint-work-fbase (fn2-fc-rows fn2-fc)) (- (fn2-run-cursors-rows fn2-run-cursors) 1)
+         (fn2-checkpoint-work-fbase (fn2-fc-rows fn2-fc)) (fn2-b-checkpoint-source-cursor-from-rows (fn2-run-cursors-rows fn2-run-cursors))
          (fn2-checkpoint-source-rbase (fn2-fc-rows fn2-fc))
          (fn2-checkpoint-windows-slot 14 fn2-checkpoint-windows) (fn2-checkpoint-windows-generation 14 fn2-checkpoint-windows)
          *fn2-run-page-size* kind owner gen fn2-checkpoint-metadata fn2-csnapshot fn2-checkpoint-source fn2-run-installed
@@ -237,7 +227,19 @@
       (phase (fn2-checkpoint-root1-phase 0 fn2-checkpoint-root1)))
   (cond
    ((equal phase *fn2-checkpoint-root1-phase-source*)
-    (b* (((mv code fn2-checkpoint-metadata fn2-run-builds fn2-run-writers fn2-run-restarts fn2-run-cursors fn2-run-paths fn2-fields fn2-pool)
+    (b* ((c (fn2-checkpoint-metadata-cursor 0 fn2-checkpoint-metadata))
+         ((when (and (equal (fn2-checkpoint-metadata-source-kind 0 fn2-checkpoint-metadata) 1)
+                      (equal (fn2-checkpoint-metadata-held 0 fn2-checkpoint-metadata) 0)
+                      (< c (fn2-run-cursors-rows fn2-run-cursors))
+                      (equal (fn2-run-cursors-physical c fn2-run-cursors) 1)
+                      (equal (fn2-run-cursors-phase c fn2-run-cursors) *fn2-run-cursor-phase-miss*)))
+          (b* (((mv code fn2-run-loads fn2-run-cursors fn2-checkpoint-summary fn2-checkpoint-summary-leases fn2-fc fn2-fc-context fn2-b3 fn2-fields fn2-pool fn2-digests)
+                (fn2-checkpoint-source-reader-step (min budget 4096) kind owner gen fn2-checkpoint-root1 fn2-checkpoint-windows fn2-csnapshot fn2-checkpoint-metadata fn2-checkpoint-source
+                 fn2-run-builds fn2-run-writers fn2-run-loads fn2-run-cursors fn2-run-installed fn2-checkpoint-summary fn2-checkpoint-summary-sources fn2-checkpoint-summary-leases
+                 fn2-boot-config fn2-fc fn2-fc-context fn2-b3 fn2-fields fn2-pool fn2-digests))
+               (fn2-checkpoint-root1 (if (eq code :need-read) (fn2-checkpoint-root1-set-read-kind 0 3 fn2-checkpoint-root1) fn2-checkpoint-root1)))
+           (fn2-checkpoint-root1-mv (if (eq code :wait) :more code))))
+         ((mv code fn2-checkpoint-metadata fn2-run-builds fn2-run-writers fn2-run-restarts fn2-run-cursors fn2-run-paths fn2-fields fn2-pool)
           (if (equal (fn2-checkpoint-metadata-source-kind 0 fn2-checkpoint-metadata) 0)
            (b* (((mv code fn2-checkpoint-metadata fn2-run-builds fn2-run-writers fn2-run-restarts fn2-fields fn2-pool)
                  (fn2-checkpoint-metadata-overlay-step (min budget 4096) fn2-checkpoint-metadata fn2-csnapshot fn2-overlays fn2-overlay-index
@@ -247,7 +249,11 @@
             fn2-run-builds fn2-run-writers fn2-run-restarts fn2-run-cursors fn2-run-paths fn2-run-cache fn2-fields fn2-pool)))
          (fn2-checkpoint-root1 (if (eq code :retention-required)
           (fn2-checkpoint-root1-set-phase 0 *fn2-checkpoint-root1-phase-retention* fn2-checkpoint-root1) fn2-checkpoint-root1)))
-     (fn2-checkpoint-root1-mv (if (member-eq code '(:ok :need-page :retention-required)) :more code))))
+     (fn2-checkpoint-root1-mv
+      (if (or (member-eq code '(:ok :need-page :retention-required))
+              (and (eq code :miss) (< c (fn2-run-cursors-rows fn2-run-cursors))
+                   (equal (fn2-run-cursors-physical c fn2-run-cursors) 1)
+                   (equal (fn2-run-cursors-phase c fn2-run-cursors) *fn2-run-cursor-phase-miss*))) :more code))))
    ((equal phase *fn2-checkpoint-root1-phase-manifest*)
     (b* (((mv code fn2-checkpoint-metadata-manifest fn2-checkpoint-metadata fn2-checkpoint-source fn2-run-builds fn2-run-writers fn2-run-restarts fn2-fields fn2-pool)
           (fn2-checkpoint-metadata-manifest-emit fn2-checkpoint-metadata-manifest fn2-checkpoint-metadata fn2-checkpoint-source
@@ -348,8 +354,13 @@
            fn2-checkpoint-build fn2-csnapshot fn2-checkpoint-construction fn2-extents fn2-alloc-edges fn2-ops fn2-checkpoints fn2-checkpoint-page-verified fn2-checkpoint-refs fn2-checkpoint-bytes))
          (fn2-csnapshot (if (eq code :complete) (fn2-csnapshot-set-complete 0 1 fn2-csnapshot) fn2-csnapshot))
          (fn2-checkpoint-root1 (if (eq code :complete) (fn2-checkpoint-root1-set-phase 0 *fn2-checkpoint-root1-phase-complete* fn2-checkpoint-root1) fn2-checkpoint-root1)))
-     (fn2-checkpoint-root1-mv (if (eq code :complete) :done code))))
-   ((equal phase *fn2-checkpoint-root1-phase-complete*) (fn2-checkpoint-root1-mv :done))
+     (fn2-checkpoint-root1-mv (if (eq code :complete) :more code))))
+   ((equal phase *fn2-checkpoint-root1-phase-complete*)
+    (b* (((mv code fn2-run-loads fn2-run-cursors fn2-checkpoint-summary fn2-checkpoint-summary-leases)
+          (fn2-checkpoint-source-reader-finish (fn2-checkpoint-root1-token 0 fn2-checkpoint-root1) kind owner gen
+           fn2-checkpoint-root1 fn2-checkpoint-windows fn2-csnapshot fn2-checkpoint-metadata fn2-checkpoint-source fn2-checkpoint-metadata-manifest
+           fn2-run-loads fn2-run-cursors fn2-checkpoint-summary fn2-checkpoint-summary-leases fn2-pool)))
+     (fn2-checkpoint-root1-mv (cond ((eq code :ok) :done) ((eq code :pending) :more) (t code)))))
    (t (fn2-checkpoint-root1-mv :state)))))
 
 (fn2-checkpoint-root1-operation fn2-checkpoint-root1-step (budget kind owner gen)
@@ -379,16 +390,27 @@
 ; interpretation is deferred until the matching harvest and workspace return.
 (defmacro fn2-checkpoint-root1-read-mv (code)
  `(mv ,code
-   (if (and (< 0 (fn2-checkpoint-root1-rows fn2-checkpoint-root1))
-            (equal (fn2-checkpoint-root1-read-kind 0 fn2-checkpoint-root1) 1))
-       (fn2-checkpoint-semantic-op-slot 0 fn2-checkpoint-semantic) (fn2-checkpoint-payload-op-slot 0 fn2-checkpoint-payload))
-   (if (and (< 0 (fn2-checkpoint-root1-rows fn2-checkpoint-root1))
-            (equal (fn2-checkpoint-root1-read-kind 0 fn2-checkpoint-root1) 1))
-       (fn2-checkpoint-semantic-op-gen 0 fn2-checkpoint-semantic) (fn2-checkpoint-payload-op-gen 0 fn2-checkpoint-payload))
+   (cond ((and (< 0 (fn2-checkpoint-root1-rows fn2-checkpoint-root1)) (< 0 (fn2-run-loads-rows fn2-run-loads))
+               (equal (fn2-checkpoint-root1-read-kind 0 fn2-checkpoint-root1) 3))
+          (fn2-run-loads-op-slot (fn2-b-checkpoint-source-cursor-from-rows (fn2-run-loads-rows fn2-run-loads)) fn2-run-loads))
+         ((and (< 0 (fn2-checkpoint-root1-rows fn2-checkpoint-root1))
+               (equal (fn2-checkpoint-root1-read-kind 0 fn2-checkpoint-root1) 1))
+          (fn2-checkpoint-semantic-op-slot 0 fn2-checkpoint-semantic))
+         (t (fn2-checkpoint-payload-op-slot 0 fn2-checkpoint-payload)))
+   (cond ((and (< 0 (fn2-checkpoint-root1-rows fn2-checkpoint-root1)) (< 0 (fn2-run-loads-rows fn2-run-loads))
+               (equal (fn2-checkpoint-root1-read-kind 0 fn2-checkpoint-root1) 3))
+          (fn2-run-loads-op-gen (fn2-b-checkpoint-source-cursor-from-rows (fn2-run-loads-rows fn2-run-loads)) fn2-run-loads))
+         ((and (< 0 (fn2-checkpoint-root1-rows fn2-checkpoint-root1))
+               (equal (fn2-checkpoint-root1-read-kind 0 fn2-checkpoint-root1) 1))
+          (fn2-checkpoint-semantic-op-gen 0 fn2-checkpoint-semantic))
+         (t (fn2-checkpoint-payload-op-gen 0 fn2-checkpoint-payload)))
    ,@(cdr (assoc-eq 'fn2-checkpoint-root1-read *fn2-checkpoint-root1-outputs*))))
 (defmacro fn2-checkpoint-root1-read-events ()
  (let ((children *fn2-checkpoint-root1-children*)
        (outputs (cdr (assoc-eq 'fn2-checkpoint-root1-read *fn2-checkpoint-root1-outputs*))))
+ (if (not (and (consp outputs) (true-listp outputs) (no-duplicatesp-eq outputs)
+               (subsetp-eq outputs children) (<= (len outputs) 29)))
+  '(make-event (er soft 'fn2-checkpoint-root1-read-events "READ must project at most29 actual mutating carriers with its three scalar results."))
  `(progn
    (defun fn2-checkpoint-root1-read (budget kind owner gen ,@children)
     (declare (xargs :stobjs ,children :guard (and ,@(fn2-checkpoint-root1-child-hyps children))))
@@ -400,6 +422,13 @@
          ((unless (fn2-checkpoint-root1-ownerp (fn2-checkpoint-root1-token 0 fn2-checkpoint-root1) kind owner gen fn2-checkpoint-root1 fn2-checkpoint-windows fn2-csnapshot))
           (fn2-checkpoint-root1-read-mv :owner)))
      (cond
+      ((and (equal (fn2-checkpoint-root1-phase 0 fn2-checkpoint-root1) *fn2-checkpoint-root1-phase-source*)
+            (equal (fn2-checkpoint-root1-read-kind 0 fn2-checkpoint-root1) 3))
+       (b* (((mv code & & fn2-run-loads fn2-run-load-ops fn2-pool fn2-ops fn2-control fn2-extents fn2-alloc-edges)
+             (fn2-checkpoint-source-reader-issue budget kind owner gen fn2-checkpoint-root1 fn2-checkpoint-windows fn2-csnapshot fn2-checkpoint-metadata fn2-checkpoint-source
+              fn2-run-builds fn2-run-writers fn2-run-loads fn2-run-cursors fn2-run-installed fn2-run-load-ops fn2-checkpoint-summary fn2-checkpoint-summary-sources fn2-checkpoint-summary-leases
+              fn2-extents fn2-alloc-edges fn2-pool fn2-ops fn2-control)))
+        (fn2-checkpoint-root1-read-mv code)))
       ((and (equal (fn2-checkpoint-root1-phase 0 fn2-checkpoint-root1) *fn2-checkpoint-root1-phase-semantic*)
             (equal (fn2-checkpoint-root1-read-kind 0 fn2-checkpoint-root1) 1))
        (b* (((mv code fn2-checkpoint-semantic fn2-checkpoint-semantic-work fn2-checkpoint-metadata fn2-extents fn2-alloc-edges fn2-ops fn2-control fn2-fc fn2-fc-context fn2-b3 fn2-fields fn2-pool fn2-digests)
@@ -419,5 +448,5 @@
       (fn2-checkpoint-root1-extra-specs outputs 3)))
    (defcost fn2-checkpoint-root1-read-op :child fn2-checkpoint-root1-read :answers t :bytes 4096 :descriptors 1
     :tables ,(fn2-checkpoint-root1-child-tables children) :effects ((:acquire (:operation)))
-    :doc "Issue at most one actual authenticated root1 source read; return its retained exact operation tuple."))))
+    :doc "Issue at most one actual authenticated root1 source read; return its retained exact operation tuple.")))))
 (fn2-checkpoint-root1-read-events)
