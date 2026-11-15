@@ -809,9 +809,12 @@
                  (:otherwise (:stop :recovery-release)))))))
   ;; stage 2 below the high water: adopt one arena position
   (install-adopt :on-refusal ((:stop :recovery-bounds))
-   (:do (code) (fn2-recovery-adopt row-rc-found))
-   (:set (rc-found (+ 1 row-rc-found)))
-   (:charge :steps *fn2-work-advance* :runnable t))
+   (:do (code) (fn2-recovery-install-adopt id row-generation)
+    :accept ()
+    :case (((:more) (:set (rc-stage 3)) (:charge :steps *fn2-work-advance* :runnable t))
+           ((:adopted :retained :empty) (:set (rc-found (+ 1 row-rc-found)) (rc-stage 2))
+            (:charge :steps *fn2-work-advance* :runnable t))
+           (:otherwise (:stop :recovery-bounds)))))
   ;; the recovery bundle released: the workspace, then the window
   (replay-release
    (:do (wcode) (fn2-recovery-release-workspace row-rc-wslot row-rc-wgen id row-generation) :accept ()
@@ -997,6 +1000,7 @@
   (:install
    (:cond ((equal row-rc-stage 0) (:goto install-scan))
           ((equal row-rc-stage 1) (:goto install-classify))
+          ((and (equal row-rc-stage 3) (< row-rc-found row-rc-high)) (:goto install-adopt))
           ((and (equal row-rc-stage 2) (< row-rc-found row-rc-high)) (:goto install-adopt))
           ((equal row-rc-stage 2) (:goto install-finish))
           (t (:stop :recovery-bounds))))
