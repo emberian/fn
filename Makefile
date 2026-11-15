@@ -291,6 +291,9 @@ ACL2_BOOKS = \
   tests/recovery-payload-chain-proof \
   tests/checkpoint-cold-path-drive \
   tests/checkpoint-cold-path-producer-support \
+  tests/recovery-release-dispatch-support \
+  tests/recovery-release-image-support \
+  tests/recovery-release-connected-unit \
   tests/checkpoint-cold-path-unit \
   books/checkpoint-restore-semantic-source \
   books/checkpoint-bank-closure-state \
@@ -622,6 +625,7 @@ ACL2_BOOKS = \
   tests/ordinary-drain-credit-unit \
   tests/ordinary-drain-credit-canonical-unit \
   tests/ordinary-b-start-quota-removal-unit \
+  tests/ordinary-b-credit-row-reuse-unit \
   tests/ordinary-drain-credit-live-unit \
   tests/pool-unit \
   tests/port-unit \
