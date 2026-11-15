@@ -3,13 +3,13 @@
 (in-package "ACL2")
 (include-book "checkpoint-construction")
 (fn2-book-layer :b)
-(defun fn2-checkpoint-owned-extent-p (checkpoint-kind e fn2-checkpoint-construction fn2-extents)
+(defun fn2-checkpoint-owned-provenance-p (checkpoint-kind e fn2-checkpoint-construction fn2-extents)
  (declare (xargs :stobjs (fn2-checkpoint-construction fn2-extents)
   :guard (and (fn2-checkpoint-construction-wfp fn2-checkpoint-construction) (fn2-extents-wfp fn2-extents))))
- (and (unsigned-byte-p 8 checkpoint-kind) (posp checkpoint-kind)
+ (and (unsigned-byte-p 8 checkpoint-kind)
       (fn2-alloc-slotp e fn2-extents) (< e (fn2-checkpoint-construction-rows fn2-checkpoint-construction))
       (= (fn2-checkpoint-construction-live e fn2-checkpoint-construction) 1)
-      (= (fn2-extents-state e fn2-extents) *fn2-extent-state-allocated*)
+      (if (member-equal (fn2-extents-state e fn2-extents) (list *fn2-extent-state-allocated* *fn2-extent-state-retire-pending*)) t nil)
       (= (fn2-extents-owner-kind e fn2-extents) checkpoint-kind)
       (posp (fn2-extents-owner-id e fn2-extents))
       (eq (fn2-alloc-handle-code e (fn2-checkpoint-construction-epoch e fn2-checkpoint-construction)
@@ -32,3 +32,12 @@
             (posp (fn2-checkpoint-construction-intended-bytes e fn2-checkpoint-construction))
             (= (fn2-checkpoint-construction-intended-bytes e fn2-checkpoint-construction)
                (fn2-checkpoint-construction-completed-bytes e fn2-checkpoint-construction))))))
+
+; The ordinary orphan producer admits only still-ALLOCATED ownership. Retired
+; provenance remains useful to detach obsolete metadata claims without ever
+; appending a duplicate retirement or minting physical FREE permission.
+(defun fn2-checkpoint-owned-extent-p (checkpoint-kind e fn2-checkpoint-construction fn2-extents)
+ (declare (xargs :stobjs (fn2-checkpoint-construction fn2-extents)
+  :guard (and (fn2-checkpoint-construction-wfp fn2-checkpoint-construction) (fn2-extents-wfp fn2-extents))))
+ (and (fn2-checkpoint-owned-provenance-p checkpoint-kind e fn2-checkpoint-construction fn2-extents)
+      (= (fn2-extents-state e fn2-extents) *fn2-extent-state-allocated*)))

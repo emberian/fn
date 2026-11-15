@@ -22,7 +22,8 @@
    (installed-root :u32) (selectable-checkpoint :u32) (recovery-base :u32) (prepared-successor :u32) (reservation :u32) (obligation :u32) (promised-read :u32) (borrow :u32) (outstanding-io :u32) (recovery-candidate :u32))
   :init-name fn2-alloc-columns-init
   :extra-fields
-  ((fn2-alloc-protection-dirty :type (unsigned-byte 1) :initially 0 :why "Actual edge-count changes coalesce until the singleton retained-debt owner begins a complete bounded sweep; late changes require another whole sweep.")
+  ((fn2-alloc-orphan-dirty :type (unsigned-byte 1) :initially 0 :why "Successful durable-kind protection changes request an owner-independent bounded orphan sweep; transient read pins do not trigger it.")
+   (fn2-alloc-protection-dirty :type (unsigned-byte 1) :initially 0 :why "Actual edge-count changes coalesce until the singleton retained-debt owner begins a complete bounded sweep; late changes require another whole sweep.")
    (fn2-alloc-retirement-intent-batch :type (unsigned-byte 60) :initially 0 :why "Actual containing batch of the singleton ordinary retirement; zero means no asynchronous intent.")
    (fn2-alloc-retirement-intent-extent :type (unsigned-byte 32) :initially 0 :why "Exact extent whose durable publication is closed while its retirement journal member is pending.")
    (fn2-alloc-retirement-intent-epoch :type (unsigned-byte 60) :initially 0 :why "Writer epoch binding the pending retirement to its actual physical allocation.")
@@ -103,11 +104,16 @@
     (:outstanding-io (fn2-extents-outstanding-io i fn2-extents))
     (:recovery-candidate (fn2-extents-recovery-candidate i fn2-extents))
     (otherwise (fn2-extents-recovery-candidate i fn2-extents))))
+(defun fn2-alloc-durable-edgep (kind)
+ (declare (xargs :guard t))
+ (if (member-eq kind '(:installed-root :selectable-checkpoint :recovery-base
+                      :prepared-successor :obligation :recovery-candidate)) t nil))
 (defun fn2-alloc-set-edge (i kind value fn2-extents)
   (declare (xargs :stobjs fn2-extents :guard (and (and (fn2-extents-wfp fn2-extents) (fn2-alloc-slotp i fn2-extents)) (unsigned-byte-p 32 value) (member-eq kind *fn2-alloc-edges*))))
-  (let ((fn2-extents
-         (if (equal value (fn2-alloc-edge-count i kind fn2-extents)) fn2-extents
-           (update-fn2-alloc-protection-dirty 1 fn2-extents))))
+  (let* ((changed (not (equal value (fn2-alloc-edge-count i kind fn2-extents))))
+         (fn2-extents (if (and changed (fn2-alloc-durable-edgep kind))
+                         (update-fn2-alloc-orphan-dirty 1 fn2-extents) fn2-extents))
+         (fn2-extents (if changed (update-fn2-alloc-protection-dirty 1 fn2-extents) fn2-extents)))
    (case kind
     (:installed-root (fn2-extents-set-installed-root i value fn2-extents))
     (:selectable-checkpoint (fn2-extents-set-selectable-checkpoint i value fn2-extents))
@@ -497,10 +503,7 @@
 ; Retirement intent and persisted retirement close new durable publication.
 ; Physical loans may still finish (or acquire a transient pin) while the
 ; recorded release waits; recovery must exclude pre-crash physical activity.
-(defun fn2-alloc-durable-edgep (kind)
- (declare (xargs :guard t))
- (if (member-eq kind '(:installed-root :selectable-checkpoint :recovery-base
-                      :prepared-successor :obligation :recovery-candidate)) t nil))
+
 ; Internal, already-validated edge/count mutation shared by ordinary admission
 ; and typed cold reconstruction. No served defcost/interface exports this helper.
 (defun fn2-alloc-edge-add-transition (edge holder i epoch counter kind fn2-extents fn2-alloc-edges)

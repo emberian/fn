@@ -11,7 +11,7 @@
      (and (equal (fn2-checkpoint-teardown-debt-wordsi (+ (* 40 c) 32 i) fn2-checkpoint-teardown-debt)
                  (fn2-checkpoint-descriptor-identity-word c i fn2-checkpoint-bytes))
           (fn2-checkpoint-teardown-retained-hash-p (+ 1 i) c fn2-checkpoint-teardown-debt fn2-checkpoint-bytes))))
-(defun fn2-checkpoint-teardown-retained-ownerp (c token kind slot gen fn2-checkpoint-teardown-debt fn2-checkpoints fn2-checkpoint-bytes)
+(defun fn2-checkpoint-teardown-retained-context-ownerp (c token kind slot gen fn2-checkpoint-teardown-debt fn2-checkpoints fn2-checkpoint-bytes)
  (declare (xargs :stobjs (fn2-checkpoint-teardown-debt fn2-checkpoints fn2-checkpoint-bytes) :verify-guards nil
   :guard (and (fn2-checkpoint-teardown-debt-wfp fn2-checkpoint-teardown-debt) (fn2-checkpoints-wfp fn2-checkpoints) (fn2-checkpoint-bytes-wfp fn2-checkpoint-bytes))))
  (and (fn2-checkpoint-teardown-debt-heldp c fn2-checkpoint-teardown-debt) (< c (fn2-checkpoints-rows fn2-checkpoints))
@@ -35,9 +35,17 @@
        (and (or cold
                 (and (equal (fn2-checkpoint-teardown-debt-installation-commit c fn2-checkpoint-teardown-debt) (fn2-checkpoints-installation-commit c fn2-checkpoints))
                      (equal (fn2-checkpoint-teardown-debt-installation-event c fn2-checkpoint-teardown-debt) (fn2-checkpoints-installation-event c fn2-checkpoints))))
-            (or (member-equal (fn2-checkpoints-state c fn2-checkpoints) (list *fn2-checkpoint-state-installed* *fn2-checkpoint-state-promoting* *fn2-checkpoint-state-promoted*))
+            (or (member-equal (fn2-checkpoints-state c fn2-checkpoints) (list *fn2-checkpoint-state-installed* *fn2-checkpoint-state-promoting* *fn2-checkpoint-state-promoted* *fn2-checkpoint-state-disposing*))
                 (and cold (equal (fn2-checkpoints-state c fn2-checkpoints) *fn2-checkpoint-state-checked*)))))
-      (equal (fn2-checkpoint-teardown-debt-word-cursor c fn2-checkpoint-teardown-debt) 40)
+      (equal (fn2-checkpoint-teardown-debt-word-cursor c fn2-checkpoint-teardown-debt) 40)))
+
+; Fresh consumers still verify the immutable descriptor. Terminal byte
+; scrubbing may use the shared context only after actual DISPOSING entry has
+; closed new claims and carried that descriptor identity in the retained debt.
+(defun fn2-checkpoint-teardown-retained-ownerp (c token kind slot gen fn2-checkpoint-teardown-debt fn2-checkpoints fn2-checkpoint-bytes)
+ (declare (xargs :stobjs (fn2-checkpoint-teardown-debt fn2-checkpoints fn2-checkpoint-bytes) :verify-guards nil
+  :guard (and (fn2-checkpoint-teardown-debt-wfp fn2-checkpoint-teardown-debt) (fn2-checkpoints-wfp fn2-checkpoints) (fn2-checkpoint-bytes-wfp fn2-checkpoint-bytes))))
+ (and (fn2-checkpoint-teardown-retained-context-ownerp c token kind slot gen fn2-checkpoint-teardown-debt fn2-checkpoints fn2-checkpoint-bytes)
       (fn2-checkpoint-teardown-retained-hash-p 0 c fn2-checkpoint-teardown-debt fn2-checkpoint-bytes)))
 (defun fn2-checkpoint-teardown-retained-bank-excludedp (c fn2-checkpoint-teardown-debt fn2-checkpoint-publication)
  (declare (xargs :stobjs (fn2-checkpoint-teardown-debt fn2-checkpoint-publication) :verify-guards nil
@@ -47,3 +55,12 @@
        (fn2-checkpoint-teardown-debt-checkpoint c fn2-checkpoint-teardown-debt)
        (fn2-checkpoint-teardown-debt-history c fn2-checkpoint-teardown-debt)
        (fn2-checkpoint-teardown-debt-incarnation c fn2-checkpoint-teardown-debt) fn2-checkpoint-publication)))
+
+; Identity recognition remains available to terminal disposal and already
+; submitted exact settlement. Fresh source/admission requires an open victim.
+(defun fn2-checkpoint-teardown-admission-ownerp (c token kind slot gen fn2-checkpoint-teardown-debt fn2-checkpoints fn2-checkpoint-bytes)
+ (declare (xargs :stobjs (fn2-checkpoint-teardown-debt fn2-checkpoints fn2-checkpoint-bytes) :verify-guards nil
+  :guard (and (fn2-checkpoint-teardown-debt-wfp fn2-checkpoint-teardown-debt) (fn2-checkpoints-wfp fn2-checkpoints) (fn2-checkpoint-bytes-wfp fn2-checkpoint-bytes))))
+ (and (fn2-checkpoint-teardown-retained-ownerp c token kind slot gen fn2-checkpoint-teardown-debt fn2-checkpoints fn2-checkpoint-bytes)
+      (not (= (fn2-checkpoints-state c fn2-checkpoints) *fn2-checkpoint-state-disposing*))
+      (= (fn2-checkpoint-teardown-debt-dispose-phase c fn2-checkpoint-teardown-debt) *fn2-checkpoint-dispose-phase-idle*)))

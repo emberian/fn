@@ -33,6 +33,8 @@
    (fn2-checkpoint-master-abort-events)
    (fn2-checkpoint-teardown-events)
    (fn2-checkpoint-teardown-sweep-events)
+   (fn2-checkpoint-owned-retirement-events)
+   (fn2-checkpoint-dispose-events)
    (fn2-checkpoint-master-faces)
    (defmachine-arms fn2-checkpoint-master)
    (defun fn2-checkpoint-needed-ready (fn2-core)
@@ -46,7 +48,8 @@
                    (or (mv-nth 1 (fn2-checkpoint-teardown-needed-op fn2-core))
                        (mv-nth 1 (fn2-checkpoint-master-pressure-op
                                   (fn2-checkpoint-master-row-retirement-seen id fn2-core) fn2-core))))
-              (and (equal (fn2-machine-phase id fn2-core) *fn2-checkpoint-master-state-teardown-submit*)
+              (and (member-equal (fn2-machine-phase id fn2-core)
+                    (list *fn2-checkpoint-master-state-teardown-submit* *fn2-checkpoint-master-state-teardown-owned-submit*))
                    (mv-nth 1 (fn2-checkpoint-teardown-submission-ready-op fn2-core)))))))
    (defun fn2-checkpoint-needed-grant (fn2-core)
     (declare (xargs :stobjs fn2-core :guard (fn2-core-wfp fn2-core)))

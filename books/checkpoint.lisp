@@ -13,7 +13,7 @@
 ; directory, event frontier and recovery arena. Hash bytes live in a disjoint
 ; concrete table, not in the reusable checker scratch rows.
 (defcolumns fn2-checkpoints
- ((state (:enum fn2-checkpoint-state (:free :preparing :checked :installed :promoting :promoted :uncertain :building)))
+ ((state (:enum fn2-checkpoint-state (:free :preparing :checked :installed :promoting :promoted :uncertain :building :disposing)))
   (checkpoint :u60) (cut-commit :u60) (cut-event :u60)
   (history :u60) (incarnation :u60) (installation-commit :u60)
   (previous :u60) (bank :u8) (anchor-mask :u8)
@@ -25,7 +25,8 @@
 (defun fn2-checkpoint-builder-claimp (c token okind oslot ogen fn2-checkpoints)
  (declare (xargs :stobjs fn2-checkpoints :guard (fn2-checkpoints-wfp fn2-checkpoints)))
  (and (natp c) (< c (fn2-checkpoints-rows fn2-checkpoints)) (posp token)
-      (not (equal (fn2-checkpoints-state c fn2-checkpoints) *fn2-checkpoint-state-free*))
+      (not (member-equal (fn2-checkpoints-state c fn2-checkpoints)
+       (list *fn2-checkpoint-state-free* *fn2-checkpoint-state-disposing*)))
       (equal (fn2-checkpoints-builder-token c fn2-checkpoints) token)
       (equal (fn2-checkpoints-builder-owner-kind c fn2-checkpoints) okind)
       (equal (fn2-checkpoints-builder-owner-slot c fn2-checkpoints) oslot)
