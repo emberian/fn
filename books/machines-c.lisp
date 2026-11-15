@@ -91,8 +91,11 @@
     (in-theory (disable ,fn))
     (defcorechild ,field ,stobj :init (,fn profile ,stobj) :profilep (fn2-idc-profilep profile) :why ,why))))
 (in-theory (disable fn2-idc-profilep))
+(include-book "peer-import-state")
 (fn2-idc-child fn2-core-id-decides fn2-id-decides (fn2-id-decides-init (fn2-profile-t profile) fn2-id-decides)
  "One identity decision per transaction survives the transaction's yields (C-S1).")
+(fn2-idc-child fn2-core-peer-imports fn2-peer-imports (fn2-peer-imports-init (fn2-profile-t profile) fn2-peer-imports)
+ "One retained, transaction-owned import snapshot; original scalars and its private pool taking survive the identity read.")
 (fn2-idc-child fn2-core-overlays fn2-overlays (fn2-overlays-init (fn2-b-capacity :identity-overlays *fn2-idc-overlays-default* profile) fn2-overlays)
  "Bounded sorted overlays hold facts not yet sealed into runs.")
 (fn2-idc-child fn2-core-overlay-index fn2-overlay-index

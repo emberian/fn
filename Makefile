@@ -99,6 +99,9 @@ ACL2_BOOKS = \
   books/codec-profile \
   books/codec-transport \
   books/codec-stack \
+  books/codec-close \
+  tests/codec-cancel-unit \
+  tests/codec-child-close-unit \
   books/compress-transport-state \
   books/tls-record-policy \
   books/tls-record-state \
@@ -221,6 +224,8 @@ ACL2_BOOKS = \
   books/owed-report \
   books/owed-txn \
   books/peer-model \
+  books/peer-import \
+  books/peer-import-state \
   books/pointwise-contracts \
   books/pool \
   books/pool-block \
@@ -415,6 +420,8 @@ ACL2_BOOKS = \
   tests/owed-unit \
   tests/parser-boundary-unit \
   tests/peer-witnesses \
+  tests/peer-import-unit \
+  tests/peer-import-detach-unit \
   tests/peer-replay-unit \
   tests/pointwise-contracts-unit \
   tests/pool-ranges-unit \
