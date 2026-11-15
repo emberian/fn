@@ -180,19 +180,19 @@
        (natp (mv-nth 4 (fn2-upload-feed-loop left i end mode discard raw copied lines rslot rgen rk rs rg dslot dgen dk ds dg limit stop-header fn2-pool))))
   :rule-classes ((:type-prescription :corollary (natp (mv-nth 1 (fn2-upload-feed-loop left i end mode discard raw copied lines rslot rgen rk rs rg dslot dgen dk ds dg limit stop-header fn2-pool))))
                  (:type-prescription :corollary (natp (mv-nth 4 (fn2-upload-feed-loop left i end mode discard raw copied lines rslot rgen rk rs rg dslot dgen dk ds dg limit stop-header fn2-pool)))))
-  :hints (("Goal" :in-theory (disable fn2-feed-emitted-lf))))
+  :hints (("Goal" :in-theory (disable fn2-feed-emitted-lf min nfix))))
 (defthm fn2-upload-feed-loop-mode
   (implies (natp mode)
            (natp (mv-nth 2 (fn2-upload-feed-loop left i end mode discard raw copied lines rslot rgen rk rs rg dslot dgen dk ds dg limit stop-header fn2-pool))))
   :rule-classes :type-prescription
-  :hints (("Goal" :in-theory (disable fn2-feed-emitted-lf))))
+  :hints (("Goal" :in-theory (disable fn2-feed-emitted-lf min nfix))))
 (defthm fn2-upload-feed-loop-lines-natp
   (natp (mv-nth 5 (fn2-upload-feed-loop left i end mode discard raw copied lines rslot rgen rk rs rg dslot dgen dk ds dg limit stop-header fn2-pool)))
   :rule-classes :type-prescription
-  :hints (("Goal" :in-theory (disable fn2-feed-emitted-lf))))
+  :hints (("Goal" :in-theory (disable fn2-feed-emitted-lf min nfix))))
 (fn2-pool-preserves fn2-upload-feed-loop (left i end mode discard raw copied lines rslot rgen rk rs rg dslot dgen dk ds dg limit stop-header fn2-pool)
   :position 6 :rows nil
-  :hints (("Goal" :in-theory (disable fn2-feed-emitted-lf))))
+  :hints (("Goal" :in-theory (disable fn2-feed-emitted-lf min nfix))))
 
 ; Counted public feed for the actual upload row.  A call reports only its
 ; own copied octets and emitted LF octets; the caller retains both totals.
