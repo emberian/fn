@@ -4,6 +4,7 @@
 (include-book "format-check")
 (include-book "alloc")
 (local (include-book "pool-read-contracts"))
+(include-book "columns-raw-frames")
 (include-book "vocab")
 (fn2-book-layer :b)
 ; Current native backend routes one image. Domain0 is the format writer's
@@ -245,9 +246,13 @@
 
 ; Keep the shared generated decoder opaque at its shape boundary.
 (fn2-fields-preserves fn2-checkpoint-decode
- (base slot gen off len okind oslot ogen fn2-fields fn2-pool) :position 1 :raw-rows t
+ (base slot gen off len okind oslot ogen fn2-fields fn2-pool) :position 1
  :hints (("Goal" :in-theory (e/d (fn2-checkpoint-decode)
                                  (fn2-format-checkpoint-descriptor-decode fn2-fields-rows fn2-fields-value)))))
+
+; Same canonical raw-row statement; only its proof theory is narrowed.
+(fn2-columns-raw-row-frame fn2-fields fn2-checkpoint-decode
+ (base slot gen off len okind oslot ogen fn2-fields fn2-pool) :position 1)
 
 (defun fn2-checkpoint-copy-expected (i dst hash fn2-digests fn2-checkpoint-bytes)
  (declare (xargs :stobjs (fn2-digests fn2-checkpoint-bytes)
