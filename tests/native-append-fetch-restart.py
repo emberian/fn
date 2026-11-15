@@ -8,6 +8,7 @@ import argparse
 import importlib.util
 import json
 import os
+import signal
 from pathlib import Path
 import subprocess
 import time
@@ -44,15 +45,46 @@ def exact_fetch(reply, expected):
     return actual
 
 
-def crossing_article(mid):
+def crossing_article(mid, body_variant=0):
     """A valid, exact 6 KiB article crossing the transport's 4 KiB window."""
     _, lines = restart.article(mid.encode("ascii"), 100)
+    # Vary every body window, not just the Message-ID in the first unit.
+    # A reused extent from the other article must change the exact FETCH bytes.
+    assert body_variant in (0, 1)
+    if body_variant:
+        mapping = bytes.maketrans(b"0123456789", b"abcdefghij")
+        lines = lines[:5] + [line.translate(mapping) for line in lines[5:]]
     article = restart.wire(lines)
     # Keep the varied body (including a dot-leading line), and shorten only
     # its tail. End on CRLF without adding an NNTP dot terminator to FNCT data.
     assert len(article) >= 6144 and len(restart.wire(lines[:5])) < 6142
     article = article[:6142].rstrip(b"\r\n")
     return article.ljust(6142, b"x") + b"\r\n"
+
+
+
+def initialize(directory, image, seconds=600):
+    """Bound initialization and clean up only this recorded launch session."""
+    command = [str(ROOT / "fn"), "init", str(image), "--size-mb", "32", "--group", "local.test"]
+    with (directory / "init.log").open("wb") as log:
+        process = subprocess.Popen(command, cwd=ROOT, env=environment(), stdout=log,
+                                   stderr=subprocess.STDOUT, start_new_session=True)
+        pidfile = directory / "init.launcher.pid"
+        pidfile.write_text(f"{process.pid}\n")
+        try:
+            result = process.wait(timeout=seconds)
+        except subprocess.TimeoutExpired:
+            # fn init waits for tools/acl2, which waits for the actual runtime.
+            # Killing only the direct Python child leaves those descendants.
+            assert int(pidfile.read_text()) == process.pid
+            try:
+                os.killpg(process.pid, signal.SIGKILL)
+            except ProcessLookupError:
+                pass
+            process.wait(timeout=30)
+            raise
+        if result:
+            raise subprocess.CalledProcessError(result, command)
 
 
 def main():
@@ -67,12 +99,11 @@ def main():
     submissions = []
     for index in range(2):
         mid = f"<native-append-fetch-{index}@example.invalid>"
-        article = crossing_article(mid)
+        article = crossing_article(mid, body_variant=index)
         article_path = directory / f"submitted-{index}.article"
         article_path.write_bytes(article)
         submissions.append((mid, article, article_path))
-    subprocess.run([str(ROOT / "fn"), "init", str(image), "--size-mb", "32", "--group", "local.test"],
-                   cwd=ROOT, env=environment(), check=True, timeout=600)
+    initialize(directory, image)
     receipts = []
     node = restart.Node(directory, image, "serve", "append", control_sock=control,
                         env=environment())

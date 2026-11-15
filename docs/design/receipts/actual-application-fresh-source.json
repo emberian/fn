@@ -1,0 +1,41 @@
+{
+  "book_source_snapshot": "9fabbb99df31b9fc37a60a2a48d0374e3dedc8b7",
+  "runtime_base": "0b41d24acf69c90ae94cfcf47204b5c45ffbb0f9",
+  "qualified_generator": "92bf3827bf64961b25844f78c9c8b01b9cc6807f",
+  "qualified_generator_receipt": "/tmp/arm-resource-qualified37-receipt.json",
+  "production_source": {
+    "books/machine-arms": "e2ec1ada55795c91e2062b5b1fd02df0224252929ebdb40e0309822ccc494e09",
+    "books/checkpoint-allocation": "e6031a68634856edc5d4e04b66efe0992e06a2271059656bb6832c23bbc4209b",
+    "books/checkpoint-future-working": "94d0fbaf5f9012f42b96fd24a022b1422a22d32919c2c25bd5403fa69a2e8296",
+    "books/checkpoint-installation-coordinator": "ea668d001176625373c3a4982233235324fb52b3710c58cd984125b03b308e34"
+  },
+  "coordinator_delta": "explicit arms include for owned DEFCOST; original events unchanged",
+  "allocation_donors": [
+    "f2ea20a59",
+    "950ba5c0c",
+    "9b7b73e24"
+  ],
+  "allocation_status": "source-only until fresh actual gate; prior mixed-world results are diagnostic",
+  "future_donors": [
+    "9202471cc",
+    "2ff2fe106"
+  ],
+  "future_status": "reviewed off-guard domain totalization; guarded computations preserved; not yet admitted",
+  "minimal_gate": {
+    "root": "books/machines-a-run",
+    "count": 35,
+    "qualified_expected": 28,
+    "ready_record_parent_count": 34,
+    "ready_record_new": 6,
+    "actual_author_target_count": 1,
+    "record_root_after_author_pass": "books/machines-a-run",
+    "executor": "sol_proof_event_budget"
+  },
+  "native_harness_source": "37b9296ac",
+  "native_harness_files": {
+    "tests/native-append-fetch-restart.py": "93ba84f1cb225b4a4c6aa0291142e03c38885c9fc849d48e11e8175ffed3dd9f",
+    "tests/test_native_append_fetch.py": "141dd8c7a4de0e7e7bc179ec77e4e1132189e6033a0f510e5e5731987df70846"
+  },
+  "native_harness_controls": "4 Python controls passed; includes distinct later article windows, swapped-tail refusal and bounded owned process-group cleanup",
+  "actual_application_native_status": "UNRUN"
+}
