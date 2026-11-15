@@ -6,7 +6,7 @@
 (defcolumns fn2-event-build
  ((phase (:enum fn2-event-build-phase
     (:idle :auth-zero :auth-open :auth :auth-ready :claim-zero :claims :reserve :zero :entries :directory-header :frontier-header
-           :peaks :physical-header :page :bound :done :uncertain)))
+           :peaks :physical-header :page :bound :done :uncertain :inventory-begin :inventory)))
   (token :u60) (owner-kind :u8) (owner-slot :u32) (owner-gen :u60)
   (candidate :u32) (cut-commit :u60) (cut-event :u60)
   (slot :u32) (gen :u60) (scratch :u32) (scratch-gen :u60)

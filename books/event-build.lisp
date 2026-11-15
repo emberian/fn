@@ -5,6 +5,7 @@
 (include-book "event-build-state")
 (include-book "event-frontier-source")
 (include-book "event-frontier-ref-fields")
+(include-book "release-inventory-source")
 (include-book "checkpoint-page-header")
 (include-book "checkpoint-map-build")
 (include-book "checkpoint-source-retention")
@@ -197,11 +198,11 @@
 
 (defun fn2-event-build-frontier-header (budget base fn2-event-build fn2-event-read fn2-csnapshot fn2-checkpoints
                                        fn2-checkpoint-refs fn2-checkpoint-construction fn2-extents fn2-checkpoint-page-verified
-                                       fn2-mk fn2-fc fn2-digests fn2-fields fn2-pool)
+                                       fn2-mk fn2-fc fn2-digests fn2-fields fn2-pool fn2-release-inventory-build)
  (declare (xargs :stobjs (fn2-event-build fn2-event-read fn2-csnapshot fn2-checkpoints fn2-checkpoint-refs
-                          fn2-checkpoint-construction fn2-extents fn2-checkpoint-page-verified fn2-mk fn2-fc fn2-digests fn2-fields fn2-pool)
+                          fn2-checkpoint-construction fn2-extents fn2-checkpoint-page-verified fn2-mk fn2-fc fn2-digests fn2-fields fn2-pool fn2-release-inventory-build)
   :verify-guards nil
-  :guard (and (fn2-event-build-wfp fn2-event-build) (fn2-event-read-wfp fn2-event-read) (fn2-csnapshot-wfp fn2-csnapshot) (fn2-checkpoints-wfp fn2-checkpoints) (fn2-checkpoint-refs-wfp fn2-checkpoint-refs) (fn2-checkpoint-construction-wfp fn2-checkpoint-construction) (fn2-extents-wfp fn2-extents) (fn2-checkpoint-page-verified-wfp fn2-checkpoint-page-verified) (fn2-mk-wfp fn2-mk) (fn2-fc-wfp fn2-fc) (fn2-digests-wfp fn2-digests) (fn2-fields-wfp fn2-fields) (fn2-pool-wfp fn2-pool))))
+  :guard (and (fn2-event-build-wfp fn2-event-build) (fn2-event-read-wfp fn2-event-read) (fn2-csnapshot-wfp fn2-csnapshot) (fn2-checkpoints-wfp fn2-checkpoints) (fn2-checkpoint-refs-wfp fn2-checkpoint-refs) (fn2-checkpoint-construction-wfp fn2-checkpoint-construction) (fn2-extents-wfp fn2-extents) (fn2-checkpoint-page-verified-wfp fn2-checkpoint-page-verified) (fn2-mk-wfp fn2-mk) (fn2-fc-wfp fn2-fc) (fn2-digests-wfp fn2-digests) (fn2-fields-wfp fn2-fields) (fn2-pool-wfp fn2-pool) (fn2-event-buildp fn2-event-build) (fn2-event-readp fn2-event-read) (fn2-csnapshotp fn2-csnapshot) (fn2-checkpointsp fn2-checkpoints) (fn2-checkpoint-refsp fn2-checkpoint-refs) (fn2-checkpoint-constructionp fn2-checkpoint-construction) (fn2-extentsp fn2-extents) (fn2-checkpoint-page-verifiedp fn2-checkpoint-page-verified) (fn2-mkp fn2-mk) (fn2-fcp fn2-fc) (fn2-digestsp fn2-digests) (fn2-fieldsp fn2-fields) (fn2-poolp fn2-pool) (fn2-release-inventory-buildp fn2-release-inventory-build) (fn2-release-inventory-build-wfp fn2-release-inventory-build))))
  (b* (((unless (and (fn2-event-build-ownerp fn2-event-build fn2-csnapshot fn2-checkpoints)
                      (equal (fn2-event-build-phase 0 fn2-event-build) *fn2-event-build-phase-frontier-header*)
                      (equal (fn2-event-build-role 0 fn2-event-build) 4)
@@ -236,11 +237,19 @@
                      (equal (fn2-checkpoint-refs-writer-epoch r fn2-checkpoint-refs) (fn2-checkpoint-page-verified-epoch child fn2-checkpoint-page-verified))
                      (equal (fn2-checkpoint-refs-allocation r fn2-checkpoint-refs) (fn2-checkpoint-page-verified-allocation child fn2-checkpoint-page-verified))))
        (mv :directory fn2-event-build fn2-fields fn2-pool))
+      ((unless (and (fn2-release-inventory-complete-p fn2-release-inventory-build fn2-csnapshot fn2-checkpoints
+                       fn2-checkpoint-construction fn2-extents fn2-checkpoint-page-verified)
+                     (equal (fn2-release-inventory-build-token 0 fn2-release-inventory-build) token)
+                     (equal (fn2-release-inventory-build-candidate 0 fn2-release-inventory-build) (fn2-event-build-candidate 0 fn2-event-build))))
+       (mv :inventory fn2-event-build fn2-fields fn2-pool))
+      (inventory-head (fn2-release-inventory-build-head 0 fn2-release-inventory-build))
       (slot (fn2-event-build-slot 0 fn2-event-build)) (gen (fn2-event-build-gen 0 fn2-event-build))
       (scratch (fn2-event-build-scratch 0 fn2-event-build)) (sgen (fn2-event-build-scratch-gen 0 fn2-event-build))
       ((mv reset fn2-pool) (fn2-pool-reset scratch sgen kind owner generation fn2-pool))
       ((unless (eq reset :ok)) (mv reset fn2-event-build fn2-fields fn2-pool))
       ((mv copied fn2-pool) (fn2-checkpoint-linked-hash-buffer 32 0 0 child scratch sgen kind owner generation nil fn2-checkpoint-page-verified fn2-pool))
+      ((unless (eq copied :ok)) (mv copied fn2-event-build fn2-fields fn2-pool))
+      ((mv copied fn2-pool) (fn2-checkpoint-linked-hash-buffer 32 0 32 inventory-head scratch sgen kind owner generation nil fn2-checkpoint-page-verified fn2-pool))
       ((unless (eq copied :ok)) (mv copied fn2-event-build fn2-fields fn2-pool))
       (fn2-fields (fn2-fields-set-value (+ base *fn2-event-frontier-header-field-kind*) *checkpoint-event-frontier-kind-semantic-member-frontier* fn2-fields))
       (fn2-fields (fn2-fields-set-value (+ base *fn2-event-frontier-header-field-version*) *fn2-format-version* fn2-fields))
@@ -248,6 +257,9 @@
       (fn2-fields (fn2-fields-set-value (+ base *fn2-event-frontier-header-field-cut-event*) (fn2-event-build-cut-event 0 fn2-event-build) fn2-fields))
       (fn2-fields (fn2-fields-set-value (+ base *fn2-event-frontier-header-field-leaf-count*) (fn2-mk-size (fn2-b-event-row (fn2-fc-rows fn2-fc)) fn2-mk) fn2-fields))
       (fn2-fields (fn2-event-frontier-put-ref "DIRECTORY-" base child 0 scratch sgen))
+      (fn2-fields (fn2-fields-set-value (+ base *fn2-event-frontier-header-field-inventory-count*)
+                    (fn2-release-inventory-build-count 0 fn2-release-inventory-build) fn2-fields))
+      (fn2-fields (fn2-event-frontier-put-ref "INVENTORY-" base inventory-head 32 scratch sgen))
       ((mv code next fn2-pool) (fn2-event-frontier-header-encode base slot gen *fn2-checkpoint-map-body-start* kind owner generation fn2-fields fn2-pool))
       (good (and (eq code :ok) (<= next *fn2-event-frontier-peaks-start*)))
       (fn2-event-build (if good (fn2-event-build-put 0 (peak 0)
@@ -326,11 +338,11 @@
   (mv code fn2-event-build fn2-checkpoint-page)))
 
 (defun fn2-event-build-consume-page (fn2-event-build fn2-event-read fn2-csnapshot fn2-checkpoints fn2-checkpoint-refs fn2-checkpoint-bytes
-                                    fn2-checkpoint-page fn2-checkpoint-page-verified fn2-checkpoint-construction fn2-extents fn2-mk fn2-fc fn2-digests fn2-pool)
+                                    fn2-checkpoint-page fn2-checkpoint-page-verified fn2-checkpoint-construction fn2-extents fn2-mk fn2-fc fn2-digests fn2-pool fn2-release-inventory-build)
  (declare (xargs :stobjs (fn2-event-build fn2-event-read fn2-csnapshot fn2-checkpoints fn2-checkpoint-refs fn2-checkpoint-bytes
-                          fn2-checkpoint-page fn2-checkpoint-page-verified fn2-checkpoint-construction fn2-extents fn2-mk fn2-fc fn2-digests fn2-pool)
+                          fn2-checkpoint-page fn2-checkpoint-page-verified fn2-checkpoint-construction fn2-extents fn2-mk fn2-fc fn2-digests fn2-pool fn2-release-inventory-build)
   :verify-guards nil
-  :guard (and (fn2-event-build-wfp fn2-event-build) (fn2-event-read-wfp fn2-event-read) (fn2-csnapshot-wfp fn2-csnapshot) (fn2-checkpoints-wfp fn2-checkpoints) (fn2-checkpoint-refs-wfp fn2-checkpoint-refs) (fn2-checkpoint-bytes-wfp fn2-checkpoint-bytes) (fn2-checkpoint-page-wfp fn2-checkpoint-page) (fn2-checkpoint-page-verified-wfp fn2-checkpoint-page-verified) (fn2-checkpoint-construction-wfp fn2-checkpoint-construction) (fn2-extents-wfp fn2-extents) (fn2-mk-wfp fn2-mk) (fn2-fc-wfp fn2-fc) (fn2-digests-wfp fn2-digests) (fn2-pool-wfp fn2-pool))))
+  :guard (and (fn2-event-build-wfp fn2-event-build) (fn2-event-read-wfp fn2-event-read) (fn2-csnapshot-wfp fn2-csnapshot) (fn2-checkpoints-wfp fn2-checkpoints) (fn2-checkpoint-refs-wfp fn2-checkpoint-refs) (fn2-checkpoint-bytes-wfp fn2-checkpoint-bytes) (fn2-checkpoint-page-wfp fn2-checkpoint-page) (fn2-checkpoint-page-verified-wfp fn2-checkpoint-page-verified) (fn2-checkpoint-construction-wfp fn2-checkpoint-construction) (fn2-extents-wfp fn2-extents) (fn2-mk-wfp fn2-mk) (fn2-fc-wfp fn2-fc) (fn2-digests-wfp fn2-digests) (fn2-pool-wfp fn2-pool) (fn2-event-buildp fn2-event-build) (fn2-event-readp fn2-event-read) (fn2-csnapshotp fn2-csnapshot) (fn2-checkpointsp fn2-checkpoints) (fn2-checkpoint-refsp fn2-checkpoint-refs) (fn2-checkpoint-bytesp fn2-checkpoint-bytes) (fn2-checkpoint-pagep fn2-checkpoint-page) (fn2-checkpoint-page-verifiedp fn2-checkpoint-page-verified) (fn2-checkpoint-constructionp fn2-checkpoint-construction) (fn2-extentsp fn2-extents) (fn2-mkp fn2-mk) (fn2-fcp fn2-fc) (fn2-digestsp fn2-digests) (fn2-poolp fn2-pool) (fn2-release-inventory-buildp fn2-release-inventory-build) (fn2-release-inventory-build-wfp fn2-release-inventory-build))))
  (b* (((unless (and (fn2-event-build-ownerp fn2-event-build fn2-csnapshot fn2-checkpoints)
                      (equal (fn2-event-build-phase 0 fn2-event-build) *fn2-event-build-phase-bound*)))
        (mv :state fn2-event-build fn2-checkpoint-refs fn2-checkpoint-bytes))
@@ -366,12 +378,18 @@
                       (equal (fn2-event-build-frontier-completed 0 fn2-event-build) 0)
                       (equal (fn2-event-build-directory-completed 0 fn2-event-build) (* pages *fn2-format-page-size*)))))
        (mv :coverage fn2-event-build fn2-checkpoint-refs fn2-checkpoint-bytes))
-      (completed (if (equal role 3) (+ *fn2-format-page-size* (fn2-event-build-directory-completed 0 fn2-event-build)) *fn2-format-page-size*))
+      (frontier-pages (+ 1 (fn2-release-inventory-build-pages 0 fn2-release-inventory-build)))
+      ((unless (or (equal role 3)
+       (fn2-release-inventory-complete-p fn2-release-inventory-build fn2-csnapshot fn2-checkpoints
+        fn2-checkpoint-construction fn2-extents fn2-checkpoint-page-verified)))
+       (mv :inventory fn2-event-build fn2-checkpoint-refs fn2-checkpoint-bytes))
+      (completed (if (equal role 3) (+ *fn2-format-page-size* (fn2-event-build-directory-completed 0 fn2-event-build))
+                      (* frontier-pages *fn2-format-page-size*)))
       ((when (and (equal role 3) (posp ordinal)))
        (let ((fn2-event-build (fn2-event-build-put 0 (phase *fn2-event-build-phase-reserve*) (ordinal (- ordinal 1))
                                (child e) (has-child 1) (directory-completed completed))))
         (mv :more fn2-event-build fn2-checkpoint-refs fn2-checkpoint-bytes)))
-      (intended (if (equal role 3) (* pages *fn2-format-page-size*) *fn2-format-page-size*))
+      (intended (if (equal role 3) (* pages *fn2-format-page-size*) (* frontier-pages *fn2-format-page-size*)))
       ((unless (equal completed intended)) (mv :coverage fn2-event-build fn2-checkpoint-refs fn2-checkpoint-bytes))
       (fn2-checkpoint-bytes (fn2-checkpoint-map-root-hash-copy 32 0 e (* 32 r) fn2-checkpoint-page-verified fn2-checkpoint-bytes))
       (fn2-checkpoint-refs (fn2-checkpoint-refs-put r
@@ -381,7 +399,7 @@
        (edge 0) (retained 0) (root-build-token token) (root-source-complete 1)
        (root-intended-bytes intended) (root-completed-bytes completed)))
       (fn2-event-build (if (equal role 3)
-       (fn2-event-build-put 0 (phase *fn2-event-build-phase-reserve*) (role 4) (ordinal 0) (has-child 0)
+       (fn2-event-build-put 0 (phase *fn2-event-build-phase-inventory-begin*) (role 4) (ordinal 0) (has-child 0)
          (directory-completed completed) (zero 0) (peak 0))
        (fn2-event-build-put 0 (phase *fn2-event-build-phase-done*) (frontier-completed completed)))))
   (mv (if (equal role 3) :more :done) fn2-event-build fn2-checkpoint-refs fn2-checkpoint-bytes)))
@@ -391,11 +409,11 @@
 ; Field stripe identity is derived from the served resource table here.
 (defun fn2-event-build-source-step (budget fn2-event-build fn2-event-read fn2-csnapshot fn2-checkpoints fn2-commit-root
                                    fn2-checkpoint-refs fn2-checkpoint-construction fn2-extents fn2-alloc-edges fn2-ops
-                                   fn2-checkpoint-page-verified fn2-mk fn2-fc fn2-digests fn2-fields fn2-pool fn2-control fn2-checkpoint-summary-authority fn2-checkpoint-bytes fn2-checkpoint-restore-events fn2-checkpoint-restore-events-work)
+                                   fn2-checkpoint-page-verified fn2-mk fn2-fc fn2-digests fn2-fields fn2-pool fn2-control fn2-checkpoint-summary-authority fn2-checkpoint-bytes fn2-checkpoint-restore-events fn2-checkpoint-restore-events-work fn2-release-inventory-build)
  (declare (xargs :stobjs (fn2-event-build fn2-event-read fn2-csnapshot fn2-checkpoints fn2-commit-root fn2-checkpoint-refs
                           fn2-checkpoint-construction fn2-extents fn2-alloc-edges fn2-ops fn2-checkpoint-page-verified
-                          fn2-mk fn2-fc fn2-digests fn2-fields fn2-pool fn2-control fn2-checkpoint-summary-authority fn2-checkpoint-bytes fn2-checkpoint-restore-events fn2-checkpoint-restore-events-work) :verify-guards nil
-  :guard (and (fn2-event-build-wfp fn2-event-build) (fn2-event-read-wfp fn2-event-read) (fn2-csnapshot-wfp fn2-csnapshot) (fn2-checkpoints-wfp fn2-checkpoints) (fn2-commit-root-wfp fn2-commit-root) (fn2-checkpoint-refs-wfp fn2-checkpoint-refs) (fn2-checkpoint-construction-wfp fn2-checkpoint-construction) (fn2-extents-wfp fn2-extents) (fn2-alloc-edges-wfp fn2-alloc-edges) (fn2-ops-wfp fn2-ops) (fn2-checkpoint-page-verified-wfp fn2-checkpoint-page-verified) (fn2-mk-wfp fn2-mk) (fn2-fc-wfp fn2-fc) (fn2-digests-wfp fn2-digests) (fn2-fields-wfp fn2-fields) (fn2-pool-wfp fn2-pool) (fn2-control-wfp fn2-control) (fn2-checkpoint-summary-authority-wfp fn2-checkpoint-summary-authority) (fn2-checkpoint-bytes-wfp fn2-checkpoint-bytes) (fn2-checkpoint-restore-events-wfp fn2-checkpoint-restore-events) (fn2-checkpoint-restore-events-work-wfp fn2-checkpoint-restore-events-work))))
+                          fn2-mk fn2-fc fn2-digests fn2-fields fn2-pool fn2-control fn2-checkpoint-summary-authority fn2-checkpoint-bytes fn2-checkpoint-restore-events fn2-checkpoint-restore-events-work fn2-release-inventory-build) :verify-guards nil
+  :guard (and (fn2-event-build-wfp fn2-event-build) (fn2-event-read-wfp fn2-event-read) (fn2-csnapshot-wfp fn2-csnapshot) (fn2-checkpoints-wfp fn2-checkpoints) (fn2-commit-root-wfp fn2-commit-root) (fn2-checkpoint-refs-wfp fn2-checkpoint-refs) (fn2-checkpoint-construction-wfp fn2-checkpoint-construction) (fn2-extents-wfp fn2-extents) (fn2-alloc-edges-wfp fn2-alloc-edges) (fn2-ops-wfp fn2-ops) (fn2-checkpoint-page-verified-wfp fn2-checkpoint-page-verified) (fn2-mk-wfp fn2-mk) (fn2-fc-wfp fn2-fc) (fn2-digests-wfp fn2-digests) (fn2-fields-wfp fn2-fields) (fn2-pool-wfp fn2-pool) (fn2-control-wfp fn2-control) (fn2-checkpoint-summary-authority-wfp fn2-checkpoint-summary-authority) (fn2-checkpoint-bytes-wfp fn2-checkpoint-bytes) (fn2-checkpoint-restore-events-wfp fn2-checkpoint-restore-events) (fn2-checkpoint-restore-events-work-wfp fn2-checkpoint-restore-events-work) (fn2-event-buildp fn2-event-build) (fn2-event-readp fn2-event-read) (fn2-csnapshotp fn2-csnapshot) (fn2-checkpointsp fn2-checkpoints) (fn2-commit-rootp fn2-commit-root) (fn2-checkpoint-refsp fn2-checkpoint-refs) (fn2-checkpoint-constructionp fn2-checkpoint-construction) (fn2-extentsp fn2-extents) (fn2-alloc-edgesp fn2-alloc-edges) (fn2-opsp fn2-ops) (fn2-checkpoint-page-verifiedp fn2-checkpoint-page-verified) (fn2-mkp fn2-mk) (fn2-fcp fn2-fc) (fn2-digestsp fn2-digests) (fn2-fieldsp fn2-fields) (fn2-poolp fn2-pool) (fn2-controlp fn2-control) (fn2-checkpoint-summary-authorityp fn2-checkpoint-summary-authority) (fn2-checkpoint-bytesp fn2-checkpoint-bytes) (fn2-checkpoint-restore-eventsp fn2-checkpoint-restore-events) (fn2-checkpoint-restore-events-workp fn2-checkpoint-restore-events-work) (fn2-release-inventory-buildp fn2-release-inventory-build) (fn2-release-inventory-build-wfp fn2-release-inventory-build))))
  (b* (((unless (fn2-event-build-ownerp fn2-event-build fn2-csnapshot fn2-checkpoints))
        (mv :owner fn2-event-build fn2-checkpoint-construction fn2-extents fn2-alloc-edges fn2-fields fn2-pool fn2-control))
       (phase (fn2-event-build-phase 0 fn2-event-build))
@@ -423,7 +441,7 @@
    ((equal phase *fn2-event-build-phase-frontier-header*)
     (mv-let (code fn2-event-build fn2-fields fn2-pool)
      (fn2-event-build-frontier-header budget base fn2-event-build fn2-event-read fn2-csnapshot fn2-checkpoints
-      fn2-checkpoint-refs fn2-checkpoint-construction fn2-extents fn2-checkpoint-page-verified fn2-mk fn2-fc fn2-digests fn2-fields fn2-pool)
+      fn2-checkpoint-refs fn2-checkpoint-construction fn2-extents fn2-checkpoint-page-verified fn2-mk fn2-fc fn2-digests fn2-fields fn2-pool fn2-release-inventory-build)
      (mv code fn2-event-build fn2-checkpoint-construction fn2-extents fn2-alloc-edges fn2-fields fn2-pool fn2-control)))
    ((equal phase *fn2-event-build-phase-peaks*)
     (mv-let (code fn2-event-build fn2-pool)
@@ -464,8 +482,8 @@
 (fn2-event-build-preserves fn2-event-build-frontier-header
  (budget base fn2-event-build fn2-event-read fn2-csnapshot fn2-checkpoints
                                        fn2-checkpoint-refs fn2-checkpoint-construction fn2-extents fn2-checkpoint-page-verified
-                                       fn2-mk fn2-fc fn2-digests fn2-fields fn2-pool)
- :carriers ((fn2-event-build 1 :prefix "-BUILDER") (fn2-fields 2 :prefix "-FIELDS") (fn2-pool 3 :prefix "-POOL")))
+                                       fn2-mk fn2-fc fn2-digests fn2-fields fn2-pool fn2-release-inventory-build)
+ :carriers ((fn2-event-build 1 :prefix "-BUILDER") (fn2-fields 2 :prefix "-FIELDS") (fn2-pool 3 :prefix "-POOL")) :hyps ((fn2-event-buildp fn2-event-build) (fn2-event-build-wfp fn2-event-build) (fn2-event-readp fn2-event-read) (fn2-event-read-wfp fn2-event-read) (fn2-csnapshotp fn2-csnapshot) (fn2-csnapshot-wfp fn2-csnapshot) (fn2-checkpointsp fn2-checkpoints) (fn2-checkpoints-wfp fn2-checkpoints) (fn2-checkpoint-refsp fn2-checkpoint-refs) (fn2-checkpoint-refs-wfp fn2-checkpoint-refs) (fn2-checkpoint-constructionp fn2-checkpoint-construction) (fn2-checkpoint-construction-wfp fn2-checkpoint-construction) (fn2-extentsp fn2-extents) (fn2-extents-wfp fn2-extents) (fn2-checkpoint-page-verifiedp fn2-checkpoint-page-verified) (fn2-checkpoint-page-verified-wfp fn2-checkpoint-page-verified) (fn2-mkp fn2-mk) (fn2-mk-wfp fn2-mk) (fn2-fcp fn2-fc) (fn2-fc-wfp fn2-fc) (fn2-digestsp fn2-digests) (fn2-digests-wfp fn2-digests) (fn2-fieldsp fn2-fields) (fn2-fields-wfp fn2-fields) (fn2-poolp fn2-pool) (fn2-pool-wfp fn2-pool) (fn2-release-inventory-buildp fn2-release-inventory-build) (fn2-release-inventory-build-wfp fn2-release-inventory-build)))
 
 (fn2-event-build-preserves fn2-event-build-peak-step
  (budget fn2-event-build fn2-event-read fn2-csnapshot fn2-checkpoints fn2-mk fn2-fc fn2-digests fn2-pool)
@@ -483,11 +501,11 @@
 
 (fn2-event-build-preserves fn2-event-build-consume-page
  (fn2-event-build fn2-event-read fn2-csnapshot fn2-checkpoints fn2-checkpoint-refs fn2-checkpoint-bytes
-                                    fn2-checkpoint-page fn2-checkpoint-page-verified fn2-checkpoint-construction fn2-extents fn2-mk fn2-fc fn2-digests fn2-pool)
- :carriers ((fn2-event-build 1 :prefix "-BUILDER") (fn2-checkpoint-refs 2 :prefix "-REFS") (fn2-checkpoint-bytes 3 :prefix "-BYTES")))
+                                    fn2-checkpoint-page fn2-checkpoint-page-verified fn2-checkpoint-construction fn2-extents fn2-mk fn2-fc fn2-digests fn2-pool fn2-release-inventory-build)
+ :carriers ((fn2-event-build 1 :prefix "-BUILDER") (fn2-checkpoint-refs 2 :prefix "-REFS") (fn2-checkpoint-bytes 3 :prefix "-BYTES")) :hyps ((fn2-event-buildp fn2-event-build) (fn2-event-build-wfp fn2-event-build) (fn2-event-readp fn2-event-read) (fn2-event-read-wfp fn2-event-read) (fn2-csnapshotp fn2-csnapshot) (fn2-csnapshot-wfp fn2-csnapshot) (fn2-checkpointsp fn2-checkpoints) (fn2-checkpoints-wfp fn2-checkpoints) (fn2-checkpoint-refsp fn2-checkpoint-refs) (fn2-checkpoint-refs-wfp fn2-checkpoint-refs) (fn2-checkpoint-bytesp fn2-checkpoint-bytes) (fn2-checkpoint-bytes-wfp fn2-checkpoint-bytes) (fn2-checkpoint-pagep fn2-checkpoint-page) (fn2-checkpoint-page-wfp fn2-checkpoint-page) (fn2-checkpoint-page-verifiedp fn2-checkpoint-page-verified) (fn2-checkpoint-page-verified-wfp fn2-checkpoint-page-verified) (fn2-checkpoint-constructionp fn2-checkpoint-construction) (fn2-checkpoint-construction-wfp fn2-checkpoint-construction) (fn2-extentsp fn2-extents) (fn2-extents-wfp fn2-extents) (fn2-mkp fn2-mk) (fn2-mk-wfp fn2-mk) (fn2-fcp fn2-fc) (fn2-fc-wfp fn2-fc) (fn2-digestsp fn2-digests) (fn2-digests-wfp fn2-digests) (fn2-poolp fn2-pool) (fn2-pool-wfp fn2-pool) (fn2-release-inventory-buildp fn2-release-inventory-build) (fn2-release-inventory-build-wfp fn2-release-inventory-build)))
 
 (fn2-event-build-preserves fn2-event-build-source-step
  (budget fn2-event-build fn2-event-read fn2-csnapshot fn2-checkpoints fn2-commit-root
                                    fn2-checkpoint-refs fn2-checkpoint-construction fn2-extents fn2-alloc-edges fn2-ops
-                                   fn2-checkpoint-page-verified fn2-mk fn2-fc fn2-digests fn2-fields fn2-pool fn2-control fn2-checkpoint-summary-authority fn2-checkpoint-bytes fn2-checkpoint-restore-events fn2-checkpoint-restore-events-work)
- :carriers ((fn2-event-build 1 :prefix "-BUILDER") (fn2-checkpoint-construction 2 :prefix "-REGISTRY") (fn2-extents 3 :prefix "-EXTENTS") (fn2-alloc-edges 4 :prefix "-EDGES") (fn2-fields 5 :prefix "-FIELDS") (fn2-pool 6 :prefix "-POOL") (fn2-control 7 :prefix "-CONTROL")))
+                                   fn2-checkpoint-page-verified fn2-mk fn2-fc fn2-digests fn2-fields fn2-pool fn2-control fn2-checkpoint-summary-authority fn2-checkpoint-bytes fn2-checkpoint-restore-events fn2-checkpoint-restore-events-work fn2-release-inventory-build)
+ :carriers ((fn2-event-build 1 :prefix "-BUILDER") (fn2-checkpoint-construction 2 :prefix "-REGISTRY") (fn2-extents 3 :prefix "-EXTENTS") (fn2-alloc-edges 4 :prefix "-EDGES") (fn2-fields 5 :prefix "-FIELDS") (fn2-pool 6 :prefix "-POOL") (fn2-control 7 :prefix "-CONTROL")) :hyps ((fn2-event-buildp fn2-event-build) (fn2-event-build-wfp fn2-event-build) (fn2-event-readp fn2-event-read) (fn2-event-read-wfp fn2-event-read) (fn2-csnapshotp fn2-csnapshot) (fn2-csnapshot-wfp fn2-csnapshot) (fn2-checkpointsp fn2-checkpoints) (fn2-checkpoints-wfp fn2-checkpoints) (fn2-commit-rootp fn2-commit-root) (fn2-commit-root-wfp fn2-commit-root) (fn2-checkpoint-refsp fn2-checkpoint-refs) (fn2-checkpoint-refs-wfp fn2-checkpoint-refs) (fn2-checkpoint-constructionp fn2-checkpoint-construction) (fn2-checkpoint-construction-wfp fn2-checkpoint-construction) (fn2-extentsp fn2-extents) (fn2-extents-wfp fn2-extents) (fn2-alloc-edgesp fn2-alloc-edges) (fn2-alloc-edges-wfp fn2-alloc-edges) (fn2-opsp fn2-ops) (fn2-ops-wfp fn2-ops) (fn2-checkpoint-page-verifiedp fn2-checkpoint-page-verified) (fn2-checkpoint-page-verified-wfp fn2-checkpoint-page-verified) (fn2-mkp fn2-mk) (fn2-mk-wfp fn2-mk) (fn2-fcp fn2-fc) (fn2-fc-wfp fn2-fc) (fn2-digestsp fn2-digests) (fn2-digests-wfp fn2-digests) (fn2-fieldsp fn2-fields) (fn2-fields-wfp fn2-fields) (fn2-poolp fn2-pool) (fn2-pool-wfp fn2-pool) (fn2-controlp fn2-control) (fn2-control-wfp fn2-control) (fn2-checkpoint-summary-authorityp fn2-checkpoint-summary-authority) (fn2-checkpoint-summary-authority-wfp fn2-checkpoint-summary-authority) (fn2-checkpoint-bytesp fn2-checkpoint-bytes) (fn2-checkpoint-bytes-wfp fn2-checkpoint-bytes) (fn2-checkpoint-restore-eventsp fn2-checkpoint-restore-events) (fn2-checkpoint-restore-events-wfp fn2-checkpoint-restore-events) (fn2-checkpoint-restore-events-workp fn2-checkpoint-restore-events-work) (fn2-checkpoint-restore-events-work-wfp fn2-checkpoint-restore-events-work) (fn2-release-inventory-buildp fn2-release-inventory-build) (fn2-release-inventory-build-wfp fn2-release-inventory-build)))
