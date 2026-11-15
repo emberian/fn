@@ -157,9 +157,9 @@
    (stobj-let ((fn2-checkpoints (fn2-core-checkpoints fn2-core)) (fn2-checkpoint-refs (fn2-core-checkpoint-refs fn2-core))
                (fn2-checkpoint-bytes (fn2-core-checkpoint-bytes fn2-core))
                (fn2-checkpoint-recovery-evidence (fn2-core-checkpoint-recovery-evidence fn2-core))
-               (fn2-fields (fn2-core-fields fn2-core)) (fn2-pool (fn2-core-pool fn2-core)))
+               (fn2-fields (fn2-core-fields fn2-core)) (fn2-pool (fn2-core-pool fn2-core)) (fn2-origin (fn2-core-origin fn2-core)))
     (code fn2-checkpoint-recovery-evidence fn2-fields)
-    (fn2-checkpoint-recovery-evidence-record fn2-checkpoints fn2-checkpoint-refs fn2-checkpoint-bytes fn2-checkpoint-recovery-evidence fn2-fields fn2-pool)
+    (fn2-checkpoint-recovery-evidence-record fn2-checkpoints fn2-checkpoint-refs fn2-checkpoint-bytes fn2-checkpoint-recovery-evidence fn2-fields fn2-origin fn2-pool)
     (mv code fn2-core))))
  (fn2-core-preserves fn2-boot-checkpoint-evidence-record (id ogen fn2-core) :position 1 :rows nil)
 
