@@ -975,7 +975,7 @@
                                         row-tx-slot row-tx-gen row-ctl row-ctl-gen row-xrow)
     :accept (:ok :absent :full :dropped :fault)
     :why ":absent: the occurrence's Message-ID is not the request's; :full: its octets do not fit the reply; :dropped: the control connection closed; :fault: the store contradicts its own rows"
-    :case (((:more :miss) (:charge :bytes *fn2-c-read-step-bytes* :steps *fn2-work-transition* :runnable t))))
+    :case (((:more :miss) (:charge :bytes *fn2-c-read-callback-bytes* :steps *fn2-work-transition* :runnable t))))
    (:case pc
     ((:ok) (:set (ipos row-npos) (count 1) (ioff at) (ilen nl))
            (:next :page) (:charge :bytes (+ *fn2-c-read-callback-bytes* 4096) :steps *fn2-work-transition* :runnable t))
@@ -993,7 +993,7 @@
                                      row-tx-slot row-tx-gen row-ctl row-ctl-gen row-xrow)
     :accept (:ok :full :dropped :fault)
     :why ":dropped: the control connection closed while the page was read; :fault: the store contradicts its own rows"
-    :case (((:more :miss) (:charge :bytes *fn2-c-read-step-bytes* :steps *fn2-work-transition* :runnable t))))
+    :case (((:more :miss) (:charge :bytes *fn2-c-read-callback-bytes* :steps *fn2-work-transition* :runnable t))))
    (:case pc
     ((:ok) (:set (ipos row-npos) (count (+ 1 row-count)) (ilen (+ row-ilen nl))
                  (ioff (if (equal row-count 0) at row-ioff)))
@@ -1060,7 +1060,7 @@
                   (fn2-cns-decode-port row-fpos row-flen row-fkind row-principal-slot
                                        row-ctl row-ctl-gen row-tx-slot row-tx-gen x)
               :accept (:ok :refused) :why "a request that does not decode is answered refused"
-    :case (((:more :miss) (:charge :bytes *fn2-c-read-step-bytes* :steps *fn2-work-transition* :runnable t))))
+    :case (((:more :miss) (:charge :bytes *fn2-c-read-callback-bytes* :steps *fn2-work-transition* :runnable t))))
              (:if (eq dcode :ok)
                   ((:set (verb nverb) (consumer ncid) (cstart ncstart) (to nto) (page-limit nlim) (epoch nepoch)
                          (wait-ms nwait) (op nop) (fstart nfstart) (name-off nnoff) (name-len nnlen))
@@ -1103,7 +1103,7 @@
          (:charge :steps *fn2-work-transition* :runnable t))
         ((:do (fcode ncpos nver pfront)
         (fn2-cns-lookup-cursor row-consumer row-epoch row-principal-slot row-cpos row-version row-pub-frontier row-xrow)
-    :case (((:more :miss) (:charge :bytes *fn2-c-read-step-bytes* :steps *fn2-work-transition* :runnable t))) :accept (:ok))
+    :case (((:more :miss) (:charge :bytes *fn2-c-read-callback-bytes* :steps *fn2-work-transition* :runnable t))) :accept (:ok))
    (:cond ((equal row-epoch 0)
            (:set (cpos ncpos) (version nver) (pub-frontier pfront) (reason *fn2-cns-reason-scope*))
            (:goto refuse))
@@ -1127,7 +1127,7 @@
   (:read :on-refusal ((:stop :machine-phase))
    (:do (fcode ncpos nver pfront)
         (fn2-cns-lookup-cursor row-consumer row-epoch row-principal-slot row-cpos row-version row-pub-frontier row-xrow)
-    :case (((:more :miss) (:charge :bytes *fn2-c-read-step-bytes* :steps *fn2-work-transition* :runnable t))) :accept (:ok))
+    :case (((:more :miss) (:charge :bytes *fn2-c-read-callback-bytes* :steps *fn2-work-transition* :runnable t))) :accept (:ok))
    (:set (cpos ncpos) (version nver) (pub-frontier pfront) (count 0) (more 0) (ioff 0) (ilen 0)
          (ipos (if (equal row-verb *fn2-cns-verb-fetch*) (- row-to 1) ncpos)))
    (:next :page)
@@ -1153,7 +1153,7 @@
                                    *fn2-cns-kind* id row-generation)
             :accept (:found :end :retry :lease :fault)
             :why ":end: no entry of the principal's past IPOS up to the frontier; :more/:miss: resume the exact retained lookup without advancing the page; :retry: article publication changed before commitment copy; :lease: reserve before selecting a record; :fault: the store contradicts its own rows"
-    :case (((:more :miss) (:charge :bytes *fn2-c-read-step-bytes* :steps *fn2-work-transition* :runnable t))))
+    :case (((:more :miss) (:charge :bytes *fn2-c-read-callback-bytes* :steps *fn2-work-transition* :runnable t))))
            (:cond ((eq icode :retry) (:charge :bytes (+ *fn2-c-read-callback-bytes* 4096) :steps *fn2-work-transition* :runnable t))
                   ((eq icode :end) (:set (ipos row-pub-frontier)) (:goto page-end))
 
