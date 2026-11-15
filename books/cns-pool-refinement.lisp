@@ -9,11 +9,36 @@
                (fn2-decl-get :columns
                  (cdr (assoc-eq 'fn2-pool (fn2-decl-rows :columns (w state)))))))))
 
-(defun fn2-cns-owned-pool-release-expected (slot gen okind id ogen pool)
+(defun fn2-cns-owned-uncredited-zero-query-pool-release-expected (slot gen okind id ogen pool)
   (declare (ignore gen okind id ogen) (xargs :verify-guards nil))
   (list (if (>= (fn2-cns-drain-cell 'fn2-pool-gen slot pool)
                  (fn2-cns-drain-get 'fn2-pool-gen-limit pool)) :retired :ok)
         (fn2-cns-drain-released-pool slot pool)))
+
+(defun fn2-cns-owned-zero-query-pool-release-expected (slot gen kind id ogen pool)
+  (if (fn2-cns-drain-credit-boundp slot pool) (list :credit pool)
+    (fn2-cns-owned-uncredited-zero-query-pool-release-expected slot gen kind id ogen pool)))
+(defun fn2-cns-owned-pool-release-expected (slot gen kind id ogen pool)
+  ; Credit authority is denied independently of a query pin's count.
+  (cond ((fn2-cns-drain-credit-boundp slot pool) (list :credit pool))
+        ((< 0 (fn2-cns-drain-cell 'fn2-pool-query-ref-count slot pool)) (list :held pool))
+        (t (fn2-cns-owned-uncredited-zero-query-pool-release-expected slot gen kind id ogen pool))))
+(defthm fn2-cns-owned-zero-query-release-equivalence-by-definition
+  (implies (equal (fn2-cns-drain-cell 'fn2-pool-query-ref-count slot pool) 0)
+           (equal (fn2-cns-owned-pool-release-expected slot gen kind id ogen pool)
+                  (fn2-cns-owned-zero-query-pool-release-expected slot gen kind id ogen pool)))
+  :hints (("Goal" :in-theory (enable fn2-cns-owned-pool-release-expected
+                   fn2-cns-owned-zero-query-pool-release-expected))))
+
+(defthm fn2-cns-owned-release-pool-effect-by-definition
+  (equal (cadr (fn2-cns-owned-pool-release-expected slot gen kind id ogen pool))
+         (fn2-cns-drain-release-pool-effect slot pool))
+  :hints (("Goal" :in-theory
+           (e/d (fn2-cns-owned-pool-release-expected
+                 fn2-cns-owned-zero-query-pool-release-expected
+                 fn2-cns-owned-uncredited-zero-query-pool-release-expected
+                 fn2-cns-drain-release-pool-effect)
+                (fn2-cns-drain-released-pool)))))
 
 (defthm fn2-cns-owned-pool-release-independent
   (implies (and (fn2-poolp pool) (fn2-pool-wfp pool)
@@ -25,7 +50,8 @@
   :hints (("Goal" :in-theory
            (union-theories
             (theory 'fn2-cns-pool-readers)
-            (e/d (fn2-pool-release fn2-pool-release-countp fn2-pool-rows
+            (e/d (fn2-pool-release fn2-pool-release-body fn2-pool-credit-group
+                 fn2-cns-drain-credit-boundp fn2-pool-release-countp fn2-pool-rows
                  fn2-pool-nclasses fn2-pool-gen-limit fn2-pool-retired-count
                  fn2-pool-class-headsi fn2-pool-class-countsi
                  fn2-pool-workspace-code fn2-pool-handle-code fn2-pool-ownerp
@@ -34,7 +60,8 @@
                  update-fn2-pool-fill$ai update-fn2-pool-next-free$ai
                  update-fn2-pool-class-headsi update-fn2-pool-class-countsi
                  update-fn2-pool-retired-count
-                 fn2-cns-owned-pool-release-expected
+                 fn2-cns-owned-pool-release-expected fn2-cns-owned-zero-query-pool-release-expected
+                 fn2-cns-owned-uncredited-zero-query-pool-release-expected
                  fn2-cns-drain-releasablep fn2-cns-drain-released-pool
                  fn2-cns-drain-put-cells fn2-cns-drain-put-cell
                  fn2-cns-drain-put fn2-cns-drain-cell fn2-cns-drain-get

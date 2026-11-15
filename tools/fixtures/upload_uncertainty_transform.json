@@ -1,0 +1,69 @@
+{
+  "approved_commit": "d1275ba2577221a2dcbc8135d9e4dd126b353683",
+  "files": {
+    "books/assembly-callbacks-d-upload.lisp": {
+      "before_sha256": "0859f04fe72225ee78514a3c33764abee4162578bce317179af93c2754682d50",
+      "after_sha256": "6c0f9a558e2d9b8d0f1328252f01e20004183bd520edfc2ce13cf2a9e7413ae3",
+      "hunks": [
+        {
+          "before": "   (:let blk (floor row-pdone *fn2-commit-unit-bytes*))\n   (:cond ((equal row-sready 0) (:charge :steps *fn2-work-poll*))\n          ((not (and (equal row-sevent *fn2-event-write-result*) (equal row-soutcome *fn2-outcome-done*)))\n           ;; nothing durable is claimed for this source: the article is refused\n           (:set (word *fn2-upload-word-not-stored*) (sready 0)) (:next :sealed)\n           (:charge :steps *fn2-work-transition* :runnable t))\n          ((and (not (fn2-am-manifestp total)) (< 0 row-scount) (<= (+ row-pdone row-scount) total))\n           (:let done2 (+ row-pdone row-scount))\n",
+          "after": "   (:let blk (floor row-pdone *fn2-commit-unit-bytes*))\n   (:cond ((equal row-sready 0) (:charge :steps *fn2-work-poll*))\n          ((not (and (equal row-sevent *fn2-event-write-result*) (equal row-soutcome *fn2-outcome-done*)))\n           ;; Issued I/O has no safe rollback: retain bytes and reservations for recovery.\n           (:set (word *fn2-upload-word-uncertain*) (sready 0)) (:next :uncertain)\n           (:charge :steps *fn2-work-transition* :runnable t))\n          ((and (not (fn2-am-manifestp total)) (< 0 row-scount) (<= (+ row-pdone row-scount) total))\n           (:let done2 (+ row-pdone row-scount))\n"
+        },
+        {
+          "before": "           (:set (munit u2) (sready 0) (mstep 0))\n           (:next (:if (< (* *fn2-commit-unit-bytes* u2) row-mfill) :store-write :store-fence))\n           (:charge :steps *fn2-work-transition* :runnable t))\n          (t (:set (word *fn2-upload-word-not-stored*) (sready 0)) (:next :sealed)\n             (:charge :steps *fn2-work-transition* :runnable t))))\n  (:store-fence :on-refusal ((:stop :machine-phase))\n   (:if (not (and (natp budget) (< 0 budget))) ((:yield))\n",
+          "after": "           (:set (munit u2) (sready 0) (mstep 0))\n           (:next (:if (< (* *fn2-commit-unit-bytes* u2) row-mfill) :store-write :store-fence))\n           (:charge :steps *fn2-work-transition* :runnable t))\n          (t (:set (word *fn2-upload-word-uncertain*) (sready 0)) (:next :uncertain)\n             (:charge :steps *fn2-work-transition* :runnable t))))\n  (:store-fence :on-refusal ((:stop :machine-phase))\n   (:if (not (and (natp budget) (< 0 budget))) ((:yield))\n"
+        },
+        {
+          "before": "  (:store-fenced :on-refusal ((:stop :machine-phase))\n   (:cond ((equal row-sready 0) (:charge :steps *fn2-work-poll*))\n          ((not (and (equal row-sevent *fn2-event-fence-result*) (equal row-soutcome *fn2-outcome-done*)))\n           (:set (word *fn2-upload-word-not-stored*) (sready 0)) (:next :sealed)\n           (:charge :steps *fn2-work-transition* :runnable t))\n          ((equal row-ilen 0)\n           (:set (sready 0)) (:next :sealed) (:charge :steps *fn2-work-transition* :runnable t))\n",
+          "after": "  (:store-fenced :on-refusal ((:stop :machine-phase))\n   (:cond ((equal row-sready 0) (:charge :steps *fn2-work-poll*))\n          ((not (and (equal row-sevent *fn2-event-fence-result*) (equal row-soutcome *fn2-outcome-done*)))\n           (:set (word *fn2-upload-word-uncertain*) (sready 0)) (:next :uncertain)\n           (:charge :steps *fn2-work-transition* :runnable t))\n          ((equal row-ilen 0)\n           (:set (sready 0)) (:next :sealed) (:charge :steps *fn2-work-transition* :runnable t))\n"
+        },
+        {
+          "before": "         (:next (:if retire :retired :free))\n         (:do () (fn2-machine-reclaim-fn2-upload id retire))\n         (:charge :steps *fn2-work-release*))))\n  (:retired (:idle)))\n :observes\n ((:write-result (:set (sevent event) (soutcome outcome) (scount count) (sready 1)) (:wake))\n  (:fence-result (:set (sevent event) (soutcome outcome) (scount count) (sready 1)) (:wake))\n",
+          "after": "         (:next (:if retire :retired :free))\n         (:do () (fn2-machine-reclaim-fn2-upload id retire))\n         (:charge :steps *fn2-work-release*))))\n  (:retired (:idle))\n  ;; An issued storage operation was ambiguous or malformed. No settlement,\n  ;; cancellation, workspace release or transaction hand-over can follow.\n  (:uncertain (:stop :upload-uncertain)))\n :observes\n ((:write-result (:set (sevent event) (soutcome outcome) (scount count) (sready 1)) (:wake))\n  (:fence-result (:set (sevent event) (soutcome outcome) (scount count) (sready 1)) (:wake))\n"
+        }
+      ]
+    },
+    "books/txn.lisp": {
+      "before_sha256": "e0d1fcdc0e82b5d041b4201e7b004104b6596063227744f1e8cf9391bcc82409",
+      "after_sha256": "aa3b7e3685b34b354194c40065ea3ed66d501d39efa0a08f918d66e0dd295fb6",
+      "hunks": [
+        {
+          "before": "(assert-event (equal *fn2-txn-ready-bytes* 26624))  ; the kind's :budget (txn-kind.lisp)\n\n(defconst *fn2-upload-word-accepted* (fn2-upload-word-code :accepted))\n(defconst *fn2-upload-word-uncertain* (fn2-upload-word-code :uncertain))\n(defconst *fn2-upload-word-duplicate* (fn2-upload-word-code :duplicate))\n(defconst *fn2-upload-word-conflict* (fn2-upload-word-code :conflict))\n(defconst *fn2-upload-word-group* (fn2-upload-word-code :group))\n",
+          "after": "(assert-event (equal *fn2-txn-ready-bytes* 26624))  ; the kind's :budget (txn-kind.lisp)\n\n(defconst *fn2-upload-word-accepted* (fn2-upload-word-code :accepted))\n(defconst *fn2-upload-word-duplicate* (fn2-upload-word-code :duplicate))\n(defconst *fn2-upload-word-conflict* (fn2-upload-word-code :conflict))\n(defconst *fn2-upload-word-group* (fn2-upload-word-code :group))\n"
+        }
+      ]
+    },
+    "books/upload-kind.lisp": {
+      "before_sha256": "0d657505b2ba6b85742dbb578dff4a28e1d3b917df1925d39da79415000cdc77",
+      "after_sha256": "017715e8aed1b68f50f18a282be9cc02db0c04a4d04ddbdeb4cf4c7b205060f4",
+      "hunks": [
+        {
+          "before": "\n(defmachine fn2-upload\n :states (:free :head :identity :receiving :validating :discard :store :stored-hash :location-hash :store-write :store-wrote\n          :store-fence :store-fenced :sealed :aborting :draining :retired)\n ;; CONN is the owner the source comes from and the word goes to: a\n ;; connection (POST, IHAVE, TAKETHIS) or a consumer request (an append,\n ;; e-surface.md 3.3: the same upload and transaction as a POST). OP is the\n",
+          "after": "\n(defmachine fn2-upload\n :states (:free :head :identity :receiving :validating :discard :store :stored-hash :location-hash :store-write :store-wrote\n          :store-fence :store-fenced :sealed :aborting :draining :retired :uncertain)\n ;; CONN is the owner the source comes from and the word goes to: a\n ;; connection (POST, IHAVE, TAKETHIS) or a consumer request (an append,\n ;; e-surface.md 3.3: the same upload and transaction as a POST). OP is the\n"
+        },
+        {
+          "before": "         (cns :kind fn2-cns :slot conn :gen conn-gen :back (upload upload-gen)\n              :reads (fed feed-mode feed-discard))\n         (child-txn :kind fn2-txn :slot txn :gen txn-gen :back (upload upload-gen)))\n :holds ((:head :upload-row :chunk-window) (:identity :upload-row :chunk-window)\n         (:receiving :upload-row :chunk-window) (:validating :upload-row :chunk-window)\n         (:discard :upload-row :chunk-window)\n",
+          "after": "         (cns :kind fn2-cns :slot conn :gen conn-gen :back (upload upload-gen)\n              :reads (fed feed-mode feed-discard))\n         (child-txn :kind fn2-txn :slot txn :gen txn-gen :back (upload upload-gen)))\n :stops (:upload-uncertain)\n :holds ((:head :upload-row :chunk-window) (:identity :upload-row :chunk-window)\n         (:receiving :upload-row :chunk-window) (:validating :upload-row :chunk-window)\n         (:discard :upload-row :chunk-window)\n"
+        },
+        {
+          "before": "         (:store-fenced :upload-row :chunk-window (:storage-window :while (lease :held)))\n         (:sealed :upload-row :chunk-window (:storage-window :while (lease :held)))\n         (:aborting :upload-row :chunk-window)\n         (:draining :upload-row :chunk-window (:storage-window :while (lease :held))))\n :budget (:bytes 4096 :steps 32 :descriptors 4)\n :capacity (fn2-upload-capacity profile)\n",
+          "after": "         (:store-fenced :upload-row :chunk-window (:storage-window :while (lease :held)))\n         (:sealed :upload-row :chunk-window (:storage-window :while (lease :held)))\n         (:aborting :upload-row :chunk-window)\n         (:uncertain :upload-row :chunk-window (:storage-window :while (lease :held)))\n         (:draining :upload-row :chunk-window (:storage-window :while (lease :held))))\n :budget (:bytes 4096 :steps 32 :descriptors 4)\n :capacity (fn2-upload-capacity profile)\n"
+        },
+        {
+          "before": "           (pext *fn2-none*) (lslot *fn2-none*) (cext *fn2-none*)\n           (ofield 12) (next-free fn2-machine-initial-next-free))\n :arms ((:free) (:head) (:identity) (:receiving) (:validating) (:discard) (:store) (:stored-hash) (:location-hash) (:store-write) (:store-wrote)\n        (:store-fence) (:store-fenced) (:sealed) (:aborting) (:draining) (:retired))\n :observes ((:write-result) (:fence-result) (:borrow-released)))\n\n; MACHINE-FORM 6.5 P4: the kind's take in child form, proved here;\n",
+          "after": "           (pext *fn2-none*) (lslot *fn2-none*) (cext *fn2-none*)\n           (ofield 12) (next-free fn2-machine-initial-next-free))\n :arms ((:free) (:head) (:identity) (:receiving) (:validating) (:discard) (:store) (:stored-hash) (:location-hash) (:store-write) (:store-wrote)\n        (:store-fence) (:store-fenced) (:sealed) (:aborting) (:draining) (:retired) (:uncertain))\n :observes ((:write-result) (:fence-result) (:borrow-released)))\n\n; MACHINE-FORM 6.5 P4: the kind's take in child form, proved here;\n"
+        }
+      ]
+    },
+    "books/upload.lisp": {
+      "before_sha256": "e4dfae49d9635c53a3970434a3978ff15856833b1884ec1564fcb17b679ae43a",
+      "after_sha256": "3ec0073a959bf9492ffe8c3ad9286cfa574f4e61643c3ceff8da8bdaa5de4849",
+      "hunks": [
+        {
+          "before": ";; The words the store's refusals give (also the transaction's).\n(defconst *fn2-upload-word-unaffordable* (fn2-upload-word-code :unaffordable))\n(defconst *fn2-upload-word-not-stored* (fn2-upload-word-code :not-stored))\n\n(defcost fn2-conn-feed-run :bytes *fn2-conn-feed-cost*\n  :answers (:terminator :need-more :budget :bounds :fault)\n",
+          "after": ";; The words the store's refusals give (also the transaction's).\n(defconst *fn2-upload-word-unaffordable* (fn2-upload-word-code :unaffordable))\n(defconst *fn2-upload-word-not-stored* (fn2-upload-word-code :not-stored))\n(defconst *fn2-upload-word-uncertain* (fn2-upload-word-code :uncertain))\n\n(defcost fn2-conn-feed-run :bytes *fn2-conn-feed-cost*\n  :answers (:terminator :need-more :budget :bounds :fault)\n"
+        }
+      ]
+    }
+  }
+}

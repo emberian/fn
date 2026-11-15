@@ -1,7 +1,8 @@
 #!/usr/bin/env python3
 """A real image, fresh SBCL processes, and SIGKILL immediately after POST's 240.
 
-Run after certifying books/node-profile.lisp. Keeps image and logs under build/.
+Run after qualifying current books/node-profile and books/native-b3-evidence.
+Keeps image and logs under build/.
 The control is exact GROUP, ARTICLE and HEAD wire bytes on two fresh opens,
 including dot transparency and an article longer than one payload extent.
 """
@@ -188,7 +189,7 @@ def main():
             grant_rc = subprocess.call(
                 [str(ROOT / "fn"), "grant", "set", "anonymous", "append", "local.test",
                  "--control-sock", str(ctl_sock)],
-                cwd=ROOT,
+                cwd=ROOT, timeout=90,
             )
             assert grant_rc == 0, grant_rc
             for mid, _, whole in articles:

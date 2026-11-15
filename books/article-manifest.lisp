@@ -1,5 +1,5 @@
 ; An article's source manifest (S-ARTICLE-LOCATION, b-durability.md B-S2):
-; stored octets longer than one payload extent are named through one
+; stored octets beyond the raw commitment span are named through one
 ; :source-manifest reference. The manifest is B's layouts, a
 ; fn2-format-source-manifest-header (the stored length, the block size, the
 ; source's content identity) and then one fn2-format-source-manifest-entry
@@ -9,10 +9,10 @@
 ; own BLAKE3) and its chaining value in the stored octets' BLAKE3 tree (the
 ; subtree of its four chunks at chunk counter 4i; a final block shorter than a
 ; unit is no complete subtree, and its entry carries its own BLAKE3 there).
-; Three consecutive blocks share one extent (an extent is
-; *fn2-commit-write-resources* units), so block i is unit i mod 3 of its
-; extent, and the entry of a block at unit 0 of its extent is the extent's
-; only owner record the article keeps.
+; A physical extent's *fn2-storage-extent-units* consecutive blocks share it.
+; Block i uses unit i mod *fn2-storage-extent-units*; the physical base
+; is *fn2-storage-extent-units* times its extent index. Only the group
+; leader at physical offset 0 owns the extent for the article.
 ;
 ; The manifest is stored in an extent of its own, its units in order; an
 ; entry never straddles two units (one starts in the next unit when fewer
@@ -40,11 +40,11 @@
   (declare (xargs :guard t))
   (ceiling (fn2-am-blocks total) *fn2-am-entries-per-unit*))
 (defthm fn2-am-units-natp (natp (fn2-am-units total)) :rule-classes :type-prescription)
-;; Stored octets are named through a manifest when they exceed one extent;
+;; Stored octets use a manifest beyond the three-unit raw commitment span;
 ;; the manifest is one extent at most (one reference per article, one level).
 (defun fn2-am-manifestp (total)
   (declare (xargs :guard t))
-  (< *fn2-commit-extent-bytes* (nfix total)))
+  (< *fn2-upload-raw-bytes* (nfix total)))
 (defun fn2-am-fits (total)
   (declare (xargs :guard t))
   (<= (fn2-am-units total) *fn2-commit-write-resources*))

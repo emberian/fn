@@ -542,7 +542,52 @@ ACL2_BOOKS = \
   tests/view-contracts-unit \
   tests/vocab-unit \
   tests/wake-unit \
-  tests/work-controls
+  tests/work-controls \
+  books/cns-query-lifetime-model \
+  books/core-scheduler-wake \
+  books/enqueue-trace \
+  books/query-reference-predicates \
+  books/query-reference-core-predicate \
+  books/query-ref-wake \
+  books/queue-model \
+  books/trace-events \
+  tests/cns-query-support \
+  tests/cns-query-lifetime-unit \
+  tests/enqueue-cost-unit \
+  tests/query-reference-unit \
+  tests/query-two-wake-unit \
+  tests/query-owner-drain-unit \
+  tests/queue-model-unit \
+  tests/trace-events-unit \
+  tests/cns-stream-append-unit \
+  books/successor-schema-geometry \
+  books/successor-workspace-geometry \
+  tests/successor-geometry-unit \
+  tests/ctl-hash-interleave-unit \
+  books/cns-source-core \
+  tests/cns-stream-fetch-unit \
+  books/cns-read-work-bounds \
+  tests/cns-article-slice-unit \
+  tests/cns-draining-credit-unit \
+  tests/cns-draining-teeth-unit \
+  tests/cns-fetch-cancel-unit \
+  tests/cns-range-continuation-unit \
+  tests/cns-tall-runs-support \
+  tests/cns-tall-runs-unit \
+  tests/cns-terminal-accounting-unit \
+  tests/cns-source-capture-unit \
+  tests/cns-source-retention-unit \
+  tests/cns-source-hash-interleave-unit \
+  tests/fnct-client-frame-unit \
+  books/cns-fetch-prefix-codec \
+  tests/cns-fetch-prefix-unit \
+  tests/txn-upload-physical-location-unit \
+  tests/upload-manifest-physical-unit \
+  tests/upload-raw-threshold-unit \
+  tests/upload-group16-served-unit \
+  tests/upload-uncertainty-served-unit \
+  tests/ctl-stripe-map-unit
+
 
 .PHONY: certify
 certify:

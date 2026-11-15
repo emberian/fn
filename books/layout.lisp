@@ -3,6 +3,8 @@
 (include-book "pool")
 (include-book "std/util/bstar" :dir :system)
 (fn2-book-layer :b)
+; Full generated decode work quantum; resumable STEP retains its caller budget.
+(defconst *fn2-codec-decode-fuel* 4096)
 ; Profile chooses row count at init; only resident ranges have u32 bounds.
 (defcolumns fn2-fields
   ((value :u60) (ref-slot :u32) (ref-gen :u60)
@@ -1097,7 +1099,7 @@
       (declare (xargs :stobjs (fn2-fields fn2-pool)
                       :guard (and ,room (fn2-pool-wfp fn2-pool))))
       (let ((fn2-fields (,start base fn2-fields)))
-        (,step base slot gen off end okind oslot ogen 4096 fn2-fields fn2-pool)))
+        (,step base slot gen off end okind oslot ogen *fn2-codec-decode-fuel* fn2-fields fn2-pool)))
     ,@(fn2-codec-fields-facts decode decodeargs 2)
     (in-theory (disable ,decode))
     ,@(fn2-codec-sizer-events name layout count)
