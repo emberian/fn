@@ -184,6 +184,7 @@
          fn2-range-sources)))
   (fn2-range-recheck (- n 1) g fn2-ranges fn2-range-sources fn2-overlays)))
 (fn2-range-sources-preserves fn2-range-recheck (n g fn2-ranges fn2-range-sources fn2-overlays) :position 1 :raw-rows t
+ :hints (("Goal" :in-theory (disable fn2-range-sources-set-state fn2-ranges-rows fn2-range-sources-rows fn2-ranges-sbase fn2-range-sources-kind fn2-range-sources-state fn2-range-sources-src fn2-range-sources-count fn2-overlays-count fn2-overlays-rows)))
  :hyps ((fn2-rangesp fn2-ranges) (fn2-ranges-wfp fn2-ranges) (fn2-range-sourcesp fn2-range-sources) (fn2-range-sources-wfp fn2-range-sources)))
 
 ; Start range read G over schema SID. The caller holds lo's key fields at
