@@ -26,6 +26,12 @@ class Acl2Cost(unittest.TestCase):
         self.assertIn('DEFUN FN2-MACHINE-ADMIT', slowest.form)
         self.assertEqual(acl2_cost.book_steps(self.log), 1206838)
 
+    def test_form_starting_on_next_line_remains_a_wrapper(self):
+        log = 'Summary\nForm:\n (CERTIFY-BOOK "wrapped" ...)\nRules: NIL\nTime: 4.0 seconds\nProver steps counted: 12\n'
+        self.assertEqual(acl2_cost.book_steps(log), 12)
+        self.assertIsNone(acl2_cost.costliest_event(log))
+        self.assertIsNone(acl2_cost.slowest_event(log))
+
     def test_missing_step_count_does_not_hide_timed_event(self):
         log = 'Summary\nForm: (DEFUN COMPILE-ONLY ...)\nRules: NIL\nTime: 2.0 seconds\n'
         self.assertIsNone(acl2_cost.costliest_event(log))

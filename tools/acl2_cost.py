@@ -52,7 +52,7 @@ def events(log: str) -> list[Event]:
             continue
         time, steps = TIME.search(block), STEPS.search(block)
         found.append(Event(
-            " ".join(line.strip() for line in form.group(1).splitlines()),
+            " ".join(line.strip() for line in form.group(1).splitlines()).strip(),
             float(time.group(1)) if time else None,
             int(steps.group(2).replace(",", "")) if steps else None,
             bool(steps and steps.group(1))))
