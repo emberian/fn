@@ -1,7 +1,7 @@
 ; Child output/effect refinement used by the independent CNS contract.
 ; This is not the full composed CNS-body or caller-domain theorem.
 (in-package "ACL2")
-(include-book "cns-draining-contract")
+(include-book "cns-draining-model")
 (include-book "pool-release-admission")
 
 (make-event

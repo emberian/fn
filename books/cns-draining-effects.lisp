@@ -1,21 +1,9 @@
 ; Independent application effects lifted through the actual served core
 ; faces. The original counted CNS obligation keeps its full antecedent.
 (in-package "ACL2")
-(include-book "cns-pool-refinement")
-(include-book "core-product-lowering")
+(include-book "cns-release-refinement")
+(include-book "cns-draining-contract")
 (include-book "machine-reservations")
-
-; Consume the shared reconstruction laws for the actual written core
-; children. No duplicate core shape or writeback implementation is needed.
-(make-event
- (let* ((world (w state))
-        (selected (fn2-product-entries (fn2-core-child-registry world)
-                                      '(fn2-core-pool fn2-core-control fn2-core-machines
-                                        fn2-core-sched fn2-cns-table) world)))
-   (value (cons 'progn
-     (append (fn2-product-core-shape-events world)
-             (fn2-product-writeback-facts selected selected world)
-             (fn2-product-spine-facts selected world))))))
 
 (defthm fn2-cns-reservation-native-by-definition
   (equal (fn2-cns-draining-reservedp core)
@@ -28,68 +16,6 @@
              fn2-machines-reservation-valuesp fn2-machines-reservation-view
              fn2-machines-active-counti fn2-machines-admission-creditsi
              fn2-machines-connection-counti fn2-core-machines))))
-
-
-(defthm fn2-cns-owned-release-admission-by-definition
-  (implies (and (fn2-poolp pool) (fn2-pool-wfp pool)
-                (fn2-cns-drain-releasablep slot gen id ogen pool))
-           (fn2-pool-release-countp slot pool))
-  :rule-classes nil
-  :hints (("Goal" :in-theory
-           (union-theories
-            (theory 'fn2-cns-pool-readers)
-            (e/d (fn2-pool-release-countp fn2-pool-rows fn2-pool-nclasses
-                  fn2-pool-retired-count fn2-pool-class-countsi
-                  fn2-cns-drain-releasablep fn2-cns-drain-cell
-                  fn2-cns-drain-get fn2-cns-drain-index)
-                 (fn2-poolp fn2-pool-wfp))))))
-
-(defun fn2-cns-release-children-expected (slot gen kind id ogen pool control)
-  (let ((out (fn2-cns-owned-pool-release-expected slot gen kind id ogen pool)))
-    (list (car out) (cadr out) control)))
-(defthm fn2-cns-core-release-children-independent
-  (implies (and (fn2-poolp pool) (fn2-pool-wfp pool)
-                (fn2-cns-drain-releasablep slot gen id ogen pool))
-    (equal
-     (fn2-core-release-children slot gen *fn2-cns-kind* id ogen pool control)
-     (fn2-cns-release-children-expected slot gen *fn2-cns-kind* id ogen pool control)))
-  :rule-classes nil
-  :hints (("Goal"
-           :use (fn2-cns-owned-release-admission-by-definition
-                 fn2-cns-owned-pool-release-independent)
-           :in-theory
-           (e/d (fn2-core-release-children fn2-cns-release-children-expected
-                 fn2-cns-owned-pool-release-expected)
-                (fn2-pool-release fn2-pool-release-countp fn2-poolp fn2-pool-wfp
-                 fn2-cns-drain-releasablep fn2-cns-drain-released-pool
-                 fn2-cns-drain-cell fn2-cns-drain-get fn2-control-record-stop)))))
-
-(defun fn2-cns-core-release-expected (slot gen kind id ogen before)
-  (let ((out (fn2-cns-owned-pool-release-expected slot gen kind id ogen
-               (fn2-cns-drain-child 'fn2-pool before))))
-    (list (car out) (fn2-cns-drain-put-child 'fn2-pool (cadr out) before))))
-
-(defun fn2-cns-core-model-projection-events (entries)
-  (declare (xargs :verify-guards nil))
-  (if (atom entries) nil
-    (let* ((field (caar entries))
-           (child (fn2-core-child-property (car entries) :stobj))
-           (writer (fn2-product-writer field)))
-      (append
-       `((defthm ,(fn2-columns-sym field "-CNS-MODEL-BY-DEFINITION")
-           (equal (fn2-cns-drain-child ',child core) (,field core))
-           :hints (("Goal" :in-theory
-                    (enable fn2-cns-drain-child fn2-cns-drain-child-index ,field))))
-         (defthm ,(fn2-columns-sym writer "-CNS-MODEL-BY-DEFINITION")
-           (equal (fn2-cns-drain-put-child ',child value core) (,writer value core))
-           :hints (("Goal" :in-theory
-                    (enable fn2-cns-drain-put-child fn2-cns-drain-child-index ,writer)))))
-       (fn2-cns-core-model-projection-events (cdr entries))))))
-(make-event
- (value (cons 'progn
-   (fn2-cns-core-model-projection-events
-     (fn2-product-entries (fn2-core-child-registry (w state))
-       '(fn2-core-pool fn2-core-control fn2-core-machines fn2-core-sched fn2-cns-table) (w state))))))
 
 (defthm fn2-cns-draining-domain-snapshot-by-definition
   (implies (and (fn2-corep core) (fn2-core-wfp core)
@@ -186,35 +112,6 @@
                  fn2-cns-draining-reservedp fn2-machines-partition-reservedp
                  fn2-core-machines fn2-core-control)))))
 
-(defthm fn2-cns-core-release-independent
-  (implies (and (fn2-corep core) (fn2-core-wfp core)
-                (fn2-cns-drain-releasablep slot gen id ogen (fn2-core-pool core)))
-    (equal (fn2-core-release slot gen *fn2-cns-kind* id ogen core)
-           (fn2-cns-core-release-expected slot gen *fn2-cns-kind* id ogen core)))
-  :rule-classes nil
-  :hints (("Goal"
-           :use ((:instance fn2-cns-core-release-children-independent
-                            (pool (fn2-core-pool core))
-                            (control (fn2-core-control core)))
-                 (:instance fn2-product-core-shape (fn2-core core)))
-           :in-theory
-           (e/d (fn2-core-release fn2-cns-core-release-expected
-                 fn2-cns-release-children-expected)
-                (fn2-core-release-children fn2-core-pool fn2-core-control
-                 update-fn2-core-pool update-fn2-core-control
-                 fn2-cns-drain-releasablep fn2-cns-owned-pool-release-expected
-                 fn2-corep fn2-core-wfp)))))
-
-(defthm fn2-cns-core-release-protected-children
-  (let ((after (mv-nth 1 (fn2-core-release slot gen kind id ogen core))))
-    (and (equal (fn2-core-machines after) (fn2-core-machines core))
-         (equal (fn2-cns-table after) (fn2-cns-table core))
-         (equal (fn2-core-sched after) (fn2-core-sched core))))
-  :hints (("Goal" :in-theory
-           (e/d (fn2-core-release)
-                (fn2-core-release-children fn2-core-machines fn2-cns-table fn2-core-sched
-                 fn2-core-pool fn2-core-control update-fn2-core-pool update-fn2-core-control)))))
-
 (defthm fn2-cns-release-ns-independent-by-definition
   (implies (and (fn2-corep core) (fn2-core-wfp core)
                 (fn2-cns-drain-releasablep slot gen id ogen (fn2-core-pool core)))
@@ -231,119 +128,3 @@
            (e/d (fn2-cns-lease-release fn2-core-release)
                 (fn2-core-release-children fn2-core-pool fn2-core-control
                  update-fn2-core-pool update-fn2-core-control)))))
-
-(defthm fn2-cns-semantic-pool-type-by-definition
-  (implies (fn2-pool-semanticp pool)
-           (and (fn2-poolp pool) (fn2-pool-wfp pool)))
-  :rule-classes (:rewrite :forward-chaining)
-  :hints (("Goal" :in-theory
-           (e/d (fn2-pool-semanticp)
-                (fn2-poolp fn2-pool-wfp fn2-pool-row-invariantp
-                 fn2-pool-class-accountsp fn2-pool-retired-slots
-                 fn2-pool-nslots fn2-pool-capacity-bytes)))))
-(defthm fn2-cns-owned-pool-release-pool-effect
-  (implies (and (fn2-poolp pool) (fn2-pool-wfp pool)
-                (fn2-cns-drain-releasablep slot gen id ogen pool))
-    (equal (mv-nth 1 (fn2-pool-release slot gen *fn2-cns-kind* id ogen pool))
-           (fn2-cns-drain-released-pool slot pool)))
-  :rule-classes nil
-  :hints (("Goal" :use fn2-cns-owned-pool-release-independent
-           :in-theory (e/d (fn2-cns-owned-pool-release-expected)
-                            (fn2-pool-release fn2-cns-drain-released-pool)))))
-
-; Initial local count bounds alone do not fund both releases. This bridge
-; consumes maintained semantic accounting, conservation, and distinct-row
-; preservation to establish the second release's actual admission guard.
-(defthm fn2-cns-distinct-releasable-after-pool-release
-  (implies (and (fn2-pool-semanticp pool)
-                (fn2-cns-drain-releasablep slot gen id ogen pool)
-                (fn2-cns-drain-releasablep other other-gen id ogen pool)
-                (not (equal other slot)))
-    (fn2-cns-drain-releasablep other other-gen id ogen
-      (mv-nth 1 (fn2-pool-release slot gen *fn2-cns-kind* id ogen pool))))
-  :rule-classes nil
-  :hints (("Goal"
-           :use (fn2-cns-owned-pool-release-pool-effect
-                 (:instance fn2-pool-distinct-workspace-admits-release-after-release
-                            (okind *fn2-cns-kind*) (oslot id)))
-           :in-theory
-           (union-theories
-            (theory 'fn2-cns-pool-readers)
-            (e/d (fn2-cns-drain-releasablep fn2-cns-drain-released-pool
-                  fn2-cns-drain-put-cells fn2-cns-drain-put-cell fn2-cns-drain-put
-                  fn2-cns-drain-cell fn2-cns-drain-get fn2-cns-drain-index
-                  fn2-pool-release-countp fn2-pool-logical-slotp fn2-pool-nslots
-                  fn2-pool-rows fn2-pool-nclasses fn2-pool-gen-limit
-                  fn2-pool-retired-count fn2-pool-class-headsi fn2-pool-class-countsi)
-                 (fn2-pool-release fn2-pool-semanticp fn2-poolp fn2-pool-wfp))))))
-
-; Keep the independent intermediate state usable after the first actual
-; call has been rewritten to its complete result. These bridges consume
-; conservation and the actual release refinement, not a second oracle.
-(defthm fn2-cns-independent-release-preserves-pool-accounting
-  (implies (and (fn2-pool-semanticp pool)
-                (fn2-cns-drain-releasablep slot gen id ogen pool))
-    (fn2-pool-semanticp (fn2-cns-drain-released-pool slot pool)))
-  :rule-classes nil
-  :hints (("Goal"
-           :use (fn2-cns-owned-pool-release-pool-effect
-                 (:instance fn2-pool-release-conservation
-                            (fn2-pool pool) (okind *fn2-cns-kind*) (oslot id)))
-           :in-theory (disable fn2-pool-semanticp fn2-pool-release
-                               fn2-cns-drain-releasablep fn2-cns-drain-released-pool))))
-(defthm fn2-cns-independent-release-keeps-second-releasable
-  (implies (and (fn2-pool-semanticp pool)
-                (fn2-cns-drain-releasablep slot gen id ogen pool)
-                (fn2-cns-drain-releasablep other other-gen id ogen pool)
-                (not (equal other slot)))
-    (fn2-cns-drain-releasablep other other-gen id ogen
-      (fn2-cns-drain-released-pool slot pool)))
-  :rule-classes nil
-  :hints (("Goal"
-           :use (fn2-cns-distinct-releasable-after-pool-release
-                 fn2-cns-owned-pool-release-pool-effect)
-           :in-theory (disable fn2-pool-semanticp fn2-pool-release
-                               fn2-cns-drain-releasablep fn2-cns-drain-released-pool))))
-
-(defthm fn2-cns-owned-core-release-pool-effect
-  (implies (and (fn2-corep core) (fn2-core-wfp core)
-                (fn2-cns-drain-releasablep slot gen id ogen (fn2-core-pool core)))
-    (equal
-     (fn2-core-pool (mv-nth 1 (fn2-core-release slot gen *fn2-cns-kind* id ogen core)))
-     (fn2-cns-drain-released-pool slot (fn2-core-pool core))))
-  :rule-classes nil
-  :hints (("Goal" :use fn2-cns-core-release-independent
-           :in-theory
-           (e/d (fn2-cns-core-release-expected fn2-cns-owned-pool-release-expected)
-                (fn2-core-release fn2-core-pool fn2-cns-drain-released-pool)))))
-(defthm fn2-cns-owned-core-release-pool-accounting
-  (implies (and (fn2-corep core) (fn2-core-wfp core)
-                (fn2-pool-semanticp (fn2-core-pool core))
-                (fn2-cns-drain-releasablep slot gen id ogen (fn2-core-pool core)))
-    (fn2-pool-semanticp
-      (fn2-core-pool (mv-nth 1 (fn2-core-release slot gen *fn2-cns-kind* id ogen core)))))
-  :rule-classes nil
-  :hints (("Goal"
-           :use (fn2-cns-owned-core-release-pool-effect
-                 (:instance fn2-cns-independent-release-preserves-pool-accounting
-                            (pool (fn2-core-pool core))))
-           :in-theory (disable fn2-core-release fn2-core-pool fn2-pool-semanticp
-                               fn2-cns-drain-releasablep fn2-cns-drain-released-pool))))
-(defthm fn2-cns-distinct-releasable-after-core-release
-  (implies (and (fn2-corep core) (fn2-core-wfp core)
-                (fn2-pool-semanticp (fn2-core-pool core))
-                (fn2-cns-drain-releasablep slot gen id ogen (fn2-core-pool core))
-                (fn2-cns-drain-releasablep other other-gen id ogen (fn2-core-pool core))
-                (not (equal other slot)))
-    (fn2-cns-drain-releasablep other other-gen id ogen
-      (fn2-core-pool (mv-nth 1 (fn2-core-release slot gen *fn2-cns-kind* id ogen core)))))
-  :rule-classes nil
-  :hints (("Goal"
-           :use (fn2-cns-owned-core-release-pool-effect
-                 (:instance fn2-cns-distinct-releasable-after-pool-release
-                            (pool (fn2-core-pool core)))
-                 (:instance fn2-cns-owned-pool-release-pool-effect
-                            (pool (fn2-core-pool core))))
-           :in-theory (disable fn2-core-release fn2-pool-release
-                               fn2-cns-drain-releasablep fn2-cns-drain-released-pool))))
-
