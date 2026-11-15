@@ -19,21 +19,39 @@
         (result (if (equal (len outputs) 1) call `(mv-nth ,position ,call)))
         (claim `(equal (fn2-b3-words-length ,result)
                        (fn2-b3-words-length fn2-b3)))
+        (observation (getpropc 'fn2-b3-words-length 'unnormalized-body nil world))
+        (raw-claim `(equal ,(sublis-var (list (cons 'fn2-b3 result)) observation)
+                           ,observation))
         (hyps (append (and domain '((fn2-b3-word-stripep row fn2-b3)))
                       (and (eq domain :index) '((natp i) (<= i 16)))))
         (recursive (getpropc name 'recursivep nil world)))
-  (if (or (not (member-eq 'fn2-b3 args)) (not position)
+  (if (or (not observation)
+          (not (equal (getpropc 'fn2-b3-words-length 'formals nil world) '(fn2-b3)))
+          (not (equal (getpropc 'fn2-b3-words-length 'stobjs-in nil world) '(fn2-b3)))
+          (not (equal (getpropc 'fn2-b3-words-length 'stobjs-out :missing world) '(nil)))
+          (eq (getpropc 'fn2-b3-words-length 'symbol-class nil world) :program)
+          (not (member-eq 'fn2-b3 args)) (not position)
           (not (member-eq domain '(nil :stripe :index)))
           (and domain (not (member-eq 'row args)))
           (and (eq domain :index) (not (member-eq 'i args))))
       (er hard 'fn2-b3-word-frame-event "Invalid actual B3 frame ABI/domain: ~x0 ~x1." name domain)
-   `(defthm ,(fn2-columns-sym name "-WORD-FRAME")
-     ,(if hyps `(implies (and ,@hyps) ,claim) claim)
-     :hints (("Goal" ,@(and recursive `(:induct ,call))
-              :in-theory (e/d (,name fn2-b3-word-stripep
-                               ,@(and (not domain) '(fn2-b3-words-length)))
-                              (fn2-b3-rows
-                               ,@(and domain '(fn2-b3-words-length))))))))))
+   `(progn
+     (defthm ,(fn2-columns-sym name "-WORD-FRAME")
+      ,(if hyps `(implies (and ,@hyps) ,claim) claim)
+      :hints (("Goal" ,@(and recursive `(:induct ,call))
+               :in-theory (e/d (,name fn2-b3-word-stripep
+                                ,@(and (not domain) '(fn2-b3-words-length)))
+                               (fn2-b3-rows
+                                ,@(and domain '(fn2-b3-words-length)))))))
+     ; Setter-NTH laws normalize the observation before a callee frame can
+     ; match. Publish that exact projection as a consequence of the public
+     ; interface, with identical hypotheses and the callee body still closed.
+     (defthm ,(fn2-columns-sym name "-WORD-FRAME-RAW-BY-DEFINITION")
+      ,(if hyps `(implies (and ,@hyps) ,raw-claim) raw-claim)
+      :hints (("Goal" :use ,(fn2-columns-sym name "-WORD-FRAME")
+               :in-theory (e/d (fn2-b3-words-length)
+                               (,name fn2-b3-word-stripep
+                                ,(fn2-columns-sym name "-WORD-FRAME"))))))))))
 (defmacro fn2-b3-word-frame (name &optional domain)
  `(make-event (value (fn2-b3-word-frame-event ',name ',domain (w state)))))
 
