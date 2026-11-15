@@ -7,7 +7,7 @@ must be derived from that store and the actual served call/attachment graph.
 
 ## Current integration frontier — 2026-11-15 UTC
 
-Current integration source is `5bbcb1b66`, including retirement dispatch, actual-type
+Current integration source is `415e495e6`, including retirement dispatch, actual-type
 codec fixtures, failed-Send classification, consumed-input accounting and farm
 Git metadata protection. No current whole-system image, full host gate,
 canonical served certificate, or completed assurance claim exists.
@@ -141,8 +141,13 @@ The actual phase-8 accumulator correspondence and its positive/hypothesis-remova
 controls are integrated at `4d7e9cb`, qualified by exact three-book record
 `certify-20261115T024813Z-754219`: one reused, two new, 0.39 seconds. Root matched
 all three current source digests. [The proof plan](ENVELOPE-OUTPUT-PROOF.md)
-connects whole-row construction and reversal next; full equivalence and fuel
-adequacy remain open.
+now connects complete row construction, reversal and actual run-resume
+composition at `415e495e6`. Exact four-book record
+`certify-20261115T030618Z-772326` passed in 0.901 seconds with two reused and two
+new books; root matched all four current source digests. Controls assert the
+whole composition antecedent and exercise insufficient fuel. Source-byte and
+segment induction, validation/linear-path refinement and global fuel adequacy
+remain open.
 
 Farm transport repair `0dda1d6ac` protects both Git pointer files and directories
 during source sync. Five transport and three budget controls pass.
