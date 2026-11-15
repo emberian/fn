@@ -6,6 +6,7 @@
 (include-book "checkpoint-metadata-manifest")
 (include-book "checkpoint-compaction-state")
 (include-book "checkpoint-predecessors")
+(include-book "run-installed-geometry")
 (include-book "checkpoint-payload")
 (include-book "checkpoint-semantic-retention")
 (include-book "machines-c-sealer")
@@ -90,12 +91,13 @@
  :doc "Derive the stable descriptor/page/scratch/read tuple from actual admitted root1 ownership.")
 
 ; Profile geometry, not a stored-history limit: every actual original C row
-; receives one inventory slot, including physical rows appended to R.
+; receives one inventory slot, including both configured physical banks.
 (defun fn2-checkpoint-predecessor-rows (profile)
  (declare (xargs :guard t))
  (+ (nfix (fn2-b-capacity :identity-overlays *fn2-idc-overlays-default* profile))
-    (nfix (fn2-b-capacity :identity-runs 64 profile))
-    (nfix (fn2-b-capacity :extent-slots 16 profile))))
+    (fn2-run-installed-row-count
+     (nfix (fn2-b-capacity :identity-runs 64 profile))
+     (nfix (fn2-b-capacity :extent-slots 16 profile)))))
 (defun fn2-checkpoint-predecessor-profilep (profile)
  (declare (xargs :guard t))
  (and (natp (fn2-b-capacity :identity-overlays *fn2-idc-overlays-default* profile))
@@ -115,7 +117,7 @@
 (defcorechild fn2-core-checkpoint-predecessors fn2-checkpoint-predecessors
  :init (fn2-checkpoint-predecessors-init-for profile fn2-checkpoint-predecessors)
  :profilep (fn2-checkpoint-predecessor-profilep profile)
- :why "Exact original held source inventory has O+R rows; many originals may map to one durable schema output.")
+ :why "Exact original held source inventory has O+R+2E rows; many originals may map to one durable schema output.")
 (fn2-sealer-child fn2-core-checkpoint-predecessor-control fn2-checkpoint-predecessor-control
  (fn2-checkpoint-predecessor-control-init 1 fn2-checkpoint-predecessor-control)
  "Current held candidate/token and bounded capture/check/retirement cursor retain original-source obligations.")

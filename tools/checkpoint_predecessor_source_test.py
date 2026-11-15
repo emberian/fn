@@ -60,4 +60,15 @@ class Inventory(unittest.TestCase):
   retirement=(ROOT/'books/checkpoint-live-retire.lisp').read_text()
   self.assertNotIn('(completed-originals ',retirement)
   self.assertNotIn('set-completed-originals',retirement)
+ def test_inventory_uses_canonical_two_bank_row_count(self):
+  s=(ROOT/'books/checkpoint-metadata-resources.lisp').read_text()
+  body=s[s.index('(defun fn2-checkpoint-predecessor-rows'):s.index('(defun fn2-checkpoint-predecessor-profilep')]
+  self.assertIn('(fn2-run-installed-row-count',body)
+  self.assertEqual(body.count(':extent-slots'),1)
+  self.assertNotIn('(* 2',body)
+  fixture=(ROOT/'tests/checkpoint-predecessor-bank-geometry-unit.lisp').read_text()
+  self.assertIn('(fn2-run-installed-init-configured r e fn2-run-installed)',fixture)
+  self.assertIn('(fn2-checkpoint-predecessors-init-for profile',fixture)
+  self.assertIn('(fn2-cpb-test 3 4 2)',fixture)
+  self.assertNotIn('-put ',fixture)
 if __name__=='__main__':unittest.main()
