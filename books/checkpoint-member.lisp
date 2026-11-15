@@ -83,17 +83,8 @@
       ((unless (eq code :ok)) (mv code 0 fn2-fields fn2-pool))
       ((mv code fn2-pool) (fn2-pool-truncate slot gen length okind oslot ogen fn2-pool)))
   (mv code (if (eq code :ok) length 0) fn2-fields fn2-pool)))
-(fn2-pool-preserves fn2-checkpoint-installation-pack-member
- (c base slot gen okind oslot ogen fn2-checkpoints fn2-checkpoint-refs fn2-checkpoint-bytes fn2-fields fn2-pool)
- :carriers ((fn2-fields 2 :prefix "-FIELDS" :hints ((fn2-columns-guard-hint
-                 '(fn2-checkpoints fn2-checkpoint-refs fn2-checkpoint-bytes fn2-fields fn2-pool)
-                 '(fn2-pool-reset fn2-pool-copy-range fn2-pool-truncate
-                   fn2-checkpoint-member-hash fn2-format-checkpoint-installation-size)
-                 nil world))) (fn2-pool 3 :prefix "-POOL" :hints ((fn2-columns-guard-hint
-                 '(fn2-checkpoints fn2-checkpoint-refs fn2-checkpoint-bytes fn2-fields fn2-pool)
-                 '(fn2-pool-reset fn2-pool-copy-range fn2-pool-truncate
-                   fn2-checkpoint-member-hash fn2-format-checkpoint-installation-size)
-                 nil world))))
+(defcolumns-carrier-contracts fn2-checkpoint-installation-pack-member
+ :carriers ((fn2-fields 2 :prefix "-FIELDS" ) (fn2-pool 3 :prefix "-POOL" ))
  :hints ((fn2-columns-guard-hint
                  '(fn2-checkpoints fn2-checkpoint-refs fn2-checkpoint-bytes fn2-fields fn2-pool)
                  '(fn2-pool-reset fn2-pool-copy-range fn2-pool-truncate

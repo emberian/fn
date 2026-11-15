@@ -495,53 +495,11 @@
 (fn2-checkpoints-preserves fn2-checkpoint-install
  (c install-commit base slot gen okind oslot ogen fn2-checkpoints fn2-checkpoint-refs fn2-checkpoint-bytes
     fn2-fields fn2-pool fn2-alloc-edges fn2-extents fn2-ops) :position 1)
-(fn2-checkpoints-preserves fn2-checkpoint-check-step
- (c row slot gen off len base okind oslot ogen budget fn2-checkpoints fn2-checkpoint-refs fn2-checkpoint-bytes
-    fn2-fc fn2-fc-context fn2-b3 fn2-fields fn2-pool fn2-digests)
- :carriers ((fn2-checkpoints 1 :prefix "-CANDIDATES" :hints ((fn2-columns-guard-hint
-                 '(fn2-checkpoints fn2-checkpoint-refs fn2-checkpoint-bytes
-                   fn2-fc fn2-fc-context fn2-b3 fn2-fields fn2-pool fn2-digests)
-                 '(fn2-checkpoint-decode fn2-checkpoint-hash-matchesp
-                   fn2-checkpoint-capture-roots fn2-b3-ready fn2-digest-rowp)
-                 nil world)))
-            (fn2-checkpoint-refs 2 :prefix "-REFS" :hints ((fn2-columns-guard-hint
-                 '(fn2-checkpoints fn2-checkpoint-refs fn2-checkpoint-bytes
-                   fn2-fc fn2-fc-context fn2-b3 fn2-fields fn2-pool fn2-digests)
-                 '(fn2-checkpoint-decode fn2-checkpoint-hash-matchesp
-                   fn2-checkpoint-capture-roots fn2-b3-ready fn2-digest-rowp)
-                 nil world))) (fn2-checkpoint-bytes 3 :prefix "-BYTES" :hints ((fn2-columns-guard-hint
-                 '(fn2-checkpoints fn2-checkpoint-refs fn2-checkpoint-bytes
-                   fn2-fc fn2-fc-context fn2-b3 fn2-fields fn2-pool fn2-digests)
-                 '(fn2-checkpoint-decode fn2-checkpoint-hash-matchesp
-                   fn2-checkpoint-capture-roots fn2-b3-ready fn2-digest-rowp)
-                 nil world)))
-            (fn2-fc 4 :prefix "-CHECKER" :hints ((fn2-columns-guard-hint
-                 '(fn2-checkpoints fn2-checkpoint-refs fn2-checkpoint-bytes
-                   fn2-fc fn2-fc-context fn2-b3 fn2-fields fn2-pool fn2-digests)
-                 '(fn2-checkpoint-decode fn2-checkpoint-hash-matchesp
-                   fn2-checkpoint-capture-roots fn2-b3-ready fn2-digest-rowp)
-                 nil world))) (fn2-b3 5 :prefix "-HASHER" :hints ((fn2-columns-guard-hint
-                 '(fn2-checkpoints fn2-checkpoint-refs fn2-checkpoint-bytes
-                   fn2-fc fn2-fc-context fn2-b3 fn2-fields fn2-pool fn2-digests)
-                 '(fn2-checkpoint-decode fn2-checkpoint-hash-matchesp
-                   fn2-checkpoint-capture-roots fn2-b3-ready fn2-digest-rowp)
-                 nil world)))
-            (fn2-fields 6 :prefix "-FIELDS" :hints ((fn2-columns-guard-hint
-                 '(fn2-checkpoints fn2-checkpoint-refs fn2-checkpoint-bytes
-                   fn2-fc fn2-fc-context fn2-b3 fn2-fields fn2-pool fn2-digests)
-                 '(fn2-checkpoint-decode fn2-checkpoint-hash-matchesp
-                   fn2-checkpoint-capture-roots fn2-b3-ready fn2-digest-rowp)
-                 nil world))) (fn2-pool 7 :prefix "-POOL" :hints ((fn2-columns-guard-hint
-                 '(fn2-checkpoints fn2-checkpoint-refs fn2-checkpoint-bytes
-                   fn2-fc fn2-fc-context fn2-b3 fn2-fields fn2-pool fn2-digests)
-                 '(fn2-checkpoint-decode fn2-checkpoint-hash-matchesp
-                   fn2-checkpoint-capture-roots fn2-b3-ready fn2-digest-rowp)
-                 nil world))) (fn2-digests 8 :prefix "-DIGESTS" :hints ((fn2-columns-guard-hint
-                 '(fn2-checkpoints fn2-checkpoint-refs fn2-checkpoint-bytes
-                   fn2-fc fn2-fc-context fn2-b3 fn2-fields fn2-pool fn2-digests)
-                 '(fn2-checkpoint-decode fn2-checkpoint-hash-matchesp
-                   fn2-checkpoint-capture-roots fn2-b3-ready fn2-digest-rowp)
-                 nil world))))
+(defcolumns-carrier-contracts fn2-checkpoint-check-step
+ :carriers ((fn2-checkpoints 1 :prefix "-CANDIDATES" )
+            (fn2-checkpoint-refs 2 :prefix "-REFS" ) (fn2-checkpoint-bytes 3 :prefix "-BYTES" )
+            (fn2-fc 4 :prefix "-CHECKER" ) (fn2-b3 5 :prefix "-HASHER" )
+            (fn2-fields 6 :prefix "-FIELDS" ) (fn2-pool 7 :prefix "-POOL" ) (fn2-digests 8 :prefix "-DIGESTS" ))
  :hints ((fn2-columns-guard-hint
                  '(fn2-checkpoints fn2-checkpoint-refs fn2-checkpoint-bytes
                    fn2-fc fn2-fc-context fn2-b3 fn2-fields fn2-pool fn2-digests)
