@@ -10,12 +10,6 @@
   (fn2-pool-query-heldp slot gen fn2-pool) held))
 (in-theory (disable fn2-core-query-heldp))
 
-(defun fn2-core-query-heldp (slot gen fn2-core)
- (declare (xargs :stobjs fn2-core :guard (fn2-core-wfp fn2-core)))
- (stobj-let ((fn2-pool (fn2-core-pool fn2-core))) (held)
-  (fn2-pool-query-heldp slot gen fn2-pool) held))
-(in-theory (disable fn2-core-query-heldp))
-
 (defun fn2-query-live-phases (name states)
  (declare (xargs :verify-guards nil))
  (if (atom states) nil
