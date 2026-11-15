@@ -31,6 +31,14 @@ class Disposing(unittest.TestCase):
         for clause in ['(not (= (fn2-checkpoints-state c fn2-checkpoints) *fn2-checkpoint-state-disposing*))','(= (fn2-checkpoint-teardown-debt-dispose-phase c fn2-checkpoint-teardown-debt) *fn2-checkpoint-dispose-phase-idle*)']:
             s=self.read('checkpoint-teardown-owner.lisp').replace(clause,'t')
             with self.assertRaises(ValueError):check_admission(s)
+    def test_retained_identity_keeps_hash_after_factor(self):
+        source=self.read('checkpoint-teardown-owner.lisp')
+        f=function(source,'fn2-checkpoint-teardown-retained-ownerp')
+        require(f,'(and (fn2-checkpoint-teardown-retained-context-ownerp ?*context) (fn2-checkpoint-teardown-retained-hash-p 0 c fn2-checkpoint-teardown-debt fn2-checkpoint-bytes))')
+        for replacement in ['t','(fn2-checkpoint-teardown-retained-context-ownerp c token kind slot gen fn2-checkpoint-teardown-debt fn2-checkpoints fn2-checkpoint-bytes)']:
+            mutant=source.replace('(fn2-checkpoint-teardown-retained-hash-p 0 c fn2-checkpoint-teardown-debt fn2-checkpoint-bytes)',replacement)
+            with self.assertRaises(ValueError):
+                require(function(mutant,'fn2-checkpoint-teardown-retained-ownerp'),'(and (fn2-checkpoint-teardown-retained-context-ownerp ?*context) (fn2-checkpoint-teardown-retained-hash-p 0 c fn2-checkpoint-teardown-debt fn2-checkpoint-bytes))')
     def test_existing_constructor_state_boundaries(self):
         # These are the actual shared admissions, rather than caller flags.
         cases=[('checkpoint.lisp','fn2-checkpoint-builder-ownerp','(equal (fn2-checkpoints-state c fn2-checkpoints) *fn2-checkpoint-state-building*)'),
