@@ -20,5 +20,16 @@ class Geometry(unittest.TestCase):
     (root/'books'/name).write_bytes(subprocess.check_output(['git','show',base+':books/'+name],cwd=ROOT))
    for repeat in range(2):
     subprocess.run([sys.executable,str(ROOT/'tools/rewrite_successor_geometry.py')],cwd=root,check=True,capture_output=True)
-    for name in names:self.assertEqual((root/'books'/name).read_bytes(),(ROOT/'books'/name).read_bytes(),name)
+    for name in names:
+     current=(ROOT/'books'/name).read_text()
+     follow=ROOT/'tools/fixtures/identity-workspace-profile-extraction.json'
+     if follow.exists():
+      paired=json.loads(follow.read_text())
+      if 'books/'+name in paired['books']:
+       self.assertEqual(current.count(paired['new']),1)
+       current=current.replace(paired['new'],paired['old'])
+       if name=='machines-c.lisp':
+        self.assertEqual(current.count(paired['include']),1)
+        current=current.replace(paired['include'],'',1)
+     self.assertEqual((root/'books'/name).read_text(),current,name)
 if __name__=='__main__':unittest.main()
