@@ -29,7 +29,11 @@ class OwnershipOrder(unittest.TestCase):
         start=self.machine.index('  (replay-frontier :')
         end=self.machine.index('  (replay-open :',start)
         arms=self.machine[start:end]
-        self.assertIn('((:done) (:set (rc-stage 5) (rc-own-token 0) (rc-own-left 0))',arms)
+        self.assertIn('((:done) (:charge :steps *fn2-work-advance* :runnable t))',arms)
+        frontier=(ROOT/'books/recovery-frontier.lisp').read_text()
+        self.assertIn('(if (eq code :done)',frontier)
+        self.assertIn('(rc-stage 5) (rc-own-token 0) (rc-own-left 0)',frontier)
+        self.assertNotIn('(rc-stage 5)',arms)
         self.assertIn('((:owned) (:set (rc-stage 0))',arms)
         self.assertIn("(member-equal row-rc-stage '(5 6 7 8))) (:goto replay-adopt)",self.machine)
     def test_fixed_records_unit_is_opened_only_for_a_new_commit(self):

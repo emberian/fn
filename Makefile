@@ -240,6 +240,7 @@ ACL2_BOOKS = \
   books/recovery-frontier \
   books/recovery-selected-adopt \
   tests/recovery-selected-adopt-unit \
+  tests/recovery-replay-init-proof \
   tests/recovery-replay-prefix-state \
   tests/recovery-replay-prefix-proof \
   tests/recovery-replay-prefix-unit \

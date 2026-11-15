@@ -67,7 +67,14 @@
                  fn2-journal-members fn2-mk fn2-b3 fn2-fields fn2-digests))
           (mv :state fn2-journal-members fn2-mk fn2-b3 fn2-fields fn2-digests))
         (mv code fn2-core))))
-  (mv (if (member-eq code '(:more :leaf :appended)) :more code) fn2-core)))
+  ; The actual scanner completion is the sole ownership-cursor initializer.
+  ; Full-base and selected replay take the same transition; the ownership
+  ; consumer chooses their existing allocation paths after this boundary.
+  (let ((fn2-core (if (eq code :done)
+                      (fn2-recovery-machine-put-core id
+                        (rc-stage 5) (rc-own-token 0) (rc-own-left 0))
+                    fn2-core)))
+   (mv (if (member-eq code '(:more :leaf :appended)) :more code) fn2-core))))
 (fn2-core-preserves fn2-recovery-frontier-step (id fn2-core) :position 1 :rows nil)
 (defcost fn2-recovery-frontier-step :answers (:more :done :state :bounds :owner :invalid) :bytes 4096
  :tables (fn2-core-machines fn2-core-rec-cand fn2-core-journal-members fn2-core-mk fn2-core-b3 fn2-core-fields fn2-core-pool fn2-core-digests)
