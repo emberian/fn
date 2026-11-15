@@ -110,13 +110,22 @@ def boundary_report(root, package):
                            'Raw/native replacements are a separate runtime boundary.']}
 
 
-def live_support_snapshot(path):
+def live_support_snapshot(path, *, source_root=None):
     """Preserve a live export as partial diagnostic evidence, never authority."""
     raw = path.read_bytes()
     forms = ledger.read_forms(raw.decode('latin-1'))
     if len(forms) != 1 or not isinstance(forms[0], list):
         raise ValueError('expected one live proof-support report')
     row = forms[0]
+    consumer_identity = None
+    if len(row) >= 2 and str(row[1]).upper() == ':SOURCE-ADMITTED-PROOF-SUPPORT':
+        if source_root is None:
+            raise ValueError('source-bound capture requires current source root')
+        from capture_native_proof_support import validate_capture
+        row = validate_capture(source_root, path)
+        consumer_identity = tagged(forms[0][3])
+    if not isinstance(row, list):
+        raise ValueError('malformed nested proof-support report')
     if len(row) % 2 or any(not isinstance(k, ledger.Sym) for k in row[::2]):
         raise ValueError('malformed live proof-support report')
     fields = {str(k).upper(): v for k, v in zip(row[::2], row[1::2])}
@@ -130,6 +139,7 @@ def live_support_snapshot(path):
         raise ValueError('incomplete proof-support snapshot shape')
     return {'kind': 'unqualified-live-event-support-snapshot',
             'snapshot_sha256': completion.sha(raw), 'payload': tagged(row),
+            'current_consumer_identity': consumer_identity,
             'actual_theorem_constraint_dependency_closure': 'unresolved',
             'provenance': 'Must be paired with the exact admitted world/source receipt; this reader does not qualify it.'}
 
@@ -149,7 +159,7 @@ def main():
                'unresolved': ['No canonical packet supplied; selected attachments are unknown.',
                               'Source declarations do not establish actual theorem assumption use.']})
     if args.proof_support:
-        report['live_proof_support'] = live_support_snapshot(args.proof_support)
+        report['live_proof_support'] = live_support_snapshot(args.proof_support, source_root=completion.BASE)
     print(json.dumps(report, indent=2))
     return 1  # A boundary report never closes the outstanding proof dependency gate.
 

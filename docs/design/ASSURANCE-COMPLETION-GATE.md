@@ -169,3 +169,56 @@ No application or complete proof-dependency closure is covered.
 The first export attempt exposed ACL2 `prin1$`'s atom-only guard. The qualified
 exporter uses the actual `print-object$` object-channel API; theorem, domain,
 and incomplete-report semantics were unchanged.
+
+### Actual native whole-effect capture (qualified 17-book scope)
+
+`tools/capture_native_proof_support.py` generates a post-admission hook for the
+unchanged `fn2-native-mk-node-whole-effect` theorem. It reads that actual source
+DEFTHM and asks ACL2 to translate the same formula through a temporary logical
+function. The hook requires its translated body to equal the live theorem,
+requires the real recorded `fn2-a-crypto-native-correspondence` support edge,
+and requires that edge's live formula and origin to match the actual
+`fn2-a-crypto-native` encapsulate. This temporary function is a source identity
+check, not a replacement semantic model or an alternative theorem.
+
+Capture must run as top-level events after source admission of the whole
+unchanged consumer book. A fresh enclosing encapsulate temporarily hides its
+external proof supporters, so it is not a valid capture context. Final file I/O
+is an ordinary top-level state expression, not a MAKE-EVENT expansion;
+loading its certificate alone does not supply the recorded support edge. The
+capture names the consumer's raw source hash and closure key, exact theorem,
+support theorem, assumption subject, extractor closure key, and generator
+source hash. `assurance_dependencies.py --source-only --proof-support CAPTURE`
+checks these against the current tree and checks the nested subject/support
+and constraint binding. It still labels the snapshot unqualified; a separate actual admission
+receipt must establish its provenance. This packet does not add a
+certificate trust path or turn that label into proof completion. Imported
+intermediate theorem support remains unknown. In particular the C BLAKE3/FFI
+premise is exposed, not established by this extraction.
+
+Example source generation (does not start ACL2):
+
+```
+python3 tools/capture_native_proof_support.py \
+  --output /tmp/native-proof-support-hook.lisp \
+  --capture /tmp/native-proof-support-capture.lsp
+```
+
+The qualified union is 17 books at code `5e32120c5`. Fourteen existing 8aeb
+entries were reused; `digest-store`, `merkle`, and the actual native consumer
+were source-admitted unchanged and then recorded. The hook's identity and
+stale/substituted report controls also pass. Exact source/key/payload identities
+are in `docs/design/receipts/native-proof-support-seventeen-record.json`; the
+actual captured object is `native-proof-support-capture.sexp` beside it.
+
+The first actual source run admitted all three production books unchanged:
+`digest-store` 0.20 s, `merkle` 14.28 s, and the native consumer 0.15 s.
+The 16-book parent union was recorded at the current keys. Top-level capture
+checks then passed for the actual source formula and crypto-assumption edge.
+The initial hook's export inside MAKE-EVENT was rejected; the source correction
+moves only I/O outside event expansion. The corrected top-level hook then passed against the actual admitted native
+consumer (0.18 s / 437 steps); ordinary export and current-identity readback
+passed. Final record `certify-20261115T234037Z-1971194` reused the qualified
+16 parents and certified only the native book. Its live snapshot exposes both
+native crypto constraint theorems among actual supporters while imported
+intermediate support remains unknown. No malformed snapshot is evidence.
