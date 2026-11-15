@@ -1,57 +1,73 @@
 # CNS source-window packet
 
-This source-only packet binds a selected published article to a retained CNS
-job, verifies physical units and the complete stored-source digest, and keeps
-whole-query allocator promises until transport handback. It is not an executed
-FETCH or a certified closure. Actual CNS/CTL actor composition remains required.
+The OUTPUT source is connected through the actual CNS and CTL actors. It has
+not been admitted or executed by ACL2 or a native node. The exact source,
+changed files, unchanged foundation blobs and checks are in the adjacent receipt.
 
-The delivery base is `86f919a16`. The current pool, columns, core, machine
-compiler, machine arms and pinned I/O leaf remain byte-identical to that base.
-The accompanying receipt records the exact provider source and named blobs.
+The base is delivery `86f919a16`. Current pool, columns, core, machine compiler,
+machine arms, pinned I/O leaf and inbound stream helper remain byte-identical.
+Apply the named OUTPUT hunks; never replace a newer whole `cns.lisp` file.
+The independently staged precise receive-cap change (`5439fd2e0` / `666b7b7ab`)
+is intentionally excluded. It is required for the coalesced full-session test;
+this packet does not relabel the frozen INPUT gate.
 
-`cns-source-capture` copies all location commitments, original SOURCE and stored
-SOURCE from the same live typed READ into an initialized 160-byte prefix. It
-claims the root extent in the same callback before the READ may be released.
-The existing item lease fits this prefix and two disjoint 4096-byte windows;
-no new pool loan is introduced. The original workspace declaration is moved
-unchanged to `cns-source-workspace`; the actor donor removes its old two forms.
+The actual flow is selection/capture → root promise → manifest coverage → MID
+match/prefix → pinned unit reads → unit verification → bounded stored hashing →
+copy/Send → checked EOF → final trailer Send return → promise release → handoff
+→ CNS lease release → FREE. There is no caller-supplied completion flag.
 
-`cns-source-raw` issues actual pinned reads and retains exact operation identity.
-Its global prefinish hook routes only the matching ReadResult/cell/generation.
-Unit verification and <=1024-byte stored-stream hashing are CNS actor phases.
-`source-next` only appends <=1024 already verified/hashed bytes to CTL staging;
-it rejects an old destination offset and does no hidden I/O or hashing. EOF
-requires all selected bytes both copied and hashed, the actual stored-source
-comparison and the current request/lease generations.
+`cns-source-capture` copies the complete location vector, original SOURCE and
+stored SOURCE from the same live typed READ into an initialized 160-byte prefix.
+It acquires the root promise in the same callback before releasing that READ.
+The unchanged item workspace is 10294 bytes; prefix, manifest unit and data unit
+end at8352. A named declaration theorem states their fit and nonoverlap. The
+actual actor keeps its existing pool lease; there is no additional pool loan.
 
-`cns-source-manifest` authenticates each full location unit before the existing
-header/entry decoder. Header identity is original SOURCE, not stored SOURCE.
-A bounded preflight claims every authenticated descendant before output begins.
-READY replay only confirms existing exact claims; it cannot extend coverage.
-The manifest/proof unit remains unchanged while data is read into the second
-window. The shared cursor decoder tail is factored once in
-`source-manifest-entry`, and the old cursor API calls that implementation.
+`cns-source-raw` queues the existing pinned BREAD primitive and routes exact
+operation/cell/generation completion through the registered global prefinish
+hook. READ observers only wake the CNS actor. Unit verification and <=1024-byte
+stored-stream hashing are separate CNS phases. The public `source-next` only
+appends <=1024 checked/hashed bytes to CTL staging, with a2048-byte copy charge.
+It rejects stale destination offsets. Hash progress advances by actual USED;
+Send retries cannot rehash a unit. EOF requires both copied and hashed length
+to equal the selected total, the actual stored-source comparison and live lease.
 
-The allocator region appends E*N rows after the existing checkpoint region,
-where E is the actual configured extent count and N the CNS count. Each query
-has one exact claim per extent; duplicate references reuse it, while another
-identity in that slot refuses. After real SEND or cancellation handback,
-RELEASING scans one owned row per actor step. RELEASED retains the tuple;
-HANDOFF acknowledges transport before CNS releases its lease through its
-existing operation and finally clears the job.
+`cns-source-manifest` authenticates every complete location unit before decoding.
+Header identity is original SOURCE; final stream identity is stored SOURCE.
+Preflight claims every contiguous authenticated descendant before output begins.
+READY replay can only confirm existing exact claims, never expand coverage.
+Expected hash/CV spans remain in the first window while data enters the second.
+The old cursor and new reader use one factored manifest decoder implementation.
 
-Format/hash geometry adds N rows before the five existing tail jobs. CTL rows
-use the four-argument runtime selector; CNS stream hash rows are separate from
-CTL frame hashes and ordinary block verification. The native donor must migrate
-all actual CTL callers together and compare FC/B3 row geometry. The source actor
-must match its job count to the actual CNS count.
+The query region appends E*N rows after the existing checkpoint edge region.
+One exact identity per query/extent deduplicates repeated references. A changed
+handle in that slot refuses. After actual SEND/cancellation handback, RELEASING
+checks physical quiescence and scans one owned row per step. RELEASED retains
+the tuple; HANDOFF acknowledges transport before CNS releases its own lease
+through its declared operation, then clears its job. Uncertain reads retain
+claims/lease and stop rather than use the normal cleanup path.
 
-The producer prerequisites are the existing `fe9f761ab`, `dfc12386f` and
-`0943d496f` donors: physical stride16, three-write grouping and the shared raw
-threshold12288. The source reader introduces no private threshold or data cap.
+One authoritative row map reserves paired upload source/stored contexts at
+3+2s/4+2s, sealer3+2W, CTL4+2W+s at the floor, per-CNS contexts next, then five
+existing tail jobs. The floor is9+2W+C+N. Runtime CTL/CNS selectors are end-relative;
+actual callbacks check FC=B3 dimensions and source-job count=CNS count. The
+ordinary block row F-2 is synchronous scratch, copied to the owner's page before
+yield. The minimal paired producer/sealer consumers are included; broader
+rolling-input and fixed-SOURCE-copy protocol changes are not.
 
-The Python controls and advisory arity/MV checks pass. The capture, hash
-interleaving and retention ACL2 fixtures are authored but unexecuted; their
-synthetic selected-READ or authenticated-CLAIM premises are stated in the tests.
-The actual CNS/CTL adapters, transport cancellation review and composed 6144-byte
-physical-reader fixture must be joined before any executable serving claim.
+Producer dependencies include physical stride16, physical data groups16 and the
+shared raw threshold12288. Raw and manifest-root commitments remain at most
+three units (96 bytes); the journal's write-resource count remains three.
+The reader adds no private article limit or global stored-history ceiling.
+
+The real `cns-stream-fetch-unit` posts, persists and FETCHes6144 exact bytes
+through the ordinary actors without seeding a source descriptor or phase. It
+remains unexecuted. A narrower two-unit reader witness drives actual allocation,
+pinned operations, completion primitives, B3, a reused4KiB output window and EOF;
+its selected typed READ premise is explicitly synthetic. Retention and hash
+interleaving witnesses likewise state their scope and are unexecuted.
+
+Forty-five targeted Python source controls pass. Advisory checks cover139 actual
+lower calls/43 known MV bindings and9 lower-derived faces/20 direct plus14 DSL
+source calls. The literal235-book union has no missing files or include cycles.
+These are source checks, not guard admission, certificate or runtime evidence.
