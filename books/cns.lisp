@@ -1053,14 +1053,14 @@
                                    row-rx-slot row-rx-gen row-fill cap)
         :accept (:ok :wait :bad))
        (:cond
-        ((eq code :wait) (:wake-row row-cns) (:charge :bytes 1024 :steps *fn2-work-transition*))
+        ((eq code :wait) (:wake-row row-cns) (:charge :bytes *fn2-cns-source-next-cost* :steps *fn2-work-transition*))
         ((and (eq code :ok) (natp copied) (<= copied cap)
               (or (< 0 copied) eof) (or (not eof) (equal copied row-oleft)))
          (:let left (- row-oleft copied)) (:let fill (+ row-fill copied))
          (:set (oleft left) (fill fill) (ochecked (if eof 1 0)))
          (:if (or eof (equal fill *fn2-ctl-io-bytes*)) ((:set (ophase *fn2-ctl-output-hash*))) ())
-         (:charge :bytes 1024 :steps *fn2-work-transition* :runnable t))
-        (t (:next :closing) (:charge :bytes 1024 :steps *fn2-work-transition* :runnable t))))))
+         (:charge :bytes *fn2-cns-source-next-cost* :steps *fn2-work-transition* :runnable t))
+        (t (:next :closing) (:charge :bytes *fn2-cns-source-next-cost* :steps *fn2-work-transition* :runnable t))))))
     ((equal row-ophase *fn2-ctl-output-hash*)
      (:do (code copied) (fn2-ctl-stream-hash id row-generation row-rx-slot row-rx-gen 0 row-fill
                                            (equal row-ochecked 1)) :accept (:ok :more :bounds))
