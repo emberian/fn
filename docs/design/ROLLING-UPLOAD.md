@@ -27,8 +27,13 @@ entry accounts for first PEXT exactly once.
 This is source, not runtime qualification or activation. Actual 32 KiB repeated
 window and threshold controls are being connected to the existing CW driver.
 The full served resource envelope must consume the same provisional-page
-geometry before integration. Definitive refusals after provisional storage and
-owner departure currently retain storage via the existing machine stop instead
-of implementing a bounded provisional cleanup continuation; that continuation
-and exact abort-cut controls remain required. No claim of recovery-byte equality
-or general upload completion has been executed yet.
+geometry before integration. Definitive refusal drains the remaining framing,
+then issues a real Fence before giving the word to the transaction. Owner
+departure also waits for the covering Fence. After the child releases its
+reference, a separate drain decodes one retained provisional entry per turn,
+settles only physical group leaders, then the unreferenced CFREE handle and
+separate ROOT once each, and finally returns the page. It never independently
+cancels first PEXT a second time. Query or borrowed workspaces postpone cleanup;
+failed or malformed Fence enters uncertainty instead. Actual abort-cut controls
+and execution of the new 32 KiB/threshold assertions remain required. No claim
+of recovery-byte equality or general upload completion has been executed yet.

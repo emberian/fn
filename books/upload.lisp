@@ -83,8 +83,8 @@
 (defcost fn2-upload-conn-live-p :doc "Whether the connection still feeds this upload.")
 (defcost fn2-upload-txn-live-p :doc "Whether the upload's transaction still names it.")
 (defcost fn2-upload-start-discard :answers (:ok :fault) :faults (:fault)
- :tables (fn2-core-machines fn2-core-machine-tables fn2-conn-table fn2-cns-table)
- :doc "A checked definite header verdict makes the actual owner drain framing before any storage claim.")
+ :tables (fn2-core-machines fn2-core-machine-tables fn2-core-pool fn2-conn-table fn2-cns-table)
+ :doc "A checked definite upload verdict makes the actual owner drain framing before any storage claim.")
 (defcost fn2-upload-wake :tables (fn2-core-machines) :doc "Wake the upload's transaction.")
 (defcost fn2-upload-payload-reserve :answers (:ok :no-space :fault) :faults (:fault) :tables (fn2-core-extents)
   :doc "Reserve the extent the source is stored in (B's allocator): (mv code extent epoch counter).")
@@ -846,8 +846,16 @@
  (b* (((unless (and (eq (fn2-upload-snapshot-read-code id fn2-core) :ok)
                     (equal (fn2-machine-generation id fn2-core) gen)
                     (not (equal (fn2-upload-row-word id fn2-core) 0))
-                    (equal (fn2-upload-row-lease id fn2-core) *fn2-upload-lease-none*)
-                    (equal (fn2-upload-row-pending id fn2-core) 0)))
+                    (equal (fn2-upload-row-pending id fn2-core) 0)
+                    (or (equal (fn2-upload-row-lease id fn2-core) *fn2-upload-lease-none*)
+                        (and (equal (fn2-upload-row-stream-active id fn2-core) 1)
+                             (member-equal (fn2-upload-row-phase id fn2-core)
+                               (list *fn2-upload-state-stream-init* *fn2-upload-state-stream-write*
+                                     *fn2-upload-state-stream-receiving*))
+                             (let ((ls (fn2-upload-row-lslot id fn2-core))
+                                   (lg (fn2-upload-row-lgen id fn2-core)))
+                              (stobj-let ((fn2-pool (fn2-core-pool fn2-core))) (ok)
+                               (eq (fn2-pool-workspace-code ls lg *fn2-upload-kind* id gen fn2-pool) :ok) ok))))))
        (mv :fault fn2-core))
       (owner (fn2-upload-row-conn id fn2-core)) (ogen (fn2-upload-row-conn-gen id fn2-core))
       (live (or (and (eq (fn2-conn-snapshot-read-code owner fn2-core) :ok)
@@ -860,7 +868,7 @@
                      (equal (fn2-cns-row-upload-gen owner fn2-core) gen))))
       ((unless live) (mv :fault fn2-core))
       ;; Reason 4 retains the checked upload verdict while framing drains;
-      ;; it is not a storage verdict and never accompanies a held page.
+      ;; issued ambiguity never reaches these preissue/receiving phases.
       (fn2-core (fn2-machine-write-feed-discard owner 4 fn2-core)))
    (mv :ok fn2-core)))
 (fn2-core-preserves fn2-upload-start-discard (id gen fn2-core) :position 1 :rows nil)

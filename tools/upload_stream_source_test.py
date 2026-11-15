@@ -45,7 +45,30 @@ class RollingSource(unittest.TestCase):
    a=s.index('(:'+phase+' :on-refusal');b=s.index('\n  (:',a+4);part=s[a:b]
    self.assertIn('*fn2-upload-word-uncertain*',part);self.assertIn('(:next :uncertain)',part)
    self.assertNotIn('fn2-core-release',part);self.assertNotIn('payload-settle',part)
+ def test_bounded_drain_uses_provisional_leaders_then_distinct_handles(self):
+  s=(ROOT/'books/assembly-callbacks-d-upload.lisp').read_text()
+  a=s.index('(:stream-drain :on-refusal');b=s.index('(:retired (:idle))',a);s=s[a:b]
+  self.assertIn('fn2-upload-stream-settle-next',s)
+  self.assertIn('fn2-upload-payload-settle row-cext row-cepoch row-calloc',s)
+  self.assertIn('fn2-upload-payload-settle row-rootext row-rootepoch row-rootalloc',s)
+  self.assertNotIn('fn2-upload-payload-settle row-pext',s)
+  self.assertLess(s.index('fn2-upload-stream-settle-next'),s.index('fn2-upload-payload-settle row-cext'))
+  self.assertLess(s.index('fn2-upload-payload-settle row-rootext'),s.index('fn2-upload-page-release'))
+ def test_definite_refusal_fences_before_any_cleanup(self):
+  s=(ROOT/'books/assembly-callbacks-d-upload.lisp').read_text()
+  a=s.index('(:stream-refuse-fence :on-refusal');b=s.index('(:stream-drain :on-refusal',a);s=s[a:b]
+  for token in ['fn2-issue-fence','*fn2-event-fence-result*','*fn2-outcome-done*','row-pending 0',
+                'fn2-upload-stream-page-ready-p','(:next :uncertain)']:
+   self.assertIn(token,s)
+  self.assertNotIn('payload-settle',s)
+ def test_actual_repeated_window_controls_have_no_state_setters(self):
+  s=(ROOT/'tests/upload-rolling-served-unit.lisp').read_text()
+  for token in ['fn2-turn','fn2-cw-adapter-one','fn2-upload-state-stream-fenced*',
+                'fn2-upload-row-stream-resets','fn2-pool-out-count','32768','12288','12289']:
+   self.assertIn(token,s)
+  self.assertNotIn('fn2-machine-write-',s)
+  self.assertNotIn('fn2-upload-put ',s)
  def test_new_books_parse(self):
-  for name in ['upload-stream','upload-stream-stage','upload-stream-reset','upload-stream-manifest']:
+  for name in ['upload-stream','upload-stream-stage','upload-stream-reset','upload-stream-manifest','upload-stream-settle']:
    self.assertTrue(lr.parse(ROOT/'books'/f'{name}.lisp').forms)
 if __name__=='__main__': unittest.main()
