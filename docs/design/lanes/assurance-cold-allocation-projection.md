@@ -131,3 +131,32 @@ Additional source controls classify a selected reserved extent while retaining
 its recovery-base and another reservation's quarantine, reject a different owner,
 and exercise allocation/retirement replay and wrong/different retirement commits.
 The actual lifecycle transition assertions remain UNRUN without compute authority.
+
+
+The actual recovery lifecycle connection is now in recovery-payload. The shared
+current-unit-open reauthenticates BOTH payload and replay rereads with the same
+existing chain-unit context/frame/hash commitment, against the actual CHAINED
+candidate records digest. Stage0 resets the shared checker; private auth progress
+advances only after its actual stages. The captured actual expected digest8 and
+row/window/actor/base/tag/mode identity are rechecked on continuation. Every new
+physical read clears auth/progress. A manifest visit therefore reauthenticates
+its reloaded journal and resumes only inside the newly authenticated same range.
+Actual pool workspace state/generation/owner, pending0 and distinct source/member
+windows are required. Source copying writes only the distinct member workspace;
+the current authenticated read is held immutable through cursor/scanner yields.
+This owned-window/checker frame invariant still requires composed qualification.
+
+Payload claims now go through the authenticated wrapper. Scalar replay arguments
+must match the actual row before even empty/end dispatch. ALLOCATION/RETIREMENT
+consume that same decoded stream/containing commit; FREE allocation enters stage3
+and retains rc-roff until its one-link cursor settles. Selected source identity
+is rejoined on every step, and no generic freeze opens. Parent-owned stage4 must
+finish semantic frontier scanning before stage0 dispatch; selected install/epoch
+and orphan-fence disposal remain separate parent integration. Source before that
+stage4 join does not claim a complete running cold recovery composition.
+
+Independent audit owns real POST/persisted-device same-length reread substitution
+and stale actual lease controls; this lane's source parsing/arity/rewrite controls
+are not a substitute. Lifecycle-specific real persisted checkpoint allocation
+continuation is still a required composed control. No ACL2/host/native/production
+compute has been run for this source milestone.

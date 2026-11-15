@@ -10,6 +10,7 @@
 (include-book "checkpoint-recovery-census-state")
 (include-book "checkpoint-selected-source-state")
 (include-book "checkpoint-projection-state")
+(include-book "checkpoint-suffix-allocation")
 (include-book "checkpoint-restore-arena")
 (include-book "checkpoint-restore-semantic-state")
 (include-book "checkpoint-restore-events-state")
@@ -143,6 +144,9 @@
 (defcorechild fn2-core-checkpoint-projection fn2-checkpoint-projection
  :init (fn2-checkpoint-projection-init (if (fn2-profile-get :image-boot profile) 1 0) fn2-checkpoint-projection)
  :profilep t :why "One owner-bound cold map/FIFO/protection cursor; phase4 remains closed through suffix reconstruction.")
+(defcorechild fn2-core-checkpoint-suffix-allocation fn2-checkpoint-suffix-allocation
+ :init (fn2-checkpoint-suffix-allocation-init (if (fn2-profile-get :image-boot profile) 1 0) fn2-checkpoint-suffix-allocation)
+ :profilep t :why "One actual authenticated cold replay allocation holds a bounded FREE predecessor cursor while phase4 remains closed.")
 (defcorechild fn2-core-checkpoint-summary-sources fn2-checkpoint-summary-sources
  :init (fn2-checkpoint-summary-sources-init (fn2-b-capacity :extent-slots 16 profile) fn2-checkpoint-summary-sources)
  :profilep t :why "One authenticated C source root per actual physical extent, tagged by exact descriptor investigation.")
