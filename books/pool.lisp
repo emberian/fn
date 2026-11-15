@@ -1290,6 +1290,9 @@
     (implies (and (consp l) (subsetp-equal f l))
              (subsetp-equal (remove-equal (car l) f) (cdr l)))
     :hints (("Goal" :use ((:instance fn2-pool-remove-subsetp (y f) (a (car l)) (x (cdr l)))))))
+  ;; The direct subset interfaces above supply the chain-tail/remove steps.
+  ;; Do not search for an unconstrained intermediate set during every rewrite.
+  (in-theory (disable fn2-pool-subsetp-trans))
   ; RESERVE: the head leaves its class's chain and free set together.
   (defthm fn2-pool-reserve-class-okp
     (implies (and (fn2-poolp fn2-pool) (fn2-pool-wfp fn2-pool)
@@ -1298,7 +1301,12 @@
              (fn2-pool-class-okp c2 (mv-nth 3 (fn2-pool-reserve class okind oslot ogen fn2-pool))))
     :hints (("Goal" :do-not '(generalize eliminate-destructors fertilize)
              :in-theory (e/d (fn2-pool-class-okp) (fn2-pool-class-okp-of-accounts))
-             :use (                 (:instance fn2-pool-class-okp-of-accounts (n (fn2-pool-nclasses fn2-pool)) (c c2))
+             :cases ((equal class c2))
+             :use (fn2-pool-nclasses-at-most-16
+                   (:instance fn2-pool-class-headsi-type (c class))
+                   (:instance fn2-pool-class-headsi-type (c c2))
+                   (:instance fn2-pool-class-countsi-type (c class))
+                   (:instance fn2-pool-class-okp-of-accounts (n (fn2-pool-nclasses fn2-pool)) (c c2))
                    (:instance fn2-pool-class-okp-of-accounts (n (fn2-pool-nclasses fn2-pool)) (c class))
                    (:instance fn2-pool-free-chain-open (f (fn2-pool-rows fn2-pool))
                               (x (fn2-pool-class-headsi class fn2-pool)))
@@ -1382,6 +1390,9 @@
       (defthm ,(fn2-pool-op-sym op "-CONSERVATION")
         (implies (fn2-pool-semanticp fn2-pool) (fn2-pool-semanticp ,q))
         :hints (("Goal" :do-not '(generalize eliminate-destructors fertilize)
+                 :in-theory (disable ,(fn2-pool-op-sym op "-ROW-OKP")
+                                     ,(fn2-pool-op-sym op "-PRESERVES-TYPE")
+                                     ,(fn2-pool-op-sym op "-PRESERVES-WFP"))
                  :use (fn2-pool-semanticp-elim ,(fn2-pool-op-sym op "-ROW-OKP") ,(fn2-pool-op-sym op "-PRESERVES-TYPE")
                        ,(fn2-pool-op-sym op "-PRESERVES-WFP")
                        (:instance fn2-pool-semanticp-intro (s ,slot) (fn2-pool ,q)))))))))

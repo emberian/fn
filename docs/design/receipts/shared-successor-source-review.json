@@ -51,5 +51,19 @@
       "sha256": "e1f4324851ffd52a9d6157a2f5c3ad6eb062a61936c9b4fcfe739f3131a7a1d6"
     }
   },
-  "pending_output": "excluded: full reader+CNS+four-argument geometry packet remains unfinished"
+  "pending_output": "excluded: full reader+CNS+four-argument geometry packet remains unfinished",
+  "pool_proposal": {
+    "origin": "49440aea6c157e95fccbad08ff7e4b9c712036fc",
+    "sha256": "ae050e8f9ff7dd599e642218c63b9714ad73b362a06c980a847986d210967918",
+    "status": "Source-only; exact original conservation event101 remains unsplit2M/20; previous9db failed and cleaned"
+  },
+  "coalesced_receive": {
+    "origin": "0d6dac6a1",
+    "files": [
+      "books/cns.lisp",
+      "books/ctl-stream-events.lisp",
+      "tests/ctl-frame-receive-controls.lsp"
+    ],
+    "scope": "Header-first10 then generated header-decoded remaining-frame cap; source-control verdict only, actual actor pending"
+  }
 }
