@@ -96,6 +96,12 @@
       ((mv created fn2-core fn2-sim fn2-own) (fn2-ccp-drive 200000 nil fn2-core fn2-sim fn2-own))
       ((unless (and (eq started :ok) (eq created :ready)))
        (mv (list :create started created) fn2-core fn2-sim fn2-own))
+      ; Image executor init configures the actual protected group before
+      ; foreground/bootstrap. Never substitute a configured-count flag or
+      ; reconfigure after the image has started using its credits.
+      ((mv release-credit & &) (fn2-release-live-credit-info fn2-core))
+      ((unless (eq release-credit :ok))
+       (mv (list :release-credit release-credit) fn2-core fn2-sim fn2-own))
       ((mv retired target ep allocation fn2-core) (fn2-rrc-retired-target fn2-core))
       ((unless (eq retired :ok)) (mv (list :target retired) fn2-core fn2-sim fn2-own))
       ((mv publication prefix suffix fn2-core fn2-sim fn2-own)

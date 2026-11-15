@@ -17,8 +17,11 @@ copies the descriptor sector from the same simulator image into the existing
 device adapter view. Four independent full-history assert-events require the
 positive packet and wrong-generation, short-completion and stale-source
 refusals. A missing antecedent returns failure. This source depends on the
-new authenticated submission implementation; the submit/poll API was frozen
-with its owner while implementation was in progress. No Lisp execution or
+new authenticated submission implementation, composed from capacity owner
+`d1fd21f26` and `121be600f`. Actual image executor startup configures its
+protected singleton workspace before foreground; the fixture checks the
+maintained group identity and never substitutes a configured-count flag.
+No Lisp execution or
 admission has run, and these assertions are not claimed as passing witnesses.
 
 Actual producer work is mandatory, not deferred: capacity owner owns the

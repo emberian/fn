@@ -64,11 +64,13 @@ class DispatchPacket(unittest.TestCase):
                      "fn2-alloc-retire", "fn2-ccp-prefix-and-publication",
                      "fn2-allocation-release-stage", "fn2-allocation-release-submit",
                      "fn2-allocation-release-poll", "fn2-ccp-restart",
-                     "fn2-rp-release-current-p", "fn2-rrd-image-packet"):
+                     "fn2-rp-release-current-p", "fn2-rrd-image-packet",
+                     "fn2-release-live-credit-info"):
             self.assertIn("(" + call + " ", source)
         for mode in ("clean", "wrong-opgen", "short", "stale-source"):
             self.assertIn(f"(assert-event (fn2-rrd-result-p :{mode} (fn2-rrc-test :{mode})))", source)
         self.assertIn("(put-assoc-equal :aturn 1 *fn2-ccp-profile*)", source)
+        self.assertNotIn("fn2-checkpoint-working-credit-configure", source)
 
     def test_image_bridge_does_not_supply_expected_authentication(self):
         source = (ROOT / "tests/recovery-release-image-support.lisp").read_text()
