@@ -51,6 +51,26 @@
         fn2-checkpoint-construction)))
   (mv code fn2-checkpoint-projection fn2-checkpoint-selected-source fn2-extents fn2-alloc-edges fn2-checkpoint-construction)))
 
+
+(fn2-checkpoint-projection-preserves fn2-checkpoint-projection-owned-step
+ (checkpoint-kind fn2-checkpoint-selected-source fn2-boot-config fn2-checkpoints fn2-checkpoint-refs fn2-checkpoint-bytes fn2-origin fn2-checkpoint-recovery-evidence fn2-checkpoint-recovery-census fn2-checkpoint-restore-map fn2-checkpoint-restore-map-control fn2-checkpoint-restore-reach-control fn2-checkpoint-projection fn2-extents fn2-ops fn2-alloc-edges fn2-checkpoint-restore-reach fn2-checkpoint-construction)
+ :hyps ((fn2-checkpoint-selected-sourcep fn2-checkpoint-selected-source) (fn2-checkpoint-selected-source-wfp fn2-checkpoint-selected-source) (fn2-boot-configp fn2-boot-config) (fn2-boot-config-wfp fn2-boot-config) (fn2-checkpointsp fn2-checkpoints) (fn2-checkpoints-wfp fn2-checkpoints) (fn2-checkpoint-refsp fn2-checkpoint-refs) (fn2-checkpoint-refs-wfp fn2-checkpoint-refs) (fn2-checkpoint-bytesp fn2-checkpoint-bytes) (fn2-checkpoint-bytes-wfp fn2-checkpoint-bytes) (fn2-originp fn2-origin) (fn2-origin-wfp fn2-origin) (fn2-checkpoint-recovery-evidencep fn2-checkpoint-recovery-evidence) (fn2-checkpoint-recovery-evidence-wfp fn2-checkpoint-recovery-evidence) (fn2-checkpoint-recovery-censusp fn2-checkpoint-recovery-census) (fn2-checkpoint-recovery-census-wfp fn2-checkpoint-recovery-census) (fn2-checkpoint-restore-mapp fn2-checkpoint-restore-map) (fn2-checkpoint-restore-map-wfp fn2-checkpoint-restore-map) (fn2-checkpoint-restore-map-controlp fn2-checkpoint-restore-map-control) (fn2-checkpoint-restore-map-control-wfp fn2-checkpoint-restore-map-control) (fn2-checkpoint-restore-reach-controlp fn2-checkpoint-restore-reach-control) (fn2-checkpoint-restore-reach-control-wfp fn2-checkpoint-restore-reach-control) (fn2-checkpoint-projectionp fn2-checkpoint-projection) (fn2-checkpoint-projection-wfp fn2-checkpoint-projection) (fn2-extentsp fn2-extents) (fn2-extents-wfp fn2-extents) (fn2-opsp fn2-ops) (fn2-ops-wfp fn2-ops) (fn2-alloc-edgesp fn2-alloc-edges) (fn2-alloc-edges-wfp fn2-alloc-edges) (fn2-checkpoint-restore-reachp fn2-checkpoint-restore-reach) (fn2-checkpoint-restore-reach-wfp fn2-checkpoint-restore-reach) (fn2-checkpoint-constructionp fn2-checkpoint-construction) (fn2-checkpoint-construction-wfp fn2-checkpoint-construction))
+ :specs (("-CHECKPOINT-PROJECTION-GUARD-DOMAIN-TYPE" fn2-checkpoint-projectionp 1)
+         ("-CHECKPOINT-PROJECTION-GUARD-DOMAIN-WFP" fn2-checkpoint-projection-wfp 1)
+         ("-CHECKPOINT-PROJECTION-ROWS" fn2-checkpoint-projection-rows 1 :frame fn2-checkpoint-projection)
+         ("-CHECKPOINT-SELECTED-SOURCE-GUARD-DOMAIN-TYPE" fn2-checkpoint-selected-sourcep 2)
+         ("-CHECKPOINT-SELECTED-SOURCE-GUARD-DOMAIN-WFP" fn2-checkpoint-selected-source-wfp 2)
+         ("-CHECKPOINT-SELECTED-SOURCE-ROWS" fn2-checkpoint-selected-source-rows 2 :frame fn2-checkpoint-selected-source)
+         ("-EXTENTS-GUARD-DOMAIN-TYPE" fn2-extentsp 3)
+         ("-EXTENTS-GUARD-DOMAIN-WFP" fn2-extents-wfp 3)
+         ("-EXTENTS-ROWS" fn2-extents-rows 3 :frame fn2-extents)
+         ("-ALLOC-EDGES-GUARD-DOMAIN-TYPE" fn2-alloc-edgesp 4)
+         ("-ALLOC-EDGES-GUARD-DOMAIN-WFP" fn2-alloc-edges-wfp 4)
+         ("-ALLOC-EDGES-ROWS" fn2-alloc-edges-rows 4 :frame fn2-alloc-edges)
+         ("-CHECKPOINT-CONSTRUCTION-GUARD-DOMAIN-TYPE" fn2-checkpoint-constructionp 5)
+         ("-CHECKPOINT-CONSTRUCTION-GUARD-DOMAIN-WFP" fn2-checkpoint-construction-wfp 5)
+         ("-CHECKPOINT-CONSTRUCTION-ROWS" fn2-checkpoint-construction-rows 5 :frame fn2-checkpoint-construction)))
+
 (defcost fn2-checkpoint-projection-step-op :child fn2-checkpoint-projection-owned-step
  :answers (:more :projected :source :capacity :cursor :totals :row :fifo :state :ownership)
  :tables (fn2-core-checkpoint-projection fn2-core-checkpoint-selected-source fn2-core-extents fn2-core-alloc-edges fn2-core-checkpoint-construction)
