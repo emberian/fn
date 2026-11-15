@@ -219,6 +219,46 @@
   fn2-pool-reserve fn2-rd-copy fn2-peer-import-materialize fn2-peer-import-start-key
   fn2-succ-txns-phase fn2-id-decides-phase fn2-id-decides-query-incarnation fn2-peer-imports-phase fn2-fields-value fn2-fields-ref-slot fn2-fields-ref-gen fn2-fields-ref-off fn2-fields-ref-len))
 
+; Recovery of an interfered import releases only its private pool taking.
+; The foreign query and successor are read-only. A live query that names the
+; taking, or any nonempty/bound successor, must finish before this can detach.
+(defun fn2-peer-import-detach-child (tx b0 ok os og fn2-peer-imports fn2-succ-txns fn2-succ-slots fn2-id-decides fn2-fields fn2-pool)
+ (declare (xargs :stobjs (fn2-peer-imports fn2-succ-txns fn2-succ-slots fn2-id-decides fn2-fields fn2-pool)
+ :guard (and (fn2-peer-imports-wfp fn2-peer-imports) (fn2-succ-txns-wfp fn2-succ-txns)
+             (fn2-succ-slots-wfp fn2-succ-slots) (fn2-id-decides-wfp fn2-id-decides)
+             (fn2-fields-wfp fn2-fields) (fn2-pool-wfp fn2-pool))))
+ (b* (((unless (and (natp tx) (< tx (fn2-peer-imports-rows fn2-peer-imports))
+                    (< tx (fn2-succ-txns-rows fn2-succ-txns)) (< tx (fn2-id-decides-rows fn2-id-decides))
+                    (equal (fn2-peer-imports-phase tx fn2-peer-imports) *fn2-peer-import-phase-interfered*)
+                    (equal (fn2-peer-imports-ok tx fn2-peer-imports) ok)
+                    (equal (fn2-peer-imports-os tx fn2-peer-imports) os)
+                    (equal (fn2-peer-imports-og tx fn2-peer-imports) og)
+                    (equal (fn2-succ-txns-phase tx fn2-succ-txns) *fn2-succ-phase-idle*)
+                    (fn2-peer-import-empty *fn2-succ-slots* (* tx *fn2-succ-slots*) fn2-succ-slots)
+                    (natp b0) (< (+ b0 *fn2-idc-eb* 4) (fn2-fields-rows fn2-fields))))
+       (mv :state fn2-peer-imports fn2-pool))
+      (slot (fn2-peer-imports-slot tx fn2-peer-imports))
+      (gen (fn2-peer-imports-gen tx fn2-peer-imports))
+      (q (+ b0 *fn2-idc-eb*))
+      ((unless (or (equal (fn2-id-decides-phase tx fn2-id-decides) *fn2-id-decide-phase-idle*)
+                   (and (not (and (equal (fn2-fields-ref-slot (+ q 1) fn2-fields) slot)
+                                  (equal (fn2-fields-ref-gen (+ q 1) fn2-fields) gen)))
+                        (not (and (equal (fn2-fields-ref-slot (+ q 4) fn2-fields) slot)
+                                  (equal (fn2-fields-ref-gen (+ q 4) fn2-fields) gen))))))
+       (mv :state fn2-peer-imports fn2-pool))
+      ((mv code fn2-pool) (fn2-pool-release slot gen ok os og fn2-pool))
+      ((unless (member-eq code '(:ok :retired))) (mv code fn2-peer-imports fn2-pool))
+      (fn2-peer-imports (fn2-peer-imports-put tx (phase *fn2-peer-import-phase-idle*)
+                        (slot 0) (gen 0) (query-held 0))))
+  (mv :ok fn2-peer-imports fn2-pool)))
+(fn2-rd-shape fn2-peer-import-detach-child
+ (tx b0 ok os og fn2-peer-imports fn2-succ-txns fn2-succ-slots fn2-id-decides fn2-fields fn2-pool)
+ ((fn2-peer-imports 1) (fn2-pool 2))
+ (fn2-peer-imports fn2-succ-txns fn2-succ-slots fn2-id-decides fn2-fields fn2-pool)
+ (fn2-peer-import-empty fn2-pool-release fn2-peer-imports-phase fn2-peer-imports-ok fn2-peer-imports-os
+  fn2-peer-imports-og fn2-peer-imports-slot fn2-peer-imports-gen fn2-succ-txns-phase
+  fn2-id-decides-phase fn2-fields-ref-slot fn2-fields-ref-gen))
+
 ; Abort only our unbound private transaction. Release after publication is a
 ; separate mode; bound and interfered takings remain retained for recovery.
 (defun fn2-peer-import-clean-child (tx ok os og published fn2-peer-imports fn2-succ-txns fn2-succ-slots fn2-id-decides fn2-pool)
@@ -313,9 +353,17 @@
     (declare (xargs :stobjs fn2-core :guard (fn2-core-wfp fn2-core)))
     (stobj-let ((fn2-peer-imports (fn2-core-peer-imports fn2-core)) (fn2-succ-txns (fn2-core-succ-txns fn2-core))
                 (fn2-succ-slots (fn2-core-succ-slots fn2-core)) (fn2-id-decides (fn2-core-id-decides fn2-core))
-                (fn2-pool (fn2-core-pool fn2-core)))
+                (fn2-pool (fn2-core-pool fn2-core)) (fn2-fields (fn2-core-fields fn2-core))
+                (fn2-fc (fn2-core-fc fn2-core)))
      (code fn2-peer-imports fn2-succ-txns fn2-succ-slots fn2-id-decides fn2-pool)
-     (fn2-peer-import-clean-child tx ok os og nil fn2-peer-imports fn2-succ-txns fn2-succ-slots fn2-id-decides fn2-pool)
+     (if (and (natp tx) (< tx (fn2-peer-imports-rows fn2-peer-imports))
+              (equal (fn2-peer-imports-phase tx fn2-peer-imports) *fn2-peer-import-phase-interfered*))
+         (mv-let (code b0) (fn2-idc-stripe tx (fn2-fc-rows fn2-fc) fn2-id-decides fn2-fields)
+          (if (not (eq code :ok)) (mv code fn2-peer-imports fn2-succ-txns fn2-succ-slots fn2-id-decides fn2-pool)
+           (mv-let (code fn2-peer-imports fn2-pool)
+            (fn2-peer-import-detach-child tx b0 ok os og fn2-peer-imports fn2-succ-txns fn2-succ-slots fn2-id-decides fn2-fields fn2-pool)
+            (mv code fn2-peer-imports fn2-succ-txns fn2-succ-slots fn2-id-decides fn2-pool))))
+       (fn2-peer-import-clean-child tx ok os og nil fn2-peer-imports fn2-succ-txns fn2-succ-slots fn2-id-decides fn2-pool))
      (mv code fn2-core)))
    (fn2-core-preserves fn2-peer-import-abort (tx ok os og fn2-core) :position 1 :rows nil
     :hints (("Goal" :in-theory (enable fn2-core-wfp))))

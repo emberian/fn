@@ -9,6 +9,11 @@ field bases, and the actual pool owner. It validates the schema fields and
 reserves an owned name/digest copy before starting the existing bounded
 identity query. Generated per-transaction `fn2-peer-imports` state retains
 the original scalar fields, receipt identity, owner and copy generation.
+Each admitted identity-query start advances a non-wrapping runtime query
+incarnation. The importer captures that incarnation and checks it before
+declaration and cleanup; a replacement query is retained, including one
+with the same owner and key. Exhaustion refuses before query or scratch
+mutation. Query steps and transaction release preserve the incarnation.
 The pool has no immutable mode: this is a private owned copy, not a claim
 that arbitrary pool clients cannot modify memory.
 
@@ -24,6 +29,11 @@ An incomplete summary fold is declared before evidence and receipt slots.
 Partial argument-copy failure therefore cannot stage a complete transaction.
 Cleanup must retain a bound transaction across persistence uncertainty and
 must not discard another writer's transaction on detected interference.
+Initial interference leaves the private snapshot retained. A later import
+abort releases only that snapshot when the successor is actually idle with
+all slots empty and no live identity query references its pool generation.
+The foreign query and successor are unchanged. Bound work or a live alias
+refuses; cleanup can be retried after its owner finishes and releases it.
 
 The source fixture checks changed origin and occurrence, changed receipt,
 changed name/digest contents and tags, duplicate counts, partial copies,
