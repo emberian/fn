@@ -480,6 +480,7 @@ ACL2_BOOKS = \
   tests/pool-protected-floor-unit \
   tests/pool-credit-unit \
   tests/pool-digest-budget-unit \
+  tests/pool-digest-critical-unit \
   tests/pool-unit \
   tests/port-unit \
   tests/primitive-list-domain-unit \
