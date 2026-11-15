@@ -15,10 +15,10 @@ the bound arguments even when no lease was acquired. Extent refusal does the
 same. ABORTED-EMPTY permits only an exact same-owner/same-nonce no-IO retry;
 completed IDLE remains monotonic and ambiguity does not rearm a nonce.
 
-Unexpected END refusal first cancels the exact unsubmitted extent reservation.
-Only successful cancellation permits returning the leases and empty abort.
-Failure stops with uncertainty and retains the resources. The checkpoint
-role6 reservation/loan path is unchanged.
+Unexpected END refusal retains the extent and all credits and stops with
+uncertainty. The current producer lacks an end-to-end classification that
+would justify empty abort after that refusal. The checkpoint role6
+reservation/loan path is unchanged.
 
 Ordinary return checks the actual row, batch and owner generation. A FREE row
 can unwind only the current next-batch claim; DRAINING requires the current
@@ -41,8 +41,8 @@ settlement, FREE B row, and fully restored drain quotas with working protection
 unchanged. These are prepared source controls, not executed assertions or
 physical IO evidence.
 
-Source gates: structural Lisp parsing, direct B* imports, diff/secrets checks,
-and local closure resolution. The unit and simulated-composition closures are
-282 and 365 local books respectively. ACL2 admission, guard/cost/footprint
-qualification and runtime initialization of the configured schedule remain
-pending; the B consumer alone does not activate credit configuration.
+Source controls remain unexecuted. Current initialization configures the same
+profile before genesis; the ordinary producer connection and its actual
+stage/admission/return controls still require a composed qualification gate.
+Static service fit does not reserve an entire foreground transaction or prove
+physical maintenance capacity.
