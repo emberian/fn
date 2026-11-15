@@ -61,3 +61,22 @@ this transfer after completed cold authority and before cold base installation.
 Six source/mutation controls and three transformation identity/rejection
 controls pass; the explicit scratch-overwrite/retained-stripe ACL2 assertion is
 added but unrun. Actual live append and producer/read routing remain owned here.
+
+The live master now has a separate bounded archive pass after the prefix/suffix
+scan. `fn2-event-catalog-live-step` derives each next source from the exact tagged
+resident batch, checks the checkpoint-owned canonical source hold and appends one
+fact/seal to a previously empty retained row. Existing catalog rows stay
+immutable. The old catalog generation is retained; it is not compared to the
+new live snapshot token. The pending descriptor/cut and master token own the
+in-flight control. Consumer publication now requires the complete pending catalog
+subject before it swaps active authority/base, making that catalog current only
+at the successful join. Source-scanned alone cannot publish it.
+
+Shared parameterized subject readers serve active0 and pending1; the active
+wrapper additionally binds the runtime base. Structural transformation fixtures
+check the actual reader against its prior active0 source. The C=1,J=3 ACL2
+fixture now calls the real archive append and concludes exact retained seal and
+current catalog as well as old source/suffix retention; it remains unrun.
+Actual next-root3 pack/read routing and live C adoption remain outstanding. The
+summary owner owns the C adoption terminal and master stage insertion; activation
+must stay closed until their terminal is part of the consume antecedent.
