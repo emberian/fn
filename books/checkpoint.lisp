@@ -2,9 +2,54 @@
 (in-package "ACL2")
 (include-book "std/util/bstar" :dir :system)
 (include-book "format-check")
-(include-book "alloc")
+(include-book "commit-alloc")
 (include-book "vocab")
+(include-book "pool-read-contracts")
+(include-book "columns-guard-hints")
+(include-book "columns-carrier-contracts")
 (fn2-book-layer :b)
+
+; Reuse the allocator accounting API from COMMIT-ALLOC.
+; These additional output interfaces do not change allocator definitions.
+(defthm fn2-alloc-edge-count-natp
+ (implies (and (fn2-extentsp fn2-extents) (fn2-extents-wfp fn2-extents)
+               (fn2-alloc-slotp i fn2-extents))
+          (natp (fn2-alloc-edge-count i kind fn2-extents)))
+ :rule-classes :type-prescription
+ :hints ((fn2-columns-guard-hint '(fn2-extents) nil
+           '(fn2-alloc-edge-count) world)))
+(defthm fn2-alloc-edge-count-bound
+ (implies (and (fn2-extentsp fn2-extents) (fn2-extents-wfp fn2-extents)
+               (fn2-alloc-slotp i fn2-extents))
+          (< (fn2-alloc-edge-count i kind fn2-extents)
+             (+ 1 *fn2-alloc-edge-count-max*)))
+ :rule-classes :linear
+ :hints ((fn2-columns-guard-hint '(fn2-extents) nil
+           '(fn2-alloc-edge-count) world)))
+
+; Holder typing is irrelevant to this output: preserve the original true
+; EXTENTS facet even outside EDGE-ADD's served guard domain.
+(fn2-extents-preserves fn2-alloc-edge-add
+ (edge holder i epoch counter kind fn2-extents fn2-alloc-edges)
+ :position 1 :prefix "-EXTENTS"
+ :hyps ((fn2-extentsp fn2-extents) (fn2-extents-wfp fn2-extents)
+        (fn2-alloc-edgesp fn2-alloc-edges) (fn2-alloc-edges-wfp fn2-alloc-edges))
+ :hints ((append (fn2-columns-guard-hint '(fn2-extents fn2-alloc-edges)
+           '(fn2-alloc-account fn2-alloc-set-edge fn2-alloc-edge-count
+             fn2-alloc-reason fn2-alloc-retirement-intentp fn2-alloc-durable-edgep)
+           '(fn2-alloc-edge-add) world)
+          '(:use ((:instance fn2-alloc-edge-count-natp)
+                  (:instance fn2-alloc-edge-count-bound))))))
+
+; The edge holder DOES require the actual stored input guard and input types.
+(defcolumns-guarded-contracts fn2-alloc-edge-add
+ :carriers ((fn2-alloc-edges 2 :prefix "-EDGES")) :rows t
+ :hints ((append (fn2-columns-guard-hint '(fn2-extents fn2-alloc-edges)
+           '(fn2-alloc-account fn2-alloc-set-edge fn2-alloc-edge-count
+             fn2-alloc-reason fn2-alloc-retirement-intentp fn2-alloc-durable-edgep)
+           '(fn2-alloc-edge-add) world)
+          '(:use ((:instance fn2-alloc-edge-count-natp)
+                  (:instance fn2-alloc-edge-count-bound))))))
 ; Current native backend routes one image. Domain0 is the format writer's
 ; declared domain; foreign references must never alias this allocator.
 (defconst *fn2-checkpoint-served-storage-domain* 0)
@@ -81,6 +126,10 @@
                             fn2-checkpoint-bytes fn2-extents fn2-alloc-edges fn2-ops)
  (declare (xargs :stobjs (fn2-checkpoints fn2-checkpoint-refs fn2-checkpoint-bytes
                           fn2-extents fn2-alloc-edges fn2-ops)
+  :guard-hints ((fn2-columns-guard-hint
+                 '(fn2-checkpoints fn2-checkpoint-refs fn2-checkpoint-bytes
+                   fn2-extents fn2-alloc-edges fn2-ops)
+                 '(fn2-alloc-edge-add fn2-alloc-edge-matchesp) nil world))
   :guard (and (fn2-extents-wfp fn2-extents) (fn2-alloc-edges-wfp fn2-alloc-edges) (fn2-ops-wfp fn2-ops)
               (fn2-checkpoints-wfp fn2-checkpoints)
               (fn2-checkpoint-refs-wfp fn2-checkpoint-refs)
@@ -166,6 +215,9 @@
 (defun fn2-checkpoint-copy-hash (left dst src slot gen okind oslot ogen
                                 fn2-pool fn2-checkpoint-bytes)
  (declare (xargs :stobjs (fn2-pool fn2-checkpoint-bytes) :measure (nfix left)
+  :guard-hints (("Goal"
+    :use ((:instance fn2-pool-read-byte-type (idx src)))
+    :in-theory (disable fn2-pool-read)))
   :guard (and (fn2-pool-wfp fn2-pool) (fn2-checkpoint-bytes-wfp fn2-checkpoint-bytes)
               (natp left) (<= left 32) (natp dst) (natp src)
               (<= (+ dst left) (fn2-checkpoint-bytes-rows fn2-checkpoint-bytes)))))
@@ -175,6 +227,15 @@
     (let ((fn2-checkpoint-bytes (fn2-checkpoint-bytes-set-value dst byte fn2-checkpoint-bytes)))
      (fn2-checkpoint-copy-hash (- left 1) (+ 1 dst) (+ 1 src) slot gen okind oslot ogen
                                fn2-pool fn2-checkpoint-bytes))))))
+
+(fn2-checkpoint-bytes-preserves fn2-checkpoint-copy-hash
+ (left dst src slot gen okind oslot ogen fn2-pool fn2-checkpoint-bytes)
+ :position 1
+ :hyps ((fn2-poolp fn2-pool) (fn2-pool-wfp fn2-pool)
+        (natp left) (<= left 32) (natp dst) (natp src)
+        (<= (+ dst left) (fn2-checkpoint-bytes-rows fn2-checkpoint-bytes))
+        (fn2-checkpoint-bytesp fn2-checkpoint-bytes) (fn2-checkpoint-bytes-wfp fn2-checkpoint-bytes))
+ :hints (("Goal" :in-theory (e/d (fn2-pool-read) (fn2-checkpoint-bytes-rows)))))
 
 ; Descriptor root fields are an existing format declaration, in groups of
 ; seven. This helper consumes one root per call; callers resume at ROLE+1.
@@ -206,6 +267,16 @@
              (fn2-checkpoint-refs (fn2-checkpoint-ref-clear-build r fn2-checkpoint-refs)))
        (mv :ok fn2-checkpoint-refs fn2-checkpoint-bytes))))))))
 
+; The actual stored guard supplies readonly field/pool types as well as
+; mutable carrier invariants. Input bounds are checked in CAPTURE-ROOT itself.
+(defcolumns-guarded-contracts fn2-checkpoint-capture-root
+ :carriers ((fn2-checkpoint-refs 1 :prefix "-REFS")
+            (fn2-checkpoint-bytes 2 :prefix "-BYTES")) :rows t
+ :hints ((fn2-columns-guard-hint
+          '(fn2-fields fn2-pool fn2-checkpoint-refs fn2-checkpoint-bytes)
+          '(fn2-checkpoint-copy-hash fn2-checkpoint-ref-clear-build)
+          '(fn2-checkpoint-capture-root) world)))
+
 ; Called immediately after the descriptor's physical page checker succeeds,
 ; before another decode can replace header fields. It decodes only its payload
 ; and rejects trailing bytes. This is a decode operation, NOT authentication;
@@ -228,16 +299,66 @@
                                              okind oslot ogen fn2-fields fn2-pool)
      (mv (if (and (eq code :ok) (not (equal next (+ off header payload)))) :length code) fn2-fields))))))
 
+; The checker consumes the decoder's output shape, never its branch tree.
+(fn2-fields-preserves fn2-checkpoint-decode
+ (base slot gen off len okind oslot ogen fn2-fields fn2-pool) :position 1
+ :hyps ((fn2-fieldsp fn2-fields) (fn2-fields-wfp fn2-fields)
+        (fn2-poolp fn2-pool) (fn2-pool-wfp fn2-pool))
+ :hints (("Goal" :in-theory (disable fn2-fields-rows fn2-fields-value
+                                    fn2-format-checkpoint-descriptor-decode))))
+
+; The successful decoder establishes the destination room it checks itself.
+(defthm fn2-checkpoint-decode-ok-room-by-definition
+ (implies
+  (equal (car (fn2-checkpoint-decode base slot gen off len okind oslot ogen fn2-fields fn2-pool)) :ok)
+  (and (natp base)
+       (<= (+ base *fn2-format-checkpoint-descriptor-num-fields*) (fn2-fields-rows fn2-fields))))
+ :hints (("Goal" :in-theory (enable fn2-checkpoint-decode))))
+
+; Preserve the stored field width through the complete decoder carrier API.
+(defthm fn2-checkpoint-decode-value-type
+ (implies
+  (and (fn2-fieldsp fn2-fields) (fn2-fields-wfp fn2-fields)
+       (fn2-poolp fn2-pool) (fn2-pool-wfp fn2-pool)
+       (natp i) (< i (fn2-fields-rows fn2-fields)))
+  (unsigned-byte-p 60
+   (fn2-fields-value i
+    (mv-nth 1 (fn2-checkpoint-decode base slot gen off len okind oslot ogen fn2-fields fn2-pool)))))
+ :hints (("Goal"
+  :use ((:instance fn2-fields-value-natp
+          (fn2-fields (mv-nth 1 (fn2-checkpoint-decode base slot gen off len okind oslot ogen fn2-fields fn2-pool))))
+        (:instance fn2-fields-value-bound
+          (fn2-fields (mv-nth 1 (fn2-checkpoint-decode base slot gen off len okind oslot ogen fn2-fields fn2-pool)))))
+  :in-theory (disable fn2-checkpoint-decode fn2-fields-value fn2-fields-rows))))
+
+(defthm fn2-checkpoint-decode-value-integer
+ (implies
+  (and (fn2-fieldsp fn2-fields) (fn2-fields-wfp fn2-fields)
+       (fn2-poolp fn2-pool) (fn2-pool-wfp fn2-pool)
+       (natp i) (< i (fn2-fields-rows fn2-fields)))
+  (integerp
+   (fn2-fields-value i
+    (mv-nth 1 (fn2-checkpoint-decode base slot gen off len okind oslot ogen fn2-fields fn2-pool)))))
+ :hints (("Goal"
+  :use ((:instance fn2-fields-value-natp
+          (fn2-fields (mv-nth 1 (fn2-checkpoint-decode base slot gen off len okind oslot ogen fn2-fields fn2-pool)))))
+  :in-theory (disable fn2-checkpoint-decode fn2-fields-value fn2-fields-rows))))
+
+(encapsulate ()
+ (local (include-book "arithmetic-3/floor-mod/floor-mod" :dir :system))
 (defun fn2-checkpoint-copy-expected (i dst hash fn2-digests fn2-checkpoint-bytes)
  (declare (xargs :stobjs (fn2-digests fn2-checkpoint-bytes)
   :measure (nfix (- 32 (nfix i)))
+  :guard-hints ((fn2-columns-guard-hint
+                 '(fn2-digests fn2-checkpoint-bytes)
+                 '(floor mod fn2-digest-word fn2-fc-word-byte) nil world))
   :guard (and (natp i) (<= i 32) (natp dst)
               (fn2-digest-rowp hash fn2-digests) (fn2-checkpoint-bytes-wfp fn2-checkpoint-bytes)
               (<= (+ dst 32) (fn2-checkpoint-bytes-rows fn2-checkpoint-bytes)))))
  (if (or (not (natp i)) (>= i 32)) fn2-checkpoint-bytes
   (let* ((byte (fn2-fc-word-byte (fn2-digest-word hash (floor i 4) fn2-digests) (mod i 4)))
          (fn2-checkpoint-bytes (fn2-checkpoint-bytes-set-value (+ dst i) byte fn2-checkpoint-bytes)))
-   (fn2-checkpoint-copy-expected (+ 1 i) dst hash fn2-digests fn2-checkpoint-bytes))))
+   (fn2-checkpoint-copy-expected (+ 1 i) dst hash fn2-digests fn2-checkpoint-bytes)))))
 
 ; A locator is only a candidate. Neither preparation nor a valid descriptor
 ; grants publication, retirement coverage, or permission to drop an old root.
@@ -296,16 +417,21 @@
   (mv :owner fn2-checkpoints fn2-checkpoint-refs fn2-checkpoint-bytes)
   (fn2-checkpoint-prepare-body c checkpoint history incarnation domain unit epoch allocation kind len hash fn2-checkpoints fn2-checkpoint-refs fn2-checkpoint-bytes fn2-digests)))
 
+(encapsulate ()
+ (local (include-book "arithmetic-3/floor-mod/floor-mod" :dir :system))
 (defun fn2-checkpoint-hash-matchesp (i dst hash fn2-digests fn2-checkpoint-bytes)
  (declare (xargs :stobjs (fn2-digests fn2-checkpoint-bytes)
   :measure (nfix (- 32 (nfix i)))
+  :guard-hints ((fn2-columns-guard-hint
+                 '(fn2-digests fn2-checkpoint-bytes)
+                 '(floor mod fn2-digest-word fn2-fc-word-byte) nil world))
   :guard (and (natp i) (<= i 32) (natp dst)
               (fn2-digest-rowp hash fn2-digests) (fn2-checkpoint-bytes-wfp fn2-checkpoint-bytes)
               (<= (+ dst 32) (fn2-checkpoint-bytes-rows fn2-checkpoint-bytes)))))
  (if (or (not (natp i)) (>= i 32)) t
   (and (equal (fn2-checkpoint-bytes-value (+ dst i) fn2-checkpoint-bytes)
               (fn2-fc-word-byte (fn2-digest-word hash (floor i 4) fn2-digests) (mod i 4)))
-       (fn2-checkpoint-hash-matchesp (+ 1 i) dst hash fn2-digests fn2-checkpoint-bytes))))
+       (fn2-checkpoint-hash-matchesp (+ 1 i) dst hash fn2-digests fn2-checkpoint-bytes)))))
 
 (defun fn2-checkpoint-capture-roots (role c base slot gen okind oslot ogen
                                    fn2-fields fn2-pool fn2-checkpoint-refs fn2-checkpoint-bytes)
@@ -321,9 +447,14 @@
     (fn2-checkpoint-capture-roots (+ 1 role) c base slot gen okind oslot ogen
                                  fn2-fields fn2-pool fn2-checkpoint-refs fn2-checkpoint-bytes)))))
 
-; The successful page checker and descriptor decode are in ONE transition.
-; A caller cannot supply a verification flag. Buffer ownership and checker
-; continuation ownership must persist across :more, as for other B readers.
+(defcolumns-guarded-contracts fn2-checkpoint-capture-roots
+ :carriers ((fn2-checkpoint-refs 1 :prefix "-REFS")
+            (fn2-checkpoint-bytes 2 :prefix "-BYTES")) :rows t
+ :hints ((fn2-columns-guard-hint
+           '(fn2-fields fn2-pool fn2-checkpoint-refs fn2-checkpoint-bytes)
+           '(fn2-checkpoint-capture-root) '(fn2-checkpoint-capture-roots) world)))
+
+; The cold descriptor reader lives in checkpoint-descriptor-read.
 
 
 (defun fn2-checkpoint-pool-hash-matchesp (left dst src slot gen okind oslot ogen
@@ -386,13 +517,20 @@
 ; Leaf contracts consumed by the generated core faces. They preserve concrete
 ; table shape only; these are not checkpoint/durability keystones.
 
-(fn2-checkpoint-refs-preserves fn2-checkpoint-retain
- (c role edge fn2-checkpoints fn2-checkpoint-refs fn2-checkpoint-bytes fn2-extents fn2-alloc-edges fn2-ops)
+; The former EDGES-TYPE omitted readonly checkpoint typing and is refuted
+; by the committed whole-antecedent control. Other carrier facets stay exact.
+(defcolumns-carrier-contracts fn2-checkpoint-retain
  :carriers ((fn2-checkpoint-refs 1 :prefix "-REFS")
-            (fn2-extents 2 :prefix "-EXTENTS") (fn2-alloc-edges 3 :prefix "-EDGES")))
+            (fn2-extents 2 :prefix "-EXTENTS") (fn2-alloc-edges 3 :prefix "-EDGES"))
+ :typed-readonly (fn2-alloc-edges)
+ :hints ((fn2-columns-guard-hint
+                 '(fn2-checkpoints fn2-checkpoint-refs fn2-checkpoint-bytes
+                   fn2-extents fn2-alloc-edges fn2-ops)
+                 '(fn2-alloc-edge-add fn2-alloc-edge-matchesp) nil world)))
 (fn2-checkpoints-preserves fn2-checkpoint-install
  (c install-commit base slot gen okind oslot ogen fn2-checkpoints fn2-checkpoint-refs fn2-checkpoint-bytes
     fn2-fields fn2-pool fn2-alloc-edges fn2-extents fn2-ops) :position 1)
+; Descriptor-reader carrier obligations remain in checkpoint-descriptor-read.
 
 
 (fn2-checkpoints-preserves fn2-checkpoint-prepare-body
