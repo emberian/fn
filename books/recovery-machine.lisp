@@ -1064,8 +1064,10 @@
    (:do (code next) (fn2-recovery-release-step id row-generation) :accept ()
     :case (((:more) (:charge :bytes 4096 :steps *fn2-work-stage* :runnable t))
            ((:need-read) (:set (rc-stage 11)) (:charge :bytes 4096 :steps *fn2-work-stage* :runnable t))
-           ;; Complete-prefix release authority is not yet available. In
-           ;; particular :blocked never skips the original journal record.
+           ((:settled) (:set (rc-roff next) (rc-stage 0))
+            (:charge :bytes 4096 :steps *fn2-work-stage* :runnable t))
+           ;; Every refusal, including incomplete prefix authority, retains
+           ;; the original member offset and all physical proof claims.
            (:otherwise (:stop :recovery-replay)))))
   (replay-record :on-refusal ((:stop :recovery-bounds))
    (:do (code next wlen ev)

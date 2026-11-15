@@ -1,7 +1,7 @@
 ; Private selected-recovery RELEASE continuation. No archived source is invented.
 ; The original authenticated journal lease remains separate from evidence I/O.
 ; Historical VERIFY/installation reread and checker callbacks are connected.
-; Final release settlement/prefix authority remains blocked; this is not FREE.
+; Settlement requires the fully applied authenticated selected inventory.
 (in-package "ACL2")
 (include-book "std/util/bstar" :dir :system)
 (include-book "recovery-payload")
@@ -9,6 +9,7 @@
 (include-book "release-member-binding")
 (include-book "release-descriptor-check")
 (include-book "checkpoint-installation-binding")
+(include-book "checkpoint-release-inventory-apply")
 (fn2-book-layer :d)
 
 (defun fn2-release-read-hash (i src slot gen kind owner generation fn2-pool fn2-allocation-release)
@@ -468,6 +469,32 @@
      fn2-release-evidence fn2-release-evidence-candidates fn2-extents fn2-alloc-edges))
    (mv code fn2-core))))
 (fn2-core-preserves fn2-rp-release-own-evidence (id ogen fn2-core) :position 1 :rows nil)
+; Use registered core child lenses, not a parallel physical or index engine.
+; The source-specific caller retains original record/lease authentication. The
+; lower kernel consumes exactly its retained next offset only after indexed
+; logical FREE, construction cleanup and E SETTLED in one no-yield branch.
+(make-event
+ (let* ((children *fn2-checkpoint-release-inventory-apply-children*)
+        (bindings (fn2-arms-core-stobj-lets children (w state))))
+  (if (not (equal (len bindings) (len children)))
+   (er hard 'fn2-rp-release-settle "Missing selected inventory child lens.")
+   (value
+    `(progn
+      (defun fn2-rp-release-settle (id ogen fn2-core)
+       (declare (xargs :stobjs fn2-core :verify-guards nil
+        :guard (and (fn2-corep fn2-core) (fn2-core-wfp fn2-core))))
+       (if (not (and (fn2-rp-release-current-p id ogen fn2-core)
+                      (fn2-rp-release-read-target-p id ogen fn2-core)
+                      (= (fn2-machine-rc-stage id fn2-core) 13)
+                      (= (fn2-machine-pending id fn2-core) 0)))
+        (mv :invalid 0 fn2-core)
+        (stobj-let ,bindings
+         (code next fn2-allocation-release fn2-release-evidence fn2-checkpoint-construction fn2-extents)
+         (if (not (fn2-checkpoint-release-inventory-applied-p ,@children))
+          (mv :blocked 0 fn2-allocation-release fn2-release-evidence fn2-checkpoint-construction fn2-extents)
+          (fn2-release-replay-settlement-progress ,@*fn2-release-replay-settlement-children*))
+         (mv code next fn2-core))))
+      (fn2-core-preserves fn2-rp-release-settle (id ogen fn2-core) :position 2 :rows nil))))))
 (defun fn2-recovery-release-step (id ogen fn2-core)
  (declare (xargs :stobjs fn2-core :guard (fn2-core-wfp fn2-core)))
  (b* (((unless (and (fn2-rp-release-read-target-p id ogen fn2-core)
@@ -518,13 +545,13 @@
    ((= stage 7)
     (mv-let (owned fn2-core) (fn2-rp-release-own-evidence id ogen fn2-core)
      (mv (if (eq owned :owned) :more :invalid) 0 fn2-core)))
-   ((= stage 8) (mv :blocked 0 fn2-core))
+   ((= stage 8) (fn2-rp-release-settle id ogen fn2-core))
    (t (mv :invalid 0 fn2-core)))))
 (fn2-core-preserves fn2-recovery-release-step (id ogen fn2-core) :position 2 :rows nil)
-(defcost fn2-recovery-release-step :answers (:more :need-read :blocked :invalid) :bytes 4096
+(defcost fn2-recovery-release-step :answers (:more :need-read :settled :blocked :invalid) :bytes 4096
  :tables (fn2-core-allocation-release fn2-core-fc fn2-core-fc-context fn2-core-b3 fn2-core-fields fn2-core-pool fn2-core-digests
-          fn2-core-release-evidence fn2-core-release-evidence-candidates fn2-core-extents fn2-core-alloc-edges)
- :doc "One bounded descriptor/J authentication step or canonical installation member; authenticated coverage alone cannot free an allocation.")
+          fn2-core-release-evidence fn2-core-release-evidence-candidates fn2-core-extents fn2-core-alloc-edges fn2-core-checkpoint-construction)
+ :doc "One bounded descriptor/J authentication or exact indexed suffix settlement, dominated by applied selected inventory and all bank protection.")
 
 ; The kind handler runs before generic pending decrement. This observation
 ; deliberately does not invoke current-unit-auth-p, whose pending0 premise is
