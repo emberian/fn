@@ -61,4 +61,12 @@ class LiveReadiness(unittest.TestCase):
   self.assertIn('fn2-core-c-source-control',s)
   self.assertIn('fn2-core-checkpoint-summary',s)
   self.assertNotIn('fn2-checkpoint-summary-set-phase',s)
+ def test_persistent_route_capacity_is_not_transient_free_credit(self):
+  g=body(self.base,'fn2-run-load-geometry-current-p')
+  self.assertIn('(posp (fn2-ops-rows fn2-ops))',g)
+  self.assertIn('(posp (fn2-ops-out-slot-length fn2-ops))',g)
+  self.assertIn('(equal (fn2-ops-out-gen-length fn2-ops) (fn2-ops-out-slot-length fn2-ops))',g)
+  self.assertIn('(equal (fn2-ops-posted-fifo-length fn2-ops) (* 2 (fn2-ops-rows fn2-ops)))',g)
+  self.assertNotIn('fn2-ops-outbox-credits',g)
+  self.assertNotIn('fn2-ops-free-head',g)
 if __name__=='__main__':unittest.main()

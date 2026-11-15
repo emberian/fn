@@ -37,6 +37,11 @@
       (equal (fn2-run-loads-rows fn2-run-loads) (fn2-checkpoint-summary-leases-rows fn2-checkpoint-summary-leases))
       (equal (fn2-run-load-geometry-operations 0 fn2-run-load-geometry) (fn2-ops-rows fn2-ops))
       (equal (fn2-ops-rows fn2-ops) (fn2-run-load-ops-rows fn2-run-load-ops))
+      ; Persistent initialized routing capacity, not a demand for a currently
+      ; free descriptor or credit during exclusive publication.
+      (posp (fn2-ops-rows fn2-ops)) (posp (fn2-ops-out-slot-length fn2-ops))
+      (equal (fn2-ops-out-gen-length fn2-ops) (fn2-ops-out-slot-length fn2-ops))
+      (equal (fn2-ops-posted-fifo-length fn2-ops) (* 2 (fn2-ops-rows fn2-ops)))
       (equal (fn2-run-load-geometry-prefix 0 fn2-run-load-geometry) (+ 4 (fn2-run-load-geometry-upload-hash-rows 0 fn2-run-load-geometry)))
       (equal (fn2-run-load-geometry-format-rows 0 fn2-run-load-geometry) (fn2-fc-rows fn2-fc))
       (equal (fn2-fc-rows fn2-fc) (fn2-fc-context-rows fn2-fc-context))

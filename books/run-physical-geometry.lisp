@@ -17,7 +17,7 @@
  (declare (xargs :guard t))
  (and (unsigned-byte-p 32 (fn2-profile-t profile))
       (unsigned-byte-p 32 (fn2-b-read-rows profile))
-      (unsigned-byte-p 32 (fn2-profile-o profile))
+      (and (posp (fn2-profile-o profile)) (unsigned-byte-p 32 (fn2-profile-o profile)))
       (unsigned-byte-p 32 (fn2-b-run-cursor-rows profile))
       (unsigned-byte-p 32 (fn2-b-upload-windows profile))
       (unsigned-byte-p 32 (fn2-b-ctl-rows profile))
