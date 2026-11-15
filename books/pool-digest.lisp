@@ -108,7 +108,8 @@
       (fn2-rec-fetch-bytes m after partial dst slot gen off okind oslot ogen fn2-pool fn2-digests)
       (mv code after partial fn2-digests))))))
  :hints (("Goal" :induct (fn2-rec-fetch-bytes n next acc dst slot gen off okind oslot ogen fn2-pool fn2-digests)
-                 :in-theory (enable fn2-rec-fetch-bytes fn2-digest-rowp)))
+                 :in-theory (e/d (fn2-rec-fetch-bytes fn2-digest-rowp)
+                                 (fn2-rec-fetch-state-p unsigned-byte-p fn2-layout-byte fn2-rec-byte-at))))
  :rule-classes nil))
 
 (defun fn2-rec-fetch-step (budget next acc dst slot gen off okind oslot ogen fn2-pool fn2-digests)
