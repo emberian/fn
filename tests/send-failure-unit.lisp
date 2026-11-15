@@ -5,27 +5,27 @@
 
 (assert-event
  (and
-  (equal (fn2-host-result *fn2-action-send* :failed 4 0 4 nil)
+  (equal (mv-list 5 (fn2-host-result *fn2-action-send* :failed 4 0 4 nil))
          (list *fn2-outcome-failed* *fn2-reason-closed* 4 0 0))
-  (equal (fn2-host-result *fn2-action-send* :failed 2 0 4 nil)
+  (equal (mv-list 5 (fn2-host-result *fn2-action-send* :failed 2 0 4 nil))
          (list *fn2-outcome-failed* *fn2-reason-closed* 2 0 0))
-  (equal (fn2-host-result *fn2-action-send* :reset 2 0 4 nil)
+  (equal (mv-list 5 (fn2-host-result *fn2-action-send* :reset 2 0 4 nil))
          (list *fn2-outcome-failed* *fn2-reason-reset* 2 0 0))
-  (equal (fn2-host-result *fn2-action-send* :eof 4 0 4 nil)
+  (equal (mv-list 5 (fn2-host-result *fn2-action-send* :eof 4 0 4 nil))
          (list *fn2-outcome-failed* *fn2-reason-closed* 4 0 0))
-  (equal (fn2-host-result *fn2-action-send* :ok 4 0 4 nil)
+  (equal (mv-list 5 (fn2-host-result *fn2-action-send* :ok 4 0 4 nil))
          (list *fn2-outcome-done* *fn2-reason-none* 4 0 0))
-  (equal (fn2-host-result *fn2-action-send* :ok 2 0 4 nil)
+  (equal (mv-list 5 (fn2-host-result *fn2-action-send* :ok 2 0 4 nil))
          (list *fn2-outcome-short* *fn2-reason-none* 2 0 0))
-  (equal (fn2-host-result *fn2-action-send* :cancelled 2 0 4 nil)
+  (equal (mv-list 5 (fn2-host-result *fn2-action-send* :cancelled 2 0 4 nil))
          (list *fn2-outcome-cancelled* *fn2-reason-none* 2 0 0))
   ; Productive Receive still delivers its bytes before the sticky close.
-  (equal (fn2-host-result *fn2-action-receive* :failed 2 0 4 nil)
+  (equal (mv-list 5 (fn2-host-result *fn2-action-receive* :failed 2 0 4 nil))
          (list *fn2-outcome-done* *fn2-reason-none* 2 0 0))
-  (equal (fn2-host-result *fn2-action-receive* :failed 0 0 4 nil)
+  (equal (mv-list 5 (fn2-host-result *fn2-action-receive* :failed 0 0 4 nil))
          (list *fn2-outcome-failed* *fn2-reason-closed* 0 0 0))
   ; Simulator release accounting is orthogonal to terminal failure.
-  (equal (fn2-sim-terminal-values *fn2-action-send* :failed 4 0 4 t nil)
+  (equal (mv-list 5 (fn2-sim-terminal-values *fn2-action-send* :failed 4 0 4 t nil))
          (list *fn2-outcome-failed* *fn2-reason-closed* 4 1 0))))
 
 ; Same controller/native-boundary composition as fn2-n-tls-ready. The
@@ -53,7 +53,7 @@
                                     fn2-tls-transport fn2-tls-record))
       ((mv status & & count & fn2-tls-transport fn2-tls-record)
        (fn2-tls-record-next 8 0 fn2-tls-transport fn2-tls-record))
-      (posted (fn2-host-result *fn2-action-send* (if (eq status :done) :ok status) count 0 4 nil)))
+      (posted (mv-list 5 (fn2-host-result *fn2-action-send* (if (eq status :done) :ok status) count 0 4 nil))))
   (mv (and (eq bound :ok)
            (equal (list a1 k1 o1 n1 a2 k2 o2 n2 a3 k3 o3 n3)
                   '(:act 13 0 4 :act 4 0 3 :act 5 0 3))
