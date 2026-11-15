@@ -86,3 +86,30 @@ The boot continuation now follows HELD through actual empty-C preflight, bounded
 Boot now derives the recovery origin through the same cold-source predicate as directory installation. Full recovery uses base0 only with empty authority/open allocator. Selected recovery records exact C/event/source tag and seeds the existing recovery chain digest from the actual mapped C predecessor seal. The unchanged common prepare operation still owns resource acquisition. Discovery, payload and replay origins use the captured base; the source transformation preserves the base0 class.
 
 Cold boot still stops before starting this recovery path until actual phase4 settlement, suffix Merkle reconstruction and persisted epoch closure are composed. The raw source edits and transformation controls do not qualify those operations.
+
+The private checkpoint-suffix-allocation cursor now observes one FREE link per
+step under the same actual selected/projected owner/token/common generation.
+It retains the exact decoded allocation tuple, containing commit>C and allocator
+head/class/epoch metadata. Source, stripe or metadata drift refuses without
+unlinking. A complete predecessor walk unlinks the exact target through the
+shared ordinary adoption mutation, then commits the recorded owner through the
+same commit transition. Missing/cyclic links are refusal, never suffix completion.
+No served face exports this private primitive: actual rc-base/rc-commit and
+chained persisted-source admission remain required in the recovery wrapper.
+
+The closed high-water observer raises only consistency metadata from an admitted
+historical identity, retaining phase4 and epoch-begun0. Ordinary reserve already
+refuses MAX counter before increment; cursor admission likewise refuses an
+unrepresentable successor before unlink. A strictly later persisted writer epoch
+still belongs to the parent-owned final transition. Source controls cover actual
+head/interior unlink, wrong predecessor/stale identity, and selected actor/source,
+decoded-stripe or allocator metadata drift between cursor calls. Selected closure
+and decoded-record provenance are explicit synthetic fixture premises. Assertions
+and ACL2 qualification remain UNRUN.
+
+Post-fence orphan/quarantine disposal remains required implementation scope, not
+permanent recovery-candidate leakage as a safety substitute. The parent owns the
+actual persisted newer epoch/backend exclusion evidence. This lane owns the
+subsequent bounded classification/cancel consumer, requiring that exact evidence
+and absence of real durable source obligations. Unknown retained reservations
+stay quarantined meanwhile; no disposal/open/FREE activation is enabled here.
