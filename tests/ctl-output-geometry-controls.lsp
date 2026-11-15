@@ -8,11 +8,11 @@
  `(let ,bindings (multiple-value-bind ,names ,computation ,@body)))
 (defun fn2-ctl-snapshot-read-code (ctl core) (declare (ignore core)) (if (= ctl 1) :ok :bounds))
 (defun fn2-machine-slot (ctl core) (declare (ignore ctl)) (getf core :slot 0))
-(dolist (name '(fn2-ctl-table fn2-cns-table fn2-core-fc fn2-core-b3 fn2-core-fields))
+(dolist (name '(fn2-ctl-table fn2-cns-table fn2-core-fc fn2-core-b3 fn2-core-fields fn2-core-cns-sources))
  (eval `(defun ,name (core) core)))
 (loop for (name key default) in '((fn2-ctl-rows :connections 2) (fn2-cns-rows :sources 2)
                                  (fn2-fc-rows :formats 32) (fn2-b3-rows :hashers 32)
-                                 (fn2-fields-rows :fields 4096))
+                                 (fn2-fields-rows :fields 4096) (fn2-cns-sources-rows :jobs 2))
  do (eval `(defun ,name (core) (getf core ,key ,default))))
 (with-open-file (in "books/machines-b.lisp")
  (loop for form = (read in nil :end) until (eq form :end) do
@@ -28,3 +28,8 @@
 (assert (equal (multiple-value-list (fn2-ctl-fc-row 1 '(:slot 1 :hashers 31))) '(:bounds 0)))
 (assert (equal (multiple-value-list (fn2-ctl-fc-row 1 '(:slot 1 :fields 3072))) '(:bounds 0)))
 (format t "CTL ACTUAL GEOMETRY SOURCE CONTROLS PASS: separate rows, mismatched-table alias refused, short stripe refused~%")
+
+; Source-job dimensions, not just CNS capacity, drive source hash rows.
+(assert (= (fn2-b-ctl-runtime-row 1 2 2 32) (fn2-b-cns-source-row 0 3 32)))
+(assert (equal (multiple-value-list (fn2-ctl-fc-row 1 '(:slot 1 :jobs 3))) '(:bounds 0)))
+(format t "CTL ACTUAL GEOMETRY SOURCE CONTROL PASS: source-job/CNS mismatch refused~%")
