@@ -1268,7 +1268,7 @@
     "current_foundation_raw_keys_match": 34,
     "old_receipt_scope": "Original prefoundation reader34 remains historical; only10oldkeys unchanged"
   },
-  "pending_source_join": "None required for granted B3retry or ARM/storage37 pilot. Both future wholebook results pending; no RAW/app grant.",
+  "pending_source_join": "No required source join pending; B3 rawprojection pilot and COPY DATA law source repair active. BroadRAW/app gated on actual producers.",
   "foundation_join": {
     "source": "6e7a1a9c105f2ccfeb0b06f32c0c566378cf62d9",
     "rows_source": "31635689e152fa20aa3e9eb18ae456ebe2397b64",
@@ -1311,7 +1311,7 @@
   },
   "dimension_interfaces_join": {
     "pool_source": "2c5e7b6daa6da6044e1a0f688d0208d917df45d1",
-    "B3_source": "5f69d871d587d7fb43bc8c96d3c778b0d571e3ee",
+    "B3_source": "ebdea5a719ec3cd30a986dd79a4f7acc2c65223b",
     "ground_fixture_source": "4d6b4ba6d",
     "scope": "Reviewed source-only producer interfaces; all existing runtime/guards/H+C unchanged, new claims UNADMITTED. No wholeRAW/FETCH claim.",
     "pool_domain": "Unconditional metadata-only ROWS/backing-DATA equations derived from actual admitted ABI; no borrowed recognizer",
@@ -1331,7 +1331,15 @@
     "pool_qualified_receipt": "/tmp/pool-dim-current-qualified12-receipt.json",
     "pool_status": "Current wholeleaf AUTHORPASS0.06s289steps+record12qualified11reuse1new; no ARM/RAW inference",
     "B3_parent_status": "Current14parent recordqualified12reuse2new; newwordleaf unproved, INIT firstrefusal0.01s295, reviewed scalarobserver hintfix pendingfreshpilot",
-    "B3_parent_receipt": "docs/design/receipts/b3-word-parent-ebce9812.json"
+    "B3_parent_receipt": "docs/design/receipts/b3-word-parent-ebce9812.json",
+    "B3_status": "Wholeword leaf UNPROVED; generated raw projections preserve exact public premises and derive from actual observer body, current pilot pending",
+    "arm_storage_qualification": {
+      "receipt": "docs/design/receipts/served-family-arm-storage-current37-record.json",
+      "current_raw_keys_match": 37,
+      "scope": "Actual37familyclosure qualified at8aeb; inherited perbook source-status labels describe planning inputs, not absence/presence of the audited certificate. No RAW/app claim.",
+      "recorded_this_campaign": 11,
+      "initial_reuse": 26
+    }
   },
   "current_source_overlays": [
     "6e7a1a9c1",
