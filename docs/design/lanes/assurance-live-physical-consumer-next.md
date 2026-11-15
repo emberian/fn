@@ -21,7 +21,7 @@ query recipe, with owned rollback on definite refusal. The explicit aggregate
 storage-rank receipt remains held until both scratch and query jobs return.
 There is no new same-rank pool wait after a physical bundle has been acquired.
 
-Live readiness is being separated from cold initialization. Cold callers still
+Live readiness is separate from cold initialization. Cold callers still
 require initialized zero-history routing rows and a currently unused full query
 bundle. The live constructor binds the actual pending catalog namespace and
 EXCLUSIVE writer token/cuts; every live turn validates that receipt. Live scans
@@ -35,9 +35,9 @@ The live writer's current install and Cbase steps have no pool carrier and issue
 no I/O. Requiring another unused query bundle while old actors retain parked
 windows can block publication behind actors waiting for HELD to end. The live
 scan therefore establishes persistent geometry/quiescence, while each new
-request continues its real all-or-refuse capacity admission. Confirmation of
-remaining retirement/promotion allocation behavior and a real producer-driven
-writer-progress regression are still required before this is called closed.
+request continues its real all-or-refuse capacity admission. Retirement and promotion allocate no new windows or I/O. A real post-Fence
+primitive resource control exercises parked pressure and writer scan progress;
+it does not establish productive second-adoption or served lookup ancestry.
 
 Remaining connected work:
 
@@ -45,13 +45,18 @@ Remaining connected work:
   metadata DROP. Its metadata observer join alone does not close this port.
   Preserve retained payload E*N holds, captured MID, SOURCE/STORED identities,
   SEND handback and current cancellation/refresh behavior.
-- Restore owns bounded retirement/cache cleanup, pending catalog promotion and
-  the sole typed APPLIED/reopen endpoint. Resource readiness grants no source
-  selection or publication authority.
-- The real post-Fence fixture needs restore providers `42d9281ae`, `0e18a52b0`
-  and `5064aafc2`, including their actual assembly event invocations. They are
-  not in this lane's older cold base. Its bound-I/O control is explicitly an
-  APPLYING refusal/actual-engine witness, not a served semantic lookup.
+- Typed catalog, Cbase, install and retirement providers are composed with their
+  actual assembly event invocations. Restore is replacing the old atomic
+  520-cell promotion with bounded PROMOTING continuation; the old 2016-byte
+  declaration counts destination footprint, not complete work. No typed finish
+  activation is justified before that repair.
+- Sealer source commits e34bd0eea and 0399c6004 are composed: eight actual
+  input cursor pairs, entry scratch, prefix hash and first output page are
+  admitted before physical merge. Exact source receipt stays through I/O and
+  drains before pool wait. Later resident output growth remains unfinished.
+- Shared run-page-step declares 4096 bytes although COPY can read and write
+  4096 bytes each. VERIFY delegates format-run; the complete phase accounting
+  must be derived rather than assuming a doubled constant closes the callback.
 - After those joins, exercise real REGISTER/APPEND, publication, adoption and
   before/after served lookup. Current prepared units remain unexecuted.
 
