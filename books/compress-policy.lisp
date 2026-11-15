@@ -108,7 +108,9 @@
  (implies (natp credit)
   (natp (mv-nth 1 (fn2-compress-observe raw used made ri ro credit ratio burst))))
  :rule-classes :type-prescription
- :hints (("Goal" :in-theory (disable fn2-compress-observe)
+ :hints (("Goal" :in-theory (disable fn2-compress-observe
+                             fn2-compress-observe-credit-bounded
+                             fn2-compress-observe-refusal-frame-by-definition)
           :cases ((equal (mv-nth 0 (fn2-compress-observe raw used made ri ro credit ratio burst)) :bounds))
           :use (fn2-compress-observe-credit-bounded
                 fn2-compress-observe-refusal-frame-by-definition))))
@@ -116,7 +118,9 @@
 (defthm fn2-compress-observe-credit-u32
  (implies (and (unsigned-byte-p 32 credit) (unsigned-byte-p 32 burst))
   (unsigned-byte-p 32 (mv-nth 1 (fn2-compress-observe raw used made ri ro credit ratio burst))))
- :hints (("Goal" :in-theory (disable fn2-compress-observe)
+ :hints (("Goal" :in-theory (disable fn2-compress-observe
+                             fn2-compress-observe-credit-bounded
+                             fn2-compress-observe-refusal-frame-by-definition)
           :cases ((equal (mv-nth 0 (fn2-compress-observe raw used made ri ro credit ratio burst)) :bounds))
           :use (fn2-compress-observe-credit-bounded
                 fn2-compress-observe-refusal-frame-by-definition))))
