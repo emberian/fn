@@ -117,6 +117,9 @@
         (mv :more fn2-checkpoint-summary fn2-checkpoint-cbase-holds fn2-extents fn2-alloc-edges fn2-run-installed)))
       ((unless (and (equal e n) (equal (fn2-checkpoint-cbase-holds-seen c fn2-checkpoint-cbase-holds) 0)))
        (mv :uncertain fn2-checkpoint-summary fn2-checkpoint-cbase-holds fn2-extents fn2-alloc-edges fn2-run-installed))
+      ; The last edge notification may have been consumed while this hold
+      ; still vetoed teardown. Publish actual availability as a new dirty cut.
+      (fn2-extents (update-fn2-alloc-protection-dirty 1 fn2-extents))
       (fn2-checkpoint-summary (fn2-checkpoint-summary-set-phase s *fn2-checkpoint-summary-phase-retired* fn2-checkpoint-summary))
       (fn2-checkpoint-cbase-holds (fn2-checkpoint-cbase-holds-set-phase c *fn2-checkpoint-cbase-phase-released* fn2-checkpoint-cbase-holds)))
   (mv :released fn2-checkpoint-summary fn2-checkpoint-cbase-holds fn2-extents fn2-alloc-edges fn2-run-installed)))
