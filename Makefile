@@ -346,6 +346,7 @@ ACL2_BOOKS = \
   tests/conn-unit \
   tests/consumer-codec-unit \
   tests/fnct-append-boundary-unit \
+  tests/fnct-stream-unit \
   tests/consumer-commit-unit \
   tests/consumer-helm \
   tests/consumer-mini \
