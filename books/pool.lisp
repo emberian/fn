@@ -898,6 +898,25 @@
                       fn2-pool-lease-op-slot fn2-pool-lease-op-gen fn2-pool-hand-to-kind
                       fn2-pool-hand-to-slot fn2-pool-hand-to-gen))
   (in-theory (set-difference-theories (current-theory :here) (theory 'fn2-pool-frame-raw-theory)))
+  ;; Admission and owner tests only choose refusal or the checked state update.
+  ;; Conservation uses the update's row/frame interfaces, not credit arithmetic
+  ;; or the representation of an owner identity or credit-group selector.
+  (in-theory (disable fn2-pool-reservable-count fn2-pool-credit-group
+                      fn2-pool-ownerp fn2-pool-mrefp fn2-pool-release-countp))
+
+  ;; Expose the successful release admission bounds once, without reopening
+  ;; the admission decision in every class, row and whole-invariant proof.
+  (defthm fn2-pool-release-countp-workspace-bounds
+    (implies (and (fn2-pool-release-countp slot fn2-pool)
+                  (natp slot) (< slot (fn2-pool-rows fn2-pool))
+                  (equal (fn2-pool-state slot fn2-pool) *fn2-pool-state-workspace*))
+             (and (< (fn2-pool-rows fn2-pool) 4294967296)
+                  (< (fn2-pool-retired-count fn2-pool) (fn2-pool-rows fn2-pool))
+                  (implies (< (fn2-pool-class slot fn2-pool) (fn2-pool-nclasses fn2-pool))
+                           (< (fn2-pool-class-countsi (fn2-pool-class slot fn2-pool) fn2-pool)
+                              (fn2-pool-rows fn2-pool)))))
+    :rule-classes :forward-chaining
+    :hints (("Goal" :in-theory (enable fn2-pool-release-countp))))
 
   ;; Row invariant: one row's clause, and all rows but one.
   (defun fn2-pool-row-okp (i fn2-pool)
@@ -996,10 +1015,44 @@
                                 (:instance fn2-pool-row-okp-by-key (fn2-pool (,w j v fn2-pool)))))))
               (fn2-pool-key-frame-events (cdr writers))))))
   (make-event (cons 'progn (fn2-pool-key-frame-events *fn2-pool-frame-writers*)))
+  ;; These writers do not occur in the exact row key. Keep the original
+  ;; different-row contracts above; add stronger same-row frames under fresh
+  ;; names so byte/query-only operations need not open the row invariant.
+  (defun fn2-pool-ignored-key-frame-events (writers)
+    (declare (xargs :guard (symbol-listp writers)))
+    (if (atom writers) nil
+      (let ((w (car writers)))
+        (if (member-eq w '(fn2-pool-set-query-ref-count fn2-pool-set-next-free
+                          fn2-pool-set-owner-kind fn2-pool-set-owner-slot fn2-pool-set-owner-gen
+                          fn2-pool-set-lease-op-slot fn2-pool-set-lease-op-gen
+                          fn2-pool-set-hand-to-kind fn2-pool-set-hand-to-slot fn2-pool-set-hand-to-gen))
+            (cons `(defthm ,(fn2-pool-frame-name 'fn2-pool-row-okp-any-row w)
+                     (equal (fn2-pool-row-okp i (,w j v fn2-pool))
+                            (fn2-pool-row-okp i fn2-pool))
+                     :hints (("Goal" :in-theory (disable fn2-pool-row-okp)
+                              :use ((:instance fn2-pool-row-okp-by-key)
+                                    (:instance fn2-pool-row-okp-by-key
+                                               (fn2-pool (,w j v fn2-pool)))))))
+                  (fn2-pool-ignored-key-frame-events (cdr writers)))
+          (fn2-pool-ignored-key-frame-events (cdr writers))))))
+  (make-event (cons 'progn (fn2-pool-ignored-key-frame-events *fn2-pool-frame-writers*)))
+
   (defthm fn2-pool-row-okp-of-update-fn2-pool-retired-count
     (equal (fn2-pool-row-okp i (update-fn2-pool-retired-count v fn2-pool)) (fn2-pool-row-okp i fn2-pool))
     :hints (("Goal" :use ((:instance fn2-pool-row-okp-by-key)
                           (:instance fn2-pool-row-okp-by-key (fn2-pool (update-fn2-pool-retired-count v fn2-pool)))))))
+  ;; A readable-prefix update leaves the remaining row clauses unchanged.
+  (defthm fn2-pool-row-okp-fill-bound
+    (implies (fn2-pool-row-okp i fn2-pool)
+             (<= (fn2-pool-fill i fn2-pool) (fn2-pool-cap i fn2-pool)))
+    :rule-classes nil
+    :hints (("Goal" :in-theory (enable fn2-pool-row-okp))))
+  (defthm fn2-pool-row-okp-of-set-fill-bounded
+    (implies (and (fn2-pool-row-okp i fn2-pool) (natp i) (natp v)
+                  (<= v (fn2-pool-cap i fn2-pool))
+                  (not (equal (fn2-pool-state i fn2-pool) *fn2-pool-state-leased-in*)))
+             (fn2-pool-row-okp i (fn2-pool-set-fill i v fn2-pool)))
+    :hints (("Goal" :in-theory (enable fn2-pool-row-okp))))
   ;; Every writer at row S leaves the other rows' clauses alone.
   (defun fn2-pool-except-frame-events (writers)
     (declare (xargs :guard (symbol-listp writers)))
@@ -1285,21 +1338,52 @@
     (implies (and (consp l) (subsetp-equal f l))
              (subsetp-equal (remove-equal (car l) f) (cdr l)))
     :hints (("Goal" :use ((:instance fn2-pool-remove-subsetp (y f) (a (car l)) (x (cdr l)))))))
+  ;; Match the operation's named head directly instead of reopening subset
+  ;; semantics or injecting its complete implication in every update branch.
+  (defthm fn2-pool-subsetp-tail-remove-head
+    (implies (and (consp l) (equal h (car l))
+                  (subsetp-equal l f) (no-duplicatesp-equal l))
+             (subsetp-equal (cdr l) (remove-equal h f)))
+    :hints (("Goal" :in-theory (disable subsetp-equal no-duplicatesp-equal)
+             :use fn2-pool-subsetp-cdr-remove)))
+  (defthm fn2-pool-subsetp-remove-head-tail
+    (implies (and (consp l) (equal h (car l)) (subsetp-equal f l))
+             (subsetp-equal (remove-equal h f) (cdr l)))
+    :hints (("Goal" :in-theory (disable subsetp-equal no-duplicatesp-equal)
+             :use fn2-pool-remove-subsetp-cdr)))
   ; RESERVE: the head leaves its class's chain and free set together.
-  (defthm fn2-pool-reserve-class-okp
+  (defthm fn2-pool-reserve-body-class-okp
     (implies (and (fn2-poolp fn2-pool) (fn2-pool-wfp fn2-pool)
                   (fn2-pool-class-accountsp (fn2-pool-nclasses fn2-pool) fn2-pool)
                   (natp c2) (< c2 (fn2-pool-nclasses fn2-pool)))
-             (fn2-pool-class-okp c2 (mv-nth 3 (fn2-pool-reserve class okind oslot ogen fn2-pool))))
+             (fn2-pool-class-okp c2 (mv-nth 3 (fn2-pool-reserve-body class okind oslot ogen fn2-pool))))
     :hints (("Goal" :do-not '(generalize eliminate-destructors fertilize)
-             :in-theory (e/d (fn2-pool-class-okp) (fn2-pool-class-okp-of-accounts))
-             :use (                 (:instance fn2-pool-class-okp-of-accounts (n (fn2-pool-nclasses fn2-pool)) (c c2))
+             :in-theory (e/d (fn2-pool-class-okp)
+                             (fn2-pool-class-okp-of-accounts no-duplicatesp-equal subsetp-equal))
+             :use (fn2-pool-nclasses-at-most-16
+                   (:instance fn2-pool-class-headsi-type (c class))
+                   (:instance fn2-pool-class-headsi-type (c c2))
+                   (:instance fn2-pool-class-countsi-type (c class))
+                   (:instance fn2-pool-class-okp-of-accounts (n (fn2-pool-nclasses fn2-pool)) (c c2))
                    (:instance fn2-pool-class-okp-of-accounts (n (fn2-pool-nclasses fn2-pool)) (c class))
                    (:instance fn2-pool-free-chain-open (f (fn2-pool-rows fn2-pool))
                               (x (fn2-pool-class-headsi class fn2-pool)))
                    (:instance fn2-pool-free-chain-fuel (f (- (fn2-pool-rows fn2-pool) 1))
                               (g (fn2-pool-rows fn2-pool))
                               (x (fn2-pool-next-free (fn2-pool-class-headsi class fn2-pool) fn2-pool)))))))
+
+  (defthm fn2-pool-reserve-class-okp
+    (implies (and (fn2-poolp fn2-pool) (fn2-pool-wfp fn2-pool)
+                  (fn2-pool-class-accountsp (fn2-pool-nclasses fn2-pool) fn2-pool)
+                  (natp c2) (< c2 (fn2-pool-nclasses fn2-pool)))
+             (fn2-pool-class-okp c2 (mv-nth 3 (fn2-pool-reserve class okind oslot ogen fn2-pool))))
+    :hints (("Goal"
+             :in-theory (e/d (fn2-pool-reserve)
+                             (fn2-pool-reserve-body fn2-pool-class-okp
+                              fn2-pool-reserve-body-class-okp fn2-pool-class-okp-of-accounts))
+             :use (fn2-pool-reserve-body-class-okp
+                   (:instance fn2-pool-class-okp-of-accounts
+                              (n (fn2-pool-nclasses fn2-pool)) (c c2))))))
 
   (defthm fn2-pool-reserve-class-accounts
     (implies (and (fn2-poolp fn2-pool) (fn2-pool-wfp fn2-pool)
@@ -1370,13 +1454,25 @@
                       (natp ,slot) (< ,slot (fn2-pool-rows fn2-pool)))
                  (fn2-pool-row-okp ,slot ,q))
         :hints (("Goal" :do-not '(generalize eliminate-destructors fertilize)
-                 :in-theory (e/d (fn2-pool-row-okp) (fn2-pool-row-okp-of-invariant))
-                 :use ((:instance fn2-pool-slot-types (i ,slot))
+                 :in-theory ,(cond
+                               ((member-eq op '(fn2-pool-write fn2-pool-reset))
+                                '(disable fn2-pool-row-okp fn2-pool-row-okp-of-invariant))
+                               ((member-eq op '(fn2-pool-adapter-write fn2-pool-query-acquire fn2-pool-query-release))
+                                `(e/d (,op)
+                                      (fn2-pool-row-okp fn2-pool-row-okp-of-invariant
+                                       fn2-pool-input-code fn2-pool-handle-code fn2-pool-readable-code)))
+                               (t '(e/d (fn2-pool-row-okp) (fn2-pool-row-okp-of-invariant))))
+                 :use (,@(and (member-eq op '(fn2-pool-write fn2-pool-reset))
+                              `((:instance fn2-pool-row-okp-fill-bound (i ,slot))))
+                       (:instance fn2-pool-slot-types (i ,slot))
                        (:instance fn2-pool-row-okp-of-invariant
                                   (n (fn2-pool-rows fn2-pool)) (i ,slot)))))))
       (defthm ,(fn2-pool-op-sym op "-CONSERVATION")
         (implies (fn2-pool-semanticp fn2-pool) (fn2-pool-semanticp ,q))
         :hints (("Goal" :do-not '(generalize eliminate-destructors fertilize)
+                 :in-theory (disable ,(fn2-pool-op-sym op "-ROW-OKP")
+                                     ,(fn2-pool-op-sym op "-PRESERVES-TYPE")
+                                     ,(fn2-pool-op-sym op "-PRESERVES-WFP"))
                  :use (fn2-pool-semanticp-elim ,(fn2-pool-op-sym op "-ROW-OKP") ,(fn2-pool-op-sym op "-PRESERVES-TYPE")
                        ,(fn2-pool-op-sym op "-PRESERVES-WFP")
                        (:instance fn2-pool-semanticp-intro (s ,slot) (fn2-pool ,q)))))))))
