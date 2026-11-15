@@ -3,6 +3,7 @@ from pathlib import Path
 import sys,unittest
 ROOT=Path(__file__).resolve().parents[1];sys.path.insert(0,str(ROOT/'tools'))
 import lisp_rewrite as lr
+from replacement_bank_c_rewrite import project as project_bank
 from physical_c_root_rewrite import DATA,node,source,project_runs,project_range,project_machines,project_c_workspace,project_run_cursor_paths,project_join
 
 def forms(text):return { (getattr(x.items[0],'low',''),getattr(x.items[1],'low','')):source(text,x) for x in lr.parse(text).forms if isinstance(x,lr.Lst) and len(x.items)>1}
@@ -10,13 +11,16 @@ class PhysicalCurrentRoot(unittest.TestCase):
  def test_named_projection_idempotence(self):
   for book,fn in (('runs',project_runs),('range',project_range),('machines-c',lambda x:project_c_workspace(project_machines(x),'machines-c'))):
    actual=(ROOT/'books'/(book+'.lisp')).read_text()
-   self.assertEqual(fn(DATA['before'][book]),actual)
-   self.assertEqual(fn(actual),actual)
+   prior=fn(DATA['before'][book])
+   self.assertEqual(project_bank(book,prior),actual)
+   self.assertEqual(fn(prior),prior)
+   self.assertEqual(project_bank(book,actual),actual)
  def test_all_other_run_events_unchanged(self):
   old=forms(DATA['before']['runs']);new=forms((ROOT/'books/runs.lisp').read_text())
+  bank_expected=forms(project_bank('runs',project_runs(DATA['before']['runs'])))
   allowed={('defcolumns',n) for n in ('fn2-run-cursors','fn2-run-paths','fn2-run-installed')}|{('defun',n) for n in ('fn2-run-cursor-start','fn2-run-install','fn2-run-retired-next')}
   for key,value in old.items():
-   if key not in allowed:self.assertEqual(new[key],value,key)
+   if key not in allowed:self.assertEqual(new[key],bank_expected.get(key,value),key)
   # Qualified guard declarations are preserved even in changed constructors.
   for _,name in allowed:
    if ('defun',name) not in old:continue

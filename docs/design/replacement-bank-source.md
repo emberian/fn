@@ -32,7 +32,9 @@ physical-work refinement or productive two-adoption evidence.
 
 Remaining connected obligations before this can serve:
 
-- The constructor/C geometry/resident search packet is owned by c_actor_loaders.
+- The constructor/C geometry/resident search packet is composed as4161477a4
+  (donor c789c00f9). Eight source controls pass; its full-R constructor fixture
+  is unexecuted and explicitly uses synthetic Ref scalars, not verified media.
 - A bounded HELD prepublication bank check must reject or yield before durable
   Write/Fence acceptance if the inactive bank is not drained. Postpublication
   FIT alone is a safe refusal but cannot establish useful publication admission.
@@ -43,6 +45,16 @@ Remaining connected obligations before this can serve:
   old observer and prove refusal before durable acceptance, then progress after
   actual release. Cold reconstruction must preserve old proof holds across
   recovery. Those execution/critical evidence obligations are still unrun.
+
+The draft `checkpoint-bank-admission.lisp` supplies lower BEGIN/STEP/READY-P
+functions over `(token kind owner generation snapshot summary installed job)`.
+Its singleton retains the actual HELD owner/cut and active catalog identity;
+STEP inspects at most one actual inactive-bank cell. An occupied cell returns
+`:resources` without advancing the cursor. No pool reserve, durable mutation,
+or physical Write occurs in this provider. Four source controls pass. Actual
+registration, derived callback charge, MASTER post-HELD/pre-reserve routing and
+typed consumer receipt propagation remain unfinished. Its READY phase is a
+derived scan continuation, not a caller-supplied readiness flag.
 
 The current-root projection is based on ROOT42aba and preserves named newer
 foundation/C/reader providers. Untracked dependency leaves in this worktree
