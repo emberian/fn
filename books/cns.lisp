@@ -96,7 +96,7 @@
 (defconst *fn2-cns-right-consume* 0)
 (defconst *fn2-cns-scope-own-consumers* 0)
 
-(defcost fn2-cns-lookup-cursor :answers (:ok :more :miss :state :bounds) :bytes 2048
+(defcost fn2-cns-lookup-cursor :answers (:ok :more :miss :state :bounds) :bytes *fn2-c-read-callback-bytes*
  :tables (fn2-core-cns-read-work fn2-cns-table fn2-core-machines fn2-core-id-engine fn2-core-reads fn2-core-ranges fn2-core-range-sources fn2-core-seeks
           fn2-core-succ-txns fn2-core-run-cursors fn2-core-run-paths fn2-core-fields)
  :doc "Read the consumer cursor (position, version) from fn2-consumer-cursor and the principal's stream frontier (fn2-cns-stream-frontier).")
@@ -110,16 +110,16 @@
 
 (defcost fn2-cns-read-row :answers (:ok :bounds)
  :doc "The row's read row, in the cns block (the N read rows before the authority block's; machines-b's fn2-b-read-rows).")
-(defcost fn2-cns-item-next :answers (:found :end :more :miss :retry :lease :fault :state :bounds) :bytes 4096
+(defcost fn2-cns-item-next :answers (:found :end :more :miss :retry :lease :fault :state :bounds) :bytes *fn2-c-read-callback-bytes*
  :tables (fn2-core-cns-read-work fn2-cns-table fn2-core-machines fn2-core-id-engine fn2-core-reads fn2-core-ranges fn2-core-range-sources
           fn2-core-seeks fn2-core-succ-txns fn2-core-run-cursors fn2-core-run-paths
           fn2-core-fields fn2-core-pool)
  :doc "The principal's next addr entry past a position up to the frontier, its article row and the item type the page's room allows: (mv code position article type bytes unit epoch allocation).")
-(defcost fn2-cns-put-item :answers (:ok :full :dropped :fault :more :miss) :bytes 8192
+(defcost fn2-cns-put-item :answers (:ok :full :dropped :fault :more :miss) :bytes *fn2-c-read-callback-bytes*
  :tables (fn2-core-id-engine fn2-core-cns-read-work fn2-cns-table fn2-ctl-table fn2-core-machines fn2-core-reads fn2-core-ranges fn2-core-range-sources fn2-core-seeks
           fn2-core-succ-txns fn2-core-run-cursors fn2-core-run-paths fn2-core-fields fn2-core-pool)
  :doc "Encode one page item in the lease (its Message-ID from the overview row, a record's octets read there, a reference's count and content) and append it to the control range: (mv code at len).")
-(defcost fn2-cns-put-article :answers (:ok :absent :full :dropped :fault :more :miss) :bytes 8192
+(defcost fn2-cns-put-article :answers (:ok :absent :full :dropped :fault :more :miss) :bytes *fn2-c-read-callback-bytes*
  :tables (fn2-core-id-engine fn2-core-cns-read-work fn2-cns-table fn2-ctl-table fn2-core-machines fn2-core-reads fn2-core-ranges fn2-core-range-sources fn2-core-seeks
           fn2-core-succ-txns fn2-core-run-cursors fn2-core-run-paths fn2-core-fields fn2-core-pool)
  :doc "Fetch's article: the occurrence's Message-ID checked against the request's, its octets (read into the lease) appended to the control range: (mv code at len).")
@@ -141,7 +141,7 @@
 (defcost fn2-cns-post-reply :answers (:ok :dropped :fault) :bytes 512
  :tables (fn2-ctl-table fn2-core-machines fn2-core-fields fn2-core-digests fn2-core-b3 fn2-core-pool)
  :doc "Encode the kind 28 reply after the request in the control range and post its extent to the waiting control connection.")
-(defcost fn2-cns-decode-port :answers (:ok :refused :more :miss) :bytes 2048
+(defcost fn2-cns-decode-port :answers (:ok :refused :more :miss) :bytes *fn2-c-read-callback-bytes*
  :tables (fn2-core-id-engine fn2-core-cns-read-work fn2-cns-table fn2-core-machines fn2-core-reads fn2-core-ranges fn2-core-range-sources fn2-core-seeks fn2-core-run-cursors fn2-core-run-paths
           fn2-core-fields)
  :doc "Decode a kind 4 request's code and fields into the request row: (mv answer reason verb cid cstart to lim epoch wait-ms op fstart noff nlen).")
@@ -1808,14 +1808,14 @@
      (defun fn2-cns-entry-mid (stream art position pf lslot lgen lk ls lg x fn2-core)
        (declare (xargs :stobjs fn2-core :guard (fn2-core-wfp fn2-core)))
        (b* (((unless (fn2-cns-mid-window-p x lslot lgen lk ls lg fn2-core)) (mv :state 0 0 fn2-core))
-            ((mv wc phase number at ms ml stamp & fn2-core)
+            ((mv wc phase number at ms ml stamp absent fn2-core)
              (fn2-cns-work-open x 3 (nfix stream) (nfix art) (nfix position) (nfix pf) (nfix lslot) (nfix lgen) fn2-core))
             ((unless (eq wc :ok)) (mv wc 0 0 fn2-core)))
         (cond
          ((equal phase *fn2-cns-read-work-done*)
           (mv-let (pc published) (fn2-successor-published fn2-core)
            (if (and (eq pc :ok) (equal stamp (nfix published)))
-            (mv :ok (nfix ms) (nfix ml) fn2-core)
+            (mv (if (equal absent 1) :absent :ok) (nfix ms) (nfix ml) fn2-core)
             (mv :retry 0 0 fn2-core))))
          ((equal phase 1)
           (b* (((mv c0 fn2-core) (fn2-read-key x :lo *fn2-overview-entry-field-group* (nfix stream) fn2-core))
@@ -1854,10 +1854,13 @@
                ((mv mc start len) (fn2-cns-core-mid-span lslot lgen at (+ at (nfix copied)) lk ls lg fn2-core))
                ((mv pc published) (fn2-successor-published fn2-core))
                (ok (and (eq oc :ok) (eq mc :ok) (eq pc :ok)))
-               ((mv saved fn2-core) (fn2-cns-work-save x 3 (if ok *fn2-cns-read-work-done* 0)
-                (nfix number) (nfix at) (nfix start) (nfix len) (nfix published) 0 fn2-core)))
-           (mv (if (not (eq saved :ok)) saved (if ok :ok (if row :fault :absent)))
-               (if ok (nfix start) 0) (if ok (nfix len) 0) fn2-core)))
+               (terminal (and (eq pc :ok) (or ok (not row))))
+               ((mv saved fn2-core) (fn2-cns-work-save x 3 (if terminal *fn2-cns-read-work-done* 0)
+                (nfix number) (nfix at) (if ok (nfix start) 0) (if ok (nfix len) 0)
+                (nfix published) (if row 0 1) fn2-core)))
+           ; Consume this C step now. The caller may start its article
+           ; lookup only on a later callback's owned terminal-cache branch.
+           (mv (if (not (eq saved :ok)) saved (if terminal :more :fault)) 0 0 fn2-core)))
          (t (mv :state 0 0 fn2-core)))))
 
      (fn2-cns-natp-outputs fn2-cns-entry-mid (stream art position pf lslot lgen lk ls lg x fn2-core) (1 2))
