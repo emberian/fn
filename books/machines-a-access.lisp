@@ -5,6 +5,7 @@
 
 (defmacro fn2-machine-access-events ()
  '(progn
+(make-event (value (fn2-machine-partition-runtime-class-event (w state))))
 (defun fn2-core-origin-values (fn2-core)
  (declare (xargs :stobjs fn2-core :guard (fn2-core-wfp fn2-core)))
  (stobj-let ((fn2-origin (fn2-core-origin fn2-core))) (lineage domain incarnation)
@@ -240,7 +241,7 @@
   (if (or (not (natp o)) (>= o *fn2-machine-admitted-max*)) nil
     (if (and (not (equal (fn2-machine-admission-head o fn2-core) *fn2-none*))
              (< 0 (fn2-machine-admission-credits o fn2-core))
-             (fn2-machine-pool-has-p (fn2-machine-partition-classes o) fn2-core))
+             (fn2-machine-pool-has-p (fn2-machine-partition-runtime-classes o fn2-core) fn2-core))
         o
       (fn2-machine-admission-ready-ord (+ 1 o) fn2-core))))
 (defthm fn2-machine-admission-ready-ord-range

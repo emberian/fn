@@ -853,10 +853,12 @@
                     (not (equal (fn2-upload-row-word id fn2-core) 0))
                     (equal (fn2-upload-row-pending id fn2-core) 0)
                     (or (equal (fn2-upload-row-lease id fn2-core) *fn2-upload-lease-none*)
-                        (and (equal (fn2-upload-row-stream-active id fn2-core) 1)
-                             (member-equal (fn2-upload-row-phase id fn2-core)
-                               (list *fn2-upload-state-stream-init* *fn2-upload-state-stream-write*
-                                     *fn2-upload-state-stream-receiving*))
+                        (and (equal (fn2-upload-row-lease id fn2-core) *fn2-upload-lease-held*)
+                             (or (equal (fn2-upload-row-stream-active id fn2-core) 0)
+                                 (and (equal (fn2-upload-row-stream-active id fn2-core) 1)
+                                      (member-equal (fn2-upload-row-phase id fn2-core)
+                                        (list *fn2-upload-state-stream-init* *fn2-upload-state-stream-write*
+                                              *fn2-upload-state-stream-receiving*))))
                              (let ((ls (fn2-upload-row-lslot id fn2-core))
                                    (lg (fn2-upload-row-lgen id fn2-core)))
                               (stobj-let ((fn2-pool (fn2-core-pool fn2-core))) (ok)
