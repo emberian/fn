@@ -98,13 +98,35 @@
 (defconst *fn2-b-range-source-cursors* *fn2-b-seal-source-cursors*)
 (defconst *fn2-b-read-loader-jobs* (+ 1 *fn2-b-range-source-cursors*))
 (defconst *fn2-b-query-loader-jobs* (* *fn2-b-query-read-rows* *fn2-b-read-loader-jobs*))
-(defun fn2-b-run-cursor-rows (profile)
+; The checkpoint source retains its original row. The archive owns a separate
+; row/checker; neither worker may borrow the other's in-flight physical cursor.
+(defun fn2-b-checkpoint-source-cursor (profile)
  (declare (xargs :guard t))
  (+ (nfix (fn2-profile-t profile)) (* (+ 1 *fn2-b-range-source-cursors*) (fn2-b-read-rows profile))
-    *fn2-b-seal-source-cursors* 1))
+    *fn2-b-seal-source-cursors*))
+(defun fn2-b-event-archive-cursor (profile)
+ (declare (xargs :guard t)) (+ 1 (fn2-b-checkpoint-source-cursor profile)))
+(defun fn2-b-run-cursor-rows (profile)
+ (declare (xargs :guard t)) (+ 1 (fn2-b-event-archive-cursor profile)))
+; Runtime workers derive their fixed admitted row from actual carrier geometry,
+; without caller-selected indexes or reconstructing T/R from unrelated tables.
+(defun fn2-b-checkpoint-source-cursor-from-rows (rows)
+ (declare (xargs :guard t)) (nfix (- (nfix rows) 2)))
+(defun fn2-b-event-archive-cursor-from-rows (rows)
+ (declare (xargs :guard t)) (nfix (- (nfix rows) 1)))
+(defthm fn2-b-checkpoint-source-cursor-from-profile-rows
+ (equal (fn2-b-checkpoint-source-cursor-from-rows (fn2-b-run-cursor-rows profile))
+        (fn2-b-checkpoint-source-cursor profile))
+ :hints (("Goal" :in-theory (enable fn2-b-checkpoint-source-cursor-from-rows fn2-b-run-cursor-rows
+                                  fn2-b-event-archive-cursor fn2-b-checkpoint-source-cursor))))
+(defthm fn2-b-event-archive-cursor-from-profile-rows
+ (equal (fn2-b-event-archive-cursor-from-rows (fn2-b-run-cursor-rows profile))
+        (fn2-b-event-archive-cursor profile))
+ :hints (("Goal" :in-theory (enable fn2-b-event-archive-cursor-from-rows fn2-b-run-cursor-rows
+                                  fn2-b-event-archive-cursor fn2-b-checkpoint-source-cursor))))
 ; Format checker rows (b-durability.md §11): 0-1 the commit kind's, 2
 ; recovery's, 3 .. 2+w D's large-upload windows, 3+w C's sealer, then
-; K=T+9R+8+1 private physical cursor checker rows follow the sealer.
+; K=T+9R+8+2 private physical cursor checker rows follow the sealer.
 ; Then 4+w+K .. 3+w+K+c E's control connections (fn2-ctl row S decodes FNCT into its
 ; slot's 128-row field stripe and hashes the BLAKE3 trailer in its b3 row,
 ; both at fn2-b-ctl-slot when the profile is at its floor), then
