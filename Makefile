@@ -231,8 +231,10 @@ ACL2_BOOKS = \
   books/pointwise-contracts \
   books/pool \
   books/pool-credit \
+  books/pool-credit-contracts \
   books/checkpoint-working-geometry \
   books/checkpoint-working-credit \
+  books/checkpoint-working-credit-init \
   books/pool-block \
   books/pool-ranges \
   books/pool-read-contracts \

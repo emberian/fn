@@ -25,6 +25,18 @@ class CreditSource(unittest.TestCase):
         self.assertNotIn('(update-', form)
         self.assertNotIn('(fn2-pool-reserve', form)
 
+    def test_actual_consumers_import_public_contract_leaf(self):
+        contract = Path('books/pool-credit-contracts.lisp').read_text()
+        lisp.parse(contract)
+        for api in ['fn2-pool-credit-configure', 'fn2-pool-credit-begin',
+                    'fn2-pool-reserve-credit', 'fn2-pool-credit-end',
+                    'fn2-pool-credit-abort-empty', 'fn2-pool-release-credit']:
+            self.assertIn('(fn2-pool-preserves ' + api, contract)
+        self.assertNotIn('(defun ', contract)
+        for file in ['books/checkpoint-working-credit.lisp',
+                     'books/checkpoint-future-working.lisp']:
+            self.assertIn('(include-book "pool-credit-contracts")', Path(file).read_text())
+
     def test_total_class_loops_and_actual_controls(self):
         source = Path('books/checkpoint-working-credit.lisp').read_text()
         self.assertEqual(source.count('(if (not (and (natp class) (< class (nfix (fn2-pool-nclasses fn2-pool)))))'), 3)

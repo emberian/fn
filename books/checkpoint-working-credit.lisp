@@ -1,7 +1,7 @@
 ; Init-only credit schedule from the SAME live window declarations. B row and
 ; I/O-row counts must come from their actual initialized children, not flags.
 (in-package "ACL2")
-(include-book "pool-credit")
+(include-book "pool-credit-contracts")
 (include-book "checkpoint-working-geometry")
 (include-book "checkpoint-service-geometry")
 (fn2-book-layer :c)
