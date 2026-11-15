@@ -5,6 +5,7 @@ ACL2_BOOKS = \
   books/accounts-core \
   books/alloc \
   books/arm-children \
+  tests/core-release-held-unit \
   books/arm-issue-effects \
   books/executor-reservation \
   books/arms \
