@@ -141,15 +141,9 @@
       ; Leaf output is outside all workspaces. Its absolute row is derived
       ; from the format/recovery region, not a caller-selected digest input.
       (leaf (fn2-event-read-leaf-digest 0 fn2-event-read))
-      (ready (equal (fn2-journal-members-phase 0 fn2-journal-members) *fn2-journal-members-phase-leaf*))
       ((mv code fn2-journal-members fn2-mk fn2-b3 fn2-fields fn2-digests)
-       (if ready
-           (mv-let (code fn2-journal-members fn2-mk fn2-b3 fn2-digests)
-            (fn2-event-member-hash-step row leaf fn2-journal-members fn2-mk fn2-b3 fn2-digests fn2-pool)
-            (mv code fn2-journal-members fn2-mk fn2-b3 fn2-fields fn2-digests))
-         (mv-let (code fn2-journal-members fn2-fields)
-          (fn2-journal-members-step (fn2-event-read-field-base 0 fn2-event-read) fn2-journal-members fn2-fields fn2-pool)
-          (mv code fn2-journal-members fn2-mk fn2-b3 fn2-fields fn2-digests))))
+       (fn2-event-members-step (fn2-event-read-field-base 0 fn2-event-read) row leaf
+        fn2-journal-members fn2-mk fn2-b3 fn2-fields fn2-pool fn2-digests))
       ((when (member-eq code '(:more :leaf :appended)))
        (mv :more fn2-event-read fn2-journal-members fn2-mk fn2-b3 fn2-fields fn2-digests))
       (next (+ (fn2-event-read-first 0 fn2-event-read) (fn2-event-read-members 0 fn2-event-read)))
