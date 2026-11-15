@@ -285,6 +285,7 @@ ACL2_BOOKS = \
   tests/check-history-unit \
   tests/check-own-unit \
   tests/claims-unit \
+  tests/cns-release-refinement-unit \
   tests/cns-decode-unit \
   tests/cns-edges-unit \
   tests/columns-cost-unit \
