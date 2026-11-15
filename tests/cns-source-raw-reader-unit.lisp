@@ -31,9 +31,10 @@
    (and (eq a :ok) (eq b :ok) (equal x y)
     (fn2-crr-bytes-equal (+ 1 (nfix i)) n disk dg diskoff slot gen fn2-pool)))))
 
-; One real lower completion path in core.lisp order: harvest validated cells,
-; return the input workspace, run actual pre-finish hooks, recycle the op.
-; This test orchestrator supplies no result identity not read from the op.
+; One real lower completion path: harvest validated cells, return the input
+; workspace, run the actual independent pre-finish hooks, recycle the op.
+; The two hooks mutate disjoint child sets; this fixture chooses one order.
+; This orchestrator supplies no result identity not read from the op.
 (defun fn2-crr-read (disk dg fn2-cns-sources fn2-cns-source-operations fn2-pool fn2-ops fn2-control fn2-checkpoints fn2-extents fn2-alloc-edges)
  (declare (xargs :stobjs (fn2-cns-sources fn2-cns-source-operations fn2-pool fn2-ops fn2-control fn2-checkpoints fn2-extents fn2-alloc-edges) :verify-guards nil))
  (b* ((logical (fn2-cns-sources-offset 0 fn2-cns-sources))
