@@ -91,7 +91,8 @@
 (defun fn2-run-load-region-drain (i b0 n0 b1 n1 b2 n2 kind owner generation fn2-run-loads)
  (declare (xargs :stobjs fn2-run-loads :guard (fn2-run-loads-wfp fn2-run-loads)))
  (b* (((unless (and (natp i) (< i (fn2-run-load-region-count n0 n1 n2))
-                    (<= (fn2-run-load-region-count n0 n1 n2) *fn2-b-query-loader-jobs*))) (mv :bounds 0))
+                    (fn2-run-load-regionp b0 n0 b1 n1 b2 n2
+                     (fn2-run-loads-rows fn2-run-loads) (fn2-run-loads-rows fn2-run-loads) (fn2-run-loads-rows fn2-run-loads)))) (mv :bounds 0))
       (c (fn2-run-load-region-cursor i b0 n0 b1 n1 b2 n2))
       ((unless (< c (fn2-run-loads-rows fn2-run-loads))) (mv :bounds 0))
       ((when (equal (fn2-run-loads-phase c fn2-run-loads) *fn2-run-load-phase-idle*)) (mv :absent c))
