@@ -54,7 +54,7 @@ class SuccessorObserver(unittest.TestCase):
   for name in ('fn2-succ-resolve-observed','fn2-succ-release-observed'):
    final=function(name)[-1][-1]
    self.assertEqual(final[0],'mv',name)
-   self.assertEqual(len(final)-1,8,name)
+   self.assertEqual(len(final)-1,11,name)
   for child in ('fn2-core-c-source-control','fn2-core-c-source-readers'):self.assertIn(child,text)
  def test_stage_refuses_live_receipt_before_snapshot_wait(self):
   text=FILES[1].read_text().split('(fn2-succ-wrap fn2-successor-stage',1)[1].split('(defun fn2-successor-out',1)[0]

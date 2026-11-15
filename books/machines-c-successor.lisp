@@ -15,6 +15,7 @@
 (in-package "ACL2")
 (include-book "machines-c-sealer-kind")
 (include-book "identity-workspace-geometry")
+(include-book "run-physical-park-region")
 (fn2-book-layer :c)
 ;; The assembly's dispatchers case-split over every schema id when open; the
 ;; successor treats them as opaque (their type facts are the assembly's).
@@ -728,58 +729,67 @@
 ; coordinates, and invalidate its cursor before dropping the exact receipt.
 ; The real writer polls/yields on its retained wake-pending control bit;
 ; release's scalar target does not create an imaginary reader machine owner.
-(defun fn2-succ-source-close (tx readrows b0 fn2-succ-txns fn2-run-cursors fn2-fields fn2-c-source-control fn2-c-source-readers)
- (declare (xargs :stobjs (fn2-succ-txns fn2-run-cursors fn2-fields fn2-c-source-control fn2-c-source-readers) :guard t))
+(defun fn2-succ-source-close (tx readrows b0 fn2-succ-txns fn2-run-cursors fn2-fields fn2-c-source-control fn2-c-source-readers fn2-run-loads fn2-checkpoint-summary fn2-checkpoint-summary-leases fn2-pool)
+ (declare (xargs :stobjs (fn2-succ-txns fn2-run-cursors fn2-fields fn2-c-source-control fn2-c-source-readers fn2-run-loads fn2-checkpoint-summary fn2-checkpoint-summary-leases fn2-pool) :guard t))
  (b* (((unless (and (fn2-succ-txns-wfp fn2-succ-txns) (fn2-run-cursors-wfp fn2-run-cursors) (fn2-fields-wfp fn2-fields)
                     (fn2-c-source-control-wfp fn2-c-source-control) (fn2-c-source-readers-wfp fn2-c-source-readers)
-                    (natp tx) (< tx (fn2-succ-txns-rows fn2-succ-txns)) (< tx (fn2-run-cursors-rows fn2-run-cursors))
+                    (fn2-run-loads-wfp fn2-run-loads) (fn2-checkpoint-summary-wfp fn2-checkpoint-summary)
+                    (fn2-checkpoint-summary-leases-wfp fn2-checkpoint-summary-leases) (fn2-pool-wfp fn2-pool)
+                    (natp tx) (< tx (fn2-succ-txns-rows fn2-succ-txns)) (< tx (fn2-run-cursors-rows fn2-run-cursors)) (< tx (fn2-run-loads-rows fn2-run-loads))
                     (natp readrows) (natp b0) (<= (+ b0 *fn2-idc-stride*) (fn2-fields-rows fn2-fields))))
-       (mv :bounds fn2-succ-txns fn2-run-cursors fn2-fields fn2-c-source-control fn2-c-source-readers))
+       (mv :bounds fn2-succ-txns fn2-run-cursors fn2-fields fn2-c-source-control fn2-c-source-readers fn2-run-loads fn2-checkpoint-summary fn2-checkpoint-summary-leases))
       (endpoint (fn2-c-source-successor-endpoint readrows tx))
       (receipt (fn2-succ-txns-source-receipt tx fn2-succ-txns))
       ((unless (< endpoint (fn2-c-source-readers-rows fn2-c-source-readers)))
-       (mv :bounds fn2-succ-txns fn2-run-cursors fn2-fields fn2-c-source-control fn2-c-source-readers))
-      ((when (equal receipt 0))
-       (mv (if (equal (fn2-c-source-readers-live endpoint fn2-c-source-readers) 0) :ok :stale)
-        fn2-succ-txns fn2-run-cursors fn2-fields fn2-c-source-control fn2-c-source-readers))
-      ((unless (fn2-c-source-reader-current-p endpoint receipt fn2-c-source-readers))
-       (mv :stale fn2-succ-txns fn2-run-cursors fn2-fields fn2-c-source-control fn2-c-source-readers))
+       (mv :bounds fn2-succ-txns fn2-run-cursors fn2-fields fn2-c-source-control fn2-c-source-readers fn2-run-loads fn2-checkpoint-summary fn2-checkpoint-summary-leases))
+      ((unless (if (equal receipt 0) (equal (fn2-c-source-readers-live endpoint fn2-c-source-readers) 0)
+                  (fn2-c-source-reader-current-p endpoint receipt fn2-c-source-readers)))
+       (mv :stale fn2-succ-txns fn2-run-cursors fn2-fields fn2-c-source-control fn2-c-source-readers fn2-run-loads fn2-checkpoint-summary fn2-checkpoint-summary-leases))
+      ; The actual retained job owns these windows, not an invented TX actor.
+      ; Canonical preflight refuses pending/uncertain/foreign pool ownership
+      ; before it drops any catalog lease or this observer receipt.
+      ((mv parked fn2-run-loads fn2-run-cursors fn2-checkpoint-summary fn2-checkpoint-summary-leases)
+       (fn2-run-load-region-park tx 1 0 0 0 0
+        (fn2-run-loads-kind tx fn2-run-loads) (fn2-run-loads-owner tx fn2-run-loads) (fn2-run-loads-generation tx fn2-run-loads)
+        fn2-run-loads fn2-run-cursors fn2-checkpoint-summary fn2-checkpoint-summary-leases fn2-pool))
+      ((unless (eq parked :ok)) (mv :state fn2-succ-txns fn2-run-cursors fn2-fields fn2-c-source-control fn2-c-source-readers fn2-run-loads fn2-checkpoint-summary fn2-checkpoint-summary-leases))
       (fn2-fields (fn2-succ-clear-ref-rows *fn2-run-reader-fields* (+ b0 *fn2-idc-rb*) fn2-fields))
       (fn2-run-cursors (fn2-run-cursors-set-phase tx *fn2-run-cursor-phase-idle* fn2-run-cursors))
       (fn2-succ-txns (fn2-succ-txns-put tx (lphase *fn2-succ-lookup-idle*) (lbound 0) (lrow 0) (lver 0)))
       ((mv code & & fn2-c-source-control fn2-c-source-readers)
-       (fn2-c-source-reader-release endpoint receipt fn2-c-source-control fn2-c-source-readers))
+       (if (equal receipt 0) (mv :ok *fn2-none* 0 fn2-c-source-control fn2-c-source-readers)
+        (fn2-c-source-reader-release endpoint receipt fn2-c-source-control fn2-c-source-readers)))
       (fn2-succ-txns (if (eq code :ok) (fn2-succ-txns-set-source-receipt tx 0 fn2-succ-txns) fn2-succ-txns)))
-  (mv code fn2-succ-txns fn2-run-cursors fn2-fields fn2-c-source-control fn2-c-source-readers)))
+  (mv code fn2-succ-txns fn2-run-cursors fn2-fields fn2-c-source-control fn2-c-source-readers fn2-run-loads fn2-checkpoint-summary fn2-checkpoint-summary-leases)))
 (fn2-idc-fn-shape fn2-succ-source-close
- (tx readrows b0 fn2-succ-txns fn2-run-cursors fn2-fields fn2-c-source-control fn2-c-source-readers)
- (fn2-succ-txns fn2-run-cursors fn2-fields fn2-c-source-control fn2-c-source-readers)
- (fn2-succ-txns fn2-run-cursors fn2-fields fn2-c-source-control fn2-c-source-readers) t
+ (tx readrows b0 fn2-succ-txns fn2-run-cursors fn2-fields fn2-c-source-control fn2-c-source-readers fn2-run-loads fn2-checkpoint-summary fn2-checkpoint-summary-leases fn2-pool)
+ (fn2-succ-txns fn2-run-cursors fn2-fields fn2-c-source-control fn2-c-source-readers fn2-run-loads fn2-checkpoint-summary fn2-checkpoint-summary-leases)
+ (fn2-succ-txns fn2-run-cursors fn2-fields fn2-c-source-control fn2-c-source-readers fn2-run-loads fn2-checkpoint-summary fn2-checkpoint-summary-leases fn2-pool) t
  (fn2-c-source-reader-current-p fn2-c-source-reader-release fn2-succ-clear-ref-rows fn2-run-cursors-set-phase
   fn2-c-source-readers-live fn2-succ-txns-source-receipt))
 
 (defun fn2-succ-resolve-observed (tx budget b0 readrows fn2-succ-txns fn2-succ-slots fn2-id-decides fn2-run-installed fn2-run-cursors fn2-run-paths
- fn2-run-cache fn2-fields fn2-pool fn2-c-source-control fn2-c-source-readers)
- (declare (xargs :stobjs (fn2-succ-txns fn2-succ-slots fn2-id-decides fn2-run-installed fn2-run-cursors fn2-run-paths fn2-run-cache fn2-fields fn2-pool fn2-c-source-control fn2-c-source-readers) :guard t))
+ fn2-run-cache fn2-fields fn2-pool fn2-c-source-control fn2-c-source-readers fn2-run-loads fn2-checkpoint-summary fn2-checkpoint-summary-leases)
+ (declare (xargs :stobjs (fn2-succ-txns fn2-succ-slots fn2-id-decides fn2-run-installed fn2-run-cursors fn2-run-paths fn2-run-cache fn2-fields fn2-pool fn2-c-source-control fn2-c-source-readers fn2-run-loads fn2-checkpoint-summary fn2-checkpoint-summary-leases) :guard t))
  (b* (((unless (and (fn2-succ-txns-wfp fn2-succ-txns) (fn2-id-decides-wfp fn2-id-decides)
                     (natp tx) (< tx (fn2-id-decides-rows fn2-id-decides)) (< tx (fn2-succ-txns-rows fn2-succ-txns))
                     (natp readrows)))
-       (mv :bounds fn2-succ-txns fn2-succ-slots fn2-run-cursors fn2-run-paths fn2-fields fn2-c-source-control fn2-c-source-readers))
+       (mv :bounds fn2-succ-txns fn2-succ-slots fn2-run-cursors fn2-run-paths fn2-fields fn2-c-source-control fn2-c-source-readers fn2-run-loads fn2-checkpoint-summary fn2-checkpoint-summary-leases))
       ; The same endpoint cannot be borrowed from an active XL or identity
       ; continuation merely because its transaction row happens to match.
       ((unless (and (or (equal (fn2-succ-txns-source-receipt tx fn2-succ-txns) 0)
                             (equal (fn2-succ-txns-lphase tx fn2-succ-txns) *fn2-succ-lookup-idle*))
                     (member (fn2-id-decides-phase tx fn2-id-decides)
                      (list *fn2-id-decide-phase-idle* *fn2-id-decide-phase-done*))))
-       (mv :state fn2-succ-txns fn2-succ-slots fn2-run-cursors fn2-run-paths fn2-fields fn2-c-source-control fn2-c-source-readers))
+       (mv :state fn2-succ-txns fn2-succ-slots fn2-run-cursors fn2-run-paths fn2-fields fn2-c-source-control fn2-c-source-readers fn2-run-loads fn2-checkpoint-summary fn2-checkpoint-summary-leases))
       ((mv admitted fn2-succ-txns fn2-c-source-control fn2-c-source-readers)
        (fn2-succ-source-acquire tx readrows fn2-succ-txns fn2-c-source-control fn2-c-source-readers))
       ((unless (eq admitted :ok))
-       (mv (if (eq admitted :busy) :more :state) fn2-succ-txns fn2-succ-slots fn2-run-cursors fn2-run-paths fn2-fields fn2-c-source-control fn2-c-source-readers))
+       (mv (if (eq admitted :busy) :more :state) fn2-succ-txns fn2-succ-slots fn2-run-cursors fn2-run-paths fn2-fields fn2-c-source-control fn2-c-source-readers fn2-run-loads fn2-checkpoint-summary fn2-checkpoint-summary-leases))
       ((mv code fn2-succ-txns fn2-succ-slots fn2-run-cursors fn2-run-paths fn2-fields)
        (fn2-succ-resolve-raw tx budget b0 fn2-succ-txns fn2-succ-slots fn2-id-decides fn2-run-installed fn2-run-cursors fn2-run-paths fn2-run-cache fn2-fields fn2-pool))
       ((when (member-eq code '(:more :miss)))
-       (mv code fn2-succ-txns fn2-succ-slots fn2-run-cursors fn2-run-paths fn2-fields fn2-c-source-control fn2-c-source-readers))
+       (mv code fn2-succ-txns fn2-succ-slots fn2-run-cursors fn2-run-paths fn2-fields fn2-c-source-control fn2-c-source-readers fn2-run-loads fn2-checkpoint-summary fn2-checkpoint-summary-leases))
       ; RI beyond the slot set is not a completion certificate. All RES rows
       ; came through the scalar-only copy above; no borrowed value is emitted.
       (code (if (and (eq code :ok)
@@ -789,11 +799,11 @@
       ; values remain scalar, but cannot pass the OPEN-stage RI gate below.
       (fn2-succ-txns (if (eq code :ok) fn2-succ-txns
        (fn2-succ-txns-put tx (ri 0) (rstate *fn2-succ-resolve-fresh*) (rbound 0))))
-      ((mv closed fn2-succ-txns fn2-run-cursors fn2-fields fn2-c-source-control fn2-c-source-readers)
-       (fn2-succ-source-close tx readrows b0 fn2-succ-txns fn2-run-cursors fn2-fields fn2-c-source-control fn2-c-source-readers)))
-  (mv (if (eq closed :ok) code :state) fn2-succ-txns fn2-succ-slots fn2-run-cursors fn2-run-paths fn2-fields fn2-c-source-control fn2-c-source-readers)))
+      ((mv closed fn2-succ-txns fn2-run-cursors fn2-fields fn2-c-source-control fn2-c-source-readers fn2-run-loads fn2-checkpoint-summary fn2-checkpoint-summary-leases)
+       (fn2-succ-source-close tx readrows b0 fn2-succ-txns fn2-run-cursors fn2-fields fn2-c-source-control fn2-c-source-readers fn2-run-loads fn2-checkpoint-summary fn2-checkpoint-summary-leases fn2-pool)))
+  (mv (if (eq closed :ok) code :state) fn2-succ-txns fn2-succ-slots fn2-run-cursors fn2-run-paths fn2-fields fn2-c-source-control fn2-c-source-readers fn2-run-loads fn2-checkpoint-summary fn2-checkpoint-summary-leases)))
 (fn2-idc-fn-shape fn2-succ-resolve-observed
- (tx budget b0 readrows fn2-succ-txns fn2-succ-slots fn2-id-decides fn2-run-installed fn2-run-cursors fn2-run-paths fn2-run-cache fn2-fields fn2-pool fn2-c-source-control fn2-c-source-readers)
- (fn2-succ-txns fn2-succ-slots fn2-run-cursors fn2-run-paths fn2-fields fn2-c-source-control fn2-c-source-readers)
- (fn2-succ-txns fn2-succ-slots fn2-id-decides fn2-run-installed fn2-run-cursors fn2-run-paths fn2-run-cache fn2-fields fn2-pool fn2-c-source-control fn2-c-source-readers) t
+ (tx budget b0 readrows fn2-succ-txns fn2-succ-slots fn2-id-decides fn2-run-installed fn2-run-cursors fn2-run-paths fn2-run-cache fn2-fields fn2-pool fn2-c-source-control fn2-c-source-readers fn2-run-loads fn2-checkpoint-summary fn2-checkpoint-summary-leases)
+ (fn2-succ-txns fn2-succ-slots fn2-run-cursors fn2-run-paths fn2-fields fn2-c-source-control fn2-c-source-readers fn2-run-loads fn2-checkpoint-summary fn2-checkpoint-summary-leases)
+ (fn2-succ-txns fn2-succ-slots fn2-id-decides fn2-run-installed fn2-run-cursors fn2-run-paths fn2-run-cache fn2-fields fn2-pool fn2-c-source-control fn2-c-source-readers fn2-run-loads fn2-checkpoint-summary fn2-checkpoint-summary-leases) t
  (fn2-succ-source-acquire fn2-succ-resolve-raw fn2-succ-source-close fn2-succ-txns-ri fn2-succ-txns-rstate))
