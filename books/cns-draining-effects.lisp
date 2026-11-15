@@ -14,7 +14,8 @@
   :hints (("Goal" :in-theory
            (union-theories
             (theory 'fn2-cns-pool-readers)
-            (e/d (fn2-cns-query-heldp fn2-cns-drain-query-heldp
+            (e/d (fn2-cns-query-heldp fn2-core-query-heldp fn2-pool-query-heldp
+                  fn2-cns-drain-query-heldp
                   fn2-pool-rows fn2-cns-drain-cell fn2-cns-drain-get fn2-cns-drain-index)
                  (fn2-core-pool fn2-corep fn2-core-wfp))))))
 
