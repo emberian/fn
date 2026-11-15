@@ -125,7 +125,10 @@ class RunPhysicalReadinessSource(unittest.TestCase):
             self.assertIn('(assert-event (fn2-rly-test :' + mode + '))', text)
         production = definitions('books/run-physical-resources.lisp')['fn2-run-load-reserve']
         bstar = next(n for n in walk(production) if n and n[0] == 'b*')
-        serial = next(i for i, n in enumerate(bstar[1]) if 'update-fn2-run-loads-admissions' in calls(n))
+        serial = next(i for i, n in enumerate(bstar[1]) if 'fn2-run-load-admission-begin' in calls(n))
+        helper = definitions('books/run-physical-state.lisp')['fn2-run-load-admission-begin']
+        self.assertIn('update-fn2-run-loads-admissions', calls(helper))
+        self.assertIn('unsigned-byte-p', calls(helper))
         allocation = next(i for i, n in enumerate(bstar[1]) if 'fn2-pool-reserve' in calls(n))
         self.assertLess(serial, allocation)
 
