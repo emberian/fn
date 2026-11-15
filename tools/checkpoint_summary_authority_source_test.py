@@ -30,7 +30,10 @@ def check_live(text):
                     '(= (fn2-checkpoint-source-rank 0 fn2-checkpoint-source) (fn2-checkpoint-metadata-manifest-entries 0 fn2-checkpoint-metadata-manifest))',
                     '(fn2-event-producer-donep ?*args)',
                     '(= (fn2-checkpoint-publication-phase 0 fn2-checkpoint-publication) *fn2-checkpoint-publication-phase-complete*)',
-                    '(fn2-checkpoint-summary-live-published-hash-p ?*args)']:
+                    '(fn2-checkpoint-summary-live-published-hash-p ?*args)',
+                    '(= (fn2-checkpoints-state c fn2-checkpoints) *fn2-checkpoint-state-installed*)',
+                    '(fn2-checkpoint-lifecycle-ownerp ?*args)',
+                    '(= (fn2-checkpoint-lifecycle-phase 0 fn2-checkpoint-lifecycle) *fn2-checkpoint-lifecycle-phase-publication*)']:
         if not lr.match(pattern,[source]): raise ValueError('missing actual live source '+pattern)
     step=lr.match('(defun fn2-checkpoint-summary-authority-live-step ?*body)',forms)[0].node
     for pattern in ['(fn2-checkpoint-summary-authority-live-source-p ?*args)',

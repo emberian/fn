@@ -49,6 +49,18 @@ class Rewrite(unittest.TestCase):
         self.assertTrue(lr.match(f'({rw.PREFIX}-live-descriptor 0 c fn2-checkpoint-bytes {rw.PREFIX})',[begin]))
         fixture=f'({rw.PREFIX}-live-descriptor 0 c fn2-checkpoint-bytes {rw.PREFIX})'
         self.assertEqual(rw.pending_live(fixture),fixture)
+    def test_lifecycle_binding_class(self):
+        sample="""(defun fn2-checkpoint-summary-authority-live-begin
+ (fn2-checkpoint-summary-authority fn2-checkpoint-source fn2-checkpoint-publication)
+ (declare (xargs :stobjs (fn2-checkpoint-summary-authority fn2-checkpoint-source fn2-checkpoint-publication)
+ :guard (fn2-checkpoint-publication-wfp fn2-checkpoint-publication)))
+ (fn2-checkpoint-summary-authority-live-source-p fn2-checkpoint-summary-authority fn2-checkpoint-source fn2-checkpoint-publication))"""
+        after=rw.bind_live_publication_lifecycle(sample)
+        fn=lr.parse(after).forms[0]
+        self.assertEqual(fn.items[2].items[-1].low,'fn2-checkpoint-lifecycle')
+        self.assertTrue(lr.match('(fn2-checkpoint-lifecycle-wfp fn2-checkpoint-lifecycle)',[fn]))
+        self.assertTrue(lr.match('(fn2-checkpoint-summary-authority-live-source-p fn2-checkpoint-summary-authority fn2-checkpoint-source fn2-checkpoint-publication fn2-checkpoint-lifecycle)',[fn]))
+        with self.assertRaises(ValueError):rw.bind_live_publication_lifecycle(after)
     def test_missing_reader_refused(self):
         with self.assertRaises(ValueError):rw.parameterize_reader('(defun other () nil)','current-p')
 if __name__=='__main__':unittest.main()
