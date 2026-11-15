@@ -33,12 +33,15 @@
                (fn2-pool-class slot fn2-pool) class))
       ((mv released fn2-core) (fn2-core-release slot gen *fn2-recovery-machine-kind* id ogen fn2-core))
       ((mv reserved new-slot new-gen fn2-core)
-       (fn2-core-reserve class *fn2-recovery-machine-kind* id ogen fn2-core)))
+       (fn2-core-reserve class *fn2-recovery-machine-kind* id ogen fn2-core))
+      (before (fn2-test-core-snapshot fn2-core))
+      ((mv refused fn2-core) (fn2-recovery-frontier-step id fn2-core)))
   (mv (and (eq released :ok) (eq reserved :ok) (= slot new-slot) (not (= gen new-gen))
            ;; Neither the saved row tuple nor its auth flag was rewritten.
            (= (fn2-machine-pool-gen id fn2-core) gen)
            (= (fn2-machine-rc-auth id fn2-core) 1)
-           (not (fn2-rp-current-unit-auth-p id ogen fn2-core))) fn2-core)))
+           (not (fn2-rp-current-unit-auth-p id ogen fn2-core))
+           (eq refused :state) (equal before (fn2-test-core-snapshot fn2-core))) fn2-core)))
 
  ; Change only a resumed scanner locator after actual authenticated begin.
 ; The actual frontier helper must refuse with the COMPLETE core unchanged.
@@ -86,9 +89,14 @@
       ;; that every later boot/adoption stage succeeds.
       (last-event (fn2-machine-rc-frontier-last id fn2-core))
       (boundary (and observed (= stage 5) (= started 1)
-                     (= (fn2-machine-rc-auth id fn2-core) 1)
-                     (stobj-let ((fn2-mk (fn2-core-mk fn2-core))) (exact)
-                      (= (fn2-mk-size 0 fn2-mk) last-event) exact)))
+                     (= (fn2-machine-rc-own-token id fn2-core) 0)
+                     (= (fn2-machine-rc-own-left id fn2-core) 0)
+                     (fn2-rp-current-unit-auth-p id (fn2-machine-generation id fn2-core) fn2-core)
+                     (fn2-rp-current-source-p id fn2-core)
+                     (stobj-let ((fn2-mk (fn2-core-mk fn2-core))
+                                 (fn2-journal-members (fn2-core-journal-members fn2-core))) (exact)
+                      (and (= (fn2-mk-size 0 fn2-mk) last-event)
+                           (= (fn2-journal-members-next-event 0 fn2-journal-members) (+ 1 last-event))) exact)))
       ((when (or boundary (zp fuel) (fn2-core-stopped-p fn2-core)
                   (= (fn2-machine-phase id fn2-core) *fn2-recovery-machine-state-done*)))
        (mv (list (if boundary :boundary :result) injected stages (fn2-core-stop-reason fn2-core)
