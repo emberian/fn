@@ -88,6 +88,11 @@
                  ((and (consp (cadar layout)) (eq (car (cadar layout)) :octets32)) (+ 4 (cadr (cadar layout))))
                  (t 9)))
        (fn2-layout-max-size (cdr layout)))))
+(defthm fn2-layout-max-size-natp
+  (implies (fn2-layoutp layout) (natp (fn2-layout-max-size layout)))
+  :rule-classes :type-prescription
+  :hints (("Goal" :induct (fn2-layout-max-size layout)
+           :in-theory (enable fn2-layout-max-size fn2-layoutp fn2-layout-kindp))))
 (defun fn2-layout-offsets (layout off)
   (declare (xargs :guard (and (fn2-layoutp layout) (or (null off) (natp off)))))
   (if (atom layout) nil
@@ -434,6 +439,8 @@
 (in-theory (disable fn2-layout-emit fn2-layout-check-values fn2-layout-size))
 (defun fn2-layout-encode (layout slot gen off okind oslot ogen fn2-fields fn2-pool)
   (declare (xargs :stobjs (fn2-fields fn2-pool)
+                  :guard-hints (("Goal" :in-theory
+                    (disable fn2-layoutp fn2-layout-kindp fn2-layout-max-size fn2-layout-size fn2-layout-range-code)))
                   :guard (and (fn2-layoutp layout) (fn2-fields-wfp fn2-fields) (fn2-pool-wfp fn2-pool))))
   (b* (((unless (unsigned-byte-p 32 off)) (mv :bounds off fn2-pool))
        ((when (> (fn2-layout-max-size layout) 4096)) (mv :budget off fn2-pool))
