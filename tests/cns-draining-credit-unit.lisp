@@ -1,0 +1,85 @@
+; Credit authority is separate from workspace ownership. These typed tagged
+; inputs exercise the unchanged whole H; they do not assert that ordinary
+; CNS admission obtains private-credit ranges. Admission/phase setup is real.
+(in-package "ACL2")
+(include-book "cns-draining-contract-unit")
+
+(defun fn2-cns-drain-credit-run (target pinned fn2-core)
+  (declare (xargs :stobjs fn2-core :verify-guards nil))
+  (b* (((mv setup id sibling fn2-core)
+        (fn2-cns-drain-setup (eq target :lease) fn2-core))
+       (gen (fn2-cns-row-generation id fn2-core))
+       (slot (case target (:lease (fn2-cns-row-lslot id fn2-core))
+                         (:ns (fn2-cns-row-ns-slot id fn2-core))
+                         (otherwise (fn2-cns-row-ws-slot id fn2-core))))
+       (pgen (case target (:lease (fn2-cns-row-lgen id fn2-core))
+                         (:ns (fn2-cns-row-ns-gen id fn2-core))
+                         (otherwise (fn2-cns-row-ws-gen id fn2-core))))
+       ((mv wc fn2-core)
+        (fn2-core-write slot pgen 0 33 *fn2-cns-kind* id gen fn2-core))
+       ((mv qc fn2-core)
+        (if pinned
+            (stobj-let ((fn2-pool (fn2-core-pool fn2-core))) (code fn2-pool)
+              (fn2-pool-query-acquire slot pgen 0 1 *fn2-cns-kind* id gen fn2-pool)
+              (mv code fn2-core))
+          (mv :ok fn2-core)))
+       (fn2-core
+        (stobj-let ((fn2-pool (fn2-core-pool fn2-core))) (fn2-pool)
+          (fn2-pool-set-credit-group slot 0 fn2-pool) fn2-core))
+       (before (fn2-test-core-snapshot fn2-core))
+       (whole-h (and setup (eq wc :ok) (eq qc :ok) (not (equal id sibling))
+                    (fn2-cns-drain-counted-basep before fn2-core)
+                    (fn2-cns-draining-domainp id before)))
+       ((mv b s d r fn2-core) (fn2-cns-run id 4 fn2-core))
+       (after (fn2-test-core-snapshot fn2-core))
+       (first-c (fn2-cns-draining-resultp id before b s d r after))
+       (held-frame (if pinned (equal (list b s d r after)
+                                     (list 0 *fn2-work-state* 0 nil before)) t))
+       ((mv close last fn2-core)
+        (if pinned
+            (stobj-let ((fn2-pool (fn2-core-pool fn2-core))) (code last fn2-pool)
+              (fn2-pool-query-release slot pgen fn2-pool) (mv code last fn2-core))
+          (mv :ok t fn2-core)))
+       (retry-before (if pinned (fn2-test-core-snapshot fn2-core) before))
+       (retry-h (if pinned
+                    (and (fn2-cns-drain-counted-basep retry-before fn2-core)
+                         (fn2-cns-draining-domainp id retry-before)) whole-h))
+       ((mv rb rs rd rr fn2-core)
+        (if pinned (fn2-cns-run id 4 fn2-core) (mv b s d r fn2-core)))
+       (final (fn2-test-core-snapshot fn2-core))
+       (pool (fn2-cns-drain-child 'fn2-pool retry-before))
+       (own (fn2-cns-drain-child 'fn2-cns retry-before))
+       (directory (fn2-cns-drain-child 'fn2-machines retry-before))
+       (row (fn2-cns-drain-cell 'fn2-machines-slot id directory))
+       (ws (fn2-cns-drain-cell 'fn2-cns-ws-slot row own))
+       (expected-pool (if (eq target :ns) (fn2-cns-drain-released-pool ws pool) pool)))
+    (mv (and whole-h first-c held-frame retry-h (eq close :ok) last
+             (fn2-cns-draining-resultp id retry-before rb rs rd rr final)
+             ; The former oracle freed credit-bound ranges. The exact
+             ; actual tuple must falsify it while retaining the whole H.
+             (not (equal (list rb rs rd rr final)
+                         (fn2-cns-draining-pre-credit-expected id retry-before)))
+             (equal (list rb rs rd rr)
+                    (list 0 (if (eq target :lease) *fn2-work-empty* *fn2-work-state*) 0 nil))
+             (equal (fn2-cns-drain-child 'fn2-pool final) expected-pool)
+             (equal (fn2-cns-drain-child 'fn2-cns final) own)
+             (equal (fn2-cns-drain-child 'fn2-machines final) directory)
+             (equal (fn2-cns-drain-child 'fn2-sched final)
+                    (fn2-cns-drain-child 'fn2-sched retry-before))
+             (equal (fn2-core-stop-reason fn2-core) *fn2-stop-reason-pool-release*))
+        fn2-core)))
+(defun fn2-cns-drain-credit-control (target pinned)
+  (declare (xargs :verify-guards nil))
+  (with-local-stobj fn2-core
+    (mv-let (yes fn2-core) (fn2-cns-drain-credit-run target pinned fn2-core) yes)))
+(defun fn2-cns-drain-credit-positive ()
+  (declare (xargs :verify-guards nil))
+  (and (fn2-cns-drain-credit-control :ws nil)
+                   (fn2-cns-drain-credit-control :ns nil)
+                   (fn2-cns-drain-credit-control :ns t)
+                   ; The held-lease case remains defensive logical input,
+                   ; marked unreachable-in-composition by its constructor.
+                   (fn2-cns-drain-credit-control :lease nil)))
+(assert-event (fn2-cns-drain-credit-positive))
+; Complete counted-row evidence is checked after all providers in
+; cns-draining-teeth-unit; this book executes its own controls above.

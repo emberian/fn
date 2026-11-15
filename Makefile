@@ -89,6 +89,8 @@ ACL2_BOOKS = \
   tests/cns-draining-composition-unit \
   tests/cns-draining-contract-unit \
   tests/cns-draining-count-counterexample \
+  tests/cns-draining-credit-unit \
+  tests/cns-draining-teeth-unit \
   tests/cns-draining-direct-events-unit \
   tests/cns-fence-proof-world \
   tests/column-snapshot-support \
