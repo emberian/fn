@@ -71,4 +71,29 @@ class ArchiveProducerSource(unittest.TestCase):
                   ('checkpoint-metadata-page.lisp','fn2-checkpoint-metadata-page-bind'),
                   ('checkpoint-metadata-page.lisp','fn2-checkpoint-metadata-page-complete-p')]:
    self.assertEqual(len(calls(form(file,'defun',fn),'fn2-checkpoint-metadata-role')),1)
+class ArchiveWorkSource(unittest.TestCase):
+ def test_page_wait_precedes_build_progress(self):
+  n=form('event-archive-work.lisp','fn2-event-archive-operation','fn2-event-archive-work')
+  consume=calls(n,'fn2-checkpoint-metadata-page-consume')[0].node
+  work=calls(n,'fn2-run-build-work')[0].node
+  self.assertLess(consume.start,work.start)
+  self.assertIn('(if (eq code :ok) :more code)',text('event-archive-work.lisp',n))
+  self.assertTrue(has(n,'fn2-checkpoint-metadata-promote'))
+  self.assertTrue(has(n,'fn2-checkpoint-metadata-page-complete-p'))
+  self.assertNotIn('(fn2-run-build-promote',text('event-archive-work.lisp',n))
+ def test_shared_physical_bind_is_the_only_page_path(self):
+  n=form('event-archive-work.lisp','fn2-event-archive-operation','fn2-event-archive-page-bind')
+  self.assertTrue(has(n,'fn2-event-archive-builderp'))
+  self.assertEqual(len(calls(n,'fn2-checkpoint-metadata-page-bind')),1)
+  self.assertNotIn('fn2-checkpoint-page-put',text('event-archive-work.lisp',n))
+ def test_finish_derives_full_coverage_and_actual_reader_terminal(self):
+  n=form('event-archive-work.lisp','fn2-event-archive-operation','fn2-event-archive-finish')
+  s=text('event-archive-work.lisp',n)
+  for name in ['fn2-event-read-ownerp','fn2-mk-size','fn2-run-builds-entries','fn2-csnapshot-cut-event','fn2-run-build-finish']:
+   self.assertTrue(has(n,name),name)
+  self.assertIn('*fn2-event-read-phase-complete*',s)
+  self.assertTrue(all(x.low.startswith('fn2-') for x in n.items[2].items))
+ def test_staging_refuses_a_frozen_page_writer(self):
+  n=form('event-archive-producer.lisp','fn2-event-archive-operation','fn2-event-archive-stage')
+  self.assertIn('(equal (fn2-checkpoint-metadata-held 0 fn2-checkpoint-metadata) 0)',text('event-archive-producer.lisp',n))
 if __name__=='__main__':unittest.main()

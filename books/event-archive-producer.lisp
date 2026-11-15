@@ -104,6 +104,7 @@
                      fn2-checkpoint-build fn2-checkpoint-source fn2-checkpoint-metadata-manifest fn2-checkpoints fn2-run-builds fn2-run-writers)
                     (fn2-checkpoint-metadata-ownerp fn2-checkpoint-metadata fn2-csnapshot fn2-run-builds fn2-run-writers)
                     (equal (fn2-checkpoint-metadata-source-kind 0 fn2-checkpoint-metadata) 2)
+                    (equal (fn2-checkpoint-metadata-held 0 fn2-checkpoint-metadata) 0)
                     (equal (fn2-checkpoint-metadata-phase 0 fn2-checkpoint-metadata) *fn2-checkpoint-metadata-phase-feeding*)
                     (fn2-event-read-ownerp fn2-event-read fn2-csnapshot)
                     (fn2-event-read-source-held-p fn2-event-read fn2-checkpoint-summary-authority fn2-checkpoints fn2-checkpoint-refs

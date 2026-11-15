@@ -131,3 +131,12 @@ root3's producer driver switches to the archive format. Actual archive page
 completion, authenticated root3 header/Cseal/coverage, selected descriptor read,
 carry-node output, source-holder lifetime, and physical reclaim/reuse remain
 required. No archive coverage/publication or source discharge is asserted yet.
+
+`fn2-event-archive-work` now sends admitted entries through the same bounded
+run close/seal, construction reserve, physical page bind/consume and parent
+promotion operations. A sealed page freezes staging until actual page completion;
+no parent Ref uses the pre-write hash. Finish requires the actual reader terminal,
+Merkle size and admitted entry count to equal the held C event cut. Its terminal
+is member-run completion, not root3 coverage or descriptor publication. Four
+additional source controls cover the frozen-page ordering, exact shared worker,
+and finish coverage. The root3 header/manifest and selected reader remain pending.
