@@ -48,7 +48,7 @@
        (if (equal (fn2-checkpoint-restore-events-cut-commit 0 fn2-checkpoint-restore-events) 0)
            (and (equal tail *fn2-alloc-none*) (equal (fn2-checkpoint-restore-events-head 0 fn2-checkpoint-restore-events) *fn2-alloc-none*)
                 (equal (fn2-checkpoint-restore-events-cut-event 0 fn2-checkpoint-restore-events) 0))
-         (and (< tail (fn2-checkpoint-restore-events-work-rows fn2-checkpoint-restore-events-work))
+         (and (< tail (fn2-checkpoint-restore-events-work-capacity fn2-checkpoint-restore-events-work))
               (<= (* 32 (+ 1 tail)) (fn2-checkpoint-restore-events-work-seals-length fn2-checkpoint-restore-events-work))
               (equal (fn2-checkpoint-restore-events-work-generation tail fn2-checkpoint-restore-events-work) (fn2-checkpoint-restore-events-generation 0 fn2-checkpoint-restore-events))
               (equal (fn2-checkpoint-restore-events-work-consumed tail fn2-checkpoint-restore-events-work) 1)

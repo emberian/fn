@@ -107,13 +107,14 @@
  :why "A nonwrapping investigation generation binds every cold reach to the same authenticated descriptor and map intake.")
 
 (defcorechild fn2-core-checkpoint-restore-events fn2-checkpoint-restore-events
- :init (fn2-checkpoint-restore-events-init (if (fn2-profile-get :image-boot profile) 1 0) fn2-checkpoint-restore-events)
+ :init (fn2-checkpoint-restore-events-init 2 fn2-checkpoint-restore-events)
  :profilep t
- :why "One exact candidate/map-generation event-directory, historical-journal and frontier continuation; never a caller cut flag.")
+ :why "Scratch row0 and retained row1 give cold investigation and live canonical archive distinct lifetimes, including nonimage startup.")
 (defcorechild fn2-core-checkpoint-restore-events-work fn2-checkpoint-restore-events-work
- :init (fn2-checkpoint-restore-events-work-init (if (fn2-profile-get :image-boot profile) (fn2-b-capacity :extent-slots 16 profile) 0) fn2-checkpoint-restore-events-work)
- :profilep (unsigned-byte-p 32 (fn2-b-capacity :extent-slots 16 profile))
- :why "Extent-tagged ordered historical journal identities and semantic seals survive root buffer reuse without an arbitrary event or history ceiling.")
+ :init (fn2-checkpoint-restore-events-work-init (fn2-b-capacity :extent-slots 16 profile) fn2-checkpoint-restore-events-work)
+ :profilep (and (unsigned-byte-p 32 (* 2 (fn2-b-capacity :extent-slots 16 profile)))
+                (unsigned-byte-p 32 (* 64 (fn2-b-capacity :extent-slots 16 profile))))
+ :why "Two charged stripes of the same journal-source layout: cold scratch and retained selected catalog; each follows actual extent capacity.")
 
 (defcorechild fn2-core-checkpoint-restore-arena fn2-checkpoint-restore-arena
  :init (fn2-checkpoint-restore-arena-init (fn2-b-capacity :extent-slots 16 profile) fn2-checkpoint-restore-arena)
