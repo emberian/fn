@@ -10,14 +10,18 @@
 
 (defconst *fn2-checkpoint-source-read-window* (+ 1 *fn2-checkpoint-source-page-window*))
 
-(defconst *fn2-checkpoint-window-count* (+ 1 *fn2-checkpoint-source-read-window*))
+; A key survives the complete source rescan while window14 holds the best
+; entry and window16 may be handed to the canonical page/semantic worker.
+; This is the physical page representation bound, not a stored-data limit.
+(defconst *fn2-checkpoint-compaction-key-window* (+ 1 *fn2-checkpoint-source-read-window*))
+(defconst *fn2-checkpoint-window-count* (+ 1 *fn2-checkpoint-compaction-key-window*))
 
 (defconst *fn2-checkpoint-working-window-count*
  (+ *fn2-checkpoint-window-count* *fn2-checkpoint-future-window-count*))
 
 (defun fn2-checkpoint-window-length (i)
  (declare (xargs :guard t))
- (cond ((or (< (nfix i) 12) (equal i 14) (equal i 16) (equal i *fn2-checkpoint-source-page-window*)) *fn2-run-page-size*)
+ (cond ((or (< (nfix i) 12) (equal i 14) (equal i 16) (equal i *fn2-checkpoint-source-page-window*) (equal i *fn2-checkpoint-compaction-key-window*)) *fn2-run-page-size*)
        ((or (equal i 12) (equal i 13)) (* 32 *fn2-run-max-levels*))
        ((equal i 15) 64) (t 4096)))
 

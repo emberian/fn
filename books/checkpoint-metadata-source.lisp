@@ -25,6 +25,21 @@
               (and (equal kind k2)
                    (or (< order o2) (and (equal order o2) (< r2 row))))))))
 
+; Canonical held-set eligibility. Both ordered enumeration and compaction's
+; raw row walk use these exact predicates; neither admits private overlays or
+; retired installed rows merely because their backing storage still exists.
+(defun fn2-checkpoint-source-overlayp (row fn2-overlays)
+ (declare (xargs :stobjs fn2-overlays :guard (fn2-overlays-wfp fn2-overlays)))
+ (and (natp row) (< row (fn2-overlays-rows fn2-overlays))
+      (posp (fn2-overlays-count row fn2-overlays))
+      (member (fn2-overlays-phase row fn2-overlays)
+              (list *fn2-overlay-phase-active* *fn2-overlay-phase-frozen*))))
+(defun fn2-checkpoint-source-runp (row fn2-run-installed)
+ (declare (xargs :stobjs fn2-run-installed :guard (fn2-run-installed-wfp fn2-run-installed)))
+ (and (natp row) (< row (fn2-run-installed-rows fn2-run-installed))
+      (posp (fn2-run-installed-entries row fn2-run-installed))
+      (equal (fn2-run-installed-state row fn2-run-installed) *fn2-run-installed-state-live*)))
+
 (defun fn2-checkpoint-source-ownerp (fn2-checkpoint-source fn2-csnapshot)
  (declare (xargs :stobjs (fn2-checkpoint-source fn2-csnapshot)
   :guard (and (fn2-checkpoint-source-wfp fn2-checkpoint-source) (fn2-csnapshot-wfp fn2-csnapshot))))
@@ -90,8 +105,7 @@
    ((and (equal kind 0) (< row (fn2-overlays-rows fn2-overlays)))
     (if (not (unsigned-byte-p 32 (+ 1 row))) (mv :bounds fn2-checkpoint-source)
      (let* ((fn2-checkpoint-source
-             (if (and (posp (fn2-overlays-count row fn2-overlays))
-                      (member (fn2-overlays-phase row fn2-overlays) (list *fn2-overlay-phase-active* *fn2-overlay-phase-frozen*)))
+             (if (fn2-checkpoint-source-overlayp row fn2-overlays)
                  (fn2-checkpoint-source-consider (fn2-overlays-schema row fn2-overlays) 0
                   (fn2-overlays-seq row fn2-overlays) row fn2-checkpoint-source) fn2-checkpoint-source))
             (fn2-checkpoint-source (fn2-checkpoint-source-set-scan-row 0 (+ 1 row) fn2-checkpoint-source)))
@@ -102,8 +116,7 @@
    ((< row (fn2-run-installed-rows fn2-run-installed))
     (if (not (unsigned-byte-p 32 (+ 1 row))) (mv :bounds fn2-checkpoint-source)
      (let* ((fn2-checkpoint-source
-             (if (and (posp (fn2-run-installed-entries row fn2-run-installed))
-                      (equal (fn2-run-installed-state row fn2-run-installed) *fn2-run-installed-state-live*))
+             (if (fn2-checkpoint-source-runp row fn2-run-installed)
                  (fn2-checkpoint-source-consider (fn2-run-installed-schema row fn2-run-installed) 1
                   (fn2-run-installed-run row fn2-run-installed) row fn2-checkpoint-source) fn2-checkpoint-source))
             (fn2-checkpoint-source (fn2-checkpoint-source-set-scan-row 0 (+ 1 row) fn2-checkpoint-source)))
