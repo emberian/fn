@@ -22,6 +22,9 @@ def one(pattern,source):
 def project(before,before_schema):
  inventory.validate_before(before,before_schema)
  physical=inventory.has_physical(before_schema)
+ release=one('(defun fn2-seal-release ?*args)',before['books/sealer.lisp'])
+ fences=lr.match('(fn2-run-installed-physical r fn2-run-installed)',[release])
+ if len(fences)!=(1 if physical else 0):raise ValueError('before physical source/fence mismatch')
  out=dict(before)
  out['books/runs.lisp'],_=held.transform('books/runs.lisp',before['books/runs.lisp'])
  s=row.transform(before['books/sealer.lisp']);ed=[]
