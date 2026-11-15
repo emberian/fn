@@ -333,6 +333,7 @@ ACL2_BOOKS = \
   books/checkpoint-live-capacity \
   tests/checkpoint-live-capacity-unit \
   books/checkpoint-live-cbase \
+  books/checkpoint-live-install \
   tests/checkpoint-live-publication-support \
   tests/checkpoint-live-catalog-unit \
   tests/run-physical-release-readiness-unit \

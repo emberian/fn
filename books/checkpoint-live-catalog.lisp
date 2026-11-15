@@ -59,7 +59,7 @@
    (owner-kind (fn2-checkpoint-source-owner-kind 0 fn2-checkpoint-source))
    (owner-slot (fn2-checkpoint-source-owner-slot 0 fn2-checkpoint-source))
    (owner-gen (fn2-checkpoint-source-owner-gen 0 fn2-checkpoint-source))
-   (priority-base 0) (application-stage 0) (count 0) (cursor 0) (installed 0) (lease-count 0)))
+   (priority-base 0) (application-stage 0) (count 0) (cursor 0) (target 0) (free-count 0) (installed 0) (lease-count 0)))
   (fn2-checkpoint-summary (update-fn2-checkpoint-summary-next-tag tag fn2-checkpoint-summary))
   (fn2-checkpoint-summary (fn2-checkpoint-live-catalog-copy-descriptor 0 c fn2-checkpoint-bytes fn2-checkpoint-summary)))
  (mv :more fn2-checkpoint-summary)))
