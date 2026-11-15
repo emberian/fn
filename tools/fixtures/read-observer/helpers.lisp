@@ -1,0 +1,45 @@
+; READ endpoint identity is its exclusive synchronous caller's row, not an ML
+; owner inferred from an integer key. Public X-only calls rely on that domain;
+; the lower barrier always checks the retained explicit receipt. A stale public
+; caller after row reuse needs a separate caller-ownership theorem.
+(defun fn2-read-observer-current-p (x fn2-reads fn2-c-source-readers)
+ (declare (xargs :stobjs (fn2-reads fn2-c-source-readers)
+  :guard (and (fn2-reads-wfp fn2-reads) (fn2-c-source-readers-wfp fn2-c-source-readers))))
+ (and (natp x) (< x (fn2-reads-rows fn2-reads))
+      (fn2-c-source-reader-current-p x (fn2-reads-observer-serial x fn2-reads) fn2-c-source-readers)))
+
+(defun fn2-read-observer-release (x fn2-reads fn2-c-source-control fn2-c-source-readers)
+ (declare (xargs :stobjs (fn2-reads fn2-c-source-control fn2-c-source-readers)
+  :guard (and (fn2-reads-wfp fn2-reads) (fn2-c-source-control-wfp fn2-c-source-control)
+              (fn2-c-source-readers-wfp fn2-c-source-readers))))
+ (b* (((unless (and (natp x) (< x (fn2-reads-rows fn2-reads))))
+       (mv :bounds fn2-reads fn2-c-source-control fn2-c-source-readers))
+      (receipt (fn2-reads-observer-serial x fn2-reads))
+      ((when (equal receipt 0)) (mv :ok fn2-reads fn2-c-source-control fn2-c-source-readers))
+      ; The writer's retained wake-pending tuple is consumed by its actual
+      ; bounded poll/self-yield loop; dropping scalar wake outputs loses no wake.
+      ((mv code & & fn2-c-source-control fn2-c-source-readers)
+       (fn2-c-source-reader-release x receipt fn2-c-source-control fn2-c-source-readers))
+      ((unless (eq code :ok)) (mv :state fn2-reads fn2-c-source-control fn2-c-source-readers))
+      (fn2-reads (fn2-reads-put x (observer-serial 0) (op *fn2-read-op-idle*) (entry 0))))
+  (mv :ok fn2-reads fn2-c-source-control fn2-c-source-readers)))
+
+(defun fn2-read-observer-enter (x fresh fn2-reads fn2-c-source-control fn2-c-source-readers)
+ (declare (xargs :stobjs (fn2-reads fn2-c-source-control fn2-c-source-readers)
+  :guard (and (fn2-reads-wfp fn2-reads) (fn2-c-source-control-wfp fn2-c-source-control)
+              (fn2-c-source-readers-wfp fn2-c-source-readers))))
+ (b* (((unless (and (natp x) (< x (fn2-reads-rows fn2-reads))))
+       (mv :bounds fn2-reads fn2-c-source-control fn2-c-source-readers))
+      ((mv code fn2-reads fn2-c-source-control fn2-c-source-readers)
+       (if fresh (fn2-read-observer-release x fn2-reads fn2-c-source-control fn2-c-source-readers)
+        (mv :ok fn2-reads fn2-c-source-control fn2-c-source-readers)))
+      ((unless (eq code :ok)) (mv code fn2-reads fn2-c-source-control fn2-c-source-readers))
+      (fn2-reads (if fresh (fn2-reads-put x (op *fn2-read-op-idle*) (entry 0)) fn2-reads))
+      (expected (fn2-reads-observer-serial x fn2-reads))
+      ((mv code receipt fn2-c-source-control fn2-c-source-readers)
+       (fn2-c-source-reader-acquire x expected fn2-c-source-control fn2-c-source-readers))
+      ((unless (eq code :ok))
+       (mv (if (member-eq code '(:busy :exhausted)) :more :state)
+           fn2-reads fn2-c-source-control fn2-c-source-readers))
+      (fn2-reads (fn2-reads-set-observer-serial x receipt fn2-reads)))
+  (mv :ok fn2-reads fn2-c-source-control fn2-c-source-readers)))
