@@ -410,6 +410,7 @@ ACL2_BOOKS = \
   tests/m2-cuts \
   tests/machine-arms-probe-fixture \
   tests/machine-arms-unit \
+  tests/machine-arm-accounting-unit \
   tests/machine-issue-bind-unit \
   tests/tls-profile-unit \
   tests/tls-transport-unit \

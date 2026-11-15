@@ -718,7 +718,7 @@ Q1 entry/partition/step/exit proofs follow these transition contracts.
 Primitive work/allocation semantics is a separate dependency of the actual
 bounded-work claim; summing declarations alone is insufficient.
 
-### Open returned-charge defect — November 15
+### Returned-charge repair and remaining composition — November 15
 
 At integration `26342e8cb`, `fn2-arms-charge-form` returns explicit byte/step
 charges plus loop work, while only its static metadata takes the maximum with
@@ -729,6 +729,20 @@ establish runtime accounting. `audit_bridge` owns the shared generator repair:
 connect returned byte/step charges and composed prefix costs, retain exact
 issued-descriptor counts, and test the actual generated composed arm and
 unchanged-cap refusal. No profile limit increase is authorized by this defect.
+
+The shared repair now passes exact 25-book record
+`certify-20261115T133412Z-1382828` (23 reused, generator and fixture certified).
+The actual generated found path reports 12288 bytes/5 steps; its end path
+reports 8192/3. The static end envelope is 8192/4 because it uses the public
+subarm step floor. The actual run-contract validator rejects the found path
+under an unchanged 8192-byte cap. Root matched all 25 source hashes and closure
+keys and reran five focused controls. This runtime generator change rekeys its
+consumers: the earlier actual A-machine35 record remains evidence for its
+stated source, not qualification of the new accounting composition. Requalify
+actual consumers after integrating the remaining peer/runtime changes.
+Preceding successful issue counts across goto remain a separate exact-effect
+and residual-admission obligation; no new DSL restriction was introduced.
+Receipt: [callback accounting](receipts/arm-accounting25-record.json).
 
 `peer_assurance` owns resumable article lookup and schema-specific physical
 read bounds in parallel. A declared callback cost is not a proof of physical
