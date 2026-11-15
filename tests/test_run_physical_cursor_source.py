@@ -37,12 +37,14 @@ class PhysicalCursorSource(unittest.TestCase):
     def test_installed_physical_root_copies_exact_reference_and_waits(self):
         root = self.runs['fn2-run-cursor-start-installed']
         used = calls(root)
-        for field in ['epoch', 'catalog-tag', 'run'] + [f'hash-{i}' for i in range(8)]:
+        for field in ['epoch', 'catalog-tag', 'run', 'wire-run'] + [f'hash-{i}' for i in range(8)]:
             self.assertIn('fn2-run-installed-' + field, used)
         self.assertIn('*fn2-run-cursor-phase-miss*', str(root))
         self.assertIn('*fn2-none*', str(root))
         self.assertNotIn('fn2-run-cache-install', used)
         self.assertNotIn('fn2-block-read-children', used)
+        self.assertIn(['run', ['fn2-run-installed-wire-run', 'r', 'fn2-run-installed']], list(walk(root)))
+        self.assertIn(['priority', ['fn2-run-installed-run', 'r', 'fn2-run-installed']], list(walk(root)))
 
     def test_parent_reread_preserves_all_hash_words_and_epoch(self):
         parent = self.runs['fn2-run-cursor-parent-ref']
