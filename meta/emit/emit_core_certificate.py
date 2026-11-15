@@ -111,6 +111,60 @@ MEMBER_DEFINITIONS = {
 }
 
 
+def closed_member_book(src, roots, output):
+    """Propose current-world identity/closure checks, not semantic adequacy.
+
+    Qualify ALL packet records, including guard and measure dependencies omitted
+    from the Lean body program. The selected roots must be the packet's exact
+    census: print with INCLUDE-CONTEXT NIL and no extra operation roots.
+    """
+    packet = read_canonical(Path(src).read_text())
+    if not packet or packet[0] != ':FN2-CERTIFICATE':
+        raise ValueError('scoped qualification requires FN2-CERTIFICATE packet')
+    p = fields(packet[1:])
+    if str(p.get(':VERSION')) != '1':
+        raise ValueError('unsupported scoped packet version')
+    for key in (':ROOTS', ':MANIFEST', ':NATIVES'):
+        if key not in p:
+            raise ValueError('scoped packet missing ' + key)
+    packet_roots = [str(decode(x)) for x in p[':ROOTS']]
+    if (not roots or len(set(roots)) != len(roots) or
+            len(set(packet_roots)) != len(packet_roots) or
+            set(packet_roots) != set(roots)):
+        raise ValueError('explicit roots differ from scoped packet root census')
+    # Same selector and rejection policy as the emitted Lean consumer.
+    _, _, allf, _, _ = inspect_core_certificate(src, roots)
+    if not set(roots) <= set(allf):
+        raise ValueError('scoped root lacks exported function record')
+    base = Path(__file__).resolve().parents[2]
+    def include(name):
+        rel = os.path.relpath(base / 'books' / name, Path(output).resolve().parent)
+        return '(include-book "' + rel.replace('\\', '/').replace('"', '\\"') + '")'
+    names = '(' + ' '.join(allf) + ')'
+    natives = '(' + ' '.join(show(decode(x)) for x in p[':NATIVES']) + ')'
+    lines = ['; PROPOSAL: certify at the current closure key before using as evidence.',
+             '; Checks exported identity and closure only; no domain/MBE/attachment theorem.',
+             '(in-package "ACL2")', include('assembly-callbacks-e-cns'),
+             include('translation-validation'),
+             "(fn2-tv-check-manifest '" + canonical_text(p[':MANIFEST']) + ')']
+    for row in p[':FUNCTIONS']:
+        d = fields(row)
+        lines.append("(fn2-tv-check-function '" + canonical_text(row) +
+                     " '" + show(decode(d[':FUNCTION'])) + ')')
+    lines.append("""(make-event
+ (let ((names '%s) (roots '%s) (natives '%s))
+  (if (and (consp roots) (no-duplicatesp-eq roots)
+           (no-duplicatesp-eq names) (subsetp-eq roots names)
+           (no-duplicatesp-eq natives)
+           (subsetp-eq natives *fn2-tv-native-boundary*)
+           (subsetp-eq *fn2-tv-native-boundary* natives)
+           (fn2-tv-closed-functions names (append names natives) (w state)))
+      '(value-triple :scoped-export-identity-and-closure)
+    (er soft 'scoped-core-export "Missing root/callee or changed native boundary."))))""" %
+                 (names, '(' + ' '.join(roots) + ')', natives))
+    return '\n\n'.join(lines) + '\n'
+
+
 def closed_member_source(src, roots):
     """Propose an exact-record recursive consumer; domain premises stay explicit.
 
@@ -263,14 +317,20 @@ def cli(argv=None):
     parser=argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--inspect', action='store_true', help='inspect the selected closure without writing artifacts')
     parser.add_argument('--closed-member-output', type=Path, help='propose packet-bound closed MEMBER consumer; requires explicit roots and Lean checking')
+    parser.add_argument('--closed-member-book', type=Path, help='also propose scoped ACL2 packet qualification book; requires --closed-member-output')
     parser.add_argument('--root', action='append', help='inspect only this explicit function body closure (repeatable)')
     parser.add_argument('source', help='canonical export packet')
     args=parser.parse_args(argv)
+    if args.closed_member_book and not args.closed_member_output:
+        parser.error('--closed-member-book requires --closed-member-output')
     if args.closed_member_output:
         if args.inspect or not args.root:
             parser.error('--closed-member-output requires explicit --root and cannot combine with --inspect')
         proposal = closed_member_source(args.source, args.root)
+        book = closed_member_book(args.source, args.root, args.closed_member_book) if args.closed_member_book else None
         args.closed_member_output.write_text(proposal)
+        if book is not None:
+            args.closed_member_book.write_text(book)
         print('CLOSED MEMBER PROPOSAL (domain premises remain; kernel and current-world gates required)')
         return
     if args.root and not args.inspect:

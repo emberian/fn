@@ -405,3 +405,33 @@ The actual draining membership site is generated `:do` acceptance routing for
 call. Therefore this consumer must bind the current draining closure rather
 than label a timer-only export as membership coverage. Current branch-domain,
 MBE, primitive/object and attachment obligations remain open.
+
+The scoped printer `meta/emit/print-cns-member-certificate.lsp` requests only
+DRAINING as a root (`include-context nil`, no operation roots). The printer
+still collects body, guard and measure dependencies. Once the current callback
+closure is qualified, produce the packet in that world and generate both sides:
+
+```sh
+python3 meta/emit/emit_core_certificate.py --root FN2-CNS-RUN-DRAINING \
+  --closed-member-output /tmp/CnsMember.lean \
+  --closed-member-book meta/emit/cns-member-packet.lisp \
+  meta/emit/cns-member-certificate.sexp
+```
+
+The companion ACL2 book checks the manifest and every exact function record,
+including records outside the Lean body selection, then checks the live
+body/guard/measure/attachment closure and native boundary. Its root census must
+exactly match the requested roots; malformed, duplicate or extra roots refuse
+before either output is written. It uses existing translation-validation
+checks and does not add a dependency to the shared callback prefix.
+
+This is an unadmitted qualification-book proposal, not new served evidence.
+Its current closure-key qualification and the corresponding Lean module check
+are separate gates. Even both gates would establish only packet identity and
+the stated membership theorem with domain premises: reached caller domains,
+primitive correspondence, MBE and the selected-dispatch/host binding chain
+still need their own proofs. This printer does not substitute the proposed
+selected dispatcher for the production dispatcher or treat defattach as an
+ACL2 equality. Nine Python source-generation controls and six existing
+inspection controls pass; no current packet or ACL2 admission was obtained by
+those controls.
