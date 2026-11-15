@@ -30,6 +30,12 @@
   (answer fn2-effect-extra) (fn2-effect-test-leaf x fn2-effect-extra)
   (let ((fn2-core (if (equal answer 0) (fn2-effect-test-boundary 7 fn2-core)
                    (fn2-effect-test-boundary answer fn2-core))))
+   (mv answer 17 29 fn2-core))))
+(defun fn2-effect-test-read (x fn2-core)
+ (declare (xargs :stobjs fn2-core :verify-guards nil :guard t))
+ (stobj-let ((fn2-effect-extra (fn2-core-extra fn2-core))) (answer)
+  (fn2-effect-extra-value 0 fn2-effect-extra)
+  (let ((fn2-core (fn2-effect-test-boundary (+ x answer) fn2-core)))
    (mv answer fn2-core))))
 (defun fn2-effect-test-order (x fn2-core)
  (declare (xargs :stobjs fn2-core :verify-guards nil :guard t))
@@ -134,3 +140,54 @@
       (equal (fn2-effect-selection-key 'implementation 'stub-b) 'stub-b)
       (not (equal (fn2-effect-selection-key 'implementation nil)
                   (fn2-effect-selection-key 'implementation 'stub-a)))))
+
+; Admit the emitted typed function itself. This exercises the actual nested
+; getter/writeback reconstruction, rather than merely accepting an IR shape.
+; All three scalar outputs retain their indices, including the last scalar.
+(defun fn2-effect-test-emission (fn world)
+ (declare (xargs :verify-guards nil))
+ (mv-let (problem rows) (fn2-effect-test-plan fn world)
+  (let ((row (cdr (assoc-eq fn rows))))
+   (mv-let (err stages ir counter)
+    (fn2-effect-compile (fn2-decl-get :body row)
+     (fn2-effect-env (fn2-decl-get :formals row) (fn2-decl-get :inputs row))
+     rows 'fn2-effect-test-boundary 'fn2-effect-test-replacement world 0 10000)
+    (declare (ignore counter))
+    (mv-let (err2 tail) (fn2-effect-tail ir)
+     (mv-let (err3 body) (fn2-effect-block stages tail world 10000)
+      (mv (or problem err err2 err3)
+          `(defun ,(fn2-effect-name fn) (x fn2-core fn2-effect-fifo)
+            (declare (xargs :stobjs fn2-core :verify-guards nil :guard t))
+            ,body))))))))
+(make-event
+ (mv-let (err event) (fn2-effect-test-emission 'fn2-effect-test-mv (w state))
+  (if err (er soft 'fn2-effect-test-emission "Mutable borrow refused: ~x0" err)
+   (value event))))
+(make-event
+ (mv-let (err event) (fn2-effect-test-emission 'fn2-effect-test-read (w state))
+  (if err (er soft 'fn2-effect-test-emission "Read borrow refused: ~x0" err)
+   (value event))))
+(make-event
+ (let* ((world (w state))
+        (fn 'fn2-effect-test-mv-ref-effect)
+        (image (fn2-effect-admitted-image fn world))
+        (stored (list :source 'source-a :admitted image)))
+  (value `(assert-event
+   ',(and (equal (getpropc fn 'stobjs-out nil world) '(nil nil nil fn2-core nil))
+          (fn2-effect-reuse-p stored 'source-a fn world)
+          (not (fn2-effect-reuse-p stored 'source-b fn world))
+          (not (fn2-effect-reuse-p (list :source 'source-a :admitted nil)
+                                  'source-a fn world)))))))
+
+; Malformed stage streams cannot turn a nested child into a free carrier.
+(make-event
+ (mv-let (orphan body)
+  (fn2-effect-block '(((fn2-core) (update-fn2-core-extra fn2-effect-extra fn2-core)))
+                    'fn2-core (w state) 100)
+  (declare (ignore body))
+  (mv-let (escape body)
+   (fn2-effect-block '(((fn2-effect-extra) (fn2-core-extra fn2-core)))
+                     'fn2-effect-extra (w state) 100)
+   (declare (ignore body))
+   (value `(assert-event ',(and (eq orphan :unpaired-nested-writeback)
+                               (eq escape :escaping-nested-child)))))))
