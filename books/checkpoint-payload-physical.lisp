@@ -74,3 +74,24 @@
  (next fn2-checkpoint-payload fn2-fields) :position 1
  :hyps ((fn2-checkpoint-payloadp fn2-checkpoint-payload) (fn2-checkpoint-payload-wfp fn2-checkpoint-payload)
         (fn2-fieldsp fn2-fields) (fn2-fields-wfp fn2-fields)))
+
+; The existing I/O owner supplies the observed byte count only after its
+; exact operation completion. Source authority remains in live/cold callers.
+(defun fn2-checkpoint-payload-physical-loaded (count fn2-checkpoint-payload)
+ (declare (xargs :stobjs fn2-checkpoint-payload :guard (fn2-checkpoint-payload-wfp fn2-checkpoint-payload)))
+ (b* (((unless (and (< 0 (fn2-checkpoint-payload-rows fn2-checkpoint-payload))
+                    (equal (fn2-checkpoint-payload-pending 0 fn2-checkpoint-payload) 1)
+                    (member (fn2-checkpoint-payload-phase 0 fn2-checkpoint-payload)
+                     (list *fn2-checkpoint-payload-phase-wait-manifest* *fn2-checkpoint-payload-phase-wait-block*))))
+       (mv :state fn2-checkpoint-payload))
+      (manifestp (equal (fn2-checkpoint-payload-phase 0 fn2-checkpoint-payload) *fn2-checkpoint-payload-phase-wait-manifest*))
+      (len (if manifestp 4096 (fn2-checkpoint-payload-block-length 0 fn2-checkpoint-payload)))
+      (good (and (posp len) (<= len 4096) (equal count len)))
+      (next (if manifestp (if (equal (fn2-checkpoint-payload-manifest-position 0 fn2-checkpoint-payload) 0)
+                           *fn2-checkpoint-payload-phase-header* *fn2-checkpoint-payload-phase-entry*)
+               *fn2-checkpoint-payload-phase-block-verify*))
+      (verify (or manifestp (equal (fn2-checkpoint-payload-location-kind 0 fn2-checkpoint-payload) 0)))
+      (fn2-checkpoint-payload (fn2-checkpoint-payload-put 0 (pending 0) (verify-next next)
+       (phase (if good (if verify *fn2-checkpoint-payload-phase-location-verify* next) *fn2-checkpoint-payload-phase-uncertain*)))))
+  (mv (if good :more :io) fn2-checkpoint-payload)))
+(fn2-checkpoint-payload-preserves fn2-checkpoint-payload-physical-loaded (count fn2-checkpoint-payload) :position 1)
