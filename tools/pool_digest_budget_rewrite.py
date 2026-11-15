@@ -43,6 +43,12 @@ SUPPORT = '''; A partial little-endian word is continuation state, not a digest 
        (<= (mv-nth 1 (fn2-rec-fetch-step budget next acc dst slot gen off okind oslot ogen fn2-pool fn2-digests)) 32)
        (<= (- (mv-nth 1 (fn2-rec-fetch-step budget next acc dst slot gen off okind oslot ogen fn2-pool fn2-digests)) next) budget)))
  :rule-classes nil)
+(defthm fn2-rec-fetch-step-result-state
+ (implies (and (natp budget) (natp off) (fn2-rec-fetch-state-p next acc))
+  (fn2-rec-fetch-state-p
+   (mv-nth 1 (fn2-rec-fetch-step budget next acc dst slot gen off okind oslot ogen fn2-pool fn2-digests))
+   (mv-nth 2 (fn2-rec-fetch-step budget next acc dst slot gen off okind oslot ogen fn2-pool fn2-digests))))
+ :rule-classes nil)
 (defthm fn2-rec-fetch-step-zero
  (implies (and (natp off) (fn2-rec-fetch-state-p next acc))
   (equal (mv-list 4 (fn2-rec-fetch-step 0 next acc dst slot gen off okind oslot ogen fn2-pool fn2-digests))

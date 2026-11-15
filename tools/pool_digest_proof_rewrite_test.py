@@ -15,7 +15,7 @@ class Proof(unittest.TestCase):
   old={m.captures['name'].low:text(before,m.node) for m in lr.match('(defun ?name ?*body)',lr.parse(before).forms,deep=False)}
   new={m.captures['name'].low:text(after,m.node) for m in lr.match('(defun ?name ?*body)',lr.parse(after).forms,deep=False)}
   self.assertEqual(old,new)
-  for name in ['fn2-rec-fetch-step-progress-bound','fn2-rec-fetch-step-zero','fn2-rec-fetch-step-shape','fn2-rec-fetch-exec-refines','fn2-rec-fetch-shape']:
+  for name in ['fn2-rec-fetch-step-progress-bound','fn2-rec-fetch-step-result-state','fn2-rec-fetch-step-zero','fn2-rec-fetch-step-shape','fn2-rec-fetch-exec-refines','fn2-rec-fetch-shape']:
    a=one(before,'(defthm '+name+' ?*body)');b=one(after,'(defthm '+name+' ?*body)')
    self.assertEqual(text(before,a.items[2]),text(after,b.items[2]),name)
  def test_word_proof_uses_original_reads_and_original_store_expression(self):
@@ -29,6 +29,10 @@ class Proof(unittest.TestCase):
   self.assertIn('(mv-nth 1 (fn2-layout-byte :u32',rhs)
   self.assertIn('(if (= k 7) :ok :more)',rhs)
   self.assertNotIn('(defun',rhs)
+ def test_exported_result_state_requires_valid_input(self):
+  s=read('books/pool-digest.lisp');n=one(s,'(defthm fn2-rec-fetch-step-result-state ?*body)')
+  self.assertTrue(lr.match('(implies (and (natp budget) (natp off) (fn2-rec-fetch-state-p next acc)) (fn2-rec-fetch-state-p (mv-nth 1 ?call) (mv-nth 2 ?call)))',[n]))
+  self.assertIn(':use ((:instance fn2-rec-fetch-bytes-bound',text(s,n))
  def test_compose_is_full_tuple_and_full_refinement_is_whole_carrier(self):
   s=read('books/pool-digest.lisp');forms=lr.parse(s).forms
   compose=lr.match('(defthm fn2-rec-fetch-bytes-compose ?*body)',forms)[0].node

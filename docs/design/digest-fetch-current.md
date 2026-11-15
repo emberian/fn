@@ -15,7 +15,10 @@ layout SHA256 stays `2060684efd33bb23e0c426275edc9a3dc6c47b50ceda0b80207c84ec7fd
 `fn2-rec-fetch-step` consumes at most its byte budget, returning the absolute
 next byte and a width-constrained partial U32 accumulator. It calls the existing
 `fn2-layout-byte :u32` transition and writes a digest word only after all four
-bytes succeed. Budget zero preserves the complete carrier and continuation.
+bytes succeed. Budget zero preserves the complete carrier and continuation. The public
+`fn2-rec-fetch-step-result-state` theorem exports validity of the returned
+next/partial state for valid input/budget/offset, including source errors;
+invalid-input `:bounds` continues to echo its arbitrary input state.
 An owner/stale/bounds error preserves the partial word and all previously
 committed words. The pool is read-only. The unchanged old fetch remains the
 reference for code and complete digest-carrier effects.
@@ -25,7 +28,9 @@ typed guard. Local proof support supplies a full four-result worker composition
 statement, extracts the aligned four-byte reads/store from the original fetch,
 and splits the remaining worker at that word. The final hint inducts the
 original fetch. These statements and guard events are authored, UNRUN proof
-obligations, not established equalities. Source controls cannot discharge them.
+obligations, not established equalities. Source controls cannot discharge them. Independent source review found no
+guarded code/effects mismatch and identified the exported result-state theorem
+needed by downstream continuation guards; its hint uses the same local bound.
 The first refuting gate must admit the new definitions, invariant/composition
 lemmas and guard events before reaching the final equality; a failure there
 must be fixed before importing the event-reader continuation.
@@ -40,7 +45,7 @@ derived by decoding the writer output. These executable controls are UNRUN.
 
 The mechanical transformations and their before fixtures are in
 `tools/pool_digest_budget_rewrite.py` and `tools/pool_digest_proof_rewrite.py`.
-Seven Python source controls pass. Lisp structural checks, secrets and diff
+Eight Python source controls pass. Lisp structural checks, secrets and diff
 checks pass. No logical proof or executable fixture success is claimed.
 
 ## Exact dependency/cache cut

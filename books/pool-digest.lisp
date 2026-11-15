@@ -107,6 +107,14 @@
  :rule-classes nil
  :hints (("Goal" :use ((:instance fn2-rec-fetch-bytes-bound (left (min budget (- 32 next)))))
                         :in-theory (enable fn2-rec-fetch-step fn2-rec-fetch-state-p))))
+(defthm fn2-rec-fetch-step-result-state
+ (implies (and (natp budget) (natp off) (fn2-rec-fetch-state-p next acc))
+  (fn2-rec-fetch-state-p
+   (mv-nth 1 (fn2-rec-fetch-step budget next acc dst slot gen off okind oslot ogen fn2-pool fn2-digests))
+   (mv-nth 2 (fn2-rec-fetch-step budget next acc dst slot gen off okind oslot ogen fn2-pool fn2-digests))))
+ :rule-classes nil
+ :hints (("Goal" :use ((:instance fn2-rec-fetch-bytes-bound (left (min budget (- 32 next)))))
+                        :in-theory (enable fn2-rec-fetch-step))))
 (defthm fn2-rec-fetch-step-zero
  (implies (and (natp off) (fn2-rec-fetch-state-p next acc))
   (equal (mv-list 4 (fn2-rec-fetch-step 0 next acc dst slot gen off okind oslot ogen fn2-pool fn2-digests))

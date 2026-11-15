@@ -148,6 +148,8 @@ def rewrite(source):
  source=lr.write(source,[(anchor.start,anchor.start,SUPPORT)])
  source=with_hint(source,'fn2-rec-fetch-step-progress-bound', ''':hints (("Goal" :use ((:instance fn2-rec-fetch-bytes-bound (left (min budget (- 32 next)))))
                         :in-theory (enable fn2-rec-fetch-step fn2-rec-fetch-state-p)))''')
+ source=with_hint(source,'fn2-rec-fetch-step-result-state', ''':hints (("Goal" :use ((:instance fn2-rec-fetch-bytes-bound (left (min budget (- 32 next)))))
+                        :in-theory (enable fn2-rec-fetch-step)))''')
  source=with_hint(source,'fn2-rec-fetch-step-zero', ''':hints (("Goal" :in-theory (enable fn2-rec-fetch-step fn2-rec-fetch-bytes fn2-rec-fetch-state-p)))''')
  source=with_hint(source,'fn2-rec-fetch-step-shape', ''':hints (("Goal" :in-theory (enable fn2-rec-fetch-step)))''')
  anchor=node(source,'(defthm fn2-rec-fetch-exec-refines ?*body)')
