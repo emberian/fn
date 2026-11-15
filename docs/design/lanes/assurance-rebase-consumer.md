@@ -112,3 +112,22 @@ partition every old source predicate clause, and require one physical read and
 one page verifier implementation. These are source controls, not ACL2 admission.
 Schema20 is reserved for internal canonical member bytes and the actual shared
 phase3 leaf digest; schema21 remains reserved for future real carry-node output.
+
+Schema20 now declares an internal, inline `(history, incarnation, event)` run
+entry containing one exact canonical member range and its shared phase3 leaf
+digest. The schema generator records internal admission: successor PUT and
+journal replay refuse these schemas before mutation/decode, and per-schema
+transaction writers omit them. Semantic journal record kinds remain unchanged.
+`fn2-event-archive-begin` reuses source build1/window12 only after actual held
+root1/source/manifest completion; manifest build2 remains untouched. The actual
+`fn2-event-archive-stage` derives the reader's held physical source, exact LEAF
+range, event order, checker and leaf row, then calls the existing run builder.
+It retains that scanner leaf through page work and returns STAGED only after
+actual entry admission; retries do not duplicate it. Shared metadata page
+recipes derive role3 for archive-kind2/schema20, preserving ordinary role1.
+Seven source controls and an unrun ACL2 internal/public admission fixture cover
+these boundaries. These new operations are **unreachable-in-composition** until
+root3's producer driver switches to the archive format. Actual archive page
+completion, authenticated root3 header/Cseal/coverage, selected descriptor read,
+carry-node output, source-holder lifetime, and physical reclaim/reuse remain
+required. No archive coverage/publication or source discharge is asserted yet.

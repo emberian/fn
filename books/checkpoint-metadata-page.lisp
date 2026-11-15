@@ -40,7 +40,8 @@
       ((unless (< extent (fn2-checkpoint-construction-rows fn2-checkpoint-construction))) (mv :bounds fn2-checkpoint-page)))
   (fn2-checkpoint-page-begin (fn2-checkpoint-metadata-token 0 fn2-checkpoint-metadata)
    (fn2-checkpoint-metadata-owner-kind 0 fn2-checkpoint-metadata) (fn2-checkpoint-metadata-owner-slot 0 fn2-checkpoint-metadata)
-   (fn2-checkpoint-metadata-owner-gen 0 fn2-checkpoint-metadata) 1
+   (fn2-checkpoint-metadata-owner-gen 0 fn2-checkpoint-metadata)
+        (fn2-checkpoint-metadata-role b fn2-checkpoint-metadata fn2-run-builds)
    (fn2-checkpoint-construction-ordinal extent fn2-checkpoint-construction) extent
    (fn2-run-writers-epoch w fn2-run-writers) (fn2-run-writers-counter w fn2-run-writers)
    (fn2-run-writers-slot w fn2-run-writers) (fn2-run-writers-gen w fn2-run-writers)
@@ -80,7 +81,8 @@
             (< e (fn2-checkpoint-page-verified-rows fn2-checkpoint-page-verified))
             (fn2-checkpoint-page-completed-extent-p (fn2-checkpoint-metadata-token 0 fn2-checkpoint-metadata)
              (fn2-checkpoint-metadata-owner-kind 0 fn2-checkpoint-metadata) (fn2-checkpoint-metadata-owner-slot 0 fn2-checkpoint-metadata)
-             (fn2-checkpoint-metadata-owner-gen 0 fn2-checkpoint-metadata) 1
+             (fn2-checkpoint-metadata-owner-gen 0 fn2-checkpoint-metadata)
+        (fn2-checkpoint-metadata-role b fn2-checkpoint-metadata fn2-run-builds)
              (fn2-checkpoint-construction-ordinal e fn2-checkpoint-construction) e
              fn2-checkpoint-page-verified fn2-checkpoint-construction fn2-extents)
             (equal (fn2-checkpoint-page-verified-epoch e fn2-checkpoint-page-verified) (fn2-run-writers-epoch w fn2-run-writers))

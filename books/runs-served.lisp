@@ -10,5 +10,6 @@
 (include-book "authority-schema")
 (include-book "folds")
 (include-book "runs-manifest")
+(include-book "event-archive-schema")
 (fn2-book-layer :c)
 (fn2-run-assemble)

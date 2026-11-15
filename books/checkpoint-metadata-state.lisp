@@ -33,3 +33,15 @@
             (equal (fn2-run-builds-oslot b fn2-run-builds) (fn2-checkpoint-metadata-owner-slot 0 fn2-checkpoint-metadata))
             (equal (fn2-run-builds-ogen b fn2-run-builds) (fn2-checkpoint-metadata-owner-gen 0 fn2-checkpoint-metadata))))))
 
+
+; Source builders are reused sequentially after root1 completion. Internal
+; archive bytes belong to root3's typed closure, never to semantic root1.
+(defun fn2-checkpoint-metadata-role (b fn2-checkpoint-metadata fn2-run-builds)
+ (declare (xargs :stobjs (fn2-checkpoint-metadata fn2-run-builds)
+  :guard (and (fn2-checkpoint-metadata-wfp fn2-checkpoint-metadata) (fn2-run-builds-wfp fn2-run-builds))))
+ (and (natp b) (< b (fn2-run-builds-rows fn2-run-builds))
+      (< 0 (fn2-checkpoint-metadata-rows fn2-checkpoint-metadata))
+      (if (fn2-run-layout-internal-p (fn2-run-builds-schema b fn2-run-builds))
+          (and (equal (fn2-run-builds-schema b fn2-run-builds) *fn2-event-archive-schema*)
+               (equal (fn2-checkpoint-metadata-source-kind 0 fn2-checkpoint-metadata) 2) 3)
+        1)))
