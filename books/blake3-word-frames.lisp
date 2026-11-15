@@ -77,6 +77,16 @@
 (fn2-b3-word-frame fn2-b3-flush)
 ; BYTE normalizes POS modulo 64; POOL-MESSAGE traverses indices [i,16).
 ; Their callers retain the physical stripe after each returned update.
+; POS is an arbitrary logical value: split the arithmetic totalization,
+; never add an element-type hypothesis to the physical-stripe interface.
+(local
+ (defthm fn2-b3-byte-word-index-bound
+  (and (natp (floor (mod x 64) 4))
+       (< (floor (mod x 64) 4) 16))
+  :hints (("Goal" :cases ((rationalp x)) :in-theory (disable mod floor))
+          ("Subgoal 1" :use ((:instance mod-bounds-1 (y 64))
+                             (:instance floor-bounds-1 (x (mod x 64)) (y 4))))
+          ("Subgoal 2" :in-theory (enable mod floor)))))
 (fn2-b3-word-frame fn2-b3-byte :stripe)
 (fn2-b3-word-frame fn2-b3-pool-message :index)
 (fn2-b3-word-frame fn2-b3-chunk-output-into :stripe)

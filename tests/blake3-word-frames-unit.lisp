@@ -45,3 +45,30 @@
        (equal (fn2-b3-wordsi 31 out) 16777216)
        (equal (fn2-b3-pos 1 out) 64)))
  :rule-classes nil)
+
+; Fractional POS is also off the declared u8 domain. This case exercises
+; arithmetic totalization without assuming INTEGERP POS in the frame law.
+(defthm fn2-b3-word-stripe-byte-fractional-pos-positive
+ (let* ((b (fn2-b3-set-pos 1 1/2 (fn2-b3-table-init 2 (create-fn2-b3))))
+        (out (mv-nth 1 (fn2-b3-byte 1 1 (create-fn2-digests) b))))
+  (and (fn2-b3-word-stripep 1 b)
+       (equal (fn2-b3-pos 1 b) 1/2)
+       (not (integerp (fn2-b3-pos 1 b)))
+       (equal (fn2-b3-words-length out) (fn2-b3-words-length b))
+       (equal (fn2-b3-words-length out) 32)
+       (equal (fn2-b3-wordsi 16 out) 16)
+       (equal (fn2-b3-pos 1 out) 3/2)))
+ :rule-classes nil)
+
+; Nonnumeric POS exercises the other branch of the total arithmetic lemma.
+(defthm fn2-b3-word-stripe-byte-nonnumeric-pos-positive
+ (let* ((b (fn2-b3-set-pos 1 :bad (fn2-b3-table-init 2 (create-fn2-b3))))
+        (out (mv-nth 1 (fn2-b3-byte 1 1 (create-fn2-digests) b))))
+  (and (fn2-b3-word-stripep 1 b)
+       (equal (fn2-b3-pos 1 b) :bad)
+       (not (acl2-numberp (fn2-b3-pos 1 b)))
+       (equal (fn2-b3-words-length out) (fn2-b3-words-length b))
+       (equal (fn2-b3-words-length out) 32)
+       (equal (fn2-b3-wordsi 16 out) 1)
+       (equal (fn2-b3-pos 1 out) 1)))
+ :rule-classes nil)
