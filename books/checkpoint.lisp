@@ -6,6 +6,7 @@
 (include-book "vocab")
 (include-book "pool-read-contracts")
 (include-book "columns-guard-hints")
+(include-book "columns-carrier-contracts")
 (fn2-book-layer :b)
 ; Current native backend routes one image. Domain0 is the format writer's
 ; declared domain; foreign references must never alias this allocator.
@@ -481,19 +482,12 @@
 ; Leaf contracts consumed by the generated core faces. They preserve concrete
 ; table shape only; these are not checkpoint/durability keystones.
 
-(fn2-checkpoint-refs-preserves fn2-checkpoint-retain
- (c role edge fn2-checkpoints fn2-checkpoint-refs fn2-checkpoint-bytes fn2-extents fn2-alloc-edges fn2-ops)
- :carriers ((fn2-checkpoint-refs 1 :prefix "-REFS" :hints ((fn2-columns-guard-hint
-                 '(fn2-checkpoints fn2-checkpoint-refs fn2-checkpoint-bytes
-                   fn2-extents fn2-alloc-edges fn2-ops)
-                 '(fn2-alloc-edge-add fn2-alloc-edge-matchesp) nil world)))
-            (fn2-extents 2 :prefix "-EXTENTS" :hints ((fn2-columns-guard-hint
-                 '(fn2-checkpoints fn2-checkpoint-refs fn2-checkpoint-bytes
-                   fn2-extents fn2-alloc-edges fn2-ops)
-                 '(fn2-alloc-edge-add fn2-alloc-edge-matchesp) nil world))) (fn2-alloc-edges 3 :prefix "-EDGES" :hints ((fn2-columns-guard-hint
-                 '(fn2-checkpoints fn2-checkpoint-refs fn2-checkpoint-bytes
-                   fn2-extents fn2-alloc-edges fn2-ops)
-                 '(fn2-alloc-edge-add fn2-alloc-edge-matchesp) nil world))))
+; The former EDGES-TYPE omitted readonly checkpoint typing and is refuted
+; by the committed whole-antecedent control. Other carrier facets stay exact.
+(defcolumns-carrier-contracts fn2-checkpoint-retain
+ :carriers ((fn2-checkpoint-refs 1 :prefix "-REFS")
+            (fn2-extents 2 :prefix "-EXTENTS") (fn2-alloc-edges 3 :prefix "-EDGES"))
+ :typed-readonly (fn2-alloc-edges)
  :hints ((fn2-columns-guard-hint
                  '(fn2-checkpoints fn2-checkpoint-refs fn2-checkpoint-bytes
                    fn2-extents fn2-alloc-edges fn2-ops)

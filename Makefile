@@ -112,6 +112,7 @@ ACL2_BOOKS = \
   books/host-compress \
   books/columns \
   books/columns-guard-hints \
+  books/columns-carrier-contracts \
   books/compress-policy \
   books/compress-kind \
   books/compress-operation \
@@ -388,6 +389,7 @@ ACL2_BOOKS = \
   tests/layout-teeth-unit \
   tests/layout-unit \
   tests/layout-size-bound-unit \
+  tests/checkpoint-carrier-unit \
   tests/columns-guard-hints-unit \
   tests/layout-proof-scope-unit \
   tests/log-model-unit \
