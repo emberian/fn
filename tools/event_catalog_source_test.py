@@ -45,6 +45,7 @@ class Source(unittest.TestCase):
    need(n,p)
  def test_source_requires_actual_exact_owned_protection(self):
   n=fn((ROOT/'books/event-catalog.lisp').read_text(),'fn2-event-catalog-held-p')
+  need(n,'(member (fn2-extents-state e fn2-extents) (list *fn2-extent-state-allocated* *fn2-extent-state-retire-pending*))')
   for kind in [':installed-root',':recovery-base',':selectable-checkpoint']:
    need(n,'(fn2-alloc-edge-matchesp ?*args '+kind+' fn2-alloc-edges)')
 if __name__=='__main__':unittest.main()
