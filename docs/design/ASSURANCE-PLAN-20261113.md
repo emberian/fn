@@ -7,6 +7,19 @@ must be derived from that store and the actual served call/attachment graph.
 
 ## Current integration frontier — 2026-11-15 UTC
 
+The next completion milestone is actual APPEND → STATUS → query, followed by
+recovery of accepted data. Integrated work now goes directly to upstream dev;
+component records alone do not establish this milestone. The shared application
+build owns the coherent current callback/runtime prefix and executable controls.
+
+Raw APPEND EOF controls from85c0114a3 are integrated as unexecuted regressions:
+seven real wire sessions require a trailing-CR refusal, empty STATUS, successful
+same-Message-ID retry, exactly one published occurrence, successful epoch setup,
+quiet termination and zero stop reason. Existing session helpers and assertions
+are preserved byte-for-byte in the shared support extraction. The precise
+final-mode-check mutant must reach actual reply divergence; a build failure is
+not a successful mutation control. Baseline and mutant execution remain owed.
+
 Current integration includes qualified held child release and generic compiler
 record890585 (29 books, root0bcf7ee29), device loan bindings record876717
 (12 books), and the earlier matcher/codec/pool scopes below. Root059ec5264 adds

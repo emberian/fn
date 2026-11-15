@@ -305,6 +305,7 @@ ACL2_BOOKS = \
   tests/cns-release-refinement-unit \
   tests/cns-release-evidence-unit \
   tests/cns-decode-unit \
+  tests/cns-raw-eof-unit \
   tests/cns-edges-unit \
   tests/columns-cost-unit \
   tests/columns-cost-unit-10 \
