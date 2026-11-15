@@ -40,6 +40,20 @@
     (fn2-extents 2 :hints nil)
     (fn2-alloc-edges 3 :hints (("Goal" :do-not-induct t))))))
 
+; The ACCOUNT strategy observes scalar frames without exposing the record
+; predicate, indexed NTH implementation, or raw updater bodies.
+(assert-event
+ (let* ((hint (fn2-columns-scalar-frame-hint
+                '(fn2-extents) '(fn2-alloc-account)
+                '(fn2-alloc-adjust fn2-alloc-adjust-okp fn2-alloc-reason)
+                (w state)))
+        (theory (cadr hint)) (opened (cadr theory)) (closed (caddr theory)))
+  (and (member-eq 'fn2-alloc-total-free opened)
+       (member-eq 'fn2-alloc-total-reserved opened)
+       (member-eq 'update-fn2-alloc-total-free closed)
+       (member-eq 'fn2-extentsp closed) (member-eq 'nth closed)
+       (not (member-eq 'fn2-extents-state opened)))))
+
 ; Unreachable-in-composition: the bad readonly holder violates the served
 ; guard's implicit checkpoint type. It satisfies the ENTIRE retired premise.
 (defthm fn2-checkpoint-retain-readonly-type-removal-witness

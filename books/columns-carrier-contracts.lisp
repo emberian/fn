@@ -128,3 +128,29 @@
  `(make-event
    (value (fn2-columns-guarded-contract-events
            ',name ',carriers ',hints ',rows (w state)))))
+
+; Scalar metadata observations must see existing raw NTH frame rules, while
+; scalar updaters stay named so their public TYPE/WFP/ROWS rules can fire.
+(defun fn2-columns-scalar-extra-runes (fields writers)
+ (declare (xargs :verify-guards nil))
+ (if (atom fields) nil
+  (append
+   (and (not (fn2-columns-arrayp (car fields)))
+        (fn2-columns-numeric-fieldp (car fields))
+        (list (if writers (fn2-columns-pre "UPDATE-" (caar fields))
+                (caar fields))))
+   (fn2-columns-scalar-extra-runes (cdr fields) writers))))
+(defun fn2-columns-table-scalar-runes (tables writers world)
+ (declare (xargs :verify-guards nil))
+ (if (atom tables) nil
+  (append
+   (fn2-columns-scalar-extra-runes
+    (fn2-decl-get :extra-fields (fn2-decl-row (list :columns (car tables)) world))
+    writers)
+   (fn2-columns-table-scalar-runes (cdr tables) writers world))))
+(defun fn2-columns-scalar-frame-hint (tables producers opaque world)
+ (declare (xargs :verify-guards nil))
+ (fn2-columns-guard-hint tables
+  (append opaque (fn2-columns-type-predicates tables)
+          (fn2-columns-table-scalar-runes tables t world))
+  (append producers (fn2-columns-table-scalar-runes tables nil world)) world))
