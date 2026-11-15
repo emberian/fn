@@ -7,6 +7,30 @@ must be derived from that store and the actual served call/attachment graph.
 
 ## Current integration frontier — 2026-11-14 evening
 
+The shared current core prerequisite is qualified in its 27-book scope:
+`certify-20261115T005654Z-646660` reused fourteen books and certified thirteen.
+Root matched all source digests before/after and to the integration tree. This
+covers core operations and scheduling, not the assembled application callbacks.
+
+Shared codec cancellation and child settlement are integrated at `53e7a596a`
+and qualified in the 13-book record `certify-20261115T005844Z-648440` (six reused,
+seven new). Root matched all thirteen current source digests and the unchanged
+runner. Four public cancellation controls and two child settlement controls pass.
+The shared generator changes invalidate older dependent TLS expansion keys;
+the historical twenty-book TLS result below is not current qualification for
+those changed consumers. Native/live-core composition is still pending. Review
+found that productive Receive completion after Close needs an explicit retained
+pre-Close input-effect receipt in replay; accepting arbitrary post-Close input
+would be an incorrect repair. Native cancelled Send must preserve accepted count
+without claiming delivered octets.
+
+The actual complete core-release theorem and its runtime/evidence candidates
+are now integrated and registered in the consumed obligation store. Their source
+includes nonempty sibling preservation, stale-generation refusal, and a sibling
+corruption control. The evidence candidate checks the exact live theorem H/C;
+universal status remains owed and current execution is pending the assembled-core
+prefix. Component ownership does not establish reachable CNS admission.
+
 Root `d18bcfbf2` includes the complete scoped TLS record/private-bridge guard
 changes (`756cef1ee`). The exact twenty-book record reused five qualified parents
 and certified fifteen books; root matched every source digest before and after.
