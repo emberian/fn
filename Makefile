@@ -403,6 +403,7 @@ ACL2_BOOKS = \
   tests/layout-unit \
   tests/columns-guard-hints-unit \
   tests/columns-carrier-hints-unit \
+  tests/checkpoint-member-interface-unit \
   tests/layout-proof-scope-unit \
   tests/log-model-unit \
   tests/m2-cuts \
