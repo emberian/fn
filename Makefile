@@ -544,6 +544,7 @@ ACL2_BOOKS = \
   tests/grant-class-resolution-unit \
   tests/root-upload-geometry-unit \
   tests/upload-rolling-served-unit \
+  tests/upload-window-profile-unit \
   tests/upload-uncertainty-served-unit \
   tests/upload-stream-abort-served-unit \
   tests/upload-dual-hash-unit \

@@ -165,10 +165,9 @@
   (declare (xargs :guard t))
   (and (booleanp (fn2-profile-get :posting-interim profile))
        (booleanp (fn2-profile-get :peering-interim profile))
-       ;; article input needs the chunk class and a hasher row per window
+       ;; article input needs its actual declared byte windows and private hash rows
        (or (not (fn2-profile-get :posting-interim profile))
-           (and (true-listp (fn2-profile-get :pool-classes profile))
-                (< *fn2-upload-chunk-class* (len (fn2-profile-get :pool-classes profile)))
+           (and (fn2-upload-window-profilep profile)
                 (< 0 (fn2-b-upload-windows profile))))
        (fn2-upload-article-profilep profile)))
 (defun fn2-input-config-from (profile fn2-input-config)

@@ -9,7 +9,7 @@ ROOT=Path(__file__).resolve().parents[1]
 class RollingSource(unittest.TestCase):
  def test_schema_is_single_checked_generator_expansion(self):
   old=subprocess.check_output(['git','show','bd3eff96a:books/upload-kind.lisp'],cwd=ROOT,text=True)
-  from compose_rolling_upload_current import upper_cut,consts,replace,fragment
+  from compose_rolling_upload_current import upper_cut,consts,replace,fragment,window_profile_guard
   lower={}
   for path in ['books/source-manifest-codec.lisp','books/upload-page-geometry.lisp','books/upload-window-geometry.lisp']:
    lower.update(consts((ROOT/path).read_text()))
@@ -19,7 +19,7 @@ class RollingSource(unittest.TestCase):
    expected=replace(expected,'defun',name,fragment(original,'defun',name))
   expected=expected.replace('(include-book "upload-window-geometry")',
      '(include-book "upload-window-geometry")\n(include-book "upload-page-geometry")')
-  self.assertEqual(expected,(ROOT/'books/upload-kind.lisp').read_text())
+  self.assertEqual(window_profile_guard(expected),(ROOT/'books/upload-kind.lisp').read_text())
  def test_actual_identity_routes_to_controller(self):
   s=(ROOT/'books/assembly-callbacks-d-upload.lisp').read_text()
   self.assertIn('((:ok) (:set (txn tid) (txn-gen tgen)) (:next :stream-init)',s)

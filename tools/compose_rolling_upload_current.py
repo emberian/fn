@@ -45,6 +45,16 @@ def upper_cut(text,lower):
  for m in lr.match('(assert-event ?*body)',lr.parse(text).forms):
   if canon(text[m.start:m.end]) in assertions:edits.append((m.start,m.end,''))
  return lr.write(text,edits)
+def window_profile_guard(text):
+ old="""           (and (true-listp (fn2-profile-get :pool-classes profile))
+                (< *fn2-upload-chunk-class* (len (fn2-profile-get :pool-classes profile)))
+                (< 0 (fn2-b-upload-windows profile))))"""
+ assert text.count(old)==1
+ text=text.replace(old,"""           (and (fn2-upload-window-profilep profile)
+                (< 0 (fn2-b-upload-windows profile))))""")
+ return text.replace('article input needs the chunk class and a hasher row per window',
+                     'article input needs its actual declared byte windows and private hash rows')
+
 def main():
  # The original ROOT codec/page extraction is already applied. These exact
  # author-owned leaves add only the explicit d51 followup policy/geometry.
