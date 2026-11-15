@@ -118,7 +118,7 @@
  :why "One exact descriptor-bound cold semantic page reader; no selected-base or live allocator authority.")
 
 (defcorechild fn2-core-checkpoint-summary fn2-checkpoint-summary
- :init (fn2-checkpoint-summary-init (if (fn2-profile-get :image-boot profile) 1 0) fn2-checkpoint-summary)
+ :init (fn2-checkpoint-summary-init (if (fn2-profile-get :image-boot profile) 2 0) fn2-checkpoint-summary)
  :profilep t :why "Exact selected-source catalog intake and bounded C adoption; capture alone is not sufficient-summary authority.")
 (defcorechild fn2-core-checkpoint-selected-source fn2-checkpoint-selected-source
  :init (fn2-checkpoint-selected-source-init 1 fn2-checkpoint-selected-source)

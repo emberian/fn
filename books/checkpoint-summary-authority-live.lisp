@@ -11,7 +11,7 @@
 (fn2-book-layer :c)
 (defun fn2-checkpoint-summary-live-published-hash-p (i c fn2-checkpoint-publication fn2-checkpoint-bytes)
  (declare (xargs :stobjs (fn2-checkpoint-publication fn2-checkpoint-bytes) :measure (nfix (- 8 (nfix i)))
- :guard (and (fn2-checkpoint-publication-wfp fn2-checkpoint-publication) (fn2-checkpoint-writer-wfp fn2-checkpoint-writer) (fn2-machines-wfp fn2-machines) (fn2-checkpoint-lifecycle-wfp fn2-checkpoint-lifecycle) (< 0 (fn2-checkpoint-publication-rows fn2-checkpoint-publication))
+ :guard (and (fn2-checkpoint-publication-wfp fn2-checkpoint-publication) (< 0 (fn2-checkpoint-publication-rows fn2-checkpoint-publication))
  (fn2-checkpoint-bytes-wfp fn2-checkpoint-bytes) (natp c) (<= (+ (* 192 c) 32) (fn2-checkpoint-bytes-rows fn2-checkpoint-bytes)) (natp i) (<= i 8))))
  (or (>= (nfix i) 8)
   (and (= (fn2-checkpoint-publication-base-word i fn2-checkpoint-publication) (fn2-checkpoint-descriptor-identity-word c i fn2-checkpoint-bytes))
