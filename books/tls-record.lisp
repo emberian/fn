@@ -155,3 +155,11 @@
          (t (let ((fn2-tls-record (fn2-tls-record-put 0 (status 5) (kick 1))))
               (mv :ok fn2-tls-transport fn2-tls-record))))))))))))
 )
+
+; Guard-qualified actual entry points; observer proof follows the shared frames.
+(verify-guards fn2-tls-record-start
+ :hints (("Goal" :in-theory (set-difference-theories (current-theory :here) (theory 'fn2-tls-record-readers)))))
+(verify-guards fn2-tls-record-wait
+ :hints (("Goal" :in-theory (set-difference-theories (current-theory :here) (union-theories (theory 'fn2-tls-record-readers) (theory 'fn2-tls-transport-readers))))))
+(verify-guards fn2-tls-record-next
+ :hints (("Goal" :in-theory (set-difference-theories (current-theory :here) (union-theories (theory 'fn2-tls-record-readers) (theory 'fn2-tls-transport-readers))))))
