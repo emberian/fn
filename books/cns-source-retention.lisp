@@ -4,6 +4,7 @@
 (include-book "cns-source-state")
 (include-book "checkpoint")
 (include-book "txn-kind")
+(include-book "columns-call-guards")
 (fn2-book-layer :d)
 (defconst *fn2-cns-source-retention-unclaimed* 0)
 (defconst *fn2-cns-source-retention-collecting* 1)
@@ -169,4 +170,8 @@
   (mv :more fn2-cns-sources fn2-extents fn2-alloc-edges)))
 (fn2-cns-sources-preserves fn2-cns-source-release-step
  (budget s cns cnsgen ctl ctlgen request fn2-cns-sources fn2-checkpoints fn2-extents fn2-alloc-edges fn2-ops fn2-pool)
- :position 1 :carriers ((fn2-cns-sources 1 :prefix "-SOURCES") (fn2-extents 2 :prefix "-EXTENTS") (fn2-alloc-edges 3 :prefix "-EDGES")))
+ :position 1 :carriers ((fn2-cns-sources 1 :prefix "-SOURCES") (fn2-extents 2 :prefix "-EXTENTS") (fn2-alloc-edges 3 :prefix "-EDGES"))
+ :hints ((fn2-columns-call-guard-hint 'fn2-cns-source-release-step
+          '(fn2-alloc-edge-drop fn2-pool-workspace-code fn2-alloc-edge-matchesp
+            fn2-alloc-edge-slotp fn2-alloc-handle-code fn2-pool-handle-code)
+          '(fn2-cns-source-release-step) world)))
