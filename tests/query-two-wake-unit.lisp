@@ -36,7 +36,7 @@
    (mv (and (eq started :ok) (equal ended (if done :stored :ok))
             (eq popped :ok) (equal id owner)) fn2-core)))
 
-(defun fn2-qtw-body (done capacity fn2-core)
+(defun fn2-qtw-body (done capacity same fn2-core)
  (declare (xargs :stobjs fn2-core :verify-guards nil))
  (b* ((profile (put-assoc-equal :trace-capacity capacity
                 (put-assoc-equal :trace t
@@ -62,7 +62,8 @@
         *fn2-cns-kind* owner generation fn2-core))
       (empty (fn2-qtw-queues owner sibling principal fn2-core))
       ; Use the existing callback handoff, not a fabricated directory write.
-      (fn2-core (fn2-machine-wake-row sibling fn2-core))
+      (intended (if same owner sibling))
+      (fn2-core (fn2-machine-wake-row intended fn2-core))
       ((mv result fn2-core)
        (if done (fn2-qru-drive 64 0 fn2-core) (fn2-successor-release 0 fn2-core)))
       (middle (fn2-qtw-queues owner sibling principal fn2-core))
@@ -82,20 +83,25 @@
            (equal (take 3 empty) '(0 0 0))
            (equal result (if done :stored :ok))
            (equal middle (list 1 0 1 owner owner *fn2-none* *fn2-none*))
-           (equal ordinary sibling) (equal wake sibling)
-           (equal both (list 1 1 2 owner sibling sibling owner))
+           (equal ordinary intended) (equal wake intended)
+           (equal both (if same (list 1 0 1 owner owner *fn2-none* *fn2-none*)
+                         (list 1 1 2 owner sibling sibling owner)))
            (equal once both) (equal qstate '(0 0))
            (equal (fn2-qru-count slot fn2-core) 0)
            (equal trace (list 1 (if (equal capacity 1) 1 0)
                               *fn2-trace-kind-enqueue* owner principal))
            (not (fn2-core-stopped-p fn2-core))) fn2-core)))
 
-(defun fn2-qtw-result (done capacity)
+(defun fn2-qtw-result (done capacity same)
  (declare (xargs :verify-guards nil))
  (with-local-stobj fn2-core
-  (mv-let (answer fn2-core) (fn2-qtw-body done capacity fn2-core) answer)))
+  (mv-let (answer fn2-core) (fn2-qtw-body done capacity same fn2-core) answer)))
 
-; Positive cancellation and DONE witnesses, plus a full diagnostic
-; ring: lost evidence must not change either actual scheduler effect.
-(assert-event (and (fn2-qtw-result nil 8) (fn2-qtw-result t 8)
-                   (fn2-qtw-result nil 1) (fn2-qtw-result t 1)))
+; Both distinct and identical ordinary/query wake owners enter through the
+; actual composition. An identical owner stays one FIFO entry after the
+; ordinary handoff is consumed. The full ring changes evidence loss only.
+(assert-event
+ (and (fn2-qtw-result nil 8 nil) (fn2-qtw-result t 8 nil)
+      (fn2-qtw-result nil 1 nil) (fn2-qtw-result t 1 nil)
+      (fn2-qtw-result nil 8 t) (fn2-qtw-result t 8 t)
+      (fn2-qtw-result nil 1 t) (fn2-qtw-result t 1 t)))
