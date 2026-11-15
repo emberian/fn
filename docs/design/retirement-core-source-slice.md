@@ -1,6 +1,6 @@
 # Actual ordinary retirement callback source slice
 
-`tests/retirement-intent-core-unit` has a 105-book local source closure. It
+`tests/retirement-intent-core-unit` has a 106-book local source closure. It
 materializes the actual A/B machine/core/access registrations, existing commit
 admission sections and the production persisted lifecycle dispatcher. It includes
 checkpoint catalog, construction and future lease state because the current B
@@ -9,7 +9,7 @@ those operations. Its closure contains no checkpoint builder, master, boot,
 writer or restore worker. The machine callbacks are the ones served assembly
 materializes, without the full simulator/executor entry.
 
-The exact local include closure and its 27 new / 15 changed source files relative
+The exact local include closure and its 28 new / 15 changed source files relative
 to root b7b79808d are in `retirement-core-source-slice.json`. This is an include
 manifest, not permission to replace root files wholesale: the reviewed integration
 568724889 already preserves root transport/layout/helper-leaf changes. Changes
@@ -49,3 +49,27 @@ actual submit/poll/dispatcher translation and those controls, not full ordinary
 persistence. The original full simulator entry still supplies the later physical
 writer/fence/install/notification qualification boundary. No ACL2, native,
 remote, service or runtime compute was run for this source slice.
+
+## Actual persisted dispatcher controls
+
+`retirement-dispatch-core-unit` calls the actual retirement producer and derives
+its containing collector, exact member workspace, control identity and allocator
+intent. It decodes that retained member with the real framing/body codecs and
+checks the full extent/epoch/allocation/batch tuple. The fixture then explicitly
+sets the logical persisted premises: publish phase, installed containing batch,
+successful dependency/log/fence flags, and no recorded failure. These assignments
+are not a physical storage or process-death witness.
+
+The positive calls `fn2-commit-lifecycle-step` itself and requires the exact
+allocation to become RETIRE_PENDING at the containing batch, with intent cleared.
+A real owned obligation is installed before submit; the positive requires its
+exact holder/handle/kind and count to survive. The retained control and all edge
+rows must stay unchanged. Nine separate controls remove phase, dependency, log,
+fence, failure-free state, installed batch, member workspace owner generation,
+control event or intent. Every one must return `:invalid` and preserve the full
+allocator, control and protector-edge state compared immediately before/after
+the dispatcher call. Those snapshots come from the existing column generator,
+including all arrays, row counts and scalar extra fields. The member-generation
+case exercises workspace ownership; the control-event case exercises the deeper
+exact retained-control identity check. The original three submit/poll assertions
+remain unchanged. All ten dispatcher assertions are source prepared and unrun.

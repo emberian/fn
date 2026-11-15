@@ -106,6 +106,7 @@
     "books/words",
     "sim/commit-test-profile",
     "tests/retirement-core-instance",
+    "tests/retirement-dispatch-core-unit",
     "tests/retirement-intent-core-controls",
     "tests/retirement-intent-core-unit",
     "tests/retirement-intent-leaf-unit"
@@ -135,6 +136,7 @@
     "books/run-geometry.lisp",
     "sim/commit-test-profile.lisp",
     "tests/retirement-core-instance.lisp",
+    "tests/retirement-dispatch-core-unit.lisp",
     "tests/retirement-intent-core-controls.lisp",
     "tests/retirement-intent-core-unit.lisp",
     "tests/retirement-intent-leaf-unit.lisp"

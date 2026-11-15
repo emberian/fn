@@ -29,3 +29,5 @@
  (with-local-stobj fn2-core
   (mv-let (ok fn2-core) (fn2-riu-generic-lifecycle-closed-body fn2-core) ok)))
 (assert-event (fn2-riu-generic-lifecycle-closed-run))
+
+(include-book "retirement-dispatch-core-unit")
