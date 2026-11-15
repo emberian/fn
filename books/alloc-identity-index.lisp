@@ -3,7 +3,8 @@
 (in-package "ACL2")
 (include-book "std/util/bstar" :dir :system)
 (include-book "alloc")
-(include-book "arithmetic-3/floor-mod/floor-mod" :dir :system)
+; Proof arithmetic remains local; consumers receive only the HOME bounds.
+(local (include-book "arithmetic-3/floor-mod/floor-mod" :dir :system))
 (fn2-book-layer :b)
 (make-event (cons 'progn (fn2-columns-enum-events
  '((phase (:enum fn2-alloc-identity-phase (:idle :clearing :probe :ready :refused)))
