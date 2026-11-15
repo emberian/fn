@@ -327,12 +327,46 @@
             (t (fn2-upload-path-loop (- left 1) (+ 1 i) :text slot gen okind oslot ogen fn2-pool))))))
 ; Whether [s, s+l) contains "POSTED", case-insensitively (H's model:
 ; b"POSTED" in path.upper()).
+; The only proper prefix that is also a suffix after a mismatch is "P":
+; there is no other P inside POSTED.  Each step makes exactly one pool read.
+(defun fn2-upload-posted-next (prefix byte)
+  (declare (xargs :guard (and (natp prefix) (natp byte))))
+  (let ((b (fn2-gram-upcase byte)))
+    (cond ((= b 80) 1)
+          ((and (= prefix 1) (= b 79)) 2)
+          ((and (= prefix 2) (= b 83)) 3)
+          ((and (= prefix 3) (= b 84)) 4)
+          ((and (= prefix 4) (= b 69)) 5)
+          ((and (= prefix 5) (= b 68)) 6)
+          (t 0))))
+(defun fn2-upload-posted-run (left i prefix slot gen okind oslot ogen fn2-pool)
+  (declare (xargs :stobjs fn2-pool :measure (nfix left)
+                  :guard (and (fn2-pool-wfp fn2-pool) (natp left) (natp i) (natp prefix))))
+  (if (zp left) nil
+    (mv-let (ok byte) (fn2-gram-read slot gen i okind oslot ogen fn2-pool)
+      (let ((next (if ok (fn2-upload-posted-next prefix byte) 0)))
+        (or (= next 6)
+            (fn2-upload-posted-run (- left 1) (+ 1 i) next slot gen okind oslot ogen fn2-pool))))))
 (defun fn2-upload-posted (left i slot gen okind oslot ogen fn2-pool)
+  (declare (xargs :stobjs fn2-pool
+                  :guard (and (fn2-pool-wfp fn2-pool) (natp left) (natp i))))
+  (and (<= 6 (nfix left))
+       (fn2-upload-posted-run left i 0 slot gen okind oslot ogen fn2-pool)))
+; Proof-only statement of the original per-start matcher.  This is never
+; called by the served verdict; its recurrence fixes the old exact behavior,
+; including a failed read at one start and a later readable match.
+(defun fn2-upload-posted-naive-spec (left i slot gen okind oslot ogen fn2-pool)
   (declare (xargs :stobjs fn2-pool :measure (nfix left)
                   :guard (and (fn2-pool-wfp fn2-pool) (natp left) (natp i))))
   (cond ((< (nfix left) 6) nil)
         ((fn2-gram-match i 6 "POSTED" slot gen okind oslot ogen fn2-pool) t)
-        (t (fn2-upload-posted (- (nfix left) 1) (+ 1 (nfix i)) slot gen okind oslot ogen fn2-pool))))
+        (t (fn2-upload-posted-naive-spec (- (nfix left) 1) (+ 1 (nfix i))
+                                         slot gen okind oslot ogen fn2-pool))))
+(defthm fn2-upload-posted-refines-naive-spec
+  (equal (fn2-upload-posted left i slot gen okind oslot ogen fn2-pool)
+         (fn2-upload-posted-naive-spec left i slot gen okind oslot ogen fn2-pool))
+  :rule-classes nil)
+(in-theory (disable fn2-upload-posted-naive-spec fn2-upload-posted-run fn2-upload-posted-next))
 (defun fn2-upload-path-ok (s l slot gen okind oslot ogen fn2-pool)
   (declare (xargs :stobjs fn2-pool :guard (and (fn2-pool-wfp fn2-pool) (natp s) (natp l))))
   (and (fn2-upload-path-loop l s :start slot gen okind oslot ogen fn2-pool)
@@ -403,6 +437,7 @@
 (assert-event
  (fn2-assert-compliant-p
   '(fn2-upload-octets fn2-upload-name fn2-upload-field-code fn2-upload-line fn2-upload-scan
-    fn2-upload-dot-atom fn2-upload-dtext fn2-upload-msgid-p fn2-upload-trim fn2-upload-path-ok
+    fn2-upload-dot-atom fn2-upload-dtext fn2-upload-msgid-p fn2-upload-trim
+    fn2-upload-posted-next fn2-upload-posted-run fn2-upload-posted fn2-upload-path-ok
     fn2-upload-verdict)
   (w state)))
