@@ -163,3 +163,9 @@
  :hints (("Goal" :in-theory (set-difference-theories (current-theory :here) (union-theories (theory 'fn2-tls-record-readers) (theory 'fn2-tls-transport-readers))))))
 (verify-guards fn2-tls-record-next
  :hints (("Goal" :in-theory (set-difference-theories (current-theory :here) (union-theories (theory 'fn2-tls-record-readers) (theory 'fn2-tls-transport-readers))))))
+
+(verify-guards fn2-tls-record-step-observe
+ :hints (("Goal" :in-theory
+  (set-difference-theories (current-theory :here)
+   (union-theories '(fn2-tls-transport-observe-spans fn2-tls-record-observe)
+    (union-theories (theory 'fn2-tls-record-readers) (theory 'fn2-tls-transport-readers)))))))

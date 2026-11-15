@@ -80,8 +80,33 @@ the toolchain below, with external memory cap 2,147,483,648 bytes and swap zero.
 The whole-effect theorem cost 120,979 steps / 0.35 seconds; the evidence book
 cost 1.119 seconds. Current Merkle cost 10.802 seconds and BLAKE3 cost 17.628
 seconds remain D26 proof-cost work. This record covers the evidence closure,
-not current native execution or the full host. The current 28-book native
-runtime dependency plan still needs six format books qualified.
+not native execution or the full host. Its exact cache coordinates and
+certificate/compiled-payload hashes are retained in
+[`receipts/native-b3-evidence-68ab9f562.json`](receipts/native-b3-evidence-68ab9f562.json).
+
+Current native execution subsequently passed on the **28-book qualified
+world** comprising `native-b3-evidence` and `format-check`, with source identity
+`588cfb732b69cc51417745b63bd332b8cc9b6770fe07db7a3299554b04792521`.
+All 28 books and the raw adapter, gate, C build script, C sources and headers
+(42 files) were checked byte equal to root `07a4db98c`. The necessary six
+format books first passed qualified record
+`certify-20261115T002747Z-617826`, reusing 15 dependencies with clean triage.
+Native loading then used only qualified compiled pairs, with no certification
+or source fallback. The C library was freshly built from those exact sources;
+the compiler, build environment and library digests are recorded in
+[`receipts/native-b3-runtime-68ab9f562.json`](receipts/native-b3-runtime-68ab9f562.json).
+
+Actual startup qualification and both native destination-alias calls passed,
+including equality of the entire digest carrier to the saved logical function
+and preservation of the sibling row. The live detector reported **10,065
+unchanged-or-declared bindings and eight declared replacements**. In a separate
+process, a real C-backed zero-prefix call returned the correct count and then
+changed byte N outside [0,N); qualification refused it with
+`zero-prefix result or pool frame` before the success marker. These current
+finite controls strengthen qualification; they do not discharge the C/FFI
+assumption, `fn2-a-native-span`, other native refinements or the full-host gate.
+Both processes ran under the external 2 GiB cap with swap zero and finished;
+the baseline took 2.021 seconds and the fault control 2.072 seconds.
 
 The exact donor `390c57de0e006e4ab06becf6c278daa04c4d7782` subsequently passed
 record certification `certify-20261114T230520Z-536071`: 16 books, 12 qualified
