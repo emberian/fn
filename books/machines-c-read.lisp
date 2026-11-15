@@ -143,14 +143,22 @@
 ;; stated over it), the fields and pool recognizers folded (C-ASSEMBLY-THEORY),
 ;; and READS: the callees and the row reads whose values only feed checks
 ;; and arguments (C-SHAPE-READS).
-(defmacro fn2-rd-shape (fn args outs stobjs &optional reads (disable 't))
- `(progn
+(defmacro fn2-rd-shape (fn args outs stobjs &optional reads (disable 't) (one 'nil))
+ (if one
+   `(progn
+     (fn2-shape-one ,(fn2-columns-sym fn "-RD-SHAPE") ,fn ,args
+      ,(fn2-idc-hyp-list stobjs) ,(fn2-fc-shape-claims outs 'fn2-shape-r)
+      ,(strip-cars outs) (,fn ,@(strip-cadrs (fn2-rd-keeps reads)))
+      (,@(set-difference-eq (fn2-rd-shape-disables stobjs) (strip-cadrs (fn2-rd-keeps reads)))
+       fn2-fieldsp fn2-fields-wfp fn2-poolp fn2-pool-wfp ,@(fn2-rd-folds reads)))
+     ,@(and disable `((in-theory (disable ,fn)))))
+   `(progn
    (defthm ,(fn2-columns-sym fn "-RD-SHAPE")
     (implies (and ,@(fn2-idc-hyp-list stobjs)) (and ,@(fn2-fc-shape-claims outs (cons fn args))))
     :hints (("Goal" :in-theory (e/d (,fn ,@(strip-cadrs (fn2-rd-keeps reads)))
                                    (,@(set-difference-eq (fn2-rd-shape-disables stobjs) (strip-cadrs (fn2-rd-keeps reads)))
                                     fn2-fieldsp fn2-fields-wfp fn2-poolp fn2-pool-wfp ,@(fn2-rd-folds reads))))))
-   ,@(and disable `((in-theory (disable ,fn))))))
+   ,@(and disable `((in-theory (disable ,fn)))))))
 
 ;; The range engine's entry points, whose shapes range.lisp's adapters do
 ;; not need (they use local stobjs).
@@ -872,7 +880,7 @@
  ((fn2-reads 3) (fn2-succ-txns 4) (fn2-run-cursors 5) (fn2-run-paths 6) (fn2-fields 7))
  (fn2-reads fn2-succ-txns fn2-overlays fn2-overlay-index fn2-run-installed fn2-run-cursors fn2-run-paths
   fn2-run-cache fn2-fields fn2-pool)
- (fn2-xl-step fn2-xl-done fn2-reads-op fn2-reads-sid fn2-reads-qk fn2-reads-qs fn2-reads-qg fn2-reads-found fn2-reads-selected fn2-id-field fn2-rd-identity-begin))
+ (fn2-xl-step fn2-xl-done fn2-reads-op fn2-reads-sid fn2-reads-qk fn2-reads-qs fn2-reads-qg fn2-reads-found fn2-reads-selected fn2-id-field fn2-rd-identity-begin) t t)
 (defthm fn2-rd-identity-natp
  (and (natp (mv-nth 1 (fn2-rd-identity x mslot mgen moff mlen okind oslot ogen budget b0 tn fn2-reads fn2-succ-txns fn2-overlays
                                        fn2-overlay-index fn2-run-installed fn2-run-cursors fn2-run-paths fn2-run-cache
