@@ -162,3 +162,10 @@
  (value (cons 'progn
    (append (fn2-issue-wrapper-effect-events '(fn2-block-read-children fn2-block-write-children) (w state))
            (fn2-issued-wrapper-events '(fn2-block-read-children fn2-block-write-children) (w state))))))
+
+; The public read/write wrappers preserve the same successful reservation
+; identity as their actual pinned producer; no second implementation.
+(make-event
+ (value (cons 'progn
+   (fn2-block-issue-identity-events
+    '(fn2-block-read-children fn2-block-write-children) (w state)))))

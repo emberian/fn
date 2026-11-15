@@ -70,6 +70,10 @@
 ;; blocks, 380,928 octets) and the profile's article bound, with the
 ;; generated Message-ID field, stays within it (fn2-input-config-profilep).
 (defconst *fn2-am-block-bytes* *fn2-commit-unit-bytes*)
+;; Raw articles carry one trusted digest per write resource. Larger sources
+;; use manifests even though a physical extent has more storage units.
+(defconst *fn2-upload-raw-bytes*
+  (* *fn2-commit-write-resources* *fn2-commit-unit-bytes*))
 (defconst *fn2-am-header-max* (fn2-layout-max-size *fn2-format-source-manifest-header*))
 (defconst *fn2-am-entry-max* (fn2-layout-max-size *fn2-format-source-manifest-entry*))
 ;; entries of the largest size one unit holds (the first holds the header too)
@@ -203,9 +207,15 @@
 (defthm fn2-upload-capacity-natp (natp (fn2-upload-capacity profile)) :rule-classes :type-prescription)
 (in-theory (disable fn2-upload-capacity))
 
+; Keep the original declaration's proof independent of unrelated enabled
+; consumer rules. Pure initial-value functions remain available explicitly.
+(encapsulate ()
+ (local (in-theory
+  (union-theories '(fn2-machine-initial-generation fn2-machine-initial-next-free)
+                  (theory 'fn2-columns-proof-theory))))
 (defmachine fn2-upload
  :states (:free :head :identity :receiving :validating :discard :store :stored-hash :location-hash :store-write :store-wrote
-          :store-fence :store-fenced :sealed :aborting :draining :retired)
+          :store-fence :store-fenced :sealed :aborting :draining :retired :uncertain)
  ;; CONN is the owner the source comes from and the word goes to: a
  ;; connection (POST, IHAVE, TAKETHIS) or a consumer request (an append,
  ;; e-surface.md 3.3: the same upload and transaction as a POST). OP is the
@@ -244,6 +254,7 @@
          (cns :kind fn2-cns :slot conn :gen conn-gen :back (upload upload-gen)
               :reads (fed feed-mode feed-discard))
          (child-txn :kind fn2-txn :slot txn :gen txn-gen :back (upload upload-gen)))
+ :stops (:upload-uncertain)
  :holds ((:head :upload-row :chunk-window) (:identity :upload-row :chunk-window)
          (:receiving :upload-row :chunk-window) (:validating :upload-row :chunk-window)
          (:discard :upload-row :chunk-window)
@@ -256,6 +267,7 @@
          (:store-fenced :upload-row :chunk-window (:storage-window :while (lease :held)))
          (:sealed :upload-row :chunk-window (:storage-window :while (lease :held)))
          (:aborting :upload-row :chunk-window)
+         (:uncertain :upload-row :chunk-window (:storage-window :while (lease :held)))
          (:draining :upload-row :chunk-window (:storage-window :while (lease :held))))
  :budget (:bytes 4096 :steps 32 :descriptors 4)
  :capacity (fn2-upload-capacity profile)
@@ -272,8 +284,8 @@
            (pext *fn2-none*) (lslot *fn2-none*) (cext *fn2-none*)
            (ofield 12) (next-free fn2-machine-initial-next-free))
  :arms ((:free) (:head) (:identity) (:receiving) (:validating) (:discard) (:store) (:stored-hash) (:location-hash) (:store-write) (:store-wrote)
-        (:store-fence) (:store-fenced) (:sealed) (:aborting) (:draining) (:retired))
- :observes ((:write-result) (:fence-result) (:borrow-released)))
+        (:store-fence) (:store-fenced) (:sealed) (:aborting) (:draining) (:retired) (:uncertain))
+ :observes ((:write-result) (:fence-result) (:borrow-released))))
 
 ; MACHINE-FORM 6.5 P4: the kind's take in child form, proved here;
 ; the admission section (assembly-callbacks-a) makes its core face.

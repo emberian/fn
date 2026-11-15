@@ -42,6 +42,7 @@
 ;; The words the store's refusals give (also the transaction's).
 (defconst *fn2-upload-word-unaffordable* (fn2-upload-word-code :unaffordable))
 (defconst *fn2-upload-word-not-stored* (fn2-upload-word-code :not-stored))
+(defconst *fn2-upload-word-uncertain* (fn2-upload-word-code :uncertain))
 
 (defcost fn2-conn-feed-run :bytes *fn2-conn-feed-cost*
   :answers (:terminator :need-more :budget :bounds :fault)
@@ -633,9 +634,9 @@
                 (mv code next lo len unit epoch alloc fn2-core)))
              ((unless (and (eq code :ok) (natp next) (natp unit) (< *fn2-upload-page-manifest* next))) (mv :bounds fn2-core))
              ((mv code fn2-core)
-              (cond ((not (equal (mod unit *fn2-commit-write-resources*) 0)) (mv :ok fn2-core))
-                    (commit (fn2-upload-extent-commit (floor unit *fn2-commit-write-resources*) epoch alloc event fn2-core))
-                    (t (fn2-upload-payload-settle (floor unit *fn2-commit-write-resources*) epoch alloc fn2-core))))
+              (cond ((not (equal (mod unit *fn2-storage-extent-units*) 0)) (mv :ok fn2-core))
+                    (commit (fn2-upload-extent-commit (floor unit *fn2-storage-extent-units*) epoch alloc event fn2-core))
+                    (t (fn2-upload-payload-settle (floor unit *fn2-storage-extent-units*) epoch alloc fn2-core))))
              ((unless (eq code :ok)) (mv code fn2-core)))
           (fn2-upload-manifest-extents (- fuel 1) commit event base ls lg (- next *fn2-upload-page-manifest*) lim mfill
                                        okind oslot ogen fn2-core))))))

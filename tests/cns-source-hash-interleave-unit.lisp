@@ -1,0 +1,132 @@
+; Actual leased-byte hashing and ordinary block/CTL interleaving. This checks
+; hash workspace isolation, not FETCH framing or source-authority admission.
+(in-package "ACL2")
+(include-book "std/util/bstar" :dir :system)
+(include-book "../books/machines-b")
+(include-book "../books/cns-source-hash")
+(include-book "../books/cns-source-state")
+(include-book "../books/fnct-pool")
+(include-book "column-snapshot-support")
+(make-event (value (cons 'progn
+ (append (fn2-test-column-snapshot-events 'fn2-b3 (w state))
+         (fn2-test-column-snapshot-events 'fn2-digests (w state))))))
+
+; Generated snapshots include ALL columns. B3's one extra array is the full
+; sixteen-word stripe per row. Digest preservation covers all136 rows/stripe,
+; not merely the result digest. Lists are test observations, never a hasher.
+(defun fn2-chi-values (row columns)
+ (declare (xargs :verify-guards nil))
+ (if (atom columns) nil
+  (cons (nth row (car columns)) (fn2-chi-values row (cdr columns)))))
+(defun fn2-chi-digest-stripe (n base columns)
+ (declare (xargs :verify-guards nil :measure (nfix n)))
+ (if (zp n) nil
+  (cons (fn2-chi-values (+ base (- n 1)) columns)
+        (fn2-chi-digest-stripe (- n 1) base columns))))
+(defun fn2-chi-view (n b d skipped)
+ (declare (xargs :verify-guards nil :measure (nfix n)))
+ (if (zp n) nil
+  (let ((row (- n 1)))
+   (if (member-equal row skipped) (fn2-chi-view row b d skipped)
+    (cons (list row (fn2-chi-values row (butlast b 2))
+           (take 16 (nthcdr (* 16 row) (car (last b))))
+           (fn2-chi-digest-stripe *fn2-digest-stride* (* row *fn2-digest-stride*) (butlast d 1)))
+          (fn2-chi-view row b d skipped))))))
+(defun fn2-chi-snapshot (skipped fn2-b3 fn2-digests)
+ (declare (xargs :stobjs (fn2-b3 fn2-digests) :verify-guards nil))
+ (list (fn2-b3-rows fn2-b3) (fn2-b3-words-length fn2-b3) (fn2-digests-rows fn2-digests)
+  (fn2-chi-view (fn2-b3-rows fn2-b3) (fn2-test-table-snapshot-fn2-b3 fn2-b3)
+               (fn2-test-table-snapshot-fn2-digests fn2-digests) skipped)))
+
+(defun fn2-chi-fill (i n slot gen fn2-pool)
+ (declare (xargs :stobjs fn2-pool :verify-guards nil :measure (nfix (- (nfix n) (nfix i)))))
+ (if (>= (nfix i) (nfix n)) (mv :ok fn2-pool)
+  (mv-let (code fn2-pool) (fn2-pool-write slot gen i (mod (nfix i) 251) 1 0 1 fn2-pool)
+   (if (eq code :ok) (fn2-chi-fill (+ 1 (nfix i)) n slot gen fn2-pool) (mv code fn2-pool)))))
+
+(defun fn2-chi-body (alias fn2-fields fn2-b3 fn2-digests fn2-pool)
+ (declare (xargs :stobjs (fn2-fields fn2-b3 fn2-digests fn2-pool) :verify-guards nil))
+ (b* ((profile (put-assoc-equal :cns 2 (put-assoc-equal :control-connections 2
+               (put-assoc-equal :large-upload-windows 1 *fn2-profile-tiny*))))
+      (sources (fn2-b-cns-source-rows profile)) (controls (fn2-b-ctl-rows profile))
+      (rows (fn2-b-format-floor profile))
+      (correct (fn2-b-cns-source-row 0 sources rows))
+      (ctl (fn2-b-ctl-runtime-row (- controls 1) controls sources rows))
+      (block (fn2-b-block-read-row rows))
+      (old (+ (- rows controls 1) (- controls 1)))
+      (stream (if (eq alias :source-alias) old correct))
+      (ctl-used (if (eq alias :old-ctl) old ctl))
+      (selected (and (= stream correct) (= ctl-used ctl)))
+      (prefix *fn2-cns-source-prefix*) (length (+ prefix 128))
+      (fn2-fields (fn2-fields-init 128 fn2-fields))
+      (fn2-b3 (fn2-b3-table-init rows fn2-b3))
+      (fn2-digests (fn2-digests-init (* rows *fn2-digest-stride*) fn2-digests))
+      (fn2-pool (fn2-pool-init '((3 . 4096)) 1 100 fn2-pool))
+      ((mv a ss sg fn2-pool) (fn2-pool-reserve 0 1 0 1 fn2-pool))
+      ((mv b bs bg fn2-pool) (fn2-pool-reserve 0 1 0 1 fn2-pool))
+      ((mv c cs cg fn2-pool) (fn2-pool-reserve 0 1 0 1 fn2-pool))
+      ((mv sa fn2-pool) (fn2-chi-fill 0 length ss sg fn2-pool))
+      ((mv ba fn2-pool) (fn2-chi-fill 0 128 bs bg fn2-pool))
+      ((mv ca fn2-pool) (fn2-chi-fill 0 14 cs cg fn2-pool))
+      ; Expected bytes come from the actual uninterrupted implementation.
+      ((mv sh fn2-b3 fn2-digests) (fn2-block-hash-into 0 ss sg 0 length 1 0 1 fn2-b3 fn2-digests fn2-pool))
+      ((mv stored fn2-pool) (fn2-digest-store 32 (fn2-digest-slot 0 *fn2-b3-result*) ss sg length 1 0 1 fn2-digests fn2-pool))
+      ((mv bh fn2-b3 fn2-digests) (fn2-block-hash-into 0 bs bg 0 128 1 0 1 fn2-b3 fn2-digests fn2-pool))
+      ((mv proof fn2-pool) (fn2-digest-store 32 (fn2-digest-slot 0 *fn2-b3-result*) bs bg 128 1 0 1 fn2-digests fn2-pool))
+      ((mv cv fn2-pool) (fn2-digest-store 32 (fn2-digest-slot 0 *fn2-b3-result*) bs bg 160 1 0 1 fn2-digests fn2-pool))
+      (whole (and (fn2-b-cns-source-geometry-p sources controls rows)
+       (= old block) (not (= correct ctl)) (not (= correct block)) (not (= ctl block))
+       (fn2-fieldsp fn2-fields) (fn2-fields-wfp fn2-fields)
+       (fn2-b3p fn2-b3) (fn2-b3-wfp fn2-b3) (fn2-digestsp fn2-digests) (fn2-digests-wfp fn2-digests)
+       (fn2-poolp fn2-pool) (fn2-pool-wfp fn2-pool) (fn2-pool-semanticp fn2-pool)
+       (eq (fn2-pool-workspace-code ss sg 1 0 1 fn2-pool) :ok)
+       (eq (fn2-pool-workspace-code bs bg 1 0 1 fn2-pool) :ok)
+       (eq (fn2-pool-workspace-code cs cg 1 0 1 fn2-pool) :ok)
+       (equal (list a b c sa ba ca sh stored bh proof cv) (make-list 11 :initial-element :ok))))
+      ((mv begin fn2-b3 fn2-digests) (fn2-cns-source-hash-begin stream fn2-b3 fn2-digests))
+      ((mv first used fn2-b3 fn2-digests) (fn2-cns-source-hash-update stream ss sg 0 prefix 1 0 1 fn2-b3 fn2-digests fn2-pool))
+      (before (fn2-chi-snapshot (list block ctl) fn2-b3 fn2-digests))
+      (stream-before (fn2-chi-snapshot (remove-equal stream (list block ctl)) fn2-b3 fn2-digests))
+      ((mv verified fn2-b3 fn2-digests)
+       (fn2-block-read-done-children 128 128 1 bs bg 0 128 160 0 1 0 1 fn2-b3 fn2-digests fn2-pool))
+      (ctl-before (fn2-chi-snapshot (list ctl) fn2-b3 fn2-digests))
+      ((mv sealed wire fn2-fields fn2-digests fn2-b3 fn2-pool)
+       (fn2-fnct-seal-pool 0 ctl-used 0 1 cs cg 1 0 1 fn2-fields fn2-digests fn2-b3 fn2-pool))
+      ((mv opened kind payload fn2-fields fn2-digests fn2-b3)
+       (fn2-fnct-open-pool 0 ctl-used cs cg 1 0 1 fn2-fields fn2-digests fn2-b3 fn2-pool))
+      (ctl-kept (equal ctl-before (fn2-chi-snapshot (list ctl) fn2-b3 fn2-digests)))
+      (other-kept (equal before (fn2-chi-snapshot (list block ctl) fn2-b3 fn2-digests)))
+      (stream-kept (equal stream-before (fn2-chi-snapshot (remove-equal stream (list block ctl)) fn2-b3 fn2-digests)))
+      (unrelated (fn2-chi-snapshot (list stream) fn2-b3 fn2-digests))
+      ((mv resumed used2 fn2-b3 fn2-digests) (fn2-cns-source-hash-update stream ss sg prefix 128 1 0 1 fn2-b3 fn2-digests fn2-pool))
+      ((mv final fn2-b3 fn2-digests) (fn2-cns-source-hash-finish stream ss sg length 1 0 1 fn2-b3 fn2-digests fn2-pool)))
+  (mv (and whole (equal selected (not alias)) (eq begin :ok) (eq first :ok) (= used prefix)
+       (eq verified :ok) (eq sealed :ok) (= wire 46) (eq opened :ok) (= kind 1) (= payload 4)
+       other-kept (equal stream-kept (not (eq alias :source-alias)))
+       (equal ctl-kept (not (eq alias :old-ctl)))
+       (eq resumed :ok) (= used2 128) (eq final (if (eq alias :source-alias) :identity :ok))
+       (equal unrelated (fn2-chi-snapshot (list stream) fn2-b3 fn2-digests)))
+      fn2-fields fn2-b3 fn2-digests fn2-pool)))
+
+(defun fn2-chi-test (alias)
+ (declare (xargs :verify-guards nil))
+ (with-local-stobj fn2-fields
+  (mv-let (answer fn2-fields)
+   (with-local-stobj fn2-b3
+    (mv-let (answer fn2-fields fn2-b3)
+     (with-local-stobj fn2-digests
+      (mv-let (answer fn2-fields fn2-b3 fn2-digests)
+       (with-local-stobj fn2-pool
+        (mv-let (answer fn2-fields fn2-b3 fn2-digests fn2-pool)
+         (fn2-chi-body alias fn2-fields fn2-b3 fn2-digests fn2-pool)
+         (mv answer fn2-fields fn2-b3 fn2-digests)))
+       (mv answer fn2-fields fn2-b3))) (mv answer fn2-fields))) answer)))
+(assert-event (fn2-chi-test nil))
+; Deliberate removal of the exact stream-row selection hypothesis. Ordinary
+; block verification overwrites its prefix; actual finish detects :identity.
+; This is NOT a claim that the old FETCH caller selected the old CTL row.
+(assert-event (fn2-chi-test :source-alias))
+; Actual old CTL formula selects block-tail12, not current CTL6. Its real
+; seal/open still works, but full preservation outside the assigned CTL row
+; fails. This tests the row-selection obligation, not a served crash trace.
+(assert-event (fn2-chi-test :old-ctl))

@@ -54,6 +54,10 @@
   (declare (xargs :stobjs fn2-core :guard (fn2-core-wfp fn2-core)))
   (b* ((start (fn2-exec-queued fn2-core))
        ((mv code id fn2-core) (fn2-exec-pop principal fn2-core))
+       ; Record the actual dequeue before callbacks can enqueue other rows.
+       ; The matching machine record closes this visit after its callbacks.
+       (fn2-core (fn2-exec-record *fn2-trace-kind-machine-start* id principal position
+                                 0 0 0 nil *fn2-none* start fn2-core))
        ((unless (eq code :ok))
         (let ((fn2-core (fn2-exec-record *fn2-trace-kind-machine* *fn2-none* principal position
                           0 *fn2-work-empty* 0 nil *fn2-none* start fn2-core)))

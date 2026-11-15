@@ -235,8 +235,8 @@
  :doc "Claim a :free account slot for a new principal (fn2-account-claim): (mv code slot id).")
 (defcost fn2-auth-unclaim :tables (fn2-core-accounts)
  :doc "Return a claimed slot whose principal was not created.")
-(defcost fn2-auth-put-create :answers (:ok :state) :bytes 4096
- :tables (fn2-core-succ-txns fn2-core-succ-slots fn2-core-fields fn2-core-run-cursors fn2-core-run-paths fn2-core-id-decides)
+(defcost fn2-auth-put-create :enqueues 1 :answers (:ok :state) :bytes 4096
+ :tables (fn2-core-succ-txns fn2-core-succ-slots fn2-core-fields fn2-core-run-cursors fn2-core-run-paths fn2-core-id-decides fn2-core-pool fn2-core-sched fn2-core-trace fn2-core-control)
  :doc "Declare principal-create's write, (NAME -> id) in fn2-principals, in the row's successor transaction and resolve its key.")
 (defcost fn2-auth-bind-ctl :tables (fn2-ctl-table)
  :doc "An accepted principal-bind binds the connection: it acts as the principal and administers nothing.")
@@ -267,11 +267,11 @@
 (defcost fn2-auth-find-grant :answers (:ok :more :state) :bytes 4096
  :tables (fn2-core-reads fn2-core-succ-txns fn2-core-run-cursors fn2-core-run-paths fn2-core-fields)
  :doc "One step of the immutable grant row's lookup: (mv code grantor enabled previous).")
-(defcost fn2-auth-put-write :answers (:ok :state) :bytes 4096
- :tables (fn2-core-succ-txns fn2-core-succ-slots fn2-core-fields fn2-core-run-cursors fn2-core-run-paths fn2-core-id-decides fn2-core-pool)
+(defcost fn2-auth-put-write :enqueues 1 :answers (:ok :state) :bytes 4096
+ :tables (fn2-core-succ-txns fn2-core-succ-slots fn2-core-fields fn2-core-run-cursors fn2-core-run-paths fn2-core-id-decides fn2-core-pool fn2-core-sched fn2-core-trace fn2-core-control)
  :doc ":ready's write: grant-set's four (fn2-auth-put-grant) or principal-create's one (fn2-auth-put-create).")
-(defcost fn2-auth-put-grant :answers (:ok :state) :bytes 4096
- :tables (fn2-core-succ-txns fn2-core-succ-slots fn2-core-fields fn2-core-run-cursors fn2-core-run-paths fn2-core-id-decides)
+(defcost fn2-auth-put-grant :enqueues 1 :answers (:ok :state) :bytes 4096
+ :tables (fn2-core-succ-txns fn2-core-succ-slots fn2-core-fields fn2-core-run-cursors fn2-core-run-paths fn2-core-id-decides fn2-core-pool fn2-core-sched fn2-core-trace fn2-core-control)
  :doc "Declare grant-set's four writes (grant row, current pointer, head, outcome) in the row's successor transaction and resolve them.")
 
 ;; ---------------------------------------------------------------------------

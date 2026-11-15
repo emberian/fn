@@ -6,6 +6,11 @@ import lisp_rewrite as lr
 import storage_block_io_lower as rw
 ROOT=Path(__file__).resolve().parents[1]
 BASE='de31cba77741e057b78e00faa33539346340d3d8'
+IDENTITY_ADDITION="\n; The public read/write wrappers preserve the same successful reservation\n; identity as their actual pinned producer; no second implementation.\n(make-event\n (value (cons 'progn\n   (fn2-block-issue-identity-events\n    '(fn2-block-read-children fn2-block-write-children) (w state)))))\n"
+def without_identity_addition(leaf):
+ assert leaf.endswith(IDENTITY_ADDITION)
+ return leaf[:-len(IDENTITY_ADDITION)]
+
 def read(p):return (ROOT/p).read_text()
 def tree(n):
  if isinstance(n,lr.Pre):return (n.prefix,tree(n.node))
@@ -14,7 +19,7 @@ class StorageBlockLower(unittest.TestCase):
  def test_every_original_function_guard_and_contract_is_exact(self):
   before=read('tools/fixtures/storage-block-io-before.lisp');a,b,c=rw.transform(before,'(include-book "machines-b")\n(defun unchanged () 1)')
   originals=[tree(n) for n in rw.selected(before)]
-  actual=[tree(n) for n in rw.selected(read('books/storage-block-io.lisp'))]
+  actual=[tree(n) for n in rw.selected(without_identity_addition(read('books/storage-block-io.lisp')))]
   self.assertEqual(originals,actual);self.assertEqual(originals,[tree(n) for n in rw.selected(c)])
   self.assertFalse(lr.match('(defun fn2-pinned-block-io-children ?*b)',lr.parse(a).forms,deep=False))
   self.assertIn('unrelated-reserve',a);self.assertIn('defcost fn2-block-read',a);self.assertIn('defcost fn2-block-write',a)
@@ -23,7 +28,15 @@ class StorageBlockLower(unittest.TestCase):
   before=subprocess.check_output(['git','show',BASE+':books/machines-b.lisp'],cwd=ROOT,text=True)
   resources='(include-book \"machines-b\")\n'
   a,b,c=rw.transform(before,resources)
-  self.assertEqual(a,read('books/machines-b.lisp'));self.assertEqual(b,'(include-book \"storage-block-io\")\n');self.assertEqual(c,read('books/storage-block-io.lisp'))
+  self.assertEqual(a,read('books/machines-b.lisp'));self.assertEqual(b,'(include-book \"storage-block-io\")\n');self.assertEqual(c,without_identity_addition(read('books/storage-block-io.lisp')))
+ def test_only_exact_appended_wrapper_identity_registration_allowed(self):
+  leaf=read('books/storage-block-io.lisp')
+  original=without_identity_addition(leaf)
+  self.assertEqual(leaf,original+IDENTITY_ADDITION)
+  for changed in (leaf.replace("'(fn2-block-read-children fn2-block-write-children) (w state)))))", "'(fn2-block-read-children) (w state)))))"),leaf+IDENTITY_ADDITION):
+   with self.assertRaises(AssertionError):
+    stripped=without_identity_addition(changed)
+    self.assertEqual(stripped,original)
  def test_local_encapsulation_and_all_eight_results_remain_whole(self):
   leaf=read('books/storage-block-io.lisp');enc=[n for n in lr.parse(leaf).forms if hasattr(n,'items') and n.items and n.items[0].low=='encapsulate']
   self.assertEqual(len(enc),1)
