@@ -90,6 +90,8 @@ class CNSContinuationSource(unittest.TestCase):
   self.assertFalse(calls(f,'fn2-cns-lookup-loop'))
   self.assertEqual(len(calls(f,'fn2-successor-published')),2)
   self.assertIn(['equal','stamp',['nfix','published']],list(walk(f)))
+  self.assertIn(['<=',['+','ms','ml'],'fill'],list(walk(f)))
+  self.assertIn(['unsigned-byte-p','32','ms'],list(walk(f)))
   self.assertIn(['if','terminal',':more',':fault'],list(walk(f)))
   bad=copy.deepcopy(f)
   for x in walk(bad):
