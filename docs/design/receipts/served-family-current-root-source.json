@@ -1030,7 +1030,7 @@
     "tests/checkpoint-reader-scalar-domain-unit",
     "tests/checkpoint-reader-refutation-unit"
   ],
-  "scope": "Current foundation and richer served-family source composition; root foundation37 exact matched qualification. RAW/FETCH/native unproved. Prior reader34 and d797 parent136 remain separately scoped to prior foundation.",
+  "scope": "Current foundation37 and detached reader34 exact receipt sources/keys; richer served-family source composition. RAW/FETCH/native unproved; prior application136 remains prior-foundation scope.",
   "held": [
     "physical metadata/reader loader dispatch",
     "rolling directory/RELEASE/stale-row reset",
@@ -1218,7 +1218,7 @@
       "docs/design/checkpoint-reader-root-projection.md",
       "docs/design/receipts/checkpoint-reader-current-thirty-four-record.json"
     ],
-    "status": "Exact historical qualified root reader source preserved; foundation rekeys24of34. Only10 exact prior receipt bindings current; downstream requalification required. No BOOT/activation join.",
+    "status": "Current foundation reader34 exact raw/key matches independently qualified rootc48 receipt; kept detached, no BOOT/activation join",
     "qualified_receipt": "docs/design/receipts/checkpoint-reader-current-thirty-four-record.json",
     "verification": {
       "source_controls": 6,
@@ -1226,152 +1226,9 @@
       "FETCH_and_BT_key_change": "NONE; reader remains detached; FETCH243+BT2 unchanged245",
       "BOOT_consumer": "Not connected by this source join; root metadata/reader owners supply actual guarded BOOT consumer separately."
     },
-    "foundation_requalification_required": [
-      {
-        "book": "tests/checkpoint-reader-refutation-unit",
-        "raw_matches": true,
-        "key_matches": false,
-        "current_key": "37a45536ca9792083c538a8670cfb330827ab91d0663f2d12ca31f11c25f5b35"
-      },
-      {
-        "book": "tests/checkpoint-reader-scalar-domain-unit",
-        "raw_matches": true,
-        "key_matches": false,
-        "current_key": "68cd141860d0b0d380783af92907dda067b6151537aa1111c063e21ebcd56fdc"
-      },
-      {
-        "book": "books/checkpoint-descriptor-read",
-        "raw_matches": true,
-        "key_matches": false,
-        "current_key": "fcff197767f478f5477512d258d6d5adceb83b8847458a1564fa5df12c33fb9b"
-      },
-      {
-        "book": "books/columns-carrier-contracts",
-        "raw_matches": true,
-        "key_matches": false,
-        "current_key": "3f3707eb6a8f0e2f8dd287e1511b79a10bd1384f705be921aa63f824ea9db2b6"
-      },
-      {
-        "book": "books/columns-guard-hints",
-        "raw_matches": true,
-        "key_matches": false,
-        "current_key": "bf3898263ea2cef72898280e78731227844bb1a3d6743342239c17372e5d8caf"
-      },
-      {
-        "book": "books/columns",
-        "raw_matches": false,
-        "key_matches": false,
-        "current_key": "240a44b23a63840a436ffbe6b12f9adc6fec80ba1056de0af7b5e666f518a510"
-      },
-      {
-        "book": "books/checkpoint-reader-interfaces",
-        "raw_matches": true,
-        "key_matches": false,
-        "current_key": "becf8347aca04ffbe3322b4a348014b2d0b53cb8947533edb6a5e73451388301"
-      },
-      {
-        "book": "books/checkpoint",
-        "raw_matches": false,
-        "key_matches": false,
-        "current_key": "474304ef29e8fc03db8d730510086850e592d6a2b96ae5cd12e6288da6c68839"
-      },
-      {
-        "book": "books/pool-read-contracts",
-        "raw_matches": true,
-        "key_matches": false,
-        "current_key": "523bbc85583665c5bef2126a28376536cb3a754146a33c58d94b85e48886ddd5"
-      },
-      {
-        "book": "books/pool",
-        "raw_matches": false,
-        "key_matches": false,
-        "current_key": "02c8ba50750b243b9b79bc6be0ff2339fad1531234575313c815e7d6fbfba72b"
-      },
-      {
-        "book": "books/vocab",
-        "raw_matches": false,
-        "key_matches": false,
-        "current_key": "f25b0db226005357f44bbfcf8f986e2193b041da652b95420a3fc290e78099df"
-      },
-      {
-        "book": "books/commit-alloc",
-        "raw_matches": true,
-        "key_matches": false,
-        "current_key": "0d5af5d53ad5ddce5fd450fce4a37d52bbb082723129840d3ed5e561266a03be"
-      },
-      {
-        "book": "books/blake3",
-        "raw_matches": true,
-        "key_matches": false,
-        "current_key": "1adc95a81d414f9641c61117d1943a846ef5284586b2ede28c5f337a598e9d67"
-      },
-      {
-        "book": "books/blake3-pool-spec",
-        "raw_matches": true,
-        "key_matches": false,
-        "current_key": "614588be690316ba29f344415e5e3b5d02419246f895182ba91dd1a7c9f63576"
-      },
-      {
-        "book": "books/digests",
-        "raw_matches": true,
-        "key_matches": false,
-        "current_key": "457e0b062bf007b8abb9a5d4be75bdd02639c47e9ae03de0a8c59239915ad76f"
-      },
-      {
-        "book": "books/layout",
-        "raw_matches": true,
-        "key_matches": false,
-        "current_key": "92461e82c5228c9fee8e155ec9bb581b9da1b10d627da4d23cab22e6e3983263"
-      },
-      {
-        "book": "books/alloc",
-        "raw_matches": true,
-        "key_matches": false,
-        "current_key": "f1ac7b6847026b4bae87b8a89f76a2dac5bc855084b92dc4282e9b4c39dc2218"
-      },
-      {
-        "book": "books/format-check",
-        "raw_matches": true,
-        "key_matches": false,
-        "current_key": "e10aa3855445168414eb40a3db140159ef0064a6b3388ce373e29abe471567af"
-      },
-      {
-        "book": "books/format-context",
-        "raw_matches": true,
-        "key_matches": false,
-        "current_key": "87381ab93b3205f1d92047b96406cfc396acec6814289d04be0ccf26106fa23e"
-      },
-      {
-        "book": "books/format",
-        "raw_matches": true,
-        "key_matches": false,
-        "current_key": "4b663418581b6239fca1086370eb6e14fd90a2590ae36919a319c7112e80a1a7"
-      },
-      {
-        "book": "books/format-storage",
-        "raw_matches": true,
-        "key_matches": false,
-        "current_key": "dc190c56c4db7d223e5c02ebc41aa40f46ce804045dac1bff2946abd0d2947b6"
-      },
-      {
-        "book": "books/format-base",
-        "raw_matches": true,
-        "key_matches": false,
-        "current_key": "9115f43e1c05b24a1afb21fb292fb5584831d496553a81380ce2d53891a2651b"
-      },
-      {
-        "book": "books/format-events",
-        "raw_matches": true,
-        "key_matches": false,
-        "current_key": "03a5b6bf63a347f9f37f11e28f269b8ef77b0f86b0a791c96432998c295b11d8"
-      },
-      {
-        "book": "books/format-physical",
-        "raw_matches": true,
-        "key_matches": false,
-        "current_key": "511bb9864b3228a10284a127f9abddc149473ead1ab10651c6522570684c5f63"
-      }
-    ]
+    "current_foundation_qualified_receipt": "docs/design/receipts/checkpoint-reader-foundation-thirty-four-record.json",
+    "current_foundation_raw_keys_match": 34,
+    "old_receipt_scope": "Original prefoundation reader34 remains historical; only10oldkeys unchanged"
   },
   "pending_source_join": "Await actual316 terminal and lower dimensions before one current cache/READY audit; universal whole-function lifting remains separately source-only",
   "foundation_join": {
@@ -1398,6 +1255,7 @@
       "prior_d797_parent136": 16
     },
     "new_exact_app_receipt_bindings": 47,
-    "next_gate": "Await actual316 terminal, then one current cache+READY union audit before convergence scope; no job/grant from this source join"
+    "next_gate": "Await actual316 terminal, then one current cache+READY union audit before convergence scope; no job/grant from this source join",
+    "current_reader_requalification": "rootc48 reader34 allcurrent raw/keys match new receipt, no duplicate job"
   }
 }
