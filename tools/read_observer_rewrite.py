@@ -17,7 +17,7 @@ def project(s,helpers,frames):
  inc=next(n for n in p.forms if isinstance(n,lr.Lst) and sym(n.items[0])=='include-book')
  edits.append((inc.end,inc.end,'\n(include-book "c-source-observer")'))
  cols=next(n for n in p.forms if isinstance(n,lr.Lst) and len(n.items)>1 and sym(n.items[1])=='fn2-reads' and sym(n.items[0])=='defcolumns')
- insert(cols.items[2],'(observer-serial :u60)')
+ insert(cols.items[2],'(observer-serial :u60) (observer-parent :u32) (observer-parent-serial :u60)')
  edits.append((cols.end,cols.end,'\n\n'+helpers))
  macro=next(n for n in p.forms if isinstance(n,lr.Lst) and sym(n.items[0])=='defmacro' and sym(n.items[1])=='fn2-rd-shape')
  edits.append((macro.end,macro.end,'\n\n'+frames))
