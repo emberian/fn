@@ -34,6 +34,16 @@ class Transfer(unittest.TestCase):
   self.assertNotIn('fn2-release-inventory-transfer-step',names)
   for name in ('fn2-release-inventory-build-transfer-cursor','fn2-release-inventory-build-rows-count',':exhausted',':evidence'):
    self.assertIn(name,str(op))
+ def test_private_control_is_actual_resource_body_with_full_schema_frames(self):
+  source=(ROOT/'tests/release-inventory-transfer-unit.lisp').read_text()
+  for name in ('fn2-ripu-body nil','fn2-release-evidence-transfer-transition','whole-antecedent','pending-frame','fn2-ritu-owner-frame','fn2-ritu-proof-frame','fn2-ritu-aggregate-frame','fn2-ritu-edges-frame','fn2-alloc-ownership-invp'):
+   self.assertIn(name,source)
+  for mode in ('nil',':bound',':stale'):
+   self.assertIn('(assert-event (fn2-ritu-test '+mode+'))',source)
+  self.assertIn('(fn2-ripu-proof-holds 0 10',source)
+  self.assertIn('(fn2-ripu-proof-holds 1 9',source)
+  self.assertIn('(fn2-alloc-edge-matchesp 0 99 0 4 1 :promised-read',source)
+  self.assertNotIn('fn2-release-inventory-build-set-phase',source)
  def test_rearm_requires_full_transfer_and_has_no_independent_reset(self):
   terminal=fun('fn2-release-inventory-transfer-terminal-p')
   self.assertIn('fn2-release-inventory-source-terminal-p',str(terminal))
