@@ -462,3 +462,36 @@ The bounded fixture receipt is
 PID 1157213, `/tmp/audit-bridge-guards-0e9b5f9ac/run.log`). No imports were
 rebuilt and no ACL2 admission was run. The current served CNS packet still
 waits for its qualified callback world; these fixture results do not qualify it.
+
+### Concrete MEMBER body consumer (2026-11-15)
+
+`Fn2.ACL2.MemberBodyCorrect.body_correct` now connects the exact five-record
+canonical MEMBER program, its symbol/proper-list domain and reached primitive
+domains to the actual generated `LayerAWorld.fns`. It supplies closed canonical
+evaluation, actual dispatch, **evalExport 32** and the native member-result
+postcondition. The packet emitter consumes this theorem through exact record
+lookup preservation, domain inclusion and explicit MEMBER input-domain
+reflection; no arbitrary dispatch equality premise is accepted.
+
+Forge warm-import gate `/tmp/audit-member-body-1169/retry.log` checked the body
+module, controls and generated six/seven-record fixtures. All fourteen axiom
+censuses contain only propext, Classical.choice and Quot.sound. The positive
+control composes the actual MEMBER call; `changed_body_correct_refused` proves
+that overriding its result with NIL cannot satisfy CanonicalBodyCorrect.
+The initial run exposed a lambda/match elaboration mismatch; explicit step
+case reduction repaired it before the successful gate. No dependency rebuilt.
+Compiler SHA256: `3e0d0d3d801675359f2d4cf9815bfdb417b20b92fdd9d48b3b14c95bbae28bbf`.
+Gate log SHA256: `a29e74167760f19453f36a5a7d089aacdeda26416776ca32748ec79a282acfb5`.
+Body/control source hashes: `ba91b965beedf183d239a75468b4e118be1570de48de02e19d1e51b1c66824e0`,
+`36f05b27d0c3fc9c53b2cb80de295f335bb31afb7bd03f1ae9fd2aafb999487f`.
+PID 1312311 and its scope ended; 2Gi memory/zero swap were enforced, peak
+196386816 bytes, no memory-limit/OOM events. Python controls: 14 closed-member
+and 6 inspection tests. This is MEMBER-local kernel evidence, not current ACL2
+packet qualification or served CNS completion.
+
+Remaining extraction-keystone package: actual admitted CNS packet, guard/domain
+adequacy, primitive correspondence and selected attachment/host binding, then
+served-root composition with whole-antecedent and hypothesis-removal witnesses.
+The historical `tools/keystone_critical_map.json` is absent in this tree;
+`docs/OWED.md` exists but has no Lean bridge registration. This local helper
+and dispatch mutation control do not discharge that top-level package.
