@@ -152,7 +152,7 @@ class CollectionTests(unittest.TestCase):
         (remote / f"{ROOTS[0]}.cert").write_bytes(b"\f#Z stale fetched fixture")
         commands = []
 
-        def run(command, check=True):
+        def run(command, check=True, **options):
             commands.append(command)
             self.assertEqual(command[0], "rsync")
             source = Path(command[-2].split(":", 1)[1])
@@ -170,7 +170,7 @@ class CollectionTests(unittest.TestCase):
             shutil.copytree(remote_root / directory, local, dirs_exist_ok=True)
             return True
 
-        def ssh(host, script, check=True):
+        def ssh(host, script, check=True, **options):
             output = f"Certification evidence: {evidence}\n" if script.startswith("cat ") else "publish: fixture\n"
             return subprocess.CompletedProcess(["ssh"], 0, output)
 

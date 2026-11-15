@@ -74,6 +74,7 @@ from pathlib import Path
 import re
 import secrets
 import shlex
+import signal
 import socket
 import subprocess
 import sys
@@ -177,8 +178,17 @@ def mirror_cache(host: str, since: float, entries: list[str] | None = None) -> i
     import cert_cache_sync
     others = [box for box in HOSTS if box != host]
     code = 0
+    deadline = time.monotonic() + EVIDENCE_TIMEOUT_SECONDS
+
+    def bounded(command, **options):
+        remaining = deadline - time.monotonic()
+        if remaining <= 0:
+            raise subprocess.TimeoutExpired(command, EVIDENCE_TIMEOUT_SECONDS)
+        return _bounded_run(command, remaining, **options)
+
     for other in others:
-        code = max(code, cert_cache_sync.sync(host, other, 0.0, since=since, entries=entries))
+        code = max(code, cert_cache_sync.sync(host, other, 0.0, since=since,
+                                              entries=entries, run=bounded))
     return code
 
 
@@ -235,13 +245,42 @@ def acl2_shell_word(host: str, acl2: str | None = None) -> str:
     return str(host_settings(host)["acl2"])
 
 
-def run(command: list[str], check: bool = True) -> subprocess.CompletedProcess:
-    return RUN(command, check=check, stdout=subprocess.PIPE,
-               stderr=subprocess.STDOUT, text=True)
+def _bounded_run(command, timeout, *, check=False, input=None, capture_output=False,
+                 **options) -> subprocess.CompletedProcess:
+    # A timed-out rsync can leave its SSH child holding the output pipe open.
+    # Bound the entire process group started by this call, not just rsync.
+    if input is not None:
+        options["stdin"] = subprocess.PIPE
+    if capture_output:
+        options.update(stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+    process = subprocess.Popen(command, start_new_session=True, **options)
+    try:
+        output, errors = process.communicate(input=input, timeout=timeout)
+    except BaseException as error:
+        try:
+            os.killpg(process.pid, signal.SIGKILL)
+        except ProcessLookupError:
+            pass
+        output, errors = process.communicate()
+        if isinstance(error, subprocess.TimeoutExpired):
+            raise subprocess.TimeoutExpired(command, timeout, output=output, stderr=errors)
+        raise
+    result = subprocess.CompletedProcess(command, process.returncode, output, errors)
+    if check:
+        result.check_returncode()
+    return result
 
 
-def ssh(host: str, script: str, check: bool = True) -> subprocess.CompletedProcess:
-    return run(["ssh", "-n", "-o", "ConnectTimeout=10", host, script], check=check)
+def run(command: list[str], check: bool = True, *, timeout: float | None = None,
+        stderr=subprocess.STDOUT) -> subprocess.CompletedProcess:
+    if timeout is None:
+        return RUN(command, check=check, stdout=subprocess.PIPE, stderr=stderr, text=True)
+    return _bounded_run(command, timeout, check=check, stdout=subprocess.PIPE,
+                        stderr=stderr, text=True)
+
+
+def ssh(host: str, script: str, check: bool = True, **options) -> subprocess.CompletedProcess:
+    return run(["ssh", "-n", "-o", "ConnectTimeout=10", host, script], check=check, **options)
 
 
 def remote_quote(path: Path | str) -> str:
@@ -1330,7 +1369,7 @@ def parse_progress(output: str) -> dict[str, str]:
 def wait(host: str, identifier: str, root: Path, poll: int = POLL_SECONDS,
          timeout_seconds: int = DEFAULT_WAIT_SECONDS,
          cache: str | None = None,
-         collect: Callable[[str, str, Path, Path, str | None], None] | None = None,
+         collect: Callable[[str, str, Path, Path, str | None], bool | None] | None = None,
          remote: str | None = None,
          ) -> int:
     """Block until the remote run writes its status file, then fetch evidence.
@@ -1344,7 +1383,8 @@ def wait(host: str, identifier: str, root: Path, poll: int = POLL_SECONDS,
     `collect` is what "fetch evidence" means for this caller, and it defaults
     to `fetch`.  `tools/triage.py` passes `fetch_logs`, which brings home the
     logs and the manifest and publishes nothing: the same wait, over a run
-    whose output is not evidence.
+    whose output is not evidence. A False collection result is reported
+    separately; it never replaces the remote run's recorded exit code.
     """
     collect = collect or fetch
     started = time.monotonic()
@@ -1386,11 +1426,12 @@ def wait(host: str, identifier: str, root: Path, poll: int = POLL_SECONDS,
         if time.monotonic() - started >= timeout_seconds:
             print(f"{identifier} on {host}: still running after "
                   f"{timeout_seconds}s; not waiting further", file=sys.stderr)
-            collect(host, identifier, root, remote, cache)
+            collected = collect(host, identifier, root, remote, cache)
             print(f"{identifier} on {host}: left running under {remote}; "
                   f"{progress.get('MARKERS', '0')} books were certified when "
-                  f"this wait gave up, and their pairs are fetched and "
-                  f"published.  Run `farm.py wait {host} {identifier}` again "
+                  "this wait gave up; "
+                  + ("collection incomplete. " if collected is False else "collection returned. ")
+                  + f"Run `farm.py wait {host} {identifier}` again "
                   f"for the rest.", file=sys.stderr)
             return 3
         SLEEP(poll)
@@ -1412,8 +1453,10 @@ def wait(host: str, identifier: str, root: Path, poll: int = POLL_SECONDS,
           + (f"; manifest {final[1]} {final[0]}" if len(final) > 1 else "")
           + "; now collecting the evidence and publishing the pairs", flush=True)
     phase_started = time.monotonic()
-    collect(host, identifier, root, remote, cache)
-    print(f"{identifier} on {host}: collected in "
+    collected = collect(host, identifier, root, remote, cache)
+    print(f"{identifier} on {host}: "
+          + ("collection incomplete; remote verdict unchanged; " if collected is False else "collected; ")
+          + "elapsed "
           f"{int(time.monotonic() - phase_started)}s", flush=True)
     return code
 
@@ -1446,48 +1489,99 @@ def report_lines(lines: list[str], verbose: bool = False) -> list[str]:
     return kept
 
 
-EVIDENCE_RSYNC_TRIES = 3
+EVIDENCE_TIMEOUT_SECONDS = 30
+
+
+def fetch_manifest(host: str, remote: Path, directory: str, local: Path) -> bool:
+    """Fetch one JSON manifest without an rsync tree scan or partial overwrite."""
+    path = remote / directory / "manifest.json"
+    temporary = local / f".manifest-{secrets.token_hex(6)}.json"
+    try:
+        done = ssh(host, f"cat {remote_quote(path)}", check=False,
+                   timeout=EVIDENCE_TIMEOUT_SECONDS, stderr=subprocess.PIPE)
+        if done.returncode:
+            raise ValueError(f"exit {done.returncode}: {(done.stderr or '').strip()[-300:]}")
+        if not isinstance(json.loads(done.stdout), dict):
+            raise ValueError("manifest is not a JSON object")
+        temporary.write_text(done.stdout, encoding="utf-8")
+        temporary.replace(local / "manifest.json")
+        return True
+    except (OSError, ValueError, subprocess.TimeoutExpired) as error:
+        print(f"farm.py: manifest collection failed for {host}:{path}: {error}; "
+              "existing local manifest preserved; remote verdict unchanged", file=sys.stderr)
+        return False
+    finally:
+        temporary.unlink(missing_ok=True)
+
+
+def fetch_transfer(command: list[str]) -> bool:
+    """One bounded optional transfer; a timeout is not a reason to retry it."""
+    try:
+        done = run(command, check=False, timeout=EVIDENCE_TIMEOUT_SECONDS)
+        if done.returncode == 0:
+            return True
+        detail = f"exit {done.returncode}: {(done.stdout or '').strip()[-300:]}"
+    except (OSError, subprocess.TimeoutExpired) as error:
+        detail = str(error)
+    print(f"farm.py: artifact collection incomplete: {detail}; remote verdict unchanged",
+          file=sys.stderr)
+    return False
+
+
+def fetch_run_log(host: str, remote: Path, identifier: str) -> str | None:
+    try:
+        done = ssh(host, f"cat {remote_quote(remote)}/build/farm/{identifier}.log",
+                   check=False, timeout=EVIDENCE_TIMEOUT_SECONDS, stderr=subprocess.PIPE)
+        if done.returncode == 0:
+            return done.stdout
+        detail = f"exit {done.returncode}: {(done.stderr or '').strip()[-300:]}"
+    except (OSError, subprocess.TimeoutExpired) as error:
+        detail = str(error)
+    print(f"farm.py: run log collection failed: {detail}; remote verdict unchanged",
+          file=sys.stderr)
+    return None
 
 
 def fetch_evidence_dir(host: str, remote: Path, directory: str, local: Path) -> bool:
     """Copy one run's evidence directory home; True when the copy is complete.
 
-    The manifest goes first and alone: it is what the verdict, the archive and
-    the cache publish read, and one interrupted bulk rsync (hundreds of small
-    log files) used to leave a directory of logs without it, silently, because
-    the exit status was dropped.  The bulk copy is retried, and a copy that
-    still fails says so on stderr with rsync's own words.
+    The manifest goes first through bounded SSH, then optional logs through
+    one bounded rsync. Neither a hung tree scan nor a failed transfer changes
+    the remote certification result or qualifies a partial local collection.
     """
     source = f"{host}:{remote}/{directory}/"
-    run(["rsync", "-a", "--include=manifest.json", "--exclude=*", source, f"{local}/"],
-        check=False)
-    done = None
-    for _ in range(EVIDENCE_RSYNC_TRIES):
-        done = run(["rsync", "-a", source, f"{local}/"], check=False)
-        if done.returncode == 0:
-            return True
-    print(f"farm.py: rsync of {source} exited {done.returncode} after "
-          f"{EVIDENCE_RSYNC_TRIES} tries; the copy under {local} may be incomplete: "
-          f"{(done.stdout or '').strip()[-300:]}", file=sys.stderr)
-    return False
+    if not fetch_manifest(host, remote, directory, local):
+        return False
+    return fetch_transfer(["rsync", "-a", "--exclude=manifest.json", source, f"{local}/"])
 
 
 def fetch(host: str, identifier: str, root: Path,
           remote: Path | None = None, cache: str | None = None,
-          verbose: bool = False) -> None:
-    """Bring back the evidence directory, the new pairs, and cache the pairs."""
+          verbose: bool = False) -> bool:
+    """Collect bounded transfers, then verify/publish pairs; False is incomplete.
+
+    Each transfer and the remote sweep gets 30 seconds; the optional mirror
+    shares one 30-second deadline. These are collection limits, not proof
+    budgets. Local eligibility verification remains the existing certs gate.
+    """
     remote = remote or remote_root(root, identifier)
     cache = cache or run_record(root, identifier).get("cache")
-    log = ssh(host, f"cat {remote_quote(remote)}/build/farm/{identifier}.log",
-              check=False).stdout
+    log = fetch_run_log(host, remote, identifier)
+    if log is None:
+        return False
     (root / "build" / "farm").mkdir(parents=True, exist_ok=True)
     (root / "build" / "farm" / f"{identifier}.log").write_text(log, encoding="utf-8")
     fetched_manifests: list[dict] = []
     for directory in sorted(set(EVIDENCE.findall(log))):
         local = root / directory
         local.mkdir(parents=True, exist_ok=True)
-        fetch_evidence_dir(host, remote, directory, local)
+        if not fetch_evidence_dir(host, remote, directory, local):
+            return False
         fetched_manifests.extend(certs.load_manifests(root, local / "manifest.json"))
+    if not fetched_manifests:
+        print(f"{identifier}: collection incomplete: no certification manifest came back; "
+              "no pairs published; remote verdict unchanged", file=sys.stderr)
+        return False
     names = [name for name in certs.certified_books(fetched_manifests, str(remote))
              if isinstance(name, str) and BOOK_NAME.fullmatch(name)]
     # Explicit roots may live outside the historical default scan. Collect
@@ -1497,38 +1591,43 @@ def fetch(host: str, identifier: str, root: Path,
     for directory in sorted(directories):
         if any(parent.as_posix() in directories for parent in Path(directory).parents):
             continue  # An ancestor's recursive transfer already covers it.
-        run(["rsync", "-a", "--update", "--include=*/", "--include=*.cert",
+        if not fetch_transfer(["rsync", "-a", "--update", "--include=*/", "--include=*.cert",
              "--include=*.port", "--include=*.fasl", "--exclude=*",
-             f"{host}:{remote}/{directory}/", f"{root}/{directory}/"], check=False)
+             f"{host}:{remote}/{directory}/", f"{root}/{directory}/"]):
+            return False
     if run_record(root, identifier).get("no_publish"):
         # A measurement run (`submit --no-publish`): its pairs stay in its
         # own tree; no cache on either box or here takes them.
         print(f"{identifier}: submitted --no-publish: the run's pairs are not "
               "published to any cache")
-        return
+        return True
     # The box keeps its own copy: the next lane there installs these instead
     # of certifying them again.  The runner publishes after each root, so this
     # is the sweep for a run whose last root, or whose own publish, failed.
-    shared = ssh(host, certs_script(host, remote, "publish", "run", cache),
-                 check=False)
-    for line in report_lines(shared.stdout.strip().splitlines(), verbose):
-        print(f"{host}: {line}")
+    try:
+        shared = ssh(host, certs_script(host, remote, "publish", "run", cache),
+                     check=False, timeout=EVIDENCE_TIMEOUT_SECONDS, stderr=subprocess.PIPE)
+    except (OSError, subprocess.TimeoutExpired) as error:
+        print(f"{host}: cache sweep incomplete: {error}; existing remote cache state "
+              "is unknown; remote verdict unchanged", file=sys.stderr)
+        shared = None
+    if shared is not None:
+        for line in report_lines(shared.stdout.strip().splitlines(), verbose):
+            print(f"{host}: {line}")
     # Publish only this run's fetched, matching evidence locally first. The
     # verified report supplies exact remote cache coordinates, including pairs
     # already published by the per-book runner, without a time-window crawl.
-    if not fetched_manifests:
-        print(f"{identifier}: no certification manifest came back for this run; "
-              "nothing to publish into the local cache", file=sys.stderr)
     report = certs.publish(root, certs.cache_directory(), fetched_manifests,
                            names=names, origin=str(remote), origin_host=host,
                            origin_kind="run")
-    if shared.returncode != 0 or not shared.stdout.strip():
+    complete = shared is not None and shared.returncode == 0 and bool(shared.stdout.strip())
+    if shared is not None and not complete:
         # A `cd` that misses (exit 9) or an ssh that dies prints nothing, and
         # a silent sweep reads exactly like a sweep that found nothing to do.
         print(f"{host}: the cache sweep under {remote} exited "
-              f"{shared.returncode} with no report; the run's pairs are NOT "
-              f"in this box's cache", file=sys.stderr)
-    elif (cache or HOSTS.get(host, {}).get("cache")) == HOSTS.get(host, {}).get("cache"):
+              f"{shared.returncode}; remote cache publication is unconfirmed: "
+              f"{(shared.stderr or '').strip()[-300:]}; remote verdict unchanged", file=sys.stderr)
+    if complete and (cache or HOSTS.get(host, {}).get("cache")) == HOSTS.get(host, {}).get("cache"):
         # One toolchain on both boxes: the other box's cache gets this run's
         # pairs too, so neither box certifies what the other already did.
         # Exact verified run coordinates avoid sweeping either global cache;
@@ -1550,16 +1649,19 @@ def fetch(host: str, identifier: str, root: Path,
         else:
             try:
                 if MIRROR(host, since, report.cache_entries) != 0:
+                    complete = False
                     print(f"{host}: mirroring the run's pairs to the other box "
                           f"failed; `tools/cert_cache_sync.py {host} OTHER` again",
                           file=sys.stderr)
             except (Exception, SystemExit) as error:
+                complete = False
                 print(f"{host}: mirroring the run's pairs to the other box "
                       f"failed: {type(error).__name__}: {error}; "
                       f"`tools/cert_cache_sync.py {host} OTHER` again",
                       file=sys.stderr)
     for line in report_lines(report.lines(), verbose):
         print(line)
+    return complete
 
 
 SLOW_SECONDS = 10.0
@@ -1740,17 +1842,20 @@ def fetch_logs(host: str, identifier: str, root: Path, remote: Path,
     same bytes again, concatenated, and on a wide run it is hundreds of
     megabytes.
     """
-    log = ssh(host, f"cat {remote_quote(remote)}/build/farm/{identifier}.log",
-              check=False).stdout
+    log = fetch_run_log(host, remote, identifier)
+    if log is None:
+        return []
     into.mkdir(parents=True, exist_ok=True)
     (into / f"{identifier}.log").write_text(log, encoding="utf-8")
     brought: list[Path] = []
     for directory in sorted(set(EVIDENCE.findall(log))):
         local = into / Path(directory).name
         local.mkdir(parents=True, exist_ok=True)
-        run(["rsync", "-a", "--include=*/", "--include=manifest.json",
+        if not fetch_manifest(host, remote, directory, local):
+            continue
+        fetch_transfer(["rsync", "-a", "--exclude=manifest.json", "--include=*/",
              "--include=*.certify.log", "--exclude=*",
-             f"{host}:{remote}/{directory}/", f"{local}/"], check=False)
+             f"{host}:{remote}/{directory}/", f"{local}/"])
         brought.append(local)
     return brought
 
