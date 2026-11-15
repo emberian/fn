@@ -13,14 +13,14 @@ theorem nonsymbol_positive :
     CanonicalExportEval MemberExecEvaluation.program domain primitiveDomain
       "MEMBER-EQ-EXEC" [.int 7, literals] Val.nil := by
   refine ⟨⟨[":SIZE", ":FULL"], rfl⟩, ?_⟩
-  exact closed_evaluation (.int 7) [":SIZE", ":FULL"]
+  exact MemberSymbolListEvaluation.closed_evaluation (.int 7) [":SIZE", ":FULL"]
 
 theorem cons_key_positive :
     domain "MEMBER-EQ-EXEC" [.cons (.int 1) Val.nil, literals] ∧
     CanonicalExportEval MemberExecEvaluation.program domain primitiveDomain
       "MEMBER-EQ-EXEC" [.cons (.int 1) Val.nil, literals] Val.nil := by
   exact ⟨⟨[":SIZE", ":FULL"], rfl⟩,
-    closed_evaluation (.cons (.int 1) Val.nil) [":SIZE", ":FULL"]⟩
+    MemberSymbolListEvaluation.closed_evaluation (.cons (.int 1) Val.nil) [":SIZE", ":FULL"]⟩
 
 theorem nonsymbol_element_refused :
     ¬ domain "MEMBER-EQ-EXEC" [.int 7, Val.ofList [.int 7]] := by

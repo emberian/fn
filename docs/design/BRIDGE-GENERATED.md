@@ -603,3 +603,14 @@ actual dispatch. Twelve emitter source controls pass. The new Lean modules are
 not yet kernel checked, and no current attached CNS packet is qualified.
 The old MEMBER warm closure uses a different Val artifact from the qualified
 symbol foundation; those artifacts must not be mixed as current evidence.
+
+The proof is factored so `MemberSymbolListEvaluation` needs only the existing
+five-definition MEMBER closure and two small generated modules, not the 322-module
+global dispatch import closure. It proposes finite canonical evaluation and
+agreement with the actual emitted recursive MEMBER function on the complementary
+domain. A coherent current-foundation gate can recompile those six small modules
+against the qualified current Val/Translation/CanonicalEvaluation artifacts.
+The separate `MemberSymbolListBodyCorrect` wrapper still requires the current
+global dispatcher and its body equation; evaluating the small closure does not
+qualify that wrapper or the emitted served consumer. Unrelated generated functions,
+including the stale LENGTH symbol literal in S34, are outside this proof scope.
