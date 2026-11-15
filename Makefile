@@ -443,6 +443,8 @@ ACL2_BOOKS = \
   tests/pool-ranges-unit \
   tests/pool-query-ref-unit \
   tests/pool-credit-unit \
+  tests/ordinary-drain-credit-unit \
+  tests/ordinary-drain-credit-live-unit \
   tests/pool-unit \
   tests/port-unit \
   tests/primitive-list-domain-unit \
