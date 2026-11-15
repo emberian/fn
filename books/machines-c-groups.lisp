@@ -644,13 +644,13 @@
    (assert-event (fn2-assert-compliant-p '(fn2-group-lookup fn2-groups-genesis fn2-principal-lookup
                                           fn2-principals-genesis fn2-principal-of-slot) (w state)))))
 
-(defcost fn2-identity-decide-start :answers (:bounds :exhausted :ok :owner :stale :state)
- :tables (fn2-core-succ-txns fn2-core-id-decides fn2-core-fields fn2-core-pool fn2-core-machines fn2-core-control)
+(defcost fn2-identity-decide-start :enqueues 1 :answers (:bounds :exhausted :ok :owner :stale :state)
+ :tables (fn2-core-succ-txns fn2-core-id-decides fn2-core-fields fn2-core-pool fn2-core-machines fn2-core-control fn2-core-sched fn2-core-trace)
  :doc "Start a transaction's identity decision: its query (five rows) written, its lookup idle.")
-(defcost fn2-identity-decide :child fn2-identity-decide-child :answers (:bad-magic :bounds :conflict :done :duplicate :end :entry :evidence :format :invariant :length
+(defcost fn2-identity-decide :enqueues 1 :child fn2-identity-decide-child :answers (:bad-magic :bounds :conflict :done :duplicate :end :entry :evidence :format :invariant :length
   :lost :miss :more :noncanonical :owner :part :payload :schema :stale :state :stored :truncated :unknown-tag :wide)
  :bytes 4096
- :tables (fn2-core-succ-txns fn2-core-id-decides fn2-core-run-cursors fn2-core-run-paths fn2-core-fields fn2-core-pool fn2-core-machines fn2-core-control)
+ :tables (fn2-core-succ-txns fn2-core-id-decides fn2-core-run-cursors fn2-core-run-paths fn2-core-fields fn2-core-pool fn2-core-machines fn2-core-control fn2-core-sched fn2-core-trace)
  :doc "One source of an identity decision's two exact reads (the summary, then the candidate): one overlay search or one run step of at most 4,096 pool reads.")
 (defcost fn2-identity-facts :answers (:ok :state) :child fn2-id-facts
  :doc "Read a done decision's facts: verdict, selection, candidate ordinal, evidence status, coverage.")

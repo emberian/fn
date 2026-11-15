@@ -812,8 +812,8 @@
  :bytes 8192
  :tables (fn2-core-succ-txns fn2-core-id-engine fn2-core-overlays fn2-core-overlay-index fn2-core-fields fn2-core-pool)
  :doc "Insert every staged row into its batch's private overlays (octet arguments copied, at most 4 KiB per slot).")
-(defcost fn2-successor-release :child fn2-successor-release-child :answers (:bounds :ok :stale :state)
- :tables (fn2-core-succ-txns fn2-core-succ-slots fn2-core-id-decides fn2-core-pool fn2-core-machines fn2-core-control)
+(defcost fn2-successor-release :enqueues 1 :child fn2-successor-release-child :answers (:bounds :ok :stale :state)
+ :tables (fn2-core-succ-txns fn2-core-succ-slots fn2-core-id-decides fn2-core-pool fn2-core-machines fn2-core-control fn2-core-sched fn2-core-trace)
  :doc "Free a transaction's write slots and its decision at its outcome.")
 (defcost fn2-successor-applied :answers (:bounds :kind :ok :state) :child fn2-succ-applied
  :doc "Whether a staged fold slot applied (:applied) or its :when failed under :unless-when :unchanged (:unchanged).")
