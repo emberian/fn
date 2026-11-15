@@ -642,3 +642,14 @@ map roundtrip admission, authenticated selected-base restoration, ordered suffix
 replay, dynamic maintenance headroom, and commit-directory/candidate lifetime.
 FREE and checkpoint activation remain disabled until their connected prerequisites
 are implemented and verified. Authorization remains an independent release blocker.
+
+## Device loan binding integration — record 876717
+
+Integrated donor0376a63c1's scalar device helpers and raw recorder. Descriptors
+now bind the submitted address and backing-object identity to the slab captured
+at actual host storage submission. Canonical Post shape is checked before field
+access; shifted-address and replacement-buffer controls reject unchanged bytes.
+Exact12 record passed in2.033s (8reused,4new); root verified all12 current closure
+hashes and all3 raw fixture source hashes against the receipt. Raw mocked performer
+controls passed. Actual envelope replay, host image execution and general memory
+noninterference remain unqualified; this gate does not establish disk durability.
