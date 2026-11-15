@@ -1,0 +1,91 @@
+; Process-visible effects of the actual single-worker file-device trace.
+; This checker does not turn a Fence return into power-loss evidence.
+; In-flight/error Writes are overapproximated by arbitrary bytes IN their
+; requested span; outside that span they cannot explain a changed image.
+(in-package "ACL2")
+
+(defun fn2-nde-octetsp (xs)
+ (if (atom xs) (null xs)
+  (and (unsigned-byte-p 8 (car xs)) (fn2-nde-octetsp (cdr xs)))))
+(defun fn2-nde-descriptorp (d fd)
+ (and (true-listp d) (equal (len d) 7) (equal (nth 0 d) fd)
+      (or (null (nth 1 d)) (natp (nth 1 d)))
+      (or (null (nth 2 d)) (natp (nth 2 d)))
+      (member-eq (nth 3 d) '(:read :write :fence))
+      (natp (nth 4 d)) (natp (nth 5 d))
+      (if (eq (nth 3 d) :write)
+          (and (fn2-nde-octetsp (nth 6 d)) (equal (len (nth 6 d)) (nth 5 d)))
+        (null (nth 6 d)))))
+(defun fn2-nde-uncertain-write (d)
+ (and (eq (nth 3 d) :write) (list :uncertain (nth 4 d) (nth 5 d))))
+(defun fn2-nde-return-effect (d result errno)
+ (cond ((eq (nth 3 d) :write)
+        (if (< result 0) (fn2-nde-uncertain-write d)
+          (list :write (nth 4 d) result (nth 6 d))))
+       ((eq (nth 3 d) :fence) (list :fence result errno))
+       (t nil)))
+; SEEN prevents job-id reuse even after return. PENDING retains queued jobs.
+; ACTIVE is the one physically executing job: overlap is refused rather than
+; silently imposing an invented serial order on multiple physical workers.
+(defun fn2-nde-decode (records fd seen pending active effects)
+ (declare (xargs :verify-guards nil))
+ (if (atom records)
+  (if records (mv :malformed nil)
+   (let ((last (and active (fn2-nde-uncertain-write (cdr (assoc-equal active pending))))))
+    (mv :ok (reverse (if last (cons last effects) effects)))))
+  (let* ((r (car records)) (tag (car r)) (id (nth 1 r)))
+   (cond
+    ((and (member-eq tag '(:submit :direct)) (true-listp r) (equal (len r) 3)
+          (posp id) (not (member-equal id seen)) (fn2-nde-descriptorp (nth 2 r) fd))
+     (fn2-nde-decode (cdr records) fd (cons id seen)
+       (acons id (nth 2 r) pending) active effects))
+    ((and (eq tag :begin) (true-listp r) (equal (len r) 2)
+          (not active) (assoc-equal id pending))
+     (fn2-nde-decode (cdr records) fd seen pending id effects))
+    ((and (eq tag :return) (true-listp r) (equal (len r) 4)
+          active (equal id active) (assoc-equal id pending)
+          (integerp (nth 2 r)) (natp (nth 3 r))
+          (or (< (nth 2 r) 0)
+              (and (equal (nth 3 r) 0)
+                   (if (eq (nth 3 (cdr (assoc-equal id pending))) :fence)
+                       (equal (nth 2 r) 0)
+                     (<= (nth 2 r) (nth 5 (cdr (assoc-equal id pending))))))))
+     (let ((effect (fn2-nde-return-effect (cdr (assoc-equal id pending)) (nth 2 r) (nth 3 r))))
+      (fn2-nde-decode (cdr records) fd seen (remove1-assoc-equal id pending) nil
+        (if effect (cons effect effects) effects))))
+    (t (mv :malformed nil))))))
+(defun fn2-native-device-effects (records fd)
+ (declare (xargs :verify-guards nil))
+ (fn2-nde-decode records fd nil nil nil nil))
+
+; Streaming image comparison: callers must cover the WHOLE image in disjoint
+; slices and compare total sizes. Filtering once per slice avoids image-size
+; times trace-length byte work. This helper alone does not prove coverage.
+(defun fn2-nde-span-effects (effects start size)
+ (declare (xargs :verify-guards nil))
+ (if (atom effects) nil
+  (let ((e (car effects)))
+   (if (and (member-eq (car e) '(:write :uncertain))
+            (< (nth 1 e) (+ start size)) (< start (+ (nth 1 e) (nth 2 e))))
+       (cons e (fn2-nde-span-effects (cdr effects) start size))
+     (fn2-nde-span-effects (cdr effects) start size)))))
+(defun fn2-nde-byte (effects address prior)
+ (declare (xargs :verify-guards nil))
+ (if (atom effects) prior
+  (let* ((e (car effects))
+         (hit (and (member-eq (car e) '(:write :uncertain))
+                   (<= (nth 1 e) address) (< address (+ (nth 1 e) (nth 2 e)))))
+         (next (if hit (if (eq (car e) :uncertain) :unknown
+                        (nth (- address (nth 1 e)) (nth 3 e))) prior)))
+   (fn2-nde-byte (cdr effects) address next))))
+(defun fn2-nde-slice (effects address before after)
+ (declare (xargs :verify-guards nil))
+ (if (atom before) (and (null before) (null after))
+  (and (consp after)
+       (let ((expected (fn2-nde-byte effects address (car before))))
+        (or (eq expected :unknown) (equal expected (car after))))
+       (fn2-nde-slice effects (+ 1 address) (cdr before) (cdr after)))))
+(defun fn2-native-device-image-slice-p (effects address before after)
+ (declare (xargs :verify-guards nil))
+ (and (natp address) (fn2-nde-octetsp before) (fn2-nde-octetsp after)
+      (fn2-nde-slice (fn2-nde-span-effects effects address (len before)) address before after)))
