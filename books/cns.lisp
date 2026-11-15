@@ -203,6 +203,9 @@
 (defcost fn2-ctl-stream-output-trailer :answers (:ok :bounds) :bytes 32
  :tables (fn2-core-pool)
  :doc "Append the final digest after checked source EOF, into a fresh staging loan.")
+(defcost fn2-ctl-receive-cap :answers (:ok :frame :bounds) :bytes 128
+ :tables (fn2-core-fields)
+ :doc "Receive only the remaining fixed header, then the generated header's remaining frame extent; leave coalesced frames in the socket.")
 (defcost fn2-ctl-stream-begin :answers (:ok :need-more :frame :bounds) :bytes 128
  :tables (fn2-core-fields fn2-core-digests fn2-core-b3)
  :doc "Parse bounded APPEND metadata and initialize the frame hash; no article allocation.")
@@ -942,10 +945,13 @@
           ((not (eq (fn2-machine-pool-capacity-read-code row-rx-slot) :ok)) (:stop :machine-phase))
           ((<= (min *fn2-ctl-io-bytes* (fn2-machine-pool-capacity row-rx-slot)) row-fill)
            (:next :closing) (:charge :steps *fn2-work-transition* :runnable t))
-          (t (:let cap (- (min *fn2-ctl-io-bytes* (fn2-machine-pool-capacity row-rx-slot)) row-fill))
-             (:issue (fn2-issue-receive row-cap-index row-cap-nonce row-rx-slot row-rx-gen cap
+          (t (:do (rcode cap) (fn2-ctl-receive-cap id row-generation row-rx-slot row-rx-gen row-fill)
+              :accept (:ok :frame :bounds))
+             (:if (and (eq rcode :ok) (natp cap) (< 0 cap) (<= cap *fn2-ctl-io-bytes*))
+              ((:issue (fn2-issue-receive row-cap-index row-cap-nonce row-rx-slot row-rx-gen cap
                                         :principal row-principal-slot)
-              :ok ((:wait :completion :bytes cap))))))
+                :ok ((:wait :completion :bytes (+ 128 cap)))))
+              ((:next :closing) (:charge :bytes 128 :steps *fn2-work-transition* :runnable t))))))
   ;; One current RX loan, shared sequentially by frame hashing and the
   ;; tentative upload consumer. No refill until both cursors relinquish it.
   (:stream :on-refusal ((:stop :machine-phase))
