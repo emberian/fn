@@ -25,7 +25,10 @@ theorem emitted_eq_native (x lst : Val) :
   obtain ⟨result, run, emitted⟩ := adequate_emitted x lst
   have solved := Countdown.equals_solution measure step decreases
     (fun a => Native.memberEqual a.1 a.2)
-    (by intro a; exact solution_equation a)
+    (by
+      intro a
+      have h := solution_equation a
+      cases hs : step a <;> simpa only [hs] using h)
     (measure (x, lst) + 1) (x, lst) (by omega)
   exact emitted.symm.trans (Except.ok.inj ((run _ (by omega)).symm.trans solved))
 

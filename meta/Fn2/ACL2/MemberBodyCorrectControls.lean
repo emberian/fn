@@ -44,6 +44,23 @@ theorem changed_dispatch_refused :
   rw [actual_dispatch]
   decide
 
+theorem changed_body_correct_refused :
+    ¬ CanonicalBodyCorrect program domain primitiveDomain changedDispatch
+      "MEMBER-EQ-EXEC" MemberBodyCorrect.result := by
+  intro h
+  obtain ⟨definition, value, _, _, _, dispatched, _, post⟩ :=
+    h [.sym ":OK", accepted] ⟨[.sym ":OK", .sym ":RETIRED"], rfl⟩
+  have valueNil : value = Val.nil := Option.some.inj dispatched.symm
+  obtain ⟨key, xs, inputs, valueResult⟩ := post
+  have same : Native.memberEqual (.sym key) (Val.ofList xs) = accepted := by
+    have pair := List.cons.inj inputs
+    have tail := List.cons.inj pair.2
+    rw [← pair.1, ← tail.1]
+    rfl
+  have impossible : accepted = Val.nil := same.symm.trans (valueResult.symm.trans valueNil)
+  cases impossible
+
+#print axioms changed_body_correct_refused
 #print axioms acceptance_call
 #print axioms actual_dispatch
 #print axioms changed_dispatch_refused
