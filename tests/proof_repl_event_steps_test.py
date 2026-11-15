@@ -173,6 +173,65 @@ class EventSteps(unittest.TestCase):
         self.assertTrue({'defun-nx', 'fn2-owed-discharge', 'fn2-assert-owed-teeth',
                          'fn2-assert-square-evidence'}.issubset(heads))
 
+    def test_derived_inventory_is_finite_and_keeps_original_scope(self):
+        source = '''(defmacro own-event () '(thm t))
+(local (defmacro private-event () '(thm t)))
+(defcolumns sample ((value :u8)))
+(defun decoy () '(defmacro not-declared () nil))
+(encapsulate () (local (private-event)) (own-event) (sample-preserves step (sample)))'''
+        names = repl.declared_event_macros([source])
+        self.assertEqual(names, {'own-event', 'private-event', 'sample-preserves'})
+        original = repl.forms(source)[-1]
+        self.assertEqual(repl.per_event_steps(original, 2000000, 20, names),
+                         f'(with-prover-step-limit 2000000 t (with-prover-time-limit 20 {original}))')
+        with self.assertRaises(ValueError):
+            repl.per_event_steps('(not-declared)', 2000000, 20, names)
+        for head in ['skip-proofs', 'defaxiom', 'defttag', 'set-prover-step-limit',
+                     'with-prover-step-limit', 'ld', 'u', 'progn!']:
+            declared = repl.declared_event_macros([f'(defmacro {head} () nil)'])
+            with self.subTest(head=head), self.assertRaises(ValueError):
+                repl.per_event_steps(f'({head})', 2000000, 20, declared)
+
+    def test_inventory_refreshes_after_declaration_removal(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            target = root / 'target.lisp'
+            dependency = root / 'dependency.lisp'
+            target.write_text('(include-book "dependency")\n(own-event)')
+            dependency.write_text('(defmacro own-event () \'(thm t))')
+            names, first_hashes, text = repl.source_event_inventory(target, root)
+            self.assertIn('own-event', names)
+            self.assertEqual(text, target.read_text())
+            dependency.write_text('(defun replacement () nil)')
+            names, second_hashes, _ = repl.source_event_inventory(target, root)
+            self.assertNotIn('own-event', names)
+            self.assertNotEqual(first_hashes['dependency'], second_hashes['dependency'])
+            with self.assertRaises(ValueError):
+                repl.per_event_steps('(own-event)', 2000000, 20, names)
+
+    def test_bound66_frozen_full_original_event_transform(self):
+        plan_path = os.environ.get('FN_PROOF_BOUND66_PLAN')
+        root_path = os.environ.get('FN_PROOF_BOUND66_ROOT')
+        if not plan_path or not root_path:
+            self.skipTest('set FN_PROOF_BOUND66_PLAN and FN_PROOF_BOUND66_ROOT for frozen source controls')
+        import json
+        import hashlib
+        root = Path(root_path)
+        plan = json.loads(Path(plan_path).read_text())
+        names, hashes, _ = repl.source_event_inventory(root / (plan['root'] + '.lisp'), root)
+        self.assertEqual(set(hashes), {row['book'] for row in plan['rows']})
+        for row in plan['rows']:
+            source = root / (row['book'] + '.lisp')
+            with self.subTest(book=row['book']):
+                self.assertEqual(hashlib.sha256(source.read_bytes()).hexdigest(), row['raw_sha256'])
+                originals = [form for form in repl.forms(source.read_text())
+                             if repl.form_head(form) not in ['in-package', 'include-book', 'defpkg']]
+                _, body = repl.encapsulated(source.read_text(), source.parent,
+                                           set(), 20, 2000000, names)
+                self.assertEqual(body, '(encapsulate ()\n' + '\n'.join(
+                    f'(with-prover-step-limit 2000000 t {repl.wrap_limit(form, 20, event=True)})'
+                    for form in originals) + '\n)')
+
     def test_macro_time_cap(self):
         form = '(fn2-machines-preserves example)'
         self.assertEqual(repl.per_event_steps(form, 2000000, 20),
