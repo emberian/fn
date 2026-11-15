@@ -154,8 +154,21 @@ no candidate-only runtime import was needed for this receipt. The actual
 167-book `assembly-callbacks-bt` author world starts with 78 compiled books and
 89 source books. Its first seven source books pass. `machines-a-run` then reaches
 the unchanged 20-second cap in an original macro (20.08 seconds, 1,174,320 steps).
-The current repair targets unnecessary allocator expansion in generated numeric
-and effect proofs; the actual emitted member caller has not yet been reached.
+The shared repair now derives opaque child calls from admitted signatures for
+non-issuing numeric and effect proofs. Exact 37-book record
+`certify-20261115T131114Z-1360565` reused 34 books and certified machine-arms,
+conn-kind and tls-kind. Root independently matched all 37 source hashes and
+closure keys after integration; two source controls pass. Runtime definitions,
+guards, theorem statements and rule classes are unchanged. The actual
+`machine-arms-unit` assertions still await application qualification.
+
+A separately labeled diagnostic reduced the original Scribe macro to 13.64
+seconds under the unchanged cap and advanced through allocation/coordinator
+repairs. It then stopped at a future-working termination gap; its scope has
+ended and resources are released. This diagnostic is not source qualification.
+The actual application candidate must consume the qualified generator and
+reviewed leaf repairs before the native two-article restart/FETCH gate.
+Receipt: [resource proof boundary](receipts/arm-resource37-record.json).
 Receipt: [shared application prerequisites](receipts/bt-ready62-record.json).
 
 Physical address geometry remains an executable blocker. `fe9f761ab` repairs

@@ -2319,6 +2319,20 @@
   (if (atom children) nil
     (append (fn2-arms-column-readers (car children) (fn2-view-layout (car children) world))
             (fn2-arms-quantity-readers (cdr children) world))))
+; Non-issuing resource reports do not depend on a child operation's private
+; allocation/search cases. Derive the boundary from actual admitted signatures.
+(defun fn2-arms-resource-stobj-callees (fns world)
+  (declare (xargs :verify-guards nil))
+  (if (atom fns) nil
+    (append (and (remove-eq nil (getpropc (car fns) 'stobjs-in nil world))
+                 (list (car fns)))
+            (fn2-arms-resource-stobj-callees (cdr fns) world))))
+(defun fn2-arms-resource-callees (name world)
+  (declare (xargs :verify-guards nil))
+  (if (member-eq 'fn2-ops (car (fn2-arms-sig name world))) nil
+    (remove-eq name
+      (fn2-arms-resource-stobj-callees
+        (all-fnnames (getpropc name 'unnormalized-body nil world)) world))))
 (defun fn2-arms-child-quantities-event-with-residual (name work-limit residual world)
   (declare (xargs :verify-guards nil))
   (let* ((ins (car (fn2-arms-sig name world)))
@@ -2337,7 +2351,8 @@
        :hints (("Goal" :in-theory (e/d (,name fn2-run-quantitiesp)
                        (nfix nth ,@(fn2-arms-shape-fns ins)
                         ,@(fn2-arms-rows-fns ins)
-                        ,@(fn2-arms-quantity-readers ins world))))))))
+                        ,@(fn2-arms-quantity-readers ins world)
+                        ,@(fn2-arms-resource-callees name world))))))))
 ; Public arms account against the caller budget. Internal chain suffixes
 ; account against their static descriptor bound; the outer admission relates
 ; that bound to the budget before any effects run.
@@ -2366,7 +2381,8 @@
     :hints (("Goal" :in-theory (e/d (,name)
        (natp nfix nth unsigned-byte-p min max
         ,@(fn2-arms-shape-fns ins) ,@(fn2-arms-rows-fns ins)
-        ,@(fn2-arms-quantity-readers ins world))))))))
+        ,@(fn2-arms-quantity-readers ins world)
+                        ,@(fn2-arms-resource-callees name world))))))))
 (defun fn2-arms-child-issued-event (name world)
  (declare (xargs :verify-guards nil))
  (let* ((sig (fn2-arms-sig name world)) (ins (car sig)) (outs (cadr sig))
