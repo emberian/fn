@@ -87,7 +87,7 @@
 ;; holds from :collect (fn2-commit's :holds); the drain's last release returns
 ;; it (its :effects in the drain arm). Foreground returns the first three
 ;; ranges separately; maintenance retains its exact bundle until the final stage.
-(defcost fn2-commit-release-pool :answers t :own-writes (pool-slot pool-gen) :tables (fn2-core-pool fn2-core-commit-io fn2-core-checkpoint-future fn2-core-checkpoint-future-windows fn2-core-extents fn2-core-control)
+(defcost fn2-commit-release-pool :answers t :own-writes (pool-slot pool-gen) :tables (fn2-core-pool fn2-core-commit-root fn2-core-commit-io fn2-core-checkpoint-future fn2-core-checkpoint-future-windows fn2-core-extents fn2-core-control)
  :doc "Release one foreground pool range, or return all four exact maintenance leases only at the final drain stage.")
 
 ;; The shared step sequences.
