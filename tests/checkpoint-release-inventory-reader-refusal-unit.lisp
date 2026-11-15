@@ -6,7 +6,7 @@
 (include-book "../books/checkpoint-restore-release-inventory-reader")
 (include-book "../books/runs-page")
 (include-book "column-snapshot-support")
-(defconst *fn2-rir-children* '(fn2-checkpoints fn2-checkpoint-refs fn2-checkpoint-bytes fn2-checkpoint-restore-map fn2-checkpoint-restore-map-control fn2-checkpoint-restore-reach fn2-checkpoint-restore-reach-control fn2-checkpoint-restore-reader fn2-checkpoint-restore-events fn2-fc fn2-fc-context fn2-b3 fn2-fields fn2-pool fn2-digests fn2-checkpoint-restore-release-inventory fn2-checkpoint-restore-release-entries fn2-extents))
+(defconst *fn2-rir-children* '(fn2-checkpoints fn2-checkpoint-refs fn2-checkpoint-bytes fn2-checkpoint-restore-map fn2-checkpoint-restore-map-control fn2-checkpoint-restore-reach fn2-checkpoint-restore-reach-control fn2-checkpoint-restore-reader fn2-checkpoint-restore-events fn2-checkpoint-restore-events-work fn2-fc fn2-fc-context fn2-b3 fn2-fields fn2-pool fn2-digests fn2-checkpoint-restore-release-inventory fn2-checkpoint-restore-release-entries fn2-extents))
 (defun fn2-rir-snapshot-events (children world)
  (declare (xargs :verify-guards nil))
  (if (atom children) nil
@@ -33,7 +33,7 @@
        ((mv page fn2-checkpoint-restore-reader fn2-checkpoint-restore-reach fn2-fc fn2-fc-context fn2-b3 fn2-fields fn2-pool fn2-digests)
         (fn2-checkpoint-restore-release-inventory-page-step 4096 fn2-checkpoints fn2-checkpoint-refs fn2-checkpoint-bytes fn2-checkpoint-restore-map fn2-checkpoint-restore-map-control fn2-checkpoint-restore-reach fn2-checkpoint-restore-reach-control fn2-checkpoint-restore-reader fn2-checkpoint-restore-release-inventory fn2-extents fn2-fc fn2-fc-context fn2-b3 fn2-fields fn2-pool fn2-digests))
        ((mv entry fn2-checkpoint-restore-reader fn2-checkpoint-restore-release-inventory fn2-checkpoint-restore-release-entries fn2-checkpoint-restore-reach fn2-fields)
-        (fn2-checkpoint-restore-release-inventory-entry fn2-checkpoints fn2-checkpoint-refs fn2-checkpoint-bytes fn2-checkpoint-restore-map fn2-checkpoint-restore-map-control fn2-checkpoint-restore-reach fn2-checkpoint-restore-reach-control fn2-checkpoint-restore-reader fn2-checkpoint-restore-release-inventory fn2-checkpoint-restore-release-entries fn2-fields fn2-pool))
+        (fn2-checkpoint-restore-release-inventory-entry fn2-checkpoints fn2-checkpoint-refs fn2-checkpoint-bytes fn2-checkpoint-restore-map fn2-checkpoint-restore-map-control fn2-checkpoint-restore-reach fn2-checkpoint-restore-reach-control fn2-checkpoint-restore-reader fn2-checkpoint-restore-release-inventory fn2-checkpoint-restore-release-entries fn2-fields fn2-pool fn2-checkpoint-restore-events-work))
        ((mv finish fn2-checkpoint-restore-release-inventory)
         (fn2-checkpoint-restore-release-inventory-finish fn2-checkpoints fn2-checkpoint-refs fn2-checkpoint-bytes fn2-checkpoint-restore-map fn2-checkpoint-restore-map-control fn2-checkpoint-restore-reach-control fn2-checkpoint-restore-reader fn2-checkpoint-restore-release-inventory fn2-checkpoint-restore-release-entries)))
    (mv (and typed (eq capture :source) (eq begin :source) (eq page :source) (eq entry :source) (eq finish :source)

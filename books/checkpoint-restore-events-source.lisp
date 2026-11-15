@@ -6,6 +6,7 @@
 (include-book "checkpoint-restore-reach")
 (include-book "digests")
 (include-book "blake3-spec")
+(include-book "origin")
 (fn2-book-layer :b)
 
 (defun fn2-checkpoint-restore-events-current-p (fn2-checkpoints fn2-checkpoint-refs fn2-checkpoint-bytes fn2-checkpoint-restore-map fn2-checkpoint-restore-map-control fn2-checkpoint-restore-reach-control fn2-checkpoint-restore-events)
@@ -90,3 +91,28 @@
    (fn2-checkpoint-restore-events-work-sealsi (+ at 1) fn2-checkpoint-restore-events-work)
    (fn2-checkpoint-restore-events-work-sealsi (+ at 2) fn2-checkpoint-restore-events-work)
    (fn2-checkpoint-restore-events-work-sealsi (+ at 3) fn2-checkpoint-restore-events-work)))))
+
+; Private tuple validation, not a constructor or numeric-generation authority.
+; The inventory factory derives GENERATION from its actual current authenticated
+; descriptor/map source before calling this lower-half prefix fact comparison.
+(defun fn2-checkpoint-restore-events-journal-tuple-p (e generation commit event epoch allocation history incarnation fn2-checkpoint-restore-events-work)
+ (declare (xargs :stobjs fn2-checkpoint-restore-events-work :verify-guards nil
+  :guard (and (fn2-checkpoint-restore-events-workp fn2-checkpoint-restore-events-work)
+              (fn2-checkpoint-restore-events-work-wfp fn2-checkpoint-restore-events-work))))
+ (and (unsigned-byte-p 32 e) (< e (fn2-checkpoint-restore-events-work-capacity fn2-checkpoint-restore-events-work))
+      (posp generation) (unsigned-byte-p 60 generation)
+      (posp commit) (unsigned-byte-p 60 commit) (posp event) (unsigned-byte-p 60 event)
+      (posp epoch) (unsigned-byte-p 60 epoch) (posp allocation) (unsigned-byte-p 60 allocation)
+      (fn2-origin-physicalp history incarnation)
+      (= (fn2-checkpoint-restore-events-work-generation e fn2-checkpoint-restore-events-work) generation)
+      (= (fn2-checkpoint-restore-events-work-consumed e fn2-checkpoint-restore-events-work) 1)
+      (= (fn2-checkpoint-restore-events-work-extent e fn2-checkpoint-restore-events-work) e)
+      (= (fn2-checkpoint-restore-events-work-commit e fn2-checkpoint-restore-events-work) commit)
+      (= (fn2-checkpoint-restore-events-work-epoch e fn2-checkpoint-restore-events-work) epoch)
+      (= (fn2-checkpoint-restore-events-work-allocation e fn2-checkpoint-restore-events-work) allocation)
+      (= (fn2-checkpoint-restore-events-work-journal-history e fn2-checkpoint-restore-events-work) history)
+      (= (fn2-checkpoint-restore-events-work-journal-incarnation e fn2-checkpoint-restore-events-work) incarnation)
+      (let ((first (fn2-checkpoint-restore-events-work-first e fn2-checkpoint-restore-events-work))
+            (members (fn2-checkpoint-restore-events-work-members e fn2-checkpoint-restore-events-work)))
+       (and (posp first) (posp members) (unsigned-byte-p 60 (+ first members))
+            (<= first event) (< event (+ first members))))))

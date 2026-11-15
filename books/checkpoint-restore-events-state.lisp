@@ -7,7 +7,8 @@
 (fn2-book-layer :b)
 (defcolumns fn2-checkpoint-restore-events-work
  ((generation :u60) (commit :u60) (first :u60) (members :u32)
-  (epoch :u60) (allocation :u60) (extent :u32) (next :u32) (consumed :bool))
+  (epoch :u60) (allocation :u60) (extent :u32) (next :u32) (consumed :bool)
+  (journal-history :u60) (journal-incarnation :u60))
  :init-name fn2-checkpoint-restore-events-work-columns-init
  :extra-fields
  ((fn2-checkpoint-restore-events-work-seals :type (array (unsigned-byte 8) (0)) :initially 0 :resizable t
