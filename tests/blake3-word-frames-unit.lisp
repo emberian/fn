@@ -12,7 +12,7 @@
 (local
  (in-theory
   (e/d (update-fn2-b3-pos$ai update-fn2-b3-wordsi resize-fn2-b3-words)
-       (nth (:executable-counterpart update-fn2-b3-pos$ai)
+       (nth nth-add1 update-nth (:executable-counterpart update-fn2-b3-pos$ai)
         (:executable-counterpart update-fn2-b3-wordsi)))))
 
 (defthm fn2-b3-word-stripe-store-positive
