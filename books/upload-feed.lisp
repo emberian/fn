@@ -78,6 +78,9 @@
 (defun fn2-feed-emitted-lf (n b)
   (declare (xargs :guard (and (natp n) (natp b))))
   (if (or (equal n 2) (and (equal n 1) (equal b 10))) 1 0))
+(defthm fn2-feed-emitted-lf-natp
+  (natp (fn2-feed-emitted-lf n b))
+  :rule-classes :type-prescription)
 
 ; The state a raw feed steps from: a dot at a line start is data.
 (defun fn2-feed-in (raw mode b)
@@ -176,16 +179,20 @@
   (and (natp (mv-nth 1 (fn2-upload-feed-loop left i end mode discard raw copied lines rslot rgen rk rs rg dslot dgen dk ds dg limit stop-header fn2-pool)))
        (natp (mv-nth 4 (fn2-upload-feed-loop left i end mode discard raw copied lines rslot rgen rk rs rg dslot dgen dk ds dg limit stop-header fn2-pool))))
   :rule-classes ((:type-prescription :corollary (natp (mv-nth 1 (fn2-upload-feed-loop left i end mode discard raw copied lines rslot rgen rk rs rg dslot dgen dk ds dg limit stop-header fn2-pool))))
-                 (:type-prescription :corollary (natp (mv-nth 4 (fn2-upload-feed-loop left i end mode discard raw copied lines rslot rgen rk rs rg dslot dgen dk ds dg limit stop-header fn2-pool))))))
+                 (:type-prescription :corollary (natp (mv-nth 4 (fn2-upload-feed-loop left i end mode discard raw copied lines rslot rgen rk rs rg dslot dgen dk ds dg limit stop-header fn2-pool)))))
+  :hints (("Goal" :in-theory (disable fn2-feed-emitted-lf))))
 (defthm fn2-upload-feed-loop-mode
   (implies (natp mode)
            (natp (mv-nth 2 (fn2-upload-feed-loop left i end mode discard raw copied lines rslot rgen rk rs rg dslot dgen dk ds dg limit stop-header fn2-pool))))
-  :rule-classes :type-prescription)
+  :rule-classes :type-prescription
+  :hints (("Goal" :in-theory (disable fn2-feed-emitted-lf))))
 (defthm fn2-upload-feed-loop-lines-natp
   (natp (mv-nth 5 (fn2-upload-feed-loop left i end mode discard raw copied lines rslot rgen rk rs rg dslot dgen dk ds dg limit stop-header fn2-pool)))
-  :rule-classes :type-prescription)
+  :rule-classes :type-prescription
+  :hints (("Goal" :in-theory (disable fn2-feed-emitted-lf))))
 (fn2-pool-preserves fn2-upload-feed-loop (left i end mode discard raw copied lines rslot rgen rk rs rg dslot dgen dk ds dg limit stop-header fn2-pool)
-  :position 6 :rows nil)
+  :position 6 :rows nil
+  :hints (("Goal" :in-theory (disable fn2-feed-emitted-lf))))
 
 ; Counted public feed for the actual upload row.  A call reports only its
 ; own copied octets and emitted LF octets; the caller retains both totals.
