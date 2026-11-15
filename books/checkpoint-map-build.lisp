@@ -80,7 +80,7 @@
        (let ((fn2-checkpoint-map-build (fn2-checkpoint-map-build-set-phase 0 *fn2-checkpoint-map-build-phase-uncertain* fn2-checkpoint-map-build)))
         (mv :missing fn2-checkpoint-map-build)))
       (role (fn2-checkpoint-map-build-role 0 fn2-checkpoint-map-build)) (ordinal (fn2-checkpoint-map-build-page-ordinal 0 fn2-checkpoint-map-build))
-      ((unless (and (equal (fn2-checkpoint-construction-live e fn2-checkpoint-construction) 1)
+      ((unless (and (fn2-checkpoint-construction-native-p e fn2-checkpoint-construction)
                      (equal (fn2-checkpoint-construction-token e fn2-checkpoint-construction) (fn2-checkpoint-map-build-token 0 fn2-checkpoint-map-build))
                      (equal (fn2-checkpoint-construction-role e fn2-checkpoint-construction) role)
                      (equal (fn2-checkpoint-construction-ordinal e fn2-checkpoint-construction) ordinal)))

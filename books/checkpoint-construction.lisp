@@ -11,3 +11,13 @@
  :extra-fields
  ((fn2-construction-ticket-scan :type (unsigned-byte 32) :initially 0 :why "One-row journal ticket lookup resumes across admission yields.")
   (fn2-construction-next-ticket :type (unsigned-byte 60) :initially 0 :why "Consume the closed journal arena in its planned ordinal order.")))
+
+; Restored ownership is physical provenance, never reservation/completion
+; authority. The selected-map projection alone may produce this role.
+(defconst *fn2-checkpoint-owned-restored-role* 255)
+(defun fn2-checkpoint-construction-native-p (e fn2-checkpoint-construction)
+ (declare (xargs :stobjs (fn2-checkpoint-construction)
+  :guard (fn2-checkpoint-construction-wfp fn2-checkpoint-construction)))
+ (and (natp e) (< e (fn2-checkpoint-construction-rows fn2-checkpoint-construction))
+      (equal (fn2-checkpoint-construction-live e fn2-checkpoint-construction) 1)
+      (<= (fn2-checkpoint-construction-role e fn2-checkpoint-construction) 6)))
