@@ -588,6 +588,7 @@ ACL2_BOOKS = \
   tests/pointwise-contracts-unit \
   tests/pool-ranges-unit \
   tests/pool-query-ref-unit \
+  tests/checkpoint-working-geometry-unit \
   tests/pool-protected-floor-unit \
   tests/pool-credit-unit \
   tests/checkpoint-worker-totalization-unit \

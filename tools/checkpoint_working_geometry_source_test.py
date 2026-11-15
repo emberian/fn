@@ -7,6 +7,18 @@ import unittest
 import lisp_rewrite as lr
 
 ROOT = Path(__file__).resolve().parents[1]
+def original_form(name, form):
+    receipt = json.loads((ROOT/'tools/fixtures/checkpoint-geometry-totalization.json').read_text())
+    row = receipt['forms'].get(name)
+    if row:
+        for old, new in reversed(row['substitutions']):
+            if form.count(new) != 1:
+                raise AssertionError('missing exact totalization: '+name)
+            form = form.replace(new, old)
+        if hashlib.sha256(form.encode()).hexdigest() != row['original_raw_sha256']:
+            raise AssertionError('changed original scan: '+name)
+    return form
+
 
 
 class GeometryExtraction(unittest.TestCase):
@@ -19,8 +31,17 @@ class GeometryExtraction(unittest.TestCase):
                 found = lr.match('_', source.forms, deep=False, name=name)
                 self.assertEqual(len(found), 1)
                 form = source.text[found[0].start:found[0].end]
-                self.assertEqual(hashlib.sha256(form.encode()).hexdigest(), digest)
+                self.assertEqual(hashlib.sha256(original_form(name, form).encode()).hexdigest(), digest)
                 self.assertEqual(lr.match('_', old.forms, deep=False, name=name), [])
+
+    def test_totalized_scans_preserve_each_original_body(self):
+        receipt = json.loads((ROOT/'tools/fixtures/checkpoint-geometry-totalization.json').read_text())
+        self.assertEqual(len(receipt['forms']), 4)
+        for name, row in receipt['forms'].items():
+            source = lr.parse(ROOT/row['book'])
+            hit = lr.match('_', source.forms, deep=False, name=name)
+            self.assertEqual(len(hit), 1)
+            original_form(name, source.text[hit[0].start:hit[0].end])
 
     def test_consumers_share_geometry_without_c_worker(self):
         for name in ('checkpoint-working-reserve', 'checkpoint-working-credit'):
