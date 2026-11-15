@@ -4,6 +4,7 @@ from pathlib import Path
 ROOT=Path(__file__).resolve().parents[1];sys.path.insert(0,str(ROOT/'tools'))
 import lisp_rewrite as lr
 from read_observer_rewrite import nodes,sym
+from physical_loader_repair import project as repair_loader
 
 def source(path):return (ROOT/path).read_text()
 def defs(s):return {sym(n.items[1]):n for f in lr.parse(s).forms for n in nodes(f) if isinstance(n,lr.Lst) and len(n.items)>2 and sym(n.items[0])=='defun'}
@@ -11,10 +12,14 @@ def donor(commit,path):return subprocess.check_output(['git','show',commit+':'+p
 class Controls(unittest.TestCase):
  def test_region_and_range_are_actual_donor(self):
   for b in ('run-physical-region','run-physical-range'):
-   self.assertEqual(source('books/'+b+'.lisp'),donor('8909df8ea','books/'+b+'.lisp'))
+   original=donor('8909df8ea','books/'+b+'.lisp')
+   expected=repair_loader(b+'.lisp',original) if b=='run-physical-region' else original
+   self.assertEqual(source('books/'+b+'.lisp'),expected)
  def test_bound_engine_is_current_unchanged(self):
   for b in ('run-physical-bound-bind','run-physical-bound-io','run-physical-bound-step'):
-   self.assertEqual(source('books/'+b+'.lisp'),donor('5d9fe3965','books/'+b+'.lisp'))
+   original=donor('5d9fe3965','books/'+b+'.lisp')
+   expected=repair_loader(b+'.lisp',original) if b=='run-physical-bound-step' else original
+   self.assertEqual(source('books/'+b+'.lisp'),expected)
  def test_selected_requires_actual_read_and_parent_receipt(self):
   n=defs(source('books/machines-c-read-loader.lisp'))['fn2-read-loader-selected']
   s=lr.emit(n.items[-1].items[1].items[0],drop_comments=True)

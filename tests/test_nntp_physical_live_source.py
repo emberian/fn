@@ -7,6 +7,7 @@ from read_observer_rewrite import nodes,sym
 from nntp_physical_port import port_cursor,port_kind,port_observer,named_lists
 from nntp_physical_admission import port as admission,kind as admission_kind
 from physical_view_owner_rewrite import project as project_view
+from physical_loader_repair import project as repair_loader
 BASE='f25d00ef6'
 def src(p):return (ROOT/p).read_text()
 def old(p,ref=BASE):return subprocess.check_output(['git','show',ref+':'+p],cwd=ROOT,text=True)
@@ -74,7 +75,8 @@ class Controls(unittest.TestCase):
   self.assertLess(s.index('(fn2-read-loader-core-faces)'),s.index('(defmachine-arms'))
  def test_all_lower_algorithms_unchanged(self):
   # READ callback plumbing has a separately checked CLOSE-park donor. Its
-  # actual rd kernels remain byte-identical; compare those rather than forbid
+  # actual rd kernels preserve only the named verified-view projection; compare
+  # those and the exact named COPY repair rather than forbid
   # the required current lifetime join in the same source book.
   def kernels(text):
    return {sym(m.node.items[1]):text[m.start:m.end]
@@ -84,7 +86,9 @@ class Controls(unittest.TestCase):
   self.assertTrue(before)
   self.assertEqual(before,kernels(src('books/machines-c-read.lisp')))
   for b in ('run-physical-release','run-physical-bound-bind','run-physical-bound-io','run-physical-bound-step','cns'):
-   self.assertEqual(old('books/'+b+'.lisp'),src('books/'+b+'.lisp'))
+   original=old('books/'+b+'.lisp')
+   expected=repair_loader(b+'.lisp',original) if b=='run-physical-bound-step' else original
+   self.assertEqual(expected,src('books/'+b+'.lisp'))
  def test_duplicate_projection_refuses(self):
   with self.assertRaises(ValueError):port_cursor(src('books/cursor.lisp'),old('books/cursor.lisp','bdbf7e9bb'))
   with self.assertRaises(ValueError):port_kind(src('books/cursor-kind.lisp'))
