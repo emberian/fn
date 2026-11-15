@@ -1,12 +1,16 @@
 ; Shared concrete payload continuation, independent of live source authority.
 (in-package "ACL2")
 (include-book "payload-workspace")
+(include-book "alloc")
 (include-book "source-manifest-codec")
 (fn2-book-layer :b)
 (defcolumns fn2-checkpoint-payload
  ((mode (:enum fn2-checkpoint-payload-mode (:live :cold)))
   (phase (:enum fn2-checkpoint-payload-phase (:idle :manifest-read :wait-manifest :header :entry :block-read :wait-block :block-verify :hash :final :complete :uncertain :location-verify :claim)))
   (verify-next :u8) (location-units :u32)
+  ; Live verification retains only the touched extent FIFO until full source
+  ; integrity succeeds. Cold mode never consumes these live proof cursors.
+  (proof-head :u32) (proof-tail :u32) (proof-count :u32)
   (original-slot :u32) (original-gen :u60) (original-off :u32)
   (stored-slot :u32) (stored-gen :u60) (stored-off :u32)
   (vector-slot :u32) (vector-gen :u60) (vector-off :u32) (vector-length :u32)
@@ -27,4 +31,9 @@
  (and (< 0 (fn2-checkpoint-payload-rows fn2-checkpoint-payload))
       (equal (fn2-checkpoint-payload-pending 0 fn2-checkpoint-payload) 0)
       (member (fn2-checkpoint-payload-phase 0 fn2-checkpoint-payload)
-       (list *fn2-checkpoint-payload-phase-idle* *fn2-checkpoint-payload-phase-complete*))))
+       (list *fn2-checkpoint-payload-phase-idle* *fn2-checkpoint-payload-phase-complete*))
+      (or (equal (fn2-checkpoint-payload-phase 0 fn2-checkpoint-payload) *fn2-checkpoint-payload-phase-idle*)
+          (equal (fn2-checkpoint-payload-mode 0 fn2-checkpoint-payload) *fn2-checkpoint-payload-mode-cold*)
+          (and (equal (fn2-checkpoint-payload-proof-count 0 fn2-checkpoint-payload) 0)
+               (equal (fn2-checkpoint-payload-proof-head 0 fn2-checkpoint-payload) *fn2-alloc-none*)
+               (equal (fn2-checkpoint-payload-proof-tail 0 fn2-checkpoint-payload) *fn2-alloc-none*)))))

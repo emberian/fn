@@ -86,3 +86,9 @@
 (defcost fn2-checkpoint-root1-workspaces-op :child fn2-checkpoint-root1-workspaces :answers t
  :tables (fn2-core-checkpoint-root1 fn2-core-checkpoint-windows fn2-core-pool)
  :doc "Derive the stable descriptor/page/scratch/read tuple from actual admitted root1 ownership.")
+
+(defcorechild fn2-core-checkpoint-payload-proofs fn2-checkpoint-payload-proofs
+ :init (fn2-checkpoint-payload-proofs-init (fn2-b-capacity :extent-slots 16 profile) fn2-checkpoint-payload-proofs)
+ :profilep (and (unsigned-byte-p 32 (fn2-b-capacity :extent-slots 16 profile))
+                (unsigned-byte-p 32 (* 8 (fn2-b-capacity :extent-slots 16 profile))))
+ :why "Authenticated physical payload use survives verifier scratch and candidate reuse; it grants no publication or retirement authority.")

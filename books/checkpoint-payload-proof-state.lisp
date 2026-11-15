@@ -1,0 +1,56 @@
+; Physical-generation-tagged facts from successful stored-source verification.
+; These classify payload USE, never publication, absence of readers, ownership
+; reservation/completion, retirement or FREE. Pending rows grant no fact.
+(in-package "ACL2")
+(include-book "checkpoint-restore-reach-state")
+(include-book "alloc")
+(include-book "format-base")
+(fn2-book-layer :b)
+(defconst *fn2-checkpoint-payload-proof-roles*
+ (logior (ash 1 *fn2-checkpoint-restore-reach-role-payload-manifest*)
+         (ash 1 *fn2-checkpoint-restore-reach-role-payload-raw*)
+         (ash 1 *fn2-checkpoint-restore-reach-role-payload-block*)))
+(defcolumns fn2-checkpoint-payload-proofs
+ ((serial :u60) (token :u60) (schema :u60) (origin :u8)
+  (candidate :u32) (checkpoint :u60) (cut-commit :u60) (cut-event :u60)
+  (source-owner-kind :u8) (source-owner-slot :u32) (source-owner-gen :u60)
+  (unit :u60) (epoch :u60) (allocation :u60) (roles :u16)
+  (allocation-owner-kind :u8) (allocation-owner :u60)
+  (pending-serial :u60) (pending-token :u60) (pending-unit :u60)
+  (pending-epoch :u60) (pending-allocation :u60) (pending-roles :u16)
+  (pending-owner-kind :u8) (pending-owner :u60) (next :u32))
+ :init-name fn2-checkpoint-payload-proofs-columns-init
+ :extra-fields
+ ((fn2-checkpoint-payload-proofs-hashes :type (array (unsigned-byte 32) (0)) :initially 0 :resizable t
+   :why "One actual full stored-source BLAKE3 commitment per classified physical extent, copied before verifier scratch is reused.")))
+(defun fn2-checkpoint-payload-proofs-init (rows fn2-checkpoint-payload-proofs)
+ (declare (xargs :stobjs fn2-checkpoint-payload-proofs :verify-guards nil
+ :guard (and (unsigned-byte-p 32 rows) (unsigned-byte-p 32 (* 8 rows)) (fn2-checkpoint-payload-proofsp fn2-checkpoint-payload-proofs))))
+ (let* ((fn2-checkpoint-payload-proofs (fn2-checkpoint-payload-proofs-columns-init rows fn2-checkpoint-payload-proofs))
+        (fn2-checkpoint-payload-proofs (resize-fn2-checkpoint-payload-proofs-hashes (* 8 rows) fn2-checkpoint-payload-proofs)))
+  fn2-checkpoint-payload-proofs))
+(defun fn2-checkpoint-payload-proofs-shape-p (fn2-checkpoint-payload-proofs fn2-extents)
+ (declare (xargs :stobjs (fn2-checkpoint-payload-proofs fn2-extents)
+ :guard (and (fn2-checkpoint-payload-proofsp fn2-checkpoint-payload-proofs) (fn2-checkpoint-payload-proofs-wfp fn2-checkpoint-payload-proofs) (fn2-extentsp fn2-extents) (fn2-extents-wfp fn2-extents))))
+ (and (= (fn2-checkpoint-payload-proofs-rows fn2-checkpoint-payload-proofs) (fn2-extents-rows fn2-extents))
+      (= (fn2-checkpoint-payload-proofs-hashes-length fn2-checkpoint-payload-proofs) (* 8 (fn2-extents-rows fn2-extents)))))
+(defun fn2-checkpoint-payload-proof-p (kind e epoch allocation fn2-checkpoint-payload-proofs fn2-extents)
+ (declare (xargs :stobjs (fn2-checkpoint-payload-proofs fn2-extents) :verify-guards nil
+ :guard (and (fn2-checkpoint-payload-proofsp fn2-checkpoint-payload-proofs) (fn2-checkpoint-payload-proofs-wfp fn2-checkpoint-payload-proofs) (fn2-extentsp fn2-extents) (fn2-extents-wfp fn2-extents))))
+ (and (unsigned-byte-p 8 kind) (unsigned-byte-p 60 epoch) (unsigned-byte-p 60 allocation)
+      (fn2-checkpoint-payload-proofs-shape-p fn2-checkpoint-payload-proofs fn2-extents)
+      (fn2-alloc-slotp e fn2-extents) (eq (fn2-alloc-handle-code e epoch allocation fn2-extents) :ok)
+      (if (member-equal (fn2-extents-state e fn2-extents) (list *fn2-extent-state-allocated* *fn2-extent-state-retire-pending*)) t nil)
+      (= (fn2-extents-release-pending e fn2-extents) 0)
+      (= (fn2-extents-owner-kind e fn2-extents) kind)
+      (= (fn2-checkpoint-payload-proofs-allocation-owner-kind e fn2-checkpoint-payload-proofs) kind)
+      (= (fn2-checkpoint-payload-proofs-allocation-owner e fn2-checkpoint-payload-proofs) (fn2-extents-owner-id e fn2-extents))
+      (= (fn2-checkpoint-payload-proofs-epoch e fn2-checkpoint-payload-proofs) epoch)
+      (= (fn2-checkpoint-payload-proofs-allocation e fn2-checkpoint-payload-proofs) allocation)
+      (= (floor (fn2-checkpoint-payload-proofs-unit e fn2-checkpoint-payload-proofs) *fn2-storage-extent-units*) e)
+      (posp (fn2-checkpoint-payload-proofs-serial e fn2-checkpoint-payload-proofs))
+      (posp (fn2-checkpoint-payload-proofs-token e fn2-checkpoint-payload-proofs))
+      (= (fn2-checkpoint-payload-proofs-schema e fn2-checkpoint-payload-proofs) 2)
+      (member-equal (fn2-checkpoint-payload-proofs-origin e fn2-checkpoint-payload-proofs) '(0 1))
+      (not (= (logand (fn2-checkpoint-payload-proofs-roles e fn2-checkpoint-payload-proofs) *fn2-checkpoint-payload-proof-roles*) 0))
+      (= (logand (fn2-checkpoint-payload-proofs-roles e fn2-checkpoint-payload-proofs) (lognot *fn2-checkpoint-payload-proof-roles*)) 0)))

@@ -6,18 +6,18 @@
 (fn2-book-layer :c)
 
 (defconst *fn2-checkpoint-root1-children*
- '(fn2-checkpoint-root1 fn2-checkpoint-windows fn2-checkpoint-metadata fn2-checkpoint-source fn2-checkpoint-metadata-manifest fn2-checkpoint-retained-entry fn2-checkpoint-payload fn2-checkpoint-semantic fn2-checkpoint-semantic-work fn2-checkpoint-build fn2-csnapshot fn2-checkpoints fn2-checkpoint-construction fn2-extents fn2-alloc-edges fn2-ops fn2-control fn2-checkpoint-refs fn2-checkpoint-bytes fn2-checkpoint-page fn2-checkpoint-page-verified fn2-overlays fn2-overlay-index fn2-run-installed fn2-run-builds fn2-run-writers fn2-run-restarts fn2-run-cursors fn2-run-paths fn2-run-cache fn2-boot-config fn2-fc fn2-fc-context fn2-b3 fn2-fields fn2-pool fn2-digests))
+ '(fn2-checkpoint-root1 fn2-checkpoint-windows fn2-checkpoint-metadata fn2-checkpoint-source fn2-checkpoint-metadata-manifest fn2-checkpoint-retained-entry fn2-checkpoint-payload fn2-checkpoint-semantic fn2-checkpoint-semantic-work fn2-checkpoint-build fn2-csnapshot fn2-checkpoints fn2-checkpoint-construction fn2-extents fn2-alloc-edges fn2-ops fn2-control fn2-checkpoint-refs fn2-checkpoint-bytes fn2-checkpoint-page fn2-checkpoint-page-verified fn2-overlays fn2-overlay-index fn2-run-installed fn2-run-builds fn2-run-writers fn2-run-restarts fn2-run-cursors fn2-run-paths fn2-run-cache fn2-boot-config fn2-fc fn2-fc-context fn2-b3 fn2-fields fn2-pool fn2-digests fn2-checkpoint-payload-proofs))
 (defconst *fn2-checkpoint-root1-outputs*
  '((fn2-checkpoint-root1-begin fn2-checkpoint-root1 fn2-checkpoint-metadata fn2-checkpoint-source fn2-checkpoint-metadata-manifest fn2-run-builds fn2-run-writers fn2-pool)
    (fn2-checkpoint-root1-select fn2-checkpoint-root1 fn2-checkpoint-source fn2-checkpoint-metadata fn2-run-builds fn2-run-writers fn2-run-cursors fn2-pool)
    (fn2-checkpoint-root1-bind fn2-checkpoint-page)
    (fn2-checkpoint-root1-consume fn2-checkpoint-root1 fn2-digests)
    (fn2-checkpoint-root1-work fn2-checkpoint-root1 fn2-checkpoint-metadata fn2-checkpoint-source fn2-checkpoint-metadata-manifest fn2-checkpoint-construction fn2-extents fn2-control fn2-run-builds fn2-run-writers fn2-run-restarts fn2-run-cursors fn2-run-paths fn2-fields fn2-pool fn2-fc fn2-fc-context fn2-b3 fn2-digests)
-   (fn2-checkpoint-root1-payload-start fn2-checkpoint-root1 fn2-checkpoint-retained-entry fn2-checkpoint-semantic fn2-checkpoint-payload fn2-digests fn2-b3 fn2-extents fn2-alloc-edges)
+   (fn2-checkpoint-root1-payload-start fn2-checkpoint-root1 fn2-checkpoint-retained-entry fn2-checkpoint-semantic fn2-checkpoint-payload fn2-digests fn2-b3 fn2-extents fn2-alloc-edges fn2-checkpoint-payload-proofs)
    (fn2-checkpoint-root1-retention fn2-checkpoint-root1 fn2-checkpoint-metadata fn2-extents fn2-alloc-edges fn2-checkpoint-semantic)
-   (fn2-checkpoint-root1-closure fn2-checkpoint-root1 fn2-checkpoint-metadata-manifest fn2-checkpoint-semantic fn2-checkpoint-semantic-work fn2-checkpoint-metadata fn2-extents fn2-alloc-edges fn2-ops fn2-control fn2-fc fn2-fc-context fn2-b3 fn2-fields fn2-pool fn2-digests fn2-checkpoint-payload fn2-checkpoint-retained-entry fn2-checkpoint-refs fn2-checkpoint-bytes fn2-csnapshot)
+   (fn2-checkpoint-root1-closure fn2-checkpoint-root1 fn2-checkpoint-metadata-manifest fn2-checkpoint-semantic fn2-checkpoint-semantic-work fn2-checkpoint-metadata fn2-extents fn2-alloc-edges fn2-ops fn2-control fn2-fc fn2-fc-context fn2-b3 fn2-fields fn2-pool fn2-digests fn2-checkpoint-payload fn2-checkpoint-retained-entry fn2-checkpoint-refs fn2-checkpoint-bytes fn2-csnapshot fn2-checkpoint-payload-proofs)
    (fn2-checkpoint-root1-read fn2-checkpoint-semantic fn2-checkpoint-semantic-work fn2-checkpoint-metadata fn2-extents fn2-alloc-edges fn2-ops fn2-control fn2-fc fn2-fc-context fn2-b3 fn2-fields fn2-pool fn2-digests fn2-checkpoint-payload)
-   (fn2-checkpoint-root1-step fn2-checkpoint-root1 fn2-checkpoint-metadata fn2-checkpoint-source fn2-checkpoint-metadata-manifest fn2-checkpoint-retained-entry fn2-checkpoint-payload fn2-checkpoint-semantic fn2-checkpoint-semantic-work fn2-csnapshot fn2-checkpoint-construction fn2-extents fn2-alloc-edges fn2-ops fn2-control fn2-checkpoint-refs fn2-checkpoint-bytes fn2-run-builds fn2-run-writers fn2-run-restarts fn2-run-cursors fn2-run-paths fn2-fc fn2-fc-context fn2-b3 fn2-fields fn2-pool fn2-digests)))
+   (fn2-checkpoint-root1-step fn2-checkpoint-root1 fn2-checkpoint-metadata fn2-checkpoint-source fn2-checkpoint-metadata-manifest fn2-checkpoint-retained-entry fn2-checkpoint-payload fn2-checkpoint-semantic fn2-checkpoint-semantic-work fn2-csnapshot fn2-checkpoint-construction fn2-extents fn2-alloc-edges fn2-ops fn2-control fn2-checkpoint-refs fn2-checkpoint-bytes fn2-run-builds fn2-run-writers fn2-run-restarts fn2-run-cursors fn2-run-paths fn2-fc fn2-fc-context fn2-b3 fn2-fields fn2-pool fn2-digests fn2-checkpoint-payload-proofs)))
 ; The declaration is the return contract, not an alternate state machine.
 ; Projection keeps every assigned lower carrier and every family callee result.
 (defun fn2-checkpoint-root1-project (tree outputs)
@@ -281,11 +281,11 @@
                fn2-run-builds fn2-run-writers fn2-checkpoints fn2-fields)))
          (mv code fn2-checkpoint-retained-entry fn2-checkpoint-semantic))))
       ((unless (eq code :ok)) (fn2-checkpoint-root1-mv code))
-      ((mv code fn2-checkpoint-payload fn2-digests fn2-b3 fn2-extents fn2-alloc-edges)
+      ((mv code fn2-checkpoint-payload fn2-digests fn2-b3 fn2-extents fn2-alloc-edges fn2-checkpoint-payload-proofs)
        (fn2-checkpoint-payload-begin (fn2-checkpoint-windows-slot 17 fn2-checkpoint-windows) (fn2-checkpoint-windows-generation 17 fn2-checkpoint-windows)
         (fn2-checkpoint-windows-slot 18 fn2-checkpoint-windows) (fn2-checkpoint-windows-generation 18 fn2-checkpoint-windows)
         (fn2-b-payload-retention-field-base (fn2-b3-rows fn2-b3)) (fn2-b-payload-retention-row (fn2-b3-rows fn2-b3))
-        fn2-checkpoint-payload fn2-checkpoint-retained-entry fn2-csnapshot fn2-checkpoints fn2-fields fn2-pool fn2-b3 fn2-digests fn2-extents fn2-alloc-edges fn2-ops))
+        fn2-checkpoint-payload fn2-checkpoint-retained-entry fn2-csnapshot fn2-checkpoints fn2-fields fn2-pool fn2-b3 fn2-digests fn2-extents fn2-alloc-edges fn2-ops fn2-checkpoint-payload-proofs))
       (fn2-checkpoint-root1 (if (eq code :ok) (fn2-checkpoint-root1-put 0
        (phase *fn2-checkpoint-root1-phase-payload*) (read-kind 2)) fn2-checkpoint-root1)))
   (fn2-checkpoint-root1-mv (if (eq code :ok) :more code))))
@@ -327,8 +327,8 @@
          (fn2-checkpoint-root1 (if (eq code :complete) (fn2-checkpoint-root1-set-phase 0 *fn2-checkpoint-root1-phase-source* fn2-checkpoint-root1) fn2-checkpoint-root1)))
      (fn2-checkpoint-root1-mv (case code (:complete :more) (:payload-required :more) (otherwise code)))))
    ((equal phase *fn2-checkpoint-root1-phase-payload*)
-    (b* (((mv code fn2-checkpoint-payload fn2-checkpoint-retained-entry fn2-fields fn2-extents fn2-alloc-edges fn2-b3 fn2-digests)
-          (fn2-checkpoint-payload-step (min budget 4096) fn2-checkpoint-payload fn2-checkpoint-retained-entry fn2-csnapshot fn2-checkpoints fn2-fields fn2-extents fn2-alloc-edges fn2-ops fn2-pool fn2-b3 fn2-digests))
+    (b* (((mv code fn2-checkpoint-payload fn2-checkpoint-retained-entry fn2-fields fn2-extents fn2-alloc-edges fn2-b3 fn2-digests fn2-checkpoint-payload-proofs)
+          (fn2-checkpoint-payload-step (min budget 4096) fn2-checkpoint-payload fn2-checkpoint-retained-entry fn2-csnapshot fn2-checkpoints fn2-fields fn2-extents fn2-alloc-edges fn2-ops fn2-pool fn2-b3 fn2-digests fn2-checkpoint-payload-proofs))
          ((unless (eq code :complete)) (fn2-checkpoint-root1-mv code))
          (pagep (equal (fn2-checkpoint-retained-entry-origin 0 fn2-checkpoint-retained-entry) *fn2-checkpoint-retained-entry-origin-page*))
          ((mv code fn2-checkpoint-retained-entry fn2-checkpoint-metadata fn2-checkpoint-semantic fn2-checkpoint-semantic-work)
