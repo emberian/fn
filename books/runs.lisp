@@ -487,7 +487,11 @@
 (defcolumns fn2-run-installed
  ((state (:enum fn2-run-installed-state (:free :live :retired)))
   (schema :u60) (run :u60) (top :u8) (slot :u32) (gen :u60) (unit :u60) (counter :u60) (entries :u60)
-  (okind :u8) (oslot :u32) (ogen :u60) (filter :bool) (funit :u60) (fcounter :u60) (ufirst :u60) (ulast :u60)))
+  (okind :u8) (oslot :u32) (ogen :u60) (filter :bool) (funit :u60) (fcounter :u60) (ufirst :u60) (ulast :u60)
+  ;; Resident runs use their pool lease; selected checkpoint sources load by Ref.
+  (physical :bool) (epoch :u60) (catalog-tag :u60)
+  (hash-0 :u32) (hash-1 :u32) (hash-2 :u32) (hash-3 :u32)
+  (hash-4 :u32) (hash-5 :u32) (hash-6 :u32) (hash-7 :u32)))
 (defun fn2-run-install (r schema run top slot gen unit counter entries okind oslot ogen fn2-run-installed)
  (declare (xargs :stobjs fn2-run-installed :guard (fn2-run-installed-wfp fn2-run-installed)))
  (b* (((unless (and (natp r) (< r (fn2-run-installed-rows fn2-run-installed))
@@ -500,7 +504,9 @@
        (mv :state fn2-run-installed))
       (fn2-run-installed (fn2-run-installed-put r (state *fn2-run-installed-state-live*) (schema schema) (run run)
                            (top top) (slot slot) (gen gen) (unit unit) (counter counter) (entries entries)
-                           (okind okind) (oslot oslot) (ogen ogen) (filter 0) (funit 0) (fcounter 0))))
+                           (okind okind) (oslot oslot) (ogen ogen) (filter 0) (funit 0) (fcounter 0)
+                           (physical 0) (epoch 0) (catalog-tag 0)
+                           (hash-0 0) (hash-1 0) (hash-2 0) (hash-3 0) (hash-4 0) (hash-5 0) (hash-6 0) (hash-7 0))))
   (mv :ok fn2-run-installed)))
 (fn2-run-installed-preserves fn2-run-install (r schema run top slot gen unit counter entries okind oslot ogen fn2-run-installed) :position 1 :raw-rows t)
 ; Name live run R's filter page.
