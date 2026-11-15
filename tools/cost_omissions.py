@@ -98,11 +98,6 @@ def audit_report(sources: dict[str, str]) -> Audit:
     return Audit(findings, unknown, ambiguous)
 
 
-def audit(sources: dict[str, str]) -> list[Finding]:
-    """Compatibility view for focused finding checks; CLI always exposes partial scope."""
-    return audit_report(sources).findings
-
-
 def main():
     p = argparse.ArgumentParser(description=__doc__)
     p.add_argument('sources', nargs='+', type=Path, help='Declaration and actual arm sources to join')

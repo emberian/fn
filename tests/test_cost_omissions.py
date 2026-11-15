@@ -16,7 +16,7 @@ ARM = '''(defmachine-arms request :declare :arms
 
 class CostOmissions(unittest.TestCase):
     def test_reached_mutable_omission_keeps_actual_charges_separate(self):
-        found = audit.audit({'provider': DECL, 'consumer': ARM})
+        found = audit.audit_report({'provider': DECL, 'consumer': ARM}).findings
         self.assertEqual([x.operation for x in found], ['release', 'release'])
         self.assertEqual(found[0].missing, [':bytes', ':steps', ':descriptors'])
         self.assertIn(':steps 24', found[0].arm_charges[0])
@@ -24,26 +24,26 @@ class CostOmissions(unittest.TestCase):
         self.assertIn('unverified', found[0].coverage)
 
     def test_explicit_zero_is_not_silently_omitted(self):
-        self.assertEqual(audit.audit({'p': DECL.replace(':answers', ':steps 0 :answers'), 'a': ARM}), [])
+        self.assertEqual(audit.audit_report({'p': DECL.replace(':answers', ':steps 0 :answers'), 'a': ARM}).findings, [])
 
     def test_pure_arithmetic_and_unreached_declarations_do_not_trigger(self):
-        self.assertEqual(audit.audit({'p': '(defcost release :doc "Pure address arithmetic.")', 'a': ARM}), [])
-        self.assertEqual(audit.audit({'p': DECL}), [])
+        self.assertEqual(audit.audit_report({'p': '(defcost release :doc "Pure address arithmetic.")', 'a': ARM}).findings, [])
+        self.assertEqual(audit.audit_report({'p': DECL}).findings, [])
 
     def test_subarms_keep_cleanup_calls_visible(self):
-        found = audit.audit({'p': DECL, 'a': ARM.replace(':arms', ':subarms')})
+        found = audit.audit_report({'p': DECL, 'a': ARM.replace(':arms', ':subarms')}).findings
         self.assertEqual(len(found), 2)
         self.assertIn('/:subarms/', found[0].arm)
 
     def test_child_does_not_hide_unpriced_stateful_boundary(self):
-        found = audit.audit({'p': DECL.replace(':answers', ':child real-release :answers'), 'a': ARM})
+        found = audit.audit_report({'p': DECL.replace(':answers', ':child real-release :answers'), 'a': ARM}).findings
         self.assertEqual(len(found), 2)
 
     def test_real_mutations_change_audit_not_expected_output_only(self):
         positive = DECL.replace(':answers', ':steps 12 :answers')
-        self.assertFalse(audit.audit({'p': positive, 'a': ARM}))
-        self.assertEqual(len(audit.audit({'p': positive.replace(':steps 12 ', ''), 'a': ARM})), 2)
-        self.assertFalse(audit.audit({'p': DECL, 'a': ARM.replace('(release id generation)', '(other id generation)')}))
+        self.assertFalse(audit.audit_report({'p': positive, 'a': ARM}).findings)
+        self.assertEqual(len(audit.audit_report({'p': positive.replace(':steps 12 ', ''), 'a': ARM}).findings), 2)
+        self.assertFalse(audit.audit_report({'p': DECL, 'a': ARM.replace('(release id generation)', '(other id generation)')}).findings)
 
     def test_unknown_provider_is_an_explicit_partial_scope_result(self):
         report = audit.audit_report({'a': ARM})
@@ -66,7 +66,7 @@ class CostOmissions(unittest.TestCase):
 
     def test_quoted_and_must_fail_declarations_are_not_real_owners(self):
         fake = "(defmacro template () '" + DECL + ')\n(must-fail ' + DECL + ')'
-        self.assertFalse(audit.audit({'p': fake, 'a': ARM}))
+        self.assertFalse(audit.audit_report({'p': fake, 'a': ARM}).findings)
 
 
 if __name__ == '__main__':
