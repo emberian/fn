@@ -381,7 +381,8 @@
      (declare (xargs :guard t))
      (and (consp e) (true-listp e) (case (car e) ,@(fn2-rf-eventp-arms evs key) (otherwise nil))))
     (defun ,(fn2-rs-sym name "-FOLD-APPLY") (kind vbase abase fn2-fields)
-     (declare (xargs :stobjs fn2-fields :guard (and (fn2-fields-wfp fn2-fields) (natp vbase) (natp abase))))
+     (declare (xargs :stobjs fn2-fields :guard (and (fn2-fields-wfp fn2-fields) (natp vbase) (natp abase))
+                     :guard-hints ((fn2-columns-guard-hint '(fn2-fields) nil nil world))))
      (if (not (and (natp vbase) (natp abase)
                    (<= (+ vbase ,(+ nk nv)) (fn2-fields-rows fn2-fields)) (<= (+ abase ,(fn2-rf-max-args evs)) (fn2-fields-rows fn2-fields))))
          (mv :bounds fn2-fields)
@@ -392,7 +393,8 @@
     ;; the arg rows at ABASE: :ok (a kind without assigns writes nothing),
     ;; :range, :event (not an event of the fold), :bounds.
     (defun ,(fn2-rs-sym name "-FOLD-ASSIGN") (kind vbase abase fn2-fields)
-     (declare (xargs :stobjs fn2-fields :guard (and (fn2-fields-wfp fn2-fields) (natp vbase) (natp abase))))
+     (declare (xargs :stobjs fn2-fields :guard (and (fn2-fields-wfp fn2-fields) (natp vbase) (natp abase))
+                     :guard-hints ((fn2-columns-guard-hint '(fn2-fields) nil nil world))))
      (if (not (and (natp vbase) (natp abase)
                    (<= (+ vbase ,(+ nk nv)) (fn2-fields-rows fn2-fields)) (<= (+ abase ,(fn2-rf-max-args evs)) (fn2-fields-rows fn2-fields))))
          (mv :bounds fn2-fields)
@@ -408,8 +410,10 @@
  (declare (xargs :verify-guards nil))
  (let* ((evs (cadr (member-eq :events fold))) (vnames (strip-cars value)) (nv (len value))
         (obs (cadr (member-eq :observe fold))))
-  `((fn2-fields-preserves ,(fn2-rs-sym name "-FOLD-APPLY") (kind vbase abase fn2-fields) :position 1)
-    (fn2-fields-preserves ,(fn2-rs-sym name "-FOLD-ASSIGN") (kind vbase abase fn2-fields) :position 1)
+  `((fn2-fields-preserves ,(fn2-rs-sym name "-FOLD-APPLY") (kind vbase abase fn2-fields) :position 1
+      :hints ((fn2-columns-guard-hint '(fn2-fields) nil nil world)))
+    (fn2-fields-preserves ,(fn2-rs-sym name "-FOLD-ASSIGN") (kind vbase abase fn2-fields) :position 1
+      :hints ((fn2-columns-guard-hint '(fn2-fields) nil nil world)))
     ;; The list side of the assignment: event E with its assigned args
     ;; computed from the key's value VALS, as (code event).
     (defun ,(fn2-rs-sym name "-FOLD-ASSIGN-SPEC") (vals e)
