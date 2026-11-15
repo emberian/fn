@@ -42,3 +42,22 @@ phase4 typed suffix settlement. Bank/archive evidence and the release of old
 canonical journals remain unresolved cross-lane dependencies. No source here
 grants FREE. The decisive two-checkpoint test with physically reclaimed/reused
 oldest journal is still owed and cannot be replaced by this source milestone.
+
+The retained event catalog now uses two disjoint stripes of the existing
+`fn2-checkpoint-restore-events-work` layout: cold scratch below the physical
+extent count, retained canonical source rows above it. Control row0 belongs to
+investigation; row1 belongs to retained catalog transfer/consumption. Both image
+and nonimage profiles reserve these lifetimes: two metadata and 32-byte seal
+stripes, two control rows and one additional 32-byte descriptor. Profile checks
+cover the row and seal address representation. Cold scratch bounds uniformly use
+the first stripe capacity, preserving old source behavior when initialized at
+logical capacity N. No later candidate scan may address retained rows.
+
+`fn2-event-catalog-cold-begin/step` bind the same actual final cold source as the
+base installer and copy one authenticated source entry/seal per turn. Every step
+rechecks source generation, descriptor and the exact phase4 owner. The caller
+cannot mint catalog readiness or supply source facts. The parent must insert
+this transfer after completed cold authority and before cold base installation.
+Six source/mutation controls and three transformation identity/rejection
+controls pass; the explicit scratch-overwrite/retained-stripe ACL2 assertion is
+added but unrun. Actual live append and producer/read routing remain owned here.
