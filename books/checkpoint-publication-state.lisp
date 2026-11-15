@@ -56,7 +56,12 @@
   (slot0 :u32) (gen0 :u60) (slot1 :u32) (gen1 :u60) (scratch :u32) (scratch-gen :u60)
   (len0 :u32) (len1 :u32) (stage0 :u8) (stage1 :u8)
   (checker-live :bool) (checker-row :u32) (checker-base :u32) (checker-packet :bool)
-  (offset0 :u60) (offset1 :u60) (op-slot :u32) (op-gen :u60)))
+  (offset0 :u60) (offset1 :u60) (op-slot :u32) (op-gen :u60))
+ :extra-fields
+ ((fn2-checkpoint-publication-evidence-meta :type (array (unsigned-byte 60) (36)) :initially 0
+   :why "Four fixed physical roles: two banks, one in-flight attempt and one displaced debt; nine exact identity scalars each.")
+  (fn2-checkpoint-publication-evidence-words :type (array (unsigned-byte 32) (160)) :initially 0
+   :why "Each physical role owns J seal, C seal, J-1 seal, previous descriptor and descriptor hash, independently of reusable directory/checker storage.")))
 
 (defun fn2-checkpoint-descriptor-identity-word (c i fn2-checkpoint-bytes)
  (declare (xargs :stobjs fn2-checkpoint-bytes

@@ -2,7 +2,7 @@
 ; Completion consumes exact issued operation identities through defcorechild's
 ; harvest extension. No caller-provided durability flag is accepted.
 (in-package "ACL2")
-(include-book "checkpoint-publication-state")
+(include-book "checkpoint-bank-evidence")
 (include-book "checkpoint-geometry")
 (include-book "arm-children")
 (fn2-book-layer :b)
@@ -66,6 +66,9 @@
       (fn2-checkpoint-bytes (fn2-checkpoint-copy-expected 0 evidence batch-hash fn2-digests fn2-checkpoint-bytes))
       (fn2-checkpoint-bytes (fn2-checkpoint-copy-expected 0 (+ evidence 32) previous-hash fn2-digests fn2-checkpoint-bytes))
       (fn2-checkpoint-bytes (fn2-checkpoint-copy-expected 0 (+ evidence 64) geometry-hash fn2-digests fn2-checkpoint-bytes))
+      ; A new attempt cannot inherit a prior attempt's directory evidence.
+      (fn2-checkpoint-publication (if (fn2-checkpoint-bank-evidence-capacityp fn2-checkpoint-publication)
+       (update-fn2-checkpoint-publication-evidence-metai 18 0 fn2-checkpoint-publication) fn2-checkpoint-publication))
       (fn2-checkpoint-publication (fn2-checkpoint-publication-put 0
         (phase *fn2-checkpoint-publication-phase-prepare*) (candidate c) (bank bank) (packet-mask 0)
         (bundle-released 0) (len0 0) (len1 0) (stage0 0) (stage1 0)
@@ -165,6 +168,10 @@
       (success (and (or (not fence)
                         (equal (fn2-checkpoint-publication-debt-valid 0 fn2-checkpoint-publication) 0))
                     (equal outcome *fn2-outcome-done*) (equal count (if fence 0 4096))))
+      ; Snapshot displaced evidence before replacing its bank identity. Both
+      ; transfers are inside the same exact validated covering-Fence callback.
+      (fn2-checkpoint-publication (if (and fence success)
+        (fn2-checkpoint-bank-evidence-record-fence fn2-checkpoint-publication) fn2-checkpoint-publication))
       (fn2-checkpoint-publication (if (and fence success)
         (fn2-checkpoint-publication-record-bank fn2-checkpoint-publication) fn2-checkpoint-publication))
       (fn2-checkpoint-publication (if (and fence success)
