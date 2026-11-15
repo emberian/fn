@@ -73,6 +73,18 @@ schemas and cannot be loaded into the older assembled application world.
 These source changes and fixtures remain unqualified; no productive served
 lookup or checkpoint reclamation activation is established by their presence.
 
+Live readiness has two further source-level obstructions under investigation.
+`fn2-run-load-readiness-roomp` demands another complete free query-loader bundle
+at begin, completion and current checks, although parked actors retain their
+windows. The writer's actual additional allocation needs must determine the
+capacity contract; geometry validity alone cannot promise future admission.
+Also, `fn2-run-load-readiness-op-row-p` requires zero routing generation and
+cursor, while successful `fn2-run-load-harvest` clears only `live`. A used and
+harvested operation therefore fails this initialization predicate. The live
+quiescence contract must accept safely drained history without accepting pending
+I/O or stale ownership. The metadata lane owns both fixes and real lifecycle
+controls; no runtime verification or liveness proof is claimed here.
+
 The counted upload feeder is integrated through the same six-result slice used
 by the actual core callback and public feeder. Its
 [15-book record](receipts/feed15-record-20261115.json) covers 11 reused parents
