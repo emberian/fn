@@ -30,60 +30,65 @@ alone confer no durability or replacement authority.
   worker, harvests exact writes, and waits for handback before promotion. Completion
   remains distinct from the eventual covering Fence/publication.
 
-## Proposed bounded source and output protocol
+## Revised preferred protocol: rescan, one final root per schema
 
-1. Request checkpoint compaction before an ordinary sealer emits any resident
-   prefix. Release its source receipt and unused leases before waiting. An active
-   sealer must first finish/drain; the checkpoint never borrows ordinary authority
-   or permits publication while C is HELD.
-2. Under the actual HELD token, form contiguous precedence intervals within each
-   schema, each with at most the declared active merge fan-in. Retain membership
-   from actual source rows, including owner/generation, order and physical fullRef.
-   This table is sized from admitted source-row geometry, not article count.
-3. Feed each interval through the shared merge engine, canonical entry rehome,
-   typed semantic/payload retention and existing run builder. Preserve the actual
-   winning entry's origin until retention and encoding consume it. No complete flag
-   or caller-supplied ready source substitutes for those checks.
-4. Split consumed input rank from emitted dense output rank. Rebuild singleton
-   intervals too: the output RUN/header identity then remains the new dense rank,
-   matching current manifest/catalog interpretation without a new wire layout.
-   Contiguous intervals preserve relative precedence outside the merged interval.
-5. Emit one directory entry per completed interval, only after every member is
-   exhausted and all output pages physically complete. Keep every old predecessor
-   in the typed replacement inventory. Existing post-Fence/current-catalog,
-   new-Cbase-HELD and EXCLUSIVE gates install output and retire all old inputs;
-   query leases drain against the old immutable catalog. Ordinary row retirement
-   never releases the persistent old Cbase promise.
-6. Recover through the existing descriptor/root1 traversal and typed payload
-   closure. No new journal record or alternate recovery parser is proposed.
+Produce exactly one final physical root per nonempty schema before publication.
+Retain all ORIGINAL source predecessors independently of output count. Rather
+than persisting temporary merge runs, repeatedly visit the full held source set
+for each next output key. Keep one current best entry and a stable lower key.
+For each actual source, reuse the existing single-source range seek/advance,
+physical MISS loader and canonical layout comparison. Skip entries equal to the
+last emitted key; compare its next head against the current best using the same
+newer/tie precedence as `fn2-range-pick`. A complete held-set scan establishes the
+next global winner, or schema exhaustion. Then run existing typed retention,
+rehome and builder add. One call never scans the whole set or article.
 
-For M sources of a schema and fan-in N, a completed generation produces
-ceil(M/N) roots, including singleton tails; repeated durable generations decrease
-M when M>N. This bounds active cursors, not stored entries or output pages. The
-consumer must still demonstrate how initially excessive source counts progress
-without skipping a source or returning an unchanged FULL retry. That connection
-is an explicit acceptance obligation, not established by this arithmetic.
+This costs O(S times K source seeks/advances), for S sources and K distinct output
+keys, plus physical authentication and rehome work. It trades repeated reads for
+bounded memory and avoids unpublished-run allocation/disposal or a new recovery
+class. It does not limit S, K or page count. No replacement is published until
+all schemas are exhausted and all actual output pages complete. The output count
+is one per schema, within the existing four-run allowance with overlay headroom.
 
-## Resource and file ownership proposal
+The named fold schemas 5/6/7 in folds.lisp store already-materialized values and
+explicitly declare :merge :latest. This protocol must use the actual layout and
+range comparison; it neither combines partial event deltas nor assumes addition
+or default-zero associativity. Further registered schemas must be checked against
+the same actual sealer semantics before enabling them.
 
-At this basis, root1 has 21 windows (including its physical input pair at19/20)
-and future workers have eight: 29 total. Reusing one pair and admitting N pairs
-adds 2*(N-1); N=8 would give 43 leases. Derive all demand from existing declarations
-and actual class aliases. Reserve the whole recipe before the cut; initialize
-borrowed loader jobs only after HELD, since snapshot final poll requires sealer
-jobs genuinely idle/free. Preserve stable publisher windows14/16/18. Exact range,
-checker and field geometry, phase costs and protected credit feasibility require
-source review before adopting this recipe.
+Candidate exact operations (internal static calls, not arbitrary callbacks):
 
-Proposed owned books: new checkpoint-compaction state/source/merge leaves; shared
-merge extraction from sealer; scoped root1 source/metadata/manifest/driver and
-working geometry changes. Coordinate master request/continuation wiring, typed
-catalog predecessor retirement and pool-credit changes with their owners before
-editing those files. No CNS changes or second B writer are in this slice.
+- compaction-begin derives HELD token/candidate/owner and starts the original-source
+  inventory; no caller member count or completion flag.
+- source-step retains actual source identity and bounded whole-set scan progress;
+  reseek-step drives the existing cursor, returning :need-read separately.
+- candidate-step compares two actual authenticated entry views, then invokes the
+  existing bounded rehome for a replacement best. The source page stays frozen
+  until that copy completes; lower-key bytes remain immutable throughout a scan.
+- selected-entry-bind constructs the common retained-entry only from the finished
+  whole-set scan and current candidate identity. Existing semantic/payload closure
+  runs before builder add; consume requires exact origin/serial completion.
+- page bind/worker TAKE/write harvest/RETURN/consume are unchanged actual checkpoint
+  operations. Directory emit occurs only at schema exhaustion and uses final dense
+  output rank, independent of original inventory rank.
+- existing typed live retirement must consume original inventory rather than
+  manifest root count; it preserves durable old holds until actual replacement.
 
-Required controls: tied source precedence before/after compaction; more than one
-fan-in interval; a source larger than resident cache capacity streaming pages;
-actual I/O harvest and page handback; all predecessor retirement and surviving
-old query leases; pre-Fence crash retains old authority; post-publication restart
-installs merged roots; partial recipe refusal releases the source receipt; and
-CLOSING drains before HELD. Runtime/proof execution is not authorized in this lane.
+Proposed new leaves are checkpoint-compaction-state/source/merge. Scoped adapters
+are checkpoint-metadata-source/metadata/manifest/driver, plus the original-source
+inventory consumer in checkpoint-live-retire under its owner's coordination.
+The master owner wires ordinary sealer request -> real drain -> checkpoint ->
+resume; a disabled route or helper endpoint does not repair FULL. Do not add B
+records, parsers or hashers. Existing legacy bounded resident admission may remain
+for its genuine fast path, but physical/unbounded output must take this route
+before a prefix is emitted.
+
+Resource investigation is still pending. Existing candidate entry window14,
+semantic window16 and physical page/read19/20 might support best/lower-key/input
+roles in disjoint phases; semantic closure overwrites16, so the lower key must
+be reconstructible from the protected current candidate after closure and before
+the next scan. Exact octet references and reset/generation checks must demonstrate
+this without authority borrowing. An eight-pair recipe would require43 windows instead of the current29 and remains
+on HOLD; no
+geometry edits or class/credit feasibility claim is made. If another protected
+scratch is required it must join atomic pre-cut admission, not a held-cut wait.
