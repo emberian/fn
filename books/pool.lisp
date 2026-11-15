@@ -902,7 +902,7 @@
   ;; Conservation uses the update's row/frame interfaces, not credit arithmetic
   ;; or the representation of an owner identity or credit-group selector.
   (in-theory (disable fn2-pool-reservable-count fn2-pool-credit-group
-                      fn2-pool-ownerp fn2-pool-mrefp))
+                      fn2-pool-ownerp fn2-pool-mrefp fn2-pool-release-countp))
 
   ;; Row invariant: one row's clause, and all rows but one.
   (defun fn2-pool-row-okp (i fn2-pool)
