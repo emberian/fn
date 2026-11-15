@@ -2,6 +2,7 @@
 ; Unix listener, durable accounts and grants, and configurable startup groups/peering.
 (in-package "ACL2")
 (include-book "host-boundary")
+(include-book "article-limit-config")
 ; Startup overrides replace keys; profiles reject duplicate keys.
 (defun fn2-node-profile-overlay (updates profile)
  (declare (xargs :guard (and (alistp updates) (alistp profile))))

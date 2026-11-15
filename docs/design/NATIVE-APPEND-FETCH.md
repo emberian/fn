@@ -53,3 +53,12 @@ Source controls:
 python3 tests/test_fn_admin_codec.py ReplyDecoding.test_fetch_canonical_widths_and_exact_binary_reply ReplyDecoding.test_truncated_accepted_results_never_decode_as_accepted InvalidReplyOutcome.test_fetch_cli_preserves_binary_and_rejects_truncation
 python3 tests/test_native_append_fetch.py
 ```
+
+`fn init IMAGE --article-max OCTETS` and `fn serve IMAGE --article-max OCTETS`
+select an explicit article byte limit. The default remains 32768. The launcher
+passes the text unchanged; ACL2 parses it, checks the upload manifest domain,
+and applies the same execution/resource admission as other profile settings.
+Invalid text or an unsupported profile is refused rather than replaced with the
+default. Use the same explicit setting when initializing and reopening a test
+image; this startup option does not change the on-disk format. A larger limit
+alone does not establish rolling-window support or bypass upload capacity.

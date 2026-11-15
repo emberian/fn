@@ -473,6 +473,7 @@ ACL2_BOOKS = \
   tests/network-backpressure-unit \
   tests/ops-semantic-steps-unit \
   tests/origin-unit \
+  tests/article-limit-config-unit \
   tests/origin-format-unit \
   tests/origin-boot-unit \
   tests/owed-authority-unit \
