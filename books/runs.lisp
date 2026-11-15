@@ -510,7 +510,9 @@
   (hash-0 :u32) (hash-1 :u32) (hash-2 :u32) (hash-3 :u32)
   (hash-4 :u32) (hash-5 :u32) (hash-6 :u32) (hash-7 :u32))
  :extra-fields ((fn2-run-installed-physical-count :type (unsigned-byte 32) :initially 0
- :why "All nonFREE physical installed rows, maintained by shared install/free transitions; not catalog-local or a caller readiness flag.")))
+  :why "All nonFREE physical installed rows, maintained by shared install/free transitions; not catalog-local or a caller readiness flag.")
+ (fn2-run-installed-adoption-demand :type (unsigned-byte 60) :initially 0
+ :why "Actual held source-fit shortage asks the existing sealer for spare rows after cut release; a resource demand, never publication or reuse authority.")))
 ; The sole physical installation transition updates the global count. Its
 ; caller supplies Ref fields from an authenticated source catalog/producer.
 ; Logical row fold only: served admission reads the maintained scalar above.

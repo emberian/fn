@@ -330,7 +330,10 @@ ACL2_BOOKS = \
   books/run-physical-harvest \
   books/checkpoint-summary-loader-readiness \
   books/checkpoint-live-catalog \
+  books/checkpoint-live-capacity \
+  tests/checkpoint-live-capacity-unit \
   books/checkpoint-live-cbase \
+  tests/checkpoint-live-publication-support \
   tests/checkpoint-live-catalog-unit \
   tests/run-physical-release-readiness-unit \
   books/checkpoint-owned-extent \

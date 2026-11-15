@@ -10,6 +10,7 @@
 (include-book "checkpoint-summary-authority-live")
 (include-book "checkpoint-live-catalog")
 (include-book "checkpoint-live-cbase")
+(include-book "checkpoint-live-capacity")
 (include-book "checkpoint-directory-consume")
 (fn2-book-layer :c)
 
@@ -54,8 +55,27 @@
    (:do (code cut event) (fn2-csnapshot-poll row-token *fn2-checkpoint-master-kind* id row-generation)
     :accept () :case (((:more) (:charge :steps *fn2-work-stage* :runnable t))
                      ((:held) (:do (retirement) (fn2-checkpoint-retirement-frontier-op))
-                      (:set (covered cut) (attempt-retirement retirement)) (:next :reserve)
+                      (:set (covered cut) (attempt-retirement retirement) (scan 0) (fit-sources 0) (fit-free 0)) (:next :source-fit-overlays)
                       (:charge :steps *fn2-work-stage* :runnable t)))))
+  ; The actual held cut is measured before construction or working admission.
+  ; A shortage goes through the same exact empty-attempt cut release, then
+  ; the existing :sealable grant observes the measured compaction demand.
+  (:source-fit-overlays :on-refusal ((:stop :checkpoint))
+   (:do (code scan sources free)
+    (fn2-checkpoint-live-fit-step-op row-token *fn2-checkpoint-master-kind* id row-generation 0 row-scan row-fit-sources row-fit-free)
+    :accept () :case
+    (((:more) (:set (scan scan) (fit-sources sources) (fit-free free)) (:charge :steps *fn2-work-stage* :runnable t))
+     ((:runs) (:set (scan 0) (fit-sources sources) (fit-free free)) (:next :source-fit-runs) (:charge :steps *fn2-work-stage* :runnable t))
+     ((:exhausted) (:next :abort-empty) (:charge :steps *fn2-work-small* :runnable t))
+     (:otherwise (:stop :checkpoint)))))
+  (:source-fit-runs :on-refusal ((:stop :checkpoint))
+   (:do (code scan sources free)
+    (fn2-checkpoint-live-fit-step-op row-token *fn2-checkpoint-master-kind* id row-generation 1 row-scan row-fit-sources row-fit-free)
+    :accept () :case
+    (((:more) (:set (scan scan) (fit-sources sources) (fit-free free)) (:charge :steps *fn2-work-stage* :runnable t))
+     ((:fit) (:set (scan 0) (fit-sources sources) (fit-free free)) (:next :reserve) (:charge :steps *fn2-work-stage* :runnable t))
+     ((:no-space :exhausted) (:next :abort-empty) (:charge :steps *fn2-work-small* :runnable t))
+     (:otherwise (:stop :checkpoint)))))
   (:directory :on-refusal ((:next :uncertain) (:charge :steps *fn2-work-small* :runnable t))
    (:do (code) (fn2-checkpoint-directory-op row-candidate row-token *fn2-checkpoint-master-kind* id row-generation)
     :accept () :case

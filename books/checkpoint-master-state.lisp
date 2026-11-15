@@ -23,7 +23,7 @@
  :doc "Wake the actual parked maintenance owner from real checkpoint pressure and available pre-cut working resources.")
 
 (defmachine fn2-checkpoint-master
- :states (:idle :disabled :catalog :reserve :workspaces :snapshot-begin :snapshot-poll :directory :abort-empty :abort-snapshot :abort-working :abort-complete :descriptor-begin
+ :states (:idle :disabled :catalog :source-fit-overlays :source-fit-runs :reserve :workspaces :snapshot-begin :snapshot-poll :directory :abort-empty :abort-snapshot :abort-working :abort-complete :descriptor-begin
           :root1-begin :root1-source :root1-read :events-begin :events-source :events-read
           :page-bind :page-take :page-wait :page-accept-return :page-consume
           :plan-begin :plan-count :plan-size :plan-reserve :plan-validate :freeze
@@ -35,7 +35,7 @@
           :summary-authority-begin :summary-authority-copy :rebase-begin :rebase-source :rebase-consume :rebase-archive
           :teardown-transfer-begin :teardown-transfer-copy :teardown-select
           :teardown-cold-next :teardown-cold-begin :teardown-cold-copy :teardown-cold-ack)
- :fields ((pending :u32) (stopped :bool) (token :u60)
+ :fields ((pending :u32) (stopped :bool) (token :u60) (fit-sources :u60) (fit-free :u32)
           (scan :u32) (highest :u60) (candidate :u32) (candidate-found :bool) (checkpoint :u60)
           (page-slot :u32) (page-gen :u60) (scratch-slot :u32) (scratch-gen :u60) (read-slot :u32) (read-gen :u60)
           (source :u8) (field-base :u32) (map-role :u8) (target :u32) (target-gen :u60)
@@ -64,7 +64,7 @@
  :initial ((generation fn2-commit-initial-generation) (phase *fn2-checkpoint-master-state-idle*)
            (ready-prev *fn2-none*) (ready-next *fn2-none*))
  :genesis ((:charge :steps *fn2-work-small* :runnable t))
- :arms ((:idle) (:disabled) (:catalog) (:reserve) (:workspaces) (:snapshot-begin) (:snapshot-poll) (:directory) (:abort-empty) (:abort-snapshot) (:abort-working) (:abort-complete) (:descriptor-begin)
+ :arms ((:idle) (:disabled) (:catalog) (:source-fit-overlays) (:source-fit-runs) (:reserve) (:workspaces) (:snapshot-begin) (:snapshot-poll) (:directory) (:abort-empty) (:abort-snapshot) (:abort-working) (:abort-complete) (:descriptor-begin)
         (:root1-begin) (:root1-source) (:root1-read) (:events-begin) (:events-source) (:events-read)
         (:page-bind) (:page-take) (:page-wait) (:page-accept-return) (:page-consume)
         (:plan-begin) (:plan-count) (:plan-size) (:plan-reserve) (:plan-validate) (:freeze)
