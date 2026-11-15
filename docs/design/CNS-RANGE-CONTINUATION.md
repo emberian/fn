@@ -50,3 +50,32 @@ page cleanup, and the initial address-selection portion of `item-next`.
 The downstream FETCH capture/root-promise/article-release block is preserved;
 source-core, source-kind, capture, retention, CTL and authorization files are
 unchanged. The three new tall-range files and Makefile additions are isolated.
+
+## Separate ARTICLE/work follow-up
+
+The `63bc1792e` source donor remains frozen. Its follow-up splits address
+selection, published ARTICLE lookup and item emission into separate CNS
+turns. ARTICLE retains the original XL published-only visibility; it does
+not substitute the broader ACTIVE/FROZEN range view. The ownership claim
+uses the composed dedicated READ/XL partition and the live CNS generation,
+phase and fixed article key. Arbitrary raw XL mutation is outside that claim.
+
+Both READ-NEXT and READ-LOOKUP receive an inner work budget of one. The
+schema-specific proposed charges derive from actual layout maxima, decoder
+fuel, overlay probes and source geometry. ADDR selection bounds at 16,568
+pool reads; ARTICLE lookup plus its atomic capture tail bounds at 14,393
+pool byte operations. These are separate phases, not a claimed combined
+trace. The existing CNS budget remains 32,768 bytes plus 32 steps.
+
+`books/cns-read-work-bounds.lisp` checks the arithmetic, including a malformed
+last decode. It does not prove an actual operation count. A counting/refinement
+connection to the served decoder and read calls remains owed. Descriptor
+issue and subsequent output processing also remain separate from the lookup
+charge. The shared arm charge/goto repair must preserve preceding call costs
+in actual returned scheduler charges; declaration metadata alone is insufficient.
+
+Future focused consumers are `tests/cns-article-slice-unit` for retained lookup
+and phase transitions, and the existing `tests/cns-stream-fetch-unit` for
+actual APPEND/FETCH composition. New controls remain unexecuted until admitted
+in the coordinated current application world. No network, deployment or
+authorization activation follows from these source changes.
