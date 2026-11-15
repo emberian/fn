@@ -1,0 +1,10 @@
+{
+  "scope": "exact subsequent initializer delegation; original schema geometry receipt unchanged",
+  "old": "(fn2-b-capacity :identity-arena-bytes 65536 profile)",
+  "new": "(fn2-idc-profile-arena profile)",
+  "books": [
+    "books/machines-c.lisp",
+    "books/machines-c-successor.lisp"
+  ],
+  "include": "(include-book \"identity-workspace-geometry\")\n"
+}

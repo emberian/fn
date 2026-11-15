@@ -19,7 +19,7 @@ ROOT = Path(__file__).resolve().parents[1]
 
 
 class Node:
-    def __init__(self, directory, image, mode, label, control_sock=None, env=None):
+    def __init__(self, directory, image, mode, label, control_sock=None, env=None, startup_args=()):
         self.log = (directory / f"{label}.log").open("wb")
         self.pidfile = directory / f"{label}.node.pid"
         self.node_pid = None
@@ -27,6 +27,7 @@ class Node:
         cmd = ["timeout", "600", str(ROOT / "fn"), mode, str(image)]
         if control_sock is not None:
             cmd.extend(["--control-sock", str(control_sock)])
+        cmd.extend(startup_args)
         self.proc = subprocess.Popen(
             cmd, cwd=ROOT,
             stdout=subprocess.PIPE, stderr=subprocess.STDOUT, start_new_session=True,

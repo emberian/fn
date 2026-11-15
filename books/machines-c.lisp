@@ -5,6 +5,7 @@
 ; through the private successor (C-S3, machines-c-successor.lisp). The run
 ; and range assemblies are range-served.lisp's.
 (in-package "ACL2")
+(include-book "identity-workspace-geometry")
 (include-book "range-served")
 (include-book "machines-b")
 (include-book "successor-schema-geometry")
@@ -64,7 +65,7 @@
                              (nfix (fn2-b-capacity :identity-overlay-entries 256 profile))))
       (unsigned-byte-p 32 (fn2-b-capacity :identity-runs 64 profile))
       (unsigned-byte-p 32 (fn2-b-capacity :run-cache 1024 profile))
-      (unsigned-byte-p 32 (fn2-b-capacity :identity-arena-bytes 65536 profile))
+      (unsigned-byte-p 32 (fn2-idc-profile-arena profile))
       ;; Layer D's read rows (C-S4, machines-c-read.lisp): R of them, each
       ;; with 8 range sources, a lookup row and cursor after the
       ;; transactions' (t + R) and 8 source cursors after those (t + 9R).
