@@ -77,7 +77,7 @@
       (ogen (fn2-machine-generation owner fn2-core))
       (class (fn2-scribe-window-class fn2-core))
       ((mv pool ws wg fn2-core) (fn2-core-reserve class *fn2-scribe-kind* owner ogen fn2-core))
-      ((mv put fn2-core) (fn2-successor-put 0 0 *fn2-addr-sid* :insert fn2-core))
+      ((mv put fn2-core) (fn2-successor-put 0 0 *fn2-succ-addr-sid* :insert fn2-core))
       ((mv args fn2-core) (fn2-odc-args 5 fn2-core))
       ((mv resolved fn2-core) (fn2-odc-resolve 40 fn2-core))
       ((mv staged & fn2-core) (fn2-successor-stage 0 fn2-core))
