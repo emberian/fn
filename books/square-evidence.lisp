@@ -247,15 +247,109 @@
                                     (list (fn2-evidence-function-binding mutant world)))))))
                (fn2-decl-row '(:square ,name) (w state))))))))))))))))
 
+; Predicate evidence concerns the exact logical H/C, not endpoint equivalence.
+; Closed constructor terms are permitted here: ACL2 must admit both complete
+; ground assertions. They are never executed as malformed raw stobjs.
+(defun fn2-evidence-closed-bindingsp (bindings vars)
+ (declare (xargs :verify-guards nil))
+ (and (true-list-listp bindings) (equal (strip-cars bindings) vars)
+      (if (atom bindings) t
+       (and (equal (len (car bindings)) 2)
+            (pseudo-termp (cadar bindings))
+            (null (all-vars (cadar bindings)))
+            (fn2-evidence-closed-bindingsp (cdr bindings) (cdr vars))))))
+
+ ; Remove exactly one structural conjunct, possibly a composite stored guard.
+; No implication rewriting or logically equivalent selector is accepted.
+(defun fn2-evidence-hypothesis-cut (hyp removed)
+ (declare (xargs :verify-guards nil))
+ (cond ((equal hyp removed) (mv 1 nil))
+       ((and (consp hyp) (eq (car hyp) 'if) (equal (len hyp) 4)
+             (equal (cadddr hyp) ''nil))
+        (mv-let (left-count left) (fn2-evidence-hypothesis-cut (cadr hyp) removed)
+         (mv-let (right-count right) (fn2-evidence-hypothesis-cut (caddr hyp) removed)
+          (mv (+ left-count right-count) (append left right)))))
+       (t (mv 0 (list hyp)))))
+
+(defun fn2-square-predicate-evidence-events-with-hints
+ (name positive negative positive-hints negative-hints recheck world)
+ (declare (xargs :verify-guards nil))
+ (let* ((row (fn2-decl-row (list :square name) world))
+        (vars (fn2-decl-get :vars row))
+        (formula (fn2-decl-statement-body (fn2-decl-get :statement row) world))
+        (removed (fn2-decl-get :remove negative))
+        (bindings (fn2-decl-get :bindings negative))
+        (pos-name (fn2-evidence-name name "$BOUND-POSITIVE"))
+        (neg-name (fn2-evidence-name name "$BOUND-NEGATIVE")))
+  (mv-let (hyp conclusion) (fn2-evidence-parts formula)
+   (mv-let (removed-count remaining) (fn2-evidence-hypothesis-cut hyp removed)
+   (let* ((pos-body `(let ,positive (and ,hyp ,conclusion)))
+          (neg-body `(let ,bindings
+                      (and ,@remaining
+                           (not ,removed) (not ,conclusion))))
+          (problem
+           (cond
+            ((not (and row (fn2-decl-get :statement row))) :unknown-statement)
+            ((not (equal formula (fn2-decl-get :translated row))) :stale-statement)
+            ((and (not recheck) (fn2-decl-get :evidence row)) :already-bound)
+            ((not (and (symbol-listp vars) (no-duplicatesp-eq vars)
+                       (fn2-evidence-closed-bindingsp positive vars)
+                       (fn2-evidence-closed-bindingsp bindings vars))) :bindings)
+            ; An actual predicate call, not a constant, equality, IF or an
+            ; author-supplied substitute formula. Its truth is proved below.
+            ((not (and (fn2-evidence-callp conclusion world)
+                       (not (member-eq (car conclusion) '(equal if implies quote)))))
+             :predicate-shape)
+            ((not (eq (fn2-decl-get :kind negative) :hypothesis-removal)) :negative-kind)
+            ((not (equal removed-count 1)) :removed-hypothesis)
+            ((and (not recheck)
+                  (or (getpropc pos-name 'theorem nil world)
+                      (getpropc neg-name 'theorem nil world))) :name-collision))))
+    (if problem
+        `(make-event (er soft 'defsquare-evidence "Cannot bind predicate ~x0: ~x1."
+                         ',name ',problem))
+     (if recheck `(progn (thm ,pos-body :hints ,positive-hints)
+                       (thm ,neg-body :hints ,negative-hints))
+      `(progn
+        (defthm ,pos-name ,pos-body :rule-classes nil :hints ,positive-hints)
+        (defthm ,neg-name ,neg-body :rule-classes nil :hints ,negative-hints)
+        (make-event
+         (value
+          (list 'table 'fn2-squares (list 'quote ',name)
+           (list 'quote
+            (fn2-decl-set :evidence
+             (fn2-decl-set :positive-theorem (getpropc ',pos-name 'theorem nil (w state))
+              (fn2-decl-set :negative-theorem (getpropc ',neg-name 'theorem nil (w state))
+               '(:kind :formula-ground-proofs :conclusion-kind :predicate
+                 :formula ,formula :translated ,(fn2-decl-get :translated row)
+                 :positive ,pos-name :negative ,neg-name
+                 :positive-body ,pos-body :negative-body ,neg-body
+                 :positive-bindings ,positive :negative-control ,negative
+                 :positive-hints ,positive-hints :negative-hints ,negative-hints)))
+             (fn2-decl-row '(:square ,name) (w state)))))))))))))))
+
+; Existing programmatic consumers retain the five-argument entry point.
+(defun fn2-square-predicate-evidence-events (name positive negative recheck world)
+ (declare (xargs :verify-guards nil))
+ (fn2-square-predicate-evidence-events-with-hints
+  name positive negative nil nil recheck world))
+
 ; Preserve the five-argument API used by constructor/snapshot consumers.
 (defun fn2-square-evidence-events (name positive negative recheck world)
  (declare (xargs :verify-guards nil))
  (fn2-square-evidence-events-with-correspondence name positive negative nil recheck world))
 
-(defmacro defsquare-evidence (name &key positive negative correspondence)
+(defmacro defsquare-evidence
+ (name &key positive negative correspondence conclusion-kind positive-hints negative-hints)
  `(make-event
-   (value (fn2-square-evidence-events-with-correspondence
-            ',name ',positive ',negative ',correspondence nil (w state)))))
+   (value
+    (if (and (eq ',conclusion-kind :predicate) (not ',correspondence))
+        (fn2-square-predicate-evidence-events-with-hints
+         ',name ',positive ',negative ',positive-hints ',negative-hints nil (w state))
+      (if (or ',conclusion-kind ',positive-hints ',negative-hints)
+          '(make-event (er soft 'defsquare-evidence "Unsupported conclusion mode."))
+        (fn2-square-evidence-events-with-correspondence
+         ',name ',positive ',negative ',correspondence nil (w state)))))))
 
 (defun fn2-evidence-functions-currentp (bindings world)
  (declare (xargs :verify-guards nil))
@@ -295,7 +389,9 @@
                     (fn2-evidence-parts
                      (fn2-decl-statement-body (fn2-decl-get :statement row) (w state)))
                    (declare (ignore hyp))
-                   (fn2-evidence-normalization-currentp e conclusion (w state)))
+                   (if (eq (fn2-decl-get :conclusion-kind e) :predicate)
+                       (and (not correspondence) (not (fn2-decl-get :functions e)))
+                     (fn2-evidence-normalization-currentp e conclusion (w state))))
                   (equal (fn2-decl-get :positive e) pos-name)
                   (equal (fn2-decl-get :negative e) neg-name)
                   (getpropc pos-name 'theorem nil (w state))
@@ -303,14 +399,19 @@
                   (equal (fn2-decl-get :positive-theorem e) (getpropc pos-name 'theorem nil (w state)))
                   (equal (fn2-decl-get :negative-theorem e) (getpropc neg-name 'theorem nil (w state)))
                   (equal (strip-cars (fn2-decl-get :functions e))
-                         (append (list (fn2-decl-get :concrete sides) (fn2-decl-get :reference sides))
+                         (if (eq (fn2-decl-get :conclusion-kind e) :predicate) nil
+                          (append (list (fn2-decl-get :concrete sides) (fn2-decl-get :reference sides))
                                  (and correspondence (list (car (fn2-decl-get :subject-call e))))
                                  (and (eq (fn2-decl-get :kind negative) :mutation)
-                                      (list (fn2-decl-get :replace negative)))))
+                                      (list (fn2-decl-get :replace negative))))))
                   (fn2-evidence-functions-currentp (fn2-decl-get :functions e) (w state))))
         (er soft 'fn2-assert-square-evidence "Missing or stale formula evidence: ~x0." ',name)
      ; Re-derive and prove both complete assertions.  Stored names, bodies or
      ; a claimed PASS flag are never evidence by themselves.
-     (value (fn2-square-evidence-events-with-correspondence
+     (value (if (eq (fn2-decl-get :conclusion-kind e) :predicate)
+                (fn2-square-predicate-evidence-events-with-hints
+                 ',name (fn2-decl-get :positive-bindings e) negative
+                 (fn2-decl-get :positive-hints e) (fn2-decl-get :negative-hints e) t (w state))
+              (fn2-square-evidence-events-with-correspondence
               ',name (fn2-decl-get :positive-bindings e)
-              (fn2-decl-get :negative-control e) correspondence t (w state)))))))
+              (fn2-decl-get :negative-control e) correspondence t (w state))))))))
