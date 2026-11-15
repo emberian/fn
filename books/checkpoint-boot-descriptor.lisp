@@ -7,6 +7,7 @@
 (include-book "boot-bootstrap-receipt")
 (include-book "checkpoint-descriptor-read")
 (include-book "checkpoint-descriptor-input")
+(local (include-book "columns-call-guards"))
 (fn2-book-layer :b)
 
 (defun fn2-boot-descriptor-source-p (c kind id ogen fn2-boot-config fn2-origin
@@ -113,6 +114,14 @@
        (fn2-checkpoint-check-step c row slot gen 0 len base kind id ogen (min budget len)
          fn2-checkpoints fn2-checkpoint-refs fn2-checkpoint-bytes fn2-fc fn2-fc-context fn2-b3 fn2-fields fn2-pool fn2-digests)))
   (mv code fn2-checkpoints fn2-checkpoint-refs fn2-checkpoint-bytes fn2-fc fn2-fc-context fn2-b3 fn2-fields fn2-pool fn2-digests)))
+
+(verify-guards fn2-boot-checkpoint-descriptor-target-pool
+ :hints ((fn2-columns-call-guard-hint 'fn2-boot-checkpoint-descriptor-target-pool
+  '(fn2-checkpoint-restore-read-target) nil world)))
+(verify-guards fn2-boot-checkpoint-descriptor-pool
+ :hints ((fn2-columns-call-guard-hint 'fn2-boot-checkpoint-descriptor-pool
+  '(fn2-checkpoint-restore-load-hash fn2-checkpoint-boot-geometry-copy
+    fn2-checkpoint-check-step) nil world)))
 
 ; Materialize only with the actual BOOT kind, CORE and bootstrap producer.
 ; The actor's held rx lease survives every :more; no parsed Ref is borrowed

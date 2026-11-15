@@ -2,6 +2,7 @@
 (in-package "ACL2")
 (include-book "std/util/bstar" :dir :system)
 (include-book "checkpoint-descriptor-input")
+(include-book "columns-carrier-contracts")
 (fn2-book-layer :b)
 
 (defun fn2-checkpoint-restore-capture-ref (f r base slot gen okind oslot ogen
@@ -27,6 +28,14 @@
       (fn2-checkpoint-refs (fn2-checkpoint-refs-set-encoded-length r (fn2-fields-value (+ base f 5) fn2-fields) fn2-checkpoint-refs))
       (fn2-checkpoint-refs (fn2-checkpoint-ref-clear-build r fn2-checkpoint-refs)))
   (mv :ok fn2-checkpoint-refs fn2-checkpoint-bytes)))
+
+(defcolumns-guarded-contracts fn2-checkpoint-restore-capture-ref
+ :carriers ((fn2-checkpoint-refs 1 :prefix "-REFS") (fn2-checkpoint-bytes 2 :prefix "-BYTES")) :rows t
+ :hints ((fn2-columns-guard-hint
+  '(fn2-fields fn2-pool fn2-checkpoint-refs fn2-checkpoint-bytes)
+  '(fn2-checkpoint-copy-hash fn2-checkpoint-ref-clear-build)
+  '(fn2-checkpoint-restore-capture-ref) world)))
+(in-theory (disable fn2-checkpoint-restore-capture-ref))
 
 (defun fn2-checkpoint-restore-anchor-step (c anchor row slot gen len base okind oslot ogen budget
                                           fn2-checkpoints fn2-checkpoint-refs fn2-checkpoint-bytes
@@ -65,3 +74,15 @@
         (incarnation (fn2-fields-value (+ base *fn2-format-anchor-field-incarnation*) fn2-fields))
         (builder-token 0) (builder-owner-kind 0) (builder-owner-slot 0) (builder-owner-gen 0))))
   (mv :candidate fn2-checkpoints fn2-checkpoint-refs fn2-checkpoint-bytes fn2-fc fn2-b3 fn2-fields fn2-pool fn2-digests)))
+
+(defcolumns-guarded-contracts fn2-checkpoint-restore-anchor-step
+ :carriers ((fn2-checkpoints 1 :prefix "-CANDIDATES") (fn2-checkpoint-refs 2 :prefix "-REFS")
+            (fn2-checkpoint-bytes 3 :prefix "-BYTES") (fn2-fc 4 :prefix "-CHECKER")
+            (fn2-b3 5 :prefix "-HASHER") (fn2-fields 6 :prefix "-FIELDS")
+            (fn2-pool 7 :prefix "-POOL") (fn2-digests 8 :prefix "-DIGESTS")) :rows t
+ :hints ((fn2-columns-guard-hint
+  '(fn2-checkpoints fn2-checkpoint-refs fn2-checkpoint-bytes fn2-fc fn2-fc-context
+    fn2-b3 fn2-fields fn2-pool fn2-digests)
+  '(fn2-format-run fn2-checkpoint-restore-capture-ref)
+  '(fn2-checkpoint-restore-anchor-step) world)))
+(in-theory (disable fn2-checkpoint-restore-anchor-step))

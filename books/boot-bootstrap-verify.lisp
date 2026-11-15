@@ -3,6 +3,7 @@
 (in-package "ACL2")
 (include-book "boot-bootstrap-pack")
 (include-book "origin")
+(local (include-book "columns-call-guards"))
 (fn2-book-layer :b)
 
 ; This is the exact two-extent separation relation in POOL-EXTENTS-APART.
@@ -94,3 +95,12 @@
       ; The receipt generation is published last, after all matched evidence.
       (fn2-boot-config (update-fn2-boot-config-bootstrap-owner-gen ogen fn2-boot-config)))
   (mv :ok fn2-boot-config fn2-fields fn2-digests fn2-b3 fn2-pool)))
+
+; These final obligations are part of this component author pilot. No nil-
+; guard-verification runtime body can qualify merely by loading its DEFUN.
+(verify-guards fn2-boot-bootstrap-pack-pool
+ :hints ((fn2-columns-call-guard-hint 'fn2-boot-bootstrap-pack-pool
+  '(fn2-boot-pack-geometry fn2-boot-bootstrap-encode-pool fn2-boot-pad fn2-digest-store) nil world)))
+(verify-guards fn2-boot-bootstrap-verify-pool
+ :hints ((fn2-columns-call-guard-hint 'fn2-boot-bootstrap-verify-pool
+  '(fn2-boot-bootstrap-pack-pool fn2-pool-compare fn2-boot-save-geometry) nil world)))

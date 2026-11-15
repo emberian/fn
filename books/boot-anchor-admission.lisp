@@ -4,6 +4,7 @@
 (include-book "checkpoint-anchor-input")
 (include-book "checkpoint-zero-range")
 (include-book "checkpoint-boot-descriptor")
+(local (include-book "columns-call-guards"))
 (fn2-book-layer :b)
 
 (defmacro fn2-boot-anchor-return (code length)
@@ -108,3 +109,11 @@
       (fn2-boot-config (update-fn2-boot-config-anchor-checked-mask
         (logior bit (fn2-boot-config-anchor-checked-mask fn2-boot-config)) fn2-boot-config)))
   (fn2-boot-anchor-return :candidate length)))
+
+(verify-guards fn2-boot-save-anchor-evidence
+ :hints ((fn2-columns-call-guard-hint 'fn2-boot-save-anchor-evidence
+  '(fn2-boot-save-anchor-digest) nil world)))
+(verify-guards fn2-boot-anchor-admit-pool
+ :hints ((fn2-columns-call-guard-hint 'fn2-boot-anchor-admit-pool
+  '(fn2-checkpoint-restore-anchor-step fn2-format-anchor-decode fn2-boot-save-anchor-evidence
+    fn2-checkpoint-boot-geometry-copy fn2-fc-reset) nil world)))

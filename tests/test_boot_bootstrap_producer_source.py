@@ -94,6 +94,21 @@ class BootstrapProducer(unittest.TestCase):
         descriptor = (ROOT/'books/checkpoint-boot-descriptor.lisp').read_text()
         self.assertIn('(fn2-boot-bootstrap-receipt-p kind id ogen fn2-boot-config fn2-origin)', descriptor)
 
+    def test_final_guards_and_real_lower_constructor_controls_are_active(self):
+        for name in ('fn2-boot-bootstrap-pack-pool','fn2-boot-bootstrap-verify-pool'):
+            self.assertIn('(verify-guards '+name,self.verify)
+        fixture = (ROOT/'tests/boot-bootstrap-producer-unit.lisp').read_text()
+        for mode in (':positive',':corrupt',':tail',':alias',':owner',':short'):
+            self.assertIn('(assert-event (fn2-bbp-check '+mode+'))',fixture)
+        self.assertIn('(fn2-boot-bootstrap-pack-pool',fixture)
+        self.assertIn('(fn2-pool-copy-range',fixture)
+        self.assertIn('(fn2-boot-bootstrap-verify-pool',fixture)
+        self.assertIn('(not (fn2-bbp-geometry-zero-p 0 fn2-pool))',fixture)
+        self.assertIn('(equal before-rx (fn2-bbp-rx-bytes',fixture)
+        self.assertIn('(fn2-columns-reference-events name',fixture)
+        for bad in ('fn2-machine-set-phase','update-fn2-boot-config-bootstrap-owner-gen'):
+            self.assertNotIn(bad,fixture)
+
 
 if __name__ == '__main__':
     unittest.main()
