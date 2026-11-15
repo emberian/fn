@@ -8,7 +8,7 @@
   (state (:enum fn2-checkpoint-restore-reach-state (:empty :named :mapped)))
   (last-role (:enum fn2-checkpoint-restore-reach-role
     (:descriptor :semantic :allocation-map :event-directory :frontier :arena
-     :journal :journal-ticket :payload-manifest :payload-raw :payload-block :semantic-source)))))
+     :journal :journal-ticket :payload-manifest :payload-raw :payload-block :semantic-source :release-inventory :release-descriptor)))))
 (defcolumns fn2-checkpoint-restore-reach-control
  ((generation :u60) (candidate :u32) (source-checkpoint :u60)
   (source-cut-commit :u60) (source-cut-event :u60)

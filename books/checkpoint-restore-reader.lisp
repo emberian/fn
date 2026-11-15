@@ -193,7 +193,7 @@
       (len *fn2-format-page-size*)
       (page-payload (fn2-fields-value (+ base *fn2-format-page-header-field-payload-length*) fn2-fields))
       ((unless (and (equal (fn2-fields-value (+ base *fn2-format-page-header-field-header-length*) fn2-fields) *fn2-checkpoint-map-body-start*)
-                     (if (equal role 3) (<= page-payload (- len *fn2-checkpoint-map-body-start*))
+                     (if (member-equal role '(3 6)) (<= page-payload (- len *fn2-checkpoint-map-body-start*))
                        (equal page-payload (- len *fn2-checkpoint-map-body-start*)))))
        (mv :framing fn2-checkpoint-restore-reader fn2-fc fn2-fc-context fn2-b3 fn2-fields fn2-pool fn2-digests))
       ; Arena total is first learned from authenticated root bytes. Map total
@@ -212,7 +212,7 @@
       (retired-count (fn2-fields-value (+ base *fn2-checkpoint-map-header-field-retired-count*) fn2-fields))
       (first (fn2-fields-value (+ base *fn2-checkpoint-map-header-field-first-ordinal*) fn2-fields))
       (count (fn2-fields-value (+ base *fn2-checkpoint-map-header-field-entry-count*) fn2-fields))
-      ((unless (or (not (equal role 3))
+      ((unless (or (not (member-equal role '(3 6)))
                     (equal page-payload (+ (- *fn2-checkpoint-map-entries-start* *fn2-checkpoint-map-body-start*) (* count width)))))
        (mv :framing fn2-checkpoint-restore-reader fn2-fc fn2-fc-context fn2-b3 fn2-fields fn2-pool fn2-digests))
       (has-next (fn2-fields-value (+ base *fn2-checkpoint-map-header-field-has-next*) fn2-fields))
