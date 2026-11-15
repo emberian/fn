@@ -20,6 +20,7 @@
 ; connection's: set when it drains with a cursor waiting.
 (in-package "ACL2")
 (include-book "cursor-kind")
+(include-book "cursor-source-observer")
 (include-book "article-manifest")
 (fn2-book-layer :d)
 
@@ -824,6 +825,14 @@
  :doc "Verify one completed location unit against the published article's ordered digest vector before decoding or serving it.")
 (defcost fn2-cursor-reset :child fn2-pool-reset :answers t :tables (fn2-core-pool)
  :doc "Empty TX (under the connection's owner) before a refusal replaces a status line.")
+(defcost fn2-cursor-request-acquire :child fn2-cursor-request-acquire-children
+ :answers (:ok :more :fault) :faults (:fault)
+ :tables (fn2-core-reads fn2-core-c-source-control fn2-core-c-source-readers)
+ :doc "Hold the actual cursor request and bind both nested READ endpoints before the first reply.")
+(defcost fn2-cursor-request-release :child fn2-cursor-request-release-children
+ :answers (:ok :fault) :faults (:fault)
+ :tables (fn2-core-reads fn2-core-c-source-control fn2-core-c-source-readers)
+ :doc "Release the response observation after actual terminal handback and both READ endpoints drain.")
 (defcost fn2-cursor-free-head :child fn2-machines-free-head-of :doc "The cursor partition's free head.")
 (defcost fn2-cursor-gen-limit :child fn2-machines-gen-limit :doc "The profile's generation limit.")
 (defcost fn2-cursor-reclaim :child fn2-machines-reclaim :tables (fn2-core-machines)
@@ -887,7 +896,8 @@
    (:do (c4) (fn2-read-key (* 2 row-slot) ':hi 1 row-hi) :accept (:ok))
    (:do (c5) (fn2-read-range (* 2 row-slot) *fn2-cursor-overview-sid*
                              *fn2-overview-entry-field-position* (if (equal row-pin 0) *fn2-none* row-pin))
-    :accept (:ok))
+    :accept (:ok)
+    :case (((:more) (:charge :steps *fn2-work-transition* :runnable t))))
    (:set (have 0) (next row-lo))
    (:next :render) (:charge :bytes 256 :steps *fn2-work-transition* :runnable t))
   ;; OVER/XOVER, HDR/XHDR: the status line first (TX is reset if the range is empty)
@@ -1046,7 +1056,8 @@
                                :okind row-conn-kind :oslot row-conn :ogen row-conn-gen)
       :accept (:ok))
      (:do (sc) (fn2-read-scan (* 2 row-slot) *fn2-groups-sid* row-tx-slot row-tx-gen row-conn-kind row-conn row-conn-gen)
-      :accept (:ok))
+      :accept (:ok)
+    :case (((:more) (:charge :steps *fn2-work-transition* :runnable t))))
      (:set (roff *fn2-cursor-key-room*) (step 10)) (:charge :bytes 512 :steps *fn2-work-transition* :runnable t))
   (lg-step :on-refusal ((:stop :machine-phase))
      (:do (nc) (fn2-read-scan-next (* 2 row-slot) *fn2-cursor-step-budget*)
@@ -1084,7 +1095,8 @@
                                  :okind row-conn-kind :oslot row-conn :ogen row-conn-gen)
       :accept (:ok))
      (:do (sc) (fn2-read-scan (* 2 row-slot) *fn2-groups-sid* row-tx-slot row-tx-gen row-conn-kind row-conn row-conn-gen)
-      :accept (:ok))
+      :accept (:ok)
+    :case (((:more) (:charge :steps *fn2-work-transition* :runnable t))))
      (:set (roff *fn2-cursor-key-room*) (have 0) (step 9) (update *fn2-cursor-update-none*))
      (:next :render) (:charge :bytes 1024 :steps *fn2-work-transition* :runnable t))
   ;; the next group: its name copied after the page's rows, filtered by
@@ -1173,7 +1185,8 @@
                                  :okind row-conn-kind :oslot row-conn :ogen row-conn-gen)
       :accept (:ok))
      (:do (sc) (fn2-read-scan (* 2 row-slot) *fn2-groups-sid* row-tx-slot row-tx-gen row-conn-kind row-conn row-conn-gen)
-      :accept (:ok))
+      :accept (:ok)
+    :case (((:more) (:charge :steps *fn2-work-transition* :runnable t))))
      (:set (roff *fn2-cursor-key-room*) (have 0) (step 12) (update *fn2-cursor-update-none*))
      (:next :render) (:charge :bytes 1024 :steps *fn2-work-transition* :runnable t))
   (newnews-group-step :on-refusal ((:stop :machine-phase))
@@ -1203,7 +1216,8 @@
      (:do (c4) (fn2-read-key (+ 1 (* 2 row-slot)) ':hi 1 row-hi) :accept (:ok))
      (:do (c5) (fn2-read-range (+ 1 (* 2 row-slot)) *fn2-cursor-overview-sid*
                                *fn2-overview-entry-field-position* (if (equal row-pin 0) *fn2-none* row-pin))
-      :accept (:ok))
+      :accept (:ok)
+    :case (((:more) (:charge :steps *fn2-work-transition* :runnable t))))
      (:set (have 2) (next row-lo))
      (:charge :bytes 256 :steps *fn2-work-transition* :runnable t))
   (newnews-ov-step :on-refusal ((:stop :machine-phase))
@@ -1585,12 +1599,18 @@
  ((:free (:idle))
   ;; the line, parsed again under the connection's owner
   (:select :on-refusal ((:stop :machine-phase))
+   (:if (equal row-cancel 1)
+        ((:next :finish) (:charge :steps *fn2-work-transition* :runnable t))
+        ((:do (ocode receipt) (fn2-cursor-request-acquire row-slot row-generation)
+          :accept (:ok)
+          :case (((:more) (:charge :steps *fn2-work-transition* :runnable t))))
+         (:set (observer-serial receipt))
    (:do (pcode ptag pk0 pa0 pb0 pk1 pa1 pb1 pa2 pb2)
         (fn2-cursor-parse row-line-s row-line-e row-mask row-rx-slot row-rx-gen
                           :okind row-conn-kind :oslot row-conn :ogen row-conn-gen)
     :accept (:ok))
    (:set (tag ptag) (k0 pk0) (a0 pa0) (b0 pb0) (k1 pk1) (a1 pa1) (b1 pb1) (a2 pa2) (b2 pb2) (step 0) (turn 1))
-   (:next :seek) (:charge :bytes 512 :steps *fn2-work-transition* :runnable t))
+   (:next :seek) (:charge :bytes 512 :steps *fn2-work-transition* :runnable t))))
   (:seek :on-refusal ((:stop :machine-phase))
    (:cond
     ;; LIST ACTIVE, ACTIVE.TIMES, COUNTS, NEWSGROUPS, SUBSCRIPTIONS: the group directory
@@ -1716,15 +1736,19 @@
          (:set (lease *fn2-cursor-lease-none*) (lslot *fn2-none*) (lgen 0))
          (:next :draining) (:charge :steps *fn2-work-transition* :runnable t))
         ((:next :draining) (:charge :steps *fn2-work-transition* :runnable t))))
-  (:draining
+  (:draining :on-refusal ((:stop :machine-phase))
+   (:cond ((not (equal row-pending 0)) (:charge :steps *fn2-work-empty*))
+          ((not (equal row-turn 1)) (:charge :steps *fn2-work-empty*))
+          (t
+   (:do (ocode) (fn2-cursor-request-release row-slot row-generation) :accept (:ok))
    (:let next (fn2-cursor-free-head *fn2-cursor-admission-ordinal*))
    (:let retire (>= row-generation (fn2-cursor-gen-limit)))
    (:set (generation (if retire row-generation (+ 1 row-generation))) (conn *fn2-none*) (conn-gen 0)
          (rx-slot *fn2-none*) (rx-gen 0) (tx-slot *fn2-none*) (tx-gen 0) (next-free next)
-         (wait-reason *fn2-wait-none*))
+         (wait-reason *fn2-wait-none*) (observer-serial 0))
    (:next (:if retire :retired :free))
    (:do () (fn2-cursor-reclaim id *fn2-cursor-admission-ordinal* retire))
-   (:charge :steps *fn2-work-release*))
+   (:charge :steps *fn2-work-release*))))
   (:retired (:idle)))
  :observes
  ((:read-result (:set (revent event) (routcome outcome) (rcount count) (rready 1)) (:wake))))
