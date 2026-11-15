@@ -17,7 +17,7 @@
  (fn2-checkpoint-bytes-wfp fn2-checkpoint-bytes) (natp c) (<= (+ (* 192 c) 32) (fn2-checkpoint-bytes-rows fn2-checkpoint-bytes)) (natp i) (<= i 8))))
  (or (>= (nfix i) 8)
   (and (= (fn2-checkpoint-publication-base-word i fn2-checkpoint-publication) (fn2-checkpoint-descriptor-identity-word c i fn2-checkpoint-bytes))
-       (fn2-checkpoint-summary-live-published-hash-p (+ 1 i) c fn2-checkpoint-publication fn2-checkpoint-bytes))))
+       (fn2-checkpoint-summary-live-published-hash-p (+ 1 (nfix i)) c fn2-checkpoint-publication fn2-checkpoint-bytes))))
 ; The actual writer machine type and requester relation materialize first.
 ; assembly-callbacks-c expands this after writer-events and rearm-events.
 (defmacro fn2-checkpoint-summary-authority-live-events ()
@@ -178,7 +178,7 @@
  (if (>= (nfix i) 32) fn2-checkpoint-summary-authority
   (let ((fn2-checkpoint-summary-authority (update-fn2-checkpoint-summary-authority-descriptori (+ 32 i)
     (fn2-checkpoint-bytes-value (+ (* 192 c) i) fn2-checkpoint-bytes) fn2-checkpoint-summary-authority)))
-   (fn2-checkpoint-summary-authority-live-descriptor (+ 1 i) c fn2-checkpoint-bytes fn2-checkpoint-summary-authority))))
+   (fn2-checkpoint-summary-authority-live-descriptor (+ 1 (nfix i)) c fn2-checkpoint-bytes fn2-checkpoint-summary-authority))))
 
 
 (defcost fn2-checkpoint-summary-authority-live-begin-op :steps *fn2-work-stage* :bytes 32 :descriptors 0 :child fn2-checkpoint-summary-authority-live-begin :answers t

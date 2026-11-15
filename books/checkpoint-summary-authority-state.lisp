@@ -27,7 +27,7 @@
  (or (>= (nfix i) 32)
   (and (= (fn2-checkpoint-summary-authority-descriptori (+ (* 32 r) i) fn2-checkpoint-summary-authority)
           (fn2-checkpoint-bytes-value (+ (* 192 c) i) fn2-checkpoint-bytes))
-       (fn2-checkpoint-summary-authority-descriptor-p r (+ 1 i) c fn2-checkpoint-summary-authority fn2-checkpoint-bytes))))
+       (fn2-checkpoint-summary-authority-descriptor-p r (+ 1 (nfix i)) c fn2-checkpoint-summary-authority fn2-checkpoint-bytes))))
 (defun fn2-checkpoint-summary-authority-row-current-p (r fn2-checkpoint-summary-authority fn2-checkpoints fn2-checkpoint-refs fn2-checkpoint-bytes)
  (declare (xargs :stobjs (fn2-checkpoint-summary-authority fn2-checkpoints fn2-checkpoint-refs fn2-checkpoint-bytes)
  :guard (and (fn2-checkpoint-summary-authority-wfp fn2-checkpoint-summary-authority) (fn2-checkpoints-wfp fn2-checkpoints)
