@@ -4,12 +4,6 @@
 (defstruct fn2-native-compress
  (transport (create-fn2-compress-transport)) seed input output)
 
-(defun fn2-native-compress-open (capacity input-quantum output-quantum)
- (make-fn2-native-compress
-  :seed (make-array capacity :element-type '(unsigned-byte 8) :initial-element 0)
-  :input (make-array input-quantum :element-type '(unsigned-byte 8) :initial-element 0)
-  :output (make-array output-quantum :element-type '(unsigned-byte 8) :initial-element 0)))
-
 (defun fn2-native-compress-handle (compression)
  (sb-sys:int-sap (fn2-compress-transport-handle (fn2-native-compress-transport compression))))
 
@@ -69,12 +63,10 @@
            (values observed 0)))))))
     (otherwise (error "fn2 compression: unselected physical action ~S" action))))))
 
-(defun fn2-native-compress-start (host slot profile)
- ;; Startup profile interpretation and live descriptor authorization are ACL2.
+(defun fn2-native-compress-start (host slot iq oq ratio burst capacity)
+ ;; Scalars come from startup settings; no profile traversal on this path.
  (let ((op (aref (fn2-nhost-ops host) slot)))
-  (multiple-value-bind (code iq oq ratio burst capacity) (fn2-host-compress-settings profile)
-   (unless (eq code :ok) (return-from fn2-native-compress-start (values code nil)))
-   (multiple-value-bind (code cap nonce address length)
+  (multiple-value-bind (code cap nonce address length)
        (fn2-host-compress-start-op slot (fn2-nop-gen op) (fn2-nhost-core host))
     (declare (ignore address))
     (unless (eq code :ok) (return-from fn2-native-compress-start (values code nil)))
@@ -90,7 +82,7 @@
             (make-array iq :element-type '(unsigned-byte 8) :initial-element 0)
             (fn2-native-compress-output compression)
             (make-array oq :element-type '(unsigned-byte 8) :initial-element 0))
-      (values :ok compression)))))))
+      (values :ok compression))))))
 
 (defun fn2-native-compress-upgrade-step (host slot compression)
  ;; Exactly one selected allocate/copy/free action. Handoff is logical and once.
@@ -124,3 +116,12 @@
       (declare (ignore kick))
       (setf (fn2-native-compress-transport compression) transport)
       (values observed 0)))))))
+
+(defun fn2-native-compress-settings (profile)
+ ;; Called only while opening the host, before any connection is admitted.
+ (multiple-value-bind (code iq oq ratio burst capacity) (fn2-host-compress-settings profile)
+  (when (eq code :ok)
+   (sb-alien:load-shared-object
+    (or (sb-ext:posix-getenv "FN2_DEFLATE_LIBRARY")
+        #+darwin "build/lib/libfn2-deflate.dylib" #-darwin "build/lib/libfn2-deflate.so")))
+  (values code iq oq ratio burst capacity)))
