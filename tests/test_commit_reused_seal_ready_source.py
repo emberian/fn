@@ -25,4 +25,8 @@ class ReusedSeal(unittest.TestCase):
   self.assertIn(['fn2-commit-seal-context','id','nil','fn2-core'],list(walk(witness)))
   self.assertIn(['eq','completed',':ok'],list(walk(witness)))
   self.assertIn(['eq','fresh',':ok'],list(walk(witness)))
+  self.assertIn(['not',['=','copied-word','old-word']],list(walk(witness)))
+  helper=definition('tests/commit-reused-seal-ready-unit.lisp','fn2-crsr-digest-source')
+  self.assertIn('fn2-digest-equal',str(helper))
+  self.assertIn('fn2-digest-set-word',str(helper))
 if __name__=='__main__':unittest.main()
