@@ -891,11 +891,13 @@
 (defun fn2-arms-account-floor (term cost)
   (declare (xargs :verify-guards nil))
   (if (zp cost) term `(max ,cost ,term)))
+; A subarm public quantity contract includes the work-empty step floor.
+; Carry that same bound through composition without opening its body.
 (defun fn2-arms-prefix-charges (charges bytes steps)
   (declare (xargs :verify-guards nil))
   (if (atom charges) nil
     (cons (list (+ bytes (car (car charges)))
-                (+ steps (cadr (car charges))) (caddr (car charges)))
+                (+ steps (max *fn2-work-empty* (cadr (car charges)))) (caddr (car charges)))
           (fn2-arms-prefix-charges (cdr charges) bytes steps))))
 (defun fn2-arms-prefix-report (call bytes steps env)
   (declare (xargs :verify-guards nil))

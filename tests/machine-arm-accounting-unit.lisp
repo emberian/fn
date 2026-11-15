@@ -55,4 +55,23 @@
  :arms ((:free (:idle))
         (:found (:do (code) (fn2-accounting-lookup)) (:goto put)))
  :observes ())
-(must-fail (defmachine-arms fn2-accounting-too-small :children))
+; The run-contract validator, rather than child emission, enforces profile
+; caps. Feed it the actual DSL-generated continuation contract.
+(make-event
+ (mv-let (err form) (fn2-arms-events 'fn2-accounting-too-small :wrappers (w state))
+  (let* ((conts (cadr (member-eq :continuations (cadr (cadddr (cadr form))))))
+         (entry (assoc-eq :found conts)))
+   (if (and (not err)
+            (equal (fn2-cost-values (fn2-arm-get :cost (cddr entry)) (w state)) '(12288 5 0))
+            (fn2-machine-arm-problem 'fn2-accounting-too-small entry nil nil (w state)))
+       '(value-triple :unchanged-cap-refused)
+     (er soft 'accounting-cap "Actual generated over-cap contract was not refused.")))))
+(make-event
+ (mv-let (err form) (fn2-arms-events 'fn2-accounting-probe :wrappers (w state))
+  (let* ((conts (cadr (member-eq :continuations (cadr (cadddr (cadr form))))))
+         (found (assoc-eq :found conts)) (end (assoc-eq :end conts)))
+   (if (and (not err)
+            (equal (fn2-cost-values (fn2-arm-get :cost (cddr found)) (w state)) '(12288 5 0))
+            (equal (fn2-cost-values (fn2-arm-get :cost (cddr end)) (w state)) '(8192 4 0)))
+       '(value-triple :nested-prefix-and-public-bound-slack)
+     (er soft 'accounting-static "Unexpected actual DSL accounting envelope.")))))

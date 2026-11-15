@@ -23,6 +23,7 @@
 (defun fn2-arms-exprs (xs env acc fuel) (declare (ignore env fuel)) (mv nil xs acc))
 (defun fn2-arms-wrap-writes (env body) (assert (null (getf env :written))) body)
 (defparameter *fn2-arms-octet-exports* nil)
+(defparameter *fn2-work-empty* 1)
 (with-open-file (in "books/machine-arms.lisp")
  (loop for form = (read in nil :eof) until (eq form :eof) do
   (when (and (eq (car form) 'defun)
@@ -66,6 +67,7 @@
   (assert (equal (multiple-value-list
    (eval `(let ((n 6000) (left 1) (table 'table-value) (pool 'pool-value)) ,form)))
    '(6021 8 1 t table-value pool-value)))))
+(assert (equal (fn2-arms-prefix-charges '((0 0 0)) 8192 3) '((8192 4 0))))
 ; Nonzero descriptor effects returned by a subarm remain exact while prefix
 ; byte/step charges accumulate. No descriptor capacity is fabricated.
 (assert (equal (multiple-value-list
