@@ -121,3 +121,19 @@
   (fn2-run-installed (fn2-core-run-installed fn2-core))
   (fn2-run-cache (fn2-core-run-cache fn2-core)))
   (code fn2-run-writers fn2-run-restarts fn2-fields fn2-pool fn2-fc fn2-fc-context fn2-b3 fn2-digests fn2-run-installed fn2-run-cache) (fn2-cns-tall-setup fn2-run-writers fn2-run-restarts fn2-fields fn2-pool fn2-fc fn2-fc-context fn2-b3 fn2-digests fn2-run-installed fn2-run-cache) (mv code fn2-core)))
+
+; Fixed 24-page fixture check, not a served global-state scan. Cache lookup
+; supplies each actual handle; pool APIs check generation, owner and full fill.
+(defun fn2-cns-tall-pages-valid (n fn2-run-cache fn2-pool)
+ (declare (xargs :stobjs (fn2-run-cache fn2-pool) :verify-guards nil :measure (nfix n)))
+ (if (zp n) t
+  (mv-let (hit slot gen) (fn2-run-cache-lookup n 1 fn2-run-cache)
+   (and (eq hit :ok)
+        (eq (fn2-pool-readable-code slot gen 9 0 1 fn2-pool) :ok)
+        (mv-let (code byte) (fn2-pool-read slot gen (- *fn2-run-page-size* 1) 9 0 1 fn2-pool)
+         (declare (ignore byte)) (eq code :ok))
+        (fn2-cns-tall-pages-valid (- n 1) fn2-run-cache fn2-pool)))))
+(defun fn2-cns-tall-pages-valid-core (fn2-core)
+ (declare (xargs :stobjs fn2-core :verify-guards nil))
+ (stobj-let ((fn2-run-cache (fn2-core-run-cache fn2-core)) (fn2-pool (fn2-core-pool fn2-core)))
+  (good) (fn2-cns-tall-pages-valid 24 fn2-run-cache fn2-pool) good))
