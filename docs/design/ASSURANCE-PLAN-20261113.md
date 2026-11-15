@@ -11,7 +11,10 @@ Upstream `ba773befc` changes the shared declaration foundation to bind claim
 identity and retain refuted claims as unfinished. The six-book union of the
 [registry](receipts/refuted-obligations-four-record.json) and
 [correspondence](receipts/refuted-correspondence-four-record.json) records matches
-that integration's current sources and closure keys. Earlier records below
+that integration's current sources and closure keys. The current-layout
+[member/completion record](receipts/member-refutation-current-thirty-seven-record.json)
+adds its 37-book closure; their union is 39 distinct current qualified books.
+Earlier records below
 remain evidence for their named frozen sources; dependent closures changed by
 this declaration update require qualification at their new keys. The active
 application and reader campaigns keep their explicit frozen sources rather
@@ -43,8 +46,11 @@ hint. Runtime bodies, guards and the original shape statement are unchanged.
 The complete BIND author pass took 46.13 seconds under the original per-event
 limits, leaving proof-cost work open. Six source/mutation controls pass.
 GROUPS, sealer and machines-c-sealer subsequently passed their whole-book
-author checks, separately from this record. READ now needs its original
-identity shape proof repaired; application composition follows. Actual FETCH cancellation remains
+author checks, separately from this record. READ also passes its complete author check at candidate `04aadad8f`: the existing
+single-walk shape constructor preserves the public statement and runtime,
+with four independent source/mutation controls passing. Its 60.30-second
+whole-book pass leaves proof-cost work open. These author passes are outside
+the BIND record; application composition follows. Actual FETCH cancellation remains
 unexecuted. Its fixture binds the failed Send to the captured connection,
 request, operation generation and range and rejects stale generations before
 acknowledging the queue head.
@@ -304,9 +310,9 @@ output recognizers/invariants. Runtime definitions and guards are unchanged.
 The original stronger off-guard FIELDS-TYPE formula is now refuted by an actual
 logical counterexample. Its complete original antecedent holds, while a readonly
 checkpoint value of -1 makes the actual packer's output fail FIELDSP. The guarded
-replacement retains the missing readonly recognizer. Production formula/registry
-bytes remain unchanged: the registry has no refuted state, and this claim must
-not be treated as proved. Exact 34-book record `certify-20261115T124759Z-1337739`
+replacement retains the missing readonly recognizer. The production formula remains unchanged. That historical registry lacked a
+refuted state; the explicit registry connection below now preserves the failure
+without treating the original claim as proved. Exact 34-book record `certify-20261115T124759Z-1337739`
 reuses 32 production books and certifies the connected positive/negative test
 leaves. Root matched all 34 source hashes and keys against the qualified entries.
 Receipt: [readonly counterexample](receipts/member-readonly-counterexample34-record.json).
@@ -319,7 +325,7 @@ live `$OWED` statement; raw author formula or a diagnostic predicate name cannot
 bind it. Refuted originals remain in the unfinished export and completion gate,
 with zero admitted proof credit. The replacement locator is explicitly unverified
 as a semantic link; existence of another theorem does not repair the original.
-The new member bridge uses the admitted readonly-removal witness to propose that
+The new member bridge uses the admitted readonly-removal witness to prove that
 exact negated instance and points to the distinct FIELDS-TYPE-UNDER-GUARD theorem.
 Existing production member and positive/negative witness bytes are unchanged.
 Each bound declaration now also emits an immutable logical claim-identity
@@ -334,12 +340,24 @@ wrong/open counterexamples and redundant author/identity replay. Actual report
 readback verifies the target row is REFUTED, unfinished, replacement link
 unverified, with zero proved claims. Four generic structural source tests pass; member-specific controls stay with the separate member packet.
 [Four-book receipt](receipts/refuted-obligations-four-record.json) records exact
-source, cert/FASL/port hashes and toolchain. The square-evidence regression has
-31 local books with only four exact qualified entries; the actual member bridge
-has 34 with only five. These receipts do not qualify those larger closures; the separate member
-source campaign is in progress and its registry bridge remains unadmitted. No
-application world was started for these registry records; the previous member counterexample receipt remains valid for
-its original frozen closure.
+source, cert/FASL/port hashes and toolchain. The larger core square-evidence
+regression remains unqualified by this record.
+
+The actual member bridge subsequently passed its original source events and
+[37-book frozen record](receipts/member-refutation-thirty-seven-record.json),
+including completion assertions and actual export readback. Its named theorem
+negates a closed instance of the original `$OWED` statement. The completion
+consumer reports both `:unproved` and `:refuted-original`, with zero proof credit.
+Root checked all 37 certificate/FASL/port payload hashes. This record uses the
+frozen layout source at `64ee0f859`; upstream's named decode constant changes
+14 dependent keys. The [current-layout 37-book record](receipts/member-refutation-current-thirty-seven-record.json)
+now passes: 23 exact qualified keys reused and 14 layout-dependent books newly
+certified, without replaying unchanged author proofs. Root independently matched
+all 37 current source hashes and closure keys, certificate/FASL/port hashes,
+and toolchain metadata. Actual member-row export readback passes at these keys.
+This qualifies the member, completion and selected-row export closure; it does
+not qualify the full application or the larger core regression.
+
 The existing small correspondence consumer subsequently passed all 49 actual
 forms (0.27 seconds, 32,957 steps), then exact four-book record
 `certify-20261115T180639Z-1652106`: two qualified declaration/owed parents reused,
@@ -348,8 +366,8 @@ square-evidence and its unchanged correspondence fixture newly certified.
 those sources and payloads. Together the two records cover six distinct local
 books, including the original-conclusion mutation/domain controls. They do not
 qualify the larger core-lowering regression or the member registry bridge.
-Generic registry integration excludes the new member bridge and its global
-export include until that actual instance theorem is admitted.
+The member packet connects the admitted bridge to the global export include
+and registers its actual completion fixture as a certification root. The current-layout record above qualifies that connection.
 
 
 
