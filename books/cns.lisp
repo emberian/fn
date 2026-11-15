@@ -1276,7 +1276,6 @@
    (:set (outcome *fn2-cns-outcome-refused*))
    (:goto answer))
   (cancel :on-refusal ((:stop :machine-phase))
-   (:do (read-release) (fn2-cns-range-release id row-generation row-xrow) :accept (:ok))
    (:cond
     ((fn2-cns-source-boundp id row-generation row-ctl row-ctl-gen row-request)
      (:do () (fn2-cns-stream-source-abort id row-generation row-ctl row-ctl-gen row-request))
