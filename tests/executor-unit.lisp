@@ -2,6 +2,7 @@
 ; this book are test-only snapshots, never part of fn2-turn.
 (in-package "ACL2")
 (include-book "reference-unit")
+(include-book "executor-residual-controls")
 
 (defun fn2-executor-test-snapshot-calls (children)
   (if (atom children) nil
@@ -264,23 +265,7 @@
   (let ((word (list (list *fn2-echo-kind* *fn2-echo-state-command* 5000 8 1))))
     (and (not (fn2-arm-word-certified-p word))
          (not (<= (fn2-arm-word-charge word) (fn2-arm-word-bound word))))))
-(defun fn2-arm-residual-run (budget fn2-core)
-  (declare (xargs :stobjs fn2-core :verify-guards nil))
-  (let ((fn2-core (fn2-core-init *fn2-profile-tiny* fn2-core)))
-    (mv-let (bytes steps descriptors runnable fn2-core) (fn2-machine-run 0 budget fn2-core)
-      (declare (ignore bytes steps runnable))
-      (mv descriptors fn2-core))))
-(defun fn2-arm-residual-positive ()
-  (declare (xargs :verify-guards nil))
-  (and (with-local-stobj fn2-core
-         (mv-let (d fn2-core) (fn2-arm-residual-run 1 fn2-core) (<= d 1)))
-       (with-local-stobj fn2-core
-         (mv-let (d fn2-core) (fn2-arm-residual-run 0 fn2-core) (<= d 0)))))
-(defun fn2-arm-residual-negative ()
-  ; The bound is attained: an Accept spends the one descriptor it is handed.
-  (declare (xargs :verify-guards nil))
-  (with-local-stobj fn2-core
-    (mv-let (d fn2-core) (fn2-arm-residual-run 1 fn2-core) (not (<= d 0)))))
+(fn2-arm-residual-teeth-events)
 (fn2-assert-owed-teeth fn2-arm-cost-composition fn2-arm-residual-budget)
 (defun fn2-arm-row-names (rows)
   (declare (xargs :verify-guards nil))

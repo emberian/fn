@@ -23,6 +23,34 @@ was built, quest by quest, is this file's git history up to 27978259c.
 Unit acceptance runs on the laptop, about 90 s, 412 tests: `build/h-venv/bin/python -m unittest`
 over the module list in the H continuation. The fn1 node runs on hbox only.
 
+## Served parser EOF controls
+
+`tests/parser-boundary-unit.lisp` drives the real `fn2-turn` executor through
+`fn2-conn-wire-run-in`. Its receive schedule ends in an explicit `:eof`; exhausting
+the byte list alone still means an open, idle peer. The adapter uses
+`fn2-sim-terminal-values`, the normalization shared with `fn2-host-result`, to post
+Receive EOF as a zero-count successful terminal. Native `host/adapter.lisp` reports
+physical EOF when socket receive returns zero. External octets never enter the
+Lisp reader in these fixtures.
+
+The independent oracle specifies the entire reply wire, closed flag, quiet stop,
+and principal-ledger conservation. It covers idle and incomplete-command EOF,
+CR/LF splits, a partial UTF-8 sequence, bare LF and NUL refusals, ignored commands
+after QUIT, and EOF midway through an article dot terminator. The posting case
+contains a dot-stuffed body line and requires no article-acceptance reply.
+`tests/parser-boundary-controls.lsp` disables EOF delivery and then changes the
+served closing continuation to command processing; both mutations must be invoked
+and rejected by the unchanged oracle, with the original functions restored.
+After certifying the fixture at the selected closure, run the mutations from the
+repository root with `timeout 240 tools/acl2 < tests/parser-boundary-controls.lsp`.
+Success requires `PARSER-BOUNDARY-CONTROLS PASS` and nonzero mutation counts.
+
+These are finite executor fixtures, not a theorem of arbitrary segmentation or
+an OS socket test. They do not prove durable-store nonmutation from the absence of
+an acceptance reply, complete dot-unstuffing correctness, or per-step allocation
+bounds. Existing nat-only receive schedules retain their original pending-input
+semantics; a forgotten EOF marker cannot silently strengthen their assertions.
+
 ## Targets
 
 `run_surface --target T --family F [--box laptop|hbox] --out DIR` (or `FN2_SURFACE_TARGET`).

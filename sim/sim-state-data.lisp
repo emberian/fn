@@ -1,6 +1,7 @@
 ; Simulator state and reproducible fault schedule. All row storage and the
 ; diagnostic ring are preallocated; only init may resize arrays or save metadata.
 (in-package "ACL2")
+(include-book "faults")
 (include-book "../books/profile")
 (include-book "../books/vocab")
 (include-book "network")
@@ -21,15 +22,18 @@
 ; 6 read-io, 7 bitrot, 8 misread, 9 miswrite, 10 lying-flush, 11 tear,
 ; 12 no-space, 13 dead, 14 fail-slow, 15 crash, 16 monotonic-jump,
 ; 17 realtime-back, 18 duplicate, 19 stale, 20 forged, 21 overcount,
-; 22 malformed, 23 flush-io, 24 short-write, 25 release-order.
+; 22 malformed, 23 flush-io, 24 short-write, 25 release-order, 27 write-io.
+; The none sentinel26 is excluded explicitly from fault selection/counting.
 ; Explicit native cut programs may pause after physical I/O and before its
-; terminal post. The ordinary scheduler refuses this phase; only the cut
-; program's saved-result continuation can resume it. Existing phases 0..3
+; terminal post. The scheduler resumes this phase only through the retained raw-result
+; continuation, without executing physical I/O again. Existing phases 0..3
 ; (idle, flight, release-pending, early-release) retain their meanings.
 (defconst *fn2-sim-native-returned* 4)
 
 (defcolumns fn2-sim
-  ((active :u8) (gen :u60) (kind :u8) (due :u60) (range-slot :u32) (range-gen :u60) (range-off :u32) (range-len :u32) (owner-kind :u8) (owner-slot :u32) (owner-gen :u60) (cap-index :u32) (cap-nonce :u32) (storage-offset :u60) (fua :bool) (may-release :bool) (cancel-slot :u32) (cancel-gen :u60) (last-gen :u60) (cancelled :bool) (terminal-outcome :u8) (terminal-reason :u8) (terminal-count :u32) (terminal-aux0 :u32) (terminal-aux1 :u32))
+  ((active :u8) (gen :u60) (kind :u8) (due :u60) (range-slot :u32) (range-gen :u60) (range-off :u32) (range-len :u32) (owner-kind :u8) (owner-slot :u32) (owner-gen :u60) (cap-index :u32) (cap-nonce :u32) (storage-offset :u60) (fua :bool) (may-release :bool) (cancel-slot :u32) (cancel-gen :u60) (last-gen :u60) (cancelled :bool) (terminal-outcome :u8) (terminal-reason :u8) (terminal-count :u32) (terminal-aux0 :u32) (terminal-aux1 :u32)
+   (return-code (:enum fn2-sim-return-code (:ok :io :bounds :no-space :would-block :closed :reset :stale :busy :admission-refused :handshake :invalid :cancelled :eof :exhausted :state :owner)))
+   (return-count :u32) (return-aux :u32) (return-word :u32) (return-time :u60) (return-fault :u8))
   :init-name fn2-sim-columns-init
   :extra-fields
   ((fn2-sim-net :type fn2-sim-network

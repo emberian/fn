@@ -131,9 +131,21 @@ cd meta && lake build && lake env lean AxiomCensus.lean
 
 ### Operating a Live Node (`./fn`)
 
-After certifying `books/node-profile.lisp`:
+After certifying `books/node-profile.lisp` and `books/merkle.lisp`, configure the
+five allocated positive u60 names below. Use the same values for initialization
+and every restart. Independent histories need separately allocated origins;
+these names do not establish uniqueness or writer authority by themselves. See
+[durable origin](docs/design/DURABLE-ORIGIN.md) for the identity model and current
+qualification gaps.
 
 ```sh
+# Set these to your allocated names; no shared operational defaults exist.
+export FN2_ORIGIN_LINEAGE="${ALLOCATED_LINEAGE:?set allocated lineage}"
+export FN2_ORIGIN_DOMAIN="${ALLOCATED_DOMAIN:?set allocated commit domain}"
+export FN2_ORIGIN_INCARNATION="${ALLOCATED_INCARNATION:?set allocated incarnation}"
+export FN2_HISTORY_ID="${ALLOCATED_HISTORY:?set allocated physical history}"
+export FN2_HISTORY_INCARNATION="${ALLOCATED_HISTORY_INCARNATION:?set physical incarnation}"
+
 # 1. Initialize a preallocated store image (O_EXCL; never truncates an existing file)
 ./fn init build/node.img --size-mb 32 --group ops.alerts --group ops.audit
 
@@ -162,6 +174,15 @@ After certifying `books/node-profile.lisp`:
 ./fn post ops.alerts --subject "Notice" --from "op@fn2.invalid" --body "line 1" --port 1119
 ./fn article ops.alerts 1 --port 1119
 ```
+
+Recovery defaults to the `broad` storage fault model with honest persistence
+fences. An unexplained dirty tail can therefore leave recovery uncertain and
+prevent startup. For a deployment whose fault model additionally excludes later
+corruption of previously required data, select `--storage-fault-model crash-only`
+on `init` and every `serve`, or set `FN2_STORAGE_FAULT_MODEL=crash-only`.
+The selection is a startup contract, not an on-disk setting, and supplies no
+independent witness. Startup reports `STORAGE-FAULT-MODEL broad` or
+`STORAGE-FAULT-MODEL crash-only` after ACL2 validates the selection.
 
 The `principal`, `grant`, `stream`, `groups`, `post`, and `article` client commands support `--json` (plus `$FN_CONTROL_SOCK`, `$FN_PORT`, `$FN_HOST` environment defaults) and preserve outcome classes at the process exit boundary:
 - `0` — `accepted`

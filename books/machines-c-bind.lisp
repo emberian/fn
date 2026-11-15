@@ -753,12 +753,12 @@
 (defcost fn2-successor-fill-octets :answers (:bounds :kind :ok :owner :state)
  :tables (fn2-core-succ-slots fn2-core-fields)
  :doc "Give a staged slot's late octet argument by reference.")
-(defcost fn2-successor-resolve :answers (:bad-magic :bounds :done :end :entry :format :invariant :length :lost :miss :more :noncanonical
+(defcost fn2-successor-resolve :child fn2-successor-resolve-child :answers (:bad-magic :bounds :done :end :entry :format :invariant :length :lost :miss :more :noncanonical
   :ok :owner :part :payload :schema :stale :state :truncated :unknown-tag :wide)
  :bytes 4096
  :tables (fn2-core-succ-txns fn2-core-succ-slots fn2-core-run-cursors fn2-core-run-paths fn2-core-fields)
  :doc "One bounded step reading a write slot's key in the installed runs: one run selection or one lookup step of at most 4,096 pool reads.")
-(defcost fn2-successor-stage :answers (:bounds :capacity :changed :done :duplicate :event :evidence :full :inconsistent :invariant
+(defcost fn2-successor-stage :child fn2-successor-stage-child :answers (:bounds :capacity :changed :done :duplicate :event :evidence :full :inconsistent :invariant
   :length :more :noncanonical :ok :owner :part :payload :range :refused :schema :stale :state
   :truncated :unknown-tag :wide)
  :bytes 4096
@@ -766,12 +766,12 @@
  :doc "Stage every write slot against the tip (one located entry per overlay of its schema), apply its fold step, and hold room (at most one arena per schema written).")
 (defcost fn2-successor-out :answers (:bounds :kind :ok :state)
  :doc "Read one field of a staged write slot's row.")
-(defcost fn2-successor-bind :answers (:bounds :done :duplicate :full :invariant :length :more :noncanonical :ok :overlap :owner :part
+(defcost fn2-successor-bind :child fn2-successor-bind-child :answers (:bounds :done :duplicate :full :invariant :length :more :noncanonical :ok :overlap :owner :part
   :payload :schema :spare :stale :state :truncated :unknown-tag :value :wide)
  :bytes 8192
  :tables (fn2-core-succ-txns fn2-core-id-engine fn2-core-overlays fn2-core-overlay-index fn2-core-fields fn2-core-pool)
  :doc "Insert every staged row into its batch's private overlays (octet arguments copied, at most 4 KiB per slot).")
-(defcost fn2-successor-release :answers (:bounds :ok :state)
+(defcost fn2-successor-release :child fn2-successor-release-child :answers (:bounds :ok :state)
  :tables (fn2-core-succ-txns fn2-core-succ-slots fn2-core-id-decides)
  :doc "Free a transaction's write slots and its decision at its outcome.")
 (defcost fn2-successor-applied :answers (:bounds :kind :ok :state) :child fn2-succ-applied

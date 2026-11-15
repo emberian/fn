@@ -4,6 +4,8 @@
 This source diagnostic is not a proof checker. Dynamic footprints and generated
 instance names are reported as unresolved, never counted as validated. The world
 log must come from the emitted query loaded after the intended certified books.
+Only direct antecedent conjuncts supply mandatory subset requirements; constraints
+inside disjunctions, negations, conditionals or other unsupported forms do not.
 """
 import argparse
 import json
@@ -94,6 +96,16 @@ def world(log):
     return result
 
 
+def conjuncts(term):
+    """Flatten AND only; do not descend through other logical contexts."""
+    if (isinstance(term, lr.Lst) and term.items
+            and lr.flat(term.items[0]).lower() == 'and'):
+        for argument in term.items[1:]:
+            yield from conjuncts(argument)
+    else:
+        yield term
+
+
 def check(rows, theorems):
     results = []
     for row in rows:
@@ -103,7 +115,8 @@ def check(rows, theorems):
         requirements = []
         if (row['concrete'] and actual is not None and isinstance(theorem, lr.Lst)
                 and len(theorem.items) == 3 and lr.flat(theorem.items[0]).lower() == 'implies'):
-            for m in lr.match('(subsetp-equal ?required ?parameter)', [theorem.items[1]]):
+            for m in lr.match('(subsetp-equal ?required ?parameter)',
+                              conjuncts(theorem.items[1]), deep=False):
                 required = literal(m.captures['required'])
                 if lr.flat(m.captures['parameter']).lower() == row['parameter'] and required is not None:
                     requirements.append(required)

@@ -615,11 +615,36 @@
           (er soft 'defresource "Malformed or duplicate resource declaration ~x0." ',kind)
         (value `(table fn2-resources ',',kind ',plist))))))
 
-(defmacro defservice (name &key ready step bound doc)
+(defun fn2-service-bindings-p (bindings)
+  (declare (xargs :guard t))
+  (if (atom bindings) (null bindings)
+    (and (true-listp (car bindings)) (equal (len (car bindings)) 2)
+         (symbolp (caar bindings)) (symbolp (cadar bindings))
+         (fn2-service-bindings-p (cdr bindings)))))
+(defun fn2-service-slot-used-p (slot rows)
+  (declare (xargs :verify-guards nil))
+  (and (consp rows)
+       (or (equal slot (fn2-resource-get :slot (cdar rows)))
+           (fn2-service-slot-used-p slot (cdr rows)))))
+(defmacro defservice (name &key slot children ready step reference bound doc)
+  ;; Each declaration implements one of the calendar's protected classes.
+  ;; READY takes CHILDREN; STEP returns (mv result CHILDREN...). The result
+  ;; is diagnostic; the executor charges the declared bounded work. These
+  ;; child services emit no descriptors; the executor arms the host wake.
   `(make-event
-    (if (not (and (keywordp ',name) (symbolp ',ready) (symbolp ',step) (stringp ,doc)))
-        (er soft 'defservice "Malformed service declaration ~x0." ',name)
-      (value `(table fn2-services ',',name '(:ready ,',ready :step ,',step :bound ,',bound :doc ,,doc))))))
+    (if (not (and (keywordp ',name) (natp ',slot) (< ',slot 4)
+                  (consp ',children) (fn2-service-bindings-p ',children)
+                  (no-duplicatesp-eq (strip-cars ',children))
+                  (symbolp ',ready) ',ready (symbolp ',step) ',step
+                  (symbolp ',reference) ',reference (stringp ,doc)
+                  (posp (fn2-resource-get :steps ',bound))
+                  (equal (fn2-resource-get :descriptors ',bound) 0)
+                  (not (assoc-eq ',name (table-alist 'fn2-services (w state))))
+                  (not (fn2-service-slot-used-p ',slot (table-alist 'fn2-services (w state))))))
+        (er soft 'defservice "Malformed or duplicate service declaration ~x0." ',name)
+      (value `(table fn2-services ',',name
+                '(:slot ,',slot :children ,',children :ready ,',ready :step ,',step
+                  :reference ,',reference :bound ,',bound :doc ,,doc))))))
 
 (defmacro defaction (name &key event issue reserve cancellable doc)
   `(make-event
@@ -644,9 +669,12 @@
   :why "A transaction's private successor overlay workspace, held from :prepare to :releasing.")
 
 (defservice :timer
+  :slot 1
+  :children ((fn2-sched fn2-core-sched) (fn2-control fn2-core-control))
+  :reference fn2-ref-timer-service-step
   :ready fn2-timer-service-ready-p
   :step fn2-timer-service-step
-  :bound (:steps 16 :descriptors 1)
+  :bound (:steps 16 :descriptors 0)
   :doc "Calendar timer service with fn2-control-idle-deadline as its wake source.")
 
 (defaction :connect

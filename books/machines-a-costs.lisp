@@ -19,12 +19,21 @@
 ; Issues: one descriptor and one transient op reservation (D0's :operation).
 (defcost fn2-issue-accept :child fn2-issue-accept-children :descriptors 1 :answers t :tables (fn2-core-ops) :effects ((:acquire (:operation)))
   :doc "Accept: one outbox descriptor.")
+(defcost fn2-issue-cancel :child fn2-issue-cancel-children :descriptors 1 :answers t
+ :tables (fn2-core-ops) :effects ((:acquire (:operation)))
+ :doc "Cancel the exact saved operation reference; its terminal result releases any loan.")
 (defcost fn2-issue-close :child fn2-issue-close-children :descriptors 1 :answers t :tables (fn2-core-ops) :effects ((:acquire (:operation)))
   :doc "Close: one outbox descriptor.")
 (defcost fn2-issue-receive :child fn2-issue-receive-children :descriptors 1 :answers t :tables (fn2-core-ops fn2-core-pool) :effects ((:acquire (:operation)))
   :doc "Receive into the row's RX range.")
 (defcost fn2-issue-send :child fn2-issue-send-children :descriptors 1 :answers t :tables (fn2-core-ops fn2-core-pool) :effects ((:acquire (:operation)))
   :doc "Send by loan from the row's range.")
+(defcost fn2-issue-tls-start :child fn2-issue-tls-start-children :descriptors 1 :answers t
+ :tables (fn2-core-ops fn2-core-pool) :effects ((:acquire (:operation)))
+ :doc "Begin TLS with a loan of the retained ciphertext suffix; terminal harvest releases it.")
+(defcost fn2-issue-compress-start :child fn2-issue-compress-start-children :descriptors 1 :answers t
+ :tables (fn2-core-ops fn2-core-pool) :effects ((:acquire (:operation)))
+ :doc "Activate compression with a loan of the retained compressed suffix; terminal harvest releases it.")
 (defcost fn2-issue-write :child fn2-issue-write-children :descriptors 1 :answers t :tables (fn2-core-ops fn2-core-pool) :effects ((:acquire (:operation)))
   :doc "Write from the scribe's window.")
 (defcost fn2-issue-fence :child fn2-issue-fence-children :descriptors 1 :answers t :tables (fn2-core-ops) :effects ((:acquire (:operation)))
@@ -52,10 +61,6 @@
   :doc "Read into the scribe's window.")
 
 ; Generic row helpers: they write the acting row's wait links and status.
-(defcost fn2-machine-issue-result :steps *fn2-work-mailbox*
-  :own-writes (pending wait-reason stopped ready-prev ready-next)
-  :tables (fn2-core-machines fn2-core-machine-tables)
-  :doc "Record an issue's outcome: pending, park on exhaustion, or stop.")
 (defcost fn2-machine-park :child fn2-machines-park :own-writes (wait-reason ready-prev ready-next)
   :tables (fn2-core-machines fn2-core-machine-tables) :doc "Park on the operation-credit FIFO.")
 (defcost fn2-machine-park-admission :child fn2-machines-park-admission :own-writes (wait-reason ready-prev ready-next)
@@ -108,3 +113,8 @@
   :doc "Accept a range handed to this row.")
 (defcost fn2-core-drop-prefix :answers t :child fn2-pool-drop-prefix :tables (fn2-core-pool) :doc "Drop a consumed prefix: bounded in-slot compaction continuation.")
 (defcost fn2-core-truncate :answers t :child fn2-pool-truncate :tables (fn2-core-pool) :doc "Keep a held range's first N filled bytes (N 0 is a reset).")
+
+(defthm fn2-issue-cancel-children-keeps-pool
+ (equal (mv-nth 3 (fn2-issue-cancel-children target-slot target-gen okind oslot ogen principal fn2-pool fn2-ops fn2-control))
+        fn2-pool)
+ :hints (("Goal" :in-theory (enable fn2-issue-cancel-children fn2-issue-children fn2-core-lease))))

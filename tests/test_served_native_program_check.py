@@ -32,9 +32,137 @@ class ServedNativeProgramTests(unittest.TestCase):
     def test_actual_graph(self):
         report = checker.check(self.root)
         self.assertTrue(report['audit_ok'], report)
-        self.assertEqual(report['cuts'], 9)
+        self.assertEqual(report['cuts'], 15)
         self.assertEqual(report['cut_mapping_status'], 'incomplete')
         self.assertEqual(report['host_refinement'], 'not_checked')
+
+    def test_native_digest_word_offset_cannot_change(self):
+        self.change('host/b3-native.lisp', '(sb-sys:sap-ref-32 sap 28) dg)',
+                    '(sb-sys:sap-ref-32 sap 24) dg)')
+        self.assertTrue(any('native ABI/effect wiring changed: fn2-b3-native-store' in f
+                            for f in checker.check(self.root)['findings']))
+
+    def test_native_captured_word_cannot_overwrite_previous_word(self):
+        self.change('host/b3-native.lisp',
+                    '(setf (sb-sys:sap-ref-32 sap 4) (fn2-digests-w1 src dg))',
+                    '(setf (sb-sys:sap-ref-32 sap 0) (fn2-digests-w1 src dg))')
+        self.assertTrue(any('native ABI/effect wiring changed: fn2-b3-native-load' in f
+                            for f in checker.check(self.root)['findings']))
+
+    def test_native_digest_store_cannot_add_an_unmodeled_write(self):
+        self.change('host/b3-native.lisp',
+                    '(declare (type sb-sys:system-area-pointer sap))\n (fn2-digest-store-words',
+                    '(declare (type sb-sys:system-area-pointer sap))\n'
+                    ' (fn2-digests-set-w0 0 99 dg)\n (fn2-digest-store-words')
+        self.assertFalse(checker.check(self.root)['audit_ok'])
+
+    def test_native_node_cannot_swap_captured_inputs(self):
+        self.change('host/b3-native.lisp',
+                    '(fn2-b3-native-load left (sb-alien:alien-sap l) dg)',
+                    '(fn2-b3-native-load right (sb-alien:alien-sap l) dg)')
+        self.assertTrue(any('native ABI/effect wiring changed: fn2-b3-native-node' in f
+                            for f in checker.check(self.root)['findings']))
+
+    def test_native_node_cannot_bypass_shared_store(self):
+        self.change('host/b3-native.lisp',
+                    '(fn2-b3-%node (sb-alien:alien-sap l) (sb-alien:alien-sap r) (sb-alien:alien-sap out))\n'
+                    '   (fn2-b3-native-store dst (sb-alien:alien-sap out) dg)',
+                    '(fn2-b3-%node (sb-alien:alien-sap l) (sb-alien:alien-sap r) (sb-alien:alien-sap out))\n'
+                    '   (fn2-digests-set-w0 dst 0 dg)')
+        self.assertFalse(checker.check(self.root)['audit_ok'])
+
+    def test_handshake_budget_must_precede_transport_work(self):
+        self.change('host/tls.lisp',
+                    '(fn2-tls-transport-next (fn2-tls-%input-room handle)',
+                    '(unbudgeted-next (fn2-tls-%input-room handle)')
+        self.assertFalse(checker.check(self.root)['audit_ok'])
+
+    def test_tls_cancellation_cannot_restore_plaintext_dispatch(self):
+        self.change('host/adapter.lisp', '(fn2-tls-transport-selected-p (fn2-nop-cap op)',
+                    '(live-handle-only (fn2-nop-cap op)')
+        self.assertFalse(checker.check(self.root)['audit_ok'])
+
+    def test_tls_staging_copy_must_advance_exact_count(self):
+        self.change('host/tls.lisp', ':start1 offset :end1 (+ offset count)',
+                    ':start1 offset :end1 (+ offset (length seed))')
+        self.assertFalse(checker.check(self.root)['audit_ok'])
+
+    def test_tls_record_must_authorize_live_loan(self):
+        self.change('host/tls.lisp', '(fn2-host-tls-record-next slot',
+                    '(unvalidated-record-select slot')
+        self.assertFalse(checker.check(self.root)['audit_ok'])
+
+    def test_tls_record_cannot_use_native_mirror_bounds(self):
+        self.change('host/tls.lisp', '(sb-sys:sap+ (sb-sys:vector-sap bytes) address) count)',
+                    '(fn2-n-sap host (fn2-nop-address op)) (fn2-nop-len op))')
+        self.assertFalse(checker.check(self.root)['audit_ok'])
+
+    def test_tls_failure_preserves_observed_payload(self):
+        self.change('host/adapter.lisp',
+                    '(fn2-n-complete host slot :failed count 0 nil (fn2-n-octets host address count))',
+                    '(fn2-n-complete host slot :failed count)')
+        self.assertFalse(checker.check(self.root)['audit_ok'])
+
+    def test_tls_child_requires_live_core_and_upper_pending(self):
+        self.change('host/tls.lisp', '(fn2-host-tls-child-next slot',
+                    '(unvalidated-child-select slot')
+        self.assertFalse(checker.check(self.root)['audit_ok'])
+
+    def test_tls_child_uses_authorized_private_offset(self):
+        self.change('host/tls.lisp', 'action bytes offset offset count)',
+                    'action bytes 0 offset count)')
+        self.assertFalse(checker.check(self.root)['audit_ok'])
+
+    def test_tls_record_must_observe_raw_count(self):
+        self.change('host/tls.lisp', 'serial raw moved errno transport record)',
+                    'serial raw 0 errno transport record)')
+        self.assertFalse(checker.check(self.root)['audit_ok'])
+
+    def test_tls_short_write_must_retain_offset(self):
+        self.change('host/tls.lisp',
+                    '(multiple-value-bind (raw errno)\n        (fn2-native-tls-perform tls action offset count',
+                    '(multiple-value-bind (raw errno)\n        (fn2-native-tls-perform tls action 0 count')
+        self.assertFalse(checker.check(self.root)['audit_ok'])
+
+    def test_tls_receive_must_observe_bio_capacity(self):
+        self.change('host/tls.lisp', '(fn2-native-recv fd (sb-sys:vector-sap input) count)',
+                    '(fn2-native-recv fd (sb-sys:vector-sap input) (length input))')
+        self.assertFalse(checker.check(self.root)['audit_ok'])
+
+    def test_tls_completion_requires_flushed_output(self):
+        self.change('books/tls-record-policy.lisp',
+                    '((< oo ol) (mv :act 5 oo (min quantum (- ol oo))))',
+                    '(nil (mv :act 5 oo (min quantum (- ol oo))))')
+        self.assertFalse(checker.check(self.root)['audit_ok'])
+
+    def test_tls_observation_preserves_epoch_and_raw_return(self):
+        self.change('host/tls.lisp',
+                    '(fn2-tls-transport-observe cap-index nonce slot generation serial raw 0 errno ledger)',
+                    '(fn2-tls-transport-observe cap-index nonce slot generation serial 0 0 errno ledger)')
+        self.assertFalse(checker.check(self.root)['audit_ok'])
+
+    def test_tls_handoff_preserves_pending_input(self):
+        self.change('host/adapter.lisp',
+                    '(setf (fn2-native-tls-transport tls) ledger)',
+                    '(setf (fn2-native-tls-transport tls) (create-fn2-tls-transport))')
+        self.assertFalse(checker.check(self.root)['audit_ok'])
+
+    def test_tls_free_cannot_bypass_logical_retirement(self):
+        self.change('host/tls.lisp',
+                    '(fn2-tls-transport-retire cap-index nonce (fn2-native-tls-transport tls))',
+                    '(values :closing (fn2-native-tls-transport tls))')
+        self.assertFalse(checker.check(self.root)['audit_ok'])
+
+    def test_tls_pointer_must_come_from_ledger(self):
+        self.change('host/tls.lisp',
+                    '(fn2-tls-transport-handle (fn2-native-tls-transport tls))',
+                    '(private-handle-copy tls)')
+        self.assertFalse(checker.check(self.root)['audit_ok'])
+
+    def test_tls_allocation_identity_cannot_be_fabricated(self):
+        self.change('host/tls.lisp', '(values (sb-sys:sap-int allocated) 0)',
+                    '(values 4096 0)')
+        self.assertFalse(checker.check(self.root)['audit_ok'])
 
     def test_new_cut_requires_coordinate(self):
         self.change('host/adapter.lisp', '(fn2-n-boundary host "take")',

@@ -31,7 +31,8 @@ No count of books, witnesses, or generated candidates substitutes for this chain
    Follow-up: lane commit `319620bed` preserves an executed counterexample to
    the current turn-invariant statement, with all its antecedents true and the
    consequent false after one actual turn. Qualified baseline REPL evidence is
-   recorded by the lane; record certification is pending. This does not refute
+   recorded by the lane; the control is record-certified in run
+   `certify-20261114T001317Z-3423328`. This does not refute
    the user-facing ACK guarantee on initialized/reachable states.
 
 2. **Turn composition and resource contracts are incomplete.**
@@ -54,9 +55,11 @@ No count of books, witnesses, or generated candidates substitutes for this chain
    cut mapping incomplete. Physical I/O return and ACL2 completion posting need
    distinct crash states, including short/error outcomes. Owner: durability and
    native lanes. A legal trace prefix ending after Accept may refute the current
-   equality with a complete canonical run: this is an UNEXECUTED counterexample
-   candidate. Test it; if confirmed, prove prefix refinement and equality under
-   a genuine completion condition instead.
+   equality with a complete canonical run. This counterexample is now executed
+   and record-certified (`c18a79e64`, run `certify-20261114T002126Z-3432086`):
+   every premise holds, but the prefix has no emitted bytes while the canonical
+   run has emitted its greeting. Prove prefix refinement and equality under a
+   genuine completion condition instead.
 
 4. **Lean model proofs do not yet establish ACL2 execution equivalence.**
    The checker explicitly excludes closure-wide exported-body evaluation and

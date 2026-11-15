@@ -1,6 +1,7 @@
 ; Real issued storage operations through the explicit native cut program.
 (in-package "ACL2")
 (include-book "../sim/native-cut-program")
+(include-book "../sim/check-core")
 
 (defun fn2-native-cut-fixture (takep fn2-core fn2-sim fn2-own)
   (declare (xargs :stobjs (fn2-core fn2-sim fn2-own) :verify-guards nil))
@@ -105,28 +106,3 @@
       ok)))
 
 (assert-event (equal (fn2-native-cut-controls) '(t t t t t t t t t)))
-
-; Whole-formula witnesses use logical stobjs so both executions start from
-; the identical immutable state.  The live controls above separately exercise
-; actual mutable stobjs and the physical-return crash path.
-(defun-nx fn2-native-cut-atomic-witness (remove-pending)
-  (mv-let (ready op c s o)
-    (fn2-native-cut-fixture t (create-fn2-core) (create-fn2-sim) (create-fn2-own))
-    (let ((s (if remove-pending (fn2-sim-set-active op 0 s) s)))
-      (and ready (fn2-corep c) (fn2-simp s) (fn2-ownp o)
-           (fn2-core-wfp c) (fn2-sim-ready s) (fn2-own-wfp o)
-           (unsigned-byte-p 32 0) (fn2-sim-native-faultp *fn2-fault-none*)
-           (if remove-pending (not (fn2-sim-native-storagep op s))
-             (fn2-sim-native-storagep op s))
-           (equal (not remove-pending)
-             (equal (fn2-sim-native-cut :finish op *fn2-fault-none* 0 c s o)
-                    (fn2-sim-complete op *fn2-fault-none* 0 c s o)))))))
-
-(defthm fn2-native-cut-atomic-positive-witness
-  (fn2-native-cut-atomic-witness nil)
-  :rule-classes nil
-  :hints (("Goal" :in-theory (union-theories (current-theory :here) (function-theory :here)))))
-(defthm fn2-native-cut-atomic-pending-hypothesis-removal
-  (fn2-native-cut-atomic-witness t)
-  :rule-classes nil
-  :hints (("Goal" :in-theory (union-theories (current-theory :here) (function-theory :here)))))

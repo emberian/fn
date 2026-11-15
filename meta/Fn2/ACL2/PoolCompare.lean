@@ -3,14 +3,18 @@ module
 
 public import Fn2.ACL2.Countdown
 public import Fn2.ACL2.Translation
-public import Mathlib.Tactic
 import all Init.Data.String.Basic
 import all Init.Data.String.Slice
 import all Init.Data.String.TakeDrop
 import all Init.Data.String.Pattern.Basic
 import all Init.Data.String.Pattern.String
 import all Init.Data.List.Control
--- BEGIN world bodies (emit_embed.py): scan
+-- BEGIN world bodies (emit_embed.py): public; scan
+public import Fn2.Instances.LayerAWorld.S34_d0to6
+public import Fn2.Instances.LayerAWorld.S17_d1
+public import Fn2.Instances.LayerAWorld.S22_d1to7
+public import Fn2.Instances.LayerAWorld.S12_d0to10
+public import Fn2.Instances.LayerAWorld.S8_d2to12
 import all Fn2.Instances.LayerAWorld.S34_d0to6
 import all Fn2.Instances.LayerAWorld.S17_d1
 import all Fn2.Instances.LayerAWorld.S22_d1to7
@@ -36,16 +40,56 @@ def measure : State → Nat
 
 def bodyValue («A» «B» «I» «N» «FN2-POOL» : Val) : Val := (if ((if ((«NOT» («NATP» «I»))).truthy then («NOT» («NATP» «I»)) else (if ((«NOT» («NATP» «N»))).truthy then («NOT» («NATP» «N»)) else («NOT» (Prim.lt «I» «N»))))).truthy then (Val.cons (Val.sym ":EQUAL") (Val.cons («NFIX» «N») Val.nil)) else ((fun («X» : Val) («Y» : Val) («FN2-POOL» : Val) («N» : Val) («B» : Val) («A» : Val) («I» : Val) => (if ((Prim.lt «X» «Y»)).truthy then (Val.cons (Val.sym ":LESS") (Val.cons «I» Val.nil)) else (if ((Prim.lt «Y» «X»)).truthy then (Val.cons (Val.sym ":GREATER") (Val.cons «I» Val.nil)) else («FN2-POOL-COMPARE-LOOP» «A» «B» (Prim.plus (Val.int 1) «I») «N» «FN2-POOL»)))) («FN2-POOL-DATAI» (Prim.plus «A» «I») «FN2-POOL») («FN2-POOL-DATAI» (Prim.plus «B» «I») «FN2-POOL») «FN2-POOL» «N» «B» «A» «I»))
 
+private theorem pool_nfix_value (x : Val) : «NFIX» x = .int (x.nfix : Int) := by
+  cases x with
+  | int z =>
+    by_cases h : z < 0
+    · simp [«NFIX», «NOT», Prim.integerp, Prim.lt, Val.ofBool, Val.truthy,
+        Val.isInt, Val.toInt, Val.nfix, Val.nil, Val.t, h,
+        Int.toNat_eq_zero.mpr (Int.le_of_lt h)]
+    · simp [«NFIX», «NOT», Prim.integerp, Prim.lt, Val.ofBool, Val.truthy,
+        Val.isInt, Val.toInt, Val.nfix, Val.nil, Val.t, h,
+        Int.toNat_of_nonneg (Int.le_of_not_gt h)]
+  | _ => rfl
+private theorem pool_nfix_difference (n i : Val) :
+    («NFIX» (Prim.plus («NFIX» n) (Prim.neg («NFIX» i)))).nfix = n.nfix - i.nfix := by
+  rw [pool_nfix_value, pool_nfix_value n, pool_nfix_value i]
+  simp only [Prim.plus, Prim.neg, Val.toInt, Val.nfix, Int.toNat_natCast,
+    ← Int.sub_eq_add_neg, Int.toNat_sub]
+
 theorem decreases (x y : State) (h : step x = .inr y) : measure y < measure x := by
   rcases x with ⟨a,b,i,n,p⟩
-  simp only [step] at h
-  split_ifs at h <;> cases h
-  all_goals
-    simp only [measure]
-    cases i <;> cases n <;>
-      simp_all [«NATP», «NOT», Prim.integerp, Prim.lt, Val.ofBool,
-        Val.truthy, Val.isInt, Val.toInt, Val.nil, Val.t, Val.nfix, Prim.plus]
-    all_goals split_ifs at * <;> simp_all [Val.nfix, Val.toInt, Prim.plus] <;> omega
+  cases i with
+  | int i =>
+    by_cases hi : i < 0
+    · simp [step, «NATP», «NOT», Prim.integerp, Prim.lt, Val.ofBool, Val.truthy, Val.isInt, Val.toInt, Val.nil, Val.t, hi] at h
+    · cases n with
+      | int n =>
+        by_cases hn : n < 0
+        · simp [step, «NATP», «NOT», Prim.integerp, Prim.lt, Val.ofBool, Val.truthy, Val.isInt, Val.toInt, Val.nil, Val.t, hi, hn] at h
+        · by_cases hin : i < n
+          · have hi0 : («NOT» («NATP» (.int i))).truthy = false := by
+              simp [«NATP», «NOT», Prim.integerp, Prim.lt, Val.ofBool, Val.truthy, Val.isInt, Val.toInt, Val.nil, Val.t, hi]
+            have hn0 : («NOT» («NATP» (.int n))).truthy = false := by
+              simp [«NATP», «NOT», Prim.integerp, Prim.lt, Val.ofBool, Val.truthy, Val.isInt, Val.toInt, Val.nil, Val.t, hn]
+            have hlt0 : («NOT» (Prim.lt (.int i) (.int n))).truthy = false := by
+              simp [«NATP», «NOT», Prim.integerp, Prim.lt, Val.ofBool, Val.truthy, Val.isInt, Val.toInt, Val.nil, Val.t, hin]
+            simp only [step, hi0, hn0, hlt0, Bool.false_eq_true, ↓reduceIte] at h
+            by_cases hab : (Prim.lt («FN2-POOL-DATAI» (Prim.plus a (.int i)) p)
+              («FN2-POOL-DATAI» (Prim.plus b (.int i)) p)).truthy = true
+            · simp only [hab, ↓reduceIte] at h
+              cases h
+            · by_cases hba : (Prim.lt («FN2-POOL-DATAI» (Prim.plus b (.int i)) p)
+                («FN2-POOL-DATAI» (Prim.plus a (.int i)) p)).truthy = true
+              · simp only [hab, hba, ↓reduceIte] at h
+                cases h
+              · simp only [hab, hba, ↓reduceIte] at h
+                cases h
+                simp only [measure, Val.nfix, Val.toInt, Prim.plus]
+                omega
+          · simp [step, «NATP», «NOT», Prim.integerp, Prim.lt, Val.ofBool, Val.truthy, Val.isInt, Val.toInt, Val.nil, Val.t, hi, hn, hin] at h
+      | _ => simp [step, «NATP», «NOT», Prim.integerp, Prim.lt, Val.ofBool, Val.truthy, Val.isInt, Val.toInt, Val.nil, Val.t, hi] at h
+  | _ => simp [step, «NATP», «NOT», Prim.integerp, Prim.lt, Val.ofBool, Val.truthy, Val.isInt, Val.toInt, Val.nil, Val.t] at h
 
 theorem go_value (fuel : Nat) (a b i n p : Val) :
     «FN2-POOL-COMPARE-LOOP».go fuel a b i n p =
@@ -54,21 +98,32 @@ theorem go_value (fuel : Nat) (a b i n p : Val) :
   | zero => rfl
   | succ fuel ih =>
     rw [«FN2-POOL-COMPARE-LOOP».go, Countdown.value_succ]
-    simp only [step]
-    split_ifs <;> simp_all only [ih]
+    by_cases hi : («NOT» («NATP» i)).truthy = true <;>
+      by_cases hn : («NOT» («NATP» n)).truthy = true <;>
+      by_cases hlt : («NOT» (Prim.lt i n)).truthy = true <;>
+      by_cases hab : (Prim.lt («FN2-POOL-DATAI» (Prim.plus a i) p)
+        («FN2-POOL-DATAI» (Prim.plus b i) p)).truthy = true <;>
+      by_cases hba : (Prim.lt («FN2-POOL-DATAI» (Prim.plus b i) p)
+        («FN2-POOL-DATAI» (Prim.plus a i) p)).truthy = true <;>
+      simp only [step, hi, hn, hlt, hab, hba, Bool.false_eq_true, ↓reduceIte, ih]
 
 theorem as_value (a b i n p : Val) :
     «FN2-POOL-COMPARE-LOOP» a b i n p =
       Countdown.value Val.nil step (measure (a,b,i,n,p) + 1) (a,b,i,n,p) := by
-  simp only [«FN2-POOL-COMPARE-LOOP», Fn2.ACL2.Fuel.nfix_diff_eq, measure, go_value]
+  simp only [«FN2-POOL-COMPARE-LOOP», pool_nfix_difference, measure, go_value]
 
 theorem body_equation (a b i n p : Val) :
     bodyValue a b i n p = «FN2-POOL-COMPARE-LOOP» a b i n p := by
   have h := Countdown.value_fixedpoint Val.nil measure step decreases (a,b,i,n,p)
   rw [← as_value] at h
-  simp only [step] at h
-  unfold bodyValue
-  split_ifs at h ⊢ <;> simp_all [← as_value]
+  by_cases hi : («NOT» («NATP» i)).truthy = true <;>
+    by_cases hn : («NOT» («NATP» n)).truthy = true <;>
+    by_cases hlt : («NOT» (Prim.lt i n)).truthy = true <;>
+    by_cases hab : (Prim.lt («FN2-POOL-DATAI» (Prim.plus a i) p)
+      («FN2-POOL-DATAI» (Prim.plus b i) p)).truthy = true <;>
+    by_cases hba : (Prim.lt («FN2-POOL-DATAI» (Prim.plus b i) p)
+      («FN2-POOL-DATAI» (Prim.plus a i) p)).truthy = true <;>
+    simpa only [step, bodyValue, hi, hn, hlt, hab, hba, Bool.false_eq_true, ↓reduceIte, ← as_value] using h.symm
 
 /-- Actual emitted function, all arguments and arbitrary pool environment.
 There is a result at every sufficient fuel, not merely a stable exhausted NIL. -/

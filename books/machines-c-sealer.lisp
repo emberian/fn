@@ -82,7 +82,7 @@
       ((unless (< crow (nfix fcrows))) (mv :no-row fn2-seals))
       ((mv c fbase) (fn2-sealer-fbase fcrows trows frows))
       ((unless (eq c :ok)) (mv c fn2-seals))
-      ((mv c fn2-seals) (fn2-seal-init 0 fbase crow *fn2-sealer-fill* *fn2-idc-owner-kind* *fn2-idc-owner-slot* *fn2-idc-owner-gen* fn2-seals))
+      ((mv c fn2-seals) (fn2-seal-init 0 fbase crow *fn2-sealer-fill* *fn2-idc-owner-kind* *fn2-idc-owner-slot* *fn2-idc-owner-gen* (fn2-profile-get :history-id profile) (fn2-profile-get :history-incarnation profile) fn2-seals))
       ((unless (eq c :ok)) (mv c fn2-seals))
       (r (fn2-b-read-rows profile))
       (qbase (+ (nfix fbase) *fn2-seal-field-rows*)))

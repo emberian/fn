@@ -5,6 +5,37 @@ Owner: integration. Commissioned by ember on 2026-11-13, following the
 `fn2-squares` remains the obligation store. Reports and public-claim coverage
 must be derived from that store and the actual served call/attachment graph.
 
+## Current integration frontier — 2026-11-14 evening
+
+Root `d486cbe80` integrates shared observer row-count frames and actual TLS
+START/WAIT/NEXT guard events (`a56eb2806`), plus compression selector guard
+repairs and executable live-row frame controls. The retained author sessions
+admitted those guards and compression controls. Compression record definitions
+were admitted without their guards; native composition and current record
+certification remain separate obligations.
+
+TLS owner has individually admitted the remaining observer guard and private
+bridge guards. Shared policy-field and bridge guard generators (`33efacc35`,
+`fe18e7078`) await their final generated-form check before root integration.
+Layout owner reports a qualified nine-book record (seven reused, two new) at
+`certify-20261115T001611Z-606256`; root receipt verification is pending. Layout
+itself still took 56.455 seconds, so proof-cost debt remains.
+
+Reclamation primitive slice `75db3d8ea` is under review, not integrated. Independent
+review found existing `alloc-unit` controls acquire durable protection after
+retirement, now correctly refused by the new barrier. The owner must preserve
+those controls by acquiring durable protection before retirement, retain transient
+post-retirement cases, and exercise `release-prepare` directly. The actual journal
+coordinator and pin consumers are being factored into a connected integration
+slice; primitive admission does not establish the served lifecycle.
+
+`recover_lean` resumes actual CNS canonical-body/domain/attachment composition;
+`sol_q1_semantics` resumes actual CNS effect and invariant proofs against the
+integrated callback changes. Their completed helper proofs do not discharge these
+obligations. Native registry certification reuses the published layout prerequisite
+instead of rebuilding it. Root owns named compute grants; no broad rerun is
+scheduled merely to refresh provenance. Historical scopes below remain historical.
+
 ## Destination and proof structure
 
 The destination remains a working persistent engine and its intended network
@@ -47,11 +78,13 @@ invariant. Do not patch the theorem with a convenient unestablished premise.
 Reproduction is lane commit `319620bed`, `tests/dur-turn-counterexample.lisp`;
 qualified baseline REPL evidence is in
 `forge:/build/lanes/stride-owed-integrated/build/proof-repl/stride-turn-inductive/log`.
-Record certification of this control is pending.
+The control is record-certified in `certify-20261114T001317Z-3423328`.
 
-Other suspected counterexamples remain unexecuted: zero-budget issue, obsolete
-4129 turn bound, and native Accept-prefix equality. Their status must not be
-upgraded from source inspection alone.
+The native Accept-prefix equality counterexample is also record-certified
+(`c18a79e64`, run `certify-20261114T002126Z-3432086`). A real zero-budget issue
+was observed with a queued Close descriptor in the assurance-budget lane; its
+fix and record gate remain in progress. The obsolete 4129 bound still needs an
+executed witness; source inspection alone is not a counterexample.
 
 ## Shared foundations to freeze
 
@@ -160,6 +193,20 @@ Every remaining trusted edge is named in the resulting public claim, never hidde
 behind a generic green status. Independent review traces a representative guarantee
 from wire input through persistence and recovery to the wire response.
 
+The [completion gate](ASSURANCE-COMPLETION-GATE.md) now selects required product
+claims from the live `fn2-squares` world, proposes packet-bound checkers with their
+own qualified current closures, and reconstructs the existing semantic requirement
+inventory. The first independent typed descriptor specification now joins actual
+`fn2-machine-run` and public `fn2-turn` proofs by exact formula/domain/ABI checks
+and proof replay, rejecting coherent weakening of claim and proof. Nine local
+source/tempfile controls pass. New ACL2 checker/join admission and current-closure
+certification remain pending; complete semantic discharge and extracted actual
+theorem/constraint dependency closure remain unimplemented. The command reports incomplete, including when build
+or generated-candidate regression passes. Its catalogue retains the unbound
+persistent-reclamation and missing served-progress requirements. These diagnostics
+do not implement those capabilities or establish actual caller-to-specification
+refinement.
+
 ## Coordination
 
 Keep existing native, TLS, compiler and timer work moving; do not discard useful
@@ -170,3 +217,166 @@ No bb2 writes, no production/service changes, no cache deletion. Use bounded REP
 spikes, narrow record gates, then one batched convergence. A lane is READY with
 named commits, exact proof/test scopes and any remaining red, not a narrative of
 completion. The integrator alone changes shared dev.
+
+## Whole-path completion targets — 2026-11-14
+
+The destination remains the persistent NNTP/storage/consumer system, including its
+network consumers. Increase the depth of each completion claim, not the count of
+isolated certified fixtures. A helper package is an intermediate deliverable until
+its actual served caller consumes the contract in a qualified composed world.
+
+1. **Accepted data through recovery.** Durability and native owners connect actual
+   initialization (including nonempty group/principal genesis), admission, collect,
+   seal, persisted acceptance and reopen. Preserve the declared broad/crash-only
+   fault distinction. The same preserved image must exhibit the specific broad
+   uncertainty diagnosis and exact prior accepted article recovery under crash-only.
+   This runtime control supplements the general ACK/recovery proof; SIGKILL does
+   not discharge power-loss, persistence-fence or arbitrary-corruption assumptions.
+2. **Independent CNS effects.** The Q1 semantics owner defines before/after effects
+   without invoking production release/reclaim/timer handlers on the checking side.
+   Exercise the actual draining run, with held lease, reusable/retired rows, a live
+   sibling timer/range, and both early and late refusals. A late name-range refusal
+   may follow successful workspace release; unchanged-core rollback is not its spec.
+   Corrupting the sibling on both Q1 executions must be detected independently even
+   if their shared-handler comparison agrees. Bridge ownership then connects the
+   same served root to canonical evaluation, guards/domains and primitive contracts.
+3. **Actual turn resource guarantees.** The scheduler owner connects a supported
+   assembled profile through actual admission, dispatch and turn execution. Prove
+   numeric and residual bounds even for stopped structural states. Keep net queue
+   delta separate from issued-incarnation history; issue/ack/reuse must not erase
+   the latter's accounting. Insufficient residual must preserve core and selection
+   cursor, with a separate fresh-quantum retry witness. Scheduler fairness, available
+   credits and actual instruction/allocation cost are separate obligations.
+4. **Full-duplex TLS ownership and bytes.** The transport owner connects allocation,
+   handshake, concurrent record operations, cancellation and exactly-once cleanup
+   through the same capability ledger and logical per-operation state. A blocked
+   receive must not prevent a send needed for progress. Retained seed, fragmented
+   BIO input, short writes, stale returns and exhaustion must reach native controls.
+   Logical handle/staging proofs do not establish OpenSSL behavior or byte effects.
+
+The existing core emitter already aliases `CoreWorld.fns` to `LayerAWorld.fns`
+and names actual served functions in dispatch equations. A suspected namespace
+mismatch was withdrawn after tracing those definitions. Preserve that connection;
+close remaining guard/domain and MBE logical/executable obligations explicitly.
+The MEMBER-EQ-EXEC pilot alone is not a proof of every MEMBER-EQUAL logical path.
+
+External review is advisory. Three bounded, tool-disabled `claude-kimi` reviews
+were requested over secret-scanned packets: system ambition, bridge/evidence,
+and runtime/durability/TLS. Large packets timed out without responses. A smaller
+system-status review returned and recommended one matrix from top claim through
+live obligation, served entrypoint, frozen artifact, fault model and independent
+scenario. Adopt that as the completion measure; counts remain build progress only.
+That status-only review blurred prover-job memory exhaustion with runtime node
+resource behavior. Reject that inference: the observed 2 GiB OOM was certification,
+not node execution. The targeted evidence-code review returned no new defect in
+the live-statement witness/recheck machinery and rejected the obsolete raw-formula
+attack; source locators and controls were independently checked. This is only the
+evidence slice, not the larger Lean bridge or universal/runtime correctness. The
+final small TLS handoff review also returned no supported defect: identity,
+lifecycle, copied-seed and output-consumption checks match the caller, and the
+unfed seed suffix is deliberately retained for later records. Physical copy,
+record migration and socket behavior are outside that result. Larger runtime and
+bridge reviews timed out and received no clearance. An absent response is not a
+clean review, and no finding is attributed to Kimi without an actual response.
+Validate alleged defects against source before assigning fixes, retain rejected
+suspicions, and distinguish known unfinished work from newly discovered defects.
+
+## Additional independent assurance lanes — 2026-11-14
+
+These lanes expand beyond the existing durability, extraction, TLS, scheduler
+resource and ACL2–Lean work. Each starts from semantic freeze `6e07e62f3` with
+planning commit `06b1785df`; newer lane results require explicit integration.
+Source investigation and bounded local controls do not allocate remote build slots.
+
+| Owner / lane | Actual assurance subject | Required useful result |
+|---|---|---|
+| authorization_assurance / assurance-authorization | Served principal, authority and incarnation binding | Connected stale-principal/grant refusal contract; actual admitted-row witness and meaningful removal/mutation control. First trace targets CNS→control generation binding and propagation into transaction authority. |
+| parser_assurance / assurance-parser-boundaries | Receive-to-command framing and consumption | Actual split/coalesced/EOF/limit boundary behavior checked against an independent expectation, with a shared fix or a proved boundary contract. |
+| storage_fault_assurance / assurance-storage-faults | Short/torn/error/fence and ambiguous persistence effects | One faithful deterministic fault control or normalization repair beyond SIGKILL, preserving accepted/refused/uncertain distinctions and explicit device assumptions. |
+| sol_artifact_assurance / assurance-artifact-binding | Certified source through loaded image and qualification receipt | Fail-closed binding plus stale/replaced/omitted artifact controls; no change to certification eligibility or historical identity. |
+| sol_assumption_assurance / assurance-assumption-boundaries | Reachable assumptions, attachments, raw substitutions and guard boundaries | A concrete escape from existing inventories/gates repaired with a reachable-edge mutation, or a precise audited coverage result. Inventory alone is not a semantic proof. |
+| progress_assurance / assurance-progress | Actual selection, runnable/wait/timer transitions and fairness | Conditional progress tied to the served scheduler, with explicit environment/quantum assumptions and an adversarial schedule or missing-assumption control. |
+
+Existing owners retain shared generators, quantitative run interfaces, TLS state,
+canonical bridge APIs and certification infrastructure. New lanes initially own
+separate contracts/fixtures or narrowly coordinated tooling changes. A suspected
+leaf defect must be checked through its actual callers: for example, a principal
+check preceding an admin check on the same unchanged core can rule out an apparent
+local bypass. Reports distinguish confirmed defects, coverage gaps and withdrawn
+suspicions. Remote proof work still requires named capacity within the 26 GiB cap.
+
+## Distributed, temporal and completion coverage — 2026-11-14
+
+A further six independent lanes start source-first from the same semantic B base.
+They add no remote compute reservations; current jobs and capacity remain under
+convergence coordination.
+
+| Owner / lane | Assurance subject | Required useful result |
+|---|---|---|
+| peer_assurance / assurance-peer-contracts | Inbound transfer decisions, replay/identity, catch-up and custody coverage | A connected inbound contract/control, plus honest separation of actual served behavior from outbound/catch-up models and interim commands. |
+| revocation_assurance / assurance-revocation | Authority changes during selection, page assembly and handoff | An independent two-head schedule and stated authorization linearization contract; no silent retroactive-rescission requirement. Coordinate, but do not duplicate, membership and permission decisions. |
+| reclamation_assurance / assurance-reclamation | Persistent extent/article lifetime versus readers, pins and checkpoints | A connected lifetime invariant or exact served-entry coverage refusal; allocator model proofs alone cannot establish a served collector. |
+| sol_crash_cut_assurance / assurance-crash-cut-map | Physical effect/return cuts before modeled completion | One source-connected cut-family mapping witness and omitted/misattributed-cut controls; preserve the incomplete global mapping verdict. |
+| identity_codec_assurance / assurance-identity-codecs | Actual wire, stored and retrieved article identity representations | A served correspondence with independent octet expectations and meaningful normalization/identity mutation; cryptographic collision resistance stays an explicit assumption. |
+| sol_claim_completion / assurance-claim-completion | Required product claims through their live proof dependencies | Qualified live-world checks over existing square rows and named product scope; refuse owed, missing, stale, witness-only or unreachable-only coverage. Reuse the bridge inventory rather than create a second claim ledger. |
+
+Initial traces found no served collector calling the allocator reclaim/checkpoint
+primitives, and outbound peer/catch-up paths remain model/design coverage. These
+are implementation/coverage gaps, not demonstrated premature-reclamation or peer
+safety defects. A suspected uncertain peer reply issue is being checked through
+actual transaction composition rather than inferred from a defensive answer branch.
+The device-syscall-return cut occurs after physical effects and before completion;
+a simulator step that combines effects and posting is not by itself its mapping.
+
+Authorization remains release-blocking: original B delivered exact article bytes
+with required grants disabled. The defensive repair worker was stopped twice by
+automatic content review for possible cybersecurity risk; source changes remain
+preserved, but its fixed-callback qualification is incomplete. Do not relabel the
+passing baseline native recovery tests as permission correctness or release approval.
+
+## Active implementation priorities — 2026-11-14
+
+Root candidate e4f74c279 contains budget admission, H1 progress, operation-phase
+refusal and reference adaptations. The 21e actual-turn record and old-stop
+mutation passed; e4f generated charge-context regression is current-key certified.
+Production TRACE/Q1 remains pending. Broad baseline exports stay stopped.
+
+Six resumed implementation lanes advance distinct remaining product obligations:
+
+- recover_children: bring reviewed shared compiler prerequisites and actual xref/transaction consumers onto the current candidate; connect live-formula production evidence.
+- reclamation_assurance: integrate physical pins/hooks, journal/replay lifecycle serialization and the release-pending protection barrier before enabling durable FREE.
+- recover_lean: connect canonical body/domain/recursive evidence to the actual CNS consumer, coordinating the existing evidence API.
+- sol_q1_semantics: complete actual CNS output/effect composition and reservation invariant initialization/preservation from independent pool effects.
+- composed_build: repair initializer proof-cost at the shared generator and compose actual turn issuance history, including reclamation hook frames.
+- sol_crash_cut_assurance: finish atomic equality witnesses and connect actual native raw-return cuts and real-file-descriptor tests to the model.
+
+Root owns timely integration and targeted composition gates. Source implementation
+proceeds concurrently; expensive proof jobs require named allocations. No lane
+may replace a missing served feature with a model-only completion claim. The
+authorization review block remains explicit and is not reassigned around review.
+
+## Integrated consumer follow-through — 2026-11-14
+
+Root 0be7f6d51 integrates the fixed-array numeric contracts, actual child
+declarations, chain-helper quantity/effect contracts and issuance-index bridge.
+Both callback proof refusals were repaired against unchanged runtime bodies and
+public contracts. Exact canonical callback record qualification is in progress;
+prior core103 qualification belongs to source4400cb995, not this new closure.
+
+Root efe958a82 integrates canonical call/lambda composition. The author's Lean
+controls passed; the current CNS timer-clear instantiation and guard/body packet
+connection remain assigned to recover_lean. No served semantic promotion follows
+from integrating this generic rule.
+
+Root e892441f7 integrates actual raw-startup function binding checks. All29 focused
+host/native-program tests pass on the integrated tree; source audit finds0 issues
+in5 raw sources. The composed qualified --load check remains assigned to
+sol_assumption_assurance with convergence coordinating the necessary artifacts.
+
+Reclamation remains on its own implementation branch. Its actual allocator and
+reservation controls do not qualify the larger checkpoint/boot/upload changes.
+Current priorities are drain-before-working-reservation composition, repaired
+map roundtrip admission, authenticated selected-base restoration, ordered suffix
+replay, dynamic maintenance headroom, and commit-directory/candidate lifetime.
+FREE and checkpoint activation remain disabled until their connected prerequisites
+are implemented and verified. Authorization remains an independent release blocker.

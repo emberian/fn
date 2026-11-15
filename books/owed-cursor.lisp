@@ -220,6 +220,12 @@
 ;; Seed SEED submitted up to the bind: (mv code pending store fn2-core),
 ;; PENDING what the owner settles (extent and chunks), the source put on
 ;; STORE at its extent.
+(defun fn2-cs-location-hashes (source)
+  ; Seed-only logical model of the raw extent's exact ordered unit digests.
+  (declare (xargs :verify-guards nil :measure (len source)))
+  (if (atom source) nil
+    (append (fn-blake3 (take (min *fn2-commit-unit-bytes* (len source)) source))
+            (fn2-cs-location-hashes (nthcdr *fn2-commit-unit-bytes* source)))))
 (defun fn2-cs-submit (seed store fn2-core)
   (declare (xargs :stobjs fn2-core :verify-guards nil))
   (b* ((text (nth 3 seed)) (source (fn2-cs-source text)) (hashed (len source))
@@ -236,6 +242,9 @@
         (mv (list :layout hashed) nil store fn2-core))
        ((mv c fn2-core) (fn2-cs-write (append source (fn-blake3 source)) c0 g0 0 fn2-core))
        ((unless (eq c :ok)) (mv (list :fill c) nil store fn2-core))
+       (location-hashes (fn2-cs-location-hashes source))
+       ((mv c ds dg fn2-core) (fn2-cs-fill (append (fn-blake3 source) location-hashes) fn2-core))
+       ((unless (eq c :ok)) (mv (list :location-hashes c) nil store fn2-core))
        ((mv c e epoch counter fn2-core) (fn2-cs-extent fn2-core))
        ((unless (eq c :ok)) (mv (list :extent c) nil store fn2-core))
        (store (cons (cons (* *fn2-commit-extent-bytes* e) source) store))
@@ -247,7 +256,7 @@
        ((mv c lines fn2-core) (fn2-cs-count 64 c0 g0 c1 g1 scanned hashed 0 fn2-core))
        ((unless (eq c :ok)) (mv (list :count c) nil store fn2-core))
        ((mv c fn2-core) (fn2-txn-put-post-for 0 c0 g0 mo ml c0 g0 c1 g1 scanned hashed 0 h 0 lines e epoch counter
-                                              0 200 0 1 fn2-core))
+                                              ds dg 0 32 (len location-hashes) 0 200 0 1 fn2-core))
        ((unless (eq c :ok)) (mv (list :post c) nil store fn2-core))
        ((mv c k fn2-core) (fn2-cs-groups 64 no nl 0 nil 0 c0 g0 c1 g1 fn2-core))
        ((unless (and (eq c :ok) (posp k))) (mv (list :groups c k) nil store fn2-core))
@@ -259,7 +268,7 @@
        (ov-end (stobj-let ((fn2-pool (fn2-core-pool fn2-core))) (f) (fn2-gram-fill c0 fn2-pool) f))
        (line (fn2-cs-octets-at c0 g0 ov-off (nfix (- ov-end ov-off)) fn2-core))
        ((unless (equal line (fn2-cs-octets (nth 2 seed)))) (mv (list :line line) nil store fn2-core)))
-    (mv :ok (list e epoch counter c0 g0 c1 g1) store fn2-core)))
+    (mv :ok (list e epoch counter c0 g0 c1 g1 ds dg) store fn2-core)))
 ;; The settled member's extent allocated to its article, the successor and
 ;; chunks released: (mv code fn2-core).
 (defun fn2-cs-finish (pending event fn2-core)
@@ -268,7 +277,8 @@
    (fn2-upload-extent-commit (nth 0 pending) (nth 1 pending) (nth 2 pending) event fn2-core)
    (mv-let (c fn2-core) (fn2-successor-release 0 fn2-core) (mv (if (member-eq c '(:ok :state)) :ok c) fn2-core))
    (fn2-core-release (nth 3 pending) (nth 4 pending) 200 0 1 fn2-core)
-   (fn2-core-release (nth 5 pending) (nth 6 pending) 200 0 1 fn2-core)))
+   (fn2-core-release (nth 5 pending) (nth 6 pending) 200 0 1 fn2-core)
+   (fn2-core-release (nth 7 pending) (nth 8 pending) 200 0 1 fn2-core)))
 ;; One seed through the path before any client: (mv code store fn2-core).
 (defun fn2-cs-seed (seed store fn2-core)
   (declare (xargs :stobjs fn2-core :verify-guards nil))

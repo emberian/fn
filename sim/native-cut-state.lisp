@@ -1,9 +1,9 @@
-; Storage-return state used only by the explicit native cut program.
+; Raw physical-return state shared by native cuts and scheduled Fence completion.
 (in-package "ACL2")
 (include-book "sim-state")
 
 ; Active 3 is the existing early borrow-release continuation.  Active 4 is
-; private to this cut program: physical I/O finished, terminal post not sent.
+; physical I/O finished, terminal post not sent.
 ; FN2-SIM-FIND-WRITE selects only active 1, so a crash cannot replay this write.
 
 (defun fn2-sim-native-flightp (slot fn2-sim)
@@ -23,11 +23,17 @@
 (defun fn2-sim-native-faultp (fault)
   (declare (xargs :guard t))
   (member-equal fault
-    (list *fn2-fault-none* *fn2-fault-read-io* *fn2-fault-no-space* *fn2-fault-dead*
+    (list *fn2-fault-none* *fn2-fault-read-io* *fn2-fault-no-space* *fn2-fault-write-io* *fn2-fault-dead*
           *fn2-fault-flush-io* *fn2-fault-short-write* *fn2-fault-bitrot*
           *fn2-fault-misread* *fn2-fault-miswrite* *fn2-fault-lying-flush*
           *fn2-fault-tear* *fn2-fault-fail-slow* *fn2-fault-fragment*
           *fn2-fault-short-send* *fn2-fault-reset* *fn2-fault-half-open* *fn2-fault-nonreading*)))
+
+(defthm fn2-sim-native-fault-type
+  (implies (fn2-sim-native-faultp fault)
+           (unsigned-byte-p 8 fault))
+  :rule-classes (:rewrite :forward-chaining)
+  :hints (("Goal" :in-theory (enable fn2-sim-native-faultp))))
 
 (defthm fn2-sim-native-fault-not-injected
   (implies (fn2-sim-native-faultp fault)
@@ -36,6 +42,52 @@
                         *fn2-fault-overcount* *fn2-fault-malformed*)))))
 (in-theory (disable fn2-sim-native-faultp))
 
+; The raw continuation uses a fixed 11-field list; this structural bridge
+; does not replace any descriptor/effect predicate.
+(defthm fn2-sim-return-code-roundtrip
+  (implies (natp (fn2-sim-return-code-keyword->code code))
+           (equal (fn2-sim-return-code-code->keyword (fn2-sim-return-code-keyword->code code)) code))
+  :hints (("Goal"
+           :in-theory
+           (enable fn2-sim-return-code-keyword->code fn2-sim-return-code-code->keyword))))
+
+(local (defthm fn2-native-take-length-unfolds
+         (implies (true-listp packet) (equal (take (len packet) packet) packet))
+         :hints (("Goal" :induct (true-listp packet) :in-theory (enable take len)))))
+
+(defthm fn2-native-eleven-list-unfolds
+  (implies (and (true-listp packet) (equal (len packet) 11))
+           (equal (list (nth 0 packet)
+                        (nth 1 packet)
+                        (nth 2 packet)
+                        (nth 3 packet)
+                        (nth 4 packet)
+                        (nth 5 packet)
+                        (nth 6 packet)
+                        (nth 7 packet)
+                        (nth 8 packet)
+                        (nth 9 packet)
+                        (nth 10 packet))
+                  packet))
+  :hints (("Goal"
+           :use
+           fn2-native-take-length-unfolds
+           :expand
+           ((take 11 packet)
+            (take 10 (cdr packet))
+            (take 9 (cdr (cdr packet)))
+            (take 8 (cdr (cdr (cdr packet))))
+            (take 7 (cdr (cdr (cdr (cdr packet)))))
+            (take 6 (cdr (cdr (cdr (cdr (cdr packet))))))
+            (take 5 (cdr (cdr (cdr (cdr (cdr (cdr packet)))))))
+            (take 4 (cdr (cdr (cdr (cdr (cdr (cdr (cdr packet))))))))
+            (take 3 (cdr (cdr (cdr (cdr (cdr (cdr (cdr (cdr packet)))))))))
+            (take 2 (cdr (cdr (cdr (cdr (cdr (cdr (cdr (cdr (cdr packet))))))))))
+            (take 1 (cdr (cdr (cdr (cdr (cdr (cdr (cdr (cdr (cdr (cdr packet)))))))))))
+            (take 0 (cdr (cdr (cdr (cdr (cdr (cdr (cdr (cdr (cdr (cdr (cdr packet)))))))))))))
+           :in-theory
+           (e/d (take nth) (fn2-native-take-length-unfolds)))))
+
 ; Packet fields: slot, generation, kind, event, length, raw code, raw count,
 ; raw auxiliary result, schedule word, the original completion time, and the physical fault.
 (defun fn2-sim-native-packetp (packet fn2-sim)
@@ -43,6 +95,10 @@
   (and (true-listp packet) (= (len packet) 11)
        (natp (nth 0 packet)) (< (nth 0 packet) (fn2-sim-rows fn2-sim))
        (unsigned-byte-p 60 (nth 1 packet)) (natp (nth 4 packet))
+       (equal (nth 1 packet) (fn2-sim-gen (nth 0 packet) fn2-sim))
+       (equal (nth 2 packet) (fn2-sim-kind (nth 0 packet) fn2-sim))
+       (equal (nth 3 packet) (fn2-terminal-event (nth 2 packet)))
+       (equal (nth 4 packet) (fn2-sim-range-len (nth 0 packet) fn2-sim))
        (unsigned-byte-p 32 (nth 8 packet)) (unsigned-byte-p 60 (nth 9 packet))
        (fn2-sim-native-faultp (nth 10 packet))))
 

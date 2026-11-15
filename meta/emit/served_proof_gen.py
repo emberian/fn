@@ -2593,17 +2593,23 @@ class ArmProofBuilder:
         return list(keys)
 
     def prove_core_call(self, call_dict, ctx):
-        """Compose the existing core adapter with a checked proper-core result."""
+        """Check the result tuple and core projection before composing the core adapter."""
         op_name = call_dict['op']
         op = self.kinfo['ops'][op_name]
-        if not self.core_mode or op['core_out'] != ['FN2-CORE']:
+        outs = op['core_out']
+        if (not self.core_mode or not outs or outs[-1] != 'FN2-CORE'
+                or any(x is not None for x in outs[:-1])):
             raise UnsupportedArmError(f'core result layout deferred: {op_name}')
+        scalar_count = len(outs)-1
+        if scalar_count and not self.tuple_analyzer.ensure(op_name, len(outs)):
+            raise UnsupportedArmError(f'core result tuple shape unavailable: {op_name}')
         sin = op['core_in']
         if sin.count('FN2-CORE') != 1 or len(sin) != len(op['core_formals']):
             raise UnsupportedArmError(f'core argument layout deferred: {op_name}')
         ai = sin.index('FN2-CORE')
         shapes = self.tuple_analyzer.core_shapes
-        if not shapes.ensure(op_name, self.n_tup, (), ai):
+        path = (scalar_count,) if scalar_count else ()
+        if not shapes.ensure(op_name, self.n_tup, path, ai):
             raise UnsupportedArmError(f'core shape unavailable: {op_name}')
         keys = self.expand_owner_py(call_dict['keys'])
         keys_l = '[' + ', '.join(f'({lean_str(k)}, {val(v)})' for k,v in keys) + ']'
@@ -2643,16 +2649,42 @@ class ArmProofBuilder:
         hcall = (f'(Combinators.callOp_core_adapter world coreTuple kObj {stargs} {c} ({o}) {keys_l} {actuals} {res} '
                  f'rfl (by decide +kernel) rfl rfl rfl rfl (by decide +kernel) (by decide +kernel) rfl '
                  f'{hkeys} {hargs} ({ident(op_name)}.fns_eq ' + ' '.join(vs) + '))')
-        self.used_core_ops.add((op_name,self.n_tup,(),ai))
+        self.used_core_ops.add((op_name,self.n_tup,path,ai))
+        if scalar_count:
+            self.used_multi_ops.add((op_name,len(outs)))
+            out_l = '[' + ', '.join(opt_str_lean(x) for x in outs) + ']'
+            res = f'(spread {out_l} {res})'
         return op,cop,op_name,vs,res,hfind,hcall
 
     def prove_core_bind(self, bvars, result, callee, actuals, ctx):
         from served_core_shape import shape_theorem_name
         op = self.kinfo['ops'][callee]
         ai = op['core_in'].index('FN2-CORE')
-        key = (callee,self.n_tup,(),ai)
+        scalar_count = len(op['core_out'])-1
+        key = (callee,self.n_tup,(scalar_count,) if scalar_count else (),ai)
         shape = f'(ServedCoreShapes.{ident(shape_theorem_name(key))} ' + ' '.join(actuals) + f' (isListB_tupleImage {ctx.kids_var}))'
         kids = self.fresh_let('core_kids')
+        if scalar_count:
+            raw = self.fresh_let('core_result')
+            declarations = [f'let {raw} : Val := ({ident(callee)} ' + ' '.join(actuals) + ')']
+            core = f'(Native.nth (.int {scalar_count}) {raw})'
+            declarations.append(f'let {kids} : Fin {self.n_tup} → Val := Combinators.kidsOfVal {self.n_tup} {core}')
+            local_vars = list(ctx.local_vars)
+            for j,bvar in enumerate(bvars[:scalar_count]):
+                name = self.fresh_let('core_value')
+                declarations.append(f'let {name} : Val := Native.nth (.int {j}) {raw}')
+                local_vars.insert(0,(bvar,name))
+            self.modified_idxs.update(range(self.n_tup))
+            next_ctx = ctx.clone(kids_var=kids,local_vars=local_vars,snap_hyp=None)
+            bs = '[' + ', '.join(lean_str(v) for v in bvars) + ']'
+            tuple_shape = f'(ServedOps.{islistN_thm_name(callee,scalar_count+1)} ' + ' '.join(actuals) + ')'
+            hbind = (f'(by simpa only [Combinators.bindVarsList, List.range_succ, List.range_zero, '
+                     f'List.map_append, List.map_cons, List.map_nil, List.nil_append, List.cons_append] using '
+                     f'(Combinators.bindOuts_spread_core_multi coreTuple {ctx.kids_var} {self.vars_lean(ctx)} '
+                     f'{self.pend_lean(ctx.pending)} {self.next_lean(ctx.next_expr)} {str(ctx.next_done).lower()} '
+                     f'{str(ctx.woken).lower()} (0, 0, 0) {scalar_count} (by decide) (by decide) {bs} {raw} '
+                     f'rfl (by decide +kernel) {tuple_shape} (isListN_of_isListB {shape})))')
+            return declarations,declarations,hbind,next_ctx
         decl = f'let {kids} : Fin {self.n_tup} → Val := Combinators.kidsOfVal {self.n_tup} {result}'
         self.modified_idxs.update(range(self.n_tup))
         next_ctx = ctx.clone(kids_var=kids,snap_hyp=None)
@@ -2775,7 +2807,7 @@ class ArmProofBuilder:
 
     def prove_bind_outs(self, outs, bvars, r_var, callee, act_vs, ctx):
         """Returns `(let_defs, let_prfs, hbind_lines, new_ctx)`."""
-        if outs == ["FN2-CORE"] and self.core_mode:
+        if "FN2-CORE" in outs and self.core_mode:
             return self.prove_core_bind(bvars, r_var, callee, act_vs, ctx)
         let_defs = []
         let_prfs = []
