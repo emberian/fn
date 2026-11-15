@@ -509,7 +509,11 @@
   (physical :bool) (epoch :u60) (catalog-tag :u60)
   (hash-0 :u32) (hash-1 :u32) (hash-2 :u32) (hash-3 :u32)
   (hash-4 :u32) (hash-5 :u32) (hash-6 :u32) (hash-7 :u32))
- :extra-fields ((fn2-run-installed-physical-count :type (unsigned-byte 32) :initially 0
+ :extra-fields (
+ (fn2-run-installed-resident-limit :type (unsigned-byte 32) :initially 0 :why "Configured resident-only prefix R; never derived from physical bank occupancy.")
+ (fn2-run-installed-bank-capacity :type (unsigned-byte 32) :initially 0 :why "Each of the two physical-only replacement banks has the configured E rows.")
+ (fn2-run-installed-bank-configured :type (unsigned-byte 1) :initially 0 :why "Bare generated init cannot authorize physical-bank installation.")
+ (fn2-run-installed-physical-count :type (unsigned-byte 32) :initially 0
  :why "All nonFREE physical installed rows, maintained by shared install/free transitions; not catalog-local or a caller readiness flag.")))
 ; The sole physical installation transition updates the global count. Its
 ; caller supplies Ref fields from an authenticated source catalog/producer.
@@ -526,9 +530,38 @@
  (= (fn2-run-installed-physical-count fn2-run-installed)
     (fn2-run-physical-rows-from (fn2-run-installed-rows fn2-run-installed) 0 fn2-run-installed)))
 
+; Geometry is established by the actual initializer, never inferred from rows.
+(defun fn2-run-installed-bank-geometry-p (fn2-run-installed)
+ (declare (xargs :stobjs fn2-run-installed :guard (fn2-run-installed-wfp fn2-run-installed)))
+ (and (equal (fn2-run-installed-bank-configured fn2-run-installed) 1)
+      (posp (fn2-run-installed-bank-capacity fn2-run-installed))
+      (equal (fn2-run-installed-rows fn2-run-installed)
+       (+ (fn2-run-installed-resident-limit fn2-run-installed)
+          (* 2 (fn2-run-installed-bank-capacity fn2-run-installed))))))
+(defun fn2-run-installed-bank-start (bank fn2-run-installed)
+ (declare (xargs :stobjs fn2-run-installed :guard (and (fn2-run-installed-wfp fn2-run-installed) (natp bank) (< bank 2))))
+ (+ (fn2-run-installed-resident-limit fn2-run-installed)
+    (* bank (fn2-run-installed-bank-capacity fn2-run-installed))))
+(defun fn2-run-installed-bank-row-p (bank r fn2-run-installed)
+ (declare (xargs :stobjs fn2-run-installed :guard (fn2-run-installed-wfp fn2-run-installed)))
+ (and (fn2-run-installed-bank-geometry-p fn2-run-installed)
+      (natp bank) (< bank 2) (natp r)
+      (<= (fn2-run-installed-bank-start bank fn2-run-installed) r)
+      (< r (+ (fn2-run-installed-bank-start bank fn2-run-installed)
+              (fn2-run-installed-bank-capacity fn2-run-installed)))))
+(defun fn2-run-installed-init-configured (resident capacity fn2-run-installed)
+ (declare (xargs :stobjs fn2-run-installed
+  :guard (and (unsigned-byte-p 32 resident) (posp capacity)
+              (unsigned-byte-p 32 capacity) (unsigned-byte-p 32 (+ resident (* 2 capacity))))))
+ (let* ((fn2-run-installed (fn2-run-installed-init (+ resident (* 2 capacity)) fn2-run-installed))
+        (fn2-run-installed (update-fn2-run-installed-resident-limit resident fn2-run-installed))
+        (fn2-run-installed (update-fn2-run-installed-bank-capacity capacity fn2-run-installed))
+        (fn2-run-installed (update-fn2-run-installed-bank-configured 1 fn2-run-installed)))
+  fn2-run-installed))
+
 (defun fn2-run-install-physical (r schema run wire-run top entries unit epoch counter catalog-tag hash-0 hash-1 hash-2 hash-3 hash-4 hash-5 hash-6 hash-7 fn2-run-installed)
  (declare (xargs :stobjs fn2-run-installed :guard (fn2-run-installed-wfp fn2-run-installed)))
- (b* (((unless (and (natp r) (< r (fn2-run-installed-rows fn2-run-installed)) (unsigned-byte-p 60 schema) (unsigned-byte-p 60 run) (unsigned-byte-p 60 wire-run) (posp wire-run) (<= wire-run run) (unsigned-byte-p 8 top) (unsigned-byte-p 60 entries) (unsigned-byte-p 60 unit) (unsigned-byte-p 60 epoch) (unsigned-byte-p 60 counter) (unsigned-byte-p 60 catalog-tag) (unsigned-byte-p 32 hash-0) (unsigned-byte-p 32 hash-1) (unsigned-byte-p 32 hash-2) (unsigned-byte-p 32 hash-3) (unsigned-byte-p 32 hash-4) (unsigned-byte-p 32 hash-5) (unsigned-byte-p 32 hash-6) (unsigned-byte-p 32 hash-7) (< top *fn2-run-max-levels*) (posp run) (posp catalog-tag) (= (mod unit *fn2-storage-extent-units*) 0))) (mv :bounds fn2-run-installed))
+ (b* (((unless (and (or (fn2-run-installed-bank-row-p 0 r fn2-run-installed) (fn2-run-installed-bank-row-p 1 r fn2-run-installed)) (natp r) (< r (fn2-run-installed-rows fn2-run-installed)) (unsigned-byte-p 60 schema) (unsigned-byte-p 60 run) (unsigned-byte-p 60 wire-run) (posp wire-run) (<= wire-run run) (unsigned-byte-p 8 top) (unsigned-byte-p 60 entries) (unsigned-byte-p 60 unit) (unsigned-byte-p 60 epoch) (unsigned-byte-p 60 counter) (unsigned-byte-p 60 catalog-tag) (unsigned-byte-p 32 hash-0) (unsigned-byte-p 32 hash-1) (unsigned-byte-p 32 hash-2) (unsigned-byte-p 32 hash-3) (unsigned-byte-p 32 hash-4) (unsigned-byte-p 32 hash-5) (unsigned-byte-p 32 hash-6) (unsigned-byte-p 32 hash-7) (< top *fn2-run-max-levels*) (posp run) (posp catalog-tag) (= (mod unit *fn2-storage-extent-units*) 0))) (mv :bounds fn2-run-installed))
       ((unless (and (= (fn2-run-installed-state r fn2-run-installed) *fn2-run-installed-state-free*)
                     (= (fn2-run-installed-physical r fn2-run-installed) 0)))
        (mv :state fn2-run-installed))
@@ -541,7 +574,7 @@
 
 (defun fn2-run-install (r schema run top slot gen unit counter entries okind oslot ogen fn2-run-installed)
  (declare (xargs :stobjs fn2-run-installed :guard (fn2-run-installed-wfp fn2-run-installed)))
- (b* (((unless (and (natp r) (< r (fn2-run-installed-rows fn2-run-installed))
+ (b* (((unless (and (and (natp r) (fn2-run-installed-bank-geometry-p fn2-run-installed) (< r (fn2-run-installed-resident-limit fn2-run-installed))) (natp r) (< r (fn2-run-installed-rows fn2-run-installed))
                     (unsigned-byte-p 60 schema) (unsigned-byte-p 60 run) (unsigned-byte-p 8 top)
                     (< top *fn2-run-max-levels*) (unsigned-byte-p 32 slot) (unsigned-byte-p 60 gen)
                     (unsigned-byte-p 60 unit) (unsigned-byte-p 60 counter) (unsigned-byte-p 60 entries)
@@ -560,7 +593,7 @@
 ; Name live run R's filter page.
 (defun fn2-run-install-filter (r unit counter fn2-run-installed)
  (declare (xargs :stobjs fn2-run-installed :guard (fn2-run-installed-wfp fn2-run-installed)))
- (b* (((unless (and (natp r) (< r (fn2-run-installed-rows fn2-run-installed))
+ (b* (((unless (and (and (natp r) (fn2-run-installed-bank-geometry-p fn2-run-installed) (< r (fn2-run-installed-resident-limit fn2-run-installed))) (natp r) (< r (fn2-run-installed-rows fn2-run-installed))
                     (unsigned-byte-p 60 unit) (unsigned-byte-p 60 counter)))
        (mv :bounds fn2-run-installed))
       ((unless (equal (fn2-run-installed-state r fn2-run-installed) *fn2-run-installed-state-live*))
@@ -571,7 +604,7 @@
 ; Name live run R's units UFIRST..ULAST.
 (defun fn2-run-install-units (r ufirst ulast fn2-run-installed)
  (declare (xargs :stobjs fn2-run-installed :guard (fn2-run-installed-wfp fn2-run-installed)))
- (b* (((unless (and (natp r) (< r (fn2-run-installed-rows fn2-run-installed))
+ (b* (((unless (and (and (natp r) (fn2-run-installed-bank-geometry-p fn2-run-installed) (< r (fn2-run-installed-resident-limit fn2-run-installed))) (natp r) (< r (fn2-run-installed-rows fn2-run-installed))
                     (unsigned-byte-p 60 ufirst) (unsigned-byte-p 60 ulast)))
        (mv :bounds fn2-run-installed))
       ((unless (equal (fn2-run-installed-state r fn2-run-installed) *fn2-run-installed-state-live*))
@@ -595,7 +628,7 @@
 ; release physical bytes, catalog metadata or immutable query leases.
 (defun fn2-run-free-physical (r fn2-run-installed)
  (declare (xargs :stobjs fn2-run-installed :guard (fn2-run-installed-wfp fn2-run-installed)))
- (b* (((unless (and (natp r) (< r (fn2-run-installed-rows fn2-run-installed)))) (mv :bounds fn2-run-installed))
+ (b* (((unless (and (or (fn2-run-installed-bank-row-p 0 r fn2-run-installed) (fn2-run-installed-bank-row-p 1 r fn2-run-installed)) (natp r) (< r (fn2-run-installed-rows fn2-run-installed)))) (mv :bounds fn2-run-installed))
       ((unless (and (= (fn2-run-installed-state r fn2-run-installed) *fn2-run-installed-state-retired*)
                     (= (fn2-run-installed-physical r fn2-run-installed) 1))) (mv :state fn2-run-installed))
       (count (fn2-run-installed-physical-count fn2-run-installed))
@@ -607,7 +640,7 @@
 
 (defun fn2-run-retired-next (r fn2-run-installed)
  (declare (xargs :stobjs fn2-run-installed :guard (fn2-run-installed-wfp fn2-run-installed)))
- (b* (((unless (and (natp r) (< r (fn2-run-installed-rows fn2-run-installed)))) (mv :bounds fn2-run-installed))
+ (b* (((unless (and (and (natp r) (fn2-run-installed-bank-geometry-p fn2-run-installed) (< r (fn2-run-installed-resident-limit fn2-run-installed))) (natp r) (< r (fn2-run-installed-rows fn2-run-installed)))) (mv :bounds fn2-run-installed))
       ((unless (equal (fn2-run-installed-state r fn2-run-installed) *fn2-run-installed-state-retired*))
        (mv :state fn2-run-installed))
             ((when (= (fn2-run-installed-physical r fn2-run-installed) 1)) (mv :physical fn2-run-installed))

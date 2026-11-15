@@ -101,12 +101,16 @@
       ;; transactions' (t + R) and 8 source cursors after those (t + 9R).
       (unsigned-byte-p 32 (fn2-b-run-cursor-rows profile))
       (unsigned-byte-p 32 (* *fn2-run-max-levels* (fn2-b-run-cursor-rows profile)))
+<<<<<<< HEAD
       (<= (+ (* *fn2-idc-b-stripe* (nfix (fn2-b-format-slots profile)))
              (* *fn2-idc-stride* (nfix (fn2-profile-t profile))) *fn2-b-seal-field-rows* *fn2-b-checkpoint-field-rows*
              (* *fn2-b-read-stride* (fn2-b-read-rows profile)))
           (nfix (fn2-b-capacity :format-field-slots (fn2-b-field-rows profile) profile)))
       (unsigned-byte-p 32 (fn2-b-run-cursor-rows profile))
       (unsigned-byte-p 32 (+ 4 (fn2-b-upload-windows profile) (fn2-b-run-cursor-rows profile)))))
+=======
+      (and (posp (fn2-b-capacity :extent-slots 16 profile)) (unsigned-byte-p 32 (fn2-b-capacity :extent-slots 16 profile)) (unsigned-byte-p 32 (+ (fn2-b-capacity :identity-runs 64 profile) (* 2 (fn2-b-capacity :extent-slots 16 profile)))))))
+>>>>>>> 4161477a4 (Configure resident prefix and two physical replacement banks)
 
 ;; Each child's init is a function whose guard is proved here once, so the
 ;; core init's guard (assembly-init) meets only the opaque profile predicate.
@@ -143,7 +147,7 @@
  (fn2-overlay-index-init (* (nfix (fn2-b-capacity :identity-overlays *fn2-idc-overlays-default* profile))
                             (nfix (fn2-b-capacity :identity-overlay-entries 256 profile))) fn2-overlay-index)
  "Each overlay's key-ordered index of its arena's entries.")
-(fn2-idc-child fn2-core-run-installed fn2-run-installed (fn2-run-installed-init (+ (fn2-b-capacity :identity-runs 64 profile) (fn2-b-capacity :extent-slots 16 profile)) fn2-run-installed)
+(fn2-idc-child fn2-core-run-installed fn2-run-installed (fn2-run-installed-init-configured (fn2-b-capacity :identity-runs 64 profile) (fn2-b-capacity :extent-slots 16 profile) fn2-run-installed)
  "The resident view of each schema's sealed runs.")
 (fn2-idc-child fn2-core-run-cursors fn2-run-cursors
  (fn2-run-cursors-init (fn2-b-run-cursor-rows profile) fn2-run-cursors)
