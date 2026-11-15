@@ -73,7 +73,10 @@
     row-page-slot row-page-gen row-scratch-slot row-scratch-gen *fn2-checkpoint-master-kind* id row-generation))
    (:next :root1-begin) (:charge :steps *fn2-work-stage* :runnable t))
   (:root1-begin :on-refusal ((:next :uncertain) (:charge :steps *fn2-work-small* :runnable t))
-   (:do (code) (fn2-checkpoint-root1-begin-op row-token *fn2-checkpoint-master-kind* id row-generation) :accept (:more)) (:next :root1-source) (:charge :steps *fn2-work-small* :runnable t))
+   (:do (code) (fn2-checkpoint-root1-planning-start-op *fn2-checkpoint-master-kind* id row-generation) :accept () :case
+    (((:more) (:charge :steps *fn2-work-stage* :runnable t))
+     ((:started) (:next :root1-source) (:charge :steps *fn2-work-stage* :runnable t))
+     (:otherwise (:next :uncertain) (:charge :steps *fn2-work-small* :runnable t)))))
   (:root1-source :on-refusal ((:next :uncertain) (:charge :steps *fn2-work-small* :runnable t))
    (:do (code) (fn2-checkpoint-root1-step-op budget *fn2-checkpoint-master-kind* id row-generation) :accept () :case
     (((:more) (:charge :bytes 4096 :steps *fn2-work-stage* :runnable t)) ((:yield) (:yield)) ((:wait) (:idle))

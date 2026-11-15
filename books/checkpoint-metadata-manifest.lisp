@@ -6,11 +6,38 @@
 ; The new directory has no selfentry.
 (in-package "ACL2")
 (include-book "checkpoint-metadata-manifest-state")
-(include-book "checkpoint-metadata-page")
+(include-book "checkpoint-planning-page")
 (include-book "checkpoint-build-state")
 (fn2-book-layer :c)
 
 
+
+; Shared field emission below eligibility: callers separately establish either
+; exact preview ownership or actual physical completion. This helper confers
+; neither physical completion nor permission to publish a Ref.
+(defun fn2-checkpoint-metadata-manifest-fields (b w base slot gen fn2-checkpoint-source fn2-checkpoint-metadata fn2-run-builds fn2-run-writers fn2-fields)
+ (declare (xargs :stobjs (fn2-checkpoint-source fn2-checkpoint-metadata fn2-run-builds fn2-run-writers fn2-fields)
+  :guard (and (fn2-checkpoint-source-wfp fn2-checkpoint-source) (fn2-checkpoint-metadata-wfp fn2-checkpoint-metadata)
+              (fn2-run-builds-wfp fn2-run-builds) (fn2-run-writers-wfp fn2-run-writers) (fn2-fields-wfp fn2-fields)
+              (< 0 (fn2-checkpoint-source-rows fn2-checkpoint-source)) (< 0 (fn2-checkpoint-metadata-rows fn2-checkpoint-metadata))
+              (natp b) (< b (fn2-run-builds-rows fn2-run-builds)) (natp w) (< w (fn2-run-writers-rows fn2-run-writers))
+              (natp base) (<= (+ base *fn2-manifest-entry-num-fields*) (fn2-fields-rows fn2-fields))
+              (unsigned-byte-p 32 slot) (unsigned-byte-p 60 gen))))
+ (b* ((fn2-fields (fn2-fields-set-value (+ base *fn2-manifest-entry-field-schema*) (fn2-checkpoint-source-schema 0 fn2-checkpoint-source) fn2-fields))
+      (fn2-fields (fn2-fields-set-value (+ base *fn2-manifest-entry-field-run*) (fn2-checkpoint-metadata-run-rank 0 fn2-checkpoint-metadata) fn2-fields))
+      (fn2-fields (fn2-fields-set-value (+ base *fn2-manifest-entry-field-height*) (fn2-run-builds-height b fn2-run-builds) fn2-fields))
+      (fn2-fields (fn2-fields-set-value (+ base *fn2-manifest-entry-field-entries*) (fn2-run-builds-entries b fn2-run-builds) fn2-fields))
+      (fn2-fields (fn2-fields-set-value (+ base *fn2-manifest-entry-field-root-unit*) (fn2-run-writers-unit w fn2-run-writers) fn2-fields))
+      (fn2-fields (fn2-fields-set-value (+ base *fn2-manifest-entry-field-root-epoch*) (fn2-run-writers-epoch w fn2-run-writers) fn2-fields))
+      (fn2-fields (fn2-fields-set-value (+ base *fn2-manifest-entry-field-root-allocation*) (fn2-run-writers-counter w fn2-run-writers) fn2-fields))
+      (fn2-fields (fn2-fields-set-value (+ base *fn2-manifest-entry-field-filter-unit*) 0 fn2-fields))
+      (fn2-fields (fn2-fields-set-value (+ base *fn2-manifest-entry-field-filter-epoch*) 0 fn2-fields))
+      (fn2-fields (fn2-fields-set-value (+ base *fn2-manifest-entry-field-filter-allocation*) 0 fn2-fields))
+      (fn2-fields (fn2-fields-put (+ base *fn2-manifest-entry-field-root-hash*)
+       (value 1) (ref-slot slot) (ref-gen gen) (ref-off 0) (ref-len 32)))
+      (fn2-fields (fn2-fields-put (+ base *fn2-manifest-entry-field-filter-hash*)
+       (value 1) (ref-slot slot) (ref-gen gen) (ref-off 32) (ref-len 32))))
+  fn2-fields))
 
 (defun fn2-checkpoint-metadata-manifest-ownerp (fn2-checkpoint-metadata-manifest fn2-csnapshot fn2-run-builds fn2-run-writers)
  (declare (xargs :stobjs (fn2-checkpoint-metadata-manifest fn2-csnapshot fn2-run-builds fn2-run-writers)
@@ -77,16 +104,19 @@
 
 ; The first32 bytes are the actual retained root hash. The second32 are the
 ; canonical absent-filter digest. No caller supplies hash bytes.
-(defun fn2-checkpoint-metadata-manifest-hash (i extent slot gen kind owner generation fn2-checkpoint-page-verified fn2-pool)
- (declare (xargs :stobjs (fn2-checkpoint-page-verified fn2-pool) :measure (nfix (- 64 (nfix i)))
+(defun fn2-checkpoint-metadata-manifest-hash (i extent slot gen kind owner generation preview fn2-checkpoint-recipe fn2-checkpoint-page-verified fn2-pool)
+ (declare (xargs :stobjs (fn2-checkpoint-recipe fn2-checkpoint-page-verified fn2-pool) :measure (nfix (- 64 (nfix i)))
   :guard (and (fn2-checkpoint-page-verified-wfp fn2-checkpoint-page-verified) (fn2-pool-wfp fn2-pool)
-              (natp extent) (< extent (fn2-checkpoint-page-verified-rows fn2-checkpoint-page-verified)) (natp i) (<= i 64))))
+              (fn2-checkpoint-recipe-wfp fn2-checkpoint-recipe) (booleanp preview)
+              (natp extent) (if preview (< extent (fn2-checkpoint-recipe-rows fn2-checkpoint-recipe))
+                (< extent (fn2-checkpoint-page-verified-rows fn2-checkpoint-page-verified))) (natp i) (<= i 64))))
  (if (>= i 64) (mv :ok fn2-pool)
-  (b* ((byte (if (< i 32) (logand 255 (ash (fn2-checkpoint-page-verified-word extent (floor i 4) fn2-checkpoint-page-verified)
+  (b* ((byte (if (< i 32) (logand 255 (ash (if preview (fn2-checkpoint-recipe-word extent (floor i 4) fn2-checkpoint-recipe)
+                  (fn2-checkpoint-page-verified-word extent (floor i 4) fn2-checkpoint-page-verified))
                                            (- (* 8 (mod i 4))))) 0))
        ((mv code fn2-pool) (fn2-pool-write slot gen i byte kind owner generation fn2-pool))
        ((unless (eq code :ok)) (mv code fn2-pool)))
-   (fn2-checkpoint-metadata-manifest-hash (+ i 1) extent slot gen kind owner generation fn2-checkpoint-page-verified fn2-pool))))
+   (fn2-checkpoint-metadata-manifest-hash (+ i 1) extent slot gen kind owner generation preview fn2-checkpoint-recipe fn2-checkpoint-page-verified fn2-pool))))
 
 (defmacro fn2-checkpoint-metadata-manifest-emit-mv (code)
  `(mv ,code fn2-checkpoint-metadata-manifest fn2-checkpoint-metadata fn2-checkpoint-source
@@ -97,15 +127,15 @@
 ; the same source, builder and verified root for a later retry.
 (defun fn2-checkpoint-metadata-manifest-emit (fn2-checkpoint-metadata-manifest fn2-checkpoint-metadata fn2-checkpoint-source
                                             fn2-csnapshot fn2-checkpoint-page fn2-checkpoint-page-verified fn2-checkpoint-construction fn2-extents
-                                            fn2-run-builds fn2-run-writers fn2-run-restarts fn2-fields fn2-pool)
+                                            fn2-run-builds fn2-run-writers fn2-run-restarts fn2-fields fn2-pool fn2-checkpoint-planning fn2-checkpoint-recipe)
  (declare (xargs :stobjs (fn2-checkpoint-metadata-manifest fn2-checkpoint-metadata fn2-checkpoint-source fn2-csnapshot fn2-checkpoint-page
                           fn2-checkpoint-page-verified fn2-checkpoint-construction fn2-extents fn2-run-builds fn2-run-writers
-                          fn2-run-restarts fn2-fields fn2-pool)
+                          fn2-run-restarts fn2-fields fn2-pool fn2-checkpoint-planning fn2-checkpoint-recipe)
   :guard (and (fn2-checkpoint-metadata-manifest-wfp fn2-checkpoint-metadata-manifest) (fn2-checkpoint-metadata-wfp fn2-checkpoint-metadata)
               (fn2-checkpoint-source-wfp fn2-checkpoint-source) (fn2-csnapshot-wfp fn2-csnapshot)
               (fn2-checkpoint-page-wfp fn2-checkpoint-page) (fn2-checkpoint-page-verified-wfp fn2-checkpoint-page-verified) (fn2-checkpoint-construction-wfp fn2-checkpoint-construction)
               (fn2-extents-wfp fn2-extents) (fn2-run-builds-wfp fn2-run-builds) (fn2-run-writers-wfp fn2-run-writers)
-              (fn2-run-restarts-wfp fn2-run-restarts) (fn2-fields-wfp fn2-fields) (fn2-pool-wfp fn2-pool))))
+              (fn2-run-restarts-wfp fn2-run-restarts) (fn2-fields-wfp fn2-fields) (fn2-pool-wfp fn2-pool) (fn2-checkpoint-planning-wfp fn2-checkpoint-planning) (fn2-checkpoint-recipe-wfp fn2-checkpoint-recipe))))
  (b* (((unless (and (fn2-checkpoint-metadata-manifest-ownerp fn2-checkpoint-metadata-manifest fn2-csnapshot fn2-run-builds fn2-run-writers)
                      (fn2-checkpoint-metadata-ownerp fn2-checkpoint-metadata fn2-csnapshot fn2-run-builds fn2-run-writers)
                      (equal (fn2-checkpoint-metadata-manifest-phase 0 fn2-checkpoint-metadata-manifest) *fn2-checkpoint-metadata-manifest-phase-adding*)
@@ -115,6 +145,7 @@
       (kind (fn2-checkpoint-metadata-manifest-owner-kind 0 fn2-checkpoint-metadata-manifest))
       (owner (fn2-checkpoint-metadata-manifest-owner-slot 0 fn2-checkpoint-metadata-manifest))
       (generation (fn2-checkpoint-metadata-manifest-owner-gen 0 fn2-checkpoint-metadata-manifest))
+      (preview (fn2-checkpoint-planning-previewp token kind owner generation fn2-checkpoint-planning fn2-csnapshot fn2-extents))
       (b (fn2-checkpoint-metadata-build 0 fn2-checkpoint-metadata))
       (mb (fn2-checkpoint-metadata-manifest-build 0 fn2-checkpoint-metadata-manifest))
       (height (fn2-run-builds-height b fn2-run-builds))
@@ -133,29 +164,19 @@
                      (equal (+ 1 (fn2-checkpoint-metadata-manifest-entries 0 fn2-checkpoint-metadata-manifest))
                             (fn2-checkpoint-source-rank 0 fn2-checkpoint-source))
                      (natp base) (<= (+ base *fn2-manifest-entry-num-fields*) (fn2-fields-rows fn2-fields))
-                     (fn2-checkpoint-metadata-page-complete-p b (- height 1) fn2-checkpoint-metadata fn2-csnapshot fn2-run-builds fn2-run-writers
-                      fn2-checkpoint-page-verified fn2-checkpoint-construction fn2-extents fn2-checkpoint-page fn2-pool)))
+                     (if preview
+                      (fn2-checkpoint-planning-sealedp b (- height 1) fn2-checkpoint-planning fn2-checkpoint-recipe fn2-checkpoint-metadata fn2-csnapshot fn2-extents fn2-run-builds fn2-run-writers)
+                      (fn2-checkpoint-metadata-page-complete-p b (- height 1) fn2-checkpoint-metadata fn2-csnapshot fn2-run-builds fn2-run-writers
+                      fn2-checkpoint-page-verified fn2-checkpoint-construction fn2-extents fn2-checkpoint-page fn2-pool))))
        (fn2-checkpoint-metadata-manifest-emit-mv :source))
       (w (fn2-run-level-writer b (- height 1)))
       (extent (floor (fn2-run-writers-unit w fn2-run-writers) *fn2-storage-extent-units*))
       ((mv code fn2-pool) (fn2-pool-reset slot gen kind owner generation fn2-pool))
       ((unless (eq code :ok)) (fn2-checkpoint-metadata-manifest-emit-mv code))
-      ((mv code fn2-pool) (fn2-checkpoint-metadata-manifest-hash 0 extent slot gen kind owner generation fn2-checkpoint-page-verified fn2-pool))
+      ((mv code fn2-pool) (fn2-checkpoint-metadata-manifest-hash 0 extent slot gen kind owner generation preview fn2-checkpoint-recipe fn2-checkpoint-page-verified fn2-pool))
       ((unless (eq code :ok)) (fn2-checkpoint-metadata-manifest-emit-mv code))
-      (fn2-fields (fn2-fields-set-value (+ base *fn2-manifest-entry-field-schema*) (fn2-checkpoint-source-schema 0 fn2-checkpoint-source) fn2-fields))
-      (fn2-fields (fn2-fields-set-value (+ base *fn2-manifest-entry-field-run*) (fn2-checkpoint-metadata-run-rank 0 fn2-checkpoint-metadata) fn2-fields))
-      (fn2-fields (fn2-fields-set-value (+ base *fn2-manifest-entry-field-height*) (fn2-run-builds-height b fn2-run-builds) fn2-fields))
-      (fn2-fields (fn2-fields-set-value (+ base *fn2-manifest-entry-field-entries*) (fn2-run-builds-entries b fn2-run-builds) fn2-fields))
-      (fn2-fields (fn2-fields-set-value (+ base *fn2-manifest-entry-field-root-unit*) (fn2-run-writers-unit w fn2-run-writers) fn2-fields))
-      (fn2-fields (fn2-fields-set-value (+ base *fn2-manifest-entry-field-root-epoch*) (fn2-run-writers-epoch w fn2-run-writers) fn2-fields))
-      (fn2-fields (fn2-fields-set-value (+ base *fn2-manifest-entry-field-root-allocation*) (fn2-run-writers-counter w fn2-run-writers) fn2-fields))
-      (fn2-fields (fn2-fields-set-value (+ base *fn2-manifest-entry-field-filter-unit*) 0 fn2-fields))
-      (fn2-fields (fn2-fields-set-value (+ base *fn2-manifest-entry-field-filter-epoch*) 0 fn2-fields))
-      (fn2-fields (fn2-fields-set-value (+ base *fn2-manifest-entry-field-filter-allocation*) 0 fn2-fields))
-      (fn2-fields (fn2-fields-put (+ base *fn2-manifest-entry-field-root-hash*)
-       (value 1) (ref-slot slot) (ref-gen gen) (ref-off 0) (ref-len 32)))
-      (fn2-fields (fn2-fields-put (+ base *fn2-manifest-entry-field-filter-hash*)
-       (value 1) (ref-slot slot) (ref-gen gen) (ref-off 32) (ref-len 32)))
+      (fn2-fields (fn2-checkpoint-metadata-manifest-fields b w base slot gen
+       fn2-checkpoint-source fn2-checkpoint-metadata fn2-run-builds fn2-run-writers fn2-fields))
       ((mv code fn2-run-builds fn2-run-writers fn2-run-restarts fn2-fields fn2-pool)
        (fn2-run-build-add mb base fn2-run-builds fn2-run-writers fn2-run-restarts fn2-fields fn2-pool))
       ((unless (eq code :ok)) (fn2-checkpoint-metadata-manifest-emit-mv code))
@@ -169,24 +190,24 @@
 ; The manifest uses the same allocator/page builder, with the declared
 ; directory kind. An empty directory gets a real open level0 root page.
 (defun fn2-checkpoint-metadata-manifest-page (level slot gen fn2-checkpoint-metadata-manifest fn2-checkpoint-metadata fn2-csnapshot
-                                            fn2-checkpoint-construction fn2-extents fn2-control fn2-run-builds fn2-run-writers fn2-pool)
+                                            fn2-checkpoint-construction fn2-extents fn2-control fn2-run-builds fn2-run-writers fn2-pool fn2-checkpoint-planning fn2-checkpoint-recipe fn2-checkpoint-recipe-order)
  (declare (xargs :stobjs (fn2-checkpoint-metadata-manifest fn2-checkpoint-metadata fn2-csnapshot fn2-checkpoint-construction
-                          fn2-extents fn2-control fn2-run-builds fn2-run-writers fn2-pool)
+                          fn2-extents fn2-control fn2-run-builds fn2-run-writers fn2-pool fn2-checkpoint-planning fn2-checkpoint-recipe fn2-checkpoint-recipe-order)
   :guard (and (fn2-checkpoint-metadata-manifest-wfp fn2-checkpoint-metadata-manifest) (fn2-checkpoint-metadata-wfp fn2-checkpoint-metadata)
               (fn2-csnapshot-wfp fn2-csnapshot) (fn2-checkpoint-construction-wfp fn2-checkpoint-construction)
               (fn2-extents-wfp fn2-extents) (fn2-control-wfp fn2-control) (fn2-run-builds-wfp fn2-run-builds)
-              (fn2-run-writers-wfp fn2-run-writers) (fn2-pool-wfp fn2-pool))))
+              (fn2-run-writers-wfp fn2-run-writers) (fn2-pool-wfp fn2-pool) (fn2-checkpoint-planning-wfp fn2-checkpoint-planning) (fn2-checkpoint-recipe-wfp fn2-checkpoint-recipe) (fn2-checkpoint-recipe-order-wfp fn2-checkpoint-recipe-order))))
  (b* (((unless (and (fn2-checkpoint-metadata-manifest-ownerp fn2-checkpoint-metadata-manifest fn2-csnapshot fn2-run-builds fn2-run-writers)
                      (member (fn2-checkpoint-metadata-manifest-phase 0 fn2-checkpoint-metadata-manifest)
                       (list *fn2-checkpoint-metadata-manifest-phase-adding* *fn2-checkpoint-metadata-manifest-phase-finishing*))
                      (not (equal slot (fn2-checkpoint-metadata-manifest-hash-slot 0 fn2-checkpoint-metadata-manifest)))))
-       (mv :manifest fn2-checkpoint-metadata fn2-checkpoint-construction fn2-extents fn2-control fn2-run-builds fn2-run-writers fn2-pool))
+       (mv :manifest fn2-checkpoint-metadata fn2-checkpoint-construction fn2-extents fn2-control fn2-run-builds fn2-run-writers fn2-pool fn2-checkpoint-planning fn2-checkpoint-recipe fn2-checkpoint-recipe-order))
       (b (fn2-checkpoint-metadata-manifest-build 0 fn2-checkpoint-metadata-manifest))
       (fn2-run-builds (if (and (equal level 0) (equal (fn2-run-builds-entries b fn2-run-builds) 0)
                               (equal (fn2-run-builds-height b fn2-run-builds) 0))
                        (fn2-run-builds-set-height b 1 fn2-run-builds) fn2-run-builds)))
   (fn2-checkpoint-metadata-page-for-build b level *page-kind-manifest* slot gen fn2-checkpoint-metadata fn2-csnapshot
-   fn2-checkpoint-construction fn2-extents fn2-control fn2-run-builds fn2-run-writers fn2-pool)))
+   fn2-checkpoint-construction fn2-extents fn2-control fn2-run-builds fn2-run-writers fn2-pool fn2-checkpoint-planning fn2-checkpoint-recipe fn2-checkpoint-recipe-order)))
 
 ; Finish only after the selector exhausted every held source and each emitted
 ; rank entered schema10 once. The empty-root case still runs the ordinary
@@ -260,7 +281,8 @@
               (natp extent) (< extent (fn2-checkpoint-page-verified-rows fn2-checkpoint-page-verified))
               (natp base) (<= (+ base 32) (fn2-checkpoint-bytes-rows fn2-checkpoint-bytes)) (natp i) (<= i 32))))
  (if (>= i 32) fn2-checkpoint-bytes
-  (let* ((byte (logand 255 (ash (fn2-checkpoint-page-verified-word extent (floor i 4) fn2-checkpoint-page-verified) (- (* 8 (mod i 4))))))
+  (let* ((byte (logand 255 (ash (if preview (fn2-checkpoint-recipe-word extent (floor i 4) fn2-checkpoint-recipe)
+                  (fn2-checkpoint-page-verified-word extent (floor i 4) fn2-checkpoint-page-verified)) (- (* 8 (mod i 4))))))
          (fn2-checkpoint-bytes (fn2-checkpoint-bytes-set-value (+ base i) byte fn2-checkpoint-bytes)))
    (fn2-checkpoint-metadata-manifest-root-hash (+ i 1) extent base fn2-checkpoint-page-verified fn2-checkpoint-bytes))))
 

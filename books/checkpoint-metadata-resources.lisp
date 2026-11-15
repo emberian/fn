@@ -89,3 +89,11 @@
 (defcost fn2-checkpoint-root1-workspaces-op :child fn2-checkpoint-root1-workspaces :answers t
  :tables (fn2-core-checkpoint-root1 fn2-core-checkpoint-windows fn2-core-pool)
  :doc "Derive the stable descriptor/page/scratch/read tuple from actual admitted root1 ownership.")
+
+; Exact recipes use the existing physical extent profile, not a semantic cap.
+(fn2-sealer-child fn2-core-checkpoint-planning fn2-checkpoint-planning (fn2-checkpoint-planning-init 1 fn2-checkpoint-planning)
+ "Exact candidate, held source cut and two-pass recipe continuation.")
+(fn2-sealer-child fn2-core-checkpoint-recipe fn2-checkpoint-recipe (fn2-checkpoint-recipe-init (fn2-b-capacity :extent-slots 16 profile) fn2-checkpoint-recipe)
+ "One actual sealed-layout recipe row per supported physical extent.")
+(fn2-sealer-child fn2-core-checkpoint-recipe-order fn2-checkpoint-recipe-order (fn2-checkpoint-recipe-order-init (fn2-b-capacity :extent-slots 16 profile) fn2-checkpoint-recipe-order)
+ "Bounded creation order retains exact planned physical identities.")

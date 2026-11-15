@@ -74,6 +74,25 @@ class Root1SourceBoundary(unittest.TestCase):
         self.assertEqual(setters, ["fn2-checkpoint-root1-closure"])
         self.assertIn("fn2-checkpoint-metadata-manifest-scan-step", str(ops[setters[0]]))
 
+    def test_preview_uses_actual_builder_without_physical_completion(self):
+        source = (ROOT / "books/checkpoint-metadata-driver.lisp").read_text()
+        ops = operations(source)
+        work = str(ops["fn2-checkpoint-root1-work"])
+        self.assertIn("fn2-checkpoint-planning-seal", work)
+        self.assertIn("fn2-checkpoint-planning-sealedp", work)
+        self.assertIn("fn2-run-build-promote", work)
+        self.assertIn("fn2-checkpoint-planning-suffix-begin", work)
+        self.assertIn("fn2-checkpoint-planning-materialize-full", str(ops["fn2-checkpoint-root1-planning-step"]))
+        self.assertIn("fn2-checkpoint-root1-begin", str(ops["fn2-checkpoint-root1-planning-step"]))
+        self.assertIn("fn2-checkpoint-planning-previewp", str(ops["fn2-checkpoint-root1-retention"]))
+        master = (ROOT / "books/checkpoint-master-arms.lisp").read_text()
+        self.assertIn("fn2-checkpoint-root1-planning-start-op", master)
+        state = (ROOT / "books/checkpoint-master-state.lisp").read_text()
+        self.assertIn("(defconst *fn2-checkpoint-activation-qualified* nil)", state)
+        planning = (ROOT / "books/checkpoint-planning-page.lisp").read_text()
+        self.assertNotIn("fn2-checkpoint-page-verified-set-", planning)
+        self.assertNotIn("fn2-csnapshot-set-complete", planning)
+
     def test_exact_harvest_hooks_and_issue_success_abi(self):
         resources = (ROOT / "books/checkpoint-metadata-resources.lisp").read_text()
         driver = (ROOT / "books/checkpoint-metadata-driver.lisp").read_text()
@@ -97,7 +116,7 @@ class Root1SourceBoundary(unittest.TestCase):
         for name, op in operations(source).items():
             self.assertEqual(assigned_carriers(op, outputs), outputs[name], name)
             self.assertLessEqual(1 + len(outputs[name]), 32, name)
-        self.assertEqual(1 + len(outputs["fn2-checkpoint-root1-step"]), 28)
+        self.assertEqual(1 + len(outputs["fn2-checkpoint-root1-step"]), 31)
         self.assertEqual(3 + len(outputs["fn2-checkpoint-root1-read"]), 17)
         # A real output from the manifest scan must survive closure dispatch.
         damaged = {name: set(values) for name, values in outputs.items()}
