@@ -2,6 +2,18 @@
 (in-package "ACL2")
 (include-book "upload-feed-lf-unit")
 
+; Complete logical snapshot generated from the actual pool schema, including
+; every extra scalar field; COPY's reference face is deliberately test-only.
+(make-event
+ (let* ((name 'fn2-pool)
+        (schema (cdr (assoc-eq name (fn2-decl-rows :columns (w state)))))
+        (fields (append (fn2-columns-fields name (fn2-decl-get :columns schema))
+                        (list (list (fn2-columns-sym name "-ROWS") :type
+                                    (list 'integer 0 (- (fn2-decl-get :rows-bound schema) 1)) :initially 0))
+                        (fn2-decl-get :extra-fields schema))))
+   (cons 'progn (fn2-columns-reference-events name (fn2-columns-sym name "-REF") fields))))
+
+
 (defun fn2-ufs-run (end budget stale)
  (declare (xargs :verify-guards nil))
  (with-local-stobj fn2-pool
