@@ -1,0 +1,23 @@
+; Actual carrier holder controls, runnable but unexecuted under source grant.
+(in-package "ACL2")
+(include-book "../books/event-archive-state")
+(defun fn2-eahu-test ()
+ (declare (xargs :verify-guards nil))
+ (with-local-stobj fn2-event-archive
+  (mv-let (answer fn2-event-archive)
+   (b* ((fn2-event-archive (fn2-event-archive-init 2 fn2-event-archive))
+        (idle (not (fn2-event-archive-candidate-held-p 0 0 fn2-event-archive)))
+        (fn2-event-archive (fn2-event-archive-put 1 (phase *fn2-event-archive-phase-cold-header*)
+         (origin *fn2-event-archive-origin-cold*) (candidate 4) (checkpoint 9) (source-tag 0) (source-generation 0)))
+        (cold (fn2-event-archive-candidate-held-p 4 9 fn2-event-archive))
+        (different (and (not (fn2-event-archive-candidate-held-p 4 8 fn2-event-archive))
+                        (not (fn2-event-archive-candidate-held-p 5 9 fn2-event-archive))))
+        (fn2-event-archive (fn2-event-archive-set-phase 1 *fn2-event-archive-phase-uncertain* fn2-event-archive))
+        (uncertain (fn2-event-archive-candidate-held-p 4 9 fn2-event-archive))
+        (fn2-event-archive (fn2-event-archive-put 0 (phase *fn2-event-archive-phase-complete*) (candidate 2) (checkpoint 6)))
+        (active (fn2-event-archive-candidate-held-p 2 6 fn2-event-archive))
+        (fn2-event-archive (fn2-event-archive-set-phase 1 *fn2-event-archive-phase-idle* fn2-event-archive)))
+    (mv (and idle cold different uncertain active
+             (not (fn2-event-archive-candidate-held-p 4 9 fn2-event-archive))
+             (fn2-event-archive-candidate-held-p 2 6 fn2-event-archive)) fn2-event-archive)) answer)))
+(assert-event (fn2-eahu-test))

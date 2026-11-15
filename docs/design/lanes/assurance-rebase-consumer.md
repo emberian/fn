@@ -269,3 +269,8 @@ physical namespace and typed manifest Ref; it is unexecuted and explicitly
 does not claim the physical-reader antecedent. Empty-cut and retained-manifest
 append producers, actual header publication/root4/master wiring and genuine
 raw journal reclamation/reuse remain open work owned by this lane.
+
+The lower canonical candidate-held predicate now retains either non-idle archive
+row by exact candidate/checkpoint, including COLD-HEADER with zero tag/generation
+and UNCERTAIN. The two fixed rows require no whole-store scan. An unrun carrier
+fixture covers idle, cold, uncertain, active and mismatched subjects.

@@ -27,3 +27,17 @@
   :guard (and (fn2-event-archive-wfp fn2-event-archive) (natp r) (< r 2)
               (member-eq kind '(:member :manifest :cut-seal)) (natp i) (< i 8))))
  (fn2-event-archive-wordsi (+ (* r 24) (case kind (:member 0) (:manifest 8) (otherwise 16)) i) fn2-event-archive))
+
+; Construction and cold discovery both retain their exact candidate even
+; before a serving tag/generation exists. Uncertain rows retain ownership.
+(defun fn2-event-archive-candidate-held-p (c checkpoint fn2-event-archive)
+ (declare (xargs :stobjs fn2-event-archive :guard (fn2-event-archive-wfp fn2-event-archive)))
+ (and (natp c) (unsigned-byte-p 60 checkpoint)
+  (or (and (< 0 (fn2-event-archive-rows fn2-event-archive))
+           (not (equal (fn2-event-archive-phase 0 fn2-event-archive) *fn2-event-archive-phase-idle*))
+           (equal (fn2-event-archive-candidate 0 fn2-event-archive) c)
+           (equal (fn2-event-archive-checkpoint 0 fn2-event-archive) checkpoint))
+      (and (< 1 (fn2-event-archive-rows fn2-event-archive))
+           (not (equal (fn2-event-archive-phase 1 fn2-event-archive) *fn2-event-archive-phase-idle*))
+           (equal (fn2-event-archive-candidate 1 fn2-event-archive) c)
+           (equal (fn2-event-archive-checkpoint 1 fn2-event-archive) checkpoint)))))
