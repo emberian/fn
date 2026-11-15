@@ -297,6 +297,7 @@ ACL2_BOOKS = \
   tests/authority-stream-resolve \
   tests/blake3-native \
   tests/blake3-unit \
+  tests/cns-fetch-prefix-unit \
   tests/blake3-vectors \
   tests/boot-unit \
   tests/borrow-conservation-unit \
