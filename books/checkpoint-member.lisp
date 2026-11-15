@@ -5,7 +5,9 @@
 (include-book "std/util/bstar" :dir :system)
 (include-book "checkpoint")
 (include-book "pool-ranges")
+(include-book "layout-size-bounds")
 (fn2-book-layer :b)
+(defcodec-size-bounds fn2-format-checkpoint-installation)
 
 (defun fn2-checkpoint-installation-member-capacity ()
  (declare (xargs :guard t))
@@ -22,7 +24,8 @@
    (if (not (eq code :ok)) (mv code fn2-pool)
     (fn2-checkpoint-member-hash (- left 1) (+ at 1) (+ source 1) slot gen okind oslot ogen fn2-checkpoint-bytes fn2-pool)))))
 (fn2-pool-preserves fn2-checkpoint-member-hash
- (left at source slot gen okind oslot ogen fn2-checkpoint-bytes fn2-pool) :position 1)
+ (left at source slot gen okind oslot ogen fn2-checkpoint-bytes fn2-pool) :position 1
+ :hints (("Goal" :in-theory (disable fn2-pool-write fn2-pool-rows))))
 (in-theory (disable fn2-checkpoint-member-hash))
 
 ; One owned workspace, including 32 temporary digest bytes. Encode at offset32,
