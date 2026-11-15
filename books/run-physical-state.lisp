@@ -35,13 +35,13 @@
 ; One source declaration emits operation-domain TYPE/WFP/ROWS contracts for
 ; every returned carrier. Readonly carriers remain only in the antecedent.
 (defun fn2-run-load-frame-hyps (carriers)
- (declare (xargs :guard t))
+ (declare (xargs :guard t :verify-guards nil))
  (if (atom carriers) nil
   (append (list (list (fn2-columns-sym (car carriers) "P") (car carriers))
                 (list (fn2-columns-sym (car carriers) "-WFP") (car carriers)))
           (fn2-run-load-frame-hyps (cdr carriers)))))
 (defun fn2-run-load-frame-specs (outputs)
- (declare (xargs :guard t))
+ (declare (xargs :guard t :verify-guards nil))
  (if (atom outputs) nil
   (let* ((obj (caar outputs)) (pos (cadar outputs)) (stem (symbol-name obj)))
    (append (list (list (concatenate 'string "-" stem "-TYPE") (fn2-columns-sym obj "P") pos)

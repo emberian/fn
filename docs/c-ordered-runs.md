@@ -9,6 +9,54 @@ fold versions, identity, decision 6), `STORAGE-DESIGN-ASTRA.md` "The concrete st
 (`docs/a-pool-host-sim.md`) and layer B's (`docs/b-durability.md`) bind this layer too. A
 departure from a decision that is not recorded here is a defect.
 
+## Physical source loading (2026-11-14 source integration)
+
+`fn2-run-installed` distinguishes resident roots from physical catalog roots.
+Physical rows retain the actual epoch, allocation, catalog tag and 32-byte hash;
+query precedence remains the source rank that the checkpoint producer also used
+as the persisted run header's RUN. Root selection preserves the full reference.
+Generated child descent copies the authenticated typed child Ref; upward scans
+retain the full parent Ref and reread/authenticate it before resuming its index.
+Physical pages do not enter the resident `(unit, counter)` cache.
+
+`run-physical-{state,resources,source,io,step,release}.lisp` owns one 64 KiB page
+and one 4 KiB sector workspace per active physical cursor. The exact catalog
+lease outlives physical operations and remains valid through installed-row
+retirement. A separate persistent C-base closure hold must protect the selected
+candidate while installed sources or query leases still reference it. Transient
+operation pins alone do not establish that lifetime obligation.
+
+The loader issues at most one 4 KiB read per explicit machine issue. Its direct
+pre-finish hook checks actual operation slot/generation, cell, event and byte
+count; copying waits until the ordinary operation finish returns the workspace.
+Only after all sixteen sectors, the existing `fn2-format-run` physical verifier,
+and the shared generated typed-header decoder succeed may the cursor enter
+HEADER. Hashing, parsing and identity decisions remain in the existing ACL2
+implementations. Host code only transports the requested bytes and completions.
+
+Private checker rows are derived from the actual C cursor geometry
+`K = T + (1 + range-source-cursors) R + seal-source-cursors + 1`. They follow
+the sealer and precede control connections. Existing semantic, payload, event,
+ordinary-read and checkpoint tail selectors retain their final-five positions.
+Profile admission grows format fields, hash state and digest capacity from the
+same row count; the loader cannot borrow another continuation's checker stripe.
+
+D query admission reserves its declared read-row cursor bundles before the first
+reply. The current geometry has two read rows, each with one lookup and eight
+range cursors: eighteen pairs of windows requesting 1,253,376 bytes, plus retained control
+and verifier state. The actual pool classes determine the charged capacity;
+a larger fallback class costs its full capacity. This is an active-request capacity limit. No stored-data
+limit or whole-store in-memory representation follows from it. Shortage refuses
+before the reply; partially acquired ownership must be cleaned before a refusal
+is sent. Final/cancel drain releases each private pair after pending zero and
+actual workspace return, then releases its catalog lease.
+
+The loader and cursor changes are source integration, not ACL2 admission or
+runtime qualification. Physical catalog activation still requires the C-base
+closure hold, every actual reader's issue/wake/drain consumer, and composed
+persisted-page lookup controls. Source-only structural controls cannot establish
+those obligations or authorize checkpoint/FREE activation.
+
 ## 1. Where each piece lives
 
 | piece | file(s) | quest |

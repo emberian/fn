@@ -58,6 +58,7 @@
 (defun fn2-idc-profilep (profile)
  (declare (xargs :guard t))
  (and (unsigned-byte-p 32 (fn2-profile-t profile))
+      (unsigned-byte-p 32 (+ 4 (fn2-b-upload-windows profile) (fn2-b-run-cursor-rows profile)))
       (unsigned-byte-p 32 (* *fn2-run-max-levels* (nfix (fn2-profile-t profile))))
       (unsigned-byte-p 32 (* *fn2-succ-slots* (nfix (fn2-profile-t profile))))
       (unsigned-byte-p 32 (fn2-b-capacity :identity-overlays *fn2-idc-overlays-default* profile))
