@@ -1,6 +1,6 @@
 {
   "status": "source-reviewed; ACL2 admission and executable assertion unrun",
-  "componentSource": "452b1adc8477677d8165d27c3a4a425117cd0cb2",
+  "componentSource": "b3c1ece9e19f4edb123257265ee621df1ea7c052",
   "consumerRoot": "tests/cns-metadata-pending-unit",
   "logicalWorldBoundary": {
     "priorApplicationSource": "30e44c6955ae09affb0acfb436c9904b9094ad1f",
@@ -14,11 +14,11 @@
     "payload": [
       {
         "path": "books/cns-request-observer.lisp",
-        "sha256": "5b672180efd0dec1a876083a6e4518b144d7c750bbfc394a0a18f99543c708ba"
+        "sha256": "957119a4a18234468447fea4477b47c82fa362fc6e1ba62ef1c69d98f15212ed"
       },
       {
         "path": "tools/cns_read_observer_rewrite.py",
-        "sha256": "b6af302f2b4bcbc38e9cf0e2d0bc49d20112275ca05afdd6abb9d3e0d94301a2"
+        "sha256": "2edf86c7ccafb62f3b6d87e31f15fa989db4e95bcf318a61de66bd24a5eace41"
       },
       {
         "path": "tools/cns_read_observer_mid.lisp",
@@ -30,7 +30,7 @@
       },
       {
         "path": "tools/test_cns_read_observer_rewrite.py",
-        "sha256": "f701c1e933bc25ce87d08c93640333834f87b6054b7cf86aa0ea2134abe91e5b"
+        "sha256": "862d856c13cb2ec923c41d59ebdf5c7597394ac66ba9b14debb1db228643a79e"
       },
       {
         "path": "tests/fixtures/cns_read_observer_targets.json",
@@ -53,7 +53,7 @@
     "projectedCallbacks": [
       "metadata acquire in decode/check/lookup/read/page/refresh",
       "metadata release before Send, safe lease-capacity reselection, successor/commit/upload waits",
-      "actual FETCH MID check before source physical work; retained fact replaces later C read",
+      "Actual FETCH MID check precedes physical work; retain META through complete authenticated descendant coverage, then release once before prefix. Source-bound abort/failure retains META until terminal HANDOFF.",
       "commit result consumed once; fresh metadata read in refresh"
     ],
     "preservedByProjection": [
@@ -82,7 +82,15 @@
       "fn2-read-parent-clear-one",
       "fn2-read-parent-binding-current-p"
     ],
-    "integrationRequirement": "Reconcile these schema/provider differences with the current rolling source before freezing closure keys; this manifest does not assert a complete current application overlay."
+    "integrationRequirement": "Reconcile these schema/provider differences with the current rolling source before freezing closure keys; this manifest does not assert a complete current application overlay.",
+    "status": "Historical observer API baseline, not a complete current physical source freeze.",
+    "laterPhysicalSourceDependencies": {
+      "0957f2b6d": "0957f2b6da834134904c95edaf68a8c6e269dbc4",
+      "69cd1695e": "69cd1695e4382c5e9c1aa2a65b6b78e1152c284c",
+      "712d5ece7": "712d5ece701d34200e0501554e00155aae1d82ff",
+      "517619e27": "517619e27c682f271ddb3a3fab19eaf064018de5"
+    },
+    "openPhysicalCnsJoin": "Drain/finish physical metadata jobs before request-release; READ CLOSE :state retains receipts for pending/uncertain/foreign regions and must not be retried as ordinary MORE. Current actual release WFP-scan/cost audit is separate and open."
   },
   "actualProducerBoundary": {
     "source": "5a516ec771141e8b6362d4bf71b468d6716249ae",
@@ -116,7 +124,7 @@
     "changed generation, cursor, position or article bytes fail the output predicate"
   ],
   "localSourceChecks": {
-    "transformControls": 3,
+    "transformControls": 4,
     "strictFixtureForms": 25,
     "knownActualDefinitionCallAritiesChecked": 84,
     "arityFindings": 0,
@@ -124,5 +132,13 @@
     "diffCheck": "pass",
     "runtimeOrCertificationClaim": false
   },
-  "nextGate": "One source-matched successor prefix reusing qualified unaffected artifacts, then admit this root and execute its unchanged assertion. No live core redefinition or duplicate cold application world."
+  "nextGate": "One source-matched successor prefix reusing qualified unaffected artifacts, then admit this root and execute its unchanged assertion. No live core redefinition or duplicate cold application world.",
+  "fetchLifetimeRepair": {
+    "reason": "Root claim alone does not retain a manifest descendant closure.",
+    "handoff": "actual source worker retention-ready/covered before source-open prefix",
+    "abort": "source-bound cancel/failure retains META through bounded cleanup and terminal HANDOFF",
+    "onceOnly": "positive actual row observer receipt gates covered/HANDOFF drop",
+    "sourceControl": "covered/open-WAIT/covered releases once; serial-guard omission fails; stale/uncertain source routes retain META and stop",
+    "sourceControlLimit": "covered/open-WAIT is unreachable-in-composition for this actual caller under its CTL frames. Mocked callee outcomes test defensive routing only. Actual emitted pendingREAD -> coverage -> pendingDATA control and manifest/adoption interleaving remain unexecuted/owed."
+  }
 }
