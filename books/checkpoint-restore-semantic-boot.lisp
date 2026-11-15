@@ -4,12 +4,13 @@
 (include-book "std/util/bstar" :dir :system)
 (include-book "boot-kind")
 (include-book "checkpoint-restore-semantic-work")
+(include-book "checkpoint-restore-semantic-reach")
 (fn2-book-layer :c)
 (defcost fn2-boot-checkpoint-semantic-begin :answers t :bytes 128
  :tables (fn2-core-checkpoint-restore-semantic fn2-core-fc fn2-core-pool))
 (defcost fn2-boot-checkpoint-semantic-sector :answers t)
-(defcost fn2-boot-checkpoint-semantic-check :child fn2-checkpoint-restore-semantic-page :answers t :bytes 4096
- :tables (fn2-core-checkpoint-restore-semantic fn2-core-fc fn2-core-fc-context fn2-core-b3 fn2-core-fields fn2-core-pool fn2-core-digests))
+(defcost fn2-boot-checkpoint-semantic-check :child fn2-checkpoint-restore-semantic-page-reach :answers t :bytes 4096
+ :tables (fn2-core-checkpoint-restore-semantic fn2-core-checkpoint-restore-reach fn2-core-fc fn2-core-fc-context fn2-core-b3 fn2-core-fields fn2-core-pool fn2-core-digests))
 
 (defcost fn2-boot-checkpoint-semantic-consume :child fn2-checkpoint-restore-semantic-consume :answers t
  :tables (fn2-core-checkpoint-restore-semantic fn2-core-checkpoint-restore-semantic-work fn2-core-fields fn2-core-digests))
@@ -19,7 +20,7 @@
 (defmacro fn2-boot-checkpoint-semantic-operations ()
  '(progn
   (make-event (value (cons 'progn
-   (append (fn2-arms-op-face-events 'fn2-boot-checkpoint-semantic-check 'fn2-checkpoint-restore-semantic-page (w state))
+   (append (fn2-arms-op-face-events 'fn2-boot-checkpoint-semantic-check 'fn2-checkpoint-restore-semantic-page-reach (w state))
            (fn2-arms-op-face-events 'fn2-boot-checkpoint-semantic-entry 'fn2-checkpoint-restore-semantic-entry (w state))
            (fn2-arms-op-face-events 'fn2-boot-checkpoint-semantic-consume 'fn2-checkpoint-restore-semantic-consume (w state))
            (fn2-arms-op-face-events 'fn2-boot-checkpoint-semantic-find 'fn2-checkpoint-restore-semantic-find (w state))))))
