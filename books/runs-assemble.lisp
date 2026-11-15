@@ -8,6 +8,7 @@
 ; path reaches a function that is not guard-verified.
 (in-package "ACL2")
 (include-book "overlay")
+(include-book "columns-call-guards")
 (fn2-book-layer :c)
 ; Exact existing lower-bound probe budget, shared with source work bounds.
 (defconst *fn2-ov-search-steps* 40)
@@ -280,12 +281,13 @@
 
 ; A shape lemma (recognizer, invariant, rows) for each named output, proved
 ; with the recognizers and the named rows accessors folded.
-(defmacro fn2-ra-shape (name call guard outputs disables)
+(defmacro fn2-ra-shape (name call guard outputs disables &optional (hints nil hints-p))
  `(defthm ,name
    (implies ,guard (and ,@(fn2-fc-shape-claims outputs call)))
-   :hints (("Goal" :in-theory (disable fn2-run-writersp fn2-run-writers-wfp fn2-run-restartsp fn2-run-restarts-wfp
-                                       fn2-run-cursorsp fn2-run-cursors-wfp fn2-run-pathsp fn2-run-paths-wfp
-                                       fn2-fieldsp fn2-fields-wfp fn2-poolp fn2-pool-wfp ,@disables)))))
+   :hints ,(if hints-p hints
+              `(("Goal" :in-theory (disable fn2-run-writersp fn2-run-writers-wfp fn2-run-restartsp fn2-run-restarts-wfp
+                                           fn2-run-cursorsp fn2-run-cursors-wfp fn2-run-pathsp fn2-run-paths-wfp
+                                           fn2-fieldsp fn2-fields-wfp fn2-poolp fn2-pool-wfp ,@disables))))))
 
 ; Shape lemmas, by cases over the arms, from each codec's own lemmas.
 (defmacro fn2-ra-shape-events ()
@@ -346,7 +348,9 @@
    (defun fn2-run-add-ready (w sid ebase fn2-run-writers fn2-run-restarts fn2-fields fn2-pool)
     (declare (xargs :stobjs (fn2-run-writers fn2-run-restarts fn2-fields fn2-pool)
      :guard (and (fn2-run-writers-wfp fn2-run-writers) (fn2-run-restarts-wfp fn2-run-restarts)
-                 (fn2-fields-wfp fn2-fields) (fn2-pool-wfp fn2-pool))))
+                 (fn2-fields-wfp fn2-fields) (fn2-pool-wfp fn2-pool))
+     :guard-hints ((fn2-columns-call-guard-hint 'fn2-run-add-ready
+                    '((:definition fn2-run-layout-fields)) nil world))))
     (b* ((code (fn2-run-add-check w sid ebase fn2-run-writers fn2-run-restarts fn2-fields))
          ((unless (eq code :ok)) code)
          (lv (fn2-run-writers-level w fn2-run-writers))
@@ -389,11 +393,12 @@
             (mv code end fn2-fields)))
          ((mv code fn2-run-writers) (fn2-run-add-commit w code end fn2-run-writers)))
      (mv code fn2-run-writers fn2-run-restarts fn2-fields fn2-pool)))
-   (fn2-fc-shape fn2-run-add-write-shape (fn2-run-add-write w sid ebase fn2-run-writers fn2-run-restarts fn2-fields fn2-pool)
+   (fn2-ra-shape fn2-run-add-write-shape (fn2-run-add-write w sid ebase fn2-run-writers fn2-run-restarts fn2-fields fn2-pool)
     (and (fn2-run-writersp fn2-run-writers) (fn2-run-restartsp fn2-run-restarts) (fn2-fieldsp fn2-fields) (fn2-poolp fn2-pool)
          (fn2-run-writers-wfp fn2-run-writers) (fn2-run-restarts-wfp fn2-run-restarts)
          (fn2-fields-wfp fn2-fields) (fn2-pool-wfp fn2-pool))
-    ((fn2-run-writers 1) (fn2-run-restarts 2) (fn2-fields 3) (fn2-pool 4)))
+    ((fn2-run-writers 1) (fn2-run-restarts 2) (fn2-fields 3) (fn2-pool 4)) nil
+    ((fn2-columns-call-guard-hint 'fn2-run-add-write nil '(fn2-run-add-write) world)))
    (in-theory (disable fn2-run-add-ready fn2-run-add-write))
    ; Append one entry (writer level 0) or index entry (level >= 1) of schema
    ; SID to an open writer, in strict key order: :ok, :full (no room; nothing
@@ -507,7 +512,8 @@
     (declare (xargs :stobjs (fn2-run-builds fn2-run-writers fn2-run-restarts fn2-fields fn2-pool fn2-digests)
      :guard (and (fn2-run-buildp b fn2-run-builds fn2-run-writers) (fn2-run-restarts-wfp fn2-run-restarts)
                  (fn2-fields-wfp fn2-fields) (fn2-pool-wfp fn2-pool) (fn2-digests-wfp fn2-digests) (natp l))
-     :guard-hints (("Goal" :in-theory (disable fn2-run-writers-rows fn2-fields-rows fn2-run-promote-check)))))
+     :guard-hints ((fn2-columns-call-guard-hint 'fn2-run-build-promote
+                    '(fn2-run-promote-check (:definition fn2-run-layout-keys)) nil world))))
     (b* ((sid (fn2-run-builds-schema b fn2-run-builds))
          (w (+ (nfix (fn2-run-builds-wbase b fn2-run-builds)) (nfix l)))
          (ib (+ (nfix (fn2-run-builds-fields b fn2-run-builds)) *fn2-run-build-index*))
