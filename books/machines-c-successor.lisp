@@ -356,7 +356,7 @@
  (declare (xargs :stobjs (fn2-succ-txns fn2-succ-slots fn2-fields) :guard t :guard-hints (("Goal" :in-theory (disable fn2-pool-reserve fn2-pool-release fn2-pool-reset fn2-pool-read fn2-pool-write
                                              fn2-pool-class-for fn2-ov-start fn2-ov-advance fn2-ov-insert
                                              fn2-ov-locate fn2-ov-entry fn2-run-copy-row fn2-fold-apply fn2-fold-assign
-                                             fn2-run-layout-size fn2-run-lookup-step fn2-run-cursor-start
+                                             fn2-run-layout-size fn2-run-lookup-step fn2-run-cursor-start-installed
                                              fn2-fields-rows fn2-succ-slots-rows fn2-succ-txns-rows fn2-overlays-rows)))))
  (b* (((unless (and (fn2-succ-txns-wfp fn2-succ-txns) (fn2-succ-slots-wfp fn2-succ-slots) (fn2-fields-wfp fn2-fields)))
        (mv :state fn2-succ-txns fn2-succ-slots fn2-fields))
@@ -416,7 +416,7 @@
  (declare (xargs :stobjs (fn2-succ-txns fn2-succ-slots fn2-fields) :guard t :guard-hints (("Goal" :in-theory (disable fn2-pool-reserve fn2-pool-release fn2-pool-reset fn2-pool-read fn2-pool-write
                                              fn2-pool-class-for fn2-ov-start fn2-ov-advance fn2-ov-insert
                                              fn2-ov-locate fn2-ov-entry fn2-run-copy-row fn2-fold-apply fn2-fold-assign
-                                             fn2-run-layout-size fn2-run-lookup-step fn2-run-cursor-start
+                                             fn2-run-layout-size fn2-run-lookup-step fn2-run-cursor-start-installed
                                              fn2-fields-rows fn2-succ-slots-rows fn2-succ-txns-rows fn2-overlays-rows)))))
  (b* (((unless (and (fn2-succ-txns-wfp fn2-succ-txns) (fn2-succ-slots-wfp fn2-succ-slots) (fn2-fields-wfp fn2-fields)))
        (mv :state fn2-succ-txns fn2-succ-slots fn2-fields))
@@ -464,7 +464,7 @@
  (declare (xargs :stobjs (fn2-succ-txns fn2-succ-slots fn2-fields) :guard t :guard-hints (("Goal" :in-theory (disable fn2-pool-reserve fn2-pool-release fn2-pool-reset fn2-pool-read fn2-pool-write
                                              fn2-pool-class-for fn2-ov-start fn2-ov-advance fn2-ov-insert
                                              fn2-ov-locate fn2-ov-entry fn2-run-copy-row fn2-fold-apply fn2-fold-assign
-                                             fn2-run-layout-size fn2-run-lookup-step fn2-run-cursor-start
+                                             fn2-run-layout-size fn2-run-lookup-step fn2-run-cursor-start-installed
                                              fn2-fields-rows fn2-succ-slots-rows fn2-succ-txns-rows fn2-overlays-rows)))))
  (b* (((unless (and (fn2-succ-txns-wfp fn2-succ-txns) (fn2-succ-slots-wfp fn2-succ-slots) (fn2-fields-wfp fn2-fields)))
        (mv :state fn2-succ-txns fn2-succ-slots fn2-fields))
@@ -559,7 +559,7 @@
  (declare (xargs :stobjs (fn2-succ-txns fn2-succ-slots fn2-run-installed fn2-run-cursors)
   :guard (and (fn2-succ-txns-wfp fn2-succ-txns) (fn2-succ-slots-wfp fn2-succ-slots) (fn2-run-installed-wfp fn2-run-installed)
               (fn2-run-cursors-wfp fn2-run-cursors) (natp s) (< s (fn2-succ-slots-rows fn2-succ-slots)) (natp b0))
-  :guard-hints (("Goal" :in-theory (disable fn2-run-cursor-start fn2-succ-resolved)))))
+  :guard-hints (("Goal" :in-theory (disable fn2-run-cursor-start-installed fn2-succ-resolved)))))
  (b* (((unless (and (natp tx) (< tx (fn2-succ-txns-rows fn2-succ-txns)) (natp s) (< s (fn2-succ-slots-rows fn2-succ-slots)) (natp b0)))
        (mv :bounds fn2-succ-txns fn2-succ-slots fn2-run-cursors))
       (sid (fn2-succ-slots-sid s fn2-succ-slots))
@@ -569,11 +569,7 @@
        (mv-let (code fn2-succ-txns fn2-succ-slots) (fn2-succ-resolved tx s nil t fn2-succ-txns fn2-succ-slots)
         (mv code fn2-succ-txns fn2-succ-slots fn2-run-cursors)))
       ((mv code fn2-run-cursors)
-       (fn2-run-cursor-start tx sid (fn2-run-installed-top r fn2-run-installed) (fn2-run-installed-slot r fn2-run-installed)
-                             (fn2-run-installed-gen r fn2-run-installed) (fn2-run-installed-unit r fn2-run-installed)
-                             (fn2-run-installed-counter r fn2-run-installed) (+ b0 *fn2-idc-rb*)
-                             (fn2-run-installed-okind r fn2-run-installed) (fn2-run-installed-oslot r fn2-run-installed)
-                             (fn2-run-installed-ogen r fn2-run-installed) fn2-run-cursors))
+       (fn2-run-cursor-start-installed tx r (+ b0 *fn2-idc-rb*) (if (equal (fn2-succ-slots-oset s fn2-succ-slots) 1) (fn2-succ-slots-sk s fn2-succ-slots) *fn2-idc-owner-kind*) (if (equal (fn2-succ-slots-oset s fn2-succ-slots) 1) (fn2-succ-slots-ss s fn2-succ-slots) *fn2-idc-owner-slot*) (if (equal (fn2-succ-slots-oset s fn2-succ-slots) 1) (fn2-succ-slots-sg s fn2-succ-slots) *fn2-idc-owner-gen*) fn2-run-installed fn2-run-cursors))
       ((unless (eq code :ok)) (mv code fn2-succ-txns fn2-succ-slots fn2-run-cursors))
       (run (fn2-run-installed-run r fn2-run-installed))
       ((unless (unsigned-byte-p 60 run)) (mv :bounds fn2-succ-txns fn2-succ-slots fn2-run-cursors))
@@ -581,7 +577,7 @@
   (mv :more fn2-succ-txns fn2-succ-slots fn2-run-cursors)))
 (fn2-idc-fn-shape fn2-succ-resolve-next (tx s b0 fn2-succ-txns fn2-succ-slots fn2-run-installed fn2-run-cursors)
  (fn2-succ-txns fn2-succ-slots fn2-run-cursors) (fn2-succ-txns fn2-succ-slots fn2-run-installed fn2-run-cursors) t
- (fn2-succ-newest-run fn2-run-cursor-start fn2-succ-resolved fn2-succ-slots-sid fn2-succ-txns-rbound fn2-run-installed-run
+ (fn2-succ-newest-run fn2-run-cursor-start-installed fn2-succ-resolved fn2-succ-slots-sid fn2-succ-txns-rbound fn2-run-installed-run
   fn2-run-installed-top fn2-run-installed-slot fn2-run-installed-gen fn2-run-installed-unit fn2-run-installed-counter
   fn2-run-installed-okind fn2-run-installed-oslot fn2-run-installed-ogen))
 
@@ -591,7 +587,7 @@
               (fn2-run-cursors-wfp fn2-run-cursors) (fn2-run-paths-wfp fn2-run-paths) (fn2-run-cache-wfp fn2-run-cache)
               (fn2-fields-wfp fn2-fields) (fn2-pool-wfp fn2-pool) (natp budget) (natp b0)
               (natp tx) (< tx (fn2-succ-txns-rows fn2-succ-txns)) (<= (+ b0 *fn2-idc-stride*) (fn2-fields-rows fn2-fields)))
-  :guard-hints (("Goal" :in-theory (disable fn2-run-cursor-start fn2-succ-resolved fn2-succ-resolve-next fn2-run-lookup-step
+  :guard-hints (("Goal" :in-theory (disable fn2-run-cursor-start-installed fn2-succ-resolved fn2-succ-resolve-next fn2-run-lookup-step
                                             fn2-succ-key-rows fn2-succ-copy-scalar-rows fn2-fields-rows fn2-succ-slots-rows)))))
  (b* (((unless (and (natp tx) (< tx (fn2-succ-txns-rows fn2-succ-txns)) (natp b0)))
        (mv :bounds fn2-succ-txns fn2-succ-slots fn2-run-cursors fn2-run-paths fn2-fields))

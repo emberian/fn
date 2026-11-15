@@ -94,10 +94,10 @@
 
 ; The run leg, between runs: start the cursor in the newest live run of SID
 ; below the bound, or answer :absent past the last.
-(defun fn2-xl-run-next (tx sid rb fn2-succ-txns fn2-run-installed fn2-run-cursors)
+(defun fn2-xl-run-next (tx sid rb qk qs qg fn2-succ-txns fn2-run-installed fn2-run-cursors)
  (declare (xargs :stobjs (fn2-succ-txns fn2-run-installed fn2-run-cursors)
   :guard (and (fn2-succ-txns-wfp fn2-succ-txns) (fn2-run-installed-wfp fn2-run-installed) (fn2-run-cursors-wfp fn2-run-cursors))
-  :guard-hints (("Goal" :in-theory (disable fn2-run-cursor-start fn2-xl-done)))))
+  :guard-hints (("Goal" :in-theory (disable fn2-run-cursor-start-installed fn2-xl-done)))))
  (b* (((unless (and (natp tx) (< tx (fn2-succ-txns-rows fn2-succ-txns)) (natp rb)))
        (mv :bounds fn2-succ-txns fn2-run-cursors))
       (rows (fn2-run-installed-rows fn2-run-installed))
@@ -105,19 +105,15 @@
       ((unless (and (natp r) (< r rows)))
        (mv-let (code fn2-succ-txns) (fn2-xl-done tx :absent fn2-succ-txns) (mv code fn2-succ-txns fn2-run-cursors)))
       ((mv code fn2-run-cursors)
-       (fn2-run-cursor-start tx sid (fn2-run-installed-top r fn2-run-installed) (fn2-run-installed-slot r fn2-run-installed)
-                             (fn2-run-installed-gen r fn2-run-installed) (fn2-run-installed-unit r fn2-run-installed)
-                             (fn2-run-installed-counter r fn2-run-installed) rb
-                             (fn2-run-installed-okind r fn2-run-installed) (fn2-run-installed-oslot r fn2-run-installed)
-                             (fn2-run-installed-ogen r fn2-run-installed) fn2-run-cursors))
+       (fn2-run-cursor-start-installed tx r rb qk qs qg fn2-run-installed fn2-run-cursors))
       ((unless (eq code :ok)) (mv code fn2-succ-txns fn2-run-cursors))
       (run (fn2-run-installed-run r fn2-run-installed))
       ((unless (and (unsigned-byte-p 60 run) (unsigned-byte-p 32 r))) (mv :bounds fn2-succ-txns fn2-run-cursors))
       (fn2-succ-txns (fn2-succ-txns-put tx (lphase *fn2-succ-lookup-scan*) (lbound run) (lrow r))))
   (mv :more fn2-succ-txns fn2-run-cursors)))
-(fn2-idc-fn-shape fn2-xl-run-next (tx sid rb fn2-succ-txns fn2-run-installed fn2-run-cursors)
+(fn2-idc-fn-shape fn2-xl-run-next (tx sid rb qk qs qg fn2-succ-txns fn2-run-installed fn2-run-cursors)
  (fn2-succ-txns fn2-run-cursors) (fn2-succ-txns fn2-run-installed fn2-run-cursors) t
- (fn2-succ-newest-run fn2-run-cursor-start fn2-xl-done fn2-succ-txns-lbound fn2-run-installed-run
+ (fn2-succ-newest-run fn2-run-cursor-start-installed fn2-xl-done fn2-succ-txns-lbound fn2-run-installed-run
   fn2-run-installed-top fn2-run-installed-slot fn2-run-installed-gen fn2-run-installed-unit fn2-run-installed-counter
   fn2-run-installed-okind fn2-run-installed-oslot fn2-run-installed-ogen))
 
@@ -154,7 +150,7 @@
     (mv-let (code fn2-succ-txns) (fn2-xl-restart tx sid fn2-succ-txns fn2-run-installed)
      (mv code 0 fn2-succ-txns fn2-run-cursors fn2-run-paths fn2-fields)))
    ((equal lphase *fn2-succ-lookup-runs*)
-    (mv-let (code fn2-succ-txns fn2-run-cursors) (fn2-xl-run-next tx sid rb fn2-succ-txns fn2-run-installed fn2-run-cursors)
+    (mv-let (code fn2-succ-txns fn2-run-cursors) (fn2-xl-run-next tx sid rb qk qs qg fn2-succ-txns fn2-run-installed fn2-run-cursors)
      (mv code 0 fn2-succ-txns fn2-run-cursors fn2-run-paths fn2-fields)))
    (t
     (b* (((mv code fn2-run-cursors fn2-run-paths fn2-fields)
