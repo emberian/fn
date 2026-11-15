@@ -4,6 +4,8 @@ import hashlib
 import tempfile
 from pathlib import Path
 import unittest
+from unittest import mock
+from types import SimpleNamespace
 
 HERE = Path(__file__).resolve().parent
 
@@ -50,6 +52,38 @@ class ControlCapture(unittest.TestCase):
         env = campaign.captured_env(Path("/tmp/fixture.trace"), b"abc", True)
         self.assertEqual(env["FN2_TEST_DEVICE_EFFECTS"], "/tmp/fixture.effects")
         self.assertNotIn("FN2_TEST_DEVICE_EFFECTS", campaign.captured_env(Path("/tmp/fixture.trace"), b"abc"))
+
+    def test_effect_replay_uses_certified_reducer_and_preserves_selected_loader(self):
+        source = (HERE.parent / "tools/image-node.lsp").read_text()
+        plain = campaign.replay_script(source)
+        effects = campaign.replay_script(source, True)
+        book = '(include-book "sim/native-device-effects" :uncertified-okp nil)'
+        raw = '(load "tests/native-device-effects-raw.lsp")'
+        self.assertNotIn(book, plain)
+        self.assertNotIn(raw, plain)
+        self.assertEqual(effects.count(book), 1)
+        self.assertEqual(effects.count(raw), 1)
+        self.assertLess(effects.index('(load "tests/native-control-replay-raw.lsp")'), effects.index(raw))
+        self.assertEqual(effects.replace("\n" + book, "").replace(raw + "\n", ""), plain)
+
+    def test_phase_images_and_uncertain_verdict_remain_distinct(self):
+        with tempfile.TemporaryDirectory() as temp:
+            directory = Path(temp)
+            for phase, expected_before, verdict in (
+                ("accepted", "before-accepted.img", ":EXACT-PROCESS-VIEW"),
+                ("restarted", "after-accepted-kill.img", ":UNCERTAIN-EFFECT-BOUND"),
+            ):
+                def completed(*args, **kwargs):
+                    env = kwargs["env"]
+                    self.assertEqual(Path(env["FN2_TEST_DEVICE_BEFORE"]).name, expected_before)
+                    self.assertEqual(Path(env["FN2_TEST_DEVICE_AFTER"]).name, f"after-{phase}-kill.img")
+                    self.assertEqual(Path(env["FN2_TEST_DEVICE_EFFECTS"]).name, f"{phase}.effects")
+                    kwargs["stdout"].write(f"NATIVE CONTROL REPLAY PASS\nNATIVE DEVICE IMAGE {verdict} 32 bytes\n".encode())
+                    return SimpleNamespace(returncode=0)
+                with mock.patch.object(campaign.subprocess, "run", side_effect=completed):
+                    campaign.replay(directory, phase, True)
+                result = campaign.json.loads((directory / f"{phase}-effect-result.json").read_text())
+                self.assertEqual(result["verdict"], verdict)
 
     def test_image_observation_retains_exact_bytes_without_overwrite(self):
         with tempfile.TemporaryDirectory() as directory:

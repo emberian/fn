@@ -41,7 +41,8 @@ python3 -m py_compile tests/native-control-launcher.py tests/native-control-deat
 ```
 
 Runtime prerequisite: exact-current qualified `books/node-profile`,
-`books/merkle`, and `tests/native-control-replay` closures. Supply explicit test
+`books/native-b3-evidence`, and `tests/native-control-replay` closures.
+The optional effect replay additionally requires `sim/native-device-effects`. Supply explicit test
 origin/history environment settings as required by current startup. Inside a
 reserved 6 GiB timed job, run:
 
@@ -70,3 +71,11 @@ records exact copy sizes and SHA-256 digests. Copies do not sync the node device
 These are process-death-visible bytes, not an asserted durable prefix. Missing
 returns and ambiguous errors remain obligations of the separate effect reducer;
 this option alone does not establish persisted-effect refinement.
+
+With device evidence enabled, the fresh replay loads the certified effect
+reducer and `native-device-effects-raw.lsp` after the control replay. It checks
+the whole equal-size before/after images and physical Read observations, using
+64 KiB scratch chunks. Each phase retains an effect-result JSON verdict:
+`:EXACT-PROCESS-VIEW` or `:UNCERTAIN-EFFECT-BOUND`. Neither means durable; raw
+Fence truth remains external. Device/control Take/Post identity binding remains
+a separate obligation and is not established merely by running both checkers.

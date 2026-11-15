@@ -1,7 +1,8 @@
 #!/usr/bin/env python3
 """Selected-host accepted POST, SIGKILL, fresh restart and control trace replay.
 
-Requires current qualified node-profile, merkle and native-control-replay.
+Requires current qualified node-profile, native-b3-evidence and native-control-replay.
+Device evidence replay additionally requires native-device-effects.
 Run inside a reserved, timed build job. No persisted-effect refinement claim:
 replayed disk Read octets remain observations, never a declared durable prefix.
 """
@@ -59,23 +60,43 @@ def await_recorded(node, received):
     return int(event)
 
 
-def replay(directory, name):
-    selected = (ROOT / "tools/image-node.lsp").read_text()
-    include = '(include-book "books/merkle" :uncertified-okp nil)'
+def replay_script(selected, device_effects=False):
+    include = '(include-book "books/node-profile" :uncertified-okp nil)'
     main = '(sb-ext:exit :code (fn2-nserve-main))'
     assert selected.count(include) == selected.count(main) == 1
-    selected = selected.replace(include, include + '\n(include-book "tests/native-control-replay" :uncertified-okp nil)')
-    selected = selected.replace(main, '(load "tests/native-control-replay-raw.lsp")\n(sb-ext:exit :code 0)')
+    books = '\n(include-book "tests/native-control-replay" :uncertified-okp nil)'
+    raw = '(load "tests/native-control-replay-raw.lsp")\n'
+    if device_effects:
+        books += '\n(include-book "sim/native-device-effects" :uncertified-okp nil)'
+        raw += '(load "tests/native-device-effects-raw.lsp")\n'
+    return selected.replace(include, include + books).replace(main, raw + '(sb-ext:exit :code 0)')
+
+
+def replay(directory, name, device_effects=False):
+    selected = replay_script((ROOT / "tools/image-node.lsp").read_text(), device_effects)
     script = directory / f"{name}-replay.lsp"
     script.write_text(selected)
     env = dict(os.environ, FN2_TEST_CAPTURE=str(directory / f"{name}.trace"),
                FN2_TEST_PEER=str(directory / f"{name}.peer"))
+    if device_effects:
+        before = "before-accepted.img" if name == "accepted" else "after-accepted-kill.img"
+        env.update(FN2_TEST_DEVICE_EFFECTS=str(directory / f"{name}.effects"),
+                   FN2_TEST_DEVICE_BEFORE=str(directory / before),
+                   FN2_TEST_DEVICE_AFTER=str(directory / f"after-{name}-kill.img"))
     with script.open("rb") as source, (directory / f"{name}-replay.log").open("wb") as log:
         result = subprocess.run([str(ROOT / "tools/acl2"), "--timeout", "300"],
                                 stdin=source, stdout=log, stderr=subprocess.STDOUT,
                                 cwd=ROOT, env=env, timeout=330)
     assert result.returncode == 0, f"see {name}-replay.log"
-    assert "NATIVE CONTROL REPLAY PASS" in (directory / f"{name}-replay.log").read_text()
+    output = (directory / f"{name}-replay.log").read_text()
+    assert "NATIVE CONTROL REPLAY PASS" in output
+    if device_effects:
+        verdicts = [line.split()[3] for line in output.splitlines()
+                    if line.startswith("NATIVE DEVICE IMAGE ")]
+        assert len(verdicts) == 1 and verdicts[0] in (":EXACT-PROCESS-VIEW", ":UNCERTAIN-EFFECT-BOUND"), verdicts
+        (directory / f"{name}-effect-result.json").write_text(json.dumps(
+            dict(verdict=verdicts[0], scope="whole process-visible image and physical Read observations; Fence truth external"),
+            indent=2) + "\n")
 
 
 def main():
@@ -172,7 +193,7 @@ def main():
         finally:
             node.close()
         (directory / "processes.json").write_text(json.dumps(receipts, indent=2) + "\n")
-        replay(directory, name)
+        replay(directory, name, args.device_effects)
     print("CONTROL DEATH PASS: accepted POST and fresh ARTICLE match independent control replays; persisted-effect mapping remains owed")
 
 
