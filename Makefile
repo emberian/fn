@@ -409,6 +409,7 @@ ACL2_BOOKS = \
   tests/merkle-unit \
   tests/member-exec-domain-unit \
   tests/native-boot-refusal-unit \
+  tests/native-control-replay \
   tests/native-cut-state-unit \
   tests/native-cut-program-unit \
   tests/storage-cancel-unit \
