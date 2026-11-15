@@ -1,3 +1,5 @@
+; Refusal boundary: encoded retirement bytes alone do not authorize replay.
+; Successful lifecycle replay belongs to the authenticated full-frame control.
 (in-package "ACL2")
 (include-book "std/util/bstar" :dir :system)
 (include-book "read-pins-unit")
@@ -40,7 +42,8 @@
       ((mv built end fn2-core)
        (fn2-retirement-replay-bytes extent epoch allocation 2 ws wg slot gen id ogen fn2-core))
       ((unless built) (mv nil fn2-core))
-      ; Wrong containing batch is rejected by the actual replay entry.
+      ; A standalone encoded stream has no actual authenticated recovery
+      ; context. Both wrong and matching commit scalars must be refused.
       ((mv wrong & & & fn2-core)
        (fn2-recovery-replay-record 3 0 end ws wg 0 0 slot gen id ogen fn2-core))
       ((mv before invariant) (fn2-read-pin-test-release-code extent epoch allocation fn2-core))
@@ -48,8 +51,8 @@
       ((mv applied next wlen & fn2-core)
        (fn2-recovery-replay-record 2 0 end ws wg 0 0 slot gen id ogen fn2-core))
       ((mv after invariant) (fn2-read-pin-test-release-code extent epoch allocation fn2-core)))
-  (mv (and (eq applied :skip) (= next end) (= wlen 0) invariant
-           (eq after :checkpoint-blocked)) fn2-core)))
+  (mv (and (eq applied :invalid) (= next 0) (= wlen 0) invariant
+           (eq after before) (eq after :state)) fn2-core)))
 (defun fn2-retirement-replay-test ()
  (declare (xargs :verify-guards nil))
  (with-local-stobj fn2-core
