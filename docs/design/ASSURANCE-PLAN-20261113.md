@@ -7,10 +7,22 @@ must be derived from that store and the actual served call/attachment graph.
 
 ## Current integration frontier — 2026-11-15 UTC
 
-Current integration source is `b88e96190`, including retirement dispatch, actual-type
+Current integration includes matcher DP traversal `b88e96190`, retirement dispatch, actual-type
 codec fixtures, failed-Send classification, consumed-input accounting and farm
 Git metadata protection. No current whole-system image, full host gate,
 canonical served certificate, or completed assurance claim exists.
+
+The shared columns diagnostic and opt-in guard-hint API are qualified by
+`certify-20261115T034623Z-812141`: six books, two reused and four new,
+3.918 seconds. Root matched all six before/after source hashes. Actual declarations
+reject conflicting definitions while admitting identical redundant enums and
+disjoint local scopes. The helper preserves public bounds and supports read-only
+inputs and extra fields; its actual guard fixture passes. The direct source
+control also passes. This columns source change invalidates dependent closure
+keys from earlier pool, codec and core records; those historical records do not
+qualify the current dependent closures. The next shared freeze combines the
+stable pool implementation with focused pool controls before format/core checks.
+Credit-book contract proofs and actual host-path qualification remain open.
 
 Allocator refinement `8595723fc` is qualified by twelve-book record
 `certify-20261115T011246Z-662045`: six reused, six newly certified. Root matched
