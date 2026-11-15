@@ -25,7 +25,7 @@
  (declare (xargs :stobjs (fn2-b3 fn2-digests fn2-pool)
                  :guard (fn2-pool-wfp fn2-pool)))
  (let ((got (fn2-digest-slot (nfix row) *fn2-b3-result*))
-       (scratch (fn2-digest-slot (nfix row) *fn2-b3-key*)))
+       (scratch (fn2-digest-slot (nfix row) *fn2-fc-hash*)))
   (if (not (and (natp row) (fn2-b3-ready row fn2-b3 fn2-digests)
                 (fn2-digest-rowp got fn2-digests) (fn2-digest-rowp scratch fn2-digests)
                 (natp expected)))
