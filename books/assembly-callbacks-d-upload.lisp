@@ -139,7 +139,7 @@
            (:do (zcode) (fn2-upload-page-zero-to *fn2-upload-page-stored-source* row-lslot row-lgen)
             :accept (:ok))
            (:set (mstep 1)) (:charge :bytes *fn2-commit-unit-bytes* :steps *fn2-work-transition* :runnable t))
-          (t (:let hrow (fn2-upload-hasher id))
+          (t (:let hrow (fn2-upload-stored-hasher id))
              (:do (slot gen off len) (fn2-upload-store-span row-lslot row-lgen row-ilen
                                     row-c0-slot row-c0-gen row-c1-slot row-c1-gen row-stored-hashed row-hashed))
              (:let done (+ row-stored-hashed len))
@@ -253,12 +253,10 @@
           ;; then its entry into the manifest (2), a step each; the write's
           ;; completion stays ready until the entry is built
           ((and (fn2-am-manifestp total) (< row-pdone total) (equal row-scount blen) (equal row-mstep 0))
-           (:let hrow (fn2-upload-hasher id))
-           (:do (hcode) (fn2-upload-block-hash hrow row-lslot row-lgen blen) :accept (:ok))
+           (:do (hcode) (fn2-upload-block-hash row-lslot row-lgen blen) :accept (:ok))
            (:set (mstep 1)) (:charge :bytes *fn2-commit-unit-bytes* :steps *fn2-work-transition* :runnable t))
           ((and (fn2-am-manifestp total) (< row-pdone total) (equal row-scount blen) (equal row-mstep 1))
-           (:let hrow (fn2-upload-hasher id))
-           (:do (vcode) (fn2-upload-block-cv hrow row-lslot row-lgen blen blk) :accept (:ok))
+           (:do (vcode) (fn2-upload-block-cv row-lslot row-lgen blen blk) :accept (:ok))
            (:set (mstep 2)) (:charge :bytes *fn2-commit-unit-bytes* :steps *fn2-work-transition* :runnable t))
           ((and (fn2-am-manifestp total) (< row-pdone total) (equal row-scount blen))
            (:let hrow (fn2-upload-hasher id))
