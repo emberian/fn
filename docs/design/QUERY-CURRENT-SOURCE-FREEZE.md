@@ -10,4 +10,22 @@ Independent CNS held-vs-zero-query models and actual lifecycle controls are carr
 
 Validation: named Lisp sources parse; four admission-rollback structural controls and eight independent Python trace controls pass; secrets and whitespace checks pass. No ACL2, cert-cache or actual owner lifecycle result is inferred from these checks.
 
-Narrow gate order: changed `arms` (7-book closure) and `machine-arms` (24) metadata/compiler first; then actual identity descriptor/child producer (`identity` 33, `machines-c-groups` 101); finally cached-prefix core operation (`query-ref-wake` 156, `assembly-callbacks-c` 160). Counts describe closures, not authorized cold jobs or cache misses. Actual query unit (185), CNS lifecycle (187) and wire owner-loss (216) require the corresponding coherent prefix. Exact cache hit/miss audit follows the frozen source; no cold 203-book run is authorized.
+Narrow gate order: changed `arms` (7-book closure) and `machine-arms` (24) metadata/compiler first; then actual identity descriptor/child producer (`identity` 33, `machines-c-groups` 101); finally cached-prefix core operation (`query-ref-wake` 156, `assembly-callbacks-c` 160). Counts describe closures, not authorized cold jobs or cache misses. Actual query unit (185), CNS lifecycle (189) and wire owner-loss (216) require the corresponding coherent prefix. Exact cache hit/miss audit follows the frozen source; no cold 203-book run is authorized.
+
+## Executed compiler gate
+
+The exact 24-book `machine-arms` closure at runtime source `33d08e3d7` passed
+the author run and record `certify-20261115T052505Z-913166`: 14 cached parents,
+10 certified books. The `bd504250f` source fixture exercised actual `defcost`
+registration and enqueue call/loop/max/refusal logic; all three assertions
+passed. Original source events retained their LOCAL/ENCAPSULATE scopes under
+2,000,000 steps and 20 seconds each; the outer author limit was 1,200 seconds.
+Record used one worker, 120 seconds per book and a 600-second outer limit.
+Both ran in the same granted 2 GiB/swap-zero allocation, serially.
+
+`receipts/query-compiler24-33d.json` binds all 24 qualified cache entries to
+toolchain `8aeb1bea18968c6cd33ac633a80ebf67e4924504db112fd27eb11f16a27b2a8c`,
+with unchanged frozen source bytes. Triage found no failures; all recorded
+job handles are absent and the allocation is released. This is compiler
+qualification only. IdentityDecide, CNS lifecycle and wire owner-loss controls
+remain unexecuted; the model credit-provenance correction is still owned by Q1.
