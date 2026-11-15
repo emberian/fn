@@ -54,3 +54,23 @@ decoder, plus hash/stale-generation refusals and exact discard. Checked native
 checkpoint, issued Fence and bundle-release are explicit synthetic premises,
 not disk/crypto or complete producer witnesses. Assertions and ACL2 remain UNRUN.
 Source READ, structure, known arity/MV and Ref recipe/formula checks passed.
+
+The next ownership milestone adds individually stamped descriptor and journal-self
+obligations before release exposure, using a shared profile layout with two edges
+per physical journal extent. Both concrete edges and a paired candidate aggregate
+are checked together; stale allocation/batch stamps and occupied edge slots refuse
+without overwriting. The self-edge prevents journal reuse from orphaning outgoing
+descriptor ownership. This is resource ownership, not release permission.
+
+The canonical release control now lives in release-allocation-state below the core
+registration; operations include that state rather than introducing an include
+cycle through publication/commit consumers. Evidence fixtures cover actual staged
+source, journal reserve, claim/idempotence, stale stamp, unrelated edge collision,
+cancel refusal and retained candidate subject. Their native checkpoint/Fence
+premises remain explicit synthetic premises; ACL2 assertions are UNRUN.
+
+The required chronological regression is projected old RETIRE_PENDING identity,
+then a post-base RELEASE, then one later accepted payload incarnation. Physical
+payload authentication and duplicate physical-claim rejection stay intact. A
+second post-base reuse under an unchanged newest selectable base has not been
+established as reachable and is not claimed by this source milestone.

@@ -18,3 +18,9 @@ def decoded_matches():
     source = '\n'.join(f'(= (fn2-fields-value (+ f {i}) fn2-fields) (fn2-allocation-release-{target} 0 fn2-allocation-release))'
                        for i, (target, _) in enumerate(REF_COLUMNS))
     return '\n'.join(emit(form) for form in parse(source).forms)
+
+def digest_columns():
+    return '\n'.join(emit(form) for form in parse(' '.join(f'(h{i} :u32)' for i in range(8))).forms)
+
+def digest_put(prefix):
+    return '\n'.join(emit(form) for form in parse(' '.join(f'(h{i} ({prefix} {i} fn2-allocation-release))' for i in range(8))).forms)
