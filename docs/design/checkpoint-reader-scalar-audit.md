@@ -40,16 +40,18 @@ requires an admitted **negation of a closed instance of the live original
 from `fa8d24704`. Refuted originals remain unfinished; a replacement theorem
 never discharges an original.
 
-These new refutation links, guarded theorems and critical registrations are
-SOURCE ONLY / UNRUN. Their zero-argument logical teeth reuse the whole-domain
-positive and real domain-removal controls. The shared predicate-conclusion
-formula-evidence extension is the canonical owner's `4d8631835` source. The
-reader connection passes actual closed constructor terms, removes exactly one
-occurrence of the stored logical guard in the live antecedent, and regenerates
-the whole positive H+C and remaining-H/false-C proofs. Hints use the admitted
-controls while keeping actual CHECK-STEP opaque, including raw execution.
-All these new evidence events remain UNRUN; no invented equality endpoints
-or assurance-complete status is used.
+The exact `6347c86a9` 33-book closure is now qualified on the record toolchain
+`8aeb1bea…`: all six original closed-instance refutations, six guarded
+replacements, whole-H/whole-C positive and domain-removal controls and replay
+passed. Its final run reused 27 current records and certified six remaining
+books. A prior supervisor race had interrupted a healthy certifier; the
+remaining record run relied on terminal manifest verdicts with the original
+absolute deadline. It changed no product source or marker criterion.
+
+The canonical predicate provider in this frozen closure is `4d8631835`.
+The current root has a newer independently qualified count-aware provider;
+projection must retain it and requalify the current reader keys. No certificate
+transfer is inferred from matching runtime bodies.
 Both test books are registered certification roots, whose dependency on the
 unqualified checkpoint book remains explicit.
 
@@ -57,7 +59,7 @@ The actual boot consumer `fn2-boot-checkpoint-descriptor-pool` already checks
 FC/context row capacity, `fn2-b3-ready`, named digest rows and field room before
 loading the retained candidate hash and writing context. The source bridge now
 consumes the distinct guarded output interface, preserving that exact body and
-guard. This caller proof is also UNRUN. The subsequent event-read continuation
+guard. This boot caller proof remains UNRUN and is outside the qualified 33-book closure. The subsequent event-read continuation
 and its live/cold caller guard verification remain required.
 
 The successful ground scope used 28 genuine compiled parents and checkpoint
