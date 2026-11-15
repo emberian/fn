@@ -35,7 +35,27 @@
                                (fn2-proof-support-names mention)))
                (eq (cadr (assoc-keyword :status (car contexts)))
                    :exact-live-constraint-theorem)
+               ; Hold each identity component fixed while changing the other.
                (not (fn2-proof-constraint-match
-                     'unrelated '(quote t)
-                     '((quote t))
+                     'fn2-a-native-span-correspondence '(quote nil)
+                     (list (getpropc 'fn2-a-native-span-correspondence
+                                    'theorem nil world))
+                     '((theorem fn2-a-native-span-correspondence))))
+               (not (fn2-proof-constraint-match
+                     'unrelated
+                     (getpropc 'fn2-a-native-span-correspondence 'theorem nil world)
+                     (list (getpropc 'fn2-a-native-span-correspondence
+                                    'theorem nil world))
                      '((theorem fn2-a-native-span-correspondence)))))))))
+
+; All matching entries count, including grouped admissions and repeated names.
+(assert-event
+ (let* ((entries (fn2-proof-support-entries
+                  'consumer
+                  '((consumer a b) ((consumer sibling) b c)
+                    (unrelated must-not-appear) (consumer a))))
+        (names (fn2-proof-support-names entries)))
+   (and (equal (len entries) 3)
+        (equal (len names) 3)
+        (subsetp-eq '(a b c) names)
+        (not (member-eq 'must-not-appear names)))))

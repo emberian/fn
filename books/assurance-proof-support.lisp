@@ -38,7 +38,8 @@
          (mv-let (representative terms origins) (constraint-info subject world)
            (list :subject subject :representative representative
                  :constraints terms :origins origins
-                 :status (cond ((unknown-constraints-p terms) :unknown-constraints)
+                 :status (cond ((not representative) :non-encapsulate-constraint)
+                               ((unknown-constraints-p terms) :unknown-constraints)
                                ((not (equal (len terms) (len origins)))
                                 :unsupported-origins)
                                ((and formula
