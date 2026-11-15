@@ -90,6 +90,8 @@
         kind cns cnsgen fn2-fields fn2-pool))
       ((unless (and (eq code :ok) (< seen total) (equal lo seen)
                     (equal len (min *fn2-commit-unit-bytes* (- total seen)))
+                    (unsigned-byte-p 32 next) (unsigned-byte-p 32 len)
+                    (unsigned-byte-p 60 unit) (unsigned-byte-p 60 epoch) (unsigned-byte-p 60 allocation)
                     (< position next)
                     (<= *fn2-cns-source-manifest-offset* hoff)
                     (<= (+ hoff 32) (+ *fn2-cns-source-manifest-offset* *fn2-commit-unit-bytes*))
@@ -119,7 +121,8 @@
       (len (fn2-cns-sources-unit-length s fn2-cns-sources))
       (total (fn2-cns-sources-total s fn2-cns-sources))
       (count (+ 1 (fn2-cns-sources-retain-entry-index s fn2-cns-sources)))
-      ((unless (and (posp len) (<= (+ seen len) total) (<= count (fn2-am-blocks total))))
+      ((unless (and (posp len) (<= (+ seen len) total) (unsigned-byte-p 32 count)
+                    (<= count (fn2-am-blocks total))))
        (let ((fn2-cns-sources (fn2-cns-sources-set-phase s *fn2-cns-source-phase-bad* fn2-cns-sources)))
         (mv :bad fn2-cns-sources fn2-extents fn2-alloc-edges)))
       ((mv code fn2-extents fn2-alloc-edges)
@@ -159,7 +162,7 @@
  (b* (((unless (and (fn2-cns-source-ownerp s cns cnsgen ctl ctlgen request fn2-cns-sources)
                     (equal (fn2-cns-sources-phase s fn2-cns-sources) *fn2-cns-source-phase-manifest*)
                     (equal (fn2-cns-sources-manifest-stage s fn2-cns-sources) *fn2-cns-source-manifest-stage-data-check*)
-                    (equal (fn2-cns-sources-retention-phase s fn2-cns-sources) 2)
+                    (fn2-cns-source-data-position-p s fn2-cns-sources)
                     (equal (fn2-cns-sources-pending s fn2-cns-sources) 0)
                     (equal (fn2-cns-sources-result-kind s fn2-cns-sources) *fn2-event-read-result*)
                     (equal (fn2-cns-sources-result-outcome s fn2-cns-sources) *fn2-outcome-done*)))
@@ -185,3 +188,18 @@
         (fn2-cns-sources-put s (unit-hashed 0) (unit-copied 0) (phase *fn2-cns-source-phase-raw-hash*))
         (fn2-cns-sources-set-phase s *fn2-cns-source-phase-bad* fn2-cns-sources))))
   (mv (if (eq code :ok) :more :bad) fn2-cns-sources fn2-b3 fn2-digests)))
+
+(fn2-cns-source-frames fn2-cns-source-manifest-check
+ (s cns cnsgen ctl ctlgen request kind base fn2-cns-sources fn2-fields fn2-b3 fn2-digests fn2-pool)
+ (fn2-cns-sources fn2-fields fn2-b3 fn2-digests fn2-pool)
+ ((fn2-cns-sources 1) (fn2-fields 2) (fn2-b3 3) (fn2-digests 4)))
+(fn2-cns-source-frames fn2-cns-source-manifest-entry
+ (s cns cnsgen ctl ctlgen request kind base fn2-cns-sources fn2-fields fn2-pool)
+ (fn2-cns-sources fn2-fields fn2-pool) ((fn2-cns-sources 1) (fn2-fields 2)))
+(fn2-cns-source-frames fn2-cns-source-manifest-claim-step
+ (s cns cnsgen ctl ctlgen request fn2-cns-sources fn2-checkpoints fn2-extents fn2-alloc-edges fn2-ops)
+ (fn2-cns-sources fn2-checkpoints fn2-extents fn2-alloc-edges fn2-ops)
+ ((fn2-cns-sources 1) (fn2-extents 2) (fn2-alloc-edges 3)))
+(fn2-cns-source-frames fn2-cns-source-manifest-data-check
+ (s cns cnsgen ctl ctlgen request kind fn2-cns-sources fn2-b3 fn2-digests fn2-pool)
+ (fn2-cns-sources fn2-b3 fn2-digests fn2-pool) ((fn2-cns-sources 1) (fn2-b3 2) (fn2-digests 3)))

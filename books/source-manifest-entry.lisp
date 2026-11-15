@@ -34,4 +34,15 @@
    (and (fn2-fieldsp after) (fn2-fields-wfp after)
         (equal (fn2-fields-rows after) (fn2-fields-rows fn2-fields)))))
  :hints (("Goal" :in-theory (disable fn2-fields-rows fn2-fieldsp fn2-fields-wfp fn2-poolp fn2-pool-wfp))))
+(defthm fn2-source-manifest-entry-naturals
+ (and
+  (natp (mv-nth 1 (fn2-source-manifest-entry base prefix lslot lgen mpos total okind oslot ogen fn2-fields fn2-pool)))
+  (natp (mv-nth 2 (fn2-source-manifest-entry base prefix lslot lgen mpos total okind oslot ogen fn2-fields fn2-pool)))
+  (natp (mv-nth 3 (fn2-source-manifest-entry base prefix lslot lgen mpos total okind oslot ogen fn2-fields fn2-pool)))
+  (natp (mv-nth 4 (fn2-source-manifest-entry base prefix lslot lgen mpos total okind oslot ogen fn2-fields fn2-pool)))
+  (natp (mv-nth 5 (fn2-source-manifest-entry base prefix lslot lgen mpos total okind oslot ogen fn2-fields fn2-pool)))
+  (natp (mv-nth 6 (fn2-source-manifest-entry base prefix lslot lgen mpos total okind oslot ogen fn2-fields fn2-pool)))
+  (natp (mv-nth 7 (fn2-source-manifest-entry base prefix lslot lgen mpos total okind oslot ogen fn2-fields fn2-pool)))
+  (natp (mv-nth 8 (fn2-source-manifest-entry base prefix lslot lgen mpos total okind oslot ogen fn2-fields fn2-pool)))
+))
 (in-theory (disable fn2-source-manifest-entry))

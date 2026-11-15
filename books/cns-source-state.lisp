@@ -30,6 +30,19 @@
       (equal ctlgen (fn2-cns-sources-ctl-gen s fn2-cns-sources))
       (equal request (fn2-cns-sources-request s fn2-cns-sources))))
 
+ ; Replay keeps the authenticated entry's logical range bound to the next
+ ; output unit, including while the physical read is in flight.
+(defun fn2-cns-source-data-position-p (s fn2-cns-sources)
+ (declare (xargs :stobjs fn2-cns-sources :guard (fn2-cns-sources-wfp fn2-cns-sources)))
+ (and (natp s) (< s (fn2-cns-sources-rows fn2-cns-sources))
+      (equal (fn2-cns-sources-retention-phase s fn2-cns-sources) 2)
+      (posp (fn2-cns-sources-unit-length s fn2-cns-sources))
+      (equal (mod (fn2-cns-sources-offset s fn2-cns-sources) *fn2-commit-unit-bytes*) 0)
+      (equal (fn2-cns-sources-manifest-seen s fn2-cns-sources)
+             (+ (fn2-cns-sources-offset s fn2-cns-sources) (fn2-cns-sources-unit-length s fn2-cns-sources)))
+      (equal (fn2-cns-sources-retain-entry-index s fn2-cns-sources)
+             (+ 1 (floor (fn2-cns-sources-offset s fn2-cns-sources) *fn2-commit-unit-bytes*)))))
+
 ; The returned carriers are the only writable children. Explicit ROWS frames
 ; accompany TYPE/WFP because the columns carrier shorthand does not emit ROWS.
 (defun fn2-cns-source-frame-hyps (children)
