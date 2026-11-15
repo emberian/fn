@@ -9,6 +9,9 @@
 (defun fn2-reo-body (mode fn2-checkpoint-publication fn2-checkpoint-lifecycle fn2-checkpoints fn2-checkpoint-refs fn2-checkpoint-bytes fn2-extents fn2-alloc-edges fn2-ops fn2-allocation-release fn2-commit-root fn2-fc fn2-digests fn2-fields fn2-pool fn2-release-evidence fn2-release-evidence-candidates)
  (declare (xargs :stobjs (fn2-checkpoint-publication fn2-checkpoint-lifecycle fn2-checkpoints fn2-checkpoint-refs fn2-checkpoint-bytes fn2-extents fn2-alloc-edges fn2-ops fn2-allocation-release fn2-commit-root fn2-fc fn2-digests fn2-fields fn2-pool fn2-release-evidence fn2-release-evidence-candidates) :verify-guards nil))
  (b* (((mv ready fn2-checkpoint-publication fn2-checkpoint-lifecycle fn2-checkpoints fn2-checkpoint-refs fn2-checkpoint-bytes fn2-extents fn2-alloc-edges fn2-ops fn2-allocation-release fn2-commit-root fn2-fc fn2-digests fn2-fields fn2-pool) (fn2-ras-ready fn2-checkpoint-publication fn2-checkpoint-lifecycle fn2-checkpoints fn2-checkpoint-refs fn2-checkpoint-bytes fn2-extents fn2-alloc-edges fn2-ops fn2-allocation-release fn2-commit-root fn2-fc fn2-digests fn2-fields fn2-pool))
+      ; Original source and installation namespaces are independent of CP37/41.
+      (fn2-allocation-release (fn2-allocation-release-put 0 (event 9) (journal-history 101) (journal-incarnation 103)))
+      (fn2-commit-root (fn2-commit-root-put 3 (physical-history 29) (physical-incarnation 31)))
       (fn2-release-evidence (fn2-release-evidence-init (fn2-extents-rows fn2-extents) fn2-release-evidence))
       (fn2-release-evidence-candidates (fn2-release-evidence-candidates-init (fn2-checkpoints-rows fn2-checkpoints) fn2-release-evidence-candidates))
       ((mv reserved & journal epoch allocation fn2-extents) (fn2-alloc-reserve fn2-extents))

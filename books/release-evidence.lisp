@@ -288,6 +288,10 @@
                (fn2-release-evidence-row-matches journal fn2-allocation-release fn2-release-evidence)))
      (mv :identity fn2-release-evidence)
   (mv :persisted (fn2-release-evidence-set-phase journal *fn2-release-evidence-phase-persisted* fn2-release-evidence))))
+(fn2-release-evidence-preserves fn2-release-evidence-mark-persisted
+ (journal fn2-allocation-release fn2-release-evidence) :position 1
+ :hyps ((fn2-allocation-releasep fn2-allocation-release) (fn2-allocation-release-wfp fn2-allocation-release)
+        (fn2-release-evidencep fn2-release-evidence) (fn2-release-evidence-wfp fn2-release-evidence)))
 ; No defcost/admission or generic discharge. Actual coordinator derives the
 ; journal tuple from its commit I/O owner before any durable exposure. Rejected
 ; settlement and authenticated map substitution require typed consumers; until
