@@ -37,10 +37,6 @@
                     (class *fn2-cns-fetch-accepted-class*) (reason-length 0)
                     (result-length (+ article-bytes *fn2-cns-fetch-result-prefix-octets*))
                     (article-length article-bytes))))
-  (values '(*fn2-fnct-magic* *fn2-fnct-version* *fn2-fnct-port-reply-kind*
-                  (+ article-bytes *fn2-cns-fetch-port-prefix-octets*)
-                  0 0 (+ article-bytes *fn2-cns-fetch-result-prefix-octets*) article-bytes))
-        (bindings (pairlis$ names values)))
   (value
    `(defun fn2-cns-fetch-stream-prefix (base article-bytes slot gen okind owner ownergen fn2-fields fn2-pool)
      (declare (xargs :stobjs (fn2-fields fn2-pool)
@@ -52,4 +48,4 @@
        (let* ,(fn2-fnct-def-result-binds 'fn2-fnct-fetch-stream-prefix bindings)
         (mv-let (code end fn2-pool)
          (fn2-fnct-fetch-stream-prefix-encode base slot gen 0 okind owner ownergen fn2-fields fn2-pool)
-         (mv code end fn2-fields fn2-pool)))))))
+         (mv code end fn2-fields fn2-pool))))))))
