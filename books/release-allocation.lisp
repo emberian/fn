@@ -96,6 +96,7 @@
     (page-kind (fn2-checkpoint-refs-page-kind r fn2-checkpoint-refs))
     (encoded-length (fn2-checkpoint-refs-encoded-length r fn2-checkpoint-refs))
     (slot 0) (gen 0) (batch 0) (event 0)
+    (writer-slot 0) (writer-gen 0) (member-length 0) (workspace-released 0)
     (journal 0) (journal-epoch 0) (journal-allocation 0) (evidence-owned 0))))
   (mv :staged fn2-allocation-release)))
 (defun fn2-allocation-release-discard-stage (kind owner generation fn2-allocation-release)

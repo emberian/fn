@@ -11,6 +11,7 @@
   (fn2-retirement-adapter-release . (fn2-checkpoint-lifecycle-release slot gen okind oslot ogen fn2-core))
   (fn2-retirement-adapter-record-match . (fn2-checkpoint-staging-match-p slot gen okind oslot ogen fn2-core))
   (fn2-retirement-adapter-installation . (fn2-checkpoint-installation-install-member base slot gen off next bytes len batch event okind oslot ogen fn2-core))
+  (fn2-retirement-adapter-release-allocation . (fn2-allocation-release-install-member base slot gen off next bytes len batch event okind oslot ogen fn2-core))
   (fn2-retirement-adapter-allocation . (fn2-checkpoint-allocation-install-member base slot gen off next bytes len batch event okind oslot ogen fn2-core))
   (fn2-retirement-adapter-install-prefix . (progn
  (defun fn2-checkpoint-allocation-install-member (base slot gen off next bytes len batch event okind oslot ogen fn2-core)

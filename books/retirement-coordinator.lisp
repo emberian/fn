@@ -16,7 +16,8 @@
    (fn2-retirement-adapter-release . (fn2-core-release slot gen okind oslot ogen fn2-core))
    (fn2-retirement-adapter-record-match . nil)
    (fn2-retirement-adapter-installation . (mv :invalid fn2-core))
-   (fn2-retirement-adapter-allocation . (mv :invalid fn2-core))))
+   (fn2-retirement-adapter-allocation . (mv :invalid fn2-core))
+   (fn2-retirement-adapter-release-allocation . (mv :invalid fn2-core))))
 
 ; Materialized after B's existing planner and member-admission operations.
 ; No general transaction decoder is opened to lifecycle input: this producer
@@ -278,7 +279,9 @@
        ((unless (or (not (member-equal rkind (list *record-kind-allocation* *record-kind-checkpoint-installation*)))
                     fn2-retirement-adapter-record-match)) (mv :invalid 0 0 fn2-core))
        ((mv code fn2-core)
-        (if (= rkind *record-kind-checkpoint-installation*)
+        (if (= rkind *record-kind-release-allocation*)
+            fn2-retirement-adapter-release-allocation
+         (if (= rkind *record-kind-checkpoint-installation*)
             fn2-retirement-adapter-installation
          (if (= rkind *record-kind-allocation*)
             fn2-retirement-adapter-allocation
@@ -320,7 +323,7 @@
                 (mv :invalid fn2-fields fn2-extents)
              (mv-let (code fn2-extents) (fn2-retirement-install batch base fn2-fields fn2-extents)
               (mv code fn2-fields fn2-extents)))))
-          (mv code fn2-core)))))))
+          (mv code fn2-core))))))))
    (mv (if (eq code :ok) :more :invalid) member (+ next bytes) fn2-core)))
  (fn2-core-preserves fn2-commit-lifecycle-step (id member off fn2-core) :position 3 :rows nil)
  (defthm fn2-commit-lifecycle-step-naturals

@@ -1,7 +1,7 @@
 ; Private selected-recovery RELEASE continuation. No archived source is invented.
 ; The original authenticated journal lease remains separate from evidence I/O.
-; Driver/checker binding is pending: unreachable-in-composition until parent
-; VERIFY routing and the authenticated verifier terminal are connected.
+; Historical VERIFY/installation reread and checker callbacks are connected.
+; Final release settlement/prefix authority remains blocked; this is not FREE.
 (in-package "ACL2")
 (include-book "std/util/bstar" :dir :system)
 (include-book "recovery-payload")

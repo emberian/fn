@@ -58,7 +58,7 @@
 (defcost fn2-commit-root-edge :answers t :tables (fn2-core-extents fn2-core-alloc-edges fn2-core-control)
  :doc "Add the batch's prepared-successor edge, or swap it for the installed-root edge.")
 (defcost fn2-commit-lifecycle-step :answers (:more :done :invalid) :bytes 4096
- :tables (fn2-core-fields fn2-core-pool fn2-core-extents fn2-core-commit-members fn2-core-commit-root fn2-core-machines fn2-core-retirement-control fn2-core-checkpoint-future fn2-core-checkpoint-future-windows fn2-core-checkpoints fn2-core-checkpoint-refs fn2-core-checkpoint-bytes fn2-core-checkpoint-construction fn2-core-alloc-edges fn2-core-ops)
+ :tables (fn2-core-fields fn2-core-pool fn2-core-extents fn2-core-commit-members fn2-core-commit-root fn2-core-machines fn2-core-retirement-control fn2-core-checkpoint-future fn2-core-checkpoint-future-windows fn2-core-checkpoints fn2-core-checkpoint-refs fn2-core-checkpoint-bytes fn2-core-checkpoint-construction fn2-core-alloc-edges fn2-core-ops fn2-core-allocation-release fn2-core-release-evidence fn2-core-release-evidence-candidates)
  :doc "After durable root installation, inspect one member frame and apply its exact-bound lifecycle record before publication.")
 (defcost fn2-commit-seal-step :answers t :bytes 4096 :own-writes (cb-cursor cb-issued cb-seal-len)
  :tables (fn2-core-pool fn2-core-control (:layers :b))
