@@ -162,8 +162,26 @@
             ((equal phase *fn2-cns-source-phase-complete*) :complete)
             ((equal phase *fn2-cns-source-phase-bad*) :bad) (t :wait)) fn2-cns-sources fn2-b3 fn2-digests)))
 
+
+(defcolumns-observation-frame fn2-cns-sources-manifest-index-after-offset fn2-cns-sources manifest-index offset)
+(defcolumns-observation-frame fn2-cns-sources-manifest-index-after-unit-copied fn2-cns-sources manifest-index unit-copied)
+(defcolumns-observation-frame fn2-cns-sources-manifest-index-after-unit-index fn2-cns-sources manifest-index unit-index)
+(defcolumns-observation-frame fn2-cns-sources-manifest-loaded-index-after-manifest-index fn2-cns-sources manifest-loaded-index manifest-index)
+(defcolumns-observation-frame fn2-cns-sources-manifest-loaded-index-after-offset fn2-cns-sources manifest-loaded-index offset)
+(defcolumns-observation-frame fn2-cns-sources-manifest-loaded-index-after-unit-copied fn2-cns-sources manifest-loaded-index unit-copied)
+(defcolumns-observation-frame fn2-cns-sources-manifest-loaded-index-after-unit-index fn2-cns-sources manifest-loaded-index unit-index)
+(defcolumns-observation-frame fn2-cns-sources-total-after-manifest-index fn2-cns-sources total manifest-index)
+(defcolumns-observation-frame fn2-cns-sources-total-after-manifest-stage fn2-cns-sources total manifest-stage)
+(defcolumns-observation-frame fn2-cns-sources-total-after-offset fn2-cns-sources total offset)
+(defcolumns-observation-frame fn2-cns-sources-total-after-unit-copied fn2-cns-sources total unit-copied)
+(defcolumns-observation-frame fn2-cns-sources-total-after-unit-index fn2-cns-sources total unit-index)
+(defcolumns-observation-frame fn2-cns-sources-unit-index-after-offset fn2-cns-sources unit-index offset)
+(defcolumns-observation-frame fn2-cns-sources-unit-index-after-unit-copied fn2-cns-sources unit-index unit-copied)
+
 (defun fn2-cns-source-next-children (s cns cnsgen ctl ctlgen request slot gen off maximum ctlkind fn2-cns-sources fn2-pool)
- (declare (xargs :stobjs (fn2-cns-sources fn2-pool) :guard (and (fn2-cns-sources-wfp fn2-cns-sources) (fn2-pool-wfp fn2-pool))))
+ (declare (xargs :stobjs (fn2-cns-sources fn2-pool) :guard (and (fn2-cns-sources-wfp fn2-cns-sources) (fn2-pool-wfp fn2-pool))
+ :guard-hints ((fn2-columns-call-guard-hint 'fn2-cns-source-next-children
+   '(fn2-rd-copy fn2-pool-ownerp) nil world))))
  (b* (((unless (and (fn2-cns-source-ownerp s cns cnsgen ctl ctlgen request fn2-cns-sources)
                     (natp maximum) (<= maximum 1024) (natp off)))
        (mv :bad 0 nil fn2-cns-sources fn2-pool))

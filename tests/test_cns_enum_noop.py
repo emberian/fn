@@ -4,12 +4,13 @@ import subprocess,sys,unittest
 ROOT=Path(__file__).resolve().parents[1]
 sys.path.insert(0,str(ROOT/'tools'))
 from cns_enum_noop import transform
+from cns_next_observation_frames import pairs,declaration
 from lisp_rewrite import parse,match,Lst,Atom,Pre
 BASE='4c46607449f33dc604d944d81ea614661eba04e3'
 def runtime_forms(text):
     parsed=parse(text)
     for found in match(None,parsed,deep=False,head='defun'):
-        if found.node.items[1].low in ('fn2-cns-source-issue-children','fn2-cns-source-raw-step-children'):
+        if found.node.items[1].low in ('fn2-cns-source-issue-children','fn2-cns-source-raw-step-children','fn2-cns-source-next-children'):
             xs=found.node.items[3].items[1].items
             positions=[i for i,n in enumerate(xs) if isinstance(n,Atom) and n.low==':guard-hints']
             if positions:
@@ -21,6 +22,7 @@ def runtime_forms(text):
         return n.text if n.kind=='string' else n.low
     ignored=[['include-book','"columns-observation-frames"'],
              ['defcolumns-observation-frame','fn2-cns-sources-hash-offset-after-unit-hashed','fn2-cns-sources','hash-offset','unit-hashed']]
+    ignored += [canonical(parse(declaration(*pair)).forms[0]) for pair in pairs(text)]
     return [canonical(n) for n in parsed.forms if canonical(n) not in ignored]
 
 class EnumNoopLowering(unittest.TestCase):
