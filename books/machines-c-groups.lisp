@@ -533,8 +533,9 @@
                (fn2-reads (fn2-core-reads fn2-core)) (fn2-c-source-control (fn2-core-c-source-control fn2-core))
                (fn2-c-source-readers (fn2-core-c-source-readers fn2-core)))
     (code ,result fn2-succ-txns fn2-run-cursors fn2-run-paths fn2-fields fn2-c-source-control fn2-c-source-readers)
-    (b* (((unless (and (natp tx) (< tx (fn2-succ-txns-rows fn2-succ-txns)) (< tx (fn2-id-decides-rows fn2-id-decides))
-                       (member (fn2-id-decides-phase tx fn2-id-decides) (list *fn2-id-decide-phase-idle* *fn2-id-decide-phase-done*))
+    (b* (((unless (and (natp tx) (< tx (fn2-succ-txns-rows fn2-succ-txns)) (< tx (fn2-id-decides-rows fn2-id-decides))))
+          (mv :bounds 0 fn2-succ-txns fn2-run-cursors fn2-run-paths fn2-fields fn2-c-source-control fn2-c-source-readers))
+         ((unless (and (member (fn2-id-decides-phase tx fn2-id-decides) (list *fn2-id-decide-phase-idle* *fn2-id-decide-phase-done*))
                        ; Resolver holds span every slot, including FRESH/NEXT.
                        ; Only a live direct XL continuation may reuse this hold.
                        (or (equal (fn2-succ-txns-source-receipt tx fn2-succ-txns) 0)
