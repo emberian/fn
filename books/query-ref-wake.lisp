@@ -1,0 +1,55 @@
+; A completed/cancelled query can unblock its source owner without an I/O
+; completion. The owner is a real machine reference; pool slots are not IDs.
+(in-package "ACL2")
+(include-book "assembly-callbacks-b2")
+
+(defun fn2-query-live-phases (name states)
+ (declare (xargs :verify-guards nil))
+ (if (atom states) nil
+  (if (member-eq (car states) '(:free :retired))
+      (fn2-query-live-phases name (cdr states))
+    (cons (fn2-machine-phase-constant name (car states))
+          (fn2-query-live-phases name (cdr states))))))
+(defun fn2-query-live-clauses (names world)
+ (declare (xargs :verify-guards nil))
+ (if (atom names) nil
+  (let* ((name (car names))
+         (kind (fn2-columns-pre "*" (fn2-columns-sym name "-KIND*")))
+         (phases (fn2-query-live-phases name (fn2-machine-property name :states world)))
+         (stopped (assoc-eq 'stopped (fn2-machine-property name :columns world))))
+   (cons `((equal kind ,kind)
+           (and (member-equal (fn2-machine-phase owner fn2-core) (list ,@phases))
+                ,(if stopped `(equal (,(fn2-machine-row-reader name 'stopped) owner fn2-core) 0) t)))
+         (fn2-query-live-clauses (cdr names) world)))))
+(make-event
+ (value
+  `(defun fn2-query-owner-livep (kind owner generation fn2-core)
+    (declare (xargs :stobjs fn2-core :guard (fn2-core-wfp fn2-core)))
+    (and (fn2-machine-idp owner fn2-core)
+         (equal (fn2-machine-kind owner fn2-core) kind)
+         (equal (fn2-machine-generation owner fn2-core) generation)
+         (cond ,@(fn2-query-live-clauses (fn2-machine-names (w state)) (w state))
+               (t nil))))))
+(in-theory (disable fn2-query-owner-livep))
+
+; QWAKE is produced only by an actual last-reference release. Consume the
+; pending notification even when its old owner has retired or been reused.
+; A new query must not overwrite its owner tuple while QWAKE is pending.
+(defun fn2-query-ref-flush (tx fn2-core)
+ (declare (xargs :stobjs fn2-core :guard (fn2-core-wfp fn2-core)))
+ (stobj-let ((fn2-id-decides (fn2-core-id-decides fn2-core)))
+  (pending kind owner generation fn2-id-decides)
+  (if (and (natp tx) (< tx (fn2-id-decides-rows fn2-id-decides))
+           (equal (fn2-id-decides-qwake tx fn2-id-decides) 1))
+      (let* ((kind (fn2-id-decides-qk tx fn2-id-decides))
+             (owner (fn2-id-decides-qs tx fn2-id-decides))
+             (generation (fn2-id-decides-qg tx fn2-id-decides))
+             (fn2-id-decides (fn2-id-decides-set-qwake tx 0 fn2-id-decides)))
+       (mv t kind owner generation fn2-id-decides))
+    (mv nil 0 0 0 fn2-id-decides))
+  (if (and pending (fn2-query-owner-livep kind owner generation fn2-core))
+      (fn2-machine-wake-row owner fn2-core)
+    fn2-core)))
+(fn2-core-preserves fn2-query-ref-flush (tx fn2-core) :rows nil
+ :hints (("Goal" :in-theory (enable fn2-core-wfp))))
+(in-theory (disable fn2-query-ref-flush))
