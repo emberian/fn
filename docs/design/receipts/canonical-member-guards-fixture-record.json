@@ -1,0 +1,67 @@
+{
+  "scope": "Generated six-record membership and seven-record guard-bearing fixtures; not a current served CNS packet",
+  "source_commit": "0e9b5f9ac",
+  "host": "forge",
+  "owner_pid": 1157213,
+  "command": "SWARM_MEM_MAX=2G swarm-build timeout 120 bash /tmp/audit-bridge-guards-0e9b5f9ac/gate.sh",
+  "log": "forge:/tmp/audit-bridge-guards-0e9b5f9ac/run.log",
+  "log_sha256": "e2754a35e16ec02e457385694ce53e5144a7385f08f5f0fde9ba916373f2796c",
+  "gate_script_sha256": "de19c3be236923e5eed3a318034e04b4e3f36f192d242593c5ada82ac8f561c6",
+  "exit_code": 0,
+  "limits": {
+    "memory_max": 2147483648,
+    "swap_max": 0,
+    "seconds": 120,
+    "lean_jobs": 1
+  },
+  "memory_peak": 108294144,
+  "memory_events": {
+    "low": 0,
+    "high": 0,
+    "max": 0,
+    "oom": 0,
+    "oom_kill": 0,
+    "oom_group_kill": 0
+  },
+  "scope_released": true,
+  "owner_pid_absent": true,
+  "compiler": {
+    "version": "4.30.0",
+    "commit": "d024af099ca4bf2c86f649261ebf59565dc8c622",
+    "sha256": "3e0d0d3d801675359f2d4cf9815bfdb417b20b92fdd9d48b3b14c95bbae28bbf"
+  },
+  "warm_imports": "/build/lanes/stride-lean-reflect/build/recursive-current-lib",
+  "imports_rebuilt": false,
+  "source_hashes": {
+    "meta/Fn2/ACL2/MemberExecEvaluation.lean": "3f38492fd237761cccfc20ab6a26ef5a569a91143d4a47a0947bd8a2322e9a2b",
+    "meta/Fn2/ACL2/CanonicalEvaluation.lean": "b9c2e3176adc4b5bc8b83e4b422be15607fb8180aa24fd929889600b1d23211c"
+  },
+  "fixture_hashes": {
+    "BodyMutant.lean": "0253df10218269f7a74eeff3332914af7d76670b30f3fdd2937262589671f582",
+    "GuardMutant.lean": "c78eb18a8a49094fda7a10d0a9cb58036a76477f3b89665f0131837f58852021",
+    "Seven.lean": "01720676f96e47b1d1a84ae844ff0c71f5dcf01853b4d14037524278139c1ace",
+    "Six.lean": "d6e4c48707f2bd544176f3daf8138f1858944545ac040916e6be6f4b4dae2a21"
+  },
+  "positive_results": {
+    "Six": "member_records/member_closed compile; propext, Classical.choice, Quot.sound only",
+    "Seven": "same two membership theorems plus root_guard_decoded (propext) and guard_helper_present (no axioms)"
+  },
+  "negative_results": {
+    "BodyMutant": {
+      "exit_code": 1,
+      "failure": "memberLookup exact recursive body definition"
+    },
+    "GuardMutant": {
+      "exit_code": 1,
+      "failure": "root_guard_decoded exact canonical guard"
+    }
+  },
+  "remaining": [
+    "Current qualified CNS callback world and packet",
+    "ACL2 companion qualification at current closure key",
+    "DomainRespectsGuards proofs",
+    "Primitive correspondence",
+    "MBE correspondence",
+    "Selected-dispatch and host execution binding"
+  ]
+}
