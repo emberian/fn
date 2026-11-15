@@ -63,7 +63,7 @@ phase and fixed article key. Arbitrary raw XL mutation is outside that claim.
 Both READ-NEXT and READ-LOOKUP receive an inner work budget of one. The
 schema-specific proposed charges derive from actual layout maxima, decoder
 fuel, overlay probes and source geometry. ADDR selection bounds at 16,568
-pool reads; ARTICLE lookup plus its atomic capture tail bounds at 14,393
+pool reads; ARTICLE lookup plus its atomic capture tail bounds at 14,293
 pool byte operations. These are separate phases, not a claimed combined
 trace. The existing CNS budget remains 32,768 bytes plus 32 steps.
 
