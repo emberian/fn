@@ -18,6 +18,7 @@
 (include-book "checkpoint-summary-adoption")
 (include-book "checkpoint-summary-apply")
 (include-book "checkpoint-directory-cold")
+(include-book "checkpoint-bank-cold")
 (include-book "machines-a-access")
 (fn2-book-layer :b)
 
@@ -857,7 +858,12 @@
            (:otherwise (:stop :checkpoint)))))
     (:checkpoint-events-frontier-finish :on-refusal ((:stop :checkpoint))
    (:do (code) (fn2-boot-checkpoint-events-frontier-finish) :accept (:events-complete))
-   (:next :checkpoint-events-finish) (:charge :steps *fn2-work-stage* :runnable t))
+   (:next :checkpoint-events-seed) (:charge :steps *fn2-work-stage* :runnable t))
+  (:checkpoint-events-seed
+   (:do (code) (fn2-checkpoint-bank-cold-seed-op 1) :accept ()
+    :case (((:more) (:next :checkpoint-events-seed) (:charge :bytes 256 :steps *fn2-work-stage* :runnable t))
+           ((:seeded) (:next :checkpoint-events-finish) (:charge :bytes 256 :steps *fn2-work-stage* :runnable t))
+           (:otherwise (:stop :checkpoint)))))
   (:checkpoint-events-finish :on-refusal ((:stop :checkpoint))
    (:do (code candidate) (fn2-boot-checkpoint-investigation-finish id row-generation) :accept ()
     :case (((:next-candidate) (:set (checkpoint-index candidate)) (:next :checkpoint-root-candidate)
