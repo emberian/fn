@@ -71,6 +71,14 @@ ACL2_BOOKS = \
   books/column-contracts \
   books/codec-profile \
   books/codec-transport \
+  books/codec-stack \
+  books/compress-transport-state \
+  books/tls-record-policy \
+  books/tls-record-state \
+  books/tls-record \
+  books/tls-stack \
+  books/host-loan \
+  books/host-codec \
   books/columns \
   books/compress-policy \
   books/commit \
@@ -247,6 +255,10 @@ ACL2_BOOKS = \
   tests/columns-unit \
   tests/codec-profile-unit \
   tests/codec-transport-unit \
+  tests/host-codec-unit \
+  tests/tls-record-policy-unit \
+  tests/tls-record-unit \
+  tests/tls-stack-unit \
   tests/compress-policy-unit \
   tests/commit-ceiling-unit \
   tests/commit-durable-all-unit \
