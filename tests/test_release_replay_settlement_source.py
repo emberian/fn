@@ -69,6 +69,15 @@ class ActualSettlement(unittest.TestCase):
   self.assertTrue(calls(progress,'fn2-release-target-settlement-current-progress'))
   self.assertFalse(calls(progress,'fn2-alloc-identity-commit-free'))
   self.assertEqual(self.text.count('(fn2-alloc-identity-commit-free '),1)
+ def test_canonical_matcher_includes_physical_installation_tuple(self):
+  text=(ROOT/'books/release-evidence.lisp').read_text()
+  table=next(read_sexp(raw) for raw in forms(text) if read_sexp(raw)[:2]==['defconst','*fn2-release-evidence-inventory-bindings*'])[2][1]
+  for pair in (['installation-extent','fn2-allocation-release-installation-position'],
+               ['installation-epoch','fn2-allocation-release-installation-epoch'],
+               ['installation-allocation','fn2-allocation-release-installation-allocation']):
+   self.assertIn(pair,table)
+  mutant=[pair for pair in table if pair[0]!='installation-extent']
+  self.assertNotIn(['installation-extent','fn2-allocation-release-installation-position'],mutant)
  def test_all_readonly_inputs_have_generated_type_and_wfp_domain(self):
   domain=next(read_sexp(raw) for raw in forms(self.text) if read_sexp(raw)[:2]==['defun','fn2-release-replay-settlement-hyps'])
   self.assertIn('"P"',next(raw for raw in forms(self.text) if 'defun fn2-release-replay-settlement-hyps' in raw))
@@ -78,6 +87,6 @@ class ActualSettlement(unittest.TestCase):
   for name in ('fn2-release-replay-settlement-current-code','fn2-alloc-ownership-invp',
                'fn2-alloc-identity-refines-p','fn2-rrsu-snapshot','fn2-aiu-adopt'):
    self.assertIn(name,unit)
-  for mode in (':actor',':source',':target',':ledger',':protector',':not-persisted',':descriptor'):
+  for mode in (':actor',':source',':target',':ledger',':protector',':not-persisted',':descriptor',':installation-location',':journal-namespace',':event'):
    self.assertIn('(assert-event (fn2-rrsu-test '+mode+'))',unit)
 if __name__=='__main__':unittest.main()
