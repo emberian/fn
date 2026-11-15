@@ -1,5 +1,5 @@
 (in-package "ACL2")
-(include-book "../books/columns-guard-hints")
+(include-book "../books/columns-call-guards")
 
 (defcolumns fn2-guard-output ((value :u60)))
 (defcolumns fn2-guard-input ((word :u8))
@@ -67,3 +67,33 @@
      (mv ok fn2-guard-output)))
    ok)))
 (assert-event (fn2-guard-hints-unit))
+
+; The default discovers both read-only observations and a stateful producer's
+; proved public boundary. The producer is deliberately left enabled here.
+(defun fn2-guard-increment (i fn2-guard-output)
+ (declare (xargs :stobjs fn2-guard-output
+  :guard (and (fn2-guard-output-wfp fn2-guard-output) (natp i)
+              (< i (fn2-guard-output-rows fn2-guard-output)))))
+ (fn2-guard-output-set-value i 1 fn2-guard-output))
+(fn2-guard-output-preserves fn2-guard-increment (i fn2-guard-output) :disable nil)
+(defun fn2-guard-auto-copy (i fn2-guard-output fn2-guard-input)
+ (declare (xargs :stobjs (fn2-guard-output fn2-guard-input)
+  :guard (and (fn2-guard-output-wfp fn2-guard-output)
+              (fn2-guard-input-wfp fn2-guard-input) (natp i)
+              (< i (fn2-guard-output-rows fn2-guard-output))
+              (< i (fn2-guard-input-rows fn2-guard-input)))
+  :guard-hints ((fn2-columns-call-guard-hint 'fn2-guard-auto-copy nil nil world))))
+ (let ((fn2-guard-output (fn2-guard-increment i fn2-guard-output)))
+  (fn2-guard-output-set-value i (fn2-guard-input-word i fn2-guard-input) fn2-guard-output)))
+(assert-event (eq (symbol-class 'fn2-guard-auto-copy (w state)) :common-lisp-compliant))
+(assert-event
+ (let* ((world (w state))
+        (hint (fn2-columns-call-guard-hint 'fn2-guard-auto-copy nil nil world))
+        (closed (caddr (cadr hint)))
+        (opened (fn2-columns-call-guard-hint 'fn2-guard-auto-copy nil
+                    '(fn2-guard-input-word fn2-guard-increment) world)))
+  (and (subsetp-eq '(fn2-guard-input-word fn2-guard-input-rows fn2-guard-increment) closed)
+       (not (member-eq 'fn2-guard-auto-copy closed))
+       (not (member-eq 'fn2-guard-input-word-bound closed))
+       (not (member-eq 'fn2-guard-increment-preserves-wfp closed))
+       (not (intersectp-eq '(fn2-guard-input-word fn2-guard-increment) (caddr (cadr opened)))))))
