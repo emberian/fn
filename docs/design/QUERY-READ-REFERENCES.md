@@ -163,8 +163,10 @@ after all reservations succeed. No write, query, callback or scheduler step
 intervenes. Fresh reservations have fill/count zero, so the positive name
 and 32-byte digest acquisition cannot succeed there. This excludes held
 rollback in the current generated path, not arbitrary malformed states or
-normal post-publication cleanup; independent structural controls are being
-added by the pool audit owner.
+normal post-publication cleanup. `test_admission_rollback_source_shape.py`
+checks the exact generator AST/control grammar and rejects inserted query
+calls in each reservation chain; four source controls pass. This is a
+source-change detector, not ACL2 admission or a lifetime theorem.
 
 The raw core-release held/no-stop leaf gate does not qualify consumers.
 Their execution requires coherent current-root query descriptor/start/DONE/
