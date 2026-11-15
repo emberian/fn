@@ -20,6 +20,7 @@ from emit_lean import (
     as_module, CORE_STRING_BODIES,
 )
 from emit_embed import alist_value, calls_of
+from emit_arm_syntax import expr_val, phase_val
 
 DIRECTORY_FIELDS = ("READY-PREV", "READY-NEXT", "WAIT-REASON")
 
@@ -1319,13 +1320,13 @@ def read_call_ast(c_sexp):
 
 
 def call_to_lean(c):
-    args_s = ", ".join(val(a) for a in c["args"])
-    keys_s = ", ".join(f"({lean_str(k)}, {val(v)})" for k, v in c["keys"])
+    args_s = ", ".join(expr_val(a) for a in c["args"])
+    keys_s = ", ".join(f"({lean_str(k)}, {expr_val(v)})" for k, v in c["keys"])
     return f"(Call.mk {lean_str(c['op'])} [{args_s}] [{keys_s}])"
 
 
 def opt_expr_lean(x):
-    return "none" if x is None else f"(some ({val(x)}))"
+    return "none" if x is None else f"(some ({expr_val(x)}))"
 
 
 def opt_str_lean(s):
@@ -1498,17 +1499,17 @@ def codes_opt_lean(cs):
 def step_to_lean(st):
     h = st[0]
     if h == "let":
-        return f"(Step.let_ {lean_str(st[1])} ({val(st[2])}))"
+        return f"(Step.let_ {lean_str(st[1])} ({expr_val(st[2])}))"
     if h == "set":
-        ps = ", ".join(f"({lean_str(f)}, {val(e)})" for f, e in st[1])
+        ps = ", ".join(f"({lean_str(f)}, {expr_val(e)})" for f, e in st[1])
         return f"(Step.set [{ps}])"
     if h == "next":
-        return f"(Step.next ({val(st[1])}))"
+        return f"(Step.next ({phase_val(st[1])}))"
     if h == "do":
         _, vs, call, ag, acc, when_, else_, cases = st
         vs_s = ", ".join(lean_str(v) for v in vs)
         acc_s = ", ".join(val(c) for c in acc)
-        el_s = ", ".join(val(e) for e in else_)
+        el_s = ", ".join(expr_val(e) for e in else_)
         cs_s = ", ".join(f"({codes_opt_lean(cs)}, [{', '.join(step_to_lean(x) for x in bs)}])" for cs, bs in cases)
         return (
             f"(Step.do_ [{vs_s}] {call_to_lean(call)} {'true' if ag else 'false'} "
@@ -1520,24 +1521,24 @@ def step_to_lean(st):
         rf_l = ", ".join(step_to_lean(x) for x in rf_s)
         return f"(Step.issue {call_to_lean(call)} [{ok_l}] [{rf_l}])"
     if h == "wake_row":
-        return f"(Step.wakeRow ({val(st[1])}))"
+        return f"(Step.wakeRow ({expr_val(st[1])}))"
     if h == "if":
         a_l = ", ".join(step_to_lean(x) for x in st[2])
         b_l = ", ".join(step_to_lean(x) for x in st[3])
-        return f"(Step.if_ ({val(st[1])}) [{a_l}] [{b_l}])"
+        return f"(Step.if_ ({expr_val(st[1])}) [{a_l}] [{b_l}])"
     if h == "cond":
-        cl_l = ", ".join(f"({val(c)}, [{', '.join(step_to_lean(x) for x in bs)}])" for c, bs in st[1])
+        cl_l = ", ".join(f"({expr_val(c)}, [{', '.join(step_to_lean(x) for x in bs)}])" for c, bs in st[1])
         return f"(Step.cond [{cl_l}])"
     if h == "case":
         ar_l = ", ".join(f"({codes_opt_lean(cs)}, [{', '.join(step_to_lean(x) for x in bs)}])" for cs, bs in st[2])
-        return f"(Step.case_ ({val(st[1])}) [{ar_l}])"
+        return f"(Step.case_ ({expr_val(st[1])}) [{ar_l}])"
     if h == "charge":
         return f"(Step.charge {opt_expr_lean(st[1])} {opt_expr_lean(st[2])} {opt_expr_lean(st[3])} {opt_expr_lean(st[4])})"
     if h == "wait":
         return f"(Step.wait {opt_expr_lean(st[1])} {opt_expr_lean(st[2])})"
     if h == "park":
         _, wn, arg, tk, stp, ks = st
-        ks_s = ", ".join(f"({lean_str(k)}, {val(v)})" for k, v in ks)
+        ks_s = ", ".join(f"({lean_str(k)}, {expr_val(v)})" for k, v in ks)
         return f"(Step.park {lean_str(wn)} {opt_expr_lean(arg)} {opt_str_lean(tk)} {opt_expr_lean(stp)} [{ks_s}])"
     if h == "stop":
         return f"(Step.stop {lean_str(st[1])} {opt_expr_lean(st[2])})"
@@ -2095,10 +2096,10 @@ class ArmProofBuilder:
     def pend_lean(self, pending):
         if not pending:
             return "[]"
-        return "[" + ", ".join(f"({lean_str(c)}, {val(e)})" for c, e in pending) + "]"
+        return "[" + ", ".join(f"({lean_str(c)}, {expr_val(e)})" for c, e in pending) + "]"
 
     def next_lean(self, next_expr):
-        return "none" if next_expr is None else f"(some ({val(next_expr)}))"
+        return "none" if next_expr is None else f"(some ({phase_val(next_expr)}))"
 
     def st_lean(self, ctx):
         return (
@@ -2318,7 +2319,7 @@ class ArmProofBuilder:
         t = read_expr_ast(e_sexp, self.kinfo, self.core_mode)
         t_lean = term_to_lean(t)
         v_lean, heval = self.prove_term_eval(t, self.st_env_ctx(ctx))
-        e_lean = f"({val(e_sexp)})"
+        e_lean = f"({expr_val(e_sexp)})"
         st_s = self.st_lean(ctx)
         hr = f"(Combinators.exceptTermOk_eq (r := readExpr {self.w_expr} {self.k_expr} {e_lean}) (t := {t_lean}) (by decide +kernel))"
         return v_lean, f"(Combinators.ev_of_readExpr {self.w_expr} {self.k_expr} {st_s} {e_lean} {t_lean} {v_lean} {hr} {heval})"
@@ -2328,7 +2329,7 @@ class ArmProofBuilder:
         if opt_sexp is None:
             return dflt_lean, f"(Combinators.evOpt_none {self.w_expr} {self.k_expr} {st_s} {dflt_lean})"
         v_lean, hev = self.prove_ev(opt_sexp, ctx)
-        return v_lean, f"(Combinators.evOpt_some {self.w_expr} {self.k_expr} {st_s} ({val(opt_sexp)}) {dflt_lean} {v_lean} {hev})"
+        return v_lean, f"(Combinators.evOpt_some {self.w_expr} {self.k_expr} {st_s} ({expr_val(opt_sexp)}) {dflt_lean} {v_lean} {hev})"
 
     def prove_flush(self, ctx):
         """Returns `(let_defs, let_prfs, hfl_prf, post_rw_lines, new_ctx)`."""
@@ -2362,10 +2363,10 @@ class ArmProofBuilder:
             col_n, e_sexp, pv, hev = pend_evals[i]
             hpairs = (
                 f"(mapM_pend_cons {self.w_expr} {self.k_expr} {st_s} "
-                f"{lean_str(col_n)} ({val(e_sexp)}) {tail_expr_lean} {pv} {tail_val_lean} {hev} {hpairs})"
+                f"{lean_str(col_n)} ({expr_val(e_sexp)}) {tail_expr_lean} {pv} {tail_val_lean} {hev} {hpairs})"
             )
             tail_val_lean = "[" + ", ".join(f"({lean_str(c)}, {v})" for c, v in pend_vars[i:]) + "]"
-            tail_expr_lean = "[" + ", ".join(f"({lean_str(c)}, {val(e)})" for c, e, _, _ in pend_evals[i:]) + "]"
+            tail_expr_lean = "[" + ", ".join(f"({lean_str(c)}, {expr_val(e)})" for c, e, _, _ in pend_evals[i:]) + "]"
         pairs_val_lean = tail_val_lean
 
         if ctx.next_expr is not None:
@@ -2376,7 +2377,7 @@ class ArmProofBuilder:
             let_defs.append(f"let {ph_v} : Val := {ph_raw}")
             let_prfs.append(f"let {ph_v} : Val := {ph_raw}")
             hrn = (
-                f"(Combinators.exceptTermOk_eq (r := readNext {self.w_expr} {self.k_expr} ({val(ctx.next_expr)})) "
+                f"(Combinators.exceptTermOk_eq (r := readNext {self.w_expr} {self.k_expr} ({phase_val(ctx.next_expr)})) "
                 f"(t := {n_term_lean}) (by decide +kernel))"
             )
             all_pairs = pend_vars + [("PHASE", ph_v)]
@@ -2558,7 +2559,7 @@ class ArmProofBuilder:
         if ctx.next_expr is not None:
             hfl = (
                 f"(Combinators.flush_next_some {self.w_expr} {self.frame_call} {st_s} "
-                f"({val(ctx.next_expr)}) {n_term_lean} {ph_v} {pairs_val_lean} _ rfl {hpairs} {hrn} {hen} {hput_var})"
+                f"({phase_val(ctx.next_expr)}) {n_term_lean} {ph_v} {pairs_val_lean} _ rfl {hpairs} {hrn} {hen} {hput_var})"
             )
         else:
             hfl = (
@@ -2612,7 +2613,7 @@ class ArmProofBuilder:
         if not shapes.ensure(op_name, self.n_tup, path, ai):
             raise UnsupportedArmError(f'core shape unavailable: {op_name}')
         keys = self.expand_owner_py(call_dict['keys'])
-        keys_l = '[' + ', '.join(f'({lean_str(k)}, {val(v)})' for k,v in keys) + ']'
+        keys_l = '[' + ', '.join(f'({lean_str(k)}, {expr_val(v)})' for k,v in keys) + ']'
         args = list(call_dict['args'])
         vs, facts = [], []
         for fm,s in zip(op['core_formals'],sin):
@@ -2628,7 +2629,7 @@ class ArmProofBuilder:
                     raise UnsupportedArmError(f'core key argument deferred: {op_name}/{fm}')
                 k,e = entry
                 v,h = self.prove_ev(e,ctx)
-                facts.append(f'(Combinators.keyOrOwner_found {self.w_expr} {self.k_expr} {self.st_lean(ctx)} {lean_str(fm)} {keys_l} {lean_str(k)} ({val(e)}) {v} (by decide +kernel) {h})')
+                facts.append(f'(Combinators.keyOrOwner_found {self.w_expr} {self.k_expr} {self.st_lean(ctx)} {lean_str(fm)} {keys_l} {lean_str(k)} ({expr_val(e)}) {v} (by decide +kernel) {h})')
             vs.append(v)
         if args:
             raise UnsupportedArmError(f'excess core arguments: {op_name}')
@@ -2639,7 +2640,7 @@ class ArmProofBuilder:
         actuals = '[' + ', '.join(vs) + ']'
         formals_l = '[' + ', '.join(lean_str(f) for f in op['core_formals']) + ']'
         sin_l = '[' + ', '.join(opt_str_lean(s) for s in sin) + ']'
-        pos_l = '[' + ', '.join(val(a) for a in call_dict['args']) + ']'
+        pos_l = '[' + ', '.join(expr_val(a) for a in call_dict['args']) + ']'
         hargs = (f'(by change Combinators.coreActuals {self.w_expr} {self.k_expr} {self.st_lean(ctx)} '
                  f'(Combinators.tupleImage {ctx.kids_var}) {formals_l} {sin_l} {pos_l} {keys_l} = .ok {actuals}; '
                  'simp only [Combinators.coreActuals, ' + ', '.join(facts + ['pure','Except.pure','List.isEmpty_nil','beq_self_eq_true','Bool.true_eq','↓reduceIte','except_ok_bind','except_pure_bind']) + '])')
@@ -2717,7 +2718,7 @@ class ArmProofBuilder:
             hfind = f"(Combinators.findOp_of_find world {lean_str(op_name)} {op_lean} rfl)"
 
         exp_keys = self.expand_owner_py(call_dict["keys"])
-        exp_keys_lean = "[" + ", ".join(f"({lean_str(k)}, {val(v)})" for k, v in exp_keys) + "]"
+        exp_keys_lean = "[" + ", ".join(f"({lean_str(k)}, {expr_val(v)})" for k, v in exp_keys) + "]"
         c_lean = call_to_lean(call_dict)
         hkeys = f"(by decide +kernel : expandOwner {self.w_expr} {self.k_expr} ({c_lean}).keys = .ok {exp_keys_lean})"
 
@@ -2737,7 +2738,7 @@ class ArmProofBuilder:
             if s_opt is not None:
                 v_s, hs = self.prove_stobj(s_opt, ctx)
                 rest_vs, rest_lean, hr = build_actuals(i_f + 1, rem_pos)
-                pos_lean = "[" + ", ".join(val(p) for p in rem_pos) + "]"
+                pos_lean = "[" + ", ".join(expr_val(p) for p in rem_pos) + "]"
                 all_vs = [v_s] + rest_vs
                 all_lean = "[" + ", ".join(all_vs) + "]"
                 prf = (
@@ -2750,12 +2751,12 @@ class ArmProofBuilder:
                 p0 = rem_pos[0]
                 v_p, hv = self.prove_ev(p0, ctx)
                 rest_vs, rest_lean, hr = build_actuals(i_f + 1, rem_pos[1:])
-                ps_lean = "[" + ", ".join(val(p) for p in rem_pos[1:]) + "]"
+                ps_lean = "[" + ", ".join(expr_val(p) for p in rem_pos[1:]) + "]"
                 all_vs = [v_p] + rest_vs
                 all_lean = "[" + ", ".join(all_vs) + "]"
                 prf = (
                     f"(Combinators.actuals_pos {self.w_expr} {self.k_expr} {st_s} "
-                    f"{lean_str(fm)} {fs_tail} {ss_tail} ({val(p0)}) {ps_lean} {exp_keys_lean} "
+                    f"{lean_str(fm)} {fs_tail} {ss_tail} ({expr_val(p0)}) {ps_lean} {exp_keys_lean} "
                     f"{v_p} {rest_lean} {hv} {hr})"
                 )
                 return all_vs, all_lean, prf
@@ -2766,7 +2767,7 @@ class ArmProofBuilder:
                 v_k, hev = self.prove_ev(e_s, ctx)
                 hko = (
                     f"(Combinators.keyOrOwner_found {self.w_expr} {self.k_expr} {st_s} "
-                    f"{lean_str(fm)} {exp_keys_lean} {lean_str(kw_s)} ({val(e_s)}) {v_k} (by decide +kernel) {hev})"
+                    f"{lean_str(fm)} {exp_keys_lean} {lean_str(kw_s)} ({expr_val(e_s)}) {v_k} (by decide +kernel) {hev})"
                 )
             elif fm == "OKIND":
                 v_k, hv = self.prove_var_st("KIND", ctx)
@@ -2956,7 +2957,7 @@ class ArmProofBuilder:
                 prf_lines.append(f"  let {lv} : Val := {v_lean}")
                 prf_lines.append(
                     f"  rw [Combinators.run_let {self.w_expr} {self.frame_call} _ {self.st_lean(cur_ctx)} "
-                    f"{lean_str(v_name)} ({val(e_sexp)}) {rest_lean} {lv} {hev}]\n"
+                    f"{lean_str(v_name)} ({expr_val(e_sexp)}) {rest_lean} {lv} {hev}]\n"
                     f"  dsimp only []"
                 )
                 cur_ctx = cur_ctx.clone(local_vars=[(v_name, lv)] + cur_ctx.local_vars)
@@ -2966,7 +2967,7 @@ class ArmProofBuilder:
 
             if h == "set":
                 _, pairs = st
-                pairs_lean = "[" + ", ".join(f"({lean_str(f)}, {val(e)})" for f, e in pairs) + "]"
+                pairs_lean = "[" + ", ".join(f"({lean_str(f)}, {expr_val(e)})" for f, e in pairs) + "]"
                 prf_lines.append(
                     f"  rw [Combinators.run_set {self.w_expr} {self.frame_call} _ {self.st_lean(cur_ctx)} "
                     f"{pairs_lean} {rest_lean} (by dsimp only [List.any]; decide)]\n"
@@ -2981,7 +2982,7 @@ class ArmProofBuilder:
                 _, ph_sexp = st
                 prf_lines.append(
                     f"  rw [Combinators.run_next {self.w_expr} {self.frame_call} _ {self.st_lean(cur_ctx)} "
-                    f"({val(ph_sexp)}) {rest_lean} rfl rfl]\n"
+                    f"({phase_val(ph_sexp)}) {rest_lean} rfl rfl]\n"
                     f"  dsimp only []"
                 )
                 cur_ctx = cur_ctx.clone(next_expr=ph_sexp)
@@ -3011,7 +3012,7 @@ class ArmProofBuilder:
                 prf_lines.append(f"  let {kids_n} : Fin {self.n_tup} → Val := {pk}")
                 prf_lines.append(
                     f"  rw [Combinators.run_wakeRow {self.w_expr} {self.frame_call} _ {self.st_lean(cur_ctx)} "
-                    f"({val(e_sexp)}) {rest_lean} {v_lean} {dir_cur} {ctrl_cur} {wr_v} rfl {hev} {hd} {hc} {hcall},\n"
+                    f"({expr_val(e_sexp)}) {rest_lean} {v_lean} {dir_cur} {ctrl_cur} {wr_v} rfl {hev} {hd} {hc} {hcall},\n"
                     f"      Combinators.setStobj_tupleStobjs {self.tup_expr} {cur_ctx.kids_var} _ _ _ _ _ _ \"FN2-MACHINES\" {self.dir_idx} _ (by decide +kernel) (by decide +kernel) (by decide +kernel),\n"
                     f"      Combinators.setStobj_tupleStobjs {self.tup_expr} _ _ _ _ _ _ _ \"FN2-CONTROL\" {self.ctrl_idx} _ (by decide +kernel) (by decide +kernel) (by decide +kernel)]\n"
                     f"  dsimp only []"
@@ -3047,7 +3048,7 @@ class ArmProofBuilder:
                     for rw_l in prw:
                         prf_lines.append(f"  {rw_l} at {hfl_v}")
                     acc_l = "[" + ", ".join(val(c) for c in acc) + "]"
-                    el_l = "[" + ", ".join(val(e) for e in else_) + "]"
+                    el_l = "[" + ", ".join(expr_val(e) for e in else_) + "]"
                     cs_l = "[" + ", ".join(f"({codes_opt_lean(cs)}, [{', '.join(step_to_lean(x) for x in bs)}])" for cs, bs in cases) + "]"
                     vs_l = "[" + ", ".join(lean_str(v) for v in vs) + "]"
                     prf_lines.append(
@@ -3095,7 +3096,7 @@ class ArmProofBuilder:
             rb = self.make_run_call(nb, cur_ctx, "fuel'", "(by omega)")
             end_prf_lines += [
                 f"  refine Combinators.run_if {self.w_expr} {self.frame_call} fuel' {self.st_lean(cur_ctx)} "
-                f"({val(c_sexp)}) {a_l} {b_l} {rest_lean} {vc} _ {hc} ?_ ?_",
+                f"({expr_val(c_sexp)}) {a_l} {b_l} {rest_lean} {vc} _ {hc} ?_ ?_",
                 f"  · intro ht; rw [ArmOut.toChild_ite, if_pos ht]; exact {ra}",
                 f"  · intro htf; have htn : ¬(({vc}).truthy = true) := Bool.eq_false_iff.mp htf",
                 f"    rw [ArmOut.toChild_ite, if_neg htn]; exact {rb}",
@@ -3117,7 +3118,7 @@ class ArmProofBuilder:
                 r0 = self.make_run_call(n0, cur_ctx, "fuel'", "(by omega)")
                 end_prf_lines += [
                     f"  rw [Combinators.run_cond_true {self.w_expr} {self.frame_call} fuel' {self.st_lean(cur_ctx)} "
-                    f"({val(c0)}) {s0_l} [] {rest_lean} {vc} {hc} rfl]",
+                    f"({expr_val(c0)}) {s0_l} [] {rest_lean} {vc} {hc} rfl]",
                     f"  exact {r0}",
                 ]
             elif len(clauses) >= 2:
@@ -3136,12 +3137,12 @@ class ArmProofBuilder:
                     f"  · rw [if_neg h]; exact {self.make_len_call(nb, cur_ctx)}"
                 )
                 s0_l = "[" + ", ".join(step_to_lean(x) for x in s0) + "]"
-                more_l = "[" + ", ".join(f"({val(c)}, [{', '.join(step_to_lean(x) for x in bs)}])" for c, bs in clauses[1:]) + "]"
+                more_l = "[" + ", ".join(f"({expr_val(c)}, [{', '.join(step_to_lean(x) for x in bs)}])" for c, bs in clauses[1:]) + "]"
                 ra = self.make_run_call(na, cur_ctx, "fuel'", "(by omega)")
                 rb = self.make_run_call(nb, cur_ctx, "fuel' + 1", "(by omega)")
                 end_prf_lines += [
                     f"  refine Combinators.run_cond_cons {self.w_expr} {self.frame_call} fuel' {self.st_lean(cur_ctx)} "
-                    f"({val(c0)}) {s0_l} {more_l} {rest_lean} {vc} _ {hc} ?_ ?_",
+                    f"({expr_val(c0)}) {s0_l} {more_l} {rest_lean} {vc} _ {hc} ?_ ?_",
                     f"  · intro ht; rw [ArmOut.toChild_ite, if_pos ht]; exact {ra}",
                     f"  · intro htf; have htn : ¬(({vc}).truthy = true) := Bool.eq_false_iff.mp htf",
                     f"    rw [ArmOut.toChild_ite, if_neg htn]; exact {rb}",
@@ -3183,7 +3184,7 @@ class ArmProofBuilder:
             arms_lean = "[" + ", ".join(f"({codes_opt_lean(cs)}, [{', '.join(step_to_lean(x) for x in bs)}])" for cs, bs in arms) + "]"
             end_prf_lines.append(
                 f"  rw [Combinators.run_case_step {self.w_expr} {self.frame_call} fuel' {self.st_lean(cur_ctx)} "
-                f"({val(key_sexp)}) {arms_lean} {rest_lean} {kv_v} {hk}]"
+                f"({expr_val(key_sexp)}) {arms_lean} {rest_lean} {kv_v} {hk}]"
             )
             end_prf_lines.append("  dsimp only [List.find?]")
             for idx_c, (cs, cn) in enumerate(child_nodes[:-1]):
@@ -3239,7 +3240,7 @@ class ArmProofBuilder:
             v0_l = lean_str(vs[0])
             vs_rest_l = "[" + ", ".join(lean_str(v) for v in vs[1:]) + "]"
             acc_l = "[" + ", ".join(val(c) for c in acc) + "]"
-            el_l = "[" + ", ".join(val(e) for e in else_) + "]"
+            el_l = "[" + ", ".join(expr_val(e) for e in else_) + "]"
             cs_l = "[" + ", ".join(f"({codes_opt_lean(cs)}, [{', '.join(step_to_lean(x) for x in bs)}])" for cs, bs in cases) + "]"
             if op_info["answers"][0] == "open":
                 ans_lean = "Answers.open_"
@@ -3616,7 +3617,7 @@ class ArmProofBuilder:
         elif h == "park":
             _, wn, arg_o, tk_o, steps_o, ks = st
             mbox_v = f"({val(self.kinfo['consts']['*FN2-WORK-MAILBOX*'])})"
-            ks_lean = "[" + ", ".join(f"({lean_str(k)}, {val(v)})" for k, v in ks) + "]"
+            ks_lean = "[" + ", ".join(f"({lean_str(k)}, {expr_val(v)})" for k, v in ks) + "]"
             is_builtin = wn in ("OPERATION", "ADMISSION", "TAKEN", "POOL")
             wait_op = self.kinfo["waits"].get(wn) if not is_builtin else None
 
@@ -3683,10 +3684,10 @@ class ArmProofBuilder:
                     f"        Combinators.setStobj_tupleStobjs {self.tup_expr} _ _ _ _ _ _ _ \"FN2-CONTROL\" {self.ctrl_idx} _ (by decide +kernel) (by decide +kernel) (by decide +kernel)]\n"
                     f"    exact {hs_ev}"
                 )
-                hpend_pp = self.prove_pend(cur_ctx, f"[(\"CURSOR\", ({val(arg_o)}))]")
+                hpend_pp = self.prove_pend(cur_ctx, f"[(\"CURSOR\", ({expr_val(arg_o)}))]")
                 end_prf_lines += [
                     f"  rw [Combinators.run_park_pool {self.w_expr} {self.frame_call} fuel' {self.st_lean(cur_ctx)} "
-                    f"{self.st_lean(stp_ctx)} {self.st_lean(fl_ctx)} ({val(arg_o)}) {opt_str_lean(tk_o)} "
+                    f"{self.st_lean(stp_ctx)} {self.st_lean(fl_ctx)} ({expr_val(arg_o)}) {opt_str_lean(tk_o)} "
                     f"{opt_expr_lean(steps_o)} {ks_lean} {rest_lean} {mbox_v} id {dir_cur} {ctrl_cur} {pr_v} {vs} "
                     f"(by decide +kernel) {hpend_pp} {hfl_v} {hid} {hd} {hc} {hcall} {hs_ev_raw},\n"
                     f"      Combinators.setStobj_tupleStobjs {self.tup_expr} {fl_ctx.kids_var} _ _ _ _ _ _ \"FN2-MACHINES\" {self.dir_idx} _ (by decide +kernel) (by decide +kernel) (by decide +kernel),\n"
@@ -3735,7 +3736,7 @@ class ArmProofBuilder:
                 prf_lines.append(f"  have {hfl_v} := {hfl}")
                 for rw_l in prw:
                     prf_lines.append(f"  {rw_l} at {hfl_v}")
-                op_a_lean = "[" + ", ".join(val(x) for x in op_a) + "]"
+                op_a_lean = "[" + ", ".join(expr_val(x) for x in op_a) + "]"
                 end_prf_lines += [
                     f"  rw [Combinators.run_park_viaOp {self.w_expr} {self.frame_call} fuel' {self.st_lean(cur_ctx)} "
                     f"{self.st_lean(fl_ctx)} {self.st_lean(nxt_ctx)} {lean_str(wn)} {opt_expr_lean(arg_o)} "
