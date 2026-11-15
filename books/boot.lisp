@@ -18,6 +18,9 @@
 (include-book "checkpoint-summary-adoption")
 (include-book "checkpoint-summary-apply")
 (include-book "checkpoint-directory-cold")
+(include-book "checkpoint-bank-bind")
+(include-book "checkpoint-bank-empty")
+(include-book "checkpoint-bank-boot")
 (include-book "event-catalog-cold")
 (include-book "checkpoint-bank-cold")
 (include-book "machines-a-access")
@@ -974,8 +977,13 @@
            (:otherwise (:stop :checkpoint)))))
   (:checkpoint-directory-install :on-refusal ((:stop :checkpoint))
    (:do (code) (fn2-directory-cold-install-op) :accept (:installed))
-   ; The selected suffix and persisted epoch transition must complete before serving.
-   (:stop :checkpoint) (:charge :bytes 4096 :steps *fn2-work-stage*))
+   (:next :checkpoint-bank-bind) (:charge :bytes 4096 :steps *fn2-work-stage* :runnable t))
+  (:checkpoint-bank-bind :on-refusal ((:stop :checkpoint))
+   (:do (code) (fn2-checkpoint-bank-bind-op budget) :accept ()
+    :case (((:more) (:charge :steps *fn2-work-stage* :runnable t))
+           ((:bound) (:next :recover) (:charge :steps *fn2-work-stage* :runnable t))
+           ((:yield) (:yield))
+           (:otherwise (:stop :checkpoint)))))
 
 
   (:checkpoint-payload-begin :on-refusal ((:stop :checkpoint))
@@ -1045,6 +1053,7 @@
           ((not (equal row-outcome *fn2-outcome-done*)) (:stop :io))
           (t (:do (code) (fn2-boot-adopt-epoch row-next-epoch))
              (:do (code) (fn2-boot-bind-checkpoint-layout id))
+             (:do (code) (fn2-boot-finish-bank-obligations id row-generation) :accept (:ok))
              (:do (rcode) (fn2-boot-release-windows row-pool-slot row-pool-gen row-rx-slot row-rx-gen id row-generation))
              (:set (release-index 0)) (:next :release) (:charge :steps *fn2-work-stage* :runnable t))))
   (:release :on-refusal ((:stop :bounds))
@@ -1063,4 +1072,4 @@
   (:fence-result (:set (event-ready 1) (outcome outcome) (count count)) (:wake))))
 
 (defmacro fn2-boot-events ()
- '(progn (fn2-boot-operations) (defmachine-arms fn2-boot) (defmachine-run fn2-boot)))
+ '(progn (fn2-boot-operations) (fn2-checkpoint-bank-empty-core-events) (fn2-boot-bank-finish-events) (defmachine-arms fn2-boot) (defmachine-run fn2-boot)))
