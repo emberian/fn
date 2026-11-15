@@ -104,8 +104,8 @@ All 31 current checkpoint-member parents are now qualified by record
 `certify-20261115T122350Z-1314201` (21 reused, ten certified, 122.156 seconds).
 Its roots are `books/checkpoint`, `books/pool-ranges` and `books/layout-size-bounds`;
 their union excludes member itself. Root matched all 31 source hashes and closure
-keys to integration and the qualified payload receipt. The next author check can
-load these compiled parents and test member alone. Record timings still expose
+keys to integration and the qualified payload receipt. These compiled parents
+supported the member check below. Record timings still expose
 proof-cost work; neither this record nor the generator pilot qualifies member,
 the application, or native restart.
 Receipt: [member parents](receipts/member-parents31-record.json).
@@ -146,6 +146,17 @@ The actual ticket author events passed in 3.39 seconds. Root matched all 27
 source hashes and closure keys against the qualified receipt. The remaining
 consumer gate is the emitted application composition, not a macro declaration.
 Receipt: [checkpoint tickets](receipts/checkpoint-tickets27-record.json).
+
+The next shared application prerequisites are qualified by exact 62-book record
+`certify-20261115T124249Z-1332436` (25 reused, 37 certified, 226.122 seconds).
+Root matched all 62 source hashes and dependency keys to upstream integration;
+no candidate-only runtime import was needed for this receipt. The actual
+167-book `assembly-callbacks-bt` author world starts with 78 compiled books and
+89 source books. Its first seven source books pass. `machines-a-run` then reaches
+the unchanged 20-second cap in an original macro (20.08 seconds, 1,174,320 steps).
+The current repair targets unnecessary allocator expansion in generated numeric
+and effect proofs; the actual emitted member caller has not yet been reached.
+Receipt: [shared application prerequisites](receipts/bt-ready62-record.json).
 
 Physical address geometry remains an executable blocker. `fe9f761ab` repairs
 POST's root location from three units per extent to the physical sixteen, with
