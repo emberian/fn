@@ -35,7 +35,7 @@
 ; Successful publication releases only finished cursors. Persistent root
 ; provenance, the authenticated frontier and the retained candidate claim stay.
 ; Uncertain, pending and pre-publication paths cannot enter this operation.
-(defun fn2-event-producer-rearm (fn2-event-build fn2-event-read fn2-journal-members
+(defun fn2-event-producer-rearm-at-phase (phase fn2-event-build fn2-event-read fn2-journal-members
  fn2-csnapshot fn2-checkpoints fn2-checkpoint-refs fn2-checkpoint-publication
  fn2-checkpoint-lifecycle fn2-extents fn2-mk fn2-fc fn2-digests fn2-checkpoint-writer fn2-machines)
  (declare (xargs :stobjs (fn2-event-build fn2-event-read fn2-journal-members
@@ -55,7 +55,7 @@
       (gen (fn2-event-build-owner-gen 0 fn2-event-build))
       (cut (fn2-event-build-cut-commit 0 fn2-event-build))
       (row (fn2-b-event-row (fn2-fc-rows fn2-fc)))
-      ((unless (and (fn2-event-producer-donep fn2-event-build fn2-event-read fn2-csnapshot fn2-checkpoints fn2-checkpoint-refs fn2-mk fn2-fc fn2-digests)
+      ((unless (and (fn2-event-producer-donep-at-phase phase fn2-event-build fn2-event-read fn2-csnapshot fn2-checkpoints fn2-checkpoint-refs fn2-mk fn2-fc fn2-digests)
                      (< c (fn2-checkpoints-rows fn2-checkpoints))
                      (equal (fn2-checkpoints-state c fn2-checkpoints) *fn2-checkpoint-state-installed*)
                      (posp (fn2-checkpoints-installation-commit c fn2-checkpoints))
@@ -95,6 +95,14 @@
       (fn2-event-read (fn2-event-read-set-phase 0 *fn2-event-read-phase-idle* fn2-event-read))
       (fn2-journal-members (fn2-journal-members-set-phase 0 *fn2-journal-members-phase-idle* fn2-journal-members)))
   (mv :ok fn2-event-build fn2-event-read fn2-journal-members)))
+(defun fn2-event-producer-rearm (fn2-event-build fn2-event-read fn2-journal-members
+ fn2-csnapshot fn2-checkpoints fn2-checkpoint-refs fn2-checkpoint-publication
+ fn2-checkpoint-lifecycle fn2-extents fn2-mk fn2-fc fn2-digests fn2-checkpoint-writer fn2-machines)
+ (declare (xargs :stobjs (fn2-event-build fn2-event-read fn2-journal-members
+  fn2-csnapshot fn2-checkpoints fn2-checkpoint-refs fn2-checkpoint-publication
+  fn2-checkpoint-lifecycle fn2-extents fn2-mk fn2-fc fn2-digests fn2-checkpoint-writer fn2-machines) :verify-guards nil
+  :guard (and (fn2-event-build-wfp fn2-event-build) (fn2-event-read-wfp fn2-event-read) (fn2-journal-members-wfp fn2-journal-members) (fn2-csnapshot-wfp fn2-csnapshot) (fn2-checkpoints-wfp fn2-checkpoints) (fn2-checkpoint-refs-wfp fn2-checkpoint-refs) (fn2-checkpoint-publication-wfp fn2-checkpoint-publication) (fn2-checkpoint-lifecycle-wfp fn2-checkpoint-lifecycle) (fn2-extents-wfp fn2-extents) (fn2-mk-wfp fn2-mk) (fn2-fc-wfp fn2-fc) (fn2-digests-wfp fn2-digests) (fn2-checkpoint-writer-wfp fn2-checkpoint-writer) (fn2-machines-wfp fn2-machines))))
+ (fn2-event-producer-rearm-at-phase *fn2-csnapshot-phase-held* fn2-event-build fn2-event-read fn2-journal-members fn2-csnapshot fn2-checkpoints fn2-checkpoint-refs fn2-checkpoint-publication fn2-checkpoint-lifecycle fn2-extents fn2-mk fn2-fc fn2-digests fn2-checkpoint-writer fn2-machines))
 
 (fn2-event-build-preserves fn2-event-producer-rearm
  (fn2-event-build fn2-event-read fn2-journal-members fn2-csnapshot fn2-checkpoints fn2-checkpoint-refs fn2-checkpoint-publication fn2-checkpoint-lifecycle fn2-extents fn2-mk fn2-fc fn2-digests fn2-checkpoint-writer fn2-machines)

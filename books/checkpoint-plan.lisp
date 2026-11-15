@@ -15,7 +15,7 @@
   (validated-base :u32) (validated-descriptors :u32)))
 (defcolumns fn2-checkpoint-plan-marks ((map :bool) (arena :bool) (ticket :bool)))
 
-(defun fn2-checkpoint-plan-ownerp (fn2-checkpoint-plan fn2-csnapshot)
+(defun fn2-checkpoint-plan-ownerp-at-phase (phase fn2-checkpoint-plan fn2-csnapshot)
  (declare (xargs :stobjs (fn2-checkpoint-plan fn2-csnapshot)
   :guard (and (fn2-checkpoint-plan-wfp fn2-checkpoint-plan) (fn2-csnapshot-wfp fn2-csnapshot))))
  (and (< 0 (fn2-checkpoint-plan-rows fn2-checkpoint-plan))
@@ -23,8 +23,12 @@
         (fn2-checkpoint-plan-owner-kind 0 fn2-checkpoint-plan)
         (fn2-checkpoint-plan-owner-slot 0 fn2-checkpoint-plan)
         (fn2-checkpoint-plan-owner-gen 0 fn2-checkpoint-plan) fn2-csnapshot)
-      (equal (fn2-csnapshot-phase 0 fn2-csnapshot) *fn2-csnapshot-phase-held*)
+      (equal (fn2-csnapshot-phase 0 fn2-csnapshot) phase)
       (equal (fn2-csnapshot-complete 0 fn2-csnapshot) 1)))
+(defun fn2-checkpoint-plan-ownerp (fn2-checkpoint-plan fn2-csnapshot)
+ (declare (xargs :stobjs (fn2-checkpoint-plan fn2-csnapshot)
+  :guard (and (fn2-checkpoint-plan-wfp fn2-checkpoint-plan) (fn2-csnapshot-wfp fn2-csnapshot))))
+ (fn2-checkpoint-plan-ownerp-at-phase *fn2-csnapshot-phase-held* fn2-checkpoint-plan fn2-csnapshot))
 
 (defun fn2-checkpoint-plan-rootp (role c token fn2-checkpoint-refs fn2-checkpoint-construction fn2-extents)
  (declare (xargs :stobjs (fn2-checkpoint-refs fn2-checkpoint-construction fn2-extents)
@@ -335,15 +339,19 @@
 ; This is reservation closure, not physical completion or install permission.
 ; The actual coordinator must retain this state while the allocator copy gate
 ; freezes persistent mutations and map/arena/descriptor pages are constructed.
-(defun fn2-checkpoint-plan-closedp (token okind oslot ogen fn2-checkpoint-plan fn2-csnapshot)
+(defun fn2-checkpoint-plan-closedp-at-phase (phase token okind oslot ogen fn2-checkpoint-plan fn2-csnapshot)
  (declare (xargs :stobjs (fn2-checkpoint-plan fn2-csnapshot)
   :guard (and (fn2-checkpoint-plan-wfp fn2-checkpoint-plan) (fn2-csnapshot-wfp fn2-csnapshot))))
- (and (fn2-checkpoint-plan-ownerp fn2-checkpoint-plan fn2-csnapshot)
+ (and (fn2-checkpoint-plan-ownerp-at-phase phase fn2-checkpoint-plan fn2-csnapshot)
       (equal (fn2-checkpoint-plan-phase 0 fn2-checkpoint-plan) *fn2-checkpoint-plan-phase-closed*)
       (equal token (fn2-checkpoint-plan-token 0 fn2-checkpoint-plan))
       (equal okind (fn2-checkpoint-plan-owner-kind 0 fn2-checkpoint-plan))
       (equal oslot (fn2-checkpoint-plan-owner-slot 0 fn2-checkpoint-plan))
       (equal ogen (fn2-checkpoint-plan-owner-gen 0 fn2-checkpoint-plan))))
+(defun fn2-checkpoint-plan-closedp (token okind oslot ogen fn2-checkpoint-plan fn2-csnapshot)
+ (declare (xargs :stobjs (fn2-checkpoint-plan fn2-csnapshot)
+  :guard (and (fn2-checkpoint-plan-wfp fn2-checkpoint-plan) (fn2-csnapshot-wfp fn2-csnapshot))))
+ (fn2-checkpoint-plan-closedp-at-phase *fn2-csnapshot-phase-held* token okind oslot ogen fn2-checkpoint-plan fn2-csnapshot))
 
 (defun fn2-checkpoint-plan-freeze-children (fn2-checkpoint-plan fn2-csnapshot fn2-checkpoint-build
                                           fn2-checkpoints fn2-checkpoint-refs fn2-checkpoint-construction fn2-extents fn2-commit-root fn2-control)
