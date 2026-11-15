@@ -13,17 +13,21 @@ component records alone do not establish this milestone. The shared application
 build owns the coherent current callback/runtime prefix and executable controls.
 
 The coherent application candidate is `0b84789e4`, with proof-only BIND repair
-`05d5a14e0` on top. Its 107-book prerequisite closure has 84 qualified books and
-23 complete author passes awaiting record certification. Root independently
-matched all 107 source hashes and closure keys after the repair; BIND is outside
-that cut. The repair uses the existing preservation generator to forward TYPE,
+`05d5a14e0` on top. Its [107-book prerequisite record](receipts/coherent-application-prerequisites107-record.json)
+contains 84 reused and 23 newly certified books. Root independently matched all
+107 candidate source hashes and closure keys, actual cert/FASL hashes and
+toolchain metadata; BIND is outside that cut. The repair uses the existing preservation generator to forward TYPE,
 WFP and ROWS facts for the actual masked query write. The original served body,
 guards and shape statement are unchanged; four factory/source mutation controls
 pass. The earlier failure was not missing LOCAL scope: the intermediate setter's
 hypotheses relieved, but its resulting recognizer was unavailable to the next
-getter's type reasoning. ACL2 admission of this repair and the actual FETCH
-cancellation fixture remain pending. The next run records the completed
-prerequisites before continuing at BIND, without replaying their author proofs.
+getter's type reasoning. The first admission attempt still fails the original shape theorem in 0.63
+seconds: later literal-zero and wake writes need the same forward interface.
+The executor is applying the existing general setter contracts to cover that
+chain, without changing the original theorem or served function. The actual
+FETCH cancellation fixture remains unexecuted. Its revised source binds the
+failed Send to the captured connection, request, operation generation and range
+and checks stale-generation rejection before acknowledging the queue head.
 
 The native acceptance sequence uses both existing real-socket tests after
 current `node-profile` and `native-b3-evidence` qualification and host/interface
