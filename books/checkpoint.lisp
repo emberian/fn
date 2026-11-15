@@ -516,10 +516,24 @@
 (local (defthm fn2-checkpoint-retain-extent-holder-independent
  (equal (mv-nth 1 (fn2-alloc-edge-add edge holder i epoch counter kind fn2-extents fn2-alloc-edges))
         (mv-nth 1 (fn2-alloc-edge-add edge 0 i epoch counter kind fn2-extents fn2-alloc-edges)))
+ :rule-classes nil
  :hints (("Goal" :in-theory (e/d (fn2-alloc-edge-add fn2-alloc-edge-add-transition)
   (fn2-alloc-handle-code fn2-alloc-durable-edgep fn2-alloc-retirement-intentp
    fn2-alloc-edge-slotp fn2-alloc-edge-count fn2-alloc-account fn2-alloc-set-edge
    fn2-alloc-reason))))))
+
+; Consume the all-input equality explicitly, rather than orienting its
+; holder-zero normal form as a self-matching rewrite rule.
+(local (defthm fn2-checkpoint-retain-edge-add-extents-type
+ (implies (and (fn2-extentsp fn2-extents) (fn2-extents-wfp fn2-extents)
+               (fn2-alloc-edgesp fn2-alloc-edges) (fn2-alloc-edges-wfp fn2-alloc-edges)
+               (unsigned-byte-p 60 epoch) (unsigned-byte-p 60 counter))
+  (fn2-extentsp (mv-nth 1 (fn2-alloc-edge-add edge holder i epoch counter kind fn2-extents fn2-alloc-edges))))
+ :hints (("Goal"
+  :use ((:instance fn2-alloc-edge-add-type (holder 0))
+        fn2-checkpoint-retain-extent-holder-independent)
+  :in-theory (disable fn2-alloc-edge-add fn2-alloc-edge-add-type
+                      fn2-extentsp fn2-extents-wfp fn2-alloc-edgesp fn2-alloc-edges-wfp)))))
 
 ; The original off-guard EDGES-TYPE omitted readonly checkpoint typing.
 ; Preserve its generated formula as an explicit unresolved claim, while the
