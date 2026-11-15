@@ -376,8 +376,13 @@ six-book record is preserved in the [carrier receipt](receipts/carrier-type-hint
 The actual installation caller's source consumes the four guarded contracts,
 but that proof is emitted later in `assembly-callbacks-bt`; certification of its
 macro declaration alone would not prove composition. That consumer remains in
-the application candidate pending its actual gate. Member qualification does
-not establish checkpoint activation, application correctness or native restart.
+the application candidate pending its actual gate. The root source alone has
+no actor route through installation BEGIN/STEP/SUBMIT; the physical metadata
+lane's real master now supplies that route. Its final join must retain these
+four guarded contracts and the STEP proof hints, then admit the generated
+caller in the actual assembly. The replacement theorem's existence alone is
+not evidence that the served path consumes it. Member qualification does not
+establish checkpoint activation, application correctness or native restart.
 
 Checkpoint-ticket installation is also qualified: exact 27-book record
 `certify-20261115T123506Z-1324806` reused 26 parents and certified tickets.

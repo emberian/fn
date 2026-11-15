@@ -303,5 +303,8 @@
     }
   },
   "export_sha256": "9cca810559e51d84571c4bf9e6410ff3e1bff758f7464d0dceb3635932592309",
-  "frozen_receipt_source": "64ee0f8592f085c0322a529b06105d053445b423"
+  "frozen_receipt_source": "64ee0f8592f085c0322a529b06105d053445b423",
+  "cleanup": "PIDs1678904 and1678964 absent; peak808570880 bytes, OOM0; named2Gi released.",
+  "log_sha256": "61ace2ef0eeeafd4118eb01b57897215778b8c686623471d533f5548e3a3013d",
+  "export_script_sha256": "455887b342b53711b6dd681745c92fd033296e8f453a148e4f65024bf7f445e8"
 }
