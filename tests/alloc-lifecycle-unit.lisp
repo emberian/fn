@@ -3,3 +3,4 @@
 (in-package "ACL2")
 (include-book "alloc-planning-unit")
 (include-book "retirement-intent-allocator-unit")
+(include-book "alloc-unit")
