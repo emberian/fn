@@ -44,6 +44,13 @@
       :hints (("Goal" :use fn2-layout-varsize-coarse-bound
                :in-theory (e/d (unsigned-byte-p integer-range-p)
                                (fn2-layout-varsize floor)))))))
+(defun fn2-codec-reference-bound-event (name width)
+  (declare (xargs :verify-guards nil))
+  `(local
+    (defthm ,(fn2-codec-symbol name "-REF-LENGTH-STORAGE-BOUND")
+      (implies (unsigned-byte-p ,width v) (<= v ,(- (expt 2 width) 1)))
+      :rule-classes nil
+      :hints (("Goal" :in-theory (enable unsigned-byte-p integer-range-p))))))
 (defun fn2-codec-sizer-bound-events (name layout count value-width ref-width)
   (declare (xargs :verify-guards nil))
   (if (atom layout) nil
@@ -67,7 +74,11 @@
                                 (append
                                  (and tail `((:instance ,(fn2-codec-symbol tail "-BOUND"))))
                                  (and (not (fn2-layout-width kind))
-                                   `((:instance ,(fn2-codec-symbol reader "-BOUND") (i ,i))
+                                   `((:instance ,(fn2-codec-symbol reader "-NATP") (i ,i))
+                                     (:instance ,(fn2-codec-symbol reader "-BOUND") (i ,i))
+                                     ,@(and (member-equal tag '(10 15 16))
+                                        `((:instance ,(fn2-codec-symbol name "-REF-LENGTH-STORAGE-BOUND")
+                                           (v ,value))))
                                      ,@(and (not (member-equal tag '(15 16)))
                                         `((:instance
                                            ,(fn2-codec-symbol name (if (= tag 10)
@@ -90,6 +101,8 @@
        (local (in-theory *fn2-codec-proof-runes*))
        (local (in-theory (disable fn2-fieldsp fn2-fields-wfp fn2-fields-rows
                                  fn2-fields-value fn2-fields-ref-len nth)))
+       ,@(and (fn2-codec-has-size-tagp layout '(10 15 16))
+              (list (fn2-codec-reference-bound-event name ref-width)))
        ,@(and (fn2-codec-has-size-tagp layout '(5 8))
               (list (fn2-codec-varsize-bound-event name "-VARSIZE-VALUE-STORAGE-BOUND" value-width)))
        ,@(and (fn2-codec-has-size-tagp layout '(10))

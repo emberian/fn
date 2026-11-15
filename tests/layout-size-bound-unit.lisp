@@ -26,6 +26,12 @@
   (fn2-fields-set-value out (fn2-codec-size-values-size base fn2-fields) fn2-fields))
 (assert-event
  (eq (symbol-class 'fn2-codec-size-store-length (w state)) :common-lisp-compliant))
+(fn2-fields-preserves fn2-codec-size-store-length (base out fn2-fields)
+ :raw-rows t
+ :hyps ((fn2-fieldsp fn2-fields) (fn2-fields-wfp fn2-fields) (natp base)
+        (<= (+ base 4) (fn2-fields-rows fn2-fields))
+        (natp out) (< out (fn2-fields-rows fn2-fields)))
+ :hints (("Goal" :in-theory (disable fn2-codec-size-values-size fn2-fields-rows))))
 
 ; The schema limits describe accepted payloads, not arbitrary stored lengths.
 ; Exercise all three length prefixes alongside fixed and variable scalars.
@@ -52,14 +58,16 @@
          (fn2-fields (fn2-fields-set-ref-len 1 128 fn2-fields))
          (fn2-fields (fn2-fields-set-ref-len 2 65536 fn2-fields))
          (fn2-fields (fn2-fields-set-ref-len 3 4294967295 fn2-fields))
-         (size (fn2-codec-size-mixed-size 0 fn2-fields)))
+         (size (fn2-codec-size-mixed-size 0 fn2-fields))
+         (expected (+ 9 (+ 2 128) (+ 2 65536) (+ 4 4294967295) 8 33 2)))
     (mv (and positive stored
              (fn2-fieldsp fn2-fields) (fn2-fields-wfp fn2-fields)
              (<= 7 (fn2-fields-rows fn2-fields))
+             (equal size expected)
              ; Removing checked-value constraints refutes the schema bound.
-             (> size *fn2-codec-size-mixed-max-size*)
+             (> expected *fn2-codec-size-mixed-max-size*)
              ; The representation-derived theorem still applies.
-             (<= size *fn2-codec-size-mixed-storage-max-size*))
+             (<= expected *fn2-codec-size-mixed-storage-max-size*))
         fn2-fields)))
 (defun fn2-codec-size-bound-unit ()
   (declare (xargs :verify-guards nil))
