@@ -25,10 +25,12 @@ class CNSContinuationSource(unittest.TestCase):
  def setUp(self):self.d=definitions()
  def test_actual_request_generation_and_partition(self):
   src=str(self.d['fn2-cns-read-owner'])
-  for term in ('fn2-machines-kind-basesi','fn2-cns-snapshot-read-code','fn2-cns-row-xrow','fn2-machine-generation','fn2-machine-slot'):
+  for term in ('fn2-machine-kind-base','fn2-cns-snapshot-read-code','fn2-cns-row-xrow','fn2-machine-generation','fn2-machine-slot'):
    self.assertIn(term,src)
+  self.assertIn('*fn2-cns-state-free*',src)
+  self.assertIn('*fn2-cns-state-retired*',src)
   for term in ('fn2-cns-read-work-owner','fn2-cns-read-work-generation','fn2-cns-read-work-a','fn2-cns-read-work-f'):
-   self.assertIn(term,str(self.d['fn2-cns-work-open']))
+   self.assertIn(term,(ROOT/'books/cns-read-state.lisp').read_text())
  def test_frontier_retains_miss_before_release(self):
   f=self.d['fn2-cns-stream-frontier']
   self.assertEqual(len(calls(f,'fn2-read-seek-step')),1)
@@ -62,4 +64,25 @@ class CNSContinuationSource(unittest.TestCase):
   f=self.d['fn2-cns-article-row']
   self.assertEqual(len(calls(f,'fn2-cns-article-query')),1)
   self.assertEqual(len(calls(f,'fn2-read-lookup')),1)
+ def test_mid_reauthenticates_same_selection_before_copy(self):
+  f=self.d['fn2-cns-entry-mid'];src=str(f)
+  self.assertTrue(calls(f,'fn2-cns-mid-window-p'))
+  self.assertEqual(len(calls(f,'fn2-read-seek-step')),1)
+  self.assertEqual(len(calls(f,'fn2-read-lookup')),1)
+  self.assertFalse(calls(f,'fn2-cns-seek-loop'))
+  self.assertFalse(calls(f,'fn2-cns-lookup-loop'))
+  self.assertEqual(len(calls(f,'fn2-successor-published')),2)
+  self.assertIn(['equal','stamp',['nfix','published']],list(walk(f)))
+  for term in ('opos','oart','*fn2-cns-read-work-done*','fn2-cns-core-mid-span'):
+   self.assertIn(term,src)
+ def test_actual_reply_callbacks_do_not_encode_on_miss(self):
+  for name in ('fn2-cns-put-item','fn2-cns-put-article'):
+   f=self.d[name]
+   self.assertTrue(calls(f,'fn2-cns-entry-mid'))
+   self.assertIn(":miss",str(f))
+   self.assertTrue(calls(f,'fn2-cns-work-save'))
+  f=self.d['fn2-cns-put-item']
+  self.assertFalse(calls(f,'fn2-cns-lookup-loop'))
+  self.assertTrue(calls(f,'fn2-cns-article-query'))
+  self.assertIn(':miss',str(self.d['fn2-cns-decode-port']))
 if __name__=='__main__':unittest.main()
