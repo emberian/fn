@@ -19,9 +19,9 @@ class PromotionAudit(unittest.TestCase):
   with self.assertRaises(ValueError):a.ex(['unbounded-recur','x'],'unbounded-recur')
   with self.assertRaises(ValueError):a.body('fn2-absent-literal-root')
  def test_model_category_sums_and_full_provider_coverage(self):
-  expected={'fn2-checkpoint-live-replace-finish':(813,17,42,2,874,257,1),
-            'fn2-checkpoint-live-replace-reopen':(872,17,43,4,936,320,0)}
-  report=json.loads((ROOT/'tests/fixtures/promotion-reopen-cost-audit.json').read_text())
+  expected={'fn2-checkpoint-live-replace-finish':(601,17,42,2,662,257,1),
+            'fn2-checkpoint-live-replace-reopen':(660,17,43,4,724,320,0)}
+  report=json.loads((ROOT/'tests/fixtures/promotion-reopen-carried-cost-audit.json').read_text())
   for name,(meta,spine,inputs,stores,total,read,write) in expected.items():
    self.assertEqual(a.expanded(name),{'metadata':meta,'spine':spine})
    byte=a.payload_footprint(name);self.assertEqual((byte['payload-read'],byte['payload-write']),(read,write))
@@ -31,7 +31,27 @@ class PromotionAudit(unittest.TestCase):
    row=report['roots'][name]
    self.assertEqual(row['face_structural_sum_upper'],total);self.assertEqual(row['payload_sum'],read+write)
    self.assertEqual({p['provider'] for p in row['components']},set(a.order(name)))
- def test_mandatory_body_preflight_exceeds_declared_150(self):
+ def test_acl2_component_formulas_and_actual_cost_faces(self):
+  constants={}
+  def value(x):
+   if isinstance(x,str):return int(x) if x.isdigit() else constants[x]
+   args=[value(v) for v in x[1:]]
+   if x[0]=='+':return sum(args)
+   if x[0]=='*':
+    import math
+    return math.prod(args)
+   if x[0]=='ceiling':return -(-args[0]//args[1])
+   self.fail(('unaccounted constant operator',x))
+  for path in ('books/checkpoint-directory-consume-work.lisp','books/checkpoint-live-finish-work.lisp'):
+   for raw in forms((ROOT/path).read_text()):
+    f=read_sexp(raw)
+    if isinstance(f,list) and f and f[0]=='defconst':constants[f[1]]=value(f[2])
+  for name,n in [('*fn2-directory-rebase-consume-steps*',211),('*fn2-checkpoint-live-promotion-steps*',662),('*fn2-checkpoint-live-reopen-steps*',724)]:self.assertEqual(constants[name],n)
+  faces={f[1]:f for raw in forms((ROOT/'books/checkpoint-live-finish.lisp').read_text()) if isinstance((f:=read_sexp(raw)),list) and f and f[0]=='defcost'}
+  for op,component in [('finish','promotion'),('reopen','reopen')]:
+   face=faces['fn2-checkpoint-live-replace-'+op+'-op']
+   self.assertEqual(face[face.index(':steps')+1],'*fn2-checkpoint-live-'+component+'-steps*')
+ def test_checked_predicates_remain_full_and_historical_150_comparison(self):
   self.assertEqual(a.expanded('fn2-run-buildp')['metadata'],91)
   self.assertEqual(a.expanded('fn2-checkpoint-slotp')['metadata'],65)
   self.assertGreater(91+65,150)
@@ -64,5 +84,5 @@ class PromotionAudit(unittest.TestCase):
   self.assertIn('(fn2-arms-stobjs-of pouts)',gate);self.assertIn('(fn2-arms-stobjs-of routs)',gate)
   self.assertNotIn('(defun fn2-checkpoint-live-replace-',gate);self.assertIn('UNEXECUTED',gate)
  def test_canonical_consume_audit_regression_is_unchanged(self):
-  self.assertEqual(a.expanded('fn2-directory-rebase-consume'),{'metadata':244,'spine':12})
+  self.assertEqual(a.expanded('fn2-directory-rebase-consume'),{'metadata':182,'spine':12})
 if __name__=='__main__':unittest.main()

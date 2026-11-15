@@ -10,7 +10,7 @@ def defs(path):return {f[1]:f for f in decls(path) if isinstance(f,list) and len
 class ConsumeWork(unittest.TestCase):
  def test_actual_body_closure_metadata_and_literal_spines(self):
   result=audit.expanded('fn2-directory-rebase-consume')
-  self.assertEqual(result,{'metadata':244,'spine':12})
+  self.assertEqual(result,{'metadata':182,'spine':12})
   self.assertEqual(len(audit.order('fn2-directory-rebase-consume')),20)
   self.assertEqual(audit.expanded('fn2-checkpoint-slotp')['metadata'],65)
   self.assertEqual(audit.expanded('fn2-digest-rowp')['metadata'],19)
@@ -53,7 +53,7 @@ class ConsumeWork(unittest.TestCase):
   self.assertEqual(cs['*fn2-directory-rebase-consume-steps*'],['+','*fn2-directory-consume-raw-metadata-steps*','*fn2-directory-consume-literal-spine-steps*','*fn2-directory-consume-core-get-steps*','*fn2-directory-consume-core-store-steps*'])
   source=(ROOT/'books/checkpoint-directory-consume-work.lisp').read_text()
   self.assertIn('(assert-event (equal *fn2-directory-rebase-consume-bytes* 4288))',source)
-  self.assertIn('(assert-event (equal *fn2-directory-rebase-consume-steps* 273))',source)
+  self.assertIn('(assert-event (equal *fn2-directory-rebase-consume-steps* 211))',source)
  def test_defcost_uses_same_acl2_charge_components_and_existing_inputs(self):
   face=next(f for f in decls('books/checkpoint-directory-consume.lisp') if isinstance(f,list) and f[:2]==['defcost','fn2-checkpoint-directory-rebase-consume-op'])
   self.assertEqual(face[face.index(':child')+1],'fn2-directory-rebase-consume')
