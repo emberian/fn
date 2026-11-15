@@ -7,6 +7,7 @@
  ((live :bool) (token :u60) (kind :u8) (row :u32) (schema :u60) (order :u60)
   (source-state :u8) (semantic-live :bool) (empty-verified :bool) (seen :u60) (last-round :u60) (ended :bool)
   (output-rank :u60) (retire-stage :u8)
+  (root-token :u60) (root-extent :u32) (root-schema :u60) (root-rank :u60)
   (old-slot :u32)
   (old-gen :u60)
   (old-unit :u60)
@@ -34,7 +35,7 @@
   (old-hash-6 :u32)
   (old-hash-7 :u32)))
 (defcolumns fn2-checkpoint-predecessor-control
- ((phase (:enum fn2-checkpoint-predecessor-phase (:idle :capture :ready :checking :complete :retiring :done :empty)))
+ ((phase (:enum fn2-checkpoint-predecessor-phase (:idle :capture :ready :checking :complete :retiring :done :empty :mapping)))
   (token :u60) (candidate :u32) (owner-kind :u8) (owner-slot :u32) (owner-gen :u60)
   (cut-commit :u60) (cut-event :u60) (overlay-rows :u32) (run-rows :u32)
   (cursor :u32) (count :u32) (checked :u32)))

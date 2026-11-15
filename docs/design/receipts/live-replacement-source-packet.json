@@ -53,7 +53,8 @@
   "cost_scope": {
     "payload": "ONE source octet read +ONE destinationoctet write percell (2bytes); EOF scalaronly. Terminal readonly descriptorcompare32cells=64bytes; no authority payload copy.",
     "declared_preflight": "256byte charge floor retained separately; callbackstepcharge150 derives component placeholders80+8+2*21summaryfields+20. This is DECLARED charge, NOT admitted whole physicalwork refinement. Complete preflight component/callgraph bound remains owed; no wholeturn bounded claim from charge.",
-    "canonical_consume": "Unchanged here; separate owner audits actual520 authoritytransfer+base-seal/preflight/controller charge."
+    "canonical_consume": "Unchanged here; separate owner audits actual520 authoritytransfer+base-seal/preflight/controller charge.",
+    "new_original_retire": "Inherited work-stage step declaration remains UNQUALIFIED pending actual component audit; byte preflightfloor256 retained. No physical body-bound claim."
   },
   "credited_arena_prerequisite": {
     "commit": "40a0c2155eae54376834c19c3424d64264ca3381",
@@ -61,5 +62,17 @@
     "scope": "whole canonical producer/config/stage/NAME/replay/group prerequisites; source-only UNRUN, not old6d alone",
     "abi": "fn2-seal-retire(commitrows o overlays pool)->code,overlays,pool; lower typed caller derives commitrows from readonly actual fn2-commit child",
     "implementation": "canonical fn2-idc-arena-return(o commitrows overlays pool), checks actual configured B/O group, owner/slot/gen/immutable origin+nonce; FREE only accepted :ok/:retired. :held/:credit/:owner preserve owned row. No private release twin."
+  },
+  "original_inventory": {
+    "prepub": "464f8ec2b +c59bc85fe +canonical compaction/empty reader58d4415c0; retain every LIVE/ACTIVE-FROZEN original including zeroentries. Exact actual header/end verifies empties before semanticREADY.",
+    "postpub": "One actual manifest scan builds denseoutputrank ->actualmanifestextent in disjoint O+R inventorycolumns. Each original separately checks oldidentity/seen/end and actualnewinstalled FullRef via directrank. Verifiedempty originals need no invented output. Root1 private reader detached before firstrelease.",
+    "lifetime": "original retire receipts become DONE only after all originalcount exact and oldCbase fully released. No genericreset; actual prepublication abort owned extension remains peer work.",
+    "complexity": "O(manifestextentrows +originalrows +actualresidentpages), one bounded original/page per step; no peroriginal extent sweep.",
+    "prerequisites": [
+      "58d4415c0 actual shared semantic/retire eligibility and empty reader",
+      "40a0c2155 wholecanonical credited arena-return packet",
+      "actualcompaction driver capture/empty/key/end/complete hooks +typedabort completion",
+      "actual per-schema output root1 builder/manifest emission"
+    ]
   }
 }
