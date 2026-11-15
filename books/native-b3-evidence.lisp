@@ -113,6 +113,24 @@
    (native-base '((1 9 99) (2 10 18) (3 11 19) (4 12 20)
                  (5 13 21) (6 14 22) (7 15 23) (8 16 24) 3))))
 
+; Keep this proven point available when another book rechecks the evidence.
+; The generic assumption's soundness constraint deliberately has no rewrite rule.
+(defthm fn2-native-node-registry-frame-observation-refused
+ (not (fn2-a-crypto-native
+       (list :fn2-b3-node '(1 2 3 4 5 6 7 8) '(9 10 11 12 13 14 15 16)
+             *fn2-native-node-registry-words* *fn2-native-node-witness-digests*)
+       (list :fn2-b3-node '(1 2 3 4 5 6 7 8) '(9 10 11 12 13 14 15 16)
+             *fn2-native-node-registry-words*
+             '((1 9 99) (2 10 18) (3 11 19) (4 12 20)
+               (5 13 21) (6 14 22) (7 15 23) (8 16 24) 3))))
+ :hints (("Goal" :use ((:instance fn2-a-crypto-native-correspondence
+         (reference (list :fn2-b3-node '(1 2 3 4 5 6 7 8) '(9 10 11 12 13 14 15 16)
+                           *fn2-native-node-registry-words* *fn2-native-node-witness-digests*))
+         (native (list :fn2-b3-node '(1 2 3 4 5 6 7 8) '(9 10 11 12 13 14 15 16)
+                        *fn2-native-node-registry-words*
+                        '((1 9 99) (2 10 18) (3 11 19) (4 12 20)
+                          (5 13 21) (6 14 22) (7 15 23) (8 16 24) 3))))))))
+
 ; Extract the actual translated hypothesis, including its CONS/LIST encoding.
 ; This prevents a source spelling from weakening or missing the removed premise.
 (make-event
