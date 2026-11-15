@@ -585,3 +585,29 @@ the seven repeated test-call edits. Fixed-row3, geometry4+4, member7, frontier3,
 visit3, reach4 and cursor4/read5 source controls pass. The peer's actual
 zero/one/two-carrier fixture remains UNRUN; this source hunk grants no archive
 terminal or hold release.
+
+Live-prefix audit refreshed against cold1c70451f05150456c4f8663b22522af5260a11d9
+(the qualified layout baseline is a separate root). Actual submit rejects
+fn2-storage-checkpoint-active at allocation-release-coordinator122; START191,
+live E claim198 and member exposure209 execute without a yield. CSNAPSHOT
+BEGIN calls snapshot-prepare57 before POLL101 captures published C, after
+proposed=installed=published and admitted C rows drain. The real active predicate
+is freeze-token>0, even while freeze-phase remains0. Thus the no-late E<=C
+subject is composed submit plus retained HELD token, not raw claim or phase0.
+Only release-evidence154 writes live1; this current source has no live0/removal
+transition. A theorem/executable inventory regression is still owed.
+
+The immutable C1(E0 live at physical slot p) -> post-cut settlement -> E1 reuse
+at p -> crash selecting C1 regression remains required. A pending bit copied
+into C1 cannot describe later settlement. Before restoring old E0 into p,
+recovery needs an authenticated durable later ownership-transfer/discharge
+receipt, or it aliases E1. Empty E RAM and volatile candidate source-closed are
+not such a receipt. Reusing the actual later C2 installation plus retained typed
+descriptor/root3 may avoid a new wire record, but its availability under selected
+C1 and ordering before prefix claims must be traced and connected first. No new
+ledger/schema/capacity or E-clear transition is authorized by this source audit.
+
+Sol_rebase_consumer retains ownership of that real transfer, original-frame
+reconstruction/Jseal/root4 completion and append/reuse controls. Codec and
+terminal-disposal owners have the exact missing receipt condition; they must
+continue refusing prefix authority until this producer/reader joins it.
