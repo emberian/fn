@@ -28,11 +28,27 @@ columns generator and changes only unconditional row-frame hints. TYPE, WFP,
 RAW-ROWS and explicit hints retain their original behavior. Actual generated-form
 controls and the complete source book pass, including ACL2's second pass.
 The composed consumer author build advanced through format, hashing, runs,
-overlay and run assembly. Its next refusal is the Ribbon HASH-LOOP guard:
-rewriting the pool-byte predicate discards the explicit eight-bit premise needed
-by the FNV step. A proof-only hint candidate retains that premise; admission is
-pending. The original timed world is terminal and its completed prefix is being
-recorded for reuse. APPEND/FETCH and native restart remain unexecuted.
+overlay and run assembly. Ribbon is now qualified by the
+[exact 29-book record](receipts/ribbon29-record.json), with 28 reused parents
+and one certified book; all current hashes and closure keys match. Local guard
+hints preserve the checked byte width, pool-write preservation and field span
+types. Standalone certification exposed an incidental author-world dependency;
+Ribbon now explicitly includes the byte-contract book locally. Runtime bodies,
+guards and theorem statements are unchanged. Its 19.684-second certification
+still leaves proof-cost work open. The composed author run has advanced through
+identity, commit geometry/format, ordered runs and authority schema; its next
+refusal is generated fold guard typing. APPEND/FETCH and native restart remain
+unexecuted.
+
+The counted upload feeder is integrated through the same six-result slice used
+by the actual core callback and public feeder. Its
+[15-book record](receipts/feed15-record-20261115.json) covers 11 reused parents
+and four certified source/control books; root matched every current source hash
+and closure key. Controls execute explicit input bounds, no header cut on this
+face, one-byte continuation and complete-pool preservation on stale generation.
+Four structural controls preserve the callback ABI and establish a single owner
+for the shared transaction counter. Actual core/callback admission and the full
+rolling upload remain pending; the leaf record does not qualify either.
 
 The same consumer needed `RUN-BUILD-PAGE` to use `(zp (nfix level))` before
 its checked page-kind call. This preserves logical ZP behavior on arbitrary
