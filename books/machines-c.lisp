@@ -10,6 +10,7 @@
 (include-book "successor-schema-geometry")
 (include-book "c-snapshot")
 (include-book "checkpoint-summary-state")
+(include-book "checkpoint-bank-admission")
 (include-book "run-physical-geometry")
 (include-book "run-physical-harvest")
 (include-book "c-source-observer")
@@ -145,6 +146,16 @@
  "One exact receipt per read, successor, sealer, complete cursor response, and CNS metadata endpoint survives yields until references are dead.")
 (fn2-idc-child fn2-core-csnapshot fn2-csnapshot (fn2-csnapshot-init 1 fn2-csnapshot)
  "One exact-owner resident metadata cut excludes staging and materialization until released.")
+(fn2-idc-child fn2-core-checkpoint-summary fn2-checkpoint-summary
+ (fn2-checkpoint-summary-init 2 fn2-checkpoint-summary)
+ "Active and pending physical catalogs exist for fresh stores and image restoration alike.")
+(fn2-idc-child fn2-core-checkpoint-summary-sources fn2-checkpoint-summary-sources
+ (fn2-checkpoint-summary-sources-init (fn2-b-capacity :extent-slots 16 profile) fn2-checkpoint-summary-sources)
+ "Exact extent-indexed source identities precede physical row installation.")
+(fn2-idc-child fn2-core-checkpoint-bank-admission fn2-checkpoint-bank-admission
+ (fn2-checkpoint-bank-admission-init 1 fn2-checkpoint-bank-admission)
+ "One actual HELD prepublication inactive-bank scan retains the owning snapshot receipt.")
+
 (fn2-idc-child fn2-core-checkpoint-summary-leases fn2-checkpoint-summary-leases
  (fn2-checkpoint-summary-leases-init (fn2-b-run-cursor-rows profile) fn2-checkpoint-summary-leases)
  "Every actual C cursor can retain one exact selected physical source across yields.")

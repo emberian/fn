@@ -4,6 +4,7 @@ import sys,unittest
 ROOT=Path(__file__).resolve().parents[1];sys.path.insert(0,str(ROOT/'tools'))
 import lisp_rewrite as lr
 from replacement_bank_c_rewrite import DATA,project,event
+from replacement_bank_live_rewrite import project_catalog_registration
 
 def body(text,name):
  n=event(text,'defun',name);return text[n.items[-1].start:n.items[-1].end]
@@ -11,8 +12,11 @@ class ReplacementBank(unittest.TestCase):
  def test_projection_and_idempotence(self):
   for b in ('runs','machines-c','sealer'):
    actual=(ROOT/'books'/(b+'.lisp')).read_text()
-   self.assertEqual(project(b,DATA['before'][b]),actual)
-   self.assertEqual(project(b,actual),actual)
+   expected=project(b,DATA['before'][b]);replayed=project(b,actual)
+   if b=='machines-c':
+    expected=project_catalog_registration(expected);replayed=project_catalog_registration(replayed)
+   self.assertEqual(expected,actual)
+   self.assertEqual(replayed,actual)
  def test_no_wfp_scan_or_inferred_resident_region(self):
   t=(ROOT/'books/runs.lisp').read_text();p=body(t,'fn2-run-installed-bank-geometry-p')
   self.assertNotIn('wfp',p);self.assertNotIn('from',p)

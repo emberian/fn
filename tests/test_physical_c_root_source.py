@@ -4,6 +4,7 @@ import sys,unittest
 ROOT=Path(__file__).resolve().parents[1];sys.path.insert(0,str(ROOT/'tools'))
 import lisp_rewrite as lr
 from replacement_bank_c_rewrite import project as project_bank
+from replacement_bank_live_rewrite import project_catalog_registration
 from physical_c_root_rewrite import DATA,node,source,project_runs,project_range,project_machines,project_c_workspace,project_run_cursor_paths,project_join
 
 def forms(text):return { (getattr(x.items[0],'low',''),getattr(x.items[1],'low','')):source(text,x) for x in lr.parse(text).forms if isinstance(x,lr.Lst) and len(x.items)>1}
@@ -12,9 +13,13 @@ class PhysicalCurrentRoot(unittest.TestCase):
   for book,fn in (('runs',project_runs),('range',project_range),('machines-c',lambda x:project_c_workspace(project_machines(x),'machines-c'))):
    actual=(ROOT/'books'/(book+'.lisp')).read_text()
    prior=fn(DATA['before'][book])
-   self.assertEqual(project_bank(book,prior),actual)
+   expected=project_bank(book,prior)
+   if book=='machines-c':expected=project_catalog_registration(expected)
+   self.assertEqual(expected,actual)
    self.assertEqual(fn(prior),prior)
-   self.assertEqual(project_bank(book,actual),actual)
+   projected=project_bank(book,actual)
+   if book=='machines-c':projected=project_catalog_registration(projected)
+   self.assertEqual(projected,actual)
  def test_all_other_run_events_unchanged(self):
   old=forms(DATA['before']['runs']);new=forms((ROOT/'books/runs.lisp').read_text())
   bank_expected=forms(project_bank('runs',project_runs(DATA['before']['runs'])))

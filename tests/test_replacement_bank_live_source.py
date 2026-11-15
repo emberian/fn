@@ -4,7 +4,7 @@ import json,sys,unittest
 ROOT=Path(__file__).resolve().parents[1]
 sys.path.insert(0,str(ROOT/'tools'))
 import lisp_rewrite as lr
-from replacement_bank_live_rewrite import project,project_receipt,project_predecessor_geometry
+from replacement_bank_live_rewrite import project,project_receipt,project_predecessor_geometry,project_catalog_registration,project_boot_catalog_registration
 DATA=json.loads((ROOT/'tools/fixtures/replacement-bank-live-source.json').read_text())
 
 def form(text, name):
@@ -14,6 +14,21 @@ def form(text, name):
     return text[n.start:n.end]
 
 class ReplacementBanks(unittest.TestCase):
+    def test_live_catalog_and_scan_exist_for_fresh_stores(self):
+        text=(ROOT/'books/machines-c.lisp').read_text()
+        self.assertEqual(project_catalog_registration(text),text)
+        for field in ('summary','summary-sources','bank-admission'):
+            ms=lr.match('(fn2-idc-child fn2-core-checkpoint-'+field+' ?*body)',lr.parse(text).forms,deep=False)
+            self.assertEqual(len(ms),1)
+            n=ms[0].node;p=text[n.start:n.end]
+            self.assertNotIn(':image-boot',p)
+        self.assertIn('(fn2-checkpoint-summary-init 2 fn2-checkpoint-summary)',text)
+        old='(in-package "ACL2")\n(defcorechild fn2-core-checkpoint-summary fn2-checkpoint-summary :init (old-summary))\n(defcorechild fn2-core-checkpoint-summary-sources fn2-checkpoint-summary-sources :init (old-sources))\n(defcorechild keep keep :init (keep-init))\n'
+        moved=project_boot_catalog_registration(old)
+        self.assertNotIn('old-summary',moved);self.assertNotIn('old-sources',moved)
+        self.assertIn('(defcorechild keep keep :init (keep-init))',moved)
+        self.assertEqual(project_boot_catalog_registration(moved),moved)
+
     def test_predecessor_geometry_uses_same_all_rows_helper(self):
         before=(ROOT/'tools/fixtures/replacement-bank-predecessor-before.lisp').read_text()
         after=project_predecessor_geometry(before)

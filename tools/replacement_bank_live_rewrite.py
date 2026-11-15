@@ -136,6 +136,38 @@ def project_predecessor_geometry(text):
           '(in-package "ACL2")\n(include-book "run-installed-geometry")')
     return text
 
+def project_catalog_registration(text):
+    """Catalog/receipt metadata belongs to every live C core, not image-only BOOT."""
+    if '(include-book "checkpoint-bank-admission")' not in text:
+        text=once(text,'(include-book "checkpoint-summary-state")',
+          '(include-book "checkpoint-summary-state")\n(include-book "checkpoint-bank-admission")')
+    if '(fn2-idc-child fn2-core-checkpoint-bank-admission ' in text:
+        return text
+    ms=lr.match('(fn2-idc-child fn2-core-csnapshot ?*body)',lr.parse(text).forms,deep=False)
+    if len(ms)!=1:raise ValueError('one actual snapshot child registration')
+    n=ms[0].node
+    addition='''
+(fn2-idc-child fn2-core-checkpoint-summary fn2-checkpoint-summary
+ (fn2-checkpoint-summary-init 2 fn2-checkpoint-summary)
+ "Active and pending physical catalogs exist for fresh stores and image restoration alike.")
+(fn2-idc-child fn2-core-checkpoint-summary-sources fn2-checkpoint-summary-sources
+ (fn2-checkpoint-summary-sources-init (fn2-b-capacity :extent-slots 16 profile) fn2-checkpoint-summary-sources)
+ "Exact extent-indexed source identities precede physical row installation.")
+(fn2-idc-child fn2-core-checkpoint-bank-admission fn2-checkpoint-bank-admission
+ (fn2-checkpoint-bank-admission-init 1 fn2-checkpoint-bank-admission)
+ "One actual HELD prepublication inactive-bank scan retains the owning snapshot receipt.")
+'''
+    return lr.write(text,[(n.end,n.end,addition)])
+
+def project_boot_catalog_registration(text):
+    """Delete only duplicate moved catalog registrations when BOOT is ported."""
+    edits=[]
+    for field in ('fn2-core-checkpoint-summary','fn2-core-checkpoint-summary-sources'):
+        ms=lr.match('(defcorechild '+field+' ?*body)',lr.parse(text).forms,deep=False)
+        if len(ms)>1:raise ValueError('duplicate BOOT catalog child '+field)
+        for m in ms:edits.append((m.node.start,m.node.end,''))
+    return lr.write(text,edits)
+
 if __name__ == '__main__':
     import argparse
     p=argparse.ArgumentParser();p.add_argument('root',type=Path);a=p.parse_args()

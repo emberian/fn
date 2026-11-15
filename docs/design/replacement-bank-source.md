@@ -26,7 +26,7 @@ with the existing descriptor, canonical authority-consume and writer receipt.
 
 `tools/replacement_bank_live_rewrite.py` is a named transformation over the
 three frozen providers in its fixture. It preserves function formals and guards.
-Its six Python controls check source replay, retained bank identity and the
+Its eight Python controls check source replay, retained bank identity and the
 actual range/drain clauses. They are source controls, not ACL2 admission,
 physical-work refinement or productive two-adoption evidence.
 
@@ -52,12 +52,16 @@ Its singleton retains the actual HELD owner/cut and active catalog identity;
 STEP inspects at most one actual inactive-bank cell. An occupied cell returns
 `:resources` without advancing the cursor. No pool reserve, durable mutation,
 or physical Write occurs in this provider. Four source controls pass. Actual
-registration, derived callback charge, MASTER post-HELD/pre-reserve routing and
-core initialization remain unfinished. The typed BEGIN transformation now
+derived callback charge and MASTER post-HELD/pre-reserve routing remain
+unfinished. C initialization now owns the two catalog metadata rows, E exact
+source rows and one bank scan row for both fresh stores and image restore.
+The named BOOT projection removes only the two moved duplicate declarations;
+the rest of BOOT remains owned by the separate bounded-reader port.
+The typed BEGIN transformation now
 appends the readonly actual admission child, checks READY-P before writer BEGIN
 and captures the scanned target bank into SUMMARY1. The existing argument
 order, mutable result list and guard conjuncts remain; the new child adds its
-own WFP guard. This requires the matching child registration before emission.
+own WFP guard. Actual master/typed callback emission remains unqualified.
 Its READY phase is a
 derived scan continuation, not a caller-supplied readiness flag.
 
