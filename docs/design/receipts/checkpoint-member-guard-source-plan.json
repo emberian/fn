@@ -1,7 +1,7 @@
 {
   "schema": "fn-author-plan-v1",
   "status": "source-only; no compute launched",
-  "base": "c1c86625e",
+  "base": "a9a98f8a0370546dbed36df0ef74669b11ded7fd",
   "source_files": {
     "books/layout-size-bounds.lisp": "exact95fd; previously reviewed standalone opt-in API",
     "tests/layout-size-bound-unit.lisp": "exact95fd; previously admitted mixed-layout controls",
@@ -9,7 +9,7 @@
     "books/checkpoint-member.lisp": "95fd SIZEbound/hashframe interface +611 computed packer hint"
   },
   "runtime_identity": {
-    "baseline": "c1c86625e",
+    "baseline": "a9a98f8a0370546dbed36df0ef74669b11ded7fd",
     "functions": [
       {
         "file": "books/checkpoint.lisp",
@@ -126,7 +126,8 @@
         "function": "fn2-checkpoint-installation-pack-member",
         "entire_definition_except_guard_hints_identical": true
       }
-    ]
+    ],
+    "method": "Original23 definitions compared as parsed S-expressions; all attributes except :guard-hints remain exact. Canonical a9 checkpoint/member bytes equal c1."
   },
   "scope": {
     "shared_prefix_root": "books/format-check",
@@ -148,9 +149,124 @@
       "books/format",
       "books/format-check"
     ],
-    "additional_named_proof_source": "books/layout-size-bounds"
+    "additional_named_proof_source": "books/layout-size-bounds",
+    "current_source_closure_counts": {
+      "checkpoint": 26,
+      "checkpoint_member": 30,
+      "size_fixture": 10
+    },
+    "parent_audit_requirement": "All27 lower parents must be qualified at exact listed source freeze before cached-only pilot; source preparation does not authorize missing-parent expansion.",
+    "union_books": 31,
+    "lower_parents": 27,
+    "format_check_parent": {
+      "books": 21,
+      "key": "66f06f545227ff2299fd37fa3fac14e77c2d21d4f1a6df9379d3835aca223c43",
+      "status": "record running at source preparation; reuse its final current-key result"
+    },
+    "outside_format_check": [
+      {
+        "book": "books/alloc",
+        "key": "f7f86365aed050f00391e37e3b7d741e99e233c28183ac3cd3ef83e02db61ed3",
+        "sha256": "886dd5c4550a43b78fafa99c02db28edbdc70c7bb1cbe806ce5e40403477a11e",
+        "source_only": false,
+        "format21": false,
+        "qualified_entries": 0,
+        "origins": []
+      },
+      {
+        "book": "books/columns-guard-hints",
+        "key": "af9c914f286c284146d84a134fc9b973a4de2703fd4b21e9bebeca994b4bd62c",
+        "sha256": "e0a20c5669df681bf75fa5eeae426adc4053010915b3c7657d56e247d5c8440b",
+        "source_only": false,
+        "format21": false,
+        "qualified_entries": 1,
+        "origins": [
+          "/build/lanes/columns-combined-record-2bc79fcef"
+        ]
+      },
+      {
+        "book": "books/fnv",
+        "key": "dd5e72b52715b8e5d826a306730b8315e9c2c0a45bee6e2d37b8fdb8429ea2af",
+        "sha256": "73d15afc6e1325f03d19ad4b39eeb3adc677ce2b07e9eddbc14141ca8843edde",
+        "source_only": false,
+        "format21": false,
+        "qualified_entries": 1,
+        "origins": [
+          "/build/lanes/assurance-shared-foundation-8ade"
+        ]
+      },
+      {
+        "book": "books/pool-ranges",
+        "key": "214ed489443980e47ff4d2aa8e0fde6ba0fb744d47d555abe7c6bf840f731131",
+        "sha256": "65cb85cbdc4b0e1e7f4e32450748eebc4235e877f4b126fd96ee9e023b4e53f0",
+        "source_only": false,
+        "format21": false,
+        "qualified_entries": 0,
+        "origins": []
+      },
+      {
+        "book": "books/pool-read-contracts",
+        "key": "661f99a30cd5794f935b94eb0410a7df2d71a362b379bc0e240c1565d987d4d4",
+        "sha256": "f51f92ce9bfcd7af93e6ba47bb5a4c43fbb5ac79424ef34ecf489b8f92e9e852",
+        "source_only": false,
+        "format21": false,
+        "qualified_entries": 0,
+        "origins": []
+      },
+      {
+        "book": "books/vocab",
+        "key": "62e162832d46d2a5a864fce7becaf75b86f6f37570c95d5d0d98eb8e7d2d4db8",
+        "sha256": "4099736dd0ecb84952f05cfe2065db89e11432ebb9e65e67d2584ca5f4c2255f",
+        "source_only": false,
+        "format21": false,
+        "qualified_entries": 1,
+        "origins": [
+          "/build/lanes/assurance-compress-record-68f"
+        ]
+      }
+    ],
+    "remaining_after_format_check": [
+      "books/alloc",
+      "books/pool-read-contracts",
+      "books/pool-ranges"
+    ],
+    "source_keys": [
+      {
+        "book": "books/checkpoint",
+        "key": "5c7b8bf999606d8b5f776214f0b96e6b0fbea810e405f221feeb0a31f2fa3683",
+        "sha256": "26011dcef94bbc3cee707a36595ff351407ede84cd5feef32a2747e673610253",
+        "source_only": true,
+        "format21": false
+      },
+      {
+        "book": "books/checkpoint-member",
+        "key": "46cf74702b202e84dbfb1265de5d0337d008aa25cc297765534b7def5f8c406c",
+        "sha256": "0a3e1d04fd236d1e0fdbc2dbeaba3fff47ec76d6df84109a1640316214057086",
+        "source_only": true,
+        "format21": false
+      },
+      {
+        "book": "books/layout-size-bounds",
+        "key": "c076d30d7780d23773e39da061c8c380d718b6d47c4777abd4d11ca532f21dfd",
+        "sha256": "242f55370eff42c596962722a3404058a48dae5215bbf9d39b82f198b07e45b7",
+        "source_only": true,
+        "format21": false
+      },
+      {
+        "book": "tests/layout-size-bound-unit",
+        "key": "59ddc139bbfc58a6448d5e951634f64331feb1f8d101058f6428c0de3ea9c644",
+        "sha256": "187f7a4bd195f43230b249c3eb71c1609d7750b5e3ca02eb276fa8434962fec7",
+        "source_only": true,
+        "format21": false
+      }
+    ]
   },
   "author_sequence": [
+    {
+      "step": "start genuine checkpoint source book before any local event",
+      "command": "proof_repl start NAME books/checkpoint --upto *fn2-checkpoint-served-storage-domain* --cached-only --limit 20",
+      "parents": "All current25 lower books must already be qualified; no source substitution or automatic expansion."
+    },
     {
       "step": "load standalone API",
       "from": "#4",
@@ -167,13 +283,15 @@
       "step": "load genuine current checkpoint source prefix",
       "through": "fn2-checkpoint-check-step",
       "cached_only_parents": true,
-      "includes": "new source API loaded explicitly; current cached helper/read contracts"
+      "includes": "new source API loaded explicitly; current cached helper/read contracts",
+      "command": "proof_repl send-range NAME books/checkpoint --from *fn2-checkpoint-served-storage-domain* --through fn2-checkpoint-check-step --skip-includes --full"
     },
     {
       "step": "load member helper and exact original pack guard on genuine checkpoint prefix",
       "from": "fn2-checkpoint-installation-member-capacity",
       "through": "fn2-checkpoint-installation-pack-member",
-      "skip_includes": true
+      "skip_includes": true,
+      "parents": "Load only current certified pool-ranges (and its fnv parent) explicitly before member source; source checkpoint prefix is genuine but not claimed certified."
     }
   ],
   "proposed_bounds": {
