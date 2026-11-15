@@ -53,6 +53,13 @@ class RawSource(unittest.TestCase):
    self.assertIn(name,used)
   self.assertIn('*fn2-cns-source-stored-offset*',str(d))
   self.assertIn(['min','1024','budget',['-','len','hashed']],list(walk(d)))
+ def test_small_raw_check_budget_retains_all_mutable_carriers(self):
+  d=self.raw['fn2-cns-source-raw-step-children']
+  branches=[n for n in walk(d) if len(n)==2 and isinstance(n[0],list) and n[0] and n[0][0]=='when' and '*fn2-cns-source-phase-raw-check*' in str(n[0])]
+  self.assertEqual(len(branches),1)
+  first=branches[0][1][1][0]
+  self.assertEqual(first,[['unless',['<=','*fn2-commit-unit-bytes*','budget']],['mv',':wait','fn2-cns-sources','fn2-b3','fn2-digests']])
+  self.assertNotIn('fn2-block-read-commitment-children',calls(first))
  def test_prepared_six_kib_control_uses_actual_copy_claim_and_gap_refusal(self):
   text=(ROOT/'tests/cns-source-capture-unit.lisp').read_text()
   for name in ['UNEXECUTED','SYNTHETIC','fn2-cns-source-capture-children','fn2-cns-source-heldp','(equal total 6144)','(eq old1 :bounds)','(equal v1 0)']:
