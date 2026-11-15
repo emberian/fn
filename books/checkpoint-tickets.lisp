@@ -85,4 +85,5 @@
     (let ((fn2-extents (update-fn2-alloc-freeze-phase 2 fn2-extents)))
      (mv code fn2-extents))))))
 (fn2-extents-preserves fn2-checkpoint-ticket-install
- (e epoch counter batch owner-kind fn2-checkpoint-construction fn2-extents) :position 1)
+ (e epoch counter batch owner-kind fn2-checkpoint-construction fn2-extents) :position 1
+ :hints (("Goal" :in-theory (disable fn2-extents-rows))))
