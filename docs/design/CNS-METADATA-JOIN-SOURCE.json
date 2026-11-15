@@ -1,6 +1,6 @@
 {
   "status": "source-reviewed; ACL2 admission and executable assertion unrun",
-  "componentSource": "261f98214dea6ef31271d65f3101ec7e467cfd16",
+  "componentSource": "160689d13d9744d3739f6fe59246fed61c38a616",
   "consumerRoot": "tests/cns-metadata-pending-unit",
   "logicalWorldBoundary": {
     "priorApplicationSource": "30e44c6955ae09affb0acfb436c9904b9094ad1f",
@@ -42,7 +42,7 @@
       },
       {
         "path": "tests/cns-fetch-meta-emitted-support.lisp",
-        "sha256": "bf10323b052ecab55a114a72b982fad40a316b02246ca056f11022926475fbd4"
+        "sha256": "feb9e12e514e323d0593c2b18243059ff849f09a4f220b9ead162b79d5cb9cc8"
       }
     ],
     "projectedSchema": {
@@ -135,9 +135,9 @@
     "secretsFindings": 0,
     "diffCheck": "pass",
     "runtimeOrCertificationClaim": false,
-    "emittedSupportStrictForms": 5,
+    "emittedSupportStrictForms": 7,
     "emittedSupportGetterCensus": "matches actual source/source-operation columns",
-    "emittedSupportExecution": "unexecuted; real constructor must consume pending-run-check at actual preflight and DATA stages"
+    "emittedSupportExecution": "unexecuted; real constructor must consume pending-run-check at preflight/DATA and handoff-zero-run-check after actual terminal acknowledgement and lease return"
   },
   "nextGate": "One source-matched successor prefix reusing qualified unaffected artifacts, then admit this root and execute its unchanged assertion. No live core redefinition or duplicate cold application world.",
   "fetchLifetimeRepair": {
@@ -146,7 +146,8 @@
     "abort": "source-bound cancel/failure retains META through bounded cleanup and terminal HANDOFF",
     "onceOnly": "positive actual row observer receipt gates covered/HANDOFF drop",
     "sourceControl": "covered/open-WAIT/covered releases once; serial-guard omission fails; stale/uncertain source routes retain META and stop",
-    "sourceControlLimit": "covered/open-WAIT is unreachable-in-composition for this actual caller under its CTL frames. Mocked callee outcomes test defensive routing only. Actual emitted pendingREAD -> coverage -> pendingDATA control and manifest/adoption interleaving remain unexecuted/owed."
+    "sourceControlLimit": "covered/open-WAIT is unreachable-in-composition for this actual caller under its CTL frames. Mocked callee outcomes test defensive routing only. Actual emitted pendingREAD -> coverage -> pendingDATA control and manifest/adoption interleaving remain unexecuted/owed.",
+    "emittedSupport": "Actual FN2-CNS-RUN checks: pending preflight/DATA requires exact return scalars and entire generated core snapshot unchanged; terminal preheader HANDOFF with serial0 requires current 512/24/0/T report, stable generation, DRAINING, typed/WFP result and complete metadata-table frame. No second 20-step charge is invented; concrete cost envelope remains separate."
   },
   "costAudit": {
     "declaredModel": "Omitted defcost dimensions default to zero; caller path accounting records the call but does not thereby prove zero implementation work.",
