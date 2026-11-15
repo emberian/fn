@@ -48,6 +48,12 @@ class ControlCapture(unittest.TestCase):
         self.assertNotIn(device, launcher.instrument(source))
         selected = launcher.instrument(source, device_effects=True)
         self.assertEqual(selected.count(device), 1)
+        adapter = b'(load "host/adapter.lisp")'
+        self.assertLess(selected.index(adapter), selected.index(device))
+        for bad in (source.replace(adapter, b""), source + adapter,
+                    source.replace(adapter, b"") + adapter):
+            with self.assertRaises(ValueError):
+                launcher.instrument(bad, device_effects=True)
         self.assertEqual(selected.replace(control, b"").replace(device, b""), source)
         env = campaign.captured_env(Path("/tmp/fixture.trace"), b"abc", True)
         self.assertEqual(env["FN2_TEST_DEVICE_EFFECTS"], "/tmp/fixture.effects")

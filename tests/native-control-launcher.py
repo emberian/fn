@@ -18,6 +18,9 @@ def instrument(source, device_effects=False):
         raise ValueError("selected image main changed; review evidence insertion")
     hook = b'(load "tests/native-control-capture.lsp")\n'
     if device_effects:
+        adapter = b'(load "host/adapter.lisp")'
+        if source.count(adapter) != 1 or source.index(adapter) > source.index(marker):
+            raise ValueError("selected adapter must load before device evidence hook")
         hook += b'(load "tests/native-device-effects-capture.lsp")\n'
     return source.replace(marker, hook + marker)
 

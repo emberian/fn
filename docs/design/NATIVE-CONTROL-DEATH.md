@@ -84,3 +84,14 @@ the whole equal-size before/after images and physical Read observations, using
 Fence truth remains external. The joined checker is a runtime prerequisite; independent control and image
 passes cannot substitute for it. Its new current closure and slab/loan binding
 must qualify before the optional campaign can run.
+
+The optional launcher refuses a missing, duplicated, or late adapter load.
+At hook load, the actual `fn2-n-storage-submit` and `fn2-device-start` functions
+must already exist. The schema-10 recorder observes the host slab during
+`fn2-n-storage-submit`; joined replay compares its address/length against
+`fn2-host-op-span`, its backing-object tokens, and the submitted Write bytes.
+Before runtime, qualify the current `sim/native-device-envelope` and its unit
+controls along with the selected node, native BLAKE3 evidence, and control
+replay roots. The leaf/scalar effect gate alone does not qualify this join.
+The raw image consumer must honor the dynamically bound records/fd and use
+the extent-validating complete-image finish check.

@@ -51,6 +51,8 @@
 
 ;; Capture the actual selected device, not a platform guess or result inference.
 (when (sb-ext:posix-getenv "FN2_TEST_DEVICE_EFFECTS")
+  (assert (and (fboundp 'fn2-n-storage-submit) (fboundp 'fn2-device-start))
+          () "Selected adapter/device must load before effect capture")
   (let ((original (symbol-function 'fn2-device-start)))
     (setf (symbol-function 'fn2-device-start)
       (lambda (&rest args)
