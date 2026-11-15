@@ -69,15 +69,28 @@
         (recognizer (fn2-columns-sym name "P"))
         (wfp (fn2-columns-sym name "-WFP"))
         (rows (fn2-columns-sym name "-ROWS"))
+        (advance (fn2-columns-sym name "-ADVANCE-SPANS"))
         (observe (fn2-columns-sym name "-OBSERVE-SPANS")))
-   (cons
-    `(defthm ,(fn2-columns-sym reader "-OF-OBSERVE-SPANS")
-      (implies (and (,recognizer ,name) (,wfp ,name) (= (,rows ,name) 1))
-       (equal (,reader 0 (mv-nth 1 (,observe cap nonce slot generation serial raw-code used made errno ,name)))
-              (,reader 0 ,name)))
-      :hints (("Goal" :in-theory
-       (union-theories '(,reader)
-        (set-difference-theories (current-theory :here) ',readers)))))
+   (append
+    (list
+     `(defthm ,(fn2-columns-sym reader "-OF-ADVANCE-SPANS")
+       (implies (and (,recognizer ,name) (,wfp ,name) (= (,rows ,name) 1))
+        (equal (,reader 0 (mv-nth 1 (,advance cap nonce slot generation serial used made ,name)))
+               (,reader 0 ,name)))
+       :hints (("Goal" :in-theory
+        (union-theories '(,reader)
+         (set-difference-theories (current-theory :here) ',readers)))))
+     `(defthm ,(fn2-columns-sym reader "-OF-OBSERVE-SPANS")
+       (implies (and (,recognizer ,name) (,wfp ,name) (= (,rows ,name) 1))
+        (equal (,reader 0 (mv-nth 1 (,observe cap nonce slot generation serial raw-code used made errno ,name)))
+               (,reader 0 ,name)))
+       :hints (("Goal" :in-theory
+        (union-theories '(,reader)
+         (set-difference-theories (current-theory :here) '(,advance ,@readers)))
+        :use ((:instance ,(fn2-columns-sym reader "-OF-ADVANCE-SPANS")
+               (,name (,(fn2-columns-sym name "-PUT") 0
+                (raw-negative (if (< raw-code 0) 1 0)) (raw-code (abs raw-code))
+                (raw-used used) (raw-made made) (raw-errno errno)))))))))
     (fn2-codec-transport-policy-frame-events name (cdr fields) readers)))))
 
 (defun fn2-codec-transport-operation-events (name input-quantum-field output-quantum-field world)
