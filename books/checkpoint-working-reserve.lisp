@@ -22,22 +22,26 @@
 
 
 
+; unreachable-in-composition: public admission uses the combined geometry scan.
 (defun fn2-checkpoint-window-roomp (i fn2-pool)
  (declare (xargs :stobjs fn2-pool :guard (and (natp i) (<= i *fn2-checkpoint-window-count*))
-                 :measure (nfix (- *fn2-checkpoint-window-count* i))))
- (if (>= i *fn2-checkpoint-window-count*) t
+                 :measure (nfix (- *fn2-checkpoint-window-count* (nfix i)))))
+ (if (and (natp i) (<= i *fn2-checkpoint-window-count*))
+  (if (>= i *fn2-checkpoint-window-count*) t
   (let ((class (fn2-pool-class-for (fn2-checkpoint-window-length i) fn2-pool)))
    (and (natp class) (< class (fn2-pool-nclasses fn2-pool))
         (<= (fn2-checkpoint-window-class-demand 0 class fn2-pool) (fn2-pool-free-count class fn2-pool))
-        (fn2-checkpoint-window-roomp (+ i 1) fn2-pool)))))
+        (fn2-checkpoint-window-roomp (+ i 1) fn2-pool))))
+  nil))
 
 (defun fn2-checkpoint-windows-reserve-loop (i nonce kind owner generation fn2-checkpoint-root1 fn2-checkpoint-windows fn2-pool)
  (declare (xargs :stobjs (fn2-checkpoint-root1 fn2-checkpoint-windows fn2-pool)
   :guard (and (fn2-checkpoint-root1-wfp fn2-checkpoint-root1) (< 0 (fn2-checkpoint-root1-rows fn2-checkpoint-root1))
               (fn2-checkpoint-windows-wfp fn2-checkpoint-windows) (<= *fn2-checkpoint-window-count* (fn2-checkpoint-windows-rows fn2-checkpoint-windows))
               (fn2-pool-wfp fn2-pool) (natp i) (<= i *fn2-checkpoint-window-count*))
-  :measure (nfix (- *fn2-checkpoint-window-count* i))))
- (if (>= i *fn2-checkpoint-window-count*)
+  :measure (nfix (- *fn2-checkpoint-window-count* (nfix i)))))
+ (if (and (natp i) (<= i *fn2-checkpoint-window-count*) (< 0 (fn2-checkpoint-root1-rows fn2-checkpoint-root1)) (<= *fn2-checkpoint-window-count* (fn2-checkpoint-windows-rows fn2-checkpoint-windows)))
+  (if (>= i *fn2-checkpoint-window-count*)
   (let ((fn2-checkpoint-root1 (fn2-checkpoint-root1-set-phase 0 *fn2-checkpoint-root1-phase-reserved* fn2-checkpoint-root1)))
    (mv :ok fn2-checkpoint-root1 fn2-checkpoint-windows fn2-pool))
   (b* ((class (fn2-pool-class-for (fn2-checkpoint-window-length i) fn2-pool))
@@ -49,14 +53,16 @@
          (mv code fn2-checkpoint-root1 fn2-checkpoint-windows fn2-pool)))
        (fn2-checkpoint-windows (fn2-checkpoint-windows-put i (live 1) (slot slot) (generation gen)))
        (fn2-checkpoint-root1 (fn2-checkpoint-root1-set-reserved 0 (+ i 1) fn2-checkpoint-root1)))
-   (fn2-checkpoint-windows-reserve-loop (+ i 1) nonce kind owner generation fn2-checkpoint-root1 fn2-checkpoint-windows fn2-pool))))
+   (fn2-checkpoint-windows-reserve-loop (+ i 1) nonce kind owner generation fn2-checkpoint-root1 fn2-checkpoint-windows fn2-pool)))
+  (mv :bounds fn2-checkpoint-root1 fn2-checkpoint-windows fn2-pool)))
 
 
 
 (defun fn2-checkpoint-working-credit-fitp (class fn2-pool)
  (declare (xargs :stobjs fn2-pool :guard (and (fn2-pool-wfp fn2-pool) (natp class))
-  :measure (nfix (- (fn2-pool-nclasses fn2-pool) (nfix class)))))
- (and (fn2-pool-credit-shapep fn2-pool)
+  :measure (nfix (- (nfix (fn2-pool-nclasses fn2-pool)) (nfix class)))))
+ (if (and (natp class))
+  (and (fn2-pool-credit-shapep fn2-pool)
       (equal (fn2-pool-credit-purposei *fn2-checkpoint-working-credit-group* fn2-pool) *fn2-pool-credit-working*)
       (member-equal (fn2-pool-credit-phasei *fn2-checkpoint-working-credit-group* fn2-pool)
        (list *fn2-pool-credit-idle* *fn2-pool-credit-aborted-empty*))
@@ -65,7 +71,8 @@
           (and (equal (fn2-pool-credit-demandi class fn2-pool)
                       (+ (fn2-checkpoint-window-class-demand 0 class fn2-pool)
                          (fn2-checkpoint-future-class-demand 0 class fn2-pool)))
-               (fn2-checkpoint-working-credit-fitp (+ class 1) fn2-pool)))))
+               (fn2-checkpoint-working-credit-fitp (+ class 1) fn2-pool))))
+  nil))
 
 (defun fn2-checkpoint-root1-credit-abort-empty (token kind owner gen fn2-checkpoint-root1 fn2-checkpoint-future fn2-csnapshot fn2-pool)
  (declare (xargs :stobjs (fn2-checkpoint-root1 fn2-checkpoint-future fn2-csnapshot fn2-pool)
