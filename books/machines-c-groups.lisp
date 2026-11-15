@@ -271,7 +271,9 @@
   fn2-id-decides-q1len fn2-id-decides-q2slot fn2-id-decides-q2gen fn2-id-decides-q2off fn2-id-decides-q2len))
 
 (defun fn2-id-decide-start (tx mslot mgen moff mlen dslot dgen doff okind oslot ogen b0 fn2-succ-txns fn2-id-decides fn2-fields fn2-pool)
- (declare (xargs :stobjs (fn2-succ-txns fn2-id-decides fn2-fields fn2-pool) :guard t))
+ (declare (xargs :stobjs (fn2-succ-txns fn2-id-decides fn2-fields fn2-pool) :guard t
+  :guard-hints ((fn2-columns-call-guard-hint 'fn2-id-decide-start
+                 '(fn2-pool-query-acquire fn2-pool-query-release) nil world))))
  (b* (((unless (and (fn2-succ-txns-wfp fn2-succ-txns) (fn2-id-decides-wfp fn2-id-decides) (fn2-fields-wfp fn2-fields) (fn2-pool-wfp fn2-pool)))
        (mv :state fn2-succ-txns fn2-id-decides fn2-fields fn2-pool))
       ((unless (and (natp tx) (< tx (fn2-succ-txns-rows fn2-succ-txns)) (< tx (fn2-id-decides-rows fn2-id-decides))
@@ -330,7 +332,9 @@
                            fn2-run-cursors fn2-run-paths fn2-run-cache fn2-fields fn2-pool)
  (declare (xargs :stobjs (fn2-succ-txns fn2-id-decides fn2-overlays fn2-overlay-index fn2-run-installed
                           fn2-run-cursors fn2-run-paths fn2-run-cache fn2-fields fn2-pool) :guard t
-  :guard-hints (("Goal" :in-theory (disable fn2-xl-step fn2-fields-rows fn2-id-decided)))))
+  :guard-hints ((fn2-columns-call-guard-hint 'fn2-id-decide-step
+                  '(fn2-xl-step fn2-fields-rows fn2-id-decided
+                    fn2-id-query-release fn2-id-query-rebuild) nil world))))
  (b* (((unless (and (fn2-succ-txns-wfp fn2-succ-txns) (fn2-id-decides-wfp fn2-id-decides) (fn2-overlays-wfp fn2-overlays)
                     (fn2-overlay-index-wfp fn2-overlay-index) (fn2-run-installed-wfp fn2-run-installed)
                     (fn2-run-cursors-wfp fn2-run-cursors) (fn2-run-paths-wfp fn2-run-paths) (fn2-run-cache-wfp fn2-run-cache)
