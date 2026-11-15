@@ -7,6 +7,14 @@
 (include-book "block-integrity")
 (include-book "cns-source-retention")
 (fn2-book-layer :d)
+;; One callback performs one phase, never both a manifest-unit check and a
+;; data-unit check. Charge the shared two-pass data verifier plus both expected
+;; digests, or the unit/header/original-identity check, within four units.
+(defconst *fn2-cns-source-unit-work-bytes* (* 4 *fn2-commit-unit-bytes*))
+(assert-event (<= (+ (* 2 *fn2-commit-unit-bytes*) 64) *fn2-cns-source-unit-work-bytes*))
+(assert-event (<= (+ *fn2-commit-unit-bytes* (* 2 *fn2-am-header-max*) 96) *fn2-cns-source-unit-work-bytes*))
+(assert-event (<= (* 2 *fn2-am-entry-max*) *fn2-cns-source-unit-work-bytes*))
+
 (defun fn2-cns-source-manifest-check (s cns cnsgen ctl ctlgen request kind base fn2-cns-sources fn2-fields fn2-b3 fn2-digests fn2-pool)
  (declare (xargs :stobjs (fn2-cns-sources fn2-fields fn2-b3 fn2-digests fn2-pool)
   :guard (and (fn2-cns-sources-wfp fn2-cns-sources) (fn2-fields-wfp fn2-fields) (fn2-pool-wfp fn2-pool))))
