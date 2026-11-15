@@ -5,7 +5,8 @@
 (defcolumns fn2-length-frame-fixture ((value :u8) (phase :u8))
  :extra-fields ((fn2-length-frame-buffer :type (array (unsigned-byte 8) (0))
                 :initially 0 :resizable t :why "Dimension interface fixture.")
-                (fn2-length-frame-count :type (unsigned-byte 32) :initially 0)))
+                (fn2-length-frame-count :type (unsigned-byte 32) :initially 0
+                 :why "Scalar observer refusal fixture.")))
 (defcolumns-array-length-frames fn2-length-frame-fixture fn2-length-frame-buffer)
 (assert-event
  (equal (getpropc 'fn2-length-frame-buffer-length-after-fn2-length-frame-fixture-set-value
