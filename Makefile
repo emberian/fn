@@ -4,6 +4,7 @@ ACL2_BOOKS = \
   books/accounts \
   books/accounts-core \
   books/alloc \
+  books/alloc-free-carrier \
   books/alloc-identity-index \
   books/arm-children \
   books/arm-issue-effects \
