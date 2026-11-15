@@ -556,6 +556,8 @@
            (unsigned-byte-p 32 e) (unsigned-byte-p 60 (+ first members)))
    (let* ((fn2-commit-root (fn2-commit-root-set-parent physical (- batch 1) fn2-commit-root))
           (fn2-commit-root (fn2-commit-root-set-extent physical e fn2-commit-root))
+          ; New tag, new seal: a reused row's previous digest is not ready.
+          (fn2-commit-root (fn2-commit-root-set-seal-ready physical 0 fn2-commit-root))
           (fn2-commit-root (fn2-commit-root-set-first-key physical first fn2-commit-root))
           (fn2-commit-root (fn2-commit-root-set-members physical members fn2-commit-root))
           (fn2-commit-root (fn2-commit-root-set-first-key 0 (+ first members) fn2-commit-root)))
