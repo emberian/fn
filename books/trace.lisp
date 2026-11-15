@@ -4,7 +4,7 @@
 (include-book "columns")
 (include-book "profile")
 (defcolumns fn2-trace
-  ((kind (:enum fn2-trace-kind (:mailbox :machine :service :clock :signal))) (machine :u32) (principal :u16) (position :u32) (bytes :u32) (steps :u32) (actions :u8) (runnable :bool) (wake-id :u32) (wake-principal :u16) (action-start :u32) (action-0-slot :u32) (action-0-gen :u60) (action-1-slot :u32) (action-1-gen :u60) (action-2-slot :u32) (action-2-gen :u60) (action-3-slot :u32) (action-3-gen :u60))
+  ((kind (:enum fn2-trace-kind (:mailbox :machine :service :clock :signal :machine-start :enqueue))) (machine :u32) (principal :u16) (position :u32) (bytes :u32) (steps :u32) (actions :u8) (runnable :bool) (wake-id :u32) (wake-principal :u16) (action-start :u32) (action-0-slot :u32) (action-0-gen :u60) (action-1-slot :u32) (action-1-gen :u60) (action-2-slot :u32) (action-2-gen :u60) (action-3-slot :u32) (action-3-gen :u60))
   :init-name fn2-trace-columns-init
   :extra-fields
   ((fn2-trace-enabled :type (unsigned-byte 1) :initially 0 :why "One diagnostic switch applies to the entire ring.")

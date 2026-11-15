@@ -1,6 +1,28 @@
 # Certification roots for the promoted fn tree. Keep every book and test
 # visible to --affected-by; lane mode selects immediate affected consumers.
 ACL2_BOOKS = \
+  books/cns-query-lifetime-model \
+  books/core-scheduler-wake \
+  books/enqueue-trace \
+  books/query-reference-predicates \
+  books/query-reference-core-predicate \
+  books/query-ref-wake \
+  books/queue-model \
+  books/trace-events \
+  tests/cns-query-support \
+  tests/cns-query-lifetime-unit \
+  tests/enqueue-cost-unit \
+  tests/query-reference-unit \
+  tests/query-two-wake-unit \
+  tests/query-owner-drain-unit \
+  tests/queue-model-unit \
+  tests/trace-events-unit \
+  books/format-check-read-contracts \
+  tests/checkpoint-carrier-unit \
+  tests/layout-size-bound-unit \
+  books/successor-schema-geometry \
+  books/successor-workspace-geometry \
+  tests/successor-geometry-unit \
   books/accounts \
   books/accounts-core \
   books/alloc \

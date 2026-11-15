@@ -133,6 +133,8 @@
  :doc "Reserve the page's read lease under the request row: (mv code slot gen).")
 ;; the name range's release (the workspace's is fn2-core-release with its
 ;; :tx-range effect; one effect per release site, as fn2-auth's key range)
+(defcost fn2-cns-query-heldp :tables (fn2-core-pool)
+ :doc "Whether this exact pool generation has an active identity-query read reference.")
 (defcost fn2-cns-release-ns :answers t :tables (fn2-core-pool)
   :doc "Release a draining request row's name range.")
 (defcost fn2-cns-lease-release :child fn2-core-release-children :answers t :tables (fn2-core-pool fn2-core-control)
@@ -1334,11 +1336,19 @@
           (t (:set (reason row-posted-word)) (:goto refuse))))
   (:draining :on-refusal ((:stop :machine-phase))
    (:cond
+    ((and (equal row-lease *fn2-cns-lease-held*)
+          (fn2-cns-query-heldp row-lslot row-lgen))
+     (:charge :steps *fn2-work-state*))
     ((equal row-lease *fn2-cns-lease-held*)
            (:do (lc) (fn2-cns-lease-release row-lslot row-lgen) :effects ((:release (:storage-window))) :accept (:ok :retired)
             :why ":retired: the lease's slot reached its generation limit and leaves the pool")
            (:set (lease *fn2-cns-lease-none*) (lslot *fn2-none*) (lgen 0))
            (:charge :steps *fn2-work-transition* :runnable t))
+    ;; Check both final ranges before releasing either. Last-reference
+    ;; completion wakes this owner; a held row does not busy-spin.
+    ((or (fn2-cns-query-heldp row-ws-slot row-ws-gen)
+         (fn2-cns-query-heldp row-ns-slot row-ns-gen))
+     (:charge :steps *fn2-work-state*))
     (t
    (:do (wrcode) (fn2-core-release row-ws-slot row-ws-gen) :effects ((:release (:tx-range)))
     :accept (:ok :retired) :why "a retired range is a completed release (the pool retires the slot)"
@@ -1647,6 +1657,10 @@
      (fn2-core-preserves fn2-cns-put-mutation
        (verb sx p cid ep start target noff nlen tx-slot tx-gen ctl ctl-gen ns-slot ns-gen id gen fn2-core) :position 1 :rows nil)
      (in-theory (disable fn2-cns-put-mutation))
+     (defun fn2-cns-query-heldp (slot gen fn2-core)
+       (declare (xargs :stobjs fn2-core :guard (fn2-core-wfp fn2-core)))
+       (fn2-core-query-heldp slot gen fn2-core))
+     (in-theory (disable fn2-cns-query-heldp))
      (defun fn2-cns-release-ns (slot gen okind oslot ogen fn2-core)
        (declare (xargs :stobjs fn2-core :guard (fn2-core-wfp fn2-core)))
        (fn2-core-release slot gen okind oslot ogen fn2-core))

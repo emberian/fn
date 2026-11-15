@@ -1,0 +1,298 @@
+{
+  "status": "SOURCE-READY author campaign; no composed runtime PASS claim",
+  "base": "9b9cd2d53",
+  "runtime_freeze": "08c510c59fa7d3c199e6d26f42ec2bf0d4760d32",
+  "retained_runtime_files": [
+    {
+      "path": "books/identity.lisp",
+      "frozen_sha256": "98df8c4eef639327c12e822f70da1737df1cdced574a728bd8d43cc23c0669a8",
+      "manifest_current": true,
+      "root_matches": false
+    },
+    {
+      "path": "books/machines-c-bind.lisp",
+      "frozen_sha256": "37c980059538a9e8d4875acd72a0817ee5ccf588a10a8ad8b654815396520056",
+      "manifest_current": true,
+      "root_matches": false
+    },
+    {
+      "path": "books/machines-c-groups.lisp",
+      "frozen_sha256": "17761d8197a5b20a56326df3175dbaedddc659dc3794ab9af58926c646775689",
+      "manifest_current": true,
+      "root_matches": false
+    },
+    {
+      "path": "books/query-ref-wake.lisp",
+      "frozen_sha256": "6424eb8b34b9b6f307da9f5edea93c498a096677c607f725f55875dcc9e2f379",
+      "manifest_current": true,
+      "root_matches": false
+    },
+    {
+      "path": "books/core-scheduler-wake.lisp",
+      "frozen_sha256": "635d5a22b95731c850fec4eac370ef154862645fa1d949e6936b262baa72527e",
+      "manifest_current": true,
+      "root_matches": false
+    },
+    {
+      "path": "books/enqueue-trace.lisp",
+      "frozen_sha256": "fa34a2a6c32783824efd1aba470fc7174faed09959a74d61a5bb608373cf894c",
+      "manifest_current": true,
+      "root_matches": false
+    },
+    {
+      "path": "books/trace.lisp",
+      "frozen_sha256": "8659e943d080aa3af080893f5027b2fa752f3803c3471620a5d946646df8065f",
+      "manifest_current": true,
+      "root_matches": false
+    },
+    {
+      "path": "books/arms.lisp",
+      "frozen_sha256": "83825a47c141b16393debcb6dfc98aa7fb54b375e7c12296fa4f25a491c29455",
+      "manifest_current": true,
+      "root_matches": true
+    },
+    {
+      "path": "books/machine-arms.lisp",
+      "frozen_sha256": "8df0f382b464bd34bc6b7fb5db064ebdc364f451efcf3bbd908a60ae60879569",
+      "manifest_current": true,
+      "root_matches": true
+    },
+    {
+      "path": "books/machines-a-costs.lisp",
+      "frozen_sha256": "046fa8ae47a0feb5bffc728a5fb47b963ae8e1f2a9fdbc6726ff47ee134a266c",
+      "manifest_current": true,
+      "root_matches": false
+    },
+    {
+      "path": "books/assembly-callbacks-c-prepare.lisp",
+      "frozen_sha256": "6aa1d2db519bc458d5f4161f9672fe44e9df0e029f541c49d7ea61368dc62239",
+      "manifest_current": true,
+      "root_matches": false
+    },
+    {
+      "path": "books/cns.lisp",
+      "frozen_sha256": "4752b8e39bee3f432cc69a1383bd2bdbadca26e79d98cd494c1fec590ef59e02",
+      "manifest_current": true,
+      "root_matches": false
+    },
+    {
+      "path": "books/txn.lisp",
+      "frozen_sha256": "22c697fbdade6c61eb4709a5f6a41d8e8682c5346bb2a55d34772528b9ed8d74",
+      "manifest_current": true,
+      "root_matches": false
+    },
+    {
+      "path": "books/assembly-callbacks-d-upload.lisp",
+      "frozen_sha256": "8d18f102194983c3cde01c24950df25c2ef463a90aa44a70c4f1f5fcf45e090b",
+      "manifest_current": true,
+      "root_matches": false
+    },
+    {
+      "path": "books/assembly-callbacks-d-conn.lisp",
+      "frozen_sha256": "c17cb4c61fd1dc1526135790349fab6954788f9a3abea2917c946a739976b483",
+      "manifest_current": true,
+      "root_matches": false
+    },
+    {
+      "path": "books/authority.lisp",
+      "frozen_sha256": "bd2d771bb2c4ffb8333461b1e3e9e7894c4a9216a922ebb47cf2f1b7fe5e8c33",
+      "manifest_current": true,
+      "root_matches": false
+    },
+    {
+      "path": "books/executor-access-events.lisp",
+      "frozen_sha256": "94c5bcdecbdfcb44ce46ce159479e26c5744274017c7bca2e686f3e26fdbbbb9",
+      "manifest_current": true,
+      "root_matches": false
+    },
+    {
+      "path": "books/executor-loop-events.lisp",
+      "frozen_sha256": "4c02a741e61b1ecae2ce6a52aac4bc37f11a5468d00d08f096bb7c403426e094",
+      "manifest_current": true,
+      "root_matches": false
+    },
+    {
+      "path": "books/trace-events.lisp",
+      "frozen_sha256": "8ff5d82c85aed855bf651d7b8902707ae4019fa51cf0076f485dae7f4caa5c29",
+      "manifest_current": true,
+      "root_matches": false
+    },
+    {
+      "path": "books/queue-model.lisp",
+      "frozen_sha256": "5d0cdb22d75771e96610c5e3ef28cabf5df05f8be9664f44872113bdebf7f96d",
+      "manifest_current": true,
+      "root_matches": false
+    },
+    {
+      "path": "tests/query-reference-unit.lisp",
+      "frozen_sha256": "9c415491f18014dacd44f42aec843d82c30a5bcfb503b99a902d766378d81e03",
+      "manifest_current": true,
+      "root_matches": false
+    },
+    {
+      "path": "tests/query-two-wake-unit.lisp",
+      "frozen_sha256": "848e7bb47c1b393872ef27dcffaea371934ae3a6913b2b821ed4474d0c4a1b87",
+      "manifest_current": true,
+      "root_matches": false
+    },
+    {
+      "path": "tests/query-owner-drain-unit.lisp",
+      "frozen_sha256": "4a5f3adfa26376e3c243ce225f7c88167f5a018780eec338ae12c19f57cb79c2",
+      "manifest_current": true,
+      "root_matches": false
+    },
+    {
+      "path": "tests/enqueue-cost-unit.lisp",
+      "frozen_sha256": "c7a17b57fcabc8c8392323e271a23b7f79fdc0a843cee4fa88de1dd2fb97ddf1",
+      "manifest_current": true,
+      "root_matches": false
+    },
+    {
+      "path": "tests/trace-events-unit.lisp",
+      "frozen_sha256": "7270259b23d8490b881be9f77dceb54b0f8d86a9481d284816aa682f8925a0f4",
+      "manifest_current": true,
+      "root_matches": false
+    },
+    {
+      "path": "tests/queue-model-unit.lisp",
+      "frozen_sha256": "0d4f47e6b9d3002bb32bc06596d4f05ef3aec5044d34383f1fee00470e4d1f8d",
+      "manifest_current": true,
+      "root_matches": false
+    },
+    {
+      "path": "tests/test_trace_replay.py",
+      "frozen_sha256": "e3ff6e6fa020e0c9a0f18d4df34c75384ceb0ee7ca694e590a0bd69ee5e49ac7",
+      "manifest_current": true,
+      "root_matches": false
+    },
+    {
+      "path": "tests/test_admission_rollback_source_shape.py",
+      "frozen_sha256": "674748653a132ab8fe589726e561b84c46d87ca7b64d230960498f28f9a1cf10",
+      "manifest_current": true,
+      "root_matches": false
+    },
+    {
+      "path": "tools/trace_replay.py",
+      "frozen_sha256": "c2cb7ed5d7f4d3cc3be3b3f677faa598a4db81a109e9094f7419e6203675862d",
+      "manifest_current": true,
+      "root_matches": false
+    },
+    {
+      "path": "docs/design/QUERY-READ-REFERENCES.md",
+      "frozen_sha256": "507597117ccdbc435120c5b13485499778b2bc377cdf0b67c4d4e0e63101b27b",
+      "manifest_current": true,
+      "root_matches": false
+    },
+    {
+      "path": "books/cns-draining-contract.lisp",
+      "frozen_sha256": "c3b015545d183fedffdcf03f15ef5b7ad6c023743404f021fba6da8698581eac",
+      "manifest_current": false,
+      "root_matches": false
+    },
+    {
+      "path": "books/cns-draining-direct-events.lisp",
+      "frozen_sha256": "62b62bac09be89d8db96277a15e3a14b0f642cc522511cc718f5fb4d59e3d061",
+      "manifest_current": true,
+      "root_matches": false
+    },
+    {
+      "path": "books/cns-draining-effects.lisp",
+      "frozen_sha256": "6cf5a6557381362c31136e1c6f1dd63a79770d3ddb56b613b151be0dfff75bd5",
+      "manifest_current": true,
+      "root_matches": false
+    },
+    {
+      "path": "books/cns-draining-model.lisp",
+      "frozen_sha256": "bfa119f0c8d90fe82606b0048af43e00497dc8c473563151e562c743640b92fc",
+      "manifest_current": false,
+      "root_matches": false
+    },
+    {
+      "path": "books/cns-draining-public.lisp",
+      "frozen_sha256": "643345c35f1ea09eede1ca502b72ae4811cd3a31eba6414537e867c5a537e205",
+      "manifest_current": false,
+      "root_matches": false
+    },
+    {
+      "path": "books/cns-pool-refinement.lisp",
+      "frozen_sha256": "06a42d4a1f389cfb3fd2cea6d5df257f79ca073c395682d5b892922fdc49d4f1",
+      "manifest_current": false,
+      "root_matches": false
+    },
+    {
+      "path": "books/cns-release-accounting.lisp",
+      "frozen_sha256": "7a6f44df88a164e50891a47f1a9240f32f779755f72acda363dcfa7950a56934",
+      "manifest_current": true,
+      "root_matches": false
+    },
+    {
+      "path": "books/cns-release-refinement.lisp",
+      "frozen_sha256": "0a9c6ffddecf232c0580db8132c5659f2425b22a6e22a9b957f291810ddbe2b7",
+      "manifest_current": false,
+      "root_matches": false
+    },
+    {
+      "path": "tests/cns-release-refinement-unit.lisp",
+      "frozen_sha256": "e647d089c69fe4a4a70814c0f53162890f38cb515717adde51c909b74f936b83",
+      "manifest_current": false,
+      "root_matches": false
+    },
+    {
+      "path": "books/cns-query-lifetime-model.lisp",
+      "frozen_sha256": "3d602fb5629e7818eb4b9ecd35f5d5ec7c2bb894972b6aa0193e40704e7e85c1",
+      "manifest_current": true,
+      "root_matches": false
+    },
+    {
+      "path": "tests/cns-query-lifetime-unit.lisp",
+      "frozen_sha256": "e39504a8c2b6c3e051e357cce82df9c5babb31a8e35685343cac052652eba80d",
+      "manifest_current": false,
+      "root_matches": false
+    },
+    {
+      "path": "tests/cns-query-support.lisp",
+      "frozen_sha256": "2bd26656ed0545022490abed41deb3241643e4da63912045e7d883f49fe5c32a",
+      "manifest_current": true,
+      "root_matches": false
+    },
+    {
+      "path": "books/query-reference-predicates.lisp",
+      "frozen_sha256": "44c87b79a38e99eda95204265b6ba1e3b852ebc797db1eb4694e071199d8ab2e",
+      "manifest_current": true,
+      "root_matches": false
+    },
+    {
+      "path": "books/query-reference-core-predicate.lisp",
+      "frozen_sha256": "4b3e43e64ff673d6f37145b247aa5dc159515694f6ac1135daf17ee46b2c84cb",
+      "manifest_current": true,
+      "root_matches": false
+    }
+  ],
+  "qualified_prefix67": "certify-20261115T074148Z-1049303",
+  "checkpoint_packet": "2ccc5c994",
+  "geometry_packet": "f9435178d23ea07a60311f2390935e9512954426",
+  "roots": [
+    "books/checkpoint",
+    "books/checkpoint-member",
+    "tests/checkpoint-carrier-unit",
+    "tests/layout-size-bound-unit",
+    "tests/successor-geometry-unit",
+    "tests/cns-raw-eof-unit",
+    "tests/cns-fetch-integrity-unit",
+    "tests/cns-recovered-fetch-unit",
+    "tests/query-reference-unit",
+    "tests/query-two-wake-unit"
+  ],
+  "scope": {
+    "books": 230,
+    "qualified_cache": 81,
+    "source": 149,
+    "event_steps": 2000000,
+    "event_seconds": 20,
+    "memory_bytes": 6442450944,
+    "swap_bytes": 0,
+    "outer_seconds": 3600,
+    "author_seconds": 3500
+  },
+  "driver_sha256": "f492790985d0c02a56a17fd8172bf3a15e48bd6cfc240b45e557d8349e0b5688"
+}

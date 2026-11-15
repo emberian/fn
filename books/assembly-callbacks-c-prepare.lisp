@@ -5,6 +5,6 @@
 ; assembly-callbacks-c's: one book made 69 s on forge (the one-minute rule;
 ; C-SUCCESSOR-BOOK).
 (in-package "ACL2")
-(include-book "assembly-callbacks-b2")
+(include-book "query-ref-wake")
 (include-book "machines-c-bind")
 (fn2-successor-prepare-events)
