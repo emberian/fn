@@ -5,6 +5,14 @@
 (defconst *fn2-checkpoint-unit-bytes* *fn2-format-sector-size*)
 (defconst *fn2-checkpoint-anchor-slots* 4)
 
+; Boot is declared before the C schema assembly. Admit a restart interval of
+; page-bounded entry decodes plus two pages for header/directory/hash overhead.
+; The actual assembled codec inequalities are checked in semantic-work; arms
+; still charge that exact derived cost, not this conservative declaration.
+(defconst *fn2-checkpoint-semantic-visit-bytes*
+ (* (+ *fn2-format-run-restart-interval* 2) *fn2-format-page-size*))
+(assert-event (unsigned-byte-p 32 *fn2-checkpoint-semantic-visit-bytes*))
+
 ; New-image layout, in physical units:
 ; [storage-extent-units*extents arena][genesis + groups][bootstrap][four checkpoint anchors]
 ; [optional slack][two writer-epoch records]. Existing boot records and checkpoint

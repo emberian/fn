@@ -150,3 +150,14 @@ including future fields, and preserves unrelated bank/recovery forms. Four sourc
 controls compare the parent2aed declaration, added-field preservation, helper
 ASTs, and the real include closure; six engine controls also compare harvest.
 No loader body, source authority, parser, hash, or completion semantics changed.
+
+Schema20's generated restart-decode maximum exceeds the former32768 boot bound.
+The actual stored restart interval is now shared B geometry; boot's named byte
+budget is `(restart-interval+2)*page-size`. The sole C assembly asserts entryMAX
+fits one page, header/directory/hash overhead fits two pages, and the exact
+assembled decode bound fits this envelope. Boot still charges exact assembled
+cost. The actual executor takes its work grant from registered machine budgets
+and multiplies that maximum by profile visits, so the new declaration propagates
+into fresh-turn room. Four source controls trace this path; the runnable actual
+registry/tiny/concrete quantum and missing-grant controls are unrun. This is no
+claim about all C accounting or measured native turn latency.
