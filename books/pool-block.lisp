@@ -45,7 +45,9 @@
        (fn2-poolp fn2-pool) (fn2-pool-wfp fn2-pool))
   ((fn2-digests 1) (fn2-b3 2))
   (("Goal" :induct (fn2-pool-block-hash-loop fuel row slot gen off len done okind oslot ogen fn2-digests fn2-b3 fn2-pool)
-           :in-theory (e/d (fn2-pool-block-hash-loop) (fn2-digestsp fn2-digests-wfp fn2-b3p fn2-b3-wfp fn2-digests-rows fn2-b3-rows)))))
+           :in-theory (e/d (fn2-pool-block-hash-loop) (fn2-digestsp fn2-digests-wfp fn2-b3p fn2-b3-wfp fn2-digests-rows fn2-b3-rows
+                            fn2-b3-ready fn2-digest-workspacep fn2-b3-update
+                            nfix posp member-equal)))))
 (defun fn2-pool-block-hash (row slot gen off len okind oslot ogen fn2-digests fn2-b3 fn2-pool)
   (declare (xargs :stobjs (fn2-digests fn2-b3 fn2-pool)
                   :guard (and (fn2-pool-wfp fn2-pool) (natp off) (natp len))))
