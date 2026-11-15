@@ -14,13 +14,13 @@
 ; this book's.
 (in-package "ACL2")
 (include-book "machines-c-bind")
+(include-book "name-directory-geometry")
 (fn2-book-layer :c)
 (local (in-theory (disable fn2-run-layout-fields fn2-run-layout-keys fn2-run-layout-merge fn2-run-layout-size
                            fn2-fold-key-arg fn2-fold-arity fn2-fold-assigned-p fn2-run-layout-octets-max
                            fn2-run-layout-value-ok fn2-run-layout-fold-p fn2-run-version)))
 
 (defconst *fn2-groups-sid* 8)
-(defconst *fn2-groups-name-max* 250)
 (assert-event (and (equal *fn2-groups-entry-field-name* 0) (equal *fn2-groups-entry-field-group* 1)))
 
 ; ---------------------------------------------------------------------------
@@ -411,6 +411,65 @@
  (fn2-overlays fn2-overlay-index fn2-fields fn2-pool) (fn2-id-engine fn2-overlays fn2-overlay-index fn2-fields fn2-pool) t
  (fn2-grp-insert-one))
 
+; Open exactly one genesis overlay. The continuation owns COUNT; each
+; entry is validated by the same real insert-one primitive before close.
+(defun fn2-grp-genesis-open (sid count b0 fn2-id-engine fn2-overlays fn2-overlay-index fn2-fields fn2-pool)
+ (declare (xargs :stobjs (fn2-id-engine fn2-overlays fn2-overlay-index fn2-fields fn2-pool) :guard t
+  :guard-hints (("Goal" :in-theory (disable fn2-idc-scratch fn2-ov-start fn2-pool-reserve fn2-pool-class-for
+                                            fn2-fields-rows fn2-overlays-rows fn2-overlay-index-rows fn2-idc-find-overlay fn2-id-engine-rows)))))
+ (b* (((unless (and (fn2-id-engine-wfp fn2-id-engine) (fn2-overlays-wfp fn2-overlays) (fn2-overlay-index-wfp fn2-overlay-index)
+                    (fn2-fields-wfp fn2-fields) (fn2-pool-wfp fn2-pool)))
+       (mv :state 0 fn2-id-engine fn2-overlays fn2-overlay-index fn2-fields fn2-pool))
+      ((unless (and (natp sid) (posp count) (natp b0)
+                    (<= (+ b0 *fn2-idc-stride*) (fn2-fields-rows fn2-fields))
+                    (< 0 (fn2-id-engine-rows fn2-id-engine))))
+       (mv :groups 0 fn2-id-engine fn2-overlays fn2-overlay-index fn2-fields fn2-pool))
+      (rows (fn2-overlays-rows fn2-overlays))
+      (o (fn2-idc-find-overlay rows 0 *fn2-overlay-phase-free* 0 fn2-overlays))
+      ((unless (and (posp rows) (< o rows))) (mv :full 0 fn2-id-engine fn2-overlays fn2-overlay-index fn2-fields fn2-pool))
+      (icap (floor (fn2-overlay-index-rows fn2-overlay-index) rows))
+      ((unless (<= count icap)) (mv :capacity 0 fn2-id-engine fn2-overlays fn2-overlay-index fn2-fields fn2-pool))
+      ((mv code fn2-id-engine fn2-pool) (fn2-idc-scratch fn2-id-engine fn2-pool))
+      ((unless (and (eq code :ok) (< 0 (fn2-id-engine-rows fn2-id-engine))))
+       (mv (if (eq code :ok) :state code) 0 fn2-id-engine fn2-overlays fn2-overlay-index fn2-fields fn2-pool))
+      (arena (fn2-id-engine-arena 0 fn2-id-engine))
+      (class (fn2-pool-class-for (nfix arena) fn2-pool))
+      ((unless (natp class)) (mv :capacity 0 fn2-id-engine fn2-overlays fn2-overlay-index fn2-fields fn2-pool))
+      ((mv code slot gen fn2-pool) (fn2-pool-reserve class *fn2-idc-owner-kind* *fn2-idc-owner-slot* *fn2-idc-owner-gen* fn2-pool))
+      ((unless (eq code :ok)) (mv code 0 fn2-id-engine fn2-overlays fn2-overlay-index fn2-fields fn2-pool))
+      ((mv code fn2-overlays fn2-pool)
+       (fn2-ov-start o sid slot gen (* o icap) icap *fn2-idc-owner-kind* *fn2-idc-owner-slot* *fn2-idc-owner-gen* 0
+                     fn2-overlays fn2-overlay-index fn2-pool))
+      ((unless (eq code :ok)) (mv code 0 fn2-id-engine fn2-overlays fn2-overlay-index fn2-fields fn2-pool)))
+  (mv :ok (nfix o) fn2-id-engine fn2-overlays fn2-overlay-index fn2-fields fn2-pool)))
+(fn2-idc-fn-shape fn2-grp-genesis-open (sid count b0 fn2-id-engine fn2-overlays fn2-overlay-index fn2-fields fn2-pool)
+ ((fn2-id-engine 2) (fn2-overlays 3) (fn2-overlay-index 4) (fn2-fields 5) (fn2-pool 6))
+ (fn2-id-engine fn2-overlays fn2-overlay-index fn2-fields fn2-pool) t
+ (fn2-idc-find-overlay fn2-idc-scratch fn2-ov-start fn2-pool-reserve fn2-pool-class-for))
+
+; One final sequence assignment and freeze, only after the exact intended
+; entry count is actually in this same owned active overlay.
+(defun fn2-grp-genesis-close (o expected fn2-id-engine fn2-overlays)
+ (declare (xargs :stobjs (fn2-id-engine fn2-overlays) :guard t))
+ (b* (((unless (and (fn2-id-engine-wfp fn2-id-engine) (fn2-overlays-wfp fn2-overlays)
+                    (< 0 (fn2-id-engine-rows fn2-id-engine)) (natp o) (< o (fn2-overlays-rows fn2-overlays))
+                    (posp expected) (= (fn2-overlays-count o fn2-overlays) expected)
+                    (= (fn2-overlays-phase o fn2-overlays) *fn2-overlay-phase-active*)
+                    (= (fn2-overlays-cov o fn2-overlays) 0) (= (fn2-overlays-batch o fn2-overlays) 0)
+                    (= (fn2-overlays-seq o fn2-overlays) 0)
+                    (= (fn2-overlays-okind o fn2-overlays) *fn2-idc-owner-kind*)
+                    (= (fn2-overlays-oslot o fn2-overlays) *fn2-idc-owner-slot*)
+                    (= (fn2-overlays-ogen o fn2-overlays) *fn2-idc-owner-gen*)))
+       (mv :state fn2-id-engine fn2-overlays))
+      (seq (+ 1 (nfix (fn2-id-engine-seq 0 fn2-id-engine))))
+      ((unless (unsigned-byte-p 60 seq)) (mv :bounds fn2-id-engine fn2-overlays))
+      (fn2-id-engine (fn2-id-engine-set-seq 0 seq fn2-id-engine))
+      (fn2-overlays (fn2-overlays-set-seq o seq fn2-overlays))
+      ((mv code fn2-overlays) (fn2-ov-advance o *fn2-overlay-phase-active* *fn2-overlay-phase-frozen* fn2-overlays)))
+  (mv code fn2-id-engine fn2-overlays)))
+(fn2-idc-fn-shape fn2-grp-genesis-close (o expected fn2-id-engine fn2-overlays)
+ (fn2-id-engine fn2-overlays) (fn2-id-engine fn2-overlays) t (fn2-ov-advance))
+
 (defun fn2-grp-genesis (sid max groups b0 fn2-id-engine fn2-overlays fn2-overlay-index fn2-fields fn2-pool)
  (declare (xargs :stobjs (fn2-id-engine fn2-overlays fn2-overlay-index fn2-fields fn2-pool) :guard t
   :guard-hints (("Goal" :in-theory (disable fn2-idc-scratch fn2-ov-start fn2-ov-advance fn2-grp-insert-all fn2-pool-reserve
@@ -423,40 +482,21 @@
       ((unless (and (natp sid) (natp max) (fn2-grp-groupsp groups max) (natp b0) (<= (+ b0 *fn2-idc-stride*) (fn2-fields-rows fn2-fields))
                     (< 0 (fn2-id-engine-rows fn2-id-engine))))
        (mv :groups fn2-id-engine fn2-overlays fn2-overlay-index fn2-fields fn2-pool))
-      (rows (fn2-overlays-rows fn2-overlays))
-      (o (fn2-idc-find-overlay rows 0 *fn2-overlay-phase-free* 0 fn2-overlays))
-      ((unless (and (posp rows) (< o rows))) (mv :full fn2-id-engine fn2-overlays fn2-overlay-index fn2-fields fn2-pool))
-      (icap (floor (fn2-overlay-index-rows fn2-overlay-index) rows))
-      ((unless (<= (len groups) icap)) (mv :capacity fn2-id-engine fn2-overlays fn2-overlay-index fn2-fields fn2-pool))
-      ((mv code fn2-id-engine fn2-pool) (fn2-idc-scratch fn2-id-engine fn2-pool))
-      ((unless (and (eq code :ok) (< 0 (fn2-id-engine-rows fn2-id-engine))))
-       (mv (if (eq code :ok) :state code) fn2-id-engine fn2-overlays fn2-overlay-index fn2-fields fn2-pool))
-      (arena (fn2-id-engine-arena 0 fn2-id-engine))
-      (class (fn2-pool-class-for (nfix arena) fn2-pool))
-      ((unless (natp class)) (mv :capacity fn2-id-engine fn2-overlays fn2-overlay-index fn2-fields fn2-pool))
-      ((mv code slot gen fn2-pool) (fn2-pool-reserve class *fn2-idc-owner-kind* *fn2-idc-owner-slot* *fn2-idc-owner-gen* fn2-pool))
-      ((unless (eq code :ok)) (mv code fn2-id-engine fn2-overlays fn2-overlay-index fn2-fields fn2-pool))
-      ((mv code fn2-overlays fn2-pool)
-       (fn2-ov-start o sid slot gen (* o icap) icap *fn2-idc-owner-kind* *fn2-idc-owner-slot* *fn2-idc-owner-gen* 0
-                     fn2-overlays fn2-overlay-index fn2-pool))
+      ((mv code o fn2-id-engine fn2-overlays fn2-overlay-index fn2-fields fn2-pool)
+       (fn2-grp-genesis-open sid (len groups) b0 fn2-id-engine fn2-overlays fn2-overlay-index fn2-fields fn2-pool))
       ((unless (eq code :ok)) (mv code fn2-id-engine fn2-overlays fn2-overlay-index fn2-fields fn2-pool))
       ((mv code fn2-overlays fn2-overlay-index fn2-fields fn2-pool)
        (fn2-grp-insert-all max groups o b0 (+ b0 *fn2-idc-eb*) fn2-id-engine fn2-overlays fn2-overlay-index fn2-fields fn2-pool))
       ((unless (eq code :ok)) (mv code fn2-id-engine fn2-overlays fn2-overlay-index fn2-fields fn2-pool))
-      (seq (+ 1 (nfix (fn2-id-engine-seq 0 fn2-id-engine))))
-      ((unless (unsigned-byte-p 60 seq)) (mv :bounds fn2-id-engine fn2-overlays fn2-overlay-index fn2-fields fn2-pool))
-      (fn2-id-engine (fn2-id-engine-set-seq 0 seq fn2-id-engine))
-      (fn2-overlays (fn2-overlays-set-seq o seq fn2-overlays))
-      ((mv code fn2-overlays) (fn2-ov-advance o *fn2-overlay-phase-active* *fn2-overlay-phase-frozen* fn2-overlays)))
+      ((mv code fn2-id-engine fn2-overlays) (fn2-grp-genesis-close o (len groups) fn2-id-engine fn2-overlays)))
   (mv code fn2-id-engine fn2-overlays fn2-overlay-index fn2-fields fn2-pool)))
 (fn2-idc-fn-shape fn2-grp-genesis (sid max groups b0 fn2-id-engine fn2-overlays fn2-overlay-index fn2-fields fn2-pool)
  (fn2-id-engine fn2-overlays fn2-overlay-index fn2-fields fn2-pool) (fn2-id-engine fn2-overlays fn2-overlay-index fn2-fields fn2-pool) t
- (fn2-grp-groupsp fn2-idc-find-overlay fn2-idc-scratch fn2-id-engine-arena fn2-id-engine-seq fn2-grp-insert-all fn2-pool-class-for))
+ (fn2-grp-groupsp fn2-grp-genesis-open fn2-grp-insert-all fn2-grp-genesis-close))
 
 ;; fn2-principals (authority-schema.lisp, id 16) shares the directory's
 ;; shape: a name of at most 64 octets to an integer value, one exact lookup.
 (defconst *fn2-principals-sid* 16)
-(defconst *fn2-principals-name-max* 64)
 (assert-event (and (equal *fn2-principals-entry-field-name* 0) (equal *fn2-principals-entry-field-principal* 1)))
 ;; The owner's account slot: the profile's :owner-account, else 1; a slot is
 ;; an owner only below the system row (P), so a profile with P <= 1 has none.

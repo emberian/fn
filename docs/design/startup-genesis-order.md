@@ -58,3 +58,33 @@ must connect it and the bounded fresh branch before claiming the startup repair.
 Image-profile executor initialization now binds accounts and initializes the parked sealer through the actor-only helper. It creates no NAME overlays; non-image initialization keeps its existing full genesis path. The actual sealer grant predicate and direct step both require either absence of a boot actor in the kind directory or a readable, unstopped READY boot actor. An unreadable present actor is refusal, not absence. This prevents fresh NAME and recovered source mutations from racing sealer work before replay/epoch closure.
 
 The bounded fresh NAME continuation and actual fresh boot branch wiring remain pending in this source checkpoint; source parsing passed, not ACL2 execution.
+
+## Bounded fresh NAME owner
+
+The dedicated `fn2-core-genesis-names` captures trusted image-profile groups,
+count, authority policy and normalized owner slot at core initialization. Its
+cursor is independent of boot's immutable-record verification cursor. Non-image
+profiles leave it uncaptured. NAME limits move unchanged to the shared geometry
+leaf; no new namespace ceiling is introduced.
+
+`fn2-startup-name-begin(id, generation, core)` accepts only the actual unstopped
+boot actor in `:genesis-begin`, binds its exact generation and derives already
+bound account IDs. Answers are `:ok/:owner/:state`. `fn2-startup-name-step` accepts
+that same actor in `:genesis-step` and verifies the account identities remain
+unchanged. Answers are `:more/:complete/:owner/:uncertain`; neither operation
+issues physical IO. Their declared tables include the actual startup context,
+account, NAME construction and pool carriers. Parent boot charges 4096 bytes per
+transition; metadata lookup/index work retains existing admitted-profile bounds,
+not a new claim of profile-independent primitive cost.
+
+Each step performs one role open, one actual `fn2-grp-insert-one`, or one close.
+The original grp-genesis now uses the same extracted open/close leaves. A role
+retains one overlay, its exact pool slot/generation, schema and decode stripe;
+count/cursor must match the actual active overlay. Coverage, batch and sequence
+must remain the initial zero values until final close. Close verifies the exact
+intended count, assigns one nonwrapping sequence and freezes once. Completed
+counts and exhausted trusted cursors bind final completion for both schemas.
+Writer failures retain work and mark uncertainty; stale context/account identity
+refuses without changing the existing job. There is no retry cleanup or row
+clearing. Parent owns the actual fresh/no-checkpoint branch before full-prefix
+replay and the sealer startup gate; selected checkpoint boot never begins NAME.
