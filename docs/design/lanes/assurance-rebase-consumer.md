@@ -545,10 +545,13 @@ restoration remain byte-identical to qualified layout2060684e. One initial
 pool-read preserves current error precedence; the shared range checker validates
 the entire chunk. The logical POOLP condition inside MBE falls back to one-byte
 checks for malformed untyped carriers, while guarded execution uses the carried
-typed stobj without runtime whole-pool validation. Two projection controls pass;
-this source projection is not integrated or qualified. Exact scan/effect
-refinement, bad-octet/partial/truncated controls and actual caller charge scope
-must close before integration. The current full4096 limitation is intentionally
+typed stobj without runtime whole-pool validation. Three projection controls pass. The new registered actual-codec fixture compares
+every MORE/OK visit against the existing logical scan at budget1/4096, including
+all semantic rows and normalized continuation, zero-budget and wrong-owner full
+field snapshots. Its four assertions are UNRUN; no alternate parser is used.
+This source projection is not integrated or qualified. Exact scan/effect
+refinement, bad-octet/truncated controls and actual caller charge scope must close
+before integration. The current full4096 limitation is intentionally
 still visible; a separate visit quota derived from field kinds is needed for a
 useful bounded full face, or callers must use the existing continuation.
 

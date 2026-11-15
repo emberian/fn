@@ -44,5 +44,15 @@ class Span(unittest.TestCase):
         self.assertIn('(,scan (- fuel chunk) base phase',gen)
         self.assertIn('(,scan (- fuel chunk) base (,nextfn phase)',gen)
 
+    def test_real_control_compares_every_visit_to_existing_model(self):
+        fixture=(ROOT/'tests/layout-payload-span-unit.lisp').read_text()
+        self.assertIn('(fn2-layout-decode-run ',fixture)
+        self.assertIn('(fn2-span-fixture-decode-step ',fixture)
+        self.assertIn('(equal (fn2-span-compiled-state code next fn2-fields) (car expected))',fixture)
+        for text in ['(fn2-pool-semanticp fn2-pool)', '(fn2-span-test 6144 1)',
+                     '(fn2-span-test 6144 4096)', '(eq zero-code :bounds)',
+                     '(eq owner-code :owner)', '(equal frame (fn2-span-frame fn2-fields))']:
+            self.assertIn(text,fixture)
+
 
 if __name__=='__main__': unittest.main()
