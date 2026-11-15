@@ -61,6 +61,9 @@
   (implies (and (fn2-layoutp layout) (consp layout))
            (and (consp (car layout)) (consp (cdar layout))
                 (fn2-layout-kindp (cadar layout)))))
+; A generic CONSP goal must not trigger a recursive search for a layout.
+; Codec guards instantiate this structural fact explicitly where needed.
+(in-theory (disable fn2-layoutp-head))
 (defthm fn2-layoutp-cdr (implies (fn2-layoutp layout) (fn2-layoutp (cdr layout))))
 (defun fn2-layout-kind-code (k)
   (declare (xargs :guard (fn2-layout-kindp k)))
@@ -261,7 +264,8 @@
            (fn2-fieldsp (mv-nth 9 (fn2-layout-scan layout fuel i pos v hi size ref phase next slot gen end okind oslot ogen  fn2-fields fn2-pool))))
   :hints (("Goal" :in-theory (disable fn2-fields-rows nfix member-equal fn2-fields-value fn2-fields-ref-slot fn2-fields-ref-gen fn2-fields-ref-off fn2-fields-ref-len fn2-fields-status))))
 (verify-guards fn2-layout-scan
-  :hints (("Goal" :in-theory (disable fn2-layoutp fn2-layout-kindp member-equal nfix fn2-fields-rows fn2-fields-value fn2-fields-ref-slot fn2-fields-ref-gen fn2-fields-ref-off fn2-fields-ref-len fn2-fields-status))))
+  :hints (("Goal" :use ((:instance fn2-layoutp-head))
+           :in-theory (disable fn2-layoutp fn2-layout-kindp member-equal nfix fn2-fields-rows fn2-fields-value fn2-fields-ref-slot fn2-fields-ref-gen fn2-fields-ref-off fn2-fields-ref-len fn2-fields-status))))
 (in-theory (disable fn2-layout-scan))
 
 (defun fn2-layout-save (i pos v hi size ref phase next fn2-fields)
@@ -414,7 +418,8 @@
 (defun fn2-layout-emit (layout fuel i pos next slot gen okind oslot ogen fn2-fields fn2-pool)
   (declare (xargs :stobjs (fn2-fields fn2-pool) :measure (+ (nfix fuel) (len layout))
                   :hints (("Goal" :in-theory (disable fn2-layout-field-size)))
-                  :guard-hints (("Goal" :in-theory (disable fn2-layoutp fn2-layout-kindp fn2-layout-field-size)))
+                  :guard-hints (("Goal" :use ((:instance fn2-layoutp-head))
+                                       :in-theory (disable fn2-layoutp fn2-layout-kindp fn2-layout-field-size)))
                   :guard (and (fn2-layoutp layout) (fn2-fields-wfp fn2-fields) (fn2-pool-wfp fn2-pool)
                               (natp fuel) (natp i) (natp pos) (natp next))))
   (b* (((when (atom layout)) (mv :ok i pos next fn2-pool))

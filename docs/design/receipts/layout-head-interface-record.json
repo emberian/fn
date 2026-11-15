@@ -1,0 +1,55 @@
+{
+  "scope": "books/layout exact eight-book closure; no application or native claim",
+  "run_id": "certify-20261115T072636Z-1034939",
+  "toolchain": "8aeb1bea18968c6cd33ac633a80ebf67e4924504db112fd27eb11f16a27b2a8c",
+  "books": {
+    "books/layout": {
+      "sha": "2060684efd33bb23e0c426275edc9a3dc6c47b50ceda0b80207c84ec7fd89d48",
+      "key": "ec3d16f88264aede287b62ffdc0f1424ab6f2fa391fe5df008337b51f4ea56ce"
+    },
+    "books/pool": {
+      "sha": "3ef26f41207ee64f6121621cc24d7100936e364b5224a4be8ae28292aa4d7fa7",
+      "key": "079b4ac98a0b3d945869386f9e8d2ebecf0a00d8715e247ba18202d4d7fbfc24"
+    },
+    "books/profile": {
+      "sha": "1f216ed6c0505dc1b01ada0f7d3d9482af6da7b7dff8736b5100ef3e3fbc1038",
+      "key": "b8fb593112597395afac6a150c4a4fca81def3095ecd8f7f9be6aa0aec7384fc"
+    },
+    "books/operations": {
+      "sha": "959da2da147247146a2360e23d2c7d6abd6c581abdf0f6873661f63cee87484f",
+      "key": "bd6bdf7f71b74618b02924c542559dcb99a149c816aeed11f3f5cd82d766483f"
+    },
+    "books/declare": {
+      "sha": "1c706e559ef3b314fb9bd48171fb2891fad8613bd4eb1c5de5268443833c4bfb",
+      "key": "f1df352dc360553d08906239d267e9371fcb2fe4f19c6581adc1b0b322b30875"
+    },
+    "books/owed-discharge": {
+      "sha": "53903322be1b79ed081ecfcbfcb9f60649d3fdbf8aa6853b772abf8e6fc69f01",
+      "key": "97e73257b5f4cb3a4ca1b8ba4bf10956295c18ec211c0b297f557e780cd20fd1"
+    },
+    "books/owed": {
+      "sha": "04104985582a552ad115a0a6adcf2e957597b1b9ca3228bf25900877cbbcb17b",
+      "key": "6f334038cc4bddaaa337357384a139be3700c2c3403094bab3398dacb7fd5a3b"
+    },
+    "books/columns": {
+      "sha": "d3a58387c7c0dabc4ceaffeeb20672031a04693d8dd52078f50c5fa487c0d5f8",
+      "key": "af444dbfcccce7083f99637cc8947a859347bd4d6c8df17f7ab3a91e00d33ca2"
+    }
+  },
+  "book_provenance": {
+    "books/columns": "installed",
+    "books/declare": "installed",
+    "books/layout": "certified",
+    "books/operations": "installed",
+    "books/owed": "installed",
+    "books/owed-discharge": "installed",
+    "books/pool": "installed",
+    "books/profile": "installed"
+  },
+  "layout_wall_seconds": 14.472,
+  "certificate_sha256": "f5efb49f4d7a1ef52b9d4aa60d5d836f282b6feee7f54ca6741465e0775219fa",
+  "compiled_sha256": "b0418a0b5c51b398e5d90c792cac2b1cd2d9066876e54596dd13bd852330e5c8",
+  "source_author_forms": 136,
+  "source_author_seconds": 16.44,
+  "open_cost": "14.472 seconds at one job; D26 cost remains open"
+}

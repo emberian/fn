@@ -57,7 +57,9 @@ currently at the checkpoint EDGE-ADD producer contract; the application fixtures
 have not executed. Accounts (`3f7b07618`) and answer preservation (`00e04f000`)
 repair only hints. The layout interface candidate disables an overly broad
 structural rewrite and explicitly supplies it to SCAN/EMIT guards; all 136 forms
-admit, with exact eight-book certification pending. These results do not certify
+admit; exact eight-book record `certify-20261115T072636Z-1034939` passes
+with seven installed parents and one newly certified book (14.472 seconds at
+one job; D26 cost remains open). Root matched all eight source hashes. These results do not certify
 the application or establish accepted-data recovery.
 
 Raw APPEND EOF controls from85c0114a3 are integrated as unexecuted regressions:
