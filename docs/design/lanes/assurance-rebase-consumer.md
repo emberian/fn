@@ -140,3 +140,13 @@ Merkle size and admitted entry count to equal the held C event cut. Its terminal
 is member-run completion, not root3 coverage or descriptor publication. Four
 additional source controls cover the frozen-page ordering, exact shared worker,
 and finish coverage. The root3 header/manifest and selected reader remain pending.
+
+The common physical engine no longer imports cold catalogs or boot orchestration.
+Its actual harvest observer moved unchanged into the lower I/O book. Boot's whole
+configuration declaration and geometry word/copy/load bodies moved unchanged into
+`boot-config-state` / `boot-geometry-state`; publication and boot keep those same
+exports. The structural extraction accepts the integrator's current declaration,
+including future fields, and preserves unrelated bank/recovery forms. Four source
+controls compare the parent2aed declaration, added-field preservation, helper
+ASTs, and the real include closure; six engine controls also compare harvest.
+No loader body, source authority, parser, hash, or completion semantics changed.
