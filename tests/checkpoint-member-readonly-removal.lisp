@@ -1,7 +1,7 @@
-; Logical ground counterexample candidate for the ORIGINAL off-guard FIELDS
-; type claim. Never execute a malformed typed stobj through raw Lisp. This
-; non-executable logical witness must be kernel-proved before it is evidence.
-; No failed proof or source inspection is recorded as a counterexample.
+; Logical ground counterexample for the ORIGINAL off-guard FIELDS type claim.
+; The theorem below establishes the whole antecedent and false conclusion by
+; actual logical execution. It does not prove/discharge that original claim.
+; Never execute a malformed typed stobj through raw Lisp.
 (in-package "ACL2")
 (include-book "../books/checkpoint-member")
 
@@ -37,7 +37,27 @@
                  (mv-nth 2 answer)) -1)
          (not (fn2-fieldsp (mv-nth 2 answer))))))))
 
-; Deliberately no ASSERT-EVENT invoking the non-executable wrapper and no
-; discharge/metadata mutation. Next retained-world gate is a DEFTHM of this
-; exact ground predicate, using actual logical definitions. Raw guard errors
-; and an unsuccessful proof are neither the expected result nor evidence.
+; This kernel theorem is the tooth: the predicate is intentionally nonexec.
+; The actual guarded replacement retains checkpointsp, which this instance
+; removes while preserving every other readonly recognizer and WFP premise.
+; Earlier failed grounding probes established nothing; only this theorem does.
+(defthm fn2-checkpoint-member-fields-type-readonly-removal-ground
+ (fn2-checkpoint-member-fields-type-readonly-removal-check)
+ :rule-classes nil
+ :hints (("Goal" :in-theory
+  (set-difference-theories
+   (union-theories (function-theory :here)
+    (union-theories (executable-counterpart-theory :here) (theory 'minimal-theory)))
+   '((:executable-counterpart fn2-checkpoint-member-fields-type-readonly-removal-check)
+     (:executable-counterpart create-fn2-checkpoints)
+     (:executable-counterpart create-fn2-checkpoint-refs)
+     (:executable-counterpart create-fn2-checkpoint-bytes)
+     (:executable-counterpart create-fn2-fields)
+     (:executable-counterpart create-fn2-pool)
+     (:executable-counterpart fn2-checkpoints-set-checkpoint)
+     (:executable-counterpart update-fn2-checkpoints-checkpoint$ai)
+     (:executable-counterpart fn2-checkpoints-checkpoint)
+     (:executable-counterpart fn2-checkpoints-checkpoint$ai)
+     (:executable-counterpart fn2-checkpoint-installation-pack-member)
+     (:executable-counterpart fn2-fields-set-value)
+     (:executable-counterpart update-fn2-fields-value$ai))))))

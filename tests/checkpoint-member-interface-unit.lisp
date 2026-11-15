@@ -1,6 +1,7 @@
 ; Real guarded execution of the actual member, not a packer clone.
 (in-package "ACL2")
 (include-book "../books/checkpoint-member")
+(include-book "checkpoint-member-readonly-removal")
 (include-book "std/util/bstar" :dir :system)
 
 ; Freeze the whole stored guard from the admitted function. Readonly stobj
