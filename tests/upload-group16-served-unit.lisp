@@ -1,0 +1,138 @@
+; Actual prebuffered POST -> upload arms -> real Write/Fence -> accepted B/C.
+; Two64KiB chunks expose the physical16th/17th boundary; this is not a small-
+; window rolling claim or a native-image crash witness. No entry is fabricated.
+(in-package "ACL2")
+(include-book "std/util/bstar" :dir :system)
+(include-book "../books/owed-txn")
+
+(defconst *fn2-up16-profile*
+ (put-assoc-equal :aturn 1 (put-assoc-equal :article-max 100000
+  (put-assoc-equal :pool-classes '((8 . 1024) (128 . 65536) (64 . 65536))
+   *fn2-txn-posting-profile*))))
+(defconst *fn2-up16-body-line* (coerce (make-list 990 :initial-element #\a) 'string))
+(defconst *fn2-up16-input*
+ (fn2-txn-post-octets
+  (append '("From: a@example.invalid" "Subject: physical groups"
+            "Newsgroups: local.test" "Message-ID: <group16@example.invalid>" "")
+          (make-list 80 :initial-element *fn2-up16-body-line*))))
+
+(defun fn2-up16-entries (left index relative end slot gen owner ogen first sixteenth fn2-fields fn2-pool)
+ (declare (xargs :stobjs (fn2-fields fn2-pool) :verify-guards nil :measure (nfix left)))
+ (if (zp left) (mv '(:missing-entry) fn2-fields)
+  (b* ((at (+ *fn2-upload-page-manifest* (fn2-am-entry-at relative)))
+       ((mv code next logical length unit epoch allocation fn2-fields)
+        (fn2-am-get-entry 0 slot gen at end *fn2-upload-kind* owner ogen fn2-fields fn2-pool))
+       ((unless (and (eq code :ok) (< at next) (<= next end)
+                     (= logical (* index *fn2-commit-unit-bytes*))))
+        (mv (list :entry code index) fn2-fields))
+       (entry (list logical length unit epoch allocation))
+       (first (if (= index 0) entry first))
+       (sixteenth (if (= index 15) entry sixteenth)))
+   (if (= index 16) (mv (list :entries first sixteenth entry) fn2-fields)
+    (fn2-up16-entries (- left 1) (+ 1 (nfix index))
+      (- next *fn2-upload-page-manifest*) end slot gen owner ogen first sixteenth fn2-fields fn2-pool)))))
+
+; Observe the real actor only after its payload and manifest writes/Fence.
+; Use PRIVATE local fields with the actual readonly owned pool, so observing
+; the generated decoder cannot alter a live actor's shared checker stripe.
+(defun fn2-up16-observe (id fn2-core)
+ (declare (xargs :stobjs fn2-core :verify-guards nil))
+ (if (not (and (eq (fn2-upload-snapshot-read-code id fn2-core) :ok)
+               (or (and (= (fn2-upload-row-phase id fn2-core) *fn2-upload-state-store-fenced*)
+                        (= (fn2-upload-row-sready id fn2-core) 1))
+                   (= (fn2-upload-row-phase id fn2-core) *fn2-upload-state-sealed*))
+               (= (fn2-upload-row-word id fn2-core) 0)
+               (> (fn2-upload-row-mfill id fn2-core) 0))) nil
+  (let ((slot (fn2-upload-row-lslot id fn2-core)) (gen (fn2-upload-row-lgen id fn2-core))
+        (ogen (fn2-upload-row-generation id fn2-core))
+        (end (+ *fn2-upload-page-manifest* (fn2-upload-row-mfill id fn2-core)))
+        (total (+ (fn2-upload-row-ilen id fn2-core) (fn2-upload-row-hashed id fn2-core))))
+   (with-local-stobj fn2-fields
+    (mv-let (answer fn2-fields)
+     (let ((fn2-fields (fn2-fields-init 128 fn2-fields)))
+      (stobj-let ((fn2-pool (fn2-core-pool fn2-core))) (answer fn2-fields)
+       (b* ((owned (and (fn2-poolp fn2-pool) (fn2-pool-wfp fn2-pool) (fn2-pool-semanticp fn2-pool)
+                       (eq (fn2-pool-workspace-code slot gen *fn2-upload-kind* id ogen fn2-pool) :ok)))
+            ((mv code after fn2-fields)
+             (fn2-format-source-manifest-header-decode 0 slot gen *fn2-upload-page-manifest* end
+               *fn2-upload-kind* id ogen fn2-fields fn2-pool))
+            ((unless (and owned (eq code :ok)
+               (= (fn2-fields-value *fn2-format-source-manifest-header-field-source-length* fn2-fields) total)
+               (= (fn2-fields-value *fn2-format-source-manifest-header-field-block-size* fn2-fields) *fn2-commit-unit-bytes*)
+               (> total (* 17 *fn2-commit-unit-bytes*))))
+             (mv (list :header code total) fn2-fields)))
+        (fn2-up16-entries 17 0 (- after *fn2-upload-page-manifest*) end slot gen id ogen nil nil fn2-fields fn2-pool))
+       (mv answer fn2-fields))) answer)))))
+
+(defun fn2-up16-observe-rows (left id fn2-core)
+ (declare (xargs :stobjs fn2-core :verify-guards nil :measure (nfix left)))
+ (if (zp left) nil
+  (or (fn2-up16-observe id fn2-core)
+      (fn2-up16-observe-rows (- left 1) (+ 1 (nfix id)) fn2-core))))
+
+(defun fn2-up16-observe-kind (fn2-core)
+ (declare (xargs :stobjs fn2-core :verify-guards nil))
+ (let ((base (fn2-machine-kind-base *fn2-upload-kind* fn2-core))
+       (rows (stobj-let ((fn2-upload (fn2-upload-table fn2-core))) (rows)
+               (fn2-upload-rows fn2-upload) rows)))
+  (fn2-up16-observe-rows rows base fn2-core)))
+
+(defun fn2-up16-loop (fuel idle accepted clients store captured fn2-core)
+ (declare (xargs :stobjs fn2-core :verify-guards nil :measure (nfix fuel)))
+ (if (zp fuel) (mv :fuel clients store captured fn2-core)
+  (b* ((captured (or captured (fn2-up16-observe-kind fn2-core)))
+       ((mv & observed visited actions fn2-core) (fn2-turn fn2-core))
+       ((mv took accepted clients store fn2-core) (fn2-cw-adapter-one accepted clients store fn2-core))
+       (idle (if (or took (< 0 observed) (< 0 visited) (< 0 actions)) 0 (+ 1 (nfix idle)))))
+   (if (or (<= 3 idle) (fn2-core-stopped-p fn2-core))
+       (mv :quiet clients store captured fn2-core)
+    (fn2-up16-loop (- fuel 1) idle accepted clients store captured fn2-core)))))
+
+(defun fn2-up16-extents-p (first sixteenth seventeenth fn2-core)
+ (declare (xargs :stobjs fn2-core :verify-guards nil))
+ (let ((e0 (floor (nth 2 first) *fn2-storage-extent-units*))
+       (e1 (floor (nth 2 seventeenth) *fn2-storage-extent-units*)))
+  (stobj-let ((fn2-extents (fn2-core-extents fn2-core))) (matched)
+   (and (not (= e0 e1))
+    (= (nth 2 first) (* e0 *fn2-storage-extent-units*))
+    (= (nth 2 sixteenth) (+ (* e0 *fn2-storage-extent-units*) 15))
+    (= (nth 2 seventeenth) (* e1 *fn2-storage-extent-units*))
+    (equal (nthcdr 3 first) (nthcdr 3 sixteenth))
+    (not (equal (nthcdr 3 first) (nthcdr 3 seventeenth)))
+    (eq (fn2-alloc-handle-code e0 (nth 3 first) (nth 4 first) fn2-extents) :ok)
+    (eq (fn2-alloc-handle-code e1 (nth 3 seventeenth) (nth 4 seventeenth) fn2-extents) :ok)
+    (= (fn2-extents-state e0 fn2-extents) *fn2-extent-state-allocated*)
+    (= (fn2-extents-state e1 fn2-extents) *fn2-extent-state-allocated*)
+    (= (fn2-extents-owner-kind e0 fn2-extents) *fn2-txn-kind*)
+    (= (fn2-extents-owner-kind e1 fn2-extents) *fn2-txn-kind*)
+    (posp (fn2-extents-owner-id e0 fn2-extents))
+    (= (fn2-extents-owner-id e0 fn2-extents) (fn2-extents-owner-id e1 fn2-extents))) matched)))
+
+(defun fn2-up16-body (fn2-core)
+ (declare (xargs :stobjs fn2-core :verify-guards nil))
+ (b* ((fn2-core (fn2-init-executor *fn2-up16-profile* :echo nil fn2-core))
+      ((mv epoch fn2-core)
+       (stobj-let ((fn2-extents (fn2-core-extents fn2-core))) (code fn2-extents)
+        (fn2-alloc-begin-epoch 1 fn2-extents) (mv code fn2-core)))
+      ((mv status clients store captured fn2-core)
+       (fn2-up16-loop 800000 0 0
+        (fn2-cw-clients (list (list *fn2-up16-input* (list (len *fn2-up16-input*))))) nil nil fn2-core))
+      ((unless (and (eq epoch :ok) (eq status :quiet) (eq (car captured) :entries)
+                    (equal (fn2-cw-results clients) (list (fn2-txn-interim-wire "240 article received OK")))))
+       (mv (list :post status captured (fn2-core-stop-reason fn2-core)) fn2-core))
+      (first (nth 1 captured)) (sixteenth (nth 2 captured)) (seventeenth (nth 3 captured))
+      (write16 (assoc-equal (* (nth 2 sixteenth) *fn2-commit-unit-bytes*) store))
+      (write17 (assoc-equal (* (nth 2 seventeenth) *fn2-commit-unit-bytes*) store)))
+  (mv (if (and (= *fn2-storage-extent-units* 16) (= *fn2-commit-write-resources* 3)
+               (= *fn2-article-location-hashes-max* 96)
+               (= (fn2-am-units *fn2-am-stored-max*) 3)
+               (not (fn2-am-fits (+ 1 *fn2-am-stored-max*)))
+               (= (nth 0 sixteenth) (* 15 *fn2-commit-unit-bytes*))
+               (= (nth 0 seventeenth) (* 16 *fn2-commit-unit-bytes*))
+               (= (nth 1 sixteenth) *fn2-commit-unit-bytes*) (= (nth 1 seventeenth) *fn2-commit-unit-bytes*)
+               (= (len (cdr write16)) *fn2-commit-unit-bytes*) (= (len (cdr write17)) *fn2-commit-unit-bytes*)
+               (fn2-up16-extents-p first sixteenth seventeenth fn2-core)
+               (fn2-core-wfp fn2-core) (not (fn2-core-stopped-p fn2-core))) :ok (list :boundary captured)) fn2-core)))
+
+(assert-event (with-local-stobj fn2-core
+ (mv-let (result fn2-core) (fn2-up16-body fn2-core) (equal result :ok))))

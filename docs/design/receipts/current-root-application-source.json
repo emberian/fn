@@ -1,0 +1,1021 @@
+{
+  "root": "4c75c7ac4a220fcc2c7744b9ad1314bc11c30a38",
+  "application": "3bfac15f7fb93a6606d4ca859fa12c22645535df",
+  "files": [
+    {
+      "path": "Makefile",
+      "action": "preserve-root",
+      "reason": "Merge additions separately"
+    },
+    {
+      "path": "books/article-manifest.lisp",
+      "action": "project-reviewed-application",
+      "source": "3bfac15f7fb93a6606d4ca859fa12c22645535df",
+      "before_sha256": "68aa3deed50bd01949f6a188ed2a7726ad389246beff2107480fa846b7fae0c4",
+      "sha256": "1195d03a1eddd47c858670c7416619f8a1afd2a227504a47249fe202b4ba43d0"
+    },
+    {
+      "path": "books/assembly-callbacks-c-prepare.lisp",
+      "action": "project-reviewed-application",
+      "source": "3bfac15f7fb93a6606d4ca859fa12c22645535df",
+      "before_sha256": "52e1c85cb82aa70a6606417a282cd6d78b0f7cf53a513500cf7723e47e1d9834",
+      "sha256": "6aa1d2db519bc458d5f4161f9672fe44e9df0e029f541c49d7ea61368dc62239"
+    },
+    {
+      "path": "books/assembly-callbacks-d-conn.lisp",
+      "action": "project-reviewed-application",
+      "source": "3bfac15f7fb93a6606d4ca859fa12c22645535df",
+      "before_sha256": "93b9aacfff418e2c51ef205a22130d45f1bf9b23ae5bd184acd70afcb9ceb2f3",
+      "sha256": "c17cb4c61fd1dc1526135790349fab6954788f9a3abea2917c946a739976b483"
+    },
+    {
+      "path": "books/assembly-callbacks-d-upload.lisp",
+      "action": "project-reviewed-application",
+      "source": "3bfac15f7fb93a6606d4ca859fa12c22645535df",
+      "before_sha256": "a342eca040465c03e2c8bcf506f0650622899115fc9497ead699c8692c176324",
+      "sha256": "6c0f9a558e2d9b8d0f1328252f01e20004183bd520edfc2ce13cf2a9e7413ae3"
+    },
+    {
+      "path": "books/assurance-completion.lisp",
+      "action": "preserve-root",
+      "reason": "Immutable claim/refutation foundation or root registrations"
+    },
+    {
+      "path": "books/authority.lisp",
+      "action": "project-reviewed-application",
+      "source": "3bfac15f7fb93a6606d4ca859fa12c22645535df",
+      "before_sha256": "2c8389ed2b6d49c8312e6ef1f864fe5a90be739e0f564d7dcb78b6fea5e84927",
+      "sha256": "bd2d771bb2c4ffb8333461b1e3e9e7894c4a9216a922ebb47cf2f1b7fe5e8c33"
+    },
+    {
+      "path": "books/cns-draining-contract.lisp",
+      "action": "project-reviewed-application",
+      "source": "3bfac15f7fb93a6606d4ca859fa12c22645535df",
+      "before_sha256": "370477e6b50f5f930b59e1c062d19bf09f23e206b960cdb1f23ac35efdabde99",
+      "sha256": "c3b015545d183fedffdcf03f15ef5b7ad6c023743404f021fba6da8698581eac"
+    },
+    {
+      "path": "books/cns-draining-direct-events.lisp",
+      "action": "project-reviewed-application",
+      "source": "3bfac15f7fb93a6606d4ca859fa12c22645535df",
+      "before_sha256": "fdbd88522bfaaad2ea3366baa3d24c1f3ab469961d4af6da5b7301909dc4a175",
+      "sha256": "62b62bac09be89d8db96277a15e3a14b0f642cc522511cc718f5fb4d59e3d061"
+    },
+    {
+      "path": "books/cns-draining-effects.lisp",
+      "action": "project-reviewed-application",
+      "source": "3bfac15f7fb93a6606d4ca859fa12c22645535df",
+      "before_sha256": "6b9ef6aff03c3c91008243b0b4ec7cb500e1f25bd2a5f559073d5009e8e517cb",
+      "sha256": "6cf5a6557381362c31136e1c6f1dd63a79770d3ddb56b613b151be0dfff75bd5"
+    },
+    {
+      "path": "books/cns-draining-model.lisp",
+      "action": "project-reviewed-application",
+      "source": "3bfac15f7fb93a6606d4ca859fa12c22645535df",
+      "before_sha256": "16f29f1ff4fe728ff934e2328bb6180ce58d1d0aab90d37fc9b55cbd53b527cc",
+      "sha256": "e1f4324851ffd52a9d6157a2f5c3ad6eb062a61936c9b4fcfe739f3131a7a1d6"
+    },
+    {
+      "path": "books/cns-draining-public.lisp",
+      "action": "project-reviewed-application",
+      "source": "3bfac15f7fb93a6606d4ca859fa12c22645535df",
+      "before_sha256": "18489625c3732a6d1054c30824faad1f9ed4cd552b09a531ce3c15aab6376a5f",
+      "sha256": "643345c35f1ea09eede1ca502b72ae4811cd3a31eba6414537e867c5a537e205"
+    },
+    {
+      "path": "books/cns-fetch-prefix-codec.lisp",
+      "action": "project-reviewed-application",
+      "source": "3bfac15f7fb93a6606d4ca859fa12c22645535df",
+      "before_sha256": null,
+      "sha256": "7a40b6078faafd9ee0a72fc23ed2065e151bc78ac9f429a38c8755de579b0f56"
+    },
+    {
+      "path": "books/cns-kind.lisp",
+      "action": "project-reviewed-application",
+      "source": "3bfac15f7fb93a6606d4ca859fa12c22645535df",
+      "before_sha256": "d3cd6a4f876e281b43f3c6d80cd587593d7400ea83dda98ecefcfe7f7cf7cb89",
+      "sha256": "9d18e41af71fb313f452499ef0ec43395aa34028d46647cc9c23073046de9d9f"
+    },
+    {
+      "path": "books/cns-pool-refinement.lisp",
+      "action": "project-reviewed-application",
+      "source": "3bfac15f7fb93a6606d4ca859fa12c22645535df",
+      "before_sha256": "33152144c6c1c3104f937480c7be548402f1b93a80066a773e013cd4a9b05cfc",
+      "sha256": "06a42d4a1f389cfb3fd2cea6d5df257f79ca073c395682d5b892922fdc49d4f1"
+    },
+    {
+      "path": "books/cns-query-lifetime-model.lisp",
+      "action": "project-reviewed-application",
+      "source": "3bfac15f7fb93a6606d4ca859fa12c22645535df",
+      "before_sha256": null,
+      "sha256": "3d602fb5629e7818eb4b9ecd35f5d5ec7c2bb894972b6aa0193e40704e7e85c1"
+    },
+    {
+      "path": "books/cns-read-work-bounds.lisp",
+      "action": "project-reviewed-application",
+      "source": "3bfac15f7fb93a6606d4ca859fa12c22645535df",
+      "before_sha256": null,
+      "sha256": "e1ab86cb377a7c2201142fba990f9ddff8ad4be6bf4902030d5c825d82b3ba7b"
+    },
+    {
+      "path": "books/cns-release-accounting.lisp",
+      "action": "project-reviewed-application",
+      "source": "3bfac15f7fb93a6606d4ca859fa12c22645535df",
+      "before_sha256": "17d8d94d17ed24e13d8e8399ff5272f7bd0cf321a641c3c22b0960a0fd4f9a7e",
+      "sha256": "7a6f44df88a164e50891a47f1a9240f32f779755f72acda363dcfa7950a56934"
+    },
+    {
+      "path": "books/cns-release-refinement.lisp",
+      "action": "project-reviewed-application",
+      "source": "3bfac15f7fb93a6606d4ca859fa12c22645535df",
+      "before_sha256": "cb071c25a83f20556d56f47cebf3679570d470328201c09a1db8906bae4746a0",
+      "sha256": "0a9c6ffddecf232c0580db8132c5659f2425b22a6e22a9b957f291810ddbe2b7"
+    },
+    {
+      "path": "books/cns-source-capture.lisp",
+      "action": "project-reviewed-application",
+      "source": "3bfac15f7fb93a6606d4ca859fa12c22645535df",
+      "before_sha256": null,
+      "sha256": "e35334278e92c3209a3b67d08e99388879aa66f1fd160499e6ee9c7de85d5727"
+    },
+    {
+      "path": "books/cns-source-core.lisp",
+      "action": "project-reviewed-application",
+      "source": "3bfac15f7fb93a6606d4ca859fa12c22645535df",
+      "before_sha256": null,
+      "sha256": "56c5ddf76cd44737da6b9c31f1c44127c6e0f69cd8de8db9b908d4e8a23c1c91"
+    },
+    {
+      "path": "books/cns-source-hash.lisp",
+      "action": "project-reviewed-application",
+      "source": "3bfac15f7fb93a6606d4ca859fa12c22645535df",
+      "before_sha256": null,
+      "sha256": "60e2d6bec152895c0ac026b9a1e2135ca49ac9a1ed9fa24b25d14b07615f8a4c"
+    },
+    {
+      "path": "books/cns-source-manifest.lisp",
+      "action": "project-reviewed-application",
+      "source": "3bfac15f7fb93a6606d4ca859fa12c22645535df",
+      "before_sha256": null,
+      "sha256": "63e9e4f974f3012778ac705d16b4d1fcb471196eacb420e8e9b648e96a5e4543"
+    },
+    {
+      "path": "books/cns-source-raw.lisp",
+      "action": "project-reviewed-application",
+      "source": "3bfac15f7fb93a6606d4ca859fa12c22645535df",
+      "before_sha256": null,
+      "sha256": "491c2e43581ecdece97662d655d7e0a2791443160d8f4d08e54e7a435aa55051"
+    },
+    {
+      "path": "books/cns-source-retention.lisp",
+      "action": "project-reviewed-application",
+      "source": "3bfac15f7fb93a6606d4ca859fa12c22645535df",
+      "before_sha256": null,
+      "sha256": "75c901e7b3b7f7a2e7adb72e0e3220fc89675c45374810b57b926a1b704a7122"
+    },
+    {
+      "path": "books/cns-source-state.lisp",
+      "action": "project-reviewed-application",
+      "source": "3bfac15f7fb93a6606d4ca859fa12c22645535df",
+      "before_sha256": null,
+      "sha256": "01056705c1c63fff3b196bf743b838deca04ea1a938c823105574728d9d2192e"
+    },
+    {
+      "path": "books/cns-source-workspace.lisp",
+      "action": "project-reviewed-application",
+      "source": "3bfac15f7fb93a6606d4ca859fa12c22645535df",
+      "before_sha256": null,
+      "sha256": "ccb4f43d3c4b9b1a2e82d092d7fea50516ba0d0175b82512523a4e50b097fc38"
+    },
+    {
+      "path": "books/cns.lisp",
+      "action": "project-reviewed-application",
+      "source": "3bfac15f7fb93a6606d4ca859fa12c22645535df",
+      "before_sha256": "cd90bbe43d1d09d657d15d05dbe474c567e46aab7c68709c84aba4c7befa04fe",
+      "sha256": "40a64e298479cc40c0310e2dc033f90a4dc4c2dead1e8514680e945d1cdf32d9"
+    },
+    {
+      "path": "books/core-scheduler-wake.lisp",
+      "action": "project-reviewed-application",
+      "source": "3bfac15f7fb93a6606d4ca859fa12c22645535df",
+      "before_sha256": null,
+      "sha256": "635d5a22b95731c850fec4eac370ef154862645fa1d949e6936b262baa72527e"
+    },
+    {
+      "path": "books/ctl-output-events.lisp",
+      "action": "project-reviewed-application",
+      "source": "3bfac15f7fb93a6606d4ca859fa12c22645535df",
+      "before_sha256": null,
+      "sha256": "d0ed54f484c344489fc06ef2df5dd51b6af37bbde2bc0f14aa8fdea37908364f"
+    },
+    {
+      "path": "books/ctl-stream-events.lisp",
+      "action": "project-reviewed-application",
+      "source": "3bfac15f7fb93a6606d4ca859fa12c22645535df",
+      "before_sha256": null,
+      "sha256": "9f15678a809e0d684bf13ca0edd9ca8c6032c0ee10f710b8d2f683a4a5f88540"
+    },
+    {
+      "path": "books/cursor.lisp",
+      "action": "project-reviewed-application",
+      "source": "3bfac15f7fb93a6606d4ca859fa12c22645535df",
+      "before_sha256": "708d54aee59214326c22b78b880f7de1ee5cbedda752af7ac42554ddf52c952c",
+      "sha256": "cd5edbedde00df7eaeb91de0df3e0769d22cb5024cc2acf9f6a2321b8c52762c"
+    },
+    {
+      "path": "books/declare.lisp",
+      "action": "preserve-root",
+      "reason": "Immutable claim/refutation foundation or root registrations"
+    },
+    {
+      "path": "books/enqueue-trace.lisp",
+      "action": "project-reviewed-application",
+      "source": "3bfac15f7fb93a6606d4ca859fa12c22645535df",
+      "before_sha256": null,
+      "sha256": "fa34a2a6c32783824efd1aba470fc7174faed09959a74d61a5bb608373cf894c"
+    },
+    {
+      "path": "books/executor-access-events.lisp",
+      "action": "project-reviewed-application",
+      "source": "3bfac15f7fb93a6606d4ca859fa12c22645535df",
+      "before_sha256": "0f7b90857ac55135aa0775ccb9592f560c94cfc943c24d27196d1a358d1c5085",
+      "sha256": "94c5bcdecbdfcb44ce46ce159479e26c5744274017c7bca2e686f3e26fdbbbb9"
+    },
+    {
+      "path": "books/executor-loop-events.lisp",
+      "action": "project-reviewed-application",
+      "source": "3bfac15f7fb93a6606d4ca859fa12c22645535df",
+      "before_sha256": "e4d51d3f4352a0257b51c55b30914c15b0e0aa81df26f94008b299f328c81c14",
+      "sha256": "4c02a741e61b1ecae2ce6a52aac4bc37f11a5468d00d08f096bb7c403426e094"
+    },
+    {
+      "path": "books/machines-b.lisp",
+      "action": "project-reviewed-application",
+      "source": "3bfac15f7fb93a6606d4ca859fa12c22645535df",
+      "before_sha256": "a29059a34261d157eadd0f8105f48c60cf3b7d6b1179221002bfb0e63818e383",
+      "sha256": "29faad62bddb81af0d28899086cd0356b62ce8860bde9c544b5543cb96a75b03"
+    },
+    {
+      "path": "books/machines-c-bind.lisp",
+      "action": "project-reviewed-application",
+      "source": "3bfac15f7fb93a6606d4ca859fa12c22645535df",
+      "before_sha256": "f26756c768f7a787fcac74faa28e4e645e027f2077856b1deac2d8683846afcd",
+      "sha256": "49774ab3709adbe59ac16c7858f50fe6a520c405d1cc2cd89ca700e98787be6a"
+    },
+    {
+      "path": "books/machines-c-groups.lisp",
+      "action": "project-reviewed-application",
+      "source": "3bfac15f7fb93a6606d4ca859fa12c22645535df",
+      "before_sha256": "5dd123b46731e9382e1f985489f8773d55f626d0a50d6677aa0cb3d74f19c293",
+      "sha256": "02dcfad52966cc61abf1b546856760e6a3cacae38f3cf85c201d5225924637c2"
+    },
+    {
+      "path": "books/machines-c-read.lisp",
+      "action": "project-reviewed-application",
+      "source": "3bfac15f7fb93a6606d4ca859fa12c22645535df",
+      "before_sha256": "561bae3856e59b753136e657df7d8960154e0618208954ed8e49a151bde3964d",
+      "sha256": "693af05503342474822b31d844aab7aed653a63151a910f47927c73d90d91f15"
+    },
+    {
+      "path": "books/machines-c-stage.lisp",
+      "action": "project-reviewed-application",
+      "source": "3bfac15f7fb93a6606d4ca859fa12c22645535df",
+      "before_sha256": "b745cea89d62bf984307376387fc4a7a00c7b77d11d1cefd5b57f71378c5713f",
+      "sha256": "6e7cc3b8ce856ea2c6c9eff6b03f7fb4aeda572015076ee17f88fde662373ebe"
+    },
+    {
+      "path": "books/machines-c-successor.lisp",
+      "action": "project-reviewed-application",
+      "source": "3bfac15f7fb93a6606d4ca859fa12c22645535df",
+      "before_sha256": "3cc72712a7f54ce24372ea2e2fc37fa1efecbdd0963044064e17c0938dfa467e",
+      "sha256": "0211f10dde290b5f58550f2d7831c6e8b343ea8f4545b4eea181b7df379552a0"
+    },
+    {
+      "path": "books/machines-c.lisp",
+      "action": "project-reviewed-application",
+      "source": "3bfac15f7fb93a6606d4ca859fa12c22645535df",
+      "before_sha256": "0ff2c7913bcfb24e8d53b13108053f5dcc6ae57da3dd7dc4d3ca5ba2a07cba2e",
+      "sha256": "013880be131d9bec09955b85e183c1d67e0776dfdee231b2c8c3ea552ae662f6"
+    },
+    {
+      "path": "books/owed-report.lisp",
+      "action": "preserve-root",
+      "reason": "Immutable claim/refutation foundation or root registrations"
+    },
+    {
+      "path": "books/owed.lisp",
+      "action": "preserve-root",
+      "reason": "Immutable claim/refutation foundation or root registrations"
+    },
+    {
+      "path": "books/query-ref-wake.lisp",
+      "action": "project-reviewed-application",
+      "source": "3bfac15f7fb93a6606d4ca859fa12c22645535df",
+      "before_sha256": null,
+      "sha256": "6424eb8b34b9b6f307da9f5edea93c498a096677c607f725f55875dcc9e2f379"
+    },
+    {
+      "path": "books/query-reference-core-predicate.lisp",
+      "action": "project-reviewed-application",
+      "source": "3bfac15f7fb93a6606d4ca859fa12c22645535df",
+      "before_sha256": null,
+      "sha256": "4b3e43e64ff673d6f37145b247aa5dc159515694f6ac1135daf17ee46b2c84cb"
+    },
+    {
+      "path": "books/query-reference-predicates.lisp",
+      "action": "project-reviewed-application",
+      "source": "3bfac15f7fb93a6606d4ca859fa12c22645535df",
+      "before_sha256": null,
+      "sha256": "44c87b79a38e99eda95204265b6ba1e3b852ebc797db1eb4694e071199d8ab2e"
+    },
+    {
+      "path": "books/queue-model.lisp",
+      "action": "project-reviewed-application",
+      "source": "3bfac15f7fb93a6606d4ca859fa12c22645535df",
+      "before_sha256": null,
+      "sha256": "5d0cdb22d75771e96610c5e3ef28cabf5df05f8be9664f44872113bdebf7f96d"
+    },
+    {
+      "path": "books/recovery-payload.lisp",
+      "action": "project-reviewed-application",
+      "source": "3bfac15f7fb93a6606d4ca859fa12c22645535df",
+      "before_sha256": "5e04bf95c1b0e242acfd0405112460e451f168181ef55d3ad04105aaeb1795f8",
+      "sha256": "7c77058b5b08d25c11476d4b09211875825ea8dc1b05ad1ab53122b2598d9a81"
+    },
+    {
+      "path": "books/source-manifest-entry.lisp",
+      "action": "project-reviewed-application",
+      "source": "3bfac15f7fb93a6606d4ca859fa12c22645535df",
+      "before_sha256": null,
+      "sha256": "7bd3b811e51923f75237f37ec2a906bc02860532ba18558b37fffbd915d6d4fc"
+    },
+    {
+      "path": "books/successor-schema-geometry.lisp",
+      "action": "project-reviewed-application",
+      "source": "3bfac15f7fb93a6606d4ca859fa12c22645535df",
+      "before_sha256": null,
+      "sha256": "99ce2bd6d103be821a896ecff5c0faeb79cbecda0e407f5c0ab1fb9ced69ceaa"
+    },
+    {
+      "path": "books/successor-workspace-geometry.lisp",
+      "action": "project-reviewed-application",
+      "source": "3bfac15f7fb93a6606d4ca859fa12c22645535df",
+      "before_sha256": null,
+      "sha256": "a94c86448e9a52a2abc76a8b8d4437311b5044e00c2edb61c0c0e49aec1e841f"
+    },
+    {
+      "path": "books/trace-events.lisp",
+      "action": "project-reviewed-application",
+      "source": "3bfac15f7fb93a6606d4ca859fa12c22645535df",
+      "before_sha256": null,
+      "sha256": "8ff5d82c85aed855bf651d7b8902707ae4019fa51cf0076f485dae7f4caa5c29"
+    },
+    {
+      "path": "books/txn.lisp",
+      "action": "project-reviewed-application",
+      "source": "3bfac15f7fb93a6606d4ca859fa12c22645535df",
+      "before_sha256": "cb4e2c09fa3b565877e86123ccfe3bb55f9897938c44179dc9f7deec2c19c2c2",
+      "sha256": "151a07ccc23264b60846b9f5fb9faf87be1d436a9c5e83971a3dc50e547e2fc8"
+    },
+    {
+      "path": "books/upload-kind.lisp",
+      "action": "project-reviewed-application",
+      "source": "3bfac15f7fb93a6606d4ca859fa12c22645535df",
+      "before_sha256": "a6300c4761e615b8e046072c9fe6b3c1f0911d39e24c5edc424d8035ecb1737f",
+      "sha256": "017715e8aed1b68f50f18a282be9cc02db0c04a4d04ddbdeb4cf4c7b205060f4"
+    },
+    {
+      "path": "books/upload.lisp",
+      "action": "project-reviewed-application",
+      "source": "3bfac15f7fb93a6606d4ca859fa12c22645535df",
+      "before_sha256": "004b64f8666bba9ff56c12f0bb795765a1cf596786366006426a6cbf4d861ff6",
+      "sha256": "3ec0073a959bf9492ffe8c3ad9286cfa574f4e61643c3ceff8da8bdaa5de4849"
+    },
+    {
+      "path": "tests/checkpoint-member-refutation-export.lsp",
+      "action": "preserve-root",
+      "reason": "Immutable claim/refutation foundation or root registrations"
+    },
+    {
+      "path": "tests/checkpoint-member-refutation-unit.lisp",
+      "action": "preserve-root",
+      "reason": "Immutable claim/refutation foundation or root registrations"
+    },
+    {
+      "path": "tests/cns-article-slice-unit.lisp",
+      "action": "project-reviewed-application",
+      "source": "3bfac15f7fb93a6606d4ca859fa12c22645535df",
+      "before_sha256": null,
+      "sha256": "58fb26dc09db67722a76c17bd24a2d13a49d9f47cf65dc073bc06a32c86a73f5"
+    },
+    {
+      "path": "tests/cns-drain-parent-controls.lsp",
+      "action": "project-reviewed-application",
+      "source": "3bfac15f7fb93a6606d4ca859fa12c22645535df",
+      "before_sha256": null,
+      "sha256": "df2ee5fdfc8af48a7093ec11815966907d45ef4fdd9c59ab844570a832658287"
+    },
+    {
+      "path": "tests/cns-draining-count-counterexample.lisp",
+      "action": "project-reviewed-application",
+      "source": "3bfac15f7fb93a6606d4ca859fa12c22645535df",
+      "before_sha256": "48043be834df0cdf2dde2917cc85c6eb52be398a3b274edb7e1b903621da6f00",
+      "sha256": "83100770c7db7205d8660c6d4911f483eb97dfb1264b240424433f364e82e92e"
+    },
+    {
+      "path": "tests/cns-draining-credit-unit.lisp",
+      "action": "project-reviewed-application",
+      "source": "3bfac15f7fb93a6606d4ca859fa12c22645535df",
+      "before_sha256": null,
+      "sha256": "db48194dff5b9f16a75d668fa13940e11444c8ad045d1a60df98c8375efac17e"
+    },
+    {
+      "path": "tests/cns-draining-teeth-unit.lisp",
+      "action": "project-reviewed-application",
+      "source": "3bfac15f7fb93a6606d4ca859fa12c22645535df",
+      "before_sha256": null,
+      "sha256": "d18a80ab7ede8e332032cc15a281dce2e357d2f86e3bff4f43d1501aafaa0ebf"
+    },
+    {
+      "path": "tests/cns-fetch-cancel-unit.lisp",
+      "action": "project-reviewed-application",
+      "source": "3bfac15f7fb93a6606d4ca859fa12c22645535df",
+      "before_sha256": null,
+      "sha256": "d6a15306df89bd3ad943a92c09691a88d221edd2a7317464ff81fb5bd8111709"
+    },
+    {
+      "path": "tests/cns-fetch-prefix-unit.lisp",
+      "action": "project-reviewed-application",
+      "source": "3bfac15f7fb93a6606d4ca859fa12c22645535df",
+      "before_sha256": null,
+      "sha256": "5f16bd9bd84ac0a6a1c0f56e0a3ee4bace537b632f42a74c389262a462f991a5"
+    },
+    {
+      "path": "tests/cns-query-lifetime-unit.lisp",
+      "action": "project-reviewed-application",
+      "source": "3bfac15f7fb93a6606d4ca859fa12c22645535df",
+      "before_sha256": null,
+      "sha256": "e39504a8c2b6c3e051e357cce82df9c5babb31a8e35685343cac052652eba80d"
+    },
+    {
+      "path": "tests/cns-query-support.lisp",
+      "action": "project-reviewed-application",
+      "source": "3bfac15f7fb93a6606d4ca859fa12c22645535df",
+      "before_sha256": null,
+      "sha256": "2bd26656ed0545022490abed41deb3241643e4da63912045e7d883f49fe5c32a"
+    },
+    {
+      "path": "tests/cns-range-continuation-unit.lisp",
+      "action": "project-reviewed-application",
+      "source": "3bfac15f7fb93a6606d4ca859fa12c22645535df",
+      "before_sha256": null,
+      "sha256": "1cc5b1bdc17a454bf353f5787414899a30cc24748dd0d679e646508f9528c362"
+    },
+    {
+      "path": "tests/cns-recovered-fetch-unit.lisp",
+      "action": "project-reviewed-application",
+      "source": "3bfac15f7fb93a6606d4ca859fa12c22645535df",
+      "before_sha256": "062c0d8d899c41c91819b75553d23f58318edb847e91eb9ce551fcc493367e7a",
+      "sha256": "d8c9c573b01665b85ab37d7532fcb47e5104926910a2aca18b278117ff2b3ea5"
+    },
+    {
+      "path": "tests/cns-release-refinement-unit.lisp",
+      "action": "project-reviewed-application",
+      "source": "3bfac15f7fb93a6606d4ca859fa12c22645535df",
+      "before_sha256": "8529c931c59ae6e0f845d7f4d19bd2cbcdb7f2369e4e232d458cec653d449601",
+      "sha256": "e647d089c69fe4a4a70814c0f53162890f38cb515717adde51c909b74f936b83"
+    },
+    {
+      "path": "tests/cns-source-arm-controls.lsp",
+      "action": "project-reviewed-application",
+      "source": "3bfac15f7fb93a6606d4ca859fa12c22645535df",
+      "before_sha256": null,
+      "sha256": "1628c4ae011808fa6e54ff7edb2d38a763cb053e2b540b1ec782dafb89b23e6a"
+    },
+    {
+      "path": "tests/cns-source-capture-unit.lisp",
+      "action": "project-reviewed-application",
+      "source": "3bfac15f7fb93a6606d4ca859fa12c22645535df",
+      "before_sha256": null,
+      "sha256": "cd9179b3b54f7b7b463b6ca2bfc6ff40f7fea880ac8f7ec8b4f26aeee459dc4d"
+    },
+    {
+      "path": "tests/cns-source-hash-interleave-unit.lisp",
+      "action": "project-reviewed-application",
+      "source": "3bfac15f7fb93a6606d4ca859fa12c22645535df",
+      "before_sha256": null,
+      "sha256": "b11836a2e959ada702216c8e177fe5198ab8ec1108000b6ef06e1547de73c06a"
+    },
+    {
+      "path": "tests/cns-source-retention-unit.lisp",
+      "action": "project-reviewed-application",
+      "source": "3bfac15f7fb93a6606d4ca859fa12c22645535df",
+      "before_sha256": null,
+      "sha256": "3ada1249dd74672b532de2d736ccdec4502236253c60c6f14d8297b9c792fb92"
+    },
+    {
+      "path": "tests/cns-stream-append-unit.lisp",
+      "action": "project-reviewed-application",
+      "source": "3bfac15f7fb93a6606d4ca859fa12c22645535df",
+      "before_sha256": null,
+      "sha256": "642fd03a3298ef6fee9215782d7fd37ff40b9e659f2c6fd6f7a54dd23ef2354e"
+    },
+    {
+      "path": "tests/cns-stream-fetch-unit.lisp",
+      "action": "project-reviewed-application",
+      "source": "3bfac15f7fb93a6606d4ca859fa12c22645535df",
+      "before_sha256": null,
+      "sha256": "20695e2a8d6e3e9fef88222ce482bd184955cee1344db293ede58b9a82420388"
+    },
+    {
+      "path": "tests/cns-tall-runs-support.lisp",
+      "action": "project-reviewed-application",
+      "source": "3bfac15f7fb93a6606d4ca859fa12c22645535df",
+      "before_sha256": null,
+      "sha256": "3fb48f1e2e7f611ca28e401d79128cbba866c91ddff057aed04b26750815e623"
+    },
+    {
+      "path": "tests/cns-tall-runs-unit.lisp",
+      "action": "project-reviewed-application",
+      "source": "3bfac15f7fb93a6606d4ca859fa12c22645535df",
+      "before_sha256": null,
+      "sha256": "2ea5e5070605d1d6a4faa767c2681a579d56c6ccb1a81ffb1ee79b4ee3f99b70"
+    },
+    {
+      "path": "tests/cns-terminal-accounting-unit.lisp",
+      "action": "project-reviewed-application",
+      "source": "3bfac15f7fb93a6606d4ca859fa12c22645535df",
+      "before_sha256": null,
+      "sha256": "87fdfa505d19fad989715b72d5503a547020f651df3965584e83ea3362d139be"
+    },
+    {
+      "path": "tests/ctl-frame-receive-controls.lsp",
+      "action": "project-reviewed-application",
+      "source": "3bfac15f7fb93a6606d4ca859fa12c22645535df",
+      "before_sha256": null,
+      "sha256": "d514f0b51d7f1f65a1867d8b1091738704781129e65450514dafb8d07d1f8c46"
+    },
+    {
+      "path": "tests/ctl-hash-interleave-unit.lisp",
+      "action": "project-reviewed-application",
+      "source": "3bfac15f7fb93a6606d4ca859fa12c22645535df",
+      "before_sha256": null,
+      "sha256": "9370746538071d43972bda6f5df2756766dd40d1f22e1b52e8641d9b522f59a3"
+    },
+    {
+      "path": "tests/ctl-output-arm-controls.lsp",
+      "action": "project-reviewed-application",
+      "source": "3bfac15f7fb93a6606d4ca859fa12c22645535df",
+      "before_sha256": null,
+      "sha256": "a629f08e8a8637fbf07b9da6afb57203600515dfcfd9c26df3c9fbbc95e0a72c"
+    },
+    {
+      "path": "tests/ctl-output-geometry-controls.lsp",
+      "action": "project-reviewed-application",
+      "source": "3bfac15f7fb93a6606d4ca859fa12c22645535df",
+      "before_sha256": null,
+      "sha256": "d3bfa1cffd331d4149744e5e121ec0499b6dbb7ff6f80d18505dc02ff3be49a2"
+    },
+    {
+      "path": "tests/ctl-stream-arm-controls.lsp",
+      "action": "project-reviewed-application",
+      "source": "3bfac15f7fb93a6606d4ca859fa12c22645535df",
+      "before_sha256": null,
+      "sha256": "745635aaf8e7f9cd260677751ebfd06544a9b0d652085de58fb140169f4f9e53"
+    },
+    {
+      "path": "tests/ctl-stripe-map-unit.lisp",
+      "action": "project-reviewed-application",
+      "source": "3bfac15f7fb93a6606d4ca859fa12c22645535df",
+      "before_sha256": null,
+      "sha256": "c8da483517946a7e884b62ee0850ef5c099ca56de782346dce9d39bca6cb7a79"
+    },
+    {
+      "path": "tests/enqueue-cost-unit.lisp",
+      "action": "project-reviewed-application",
+      "source": "3bfac15f7fb93a6606d4ca859fa12c22645535df",
+      "before_sha256": null,
+      "sha256": "c7a17b57fcabc8c8392323e271a23b7f79fdc0a843cee4fa88de1dd2fb97ddf1"
+    },
+    {
+      "path": "tests/fixtures/cns_source_mv_returns.json",
+      "action": "project-reviewed-application",
+      "source": "3bfac15f7fb93a6606d4ca859fa12c22645535df",
+      "before_sha256": null,
+      "sha256": "e22c257083c0993f7dfa04bebb292b86b6d1745719bb2d36fabed9855b5b7724"
+    },
+    {
+      "path": "tests/fnct-client-frame-unit.lisp",
+      "action": "project-reviewed-application",
+      "source": "3bfac15f7fb93a6606d4ca859fa12c22645535df",
+      "before_sha256": null,
+      "sha256": "4044b6955ef1879802ff2e9686729b74d0a3e950daef035175ebd6e93c1b58e4"
+    },
+    {
+      "path": "tests/fnct-client.lisp",
+      "action": "project-reviewed-application",
+      "source": "3bfac15f7fb93a6606d4ca859fa12c22645535df",
+      "before_sha256": "81723809516e023f41e0802ebf67034955f29a83d70d68d1c863e9766c82a301",
+      "sha256": "e258fa93440b3ee54ba51acabcf5a49eefa479efca329ef2fcb511408a8137c9"
+    },
+    {
+      "path": "tests/fnct-stream-controls.lsp",
+      "action": "project-reviewed-application",
+      "source": "3bfac15f7fb93a6606d4ca859fa12c22645535df",
+      "before_sha256": null,
+      "sha256": "a6a2001ac7fbb44cd951f91fa8d584699bacfc90f110c11089bc2d94ffe38d7f"
+    },
+    {
+      "path": "tests/owed-refutation-export.lsp",
+      "action": "preserve-root",
+      "reason": "Immutable claim/refutation foundation or root registrations"
+    },
+    {
+      "path": "tests/owed-refutation-unit.lisp",
+      "action": "preserve-root",
+      "reason": "Immutable claim/refutation foundation or root registrations"
+    },
+    {
+      "path": "tests/query-owner-drain-unit.lisp",
+      "action": "project-reviewed-application",
+      "source": "3bfac15f7fb93a6606d4ca859fa12c22645535df",
+      "before_sha256": null,
+      "sha256": "4a5f3adfa26376e3c243ce225f7c88167f5a018780eec338ae12c19f57cb79c2"
+    },
+    {
+      "path": "tests/query-reference-unit.lisp",
+      "action": "project-reviewed-application",
+      "source": "3bfac15f7fb93a6606d4ca859fa12c22645535df",
+      "before_sha256": null,
+      "sha256": "9c415491f18014dacd44f42aec843d82c30a5bcfb503b99a902d766378d81e03"
+    },
+    {
+      "path": "tests/query-two-wake-unit.lisp",
+      "action": "project-reviewed-application",
+      "source": "3bfac15f7fb93a6606d4ca859fa12c22645535df",
+      "before_sha256": null,
+      "sha256": "848e7bb47c1b393872ef27dcffaea371934ae3a6913b2b821ed4474d0c4a1b87"
+    },
+    {
+      "path": "tests/query-wake-frame-controls.lsp",
+      "action": "project-reviewed-application",
+      "source": "3bfac15f7fb93a6606d4ca859fa12c22645535df",
+      "before_sha256": null,
+      "sha256": "e2209ec35da295687a1a0625e5a2255d1eaabce5f0b9f31cad9d1326909c28f5"
+    },
+    {
+      "path": "tests/queue-model-unit.lisp",
+      "action": "project-reviewed-application",
+      "source": "3bfac15f7fb93a6606d4ca859fa12c22645535df",
+      "before_sha256": null,
+      "sha256": "0d4f47e6b9d3002bb32bc06596d4f05ef3aec5044d34383f1fee00470e4d1f8d"
+    },
+    {
+      "path": "tests/read_shape_one_controls.lsp",
+      "action": "project-reviewed-application",
+      "source": "3bfac15f7fb93a6606d4ca859fa12c22645535df",
+      "before_sha256": null,
+      "sha256": "e9343bd9b11d34f3d473137aaf343533a09cd3bc4041c889e57b7747cdb73385"
+    },
+    {
+      "path": "tests/runs-header-shape-controls.lsp",
+      "action": "project-reviewed-application",
+      "source": "3bfac15f7fb93a6606d4ca859fa12c22645535df",
+      "before_sha256": null,
+      "sha256": "d1fc3f37748fc9d63146cf32392f0bb8e6543885e2a4f537ede6a563a4aa1169"
+    },
+    {
+      "path": "tests/square-evidence-unit.lisp",
+      "action": "preserve-root",
+      "reason": "Immutable claim/refutation foundation or root registrations"
+    },
+    {
+      "path": "tests/successor-geometry-unit.lisp",
+      "action": "project-reviewed-application",
+      "source": "3bfac15f7fb93a6606d4ca859fa12c22645535df",
+      "before_sha256": null,
+      "sha256": "55e27e3347a24aa1d332d716f08f9db6a20bd1b5054f4a60c586bdf5763362ae"
+    },
+    {
+      "path": "tests/test_admission_rollback_source_shape.py",
+      "action": "project-reviewed-application",
+      "source": "3bfac15f7fb93a6606d4ca859fa12c22645535df",
+      "before_sha256": null,
+      "sha256": "674748653a132ab8fe589726e561b84c46d87ca7b64d230960498f28f9a1cf10"
+    },
+    {
+      "path": "tests/test_checkpoint_member_refutation.py",
+      "action": "preserve-root",
+      "reason": "Immutable claim/refutation foundation or root registrations"
+    },
+    {
+      "path": "tests/test_cns_phase_source.py",
+      "action": "project-reviewed-application",
+      "source": "3bfac15f7fb93a6606d4ca859fa12c22645535df",
+      "before_sha256": null,
+      "sha256": "195f5aa7ba5d33e0bbbb9173e65d51e6b2a920715b840acee07f1b996b0e7006"
+    },
+    {
+      "path": "tests/test_cns_read_work_source.py",
+      "action": "project-reviewed-application",
+      "source": "3bfac15f7fb93a6606d4ca859fa12c22645535df",
+      "before_sha256": null,
+      "sha256": "74d95fd63502bf71902499edbfa42b5dadf484bc4758a8fda3d1564133c5a84c"
+    },
+    {
+      "path": "tests/test_min_arity_source.py",
+      "action": "project-reviewed-application",
+      "source": "3bfac15f7fb93a6606d4ca859fa12c22645535df",
+      "before_sha256": null,
+      "sha256": "af4b14c258bc31fd004d80c3b335c07805f74a474d026b5a43936382f2e9dfb7"
+    },
+    {
+      "path": "tests/test_owed_refutation.py",
+      "action": "preserve-root",
+      "reason": "Immutable claim/refutation foundation or root registrations"
+    },
+    {
+      "path": "tests/test_query_wake_frames.py",
+      "action": "project-reviewed-application",
+      "source": "3bfac15f7fb93a6606d4ca859fa12c22645535df",
+      "before_sha256": null,
+      "sha256": "a85a3214b92104f9dbbfafc6fa25d366e6e4019b010a74630e3b8601d9f8ea91"
+    },
+    {
+      "path": "tests/test_read_shape_one.py",
+      "action": "project-reviewed-application",
+      "source": "3bfac15f7fb93a6606d4ca859fa12c22645535df",
+      "before_sha256": null,
+      "sha256": "e8c86a4f0d5da63f03f06b7e58491332265d64399b56833044c937ceedb5f04f"
+    },
+    {
+      "path": "tests/test_runs_header_shape_hints.py",
+      "action": "project-reviewed-application",
+      "source": "3bfac15f7fb93a6606d4ca859fa12c22645535df",
+      "before_sha256": null,
+      "sha256": "ad1e3b184ed9beb628922d9b7fd8db2ec73b1739044c8393b887c0697af9364a"
+    },
+    {
+      "path": "tests/test_trace_replay.py",
+      "action": "project-reviewed-application",
+      "source": "3bfac15f7fb93a6606d4ca859fa12c22645535df",
+      "before_sha256": null,
+      "sha256": "e3ff6e6fa020e0c9a0f18d4df34c75384ceb0ee7ca694e590a0bd69ee5e49ac7"
+    },
+    {
+      "path": "tests/trace-events-unit.lisp",
+      "action": "project-reviewed-application",
+      "source": "3bfac15f7fb93a6606d4ca859fa12c22645535df",
+      "before_sha256": null,
+      "sha256": "7270259b23d8490b881be9f77dceb54b0f8d86a9481d284816aa682f8925a0f4"
+    },
+    {
+      "path": "tests/txn-upload-physical-location-unit.lisp",
+      "action": "project-reviewed-application",
+      "source": "3bfac15f7fb93a6606d4ca859fa12c22645535df",
+      "before_sha256": null,
+      "sha256": "b18c1d92e2f5da8c4a7d4bf6910a793bc0c9ba82601e07615dda17a540232a2b"
+    },
+    {
+      "path": "tests/upload-group16-served-unit.lisp",
+      "action": "project-reviewed-application",
+      "source": "3bfac15f7fb93a6606d4ca859fa12c22645535df",
+      "before_sha256": null,
+      "sha256": "408ae7e3fd45d26266a69639cb7c1e0ef6c9b976cfb064dee0e5ccb698c0dbab"
+    },
+    {
+      "path": "tests/upload-manifest-physical-unit.lisp",
+      "action": "project-reviewed-application",
+      "source": "3bfac15f7fb93a6606d4ca859fa12c22645535df",
+      "before_sha256": null,
+      "sha256": "983617cfa57c096a457b649952dd7a2558275d183cf01c71a281de4952ed6b4a"
+    },
+    {
+      "path": "tests/upload-raw-threshold-unit.lisp",
+      "action": "project-reviewed-application",
+      "source": "3bfac15f7fb93a6606d4ca859fa12c22645535df",
+      "before_sha256": null,
+      "sha256": "bac309de4ffbb871f6205aa4dc95e4b31c6f3d7b787b4f481b15e20a91b79263"
+    },
+    {
+      "path": "tests/upload-uncertainty-served-unit.lisp",
+      "action": "project-reviewed-application",
+      "source": "3bfac15f7fb93a6606d4ca859fa12c22645535df",
+      "before_sha256": null,
+      "sha256": "f4ef157cb7176209839be1bd7a668dac3e8d3f9f20fcf93fee2960a35f0a5ab9"
+    },
+    {
+      "path": "tools/cns_source_arity_check.py",
+      "action": "project-reviewed-application",
+      "source": "3bfac15f7fb93a6606d4ca859fa12c22645535df",
+      "before_sha256": null,
+      "sha256": "023d4a8c080e79bc21ae44d192217f8bca46722514f6d848ca42dea022a0b0f1"
+    },
+    {
+      "path": "tools/cns_source_mv_rewrite.py",
+      "action": "project-reviewed-application",
+      "source": "3bfac15f7fb93a6606d4ca859fa12c22645535df",
+      "before_sha256": null,
+      "sha256": "3ec097ab799cc0e4b9482a794fb3564f8ca766ef884c9bc99ac97c7c1541e07a"
+    },
+    {
+      "path": "tools/cns_source_raw_check.py",
+      "action": "project-reviewed-application",
+      "source": "3bfac15f7fb93a6606d4ca859fa12c22645535df",
+      "before_sha256": null,
+      "sha256": "b9424110efd8f79e9e931b77ce43b1b6e6bc3149b0248e9fbe6f1b23a1a264c1"
+    },
+    {
+      "path": "tools/cns_source_retention_check.py",
+      "action": "project-reviewed-application",
+      "source": "3bfac15f7fb93a6606d4ca859fa12c22645535df",
+      "before_sha256": null,
+      "sha256": "1a6ae73b2e399c100ad5698e307bd08550adeace13acbc85a227c2cc04a97a9d"
+    },
+    {
+      "path": "tools/fixtures/successor_geometry.json",
+      "action": "project-reviewed-application",
+      "source": "3bfac15f7fb93a6606d4ca859fa12c22645535df",
+      "before_sha256": null,
+      "sha256": "73eb5ee10942779c001bcec786e2170fe75da7e8017e69639dd49e1dc7f554bf"
+    },
+    {
+      "path": "tools/fixtures/upload_uncertainty_transform.json",
+      "action": "project-reviewed-application",
+      "source": "3bfac15f7fb93a6606d4ca859fa12c22645535df",
+      "before_sha256": null,
+      "sha256": "95db2b8ad394e7ff2b6588bad40f1ec689576b923cd2ebf14ff5b6848d8805ad"
+    },
+    {
+      "path": "tools/owed-export.lsp",
+      "action": "preserve-root",
+      "reason": "Immutable claim/refutation foundation or root registrations"
+    },
+    {
+      "path": "tools/rewrite_successor_geometry.py",
+      "action": "project-reviewed-application",
+      "source": "3bfac15f7fb93a6606d4ca859fa12c22645535df",
+      "before_sha256": null,
+      "sha256": "4c61a4f5ba0d36f52635b0a623d8d4065d62f56523d2766d8295b9f270ee29ca"
+    },
+    {
+      "path": "tools/successor_geometry_source_check.py",
+      "action": "project-reviewed-application",
+      "source": "3bfac15f7fb93a6606d4ca859fa12c22645535df",
+      "before_sha256": null,
+      "sha256": "a775203264546fb7c033fc582d92dffe597bf595c1b612f53864d04e4abae586"
+    },
+    {
+      "path": "tools/test_cns_source_hash_geometry.py",
+      "action": "project-reviewed-application",
+      "source": "3bfac15f7fb93a6606d4ca859fa12c22645535df",
+      "before_sha256": null,
+      "sha256": "482161948b734449b36d3abc15874ad1f921d89ae07d1670c8b6dee2c274f1e4"
+    },
+    {
+      "path": "tools/test_cns_source_mv_rewrite.py",
+      "action": "project-reviewed-application",
+      "source": "3bfac15f7fb93a6606d4ca859fa12c22645535df",
+      "before_sha256": null,
+      "sha256": "fe012c09a749c35260e93d02384362cdf8c5c0cbed33c097ca28e1232583ec94"
+    },
+    {
+      "path": "tools/test_rewrite_successor_geometry.py",
+      "action": "project-reviewed-application",
+      "source": "3bfac15f7fb93a6606d4ca859fa12c22645535df",
+      "before_sha256": null,
+      "sha256": "652ed00fe79a6eb6d547a5f81cd873ac186e9317d96ba176da03cc5342847cee"
+    },
+    {
+      "path": "tools/test_source_manifest_extraction.py",
+      "action": "project-reviewed-application",
+      "source": "3bfac15f7fb93a6606d4ca859fa12c22645535df",
+      "before_sha256": null,
+      "sha256": "1afa3b3780f7daa2831870c47edcfce21b15362befeecb4e51adbd140a4163b5"
+    },
+    {
+      "path": "tools/trace_replay.py",
+      "action": "project-reviewed-application",
+      "source": "3bfac15f7fb93a6606d4ca859fa12c22645535df",
+      "before_sha256": null,
+      "sha256": "c2cb7ed5d7f4d3cc3be3b3f677faa598a4db81a109e9094f7419e6203675862d"
+    },
+    {
+      "path": "tools/upload_payload_group_rewrite.py",
+      "action": "project-reviewed-application",
+      "source": "3bfac15f7fb93a6606d4ca859fa12c22645535df",
+      "before_sha256": null,
+      "sha256": "94576600c198feaea210d31b99dd647a7093761b37c3235d4a74396cdd574f2a"
+    },
+    {
+      "path": "tools/upload_physical_stride_rewrite.py",
+      "action": "project-reviewed-application",
+      "source": "3bfac15f7fb93a6606d4ca859fa12c22645535df",
+      "before_sha256": null,
+      "sha256": "4aebd207318107f186c993ed782c4bcf6f88d542417c229b2da472592d8e19e0"
+    },
+    {
+      "path": "tools/upload_physical_stride_source_test.py",
+      "action": "project-reviewed-application",
+      "source": "3bfac15f7fb93a6606d4ca859fa12c22645535df",
+      "before_sha256": null,
+      "sha256": "8008503cf807c2fddc79599a08ebd98a49f54d594d411816a6259b632c5255b9"
+    },
+    {
+      "path": "tools/upload_raw_threshold_source_test.py",
+      "action": "project-reviewed-application",
+      "source": "3bfac15f7fb93a6606d4ca859fa12c22645535df",
+      "before_sha256": null,
+      "sha256": "256ecfb9a0f2e6d51a59dbc24cbc53160c5922db4f20ec0c8340ac23f166e80d"
+    },
+    {
+      "path": "tools/upload_uncertainty_rewrite.py",
+      "action": "project-reviewed-application",
+      "source": "3bfac15f7fb93a6606d4ca859fa12c22645535df",
+      "before_sha256": null,
+      "sha256": "cedcb482ed036146910c198fd9105311f6b4eb5da8d94179df8c10e94e36dbb8"
+    },
+    {
+      "path": "tools/upload_uncertainty_source_test.py",
+      "action": "project-reviewed-application",
+      "source": "3bfac15f7fb93a6606d4ca859fa12c22645535df",
+      "before_sha256": null,
+      "sha256": "126275a1556f66e6017dbf5d3d7947daf8dc9e9bddb548784a8ef3401b656045"
+    }
+  ],
+  "root_preserved": [
+    "books/assurance-completion.lisp",
+    "books/declare.lisp",
+    "books/owed-report.lisp",
+    "books/owed.lisp",
+    "tests/square-evidence-unit.lisp",
+    "tools/owed-export.lsp"
+  ],
+  "added_registrations": [
+    "books/cns-query-lifetime-model",
+    "books/core-scheduler-wake",
+    "books/enqueue-trace",
+    "books/query-reference-predicates",
+    "books/query-reference-core-predicate",
+    "books/query-ref-wake",
+    "books/queue-model",
+    "books/trace-events",
+    "tests/cns-query-support",
+    "tests/cns-query-lifetime-unit",
+    "tests/enqueue-cost-unit",
+    "tests/query-reference-unit",
+    "tests/query-two-wake-unit",
+    "tests/query-owner-drain-unit",
+    "tests/queue-model-unit",
+    "tests/trace-events-unit",
+    "tests/cns-stream-append-unit",
+    "books/successor-schema-geometry",
+    "books/successor-workspace-geometry",
+    "tests/successor-geometry-unit",
+    "tests/ctl-hash-interleave-unit",
+    "books/cns-source-core",
+    "tests/cns-stream-fetch-unit",
+    "books/cns-read-work-bounds",
+    "tests/cns-article-slice-unit",
+    "tests/cns-draining-credit-unit",
+    "tests/cns-draining-teeth-unit",
+    "tests/cns-fetch-cancel-unit",
+    "tests/cns-range-continuation-unit",
+    "tests/cns-tall-runs-support",
+    "tests/cns-tall-runs-unit",
+    "tests/cns-terminal-accounting-unit",
+    "tests/cns-source-capture-unit",
+    "tests/cns-source-retention-unit",
+    "tests/cns-source-hash-interleave-unit",
+    "tests/fnct-client-frame-unit",
+    "books/cns-fetch-prefix-codec",
+    "tests/cns-fetch-prefix-unit",
+    "tests/txn-upload-physical-location-unit",
+    "tests/upload-manifest-physical-unit",
+    "tests/upload-raw-threshold-unit",
+    "tests/upload-group16-served-unit",
+    "tests/upload-uncertainty-served-unit",
+    "tests/ctl-stripe-map-unit"
+  ],
+  "held": [
+    "unfinished rolling1dec",
+    "physical metadata/provider join",
+    "COMPRESS",
+    "columns379"
+  ],
+  "status": "SOURCE READY; unqualified coherent application; no proof world launched",
+  "verification": {
+    "focused_python_controls": 40,
+    "strict_lisp_parse": 97,
+    "CNS_actual_definition_calls": 73,
+    "CNS_known_mv_bindings": 35,
+    "CNS_arity_findings": 0,
+    "host_raw_sources": 6,
+    "host_static_findings": 0,
+    "root_claim_foundation_preserved": 6,
+    "original_application_packet_125": "All125 original named application entries equal latest3bf except intentional additive Makefile merge",
+    "six_result_feed": "Current root upload-feed/shared slice and actual callback-D untouched; focused composition controls pass",
+    "current_root_machine_initializer": "All three current root initializer books retained; sourcecontrols pass",
+    "certification": "Previous112/CONN33 are exact source-key receipts; current cache cut must be audited before launch"
+  }
+}

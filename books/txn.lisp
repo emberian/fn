@@ -67,7 +67,6 @@
 (assert-event (equal *fn2-txn-ready-bytes* 26624))  ; the kind's :budget (txn-kind.lisp)
 
 (defconst *fn2-upload-word-accepted* (fn2-upload-word-code :accepted))
-(defconst *fn2-upload-word-uncertain* (fn2-upload-word-code :uncertain))
 (defconst *fn2-upload-word-duplicate* (fn2-upload-word-code :duplicate))
 (defconst *fn2-upload-word-conflict* (fn2-upload-word-code :conflict))
 (defconst *fn2-upload-word-group* (fn2-upload-word-code :group))
@@ -84,7 +83,10 @@
 ;; :prepare. The body's lines first (the article row's `lines`): LF octets of
 ;; [body, source) read under the upload's owner, at most
 ;; *fn2-txn-count-bytes* per run, COUNTED the continuation.
-; Shared byte-for-byte worker and contracts are owned by upload-feed (via upload).
+
+
+
+; Shared LF worker and contracts are owned by upload-feed (via upload).
 
 ;; Newsgroups, a name at a time: the value's names are separated by commas
 ;; and white space (the model's split).
@@ -252,8 +254,8 @@
 (defcost fn2-claim-release-core :answers (:ok :bounds :state) :tables (fn2-core-claims fn2-core-machines)
   :effects ((:release (:identity-reservation)))
   :doc "Release a held claim and hand it to its FIFO's head, waking that transaction.")
-(defcost fn2-txn-offer :answers (:ok :bounds :state)
-  :tables (fn2-core-succ-txns fn2-core-id-decides fn2-core-fields)
+(defcost fn2-txn-offer :enqueues 1 :answers (:ok :bounds :state :exhausted :owner :stale)
+  :tables (fn2-core-succ-txns fn2-core-id-decides fn2-core-fields fn2-core-pool fn2-core-machines fn2-core-control fn2-core-sched fn2-core-trace)
   :doc "Start the identity decision for the upload's Message-ID and content digest.")
 (defcost fn2-txn-count :child fn2-txn-count-loop :answers (:ok :bounds) :bytes *fn2-txn-count-bytes*
   :doc "Count LF octets in up to 2,048 octets of a pool slot.")
@@ -427,6 +429,10 @@
   ;; count the body's lines, look each group up, refuse :group or the injected
   ;; fields, declare the slots (evidence or article); then resolve them
   (:prepare :on-refusal ((:stop :machine-phase))
+   (:if (or (fn2-core-query-heldp (:read upload c0-slot) (:read upload c0-gen))
+            (fn2-core-query-heldp (:read upload c1-slot) (:read upload c1-gen)))
+        ((:charge :steps *fn2-work-state*))
+        (
    (:if (equal row-prepared 1)
         ((:do (answer) (fn2-successor-resolve row-slot 4096)
           :accept ()
@@ -484,9 +490,13 @@
                               ((:set (word inj)) (:next :refused)
                                (:charge :bytes 8192 :steps *fn2-work-transition* :runnable t))
                               ((:set (prepared 1))
-                               (:charge :bytes 8192 :steps *fn2-work-transition* :runnable t))))))))))
+                               (:charge :bytes 8192 :steps *fn2-work-transition* :runnable t))))))))))))
   ;; stage every slot against the tip, emit into chunk 1, admit the member, bind on :ok (one run)
   (:ready :on-refusal ((:stop :machine-phase))
+   (:if (or (fn2-core-query-heldp (:read upload c0-slot) (:read upload c0-gen))
+            (fn2-core-query-heldp (:read upload c1-slot) (:read upload c1-gen)))
+        ((:charge :steps *fn2-work-state*))
+        (
    (:let sslot row-slot)
    (:if (eq (fn2-commit-posture) :draining)
         ((:set (word *fn2-upload-word-unaffordable*)) (:next :refused)
@@ -548,7 +558,7 @@
                  ((:duplicate) (:set (word *fn2-upload-word-duplicate*)) (:next :refused)
                                (:charge :bytes 24576 :steps *fn2-work-transition* :runnable t))
                  ((:capacity) (:set (word *fn2-upload-word-unaffordable*)) (:next :refused)
-                              (:charge :bytes 24576 :steps *fn2-work-transition* :runnable t)))))))
+                              (:charge :bytes 24576 :steps *fn2-work-transition* :runnable t)))))))))
   (:batched :on-refusal ((:stop :machine-phase))
    (:do (tcode tbatch tevent tout)
         (fn2-commit-take :owner upload)
@@ -783,8 +793,8 @@
           (location-hashes sslot sgen hoff hlen)
           (bytes bytes) (lines lines)
           (location-unit lunit) (location-epoch lepoch) (location-allocation lalloc)
-          ;; one extent's octets are its raw source; longer ones are named
-          ;; through their source manifest (article-manifest.lisp)
+          ;; Raw commitment span's octets are direct; longer sources use
+          ;; their source manifest (article-manifest.lisp).
           (location-kind (if (fn2-am-manifestp bytes) *fn2-txn-location-source-manifest* *fn2-txn-location-raw-source*))
           :owner (okind oslot ogen) fn2-core))
        ((unless (eq c :ok)) (mv c fn2-core)))
@@ -944,7 +954,7 @@
 (in-theory (disable fn2-txn-xref))
 
 ;; The article's location is its upload's payload extent: the extent's first
-;; unit (an extent is *fn2-commit-write-resources* units) and its handle; its
+;; physical unit (an extent is *fn2-storage-extent-units* units) and its handle; its
 ;; length the stored octets' (the injected field's ILEN and the source's HASHED).
 (defun fn2-txn-put-post-for (tx ms mg mo ml c0 g0 c1 g1 scanned hashed ilen h principal lines pext pepoch palloc
                                 sslot sgen soff hoff hlen op okind oslot ogen fn2-core)
@@ -968,7 +978,7 @@
        ((unless (eq c :ok)) (mv c fn2-core))
        ((mv c fn2-core)
         (fn2-txn-put-post tx ms mg mo ml c0 g0 scanned sslot sgen soff hoff hlen (+ hashed ilen) lines
-                          (* *fn2-commit-write-resources* (nfix pext)) pepoch palloc okind oslot ogen h principal op fn2-core))
+                          (* *fn2-storage-extent-units* (nfix pext)) pepoch palloc okind oslot ogen h principal op fn2-core))
        ((unless (eq c :ok)) (mv c fn2-core))
        ((mv ov-off ov-len fn2-core)
         (fn2-txn-synth-ov ms mg mo ml scanned scanned (+ hashed ilen) lines c0 g0 okind oslot ogen fn2-core)))

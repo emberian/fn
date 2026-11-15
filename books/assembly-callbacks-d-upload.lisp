@@ -6,7 +6,7 @@
 
 ;; The source manifest's pure decisions the arms read (article-manifest.lisp).
 (defcost fn2-am-fits :doc "Whether stored octets of a length are named by one source manifest.")
-(defcost fn2-am-manifestp :doc "Whether stored octets of a length are longer than one extent (named through a manifest).")
+(defcost fn2-am-manifestp :doc "Whether stored octets exceed the raw commitment span (named through a manifest).")
 (defcost fn2-upload-manifest-units :doc "The manifest units the drain settles, a unit of entries per step.")
 
 (defun fn2-upload-release-c0 (slot gen okind oslot ogen fn2-core)
@@ -202,7 +202,7 @@
                                                       row-c1-slot row-c1-gen row-hashed)
             :accept (:ok))
            (:set (mfill mf) (mstep 0)) (:charge :bytes *fn2-upload-head-bytes* :steps *fn2-work-transition* :runnable t))
-          ((and (< row-pdone total) (equal (mod blk *fn2-commit-write-resources*) 0) (equal row-cfree 0))
+          ((and (< row-pdone total) (equal (mod blk *fn2-storage-extent-units*) 0) (equal row-cfree 0))
            (:do (rcode e ep al) (fn2-upload-payload-reserve)
             :accept ()
             :case (((:ok) (:set (cext e) (cepoch ep) (calloc al) (cfree 1))
@@ -214,7 +214,7 @@
                                                row-pdone row-hashed)
             :accept (:ok))
            (:issue (fn2-issue-write (+ (* *fn2-commit-extent-bytes* row-cext)
-                                       (* *fn2-commit-unit-bytes* (mod blk *fn2-commit-write-resources*)))
+                                       (* *fn2-commit-unit-bytes* (mod blk *fn2-storage-extent-units*)))
                                     row-lslot row-lgen *fn2-upload-page-stage* glen 0
                                     :principal row-principal-slot)
             :ok ((:set (sready 0)) (:next :store-wrote) (:wait :completion :bytes 4096 :steps *fn2-work-small*))))
@@ -241,8 +241,8 @@
    (:let blk (floor row-pdone *fn2-commit-unit-bytes*))
    (:cond ((equal row-sready 0) (:charge :steps *fn2-work-poll*))
           ((not (and (equal row-sevent *fn2-event-write-result*) (equal row-soutcome *fn2-outcome-done*)))
-           ;; nothing durable is claimed for this source: the article is refused
-           (:set (word *fn2-upload-word-not-stored*) (sready 0)) (:next :sealed)
+           ;; Issued I/O has no safe rollback: retain bytes and reservations for recovery.
+           (:set (word *fn2-upload-word-uncertain*) (sready 0)) (:next :uncertain)
            (:charge :steps *fn2-work-transition* :runnable t))
           ((and (not (fn2-am-manifestp total)) (< 0 row-scount) (<= (+ row-pdone row-scount) total))
            (:let done2 (+ row-pdone row-scount))
@@ -263,8 +263,8 @@
           ((and (fn2-am-manifestp total) (< row-pdone total) (equal row-scount blen))
            (:let hrow (fn2-upload-hasher id))
            (:do (ecode mf) (fn2-upload-block-entry hrow row-lslot row-lgen blk blen
-                                                   (+ (* *fn2-commit-write-resources* row-cext)
-                                                      (mod blk *fn2-commit-write-resources*))
+                                                   (+ (* *fn2-storage-extent-units* row-cext)
+                                                      (mod blk *fn2-storage-extent-units*))
                                                    row-cepoch row-calloc row-mfill)
             :accept (:ok))
            (:set (pdone (+ row-pdone blen)) (mfill mf) (cfree 0) (sready 0) (mstep 0))
@@ -276,7 +276,7 @@
            (:set (munit u2) (sready 0) (mstep 0))
            (:next (:if (< (* *fn2-commit-unit-bytes* u2) row-mfill) :store-write :store-fence))
            (:charge :steps *fn2-work-transition* :runnable t))
-          (t (:set (word *fn2-upload-word-not-stored*) (sready 0)) (:next :sealed)
+          (t (:set (word *fn2-upload-word-uncertain*) (sready 0)) (:next :uncertain)
              (:charge :steps *fn2-work-transition* :runnable t))))
   (:store-fence :on-refusal ((:stop :machine-phase))
    (:if (not (and (natp budget) (< 0 budget))) ((:yield))
@@ -289,7 +289,7 @@
   (:store-fenced :on-refusal ((:stop :machine-phase))
    (:cond ((equal row-sready 0) (:charge :steps *fn2-work-poll*))
           ((not (and (equal row-sevent *fn2-event-fence-result*) (equal row-soutcome *fn2-outcome-done*)))
-           (:set (word *fn2-upload-word-not-stored*) (sready 0)) (:next :sealed)
+           (:set (word *fn2-upload-word-uncertain*) (sready 0)) (:next :uncertain)
            (:charge :steps *fn2-work-transition* :runnable t))
           ((equal row-ilen 0)
            (:set (sready 0)) (:next :sealed) (:charge :steps *fn2-work-transition* :runnable t))
@@ -314,7 +314,13 @@
   ;; returns the store page, then releases the second chunk, then the first,
   ;; then the row.
   (:draining :on-refusal ((:stop :pool-release :steps *fn2-work-state*))
-   (:cond ((and (equal row-lease *fn2-upload-lease-held*)
+   (:cond
+          ;; Keep the page and extent state together until its last query
+          ;; reference wakes this owner. No settlement precedes this check.
+          ((and (equal row-lease *fn2-upload-lease-held*)
+                (fn2-core-query-heldp row-lslot row-lgen))
+           (:charge :steps *fn2-work-state*))
+          ((and (equal row-lease *fn2-upload-lease-held*)
                 (< row-mdrain (fn2-upload-manifest-units (+ row-ilen row-hashed) row-mfill)))
            (:let hrow (fn2-upload-hasher id))
            (:do (pcode) (fn2-upload-settle-unit (* 128 hrow) (+ row-ilen row-hashed) row-lslot row-lgen row-mfill
@@ -330,6 +336,11 @@
            (:set (lease *fn2-upload-lease-none*) (lslot *fn2-none*) (lgen 0) (pext *fn2-none*) (cext *fn2-none*)
                  (cfree 0) (mfill 0) (mdrain 0))
            (:charge :steps *fn2-work-transition* :runnable t))
+          ;; Test both chunks before settling or freeing either. A held C0
+          ;; must not leave C1 freed while the row still carries its handle.
+          ((or (fn2-core-query-heldp row-c0-slot row-c0-gen)
+               (fn2-core-query-heldp row-c1-slot row-c1-gen))
+           (:charge :steps *fn2-work-state*))
           (t
          (:do (pcode) (fn2-upload-payload-settle row-pext row-pepoch row-palloc) :accept (:ok))
          (:do (c1code) (fn2-core-release row-c1-slot row-c1-gen)
@@ -346,7 +357,10 @@
          (:next (:if retire :retired :free))
          (:do () (fn2-machine-reclaim-fn2-upload id retire))
          (:charge :steps *fn2-work-release*))))
-  (:retired (:idle)))
+  (:retired (:idle))
+  ;; An issued storage operation was ambiguous or malformed. No settlement,
+  ;; cancellation, workspace release or transaction hand-over can follow.
+  (:uncertain (:stop :upload-uncertain)))
  :observes
  ((:write-result (:set (sevent event) (soutcome outcome) (scount count) (sready 1)) (:wake))
   (:fence-result (:set (sevent event) (soutcome outcome) (scount count) (sready 1)) (:wake))
