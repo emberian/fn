@@ -5,6 +5,7 @@
 (include-book "std/util/bstar" :dir :system)
 (include-book "checkpoint-projection-protect")
 (include-book "checkpoint-bank-closure-state")
+(include-book "checkpoint-bank-closure-edges")
 (include-book "checkpoint-bank-obligations-state")
 (fn2-book-layer :b)
 (defcolumns fn2-checkpoint-bank-protection
@@ -116,7 +117,7 @@
       (epoch (fn2-checkpoint-bank-closures-epoch r fn2-checkpoint-bank-closures))
       (allocation (fn2-checkpoint-bank-closures-allocation r fn2-checkpoint-bank-closures))
       (holder (fn2-checkpoint-publication-cold-metai (+ (* 12 slot) 2) fn2-checkpoint-publication))
-      (edge (fn2-checkpoint-source-edge slot e fn2-extents fn2-ops fn2-checkpoints))
+      (edge (fn2-checkpoint-bank-closure-edge slot e fn2-extents fn2-ops fn2-checkpoints))
       ((unless (and (not (= (fn2-extents-state e fn2-extents) *fn2-extent-state-free*))
                     (= (fn2-extents-epoch e fn2-extents) epoch)
                     (= (fn2-extents-counter e fn2-extents) allocation)
