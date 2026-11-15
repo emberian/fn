@@ -1,12 +1,20 @@
 # Query read references: implementation plan
 
-Status: source implementation in progress, not admitted or qualified.
-Foundation is 020d6313c composed with peer-history-order through 277f927c3.
-The pool counter, actual query lifecycle, checked owner wake, CNS drainage,
-upload/connection drainage, and transaction prepare/ready preflights are
-present in source. Independent global accounting preservation and actual
-owner lifecycle controls remain in progress. Authorization and network
-import remain inactive.
+Status: active query lifetime and callback/reference composition remain
+unqualified. The dormant pool primitive foundation and its leaf controls
+are certified: the exact ten-book closure rooted at
+`tests/pool-query-ref-unit` has key
+`659b5c3975baac8a4db01f65b57271cc6fa10a42ed7ce4fa68ecfb70d832b57f`
+under toolchain `8aeb1bea…`; record `certify-20261115T024211Z-748010`
+certified pool, pool-ranges and the unit, reusing seven parents. Root
+`a3b9723a1` integrated only that dormant foundation. It introduces no
+served query-reference producer or cleanup/wake consumer.
+
+The separate consumer lane contains actual query lifetime, checked owner
+enqueue, CNS/upload/connection drainage and transaction preflights.
+Independent global accounting preservation, reference effect lowering,
+selected callback binding and full callback controls remain pending.
+Authorization and network import remain inactive.
 
 ## Ownership subject
 
