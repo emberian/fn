@@ -69,7 +69,8 @@
                       (<= (fn2-machine-rc-chain rid fn2-core) (fn2-machine-rc-commit rid fn2-core))
                       (unsigned-byte-p 60 epoch)
                       (> epoch (fn2-machine-rc-epoch rid fn2-core))))
-         (mv :reconstruction fn2-core)))
+         (mv :reconstruction fn2-core))
+        (rgen (fn2-machine-generation rid fn2-core)))
     (stobj-let (
      (fn2-checkpoint-selected-source (fn2-core-checkpoint-selected-source fn2-core))
      (fn2-boot-config (fn2-core-boot-config fn2-core))
@@ -92,11 +93,20 @@
      (code fn2-checkpoints fn2-extents)
      (b* (((unless (and (= (fn2-alloc-epoch-begun fn2-extents) 0)
                         (> epoch (fn2-alloc-current-epoch fn2-extents))
+                        (fn2-alloc-identity-owner-p *fn2-recovery-machine-kind* rid rgen
+                         (fn2-checkpoint-selected-source-generation 0 fn2-checkpoint-selected-source) fn2-extents)
+                        (fn2-alloc-identity-geometry-p fn2-extents)
+                        (= (fn2-alloc-identity-phase fn2-extents) *fn2-alloc-identity-phase-idle*)
+                        (= (fn2-alloc-identity-op fn2-extents) *fn2-alloc-identity-op-none*)
                         (fn2-checkpoint-bank-protection-complete-p fn2-checkpoint-selected-source fn2-boot-config fn2-checkpoints fn2-checkpoint-refs fn2-checkpoint-bytes fn2-origin fn2-checkpoint-recovery-evidence fn2-checkpoint-recovery-census fn2-checkpoint-restore-map fn2-checkpoint-restore-map-control fn2-checkpoint-restore-reach-control fn2-checkpoint-projection fn2-ops fn2-extents fn2-checkpoint-publication fn2-checkpoint-bank-closures fn2-checkpoint-bank-protection fn2-alloc-edges)))
             (mv :protection fn2-checkpoints fn2-extents))
           ((mv code fn2-checkpoints)
            (fn2-checkpoint-bank-promote-selected fn2-boot-config fn2-checkpoints fn2-checkpoint-refs fn2-checkpoint-bytes fn2-origin fn2-checkpoint-recovery-evidence fn2-checkpoint-recovery-census fn2-checkpoint-selected-source fn2-checkpoint-restore-map-control fn2-checkpoint-publication))
           ((unless (eq code :installed)) (mv code fn2-checkpoints fn2-extents))
+          ((mv code fn2-extents)
+           (fn2-alloc-identity-end *fn2-recovery-machine-kind* rid rgen
+            (fn2-checkpoint-selected-source-generation 0 fn2-checkpoint-selected-source) fn2-extents))
+          ((unless (eq code :ok)) (mv code fn2-checkpoints fn2-extents))
           ; All fallible checks precede the opening. The ordinary epoch
           ; operation below shares the existing epoch/counter transition.
           (fn2-extents (update-fn2-alloc-freeze-token 0 fn2-extents))
