@@ -988,7 +988,7 @@
     "tests/checkpoint-reader-scalar-domain-unit",
     "tests/checkpoint-reader-refutation-unit"
   ],
-  "scope": "Concrete source composition only; no active candidate changes, prover run or new qualification. RAW remains UNPROVED; prior135 qualified closure excludes RAW.",
+  "scope": "Source composition and exact parent136 receipt binding; whole RAW/FETCH/native remain unproved",
   "held": [
     "physical metadata/reader loader dispatch",
     "rolling directory/RELEASE/stale-row reset",
@@ -1095,10 +1095,28 @@
       "record_claim": "NONE; prior135 and root reader34 stay exact separately"
     },
     "RAWd797": {
-      "status": "UNQUALIFIED; root-granted fresh-state pilot only",
+      "status": "Whole RAW UNPROVED; parent136 qualified",
       "changes": "Canonical optional supplied-p frame hint API; four RAW frame hints plus explicit HASH3/BLOCK-COMMITMENT opacity; no runtime, stored guard or original H/C change",
-      "prospective_parent_record": "current136119genuine+17READY, followed whole RAW;137 record only after actual authorPASS in same budget",
-      "resident_world_policy": "No old135 state/macro redefinition"
+      "resident_world_policy": "No old135 state/macro redefinition",
+      "parent_receipt": "/tmp/served-d797-qualified136-receipt.json",
+      "parent_record": {
+        "reuse": 119,
+        "new": 17,
+        "all_current_source_keys_match_family": 136
+      },
+      "actual_partial": {
+        "all_guards": "PASS",
+        "ISSUE_TYPE": "PASS",
+        "ISSUE_WFP": "PASS",
+        "first_refusal": "ISSUE-FN2-POOL-ROWS",
+        "seconds": 0.21,
+        "steps": 23188,
+        "macro_seconds": 7.46,
+        "macro_steps": 609812,
+        "book_seconds": 18.89
+      },
+      "reason": "Unconditional frame requires lower unconditional row equation; typed preservation contracts do not supply it",
+      "whole_RAW_record": "NONE"
     }
   },
   "enum_fragment_evidence": {
@@ -1110,7 +1128,7 @@
     "source": "cc73111c5f326fbc0cd5938670fa040b9c87ddad",
     "book": "books/columns-observation-frames.lisp",
     "scope": "One requested distinct-field unconditional getter-over-setter equality; no global observation matrix or guard premise change",
-    "status": "Requested pair admitted in diagnostic pilot; RAW_STEP guard passed, next guard refused. No current-key helper/RAW record claim."
+    "status": "Helper is included in qualified current parent136; RAW wholebook remains UNPROVED"
   },
   "closure_plan": {
     "RAW": 137,
@@ -1119,7 +1137,7 @@
     "native_tail_after_combined": 17,
     "prior135_current_key_matches": 119,
     "prior135_rekeyed_by_storage_append": 16,
-    "scope": "Metadata only; helper and whole RAW unproved under pilot, no new qualification."
+    "scope": "Parent136 exact source/key matches audited receipt; RAW137/FETCH243/combined245 remain unqualified"
   },
   "root_reader_projection": {
     "root": "5a3c9089341e196e51b80725b97225110f569c05",
