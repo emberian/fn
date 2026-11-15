@@ -270,6 +270,7 @@ ACL2_BOOKS = \
   tests/compress-action-unit \
   tests/compress-settings-unit \
   tests/compress-transport-unit \
+  tests/compress-record-unit \
   tests/compress-stage-unit \
   tests/commit-ceiling-unit \
   tests/commit-durable-all-unit \
