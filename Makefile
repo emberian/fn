@@ -205,6 +205,7 @@ ACL2_BOOKS = \
   books/machines-c \
   books/machines-c-bind \
   books/machines-c-groups \
+  books/pool-copy \
   books/machines-c-read \
   books/machines-c-sealer \
   books/machines-c-sealer-events \

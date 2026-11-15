@@ -24,6 +24,7 @@
 ; land (schemas 17-19); any other opcode, or a frame that is not exactly its
 ; layout, answers refused frame and never another verb.
 (in-package "ACL2")
+(include-book "pool-copy")
 (include-book "cns")
 (fn2-book-layer :e)
 

@@ -6,6 +6,7 @@
 ; a parked wait is woken by the publish hook's bucket push, through the
 ; grant service, never by a scan.
 (in-package "ACL2")
+(include-book "pool-copy")
 (include-book "cns-kind")
 (include-book "cns-read-work-bounds")
 (include-book "cns-source-core")

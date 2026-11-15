@@ -2,6 +2,9 @@
 ; grants no CNS/CTL selection authority; the actual actor wrapper binds its
 ; row/request/lease before calling it and retains the READ until root-hold.
 (in-package "ACL2")
+(include-book "machines-c-read")
+(include-book "article-manifest")
+(include-book "cns-source-workspace")
 (include-book "cns-source-state")
 (include-book "txn-kind")
 (include-book "cns-source-retention")

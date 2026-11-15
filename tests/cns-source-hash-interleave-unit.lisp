@@ -5,6 +5,7 @@
 (include-book "../books/machines-b")
 (include-book "../books/cns-source-hash")
 (include-book "../books/cns-source-state")
+(include-book "../books/cns-source-workspace")
 (include-book "../books/fnct-pool")
 (include-book "column-snapshot-support")
 (make-event (value (cons 'progn
