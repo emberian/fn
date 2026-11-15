@@ -17,6 +17,8 @@
 (defconst *fn2-upload-hash-bytes* 2048)
 (defconst *fn2-upload-scan-bytes* 2048)
 (defconst *fn2-upload-run-bytes* (+ (* 2 *fn2-upload-hash-bytes*) *fn2-upload-scan-bytes*))
+;; Defmachine budgets are literal naturals; tie its charge to this derivation.
+(assert-event (equal *fn2-upload-run-bytes* 6144))
 ;; The pool class of a chunk (the profile's second class: 64 KiB in the
 ;; concrete profile) and the article bound when the profile names none
 ;; (fn1's source bound, specs/article-parser.md).
@@ -258,7 +260,7 @@
          (:sealed :upload-row :chunk-window (:storage-window :while (lease :held)))
          (:aborting :upload-row :chunk-window)
          (:draining :upload-row :chunk-window (:storage-window :while (lease :held))))
- :budget (:bytes *fn2-upload-run-bytes* :steps 32 :descriptors 4)
+ :budget (:bytes 6144 :steps 32 :descriptors 4)
  :capacity (fn2-upload-capacity profile)
  ;; A connection takes the row with its two chunks (A-S7).
  :taken (:phase :head :rows :upload-row
