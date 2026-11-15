@@ -27,8 +27,19 @@
  (list (fn2-pfu-slots 0 fn2-pool) (fn2-pool-credit-configured fn2-pool)
        (fn2-pool-credit-group-count fn2-pool) (fn2-pool-retired-count fn2-pool)
        (fn2-pcu-arrays 0 (max (fn2-pool-nclasses fn2-pool)
-                            (fn2-pool-credit-group-count fn2-pool)
-                            (fn2-pool-credit-demand-length fn2-pool)) fn2-pool)))
+                            (max (fn2-pool-credit-group-count fn2-pool)
+                                 (fn2-pool-credit-demand-length fn2-pool))) fn2-pool)))
+; These negative-index controls concern the total logical domain, outside
+; the writers' NATP guards. Served transition controls below stay guarded.
+(defthm fn2-pcu-logical-negative-demands-unchanged
+ (equal (fn2-pool-credit-store-demands xs -1 fn2-pool) fn2-pool)
+ :hints (("Goal" :in-theory (enable fn2-pool-credit-store-demands))))
+(defthm fn2-pcu-logical-negative-groups-unchanged
+ (equal (fn2-pool-credit-store-groups groups -1 fn2-pool) fn2-pool)
+ :hints (("Goal" :in-theory (enable fn2-pool-credit-store-groups))))
+(defthm fn2-pcu-logical-negative-protected-unchanged
+ (equal (fn2-pool-credit-store-protected -1 groups fn2-pool) fn2-pool)
+ :hints (("Goal" :in-theory (enable fn2-pool-credit-store-protected))))
 (defun fn2-pcu-body (fn2-pool)
  (declare (xargs :stobjs fn2-pool :verify-guards nil))
  (b* ((fn2-pool (fn2-pool-init '((6 . 4096)) 1 10 fn2-pool))
@@ -36,11 +47,6 @@
       ((mv shortage fn2-pool) (fn2-pool-credit-configure '((1 5) (2 1) (2 1)) fn2-pool))
       ((unless (and (eq shortage :exhausted) (equal before (fn2-pcu-view fn2-pool)))) (mv nil fn2-pool))
       ((mv configured fn2-pool) (fn2-pool-credit-configure '((1 2) (2 1) (2 1)) fn2-pool))
-      (before-indices (fn2-pcu-view fn2-pool))
-      (fn2-pool (fn2-pool-credit-store-demands '(99) -1 fn2-pool))
-      (fn2-pool (fn2-pool-credit-store-groups '((1 99)) -1 fn2-pool))
-      (fn2-pool (fn2-pool-credit-store-protected -1 '((1 99)) fn2-pool))
-      ((unless (equal before-indices (fn2-pcu-view fn2-pool))) (mv nil fn2-pool))
       ((mv o1 a ag fn2-pool) (fn2-pool-reserve 0 20 0 1 fn2-pool))
       ((mv o2 b bg fn2-pool) (fn2-pool-reserve 0 20 1 1 fn2-pool))
       (before (fn2-pcu-view fn2-pool))

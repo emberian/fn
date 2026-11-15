@@ -9,6 +9,7 @@ class Frames(unittest.TestCase):
         generated = frames.generate(source, Path('books/pool.lisp').read_text())
         self.assertEqual(len(lisp_rewrite.parse(generated).forms), 6)
         self.assertEqual(len(lisp_rewrite.parse(frames.generate_resizers(source, Path('books/pool.lisp').read_text())).forms), 9)
+        self.assertEqual(len(lisp_rewrite.parse(frames.generate_row_setters(source, Path('books/pool.lisp').read_text())).forms), 5)
         self.assertEqual(frames.rewrite(source, Path('books/pool.lisp').read_text()), source)
 
     def test_undeclared_setter_refused(self):

@@ -41,13 +41,34 @@ def generate_resizers(source, declaration):
                       ' :hints (("Goal" :in-theory (enable fn2-pool-nclasses ' + op + '))))\n')
     return ''.join(result)
 
+def generate_row_setters(source, declaration):
+    parsed = lisp_rewrite.parse(source)
+    writer = next(source[n.start:n.end] for n in parsed.forms
+                  if source[n.start:n.end].startswith('(defun fn2-pool-release-credit'))
+    names = list(dict.fromkeys(re.findall(r'\((credit-(?:group|nonce|owner-[a-z]+)) ', writer)))
+    assert names
+    getters = ['fn2-pool-credit-available-length', 'fn2-pool-credit-protected-length',
+               'fn2-pool-credit-phase-length']
+    result = ['; Credit row-setter frames generated from the actual provenance writes.\n']
+    for name in names:
+        assert '(' + name + ' :' in declaration
+        setter = 'fn2-pool-set-' + name
+        equations = ['(equal (' + getter + ' (' + setter + ' slot value fn2-pool)) ('
+                     + getter + ' fn2-pool))' for getter in getters]
+        result.append('(defthm ' + setter + '-keeps-credit-geometry\n (and '
+                      + '\n      '.join(equations) + ')\n :hints (("Goal" :in-theory (enable '
+                      + ' '.join(getters + [setter, 'update-fn2-pool-' + name + '$ai']) + '))))\n')
+    return ''.join(result) + '\n'
+
 def rewrite(source, declaration):
     begin = source.index(START)
     end = source.index(END, begin)
     resize_start = source.index('; Public scalar frames for the actual configuration resizers.')
     resize_end = source.index('(defun fn2-pool-credit-configure', resize_start)
     return lisp_rewrite.write(source, [(begin, end, generate(source, declaration)),
-        (resize_start, resize_end, generate_resizers(source, declaration))])
+        (resize_start, resize_end, generate_resizers(source, declaration)),
+        (source.index('; Credit row-setter frames generated'),
+         source.index('; Request producer contracts'), generate_row_setters(source, declaration))])
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()

@@ -303,6 +303,53 @@
          (fn2-pool (update-fn2-pool-credit-group-noncei group nonce fn2-pool))
          (fn2-pool (update-fn2-pool-credit-phasei group *fn2-pool-credit-redeeming* fn2-pool)))
    (mv :ok fn2-pool))))
+(defthm fn2-pool-credit-available-keeps-protected-length
+ (equal (fn2-pool-credit-protected-length
+          (update-fn2-pool-credit-availablei i value fn2-pool))
+        (fn2-pool-credit-protected-length fn2-pool))
+ :hints (("Goal" :in-theory (enable fn2-pool-credit-protected-length update-fn2-pool-credit-availablei))))
+(defthm fn2-pool-credit-protected-keeps-available-length
+ (equal (fn2-pool-credit-available-length
+          (update-fn2-pool-credit-protectedi i value fn2-pool))
+        (fn2-pool-credit-available-length fn2-pool))
+ :hints (("Goal" :in-theory (enable fn2-pool-credit-available-length update-fn2-pool-credit-protectedi))))
+(defthm fn2-pool-credit-available-keeps-phase-length
+ (equal (fn2-pool-credit-phase-length
+          (update-fn2-pool-credit-availablei i value fn2-pool))
+        (fn2-pool-credit-phase-length fn2-pool))
+ :hints (("Goal" :in-theory (enable fn2-pool-credit-phase-length update-fn2-pool-credit-availablei))))
+(defthm fn2-pool-credit-protected-keeps-phase-length
+ (equal (fn2-pool-credit-phase-length
+          (update-fn2-pool-credit-protectedi i value fn2-pool))
+        (fn2-pool-credit-phase-length fn2-pool))
+ :hints (("Goal" :in-theory (enable fn2-pool-credit-phase-length update-fn2-pool-credit-protectedi))))
+; Credit row-setter frames generated from the actual provenance writes.
+(defthm fn2-pool-set-credit-group-keeps-credit-geometry
+ (and (equal (fn2-pool-credit-available-length (fn2-pool-set-credit-group slot value fn2-pool)) (fn2-pool-credit-available-length fn2-pool))
+      (equal (fn2-pool-credit-protected-length (fn2-pool-set-credit-group slot value fn2-pool)) (fn2-pool-credit-protected-length fn2-pool))
+      (equal (fn2-pool-credit-phase-length (fn2-pool-set-credit-group slot value fn2-pool)) (fn2-pool-credit-phase-length fn2-pool)))
+ :hints (("Goal" :in-theory (enable fn2-pool-credit-available-length fn2-pool-credit-protected-length fn2-pool-credit-phase-length fn2-pool-set-credit-group update-fn2-pool-credit-group$ai))))
+(defthm fn2-pool-set-credit-nonce-keeps-credit-geometry
+ (and (equal (fn2-pool-credit-available-length (fn2-pool-set-credit-nonce slot value fn2-pool)) (fn2-pool-credit-available-length fn2-pool))
+      (equal (fn2-pool-credit-protected-length (fn2-pool-set-credit-nonce slot value fn2-pool)) (fn2-pool-credit-protected-length fn2-pool))
+      (equal (fn2-pool-credit-phase-length (fn2-pool-set-credit-nonce slot value fn2-pool)) (fn2-pool-credit-phase-length fn2-pool)))
+ :hints (("Goal" :in-theory (enable fn2-pool-credit-available-length fn2-pool-credit-protected-length fn2-pool-credit-phase-length fn2-pool-set-credit-nonce update-fn2-pool-credit-nonce$ai))))
+(defthm fn2-pool-set-credit-owner-kind-keeps-credit-geometry
+ (and (equal (fn2-pool-credit-available-length (fn2-pool-set-credit-owner-kind slot value fn2-pool)) (fn2-pool-credit-available-length fn2-pool))
+      (equal (fn2-pool-credit-protected-length (fn2-pool-set-credit-owner-kind slot value fn2-pool)) (fn2-pool-credit-protected-length fn2-pool))
+      (equal (fn2-pool-credit-phase-length (fn2-pool-set-credit-owner-kind slot value fn2-pool)) (fn2-pool-credit-phase-length fn2-pool)))
+ :hints (("Goal" :in-theory (enable fn2-pool-credit-available-length fn2-pool-credit-protected-length fn2-pool-credit-phase-length fn2-pool-set-credit-owner-kind update-fn2-pool-credit-owner-kind$ai))))
+(defthm fn2-pool-set-credit-owner-slot-keeps-credit-geometry
+ (and (equal (fn2-pool-credit-available-length (fn2-pool-set-credit-owner-slot slot value fn2-pool)) (fn2-pool-credit-available-length fn2-pool))
+      (equal (fn2-pool-credit-protected-length (fn2-pool-set-credit-owner-slot slot value fn2-pool)) (fn2-pool-credit-protected-length fn2-pool))
+      (equal (fn2-pool-credit-phase-length (fn2-pool-set-credit-owner-slot slot value fn2-pool)) (fn2-pool-credit-phase-length fn2-pool)))
+ :hints (("Goal" :in-theory (enable fn2-pool-credit-available-length fn2-pool-credit-protected-length fn2-pool-credit-phase-length fn2-pool-set-credit-owner-slot update-fn2-pool-credit-owner-slot$ai))))
+(defthm fn2-pool-set-credit-owner-gen-keeps-credit-geometry
+ (and (equal (fn2-pool-credit-available-length (fn2-pool-set-credit-owner-gen slot value fn2-pool)) (fn2-pool-credit-available-length fn2-pool))
+      (equal (fn2-pool-credit-protected-length (fn2-pool-set-credit-owner-gen slot value fn2-pool)) (fn2-pool-credit-protected-length fn2-pool))
+      (equal (fn2-pool-credit-phase-length (fn2-pool-set-credit-owner-gen slot value fn2-pool)) (fn2-pool-credit-phase-length fn2-pool)))
+ :hints (("Goal" :in-theory (enable fn2-pool-credit-available-length fn2-pool-credit-protected-length fn2-pool-credit-phase-length fn2-pool-set-credit-owner-gen update-fn2-pool-credit-owner-gen$ai))))
+
 ; Request producer contracts from the existing shared columns emitter.
 (fn2-pool-preserves fn2-pool-reserve-body
  (class kind owner generation fn2-pool) :position 3 :disable nil)
@@ -354,8 +401,32 @@
                (fn2-pool-credit-fullp group 0 fn2-pool))) (mv :pending fn2-pool)
   (let ((fn2-pool (update-fn2-pool-credit-phasei group *fn2-pool-credit-aborted-empty* fn2-pool))) (mv :ok fn2-pool))))
 
+(fn2-pool-preserves fn2-pool-release-body
+ (slot gen kind owner generation fn2-pool) :position 1 :disable nil)
+(fn2-pool-preserves fn2-pool-release-body
+ (slot gen kind owner generation fn2-pool) :position 1 :disable t
+ :specs (("-CREDIT-NCLASSES" fn2-pool-nclasses 1 :frame fn2-pool
+           :hints (("Goal" :in-theory (enable fn2-pool-release-body fn2-pool-nclasses))))
+         ("-CREDIT-AVAILABLE-LENGTH" fn2-pool-credit-available-length 1 :frame fn2-pool
+           :hints (("Goal" :in-theory (enable fn2-pool-release-body fn2-pool-credit-available-length))))
+         ("-CREDIT-PROTECTED-LENGTH" fn2-pool-credit-protected-length 1 :frame fn2-pool
+           :hints (("Goal" :in-theory (enable fn2-pool-release-body fn2-pool-credit-protected-length))))
+         ("-CREDIT-PHASE-LENGTH" fn2-pool-credit-phase-length 1 :frame fn2-pool
+           :hints (("Goal" :in-theory (enable fn2-pool-release-body fn2-pool-credit-phase-length))))))
 (defun fn2-pool-release-credit (slot gen group nonce kind owner generation fn2-pool)
- (declare (xargs :stobjs fn2-pool :guard (fn2-pool-wfp fn2-pool)))
+ (declare (xargs :stobjs fn2-pool :guard (fn2-pool-wfp fn2-pool)
+ :guard-hints (("Goal" :use ((:instance fn2-pool-credit-shaped-index-bound
+                                  (class (fn2-pool-class slot fn2-pool)))
+                            (:instance fn2-pool-credit-demandi-bound
+                              (i (+ (* group (fn2-pool-nclasses fn2-pool))
+                                    (fn2-pool-class slot fn2-pool))))
+                            (:instance fn2-pool-credit-demandi-natp
+                              (i (+ (* group (fn2-pool-nclasses fn2-pool))
+                                    (fn2-pool-class slot fn2-pool))))
+                            (:instance fn2-pool-credit-availablei-natp
+                              (i (+ (* group (fn2-pool-nclasses fn2-pool))
+                                    (fn2-pool-class slot fn2-pool))))))
+  (fn2-columns-guard-hint '(fn2-pool) '(fn2-pool-release-body fn2-pool-credit-fullp) nil world))))
  (b* (((unless (and (fn2-pool-credit-ownerp group nonce kind owner generation fn2-pool)
                     (member-equal (fn2-pool-credit-phasei group fn2-pool)
                      (list *fn2-pool-credit-redeeming* *fn2-pool-credit-held* *fn2-pool-credit-depleted*))
