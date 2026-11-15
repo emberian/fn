@@ -337,7 +337,7 @@
   (let* ((sig (car signatures)) (name (car sig)) (args (cadr sig))
          (private (eq name 'fn2-alloc-identity-publish-existing-row)))
    (cons `(fn2-extents-preserves ,name ,args :position ,(if private nil 1)
-           :disable nil :wfp-type t
+           :disable t :wfp-type t
            :hyps ((fn2-extentsp fn2-extents) (fn2-extents-wfp fn2-extents)
                   ,@(and private '((fn2-alloc-identity-publishable-p kind owner ogen source fn2-extents)))))
          (fn2-alloc-identity-shape-events (cdr signatures))))))
