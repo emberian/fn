@@ -99,5 +99,7 @@
 (defthm fn2-b3-ready-word-stripe
  (implies (fn2-b3-ready row fn2-b3 fn2-digests)
           (fn2-b3-word-stripep row fn2-b3))
- :hints (("Goal" :in-theory (enable fn2-b3-ready fn2-b3-word-stripep))))
+ :hints (("Goal" :in-theory
+          (e/d (fn2-b3-ready fn2-b3-word-stripep)
+               (fn2-b3-rows fn2-b3-words-length fn2-digest-workspacep fn2-digests-rows)))))
 (in-theory (disable fn2-b3-word-stripep))
