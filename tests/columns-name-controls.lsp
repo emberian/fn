@@ -69,9 +69,11 @@
 (assert (emit '((a (:enum shared (:x :y)))
                 (b (:enum shared (:x :y)))) nil))
 ; Valid output is exactly the previous registry invocation, not rewritten.
-(let* ((cols '((credit-nonce :u60)))
-       (extras '((fn2-p-credit-group-nonce :type (array (unsigned-byte 60) (0))
+(dolist (case '((((credit-nonce :u60))
+                 ((fn2-p-credit-group-nonce :type (array (unsigned-byte 60) (0))
                    :initially 0 :resizable t :why "Control group storage.")))
+                (((a (:enum shared (:x :y))) (b (:enum shared (:x :y)))) nil)))
+(let* ((cols (car case)) (extras (cadr case))
        (checked (emit cols extras))
        (original (symbol-function 'fn2-columns-declare)))
  (unwind-protect
@@ -79,5 +81,5 @@
          ; SBCL represents nested backquote commas as fresh internal objects.
          (assert (string= (prin1-to-string checked)
                           (prin1-to-string (emit cols extras)))))
-  (setf (symbol-function 'fn2-columns-declare) original)))
+  (setf (symbol-function 'fn2-columns-declare) original))))
 (format t "COLUMNS NAME CONTROLS PASS~%")
