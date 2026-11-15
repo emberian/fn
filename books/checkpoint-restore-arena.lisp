@@ -142,8 +142,7 @@
 (defcost fn2-boot-checkpoint-arena-target :child fn2-checkpoint-restore-arena-target :answers (:state :end :target)
  :doc "One ordinal of the actual complete arena and validated candidate map; no caller chooses a tuple or substitutes live allocator state.")
 
-(defcost fn2-boot-checkpoint-arena-consume :child fn2-checkpoint-restore-arena-consume :answers (:entry :state :coverage :format :identity) :bytes *fn2-checkpoint-arena-entry-width*
- :tables (fn2-core-checkpoint-restore-reader fn2-core-checkpoint-restore-arena fn2-core-checkpoint-restore-arena-marks fn2-core-checkpoint-restore-arena-control fn2-core-fields))
+
 (defcost fn2-boot-checkpoint-arena-finish :child fn2-checkpoint-restore-arena-finish :answers (:coverage :arena-ready)
  :tables (fn2-core-checkpoint-restore-arena-control))
 
