@@ -42,7 +42,7 @@ def check(publication, writer):
     assert gate < rearm
     assert '(debt-valid 0)' not in publication, 'no caller-clear operation'
 def main():
-    p=(ROOT/'books/checkpoint-publication.lisp').read_text()
+    p=(ROOT/'books/checkpoint-publication-state.lisp').read_text() + '\n' + (ROOT/'books/checkpoint-publication.lisp').read_text()
     w=(ROOT/'books/checkpoint-writer.lisp').read_text()
     check(p,w)
     from rewrite_checkpoint_bank_capture import rewrite
