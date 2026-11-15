@@ -105,16 +105,29 @@
       ((mv held fn2-core fn2-sim fn2-own) (fn2-ccp-drive 600000 t fn2-core fn2-sim fn2-own))
       ((unless (and (eq restarted :ok) (eq held :epoch-held) (fn2-ccp-before-open-p prefix suffix fn2-core)))
        (mv (list :selected restarted held) fn2-core fn2-sim fn2-own))
+      (boot (fn2-machine-kind-base *fn2-boot-kind* fn2-core))
+      (owner-generation (fn2-machine-generation boot fn2-core))
+      (root-slot (fn2-machine-root-slot boot fn2-core)) (root-gen (fn2-machine-root-gen boot fn2-core))
+      (closed-epoch (stobj-let ((fn2-extents (fn2-core-extents fn2-core))) (epoch)
+                     (fn2-alloc-current-epoch fn2-extents) epoch))
       ((mv posted fn2-core fn2-sim fn2-own) (fn2-ccp-complete-epoch fault fn2-core fn2-sim fn2-own))
       ((mv finished fn2-core fn2-sim fn2-own) (fn2-ccp-drive 200000 nil fn2-core fn2-sim fn2-own))
-      (open (stobj-let ((fn2-extents (fn2-core-extents fn2-core))) (open)
-             (and (= (fn2-alloc-freeze-phase fn2-extents) 0) (= (fn2-alloc-epoch-begun fn2-extents) 1)) open)))
-  (mv (list posted finished open prefix suffix) fn2-core fn2-sim fn2-own)))
+      ((mv phase begun epoch window rebindable)
+       (stobj-let ((fn2-extents (fn2-core-extents fn2-core)) (fn2-pool (fn2-core-pool fn2-core))
+                   (fn2-checkpoint-payload (fn2-core-checkpoint-payload fn2-core))) (phase begun epoch window rebindable)
+        (mv (fn2-alloc-freeze-phase fn2-extents) (fn2-alloc-epoch-begun fn2-extents)
+            (fn2-alloc-current-epoch fn2-extents)
+            (fn2-pool-workspace-code root-slot root-gen *fn2-boot-kind* boot owner-generation fn2-pool)
+            (fn2-checkpoint-payload-rebindablep fn2-checkpoint-payload))
+        (mv phase begun epoch window rebindable)))
+      (open (and (= phase 0) (= begun 1) (< closed-epoch epoch) (not (eq window :ok)) rebindable)))
+  (mv (list posted finished open prefix suffix (list phase begun epoch window rebindable)) fn2-core fn2-sim fn2-own)))
 
 (defun fn2-ccp-test (fault)
  (declare (xargs :verify-guards nil))
  (fn2-run-with-local (fn2-core fn2-sim fn2-own)
   (fn2-ccp-body fault fn2-core fn2-sim fn2-own)))
 ; Intentionally no assert-event until the actual post-Fence open join lands.
-; Gate entry will assert (:posted :ready T prefix suffix) for fault NONE,
-; and (:posted :failed NIL ...) for actual FLUSH-IO, each from a fresh producer.
+; Gate entry will require :posted/:ready/open plus exact phase0/begun1/newer
+; epoch and settled root/payload for NONE. FLUSH-IO must be :posted/:failed
+; with phase4/begun0 (not merely NOT OPEN), each from a fresh producer.
