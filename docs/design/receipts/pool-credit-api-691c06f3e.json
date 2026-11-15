@@ -1,0 +1,107 @@
+{
+  "scope": "Credit API and primitive controls; no served redemption or complete maintenance guarantee.",
+  "source_commit": "691c06f3e6ba043ce19ccae1b0e050fdc65331e6",
+  "toolchain_identity": "8aeb1bea18968c6cd33ac633a80ebf67e4924504db112fd27eb11f16a27b2a8c",
+  "record_run": "/build/lanes/assurance-credit-contract-record/build/acl2/certify-20261115T051958Z-908176",
+  "result": "PASS",
+  "seconds": 5.383,
+  "installed": 9,
+  "certified": [
+    "books/pool-credit",
+    "tests/pool-credit-unit"
+  ],
+  "source_files": {
+    "tests/pool-credit-unit": "a593c87c220ece64f12edb97021c1f72797aa6c635c84e4e29ca4872b43fbce5",
+    "tests/pool-protected-floor-unit": "32534b37773aa706d7ba06a3ad56f5d55202eb577a5155cb82b8d2ceabb35636",
+    "books/pool": "3ef26f41207ee64f6121621cc24d7100936e364b5224a4be8ae28292aa4d7fa7",
+    "books/profile": "1f216ed6c0505dc1b01ada0f7d3d9482af6da7b7dff8736b5100ef3e3fbc1038",
+    "books/operations": "959da2da147247146a2360e23d2c7d6abd6c581abdf0f6873661f63cee87484f",
+    "books/declare": "1c706e559ef3b314fb9bd48171fb2891fad8613bd4eb1c5de5268443833c4bfb",
+    "books/owed-discharge": "53903322be1b79ed081ecfcbfcb9f60649d3fdbf8aa6853b772abf8e6fc69f01",
+    "books/owed": "04104985582a552ad115a0a6adcf2e957597b1b9ca3228bf25900877cbbcb17b",
+    "books/columns": "d3a58387c7c0dabc4ceaffeeb20672031a04693d8dd52078f50c5fa487c0d5f8",
+    "books/pool-credit": "850202858dc28055726072030399322853b3fa3f159755fb293420063358ddaf",
+    "books/columns-guard-hints": "e0a20c5669df681bf75fa5eeae426adc4053010915b3c7657d56e247d5c8440b"
+  },
+  "qualified_cache": {
+    "tests/pool-credit-unit": {
+      "key": "5f5ae33797101451bed3f5ba3c2abde89ddda1d704188a2c21d6f864b0a2b92f",
+      "entry": "/home/fn/.cache/fn-certs/5f5ae33797101451bed3f5ba3c2abde89ddda1d704188a2c21d6f864b0a2b92f/a66a48d4c2633389",
+      "fasl_sha256": "9b662af67a6e5ca69d68a45244176779214eca45e65acd091007f6211ee892bf"
+    },
+    "tests/pool-protected-floor-unit": {
+      "key": "bfa0a923f31913807f0f5ce4ad73ce5991978a6f7cc348e83a45aab847fd0f7e",
+      "entry": "/home/fn/.cache/fn-certs/bfa0a923f31913807f0f5ce4ad73ce5991978a6f7cc348e83a45aab847fd0f7e/c6effbbaa0a0d4b3",
+      "fasl_sha256": "993706f966582c7b5dd35b9d431658d24df9c124ee2769ceb76136b0e617af87"
+    },
+    "books/pool": {
+      "key": "079b4ac98a0b3d945869386f9e8d2ebecf0a00d8715e247ba18202d4d7fbfc24",
+      "entry": "/home/fn/.cache/fn-certs/079b4ac98a0b3d945869386f9e8d2ebecf0a00d8715e247ba18202d4d7fbfc24/1993641322b8cf2d",
+      "fasl_sha256": "2f7226f08f4e4a072070706bf6cfa8f6bcb4df98f4d9e333247ca9c99f4b37cc"
+    },
+    "books/profile": {
+      "key": "b8fb593112597395afac6a150c4a4fca81def3095ecd8f7f9be6aa0aec7384fc",
+      "entry": "/home/fn/.cache/fn-certs/b8fb593112597395afac6a150c4a4fca81def3095ecd8f7f9be6aa0aec7384fc/84166f8b7b293004",
+      "fasl_sha256": "db84531b9954255cc27ca4c79c47c4c43f56a50e09c4f002731f9aa8fbab52f8"
+    },
+    "books/operations": {
+      "key": "bd6bdf7f71b74618b02924c542559dcb99a149c816aeed11f3f5cd82d766483f",
+      "entry": "/home/fn/.cache/fn-certs/bd6bdf7f71b74618b02924c542559dcb99a149c816aeed11f3f5cd82d766483f/84166f8b7b293004",
+      "fasl_sha256": "d8ee889a9ed62314ef52fbef89daa3a40e379c48794ab076eddb5897d295b48d"
+    },
+    "books/declare": {
+      "key": "f1df352dc360553d08906239d267e9371fcb2fe4f19c6581adc1b0b322b30875",
+      "entry": "/home/fn/.cache/fn-certs/f1df352dc360553d08906239d267e9371fcb2fe4f19c6581adc1b0b322b30875/2c56b9035d330b37",
+      "fasl_sha256": "949ada9e4b8673d8401f9a6d053f5f11b1e373f28b38638cc3fae79c3b469db6"
+    },
+    "books/owed-discharge": {
+      "key": "97e73257b5f4cb3a4ca1b8ba4bf10956295c18ec211c0b297f557e780cd20fd1",
+      "entry": "/home/fn/.cache/fn-certs/97e73257b5f4cb3a4ca1b8ba4bf10956295c18ec211c0b297f557e780cd20fd1/bab1191b3d08490a",
+      "fasl_sha256": "17a2fbf13ba55900448433c8f1d8ca53d95088dd0db4411c7ee827de680410b7"
+    },
+    "books/owed": {
+      "key": "6f334038cc4bddaaa337357384a139be3700c2c3403094bab3398dacb7fd5a3b",
+      "entry": "/home/fn/.cache/fn-certs/6f334038cc4bddaaa337357384a139be3700c2c3403094bab3398dacb7fd5a3b/2c56b9035d330b37",
+      "fasl_sha256": "1d0f0a9a82c7ec001a440ba127e28c15abc35f50fd46a2b6070e86c509f910df"
+    },
+    "books/columns": {
+      "key": "af444dbfcccce7083f99637cc8947a859347bd4d6c8df17f7ab3a91e00d33ca2",
+      "entry": "/home/fn/.cache/fn-certs/af444dbfcccce7083f99637cc8947a859347bd4d6c8df17f7ab3a91e00d33ca2/6add19db01a9c2ec",
+      "fasl_sha256": "92347805c6e7821996c5598450f69fb58879c1635f2645f5c900f296ab86223e"
+    },
+    "books/pool-credit": {
+      "key": "5c5a86c6f2441283c79b46b849a44c6fad2701def7bdd637d09898d16f06e3bb",
+      "entry": "/home/fn/.cache/fn-certs/5c5a86c6f2441283c79b46b849a44c6fad2701def7bdd637d09898d16f06e3bb/a66a48d4c2633389",
+      "fasl_sha256": "4f8d765d7ae62f60afba389c41f5f6fdc731a49c446d538308842458b6c59ba5"
+    },
+    "books/columns-guard-hints": {
+      "key": "af9c914f286c284146d84a134fc9b973a4de2703fd4b21e9bebeca994b4bd62c",
+      "entry": "/home/fn/.cache/fn-certs/af9c914f286c284146d84a134fc9b973a4de2703fd4b21e9bebeca994b4bd62c/6add19db01a9c2ec",
+      "fasl_sha256": "e2879e1b3201b7bb7663e28e1042e762767cb2e0d5e22ea07656605babd404b3"
+    }
+  },
+  "cleanup": {
+    "record_pids_absent": [
+      908166,
+      908167,
+      908176
+    ],
+    "record_scope_released": "run-p908166-i30264858.scope",
+    "author_pids_absent": [
+      901119,
+      901120,
+      901143,
+      901144
+    ],
+    "author_scope_released": "run-p901119-i30257811.scope"
+  },
+  "controls": [
+    "nonzero protected floor and credited redemption",
+    "ordinary credited release refused",
+    "actual hand and exact return to provenance owner",
+    "held workspace and retired depletion",
+    "stale nonce/owner refusal with complete accounting unchanged",
+    "exact no-IO aborted-empty retry; completed-cycle same-nonce refusal",
+    "negative-index total logical theorems explicitly outside NATP guards"
+  ]
+}
