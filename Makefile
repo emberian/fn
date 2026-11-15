@@ -333,6 +333,7 @@ ACL2_BOOKS = \
   tests/cns-decode-unit \
   tests/cns-raw-eof-unit \
   tests/cns-stream-append-unit \
+  tests/ctl-stripe-map-unit \
   tests/cns-recovered-fetch-unit \
   tests/cns-edges-unit \
   tests/columns-cost-unit \
