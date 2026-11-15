@@ -27,8 +27,24 @@ closure keys. The proof adapter delegates complete statements to the existing
 columns generator and changes only unconditional row-frame hints. TYPE, WFP,
 RAW-ROWS and explicit hints retain their original behavior. Actual generated-form
 controls and the complete source book pass, including ACL2's second pass.
-The composed consumer build has advanced beyond CNS edges into the format and
-hashing dependencies; APPEND/FETCH and native restart remain unexecuted.
+The composed consumer author build advanced through format, hashing, runs,
+overlay and run assembly. Its next refusal is the Ribbon HASH-LOOP guard:
+rewriting the pool-byte predicate discards the explicit eight-bit premise needed
+by the FNV step. A proof-only hint candidate retains that premise; admission is
+pending. The original timed world is terminal and its completed prefix is being
+recorded for reuse. APPEND/FETCH and native restart remain unexecuted.
+
+The same consumer needed `RUN-BUILD-PAGE` to use `(zp (nfix level))` before
+its checked page-kind call. This preserves logical ZP behavior on arbitrary
+inputs and passes actual whole-book admission; exact record qualification is
+pending. The callee still receives the original level and rejects invalid input.
+
+SOURCE routing now has a reviewed structural repair for sixteen findings in the
+frozen consumer: finite returned statuses reach their explicit continuation or
+cleanup branches, and operation acquisition remains conditional on successful
+issue. Six source controls cover both frozen implementations, status closure,
+idempotence and preservation of injected ownership effects. This is not executed
+actor evidence. The approved consumer overlay still awaits composed admission.
 
 Stable connection/TLS schema providers are integrated at `bf2fc57e7` with
 [qualified 39-book evidence](receipts/kind-schema39-record.json): 35 reused,
