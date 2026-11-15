@@ -1,6 +1,7 @@
 ; Cold C source adoption: one directory row per step while boot is non-serving.
 ; The authority opener lives above cold selected-candidate/root4 evidence.
 (in-package "ACL2")
+(include-book "std/util/bstar" :dir :system)
 (include-book "checkpoint-summary-leases")
 (include-book "machines-c-successor")
 (fn2-book-layer :c)

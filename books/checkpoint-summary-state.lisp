@@ -2,7 +2,7 @@
 ; Each source root owns an actual extent; the table has one row per extent.
 (in-package "ACL2")
 (include-book "checkpoint-restore-semantic-state")
-(fn2-book-layer :c)
+(fn2-book-layer :b)
 (defcolumns fn2-checkpoint-summary
  ((phase (:enum fn2-checkpoint-summary-phase (:idle :capture :captured :applying :applied :uncertain)))
   (tag :u60) (candidate :u32) (checkpoint :u60) (cut-commit :u60) (cut-event :u60)
