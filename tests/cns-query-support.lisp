@@ -28,4 +28,3 @@
   (and (fn2-corep fn2-core) (fn2-core-wfp fn2-core) (natp 4)
        (fn2-cns-draining-domainp id before) (fn2-cns-draining-reservedp before)
        (fn2-cns-drain-pool-semanticp fn2-core)))
-

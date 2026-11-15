@@ -45,7 +45,7 @@
     "tests/cns-release-refinement-unit.lisp": "4aa3a3f9a7e840562050c2f9c5da9cf4dcae9d34305685df7a0056c46e2b3710",
     "books/cns-query-lifetime-model.lisp": "3d602fb5629e7818eb4b9ecd35f5d5ec7c2bb894972b6aa0193e40704e7e85c1",
     "tests/cns-query-lifetime-unit.lisp": "7000663a078a77a0a08a256f1298108f94bf930d202ebeb10e5f1061b7bcf50a",
-    "tests/cns-query-support.lisp": "f57533ecb7c001bff21cecc66b513f7318836da6bb140d6b70fb0fa944e11acc"
+    "tests/cns-query-support.lisp": "e968a4702b3ab4c11648c55ba9fa170ff195c8911d8031ef145f542ddff12382"
   },
   "protected_byte_identical": [
     "books/pool.lisp",
