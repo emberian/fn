@@ -33,7 +33,7 @@ class Span(unittest.TestCase):
 
     def test_source_type_and_range_are_required_without_runtime_whole_scan(self):
         after=rw.rewrite(BASE);chunk=form(after,'fn2-layout-payload-chunk')
-        self.assertIn('(mbe :logic (fn2-poolp fn2-pool) :exec t)',chunk)
+        self.assertNotIn('fn2-poolp',chunk)
         self.assertIn('(min fuel (- size pos) (- end next))',chunk)
         self.assertIn('(fn2-layout-range-code slot gen next (+ next n) nil okind oslot ogen fn2-pool)',chunk)
         gen=form(after,'fn2-codec-events')
@@ -43,6 +43,20 @@ class Span(unittest.TestCase):
         self.assertIn('(,bytefn phase (+ pos (- chunk 1)) v hi size payload byte)',gen)
         self.assertIn('(,scan (- fuel chunk) base phase',gen)
         self.assertIn('(,scan (- fuel chunk) base (,nextfn phase)',gen)
+        lemma=lr.match('(defthm fn2-layout-readable-span-octet ?*body)',lr.parse(after).forms)[0].node
+        self.assertIn('(fn2-poolp fn2-pool)',after[lemma.start:lemma.end])
+        self.assertIn('(equal (mv-list 3 (,scan ,@scanargs fn2-fields fn2-pool))',gen)
+        self.assertIn('"-EXEC-HYPS"',gen)
+        self.assertIn('"-EXEC-REFINES"',gen)
+
+    def test_mbe_logical_subject_is_exact_original_generated_scanner(self):
+        before=form(BASE,'fn2-codec-events');after=form(rw.rewrite(BASE),'fn2-codec-events')
+        original=lr.match('(defun ,scan ?*body)',lr.parse(before).forms)[0].node.items[-1]
+        changed=lr.match('(defun ,scan ?*body)',lr.parse(after).forms)[0].node.items[-1]
+        self.assertEqual(changed.items[0].low,'mbe')
+        self.assertEqual(changed.items[1].low,':logic')
+        self.assertEqual(before[original.start:original.end],after[changed.items[2].start:changed.items[2].end])
+        self.assertEqual(changed.items[3].low,':exec')
 
     def test_real_control_compares_every_visit_to_existing_model(self):
         fixture=(ROOT/'tests/layout-payload-span-unit.lisp').read_text()
@@ -53,6 +67,20 @@ class Span(unittest.TestCase):
                      '(fn2-span-test 6144 4096)', '(eq zero-code :bounds)',
                      '(eq owner-code :owner)', '(equal frame (fn2-span-frame fn2-fields))']:
             self.assertIn(text,fixture)
+
+    def test_refinement_teeth_use_same_generated_terms_and_remove_only_type(self):
+        fixture=(ROOT/'tools/fixtures/layout-span-refinement-teeth.lisp').read_text()
+        for text in ["(fn2-codec-events 'fn2-span-fixture", '(car (last scan))',
+                     '(cadr (member-eq :exec body))',
+                     "(without-pool-type (list 'and (cadr whole) (cadddr whole)))",
+                     "(left (list 'mv-list 3 (cons 'fn2-span-fixture-scan args)))",
+                     '(fn2-span-teeth-build positive 0 24 nil nil)',
+                     '(fn2-span-teeth-build positive 8 12 nil nil)',
+                     '(fn2-span-teeth-build positive 19 24 23 9)',
+                     '(fn2-span-teeth-build removed 8 24 6 256)']:
+            self.assertIn(text,fixture)
+        old=(ROOT/'tests/layout-model-empty-boundary-unit.lisp').read_text()
+        self.assertIn("'(t :more 1 2 1 :more 1 1 0)",old)
 
 
 if __name__=='__main__': unittest.main()

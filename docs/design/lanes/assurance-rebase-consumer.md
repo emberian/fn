@@ -537,23 +537,33 @@ fn2-layout-decode-run also returns original OFF on scanner errors, whereas the
 generated STEP returns its fault NEXT; general error-NEXT equivalence is already
 absent from the current baseline and must not be claimed by a new refinement.
 
-The isolated layout_payload_span_rewrite projection preserves byte fuel: an
-opaque payload chunk is min(remaining payload, remaining input, fuel), the
-existing BYTE receives its last position, and recursion subtracts that exact
-chunk. All public faces, logical/model scan, G1 statements, hints and rune
-restoration remain byte-identical to qualified layout2060684e. One initial
-pool-read preserves current error precedence; the shared range checker validates
-the entire chunk. The logical POOLP condition inside MBE falls back to one-byte
-checks for malformed untyped carriers, while guarded execution uses the carried
-typed stobj without runtime whole-pool validation. Three projection controls pass. The new registered actual-codec fixture compares
-every MORE/OK visit against the existing logical scan at budget1/4096, including
-all semantic rows and normalized continuation, zero-budget and wrong-owner full
-field snapshots. Its four assertions are UNRUN; no alternate parser is used.
-This source projection is not integrated or qualified. Exact scan/effect
-refinement, bad-octet/truncated controls and actual caller charge scope must close
-before integration. The current full4096 limitation is intentionally
-still visible; a separate visit quota derived from field kinds is needed for a
-useful bounded full face, or callers must use the existing continuation.
+The isolated span projection keeps the exact original generated SCAN body as
+its MBE logical subject and mechanically derives the executable arm from that
+same body. Chunk=min(payload remainder,input remainder,fuel), subtracting its
+exact byte count. Public STEP and G1 forms remain unchanged. EXEC-HYPS includes
+every original guard and both stobj recognizers; EXEC-REFINES requires equality
+of all three returned values, including the COMPLETE fields carrier. The guard
+proof consumes that statement. MBE alone is not executable refinement.
+
+Five span and four bounded-full projection controls pass. Seven source teeth
+extract their compared terms from the same generator event: six whole-H cases
+(partial, field/input end, zero fuel, truncation, typed fault), plus removal of
+exactly POOLP with one unread byte256 and otherwise unchanged owned geometry.
+The general proof, guard verification and all teeth remain UNRUN. The registered
+per-visit model/STEP fixture remains a separate positive control at budget1/4096;
+it does not establish equivalence for the generic model's original error-NEXT
+or zero0-fuel differences. Both mismatches now have immutable executable
+original-baseline controls, unexecuted here. No model repair is integrated.
+
+c182c14c5 contains independent model-error and fullface source projections. Full
+fuel=min(actualspan,MAX)+emptycount+1 sentinel, with range/owner preflight before
+START. It avoids a declaration-only giant quota and prevents a tiny malformed
+schema from scanning an entire enclosing page. A post-projection fixture covers
+6KiB full/model Ref/end, fullsnapshot refusal, truncation/error rollback, and a
+tiny unterminated scalar at9bytes versus64KiB input. Its thirteen source forms
+are UNRUN and require projection. Native streaming now bypasses fullface for
+APPEND; other stream-list verbs remain Q1's explicit frontier. No fullface/caller
+cost or guard qualification is claimed; three named source hunks remain separate.
 
 6a44f8b75 supplies narrow parsed internal-schema declaration/scalar/admission
 projection over currentad722 source. It adds the missing :internal declaration

@@ -6,10 +6,15 @@ remain unexecuted unless a separate current-key receipt says otherwise.
 
 The three independent projections are:
 
-1. `layout_payload_span_rewrite.rewrite`: same byte fuel, code/NEXT and
-   continuation. A typed opaque chunk is min(payload remainder, input remainder,
-   fuel), consumes that many fuel units, and retains the initial read/error
-   check. Its logical untyped fallback reads one byte. There is one scanner.
+1. `layout_payload_span_rewrite.rewrite`: the exact original generated SCAN
+   body is its MBE logical subject; the executable arm is mechanically derived
+   from that same body. An opaque chunk is min(payload remainder, input
+   remainder, fuel), consumes that many fuel units, and retains the initial
+   read/error check. The named EXEC-HYPS includes every original guard and both
+   stobj recognizers. EXEC-REFINES compares all three returned values, including
+   the complete fields carrier, and is required by the guard proof. MBE itself
+   does not establish that equality. There is one scanner; its original logical
+   behavior on malformed untyped sources is retained.
 2. `layout_bounded_full_rewrite.model_error`: the reference wrapper returns the
    actual scanner fault NEXT instead of OFF. The original typed malformed
    mismatch remains in `tests/layout-model-error-boundary-unit.lisp`; it is not
@@ -47,7 +52,16 @@ named projections; it is not registered as a runnable current-source root before
 that projection. The source fixture uses the existing real model and generated
 codec, rather than a parser implemented in Python.
 
-Four full-packet and three span-projection source controls pass. They preserve
+The exact span teeth extract both terms from the same generator's returned
+event, rather than writing another parser. Six positive statements assert the
+whole H and exact full-MV equality for partial, field end, input end, zero fuel,
+truncation and typed fault cases. The removal statement deletes only POOLP;
+one unread payload byte becomes256 while its owned geometry and other guards
+remain intact. These seven source teeth and the general guard/equality proof
+are UNRUN. Original generic error-NEXT and zero-field-fuel mismatches remain
+separate source-keyed controls; neither is silently folded into this refinement.
+
+Four full-packet and five span-projection source controls pass. They preserve
 the qualified hints/rune boundary and original G1 forms, and verify projection
 commutation. The transformed whole layout has the same single pre-existing B*
 ignore-binding finding as the qualified baseline. No whole-guard, scan/effect
