@@ -91,6 +91,23 @@ class EventSteps(unittest.TestCase):
         with self.assertRaises(ValueError):
             repl.per_event_steps('(fn2-unknown-event t)', 2000000, 20)
 
+    def test_stable_source_event_declarations_keep_original_budgets(self):
+        root = Path(__file__).resolve().parents[1]
+        for book in ['commit-geometry', 'run-geometry', 'digest-store', 'pool-digest',
+                     'merkle', 'origin', 'read-pins']:
+            source = root / 'books' / (book + '.lisp')
+            with self.subTest(book=book):
+                hoisted, body = repl.encapsulated(source.read_text(), source.parent,
+                                                  set(), 20, 2000000)
+                originals = [form for form in repl.forms(source.read_text())
+                             if repl.form_head(form) not in ['in-package', 'include-book', 'defpkg']]
+                self.assertEqual(body, '(encapsulate ()\n' + '\n'.join(
+                    f'(with-prover-step-limit 2000000 t {repl.wrap_limit(form, 20, event=True)})'
+                    for form in originals) + '\n)')
+        for form in ['(defttag unsafe)', '(defaxiom unsafe t)', '(fn2-unreviewed-macro t)']:
+            with self.subTest(form=form), self.assertRaises(ValueError):
+                repl.per_event_steps(form, 2000000, 20)
+
     def test_macro_time_cap(self):
         form = '(fn2-machines-preserves example)'
         self.assertEqual(repl.per_event_steps(form, 2000000, 20),
