@@ -33,6 +33,17 @@ class EventSteps(unittest.TestCase):
             with self.subTest(steps=steps), self.assertRaises(ValueError):
                 repl.per_event_steps('(thm t)', steps)
 
+    def test_scoped_range_requires_explicit_finite_positive_time_limit(self):
+        for limit in [None, 0, -1, float('inf'), -float('inf'), float('nan')]:
+            args = SimpleNamespace(per_event_steps=2000000, ld_local=True, limit=limit)
+            with self.subTest(limit=limit), \
+                 patch.object(repl, 'book_path') as book, \
+                 patch.object(repl, 'send_many') as send, \
+                 self.assertRaisesRegex(SystemExit, 'explicit positive finite --limit'):
+                repl.send_range(args)
+            book.assert_not_called()
+            send.assert_not_called()
+
     def test_scoped_range_disables_only_outer_limit(self):
         with tempfile.TemporaryDirectory() as directory:
             path = Path(directory) / 'events.lisp'
