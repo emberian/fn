@@ -35,6 +35,12 @@ class Cold(unittest.TestCase):
  def test_wrong_schema_refuses_before_fence_projection(self):
   _,root_schema,_=p.load_case('root')
   with self.assertRaisesRegex(ValueError,'before-schema differs'):p.project(self.before,root_schema)
+ def test_inconsistent_actual_fence_refuses(self):
+  before=copy.deepcopy(self.before)
+  source=before['books/sealer.lisp'];n=p.one('(defun fn2-seal-release ?*args)',source)
+  fences=lr.match('((when (= (fn2-run-installed-physical r fn2-run-installed) 1)) ?*rest)',[n]);self.assertEqual(len(fences),1)
+  before['books/sealer.lisp']=lr.write(source,[(fences[0].start,fences[0].end,'')])
+  with self.assertRaisesRegex(ValueError,'physical source/fence mismatch'):p.project(before,self.schema)
  def test_appended_scalar_and_version_floor_are_not_silently_removed(self):
   schema=copy.deepcopy(self.schema);text=schema['declarations']['fn2-run-installed'];n=lr.parse(text).forms[0]
   i=next(i for i,x in enumerate(n.items) if getattr(x,'low',None)==':extra-fields');extras=n.items[i+1]
