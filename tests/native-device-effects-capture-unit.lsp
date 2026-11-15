@@ -19,7 +19,7 @@
        (bytes (make-array 4 :element-type '(unsigned-byte 8) :initial-contents '(9 1 2 3)))
        (job (make-fn2-device-job :slot 4 :gen 7 :kind :write :bytes bytes :address 1 :length 3 :offset 100)))
  (assert (eq :queued (fn2-device-submit device job)))
- (assert (equal '(:original-return :second-value) (multiple-value-list (fn2-device-perform device job))))
+ (assert (equal '(:original-return :second-value) (multiple-value-list (fn2-device-perform device job)))))
 ;; A mutation after submission must be rejected before performing the write.
 (let* ((device (%make-fn2-device :fd 17))
        (bytes (make-array 1 :element-type '(unsigned-byte 8) :initial-element 5))
