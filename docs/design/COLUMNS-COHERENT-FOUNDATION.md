@@ -97,7 +97,9 @@ world:1,955,464 steps. The localized row equation fell to20,403 steps/0.05s.
 The author gate then stopped at `fn2-harvest-next`'s guard in VOCAB (>2M steps),
 with no retry. Nineteen fully source-READY books were recorded, one at a time;
 their complete qualified parent-closed union is27 books, not the whole37.
-The extra cached TUPLE warm import is outside that accepted prefix ancestry.
+The extra current cache hit is FNV; TUPLE is already inside the accepted27.
+This distinction is checked by exact hit-set difference, not inferred from
+the original warm imports.
 
 `receipts/columns-coherent-prefix87.json` binds all19 manifests and all27
 current closure keys to actual8aeb cert/port/FASL hashes. This includes the
@@ -169,3 +171,21 @@ cell-state instances are source-controlled. The same single FIFO observation
 remains enabled and all unrelated readers remain closed. This candidate is
 UNRUN. Prior27 qualified payloads remain unchanged; no record was granted for
 be136, and all owned processes/scope were gone before releasing2Gi.
+
+### Whole VOCAB source pass and remaining exact campaign
+
+The e9 pilot passed the entire actual VOCAB at original2M20 per source event,
+including its aggregates. HARVEST is :COMMON-LISP-COMPLIANT in the resulting
+world with its unchanged original guard. This is AUTHOR evidence, not a book
+certificate. All four owned PIDs/scope were verified gone before releasing2Gi;
+no record or whole37 replay was granted for that pilot.
+
+The remaining plan checks unchanged keys for the qualified27 and separately
+verifies actual FNV cert/port/FASL payloads under8aeb. Thus there are28 current
+hits and nine misses. Record already source-READY VOCAB first; only the eight
+other genuine misses then need source admission: checkpoint, run-geometry,
+columns-call-guards, pool-ranges, runs-page, runs-schema, runs and the real
+carried fixture. Fresh actual parent worlds and dependency-order whole-book
+records avoid replaying the19 qualified records or exposing unrelated LOCAL
+proof modules globally. Final exact two-root37-union qualification is separate
+and remains pending a new compute grant. No partial book receives a record.
