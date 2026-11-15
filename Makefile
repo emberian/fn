@@ -408,6 +408,7 @@ ACL2_BOOKS = \
   tests/layout-unit \
   tests/columns-guard-hints-unit \
   tests/columns-carrier-hints-unit \
+  tests/columns-carried-unit \
   tests/columns-numeric-theory-unit \
   tests/checkpoint-member-interface-unit \
   tests/checkpoint-member-refutation-unit \
