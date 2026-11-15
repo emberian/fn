@@ -159,7 +159,7 @@
   "author_sequence": [
     {
       "step": "start genuine checkpoint source book before any local event",
-      "command": "proof_repl start NAME books/checkpoint --upto *fn2-checkpoint-served-storage-domain* --cached-only --limit20",
+      "command": "proof_repl start NAME books/checkpoint --upto *fn2-checkpoint-served-storage-domain* --cached-only --limit 20",
       "parents": "All current25 lower books must already be qualified; no source substitution or automatic expansion."
     },
     {
