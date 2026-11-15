@@ -10,7 +10,9 @@
   (limit :u32) (cursor :u32) (seen :u60) (run-cursor :u32)
   (hash-0 :u32) (hash-1 :u32) (hash-2 :u32) (hash-3 :u32)
   (hash-4 :u32) (hash-5 :u32) (hash-6 :u32) (hash-7 :u32)
-  (owner-kind :u8) (owner-slot :u32) (owner-gen :u60)))
+  (owner-kind :u8) (owner-slot :u32) (owner-gen :u60)
+  (edge-base :u32) (run-limit :u32) (drain-started :bool)))
+
 
 ; The entire existing source region comes first. No C base may borrow a
 ; free-looking source/root/I/O slot reserved to another lifetime role.

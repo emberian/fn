@@ -2,21 +2,28 @@
 ; No second page writer or host/caller completion flag exists in this machine.
 (in-package "ACL2")
 (include-book "checkpoint-master-rearm")
-(include-book "checkpoint-teardown")
+(include-book "checkpoint-teardown-sweep")
+(include-book "checkpoint-teardown-cold-transfer")
+(include-book "checkpoint-bank-transfer")
 (include-book "checkpoint-metadata-driver")
 (include-book "event-build-kind")
 (include-book "checkpoint-summary-authority-live")
+(include-book "checkpoint-directory-consume")
 (fn2-book-layer :c)
 
 (defmachine-arms fn2-checkpoint-master :declare
  :arms
  ((:idle :on-refusal ((:next :uncertain) (:charge :steps *fn2-work-small* :runnable t))
    (:if *fn2-checkpoint-activation-qualified*
-    ((:do (code needed retirement) (fn2-checkpoint-master-pressure-op row-retirement-seen))
-     (:if needed
-      ((:set (scan 0) (highest 0) (candidate 0) (candidate-found 0))
-       (:next :catalog) (:charge :steps *fn2-work-small* :runnable t))
-      ((:park :checkpoint-needed))))
+    ((:do (notify cleanup) (fn2-checkpoint-teardown-needed-op))
+     (:if cleanup
+      ((:do (begin) (fn2-checkpoint-teardown-sweep-begin-op id row-generation) :accept (:more))
+       (:set (debt-scan 0) (scan 0)) (:next :teardown-select) (:charge :steps *fn2-work-stage* :runnable t))
+      ((:do (code needed retirement) (fn2-checkpoint-master-pressure-op row-retirement-seen))
+       (:if needed
+        ((:set (scan 0) (highest 0) (candidate 0) (candidate-found 0))
+         (:next :catalog) (:charge :steps *fn2-work-small* :runnable t))
+        ((:park :checkpoint-needed))))))
     ((:next :disabled) (:charge :steps *fn2-work-small*))))
   (:disabled (:idle))
   (:catalog :on-refusal ((:next :admission-refused) (:charge :steps *fn2-work-small* :runnable t))
@@ -292,13 +299,58 @@
    (:next :snapshot-release) (:charge :steps *fn2-work-small* :runnable t))
   (:snapshot-release :on-refusal ((:next :uncertain) (:charge :steps *fn2-work-small* :runnable t))
    (:do (code) (fn2-csnapshot-release row-token *fn2-checkpoint-master-kind* id row-generation))
-   (:next :teardown-begin) (:charge :steps *fn2-work-small* :runnable t))
-  (:teardown-begin (:set (scan 0)) (:next :teardown-source) (:charge :steps *fn2-work-small* :runnable t))
+   (:next :teardown-transfer-begin) (:charge :steps *fn2-work-small* :runnable t))
+
+  (:teardown-transfer-begin :on-refusal ((:next :teardown-uncertain) (:charge :steps *fn2-work-small* :runnable t))
+   (:do (code candidate) (fn2-checkpoint-teardown-transfer-begin-op row-token *fn2-checkpoint-master-kind* id row-generation)
+    :accept () :case
+    (((:none) (:set (scan 0)) (:next :teardown-cold-next) (:charge :steps *fn2-work-small* :runnable t))
+     ((:copy :duplicate) (:set (debt-scan candidate)) (:next :teardown-transfer-copy) (:charge :bytes 160 :steps *fn2-work-stage* :runnable t))
+     (:otherwise (:next :teardown-uncertain) (:charge :steps *fn2-work-small* :runnable t)))))
+  (:teardown-transfer-copy :on-refusal ((:next :teardown-uncertain) (:charge :steps *fn2-work-small* :runnable t))
+   (:do (code) (fn2-checkpoint-teardown-transfer-step-op row-debt-scan row-token *fn2-checkpoint-master-kind* id row-generation)
+    :accept () :case
+    (((:more) (:charge :bytes 4 :steps *fn2-work-stage* :runnable t))
+     ((:transferred) (:set (scan 0)) (:next :teardown-cold-next) (:charge :bytes 160 :steps *fn2-work-stage* :runnable t))
+     (:otherwise (:next :teardown-uncertain) (:charge :steps *fn2-work-small* :runnable t)))))
+
+  (:teardown-cold-next :on-refusal ((:next :teardown-uncertain) (:charge :steps *fn2-work-small* :runnable t))
+   (:do (code next physicalslot) (fn2-checkpoint-teardown-cold-next-op row-scan) :accept () :case
+    (((:pending) (:set (scan next) (source physicalslot)) (:next :teardown-cold-begin) (:charge :steps *fn2-work-stage* :runnable t))
+     ((:more) (:set (scan next)) (:charge :steps *fn2-work-small* :runnable t))
+     ((:end) (:next :done) (:charge :steps *fn2-work-small* :runnable t))
+     (:otherwise (:next :teardown-uncertain) (:charge :steps *fn2-work-small* :runnable t)))))
+  (:teardown-cold-begin :on-refusal ((:next :teardown-uncertain) (:charge :steps *fn2-work-small* :runnable t))
+   (:do (code candidate) (fn2-checkpoint-teardown-cold-begin-op row-source row-token *fn2-checkpoint-master-kind* id row-generation) :accept () :case
+    (((:copy) (:set (debt-scan candidate)) (:next :teardown-cold-copy) (:charge :bytes 192 :steps *fn2-work-stage* :runnable t))
+     ((:copied) (:set (debt-scan candidate)) (:next :teardown-cold-ack) (:charge :bytes 192 :steps *fn2-work-stage* :runnable t))
+     (:otherwise (:next :teardown-uncertain) (:charge :steps *fn2-work-small* :runnable t)))))
+  (:teardown-cold-copy :on-refusal ((:next :teardown-uncertain) (:charge :steps *fn2-work-small* :runnable t))
+   (:do (code) (fn2-checkpoint-teardown-cold-step-op row-source row-debt-scan row-token *fn2-checkpoint-master-kind* id row-generation) :accept () :case
+    (((:more) (:charge :bytes 4 :steps *fn2-work-stage* :runnable t))
+     ((:copied) (:next :teardown-cold-ack) (:charge :bytes 192 :steps *fn2-work-stage* :runnable t))
+     (:otherwise (:next :teardown-uncertain) (:charge :steps *fn2-work-small* :runnable t)))))
+  (:teardown-cold-ack :on-refusal ((:next :teardown-uncertain) (:charge :steps *fn2-work-small* :runnable t))
+   (:do (code) (fn2-checkpoint-teardown-cold-ack-op row-source) :accept (:transferred))
+   (:next :teardown-cold-next) (:charge :bytes 192 :steps *fn2-work-stage* :runnable t))
+
+  (:teardown-select :on-refusal ((:next :teardown-uncertain) (:charge :steps *fn2-work-small* :runnable t))
+   (:do (code next token extent epoch allocation batch event phase)
+    (fn2-checkpoint-teardown-select-op row-debt-scan *fn2-checkpoint-master-kind* id row-generation)
+    :accept () :case
+    (((:more) (:set (debt-scan next)) (:charge :steps *fn2-work-small* :runnable t))
+     ((:done) (:next :done) (:charge :steps *fn2-work-small* :runnable t))
+     ((:source) (:set (token token) (scan 0)) (:next :teardown-source) (:charge :steps *fn2-work-stage* :runnable t))
+     ((:drop) (:set (token token) (teardown-extent extent) (teardown-epoch epoch) (teardown-allocation allocation) (batch batch) (event event))
+      (:next :teardown-drop) (:charge :steps *fn2-work-stage* :runnable t))
+     (:otherwise (:next :teardown-uncertain) (:charge :steps *fn2-work-small* :runnable t)))))
+
+  (:teardown-begin (:set (scan 0) (debt-scan 0)) (:next :teardown-select) (:charge :steps *fn2-work-small* :runnable t))
   (:teardown-source :on-refusal ((:next :teardown-uncertain) (:charge :steps *fn2-work-small* :runnable t))
    (:do (code scan extent epoch allocation)
-    (fn2-checkpoint-teardown-inspect-op row-token *fn2-checkpoint-master-kind* id row-generation row-scan)
+    (fn2-checkpoint-teardown-inspect-op row-debt-scan row-token *fn2-checkpoint-master-kind* id row-generation row-scan)
     :accept () :case
-    (((:none) (:next :done) (:charge :steps *fn2-work-small* :runnable t))
+    (((:none) (:next :teardown-retained) (:charge :steps *fn2-work-small* :runnable t))
      ((:more) (:set (scan scan)) (:charge :steps *fn2-work-stage* :runnable t))
      ((:eligible) (:set (teardown-extent extent) (teardown-epoch epoch) (teardown-allocation allocation))
       (:next :teardown-submit) (:charge :steps *fn2-work-small* :runnable t))
@@ -307,20 +359,20 @@
   (:teardown-submit :on-refusal ((:next :teardown-uncertain) (:charge :steps *fn2-work-small* :runnable t))
    (:if (and (natp budget) (< 0 budget))
     ((:do (code outcome batch event)
-      (fn2-checkpoint-teardown-submit row-token *fn2-checkpoint-master-kind* id row-generation row-teardown-extent row-teardown-epoch row-teardown-allocation)
+      (fn2-checkpoint-teardown-submit row-debt-scan row-token *fn2-checkpoint-master-kind* id row-generation row-teardown-extent row-teardown-epoch row-teardown-allocation)
       :effects ((:acquire (:storage-window))) :accept () :case
       (((:ok) (:set (batch batch) (event event))
         (:if (eq outcome :ok)
          ((:next :teardown-wait) (:charge :bytes *fn2-checkpoint-teardown-member-bytes* :steps *fn2-work-stage* :runnable t))
          ((:next :teardown-holding-uncertain) (:charge :bytes *fn2-checkpoint-teardown-member-bytes* :steps *fn2-work-small* :runnable t))))
-       ((:busy :exhausted) (:yield))
+       ((:busy :exhausted) (:park :checkpoint-needed))
        ((:retained) (:next :teardown-retained) (:charge :steps *fn2-work-small* :runnable t))
        (:otherwise (:next :teardown-uncertain) (:charge :steps *fn2-work-small* :runnable t)))))
     ((:yield))))
   (:teardown-wait :on-refusal ((:next :teardown-holding-uncertain) (:charge :steps *fn2-work-small* :runnable t))
    (:if (and (natp budget) (< 0 budget))
     ((:do (code outcome batch event)
-    (fn2-checkpoint-teardown-poll *fn2-checkpoint-master-kind* id row-generation)
+    (fn2-checkpoint-teardown-poll row-debt-scan row-token *fn2-checkpoint-master-kind* id row-generation)
     :effects ((:release (:storage-window))) :accept () :case
     (((:pending) (:idle))
      ((:ok) (:if (and (equal batch row-batch) (equal event row-event))
@@ -333,7 +385,7 @@
   (:teardown-drop :on-refusal ((:next :teardown-uncertain) (:charge :steps *fn2-work-small* :runnable t))
    (:if (and (natp budget) (< 0 budget))
     ((:do (code scan)
-    (fn2-checkpoint-teardown-drop-op row-token *fn2-checkpoint-master-kind* id row-generation row-teardown-extent row-teardown-epoch row-teardown-allocation row-batch)
+    (fn2-checkpoint-teardown-drop-op row-debt-scan row-token *fn2-checkpoint-master-kind* id row-generation row-teardown-extent row-teardown-epoch row-teardown-allocation row-batch)
     :accept () :case
     (((:ok) (:set (scan scan)) (:next :teardown-source) (:charge :steps *fn2-work-stage* :runnable t))
      ((:retained) (:next :teardown-retained) (:charge :steps *fn2-work-small* :runnable t))
@@ -342,7 +394,11 @@
   (:teardown-holding-uncertain (:set (stopped 1)) (:stop :checkpoint))
   (:teardown-uncertain (:set (stopped 1)) (:stop :checkpoint))
   ; Reuse waits for authenticated ancestry/archive reachability, not EOF alone.
-  (:teardown-retained (:set (stopped 1)) (:stop :checkpoint))
+  (:teardown-retained
+   (:if (< row-debt-scan *fn2-alloc-none*)
+    ((:set (debt-scan (+ 1 row-debt-scan)) (scan 0)) (:next :teardown-select)
+     (:charge :steps *fn2-work-small* :runnable t))
+    ((:next :teardown-uncertain) (:charge :steps *fn2-work-small* :runnable t))))
   (:done (:set (pending 0) (token 0) (retirement-seen row-attempt-retirement)) (:next :idle) (:charge :steps *fn2-work-small* :runnable t))
   (:admission-refused (:idle))
   (:refused (:set (stopped 1)) (:stop :checkpoint))
@@ -356,6 +412,22 @@
   (:summary-authority-copy :on-refusal ((:next :uncertain) (:charge :steps *fn2-work-small* :runnable t))
    (:do (code) (fn2-checkpoint-summary-authority-live-step-op) :accept () :case
     (((:more) (:charge :steps *fn2-work-stage* :runnable t))
-     ((:complete) (:next :release) (:charge :steps *fn2-work-stage* :runnable t))
+     ((:complete) (:next :rebase-begin) (:charge :steps *fn2-work-stage* :runnable t))
+     (:otherwise (:next :uncertain) (:charge :steps *fn2-work-small* :runnable t)))))
+  (:rebase-begin :on-refusal ((:next :uncertain) (:charge :steps *fn2-work-small* :runnable t))
+   (:do (code) (fn2-checkpoint-directory-rebase-begin-op row-token *fn2-checkpoint-master-kind* id row-generation))
+   (:next :rebase-source) (:charge :steps *fn2-work-stage* :runnable t))
+  (:rebase-source :on-refusal ((:next :uncertain) (:charge :steps *fn2-work-small* :runnable t))
+   (:do (code) (fn2-checkpoint-directory-rebase-step-op) :accept () :case
+    (((:more) (:charge :steps *fn2-work-stage* :runnable t))
+     ((:await-evidence) (:next :rebase-archive) (:charge :steps *fn2-work-small* :runnable t))
+     (:otherwise (:next :uncertain) (:charge :steps *fn2-work-small* :runnable t)))))
+  (:rebase-consume :on-refusal ((:next :uncertain) (:charge :steps *fn2-work-small* :runnable t))
+   (:do (code) (fn2-checkpoint-directory-rebase-consume-op row-token *fn2-checkpoint-master-kind* id row-generation) :accept (:committed))
+   (:next :release) (:charge :bytes 4096 :steps *fn2-work-stage* :runnable t))
+  (:rebase-archive :on-refusal ((:next :uncertain) (:charge :steps *fn2-work-small* :runnable t))
+   (:do (code) (fn2-event-catalog-live-step-op) :accept () :case
+    (((:more) (:charge :steps *fn2-work-stage* :runnable t))
+     ((:complete) (:next :rebase-consume) (:charge :steps *fn2-work-stage* :runnable t))
      (:otherwise (:next :uncertain) (:charge :steps *fn2-work-small* :runnable t))))))
  :observes ((:read-result (:wake))))

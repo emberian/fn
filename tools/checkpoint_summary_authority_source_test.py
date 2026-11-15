@@ -70,7 +70,7 @@ class Source(unittest.TestCase):
         states=[x.low for x in props[':states'].items]
         self.assertEqual(states,[x.items[0].low for x in props[':arms'].items])
         holds={x.items[0].low:[y.low for y in x.items[1:]] for x in props[':holds'].items}
-        for name in [':summary-authority-begin',':summary-authority-copy']:
+        for name in [':summary-authority-begin',':summary-authority-copy',':rebase-begin',':rebase-source',':rebase-consume',':rebase-archive']:
             self.assertEqual(holds[name],[':storage-window',':storage-window'])
         actual=lr.match('(defmachine-arms fn2-checkpoint-master ?*body)',lr.parse((ROOT/'books/checkpoint-master-arms.lisp').read_text()).forms)[0].node
         arms=next(actual.items[i+1] for i,x in enumerate(actual.items) if getattr(x,'low',None)==':arms')
@@ -78,7 +78,10 @@ class Source(unittest.TestCase):
         wait=next(x for x in arms.items if x.items[0].low==':publish-wait')
         self.assertTrue(lr.match('(:next :summary-authority-begin)',[wait]))
         copy=next(x for x in arms.items if x.items[0].low==':summary-authority-copy')
-        self.assertTrue(lr.match('((:complete) (:next :release) ?*rest)',[copy]))
+        self.assertTrue(lr.match('((:complete) (:next :rebase-begin) ?*rest)',[copy]))
+        consume=next(x for x in arms.items if x.items[0].low==':rebase-consume')
+        self.assertTrue(lr.match('(:do (code) (fn2-checkpoint-directory-rebase-consume-op ?*args) :accept (:committed))',[consume]))
+        self.assertTrue(lr.match('(:next :release)',[consume]))
     def test_actual_join(self): check((ROOT/'books/checkpoint-summary-authority-cold.lisp').read_text())
     def test_no_preprojection_authority(self):
         s=(ROOT/'books/checkpoint-summary-authority-cold.lisp').read_text().replace('*fn2-checkpoint-selected-source-phase-projected*','*fn2-checkpoint-selected-source-phase-validated*')

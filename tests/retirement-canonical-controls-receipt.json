@@ -1,0 +1,33 @@
+{
+  "source_base": "347058fb0fc0e03d73a3506541b5fd5d64fdb218",
+  "scope": "test-only event extraction; no runtime or ACL2 qualification",
+  "groups": {
+    "fn2-retirement-dispatch-controls-events": {
+      "source": "tests/retirement-dispatch-core-unit.lisp",
+      "shared_source": "tests/retirement-dispatch-controls.lisp",
+      "forms": 27,
+      "assertions": 24,
+      "sha256": "8cfacd92294b2c6d6cf97787f4aff913fc0e3120403b0a012460851beea7b8ae",
+      "dispatcher_assertions": 16,
+      "cursor_assertions": 8
+    },
+    "fn2-retirement-generic-controls-events": {
+      "source": "tests/retirement-intent-core-unit.lisp",
+      "shared_source": "tests/retirement-generic-controls.lisp",
+      "forms": 3,
+      "assertions": 1,
+      "sha256": "b43ac72a3f2400fe36f3508dd9a9ca11b060d80a649b352970f6f770b62d12d7"
+    },
+    "fn2-retirement-intent-core-controls-events": {
+      "shared_source": "tests/retirement-intent-core-controls.lisp",
+      "forms": 5,
+      "assertions": 3,
+      "sha256": "265fb2eb6c0de20ed5407b16bb3e103ea48c51d36e049cc3ff512de2dc484cec"
+    }
+  },
+  "publish_entry": {
+    "source": "tests/retirement-publish-core-unit.lisp",
+    "byte_sha256": "f3775e03b91bb889bb2242c14d44fb0862cd0bd95befbfecb4b3ae7c565729e3",
+    "assertions": 4
+  }
+}

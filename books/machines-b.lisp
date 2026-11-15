@@ -156,10 +156,18 @@
 (defun fn2-b-event-root-digest (format-rows extents)
  (declare (xargs :guard (and (natp format-rows) (natp extents))))
  (+ 1 (fn2-b-event-leaf-digest format-rows extents)))
+; Expected and predecessor source seals have dedicated rows; catalog reads
+; never overwrite a live mapped directory or a Merkle/physical checker stripe.
+(defun fn2-b-event-expected-digest (format-rows extents)
+ (declare (xargs :guard (and (natp format-rows) (natp extents))))
+ (+ 2 (fn2-b-event-leaf-digest format-rows extents)))
+(defun fn2-b-event-previous-digest (format-rows extents)
+ (declare (xargs :guard (and (natp format-rows) (natp extents))))
+ (+ 3 (fn2-b-event-leaf-digest format-rows extents)))
 (defun fn2-b-digest-minimum (profile)
  (declare (xargs :guard t))
  (+ (* *fn2-digest-stride* (nfix (fn2-b-format-slots profile)))
-    3 (nfix (fn2-b-capacity :extent-slots 16 profile))
+    5 (nfix (fn2-b-capacity :extent-slots 16 profile))
     (fn2-rec-digest-rows (nfix (fn2-b-capacity :extent-slots 16 profile)))))
 (defthm fn2-b-digest-minimum-natural
  (natp (fn2-b-digest-minimum profile)) :rule-classes :type-prescription)
@@ -254,20 +262,30 @@
   ; and the event it began at (b54 M3).
   (aborting :u60) (abort-event :u60)
  ))
-; Current representation: row0 is metadata and positive absolute batch IDs
-; occupy rows1..PROPOSED. Count from actual proposals, including in-flight rows;
-; publication lag and hoped-for checkpoint reclamation grant no extra credit.
+; Resident occupancy is the proposed suffix above the actual installed base.
+; In-flight proposals count; publication lag or hoped-for physical release does
+; not grant extra credit. The allocator independently refuses protected extents.
+(defun fn2-commit-directory-window-state-p (fn2-commit-root)
+ (declare (xargs :stobjs fn2-commit-root :guard (fn2-commit-root-wfp fn2-commit-root)))
+ (and (< 0 (fn2-commit-root-rows fn2-commit-root))
+  (let ((base (fn2-commit-root-base-batch 0 fn2-commit-root))
+        (published (fn2-commit-root-published 0 fn2-commit-root))
+        (installed (fn2-commit-root-installed 0 fn2-commit-root))
+        (proposed (fn2-commit-root-proposed 0 fn2-commit-root)))
+   (and (<= base published) (<= published installed) (<= installed proposed)
+        (<= (- proposed base) (- (fn2-commit-root-rows fn2-commit-root) 1))
+        (or (= base 0) (= (fn2-commit-root-base-ready 0 fn2-commit-root) 1))))))
+(defun fn2-commit-directory-admission-limit (fn2-commit-root)
+ (declare (xargs :stobjs fn2-commit-root :guard (fn2-commit-root-wfp fn2-commit-root)))
+ (if (fn2-commit-directory-window-state-p fn2-commit-root)
+     (+ (fn2-commit-root-base-batch 0 fn2-commit-root) (fn2-commit-root-rows fn2-commit-root)) 0))
 (defun fn2-commit-directory-headroom (needed fn2-commit-root)
  (declare (xargs :stobjs fn2-commit-root :guard (fn2-commit-root-wfp fn2-commit-root)))
- (if (not (and (natp needed) (posp (fn2-commit-root-rows fn2-commit-root)))) (mv :state 0)
-  (let* ((proposed (fn2-commit-root-proposed 0 fn2-commit-root))
-         (installed (fn2-commit-root-installed 0 fn2-commit-root))
-         (published (fn2-commit-root-published 0 fn2-commit-root))
-         (capacity (- (fn2-commit-root-rows fn2-commit-root) 1)))
-   (if (not (and (natp published) (natp installed) (natp proposed)
-                  (<= published installed) (<= installed proposed) (<= proposed capacity))) (mv :state 0)
-    (let ((available (- capacity proposed)))
-     (mv (if (<= needed available) :ok :no-space) available))))))
+ (if (not (and (natp needed) (fn2-commit-directory-window-state-p fn2-commit-root))) (mv :state 0)
+  (let ((available (- (- (fn2-commit-root-rows fn2-commit-root) 1)
+                      (- (fn2-commit-root-proposed 0 fn2-commit-root) (fn2-commit-root-base-batch 0 fn2-commit-root)))))
+   (mv (if (<= needed available) :ok :no-space) available))))
+
 (defthm fn2-commit-directory-headroom-available-nat
  (natp (mv-nth 1 (fn2-commit-directory-headroom needed fn2-commit-root)))
  :rule-classes :type-prescription
@@ -393,7 +411,7 @@
  :fields ((pending :u32) (stopped :bool) (pool-slot :u32) (pool-gen :u60)
           (rc-mode :u8) (rc-pos :u32) (rc-role :u8) (rc-stage :u32) (rc-filled :u32)
           (rc-ready :bool) (rc-outcome :u8) (rc-count :u32)
-          (rc-chain :u60) (rc-arena :u32) (rc-high :u32) (rc-dirty :bool) (rc-ambiguous :bool)
+          (rc-chain :u60) (rc-base :u60) (rc-base-event :u60) (rc-base-tag :u60) (rc-arena :u32) (rc-high :u32) (rc-dirty :bool) (rc-ambiguous :bool)
           (rc-class :u8) (rc-witness :u60) (rc-witness-outcome :u8) (rc-assume :u8)
           (rc-epoch :u60) (rc-found :u32)
           ;; the payload pass: the chained commit whose records are read, the
@@ -401,6 +419,12 @@
           ;; source manifest being followed (its position, unit, units, stored
           ;; length and owner event)
           (rc-commit :u60) (rc-roff :u32) (rc-rend :u32)
+          ;; Actual authenticated reread identity; no decoded-record caller flag.
+          (rc-auth :bool) (rc-auth-progress :u8) (rc-auth-mode :u8) (rc-auth-generation :u60) (rc-auth-pos :u32) (rc-auth-commit :u60)
+          (rc-auth-slot :u32) (rc-auth-gen :u60) (rc-auth-base :u60) (rc-auth-tag :u60)
+          (rc-auth-h0 :u32) (rc-auth-h1 :u32) (rc-auth-h2 :u32) (rc-auth-h3 :u32) (rc-auth-h4 :u32) (rc-auth-h5 :u32) (rc-auth-h6 :u32) (rc-auth-h7 :u32)
+          (rc-auth-roff :u32) (rc-auth-rend :u32) (rc-lifecycle-next :u32)
+          (rc-frontier-first :u60) (rc-frontier-last :u60) (rc-frontier-started :bool)
           (rc-mpos :u32) (rc-munit :u8) (rc-munits :u8) (rc-mtotal :u60) (rc-mevent :u60)
           ;; M7's replay: the member workspace (held with the window), its
           ;; length and its member's event, the members replayed of the

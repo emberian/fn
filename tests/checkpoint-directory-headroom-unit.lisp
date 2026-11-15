@@ -1,5 +1,5 @@
 ; Source controls for the actual B headroom helper and C room predicate.
-; No ring/rebase is active; all credits are current absolute resident rows.
+; Initial-base controls plus an installed base beyond physical row count.
 (in-package "ACL2")
 (include-book "std/util/bstar" :dir :system)
 (include-book "../books/checkpoint-master-abort")
@@ -40,3 +40,22 @@
    (with-local-stobj fn2-commit-root
     (mv-let (ok fn2-extents fn2-commit-root) (fn2-cdh-body fn2-extents fn2-commit-root) (mv ok fn2-extents))) ok)))
 (assert-event (fn2-cdh-run))
+
+(defun fn2-cdh-rebased-body (fn2-commit-root)
+ (declare (xargs :stobjs fn2-commit-root :verify-guards nil))
+ (b* ((fn2-commit-root (fn2-commit-root-init 4 fn2-commit-root))
+      (fn2-commit-root (fn2-commit-root-put 0 (base-batch 120) (base-ready 1) (published 121) (installed 121) (proposed 122)))
+      ((mv yes available) (fn2-commit-directory-headroom 1 fn2-commit-root))
+      ((mv no same) (fn2-commit-directory-headroom 2 fn2-commit-root))
+      (limit (fn2-commit-directory-admission-limit fn2-commit-root))
+      (fn2-commit-root (fn2-commit-root-put 0 (proposed 123)))
+      ((mv full zero) (fn2-commit-directory-headroom 1 fn2-commit-root))
+      (fn2-commit-root (fn2-commit-root-put 0 (base-ready 0)))
+      ((mv missing none) (fn2-commit-directory-headroom 0 fn2-commit-root)))
+  (mv (and (eq yes :ok) (= available 1) (eq no :no-space) (= same 1) (= limit 124)
+           (eq full :no-space) (= zero 0) (eq missing :state) (= none 0)
+           (= (fn2-commit-directory-admission-limit fn2-commit-root) 0)) fn2-commit-root)))
+(defun fn2-cdh-rebased ()
+ (declare (xargs :verify-guards nil))
+ (with-local-stobj fn2-commit-root (mv-let (okay fn2-commit-root) (fn2-cdh-rebased-body fn2-commit-root) okay)))
+(assert-event (fn2-cdh-rebased))

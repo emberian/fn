@@ -109,3 +109,38 @@
 (assert-event (fn2-codec-cancel-check nil 2))
 (assert-event (fn2-codec-cancel-check t 0))
 (assert-event (fn2-codec-cancel-check nil 0))
+
+; No physical free is owed before allocation or after a failed allocation.
+; A pending allocation still owns the reservation until its real return.
+(defun fn2-codec-unused-cleanup-run (allocatep fn2-cancel-carrier)
+ (declare (xargs :stobjs fn2-cancel-carrier :verify-guards nil))
+ (b* (((mv begun fn2-cancel-carrier)
+       (fn2-cancel-carrier-begin 7 17 3 9 0 0 4 4 1 1 fn2-cancel-carrier))
+      (reserved (= (fn2-cancel-carrier-cleanup-credit 0 fn2-cancel-carrier) 1))
+      ((mv allocation-ok fn2-cancel-carrier)
+       (if (not allocatep) (mv t fn2-cancel-carrier)
+        (b* (((mv selected action & & serial fn2-cancel-carrier)
+              (fn2-cancel-carrier-next 0 0 fn2-cancel-carrier))
+             ((mv held fn2-cancel-carrier) (fn2-cancel-carrier-retire 7 17 fn2-cancel-carrier))
+             (preserved (and (= (fn2-cancel-carrier-pending 0 fn2-cancel-carrier) 8)
+                             (= (fn2-cancel-carrier-cleanup-credit 0 fn2-cancel-carrier) 1)
+                             (not (fn2-cancel-carrier-retired-p 7 17 fn2-cancel-carrier))))
+             ((mv failed accepted fn2-cancel-carrier)
+              (fn2-cancel-carrier-observe-lifecycle 7 17 3 9 serial 0 0 0 fn2-cancel-carrier)))
+         (mv (and (eq selected :act) (= action 8) (eq held :pending) preserved
+                  (eq failed :closing) accepted) fn2-cancel-carrier))))
+      ((mv stale fn2-cancel-carrier) (fn2-cancel-carrier-retire 7 18 fn2-cancel-carrier))
+      (still-reserved (= (fn2-cancel-carrier-cleanup-credit 0 fn2-cancel-carrier) 1))
+      ((mv retired fn2-cancel-carrier) (fn2-cancel-carrier-retire 7 17 fn2-cancel-carrier))
+      ((mv next action & & & fn2-cancel-carrier) (fn2-cancel-carrier-next 0 0 fn2-cancel-carrier)))
+  (mv (and (eq begun :ok) reserved allocation-ok (eq stale :stale) still-reserved
+           (eq retired :done) (fn2-cancel-carrier-retired-p 7 17 fn2-cancel-carrier)
+           (= (fn2-cancel-carrier-cleanup-credit 0 fn2-cancel-carrier) 0)
+           (eq next :retired) (= action 0)) fn2-cancel-carrier)))
+(defun fn2-codec-unused-cleanup-check (allocatep)
+ (declare (xargs :verify-guards nil))
+ (with-local-stobj fn2-cancel-carrier
+  (mv-let (ok fn2-cancel-carrier)
+   (fn2-codec-unused-cleanup-run allocatep fn2-cancel-carrier) ok)))
+(assert-event (fn2-codec-unused-cleanup-check nil))
+(assert-event (fn2-codec-unused-cleanup-check t))

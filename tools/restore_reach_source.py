@@ -4,11 +4,11 @@ import argparse
 import lisp_rewrite as lr
 
 
-def rewrite(text):
+def rewrite(text, prefixes=('fn2-checkpoint-restore-reach-', 'fn2-checkpoint-restore-events-')):
     edits = []
     for match in lr.match('(defun ?name ?args ?*body)', lr.parse(text).forms, deep=False):
         name = match.captures['name']
-        if not isinstance(name, lr.Atom) or not name.low.startswith(('fn2-checkpoint-restore-reach-', 'fn2-checkpoint-restore-events-')):
+        if not isinstance(name, lr.Atom) or not name.low.startswith(prefixes):
             continue
         for decl in match.captures['body']:
             if not isinstance(decl, lr.Lst) or not decl.items or getattr(decl.items[0], 'low', '') != 'declare':

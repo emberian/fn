@@ -5,7 +5,7 @@
 (include-book "std/util/bstar" :dir :system)
 (fn2-book-layer :b)
 
-(defun fn2-checkpoint-selected-source-copy (i at fn2-checkpoint-bytes fn2-checkpoint-selected-source)
+(defun fn2-checkpoint-selected-source-copy-descriptor (i at fn2-checkpoint-bytes fn2-checkpoint-selected-source)
  (declare (xargs :stobjs (fn2-checkpoint-bytes fn2-checkpoint-selected-source)
   :measure (nfix (- 32 (nfix i)))
   :guard (and (fn2-checkpoint-bytes-wfp fn2-checkpoint-bytes)
@@ -16,7 +16,7 @@
   (let ((fn2-checkpoint-selected-source
          (update-fn2-checkpoint-selected-source-descriptori i
           (fn2-checkpoint-bytes-value (+ at i) fn2-checkpoint-bytes) fn2-checkpoint-selected-source)))
-   (fn2-checkpoint-selected-source-copy (+ 1 i) at fn2-checkpoint-bytes fn2-checkpoint-selected-source))))
+   (fn2-checkpoint-selected-source-copy-descriptor (+ 1 i) at fn2-checkpoint-bytes fn2-checkpoint-selected-source))))
 
 (defun fn2-checkpoint-selected-source-descriptor-p (i at fn2-checkpoint-bytes fn2-checkpoint-selected-source)
  (declare (xargs :stobjs (fn2-checkpoint-bytes fn2-checkpoint-selected-source)
@@ -94,7 +94,7 @@
        (cut-commit (fn2-checkpoints-cut-commit c fn2-checkpoints)) (cut-event (fn2-checkpoints-cut-event c fn2-checkpoints))
        (history (fn2-checkpoints-history c fn2-checkpoints)) (incarnation (fn2-checkpoints-incarnation c fn2-checkpoints))
        (generation 0)))
-      (fn2-checkpoint-selected-source (fn2-checkpoint-selected-source-copy 0 at fn2-checkpoint-bytes fn2-checkpoint-selected-source)))
+      (fn2-checkpoint-selected-source (fn2-checkpoint-selected-source-copy-descriptor 0 at fn2-checkpoint-bytes fn2-checkpoint-selected-source)))
   (mv :reinvestigate c fn2-checkpoint-selected-source)))
 
 (defcost fn2-boot-checkpoint-select :answers (:reinvestigate :source :bounds :state)

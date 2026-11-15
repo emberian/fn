@@ -106,7 +106,9 @@
     "books/words",
     "sim/commit-test-profile",
     "tests/retirement-core-instance",
+    "tests/retirement-dispatch-controls",
     "tests/retirement-dispatch-core-unit",
+    "tests/retirement-generic-controls",
     "tests/retirement-intent-core-controls",
     "tests/retirement-intent-core-unit",
     "tests/retirement-intent-leaf-unit",
@@ -137,7 +139,9 @@
     "books/run-geometry.lisp",
     "sim/commit-test-profile.lisp",
     "tests/retirement-core-instance.lisp",
+    "tests/retirement-dispatch-controls.lisp",
     "tests/retirement-dispatch-core-unit.lisp",
+    "tests/retirement-generic-controls.lisp",
     "tests/retirement-intent-core-controls.lisp",
     "tests/retirement-intent-core-unit.lisp",
     "tests/retirement-intent-leaf-unit.lisp",
@@ -332,5 +336,19 @@
       ],
       "qualification": "source-only; depends on runtime cursor guard fix"
     }
+  },
+  "canonical_gate": {
+    "root": "tests/retirement-canonical-core-unit",
+    "source_base": "347058fb0fc0e03d73a3506541b5fd5d64fdb218",
+    "local_book_count": 166,
+    "partial_core_in_closure": false,
+    "assertions": {
+      "submit_poll": 3,
+      "generic_decoder": 1,
+      "dispatcher": 16,
+      "cursor": 8,
+      "publish": 4
+    },
+    "qualification": "source-only; no ACL2 or runtime execution"
   }
 }

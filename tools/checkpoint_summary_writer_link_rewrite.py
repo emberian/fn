@@ -41,7 +41,8 @@ def rewrite(source):
 '''+''.join(source[d.start:d.end]+'\n' for d in defs)+'))'
     source=lr.write(source,[(d.start,d.end,macro if i==0 else '') for i,d in enumerate(defs)])
     source=source.replace('(include-book "event-producer")','(include-book "event-producer")\n(include-book "event-rearm")')
-    return source.replace('\n  \n','\n\n')
+    while '\n  \n' in source:source=source.replace('\n  \n','\n\n')
+    return source
 if __name__=='__main__':
     root=Path(__file__).resolve().parents[1]
     p=root/'books/checkpoint-summary-authority-live.lisp';p.write_text(rewrite(p.read_text()))

@@ -9,6 +9,7 @@
 (include-book "machines-b")
 (include-book "c-snapshot")
 (include-book "checkpoint-summary-state")
+(include-book "startup-genesis-state")
 (fn2-book-layer :c)
 
 ; ---------------------------------------------------------------------------

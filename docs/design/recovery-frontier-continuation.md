@@ -1,0 +1,7 @@
+# Actual recovery frontier continuation
+
+The canonical recovery dispatcher now routes authenticated replay stage4 through `fn2-recovery-frontier-step` before any lifecycle/C replay. It consumes the same `fn2-event-members-step` scanner and hash/carry primitive as checkpoint event reading. The actual CHAINED candidate supplies the event interval, and the current recovery row supplies the immutable owned window and generation. Every continuation checks the shared current-unit authentication predicate, scanner ownership/range and candidate interval. It advances only after scanner EOF and exact frontier size; it never resets a selected C frontier.
+
+`fn2-recovery-install-finish` publishes the reconstructed mapped directory terminal for the actual selected source while leaving allocator phase4 and epoch-begun0 unchanged. The full-discovery path retains its existing operation. Opening selected issuance still requires the actual later persisted boot epoch Fence and completed protection/orphan reconstruction.
+
+Source only: parsed changed Lisp forms, scoped reread rewrite fixtures, secrets and diff checks pass. No admission, execution or whole-recovery claim. The selected candidate-adoption bridge is under implementation; phase4 therefore remains a real blocking boundary. The independent audit owns same-length reread substitution, stale lease and continuation controls. Runtime row0 is the reconstructed recovery frontier, not a claim that subsequent ordinary commit currently maintains that row.
