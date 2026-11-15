@@ -165,4 +165,24 @@ class ArchiveManifestSource(unittest.TestCase):
  def test_schema10_height_is_level_count_at_both_captures(self):
   n=form('event-archive-control.lisp','fn2-event-archive-operation','fn2-event-archive-capture-member')
   self.assertIn('(member-height (fn2-run-builds-height b fn2-run-builds))',text('event-archive-control.lisp',n))
+class ArchivePageKindSource(unittest.TestCase):
+ def test_root3_class_is_exactly_manifest_and_internal_run_pages(self):
+  n=form('checkpoint-page-header.lisp','defun','fn2-checkpoint-page-role-kind-p')
+  cases=calls(n,'case')[0].node
+  role3=next(x for x in cases.items[2:] if hasattr(x,'items') and x.items[0].low=='3')
+  s=text('checkpoint-page-header.lisp',role3)
+  for kind in ['*page-kind-manifest*','*page-kind-run-data*','*page-kind-run-index*']:
+   self.assertIn(kind,s)
+  self.assertEqual(s.count('(equal kind '),3)
+  self.assertNotIn('checkpoint-descriptor',s)
+ def test_actual_archive_worker_uses_schema_kind_and_verified_promotion(self):
+  n=form('event-archive-work.lisp','fn2-event-archive-operation','fn2-event-archive-work')
+  self.assertTrue(has(n,'fn2-checkpoint-metadata-page'))
+  self.assertTrue(has(n,'fn2-checkpoint-metadata-page-consume'))
+  self.assertTrue(has(n,'fn2-checkpoint-metadata-promote'))
+  wrapper=form('checkpoint-metadata.lisp','defun','fn2-checkpoint-metadata-page')
+  self.assertTrue(has(wrapper,'fn2-run-layout-page-kind'))
+  bind=form('checkpoint-metadata-page.lisp','defun','fn2-checkpoint-metadata-page-bind')
+  self.assertTrue(has(bind,'fn2-checkpoint-metadata-writerp'))
+  self.assertTrue(has(bind,'fn2-checkpoint-metadata-role'))
 if __name__=='__main__':unittest.main()

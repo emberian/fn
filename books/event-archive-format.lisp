@@ -1,4 +1,4 @@
-; Root3's canonical archive header, under the existing proof-page envelope.
+; Root3's canonical archive header, under its existing manifest-page envelope.
 ; Its manifest is an ordinary schema10 run of physically completed internal
 ; member runs. There is no alternate raw-journal fallback in this layout.
 (in-package "ACL2")

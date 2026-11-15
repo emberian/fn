@@ -196,3 +196,12 @@ the real schema10 contract (top level is height-1). Four additional source
 controls cover reuse, coverage, actual completion and that height distinction.
 Empty-cut manifest construction currently explicitly refuses and remains owed;
 new header page publication, selected read and retained-run append are pending.
+
+The shared physical page worker's role3 class formerly admitted only manifest
+pages, which would refuse the real internal20 run/data descendants. Its class
+now admits exactly manifest, run-data and run-index; other role classes are
+unchanged. Actual archive ownership/build/phase still gates the C writer, whose
+page kind derives from the sole schema/level dispatcher and whose promotion
+requires the real physical completion. Root3's header retains the existing
+manifest envelope. Two source controls and unrun actual class/refusal assertions
+cover this distinction; the class predicate grants no coverage or completion.

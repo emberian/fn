@@ -8,9 +8,10 @@
 (defconst *fn2-checkpoint-page-header-area*
  (* 32 (ceiling *fn2-format-page-header-max-size* 32)))
 
-; Metadata's role1 may use any declared physical page kind; its constructor
-; must establish the kind of each actual semantic page. Other roles have a
-; fixed wire kind. This predicate conveys no source-coverage evidence.
+; Metadata's role1 may use any declared physical page kind. Root3's archive
+; contains its manifest envelope and internal member run/index pages. The C
+; constructor establishes the exact schema/level kind from its owned writer;
+; this class predicate conveys no source coverage or completion evidence.
 (defun fn2-checkpoint-page-role-kind-p (role kind)
  (declare (xargs :guard t))
  (and (natp kind) (< kind (len (caddr *fn2-format-page-kind*)))
@@ -18,7 +19,8 @@
        (0 (equal kind *page-kind-checkpoint-descriptor*))
        (1 t)
        (2 (equal kind *page-kind-allocation-map*))
-       (3 (equal kind *page-kind-manifest*))
+       (3 (or (equal kind *page-kind-manifest*)
+              (equal kind *page-kind-run-data*) (equal kind *page-kind-run-index*)))
        (4 (equal kind *page-kind-merkle-node*))
        (5 (equal kind *page-kind-recovery-arena*))
        (otherwise nil))))
