@@ -28,6 +28,12 @@
      (:if (equal row-bundle *fn2-sealer-bundle-held*)
       ((:set (drain 0)) (:next :draining) (:charge :steps *fn2-work-transition* :runnable t))
       ((:park :sealable :steps *fn2-work-transition*))))
+    ((eq status :retire)
+     (:do (code) (fn2-sealer-load-retire-op) :accept () :case
+      (((:retired :resident) (:charge :steps *fn2-work-transition* :runnable t))
+       ((:busy) (:park :sealable :steps *fn2-work-transition*))
+       (:otherwise (:do () (fn2-sealer-refuse code)) (:set (stopped 1)) (:next :stopped)
+        (:charge :steps *fn2-work-transition*)))))
     ((and (eq status :admit) (equal row-bundle *fn2-sealer-bundle-none*))
      (:do (code complete) (fn2-sealer-load-reserve-op *fn2-sealer-kind* id row-generation)
       :accept () :case
@@ -82,7 +88,8 @@
      ((:wait) (:wait :completion :steps *fn2-work-small*))
      (:otherwise (:do () (fn2-sealer-refuse code)) (:set (stopped 1)) (:next :stopped)
       (:charge :steps *fn2-work-transition*)))))
-  (:stopped (:idle))))
+  (:stopped (:idle)))
+ :observes ((:read-result (:wake))))
 
 (defmacro fn2-sealer-core-events ()
  '(progn
@@ -131,7 +138,7 @@
                 (fn2-csnapshot (fn2-core-csnapshot fn2-core)))
      (yes)
      (let ((status (fn2-sealer-load-status fn2-seals fn2-overlays fn2-run-installed fn2-pool fn2-csnapshot)))
-      (or (eq status :run)
+      (or (member-eq status '(:run :retire))
           (and (eq status :admit) (fn2-run-load-roomp *fn2-b-seal-source-cursors* fn2-pool))))
      yes))
    (defun fn2-sealer-ready (fn2-core)
