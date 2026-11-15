@@ -1,6 +1,6 @@
 {
   "status": "source-reviewed; ACL2 admission and executable assertion unrun",
-  "componentSource": "b3c1ece9e19f4edb123257265ee621df1ea7c052",
+  "componentSource": "261f98214dea6ef31271d65f3101ec7e467cfd16",
   "consumerRoot": "tests/cns-metadata-pending-unit",
   "logicalWorldBoundary": {
     "priorApplicationSource": "30e44c6955ae09affb0acfb436c9904b9094ad1f",
@@ -39,6 +39,10 @@
       {
         "path": "tests/cns-metadata-pending-unit.lisp",
         "sha256": "38ab6d344d7ecd41bacf763424b89508ffccb996bbe8d1f34ba5a2970493d2f5"
+      },
+      {
+        "path": "tests/cns-fetch-meta-emitted-support.lisp",
+        "sha256": "bf10323b052ecab55a114a72b982fad40a316b02246ca056f11022926475fbd4"
       }
     ],
     "projectedSchema": {
@@ -90,7 +94,7 @@
       "712d5ece7": "712d5ece701d34200e0501554e00155aae1d82ff",
       "517619e27": "517619e27c682f271ddb3a3fab19eaf064018de5"
     },
-    "openPhysicalCnsJoin": "Drain/finish physical metadata jobs before request-release; READ CLOSE :state retains receipts for pending/uncertain/foreign regions and must not be retried as ordinary MORE. Current actual release WFP-scan/cost audit is separate and open."
+    "openPhysicalCnsJoin": "Drain/finish physical metadata jobs before request-release; READ CLOSE :state retains receipts for pending/uncertain/foreign regions and must not be retried as ordinary MORE. WFP is fixed-schema array-length metadata, not a data-row scan; no carried-READ rewrite or scan-removal claim is justified. The bounded nine-job release cost remains under source audit."
   },
   "actualProducerBoundary": {
     "source": "5a516ec771141e8b6362d4bf71b468d6716249ae",
@@ -130,7 +134,10 @@
     "arityFindings": 0,
     "secretsFindings": 0,
     "diffCheck": "pass",
-    "runtimeOrCertificationClaim": false
+    "runtimeOrCertificationClaim": false,
+    "emittedSupportStrictForms": 5,
+    "emittedSupportGetterCensus": "matches actual source/source-operation columns",
+    "emittedSupportExecution": "unexecuted; real constructor must consume pending-run-check at actual preflight and DATA stages"
   },
   "nextGate": "One source-matched successor prefix reusing qualified unaffected artifacts, then admit this root and execute its unchanged assertion. No live core redefinition or duplicate cold application world.",
   "fetchLifetimeRepair": {
@@ -140,5 +147,10 @@
     "onceOnly": "positive actual row observer receipt gates covered/HANDOFF drop",
     "sourceControl": "covered/open-WAIT/covered releases once; serial-guard omission fails; stale/uncertain source routes retain META and stop",
     "sourceControlLimit": "covered/open-WAIT is unreachable-in-composition for this actual caller under its CTL frames. Mocked callee outcomes test defensive routing only. Actual emitted pendingREAD -> coverage -> pendingDATA control and manifest/adoption interleaving remain unexecuted/owed."
+  },
+  "costAudit": {
+    "declaredModel": "Omitted defcost dimensions default to zero; caller path accounting records the call but does not thereby prove zero implementation work.",
+    "guardClassification": "Concrete WFP array LENGTH checks have fixed schema size, not a row-count/data-size traversal. Preserve checked operations; no scan-removal rewrite.",
+    "remaining": "Derive nonzero bounded release work including fixed metadata checks and nine-job owner/park. Repeated zero-serial helper calls must be distinguished from real releases without arbitrary budget inflation."
   }
 }
