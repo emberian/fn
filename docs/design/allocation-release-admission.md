@@ -34,7 +34,10 @@ fence, draining/free, or a strictly newer nonwrapping writer generation. Only
 then does actual credited release free the workspace. Its historical slot and
 generation remain recorded with `workspace-released = 1`; all evidence stays
 owned. Refused, ambiguous, stale or failed-return paths retain ownership and
-report uncertainty rather than rearming a nonce. Successful poll returns
+report uncertainty rather than rearming a nonce. Generation-limit `:retired`
+is a known ownership terminal: accepted PERSISTED remains persisted and its
+credit group stays depleted; an unsubmitted return reports exhausted capacity
+without attempting empty-abort/rearm. Successful poll returns
 `:persisted`, never physical reclamation permission.
 
 These are connected source interfaces, not an executed durability witness.
