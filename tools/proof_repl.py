@@ -1102,12 +1102,16 @@ def per_event_steps(form: str, steps: int, limit: float | None = None) -> str:
         raise ValueError("per-event steps requires a literal event form")
     head = form_head(text)
     # Reject literal commands, limit overrides, raw evaluation and trust mechanisms.
-    # Existing fn2 event macros follow the source loader contract; their expansions
+    # The explicitly listed project event macros follow the source loader contract; their expansions
     # remain one original event, never recursively split or evaluated by Python.
     allowed = set(EVENT_HEADS) | {"local", "progn", "in-theory", "table", "deflabel",
                                   "defmacro", "defequiv", "defcong", "defrefinement",
-                                  "assert-event", "value-triple", "include-book", "defun-sk"}
-    if head not in allowed and not head.startswith("fn2-"):
+                                  "assert-event", "value-triple", "include-book", "defun-sk", "defcolumns",
+                                  "fn2-control-preserves", "fn2-issue-children-wrapper",
+                                  "fn2-machines-keeps-directory", "fn2-machines-preserves",
+                                  "fn2-machines-wait-queue", "fn2-ops-preserves",
+                                  "fn2-pool-preserves", "fn2-env-ops-advanced-by-heads"}
+    if head not in allowed:
         raise ValueError(f"per-event steps does not support event head {head!r}")
     inner = text[1:-1]
     children = spans(inner)
