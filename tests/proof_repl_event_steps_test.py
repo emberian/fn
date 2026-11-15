@@ -232,6 +232,29 @@ class EventSteps(unittest.TestCase):
                     f'(with-prover-step-limit 2000000 t {repl.wrap_limit(form, 20, event=True)})'
                     for form in originals) + '\n)')
 
+    def test_reviewed_assembly_generator_heads(self):
+        # The core preservation macro comes from core.lisp's explicit columns
+        # generator; successor columns are a literal template in their provider.
+        for form in ['(defcost operation :answers t)',
+                     '(fn2-core-preserves operation (fn2-core) :rows nil)',
+                     '(fn2-succ-slots-preserves operation (fn2-succ-slots) :raw-rows t)']:
+            with self.subTest(form=form):
+                self.assertEqual(repl.per_event_steps(form, 2000000, 20),
+                                 f'(with-prover-step-limit 2000000 t (with-prover-time-limit 20 {form}))')
+
+    def test_scoped_range_checks_attachment_boundary_before_sending(self):
+        with tempfile.TemporaryDirectory() as directory:
+            path = Path(directory) / 'events.lisp'
+            path.write_text('(attach-stobj generic concrete)')
+            args = SimpleNamespace(name='test', book=str(path), start=None, until=None,
+                                   through=None, skip_includes=True, ld_local=True,
+                                   limit=20, full=False, keep_going=False, per_event_steps=2000000)
+            with patch.object(repl, 'book_path', return_value=path), \
+                 patch.object(repl, 'send_many') as send, \
+                 self.assertRaisesRegex(SystemExit, 'attachment'):
+                repl.send_range(args)
+            send.assert_not_called()
+
     def test_macro_time_cap(self):
         form = '(fn2-machines-preserves example)'
         self.assertEqual(repl.per_event_steps(form, 2000000, 20),

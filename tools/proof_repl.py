@@ -1174,6 +1174,7 @@ def per_event_steps(form: str, steps: int, limit: float | None = None,
                                   "defcorechild", "defstobj", "fn2-cm-defreaders", "defun-nx",
                                   "fn2-owed-discharge", "fn2-assert-owed-teeth",
                                   "fn2-assert-square-evidence", "defun-inline", "deftheory",
+                                  "defcost", "fn2-core-preserves", "fn2-succ-slots-preserves",
                                   "fn2-control-preserves", "fn2-issue-children-wrapper",
                                   "fn2-machines-keeps-directory", "fn2-machines-preserves",
                                   "fn2-machines-wait-queue", "fn2-ops-preserves",
@@ -2979,6 +2980,14 @@ def send_range(args) -> int:
     event_macros = None
     if getattr(args, "per_event_steps", None) is not None:
         event_macros, source_hashes, source_text = source_event_inventory(path)
+        if path.resolve().is_relative_to(ROOT.resolve()):
+            refusal = attachment_source_refusal({name: [] for name in source_hashes},
+                                                list(source_hashes))
+        else:
+            refusal = ("proof-repl: refusing scoped source attachment replay"
+                       if attachment_events(source_text) else None)
+        if refusal:
+            raise SystemExit(refusal)
         inventory_hash = hashlib.sha256(json.dumps(source_hashes, sort_keys=True).encode()).hexdigest()
         print(f"source event inventory: {len(event_macros)} declared macro names from "
               f"{len(source_hashes)} source snapshots; SHA256 {inventory_hash}", flush=True)
