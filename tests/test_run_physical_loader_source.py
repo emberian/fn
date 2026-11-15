@@ -6,7 +6,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1] / 'tools'))
 from lisp_source import forms, read_sexp
 ROOT = Path(__file__).resolve().parents[1]
 FILES = tuple(ROOT / 'books' / ('run-physical-' + n + '.lisp')
-              for n in ('state', 'resources', 'source', 'io', 'step', 'release'))
+              for n in ('state', 'resources', 'bound', 'source', 'bound-io', 'io', 'bound-step', 'step', 'release'))
 
 def walk(x):
     if isinstance(x, list):
@@ -36,12 +36,22 @@ class PhysicalLoaderSource(unittest.TestCase):
     def setUp(self):
         self.d = definitions()
 
+    def implementation(self, name):
+        wrapper = self.d[name]
+        lower = name.replace('fn2-run-load-', 'fn2-run-bound-')
+        self.assertEqual(len(calls(wrapper, 'fn2-run-load-sourcep')), 1)
+        call = calls(wrapper, lower)
+        self.assertEqual(len(call), 1)
+        self.assertEqual(call[0][1:], self.d[lower][2])
+        self.assertEqual(len(calls(self.d[lower], 'fn2-run-load-boundp')), 1)
+        return self.d[lower]
+
     def test_only_explicit_issue_queues_one_unit(self):
-        issue = self.d['fn2-run-load-issue']
+        issue = self.implementation('fn2-run-load-issue')
         reads = calls(issue, 'fn2-block-read-children')
         self.assertEqual(len(reads), 1)
         self.assertEqual(reads[0][4:6], ['0', '*fn2-commit-unit-bytes*'])
-        self.assertFalse(calls(self.d['fn2-run-load-step'], 'fn2-block-read-children'))
+        self.assertFalse(calls(self.implementation('fn2-run-load-step'), 'fn2-block-read-children'))
         self.assertFalse(calls(issue, 'fn2-run-load-issue'))
         self.assertIn(['<', ['fn2-run-loads-sector', 'c', 'fn2-run-loads'],
                        '*fn2-storage-extent-units*'], list(walk(issue)))
@@ -60,7 +70,10 @@ class PhysicalLoaderSource(unittest.TestCase):
         self.assertFalse(exact_hook(bad))
 
     def test_full_reference_and_owner_survive_yield(self):
-        f = self.d['fn2-run-load-sourcep']
+        source = self.d['fn2-run-load-sourcep']
+        self.assertEqual(calls(source, 'fn2-run-load-boundp'),
+                         [['fn2-run-load-boundp', 'c', 'fn2-run-loads', 'fn2-run-cursors']])
+        f = self.d['fn2-run-load-boundp']
         for load, cursor in (('unit', 'unit'), ('epoch', 'epoch'), ('allocation', 'counter'),
                              ('schema', 'schema'), ('run', 'run'), ('level', 'level'),
                              ('kind', 'okind'), ('owner', 'oslot'), ('generation', 'ogen'),
@@ -68,12 +81,12 @@ class PhysicalLoaderSource(unittest.TestCase):
             self.assertTrue(has_equality(f, ['fn2-run-loads-' + load, 'c', 'fn2-run-loads'],
                                          ['fn2-run-cursors-' + cursor, 'c', 'fn2-run-cursors']))
         self.assertEqual(len(calls(f, 'fn2-run-load-hash-current-p')), 1)
-        self.assertEqual(len(calls(f, 'fn2-checkpoint-summary-lease-current-p')), 1)
+        self.assertEqual(len(calls(source, 'fn2-checkpoint-summary-lease-current-p')), 1)
         self.assertTrue(calls(self.d['fn2-run-load-bind'], 'fn2-checkpoint-summary-acquire'))
         self.assertTrue(calls(self.d['fn2-run-load-bind'], 'fn2-checkpoint-summary-release'))
 
     def test_verifier_and_real_decoder_precede_exposure(self):
-        f = self.d['fn2-run-load-step']
+        f = self.implementation('fn2-run-load-step')
         self.assertEqual(len(calls(f, 'fn2-format-run')), 1)
         verify = calls(f, 'fn2-format-run')[0]
         self.assertEqual(verify[1:3], [':page', 'nil'])
@@ -122,7 +135,7 @@ class PhysicalLoaderSource(unittest.TestCase):
         frames = {f[1]: f for p in FILES for raw in forms(p.read_text())
                   if isinstance((f := read_sexp(raw)), list) and f and f[0] == 'fn2-run-load-frames'}
         for name, frame in frames.items():
-            f = self.d[name]
+            f = (self.implementation(name) if name in ('fn2-run-load-issue', 'fn2-run-load-step') else self.d[name])
             outputs = {o[0] for o in frame[4]}
             assigned = set()
             for x in walk(f[3:]):
@@ -133,7 +146,9 @@ class PhysicalLoaderSource(unittest.TestCase):
                         assigned.update(n for n in names if isinstance(n, str) and n.startswith('fn2-'))
             self.assertEqual(outputs, assigned, name)
             self.assertLessEqual(max(int(o[1]) for o in frame[4]) + 1, 32)
-        self.assertEqual(len(frames), 7)
+        self.assertEqual(set(frames), {'fn2-run-load-reserve', 'fn2-run-load-bind',
+            'fn2-run-load-issue', 'fn2-run-bound-issue', 'fn2-run-load-harvest',
+            'fn2-run-load-step', 'fn2-run-bound-step', 'fn2-run-load-release', 'fn2-run-load-park-source'})
 
 if __name__ == '__main__':
     unittest.main()
