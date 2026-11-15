@@ -337,6 +337,7 @@ ACL2_BOOKS = \
   books/cns-source-core \
   books/cns-request-observer \
   tests/cns-metadata-pending-unit \
+  tests/cns-fetch-meta-emitted-support \
   tests/cns-stream-fetch-unit \
   tests/ctl-stripe-map-unit \
   tests/cns-recovered-fetch-unit \
