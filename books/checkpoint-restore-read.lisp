@@ -13,6 +13,7 @@
  (case role
   (2 (mv :ok *page-kind-allocation-map* *checkpoint-map-body-kind-allocation-map* *fn2-checkpoint-map-slots* *fn2-checkpoint-map-entry-width* *fn2-format-allocation-map-entry-num-fields*))
   (3 (mv :ok *page-kind-manifest* *checkpoint-map-body-kind-event-proof-directory* *fn2-event-proof-slots* *fn2-event-proof-entry-width* *fn2-event-proof-entry-num-fields*))
+  (4 (mv :frontier *page-kind-merkle-node* 0 60 32 *fn2-event-frontier-header-num-fields*))
   (5 (mv :ok *page-kind-recovery-arena* *checkpoint-map-body-kind-recovery-arena* *fn2-checkpoint-arena-slots* *fn2-checkpoint-arena-entry-width* *fn2-format-recovery-arena-entry-num-fields*))
   (otherwise (mv :role 0 0 1 0 0))))
 
