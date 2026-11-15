@@ -701,3 +701,15 @@ drop have explicit zero-budget no-effect branches. EOF retains debt and catalog
 state: archive/ancestry reachability must be settled before root/source teardown
 or catalog reuse. The source actor and primitive controls remain unadmitted;
 activation and allocator FREE remain disabled.
+
+Planning cancellation resets root1 source state only after the actual build
+cleanup reaches CANCELLED at its exact extent-plus-198 cursor under the same
+HELD cut and phase3 owner. `checkpoint-metadata-abort.lisp` additionally checks
+all 27 current lease owners, returned future borrows, and zero page/semantic/
+payload pending operations before each bounded reset turn. It retires only
+private writer/path and source continuations, preserves retained-entry serial,
+and resets only the two private checker phases. B3/digest bytes are untouched;
+the next actual producer begin initializes them. The terminal record binds the
+candidate, token, owner and cut. It leaves root1 RESERVED/token0, future token0
+and snapshot COMPLETE0; the checkpoint owner retains candidate/planning state
+until its final gate. This operation releases no cut, lease or allocator edge.
