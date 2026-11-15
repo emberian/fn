@@ -773,7 +773,7 @@
            (:otherwise (:stop :checkpoint)))))
   (:checkpoint-semantic-entries :on-refusal ((:stop :checkpoint))
    (:do (code) (fn2-boot-checkpoint-semantic-consume 256) :accept ()
-    :case (((:more) (:next :checkpoint-semantic-entries) (:charge :bytes 32768 :steps *fn2-work-stage* :runnable t))
+    :case (((:more) (:next :checkpoint-semantic-entries) (:charge :bytes *fn2-checkpoint-restore-semantic-entry-bytes* :steps *fn2-work-stage* :runnable t))
            ((:find) (:next :checkpoint-semantic-find) (:charge :steps *fn2-work-stage* :runnable t))
            ((:payload-required) (:next :checkpoint-payload-begin) (:charge :steps *fn2-work-stage* :runnable t))
            (:otherwise (:stop :checkpoint)))))
