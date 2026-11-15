@@ -44,6 +44,7 @@
               (:if (equal complete 1) ((:charge :steps *fn2-work-transition* :runnable t))
                 ((:next :load-refused) (:charge :steps *fn2-work-transition* :runnable t))))
              ((:resident) ,@original)
+             ((:blocked) (:charge :steps *fn2-work-poll* :runnable t))
              ((:exhausted) ,@(fn2-c-actor-loader-refusal name))
              (:otherwise (:stop :pool-release :steps *fn2-work-state*)))))
     (t (:do (load-code load-job load-phase) (fn2-c-actor-loader-state id row-generation) :accept ()

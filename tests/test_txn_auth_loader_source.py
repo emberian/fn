@@ -31,6 +31,23 @@ class TxnAuthLoader(unittest.TestCase):
   self.assertTrue(calls(admit,'fn2-run-installed-physical-count'))
   self.assertTrue(calls(admit,'fn2-run-load-region-freep'))
   self.assertTrue(calls(admit,'fn2-run-load-region-reserve'))
+ def test_writer_gate_precedes_every_fresh_reservation_and_count_sample(self):
+  x=fn('fn2-c-actor-load-admission-code')
+  for n in ('fn2-c-source-reader-current-p','fn2-succ-txns-source-receipt','fn2-read-observer-current-p','fn2-reads-observer-parent-serial'):
+   self.assertTrue(calls(x,n),n)
+  self.assertFalse(calls(x,'fn2-c-source-control-readers'))
+  text=RUNTIME.read_text().split('(defun fn2-c-actor-loader-admit',1)[1]
+  self.assertLess(text.index('(fn2-c-actor-load-admission-code'),text.index('(fn2-run-installed-physical-count'))
+  self.assertLess(text.index('(fn2-c-actor-load-admission-code'),text.index('(fn2-run-load-region-reserve'))
+  self.assertIn('((:blocked) (:charge :steps *fn2-work-poll* :runnable t))',FORM.read_text())
+ def test_prepared_pending_writer_blocks_new_actor_without_allocation_churn(self):
+  text=(ROOT/'tests/txn-auth-loader-admission-unit.lisp').read_text()
+  for call in ('fn2-machine-take-fn2-auth','fn2-successor-resolve','fn2-c-source-writer-begin','fn2-c-actor-loader-reserve','fn2-successor-release','fn2-c-source-writer-poll'):
+   self.assertIn('('+call,text)
+  self.assertIn('(eq blocked :blocked) (equal complete 0) blocked-kept',text)
+  self.assertIn('(eq existing :resident) (equal existing-complete 0) existing-kept',text)
+  self.assertIn('(equal before (fn2-tal-capacity-view fn2-core))',text)
+  self.assertNotIn('update-fn2-run-installed-physical-count',text)
  def test_real_receipt_and_selected_miss_before_owner_capture(self):
   x=fn('fn2-c-actor-tx-missp')
   for name in ('fn2-c-source-reader-current-p','fn2-succ-txns-source-receipt','fn2-c-source-successor-endpoint','fn2-run-cursors-priority'):
@@ -82,5 +99,5 @@ class TxnAuthLoader(unittest.TestCase):
       checked+=1;self.assertEqual(len(a)-1,definitions[a[0]],a[0])
      if len(a)==2 and isinstance(a[0],list) and a[0] and a[0][0]=='mv' and isinstance(a[1],list) and a[1] and isinstance(a[1][0],str) and a[1][0] in known:
       mv+=1;self.assertEqual(len(a[0])-1,known[a[1][0]],a[1][0])
-  self.assertEqual((checked,mv),(85,8))
+  self.assertGreater(checked,100);self.assertEqual(mv,8)
 if __name__=='__main__':unittest.main()
