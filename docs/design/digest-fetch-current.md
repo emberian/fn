@@ -1,7 +1,7 @@
 # Budgeted digest fetch: current-source proof packet
 
-SOURCE-ONLY successor to the frozen6a5 author check described below. The new
-natural-measure proof boundary has not run in ACL2. Archive authority and hold
+SOURCE-ONLY successor to the frozen6a5 author check described below. The current structural-theory
+proof boundary has not run in ACL2. Archive authority and hold
 release remain unfinished; this packet grants neither.
 
 The base is `a1dba5a1c7bd303ba6085c589b9020c357624079`. The entire original
@@ -45,7 +45,7 @@ derived by decoding the writer output. These executable controls are UNRUN.
 
 The mechanical transformations and their before fixtures are in
 `tools/pool_digest_budget_rewrite.py` and `tools/pool_digest_proof_rewrite.py`.
-Nine Python source controls pass. Lisp structural checks, secrets and diff
+Ten Python source controls pass. Lisp structural checks, secrets and diff
 checks pass. No whole-book proof or executable fixture success is claimed.
 
 ## Exact dependency/cache cut
@@ -110,3 +110,35 @@ No rewrite depth, step/time allowance, runtime data domain or error behavior
 changes. The minimal next question is whether this local natural-measure
 boundary admits, and then which next original event is first to refuse.
 The successor requires a new named root scope; no retry has run.
+
+## Frozen734 next refusal and structural boundary
+
+A separately granted author check of `7349fa4fa` used the same limits and a
+fresh owned worktree/session. The scalar LEFT lemma and worker termination
+admitted within the source encapsulate. The next first refusal was local
+`fn2-rec-fetch-bytes-shape`: rewrite call-depth1000, 8,129 steps and 0.07 ACL2
+seconds (enclosing source attempt 0.33 seconds). No final equality or worker
+guard event was reached. The entire attempted encapsulate subsequently failed;
+these event admissions do not constitute a certified or exported book.
+
+`digest-fetch-734-author-refusal.json` binds that unchanged source/input and raw
+refusal. Explicit cleanup removed outer1404825, wrapper1404826, server1404866,
+ACL2 group1404870 and `run-p1404825-i30761516.scope` before release was reported.
+Raw artifacts remain in the owned ignored `build/coordinator/evidence/` and
+remote `/tmp/digest-fetch-734-*`; no fixture or record job ran.
+
+The structural carrier theorem requires only the original carrier recognizer,
+row validity, and actual `fn2-digest-set-word-shape` after a whole-word write.
+The worker explicitly tests `unsigned-byte-p 32 word` before that write. It
+need not establish the decoded value or partial-state arithmetic to preserve
+carrier shape. Its former hint enabled the worker/row predicate but left the
+semantic state and width definitions enabled; the raw refusal again shows
+integer-range/exponent arithmetic opening in the induction branches.
+
+The successor changes only that local hint to enable worker/row reasoning
+while keeping `fn2-rec-fetch-state-p` and `unsigned-byte-p` opaque. Existing
+setter-shape rules can consume the explicit width hypothesis without decoding
+it. The exact theorem, recursive body, measures, guards and public contracts
+remain unchanged. A source control checks the full carrier-shape conclusion
+and these theory boundaries. This is an unrun source proposal, not an argument
+that the next proof succeeds; it requires a fresh named root scope.

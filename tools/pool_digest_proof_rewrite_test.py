@@ -49,6 +49,12 @@ class Proof(unittest.TestCase):
   lemma=lr.match('(defthm fn2-rec-fetch-left-measure ?*body)',lr.parse(s).forms)[0].node
   self.assertTrue(lr.match('(and (o-p (nfix left)) (implies (not (zp left)) (o< (nfix (- left 1)) (nfix left))))',[lemma]))
   self.assertNotIn('fn2-pool',text(s,lemma));self.assertNotIn('fn2-layout',text(s,lemma))
+ def test_structural_shape_keeps_codec_state_and_width_opaque(self):
+  s=read('books/pool-digest.lisp')
+  n=lr.match('(defthm fn2-rec-fetch-bytes-shape ?*body)',lr.parse(s).forms)[0].node
+  self.assertIn('(e/d (fn2-rec-fetch-bytes fn2-digest-rowp)',text(s,n))
+  self.assertIn('(fn2-rec-fetch-state-p unsigned-byte-p)',text(s,n))
+  self.assertTrue(lr.match('(implies (and (fn2-digestsp fn2-digests) (fn2-digest-rowp dst fn2-digests)) (and (fn2-digestsp (mv-nth 3 ?call)) (fn2-digests-wfp (mv-nth 3 ?call)) (equal (fn2-digests-rows (mv-nth 3 ?call)) (fn2-digests-rows fn2-digests))))',[n]))
  def test_exported_result_state_requires_valid_input(self):
   s=read('books/pool-digest.lisp');n=one(s,'(defthm fn2-rec-fetch-step-result-state ?*body)')
   self.assertTrue(lr.match('(implies (and (natp budget) (natp off) (fn2-rec-fetch-state-p next acc)) (fn2-rec-fetch-state-p (mv-nth 1 ?call) (mv-nth 2 ?call)))',[n]))

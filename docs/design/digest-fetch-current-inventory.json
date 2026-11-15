@@ -60,9 +60,9 @@
     },
     {
       "book": "books/pool-digest",
-      "source_sha256": "9b8f88c08d91aaadeaf8a45c2cab52216d759e4d2ac818de64f131a90bd07074",
-      "form_sha256": "b74528a2f90f961ee8c9fd7325ee92f069e6563cefa8744e3bddc35c61526a7b",
-      "plain_closure_key": "3e9d1364f350dd60505c65a6415c1ec9277eb610c3cd83ce8753375ea6570d44",
+      "source_sha256": "3fd8a74204bae8ed8ee641ca27a734e863ac67d9f26dd711c566858e2127007a",
+      "form_sha256": "5154f4fd84f9737521e70a55df36d9faa6ef9b3a764703f1a05175408aaab3a6",
+      "plain_closure_key": "9782a93e3f6ca35a028476d7f97a5a52db5e1c80469b248977a924efe4733e86",
       "local_include_count": 10
     },
     {
@@ -144,7 +144,7 @@
       },
       {
         "book": "books/pool-digest",
-        "plain_closure_key": "3e9d1364f350dd60505c65a6415c1ec9277eb610c3cd83ce8753375ea6570d44",
+        "plain_closure_key": "9782a93e3f6ca35a028476d7f97a5a52db5e1c80469b248977a924efe4733e86",
         "entries": []
       },
       {
@@ -281,7 +281,7 @@
         },
         {
           "book": "books/pool-digest",
-          "plain_closure_key": "3e9d1364f350dd60505c65a6415c1ec9277eb610c3cd83ce8753375ea6570d44",
+          "plain_closure_key": "9782a93e3f6ca35a028476d7f97a5a52db5e1c80469b248977a924efe4733e86",
           "key_directory_exists": false,
           "selected": null
         },

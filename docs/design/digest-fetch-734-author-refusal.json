@@ -1,0 +1,38 @@
+{
+  "source_commit": "7349fa4fa7af43e81e05a3a66bb1c15005f23f46",
+  "toolchain": "8aeb1bea18968c6cd33ac633a80ebf67e4924504db112fd27eb11f16a27b2a8c",
+  "scope": "author-only exact10/9cached; not certification",
+  "outcome": "first refusal at local structural carrier-shape proof",
+  "first_event": "fn2-rec-fetch-bytes-shape",
+  "original_form": 19,
+  "refusal": "ACL2 rewrite call-depth1000",
+  "steps": 8129,
+  "event_acl2_seconds": 0.07,
+  "encapsulate_acl2_seconds": 0.33,
+  "worker_termination": "admitted within subsequently refused encapsulate",
+  "equality": "unreached",
+  "guards": "unreached",
+  "fixtures": "not requested or run",
+  "memory_max": 2147483648,
+  "memory_swap_max": 0,
+  "total_seconds_limit": 600,
+  "event_steps_limit": 2000000,
+  "event_seconds_limit": 20,
+  "recorded_own_pids": [
+    1404825,
+    1404826,
+    1404866,
+    1404870
+  ],
+  "released": true,
+  "author_input_sha256": "1a1cc5ad52a333b789c235f7f9ddddf2e452c351069e1fe60824f5831145d0e8",
+  "artifacts_sha256": {
+    "digest-fetch-734-preflight.json": "f7ee757fb1cb8ffaada474d10acbcb851ad9cbe41ede1ab0c51cc08f42d4f8ae",
+    "digest-fetch-734-author.log": "fdea1f77fa0ddc46cd6de550a0e341026783f8a2c91a703c759f9846e8631b1c",
+    "digest-fetch-734-author-input.lisp": "1a1cc5ad52a333b789c235f7f9ddddf2e452c351069e1fe60824f5831145d0e8",
+    "digest-fetch-734-handles.json": "11c00810ed5d26393bde19b08ffbfe1e26fc5fba2b5dfb7e50c1c7fdd94f980b",
+    "digest-fetch-734-scope.json": "f79ae9c172f505ef3c61c4cde3d0bb01cc14f9be18a074db2d9adaec8512ec8d",
+    "last-output-3.txt": "fa4b439b2815a013945f5d1271e534d2278b33886e3ebd9973291846df3d0ca5",
+    "digest-fetch-734-release-receipt.json": "b86f15bf4d89b94aa9c044cacef15a76c3fb4f311e285e443ba7e1722f4a4d56"
+  }
+}
