@@ -12,10 +12,11 @@
 (fn2-book-layer :d)
 
 ;; The run quantum, split statically: at most *fn2-upload-hash-bytes* hashed
-;; and *fn2-upload-scan-bytes* of header scanned per run.
+;; and *fn2-upload-scan-bytes* of header scanned per run; each hashed span
+;; is also counted once for LF octets before its source window can roll.
 (defconst *fn2-upload-hash-bytes* 2048)
 (defconst *fn2-upload-scan-bytes* 2048)
-(defconst *fn2-upload-run-bytes* (+ *fn2-upload-hash-bytes* *fn2-upload-scan-bytes*))
+(defconst *fn2-upload-run-bytes* (+ (* 2 *fn2-upload-hash-bytes*) *fn2-upload-scan-bytes*))
 ;; The pool class of a chunk (the profile's second class: 64 KiB in the
 ;; concrete profile) and the article bound when the profile names none
 ;; (fn1's source bound, specs/article-parser.md).
@@ -217,7 +218,7 @@
  :fields ((conn :link) (conn-gen :u60) (request :u32)
           (rule (:enum fn2-upload-rule (:post :ihave :takethis))) (op :u60)
           (c0-slot :link) (c0-gen :u60) (c1-slot :link) (c1-gen :u60)
-          (filled :u60) (hashed :u60)
+          (filled :u60) (hashed :u60) (source-lines :u32)
           (scan-off :u32) (ofield :u8) (visible :bool) (nfields :u16) (nlines :u16) (seen :u32)
           (mo :u32) (ml :u32) (no :u32) (nl :u32) (po :u32) (pl :u32)
           (head-status (:enum fn2-upload-head (:scanning :done :malformed :line-length :header-fields
@@ -261,14 +262,14 @@
          (:sealed :upload-row :chunk-window (:storage-window :while (lease :held)))
          (:aborting :upload-row :chunk-window)
          (:draining :upload-row :chunk-window (:storage-window :while (lease :held))))
- :budget (:bytes 4096 :steps 32 :descriptors 4)
+ :budget (:bytes *fn2-upload-run-bytes* :steps 32 :descriptors 4)
  :capacity (fn2-upload-capacity profile)
  ;; A connection takes the row with its two chunks (A-S7).
  :taken (:phase :head :rows :upload-row
          :ranges ((:chunk-window :slot c0-slot :gen c0-gen :class 1)
                   (:chunk-window :slot c1-slot :gen c1-gen :class 1))
          :copy (conn conn-gen request rule principal-slot op)
-         :clear (filled hashed scan-off visible nfields nlines seen mo ml no nl po pl
+         :clear (filled hashed source-lines scan-off visible nfields nlines seen mo ml no nl po pl
                  head-status word inj txn-gen stopped pepoch palloc pdone sevent soutcome scount sready
                  lgen lease ilen cepoch calloc cfree mfill munit mstep mdrain stored-hashed location-hashed))
  :initial ((generation fn2-machine-initial-generation) (ready-prev *fn2-none*) (ready-next *fn2-none*)
