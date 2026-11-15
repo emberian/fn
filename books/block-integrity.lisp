@@ -1,6 +1,6 @@
 ; Actual storage-read hash decisions, independent of machine declarations.
 (in-package "ACL2")
-(include-book "blake3-row-frames")
+(include-book "blake3-word-frames")
 (include-book "pool-digest")
 (include-book "commit-geometry")
 (fn2-book-layer :b)
@@ -51,6 +51,7 @@
                  :in-theory (disable fn2-b3-ready fn2-digestsp fn2-digests-wfp fn2-digests-rows
                                      fn2-b3p fn2-b3-wfp fn2-b3-rows fn2-b3-update-shape))))
 (fn2-hash-row-frames fn2-block-hash-span fn2-digests fn2-b3)
+(fn2-b3-word-frame fn2-block-hash-span)
 (in-theory (disable fn2-block-hash-span))
 ;; The LEN octets at BOFF of the lease LSLOT LGEN hashed in hasher row ROW
 ;; into its result slot: (mv code fn2-b3 fn2-digests).
@@ -79,6 +80,7 @@
  :hints (("Goal" :in-theory (e/d (fn2-b3-ready) (fn2-digestsp fn2-digests-wfp fn2-digests-rows
                                                    fn2-b3p fn2-b3-wfp fn2-b3-rows)))))
 (fn2-hash-row-frames fn2-block-hash-into fn2-b3 fn2-digests)
+(fn2-b3-word-frame fn2-block-hash-into)
 (in-theory (disable fn2-block-hash-into))
 ;; Whether digest row GOT equals the 32 octets at OFF of the lease (loaded
 ;; into digest row SCRATCH): (mv same fn2-digests).
@@ -142,6 +144,7 @@
         (equal (len (nth *fn2-b3-wordsi* b)) (len (nth *fn2-b3-wordsi* fn2-b3))))))
  :hints (("Goal" :in-theory (disable fn2-digestsp fn2-digests-wfp fn2-digests-rows
                                     fn2-b3p fn2-b3-wfp fn2-b3-rows fn2-digest-rowp))))
+(fn2-b3-word-frame fn2-block-read-commitment-children)
 (in-theory (disable fn2-block-read-commitment-children))
 
 ; B-S2 S10: the read's completion. Every requested octet arrived (BYTES =

@@ -48,6 +48,7 @@
          ("-DIGESTS-TYPE" fn2-digestsp 2) ("-DIGESTS-WFP" fn2-digests-wfp 2) ("-DIGESTS-ROWS" fn2-digests-rows 2 :frame fn2-digests
           :hints (("Goal" :in-theory (e/d (fn2-cns-source-hash-begin) (fn2-b3-rows fn2-digests-rows))))))
  :hints (("Goal" :use fn2-cns-source-hash-begin-shape :in-theory (disable fn2-cns-source-hash-begin fn2-b3p fn2-b3-wfp fn2-b3-rows fn2-digestsp fn2-digests-wfp fn2-digests-rows))))
+(fn2-b3-word-frame fn2-cns-source-hash-begin)
 (in-theory (disable fn2-cns-source-hash-begin))
 
 (defthm fn2-cns-source-hash-update-shape
@@ -63,6 +64,7 @@
          ("-DIGESTS-TYPE" fn2-digestsp 3) ("-DIGESTS-WFP" fn2-digests-wfp 3) ("-DIGESTS-ROWS" fn2-digests-rows 3 :frame fn2-digests
           :hints (("Goal" :in-theory (e/d (fn2-cns-source-hash-update) (fn2-b3-rows fn2-digests-rows))))))
  :hints (("Goal" :use fn2-cns-source-hash-update-shape :in-theory (disable fn2-cns-source-hash-update fn2-b3p fn2-b3-wfp fn2-b3-rows fn2-digestsp fn2-digests-wfp fn2-digests-rows))))
+(fn2-b3-word-frame fn2-cns-source-hash-update)
 (in-theory (disable fn2-cns-source-hash-update))
 
 (defthm fn2-cns-source-hash-finish-shape
@@ -78,4 +80,5 @@
          ("-DIGESTS-TYPE" fn2-digestsp 2) ("-DIGESTS-WFP" fn2-digests-wfp 2) ("-DIGESTS-ROWS" fn2-digests-rows 2 :frame fn2-digests
           :hints (("Goal" :in-theory (e/d (fn2-cns-source-hash-finish) (fn2-b3-rows fn2-digests-rows))))))
  :hints (("Goal" :use fn2-cns-source-hash-finish-shape :in-theory (disable fn2-cns-source-hash-finish fn2-b3p fn2-b3-wfp fn2-b3-rows fn2-digestsp fn2-digests-wfp fn2-digests-rows))))
+(fn2-b3-word-frame fn2-cns-source-hash-finish)
 (in-theory (disable fn2-cns-source-hash-finish))
