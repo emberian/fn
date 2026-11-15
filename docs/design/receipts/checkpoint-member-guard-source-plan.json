@@ -1,7 +1,7 @@
 {
   "schema": "fn-author-plan-v1",
-  "status": "source-only; no compute launched",
-  "base": "a9a98f8a0370546dbed36df0ef74669b11ded7fd",
+  "status": "source-only actual-guard candidate; first author world stopped at prefix, three local proof repairs admitted, CHECK-STEP/MEMBER pending",
+  "base": "5082007fb",
   "source_files": {
     "books/layout-size-bounds.lisp": "exact95fd; previously reviewed standalone opt-in API",
     "tests/layout-size-bound-unit.lisp": "exact95fd; previously admitted mixed-layout controls",
@@ -9,7 +9,7 @@
     "books/checkpoint-member.lisp": "95fd SIZEbound/hashframe interface +611 computed packer hint"
   },
   "runtime_identity": {
-    "baseline": "a9a98f8a0370546dbed36df0ef74669b11ded7fd",
+    "baseline": "5082007fb",
     "functions": [
       {
         "file": "books/checkpoint.lisp",
@@ -155,7 +155,7 @@
       "checkpoint_member": 30,
       "size_fixture": 10
     },
-    "parent_audit_requirement": "All27 lower parents must be qualified at exact listed source freeze before cached-only pilot; source preparation does not authorize missing-parent expansion.",
+    "parent_audit_requirement": "All27 lower parents are now qualified at exact508 pool/ranges/columns/format bytes; fresh31-key preflight required before next world.",
     "union_books": 31,
     "lower_parents": 27,
     "format_check_parent": {
@@ -225,11 +225,7 @@
         ]
       }
     ],
-    "remaining_after_format_check": [
-      "books/alloc",
-      "books/pool-read-contracts",
-      "books/pool-ranges"
-    ],
+    "remaining_after_format_check": [],
     "source_keys": [
       {
         "book": "books/checkpoint",
@@ -295,7 +291,7 @@
     }
   ],
   "proposed_bounds": {
-    "outer_seconds": 300,
+    "outer_seconds": 1200,
     "event_steps": 2000000,
     "event_seconds": 20,
     "jobs": 1,
@@ -308,5 +304,34 @@
     "Standalone API and mixed fixture pass without exploratory ambient arithmetic."
   ],
   "stop": "First actual refusal retains checkpoint within hard scope; no wider closure or budget increase.",
-  "excluded": "No full checkpoint book certification claim; no helper repeat record; no layout/pool edits."
+  "excluded": "No full checkpoint book certification claim; no helper repeat record; no layout/pool edits.",
+  "first_world": {
+    "freeze": "a18335c36",
+    "outer_pid": 870615,
+    "server_pid": 870666,
+    "acl2_ancestor_pid": 870670,
+    "deadline_seconds": 300,
+    "ended": "original hard timeout; owned processes and cgroup absent",
+    "frontier": "HASH-MATCHESP admitted, CAPTURE-ROOTS/CHECK-STEP/MEMBER not reached",
+    "repairs": [
+      {
+        "function": "fn2-checkpoint-retain",
+        "seconds": 0.16,
+        "steps": 10260,
+        "change": "shared getter hint closes EDGE-ADD/EDGE-MATCHESP"
+      },
+      {
+        "function": "fn2-checkpoint-copy-expected",
+        "seconds": 0.22,
+        "steps": 1657,
+        "change": "local floor/mod arithmetic and getter opacity"
+      },
+      {
+        "function": "fn2-checkpoint-hash-matchesp",
+        "seconds": 0.19,
+        "steps": 1757,
+        "change": "same local floor/mod proof basis"
+      }
+    ]
+  }
 }
