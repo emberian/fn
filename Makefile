@@ -270,6 +270,8 @@ ACL2_BOOKS = \
   books/upload-feed \
   books/upload-kind \
   books/upload-page-geometry \
+  books/identity-workspace-geometry \
+  books/checkpoint-service-geometry \
   books/upload-scan \
   books/vocab \
   books/words \
@@ -498,6 +500,7 @@ ACL2_BOOKS = \
   tests/pool-credit-unit \
   tests/ordinary-drain-credit-unit \
   tests/upload-page-geometry-unit \
+  tests/checkpoint-service-geometry-unit \
   tests/ordinary-drain-credit-live-unit \
   tests/pool-unit \
   tests/port-unit \
