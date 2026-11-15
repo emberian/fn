@@ -1,7 +1,8 @@
 ; meta/emit/print-world.lisp: the printer of fn2's ACL2 world for the Lean side.
 ; Raw Lisp, loaded after the books are included and the loop is left (:q); never a
 ; certifying event (the pattern of tools/owed-export.lsp). Its one entry point,
-; META-PRINT-WORLD, writes one S-expression with two parts:
+; META-PRINT-WORLD writes a world S-expression with two parts, followed by
+; an exact printed-token/home-package/name table for lossless symbol literals:
 ;
 ;  (:registry ...)  every declaration table the forms write, row for row, in declaration
 ;                   order; the bulky keys whose values are event text (:generated
@@ -399,6 +400,23 @@
                   (loop for f in *meta-natives*
                         when (getpropc f 'unnormalized-body nil *meta-w*) collect (meta-fn f)))))))
 
+(defun meta-symbol-packages (world)
+  ;; Run under exactly the same printer bindings as WORLD. The printed token is
+  ;; only a lookup key; the live symbol's home package and name are authoritative.
+  (let ((seen (make-hash-table :test #'eq)) (rows nil))
+    (labels ((walk (x)
+               (cond ((consp x) (walk (car x)) (walk (cdr x)))
+                     ((and (symbolp x) (not (gethash x seen)))
+                      (setf (gethash x seen) t)
+                      (let ((package (symbol-package x)))
+                        (unless (and package
+                                     (member (package-name package)
+                                             '("ACL2" "COMMON-LISP" "KEYWORD") :test #'string=))
+                          (error "Unsupported literal symbol package: ~s" x))
+                        (push (list (prin1-to-string x) (package-name package) (symbol-name x)) rows))))))
+      (walk world))
+    (list :fn2-symbol-packages (nreverse rows))))
+
 (defun meta-print-world (path)
   (setq *meta-errors* nil)
   (let* ((world (list :fn2-world (meta-registry) (meta-embed))))
@@ -409,7 +427,9 @@
         (let ((*package* (find-package "ACL2")) (*print-case* :upcase) (*print-pretty* nil)
               (*print-length* nil) (*print-level* nil) (*print-escape* t) (*print-readably* nil)
               (*print-base* 10) (*print-radix* nil))
-          (prin1 world out) (terpri out))
+          (let ((packages (meta-symbol-packages world)))
+            (prin1 world out) (terpri out)
+            (prin1 packages out) (terpri out)))
         (format t "~&FN2-META-PRINT-WORLD PASS ~a~%" path)))))
 
 ; Canonical companion package. The legacy presentation remains available for

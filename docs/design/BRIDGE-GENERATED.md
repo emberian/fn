@@ -495,3 +495,87 @@ served-root composition with whole-antecedent and hypothesis-removal witnesses.
 The historical `tools/keystone_critical_map.json` is absent in this tree;
 `docs/OWED.md` exists but has no Lean bridge registration. This local helper
 and dispatch mutation control do not discharge that top-level package.
+
+### Served CNS MEMBER selection proposal (2026-11-15)
+
+`meta/emit/emit_served_member_binding.py` now generates a scoped current-world
+qualification book for the actual `FN2-CNS-RUN-STUB` selection of `FN2-CNS-RUN`
+and its logical call path through `FN2-CNS-PUT-ITEM` to `FN2-CNS-PUT-ANSWER`.
+The book checks every canonical function record (including attachment, guard,
+measure and stobj ABI), manifest, native census and dependency closure. The
+selection is not substituted for a constrained function's logical body.
+`print-cns-selected-member.lsp` requests this packet in the shared attached
+world; no second application world is required.
+
+Optional `--lean-output` generates the reply helper's exact canonical body and
+an equation between the actual emitted helper and the same expression with its
+single `MEMBER-EQUAL` replaced by actual `MEMBER-EQ-EXEC`. The existing
+unconditional `emitted_eq_native` proves that local substitution for arbitrary
+Val inputs; no unsupported symbol-key premise is inserted. This is not yet a
+canonical primitive correspondence or an ACL2-to-served behavior theorem.
+
+Nine direct Python controls pass for the selector/context proposal, including
+same-ABI redirection, package aliases, disconnected helper, and nonliteral
+MEMBER arguments. These are synthetic packet controls. The actual attached CNS
+packet and generated helper proof still await the sole shared admitted world.
+
+The former symbol-data adapter conflated KEYWORD SIZE with ACL2 `:SIZE`.
+The repair uses fixed disjoint encodings for the existing three-package subset
+and accepts a symbolic value only when its deterministic inverse reconstructs
+the exact canonical object. COMMON-LISP NIL/T retain their truth behavior.
+`PrimitiveSymbols.symbol_equal_correspondence` covers **either** symbolic
+argument: actual MEMBER compares arbitrary RC first with a keyword element
+second. No RC-symbol hypothesis is inserted.
+
+**Qualified foundation scope:** nine local Lean modules at
+`fb4daf6bc11633b202052c94e35fd27aa5827cf0`, receipt
+`/tmp/symbol-foundation-qualified9-receipt.json`, including inverse/injectivity,
+either-side EQUAL, actual collision, NIL and separator controls. Axiom censuses
+contain only propext, Classical.choice and Quot.sound. Compiler SHA256
+`3e0d0d3d801675359f2d4cf9815bfdb417b20b92fdd9d48b3b14c95bbae28bbf`;
+log SHA256 `d7b293364d59895871d2c3f4264e4dee421c69a127287b342d44349e7e668ac5`.
+This excludes the later declaration syntax migration and generated app world.
+
+**Qualified syntax scope:** the coherent eleven-module migration at
+`33c2c1ded372f86e400808449961281d50f8d1e0` passed, receipt
+`/tmp/symbol-projection-qualified11-receipt.json`: five exact artifact reuses and
+six compiled modules, including all four unchanged Pathway read equations and
+nine syntax controls. Each concrete canonical projection is checked with kernel
+`decide`, then rewritten into the original `Arm.read` parser. Axiom censuses
+remain propext, Classical.choice and Quot.sound; log SHA256
+`8f99ea93b8db62cdcfff2d054b3a2aa0d45359b8193ec6a881fe45f30bfcecee`.
+No compatibility fallback accepts old unqualified external declaration names.
+Existing generated bodies with nonkeyword data must be regenerated from actual
+package-preserving literals. Pres, PrimitiveLists and PrimitiveIntegerPower also
+passed against those exact eleven artifacts. PrimitiveContracts then passed with
+unchanged statements and only the required Rat.Floor/Ring/NormNum/Lift imports
+from pinned Mathlib `1c2b90b13009c65b090d95a83c98e248deafb6f1` (Lean 4.30.0).
+The fifteen-module receipt `/tmp/symbol-qualified15-receipt.json` records source,
+artifact, compiler and dependency hashes; all printed contract axiom censuses
+remain the same three axioms. Source is `5a0a65aaf` (this paragraph is the only
+subsequent change). Thirty-five focused Python controls pass, including the real
+printer helper, package collisions, literal dot, syntax/data distinction and
+served-binding refusal cases. This is a foundation/producer-source gate, not a
+qualification of generated application bodies or the selected live packet.
+
+The printer retains actual home packages; canonical emission preserves them and
+recognizes only real COMMON-LISP NIL as a list terminator. Annotated dot symbols
+remain data rather than dotted-tail syntax. Typed declaration projection keeps
+QUOTE payloads and CASE keys unchanged and rejects noninjective syntax-name
+mappings. The tuple emitter distinguishes symbol data from syntactic identifiers.
+
+**Remaining served obligation:** qualify the actual RUN-STUB selection of RUN,
+its live body/guard/measure/ABI closure and the PUT-ITEM → PUT-ANSWER call; bind
+both canonical operands to the actual RC producer and each reached literal
+MEMBER element, then compose the full caller domain and selected attachment.
+Val-only comparison-domain facts and a logical call-graph path do not supply
+that canonical pair correspondence or reachability. The generated helper context
+equation is still a proposal until checked against the actual packet. Full
+extraction assurance remains open with whole-antecedent/removal evidence owed.
+
+Separately, the six actual translation-validation checker macros now return
+uniform error triples. Exact two-book record
+`certify-20261115T142111Z-1430148` at source `8663207f25c0743d06a667256c5340544aa51f61`
+checks live fn2-tv-codes identity, body-only mutation and actual macro refusals;
+receipt `/tmp/translation-macro-qualified2-receipt.json`. This tooling gate has no
+application or served packet dependency and does not enlarge the scope above.

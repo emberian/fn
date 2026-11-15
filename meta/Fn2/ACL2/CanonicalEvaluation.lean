@@ -249,7 +249,13 @@ theorem object_of_value_integer {object : Object} {i : Int}
   | rational n d => cases represented
   | complex re im => cases represented
   | symbol p n =>
-      cases hn : (Object.symbol p n).name? <;> simp [Object.value?, hn] at represented
+      cases he : symbolEncoding? p n with
+      | none => simp [Object.value?, Object.symbolValue?, he] at represented
+      | some encoded =>
+        simp only [Object.value?, Object.symbolValue?, he] at represented
+        change (if symbolObject? encoded = some (.symbol p n)
+          then some (Val.sym encoded) else none) = some (.int i) at represented
+        split at represented <;> cases represented
   | character n =>
       simp only [Object.value?] at represented
       split at represented <;> cases represented
