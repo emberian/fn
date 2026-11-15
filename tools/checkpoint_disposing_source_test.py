@@ -39,6 +39,18 @@ class Disposing(unittest.TestCase):
             mutant=source.replace('(fn2-checkpoint-teardown-retained-hash-p 0 c fn2-checkpoint-teardown-debt fn2-checkpoint-bytes)',replacement)
             with self.assertRaises(ValueError):
                 require(function(mutant,'fn2-checkpoint-teardown-retained-ownerp'),'(and (fn2-checkpoint-teardown-retained-context-ownerp ?*context) (fn2-checkpoint-teardown-retained-hash-p 0 c fn2-checkpoint-teardown-debt fn2-checkpoint-bytes))')
+    def test_new_evidence_generation_and_wrap_preflight(self):
+        for filename,name in [('checkpoint-teardown-transfer.lisp','fn2-checkpoint-teardown-transfer-begin'),('checkpoint-teardown-cold-transfer.lisp','fn2-checkpoint-teardown-cold-begin')]:
+            text=self.read(filename); f=function(text,name)
+            require(f,'(unsigned-byte-p 60 generation)')
+            require(f,'(update-fn2-checkpoint-teardown-debt-last-generation generation fn2-checkpoint-teardown-debt)')
+            require(f,'(generation generation)')
+            # Structural ordering: exhaustion precedes the watermark write.
+            guard=lr.match('(unsigned-byte-p 60 generation)',[f])[0]
+            write=lr.match('(update-fn2-checkpoint-teardown-debt-last-generation generation fn2-checkpoint-teardown-debt)',[f])[0]
+            self.assertLess(guard.start,write.start)
+        f=function(self.read('checkpoint-teardown-cold-transfer.lisp'),'fn2-checkpoint-teardown-cold-begin')
+        require(f,'(if new (+ 1 (fn2-checkpoint-teardown-debt-last-generation fn2-checkpoint-teardown-debt)) (fn2-checkpoint-teardown-debt-generation c fn2-checkpoint-teardown-debt))')
     def test_existing_constructor_state_boundaries(self):
         # These are the actual shared admissions, rather than caller flags.
         cases=[('checkpoint.lisp','fn2-checkpoint-builder-ownerp','(equal (fn2-checkpoints-state c fn2-checkpoints) *fn2-checkpoint-state-building*)'),

@@ -54,7 +54,13 @@
       ((when (and (not new) (fn2-checkpoint-bank-obligation-memberp physicalslot (fn2-checkpoint-teardown-debt-anchor-mask c fn2-checkpoint-teardown-debt))))
        (mv (if (fn2-checkpoint-teardown-cold-retainedp physicalslot fn2-checkpoint-teardown-debt fn2-checkpoint-publication) :copied :retained) c fn2-checkpoint-teardown-debt))
       ((when (and new (not (< (fn2-checkpoint-teardown-debt-count fn2-checkpoint-teardown-debt) (fn2-checkpoint-teardown-debt-rows fn2-checkpoint-teardown-debt))))) (mv :retained c fn2-checkpoint-teardown-debt))
+      (generation (if new (+ 1 (fn2-checkpoint-teardown-debt-last-generation fn2-checkpoint-teardown-debt))
+                      (fn2-checkpoint-teardown-debt-generation c fn2-checkpoint-teardown-debt)))
+      ((unless (unsigned-byte-p 60 generation)) (mv :exhausted c fn2-checkpoint-teardown-debt))
+      (fn2-checkpoint-teardown-debt (if new (update-fn2-checkpoint-teardown-debt-last-generation generation fn2-checkpoint-teardown-debt) fn2-checkpoint-teardown-debt))
       (fn2-checkpoint-teardown-debt (if new (fn2-checkpoint-teardown-debt-put c
+       (generation generation) (dispose-phase *fn2-checkpoint-dispose-phase-idle*) (dispose-cursor 0)
+       (extent 0) (epoch 0) (allocation 0) (batch 0) (event 0)
        (phase *fn2-checkpoint-teardown-debt-phase-copying*) (token token) (owner-kind kind) (owner-slot owner) (owner-gen gen)
        (checkpoint checkpoint) (history history) (incarnation incarnation) (cut-commit cut) (cut-event cutevent)
        (installation-commit batch) (installation-event event) (word-cursor 0) (anchor-mask 0)) fn2-checkpoint-teardown-debt))
