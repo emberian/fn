@@ -51,6 +51,35 @@ inbound source packet exists; outbound FETCH streaming remains in progress.
 The current upload's two chunks admit at most 8159 bytes despite the configured
 32768-byte article maximum: rolling upload remains required beyond this milestone.
 
+The delivery candidate `86f919a16` admitted the APPEND prefix, borrow-release
+and scheduler books in the retained author world. FETCH prefix decoding and
+its 0/6144/16384-byte unit assertions also passed after the macro/fixture repairs.
+These are source-admission results, not qualification of the full application.
+Checkpoint-member still refuses its generated FIELDS TYPE claim; CNS edges
+hits the RAW-ROWS proof budget; trace registration reports a conflicting
+`:COLUMNS FN2-TRACE` definition. The generator hint repair `4777bf7fc` and
+trace enum repair belong in the next coherent candidate, with changed
+ancestor keys recomputed rather than reused as if unchanged. The trace conflict
+is a five-tag foundational enum versus the actual seven-tag consumer; the
+repair must preserve existing tags 0–4 and include MACHINE-START and ENQUEUE.
+
+Physical address geometry remains an executable blocker. `fe9f761ab` repairs
+POST's root location from three units per extent to the physical sixteen, with
+an unexecuted nonzero-extent constructor control. Root also traced the same
+mismatch through manifest production and settlement: the upload callback writes
+at `extent-bytes * cext` but encodes block-entry locations as `3 * cext + offset`,
+and `fn2-upload-manifest-extents` recovers the extent by dividing by three.
+The actual storage reader divides physical units by sixteen. Reclamation owns
+the complete encode/decode repair and a nonzero-extent manifest/settlement
+control. Three-block write grouping is a distinct concept and must remain three;
+the POST-only repair does not close this class.
+
+Outbound composition is still unfinished. Native and CNS owners agreed that
+closing first stops new reads, then waits for outstanding sends/borrows to
+return before releasing retained storage and the lease. Becoming quiescent must
+wake CNS again; an early cancellation wake alone can leave both actors parked.
+The actual actor handoff, checked reader and restart roundtrip remain unexecuted.
+
 Current served article integration has a concrete workspace mismatch:
 `ordered.lisp` declares 13 article fields including location-hashes, while
 `machines-c-successor.lisp` permits only 12 and `fn2-succ-arg` rejects index 12.
