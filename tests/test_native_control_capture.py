@@ -51,20 +51,20 @@ class ControlCapture(unittest.TestCase):
         self.assertEqual(selected.replace(control, b"").replace(device, b""), source)
         env = campaign.captured_env(Path("/tmp/fixture.trace"), b"abc", True)
         self.assertEqual(env["FN2_TEST_DEVICE_EFFECTS"], "/tmp/fixture.effects")
+        self.assertEqual(env["FN2_TEST_DEVICE_BACKEND"], "/tmp/fixture.device")
         self.assertNotIn("FN2_TEST_DEVICE_EFFECTS", campaign.captured_env(Path("/tmp/fixture.trace"), b"abc"))
 
     def test_effect_replay_uses_certified_reducer_and_preserves_selected_loader(self):
         source = (HERE.parent / "tools/image-node.lsp").read_text()
         plain = campaign.replay_script(source)
         effects = campaign.replay_script(source, True)
-        book = '(include-book "sim/native-device-effects" :uncertified-okp nil)'
+        book = '(include-book "sim/native-device-envelope" :uncertified-okp nil)'
         raw = '(load "tests/native-device-effects-raw.lsp")'
         self.assertNotIn(book, plain)
         self.assertNotIn(raw, plain)
         self.assertEqual(effects.count(book), 1)
-        self.assertEqual(effects.count(raw), 1)
-        self.assertLess(effects.index('(load "tests/native-control-replay-raw.lsp")'), effects.index(raw))
-        self.assertEqual(effects.replace("\n" + book, "").replace(raw + "\n", ""), plain)
+        self.assertNotIn(raw, effects)  # nested in the joined raw replay instead
+        self.assertEqual(effects.replace("\n" + book, ""), plain)
 
     def test_phase_images_and_uncertain_verdict_remain_distinct(self):
         with tempfile.TemporaryDirectory() as temp:

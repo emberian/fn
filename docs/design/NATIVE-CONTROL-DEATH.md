@@ -42,7 +42,7 @@ python3 -m py_compile tests/native-control-launcher.py tests/native-control-deat
 
 Runtime prerequisite: exact-current qualified `books/node-profile`,
 `books/native-b3-evidence`, and `tests/native-control-replay` closures.
-The optional effect replay additionally requires `sim/native-device-effects`. Supply explicit test
+The optional effect replay additionally requires `sim/native-device-envelope` (including the effect reducer). Supply explicit test
 origin/history environment settings as required by current startup. Inside a
 reserved 6 GiB timed job, run:
 
@@ -72,10 +72,15 @@ These are process-death-visible bytes, not an asserted durable prefix. Missing
 returns and ambiguous errors remain obligations of the separate effect reducer;
 this option alone does not establish persisted-effect refinement.
 
-With device evidence enabled, the fresh replay loads the certified effect
-reducer and `native-device-effects-raw.lsp` after the control replay. It checks
+With device evidence enabled, the fresh replay calls
+`fn2-native-device-control-replay` on the same control trace and captured device
+records. It requires `:pass` and checks independent peer receipts against that
+joined replay's capabilities. The actual selected device fd and backend come
+from `fn2-device-start`'s returned object, recorded in the phase `.device` file.
+The whole-image consumer runs inside the same records/fd bindings. It checks
 the whole equal-size before/after images and physical Read observations, using
 64 KiB scratch chunks. Each phase retains an effect-result JSON verdict:
 `:EXACT-PROCESS-VIEW` or `:UNCERTAIN-EFFECT-BOUND`. Neither means durable; raw
-Fence truth remains external. Device/control Take/Post identity binding remains
-a separate obligation and is not established merely by running both checkers.
+Fence truth remains external. The joined checker is a runtime prerequisite; independent control and image
+passes cannot substitute for it. Its new current closure and slab/loan binding
+must qualify before the optional campaign can run.

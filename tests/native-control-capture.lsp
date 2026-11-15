@@ -48,3 +48,16 @@
           ;; Test-only pause fixes the cut, preventing a truncated final form.
           ;; Parent SIGKILLs this recorded PID; no unwind/storage cleanup runs.
           (sb-thread:wait-on-semaphore (sb-thread:make-semaphore :count 0)))))))
+
+;; Capture the actual selected device, not a platform guess or result inference.
+(when (sb-ext:posix-getenv "FN2_TEST_DEVICE_EFFECTS")
+  (let ((original (symbol-function 'fn2-device-start)))
+    (setf (symbol-function 'fn2-device-start)
+      (lambda (&rest args)
+        (let ((device (apply original args)))
+          (with-open-file (out (or (sb-ext:posix-getenv "FN2_TEST_DEVICE_BACKEND")
+                                   (error "device backend evidence path missing"))
+                               :direction :output :if-exists :error :if-does-not-exist :create)
+            (write (list :device (fn2-device-fd device) (fn2-device-backend device)) :stream out)
+            (terpri out) (finish-output out))
+          device)))))

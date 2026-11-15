@@ -27,8 +27,10 @@ restart = boundary.restart
 def captured_env(path, target, device_effects=False):
     env = boundary.environment()
     env.pop("FN2_TEST_DEVICE_EFFECTS", None)
+    env.pop("FN2_TEST_DEVICE_BACKEND", None)
     if device_effects:
         env["FN2_TEST_DEVICE_EFFECTS"] = str(path.with_suffix(".effects"))
+        env["FN2_TEST_DEVICE_BACKEND"] = str(path.with_suffix(".device"))
     env.update(FN2_TEST_CAPTURE=str(path), FN2_ENVELOPE_TRACE="262144")
     env["FN2_TEST_CAPTURE_TARGET"] = target.hex()
     return env
@@ -67,8 +69,7 @@ def replay_script(selected, device_effects=False):
     books = '\n(include-book "tests/native-control-replay" :uncertified-okp nil)'
     raw = '(load "tests/native-control-replay-raw.lsp")\n'
     if device_effects:
-        books += '\n(include-book "sim/native-device-effects" :uncertified-okp nil)'
-        raw += '(load "tests/native-device-effects-raw.lsp")\n'
+        books += '\n(include-book "sim/native-device-envelope" :uncertified-okp nil)'
     return selected.replace(include, include + books).replace(main, raw + '(sb-ext:exit :code 0)')
 
 
@@ -78,9 +79,12 @@ def replay(directory, name, device_effects=False):
     script.write_text(selected)
     env = dict(os.environ, FN2_TEST_CAPTURE=str(directory / f"{name}.trace"),
                FN2_TEST_PEER=str(directory / f"{name}.peer"))
+    env.pop("FN2_TEST_DEVICE_EFFECTS", None)
+    env.pop("FN2_TEST_DEVICE_BACKEND", None)
     if device_effects:
         before = "before-accepted.img" if name == "accepted" else "after-accepted-kill.img"
         env.update(FN2_TEST_DEVICE_EFFECTS=str(directory / f"{name}.effects"),
+                   FN2_TEST_DEVICE_BACKEND=str(directory / f"{name}.device"),
                    FN2_TEST_DEVICE_BEFORE=str(directory / before),
                    FN2_TEST_DEVICE_AFTER=str(directory / f"after-{name}-kill.img"))
     with script.open("rb") as source, (directory / f"{name}-replay.log").open("wb") as log:
