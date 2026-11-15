@@ -5,27 +5,53 @@
 (include-book "event-archive-producer")
 (fn2-book-layer :c)
 
-(defun fn2-event-archive-builderp (fn2-checkpoint-root1 fn2-checkpoint-windows fn2-csnapshot fn2-checkpoint-build fn2-checkpoint-source
+(defun fn2-event-archive-ownerp (r fn2-event-archive fn2-checkpoint-root1 fn2-checkpoint-windows fn2-csnapshot fn2-checkpoint-build
+ fn2-checkpoint-source fn2-checkpoint-metadata-manifest fn2-checkpoints fn2-run-builds fn2-run-writers)
+ (declare (xargs :stobjs (fn2-event-archive fn2-checkpoint-root1 fn2-checkpoint-windows fn2-csnapshot fn2-checkpoint-build
+ fn2-checkpoint-source fn2-checkpoint-metadata-manifest fn2-checkpoints fn2-run-builds fn2-run-writers)
+ :guard (and (fn2-event-archive-wfp fn2-event-archive) (fn2-checkpoint-root1-wfp fn2-checkpoint-root1) (fn2-checkpoint-windows-wfp fn2-checkpoint-windows)
+ (fn2-csnapshot-wfp fn2-csnapshot) (fn2-checkpoint-build-wfp fn2-checkpoint-build) (fn2-checkpoint-source-wfp fn2-checkpoint-source)
+ (fn2-checkpoint-metadata-manifest-wfp fn2-checkpoint-metadata-manifest) (fn2-checkpoints-wfp fn2-checkpoints)
+ (fn2-run-builds-wfp fn2-run-builds) (fn2-run-writers-wfp fn2-run-writers))))
+ (and (natp r) (< r 2) (< r (fn2-event-archive-rows fn2-event-archive))
+      (not (equal (fn2-event-archive-phase r fn2-event-archive) *fn2-event-archive-phase-idle*))
+      (fn2-event-archive-sourcep fn2-checkpoint-root1 fn2-checkpoint-windows fn2-csnapshot fn2-checkpoint-build
+       fn2-checkpoint-source fn2-checkpoint-metadata-manifest fn2-checkpoints fn2-run-builds fn2-run-writers)
+      (equal (fn2-event-archive-token r fn2-event-archive) (fn2-checkpoint-root1-token 0 fn2-checkpoint-root1))
+      (equal (fn2-event-archive-owner-kind r fn2-event-archive) (fn2-checkpoint-root1-owner-kind 0 fn2-checkpoint-root1))
+      (equal (fn2-event-archive-owner-slot r fn2-event-archive) (fn2-checkpoint-root1-owner-slot 0 fn2-checkpoint-root1))
+      (equal (fn2-event-archive-owner-gen r fn2-event-archive) (fn2-checkpoint-root1-owner-gen 0 fn2-checkpoint-root1))
+      (equal (fn2-event-archive-candidate r fn2-event-archive) (fn2-checkpoint-build-candidate 0 fn2-checkpoint-build))
+      (equal (fn2-event-archive-checkpoint r fn2-event-archive) (fn2-checkpoint-build-checkpoint 0 fn2-checkpoint-build))
+      (equal (fn2-event-archive-cut-commit r fn2-event-archive) (fn2-csnapshot-cut-commit 0 fn2-csnapshot))
+      (equal (fn2-event-archive-cut-event r fn2-event-archive) (fn2-csnapshot-cut-event 0 fn2-csnapshot))
+      (equal (fn2-event-archive-history r fn2-event-archive) (fn2-checkpoint-build-history 0 fn2-checkpoint-build))
+      (equal (fn2-event-archive-incarnation r fn2-event-archive) (fn2-checkpoint-build-history-incarnation 0 fn2-checkpoint-build))))
+
+(defun fn2-event-archive-builderp (fn2-event-archive fn2-checkpoint-root1 fn2-checkpoint-windows fn2-csnapshot fn2-checkpoint-build fn2-checkpoint-source
  fn2-checkpoint-metadata-manifest fn2-checkpoints fn2-checkpoint-metadata fn2-run-builds fn2-run-writers)
- (declare (xargs :stobjs (fn2-checkpoint-root1 fn2-checkpoint-windows fn2-csnapshot fn2-checkpoint-build fn2-checkpoint-source
+ (declare (xargs :stobjs (fn2-event-archive fn2-checkpoint-root1 fn2-checkpoint-windows fn2-csnapshot fn2-checkpoint-build fn2-checkpoint-source
  fn2-checkpoint-metadata-manifest fn2-checkpoints fn2-checkpoint-metadata fn2-run-builds fn2-run-writers)
- :guard (and (fn2-checkpoint-root1-wfp fn2-checkpoint-root1) (fn2-checkpoint-windows-wfp fn2-checkpoint-windows)
+ :guard (and (fn2-event-archive-wfp fn2-event-archive) (fn2-checkpoint-root1-wfp fn2-checkpoint-root1) (fn2-checkpoint-windows-wfp fn2-checkpoint-windows)
  (fn2-csnapshot-wfp fn2-csnapshot) (fn2-checkpoint-build-wfp fn2-checkpoint-build) (fn2-checkpoint-source-wfp fn2-checkpoint-source)
  (fn2-checkpoint-metadata-manifest-wfp fn2-checkpoint-metadata-manifest) (fn2-checkpoints-wfp fn2-checkpoints)
  (fn2-checkpoint-metadata-wfp fn2-checkpoint-metadata) (fn2-run-builds-wfp fn2-run-builds) (fn2-run-writers-wfp fn2-run-writers))))
- (and (fn2-event-archive-sourcep fn2-checkpoint-root1 fn2-checkpoint-windows fn2-csnapshot fn2-checkpoint-build fn2-checkpoint-source
+ (and (fn2-event-archive-ownerp 1 fn2-event-archive fn2-checkpoint-root1 fn2-checkpoint-windows fn2-csnapshot fn2-checkpoint-build fn2-checkpoint-source
        fn2-checkpoint-metadata-manifest fn2-checkpoints fn2-run-builds fn2-run-writers)
       (fn2-checkpoint-metadata-ownerp fn2-checkpoint-metadata fn2-csnapshot fn2-run-builds fn2-run-writers)
       (equal (fn2-checkpoint-metadata-build 0 fn2-checkpoint-metadata) *fn2-checkpoint-source-build*)
       (equal (fn2-checkpoint-metadata-source-kind 0 fn2-checkpoint-metadata) 2)
-      (equal (fn2-run-builds-schema *fn2-checkpoint-source-build* fn2-run-builds) *fn2-event-archive-schema*)
+      (or (and (equal (fn2-run-builds-schema *fn2-checkpoint-source-build* fn2-run-builds) *fn2-event-archive-schema*)
+               (equal (fn2-event-archive-phase 1 fn2-event-archive) *fn2-event-archive-phase-members*))
+          (and (equal (fn2-run-builds-schema *fn2-checkpoint-source-build* fn2-run-builds) 10)
+               (equal (fn2-event-archive-phase 1 fn2-event-archive) *fn2-event-archive-phase-manifest*)))
       (equal (fn2-run-builds-run *fn2-checkpoint-source-build* fn2-run-builds) (fn2-checkpoint-build-checkpoint 0 fn2-checkpoint-build))))
 
 (fn2-event-archive-operation fn2-event-archive-finish
- (fn2-checkpoint-root1 fn2-checkpoint-windows fn2-csnapshot fn2-checkpoint-build fn2-checkpoint-source fn2-checkpoint-metadata-manifest
+ (fn2-event-archive fn2-checkpoint-root1 fn2-checkpoint-windows fn2-csnapshot fn2-checkpoint-build fn2-checkpoint-source fn2-checkpoint-metadata-manifest
   fn2-checkpoints fn2-checkpoint-metadata fn2-run-builds fn2-run-writers fn2-event-read fn2-mk fn2-digests)
  (fn2-run-builds)
- (b* (((unless (and (fn2-event-archive-builderp fn2-checkpoint-root1 fn2-checkpoint-windows fn2-csnapshot fn2-checkpoint-build fn2-checkpoint-source
+ (b* (((unless (and (fn2-event-archive-builderp fn2-event-archive fn2-checkpoint-root1 fn2-checkpoint-windows fn2-csnapshot fn2-checkpoint-build fn2-checkpoint-source
                      fn2-checkpoint-metadata-manifest fn2-checkpoints fn2-checkpoint-metadata fn2-run-builds fn2-run-writers)
                     (equal (fn2-checkpoint-metadata-held 0 fn2-checkpoint-metadata) 0)
                     (fn2-event-read-ownerp fn2-event-read fn2-csnapshot)
@@ -39,11 +65,11 @@
   (fn2-run-build-finish *fn2-checkpoint-source-build* fn2-run-builds)))
 
 (fn2-event-archive-operation fn2-event-archive-page-bind
- (fn2-checkpoint-root1 fn2-checkpoint-windows fn2-csnapshot fn2-checkpoint-build fn2-checkpoint-source fn2-checkpoint-metadata-manifest
+ (fn2-event-archive fn2-checkpoint-root1 fn2-checkpoint-windows fn2-csnapshot fn2-checkpoint-build fn2-checkpoint-source fn2-checkpoint-metadata-manifest
   fn2-checkpoints fn2-checkpoint-metadata fn2-run-builds fn2-run-writers fn2-checkpoint-page fn2-checkpoint-page-verified
   fn2-checkpoint-construction fn2-extents fn2-pool fn2-fc fn2-fields)
  (fn2-checkpoint-page)
- (b* (((unless (and (fn2-event-archive-builderp fn2-checkpoint-root1 fn2-checkpoint-windows fn2-csnapshot fn2-checkpoint-build fn2-checkpoint-source
+ (b* (((unless (and (fn2-event-archive-builderp fn2-event-archive fn2-checkpoint-root1 fn2-checkpoint-windows fn2-csnapshot fn2-checkpoint-build fn2-checkpoint-source
                      fn2-checkpoint-metadata-manifest fn2-checkpoints fn2-checkpoint-metadata fn2-run-builds fn2-run-writers)
                     (equal (fn2-checkpoint-metadata-held 0 fn2-checkpoint-metadata) 1)))
        (mv :source fn2-checkpoint-page))
@@ -55,12 +81,12 @@
    fn2-checkpoint-page fn2-checkpoint-page-verified fn2-checkpoint-construction fn2-extents fn2-pool fn2-fc fn2-fields)))
 
 (fn2-event-archive-operation fn2-event-archive-work
- (fn2-checkpoint-root1 fn2-checkpoint-windows fn2-csnapshot fn2-checkpoint-build fn2-checkpoint-source fn2-checkpoint-metadata-manifest
+ (fn2-event-archive fn2-checkpoint-root1 fn2-checkpoint-windows fn2-csnapshot fn2-checkpoint-build fn2-checkpoint-source fn2-checkpoint-metadata-manifest
   fn2-checkpoints fn2-checkpoint-metadata fn2-run-builds fn2-run-writers fn2-run-restarts fn2-checkpoint-page fn2-checkpoint-page-verified
   fn2-checkpoint-construction fn2-extents fn2-control fn2-fc fn2-fc-context fn2-b3 fn2-fields fn2-pool fn2-digests)
  (fn2-checkpoint-metadata fn2-run-builds fn2-run-writers fn2-run-restarts fn2-checkpoint-construction fn2-extents fn2-control
   fn2-fc fn2-fc-context fn2-b3 fn2-fields fn2-pool fn2-digests)
- (b* (((unless (and (fn2-event-archive-builderp fn2-checkpoint-root1 fn2-checkpoint-windows fn2-csnapshot fn2-checkpoint-build fn2-checkpoint-source
+ (b* (((unless (and (fn2-event-archive-builderp fn2-event-archive fn2-checkpoint-root1 fn2-checkpoint-windows fn2-csnapshot fn2-checkpoint-build fn2-checkpoint-source
                      fn2-checkpoint-metadata-manifest fn2-checkpoints fn2-checkpoint-metadata fn2-run-builds fn2-run-writers)
                     (equal (fn2-checkpoint-metadata-phase 0 fn2-checkpoint-metadata) *fn2-checkpoint-metadata-phase-feeding*)))
        (mv :source fn2-checkpoint-metadata fn2-run-builds fn2-run-writers fn2-run-restarts fn2-checkpoint-construction fn2-extents fn2-control fn2-fc fn2-fc-context fn2-b3 fn2-fields fn2-pool fn2-digests))
@@ -99,5 +125,5 @@
              (let ((fn2-checkpoint-metadata (fn2-checkpoint-metadata-set-phase 0 *fn2-checkpoint-metadata-phase-uncertain* fn2-checkpoint-metadata)))
               (mv :source-changed fn2-checkpoint-metadata fn2-run-builds fn2-run-writers fn2-run-restarts fn2-checkpoint-construction fn2-extents fn2-control fn2-fc fn2-fc-context fn2-b3 fn2-fields fn2-pool fn2-digests)))
             (fn2-checkpoint-metadata (fn2-checkpoint-metadata-set-phase 0 *fn2-checkpoint-metadata-phase-source-drained* fn2-checkpoint-metadata)))
-        (mv :member-run-complete fn2-checkpoint-metadata fn2-run-builds fn2-run-writers fn2-run-restarts fn2-checkpoint-construction fn2-extents fn2-control fn2-fc fn2-fc-context fn2-b3 fn2-fields fn2-pool fn2-digests))))
+        (mv (if (equal (fn2-run-builds-schema b fn2-run-builds) *fn2-event-archive-schema*) :member-run-complete :manifest-run-complete) fn2-checkpoint-metadata fn2-run-builds fn2-run-writers fn2-run-restarts fn2-checkpoint-construction fn2-extents fn2-control fn2-fc fn2-fc-context fn2-b3 fn2-fields fn2-pool fn2-digests))))
   (mv code fn2-checkpoint-metadata fn2-run-builds fn2-run-writers fn2-run-restarts fn2-checkpoint-construction fn2-extents fn2-control fn2-fc fn2-fc-context fn2-b3 fn2-fields fn2-pool fn2-digests)))

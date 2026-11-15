@@ -3,7 +3,10 @@
 (in-package "ACL2")
 (include-book "checkpoint-metadata-driver")
 (include-book "event-read-verify")
+(include-book "event-archive-state")
 (fn2-book-layer :c)
+(fn2-sealer-child fn2-core-event-archive fn2-event-archive (fn2-event-archive-init 2 fn2-event-archive)
+ "Active and sole pending canonical archive subjects retain exact roots and cut seals across bounded construction.")
 (assert-event (equal *fn2-commit-unit-bytes* 4096))
 
 ; Project the existing child operation generator over explicit actual inputs

@@ -65,8 +65,9 @@ class ArchiveProducerSource(unittest.TestCase):
   n=form('checkpoint-metadata-state.lisp','defun','fn2-checkpoint-metadata-role')
   self.assertTrue(has(n,'fn2-run-layout-internal-p'))
   s=text('checkpoint-metadata-state.lisp',n)
-  self.assertIn('(equal (fn2-checkpoint-metadata-source-kind 0 fn2-checkpoint-metadata) 2) 3)',s)
-  self.assertTrue(s.rstrip().endswith('1)))'))
+  self.assertIn('(equal b (fn2-checkpoint-metadata-build 0 fn2-checkpoint-metadata))',s)
+  self.assertIn('(list *fn2-event-archive-schema* 10)',s)
+  self.assertIn('(and (not (fn2-run-layout-internal-p (fn2-run-builds-schema b fn2-run-builds))) 1)',s)
   for file,fn in [('checkpoint-metadata.lisp','fn2-checkpoint-metadata-page-for-build'),
                   ('checkpoint-metadata-page.lisp','fn2-checkpoint-metadata-page-bind'),
                   ('checkpoint-metadata-page.lisp','fn2-checkpoint-metadata-page-complete-p')]:

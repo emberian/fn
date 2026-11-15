@@ -5,31 +5,9 @@
 (include-book "event-archive-state")
 (include-book "event-archive-format")
 (fn2-book-layer :c)
-(fn2-sealer-child fn2-core-event-archive fn2-event-archive (fn2-event-archive-init 2 fn2-event-archive)
- "Active and sole pending canonical archive subjects retain exact roots and cut seals across bounded construction.")
 
-(defun fn2-event-archive-ownerp (r fn2-event-archive fn2-checkpoint-root1 fn2-checkpoint-windows fn2-csnapshot fn2-checkpoint-build
- fn2-checkpoint-source fn2-checkpoint-metadata-manifest fn2-checkpoints fn2-run-builds fn2-run-writers)
- (declare (xargs :stobjs (fn2-event-archive fn2-checkpoint-root1 fn2-checkpoint-windows fn2-csnapshot fn2-checkpoint-build
- fn2-checkpoint-source fn2-checkpoint-metadata-manifest fn2-checkpoints fn2-run-builds fn2-run-writers)
- :guard (and (fn2-event-archive-wfp fn2-event-archive) (fn2-checkpoint-root1-wfp fn2-checkpoint-root1) (fn2-checkpoint-windows-wfp fn2-checkpoint-windows)
- (fn2-csnapshot-wfp fn2-csnapshot) (fn2-checkpoint-build-wfp fn2-checkpoint-build) (fn2-checkpoint-source-wfp fn2-checkpoint-source)
- (fn2-checkpoint-metadata-manifest-wfp fn2-checkpoint-metadata-manifest) (fn2-checkpoints-wfp fn2-checkpoints)
- (fn2-run-builds-wfp fn2-run-builds) (fn2-run-writers-wfp fn2-run-writers))))
- (and (natp r) (< r 2) (< r (fn2-event-archive-rows fn2-event-archive))
-      (not (equal (fn2-event-archive-phase r fn2-event-archive) *fn2-event-archive-phase-idle*))
-      (fn2-event-archive-sourcep fn2-checkpoint-root1 fn2-checkpoint-windows fn2-csnapshot fn2-checkpoint-build
-       fn2-checkpoint-source fn2-checkpoint-metadata-manifest fn2-checkpoints fn2-run-builds fn2-run-writers)
-      (equal (fn2-event-archive-token r fn2-event-archive) (fn2-checkpoint-root1-token 0 fn2-checkpoint-root1))
-      (equal (fn2-event-archive-owner-kind r fn2-event-archive) (fn2-checkpoint-root1-owner-kind 0 fn2-checkpoint-root1))
-      (equal (fn2-event-archive-owner-slot r fn2-event-archive) (fn2-checkpoint-root1-owner-slot 0 fn2-checkpoint-root1))
-      (equal (fn2-event-archive-owner-gen r fn2-event-archive) (fn2-checkpoint-root1-owner-gen 0 fn2-checkpoint-root1))
-      (equal (fn2-event-archive-candidate r fn2-event-archive) (fn2-checkpoint-build-candidate 0 fn2-checkpoint-build))
-      (equal (fn2-event-archive-checkpoint r fn2-event-archive) (fn2-checkpoint-build-checkpoint 0 fn2-checkpoint-build))
-      (equal (fn2-event-archive-cut-commit r fn2-event-archive) (fn2-csnapshot-cut-commit 0 fn2-csnapshot))
-      (equal (fn2-event-archive-cut-event r fn2-event-archive) (fn2-csnapshot-cut-event 0 fn2-csnapshot))
-      (equal (fn2-event-archive-history r fn2-event-archive) (fn2-checkpoint-build-history 0 fn2-checkpoint-build))
-      (equal (fn2-event-archive-incarnation r fn2-event-archive) (fn2-checkpoint-build-history-incarnation 0 fn2-checkpoint-build))))
+
+
 
 (defun fn2-event-archive-copy-digest (r kind i row fn2-digests fn2-event-archive)
  (declare (xargs :stobjs (fn2-digests fn2-event-archive) :measure (nfix (- 8 (nfix i)))
@@ -83,7 +61,7 @@
                      fn2-checkpoint-source fn2-checkpoint-metadata-manifest fn2-checkpoints fn2-run-builds fn2-run-writers)
                     (equal (fn2-event-archive-phase 1 fn2-event-archive) *fn2-event-archive-phase-members*)
                     (equal (fn2-event-archive-origin 1 fn2-event-archive) *fn2-event-archive-origin-fresh*)
-                    (fn2-event-archive-builderp fn2-checkpoint-root1 fn2-checkpoint-windows fn2-csnapshot fn2-checkpoint-build fn2-checkpoint-source
+                    (fn2-event-archive-builderp fn2-event-archive fn2-checkpoint-root1 fn2-checkpoint-windows fn2-csnapshot fn2-checkpoint-build fn2-checkpoint-source
                      fn2-checkpoint-metadata-manifest fn2-checkpoints fn2-checkpoint-metadata fn2-run-builds fn2-run-writers)
                     (fn2-event-read-ownerp fn2-event-read fn2-csnapshot)
                     (equal (fn2-event-read-phase 0 fn2-event-read) *fn2-event-read-phase-complete*)

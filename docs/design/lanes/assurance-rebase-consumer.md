@@ -174,3 +174,12 @@ cannot publish root3 or discharge a source. Four more source controls and an
 unrun metadata-isolation fixture cover these boundaries. Root3 manifest/header
 production, selected header reader and old-manifest tail continuation are still
 required before this new format is reachable in the composed machine.
+
+The actual archive worker cone now carries pending control1 explicitly and
+requires its exact owner, candidate, cut, namespace and phase. Schema20 work is
+admitted only in MEMBERS, and schema10 work only in MANIFEST. The shared role
+helper assigns root3 solely for archive-kind2's actual metadata build; the other
+root1 schema10 build remains role1. Internal20 without that ownership refuses.
+Four program-transformation controls preserve the owner decision and output
+projection and check every worker-call arity; an unrun ACL2 control distinguishes
+archive build1, root1 build2 and removed archive ownership.
