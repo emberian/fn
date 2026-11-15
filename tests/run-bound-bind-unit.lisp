@@ -1,0 +1,37 @@
+; Actual common physical bind with a synthetic immutable cursor. This primitive
+; grants no catalog/archive authority. Runnable, unexecuted under source grant.
+(in-package "ACL2")
+(include-book "../books/run-physical-bound-bind")
+(defun fn2-rbbu-body (fn2-run-loads fn2-run-cursors fn2-pool)
+ (declare (xargs :stobjs (fn2-run-loads fn2-run-cursors fn2-pool) :verify-guards nil))
+ (b* ((fn2-run-loads (fn2-run-loads-init 1 fn2-run-loads))
+      (fn2-run-cursors (fn2-run-cursors-init 1 fn2-run-cursors))
+      (fn2-pool (fn2-pool-init '((1 . 65536) (1 . 4096)) 1 100 fn2-pool))
+      ((mv reserve fn2-run-loads fn2-pool) (fn2-run-load-reserve 0 1 2 3 fn2-run-loads fn2-pool))
+      ((mv start fn2-run-cursors) (fn2-run-cursor-start 0 10 0 *fn2-none* 0 16 4 0 1 2 3 fn2-run-cursors))
+      (fn2-run-cursors (fn2-run-cursors-put 0 (physical 1) (phase *fn2-run-cursor-phase-miss*)
+       (epoch 2) (run 9) (source-row *fn2-none*) (catalog-tag 77) (hash-0 123)))
+      ((mv refused fn2-run-loads fn2-pool) (fn2-run-bound-bind 0 1 2 8 456 789 fn2-run-loads fn2-run-cursors fn2-pool))
+      (untouched (equal (fn2-run-loads-phase 0 fn2-run-loads) *fn2-run-load-phase-reserved*))
+      ((mv bound fn2-run-loads fn2-pool) (fn2-run-bound-bind 0 1 2 3 456 789 fn2-run-loads fn2-run-cursors fn2-pool))
+      (actual (and (fn2-run-load-boundp 0 fn2-run-loads fn2-run-cursors)
+                   (equal (fn2-run-loads-phase 0 fn2-run-loads) *fn2-run-load-phase-read*)
+                   (equal (fn2-run-loads-history 0 fn2-run-loads) 456)
+                   (equal (fn2-run-loads-incarnation 0 fn2-run-loads) 789)
+                   (equal (fn2-run-load-word 0 0 fn2-run-loads) 123)))
+      ((mv duplicate fn2-run-loads fn2-pool) (fn2-run-bound-bind 0 1 2 3 456 789 fn2-run-loads fn2-run-cursors fn2-pool)))
+  (mv (and (eq reserve :ok) (eq start :ok) (eq refused :source) untouched
+           (eq bound :need-read) actual (eq duplicate :source)
+           (equal (fn2-run-loads-phase 0 fn2-run-loads) *fn2-run-load-phase-read*)) fn2-run-loads fn2-run-cursors fn2-pool)))
+(defun fn2-rbbu-test ()
+ (declare (xargs :verify-guards nil))
+ (with-local-stobj fn2-run-loads
+  (mv-let (answer fn2-run-loads)
+   (with-local-stobj fn2-run-cursors
+    (mv-let (answer fn2-run-loads fn2-run-cursors)
+     (with-local-stobj fn2-pool
+      (mv-let (answer fn2-run-loads fn2-run-cursors fn2-pool)
+       (fn2-rbbu-body fn2-run-loads fn2-run-cursors fn2-pool)
+       (mv answer fn2-run-loads fn2-run-cursors)))
+     (mv answer fn2-run-loads))) answer)))
+(assert-event (fn2-rbbu-test))

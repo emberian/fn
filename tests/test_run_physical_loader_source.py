@@ -6,7 +6,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1] / 'tools'))
 from lisp_source import forms, read_sexp
 ROOT = Path(__file__).resolve().parents[1]
 FILES = tuple(ROOT / 'books' / ('run-physical-' + n + '.lisp')
-              for n in ('state', 'resources', 'bound', 'source', 'bound-io', 'io', 'bound-step', 'step', 'release'))
+              for n in ('state', 'resources', 'bound', 'bound-bind', 'source', 'harvest', 'bound-io', 'io', 'bound-step', 'step', 'release'))
 
 def walk(x):
     if isinstance(x, list):
@@ -146,7 +146,7 @@ class PhysicalLoaderSource(unittest.TestCase):
                         assigned.update(n for n in names if isinstance(n, str) and n.startswith('fn2-'))
             self.assertEqual(outputs, assigned, name)
             self.assertLessEqual(max(int(o[1]) for o in frame[4]) + 1, 32)
-        self.assertEqual(set(frames), {'fn2-run-load-reserve', 'fn2-run-load-bind',
+        self.assertEqual(set(frames), {'fn2-run-load-reserve', 'fn2-run-load-bind', 'fn2-run-bound-bind',
             'fn2-run-load-issue', 'fn2-run-bound-issue', 'fn2-run-load-harvest',
             'fn2-run-load-step', 'fn2-run-bound-step', 'fn2-run-load-release', 'fn2-run-load-park-source'})
 

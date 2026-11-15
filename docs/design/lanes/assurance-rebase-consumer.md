@@ -279,3 +279,14 @@ The sole archive core child is now registered in the actual early C child list
 with init2 and only the lower state include. Producer registration was removed;
 no archive codec, producer, walker or activation enters the early closure.
 Two source controls enforce the single declaration and both conservative rows.
+
+The actual catalog physical binding tail is now shared as fn2-run-bound-bind
+in its own lower book. Catalog admission, previous-lease release and current
+lease acquisition remain in the original wrapper, unchanged before that call.
+The common body resets the actual owned page and copies the same cursor
+fullRef/hash/owner fields with explicit physical history/incarnation; it grants
+no source authority. Four rewrite controls preserve the exact old admission
+prefix, concrete effect tree and extraction replay. Twelve existing loader/
+source-boundary controls pass. An unrun actual primitive fixture covers bound
+state and owner/duplicate refusal. Frozen bound issue/step/resource files and
+the separate minimal root fixture closure were not edited by this change.

@@ -1,6 +1,6 @@
 ; Admission binds an actual MISS cursor to its current immutable catalog lease.
 (in-package "ACL2")
-(include-book "run-physical-bound")
+(include-book "run-physical-bound-bind")
 (include-book "checkpoint-summary-leases")
 (fn2-book-layer :c)
 
@@ -51,17 +51,11 @@
        (fn2-checkpoint-summary-acquire (fn2-run-cursors-source-row c fn2-run-cursors) c kind owner generation
         fn2-checkpoint-summary fn2-checkpoint-summary-sources fn2-checkpoint-summary-leases fn2-run-installed))
       ((unless (eq code :ok)) (mv code fn2-run-loads fn2-checkpoint-summary fn2-checkpoint-summary-leases fn2-pool))
-      ((mv code fn2-pool) (fn2-pool-reset (fn2-run-loads-page c fn2-run-loads) (fn2-run-loads-page-gen c fn2-run-loads) kind owner generation fn2-pool))
-      ((unless (eq code :ok)) (mv code fn2-run-loads fn2-checkpoint-summary fn2-checkpoint-summary-leases fn2-pool))
-      (fn2-run-loads (fn2-run-loads-put c (phase *fn2-run-load-phase-read*)
-       (source (fn2-run-cursors-source-row c fn2-run-cursors)) (tag (fn2-run-cursors-catalog-tag c fn2-run-cursors))
-       (unit (fn2-run-cursors-unit c fn2-run-cursors)) (epoch (fn2-run-cursors-epoch c fn2-run-cursors))
-       (allocation (fn2-run-cursors-counter c fn2-run-cursors)) (schema (fn2-run-cursors-schema c fn2-run-cursors))
-       (run (fn2-run-cursors-run c fn2-run-cursors)) (level (fn2-run-cursors-level c fn2-run-cursors))
-       (history (fn2-checkpoint-summary-history 0 fn2-checkpoint-summary))
-       (incarnation (fn2-checkpoint-summary-incarnation 0 fn2-checkpoint-summary))
-       (sector 0) (copied 0) (hash-0 (fn2-run-cursor-hash-word c 0 fn2-run-cursors)) (hash-1 (fn2-run-cursor-hash-word c 1 fn2-run-cursors)) (hash-2 (fn2-run-cursor-hash-word c 2 fn2-run-cursors)) (hash-3 (fn2-run-cursor-hash-word c 3 fn2-run-cursors)) (hash-4 (fn2-run-cursor-hash-word c 4 fn2-run-cursors)) (hash-5 (fn2-run-cursor-hash-word c 5 fn2-run-cursors)) (hash-6 (fn2-run-cursor-hash-word c 6 fn2-run-cursors)) (hash-7 (fn2-run-cursor-hash-word c 7 fn2-run-cursors)))))
-  (mv :need-read fn2-run-loads fn2-checkpoint-summary fn2-checkpoint-summary-leases fn2-pool)))
+      ((mv code fn2-run-loads fn2-pool)
+       (fn2-run-bound-bind c kind owner generation
+        (fn2-checkpoint-summary-history 0 fn2-checkpoint-summary)
+        (fn2-checkpoint-summary-incarnation 0 fn2-checkpoint-summary) fn2-run-loads fn2-run-cursors fn2-pool)))
+  (mv code fn2-run-loads fn2-checkpoint-summary fn2-checkpoint-summary-leases fn2-pool)))
 
 (fn2-run-load-frames fn2-run-load-bind
  (c kind owner generation fn2-run-loads fn2-run-cursors fn2-checkpoint-summary fn2-checkpoint-summary-sources fn2-checkpoint-summary-leases fn2-run-installed fn2-pool)
