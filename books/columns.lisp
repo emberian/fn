@@ -212,8 +212,11 @@
                 `((defthm ,(fn2-columns-sym name (concatenate 'string prefix "-RAW-ROWS"))
                     (equal (nth ,(fn2-columns-pre "*" (fn2-columns-sym table "-ROWS*")) ,result)
                            (nth ,(fn2-columns-pre "*" (fn2-columns-sym table "-ROWS*")) ,table))
+                    ; Keep the supplied public ROWS equality as a hypothesis;
+                    ; its enabled rewrite rule would erase it before NTH opens.
                     :hints (("Goal"
-                             :in-theory (e/d (,(fn2-columns-sym table "-ROWS")) (,name))
+                             :in-theory (e/d (,(fn2-columns-sym table "-ROWS"))
+                                             (,name ,(fn2-columns-sym name (concatenate 'string prefix "-ROWS"))))
                              :use ,(fn2-columns-sym name (concatenate 'string prefix "-ROWS")))))))
               ,@(and disable `((in-theory (disable ,name)))))))
       (if part (nth part forms) forms))))
@@ -250,6 +253,12 @@
         (and (eq (car type) 'integer) (natp (cadr type))
              (or (eq (caddr type) '*)
                  (and (integerp (caddr type)) (<= (cadr type) (caddr type)))))))))
+
+(defun fn2-columns-all-numeric-fieldsp (fields)
+  (declare (xargs :verify-guards nil))
+  (if (atom fields) (null fields)
+    (and (fn2-columns-numeric-fieldp (car fields))
+         (fn2-columns-all-numeric-fieldsp (cdr fields)))))
 
 (defun fn2-columns-type-form (type v)
   (declare (xargs :guard t :verify-guards nil))
@@ -952,9 +961,10 @@
             :extra-field-reasons (fn2-columns-extra-reasons extras)
             :extra-field-resident (fn2-columns-extra-resident extras) :init-name init :put-policy put-policy)
       nil
-      `(; Plain numeric columns need only this DSL's proof theory. Raw extras
-       ; retain incoming rules for their external nested-stobj constructors.
-       ,@(if extras nil '((local (in-theory (theory 'fn2-columns-proof-theory)))))
+      `(; Numeric arrays/scalars use the same library theory as ordinary columns.
+       ; Raw/nested/custom extras retain their external constructor rules.
+       ,@(if (fn2-columns-all-numeric-fieldsp (fn2-columns-extra-specs extras))
+             '((local (in-theory (theory 'fn2-columns-proof-theory)))) nil)
        (local (in-theory (disable update-nth)))
        ,@(fn2-columns-enum-events cols)
        (defstobj ,name ,@fields :inline t)
