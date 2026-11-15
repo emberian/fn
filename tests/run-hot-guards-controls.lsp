@@ -12,7 +12,7 @@
 (eval (selected-form "books/format-check.lisp" 'fn2-fc-shape))
 (defun emitted (path)
  (eval (selected-form path 'fn2-ra-shape))
- (loop for name in '(fn2-ra-page-events fn2-ra-build-events) append
+ (loop for name in '(fn2-ra-page-events fn2-ra-build-events fn2-ra-lookup-events) append
   (progn (eval (selected-form path name))
    (mapcar (lambda (form)
              (if (and (consp form) (member (car form) '(fn2-ra-shape fn2-fc-shape)))
@@ -39,7 +39,7 @@
 (assert (equal (mapcar #'strip-proof-options *old*)
                (mapcar #'strip-proof-options *new*)))
 (let ((changed (loop for a in *old* for b in *new* unless (equal a b) collect (cadr b))))
- (assert (equal changed '(fn2-run-add-ready fn2-run-add-write-shape fn2-run-build-promote))))
+ (assert (equal changed '(fn2-run-add-ready fn2-run-add-write-shape fn2-run-build-promote fn2-run-step-child-shape fn2-run-step-up-shape))))
 (let ((nil-event (macroexpand-1 (append *legacy-call* '(nil))))
       (custom '(("Goal" :use actual-frame))))
  (assert (null (getf (cdddr nil-event) :hints)))

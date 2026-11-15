@@ -718,7 +718,8 @@
    (fn2-ra-shape fn2-run-step-child-shape
     (fn2-run-step-child c sid childp level nkeys slot gen lo hi idx off unit counter rb ok os og fn2-run-cursors fn2-run-paths fn2-run-cache fn2-fields fn2-pool)
     (and (fn2-run-cursorsp fn2-run-cursors) (fn2-run-cursors-wfp fn2-run-cursors) (fn2-run-pathsp fn2-run-paths) (fn2-run-paths-wfp fn2-run-paths) (fn2-fieldsp fn2-fields) (fn2-fields-wfp fn2-fields) (fn2-run-readerp rb fn2-fields))
-    ((fn2-run-cursors 1) (fn2-run-paths 2) (fn2-fields 3)) (fn2-run-cursors-rows fn2-run-paths-rows fn2-fields-rows))
+    ((fn2-run-cursors 1) (fn2-run-paths 2) (fn2-fields 3)) (fn2-run-cursors-rows fn2-run-paths-rows fn2-fields-rows)
+    ((fn2-columns-call-guard-hint 'fn2-run-step-child '(fn2-run-cursors-rows fn2-run-paths-rows fn2-fields-rows fn2-run-cache-lookup fn2-run-readerp) '(fn2-run-step-child) world)))
    (fn2-ra-shape fn2-run-step-deliver-shape
     (fn2-run-step-deliver c sid idx off slot gen unit counter rb ok os og fn2-run-cursors fn2-run-paths fn2-fields fn2-pool)
     (and (fn2-run-cursorsp fn2-run-cursors) (fn2-run-cursors-wfp fn2-run-cursors) (fn2-run-pathsp fn2-run-paths) (fn2-run-paths-wfp fn2-run-paths) (fn2-fieldsp fn2-fields) (fn2-fields-wfp fn2-fields) (fn2-run-readerp rb fn2-fields))
@@ -726,7 +727,8 @@
    (fn2-ra-shape fn2-run-step-up-shape
     (fn2-run-step-up c level top rb ok os og fn2-run-cursors fn2-run-paths fn2-run-cache fn2-fields fn2-pool)
     (and (fn2-run-cursorsp fn2-run-cursors) (fn2-run-cursors-wfp fn2-run-cursors) (fn2-run-pathsp fn2-run-paths) (fn2-run-paths-wfp fn2-run-paths) (fn2-fieldsp fn2-fields) (fn2-fields-wfp fn2-fields) (fn2-run-readerp rb fn2-fields))
-    ((fn2-run-cursors 1) (fn2-fields 2)) (fn2-run-cursors-rows fn2-run-paths-rows fn2-fields-rows))
+    ((fn2-run-cursors 1) (fn2-fields 2)) (fn2-run-cursors-rows fn2-run-paths-rows fn2-fields-rows)
+    ((fn2-columns-call-guard-hint 'fn2-run-step-up '(fn2-run-cursors-rows fn2-run-paths-rows fn2-fields-rows fn2-run-cache-lookup fn2-run-readerp) '(fn2-run-step-up) world)))
    (in-theory (disable fn2-run-step-header fn2-run-step-seek fn2-run-step-child fn2-run-step-deliver fn2-run-step-up))
    ;; Each phase reads the cursor row and checks it, then runs its helper;
    ;; the step dispatches on the phase.
