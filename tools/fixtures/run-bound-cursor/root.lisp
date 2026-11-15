@@ -1,0 +1,18 @@
+; Exact required forms from ROOT0234/parent4c16, source transformation fixture.
+(defcolumns fn2-run-cursors
+ ((phase (:enum fn2-run-cursor-phase (:idle :header :seek :child :miss :found :absent :failed :at :up :end :lost)))
+  (schema :u60) (level :u8) (top :u8) (left :bool) (slot :u32) (gen :u60) (lo :u32) (hi :u32) (idx :u32) (off :u32)
+  (unit :u60) (counter :u60) (rb :u32) (okind :u8) (oslot :u32) (ogen :u60)))
+(defun fn2-run-cursor-start (c schema level slot gen unit counter rb okind oslot ogen fn2-run-cursors)
+ (declare (xargs :stobjs fn2-run-cursors :guard (fn2-run-cursors-wfp fn2-run-cursors)))
+ (if (not (and (natp c) (< c (fn2-run-cursors-rows fn2-run-cursors)) (unsigned-byte-p 60 schema) (unsigned-byte-p 8 level)
+               (< level *fn2-run-max-levels*)
+               (unsigned-byte-p 32 slot) (unsigned-byte-p 60 gen) (unsigned-byte-p 60 unit) (unsigned-byte-p 60 counter)
+               (unsigned-byte-p 32 rb) (unsigned-byte-p 8 okind) (unsigned-byte-p 32 oslot) (unsigned-byte-p 60 ogen)))
+     (mv :bounds fn2-run-cursors)
+  (let ((fn2-run-cursors (fn2-run-cursors-put c (phase *fn2-run-cursor-phase-header*) (schema schema) (level level) (top level)
+                               (left 0) (slot slot) (gen gen)
+                               (lo 0) (hi 0) (idx 0) (off 0) (unit unit) (counter counter) (rb rb)
+                               (okind okind) (oslot oslot) (ogen ogen))))
+   (mv :ok fn2-run-cursors))))
+(fn2-run-cursors-preserves fn2-run-cursor-save (c phase level slot gen lo hi idx off unit counter fn2-run-cursors) :position 1 :raw-rows t)
