@@ -6,5 +6,5 @@
 (defconst *fn2-commit-unit-bytes* *fn2-format-sector-size*)
 (defconst *fn2-commit-write-resources* 3)
 (defconst *fn2-commit-pools* 4)
-(defconst *fn2-commit-extent-bytes* (* *fn2-commit-write-resources* *fn2-commit-unit-bytes*))
+(defconst *fn2-commit-extent-bytes* *fn2-storage-extent-bytes*)
 (defconst *fn2-commit-digest-bytes* 32)
