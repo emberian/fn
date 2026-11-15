@@ -214,6 +214,7 @@ ACL2_BOOKS = \
   books/owed \
   books/owed-accounts \
   books/owed-authority \
+  books/wire-fixture-profiles \
   books/owed-conn \
   books/owed-consumer \
   books/owed-cursor \
@@ -236,6 +237,43 @@ ACL2_BOOKS = \
   books/recovery \
   books/recovery-machine \
   books/recovery-payload \
+  books/recovery-frontier \
+  books/recovery-selected-adopt \
+  tests/recovery-selected-adopt-unit \
+  books/checkpoint-bank-bind \
+  books/checkpoint-bank-empty \
+  books/checkpoint-bank-boot \
+  books/boot-root-release \
+  tests/boot-root-release-unit \
+  tests/recovery-payload-chain-unit \
+  tests/recovery-payload-chain-proof \
+  tests/checkpoint-cold-path-drive \
+  tests/checkpoint-cold-path-unit \
+  books/checkpoint-restore-semantic-source \
+  books/checkpoint-bank-closure-state \
+  books/checkpoint-bank-closure-capture \
+  books/checkpoint-bank-closure-kind \
+  books/checkpoint-bank-protection \
+  books/checkpoint-bank-closure-edges \
+  tests/checkpoint-bank-closure-edges-unit \
+  books/checkpoint-bank-protection-kind \
+  tests/checkpoint-bank-reset-unit \
+  books/boot-config-state \
+  books/boot-geometry-state \
+  books/commit-root-state \
+  books/run-active-geometry \
+  books/run-physical-state \
+  books/run-physical-resources \
+  books/run-physical-geometry \
+  books/run-physical-readiness \
+  books/run-physical-harvest \
+  books/checkpoint-summary-loader-readiness \
+  books/checkpoint-owned-extent \
+  books/checkpoint-owned-projection \
+  books/checkpoint-owned-release \
+  tests/checkpoint-owned-extent-unit \
+  tests/checkpoint-owned-projection-unit \
+  tests/checkpoint-owned-release-unit \
   books/recovery-proof \
   books/reference \
   books/reference-state \
@@ -272,6 +310,7 @@ ACL2_BOOKS = \
   tests/accounts-unit \
   tests/alloc-random \
   tests/alloc-unit \
+  tests/alloc-protection-notification-unit \
   tests/alloc-freeze-unit \
   tests/checkpoint-unit \
   tests/alloc-planning-unit \
@@ -309,6 +348,9 @@ ACL2_BOOKS = \
   tests/checkpoint-retention-profile-unit \
   tests/checkpoint-semantic-unit \
   tests/checkpoint-teardown-unit \
+  tests/checkpoint-teardown-transfer-unit \
+  tests/checkpoint-teardown-cold-unit \
+  tests/checkpoint-bank-transfer-unit \
   tests/checkpoint-working-release-unit \
   tests/retirement-intent-unit \
   tests/run-packing-unit \
@@ -327,6 +369,7 @@ ACL2_BOOKS = \
   tests/owed-reclamation-unit \
   tests/retirement-intent-core-unit \
   tests/startup-genesis-unit \
+  tests/startup-name-owner-unit \
   tests/retirement-publish-core-unit \
   tests/retirement-canonical-core-unit \
   tests/authority-client \
@@ -430,6 +473,7 @@ ACL2_BOOKS = \
   tests/manifest-binding-served-unit \
   tests/manifest-publication-unit \
   tests/recovery-manifest-binding-unit \
+  tests/recovery-reread-integrity-unit \
   tests/upload-location-hashes-unit \
   tests/upload-stored-source-unit \
   tests/host-unit \

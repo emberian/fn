@@ -39,7 +39,7 @@
   :guard (and (fn2-checkpoint-construction-wfp fn2-checkpoint-construction) (fn2-extents-wfp fn2-extents))))
  (and (natp extent) (< extent (fn2-checkpoint-construction-rows fn2-checkpoint-construction))
       (fn2-alloc-slotp extent fn2-extents)
-      (equal (fn2-checkpoint-construction-live extent fn2-checkpoint-construction) 1)
+      (fn2-checkpoint-construction-native-p extent fn2-checkpoint-construction)
       (equal (fn2-checkpoint-construction-token extent fn2-checkpoint-construction) token)
       (equal (fn2-checkpoint-construction-owner-kind extent fn2-checkpoint-construction) okind)
       (equal (fn2-checkpoint-construction-owner-slot extent fn2-checkpoint-construction) oslot)

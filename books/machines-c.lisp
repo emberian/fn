@@ -13,6 +13,8 @@
 (include-book "run-physical-release")
 (include-book "run-physical-geometry")
 (include-book "checkpoint-summary-state")
+(include-book "run-physical-geometry")
+(include-book "run-physical-harvest")
 (include-book "startup-genesis-state")
 (fn2-book-layer :c)
 
@@ -78,7 +80,9 @@
       (<= (+ (* *fn2-idc-b-stripe* (nfix (fn2-b-format-slots profile)))
              (* *fn2-idc-stride* (nfix (fn2-profile-t profile))) *fn2-b-seal-field-rows* *fn2-b-checkpoint-field-rows*
              (* *fn2-b-read-stride* (fn2-b-read-rows profile)))
-          (nfix (fn2-b-capacity :format-field-slots (fn2-b-field-rows profile) profile)))))
+          (nfix (fn2-b-capacity :format-field-slots (fn2-b-field-rows profile) profile)))
+      (unsigned-byte-p 32 (fn2-b-run-cursor-rows profile))
+      (unsigned-byte-p 32 (+ 4 (fn2-b-upload-windows profile) (fn2-b-run-cursor-rows profile)))))
 
 ;; Each child's init is a function whose guard is proved here once, so the
 ;; core init's guard (assembly-init) meets only the opaque profile predicate.

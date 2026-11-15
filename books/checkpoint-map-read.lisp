@@ -48,7 +48,7 @@
                      (equal (fn2-checkpoint-construction-rows fn2-checkpoint-construction) (fn2-extents-rows fn2-extents))
                      (natp base) (<= (+ base *fn2-format-recovery-arena-entry-num-fields*) (fn2-fields-rows fn2-fields))))
        (mv :bounds fn2-fields))
-      ((unless (and (equal (fn2-checkpoint-construction-live extent fn2-checkpoint-construction) 1)
+      ((unless (and (fn2-checkpoint-construction-native-p extent fn2-checkpoint-construction)
                      (equal (fn2-checkpoint-construction-token extent fn2-checkpoint-construction) token)
                      (equal (fn2-checkpoint-construction-role extent fn2-checkpoint-construction) 6)
                      (equal (fn2-checkpoint-construction-ordinal extent fn2-checkpoint-construction) ordinal)))

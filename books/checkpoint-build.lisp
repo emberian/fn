@@ -3,6 +3,7 @@
 (in-package "ACL2")
 (include-book "checkpoint-descriptor")
 (include-book "origin")
+(include-book "checkpoint-teardown-state")
 (include-book "checkpoint-construction-owner")
 (include-book "checkpoint-page-io")
 (fn2-book-layer :c)
@@ -344,8 +345,22 @@
          ("-POOL-WFP" fn2-pool-wfp 3)
          ("-POOL-ROWS" fn2-pool-rows 3 :frame fn2-pool)))
 
-(defcost fn2-checkpoint-build-begin-op :child fn2-checkpoint-build-begin :answers t
- :tables (fn2-core-checkpoint-build fn2-core-csnapshot fn2-core-checkpoints fn2-core-checkpoint-refs fn2-core-checkpoint-bytes
+(defun fn2-checkpoint-build-begin-retained (checkpoint c token slot gen scratch sgen okind oslot ogen
+                                 fn2-checkpoint-build fn2-csnapshot fn2-checkpoints fn2-checkpoint-refs
+                                 fn2-checkpoint-bytes fn2-fields fn2-fc fn2-checkpoint-construction fn2-extents fn2-pool fn2-origin fn2-control fn2-checkpoint-teardown-debt)
+ (declare (xargs :stobjs (fn2-checkpoint-build fn2-csnapshot fn2-checkpoints fn2-checkpoint-refs
+                          fn2-checkpoint-bytes fn2-fields fn2-fc fn2-checkpoint-construction fn2-extents fn2-pool fn2-origin fn2-control fn2-checkpoint-teardown-debt)
+  :guard (and (fn2-checkpoint-teardown-debt-wfp fn2-checkpoint-teardown-debt) (fn2-checkpoint-build-wfp fn2-checkpoint-build) (fn2-csnapshot-wfp fn2-csnapshot)
+              (fn2-checkpoints-wfp fn2-checkpoints) (fn2-checkpoint-refs-wfp fn2-checkpoint-refs)
+              (fn2-checkpoint-bytes-wfp fn2-checkpoint-bytes) (fn2-fields-wfp fn2-fields) (fn2-fc-wfp fn2-fc)
+              (fn2-checkpoint-construction-wfp fn2-checkpoint-construction) (fn2-extents-wfp fn2-extents) (fn2-pool-wfp fn2-pool) (fn2-control-wfp fn2-control) (fn2-origin-wfp fn2-origin))))
+ (if (fn2-checkpoint-teardown-debt-heldp c fn2-checkpoint-teardown-debt)
+     (mv :retained fn2-checkpoint-build fn2-checkpoints fn2-checkpoint-construction fn2-extents fn2-control)
+   (fn2-checkpoint-build-begin checkpoint c token slot gen scratch sgen okind oslot ogen
+                                 fn2-checkpoint-build fn2-csnapshot fn2-checkpoints fn2-checkpoint-refs
+                                 fn2-checkpoint-bytes fn2-fields fn2-fc fn2-checkpoint-construction fn2-extents fn2-pool fn2-origin fn2-control)))
+(defcost fn2-checkpoint-build-begin-op :child fn2-checkpoint-build-begin-retained :answers t
+ :tables (fn2-core-checkpoint-teardown-debt fn2-core-checkpoint-build fn2-core-csnapshot fn2-core-checkpoints fn2-core-checkpoint-refs fn2-core-checkpoint-bytes
            fn2-core-fields fn2-core-fc fn2-core-checkpoint-construction fn2-core-extents fn2-core-pool fn2-core-origin fn2-core-control)
  :doc "Reserve the real descriptor identity and atomically claim its nonselectable candidate from the actual held C owner.")
 (defcost fn2-checkpoint-build-source-op :child fn2-checkpoint-build-source-step :answers t :bytes 4096

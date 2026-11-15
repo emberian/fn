@@ -9,7 +9,8 @@
 (include-book "commit-alloc")
 (include-book "read-pins")
 (include-book "checkpoint-cbase-state")
-(include-book "retirement-coordinator")
+(include-book "checkpoint-geometry")
+(include-book "checkpoint-lifecycle-coordinator")
 (include-book "checkpoint-tickets")
 (include-book "format-check")
 (include-book "payload-workspace")
@@ -56,7 +57,9 @@
  (declare (xargs :guard t))
  (+ 6 (* 2 (nfix (fn2-b-capacity :extent-slots 16 profile)))
     (nfix (fn2-profile-o profile)) (* 6 (fn2-b-checkpoint-capacity profile))
-    (* 2 (nfix (fn2-b-capacity :extent-slots 16 profile)) (fn2-b-checkpoint-capacity profile))))
+    (* 2 (nfix (fn2-b-capacity :extent-slots 16 profile)) (fn2-b-checkpoint-capacity profile))
+    ; Four independent physical anchors cannot alias canonical source holds.
+    (* *fn2-checkpoint-anchor-slots* (nfix (fn2-b-capacity :extent-slots 16 profile)))))
 (defcorechild fn2-core-checkpoint-cbase-holds fn2-checkpoint-cbase-holds
  :init (fn2-checkpoint-cbase-holds-init (fn2-b-checkpoint-capacity profile) fn2-checkpoint-cbase-holds)
  :profilep (unsigned-byte-p 32 (fn2-b-checkpoint-capacity profile))
@@ -138,6 +141,11 @@
 ; row (main's ruling, 2026-10-30); w's default is resources.lisp's round-2
 ; bound (16), c's the tiny profile's 2; D's upload capacity, C's sealer row
 ; and E's control capacity read these functions.
+
+
+
+
+
 (defun fn2-b-upload-windows (profile)
  (declare (xargs :guard t))
  (nfix (fn2-b-capacity :large-upload-windows 16 profile)))
@@ -289,15 +297,7 @@
 (defcorechild fn2-core-commit-io fn2-commit-io
  :init (fn2-commit-io-init 6 fn2-commit-io) :profilep t
  :why "Three reserved resources per batch, including operation-owned edges.")
-(defcolumns fn2-commit-root
- ((installed :u60) (published :u60) (proposed :u60)
-  ; Row0 retained recovery boundary; positive base requires separate authority.
-  (base-batch :u60) (base-event :u60) (base-ready :bool)
-  (parent :u60) (extent :u32) (first-key :u60) (members :u32) (seal-ready :bool) (barrier-mode :bool)
-  ; Row 0 only: the first refused batch of an abort in progress (0: none)
-  ; and the event it began at (b54 M3).
-  (aborting :u60) (abort-event :u60)
- ))
+(include-book "commit-root-state")
 ; Resident occupancy is the proposed suffix above the actual installed base.
 ; In-flight proposals count; publication lag or hoped-for physical release does
 ; not grant extra credit. The allocator independently refuses protected extents.
@@ -455,6 +455,13 @@
           ;; source manifest being followed (its position, unit, units, stored
           ;; length and owner event)
           (rc-commit :u60) (rc-roff :u32) (rc-rend :u32)
+          ;; Actual authenticated reread identity; no decoded-record caller flag.
+          (rc-auth :bool) (rc-auth-progress :u8) (rc-auth-mode :u8) (rc-auth-generation :u60) (rc-auth-pos :u32) (rc-auth-commit :u60)
+          (rc-auth-slot :u32) (rc-auth-gen :u60) (rc-auth-base :u60) (rc-auth-tag :u60)
+          (rc-auth-h0 :u32) (rc-auth-h1 :u32) (rc-auth-h2 :u32) (rc-auth-h3 :u32) (rc-auth-h4 :u32) (rc-auth-h5 :u32) (rc-auth-h6 :u32) (rc-auth-h7 :u32)
+          (rc-auth-roff :u32) (rc-auth-rend :u32) (rc-lifecycle-next :u32)
+          (rc-frontier-first :u60) (rc-frontier-last :u60) (rc-frontier-started :bool)
+          (rc-own-token :u32) (rc-own-left :u32)
           (rc-mpos :u32) (rc-munit :u8) (rc-munits :u8) (rc-mtotal :u60) (rc-mevent :u60)
           ;; M7's replay: the member workspace (held with the window), its
           ;; length and its member's event, the members replayed of the

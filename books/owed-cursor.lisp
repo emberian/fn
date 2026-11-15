@@ -20,14 +20,7 @@
 ; reserve its run pages (each run's pages stay resident) (it stops the core :sealer-full otherwise,
 ; C-SEAL-BACKPRESSURE), with one large-upload window.
 (defconst *fn2-cursor-overview-sid* 3)
-(defconst *fn2-cursor-profile*
- (put-assoc-equal :groups '(("local.test" . 1) ("local.empty" . 2))
-  (put-assoc-equal :identity-overlays 64
-   (put-assoc-equal :large-upload-windows 1
-    (put-assoc-equal :reading t
-     (put-assoc-equal :x 2
-      (put-assoc-equal :pool-classes '((8 . 1024) (128 . 4096) (64 . 65536)) *fn2-txn-posting-profile*)))))))
-
+; Shared unchanged serving fixture geometry: wire-fixture-profiles.lisp.
 ; ---------------------------------------------------------------------------
 ; A seed is (GROUP MID LINE TEXT): an article accepted into group GROUP (an
 ; identifier of the profile's :groups) with Message-ID MID, overview line

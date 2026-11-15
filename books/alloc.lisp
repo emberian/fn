@@ -22,7 +22,8 @@
    (installed-root :u32) (selectable-checkpoint :u32) (recovery-base :u32) (prepared-successor :u32) (reservation :u32) (obligation :u32) (promised-read :u32) (borrow :u32) (outstanding-io :u32) (recovery-candidate :u32))
   :init-name fn2-alloc-columns-init
   :extra-fields
-  ((fn2-alloc-retirement-intent-batch :type (unsigned-byte 60) :initially 0 :why "Actual containing batch of the singleton ordinary retirement; zero means no asynchronous intent.")
+  ((fn2-alloc-protection-dirty :type (unsigned-byte 1) :initially 0 :why "Actual edge-count changes coalesce until the singleton retained-debt owner begins a complete bounded sweep; late changes require another whole sweep.")
+   (fn2-alloc-retirement-intent-batch :type (unsigned-byte 60) :initially 0 :why "Actual containing batch of the singleton ordinary retirement; zero means no asynchronous intent.")
    (fn2-alloc-retirement-intent-extent :type (unsigned-byte 32) :initially 0 :why "Exact extent whose durable publication is closed while its retirement journal member is pending.")
    (fn2-alloc-retirement-intent-epoch :type (unsigned-byte 60) :initially 0 :why "Writer epoch binding the pending retirement to its actual physical allocation.")
    (fn2-alloc-retirement-intent-allocation :type (unsigned-byte 60) :initially 0 :why "Allocation generation binding the pending retirement; recycled extents cannot inherit intent.")
@@ -79,7 +80,10 @@
     (otherwise (fn2-extents-recovery-candidate i fn2-extents))))
 (defun fn2-alloc-set-edge (i kind value fn2-extents)
   (declare (xargs :stobjs fn2-extents :guard (and (and (fn2-extents-wfp fn2-extents) (fn2-alloc-slotp i fn2-extents)) (unsigned-byte-p 32 value) (member-eq kind *fn2-alloc-edges*))))
-  (case kind
+  (let ((fn2-extents
+         (if (equal value (fn2-alloc-edge-count i kind fn2-extents)) fn2-extents
+           (update-fn2-alloc-protection-dirty 1 fn2-extents))))
+   (case kind
     (:installed-root (fn2-extents-set-installed-root i value fn2-extents))
     (:selectable-checkpoint (fn2-extents-set-selectable-checkpoint i value fn2-extents))
     (:recovery-base (fn2-extents-set-recovery-base i value fn2-extents))
@@ -90,7 +94,7 @@
     (:borrow (fn2-extents-set-borrow i value fn2-extents))
     (:outstanding-io (fn2-extents-set-outstanding-io i value fn2-extents))
     (:recovery-candidate (fn2-extents-set-recovery-candidate i value fn2-extents))
-    (otherwise (fn2-extents-set-recovery-candidate i value fn2-extents))))
+    (otherwise (fn2-extents-set-recovery-candidate i value fn2-extents)))))
 (defthm fn2-alloc-set-edge-wfp
   (implies (and (fn2-extentsp fn2-extents) (and (fn2-extents-wfp fn2-extents) (fn2-alloc-slotp i fn2-extents)) (unsigned-byte-p 32 value)) (fn2-extents-wfp (fn2-alloc-set-edge i kind value fn2-extents))))
 (defthm fn2-alloc-set-edge-type
@@ -526,6 +530,12 @@
     (cond ((not (eq code :ok)) (mv code fn2-extents fn2-alloc-edges))
           ((not (member-eq kind *fn2-alloc-edges*)) (mv :edge-kind fn2-extents fn2-alloc-edges))
           ((eq kind :reservation) (mv :reservation-owned fn2-extents fn2-alloc-edges))
+          ; A completed cold protection scan remains valid through suffix
+          ; replay. Only the final private recovery join may open phase4;
+          ; ordinary drops cannot erase its reconstructed source claims.
+          ((and (= (fn2-alloc-freeze-phase fn2-extents) 4)
+                (eq kind :recovery-base))
+           (mv :cold-recovery fn2-extents fn2-alloc-edges))
           ((not (fn2-alloc-edge-slotp edge fn2-alloc-edges)) (mv :edge-bounds fn2-extents fn2-alloc-edges))
           ((not (fn2-alloc-edge-matchesp edge holder i epoch counter kind fn2-alloc-edges))
            (mv :edge-holder fn2-extents fn2-alloc-edges))
@@ -543,6 +553,13 @@
            (fn2-alloc-edge-matchesp edge holder i epoch counter kind edges))
   :hints (("Goal" :in-theory (e/d (fn2-alloc-edge-drop)
                                  (fn2-alloc-edge-matchesp)))))
+(defthm fn2-alloc-edge-drop-cold-base-frame
+ (implies (and (equal (fn2-alloc-freeze-phase p) 4)
+               (equal kind :recovery-base))
+  (and (equal (mv-nth 1 (fn2-alloc-edge-drop edge holder i epoch counter kind p edges)) p)
+       (equal (mv-nth 2 (fn2-alloc-edge-drop edge holder i epoch counter kind p edges)) edges)))
+ :hints (("Goal" :in-theory (e/d (fn2-alloc-edge-drop)
+                               (fn2-alloc-handle-code)))))
 ; Internal shared settlement; callers establish ordinary-open or exact
 ; selected cold persisted-evidence authority. No served operation exports it.
 (defun fn2-alloc-commit-allocation-transition (i epoch counter owner-kind owner-id fn2-extents)

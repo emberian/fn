@@ -11,7 +11,7 @@
               (fn2-extents-wfp fn2-extents))))
  (and (fn2-alloc-slotp extent fn2-extents)
       (< extent (fn2-checkpoint-construction-rows fn2-checkpoint-construction))
-      (= (fn2-checkpoint-construction-live extent fn2-checkpoint-construction) 1)
+      (fn2-checkpoint-construction-native-p extent fn2-checkpoint-construction)
       (posp (fn2-alloc-freeze-token fn2-extents))
       (equal (fn2-checkpoint-construction-token extent fn2-checkpoint-construction)
              (fn2-alloc-freeze-token fn2-extents))

@@ -1,6 +1,7 @@
 ; C-aware checkpoint construction is registered above its B-only children.
 (in-package "ACL2")
 (include-book "checkpoint-kind-b")
+(include-book "checkpoint-teardown-state")
 (include-book "checkpoint-page-kind")
 (include-book "checkpoint-build")
 (include-book "checkpoint-plan")
@@ -26,3 +27,8 @@
 (defcorechild fn2-core-checkpoint-map-build fn2-checkpoint-map-build
  :init (fn2-checkpoint-map-build-init 1 fn2-checkpoint-map-build) :profilep t
  :why "One frozen map/arena page chain owns bounded source traversal and completion-gated root construction.")
+
+(defcorechild fn2-core-checkpoint-teardown-debt fn2-checkpoint-teardown-debt
+ :init (fn2-checkpoint-teardown-debt-init (fn2-b-checkpoint-capacity profile) fn2-checkpoint-teardown-debt)
+ :profilep (unsigned-byte-p 32 (fn2-b-checkpoint-capacity profile))
+ :why "One immutable displaced-evidence and exact retirement continuation per configured candidate; no overwrite, timer or FREE authority.")

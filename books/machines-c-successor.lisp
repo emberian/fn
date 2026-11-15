@@ -202,6 +202,44 @@
        (t (let ((fn2-fields (fn2-succ-copy-row from to fn2-fields)))
            (fn2-succ-copy-rows (- n 1) (+ 1 from) (+ 1 to) fn2-fields)))))
 (fn2-fields-preserves fn2-succ-copy-rows (n from to fn2-fields) :position nil :raw-rows t)
+; Clear borrowed coordinates in a bounded scratch region without changing
+; scalar values or status. The source-read and stage boundaries share this.
+(defun fn2-succ-clear-ref-rows (n base fn2-fields)
+ (declare (xargs :stobjs fn2-fields :measure (nfix n)
+                 :guard (and (fn2-fields-wfp fn2-fields) (natp n) (natp base))))
+ (cond ((zp n) fn2-fields)
+       ((not (and (natp base) (< (+ base n -1) (fn2-fields-rows fn2-fields)))) fn2-fields)
+       (t (let ((fn2-fields (fn2-fields-put (+ base n -1)
+                              (ref-slot 0) (ref-gen 0) (ref-off 0) (ref-len 0))))
+            (fn2-succ-clear-ref-rows (- n 1) base fn2-fields)))))
+(fn2-fields-preserves fn2-succ-clear-ref-rows (n base fn2-fields) :position nil :raw-rows t)
+; A resolved run value is used after the source-read lease ends only as an
+; integer decision input. Fold values and union payloads are scalar by their
+; schema checks; insert reads use the result only for presence. Keep the value
+; and status, but do not retain the run page's pool coordinates in the slot.
+(defun fn2-succ-copy-scalar-row (from to fn2-fields)
+ (declare (xargs :stobjs fn2-fields :guard (and (fn2-fields-wfp fn2-fields) (natp from) (natp to))))
+ (if (not (and (natp from) (natp to) (< from (fn2-fields-rows fn2-fields)) (< to (fn2-fields-rows fn2-fields)))) fn2-fields
+  (fn2-fields-put to (value (fn2-fields-value from fn2-fields))
+                  (ref-slot 0) (ref-gen 0) (ref-off 0) (ref-len 0)
+                  (status (fn2-fields-status from fn2-fields)))))
+(fn2-fields-preserves fn2-succ-copy-scalar-row (from to fn2-fields) :position nil :raw-rows t)
+(defun fn2-succ-copy-scalar-rows (n from to fn2-fields)
+ (declare (xargs :stobjs fn2-fields :measure (nfix n) :guard (and (fn2-fields-wfp fn2-fields) (natp n) (natp from) (natp to))))
+ (cond ((zp n) fn2-fields)
+       ((not (and (natp from) (natp to) (< (+ from n -1) (fn2-fields-rows fn2-fields)) (< (+ to n -1) (fn2-fields-rows fn2-fields))))
+        fn2-fields)
+       (t (let ((fn2-fields (fn2-succ-copy-scalar-row from to fn2-fields)))
+           (fn2-succ-copy-scalar-rows (- n 1) (+ 1 from) (+ 1 to) fn2-fields)))))
+(fn2-fields-preserves fn2-succ-copy-scalar-rows (n from to fn2-fields) :position nil :raw-rows t)
+; Only an insert may discard a non-scalar source value: it uses the old row
+; for presence. Fold, union and dependency decisions consume source values,
+; so fail closed if a future schema introduces an octet value there.
+(defun fn2-succ-source-values-scalar-p (n j sid)
+ (declare (xargs :measure (nfix n) :guard (and (natp n) (natp j))))
+ (if (zp n) t
+  (and (not (fn2-run-layout-octets-max sid j))
+       (fn2-succ-source-values-scalar-p (- n 1) (+ 1 j) sid))))
 ; Set N rows from BASE to the value 0 (an absent fold row reads as zeros).
 (defun fn2-succ-zero-rows (n base fn2-fields)
  (declare (xargs :stobjs fn2-fields :measure (nfix n) :guard (and (fn2-fields-wfp fn2-fields) (natp n) (natp base))))
@@ -564,7 +602,7 @@
               (fn2-fields-wfp fn2-fields) (fn2-pool-wfp fn2-pool) (natp budget) (natp b0)
               (natp tx) (< tx (fn2-succ-txns-rows fn2-succ-txns)) (<= (+ b0 *fn2-idc-stride*) (fn2-fields-rows fn2-fields)))
   :guard-hints (("Goal" :in-theory (disable fn2-run-cursor-start-installed fn2-succ-resolved fn2-succ-resolve-next fn2-run-lookup-step
-                                            fn2-succ-key-rows fn2-succ-copy-rows fn2-fields-rows fn2-succ-slots-rows)))))
+                                            fn2-succ-key-rows fn2-succ-copy-scalar-rows fn2-fields-rows fn2-succ-slots-rows)))))
  (b* (((unless (and (natp tx) (< tx (fn2-succ-txns-rows fn2-succ-txns)) (natp b0)))
        (mv :bounds fn2-succ-txns fn2-succ-slots fn2-run-cursors fn2-run-paths fn2-fields))
       (ri (nfix (fn2-succ-txns-ri tx fn2-succ-txns)))
@@ -614,8 +652,13 @@
            (mv :more fn2-succ-txns fn2-succ-slots fn2-run-cursors fn2-run-paths fn2-fields)))
          ((unless (eq c :found)) (mv c fn2-succ-txns fn2-succ-slots fn2-run-cursors fn2-run-paths fn2-fields))
          (nk (nfix (fn2-run-layout-keys sid)))
-         (fn2-fields (fn2-succ-copy-rows (nfix (- (fn2-run-layout-fields sid 0) nk)) (+ b0 *fn2-idc-rb* *fn2-run-reader-entry* nk)
-                                         (+ entry *fn2-succ-res*) fn2-fields))
+         (nv (nfix (- (fn2-run-layout-fields sid 0) nk)))
+         ((unless (or (and (equal code *fn2-succ-kind-insert*)
+                           (not (eq (fn2-run-layout-merge sid) :union)))
+                      (fn2-succ-source-values-scalar-p nv nk sid)))
+          (mv :schema fn2-succ-txns fn2-succ-slots fn2-run-cursors fn2-run-paths fn2-fields))
+         (fn2-fields (fn2-succ-copy-scalar-rows nv (+ b0 *fn2-idc-rb* *fn2-run-reader-entry* nk)
+                                                (+ entry *fn2-succ-res*) fn2-fields))
          ((mv c fn2-succ-txns fn2-succ-slots) (fn2-succ-resolved tx s t t fn2-succ-txns fn2-succ-slots)))
      (mv c fn2-succ-txns fn2-succ-slots fn2-run-cursors fn2-run-paths fn2-fields))))))
 (fn2-idc-fn-shape fn2-succ-resolve-step (tx budget b0 qk qs qg fn2-succ-txns fn2-succ-slots fn2-run-installed fn2-run-cursors fn2-run-paths fn2-run-cache fn2-fields fn2-pool)
@@ -623,14 +666,14 @@
  (fn2-succ-txns fn2-succ-slots fn2-run-installed fn2-run-cursors fn2-run-paths fn2-run-cache fn2-fields fn2-pool) t
  (fn2-succ-txns-ri fn2-succ-txns-rstate fn2-succ-slots-sid fn2-succ-slots-kind fn2-succ-slots-phase fn2-run-version
   fn2-succ-reads-key fn2-run-layout-keys fn2-run-layout-fields fn2-succ-kindkw fn2-succ-resolved fn2-succ-resolve-next
-  fn2-run-lookup-step fn2-succ-key-rows fn2-succ-copy-rows fn2-run-cursors-rows fn2-run-paths-rows
+  fn2-run-lookup-step fn2-succ-key-rows fn2-succ-copy-scalar-rows fn2-succ-source-values-scalar-p fn2-run-layout-merge fn2-run-cursors-rows fn2-run-paths-rows
   fn2-succ-slots-oset fn2-succ-slots-sk fn2-succ-slots-ss fn2-succ-slots-sg fn2-succ-slots-vrun))
 
 ; One bounded step of resolve for TX (BUDGET at most 4,096): :more, :miss
 ; (a run page to load, as C-S1), or :ok when every slot is resolved. A
 ; transaction whose decision is in progress (it shares the run cursor) is
 ; refused :state.
-(defun fn2-succ-resolve (tx budget b0 qk qs qg fn2-succ-txns fn2-succ-slots fn2-id-decides fn2-run-installed fn2-run-cursors fn2-run-paths
+(defun fn2-succ-resolve-raw (tx budget b0 qk qs qg fn2-succ-txns fn2-succ-slots fn2-id-decides fn2-run-installed fn2-run-cursors fn2-run-paths
                          fn2-run-cache fn2-fields fn2-pool)
  (declare (xargs :stobjs (fn2-succ-txns fn2-succ-slots fn2-id-decides fn2-run-installed fn2-run-cursors fn2-run-paths fn2-run-cache
                           fn2-fields fn2-pool) :guard t
@@ -648,9 +691,31 @@
        (mv :state fn2-succ-txns fn2-succ-slots fn2-run-cursors fn2-run-paths fn2-fields))
       (fn2-succ-txns (fn2-succ-txns-set-phase tx *fn2-succ-phase-open* fn2-succ-txns)))
   (fn2-succ-resolve-step tx budget b0 qk qs qg fn2-succ-txns fn2-succ-slots fn2-run-installed fn2-run-cursors fn2-run-paths fn2-run-cache fn2-fields fn2-pool)))
-(fn2-idc-fn-shape fn2-succ-resolve (tx budget b0 qk qs qg fn2-succ-txns fn2-succ-slots fn2-id-decides fn2-run-installed fn2-run-cursors fn2-run-paths
+(fn2-idc-fn-shape fn2-succ-resolve-raw (tx budget b0 qk qs qg fn2-succ-txns fn2-succ-slots fn2-id-decides fn2-run-installed fn2-run-cursors fn2-run-paths
                                     fn2-run-cache fn2-fields fn2-pool)
  (fn2-succ-txns fn2-succ-slots fn2-run-cursors fn2-run-paths fn2-fields)
  (fn2-succ-txns fn2-succ-slots fn2-id-decides fn2-run-installed fn2-run-cursors fn2-run-paths fn2-run-cache fn2-fields fn2-pool) t
  (fn2-succ-txns-phase fn2-id-decides-phase))
+
+; A completed resolve has no further use for the run reader's decoded page
+; references. The caller may now release its source-read observer before C
+; staging or B admission can park.
+(defun fn2-succ-resolve (tx budget b0 qk qs qg fn2-succ-txns fn2-succ-slots fn2-id-decides fn2-run-installed fn2-run-cursors fn2-run-paths
+                         fn2-run-cache fn2-fields fn2-pool)
+ (declare (xargs :stobjs (fn2-succ-txns fn2-succ-slots fn2-id-decides fn2-run-installed fn2-run-cursors fn2-run-paths fn2-run-cache
+                          fn2-fields fn2-pool) :guard t
+                 :guard-hints (("Goal" :in-theory (disable fn2-succ-resolve-raw fn2-succ-clear-ref-rows fn2-fields-rows)))))
+ (b* (((mv code fn2-succ-txns fn2-succ-slots fn2-run-cursors fn2-run-paths fn2-fields)
+       (fn2-succ-resolve-raw tx budget b0 qk qs qg fn2-succ-txns fn2-succ-slots fn2-id-decides fn2-run-installed fn2-run-cursors fn2-run-paths
+                             fn2-run-cache fn2-fields fn2-pool))
+      (fn2-fields (if (and (eq code :ok) (fn2-fields-wfp fn2-fields) (natp b0)
+                           (<= (+ b0 *fn2-idc-stride*) (fn2-fields-rows fn2-fields)))
+                     (fn2-succ-clear-ref-rows *fn2-run-reader-fields* (+ b0 *fn2-idc-rb*) fn2-fields)
+                   fn2-fields)))
+  (mv code fn2-succ-txns fn2-succ-slots fn2-run-cursors fn2-run-paths fn2-fields)))
+(fn2-idc-fn-shape fn2-succ-resolve (tx budget b0 qk qs qg fn2-succ-txns fn2-succ-slots fn2-id-decides fn2-run-installed fn2-run-cursors fn2-run-paths
+                                    fn2-run-cache fn2-fields fn2-pool)
+ (fn2-succ-txns fn2-succ-slots fn2-run-cursors fn2-run-paths fn2-fields)
+ (fn2-succ-txns fn2-succ-slots fn2-id-decides fn2-run-installed fn2-run-cursors fn2-run-paths fn2-run-cache fn2-fields fn2-pool) t
+ (fn2-succ-resolve-raw fn2-succ-clear-ref-rows fn2-fields-wfp fn2-fields-rows))
 

@@ -230,3 +230,21 @@ A scoped adapter normalizes the latter's equivalent natural-index spelling,
 then uses the same checked successor rewrite. Three source controls preserve
 actual definitions/arity and refuse measure drift. Guarded natural-index byte
 behavior is unchanged; ACL2 admission remains unrun.
+
+### Cold source composition 9f37711c2 (source only)
+
+The merged source retains the canonical commit-root-state extraction and the
+appended archive cursor, physical cursor priority and wire-run distinctions.
+Both actual raw/public successor resolvers now thread the physical query owner
+qk/qs/qg through cleanup and the core caller; scalar value copying and completed
+reader-reference clearing remain intact. The actual completion observer is
+defined once in run-physical-harvest and included by the bound issuing engine.
+Three owner rewrite controls, six lifetime controls and eight bound-engine
+controls pass; no ACL2 execution or certification was authorized.
+
+The newly imported readiness_slice_source_test retains unresolved composition
+failures: its whole-current-source replay/cursor/boot expectations predate the
+archive geometry, priority and lower extraction; its no-engine include assertion
+also finds an actual dependency via readiness→machines-c-read→sealer→machines-c.
+The include walk has no cycle. Metadata owner was asked to own the narrower
+READ-state dependency. These controls have not been removed or rebased.

@@ -56,12 +56,33 @@ query references away. These changes remain source-only. Protected checkpoint
 capacity must also guarantee ordinary staged journal drain capacity per class;
 aggregate totals or double-counted reservations cannot establish progress.
 
-Cold recovery remains unfinished. It needs bounded physical page loading,
-allocator reconstruction, retained C-source ownership through query drain, and
-actual summary/rebase. Startup currently creates genesis NAME overlays before
-choosing a stored checkpoint; reclamation owns moving genesis into the fresh
-branch and tying sealer eligibility to actual boot closure. The autonomous
-retirement submit/poll producer also remains unconnected.
+Cold recovery remains unfinished. The cold integration lane now routes startup
+through fresh-only NAME genesis or stored-checkpoint loading and protects all
+physical selectable anchors before suffix recovery. Its private post-Fence
+`fn2-boot-finalize-recovery` checks the actual actor, completed reconstruction,
+terminal root workspace, all-bank protection and newer epoch before clearing
+phase4 and invoking the unchanged ordinary `fn2-alloc-begin-epoch`. These are
+source implementations, not a qualified selected boot. Connected actual
+checkpoint/store/crash/restart controls now assert both successful epoch opening
+and failed-Fence ambiguity retention; their ACL2 execution remains pending.
+
+**Chronological selected ownership (reclamation deputy, 62363300e).** Physical
+payload authentication remains a complete prepass. Selected install now classifies
+without mutating base ownership; after the actual replay scanner, bounded stages
+5–8 adopt the current journal and its checked counted payload chain before member
+replay. This permits an earlier persisted RELEASE to precede a later reused
+payload allocation. The concrete target history is a base-retired allocation,
+then RELEASE, then one later accepted payload incarnation before crash. It does
+not assume two physically recoverable post-base incarnations. Source routing and
+preservation controls pass; the actual selected fixture, RELEASE transition and
+whole-history execution remain required. Carried payload-prefix invariants and
+cross-yield authentication must be proved for the actual machine.
+
+Autonomous orphan retirement now has a source producer using ordinary submit/poll
+and retaining ambiguity; its runtime qualification and holder discharge remain
+open. Live physical C adoption, retained archive/rebase transfer and actual credit
+consumer progress remain required. FREE activation stays disabled until durable
+release evidence, fallback-bank obligations and cold replay compose.
 
 TLS/COMPRESS shared host closure, actual native input-prefix emission, and replay
 receipt consumption are source candidates, not qualified host behavior. Native

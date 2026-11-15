@@ -55,7 +55,9 @@ class BoundExtraction(unittest.TestCase):
    self.assertEqual(len(lr.match('(include-book "run-physical-'+lower+'")',forms,deep=False)),1)
  def test_actual_harvest_body_is_shared_unchanged(self):
   old=fn(read('tools/fixtures/run-physical-bound/io.lisp'),'fn2-run-load-harvest')
-  new=fn(read('books/run-physical-bound-io.lisp'),'fn2-run-load-harvest')
+  new=fn(read('books/run-physical-harvest.lisp'),'fn2-run-load-harvest')
+  self.assertEqual(len(lr.match('(include-book "run-physical-harvest")',lr.parse(read('books/run-physical-bound-io.lisp')).forms,deep=False)),1)
+  self.assertFalse(lr.match('(defun fn2-run-load-harvest ?*body)',lr.parse(read('books/run-physical-bound-io.lisp')).forms,deep=False))
   self.assertEqual(tree(old),tree(new))
   self.assertFalse(lr.match('(defun fn2-run-load-harvest ?*body)',lr.parse(read('books/run-physical-io.lisp')).forms,deep=False))
  def test_verification_and_read_only_exist_once(self):
