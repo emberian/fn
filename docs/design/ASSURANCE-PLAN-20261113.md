@@ -7,6 +7,16 @@ must be derived from that store and the actual served call/attachment graph.
 
 ## Current integration frontier — 2026-11-15 UTC
 
+Upstream `ba773befc` changes the shared declaration foundation to bind claim
+identity and retain refuted claims as unfinished. The six-book union of the
+[registry](receipts/refuted-obligations-four-record.json) and
+[correspondence](receipts/refuted-correspondence-four-record.json) records matches
+that integration's current sources and closure keys. Earlier records below
+remain evidence for their named frozen sources; dependent closures changed by
+this declaration update require qualification at their new keys. The active
+application and reader campaigns keep their explicit frozen sources rather
+than silently switching foundations mid-proof.
+
 The next completion milestone is actual APPEND → STATUS → query, followed by
 recovery of accepted data. Integrated work now goes directly to upstream dev;
 component records alone do not establish this milestone. The shared application
@@ -32,8 +42,9 @@ facts and checked-mask facts; its caller uses the shared call-derived guard
 hint. Runtime bodies, guards and the original shape statement are unchanged.
 The complete BIND author pass took 46.13 seconds under the original per-event
 limits, leaving proof-cost work open. Six source/mutation controls pass.
-GROUPS subsequently passed its author check, separately from this record;
-sealer and application composition follow. Actual FETCH cancellation remains
+GROUPS, sealer and machines-c-sealer subsequently passed their whole-book
+author checks, separately from this record. READ now needs its original
+identity shape proof repaired; application composition follows. Actual FETCH cancellation remains
 unexecuted. Its fixture binds the failed Send to the captured connection,
 request, operation generation and range and rejects stale generations before
 acknowledging the queue head.
