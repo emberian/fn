@@ -20,6 +20,7 @@
   (address 0 :type fixnum) (len 0 :type fixnum) (target 0) (target-gen 0)
   (outcome 0) (reason 0) (count 0) (aux0 0) (aux1 0)
   (tls-started nil) (tls-record (create-fn2-tls-record))
+  (compress-record nil)
   (family :none) (port 0) (w0 0) (w1 0) (w2 0) (w3 0) (octets nil) (offset 0) (fua 0))
 
 ;; A capability: index 0 is the listener (its TCP socket, and the owner-only
