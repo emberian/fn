@@ -469,6 +469,7 @@ ACL2_BOOKS = \
   tests/manifest-binding-served-unit \
   tests/manifest-publication-unit \
   tests/recovery-manifest-binding-unit \
+  tests/recovery-reread-integrity-unit \
   tests/upload-location-hashes-unit \
   tests/upload-stored-source-unit \
   tests/host-unit \
