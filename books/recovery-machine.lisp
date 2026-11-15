@@ -825,7 +825,7 @@
   ;; stage 2 at the high water: the frontier and the writer epoch, then the
   ;; replay of every chained commit's members (M7)
   (install-finish :on-refusal ((:stop :recovery-bounds))
-   (:do (code) (fn2-recovery-finish row-rc-chain row-rc-epoch))
+   (:do (code) (fn2-recovery-install-finish id))
    (:if (< row-rc-base row-rc-chain)
         ((:do (pcode p) (fn2-recovery-commit-extent (+ 1 row-rc-base)) :accept (:ok))
          (:set (rc-mode *fn2-rec-mode-replay*) (rc-commit (+ 1 row-rc-base)) (rc-pos p) (rc-role 1) (rc-roff 0) (rc-rend 0)
@@ -839,6 +839,11 @@
   ;; C's fn2-member-replay in member order, then the commit's batch
   ;; published (fn2-successor-publish). A hook's refusal stops the core
   ;; :recovery-replay after the replayed prefix; keyed members replay nothing.
+  (replay-frontier :on-refusal ((:stop :recovery-replay))
+   (:do (code) (fn2-recovery-frontier-step id) :accept ()
+    :case (((:more) (:charge :bytes 4096 :steps *fn2-work-stage* :runnable t))
+           ((:done) (:set (rc-stage 0)) (:charge :steps *fn2-work-advance* :runnable t))
+           (:otherwise (:stop :recovery-replay)))))
   (replay-open :on-refusal ((:stop :recovery-bounds))
    (:do (code roff rend first last) (fn2-recovery-current-unit-open id)
     :accept ()
@@ -946,6 +951,7 @@
           ((and (equal row-rc-mode *fn2-rec-mode-replay*) (equal row-rc-stage 1)) (:goto replay-flush))
           ((and (equal row-rc-mode *fn2-rec-mode-replay*) (equal row-rc-stage 2)) (:goto replay-commit-end))
           ((and (equal row-rc-mode *fn2-rec-mode-replay*) (equal row-rc-stage 3)) (:goto replay-lifecycle))
+          ((and (equal row-rc-mode *fn2-rec-mode-replay*) (equal row-rc-stage 4)) (:goto replay-frontier))
           ((equal row-rc-mode *fn2-rec-mode-replay*) (:goto replay-record))
           (t
    (:if (equal row-rc-mode *fn2-rec-mode-discover*)

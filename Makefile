@@ -236,6 +236,7 @@ ACL2_BOOKS = \
   books/recovery \
   books/recovery-machine \
   books/recovery-payload \
+  books/recovery-frontier \
   books/recovery-proof \
   books/reference \
   books/reference-state \
