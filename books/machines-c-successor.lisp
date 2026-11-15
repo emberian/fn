@@ -38,39 +38,25 @@
 ; fields in field order from 0.
 
 
-; A write slot's block of field rows (C-STRIPE): the staged row at +0 (key
-; fields then value fields, at most 12), the args as given at +12 (a value,
-; a packed handle for :out, an octet reference), the args evaluated at +24
-; (a fold's event args), the key's row
-; read from the installed runs at +36 (its value fields, at most 8).
-(defconst *fn2-succ-entry* 0)
-(defconst *fn2-succ-raw* 12)
-(defconst *fn2-succ-eval* 24)
-(defconst *fn2-succ-res* 36)
-; Row 44 of a staged slot's block: 1 when stage found it fresh (an insert
-; new at the tip, a fold step applied), 0 when it binds nothing (a :union
-; key already present, a fold :unchanged). An arg (:new K) reads it.
-(defconst *fn2-succ-fresh* 44)
-(defconst *fn2-succ-fields-max* 12)
-(defconst *fn2-succ-values-max* 8)
+ ; C-STRIPE: ENTRY, RAW args, EVAL args, RES values and FRESH occupy
+; disjoint declaration-derived regions. The generic run decoder's80-row guard
+; is a table-tail reservation; its actual entry writes are the schema fields.
+; successor-schema-geometry owns every offset and capacity.
 (assert-event (<= (+ *fn2-succ-res* *fn2-succ-values-max*) *fn2-succ-fresh*))
 (assert-event (< *fn2-succ-fresh* *fn2-succ-block*))
 
-;; Every assembled schema fits a slot: at most 12 entry fields and, for a
-;; fold, 8 value fields and 12 args per event kind; its octet fields fit the
-;; bind scratch together.
+;; Every assembled schema and fold fits the inventory-derived slot; all
+;; readable value fields fit RES, and its octets fit the actual scratch class.
 (defun fn2-succ-kinds-fit (sid kinds)
  (declare (xargs :verify-guards nil))
  (or (atom kinds) (and (<= (nfix (fn2-fold-arity sid (car kinds))) *fn2-succ-fields-max*) (fn2-succ-kinds-fit sid (cdr kinds)))))
-(defun fn2-succ-octets-total (sid f n)
- (declare (xargs :verify-guards nil :measure (nfix (- (nfix n) (nfix f)))))
- (if (<= (nfix n) (nfix f)) 0 (+ (nfix (fn2-run-layout-octets-max sid f)) (fn2-succ-octets-total sid (+ 1 (nfix f)) n))))
+
 (defun fn2-succ-schemas-fit (ids)
  (declare (xargs :verify-guards nil))
  (or (atom ids)
      (let* ((sid (car ids)) (nf (fn2-run-layout-fields sid 0)))
       (and (<= nf *fn2-succ-fields-max*)
-           (or (not (fn2-run-layout-fold-p sid)) (<= (- nf (fn2-run-layout-keys sid)) *fn2-succ-values-max*))
+           (<= (- nf (fn2-run-layout-keys sid)) *fn2-succ-values-max*)
            (fn2-succ-kinds-fit sid *fn2-run-fold-kinds*)
            (<= (fn2-succ-octets-total sid 0 nf) *fn2-idc-scratch-bytes*)
            (fn2-succ-schemas-fit (cdr ids))))))
