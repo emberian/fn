@@ -1290,15 +1290,12 @@
     (implies (and (consp l) (subsetp-equal f l))
              (subsetp-equal (remove-equal (car l) f) (cdr l)))
     :hints (("Goal" :use ((:instance fn2-pool-remove-subsetp (y f) (a (car l)) (x (cdr l)))))))
-  ;; The direct subset interfaces above supply the chain-tail/remove steps.
-  ;; Do not search for an unconstrained intermediate set during every rewrite.
-  (in-theory (disable fn2-pool-subsetp-trans))
   ; RESERVE: the head leaves its class's chain and free set together.
-  (defthm fn2-pool-reserve-class-okp
+  (defthm fn2-pool-reserve-body-class-okp
     (implies (and (fn2-poolp fn2-pool) (fn2-pool-wfp fn2-pool)
                   (fn2-pool-class-accountsp (fn2-pool-nclasses fn2-pool) fn2-pool)
                   (natp c2) (< c2 (fn2-pool-nclasses fn2-pool)))
-             (fn2-pool-class-okp c2 (mv-nth 3 (fn2-pool-reserve class okind oslot ogen fn2-pool))))
+             (fn2-pool-class-okp c2 (mv-nth 3 (fn2-pool-reserve-body class okind oslot ogen fn2-pool))))
     :hints (("Goal" :do-not '(generalize eliminate-destructors fertilize)
              :in-theory (e/d (fn2-pool-class-okp) (fn2-pool-class-okp-of-accounts))
              :cases ((equal class c2))
@@ -1313,6 +1310,19 @@
                    (:instance fn2-pool-free-chain-fuel (f (- (fn2-pool-rows fn2-pool) 1))
                               (g (fn2-pool-rows fn2-pool))
                               (x (fn2-pool-next-free (fn2-pool-class-headsi class fn2-pool) fn2-pool)))))))
+
+  (defthm fn2-pool-reserve-class-okp
+    (implies (and (fn2-poolp fn2-pool) (fn2-pool-wfp fn2-pool)
+                  (fn2-pool-class-accountsp (fn2-pool-nclasses fn2-pool) fn2-pool)
+                  (natp c2) (< c2 (fn2-pool-nclasses fn2-pool)))
+             (fn2-pool-class-okp c2 (mv-nth 3 (fn2-pool-reserve class okind oslot ogen fn2-pool))))
+    :hints (("Goal"
+             :in-theory (e/d (fn2-pool-reserve)
+                             (fn2-pool-reserve-body fn2-pool-class-okp
+                              fn2-pool-reserve-body-class-okp fn2-pool-class-okp-of-accounts))
+             :use (fn2-pool-reserve-body-class-okp
+                   (:instance fn2-pool-class-okp-of-accounts
+                              (n (fn2-pool-nclasses fn2-pool)) (c c2))))))
 
   (defthm fn2-pool-reserve-class-accounts
     (implies (and (fn2-poolp fn2-pool) (fn2-pool-wfp fn2-pool)
