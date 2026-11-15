@@ -203,7 +203,7 @@
 (in-theory (disable fn2-upload-capacity))
 
 (defmachine fn2-upload
- :states (:free :head :identity :receiving :validating :discard :store :stored-hash :store-write :store-wrote
+ :states (:free :head :identity :receiving :validating :discard :store :stored-hash :location-hash :store-write :store-wrote
           :store-fence :store-fenced :sealed :aborting :draining :retired)
  ;; CONN is the owner the source comes from and the word goes to: a
  ;; connection (POST, IHAVE, TAKETHIS) or a consumer request (an append,
@@ -237,7 +237,7 @@
           ;; bounded operation each, and MDRAIN the manifest units the drain
           ;; has settled
           (cext :link) (cepoch :u60) (calloc :u60) (cfree :bool) (mfill :u32) (munit :u8)
-          (mstep :u8) (mdrain :u8) (stored-hashed :u60))
+          (mstep :u8) (mdrain :u8) (stored-hashed :u60) (location-hashed :u8))
  :links ((conn :kind fn2-conn :slot conn :gen conn-gen :back (upload upload-gen)
                :reads (fed feed-mode feed-discard))
          (cns :kind fn2-cns :slot conn :gen conn-gen :back (upload upload-gen)
@@ -248,6 +248,7 @@
          (:discard :upload-row :chunk-window)
          (:store :upload-row :chunk-window (:storage-window :while (lease :held)))
          (:stored-hash :upload-row :chunk-window (:storage-window :while (lease :held)))
+         (:location-hash :upload-row :chunk-window (:storage-window :while (lease :held)))
          (:store-write :upload-row :chunk-window (:storage-window :while (lease :held)))
          (:store-wrote :upload-row :chunk-window (:storage-window :while (lease :held)))
          (:store-fence :upload-row :chunk-window (:storage-window :while (lease :held)))
@@ -264,12 +265,12 @@
          :copy (conn conn-gen request rule principal-slot op)
          :clear (filled hashed scan-off visible nfields nlines seen mo ml no nl po pl
                  head-status word inj txn-gen stopped pepoch palloc pdone sevent soutcome scount sready
-                 lgen lease ilen cepoch calloc cfree mfill munit mstep mdrain stored-hashed))
+                 lgen lease ilen cepoch calloc cfree mfill munit mstep mdrain stored-hashed location-hashed))
  :initial ((generation fn2-machine-initial-generation) (ready-prev *fn2-none*) (ready-next *fn2-none*)
            (c0-slot *fn2-none*) (c1-slot *fn2-none*) (conn *fn2-none*) (txn *fn2-none*) (account-ref *fn2-none*)
            (pext *fn2-none*) (lslot *fn2-none*) (cext *fn2-none*)
            (ofield 12) (next-free fn2-machine-initial-next-free))
- :arms ((:free) (:head) (:identity) (:receiving) (:validating) (:discard) (:store) (:stored-hash) (:store-write) (:store-wrote)
+ :arms ((:free) (:head) (:identity) (:receiving) (:validating) (:discard) (:store) (:stored-hash) (:location-hash) (:store-write) (:store-wrote)
         (:store-fence) (:store-fenced) (:sealed) (:aborting) (:draining) (:retired))
  :observes ((:write-result) (:fence-result) (:borrow-released)))
 

@@ -65,6 +65,35 @@ class CoreCertificateInspection(unittest.TestCase):
             self.assertNotIn('UNUSED', output.getvalue())
             self.assertEqual(before, {p: p.read_bytes() for p in Path(directory).rglob('*') if p.is_file()})
 
+    def test_explicit_function_selection_omits_context_roots(self):
+        with tempfile.TemporaryDirectory() as directory:
+            source = self.fixture(directory)
+            _, selected, _, names, _ = c.inspect_core_certificate(source, ['UNUSED'])
+            self.assertEqual(names, {'UNUSED'})
+            self.assertEqual([f.name for f, _ in selected], ['UNUSED'])
+            output = io.StringIO()
+            with contextlib.redirect_stdout(output):
+                c.cli(['--inspect', '--root', 'UNUSED', str(source)])
+            self.assertIn('1 functions', output.getvalue())
+            self.assertNotIn(BASE[0], output.getvalue())
+
+    def test_explicit_function_selection_still_refuses_missing_dependency(self):
+        with tempfile.TemporaryDirectory() as directory:
+            source = self.fixture(directory, changed={'UNUSED':['MISSING']})
+            with self.assertRaisesRegex(ValueError, 'missing core callee MISSING'):
+                c.inspect_core_certificate(source, ['UNUSED'])
+            with self.assertRaisesRegex(ValueError, 'empty selected core roots'):
+                c.inspect_core_certificate(source, [])
+
+    def test_selected_root_cannot_silently_emit_default_arms(self):
+        with tempfile.TemporaryDirectory() as directory:
+            source = self.fixture(directory)
+            with contextlib.redirect_stderr(io.StringIO()), mock.patch.object(c, 'main') as main:
+                with self.assertRaises(SystemExit) as failed:
+                    c.cli(['--root', 'UNUSED', str(source)])
+            self.assertEqual(failed.exception.code, 2)
+            main.assert_not_called()
+
     def test_existing_refusals(self):
         for kwargs, reason in [
                 ({'attachment': 'ATTACHED'}, 'attached core callee'),

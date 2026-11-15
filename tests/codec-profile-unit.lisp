@@ -1,0 +1,10 @@
+(in-package "ACL2")
+(include-book "../books/codec-profile")
+(assert-event (equal (fn2-codec-seed-capacity '((:pool-classes . ((6 . 4096) (2 . 65536))))) 4096))
+(assert-event (equal (fn2-codec-seed-reservation-bytes '((:c . 3) (:pool-classes . ((6 . 4096))))) 12288))
+(assert-event (equal (mv-list 2 (fn2-codec-upgrade-turns 4096 1024)) '(:ok 6)))
+(assert-event (equal (mv-list 2 (fn2-codec-upgrade-turns 4097 1024)) '(:ok 7)))
+(assert-event (equal (mv-list 2 (fn2-codec-upgrade-turns 0 1024)) '(:ok 2)))
+; A derived transient budget may need 33 bits; no stored-data truncation.
+(assert-event (equal (mv-list 2 (fn2-codec-upgrade-turns #xffffffff 1)) '(:ok 4294967297)))
+(assert-event (equal (mv-list 2 (fn2-codec-upgrade-turns 4096 0)) '(:bounds 0)))

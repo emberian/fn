@@ -7,6 +7,9 @@
 (include-book "checkpoint-page-header")
 (include-book "checkpoint-map-build")
 (include-book "checkpoint-source-retention")
+(include-book "checkpoint-planning-construction")
+(include-book "checkpoint-planning-schedule")
+(include-book "checkpoint-planning-page")
 (fn2-book-layer :c)
 
 (defun fn2-event-build-ownerp (fn2-event-build fn2-csnapshot fn2-checkpoints)
@@ -21,7 +24,9 @@
       (equal (fn2-event-build-cut-event 0 fn2-event-build) (fn2-csnapshot-cut-event 0 fn2-csnapshot))
       (fn2-checkpoint-builder-ownerp (fn2-event-build-candidate 0 fn2-event-build) (fn2-event-build-token 0 fn2-event-build)
        (fn2-event-build-owner-kind 0 fn2-event-build) (fn2-event-build-owner-slot 0 fn2-event-build)
-       (fn2-event-build-owner-gen 0 fn2-event-build) fn2-checkpoints)))
+       (fn2-event-build-owner-gen 0 fn2-event-build) fn2-checkpoints)
+      (equal (fn2-event-build-history 0 fn2-event-build) (fn2-checkpoints-history (fn2-event-build-candidate 0 fn2-event-build) fn2-checkpoints))
+      (equal (fn2-event-build-history-incarnation 0 fn2-event-build) (fn2-checkpoints-incarnation (fn2-event-build-candidate 0 fn2-event-build) fn2-checkpoints))))
 
 (defun fn2-event-build-begin (c token slot gen scratch sgen okind oslot ogen
                              fn2-event-build fn2-event-read fn2-csnapshot fn2-checkpoints fn2-checkpoint-refs fn2-checkpoint-bytes
@@ -34,6 +39,7 @@
                       (list *fn2-event-build-phase-idle* *fn2-event-build-phase-auth-ready*))
                      (fn2-checkpoint-slotp c fn2-checkpoints fn2-checkpoint-refs fn2-checkpoint-bytes)
                      (fn2-checkpoint-builder-ownerp c token okind oslot ogen fn2-checkpoints)
+                     (fn2-origin-physicalp (fn2-checkpoints-history c fn2-checkpoints) (fn2-checkpoints-incarnation c fn2-checkpoints))
                      (fn2-event-frontier-source-p token okind oslot ogen fn2-event-read fn2-csnapshot fn2-mk fn2-fc fn2-digests)))
        (mv :source fn2-event-build))
       (cut (fn2-csnapshot-cut-commit 0 fn2-csnapshot))
@@ -51,16 +57,16 @@
        (slot slot) (gen gen) (scratch scratch) (scratch-gen sgen)
        (role 3) (ordinal (- pages 1)) (pages pages) (first 0) (end 0) (entry 0)
        (claimed 0) (zero 0) (peak 0) (payload 0) (has-child 0)
-       (directory-completed 0) (frontier-completed 0))))
+       (directory-completed 0) (frontier-completed 0) (history (fn2-checkpoints-history c fn2-checkpoints)) (history-incarnation (fn2-checkpoints-incarnation c fn2-checkpoints)))))
   (mv :ok fn2-event-build)))
 
-(defun fn2-event-build-reserve (fn2-event-build fn2-csnapshot fn2-checkpoints fn2-checkpoint-construction fn2-extents fn2-control)
- (declare (xargs :stobjs (fn2-event-build fn2-csnapshot fn2-checkpoints fn2-checkpoint-construction fn2-extents fn2-control) :verify-guards nil
-  :guard (and (fn2-event-build-wfp fn2-event-build) (fn2-csnapshot-wfp fn2-csnapshot) (fn2-checkpoints-wfp fn2-checkpoints) (fn2-checkpoint-construction-wfp fn2-checkpoint-construction) (fn2-extents-wfp fn2-extents) (fn2-control-wfp fn2-control))))
+(defun fn2-event-build-reserve (fn2-event-build fn2-csnapshot fn2-checkpoints fn2-checkpoint-construction fn2-extents fn2-control fn2-checkpoint-planning fn2-checkpoint-recipe fn2-checkpoint-recipe-order)
+ (declare (xargs :stobjs (fn2-event-build fn2-csnapshot fn2-checkpoints fn2-checkpoint-construction fn2-extents fn2-control fn2-checkpoint-planning fn2-checkpoint-recipe fn2-checkpoint-recipe-order) :verify-guards nil
+  :guard (and (fn2-event-build-wfp fn2-event-build) (fn2-csnapshot-wfp fn2-csnapshot) (fn2-checkpoints-wfp fn2-checkpoints) (fn2-checkpoint-construction-wfp fn2-checkpoint-construction) (fn2-extents-wfp fn2-extents) (fn2-control-wfp fn2-control) (fn2-checkpoint-planning-wfp fn2-checkpoint-planning) (fn2-checkpoint-recipe-wfp fn2-checkpoint-recipe) (fn2-checkpoint-recipe-order-wfp fn2-checkpoint-recipe-order))))
  (b* (((unless (and (fn2-event-build-ownerp fn2-event-build fn2-csnapshot fn2-checkpoints)
                      (equal (fn2-event-build-phase 0 fn2-event-build) *fn2-event-build-phase-reserve*)
                      (equal (fn2-event-build-claimed 0 fn2-event-build) (fn2-event-build-cut-commit 0 fn2-event-build))))
-       (mv :state fn2-event-build fn2-checkpoint-construction fn2-extents fn2-control))
+       (mv :state fn2-event-build fn2-checkpoint-construction fn2-extents fn2-control fn2-checkpoint-planning fn2-checkpoint-recipe fn2-checkpoint-recipe-order))
       (role (fn2-event-build-role 0 fn2-event-build)) (ordinal (fn2-event-build-ordinal 0 fn2-event-build))
       (pages (fn2-event-build-pages 0 fn2-event-build))
       (first (* (fn2-event-build-ordinal 0 fn2-event-build) *fn2-event-proof-slots*))
@@ -74,20 +80,20 @@
                               (equal (fn2-event-build-directory-completed 0 fn2-event-build) (* (- pages (+ ordinal 1)) *fn2-format-page-size*)))
                        (and (equal ordinal 0) (equal (fn2-event-build-directory-completed 0 fn2-event-build) (* pages *fn2-format-page-size*))
                             (equal (fn2-event-build-frontier-completed 0 fn2-event-build) 0)))))
-       (mv :bounds fn2-event-build fn2-checkpoint-construction fn2-extents fn2-control))
-      ((mv code e ep al fn2-checkpoint-construction fn2-extents fn2-control)
-       (fn2-checkpoint-construction-reserve (fn2-event-build-token 0 fn2-event-build)
+       (mv :bounds fn2-event-build fn2-checkpoint-construction fn2-extents fn2-control fn2-checkpoint-planning fn2-checkpoint-recipe fn2-checkpoint-recipe-order))
+      ((mv code e ep al fn2-checkpoint-planning fn2-checkpoint-recipe fn2-checkpoint-recipe-order fn2-checkpoint-construction fn2-extents fn2-control)
+       (fn2-checkpoint-planning-construction-reserve (fn2-event-build-token 0 fn2-event-build)
         (fn2-event-build-owner-kind 0 fn2-event-build) (fn2-event-build-owner-slot 0 fn2-event-build)
         (fn2-event-build-owner-gen 0 fn2-event-build) (fn2-event-build-role 0 fn2-event-build)
         (fn2-event-build-ordinal 0 fn2-event-build) *fn2-format-page-size*
-        fn2-csnapshot fn2-checkpoint-construction fn2-extents fn2-control))
+        (fn2-checkpoint-planning-role-kind role) 0 fn2-checkpoint-planning fn2-checkpoint-recipe fn2-checkpoint-recipe-order fn2-csnapshot fn2-checkpoint-construction fn2-extents fn2-control))
       ((when (member-eq code '(:no-space :exhausted)))
        ; An actionable refusal, not progress or an implicit retry while held.
-       (mv code fn2-event-build fn2-checkpoint-construction fn2-extents fn2-control))
+       (mv code fn2-event-build fn2-checkpoint-construction fn2-extents fn2-control fn2-checkpoint-planning fn2-checkpoint-recipe fn2-checkpoint-recipe-order))
       (fn2-event-build (fn2-event-build-put 0
        (extent e) (epoch ep) (allocation al) (zero 0) (peak 0) (first first) (end end) (entry first)
        (phase (if (eq code :ok) *fn2-event-build-phase-zero* *fn2-event-build-phase-uncertain*)))))
-  (mv code fn2-event-build fn2-checkpoint-construction fn2-extents fn2-control)))
+  (mv code fn2-event-build fn2-checkpoint-construction fn2-extents fn2-control fn2-checkpoint-planning fn2-checkpoint-recipe fn2-checkpoint-recipe-order)))
 
 (defun fn2-event-build-zero-step (budget fn2-event-build fn2-csnapshot fn2-checkpoints fn2-pool)
  (declare (xargs :stobjs (fn2-event-build fn2-csnapshot fn2-checkpoints fn2-pool) :verify-guards nil
@@ -177,7 +183,7 @@
         (fn2-event-build-owner-kind 0 fn2-event-build) (fn2-event-build-owner-slot 0 fn2-event-build)
         (fn2-event-build-owner-gen 0 fn2-event-build) 3 (fn2-event-build-ordinal 0 fn2-event-build)
         (fn2-event-build-extent 0 fn2-event-build) (fn2-event-build-epoch 0 fn2-event-build)
-        (fn2-event-build-allocation 0 fn2-event-build) 1 1
+        (fn2-event-build-allocation 0 fn2-event-build) (fn2-event-build-history 0 fn2-event-build) (fn2-event-build-history-incarnation 0 fn2-event-build)
         (fn2-event-build-cut-commit 0 fn2-event-build) (fn2-event-build-cut-event 0 fn2-event-build)
         (fn2-event-build-cut-commit 0 fn2-event-build) (fn2-event-build-first 0 fn2-event-build) count *fn2-event-proof-slots* base
         (fn2-event-build-slot 0 fn2-event-build) (fn2-event-build-gen 0 fn2-event-build)
@@ -226,8 +232,8 @@
                      (equal (fn2-checkpoint-refs-encoded-length r fn2-checkpoint-refs) *fn2-format-page-size*)
                      (fn2-checkpoint-page-completed-extent-p token kind owner generation 3 0 child fn2-checkpoint-page-verified fn2-checkpoint-construction fn2-extents)
                      (equal (fn2-checkpoint-page-verified-page-kind child fn2-checkpoint-page-verified) *page-kind-manifest*)
-                     (equal (fn2-checkpoint-page-verified-history child fn2-checkpoint-page-verified) 1)
-                     (equal (fn2-checkpoint-page-verified-incarnation child fn2-checkpoint-page-verified) 1)
+                     (equal (fn2-checkpoint-page-verified-history child fn2-checkpoint-page-verified) (fn2-event-build-history 0 fn2-event-build))
+                     (equal (fn2-checkpoint-page-verified-incarnation child fn2-checkpoint-page-verified) (fn2-event-build-history-incarnation 0 fn2-event-build))
                      (equal (fn2-checkpoint-page-verified-encoded-length child fn2-checkpoint-page-verified) *fn2-format-page-size*)
                      (equal (fn2-checkpoint-refs-writer-epoch r fn2-checkpoint-refs) (fn2-checkpoint-page-verified-epoch child fn2-checkpoint-page-verified))
                      (equal (fn2-checkpoint-refs-allocation r fn2-checkpoint-refs) (fn2-checkpoint-page-verified-allocation child fn2-checkpoint-page-verified))))
@@ -297,7 +303,7 @@
         (fn2-event-build-ordinal 0 fn2-event-build) (fn2-event-build-extent 0 fn2-event-build)
         (fn2-event-build-epoch 0 fn2-event-build) (fn2-event-build-allocation 0 fn2-event-build)
         (if (equal (fn2-event-build-role 0 fn2-event-build) 3) *page-kind-manifest* *page-kind-merkle-node*)
-        1 1 *fn2-format-page-size* (fn2-event-build-payload 0 fn2-event-build) base
+        (fn2-event-build-history 0 fn2-event-build) (fn2-event-build-history-incarnation 0 fn2-event-build) *fn2-format-page-size* (fn2-event-build-payload 0 fn2-event-build) base
         (fn2-event-build-slot 0 fn2-event-build) (fn2-event-build-gen 0 fn2-event-build)
         fn2-checkpoint-construction fn2-extents fn2-fields fn2-pool))
       (fn2-event-build (fn2-event-build-set-phase 0
@@ -307,14 +313,14 @@
 ; Bind once. No source packing transition exists in :bound while the shared
 ; worker owns the real HAND/ACCEPT lease or while its write result is pending.
 (defun fn2-event-build-bind-page (fn2-event-build fn2-csnapshot fn2-checkpoints fn2-checkpoint-construction fn2-extents
-                                 fn2-checkpoint-page fn2-checkpoint-page-verified fn2-pool fn2-fc fn2-fields)
+                                 fn2-checkpoint-page fn2-checkpoint-page-verified fn2-pool fn2-fc fn2-fields fn2-checkpoint-planning fn2-checkpoint-recipe)
  (declare (xargs :stobjs (fn2-event-build fn2-csnapshot fn2-checkpoints fn2-checkpoint-construction fn2-extents
-                          fn2-checkpoint-page fn2-checkpoint-page-verified fn2-pool fn2-fc fn2-fields) :verify-guards nil
-  :guard (and (fn2-event-build-wfp fn2-event-build) (fn2-csnapshot-wfp fn2-csnapshot) (fn2-checkpoints-wfp fn2-checkpoints) (fn2-checkpoint-construction-wfp fn2-checkpoint-construction) (fn2-extents-wfp fn2-extents) (fn2-checkpoint-page-wfp fn2-checkpoint-page) (fn2-checkpoint-page-verified-wfp fn2-checkpoint-page-verified) (fn2-pool-wfp fn2-pool) (fn2-fc-wfp fn2-fc) (fn2-fields-wfp fn2-fields))))
+                          fn2-checkpoint-page fn2-checkpoint-page-verified fn2-pool fn2-fc fn2-fields fn2-checkpoint-planning fn2-checkpoint-recipe) :verify-guards nil
+  :guard (and (fn2-event-build-wfp fn2-event-build) (fn2-csnapshot-wfp fn2-csnapshot) (fn2-checkpoints-wfp fn2-checkpoints) (fn2-checkpoint-construction-wfp fn2-checkpoint-construction) (fn2-extents-wfp fn2-extents) (fn2-checkpoint-page-wfp fn2-checkpoint-page) (fn2-checkpoint-page-verified-wfp fn2-checkpoint-page-verified) (fn2-pool-wfp fn2-pool) (fn2-fc-wfp fn2-fc) (fn2-fields-wfp fn2-fields) (fn2-checkpoint-planning-wfp fn2-checkpoint-planning) (fn2-checkpoint-recipe-wfp fn2-checkpoint-recipe))))
  (b* (((unless (and (fn2-event-build-ownerp fn2-event-build fn2-csnapshot fn2-checkpoints)
                      (equal (fn2-event-build-phase 0 fn2-event-build) *fn2-event-build-phase-page*)
                      (member-equal (fn2-event-build-role 0 fn2-event-build) '(3 4))))
-       (mv :state fn2-event-build fn2-checkpoint-page))
+       (mv :state fn2-event-build fn2-checkpoint-page fn2-checkpoint-recipe))
       ((mv code fn2-checkpoint-page)
        (fn2-checkpoint-page-begin (fn2-event-build-token 0 fn2-event-build)
         (fn2-event-build-owner-kind 0 fn2-event-build) (fn2-event-build-owner-slot 0 fn2-event-build)
@@ -323,10 +329,15 @@
         (fn2-event-build-epoch 0 fn2-event-build) (fn2-event-build-allocation 0 fn2-event-build)
         (fn2-event-build-slot 0 fn2-event-build) (fn2-event-build-gen 0 fn2-event-build)
         (if (equal (fn2-event-build-role 0 fn2-event-build) 3) *page-kind-manifest* *page-kind-merkle-node*)
-        1 1 *fn2-format-page-size* fn2-checkpoint-page fn2-checkpoint-page-verified fn2-checkpoint-construction
+        (fn2-event-build-history 0 fn2-event-build) (fn2-event-build-history-incarnation 0 fn2-event-build) *fn2-format-page-size* fn2-checkpoint-page fn2-checkpoint-page-verified fn2-checkpoint-construction
         fn2-csnapshot fn2-extents fn2-pool fn2-fc fn2-fields))
+      ((unless (eq code :ok)) (mv code fn2-event-build fn2-checkpoint-page fn2-checkpoint-recipe))
+      ((mv code fn2-checkpoint-recipe)
+       (if (equal (fn2-alloc-freeze-phase fn2-extents) 3)
+        (fn2-checkpoint-planning-note-bind fn2-checkpoint-planning fn2-checkpoint-recipe fn2-checkpoint-page fn2-csnapshot fn2-extents)
+        (mv :ok fn2-checkpoint-recipe)))
       (fn2-event-build (if (eq code :ok) (fn2-event-build-set-phase 0 *fn2-event-build-phase-bound* fn2-event-build) fn2-event-build)))
-  (mv code fn2-event-build fn2-checkpoint-page)))
+  (mv code fn2-event-build fn2-checkpoint-page fn2-checkpoint-recipe)))
 
 (defun fn2-event-build-consume-page (fn2-event-build fn2-event-read fn2-csnapshot fn2-checkpoints fn2-checkpoint-refs fn2-checkpoint-bytes
                                     fn2-checkpoint-page fn2-checkpoint-page-verified fn2-checkpoint-construction fn2-extents fn2-mk fn2-fc fn2-digests fn2-pool)
@@ -352,8 +363,8 @@
                      (equal (fn2-checkpoint-page-verified-epoch e fn2-checkpoint-page-verified) (fn2-event-build-epoch 0 fn2-event-build))
                      (equal (fn2-checkpoint-page-verified-allocation e fn2-checkpoint-page-verified) (fn2-event-build-allocation 0 fn2-event-build))
                      (equal (fn2-checkpoint-page-verified-page-kind e fn2-checkpoint-page-verified) (if (equal role 3) *page-kind-manifest* *page-kind-merkle-node*))
-                     (equal (fn2-checkpoint-page-verified-history e fn2-checkpoint-page-verified) 1)
-                     (equal (fn2-checkpoint-page-verified-incarnation e fn2-checkpoint-page-verified) 1)
+                     (equal (fn2-checkpoint-page-verified-history e fn2-checkpoint-page-verified) (fn2-event-build-history 0 fn2-event-build))
+                     (equal (fn2-checkpoint-page-verified-incarnation e fn2-checkpoint-page-verified) (fn2-event-build-history-incarnation 0 fn2-event-build))
                      (equal (fn2-checkpoint-page-verified-encoded-length e fn2-checkpoint-page-verified) *fn2-format-page-size*)
                      (eq (fn2-pool-workspace-code (fn2-event-build-slot 0 fn2-event-build) (fn2-event-build-gen 0 fn2-event-build)
                            kind owner generation fn2-pool) :ok)
@@ -394,51 +405,51 @@
 ; Field stripe identity is derived from the served resource table here.
 (defun fn2-event-build-source-step (budget fn2-event-build fn2-event-read fn2-csnapshot fn2-checkpoints fn2-commit-root
                                    fn2-checkpoint-refs fn2-checkpoint-construction fn2-extents fn2-alloc-edges fn2-ops
-                                   fn2-checkpoint-page-verified fn2-mk fn2-fc fn2-digests fn2-fields fn2-pool fn2-control)
+                                   fn2-checkpoint-page-verified fn2-mk fn2-fc fn2-digests fn2-fields fn2-pool fn2-control fn2-checkpoint-planning fn2-checkpoint-recipe fn2-checkpoint-recipe-order)
  (declare (xargs :stobjs (fn2-event-build fn2-event-read fn2-csnapshot fn2-checkpoints fn2-commit-root fn2-checkpoint-refs
                           fn2-checkpoint-construction fn2-extents fn2-alloc-edges fn2-ops fn2-checkpoint-page-verified
-                          fn2-mk fn2-fc fn2-digests fn2-fields fn2-pool fn2-control) :verify-guards nil
-  :guard (and (fn2-event-build-wfp fn2-event-build) (fn2-event-read-wfp fn2-event-read) (fn2-csnapshot-wfp fn2-csnapshot) (fn2-checkpoints-wfp fn2-checkpoints) (fn2-commit-root-wfp fn2-commit-root) (fn2-checkpoint-refs-wfp fn2-checkpoint-refs) (fn2-checkpoint-construction-wfp fn2-checkpoint-construction) (fn2-extents-wfp fn2-extents) (fn2-alloc-edges-wfp fn2-alloc-edges) (fn2-ops-wfp fn2-ops) (fn2-checkpoint-page-verified-wfp fn2-checkpoint-page-verified) (fn2-mk-wfp fn2-mk) (fn2-fc-wfp fn2-fc) (fn2-digests-wfp fn2-digests) (fn2-fields-wfp fn2-fields) (fn2-pool-wfp fn2-pool) (fn2-control-wfp fn2-control))))
+                          fn2-mk fn2-fc fn2-digests fn2-fields fn2-pool fn2-control fn2-checkpoint-planning fn2-checkpoint-recipe fn2-checkpoint-recipe-order) :verify-guards nil
+  :guard (and (fn2-event-build-wfp fn2-event-build) (fn2-event-read-wfp fn2-event-read) (fn2-csnapshot-wfp fn2-csnapshot) (fn2-checkpoints-wfp fn2-checkpoints) (fn2-commit-root-wfp fn2-commit-root) (fn2-checkpoint-refs-wfp fn2-checkpoint-refs) (fn2-checkpoint-construction-wfp fn2-checkpoint-construction) (fn2-extents-wfp fn2-extents) (fn2-alloc-edges-wfp fn2-alloc-edges) (fn2-ops-wfp fn2-ops) (fn2-checkpoint-page-verified-wfp fn2-checkpoint-page-verified) (fn2-mk-wfp fn2-mk) (fn2-fc-wfp fn2-fc) (fn2-digests-wfp fn2-digests) (fn2-fields-wfp fn2-fields) (fn2-pool-wfp fn2-pool) (fn2-control-wfp fn2-control) (fn2-checkpoint-planning-wfp fn2-checkpoint-planning) (fn2-checkpoint-recipe-wfp fn2-checkpoint-recipe) (fn2-checkpoint-recipe-order-wfp fn2-checkpoint-recipe-order))))
  (b* (((unless (fn2-event-build-ownerp fn2-event-build fn2-csnapshot fn2-checkpoints))
-       (mv :owner fn2-event-build fn2-checkpoint-construction fn2-extents fn2-alloc-edges fn2-fields fn2-pool fn2-control))
+       (mv :owner fn2-event-build fn2-checkpoint-construction fn2-extents fn2-alloc-edges fn2-fields fn2-pool fn2-control fn2-checkpoint-planning fn2-checkpoint-recipe fn2-checkpoint-recipe-order))
       (phase (fn2-event-build-phase 0 fn2-event-build))
       (base (* 128 (fn2-b-event-row (fn2-fc-rows fn2-fc))))
       (budget (min 4096 (nfix budget))))
   (cond
    ((member-equal phase (list *fn2-event-build-phase-claim-zero* *fn2-event-build-phase-zero*))
     (mv-let (code fn2-event-build fn2-pool) (fn2-event-build-zero-step budget fn2-event-build fn2-csnapshot fn2-checkpoints fn2-pool)
-     (mv code fn2-event-build fn2-checkpoint-construction fn2-extents fn2-alloc-edges fn2-fields fn2-pool fn2-control)))
+     (mv code fn2-event-build fn2-checkpoint-construction fn2-extents fn2-alloc-edges fn2-fields fn2-pool fn2-control fn2-checkpoint-planning fn2-checkpoint-recipe fn2-checkpoint-recipe-order)))
    ((member-equal phase (list *fn2-event-build-phase-claims* *fn2-event-build-phase-entries*))
     (mv-let (code fn2-event-build fn2-extents fn2-alloc-edges fn2-fields fn2-pool)
      (fn2-event-build-entry-step budget base fn2-event-build fn2-csnapshot fn2-checkpoints fn2-commit-root
       fn2-extents fn2-alloc-edges fn2-ops fn2-fc fn2-digests fn2-fields fn2-pool)
-     (mv code fn2-event-build fn2-checkpoint-construction fn2-extents fn2-alloc-edges fn2-fields fn2-pool fn2-control)))
+     (mv code fn2-event-build fn2-checkpoint-construction fn2-extents fn2-alloc-edges fn2-fields fn2-pool fn2-control fn2-checkpoint-planning fn2-checkpoint-recipe fn2-checkpoint-recipe-order)))
    ((equal phase *fn2-event-build-phase-reserve*)
-    (if (zp budget) (mv :yield fn2-event-build fn2-checkpoint-construction fn2-extents fn2-alloc-edges fn2-fields fn2-pool fn2-control)
-     (mv-let (code fn2-event-build fn2-checkpoint-construction fn2-extents fn2-control)
-      (fn2-event-build-reserve fn2-event-build fn2-csnapshot fn2-checkpoints fn2-checkpoint-construction fn2-extents fn2-control)
-      (mv (if (eq code :ok) :more code) fn2-event-build fn2-checkpoint-construction fn2-extents fn2-alloc-edges fn2-fields fn2-pool fn2-control))))
+    (if (zp budget) (mv :yield fn2-event-build fn2-checkpoint-construction fn2-extents fn2-alloc-edges fn2-fields fn2-pool fn2-control fn2-checkpoint-planning fn2-checkpoint-recipe fn2-checkpoint-recipe-order)
+     (mv-let (code fn2-event-build fn2-checkpoint-construction fn2-extents fn2-control fn2-checkpoint-planning fn2-checkpoint-recipe fn2-checkpoint-recipe-order)
+      (fn2-event-build-reserve fn2-event-build fn2-csnapshot fn2-checkpoints fn2-checkpoint-construction fn2-extents fn2-control fn2-checkpoint-planning fn2-checkpoint-recipe fn2-checkpoint-recipe-order)
+      (mv (if (eq code :ok) :more code) fn2-event-build fn2-checkpoint-construction fn2-extents fn2-alloc-edges fn2-fields fn2-pool fn2-control fn2-checkpoint-planning fn2-checkpoint-recipe fn2-checkpoint-recipe-order))))
    ((equal phase *fn2-event-build-phase-directory-header*)
     (mv-let (code fn2-event-build fn2-fields fn2-pool)
      (fn2-event-build-directory-header budget base fn2-event-build fn2-csnapshot fn2-checkpoints
       fn2-checkpoint-construction fn2-extents fn2-checkpoint-page-verified fn2-fields fn2-pool)
-     (mv code fn2-event-build fn2-checkpoint-construction fn2-extents fn2-alloc-edges fn2-fields fn2-pool fn2-control)))
+     (mv code fn2-event-build fn2-checkpoint-construction fn2-extents fn2-alloc-edges fn2-fields fn2-pool fn2-control fn2-checkpoint-planning fn2-checkpoint-recipe fn2-checkpoint-recipe-order)))
    ((equal phase *fn2-event-build-phase-frontier-header*)
     (mv-let (code fn2-event-build fn2-fields fn2-pool)
      (fn2-event-build-frontier-header budget base fn2-event-build fn2-event-read fn2-csnapshot fn2-checkpoints
       fn2-checkpoint-refs fn2-checkpoint-construction fn2-extents fn2-checkpoint-page-verified fn2-mk fn2-fc fn2-digests fn2-fields fn2-pool)
-     (mv code fn2-event-build fn2-checkpoint-construction fn2-extents fn2-alloc-edges fn2-fields fn2-pool fn2-control)))
+     (mv code fn2-event-build fn2-checkpoint-construction fn2-extents fn2-alloc-edges fn2-fields fn2-pool fn2-control fn2-checkpoint-planning fn2-checkpoint-recipe fn2-checkpoint-recipe-order)))
    ((equal phase *fn2-event-build-phase-peaks*)
     (mv-let (code fn2-event-build fn2-pool)
      (fn2-event-build-peak-step budget fn2-event-build fn2-event-read fn2-csnapshot fn2-checkpoints fn2-mk fn2-fc fn2-digests fn2-pool)
-     (mv code fn2-event-build fn2-checkpoint-construction fn2-extents fn2-alloc-edges fn2-fields fn2-pool fn2-control)))
+     (mv code fn2-event-build fn2-checkpoint-construction fn2-extents fn2-alloc-edges fn2-fields fn2-pool fn2-control fn2-checkpoint-planning fn2-checkpoint-recipe fn2-checkpoint-recipe-order)))
    ((equal phase *fn2-event-build-phase-physical-header*)
     (mv-let (code fn2-event-build fn2-fields fn2-pool)
      (fn2-event-build-physical-header budget base fn2-event-build fn2-csnapshot fn2-checkpoints fn2-checkpoint-construction fn2-extents fn2-fields fn2-pool)
-     (mv code fn2-event-build fn2-checkpoint-construction fn2-extents fn2-alloc-edges fn2-fields fn2-pool fn2-control)))
+     (mv code fn2-event-build fn2-checkpoint-construction fn2-extents fn2-alloc-edges fn2-fields fn2-pool fn2-control fn2-checkpoint-planning fn2-checkpoint-recipe fn2-checkpoint-recipe-order)))
    (t (mv (cond ((equal phase *fn2-event-build-phase-page*) :page) ((equal phase *fn2-event-build-phase-bound*) :wait)
                 ((equal phase *fn2-event-build-phase-done*) :done) (t :uncertain))
-          fn2-event-build fn2-checkpoint-construction fn2-extents fn2-alloc-edges fn2-fields fn2-pool fn2-control)))))
+          fn2-event-build fn2-checkpoint-construction fn2-extents fn2-alloc-edges fn2-fields fn2-pool fn2-control fn2-checkpoint-planning fn2-checkpoint-recipe fn2-checkpoint-recipe-order)))))
 
 (fn2-event-build-preserves fn2-event-build-begin
  (c token slot gen scratch sgen okind oslot ogen
@@ -447,8 +458,8 @@
  :carriers ((fn2-event-build 1 :prefix "-BUILDER")))
 
 (fn2-event-build-preserves fn2-event-build-reserve
- (fn2-event-build fn2-csnapshot fn2-checkpoints fn2-checkpoint-construction fn2-extents fn2-control)
- :carriers ((fn2-event-build 1 :prefix "-BUILDER") (fn2-checkpoint-construction 2 :prefix "-REGISTRY") (fn2-extents 3 :prefix "-EXTENTS") (fn2-control 4 :prefix "-CONTROL")))
+ (fn2-event-build fn2-csnapshot fn2-checkpoints fn2-checkpoint-construction fn2-extents fn2-control fn2-checkpoint-planning fn2-checkpoint-recipe fn2-checkpoint-recipe-order)
+ :carriers ((fn2-event-build 1 :prefix "-BUILDER") (fn2-checkpoint-construction 2 :prefix "-REGISTRY") (fn2-extents 3 :prefix "-EXTENTS") (fn2-control 4 :prefix "-CONTROL") (fn2-checkpoint-planning 5 :prefix "-PLANNING") (fn2-checkpoint-recipe 6 :prefix "-RECIPE") (fn2-checkpoint-recipe-order 7 :prefix "-ORDER")))
 
 (fn2-event-build-preserves fn2-event-build-zero-step
  (budget fn2-event-build fn2-csnapshot fn2-checkpoints fn2-pool)
@@ -481,8 +492,8 @@
 
 (fn2-event-build-preserves fn2-event-build-bind-page
  (fn2-event-build fn2-csnapshot fn2-checkpoints fn2-checkpoint-construction fn2-extents
-                                 fn2-checkpoint-page fn2-checkpoint-page-verified fn2-pool fn2-fc fn2-fields)
- :carriers ((fn2-event-build 1 :prefix "-BUILDER") (fn2-checkpoint-page 2 :prefix "-PAGE")))
+                                 fn2-checkpoint-page fn2-checkpoint-page-verified fn2-pool fn2-fc fn2-fields fn2-checkpoint-planning fn2-checkpoint-recipe)
+ :carriers ((fn2-event-build 1 :prefix "-BUILDER") (fn2-checkpoint-page 2 :prefix "-PAGE") (fn2-checkpoint-recipe 3 :prefix "-RECIPE")))
 
 (fn2-event-build-preserves fn2-event-build-consume-page
  (fn2-event-build fn2-event-read fn2-csnapshot fn2-checkpoints fn2-checkpoint-refs fn2-checkpoint-bytes
@@ -492,5 +503,5 @@
 (fn2-event-build-preserves fn2-event-build-source-step
  (budget fn2-event-build fn2-event-read fn2-csnapshot fn2-checkpoints fn2-commit-root
                                    fn2-checkpoint-refs fn2-checkpoint-construction fn2-extents fn2-alloc-edges fn2-ops
-                                   fn2-checkpoint-page-verified fn2-mk fn2-fc fn2-digests fn2-fields fn2-pool fn2-control)
- :carriers ((fn2-event-build 1 :prefix "-BUILDER") (fn2-checkpoint-construction 2 :prefix "-REGISTRY") (fn2-extents 3 :prefix "-EXTENTS") (fn2-alloc-edges 4 :prefix "-EDGES") (fn2-fields 5 :prefix "-FIELDS") (fn2-pool 6 :prefix "-POOL") (fn2-control 7 :prefix "-CONTROL")))
+                                   fn2-checkpoint-page-verified fn2-mk fn2-fc fn2-digests fn2-fields fn2-pool fn2-control fn2-checkpoint-planning fn2-checkpoint-recipe fn2-checkpoint-recipe-order)
+ :carriers ((fn2-event-build 1 :prefix "-BUILDER") (fn2-checkpoint-construction 2 :prefix "-REGISTRY") (fn2-extents 3 :prefix "-EXTENTS") (fn2-alloc-edges 4 :prefix "-EDGES") (fn2-fields 5 :prefix "-FIELDS") (fn2-pool 6 :prefix "-POOL") (fn2-control 7 :prefix "-CONTROL") (fn2-checkpoint-planning 8 :prefix "-PLANNING") (fn2-checkpoint-recipe 9 :prefix "-RECIPE") (fn2-checkpoint-recipe-order 10 :prefix "-ORDER")))

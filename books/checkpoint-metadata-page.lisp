@@ -17,8 +17,8 @@
       (equal (fn2-run-builds-ogen b fn2-run-builds) (fn2-checkpoint-metadata-owner-gen 0 fn2-checkpoint-metadata))
       (let ((w (fn2-run-level-writer b level)))
        (and (equal (fn2-run-writers-phase w fn2-run-writers) *fn2-run-writer-phase-sealed*)
-            (equal (fn2-run-writers-history w fn2-run-writers) 1)
-            (equal (fn2-run-writers-incarnation w fn2-run-writers) *fn2-identity-incarnation*)
+            (equal (fn2-run-writers-history w fn2-run-writers) (fn2-checkpoint-metadata-history 0 fn2-checkpoint-metadata))
+            (equal (fn2-run-writers-incarnation w fn2-run-writers) (fn2-checkpoint-metadata-history-incarnation 0 fn2-checkpoint-metadata))
             (equal (mod (fn2-run-writers-unit w fn2-run-writers) *fn2-storage-extent-units*) 0)))))
 
 ; All Ref inputs derive from the actual sealed writer and retained reservation,

@@ -106,8 +106,9 @@
                 (equal (fn2-checkpoint-restore-reader-total 0 fn2-checkpoint-restore-reader) (fn2-checkpoint-restore-arena-control-cursor 0 fn2-checkpoint-restore-arena-control))
                 (equal (fn2-checkpoint-restore-reader-total 0 fn2-checkpoint-restore-reader) (fn2-checkpoint-restore-reader-entry-ordinal 0 fn2-checkpoint-restore-reader))))
   (mv :coverage fn2-checkpoint-restore-arena-control)
-  (mv :arena-ready (fn2-checkpoint-restore-arena-control-put 0 (phase *fn2-checkpoint-restore-arena-phase-complete*)
-    (total (fn2-checkpoint-restore-reader-total 0 fn2-checkpoint-restore-reader)) (total-known 1)))))
+  (let* ((fn2-checkpoint-restore-arena-control (fn2-checkpoint-restore-arena-control-put 0 (phase *fn2-checkpoint-restore-arena-phase-complete*)
+    (total (fn2-checkpoint-restore-reader-total 0 fn2-checkpoint-restore-reader)) (total-known 1))))
+   (mv :arena-ready fn2-checkpoint-restore-arena-control))))
 
 (defun fn2-checkpoint-restore-arena-target (c ordinal fn2-checkpoint-restore-arena fn2-checkpoint-restore-arena-control
                                           fn2-checkpoint-restore-map fn2-checkpoint-restore-map-control)
@@ -142,8 +143,7 @@
 (defcost fn2-boot-checkpoint-arena-target :child fn2-checkpoint-restore-arena-target :answers (:state :end :target)
  :doc "One ordinal of the actual complete arena and validated candidate map; no caller chooses a tuple or substitutes live allocator state.")
 
-(defcost fn2-boot-checkpoint-arena-consume :child fn2-checkpoint-restore-arena-consume :answers (:entry :state :coverage :format :identity) :bytes *fn2-checkpoint-arena-entry-width*
- :tables (fn2-core-checkpoint-restore-reader fn2-core-checkpoint-restore-arena fn2-core-checkpoint-restore-arena-marks fn2-core-checkpoint-restore-arena-control fn2-core-fields))
+
 (defcost fn2-boot-checkpoint-arena-finish :child fn2-checkpoint-restore-arena-finish :answers (:coverage :arena-ready)
  :tables (fn2-core-checkpoint-restore-arena-control))
 

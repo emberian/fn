@@ -1,7 +1,7 @@
 ; Bounded decisions used by the actual C maintenance owner. These read actual
 ; carriers; none accepts a caller readiness, cut or completed-page assertion.
 (in-package "ACL2")
-(include-book "checkpoint-master-state")
+(include-book "checkpoint-master-abort")
 (include-book "retirement")
 (include-book "checkpoint-metadata-resources")
 (fn2-book-layer :c)
@@ -37,7 +37,7 @@
 
 (defcost fn2-checkpoint-plan-begin-op :child fn2-checkpoint-plan-begin :answers t
  :tables (fn2-core-checkpoint-plan fn2-core-csnapshot fn2-core-checkpoint-build fn2-core-checkpoints
-          fn2-core-checkpoint-refs fn2-core-checkpoint-construction fn2-core-extents fn2-core-checkpoint-plan-marks)
+          fn2-core-checkpoint-refs fn2-core-checkpoint-construction fn2-core-extents fn2-core-checkpoint-plan-marks fn2-core-checkpoint-planning)
  :doc "Start counting the actual completed source roots and retained construction set.")
 (defcost fn2-checkpoint-plan-count-op :child fn2-checkpoint-plan-count-step :answers t
  :tables (fn2-core-checkpoint-plan fn2-core-csnapshot fn2-core-checkpoint-build fn2-core-checkpoint-refs
@@ -46,8 +46,8 @@
 (defcost fn2-checkpoint-plan-size-op :child fn2-checkpoint-plan-size-step :answers t
  :tables (fn2-core-checkpoint-plan fn2-core-csnapshot fn2-core-extents)
  :doc "Advance one monotone ticket/arena fixedpoint iteration under actual allocator capacity.")
-(defcost fn2-checkpoint-plan-reserve-op :child fn2-checkpoint-plan-reserve-step :answers t :effects :per-use
- :tables (fn2-core-checkpoint-plan fn2-core-csnapshot fn2-core-checkpoint-construction fn2-core-extents fn2-core-control)
+(defcost fn2-checkpoint-plan-reserve-op :child fn2-checkpoint-plan-reserve-step :answers t
+ :tables (fn2-core-checkpoint-plan fn2-core-csnapshot fn2-core-checkpoint-construction fn2-core-extents fn2-core-control fn2-core-checkpoint-planning fn2-core-checkpoint-recipe fn2-core-checkpoint-recipe-order)
  :doc "Reserve one derived map, arena or journal ticket extent; retained prefixes survive refusal.")
 (defcost fn2-checkpoint-plan-validate-op :child fn2-checkpoint-plan-validate-step :answers t
  :tables (fn2-core-checkpoint-plan fn2-core-csnapshot fn2-core-checkpoint-build fn2-core-checkpoint-refs
@@ -91,12 +91,13 @@
  :answers (:ok :state) :tables (fn2-core-retirement-control fn2-core-extents)
  :doc "Read exact owner/token staged allocation count; only an actual empty scan may bypass allocation admission.")
 
-(defun fn2-checkpoint-master-pressure-children (seen fn2-checkpoint-root1 fn2-csnapshot fn2-extents fn2-pool)
- (declare (xargs :stobjs (fn2-checkpoint-root1 fn2-csnapshot fn2-extents fn2-pool)
+(defun fn2-checkpoint-master-pressure-children (seen fn2-checkpoint-root1 fn2-csnapshot fn2-extents fn2-pool fn2-commit-root fn2-boot-config)
+ (declare (xargs :stobjs (fn2-checkpoint-root1 fn2-csnapshot fn2-extents fn2-pool fn2-commit-root fn2-boot-config)
   :guard (and (fn2-checkpoint-root1-wfp fn2-checkpoint-root1) (fn2-csnapshot-wfp fn2-csnapshot)
-              (fn2-extents-wfp fn2-extents) (fn2-pool-wfp fn2-pool) (unsigned-byte-p 60 seen))))
+              (fn2-extents-wfp fn2-extents) (fn2-pool-wfp fn2-pool) (fn2-commit-root-wfp fn2-commit-root) (fn2-boot-config-wfp fn2-boot-config) (unsigned-byte-p 60 seen))))
  (mv :ok
-  (and (< 0 (fn2-checkpoint-root1-rows fn2-checkpoint-root1))
+  (and (equal (fn2-boot-config-checkpoint-layout-ready fn2-boot-config) 1)
+       (< 0 (fn2-checkpoint-root1-rows fn2-checkpoint-root1))
        (< 0 (fn2-csnapshot-rows fn2-csnapshot))
        (equal (fn2-checkpoint-root1-phase 0 fn2-checkpoint-root1) *fn2-checkpoint-root1-phase-idle*)
        (equal (fn2-csnapshot-phase 0 fn2-csnapshot) *fn2-csnapshot-phase-idle*)
@@ -104,8 +105,53 @@
        (equal (fn2-alloc-freeze-token fn2-extents) 0)
        (< 0 (fn2-alloc-blocked fn2-extents))
        (< seen (fn2-alloc-last-retirement fn2-extents))
-       (fn2-checkpoint-window-roomp 0 fn2-pool))
+       (fn2-checkpoint-directory-roomp fn2-extents fn2-commit-root)
+       (fn2-checkpoint-admission-roomp 0 fn2-pool))
   (fn2-alloc-last-retirement fn2-extents)))
 (defcost fn2-checkpoint-master-pressure-op :child fn2-checkpoint-master-pressure-children :answers (:ok)
- :tables (fn2-core-checkpoint-root1 fn2-core-csnapshot fn2-core-extents fn2-core-pool)
- :doc "Use actual blocked retirement progress and complete cached pre-cut working-room availability, with no guessed free-space threshold.")
+ :tables (fn2-core-checkpoint-root1 fn2-core-csnapshot fn2-core-extents fn2-core-pool fn2-core-commit-root fn2-core-boot-config)
+ :doc "Report actual retirement debt with cached bundle and directory hints; permission is rechecked only at the held cut.")
+
+; The lower release cursor resets root1 to IDLE only after all nineteen
+; actual lease releases succeed. This observation ends the abstract bundle
+; hold once, rather than pretending that each partial release drops it.
+(defun fn2-checkpoint-master-release-complete-children (token kind owner gen fn2-checkpoint-root1 fn2-checkpoint-plan
+                                                      fn2-checkpoint-build fn2-csnapshot fn2-checkpoints
+                                                      fn2-checkpoint-refs fn2-checkpoint-publication fn2-extents)
+ (declare (xargs :stobjs (fn2-checkpoint-root1 fn2-checkpoint-plan fn2-checkpoint-build fn2-csnapshot fn2-checkpoints
+                          fn2-checkpoint-refs fn2-checkpoint-publication fn2-extents)
+  :guard (and (fn2-checkpoint-root1-wfp fn2-checkpoint-root1) (fn2-checkpoint-plan-wfp fn2-checkpoint-plan)
+              (fn2-checkpoint-build-wfp fn2-checkpoint-build) (fn2-csnapshot-wfp fn2-csnapshot)
+              (fn2-checkpoints-wfp fn2-checkpoints) (fn2-checkpoint-refs-wfp fn2-checkpoint-refs)
+              (fn2-checkpoint-publication-wfp fn2-checkpoint-publication) (fn2-extents-wfp fn2-extents))))
+ (mv-let (code c)
+  (fn2-checkpoint-master-ready-children token kind owner gen fn2-checkpoint-plan fn2-checkpoint-build
+   fn2-csnapshot fn2-checkpoints fn2-checkpoint-refs)
+  (if (and (eq code :ready) (< 0 (fn2-checkpoint-root1-rows fn2-checkpoint-root1))
+           (< 0 (fn2-checkpoint-publication-rows fn2-checkpoint-publication))
+           (equal (fn2-checkpoint-root1-phase 0 fn2-checkpoint-root1) *fn2-checkpoint-root1-phase-idle*)
+           (equal (fn2-checkpoint-root1-reserved 0 fn2-checkpoint-root1) 0)
+           (equal (fn2-checkpoint-root1-owner-kind 0 fn2-checkpoint-root1) kind)
+           (equal (fn2-checkpoint-root1-owner-slot 0 fn2-checkpoint-root1) owner)
+           (equal (fn2-checkpoint-root1-owner-gen 0 fn2-checkpoint-root1) gen)
+           (equal (fn2-checkpoint-publication-phase 0 fn2-checkpoint-publication) *fn2-checkpoint-publication-phase-complete*)
+           (equal (fn2-checkpoint-publication-candidate 0 fn2-checkpoint-publication) c)
+           (equal (fn2-checkpoint-publication-bundle-released 0 fn2-checkpoint-publication) 1)
+           (equal (fn2-alloc-freeze-phase fn2-extents) 2)
+           (equal (fn2-alloc-freeze-token fn2-extents) token)
+           (equal (fn2-alloc-freeze-owner-kind fn2-extents) kind)
+           (equal (fn2-alloc-freeze-owner-slot fn2-extents) owner)
+           (equal (fn2-alloc-freeze-owner-gen fn2-extents) gen)) :ok :state)))
+(defcost fn2-checkpoint-master-release-complete-op :child fn2-checkpoint-master-release-complete-children
+ :answers (:ok :state)
+ :tables (fn2-core-checkpoint-root1 fn2-core-checkpoint-plan fn2-core-checkpoint-build fn2-core-csnapshot fn2-core-checkpoints
+          fn2-core-checkpoint-refs fn2-core-checkpoint-publication fn2-core-extents)
+ :effects ((:release (:storage-window :storage-window)))
+ :doc "End the abstract working-bundle hold only from actual terminal lease release and same-owner completed publication.")
+
+(defun fn2-checkpoint-retirement-frontier-children (fn2-extents)
+ (declare (xargs :stobjs fn2-extents :guard (fn2-extents-wfp fn2-extents)))
+ (fn2-alloc-last-retirement fn2-extents))
+(defcost fn2-checkpoint-retirement-frontier-op :child fn2-checkpoint-retirement-frontier-children
+ :tables (fn2-core-extents)
+ :doc "Capture actual retirement debt after C/B drain; only successful publication advances the actor's seen frontier.")

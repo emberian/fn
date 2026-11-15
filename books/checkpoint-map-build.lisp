@@ -15,7 +15,9 @@
   (first :u32) (end :u32) (entry :u32) (scan :u32) (zero :u32)
   (extent :u32) (epoch :u60) (allocation :u60)
   (slot :u32) (gen :u60) (scratch :u32) (scratch-gen :u60)
-  (child :u32) (has-child :bool) (payload :u32)))
+  (child :u32) (has-child :bool) (payload :u32)
+  ; Physical identity captured from the owner-bound configured origin.
+  (history :u60) (history-incarnation :u60)))
 
 (defun fn2-checkpoint-map-ownerp (fn2-checkpoint-map-build fn2-csnapshot fn2-extents)
  (declare (xargs :stobjs (fn2-checkpoint-map-build fn2-csnapshot fn2-extents)
@@ -31,10 +33,10 @@
        (fn2-checkpoint-map-build-owner-slot 0 fn2-checkpoint-map-build)
        (fn2-checkpoint-map-build-owner-gen 0 fn2-checkpoint-map-build) fn2-extents)))
 
-(defun fn2-checkpoint-map-build-begin (role slot gen scratch sgen fn2-checkpoint-map-build fn2-checkpoint-plan fn2-csnapshot fn2-extents fn2-pool)
- (declare (xargs :stobjs (fn2-checkpoint-map-build fn2-checkpoint-plan fn2-csnapshot fn2-extents fn2-pool)
+(defun fn2-checkpoint-map-build-begin (role slot gen scratch sgen fn2-checkpoint-map-build fn2-checkpoint-plan fn2-csnapshot fn2-extents fn2-checkpoints fn2-pool)
+ (declare (xargs :stobjs (fn2-checkpoint-map-build fn2-checkpoint-plan fn2-csnapshot fn2-extents fn2-checkpoints fn2-pool)
   :guard (and (fn2-checkpoint-map-build-wfp fn2-checkpoint-map-build) (fn2-checkpoint-plan-wfp fn2-checkpoint-plan)
-              (fn2-csnapshot-wfp fn2-csnapshot) (fn2-extents-wfp fn2-extents) (fn2-pool-wfp fn2-pool))))
+              (fn2-csnapshot-wfp fn2-csnapshot) (fn2-extents-wfp fn2-extents) (fn2-pool-wfp fn2-pool) (fn2-checkpoints-wfp fn2-checkpoints))))
  (b* (((unless (and (< 0 (fn2-checkpoint-map-build-rows fn2-checkpoint-map-build))
                      (< 0 (fn2-checkpoint-plan-rows fn2-checkpoint-plan))
                      (member-equal (fn2-checkpoint-map-build-phase 0 fn2-checkpoint-map-build)
@@ -42,10 +44,13 @@
                      (member-equal role '(2 5)))) (mv :state fn2-checkpoint-map-build))
       (token (fn2-checkpoint-plan-token 0 fn2-checkpoint-plan)) (kind (fn2-checkpoint-plan-owner-kind 0 fn2-checkpoint-plan))
       (owner (fn2-checkpoint-plan-owner-slot 0 fn2-checkpoint-plan)) (generation (fn2-checkpoint-plan-owner-gen 0 fn2-checkpoint-plan))
+      (c (fn2-checkpoint-plan-candidate 0 fn2-checkpoint-plan))
       (total (if (equal role 2) (fn2-extents-rows fn2-extents) (fn2-checkpoint-plan-tickets 0 fn2-checkpoint-plan)))
       (slots (if (equal role 2) *fn2-checkpoint-map-slots* *fn2-checkpoint-arena-slots*))
       (pages (fn2-checkpoint-map-page-count total slots))
-      ((unless (and (fn2-checkpoint-plan-closedp token kind owner generation fn2-checkpoint-plan fn2-csnapshot)
+      ((unless (and (fn2-checkpoint-builder-ownerp c token kind owner generation fn2-checkpoints)
+                     (fn2-origin-physicalp (fn2-checkpoints-history c fn2-checkpoints) (fn2-checkpoints-incarnation c fn2-checkpoints))
+                     (fn2-checkpoint-plan-closedp token kind owner generation fn2-checkpoint-plan fn2-csnapshot)
                      (fn2-alloc-copy-ownerp token kind owner generation fn2-extents)
                      (posp pages) (unsigned-byte-p 32 pages) (unsigned-byte-p 32 total)
                      (equal pages (fn2-checkpoint-plan-role-count role fn2-checkpoint-plan))
@@ -56,7 +61,8 @@
        (mv :owner fn2-checkpoint-map-build))
       (fn2-checkpoint-map-build (fn2-checkpoint-map-build-put 0 (phase *fn2-checkpoint-map-build-phase-find*)
        (token token) (owner-kind kind) (owner-slot owner) (owner-gen generation)
-       (candidate (fn2-checkpoint-plan-candidate 0 fn2-checkpoint-plan)) (role role) (page-count pages) (page-ordinal (- pages 1))
+       (candidate c) (history (fn2-checkpoints-history c fn2-checkpoints))
+       (history-incarnation (fn2-checkpoints-incarnation c fn2-checkpoints)) (role role) (page-count pages) (page-ordinal (- pages 1))
        (total total) (first 0) (end 0) (entry 0) (scan 0) (zero 0)
        (slot slot) (gen gen) (scratch scratch) (scratch-gen sgen) (has-child 0))))
   (mv :ok fn2-checkpoint-map-build)))
@@ -176,7 +182,7 @@
         (fn2-checkpoint-map-build-owner-kind 0 fn2-checkpoint-map-build) (fn2-checkpoint-map-build-owner-slot 0 fn2-checkpoint-map-build)
         (fn2-checkpoint-map-build-owner-gen 0 fn2-checkpoint-map-build) role ordinal
         (fn2-checkpoint-map-build-extent 0 fn2-checkpoint-map-build) (fn2-checkpoint-map-build-epoch 0 fn2-checkpoint-map-build)
-        (fn2-checkpoint-map-build-allocation 0 fn2-checkpoint-map-build) 1 1
+        (fn2-checkpoint-map-build-allocation 0 fn2-checkpoint-map-build) (fn2-checkpoint-map-build-history 0 fn2-checkpoint-map-build) (fn2-checkpoint-map-build-history-incarnation 0 fn2-checkpoint-map-build)
         (fn2-csnapshot-cut-commit 0 fn2-csnapshot) (fn2-csnapshot-cut-event 0 fn2-csnapshot)
         total first (- end first) slots base (fn2-checkpoint-map-build-slot 0 fn2-checkpoint-map-build)
         (fn2-checkpoint-map-build-gen 0 fn2-checkpoint-map-build) (fn2-checkpoint-map-build-scratch 0 fn2-checkpoint-map-build)
@@ -205,7 +211,7 @@
         (fn2-checkpoint-map-build-owner-gen 0 fn2-checkpoint-map-build) role (fn2-checkpoint-map-build-page-ordinal 0 fn2-checkpoint-map-build)
         (fn2-checkpoint-map-build-extent 0 fn2-checkpoint-map-build) (fn2-checkpoint-map-build-epoch 0 fn2-checkpoint-map-build)
         (fn2-checkpoint-map-build-allocation 0 fn2-checkpoint-map-build)
-        (if (equal role 2) *page-kind-allocation-map* *page-kind-recovery-arena*) 1 1 *fn2-format-page-size*
+        (if (equal role 2) *page-kind-allocation-map* *page-kind-recovery-arena*) (fn2-checkpoint-map-build-history 0 fn2-checkpoint-map-build) (fn2-checkpoint-map-build-history-incarnation 0 fn2-checkpoint-map-build) *fn2-format-page-size*
         (fn2-checkpoint-map-build-payload 0 fn2-checkpoint-map-build) base
         (fn2-checkpoint-map-build-slot 0 fn2-checkpoint-map-build) (fn2-checkpoint-map-build-gen 0 fn2-checkpoint-map-build)
         fn2-checkpoint-construction fn2-extents fn2-fields fn2-pool))
@@ -234,7 +240,7 @@
         (fn2-checkpoint-map-build-extent 0 fn2-checkpoint-map-build) (fn2-checkpoint-map-build-epoch 0 fn2-checkpoint-map-build)
         (fn2-checkpoint-map-build-allocation 0 fn2-checkpoint-map-build)
         (fn2-checkpoint-map-build-slot 0 fn2-checkpoint-map-build) (fn2-checkpoint-map-build-gen 0 fn2-checkpoint-map-build)
-        (if (equal role 2) *page-kind-allocation-map* *page-kind-recovery-arena*) 1 1 *fn2-format-page-size*
+        (if (equal role 2) *page-kind-allocation-map* *page-kind-recovery-arena*) (fn2-checkpoint-map-build-history 0 fn2-checkpoint-map-build) (fn2-checkpoint-map-build-history-incarnation 0 fn2-checkpoint-map-build) *fn2-format-page-size*
         fn2-checkpoint-page fn2-checkpoint-page-verified fn2-checkpoint-construction fn2-csnapshot fn2-extents fn2-pool fn2-fc fn2-fields))
       (fn2-checkpoint-map-build (if (eq code :ok)
        (fn2-checkpoint-map-build-set-phase 0 *fn2-checkpoint-map-build-phase-bound* fn2-checkpoint-map-build) fn2-checkpoint-map-build)))
@@ -275,8 +281,8 @@
         (equal (fn2-checkpoint-page-verified-epoch e fn2-checkpoint-page-verified) (fn2-checkpoint-map-build-epoch 0 fn2-checkpoint-map-build))
         (equal (fn2-checkpoint-page-verified-allocation e fn2-checkpoint-page-verified) (fn2-checkpoint-map-build-allocation 0 fn2-checkpoint-map-build))
         (equal (fn2-checkpoint-page-verified-page-kind e fn2-checkpoint-page-verified) (if (equal role 2) *page-kind-allocation-map* *page-kind-recovery-arena*))
-        (equal (fn2-checkpoint-page-verified-history e fn2-checkpoint-page-verified) 1)
-        (equal (fn2-checkpoint-page-verified-incarnation e fn2-checkpoint-page-verified) 1)
+        (equal (fn2-checkpoint-page-verified-history e fn2-checkpoint-page-verified) (fn2-checkpoint-map-build-history 0 fn2-checkpoint-map-build))
+        (equal (fn2-checkpoint-page-verified-incarnation e fn2-checkpoint-page-verified) (fn2-checkpoint-map-build-history-incarnation 0 fn2-checkpoint-map-build))
         (equal (fn2-checkpoint-page-verified-encoded-length e fn2-checkpoint-page-verified) *fn2-format-page-size*)
         (eq (fn2-pool-workspace-code (fn2-checkpoint-map-build-slot 0 fn2-checkpoint-map-build)
               (fn2-checkpoint-map-build-gen 0 fn2-checkpoint-map-build) kind owner generation fn2-pool) :ok)
@@ -330,8 +336,8 @@
                     (t :state)) fn2-checkpoint-map-build fn2-fields fn2-pool))))
 
 (fn2-checkpoint-map-build-preserves fn2-checkpoint-map-build-begin
- (role slot gen scratch sgen fn2-checkpoint-map-build fn2-checkpoint-plan fn2-csnapshot fn2-extents fn2-pool)
- :hyps ((fn2-checkpoint-map-buildp fn2-checkpoint-map-build) (fn2-checkpoint-map-build-wfp fn2-checkpoint-map-build) (fn2-checkpoint-planp fn2-checkpoint-plan) (fn2-checkpoint-plan-wfp fn2-checkpoint-plan) (fn2-csnapshotp fn2-csnapshot) (fn2-csnapshot-wfp fn2-csnapshot) (fn2-extentsp fn2-extents) (fn2-extents-wfp fn2-extents) (fn2-poolp fn2-pool) (fn2-pool-wfp fn2-pool))
+ (role slot gen scratch sgen fn2-checkpoint-map-build fn2-checkpoint-plan fn2-csnapshot fn2-extents fn2-checkpoints fn2-pool)
+ :hyps ((fn2-checkpoint-map-buildp fn2-checkpoint-map-build) (fn2-checkpoint-map-build-wfp fn2-checkpoint-map-build) (fn2-checkpoint-planp fn2-checkpoint-plan) (fn2-checkpoint-plan-wfp fn2-checkpoint-plan) (fn2-csnapshotp fn2-csnapshot) (fn2-csnapshot-wfp fn2-csnapshot) (fn2-extentsp fn2-extents) (fn2-extents-wfp fn2-extents) (fn2-poolp fn2-pool) (fn2-pool-wfp fn2-pool) (fn2-checkpointsp fn2-checkpoints) (fn2-checkpoints-wfp fn2-checkpoints))
  :specs (("-CHECKPOINT-MAP-BUILD-TYPE" fn2-checkpoint-map-buildp 1)
          ("-CHECKPOINT-MAP-BUILD-WFP" fn2-checkpoint-map-build-wfp 1)
          ("-CHECKPOINT-MAP-BUILD-ROWS" fn2-checkpoint-map-build-rows 1 :frame fn2-checkpoint-map-build)))
@@ -439,7 +445,7 @@
 
 (defcost fn2-checkpoint-map-begin :child fn2-checkpoint-map-build-begin
  :answers (:state :owner :ok)
- :tables (fn2-core-checkpoint-map-build fn2-core-checkpoint-plan fn2-core-csnapshot fn2-core-extents fn2-core-pool)
+ :tables (fn2-core-checkpoint-map-build fn2-core-checkpoint-plan fn2-core-csnapshot fn2-core-extents fn2-core-checkpoints fn2-core-pool)
  :doc "Begin an actual closed-plan map or arena chain in owned workspaces; no caller page count or cut.")
 (defcost fn2-checkpoint-map-source-step-op :child fn2-checkpoint-map-source-step
  :answers t :bytes 4096

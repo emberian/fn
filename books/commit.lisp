@@ -2,6 +2,7 @@
 (in-package "ACL2")
 (include-book "machines-a-access")
 (include-book "commit-format")
+(include-book "checkpoint-commit-leases")
 (fn2-book-layer :b)
 ; Named stops (review ruling 3): a commit helper that finds a state its callers
 ; rule out stops the core with a named reason instead of absorbing it
@@ -354,12 +355,20 @@
        (let ((fn2-commit-io (fn2-commit-io-set-ready r 1 fn2-commit-io))) (mv t fn2-commit-io))) (mv nil fn2-commit-io))
   (fn2-commit-require ok *fn2-stop-reason-commit-pool*)))))
 (fn2-core-preserves fn2-commit-save-pool (id role slot gen fn2-core) :rows nil :prefix "")
- ; Admission is bounded by four pool reservations. On refusal unwind only
-; the newly acquired workspaces; no sequence/root or storage effect exists yet.
+ ; Foreground admission reserves four pool ranges; checkpoint admission borrows
+; the pre-cut four-range bundle. Refusal returns only these volatile resources
+; before a sequence/root or storage effect exists.
+(fn2-checkpoint-commit-loan-events)
 (defun fn2-commit-release-pool (id role owner-gen fn2-core)
  (declare (xargs :stobjs fn2-core :guard (fn2-core-wfp fn2-core)))
  (fn2-commit-checked id (mv :bounds fn2-core)
- (b* ((scratch (equal role 3))
+ (b* ((loan (fn2-checkpoint-commit-loan-state id owner-gen fn2-core))
+      ((when (eq loan :broken))
+       (let ((fn2-core (fn2-core-stop *fn2-stop-reason-commit-pool* fn2-core))) (mv :uncertain fn2-core)))
+      ((when (eq loan :borrowed))
+       (if (not (and (natp role) (< role 4))) (mv :bounds fn2-core)
+        (if (= role 3) (fn2-checkpoint-commit-return-pools id owner-gen fn2-core) (mv :ok fn2-core))))
+      (scratch (equal role 3))
       ((mv & & & slot gen) (fn2-commit-resource id (if scratch 0 role) fn2-core))
       (r (+ (* 3 (fn2-commit-row id fn2-core)) (nfix role)))
       ((mv code fn2-core)
@@ -384,6 +393,7 @@
  (if (and (natp role) (< role 3)) (fn2-commit-save-pool id role slot gen fn2-core)
   (fn2-commit-put-core id (pool-slot slot) (pool-gen gen))))
 (fn2-core-preserves fn2-commit-keep-pool (id role slot gen fn2-core) :rows nil :prefix "")
+(fn2-checkpoint-commit-reserve-events)
 (defun fn2-commit-unwind-pool (id role owner-gen fn2-core)
  (declare (xargs :stobjs fn2-core :guard (fn2-core-wfp fn2-core)))
  (mv-let (released fn2-core) (fn2-commit-release-pool id role owner-gen fn2-core)
@@ -493,14 +503,22 @@
           ((unless (and (< batch capacity) (or (not again) (< gen (fn2-machine-gen-limit fn2-core)))))
            (mv :exhausted fn2-core))
           (owner-gen (if again (+ 1 gen) gen))
-          ((mv code fn2-core) (fn2-commit-reserve-pools 4 id owner-gen fn2-core))
+          (maintenance (fn2-storage-frozen fn2-core))
+          ((mv code fn2-core)
+           (if maintenance (fn2-checkpoint-commit-reserve-pools id owner-gen fn2-core)
+             (fn2-commit-reserve-pools 4 id owner-gen fn2-core)))
           ((unless (eq code :ok)) (mv code fn2-core))
           ((mv code fn2-core)
-           (if (fn2-storage-frozen fn2-core)
+           (if maintenance
                (fn2-commit-reserve-ticket id batch fn2-core)
              (fn2-commit-reserve-extent id fn2-core)))
           ((unless (eq code :ok))
-           (let ((fn2-core (fn2-commit-release-pools 4 id owner-gen fn2-core))) (mv code fn2-core)))
+           (if maintenance
+               (mv-let (returned fn2-core) (fn2-checkpoint-commit-return-pools id owner-gen fn2-core)
+                (let ((fn2-core (if (eq returned :ok) fn2-core
+                                 (fn2-core-stop *fn2-stop-reason-commit-pool* fn2-core))))
+                 (mv (if (eq returned :ok) code :uncertain) fn2-core)))
+             (let ((fn2-core (fn2-commit-release-pools 4 id owner-gen fn2-core))) (mv code fn2-core))))
           (fn2-core (fn2-commit-put-core id (phase *fn2-commit-state-collect*)
             (member-count members) (first-key first-key) (cb-mode mode)
             (batch-no batch) (partner partner) (principal-slot 0) (stopped 0) (generation owner-gen)
@@ -828,7 +846,7 @@
   (if (eq pick :open) (fn2-commit-txn-open id partner slot gen len okind oslot ogen need fn2-core)
    (fn2-commit-txn-join id slot gen len okind oslot ogen need fn2-core))))
 (fn2-core-preserves fn2-commit-admit-txn (slot gen len okind oslot ogen fn2-core) :position 3 :rows nil)
-(fn2-retirement-coordinator-events)
+(fn2-checkpoint-retirement-coordinator-events)
 (fn2-checkpoint-allocation-coordinator-events)
 (fn2-checkpoint-installation-coordinator-events)
 ; B-S2 S9: the article's source reference from an admitted workspace's first
@@ -884,6 +902,17 @@
   (mv code slot gen fn2-core)))
 (fn2-core-preserves fn2-block-write (pu epoch alloc off len lslot lgen boff okind oslot ogen principal fn2-core)
  :position 3 :rows nil :hints (("Goal" :in-theory (enable fn2-core-wfp))))
+; Shared location commitment check, also used by checkpoint payload reads.
+(defun fn2-block-read-commitment (bytes len lslot lgen boff hslot hgen hoff okind oslot ogen fn2-core)
+ (declare (xargs :stobjs fn2-core :guard (fn2-core-wfp fn2-core)
+                 :guard-hints (("Goal" :in-theory (enable fn2-core-wfp)))))
+ (stobj-let ((fn2-b3 (fn2-core-b3 fn2-core)) (fn2-digests (fn2-core-digests fn2-core))
+             (fn2-pool (fn2-core-pool fn2-core)))
+  (code fn2-b3 fn2-digests)
+  (fn2-block-read-commitment-children bytes len lslot lgen boff hslot hgen hoff okind oslot ogen fn2-b3 fn2-digests fn2-pool)
+  (mv code fn2-core)))
+(fn2-core-preserves fn2-block-read-commitment (bytes len lslot lgen boff hslot hgen hoff okind oslot ogen fn2-core)
+ :position 1 :rows nil :hints (("Goal" :in-theory (enable fn2-core-wfp))))
 ; B-S2 S10: the read's completion's core face over its child,
 ; fn2-block-read-done-children (machines-b.lisp; S9a).
 (defun fn2-block-read-done (bytes len verify lslot lgen boff hoff cvoff block okind oslot ogen fn2-core)
@@ -926,9 +955,10 @@
 ; One record header at EVENT into DST from CURSOR: (mv code end fn2-core).
 (defun fn2-commit-txn-header (rkind event base dst dg cursor scratch sg id ogen fn2-core)
  (declare (xargs :stobjs fn2-core :guard (fn2-core-wfp fn2-core)))
- (stobj-let ((fn2-fields (fn2-core-fields fn2-core)) (fn2-pool (fn2-core-pool fn2-core)))
+ (stobj-let ((fn2-origin (fn2-core-origin fn2-core)) (fn2-fields (fn2-core-fields fn2-core)) (fn2-pool (fn2-core-pool fn2-core)))
   (code end fn2-fields fn2-pool)
-  (fn2-commit-pack-txn-header rkind event base dst dg cursor scratch sg *fn2-commit-kind* id ogen fn2-fields fn2-pool)
+  (fn2-commit-pack-txn-header rkind event base dst dg cursor scratch sg *fn2-commit-kind* id ogen (fn2-origin-lineage fn2-origin) (fn2-origin-domain fn2-origin)
+                    (fn2-origin-incarnation fn2-origin) fn2-fields fn2-pool)
   (mv code (nfix end) fn2-core)))
 (fn2-core-preserves fn2-commit-txn-header (rkind event base dst dg cursor scratch sg id ogen fn2-core) :position 2 :rows nil)
 (defthm fn2-commit-txn-header-natp
@@ -1129,10 +1159,11 @@
       (scratch (fn2-machine-pool-slot id fn2-core)) (sg (fn2-machine-pool-gen id fn2-core))
       (batch (fn2-machine-batch-no id fn2-core)) (first (fn2-machine-first-key id fn2-core))
       (members (fn2-machine-member-count id fn2-core)) (ogen (fn2-machine-generation id fn2-core)))
- (stobj-let ((fn2-fields (fn2-core-fields fn2-core)) (fn2-pool (fn2-core-pool fn2-core)))
+ (stobj-let ((fn2-origin (fn2-core-origin fn2-core)) (fn2-fields (fn2-core-fields fn2-core)) (fn2-pool (fn2-core-pool fn2-core)))
   (code end fn2-fields fn2-pool)
   (fn2-commit-pack kind index base slot gen off scratch sg e epoch counter batch first members
-                    *fn2-commit-kind* id ogen fn2-fields fn2-pool)
+                    *fn2-commit-kind* id ogen (fn2-origin-lineage fn2-origin) (fn2-origin-domain fn2-origin)
+                    (fn2-origin-incarnation fn2-origin) (fn2-origin-history fn2-origin) (fn2-origin-history-incarnation fn2-origin) fn2-fields fn2-pool)
   (mv code end fn2-core)))))
 (fn2-core-preserves fn2-commit-pack-core (id kind role index off fn2-core) :position 2 :rows nil)
 (defun fn2-commit-context (id role fn2-core)
@@ -1140,7 +1171,7 @@
  (fn2-commit-checked id fn2-core
  (b* (((mv e epoch counter & &) (fn2-commit-resource id role fn2-core))
       (row (fn2-commit-row id fn2-core)) (batch (fn2-machine-batch-no id fn2-core)))
- (stobj-let ((fn2-fc-context (fn2-core-fc-context fn2-core))) (ok fn2-fc-context)
+ (stobj-let ((fn2-origin (fn2-core-origin fn2-core)) (fn2-fc-context (fn2-core-fc-context fn2-core))) (ok fn2-fc-context)
   (if (and (natp row) (< row (fn2-fc-context-rows fn2-fc-context))
            (unsigned-byte-p 32 e) (natp role) (< role 3)
            (unsigned-byte-p 60 epoch) (unsigned-byte-p 60 counter)
@@ -1148,8 +1179,8 @@
    (let* ((fn2-fc-context (fn2-fc-context-set-hash row (fn2-digest-slot row *fn2-fc-hash*) fn2-fc-context))
           (fn2-fc-context (fn2-fc-context-set-geometry row (fn2-digest-slot row *fn2-fc-geometry*) fn2-fc-context))
           (fn2-fc-context (fn2-fc-context-set-location row (+ (* *fn2-storage-extent-units* e) role) fn2-fc-context))
-          (fn2-fc-context (fn2-fc-context-set-history row 1 fn2-fc-context))
-          (fn2-fc-context (fn2-fc-context-set-incarnation row 1 fn2-fc-context))
+          (fn2-fc-context (fn2-fc-context-set-history row (fn2-origin-history fn2-origin) fn2-fc-context))
+          (fn2-fc-context (fn2-fc-context-set-incarnation row (fn2-origin-history-incarnation fn2-origin) fn2-fc-context))
           (fn2-fc-context (fn2-fc-context-set-extent row e fn2-fc-context))
           (fn2-fc-context (fn2-fc-context-set-writer-epoch row epoch fn2-fc-context))
           (fn2-fc-context (fn2-fc-context-set-extent-writer-epoch row epoch fn2-fc-context))
@@ -1442,7 +1473,7 @@
 ; publish, settlement, drop, notify and drain, then the kind's run.
 (defun fn2-commit-event-forms-2b ()
  (list* 'progn (fn2-commit-local-theory) (fn2-commit-local-forward) (fn2-commit-local-idp) '(
-(fn2-retirement-install-events)
+(fn2-checkpoint-retirement-install-events)
 (defun fn2-commit-root-swap (id publish fn2-core)
  (declare (xargs :stobjs fn2-core :guard (fn2-core-wfp fn2-core)))
  (fn2-commit-checked id (mv nil fn2-core)

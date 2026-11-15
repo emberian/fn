@@ -2,25 +2,27 @@
 ; verification, sector writes and validated harvest for every checkpoint root.
 (in-package "ACL2")
 (include-book "checkpoint-descriptor")
+(include-book "origin")
 (include-book "checkpoint-construction-owner")
 (include-book "checkpoint-page-io")
 (fn2-book-layer :c)
 
 (defun fn2-checkpoint-build-begin (checkpoint c token slot gen scratch sgen okind oslot ogen
                                  fn2-checkpoint-build fn2-csnapshot fn2-checkpoints fn2-checkpoint-refs
-                                 fn2-checkpoint-bytes fn2-fields fn2-fc fn2-checkpoint-construction fn2-extents fn2-pool fn2-control)
+                                 fn2-checkpoint-bytes fn2-fields fn2-fc fn2-checkpoint-construction fn2-extents fn2-pool fn2-origin fn2-control)
  (declare (xargs :stobjs (fn2-checkpoint-build fn2-csnapshot fn2-checkpoints fn2-checkpoint-refs
-                          fn2-checkpoint-bytes fn2-fields fn2-fc fn2-checkpoint-construction fn2-extents fn2-pool fn2-control)
+                          fn2-checkpoint-bytes fn2-fields fn2-fc fn2-checkpoint-construction fn2-extents fn2-pool fn2-origin fn2-control)
   :guard (and (fn2-checkpoint-build-wfp fn2-checkpoint-build) (fn2-csnapshot-wfp fn2-csnapshot)
               (fn2-checkpoints-wfp fn2-checkpoints) (fn2-checkpoint-refs-wfp fn2-checkpoint-refs)
               (fn2-checkpoint-bytes-wfp fn2-checkpoint-bytes) (fn2-fields-wfp fn2-fields) (fn2-fc-wfp fn2-fc)
-              (fn2-checkpoint-construction-wfp fn2-checkpoint-construction) (fn2-extents-wfp fn2-extents) (fn2-pool-wfp fn2-pool) (fn2-control-wfp fn2-control))))
+              (fn2-checkpoint-construction-wfp fn2-checkpoint-construction) (fn2-extents-wfp fn2-extents) (fn2-pool-wfp fn2-pool) (fn2-control-wfp fn2-control) (fn2-origin-wfp fn2-origin))))
  (b* (((unless (and (< 0 (fn2-checkpoint-build-rows fn2-checkpoint-build))
                      (equal (fn2-checkpoint-build-phase 0 fn2-checkpoint-build) *fn2-checkpoint-build-phase-idle*)
                      (fn2-csnapshot-ownerp token okind oslot ogen fn2-csnapshot)
                      (equal (fn2-csnapshot-phase 0 fn2-csnapshot) *fn2-csnapshot-phase-held*)))
        (mv :snapshot fn2-checkpoint-build fn2-checkpoints fn2-checkpoint-construction fn2-extents fn2-control))
-      ((unless (and (fn2-checkpoint-slotp c fn2-checkpoints fn2-checkpoint-refs fn2-checkpoint-bytes)
+      ((unless (and (fn2-origin-physicalp (fn2-origin-history fn2-origin) (fn2-origin-history-incarnation fn2-origin))
+                     (fn2-checkpoint-slotp c fn2-checkpoints fn2-checkpoint-refs fn2-checkpoint-bytes)
                      (equal (fn2-checkpoints-state c fn2-checkpoints) *fn2-checkpoint-state-free*)
                      (posp checkpoint) (unsigned-byte-p 60 checkpoint)
                      (unsigned-byte-p 32 slot) (unsigned-byte-p 60 gen)
@@ -41,10 +43,12 @@
        (mv code fn2-checkpoint-build fn2-checkpoints fn2-checkpoint-construction fn2-extents fn2-control))
       (fn2-checkpoints (fn2-checkpoints-put c (state *fn2-checkpoint-state-building*) (checkpoint checkpoint)
         (cut-commit (fn2-csnapshot-cut-commit 0 fn2-csnapshot)) (cut-event (fn2-csnapshot-cut-event 0 fn2-csnapshot))
+        (history (fn2-origin-history fn2-origin)) (incarnation (fn2-origin-history-incarnation fn2-origin))
         (builder-token token) (builder-owner-kind okind) (builder-owner-slot oslot) (builder-owner-gen ogen)))
       (fn2-checkpoint-build (fn2-checkpoint-build-put 0
         (phase (if (eq code :ok) *fn2-checkpoint-build-phase-await-roots* *fn2-checkpoint-build-phase-uncertain*)) (owner-kind okind) (owner-slot oslot) (owner-gen ogen)
         (snapshot-token token) (candidate c) (checkpoint checkpoint)
+        (history (fn2-origin-history fn2-origin)) (history-incarnation (fn2-origin-history-incarnation fn2-origin))
         (cut-commit (fn2-csnapshot-cut-commit 0 fn2-csnapshot)) (cut-event (fn2-csnapshot-cut-event 0 fn2-csnapshot))
         (extent extent) (epoch epoch) (allocation allocation) (slot slot) (gen gen) (scratch scratch) (scratch-gen sgen)
         (checker-row row) (field-base base) (intended-bytes 4096) (completed-bytes 0))))
@@ -93,7 +97,7 @@
         (fn2-checkpoint-build-scratch 0 fn2-checkpoint-build) (fn2-checkpoint-build-scratch-gen 0 fn2-checkpoint-build)
         (fn2-checkpoint-build-owner-kind 0 fn2-checkpoint-build) (fn2-checkpoint-build-owner-slot 0 fn2-checkpoint-build)
         (fn2-checkpoint-build-owner-gen 0 fn2-checkpoint-build)
-        fn2-csnapshot fn2-checkpoint-construction fn2-extents fn2-checkpoint-refs fn2-checkpoint-bytes fn2-fields fn2-pool))
+        fn2-csnapshot fn2-checkpoint-construction fn2-extents fn2-checkpoint-refs fn2-checkpoint-bytes fn2-fields fn2-checkpoint-build fn2-pool))
       (fn2-checkpoint-build (fn2-checkpoint-build-set-phase 0
         (if (eq code :ok) *fn2-checkpoint-build-phase-page* *fn2-checkpoint-build-phase-uncertain*) fn2-checkpoint-build)))
   (mv code fn2-checkpoint-build fn2-fields fn2-pool)))
@@ -127,7 +131,7 @@
         (fn2-checkpoint-build-extent 0 fn2-checkpoint-build) (fn2-checkpoint-build-epoch 0 fn2-checkpoint-build)
         (fn2-checkpoint-build-allocation 0 fn2-checkpoint-build)
         (fn2-checkpoint-build-slot 0 fn2-checkpoint-build) (fn2-checkpoint-build-gen 0 fn2-checkpoint-build)
-        *page-kind-checkpoint-descriptor* 1 1 4096 fn2-checkpoint-page fn2-checkpoint-page-verified
+        *page-kind-checkpoint-descriptor* (fn2-checkpoint-build-history 0 fn2-checkpoint-build) (fn2-checkpoint-build-history-incarnation 0 fn2-checkpoint-build) 4096 fn2-checkpoint-page fn2-checkpoint-page-verified
         fn2-checkpoint-construction fn2-csnapshot fn2-extents fn2-pool fn2-fc fn2-fields))
       (fn2-checkpoint-build (if (eq code :ok)
        (fn2-checkpoint-build-set-phase 0 *fn2-checkpoint-build-phase-bound* fn2-checkpoint-build) fn2-checkpoint-build)))
@@ -178,8 +182,8 @@
                      (equal (fn2-checkpoint-page-verified-epoch extent fn2-checkpoint-page-verified) epoch)
                      (equal (fn2-checkpoint-page-verified-allocation extent fn2-checkpoint-page-verified) allocation)
                      (equal (fn2-checkpoint-page-verified-page-kind extent fn2-checkpoint-page-verified) *page-kind-checkpoint-descriptor*)
-                     (equal (fn2-checkpoint-page-verified-history extent fn2-checkpoint-page-verified) 1)
-                     (equal (fn2-checkpoint-page-verified-incarnation extent fn2-checkpoint-page-verified) 1)
+                     (equal (fn2-checkpoint-page-verified-history extent fn2-checkpoint-page-verified) (fn2-checkpoint-build-history 0 fn2-checkpoint-build))
+                     (equal (fn2-checkpoint-page-verified-incarnation extent fn2-checkpoint-page-verified) (fn2-checkpoint-build-history-incarnation 0 fn2-checkpoint-build))
                      (equal (fn2-checkpoint-page-verified-encoded-length extent fn2-checkpoint-page-verified) 4096)
                      (eq (fn2-pool-workspace-code slot gen kind owner generation fn2-pool) :ok)
                      (< 0 (fn2-checkpoint-page-rows fn2-checkpoint-page))
@@ -200,7 +204,7 @@
       (fn2-digests (fn2-checkpoint-build-hash-load 0 extent hash fn2-checkpoint-page-verified fn2-digests))
       ((mv code fn2-checkpoints fn2-checkpoint-refs fn2-checkpoint-bytes)
        (fn2-checkpoint-prepare-owned c token kind owner generation (fn2-checkpoint-build-checkpoint 0 fn2-checkpoint-build)
-        1 1 0 (* extent *fn2-storage-extent-units*) epoch allocation *page-kind-checkpoint-descriptor* 4096 hash
+        (fn2-checkpoint-build-history 0 fn2-checkpoint-build) (fn2-checkpoint-build-history-incarnation 0 fn2-checkpoint-build) 0 (* extent *fn2-storage-extent-units*) epoch allocation *page-kind-checkpoint-descriptor* 4096 hash
         fn2-checkpoints fn2-checkpoint-refs fn2-checkpoint-bytes fn2-digests))
       ((unless (eq code :ok))
        (let ((fn2-checkpoint-build (fn2-checkpoint-build-set-phase 0 *fn2-checkpoint-build-phase-uncertain* fn2-checkpoint-build)))
@@ -250,8 +254,8 @@
                     (t :state)) fn2-checkpoint-build fn2-fields fn2-pool))))
 
 (fn2-checkpoint-build-preserves fn2-checkpoint-build-begin
- (checkpoint c token slot gen scratch sgen okind oslot ogen fn2-checkpoint-build fn2-csnapshot fn2-checkpoints fn2-checkpoint-refs fn2-checkpoint-bytes fn2-fields fn2-fc fn2-checkpoint-construction fn2-extents fn2-pool fn2-control)
- :hyps ((fn2-checkpoint-buildp fn2-checkpoint-build) (fn2-checkpoint-build-wfp fn2-checkpoint-build) (fn2-csnapshotp fn2-csnapshot) (fn2-csnapshot-wfp fn2-csnapshot) (fn2-checkpointsp fn2-checkpoints) (fn2-checkpoints-wfp fn2-checkpoints) (fn2-checkpoint-refsp fn2-checkpoint-refs) (fn2-checkpoint-refs-wfp fn2-checkpoint-refs) (fn2-checkpoint-bytesp fn2-checkpoint-bytes) (fn2-checkpoint-bytes-wfp fn2-checkpoint-bytes) (fn2-fieldsp fn2-fields) (fn2-fields-wfp fn2-fields) (fn2-fcp fn2-fc) (fn2-fc-wfp fn2-fc) (fn2-checkpoint-constructionp fn2-checkpoint-construction) (fn2-checkpoint-construction-wfp fn2-checkpoint-construction) (fn2-extentsp fn2-extents) (fn2-extents-wfp fn2-extents) (fn2-poolp fn2-pool) (fn2-pool-wfp fn2-pool) (fn2-controlp fn2-control) (fn2-control-wfp fn2-control))
+ (checkpoint c token slot gen scratch sgen okind oslot ogen fn2-checkpoint-build fn2-csnapshot fn2-checkpoints fn2-checkpoint-refs fn2-checkpoint-bytes fn2-fields fn2-fc fn2-checkpoint-construction fn2-extents fn2-pool fn2-origin fn2-control)
+ :hyps ((fn2-checkpoint-buildp fn2-checkpoint-build) (fn2-checkpoint-build-wfp fn2-checkpoint-build) (fn2-csnapshotp fn2-csnapshot) (fn2-csnapshot-wfp fn2-csnapshot) (fn2-checkpointsp fn2-checkpoints) (fn2-checkpoints-wfp fn2-checkpoints) (fn2-checkpoint-refsp fn2-checkpoint-refs) (fn2-checkpoint-refs-wfp fn2-checkpoint-refs) (fn2-checkpoint-bytesp fn2-checkpoint-bytes) (fn2-checkpoint-bytes-wfp fn2-checkpoint-bytes) (fn2-fieldsp fn2-fields) (fn2-fields-wfp fn2-fields) (fn2-fcp fn2-fc) (fn2-fc-wfp fn2-fc) (fn2-checkpoint-constructionp fn2-checkpoint-construction) (fn2-checkpoint-construction-wfp fn2-checkpoint-construction) (fn2-extentsp fn2-extents) (fn2-extents-wfp fn2-extents) (fn2-poolp fn2-pool) (fn2-pool-wfp fn2-pool) (fn2-controlp fn2-control) (fn2-control-wfp fn2-control) (fn2-originp fn2-origin) (fn2-origin-wfp fn2-origin))
  :specs (("-CHECKPOINT-BUILD-TYPE" fn2-checkpoint-buildp 1)
          ("-CHECKPOINT-BUILD-WFP" fn2-checkpoint-build-wfp 1)
          ("-CHECKPOINT-BUILD-ROWS" fn2-checkpoint-build-rows 1 :frame fn2-checkpoint-build)
@@ -342,7 +346,7 @@
 
 (defcost fn2-checkpoint-build-begin-op :child fn2-checkpoint-build-begin :answers t
  :tables (fn2-core-checkpoint-build fn2-core-csnapshot fn2-core-checkpoints fn2-core-checkpoint-refs fn2-core-checkpoint-bytes
-           fn2-core-fields fn2-core-fc fn2-core-checkpoint-construction fn2-core-extents fn2-core-pool fn2-core-control)
+           fn2-core-fields fn2-core-fc fn2-core-checkpoint-construction fn2-core-extents fn2-core-pool fn2-core-origin fn2-core-control)
  :doc "Reserve the real descriptor identity and atomically claim its nonselectable candidate from the actual held C owner.")
 (defcost fn2-checkpoint-build-source-op :child fn2-checkpoint-build-source-step :answers t :bytes 4096
  :tables (fn2-core-checkpoint-build fn2-core-csnapshot fn2-core-checkpoints fn2-core-checkpoint-construction fn2-core-extents

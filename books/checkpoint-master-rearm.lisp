@@ -2,6 +2,7 @@
 ; publication, physical handback, working-window release and B lifecycle thaw.
 ; This changes no candidate, allocation, edge, published cut or FREE authority.
 (in-package "ACL2")
+(include-book "std/util/bstar" :dir :system)
 (include-book "checkpoint-master-control")
 (fn2-book-layer :c)
 (defun fn2-checkpoint-master-rearm-children (token kind owner gen fn2-checkpoint-build fn2-checkpoint-plan fn2-checkpoint-map-build

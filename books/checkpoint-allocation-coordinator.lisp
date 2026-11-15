@@ -2,6 +2,7 @@
 ; rows 1..the planner-derived capacity retain exact staged identities.
 (in-package "ACL2")
 (include-book "retirement")
+(include-book "checkpoint-allocation")
 (fn2-book-layer :b)
 (defmacro fn2-checkpoint-allocation-coordinator-events ()
  '(progn
@@ -10,7 +11,8 @@
   (declare (xargs :stobjs fn2-core :guard (fn2-core-wfp fn2-core)))
   (b* (((unless (and (unsigned-byte-p 32 slot) (unsigned-byte-p 60 gen) (posp len)
                      (posp okind) (unsigned-byte-p 8 okind) (unsigned-byte-p 32 oslot) (unsigned-byte-p 60 ogen)
-                     (posp need) (<= need *fn2-commit-records-room*) (not (fn2-core-stopped-p fn2-core))))
+                     (posp need) (<= need *fn2-commit-records-room*) (not (fn2-core-stopped-p fn2-core))
+                     (fn2-checkpoint-staging-match-p slot gen okind oslot ogen fn2-core)))
         (mv :invalid 0 0 fn2-core))
        ((mv pick id partner) (fn2-commit-pick fn2-core))
        ((when (or (eq pick :exhausted) (and open-only (not (eq pick :open)))
@@ -44,17 +46,18 @@
              (if (and (= (fn2-retirement-control-allocation-member 0 fn2-retirement-control) 1)
                       (= (fn2-retirement-control-token 0 fn2-retirement-control) (fn2-alloc-freeze-token fn2-extents)))
                  (fn2-retirement-control-scan 0 fn2-retirement-control) 0)) (mv token scan)))
-       (class (stobj-let ((fn2-pool (fn2-core-pool fn2-core))) (class)
-                (fn2-pool-class-for (* *fn2-checkpoint-allocation-records-per-ticket*
-                  (+ *fn2-format-txn-record-max-size* *fn2-format-allocation-max-size*)) fn2-pool) class))
-       ((unless class) (mv :admission fn2-core))
-       ((mv code slot gen fn2-core) (fn2-core-reserve class okind oslot ogen fn2-core))
-       ((unless (eq code :ok)) (mv :exhausted fn2-core)))
+       ((mv code c leased-token slot gen fn2-core)
+        (fn2-checkpoint-staging-current okind oslot ogen
+         (* *fn2-checkpoint-allocation-records-per-ticket*
+            (+ *fn2-format-txn-record-max-size* *fn2-format-allocation-max-size*)) fn2-core))
+       ((unless (eq code :ok)) (mv code fn2-core))
+       ((unless (equal token leased-token))
+        (let ((fn2-core (fn2-core-stop *fn2-stop-reason-commit-settle* fn2-core))) (mv :uncertain fn2-core))))
    (stobj-let ((fn2-retirement-control (fn2-core-retirement-control fn2-core))) (fn2-retirement-control)
     (if (and (< 0 (fn2-retirement-control-rows fn2-retirement-control))
              (unsigned-byte-p 32 slot) (unsigned-byte-p 60 gen))
         (fn2-retirement-control-put 0 (state *fn2-retirement-state-scanning*)
-         (allocation-member 1) (installation-member 0) (token token) (owner-kind okind) (owner-slot oslot) (owner-gen ogen)
+         (allocation-member 1) (installation-member 0) (candidate c) (token token) (owner-kind okind) (owner-slot oslot) (owner-gen ogen)
          (slot slot) (gen gen) (scan scan) (count 0) (bytes 0) (installed 0) (install-offset 0) (batch 0) (event 0))
       fn2-retirement-control)
     (mv :ok fn2-core))))
@@ -63,6 +66,7 @@
  (defun fn2-checkpoint-allocation-step (fn2-core)
   (declare (xargs :stobjs fn2-core :guard (fn2-core-wfp fn2-core)))
   (if (fn2-core-stopped-p fn2-core) (mv :uncertain fn2-core)
+  (if (not (fn2-checkpoint-staging-active-p fn2-core)) (mv :invalid fn2-core)
   (stobj-let ((fn2-retirement-control (fn2-core-retirement-control fn2-core))
               (fn2-checkpoint-construction (fn2-core-checkpoint-construction fn2-core))
               (fn2-extents (fn2-core-extents fn2-core))
@@ -77,7 +81,8 @@
         (e (fn2-retirement-control-scan 0 fn2-retirement-control))
         (n (fn2-retirement-control-count 0 fn2-retirement-control))
         ((when (or (>= n *fn2-checkpoint-allocation-records-per-ticket*) (>= e (fn2-extents-rows fn2-extents))))
-         (mv :staged (fn2-retirement-control-set-state 0 *fn2-retirement-state-staged* fn2-retirement-control) fn2-fields fn2-pool))
+         (let* ((fn2-retirement-control (fn2-retirement-control-set-state 0 *fn2-retirement-state-staged* fn2-retirement-control)))
+          (mv :staged fn2-retirement-control fn2-fields fn2-pool)))
         ((unless (and (unsigned-byte-p 32 (+ 1 e)) (< (+ 1 n) (fn2-retirement-control-rows fn2-retirement-control))))
          (mv :invalid fn2-retirement-control fn2-fields fn2-pool))
         ; Never spend a partially filled ticket by skipping an unfinished owned
@@ -88,7 +93,8 @@
                     (not (fn2-checkpoint-allocation-ready-p e fn2-checkpoint-construction fn2-extents))))
          (mv :pending fn2-retirement-control fn2-fields fn2-pool))
         ((unless (fn2-checkpoint-allocation-ready-p e fn2-checkpoint-construction fn2-extents))
-         (mv :more (fn2-retirement-control-set-scan 0 (+ 1 e) fn2-retirement-control) fn2-fields fn2-pool))
+         (let* ((fn2-retirement-control (fn2-retirement-control-set-scan 0 (+ 1 e) fn2-retirement-control)))
+          (mv :more fn2-retirement-control fn2-fields fn2-pool)))
         ((mv code end fn2-fields fn2-pool)
          (fn2-checkpoint-allocation-pack-member e 0
           (fn2-retirement-control-slot 0 fn2-retirement-control)
@@ -105,7 +111,7 @@
           (allocation (fn2-checkpoint-construction-counter e fn2-checkpoint-construction))))
         (fn2-retirement-control (fn2-retirement-control-put 0 (scan (+ 1 e)) (count (+ 1 n)) (bytes end))))
     (mv :more fn2-retirement-control fn2-fields fn2-pool))
-   (mv code fn2-core))))
+   (mv code fn2-core)))))
  (fn2-core-preserves fn2-checkpoint-allocation-step (fn2-core) :position 1 :rows nil)
 
  ; An empty terminal scan owns no journal ticket. Release its pool workspace
@@ -127,7 +133,7 @@
           (mv nil 0 0 0 0 0)) (mv ready slot gen okind oslot ogen)))
        ((unless ready) (mv :invalid fn2-core))
        ((when (fn2-core-stopped-p fn2-core)) (mv :uncertain fn2-core))
-       ((mv code fn2-core) (fn2-core-release slot gen okind oslot ogen fn2-core)))
+       ((mv code fn2-core) (fn2-checkpoint-lifecycle-release slot gen okind oslot ogen fn2-core)))
    (stobj-let ((fn2-retirement-control (fn2-core-retirement-control fn2-core))) (fn2-retirement-control)
     (if (< 0 (fn2-retirement-control-rows fn2-retirement-control))
         (fn2-retirement-control-set-state 0
@@ -182,17 +188,17 @@
 
 ; Actual core operations consumed by the checkpoint worker's generated arms.
 (defcost fn2-checkpoint-allocation-begin :answers t
- :tables (fn2-core-retirement-control fn2-core-extents fn2-core-pool fn2-core-control)
- :doc "Reserve the single token-bound allocation lifecycle workspace.")
+ :tables (fn2-core-retirement-control fn2-core-checkpoint-future fn2-core-checkpoint-future-windows fn2-core-extents fn2-core-pool fn2-core-control)
+ :doc "Borrow the exact pre-cut staging lease for the single token-bound allocation member.")
 (defcost fn2-checkpoint-allocation-step :answers t :bytes 4096
- :tables (fn2-core-retirement-control fn2-core-checkpoint-construction fn2-core-extents fn2-core-fields fn2-core-pool)
+ :tables (fn2-core-retirement-control fn2-core-checkpoint-future fn2-core-checkpoint-future-windows fn2-core-checkpoint-construction fn2-core-extents fn2-core-fields fn2-core-pool)
  :doc "Inspect one construction and append at most one framed allocation record.")
 (defcost fn2-checkpoint-allocation-submit :answers t
- :tables (fn2-core-retirement-control fn2-core-extents fn2-core-checkpoint-construction fn2-core-commit-io fn2-core-commit-root fn2-core-commit-members fn2-core-machines fn2-core-pool fn2-core-control)
+ :tables (fn2-core-retirement-control fn2-core-checkpoint-future fn2-core-checkpoint-future-windows fn2-core-extents fn2-core-checkpoint-construction fn2-core-commit-io fn2-core-commit-root fn2-core-commit-members fn2-core-machines fn2-core-pool fn2-core-control)
  :doc "Select the real B planner and submit the retained allocation member.")
 (defcost fn2-checkpoint-allocation-finish-empty :answers t
- :tables (fn2-core-retirement-control fn2-core-extents fn2-core-pool fn2-core-control)
- :doc "Release only an empty token-current terminal allocation scan.")
+ :tables (fn2-core-retirement-control fn2-core-checkpoint-future fn2-core-checkpoint-future-windows fn2-core-extents fn2-core-pool fn2-core-control)
+ :doc "Return the exact future staging identity only after an empty token-current terminal scan.")
 (defcost fn2-retirement-poll :answers t
- :tables (fn2-core-retirement-control fn2-core-extents fn2-core-commit-settled fn2-core-pool fn2-core-control)
+ :tables (fn2-core-retirement-control fn2-core-checkpoint-future fn2-core-checkpoint-future-windows fn2-core-extents fn2-core-commit-settled fn2-core-pool fn2-core-control)
  :doc "Consume exact lifecycle settlement, retaining workspace on uncertainty.")

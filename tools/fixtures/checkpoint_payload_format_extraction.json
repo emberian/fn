@@ -1,0 +1,166 @@
+{
+  "baseline": "36a025eb3",
+  "old": "; Actual typed source-manifest traversal and full stored-byte integrity.\n; Every physical child is pinned before its read; only the existing B block\n; proof checker and streaming BLAKE3 implementation decide hash agreement.\n(in-package \"ACL2\")\n(include-book \"checkpoint-payload-io\")\n(fn2-book-layer :c)\n\n(defmacro fn2-checkpoint-payload-step-mv (code)\n `(mv ,code fn2-checkpoint-payload fn2-checkpoint-retained-entry fn2-fields fn2-extents fn2-alloc-edges fn2-b3 fn2-digests))\n\n(defun fn2-checkpoint-payload-step (budget fn2-checkpoint-payload fn2-checkpoint-retained-entry fn2-csnapshot fn2-checkpoints\n                                   fn2-fields fn2-extents fn2-alloc-edges fn2-ops fn2-pool fn2-b3 fn2-digests)\n (declare (xargs :stobjs (fn2-checkpoint-payload fn2-checkpoint-retained-entry fn2-csnapshot fn2-checkpoints fn2-fields fn2-extents\n                          fn2-alloc-edges fn2-ops fn2-pool fn2-b3 fn2-digests)\n  :guard (and (fn2-checkpoint-payload-wfp fn2-checkpoint-payload) (fn2-checkpoint-retained-entry-wfp fn2-checkpoint-retained-entry)\n              (fn2-csnapshot-wfp fn2-csnapshot) (fn2-checkpoints-wfp fn2-checkpoints) (fn2-fields-wfp fn2-fields)\n              (fn2-extents-wfp fn2-extents) (fn2-alloc-edges-wfp fn2-alloc-edges) (fn2-ops-wfp fn2-ops) (fn2-pool-wfp fn2-pool)\n              (fn2-b3-wfp fn2-b3) (fn2-digests-wfp fn2-digests))))\n (b* (((unless (and (natp budget) (< 0 budget))) (fn2-checkpoint-payload-step-mv :yield))\n      ((unless (fn2-checkpoint-payload-sourcep fn2-checkpoint-payload fn2-checkpoint-retained-entry fn2-csnapshot fn2-checkpoints fn2-fields))\n       (fn2-checkpoint-payload-step-mv :source))\n      (phase (fn2-checkpoint-payload-phase 0 fn2-checkpoint-payload))\n      (kind (fn2-checkpoint-payload-owner-kind 0 fn2-checkpoint-payload))\n      (owner (fn2-checkpoint-payload-owner-slot 0 fn2-checkpoint-payload))\n      (generation (fn2-checkpoint-payload-owner-gen 0 fn2-checkpoint-payload))\n      (base (fn2-checkpoint-payload-field-base 0 fn2-checkpoint-payload))\n      (entry (fn2-checkpoint-payload-entry-base 0 fn2-checkpoint-payload))\n      (mslot (fn2-checkpoint-payload-manifest-slot 0 fn2-checkpoint-payload))\n      (mgen (fn2-checkpoint-payload-manifest-gen 0 fn2-checkpoint-payload))\n      (dslot (fn2-checkpoint-payload-data-slot 0 fn2-checkpoint-payload))\n      (dgen (fn2-checkpoint-payload-data-gen 0 fn2-checkpoint-payload))\n      (total (fn2-checkpoint-payload-total 0 fn2-checkpoint-payload))\n      (position (fn2-checkpoint-payload-position 0 fn2-checkpoint-payload))\n      (hash-row (fn2-checkpoint-payload-hash-row 0 fn2-checkpoint-payload))\n      (location (fn2-checkpoint-payload-location-kind 0 fn2-checkpoint-payload))\n      ((unless (and (<= position total) (equal (fn2-checkpoint-payload-pending 0 fn2-checkpoint-payload) 0)\n                     (<= 9 (fn2-b3-rows fn2-b3))\n                     (equal hash-row (fn2-b-payload-retention-row (fn2-b3-rows fn2-b3)))\n                     (equal base (fn2-b-payload-retention-field-base (fn2-b3-rows fn2-b3)))\n                     (fn2-b3-ready hash-row fn2-b3 fn2-digests)\n                     (<= (+ base (max *fn2-am-header-fields* *fn2-am-entry-fields*)) (fn2-fields-rows fn2-fields))))\n       (fn2-checkpoint-payload-step-mv :state)))\n  (cond\n   ((equal phase *fn2-checkpoint-payload-phase-header*)\n    (b* (((unless (and (equal location 1) (equal position 0)\n                       (equal (fn2-checkpoint-payload-manifest-position 0 fn2-checkpoint-payload) 0)\n                       (equal (fn2-checkpoint-payload-loaded-unit 0 fn2-checkpoint-payload) 0)))\n          (fn2-checkpoint-payload-step-mv :state))\n         ((mv code next fn2-fields) (fn2-am-get-header base total mslot mgen 0 *fn2-commit-unit-bytes*\n          kind owner generation fn2-fields fn2-pool))\n         ((unless (and (eq code :ok) (natp next) (< 0 next) (<= next *fn2-commit-unit-bytes*)))\n          (fn2-checkpoint-payload-step-mv :manifest-header))\n         (h (+ base *fn2-format-source-manifest-header-field-source-identity*))\n         (s (+ entry *fn2-article-entry-field-source*))\n         ((unless (and (equal (fn2-fields-ref-len h fn2-fields) 32) (equal (fn2-fields-ref-len s fn2-fields) 32)))\n          (fn2-checkpoint-payload-step-mv :manifest-identity))\n         ((mv code order &) (fn2-pool-compare\n          (fn2-fields-ref-slot h fn2-fields) (fn2-fields-ref-gen h fn2-fields) (fn2-fields-ref-off h fn2-fields) kind owner generation\n          (fn2-fields-ref-slot s fn2-fields) (fn2-fields-ref-gen s fn2-fields) (fn2-fields-ref-off s fn2-fields) kind owner generation 32 fn2-pool))\n         ((unless (and (eq code :ok) (eq order :equal)))\n          (let ((fn2-checkpoint-payload (fn2-checkpoint-payload-set-phase 0 *fn2-checkpoint-payload-phase-uncertain* fn2-checkpoint-payload)))\n           (fn2-checkpoint-payload-step-mv :manifest-identity)))\n         (at (fn2-am-entry-at next))\n         ((unless (unsigned-byte-p 32 at)) (fn2-checkpoint-payload-step-mv :bounds))\n         (fn2-checkpoint-payload (fn2-checkpoint-payload-put 0 (manifest-position at)\n          (phase (if (< at *fn2-commit-unit-bytes*) *fn2-checkpoint-payload-phase-entry* *fn2-checkpoint-payload-phase-manifest-read*)))))\n     (fn2-checkpoint-payload-step-mv :more)))\n   ((equal phase *fn2-checkpoint-payload-phase-entry*)\n    (b* ((at (fn2-am-entry-at (fn2-checkpoint-payload-manifest-position 0 fn2-checkpoint-payload)))\n         (relative (floor at *fn2-commit-unit-bytes*))\n         (off (mod at *fn2-commit-unit-bytes*))\n         ((unless (and (equal location 1) (< position total) (unsigned-byte-p 32 at) (< relative *fn2-storage-extent-units*)))\n          (fn2-checkpoint-payload-step-mv :manifest-geometry))\n         ((unless (equal relative (fn2-checkpoint-payload-loaded-unit 0 fn2-checkpoint-payload)))\n          (let ((fn2-checkpoint-payload (fn2-checkpoint-payload-put 0 (manifest-position at) (phase *fn2-checkpoint-payload-phase-manifest-read*))))\n           (fn2-checkpoint-payload-step-mv :need-read)))\n         ((mv code next logical len unit epoch allocation fn2-fields)\n          (fn2-am-get-entry base mslot mgen off *fn2-commit-unit-bytes* kind owner generation fn2-fields fn2-pool))\n         ((unless (and (eq code :ok) (< off next) (<= next *fn2-commit-unit-bytes*) (equal logical position)\n                        (equal len (min *fn2-am-block-bytes* (- total position)))\n                        (equal (fn2-fields-value (+ base *fn2-format-source-manifest-entry-field-block-storage-domain*) fn2-fields) 0)\n                        (equal (fn2-fields-value (+ base *fn2-format-source-manifest-entry-field-block-page-kind*) fn2-fields) *page-kind-raw-source*)\n                        (equal (fn2-fields-value (+ base *fn2-format-source-manifest-entry-field-block-encoded-length*) fn2-fields) len)))\n          (fn2-checkpoint-payload-step-mv :manifest-entry))\n         (h (+ base *fn2-format-source-manifest-entry-field-block-expected-hash*))\n         (cv (+ base *fn2-format-source-manifest-entry-field-subtree-cv*))\n         ((unless (and (equal (fn2-fields-ref-slot h fn2-fields) mslot) (equal (fn2-fields-ref-gen h fn2-fields) mgen)\n                        (equal (fn2-fields-ref-slot cv fn2-fields) mslot) (equal (fn2-fields-ref-gen cv fn2-fields) mgen)\n                        (equal (fn2-fields-ref-len h fn2-fields) 32) (equal (fn2-fields-ref-len cv fn2-fields) 32)))\n          (fn2-checkpoint-payload-step-mv :manifest-proof))\n         ((mv code fn2-extents fn2-alloc-edges) (fn2-checkpoint-source-claim\n          (fn2-checkpoint-payload-candidate 0 fn2-checkpoint-payload) (fn2-checkpoint-payload-checkpoint 0 fn2-checkpoint-payload)\n          (floor unit *fn2-storage-extent-units*) epoch allocation fn2-extents fn2-alloc-edges fn2-ops fn2-checkpoints))\n         ((unless (eq code :ok)) (fn2-checkpoint-payload-step-mv code))\n         (next-position (+ (* relative *fn2-commit-unit-bytes*) next))\n         ((unless (unsigned-byte-p 32 next-position)) (fn2-checkpoint-payload-step-mv :bounds))\n         (fn2-checkpoint-payload (fn2-checkpoint-payload-put 0 (manifest-position next-position)\n          (block-unit unit) (block-epoch epoch) (block-allocation allocation) (block-length len) (hash-cursor 0)\n          (hash-offset (fn2-fields-ref-off h fn2-fields)) (cv-offset (fn2-fields-ref-off cv fn2-fields))\n          (phase *fn2-checkpoint-payload-phase-block-read*))))\n     (fn2-checkpoint-payload-step-mv :need-read)))\n   ((equal phase *fn2-checkpoint-payload-phase-block-verify*)\n    (b* ((len (fn2-checkpoint-payload-block-length 0 fn2-checkpoint-payload))\n         ((unless (and (posp len) (<= len *fn2-commit-unit-bytes*)\n                        (eq (fn2-pool-workspace-code dslot dgen kind owner generation fn2-pool) :ok)\n                        (<= len (fn2-pool-fill dslot fn2-pool))))\n          (fn2-checkpoint-payload-step-mv :read-window))\n         ((mv code fn2-b3 fn2-digests) (fn2-block-read-done-from-children len len (if (equal location 1) 1 0)\n          dslot dgen 0 mslot mgen (fn2-checkpoint-payload-hash-offset 0 fn2-checkpoint-payload)\n          (fn2-checkpoint-payload-cv-offset 0 fn2-checkpoint-payload) (floor position *fn2-am-block-bytes*) kind owner generation\n          fn2-b3 fn2-digests fn2-pool))\n         ((unless (eq code :ok))\n          (let ((fn2-checkpoint-payload (fn2-checkpoint-payload-set-phase 0 *fn2-checkpoint-payload-phase-uncertain* fn2-checkpoint-payload)))\n           (fn2-checkpoint-payload-step-mv code)))\n         (fn2-checkpoint-payload (fn2-checkpoint-payload-put 0 (phase *fn2-checkpoint-payload-phase-hash*) (hash-cursor 0))))\n     (fn2-checkpoint-payload-step-mv :more)))\n   ((equal phase *fn2-checkpoint-payload-phase-hash*)\n    (b* ((cursor (fn2-checkpoint-payload-hash-cursor 0 fn2-checkpoint-payload))\n         (len (fn2-checkpoint-payload-block-length 0 fn2-checkpoint-payload))\n         ((unless (and (< cursor len) (<= len *fn2-commit-unit-bytes*) (<= (+ position len) total)))\n          (fn2-checkpoint-payload-step-mv :state))\n         (take (min budget 4096 (- len cursor)))\n         ((mv code used fn2-digests fn2-b3) (fn2-b3-update hash-row dslot dgen cursor take kind owner generation fn2-digests fn2-b3 fn2-pool))\n         ((unless (and (member-eq code '(:ok :more)) (natp used) (< 0 used) (<= used take)))\n          (let ((fn2-checkpoint-payload (fn2-checkpoint-payload-set-phase 0 *fn2-checkpoint-payload-phase-uncertain* fn2-checkpoint-payload)))\n           (fn2-checkpoint-payload-step-mv :hash)))\n         (next (+ cursor used))\n         ((when (< next len))\n          (let ((fn2-checkpoint-payload (fn2-checkpoint-payload-set-hash-cursor 0 next fn2-checkpoint-payload)))\n           (fn2-checkpoint-payload-step-mv :more)))\n         (position (+ position len))\n         (fn2-checkpoint-payload (fn2-checkpoint-payload-put 0 (position position) (hash-cursor 0)\n          (phase (cond ((equal position total) *fn2-checkpoint-payload-phase-final*)\n                       ((equal location 1) *fn2-checkpoint-payload-phase-entry*) (t *fn2-checkpoint-payload-phase-block-read*)))\n          (block-unit (if (equal location 0) (+ (fn2-checkpoint-payload-source-unit 0 fn2-checkpoint-payload) (floor position *fn2-commit-unit-bytes*))\n                        (fn2-checkpoint-payload-block-unit 0 fn2-checkpoint-payload)))\n          (block-length (min *fn2-commit-unit-bytes* (- total position))))))\n     (fn2-checkpoint-payload-step-mv :more)))\n   ((equal phase *fn2-checkpoint-payload-phase-final*)\n    (b* (((unless (equal position total)) (fn2-checkpoint-payload-step-mv :source-count))\n         (got (fn2-digest-slot hash-row *fn2-b3-result*))\n         (scratch (fn2-digest-slot hash-row *fn2-fc-hash*))\n         ((unless (and (fn2-digest-rowp got fn2-digests) (fn2-digest-rowp scratch fn2-digests)))\n          (fn2-checkpoint-payload-step-mv :bounds))\n         (fn2-digests (fn2-b3-finalize got hash-row fn2-digests fn2-b3))\n         (h (+ entry *fn2-article-entry-field-stored-source*))\n         ((unless (equal (fn2-fields-ref-len h fn2-fields) 32)) (fn2-checkpoint-payload-step-mv :stored-identity))\n         ((mv same fn2-digests) (fn2-block-digest-at got scratch (fn2-fields-ref-slot h fn2-fields) (fn2-fields-ref-gen h fn2-fields)\n          (fn2-fields-ref-off h fn2-fields) kind owner generation fn2-digests fn2-pool))\n         ((unless same)\n          (let ((fn2-checkpoint-payload (fn2-checkpoint-payload-set-phase 0 *fn2-checkpoint-payload-phase-uncertain* fn2-checkpoint-payload)))\n           (fn2-checkpoint-payload-step-mv :stored-identity)))\n         (fn2-checkpoint-payload (fn2-checkpoint-payload-set-phase 0 *fn2-checkpoint-payload-phase-complete* fn2-checkpoint-payload))\n         (fn2-checkpoint-retained-entry (fn2-checkpoint-retained-entry-set-phase 0 *fn2-checkpoint-retained-entry-phase-payload-complete* fn2-checkpoint-retained-entry)))\n     (fn2-checkpoint-payload-step-mv :complete)))\n   ((member phase (list *fn2-checkpoint-payload-phase-manifest-read* *fn2-checkpoint-payload-phase-block-read*))\n    (fn2-checkpoint-payload-step-mv :need-read))\n   (t (fn2-checkpoint-payload-step-mv :state)))))\n\n(fn2-checkpoint-payload-preserves fn2-checkpoint-payload-step\n (budget fn2-checkpoint-payload fn2-checkpoint-retained-entry fn2-csnapshot fn2-checkpoints fn2-fields fn2-extents fn2-alloc-edges fn2-ops fn2-pool fn2-b3 fn2-digests)\n :hyps ((fn2-checkpoint-payloadp fn2-checkpoint-payload) (fn2-checkpoint-payload-wfp fn2-checkpoint-payload)\n        (fn2-checkpoint-retained-entryp fn2-checkpoint-retained-entry) (fn2-checkpoint-retained-entry-wfp fn2-checkpoint-retained-entry)\n        (fn2-csnapshotp fn2-csnapshot) (fn2-csnapshot-wfp fn2-csnapshot)\n        (fn2-checkpointsp fn2-checkpoints) (fn2-checkpoints-wfp fn2-checkpoints)\n        (fn2-fieldsp fn2-fields) (fn2-fields-wfp fn2-fields)\n        (fn2-extentsp fn2-extents) (fn2-extents-wfp fn2-extents)\n        (fn2-alloc-edgesp fn2-alloc-edges) (fn2-alloc-edges-wfp fn2-alloc-edges)\n        (fn2-opsp fn2-ops) (fn2-ops-wfp fn2-ops)\n        (fn2-poolp fn2-pool) (fn2-pool-wfp fn2-pool)\n        (fn2-b3p fn2-b3) (fn2-b3-wfp fn2-b3)\n        (fn2-digestsp fn2-digests) (fn2-digests-wfp fn2-digests))\n :specs ((\"-CHECKPOINT-PAYLOAD-TYPE\" fn2-checkpoint-payloadp 1)\n         (\"-CHECKPOINT-PAYLOAD-WFP\" fn2-checkpoint-payload-wfp 1)\n         (\"-CHECKPOINT-PAYLOAD-ROWS\" fn2-checkpoint-payload-rows 1 :frame fn2-checkpoint-payload)\n         (\"-CHECKPOINT-RETAINED-ENTRY-TYPE\" fn2-checkpoint-retained-entryp 2)\n         (\"-CHECKPOINT-RETAINED-ENTRY-WFP\" fn2-checkpoint-retained-entry-wfp 2)\n         (\"-CHECKPOINT-RETAINED-ENTRY-ROWS\" fn2-checkpoint-retained-entry-rows 2 :frame fn2-checkpoint-retained-entry)\n         (\"-FIELDS-TYPE\" fn2-fieldsp 3)\n         (\"-FIELDS-WFP\" fn2-fields-wfp 3)\n         (\"-FIELDS-ROWS\" fn2-fields-rows 3 :frame fn2-fields)\n         (\"-EXTENTS-TYPE\" fn2-extentsp 4)\n         (\"-EXTENTS-WFP\" fn2-extents-wfp 4)\n         (\"-EXTENTS-ROWS\" fn2-extents-rows 4 :frame fn2-extents)\n         (\"-ALLOC-EDGES-TYPE\" fn2-alloc-edgesp 5)\n         (\"-ALLOC-EDGES-WFP\" fn2-alloc-edges-wfp 5)\n         (\"-ALLOC-EDGES-ROWS\" fn2-alloc-edges-rows 5 :frame fn2-alloc-edges)\n         (\"-B3-TYPE\" fn2-b3p 6)\n         (\"-B3-WFP\" fn2-b3-wfp 6)\n         (\"-B3-ROWS\" fn2-b3-rows 6 :frame fn2-b3)\n         (\"-B3-WORDS\" fn2-b3-words-length 6 :frame fn2-b3)\n         (\"-DIGESTS-TYPE\" fn2-digestsp 7)\n         (\"-DIGESTS-WFP\" fn2-digests-wfp 7)\n         (\"-DIGESTS-ROWS\" fn2-digests-rows 7 :frame fn2-digests)))\n",
+  "edits": [
+    {
+      "old": "(include-book \"checkpoint-payload-io\")\n",
+      "new": "(include-book \"checkpoint-payload-io\")\n(include-book \"checkpoint-payload-format\")\n"
+    },
+    {
+      "old": "         ((mv code next fn2-fields) (fn2-am-get-header base total mslot mgen 0 *fn2-commit-unit-bytes*\n",
+      "new": "         ((mv code next fn2-fields) (fn2-checkpoint-payload-read-header base (+ entry *fn2-article-entry-field-source*) total mslot mgen\n"
+    },
+    {
+      "old": "         ((unless (and (eq code :ok) (natp next) (< 0 next) (<= next *fn2-commit-unit-bytes*)))\n          (fn2-checkpoint-payload-step-mv :manifest-header))\n         (h (+ base *fn2-format-source-manifest-header-field-source-identity*))\n         (s (+ entry *fn2-article-entry-field-source*))\n         ((unless (and (equal (fn2-fields-ref-len h fn2-fields) 32) (equal (fn2-fields-ref-len s fn2-fields) 32)))\n          (fn2-checkpoint-payload-step-mv :manifest-identity))\n         ((mv code order &) (fn2-pool-compare\n          (fn2-fields-ref-slot h fn2-fields) (fn2-fields-ref-gen h fn2-fields) (fn2-fields-ref-off h fn2-fields) kind owner generation\n          (fn2-fields-ref-slot s fn2-fields) (fn2-fields-ref-gen s fn2-fields) (fn2-fields-ref-off s fn2-fields) kind owner generation 32 fn2-pool))\n         ((unless (and (eq code :ok) (eq order :equal)))\n          (let ((fn2-checkpoint-payload (fn2-checkpoint-payload-set-phase 0 *fn2-checkpoint-payload-phase-uncertain* fn2-checkpoint-payload)))\n           (fn2-checkpoint-payload-step-mv :manifest-identity)))\n",
+      "new": "         ((unless (eq code :ok))\n          (let ((fn2-checkpoint-payload (if (eq code :identity-mismatch)\n                 (fn2-checkpoint-payload-set-phase 0 *fn2-checkpoint-payload-phase-uncertain* fn2-checkpoint-payload) fn2-checkpoint-payload)))\n           (fn2-checkpoint-payload-step-mv (if (eq code :identity-mismatch) :manifest-identity code))))\n"
+    },
+    {
+      "old": "         ((mv code next logical len unit epoch allocation fn2-fields)\n          (fn2-am-get-entry base mslot mgen off *fn2-commit-unit-bytes* kind owner generation fn2-fields fn2-pool))\n         ((unless (and (eq code :ok) (< off next) (<= next *fn2-commit-unit-bytes*) (equal logical position)\n                        (equal len (min *fn2-am-block-bytes* (- total position)))\n                        (equal (fn2-fields-value (+ base *fn2-format-source-manifest-entry-field-block-storage-domain*) fn2-fields) 0)\n                        (equal (fn2-fields-value (+ base *fn2-format-source-manifest-entry-field-block-page-kind*) fn2-fields) *page-kind-raw-source*)\n                        (equal (fn2-fields-value (+ base *fn2-format-source-manifest-entry-field-block-encoded-length*) fn2-fields) len)))\n          (fn2-checkpoint-payload-step-mv :manifest-entry))\n",
+      "new": "         ((mv code next & len unit epoch allocation fn2-fields)\n          (fn2-checkpoint-payload-read-entry base position total mslot mgen off kind owner generation fn2-fields fn2-pool))\n         ((unless (eq code :ok)) (fn2-checkpoint-payload-step-mv code))\n"
+    },
+    {
+      "old": "         ((unless (and (equal (fn2-fields-ref-slot h fn2-fields) mslot) (equal (fn2-fields-ref-gen h fn2-fields) mgen)\n                        (equal (fn2-fields-ref-slot cv fn2-fields) mslot) (equal (fn2-fields-ref-gen cv fn2-fields) mgen)\n                        (equal (fn2-fields-ref-len h fn2-fields) 32) (equal (fn2-fields-ref-len cv fn2-fields) 32)))\n          (fn2-checkpoint-payload-step-mv :manifest-proof))\n",
+      "new": ""
+    }
+  ],
+  "physical_body_edits": [
+    {
+      "start": 0,
+      "end": 281,
+      "old": "(b* (((unless (and (natp budget) (< 0 budget))) (fn2-checkpoint-payload-step-mv :yield))\n      ((unless (fn2-checkpoint-payload-sourcep fn2-checkpoint-payload fn2-checkpoint-retained-entry fn2-csnapshot fn2-checkpoints fn2-fields))\n       (fn2-checkpoint-payload-step-mv :source))\n",
+      "new": "(b* (((unless (and (natp budget) (< 0 budget))) (fn2-checkpoint-payload-physical-step-mv :yield))\n      ((unless (< 0 (fn2-checkpoint-payload-rows fn2-checkpoint-payload))) (fn2-checkpoint-payload-physical-step-mv :state))\n"
+    },
+    {
+      "start": 653,
+      "end": 728,
+      "old": "      (entry (fn2-checkpoint-payload-entry-base 0 fn2-checkpoint-payload))\n",
+      "new": ""
+    },
+    {
+      "start": 1850,
+      "end": 1899,
+      "old": "       (fn2-checkpoint-payload-step-mv :state)))\n",
+      "new": "       (fn2-checkpoint-payload-physical-step-mv :state)))\n"
+    },
+    {
+      "start": 1907,
+      "end": 1907,
+      "old": "",
+      "new": "   ((equal phase *fn2-checkpoint-payload-phase-location-verify*)\n    (b* (((mv code fn2-checkpoint-payload fn2-b3 fn2-digests)\n          (fn2-checkpoint-payload-location-check fn2-checkpoint-payload fn2-b3 fn2-digests fn2-pool)))\n     (fn2-checkpoint-payload-physical-step-mv code)))\n"
+    },
+    {
+      "start": 2222,
+      "end": 2410,
+      "old": "          (fn2-checkpoint-payload-step-mv :state))\n         ((mv code next fn2-fields) (fn2-checkpoint-payload-read-header base (+ entry *fn2-article-entry-field-source*) total mslot mgen\n",
+      "new": "          (fn2-checkpoint-payload-physical-step-mv :state))\n         ((mv code next fn2-fields) (fn2-checkpoint-payload-read-header base\n          (fn2-checkpoint-payload-original-slot 0 fn2-checkpoint-payload) (fn2-checkpoint-payload-original-gen 0 fn2-checkpoint-payload)\n          (fn2-checkpoint-payload-original-off 0 fn2-checkpoint-payload) total mslot mgen\n"
+    },
+    {
+      "start": 2714,
+      "end": 2818,
+      "old": "           (fn2-checkpoint-payload-step-mv (if (eq code :identity-mismatch) :manifest-identity code))))\n",
+      "new": "           (fn2-checkpoint-payload-physical-step-mv (if (eq code :identity-mismatch) :manifest-identity code))))\n"
+    },
+    {
+      "start": 2855,
+      "end": 2940,
+      "old": "         ((unless (unsigned-byte-p 32 at)) (fn2-checkpoint-payload-step-mv :bounds))\n",
+      "new": "         ((unless (unsigned-byte-p 32 at)) (fn2-checkpoint-payload-physical-step-mv :bounds))\n"
+    },
+    {
+      "start": 3165,
+      "end": 3211,
+      "old": "     (fn2-checkpoint-payload-step-mv :more)))\n",
+      "new": "     (fn2-checkpoint-payload-physical-step-mv :more)))\n"
+    },
+    {
+      "start": 3596,
+      "end": 3659,
+      "old": "          (fn2-checkpoint-payload-step-mv :manifest-geometry))\n",
+      "new": "          (fn2-checkpoint-payload-physical-step-mv :manifest-geometry))\n"
+    },
+    {
+      "start": 3906,
+      "end": 4027,
+      "old": "           (fn2-checkpoint-payload-step-mv :need-read)))\n         ((mv code next & len unit epoch allocation fn2-fields)\n",
+      "new": "           (fn2-checkpoint-payload-physical-step-mv :need-read)))\n         ((mv code next & & & & & fn2-fields)\n"
+    },
+    {
+      "start": 4151,
+      "end": 5378,
+      "old": "         ((unless (eq code :ok)) (fn2-checkpoint-payload-step-mv code))\n         (h (+ base *fn2-format-source-manifest-entry-field-block-expected-hash*))\n         (cv (+ base *fn2-format-source-manifest-entry-field-subtree-cv*))\n         ((mv code fn2-extents fn2-alloc-edges) (fn2-checkpoint-source-claim\n          (fn2-checkpoint-payload-candidate 0 fn2-checkpoint-payload) (fn2-checkpoint-payload-checkpoint 0 fn2-checkpoint-payload)\n          (floor unit *fn2-storage-extent-units*) epoch allocation fn2-extents fn2-alloc-edges fn2-ops fn2-checkpoints))\n         ((unless (eq code :ok)) (fn2-checkpoint-payload-step-mv code))\n         (next-position (+ (* relative *fn2-commit-unit-bytes*) next))\n         ((unless (unsigned-byte-p 32 next-position)) (fn2-checkpoint-payload-step-mv :bounds))\n         (fn2-checkpoint-payload (fn2-checkpoint-payload-put 0 (manifest-position next-position)\n          (block-unit unit) (block-epoch epoch) (block-allocation allocation) (block-length len) (hash-cursor 0)\n          (hash-offset (fn2-fields-ref-off h fn2-fields)) (cv-offset (fn2-fields-ref-off cv fn2-fields))\n          (phase *fn2-checkpoint-payload-phase-block-read*))))\n     (fn2-checkpoint-payload-step-mv :need-read)))\n",
+      "new": "         ((unless (eq code :ok)) (fn2-checkpoint-payload-physical-step-mv code))\n         ; The decoded entry stays retained. Domain-specific live/cold\n         ; admission must accept this handle before the shared bind below.\n         )\n     (mv :claim next fn2-checkpoint-payload fn2-fields fn2-b3 fn2-digests)))\n"
+    },
+    {
+      "start": 5752,
+      "end": 5809,
+      "old": "          (fn2-checkpoint-payload-step-mv :read-window))\n",
+      "new": "          (fn2-checkpoint-payload-physical-step-mv :read-window))\n"
+    },
+    {
+      "start": 6361,
+      "end": 6412,
+      "old": "           (fn2-checkpoint-payload-step-mv code)))\n",
+      "new": "           (fn2-checkpoint-payload-physical-step-mv code)))\n"
+    },
+    {
+      "start": 6538,
+      "end": 6584,
+      "old": "     (fn2-checkpoint-payload-step-mv :more)))\n",
+      "new": "     (fn2-checkpoint-payload-physical-step-mv :more)))\n"
+    },
+    {
+      "start": 6897,
+      "end": 6948,
+      "old": "          (fn2-checkpoint-payload-step-mv :state))\n",
+      "new": "          (fn2-checkpoint-payload-physical-step-mv :state))\n"
+    },
+    {
+      "start": 7376,
+      "end": 7428,
+      "old": "           (fn2-checkpoint-payload-step-mv :hash)))\n",
+      "new": "           (fn2-checkpoint-payload-physical-step-mv :hash)))\n"
+    },
+    {
+      "start": 7603,
+      "end": 7655,
+      "old": "           (fn2-checkpoint-payload-step-mv :more)))\n",
+      "new": "           (fn2-checkpoint-payload-physical-step-mv :more)))\n"
+    },
+    {
+      "start": 8321,
+      "end": 8367,
+      "old": "     (fn2-checkpoint-payload-step-mv :more)))\n",
+      "new": "     (fn2-checkpoint-payload-physical-step-mv :more)))\n"
+    },
+    {
+      "start": 8422,
+      "end": 8512,
+      "old": "    (b* (((unless (equal position total)) (fn2-checkpoint-payload-step-mv :source-count))\n",
+      "new": "    (b* (((unless (equal position total)) (fn2-checkpoint-payload-physical-step-mv :source-count))\n"
+    },
+    {
+      "start": 8727,
+      "end": 8779,
+      "old": "          (fn2-checkpoint-payload-step-mv :bounds))\n",
+      "new": "          (fn2-checkpoint-payload-physical-step-mv :bounds))\n"
+    },
+    {
+      "start": 8852,
+      "end": 9253,
+      "old": "         (h (+ entry *fn2-article-entry-field-stored-source*))\n         ((unless (equal (fn2-fields-ref-len h fn2-fields) 32)) (fn2-checkpoint-payload-step-mv :stored-identity))\n         ((mv same fn2-digests) (fn2-block-digest-at got scratch (fn2-fields-ref-slot h fn2-fields) (fn2-fields-ref-gen h fn2-fields)\n          (fn2-fields-ref-off h fn2-fields) kind owner generation fn2-digests fn2-pool))\n",
+      "new": "         ((mv same fn2-digests) (fn2-block-digest-at got scratch\n          (fn2-checkpoint-payload-stored-slot 0 fn2-checkpoint-payload) (fn2-checkpoint-payload-stored-gen 0 fn2-checkpoint-payload)\n          (fn2-checkpoint-payload-stored-off 0 fn2-checkpoint-payload) kind owner generation fn2-digests fn2-pool))\n"
+    },
+    {
+      "start": 9420,
+      "end": 9838,
+      "old": "           (fn2-checkpoint-payload-step-mv :stored-identity)))\n         (fn2-checkpoint-payload (fn2-checkpoint-payload-set-phase 0 *fn2-checkpoint-payload-phase-complete* fn2-checkpoint-payload))\n         (fn2-checkpoint-retained-entry (fn2-checkpoint-retained-entry-set-phase 0 *fn2-checkpoint-retained-entry-phase-payload-complete* fn2-checkpoint-retained-entry)))\n     (fn2-checkpoint-payload-step-mv :complete)))\n",
+      "new": "           (fn2-checkpoint-payload-physical-step-mv :stored-identity)))\n         (fn2-checkpoint-payload (fn2-checkpoint-payload-set-phase 0 *fn2-checkpoint-payload-phase-complete* fn2-checkpoint-payload)))\n     (fn2-checkpoint-payload-physical-step-mv :complete)))\n"
+    },
+    {
+      "start": 9951,
+      "end": 10048,
+      "old": "    (fn2-checkpoint-payload-step-mv :need-read))\n   (t (fn2-checkpoint-payload-step-mv :state))))",
+      "new": "    (fn2-checkpoint-payload-physical-step-mv :need-read))\n   (t (fn2-checkpoint-payload-physical-step-mv :state))))"
+    }
+  ]
+}

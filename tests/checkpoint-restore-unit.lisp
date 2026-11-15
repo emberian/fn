@@ -82,7 +82,7 @@
 ; no test sets map completion or writes a ledger row directly.
 (defun fn2-cru-map-pack (e mode slot gen fn2-fields fn2-pool)
  (declare (xargs :stobjs (fn2-fields fn2-pool) :verify-guards nil))
- (b* ((state (cond ((equal e 1) 1) ((equal e 2) 2) ((member-equal e '(3 4)) 3) (t 0)))
+ (b* ((state (cond ((or (equal e 1) (and (eq mode :children) (equal e 5))) 1) ((equal e 2) 2) ((member-equal e '(3 4)) 3) (t 0)))
       (off (+ *fn2-checkpoint-map-entries-start* (* e *fn2-checkpoint-map-entry-width*)))
       (retirement (cond ((equal e 3) 10) ((equal e 4) (if (eq mode :nonmonotone) 9 11)) (t 0)))
       (next (cond ((equal e 3) (if (eq mode :short) *fn2-alloc-none* 4))
@@ -187,7 +187,7 @@
            (equal (fn2-checkpoint-restore-map-state 2 fn2-checkpoint-restore-map) 2)
            (equal (fn2-checkpoint-restore-map-owner 2 fn2-checkpoint-restore-map) 777)
            (equal (fn2-checkpoint-restore-map-state 3 fn2-checkpoint-restore-map) 3)
-           (eq checked (if mode :chain :fifo-ready)))
+           (eq checked (if (member-eq mode '(:cycle :nonmonotone :short)) :chain :fifo-ready)))
       fn2-checkpoint-restore-reader fn2-checkpoint-restore-map fn2-checkpoint-restore-map-control fn2-fields fn2-pool)))
 (defun fn2-cru-map-test (mode)
  (declare (xargs :verify-guards nil))

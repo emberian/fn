@@ -495,14 +495,15 @@ Logs and state are `/tmp/reclamation-format-union-78*` on Forge.
 The remaining implementation work is the real C master/source actor, arena and
 installation evidence intake, selected-base allocator reconstruction, ordered
 allocation/retirement/release replay, and journaled writer exclusion. Anchor
-previous-checkpoint batch hash must not be substituted for the immediate
+previous-checkpoint descriptor identity must not be substituted for the immediate
 predecessor seal. Dynamic foreground maintenance headroom also remains open:
 the minimum profile admission bound does not reserve enough space against later
 growth. Both upload and ordinary journal allocation must respect that policy,
 while checkpoint maintenance consumes its already reserved tickets. FREE remains
 disabled until this chain is implemented and qualified.
-`checkpoint-metadata-resources.lisp` reserves root1's fixed working windows
-before acquisition of the C cut. Its two builders, twelve writers, cursor and
+`checkpoint-metadata-resources.lisp` atomically tries the complete working
+bundle only after the C cut is held. A refusal that acquired no bundle releases
+that exact cut immediately; it never waits for pool room while holding C. Its two builders, twelve writers, cursor and
 field stripe are distinct from the resident sealer, which may be frozen in
 mid-build. The stable nonwriter windows remain owned through later root and
 descriptor production. `checkpoint-metadata-driver.lisp` composes the actual
@@ -524,3 +525,196 @@ extension to the semantic/payload lower job. The actor observer only wakes the
 source continuation: its smaller ABI cannot reconstruct operation identity.
 The public READ maps only the lower queued `:issued` result to the issue DSL's
 `:ok`; all refusal and uncertain outcomes pass through unchanged.
+
+
+The B lifecycle now consumes actual physical construction entries one per step,
+retaining every constructed page and reserved journal ticket before changing
+copy phase 1 to installation phase 2. It retains the six root edges separately.
+After the actual installed member, it traverses the candidate's dedicated source
+edges and atomically changes prepared protection to selectable protection. The
+publisher start operation checks that actual lifecycle state. Thaw requires the
+same candidate's completed bank publication and released writer bundle; it
+changes only the physical freeze phase, retaining the C owner token for normal
+snapshot release. It does not advance checkpoint coverage or permit FREE.
+These source operations and their shape obligations remain unadmitted; the
+master is connecting them and primitive controls are being prepared.
+Root1 callbacks retain all required child inputs but return only each operation's
+assigned and nested-callee result carriers. The largest result is STEP's code
+plus 27 carriers (28 values); READ returns its three scalars plus 14 carriers
+(17 values). The declaration drives body projection and positional shape
+contracts together. A source control compares that declaration with actual
+assignments and family calls, including a removed-manifest-result mutation.
+This stays below ACL2's 32-value limit without treating readonly inputs as
+outputs; it is a source check, not admission of the generated callbacks.
+## Maintenance actor source integration
+
+`checkpoint-master-kind` registers the actual singleton C maintenance owner,
+shared page worker and bank writer before the assembly index is consumed.
+Executor genesis creates the maintenance row and ordinary `fn2-turn` dispatch
+runs it. Its source activation constant remains NIL: recovery selection,
+ordered semantic/physical replay and combined maintenance headroom are still
+qualification requirements. Registering these bodies does not enable FREE.
+
+The maintenance owner closes and drains C before atomically trying the protected
+27-window bundle. It then drives the existing metadata, authenticated event,
+reservation closure, map/arena and descriptor callbacks. All producers bind once and use
+one generated page worker's destination-derived HAND/ACCEPT and completion
+handback. READ is a separate budgeted issue arm. The B lifecycle owns bounded
+construction/source retention, the only copy-to-install transition and thaw;
+B's actual journal owns allocation members and final installation. Publication
+borrows its three dedicated future leases. C rearm and snapshot release follow actual
+bank completion, source-window release and B thaw; uncertainty retains state.
+
+The pressure source uses actual blocked retirement progress, cached complete
+working-bundle room and the derived resident-directory budget as hints. The
+held-cut admission rechecks permission. This does not guarantee physical
+construction headroom or maintenance liveness. Source arity, dispatch and gate
+controls are static checks; these actor books have not been admitted or run.
+
+The pre-construction directory check runs only at the settled held C cut,
+before descriptor BEGIN. Its resident commit budget is derived as one final
+installation plus the ceiling of actual extent rows divided by the actual
+allocation-record capacity per batch. This covers any physically feasible
+construction's allocation records, but can conservatively refuse a smaller
+snapshot near directory exhaustion; it is not physical free-space headroom.
+The same hint in the pressure source prevents immediate abort/retry churn.
+Startup's actual completed-fence layout binding is required before admission.
+
+A refused pre-construction directory check releases the exact C snapshot token
+first, then calls the sole shared working-release body over future8 and root19,
+one actual owned lease per step. Its authority comes from the actual master
+abort phase, FREE candidate, IDLE descriptor builder and untouched zero-token,
+no-loan bundle. It cannot cancel allocations or release persistent edges, and
+cannot authorize cleanup after descriptor BEGIN. Normal publication and this
+abort share the physical release loop with separate permission guards.
+These actor guards and controls remain source-only and unadmitted.
+The subsequent 20-book map roundtrip probe at `60d49ddff` refused at
+`FN2-CHECKPOINT-FROZEN-MAP-ENTRY-PRESERVES-TYPE`, before the packer/reader and
+target assertions ran. The generated TYPE formula assumed only destination
+shape and omitted the readonly allocator's domain. The repair preserves that
+original formula in explicit malformed-logical-source controls, names the
+replacement's actual guard domain, and retains the stronger valid WFP and
+unconditional row effects. Operation bodies are unchanged. The controls and
+replacement contracts are source obligations awaiting the revised narrow gate;
+a failed proof search alone is not their counterexample evidence. The refused
+probe used 108.16 seconds; recorded PIDs 121267/121292/121293 were absent after
+cleanup, and its allocation was released.
+
+Working-memory admission now reserves root19 plus future8 as actual leases in
+one atomic per-class TRY at the exact held C cut. The future bundle contains
+one maximum-sized staging window, four serialized journal windows, and three
+anchor windows. The anchor writer waits for journal handback, borrows its exact
+three leases and returns them after its covering fence. Central cleanup frees
+future8 before root19 and reports the abstract bundle released only after all
+27 are gone. Journal/staging consumer integration and the D0 bundle/loan
+composition remain in progress; these source changes are not a liveness proof.
+The pre-construction directory check runs only at the settled held C cut,
+before descriptor BEGIN. Its resident commit budget is derived as one final
+installation plus the ceiling of actual extent rows divided by the actual
+allocation-record capacity per batch. This covers any physically feasible
+construction's allocation records, but can conservatively refuse a smaller
+snapshot near directory exhaustion; it is not physical free-space headroom.
+The same hint in the pressure source prevents immediate abort/retry churn.
+Startup's actual completed-fence layout binding is required before admission.
+
+A refused pre-construction directory check releases the exact C snapshot token
+first, then calls the sole shared working-release body over future8 and root19,
+one actual owned lease per step. Its authority comes from the actual master
+abort phase, FREE candidate, IDLE descriptor builder and untouched zero-token,
+no-loan bundle. It cannot cancel allocations or release persistent edges, and
+cannot authorize cleanup after descriptor BEGIN. Normal publication and this
+abort share the physical release loop with separate permission guards.
+These actor guards and controls remain source-only and unadmitted.
+
+
+The resource order avoids stranding an existing STAGED transaction: the served
+transaction can park after C staging when B cannot admit its journal workspace.
+Capturing maintenance leases before closing C could exhaust the journal class
+and then wait for that same transaction. The master now drains first without
+holding working leases, and never parks on a pool wait while C is held.
+Retirement debt is captured at HELD and marked seen only after successful
+publication; a transient failed TRY therefore remains eligible when room returns.
+
+The revised map roundtrip probe at `c524dc32e` source-admitted the repaired
+readonly map-entry contracts, then refused the actual map packer's guard:
+the encoder's field-capacity bound was not carried through the reader's
+unchanged-row-count theorem. The 20-book attempt used eight cached parents
+and eleven explicit source parents; total ACL2 loading cost was 94.91 seconds
+and 12,973,186 prover steps. The failing guard itself used 0.06 seconds and
+8,463 steps. Restore-reader loading and all target malformed-source and
+roundtrip controls remained unrun. This clears the earlier source-reader
+admission obstruction, not the end-to-end map recovery obligation.
+
+A subsequent retained source session at `40de976fb`, with the proof-only
+changes committed in `5e59fd022` and `0d1d55fcf`, admitted the actual map/arena
+packers and restore reader. The unchanged roundtrip assertion then passed
+after `94382fa6f` declared two unused reserve outputs: actual allocator
+reserve/commit/retire state was packed and read back, with its original stale,
+corruption and FIFO controls. The fixture runs ACL2 logical controls; it is
+not a host crash/recovery or complete checkpoint-selection witness.
+
+The missing-source-shape ground theorem still refused after 0.33 seconds and
+90,203 prover steps; the corresponding missing-source-type theorem was not
+sent. A proof refusal does not establish either malformed-source witness.
+The restore book's 56.44-second, 13,236,134-step source admission also leaves
+a proof-cost defect. The retained session was explicitly stopped and its
+three recorded lifecycle PIDs were absent. No certificate, full recovery,
+reclamation activation or FREE claim follows from these results.
+
+The shared semantic-page decoder was source-admitted in the 24-book `e7c67652f`
+closure with the proof-only row-frame hint committed in `d9959fe21`. This
+covers the actual header/child-Ref predicates, header reader guards, carrier
+frames, reader-context preservation, exact decoded-field/code observations,
+and retained entry-count implication. The seven remaining contract forms
+used 0.21 seconds and 17,516 prover steps after the source-parent load.
+It does not authenticate a cold candidate by itself: the composing binder
+must retain and check the authenticated descriptor and allocation-map
+identity, including replacement of a descriptor in the same candidate slot.
+
+The runtime publication child now retains two fence-owned bank occupants and
+one displaced-candidate debt. Each identity includes the catalog row, checkpoint,
+history, incarnation and all 32 bytes of the descriptor Ref's expected hash.
+The existing BEGIN snapshots those hash words from the actual installed
+candidate; only the matching successful covering Fence transfers that attempt
+into its bank. Replacing an occupied bank first retains its complete old
+identity as debt. Unrelated, failed and ambiguous completions preserve the old
+occupants and attempted identity; no completion may overwrite existing debt.
+Both lower publication BEGIN and actual writer rearm refuse outstanding debt.
+
+This is the first candidate-lifetime connection, not candidate recycling.
+There is deliberately no debt-clear operation. The next bounded post-C-release
+teardown must exclude both banks, persist retirements of exact owned construction
+allocations through the existing journal producer, remove only this candidate's
+root/source edges, and preserve other candidates and read pins. Borrowed sources
+are not retired by this operation. Cold boot must reconstruct both authenticated
+bank occupants and retained installation evidence before teardown is authorized;
+runtime fields do not establish cold authority. Bounded debt inspection/retirement scheduling now exists; terminal
+catalog reuse remains unimplemented. Activation and FREE remain disabled.
+
+The master now reaches a bounded displaced-candidate inspection after normal
+C snapshot release. Each call checks one actual physical row under the retained
+latest lifecycle/candidate owner, published descriptor identity and exact old
+debt identity. An owned role0..5 construction may be eligible only with its exact
+victim source edge, its counted exact six-root edges and no nonvictim durable
+protector. Physical read/I/O pins remain untouched; role6 journal tickets,
+borrowed sources and shared/archive-protected extents are not retirement input.
+The candidate and B lifecycle provenance remain retained across this traversal.
+
+The actual submit wrapper rechecks the full eligibility gate and calls the
+existing ordinary retirement producer in the same ACL2 call. That producer
+binds the actual containing batch and installs the allocator retirement intent
+before txn admission. New durable protectors are refused during the asynchronous
+wait and after persisted retirement; physical pins may still complete. Exact
+accepted/refused settlement releases the staging lease, while uncertainty
+retains it and the intent. The master tracks that one lease separately from the
+already released working27 bundle, including the uncertain-acquisition path.
+
+Only exact accepted batch/event settlement reaches the edge-drop arm. That arm
+checks the same owner/debt, exact allocation and actual RETIRE_PENDING retirement
+commit, then invokes the existing allocator edge-drop for the victim's source
+edge alone. It preserves all six roots, borrowed/shared/archive references,
+other candidates and transient pins. Submit, settlement consumption and edge
+drop have explicit zero-budget no-effect branches. EOF retains debt and catalog
+state: archive/ancestry reachability must be settled before root/source teardown
+or catalog reuse. The source actor and primitive controls remain unadmitted;
+activation and allocator FREE remain disabled.

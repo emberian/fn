@@ -15,6 +15,7 @@ sys.path.insert(0, str(Path(__file__).parent))
 from emit_certificate import *
 from emit_embed import alist_value
 from served_proof_gen import emit_served_proofs, is_nil
+from served_semantic_inventory import function_semantics, semantic_inventory
 
 BASE = Path(__file__).resolve().parents[2]
 
@@ -431,6 +432,7 @@ def generate(src):
     pkg_cache=BASE/'build/served-package-cache.pkl'
     pkg_deps=[src,Path(__file__),Path(__file__).with_name('emit_lean.py'),
       Path(__file__).with_name('emit_certificate.py'),Path(__file__).with_name('emit_embed.py'),
+      Path(__file__).with_name('served_semantic_inventory.py'),
       *([lw_file] if lw_file.is_file() else [])]
     pkg_key=hashlib.sha256(('v2:' + ''.join(digest(d) for d in pkg_deps)).encode()).hexdigest()
     static_targets=[export,out.parent/'ServedKinds.lean',out.parent/'ServedMetadata.lean',out.parent/'ServedCommit.lean']
@@ -482,7 +484,8 @@ def generate(src):
                 extra_calls[name] = calls_of(lbody, set())
                 acl2.write('('+name+' . '+packed_text(row)+')\n')
                 functions.append({'name':name,'canonical_export':'proposed',
-                  'record_sha256':hashlib.sha256(canonical_text(row).encode()).hexdigest()})
+                  'record_sha256':hashlib.sha256(canonical_text(row).encode()).hexdigest(),
+                  'semantic':function_semantics(name,row,d)})
             acl2.write('))\n')
             acl2.write("(fn2-tv-check-served-closure '("+' '.join(sorted(names))+") '("+' '.join(refused_list)+"))\n")
         widx=world_index(BASE/'meta/Fn2',extra_calls)
@@ -527,6 +530,7 @@ def generate(src):
       'unresolved':refused_list,
       'commit_words':len(cw_parsed),
       'native_boundary':natives_list,
+      'semantic_inventory':semantic_inventory(functions,roots,natives_list),
       'gates':{},'inputs':{str(f.relative_to(BASE)):digest(f) for f in sorted(set(
         [export,BASE/'meta/Fn2.lean',BASE/'meta/lean-toolchain',BASE/'meta/lake-manifest.json',
          *acl2_sources(),*BASE.glob('meta/Fn2/**/*.lean'),

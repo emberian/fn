@@ -1633,6 +1633,10 @@
         ((member-eq (car vars) sym-vars) (fn2-arms-nfix-bindings (cdr vars) sym-vars))
         (t (cons `(,(car vars) (nfix ,(car vars)))
                  (fn2-arms-nfix-bindings (cdr vars) sym-vars)))))
+(defun fn2-arms-max-dim (charges i)
+  (declare (xargs :verify-guards nil))
+  (if (atom charges) 0 (max (nfix (nth i (car charges))) (fn2-arms-max-dim (cdr charges) i))))
+
 (defun fn2-arms-chain-events (helper bvars kind ccode cacc env)
   (declare (xargs :verify-guards nil))
   (let* ((world (fn2-arm-get :world env))
@@ -1652,7 +1656,17 @@
                  (fn2-arms-child-callees (fn2-arm-get :uses cacc) world))
         ,(append (fn2-arms-column-readers kind (fn2-machine-property kind :table world))
                  (fn2-arms-column-readers 'fn2-machines *fn2-machine-directory-fields*))
-        nil))))
+        nil)
+      ,@(and (not observe)
+        `((make-event
+            (value (fn2-arms-child-quantities-event-with-residual
+                    ',helper
+                    ,(+ (fn2-arms-max-dim (fn2-arm-get :charges cacc) 0)
+                        (max *fn2-work-empty* (fn2-arms-max-dim (fn2-arm-get :charges cacc) 1)))
+                    ,(fn2-arms-max-dim (fn2-arm-get :charges cacc) 2)
+                    (w state))))
+          (make-event (value (fn2-arms-child-effects-event ',helper (w state))))
+          (make-event (value (fn2-arms-child-issued-event ',helper (w state)))))))))
 (defun fn2-arms-bool-expr-p (e)
   (declare (xargs :verify-guards nil))
   (or (booleanp e)
@@ -1920,27 +1934,42 @@
          (:issue
           (let* ((call (cadr step)) (opts (cddr step))
                  (code-var 'fn2-issue-code)
+                 (bindings (fn2-arms-kw :bind opts nil))
+                 (result-vars '(fn2-issue-op fn2-issue-opgen))
                  (ok (fn2-arms-kw :ok opts nil)) (refused (fn2-arms-kw :refused opts nil))
                  (budget (fn2-arm-get :budget env)))
             (cond
              (rest (mv (msg "~x0 ends its path; its :ok steps continue it." step) nil acc))
+             ((and (member-eq :bind opts)
+                   (not (and (true-listp bindings) (equal (len bindings) 2)
+                             (fn2-arms-vars-ok bindings)
+                             (no-duplicatesp-eq bindings)
+                             (not (intersection-eq bindings (cons code-var result-vars)))
+                             (not (intersection-eq bindings (fn2-arm-get :bound env))))))
+              (mv (msg "~x0 :bind requires two fresh variable names for operation slot and generation." step) nil acc))
              ((not (and (consp ok) (true-listp refused)))
-              (mv (msg "~x0 is (:issue (OP ARG ...) :ok (STEP ...) [:refused (STEP ...)])." step) nil acc))
+              (mv (msg "~x0 is (:issue (OP ARG ...) [:bind (SLOT GEN)] :ok (STEP ...) [:refused (STEP ...)])." step) nil acc))
              ((zp (fn2-arm-get :descriptors budget))
               (mv (msg "~x0 issues, but the kind declares :descriptors 0." step) nil acc))
              (t
               (mv-let (err call2 acc) (fn2-arms-call call nil env acc fuel)
                 (if err (mv err nil acc)
-                  (mv-let (err1 okc acc) (fn2-arms-steps ok (fn2-arms-with-use (car call) (fn2-arms-cleared env)) acc (1- fuel))
+                  (mv-let (err1 okc acc) (fn2-arms-steps ok (fn2-arms-with-use (car call)
+                                                   (fn2-decl-set :bound (append bindings (fn2-arm-get :bound env))
+                                                                 (fn2-arms-cleared env))) acc (1- fuel))
                     (mv-let (err2 exc acc) (fn2-arms-steps (append refused '((:park :operation))) (fn2-arms-cleared env) acc (1- fuel))
                       (mv-let (err3 otc acc)
                         (fn2-arms-steps (append refused (or (fn2-arm-get :refusal env) '((:halt)))) (fn2-arms-cleared env) acc (1- fuel))
                         (mv (or err1 err2 err3)
                             (fn2-arms-wrap-writes env
                              `(mv-let ,(fn2-arms-binders (getpropc (car call2) 'stobjs-out nil (fn2-arm-get :world env))
-                                                         (list code-var 'fn2-issue-op 'fn2-issue-opgen)) ,call2
-                                (declare (ignorable fn2-issue-op fn2-issue-opgen))
-                                (cond ((eq ,code-var :ok) ,okc)
+                                                         (cons code-var result-vars)) ,call2
+                                (declare (ignorable ,@result-vars))
+                                (cond ((eq ,code-var :ok)
+                                       ,(if bindings
+                                            `(let ((,(car bindings) ,(car result-vars))
+                                                   (,(cadr bindings) ,(cadr result-vars))) ,okc)
+                                          okc))
                                       ((eq ,code-var :exhausted) ,exc)
                                       (t ,otc))))
                             (fn2-decl-set :issues t acc)))))))))))
@@ -2170,10 +2199,6 @@
       (mv-let (from refusal steps) (fn2-arms-options (cddr entry))
         (if (eq (car entry) :from) (mv (cadr entry) refusal steps) (mv from (fn2-arms-norm-refusal (cadr entry)) steps)))
     (mv nil nil entry)))
-(defun fn2-arms-max-dim (charges i)
-  (declare (xargs :verify-guards nil))
-  (if (atom charges) 0 (max (nfix (nth i (car charges))) (fn2-arms-max-dim (cdr charges) i))))
-
 (defun fn2-arms-budget-admission (body descriptors tuple)
   ;; Reserve the whole path's inferred descriptor maximum before any effects.
   ;; A short residual budget preserves the continuation and all children; the
@@ -2262,25 +2287,34 @@
   (if (atom children) nil
     (append (fn2-arms-column-readers (car children) (fn2-view-layout (car children) world))
             (fn2-arms-quantity-readers (cdr children) world))))
-(defun fn2-arms-child-quantities-event (name work-limit world)
+(defun fn2-arms-child-quantities-event-with-residual (name work-limit residual world)
   (declare (xargs :verify-guards nil))
   (let* ((ins (car (fn2-arms-sig name world)))
          (formals (getpropc name 'formals nil world))
          (call (cons name formals))
          (hyps (append (fn2-arms-child-shape-hyps ins)
                        (list (getpropc name 'guard t world))))
-         (terms (fn2-run-quantity-terms call 'budget work-limit
+         (terms (fn2-run-quantity-terms call residual work-limit
                    (nfix (fn2-arm-get :descriptors (fn2-machine-property (car ins) :budget world))))))
     `(defthm ,(fn2-columns-sym name "-QUANTITIES")
        (implies (and ,@hyps)
                 (and (fn2-run-quantitiesp (car ,call) (mv-nth 1 ,call)
-                                     (mv-nth 2 ,call) budget ,work-limit)
+                                     (mv-nth 2 ,call) ,residual ,work-limit)
                      ,(nth 5 terms)))
        :rule-classes ,(fn2-run-quantity-rules hyps terms)
        :hints (("Goal" :in-theory (e/d (,name fn2-run-quantitiesp)
                        (nfix nth ,@(fn2-arms-shape-fns ins)
                         ,@(fn2-arms-rows-fns ins)
                         ,@(fn2-arms-quantity-readers ins world))))))))
+; Public arms account against the caller budget. Internal chain suffixes
+; account against their static descriptor bound; the outer admission relates
+; that bound to the budget before any effects run.
+(defun fn2-arms-child-quantities-event (name work-limit world)
+  (declare (xargs :verify-guards nil))
+  (fn2-arms-child-quantities-event-with-residual name work-limit 'budget world))
+; Keep row values and their width checks opaque in effect proofs, as in
+; shape proofs: effects compose through callee contracts, not storage layout.
+; Opening these readers splits each path on unrelated field ranges.
 ; This is an actual effect proof, distinct from the numeric report bound.
 ; Arms without an operation child must report zero; issuing arms prove the
 ; exact append count. A body that dequeues or underreports cannot satisfy it.
@@ -2298,22 +2332,37 @@
           `(equal ,after (+ ,before (mv-nth 2 ,call)))
         `(equal (mv-nth 2 ,call) 0)))
     :hints (("Goal" :in-theory (e/d (,name)
-       (natp nfix nth ,@(fn2-arms-shape-fns ins) ,@(fn2-arms-rows-fns ins))))))))
+       (natp nfix nth unsigned-byte-p min max
+        ,@(fn2-arms-shape-fns ins) ,@(fn2-arms-rows-fns ins)
+        ,@(fn2-arms-quantity-readers ins world))))))))
 (defun fn2-arms-child-issued-event (name world)
  (declare (xargs :verify-guards nil))
  (let* ((sig (fn2-arms-sig name world)) (ins (car sig)) (outs (cadr sig))
         (call (cons name (getpropc name 'formals nil world)))
         (pos (position-eq 'fn2-ops outs))
-        (after (if pos `(mv-nth ,(+ 4 pos) ,call) 'fn2-ops)))
-  `(defthm ,(fn2-columns-sym name "-ISSUED-EFFECT")
-    (implies (and ,@(fn2-arms-child-shape-hyps ins)
-                  ,(getpropc name 'guard t world))
-     ,(if (member-eq 'fn2-ops ins)
-          (fn2-run-issued-claim `(mv-nth 2 ,call) 'fn2-ops after)
-        `(equal (mv-nth 2 ,call) 0)))
-    :hints (("Goal" :in-theory (e/d (,name)
-       (natp nfix nth fn2-ops-issued-count fn2-op-issued-weight
-        ,@(fn2-arms-shape-fns ins) ,@(fn2-arms-rows-fns ins))))))))
+        (after (if pos `(mv-nth ,(+ 4 pos) ,call) 'fn2-ops))
+        (ops (member-eq 'fn2-ops ins))
+        (formula
+         `(implies (and ,@(fn2-arms-child-shape-hyps ins)
+                        ,(getpropc name 'guard t world))
+           ,(if ops (fn2-run-issued-claim `(mv-nth 2 ,call) 'fn2-ops after)
+              `(equal (mv-nth 2 ,call) 0)))))
+  ; Without an operation carrier these two public statements are identical.
+  ; Check that identity before reusing the first proof; never infer history
+  ; preservation from queue length when an operation carrier is present.
+  (if (and (not ops)
+           (not (equal formula (caddr (fn2-arms-child-effects-event name world)))))
+      `(make-event (er soft 'fn2-arms-child-issued-event
+          "Non-issuing effect statements disagree for ~x0." ',name))
+    `(defthm ,(fn2-columns-sym name "-ISSUED-EFFECT")
+       ,formula
+       :hints ,(if ops
+                   `(("Goal" :in-theory (e/d (,name)
+                      (natp nfix nth unsigned-byte-p min max
+                       fn2-ops-issued-count fn2-op-issued-weight
+                       ,@(fn2-arms-shape-fns ins) ,@(fn2-arms-rows-fns ins)
+                       ,@(fn2-arms-quantity-readers ins world)))))
+                 `(("Goal" :by ,(fn2-columns-sym name "-DESCRIPTOR-EFFECT"))))))))
 (defun fn2-arms-child-fn-events (name kind observe acc body world)
   (declare (xargs :verify-guards nil))
   (let* ((tuple (fn2-arms-kind-tuple kind world))

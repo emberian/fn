@@ -2,7 +2,7 @@
 ; Physical root completion remains the shared worker's responsibility.
 (in-package "ACL2")
 (include-book "event-build-unit")
-(include-book "../books/event-producer")
+(include-book "../books/event-rearm")
 
 (defun fn2-epp-begin (token slot gen scratch sgen read-slot read-gen fn2-event-build fn2-checkpoint-build fn2-checkpoints fn2-core)
  (declare (xargs :stobjs (fn2-event-build fn2-checkpoint-build fn2-checkpoints fn2-core) :verify-guards nil))
@@ -13,9 +13,9 @@
 
 (defun fn2-epp-step (budget fn2-event-build fn2-checkpoints fn2-checkpoint-refs fn2-checkpoint-bytes fn2-checkpoint-construction fn2-checkpoint-page-verified fn2-core)
  (declare (xargs :stobjs (fn2-event-build fn2-checkpoints fn2-checkpoint-refs fn2-checkpoint-bytes fn2-checkpoint-construction fn2-checkpoint-page-verified fn2-core) :verify-guards nil))
- (stobj-let ((fn2-event-read (fn2-core-event-read fn2-core)) (fn2-csnapshot (fn2-core-csnapshot fn2-core)) (fn2-commit-root (fn2-core-commit-root fn2-core)) (fn2-extents (fn2-core-extents fn2-core)) (fn2-alloc-edges (fn2-core-alloc-edges fn2-core)) (fn2-ops (fn2-core-ops fn2-core)) (fn2-journal-members (fn2-core-journal-members fn2-core)) (fn2-mk (fn2-core-mk fn2-core)) (fn2-fc (fn2-core-fc fn2-core)) (fn2-fc-context (fn2-core-fc-context fn2-core)) (fn2-b3 (fn2-core-b3 fn2-core)) (fn2-fields (fn2-core-fields fn2-core)) (fn2-pool (fn2-core-pool fn2-core)) (fn2-digests (fn2-core-digests fn2-core)) (fn2-control (fn2-core-control fn2-core)))
-  (code fn2-event-build fn2-event-read fn2-journal-members fn2-mk fn2-fc fn2-fc-context fn2-b3 fn2-checkpoint-construction fn2-extents fn2-alloc-edges fn2-fields fn2-pool fn2-digests fn2-control)
-  (fn2-event-producer-step budget fn2-event-build fn2-event-read fn2-csnapshot fn2-checkpoints fn2-commit-root fn2-checkpoint-refs fn2-checkpoint-bytes fn2-checkpoint-construction fn2-extents fn2-alloc-edges fn2-ops fn2-checkpoint-page-verified fn2-journal-members fn2-mk fn2-fc fn2-fc-context fn2-b3 fn2-fields fn2-pool fn2-digests fn2-control)
+ (stobj-let ((fn2-event-read (fn2-core-event-read fn2-core)) (fn2-csnapshot (fn2-core-csnapshot fn2-core)) (fn2-commit-root (fn2-core-commit-root fn2-core)) (fn2-extents (fn2-core-extents fn2-core)) (fn2-alloc-edges (fn2-core-alloc-edges fn2-core)) (fn2-ops (fn2-core-ops fn2-core)) (fn2-journal-members (fn2-core-journal-members fn2-core)) (fn2-mk (fn2-core-mk fn2-core)) (fn2-fc (fn2-core-fc fn2-core)) (fn2-fc-context (fn2-core-fc-context fn2-core)) (fn2-b3 (fn2-core-b3 fn2-core)) (fn2-fields (fn2-core-fields fn2-core)) (fn2-pool (fn2-core-pool fn2-core)) (fn2-digests (fn2-core-digests fn2-core)) (fn2-control (fn2-core-control fn2-core)) (fn2-checkpoint-build (fn2-core-checkpoint-build fn2-core)) (fn2-checkpoint-planning (fn2-core-checkpoint-planning fn2-core)) (fn2-checkpoint-recipe (fn2-core-checkpoint-recipe fn2-core)) (fn2-checkpoint-recipe-order (fn2-core-checkpoint-recipe-order fn2-core)))
+  (code fn2-event-build fn2-event-read fn2-journal-members fn2-mk fn2-fc fn2-fc-context fn2-b3 fn2-checkpoint-construction fn2-extents fn2-alloc-edges fn2-fields fn2-pool fn2-digests fn2-control fn2-checkpoint-planning fn2-checkpoint-recipe fn2-checkpoint-recipe-order)
+  (fn2-event-producer-step budget fn2-event-build fn2-event-read fn2-csnapshot fn2-checkpoints fn2-commit-root fn2-checkpoint-refs fn2-checkpoint-bytes fn2-checkpoint-construction fn2-extents fn2-alloc-edges fn2-ops fn2-checkpoint-page-verified fn2-journal-members fn2-mk fn2-fc fn2-fc-context fn2-b3 fn2-fields fn2-pool fn2-digests fn2-checkpoint-build fn2-control fn2-checkpoint-planning fn2-checkpoint-recipe fn2-checkpoint-recipe-order)
   (mv code fn2-event-build fn2-checkpoint-construction fn2-core)))
 
 (defun fn2-epp-read (fn2-event-build fn2-checkpoints fn2-core)
@@ -39,6 +39,35 @@
       ((unless (eq issued :ok)) (mv issued fn2-event-build fn2-checkpoint-construction fn2-core fn2-sim fn2-own))
       ((mv fn2-core fn2-sim fn2-own) (fn2-epv-physical fn2-core fn2-sim fn2-own)))
   (fn2-epp-drive (- fuel 1) fn2-event-build fn2-checkpoints fn2-checkpoint-refs fn2-checkpoint-bytes fn2-checkpoint-construction fn2-checkpoint-page-verified fn2-core fn2-sim fn2-own)))
+
+; Missing successful publication must not reset a real bound source job.
+(defun fn2-epp-rearm-control-body (fn2-event-build fn2-checkpoints fn2-checkpoint-refs fn2-checkpoint-publication fn2-checkpoint-lifecycle fn2-core)
+ (declare (xargs :stobjs (fn2-event-build fn2-checkpoints fn2-checkpoint-refs fn2-checkpoint-publication fn2-checkpoint-lifecycle fn2-core) :verify-guards nil))
+ (b* ((phase (fn2-event-build-phase 0 fn2-event-build))
+      (token (fn2-event-build-token 0 fn2-event-build))
+      (fn2-checkpoint-publication (fn2-checkpoint-publication-init 1 fn2-checkpoint-publication))
+      (fn2-checkpoint-lifecycle (fn2-checkpoint-lifecycle-init 1 fn2-checkpoint-lifecycle)))
+  (stobj-let ((fn2-event-read (fn2-core-event-read fn2-core)) (fn2-journal-members (fn2-core-journal-members fn2-core))
+              (fn2-csnapshot (fn2-core-csnapshot fn2-core)) (fn2-extents (fn2-core-extents fn2-core))
+              (fn2-mk (fn2-core-mk fn2-core)) (fn2-fc (fn2-core-fc fn2-core)) (fn2-digests (fn2-core-digests fn2-core))
+              (fn2-checkpoint-writer (fn2-checkpoint-writer-table fn2-core)) (fn2-machines (fn2-core-machines fn2-core)))
+   (code fn2-event-build fn2-event-read fn2-journal-members)
+   (fn2-event-producer-rearm fn2-event-build fn2-event-read fn2-journal-members fn2-csnapshot fn2-checkpoints fn2-checkpoint-refs
+    fn2-checkpoint-publication fn2-checkpoint-lifecycle fn2-extents fn2-mk fn2-fc fn2-digests fn2-checkpoint-writer fn2-machines)
+   (mv (and (eq code :retained) (= phase (fn2-event-build-phase 0 fn2-event-build))
+            (= token (fn2-event-build-token 0 fn2-event-build))
+            (= (fn2-event-read-phase 0 fn2-event-read) *fn2-event-read-phase-complete*)
+            (= (fn2-journal-members-phase 0 fn2-journal-members) *fn2-journal-members-phase-done*))
+       fn2-event-build fn2-checkpoint-publication fn2-checkpoint-lifecycle fn2-core))))
+(defun fn2-epp-rearm-control (fn2-event-build fn2-checkpoints fn2-checkpoint-refs fn2-core)
+ (declare (xargs :stobjs (fn2-event-build fn2-checkpoints fn2-checkpoint-refs fn2-core) :verify-guards nil))
+ (with-local-stobj fn2-checkpoint-publication
+  (mv-let (answer fn2-event-build fn2-checkpoint-publication fn2-core)
+   (with-local-stobj fn2-checkpoint-lifecycle
+    (mv-let (answer fn2-event-build fn2-checkpoint-publication fn2-checkpoint-lifecycle fn2-core)
+     (fn2-epp-rearm-control-body fn2-event-build fn2-checkpoints fn2-checkpoint-refs fn2-checkpoint-publication fn2-checkpoint-lifecycle fn2-core)
+     (mv answer fn2-event-build fn2-checkpoint-publication fn2-core)))
+   (mv answer fn2-event-build fn2-core))))
 
 (defun fn2-epp-body (pressure fn2-event-build fn2-checkpoint-build fn2-checkpoints fn2-checkpoint-refs fn2-checkpoint-bytes
                      fn2-checkpoint-construction fn2-checkpoint-page fn2-checkpoint-page-verified fn2-core fn2-sim fn2-own)
@@ -79,8 +108,10 @@
                    (fn2-fc (fn2-core-fc fn2-core)) (fn2-extents (fn2-core-extents fn2-core))
                    (fn2-pool (fn2-core-pool fn2-core)) (fn2-control (fn2-core-control fn2-core)))
         (code fn2-checkpoint-build fn2-checkpoints fn2-checkpoint-construction fn2-extents fn2-control)
-        (fn2-checkpoint-build-begin 1 0 token ds dg ss sg 7 0 1 fn2-checkpoint-build fn2-csnapshot fn2-checkpoints
-          fn2-checkpoint-refs fn2-checkpoint-bytes fn2-fields fn2-fc fn2-checkpoint-construction fn2-extents fn2-pool fn2-control)
+        (with-local-stobj fn2-origin
+        (let ((fn2-origin (fn2-origin-prepare '((:origin-lineage . 101) (:origin-domain . 103) (:origin-incarnation . 107) (:history-id . 1) (:history-incarnation . 1)) fn2-origin)))
+         (fn2-checkpoint-build-begin 1 0 token ds dg ss sg 7 0 1 fn2-checkpoint-build fn2-csnapshot fn2-checkpoints
+          fn2-checkpoint-refs fn2-checkpoint-bytes fn2-fields fn2-fc fn2-checkpoint-construction fn2-extents fn2-pool fn2-origin fn2-control)))
         (mv code fn2-checkpoint-build fn2-checkpoints fn2-checkpoint-construction fn2-core)))
       ((mv pressurized fn2-core) (if pressure (fn2-evb-pressure rows fn2-core) (mv :ok fn2-core)))
       ((mv stale fn2-event-build fn2-core)
@@ -132,12 +163,12 @@
                   (= (fn2-fields-value (+ 256 *fn2-event-proof-entry-field-event-first*) fn2-fields) 1)
                   (= (fn2-fields-value (+ 256 *fn2-event-proof-entry-field-members*) fn2-fields) 1))
              (fn2-pool-logical-octets 4096 (fn2-pool-base ps fn2-pool) fn2-pool) fn2-fields)) (mv answer before fn2-core)))
-      ((mv bound fn2-event-build fn2-checkpoint-page)
-       (stobj-let ((fn2-csnapshot (fn2-core-csnapshot fn2-core)) (fn2-extents (fn2-core-extents fn2-core))
+      ((mv bound fn2-event-build fn2-checkpoint-page fn2-core)
+       (stobj-let ((fn2-checkpoint-planning (fn2-core-checkpoint-planning fn2-core)) (fn2-checkpoint-recipe (fn2-core-checkpoint-recipe fn2-core)) (fn2-csnapshot (fn2-core-csnapshot fn2-core)) (fn2-extents (fn2-core-extents fn2-core))
                    (fn2-pool (fn2-core-pool fn2-core)) (fn2-fc (fn2-core-fc fn2-core)) (fn2-fields (fn2-core-fields fn2-core)))
-        (code fn2-event-build fn2-checkpoint-page)
+        (code fn2-event-build fn2-checkpoint-page fn2-checkpoint-recipe)
         (fn2-event-build-bind-page fn2-event-build fn2-csnapshot fn2-checkpoints fn2-checkpoint-construction fn2-extents
-          fn2-checkpoint-page fn2-checkpoint-page-verified fn2-pool fn2-fc fn2-fields) (mv code fn2-event-build fn2-checkpoint-page)))
+          fn2-checkpoint-page fn2-checkpoint-page-verified fn2-pool fn2-fc fn2-fields fn2-checkpoint-planning fn2-checkpoint-recipe) (mv code fn2-event-build fn2-checkpoint-page fn2-core)))
       ((mv waited fn2-event-build fn2-checkpoint-construction fn2-core)
        (fn2-evb-step fn2-event-build fn2-checkpoints fn2-checkpoint-refs fn2-checkpoint-construction fn2-checkpoint-page-verified fn2-core))
       ((mv consumed fn2-event-build fn2-checkpoint-refs fn2-checkpoint-bytes)
@@ -148,9 +179,11 @@
         (fn2-event-build-consume-page fn2-event-build fn2-event-read fn2-csnapshot fn2-checkpoints fn2-checkpoint-refs fn2-checkpoint-bytes
           fn2-checkpoint-page fn2-checkpoint-page-verified fn2-checkpoint-construction fn2-extents fn2-mk fn2-fc fn2-digests fn2-pool)
         (mv code fn2-event-build fn2-checkpoint-refs fn2-checkpoint-bytes)))
+      ((mv rearm-retained fn2-event-build fn2-core)
+       (fn2-epp-rearm-control fn2-event-build fn2-checkpoints fn2-checkpoint-refs fn2-core))
       (unchanged (stobj-let ((fn2-pool (fn2-core-pool fn2-core))) (p)
                    (equal before (fn2-pool-logical-octets 4096 (fn2-pool-base ps fn2-pool) fn2-pool)) p)))
-  (mv (and prefix (eq prepared :page) decoded (eq bound :ok) (eq waited :wait) (eq consumed :pending) unchanged
+  (mv (and prefix (eq prepared :page) decoded (eq bound :ok) (eq waited :wait) (eq consumed :pending) unchanged rearm-retained
            (= (fn2-event-build-phase 0 fn2-event-build) *fn2-event-build-phase-bound*)
            (= (fn2-event-build-directory-completed 0 fn2-event-build) 0)
            (= (fn2-checkpoint-refs-root-source-complete 3 fn2-checkpoint-refs) 0))

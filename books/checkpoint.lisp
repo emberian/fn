@@ -46,10 +46,14 @@
 (defun fn2-checkpoint-ref-clear-build (r fn2-checkpoint-refs)
  (declare (xargs :stobjs fn2-checkpoint-refs
   :guard (and (fn2-checkpoint-refs-wfp fn2-checkpoint-refs) (natp r) (< r (fn2-checkpoint-refs-rows fn2-checkpoint-refs)))))
+ ; The frame contract covers arbitrary logical indices, including indices
+ ; outside the guarded served domain. Never let a raw setter extend a column.
+ (if (not (and (natp r) (< r (fn2-checkpoint-refs-rows fn2-checkpoint-refs))))
+     fn2-checkpoint-refs
  (let* ((fn2-checkpoint-refs (fn2-checkpoint-refs-set-root-build-token r 0 fn2-checkpoint-refs))
         (fn2-checkpoint-refs (fn2-checkpoint-refs-set-root-source-complete r 0 fn2-checkpoint-refs))
         (fn2-checkpoint-refs (fn2-checkpoint-refs-set-root-intended-bytes r 0 fn2-checkpoint-refs))
-        (fn2-checkpoint-refs (fn2-checkpoint-refs-set-root-completed-bytes r 0 fn2-checkpoint-refs))) fn2-checkpoint-refs))
+        (fn2-checkpoint-refs (fn2-checkpoint-refs-set-root-completed-bytes r 0 fn2-checkpoint-refs))) fn2-checkpoint-refs)))
 (fn2-checkpoint-refs-preserves fn2-checkpoint-ref-clear-build (r fn2-checkpoint-refs))
 (in-theory (disable fn2-checkpoint-ref-clear-build))
 

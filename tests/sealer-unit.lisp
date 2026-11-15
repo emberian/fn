@@ -58,7 +58,7 @@
       (fn2-run-paths (fn2-run-paths-init (* 9 *fn2-run-max-levels*) fn2-run-paths))
       (fn2-ranges (fn2-ranges-init 1 fn2-ranges))
       (fn2-range-sources (fn2-range-sources-init 8 fn2-range-sources))
-      ((mv code fn2-seals) (fn2-seal-init 0 *fn2-su-fbase* 0 pfill 9 0 1 fn2-seals))
+      ((mv code fn2-seals) (fn2-seal-init 0 *fn2-su-fbase* 0 pfill 9 0 1 1 1 fn2-seals))
       ((unless (eq code :ok)) (fn2-su-mv code))
       ;; the merge (C5): range row 0, sources 0-7 through cursors 1-8
       ((mv code fn2-seals) (fn2-seal-merge-rows 0 0 1 (+ *fn2-su-fbase* *fn2-seal-field-rows*)
@@ -383,7 +383,7 @@
       (fn2-run-paths (fn2-run-paths-init (* 9 *fn2-run-max-levels*) fn2-run-paths))
       (fn2-ranges (fn2-ranges-init 1 fn2-ranges))
       (fn2-range-sources (fn2-range-sources-init 8 fn2-range-sources))
-      ((mv code fn2-seals) (fn2-seal-init 0 *fn2-su-fbase* 0 pfill 9 0 1 fn2-seals))
+      ((mv code fn2-seals) (fn2-seal-init 0 *fn2-su-fbase* 0 pfill 9 0 1 1 1 fn2-seals))
       ((unless (eq code :ok)) (fn2-su-mv code))
       ((mv code fn2-seals) (fn2-seal-merge-rows 0 0 1 (+ *fn2-su-fbase* *fn2-seal-field-rows*)
                                                 (+ *fn2-su-fbase* *fn2-seal-field-rows* *fn2-run-entry-rows*) fn2-seals)))

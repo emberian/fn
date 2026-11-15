@@ -7,17 +7,11 @@
 (include-book "checkpoint-restore-reader")
 (include-book "checkpoint-restore-map")
 (include-book "checkpoint-recovery-evidence-state")
+(include-book "checkpoint-recovery-census-state")
 (include-book "checkpoint-restore-arena")
+(include-book "checkpoint-restore-semantic-state")
+(include-book "boot-format")
 (fn2-book-layer :b)
-
-(deflayout fn2-boot-record
- '((magic :u32) (version :u8) (kind :u8) (index :varint)
-   (image-size :varint) (extents :varint) (groups :varint)
-   (owner :u32) (authority :u8) (identity (:octets 250))
-   (value :varint) (epoch :varint) (previous :varint)))
-(defconst *fn2-boot-magic* #x54423246)
-(defconst *fn2-boot-unit* 4096)
-(defconst *fn2-boot-hash-offset* 4064)
 
 ; Only startup configuration has a list cursor. It advances one group per
 ; visit, is cleared before ready, and never contains parsed device data.
@@ -32,6 +26,9 @@
  ((fn2-boot-config-checkpoint-layout-ready :type (unsigned-byte 1) :initially 0 :why "Set only after checked bootstrap/empty anchor scan and the final startup fence.")
   (fn2-boot-config-image-size :type (unsigned-byte 60) :initially 0 :why "Actual image size checked by ACL2 startup geometry.")
   (fn2-boot-config-geometry :type (array (unsigned-byte 8) (32)) :initially 0 :why "Owned bootstrap geometry hash; not checker scratch.")
+  (fn2-boot-config-anchor-checked-mask :type (unsigned-byte 8) :initially 0 :why "Actual per-slot anchor authentication results; retained separately from empty and malformed sectors.")
+  (fn2-boot-config-anchor-empty-mask :type (unsigned-byte 8) :initially 0 :why "Actual canonical-zero anchor sectors observed during this cold scan.")
+  (fn2-boot-config-anchor-invalid-mask :type (unsigned-byte 8) :initially 0 :why "Observed nonempty anchor failures remain explicit census evidence; never silently relabelled empty.")
   (fn2-boot-config-arena-mask :type (unsigned-byte 8) :initially 0 :why "Per-anchor authenticated arena tuple/uniqueness evidence only; never selected-base authority.")
   (fn2-boot-config-map-fifo-mask :type (unsigned-byte 8) :initially 0 :why "Per-anchor allocation-map/FIFO investigation evidence only; never a selected-base or serving bit.")
   (fn2-boot-config-anchor-evidence :type (array (unsigned-byte 8) (384)) :initially 0 :why "Three checked digests per physical anchor slot: batch, predecessor, anchor hash; retained across rx window reuse.")
@@ -94,6 +91,15 @@
  :profilep t
  :why "Exact intake cursor and bounded FIFO investigation remain bound to their actual anchor candidate.")
 
+(defcorechild fn2-core-checkpoint-restore-reach fn2-checkpoint-restore-reach
+ :init (fn2-checkpoint-restore-reach-init (fn2-b-capacity :extent-slots 16 profile) fn2-checkpoint-restore-reach)
+ :profilep (unsigned-byte-p 32 (fn2-b-capacity :extent-slots 16 profile))
+ :why "One tagged identity and typed protection union per extent, shared by every cold root and payload alias.")
+(defcorechild fn2-core-checkpoint-restore-reach-control fn2-checkpoint-restore-reach-control
+ :init (fn2-checkpoint-restore-reach-control-init (if (fn2-profile-get :image-boot profile) 1 0) fn2-checkpoint-restore-reach-control)
+ :profilep t
+ :why "A nonwrapping investigation generation binds every cold reach to the same authenticated descriptor and map intake.")
+
 (defcorechild fn2-core-checkpoint-restore-arena fn2-checkpoint-restore-arena
  :init (fn2-checkpoint-restore-arena-init (fn2-b-capacity :extent-slots 16 profile) fn2-checkpoint-restore-arena)
  :profilep (unsigned-byte-p 32 (fn2-b-capacity :extent-slots 16 profile))
@@ -107,13 +113,28 @@
  :profilep t
  :why "One candidate-bound ordered arena intake cursor; no live allocator authority.")
 
+(defcorechild fn2-core-checkpoint-restore-semantic fn2-checkpoint-restore-semantic
+ :init (fn2-checkpoint-restore-semantic-init (if (fn2-profile-get :image-boot profile) 1 0) fn2-checkpoint-restore-semantic)
+ :profilep t
+ :why "One exact descriptor-bound cold semantic page reader; no selected-base or live allocator authority.")
+
+(defcorechild fn2-core-checkpoint-restore-semantic-work fn2-checkpoint-restore-semantic-work
+ :init (fn2-checkpoint-restore-semantic-work-init (fn2-b-capacity :extent-slots 16 profile) fn2-checkpoint-restore-semantic-work)
+ :profilep (unsigned-byte-p 32 (fn2-b-capacity :extent-slots 16 profile))
+ :why "Tagged exact authenticated semantic page targets, one row per physical extent; no live edge or serving authority.")
+
 (defcorechild fn2-core-checkpoint-recovery-evidence fn2-checkpoint-recovery-evidence
  :init (fn2-checkpoint-recovery-evidence-init 5 fn2-checkpoint-recovery-evidence) :profilep t
  :why "One bounded cold journal investigation and evidence for each of the four physical anchors; no base selection.")
 
+(defcorechild fn2-core-checkpoint-recovery-census fn2-checkpoint-recovery-census
+ :init (fn2-checkpoint-recovery-census-init (if (fn2-profile-get :image-boot profile) 1 0) fn2-checkpoint-recovery-census)
+ :profilep t
+ :why "One bounded census rebinds retained installation evidence and observed anchor ancestry; semantic roots remain owed and no base is selected.")
+
 (defmachine fn2-boot
  :states (:free :prepare :write :write-result :read :read-result :verify :advance
-          :anchor :bootstrap :bootstrap-verify :checkpoint-anchor :checkpoint-check :checkpoint-descriptor :checkpoint-verify :checkpoint-root-candidate :checkpoint-root-reserve :checkpoint-root-begin :checkpoint-root-load :checkpoint-root-copy :checkpoint-root-verify :checkpoint-root-dispatch :checkpoint-root-padding :checkpoint-root-next :checkpoint-root-finish :checkpoint-root-fifo :checkpoint-evidence-begin :checkpoint-evidence-target :checkpoint-evidence-load :checkpoint-evidence-copy :checkpoint-evidence-check :checkpoint-evidence-record :checkpoint-evidence-next :recover :recover-wait :epoch :epoch-fence :epoch-result :release :ready :failed)
+          :anchor :bootstrap :bootstrap-verify :checkpoint-anchor :checkpoint-check :checkpoint-descriptor :checkpoint-verify :checkpoint-root-candidate :checkpoint-root-reserve :checkpoint-root-begin :checkpoint-root-load :checkpoint-root-copy :checkpoint-root-verify :checkpoint-root-dispatch :checkpoint-root-padding :checkpoint-root-next :checkpoint-root-finish :checkpoint-root-fifo :checkpoint-evidence-begin :checkpoint-evidence-target :checkpoint-evidence-load :checkpoint-evidence-copy :checkpoint-evidence-check :checkpoint-evidence-record :checkpoint-evidence-next :checkpoint-semantic-begin :checkpoint-semantic-load :checkpoint-semantic-copy :checkpoint-semantic-check :checkpoint-semantic-entries :checkpoint-semantic-find :checkpoint-census :recover :recover-wait :epoch :epoch-fence :epoch-result :release :ready :failed)
  :fields ((pending :u32) (stopped :bool) (pool-slot :u32) (pool-gen :u60)
           (rx-slot :u32) (rx-gen :u60) (create :bool) (image-size :u60)
           (base :u60) (total :u32) (index :u32) (stage :u8) (offset :u60)
@@ -124,7 +145,21 @@
          (:advance :storage-window) (:anchor :storage-window)
          (:bootstrap :storage-window) (:bootstrap-verify :storage-window)
          (:checkpoint-anchor :storage-window) (:checkpoint-check :storage-window) (:checkpoint-descriptor :storage-window) (:checkpoint-verify :storage-window)
-         (:checkpoint-root-candidate :storage-window) (:checkpoint-root-reserve :storage-window) (:checkpoint-root-begin :storage-window) (:checkpoint-root-load :storage-window) (:checkpoint-root-copy :storage-window) (:checkpoint-root-verify :storage-window) (:checkpoint-root-dispatch :storage-window) (:checkpoint-root-padding :storage-window) (:checkpoint-root-next :storage-window) (:checkpoint-root-finish :storage-window) (:checkpoint-root-fifo :storage-window) (:recover :storage-window)
+         (:checkpoint-root-candidate :storage-window) (:checkpoint-root-reserve :storage-window) (:checkpoint-root-begin :storage-window) (:checkpoint-root-load :storage-window) (:checkpoint-root-copy :storage-window) (:checkpoint-root-verify :storage-window) (:checkpoint-root-dispatch :storage-window) (:checkpoint-root-padding :storage-window) (:checkpoint-root-next :storage-window) (:checkpoint-root-finish :storage-window) (:checkpoint-root-fifo :storage-window)
+         (:checkpoint-evidence-begin :storage-window)
+         (:checkpoint-evidence-target :storage-window)
+         (:checkpoint-evidence-load :storage-window)
+         (:checkpoint-evidence-copy :storage-window)
+         (:checkpoint-evidence-check :storage-window)
+         (:checkpoint-evidence-record :storage-window)
+         (:checkpoint-evidence-next :storage-window)
+         (:checkpoint-semantic-begin :storage-window)
+         (:checkpoint-semantic-load :storage-window)
+         (:checkpoint-semantic-copy :storage-window)
+         (:checkpoint-semantic-check :storage-window)
+         (:checkpoint-semantic-entries :storage-window)
+         (:checkpoint-semantic-find :storage-window)
+         (:checkpoint-census :storage-window) (:recover :storage-window)
          (:recover-wait :storage-window) (:epoch :storage-window) (:epoch-fence :storage-window)
          (:epoch-result :storage-window))
  :budget (:bytes 32768 :steps 32 :descriptors 4)
@@ -132,7 +167,21 @@
  :capacity (if (fn2-profile-get :image-boot profile) 1 0)
  :initial ((generation fn2-commit-initial-generation) (ready-prev *fn2-none*) (ready-next *fn2-none*))
  :arms ((:free) (:prepare) (:write) (:write-result) (:read) (:read-result) (:verify) (:advance)
-        (:anchor) (:bootstrap) (:bootstrap-verify) (:checkpoint-anchor) (:checkpoint-check) (:checkpoint-descriptor) (:checkpoint-verify) (:checkpoint-root-candidate) (:checkpoint-root-reserve) (:checkpoint-root-begin) (:checkpoint-root-load) (:checkpoint-root-copy) (:checkpoint-root-verify) (:checkpoint-root-dispatch) (:checkpoint-root-padding) (:checkpoint-root-next) (:checkpoint-root-finish) (:checkpoint-root-fifo) (:recover) (:recover-wait) (:epoch) (:epoch-fence) (:epoch-result) (:release) (:ready) (:failed))
+        (:anchor) (:bootstrap) (:bootstrap-verify) (:checkpoint-anchor) (:checkpoint-check) (:checkpoint-descriptor) (:checkpoint-verify) (:checkpoint-root-candidate) (:checkpoint-root-reserve) (:checkpoint-root-begin) (:checkpoint-root-load) (:checkpoint-root-copy) (:checkpoint-root-verify) (:checkpoint-root-dispatch) (:checkpoint-root-padding) (:checkpoint-root-next) (:checkpoint-root-finish) (:checkpoint-root-fifo)
+        (:checkpoint-evidence-begin)
+        (:checkpoint-evidence-target)
+        (:checkpoint-evidence-load)
+        (:checkpoint-evidence-copy)
+        (:checkpoint-evidence-check)
+        (:checkpoint-evidence-record)
+        (:checkpoint-evidence-next)
+        (:checkpoint-semantic-begin)
+        (:checkpoint-semantic-load)
+        (:checkpoint-semantic-copy)
+        (:checkpoint-semantic-check)
+        (:checkpoint-semantic-entries)
+        (:checkpoint-semantic-find)
+        (:checkpoint-census) (:recover) (:recover-wait) (:epoch) (:epoch-fence) (:epoch-result) (:release) (:ready) (:failed))
  :observes ((:read-result) (:write-result) (:fence-result)))
 
 (include-book "checkpoint-restore-boot")

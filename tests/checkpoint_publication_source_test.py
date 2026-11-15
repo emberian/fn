@@ -46,8 +46,16 @@ def contract(publication, boot, ops, writer):
     assert ["equal", ["fn2-checkpoint-publication-phase", "0", "fn2-checkpoint-publication"], "*fn2-checkpoint-publication-phase-complete*"] in nodes
     assert ["equal", ["fn2-checkpoint-publication-bundle-released", "0", "fn2-checkpoint-publication"], "0"] in nodes
     bindings = release[-1][1]
-    releases = [value for _, value in bindings if isinstance(value, list) and value and value[0] == "fn2-core-release-children"]
-    assert [call[1:3] for call in releases] == [["s0", "g0"], ["s1", "g1"], ["ss", "gs"]]
+    assert not any(node and node[0] in ("fn2-core-release-children", "fn2-pool-release") for node in nodes), "writer returns borrowed leases; central cleanup frees"
+    handbacks = [node for node in nodes if node and node[0] == "fn2-checkpoint-future-return-anchor"]
+    assert len(handbacks) == 1 and handbacks[0][1:8] == ["token", "master-kind", "master-slot", "master-gen", "kind", "owner", "generation"]
+    reserve = function(ops, "fn2-checkpoint-writer-reserve-children")
+    reserve_nodes = list(walk(reserve))
+    assert ["fn2-checkpoint-future-no-loansp", "1", "5", "fn2-checkpoint-future-windows"] in reserve_nodes, "settlement does not imply journal handback"
+    assert any(node and node[0] == "fn2-checkpoint-future-borrow-anchor" for node in reserve_nodes)
+    assert not any(node and node[0] in ("fn2-pool-reserve", "fn2-core-reserve") for node in reserve_nodes), "no post-cut pool acquisition"
+    for candidate in (nodes, reserve_nodes):
+        assert ["fn2-checkpoint-builder-claimp", "c", "token", "master-kind", "master-slot", "master-gen", "fn2-checkpoints"] in candidate
     assert bindings[-1] == ["fn2-checkpoint-publication", ["fn2-checkpoint-publication-set-bundle-released", "0", "1", "fn2-checkpoint-publication"]]
     start = function(writer, "fn2-checkpoint-writer-start-children")
     assert start[2][0] == "c" and all(arg.startswith("fn2-") for arg in start[2][1:]), "no caller closure/owner/target flags"
@@ -107,6 +115,8 @@ def main():
         (3, '(equal (fn2-machine-generation requester) requestgen)', 't'),
         (0, '(if (and fence success)', '(if success'),
         (2, '(fn2-checkpoint-publication-previous-load 0 previous fn2-checkpoint-publication fn2-digests)', '(fn2-rec-zero-digest previous fn2-digests)'),
+        (2, '(fn2-checkpoint-future-no-loansp 1 5 fn2-checkpoint-future-windows)', 't'),
+        (2, '(fn2-checkpoint-future-return-anchor token master-kind master-slot master-gen kind owner generation', '(fn2-checkpoint-future-borrow-anchor token master-kind master-slot master-gen kind owner generation'),
     )
     for index, before, after in cases:
         changed = source.copy()
@@ -117,7 +127,7 @@ def main():
         except (AssertionError, StopIteration):
             continue
         raise AssertionError("source controls accepted an unsafe publication mutant")
-    print("publication source/ABI contracts and 6 rejection controls pass; no ACL2 execution or startup-selection claim")
+    print("publication source/ABI contracts and 8 rejection controls pass; no ACL2 execution or startup-selection claim")
 
 
 if __name__ == "__main__":

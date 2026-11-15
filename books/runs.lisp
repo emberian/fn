@@ -3,6 +3,7 @@
 ; A build owns one writer row per level; its caller supplies pages and
 ; records each sealed page. Every call is bounded; :more resumes.
 (in-package "ACL2")
+(include-book "run-geometry")
 (include-book "runs-schema")
 (fn2-book-layer :c)
 ; B's and A's shape lemmas are stated over the rows accessors; keep them folded.
@@ -10,7 +11,7 @@
 
 ; A format parameter, not a ceiling on stored entries: with 64 KiB pages and
 ; index entries of at most 350 bytes, six levels address over 10^13 pages.
-(defconst *fn2-run-max-levels* 6)
+
 ; Field rows a build owns: one writer range per level, then one index-entry
 ; region where a sealed page's first key and reference are assembled.
 (defconst *fn2-run-build-index* (* *fn2-run-max-levels* *fn2-run-writer-fields*))
