@@ -214,6 +214,7 @@ ACL2_BOOKS = \
   books/owed \
   books/owed-accounts \
   books/owed-authority \
+  books/wire-fixture-profiles \
   books/owed-conn \
   books/owed-consumer \
   books/owed-cursor \
@@ -245,6 +246,9 @@ ACL2_BOOKS = \
   books/boot-root-release \
   tests/boot-root-release-unit \
   tests/recovery-payload-chain-unit \
+  tests/recovery-payload-chain-proof \
+  tests/checkpoint-cold-path-drive \
+  tests/checkpoint-cold-path-unit \
   books/checkpoint-restore-semantic-source \
   books/checkpoint-bank-closure-state \
   books/checkpoint-bank-closure-capture \
