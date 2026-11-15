@@ -164,9 +164,9 @@
       (fn2-checkpoint-summary-authority (fn2-checkpoint-summary-authority-put 1
        (cursor (+ 1 i)) (phase (if (= i 487) *fn2-checkpoint-summary-authority-phase-complete* *fn2-checkpoint-summary-authority-phase-copy*)))))
   (mv (if (= i 487) :complete :more) fn2-checkpoint-summary-authority)))
-(defcost fn2-checkpoint-summary-authority-live-begin-op :child fn2-checkpoint-summary-authority-live-begin :answers t
+(defcost fn2-checkpoint-summary-authority-live-begin-op :steps *fn2-work-stage* :bytes 32 :descriptors 0 :child fn2-checkpoint-summary-authority-live-begin :answers t
  :tables (fn2-core-checkpoint-summary-authority fn2-core-checkpoint-source fn2-core-checkpoint-metadata-manifest fn2-core-checkpoint-build fn2-core-checkpoint-publication fn2-core-csnapshot fn2-core-run-builds fn2-core-run-writers fn2-core-event-build fn2-core-event-read fn2-core-checkpoints fn2-core-checkpoint-refs fn2-core-checkpoint-bytes fn2-core-commit-root fn2-core-mk fn2-core-fc fn2-core-digests fn2-core-checkpoint-lifecycle)
  :doc "Retain one actual HELD producer sufficient-summary observation before release.")
-(defcost fn2-checkpoint-summary-authority-live-step-op :child fn2-checkpoint-summary-authority-live-step :answers t
+(defcost fn2-checkpoint-summary-authority-live-step-op :steps *fn2-work-stage* :bytes 4 :descriptors 0 :child fn2-checkpoint-summary-authority-live-step :answers t
  :tables (fn2-core-checkpoint-summary-authority fn2-core-checkpoint-source fn2-core-checkpoint-metadata-manifest fn2-core-checkpoint-build fn2-core-checkpoint-publication fn2-core-csnapshot fn2-core-run-builds fn2-core-run-writers fn2-core-event-build fn2-core-event-read fn2-core-checkpoints fn2-core-checkpoint-refs fn2-core-checkpoint-bytes fn2-core-commit-root fn2-core-mk fn2-core-fc fn2-core-digests fn2-core-checkpoint-lifecycle)
  :doc "Retain one actual HELD producer sufficient-summary observation before release.")
