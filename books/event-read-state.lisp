@@ -5,7 +5,7 @@
 (include-book "arm-children")
 (fn2-book-layer :b)
 (defcolumns fn2-event-read
- ((phase (:enum fn2-event-read-phase (:idle :read-seal :wait-seal :frame-seal :seal-span :seal-tail :semantic-seal
+ ((phase (:enum fn2-event-read-phase (:idle :read-seal :wait-seal :frame-seal :seal-span :seal-tail :semantic-seal :record-digest
                                      :read-records :wait-records :frame-records :members :next :complete :uncertain)))
   (token :u60) (owner-kind :u8) (owner-slot :u32) (owner-gen :u60)
   (journal-history :u60) (journal-incarnation :u60)
@@ -13,6 +13,7 @@
   (extent :u32) (epoch :u60) (allocation :u60) (first :u60) (members :u32)
   (slot :u32) (gen :u60) (checker :u32) (field-base :u32) (leaf-digest :u32)
   (body-off :u32) (body-len :u32)
+  (record-fetch-next :u8) (record-fetch-acc :u32) (record-fetch-off :u32)
   (seal-span-started :bool) (seal-span-next :u32) (seal-span-length :u32) (op-slot :u32) (op-gen :u60) (pending :bool)
   ; Physical identity captured from the owner-bound configured origin.
   (history :u60) (history-incarnation :u60)))
@@ -21,7 +22,7 @@
 (defun fn2-event-read-format-phase-p (phase)
  (declare (xargs :guard t))
  (and (member-equal phase (list *fn2-event-read-phase-frame-seal* *fn2-event-read-phase-seal-span* *fn2-event-read-phase-seal-tail*
-                               *fn2-event-read-phase-semantic-seal* *fn2-event-read-phase-frame-records*)) t))
+                               *fn2-event-read-phase-semantic-seal* *fn2-event-read-phase-record-digest* *fn2-event-read-phase-frame-records*)) t))
 
 (defun fn2-event-read-harvest (opslot opgen cell evkind outcome reason count aux0 aux1 fn2-event-read)
  (declare (xargs :stobjs fn2-event-read :guard (fn2-event-read-wfp fn2-event-read)))

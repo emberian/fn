@@ -110,6 +110,65 @@
 (fn2-fields-preserves fn2-event-read-seal-span-step
  (budget fn2-event-read fn2-fields fn2-pool) :position 2 :raw-rows t)
 
+; Only actual semantic-verifier success enters RECORD-DIGEST. Source identity
+; stays in the existing reader row; each byte visit rechecks its decoded Ref,
+; authenticated result/window and the public wrapper's external source owner.
+(defun fn2-event-read-record-digest-current-p (expected fn2-event-read fn2-fc fn2-fields fn2-digests)
+ (declare (xargs :stobjs (fn2-event-read fn2-fc fn2-fields fn2-digests) :verify-guards nil
+  :guard (and (fn2-event-read-wfp fn2-event-read) (fn2-fc-wfp fn2-fc)
+              (fn2-fields-wfp fn2-fields) (fn2-digests-wfp fn2-digests))))
+ (and (< 0 (fn2-event-read-rows fn2-event-read))
+  (let* ((row (fn2-event-read-checker 0 fn2-event-read))
+         (base (fn2-event-read-field-base 0 fn2-event-read))
+         (field (+ base *fn2-format-sealed-batch-field-record-stream*))
+         (off (fn2-event-read-record-fetch-off 0 fn2-event-read)))
+   (and (equal (fn2-event-read-phase 0 fn2-event-read) *fn2-event-read-phase-record-digest*)
+        (< row (fn2-fc-rows fn2-fc))
+        (equal (fn2-fc-phase row fn2-fc) *fn2-fc-phase-idle*)
+        (<= (+ base *fn2-format-sealed-batch-num-fields*) (fn2-fields-rows fn2-fields))
+        (fn2-digest-rowp expected fn2-digests)
+        (fn2-digest-rowp (fn2-digest-slot row *fn2-fc-result*) fn2-digests)
+        (fn2-digest-equal (fn2-digest-slot row *fn2-fc-result*) expected fn2-digests)
+        (fn2-rec-fetch-state-p (fn2-event-read-record-fetch-next 0 fn2-event-read)
+                              (fn2-event-read-record-fetch-acc 0 fn2-event-read))
+        (equal (fn2-fields-ref-slot field fn2-fields) (fn2-event-read-slot 0 fn2-event-read))
+        (equal (fn2-fields-ref-gen field fn2-fields) (fn2-event-read-gen 0 fn2-event-read))
+        (equal (fn2-fields-ref-off field fn2-fields) off)
+        (equal (fn2-fields-ref-len field fn2-fields) 32)
+        (<= (fn2-event-read-body-off 0 fn2-event-read) off)
+        (<= (+ off 32) (+ (fn2-event-read-body-off 0 fn2-event-read) (fn2-event-read-body-len 0 fn2-event-read)))
+))))
+
+(defun fn2-event-read-record-digest-step (budget expected fn2-event-read fn2-fc fn2-fields fn2-pool fn2-digests)
+ (declare (xargs :stobjs (fn2-event-read fn2-fc fn2-fields fn2-pool fn2-digests) :verify-guards nil
+  :guard (and (fn2-event-read-wfp fn2-event-read) (fn2-fc-wfp fn2-fc)
+              (fn2-fields-wfp fn2-fields) (fn2-pool-wfp fn2-pool) (fn2-digests-wfp fn2-digests))))
+ (b* (((unless (fn2-event-read-record-digest-current-p expected fn2-event-read fn2-fc fn2-fields fn2-digests))
+       (mv :source fn2-event-read fn2-digests))
+      ((unless (and (natp budget) (<= budget *fn2-commit-unit-bytes*)))
+       (mv :bounds fn2-event-read fn2-digests))
+      ((when (zp budget)) (mv :more fn2-event-read fn2-digests))
+      (row (fn2-event-read-checker 0 fn2-event-read))
+      (hash (fn2-digest-slot row *fn2-fc-hash*))
+      ((unless (fn2-digest-rowp hash fn2-digests)) (mv :bounds fn2-event-read fn2-digests))
+      ((mv code next acc fn2-digests)
+       (fn2-rec-fetch-step budget (fn2-event-read-record-fetch-next 0 fn2-event-read)
+        (fn2-event-read-record-fetch-acc 0 fn2-event-read) hash
+        (fn2-event-read-slot 0 fn2-event-read) (fn2-event-read-gen 0 fn2-event-read)
+        (fn2-event-read-record-fetch-off 0 fn2-event-read)
+        (fn2-event-read-owner-kind 0 fn2-event-read) (fn2-event-read-owner-slot 0 fn2-event-read)
+        (fn2-event-read-owner-gen 0 fn2-event-read) fn2-pool fn2-digests))
+      (complete (and (eq code :ok) (equal next 32) (equal acc 0)))
+
+      (fn2-event-read (fn2-event-read-put 0
+       (record-fetch-next next) (record-fetch-acc acc)
+       (phase (cond (complete *fn2-event-read-phase-read-records*)
+                    ((eq code :more) *fn2-event-read-phase-record-digest*)
+                    (t *fn2-event-read-phase-uncertain*))))))
+  (mv (if (and (eq code :ok) (not complete)) :invariant code) fn2-event-read fn2-digests)))
+(fn2-event-read-preserves fn2-event-read-record-digest-step
+ (budget expected fn2-event-read fn2-fc fn2-fields fn2-pool fn2-digests) :position 1)
+
 (defun fn2-event-read-format-core (budget expected previous fn2-event-read
                                   fn2-journal-members fn2-fc fn2-fc-context fn2-b3 fn2-fields fn2-pool fn2-digests)
  (declare (xargs :stobjs (fn2-event-read fn2-journal-members
@@ -144,6 +203,10 @@
                      (<= (+ base *fn2-format-sealed-batch-num-fields*) (fn2-fields-rows fn2-fields))
                      (posp budget) (<= budget 4096)))
        (mv :state fn2-event-read fn2-journal-members fn2-fc fn2-fc-context fn2-b3 fn2-fields fn2-pool fn2-digests))
+      ((when (equal phase *fn2-event-read-phase-record-digest*))
+       (mv-let (code fn2-event-read fn2-digests)
+        (fn2-event-read-record-digest-step budget expected fn2-event-read fn2-fc fn2-fields fn2-pool fn2-digests)
+        (mv code fn2-event-read fn2-journal-members fn2-fc fn2-fc-context fn2-b3 fn2-fields fn2-pool fn2-digests)))
       ((when (member-equal phase (list *fn2-event-read-phase-seal-span* *fn2-event-read-phase-seal-tail*)))
        (mv-let (code fn2-event-read fn2-fields)
         (fn2-event-read-seal-span-step budget fn2-event-read fn2-fields fn2-pool)
@@ -178,16 +241,22 @@
        (b* ((first (fn2-event-read-first 0 fn2-event-read))
             (members (fn2-event-read-members 0 fn2-event-read))
             (field (+ base *fn2-format-sealed-batch-field-record-stream*))
+            (off (fn2-fields-ref-off field fn2-fields))
             (valid (and (fn2-digest-equal (fn2-digest-slot row *fn2-fc-result*) expected fn2-digests)
+                        (posp first) (posp members)
                         (equal (fn2-fields-value (+ base *fn2-format-sealed-batch-field-event-first*) fn2-fields) first)
                         (equal (fn2-fields-value (+ base *fn2-format-sealed-batch-field-event-last*) fn2-fields) (+ first members -1))
-                        (equal (fn2-fields-ref-len field fn2-fields) 32)))
-            ((mv fetched fn2-digests)
-             (if valid (fn2-rec-fetch 0 hash slot gen (fn2-fields-ref-off field fn2-fields) kind owner generation fn2-pool fn2-digests)
-              (mv :seal fn2-digests)))
-            (fn2-event-read (fn2-event-read-set-phase 0
-              (if (eq fetched :ok) *fn2-event-read-phase-read-records* *fn2-event-read-phase-uncertain*) fn2-event-read)))
-        (mv fetched fn2-event-read fn2-journal-members fn2-fc fn2-fc-context fn2-b3 fn2-fields fn2-pool fn2-digests)))
+                        (equal (fn2-fields-ref-slot field fn2-fields) slot)
+                        (equal (fn2-fields-ref-gen field fn2-fields) gen)
+                        (equal (fn2-fields-ref-len field fn2-fields) 32)
+                        (<= (fn2-event-read-body-off 0 fn2-event-read) off)
+                        (<= (+ off 32) (+ (fn2-event-read-body-off 0 fn2-event-read) (fn2-event-read-body-len 0 fn2-event-read)))))
+            (fn2-event-read (if valid (fn2-event-read-put 0
+             (phase *fn2-event-read-phase-record-digest*)
+             (record-fetch-next 0) (record-fetch-acc 0) (record-fetch-off off)
+)
+             (fn2-event-read-set-phase 0 *fn2-event-read-phase-uncertain* fn2-event-read))))
+        (mv (if valid :more :seal) fn2-event-read fn2-journal-members fn2-fc fn2-fc-context fn2-b3 fn2-fields fn2-pool fn2-digests)))
       ; The physical verifier resets its own continuation at success. Decode
       ; the already authenticated header to recover exact body boundaries.
       ((mv decoded off fn2-fields) (fn2-format-frame-header-decode base slot gen 0 4096 kind owner generation fn2-fields fn2-pool))
@@ -248,7 +317,7 @@
  :guard (and (fn2-checkpoint-restore-events-work-wfp fn2-checkpoint-restore-events-work) (fn2-digests-wfp fn2-digests)
              (natp i) (<= i 8) (booleanp zero) (natp row) (fn2-digest-rowp dst fn2-digests)
              (or zero (<= (* 32 (+ 1 row)) (fn2-checkpoint-restore-events-work-seals-length fn2-checkpoint-restore-events-work))))))
- (if (>= (nfix i) 8) fn2-digests
+ (if (or (not (natp i)) (>= i 8)) fn2-digests
   (let ((fn2-digests (fn2-digest-set-word dst i (if zero 0 (fn2-event-catalog-seal-word row i fn2-checkpoint-restore-events-work)) fn2-digests)))
    (fn2-event-source-load-seal (+ 1 i) zero row dst fn2-checkpoint-restore-events-work fn2-digests))))
 (defun fn2-event-source-seal (batch dst fn2-checkpoint-summary-authority fn2-checkpoints fn2-checkpoint-refs fn2-checkpoint-bytes fn2-commit-root fn2-extents fn2-alloc-edges fn2-ops fn2-fc fn2-checkpoint-restore-events fn2-checkpoint-restore-events-work fn2-digests)
@@ -280,6 +349,8 @@
       (commit (fn2-event-read-commit 0 fn2-event-read))
       ((unless (and (posp commit) (fn2-event-read-source-held-p fn2-event-read fn2-checkpoint-summary-authority fn2-checkpoints fn2-checkpoint-refs fn2-checkpoint-bytes fn2-commit-root fn2-extents fn2-alloc-edges fn2-ops fn2-checkpoint-restore-events fn2-checkpoint-restore-events-work)))
        (mv :source fn2-event-read fn2-journal-members fn2-fc fn2-fc-context fn2-b3 fn2-fields fn2-pool fn2-digests))
+      ((unless (and (natp budget) (<= budget 4096) (fn2-event-read-format-phase-p (fn2-event-read-phase 0 fn2-event-read)))) (mv :state fn2-event-read fn2-journal-members fn2-fc fn2-fc-context fn2-b3 fn2-fields fn2-pool fn2-digests))
+      ((when (equal budget 0)) (mv :more fn2-event-read fn2-journal-members fn2-fc fn2-fc-context fn2-b3 fn2-fields fn2-pool fn2-digests))
       ((mv expected-code expected fn2-digests) (fn2-event-source-seal commit (fn2-b-event-expected-digest (fn2-fc-rows fn2-fc) (fn2-extents-rows fn2-extents)) fn2-checkpoint-summary-authority fn2-checkpoints fn2-checkpoint-refs fn2-checkpoint-bytes fn2-commit-root fn2-extents fn2-alloc-edges fn2-ops fn2-fc fn2-checkpoint-restore-events fn2-checkpoint-restore-events-work fn2-digests))
       ((mv previous-code previous fn2-digests) (fn2-event-source-seal (- commit 1) (fn2-b-event-previous-digest (fn2-fc-rows fn2-fc) (fn2-extents-rows fn2-extents)) fn2-checkpoint-summary-authority fn2-checkpoints fn2-checkpoint-refs fn2-checkpoint-bytes fn2-commit-root fn2-extents fn2-alloc-edges fn2-ops fn2-fc fn2-checkpoint-restore-events fn2-checkpoint-restore-events-work fn2-digests))
       ((unless (and (eq expected-code :ok) (eq previous-code :ok)))
