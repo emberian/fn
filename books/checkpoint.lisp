@@ -1,5 +1,6 @@
 ; Concrete checkpoint candidates. Preparation never grants allocator coverage.
 (in-package "ACL2")
+(include-book "std/util/bstar" :dir :system)
 (include-book "format-check")
 (include-book "alloc")
 (include-book "vocab")

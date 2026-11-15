@@ -1,6 +1,6 @@
 {
-  "baseline": "b7b79808d",
-  "source_base": "568724889",
+  "baseline": "adacd9e71d75ce32dfc0b3b8210b87851066d05c",
+  "source_base": "93391ba3de1ddaee69a6a13c4f55c7b7ac511b13",
   "root": "tests/retirement-intent-core-unit",
   "qualification": "source-only, no ACL2 execution",
   "local_books": [
@@ -142,7 +142,6 @@
     "tests/retirement-intent-leaf-unit.lisp"
   ],
   "changed_files_from_baseline": [
-    "books/alloc.lisp",
     "books/block-integrity.lisp",
     "books/commit.lisp",
     "books/commit-format.lisp",
@@ -157,5 +156,10 @@
     "books/runs.lisp",
     "books/runs-assemble.lisp",
     "books/runs-page.lisp"
+  ],
+  "runtime_supplements": [
+    "books/commit-arms.lisp",
+    "books/ops-semantic-steps.lisp",
+    "books/assembly-index.lisp"
   ]
 }

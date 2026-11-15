@@ -9,11 +9,14 @@ those operations. Its closure contains no checkpoint builder, master, boot,
 writer or restore worker. The machine callbacks are the ones served assembly
 materializes, without the full simulator/executor entry.
 
-The exact local include closure and its 28 new / 15 changed source files relative
-to root b7b79808d are in `retirement-core-source-slice.json`. This is an include
-manifest, not permission to replace root files wholesale: the reviewed integration
-568724889 already preserves root transport/layout/helper-leaf changes. Changes
-outside this manifest are not required to admit this callback entry.
+The exact local include closure and its 28 new / 14 changed source files relative
+to root adacd9e71 are in `retirement-core-source-slice.json`. The additional runtime
+files are `commit-arms.lisp`, `ops-semantic-steps.lisp` and the catalog-only include
+in `assembly-index.lisp`. Root transport, compression and C attachments are
+preserved. The actual scheduled retirement producer still resides in checkpoint
+teardown, outside this slice. This slice connects the consumer and callable
+producer; it does not enable reclamation or FREE. Full checkpoint scheduling,
+selected-base recovery and retained-history rebase remain required.
 
 `checkpoint-catalog-kind` contains the same capacity helper and three catalog
 registrations formerly embedded in `checkpoint-kind-b`; the latter retains its
@@ -73,3 +76,40 @@ including all arrays, row counts and scalar extra fields. The member-generation
 case exercises workspace ownership; the control-event case exercises the deeper
 exact retained-control identity check. The original three submit/poll assertions
 remain unchanged. All ten dispatcher assertions are source prepared and unrun.
+
+## Cursor partition boundary
+
+Both the actual persisted dispatcher and the production publish arm check the
+same scalar `fn2-commit-lifecycle-cursorp` against the declared member partition.
+Counts beyond that partition, cursors beyond the count and nonzero terminal
+offsets refuse before member indexing or publication. Only an exact terminal
+cursor with zero offset can report completion; the dispatcher also requires its
+existing persisted containing-batch envelope for that result. These checks do
+not scan or revalidate the store. Execution qualification remains pending.
+
+## Partition/cursor controls added after c68d8b006
+
+The dispatcher fixture adds six actual-entry scenarios: over-capacity count,
+physical cross-partition index, member greater than count, terminal nonzero
+byte offset, valid terminal completion, and terminal cursor with the wrong
+installed batch. Every malformed scenario requires `:invalid` and the same
+full allocator/control/edge snapshots as the existing controls. The crossing
+witness explicitly confirms that the computed index exists in the next
+partition and holds its initialized real `:none` row; global array bounds alone
+would allow the old dispatcher to skip it. The over-count/member-zero case
+would otherwise reach the actual pending retirement. Corrupted cursor states
+must still satisfy the actual core WFP, making the missing semantic bound
+explicit rather than assuming WFP excludes these states.
+
+The terminal positive first installs the actual produced retirement, advances
+past its exact byte length using the actual dispatcher, then calls again at
+member=count/off=0. It requires `:done` and unchanged full snapshots for that
+terminal call. Shared-predicate boundary assertions call the runtime owner's
+`fn2-commit-lifecycle-cursorp` directly, using the declared per-batch geometry.
+No fixture-local cursor model or literal partition capacity is introduced.
+
+These additive controls depend on the runtime owner's matching cursor/partition
+fix; c68 itself does not yet define the predicate or enforce these refusals.
+They are source prepared, not executed. The served publish-arm boundary is a
+separate entry through the existing generated `fn2-commit-run-publish`; the
+small callback instance does not materialize those arms.
