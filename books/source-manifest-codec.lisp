@@ -1,10 +1,13 @@
 ; Actual ROOT source-manifest geometry and readers, shared below C and D.
-; The physical 64KiB manifest threshold is unchanged.
+; Rolling paired producer uses the actual raw commitment span, not extent size.
 (in-package "ACL2")
 (include-book "commit-format")
 (fn2-book-layer :b)
 
 (defconst *fn2-am-block-bytes* *fn2-commit-unit-bytes*)
+
+(defconst *fn2-upload-raw-bytes*
+  (* *fn2-commit-write-resources* *fn2-commit-unit-bytes*))
 
 (defconst *fn2-am-header-max* (fn2-layout-max-size *fn2-format-source-manifest-header*))
 
@@ -38,7 +41,7 @@
 
 (defun fn2-am-manifestp (total)
   (declare (xargs :guard t))
-  (< *fn2-commit-extent-bytes* (nfix total)))
+  (< *fn2-upload-raw-bytes* (nfix total)))
 
 (defun fn2-am-fits (total)
   (declare (xargs :guard t))

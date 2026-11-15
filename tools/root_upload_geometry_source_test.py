@@ -37,7 +37,13 @@ class RootGeometry(unittest.TestCase):
                             target_path=move['target']
                 target=(ROOT/target_path).read_text()
                 form,_,_=unique(target,row['head'],row['name'],row['needle'])
-                self.assertEqual(form,row['form'])
+                policy_path=ROOT/'tools/fixtures/upload-stream-page-composition.json'
+                policies=json.loads(policy_path.read_text())['policies'] if policy_path.exists() else []
+                policy=next((p for p in policies if p['book']==target_path and p['name']==row['name']),None)
+                if policy:
+                    self.assertEqual(policy['old'],row['form'])
+                    self.assertEqual(form,policy['new'])
+                else:self.assertEqual(form,row['form'])
                 old=(ROOT/row['source']).read_text()
                 if row['name'] is not None:
                     self.assertEqual(lr.match('_',lr.parse(old).forms,deep=True,head=row['head'],name=row['name']),[])
@@ -61,7 +67,12 @@ class RootGeometry(unittest.TestCase):
         form,node,parsed=unique(page,'defun','fn2-upload-input-bound')
         actual=parsed.text[node.items[-1].start:node.items[-1].end]
         expected=rows['fn2-upload-bound']['substitutions'][0][0].replace('(nfix max)','(nfix article-max)')
-        self.assertEqual(ledger.canonical_text(actual),ledger.canonical_text(expected))
+        policy_path=ROOT/'tools/fixtures/upload-stream-page-composition.json'
+        if policy_path.exists():
+            policy=next(p for p in json.loads(policy_path.read_text())['policies'] if p['name']=='fn2-upload-input-bound')
+            self.assertEqual(policy['old'].splitlines()[-1].strip(),expected+')')
+            self.assertEqual(ledger.canonical_text(actual),ledger.canonical_text('(nfix article-max)'))
+        else:self.assertEqual(ledger.canonical_text(actual),ledger.canonical_text(expected))
         form,node,parsed=unique(page,'defun','fn2-upload-article-profilep')
         actual=parsed.text[node.items[-1].start:node.items[-1].end]
         self.assertEqual(ledger.canonical_text(actual),ledger.canonical_text(rows['fn2-input-config-profilep']['substitutions'][0][0]))
@@ -76,12 +87,12 @@ class RootGeometry(unittest.TestCase):
             self.assertEqual(hashlib.sha256(form.encode()).hexdigest(),row['sha256'])
         codec=(ROOT/'books/source-manifest-codec.lisp').read_text()
         manifest,_,_=unique(codec,'defun','fn2-am-manifestp')
-        self.assertIn('(< *fn2-commit-extent-bytes* (nfix total))',manifest)
+        self.assertIn('(< *fn2-upload-raw-bytes* (nfix total))',manifest)
         self.assertNotIn('fn2-upload-payload',codec)
         for name in ['fn2-am-blocks','fn2-am-units','fn2-am-manifestp']:
             self.assertEqual(sum(1 for r in self.receipt['moves'] if r['name']==name),1)
         fixture=(ROOT/'tests/root-upload-geometry-unit.lisp').read_text()
-        for needle in ['(not (fn2-am-manifestp 12289))','(not (fn2-am-manifestp 65536))',
+        for needle in ['(not (fn2-am-manifestp 12288))','(fn2-am-manifestp 12289)',
                        '(fn2-am-manifestp 65537)','(fn2-upload-page-bytes 33032)']:
             self.assertIn(needle,fixture)
 if __name__=='__main__':unittest.main()

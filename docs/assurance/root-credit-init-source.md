@@ -95,3 +95,20 @@ rolling feed/spool progress (producer is not delivered here) nor protects F from
 other admitted foreground holders. Supported concurrency, uncertain retained
 leases and grant exclusion remain separate required work; P's protected quotas
 remain authoritative and unchanged.
+
+Paired rolling page-sizing follow-on
+
+The actual rolling producer522e12181 supplies the shared provisional region:
+page-manifest + raw commitment bytes, followed by U*am-units(total) encoded-entry
+scratch. These are metadata regions, not an article-sized retained buffer. Its
+SOURCE offset/assertion and provisional/page-bytes forms move unchanged into
+upload-page-geometry. F calls that exact stream-page-bytes function.
+
+This follow-on explicitly changes the prior ROOT policy: manifest eligibility
+now uses the actual raw commitment span3*U rather than physical extent bytes,
+and the input bound is the configured profile maximum rather than the sum of
+reused physical windows. The old receipt and old policy fixture are retained
+inside upload-stream-page-composition.json; they are not rebaselined as unchanged.
+The new source controls pin the actual producer forms and both policy sides.
+This packet requires paired upper removal/includes and rolling consumers before
+activation. It does not independently qualify the controller or admission.

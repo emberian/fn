@@ -111,7 +111,7 @@
           (bound (fn2-upload-input-bound (fn2-upload-profile-article-max profile) capacity0 capacity1))
           (scratch-class (fn2-pool-class-for *fn2-idc-scratch-bytes* fn2-pool))
           (arena-class (fn2-pool-class-for arena fn2-pool))
-          (page-class (fn2-pool-class-for (fn2-upload-page-bytes (+ bound *fn2-upload-mid-line-max*)) fn2-pool)))
+          (page-class (fn2-pool-class-for (fn2-upload-stream-page-bytes (+ bound *fn2-upload-mid-line-max*)) fn2-pool)))
     (if (not (and (fn2-checkpoint-startup-requests-fit-p *fn2-checkpoint-startup-window-requests* fn2-pool)
                   (posp capacity0) (posp capacity1)
                   (natp scratch-class) (< scratch-class (fn2-pool-nclasses fn2-pool))
