@@ -78,8 +78,16 @@ def inline_issue_cases(source):
     if i+2!=len(parent.items):raise ValueError('source issue dispatch must end its clause')
     if sym(branch.items[1])!=sym(n.items[1].items[0]):raise ValueError('source issue status mismatch')
     call=source[n.items[2].start:n.items[2].end];variables=source[n.items[1].start:n.items[1].end]
+    if (len(n.items)-3)%2:raise ValueError('malformed source issue options')
+    kept=[]
+    for j in range(3,len(n.items),2):
+     key=sym(n.items[j])
+     if not key.startswith(':'):raise ValueError('malformed source issue option key')
+     if key==':case':raise ValueError('source issue already has an inline case before its dispatch')
+     if key!=':accept':kept.append(source[n.items[j].start:n.items[j+1].end])
+    options=(' '+' '.join(kept)) if kept else ''
     clauses=' '.join(source[x.start:x.end] for x in branch.items[2:])
-    edits.append((n.start,branch.end,'(:do '+variables+' '+call+' :accept () :case ('+clauses+'))'))
+    edits.append((n.start,branch.end,'(:do '+variables+' '+call+options+' :accept () :case ('+clauses+'))'))
  return lr.write(source,edits)
 
 def transform(source):
