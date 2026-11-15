@@ -87,19 +87,9 @@
 ; The served interface uses the actual stored guard, including all readonly
 ; input recognizers. The stronger off-guard FIELDS claim remains explicitly owed.
 ; New distinct served-domain interface. No old theorem is renamed/weakened.
-(defcolumns-guarded-contracts fn2-checkpoint-installation-pack-member
- ; Pool preservation is independent of the copied values. Keep its branch
- ; tests opaque; the callee TYPE/WFP interfaces handle every return branch.
- :carriers ((fn2-fields 2 :prefix "-FIELDS")
-            (fn2-pool 3 :prefix "-POOL"
-             :hints ((fn2-columns-guard-hint
-                      '(fn2-checkpoints fn2-checkpoint-refs fn2-checkpoint-bytes fn2-fields fn2-pool)
-                      '(fn2-pool-reset fn2-pool-copy-range fn2-pool-truncate
-                        fn2-checkpoint-member-hash fn2-format-checkpoint-installation-size
-                        fn2-format-txn-record-encode fn2-format-checkpoint-installation-encode
-                        fn2-checkpoint-slotp unsigned-byte-p integer-range-p natp member-equal)
-                      '(fn2-checkpoint-installation-pack-member) world))))
- :hints ((append
+(make-event
+ (let* ((name 'fn2-checkpoint-installation-pack-member)
+        (field-hints '((append
           (fn2-columns-guard-hint
            '(fn2-checkpoints fn2-checkpoint-refs fn2-checkpoint-bytes fn2-fields fn2-pool)
            '(fn2-pool-reset fn2-pool-copy-range fn2-pool-truncate
@@ -120,6 +110,30 @@
    (:instance fn2-checkpoint-refs-page-kind-bound (i (* 6 c)))
    (:instance fn2-checkpoint-refs-encoded-length-natp (i (* 6 c)))
    (:instance fn2-checkpoint-refs-encoded-length-bound (i (* 6 c))))))))
+        (pool-hints '((fn2-columns-guard-hint
+                     '(fn2-checkpoints fn2-checkpoint-refs fn2-checkpoint-bytes fn2-fields fn2-pool)
+                     '(fn2-pool-reset fn2-pool-copy-range fn2-pool-truncate
+                       fn2-checkpoint-member-hash fn2-format-checkpoint-installation-size
+                       fn2-format-txn-record-encode fn2-format-checkpoint-installation-encode
+                       fn2-checkpoint-slotp unsigned-byte-p integer-range-p natp member-equal)
+                     '(fn2-checkpoint-installation-pack-member) world)))
+        (events (fn2-columns-guarded-contract-events name
+                  '((fn2-fields 2 :prefix "-FIELDS") (fn2-pool 3 :prefix "-POOL"))
+                  field-hints nil (w state)))
+        (pool-type (nth 3 events)) (pool-wfp (nth 4 events)))
+  ; The existing carrier constructor only forwards per-carrier hints to WFP.
+  ; Keep its exact formulas, and replace only the TYPE/WFP pool proof options.
+  (if (or (not (equal (len events) 6))
+          (not (equal (cadr pool-type) (fn2-columns-sym name "-POOL-TYPE-UNDER-GUARD")))
+          (not (equal (cadr pool-wfp) (fn2-columns-sym name "-POOL-WFP-UNDER-GUARD")))
+          (not (equal (nthcdr 3 pool-type) (list :hints field-hints)))
+          (not (equal (nthcdr 3 pool-wfp) (list :hints field-hints))))
+      (er soft 'checkpoint-member-contract "Actual guarded carrier event shape changed.")
+    (value (cons 'progn
+             (append (take 2 (cdr events))
+               (list (append (take 3 pool-type) (list :hints pool-hints))
+                     (append (take 3 pool-wfp) (list :hints pool-hints)))
+               (nthcdr 5 events)))))))
 
 ; Preserve the other three original facets with their exact original H.
 (make-event
@@ -127,15 +141,7 @@
         (args (getpropc name 'formals :missing world))
         (inputs (getpropc name 'stobjs-in nil world))
         (outputs (getpropc name 'stobjs-out nil world))
-        (carriers '((fn2-fields 2 :prefix "-FIELDS")
-            (fn2-pool 3 :prefix "-POOL"
-             :hints ((fn2-columns-guard-hint
-                      '(fn2-checkpoints fn2-checkpoint-refs fn2-checkpoint-bytes fn2-fields fn2-pool)
-                      '(fn2-pool-reset fn2-pool-copy-range fn2-pool-truncate
-                        fn2-checkpoint-member-hash fn2-format-checkpoint-installation-size
-                        fn2-format-txn-record-encode fn2-format-checkpoint-installation-encode
-                        fn2-checkpoint-slotp unsigned-byte-p integer-range-p natp member-equal)
-                      '(fn2-checkpoint-installation-pack-member) world)))))
+        (carriers '((fn2-fields 2 :prefix "-FIELDS") (fn2-pool 3 :prefix "-POOL")))
         (hints '((fn2-columns-guard-hint
                   '(fn2-checkpoints fn2-checkpoint-refs fn2-checkpoint-bytes fn2-fields fn2-pool)
                   '(fn2-pool-reset fn2-pool-copy-range fn2-pool-truncate
@@ -157,4 +163,19 @@
                 fn2-checkpoint-member-fields-type-readonly-removal-check)
         :layer :b
         :doc "Original off-guard FIELDS-TYPE formula is unresolved, not proved or refuted. Guarded served-domain facts have distinct names. Evaluating diagnostic teeth are separately owed in the member unit.")
-       ,@(cdr rest))))))
+       ,(cadr rest)
+       ,(append (take 3 (nth 2 rest)) (list :hints '((fn2-columns-guard-hint
+                     '(fn2-checkpoints fn2-checkpoint-refs fn2-checkpoint-bytes fn2-fields fn2-pool)
+                     '(fn2-pool-reset fn2-pool-copy-range fn2-pool-truncate
+                       fn2-checkpoint-member-hash fn2-format-checkpoint-installation-size
+                       fn2-format-txn-record-encode fn2-format-checkpoint-installation-encode
+                       fn2-checkpoint-slotp unsigned-byte-p integer-range-p natp member-equal)
+                     '(fn2-checkpoint-installation-pack-member) world))))
+       ,(append (take 3 (nth 3 rest)) (list :hints '((fn2-columns-guard-hint
+                     '(fn2-checkpoints fn2-checkpoint-refs fn2-checkpoint-bytes fn2-fields fn2-pool)
+                     '(fn2-pool-reset fn2-pool-copy-range fn2-pool-truncate
+                       fn2-checkpoint-member-hash fn2-format-checkpoint-installation-size
+                       fn2-format-txn-record-encode fn2-format-checkpoint-installation-encode
+                       fn2-checkpoint-slotp unsigned-byte-p integer-range-p natp member-equal)
+                     '(fn2-checkpoint-installation-pack-member) world))))
+       ,@(nthcdr 4 rest))))))
