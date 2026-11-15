@@ -27,13 +27,13 @@
   fn2-checkpoint-restore-events-work))
 (defcolumns fn2-checkpoint-restore-events
  ((phase (:enum fn2-checkpoint-restore-events-phase
-    (:idle :directory :journal-bind :journal :frontier-begin :frontier :peaks :padding :complete :uncertain)))
+    (:idle :directory :journal-bind :journal :frontier-begin :frontier :peaks :padding :complete :uncertain :inventory)))
   (candidate :u32) (generation :u60) (cut-commit :u60) (cut-event :u60)
   (checkpoint :u60) (history :u60) (incarnation :u60) (token :u60)
   (owner-kind :u8) (owner-slot :u32) (owner-gen :u60)
   (slot :u32) (gen :u60) (record-slot :u32) (record-gen :u60)
   (head :u32) (tail :u32) (count :u60) (next-event :u60)
-  (cursor :u32) (previous :u32) (consumed :u60) (peak :u8))
+  (cursor :u32) (previous :u32) (consumed :u60) (peak :u8) (inventory-count :u60))
  :extra-fields
  ((fn2-checkpoint-restore-events-catalog-descriptor :type (array (unsigned-byte 8) (32)) :initially 0
    :why "Retained row1 catalog descriptor survives scratch row0 candidate reuse.")
