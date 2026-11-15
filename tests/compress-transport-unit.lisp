@@ -54,11 +54,11 @@
       ((mv code fn2-compress-transport)
        (fn2-compress-transport-observe-spans 4 5 6 7 serial 0 4 8 0 fn2-compress-transport))
       ((unless (eq code :ok)) (mv :observe fn2-compress-transport))
-      (before (fn2-compress-transport-copy fn2-compress-transport))
+      (before (list (fn2-compress-transport-rows fn2-compress-transport) (fn2-compress-transport-row-snapshot 0 fn2-compress-transport)))
       ((mv code serial fn2-compress-transport)
        (fn2-compress-transport-select-encode 4 5 6 7 4 4 0 fn2-compress-transport))
       ((unless (and (eq code :need-output) (= serial 0)
-                    (equal before (fn2-compress-transport-copy fn2-compress-transport))))
+                    (equal before (list (fn2-compress-transport-rows fn2-compress-transport) (fn2-compress-transport-row-snapshot 0 fn2-compress-transport)))))
        (mv :must-drain-first fn2-compress-transport))
       ; Duplex decode may write a single application octet while the encoded
       ; send buffer waits for the lower carrier. It does not flush the encoder.
@@ -84,7 +84,7 @@
         ((unless (eq code :ok)) (mv nil fn2-compress-transport))
         (fn2-compress-transport
          (fn2-compress-transport-put 0 (alive 1) (handle-id 7) (terminal 3) (copied 3) (output-quantum 6)))
-        (before (fn2-compress-transport-copy fn2-compress-transport))
+        (before (list (fn2-compress-transport-rows fn2-compress-transport) (fn2-compress-transport-row-snapshot 0 fn2-compress-transport)))
         ((mv code serial fn2-compress-transport)
          (fn2-compress-transport-select-encode 4 5 6 7 0 4 0 fn2-compress-transport)))
     (mv (and (fn2-compress-transportp fn2-compress-transport)
@@ -93,7 +93,7 @@
              (eq code :bounds) (= serial 0)
              (not (<= *fn2-compress-min-output-window*
                       (fn2-compress-transport-request-out-count 0 fn2-compress-transport)))
-             (equal before (fn2-compress-transport-copy fn2-compress-transport))) fn2-compress-transport))
+             (equal before (list (fn2-compress-transport-rows fn2-compress-transport) (fn2-compress-transport-row-snapshot 0 fn2-compress-transport)))) fn2-compress-transport))
    ok)))
 (assert-event (fn2-compress-rejected-window-control))
 
@@ -124,11 +124,11 @@
                     (= (fn2-compress-transport-output-offset 0 fn2-compress-transport) 1)
                     (= (fn2-compress-transport-output-length 0 fn2-compress-transport) 8)))
        (mv nil fn2-compress-transport))
-      (before (fn2-compress-transport-copy fn2-compress-transport))
+      (before (list (fn2-compress-transport-rows fn2-compress-transport) (fn2-compress-transport-row-snapshot 0 fn2-compress-transport)))
       ((mv code fn2-compress-transport)
        (fn2-compress-transport-observe-spans 4 5 6 7 serial 0 1 0 0 fn2-compress-transport))
       ((unless (and (eq code :stale)
-                    (equal before (fn2-compress-transport-copy fn2-compress-transport))))
+                    (equal before (list (fn2-compress-transport-rows fn2-compress-transport) (fn2-compress-transport-row-snapshot 0 fn2-compress-transport)))))
        (mv nil fn2-compress-transport))
       ((mv code ?serial fn2-compress-transport)
        (fn2-compress-transport-select-encode 4 5 6 7 4 4 0 fn2-compress-transport)))
