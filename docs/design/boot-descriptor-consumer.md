@@ -88,12 +88,19 @@ for `fn2-boot-bootstrap-pack-pool`: the caller lacked output WFP facts and the
 successful constructor's checked result-digest row. No component assertion or
 anchor admission ran, and no certificate was recorded.
 
-The proof-only `boot-bootstrap-pack-contracts` successor preserves those
-constructor bytes and keys. It exports actual stored-guard carrier contracts
+The proof-only `boot-bootstrap-pack-contracts` successor exports stored-guard carrier contracts
 and the exact image/result-row facts established by successful construction.
 Explicit instances connect the actual returned carriers to the verifier's
 guard. The receipt setter bounds also follow from the existing successful
 construction branch. These additions do not change any runtime body or stored
-guard, and still need an author run. The 31-book constructor closure is READY
-for a separate record-only gate (24 qualified parents and seven whole author
-passes); this does not qualify the rejected verifier or its consumers.
+guard, and still need an author run.
+
+Standalone certification then exposed the constructor's missing proof
+dependency: the first author world had supplied `fn2-pool-read-byte-type`
+through its unrelated reader import. Six prerequisite books actually
+certified; the constructor did not. Its source now explicitly imports that
+proof provider locally and uses the exact byte-return fact in the two copy
+helpers' guard hints. Runtime and stored guards are unchanged, but the
+constructor and descendant keys change and need a new author/record gate.
+The next author ENTRY uses only this root's declared imports, including its
+explicit private proof import, so the unrelated reader cannot mask the gap.

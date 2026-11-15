@@ -56,6 +56,18 @@ def producer(source):
     generic = lr.write(generic, [(bootstrap.items[1].start, bootstrap.items[1].end,
                                  'fn2-boot-bootstrap-encode-pool'),
                                 (a.start, b.end, '')])
+    # The original broad author world exported this byte fact through an
+    # unrelated reader. Own the real dependency and use its exact call here.
+    edits = []
+    for name, substitutions in (
+        ('fn2-boot-save-geometry', '(slot source) (gen sgen) (idx (+ source-off i)) (okind kind) (oslot id)'),
+        ('fn2-boot-save-anchor-digest', '(idx src) (okind kind) (oslot id)')):
+        fn = lr.match('(defun '+name+' ?*body)', lr.parse(generic).forms)[0].node
+        xargs = lr.match('(xargs ?*args)', [fn])[0].node
+        at = next(n.start for n in xargs.items if getattr(n, 'low', None) == ':guard')
+        edits.append((at, at, ':guard-hints (("Goal" :use ((:instance fn2-pool-read-byte-type '+
+                      substitutions+')) :in-theory (disable fn2-pool-read)))\n  '))
+    generic = lr.write(generic, edits)
     return '''; Canonical bootstrap construction, independent of BOOT registration.
 (in-package "ACL2")
 (include-book "std/util/bstar" :dir :system)
@@ -63,6 +75,7 @@ def producer(source):
 (include-book "checkpoint-geometry")
 (include-book "boot-config-state")
 (include-book "pool-ranges")
+(local (include-book "pool-read-contracts"))
 (fn2-book-layer :b)
 
 '''+generic

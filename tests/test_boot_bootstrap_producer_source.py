@@ -20,6 +20,22 @@ def norm(n):
     return n.low
 
 
+def runtime(n):
+    """Erase only actual XARGS proof hints; keep guards and all body terms."""
+    if isinstance(n,lr.Lst):
+        if n.items and getattr(n.items[0],'low',None)=='xargs':
+            result=[];i=0
+            while i<len(n.items):
+                if getattr(n.items[i],'low',None)==':guard-hints':
+                    i+=2
+                else:
+                    result.append(runtime(n.items[i]));i+=1
+            return tuple(result)
+        return tuple(runtime(x) for x in n.items)
+    if isinstance(n,lr.Pre):return n.prefix,runtime(n.node)
+    return n.low
+
+
 class BootstrapProducer(unittest.TestCase):
     def setUp(self):
         self.before = json.loads((ROOT/'tools/fixtures/boot-bootstrap-producer-before.json').read_text())['source']
@@ -119,7 +135,10 @@ class BootstrapProducer(unittest.TestCase):
                     new = e.unique(now,node.items[1].low)
                     self.assertEqual(before[node.start:node.end],now[new.start:new.end])
         accepted = subprocess.check_output(['git','show','f849f3e80:books/boot-bootstrap-pack.lisp'],cwd=ROOT,text=True)
-        self.assertEqual(accepted,self.pack)
+        for node in lr.parse(accepted).forms:
+            if isinstance(node,lr.Lst) and getattr(node.items[0],'low',None)=='defun':
+                self.assertEqual(runtime(node),runtime(e.unique(self.pack,node.items[1].low)))
+        self.assertIn('(local (include-book "pool-read-contracts"))',self.pack)
         contracts = (ROOT/'books/boot-bootstrap-pack-contracts.lisp').read_text()
         self.assertFalse(lr.match('(defun ?*body)',lr.parse(contracts).forms))
         self.assertIn('fn2-boot-pack-geometry-ok-result-row-by-definition',contracts)

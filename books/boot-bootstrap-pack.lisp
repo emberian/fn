@@ -5,6 +5,7 @@
 (include-book "checkpoint-geometry")
 (include-book "boot-config-state")
 (include-book "pool-ranges")
+(local (include-book "pool-read-contracts"))
 (fn2-book-layer :b)
 
 (defun fn2-boot-geometry-bindings (bindings)
@@ -84,6 +85,7 @@
 
 (defun fn2-boot-save-geometry (i source sgen source-off kind id ogen fn2-pool fn2-boot-config)
  (declare (xargs :stobjs (fn2-pool fn2-boot-config) :measure (nfix (- 32 (nfix i)))
+  :guard-hints (("Goal" :use ((:instance fn2-pool-read-byte-type (slot source) (gen sgen) (idx (+ source-off i)) (okind kind) (oslot id))) :in-theory (disable fn2-pool-read)))
   :guard (and (fn2-pool-wfp fn2-pool) (fn2-boot-config-wfp fn2-boot-config) (natp i) (<= i 32) (natp source-off))))
  (if (or (not (natp i)) (>= i 32)) (mv :ok fn2-boot-config)
   (mv-let (code byte) (fn2-pool-read source sgen (+ source-off i) kind id ogen fn2-pool)
@@ -93,6 +95,7 @@
 
 (defun fn2-boot-save-anchor-digest (left dst src slot gen kind id ogen fn2-pool fn2-boot-config)
  (declare (xargs :stobjs (fn2-pool fn2-boot-config) :measure (nfix left)
+  :guard-hints (("Goal" :use ((:instance fn2-pool-read-byte-type (idx src) (okind kind) (oslot id))) :in-theory (disable fn2-pool-read)))
   :guard (and (fn2-pool-wfp fn2-pool) (fn2-boot-config-wfp fn2-boot-config)
               (natp left) (<= left 32) (natp dst) (<= (+ dst left) 384) (natp src))))
  (if (zp left) (mv :ok fn2-boot-config)
