@@ -3,6 +3,7 @@
 (in-package "ACL2")
 (include-book "machines-b")
 (include-book "machine-arms")
+(include-book "boot-config-state")
 (include-book "checkpoint-geometry")
 (include-book "checkpoint-restore-reader")
 (include-book "checkpoint-restore-map")
@@ -25,27 +26,8 @@
 ; most fn2-boot-pack-pool writes) and a u60 value in 8 bytes; the path at
 ; *fn2-profile-path-identity-max* octets. COUNT is fixed at init, so the
 ; measure is too while the cursor advances.
-(defconst *fn2-boot-group-entry-bytes* (+ 250 8))
-(defcolumns fn2-boot-config nil :init-name fn2-boot-config-empty
- :extra-fields
- ((fn2-boot-config-checkpoint-layout-ready :type (unsigned-byte 1) :initially 0 :why "Set only after checked bootstrap/empty anchor scan and the final startup fence.")
-  (fn2-boot-config-image-size :type (unsigned-byte 60) :initially 0 :why "Actual image size checked by ACL2 startup geometry.")
-  (fn2-boot-config-geometry :type (array (unsigned-byte 8) (32)) :initially 0 :why "Owned bootstrap geometry hash; not checker scratch.")
-  (fn2-boot-config-anchor-checked-mask :type (unsigned-byte 8) :initially 0 :why "Actual per-slot anchor authentication results; retained separately from empty and malformed sectors.")
-  (fn2-boot-config-anchor-empty-mask :type (unsigned-byte 8) :initially 0 :why "Actual canonical-zero anchor sectors observed during this cold scan.")
-  (fn2-boot-config-anchor-invalid-mask :type (unsigned-byte 8) :initially 0 :why "Observed nonempty anchor failures remain explicit census evidence; never silently relabelled empty.")
-  (fn2-boot-config-arena-mask :type (unsigned-byte 8) :initially 0 :why "Per-anchor authenticated arena tuple/uniqueness evidence only; never selected-base authority.")
-  (fn2-boot-config-map-fifo-mask :type (unsigned-byte 8) :initially 0 :why "Per-anchor allocation-map/FIFO investigation evidence only; never a selected-base or serving bit.")
-  (fn2-boot-config-anchor-evidence :type (array (unsigned-byte 8) (384)) :initially 0 :why "Three checked digests per physical anchor slot: batch, predecessor, anchor hash; retained across rx window reuse.")
-  (fn2-boot-config-groups :type t :initially nil :why "Unconsumed trusted startup group configuration; one group per boot visit."
-   :resident (* *fn2-boot-group-entry-bytes* (fn2-boot-config-count fn2-boot-config)))
-  (fn2-boot-config-path :type t :initially nil :why "Trusted startup path identity, checked against the immutable image record."
-   :resident *fn2-profile-path-identity-max*)
-  (fn2-boot-config-count :type (unsigned-byte 32) :initially 0 :why "Number of immutable genesis group records.")
-  (fn2-boot-config-extents :type (unsigned-byte 32) :initially 0 :why "The image's arena geometry, checked before recovery.")
-  (fn2-boot-config-owner :type (unsigned-byte 32) :initially 0 :why "Persisted initial owner account binding.")
-  (fn2-boot-config-recovery-assumptions :type (unsigned-byte 8) :initially 2 :why "Declared startup storage fault contract; never inferred from image bytes.")
-  (fn2-boot-config-authority :type (unsigned-byte 1) :initially 0 :why "Whether genesis includes the principal directory.")))
+
+
 
 (defun fn2-boot-config-prepare (profile fn2-boot-config)
  (declare (xargs :stobjs fn2-boot-config :guard t))

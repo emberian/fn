@@ -112,3 +112,13 @@ partition every old source predicate clause, and require one physical read and
 one page verifier implementation. These are source controls, not ACL2 admission.
 Schema20 is reserved for internal canonical member bytes and the actual shared
 phase3 leaf digest; schema21 remains reserved for future real carry-node output.
+
+The common physical engine no longer imports cold catalogs or boot orchestration.
+Its actual harvest observer moved unchanged into the lower I/O book. Boot's whole
+configuration declaration and geometry word/copy/load bodies moved unchanged into
+`boot-config-state` / `boot-geometry-state`; publication and boot keep those same
+exports. The structural extraction accepts the integrator's current declaration,
+including future fields, and preserves unrelated bank/recovery forms. Four source
+controls compare the parent2aed declaration, added-field preservation, helper
+ASTs, and the real include closure; six engine controls also compare harvest.
+No loader body, source authority, parser, hash, or completion semantics changed.
