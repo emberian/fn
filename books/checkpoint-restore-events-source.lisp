@@ -1,0 +1,82 @@
+; B-readable exact terminal evidence for selected-summary and bank consumers.
+; Only the actual C journal/frontier engine creates the terminal phase; these
+; getters validate current descriptor/map provenance and expose retained bytes.
+(in-package "ACL2")
+(include-book "checkpoint-restore-events-state")
+(include-book "checkpoint-restore-reach")
+(include-book "digests")
+(include-book "blake3-spec")
+(fn2-book-layer :b)
+
+(defun fn2-checkpoint-restore-events-current-p (fn2-checkpoints fn2-checkpoint-refs fn2-checkpoint-bytes fn2-checkpoint-restore-map fn2-checkpoint-restore-map-control fn2-checkpoint-restore-reach-control fn2-checkpoint-restore-events)
+ (declare (xargs :stobjs (fn2-checkpoints fn2-checkpoint-refs fn2-checkpoint-bytes fn2-checkpoint-restore-map fn2-checkpoint-restore-map-control fn2-checkpoint-restore-reach-control fn2-checkpoint-restore-events) :verify-guards nil
+  :guard (and (fn2-checkpoints-wfp fn2-checkpoints) (fn2-checkpoint-refs-wfp fn2-checkpoint-refs) (fn2-checkpoint-bytes-wfp fn2-checkpoint-bytes) (fn2-checkpoint-restore-map-wfp fn2-checkpoint-restore-map) (fn2-checkpoint-restore-map-control-wfp fn2-checkpoint-restore-map-control) (fn2-checkpoint-restore-reach-control-wfp fn2-checkpoint-restore-reach-control) (fn2-checkpoint-restore-events-wfp fn2-checkpoint-restore-events))))
+ (and (< 0 (fn2-checkpoint-restore-events-rows fn2-checkpoint-restore-events))
+      (fn2-checkpoint-restore-reach-current-p fn2-checkpoints fn2-checkpoint-refs fn2-checkpoint-bytes fn2-checkpoint-restore-map fn2-checkpoint-restore-map-control fn2-checkpoint-restore-reach-control)
+      (equal (fn2-checkpoint-restore-events-generation 0 fn2-checkpoint-restore-events) (fn2-checkpoint-restore-reach-control-generation 0 fn2-checkpoint-restore-reach-control))
+      (equal (fn2-checkpoint-restore-events-candidate 0 fn2-checkpoint-restore-events) (fn2-checkpoint-restore-reach-control-candidate 0 fn2-checkpoint-restore-reach-control))
+      (equal (fn2-checkpoint-restore-events-cut-commit 0 fn2-checkpoint-restore-events) (fn2-checkpoint-restore-reach-control-source-cut-commit 0 fn2-checkpoint-restore-reach-control))
+      (equal (fn2-checkpoint-restore-events-cut-event 0 fn2-checkpoint-restore-events) (fn2-checkpoint-restore-reach-control-source-cut-event 0 fn2-checkpoint-restore-reach-control))))
+
+(defun fn2-checkpoint-restore-events-reader-p (fn2-checkpoint-restore-reader fn2-checkpoint-restore-events)
+ (declare (xargs :stobjs (fn2-checkpoint-restore-reader fn2-checkpoint-restore-events) :verify-guards nil
+  :guard (and (fn2-checkpoint-restore-reader-wfp fn2-checkpoint-restore-reader) (fn2-checkpoint-restore-events-wfp fn2-checkpoint-restore-events))))
+ (and (< 0 (fn2-checkpoint-restore-reader-rows fn2-checkpoint-restore-reader))
+      (< 0 (fn2-checkpoint-restore-events-rows fn2-checkpoint-restore-events))
+      (equal (fn2-checkpoint-restore-reader-slot 0 fn2-checkpoint-restore-reader) (fn2-checkpoint-restore-events-slot 0 fn2-checkpoint-restore-events))
+      (equal (fn2-checkpoint-restore-reader-gen 0 fn2-checkpoint-restore-reader) (fn2-checkpoint-restore-events-gen 0 fn2-checkpoint-restore-events))
+      (equal (fn2-checkpoint-restore-reader-owner-kind 0 fn2-checkpoint-restore-reader) (fn2-checkpoint-restore-events-owner-kind 0 fn2-checkpoint-restore-events))
+      (equal (fn2-checkpoint-restore-reader-owner-slot 0 fn2-checkpoint-restore-reader) (fn2-checkpoint-restore-events-owner-slot 0 fn2-checkpoint-restore-events))
+      (equal (fn2-checkpoint-restore-reader-owner-gen 0 fn2-checkpoint-restore-reader) (fn2-checkpoint-restore-events-owner-gen 0 fn2-checkpoint-restore-events))))
+
+(defun fn2-checkpoint-restore-events-complete-p (fn2-checkpoints fn2-checkpoint-refs fn2-checkpoint-bytes fn2-checkpoint-restore-map fn2-checkpoint-restore-map-control fn2-checkpoint-restore-reach-control fn2-checkpoint-restore-reader fn2-checkpoint-restore-events fn2-checkpoint-restore-events-work)
+ (declare (xargs :stobjs (fn2-checkpoints fn2-checkpoint-refs fn2-checkpoint-bytes fn2-checkpoint-restore-map fn2-checkpoint-restore-map-control fn2-checkpoint-restore-reach-control fn2-checkpoint-restore-reader fn2-checkpoint-restore-events fn2-checkpoint-restore-events-work) :verify-guards nil
+  :guard (and (fn2-checkpoints-wfp fn2-checkpoints) (fn2-checkpoint-refs-wfp fn2-checkpoint-refs) (fn2-checkpoint-bytes-wfp fn2-checkpoint-bytes) (fn2-checkpoint-restore-map-wfp fn2-checkpoint-restore-map) (fn2-checkpoint-restore-map-control-wfp fn2-checkpoint-restore-map-control) (fn2-checkpoint-restore-reach-control-wfp fn2-checkpoint-restore-reach-control) (fn2-checkpoint-restore-reader-wfp fn2-checkpoint-restore-reader) (fn2-checkpoint-restore-events-wfp fn2-checkpoint-restore-events) (fn2-checkpoint-restore-events-work-wfp fn2-checkpoint-restore-events-work))))
+ (and (fn2-checkpoint-restore-events-current-p fn2-checkpoints fn2-checkpoint-refs fn2-checkpoint-bytes fn2-checkpoint-restore-map fn2-checkpoint-restore-map-control fn2-checkpoint-restore-reach-control fn2-checkpoint-restore-events)
+      (fn2-checkpoint-restore-events-reader-p fn2-checkpoint-restore-reader fn2-checkpoint-restore-events)
+      (fn2-checkpoint-restore-reach-reader-p fn2-checkpoint-restore-reader fn2-checkpoint-restore-reach-control)
+      (equal (fn2-checkpoint-restore-events-phase 0 fn2-checkpoint-restore-events) *fn2-checkpoint-restore-events-phase-complete*)
+      (equal (fn2-checkpoint-restore-reader-role 0 fn2-checkpoint-restore-reader) 4)
+      (equal (fn2-checkpoint-restore-reader-phase 0 fn2-checkpoint-restore-reader) *fn2-checkpoint-restore-reader-phase-done*)
+      (equal (fn2-checkpoint-restore-events-frontier-length fn2-checkpoint-restore-events) *fn2-event-frontier-bytes*)
+      (equal (fn2-checkpoint-restore-events-peak 0 fn2-checkpoint-restore-events) 60)
+      (equal (fn2-checkpoint-restore-events-count 0 fn2-checkpoint-restore-events) (fn2-checkpoint-restore-events-cut-commit 0 fn2-checkpoint-restore-events))
+      (equal (fn2-checkpoint-restore-events-consumed 0 fn2-checkpoint-restore-events) (fn2-checkpoint-restore-events-count 0 fn2-checkpoint-restore-events))
+      (equal (fn2-checkpoint-restore-events-next-event 0 fn2-checkpoint-restore-events) (+ 1 (fn2-checkpoint-restore-events-cut-event 0 fn2-checkpoint-restore-events)))
+      (equal (fn2-checkpoint-restore-events-cursor 0 fn2-checkpoint-restore-events) *fn2-alloc-none*)
+      (let ((tail (fn2-checkpoint-restore-events-tail 0 fn2-checkpoint-restore-events)))
+       (if (equal (fn2-checkpoint-restore-events-cut-commit 0 fn2-checkpoint-restore-events) 0)
+           (and (equal tail *fn2-alloc-none*) (equal (fn2-checkpoint-restore-events-head 0 fn2-checkpoint-restore-events) *fn2-alloc-none*)
+                (equal (fn2-checkpoint-restore-events-cut-event 0 fn2-checkpoint-restore-events) 0))
+         (and (< tail (fn2-checkpoint-restore-events-work-capacity fn2-checkpoint-restore-events-work))
+              (<= (* 32 (+ 1 tail)) (fn2-checkpoint-restore-events-work-seals-length fn2-checkpoint-restore-events-work))
+              (equal (fn2-checkpoint-restore-events-work-generation tail fn2-checkpoint-restore-events-work) (fn2-checkpoint-restore-events-generation 0 fn2-checkpoint-restore-events))
+              (equal (fn2-checkpoint-restore-events-work-consumed tail fn2-checkpoint-restore-events-work) 1)
+              (equal (fn2-checkpoint-restore-events-work-commit tail fn2-checkpoint-restore-events-work) (fn2-checkpoint-restore-events-cut-commit 0 fn2-checkpoint-restore-events))
+              (equal (fn2-checkpoint-restore-events-work-next tail fn2-checkpoint-restore-events-work) *fn2-alloc-none*))))))
+
+(defun fn2-checkpoint-restore-events-frontier-word (level i fn2-checkpoints fn2-checkpoint-refs fn2-checkpoint-bytes fn2-checkpoint-restore-map fn2-checkpoint-restore-map-control fn2-checkpoint-restore-reach-control fn2-checkpoint-restore-reader fn2-checkpoint-restore-events fn2-checkpoint-restore-events-work)
+ (declare (xargs :stobjs (fn2-checkpoints fn2-checkpoint-refs fn2-checkpoint-bytes fn2-checkpoint-restore-map fn2-checkpoint-restore-map-control fn2-checkpoint-restore-reach-control fn2-checkpoint-restore-reader fn2-checkpoint-restore-events fn2-checkpoint-restore-events-work) :verify-guards nil
+  :guard (and (fn2-checkpoints-wfp fn2-checkpoints) (fn2-checkpoint-refs-wfp fn2-checkpoint-refs) (fn2-checkpoint-bytes-wfp fn2-checkpoint-bytes) (fn2-checkpoint-restore-map-wfp fn2-checkpoint-restore-map) (fn2-checkpoint-restore-map-control-wfp fn2-checkpoint-restore-map-control) (fn2-checkpoint-restore-reach-control-wfp fn2-checkpoint-restore-reach-control) (fn2-checkpoint-restore-reader-wfp fn2-checkpoint-restore-reader) (fn2-checkpoint-restore-events-wfp fn2-checkpoint-restore-events) (fn2-checkpoint-restore-events-work-wfp fn2-checkpoint-restore-events-work))))
+ (b* (((unless (fn2-checkpoint-restore-events-complete-p fn2-checkpoints fn2-checkpoint-refs fn2-checkpoint-bytes fn2-checkpoint-restore-map fn2-checkpoint-restore-map-control fn2-checkpoint-restore-reach-control fn2-checkpoint-restore-reader fn2-checkpoint-restore-events fn2-checkpoint-restore-events-work)) (mv :source 0))
+      ((unless (and (natp level) (< level 60) (natp i) (< i 8))) (mv :bounds 0))
+      (at (+ (* 32 level) (* 4 i))))
+  (mv :ok (fn-b3-le-word
+   (fn2-checkpoint-restore-events-frontieri at fn2-checkpoint-restore-events)
+   (fn2-checkpoint-restore-events-frontieri (+ at 1) fn2-checkpoint-restore-events)
+   (fn2-checkpoint-restore-events-frontieri (+ at 2) fn2-checkpoint-restore-events)
+   (fn2-checkpoint-restore-events-frontieri (+ at 3) fn2-checkpoint-restore-events)))))
+
+(defun fn2-checkpoint-restore-events-cut-seal-word (i fn2-checkpoints fn2-checkpoint-refs fn2-checkpoint-bytes fn2-checkpoint-restore-map fn2-checkpoint-restore-map-control fn2-checkpoint-restore-reach-control fn2-checkpoint-restore-reader fn2-checkpoint-restore-events fn2-checkpoint-restore-events-work)
+ (declare (xargs :stobjs (fn2-checkpoints fn2-checkpoint-refs fn2-checkpoint-bytes fn2-checkpoint-restore-map fn2-checkpoint-restore-map-control fn2-checkpoint-restore-reach-control fn2-checkpoint-restore-reader fn2-checkpoint-restore-events fn2-checkpoint-restore-events-work) :verify-guards nil
+  :guard (and (fn2-checkpoints-wfp fn2-checkpoints) (fn2-checkpoint-refs-wfp fn2-checkpoint-refs) (fn2-checkpoint-bytes-wfp fn2-checkpoint-bytes) (fn2-checkpoint-restore-map-wfp fn2-checkpoint-restore-map) (fn2-checkpoint-restore-map-control-wfp fn2-checkpoint-restore-map-control) (fn2-checkpoint-restore-reach-control-wfp fn2-checkpoint-restore-reach-control) (fn2-checkpoint-restore-reader-wfp fn2-checkpoint-restore-reader) (fn2-checkpoint-restore-events-wfp fn2-checkpoint-restore-events) (fn2-checkpoint-restore-events-work-wfp fn2-checkpoint-restore-events-work))))
+ (b* (((unless (fn2-checkpoint-restore-events-complete-p fn2-checkpoints fn2-checkpoint-refs fn2-checkpoint-bytes fn2-checkpoint-restore-map fn2-checkpoint-restore-map-control fn2-checkpoint-restore-reach-control fn2-checkpoint-restore-reader fn2-checkpoint-restore-events fn2-checkpoint-restore-events-work)) (mv :source 0))
+      ((unless (and (natp i) (< i 8))) (mv :bounds 0))
+      (tail (fn2-checkpoint-restore-events-tail 0 fn2-checkpoint-restore-events))
+      ((when (equal tail *fn2-alloc-none*)) (mv :ok 0))
+      (at (+ (* 32 tail) (* 4 i))))
+  (mv :ok (fn-b3-le-word
+   (fn2-checkpoint-restore-events-work-sealsi at fn2-checkpoint-restore-events-work)
+   (fn2-checkpoint-restore-events-work-sealsi (+ at 1) fn2-checkpoint-restore-events-work)
+   (fn2-checkpoint-restore-events-work-sealsi (+ at 2) fn2-checkpoint-restore-events-work)
+   (fn2-checkpoint-restore-events-work-sealsi (+ at 3) fn2-checkpoint-restore-events-work)))))

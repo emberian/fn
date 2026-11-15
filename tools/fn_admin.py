@@ -783,7 +783,7 @@ def prepare_native_crypto(root: Path) -> None:
 
 
 def prepare_native_tls(root: Path, env: dict[str, str]) -> None:
-    """Prepare the native dependency whenever startup receives TLS settings."""
+    """Build and select the same native dependency for CLI TLS startup."""
     if "FN2_TLS_CERTIFICATE" not in env and "FN2_TLS_KEY" not in env:
         return
     try:
@@ -793,6 +793,11 @@ def prepare_native_tls(root: Path, env: dict[str, str]) -> None:
         )
     except (subprocess.CalledProcessError, subprocess.TimeoutExpired) as exc:
         raise OSError("native TLS build failed; node was not started") from exc
+    # The raw adapter accepts an explicit library for standalone primitive
+    # tests. CLI startup must load the artifact this build just prepared,
+    # rather than an inherited FN2_TLS_LIBRARY naming unrelated bytes.
+    name = "libfn2-tls.dylib" if sys.platform == "darwin" else "libfn2-tls.so"
+    env["FN2_TLS_LIBRARY"] = str((root / "build" / "lib" / name).resolve())
 
 
 def apply_origin_options(args: argparse.Namespace, env: dict[str, str]) -> None:

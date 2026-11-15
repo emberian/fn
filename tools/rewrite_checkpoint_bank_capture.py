@@ -40,8 +40,36 @@ def rewrite(source):
     # The comment belongs to the book; regenerate only the named definition.
     code=helper[helper.index('(defun '):].rstrip()
     return write(source,[(node.start,node.end,code)])
+def evidence_identity_helpers():
+    out = {}
+    for suffix, formal, guard, fields in (
+        ('word', 'i', '(natp i) (< i 8)', [f'hash-{i}' for i in range(8)]),
+        ('scalar', 'i', '(natp i) (<= 1 i) (<= i 4)', ['candidate', 'checkpoint', 'history', 'incarnation'])):
+        name = 'fn2-checkpoint-bank-evidence-id-'+suffix
+        code = f'(defun {name} (slot {formal} fn2-checkpoint-publication)\n (declare (xargs :stobjs fn2-checkpoint-publication :guard (and (fn2-checkpoint-publication-wfp fn2-checkpoint-publication) (fn2-checkpoint-bank-evidence-capacityp fn2-checkpoint-publication) (natp slot) (< slot 4) {guard})))\n (case slot\n'
+        for n, prefix in enumerate(('bank0', 'bank1', 'attempt', 'debt')):
+            code += f'  ({n} (case i\n'
+            for i, field in enumerate(fields, 0 if suffix == 'word' else 1):
+                src = 'candidate' if prefix == 'attempt' and field == 'candidate' else prefix+'-'+field
+                code += f'    ({i} (fn2-checkpoint-publication-{src} 0 fn2-checkpoint-publication))\n'
+            code += '    (otherwise 0)))\n'
+        code += '  (otherwise 0)))'
+        out[name] = code
+    return out
+
+def rewrite_evidence_identity(source):
+    parsed = parse(source)
+    edits = []
+    for name, code in evidence_identity_helpers().items():
+        hits = match('(defun '+name+' ?*body)', parsed.forms, deep=False)
+        if len(hits) != 1:
+            raise ValueError('expected one '+name)
+        node = hits[0].node
+        edits.append((node.start, node.end, code))
+    return write(source, edits)
+
 if __name__=='__main__':
-    path=Path(__file__).resolve().parents[1]/'books/checkpoint-publication.lisp'
+    path=Path(__file__).resolve().parents[1]/'books/checkpoint-publication-state.lisp'
     source=path.read_text(); updated=rewrite(source)
     if source!=updated:path.write_text(updated)
     print('bank identity capture:', 'unchanged' if source==updated else 'regenerated')

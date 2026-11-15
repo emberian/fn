@@ -135,7 +135,9 @@
   (b* (((mv & b d) (fn2-block-read-commitment-children bytes len lslot lgen boff hslot hgen hoff okind oslot ogen fn2-b3 fn2-digests fn2-pool)))
    (and (fn2-digestsp d) (fn2-digests-wfp d) (equal (fn2-digests-rows d) (fn2-digests-rows fn2-digests))
         (fn2-b3p b) (fn2-b3-wfp b) (equal (fn2-b3-rows b) (fn2-b3-rows fn2-b3))
-        (equal (len (nth *fn2-b3-wordsi* b)) (len (nth *fn2-b3-wordsi* fn2-b3)))))))
+        (equal (len (nth *fn2-b3-wordsi* b)) (len (nth *fn2-b3-wordsi* fn2-b3))))))
+ :hints (("Goal" :in-theory (disable fn2-digestsp fn2-digests-wfp fn2-digests-rows
+                                    fn2-b3p fn2-b3-wfp fn2-b3-rows fn2-digest-rowp))))
 (in-theory (disable fn2-block-read-commitment-children))
 
 ; B-S2 S10: the read's completion. Every requested octet arrived (BYTES =

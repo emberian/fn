@@ -2,6 +2,7 @@
 ; evidence. All four slots must have been observed; no caller supplies a
 ; verified bit or chooses a reconstruction base. Semantic roots remain owed.
 (in-package "ACL2")
+(include-book "origin")
 (include-book "std/util/bstar" :dir :system)
 (include-book "boot-kind")
 (include-book "checkpoint-recovery-census-state")
@@ -35,14 +36,15 @@
        (fn2-checkpoint-recovery-census-descriptor-bytes-p (- left 1) (+ source 1) (+ evidence 1) fn2-checkpoint-bytes fn2-checkpoint-recovery-evidence))))
 
 ; Rebind the retained row, not row0's last investigation, to the actual current
-; physical anchor, descriptor and cut. Lineage1/1 is the existing cold checker
-; contract; this does not broaden the supported history/incarnation profile.
-(defun fn2-checkpoint-recovery-census-bound-p (c fn2-boot-config fn2-checkpoints fn2-checkpoint-refs fn2-checkpoint-bytes fn2-checkpoint-recovery-evidence)
- (declare (xargs :stobjs (fn2-boot-config fn2-checkpoints fn2-checkpoint-refs fn2-checkpoint-bytes fn2-checkpoint-recovery-evidence)
+; physical anchor, descriptor and cut. Expected physical names come from the
+; configured origin child, independently of semantic acceptance lineage.
+(defun fn2-checkpoint-recovery-census-bound-p (c fn2-boot-config fn2-checkpoints fn2-checkpoint-refs fn2-checkpoint-bytes fn2-origin fn2-checkpoint-recovery-evidence)
+ (declare (xargs :stobjs (fn2-boot-config fn2-checkpoints fn2-checkpoint-refs fn2-checkpoint-bytes fn2-origin fn2-checkpoint-recovery-evidence)
   :guard (and (fn2-boot-config-wfp fn2-boot-config) (fn2-checkpoints-wfp fn2-checkpoints)
               (fn2-checkpoint-refs-wfp fn2-checkpoint-refs) (fn2-checkpoint-bytes-wfp fn2-checkpoint-bytes)
-              (fn2-checkpoint-recovery-evidence-wfp fn2-checkpoint-recovery-evidence))))
- (and (fn2-checkpoint-recovery-census-slotp c)
+              (fn2-checkpoint-recovery-evidence-wfp fn2-checkpoint-recovery-evidence) (fn2-origin-wfp fn2-origin))))
+ (and (fn2-origin-physicalp (fn2-origin-history fn2-origin) (fn2-origin-history-incarnation fn2-origin))
+      (fn2-checkpoint-recovery-census-slotp c)
       (fn2-checkpoint-slotp c fn2-checkpoints fn2-checkpoint-refs fn2-checkpoint-bytes)
       (fn2-checkpoint-recovery-evidence-ready-p c fn2-checkpoint-recovery-evidence)
       (fn2-checkpoint-recovery-census-memberp c (fn2-boot-config-anchor-checked-mask fn2-boot-config))
@@ -54,7 +56,7 @@
             (posp (fn2-checkpoints-checkpoint c fn2-checkpoints))
             (= (fn2-checkpoints-anchor-mask c fn2-checkpoints) (fn2-checkpoint-recovery-census-bit c))
             (= (fn2-checkpoints-bank c fn2-checkpoints) (floor c 2))
-            (= (fn2-checkpoints-history c fn2-checkpoints) 1) (= (fn2-checkpoints-incarnation c fn2-checkpoints) 1)
+            (= (fn2-checkpoints-history c fn2-checkpoints) (fn2-origin-history fn2-origin)) (= (fn2-checkpoints-incarnation c fn2-checkpoints) (fn2-origin-history-incarnation fn2-origin))
             (= (fn2-checkpoints-checkpoint c fn2-checkpoints) (fn2-checkpoint-recovery-evidence-checkpoint e fn2-checkpoint-recovery-evidence))
             (= (fn2-checkpoints-cut-commit c fn2-checkpoints) (fn2-checkpoint-recovery-evidence-cut-commit e fn2-checkpoint-recovery-evidence))
             (= (fn2-checkpoints-cut-event c fn2-checkpoints) (fn2-checkpoint-recovery-evidence-cut-event e fn2-checkpoint-recovery-evidence))
@@ -133,11 +135,11 @@
 ; call. The cold boot barrier keeps these evidence children immutable while
 ; the census runs; no extent-store scan or allocator operation is performed.
 (defun fn2-checkpoint-recovery-census-step (fn2-boot-config fn2-checkpoints fn2-checkpoint-refs fn2-checkpoint-bytes
-                                           fn2-checkpoint-recovery-evidence fn2-checkpoint-recovery-census)
- (declare (xargs :stobjs (fn2-boot-config fn2-checkpoints fn2-checkpoint-refs fn2-checkpoint-bytes fn2-checkpoint-recovery-evidence fn2-checkpoint-recovery-census)
+                                           fn2-checkpoint-recovery-evidence fn2-origin fn2-checkpoint-recovery-census)
+ (declare (xargs :stobjs (fn2-boot-config fn2-checkpoints fn2-checkpoint-refs fn2-checkpoint-bytes fn2-checkpoint-recovery-evidence fn2-origin fn2-checkpoint-recovery-census)
   :guard (and (fn2-boot-config-wfp fn2-boot-config) (fn2-checkpoints-wfp fn2-checkpoints)
               (fn2-checkpoint-refs-wfp fn2-checkpoint-refs) (fn2-checkpoint-bytes-wfp fn2-checkpoint-bytes)
-              (fn2-checkpoint-recovery-evidence-wfp fn2-checkpoint-recovery-evidence) (fn2-checkpoint-recovery-census-wfp fn2-checkpoint-recovery-census))))
+              (fn2-checkpoint-recovery-evidence-wfp fn2-checkpoint-recovery-evidence) (fn2-checkpoint-recovery-census-wfp fn2-checkpoint-recovery-census) (fn2-origin-wfp fn2-origin))))
  (b* (((unless (and (< 0 (fn2-checkpoint-recovery-census-rows fn2-checkpoint-recovery-census))
                      (= (fn2-checkpoint-recovery-census-checked-mask 0 fn2-checkpoint-recovery-census) (fn2-boot-config-anchor-checked-mask fn2-boot-config))
                      (= (fn2-checkpoint-recovery-census-empty-mask 0 fn2-checkpoint-recovery-census) (fn2-boot-config-anchor-empty-mask fn2-boot-config))
@@ -159,7 +161,7 @@
    ((= phase *fn2-checkpoint-recovery-census-phase-candidates*)
     (b* (((unless (fn2-checkpoint-recovery-census-slotp c)) (mv :state fn2-checkpoint-recovery-census))
          (present (fn2-checkpoint-recovery-census-memberp c checked))
-         (ok (and present (fn2-checkpoint-recovery-census-bound-p c fn2-boot-config fn2-checkpoints fn2-checkpoint-refs fn2-checkpoint-bytes fn2-checkpoint-recovery-evidence)))
+         (ok (and present (fn2-checkpoint-recovery-census-bound-p c fn2-boot-config fn2-checkpoints fn2-checkpoint-refs fn2-checkpoint-bytes fn2-origin fn2-checkpoint-recovery-evidence)))
          (bit (fn2-checkpoint-recovery-census-bit c))
          (fn2-checkpoint-recovery-census (fn2-checkpoint-recovery-census-put 0
            (bound-mask (if ok (logior bound bit) bound))
@@ -171,10 +173,11 @@
     (b* (((unless (and (fn2-checkpoint-recovery-census-slotp left) (fn2-checkpoint-recovery-census-slotp right))) (mv :state fn2-checkpoint-recovery-census))
          (both (and (fn2-checkpoint-recovery-census-memberp left bound) (fn2-checkpoint-recovery-census-memberp right bound)))
          ((unless (or (not both)
-            (and (fn2-checkpoint-recovery-census-bound-p left fn2-boot-config fn2-checkpoints fn2-checkpoint-refs fn2-checkpoint-bytes fn2-checkpoint-recovery-evidence)
-                 (fn2-checkpoint-recovery-census-bound-p right fn2-boot-config fn2-checkpoints fn2-checkpoint-refs fn2-checkpoint-bytes fn2-checkpoint-recovery-evidence)
+            (and (fn2-checkpoint-recovery-census-bound-p left fn2-boot-config fn2-checkpoints fn2-checkpoint-refs fn2-checkpoint-bytes fn2-origin fn2-checkpoint-recovery-evidence)
+                 (fn2-checkpoint-recovery-census-bound-p right fn2-boot-config fn2-checkpoints fn2-checkpoint-refs fn2-checkpoint-bytes fn2-origin fn2-checkpoint-recovery-evidence)
                  (<= 24 (fn2-checkpoint-refs-rows fn2-checkpoint-refs)))))
-          (mv :stale (fn2-checkpoint-recovery-census-put 0 (phase *fn2-checkpoint-recovery-census-phase-uncertain*) (topology *fn2-checkpoint-recovery-census-topology-incomplete*))))
+          (let* ((fn2-checkpoint-recovery-census (fn2-checkpoint-recovery-census-put 0 (phase *fn2-checkpoint-recovery-census-phase-uncertain*) (topology *fn2-checkpoint-recovery-census-topology-incomplete*))))
+           (mv :stale fn2-checkpoint-recovery-census)))
          (a (+ 256 (* 160 left))) (b (+ 256 (* 160 right)))
          (same-hash (and both (fn2-checkpoint-recovery-evidence-equal 32 (+ a 96) (+ b 96) fn2-checkpoint-recovery-evidence)))
          (same (and both (fn2-checkpoint-recovery-census-duplicate-p left right fn2-checkpoints fn2-checkpoint-refs fn2-checkpoint-recovery-evidence)))
@@ -241,13 +244,13 @@
  :hyps ((fn2-boot-configp fn2-boot-config) (fn2-boot-config-wfp fn2-boot-config)
         (fn2-checkpoint-recovery-censusp fn2-checkpoint-recovery-census) (fn2-checkpoint-recovery-census-wfp fn2-checkpoint-recovery-census)))
 (fn2-checkpoint-recovery-census-preserves fn2-checkpoint-recovery-census-step
- (fn2-boot-config fn2-checkpoints fn2-checkpoint-refs fn2-checkpoint-bytes fn2-checkpoint-recovery-evidence fn2-checkpoint-recovery-census) :position 1
+ (fn2-boot-config fn2-checkpoints fn2-checkpoint-refs fn2-checkpoint-bytes fn2-checkpoint-recovery-evidence fn2-origin fn2-checkpoint-recovery-census) :position 1
  :hyps ((fn2-boot-configp fn2-boot-config) (fn2-boot-config-wfp fn2-boot-config)
         (fn2-checkpointsp fn2-checkpoints) (fn2-checkpoints-wfp fn2-checkpoints)
         (fn2-checkpoint-refsp fn2-checkpoint-refs) (fn2-checkpoint-refs-wfp fn2-checkpoint-refs)
         (fn2-checkpoint-bytesp fn2-checkpoint-bytes) (fn2-checkpoint-bytes-wfp fn2-checkpoint-bytes)
         (fn2-checkpoint-recovery-evidencep fn2-checkpoint-recovery-evidence) (fn2-checkpoint-recovery-evidence-wfp fn2-checkpoint-recovery-evidence)
-        (fn2-checkpoint-recovery-censusp fn2-checkpoint-recovery-census) (fn2-checkpoint-recovery-census-wfp fn2-checkpoint-recovery-census)))
+        (fn2-checkpoint-recovery-censusp fn2-checkpoint-recovery-census) (fn2-checkpoint-recovery-census-wfp fn2-checkpoint-recovery-census) (fn2-originp fn2-origin) (fn2-origin-wfp fn2-origin)))
 
 (defcost fn2-boot-checkpoint-census :answers (:more :semantic-roots-owed :scan-incomplete :state :stale)
  :bytes 512 :tables (fn2-core-checkpoint-recovery-census)
@@ -264,10 +267,10 @@
                 (fn2-checkpoints (fn2-core-checkpoints fn2-core)) (fn2-checkpoint-refs (fn2-core-checkpoint-refs fn2-core))
                 (fn2-checkpoint-bytes (fn2-core-checkpoint-bytes fn2-core))
                 (fn2-checkpoint-recovery-evidence (fn2-core-checkpoint-recovery-evidence fn2-core))
-                (fn2-checkpoint-recovery-census (fn2-core-checkpoint-recovery-census fn2-core))) (code fn2-checkpoint-recovery-census)
+                (fn2-checkpoint-recovery-census (fn2-core-checkpoint-recovery-census fn2-core)) (fn2-origin (fn2-core-origin fn2-core))) (code fn2-checkpoint-recovery-census)
      (if (zp (fn2-checkpoint-recovery-census-rows fn2-checkpoint-recovery-census)) (mv :state fn2-checkpoint-recovery-census)
       (if (= (fn2-checkpoint-recovery-census-phase 0 fn2-checkpoint-recovery-census) *fn2-checkpoint-recovery-census-phase-idle*)
        (fn2-checkpoint-recovery-census-begin fn2-boot-config fn2-checkpoint-recovery-census)
-       (fn2-checkpoint-recovery-census-step fn2-boot-config fn2-checkpoints fn2-checkpoint-refs fn2-checkpoint-bytes fn2-checkpoint-recovery-evidence fn2-checkpoint-recovery-census)))
+       (fn2-checkpoint-recovery-census-step fn2-boot-config fn2-checkpoints fn2-checkpoint-refs fn2-checkpoint-bytes fn2-checkpoint-recovery-evidence fn2-origin fn2-checkpoint-recovery-census)))
      (mv code fn2-core))))
   (fn2-core-preserves fn2-boot-checkpoint-census (id ogen fn2-core) :position 1 :rows nil)))
