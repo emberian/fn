@@ -1,6 +1,40 @@
 # Certification roots for the promoted fn tree. Keep every book and test
 # visible to --affected-by; lane mode selects immediate affected consumers.
 ACL2_BOOKS = \
+  books/article-limit-text \
+  tests/article-limit-text-unit \
+  books/allocation-release-geometry \
+  books/article-limit-config \
+  books/checkpoint-service-geometry \
+  books/checkpoint-working-credit-init \
+  books/checkpoint-working-credit \
+  books/checkpoint-working-geometry \
+  books/identity-workspace-geometry \
+  books/source-manifest-codec \
+  books/upload-block-private \
+  books/upload-page-geometry \
+  books/upload-stream-manifest \
+  books/upload-stream-reset \
+  books/upload-stream-settle \
+  books/upload-stream-stage \
+  books/upload-stream \
+  books/upload-window-geometry \
+  tests/grant-class-resolution-unit \
+  tests/machine-range-provider-unit \
+  tests/machine-taken-byte-class-unit \
+  tests/root-upload-geometry-unit \
+  tests/root-working-credit-init-unit \
+  tests/txn-retained-source-served-unit \
+  tests/upload-block-private-unit \
+  tests/upload-dual-hash-unit \
+  tests/upload-page-take-unit \
+  tests/upload-posted-linear-unit \
+  tests/upload-rolling-feed-component-unit \
+  tests/upload-rolling-served-unit \
+  tests/upload-source-lifetime-unit \
+  tests/upload-stream-abort-served-unit \
+  tests/upload-stream-manifest-unit \
+  tests/upload-window-profile-unit \
   books/accounts \
   books/accounts-core \
   books/alloc \
@@ -475,6 +509,7 @@ ACL2_BOOKS = \
   tests/network-backpressure-unit \
   tests/ops-semantic-steps-unit \
   tests/origin-unit \
+  tests/article-limit-config-unit \
   tests/origin-format-unit \
   tests/origin-boot-unit \
   tests/owed-authority-unit \

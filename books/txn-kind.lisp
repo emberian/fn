@@ -30,6 +30,13 @@
 (assert-event (and (posp *fn2-txn-groups-max*)
                    (< *fn2-txn-slot-depend* *fn2-succ-slots*)))
 
+ ;; The existing namespace scratch encoding is one u8 length followed by
+;; that many name octets. Its supported group-slot bound fits the rolling
+;; body workspace even before an oversized overview is refused.
+(defconst *fn2-txn-name-span-max* (expt 2 8))
+(defconst *fn2-txn-names-bytes-max* (* *fn2-txn-groups-max* *fn2-txn-name-span-max*))
+(assert-event (<= *fn2-txn-names-bytes-max* *fn2-upload-body-window-bytes*))
+
 ;; Profile-configured cross-post group limit (:max-groups-per-article, D27):
 ;; a D core child read by fn2-txn instead of a compile-time literal.
 (defcolumns fn2-txn-config ((groups-max :u8)))
@@ -103,7 +110,7 @@
           (xstep :u8) (xgroup :u60) (xhead :u60) (xgrant :u60)
           (stopped :bool) (next-free :link))
  :links ((upload :kind fn2-upload :slot upload :gen upload-gen :back (txn txn-gen)
-                 :reads (phase word inj ml mo c0-slot c0-gen c1-slot c1-gen hashed scan-off no nl pext pepoch palloc ilen lslot lgen mfill op)))
+                 :reads (phase word inj ml mo c0-slot c0-gen c1-slot c1-gen hashed source-lines nlines scan-off no nl pext pepoch palloc ilen lslot lgen mfill op)))
  :stops (:txn-uncertain)
  :holds ((:admit :transaction-row) (:reserve :transaction-row)
          (:lookup :transaction-row :identity-reservation) (:prepare :transaction-row :identity-reservation)

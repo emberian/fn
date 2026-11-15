@@ -6,8 +6,10 @@
     {
       "path": "books/article-manifest.lisp",
       "source": "2015b9ed65eec4ebde0036a51bda35726a85be1e",
-      "sha256": "1195d03a1eddd47c858670c7416619f8a1afd2a227504a47249fe202b4ba43d0",
-      "root_sha256": "68aa3deed50bd01949f6a188ed2a7726ad389246beff2107480fa846b7fae0c4"
+      "sha256": "dc5acf447e12f7ff60c128805b0fd1d5a44c3b128bfcf1537aa7fda2f15fe42d",
+      "root_sha256": "68aa3deed50bd01949f6a188ed2a7726ad389246beff2107480fa846b7fae0c4",
+      "prior_join_sha256": "1195d03a1eddd47c858670c7416619f8a1afd2a227504a47249fe202b4ba43d0",
+      "source_scope": "Currentproposedrolling/runtimeplusreviewedproof/interfaceoverlays; originaldonor labelisruntimeorigin"
     },
     {
       "path": "books/assembly-callbacks-c-prepare.lisp",
@@ -24,8 +26,10 @@
     {
       "path": "books/assembly-callbacks-d-upload.lisp",
       "source": "2015b9ed65eec4ebde0036a51bda35726a85be1e",
-      "sha256": "6c0f9a558e2d9b8d0f1328252f01e20004183bd520edfc2ce13cf2a9e7413ae3",
-      "root_sha256": "a342eca040465c03e2c8bcf506f0650622899115fc9497ead699c8692c176324"
+      "sha256": "ead014fa4477829381f1f26a13c0a57e5aac4bb47e8f31f58bbb6c35890091dd",
+      "root_sha256": "a342eca040465c03e2c8bcf506f0650622899115fc9497ead699c8692c176324",
+      "prior_join_sha256": "6c0f9a558e2d9b8d0f1328252f01e20004183bd520edfc2ce13cf2a9e7413ae3",
+      "source_scope": "Currentproposedrolling/runtimeplusreviewedproof/interfaceoverlays; originaldonor labelisruntimeorigin"
     },
     {
       "path": "books/authority.lisp",
@@ -224,8 +228,10 @@
     {
       "path": "books/machines-b.lisp",
       "source": "2015b9ed65eec4ebde0036a51bda35726a85be1e",
-      "sha256": "29faad62bddb81af0d28899086cd0356b62ce8860bde9c544b5543cb96a75b03",
-      "root_sha256": "a29059a34261d157eadd0f8105f48c60cf3b7d6b1179221002bfb0e63818e383"
+      "sha256": "35f0c7c7fc7824682c87e4787ca3bb696d7d745c99855324b3ff6eff827ec8b1",
+      "root_sha256": "a29059a34261d157eadd0f8105f48c60cf3b7d6b1179221002bfb0e63818e383",
+      "prior_join_sha256": "29faad62bddb81af0d28899086cd0356b62ce8860bde9c544b5543cb96a75b03",
+      "source_scope": "Currentproposedrolling/runtimeplusreviewedproof/interfaceoverlays; originaldonor labelisruntimeorigin"
     },
     {
       "path": "books/machines-c-bind.lisp",
@@ -256,20 +262,26 @@
     {
       "path": "books/machines-c-successor.lisp",
       "source": "2015b9ed65eec4ebde0036a51bda35726a85be1e",
-      "sha256": "0211f10dde290b5f58550f2d7831c6e8b343ea8f4545b4eea181b7df379552a0",
-      "root_sha256": "3cc72712a7f54ce24372ea2e2fc37fa1efecbdd0963044064e17c0938dfa467e"
+      "sha256": "2f7f016b10382f964585ff7a2215f48f4febc1dafc128ab8f7fac29822b3f83a",
+      "root_sha256": "3cc72712a7f54ce24372ea2e2fc37fa1efecbdd0963044064e17c0938dfa467e",
+      "prior_join_sha256": "0211f10dde290b5f58550f2d7831c6e8b343ea8f4545b4eea181b7df379552a0",
+      "source_scope": "Currentproposedrolling/runtimeplusreviewedproof/interfaceoverlays; originaldonor labelisruntimeorigin"
     },
     {
       "path": "books/machines-c.lisp",
       "source": "2015b9ed65eec4ebde0036a51bda35726a85be1e",
-      "sha256": "013880be131d9bec09955b85e183c1d67e0776dfdee231b2c8c3ea552ae662f6",
-      "root_sha256": "0ff2c7913bcfb24e8d53b13108053f5dcc6ae57da3dd7dc4d3ca5ba2a07cba2e"
+      "sha256": "5f6615d88b3c82ec346274456d01e9f8d39c0572e0c8b2553cf5da58f5069cec",
+      "root_sha256": "0ff2c7913bcfb24e8d53b13108053f5dcc6ae57da3dd7dc4d3ca5ba2a07cba2e",
+      "prior_join_sha256": "013880be131d9bec09955b85e183c1d67e0776dfdee231b2c8c3ea552ae662f6",
+      "source_scope": "Currentproposedrolling/runtimeplusreviewedproof/interfaceoverlays; originaldonor labelisruntimeorigin"
     },
     {
       "path": "books/machines.lisp",
       "source": "2015b9ed65eec4ebde0036a51bda35726a85be1e",
-      "sha256": "a6013533da9758adab81d87f14b4011d9e761ea181154837760552f0f1935b09",
-      "root_sha256": "a6013533da9758adab81d87f14b4011d9e761ea181154837760552f0f1935b09"
+      "sha256": "5c5a20c1f2ff695fcaa9b2ba2d7bf345781c8127c33af89984c14f516641932f",
+      "root_sha256": "a6013533da9758adab81d87f14b4011d9e761ea181154837760552f0f1935b09",
+      "prior_join_sha256": "a6013533da9758adab81d87f14b4011d9e761ea181154837760552f0f1935b09",
+      "source_scope": "Currentproposedrolling/runtimeplusreviewedproof/interfaceoverlays; originaldonor labelisruntimeorigin"
     },
     {
       "path": "books/query-ref-wake.lisp",
@@ -336,20 +348,26 @@
     {
       "path": "books/txn.lisp",
       "source": "2015b9ed65eec4ebde0036a51bda35726a85be1e",
-      "sha256": "151a07ccc23264b60846b9f5fb9faf87be1d436a9c5e83971a3dc50e547e2fc8",
-      "root_sha256": "cb4e2c09fa3b565877e86123ccfe3bb55f9897938c44179dc9f7deec2c19c2c2"
+      "sha256": "df10cc85b5945be3a3529cfb870ba024bf97efa2e86b5e713326604c1bc39436",
+      "root_sha256": "cb4e2c09fa3b565877e86123ccfe3bb55f9897938c44179dc9f7deec2c19c2c2",
+      "prior_join_sha256": "151a07ccc23264b60846b9f5fb9faf87be1d436a9c5e83971a3dc50e547e2fc8",
+      "source_scope": "Currentproposedrolling/runtimeplusreviewedproof/interfaceoverlays; originaldonor labelisruntimeorigin"
     },
     {
       "path": "books/upload-kind.lisp",
       "source": "2015b9ed65eec4ebde0036a51bda35726a85be1e",
-      "sha256": "c2dd9ed55a7e2a80ab07fac98acd786442e012eeb195132da1d28c605f2c6a3f",
-      "root_sha256": "a6300c4761e615b8e046072c9fe6b3c1f0911d39e24c5edc424d8035ecb1737f"
+      "sha256": "87939fed63fd1aa503cb70a579d4bdffddc0c023962ec29ffccb8293c7e1f230",
+      "root_sha256": "a6300c4761e615b8e046072c9fe6b3c1f0911d39e24c5edc424d8035ecb1737f",
+      "prior_join_sha256": "c2dd9ed55a7e2a80ab07fac98acd786442e012eeb195132da1d28c605f2c6a3f",
+      "source_scope": "Currentproposedrolling/runtimeplusreviewedproof/interfaceoverlays; originaldonor labelisruntimeorigin"
     },
     {
       "path": "books/upload.lisp",
       "source": "2015b9ed65eec4ebde0036a51bda35726a85be1e",
-      "sha256": "3ec0073a959bf9492ffe8c3ad9286cfa574f4e61643c3ceff8da8bdaa5de4849",
-      "root_sha256": "004b64f8666bba9ff56c12f0bb795765a1cf596786366006426a6cbf4d861ff6"
+      "sha256": "c07c83b909b6cdb6e9f0f235b48c5f4d7d5302e143b02be02e84e4a696cc8447",
+      "root_sha256": "004b64f8666bba9ff56c12f0bb795765a1cf596786366006426a6cbf4d861ff6",
+      "prior_join_sha256": "3ec0073a959bf9492ffe8c3ad9286cfa574f4e61643c3ceff8da8bdaa5de4849",
+      "source_scope": "Currentproposedrolling/runtimeplusreviewedproof/interfaceoverlays; originaldonor labelisruntimeorigin"
     },
     {
       "path": "tests/cns-article-slice-unit.lisp",
@@ -690,8 +708,10 @@
     {
       "path": "tests/txn-upload-physical-location-unit.lisp",
       "source": "2015b9ed65eec4ebde0036a51bda35726a85be1e",
-      "sha256": "b18c1d92e2f5da8c4a7d4bf6910a793bc0c9ba82601e07615dda17a540232a2b",
-      "root_sha256": null
+      "sha256": "e1af050c3b07f845b2b0ad7f5758b7404316c4c3a5f347e3cfd56fb9718d97e4",
+      "root_sha256": null,
+      "prior_join_sha256": "b18c1d92e2f5da8c4a7d4bf6910a793bc0c9ba82601e07615dda17a540232a2b",
+      "source_scope": "Currentproposedrolling/runtimeplusreviewedproof/interfaceoverlays; originaldonor labelisruntimeorigin"
     },
     {
       "path": "tests/upload-group16-served-unit.lisp",
@@ -714,8 +734,10 @@
     {
       "path": "tests/upload-uncertainty-served-unit.lisp",
       "source": "2015b9ed65eec4ebde0036a51bda35726a85be1e",
-      "sha256": "f4ef157cb7176209839be1bd7a668dac3e8d3f9f20fcf93fee2960a35f0a5ab9",
-      "root_sha256": null
+      "sha256": "7cfb7cdd679149c36ef60e13e4bc8fcfef67a90345eb8f0f1dabdb58daa01e6b",
+      "root_sha256": null,
+      "prior_join_sha256": "f4ef157cb7176209839be1bd7a668dac3e8d3f9f20fcf93fee2960a35f0a5ab9",
+      "source_scope": "Currentproposedrolling/runtimeplusreviewedproof/interfaceoverlays; originaldonor labelisruntimeorigin"
     },
     {
       "path": "tools/add_preservation_frame_hints.py",
@@ -848,8 +870,10 @@
     {
       "path": "tools/upload_uncertainty_source_test.py",
       "source": "2015b9ed65eec4ebde0036a51bda35726a85be1e",
-      "sha256": "126275a1556f66e6017dbf5d3d7947daf8dc9e9bddb548784a8ef3401b656045",
-      "root_sha256": null
+      "sha256": "050520c59d280763e0f84e10871574049b0e101e9d4e0f0bb864944a8fd7af24",
+      "root_sha256": null,
+      "prior_join_sha256": "126275a1556f66e6017dbf5d3d7947daf8dc9e9bddb548784a8ef3401b656045",
+      "source_scope": "Currentproposedrolling/runtimeplusreviewedproof/interfaceoverlays; originaldonor labelisruntimeorigin"
     },
     {
       "path": "tests/checkpoint-installation-domain-unit.lisp",
@@ -877,7 +901,9 @@
     {
       "path": "books/columns-observation-frames.lisp",
       "source": "cc73111c5f326fbc0cd5938670fa040b9c87ddad",
-      "sha256": "235b8aa4d956ac989e1126767bfde1c6b03528399944f56eb9f90f5cffdd6b92"
+      "sha256": "68a893b2f9c431a8cad67ef995cbbb3379ea25f6df2ab1e84da77b48389a0a76",
+      "prior_join_sha256": "235b8aa4d956ac989e1126767bfde1c6b03528399944f56eb9f90f5cffdd6b92",
+      "source_scope": "Currentproposedrolling/runtimeplusreviewedproof/interfaceoverlays; originaldonor labelisruntimeorigin"
     },
     {
       "path": "tests/columns-observation-frames-controls.lsp",
@@ -1058,7 +1084,7 @@
     "tests/checkpoint-reader-scalar-domain-unit",
     "tests/checkpoint-reader-refutation-unit"
   ],
-  "scope": "Current foundation37 and detached reader34 exact receipt sources/keys; richer served-family source composition. RAW/FETCH/native unproved; prior application136 remains prior-foundation scope.",
+  "scope": "Proposed current rolling/native served source family with qualified lower leaf scopes separately bound; fullcomposedruntime,RAW,consumer/native assertions unproved.",
   "held": [
     "physical metadata/reader loader dispatch",
     "rolling directory/RELEASE/stale-row reset",
@@ -1268,7 +1294,7 @@
     "current_foundation_raw_keys_match": 34,
     "old_receipt_scope": "Original prefoundation reader34 remains historical; only10oldkeys unchanged"
   },
-  "pending_source_join": "B3 sharedextra-array LENGTH observer candidate3144 pendingrootreview; currentCOPY221+readwrappers source joined, newleafpilot pending. NoRAW/app grant.",
+  "pending_source_join": "Metadata2Wloader bridge beforephysicalactivation; source-onlycontrol repairs tracked. IncomingB3proofresults preserved separately; no livepilot retarget.",
   "foundation_join": {
     "source": "6e7a1a9c105f2ccfeb0b06f32c0c566378cf62d9",
     "rows_source": "31635689e152fa20aa3e9eb18ae456ebe2397b64",
@@ -1311,7 +1337,7 @@
   },
   "dimension_interfaces_join": {
     "pool_source": "2c5e7b6daa6da6044e1a0f688d0208d917df45d1",
-    "B3_source": "ebdea5a719ec3cd30a986dd79a4f7acc2c65223b",
+    "B3_source": "166ce6070",
     "ground_fixture_source": "4d6b4ba6d",
     "scope": "Reviewed source-only producer interfaces; all existing runtime/guards/H+C unchanged, new claims UNADMITTED. No wholeRAW/FETCH claim.",
     "pool_domain": "Unconditional metadata-only ROWS/backing-DATA equations derived from actual admitted ABI; no borrowed recognizer",
@@ -1332,14 +1358,15 @@
     "pool_status": "Current wholeleaf AUTHORPASS0.06s289steps+record12qualified11reuse1new; no ARM/RAW inference",
     "B3_parent_status": "Current14parent recordqualified12reuse2new; newwordleaf unproved, INIT firstrefusal0.01s295, reviewed scalarobserver hintfix pendingfreshpilot",
     "B3_parent_receipt": "docs/design/receipts/b3-word-parent-ebce9812.json",
-    "B3_status": "Wholeword leaf UNPROVED; generated raw projections preserve exact public premises and derive from actual observer body, current pilot pending",
+    "B3_status": "ExtraARRAYobserverproducer+fixture6actualrecordqualified; totalPOS arithmetic wordleaf stillUNPROVED/activepilot",
     "arm_storage_qualification": {
       "receipt": "docs/design/receipts/served-family-arm-storage-current37-record.json",
       "current_raw_keys_match": 37,
       "scope": "Actual37familyclosure qualified at8aeb; inherited perbook source-status labels describe planning inputs, not absence/presence of the audited certificate. No RAW/app claim.",
       "recorded_this_campaign": 11,
       "initial_reuse": 26
-    }
+    },
+    "B3_observer_receipt": "docs/design/receipts/b3-observer-family-18df.json"
   },
   "current_source_overlays": [
     "6e7a1a9c1",
@@ -1349,12 +1376,25 @@
     "5f69d871d"
   ],
   "copy_data_interfaces": {
-    "source": "221f6a01880826cb6eb3fa461aa37e6487fcd052",
+    "source": "b21f953da9e1db5972f92b7032dbfe9b68ce3083",
     "prior_source": "f65d3562092d8c6609fea32a315a3513f3a6de1f",
     "scope": "Pending producer/reader proofinterfaces only; runtime,guards,originalclaims exact",
     "proof_domain": "Nonempty WRITE backinglength; invalidbyte unchanged; valid successfulREAD impliesnonempty; unconditional actualCOPY induction, no borrowedWFPguard",
-    "actual_partial": "WRITE nonempty and invalid-byte lemmasPASS; localvalid-byte\u21d2nonempty firstrefusal dueLENopacity; approvedhint-only LENenable retry UNRUN atjoin",
-    "whole_copy_record": "NONE",
+    "actual_partial": "Wholecopy source16forms0refused; originaldomain and completeCOPY theoremPASS; actualrecord8payloads rootindependentlyverified",
+    "whole_copy_record": "Actualcurrent8qualified7reuse1new atb21; /tmp/pool-copy-data211-qualified8-receipt.json. ConnectedREAD wrappers SOURCEONLY, no wholeREAD/RAW transfer",
     "reader_requests": "RD-OCTETS DATA and actual publicREAD ROWS/DATA connected; wrapper wholebooksUNRUN"
+  },
+  "rolling_native_join": {
+    "source": "847fd55720d1a5ec2882fedddaabedddc3634f9c",
+    "exact_parser_source": "0c9bf6ea0",
+    "parser_sha256": "390c6ae567893804032e6699dca1af3c360756745b075d40104a3c819e3af64c",
+    "scope": "Proposed current source composition, no composed guard/ACL2/native qualification. Default32KiB unchanged;96KiB explicit separateprofile. Metadata physicalactivation and2Wloader bridge remain separate.",
+    "feed_abi": "Canonicalpublicslice6 retained; countedcorecallback7 intentional producer+callerjoin",
+    "preservation": "All98 donor paths matched exact889 baseline before application; later COPY/READ/B3 interface overlays retained. No source conflicts.",
+    "current_red_source_controls": [
+      "Rolling preservation test must account for exactly reviewed READ dimension additions while preserving everyoriginalbody/guard/claim",
+      "Distinct-column missing-frame mutation selector nowhas2legitimate functionoccurrences after extraARRAYAPI, needs exactgenerator scopedmutation"
+    ],
+    "native_parser_qualification": "docs/design/receipts/native-article-text-qualified2.json"
   }
 }

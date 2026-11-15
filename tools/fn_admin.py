@@ -887,6 +887,8 @@ def cmd_init(args: argparse.Namespace, root: Path) -> int:
         FN2_OWNER_UID=env.get("FN2_OWNER_UID", str(os.getuid())),
     )
     apply_origin_options(args, env)
+    if getattr(args, "article_max", None) is not None:
+        env["FN2_ARTICLE_MAX"] = args.article_max
     if args.storage_fault_model is not None:
         env["FN2_STORAGE_FAULT_MODEL"] = args.storage_fault_model
     if groups:
@@ -945,6 +947,8 @@ def cmd_serve(args: argparse.Namespace, root: Path) -> int:
         FN2_OWNER_UID=env.get("FN2_OWNER_UID", str(os.getuid())),
     )
     apply_origin_options(args, env)
+    if getattr(args, "article_max", None) is not None:
+        env["FN2_ARTICLE_MAX"] = args.article_max
     if args.storage_fault_model is not None:
         env["FN2_STORAGE_FAULT_MODEL"] = args.storage_fault_model
     if args.host:
@@ -1414,6 +1418,8 @@ def build_parser() -> argparse.ArgumentParser:
                          help="recovery contract: broad (default) or crash-only")
 
     for origin_parser in (p_init, p_serve):
+        origin_parser.add_argument("--article-max", metavar="OCTETS",
+                                   help="article byte limit admitted by the node profile (default: 32768)")
         origin_parser.add_argument("--origin-lineage", metavar="ID",
                                    help="assigned lineage name (required here or FN2_ORIGIN_LINEAGE)")
         origin_parser.add_argument("--origin-domain", metavar="ID",

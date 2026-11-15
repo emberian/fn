@@ -34,14 +34,19 @@
  (implies (unsigned-byte-p 8 (fn2-pool-datai i fn2-pool))
           (posp (fn2-pool-data-length fn2-pool)))
  :hints (("Goal" :cases ((consp (nth *fn2-pool-datai* fn2-pool)))
+   :expand ((len (nth *fn2-pool-datai* fn2-pool)))
    :in-theory (enable len fn2-pool-datai fn2-pool-data-length unsigned-byte-p integer-range-p)))))
 (defthm fn2-pool-read-valid-byte-data-nonempty
  (implies
   (and (equal (car (fn2-pool-read slot gen idx okind oslot ogen fn2-pool)) :ok)
        (unsigned-byte-p 8 (mv-nth 1 (fn2-pool-read slot gen idx okind oslot ogen fn2-pool))))
   (posp (fn2-pool-data-length fn2-pool)))
- :hints (("Goal" :in-theory (e/d (fn2-pool-read)
-   (fn2-pool-readable-code fn2-pool-data-length fn2-pool-datai)))))
+ :hints (("Goal"
+   :use ((:instance fn2-pool-valid-data-byte-nonempty
+           (i (+ (fn2-pool-base slot fn2-pool) idx))))
+   :in-theory (e/d (fn2-pool-read)
+    (fn2-pool-readable-code fn2-pool-data-length fn2-pool-datai
+     fn2-pool-base fn2-pool-fill fn2-pool-valid-data-byte-nonempty)))))
 (local (defthm fn2-pool-read-write-data-length
  (implies (equal (car (fn2-pool-read sslot sgen soff sk ss sg fn2-pool)) :ok)
   (equal

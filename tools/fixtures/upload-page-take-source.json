@@ -1,0 +1,42 @@
+{
+  "base": "885e36e807daca0027c974109758e3ddee19c700",
+  "scope": "source-only atomic upload page TAKE; assertions unrun",
+  "files": {
+    "books/machines.lisp": {
+      "before_sha256": "078b309df5051b4dab94bc996b9d08eafd1341eee04138fc0e517756ed4ef74e",
+      "after_sha256": "dda853048aae5f3325bde5ea3e01ba30f6323f9fbcc118e5202806375796dcd4"
+    },
+    "books/machine-arms.lisp": {
+      "before_sha256": "c31788bd91bb81a1e78eb99b1299166caad9c4c89e3a1b9659a78eb63213efee",
+      "after_sha256": "7843cd0794ae7e686db4ab9ee75286ffe6d2e3ef6eb8e91fd1c5cbb2364320ea"
+    },
+    "books/machines-a-access.lisp": {
+      "before_sha256": "e6dd1acaf9149a1769841343f6d5808dd4124ce75e177a59d155ed3afd53d668",
+      "after_sha256": "446d765ecb3b7aa0ed2ab7c9d2f9964bd47aff03d80cd521a9c6b11e1264ae5b"
+    },
+    "books/upload-kind.lisp": {
+      "before_sha256": "ac43b315a9dbb2f1b5a8c7577b678378e0a4a3c1db081cedcf963b9547777de1",
+      "after_sha256": "24566c9ac82cf9c898f6343ca1740affc3803aea41603c6537873ef63d7acc21"
+    },
+    "books/upload-stream.lisp": {
+      "before_sha256": "eaa13e27ba00607a36f4d7ff30882899f1f9f458ded9c1e5906aaa339f3e8e26",
+      "after_sha256": "7560164bb960aeb2af6d61f5b717f8a6d86793074973992990a0877c04b5f610"
+    },
+    "books/upload.lisp": {
+      "before_sha256": "a8ab16bebf0b6790667e70447523fac9f553903301529fbf196b83ca21e771a4",
+      "after_sha256": "c07c83b909b6cdb6e9f0f235b48c5f4d7d5302e143b02be02e84e4a696cc8447"
+    },
+    "books/assembly-callbacks-d-upload.lisp": {
+      "before_sha256": "807fc187a8c225866b75bfceca1c81b91b80b548399f5d66e73beb6e12c01aa9",
+      "after_sha256": "ead014fa4477829381f1f26a13c0a57e5aac4bb47e8f31f58bbb6c35890091dd"
+    },
+    "books/checkpoint-service-geometry.lisp": {
+      "before_sha256": "abbd681d124246b5ef83c60cd5430387feafddf69c59177ba48123f51f42df7e",
+      "after_sha256": "381abcaeab5b47c4c0c4cd2c24d2edbbe822ff1c009d40ce6846f4a7ae5e4f3e"
+    },
+    "books/checkpoint-working-credit-init.lisp": {
+      "before_sha256": "c2166c58321db3a3f7bfef827432c8eeab033cb36ec75a10e1a6f5035c703a91",
+      "after_sha256": "b84b597dd40b066908f6a6533cb09184ad8c9ffe905509212de9913a14457ad7"
+    }
+  }
+}
