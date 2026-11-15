@@ -19,4 +19,5 @@
 (fn2-event-producer-rearm-events)
 (fn2-checkpoint-summary-authority-live-events)
 (fn2-checkpoint-live-catalog-events)
+(fn2-checkpoint-live-cbase-events)
 (fn2-checkpoint-master-events)

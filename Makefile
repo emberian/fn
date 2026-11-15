@@ -331,6 +331,7 @@ ACL2_BOOKS = \
   books/checkpoint-summary-loader-readiness \
   tests/run-physical-release-readiness-unit \
   books/checkpoint-live-catalog \
+  books/checkpoint-live-cbase \
   tests/checkpoint-live-catalog-unit \
   books/checkpoint-owned-extent \
   books/checkpoint-owned-projection \
