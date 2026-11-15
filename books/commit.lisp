@@ -434,7 +434,7 @@
  (stobj-let ((fn2-commit-root (fn2-core-commit-root fn2-core))) (batch key capacity mode)
   (if (< 0 (fn2-commit-root-rows fn2-commit-root))
       (mv (+ 1 (fn2-commit-root-proposed 0 fn2-commit-root))
-          (fn2-commit-root-first-key 0 fn2-commit-root) (fn2-commit-root-rows fn2-commit-root)
+          (fn2-commit-root-first-key 0 fn2-commit-root) (fn2-commit-directory-admission-limit fn2-commit-root)
           (fn2-commit-root-barrier-mode 0 fn2-commit-root))
     (mv 0 0 0 0)) (mv batch key capacity mode)))
 (in-theory (disable fn2-commit-frontier))
