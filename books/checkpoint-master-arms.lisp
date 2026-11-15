@@ -368,7 +368,7 @@
   (:summary-authority-copy :on-refusal ((:next :uncertain) (:charge :steps *fn2-work-small* :runnable t))
    (:do (code) (fn2-checkpoint-summary-authority-live-step-op) :accept () :case
     (((:more) (:charge :steps *fn2-work-stage* :runnable t))
-     ((:complete) (:next :rebase-begin) (:charge :steps *fn2-work-stage* :runnable t))
+     ((:complete) (:next :live-catalog-close) (:charge :steps *fn2-work-stage* :runnable t))
      (:otherwise (:next :uncertain) (:charge :steps *fn2-work-small* :runnable t)))))
   (:rebase-begin :on-refusal ((:next :uncertain) (:charge :steps *fn2-work-small* :runnable t))
    (:do (code) (fn2-checkpoint-directory-rebase-begin-op row-token *fn2-checkpoint-master-kind* id row-generation))
@@ -429,5 +429,8 @@
      (:otherwise (:next :teardown-uncertain) (:charge :steps *fn2-work-small* :runnable t)))))
   (:teardown-cold-ack :on-refusal ((:next :teardown-uncertain) (:charge :steps *fn2-work-small* :runnable t))
    (:do (code) (fn2-checkpoint-teardown-cold-ack-op row-source) :accept (:transferred))
-   (:next :teardown-cold-next) (:charge :bytes 192 :steps *fn2-work-stage* :runnable t)))
+   (:next :teardown-cold-next) (:charge :bytes 192 :steps *fn2-work-stage* :runnable t))
+  (:live-catalog-close :on-refusal ((:next :uncertain) (:charge :steps *fn2-work-small* :runnable t))
+   (:do (code) (fn2-checkpoint-summary-live-close-op) :accept (:captured))
+   (:next :rebase-begin) (:charge :bytes 32 :steps *fn2-work-stage* :runnable t)))
  :observes ((:read-result (:wake))))

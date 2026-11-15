@@ -3,12 +3,13 @@ from pathlib import Path
 import unittest
 import lisp_rewrite as lr
 import checkpoint_summary_writer_link_rewrite as rw
+import checkpoint_live_authority_catalog_rewrite as catalog
 ROOT=Path(__file__).resolve().parents[1]
 class Link(unittest.TestCase):
     def test_actual_class_reproduces_from_fixed_original(self):
         before=(ROOT/'tools/fixtures/checkpoint-summary-live-writer-before.lisp').read_text()
         actual=(ROOT/'books/checkpoint-summary-authority-live.lisp').read_text()
-        self.assertEqual(actual,rw.rewrite(before))
+        self.assertEqual(actual,catalog.rewrite(rw.rewrite(before)))
     def test_hash_helper_has_no_unbound_stobj_guards(self):
         forms=lr.parse(ROOT/'books/checkpoint-summary-authority-live.lisp').forms
         fn=lr.match('(defun fn2-checkpoint-summary-live-published-hash-p ?*body)',forms)[0].node
