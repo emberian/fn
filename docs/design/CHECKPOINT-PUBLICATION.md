@@ -730,3 +730,30 @@ the next actual producer begin initializes them. The terminal record binds the
 candidate, token, owner and cut. It leaves root1 RESERVED/token0, future token0
 and snapshot COMPLETE0; the checkpoint owner retains candidate/planning state
 until its final gate. This operation releases no cut, lease or allocator edge.
+
+Planning refusal after descriptor reservation uses an actual post-descriptor
+abort chain. The master first drives the existing owner-scoped cancellation
+across the construction ledger while phase3 stays closed. An issued, completed
+or claimed row requires recovery; it cannot enter ordinary working cleanup.
+After actual CANCEL-EMPTY, the descriptor continuation scans the candidate's
+exact unpublished PREPARED source edges, clears six unretained reference rows,
+then zeros its 192 hash bytes, one row or byte per call. The BUILDING claim,
+physical namespace and held cut remain intact through the last byte. Foreign
+holders and read/I/O pins remain unchanged, including during source-edge cleanup.
+
+The separate lower reset consumes exact CANCELLED/EOF and cancellation/cut
+provenance. It requires ownership of all 27 leases, no future borrowers and no
+pending semantic/payload/page operations before resetting private source
+continuations. It leaves root1 RESERVED/token0 and future8 token0. Final abort
+checks that actual reset terminal/cursor and resource capacities, then ends
+phase3 using the allocator's current frontier and clears only the unpublished
+candidate/build/planning state in the same call. No fallible operation or yield
+separates opening the gate from clearing that claim. The master then rejoins
+the existing cut release and bounded shared27 cleanup. Refusal before descriptor
+reservation uses the original preconstruction gate. Allocator FREE, bank debt
+clearing and installed-candidate teardown are not granted by either abort path.
+
+These connected source arms and primitive controls remain unadmitted and
+activation stays disabled. Repeated identical planning refusal also needs an
+actual resource-change retry policy; cancellation does not mark retirement debt
+seen or establish a maintenance liveness guarantee.
