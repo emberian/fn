@@ -9,6 +9,7 @@
 (include-book "read-pins")
 (include-book "checkpoint-cbase-state")
 (include-book "checkpoint-lifecycle-coordinator")
+(include-book "release-allocation")
 (include-book "checkpoint-tickets")
 (include-book "format-check")
 (include-book "payload-workspace")
@@ -44,6 +45,10 @@
 (defcorechild fn2-core-retirement-control fn2-retirement-control
  :init (fn2-retirement-control-init (+ 1 *fn2-checkpoint-allocation-records-per-ticket*) fn2-retirement-control) :profilep t
  :why "One lifecycle producer, retained workspace and exact settlement identity across yields.")
+(defcorechild fn2-core-allocation-release fn2-allocation-release
+ :init (fn2-allocation-release-init 1 fn2-allocation-release)
+ :profilep t
+ :why "One actual staged/pending RELEASE_ALLOCATION owns exact checkpoint evidence and target across yields; no FREE admission is granted by staging.")
 (defun fn2-b-checkpoint-capacity (profile)
  (declare (xargs :guard t))
  (nfix (fn2-b-capacity :checkpoint-candidates 4 profile)))
