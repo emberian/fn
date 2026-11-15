@@ -1,0 +1,238 @@
+{
+  "schema": "fn-record-receipt-v1",
+  "scope": "Exact six-book union for corrected DEFCOLUMNS namespace checks and opt-in getter-opacity helper; actual CHECK-STEP/MEMBER guard source is excluded.",
+  "source_commit": "2bc79fcefba8c670a56794d6cc560c9219c6927d",
+  "source_base": "028d261bcaad4b5b387d9aa2ecd03b462584b08e",
+  "source_change_candidates": [
+    "47462d438",
+    "877fc9573"
+  ],
+  "remote_host": "fn@dregg-forge",
+  "remote_source": "/build/lanes/columns-combined-record-2bc79fcef",
+  "farm_run": "run-20261115T034557Z-0692",
+  "certify_run": "certify-20261115T034623Z-812141",
+  "manifest": "/build/lanes/columns-combined-record-2bc79fcef/build/acl2/certify-20261115T034623Z-812141/manifest.json",
+  "manifest_sha256": "99200c123ec7e525c2c1a2357bd05f73000282360065a42419634a9b8fe47eb6",
+  "remote_audits": "/build/lanes/columns-combined-record-2bc79fcef/build/columns-combined-record-evidence",
+  "status": "passed",
+  "roots": [
+    "tests/columns-name-unit",
+    "tests/columns-guard-hints-unit"
+  ],
+  "selection": {
+    "lane": true,
+    "affected_by": [
+      "tests/columns-name-unit",
+      "tests/columns-guard-hints-unit"
+    ]
+  },
+  "source_evidence": {
+    "method": "All six SHA256 values match immutable source_commit and manifest before/after; final source files match reviewed47462/877 byte-for-byte.",
+    "before_equals_after": true,
+    "runner_unchanged": true,
+    "closure": [
+      {
+        "book": "books/columns",
+        "key": "af444dbfcccce7083f99637cc8947a859347bd4d6c8df17f7ab3a91e00d33ca2",
+        "sha256": "d3a58387c7c0dabc4ceaffeeb20672031a04693d8dd52078f50c5fa487c0d5f8"
+      },
+      {
+        "book": "books/columns-guard-hints",
+        "key": "af9c914f286c284146d84a134fc9b973a4de2703fd4b21e9bebeca994b4bd62c",
+        "sha256": "e0a20c5669df681bf75fa5eeae426adc4053010915b3c7657d56e247d5c8440b"
+      },
+      {
+        "book": "books/declare",
+        "key": "f1df352dc360553d08906239d267e9371fcb2fe4f19c6581adc1b0b322b30875",
+        "sha256": "1c706e559ef3b314fb9bd48171fb2891fad8613bd4eb1c5de5268443833c4bfb"
+      },
+      {
+        "book": "books/operations",
+        "key": "bd6bdf7f71b74618b02924c542559dcb99a149c816aeed11f3f5cd82d766483f",
+        "sha256": "959da2da147247146a2360e23d2c7d6abd6c581abdf0f6873661f63cee87484f"
+      },
+      {
+        "book": "tests/columns-guard-hints-unit",
+        "key": "9a7fd43448ea30bacb761a8ef51f43253171b995259fee597515d71d0b434dff",
+        "sha256": "fe25b8b94a1da23203d08e5174d50d8b8293572c62cf0e43d7c955f2306b0b10"
+      },
+      {
+        "book": "tests/columns-name-unit",
+        "key": "b011b637d50867ec2f1b128a40513f855ec22c05dec95c92edf1fa15eeba1950",
+        "sha256": "2b92ba225c34032a28f582d576bebeb4b6f8bb0fef9011359a3bf80b4005ea17"
+      }
+    ],
+    "auxiliary": {
+      "tests/columns-name-controls.lsp": "6ac25117a9e99c5bccd142a0c2b737c221a9657a370af8f7583cd93e37d2cf78"
+    }
+  },
+  "cache": {
+    "directory": "/home/fn/.cache/fn-certs",
+    "toolchain_identity": "8aeb1bea18968c6cd33ac633a80ebf67e4924504db112fd27eb11f16a27b2a8c",
+    "reused": 2,
+    "new": 4,
+    "audit": "Every selected book.cert/book.fasl/meta.json exists and is owned by fn; actual hashes match metadata, and four new pairs match manifest.",
+    "entries": [
+      {
+        "book": "books/columns",
+        "key": "af444dbfcccce7083f99637cc8947a859347bd4d6c8df17f7ab3a91e00d33ca2",
+        "sha256": "d3a58387c7c0dabc4ceaffeeb20672031a04693d8dd52078f50c5fa487c0d5f8",
+        "cache_path": "/home/fn/.cache/fn-certs/af444dbfcccce7083f99637cc8947a859347bd4d6c8df17f7ab3a91e00d33ca2/6add19db01a9c2ec",
+        "origin_root": "/build/lanes/columns-combined-record-2bc79fcef",
+        "origin_kind": "run",
+        "cert_sha256": "10a910e567c7c324d786687cc0fffc9fa915d9af40f23973191278538915042f",
+        "fasl_sha256": "92347805c6e7821996c5598450f69fb58879c1635f2645f5c900f296ab86223e",
+        "owners": {
+          "book.cert": "fn",
+          "book.fasl": "fn",
+          "meta.json": "fn"
+        }
+      },
+      {
+        "book": "books/columns-guard-hints",
+        "key": "af9c914f286c284146d84a134fc9b973a4de2703fd4b21e9bebeca994b4bd62c",
+        "sha256": "e0a20c5669df681bf75fa5eeae426adc4053010915b3c7657d56e247d5c8440b",
+        "cache_path": "/home/fn/.cache/fn-certs/af9c914f286c284146d84a134fc9b973a4de2703fd4b21e9bebeca994b4bd62c/6add19db01a9c2ec",
+        "origin_root": "/build/lanes/columns-combined-record-2bc79fcef",
+        "origin_kind": "run",
+        "cert_sha256": "2c72d5054751145dc50bbc0652e6462b46e4ef13b6443fec0e20328a8560bf56",
+        "fasl_sha256": "e2879e1b3201b7bb7663e28e1042e762767cb2e0d5e22ea07656605babd404b3",
+        "owners": {
+          "book.cert": "fn",
+          "book.fasl": "fn",
+          "meta.json": "fn"
+        }
+      },
+      {
+        "book": "books/declare",
+        "key": "f1df352dc360553d08906239d267e9371fcb2fe4f19c6581adc1b0b322b30875",
+        "sha256": "1c706e559ef3b314fb9bd48171fb2891fad8613bd4eb1c5de5268443833c4bfb",
+        "cache_path": "/home/fn/.cache/fn-certs/f1df352dc360553d08906239d267e9371fcb2fe4f19c6581adc1b0b322b30875/2c56b9035d330b37",
+        "origin_root": "/build/lanes/finish-build-row",
+        "origin_kind": "run",
+        "cert_sha256": "202d9dd8bfa5eb1d5c2f705fc7dd054f87014e5263da1f80bbafef057ce68971",
+        "fasl_sha256": "949ada9e4b8673d8401f9a6d053f5f11b1e373f28b38638cc3fae79c3b469db6",
+        "owners": {
+          "book.cert": "fn",
+          "book.fasl": "fn",
+          "meta.json": "fn"
+        }
+      },
+      {
+        "book": "books/operations",
+        "key": "bd6bdf7f71b74618b02924c542559dcb99a149c816aeed11f3f5cd82d766483f",
+        "sha256": "959da2da147247146a2360e23d2c7d6abd6c581abdf0f6873661f63cee87484f",
+        "cache_path": "/home/fn/.cache/fn-certs/bd6bdf7f71b74618b02924c542559dcb99a149c816aeed11f3f5cd82d766483f/84166f8b7b293004",
+        "origin_root": "/build/lanes/assurance-storage-codec-5ca",
+        "origin_kind": "run",
+        "cert_sha256": "498648c5b419b4b8b83b2167dbdc831bf513629e10dc1b764bf7a314b73e1e5d",
+        "fasl_sha256": "d8ee889a9ed62314ef52fbef89daa3a40e379c48794ab076eddb5897d295b48d",
+        "owners": {
+          "book.cert": "fn",
+          "book.fasl": "fn",
+          "meta.json": "fn"
+        }
+      },
+      {
+        "book": "tests/columns-guard-hints-unit",
+        "key": "9a7fd43448ea30bacb761a8ef51f43253171b995259fee597515d71d0b434dff",
+        "sha256": "fe25b8b94a1da23203d08e5174d50d8b8293572c62cf0e43d7c955f2306b0b10",
+        "cache_path": "/home/fn/.cache/fn-certs/9a7fd43448ea30bacb761a8ef51f43253171b995259fee597515d71d0b434dff/6add19db01a9c2ec",
+        "origin_root": "/build/lanes/columns-combined-record-2bc79fcef",
+        "origin_kind": "run",
+        "cert_sha256": "05646ce5a0a3479a6fdab8b8b5dc0d2c24bc82a07c18722d8d58a0a236d378cc",
+        "fasl_sha256": "e2d8691094e02c6275a010bebed256df694206cbf73d0b072dff89c5fbfd9a1a",
+        "owners": {
+          "book.cert": "fn",
+          "book.fasl": "fn",
+          "meta.json": "fn"
+        }
+      },
+      {
+        "book": "tests/columns-name-unit",
+        "key": "b011b637d50867ec2f1b128a40513f855ec22c05dec95c92edf1fa15eeba1950",
+        "sha256": "2b92ba225c34032a28f582d576bebeb4b6f8bb0fef9011359a3bf80b4005ea17",
+        "cache_path": "/home/fn/.cache/fn-certs/b011b637d50867ec2f1b128a40513f855ec22c05dec95c92edf1fa15eeba1950/6add19db01a9c2ec",
+        "origin_root": "/build/lanes/columns-combined-record-2bc79fcef",
+        "origin_kind": "run",
+        "cert_sha256": "4683adf0f59f274df33932372b1f5a5bf3ff8808f354e7e65d3ff72c383d74f7",
+        "fasl_sha256": "27ffb1ccbe7c08aa851279636c64096ebf22b23a1448b9d7f6e031b2ed31fa05",
+        "owners": {
+          "book.cert": "fn",
+          "book.fasl": "fn",
+          "meta.json": "fn"
+        }
+      }
+    ]
+  },
+  "author": {
+    "status": "passed",
+    "source_snapshot": "/build/lanes/columns-combined-2bc79fcef",
+    "log": "/tmp/columns-combined-author.log",
+    "outer_pid": 811049,
+    "server_pid": 811066,
+    "acl2_ancestor_pid": 811068,
+    "outer_seconds": 300,
+    "per_event_seconds": 20,
+    "per_event_steps": 2000000,
+    "guard_fixture_seconds": 0.75,
+    "guard_fixture_steps": 28574
+  },
+  "record": {
+    "jobs": 1,
+    "images": "off",
+    "book_seconds": 120,
+    "outer_seconds": 600,
+    "runner_pid": 812136,
+    "effective_caps": [
+      {
+        "pid": 812106,
+        "cgroup": "/user.slice/user-1000.slice/user@1000.service/swarm.slice/run-p812105-i30168797.scope",
+        "memory_max": "2147483648",
+        "memory_swap_max": "0"
+      },
+      {
+        "pid": 812141,
+        "cgroup": "/user.slice/user-1000.slice/user@1000.service/swarm.slice/run-p812140-i30168832.scope",
+        "memory_max": "2147483648",
+        "memory_swap_max": "0"
+      }
+    ],
+    "book_wall_seconds": {
+      "books/columns": 1.121,
+      "books/columns-guard-hints": 0.166,
+      "tests/columns-guard-hints-unit": 1.068,
+      "tests/columns-name-unit": 1.471
+    },
+    "book_prover_steps": {
+      "books/columns": 28207,
+      "books/columns-guard-hints": 0,
+      "tests/columns-guard-hints-unit": 28516,
+      "tests/columns-name-unit": 32280
+    },
+    "triage": {
+      "real": 0,
+      "cascade": 0,
+      "must_fail": 1,
+      "limit": 0,
+      "killed": 0,
+      "other": 0
+    }
+  },
+  "release": {
+    "verified_pids_absent": [
+      811049,
+      811066,
+      811068,
+      812136,
+      812140,
+      812141
+    ],
+    "verified_scopes_absent": [
+      "run-p811049-i30167741.scope",
+      "run-p812140-i30168832.scope"
+    ],
+    "reservation_released": true
+  },
+  "remaining": "Actual CHECK-STEP and MEMBER guards still need their coherent current qualified parent prefix; this receipt qualifies only the shared proof API and focused controls."
+}
