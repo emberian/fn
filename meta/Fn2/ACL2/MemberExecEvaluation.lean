@@ -249,6 +249,28 @@ theorem closed_adequate_emitted (key : String) (xs : List Val) :
     exact closed_evaluation key xs
   · simpa only [he] using hr
 
+/-- Five exact lookup equations suffice for embedding this recursive closure.
+Generated consumers prove these equations against their packet-derived records. -/
+theorem program_extension_of_lookups {target : CanonicalProgram}
+    (notLookup : target "NOT" = some notDefinition)
+    (atomLookup : target "ATOM" = some atomDefinition)
+    (endpLookup : target "ENDP" = some endpDefinition)
+    (eqLookup : target "EQ" = some eqDefinition)
+    (memberLookup : target "MEMBER-EQ-EXEC" = some memberDefinition) :
+    ∀ name definition, program name = some definition → target name = some definition := by
+  intro name definition resolved
+  by_cases hn : name = "NOT"
+  · subst name; exact notLookup.trans resolved
+  by_cases ha : name = "ATOM"
+  · subst name; exact atomLookup.trans resolved
+  by_cases he : name = "ENDP"
+  · subst name; exact endpLookup.trans resolved
+  by_cases hq : name = "EQ"
+  · subst name; exact eqLookup.trans resolved
+  by_cases hm : name = "MEMBER-EQ-EXEC"
+  · subst name; exact memberLookup.trans resolved
+  simp [program, hn, ha, he, hq, hm] at resolved
+
 /-- Reuse the actual emitted recursive result inside a larger canonical closure.
 All five logical records and every reached admission must be preserved. The
 consumer must discharge these premises from its own current canonical packet;

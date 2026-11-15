@@ -7,34 +7,51 @@ must be derived from that store and the actual served call/attachment graph.
 
 ## Current integration frontier — 2026-11-14 evening
 
-Root `d486cbe80` integrates shared observer row-count frames and actual TLS
-START/WAIT/NEXT guard events (`a56eb2806`), plus compression selector guard
-repairs and executable live-row frame controls. The retained author sessions
-admitted those guards and compression controls. Compression record definitions
-were admitted without their guards; native composition and current record
-certification remain separate obligations.
+Root `d18bcfbf2` includes the complete scoped TLS record/private-bridge guard
+changes (`756cef1ee`). The exact twenty-book record reused five qualified parents
+and certified fifteen books; root matched every source digest before and after.
+Native evidence and actual C-backed runtime controls are recorded in
+[NATIVE-B3-CORRESPONDENCE.md](NATIVE-B3-CORRESPONDENCE.md), with their finite scope
+and remaining C/FFI assumptions explicit. These do not establish the full host
+or an encrypted network roundtrip. Layout remains qualified in its nine-book
+scope, with its 56.455-second proof-cost debt still open.
 
-TLS owner has individually admitted the remaining observer guard and private
-bridge guards. Shared policy-field and bridge guard generators (`33efacc35`,
-`fe18e7078`) await their final generated-form check before root integration.
-Layout owner reports a qualified nine-book record (seven reused, two new) at
-`certify-20261115T001611Z-606256`; root receipt verification is pending. Layout
-itself still took 56.455 seconds, so proof-cost debt remains.
+Allocator barriers and expanded existing controls are integrated at `7b2906f74`.
+The twelve-book author gate passed, including all existing protector/model traces
+and direct release-marker interleavings. Review exposed five old test setups that
+acquired durable protectors after retirement; those now use the permitted ordering
+while retaining transient post-retirement races. This changes allocator-dependent
+closure keys. Current twelve-book record
+`certify-20261115T004941Z-639322` passed: six cached books and six newly certified.
+Root independently matched all twelve current source digests before and after,
+all six success results, the unchanged runner, and toolchain
+`8aeb1bea18968c6cd33ac633a80ebf67e4924504db112fd27eb11f16a27b2a8c`.
+Allocator certification took 11.213 seconds; its D26 proof-cost debt remains.
+Composed journal/core qualification is still open. The next callback slice now
+has direct persisted-dispatcher source controls at `4e8f31e46`, with a nonempty
+owned obligation and nine separate premise-removal refusals. Independent source
+review passed; execution and physical persistence correspondence remain owed.
 
-Reclamation primitive slice `75db3d8ea` is under review, not integrated. Independent
-review found existing `alloc-unit` controls acquire durable protection after
-retirement, now correctly refused by the new barrier. The owner must preserve
-those controls by acquiring durable protection before retirement, retain transient
-post-retirement cases, and exercise `release-prepare` directly. The actual journal
-coordinator and pin consumers are being factored into a connected integration
-slice; primitive admission does not establish the served lifecycle.
+Actual cancellation composition remains a transport blocker. Close removes the
+live capability lookup before a later Cancel, so results must come from retained
+operation state. Productive Receive cancellation must survive the shared result
+normalizer. A completed raw EAGAIN observation settles its physical serial; a
+pending logical TLS child may retain its parent operation. Shared ACL2 closure,
+abort and result-classification work is owned by `served_names` and
+`compress_served`; no host-side state-clearing substitute is authorized.
 
-`recover_lean` resumes actual CNS canonical-body/domain/attachment composition;
-`sol_q1_semantics` resumes actual CNS effect and invariant proofs against the
-integrated callback changes. Their completed helper proofs do not discharge these
-obligations. Native registry certification reuses the published layout prerequisite
-instead of rebuilding it. Root owns named compute grants; no broad rerun is
-scheduled merely to refresh provenance. Historical scopes below remain historical.
+The Lean canonical extension and packet-bound membership consumer are integrated
+at `d5f21f9af` and `8e08b236e`. The positive generator fixture compiles, and a
+same-ABI changed recursive body fails its exact lookup equality. The actual CNS
+packet, reached domains, MBE correspondence and selected attachments remain owed.
+`recover_lean`, `sol_q1_semantics` and `durability_frames` continue those connections
+and initialized reachable-state proofs. The refuted old arbitrary-state durability
+claim must be replaced and its consumers migrated; the public ACK guarantee stays.
+
+Root owns named compute grants. Convergence is comparing current prerequisite
+closures for actual callback, manifest-serving, parser and CNS packet gates;
+metadata work does not authorize a broad rebuild. Historical scopes below remain
+historical, and authorization remains an independent release blocker.
 
 ## Destination and proof structure
 
