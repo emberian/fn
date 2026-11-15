@@ -368,3 +368,40 @@ The CNS consumer must still establish those exact lookup/domain premises from
 its current qualified packet, prove the selected logical/executable MBE relation
 under its guard, and connect primitive correspondence and selected attachments.
 This author check discharges none of those current served-site obligations.
+
+The existing core emitter now accepts an opt-in packet-bound recursive consumer:
+
+```
+python3 meta/emit/emit_core_certificate.py --root FN2-CNS-RUN-DRAINING \
+  --closed-member-output /tmp/CnsMember.lean CURRENT-SCOPED-PACKET.sexp
+```
+
+This selects the actual root body closure, retains its exact canonical Object
+bodies, rejects duplicate decoded subjects and missing/attached callees, and emits
+five kernel-checked lookup equations into `MemberExecEvaluation`'s definitions.
+The resulting `member_closed` theorem consumes those equations through
+`program_extension_of_lookups` and `closed_in_program`. Call-domain and
+primitive-domain inclusion remain explicit theorem premises. Generation itself
+is a proposal; the packet's live-world qualification and the generated Lean
+module's successful check are both required. No current packet is substituted
+by the test fixtures.
+
+A six-record fixture (the five membership definitions and a synthetic caller)
+passed the bounded Forge generator-composition gate at
+`/tmp/stride-member-packet.log` (PID 625826, 2Gi, 120 seconds, Lean 4.30 `-j1`).
+The generated lookup and closed-evaluation censuses contain only the allowed
+three axioms. Changing only the recursive CDR argument to the unchanged list
+kept the ABI and closure but failed exactly at the `memberLookup` equality
+(exit 1, raw output `/tmp/stride-member-packet-mutant.log`). Successful generated
+source SHA is `585fa7c59fa8179b5dce6ab2923a65af16a15386ae803c283a48a7b546a5e296`;
+mutant SHA is `bb2bd939d56cf453d5e5180d7ce165dab05114cb45e9a59a0d0dcb626dfb49fc`.
+Four new packet controls and six existing inspection controls pass directly.
+A unittest-discovery invocation unexpectedly loaded unrelated surface tests and
+failed on their missing `hypothesis` dependency; the named files were then run
+directly, without that unrelated suite.
+
+The actual draining membership site is generated `:do` acceptance routing for
+`:ok`/`:retired`; core release uses OR/EQ and timer clearing has no source MEMBER
+call. Therefore this consumer must bind the current draining closure rather
+than label a timer-only export as membership coverage. Current branch-domain,
+MBE, primitive/object and attachment obligations remain open.

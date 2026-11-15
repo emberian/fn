@@ -453,13 +453,15 @@
    (:if (not (eq (fn2-machine-pool-borrows-read-code row-tx-slot) :ok))
         ((:stop :machine-observation))
         ((:let borrows (fn2-machine-pool-borrows row-tx-slot))
-         (:if (and (or (equal outcome *fn2-outcome-done*) (equal outcome *fn2-outcome-short*))
-                   (natp count))
-              ((:do (code) (fn2-account-charge-core row-principal-slot *fn2-account-charge-tx* count))
-               (:if (eq code :ok)
+         ;; Every Send terminal reports consumed application input, including
+         ;; failure/cancellation. Only success permits advancing the reply.
+         (:do (code) (fn2-account-charge-core row-principal-slot *fn2-account-charge-tx* count))
+         (:if (eq code :ok)
+              ((:if (and (or (equal outcome *fn2-outcome-done*) (equal outcome *fn2-outcome-short*))
+                         (natp count))
                     ((:set (borrows borrows) (tx-off (+ row-tx-off count))) (:wake))
-                    ((:stop :machine-observation))))
-              ((:set (borrows borrows)) (:next :closing) (:wake))))))
+                    ((:set (borrows borrows)) (:next :closing) (:wake))))
+              ((:stop :machine-observation))))))
   (:borrow-released
    (:let loan-slot (if (or (equal row-upgrade-stage *fn2-conn-upgrade-stage-running*)
                           (equal row-upgrade-stage *fn2-conn-upgrade-stage-finished*)) row-rx-slot row-tx-slot))

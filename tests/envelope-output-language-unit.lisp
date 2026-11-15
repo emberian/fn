@@ -1,0 +1,51 @@
+(in-package "ACL2")
+(include-book "../sim/envelope-output-language")
+(assert-event
+ (and (fn2-eo-language-p '((:exact 1) (:prefix 2 3) (:exact 4)) '(1 2 4))
+      (not (fn2-eo-language-p '((:exact 1) (:prefix 2 3) (:exact 4)) '(1 3 4)))
+      (not (fn2-eo-language-p '((:prefix . bad)) nil))
+      (not (fn2-eo-language-p '((:exact 300)) '(300)))
+      (not (fn2-eo-language-p '((:exact 1)) '(1 . bad)))))
+; A prefix may skip its current byte and use the following row. Omitting
+; that disjunct rejects this valid empty prefix.
+(assert-event
+ (let* ((following '((:exact 2))) (rest '(3)) (peer '(2)))
+  (and (equal (fn2-eo-language-row following peer) '(t nil))
+       (equal (fn2-eo-language-row (cons (cons :prefix rest) following) peer) '(t nil))
+       (fn2-eo-language-p (cons '(:prefix 1 3) following) peer)
+       (not (and (consp peer) (equal 1 (car peer))
+                 (cadr (fn2-eo-language-row (cons (cons :prefix rest) following) peer)))))))
+; Exact and prefix differ at the zero-length choice; both consume matching bytes.
+(assert-event
+ (and (equal (fn2-eo-language-row '((:exact 1) (:exact 2)) '(1 2)) '(t nil nil))
+      (equal (fn2-eo-language-row '((:prefix 1) (:exact 2)) '(1 2)) '(t t nil))))
+(defun fn2-eo-phase8-witness (drop-shift)
+ (declare (xargs :verify-guards nil))
+ (with-local-stobj fn2-envelope-output-state
+  (mv-let (ok fn2-envelope-output-state)
+   (let* ((peer '(1 2)) (following '((:exact 2)))
+          (shifted (cdr (fn2-eo-language-row (cons '(:exact) following) peer)))
+          (fn2-envelope-output-state (update-fn2-eo-phase 8 fn2-envelope-output-state))
+          (fn2-envelope-output-state (update-fn2-eo-scan peer fn2-envelope-output-state))
+          (fn2-envelope-output-state (update-fn2-eo-byte 1 fn2-envelope-output-state))
+          (fn2-envelope-output-state (update-fn2-eo-prefix nil fn2-envelope-output-state))
+          (fn2-envelope-output-state (update-fn2-eo-suffix-scan (fn2-eo-language-row following peer) fn2-envelope-output-state))
+          (fn2-envelope-output-state (update-fn2-eo-shifted (if drop-shift nil shifted) fn2-envelope-output-state))
+          (fn2-envelope-output-state (update-fn2-eo-acc '(nil) fn2-envelope-output-state))
+          (antecedent
+           (and (equal (fn2-eo-phase fn2-envelope-output-state) 8)
+                (consp (fn2-eo-scan fn2-envelope-output-state))
+                (fn2-eo-octets-p peer) (unsigned-byte-p 8 1)
+                (fn2-eo-octets-p nil) (fn2-eo-segments-p following)
+                (equal (fn2-eo-suffix-scan fn2-envelope-output-state) (fn2-eo-language-row following peer))
+                (equal (fn2-eo-shifted fn2-envelope-output-state) shifted)))
+          (fn2-envelope-output-state (fn2-envelope-output-step fn2-envelope-output-state)))
+    (mv (if drop-shift
+            (and (not antecedent)
+                 (not (equal (fn2-eo-acc fn2-envelope-output-state) '(t nil)))
+                 (fn2-envelope-output-language-p '((:exact 1) (:exact 2)) peer))
+          (and antecedent (equal (fn2-eo-acc fn2-envelope-output-state) '(t nil))
+               (equal (fn2-eo-scan fn2-envelope-output-state) '(2))))
+        fn2-envelope-output-state)) ok)))
+(assert-event (fn2-eo-phase8-witness nil))
+(assert-event (fn2-eo-phase8-witness t))

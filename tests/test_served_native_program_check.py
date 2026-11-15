@@ -213,7 +213,7 @@ class ServedNativeProgramTests(unittest.TestCase):
         self.assertFalse(checker.check(self.root)['audit_ok'])
 
     def test_shared_normalizer_cannot_fabricate_count(self):
-        self.change('books/host-boundary.lisp', 'kind code count aux len nil cancelled)',
+        self.change('books/host-result.lisp', 'kind code count aux len nil cancelled)',
                     'kind code 0 aux len nil cancelled)')
         self.assertFalse(checker.check(self.root)['audit_ok'])
 

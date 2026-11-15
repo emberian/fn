@@ -17,7 +17,8 @@
                (fn2-columns-sym operation "-ROWS")))))
   `(progn
    (verify-guards ,(fn2-columns-sym name "-PARENT") :hints (("Goal" :in-theory (disable ,@readers))))
-   (verify-guards ,(fn2-columns-sym name "-SPAN") :hints (("Goal" :in-theory (disable ,@readers)))))))
+   (verify-guards ,(fn2-columns-sym name "-SPAN") :hints (("Goal" :in-theory (disable ,@readers))))
+   (verify-guards ,(fn2-columns-sym name "-CLOSED-CHILD") :hints (("Goal" :in-theory (disable ,@readers)))))))
 
 (defmacro defcodec-stack-bridge (name upper lower operation
  &key (input-quantum-field 'input-quantum) (output-quantum-field 'output-quantum))
@@ -80,4 +81,43 @@
                   (= extent (,(fn2-columns-sym lower "-REQUEST-OUT-EXTENT") 0 ,lower)))))
       (mv :ok channel (+ base offset) count)
     (mv :stale 0 0 0))))
+; A child abort reports its private-window prefix only after real cleanup.
+; The upper policy atomically settles BOTH its cap and application-op ledgers.
+; This is a logical child result, not a fabricated raw syscall observation.
+(defun ,(fn2-columns-sym name "-CLOSED-CHILD")
+ (cap nonce slot generation ,upper ,lower ,operation)
+ (declare (xargs :stobjs (,upper ,lower ,operation) :verify-guards nil
+  :guard (and (,(fn2-columns-sym upper "-WFP") ,upper) (= (,(fn2-columns-sym upper "-ROWS") ,upper) 1)
+              (,(fn2-columns-sym lower "-WFP") ,lower)
+              (,(fn2-columns-sym operation "-WFP") ,operation))))
+ (mv-let (code channel base extent parent-serial)
+  (,(fn2-columns-sym name "-PARENT") cap nonce slot generation ,upper)
+  (declare (ignore base))
+  (cond
+   ((not (eq code :ok)) (mv :stale 0 0 0 0))
+   ((not (= (,(fn2-columns-sym lower "-ROWS") ,lower) 1)) (mv :stale 0 0 0 0))
+   ((not (and (equal cap (,(fn2-columns-sym lower "-CAP") 0 ,lower))
+               (equal nonce (,(fn2-columns-sym lower "-NONCE") 0 ,lower))))
+    (mv :stale 0 0 0 0))
+   ((not (= (,(fn2-columns-sym lower "-PENDING") 0 ,lower) 0)) (mv :pending 0 0 0 0))
+   ((not (,(fn2-columns-sym lower "-RETIRED-P") cap nonce ,lower)) (mv :live 0 0 0 0))
+   ((= (,(fn2-columns-sym operation "-ROWS") ,operation) 0)
+    (mv :ok parent-serial (if (= channel 3) 5 6) 0 0))
+   ((not (= (,(fn2-columns-sym operation "-ROWS") ,operation) 1)) (mv :stale 0 0 0 0))
+   ((not (and (equal cap (,(fn2-columns-sym operation "-CAP") 0 ,operation))
+               (equal nonce (,(fn2-columns-sym operation "-NONCE") 0 ,operation))
+               (equal slot (,(fn2-columns-sym operation "-SLOT") 0 ,operation))
+               (equal generation (,(fn2-columns-sym operation "-GENERATION") 0 ,operation))
+               (equal parent-serial (,(fn2-columns-sym operation "-PARENT-SERIAL") 0 ,operation))
+               (equal extent (,(fn2-columns-sym operation "-EXTENT") 0 ,operation))))
+    (mv :stale 0 0 0 0))
+   ((not (= (,(fn2-columns-sym operation "-PENDING-SERIAL") 0 ,operation) 0))
+    (mv :pending 0 0 0 0))
+   (t
+    (let ((progress (if (= channel 3)
+                        (,(fn2-columns-sym operation "-SOURCE-PROGRESS") 0 ,operation)
+                      (,(fn2-columns-sym operation "-SINK-PROGRESS") 0 ,operation))))
+     (if (not (<= progress extent)) (mv :bounds 0 0 0 0)
+      (mv :ok parent-serial (if (= channel 3) 5 6)
+          (if (= channel 3) progress 0) (if (= channel 3) 0 progress))))))))
 (make-event (value (fn2-codec-stack-guard-events ',name ',upper ',lower ',operation (w state))))))

@@ -11,6 +11,7 @@ distinct at every boundary.
 from __future__ import annotations
 
 import argparse
+import hashlib
 import json
 import os
 from pathlib import Path
@@ -18,6 +19,7 @@ import socket
 import stat
 import subprocess
 import sys
+import tempfile
 
 EXIT_ACCEPTED = 0
 EXIT_REFUSED = 1
@@ -783,7 +785,7 @@ def prepare_native_crypto(root: Path) -> None:
 
 
 def prepare_native_tls(root: Path, env: dict[str, str]) -> None:
-    """Prepare the native dependency whenever startup receives TLS settings."""
+    """Build and select the same native dependency for CLI TLS startup."""
     if "FN2_TLS_CERTIFICATE" not in env and "FN2_TLS_KEY" not in env:
         return
     try:
@@ -793,6 +795,49 @@ def prepare_native_tls(root: Path, env: dict[str, str]) -> None:
         )
     except (subprocess.CalledProcessError, subprocess.TimeoutExpired) as exc:
         raise OSError("native TLS build failed; node was not started") from exc
+    # The raw adapter accepts an explicit library for standalone primitive
+    # tests. CLI startup must load the artifact this build just prepared,
+    # rather than an inherited FN2_TLS_LIBRARY naming unrelated bytes.
+    name = "libfn2-tls.dylib" if sys.platform == "darwin" else "libfn2-tls.so"
+    env["FN2_TLS_LIBRARY"] = str((root / "build" / "lib" / name).resolve())
+
+
+def prepare_native_deflate(root: Path, selected: Path) -> dict[str, str]:
+    """Build the exact selected dependency after ACL2 admitted its settings.
+
+    No profile or enablement decision enters this helper. Partial compiler
+    output never occupies the path the host will load.
+    """
+    selected = (selected if selected.is_absolute() else root / selected).absolute()
+    source, recipe = root / "host/fn2-deflate.c", root / "host/build-deflate.sh"
+    source_bytes, recipe_bytes = source.read_bytes(), recipe.read_bytes()
+    inputs = {"source_sha256": hashlib.sha256(source_bytes).hexdigest(),
+              "recipe_sha256": hashlib.sha256(recipe_bytes).hexdigest()}
+    selected.parent.mkdir(parents=True, exist_ok=True)
+    with tempfile.TemporaryDirectory(prefix=".fn2-deflate-", dir=selected.parent) as scratch:
+        artifacts = Path(scratch) / "artifacts"
+        artifacts.mkdir()
+        candidate = artifacts / selected.name
+        # The recipe resolves its source beside itself. Compile immutable
+        # captured inputs, not live files which could change between hashes.
+        snapshot = Path(scratch) / "inputs"
+        snapshot.mkdir()
+        (snapshot / source.name).write_bytes(source_bytes)
+        snapshot_recipe = snapshot / recipe.name
+        snapshot_recipe.write_bytes(recipe_bytes)
+        try:
+            subprocess.run(["sh", str(snapshot_recipe), str(candidate)], cwd=root, check=True, timeout=120)
+        except (subprocess.CalledProcessError, subprocess.TimeoutExpired) as exc:
+            raise OSError("native deflate build failed; selected library was not replaced") from exc
+        if (inputs["source_sha256"] != hashlib.sha256(source.read_bytes()).hexdigest()
+                or inputs["recipe_sha256"] != hashlib.sha256(recipe.read_bytes()).hexdigest()):
+            raise OSError("native deflate source changed during build; selected library was not replaced")
+        artifact = candidate.read_bytes()
+        if not artifact:
+            raise OSError("native deflate build produced an empty library")
+        receipt = dict(path=str(selected), library_sha256=hashlib.sha256(artifact).hexdigest(), **inputs)
+        os.replace(candidate, selected)
+    return receipt
 
 
 def apply_origin_options(args: argparse.Namespace, env: dict[str, str]) -> None:
@@ -1448,6 +1493,19 @@ def build_parser() -> argparse.ArgumentParser:
 
 def main(argv: list[str] | None = None, root: Path | None = None) -> int:
     repo_root = root or Path(__file__).resolve().parents[1]
+    arguments = sys.argv[1:] if argv is None else argv
+    # Fixed startup protocol, invoked only after the ACL2 settings observer
+    # requests this dependency. This is not a public compression switch.
+    if arguments and arguments[0] == "__prepare-native-deflate":
+        if len(arguments) != 2 or not arguments[1]:
+            sys.stderr.write("native deflate preparation requires one output path\n")
+            return EXIT_ERROR
+        try:
+            print(json.dumps(prepare_native_deflate(repo_root, Path(arguments[1])), sort_keys=True), flush=True)
+            return EXIT_ACCEPTED
+        except OSError as exc:
+            sys.stderr.write(f"native deflate preparation: {exc}\n")
+            return EXIT_ERROR
     parser = build_parser()
     args = parser.parse_args(argv)
     try:

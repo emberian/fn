@@ -1,0 +1,18 @@
+; Shared B provenance predicate for the actual production-owned root carriers.
+(in-package "ACL2")
+(include-book "checkpoint")
+(fn2-book-layer :b)
+(defun fn2-checkpoint-production-roots-p (role c token fn2-checkpoint-refs)
+ (declare (xargs :stobjs fn2-checkpoint-refs :measure (nfix (- 6 (nfix role)))
+  :guard (and (fn2-checkpoint-refs-wfp fn2-checkpoint-refs) (natp role) (<= role 6)
+              (natp c) (<= (* 6 (+ 1 c)) (fn2-checkpoint-refs-rows fn2-checkpoint-refs)))))
+ (if (or (not (natp role)) (>= role 6)) t
+  (let ((r (+ (* 6 c) role)))
+   (and (posp token) (equal (fn2-checkpoint-refs-root-build-token r fn2-checkpoint-refs) token)
+        (equal (fn2-checkpoint-refs-root-source-complete r fn2-checkpoint-refs) 1)
+        (posp (fn2-checkpoint-refs-encoded-length r fn2-checkpoint-refs))
+        (<= (fn2-checkpoint-refs-encoded-length r fn2-checkpoint-refs)
+            (fn2-checkpoint-refs-root-intended-bytes r fn2-checkpoint-refs))
+        (equal (fn2-checkpoint-refs-root-intended-bytes r fn2-checkpoint-refs)
+               (fn2-checkpoint-refs-root-completed-bytes r fn2-checkpoint-refs))
+        (fn2-checkpoint-production-roots-p (+ 1 role) c token fn2-checkpoint-refs)))))

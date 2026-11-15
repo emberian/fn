@@ -13,6 +13,12 @@
 (defconst *fn2-format-frame-magic* #x524a3246) ; F2JR
 (defconst *fn2-format-sector-size* 4096)
 (defconst *fn2-format-page-size* 65536)
+; One allocator identity owns one complete metadata page. Journal batches
+; still use three sector writes; payload packing may use fewer units than
+; the allocation's physical stride.
+(defconst *fn2-storage-extent-bytes* *fn2-format-page-size*)
+(defconst *fn2-storage-extent-units* (/ *fn2-storage-extent-bytes* *fn2-format-sector-size*))
+(assert-event (equal *fn2-storage-extent-units* 16))
 ; ENVELOPE-AND-HOST section 1.6: exact Message-ID octets, maximum 250.
 (defconst *fn2-format-message-id-max* 250)
 (defconst *fn2-format-page-kind* '(:enum page-kind (:run-data :run-index :partitioned-filter :manifest :allocation-map :source-manifest :range-proof :checkpoint-descriptor :merkle-node :raw-source :key-list :recovery-arena :dependency-manifest :membership-list :obligation-list)))
