@@ -365,9 +365,14 @@
   (:rebase-source :on-refusal ((:next :uncertain) (:charge :steps *fn2-work-small* :runnable t))
    (:do (code) (fn2-checkpoint-directory-rebase-step-op) :accept () :case
     (((:more) (:charge :steps *fn2-work-stage* :runnable t))
-     ((:await-evidence) (:next :rebase-consume) (:charge :steps *fn2-work-small* :runnable t))
+     ((:await-evidence) (:next :rebase-archive) (:charge :steps *fn2-work-small* :runnable t))
      (:otherwise (:next :uncertain) (:charge :steps *fn2-work-small* :runnable t)))))
   (:rebase-consume :on-refusal ((:next :uncertain) (:charge :steps *fn2-work-small* :runnable t))
    (:do (code) (fn2-checkpoint-directory-rebase-consume-op row-token *fn2-checkpoint-master-kind* id row-generation) :accept (:committed))
-   (:next :release) (:charge :bytes 4096 :steps *fn2-work-stage* :runnable t)))
+   (:next :release) (:charge :bytes 4096 :steps *fn2-work-stage* :runnable t))
+  (:rebase-archive :on-refusal ((:next :uncertain) (:charge :steps *fn2-work-small* :runnable t))
+   (:do (code) (fn2-event-catalog-live-step-op) :accept () :case
+    (((:more) (:charge :steps *fn2-work-stage* :runnable t))
+     ((:complete) (:next :rebase-consume) (:charge :steps *fn2-work-stage* :runnable t))
+     (:otherwise (:next :uncertain) (:charge :steps *fn2-work-small* :runnable t))))))
  :observes ((:read-result (:wake))))
