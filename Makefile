@@ -174,6 +174,7 @@ ACL2_BOOKS = \
   books/format \
   books/format-base \
   books/format-check \
+  books/format-check-read-contracts \
   books/format-context \
   books/format-events \
   books/format-physical \
@@ -316,6 +317,9 @@ ACL2_BOOKS = \
   tests/columns-cost-unit-20 \
   tests/columns-unit \
   tests/columns-name-unit \
+  tests/layout-size-bound-unit \
+  tests/checkpoint-descriptor-read-unit \
+  tests/checkpoint-carrier-unit \
   tests/codec-profile-unit \
   tests/codec-transport-unit \
   tests/host-codec-unit \
