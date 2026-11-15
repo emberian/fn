@@ -85,11 +85,30 @@ Receipt: [pool and BLAKE3 pool](receipts/pool-b3-ten-record.json).
 The coherent application author run advanced through the format books, BLAKE3,
 allocator and commit allocator, then stopped at the original `FN2-OPS` column
 macro in `vocab`: 20.02 seconds / 695,400 steps, before member execution.
-Many small generated admissions accumulate under the macro's shared time cap;
-this is not a counterexample. The generator owner is testing use of the existing
-small proof theory for entirely numeric extra fields, retaining the original
-path for nested/raw extras. No larger cap or split macro is authorized by this
-repair. Member and actual application/restart qualification remain open.
+Many small generated admissions accumulated under the macro's shared time cap;
+this was not a counterexample. The shared generator now uses its existing small
+proof theory for entirely numeric extra fields, retaining the original path for
+nested/raw extras. RAW-ROWS hints also disable the public ROWS rewrite while using
+its equality, so it survives until the raw observer opens. Runtime definitions,
+guards and theorem statements remain unchanged; original event caps are unchanged.
+Full columns, pool and vocabulary author checks passed, followed by exact eight-book
+record `certify-20261115T121619Z-1306810` (five reused, three new books).
+The numeric/mixed-extra, incoming-theory and multi-value RAW-ROWS regression
+fixture then passed its actual author check and exact nine-book record
+`certify-20261115T122302Z-1313433` (eight reused, one new book). Root matched
+all nine before/after source hashes and root dependency keys to integration.
+Receipt: [numeric theory and RAW-ROWS](receipts/columns-numeric-nine-record.json).
+Member and actual application/restart qualification remain open.
+
+All 31 current checkpoint-member parents are now qualified by record
+`certify-20261115T122350Z-1314201` (21 reused, ten certified, 122.156 seconds).
+Its roots are `books/checkpoint`, `books/pool-ranges` and `books/layout-size-bounds`;
+their union excludes member itself. Root matched all 31 source hashes and closure
+keys to integration and the qualified payload receipt. The next author check can
+load these compiled parents and test member alone. Record timings still expose
+proof-cost work; neither this record nor the generator pilot qualifies member,
+the application, or native restart.
+Receipt: [member parents](receipts/member-parents31-record.json).
 
 The frozen checkpoint-member diagnostic executed the actual packer successfully
 with its whole stored guard, input recognizers and all four output type/WFP
@@ -104,8 +123,9 @@ record snapshots and qualified cache entries. The registered fixture exercises
 actual constructor routing and admission; source controls reject the old generator.
 Receipt: [carrier TYPE hints](receipts/carrier-type-hints-six-record.json).
 Member-specific event surgery is removed in reviewed candidate `7b2e2188b`, but
-its current parent closure must include the pending pool repair before execution.
-This six-book record does not qualify member preservation or the application.
+its current parent closure still requires qualification with the latest shared
+generator before execution. This six-book record does not qualify member
+preservation or the application.
 
 Physical address geometry remains an executable blocker. `fe9f761ab` repairs
 POST's root location from three units per extent to the physical sixteen, with
