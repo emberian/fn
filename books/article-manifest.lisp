@@ -1,5 +1,5 @@
 ; An article's source manifest (S-ARTICLE-LOCATION, b-durability.md B-S2):
-; stored octets longer than one payload extent are named through one
+; stored octets beyond the raw commitment span are named through one
 ; :source-manifest reference. The manifest is B's layouts, a
 ; fn2-format-source-manifest-header (the stored length, the block size, the
 ; source's content identity) and then one fn2-format-source-manifest-entry
@@ -40,11 +40,11 @@
   (declare (xargs :guard t))
   (ceiling (fn2-am-blocks total) *fn2-am-entries-per-unit*))
 (defthm fn2-am-units-natp (natp (fn2-am-units total)) :rule-classes :type-prescription)
-;; Stored octets are named through a manifest when they exceed one extent;
+;; Stored octets use a manifest beyond the three-unit raw commitment span;
 ;; the manifest is one extent at most (one reference per article, one level).
 (defun fn2-am-manifestp (total)
   (declare (xargs :guard t))
-  (< *fn2-commit-extent-bytes* (nfix total)))
+  (< *fn2-upload-raw-bytes* (nfix total)))
 (defun fn2-am-fits (total)
   (declare (xargs :guard t))
   (<= (fn2-am-units total) *fn2-commit-write-resources*))
