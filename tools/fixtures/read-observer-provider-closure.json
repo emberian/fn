@@ -1,0 +1,1186 @@
+{
+ "base": "1c9e7c905fef6161b4ed05c71eaa99da3cdb4dbb",
+ "read-closure": {
+  "books/machines-c-read": {
+   "sha256": "0b809780be2098e6821de5cbd2788b0d793e3174ec73637b973bf46dce00aab8",
+   "origin": "current-root-and-owned-park",
+   "includes": [
+    "books/machines-c-sealer",
+    "books/run-physical-park-region",
+    "books/c-source-observer"
+   ]
+  },
+  "books/machines-c-sealer": {
+   "sha256": "aa23dd07722052d40c606a501282c6b018d32852d66cea23fa58651e7883358e",
+   "origin": "current-root-and-owned-park",
+   "includes": [
+    "books/sealer"
+   ]
+  },
+  "books/sealer": {
+   "sha256": "e838d81d368a37944cf53a514be3ad144f97b78297a5167fa5bde150c74533d8",
+   "origin": "current-root-and-owned-park",
+   "includes": [
+    "books/machines-c-groups"
+   ]
+  },
+  "books/machines-c-groups": {
+   "sha256": "819a21819283ad1c7f0933a677ad683ab50cb459bdaf7b638610730c7bdc9e97",
+   "origin": "current-root-and-owned-park",
+   "includes": [
+    "books/machines-c-bind"
+   ]
+  },
+  "books/machines-c-bind": {
+   "sha256": "15be2a90e9d83a76632d0ad6c550e13a4cd255d53ff173fe99999ebb2ec4f0a9",
+   "origin": "current-root-and-owned-park",
+   "includes": [
+    "books/machines-c-stage"
+   ]
+  },
+  "books/machines-c-stage": {
+   "sha256": "b16364d3bb5eddbf72e4e60eba7b4d1ea359d14583d7addaed7112e15e743629",
+   "origin": "current-root-and-owned-park",
+   "includes": [
+    "books/machines-c-successor"
+   ]
+  },
+  "books/machines-c-successor": {
+   "sha256": "97fd79d6dac8df0198cbd0c8140cdeda804f31affb895c676b1fedec13c51e21",
+   "origin": "current-root-and-owned-park",
+   "includes": [
+    "books/machines-c-sealer-kind",
+    "books/run-physical-park-region"
+   ]
+  },
+  "books/machines-c-sealer-kind": {
+   "sha256": "43579e2fe85ba62d63d9b4ac26c534654d65707b47c9e458ba4d71dd1bc56984",
+   "origin": "current-root-and-owned-park",
+   "includes": [
+    "books/machines-all",
+    "books/machines-c"
+   ]
+  },
+  "books/machines-all": {
+   "sha256": "abaaa049106a9d37b90d041d3ff7162fb7d8ceb6749bc05bf58da89f59fe4a74",
+   "origin": "current-root-and-owned-park",
+   "includes": [
+    "books/machines-a"
+   ]
+  },
+  "books/machines-a": {
+   "sha256": "6b27d9f04b788ed2730f2e520770c40f7dd9c06828a15a14dc79db50960adeec",
+   "origin": "current-root-and-owned-park",
+   "includes": [
+    "books/machines",
+    "books/profile"
+   ]
+  },
+  "books/machines": {
+   "sha256": "a6013533da9758adab81d87f14b4011d9e761ea181154837760552f0f1935b09",
+   "origin": "current-root-and-owned-park",
+   "includes": [
+    "books/vocab",
+    "books/arms",
+    "books/columns-call-guards"
+   ]
+  },
+  "books/vocab": {
+   "sha256": "4099736dd0ecb84952f05cfe2065db89e11432ebb9e65e67d2584ca5f4c2255f",
+   "origin": "current-root-and-owned-park",
+   "includes": [
+    "books/columns",
+    "books/owed",
+    "books/profile"
+   ]
+  },
+  "books/columns": {
+   "sha256": "8b694caf782c2ce3a29fa109b055c181b54beda214276493f6d9acb9456a881b",
+   "origin": "current-root-and-owned-park",
+   "includes": [
+    "books/operations"
+   ]
+  },
+  "books/operations": {
+   "sha256": "419120e7ae100f400d18cdee2d080d6133523673cac22fae1b05c7201ff97dd8",
+   "origin": "current-root-and-owned-park",
+   "includes": [
+    "books/declare"
+   ]
+  },
+  "books/declare": {
+   "sha256": "54e850788ee821dd90a4d9715e93d319f94846039592c4420fef1bdc5d959569",
+   "origin": "current-root-and-owned-park",
+   "includes": []
+  },
+  "books/owed": {
+   "sha256": "171950b91e40f4e7d0e94902ce00009adc62d8104e0eecd5db6a59b93bbffb15",
+   "origin": "current-root-and-owned-park",
+   "includes": [
+    "books/declare"
+   ]
+  },
+  "books/profile": {
+   "sha256": "1f216ed6c0505dc1b01ada0f7d3d9482af6da7b7dff8736b5100ef3e3fbc1038",
+   "origin": "current-root-and-owned-park",
+   "includes": [
+    "books/operations"
+   ]
+  },
+  "books/arms": {
+   "sha256": "83825a47c141b16393debcb6dfc98aa7fb54b375e7c12296fa4f25a491c29455",
+   "origin": "current-root-and-owned-park",
+   "includes": [
+    "books/run-budget",
+    "books/resources",
+    "books/operations",
+    "books/columns"
+   ]
+  },
+  "books/run-budget": {
+   "sha256": "6c340901483627a433e4de6b7699b684b9949f233ee52ce4c5840774df59a7d0",
+   "origin": "current-root-and-owned-park",
+   "includes": []
+  },
+  "books/resources": {
+   "sha256": "019bb017e54237a5304f30598b8842de8f0651b5f92c523ff174f24994fe43c6",
+   "origin": "current-root-and-owned-park",
+   "includes": [
+    "books/owed"
+   ]
+  },
+  "books/columns-call-guards": {
+   "sha256": "fd7c2588e6d90338288b484078525799ac261c66013ebe112c3f369870db5a4a",
+   "origin": "current-root-and-owned-park",
+   "includes": [
+    "books/columns-guard-hints"
+   ]
+  },
+  "books/columns-guard-hints": {
+   "sha256": "e0a20c5669df681bf75fa5eeae426adc4053010915b3c7657d56e247d5c8440b",
+   "origin": "current-root-and-owned-park",
+   "includes": [
+    "books/columns"
+   ]
+  },
+  "books/machines-c": {
+   "sha256": "74cdc7876430a5597a2fc3f675d0c038daebeb9908c5ec01fbca76c37017c6b1",
+   "origin": "current-root-and-owned-park",
+   "includes": [
+    "books/range-served",
+    "books/machines-b",
+    "books/successor-schema-geometry",
+    "books/c-snapshot",
+    "books/checkpoint-summary-state",
+    "books/checkpoint-bank-admission",
+    "books/run-physical-geometry",
+    "books/run-physical-harvest",
+    "books/c-source-observer",
+    "books/run-physical-step",
+    "books/run-physical-release"
+   ]
+  },
+  "books/range-served": {
+   "sha256": "46eeca4e8e04792a8d8df877d8504574392cd13898beacef4a0add088b3bde07",
+   "origin": "current-root-and-owned-park",
+   "includes": [
+    "books/runs-served",
+    "books/range"
+   ]
+  },
+  "books/runs-served": {
+   "sha256": "3b1f9d144f1a4b34c0ff7b4660b79ee86871d15a89a0290878586369edd23318",
+   "origin": "current-root-and-owned-park",
+   "includes": [
+    "books/identity",
+    "books/ordered",
+    "books/authority-schema",
+    "books/folds",
+    "books/runs-manifest"
+   ]
+  },
+  "books/identity": {
+   "sha256": "98df8c4eef639327c12e822f70da1737df1cdced574a728bd8d43cc23c0669a8",
+   "origin": "current-root-and-owned-park",
+   "includes": [
+    "books/runs-assemble",
+    "books/ribbon"
+   ]
+  },
+  "books/runs-assemble": {
+   "sha256": "d5ffb8aeec8102cfa79ce20cc8f1896bc1f293eafa80f169321d3ac728b0e048",
+   "origin": "current-root-and-owned-park",
+   "includes": [
+    "books/overlay",
+    "books/columns-call-guards"
+   ]
+  },
+  "books/overlay": {
+   "sha256": "e1e96a46efd6d5a7951d1782b9ce0c340b9a0425ed21b8b0752a8cb892bbdcb3",
+   "origin": "current-root-and-owned-park",
+   "includes": [
+    "books/runs"
+   ]
+  },
+  "books/runs": {
+   "sha256": "dcb87655b7979c29f7d76c45c18d805768a05e63acf5a72b4fcec23a2df56677",
+   "origin": "current-root-and-owned-park",
+   "includes": [
+    "books/run-geometry",
+    "books/runs-schema"
+   ]
+  },
+  "books/run-geometry": {
+   "sha256": "b0d0fa1c783d6c5c26ee1c47124121f33b0beef4ed3d0bfa3e6b596036dbaeb5",
+   "origin": "current-root-and-owned-park",
+   "includes": [
+    "books/format-base",
+    "books/run-installed-geometry"
+   ]
+  },
+  "books/format-base": {
+   "sha256": "ead88cb8e7ab67db0c6a06ac400c813f753121c77082825b16016835eb462699",
+   "origin": "current-root-and-owned-park",
+   "includes": [
+    "books/layout"
+   ]
+  },
+  "books/layout": {
+   "sha256": "2bc995f6bb70ec17862c5b535a4734e90a7a5dfd6312ebdee7d06877b0fbb4d8",
+   "origin": "current-root-and-owned-park",
+   "includes": [
+    "books/pool"
+   ]
+  },
+  "books/pool": {
+   "sha256": "32dce8695606e5faa78dbd1d4de70f7ace78436501ad8390a24fe301c2cf07db",
+   "origin": "current-root-and-owned-park",
+   "includes": [
+    "books/columns",
+    "books/owed-discharge",
+    "books/profile"
+   ]
+  },
+  "books/owed-discharge": {
+   "sha256": "53903322be1b79ed081ecfcbfcb9f60649d3fdbf8aa6853b772abf8e6fc69f01",
+   "origin": "current-root-and-owned-park",
+   "includes": [
+    "books/owed"
+   ]
+  },
+  "books/run-installed-geometry": {
+   "sha256": "a09c014cecf66ce661ae0ef9ec98b1c7ad0d324bb5f136e3ba69df8d3cb7121b",
+   "origin": "current-root-and-owned-park",
+   "includes": [
+    "books/format-base"
+   ]
+  },
+  "books/runs-schema": {
+   "sha256": "bb34fee128ac49657d77e6fc46ee4a85e602695eccf067f1e7f89d17cc32ab4f",
+   "origin": "current-root-and-owned-park",
+   "includes": [
+    "books/runs-page",
+    "books/columns-call-guards"
+   ]
+  },
+  "books/runs-page": {
+   "sha256": "3c05d886f028eeb7ed874de5a2d6463c64f6853ac6499de30a4f7e91bde0df16",
+   "origin": "current-root-and-owned-park",
+   "includes": [
+    "books/run-geometry",
+    "books/format-check",
+    "books/pool-ranges"
+   ]
+  },
+  "books/format-check": {
+   "sha256": "c98f35c7c74d009ab24dbd5b87b1859dbba46be77b31a3585e252d3084ca4951",
+   "origin": "current-root-and-owned-park",
+   "includes": [
+    "books/format",
+    "books/blake3",
+    "books/format-context",
+    "books/assumptions-native-span"
+   ]
+  },
+  "books/format": {
+   "sha256": "01bd400412d667e203d105b8dd7d69563c174c02f5b23d58f9d57bdb4ae5ab1a",
+   "origin": "current-root-and-owned-park",
+   "includes": [
+    "books/format-physical",
+    "books/format-events",
+    "books/format-storage"
+   ]
+  },
+  "books/format-physical": {
+   "sha256": "818642d11e9638333f30fa6f60e3ee8db1ce39d1d040c76ed7ab58df781c1d19",
+   "origin": "current-root-and-owned-park",
+   "includes": [
+    "books/format-base"
+   ]
+  },
+  "books/format-events": {
+   "sha256": "10be8e61d3746b6094d4b1ac5a2d6006c4d8901a3744b6ca1b4959836812a62b",
+   "origin": "current-root-and-owned-park",
+   "includes": [
+    "books/format-base"
+   ]
+  },
+  "books/format-storage": {
+   "sha256": "ddb445f4a77de9462de3b4df0dc5111f381c7b73f94812cb2fa2096852adc68f",
+   "origin": "current-root-and-owned-park",
+   "includes": [
+    "books/format-base"
+   ]
+  },
+  "books/blake3": {
+   "sha256": "e228c1eb31f2f764e925e86fa4f0a7b7682810d64a27f7c39b9f416f93bdc1a1",
+   "origin": "current-root-and-owned-park",
+   "includes": [
+    "books/digests",
+    "books/layout",
+    "books/blake3-spec",
+    "books/blake3-pool-spec"
+   ]
+  },
+  "books/digests": {
+   "sha256": "e821bfe1ffee392c8019fad513db8a83aaf2448251087f26c9576a3af333a524",
+   "origin": "current-root-and-owned-park",
+   "includes": [
+    "books/columns"
+   ]
+  },
+  "books/blake3-spec": {
+   "sha256": "253babac6e5d9e9df00a655ba6b6595c9e6d85315c9294f05e3d939f19ad5770",
+   "origin": "current-root-and-owned-park",
+   "includes": []
+  },
+  "books/blake3-pool-spec": {
+   "sha256": "2775bf744b6ed52fd098fe329b0b183d62c0857a5a2a989cf80e968f5a366e2b",
+   "origin": "current-root-and-owned-park",
+   "includes": [
+    "books/pool",
+    "books/digests",
+    "books/blake3-spec"
+   ]
+  },
+  "books/format-context": {
+   "sha256": "16c2a00f17df2e53d055137f80eedcbb8c87b673ab7ae13e7a31246222ad008f",
+   "origin": "current-root-and-owned-park",
+   "includes": [
+    "books/columns",
+    "books/tuple"
+   ]
+  },
+  "books/tuple": {
+   "sha256": "c6b895fd566be6b91ba68fb040826b689a5ad4891a65e040773bfb28b90e1978",
+   "origin": "current-root-and-owned-park",
+   "includes": []
+  },
+  "books/assumptions-native-span": {
+   "sha256": "3fd43c5b3c3d0ea553afb41fa99f6f7136918ecbf22921eac878cde96439def8",
+   "origin": "current-root-and-owned-park",
+   "includes": []
+  },
+  "books/pool-ranges": {
+   "sha256": "2f9e1f0c898ea4f6747f4e8f4942bc7f73be512ed1b90feb2d9cad7a58e3f959",
+   "origin": "current-root-and-owned-park",
+   "includes": [
+    "books/pool",
+    "books/fnv",
+    "books/columns-guard-hints"
+   ]
+  },
+  "books/fnv": {
+   "sha256": "73d15afc6e1325f03d19ad4b39eeb3adc677ce2b07e9eddbc14141ca8843edde",
+   "origin": "current-root-and-owned-park",
+   "includes": [
+    "books/operations"
+   ]
+  },
+  "books/ribbon": {
+   "sha256": "cb705e9bf4cab4284f31846f8cbf0d8efdb1d86e4e11a13076ad490b6843d43a",
+   "origin": "current-root-and-owned-park",
+   "includes": [
+    "books/runs-page",
+    "books/fnv",
+    "books/words",
+    "books/columns-call-guards"
+   ]
+  },
+  "books/words": {
+   "sha256": "6ca5cf3204ca8e87136b8f2e25f1f04baf45c6c86cf7908b1993dc7d6325226c",
+   "origin": "current-root-and-owned-park",
+   "includes": []
+  },
+  "books/ordered": {
+   "sha256": "67803ac18222ac6a6d684ac8205f9c55b4ad94a2bafd8d46d5bb8dfdb22968cb",
+   "origin": "current-root-and-owned-park",
+   "includes": [
+    "books/runs-schema",
+    "books/commit-format"
+   ]
+  },
+  "books/commit-format": {
+   "sha256": "c263a0e0300ab9ec84351d46dce15b40d71c5d5abcb99d769bb098a15f5fae7e",
+   "origin": "current-root-and-owned-park",
+   "includes": [
+    "books/format-check",
+    "books/origin",
+    "books/commit-geometry"
+   ]
+  },
+  "books/origin": {
+   "sha256": "7f63d5f31b061c0b9206b82394d70e31fce57ceafc9ec7cd8477a54d538d9c19",
+   "origin": "current-root-and-owned-park",
+   "includes": [
+    "books/profile",
+    "books/columns"
+   ]
+  },
+  "books/commit-geometry": {
+   "sha256": "e06315c94bcd0d247214377fb33186f14ca1aa2ee6afe1499d69d053ff0134e2",
+   "origin": "current-root-and-owned-park",
+   "includes": [
+    "books/format-base"
+   ]
+  },
+  "books/authority-schema": {
+   "sha256": "a235d1833dcc10fa12fca819b80a4473e25c98ebd74c19f4c877daa36c3be304",
+   "origin": "current-root-and-owned-park",
+   "includes": [
+    "books/runs-schema"
+   ]
+  },
+  "books/folds": {
+   "sha256": "ee68191d177c203c6622092f4a9f8f7c137da211d5e019137622173bdceae956",
+   "origin": "current-root-and-owned-park",
+   "includes": [
+    "books/runs-schema"
+   ]
+  },
+  "books/runs-manifest": {
+   "sha256": "3dde08bf022887610e3763fc8c7dea1243b8c5657114926d5ef3b62efcac6a37",
+   "origin": "current-root-and-owned-park",
+   "includes": [
+    "books/runs-schema"
+   ]
+  },
+  "books/range": {
+   "sha256": "ed2477bbb9b582c49cc4a043eb549c7d212fe66eac3659e7629ae642d1e2be1f",
+   "origin": "current-root-and-owned-park",
+   "includes": [
+    "books/runs-assemble"
+   ]
+  },
+  "books/machines-b": {
+   "sha256": "6d529fc743e2be03f37c807a4b5b701df93de82c017f84940f3d9862c369b528",
+   "origin": "current-root-and-owned-park",
+   "includes": [
+    "books/machines",
+    "books/core-children",
+    "books/profile",
+    "books/run-active-geometry",
+    "books/origin",
+    "books/sched",
+    "books/commit-alloc",
+    "books/read-pins",
+    "books/checkpoint-lifecycle-coordinator",
+    "books/checkpoint-tickets",
+    "books/format-check",
+    "books/payload-workspace",
+    "books/recovery",
+    "books/block-integrity",
+    "books/commit-members",
+    "books/merkle",
+    "books/event-read-state",
+    "books/journal-members-state",
+    "books/commit",
+    "books/storage-block-io"
+   ]
+  },
+  "books/core-children": {
+   "sha256": "24a985caf082ff74f72c96638034eba619ce114d611a804d0b4a239721d37e4b",
+   "origin": "current-root-and-owned-park",
+   "includes": [
+    "books/machines"
+   ]
+  },
+  "books/run-active-geometry": {
+   "sha256": "09fb355b58e5a380c954b89a824e8b9b6e0b59ba139e145cdea64ad7a42a6021",
+   "origin": "current-root-and-owned-park",
+   "includes": [
+    "books/declare"
+   ]
+  },
+  "books/sched": {
+   "sha256": "aa485faf89a7a51334cad497e8db98043c5678dd9a32ed597bdd0ec4a41dd59f",
+   "origin": "current-root-and-owned-park",
+   "includes": [
+    "books/columns",
+    "books/machines",
+    "books/profile",
+    "books/exec-state",
+    "books/owed"
+   ]
+  },
+  "books/exec-state": {
+   "sha256": "56eb8a81a3cc049c27c1e23dd1930f8184f2c892207169532315184ca141ea3d",
+   "origin": "current-root-and-owned-park",
+   "includes": [
+    "books/columns",
+    "books/profile"
+   ]
+  },
+  "books/commit-alloc": {
+   "sha256": "ae683093a38107790d4e17ca1c10a5532905eaffa00d9ed96f483f3cf8e63072",
+   "origin": "current-root-and-owned-park",
+   "includes": [
+    "books/alloc",
+    "books/blake3"
+   ]
+  },
+  "books/alloc": {
+   "sha256": "886dd5c4550a43b78fafa99c02db28edbdc70c7bb1cbe806ce5e40403477a11e",
+   "origin": "current-root-and-owned-park",
+   "includes": [
+    "books/columns",
+    "books/owed",
+    "books/tuple"
+   ]
+  },
+  "books/read-pins": {
+   "sha256": "9c4a95db6c8188791929f924636c615a6408a6a02d2be9777e16009fad2811b6",
+   "origin": "current-root-and-owned-park",
+   "includes": [
+    "books/commit-alloc",
+    "books/vocab"
+   ]
+  },
+  "books/checkpoint-lifecycle-coordinator": {
+   "sha256": "1f01943a0bc300d6d5891a3188024b44b314a312c91a997ea5111097897b5b0f",
+   "origin": "current-root-and-owned-park",
+   "includes": [
+    "books/retirement-coordinator",
+    "books/checkpoint-allocation-coordinator",
+    "books/checkpoint-installation-coordinator",
+    "books/checkpoint-maintenance-staging"
+   ]
+  },
+  "books/retirement-coordinator": {
+   "sha256": "9495cceb023c5144f7f4d9b87f9953b7245ebb623e0d6b2d00b321aadbf9d20e",
+   "origin": "current-root-and-owned-park",
+   "includes": [
+    "books/retirement"
+   ]
+  },
+  "books/retirement": {
+   "sha256": "1f8ebb638aacdbda36c336663fc6d6321896aba570b95d5a3eef02360fcb6caf",
+   "origin": "current-root-and-owned-park",
+   "includes": [
+    "books/commit-alloc",
+    "books/format-events"
+   ]
+  },
+  "books/checkpoint-allocation-coordinator": {
+   "sha256": "d2c42d0b2f85dc86e4d99b8f9ce10e4680181c04efb82d64d86ed833c50026ec",
+   "origin": "current-root-and-owned-park",
+   "includes": [
+    "books/retirement",
+    "books/checkpoint-allocation",
+    "books/arms"
+   ]
+  },
+  "books/checkpoint-allocation": {
+   "sha256": "e6031a68634856edc5d4e04b66efe0992e06a2271059656bb6832c23bbc4209b",
+   "origin": "current-root-and-owned-park",
+   "includes": [
+    "books/checkpoint-tickets",
+    "books/format-events",
+    "books/layout-size-bounds"
+   ]
+  },
+  "books/checkpoint-tickets": {
+   "sha256": "5a844a9730bd57a1e5f07d0890aeb708e158c74b08d1ea9723c54ba412890e4b",
+   "origin": "current-root-and-owned-park",
+   "includes": [
+    "books/checkpoint-construction",
+    "books/commit-format"
+   ]
+  },
+  "books/checkpoint-construction": {
+   "sha256": "adc6c1bd23046033b2e8e4214586ee51447c32c34d859124557321aa4e97f338",
+   "origin": "current-root-and-owned-park",
+   "includes": [
+    "books/alloc"
+   ]
+  },
+  "books/layout-size-bounds": {
+   "sha256": "242f55370eff42c596962722a3404058a48dae5215bbf9d39b82f198b07e45b7",
+   "origin": "current-root-and-owned-park",
+   "includes": [
+    "books/layout"
+   ]
+  },
+  "books/checkpoint-installation-coordinator": {
+   "sha256": "ea668d001176625373c3a4982233235324fb52b3710c58cd984125b03b308e34",
+   "origin": "current-root-and-owned-park",
+   "includes": [
+    "books/checkpoint-member",
+    "books/checkpoint-production",
+    "books/arms"
+   ]
+  },
+  "books/checkpoint-member": {
+   "sha256": "8b76cf4210628fed16261fceaedc00623f4d864e22779d9714db0bcbef486d31",
+   "origin": "current-root-and-owned-park",
+   "includes": [
+    "books/checkpoint",
+    "books/pool-ranges",
+    "books/layout-size-bounds",
+    "books/columns-guard-hints",
+    "books/owed"
+   ]
+  },
+  "books/checkpoint": {
+   "sha256": "ef8e12b3449c471a750dab489efe2bd2293a69429da6cef873b56f2c2b63eed7",
+   "origin": "current-root-and-owned-park",
+   "includes": [
+    "books/format-check",
+    "books/commit-alloc",
+    "books/vocab",
+    "books/pool-read-contracts",
+    "books/columns-guard-hints",
+    "books/columns-carrier-contracts"
+   ]
+  },
+  "books/pool-read-contracts": {
+   "sha256": "f51f92ce9bfcd7af93e6ba47bb5a4c43fbb5ac79424ef34ecf489b8f92e9e852",
+   "origin": "current-root-and-owned-park",
+   "includes": [
+    "books/pool"
+   ]
+  },
+  "books/columns-carrier-contracts": {
+   "sha256": "36cf411d1119704be488c119243d0aff8006e9babe38bb128f5d627353373c5a",
+   "origin": "current-root-and-owned-park",
+   "includes": [
+    "books/columns-guard-hints"
+   ]
+  },
+  "books/checkpoint-production": {
+   "sha256": "83d37ac624dce625c62c7d973038ec4cb7f075dc6996301d717c5a66cc9b89af",
+   "origin": "current-root-and-owned-park",
+   "includes": [
+    "books/checkpoint"
+   ]
+  },
+  "books/checkpoint-maintenance-staging": {
+   "sha256": "2ce7e09bac537046a441ba1866f9bfaf324c07293086da4462da84887101a806",
+   "origin": "current-root-and-owned-park",
+   "includes": [
+    "books/checkpoint-future-resources"
+   ]
+  },
+  "books/checkpoint-future-resources": {
+   "sha256": "3936d5295ae9808b3f494ada9693dbff161bff0dbb0c2a69749444619f2c2d06",
+   "origin": "current-root-and-owned-park",
+   "includes": [
+    "books/checkpoint-future-working",
+    "books/core-children"
+   ]
+  },
+  "books/checkpoint-future-working": {
+   "sha256": "94d0fbaf5f9012f42b96fd24a022b1422a22d32919c2c25bd5403fa69a2e8296",
+   "origin": "current-root-and-owned-park",
+   "includes": [
+    "books/checkpoint-member",
+    "books/commit-format"
+   ]
+  },
+  "books/payload-workspace": {
+   "sha256": "4892fc375123f9544d1e4d69f6782eb79f4f528427090bf0b688ef40b06355b9",
+   "origin": "current-root-and-owned-park",
+   "includes": [
+    "books/declare"
+   ]
+  },
+  "books/recovery": {
+   "sha256": "30ae12c976c2e1f78bbc069348ec70e2ceea2e347b46330eecfa9c2a86ed9ad5",
+   "origin": "current-root-and-owned-park",
+   "includes": [
+    "books/commit-format",
+    "books/alloc",
+    "books/pool-digest"
+   ]
+  },
+  "books/pool-digest": {
+   "sha256": "f466162c376f983c3fedacf17dd4c7f89529153caf27aaca30d81a411dd14197",
+   "origin": "current-root-and-owned-park",
+   "includes": [
+    "books/digests",
+    "books/pool",
+    "books/layout"
+   ]
+  },
+  "books/block-integrity": {
+   "sha256": "f1ea96d8fce0b9228e3a4feb331d9c88732c2f839369d24203b4a275f5112721",
+   "origin": "current-root-and-owned-park",
+   "includes": [
+    "books/blake3-row-frames",
+    "books/pool-digest",
+    "books/commit-geometry"
+   ]
+  },
+  "books/blake3-row-frames": {
+   "sha256": "2e2386ed36d8d7869186f83f0ce698faf56f3e02de8f30585d817f231e16f9d7",
+   "origin": "current-root-and-owned-park",
+   "includes": [
+    "books/blake3",
+    "books/pool-digest"
+   ]
+  },
+  "books/commit-members": {
+   "sha256": "3fafe717b7f9c51d7bffd04a5a3b58467329eb80e7d1b0af8c5b05ea984ffb8b",
+   "origin": "current-root-and-owned-park",
+   "includes": [
+    "books/columns"
+   ]
+  },
+  "books/merkle": {
+   "sha256": "893f300d6b6ce46640a604ecd6a71ea2195b38cc818f795eae3d96c525eba7f6",
+   "origin": "current-root-and-owned-park",
+   "includes": [
+    "books/blake3",
+    "books/digest-store",
+    "books/assumptions-integrity"
+   ]
+  },
+  "books/digest-store": {
+   "sha256": "de25fd767c4ad8352ac76153b72b04d7c9246ddb826daf233290aa5e59be8816",
+   "origin": "current-root-and-owned-park",
+   "includes": [
+    "books/digests"
+   ]
+  },
+  "books/assumptions-integrity": {
+   "sha256": "3e1131f6b5a9c47bf9b21bec4dffae3ef46940453e4df9f768899c9d0814d06f",
+   "origin": "current-root-and-owned-park",
+   "includes": []
+  },
+  "books/event-read-state": {
+   "sha256": "55405e0eddcb169465aa18fd0dfa89b06978915786b1a933028728d6644b6862",
+   "origin": "current-root-and-owned-park",
+   "includes": [
+    "books/arm-children"
+   ]
+  },
+  "books/arm-children": {
+   "sha256": "102693b7b871c8da5b31649f60ee70f832b5726a9f98caa910d25ca1e3177d07",
+   "origin": "current-root-and-owned-park",
+   "includes": [
+    "books/pool-ranges",
+    "books/vocab",
+    "books/exec-state",
+    "books/machines-directory"
+   ]
+  },
+  "books/machines-directory": {
+   "sha256": "d87c6d169aae1a5c06fd1f31d9047645c8ecae0c444e10ad205958a37e2c83fa",
+   "origin": "current-root-and-owned-park",
+   "includes": [
+    "books/machines",
+    "books/profile"
+   ]
+  },
+  "books/journal-members-state": {
+   "sha256": "8b705c5a96e393d5460f210f49343a6967c56c526ce97d3cd636972b1fc9b414",
+   "origin": "current-root-and-owned-park",
+   "includes": [
+    "books/columns"
+   ]
+  },
+  "books/commit": {
+   "sha256": "f3bc27add4028c6da04a241706f5ab61fddfca0f03230211ec2387597e22a205",
+   "origin": "current-root-and-owned-park",
+   "includes": [
+    "books/machines-a-access",
+    "books/commit-format",
+    "books/checkpoint-commit-leases"
+   ]
+  },
+  "books/machines-a-access": {
+   "sha256": "f08c1a652fe7fbf06072d136e544a77e7cc27d53e98b2006c553fbdda7603adc",
+   "origin": "current-root-and-owned-park",
+   "includes": [
+    "books/core"
+   ]
+  },
+  "books/core": {
+   "sha256": "6fd705fc6db1d0058f3eb17e6450ebc80a3611c84bc9fa5d0b4b3f07844175a8",
+   "origin": "current-root-and-owned-park",
+   "includes": [
+    "books/pool-ranges",
+    "books/vocab",
+    "books/borrow-release",
+    "books/sched",
+    "books/trace",
+    "books/exec-state",
+    "books/arm-issue-effects",
+    "books/core-children-a",
+    "books/core-harvest"
+   ]
+  },
+  "books/borrow-release": {
+   "sha256": "08d68878eaf8c50f39552a34ab9cfce8c070b2bd21a71f4f452256f1cd2559cf",
+   "origin": "current-root-and-owned-park",
+   "includes": [
+    "books/vocab"
+   ]
+  },
+  "books/trace": {
+   "sha256": "8659e943d080aa3af080893f5027b2fa752f3803c3471620a5d946646df8065f",
+   "origin": "current-root-and-owned-park",
+   "includes": [
+    "books/columns",
+    "books/profile"
+   ]
+  },
+  "books/arm-issue-effects": {
+   "sha256": "a9460bbc8e085b404804d7b82328c1f7a249faeee25380af6586b389d3d5d9fd",
+   "origin": "current-root-and-owned-park",
+   "includes": [
+    "books/ops-issued-effects"
+   ]
+  },
+  "books/ops-issued-effects": {
+   "sha256": "0d8ca86349858405807ff2cdccffccd71d1c8cef2065186b28aa31aafd35a709",
+   "origin": "current-root-and-owned-park",
+   "includes": [
+    "books/ops-issued-count"
+   ]
+  },
+  "books/ops-issued-count": {
+   "sha256": "2238a6e61e7075984f5cd95519a7dd71bc2d1e6f4da6d0b411e639f27ce7a426",
+   "origin": "current-root-and-owned-park",
+   "includes": [
+    "books/ops-heads"
+   ]
+  },
+  "books/ops-heads": {
+   "sha256": "17af3696d3ad68f638d8301906cb1ce67152e6fa685a8d7697b5521018359366",
+   "origin": "current-root-and-owned-park",
+   "includes": [
+    "books/arm-children"
+   ]
+  },
+  "books/core-children-a": {
+   "sha256": "53d4a6b40b03165e5f80fb04105aa8a9731c38423cd83abed97e75a6bafbf2ab",
+   "origin": "current-root-and-owned-park",
+   "includes": [
+    "books/core-children",
+    "books/pool",
+    "books/sched",
+    "books/trace",
+    "books/exec-state",
+    "books/machines-directory"
+   ]
+  },
+  "books/core-harvest": {
+   "sha256": "d5289962939c724844ffefec1085a92263329fd2ccb8d8dfbe4538ee96f0ff14",
+   "origin": "current-root-and-owned-park",
+   "includes": [
+    "books/core-children"
+   ]
+  },
+  "books/checkpoint-commit-leases": {
+   "sha256": "bb1c2e299d594b6a32e5106ee795dec8ce5cbd8f3f40ee954b7e66b1fafd2ecb",
+   "origin": "current-root-and-owned-park",
+   "includes": [
+    "books/checkpoint-future-resources"
+   ]
+  },
+  "books/storage-block-io": {
+   "sha256": "4886fb553552d6155691068f5e9a351eebbb1f3583c113e47ada2701692116f7",
+   "origin": "current-root-and-owned-park",
+   "includes": [
+    "books/arm-issue-effects",
+    "books/read-pins",
+    "books/commit-geometry"
+   ]
+  },
+  "books/successor-schema-geometry": {
+   "sha256": "99ce2bd6d103be821a896ecff5c0faeb79cbecda0e407f5c0ab1fb9ced69ceaa",
+   "origin": "prospective-lower-provider",
+   "includes": [
+    "books/runs-served",
+    "books/successor-workspace-geometry"
+   ]
+  },
+  "books/successor-workspace-geometry": {
+   "sha256": "a94c86448e9a52a2abc76a8b8d4437311b5044e00c2edb61c0c0e49aec1e841f",
+   "origin": "prospective-lower-provider",
+   "includes": [
+    "books/format-base"
+   ]
+  },
+  "books/c-snapshot": {
+   "sha256": "262e52caeb7800b7b4fcfe9fac496238ac2ab265b5a25a5238a0c68cf408d6d8",
+   "origin": "prospective-lower-provider",
+   "includes": [
+    "books/c-snapshot-state",
+    "books/overlay",
+    "books/run-physical-region"
+   ]
+  },
+  "books/c-snapshot-state": {
+   "sha256": "2ef86d103dea6fe1b515bf35c72fb15d77252725eb89c83ca9e73c9c15799731",
+   "origin": "prospective-lower-provider",
+   "includes": [
+    "books/columns"
+   ]
+  },
+  "books/run-physical-region": {
+   "sha256": "e16a7c61436e56a85fbe8653f03d8e1801c7352d5f8a93a8f3e9745092c94c4c",
+   "origin": "prospective-lower-provider",
+   "includes": [
+    "books/run-physical-release"
+   ]
+  },
+  "books/run-physical-release": {
+   "sha256": "6c7923b75826c8d4cc5d38e608307b93deaea687b582a1147e4f081bb57403dd",
+   "origin": "current-root-and-owned-park",
+   "includes": [
+    "books/run-physical-source"
+   ]
+  },
+  "books/run-physical-source": {
+   "sha256": "102241d2d215d03b85f05a100359c5e5308164af4f870cdd00334768d357239d",
+   "origin": "prospective-lower-provider",
+   "includes": [
+    "books/run-physical-bound-bind",
+    "books/checkpoint-summary-leases"
+   ]
+  },
+  "books/run-physical-bound-bind": {
+   "sha256": "6b318587cba7533d15b9631e33721418ca7cc1579d1052bae6e1bcf07753f477",
+   "origin": "prospective-lower-provider",
+   "includes": [
+    "books/run-physical-bound"
+   ]
+  },
+  "books/run-physical-bound": {
+   "sha256": "86750a64cfd1201ccaf0e317442690d4ed72e90eb1efde76a66f8440e7184a0b",
+   "origin": "prospective-lower-provider",
+   "includes": [
+    "books/run-physical-resources"
+   ]
+  },
+  "books/run-physical-resources": {
+   "sha256": "f2dddc7f305f42dd2b180ced0bdf29b2a444f9de09cf35b864adcc267ebd25d8",
+   "origin": "prospective-lower-provider",
+   "includes": [
+    "books/run-physical-state",
+    "books/machines-b"
+   ]
+  },
+  "books/run-physical-state": {
+   "sha256": "85bc4aff9c84e5c60c1709a04d32fca19e239627e22e9b94aed8dc2548921d2d",
+   "origin": "prospective-lower-provider",
+   "includes": [
+    "books/runs"
+   ]
+  },
+  "books/checkpoint-summary-leases": {
+   "sha256": "70f4d4fd48d91f647dc55b461dd1071820da5ec1deed2139241eeaee4f714d0a",
+   "origin": "prospective-lower-provider",
+   "includes": [
+    "books/checkpoint-summary-state",
+    "books/runs"
+   ]
+  },
+  "books/checkpoint-summary-state": {
+   "sha256": "35c19da2528251cc0c63a5bd863f0170755699cdc7ce2be88126d4eb2fe48272",
+   "origin": "prospective-lower-provider",
+   "includes": [
+    "books/checkpoint-restore-semantic-state"
+   ]
+  },
+  "books/checkpoint-restore-semantic-state": {
+   "sha256": "02d34dfe5f2112a68889cb3fe613fde043966717a179e43c48daea4fbf71bc8f",
+   "origin": "prospective-lower-provider",
+   "includes": [
+    "books/checkpoint-restore-provenance"
+   ]
+  },
+  "books/checkpoint-restore-provenance": {
+   "sha256": "ab757067c2bb6b9aa332d73ed5e0a6b096a58e15a1f95bf5f33db3ad56628938",
+   "origin": "prospective-lower-provider",
+   "includes": [
+    "books/checkpoint-restore-map"
+   ]
+  },
+  "books/checkpoint-restore-map": {
+   "sha256": "5e95575a2865cd7b461378daa93f5277354ed27a36dfc8bdd465d13a690df31a",
+   "origin": "prospective-lower-provider",
+   "includes": [
+    "books/checkpoint-restore-reader",
+    "books/checkpoint-restore-reach-state"
+   ]
+  },
+  "books/checkpoint-restore-reader": {
+   "sha256": "59530c60f64c61aae858c59ae8e3b1ba1059fecd50abb62061e6f4fbcffeab81",
+   "origin": "prospective-lower-provider",
+   "includes": [
+    "books/checkpoint-restore"
+   ]
+  },
+  "books/checkpoint-restore": {
+   "sha256": "2b31b2d276cb08caf740bbcc5f150926fb6b14bec805a4132b688140b81eb8e6",
+   "origin": "prospective-lower-provider",
+   "includes": [
+    "books/checkpoint",
+    "books/checkpoint-restore-read",
+    "books/checkpoint-geometry"
+   ]
+  },
+  "books/checkpoint-restore-read": {
+   "sha256": "e81cee2ff3a71d94986661c346391113407e8865f876f0801d3a98a7f1cec96b",
+   "origin": "prospective-lower-provider",
+   "includes": [
+    "books/event-proof-format",
+    "books/alloc"
+   ]
+  },
+  "books/event-proof-format": {
+   "sha256": "519be9b00f0719a7b9b8728574635960b8d9243c5db03e2ca790a5e958a35c2c",
+   "origin": "prospective-lower-provider",
+   "includes": [
+    "books/checkpoint-map-format"
+   ]
+  },
+  "books/checkpoint-map-format": {
+   "sha256": "86cf2a13eb3e45d83a08cf1101bf6124e7638a78c98f849985779ec890b397ba",
+   "origin": "prospective-lower-provider",
+   "includes": [
+    "books/format"
+   ]
+  },
+  "books/checkpoint-geometry": {
+   "sha256": "47aac52fae2a05b63f099027cf14a109751f821bf41faa1f4b5bca769058b488",
+   "origin": "prospective-lower-provider",
+   "includes": [
+    "books/format-physical"
+   ]
+  },
+  "books/checkpoint-restore-reach-state": {
+   "sha256": "10e8b5b963d7271cc2534c3b40e887e43e6b44988a87a3918434943ec7477044",
+   "origin": "prospective-lower-provider",
+   "includes": [
+    "books/columns"
+   ]
+  },
+  "books/checkpoint-bank-admission": {
+   "sha256": "4737f645cfdf293cf15719d38c3af9efdb407d6d14643f3b651a3f617bd6559b",
+   "origin": "current-root-and-owned-park",
+   "includes": [
+    "books/checkpoint-summary-state",
+    "books/c-snapshot",
+    "books/runs"
+   ]
+  },
+  "books/run-physical-geometry": {
+   "sha256": "381bfaec6964c1aba882ddcc556e0cadaccbdf2ff25b57eb4abe42af853e3857",
+   "origin": "prospective-lower-provider",
+   "includes": [
+    "books/run-physical-resources"
+   ]
+  },
+  "books/run-physical-harvest": {
+   "sha256": "2b6431f4f29ba5bade253c1320406902f58059c968777608e4f2b94ef7de2487",
+   "origin": "prospective-lower-provider",
+   "includes": [
+    "books/run-physical-resources"
+   ]
+  },
+  "books/c-source-observer": {
+   "sha256": "f9b7630b5c433d79f71c90948743fa89fddbfdaf2b7dfb1a90e8e5086e277619",
+   "origin": "prospective-lower-provider",
+   "includes": [
+    "books/c-source-observer-state"
+   ]
+  },
+  "books/c-source-observer-state": {
+   "sha256": "c655a2252f53df95d9eb329414d7a131ecdbbd834786a2b68db61d8c87803efd",
+   "origin": "prospective-lower-provider",
+   "includes": [
+    "books/columns"
+   ]
+  },
+  "books/run-physical-step": {
+   "sha256": "a8ddde305fd9570f59d0202a6ba1297f8cb59743c34d06ac78fe5882655b86ee",
+   "origin": "prospective-lower-provider",
+   "includes": [
+    "books/run-physical-io",
+    "books/run-physical-bound-step"
+   ]
+  },
+  "books/run-physical-io": {
+   "sha256": "aa2c2986687f8ebda5869f400f04edc718e30503a6d238612f6f1a9e998e06df",
+   "origin": "prospective-lower-provider",
+   "includes": [
+    "books/run-physical-source",
+    "books/run-physical-bound-io"
+   ]
+  },
+  "books/run-physical-bound-io": {
+   "sha256": "de22818b77a630635f9b36eebab4590031b3d9c8bb09e3e5fb44a5aac51d2c6d",
+   "origin": "prospective-lower-provider",
+   "includes": [
+    "books/run-physical-bound",
+    "books/run-physical-harvest"
+   ]
+  },
+  "books/run-physical-bound-step": {
+   "sha256": "fff76ce56b8a1edc0451509a423c156713ecadc840cf2dfa8cef9fe4bfab12c7",
+   "origin": "prospective-lower-provider",
+   "includes": [
+    "books/run-physical-bound-io",
+    "books/runs-served",
+    "books/boot-geometry-state",
+    "books/checkpoint-semantic-page"
+   ]
+  },
+  "books/boot-geometry-state": {
+   "sha256": "1e9c8e2ae031715296de226431e460f8f2f955e62ecc1f7d42102ff1678b801e",
+   "origin": "current-root-and-owned-park",
+   "includes": [
+    "books/boot-config-state",
+    "books/format-check"
+   ]
+  },
+  "books/boot-config-state": {
+   "sha256": "9fb97cf4095154cc1cfe9fe2fdf499c2c88a3d36410f76b96b7177932d05b703",
+   "origin": "current-root-and-owned-park",
+   "includes": [
+    "books/columns",
+    "books/profile"
+   ]
+  },
+  "books/checkpoint-semantic-page": {
+   "sha256": "548241bb40835f731218d26cff190dbed7febc42965c3ba542a096b3beb19ccf",
+   "origin": "prospective-lower-provider",
+   "includes": [
+    "books/runs-page"
+   ]
+  },
+  "books/run-physical-park-region": {
+   "sha256": "a6a4a72f76057ec1196586e70255a4914f9aa1eb759921ecf553f89616dcc069",
+   "origin": "current-root-and-owned-park",
+   "includes": [
+    "books/run-physical-region"
+   ]
+  }
+ },
+ "missing": [],
+ "scope": "Static include graph of immutable current ROOT tracked source plus named park overlay and exact prospective lower-provider hashes; no dirty B overlay and no ACL2/world admission."
+}
