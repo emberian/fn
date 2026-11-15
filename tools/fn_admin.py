@@ -379,6 +379,12 @@ def build_cns_request(verb: str, **kw) -> bytes:
         )
     elif verb == "ack":
         body = bytes([code]) + cursor_propose(kw["cursor"], kw["position"])
+    elif verb == "fetch":
+        position = kw["position"]
+        if not (0 <= position < (1 << 64)):
+            raise ValueError("position must be in 0 .. 2^64-1")
+        body = (bytes([code]) + octets16(kw["message_id"])
+                + u32be(kw["domain"], "domain") + position.to_bytes(8, "big"))
     elif verb == "append":
         op_val = kw.get("op", 0)
         op_bytes = be_pos(op_val) if op_val > 0 else b""
@@ -480,6 +486,11 @@ def decode_cns_reply(verb: str, frame: bytes) -> dict:
             count=count,
             items=items,
         )
+    elif verb == "fetch":
+        article, end = _octets32_at(q, 0, "fetch article")
+        if end != len(q):
+            raise WireError("trailing bytes in fetch result")
+        out.update(article_hex=article.hex(), octets=len(article))
     elif verb == "append":
         mid_raw, j = _octets16_at(q, 0, "append Message-ID")
         dom_raw, j = _take(q, j, 4, "append domain")
@@ -1087,6 +1098,19 @@ def cmd_stream_append(args: argparse.Namespace) -> int:
     return emit(res, args.json)
 
 
+def cmd_stream_fetch(args: argparse.Namespace) -> int:
+    with ControlSession(require_control_sock(args)) as sess:
+        bound = sess.bind_as(args.as_principal)
+        if bound and bound["outcome"] != "accepted":
+            return emit(bound, args.json)
+        result = sess.cns("fetch", message_id=args.message_id.encode("latin-1"),
+                          domain=args.domain, position=args.position)
+    if result["outcome"] != "accepted" or args.json:
+        return emit(result, args.json)
+    sys.stdout.buffer.write(bytes.fromhex(result["article_hex"]))
+    return 0
+
+
 def _render_page_human(res: dict) -> str:
     if res["outcome"] != "accepted":
         return f"{res['outcome']} reason={res.get('reason', 'none')}"
@@ -1443,6 +1467,12 @@ def build_parser() -> argparse.ArgumentParser:
     p_sapp.add_argument("--op", help="idempotent operation id (1..2^60-1)")
     _add_control_args(p_sapp)
 
+    p_sfetch = stream_sub.add_parser("fetch", help="fetch exact article octets at a reported occurrence")
+    p_sfetch.add_argument("message_id", help="Message-ID reported by append/read")
+    p_sfetch.add_argument("--domain", type=int, required=True, help="reported occurrence domain (u32)")
+    p_sfetch.add_argument("--position", type=int, required=True, help="reported occurrence position (u64)")
+    _add_control_args(p_sfetch)
+
     p_sread = stream_sub.add_parser("read", help="read a bounded page from a consumer cursor")
     p_sread.add_argument("--cursor", help="issued fncu cursor hex")
     p_sread.add_argument("--cursor-file", type=Path, help="file containing fncu cursor hex")
@@ -1523,6 +1553,7 @@ def main(argv: list[str] | None = None, root: Path | None = None) -> int:
             dispatch = {
                 "register": cmd_stream_register,
                 "append": cmd_stream_append,
+                "fetch": cmd_stream_fetch,
                 "read": cmd_stream_read,
                 "wait": cmd_stream_wait,
                 "ack": cmd_stream_ack,
