@@ -65,10 +65,65 @@ class ServiceGeometry(unittest.TestCase):
         boot = lr.parse(ROOT/'books/boot.lisp')
         released = lr.match('_', boot.forms, deep=True, head='defun', name='fn2-boot-release-windows')
         self.assertEqual(len(released), 1)
-        # The current helper only receives pack/rx. A root release changes
-        # this source witness and requires reviewing the retained-root term.
+        # Pack/rx and root remain distinct leases; actual epoch-result joins
+        # root release before finalization opens the epoch or releases listeners.
         text = boot.text[released[0].start:released[0].end]
         self.assertNotIn('root-slot', text)
+
+    def check_ready_join(self, source):
+        boot = lr.parse(source)
+        arms = [n for f in boot.forms for n in walk(f)
+                if isinstance(n, lr.Lst) and n.items]
+        epoch = [n for n in arms if atom(n.items[0]) == ':epoch-result']
+        release = [n for n in arms if len(n.items) > 1
+                   and atom(n.items[0]) == ':release' and atom(n.items[1]) == ':on-refusal']
+        self.assertEqual(len(epoch), 1)
+        self.assertEqual(len(release), 1)
+        text = boot.text[epoch[0].start:epoch[0].end]
+        calls = ['fn2-boot-finish-bank-obligations',
+                 'fn2-boot-release-root-window', 'fn2-boot-finalize-recovery',
+                 'fn2-boot-release-windows', '(:next :release)']
+        positions = [text.index(name) for name in calls]
+        self.assertEqual(positions, sorted(positions))
+        self.assertIn('(not (equal row-outcome *fn2-outcome-done*)) (:stop :io)', text)
+        self.assertIn('(fn2-boot-release-root-window id row-generation) :accept (:ok :retired)', text)
+        transitions = [n for n in arms if len(n.items) == 2
+                       and atom(n.items[0]) == ':next' and atom(n.items[1]) == ':ready']
+        self.assertEqual(len(transitions), 2)
+        self.assertTrue(all(release[0].start < n.start < n.end < release[0].end
+                            for n in transitions))
+        helper = lr.parse(ROOT/'books/boot-root-release.lisp')
+        found = lr.match('_', helper.forms, deep=True, head='defun',
+                         name='fn2-boot-release-root-window')
+        self.assertEqual(len(found), 1)
+        text = helper.text[found[0].start:found[0].end]
+        returned = text.index('(fn2-core-release slot gen *fn2-boot-kind* id ogen fn2-core)')
+        accepted = text.index("((unless (member-eq code '(:ok :retired)))", returned)
+        cleared = text.index('(root-slot 0) (root-gen 0)', accepted)
+        self.assertLess(returned, accepted)
+        self.assertLess(accepted, cleared)
+        bank = lr.parse(ROOT/'books/checkpoint-bank-boot.lisp')
+        finalize = lr.match('_', bank.forms, deep=True, head='defun',
+                            name='fn2-boot-finalize-recovery')
+        self.assertEqual(len(finalize), 1)
+        text = bank.text[finalize[0].start:finalize[0].end]
+        self.assertIn('(= (fn2-machine-root-gen id fn2-core) 0)', text)
+        geometry = (ROOT/'books/checkpoint-service-geometry.lisp').read_text()
+        self.assertIn('(cold (+ startup root))', geometry)
+        self.assertIn('(cold-post post)', geometry)
+        self.assertNotIn('(cold-post (+ post root))', geometry)
+
+    def test_actual_ready_join_releases_root_before_service(self):
+        source = (ROOT/'books/boot.lisp').read_text()
+        self.check_ready_join(source)
+        with self.assertRaises((AssertionError, ValueError)):
+            self.check_ready_join(source.replace(
+                '(fn2-boot-release-root-window id row-generation)',
+                '(fn2-boot-missing-release id row-generation)', 1))
+        with self.assertRaises(AssertionError):
+            self.check_ready_join(source.replace(
+                '(fn2-boot-release-root-window id row-generation) :accept (:ok :retired)',
+                '(fn2-boot-release-root-window id row-generation) :accept (:ok :retired :busy)', 1))
 
     def test_actual_engine_uses_shared_workspace_geometry(self):
         receipt = json.loads((ROOT/'tools/fixtures/identity-workspace-geometry-extraction.json').read_text())
