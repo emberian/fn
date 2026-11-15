@@ -745,9 +745,17 @@
   (declare (xargs :stobjs (fn2-extents fn2-alloc-edges)
     :guard (and (fn2-extents-wfp fn2-extents) (fn2-alloc-edges-wfp fn2-alloc-edges)
                 (unsigned-byte-p 60 new-epoch) (unsigned-byte-p 60 new-counter))
-    ; These tests reject branches; their internals supply no guard premise.
-    :guard-hints (("Goal" :in-theory
-                  (disable fn2-alloc-handle-code fn2-alloc-edge-matchesp
+    ; Use the checked-slot contract and public numeric reader facts. Keep
+    ; branch-only tests and recursive list access below that proof boundary.
+    :guard-hints (("Goal"
+                  :use ((:instance fn2-alloc-handle-code-ok-slotp)
+                        (:instance fn2-alloc-handle-code-ok-slotp
+                         (i j) (epoch new-epoch) (counter new-counter)))
+                  :in-theory
+                  (disable nth fn2-extents-rows fn2-alloc-edges-rows
+                           fn2-extents-state fn2-extents-owner-kind fn2-extents-owner-id
+                           fn2-extents-installed-root fn2-extents-prepared-successor
+                           fn2-alloc-edges-kind fn2-alloc-handle-code fn2-alloc-edge-matchesp
                            fn2-alloc-frozenp fn2-alloc-retirement-intentp
                            fn2-alloc-edge-kind-code->keyword)))))
   (let ((a (fn2-alloc-handle-code i epoch counter fn2-extents))
