@@ -1,0 +1,226 @@
+{
+  "base": "836238fb119e06e724291e8fc94fd1e32f836a47",
+  "source_status": "Proof source candidate only; checkpoint/member whole-book admission and current-key record remain unproved.",
+  "roots": [
+    "books/checkpoint-member",
+    "tests/checkpoint-carrier-unit",
+    "tests/layout-size-bound-unit"
+  ],
+  "union_count": 35,
+  "source_count": 7,
+  "required_parent_count": 28,
+  "source_files": [
+    {
+      "file": "books/checkpoint.lisp",
+      "sha256": "fae2fa74d9d3da4e18d47a8cfe12ecf32689c74508afb89de85bf5d8600d2a9d"
+    },
+    {
+      "file": "books/checkpoint-member.lisp",
+      "sha256": "1b1bd8fcb91265f8af7080ba4af6b12ce9a750a6585da7889ae7d72310d57f0c"
+    },
+    {
+      "file": "books/columns-carrier-contracts.lisp",
+      "sha256": "36cf411d1119704be488c119243d0aff8006e9babe38bb128f5d627353373c5a"
+    },
+    {
+      "file": "books/layout-size-bounds.lisp",
+      "sha256": "242f55370eff42c596962722a3404058a48dae5215bbf9d39b82f198b07e45b7"
+    },
+    {
+      "file": "books/format-check-read-contracts.lisp",
+      "sha256": "4fe795fa67f595eef8b1273c71646255716c2e3b058a85a0adb43dd72fa5bc84"
+    },
+    {
+      "file": "tests/checkpoint-carrier-unit.lisp",
+      "sha256": "0bfab15fcddf607adb519fdfdc3c64c1e857b769a55b0dc56531146e1f324da6"
+    },
+    {
+      "file": "tests/layout-size-bound-unit.lisp",
+      "sha256": "187f7a4bd195f43230b249c3eb71c1609d7750b5e3ca02eb276fa8434962fec7"
+    }
+  ],
+  "required_parent_books": [
+    "books/alloc",
+    "books/assumptions-native-span",
+    "books/blake3",
+    "books/blake3-pool-spec",
+    "books/blake3-spec",
+    "books/columns",
+    "books/columns-guard-hints",
+    "books/commit-alloc",
+    "books/declare",
+    "books/digests",
+    "books/fnv",
+    "books/format",
+    "books/format-base",
+    "books/format-check",
+    "books/format-context",
+    "books/format-events",
+    "books/format-physical",
+    "books/format-storage",
+    "books/layout",
+    "books/operations",
+    "books/owed",
+    "books/owed-discharge",
+    "books/pool",
+    "books/pool-ranges",
+    "books/pool-read-contracts",
+    "books/profile",
+    "books/tuple",
+    "books/vocab"
+  ],
+  "dependency_edges": {
+    "tests/layout-size-bound-unit": [
+      "books/layout-size-bounds"
+    ],
+    "books/layout-size-bounds": [
+      "books/layout"
+    ],
+    "books/layout": [
+      "books/pool"
+    ],
+    "books/pool": [
+      "books/columns",
+      "books/owed-discharge",
+      "books/profile"
+    ],
+    "books/profile": [
+      "books/operations"
+    ],
+    "books/operations": [
+      "books/declare"
+    ],
+    "books/declare": [],
+    "books/owed-discharge": [
+      "books/owed"
+    ],
+    "books/owed": [
+      "books/declare"
+    ],
+    "books/columns": [
+      "books/operations"
+    ],
+    "tests/checkpoint-carrier-unit": [
+      "books/checkpoint"
+    ],
+    "books/checkpoint": [
+      "books/format-check-read-contracts",
+      "books/commit-alloc",
+      "books/vocab",
+      "books/pool-read-contracts",
+      "books/columns-guard-hints",
+      "books/columns-carrier-contracts"
+    ],
+    "books/columns-carrier-contracts": [
+      "books/columns-guard-hints"
+    ],
+    "books/columns-guard-hints": [
+      "books/columns"
+    ],
+    "books/pool-read-contracts": [
+      "books/pool"
+    ],
+    "books/vocab": [
+      "books/columns",
+      "books/owed",
+      "books/profile"
+    ],
+    "books/commit-alloc": [
+      "books/alloc",
+      "books/blake3"
+    ],
+    "books/blake3": [
+      "books/digests",
+      "books/layout",
+      "books/blake3-spec",
+      "books/blake3-pool-spec"
+    ],
+    "books/blake3-pool-spec": [
+      "books/pool",
+      "books/digests",
+      "books/blake3-spec"
+    ],
+    "books/blake3-spec": [],
+    "books/digests": [
+      "books/columns"
+    ],
+    "books/alloc": [
+      "books/columns",
+      "books/owed",
+      "books/tuple"
+    ],
+    "books/tuple": [],
+    "books/format-check-read-contracts": [
+      "books/format-check"
+    ],
+    "books/format-check": [
+      "books/format",
+      "books/blake3",
+      "books/format-context",
+      "books/assumptions-native-span"
+    ],
+    "books/assumptions-native-span": [],
+    "books/format-context": [
+      "books/columns",
+      "books/tuple"
+    ],
+    "books/format": [
+      "books/format-physical",
+      "books/format-events",
+      "books/format-storage"
+    ],
+    "books/format-storage": [
+      "books/format-base"
+    ],
+    "books/format-base": [
+      "books/layout"
+    ],
+    "books/format-events": [
+      "books/format-base"
+    ],
+    "books/format-physical": [
+      "books/format-base"
+    ],
+    "books/checkpoint-member": [
+      "books/checkpoint",
+      "books/pool-ranges",
+      "books/layout-size-bounds",
+      "books/columns-guard-hints"
+    ],
+    "books/pool-ranges": [
+      "books/pool",
+      "books/fnv",
+      "books/columns-guard-hints"
+    ],
+    "books/fnv": [
+      "books/operations"
+    ]
+  },
+  "cycle": null,
+  "actual_results": {
+    "checkpoint_and_member_guards": "Earlier actual unchanged guard PASS; not a whole-book result.",
+    "allocator_output_contracts": "25fa actual shared-world producer chain PASS; ACCOUNT reused COMMIT-ALLOC facts, now explicit dependency.",
+    "page_frame_eight": "Actual shared-world corrected CAR events PASS .41s/463 steps (reported by executing owner). Source-backed proofbook then redundant .00s.",
+    "latest_checkpoint_verdict": "25fa CANDIDATES-TYPE refused .40s/14505 steps before page frames.",
+    "corrected_checkpoint_fae2": "Staged, NEVER admitted before shared-world hard deadline.",
+    "counter_controls": "Full old RETAIN antecedent refutation + typed whole-H positive already proved; final coherent fixture admission pending."
+  },
+  "next_gate": {
+    "resource_owner": "Parent must allocate; no private reservation or job.",
+    "parents": "Use current-key certified prefix once owner receipt is ready. Strict compare every required parent; stop on missing/source mismatch.",
+    "order": "Admit actual new proof libraries (skip only exact already-certified libraries), checkpoint full source, checkpoint-member full source, both complete fixtures; preserve per-event limits.",
+    "first_question": "Does corrected original CHECK-STEP-CANDIDATES-TYPE discharge through successful FIELDS and unconditional POOL frame +DECODE room?",
+    "record_only_after": "Both complete source books and controls pass; no partial-book claim.",
+    "pending_hint": "If arithmetic context lacks decoder room, same exact statement may need forward-chaining class; not applied without actual residual."
+  },
+  "runtime_guard_identity": {
+    "comparison_base": "836238fb119e06e724291e8fc94fd1e32f836a47",
+    "ignored_only": ":guard-hints",
+    "whole_defun_AST_equality": true,
+    "counts": {
+      "books/checkpoint.lisp": 20,
+      "books/checkpoint-member.lisp": 3
+    }
+  },
+  "controls": "Retire only demonstrated false RETAIN EDGES-TYPE, explicitly named readonly-typed replacement. All other old carrier statements retained."
+}
