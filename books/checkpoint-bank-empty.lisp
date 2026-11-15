@@ -13,7 +13,7 @@
   (and (equal (fn2-checkpoint-publication-cold-metai (* 12 slot) fn2-checkpoint-publication) 0)
        (fn2-checkpoint-bank-empty-sources-p (+ slot 1) fn2-checkpoint-publication))))
 (defcost fn2-boot-bind-checkpoint-obligations :answers t
- :tables (fn2-core-machines fn2-core-boot fn2-core-boot-config fn2-core-checkpoint-publication)
+ :tables (fn2-core-machines fn2-core-boot-config fn2-core-checkpoint-publication)
  :doc "Bind no cold obligations only from the actual completed all-empty scan or create/write/epoch-Fence boot continuation.")
 (defmacro fn2-checkpoint-bank-empty-core-events ()
  '(progn
