@@ -36,7 +36,7 @@ source=lr.write(source,[(form.start,form.end,newform),(h.start,h.end,'' )]).repl
 (B/'run-physical-source.lisp').write_text(source)
 catalogargs='fn2-checkpoint-summary fn2-checkpoint-summary-sources fn2-checkpoint-summary-leases fn2-run-installed '
 catalogwf=['(fn2-checkpoint-summary-wfp fn2-checkpoint-summary)','(fn2-checkpoint-summary-sources-wfp fn2-checkpoint-summary-sources)','(fn2-checkpoint-summary-leases-wfp fn2-checkpoint-summary-leases)','(fn2-run-installed-wfp fn2-run-installed)']
-for suffix,extra,pre in [('issue','', '(include-book "run-physical-bound")'),('step',' fn2-boot-config','(include-book "run-physical-bound-io")\n(include-book "boot-geometry-state")\n(include-book "checkpoint-semantic-page")')]:
+for suffix,extra,pre in [('issue','', '(include-book "run-physical-bound")'),('step',' fn2-boot-config','(include-book "run-physical-bound-io")\n(include-book "runs-served")\n(include-book "boot-geometry-state")\n(include-book "checkpoint-semantic-page")')]:
  path=B/('run-physical-'+('io' if suffix=='issue' else suffix)+'.lisp'); s=(F/('io.lisp' if suffix=='issue' else 'step.lisp')).read_text();name='fn2-run-load-'+suffix;n=fn(s,name); original=raw(s,n);engine=original.replace(name,'fn2-run-bound-'+suffix,1)
  # Remove only source authority carriers, retaining all physical work state.
  engine=engine.replace(catalogargs,'').replace(catalogargs.rstrip()+'\n','')
