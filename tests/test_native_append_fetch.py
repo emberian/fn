@@ -26,10 +26,17 @@ class ExactFetch(unittest.TestCase):
 
     def test_crossing_articles_reject_a_previous_article_reply(self):
         first = campaign.crossing_article("<native-append-fetch-0@example.invalid>")
-        second = campaign.crossing_article("<native-append-fetch-1@example.invalid>")
+        second = campaign.crossing_article("<native-append-fetch-1@example.invalid>", body_variant=1)
         self.assertEqual(len(first), 6144)
         self.assertEqual(len(second), 6144)
         self.assertNotEqual(first, second)
+        self.assertNotEqual(first[4096:], second[4096:])
+        # Preserve the correct identity/header but substitute the other
+        # article's later extent: this must not pass the restart oracle.
+        wrong_tail = second[:4096] + first[4096:]
+        with self.assertRaises(AssertionError):
+            campaign.exact_fetch(dict(outcome="accepted", article_hex=wrong_tail.hex(),
+                                      octets=len(wrong_tail)), second)
         for article in (first, second):
             self.assertIn(b"\r\n.", article)
             self.assertTrue(article.endswith(b"\r\n"))
