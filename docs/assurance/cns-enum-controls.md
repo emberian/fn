@@ -40,7 +40,8 @@ Generation against an unrelated or unlowered tree fails closed on source shape.
 The baseline git object must be available. This lane intentionally does not
 commit a 430 KB generated artifact or modify the runtime donor.
 
-**Unrun obligations:** ACL2 admission of the generated witnesses; an actual
+**Remaining obligations:** record certification of the generated witnesses
+(author admission passed below); an actual
 P+WFP+valid-row universal whole-fragment equality proof with the cached stage
 bound to the actual getter; composed return-value/effect equivalence of the three
 served functions; repaired-book guard verification and record certification.
@@ -155,3 +156,25 @@ fixture `/tmp/assurance-enum-controls-narrow.lisp` SHA256 is
 emitter SHA256 is
 `539194c4c64a95f9b0ffc77c0d8f0279c524a8ecab9f02be50d580ae8da956ff`.
 This support code and its named theory are unadmitted; no new compute was started.
+
+
+## Narrow fixture author admission
+
+The frozen `61bbea7a` fixture passed author admission of **all 226 named closed
+witnesses** under the unchanged original 2M-step / 20-second per-event limits.
+The state-only 131-book compiled closure loaded in 10.48 ACL2 seconds. Constructing
+the named theory took 0.06 ACL2 seconds (`DEFTHEORY` itself rounded to 0.00); the
+fixture command took 1.6 seconds wall. Its outer encapsulate summary reports 1.54
+ACL2 seconds and 1,045 steps, which excludes child proof work and is not a total
+proof-cost claim. There were zero refused events and campaign exit was zero.
+
+The [scoped receipt](cns-enum-fragment-author-61bbea7a.json) records all 226 exact
+admitted names, parsed-formula hashes, all three fixture hashes, qualified warm
+world provenance, retained raw-log hash, resource limits, and terminal cleanup.
+It establishes logical whole-carrier equality for the recorded concrete witnesses,
+including 255, named transitions, and the missing-row negative. It is author
+admission rather than a record-toolchain certificate or runtime qualification;
+the universal fragment and composed served-function obligations remain open.
+All owned handles and their exact scope were absent before the actual ledger
+slot was released under lock, recalculating both unassigned fields. No additional
+compute or runtime consumer replay was performed.
