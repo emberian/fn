@@ -274,3 +274,8 @@ The lower canonical candidate-held predicate now retains either non-idle archive
 row by exact candidate/checkpoint, including COLD-HEADER with zero tag/generation
 and UNCERTAIN. The two fixed rows require no whole-store scan. An unrun carrier
 fixture covers idle, cold, uncertain, active and mismatched subjects.
+
+The sole archive core child is now registered in the actual early C child list
+with init2 and only the lower state include. Producer registration was removed;
+no archive codec, producer, walker or activation enters the early closure.
+Two source controls enforce the single declaration and both conservative rows.
