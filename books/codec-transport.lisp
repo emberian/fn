@@ -511,6 +511,25 @@
      (declare (xargs :stobjs ,name :verify-guards nil :guard (and (,wfp ,name) (= (,rows ,name) 1))))
      (if (not (= (,(fn2-columns-sym name "-PENDING-SERIAL") 0 ,name) 0)) (mv :pending ,name)
        (let ((,name (,put 0 (terminal 1)))) (mv :ok ,name))))
+    ; Codec policy supplies its public-input action (TLS12, DEFLATE10).
+    ; The shared operation ledger supplies accepted incarnation and prefix.
+    (defun ,(fn2-columns-sym name "-INPUT-PREFIX") (serial action expected-action offset count ,name)
+     (declare (xargs :stobjs ,name :verify-guards nil
+      :guard (and (,wfp ,name) (= (,rows ,name) 1))))
+     (cond
+      ((or (not (equal action expected-action)) (equal count 0)
+           (not (= (,(fn2-columns-sym name "-PARENT-SERIAL") 0 ,name) 0))) (mv :none 0 0))
+      ((not (and (posp serial) (unsigned-byte-p 60 serial)
+                  (posp expected-action) (unsigned-byte-p 8 expected-action)
+                  (unsigned-byte-p 32 offset) (posp count) (unsigned-byte-p 32 count)
+                  (= (,(fn2-columns-sym name "-PENDING-SERIAL") 0 ,name) 0)
+                  (equal (,(fn2-columns-sym name "-PENDING-ACTION") 0 ,name) expected-action)
+                  (= (,(fn2-columns-sym name "-LAST-SERIAL") 0 ,name) serial)
+                  (<= count (,(fn2-columns-sym name "-SINK-COUNT") 0 ,name))
+                  (= (+ offset count) (,(fn2-columns-sym name "-SINK-PROGRESS") 0 ,name))
+                  (<= (+ offset count) (,(fn2-columns-sym name "-EXTENT") 0 ,name))))
+       (mv :stale 0 0))
+      (t (mv :input-prefix offset count))))
     (defun ,(fn2-columns-sym name "-CANCEL") (receivep ,name)
      (declare (xargs :stobjs ,name :verify-guards nil :guard (and (,wfp ,name) (= (,rows ,name) 1))))
      (cond ((not (booleanp receivep)) (mv :bounds nil 0 nil ,name))
@@ -572,6 +591,7 @@
     (verify-guards ,(fn2-columns-sym name "-BIND") :hints (("Goal" :in-theory (disable ,@readers))))
     (verify-guards ,(fn2-columns-sym name "-BIND-CHILD") :hints (("Goal" :in-theory (disable ,@readers))))
     (verify-guards ,(fn2-columns-sym name "-FINISH") :hints (("Goal" :in-theory (disable ,@readers))))
+    (verify-guards ,(fn2-columns-sym name "-INPUT-PREFIX") :hints (("Goal" :in-theory (disable ,@readers))))
     (verify-guards ,(fn2-columns-sym name "-CANCEL") :hints (("Goal" :in-theory (disable ,@readers))))
     (verify-guards ,(fn2-columns-sym name "-REQUESTABLE-P") :hints (("Goal" :in-theory (disable ,@readers))))
     (verify-guards ,(fn2-columns-sym name "-REQUEST") :hints (("Goal" :in-theory (disable ,@readers))))

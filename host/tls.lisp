@@ -169,7 +169,7 @@
      (unless (member observed '(:ok :blocked))
       (error "fn2 TLS: selected record observation refused: ~S" observed))
      (multiple-value-bind (effect relative-offset effect-count)
-         (fn2-tls-record-input-prefix serial action offset moved next-record)
+         (fn2-tls-record-public-input-prefix serial action offset moved next-record)
       (case effect
        (:input-prefix
         (fn2-n-record host (list :input-prefix slot (fn2-nop-gen op)
