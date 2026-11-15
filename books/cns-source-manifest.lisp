@@ -151,7 +151,7 @@
  (b* (((unless (and (fn2-cns-source-ownerp s cns cnsgen ctl ctlgen request fn2-cns-sources)
                     (equal (fn2-cns-sources-phase s fn2-cns-sources) *fn2-cns-source-phase-manifest*)
                     (equal (fn2-cns-sources-manifest-stage s fn2-cns-sources) *fn2-cns-source-manifest-stage-data-check*)
-                    (equal (fn2-cns-sources-retention-phase s fn2-cns-sources) 2)
+                    (fn2-cns-source-data-position-p s fn2-cns-sources)
                     (equal (fn2-cns-sources-pending s fn2-cns-sources) 0)
                     (equal (fn2-cns-sources-result-kind s fn2-cns-sources) *fn2-event-read-result*)
                     (equal (fn2-cns-sources-result-outcome s fn2-cns-sources) *fn2-outcome-done*)))

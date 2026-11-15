@@ -39,6 +39,7 @@
                     (fn2-cns-source-heldp s cns cnsgen ctl ctlgen request unit epoch allocation fn2-cns-sources fn2-checkpoints fn2-extents fn2-alloc-edges fn2-ops)
                     (if manifest t (equal (fn2-cns-sources-retention-phase s fn2-cns-sources) *fn2-cns-source-retention-ready*))
                     (posp len) (<= len *fn2-commit-unit-bytes*)
+                    (if data (fn2-cns-source-data-position-p s fn2-cns-sources) t)
                     (if raw (and (equal (fn2-cns-sources-location-kind s fn2-cns-sources) 0)
                                  (equal (fn2-cns-sources-offset s fn2-cns-sources) (* *fn2-commit-unit-bytes* (fn2-cns-sources-unit-index s fn2-cns-sources)))
                                  (equal (fn2-cns-sources-offset s fn2-cns-sources) (fn2-cns-sources-hash-offset s fn2-cns-sources))) t)
