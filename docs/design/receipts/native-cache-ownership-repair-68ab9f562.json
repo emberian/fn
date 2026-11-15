@@ -1,0 +1,486 @@
+{
+  "scope": "Ownership-only repair of the twelve exact entries created by native/format records; no certificate, port, compiled payload, metadata byte, file mode, name or provenance change. No ACL2 or new proof run.",
+  "cause": "The publisher was launched as root. write_text_atomic uses mkstemp (metadata0600), and entry_lock opens a+b (root-owned0644 lock blocked fn writes). Existing single-owner cache behavior is preserved.",
+  "future_publication": "Launch explicitly as fn@dregg-forge (verified uid1000/gid1000), assert effective uid1000 before work, use an fn-owned checkout and unchanged swarm-build caps. No permission sweep or metadata relabel.",
+  "source_origin": "/build/lanes/native-registry-record-68ab9f562",
+  "audit": "Every entry matched one of the two passed qualified manifests and exact source, certificate, FASL and port hashes. Ownership transfer held the exact entry exclusive lock. Before/after checks preserved bytes and modes.",
+  "verification_as_fn": "All twelve entries passed actual certs.cached_entries, entry_lock and entry_matches_meta under uid1000/gid1000; no ACL2.",
+  "audit_receipt_sha256": {
+    "native-cache-owner-repair-receipt.json": "fd87ca666d9088cc7d6e7555c38d953e23a8091c2372ed38a9d71f78051c2833",
+    "native-cache-owner-repair-extra5-receipt.json": "dd85cb9ed902bbed9e35b7c118b3ad58143c1bc6cf90ee00079d852a37760253"
+  },
+  "manifest_sha256": {
+    "/build/lanes/native-registry-record-68ab9f562/build/acl2/certify-20261115T002302Z-613027/manifest.json": "6ed660f90fb84afd24dd9e5a351ac3ca3e3cbeaf5191d91b85dcdcf3affab85f",
+    "/build/lanes/native-registry-record-68ab9f562/build/acl2/certify-20261115T002747Z-617826/manifest.json": "96ac96eda26b122cd73b25317f01940cd45f7213ea6e4f402eaa3a8be8258347"
+  },
+  "entries": [
+    {
+      "book": "books/blake3",
+      "entry": "/home/fn/.cache/fn-certs/f4628945ce9922972ed4850cdd735111933f1b9d241e3c1938c172443c860779/71c13cf045777750",
+      "key_directory": "/home/fn/.cache/fn-certs/f4628945ce9922972ed4850cdd735111933f1b9d241e3c1938c172443c860779",
+      "owner_before": "0:0",
+      "owner_after": "1000:1000",
+      "unchanged_files": [
+        {
+          "name": ".entry.lock",
+          "mode": "0o644",
+          "size": 0,
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        {
+          "name": "book.cert",
+          "mode": "0o644",
+          "size": 230653,
+          "sha256": "8f9ac4e36f3374c6891ac597fc133a5cf37ed010cfb864a1142b446c6cace0c4"
+        },
+        {
+          "name": "book.fasl",
+          "mode": "0o644",
+          "size": 523482,
+          "sha256": "127c97cc0828eeba39aec514436224d987ffa0861d133f79a62efd1d31d34227"
+        },
+        {
+          "name": "book.port",
+          "mode": "0o644",
+          "size": 53,
+          "sha256": "f4cb7e8160cfa6f41cddb04be508f922aa8e87c4ff126bfaad3379aa92e647e0"
+        },
+        {
+          "name": "meta.json",
+          "mode": "0o600",
+          "size": 4920,
+          "sha256": "0ac34cb270341fd54f4fd4839963d7daf2ad1dc09ca1b38fa6f84d910c72066c"
+        }
+      ]
+    },
+    {
+      "book": "books/format",
+      "entry": "/home/fn/.cache/fn-certs/a28b1621969f5d76c4b66a2e36b32dfdc452a85ba18bce5a1d2e0e119f8fe0aa/71c13cf045777750",
+      "key_directory": "/home/fn/.cache/fn-certs/a28b1621969f5d76c4b66a2e36b32dfdc452a85ba18bce5a1d2e0e119f8fe0aa",
+      "owner_before": "0:0",
+      "owner_after": "1000:1000",
+      "unchanged_files": [
+        {
+          "name": ".entry.lock",
+          "mode": "0o644",
+          "size": 0,
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        {
+          "name": "book.cert",
+          "mode": "0o644",
+          "size": 6209,
+          "sha256": "22f69fd9a4d0dcc0244c0e4089ba3e0e63221bb9d522b9985a77a64491be623a"
+        },
+        {
+          "name": "book.fasl",
+          "mode": "0o644",
+          "size": 22212,
+          "sha256": "c8706b9bd07996647b03680f0899dd625a48d450add866d7fcd27eddcb7b3481"
+        },
+        {
+          "name": "book.port",
+          "mode": "0o644",
+          "size": 53,
+          "sha256": "f4cb7e8160cfa6f41cddb04be508f922aa8e87c4ff126bfaad3379aa92e647e0"
+        },
+        {
+          "name": "meta.json",
+          "mode": "0o600",
+          "size": 5023,
+          "sha256": "6430178eadf1f33f7bf62ea87c546ca981ac606f3028771303fe133581864ec4"
+        }
+      ]
+    },
+    {
+      "book": "books/format-base",
+      "entry": "/home/fn/.cache/fn-certs/d468184c9e1210d98692d15dac6b9f65c8c1975a235f485da3e67214d74f36f0/71c13cf045777750",
+      "key_directory": "/home/fn/.cache/fn-certs/d468184c9e1210d98692d15dac6b9f65c8c1975a235f485da3e67214d74f36f0",
+      "owner_before": "0:0",
+      "owner_after": "1000:1000",
+      "unchanged_files": [
+        {
+          "name": ".entry.lock",
+          "mode": "0o644",
+          "size": 0,
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        {
+          "name": "book.cert",
+          "mode": "0o644",
+          "size": 68348,
+          "sha256": "b8bc7275a3c49460ac535b3d858ade6d6ef4ea9e0eeb412153035b41532a0b0d"
+        },
+        {
+          "name": "book.fasl",
+          "mode": "0o644",
+          "size": 226086,
+          "sha256": "66e514ff5a5019c501d67d36bd209ba15dcf5b045c4b7c8b444241d664c81238"
+        },
+        {
+          "name": "book.port",
+          "mode": "0o644",
+          "size": 53,
+          "sha256": "f4cb7e8160cfa6f41cddb04be508f922aa8e87c4ff126bfaad3379aa92e647e0"
+        },
+        {
+          "name": "meta.json",
+          "mode": "0o600",
+          "size": 4644,
+          "sha256": "f9bddb44bc16dc7ce8d2de1d7cee8426b82b87efe3334d26b02db33dfcb9c058"
+        }
+      ]
+    },
+    {
+      "book": "books/format-check",
+      "entry": "/home/fn/.cache/fn-certs/7ae20ee40287b0860f3a004731e2b165c4021d7b77ae67249b4893733d7344ef/71c13cf045777750",
+      "key_directory": "/home/fn/.cache/fn-certs/7ae20ee40287b0860f3a004731e2b165c4021d7b77ae67249b4893733d7344ef",
+      "owner_before": "0:0",
+      "owner_after": "1000:1000",
+      "unchanged_files": [
+        {
+          "name": ".entry.lock",
+          "mode": "0o644",
+          "size": 0,
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        {
+          "name": "book.cert",
+          "mode": "0o644",
+          "size": 84378,
+          "sha256": "859b6865f842c5a4c6e78f666f06792f4f30ba2b8e26c238f0888417bd62d797"
+        },
+        {
+          "name": "book.fasl",
+          "mode": "0o644",
+          "size": 271445,
+          "sha256": "7cff26b742599eccfd75e34cd2bc6b4d0d0d177f43306d425b1a7e46556c085a"
+        },
+        {
+          "name": "book.port",
+          "mode": "0o644",
+          "size": 53,
+          "sha256": "f4cb7e8160cfa6f41cddb04be508f922aa8e87c4ff126bfaad3379aa92e647e0"
+        },
+        {
+          "name": "meta.json",
+          "mode": "0o600",
+          "size": 5795,
+          "sha256": "967cb767b7b17cc0e8cf4f0fe77f57d23db5e5ce79bc2e437d6924eafc94b7e5"
+        }
+      ]
+    },
+    {
+      "book": "books/format-events",
+      "entry": "/home/fn/.cache/fn-certs/529bce034608e7801311f147af4d2233d3326c6ba0187bc8d296147265304445/71c13cf045777750",
+      "key_directory": "/home/fn/.cache/fn-certs/529bce034608e7801311f147af4d2233d3326c6ba0187bc8d296147265304445",
+      "owner_before": "0:0",
+      "owner_after": "1000:1000",
+      "unchanged_files": [
+        {
+          "name": ".entry.lock",
+          "mode": "0o644",
+          "size": 0,
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        {
+          "name": "book.cert",
+          "mode": "0o644",
+          "size": 1941944,
+          "sha256": "dc1f07195af676bb34131cfb311ac20ac75278fbeb52b06a3df98c029e5f9b82"
+        },
+        {
+          "name": "book.fasl",
+          "mode": "0o644",
+          "size": 6008592,
+          "sha256": "19a67beaf61c6a3ac5111f774f764104c083e4626ffbca7438b29eebd41d6538"
+        },
+        {
+          "name": "book.port",
+          "mode": "0o644",
+          "size": 53,
+          "sha256": "f4cb7e8160cfa6f41cddb04be508f922aa8e87c4ff126bfaad3379aa92e647e0"
+        },
+        {
+          "name": "meta.json",
+          "mode": "0o600",
+          "size": 4743,
+          "sha256": "4adf19831156c624f05dbd3184749f56d99daf887628741dc8325831c087e4c8"
+        }
+      ]
+    },
+    {
+      "book": "books/format-physical",
+      "entry": "/home/fn/.cache/fn-certs/a1d423ad700a1249688b233527140eea29b1d95d985bec6aae99877599b59b13/71c13cf045777750",
+      "key_directory": "/home/fn/.cache/fn-certs/a1d423ad700a1249688b233527140eea29b1d95d985bec6aae99877599b59b13",
+      "owner_before": "0:0",
+      "owner_after": "1000:1000",
+      "unchanged_files": [
+        {
+          "name": ".entry.lock",
+          "mode": "0o644",
+          "size": 0,
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        {
+          "name": "book.cert",
+          "mode": "0o644",
+          "size": 464722,
+          "sha256": "64ebc5057669b28d4c171e149ced99bd4fa7b32080d9c1f1febcbce0c30472c9"
+        },
+        {
+          "name": "book.fasl",
+          "mode": "0o644",
+          "size": 1371928,
+          "sha256": "b3b2404636e02a5f48a90cdb8bf1643c71403aeebb738fda892b03811bc45f88"
+        },
+        {
+          "name": "book.port",
+          "mode": "0o644",
+          "size": 53,
+          "sha256": "f4cb7e8160cfa6f41cddb04be508f922aa8e87c4ff126bfaad3379aa92e647e0"
+        },
+        {
+          "name": "meta.json",
+          "mode": "0o600",
+          "size": 4747,
+          "sha256": "9a14e1f3c0f4dbc4f58a8d4b611ab7799c5971d703717e283689b9953cb359ae"
+        }
+      ]
+    },
+    {
+      "book": "books/format-storage",
+      "entry": "/home/fn/.cache/fn-certs/4fd7958d457a1e87e7ca637adfcb07e8ef277128a4f755914ad0581406554d55/71c13cf045777750",
+      "key_directory": "/home/fn/.cache/fn-certs/4fd7958d457a1e87e7ca637adfcb07e8ef277128a4f755914ad0581406554d55",
+      "owner_before": "0:0",
+      "owner_after": "1000:1000",
+      "unchanged_files": [
+        {
+          "name": ".entry.lock",
+          "mode": "0o644",
+          "size": 0,
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        {
+          "name": "book.cert",
+          "mode": "0o644",
+          "size": 1459953,
+          "sha256": "6ee5f00a45118201484b8e852ad1d1df858926dccf80e77fa59d2e05a324a74e"
+        },
+        {
+          "name": "book.fasl",
+          "mode": "0o644",
+          "size": 4457227,
+          "sha256": "ad7f4b0b6e5ceb0c87275fba44a650e7d487e992a46ebdd72af15a99ff2508d8"
+        },
+        {
+          "name": "book.port",
+          "mode": "0o644",
+          "size": 53,
+          "sha256": "f4cb7e8160cfa6f41cddb04be508f922aa8e87c4ff126bfaad3379aa92e647e0"
+        },
+        {
+          "name": "meta.json",
+          "mode": "0o600",
+          "size": 4745,
+          "sha256": "a5944e3f6f6c365c3d04136793bfe0ccd57e51baf59c4cc7eb73eb7a2e82e65f"
+        }
+      ]
+    },
+    {
+      "book": "books/assurance-completion",
+      "entry": "/home/fn/.cache/fn-certs/41730432c6c87f3371f814e522288aa90c2d99785f54f2306e7f14c9246cc3c8/71c13cf045777750",
+      "key_directory": "/home/fn/.cache/fn-certs/41730432c6c87f3371f814e522288aa90c2d99785f54f2306e7f14c9246cc3c8",
+      "owner_before": "0:0",
+      "owner_after": "1000:1000",
+      "unchanged_files": [
+        {
+          "name": ".entry.lock",
+          "mode": "0o644",
+          "size": 0,
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        {
+          "name": "book.cert",
+          "mode": "0o644",
+          "size": 5104,
+          "sha256": "5241f655272e61086e104df5a7b68c860ea87ef4b916a5399711390cb5d00786"
+        },
+        {
+          "name": "book.fasl",
+          "mode": "0o644",
+          "size": 25814,
+          "sha256": "f42dff1302f7f91d42a46724db326a30b8807131bf9f435db4209a30856fa0e8"
+        },
+        {
+          "name": "book.port",
+          "mode": "0o644",
+          "size": 53,
+          "sha256": "f4cb7e8160cfa6f41cddb04be508f922aa8e87c4ff126bfaad3379aa92e647e0"
+        },
+        {
+          "name": "meta.json",
+          "mode": "0o600",
+          "size": 4209,
+          "sha256": "ed333bed3ba0ed593f7c1672e93b17729639bd10c94af6f6c1033c0ca3892742"
+        }
+      ]
+    },
+    {
+      "book": "books/digest-store",
+      "entry": "/home/fn/.cache/fn-certs/fb61da8b7639a18305e2309626b6f224d96c621969c8b27cadd21b601a72d244/71c13cf045777750",
+      "key_directory": "/home/fn/.cache/fn-certs/fb61da8b7639a18305e2309626b6f224d96c621969c8b27cadd21b601a72d244",
+      "owner_before": "0:0",
+      "owner_after": "1000:1000",
+      "unchanged_files": [
+        {
+          "name": ".entry.lock",
+          "mode": "0o644",
+          "size": 0,
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        {
+          "name": "book.cert",
+          "mode": "0o644",
+          "size": 550630,
+          "sha256": "5d6b9185a7a92c6d910d657ea77c5dd8e9ff943f0c997c46b55f298060a9e935"
+        },
+        {
+          "name": "book.fasl",
+          "mode": "0o644",
+          "size": 62596,
+          "sha256": "84ef3deb667c5522245d740b88226f71001f5373680bc764abcbbf0108c18263"
+        },
+        {
+          "name": "book.port",
+          "mode": "0o644",
+          "size": 53,
+          "sha256": "f4cb7e8160cfa6f41cddb04be508f922aa8e87c4ff126bfaad3379aa92e647e0"
+        },
+        {
+          "name": "meta.json",
+          "mode": "0o600",
+          "size": 4282,
+          "sha256": "da88e679956ab289eb97b29ba679a648cd0a4b0a6dad808eb2e9cdf55f037ce5"
+        }
+      ]
+    },
+    {
+      "book": "books/merkle",
+      "entry": "/home/fn/.cache/fn-certs/edf73854b9c59b82047059d3db9637db74e4fb0702ffdc3ad299be28199e6c2a/71c13cf045777750",
+      "key_directory": "/home/fn/.cache/fn-certs/edf73854b9c59b82047059d3db9637db74e4fb0702ffdc3ad299be28199e6c2a",
+      "owner_before": "0:0",
+      "owner_after": "1000:1000",
+      "unchanged_files": [
+        {
+          "name": ".entry.lock",
+          "mode": "0o644",
+          "size": 0,
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        {
+          "name": "book.cert",
+          "mode": "0o644",
+          "size": 169056,
+          "sha256": "4d1cc42d2635af5a0ffa7be222df74b5ce9bdd83b4420ac8b6487cc6f6e8e846"
+        },
+        {
+          "name": "book.fasl",
+          "mode": "0o644",
+          "size": 396197,
+          "sha256": "85bcfff79e25db0bee0ef0d9619b124e52a3f533b8cd3c329c5752cd3e746fd8"
+        },
+        {
+          "name": "book.port",
+          "mode": "0o644",
+          "size": 53,
+          "sha256": "f4cb7e8160cfa6f41cddb04be508f922aa8e87c4ff126bfaad3379aa92e647e0"
+        },
+        {
+          "name": "meta.json",
+          "mode": "0o600",
+          "size": 5211,
+          "sha256": "65dde9cff33237d63b170a8037a259c26baa893455b5243ac6eadddc88be6649"
+        }
+      ]
+    },
+    {
+      "book": "books/native-b3-correspondence",
+      "entry": "/home/fn/.cache/fn-certs/445be60f47c10db346413c7ca311aff2e15b1fcab510d333a29a1edf8463881e/71c13cf045777750",
+      "key_directory": "/home/fn/.cache/fn-certs/445be60f47c10db346413c7ca311aff2e15b1fcab510d333a29a1edf8463881e",
+      "owner_before": "0:0",
+      "owner_after": "1000:1000",
+      "unchanged_files": [
+        {
+          "name": ".entry.lock",
+          "mode": "0o644",
+          "size": 0,
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        {
+          "name": "book.cert",
+          "mode": "0o644",
+          "size": 14795,
+          "sha256": "a514fa058ca8cd9f95d5678629cd7f9d60b87958cfd84da79814cf6802fe9c11"
+        },
+        {
+          "name": "book.fasl",
+          "mode": "0o644",
+          "size": 14539,
+          "sha256": "b1a3e3d7d62a2917d86e4d07f64136b8f8dd5e6610d23ebe7a29eb4f32d18ce6"
+        },
+        {
+          "name": "book.port",
+          "mode": "0o644",
+          "size": 53,
+          "sha256": "f4cb7e8160cfa6f41cddb04be508f922aa8e87c4ff126bfaad3379aa92e647e0"
+        },
+        {
+          "name": "meta.json",
+          "mode": "0o600",
+          "size": 5337,
+          "sha256": "04807a6364c7be7ea5e4c8ad305ead5ce6ff18f259f3df131d74599ee7cb04b8"
+        }
+      ]
+    },
+    {
+      "book": "books/native-b3-evidence",
+      "entry": "/home/fn/.cache/fn-certs/147eb51e774711f4a35251c33ddff602c57cd583067043b08759ba9e1929bc14/71c13cf045777750",
+      "key_directory": "/home/fn/.cache/fn-certs/147eb51e774711f4a35251c33ddff602c57cd583067043b08759ba9e1929bc14",
+      "owner_before": "0:0",
+      "owner_after": "1000:1000",
+      "unchanged_files": [
+        {
+          "name": ".entry.lock",
+          "mode": "0o644",
+          "size": 0,
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        {
+          "name": "book.cert",
+          "mode": "0o644",
+          "size": 30586,
+          "sha256": "9e60da703ae7c81358371bd177f7e2cc3e6b2b45722178cabfcde4cd177bbd81"
+        },
+        {
+          "name": "book.fasl",
+          "mode": "0o644",
+          "size": 25343,
+          "sha256": "65aecf28d1f44f2e3480ca3c8731ea33892d4439752186e216561aa945d86fb7"
+        },
+        {
+          "name": "book.port",
+          "mode": "0o644",
+          "size": 53,
+          "sha256": "f4cb7e8160cfa6f41cddb04be508f922aa8e87c4ff126bfaad3379aa92e647e0"
+        },
+        {
+          "name": "meta.json",
+          "mode": "0o600",
+          "size": 5636,
+          "sha256": "48f51f3f19a955ae031dbbfe58eee878694eda5d7cecb76c56e10c35f0a62fe1"
+        }
+      ]
+    }
+  ]
+}
