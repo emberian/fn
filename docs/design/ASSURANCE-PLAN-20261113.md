@@ -265,6 +265,20 @@ leaves. Root matched all 34 source hashes and keys against the qualified entries
 Receipt: [readonly counterexample](receipts/member-readonly-counterexample34-record.json).
 Receipt: [member and actual positive](receipts/checkpoint-member-thirty-three-record.json).
 
+Source follow-on (`assurance-refuted-claims`, not yet certified) adds registry
+status `(:refuted counterexample-theorem candidate-replacement-theorem)`. The
+table guard accepts only an admitted negation of a closed instance of the exact
+live `$OWED` statement; raw author formula or a diagnostic predicate name cannot
+bind it. Refuted originals remain in the unfinished export and completion gate,
+with zero admitted proof credit. The replacement locator is explicitly unverified
+as a semantic link; existence of another theorem does not repair the original.
+The new member bridge uses the admitted readonly-removal witness to propose that
+exact negated instance and points to the distinct FIELDS-TYPE-UNDER-GUARD theorem.
+Existing production member and positive/negative witness bytes are unchanged.
+Focused actual ACL2 refusal/export controls and the bridge await a scoped gate;
+four structural source tests pass. No application world was started.
+
+
 The shared `:type-hints` fix replaces member-specific event surgery. Its original
 six-book record is preserved in the [carrier receipt](receipts/carrier-type-hints-six-record.json).
 The actual installation caller's source consumes the four guarded contracts,

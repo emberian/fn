@@ -1,0 +1,43 @@
+"""Source contracts for registry/export plumbing; ACL2 controls are separate."""
+from pathlib import Path
+import sys
+import unittest
+ROOT = Path(__file__).parents[1]
+sys.path.insert(0, str(ROOT / 'meta/emit'))
+from emit_lean import read_all
+
+class RefutationPlumbing(unittest.TestCase):
+    def test_registry_uses_live_theorem_closed_exact_subject(self):
+        text = (ROOT / 'books/owed.lisp').read_text()
+        forms = read_all(text)
+        check = next(x for x in forms if x[:2] == ['defun', 'fn2-square-refutedp'])
+        rendered = str(check)
+        for token in ['all-vars', 'statement', 'replacement', 'getpropc', ':refuted']:
+            self.assertIn(token, rendered)
+        self.assertIn('(not (eq (car (fn2-decl-get :proof (cdar rows))) :proved))', text)
+    def test_proved_count_and_completion_do_not_accept_refuted(self):
+        text = (ROOT / 'books/owed.lisp').read_text()
+        self.assertIn('(if (eq (car (fn2-decl-get :proof r)) :proved) 1 0)', text)
+        complete = (ROOT / 'books/assurance-completion.lisp').read_text()
+        self.assertIn(':refuted-original', complete)
+        self.assertIn(':candidate-replacement-link-unverified', complete)
+        self.assertIn('(not (eq (car (fn2-decl-get :proof row)) :proved))', complete)
+    def test_actual_member_binding_and_export_are_connected(self):
+        source = (ROOT / 'tests/checkpoint-member-refutation-unit.lisp').read_text()
+        self.assertIn('(not (fn2-checkpoint-installation-pack-member-fields-type$owed', source)
+        self.assertIn(':use fn2-checkpoint-member-fields-type-readonly-removal-ground', source)
+        self.assertIn('fn2-checkpoint-installation-pack-member-fields-type-under-guard', source)
+        self.assertIn('(include-book "tests/checkpoint-member-refutation-unit")',
+                      (ROOT / 'tools/owed-export.lsp').read_text())
+        self.assertIn('link unverified', (ROOT / 'books/owed-report.lisp').read_text())
+    def test_adversarial_actual_events_parse(self):
+        for path in ['tests/owed-refutation-unit.lisp', 'tests/owed-refutation-export.lsp',
+                     'tests/checkpoint-member-refutation-unit.lisp']:
+            self.assertTrue(read_all((ROOT / path).read_text()))
+        text = (ROOT / 'tests/owed-refutation-unit.lisp').read_text()
+        self.assertGreaterEqual(text.count('(must-fail'), 5)
+        self.assertIn("'(x y)", text)
+        self.assertIn("'(1 1 0 0)", text)
+
+if __name__ == '__main__':
+    unittest.main()

@@ -40,6 +40,31 @@
   (declare (xargs :verify-guards nil))
   (let ((fns (fn2-decl-get side (fn2-decl-get :sides row))))
     (if (symbol-listp fns) fns nil)))
+; A refutation is an admitted negation of a CLOSED instance of this exact
+; live statement. A named diagnostic predicate alone is not subject binding.
+(defun fn2-square-refutation-call (theorem)
+  (declare (xargs :verify-guards nil))
+  (cond ((and (true-listp theorem) (equal (len theorem) 2)
+              (eq (car theorem) 'not)) (cadr theorem))
+        ((and (true-listp theorem) (equal (len theorem) 4)
+              (eq (car theorem) 'if)
+              (equal (caddr theorem) ''nil) (equal (cadddr theorem) ''t))
+         (cadr theorem))
+        (t nil)))
+(defun fn2-square-refutedp (proof statement vars world)
+  (declare (xargs :verify-guards nil))
+  (let* ((theorem (and (symbolp (cadr proof))
+                      (getpropc (cadr proof) 'theorem nil world)))
+         (call (fn2-square-refutation-call theorem))
+         (replacement (caddr proof)))
+    (and (true-listp proof) (equal (len proof) 3)
+         (eq (car proof) :refuted) statement
+         (true-listp call) (equal (len (cdr call)) (len vars))
+         (eq (car call) statement) (not (all-vars call))
+         (symbolp replacement) replacement
+         (not (eq replacement (cadr proof)))
+         (getpropc replacement 'theorem nil world))))
+
 (defun fn2-square-rowp (name row world)
   (declare (xargs :verify-guards nil))
   (let* ((statement (fn2-decl-get :statement row))
@@ -75,6 +100,7 @@
            (and (not body) (not (fn2-decl-get :formula row))
                 (not (fn2-decl-get :checks row))))
          (or (equal proof '(:owed))
+             (fn2-square-refutedp proof statement vars world)
              (and statement (true-listp proof) (equal (len proof) 2)
                   (eq (car proof) :proved) thm
                   (or (equal thm body) (equal thm (cons statement vars))))))))
@@ -102,10 +128,21 @@
     (er hard 'defthm-owed
         "~x0 requires :teeth to name evaluating functions, not prose or forms." name)))
 
+; Refuted originals remain unfinished obligations. The replacement is an
+; admitted, separately named result, never a discharge of the original.
+(defun fn2-square-refuted-event (name counterexample replacement world)
+  (declare (xargs :verify-guards nil))
+  (let ((row (fn2-decl-row (list :square name) world)))
+    `(table fn2-squares ',name
+       ',(fn2-decl-set :proof (list :refuted counterexample replacement) row))))
+(defmacro defsquare-refuted (name counterexample replacement)
+  `(make-event
+    (value (fn2-square-refuted-event ',name ',counterexample ',replacement (w state)))))
+
 (defun fn2-square-owed-rows (rows)
   (declare (xargs :verify-guards nil))
   (if (atom rows) nil
-    (if (equal (fn2-decl-get :proof (cdar rows)) '(:owed))
+    (if (not (eq (car (fn2-decl-get :proof (cdar rows))) :proved))
         (cons (car rows) (fn2-square-owed-rows (cdr rows)))
       (fn2-square-owed-rows (cdr rows)))))
 (defun fn2-owed-names (world)

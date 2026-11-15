@@ -408,6 +408,7 @@ ACL2_BOOKS = \
   tests/columns-carrier-hints-unit \
   tests/columns-numeric-theory-unit \
   tests/checkpoint-member-interface-unit \
+  tests/checkpoint-member-refutation-unit \
   tests/layout-proof-scope-unit \
   tests/log-model-unit \
   tests/m2-cuts \
@@ -475,6 +476,7 @@ ACL2_BOOKS = \
   tests/owed-d-unit \
   tests/owed-reclamation-unit \
   tests/owed-unit \
+  tests/owed-refutation-unit \
   tests/parser-boundary-unit \
   tests/peer-witnesses \
   tests/peer-replay-unit \
