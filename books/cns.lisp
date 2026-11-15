@@ -976,7 +976,7 @@
         (:issue (fn2-issue-receive row-cap-index row-cap-nonce row-rx-slot row-rx-gen cap
                                   :principal row-principal-slot)
          :ok ((:wait :completion :bytes cap))))
-       ((:let n (min 4096 row-sremaining (nfix (- row-fill row-shash))))
+       ((:let n (min (min 4096 row-sremaining) (nfix (- row-fill row-shash))))
         (:do (hc copied) (fn2-ctl-stream-hash id row-generation row-rx-slot row-rx-gen row-shash n
                                                 (equal n row-sremaining))
          :accept (:ok :more :bounds)
@@ -1088,7 +1088,7 @@
     ((equal row-ophase *fn2-ctl-output-fill*)
      (:if (<= *fn2-ctl-io-bytes* row-fill)
       ((:set (ophase *fn2-ctl-output-hash*)) (:charge :steps *fn2-work-transition* :runnable t))
-      ((:let cap (min 1024 row-oleft (- *fn2-ctl-io-bytes* row-fill)))
+      ((:let cap (min (min 1024 row-oleft) (- *fn2-ctl-io-bytes* row-fill)))
        (:do (code copied eof)
         (fn2-cns-stream-source-next row-cns row-cns-gen id row-generation row-request
                                    row-rx-slot row-rx-gen row-fill cap)
