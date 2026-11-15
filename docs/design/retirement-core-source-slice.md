@@ -1,6 +1,6 @@
 # Actual ordinary retirement callback source slice
 
-`tests/retirement-intent-core-unit` has a 106-book local source closure. It
+`tests/retirement-intent-core-unit` has a 107-book local source closure. It
 materializes the actual A/B machine/core/access registrations, existing commit
 admission sections and the production persisted lifecycle dispatcher. It includes
 checkpoint catalog, construction and future lease state because the current B
@@ -9,7 +9,7 @@ those operations. Its closure contains no checkpoint builder, master, boot,
 writer or restore worker. The machine callbacks are the ones served assembly
 materializes, without the full simulator/executor entry.
 
-The exact local include closure and its 28 new / 14 changed source files relative
+The exact local include closure and its 29 new / 14 changed source files relative
 to root adacd9e71 are in `retirement-core-source-slice.json`. The additional runtime
 files are `commit-arms.lisp`, `ops-semantic-steps.lisp` and the catalog-only include
 in `assembly-index.lisp`. Root transport, compression and C attachments are
@@ -103,3 +103,32 @@ fix; c68 itself does not yet define the predicate or enforce these refusals.
 They are source prepared, not executed. The served publish-arm boundary is a
 separate entry through the existing generated `fn2-commit-run-publish`; the
 small callback instance does not materialize those arms.
+
+## Actual served publish-arm negative entry
+
+`tests/retirement-publish-core-unit` includes the existing
+`assembly-callbacks-r2` entry and directly calls the generated served
+`fn2-commit-run-publish`. It does not instantiate another machine or arm
+implementation. The four source controls supply a real submitted retirement,
+held obligation, good actual partner, and logical persisted envelope, then
+corrupt only count/cursor: over-capacity count, physical cross-partition cursor,
+member greater than count, or terminal nonzero offset. The arm budget comes
+from the actual registered commit declaration and must be positive.
+
+Each requires sticky `commit-publish` stop, no descriptors, unchanged publication
+and acknowledgement markers/cursor/phase, and complete declaration-generated
+snapshots of allocator, retirement control, protection edges, members,
+settlements, commit root (including published frontier), source pool/fields,
+operations and C's ID-engine published state. `retirement-control` is distinct
+from global execution `control`: global stop/reason are expected to change and
+are asserted directly rather than included in that unchanged source frame.
+The comparison does not claim a complete frame for every global-control field.
+
+The existing test projection helper moves unchanged to the shared
+`retirement-state-projections` book; the original callback fixture's schema
+snapshots are unchanged. Local source closures are now 107 for the callback
+root and 162 for this served publish negative root, with no missing files.
+The publish target is registered in Makefile. All controls remain source
+prepared and unrun, and depend on the parent's matching runtime guard commit.
+Positive complete C publication/ACK remains a subsequent qualification step;
+these negatives establish no physical persistence claim.
