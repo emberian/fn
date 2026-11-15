@@ -3,7 +3,7 @@
 ; This does not release allocator retention edges or authorize FREE.
 (in-package "ACL2")
 (include-book "checkpoint-working-release")
-(include-book "checkpoint-metadata-resources")
+(include-book "checkpoint-source-loader")
 (include-book "checkpoint-publication")
 (fn2-book-layer :c)
 
@@ -14,14 +14,14 @@
 
 
 (defun fn2-checkpoint-root1-release (budget kind owner gen fn2-checkpoint-root1 fn2-checkpoint-windows fn2-checkpoint-metadata-manifest
-                                    fn2-checkpoint-build fn2-checkpoints fn2-checkpoint-publication fn2-pool fn2-control fn2-checkpoint-future fn2-checkpoint-future-windows)
+                                    fn2-checkpoint-build fn2-checkpoints fn2-checkpoint-publication fn2-pool fn2-control fn2-checkpoint-future fn2-checkpoint-future-windows fn2-run-loads fn2-run-cursors fn2-checkpoint-summary-leases)
  (declare (xargs :stobjs (fn2-checkpoint-root1 fn2-checkpoint-windows fn2-checkpoint-metadata-manifest fn2-checkpoint-build
-                          fn2-checkpoints fn2-checkpoint-publication fn2-pool fn2-control fn2-checkpoint-future fn2-checkpoint-future-windows)
+                          fn2-checkpoints fn2-checkpoint-publication fn2-pool fn2-control fn2-checkpoint-future fn2-checkpoint-future-windows fn2-run-loads fn2-run-cursors fn2-checkpoint-summary-leases)
   :guard (and (fn2-checkpoint-root1-wfp fn2-checkpoint-root1) (fn2-checkpoint-windows-wfp fn2-checkpoint-windows)
               (fn2-checkpoint-metadata-manifest-wfp fn2-checkpoint-metadata-manifest) (fn2-checkpoint-build-wfp fn2-checkpoint-build)
               (fn2-checkpoints-wfp fn2-checkpoints) (fn2-checkpoint-publication-wfp fn2-checkpoint-publication)
               (fn2-pool-wfp fn2-pool) (fn2-control-wfp fn2-control)
-              (fn2-checkpoint-future-wfp fn2-checkpoint-future) (fn2-checkpoint-future-windows-wfp fn2-checkpoint-future-windows))))
+              (fn2-checkpoint-future-wfp fn2-checkpoint-future) (fn2-checkpoint-future-windows-wfp fn2-checkpoint-future-windows) (fn2-run-loads-wfp fn2-run-loads) (fn2-run-cursors-wfp fn2-run-cursors) (fn2-checkpoint-summary-leases-wfp fn2-checkpoint-summary-leases))))
  (b* (((unless (and (natp budget) (< 0 budget)))
        (mv :yield fn2-checkpoint-root1 fn2-checkpoint-windows fn2-checkpoint-metadata-manifest fn2-pool fn2-control fn2-checkpoint-future fn2-checkpoint-future-windows))
       ((unless (and (< 0 (fn2-checkpoint-root1-rows fn2-checkpoint-root1))
@@ -30,6 +30,7 @@
                     (< 0 (fn2-checkpoint-build-rows fn2-checkpoint-build))
                     (< 0 (fn2-checkpoint-publication-rows fn2-checkpoint-publication))
                     (equal (fn2-checkpoint-root1-phase 0 fn2-checkpoint-root1) *fn2-checkpoint-root1-phase-complete*)
+                    (fn2-checkpoint-source-reader-detachedp fn2-run-loads fn2-run-cursors fn2-checkpoint-summary-leases)
                     (equal kind (fn2-checkpoint-root1-owner-kind 0 fn2-checkpoint-root1))
                     (equal owner (fn2-checkpoint-root1-owner-slot 0 fn2-checkpoint-root1))
                     (equal gen (fn2-checkpoint-root1-owner-gen 0 fn2-checkpoint-root1))
@@ -56,12 +57,12 @@
   (fn2-checkpoint-working-release-step budget c kind owner gen fn2-checkpoint-root1 fn2-checkpoint-windows fn2-checkpoint-metadata-manifest fn2-pool fn2-control fn2-checkpoint-future fn2-checkpoint-future-windows)))
 
 (fn2-checkpoint-root1-preserves fn2-checkpoint-root1-release
- (budget kind owner gen fn2-checkpoint-root1 fn2-checkpoint-windows fn2-checkpoint-metadata-manifest fn2-checkpoint-build fn2-checkpoints fn2-checkpoint-publication fn2-pool fn2-control fn2-checkpoint-future fn2-checkpoint-future-windows)
+ (budget kind owner gen fn2-checkpoint-root1 fn2-checkpoint-windows fn2-checkpoint-metadata-manifest fn2-checkpoint-build fn2-checkpoints fn2-checkpoint-publication fn2-pool fn2-control fn2-checkpoint-future fn2-checkpoint-future-windows fn2-run-loads fn2-run-cursors fn2-checkpoint-summary-leases)
  :hyps ((fn2-checkpoint-futurep fn2-checkpoint-future) (fn2-checkpoint-future-wfp fn2-checkpoint-future)
         (fn2-checkpoint-future-windowsp fn2-checkpoint-future-windows) (fn2-checkpoint-future-windows-wfp fn2-checkpoint-future-windows) (fn2-checkpoint-root1-wfp fn2-checkpoint-root1) (fn2-checkpoint-windows-wfp fn2-checkpoint-windows)
         (fn2-checkpoint-metadata-manifest-wfp fn2-checkpoint-metadata-manifest) (fn2-checkpoint-build-wfp fn2-checkpoint-build)
         (fn2-checkpoints-wfp fn2-checkpoints) (fn2-checkpoint-publication-wfp fn2-checkpoint-publication)
-        (fn2-pool-wfp fn2-pool) (fn2-control-wfp fn2-control))
+        (fn2-pool-wfp fn2-pool) (fn2-control-wfp fn2-control) (fn2-run-loads-wfp fn2-run-loads) (fn2-run-cursors-wfp fn2-run-cursors) (fn2-checkpoint-summary-leases-wfp fn2-checkpoint-summary-leases))
   :specs (("-FUTURE-TYPE" fn2-checkpoint-futurep 6) ("-FUTURE-WFP" fn2-checkpoint-future-wfp 6)
          ("-FUTURE-ROWS" fn2-checkpoint-future-rows 6 :frame fn2-checkpoint-future)
          ("-FUTURE-WINDOWS-TYPE" fn2-checkpoint-future-windowsp 7) ("-FUTURE-WINDOWS-WFP" fn2-checkpoint-future-windows-wfp 7)
@@ -77,5 +78,5 @@
          ("-CONTROL-TYPE" fn2-controlp 5) ("-CONTROL-WFP" fn2-control-wfp 5) ("-CONTROL-ROWS" fn2-control-rows 5 :frame fn2-control)))
 (defcost fn2-checkpoint-root1-release-op :child fn2-checkpoint-root1-release :answers t
  :tables (fn2-core-checkpoint-root1 fn2-core-checkpoint-windows fn2-core-checkpoint-metadata-manifest fn2-core-checkpoint-build
-           fn2-core-checkpoints fn2-core-checkpoint-publication fn2-core-pool fn2-core-control fn2-core-checkpoint-future fn2-core-checkpoint-future-windows)
- :doc "After the actual same-candidate publication fence, release one owned future or root1 window; aggregate completion means all27, never allocator retention.")
+           fn2-core-checkpoints fn2-core-checkpoint-publication fn2-core-pool fn2-core-control fn2-core-checkpoint-future fn2-core-checkpoint-future-windows fn2-core-run-loads fn2-core-run-cursors fn2-core-checkpoint-summary-leases)
+ :doc "After the actual same-candidate publication fence, release one owned future or root1 window; aggregate completion covers all working windows, never allocator retention.")

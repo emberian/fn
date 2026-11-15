@@ -54,4 +54,21 @@ class CursorObserver(unittest.TestCase):
   drain=str(named('run-load-drain'))
   self.assertIn('fn2-run-page-release',drain)
   self.assertIn('*fn2-cursor-storage-none*',drain)
+ def test_actual_release_effects_require_declared_union_hold(self):
+  def guarded(x, active=False):
+   if not isinstance(x,list):return []
+   if x and x[0]==':if' and x[1]==['equal','row-storage','*fn2-cursor-storage-held*']:
+    return guarded(x[2],True)+guarded(x[3],active)
+   if x and x[0]==':do' and ':effects' in x and x[x.index(':effects')+1]==[[':release',[':storage-window']]]:
+    return [active]
+   return [g for child in x for g in guarded(child,active)]
+  effects=guarded(arms())
+  self.assertEqual(effects,[True]*4)
+  bad=source().replace('(equal row-storage *fn2-cursor-storage-held*)','(equal row-lease *fn2-cursor-lease-held*)',1)
+  badarm=next(read_sexp(f) for f in forms(bad) if f.startswith('(defmachine-arms fn2-cursor :children'))
+  self.assertIn(False,guarded(badarm))
+  select=named(':select')
+  self.assertIn(['equal','row-storage','*fn2-cursor-storage-none*'],list(walk(select)))
+  terminal=named('source-release-finish')
+  self.assertIn(['equal','row-storage','*fn2-cursor-storage-none*'],list(walk(terminal)))
 if __name__=='__main__':unittest.main()

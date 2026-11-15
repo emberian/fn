@@ -74,3 +74,32 @@ before changing the physical source set; the count is not lifetime permission.
 `tests/test_cursor_source_observer_source.py` checks the connected admission,
 refusal, union, and final cleanup source. These source checks do not establish
 ACL2 admission or execute the request/adoption interleaving.
+
+## Resolved C actors
+
+The scoped txn/auth/CNS callback generator acquires the observer before any
+source read or physical-page admission. A pending physical read retains it.
+At the actual resolved pre-stage boundary, the callback parks one loader job
+per turn and checks the complete region before releasing the observer. Parking
+releases immutable catalog leases and clears physical cursors; it preserves
+owned private windows and their storage hold. The release turn wakes the exact
+waiting writer before any separate requester wake can overwrite that wake.
+
+This boundary does not materialize borrowed octets. Current FOLD values are
+restricted to scalars by declaration, and the original stage code checks the
+strict per-schema source version before reading retained RES fields. Live
+adoption must increase affected query priorities. A continuation that returns
+to resolution reacquires the observer before reading any source again.
+
+Committed CNS registration retains its accepted continuation if a writer is
+pending. It performs a bounded runnable poll with no new reservation, observer,
+or old catalog lease. Its already admitted private windows remain charged.
+Preaccept refusal and final cleanup release the observer only after actual
+loader drain. The prepared `c-actor-source-observer-unit.lisp` follows actual
+AUTH birth, resolve, park, release, writer wake, and re-resolution callbacks;
+its empty OPEN successor and physical admission premises are synthetic.
+
+The physical serving baseline still requires the sealer's active merge to
+finish before Csnapshot reaches HELD, complete live physical publication, and
+profile feasibility for query plus maintenance windows. Source controls and
+prepared fixtures do not discharge those integration requirements.

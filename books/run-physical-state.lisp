@@ -2,7 +2,7 @@
 ; cursors; operation pins protect each in-flight sector independently.
 (in-package "ACL2")
 (include-book "std/util/bstar" :dir :system)
-(include-book "checkpoint-summary-leases")
+(include-book "runs")
 (fn2-book-layer :c)
 (defcolumns fn2-run-loads
  ((phase (:enum fn2-run-load-phase (:idle :reserved :read :wait :copy :context :verify :header :ready :uncertain)))

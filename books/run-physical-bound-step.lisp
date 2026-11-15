@@ -1,7 +1,7 @@
 ; Shared bounded physical engine; callers establish their source authority each turn.
 (in-package "ACL2")
 (include-book "run-physical-bound-io")
-(include-book "checkpoint-boot")
+(include-book "boot-geometry-state")
 (include-book "checkpoint-semantic-page")
 (fn2-book-layer :c)
 (defun fn2-run-load-digest (c i row fn2-run-loads fn2-digests)

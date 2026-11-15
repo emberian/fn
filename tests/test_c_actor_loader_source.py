@@ -142,6 +142,36 @@ class ActorLoader(unittest.TestCase):
   event=(ROOT/'books/assembly-callbacks-e-cns.lisp').read_text()
   self.assertEqual(event.count('(fn2-c-actor-loader-core-events)'),1)
 
+class ActorObserver(unittest.TestCase):
+ def test_actual_protocol_brackets_loader_and_released_stage(self):
+  fs=parsed('books/c-actor-loader-form.lisp')
+  observed=function('fn2-c-actor-source-work',fs)
+  text=(ROOT/'books/c-actor-loader-form.lisp').read_text()
+  for op in ('fn2-c-source-read-acquire','fn2-c-source-read-release','fn2-c-actor-loader-park-step'):
+   self.assertIn(op,text)
+  # The released branch calls the unwrapped stage body. It must not run the
+  # loader selector or resolving/read helpers again before reacquisition.
+  self.assertIn('`((:if ,boundary ,original',text)
+  self.assertNotIn('`((:if ,boundary ,body',text)
+  self.assertIn('(:set (source-observation ,none) (source-row 0))',text)
+  self.assertIn('(:if (not (equal source-target *fn2-none*)) ((:wake-row source-target)) ())',text)
+  self.assertIn('(fn2-c-actor-loader-drain-body name (fn2-c-actor-source-release name body))',text)
+  self.assertIn('(loader loader-row source-observation source-row)',text)
+  # No ordinary reply/progress status releases the observer.
+  release=function('fn2-c-actor-source-release',fs)
+  self.assertFalse(calls(release,'fn2-run-page-release'))
+  self.assertIn('single wake slot',text)
+  self.assertIn('`((:if (equal row-source-observation',text)
+  self.assertNotIn(',@terminal',str(release))
+  self.assertIn('((:busy :exhausted) (:next :load-refused)',text)
+  self.assertIn("(and (eq name 'fn2-cns) (eq phase :register-output))",text)
+  self.assertIn('((:busy) (:charge :steps *fn2-work-poll* :runnable t))',text)
+ def test_only_actual_ready_conditions_enable_park(self):
+  f=function('fn2-c-actor-source-boundary',parsed('books/c-actor-loader-form.lisp'))
+  text=str(f)
+  for x in ('fn2-txn','fn2-auth','fn2-cns',':ready',':commit','row-prepared','row-wstep'):
+   self.assertIn(x,text)
+
 class ActorPriority(unittest.TestCase):
  def test_selected_query_priority_is_distinct_from_wire_identity(self):
   selected=function('fn2-c-actor-tx-missp',parsed('books/c-actor-loader.lisp'))

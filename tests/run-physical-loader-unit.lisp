@@ -6,7 +6,9 @@
 ; Fuel bounds only the fixture; success requires complete physical reads and
 ; terminal lookup, never a seeded cache row or a caller readiness flag.
 (in-package "ACL2")
-(include-book "../books/executor")
+; Use the actual C callback assembly and common core I/O boundary. No
+; scheduler loop, E actor assembly or alternate core is needed by this fixture.
+(include-book "../books/assembly-callbacks-c")
 (include-book "../books/checkpoint-summary-apply")
 (include-book "../books/checkpoint-metadata-source")
 (include-book "std/util/bstar" :dir :system)
@@ -389,14 +391,15 @@
 
 ; Emulate loss of the old volatile source directories at cold adoption.
 ; Source bytes stay in the fixture's disk windows; no allocator identity or
-; lifetime edge is freed. The synthetic opener sets only APPLYING authority.
+; lifetime edge is freed. This fixture seeds internal APPLYING authority and
+; completed application preflight stage2; it does not qualify the cold opener.
 (fn2-rpl-wrapper fn2-rpl-cold-admission ()
  (fn2-run-installed fn2-run-cache fn2-overlays fn2-checkpoint-summary fn2-csnapshot)
  (fn2-run-installed fn2-run-cache fn2-overlays fn2-checkpoint-summary) (code)
  (let* ((fn2-run-installed (fn2-run-installed-init (fn2-run-installed-rows fn2-run-installed) fn2-run-installed))
         (fn2-run-cache (fn2-run-cache-init (fn2-run-cache-rows fn2-run-cache) fn2-run-cache))
         (fn2-overlays (fn2-overlays-init (fn2-overlays-rows fn2-overlays) fn2-overlays))
-        (fn2-checkpoint-summary (fn2-checkpoint-summary-put 0 (phase *fn2-checkpoint-summary-phase-applying*)
+        (fn2-checkpoint-summary (fn2-checkpoint-summary-put 0 (phase *fn2-checkpoint-summary-phase-applying*) (application-stage 2)
          (tag 1) (candidate 0) (checkpoint 1) (cut-commit (fn2-csnapshot-cut-commit 0 fn2-csnapshot))
          (cut-event (fn2-csnapshot-cut-event 0 fn2-csnapshot)) (history 1) (incarnation 1)
          (generation 1) (semantic-tag 1) (count 3) (cursor 0) (installed 0) (lease-count 0))))

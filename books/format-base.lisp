@@ -13,6 +13,9 @@
 (defconst *fn2-format-frame-magic* #x524a3246) ; F2JR
 (defconst *fn2-format-sector-size* 4096)
 (defconst *fn2-format-page-size* 65536)
+; Stored run pages use this minimum restart interval. The C codec/writer and
+; B's scheduler admission share one declaration.
+(defconst *fn2-format-run-restart-interval* 16)
 ; One allocator identity owns one complete metadata page. Journal batches
 ; still use three sector writes; payload packing may use fewer units than
 ; the allocation's physical stride.

@@ -18,7 +18,7 @@
 (defconst *fn2-run-restart-bytes* *fn2-run-restart-max-size*)
 ; Every entry is at least one byte, so a 64 KiB page has at most this many
 ; restarts at interval 16; the interval is a page field, never below 16.
-(defconst *fn2-run-restart-interval* 16)
+(defconst *fn2-run-restart-interval* *fn2-format-run-restart-interval*)
 (defconst *fn2-run-restart-capacity* 4096)
 ; A writer's fill limit (bytes of entries plus directory, from the page start)
 ; is a page-fill parameter like a block size; the encoded page stays 64 KiB.
