@@ -68,11 +68,20 @@ The same record covers the column generator's RAW-ROWS opacity hint, but does
 not establish its CNS-edge consumer: the twenty-book author run admitted
 operations, columns, profile and trace, then exhausted the unchanged two-million
 step budget in pool's original conservation encapsulate. No full application
-or native claim follows. Pool's local credit/owner selector opacity repair reduced the author attempt
-from exhaustion at two million steps to 474,224 steps, then refused
-RESERVE-CLASS-OKP on missing public selector typing facts. The revised candidate
-`9db8e27b` supplies those facts and separates the observed/reserved class cases;
-its next gate is pending. The original proof block and cap stay intact.
+or native claim follows. Subsequent pool repairs preserve the original eleven
+statements and runtime definitions. Candidate `e76a6cdb3` reached a concrete
+RESERVE-BODY-CLASS subset-interface refusal in 4.18 seconds / 666,687 steps.
+The matching direct-interface repair `88a56c131` remains unexecuted; the original
+bounded session ended and all its owned processes and resource scope are gone.
+The original conservation encapsulate and shared two-million-step cap remain intact.
+
+The frozen checkpoint-member diagnostic executed the actual packer successfully
+with its whole stored guard, input recognizers and all four output type/WFP
+checks. This positive witness does not establish the general preservation claims.
+The guarded contract block exhausted its shared budget at POOL TYPE after both
+FIELDS claims passed; POOL WFP was not reached. Per-carrier hints were found to
+route only to WFP. The shared generator is being extended to support distinct
+TYPE hints instead of retaining member-specific generated-event surgery.
 
 Physical address geometry remains an executable blocker. `fe9f761ab` repairs
 POST's root location from three units per extent to the physical sixteen, with
@@ -95,21 +104,26 @@ it does not enable rolling upload beyond the current two chunks. Three-unit
 raw commitments and the three-unit manifest-root budget are distinct from
 payload grouping. Source review found no requirement for grouping only three
 manifest payload blocks in a sixteen-unit extent. A separate capacity repair
-will use the physical extent capacity with sixteenth/seventeenth-block controls;
-it must not silently change the already staged physical-stride packet.
+`1383fb964` uses physical capacity with sixteenth/seventeenth-block controls.
+Independent source review finds the production grouping coherent, but its fixture
+observes global machine IDs 0/1 instead of the upload kind's actual base and rows.
+The owner must correct that observer before execution; no runtime pass is claimed.
+The packet remains separate from the already staged physical-stride repair.
 
-The input framing path also needs a concrete coalescing repair: a receive can
-contain REGISTER plus a prefix of APPEND, but the current full-frame opener
-refuses bytes beyond the first declared frame. Native is implementing a fixed
-header receive followed by reads bounded by the generated ACL2 remaining-length
-decision. The existing coalesced actor fixture must remain; CLI requests sent
-one at a time do not establish this property.
+The coalescing source repair `0d6dac6a1` now limits the first receive to the
+remaining fixed header, then uses the generated ACL2 remaining-length decision
+for subsequent reads. Actual helper controls cover coalesced frames, truncated
+input and the 4096-byte loan cap. Their decoder/carrier stubs mean they do not
+establish actual actor or socket execution; the composed coalesced fixture remains owed.
 
-Outbound composition is still unfinished. Native and CNS owners agreed that
-closing first stops new reads, then waits for outstanding sends/borrows to
-return before releasing retained storage and the lease. Becoming quiescent must
-wake CNS again; an early cancellation wake alone can leave both actors parked.
-The actual actor handoff, checked reader and restart roundtrip remain unexecuted.
+The combined FETCH actor source `d99032d7c` is independently reviewed and ready
+for integration. It connects checked source readers, coverage/Message-ID gating
+and handoff cleanup. Two concrete cancellation deadlocks are repaired: source
+abort directly wakes the exact closing CTL, and native draining wakes its live
+child after outstanding sends/borrows reach zero even before an output prefix
+exists. Source controls pass. ACL2 admission, actual actor execution and the
+native restart roundtrip remain unqualified. Convergence owns composition with
+the physical repairs and current upstream root before the next application gate.
 
 Current served article integration has a concrete workspace mismatch:
 `ordered.lisp` declares 13 article fields including location-hashes, while
