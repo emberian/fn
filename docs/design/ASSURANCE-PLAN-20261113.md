@@ -7,7 +7,7 @@ must be derived from that store and the actual served call/attachment graph.
 
 ## Current integration frontier — 2026-11-15 UTC
 
-Current integration source is `79440f99d`, including retirement dispatch, actual-type
+Current integration source is `4d7e9cb`, including retirement dispatch, actual-type
 codec fixtures, failed-Send classification, consumed-input accounting and farm
 Git metadata protection. No current whole-system image, full host gate,
 canonical served certificate, or completed assurance claim exists.
@@ -76,7 +76,11 @@ query references away. The pool conservation, range and two unit controls passed
 execution. Exact ten-book record `certify-20261115T024211Z-748010` then passed:
 seven reused, three newly certified in 22.788 seconds. Root matched all ten
 before/after source digests to candidate `0b3475cce`, with unchanged runner and
-qualified toolchain. This pool scope does not qualify the broader callbacks. The broader
+qualified toolchain. The exact foundation is integrated at `a3b9723a1`; no
+served query producer calls acquire/release yet. This changes dependent pool
+closure keys: earlier larger gates are historical until requalified. Descriptor
+lifecycle, the LAST-result contract and checked wakeup remain consumer
+obligations. This pool scope does not qualify the broader callbacks. The broader
 callback changes remain unqualified. Last-query-reference cleanup now uses the
 shared scheduler enqueue primitive in its candidate, preserving an occupied
 ordinary wake. Complete callback effects, reference correspondence and trace
@@ -114,6 +118,12 @@ dynamic host and interface gates. Independent review confirms the malformed
 fixes and a conservative fuel calculation, but this is not an admitted fuel
 theorem. The language specification requires explicit well-formed input
 hypotheses; runtime rejection of malformed observations is a separate obligation.
+The actual phase-8 accumulator correspondence and its positive/hypothesis-removal
+controls are integrated at `4d7e9cb`, qualified by exact three-book record
+`certify-20261115T024813Z-754219`: one reused, two new, 0.39 seconds. Root matched
+all three current source digests. [The proof plan](ENVELOPE-OUTPUT-PROOF.md)
+connects whole-row construction and reversal next; full equivalence and fuel
+adequacy remain open.
 
 Farm transport repair `0dda1d6ac` protects both Git pointer files and directories
 during source sync. Five transport and three budget controls pass.
