@@ -3,11 +3,11 @@
   "targets": {
     "tests/ordinary-drain-credit-unit": {
       "closure_count": 167,
-      "plain_closure_key": "2c54f000a1a122e3c1554460defe86efc5925710303123f0a36ab4e78edb062b"
+      "plain_closure_key": "ae6e4f2cf3d78cb297f47124dd08de71fd53a529085ab51029f3e9a55987247f"
     },
     "tests/c-stage-pool-preflight-unit": {
       "closure_count": 164,
-      "plain_closure_key": "c3880fb5702dd31e9bf448d778dd3f6d8060bc0c3cd4e7b82b8c58179de878c5"
+      "plain_closure_key": "08b8877260c2917649cbfa2ed7957939b80a9967741b57570a3c2330d4828087"
     }
   },
   "union_closure_count": 168,
@@ -85,5 +85,6 @@
     "books/run-budget": "3a840b886d62c892a01f216d5afb084db051700e001a2d55560749153590833f",
     "books/tuple": "b0fe12b03ba9cae656e0a0d40c8ccd699ff47788c2bd5a448903fb0c0401b9c6",
     "books/words": "e9397cf88715b10c6d45cab4046bfe501ea8d22d18a031dfd1b3bf67ec6a1da6"
-  }
+  },
+  "qualified_api_receipt": "docs/design/receipts/pool-credit-kind-zero-0f3a2e960.json"
 }
