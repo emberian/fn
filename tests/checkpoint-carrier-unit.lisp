@@ -29,6 +29,21 @@
   :typed-readonly (fn2-alloc-edges))
  :expected :soft :check-expansion t)
 
+; The actual stored entry guard already supplies the readonly typing that
+; generated core faces lift. This control uses no manually added premise.
+(make-event
+ (let* ((world (w state)) (name 'fn2-checkpoint-retain)
+        (args (getpropc name 'formals nil world))
+        (guard (getpropc name 'guard :missing world)))
+  (if (eq guard :missing)
+      (er soft 'checkpoint-carrier-unit "Missing actual RETAIN guard.")
+    (value
+     `(defthm fn2-checkpoint-retain-edge-type-for-verified-callers
+       (implies ,guard
+        (fn2-alloc-edgesp (mv-nth 3 (,name ,@args))))
+       :rule-classes nil
+       :hints (("Goal" :in-theory (disable fn2-checkpoint-retain))))))))
+
 ; Absent WFP hints inherit; explicit nil and explicit overrides remain exact.
 (assert-event
  (equal
