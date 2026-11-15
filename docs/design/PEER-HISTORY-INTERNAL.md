@@ -10,7 +10,8 @@ installed journal entry from that cut in the same operation; its extent,
 allocation generation and installed-root edge must match. The checkpoint
 caller retains its independent `fn2-checkpoint-build-ownerp` admission.
 The peer caller obtains its physical cursor namespace from `fn2-core-origin`.
-A journal's historical namespace is separately authenticated by the shared
+An actually empty held cut completes without reading a nonexistent entry;
+its settled commit root must also be empty. A journal's historical namespace is separately authenticated by the shared
 seal verifier; namespace numbers are not compared chronologically.
 
 `fn2-peer-history-member-core` advances the existing record/member verifier

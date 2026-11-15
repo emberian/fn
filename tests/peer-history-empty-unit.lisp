@@ -1,4 +1,4 @@
-; Source-only control for the actual held empty cut. This exercises boot,
+; Source-only control for the actual held empty cut. This exercises core initialization,
 ; snapshot admission and the peer reader; it constructs no checkpoint state.
 (in-package "ACL2")
 (include-book "../books/executor")

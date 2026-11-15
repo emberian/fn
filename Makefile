@@ -446,6 +446,7 @@ ACL2_BOOKS = \
   tests/parser-boundary-unit \
   tests/peer-witnesses \
   tests/peer-history-unit \
+  tests/peer-history-empty-unit \
   tests/peer-replay-unit \
   tests/pointwise-contracts-unit \
   tests/pool-ranges-unit \
