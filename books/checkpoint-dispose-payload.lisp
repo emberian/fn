@@ -50,7 +50,8 @@
       (allocation (fn2-extents-counter e fn2-extents))
       (checkpoint (fn2-checkpoint-teardown-debt-checkpoint c fn2-checkpoint-teardown-debt))
       (edge (fn2-checkpoint-source-edge c e fn2-extents fn2-ops fn2-checkpoints))
-      ((unless (and (fn2-alloc-edge-slotp edge fn2-alloc-edges)
+      ((unless (and (< 0 (fn2-extents-selectable-checkpoint e fn2-extents))
+                     (fn2-alloc-edge-slotp edge fn2-alloc-edges)
                      (fn2-alloc-edge-matchesp edge checkpoint e epoch allocation :selectable-checkpoint fn2-alloc-edges))) :edge)
       ; E-only historical RELEASE evidence remains a veto even without any
       ; current catalog candidate index or paired aggregate entry.

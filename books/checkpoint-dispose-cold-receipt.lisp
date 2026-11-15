@@ -91,3 +91,20 @@
       (eq (fn2-alloc-handle-code e epoch allocation fn2-extents) :ok)
       (if (member-equal (fn2-extents-state e fn2-extents) (list *fn2-extent-state-allocated* *fn2-extent-state-retire-pending*)) t nil)
       (= (fn2-extents-release-pending e fn2-extents) 0)))
+
+; Extent-granularity location is the actual common reach namespace: aliases
+; within one allocation OR their authenticated role bits, never page hashes.
+(defun fn2-checkpoint-dispose-cold-payload-p (slot c e epoch allocation fn2-checkpoint-teardown-debt fn2-checkpoint-publication fn2-checkpoint-bank-closures fn2-checkpoint-bank-protection fn2-extents fn2-ops fn2-checkpoints fn2-alloc-edges)
+ (declare (xargs :stobjs (fn2-checkpoint-teardown-debt fn2-checkpoint-publication fn2-checkpoint-bank-closures fn2-checkpoint-bank-protection fn2-extents fn2-ops fn2-checkpoints fn2-alloc-edges) :verify-guards nil :measure (nfix (- 4 (nfix slot)))
+ :guard (and (fn2-checkpoint-teardown-debtp fn2-checkpoint-teardown-debt) (fn2-checkpoint-teardown-debt-wfp fn2-checkpoint-teardown-debt)
+             (fn2-checkpoint-publicationp fn2-checkpoint-publication) (fn2-checkpoint-publication-wfp fn2-checkpoint-publication)
+             (fn2-checkpoint-bank-closuresp fn2-checkpoint-bank-closures) (fn2-checkpoint-bank-closures-wfp fn2-checkpoint-bank-closures)
+             (fn2-checkpoint-bank-protectionp fn2-checkpoint-bank-protection) (fn2-checkpoint-bank-protection-wfp fn2-checkpoint-bank-protection)
+             (fn2-extentsp fn2-extents) (fn2-extents-wfp fn2-extents) (fn2-opsp fn2-ops) (fn2-ops-wfp fn2-ops)
+             (fn2-checkpointsp fn2-checkpoints) (fn2-checkpoints-wfp fn2-checkpoints)
+             (fn2-alloc-edgesp fn2-alloc-edges) (fn2-alloc-edges-wfp fn2-alloc-edges))))
+ (and (natp slot) (< slot *fn2-checkpoint-anchor-slots*)
+  (or (and (fn2-checkpoint-dispose-cold-row-p slot c e epoch allocation fn2-checkpoint-teardown-debt fn2-checkpoint-publication fn2-checkpoint-bank-closures fn2-checkpoint-bank-protection fn2-extents fn2-ops fn2-checkpoints fn2-alloc-edges)
+           (not (= (logand (fn2-checkpoint-bank-closures-role-bits (+ (* slot (fn2-extents-rows fn2-extents)) e) fn2-checkpoint-bank-closures)
+                            *fn2-checkpoint-payload-proof-roles*) 0)))
+      (fn2-checkpoint-dispose-cold-payload-p (+ 1 slot) c e epoch allocation fn2-checkpoint-teardown-debt fn2-checkpoint-publication fn2-checkpoint-bank-closures fn2-checkpoint-bank-protection fn2-extents fn2-ops fn2-checkpoints fn2-alloc-edges))))
