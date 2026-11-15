@@ -311,6 +311,7 @@ ACL2_BOOKS = \
   tests/host-codec-cancel-unit \
   tests/tls-record-policy-unit \
   tests/tls-record-unit \
+  tests/tls-record-progress-unit \
   tests/send-failure-unit \
   tests/send-accounting-unit \
   tests/tls-stack-unit \
