@@ -62,6 +62,24 @@ class EventSteps(unittest.TestCase):
         repl.handle({'op': 'send', 'form': '(thm t)', 'limit': None}, acl2, state, 20)
         acl2.send.assert_called_once_with('(with-prover-time-limit 20 (thm t))', 60)
 
+    def test_q1_declared_source_event_classes(self):
+        root = Path(__file__).resolve().parents[1]
+        books = ('arms machines core-children exec-state machines-directory arm-children '
+                 'ops-heads ops-issued-count ops-issued-effects arm-issue-effects '
+                 'machine-arms core-lowering core-product-lowering').split()
+        sources = [root / 'books' / (book + '.lisp') for book in books]
+        sources.append(root / 'tests' / 'column-snapshot-support.lisp')
+        for source in sources:
+            with self.subTest(source=source.name):
+                hoisted, body = repl.encapsulated(source.read_text(), source.parent,
+                                                  set(), 20, 2000000)
+                self.assertTrue(body.startswith('(encapsulate ()'))
+        event = '(defcolumns example ((value :u32)))'
+        self.assertEqual(repl.per_event_steps(event, 2000000, 20),
+                         f'(with-prover-step-limit 2000000 t (with-prover-time-limit 20 {event}))')
+        with self.assertRaises(ValueError):
+            repl.per_event_steps('(fn2-unknown-event t)', 2000000, 20)
+
     def test_macro_time_cap(self):
         form = '(fn2-machines-preserves example)'
         self.assertEqual(repl.per_event_steps(form, 2000000, 20),
