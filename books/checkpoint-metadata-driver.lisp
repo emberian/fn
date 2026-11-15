@@ -298,6 +298,11 @@
                     (fn2-run-buildp (fn2-checkpoint-root1-build 0 fn2-checkpoint-root1) fn2-run-builds fn2-run-writers)))
        (fn2-checkpoint-root1-mv :owner))
       (b (fn2-checkpoint-root1-build 0 fn2-checkpoint-root1))
+      ; Preview and physical B sealing must use the same canonical geometry,
+      ; even when semantic retention has not yet occupied this checker row.
+      (geometry (fn2-digest-slot (fn2-run-builds-crow b fn2-run-builds) *fn2-fc-geometry*))
+      ((mv code fn2-digests) (fn2-checkpoint-boot-geometry-load geometry fn2-boot-config fn2-digests))
+      ((unless (eq code :ok)) (fn2-checkpoint-root1-mv code))
       ((mv code level fn2-run-builds fn2-run-writers fn2-run-restarts fn2-fields fn2-pool fn2-fc fn2-fc-context fn2-b3 fn2-digests)
        (fn2-run-build-work b (min budget 4096) fn2-run-builds fn2-run-writers fn2-run-restarts fn2-fields fn2-pool fn2-fc fn2-fc-context fn2-b3 fn2-digests))
       ((when (eq code :need-page))

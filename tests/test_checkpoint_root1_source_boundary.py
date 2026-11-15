@@ -79,6 +79,8 @@ class Root1SourceBoundary(unittest.TestCase):
         ops = operations(source)
         work = str(ops["fn2-checkpoint-root1-work"])
         self.assertIn("fn2-checkpoint-planning-seal", work)
+        self.assertIn("fn2-checkpoint-boot-geometry-load", work)
+        self.assertLess(work.index("fn2-checkpoint-boot-geometry-load"), work.index("fn2-run-build-work"))
         self.assertIn("fn2-checkpoint-planning-sealedp", work)
         self.assertIn("fn2-run-build-promote", work)
         self.assertIn("fn2-checkpoint-planning-suffix-begin", work)
