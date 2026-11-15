@@ -243,6 +243,12 @@
                                              okind oslot ogen fn2-fields fn2-pool)
      (mv (if (and (eq code :ok) (not (equal next (+ off header payload)))) :length code) fn2-fields))))))
 
+; Keep the shared generated decoder opaque at its shape boundary.
+(fn2-fields-preserves fn2-checkpoint-decode
+ (base slot gen off len okind oslot ogen fn2-fields fn2-pool) :position 1 :raw-rows t
+ :hints (("Goal" :in-theory (e/d (fn2-checkpoint-decode)
+                                 (fn2-format-checkpoint-descriptor-decode)))))
+
 (defun fn2-checkpoint-copy-expected (i dst hash fn2-digests fn2-checkpoint-bytes)
  (declare (xargs :stobjs (fn2-digests fn2-checkpoint-bytes)
   :measure (nfix (- 32 (nfix i)))
@@ -335,6 +341,26 @@
    (if (not (eq code :ok)) (mv code fn2-checkpoint-refs fn2-checkpoint-bytes)
     (fn2-checkpoint-capture-roots (+ 1 role) c base slot gen okind oslot ogen
                                  fn2-fields fn2-pool fn2-checkpoint-refs fn2-checkpoint-bytes)))))
+
+; Root capture composes the actual copier and generated setters. Its
+; consumers need their returned table types, not the recursive bodies.
+(fn2-checkpoint-refs-preserves fn2-checkpoint-capture-root
+ (c role base slot gen okind oslot ogen fn2-fields fn2-pool fn2-checkpoint-refs fn2-checkpoint-bytes)
+ :hyps ((fn2-fieldsp fn2-fields) (fn2-fields-wfp fn2-fields)
+        (fn2-poolp fn2-pool) (fn2-pool-wfp fn2-pool)
+        (fn2-checkpoint-refsp fn2-checkpoint-refs) (fn2-checkpoint-refs-wfp fn2-checkpoint-refs)
+        (fn2-checkpoint-bytesp fn2-checkpoint-bytes) (fn2-checkpoint-bytes-wfp fn2-checkpoint-bytes))
+ :carriers ((fn2-checkpoint-refs 1 :prefix "-REFS") (fn2-checkpoint-bytes 2 :prefix "-BYTES"))
+ :hints (("Goal" :in-theory (e/d (fn2-checkpoint-capture-root) (fn2-checkpoint-copy-hash)))))
+(fn2-checkpoint-refs-preserves fn2-checkpoint-capture-roots
+ (role c base slot gen okind oslot ogen fn2-fields fn2-pool fn2-checkpoint-refs fn2-checkpoint-bytes)
+ :hyps ((fn2-fieldsp fn2-fields) (fn2-fields-wfp fn2-fields)
+        (fn2-poolp fn2-pool) (fn2-pool-wfp fn2-pool)
+        (fn2-checkpoint-refsp fn2-checkpoint-refs) (fn2-checkpoint-refs-wfp fn2-checkpoint-refs)
+        (fn2-checkpoint-bytesp fn2-checkpoint-bytes) (fn2-checkpoint-bytes-wfp fn2-checkpoint-bytes))
+ :carriers ((fn2-checkpoint-refs 1 :prefix "-REFS") (fn2-checkpoint-bytes 2 :prefix "-BYTES"))
+ :hints (("Goal" :induct (fn2-checkpoint-capture-roots role c base slot gen okind oslot ogen fn2-fields fn2-pool fn2-checkpoint-refs fn2-checkpoint-bytes)
+                :in-theory (e/d (fn2-checkpoint-capture-roots) (fn2-checkpoint-capture-root)))))
 
 ; The successful page checker and descriptor decode are in ONE transition.
 ; A caller cannot supply a verification flag. Buffer ownership and checker
