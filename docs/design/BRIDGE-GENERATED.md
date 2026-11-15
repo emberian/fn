@@ -547,8 +547,16 @@ remain propext, Classical.choice and Quot.sound; log SHA256
 No compatibility fallback accepts old unqualified external declaration names.
 Existing generated bodies with nonkeyword data must be regenerated from actual
 package-preserving literals. Pres, PrimitiveLists and PrimitiveIntegerPower also
-passed against those exact eleven artifacts; PrimitiveContracts remains pending
-the matching pinned Mathlib dependency subset.
+passed against those exact eleven artifacts. PrimitiveContracts then passed with
+unchanged statements and only the required Rat.Floor/Ring/NormNum/Lift imports
+from pinned Mathlib `1c2b90b13009c65b090d95a83c98e248deafb6f1` (Lean 4.30.0).
+The fifteen-module receipt `/tmp/symbol-qualified15-receipt.json` records source,
+artifact, compiler and dependency hashes; all printed contract axiom censuses
+remain the same three axioms. Source is `5a0a65aaf` (this paragraph is the only
+subsequent change). Thirty-five focused Python controls pass, including the real
+printer helper, package collisions, literal dot, syntax/data distinction and
+served-binding refusal cases. This is a foundation/producer-source gate, not a
+qualification of generated application bodies or the selected live packet.
 
 The printer retains actual home packages; canonical emission preserves them and
 recognizes only real COMMON-LISP NIL as a list terminator. Annotated dot symbols
