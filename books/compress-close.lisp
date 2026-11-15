@@ -1,0 +1,37 @@
+; Shared physical reclamation enables deferred public cancellation.
+(in-package "ACL2")
+(include-book "compress-record")
+(include-book "compress-transport-lifecycle")
+(include-book "codec-close")
+(include-book "tls-stack")
+(fn2-book-layer :d)
+(defcodec-record-closure fn2-compress-operation fn2-compress-transport)
+
+; Whole-carrier Close first frees TLS. Its private child may have consumed a
+; prefix while the parent remained pending. Settle that prefix once before
+; retiring compression; application progress remains in the outer operation.
+(defun fn2-compress-record-close-child
+ (cap nonce slot generation fn2-compress-operation fn2-compress-transport fn2-tls-transport fn2-tls-record)
+ (declare (xargs :stobjs (fn2-compress-operation fn2-compress-transport fn2-tls-transport fn2-tls-record)
+  :verify-guards nil
+  :guard (and (fn2-compress-operation-wfp fn2-compress-operation)
+              (= (fn2-compress-operation-rows fn2-compress-operation) 1)
+              (fn2-compress-transport-wfp fn2-compress-transport)
+              (= (fn2-compress-transport-rows fn2-compress-transport) 1)
+              (fn2-tls-transport-wfp fn2-tls-transport)
+              (fn2-tls-record-wfp fn2-tls-record))))
+ (mv-let (code serial action used made)
+  (fn2-compress-tls-closed-child cap nonce slot generation
+   fn2-compress-transport fn2-tls-transport fn2-tls-record)
+  (if (not (eq code :ok)) (mv code fn2-compress-operation fn2-compress-transport)
+   (if (not (and (equal serial (fn2-compress-operation-pending-serial 0 fn2-compress-operation))
+                 (equal action (fn2-compress-operation-pending-action 0 fn2-compress-operation))
+                 (fn2-compress-operation-observable-p serial 0 0 fn2-compress-operation)))
+       (mv :stale fn2-compress-operation fn2-compress-transport)
+    (mv-let (advanced fn2-compress-transport)
+     (fn2-compress-transport-advance-spans cap nonce slot generation serial used made fn2-compress-transport)
+     (if (not (eq advanced :ok)) (mv advanced fn2-compress-operation fn2-compress-transport)
+      (mv-let (observed fn2-compress-operation)
+       (fn2-compress-operation-observe serial 0 0 fn2-compress-operation)
+       (let ((fn2-compress-transport (fn2-compress-transport-put 0 (terminal 2))))
+        (mv observed fn2-compress-operation fn2-compress-transport)))))))))

@@ -109,12 +109,14 @@ ACL2_BOOKS = \
   books/tls-stack \
   books/host-loan \
   books/host-codec \
+  books/host-codec-close \
   books/host-compress \
   books/columns \
   books/compress-policy \
   books/compress-kind \
   books/compress-operation \
   books/compress-record \
+  books/compress-close \
   books/compress-transport-lifecycle \
   books/compress-transport-ops \
   books/compress \

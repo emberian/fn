@@ -133,28 +133,38 @@
 ; A blocked child retains the SAME parent epoch; it never earns decode credit.
 (defun fn2-compress-record-carrier-observe
  (status count errno fn2-compress-operation fn2-compress-transport)
+ (declare (ignore errno))
  (declare (xargs :stobjs (fn2-compress-operation fn2-compress-transport) :verify-guards nil
   :guard (and (fn2-compress-operation-wfp fn2-compress-operation)
               (= (fn2-compress-operation-rows fn2-compress-operation) 1)
               (fn2-compress-transport-wfp fn2-compress-transport)
               (= (fn2-compress-transport-rows fn2-compress-transport) 1))))
- (let ((action (fn2-compress-transport-pending 0 fn2-compress-transport)))
-  (cond
-   ((not (member-equal action '(5 6))) (mv :state fn2-compress-operation fn2-compress-transport))
-   ((member-equal status '(:progress :pending :blocked))
-    (mv :blocked fn2-compress-operation fn2-compress-transport))
-   ((not (and (unsigned-byte-p 32 count) (unsigned-byte-p 32 errno)
-              (member-equal status '(:done :eof :failed))))
-    (mv :bounds fn2-compress-operation fn2-compress-transport))
-   (t (fn2-compress-record-observe
-       (fn2-compress-operation-cap 0 fn2-compress-operation)
-       (fn2-compress-operation-nonce 0 fn2-compress-operation)
-       (fn2-compress-operation-slot 0 fn2-compress-operation)
-       (fn2-compress-operation-generation 0 fn2-compress-operation)
-       (fn2-compress-operation-pending-serial 0 fn2-compress-operation)
-       (if (and (eq status :done) (< 0 count)) 0 -1)
-       (if (= action 5) count 0) (if (= action 6) count 0) errno
-       fn2-compress-operation fn2-compress-transport)))))
+ (b* ((action (fn2-compress-transport-pending 0 fn2-compress-transport))
+      (serial (fn2-compress-operation-pending-serial 0 fn2-compress-operation))
+      ((unless (member-equal action '(5 6))) (mv :state fn2-compress-operation fn2-compress-transport))
+      ((when (member-equal status '(:progress :pending :blocked)))
+       (mv :blocked fn2-compress-operation fn2-compress-transport))
+      ((unless (and (unsigned-byte-p 32 count) (member-equal status '(:done :eof :failed))
+                    (equal action (fn2-compress-operation-pending-action 0 fn2-compress-operation))
+                    (fn2-compress-operation-observable-p serial 0 0 fn2-compress-operation)))
+       (mv :bounds fn2-compress-operation fn2-compress-transport))
+      ((mv code fn2-compress-transport)
+       (fn2-compress-transport-advance-spans
+        (fn2-compress-operation-cap 0 fn2-compress-operation)
+        (fn2-compress-operation-nonce 0 fn2-compress-operation)
+        (fn2-compress-operation-slot 0 fn2-compress-operation)
+        (fn2-compress-operation-generation 0 fn2-compress-operation)
+        serial (if (= action 5) count 0) (if (= action 6) count 0) fn2-compress-transport))
+      ((unless (eq code :ok)) (mv code fn2-compress-operation fn2-compress-transport))
+      ((mv code fn2-compress-operation) (fn2-compress-operation-observe serial 0 0 fn2-compress-operation))
+      (productive (and (eq status :done) (< 0 count)))
+      (fn2-compress-transport (if productive fn2-compress-transport
+                               (fn2-compress-transport-put 0 (terminal 2))))
+      (fn2-compress-operation
+       (if (= action 6) (fn2-compress-operation-put 0 (need-input 0) (kick 1))
+         (fn2-compress-operation-put 0 (kick 1)))))
+  (mv (if (eq code :ok) (if productive :progress :failed) code)
+      fn2-compress-operation fn2-compress-transport)))
 
 (defun fn2-compress-record-socket-observe
  (raw errno fn2-compress-operation fn2-compress-transport)
@@ -186,22 +196,6 @@
    (mv (fn2-compress-operation-interest 0 fn2-compress-operation)
        (= (fn2-compress-operation-kick 0 fn2-compress-operation) 1))))
 
-; Cancel can run after Close removed the physical capability. The operation
-; ledger still owns the application prefix. A pending child must be aborted
-; through the shared stack seam before this terminal decision is available.
-(defun fn2-compress-record-cancel (receive fn2-compress-operation)
- (declare (xargs :stobjs fn2-compress-operation :verify-guards nil
-  :guard (and (fn2-compress-operation-wfp fn2-compress-operation)
-              (= (fn2-compress-operation-rows fn2-compress-operation) 1))))
- (if (not (unsigned-byte-p 1 receive)) (mv :bounds 0 fn2-compress-operation)
-  (let ((prefix (if (= receive 1) (fn2-compress-operation-sink-progress 0 fn2-compress-operation)
-                   (fn2-compress-operation-source-progress 0 fn2-compress-operation))))
-   (if (= (fn2-compress-operation-terminal 0 fn2-compress-operation) 1)
-       (mv :too-late prefix fn2-compress-operation)
-    (mv-let (code fn2-compress-operation) (fn2-compress-operation-finish fn2-compress-operation)
-     (mv (if (eq code :ok) (if (and (= receive 1) (< 0 prefix)) :productive :cancelled) code)
-         prefix fn2-compress-operation))))))
-
 ; Keep the generated scalar abstraction in guard proofs. Common row frames
 ; connect the two ledgers after observations without opening either updater.
 (make-event
@@ -211,7 +205,7 @@
           '(fn2-compress-transport-rows fn2-compress-operation-rows
             fn2-compress-operation-bind fn2-compress-operation-request fn2-compress-operation-observe
             fn2-compress-operation-requestable-p fn2-compress-operation-observable-p fn2-compress-observe
-            fn2-compress-transport-observe-spans fn2-compress-transport-select
+            fn2-compress-transport-observe-spans fn2-compress-transport-advance-spans fn2-compress-transport-select
             fn2-compress-transport-select-encode fn2-compress-transport-select-decode
             fn2-compress-transport-select-drain fn2-compress-transport-select-fill)
           (fn2-columns-projection-readers 'fn2-compress-transport
@@ -231,5 +225,4 @@
    (verify-guards fn2-compress-record-observe :hints ,hints)
    (verify-guards fn2-compress-record-carrier-observe :hints ,hints)
    (verify-guards fn2-compress-record-socket-observe :hints ,hints)
-   (verify-guards fn2-compress-record-cancel :hints ,hints)
    (verify-guards fn2-compress-record-wait :hints ,hints)))))
