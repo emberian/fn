@@ -86,3 +86,19 @@ stale owner generation; and unchanged scalar results after read refs close.
 The earlier same-transaction duplicate/conflict and detach controls remain
 required composition checks. Pool/query/CNS ownership is assigned. No execution grant has been allocated;
 source parsing and checks do not establish these control results.
+
+## Wake composition frontier
+
+The current source flush uses the machine directory's single wake slot.
+A composed callback that already posted a different wake can lose that
+notification when query completion overwrites the slot. The candidate
+transaction reply path has not been demonstrated reachable with an ACTIVE
+query and a nonzero reply word; the generic composed callback seam remains
+unsafe independently of that reachability question.
+
+The repair will share the actual scheduler enqueue operation with the
+executor, preserve the ordinary wake intent, and record the additional
+scheduler effect in the diagnostic trace. Trace loss must invalidate replay
+evidence without stopping legitimate scheduling. Runtime and independent
+trace changes are under construction; current lifecycle fixtures are source
+controls awaiting that repair and execution.
