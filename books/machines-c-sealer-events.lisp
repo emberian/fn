@@ -33,10 +33,20 @@
 
 (defmacro fn2-sealer-core-events ()
  '(progn
+   ; The actual kind directory distinguishes an absent non-image boot actor
+   ; from a present actor whose snapshot is unreadable or not yet complete.
+   (defun fn2-sealer-boot-closed-p (fn2-core)
+    (declare (xargs :stobjs fn2-core :guard (fn2-core-wfp fn2-core)))
+    (let ((boot (fn2-machine-kind-base *fn2-boot-kind* fn2-core)))
+     (or (equal boot *fn2-none*)
+         (and (eq (fn2-boot-snapshot-read-code boot fn2-core) :ok)
+              (equal (fn2-machine-phase boot fn2-core) *fn2-boot-state-ready*)
+              (equal (fn2-machine-stopped boot fn2-core) 0)))))
    (assert-event (equal *fn2-sealer-kind* *fn2-idc-owner-kind*))
    (defun fn2-sealer-step (budget fn2-core)
     (declare (xargs :stobjs fn2-core :guard (fn2-core-wfp fn2-core)))
-    (if (equal (mv-nth 0 (fn2-csnapshot-state fn2-core)) *fn2-csnapshot-phase-held*)
+    (if (or (not (fn2-sealer-boot-closed-p fn2-core))
+            (equal (mv-nth 0 (fn2-csnapshot-state fn2-core)) *fn2-csnapshot-phase-held*))
         (mv :busy fn2-core)
     (stobj-let ((fn2-seals (fn2-core-seals fn2-core)) (fn2-overlays (fn2-core-overlays fn2-core))
                 (fn2-overlay-index (fn2-core-overlay-index fn2-core)) (fn2-run-installed (fn2-core-run-installed fn2-core))
@@ -82,7 +92,8 @@
    (defun fn2-sealer-ready (fn2-core)
     (declare (xargs :stobjs fn2-core :guard (fn2-core-wfp fn2-core)))
     (let ((id (fn2-machine-kind-base *fn2-sealer-kind* fn2-core)))
-     (and (not (equal (mv-nth 0 (fn2-csnapshot-state fn2-core)) *fn2-csnapshot-phase-held*))
+     (and (fn2-sealer-boot-closed-p fn2-core)
+          (not (equal (mv-nth 0 (fn2-csnapshot-state fn2-core)) *fn2-csnapshot-phase-held*))
           (not (equal id *fn2-none*)) (fn2-machine-idp id fn2-core)
           (eq (fn2-machine-phase-read-code id fn2-core) :ok)
           (equal (fn2-machine-phase id fn2-core) *fn2-sealer-state-sealing*)
