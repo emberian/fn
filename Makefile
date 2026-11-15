@@ -617,6 +617,7 @@ ACL2_BOOKS = \
   tests/checkpoint-working-credit-configure-unit \
   tests/ordinary-drain-credit-unit \
   tests/ordinary-drain-credit-canonical-unit \
+  tests/ordinary-b-start-quota-removal-unit \
   tests/ordinary-drain-credit-live-unit \
   tests/pool-unit \
   tests/port-unit \
