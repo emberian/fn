@@ -160,3 +160,15 @@ controls remain UNRUN. The D include walk on the623 foundation encounters the
 existing boot-kind/selected-source/census cycle; current coherent parent merge
 is required before claiming this new D closure acyclic. No alternate split is
 authored in this lane.
+
+After merging currentparent4c289 asdc248af20, recovery-release's318-book literal
+include DAG is acyclic; no alternate lower-state extraction was needed.
+
+Installation matching now has one shared field predicate in
+checkpoint-installation-binding. The actual cold evidence member walker calls
+it for checkpoint/Ref6/hash-present; its original concrete pool-hash comparison,
+namespace checks, event continuity and strict cut/J ordering stay in place. The
+extraction fixture preserves all nine numeric-domain field equalities and the
+original hash test, plus discriminating stale/duplicate transformation controls.
+This helper decides field equality only; it supplies no publication/authentication
+authority. The release verifier must consume it only after actual J reauthentication.
