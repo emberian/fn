@@ -260,7 +260,9 @@
        (mv :state fn2-succ-txns fn2-succ-slots fn2-id-decides))
       ((unless (and (natp tx) (< tx (fn2-succ-txns-rows fn2-succ-txns)) (< tx (fn2-id-decides-rows fn2-id-decides))))
        (mv :bounds fn2-succ-txns fn2-succ-slots fn2-id-decides))
-      ((when (equal (fn2-succ-txns-phase tx fn2-succ-txns) *fn2-succ-phase-bound*)) (mv :state fn2-succ-txns fn2-succ-slots fn2-id-decides))
+      ((when (or (equal (fn2-succ-txns-phase tx fn2-succ-txns) *fn2-succ-phase-bound*)
+                 (not (equal (fn2-succ-txns-source-receipt tx fn2-succ-txns) 0))))
+       (mv :state fn2-succ-txns fn2-succ-slots fn2-id-decides))
       (fn2-succ-slots (fn2-succ-release-slots *fn2-succ-slots* (* tx *fn2-succ-slots*) fn2-succ-slots))
       (fn2-succ-txns (fn2-succ-txns-put tx (phase *fn2-succ-phase-idle*) (batch 0) (event 0) (ri 0)
                                         (rstate *fn2-succ-resolve-fresh*) (rbound 0)
@@ -268,7 +270,30 @@
       (fn2-id-decides (fn2-id-decides-set-phase tx *fn2-id-decide-phase-idle* fn2-id-decides)))
   (mv :ok fn2-succ-txns fn2-succ-slots fn2-id-decides)))
 (fn2-idc-fn-shape fn2-succ-release (tx fn2-succ-txns fn2-succ-slots fn2-id-decides) (fn2-succ-txns fn2-succ-slots fn2-id-decides)
- (fn2-succ-txns fn2-succ-slots fn2-id-decides) t (fn2-succ-txns-phase fn2-succ-release-slots))
+ (fn2-succ-txns fn2-succ-slots fn2-id-decides) t (fn2-succ-txns-phase fn2-succ-txns-source-receipt fn2-succ-release-slots))
+
+; Public cancellation closes the live source endpoint before the ordinary
+; release can reset its row. Internal publish/replay release remains receipt0
+; only; it cannot silently reset an abandoned live observer.
+(defun fn2-succ-release-observed (tx b0 fn2-succ-txns fn2-succ-slots fn2-id-decides fn2-run-cursors fn2-fields fn2-c-source-control fn2-c-source-readers)
+ (declare (xargs :stobjs (fn2-succ-txns fn2-succ-slots fn2-id-decides fn2-run-cursors fn2-fields fn2-c-source-control fn2-c-source-readers) :guard t))
+ (b* (((unless (and (fn2-succ-txns-wfp fn2-succ-txns) (fn2-id-decides-wfp fn2-id-decides)
+                    (natp tx) (< tx (fn2-id-decides-rows fn2-id-decides)) (< tx (fn2-succ-txns-rows fn2-succ-txns))
+                    (<= (fn2-id-decides-rows fn2-id-decides) (fn2-succ-txns-rows fn2-succ-txns))
+                    (not (equal (fn2-succ-txns-phase tx fn2-succ-txns) *fn2-succ-phase-bound*))))
+       (mv :state fn2-succ-txns fn2-succ-slots fn2-id-decides fn2-run-cursors fn2-fields fn2-c-source-control fn2-c-source-readers))
+      (readrows (- (fn2-succ-txns-rows fn2-succ-txns) (fn2-id-decides-rows fn2-id-decides)))
+      ((mv closed fn2-succ-txns fn2-run-cursors fn2-fields fn2-c-source-control fn2-c-source-readers)
+       (fn2-succ-source-close tx readrows b0 fn2-succ-txns fn2-run-cursors fn2-fields fn2-c-source-control fn2-c-source-readers))
+      ((unless (eq closed :ok))
+       (mv :state fn2-succ-txns fn2-succ-slots fn2-id-decides fn2-run-cursors fn2-fields fn2-c-source-control fn2-c-source-readers))
+      ((mv code fn2-succ-txns fn2-succ-slots fn2-id-decides) (fn2-succ-release tx fn2-succ-txns fn2-succ-slots fn2-id-decides)))
+  (mv code fn2-succ-txns fn2-succ-slots fn2-id-decides fn2-run-cursors fn2-fields fn2-c-source-control fn2-c-source-readers)))
+(fn2-idc-fn-shape fn2-succ-release-observed
+ (tx b0 fn2-succ-txns fn2-succ-slots fn2-id-decides fn2-run-cursors fn2-fields fn2-c-source-control fn2-c-source-readers)
+ (fn2-succ-txns fn2-succ-slots fn2-id-decides fn2-run-cursors fn2-fields fn2-c-source-control fn2-c-source-readers)
+ (fn2-succ-txns fn2-succ-slots fn2-id-decides fn2-run-cursors fn2-fields fn2-c-source-control fn2-c-source-readers) t
+ (fn2-succ-source-close fn2-succ-release fn2-succ-txns-phase))
 
 ; ---------------------------------------------------------------------------
 ; Publication of batch B (B, after the root swap, before any member result):
@@ -756,7 +781,7 @@
 (defcost fn2-successor-resolve :child fn2-successor-resolve-child :answers (:bad-magic :bounds :done :end :entry :format :invariant :length :lost :miss :more :noncanonical
   :ok :owner :part :payload :schema :stale :state :truncated :unknown-tag :wide)
  :bytes 4096
- :tables (fn2-core-succ-txns fn2-core-succ-slots fn2-core-run-cursors fn2-core-run-paths fn2-core-fields)
+ :tables (fn2-core-succ-txns fn2-core-succ-slots fn2-core-run-cursors fn2-core-run-paths fn2-core-fields fn2-core-c-source-control fn2-core-c-source-readers)
  :doc "One bounded step reading a write slot's key in the installed runs: one run selection or one lookup step of at most 4,096 pool reads.")
 (defcost fn2-successor-stage :child fn2-successor-stage-child :answers (:bounds :capacity :changed :done :duplicate :event :evidence :full :inconsistent :invariant
   :length :more :noncanonical :ok :owner :part :payload :range :refused :schema :stale :state
@@ -772,7 +797,7 @@
  :tables (fn2-core-succ-txns fn2-core-id-engine fn2-core-overlays fn2-core-overlay-index fn2-core-fields fn2-core-pool)
  :doc "Insert every staged row into its batch's private overlays (octet arguments copied, at most 4 KiB per slot).")
 (defcost fn2-successor-release :child fn2-successor-release-child :answers (:bounds :ok :state)
- :tables (fn2-core-succ-txns fn2-core-succ-slots fn2-core-id-decides)
+ :tables (fn2-core-succ-txns fn2-core-succ-slots fn2-core-id-decides fn2-core-run-cursors fn2-core-fields fn2-core-c-source-control fn2-core-c-source-readers)
  :doc "Free a transaction's write slots and its decision at its outcome.")
 (defcost fn2-successor-applied :answers (:bounds :kind :ok :state) :child fn2-succ-applied
  :doc "Whether a staged fold slot applied (:applied) or its :when failed under :unless-when :unchanged (:unchanged).")
@@ -1014,13 +1039,14 @@
      (fn2-id-decides (fn2-core-id-decides fn2-core)) (fn2-run-installed (fn2-core-run-installed fn2-core))
      (fn2-run-cursors (fn2-core-run-cursors fn2-core)) (fn2-run-paths (fn2-core-run-paths fn2-core))
      (fn2-run-cache (fn2-core-run-cache fn2-core)) (fn2-fields (fn2-core-fields fn2-core)) (fn2-pool (fn2-core-pool fn2-core))
-     (fn2-fc (fn2-core-fc fn2-core)))
-    (fn2-succ-txns fn2-succ-slots fn2-run-cursors fn2-run-paths fn2-fields)
+     (fn2-fc (fn2-core-fc fn2-core))
+     (fn2-c-source-control (fn2-core-c-source-control fn2-core)) (fn2-c-source-readers (fn2-core-c-source-readers fn2-core)))
+    (fn2-succ-txns fn2-succ-slots fn2-run-cursors fn2-run-paths fn2-fields fn2-c-source-control fn2-c-source-readers)
     (mv-let (c b0) (fn2-idc-stripe tx (fn2-fc-rows fn2-fc) fn2-id-decides fn2-fields)
      (if (eq c :ok)
-         (fn2-succ-resolve tx budget b0 fn2-succ-txns fn2-succ-slots fn2-id-decides fn2-run-installed fn2-run-cursors fn2-run-paths
-                           fn2-run-cache fn2-fields fn2-pool)
-       (mv c fn2-succ-txns fn2-succ-slots fn2-run-cursors fn2-run-paths fn2-fields)))
+         (fn2-succ-resolve-observed tx budget b0 fn2-succ-txns fn2-succ-slots fn2-id-decides fn2-run-installed fn2-run-cursors fn2-run-paths
+                           fn2-run-cache fn2-fields fn2-pool fn2-c-source-control fn2-c-source-readers)
+       (mv c fn2-succ-txns fn2-succ-slots fn2-run-cursors fn2-run-paths fn2-fields fn2-c-source-control fn2-c-source-readers)))
     answer)
    (in-theory (disable fn2-successor-put fn2-successor-arg fn2-successor-arg-octets fn2-successor-arg-octets-late fn2-successor-resolve))
    (make-event (value (cons 'progn (fn2-succ-schema-defun-events (fn2-succ-schema-specs (fn2-decl-rows :schema (w state)))))))
@@ -1137,9 +1163,14 @@
        (mv c fn2-succ-txns fn2-id-engine fn2-overlays fn2-overlay-index fn2-fields fn2-pool))))
    (fn2-succ-wrap fn2-successor-release (tx)
     ((fn2-succ-txns (fn2-core-succ-txns fn2-core)) (fn2-succ-slots (fn2-core-succ-slots fn2-core))
-     (fn2-id-decides (fn2-core-id-decides fn2-core)))
-    (fn2-succ-txns fn2-succ-slots fn2-id-decides)
-    (fn2-succ-release tx fn2-succ-txns fn2-succ-slots fn2-id-decides))
+     (fn2-id-decides (fn2-core-id-decides fn2-core)) (fn2-run-cursors (fn2-core-run-cursors fn2-core))
+     (fn2-fields (fn2-core-fields fn2-core)) (fn2-fc (fn2-core-fc fn2-core))
+     (fn2-c-source-control (fn2-core-c-source-control fn2-core)) (fn2-c-source-readers (fn2-core-c-source-readers fn2-core)))
+    (fn2-succ-txns fn2-succ-slots fn2-id-decides fn2-run-cursors fn2-fields fn2-c-source-control fn2-c-source-readers)
+    (mv-let (c b0) (fn2-idc-stripe tx (fn2-fc-rows fn2-fc) fn2-id-decides fn2-fields)
+     (if (eq c :ok)
+         (fn2-succ-release-observed tx b0 fn2-succ-txns fn2-succ-slots fn2-id-decides fn2-run-cursors fn2-fields fn2-c-source-control fn2-c-source-readers)
+       (mv c fn2-succ-txns fn2-succ-slots fn2-id-decides fn2-run-cursors fn2-fields fn2-c-source-control fn2-c-source-readers))))
    (fn2-succ-wrap fn2-succ-core-publish (batch)
     ((fn2-succ-txns (fn2-core-succ-txns fn2-core)) (fn2-overlays (fn2-core-overlays fn2-core))
      (fn2-id-engine (fn2-core-id-engine fn2-core)))
