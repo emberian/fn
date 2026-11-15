@@ -178,6 +178,19 @@
      (fn2-checkpoint-copy-hash (- left 1) (+ 1 dst) (+ 1 src) slot gen okind oslot ogen
                                fn2-pool fn2-checkpoint-bytes))))))
 
+; The recursive copier owns its byte-table effects before root capture uses
+; them. These are the original guarded call's complete domain and effects.
+(fn2-checkpoint-bytes-preserves fn2-checkpoint-copy-hash
+ (left dst src slot gen okind oslot ogen fn2-pool fn2-checkpoint-bytes) :position 1
+ :hyps ((fn2-poolp fn2-pool) (fn2-pool-wfp fn2-pool)
+        (fn2-checkpoint-bytesp fn2-checkpoint-bytes) (fn2-checkpoint-bytes-wfp fn2-checkpoint-bytes)
+        (natp left) (<= left 32) (natp dst) (natp src)
+        (<= (+ dst left) (fn2-checkpoint-bytes-rows fn2-checkpoint-bytes)))
+ :hints (("Goal" :induct (fn2-checkpoint-copy-hash left dst src slot gen okind oslot ogen fn2-pool fn2-checkpoint-bytes)
+                :in-theory (e/d (fn2-checkpoint-copy-hash)
+                                (fn2-pool-read fn2-poolp fn2-pool-wfp
+                                 fn2-checkpoint-bytesp fn2-checkpoint-bytes-wfp)))))
+
 ; Descriptor root fields are an existing format declaration, in groups of
 ; seven. This helper consumes one root per call; callers resume at ROLE+1.
 (defun fn2-checkpoint-capture-root (c role base slot gen okind oslot ogen
