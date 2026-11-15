@@ -7,8 +7,9 @@ must be derived from that store and the actual served call/attachment graph.
 
 ## Current integration frontier — 2026-11-15 UTC
 
-Current integration is `11ceb6ada`, including retirement dispatch, actual-type
-codec fixtures and failed-Send classification. No current whole-system image, full host gate,
+Current integration source is `5bbcb1b66`, including retirement dispatch, actual-type
+codec fixtures, failed-Send classification, consumed-input accounting and farm
+Git metadata protection. No current whole-system image, full host gate,
 canonical served certificate, or completed assurance claim exists.
 
 Allocator refinement `8595723fc` is qualified by twelve-book record
@@ -38,10 +39,30 @@ canonical controls are integrated at `73f8ada7d`. The 33-book prerequisite recor
 retirement size-proof ordering is now certified. The next machines-b wave reused 50 qualified books and admitted three further
 source modules before stopping at allocation packing: the codec-size upper bound
 is missing from its proof interface. A generic bounds prototype passed only with
-an exploratory scalar lemma, so the final producer and original packer guard are
-still pending. The chosen repair is a separate proof-generator book exposing
-`defcodec-size-bounds` at actual consumers, leaving existing layout expansions and
-keys unchanged. Its standalone gate precedes another broad module run. The 32
+an exploratory scalar lemma. The replacement standalone proof generator now
+admits the allocation and retirement size bounds without scratch lemmas; the
+actual allocation packer's unchanged guard passed in 0.25 seconds / 30,953 steps.
+The combined author session subsequently passed the final mixed-schema fixture,
+both allocation and retirement packer guards and their carrier families. Local
+row-opacity hints repaired allocation installation and ticket preservation.
+A named `pool-read` byte contract and complete COPY-HASH carrier facts also
+admitted the unchanged hash-copy and capture-roots consumers. The checkpoint
+CHECK-STEP guard still exhausted two million steps in 22.43 seconds; installation
+packing still refused after a targeted opacity attempt. Neither is a proved
+counterexample or a passing book. The session stopped before its deadline.
+
+Clean candidates `827af50ad` (shared proof foundations) and `dccf0eb32` (consumer
+connections) preserve the current pool and layout source. Root independently
+compared 31 runtime function/guard ASTs across five consumer books, allowing only
+proof-hint differences. `defcodec-size-bounds` replaces the retirement-local
+prototype. Current-pool qualification remains pending; the two outstanding
+guards are assigned to proof-cost repair before canonical composition.
+The checked-reader contract is separately integrated at `5bbcb1b66`: exact
+eight-book record `certify-20261115T025521Z-761431` passed with seven reused and
+one new book in 0.276 seconds. Root matched all eight current source digests;
+the manifest lacks a Git revision, so provenance is bound by those exact bytes.
+The remaining size/interface foundation record waits for the required pool-credit
+layout below, avoiding an immediately obsolete dependent build. The 32
 canonical runtime assertions and full application composition remain unexecuted.
 
 Codec fixture record `certify-20261115T020143Z-708421` passed all 24 books of
@@ -66,11 +87,25 @@ Pool mutations and release refuse held references; owners preflight their entire
 release or mutation set before effects, then retry through checked last-reference
 wakeups. Peer owns shared pool edits; CNS whole-result semantics retain the old
 operation-borrow assumptions and add held/no-effect behavior without assuming
-query references away. These changes remain source-only. A newly found composition concern holds
-integration: query-reference cleanup may overwrite an already populated singleton
-wake. The repair must preserve both scheduler effects and trace replay. Protected checkpoint
+query references away. The pool conservation, range and two unit controls passed source-author
+execution. Exact ten-book record `certify-20261115T024211Z-748010` then passed:
+seven reused, three newly certified in 22.788 seconds. Root matched all ten
+before/after source digests to candidate `0b3475cce`, with unchanged runner and
+qualified toolchain. The exact foundation is integrated at `a3b9723a1`; no
+served query producer calls acquire/release yet. This changes dependent pool
+closure keys: earlier larger gates are historical until requalified. Descriptor
+lifecycle, the LAST-result contract and checked wakeup remain consumer
+obligations. This pool scope does not qualify the broader callbacks. The broader
+callback changes remain unqualified. Last-query-reference cleanup now uses the
+shared scheduler enqueue primitive in its candidate, preserving an occupied
+ordinary wake. Complete callback effects, reference correspondence and trace
+replay still need qualification before integration. Protected checkpoint
 capacity must also guarantee ordinary staged journal drain capacity per class;
 aggregate totals or double-counted reservations cannot establish progress.
+Capacity owns the next pool edit. Explicit reservation credits require row
+provenance and per-class/per-group state, with independent working and actual
+B-row STAGED-drain groups. This changes pool layout; source freeze and primitive
+qualification must precede the next dependent foundation/canonical record.
 
 Cold recovery remains unfinished. It needs bounded physical page loading,
 allocator reconstruction, retained C-source ownership through query drain, and
@@ -85,10 +120,32 @@ seconds, all before/after digests matched by root. Only raw `:ok` Send becomes
 DONE/SHORT; failure retains consumed count and reason. Actual TLS full/partial
 drain-failure controls refute the old normalizer while its success control remains
 accepted. Productive Receive and cancellation compatibility controls pass.
-Replay separately conflates consumed Send bytes with peer delivery in its
-capability transcript. Names owns ordered delivery constraints checked against
-independently captured peer RX, including failed and productive cancelled Send;
-consumed-byte validation alone must not establish delivery.
+Connection accounting repair `ad9cc38dc` charges consumed input before
+terminal-status handling; only DONE/SHORT advance the transmit offset. Its actual
+callback controls remain unexecuted pending the application dependencies.
+
+Replay's candidate separates consumed Send bytes from independently captured
+peer delivery using ordered exact/prefix constraints, including failed and
+productive cancelled Send. Independent review found malformed-list and non-octet
+acceptance defects; candidate `67a776052` repairs them with bounded validation.
+Its exact two-book record `certify-20261115T023638Z-742660` passed in 0.45 seconds;
+root matched both before/after digests to that candidate, and the owner audited
+cache integrity. General language refinement, fuel adequacy and the actual
+composed native/replay gate remain owed. The exact matcher is integrated at
+`79440f99d`; the host/replay consumer remains a separate candidate awaiting its
+dynamic host and interface gates. Independent review confirms the malformed
+fixes and a conservative fuel calculation, but this is not an admitted fuel
+theorem. The language specification requires explicit well-formed input
+hypotheses; runtime rejection of malformed observations is a separate obligation.
+The actual phase-8 accumulator correspondence and its positive/hypothesis-removal
+controls are integrated at `4d7e9cb`, qualified by exact three-book record
+`certify-20261115T024813Z-754219`: one reused, two new, 0.39 seconds. Root matched
+all three current source digests. [The proof plan](ENVELOPE-OUTPUT-PROOF.md)
+connects whole-row construction and reversal next; full equivalence and fuel
+adequacy remain open.
+
+Farm transport repair `0dda1d6ac` protects both Git pointer files and directories
+during source sync. Five transport and three budget controls pass.
 
 TLS/COMPRESS shared host closure, actual native input-prefix emission, and replay
 receipt consumption are source candidates, not qualified host behavior. Native
@@ -100,7 +157,13 @@ finite C/FFI scope; it does not establish an encrypted network roundtrip.
 The actual core-release theorem/evidence candidates remain owed. The Lean
 packet-bound consumer accepts its positive fixture and rejects a changed recursive
 body, but the current CNS packet, reached domains, MBE correspondence and selected
-attachments remain open. Initialized reachable-state durability must replace the
+attachments remain open. In particular, `defattach` does not prove equality
+between logical dispatch stubs and their selected executable bodies. Reference
+callback generation must preserve complete results and state correspondence,
+substituting independent literal-FIFO semantics only at declared scheduler
+effect boundaries. Hidden intrusive-queue reads must be rejected or separately
+related; trace records cannot drive reference queues. Initialized reachable-state
+durability must replace the
 refuted arbitrary-state claim while preserving the public ACK guarantee.
 
 Root owns named compute grants; metadata inventories do not authorize broad

@@ -11,7 +11,7 @@
    (state (:enum fn2-pool-state (:free :workspace :leased-in :leased-out :handed :retired)))
    (owner-kind :u8) (owner-slot :u32) (owner-gen :u60)
    (lease-op-slot :link) (lease-op-gen :u60) (lease-off :u32) (lease-len :u32)
-   (out-count :u32) (fill :u32)
+   (out-count :u32) (query-ref-count :u60) (fill :u32)
    (hand-to-kind :u8) (hand-to-slot :link) (hand-to-gen :u60)
    (next-free :link) (class :u8))
   :rows-bound 4294967296
@@ -38,6 +38,12 @@
         ((not (equal gen (fn2-pool-gen slot fn2-pool))) :stale)
         (t :ok)))
 
+(defun fn2-pool-query-heldp (slot gen fn2-pool)
+  (declare (xargs :stobjs fn2-pool :guard (fn2-pool-wfp fn2-pool)))
+  (and (natp slot) (< slot (fn2-pool-rows fn2-pool))
+       (equal gen (fn2-pool-gen slot fn2-pool))
+       (< 0 (fn2-pool-query-ref-count slot fn2-pool))))
+
 (defun fn2-pool-ownerp (slot okind oslot ogen fn2-pool)
   (declare (xargs :stobjs fn2-pool
                   :guard (and (fn2-pool-wfp fn2-pool) (natp slot)
@@ -50,6 +56,8 @@
   (declare (xargs :stobjs fn2-pool :guard (fn2-pool-wfp fn2-pool)))
   (let ((code (fn2-pool-handle-code slot gen fn2-pool)))
     (cond ((not (eq code :ok)) code)
+          ((< 0 (fn2-pool-query-ref-count slot fn2-pool))
+           (if (fn2-pool-ownerp slot okind oslot ogen fn2-pool) :held :owner))
           ((not (equal (fn2-pool-state slot fn2-pool) *fn2-pool-state-workspace*)) :state)
           ((not (fn2-pool-ownerp slot okind oslot ogen fn2-pool)) :owner)
           ((not (= (fn2-pool-out-count slot fn2-pool) 0)) :state)
@@ -79,7 +87,7 @@
                            (state *fn2-pool-state-free*)
                            (owner-kind 0) (owner-slot 0) (owner-gen 0)
                            (lease-op-slot 0) (lease-op-gen 0) (lease-off 0) (lease-len 0)
-                           (out-count 0) (fill 0)
+                           (out-count 0) (query-ref-count 0) (fill 0)
                            (hand-to-kind 0) (hand-to-slot 0) (hand-to-gen 0)
                            (next-free (if (and (< 1 left) (< (+ 1 slot) (fn2-pool-rows fn2-pool)))
                                           (+ 1 slot) *fn2-none*))
@@ -170,13 +178,14 @@
              (mv :state 0 0 fn2-pool))
             ((not (= (fn2-pool-class slot fn2-pool) class)) (mv :state 0 0 fn2-pool))
             ((not (= (fn2-pool-out-count slot fn2-pool) 0)) (mv :state 0 0 fn2-pool))
+            ((not (= (fn2-pool-query-ref-count slot fn2-pool) 0)) (mv :held 0 0 fn2-pool))
             (t (let* ((gen (fn2-pool-gen slot fn2-pool))
                       (next (fn2-pool-next-free slot fn2-pool))
                       (fn2-pool (update-fn2-pool-class-headsi class next fn2-pool))
                       (fn2-pool (update-fn2-pool-class-countsi class (- count 1) fn2-pool))
                       (fn2-pool (fn2-pool-put slot (state *fn2-pool-state-workspace*)
                                             (owner-kind okind) (owner-slot oslot) (owner-gen ogen)
-                                            (out-count 0) (fill 0))))
+                                            (out-count 0) (query-ref-count 0) (fill 0))))
                  (mv :ok slot gen fn2-pool)))))))
 
  ; The count premise is local and constant-work. Semantic accounting owes
@@ -276,6 +285,37 @@
                     (equal (fn2-pool-state slot fn2-pool) *fn2-pool-state-leased-out*))) :state)
           ((not (fn2-pool-ownerp slot okind oslot ogen fn2-pool)) :owner)
           (t :ok))))
+
+; Query references are a separate reader count, never synthetic OpRefs.
+; They keep the entire taking stable while the caller consumes its window.
+; The query descriptor owns one acquire and one matched release per window.
+(defconst *fn2-pool-query-ref-max* 1152921504606846975)
+(defun fn2-pool-query-acquire (slot gen off len okind oslot ogen fn2-pool)
+  (declare (xargs :stobjs fn2-pool :guard (fn2-pool-wfp fn2-pool)))
+  (let ((code (fn2-pool-readable-code slot gen okind oslot ogen fn2-pool)))
+    (cond ((not (eq code :ok)) (mv code fn2-pool))
+          ((not (and (unsigned-byte-p 32 off) (unsigned-byte-p 32 len)
+                     (<= (+ off len) (fn2-pool-fill slot fn2-pool))))
+           (mv :bounds fn2-pool))
+          ((>= (fn2-pool-query-ref-count slot fn2-pool) *fn2-pool-query-ref-max*)
+           (mv :exhausted fn2-pool))
+          (t (let ((fn2-pool (fn2-pool-set-query-ref-count slot
+                              (+ 1 (fn2-pool-query-ref-count slot fn2-pool)) fn2-pool)))
+               (mv :ok fn2-pool))))))
+
+; Caller matches and consumes its actual query descriptor, not an I/O op.
+; LAST is true only for a successful transition from one reader to zero.
+(defun fn2-pool-query-release (slot gen fn2-pool)
+  (declare (xargs :stobjs fn2-pool :guard (fn2-pool-wfp fn2-pool)))
+  (let ((code (fn2-pool-handle-code slot gen fn2-pool)))
+    (cond ((not (eq code :ok)) (mv code nil fn2-pool))
+          ((not (or (equal (fn2-pool-state slot fn2-pool) *fn2-pool-state-workspace*)
+                    (equal (fn2-pool-state slot fn2-pool) *fn2-pool-state-leased-out*)))
+           (mv :state nil fn2-pool))
+          ((= (fn2-pool-query-ref-count slot fn2-pool) 0) (mv :state nil fn2-pool))
+          (t (let* ((count (fn2-pool-query-ref-count slot fn2-pool))
+                    (fn2-pool (fn2-pool-set-query-ref-count slot (- count 1) fn2-pool)))
+               (mv :ok (= count 1) fn2-pool))))))
 
 (defun fn2-pool-lease-out (slot gen off len okind oslot ogen fn2-pool)
   (declare (xargs :stobjs fn2-pool :guard (fn2-pool-wfp fn2-pool)))
@@ -436,6 +476,8 @@
 (fn2-pool-preserves fn2-pool-lease-in (slot gen len opslot opgen okind oslot ogen fn2-pool) :position 2 :disable nil)
 (fn2-pool-preserves fn2-pool-adapter-write (slot gen opslot opgen idx byte fn2-pool) :position 1 :disable nil)
 (fn2-pool-preserves fn2-pool-complete-in (slot gen opslot opgen n fn2-pool) :position 1 :disable nil)
+(fn2-pool-preserves fn2-pool-query-acquire (slot gen off len okind oslot ogen fn2-pool) :position 1 :disable nil)
+(fn2-pool-preserves fn2-pool-query-release (slot gen fn2-pool) :position 2 :disable nil)
 (fn2-pool-preserves fn2-pool-lease-out (slot gen off len okind oslot ogen fn2-pool) :position 1 :disable nil)
 (fn2-pool-preserves fn2-pool-release-out (slot gen fn2-pool) :position 1 :disable nil)
 (fn2-pool-preserves fn2-pool-hand (slot gen okind oslot ogen tkind tslot tgen fn2-pool) :position 1 :disable nil)
@@ -449,7 +491,7 @@
   '(fn2-pool-init fn2-pool-class-for fn2-pool-reserve
     fn2-pool-release fn2-pool-lease-in fn2-pool-adapter-write
     fn2-pool-complete-in fn2-pool-lease-out fn2-pool-release-out
-    fn2-pool-hand fn2-pool-accept-hand fn2-pool-read
+    fn2-pool-query-acquire fn2-pool-query-release fn2-pool-hand fn2-pool-accept-hand fn2-pool-read
     fn2-pool-write fn2-pool-reset fn2-pool-slot-state
     fn2-pool-slot-gen fn2-pool-slot-fill fn2-pool-slot-base
     fn2-pool-slot-cap fn2-pool-slot-out-count fn2-pool-lease-range
@@ -461,11 +503,11 @@
 ; result predicates share the exact conclusion with evaluated test witnesses.
 ; The nx wrappers and dispatcher are logical only; no nx function is executed.
 (defconst *fn2-pool-handle-operations*
-  '(:release :lease-in :adapter-write :complete-in :lease-out :release-out
+  '(:release :lease-in :adapter-write :complete-in :lease-out :release-out :query-acquire :query-release
     :hand :accept-hand :read :write :reset))
 (defconst *fn2-pool-operations*
   '(:reserve :release :lease-in :adapter-write :complete-in :lease-out
-    :release-out :hand :accept-hand :read :write :reset))
+    :release-out :query-acquire :query-release :hand :accept-hand :read :write :reset))
 
 ; The arguments are exactly the scalar API arguments, in the API's order.
 ; The two-element result deliberately retains the complete logical pool.
@@ -495,6 +537,13 @@
     (:release-out (mv-let (code after)
                     (fn2-pool-release-out (nth 0 a) (nth 1 a) p)
                     (list code after)))
+    (:query-acquire (mv-let (code after)
+                      (fn2-pool-query-acquire (nth 0 a) (nth 1 a) (nth 2 a) (nth 3 a)
+                                              (nth 4 a) (nth 5 a) (nth 6 a) p)
+                      (list code after)))
+    (:query-release (mv-let (code last after)
+                      (fn2-pool-query-release (nth 0 a) (nth 1 a) p)
+                      (declare (ignore last)) (list code after)))
     (:hand (mv-let (code after)
              (fn2-pool-hand (nth 0 a) (nth 1 a) (nth 2 a) (nth 3 a)
                             (nth 4 a) (nth 5 a) (nth 6 a) (nth 7 a) p)
@@ -716,6 +765,7 @@
   (defconst *fn2-pool-frame-readers*
     '((fn2-pool-gen . fn2-pool-set-gen) (fn2-pool-base) (fn2-pool-cap)
       (fn2-pool-state . fn2-pool-set-state) (fn2-pool-fill . fn2-pool-set-fill)
+      (fn2-pool-query-ref-count . fn2-pool-set-query-ref-count)
       (fn2-pool-out-count . fn2-pool-set-out-count) (fn2-pool-lease-off . fn2-pool-set-lease-off)
       (fn2-pool-lease-len . fn2-pool-set-lease-len) (fn2-pool-next-free . fn2-pool-set-next-free)
       (fn2-pool-class)
@@ -726,13 +776,13 @@
     '((fn2-pool-rows) (fn2-pool-nclasses) (fn2-pool-gen-limit)
       (fn2-pool-retired-count . update-fn2-pool-retired-count) (fn2-pool-data-length)))
   (defconst *fn2-pool-frame-writers*
-    '(fn2-pool-set-gen fn2-pool-set-state fn2-pool-set-fill fn2-pool-set-out-count
+    '(fn2-pool-set-gen fn2-pool-set-state fn2-pool-set-fill fn2-pool-set-out-count fn2-pool-set-query-ref-count
       fn2-pool-set-lease-off fn2-pool-set-lease-len fn2-pool-set-next-free
       fn2-pool-set-owner-kind fn2-pool-set-owner-slot fn2-pool-set-owner-gen
       fn2-pool-set-lease-op-slot fn2-pool-set-lease-op-gen
       fn2-pool-set-hand-to-kind fn2-pool-set-hand-to-slot fn2-pool-set-hand-to-gen
       update-fn2-pool-class-headsi update-fn2-pool-class-countsi update-fn2-pool-datai))
-  (deftheory fn2-pool-frame-raw-theory '(fn2-pool-gen$ai update-fn2-pool-gen$ai fn2-pool-base$ai update-fn2-pool-base$ai fn2-pool-cap$ai update-fn2-pool-cap$ai fn2-pool-state$ai update-fn2-pool-state$ai fn2-pool-owner-kind$ai update-fn2-pool-owner-kind$ai fn2-pool-owner-slot$ai update-fn2-pool-owner-slot$ai fn2-pool-owner-gen$ai update-fn2-pool-owner-gen$ai fn2-pool-lease-op-slot$ai update-fn2-pool-lease-op-slot$ai fn2-pool-lease-op-gen$ai update-fn2-pool-lease-op-gen$ai fn2-pool-lease-off$ai update-fn2-pool-lease-off$ai fn2-pool-lease-len$ai update-fn2-pool-lease-len$ai fn2-pool-out-count$ai update-fn2-pool-out-count$ai fn2-pool-fill$ai update-fn2-pool-fill$ai fn2-pool-hand-to-kind$ai update-fn2-pool-hand-to-kind$ai fn2-pool-hand-to-slot$ai update-fn2-pool-hand-to-slot$ai fn2-pool-hand-to-gen$ai update-fn2-pool-hand-to-gen$ai fn2-pool-next-free$ai update-fn2-pool-next-free$ai fn2-pool-class$ai update-fn2-pool-class$ai fn2-pool-class-headsi update-fn2-pool-class-headsi fn2-pool-class-countsi update-fn2-pool-class-countsi fn2-pool-class-sizesi fn2-pool-datai update-fn2-pool-datai fn2-pool-data-length fn2-pool-rows fn2-pool-nclasses fn2-pool-gen-limit fn2-pool-retired-count update-fn2-pool-retired-count))
+  (deftheory fn2-pool-frame-raw-theory '(fn2-pool-gen$ai update-fn2-pool-gen$ai fn2-pool-base$ai update-fn2-pool-base$ai fn2-pool-cap$ai update-fn2-pool-cap$ai fn2-pool-state$ai update-fn2-pool-state$ai fn2-pool-owner-kind$ai update-fn2-pool-owner-kind$ai fn2-pool-owner-slot$ai update-fn2-pool-owner-slot$ai fn2-pool-owner-gen$ai update-fn2-pool-owner-gen$ai fn2-pool-lease-op-slot$ai update-fn2-pool-lease-op-slot$ai fn2-pool-lease-op-gen$ai update-fn2-pool-lease-op-gen$ai fn2-pool-lease-off$ai update-fn2-pool-lease-off$ai fn2-pool-lease-len$ai update-fn2-pool-lease-len$ai fn2-pool-out-count$ai update-fn2-pool-out-count$ai fn2-pool-query-ref-count$ai update-fn2-pool-query-ref-count$ai fn2-pool-fill$ai update-fn2-pool-fill$ai fn2-pool-hand-to-kind$ai update-fn2-pool-hand-to-kind$ai fn2-pool-hand-to-slot$ai update-fn2-pool-hand-to-slot$ai fn2-pool-hand-to-gen$ai update-fn2-pool-hand-to-gen$ai fn2-pool-next-free$ai update-fn2-pool-next-free$ai fn2-pool-class$ai update-fn2-pool-class$ai fn2-pool-class-headsi update-fn2-pool-class-headsi fn2-pool-class-countsi update-fn2-pool-class-countsi fn2-pool-class-sizesi fn2-pool-datai update-fn2-pool-datai fn2-pool-data-length fn2-pool-rows fn2-pool-nclasses fn2-pool-gen-limit fn2-pool-retired-count update-fn2-pool-retired-count))
   (defun fn2-pool-frame-name (r w)
     (declare (xargs :guard (and (symbolp r) (symbolp w))))
     (intern-in-package-of-symbol
@@ -794,7 +844,7 @@
                                    (fn2-pool-frame-retired-events *fn2-pool-frame-scalars* nil))))
 
   (in-theory (disable fn2-pool-gen fn2-pool-base fn2-pool-cap fn2-pool-state fn2-pool-fill
-                      fn2-pool-out-count fn2-pool-lease-off fn2-pool-lease-len fn2-pool-next-free
+                      fn2-pool-out-count fn2-pool-query-ref-count fn2-pool-lease-off fn2-pool-lease-len fn2-pool-next-free
                       fn2-pool-class fn2-pool-owner-kind fn2-pool-owner-slot fn2-pool-owner-gen
                       fn2-pool-lease-op-slot fn2-pool-lease-op-gen fn2-pool-hand-to-kind
                       fn2-pool-hand-to-slot fn2-pool-hand-to-gen))
@@ -1288,6 +1338,8 @@
 (fn2-pool-op-conservation fn2-pool-lease-in (slot gen len opslot opgen okind oslot ogen fn2-pool) 2)
 (fn2-pool-op-conservation fn2-pool-adapter-write (slot gen opslot opgen idx byte fn2-pool) 1)
 (fn2-pool-op-conservation fn2-pool-complete-in (slot gen opslot opgen n fn2-pool) 1)
+(fn2-pool-op-conservation fn2-pool-query-acquire (slot gen off len okind oslot ogen fn2-pool) 1)
+(fn2-pool-op-conservation fn2-pool-query-release (slot gen fn2-pool) 2)
 (fn2-pool-op-conservation fn2-pool-lease-out (slot gen off len okind oslot ogen fn2-pool) 1)
 (fn2-pool-op-conservation fn2-pool-release-out (slot gen fn2-pool) 1)
 (fn2-pool-op-conservation fn2-pool-hand (slot gen okind oslot ogen tkind tslot tgen fn2-pool) 1)
@@ -1403,7 +1455,7 @@
            (fn2-pool-conservation-conclusion op a p))
   :hints (("Goal" :in-theory (disable fn2-pool-reserve fn2-pool-release fn2-pool-lease-in
                                       fn2-pool-adapter-write fn2-pool-complete-in fn2-pool-lease-out
-                                      fn2-pool-release-out fn2-pool-hand fn2-pool-accept-hand
+                                      fn2-pool-release-out fn2-pool-query-acquire fn2-pool-query-release fn2-pool-hand fn2-pool-accept-hand
                                       fn2-pool-read fn2-pool-write fn2-pool-reset))))
 (defthm fn2-pool-conservation-statement
   (fn2-pool-conservation$owed op a p)

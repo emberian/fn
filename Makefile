@@ -230,6 +230,7 @@ ACL2_BOOKS = \
   books/pool \
   books/pool-block \
   books/pool-ranges \
+  books/pool-read-contracts \
   books/port \
   books/profile \
   books/q1 \
@@ -413,6 +414,10 @@ ACL2_BOOKS = \
   tests/storage-cancel-unit \
   tests/native-cut-binding-unit \
   tests/native-envelope-prefix-unit \
+  sim/envelope-output \
+  tests/envelope-output-unit \
+  sim/envelope-output-language \
+  tests/envelope-output-language-unit \
   tests/envelope-input-unit \
   tests/envelope-prefix-unit \
   tests/native-unit \
@@ -431,6 +436,7 @@ ACL2_BOOKS = \
   tests/peer-replay-unit \
   tests/pointwise-contracts-unit \
   tests/pool-ranges-unit \
+  tests/pool-query-ref-unit \
   tests/pool-unit \
   tests/port-unit \
   tests/primitive-list-domain-unit \
