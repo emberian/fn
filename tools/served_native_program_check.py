@@ -15,7 +15,7 @@ from served_host_check import inspect, walk
 
 ROOT = Path(__file__).resolve().parents[1]
 MODEL_PATHS = ['sim/sim.lisp', 'sim/sim-adapter-base.lisp', 'sim/check-own.lisp',
-               'books/host-boundary.lisp', 'books/host-ops.lisp', 'books/host-codec.lisp',
+               'books/host-boundary.lisp', 'books/host-result.lisp', 'books/host-ops.lisp', 'books/host-codec.lisp',
                'books/tls-record.lisp', 'books/tls-record-policy.lisp']
 # Every literal injection site, including the two distinct network syscall sites.
 # Values name the surrounding model transition, not a native syscall guarantee.
