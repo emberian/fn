@@ -25,8 +25,9 @@ The next source port uses existing engine bodies, not another reader:
 
 These are source references, not qualified closure identities. Keep the current
 engine and all current ROOT pool, columns, allocator, compiler, framing and
-RELEASE definitions. Exclude the old actor-wide source-observer layer from
-318/738/807: current request and operation endpoint receipts replace it.
+RELEASE definitions. Exclude all old actor-wide source-observer fields, hooks and adapters;
+current request and operation endpoint receipts replace them. A cited cost
+declaration is a named hunk, not permission to import its surrounding layer.
 
 CNS conflicts are direct. Old actor ports rewrote the same page, put-article,
 source, fetch, post-commit and callback regions as the current retained payload
