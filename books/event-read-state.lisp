@@ -10,7 +10,9 @@
   (cut-commit :u60) (cut-event :u60) (commit :u60) (next-event :u60)
   (extent :u32) (epoch :u60) (allocation :u60) (first :u60) (members :u32)
   (slot :u32) (gen :u60) (checker :u32) (field-base :u32) (leaf-digest :u32)
-  (body-off :u32) (body-len :u32) (op-slot :u32) (op-gen :u60) (pending :bool)))
+  (body-off :u32) (body-len :u32) (op-slot :u32) (op-gen :u60) (pending :bool)
+  ; Physical identity captured from the owner-bound configured origin.
+  (history :u60) (history-incarnation :u60)))
 
 (defun fn2-event-read-harvest (opslot opgen cell evkind outcome reason count aux0 aux1 fn2-event-read)
  (declare (xargs :stobjs fn2-event-read :guard (fn2-event-read-wfp fn2-event-read)))

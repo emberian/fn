@@ -14,7 +14,7 @@
 (defcost fn2-checkpoint-events-step :child fn2-event-producer-step :answers t :bytes 4096
  :tables (fn2-core-event-build fn2-core-event-read fn2-core-journal-members fn2-core-mk
           fn2-core-fc fn2-core-fc-context fn2-core-b3 fn2-core-checkpoint-construction
-          fn2-core-extents fn2-core-alloc-edges fn2-core-fields fn2-core-pool fn2-core-digests fn2-core-control)
+          fn2-core-extents fn2-core-alloc-edges fn2-core-fields fn2-core-pool fn2-core-digests fn2-core-checkpoint-build fn2-core-control)
  :doc "Advance bounded authentication/source construction without issuing physical IO; pending and pressure are explicit.")
 (defcost fn2-checkpoint-events-read :child fn2-event-producer-issue :answers t :bytes 4096 :descriptors 1
  :tables (fn2-core-event-build fn2-core-event-read fn2-core-extents fn2-core-alloc-edges fn2-core-pool fn2-core-ops fn2-core-control)

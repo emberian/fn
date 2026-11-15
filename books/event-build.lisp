@@ -21,7 +21,9 @@
       (equal (fn2-event-build-cut-event 0 fn2-event-build) (fn2-csnapshot-cut-event 0 fn2-csnapshot))
       (fn2-checkpoint-builder-ownerp (fn2-event-build-candidate 0 fn2-event-build) (fn2-event-build-token 0 fn2-event-build)
        (fn2-event-build-owner-kind 0 fn2-event-build) (fn2-event-build-owner-slot 0 fn2-event-build)
-       (fn2-event-build-owner-gen 0 fn2-event-build) fn2-checkpoints)))
+       (fn2-event-build-owner-gen 0 fn2-event-build) fn2-checkpoints)
+      (equal (fn2-event-build-history 0 fn2-event-build) (fn2-checkpoints-history (fn2-event-build-candidate 0 fn2-event-build) fn2-checkpoints))
+      (equal (fn2-event-build-history-incarnation 0 fn2-event-build) (fn2-checkpoints-incarnation (fn2-event-build-candidate 0 fn2-event-build) fn2-checkpoints))))
 
 (defun fn2-event-build-begin (c token slot gen scratch sgen okind oslot ogen
                              fn2-event-build fn2-event-read fn2-csnapshot fn2-checkpoints fn2-checkpoint-refs fn2-checkpoint-bytes
@@ -34,6 +36,7 @@
                       (list *fn2-event-build-phase-idle* *fn2-event-build-phase-auth-ready*))
                      (fn2-checkpoint-slotp c fn2-checkpoints fn2-checkpoint-refs fn2-checkpoint-bytes)
                      (fn2-checkpoint-builder-ownerp c token okind oslot ogen fn2-checkpoints)
+                     (fn2-origin-physicalp (fn2-checkpoints-history c fn2-checkpoints) (fn2-checkpoints-incarnation c fn2-checkpoints))
                      (fn2-event-frontier-source-p token okind oslot ogen fn2-event-read fn2-csnapshot fn2-mk fn2-fc fn2-digests)))
        (mv :source fn2-event-build))
       (cut (fn2-csnapshot-cut-commit 0 fn2-csnapshot))
@@ -51,7 +54,7 @@
        (slot slot) (gen gen) (scratch scratch) (scratch-gen sgen)
        (role 3) (ordinal (- pages 1)) (pages pages) (first 0) (end 0) (entry 0)
        (claimed 0) (zero 0) (peak 0) (payload 0) (has-child 0)
-       (directory-completed 0) (frontier-completed 0))))
+       (directory-completed 0) (frontier-completed 0) (history (fn2-checkpoints-history c fn2-checkpoints)) (history-incarnation (fn2-checkpoints-incarnation c fn2-checkpoints)))))
   (mv :ok fn2-event-build)))
 
 (defun fn2-event-build-reserve (fn2-event-build fn2-csnapshot fn2-checkpoints fn2-checkpoint-construction fn2-extents fn2-control)
@@ -177,7 +180,7 @@
         (fn2-event-build-owner-kind 0 fn2-event-build) (fn2-event-build-owner-slot 0 fn2-event-build)
         (fn2-event-build-owner-gen 0 fn2-event-build) 3 (fn2-event-build-ordinal 0 fn2-event-build)
         (fn2-event-build-extent 0 fn2-event-build) (fn2-event-build-epoch 0 fn2-event-build)
-        (fn2-event-build-allocation 0 fn2-event-build) 1 1
+        (fn2-event-build-allocation 0 fn2-event-build) (fn2-event-build-history 0 fn2-event-build) (fn2-event-build-history-incarnation 0 fn2-event-build)
         (fn2-event-build-cut-commit 0 fn2-event-build) (fn2-event-build-cut-event 0 fn2-event-build)
         (fn2-event-build-cut-commit 0 fn2-event-build) (fn2-event-build-first 0 fn2-event-build) count *fn2-event-proof-slots* base
         (fn2-event-build-slot 0 fn2-event-build) (fn2-event-build-gen 0 fn2-event-build)
@@ -226,8 +229,8 @@
                      (equal (fn2-checkpoint-refs-encoded-length r fn2-checkpoint-refs) *fn2-format-page-size*)
                      (fn2-checkpoint-page-completed-extent-p token kind owner generation 3 0 child fn2-checkpoint-page-verified fn2-checkpoint-construction fn2-extents)
                      (equal (fn2-checkpoint-page-verified-page-kind child fn2-checkpoint-page-verified) *page-kind-manifest*)
-                     (equal (fn2-checkpoint-page-verified-history child fn2-checkpoint-page-verified) 1)
-                     (equal (fn2-checkpoint-page-verified-incarnation child fn2-checkpoint-page-verified) 1)
+                     (equal (fn2-checkpoint-page-verified-history child fn2-checkpoint-page-verified) (fn2-event-build-history 0 fn2-event-build))
+                     (equal (fn2-checkpoint-page-verified-incarnation child fn2-checkpoint-page-verified) (fn2-event-build-history-incarnation 0 fn2-event-build))
                      (equal (fn2-checkpoint-page-verified-encoded-length child fn2-checkpoint-page-verified) *fn2-format-page-size*)
                      (equal (fn2-checkpoint-refs-writer-epoch r fn2-checkpoint-refs) (fn2-checkpoint-page-verified-epoch child fn2-checkpoint-page-verified))
                      (equal (fn2-checkpoint-refs-allocation r fn2-checkpoint-refs) (fn2-checkpoint-page-verified-allocation child fn2-checkpoint-page-verified))))
@@ -297,7 +300,7 @@
         (fn2-event-build-ordinal 0 fn2-event-build) (fn2-event-build-extent 0 fn2-event-build)
         (fn2-event-build-epoch 0 fn2-event-build) (fn2-event-build-allocation 0 fn2-event-build)
         (if (equal (fn2-event-build-role 0 fn2-event-build) 3) *page-kind-manifest* *page-kind-merkle-node*)
-        1 1 *fn2-format-page-size* (fn2-event-build-payload 0 fn2-event-build) base
+        (fn2-event-build-history 0 fn2-event-build) (fn2-event-build-history-incarnation 0 fn2-event-build) *fn2-format-page-size* (fn2-event-build-payload 0 fn2-event-build) base
         (fn2-event-build-slot 0 fn2-event-build) (fn2-event-build-gen 0 fn2-event-build)
         fn2-checkpoint-construction fn2-extents fn2-fields fn2-pool))
       (fn2-event-build (fn2-event-build-set-phase 0
@@ -323,7 +326,7 @@
         (fn2-event-build-epoch 0 fn2-event-build) (fn2-event-build-allocation 0 fn2-event-build)
         (fn2-event-build-slot 0 fn2-event-build) (fn2-event-build-gen 0 fn2-event-build)
         (if (equal (fn2-event-build-role 0 fn2-event-build) 3) *page-kind-manifest* *page-kind-merkle-node*)
-        1 1 *fn2-format-page-size* fn2-checkpoint-page fn2-checkpoint-page-verified fn2-checkpoint-construction
+        (fn2-event-build-history 0 fn2-event-build) (fn2-event-build-history-incarnation 0 fn2-event-build) *fn2-format-page-size* fn2-checkpoint-page fn2-checkpoint-page-verified fn2-checkpoint-construction
         fn2-csnapshot fn2-extents fn2-pool fn2-fc fn2-fields))
       (fn2-event-build (if (eq code :ok) (fn2-event-build-set-phase 0 *fn2-event-build-phase-bound* fn2-event-build) fn2-event-build)))
   (mv code fn2-event-build fn2-checkpoint-page)))
@@ -352,8 +355,8 @@
                      (equal (fn2-checkpoint-page-verified-epoch e fn2-checkpoint-page-verified) (fn2-event-build-epoch 0 fn2-event-build))
                      (equal (fn2-checkpoint-page-verified-allocation e fn2-checkpoint-page-verified) (fn2-event-build-allocation 0 fn2-event-build))
                      (equal (fn2-checkpoint-page-verified-page-kind e fn2-checkpoint-page-verified) (if (equal role 3) *page-kind-manifest* *page-kind-merkle-node*))
-                     (equal (fn2-checkpoint-page-verified-history e fn2-checkpoint-page-verified) 1)
-                     (equal (fn2-checkpoint-page-verified-incarnation e fn2-checkpoint-page-verified) 1)
+                     (equal (fn2-checkpoint-page-verified-history e fn2-checkpoint-page-verified) (fn2-event-build-history 0 fn2-event-build))
+                     (equal (fn2-checkpoint-page-verified-incarnation e fn2-checkpoint-page-verified) (fn2-event-build-history-incarnation 0 fn2-event-build))
                      (equal (fn2-checkpoint-page-verified-encoded-length e fn2-checkpoint-page-verified) *fn2-format-page-size*)
                      (eq (fn2-pool-workspace-code (fn2-event-build-slot 0 fn2-event-build) (fn2-event-build-gen 0 fn2-event-build)
                            kind owner generation fn2-pool) :ok)

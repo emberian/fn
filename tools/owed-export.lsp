@@ -26,6 +26,7 @@
 (include-book "tests/log-model-unit")
 (include-book "tests/blake3-unit")
 (include-book "tests/merkle-unit")
+(include-book "books/native-b3-evidence")
 (include-book "tests/format-check-unit")
 (include-book "tests/layout-teeth-unit")
 (include-book "tests/commit-proof-unit")

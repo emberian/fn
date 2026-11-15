@@ -3,60 +3,27 @@
 (in-package "ACL2")
 (include-book "std/util/bstar" :dir :system)
 (include-book "boot-kind")
-(include-book "checkpoint-restore-semantic")
-(include-book "runs-served")
+(include-book "checkpoint-restore-semantic-work")
+(include-book "checkpoint-restore-semantic-reach")
 (fn2-book-layer :c)
 (defcost fn2-boot-checkpoint-semantic-begin :answers t :bytes 128
  :tables (fn2-core-checkpoint-restore-semantic fn2-core-fc fn2-core-pool))
 (defcost fn2-boot-checkpoint-semantic-sector :answers t)
-(defcost fn2-boot-checkpoint-semantic-check :child fn2-checkpoint-restore-semantic-page :answers t :bytes 4096
- :tables (fn2-core-checkpoint-restore-semantic fn2-core-fc fn2-core-fc-context fn2-core-b3 fn2-core-fields fn2-core-pool fn2-core-digests))
+(defcost fn2-boot-checkpoint-semantic-check :child fn2-checkpoint-restore-semantic-page-reach :answers t :bytes 4096
+ :tables (fn2-core-checkpoint-restore-semantic fn2-core-checkpoint-restore-reach fn2-core-fc fn2-core-fc-context fn2-core-b3 fn2-core-fields fn2-core-pool fn2-core-digests))
 
-; Only observation of an authenticated retained page reaches this decoder.
-; The tuple stays in the held field stripe until its concrete work consumer
-; accepts it; advancing the cursor is a separate atomic consumption step.
-(defun fn2-checkpoint-restore-semantic-entry (base fn2-checkpoint-restore-semantic fn2-checkpoints fn2-checkpoint-refs fn2-checkpoint-bytes
- fn2-checkpoint-restore-map fn2-checkpoint-restore-map-control fn2-fields fn2-pool)
- (declare (xargs :stobjs (fn2-checkpoint-restore-semantic fn2-checkpoints fn2-checkpoint-refs fn2-checkpoint-bytes fn2-checkpoint-restore-map fn2-checkpoint-restore-map-control fn2-fields fn2-pool)
-  :guard (and (fn2-checkpoint-restore-semantic-wfp fn2-checkpoint-restore-semantic) (fn2-checkpoints-wfp fn2-checkpoints)
-   (fn2-checkpoint-refs-wfp fn2-checkpoint-refs) (fn2-checkpoint-bytes-wfp fn2-checkpoint-bytes) (fn2-checkpoint-restore-map-wfp fn2-checkpoint-restore-map)
-   (fn2-checkpoint-restore-map-control-wfp fn2-checkpoint-restore-map-control) (fn2-fields-wfp fn2-fields) (fn2-pool-wfp fn2-pool))))
- (b* (((unless (and (< 0 (fn2-checkpoint-restore-semantic-rows fn2-checkpoint-restore-semantic))
-                    (equal (fn2-checkpoint-restore-semantic-phase 0 fn2-checkpoint-restore-semantic) *fn2-checkpoint-restore-semantic-phase-entries*)
-                    (fn2-checkpoint-restore-map-current-p fn2-checkpoints fn2-checkpoint-refs fn2-checkpoint-bytes fn2-checkpoint-restore-map fn2-checkpoint-restore-map-control)
-                    (fn2-checkpoint-restore-semantic-source-equal 0 fn2-checkpoint-restore-map-control fn2-checkpoint-restore-semantic)
-                    (equal (fn2-checkpoint-restore-semantic-candidate 0 fn2-checkpoint-restore-semantic)
-                           (fn2-checkpoint-restore-map-control-candidate 0 fn2-checkpoint-restore-map-control))
-                    (equal base (fn2-checkpoint-restore-semantic-field-base 0 fn2-checkpoint-restore-semantic))
-                    (fn2-run-readerp base fn2-fields))) (mv :source fn2-fields))
-      (slot (fn2-checkpoint-restore-semantic-slot 0 fn2-checkpoint-restore-semantic))
-      (gen (fn2-checkpoint-restore-semantic-gen 0 fn2-checkpoint-restore-semantic))
-      (kind (fn2-checkpoint-restore-semantic-owner-kind 0 fn2-checkpoint-restore-semantic))
-      (owner (fn2-checkpoint-restore-semantic-owner-slot 0 fn2-checkpoint-restore-semantic))
-      (generation (fn2-checkpoint-restore-semantic-owner-gen 0 fn2-checkpoint-restore-semantic))
-      (schema (fn2-checkpoint-restore-semantic-schema 0 fn2-checkpoint-restore-semantic))
-      (run (fn2-checkpoint-restore-semantic-run 0 fn2-checkpoint-restore-semantic))
-      (level (fn2-checkpoint-restore-semantic-level 0 fn2-checkpoint-restore-semantic))
-      (entry (fn2-checkpoint-restore-semantic-cursor 0 fn2-checkpoint-restore-semantic))
-      ((unless (and (eq (fn2-pool-workspace-code slot gen kind owner generation fn2-pool) :ok)
-                    (equal (fn2-pool-fill slot fn2-pool) *fn2-format-page-size*))) (mv :window fn2-fields))
-      ((when (>= entry (fn2-checkpoint-restore-semantic-entries 0 fn2-checkpoint-restore-semantic))) (mv :page-end fn2-fields))
-      ((mv code fn2-fields) (fn2-checkpoint-semantic-page-read-header slot gen base schema run level kind owner generation fn2-fields fn2-pool))
-      ((unless (and (eq code :ok) (equal (fn2-run-hdr base entries) (fn2-checkpoint-restore-semantic-entries 0 fn2-checkpoint-restore-semantic))))
-       (mv :source-header fn2-fields))
-      ((mv code end fn2-fields) (fn2-run-nth schema level entry slot gen base kind owner generation fn2-fields fn2-pool)))
-  (mv (if (and (eq code :ok) (natp end)) :entry :format) fn2-fields)))
-(defcost fn2-boot-checkpoint-semantic-entry :child fn2-checkpoint-restore-semantic-entry :answers t
- :tables (fn2-core-fields))
-(fn2-fields-preserves fn2-checkpoint-restore-semantic-entry
- (base fn2-checkpoint-restore-semantic fn2-checkpoints fn2-checkpoint-refs fn2-checkpoint-bytes fn2-checkpoint-restore-map fn2-checkpoint-restore-map-control fn2-fields fn2-pool)
- :position 1)
+(defcost fn2-boot-checkpoint-semantic-consume :child fn2-checkpoint-restore-semantic-consume :answers t
+ :tables (fn2-core-checkpoint-restore-semantic fn2-core-checkpoint-restore-semantic-work fn2-core-fields fn2-core-digests))
+(defcost fn2-boot-checkpoint-semantic-find :child fn2-checkpoint-restore-semantic-find :answers t
+ :tables (fn2-core-checkpoint-restore-semantic fn2-core-fc fn2-core-pool))
 
 (defmacro fn2-boot-checkpoint-semantic-operations ()
  '(progn
   (make-event (value (cons 'progn
-   (append (fn2-arms-op-face-events 'fn2-boot-checkpoint-semantic-check 'fn2-checkpoint-restore-semantic-page (w state))
-           (fn2-arms-op-face-events 'fn2-boot-checkpoint-semantic-entry 'fn2-checkpoint-restore-semantic-entry (w state))))))
+   (append (fn2-arms-op-face-events 'fn2-boot-checkpoint-semantic-check 'fn2-checkpoint-restore-semantic-page-reach (w state))
+           (fn2-arms-op-face-events 'fn2-boot-checkpoint-semantic-entry 'fn2-checkpoint-restore-semantic-entry (w state))
+           (fn2-arms-op-face-events 'fn2-boot-checkpoint-semantic-consume 'fn2-checkpoint-restore-semantic-consume (w state))
+           (fn2-arms-op-face-events 'fn2-boot-checkpoint-semantic-find 'fn2-checkpoint-restore-semantic-find (w state))))))
   (defun fn2-boot-checkpoint-semantic-begin (id ogen fn2-core)
    (declare (xargs :stobjs fn2-core :guard (fn2-core-wfp fn2-core)))
    (if (not (and (eq (fn2-boot-snapshot-read-code id fn2-core) :ok)
@@ -73,7 +40,7 @@
                          (< 0 (fn2-checkpoint-restore-map-control-rows fn2-checkpoint-restore-map-control))
                          (equal c (fn2-checkpoint-restore-map-control-candidate 0 fn2-checkpoint-restore-map-control))))
             (mv :state fn2-checkpoint-restore-semantic fn2-fc fn2-pool))
-           (fn2-checkpoint-restore-semantic (fn2-checkpoint-restore-semantic-init 1 fn2-checkpoint-restore-semantic))
+           (fn2-checkpoint-restore-semantic (fn2-checkpoint-restore-semantic-set-phase 0 *fn2-checkpoint-restore-semantic-phase-idle* fn2-checkpoint-restore-semantic))
            (fn2-fc (fn2-fc-reset 2 fn2-fc))
            ((mv code fn2-pool) (fn2-pool-reset slot gen *fn2-boot-kind* id ogen fn2-pool))
            ((unless (eq code :ok)) (mv code fn2-checkpoint-restore-semantic fn2-fc fn2-pool))

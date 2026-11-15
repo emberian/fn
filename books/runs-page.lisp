@@ -119,15 +119,34 @@
   (mv :ok fn2-run-writers fn2-run-restarts)))
 
 ; Room for an entry of SIZE bytes, counting the restart it may add.
+; Exact occupied end after this entry and its possible restart. This is the
+; served packing decision, also exposed for bounded layout observation. It
+; predicts no page identity, ordering, encoding success or physical completion.
+(defun fn2-run-pack-bound (size cursor entries restarts limit)
+ (declare (xargs :guard (and (natp size) (natp cursor) (natp entries) (natp restarts) (natp limit))))
+ (let* ((next-restarts (+ restarts (if (equal (mod entries *fn2-run-restart-interval*) 0) 1 0)))
+        (end (+ cursor size (* *fn2-run-restart-bytes* next-restarts))))
+  (mv (<= end (min limit *fn2-run-page-size*)) end next-restarts)))
+
 (defun fn2-run-roomp (w size fn2-run-writers)
  (declare (xargs :stobjs fn2-run-writers
   :guard (and (fn2-run-writers-wfp fn2-run-writers) (natp w) (< w (fn2-run-writers-rows fn2-run-writers))
               (natp size))))
- (let* ((entries (fn2-run-writers-entries w fn2-run-writers))
-        (restarts (+ (fn2-run-writers-restarts w fn2-run-writers)
-                     (if (equal (mod entries *fn2-run-restart-interval*) 0) 1 0))))
-  (<= (+ (fn2-run-writers-cursor w fn2-run-writers) size (* *fn2-run-restart-bytes* restarts))
-      (min (fn2-run-writers-limit w fn2-run-writers) *fn2-run-page-size*))))
+ (mv-let (fits end restarts)
+  (fn2-run-pack-bound size (fn2-run-writers-cursor w fn2-run-writers)
+   (fn2-run-writers-entries w fn2-run-writers) (fn2-run-writers-restarts w fn2-run-writers)
+   (fn2-run-writers-limit w fn2-run-writers))
+  (declare (ignore end restarts)) fits))
+
+; The old room predicate is unchanged, including its logical totalization.
+(defthm fn2-run-roomp-by-definition
+ (equal (fn2-run-roomp w size fn2-run-writers)
+  (let* ((entries (fn2-run-writers-entries w fn2-run-writers))
+         (restarts (+ (fn2-run-writers-restarts w fn2-run-writers)
+                      (if (equal (mod entries *fn2-run-restart-interval*) 0) 1 0))))
+   (<= (+ (fn2-run-writers-cursor w fn2-run-writers) size (* *fn2-run-restart-bytes* restarts))
+       (min (fn2-run-writers-limit w fn2-run-writers) *fn2-run-page-size*))))
+ :hints (("Goal" :in-theory (enable fn2-run-roomp fn2-run-pack-bound))))
 
 ; Restarts J .. J+K-1 of writer W, encoded at CURSOR + 4j through the
 ; generated restart codec (one scratch field row).

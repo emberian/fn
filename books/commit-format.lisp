@@ -2,6 +2,7 @@
 (in-package "ACL2")
 (include-book "format-check")
 (include-book "origin")
+(include-book "commit-geometry")
 (fn2-book-layer :b)
 ; B-S2 (§11b S1-S2): a transaction member's workspace holds at most this many
 ; record frames; the records frame's payload bounds a batch's records, each
@@ -20,15 +21,6 @@
 (assert-event (<= (* *fn2-checkpoint-allocation-records-per-ticket*
                      (+ *fn2-format-record-header-max-size* *fn2-format-allocation-max-size*))
                   *fn2-commit-records-room*))
-; One geometry shared by packing, issuing, and the resource model.
-(defconst *fn2-commit-unit-bytes* *fn2-format-sector-size*)
-(defconst *fn2-commit-write-resources* 3)
-; The journal writes three 4 KiB roles in one 64 KiB allocation: 16/3
-; physical packing overhead, with thirteen unused units still owned by the
-; batch. Its I/O rows and charged write bytes remain three and 12,288.
-(defconst *fn2-commit-pools* 4)
-(defconst *fn2-commit-extent-bytes* *fn2-storage-extent-bytes*)
-(defconst *fn2-commit-digest-bytes* 32)
 (defconst *fn2-commit-page-payload* (* 32 (ceiling *fn2-format-page-header-max-size* 32)))
 (defconst *fn2-commit-frame-trailer* (- *fn2-commit-unit-bytes* *fn2-format-frame-trailer-max-size*))
 (defconst *fn2-commit-frame-digest* (- *fn2-commit-unit-bytes* *fn2-commit-digest-bytes*))

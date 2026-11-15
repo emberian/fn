@@ -126,7 +126,8 @@
 (defun fn2-boot-save-anchor-evidence (anchor slot gen id ogen fn2-fields fn2-pool fn2-boot-config)
  (declare (xargs :stobjs (fn2-fields fn2-pool fn2-boot-config)
   :guard (and (fn2-fields-wfp fn2-fields) (fn2-pool-wfp fn2-pool) (fn2-boot-config-wfp fn2-boot-config))))
- (b* (((unless (and (natp anchor) (< anchor 4)
+ (b* (((unless (and (fn2-origin-physicalp (fn2-origin-history fn2-origin) (fn2-origin-history-incarnation fn2-origin))
+                     (natp anchor) (< anchor 4)
                      (<= (+ 256 *fn2-format-anchor-num-fields*) (fn2-fields-rows fn2-fields)))) (mv :bounds fn2-boot-config))
       ((mv code fn2-boot-config) (fn2-boot-save-anchor-digest 32 (* 96 anchor)
         (fn2-fields-ref-off (+ 256 *fn2-format-anchor-field-checkpoint-batch*) fn2-fields) slot gen id ogen fn2-pool fn2-boot-config))
@@ -141,13 +142,13 @@
 ; The expected geometry bytes come from boot's own configuration-bound hash.
 (defun fn2-boot-scan-checkpoint-pool-inner (anchor length slot gen id ogen
                                     fn2-boot-config fn2-checkpoints fn2-checkpoint-refs fn2-checkpoint-bytes
-                                    fn2-fc fn2-fc-context fn2-b3 fn2-fields fn2-pool fn2-digests)
+                                    fn2-fc fn2-fc-context fn2-b3 fn2-fields fn2-pool fn2-origin fn2-digests)
  (declare (xargs :stobjs (fn2-boot-config fn2-checkpoints fn2-checkpoint-refs fn2-checkpoint-bytes
-                          fn2-fc fn2-fc-context fn2-b3 fn2-fields fn2-pool fn2-digests)
+                          fn2-fc fn2-fc-context fn2-b3 fn2-fields fn2-pool fn2-origin fn2-digests)
   :guard (and (fn2-boot-config-wfp fn2-boot-config) (fn2-checkpoints-wfp fn2-checkpoints)
               (fn2-checkpoint-refs-wfp fn2-checkpoint-refs) (fn2-checkpoint-bytes-wfp fn2-checkpoint-bytes)
               (fn2-fc-wfp fn2-fc) (fn2-fc-context-wfp fn2-fc-context) (fn2-b3-wfp fn2-b3)
-              (fn2-fields-wfp fn2-fields) (fn2-pool-wfp fn2-pool) (fn2-digests-wfp fn2-digests))))
+              (fn2-fields-wfp fn2-fields) (fn2-pool-wfp fn2-pool) (fn2-digests-wfp fn2-digests) (fn2-origin-wfp fn2-origin))))
  (b* ((row 2) (base 256) (geometry (fn2-digest-slot 2 *fn2-fc-geometry*))
       ((unless (and (natp anchor) (< anchor 4) (natp length) (<= length *fn2-format-anchor-max-size*)
                      (< row (fn2-fc-rows fn2-fc)) (< row (fn2-fc-context-rows fn2-fc-context))
@@ -175,7 +176,7 @@
       (fn2-digests (if (zp length) (fn2-checkpoint-boot-geometry-copy 0 geometry fn2-boot-config fn2-digests) fn2-digests))
       (fn2-fc (if (zp length) (fn2-fc-reset row fn2-fc) fn2-fc))
       (fn2-fc-context (if (zp length)
-        (fn2-fc-context-put row (location anchor) (history 1) (incarnation 1)
+        (fn2-fc-context-put row (location anchor) (history (fn2-origin-history fn2-origin)) (incarnation (fn2-origin-history-incarnation fn2-origin))
           (hash geometry) (geometry geometry) (previous-seal geometry)) fn2-fc-context))
       ((mv code fn2-checkpoints fn2-checkpoint-refs fn2-checkpoint-bytes fn2-fc fn2-b3 fn2-fields fn2-pool fn2-digests)
        (fn2-checkpoint-restore-anchor-step anchor anchor row slot gen len base *fn2-boot-kind* id ogen 4096
@@ -190,16 +191,16 @@
 
 (defun fn2-boot-scan-checkpoint-pool (anchor length slot gen id ogen
                                     fn2-boot-config fn2-checkpoints fn2-checkpoint-refs fn2-checkpoint-bytes
-                                    fn2-fc fn2-fc-context fn2-b3 fn2-fields fn2-pool fn2-digests)
+                                    fn2-fc fn2-fc-context fn2-b3 fn2-fields fn2-pool fn2-origin fn2-digests)
  (declare (xargs :stobjs (fn2-boot-config fn2-checkpoints fn2-checkpoint-refs fn2-checkpoint-bytes
-                          fn2-fc fn2-fc-context fn2-b3 fn2-fields fn2-pool fn2-digests)
+                          fn2-fc fn2-fc-context fn2-b3 fn2-fields fn2-pool fn2-origin fn2-digests)
   :guard (and (fn2-boot-config-wfp fn2-boot-config) (fn2-checkpoints-wfp fn2-checkpoints)
               (fn2-checkpoint-refs-wfp fn2-checkpoint-refs) (fn2-checkpoint-bytes-wfp fn2-checkpoint-bytes)
               (fn2-fc-wfp fn2-fc) (fn2-fc-context-wfp fn2-fc-context) (fn2-b3-wfp fn2-b3)
-              (fn2-fields-wfp fn2-fields) (fn2-pool-wfp fn2-pool) (fn2-digests-wfp fn2-digests))))
+              (fn2-fields-wfp fn2-fields) (fn2-pool-wfp fn2-pool) (fn2-digests-wfp fn2-digests) (fn2-origin-wfp fn2-origin))))
  (b* (((mv raw len fn2-boot-config fn2-checkpoints fn2-checkpoint-refs fn2-checkpoint-bytes fn2-fc fn2-fc-context fn2-b3 fn2-fields fn2-pool fn2-digests)
        (fn2-boot-scan-checkpoint-pool-inner anchor length slot gen id ogen fn2-boot-config fn2-checkpoints fn2-checkpoint-refs fn2-checkpoint-bytes
-         fn2-fc fn2-fc-context fn2-b3 fn2-fields fn2-pool fn2-digests))
+         fn2-fc fn2-fc-context fn2-b3 fn2-fields fn2-pool fn2-origin fn2-digests))
       (code (if (member-eq raw '(:empty :more :candidate)) raw :invalid))
       (bit (fn2-checkpoint-recovery-census-bit anchor))
       ; The result is consumed in the same transition as the actual checker.
@@ -363,10 +364,10 @@
                (fn2-checkpoint-bytes (fn2-core-checkpoint-bytes fn2-core))
                (fn2-fc (fn2-core-fc fn2-core)) (fn2-fc-context (fn2-core-fc-context fn2-core))
                (fn2-b3 (fn2-core-b3 fn2-core)) (fn2-fields (fn2-core-fields fn2-core))
-               (fn2-pool (fn2-core-pool fn2-core)) (fn2-digests (fn2-core-digests fn2-core)))
+               (fn2-pool (fn2-core-pool fn2-core)) (fn2-digests (fn2-core-digests fn2-core)) (fn2-origin (fn2-core-origin fn2-core)))
     (code len fn2-boot-config fn2-checkpoints fn2-checkpoint-refs fn2-checkpoint-bytes fn2-fc fn2-fc-context fn2-b3 fn2-fields fn2-pool fn2-digests)
     (fn2-boot-scan-checkpoint-pool anchor length slot gen id ogen fn2-boot-config
-      fn2-checkpoints fn2-checkpoint-refs fn2-checkpoint-bytes fn2-fc fn2-fc-context fn2-b3 fn2-fields fn2-pool fn2-digests)
+      fn2-checkpoints fn2-checkpoint-refs fn2-checkpoint-bytes fn2-fc fn2-fc-context fn2-b3 fn2-fields fn2-pool fn2-origin fn2-digests)
     (mv (if (member-eq code '(:empty :more :candidate)) code :invalid) len fn2-core))))
  (fn2-core-preserves fn2-boot-scan-checkpoint (anchor length slot gen id ogen fn2-core) :position 2 :rows nil)
 
@@ -769,10 +770,20 @@
            ((:entries) (:next :checkpoint-semantic-entries) (:charge :bytes 4096 :steps *fn2-work-stage* :runnable t))
            (:otherwise (:stop :checkpoint)))))
   (:checkpoint-semantic-entries :on-refusal ((:stop :checkpoint))
-   (:do (code) (fn2-boot-checkpoint-semantic-entry 256) :accept (:entry :page-end))
-   ; Entry bytes remain retained here until the typed child/payload consumer
-   ; is connected. Decoding alone does not authorize selection or serving.
-   (:stop :checkpoint))
+   (:do (code) (fn2-boot-checkpoint-semantic-consume 256) :accept ()
+    :case (((:more) (:next :checkpoint-semantic-entries) (:charge :bytes 512 :steps *fn2-work-stage* :runnable t))
+           ((:find) (:next :checkpoint-semantic-find) (:charge :steps *fn2-work-stage* :runnable t))
+           ; A payload leaf stays retained until its actual physical closure
+           ; consumer completes; it cannot be counted or skipped here.
+           (:otherwise (:stop :checkpoint)))))
+  (:checkpoint-semantic-find :on-refusal ((:stop :checkpoint))
+   (:do (code) (fn2-boot-checkpoint-semantic-find) :accept ()
+    :case (((:read) (:set (root-cursor 0)) (:next :checkpoint-semantic-load) (:charge :bytes 32 :steps *fn2-work-stage* :runnable t))
+           ((:tree-ready) (:if (< row-checkpoint-index 3)
+                     ((:set (checkpoint-index (+ 1 row-checkpoint-index))) (:next :checkpoint-root-candidate)
+                      (:charge :steps *fn2-work-stage* :runnable t))
+                     ((:next :checkpoint-census) (:charge :steps *fn2-work-small* :runnable t))))
+           (:otherwise (:stop :checkpoint)))))
   (:checkpoint-census
    (:do (code) (fn2-boot-checkpoint-census id row-generation) :accept ()
     :case (((:more) (:next :checkpoint-census) (:charge :bytes 512 :steps *fn2-work-stage* :runnable t))

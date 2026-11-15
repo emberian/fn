@@ -23,13 +23,16 @@
         (<= (fn2-profile-get :compress-output-quantum profile)
             (fn2-profile-get :compress-expansion-burst profile))))))
 
-(defun fn2-compress-admit (authenticated active deflate profile)
+(defun fn2-compress-admission (authenticated active deflate enabled)
  (declare (xargs :guard t))
  (cond ((not authenticated) :auth-required)
        (active :running)
-       ((or (not deflate) (not (fn2-compress-profilep profile))
-            (not (fn2-profile-get :compress-enabled profile))) :algorithm)
+       ((or (not deflate) (not enabled)) :algorithm)
        (t :started)))
+(defun fn2-compress-admit (authenticated active deflate profile)
+ (declare (xargs :guard t))
+ (fn2-compress-admission authenticated active deflate
+  (and (fn2-compress-profilep profile) (fn2-profile-get :compress-enabled profile))))
 
 ; Output credit begins at BURST. Each successfully observed compressed input
 ; octet earns RATIO credit; produced application octets spend it. Saturation

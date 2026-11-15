@@ -5,6 +5,7 @@
 (in-package "ACL2")
 (include-book "commit-format")
 (include-book "alloc")
+(include-book "pool-digest")
 (fn2-book-layer :b)
 (local (in-theory (disable fn2-digests-rows fn2-digestsp fn2-digests-wfp fn2-poolp fn2-pool-wfp
  fn2-fc-context-rows fn2-fc-contextp fn2-fc-context-wfp)))
@@ -18,6 +19,7 @@
 (defcolumns fn2-rec-cand
  ((status (:enum fn2-rec-status (:unread :empty :invalid :unreadable :candidate :chained :payload)))
   (commit :u60) (epoch :u60) (allocation :u60) (first :u60) (last :u60)
+  (history :u60) (history-incarnation :u60)
   (seal-off :u32) (seal-len :u32) (owner-kind :u8) (owner :u60)))
 
 ; Classification and witness outcome vocabularies (ROUND2 §E.4, scholar ch. 4).
@@ -83,43 +85,6 @@
    (cond ((not (eq code :ok)) (mv code nil))
          ((not (equal byte 0)) (mv :ok t))
          (t (fn2-rec-nonzero (- left 1) slot gen (+ 1 off) okind oslot ogen fn2-pool))))))
-
-(defun fn2-rec-byte-at (slot gen off okind oslot ogen fn2-pool)
- (declare (xargs :stobjs fn2-pool :guard (and (fn2-pool-wfp fn2-pool) (natp off))))
- (mv-let (code byte) (fn2-pool-read slot gen off okind oslot ogen fn2-pool)
-  (mv code (if (and (eq code :ok) (unsigned-byte-p 8 byte)) byte 0))))
-(defthm fn2-rec-byte-at-natp
- (natp (mv-nth 1 (fn2-rec-byte-at slot gen off okind oslot ogen fn2-pool)))
- :rule-classes :type-prescription)
-(defthm fn2-rec-byte-at-bound
- (< (mv-nth 1 (fn2-rec-byte-at slot gen off okind oslot ogen fn2-pool)) 256)
- :rule-classes :linear)
-(in-theory (disable fn2-rec-byte-at))
-
-; Load 32 little-endian bytes at off into digest row dst, word k first.
-(defun fn2-rec-fetch (k dst slot gen off okind oslot ogen fn2-pool fn2-digests)
- (declare (xargs :stobjs (fn2-pool fn2-digests) :measure (nfix (- 8 (nfix k)))
-  :guard (and (fn2-pool-wfp fn2-pool) (fn2-digest-rowp dst fn2-digests)
-              (natp k) (<= k 8) (natp off))))
- (if (or (not (natp k)) (>= k 8)) (mv :ok fn2-digests)
-  (b* ((at (+ off (* 4 k)))
-       ((mv c0 b0) (fn2-rec-byte-at slot gen at okind oslot ogen fn2-pool))
-       ((mv c1 b1) (fn2-rec-byte-at slot gen (+ 1 at) okind oslot ogen fn2-pool))
-       ((mv c2 b2) (fn2-rec-byte-at slot gen (+ 2 at) okind oslot ogen fn2-pool))
-       ((mv c3 b3) (fn2-rec-byte-at slot gen (+ 3 at) okind oslot ogen fn2-pool))
-       ((unless (and (eq c0 :ok) (eq c1 :ok) (eq c2 :ok) (eq c3 :ok)))
-        (mv (if (eq c0 :ok) (if (eq c1 :ok) (if (eq c2 :ok) c3 c2) c1) c0) fn2-digests))
-       (word (+ b0 (* 256 b1) (* 65536 b2) (* 16777216 b3)))
-       (fn2-digests (fn2-digest-set-word dst k word fn2-digests)))
-   (fn2-rec-fetch (+ 1 k) dst slot gen off okind oslot ogen fn2-pool fn2-digests))))
-(defthm fn2-rec-fetch-shape
- (implies (and (fn2-digestsp fn2-digests) (fn2-digest-rowp dst fn2-digests))
-  (and (fn2-digestsp (mv-nth 1 (fn2-rec-fetch k dst slot gen off okind oslot ogen fn2-pool fn2-digests)))
-       (fn2-digests-wfp (mv-nth 1 (fn2-rec-fetch k dst slot gen off okind oslot ogen fn2-pool fn2-digests)))
-       (equal (fn2-digests-rows (mv-nth 1 (fn2-rec-fetch k dst slot gen off okind oslot ogen fn2-pool fn2-digests)))
-              (fn2-digests-rows fn2-digests))))
- :hints (("Goal" :in-theory (disable fn2-digestsp fn2-digests-wfp fn2-digests-rows))))
-(in-theory (disable fn2-rec-fetch))
 
 (defun fn2-rec-zero-digest (dst fn2-digests)
  (declare (xargs :stobjs fn2-digests :guard (fn2-digest-rowp dst fn2-digests)))

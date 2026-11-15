@@ -65,8 +65,10 @@
                    (fn2-fc (fn2-core-fc fn2-core)) (fn2-extents (fn2-core-extents fn2-core))
                    (fn2-pool (fn2-core-pool fn2-core)) (fn2-control (fn2-core-control fn2-core)))
         (code fn2-checkpoint-build fn2-checkpoints fn2-checkpoint-construction fn2-extents fn2-control)
-        (fn2-checkpoint-build-begin 1 0 token ds dg ss sg 7 0 1 fn2-checkpoint-build fn2-csnapshot fn2-checkpoints
-          fn2-checkpoint-refs fn2-checkpoint-bytes fn2-fields fn2-fc fn2-checkpoint-construction fn2-extents fn2-pool fn2-control)
+        (with-local-stobj fn2-origin
+        (let ((fn2-origin (fn2-origin-prepare '((:origin-lineage . 101) (:origin-domain . 103) (:origin-incarnation . 107) (:history-id . 1) (:history-incarnation . 1)) fn2-origin)))
+         (fn2-checkpoint-build-begin 1 0 token ds dg ss sg 7 0 1 fn2-checkpoint-build fn2-csnapshot fn2-checkpoints
+          fn2-checkpoint-refs fn2-checkpoint-bytes fn2-fields fn2-fc fn2-checkpoint-construction fn2-extents fn2-pool fn2-origin fn2-control)))
         (mv code fn2-checkpoint-build fn2-checkpoints fn2-checkpoint-construction fn2-core)))
       ((mv pressurized fn2-core) (if pressure (fn2-evb-pressure rows fn2-core) (mv :ok fn2-core)))
       ((mv begun fn2-event-build)

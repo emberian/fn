@@ -1,0 +1,162 @@
+; Compression policy over the shared capability and application ledgers.
+(in-package "ACL2")
+(include-book "compress-transport-ops")
+(include-book "compress-operation")
+(include-book "std/util/bstar" :dir :system)
+(fn2-book-layer :d)
+
+; RECEIVE is a logical direction bit supplied by the admitted host boundary.
+; Every physical request reserves the SAME serial in both shared ledgers.
+(defun fn2-compress-record-next
+ (cap nonce slot generation receive extent fn2-compress-operation fn2-compress-transport)
+ (declare (xargs :stobjs (fn2-compress-operation fn2-compress-transport) :verify-guards nil
+  :guard (and (fn2-compress-operation-wfp fn2-compress-operation)
+              (fn2-compress-transport-wfp fn2-compress-transport)
+              (= (fn2-compress-transport-rows fn2-compress-transport) 1))))
+ (b* (((unless (unsigned-byte-p 1 receive))
+       (mv :bounds 0 fn2-compress-operation fn2-compress-transport))
+      ((mv code fn2-compress-operation)
+       (fn2-compress-operation-bind cap nonce slot generation extent fn2-compress-operation))
+      ((unless (eq code :ok)) (mv code 0 fn2-compress-operation fn2-compress-transport))
+      ((when (not (= (fn2-compress-operation-pending-serial 0 fn2-compress-operation) 0)))
+       (let ((serial (fn2-compress-operation-pending-serial 0 fn2-compress-operation)))
+        (mv (if (and (fn2-compress-transport-match-p cap nonce slot generation serial fn2-compress-transport)
+                     (member-equal (fn2-compress-transport-pending 0 fn2-compress-transport) '(5 6))
+                     (equal (fn2-compress-transport-pending 0 fn2-compress-transport)
+                            (fn2-compress-operation-pending-action 0 fn2-compress-operation))) :ok :pending)
+            serial fn2-compress-operation fn2-compress-transport)))
+      ((when (not (= (fn2-compress-transport-pending 0 fn2-compress-transport) 0)))
+       (mv :pending 0 fn2-compress-operation fn2-compress-transport))
+      (source (fn2-compress-operation-source-progress 0 fn2-compress-operation))
+      (sink (fn2-compress-operation-sink-progress 0 fn2-compress-operation))
+      ((unless (and (= (fn2-compress-transport-terminal 0 fn2-compress-transport) 3)
+                    (= (fn2-compress-transport-alive 0 fn2-compress-transport) 1)))
+       (mv :failed (if (= receive 1) sink source) fn2-compress-operation fn2-compress-transport))
+      (iq (fn2-compress-transport-input-quantum 0 fn2-compress-transport))
+      (oq (fn2-compress-transport-output-quantum 0 fn2-compress-transport))
+      (drain (< (fn2-compress-transport-output-offset 0 fn2-compress-transport)
+                (fn2-compress-transport-output-length 0 fn2-compress-transport)))
+      ((when (and (not drain)
+                  (or (= extent 0) (and (= receive 1) (< 0 sink))
+                      (and (= receive 0) (= source extent)
+                           (= (fn2-compress-operation-flush-complete 0 fn2-compress-operation) 1)))))
+       (mv :done (if (= receive 1) sink source) fn2-compress-operation fn2-compress-transport))
+      (serial (+ 1 (fn2-compress-transport-serial 0 fn2-compress-transport)))
+      (action (if drain 5 (if (= receive 1)
+                  (if (= (fn2-compress-operation-need-input 0 fn2-compress-operation) 1) 6 10) 11)))
+      (source-count (if (= action 11) (min iq (nfix (- extent source))) 0))
+      (sink-count (if (= action 10)
+                      (min (nfix (- extent sink))
+                           (min oq (fn2-compress-transport-credit 0 fn2-compress-transport))) 0))
+      ((unless (fn2-compress-operation-requestable-p serial action source-count sink-count fn2-compress-operation))
+       (mv :bounds 0 fn2-compress-operation fn2-compress-transport))
+      ((mv code serial fn2-compress-transport)
+       (cond (drain (fn2-compress-transport-select-drain cap nonce slot generation fn2-compress-transport))
+             ((= action 6) (fn2-compress-transport-select-fill cap nonce slot generation fn2-compress-transport))
+             ((= receive 1) (fn2-compress-transport-select-decode cap nonce slot generation sink extent fn2-compress-transport))
+             (t (fn2-compress-transport-select-encode cap nonce slot generation source extent
+                  (fn2-compress-operation-flush-complete 0 fn2-compress-operation) fn2-compress-transport))))
+      ((unless (eq code :ok))
+       (let ((fn2-compress-transport
+              (if (eq code :limit) (fn2-compress-transport-put 0 (terminal 2)) fn2-compress-transport)))
+        (mv (if (eq code :limit) :failed code) (if (= receive 1) sink source)
+            fn2-compress-operation fn2-compress-transport)))
+      ((mv code fn2-compress-operation)
+       (fn2-compress-operation-request serial action source-count sink-count fn2-compress-operation)))
+  (mv code serial fn2-compress-operation fn2-compress-transport)))
+
+; Both observers validate before application policy changes. A stale or replayed
+; completion cannot replenish credit, finish a flush or advance application work.
+(defun fn2-compress-record-observe
+ (cap nonce slot generation serial raw used made errno fn2-compress-operation fn2-compress-transport)
+ (declare (xargs :stobjs (fn2-compress-operation fn2-compress-transport) :verify-guards nil
+  :guard (and (fn2-compress-operation-wfp fn2-compress-operation)
+              (= (fn2-compress-operation-rows fn2-compress-operation) 1)
+              (fn2-compress-transport-wfp fn2-compress-transport)
+              (= (fn2-compress-transport-rows fn2-compress-transport) 1))))
+ (b* ((action (fn2-compress-transport-pending 0 fn2-compress-transport))
+      (app-used (if (= action 11) used 0))
+      (app-made (if (= action 10) made 0))
+      ((unless (and (fn2-compress-transport-match-p cap nonce slot generation serial fn2-compress-transport)
+                    (equal action (fn2-compress-operation-pending-action 0 fn2-compress-operation))
+                    (equal cap (fn2-compress-operation-cap 0 fn2-compress-operation))
+                    (equal nonce (fn2-compress-operation-nonce 0 fn2-compress-operation))
+                    (equal slot (fn2-compress-operation-slot 0 fn2-compress-operation))
+                    (equal generation (fn2-compress-operation-generation 0 fn2-compress-operation))
+                    (member-equal action '(5 6 10 11))
+                    (fn2-compress-operation-observable-p serial app-used app-made fn2-compress-operation)))
+       (mv :stale fn2-compress-operation fn2-compress-transport))
+      (requested-output (fn2-compress-transport-request-out-count 0 fn2-compress-transport))
+      ((mv policy credit)
+       (if (= action 10)
+           (fn2-compress-observe raw used made
+            (fn2-compress-transport-request-in-count 0 fn2-compress-transport) requested-output
+            (fn2-compress-transport-credit 0 fn2-compress-transport)
+            (fn2-compress-transport-ratio 0 fn2-compress-transport)
+            (fn2-compress-transport-burst 0 fn2-compress-transport))
+         (mv (if (equal raw 0) :progress :failed)
+             (fn2-compress-transport-credit 0 fn2-compress-transport))))
+      ((when (eq policy :bounds)) (mv :bounds fn2-compress-operation fn2-compress-transport))
+      ((mv code fn2-compress-transport)
+       (fn2-compress-transport-observe-spans cap nonce slot generation serial raw used made errno fn2-compress-transport))
+      ((unless (eq code :ok)) (mv code fn2-compress-operation fn2-compress-transport))
+      ((mv code fn2-compress-operation)
+       (fn2-compress-operation-observe serial app-used app-made fn2-compress-operation))
+      (fn2-compress-transport
+       (if (member-equal policy '(:failed :final))
+           (fn2-compress-transport-put 0 (credit credit) (terminal 2))
+         (fn2-compress-transport-put 0 (credit credit))))
+      (fn2-compress-operation
+       (if (= action 6) (fn2-compress-operation-put 0 (need-input 0))
+        (if (and (= action 10) (eq policy :need-input))
+            (fn2-compress-operation-put 0 (need-input 1)) fn2-compress-operation)))
+      (fn2-compress-operation
+       (if (and (= action 11) (equal raw 0)
+                (= (fn2-compress-operation-source-progress 0 fn2-compress-operation)
+                   (fn2-compress-operation-extent 0 fn2-compress-operation))
+                (< made requested-output))
+           (fn2-compress-operation-put 0 (flush-complete 1))
+         fn2-compress-operation)))
+  (mv (if (eq code :ok) policy code) fn2-compress-operation fn2-compress-transport)))
+
+; Carrier results arrive either from a completed TLS child or a raw syscall.
+; A blocked child retains the SAME parent epoch; it never earns decode credit.
+(defun fn2-compress-record-carrier-observe
+ (status count errno fn2-compress-operation fn2-compress-transport)
+ (declare (xargs :stobjs (fn2-compress-operation fn2-compress-transport) :verify-guards nil
+  :guard (and (fn2-compress-operation-wfp fn2-compress-operation)
+              (= (fn2-compress-operation-rows fn2-compress-operation) 1)
+              (fn2-compress-transport-wfp fn2-compress-transport)
+              (= (fn2-compress-transport-rows fn2-compress-transport) 1))))
+ (let ((action (fn2-compress-transport-pending 0 fn2-compress-transport)))
+  (cond
+   ((not (member-equal action '(5 6))) (mv :state fn2-compress-operation fn2-compress-transport))
+   ((member-equal status '(:progress :pending :blocked))
+    (mv :blocked fn2-compress-operation fn2-compress-transport))
+   ((not (and (unsigned-byte-p 32 count) (unsigned-byte-p 32 errno)
+              (member-equal status '(:done :eof :failed))))
+    (mv :bounds fn2-compress-operation fn2-compress-transport))
+   (t (fn2-compress-record-observe
+       (fn2-compress-operation-cap 0 fn2-compress-operation)
+       (fn2-compress-operation-nonce 0 fn2-compress-operation)
+       (fn2-compress-operation-slot 0 fn2-compress-operation)
+       (fn2-compress-operation-generation 0 fn2-compress-operation)
+       (fn2-compress-operation-pending-serial 0 fn2-compress-operation)
+       (if (and (eq status :done) (< 0 count)) 0 -1)
+       (if (= action 5) count 0) (if (= action 6) count 0) errno
+       fn2-compress-operation fn2-compress-transport)))))
+
+(defun fn2-compress-record-socket-observe
+ (raw errno fn2-compress-operation fn2-compress-transport)
+ (declare (xargs :stobjs (fn2-compress-operation fn2-compress-transport) :verify-guards nil
+  :guard (and (fn2-compress-operation-wfp fn2-compress-operation)
+              (= (fn2-compress-operation-rows fn2-compress-operation) 1)
+              (fn2-compress-transport-wfp fn2-compress-transport)
+              (= (fn2-compress-transport-rows fn2-compress-transport) 1))))
+ (cond
+  ((not (and (integerp raw) (unsigned-byte-p 32 errno)))
+   (mv :bounds fn2-compress-operation fn2-compress-transport))
+  ((and (< raw 0) (member-equal errno '(4 11 35)))
+   (fn2-compress-record-carrier-observe :blocked 0 errno fn2-compress-operation fn2-compress-transport))
+  (t (fn2-compress-record-carrier-observe (if (< 0 raw) :done :failed) (if (< raw 0) 0 raw) errno
+       fn2-compress-operation fn2-compress-transport))))
