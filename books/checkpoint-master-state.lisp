@@ -26,7 +26,8 @@
           :retention-begin :retention-source :publish-start :publish-wait :release :release-complete :thaw :event-rearm :rearm :snapshot-release :teardown-begin :teardown-source :teardown-submit :teardown-wait :teardown-drop :teardown-holding-uncertain :teardown-uncertain :teardown-retained :done
           :admission-refused :refused :uncertain :loan-uncertain
           :summary-authority-begin :summary-authority-copy :rebase-begin :rebase-source :rebase-consume :rebase-archive
-          :teardown-transfer-begin :teardown-transfer-copy :teardown-select)
+          :teardown-transfer-begin :teardown-transfer-copy :teardown-select
+          :teardown-cold-next :teardown-cold-begin :teardown-cold-copy :teardown-cold-ack)
  :fields ((pending :u32) (stopped :bool) (token :u60)
           (scan :u32) (highest :u60) (candidate :u32) (candidate-found :bool) (checkpoint :u60)
           (page-slot :u32) (page-gen :u60) (scratch-slot :u32) (scratch-gen :u60) (read-slot :u32) (read-gen :u60)
@@ -66,5 +67,6 @@
         (:retention-begin) (:retention-source) (:publish-start) (:publish-wait) (:release) (:release-complete) (:thaw) (:event-rearm) (:rearm) (:snapshot-release) (:teardown-begin) (:teardown-source) (:teardown-submit) (:teardown-wait) (:teardown-drop) (:teardown-holding-uncertain) (:teardown-uncertain) (:teardown-retained) (:done)
         (:admission-refused) (:refused) (:uncertain) (:loan-uncertain)
           (:summary-authority-begin) (:summary-authority-copy) (:rebase-begin) (:rebase-source) (:rebase-consume) (:rebase-archive)
-          (:teardown-transfer-begin) (:teardown-transfer-copy) (:teardown-select))
+          (:teardown-transfer-begin) (:teardown-transfer-copy) (:teardown-select)
+          (:teardown-cold-next) (:teardown-cold-begin) (:teardown-cold-copy) (:teardown-cold-ack))
  :observes ((:read-result)))
