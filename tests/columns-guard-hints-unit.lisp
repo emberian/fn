@@ -75,7 +75,10 @@
   :guard (and (fn2-guard-output-wfp fn2-guard-output) (natp i)
               (< i (fn2-guard-output-rows fn2-guard-output)))))
  (fn2-guard-output-set-value i 1 fn2-guard-output))
-(fn2-guard-output-preserves fn2-guard-increment (i fn2-guard-output) :disable nil)
+(make-event
+ (let ((guard (getpropc 'fn2-guard-increment 'guard :missing (w state))))
+  (value `(fn2-guard-output-preserves fn2-guard-increment (i fn2-guard-output)
+           :disable nil :hyps (,guard)))))
 (defun fn2-guard-auto-copy (i fn2-guard-output fn2-guard-input)
  (declare (xargs :stobjs (fn2-guard-output fn2-guard-input)
   :guard (and (fn2-guard-output-wfp fn2-guard-output)
