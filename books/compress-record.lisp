@@ -132,8 +132,7 @@
 ; Carrier results arrive either from a completed TLS child or a raw syscall.
 ; A blocked child retains the SAME parent epoch; it never earns decode credit.
 (defun fn2-compress-record-carrier-observe
- (status count errno fn2-compress-operation fn2-compress-transport)
- (declare (ignore errno))
+ (status count fn2-compress-operation fn2-compress-transport)
  (declare (xargs :stobjs (fn2-compress-operation fn2-compress-transport) :verify-guards nil
   :guard (and (fn2-compress-operation-wfp fn2-compress-operation)
               (= (fn2-compress-operation-rows fn2-compress-operation) 1)
