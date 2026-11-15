@@ -47,6 +47,7 @@
 (in-package "ACL2")
 (include-book "machines-c-sealer")
 (include-book "pool-copy")
+(include-book "pool-dimensions")
 (fn2-book-layer :c)
 (local (in-theory (disable fn2-run-layout-fields fn2-run-layout-keys fn2-run-layout-merge fn2-run-layout-size
                            fn2-fold-key-arg fn2-fold-arity fn2-fold-assigned-p fn2-run-layout-octets-max
@@ -521,6 +522,8 @@
   (mv :ok k (- len (+ from k)) fn2-pool)))
 (fn2-pool-preserves fn2-rd-octets (x f from n dslot dgen doff dk ds dg fn2-reads fn2-run-installed fn2-fields fn2-pool) :position 3
  :hints (("Goal" :in-theory (disable fn2-rd-copy fn2-rd-entry-row fn2-pool-rows))))
+(fn2-pool-dimensions fn2-rd-octets :observations (:data)
+ :opaque (fn2-rd-copy fn2-rd-entry-row))
 (in-theory (disable fn2-rd-octets fn2-rd-value))
 
 ; ---------------------------------------------------------------------------
@@ -1017,6 +1020,8 @@
   :guard (and (fn2-reads-wfp fn2-reads) (fn2-run-installed-wfp fn2-run-installed) (fn2-fields-wfp fn2-fields)
    (fn2-pool-wfp fn2-pool))))
  (fn2-rd-octets x f from n dslot dgen doff dk ds dg fn2-reads fn2-run-installed fn2-fields fn2-pool))
+(fn2-pool-dimensions fn2-read-octets-children :observations (:rows :data)
+ :opaque (fn2-rd-octets))
 (defun fn2-read-release-children (x fn2-reads fn2-id-decides fn2-ranges fn2-seeks fn2-succ-txns)
  (declare (xargs :stobjs (fn2-reads fn2-id-decides fn2-ranges fn2-seeks fn2-succ-txns)
   :guard (and (fn2-reads-wfp fn2-reads) (fn2-id-decides-wfp fn2-id-decides) (fn2-ranges-wfp fn2-ranges) (fn2-seeks-wfp
