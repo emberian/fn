@@ -55,10 +55,13 @@ def main():
     image = directory / "node.img"
     control = Path(f"/tmp/fn2-append-fetch-{os.getpid()}-{time.time_ns()}.sock")
     principal = "crash-reader"
-    mid = "<native-append-fetch@example.invalid>"
-    article = crossing_article(mid)
-    article_path = directory / "submitted.article"
-    article_path.write_bytes(article)
+    submissions = []
+    for index in range(2):
+        mid = f"<native-append-fetch-{index}@example.invalid>"
+        article = crossing_article(mid)
+        article_path = directory / f"submitted-{index}.article"
+        article_path.write_bytes(article)
+        submissions.append((mid, article, article_path))
     subprocess.run([str(ROOT / "fn"), "init", str(image), "--size-mb", "32", "--group", "local.test"],
                    cwd=ROOT, env=boundary.environment(), check=True, timeout=600)
     receipts = []
@@ -72,15 +75,19 @@ def main():
             grant = run_fn(directory, f"grant-{right}", "grant", "set", principal, right,
                            "local.test", "--control-sock", control)
             assert grant["outcome"] == "accepted", grant
-        accepted = run_fn(directory, "accepted", "stream", "append", "--as", principal,
-                          "--file", article_path, "--op", "71", "--control-sock", control)
-        assert accepted["outcome"] == "accepted" and accepted["evidence"] == "committed", accepted
-        assert accepted["message_id"] == mid and accepted["position"] > 0, accepted
-        # The actual socket reply has reached this parent before SIGKILL.
+        accepted_articles = []
+        for index, (mid, article, article_path) in enumerate(submissions):
+            accepted = run_fn(directory, f"accepted-{index}", "stream", "append", "--as", principal,
+                              "--file", article_path, "--op", str(71 + index), "--control-sock", control)
+            assert accepted["outcome"] == "accepted" and accepted["evidence"] == "committed", accepted
+            assert accepted["message_id"] == mid and accepted["position"] > 0, accepted
+            accepted_articles.append(accepted)
+        assert len({(a["domain"], a["position"]) for a in accepted_articles}) == len(submissions)
+        # Both actual socket replies have reached this parent before SIGKILL.
         node.kill()
         receipts.append(dict(phase="accepted", node_pid=node.node_pid, exit=node.proc.returncode,
-                             article_octets=len(article),
-                             cut="SIGKILL after parent received accepted committed APPEND reply"))
+                             article_octets=[len(article) for _, article, _ in submissions],
+                             cut="SIGKILL after parent received both accepted committed APPEND replies"))
     finally:
         node.close()
     (directory / "processes.json").write_text(json.dumps(receipts, indent=2) + "\n")
@@ -88,12 +95,15 @@ def main():
                         env=boundary.environment())
     try:
         node.marker(b"LISTENING-LOCAL ")
-        fetched = run_fn(directory, "fetched", "stream", "fetch", mid, "--as", principal,
-                         "--domain", accepted["domain"], "--position", accepted["position"],
-                         "--control-sock", control)
-        (directory / "fetched.article").write_bytes(exact_fetch(fetched, article))
+        for index, ((mid, article, _), accepted) in enumerate(zip(submissions, accepted_articles)):
+            fetched = run_fn(directory, f"fetched-{index}", "stream", "fetch", mid, "--as", principal,
+                             "--domain", accepted["domain"], "--position", accepted["position"],
+                             "--control-sock", control)
+            (directory / f"fetched-{index}.article").write_bytes(exact_fetch(fetched, article))
         # Same occurrence with a different Message-ID must not disclose bytes.
-        denied = run_fn(directory, "wrong-mid", "stream", "fetch", "<wrong@example.invalid>",
+        # Use the other real committed identity, not merely an unknown name.
+        accepted = accepted_articles[1]
+        denied = run_fn(directory, "wrong-mid", "stream", "fetch", submissions[0][0],
                         "--as", principal, "--domain", accepted["domain"],
                         "--position", accepted["position"], "--control-sock", control, expected=1)
         assert denied["outcome"] == "refused" and "article_hex" not in denied, denied
@@ -103,7 +113,7 @@ def main():
     finally:
         node.close()
     (directory / "processes.json").write_text(json.dumps(receipts, indent=2) + "\n")
-    print("NATIVE APPEND/FETCH RESTART PASS: actual local socket, independent fresh process, exact 6144 article octets")
+    print("NATIVE APPEND/FETCH RESTART PASS: actual local socket, independent fresh process, two exact 6144-byte articles")
 
 
 if __name__ == "__main__":
