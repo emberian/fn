@@ -119,9 +119,15 @@ All four served-domain TYPE/WFP contracts and the other three original off-guard
 facets are proved. The actual packer witness asserts its whole stored guard,
 readonly and mutable recognizers, successful packing, exact fill and all four
 output recognizers/invariants. Runtime definitions and guards are unchanged.
-The original stronger off-guard FIELDS-TYPE formula remains explicitly owed,
-not weakened or silently claimed proved; a concrete readonly-hypothesis removal
-candidate is being checked separately.
+The original stronger off-guard FIELDS-TYPE formula is now refuted by an actual
+logical counterexample. Its complete original antecedent holds, while a readonly
+checkpoint value of -1 makes the actual packer's output fail FIELDSP. The guarded
+replacement retains the missing readonly recognizer. Production formula/registry
+bytes remain unchanged: the registry has no refuted state, and this claim must
+not be treated as proved. Exact 34-book record `certify-20261115T124759Z-1337739`
+reuses 32 production books and certifies the connected positive/negative test
+leaves. Root matched all 34 source hashes and keys against the qualified entries.
+Receipt: [readonly counterexample](receipts/member-readonly-counterexample34-record.json).
 Receipt: [member and actual positive](receipts/checkpoint-member-thirty-three-record.json).
 
 The shared `:type-hints` fix replaces member-specific event surgery. Its original
