@@ -51,6 +51,11 @@
              (hint (car (getf (cdddr row) :hints)))
              (theory (getf (cdr hint) :in-theory)))
         (assert (equal (without-hints old) (without-hints new)))
+        (let* ((whole-hint (car (getf (cdddr (second new)) :hints)))
+               (whole-theory (getf (cdr whole-hint) :in-theory))
+               (query (member op '(fn2-pool-query-acquire fn2-pool-query-release))))
+          (dolist (predicate '(fn2-pool-input-code fn2-pool-handle-code fn2-pool-readable-code))
+            (assert (eq (not (null query)) (not (null (member predicate (cdr whole-theory))))))))
         (if (member op pure)
             (progn
               (assert (equal (cadr theory) (list op)))
