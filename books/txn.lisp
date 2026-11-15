@@ -16,6 +16,7 @@
 (in-package "ACL2")
 (include-book "txn-kind")
 (include-book "upload")
+(include-book "upload-stream")
 (fn2-book-layer :d)
 
 ;; The claim walk's chain steps per run: each step compares at most one
@@ -461,6 +462,7 @@
                       ((equal row-filed 0)
                        (:do (fcode verdict selection h evidence coverage) (fn2-identity-facts row-slot))
                        (:do (dcode ds dg doff) (fn2-txn-source-digest-ref row-slot) :accept (:ok))
+                       (:do (lcode le lep lal) (fn2-upload-location-tuple row-upload row-upload-gen) :accept (:ok))
                        (:do (pcode) (fn2-txn-put-post-for row-slot
                                                           (if (equal (:read upload ilen) 0) (:read upload c0-slot) (:read upload lslot))
                                                           (if (equal (:read upload ilen) 0) (:read upload c0-gen) (:read upload lgen))
@@ -468,8 +470,7 @@
                                                           c0 g0 scanned hashed (:read upload ilen)
                                                           ds dg doff
                                                           h row-principal-slot row-lines
-                                                          (:read upload pext) (:read upload pepoch)
-                                                          (:read upload palloc)
+                                                          le lep lal
                                                           (:read upload lslot) (:read upload lgen) *fn2-upload-page-stored-source*
                                                           *fn2-upload-page-location-hashes* (* 32 (:read upload location-hashed))
                                                           (:read upload op)
@@ -571,11 +572,11 @@
                          ;; (every extent its stored octets occupy: the
                          ;; manifest's and each block's)
                          ((:let hrow (fn2-upload-hasher row-upload))
+                          (:do (lcode le lep lal) (fn2-upload-location-tuple row-upload row-upload-gen) :accept (:ok))
                           (:do (acode) (fn2-upload-extents-of t tevent (* 128 hrow)
                                                               (+ (:read upload ilen) (:read upload hashed))
                                                               (:read upload lslot) (:read upload lgen) (:read upload mfill)
-                                                              (:read upload pext) (:read upload pepoch)
-                                                              (:read upload palloc) *fn2-none* 0 0 0
+                                                              le lep lal *fn2-none* 0 0 0
                                                               :owner upload)
                            :accept (:ok))
                           (:set (word *fn2-upload-word-accepted*))

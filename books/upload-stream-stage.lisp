@@ -6,10 +6,10 @@
 
 (defcost fn2-upload-stream-stage :answers (:ok :idle :fault)
   :faults (:fault)
-  :bytes (+ (* 2 *fn2-commit-unit-bytes*) *fn2-upload-digest-octets* 4)
+  :bytes (+ (* 2 *fn2-upload-hash-bytes*) *fn2-upload-digest-octets* 4)
   :tables (fn2-core-machines fn2-core-machine-tables fn2-upload-table
            fn2-core-pool fn2-core-b3 fn2-core-digests)
-  :own-writes (stored-hashed stream-stage-used)
+  :own-writes (stored-hashed stream-stage-used stream-stored-finalized)
   :doc "Hash and stage one available stored-stream span, or finalize its digest at EOF.")
 
 (defmacro fn2-upload-stream-stage-events ()
@@ -72,7 +72,9 @@
              ((unless (eq code :ok)) (mv :fault 0 fn2-core))
              ((mv code fn2-core)
               (fn2-upload-digest-store hrow ls lg *fn2-upload-page-stored-source* id gen fn2-core)))
-          (mv (if (eq code :ok) :ok :fault) 0 fn2-core)))
+          (let ((fn2-core (if (eq code :ok)
+                              (fn2-machine-write-stream-stored-finalized id 1 fn2-core) fn2-core)))
+            (mv (if (eq code :ok) :ok :fault) 0 fn2-core))))
        ((when (equal used *fn2-commit-unit-bytes*)) (mv :idle 0 fn2-core))
        (prefix (< cursor ilen))
        (header (and (not prefix) (< source-cursor header-fill)))
@@ -87,7 +89,7 @@
        (available (cond (prefix (- ilen cursor))
                         (header (- header-fill source-cursor))
                         (t (- stream-end source-cursor))))
-       (length (min (- *fn2-commit-unit-bytes* used) available))
+       (length (min *fn2-upload-hash-bytes* (min (- *fn2-commit-unit-bytes* used) available)))
        (stage-off (+ *fn2-upload-page-stage* used))
        ((unless (posp length)) (mv :idle 0 fn2-core))
        ;; All handles, ownership, filled source octets and destination range
@@ -111,6 +113,7 @@
         (fn2-core-copy-range src src-gen off ls lg stage-off length
                              *fn2-upload-kind* id gen fn2-core))
        ((unless (eq ccode :ok)) (mv :fault 0 fn2-core))
+       (fn2-core (if last (fn2-machine-write-stream-stored-finalized id 1 fn2-core) fn2-core))
        (fn2-core (fn2-machine-write-stored-hashed id (+ cursor length) fn2-core))
        (fn2-core (fn2-machine-write-stream-stage-used id (+ used length) fn2-core)))
     (mv :ok length fn2-core)))
