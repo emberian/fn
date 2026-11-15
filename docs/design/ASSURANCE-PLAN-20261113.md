@@ -24,8 +24,27 @@ then FETCH of the exact original article. It requires intact completed recovery,
 quiet termination and zero stop reason. The shared session helper now accepts
 the existing device; old callers still supply NIL. Execution remains owed.
 This test does not cover native process-death cuts or actual socket restart.
-The native owner is connecting those gates and adding the missing public FETCH
-client encoder/decoder to the existing socket client.
+The native owner is connecting those gates; the public FETCH client is now
+integrated, with runtime execution still pending.
+
+Current served article integration has a concrete workspace mismatch:
+`ordered.lisp` declares 13 article fields including location-hashes, while
+`machines-c-successor.lisp` permits only 12 and `fn2-succ-arg` rejects index 12.
+The fix must derive the shared entry/argument/result regions and B transaction
+stripe from the assembled schema requirements, preserving disjoint write
+footprints and allocation bounds. Raising only the article limit would overlap
+the adjacent workspace. Reclamation owns this repair before APPEND execution.
+The existing 4096-byte bind scratch has not been shown insufficient for the
+current schema inventory; its derivation is part of preventing future drift.
+
+The public client now provides exact-byte FETCH (`099a7a2c8`) and a native
+APPEND/restart/FETCH fixture. Four focused codec/socket-client and exact-byte
+controls pass; actual node execution remains owed. The NNTP parser generator
+hint repair (`3384f2984`) admits its actual generated book in 7.29 seconds.
+FNCT schema declarations (`c2d28dd96`) preserve all 1666 generated events and
+pass completeness/refusal controls; consumer-codec admits in 41.04 seconds in
+the retained application world. Its whole-book proof cost remains above the
+D26 target. These author loads are not record-toolchain certification.
 
 Raw APPEND EOF controls from85c0114a3 are integrated as unexecuted regressions:
 seven real wire sessions require a trailing-CR refusal, empty STATUS, successful
