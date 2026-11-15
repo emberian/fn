@@ -42,7 +42,7 @@
  (let* ((fn2-codec-probe (fn2-codec-probe-init 1 fn2-codec-probe))
         (fn2-codec-probe (fn2-codec-probe-put 0
           (cap 7) (nonce 17) (alive 1) (handle-id 4096) (cleanup-credit 1)
-          (terminal 3) (quantum 4) (input-length 4) (input-offset 1))))
+          (terminal 3) (mode 7) (quantum 4) (input-length 4) (input-offset 1))))
   (mv-let (selected serial fn2-codec-probe)
    (fn2-codec-probe-select 7 17 3 9 10 2 1 3 4 3 0 4 4 fn2-codec-probe)
    (mv-let (too-many fn2-codec-probe)
@@ -57,6 +57,7 @@
       (mv-let (duplicate fn2-codec-probe)
        (fn2-codec-probe-observe-spans 7 17 3 9 serial 0 2 3 0 fn2-codec-probe)
        (mv (and refused (eq observed :ok) (eq duplicate :stale)
+                (= (fn2-codec-probe-mode 0 fn2-codec-probe) 7)
                 (= (fn2-codec-probe-pending 0 fn2-codec-probe) 0)
                 (= (fn2-codec-probe-input-offset 0 fn2-codec-probe) 3)
                 (= (fn2-codec-probe-output-length 0 fn2-codec-probe) 3)

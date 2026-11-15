@@ -5,6 +5,48 @@ Owner: integration. Commissioned by ember on 2026-11-13, following the
 `fn2-squares` remains the obligation store. Reports and public-claim coverage
 must be derived from that store and the actual served call/attachment graph.
 
+## Current integration frontier — 2026-11-14 evening
+
+Root `d18bcfbf2` includes the complete scoped TLS record/private-bridge guard
+changes (`756cef1ee`). The exact twenty-book record reused five qualified parents
+and certified fifteen books; root matched every source digest before and after.
+Native evidence and actual C-backed runtime controls are recorded in
+[NATIVE-B3-CORRESPONDENCE.md](NATIVE-B3-CORRESPONDENCE.md), with their finite scope
+and remaining C/FFI assumptions explicit. These do not establish the full host
+or an encrypted network roundtrip. Layout remains qualified in its nine-book
+scope, with its 56.455-second proof-cost debt still open.
+
+Allocator barriers and expanded existing controls are integrated at `7b2906f74`.
+The twelve-book author gate passed, including all existing protector/model traces
+and direct release-marker interleavings. Review exposed five old test setups that
+acquired durable protectors after retirement; those now use the permitted ordering
+while retaining transient post-retirement races. This changes allocator-dependent
+closure keys. Record certification and composed journal/core qualification remain
+open. The next callback slice uses production generators, but its initial controls
+never called the persisted dispatcher; direct dispatcher controls are now required
+before treating that boundary as tested.
+
+Actual cancellation composition remains a transport blocker. Close removes the
+live capability lookup before a later Cancel, so results must come from retained
+operation state. Productive Receive cancellation must survive the shared result
+normalizer. A completed raw EAGAIN observation settles its physical serial; a
+pending logical TLS child may retain its parent operation. Shared ACL2 closure,
+abort and result-classification work is owned by `served_names` and
+`compress_served`; no host-side state-clearing substitute is authorized.
+
+The Lean canonical extension and packet-bound membership consumer are integrated
+at `d5f21f9af` and `8e08b236e`. The positive generator fixture compiles, and a
+same-ABI changed recursive body fails its exact lookup equality. The actual CNS
+packet, reached domains, MBE correspondence and selected attachments remain owed.
+`recover_lean`, `sol_q1_semantics` and `durability_frames` continue those connections
+and initialized reachable-state proofs. The refuted old arbitrary-state durability
+claim must be replaced and its consumers migrated; the public ACK guarantee stays.
+
+Root owns named compute grants. Convergence is comparing current prerequisite
+closures for actual callback, manifest-serving, parser and CNS packet gates;
+metadata work does not authorize a broad rebuild. Historical scopes below remain
+historical, and authorization remains an independent release blocker.
+
 ## Destination and proof structure
 
 The destination remains a working persistent engine and its intended network
