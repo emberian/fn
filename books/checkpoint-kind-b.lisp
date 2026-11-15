@@ -24,5 +24,5 @@
 (include-book "checkpoint-writer")
 
 (defcorechild fn2-core-checkpoint-summary-authority fn2-checkpoint-summary-authority
- :init (fn2-checkpoint-summary-authority-init 1 fn2-checkpoint-summary-authority)
+ :init (fn2-checkpoint-summary-authority-init 2 fn2-checkpoint-summary-authority)
  :profilep t :why "Exact cold/live sufficient-summary subject, retained frontier and predecessor after the real C consumer completes; distinct from selected-source projection provenance.")
