@@ -9,6 +9,7 @@ ACL2_BOOKS = \
   books/alloc-identity-index-invariant \
   books/alloc-identity-index-initialization \
   books/alloc-identity-index-preservation \
+  books/checkpoint-projection-identity-preservation \
   books/arm-children \
   books/arm-issue-effects \
   books/executor-reservation \
