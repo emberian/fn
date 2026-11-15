@@ -13,7 +13,7 @@ class EvidenceLifecycle(unittest.TestCase):
  def test_one_mapping_stores_and_matches_original_record_tuple(self):
   s=source('release-evidence.lisp')
   mapping=next(read_sexp(f)[2][1] for f in forms(s) if read_sexp(f)[:2]==['defconst','*fn2-release-evidence-inventory-bindings*'])
-  self.assertEqual([r[0] for r in mapping],['journal-history','journal-incarnation','event','extent','epoch','allocation','retirement','installation-history','installation-incarnation'])
+  self.assertEqual([r[0] for r in mapping],['journal-history','journal-incarnation','event','extent','epoch','allocation','retirement','installation-history','installation-incarnation','installation-extent','installation-epoch','installation-allocation'])
   self.assertIn('fn2-release-evidence-inventory-matches',str(function('release-evidence.lisp','fn2-release-evidence-row-matches')))
   self.assertIn('fn2-release-evidence-inventory-put',str(function('release-evidence.lisp','fn2-release-evidence-claim-transition')))
   self.assertIn('fn2-release-evidence-inventory-put-forms *fn2-release-evidence-inventory-bindings*',s)
