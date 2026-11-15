@@ -3,6 +3,22 @@
 (include-book "codec-transport")
 (fn2-book-layer :a)
 
+(defun fn2-codec-stack-guard-events (name upper lower operation world)
+ (declare (xargs :verify-guards nil))
+ (let ((readers
+        (append
+         (fn2-columns-projection-readers upper
+          (fn2-decl-get :columns (fn2-decl-row (list :columns upper) world)))
+         (fn2-columns-projection-readers lower
+          (fn2-decl-get :columns (fn2-decl-row (list :columns lower) world)))
+         (fn2-columns-projection-readers operation
+          (fn2-decl-get :columns (fn2-decl-row (list :columns operation) world)))
+         (list (fn2-columns-sym upper "-ROWS") (fn2-columns-sym lower "-ROWS")
+               (fn2-columns-sym operation "-ROWS")))))
+  `(progn
+   (verify-guards ,(fn2-columns-sym name "-PARENT") :hints (("Goal" :in-theory (disable ,@readers))))
+   (verify-guards ,(fn2-columns-sym name "-SPAN") :hints (("Goal" :in-theory (disable ,@readers)))))))
+
 (defmacro defcodec-stack-bridge (name upper lower operation
  &key (input-quantum-field 'input-quantum) (output-quantum-field 'output-quantum))
  `(progn
@@ -63,4 +79,5 @@
                   (= offset (,(fn2-columns-sym lower "-REQUEST-OUT-OFFSET") 0 ,lower)) (= count (,(fn2-columns-sym lower "-REQUEST-OUT-COUNT") 0 ,lower))
                   (= extent (,(fn2-columns-sym lower "-REQUEST-OUT-EXTENT") 0 ,lower)))))
       (mv :ok channel (+ base offset) count)
-    (mv :stale 0 0 0))))))
+    (mv :stale 0 0 0))))
+(make-event (value (fn2-codec-stack-guard-events ',name ',upper ',lower ',operation (w state))))))
