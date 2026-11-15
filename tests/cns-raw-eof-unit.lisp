@@ -55,7 +55,12 @@
   (declare (xargs :verify-guards nil))
   (let* ((r (fn2-cre-run n split)) (replies (nth 2 r))
          (accepted (nth 3 replies)) (position (car (nth 2 accepted))))
-    (and (equal (len replies) 5)
+    ; :quiet alone also means a fatal core stop in fn2-cw-loop. Require
+    ; both its idle termination and zero stop reason, plus real epoch setup.
+    (and (eq (nth 0 r) :ok)
+         (eq (nth 1 r) :quiet)
+         (equal (nth 3 r) 0)
+         (equal (len replies) 5)
          (equal (nth 0 replies) '(:accepted "" 0))
          (equal (nth 1 replies) '(:refused "framing" nil))
          (equal (nth 2 replies) '(:accepted "" (0 0 0)))
