@@ -559,9 +559,26 @@
    ;; and principal-bind read them, and where the profile must give the
    ;; directory its overlay. A profile serving no authority (the tiny unit
    ;; profiles) has no reader of the names and need not hold the overlay.
-   (defun fn2-principals-genesis (profile fn2-core)
+      ; Read already-bound actor identities. This never increments incarnation.
+   ; The owner slot is trusted startup configuration; IDs come from accounts.
+   (defun fn2-principals-bound-genesis-ids (owner-slot fn2-core)
     (declare (xargs :stobjs fn2-core :guard (fn2-core-wfp fn2-core)))
-    (mv-let (code ids fn2-core) (fn2-principals-bind-genesis profile fn2-core)
+    (stobj-let ((fn2-accounts (fn2-core-accounts fn2-core))) (code ids)
+     (if (and (fn2-accountsp fn2-accounts) (fn2-accounts-wfp fn2-accounts) (fn2-accounts-shapep fn2-accounts)
+              (natp owner-slot) (< 0 (fn2-accounts-rows fn2-accounts)))
+         (let* ((owner (< (+ 1 owner-slot) (fn2-accounts-rows fn2-accounts)))
+                (anonymous (fn2-account-principal-id 0 fn2-accounts))
+                (owner-id (if owner (fn2-account-principal-id owner-slot fn2-accounts) 0)))
+          (if (and (posp (fn2-accounts-incarnation 0 fn2-accounts)) (unsigned-byte-p 60 anonymous)
+                   (or (not owner) (and (posp (fn2-accounts-incarnation owner-slot fn2-accounts))
+                                        (unsigned-byte-p 60 owner-id))))
+              (mv :ok (cons (cons "anonymous" anonymous) (and owner (list (cons "owner" owner-id)))))
+            (mv :state nil)))
+       (mv :state nil))
+     (mv code ids)))
+(defun fn2-principals-name-genesis (profile fn2-core)
+    (declare (xargs :stobjs fn2-core :guard (fn2-core-wfp fn2-core)))
+    (mv-let (code ids) (fn2-principals-bound-genesis-ids (fn2-principals-owner-slot profile) fn2-core)
      (if (or (not (eq code :ok)) (not (posp (nfix (fn2-profile-get :authority profile)))))
          (mv code fn2-core)
       (stobj-let ((fn2-id-engine (fn2-core-id-engine fn2-core)) (fn2-id-decides (fn2-core-id-decides fn2-core))
@@ -574,6 +591,15 @@
                              fn2-id-engine fn2-overlays fn2-overlay-index fn2-fields fn2-pool)
           (mv c fn2-id-engine fn2-overlays fn2-overlay-index fn2-fields fn2-pool)))
        (mv code fn2-core)))))
+   (fn2-core-preserves fn2-principals-name-genesis (profile fn2-core)
+    :position 1 :rows nil :hints (("Goal" :in-theory (enable fn2-core-wfp))))
+   ; Preserve the original nonimage/public operation: bind once, then write
+   ; the authority NAME overlay from those same actual bound identities.
+   (defun fn2-principals-genesis (profile fn2-core)
+    (declare (xargs :stobjs fn2-core :guard (fn2-core-wfp fn2-core)))
+    (mv-let (code ids fn2-core) (fn2-principals-bind-genesis profile fn2-core)
+     (declare (ignore ids))
+     (if (eq code :ok) (fn2-principals-name-genesis profile fn2-core) (mv code fn2-core))))
    (fn2-core-preserves fn2-principals-genesis (profile fn2-core)
     :position 1 :rows nil :hints (("Goal" :in-theory (enable fn2-core-wfp))))
    ;; A connection's durable principal id from its account slot (D7's id).
@@ -587,7 +613,7 @@
        (mv :state 0))
      (mv code (nfix id))))
    (in-theory (disable fn2-group-lookup fn2-groups-genesis fn2-principal-lookup fn2-principals-bind-genesis
-                       fn2-principals-genesis fn2-principal-of-slot))
+                       fn2-principals-genesis fn2-principals-name-genesis fn2-principals-bound-genesis-ids fn2-principal-of-slot))
    (assert-event (fn2-assert-compliant-p '(fn2-group-lookup fn2-groups-genesis fn2-principal-lookup
                                           fn2-principals-genesis fn2-principal-of-slot) (w state)))))
 

@@ -326,6 +326,7 @@ ACL2_BOOKS = \
   tests/storage-geometry-unit \
   tests/owed-reclamation-unit \
   tests/retirement-intent-core-unit \
+  tests/startup-genesis-unit \
   tests/retirement-publish-core-unit \
   tests/retirement-canonical-core-unit \
   tests/authority-client \
