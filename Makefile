@@ -430,6 +430,7 @@ ACL2_BOOKS = \
   tests/pool-query-ref-unit \
   tests/query-reference-unit \
   tests/query-owner-drain-unit \
+  tests/query-two-wake-unit \
   tests/peer-replay-unit \
   tests/pointwise-contracts-unit \
   tests/pool-ranges-unit \

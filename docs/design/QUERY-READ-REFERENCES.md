@@ -89,16 +89,17 @@ source parsing and checks do not establish these control results.
 
 ## Wake composition frontier
 
-The current source flush uses the machine directory's single wake slot.
+The prior source flush used the machine directory's single wake slot.
 A composed callback that already posted a different wake can lose that
 notification when query completion overwrites the slot. The candidate
 transaction reply path has not been demonstrated reachable with an ACTIVE
 query and a nonzero reply word; the generic composed callback seam remains
 unsafe independently of that reachability question.
 
-The repair will share the actual scheduler enqueue operation with the
-executor, preserve the ordinary wake intent, and record the additional
+The current source shares the actual scheduler enqueue operation with the
+executor, preserves the ordinary wake intent, and records the additional
 scheduler effect in the diagnostic trace. Trace loss must invalidate replay
-evidence without stopping legitimate scheduling. Runtime and independent
-trace changes are under construction; current lifecycle fixtures are source
-controls awaiting that repair and execution.
+evidence without stopping legitimate scheduling. Runtime changes and a concrete two-owner composition control are present.
+Independent trace replay and reference FIFO semantics are under construction;
+current lifecycle fixtures remain source controls awaiting composition and
+execution.
