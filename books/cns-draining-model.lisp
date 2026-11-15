@@ -95,8 +95,22 @@
   (and (natp slot) (< slot (fn2-cns-drain-get 'fn2-pool-rows pool))
        (equal gen (fn2-cns-drain-cell 'fn2-pool-gen slot pool))
        (< 0 (fn2-cns-drain-cell 'fn2-pool-query-ref-count slot pool))))
+; A private credit tag is release authority held by its credit owner.
+; Matching the workspace owner/generation does not authorize an ordinary
+; return. This predicate reads the representation, never the pool handler.
+(defun fn2-cns-drain-credit-boundp (slot pool)
+  (and (natp slot) (< slot (fn2-cns-drain-get 'fn2-pool-rows pool))
+       (not (equal (fn2-cns-drain-cell 'fn2-pool-credit-group slot pool) *fn2-none*))))
+
+; Refusal records the first terminal reason. Every unrelated control field,
+; including kind/detail, clock, budgets and path octets, is framed exactly.
+(defun fn2-cns-drain-stopped-control (reason control)
+  (if (equal (fn2-cns-drain-get 'fn2-control-stop control) 1) control
+    (fn2-cns-drain-put 'fn2-control-stop-reason reason
+      (fn2-cns-drain-put 'fn2-control-stop 1 control))))
 (defun fn2-cns-drain-release-pool-effect (slot pool)
-  (if (< 0 (fn2-cns-drain-cell 'fn2-pool-query-ref-count slot pool))
+  (if (or (fn2-cns-drain-credit-boundp slot pool)
+          (< 0 (fn2-cns-drain-cell 'fn2-pool-query-ref-count slot pool)))
       pool
     (fn2-cns-drain-released-pool slot pool)))
 
@@ -154,7 +168,7 @@
         (fn2-cns-drain-put 'fn2-sched-earliest-deadline *fn2-no-deadline* sched)
       sched)))
 
-(defun fn2-cns-draining-zero-query-expected (id before)
+(defun fn2-cns-draining-uncredited-zero-query-expected (id before)
   (let* ((dir (fn2-cns-drain-child 'fn2-machines before))
          (own (fn2-cns-drain-child 'fn2-cns before))
          (pool (fn2-cns-drain-child 'fn2-pool before))
@@ -196,6 +210,44 @@
                           (fn2-cns-drain-put-child 'fn2-cns own before))))))
         (list 0 *fn2-work-release* 0 nil after)))))
 
+; Keep the previous successful-cleanup model above as the explicit
+; uncredited specification. A credit refusal is an exact stopped result,
+; not permission to free the range or to erase its credit accounting.
+(defun fn2-cns-draining-credit-stop-expected (before steps)
+  (list 0 steps 0 nil
+    (fn2-cns-drain-put-child 'fn2-control
+      (fn2-cns-drain-stopped-control *fn2-stop-reason-pool-release*
+        (fn2-cns-drain-child 'fn2-control before)) before)))
+(defun fn2-cns-draining-ordinary-rangesp (id before)
+  (let* ((dir (fn2-cns-drain-child 'fn2-machines before))
+         (own (fn2-cns-drain-child 'fn2-cns before))
+         (pool (fn2-cns-drain-child 'fn2-pool before))
+         (slot (fn2-cns-drain-cell 'fn2-machines-slot id dir)))
+    (if (equal (fn2-cns-drain-cell 'fn2-cns-lease slot own) *fn2-cns-lease-held*)
+        (not (fn2-cns-drain-credit-boundp (fn2-cns-drain-cell 'fn2-cns-lslot slot own) pool))
+      (and (not (fn2-cns-drain-credit-boundp (fn2-cns-drain-cell 'fn2-cns-ws-slot slot own) pool))
+           (not (fn2-cns-drain-credit-boundp (fn2-cns-drain-cell 'fn2-cns-ns-slot slot own) pool))))))
+(defun fn2-cns-draining-zero-query-expected (id before)
+  (let* ((dir (fn2-cns-drain-child 'fn2-machines before))
+         (own (fn2-cns-drain-child 'fn2-cns before))
+         (pool (fn2-cns-drain-child 'fn2-pool before))
+         (slot (fn2-cns-drain-cell 'fn2-machines-slot id dir))
+         (ws (fn2-cns-drain-cell 'fn2-cns-ws-slot slot own)))
+    (cond
+     ((equal (fn2-cns-drain-cell 'fn2-cns-lease slot own) *fn2-cns-lease-held*)
+      (if (fn2-cns-drain-credit-boundp (fn2-cns-drain-cell 'fn2-cns-lslot slot own) pool)
+          (fn2-cns-draining-credit-stop-expected before *fn2-work-empty*)
+        (fn2-cns-draining-uncredited-zero-query-expected id before)))
+     ((fn2-cns-drain-credit-boundp ws pool)
+      (fn2-cns-draining-credit-stop-expected before *fn2-work-state*))
+     ((fn2-cns-drain-credit-boundp (fn2-cns-drain-cell 'fn2-cns-ns-slot slot own) pool)
+      ; WS has already returned. NS refuses without clearing the row,
+      ; changing its timer or reclaiming it. There is no rollback of WS.
+      (fn2-cns-draining-credit-stop-expected
+        (fn2-cns-drain-put-child 'fn2-pool (fn2-cns-drain-released-pool ws pool) before)
+        *fn2-work-state*))
+     (t (fn2-cns-draining-uncredited-zero-query-expected id before)))))
+
 ; Preflight the whole relevant release set before either final release.
 ; A held lease owns a separate release set; final WS/NS are not inspected.
 (defun fn2-cns-draining-query-heldp (id before)
@@ -225,10 +277,24 @@
                     (fn2-cns-drain-cell 'fn2-cns-ws-slot slot own) pool) 0)
            (equal (fn2-cns-drain-cell 'fn2-pool-query-ref-count
                     (fn2-cns-drain-cell 'fn2-cns-ns-slot slot own) pool) 0)))))
+; Historical query-aware oracle, retained only as an adversarial control.
+(defun fn2-cns-draining-pre-credit-expected (id before)
+  (if (fn2-cns-draining-query-heldp id before)
+      (list 0 *fn2-work-state* 0 nil before)
+    (fn2-cns-draining-uncredited-zero-query-expected id before)))
 (defun fn2-cns-draining-expected (id before)
   (if (fn2-cns-draining-query-heldp id before)
       (list 0 *fn2-work-state* 0 nil before)
     (fn2-cns-draining-zero-query-expected id before)))
+(defthm fn2-cns-draining-uncredited-equivalence-by-definition
+  (implies (fn2-cns-draining-ordinary-rangesp id before)
+           (equal (fn2-cns-draining-expected id before)
+                  (fn2-cns-draining-pre-credit-expected id before)))
+  :hints (("Goal" :in-theory
+           (e/d (fn2-cns-draining-expected fn2-cns-draining-pre-credit-expected
+                 fn2-cns-draining-zero-query-expected fn2-cns-draining-ordinary-rangesp)
+                (fn2-cns-draining-uncredited-zero-query-expected
+                 fn2-cns-drain-credit-boundp fn2-cns-drain-released-pool)))))
 (defthm fn2-cns-draining-query-held-result-by-definition
   (implies (fn2-cns-draining-query-heldp id before)
            (equal (fn2-cns-draining-expected id before)

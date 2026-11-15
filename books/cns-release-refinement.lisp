@@ -20,7 +20,9 @@
 
 (defun fn2-cns-release-children-expected (slot gen kind id ogen pool control)
   (let ((out (fn2-cns-owned-pool-release-expected slot gen kind id ogen pool)))
-    (list (car out) (cadr out) control)))
+    (list (car out) (cadr out)
+      (if (member-eq (car out) '(:ok :retired :held)) control
+        (fn2-cns-drain-stopped-control *fn2-stop-reason-pool-release* control)))))
 
 (defthm fn2-cns-core-release-children-independent
   (implies (and (fn2-poolp pool) (fn2-pool-wfp pool)
@@ -34,27 +36,52 @@
                  fn2-cns-owned-pool-release-independent)
            :in-theory
            (e/d (fn2-core-release-children fn2-cns-release-children-expected
-                 fn2-cns-owned-pool-release-expected)
+                 fn2-cns-owned-pool-release-expected fn2-cns-drain-stopped-control
+                 fn2-control-record-stop fn2-control-stop
+                 update-fn2-control-stop update-fn2-control-stop-reason)
                 (fn2-pool-release fn2-pool-release-countp fn2-poolp fn2-pool-wfp
                  fn2-cns-drain-releasablep fn2-cns-drain-released-pool
-                 fn2-cns-drain-cell fn2-cns-drain-get fn2-control-record-stop)))))
+                 fn2-cns-drain-cell fn2-cns-drain-get)))))
 
+(defun fn2-cns-core-release-output-expected (out before)
+  (let ((after (fn2-cns-drain-put-child 'fn2-pool (cadr out) before)))
+    (list (car out)
+      (if (member-eq (car out) '(:ok :retired :held)) after
+        (fn2-cns-drain-put-child 'fn2-control
+          (fn2-cns-drain-stopped-control *fn2-stop-reason-pool-release*
+            (fn2-cns-drain-child 'fn2-control before)) after)))))
 (defun fn2-cns-core-release-expected (slot gen kind id ogen before)
-  (let ((out (fn2-cns-owned-pool-release-expected slot gen kind id ogen
-               (fn2-cns-drain-child 'fn2-pool before))))
-    (list (car out) (fn2-cns-drain-put-child 'fn2-pool (cadr out) before))))
-
+  (fn2-cns-core-release-output-expected
+    (fn2-cns-owned-pool-release-expected slot gen kind id ogen
+      (fn2-cns-drain-child 'fn2-pool before)) before))
 (defun fn2-cns-core-release-zero-query-expected (slot gen kind id ogen before)
-  (let ((out (fn2-cns-owned-zero-query-pool-release-expected slot gen kind id ogen
-               (fn2-cns-drain-child 'fn2-pool before))))
+  (fn2-cns-core-release-output-expected
+    (fn2-cns-owned-zero-query-pool-release-expected slot gen kind id ogen
+      (fn2-cns-drain-child 'fn2-pool before)) before))
+; The previous oracle is a control, not the current permission contract.
+(defun fn2-cns-core-release-pre-credit-expected (slot gen kind id ogen before)
+  (let* ((pool (fn2-cns-drain-child 'fn2-pool before))
+         (out (if (< 0 (fn2-cns-drain-cell 'fn2-pool-query-ref-count slot pool))
+                  (list :held pool)
+                (fn2-cns-owned-uncredited-zero-query-pool-release-expected slot gen kind id ogen pool))))
     (list (car out) (fn2-cns-drain-put-child 'fn2-pool (cadr out) before))))
+(defthm fn2-cns-core-release-uncredited-equivalence-by-definition
+  (implies (not (fn2-cns-drain-credit-boundp slot (fn2-cns-drain-child 'fn2-pool before)))
+           (equal (fn2-cns-core-release-expected slot gen kind id ogen before)
+                  (fn2-cns-core-release-pre-credit-expected slot gen kind id ogen before)))
+  :hints (("Goal" :in-theory
+           (e/d (fn2-cns-core-release-expected fn2-cns-core-release-pre-credit-expected
+                 fn2-cns-core-release-output-expected fn2-cns-owned-pool-release-expected
+                 fn2-cns-owned-uncredited-zero-query-pool-release-expected)
+                (fn2-cns-drain-released-pool fn2-cns-drain-credit-boundp)))))
 (defthm fn2-cns-core-release-zero-query-equivalence-by-definition
   (implies (equal (fn2-cns-drain-cell 'fn2-pool-query-ref-count slot
                     (fn2-cns-drain-child 'fn2-pool before)) 0)
            (equal (fn2-cns-core-release-expected slot gen kind id ogen before)
                   (fn2-cns-core-release-zero-query-expected slot gen kind id ogen before)))
   :hints (("Goal" :in-theory
-           (enable fn2-cns-core-release-expected fn2-cns-core-release-zero-query-expected))))
+           (enable fn2-cns-core-release-expected fn2-cns-core-release-zero-query-expected
+                   fn2-cns-owned-zero-query-release-equivalence-by-definition))))
 
 ; Keep this consequential component visible in the actual obligation store.
 ; Admission of the universal theorem and formula-bound teeth are separate.
@@ -66,8 +93,9 @@
   :schema :invariant :claim :semantic :boundary :ownership-reclamation
   :sides (:concrete fn2-core-release :reference fn2-cns-core-release-expected)
   :teeth (fn2-cns-core-release-positive fn2-cns-core-release-without-generation
-          fn2-cns-core-release-sibling-mutation fn2-cns-core-release-query-held-positive)
-  :doc "The actual core release returns the independent complete scalar/core result and frames every other child and protected sibling. A positive query count retains the complete core with :held; zero query count retains the prior release result. A stale handle removes releasability without changing the typed/WFP input; actual sibling corruption falsifies the complete result. Component ownership is not a claim of reachable CNS admission.")
+          fn2-cns-core-release-sibling-mutation fn2-cns-core-release-query-held-positive
+          fn2-cns-core-release-credit-positive)
+  :doc "The actual core release returns the independent complete scalar/core result and frames every other child and protected sibling. A credit-bound input returns :credit with the complete pool retained and only the sticky stop effect. An ordinary positive query count retains the complete core with :held; noncredited semantics are preserved. A stale handle removes releasability without changing the typed/WFP input; actual sibling corruption falsifies the complete result. Component ownership is not a claim of reachable CNS admission.")
 
 (defthm fn2-cns-core-release-independent
   (implies (and (fn2-corep core) (fn2-core-wfp core)
@@ -82,7 +110,7 @@
                  (:instance fn2-product-core-shape (fn2-core core)))
            :in-theory
            (e/d (fn2-core-release fn2-cns-core-release-expected
-                 fn2-cns-release-children-expected)
+                 fn2-cns-release-children-expected fn2-cns-core-release-output-expected)
                 (fn2-core-release-children fn2-core-pool fn2-core-control
                  update-fn2-core-pool update-fn2-core-control
                  fn2-cns-drain-releasablep fn2-cns-owned-pool-release-expected

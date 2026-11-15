@@ -40,6 +40,8 @@
            :in-theory
            (e/d (fn2-cns-draining-domainp fn2-cns-draining-expected
                  fn2-cns-draining-zero-query-expected
+                 fn2-cns-draining-uncredited-zero-query-expected
+                 fn2-cns-draining-credit-stop-expected fn2-cns-drain-stopped-control
                  fn2-cns-arm-ok-p fn2-cns-arm-charge-ok-p fn2-cns-arm-next-ok-p
                  fn2-machine-phase-read-code fn2-machine-phase fn2-machine-idp
                  fn2-machine-kind fn2-machine-kind-read-code

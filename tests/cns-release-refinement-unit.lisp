@@ -20,11 +20,21 @@
        ((mv twc fn2-core)
         (fn2-core-write slot gen 0 33 *fn2-cns-kind* 10 1 fn2-core))
        ((mv qc fn2-core)
-        (if (eq control :query-held)
+        (if (member-eq control '(:query-held :credit-query-held))
             (stobj-let ((fn2-pool (fn2-core-pool fn2-core))) (code fn2-pool)
               (fn2-pool-query-acquire slot gen 0 1 *fn2-cns-kind* 10 1 fn2-pool)
               (mv code fn2-core))
           (mv :ok fn2-core)))
+       ; Defensive logical inputs: preserve the complete original H while
+       ; assigning separate credit authority. No credit-allocation reachability
+       ; is inferred from these typed setters.
+       (fn2-core
+        (if (member-eq control '(:credit :credit-query-held :credit-sticky))
+            (stobj-let ((fn2-pool (fn2-core-pool fn2-core))) (fn2-pool)
+              (fn2-pool-set-credit-group slot 0 fn2-pool) fn2-core)
+          fn2-core))
+       (fn2-core (if (eq control :credit-sticky)
+                     (fn2-core-stop *fn2-stop-reason-machine-write* fn2-core) fn2-core))
        (before (fn2-test-core-snapshot fn2-core))
        (pool (fn2-cns-drain-child 'fn2-pool before))
        (base (and supported (eq wc :ok) (eq twc :ok) (eq qc :ok)
@@ -68,6 +78,20 @@
                      (equal (fn2-cns-drain-cell 'fn2-pool-query-ref-count slot pool) 1)
                      (equal (fn2-cns-drain-cell 'fn2-pool-out-count slot pool) 0)
                      (equal after before)))
+               ((:credit :credit-query-held :credit-sticky)
+                (and whole-h original-c conclusion (eq code :credit)
+                     (equal (fn2-cns-drain-child 'fn2-pool after) pool)
+                     ; Complete equality also frames every sibling byte,
+                     ; outstanding borrow, credit vector and other core child.
+                     (not (equal (list code after)
+                       (fn2-cns-core-release-pre-credit-expected
+                         slot argument-gen *fn2-cns-kind* 10 1 before)))
+                     (equal (fn2-cns-drain-get 'fn2-control-stop-reason
+                              (fn2-cns-drain-child 'fn2-control after))
+                            (if (eq control :credit-sticky)
+                                *fn2-stop-reason-machine-write* *fn2-stop-reason-pool-release*))
+                     (if (eq control :credit-query-held)
+                         (equal (fn2-cns-drain-cell 'fn2-pool-query-ref-count slot pool) 1) t)))
                (:without-generation
                 (and (not ownership) (not whole-h) (eq code :stale)
                      (equal (fn2-cns-drain-child 'fn2-pool released) pool)
@@ -100,9 +124,15 @@
 (defun fn2-cns-core-release-query-held-positive ()
   (declare (xargs :verify-guards nil))
   (fn2-cns-core-release-control :query-held))
+(defun fn2-cns-core-release-credit-positive ()
+  (declare (xargs :verify-guards nil))
+  (and (fn2-cns-core-release-control :credit)
+       (fn2-cns-core-release-control :credit-query-held)
+       (fn2-cns-core-release-control :credit-sticky)))
 (assert-event (and (fn2-cns-core-release-positive)
                    (fn2-cns-core-release-without-generation)
                    (fn2-cns-core-release-sibling-mutation)
-                   (fn2-cns-core-release-query-held-positive)))
+                   (fn2-cns-core-release-query-held-positive)
+                   (fn2-cns-core-release-credit-positive)))
 
 (fn2-assert-owed-teeth fn2-cns-core-release-independent)
