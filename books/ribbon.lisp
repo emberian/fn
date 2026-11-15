@@ -18,6 +18,7 @@
 ; (back substitution from the top slot, the bytes, the close, the header,
 ; the seal) until :sealed. Every call is bounded; :more resumes.
 (in-package "ACL2")
+(local (include-book "pool-read-contracts"))
 (include-book "runs-page")
 (include-book "fnv")
 (include-book "words")
