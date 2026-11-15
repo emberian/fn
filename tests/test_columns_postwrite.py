@@ -32,7 +32,10 @@ class Postwrite(unittest.TestCase):
             self.assertIn('assertion', result.stdout.lower())
 
     def test_removing_automatic_hint_connection_fails(self):
-        self.mutant('(set-difference-eq (fn2-columns-postwrite-readers name tables world) opaque)', 'nil')
+        self.mutant('(set-difference-eq (fn2-columns-postwrite-runes name tables opaque world) opaque)', 'nil')
+
+    def test_omitting_required_rows_observer_fails(self):
+        self.mutant('(list rows))', 'nil)')
 
     def test_wrong_table_provenance_is_rejected(self):
         self.mutant('(member-eq (caddr reader) (cadr arguments))', '(cadr arguments)')

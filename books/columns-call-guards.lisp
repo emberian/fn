@@ -100,6 +100,29 @@
    nil (fn2-columns-observation-interfaces tables world) 10000)
   (declare (ignore provenance)) readers))
 
+; RAW-NTH facts state the row bound using (nth ROWS-INDEX table). Pair a
+; selected observer with its own ROWS definition so an opaque (< i (ROWS
+; table)) hypothesis matches that public frame interface. Other tables' ROWS
+; stay closed. A missing scalar ABI is not guessed.
+(defun fn2-columns-observation-row-runes (readers interfaces world)
+ (declare (xargs :verify-guards nil))
+ (if (atom readers) nil
+  (let* ((table (caddr (assoc-eq (car readers) interfaces)))
+         (rows (and table (fn2-columns-sym table "-ROWS"))))
+   (union-eq
+    (and rows
+         (equal (getpropc rows 'stobjs-in :missing world) (list table))
+         (equal (getpropc rows 'stobjs-out :missing world) '(nil))
+         (list rows))
+    (fn2-columns-observation-row-runes (cdr readers) interfaces world)))))
+(defun fn2-columns-postwrite-runes (name tables opaque world)
+ (declare (xargs :verify-guards nil))
+ (let ((readers (set-difference-eq
+                 (fn2-columns-postwrite-readers name tables world) opaque)))
+  (union-eq readers
+   (fn2-columns-observation-row-runes readers
+    (fn2-columns-observation-interfaces tables world) world))))
+
 (defun fn2-columns-call-guard-hint (name opaque enables world)
  (declare (xargs :verify-guards nil))
  (let* ((args (getpropc name 'formals :missing world))
@@ -116,4 +139,4 @@
       (fn2-columns-framed-callees
        (all-fnnames (getpropc name 'unnormalized-body nil world)) tables world)))
     (union-eq enables
-     (set-difference-eq (fn2-columns-postwrite-readers name tables world) opaque)) world))))
+     (set-difference-eq (fn2-columns-postwrite-runes name tables opaque world) opaque)) world))))

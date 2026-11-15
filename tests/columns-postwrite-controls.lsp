@@ -50,6 +50,8 @@
          (list (list 'caller 'formals '(i v table other) 'stobjs-in '(nil nil table other)
                      'symbol-class :common-lisp-compliant 'unnormalized-body body))
          (loop for table in '(table other) append
+           (list (list (fn2-columns-sym table "-ROWS") 'stobjs-in (list table) 'stobjs-out '(nil))))
+         (loop for table in '(table other) append
            (loop for field in '(x y z) append (interface-properties table field))))))
 (defun selected (body) (fn2-columns-postwrite-readers 'caller '(table other) (fixture-world body)))
 ; Nested setters of the same table expose only the observer, not other reads.
@@ -79,6 +81,8 @@
  (assert (equal (car theory) 'e/d))
  (assert (member 'table-y (cadr theory)))
  (assert (member 'table-z (cadr theory)))
+ (assert (member 'table-rows (cadr theory)))
+ (assert (member 'other-rows (caddr theory)))
  (assert (member 'table-x (caddr theory)))
  (assert (member 'opaque-producer (caddr theory)))
  (assert (member 'nth (caddr theory)))
@@ -90,8 +94,19 @@
        (opened (cadr (fn2-columns-call-guard-hint 'caller '(table-y) '(table-y) world))))
  (assert (not (member 'table-y (cadr closed))))
  (assert (member 'table-y (caddr closed)))
+ (assert (member 'table-rows (caddr closed)))
  (assert (member 'table-y (cadr opened)))
  (assert (not (member 'table-y (caddr opened)))))
+; Explicit row opacity wins without suppressing the selected field reader.
+(let* ((world (fixture-world '(table-y i (table-set-x i v table))))
+       (theory (cadr (fn2-columns-call-guard-hint 'caller '(table-rows) nil world))))
+ (assert (member 'table-y (cadr theory)))
+ (assert (member 'table-rows (caddr theory)))
+ (assert (not (member 'table-rows (cadr theory)))))
+; No guessed row observer for an absent/mismatched scalar ABI.
+(let ((world (fixture-world '(table-y i (table-set-x i v table)))))
+ (setf (getf (cdr (assoc 'table-rows (getf world :properties))) 'stobjs-in) '(other))
+ (assert (not (member 'table-rows (fn2-columns-postwrite-runes 'caller '(table) nil world)))))
 ; Fail closed on unavailable proof interfaces or incompatible stobj signatures.
 (let ((world (fixture-world '(table-y i (table-set-x i v table)))))
  (setf (getf (cdr (assoc 'table-set-x-nth (getf world :properties))) 'theorem) nil)
