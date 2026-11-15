@@ -22,6 +22,7 @@
 (include-book "cursor-kind")
 (include-book "article-manifest")
 (include-book "machines-c-read-loader")
+(include-book "c-source-observer-adapters")
 (fn2-book-layer :d)
 
 (defconst *fn2-cursor-overview-sid* 3)
@@ -886,6 +887,15 @@
 (defcost fn2-cursor-hscan :child fn2-cursor-pool-hscan :answers (:ok :done :full :fault) :faults (:fault) :bytes 8192
  :tables (fn2-core-pool)
  :doc "Scan at most 4,096 stored octets of the lease for HDR's field, its value appended to TX; (mv code used st k).")
+(defun fn2-cursor-lease-class-of (fn2-pool)
+  (declare (xargs :stobjs fn2-pool :guard (fn2-pool-wfp fn2-pool)))
+  (fn2-pool-class-for (+ *fn2-article-location-hashes-max* (* 2 *fn2-commit-unit-bytes*)) fn2-pool))
+(defcost fn2-cursor-lease-reserve :child fn2-pool-reserve :answers (:ok :exhausted :bounds :state) :tables (fn2-core-pool)
+ :doc "Reserve the standalone resident article workspace before any reply.")
+(defcost fn2-cursor-lease-release :child fn2-core-release-children :answers t :tables (fn2-core-pool fn2-core-control)
+ :doc "Return the standalone resident article workspace.")
+(defcost fn2-cursor-lease-class :child fn2-cursor-lease-class-of)
+(defcost fn2-cursor-physical-sources :child fn2-run-installed-physical-count :tables (fn2-core-run-installed))
 (defcost fn2-cursor-query-article-page :child fn2-cursor-query-article-page-children :answers t
  :tables (fn2-cursor-table fn2-core-machines fn2-core-reads fn2-core-id-decides fn2-core-succ-txns fn2-core-run-loads fn2-core-run-cursors fn2-core-pool)
  :doc "Borrow the preadmitted read0 exact-lookup page only when its actual actor and XL continuations are quiescent.")
@@ -902,6 +912,30 @@
 (defmachine-arms fn2-cursor :children
  :subarms
  (
+  (source-release-refuse :on-refusal ((:stop :machine-phase))
+   (:do (released target targetgen) (fn2-c-source-read-release id row-generation) :accept (:ok :absent))
+   (:if (not (equal target *fn2-none*)) ((:wake-row target)) ())
+   (:set (reply (fn2-cursor-reply-of row-tag :no-projection))) (:goto refuse))
+  (source-release-finish :on-refusal ((:stop :machine-phase))
+   (:do (released target targetgen) (fn2-c-source-read-release id row-generation) :accept (:ok :absent))
+   (:if (not (equal target *fn2-none*)) ((:wake-row target)) ())
+   (:if (equal row-load-refuse 1)
+        ((:set (load-refuse 0) (reply (fn2-cursor-reply-of row-tag :no-projection))) (:goto refuse))
+        ((:next :draining) (:charge :steps *fn2-work-transition* :runnable t))))
+  (resident-admit :on-refusal ((:stop :machine-phase))
+   (:if (or (fn2-cursor-hdr-p row-tag)
+            (equal row-tag *fn2-nntp-command-article*) (equal row-tag *fn2-nntp-command-head*)
+            (equal row-tag *fn2-nntp-command-body*) (equal row-tag *fn2-nntp-command-xfn-zarticle*))
+        ((:let class (fn2-cursor-lease-class))
+         (:if (natp class)
+              ((:do (reserved ls lg) (fn2-cursor-lease-reserve class)
+                :effects ((:acquire (:storage-window))) :accept () :case
+                (((:ok) (:set (lease *fn2-cursor-lease-held*) (lslot ls) (lgen lg) (storage *fn2-cursor-storage-held*))
+                         (:next :seek) (:charge :steps *fn2-work-transition* :runnable t))
+                 ((:exhausted) (:goto source-release-refuse))
+                 (:otherwise (:stop :machine-phase)))))
+              ((:goto source-release-refuse))))
+        ((:next :seek) (:charge :steps *fn2-work-transition* :runnable t))))
   ;; These subarms retain the invoking seek/render phase. The real read
   ;; callback routes exact op identity; the observer only schedules us.
   (run-load-start :on-refusal ((:stop :machine-phase))
@@ -933,7 +967,7 @@
                 (:charge :steps *fn2-work-transition* :runnable t))
      ((:last) (:do (released) (fn2-run-page-release c *fn2-cursor-kind* id row-generation)
                 :effects ((:release (:storage-window))) :accept (:ok))
-              (:set (query-bundle *fn2-cursor-query-bundle-none*) (load-active 0))
+              (:set (query-bundle *fn2-cursor-query-bundle-none*) (storage *fn2-cursor-storage-none*) (load-active 0))
               (:charge :steps *fn2-work-transition* :runnable t))
      ((:absent) (:set (load-release (+ row-load-release 1))) (:charge :steps *fn2-work-transition* :runnable t))
      ((:wait) (:wait :completion :steps *fn2-work-small*))
@@ -1490,7 +1524,11 @@
   (art-fail :on-refusal ((:stop :machine-phase))
      (:cond ((equal row-lease *fn2-cursor-lease-held*)
 
-             (:set (lease *fn2-cursor-lease-none*) (lslot *fn2-none*) (lgen 0))
+             (:if (equal row-query-bundle *fn2-cursor-query-bundle-none*)
+              ((:do (released) (fn2-cursor-lease-release row-lslot row-lgen)
+                :effects ((:release (:storage-window))) :accept (:ok :retired))
+               (:set (storage *fn2-cursor-storage-none*))) ())
+           (:set (lease *fn2-cursor-lease-none*) (lslot *fn2-none*) (lgen 0))
              (:charge :steps *fn2-work-transition* :runnable t))
             ((equal row-said 0) (:goto art-refuse))
             (t (:do (xc) (fn2-cursor-reset row-tx-slot row-tx-gen :okind row-conn-kind :oslot row-conn :ogen row-conn-gen)
@@ -1543,6 +1581,10 @@
       :accept (:ok))
      (:if (equal row-lease *fn2-cursor-lease-held*)
           (
+           (:if (equal row-query-bundle *fn2-cursor-query-bundle-none*)
+              ((:do (released) (fn2-cursor-lease-release row-lslot row-lgen)
+                :effects ((:release (:storage-window))) :accept (:ok :retired))
+               (:set (storage *fn2-cursor-storage-none*))) ())
            (:set (lease *fn2-cursor-lease-none*) (lslot *fn2-none*) (lgen 0) (done 1) (step 0))
            (:goto hand))
           ((:set (done 1) (step 0))
@@ -1657,22 +1699,25 @@
  ((:free (:idle))
   ;; the line, parsed again under the connection's owner
   (:select :on-refusal ((:stop :machine-phase))
-   (:if (equal row-query-bundle *fn2-cursor-query-bundle-none*)
-    ((:do (pcode ptag pk0 pa0 pb0 pk1 pa1 pb1 pa2 pb2)
+   (:do (pcode ptag pk0 pa0 pb0 pk1 pa1 pb1 pa2 pb2)
         (fn2-cursor-parse row-line-s row-line-e row-mask row-rx-slot row-rx-gen
-                          :okind row-conn-kind :oslot row-conn :ogen row-conn-gen)
-    :accept (:ok))
+                          :okind row-conn-kind :oslot row-conn :ogen row-conn-gen) :accept (:ok))
    (:set (tag ptag) (k0 pk0) (a0 pa0) (b0 pb0) (k1 pk1) (a1 pa1) (b1 pb1) (a2 pa2) (b2 pb2) (step 0) (turn 1))
-   ;; Admit every physical cursor page before the first status or multiline
-   ;; prefix. Ordinary capacity refusal never parks with a partial reply.
-   (:do (admit complete) (fn2-run-page-bundle-reserve (* *fn2-b-query-read-rows* row-slot) *fn2-cursor-kind* id row-generation)
-    :effects ((:acquire (:storage-window))) :accept () :case
-    (((:ok) (:set (query-bundle *fn2-cursor-query-bundle-held*) (load-release 0) (load-refuse (if (equal complete 1) 0 1)))
-             (:next (:if (equal complete 1) :seek :finish))
-             (:charge :bytes 512 :steps *fn2-work-transition* :runnable t))
-     ((:exhausted) (:set (reply (fn2-cursor-reply-of ptag :no-projection))) (:goto refuse))
+   (:do (observed) (fn2-c-source-read-acquire id row-generation) :accept () :case
+    (((:busy) (:set (reply (fn2-cursor-reply-of ptag :no-projection))) (:goto refuse))
+     ((:ok)
+      (:let physical (fn2-cursor-physical-sources))
+      (:if (equal physical 0)
+           ((:goto resident-admit))
+           ((:do (admit complete) (fn2-run-page-bundle-reserve (* *fn2-b-query-read-rows* row-slot) *fn2-cursor-kind* id row-generation)
+             :effects ((:acquire (:storage-window))) :accept () :case
+             (((:ok) (:set (query-bundle *fn2-cursor-query-bundle-held*) (storage *fn2-cursor-storage-held*)
+                           (load-release 0) (load-refuse (if (equal complete 1) 0 1)))
+                      (:next (:if (equal complete 1) :seek :finish))
+                      (:charge :bytes 512 :steps *fn2-work-transition* :runnable t))
+              ((:exhausted) (:goto source-release-refuse))
+              (:otherwise (:stop :machine-phase)))))))
      (:otherwise (:stop :machine-phase)))))
-    ((:stop :machine-phase))))
   (:seek :on-refusal ((:stop :machine-phase))
    (:cond
     ((and (equal row-load-active 1) (equal row-cancel 1)) (:next :finish) (:charge :steps *fn2-work-transition* :runnable t))
@@ -1801,14 +1846,15 @@
     ;; borrowed article page handle is cleared.
     ((equal row-lease *fn2-cursor-lease-held*)
 
-     (:set (lease *fn2-cursor-lease-none*) (lslot *fn2-none*) (lgen 0))
+     (:if (equal row-query-bundle *fn2-cursor-query-bundle-none*)
+              ((:do (released) (fn2-cursor-lease-release row-lslot row-lgen)
+                :effects ((:release (:storage-window))) :accept (:ok :retired))
+               (:set (storage *fn2-cursor-storage-none*))) ())
+           (:set (lease *fn2-cursor-lease-none*) (lslot *fn2-none*) (lgen 0))
      (:charge :steps *fn2-work-transition* :runnable t))
     ((equal row-query-bundle *fn2-cursor-query-bundle-held*)
      (:if (< row-load-release *fn2-b-query-loader-jobs*) ((:goto run-load-drain)) ((:stop :machine-phase))))
-    ((equal row-load-refuse 1)
-     ;; A partial failed admission must finish owned cleanup before503.
-     (:set (load-refuse 0) (reply (fn2-cursor-reply-of row-tag :no-projection))) (:goto refuse))
-    (t (:next :draining) (:charge :steps *fn2-work-transition* :runnable t))))
+    (t (:goto source-release-finish))))
   (:draining
    (:let next (fn2-cursor-free-head *fn2-cursor-admission-ordinal*))
    (:let retire (>= row-generation (fn2-cursor-gen-limit)))
