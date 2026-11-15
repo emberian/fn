@@ -83,11 +83,32 @@ class LiveMaster(unittest.TestCase):
    self.assertEqual(arm(p),old)
   for op in ('fn2-checkpoint-master-abort-step-op','fn2-checkpoint-root1-consume-op','fn2-checkpoint-root1-release-op','fn2-checkpoint-build-bind-op','fn2-checkpoint-build-consume-op'):
    self.assertTrue(all(x[1]=='budget' for x in walk(actual) if x and x[0]==op),op)
+ def test_all_original_do_case_selectors_are_unchanged(self):
+  def selectors(t):
+   result=[]
+   for x in walk(t):
+    if x and x[0]==':do' and ':case' in x:
+     result.append((x[2][0],[b[0] for b in x[x.index(':case')+1]]))
+   return result
+  old=[read_sexp(f) for f in forms(BEFORE['checkpoint-master-arms'])]
+  actual=tree('checkpoint-master-arms')
+  def grouped(t):
+   d={}
+   for op,labels in selectors(t):d.setdefault(op,[]).append(labels)
+   return d
+  got=grouped(actual)
+  for op,labels in grouped(old).items():self.assertEqual(got[op],labels,op)
+  import copy
+  mutant=copy.deepcopy(actual)
+  call=next(x for x in walk(mutant) if x and x[0]==':do' and isinstance(x[2],list) and x[2][0]=='fn2-checkpoint-root1-step-op')
+  branch=next(b for b in call[call.index(':case')+1] if b[0]==[':yield'])
+  branch[0]=copy.deepcopy(branch[1]) # old bad rewrite: same charge count
+  self.assertNotEqual(grouped(mutant)[call[2][0]],got[call[2][0]])
  def test_four_pure_results_charge_bytes_including_page_wait_yield(self):
   expected={':root1-source':'*fn2-checkpoint-root1-turn-bytes*',':events-source':'4096',':map-source':'4096',':descriptor-source':'4096'}
   for phase,byte in expected.items():
    a=arm(phase)
-   self.assertFalse(any(x in [[':yield'],[':idle']] for x in walk(a)),phase)
+   self.assertFalse(any(x==[':idle'] for x in walk(a)),phase)
    for x in walk(a):
     if x and x[0]==':charge':
      self.assertEqual(x[x.index(':bytes')+1],byte,phase)
