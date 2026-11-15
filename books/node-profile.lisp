@@ -11,6 +11,7 @@
 (defconst *fn2-node-profile*
  (fn2-node-profile-overlay
   '((:listener-targets . fn2-conn)
+    (:storage-fault-model . "broad")
     (:listener-local-target . fn2-ctl)
     (:owner-account . 2)
     (:authority . 4)

@@ -2,12 +2,13 @@
 (in-package "ACL2")
 (include-book "pool-ranges")
 (include-book "vocab")
+(include-book "borrow-release")
 (include-book "std/util/bstar" :dir :system)
 
 (include-book "sched")
 (include-book "trace")
 (include-book "exec-state")
-(include-book "arm-children")
+(include-book "arm-issue-effects")
 
 (include-book "core-children-a")
 (defmacro fn2-core-events ()
@@ -189,6 +190,19 @@
     (v) (fn2-control-stop fn2-control) (equal v 1)))
 (in-theory (disable fn2-core-stopped-p))
 
+; A successful return has neither a stop flag nor a recorded failure. WFP is
+; structural and alone does not equate those two fields on arbitrary inputs.
+(defun fn2-core-success-p (fn2-core)
+  (declare (xargs :stobjs fn2-core :guard (fn2-core-wfp fn2-core)))
+  (and (not (fn2-core-stopped-p fn2-core))
+       (equal (fn2-core-stop-reason fn2-core) *fn2-stop-reason-none*)))
+(defthm fn2-core-stop-not-success
+  (not (fn2-core-success-p (fn2-core-stop reason fn2-core)))
+  :hints (("Goal" :in-theory (enable fn2-core-success-p fn2-core-stopped-p
+                                    fn2-core-stop fn2-control-record-stop fn2-control-stop
+                                    update-fn2-control-stop update-fn2-control-stop-reason))))
+(in-theory (disable fn2-core-success-p))
+
 ; DSL for bounded pool operations through the parent. Lists exist only at
 ; macro expansion, never in the emitted runtime paths.
 (defmacro fn2-core-pool-wrapper (name target args results position)
@@ -264,10 +278,13 @@
         (code slot gen fn2-pool fn2-ops fn2-control)
         (,(fn2-columns-sym name "-CHILDREN") ,@args okind oslot ogen principal fn2-pool fn2-ops fn2-control)
         (mv code slot gen fn2-core)))
-    `((fn2-core-preserves ,name (,@args okind oslot ogen principal fn2-core) :position 3 :rows nil))
+    `((fn2-core-preserves ,name (,@args okind oslot ogen principal fn2-core) :position 3 :rows nil)
+      ,(fn2-issue-core-effect-event name (append args '(okind oslot ogen principal fn2-core)))
+      ,(fn2-issue-core-issued-event name (append args '(okind oslot ogen principal fn2-core))))
     (list :refusal (list :square (fn2-columns-sym name "-REFUSAL")))))
 (fn2-core-issue-wrapper fn2-issue-receive (cap-index cap-nonce slot gen len))
 (fn2-core-issue-wrapper fn2-issue-send (cap-index cap-nonce slot gen off len may-release))
+(fn2-core-issue-wrapper fn2-issue-tls-start (cap-index cap-nonce slot gen off len))
 (fn2-core-issue-wrapper fn2-issue-read (offset slot gen len))
 (fn2-core-issue-wrapper fn2-issue-write (offset slot gen off len fua))
 (fn2-core-issue-wrapper fn2-issue-fence ())
@@ -343,10 +360,7 @@
                  (fn2-pool-complete-in slot gen opslot opgen
                    (if (or (equal outcome *fn2-outcome-failed*)
                            (equal outcome *fn2-outcome-cancelled*)) 0 count) fn2-pool))
-                ((or (equal evkind *fn2-event-borrow-released*)
-                     (and (equal rh 0) (equal rp 0)
-                          (or (equal evkind *fn2-event-write-result*)
-                              (and (equal evkind *fn2-event-send-result*) (equal aux0 0)))))
+                ((fn2-terminal-releases-borrow-p (fn2-ops-kind opslot fn2-ops) evkind aux0 rp rh)
                  (fn2-pool-release-out slot gen fn2-pool))
                 (t (mv :ok fn2-pool))))
          ((unless (eq code :ok))
@@ -415,6 +429,7 @@
      :doc "A refused issue preserves the entire logical core, including generations and free-row contents; free rows are canonical as produced by init and finish."))
 (fn2-core-owe-refusal fn2-issue-receive (cap-index cap-nonce slot gen len okind oslot ogen principal))
 (fn2-core-owe-refusal fn2-issue-send (cap-index cap-nonce slot gen off len may-release okind oslot ogen principal))
+(fn2-core-owe-refusal fn2-issue-tls-start (cap-index cap-nonce slot gen off len okind oslot ogen principal))
 (fn2-core-owe-refusal fn2-issue-read (offset slot gen len okind oslot ogen principal))
 (fn2-core-owe-refusal fn2-issue-write (offset slot gen off len fua okind oslot ogen principal))
 (fn2-core-owe-refusal fn2-issue-fence (okind oslot ogen principal))
@@ -512,7 +527,8 @@
   ;; ENTRIES: the core-child registry, for each child's :profilep. Its init's
   ;; guard is proved from that child's profile facts alone with the profile
   ;; predicate closed (0.1 s against 12-24 s with fn2-profilep open); a child
-  ;; whose init needs the open predicate falls back to it (make-event :or).
+  ;; whose init needs base-profile details opens only that base predicate;
+  ;; the assembled core profile stays closed in both attempts (make-event :or).
   (if (or (atom children) (atom inits)) nil
     (let* ((c (car children)) (name (fn2-core-init-child-name (car c))) (stobj (cadr c))
            (prof (fn2-columns-sym name "-PROFILE"))
@@ -524,23 +540,25 @@
              `(make-event
                '(:or (defun ,name (profile fn2-core)
                        (declare (xargs :stobjs fn2-core :guard (fn2-core-profilep profile)
-                                       :guard-hints (("Goal" :use ,prof :in-theory (disable fn2-core-profilep fn2-profilep))))
+                                       :guard-hints (("Goal" :use (,prof fn2-profile-trace-boolean) :in-theory (disable fn2-core-profilep fn2-profilep))))
                                 (ignorable profile))
                        ,body)
                      (defun ,name (profile fn2-core)
                        (declare (xargs :stobjs fn2-core :guard (fn2-core-profilep profile)
-                                       :guard-hints (("Goal" :in-theory (enable fn2-core-profilep fn2-machines-profilep fn2-profilep))))
+                                       :guard-hints (("Goal" :use (,prof fn2-profile-trace-boolean) :in-theory
+                                        (e/d (fn2-machines-profilep fn2-profilep) (fn2-core-profilep)))))
                                 (ignorable profile))
                        ,body)))
              `(make-event
                '(:or (defthm ,(fn2-columns-sym name "-TYPE")
                        (implies (and (fn2-corep fn2-core) (fn2-core-profilep profile))
                                 (fn2-corep (,name profile fn2-core)))
-                       :hints (("Goal" :use ,prof :in-theory (disable fn2-core-profilep fn2-profilep))))
+                       :hints (("Goal" :use (,prof fn2-profile-trace-boolean) :in-theory (disable fn2-core-profilep fn2-profilep))))
                      (defthm ,(fn2-columns-sym name "-TYPE")
                        (implies (and (fn2-corep fn2-core) (fn2-core-profilep profile))
                                 (fn2-corep (,name profile fn2-core)))
-                       :hints (("Goal" :in-theory (enable fn2-core-profilep fn2-machines-profilep))))))
+                       :hints (("Goal" :use (,prof fn2-profile-trace-boolean) :in-theory
+                                (e/d (fn2-machines-profilep) (fn2-core-profilep)))))))
              (fn2-core-init-child-events (cdr children) (cdr inits) entries)))))
 (defun fn2-core-init-child-names (children)
   (if (atom children) nil

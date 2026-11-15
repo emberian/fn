@@ -347,6 +347,11 @@
 ;; are in TX; :ok when the octets ran out first.
 (defun fn2-cursor-hscan-loop (n i to st k used a0 b0 rslot rgen lslot lgen okind oslot ogen tslot tgen tk ts tg fn2-pool)
   (declare (xargs :stobjs fn2-pool :measure (nfix n)
+                  :hints (("Goal" :in-theory
+                                 (disable fn2-cursor-hscan-step fn2-gram-upcase
+                                          fn2-pool-slot-capacity)))
+                  :guard-hints (("Goal" :in-theory
+                                 (disable fn2-cursor-hscan-step fn2-gram-upcase)))
                   :guard (and (fn2-pool-wfp fn2-pool) (natp n) (natp i) (natp to) (natp st) (natp k) (natp used)
                               (natp a0) (natp b0))))
   (b* ((i (nfix i)) (st (nfix st)) (k (nfix k)) (used (nfix used))
@@ -388,12 +393,31 @@
        (natp (mv-nth 3 (fn2-cursor-pool-hscan from to st k a0 b0 rslot rgen lslot lgen tslot tgen tk ts tg okind oslot ogen fn2-pool))))
   :hints (("Goal" :in-theory (enable fn2-cursor-pool-hscan))))
 (in-theory (disable fn2-cursor-hscan-step fn2-cursor-hscan-loop fn2-cursor-pool-hscan))
-;; The lease's pool class: the smallest that holds two storage units (a
+;; The lease's pool class: the trusted digest prefix plus two storage units (a
 ;; block named through a source manifest is read at the lease's fill, after
 ;; the manifest unit that names it, and checked against that entry there).
 (defun fn2-cursor-lease-class-of (fn2-pool)
   (declare (xargs :stobjs fn2-pool :guard (fn2-pool-wfp fn2-pool)))
-  (fn2-pool-class-for (* 2 *fn2-commit-unit-bytes*) fn2-pool))
+  (fn2-pool-class-for (+ *fn2-article-location-hashes-max* (* 2 *fn2-commit-unit-bytes*)) fn2-pool))
+
+;; The expected digest bytes are copied from the published article row into
+;; the lease prefix; device reads append after that prefix. This operation
+;; does not accept a digest decoded from the device bytes being checked.
+(defun fn2-cursor-location-check-of (bytes len hashes index lslot lgen okind oslot ogen fn2-b3 fn2-digests fn2-pool)
+ (declare (xargs :stobjs (fn2-b3 fn2-digests fn2-pool) :guard (fn2-pool-wfp fn2-pool)))
+ (if (not (and (natp hashes) (<= hashes *fn2-article-location-hashes-max*)
+               (equal (mod hashes 32) 0) (natp index) (< index (floor hashes 32))))
+     (mv :bounds fn2-b3 fn2-digests)
+   (fn2-block-read-commitment-children bytes len lslot lgen *fn2-article-location-hashes-max* lslot lgen (* 32 index)
+                                     okind oslot ogen fn2-b3 fn2-digests fn2-pool)))
+(defthm fn2-cursor-location-check-of-shape
+ (implies (and (fn2-digestsp fn2-digests) (fn2-digests-wfp fn2-digests) (fn2-b3p fn2-b3) (fn2-b3-wfp fn2-b3)
+               (fn2-poolp fn2-pool) (fn2-pool-wfp fn2-pool))
+  (b* (((mv & b d) (fn2-cursor-location-check-of bytes len hashes index lslot lgen okind oslot ogen fn2-b3 fn2-digests fn2-pool)))
+   (and (fn2-digestsp d) (fn2-digests-wfp d) (equal (fn2-digests-rows d) (fn2-digests-rows fn2-digests))
+        (fn2-b3p b) (fn2-b3-wfp b) (equal (fn2-b3-rows b) (fn2-b3-rows fn2-b3))
+        (equal (len (nth *fn2-b3-wordsi* b)) (len (nth *fn2-b3-wordsi* fn2-b3)))))))
+(in-theory (disable fn2-cursor-location-check-of))
 
 ;; The entry of the next block of stored octets named through a source
 ;; manifest (article-manifest.lisp), from the manifest unit the lease holds:
@@ -413,19 +437,19 @@
        ((mv c at fn2-fields)
         (if (equal mpos 0)
             (mv-let (c h fn2-fields)
-              (fn2-am-get-header base total lslot lgen 0 *fn2-commit-unit-bytes* okind oslot ogen fn2-fields fn2-pool)
-              (mv c (fn2-am-entry-at h) fn2-fields))
+              (fn2-am-get-header base total lslot lgen *fn2-article-location-hashes-max* (+ *fn2-article-location-hashes-max* *fn2-commit-unit-bytes*) okind oslot ogen fn2-fields fn2-pool)
+              (mv c (fn2-am-entry-at (nfix (- h *fn2-article-location-hashes-max*))) fn2-fields))
           (mv :ok mpos fn2-fields)))
        ((unless (and (eq c :ok) (<= u0 at) (< (- at u0) *fn2-commit-unit-bytes*))) (mv :bounds 0 0 0 0 0 0 0 0 fn2-fields))
        ((mv c next lo len unit epoch alloc fn2-fields)
-        (fn2-am-get-entry base lslot lgen (- at u0) *fn2-commit-unit-bytes* okind oslot ogen fn2-fields fn2-pool))
+        (fn2-am-get-entry base lslot lgen (+ *fn2-article-location-hashes-max* (- at u0)) (+ *fn2-article-location-hashes-max* *fn2-commit-unit-bytes*) okind oslot ogen fn2-fields fn2-pool))
        (h (+ (nfix base) *fn2-format-source-manifest-entry-field-block-expected-hash*))
        (cv (+ (nfix base) *fn2-format-source-manifest-entry-field-subtree-cv*))
        ((unless (and (eq c :ok) (< h (nfix (fn2-fields-rows fn2-fields))) (< cv (nfix (fn2-fields-rows fn2-fields)))
                      (equal (fn2-fields-ref-slot h fn2-fields) lslot) (equal (fn2-fields-ref-len h fn2-fields) 32)
                      (equal (fn2-fields-ref-slot cv fn2-fields) lslot) (equal (fn2-fields-ref-len cv fn2-fields) 32)))
         (mv :bounds 0 0 0 0 0 0 0 0 fn2-fields)))
-    (mv :ok (fn2-am-entry-at (+ u0 next)) lo len unit epoch alloc
+    (mv :ok (fn2-am-entry-at (+ u0 (nfix (- next *fn2-article-location-hashes-max*)))) lo len unit epoch alloc
         (nfix (fn2-fields-ref-off h fn2-fields)) (nfix (fn2-fields-ref-off cv fn2-fields)) fn2-fields)))
 (defthm fn2-cursor-manifest-entry-of-shape
   (implies (and (fn2-fieldsp fn2-fields) (fn2-fields-wfp fn2-fields) (fn2-pool-wfp fn2-pool))
@@ -793,6 +817,11 @@
  :doc "ARTICLE/HEAD/BODY's 22x line and, for ARTICLE and HEAD, the overview's Xref field as the first header line.")
 (defcost fn2-cursor-put-line :child fn2-cursor-pool-put :answers t :bytes 64 :tables (fn2-core-pool)
  :doc "Append a number and TAB, a number line, CR LF, or the terminator.")
+(defcost fn2-cursor-keep-prefix :child fn2-pool-truncate :answers t :tables (fn2-core-pool)
+ :doc "Retain the trusted location digest vector while replacing the next read unit.")
+(defcost fn2-cursor-location-check :child fn2-cursor-location-check-of :answers (:ok :io :hash :bounds)
+ :bytes 8192 :tables (fn2-core-b3 fn2-core-digests)
+ :doc "Verify one completed location unit against the published article's ordered digest vector before decoding or serving it.")
 (defcost fn2-cursor-reset :child fn2-pool-reset :answers t :tables (fn2-core-pool)
  :doc "Empty TX (under the connection's owner) before a refusal replaces a status line.")
 (defcost fn2-cursor-free-head :child fn2-machines-free-head-of :doc "The cursor partition's free head.")
@@ -1294,7 +1323,7 @@
   ;; HDR's field in the stored octets read so far (the header block ends
   ;; the scan, so the body is never read); a page breaks inside a long value
   (hdr-copy :on-refusal ((:stop :machine-phase))
-     (:let base (if (equal row-mkind 1) *fn2-commit-unit-bytes* 0))
+     (:let base (+ *fn2-article-location-hashes-max* (if (equal row-mkind 1) *fn2-commit-unit-bytes* 0)))
      (:do (hc used st k) (fn2-cursor-hscan (+ base row-loff) (+ base row-plen) row-ast row-hk row-a0 row-b0 row-rx-slot row-rx-gen
                                           row-lslot row-lgen row-tx-slot row-tx-gen row-conn-kind row-conn row-conn-gen)
       :accept ()
@@ -1316,8 +1345,12 @@
   ;; storage unit, B's block read of each unit into it, and the octets
   ;; dot-stuffed onto TX page by page; the terminator, the lease returned.
   (art-key :on-refusal ((:stop :machine-phase))
-     (:do (kc) (fn2-read-key (+ 1 (* 2 row-slot)) ':lo *fn2-article-entry-field-article* row-art) :accept (:ok))
-     (:set (step 21)) (:charge :steps *fn2-work-transition* :runnable t))
+     ;; Acquire the bounded lease before retaining C's article read. Never
+     ;; park for pool capacity while holding a published run/cache row.
+     (:if (equal row-lease *fn2-cursor-lease-held*)
+          ((:do (kc) (fn2-read-key (+ 1 (* 2 row-slot)) ':lo *fn2-article-entry-field-article* row-art) :accept (:ok))
+           (:set (step 21)) (:charge :steps *fn2-work-transition* :runnable t))
+          ((:set (step 22)) (:goto art-lease))))
   (art-refuse :on-refusal ((:stop :machine-phase))
      (:if (equal row-hmode 1)
           ;; HDR over an article with no stored octets: an empty value
@@ -1334,7 +1367,6 @@
                     (:do (c3 a) (fn2-read-value (+ 1 (* 2 row-slot)) *fn2-article-entry-field-location-allocation*) :accept (:ok))
                     (:do (c4 b) (fn2-read-value (+ 1 (* 2 row-slot)) *fn2-article-entry-field-bytes*) :accept (:ok))
                     (:do (c5 k) (fn2-read-value (+ 1 (* 2 row-slot)) *fn2-article-entry-field-location-kind*) :accept (:ok))
-                    (:do (rc) (fn2-read-release (+ 1 (* 2 row-slot))) :accept (:ok))
                     (:if (and (or (equal k *fn2-txn-location-raw-source*) (equal k *fn2-txn-location-source-manifest*))
                               (< 0 (nfix b)))
                          ((:set (lunit u) (lepoch e) (lalloc a) (alen b) (apos 0)
@@ -1343,23 +1375,40 @@
                                        (+ 2 (* 4 (cond ((equal row-tag *fn2-nntp-command-head*) 1)
                                                        ((equal row-tag *fn2-nntp-command-body*) 2)
                                                        (t 0))))))
-                                (step 22))
+                                (step 27))
                           (:charge :bytes 4096 :steps *fn2-work-transition* :runnable t))
-                         ((:goto art-refuse))))
+                         ((:do (rc) (fn2-read-release (+ 1 (* 2 row-slot))) :accept (:ok))
+                          (:goto art-refuse))))
              ((:more) (:charge :bytes 4096 :steps *fn2-work-transition* :runnable t))
              ((:absent) (:do (rc) (fn2-read-release (+ 1 (* 2 row-slot))) :accept (:ok)) (:goto art-refuse))
              (:otherwise (:stop :machine-phase)))))
   (art-lease :on-refusal ((:stop :machine-phase))
      (:let class (fn2-cursor-lease-class))
      (:cond ((equal row-lease *fn2-cursor-lease-held*)
-             (:set (step 23)) (:charge :steps *fn2-work-transition* :runnable t))
+             (:set (step 20)) (:charge :steps *fn2-work-transition* :runnable t))
             ((null class) (:goto art-refuse))
             (t
            (:do (code ls lg) (fn2-cursor-lease-reserve class) :effects ((:acquire (:storage-window)))
             :case (((:exhausted) (:park :pool class :steps *fn2-work-transition*))
                    (:otherwise (:goto art-refuse))))
-           (:set (lslot ls) (lgen lg) (lease *fn2-cursor-lease-held*) (step 23))
+           (:set (lslot ls) (lgen lg) (lease *fn2-cursor-lease-held*) (step 20))
            (:charge :steps *fn2-work-transition* :runnable t))))
+  ;; Copy the commitment from the still-live published article row before
+  ;; releasing that row. A publication race restarts the lookup; copied
+  ;; bytes are never accepted with stale location scalars.
+  (art-bind :on-refusal ((:stop :machine-phase))
+     (:do (zc) (fn2-cursor-reset row-lslot row-lgen) :accept (:ok))
+     (:do (pc) (fn2-cursor-pad *fn2-article-location-hashes-max* row-lslot row-lgen) :accept (:ok))
+     (:do (hc copied left) (fn2-read-octets (+ 1 (* 2 row-slot)) *fn2-article-entry-field-location-hashes*
+                                          0 *fn2-article-location-hashes-max* row-lslot row-lgen 0)
+      :accept (:ok :stale) :why ":stale: restart location and commitment together")
+     (:do (rc) (fn2-read-release (+ 1 (* 2 row-slot))) :accept (:ok))
+     (:cond ((eq hc :stale) (:set (step 20)) (:charge :bytes 256 :steps *fn2-work-transition* :runnable t))
+            ((and (equal left 0) (posp copied) (equal (mod copied 32) 0)
+                  (<= copied *fn2-article-location-hashes-max*)
+                  (or (equal row-mkind 1) (equal copied (* 32 (ceiling row-alen *fn2-commit-unit-bytes*)))))
+             (:set (lhashlen copied) (step 23)) (:charge :bytes 256 :steps *fn2-work-transition* :runnable t))
+            (t (:set (step 25)) (:goto art-fail))))
   ;; a failed read: the lease returned; before the 22x line the reply is
   ;; refused; after it the reply cannot be completed, so what TX holds is
   ;; dropped and the connection closes (UPDATE close; this replaced the
@@ -1378,7 +1427,7 @@
   ;; one extent's octets are read unit by unit from LUNIT; octets named
   ;; through a source manifest read the manifest's unit holding the next
   ;; block's entry (art-entry decodes it), then the block, with no reset
-  ;; between: the block lands at the lease's fill, [4096, 4096+BLEN), beside
+  ;; between: the block lands after the trusted prefix and manifest unit, beside
   ;; the entry it is checked against (:fetch)
   (art-read :on-refusal ((:stop :machine-phase))
      (:let pos row-apos)
@@ -1387,13 +1436,13 @@
      (:if (not (and (natp budget) (< 0 budget))) ((:yield))
           ((:cond
             ((equal row-mkind 0)
-             (:do (zc) (fn2-cursor-reset row-lslot row-lgen) :accept (:ok))
+             (:do (zc) (fn2-cursor-keep-prefix row-lslot row-lgen *fn2-article-location-hashes-max*) :accept (:ok))
              (:issue (fn2-block-read (+ row-lunit (floor pos *fn2-commit-unit-bytes*)) row-lepoch row-lalloc off len
                                      row-lslot row-lgen :principal row-principal-slot)
               :ok ((:set (plen len) (loff 0) (rready 0) (mread 0)) (:next :fetch)
                    (:wait :completion :bytes 4096 :steps *fn2-work-small*))))
             ((equal row-bready 0)
-             (:do (zc) (fn2-cursor-reset row-lslot row-lgen) :accept (:ok))
+             (:do (zc) (fn2-cursor-keep-prefix row-lslot row-lgen *fn2-article-location-hashes-max*) :accept (:ok))
              (:issue (fn2-block-read (+ row-lunit (floor row-mpos *fn2-commit-unit-bytes*)) row-lepoch row-lalloc
                                      0 *fn2-commit-unit-bytes* row-lslot row-lgen :principal row-principal-slot)
               :ok ((:set (plen *fn2-commit-unit-bytes*) (loff 0) (rready 0) (mread 1)) (:next :fetch)
@@ -1435,8 +1484,8 @@
                                               :okind row-conn-kind :oslot row-conn :ogen row-conn-gen)
               :accept (:ok))
              (:set (said 1)) (:charge :bytes 4096 :steps *fn2-work-transition* :runnable t))
-            (t (:do (sc used st) (fn2-cursor-stuff (+ (if (equal row-mkind 1) *fn2-commit-unit-bytes* 0) row-loff)
-                                                   (+ (if (equal row-mkind 1) *fn2-commit-unit-bytes* 0) row-plen)
+            (t (:do (sc used st) (fn2-cursor-stuff (+ *fn2-article-location-hashes-max* (if (equal row-mkind 1) *fn2-commit-unit-bytes* 0) row-loff)
+                                                   (+ *fn2-article-location-hashes-max* (if (equal row-mkind 1) *fn2-commit-unit-bytes* 0) row-plen)
                                                    row-ast row-lslot row-lgen
                                                    row-tx-slot row-tx-gen row-conn-kind row-conn row-conn-gen)
                 :accept ()
@@ -1604,6 +1653,7 @@
     ((equal row-step 24) (:goto art-copy))
     ((equal row-step 25) (:goto art-fail))
     ((equal row-step 26) (:goto art-entry))
+    ((equal row-step 27) (:goto art-bind))
     ((equal row-tag *fn2-nntp-command-list*) (:goto list-render))
     ((equal row-tag *fn2-nntp-command-newnews*) (:goto newnews-render))
     ((equal row-have 0) (:goto render-step))
@@ -1641,12 +1691,17 @@
    (:cond ((equal row-rready 0) (:charge :steps *fn2-work-poll*))
           ((not (and (equal row-revent *fn2-event-read-result*) (equal row-routcome *fn2-outcome-done*)))
            (:set (rready 0) (step 25)) (:next :render) (:charge :steps *fn2-work-transition* :runnable t))
-          ((equal row-mread 1)
-           (:set (rready 0) (mread 0) (step (if (equal row-rcount row-plen) 26 25))) (:next :render)
-           (:charge :steps *fn2-work-transition* :runnable t))
+          ((or (equal row-mread 1) (equal row-mkind 0))
+           (:do (dc) (fn2-cursor-location-check row-rcount row-plen row-lhashlen
+                       (floor (if (equal row-mread 1) row-mpos row-apos) *fn2-commit-unit-bytes*)
+                       row-lslot row-lgen)
+            :accept (:ok :io :hash :bounds)
+            :why ":hash or :bounds: published location commitment does not name these octets")
+           (:set (rready 0) (mread 0) (step (if (eq dc :ok) (if (equal row-mread 1) 26 24) 25)))
+           (:next :render) (:charge :bytes 8192 :steps *fn2-work-transition* :runnable t))
           (t
            (:do (dc) (fn2-block-read-done row-rcount row-plen (if (equal row-mkind 1) 1 0) row-lslot row-lgen
-                                          (if (equal row-mkind 1) *fn2-commit-unit-bytes* 0) row-bhash row-bcv
+                                          (+ *fn2-article-location-hashes-max* *fn2-commit-unit-bytes*) row-bhash row-bcv
                                           (floor row-apos *fn2-commit-unit-bytes*))
             :accept (:ok :io :hash)
             :why ":io: fewer octets than asked; :hash: a block its manifest entry does not name (S9a)")

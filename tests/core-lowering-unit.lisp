@@ -37,17 +37,31 @@
 ;; The mv-let must preserve the single evaluation of its producer.
 (defun fn2-lower-pair-values (value)
  (declare (xargs :guard (natp value))) (mv value (+ 1 value)))
+(defthm fn2-lower-pair-values-result-shape
+ (equal (list (car (fn2-lower-pair-values value))
+              (nth 1 (fn2-lower-pair-values value)))
+        (fn2-lower-pair-values value)))
 (in-theory (disable fn2-lower-pair-values))
 (defun fn2-lower-read-pair (limit fn2-core)
  (declare (xargs :stobjs fn2-core :guard (and (natp limit) (fn2-core-wfp fn2-core))))
  (let ((value (fn2-lower-read limit fn2-core))) (fn2-lower-pair-values (nfix value))))
 (in-theory (disable fn2-lower-read fn2-lower-read-pair))
+(defcore-readonly-child fn2-lower-read-pair fn2-lower-read-pair-child)
+(assert-event
+ (member-eq 'fn2-lower-read-child
+  (all-fnnames (getpropc 'fn2-lower-read-pair-child 'unnormalized-body nil (w state)))))
 (defun fn2-lower-read-composed (limit fn2-core)
  (declare (xargs :stobjs fn2-core :guard (and (natp limit) (fn2-core-wfp fn2-core))))
  (mv-let (first second) (fn2-lower-read-pair limit fn2-core)
    (mv (+ 2 (nfix first)) (+ 3 (nfix second)))))
 (defcore-readonly-child fn2-lower-read-composed fn2-lower-read-composed-child)
 (assert-event (equal (getpropc 'fn2-lower-read-composed-child 'stobjs-out nil (w state)) '(nil nil)))
+;; The proved intermediate boundary remains a call, not an expanded scan.
+(assert-event
+ (let ((calls (all-fnnames (getpropc 'fn2-lower-read-composed-child 'unnormalized-body nil (w state)))))
+  (and (member-eq 'fn2-lower-read-pair-child calls)
+       (not (member-eq 'fn2-lower-config-value calls)))))
+
 (defun fn2-lower-composed-witness ()
  (declare (xargs :verify-guards nil))
  (with-local-stobj fn2-lower-config
@@ -66,3 +80,116 @@
    (fn2-lower-recursive (1- n) fn2-core)))
 (must-fail (defcore-readonly-child fn2-lower-recursive fn2-lower-recursive-child))
 (assert-event (not (assoc-eq 'fn2-lower-recursive (table-alist 'fn2-core-lowered (w state)))))
+;; A formal proof is not a substitute for the promoted evaluating teeth.
+(must-fail (fn2-check-lowering-teeth fn2-lower-read fn2-lower-read-pair fn2-lower-read-composed))
+(defmacro fn2-lowering-fixture-teeth (source child outputs expected)
+ (let* ((base (fn2-columns-sym child "-REFINES-CORE"))
+        (witness (fn2-columns-sym base "-WITNESS"))
+        (left (fn2-arms-result-vars outputs))
+        (right (if (equal outputs 1) '(r0) '(r0 r1))))
+  `(progn
+    (defun ,witness (mutant)
+     (declare (xargs :verify-guards nil))
+     (with-local-stobj fn2-core
+      (mv-let (answer fn2-core)
+       (let* ((fn2-core
+               (stobj-let ((fn2-lower-config (fn2-core-config fn2-core))) (fn2-lower-config)
+                (let* ((fn2-lower-config (fn2-lower-config-init 1 fn2-lower-config))
+                       (fn2-lower-config (fn2-lower-config-set-value 0 37 fn2-lower-config))) fn2-lower-config)
+                fn2-core))
+              (pre (and (fn2-corep fn2-core) (fn2-core-wfp fn2-core) (natp 40))))
+        ,(let ((continuation
+                `(stobj-let ((fn2-lower-config (fn2-core-config fn2-core))) (answer)
+                  ,(let ((check
+                          `(and pre (fn2-lower-configp fn2-lower-config) (fn2-lower-config-wfp fn2-lower-config)
+                                (equal (list ,@left) ',expected)
+                                (if mutant
+                                    (not (equal (list ,@left) (list (+ 1 (nfix ,(car right))) ,@(cdr right))))
+                                  (equal (list ,@left) (list ,@right))))))
+                     (if (equal outputs 1) `(let ((,(car right) (,child 40 fn2-lower-config))) ,check)
+                      `(mv-let ,right (,child 40 fn2-lower-config) ,check)))
+                  (mv answer fn2-core))))
+           (if (equal outputs 1) `(let ((,(car left) (,source 40 fn2-core))) ,continuation)
+            `(mv-let ,left (,source 40 fn2-core) ,continuation))))
+       answer)))
+    (defun ,(fn2-columns-sym base "-POSITIVE") () (declare (xargs :verify-guards nil)) (,witness nil))
+    (defun ,(fn2-columns-sym base "-NEGATIVE") () (declare (xargs :verify-guards nil)) (,witness t)))))
+(fn2-lowering-fixture-teeth fn2-lower-read fn2-lower-read-child 1 (37))
+(fn2-lowering-fixture-teeth fn2-lower-read-pair fn2-lower-read-pair-child 2 (37 38))
+(fn2-lowering-fixture-teeth fn2-lower-read-composed fn2-lower-read-composed-child 2 (39 41))
+(fn2-check-lowering-teeth fn2-lower-read fn2-lower-read-pair fn2-lower-read-composed)
+(assert-event
+ (let ((row (fn2-decl-row '(:square fn2-lower-read-composed-child-refines-core) (w state))))
+  (and (eq (fn2-decl-get :claim row) :compiler)
+       (eq (fn2-decl-get :boundary row) :core-child-extraction)
+       (equal (fn2-decl-get :proof row) '(:proved fn2-lower-read-composed-child-refines-core)))))
+
+(must-fail (defcore-readonly-child fn2-lower-read fn2-lower-one-tooth
+             :teeth (fn2-lower-read-child-refines-core-positive)))
+(must-fail (defcore-readonly-child fn2-lower-read fn2-lower-duplicate-teeth
+             :teeth (fn2-lower-read-child-refines-core-positive fn2-lower-read-child-refines-core-positive)))
+
+;; An opaque multi-result tail uses the proved result-shape corollary.
+(defun fn2-lower-pair-tail (limit fn2-core)
+ (declare (xargs :stobjs fn2-core :guard (and (natp limit) (fn2-core-wfp fn2-core))))
+ (fn2-lower-read-pair limit fn2-core))
+(in-theory (disable fn2-lower-pair-tail))
+(defcore-readonly-child fn2-lower-pair-tail fn2-lower-pair-tail-child)
+(fn2-lowering-fixture-teeth fn2-lower-pair-tail fn2-lower-pair-tail-child 2 (37 38))
+(fn2-check-lowering-teeth fn2-lower-pair-tail)
+
+;; Bottom-up derivation discovers intermediate boundaries, without a hand list.
+(defun fn2-lower-auto-base (limit fn2-core)
+ (declare (xargs :stobjs fn2-core :guard (and (natp limit) (fn2-core-wfp fn2-core))))
+ (fn2-lower-read limit fn2-core))
+(defun fn2-lower-auto-top (limit fn2-core)
+ (declare (xargs :stobjs fn2-core :guard (and (natp limit) (fn2-core-wfp fn2-core))))
+ (+ 1 (nfix (fn2-lower-auto-base limit fn2-core))))
+(in-theory (disable fn2-lower-auto-base fn2-lower-auto-top))
+(defcore-readonly-closure fn2-lower-auto-top fn2-lower-auto-top-child)
+(assert-event
+ (member-eq 'fn2-lower-auto-base-lowered-child
+  (all-fnnames (getpropc 'fn2-lower-auto-top-child 'unnormalized-body nil (w state)))))
+(fn2-lowering-fixture-teeth fn2-lower-auto-base fn2-lower-auto-base-lowered-child 1 (37))
+(fn2-lowering-fixture-teeth fn2-lower-auto-top fn2-lower-auto-top-child 1 (38))
+(fn2-check-lowering-teeth fn2-lower-auto-base fn2-lower-auto-top)
+(must-fail (defcore-readonly-closure fn2-lower-recursive fn2-lower-recursive-family))
+(assert-event (not (function-symbolp 'fn2-lower-recursive-family (w state))))
+
+;; A guard-only core reader is part of the same dependency DAG and child ABI.
+(defun fn2-lower-guard-p (limit fn2-core)
+ (declare (xargs :stobjs fn2-core :guard (and (natp limit) (fn2-core-wfp fn2-core))))
+ (natp (fn2-lower-read limit fn2-core)))
+(defun fn2-lower-guard-only (limit fn2-core)
+ (declare (ignorable limit fn2-core) (xargs :stobjs fn2-core :guard (and (natp limit) (fn2-core-wfp fn2-core)
+                                           (fn2-lower-guard-p limit fn2-core))))
+ 7)
+(in-theory (disable fn2-lower-guard-p fn2-lower-guard-only))
+(defcore-readonly-closure fn2-lower-guard-only fn2-lower-guard-only-child)
+(assert-event
+ (and (equal (getpropc 'fn2-lower-guard-only-child 'stobjs-in nil (w state))
+             '(nil fn2-lower-config))
+      (member-eq 'fn2-lower-guard-p-lowered-child
+       (all-fnnames (getpropc 'fn2-lower-guard-only-child 'guard nil (w state))))))
+
+;; Primitive-access guard facts may come from a modular core predicate.
+(defun fn2-lower-indexp (i fn2-core)
+ (declare (xargs :stobjs fn2-core :guard (fn2-core-wfp fn2-core)))
+ (stobj-let ((fn2-lower-config (fn2-core-config fn2-core))) (answer)
+  (and (natp i) (< i (fn2-lower-config-rows fn2-lower-config))) answer))
+(defun fn2-lower-index-read (i fn2-core)
+ (declare (xargs :stobjs fn2-core
+                 :guard (and (fn2-core-wfp fn2-core) (fn2-lower-indexp i fn2-core))
+                 :guard-hints (("Goal" :in-theory (enable fn2-lower-indexp)))))
+ (stobj-let ((fn2-lower-config (fn2-core-config fn2-core))) (answer)
+  (fn2-lower-config-value i fn2-lower-config) answer))
+(in-theory (disable fn2-lower-indexp fn2-lower-index-read))
+(defcore-readonly-closure fn2-lower-index-read fn2-lower-index-read-child)
+;; The predicate slice follows a bound result but excludes a data-only call.
+(assert-event
+ (let ((names (fn2-lower-predicate-names
+              '((lambda (code x) (if (equal code ':ok) (data-reader x) '0))
+                (validation-reader i) (unrelated-reader j)) nil t 100)))
+  (and (member-eq 'validation-reader names)
+       (not (member-eq 'data-reader names))
+       (not (member-eq 'unrelated-reader names)))))

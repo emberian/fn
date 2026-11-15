@@ -24,6 +24,7 @@ import threading
 sys.path.insert(0, str(Path(__file__).parent))
 from emit_served_certificate import BASE, digest
 
+LEAN_CACHE_POLICY = 'external-artifacts-exact-batch-import-view-v2'
 ALLOWED = {'propext', 'Classical.choice', 'Quot.sound'}
 ROOT_THEOREMS = ('validated', 'accepted_entry_positive', 'omitted_child_rejected')
 
@@ -119,25 +120,62 @@ def build_batch_source(slices):
     return '\n'.join(lines), ranges
 
 
-def compile_one(source, lib, seconds, logname, root=BASE, write_olean=True):
+def transitive_dependencies(names, graph):
+    result = set()
+    def visit(name):
+        if name in result:
+            return
+        if name not in graph:
+            raise ValueError('unqualified local import ' + name)
+        result.add(name)
+        for dep in graph[name]:
+            visit(dep)
+    for name in names:
+        visit(name)
+    return result
+
+
+@contextmanager
+def local_dependency_view(lib, modules):
+    """Prevent external packages from importing undeclared/stale local artifacts."""
+    with tempfile.TemporaryDirectory(prefix='served-lean-imports-') as td:
+        view = Path(td)
+        # Lean chooses the first package directory, even when a module is absent.
+        (view / 'Fn2').mkdir()
+        for module in sorted(modules):
+            relative = Path(*module.split('.')).with_suffix('.olean')
+            artifact = lib / relative
+            if not artifact.is_file():
+                raise ValueError('missing qualified local artifact ' + module)
+            for suffix in ['.olean', '.olean.private', '.olean.server', '.ir']:
+                source = lib / relative.with_suffix(suffix)
+                if source.is_file():
+                    target = view / relative.with_suffix(suffix)
+                    target.parent.mkdir(parents=True, exist_ok=True)
+                    target.symlink_to(source.resolve())
+        yield view
+
+
+def compile_one(source, lib, seconds, logname, root=BASE, write_olean=True, allowed_modules=()):
     src_path = Path(source)
     abs_src = src_path if src_path.is_absolute() else (root / src_path)
     meta_dir = root / 'meta'
     lean_arg = str(abs_src.relative_to(meta_dir)) if abs_src.is_relative_to(meta_dir) else str(abs_src)
-    cmd = ['lean', lean_arg]
+    cmd = ['lean', '-j1', lean_arg]
     if write_olean:
         out = lib / abs_src.relative_to(meta_dir).with_suffix('.olean')
         out.parent.mkdir(parents=True, exist_ok=True)
         cmd += ['-o', str(out)]
     log = root / 'build/served-certificate-gates' / logname
     log.parent.mkdir(parents=True, exist_ok=True)
-    env = os.environ.copy()
-    env['LEAN_PATH'] = str(lib.resolve()) + (os.pathsep + env['LEAN_PATH'] if env.get('LEAN_PATH') else '')
+    env = lean_environment(lib)
     try:
-        result = subprocess.run(
-            cmd, cwd=meta_dir, env=env, text=True,
-            stdout=subprocess.PIPE, stderr=subprocess.STDOUT, timeout=seconds,
-        )
+        with local_dependency_view(lib, allowed_modules) as view:
+            env['LEAN_PATH'] = str(view) + os.pathsep + env['LEAN_PATH']
+            result = subprocess.run(
+                cmd, cwd=meta_dir, env=env, text=True,
+                stdout=subprocess.PIPE, stderr=subprocess.STDOUT, timeout=seconds,
+            )
         log.write_text(result.stdout)
         return result.returncode, result.stdout, str(log.relative_to(root))
     except subprocess.TimeoutExpired as e:
@@ -148,7 +186,69 @@ def compile_one(source, lib, seconds, logname, root=BASE, write_olean=True):
         return 124, output, str(log.relative_to(root))
 
 
-def toolchain_fingerprint(root=BASE):
+def lean_environment(lib):
+    env = os.environ.copy()
+    env['LEAN_PATH'] = str(lib.resolve()) + (os.pathsep + env['LEAN_PATH'] if env.get('LEAN_PATH') else '')
+    return env
+
+
+def artifact_signature(artifact):
+    """Bind the complete import artifact, including Lean's private/server sidecars."""
+    paths = [artifact, Path(str(artifact) + '.private'), Path(str(artifact) + '.server'),
+             artifact.with_suffix('.ir')]
+    return ''.join(str(p) + ':' + (digest(p) if p.is_file() else '<absent>') for p in paths)
+
+
+def external_library_fingerprint(paths, owned_lib=None, owned_modules=()):
+    """Conservative transitive import inventory, including shadowing directories.
+
+    Lean resolves a package at its first search root, not each module separately.
+    Hash all external artifacts rather than guessing their transitive imports from
+    local source. Only exact outputs of the checked local closure are excluded.
+    Other Fn2 artifacts remain bound even when an external module imports them.
+    Directory symlinks are followed; cycles fail closed.
+    """
+    hashed = hashlib.sha256()
+    owned = owned_lib.resolve() if owned_lib is not None else None
+    outputs = set()
+    ancestors_owned = set()
+    for name in owned_modules:
+        artifact = owned / Path(*name.split('.')).with_suffix('.olean')
+        outputs.update([artifact, Path(str(artifact)+'.private'), Path(str(artifact)+'.server'),
+                        artifact.with_suffix('.ir')])
+        ancestors_owned.update(artifact.parents)
+
+    def add(value):
+        hashed.update(json.dumps(value, ensure_ascii=True).encode() + b'\n')
+
+    def walk(path, ancestors):
+        if path in outputs:
+            return
+        resolved = path.resolve()
+        if path.is_dir():
+            if resolved in ancestors:
+                raise ValueError('cycle in Lean library path: ' + str(path))
+            if path not in ancestors_owned or path == owned:
+                add(['directory', str(path), str(resolved)])
+            for child in sorted(path.iterdir()):
+                walk(child, ancestors | {resolved})
+        elif path.is_file() and (path.name.endswith(('.olean', '.olean.private', '.olean.server',
+                                                     '.ir', '.so', '.dylib', '.dll')) or '.so.' in path.name):
+            add(['artifact', str(path), str(resolved), digest(path)])
+        elif path.is_symlink() and not path.exists():
+            add(['dangling', str(path), str(resolved)])
+
+    for path in paths:
+        path = path.resolve()
+        add(['search-root', str(path)])
+        if path.exists():
+            walk(path, set())
+        else:
+            add(['missing', str(path)])
+    return hashed.hexdigest()
+
+
+def toolchain_fingerprint(root=BASE, lib=None, owned_modules=()):
     lean_bin = shutil.which('lean')
     if not lean_bin:
         raise RuntimeError('lean executable not found in PATH')
@@ -167,7 +267,12 @@ def toolchain_fingerprint(root=BASE):
     runtime = prefix / 'lib/lean'
     files.extend(sorted(runtime.glob('*.so')))
     files.extend(sorted(runtime.glob('*.dylib')))
-    return hashlib.sha256((version + ''.join(
+    env = lean_environment(lib) if lib is not None else os.environ
+    search = env.get('LEAN_PATH', '').split(os.pathsep) if env.get('LEAN_PATH') else []
+    paths = [(Path(p) if Path(p).is_absolute() else root / 'meta' / p).resolve() for p in search]
+    paths.append(runtime.resolve())
+    external = external_library_fingerprint(paths, lib, owned_modules)
+    return hashlib.sha256((LEAN_CACHE_POLICY + version + external + ''.join(
         str(p) + ':' + digest(p) for p in files)).encode()).hexdigest()
 
 
@@ -175,7 +280,7 @@ def dep_signature(deps, done, lib):
     parts = []
     for d in sorted(set(deps)):
         art = lib / Path(*d.split('.')).with_suffix('.olean')
-        parts.append(f'{d}:{done[d]}:{digest(art)}')
+        parts.append(f'{d}:{done[d]}:{artifact_signature(art)}')
     return ''.join(parts)
 
 
@@ -224,10 +329,7 @@ def lean_cache_session(root, lib=None):
             checkpoint()
 
 
-def compile_closure(roots, lib, seconds, jobs, root=BASE, cache=None, tool=None, checkpoint=None):
-    """Recheck every local import, then reuse only this checker's bound cache.
-    An olean copied from a warm lane is not evidence for changed dependencies.
-    """
+def local_module_closure(roots, root):
     deps = {}
 
     def visit(module):
@@ -244,12 +346,24 @@ def compile_closure(roots, lib, seconds, jobs, root=BASE, cache=None, tool=None,
     for r in roots:
         visit(r)
 
+    return deps
+
+
+def compile_closure(roots, lib, seconds, jobs, root=BASE, cache=None, tool=None, checkpoint=None):
+    """Recheck every local import, then reuse only this checker's bound cache.
+    An olean copied from a warm lane is not evidence for changed dependencies.
+    """
+    deps = local_module_closure(roots, root)
+
     if cache is None:
         with lean_cache_session(root, lib) as (owned_cache, save):
             return compile_closure(roots, lib, seconds, jobs, root=root,
                                    cache=owned_cache, tool=tool, checkpoint=save)
     if tool is None:
-        tool = toolchain_fingerprint(root)
+        lib.mkdir(parents=True, exist_ok=True)
+        with stable_toolchain(root, lib, deps, cache, checkpoint or (lambda: None)) as bound_tool:
+            return compile_closure(roots, lib, seconds, jobs, root=root, cache=cache,
+                                   tool=bound_tool, checkpoint=checkpoint)
 
     done = {}
     pending = set(deps)
@@ -266,14 +380,15 @@ def compile_closure(roots, lib, seconds, jobs, root=BASE, cache=None, tool=None,
                 ).hexdigest()
                 artifact = lib / Path(*n.split('.')).with_suffix('.olean')
                 old = cache.get(n, {})
-                if old.get('key') == key and artifact.is_file() and old.get('olean') == digest(artifact):
+                if old.get('key') == key and artifact.is_file() and old.get('olean') == artifact_signature(artifact):
                     return n, key, old, None
-                rc, out, log = compile_one(source, lib, seconds, 'dependency-' + n + '.log', root=root, write_olean=True)
+                rc, out, log = compile_one(source, lib, seconds, 'dependency-' + n + '.log', root=root, write_olean=True,
+                                               allowed_modules=transitive_dependencies(deps[n], deps))
                 if rc:
                     return n, key, None, log
                 rec = {
                     'key': key,
-                    'olean': digest(artifact),
+                    'olean': artifact_signature(artifact),
                     'log': log,
                     'log_sha256': digest(root / log),
                 }
@@ -309,17 +424,7 @@ def root_census_ok(output, root_idx):
     return all(census(output, f'Fn2.Arms.Served.Root{root_idx}Proof.{t}') for t in ROOT_THEOREMS)
 
 
-def lean_gates(report, lib, seconds, jobs, root=BASE, batch_size=4, only=None):
-    with lean_cache_session(root, lib) as (cache, checkpoint):
-        return lean_gates_locked(report, lib, seconds, jobs, root, batch_size, only, cache, checkpoint)
-
-
-def lean_gates_locked(report, lib, seconds, jobs, root, batch_size, only, cache, checkpoint):
-    # The caller starts this process under swarm-build/lake env. Install each
-    # changed dependency into this lane's own library, never another lane's.
-    cache_lock = threading.Lock()
-    tool = toolchain_fingerprint(root)
-
+def gate_plan(report, root, only):
     selected_indices = [
         i for i, r in enumerate(report['roots'])
         if not only or (only in r['name'] or only == f'Root{i}' or only == r.get('kind', ''))
@@ -344,8 +449,55 @@ def lean_gates_locked(report, lib, seconds, jobs, root, batch_size, only, cache,
         if (root / 'meta/Fn2/Instances/ServedCommit.lean').is_file():
             base_closure.add('Fn2.Instances.ServedCommit')
 
+    return selected_indices, base_closure | extra
+
+
+@contextmanager
+def stable_toolchain(root, lib, owned_modules, cache, checkpoint):
+    """Keep standalone closure checks and complete gates in one external world."""
+    tool = toolchain_fingerprint(root, lib, owned_modules)
     try:
-        done = compile_closure(sorted(base_closure | extra), lib, seconds, jobs, root=root, cache=cache, tool=tool, checkpoint=checkpoint)
+        yield tool
+    finally:
+        try:
+            stable = toolchain_fingerprint(root, lib, owned_modules) == tool
+        except Exception:
+            cache.clear()
+            checkpoint()
+            raise
+        if not stable:
+            cache.clear()
+            checkpoint()
+            raise RuntimeError('Lean compiler or external libraries changed during gate')
+
+
+def lean_gates(report, lib, seconds, jobs, root=BASE, batch_size=4, only=None):
+    with lean_cache_session(root, lib) as (cache, checkpoint):
+        selected, closure = gate_plan(report, root, only)
+        owned_modules = set(local_module_closure(closure, root))
+        owned_modules.update('.'.join(Path(report['roots'][i]['contract']).relative_to('meta').with_suffix('').parts)
+                             for i in selected)
+        with stable_toolchain(root, lib, owned_modules, cache, checkpoint) as tool:
+            return lean_gates_locked(report, lib, seconds, jobs, root, batch_size, only, cache, checkpoint, tool)
+
+
+def proof_batch_scope(row, deps, graph):
+    return row.get('kind', ''), tuple(sorted(transitive_dependencies(deps, graph)))
+
+
+def lean_gates_locked(report, lib, seconds, jobs, root, batch_size, only, cache, checkpoint, tool):
+    # The caller starts this process under swarm-build/lake env. Install each
+    # changed dependency into this lane's own library, never another lane's.
+    cache_lock = threading.Lock()
+
+    selected_indices, base_closure = gate_plan(report, root, only)
+    graph = local_module_closure(base_closure, root)
+    for i in selected_indices:
+        path = Path(report['roots'][i]['contract'])
+        graph['.'.join(path.relative_to('meta').with_suffix('').parts)] = local_imports((root / path).read_text())
+
+    try:
+        done = compile_closure(sorted(base_closure), lib, seconds, jobs, root=root, cache=cache, tool=tool, checkpoint=checkpoint)
 
         if not only and report.get('commit_words', 0):
             sc_rec = cache.get('Fn2.Instances.ServedCommit', {})
@@ -357,6 +509,7 @@ def lean_gates_locked(report, lib, seconds, jobs, root, batch_size, only, cache,
                 rc, out, log = compile_one(
                     'meta/Fn2/Instances/ServedCommit.lean', lib, seconds, 'commit-words.log',
                     root=root, write_olean=True,
+                    allowed_modules=transitive_dependencies(graph['Fn2.Instances.ServedCommit'], graph),
                 )
             if rc or not all(
                 census(out, 'Fn2.Instances.ServedCommit.word' + str(i) + '_translation')
@@ -385,17 +538,18 @@ def lean_gates_locked(report, lib, seconds, jobs, root, batch_size, only, cache,
             if (
                 old.get('key') == c_key
                 and artifact.is_file()
-                and old.get('olean') == digest(artifact)
+                and old.get('olean') == artifact_signature(artifact)
                 and old_log
                 and (root / old_log).is_file()
                 and old.get('log_sha256') == digest(root / old_log)
             ):
                 return c_rel, c_mod, c_key, 0, old_log, None
-            rc, out, log = compile_one(c_rel, lib, seconds, log_name, root=root, write_olean=True)
+            rc, out, log = compile_one(c_rel, lib, seconds, log_name, root=root, write_olean=True,
+                                        allowed_modules=transitive_dependencies(c_deps, graph))
             if rc == 0:
                 rec = {
                     'key': c_key,
-                    'olean': digest(artifact),
+                    'olean': artifact_signature(artifact),
                     'log': log,
                     'log_sha256': digest(root / log),
                 }
@@ -414,7 +568,7 @@ def lean_gates_locked(report, lib, seconds, jobs, root, batch_size, only, cache,
                 checkpoint()
 
         # Phase 2: Check proof cache; group uncached proofs into per-kind batches.
-        uncached_by_kind = {}
+        uncached_by_scope = {}
         solo_items = []
 
         for i in selected_indices:
@@ -459,11 +613,13 @@ def lean_gates_locked(report, lib, seconds, jobs, root, batch_size, only, cache,
             if parsed is None:
                 solo_items.append([item])
             else:
-                uncached_by_kind.setdefault(row.get('kind', ''), []).append(item)
+                # A batch may not lend one slice another slice's local imports.
+                scope = proof_batch_scope(row, p_deps, graph)
+                uncached_by_scope.setdefault(scope, []).append(item)
 
         batches = list(solo_items)
-        for kind_name in sorted(uncached_by_kind):
-            items = uncached_by_kind[kind_name]
+        for kind_name in sorted(uncached_by_scope):
+            items = uncached_by_scope[kind_name]
             for pos in range(0, len(items), max(1, batch_size)):
                 batches.append(items[pos:pos + max(1, batch_size)])
 
@@ -471,7 +627,8 @@ def lean_gates_locked(report, lib, seconds, jobs, root, batch_size, only, cache,
 
         def record_solo(item):
             i, row, p_key, _ = item
-            rc, out, log = compile_one(row['proof'], lib, seconds, f'{i}-proof.log', root=root, write_olean=False)
+            rc, out, log = compile_one(row['proof'], lib, seconds, f'{i}-proof.log', root=root, write_olean=False,
+                                        allowed_modules=transitive_dependencies(local_imports((root / row['proof']).read_text()), graph))
             theorem = f'Fn2.Arms.Served.Root{i}Proof.validated'
             if rc == 0 and root_census_ok(out, i):
                 sha = digest(root / log)
@@ -514,6 +671,7 @@ def lean_gates_locked(report, lib, seconds, jobs, root, batch_size, only, cache,
                 rc, out, _ = compile_one(
                     batch_file, lib, batch_timeout, f'batch-proof-{bid}.log',
                     root=root, write_olean=False,
+                    allowed_modules=transitive_dependencies(local_imports(batch_src), graph),
                 )
             finally:
                 batch_file.unlink(missing_ok=True)

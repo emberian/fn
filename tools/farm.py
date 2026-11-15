@@ -1489,7 +1489,15 @@ def fetch(host: str, identifier: str, root: Path,
         local.mkdir(parents=True, exist_ok=True)
         fetch_evidence_dir(host, remote, directory, local)
         fetched_manifests.extend(certs.load_manifests(root, local / "manifest.json"))
-    for directory in certs.BOOK_DIRECTORIES:
+    names = [name for name in certs.certified_books(fetched_manifests, str(remote))
+             if isinstance(name, str) and BOOK_NAME.fullmatch(name)]
+    # Explicit roots may live outside the historical default scan. Collect
+    # their pairs too, before publish verifies them against the fetched evidence.
+    directories = set(certs.BOOK_DIRECTORIES)
+    directories.update(str(Path(name).parent) for name in names)
+    for directory in sorted(directories):
+        if any(parent.as_posix() in directories for parent in Path(directory).parents):
+            continue  # An ancestor's recursive transfer already covers it.
         run(["rsync", "-a", "--update", "--include=*/", "--include=*.cert",
              "--include=*.port", "--include=*.fasl", "--exclude=*",
              f"{host}:{remote}/{directory}/", f"{root}/{directory}/"], check=False)
@@ -1512,8 +1520,6 @@ def fetch(host: str, identifier: str, root: Path,
     if not fetched_manifests:
         print(f"{identifier}: no certification manifest came back for this run; "
               "nothing to publish into the local cache", file=sys.stderr)
-    names = [name for name in certs.certified_books(fetched_manifests, str(remote))
-             if isinstance(name, str) and BOOK_NAME.fullmatch(name)]
     report = certs.publish(root, certs.cache_directory(), fetched_manifests,
                            names=names, origin=str(remote), origin_host=host,
                            origin_kind="run")
@@ -2159,6 +2165,9 @@ def main(argv: list[str] | None = None) -> int:
                              "--affected-by, these books are also its roots")
     parser.add_argument("--timeout-seconds", type=int, default=1800,
                         help="per-ACL2-invocation timeout on the host")
+    parser.add_argument("--budget-seconds", type=int, default=None,
+                        help="submit: total certification runner budget in seconds; "
+                             "distinct from the per-invocation timeout")
     parser.add_argument("--wait-seconds", type=int, default=DEFAULT_WAIT_SECONDS,
                         help="how long `wait` blocks before giving up")
     parser.add_argument("--poll-seconds", type=int, default=POLL_SECONDS)
@@ -2192,6 +2201,9 @@ def main(argv: list[str] | None = None) -> int:
                              "to the box's cache, and `wait` neither sweeps nor "
                              "mirrors nor publishes locally (the run record says so)")
     arguments = parser.parse_args(argv)
+    if arguments.budget_seconds is not None:
+        if arguments.action != "submit" or arguments.budget_seconds <= 0:
+            parser.error("--budget-seconds requires submit and a positive number")
     root = Path(arguments.root).resolve()
     if arguments.recertify_from:
         if arguments.action != "submit":
@@ -2258,6 +2270,7 @@ def main(argv: list[str] | None = None) -> int:
                                 arguments.closure, arguments.cache,
                                 arguments.acl2,
                                 no_publish=arguments.no_publish,
+                                budget_seconds=arguments.budget_seconds,
                                 require_origin=arguments.require_origin,
                                 recertify=list(arguments.recertify),
                                 images=arguments.images

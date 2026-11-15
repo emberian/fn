@@ -1,6 +1,6 @@
 (in-package "ACL2")
 (include-book "columns")
-(include-book "owed")
+(include-book "owed-discharge")
 (include-book "profile")
 
 ; A range is slot-relative u32/u32.  Bases are u60 so the shared region is
@@ -699,14 +699,8 @@
 ;; An owed row becomes proved by naming the admitted theorem of its exact
 ;; statement; the fn2-squares table guard refuses a theorem whose formula is
 ;; not the row's translated statement or its statement function on its vars.
-;; (Generic: it belongs in owed.lisp, whose change recertifies every book.)
-(defmacro fn2-owed-discharge (name thm)
-  `(make-event
-    (let ((row (fn2-decl-row '(:square ,name) (w state))))
-      (if (not (and row (equal (fn2-decl-get :proof row) '(:owed))))
-          (er soft 'fn2-owed-discharge "~x0 is not an owed obligation." ',name)
-        (value (list 'table 'fn2-squares '',name
-                     (list 'quote (fn2-decl-set :proof '(:proved ,thm) row))))))))
+;; The shared macro is defined in owed-discharge.lisp.
+
 
 ;; ---------------------------------------------------------------------------
 ;; FN2-POOL-CONSERVATION, proved. The invariant splits into one clause per row

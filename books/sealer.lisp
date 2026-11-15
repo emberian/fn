@@ -43,6 +43,7 @@
 (defcolumns fn2-seals
  ((phase (:enum fn2-seal-phase (:idle :build :filter :install :failed :release)))
   (sub (:enum fn2-seal-sub (:open :clear :add :drive :finish :solve)))
+  (history :u60) (history-incarnation :u60)
   (o :u32) (pos :u32) (sid :u60) (run :u60) (runs :u60) (units :u60)
   (top :u8) (rslot :u32) (rgen :u60) (runit :u60) (rcounter :u60) (entries :u60)
   (hslot :u32) (hgen :u60) (filter :bool) (funit :u60) (fcounter :u60)
@@ -59,17 +60,18 @@
  `(fn2-idc-fn-shape ,fn ,args ,outs ,stobjs ,mode ,(append reads *fn2-seal-rows-folded*)))
 
 ; Set the seal row's resources: idle, no run or unit handed out yet.
-(defun fn2-seal-init (wbase fbase crow pagefill okind oslot ogen fn2-seals)
+(defun fn2-seal-init (wbase fbase crow pagefill okind oslot ogen history history-incarnation fn2-seals)
  (declare (xargs :stobjs fn2-seals :guard (fn2-seals-wfp fn2-seals)))
- (if (not (and (< 0 (fn2-seals-rows fn2-seals)) (unsigned-byte-p 32 wbase) (unsigned-byte-p 32 fbase)
+ (if (not (and (fn2-origin-physicalp history history-incarnation) (< 0 (fn2-seals-rows fn2-seals)) (unsigned-byte-p 32 wbase) (unsigned-byte-p 32 fbase)
                (unsigned-byte-p 32 crow) (unsigned-byte-p 32 pagefill) (unsigned-byte-p 8 okind)
                (unsigned-byte-p 32 oslot) (unsigned-byte-p 60 ogen)))
      (mv :bounds fn2-seals)
   (let ((fn2-seals (fn2-seals-put 0 (phase *fn2-seal-phase-idle*) (sub *fn2-seal-sub-open*) (o 0) (pos 0) (sid 0) (run 0)
+                                  (history history) (history-incarnation history-incarnation)
                                   (runs 0) (units 0) (filter 0) (wbase wbase) (fbase fbase) (crow crow) (fill pagefill)
                                   (okind okind) (oslot oslot) (ogen ogen))))
    (mv :ok fn2-seals))))
-(fn2-seal-shape fn2-seal-init (wbase fbase crow pagefill okind oslot ogen fn2-seals) (fn2-seals) (fn2-seals))
+(fn2-seal-shape fn2-seal-init (wbase fbase crow pagefill okind oslot ogen history history-incarnation fn2-seals) (fn2-seals) (fn2-seals))
 ; The merge's read resources (C5): range row RG, its eight sources from
 ; SBASE reading through run cursors from CBASE, the query key's field rows
 ; at QBASE and the sources' reader rows from RBASE.
@@ -334,7 +336,7 @@
        (mv :bounds fn2-seals fn2-overlays fn2-run-builds fn2-run-writers fn2-pool))
       ((mv code fn2-run-builds fn2-run-writers fn2-pool)
        (fn2-run-build-start 0 sid run (fn2-seals-wbase 0 fn2-seals) crow hbase hslot hgen (fn2-seals-fbase 0 fn2-seals)
-                            (fn2-seals-fill 0 fn2-seals) 1 1 okind oslot ogen fn2-run-builds fn2-run-writers fn2-pool))
+                            (fn2-seals-fill 0 fn2-seals) (fn2-seals-history 0 fn2-seals) (fn2-seals-history-incarnation 0 fn2-seals) okind oslot ogen fn2-run-builds fn2-run-writers fn2-pool))
       ((unless (eq code :ok)) (mv code fn2-seals fn2-overlays fn2-run-builds fn2-run-writers fn2-pool))
       (fn2-seals (fn2-seals-put 0 (phase *fn2-seal-phase-build*) (sub *fn2-seal-sub-open*) (o use-o) (pos 0) (sid sid) (run run)
                                 (runs run) (hslot hslot) (hgen hgen) (filter 0) (entries 0) (k k) (rlo rlo) (ufirst ufirst)
@@ -843,7 +845,7 @@
       (crow (fn2-seals-crow 0 fn2-seals))
       ((mv code fn2-run-writers fn2-pool)
        (fn2-run-open w slot gen (fn2-seals-sid 0 fn2-seals) 1 0 (fn2-seals-run 0 fn2-seals) 0 *page-kind-partitioned-filter*
-                     unit 1 unit 1 1 (fn2-seals-okind 0 fn2-seals) (fn2-seals-oslot 0 fn2-seals) (fn2-seals-ogen 0 fn2-seals)
+                     unit 1 unit (fn2-seals-history 0 fn2-seals) (fn2-seals-history-incarnation 0 fn2-seals) (fn2-seals-okind 0 fn2-seals) (fn2-seals-oslot 0 fn2-seals) (fn2-seals-ogen 0 fn2-seals)
                      (+ (nfix (fn2-seals-fbase 0 fn2-seals)) *fn2-seal-fw*) *fn2-run-page-size* fn2-run-writers fn2-pool))
       ((unless (eq code :ok)) (mv code fn2-ribbon-builds fn2-run-writers fn2-pool))
       ((mv code fn2-ribbon-builds)

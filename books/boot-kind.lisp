@@ -3,16 +3,8 @@
 (in-package "ACL2")
 (include-book "machines-b")
 (include-book "machine-arms")
+(include-book "boot-format")
 (fn2-book-layer :b)
-
-(deflayout fn2-boot-record
- '((magic :u32) (version :u8) (kind :u8) (index :varint)
-   (image-size :varint) (extents :varint) (groups :varint)
-   (owner :u32) (authority :u8) (identity (:octets 250))
-   (value :varint) (epoch :varint) (previous :varint)))
-(defconst *fn2-boot-magic* #x54423246)
-(defconst *fn2-boot-unit* 4096)
-(defconst *fn2-boot-hash-offset* 4064)
 
 ; Only startup configuration has a list cursor. It advances one group per
 ; visit, is cleared before ready, and never contains parsed device data.
@@ -31,6 +23,7 @@
   (fn2-boot-config-count :type (unsigned-byte 32) :initially 0 :why "Number of immutable genesis group records.")
   (fn2-boot-config-extents :type (unsigned-byte 32) :initially 0 :why "The image's arena geometry, checked before recovery.")
   (fn2-boot-config-owner :type (unsigned-byte 32) :initially 0 :why "Persisted initial owner account binding.")
+  (fn2-boot-config-recovery-assumptions :type (unsigned-byte 8) :initially 2 :why "Declared startup storage fault contract; never inferred from image bytes.")
   (fn2-boot-config-authority :type (unsigned-byte 1) :initially 0 :why "Whether genesis includes the principal directory.")))
 
 (defun fn2-boot-config-prepare (profile fn2-boot-config)
@@ -41,6 +34,7 @@
         (owner (fn2-profile-get :owner-account profile)))
   (if (not (fn2-profile-get :image-boot profile)) fn2-boot-config
    (let* ((fn2-boot-config (update-fn2-boot-config-groups groups fn2-boot-config))
+          (fn2-boot-config (update-fn2-boot-config-recovery-assumptions (fn2-profile-recovery-assumptions profile) fn2-boot-config))
           (fn2-boot-config (update-fn2-boot-config-path (fn2-profile-path-identity profile) fn2-boot-config))
           (fn2-boot-config (update-fn2-boot-config-count (if (unsigned-byte-p 32 (len groups)) (len groups) 0) fn2-boot-config))
           (fn2-boot-config (update-fn2-boot-config-extents (if (unsigned-byte-p 32 extents) extents 0) fn2-boot-config))
@@ -49,8 +43,18 @@
      fn2-boot-config))))
 (defthm fn2-boot-config-prepare-type
  (implies (fn2-boot-configp fn2-boot-config)
-          (fn2-boot-configp (fn2-boot-config-prepare profile fn2-boot-config))))
-(defthm fn2-boot-config-prepare-wfp (fn2-boot-config-wfp (fn2-boot-config-prepare profile fn2-boot-config)))
+          (fn2-boot-configp (fn2-boot-config-prepare profile fn2-boot-config)))
+ :hints (("Goal" :in-theory (disable fn2-profile-recovery-assumptions fn2-profile-get
+                                    fn2-profile-path-identity unsigned-byte-p posp nfix))))
+(defthm fn2-boot-config-prepare-wfp (fn2-boot-config-wfp (fn2-boot-config-prepare profile fn2-boot-config))
+ :hints (("Goal" :in-theory (disable fn2-profile-recovery-assumptions fn2-profile-get
+                                    fn2-profile-path-identity unsigned-byte-p posp nfix))))
+(defthm fn2-boot-config-prepare-recovery-assumptions
+ (implies (fn2-profile-get :image-boot profile)
+  (equal (fn2-boot-config-recovery-assumptions (fn2-boot-config-prepare profile fn2-boot-config))
+         (fn2-profile-recovery-assumptions profile)))
+ :hints (("Goal" :in-theory (disable fn2-profile-recovery-assumptions fn2-profile-get
+                                    fn2-profile-path-identity unsigned-byte-p posp nfix))))
 (in-theory (disable fn2-boot-config-prepare))
 (defcorechild fn2-core-boot-config fn2-boot-config
  :init (fn2-boot-config-prepare profile fn2-boot-config)

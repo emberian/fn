@@ -639,6 +639,38 @@ before target across a crash, the commit cuts, two routing projections, an old i
 visibility under disclosure, carried count and octets, cleanup debt, fragments, a grant change under
 pending work) land with the served verb each exercises.
 
+### 13.8.1 Current inbound replay boundary
+`tests/peer-replay-unit.lisp` targets `fn2-cursor-wire-run`, which drives the composed
+core through the simulated adapter. Its observations are literal reply bytes,
+`GROUP` count/high-water and `BODY 1`: identical retransmission and a different body
+under the accepted Message-ID must leave the original article intact. A distinct
+Message-ID control must admit the second body and advance the count/high-water;
+fragmented input repeats the same-ID case. The fixture also requires quiescence
+without a core stop. On semantic base `6e07e62f3`, the three assertions passed
+in the composed core, and the exact test book was certified under qualified
+launcher identity `8aeb1bea18968c6cd33ac633a80ebf67e4924504db112fd27eb11f16a27b2a8c`,
+closure key `764873415608d4de215934accbcc1794c9f8f57e3af0cda7ee907a6b42623741`
+(156 books). The record is `certify-20261114T053011Z-3756097`; this is finite
+regression evidence, not discharge of K-P1 or K-P6 over arbitrary traces.
+
+This scope is one live connection on one node with successful simulated durable
+I/O and the explicit `:peering-interim` profile. It does not establish lost-reply
+recovery, peer authentication, retention/reclamation, real storage durability,
+cryptographic collision resistance, or cross-node convergence. A peer may send
+conflicting bytes; the expected local behavior does not assume peer honesty.
+
+The served offer path is `cursor.lisp`'s `seek-identity` arm calling
+`fn2-read-identity`: `machines-c-read.lisp` first reads the local identity-article
+index (SID 14), then the evidence summary (SID 13). Only `:found` suppresses
+CHECK/IHAVE; `:evidence` and `:absent` request the transfer. The fixture observes
+accepted history, not an evidence-only store. Evidence-only import, withdrawn or
+reclaimed history, and offer/transfer authority changes still need composed
+witnesses when their producers are connected.
+
+Outbound feeding and catchup coverage remain the implementation frontier in
+§13.3–13.4. `conn-answer.lisp` explicitly marks `XFNCATCHUP` interim; the
+`peer-model.lisp` witnesses do not close those served obligations.
+
 ### 13.9 Seams, with the owners' answers
 - **D (answered):** §13.2's table whole in D5 3/n; authority rechecked at each offer and transfer;
   §14.4.3's identity text rewritten to rulings 6/7/8/11 in D's next push; `:peer-credit` as a ledger net

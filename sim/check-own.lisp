@@ -145,9 +145,22 @@
 (fn2-own-preserves fn2-own-restart (fn2-own) :position nil :rows nil
   :hyps ((fn2-ownp fn2-own) (fn2-own-wfp fn2-own) ))
 
+; Expose only the pool fields the initializer calls. Opening the whole
+; profile schema in its nested resize guard repeats unrelated validation.
+(local (defthm fn2-own-init-profile-pool-unfolds
+  (implies (fn2-profilep profile)
+           (and (fn2-profile-classes-p (fn2-profile-pool-classes profile))
+                (unsigned-byte-p 60
+                  (fn2-profile-pool-bytes (fn2-profile-pool-classes profile)))))
+  :rule-classes (:rewrite :forward-chaining)
+  :hints (("Goal" :in-theory
+           (union-theories '(fn2-profilep) (theory 'minimal-theory))))))
+
 (defun fn2-own-init (profile fn2-own)
   (declare (xargs :stobjs fn2-own :guard (fn2-profilep profile)
-                  :guard-hints (("Goal" :in-theory (enable fn2-profilep fn2-profile-o fn2-profile-qa)))))
+                  :guard-hints (("Goal" :in-theory
+                    (disable fn2-profilep fn2-profile-o fn2-profile-qa
+                             fn2-profile-pool-classes)))))
   (let* ((bytes (fn2-profile-pool-bytes (fn2-profile-pool-classes profile)))
          (ops (fn2-profile-o profile)) (qa (fn2-profile-qa profile))
          (fn2-own (fn2-own-columns-init ops fn2-own))
@@ -173,6 +186,19 @@
         (fn2-own-mark-input (+ 1 base) (- left 1) gen fn2-own)))))
 (fn2-own-preserves fn2-own-mark-input (base left gen fn2-own) :position nil :rows nil
   :hyps ((fn2-ownp fn2-own) (fn2-own-wfp fn2-own) (natp base) (natp left) (unsigned-byte-p 60 gen)))
+
+; A column reader and its row bound must retain the same representation.
+; Derive this client theory from the generating declarations: public indexed
+; type/bound facts then apply before concrete NTH expansions lose the match.
+(local (make-event
+ (let* ((pool (fn2-decl-row '(:columns fn2-pool) (w state)))
+        (ops (fn2-decl-row '(:columns fn2-ops) (w state))))
+   (if (and pool ops)
+       (value `(in-theory (disable
+          fn2-pool-rows fn2-ops-rows
+          ,@(fn2-columns-projection-readers 'fn2-pool (fn2-decl-get :columns pool))
+          ,@(fn2-columns-projection-readers 'fn2-ops (fn2-decl-get :columns ops)))))
+     (er soft 'fn2-own-client-theory "Missing pool or operation column declaration.")))))
 
 (defun fn2-own-observe-issue-parts (opslot fn2-pool fn2-ops fn2-own)
   (declare (xargs :stobjs (fn2-pool fn2-ops fn2-own)

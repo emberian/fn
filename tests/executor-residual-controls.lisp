@@ -1,0 +1,27 @@
+; Evaluating teeth shared by the full served world and the small real core.
+(in-package "ACL2")
+(defmacro fn2-arm-residual-teeth-events ()
+ '(progn
+(defun fn2-arm-residual-run (budget fn2-core)
+ (declare (xargs :stobjs fn2-core :verify-guards nil))
+ (b* ((fn2-core (fn2-core-init *fn2-profile-tiny* fn2-core))
+      (id (fn2-machine-free-head *fn2-echo-admission-ordinal* fn2-core))
+      ((mv code fn2-core) (fn2-machine-admit-fn2-echo 7 9 1 fn2-core))
+      (hyps (and (eq code :ok) (fn2-corep fn2-core) (fn2-core-wfp fn2-core)
+                 (fn2-machine-idp id fn2-core) (equal (fn2-machine-kind id fn2-core) *fn2-echo-kind*)))
+      ((mv ?bytes ?steps descriptors ?runnable fn2-core) (fn2-machine-run id budget fn2-core)))
+  (mv (list hyps (natp budget) descriptors budget (<= descriptors budget)) fn2-core)))
+(defun fn2-arm-residual-case (budget)
+ (declare (xargs :verify-guards nil))
+ (with-local-stobj fn2-core (mv-let (answer fn2-core)
+  (fn2-arm-residual-run budget fn2-core) answer)))
+(defun fn2-arm-residual-positive ()
+ (declare (xargs :verify-guards nil))
+ (and (equal (fn2-arm-residual-case 1) '(t t 1 1 t))
+      (equal (fn2-arm-residual-case 0) '(t t 0 0 t))))
+(defun fn2-arm-residual-negative ()
+ ; Removing NATP budget makes the unchanged theorem false: zero is not <= -1.
+ ; Every other hypothesis holds on the actually admitted echo row.
+ (declare (xargs :verify-guards nil))
+ (equal (fn2-arm-residual-case -1) '(t nil 0 -1 nil)))
+))

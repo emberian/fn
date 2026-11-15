@@ -102,7 +102,7 @@
     (mv-let (o v d b s concrete1)
       (,(car (sq-get :concrete sides)) t (,(sq-get :budget contract) ctx) concrete)
       (mv-let (ro rv rd rb rs lists1 reference1)
-        (,(car (sq-get :reference sides)) (,(sq-get :budget contract) ctx) lists reference)
+        (,(car (sq-get :reference sides)) t (,(sq-get :budget contract) ctx) lists reference)
         (let ((concrete2 (,(cadr (sq-get :concrete sides)) b s concrete1))
               (ctx1 (,(sq-get :advance contract) ctx o v d rb rs)))
           (and (equal (list o v d b s) (list ro rv rd rb rs))
