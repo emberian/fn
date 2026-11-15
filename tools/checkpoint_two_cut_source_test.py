@@ -25,4 +25,12 @@ class TwoCut(unittest.TestCase):
   self.assertLess(next.index('(fn2-clt-completed-p checkpoint'),next.index('(fn2-clc-prefix-to-held '))
   self.assertIn('(< checkpoint next)',next)
   self.assertIn('(fn2-clc-full-live-source-p fn2-core)',next)
+ def test_activation_and_nonproductive_standalone_frontier_are_explicit(self):
+  s=(ROOT/'tests/checkpoint-live-two-cut-support.lisp').read_text()
+  self.assertIn('predicate cannot become\n; productive there',s)
+  self.assertIn('Typed route506e346ed',s)
+  state=(ROOT/'books/checkpoint-master-state.lisp').read_text()
+  self.assertIn('(defconst *fn2-checkpoint-activation-qualified* nil)',state)
+  arms=(ROOT/'books/checkpoint-master-arms.lisp').read_text()
+  self.assertIn('(:if *fn2-checkpoint-activation-qualified*',arms)
 if __name__=='__main__':unittest.main()

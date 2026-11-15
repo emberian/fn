@@ -3,6 +3,13 @@
 ; never sets APPLIED, bank, authority, phase, protection or persistence state.
 ; Complete runtime master/compactor/bank providers are prerequisites. Source
 ; only: no whole two-cut or DELETE execution claim is made by this book.
+; Exact frontier: the standalone456/a749 source has the old master
+; summary-copy -> rebase -> release route, so this predicate cannot become
+; productive there. Typed route506e346ed plus the coherent compactor/bank/
+; authorizer/callback providers is required, and remains unqualified.
+; Activation NIL blocks automatic IDLE admission. The already authorized
+; test-only maintenance-entry constructor does not enable it; no other phase
+; or flag is assigned here to bypass a missing route or failed admission.
 (in-package "ACL2")
 (include-book "checkpoint-live-network-prefix-support")
 (include-book "../books/checkpoint-cbase-identity")
