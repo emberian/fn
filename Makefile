@@ -385,6 +385,7 @@ ACL2_BOOKS = \
   tests/parser-boundary-unit \
   tests/peer-witnesses \
   tests/peer-import-unit \
+  tests/peer-import-detach-unit \
   tests/peer-replay-unit \
   tests/pointwise-contracts-unit \
   tests/pool-ranges-unit \

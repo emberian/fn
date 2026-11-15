@@ -34,6 +34,15 @@ abort releases only that snapshot when the successor is actually idle with
 all slots empty and no live identity query references its pool generation.
 The foreign query and successor are unchanged. Bound work or a live alias
 refuses; cleanup can be retried after its owner finishes and releases it.
+The alias check covers this transaction. The private-copy ownership contract
+forbids handing its pool handle to other transactions; this is not a scan or
+proof that arbitrary other clients cannot retain that private handle.
+Only fixtures currently call this importer. Production slot/generation reads
+are confined to its same-transaction materialization/query/successor path,
+but generic query admission accepts caller-provided references and owner.
+Before a composed producer can claim cross-transaction reclamation safety,
+creation/transfer must enforce transaction-bound private references or the
+producer must prove that these handles cannot escape. That claim is open.
 
 The source fixture checks changed origin and occurrence, changed receipt,
 changed name/digest contents and tags, duplicate counts, partial copies,
