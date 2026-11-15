@@ -3,7 +3,9 @@ module
 public import Fn2.ACL2.Val
 public import Fn2.ACL2.PrimitiveIntegerPower
 public import Mathlib.Data.Rat.Floor
-public import Mathlib.Tactic
+public import Mathlib.Tactic.Ring
+public import Mathlib.Tactic.NormNum
+public import Mathlib.Tactic.Lift
 import all Init.Data.String.Basic
 import all Init.Data.String.Slice
 import all Init.Data.String.TakeDrop

@@ -536,14 +536,19 @@ contain only propext, Classical.choice and Quot.sound. Compiler SHA256
 log SHA256 `d7b293364d59895871d2c3f4264e4dee421c69a127287b342d44349e7e668ac5`.
 This excludes the later declaration syntax migration and generated app world.
 
-**Unfinished syntax scope:** the coherent eleven-module migration is not
-qualified. Its new projection and nine control examples passed a bounded author
-probe, but four unchanged Pathway fixture read equations still need a checked
-projection boundary before internal-reader reduction. The source now proves each concrete canonical
-projection separately, then rewrites it into the unchanged `Arm.read` parser;
-this repair has not yet been checked. No compatibility fallback accepts old
-unqualified external declaration names. Existing generated bodies with
-nonkeyword data must be regenerated from actual package-preserving literals.
+**Qualified syntax scope:** the coherent eleven-module migration at
+`33c2c1ded372f86e400808449961281d50f8d1e0` passed, receipt
+`/tmp/symbol-projection-qualified11-receipt.json`: five exact artifact reuses and
+six compiled modules, including all four unchanged Pathway read equations and
+nine syntax controls. Each concrete canonical projection is checked with kernel
+`decide`, then rewritten into the original `Arm.read` parser. Axiom censuses
+remain propext, Classical.choice and Quot.sound; log SHA256
+`8f99ea93b8db62cdcfff2d054b3a2aa0d45359b8193ec6a881fe45f30bfcecee`.
+No compatibility fallback accepts old unqualified external declaration names.
+Existing generated bodies with nonkeyword data must be regenerated from actual
+package-preserving literals. Pres, PrimitiveLists and PrimitiveIntegerPower also
+passed against those exact eleven artifacts; PrimitiveContracts remains pending
+the matching pinned Mathlib dependency subset.
 
 The printer retains actual home packages; canonical emission preserves them and
 recognizes only real COMMON-LISP NIL as a list terminator. Annotated dot symbols
