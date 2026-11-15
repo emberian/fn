@@ -118,3 +118,40 @@ Emitter SHA256:
 This successor has not been submitted to ACL2. Its existing state-only dependency,
 metadata-based raw-executable exclusion, and all outstanding proof obligations
 remain the same.
+
+The granted successor attempt also admitted **0/226 witnesses**: its internal
+90-second wall timer ended the job with exit 124 while the first theorem's
+computed hint was still the last output. The genuine 131-book state closure
+loaded in 9.83 ACL2 seconds, and exact input/payload preflight passed again.
+No first-theorem proof summary or logical refutation was produced. Its terminal
+raw output is `/tmp/enum-controls-848-terminal-raw.txt` on forge, SHA256
+`9e37993a89f16bc9c5b7f33898a045f5e0042051bc4eaed7b325dc452a30ff17`.
+All owned handles (1845377, 1845380, 1845426, process group 1845430) and scope
+`run-p1845377-i31202066.scope` were absent after cleanup. The ledger slot was
+released under its lock, recalculating both unassigned fields from current slots.
+
+## Narrow theory source candidate
+
+The broad computed hint performed nested `union-equal` over the entire loaded
+world's function and executable theories for each witness. Those list-set unions
+perform quadratic membership work before the prover emits its summary. The
+terminal log is consistent with that setup cost; it does not measure which
+subexpression consumed the wall budget.
+
+The source-only candidate constructs `fn2-cns-enum-logical-theory` once. Its seeds
+come from actual fragment getter calls and PUT-generated setters, plus the actual
+table P/WFP/ROWS functions and ground addition/comparison/equality/NATP primitives.
+It follows the live world's stored `unnormalized-body` dependencies with
+`all-fnnames`, selects only corresponding definition/executable runes from the
+world, then subtracts actual stobj executable counterparts using their signature
+metadata. A world-sized fuel bound fails hard if exhausted. It never silently
+truncates a dependency closure. Each witness references that named small theory;
+there is no whole-world `union-equal` and no per-witness closure construction.
+
+A parsed comparison confirms all 226 names/formulas, including the IGNORABLE
+declarations, are exactly unchanged. Source controls still pass. The candidate
+fixture `/tmp/assurance-enum-controls-narrow.lisp` SHA256 is
+`61bbea7a3030a9a7abe49ec13cb6cb1326b19d0bd2cfec532d10e9d26bcbbf21`;
+emitter SHA256 is
+`539194c4c64a95f9b0ffc77c0d8f0279c524a8ecab9f02be50d580ae8da956ff`.
+This support code and its named theory are unadmitted; no new compute was started.

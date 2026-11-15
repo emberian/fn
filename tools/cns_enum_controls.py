@@ -159,14 +159,58 @@ def main():
                      (getpropc fn 'stobjs-out nil world))))
        (cons rune (fn2-cns-enum-stobj-execs (cdr runes) world))
      (fn2-cns-enum-stobj-execs (cdr runes) world))))))
-(local (defun fn2-cns-enum-ground-hint (functions execs minimal world)
+(local (defun fn2-cns-enum-definition-closure (todo seen fuel world)
+ (declare (xargs :verify-guards nil :measure (nfix fuel)))
+ (cond ((atom todo) seen)
+       ((zp fuel) (er hard 'fn2-cns-enum-definition-closure
+                       "Actual definition closure exhausted world-sized fuel."))
+       ((member-eq (car todo) seen)
+        (fn2-cns-enum-definition-closure (cdr todo) seen (1- fuel) world))
+       (t (let* ((fn (car todo))
+                 (body (getpropc fn 'unnormalized-body nil world)))
+        (fn2-cns-enum-definition-closure
+          (append (and body (all-fnnames body)) (cdr todo))
+          (cons fn seen) (1- fuel) world))))))
+(local (defun fn2-cns-enum-select-runes (runes functions)
  (declare (xargs :verify-guards nil))
- (list :in-theory
-  (list 'quote
-   (set-difference-equal
-    (union-equal functions (union-equal execs minimal))
-    (fn2-cns-enum-stobj-execs execs world))))))"""])
-    hint = " :hints ((fn2-cns-enum-ground-hint (function-theory :here) (executable-counterpart-theory :here) (theory 'minimal-theory) world))"
+ (if (atom runes) nil
+  (let ((rune (car runes)))
+   (if (and (member-eq (car rune) '(:definition :executable-counterpart))
+            (member-eq (cadr rune) functions))
+       (cons rune (fn2-cns-enum-select-runes (cdr runes) functions))
+     (fn2-cns-enum-select-runes (cdr runes) functions))))))
+"""])
+    # Seed only the actual fragment calls and macro-generated setters. Expand
+    # transitive logical definitions from the live world's stored bodies once.
+    seeds = {TABLE + 'p', TABLE + '-wfp', TABLE + '-rows',
+             'binary-+', 'binary-<', 'equal', 'natp'}
+    def seed_calls(node):
+        if not isinstance(node, list) or not node:
+            return
+        if node[0] == PUT:
+            seeds.update(TABLE + '-set-' + field for field, _ in node[2:])
+        elif isinstance(node[0], str) and node[0].startswith(TABLE + '-'):
+            seeds.add(node[0])
+        for child in node:
+            seed_calls(child)
+    for form in oldforms + newforms:
+        seed_calls(form)
+    seeds.discard(PUT)
+    fixtures.append("""; Construct one small named theory. No whole-world UNION-EQUAL.
+(local (make-event
+ (let* ((world (w state))
+        (definitions (function-theory :here))
+        (execs (executable-counterpart-theory :here))
+        (functions (fn2-cns-enum-definition-closure
+                    '""" + sexp(sorted(seeds)) + """ nil
+                    (len (append definitions execs)) world))
+        (selected (append (fn2-cns-enum-select-runes definitions functions)
+                          (fn2-cns-enum-select-runes execs functions)))
+        (logical (set-difference-equal
+                   (append selected (theory 'minimal-theory))
+                   (fn2-cns-enum-stobj-execs selected world))))
+  (value (list 'deftheory 'fn2-cns-enum-logical-theory (list 'quote logical))))))""")
+    hint = " :hints ((\"Goal\" :in-theory (theory 'fn2-cns-enum-logical-theory)))"
     count = 0
     for case, (before, after) in enumerate(zip(oldforms, newforms)):
         for phase, stage, flag, data, raw, same in itertools.product(range(len(phases) + 1), range(len(stages) + 1), [False, True], [False, True], [False, True], [False, True]):
@@ -210,7 +254,7 @@ def main():
     assert old_missing != empty
     fixtures.append(f'(defthm fn2-cns-enum-missing-row-control\n (let ((xs (quote {sexp(empty)})))\n (and ({TABLE}p xs) ({TABLE}-wfp xs)\n (not (< 0 ({TABLE}-rows xs)))\n (not (equal (update-nth {j} (update-nth 0 (nth 0 (nth {j} xs)) (nth {j} xs)) xs) xs))))\n :rule-classes nil{hint})')
     args.emit.write_text('\n'.join(fixtures) + '\n')
-    print(f'{count} full-table AST comparisons passed; 4 dropped-transition mutants rejected; missing-row negative passed; emitted {len(fixtures)-4} unadmitted ACL2 witnesses to {args.emit}')
+    print(f'{count} full-table AST comparisons passed; 4 dropped-transition mutants rejected; missing-row negative passed; emitted {sum(x.startswith('(defthm ') for x in fixtures)} unadmitted ACL2 witnesses to {args.emit}')
 
 
 if __name__ == '__main__':
