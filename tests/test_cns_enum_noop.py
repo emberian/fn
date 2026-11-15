@@ -16,6 +16,8 @@ def runtime_forms(text):
             if positions:
                 i=positions[0]
                 del xs[i:i+2]
+    for found in match(None,parsed,deep=False,head='fn2-cns-source-frames'):
+        if len(found.node.items)==6:found.node.items.pop()
     def canonical(n):
         if isinstance(n,Lst):return [canonical(x) for x in n.items]
         if isinstance(n,Pre):return (n.prefix,canonical(n.node))
