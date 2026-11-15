@@ -126,10 +126,6 @@
 (defcorechild fn2-core-checkpoint-summary-sources fn2-checkpoint-summary-sources
  :init (fn2-checkpoint-summary-sources-init (fn2-b-capacity :extent-slots 16 profile) fn2-checkpoint-summary-sources)
  :profilep t :why "One authenticated C source root per actual physical extent, tagged by exact descriptor investigation.")
-(defcorechild fn2-core-checkpoint-summary-leases fn2-checkpoint-summary-leases
- :init (fn2-checkpoint-summary-leases-init (+ (fn2-profile-t profile) (* 9 (fn2-b-read-rows profile)) 1) fn2-checkpoint-summary-leases)
- :profilep t :why "Exact query/loader owner and generation retain a selected physical C source across yields.")
-
 (defcorechild fn2-core-checkpoint-restore-semantic-work fn2-checkpoint-restore-semantic-work
  :init (fn2-checkpoint-restore-semantic-work-init (fn2-b-capacity :extent-slots 16 profile) fn2-checkpoint-restore-semantic-work)
  :profilep (unsigned-byte-p 32 (fn2-b-capacity :extent-slots 16 profile))
@@ -153,7 +149,7 @@
 
 (defmachine fn2-boot
  :states (:free :prepare :write :write-result :read :read-result :verify :advance
-          :anchor :bootstrap :bootstrap-verify :checkpoint-anchor :checkpoint-check :checkpoint-descriptor :checkpoint-verify :checkpoint-root-candidate :checkpoint-root-reserve :checkpoint-root-begin :checkpoint-root-load :checkpoint-root-copy :checkpoint-root-verify :checkpoint-root-dispatch :checkpoint-root-padding :checkpoint-root-next :checkpoint-root-finish :checkpoint-root-fifo :checkpoint-evidence-begin :checkpoint-evidence-target :checkpoint-evidence-load :checkpoint-evidence-copy :checkpoint-evidence-check :checkpoint-evidence-record :checkpoint-evidence-next :checkpoint-semantic-begin :checkpoint-semantic-load :checkpoint-semantic-copy :checkpoint-semantic-check :checkpoint-semantic-entries :checkpoint-semantic-find :checkpoint-payload-begin :checkpoint-payload-load :checkpoint-payload-copy :checkpoint-payload-step :checkpoint-census :recover :recover-wait :epoch :epoch-fence :epoch-result :release :ready :failed)
+          :anchor :bootstrap :bootstrap-verify :checkpoint-anchor :checkpoint-check :checkpoint-descriptor :checkpoint-verify :checkpoint-root-candidate :checkpoint-root-reserve :checkpoint-root-begin :checkpoint-root-load :checkpoint-root-copy :checkpoint-root-verify :checkpoint-root-dispatch :checkpoint-root-padding :checkpoint-root-next :checkpoint-root-finish :checkpoint-root-fifo :checkpoint-evidence-begin :checkpoint-evidence-target :checkpoint-evidence-load :checkpoint-evidence-copy :checkpoint-evidence-check :checkpoint-evidence-record :checkpoint-evidence-next :checkpoint-semantic-begin :checkpoint-semantic-load :checkpoint-semantic-copy :checkpoint-semantic-check :checkpoint-summary-capture :checkpoint-semantic-entries :checkpoint-semantic-find :checkpoint-summary-close :checkpoint-payload-begin :checkpoint-payload-load :checkpoint-payload-copy :checkpoint-payload-step :checkpoint-census :recover :recover-wait :epoch :epoch-fence :epoch-result :release :ready :failed)
  :fields ((pending :u32) (stopped :bool) (pool-slot :u32) (pool-gen :u60)
           (rx-slot :u32) (rx-gen :u60) (create :bool) (image-size :u60)
           (base :u60) (total :u32) (index :u32) (stage :u8) (offset :u60)
@@ -176,6 +172,8 @@
          (:checkpoint-semantic-load :storage-window)
          (:checkpoint-semantic-copy :storage-window)
          (:checkpoint-semantic-check :storage-window)
+         (:checkpoint-summary-capture :storage-window)
+         (:checkpoint-summary-close :storage-window)
          (:checkpoint-semantic-entries :storage-window)
          (:checkpoint-semantic-find :storage-window)
          (:checkpoint-payload-begin :storage-window)
@@ -202,6 +200,8 @@
         (:checkpoint-semantic-load)
         (:checkpoint-semantic-copy)
         (:checkpoint-semantic-check)
+        (:checkpoint-summary-capture)
+        (:checkpoint-summary-close)
         (:checkpoint-semantic-entries)
         (:checkpoint-semantic-find)
         (:checkpoint-payload-begin)

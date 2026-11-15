@@ -8,6 +8,7 @@
 (include-book "range-served")
 (include-book "machines-b")
 (include-book "c-snapshot")
+(include-book "checkpoint-summary-state")
 (fn2-book-layer :c)
 
 ; ---------------------------------------------------------------------------
@@ -107,6 +108,9 @@
 (fn2-idc-child fn2-core-run-cursors fn2-run-cursors
  (fn2-run-cursors-init (+ (nfix (fn2-profile-t profile)) (* 9 (fn2-b-read-rows profile)) *fn2-idc-seal-cursors* 1) fn2-run-cursors)
  "A decision's resumable run cursor (cursor row = decision row), then each read row's lookup cursor and its range sources' (C-S4).")
+(fn2-idc-child fn2-core-checkpoint-summary-leases fn2-checkpoint-summary-leases
+ (fn2-checkpoint-summary-leases-init (+ (nfix (fn2-profile-t profile)) (* 9 (fn2-b-read-rows profile)) *fn2-idc-seal-cursors* 1) fn2-checkpoint-summary-leases)
+ "Every actual C cursor can retain one exact selected physical source across yields.")
 (fn2-idc-child fn2-core-run-paths fn2-run-paths
  (fn2-run-paths-init (* *fn2-run-max-levels* (+ (nfix (fn2-profile-t profile)) (* 9 (fn2-b-read-rows profile)) *fn2-idc-seal-cursors* 1)) fn2-run-paths)
  "Each cursor's descent, one row per level.")

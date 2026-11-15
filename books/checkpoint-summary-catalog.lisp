@@ -1,6 +1,7 @@
 ; Root1 directory capture at the actual authenticated entry boundary.
 ; Capture is separate from C adoption and grants no prefix-discard authority.
 (in-package "ACL2")
+(include-book "std/util/bstar" :dir :system)
 (include-book "checkpoint-summary-state")
 (include-book "checkpoint-restore-semantic-work")
 (fn2-book-layer :c)
@@ -82,13 +83,12 @@
   (mv :ok fn2-checkpoint-summary)))
 
 ; All digest bytes come from the held decoded manifest field under its owner.
-(defun fn2-checkpoint-summary-load-hash (i src off slot gen kind owner generation row
+(defun fn2-checkpoint-summary-load-hash (i off slot gen kind owner generation row
  fn2-pool fn2-checkpoint-summary-sources)
  (declare (xargs :stobjs (fn2-pool fn2-checkpoint-summary-sources)
   :measure (nfix (- 8 (nfix i)))
   :guard (and (fn2-pool-wfp fn2-pool) (fn2-checkpoint-summary-sources-wfp fn2-checkpoint-summary-sources)
               (natp i) (<= i 8) (natp off) (natp row) (< row (fn2-checkpoint-summary-sources-rows fn2-checkpoint-summary-sources)))))
- (declare (ignore src))
  (if (>= (nfix i) 8) (mv :ok fn2-checkpoint-summary-sources)
   (b* (((mv c0 b0) (fn2-pool-read slot gen (+ off (* i 4)) kind owner generation fn2-pool))
        ((mv c1 b1) (fn2-pool-read slot gen (+ off (* i 4) 1) kind owner generation fn2-pool))
@@ -106,7 +106,7 @@
          (5 (fn2-checkpoint-summary-sources-set-hash-5 row word fn2-checkpoint-summary-sources))
          (6 (fn2-checkpoint-summary-sources-set-hash-6 row word fn2-checkpoint-summary-sources))
          (otherwise (fn2-checkpoint-summary-sources-set-hash-7 row word fn2-checkpoint-summary-sources)))))
-   (fn2-checkpoint-summary-load-hash (+ 1 i) 0 off slot gen kind owner generation row fn2-pool fn2-checkpoint-summary-sources))))
+   (fn2-checkpoint-summary-load-hash (+ 1 i) off slot gen kind owner generation row fn2-pool fn2-checkpoint-summary-sources))))
 
 (defun fn2-checkpoint-summary-capture (base fn2-checkpoint-summary fn2-checkpoint-summary-sources
  fn2-checkpoint-restore-semantic fn2-checkpoints fn2-checkpoint-refs fn2-checkpoint-bytes
@@ -174,7 +174,7 @@
       ((unless (and (= (fn2-fields-ref-len hf fn2-fields) 32) (natp (fn2-fields-ref-off hf fn2-fields))))
        (mv :hash fn2-checkpoint-summary fn2-checkpoint-summary-sources fn2-fields))
       ((mv code fn2-checkpoint-summary-sources)
-       (fn2-checkpoint-summary-load-hash 0 0 (fn2-fields-ref-off hf fn2-fields) (fn2-fields-ref-slot hf fn2-fields)
+       (fn2-checkpoint-summary-load-hash 0 (fn2-fields-ref-off hf fn2-fields) (fn2-fields-ref-slot hf fn2-fields)
         (fn2-fields-ref-gen hf fn2-fields) (fn2-checkpoint-restore-semantic-owner-kind 0 fn2-checkpoint-restore-semantic)
         (fn2-checkpoint-restore-semantic-owner-slot 0 fn2-checkpoint-restore-semantic)
         (fn2-checkpoint-restore-semantic-owner-gen 0 fn2-checkpoint-restore-semantic) e fn2-pool fn2-checkpoint-summary-sources))
@@ -195,6 +195,10 @@
  (fn2-checkpoint-restore-map-wfp fn2-checkpoint-restore-map) (fn2-checkpoint-restore-map-control-wfp fn2-checkpoint-restore-map-control))))
  (b* (((unless (and (fn2-checkpoint-summary-current-p fn2-checkpoint-summary fn2-checkpoints fn2-checkpoint-refs fn2-checkpoint-bytes
                      fn2-checkpoint-restore-map fn2-checkpoint-restore-map-control fn2-checkpoint-restore-semantic)
+                    (= (fn2-checkpoint-summary-sources-rows fn2-checkpoint-summary-sources)
+                       (fn2-checkpoint-restore-map-rows fn2-checkpoint-restore-map))
+                    (<= (fn2-checkpoint-summary-count 0 fn2-checkpoint-summary)
+                        (fn2-checkpoint-summary-sources-rows fn2-checkpoint-summary-sources))
                     (= (fn2-checkpoint-summary-phase 0 fn2-checkpoint-summary) *fn2-checkpoint-summary-phase-capture*)
                     (= (fn2-checkpoint-restore-semantic-phase 0 fn2-checkpoint-restore-semantic) *fn2-checkpoint-restore-semantic-phase-complete*)))
        (mv :source fn2-checkpoint-summary))
