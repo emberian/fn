@@ -180,13 +180,14 @@
            (prefix (or (fn2-decl-get :prefix options) ""))
            (inv (or (fn2-decl-get :invariant options) (fn2-columns-sym table "-WFP")))
            (suffix (or (fn2-decl-get :suffix options) "-WFP")))
-      ; TYPE keeps the outer fallback unless explicitly overridden. An explicit
-      ; NIL suppresses that fallback; :hints continues to select WFP hints.
+      ; Omitted TYPE/WFP options inherit the outer hint. An explicit NIL
+      ; remains an opt-out, so preserve option presence as well as its value.
       (append `((,(concatenate 'string prefix "-TYPE") ,(fn2-columns-sym table "P") ,pos
                  ,@(and (member-eq :type-hints options)
                         `(:hints ,(fn2-decl-get :type-hints options))))
                 (,(concatenate 'string prefix suffix) ,inv ,pos
-                 :hints ,(fn2-decl-get :hints options)))
+                 ,@(and (member-eq :hints options)
+                        `(:hints ,(fn2-decl-get :hints options)))))
               (fn2-columns-carrier-specs (cdr carriers))))))
 (defun fn2-columns-forward-facts (facts call)
   (declare (xargs :verify-guards nil))
