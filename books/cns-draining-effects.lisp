@@ -1,7 +1,7 @@
 ; Independent application effects lifted through the actual served core
 ; faces. The original counted CNS obligation keeps its full antecedent.
 (in-package "ACL2")
-(include-book "cns-release-refinement")
+(include-book "cns-release-accounting")
 (include-book "cns-draining-contract")
 (include-book "machine-reservations")
 

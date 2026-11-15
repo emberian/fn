@@ -2,7 +2,6 @@
 ; This is not the full composed CNS-body or caller-domain theorem.
 (in-package "ACL2")
 (include-book "cns-draining-model")
-(include-book "pool-release-admission")
 
 (make-event
  (value `(deftheory fn2-cns-pool-readers
