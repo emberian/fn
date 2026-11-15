@@ -238,6 +238,7 @@ ACL2_BOOKS = \
   books/recovery-payload \
   books/recovery-proof \
   books/reference \
+  books/reference-selected-source \
   books/reference-state \
   books/resident \
   books/resources \
@@ -444,6 +445,7 @@ ACL2_BOOKS = \
   tests/recovery-article-unit \
   tests/recovery-proof-unit \
   tests/reference-unit \
+  tests/reference-selected-source-unit \
   tests/request-unit \
   tests/resources-unit \
   tests/ribbon-unit \
