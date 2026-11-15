@@ -4,6 +4,7 @@
 (include-book "machines-c-read")
 (include-book "run-physical-bundle")
 (include-book "machine-arms")
+(include-book "run-physical-core-faces")
 (fn2-book-layer :c)
 (defun fn2-read-loader-range-select (i n x fn2-reads fn2-ranges fn2-range-sources fn2-run-cursors)
  (declare (xargs :stobjs (fn2-reads fn2-ranges fn2-range-sources fn2-run-cursors)
@@ -134,17 +135,8 @@
 ; face emitter cannot discover them. Materialize the same shared generator
 ; against each actual declared child after the served core exists.
 (defconst *fn2-read-loader-core-operations*
- '(fn2-run-page-reserve fn2-run-page-bind fn2-run-page-step fn2-run-page-read fn2-run-page-release
-   fn2-run-page-bundle-reserve fn2-read-loader-owner-op fn2-read-loader-drain-op fn2-read-loader-member-release-op))
-(defun fn2-read-loader-core-face-events (ops world)
- (declare (xargs :verify-guards nil))
- (if (atom ops) (mv nil nil)
-  (let* ((op (car ops)) (row (fn2-arms-op-row op world)) (child (fn2-decl-get :child row)))
-   (if (not (and row child (function-symbolp child world)))
-    (mv (msg "Physical query operation ~x0 has no actual admitted child." op) nil)
-    (mv-let (err rest) (fn2-read-loader-core-face-events (cdr ops) world)
-     (mv err (append (and (not (function-symbolp op world)) (fn2-arms-op-face-events op child world)) rest)))))))
+ '(fn2-run-page-bundle-reserve fn2-read-loader-owner-op fn2-read-loader-drain-op fn2-read-loader-member-release-op))
 (defmacro fn2-read-loader-core-faces ()
  '(make-event
-   (mv-let (err events) (fn2-read-loader-core-face-events *fn2-read-loader-core-operations* (w state))
+   (mv-let (err events) (fn2-run-loader-core-face-events *fn2-read-loader-core-operations* (w state))
     (if err (er soft 'fn2-read-loader-core-faces "~@0" err) (value (cons 'progn events))))))
