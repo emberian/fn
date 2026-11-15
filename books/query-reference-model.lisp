@@ -230,3 +230,53 @@
 (fn2-qr-metadata-frame evidence 60)
 (fn2-qr-metadata-frame qualified 1)
 (fn2-qr-metadata-frame local 1)
+
+; Bridge the independent sum to the actual held-source gate. This is the
+; prerequisite for framing all other pool mutators, not just query calls.
+(defthm fn2-qr-counts-matchp-entry
+ (implies (and (fn2-qr-counts-matchp n p d) (natp r) (< r (nfix n)))
+          (equal (fn2-pool-query-ref-count r p)
+                 (fn2-qr-reference-count (fn2-id-decides-rows d) r (fn2-pool-gen r p) d)))
+ :hints (("Goal" :induct (fn2-qr-counts-matchp n p d)
+          :in-theory (enable fn2-qr-counts-matchp))))
+(defthm fn2-qr-descriptors-validp-entry
+ (implies (and (fn2-qr-descriptors-validp n d p) (natp i) (< i (nfix n)))
+          (fn2-qr-row-validp i d p))
+ :hints (("Goal" :induct (fn2-qr-descriptors-validp n d p)
+          :in-theory (enable fn2-qr-descriptors-validp))))
+(defthm fn2-qr-first-active-reference-positive
+ (implies (and (fn2-query-references-accountedp p d) (natp i) (< i (fn2-id-decides-rows d))
+               (logbitp 0 (fn2-id-decides-qmask i d)))
+          (< 0 (fn2-pool-query-ref-count (fn2-id-decides-q1slot i d) p)))
+ :rule-classes :linear
+ :hints (("Goal" :in-theory (enable fn2-query-references-accountedp fn2-qr-row-validp
+                                   fn2-qr-window-validp fn2-qr-row-count fn2-qr-reference-on)
+          :use ((:instance fn2-qr-reference-count-row-lower-bound
+                 (s i) (n (fn2-id-decides-rows d)) (r (fn2-id-decides-q1slot i d))
+                 (g (fn2-id-decides-q1gen i d)))))))
+(defthm fn2-qr-second-active-reference-positive
+ (implies (and (fn2-query-references-accountedp p d) (natp i) (< i (fn2-id-decides-rows d))
+               (logbitp 1 (fn2-id-decides-qmask i d)))
+          (< 0 (fn2-pool-query-ref-count (fn2-id-decides-q2slot i d) p)))
+ :rule-classes :linear
+ :hints (("Goal" :in-theory (enable fn2-query-references-accountedp fn2-qr-row-validp
+                                   fn2-qr-window-validp fn2-qr-row-count fn2-qr-reference-on)
+          :use ((:instance fn2-qr-reference-count-row-lower-bound
+                 (s i) (n (fn2-id-decides-rows d)) (r (fn2-id-decides-q2slot i d))
+                 (g (fn2-id-decides-q2gen i d)))))))
+(defthm fn2-qr-same-handle-two-references-counted
+ (implies (and (fn2-query-references-accountedp p d) (natp i) (< i (fn2-id-decides-rows d))
+               (equal (fn2-id-decides-qmask i d) 3)
+               (equal (fn2-id-decides-q1slot i d) (fn2-id-decides-q2slot i d))
+               (equal (fn2-id-decides-q1gen i d) (fn2-id-decides-q2gen i d)))
+          (<= 2 (fn2-pool-query-ref-count (fn2-id-decides-q1slot i d) p)))
+ :rule-classes :linear
+ :hints (("Goal" :in-theory (enable fn2-query-references-accountedp fn2-qr-row-validp
+                                   fn2-qr-window-validp fn2-qr-row-count fn2-qr-reference-on)
+          :use ((:instance fn2-qr-reference-count-row-lower-bound
+                 (s i) (n (fn2-id-decides-rows d)) (r (fn2-id-decides-q1slot i d))
+                 (g (fn2-id-decides-q1gen i d)))))))
+
+(defun-nx fn2-qr-local-deltap (s p q d e)
+ (and (fn2-qr-sources-equal p q) (equal (fn2-id-decides-rows d) (fn2-id-decides-rows e))
+      (fn2-qr-keys-except s d e) (fn2-qr-counter-delta s p q d e)))

@@ -236,6 +236,9 @@ ACL2_BOOKS = \
   books/pool-ranges \
   books/port \
   books/profile \
+  books/query-reference-model \
+  books/query-reference-local \
+  books/query-reference-coverage \
   books/q1 \
   books/range \
   books/range-served \
