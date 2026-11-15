@@ -2,6 +2,7 @@
 """Pin current served source preservation and the intentional rolling ABI."""
 from pathlib import Path
 import subprocess,unittest,lisp_rewrite as lr
+import cns_source_leaf_source_test as leaves
 R=Path(__file__).resolve().parents[1]
 BASE='8897f790e840651bbfc402ec31ee35a434f8109b'
 class Join(unittest.TestCase):
@@ -11,7 +12,17 @@ class Join(unittest.TestCase):
                'books/cns.lisp','books/ctl-output-events.lisp','books/ctl-stream-events.lisp','books/conn-kind.lisp',
                'books/machines-c-bind.lisp','books/machines-c-stage.lisp']:
    old=subprocess.check_output(['git','show',BASE+':'+name],cwd=R)
-   self.assertEqual((R/name).read_bytes(),old,name)
+   if name == 'books/machines-c-read.lisp':
+    # Validate only the exact reviewed additions, then compare every original
+    # complete AST, including original theories and proof hints.
+    actual=leaves.parsed(name)
+    leaves.original_consumer_forms(name,actual)
+    extra=['include-book','"pool-dimensions"']
+    self.assertEqual(actual.count(extra),1)
+    original=[leaves.converted(x) for x in leaves.ledger.read_forms(old.decode())]
+    remaining=[x for x in actual if x!=extra and x not in leaves.READ_DIMENSIONS]
+    self.assertEqual(remaining,original,name)
+   else:self.assertEqual((R/name).read_bytes(),old,name)
  def test_counted_core_callback_and_public_compatibility_are_both_real(self):
   s=(R/'books/assembly-callbacks-d.lisp').read_text()
   node=lr.match('(defun fn2-upload-feed-pool ?*body)',lr.parse(s).forms)[0]

@@ -4,9 +4,12 @@ from pathlib import Path
 import subprocess
 import tempfile
 import unittest
+import sys
 
 ROOT = Path(__file__).resolve().parents[1]
 SOURCE = ROOT / 'books/columns-observation-frames.lisp'
+sys.path.insert(0, str(ROOT / 'tools'))
+import lisp_rewrite as lr
 
 class ObservationFrames(unittest.TestCase):
     def run_controls(self, source=SOURCE):
@@ -21,10 +24,16 @@ class ObservationFrames(unittest.TestCase):
 
     def mutant(self, old, new):
         source = SOURCE.read_text()
-        self.assertEqual(source.count(old), 1)
+        functions = lr.match('(defun fn2-columns-observation-frame-event ?*body)',
+                             lr.parse(source).forms, deep=False)
+        self.assertEqual(len(functions), 1)
+        function = functions[0]
+        target = source[function.start:function.end]
+        self.assertEqual(target.count(old), 1)
         with tempfile.TemporaryDirectory() as directory:
             path = Path(directory) / 'mutant.lisp'
-            path.write_text(source.replace(old, new))
+            path.write_text(source[:function.start] + target.replace(old, new) +
+                            source[function.end:])
             result = self.run_controls(path)
             self.assertNotEqual(result.returncode, 0, result.stdout)
             self.assertIn('assertion', result.stdout.lower())

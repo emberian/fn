@@ -1143,7 +1143,8 @@
     "reader34_after_source_state_API": "All34raw/currentkeys still exact",
     "enum_fixture_unchanged_after_frame_API": true,
     "d797_control_scope": "22 focused tests incl6detached-reader checks; enum226 fixture identical; no ACL2run",
-    "enum_universal_integration": "Current generator emits exact admitted fixture25186111 and exact3universal formula hashes; ground226 remains exact61bbea7a;4source testsPASS; no prover run"
+    "enum_universal_integration": "Current generator emits exact admitted fixture25186111 and exact3universal formula hashes; ground226 remains exact61bbea7a;4source testsPASS; no prover run",
+    "postrolling_source_controls": "23focusedtestsPASS:observer4+B3source3+COPY4+rolling3+storage9; sourcecut6alsoPASS"
   },
   "qualification": {
     "prior135": "/tmp/served-d55-qualified135-receipt.json; all135 source/key payloads audited; RAW excluded",
@@ -1294,7 +1295,7 @@
     "current_foundation_raw_keys_match": 34,
     "old_receipt_scope": "Original prefoundation reader34 remains historical; only10oldkeys unchanged"
   },
-  "pending_source_join": "Metadata2Wloader bridge beforephysicalactivation; source-onlycontrol repairs tracked. IncomingB3proofresults preserved separately; no livepilot retarget.",
+  "pending_source_join": "No lowerproducerblocker; currentrollingclosure/cache/READYplan next. Metadata2Wphysicalactivation remains separate; no core/RAW/native qualification.",
   "foundation_join": {
     "source": "6e7a1a9c105f2ccfeb0b06f32c0c566378cf62d9",
     "rows_source": "31635689e152fa20aa3e9eb18ae456ebe2397b64",
@@ -1337,7 +1338,7 @@
   },
   "dimension_interfaces_join": {
     "pool_source": "2c5e7b6daa6da6044e1a0f688d0208d917df45d1",
-    "B3_source": "166ce6070",
+    "B3_source": "af4c53ddc6b1e94325df235040cd5e1de0632ac0",
     "ground_fixture_source": "4d6b4ba6d",
     "scope": "Reviewed source-only producer interfaces; all existing runtime/guards/H+C unchanged, new claims UNADMITTED. No wholeRAW/FETCH claim.",
     "pool_domain": "Unconditional metadata-only ROWS/backing-DATA equations derived from actual admitted ABI; no borrowed recognizer",
@@ -1358,7 +1359,7 @@
     "pool_status": "Current wholeleaf AUTHORPASS0.06s289steps+record12qualified11reuse1new; no ARM/RAW inference",
     "B3_parent_status": "Current14parent recordqualified12reuse2new; newwordleaf unproved, INIT firstrefusal0.01s295, reviewed scalarobserver hintfix pendingfreshpilot",
     "B3_parent_receipt": "docs/design/receipts/b3-word-parent-ebce9812.json",
-    "B3_status": "ExtraARRAYobserverproducer+fixture6actualrecordqualified; totalPOS arithmetic wordleaf stillUNPROVED/activepilot",
+    "B3_status": "Actualcurrentproductionword17qualified; rootindependentlyall17raw/keys/certPORTFASL verified. Groundfixtureseparatepending.",
     "arm_storage_qualification": {
       "receipt": "docs/design/receipts/served-family-arm-storage-current37-record.json",
       "current_raw_keys_match": 37,
@@ -1366,7 +1367,8 @@
       "recorded_this_campaign": 11,
       "initial_reuse": 26
     },
-    "B3_observer_receipt": "docs/design/receipts/b3-observer-family-18df.json"
+    "B3_observer_receipt": "docs/design/receipts/b3-observer-family-18df.json",
+    "B3_payload_audit": "/tmp/root-b3-word17-current-payload-audit.json"
   },
   "current_source_overlays": [
     "6e7a1a9c1",
@@ -1391,10 +1393,8 @@
     "scope": "Proposed current source composition, no composed guard/ACL2/native qualification. Default32KiB unchanged;96KiB explicit separateprofile. Metadata physicalactivation and2Wloader bridge remain separate.",
     "feed_abi": "Canonicalpublicslice6 retained; countedcorecallback7 intentional producer+callerjoin",
     "preservation": "All98 donor paths matched exact889 baseline before application; later COPY/READ/B3 interface overlays retained. No source conflicts.",
-    "current_red_source_controls": [
-      "Rolling preservation test must account for exactly reviewed READ dimension additions while preserving everyoriginalbody/guard/claim",
-      "Distinct-column missing-frame mutation selector nowhas2legitimate functionoccurrences after extraARRAYAPI, needs exactgenerator scopedmutation"
-    ],
-    "native_parser_qualification": "docs/design/receipts/native-article-text-qualified2.json"
+    "current_red_source_controls": [],
+    "native_parser_qualification": "docs/design/receipts/native-article-text-qualified2.json",
+    "control_repair": "FulloriginalREADAST comparison retained moduloexactreviewedinclude+twoDIMrequests. Originaldistinctcolumngenerator mutation scoped byASTfunction. OriginalstorageextractorFULLAST retained moduloexact3canonicalDIMrequests/import, withmissing/duplicate/wrongobservationmutants. No baselinesreplaced."
   }
 }
