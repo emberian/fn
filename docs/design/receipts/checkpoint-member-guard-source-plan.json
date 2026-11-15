@@ -1,6 +1,6 @@
 {
   "schema": "fn-author-plan-v1",
-  "status": "source-only actual-guard candidate; first author world stopped at prefix, three local proof repairs admitted, CHECK-STEP/MEMBER pending",
+  "status": "Both actual original guards and compliance PASS; same-book preservation/footer author work pending.",
   "base": "5082007fb",
   "source_files": {
     "books/layout-size-bounds.lisp": "exact95fd; previously reviewed standalone opt-in API",
@@ -333,5 +333,44 @@
         "change": "same local floor/mod proof basis"
       }
     ]
+  },
+  "actual_guards": {
+    "check_step": {
+      "seconds": 0.67,
+      "steps": 40783
+    },
+    "member": {
+      "seconds": 0.68,
+      "steps": 58288
+    },
+    "compliance_assertion": "passed",
+    "runtime_definitions_identical_except_guard_hints": 23,
+    "original_preservation_calls_identical_except_hints": 9
+  },
+  "generator_followup": {
+    "owner": "sol_proof_event_budget",
+    "fix_commit": "f2a1a1233",
+    "cause": "fn2-columns-carrier-specs emits explicit :hints nil on absent per-carrier option, masking outer fallback",
+    "temporary_workaround": "AST-copy the actual guard strategy into outer preservation hints and absent per-carrier hints; preserve explicit overrides/nil.",
+    "paths": [
+      "books/checkpoint.lisp",
+      "books/checkpoint-member.lisp"
+    ],
+    "families": [
+      "fn2-checkpoint-retain",
+      "fn2-checkpoint-check-step",
+      "fn2-checkpoint-installation-pack-member"
+    ],
+    "removal": "At next shared convergence integrate generator fix, then remove exactly these mechanically-added per-carrier options; retain outer shared strategy.",
+    "tool_fixtures": "/tmp/checkpoint-preservation-hints.py and /tmp/checkpoint-carrier-wfp-hints.py assert explicit-override preservation and idempotence."
+  },
+  "second_world": {
+    "freeze": "9abe38453",
+    "outer_pid": 878990,
+    "server_pid": 879012,
+    "acl2_ancestor_pid": 879016,
+    "deadline_seconds": 1200,
+    "ended": "original hard deadline, processes and scope absent",
+    "footer_frontier": "RETAIN-REFS-TYPE passed0.08s/3061; WFP reopens allocator because generated :hints nil masks fallback. Normalized WFP workaround not executed before deadline."
   }
 }
