@@ -57,7 +57,8 @@
                           (equal epoch (fn2-cns-sources-root-epoch s fn2-cns-sources))
                           (equal allocation (fn2-cns-sources-root-allocation s fn2-cns-sources)))
                      (and (equal (fn2-cns-sources-phase s fn2-cns-sources) *fn2-cns-source-phase-manifest*)
-                          (equal (fn2-cns-sources-retention-phase s fn2-cns-sources) *fn2-cns-source-retention-collecting*)
+                          (member (fn2-cns-sources-retention-phase s fn2-cns-sources)
+                                  (list *fn2-cns-source-retention-collecting* *fn2-cns-source-retention-ready*))
                           (equal (fn2-cns-sources-manifest-stage s fn2-cns-sources) *fn2-cns-source-manifest-stage-claim*)
                           (equal unit (fn2-cns-sources-unit s fn2-cns-sources))
                           (equal epoch (fn2-cns-sources-epoch s fn2-cns-sources))
@@ -74,9 +75,11 @@
          (mv :state fn2-extents fn2-alloc-edges))
         ((fn2-alloc-edge-matchesp edge cnsgen e epoch allocation :promised-read fn2-alloc-edges)
          (mv :ok fn2-extents fn2-alloc-edges))
+        ((equal (fn2-cns-sources-retention-phase s fn2-cns-sources) *fn2-cns-source-retention-ready*)
+         (mv :coverage fn2-extents fn2-alloc-edges))
         ((not (equal (fn2-alloc-edges-state edge fn2-alloc-edges) *fn2-alloc-edge-state-free*))
          (mv :edge-owner fn2-extents fn2-alloc-edges))
-        ((equal (fn2-extents-promised-read e fn2-extents) (1- (expt 2 32)))
+        ((equal (fn2-extents-promised-read e fn2-extents) *fn2-alloc-edge-count-max*)
          (mv :capacity fn2-extents fn2-alloc-edges))
         (t (fn2-alloc-edge-add edge cnsgen e epoch allocation :promised-read fn2-extents fn2-alloc-edges)))))
 (defun fn2-cns-source-root-hold-children (s cns cnsgen ctl ctlgen request
@@ -116,4 +119,54 @@
  :carriers ((fn2-extents 1 :prefix "-EXTENTS") (fn2-alloc-edges 2 :prefix "-EDGES")))
 (fn2-cns-sources-preserves fn2-cns-source-root-hold-children
  (s cns cnsgen ctl ctlgen request fn2-cns-sources fn2-checkpoints fn2-extents fn2-alloc-edges fn2-ops)
+ :position 1 :carriers ((fn2-cns-sources 1 :prefix "-SOURCES") (fn2-extents 2 :prefix "-EXTENTS") (fn2-alloc-edges 3 :prefix "-EDGES")))
+
+; Only the actual terminal SEND/abort handback adapter enters RELEASING.
+; EOF/COMPLETE is deliberately insufficient. Each call visits one owned row;
+; every refusal preserves the unvisited subset and the exact request tuple.
+(defun fn2-cns-source-release-step (budget s cns cnsgen ctl ctlgen request
+ fn2-cns-sources fn2-checkpoints fn2-extents fn2-alloc-edges fn2-ops fn2-pool)
+ (declare (xargs :stobjs (fn2-cns-sources fn2-checkpoints fn2-extents fn2-alloc-edges fn2-ops fn2-pool)
+ :guard (and (fn2-cns-sources-wfp fn2-cns-sources) (fn2-checkpoints-wfp fn2-checkpoints)
+  (fn2-extents-wfp fn2-extents) (fn2-alloc-edges-wfp fn2-alloc-edges)
+  (fn2-ops-wfp fn2-ops) (fn2-pool-wfp fn2-pool))))
+ (b* (((unless (and (fn2-cns-source-retain-ownerp s cns cnsgen ctl ctlgen request fn2-cns-sources)
+                    (equal (fn2-cns-sources-phase s fn2-cns-sources) *fn2-cns-source-phase-releasing*)
+                    (equal (fn2-cns-sources-pending s fn2-cns-sources) 0)
+                    (equal (fn2-cns-sources-uncertain s fn2-cns-sources) 0)
+                    (equal (fn2-cns-sources-borrow-count s fn2-cns-sources) 0)
+                    (eq (fn2-pool-workspace-code
+                         (fn2-cns-sources-lslot s fn2-cns-sources)
+                         (fn2-cns-sources-lgen s fn2-cns-sources)
+                         (fn2-cns-sources-owner-kind s fn2-cns-sources) cns cnsgen fn2-pool) :ok)))
+       (mv :source fn2-cns-sources fn2-extents fn2-alloc-edges))
+      ((unless (posp budget)) (mv :more fn2-cns-sources fn2-extents fn2-alloc-edges))
+      (e (fn2-cns-sources-release-row s fn2-cns-sources))
+      ((when (> e (fn2-extents-rows fn2-extents)))
+       (mv :cursor fn2-cns-sources fn2-extents fn2-alloc-edges))
+      ((when (equal e (fn2-extents-rows fn2-extents)))
+       (let ((fn2-cns-sources (fn2-cns-sources-put s
+              (phase *fn2-cns-source-phase-released*)
+              (retention-phase *fn2-cns-source-retention-released*))))
+        (mv :released fn2-cns-sources fn2-extents fn2-alloc-edges)))
+      (edge (fn2-cns-source-edge s e fn2-checkpoints fn2-extents fn2-ops))
+      ((unless (fn2-alloc-edge-slotp edge fn2-alloc-edges))
+       (mv :edge-bounds fn2-cns-sources fn2-extents fn2-alloc-edges))
+      (free (equal (fn2-alloc-edges-state edge fn2-alloc-edges) *fn2-alloc-edge-state-free*))
+      (epoch (fn2-alloc-edges-epoch edge fn2-alloc-edges))
+      (allocation (fn2-alloc-edges-counter edge fn2-alloc-edges))
+      ((unless (or free
+                    (and (fn2-alloc-edge-matchesp edge cnsgen e epoch allocation :promised-read fn2-alloc-edges)
+                         (eq (fn2-alloc-handle-code e epoch allocation fn2-extents) :ok)
+                         (posp (fn2-extents-promised-read e fn2-extents)))))
+       (mv :edge-owner fn2-cns-sources fn2-extents fn2-alloc-edges))
+      ((mv code fn2-extents fn2-alloc-edges)
+       (if free (mv :ok fn2-extents fn2-alloc-edges)
+        (fn2-alloc-edge-drop edge cnsgen e epoch allocation :promised-read fn2-extents fn2-alloc-edges)))
+      ((unless (eq code :ok)) (mv code fn2-cns-sources fn2-extents fn2-alloc-edges))
+      (fn2-cns-sources (fn2-cns-sources-put s
+       (retention-phase *fn2-cns-source-retention-releasing*) (release-row (+ 1 e)))))
+  (mv :more fn2-cns-sources fn2-extents fn2-alloc-edges)))
+(fn2-cns-sources-preserves fn2-cns-source-release-step
+ (budget s cns cnsgen ctl ctlgen request fn2-cns-sources fn2-checkpoints fn2-extents fn2-alloc-edges fn2-ops fn2-pool)
  :position 1 :carriers ((fn2-cns-sources 1 :prefix "-SOURCES") (fn2-extents 2 :prefix "-EXTENTS") (fn2-alloc-edges 3 :prefix "-EDGES")))
