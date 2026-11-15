@@ -61,7 +61,11 @@
  ((fn2-checkpoint-publication-evidence-meta :type (array (unsigned-byte 60) (36)) :initially 0
    :why "Four fixed physical roles: two banks, one in-flight attempt and one displaced debt; nine exact identity scalars each.")
   (fn2-checkpoint-publication-evidence-words :type (array (unsigned-byte 32) (160)) :initially 0
-   :why "Each physical role owns J seal, C seal, J-1 seal, previous descriptor and descriptor hash, independently of reusable directory/checker storage.")))
+   :why "Each physical role owns J seal, C seal, J-1 seal, previous descriptor and descriptor hash, independently of reusable directory/checker storage.")
+  (fn2-checkpoint-publication-cold-meta :type (array (unsigned-byte 60) (48)) :initially 0
+   :why "One independently investigated record per physical anchor: phase, full tuple, source generation/tag and bounded copy cursor.")
+  (fn2-checkpoint-publication-cold-words :type (array (unsigned-byte 32) (192)) :initially 0
+   :why "Each of four physical anchors retains six hashes, including the actual anchor hash, before shared cold scratch is reused.")))
 
 (defun fn2-checkpoint-descriptor-identity-word (c i fn2-checkpoint-bytes)
  (declare (xargs :stobjs fn2-checkpoint-bytes

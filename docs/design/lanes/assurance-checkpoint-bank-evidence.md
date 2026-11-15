@@ -35,3 +35,22 @@ The candidate-scoped debt owner must copy every identity/hash before clearing
 the singleton debt; all physical promises and durable protectors survive that
 transfer. The typed callback fixture is unexecuted and seeds installed/issued
 premises explicitly; it is not a physical durability or cold-recovery witness.
+
+## Cold source retention
+
+`fn2-checkpoint-bank-cold-seed-op(budget)` derives the actual current physical
+anchor from map/event investigation state. Actual census-bound anchor/member
+and terminal authenticated root3/root4 predicates precede every bounded copy.
+One word per turn retains J seal, C seal, J-1 seal, previous descriptor,
+descriptor and anchor hash; only EOF after all48 words makes a record readable.
+A changed partial source retains its incomplete record. A repeat investigation
+may reuse an existing record only after exact tuple and all48 word equality.
+
+`fn2-checkpoint-bank-cold-{snapshot,event,word}` read these retained per-anchor
+records independently of scratch, with `:anchor-hash` as an additional word
+kind. Four physical-anchor records remain separate: investigation order does
+not choose an occupant of either two-copy bank. The actual boot owner must drive
+seed to completion before investigation-finish/scratch reuse, then bind these
+records through authenticated census topology before operational bank placement.
+The new negative constructor fixture does not fabricate a positive investigation;
+the full boot success witness and qualification remain pending.
