@@ -232,16 +232,42 @@
 (fn2-cns-source-frames fn2-cns-source-issue-children
  (s cns cnsgen ctl ctlgen request kind principal fn2-cns-sources fn2-cns-source-operations fn2-extents fn2-alloc-edges fn2-pool fn2-ops fn2-control fn2-checkpoints)
  (fn2-cns-sources fn2-cns-source-operations fn2-extents fn2-alloc-edges fn2-pool fn2-ops fn2-control fn2-checkpoints)
- ((fn2-cns-sources 3) (fn2-cns-source-operations 4) (fn2-pool 5) (fn2-ops 6) (fn2-control 7) (fn2-extents 8) (fn2-alloc-edges 9)))
+ ((fn2-cns-sources 3) (fn2-cns-source-operations 4) (fn2-pool 5) (fn2-ops 6) (fn2-control 7) (fn2-extents 8) (fn2-alloc-edges 9))
+ ((fn2-columns-call-guard-hint 'fn2-cns-source-issue-children
+   '(fn2-block-read-children fn2-pool-truncate fn2-rd-copy
+     fn2-cns-source-heldp fn2-cns-source-retain-ownerp
+     fn2-cns-source-data-position-p fn2-pool-workspace-code
+     fn2-pool-ownerp fn2-alloc-edge-matchesp fn2-alloc-handle-code)
+   '(fn2-cns-source-issue-children) world)))
 (fn2-cns-source-frames fn2-cns-source-harvest
  (op opgen cell event outcome reason count aux0 aux1 fn2-cns-sources fn2-cns-source-operations)
  (fn2-cns-sources fn2-cns-source-operations)
- ((fn2-cns-sources 1) (fn2-cns-source-operations 2)))
+ ((fn2-cns-sources 1) (fn2-cns-source-operations 2))
+ ((fn2-columns-call-guard-hint 'fn2-cns-source-harvest
+   '(fn2-block-read-children fn2-pool-truncate fn2-rd-copy
+     fn2-cns-source-heldp fn2-cns-source-retain-ownerp
+     fn2-cns-source-data-position-p fn2-pool-workspace-code
+     fn2-pool-ownerp fn2-alloc-edge-matchesp fn2-alloc-handle-code)
+   '(fn2-cns-source-harvest) world)))
 (fn2-cns-source-frames fn2-cns-source-raw-step-children
  (s cns cnsgen ctl ctlgen request kind connections budget fn2-cns-sources fn2-b3 fn2-digests fn2-pool)
  (fn2-cns-sources fn2-b3 fn2-digests fn2-pool)
- ((fn2-cns-sources 1) (fn2-b3 2) (fn2-digests 3)))
+ ((fn2-cns-sources 1) (fn2-b3 2) (fn2-digests 3))
+ ((fn2-columns-call-guard-hint 'fn2-cns-source-raw-step-children
+   '(fn2-cns-source-hash-begin fn2-cns-source-hash-update
+     fn2-cns-source-hash-finish fn2-block-read-commitment-children
+     fn2-block-read-children fn2-pool-truncate fn2-rd-copy
+     fn2-cns-source-heldp fn2-cns-source-retain-ownerp
+     fn2-cns-source-data-position-p fn2-pool-workspace-code
+     fn2-pool-ownerp fn2-alloc-edge-matchesp fn2-alloc-handle-code)
+   '(fn2-cns-source-raw-step-children) world)))
 (fn2-cns-source-frames fn2-cns-source-next-children
  (s cns cnsgen ctl ctlgen request slot gen off maximum ctlkind fn2-cns-sources fn2-pool)
  (fn2-cns-sources fn2-pool)
- ((fn2-cns-sources 3) (fn2-pool 4)))
+ ((fn2-cns-sources 3) (fn2-pool 4))
+ ((fn2-columns-call-guard-hint 'fn2-cns-source-next-children
+   '(fn2-block-read-children fn2-pool-truncate fn2-rd-copy
+     fn2-cns-source-heldp fn2-cns-source-retain-ownerp
+     fn2-cns-source-data-position-p fn2-pool-workspace-code
+     fn2-pool-ownerp fn2-alloc-edge-matchesp fn2-alloc-handle-code)
+   '(fn2-cns-source-next-children) world)))

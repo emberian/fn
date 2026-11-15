@@ -1,6 +1,6 @@
 {
   "root": "cadd5bb3b6751fcc96cbe41aea199029de7b0838",
-  "application_source": "51770a8bb82257da5363786f41e99ea4a2967fa8",
+  "application_source": "d7973ce449dfaa3ff4e5c45864a24d3f534018ca",
   "domain_fixture_source": "d6fed39d3",
   "files": [
     {
@@ -137,8 +137,8 @@
     },
     {
       "path": "books/cns-source-raw.lisp",
-      "source": "51770a8bb82257da5363786f41e99ea4a2967fa8",
-      "sha256": "c9d1c7c8b33890ddf498e875286acb435dccfe07a845f76e92a5f9f7e75fb7a2"
+      "source": "d7973ce449dfaa3ff4e5c45864a24d3f534018ca",
+      "sha256": "2b8c32ea4f65ab5fe5be512f7d6511b1a58b45ff707e3da31923461d8bae9b9e"
     },
     {
       "path": "books/cns-source-retention.lisp",
@@ -148,9 +148,8 @@
     },
     {
       "path": "books/cns-source-state.lisp",
-      "source": "2015b9ed65eec4ebde0036a51bda35726a85be1e",
-      "sha256": "01056705c1c63fff3b196bf743b838deca04ea1a938c823105574728d9d2192e",
-      "root_sha256": null
+      "source": "d7973ce449dfaa3ff4e5c45864a24d3f534018ca",
+      "sha256": "49e2cd0b868355ea73ad23bf2ecc62b7fb78abf6fae7a77688f9960386452513"
     },
     {
       "path": "books/cns-source-workspace.lisp",
@@ -586,8 +585,8 @@
     },
     {
       "path": "tests/test_cns_enum_noop.py",
-      "source": "51770a8bb82257da5363786f41e99ea4a2967fa8",
-      "sha256": "e3052ec548b4eafab0ce0a0ad21908db910dd8192b1c22460db0c69d67f18d64"
+      "source": "d7973ce449dfaa3ff4e5c45864a24d3f534018ca",
+      "sha256": "08f8e1aa1cf9536ffac811d4110ac7c9f70de4027b5e3237288396ed6d25a38f"
     },
     {
       "path": "tests/test_cns_phase_source.py",
@@ -639,8 +638,8 @@
     },
     {
       "path": "tests/test_source_raw_call_hints.py",
-      "source": "51770a8bb82257da5363786f41e99ea4a2967fa8",
-      "sha256": "4a2e89860c98c0390ca0681a42b53a4b58d3baafa016f1262d79b39d007eaf6e"
+      "source": "d7973ce449dfaa3ff4e5c45864a24d3f534018ca",
+      "sha256": "5bee0c092fc1de3889fa50fa3518b45c8e8b419001a86fcecc3102ebf3bf4f43"
     },
     {
       "path": "tests/test_source_retention_call_hints.py",
@@ -918,6 +917,16 @@
       "path": "tools/cns_next_observation_frames.py",
       "source": "51770a8bb82257da5363786f41e99ea4a2967fa8",
       "sha256": "2f8e93be9e3487e222d156cf60279395834fc4bcf734679cbeded56dd9f216a4"
+    },
+    {
+      "path": "tests/cns-source-frame-hint-controls.lsp",
+      "source": "d7973ce449dfaa3ff4e5c45864a24d3f534018ca",
+      "sha256": "e74b084bd289f113b24e872455f1547d37bc0418f5c46da26fe75b8eceb78431"
+    },
+    {
+      "path": "tests/test_cns_source_frame_hints.py",
+      "source": "d7973ce449dfaa3ff4e5c45864a24d3f534018ca",
+      "sha256": "3cc4d791a80c9d702e9abd8746f881e69cfcf7e0f888e256b7410c25a4498c1d"
     }
   ],
   "preserve_current_root_exact": [
@@ -1033,7 +1042,11 @@
     "observation_frame_join_controls": 10,
     "enum_fixture_unchanged_after_observation_join": true,
     "NEXT_observation_frame_controls": 12,
-    "enum_fixture_unchanged_after_NEXT_frames": true
+    "enum_fixture_unchanged_after_NEXT_frames": true,
+    "d797_targeted_controls_including_reader": 22,
+    "reader34_after_source_state_API": "All34raw/currentkeys still exact",
+    "enum_fixture_unchanged_after_frame_API": true,
+    "d797_control_scope": "22 focused tests incl6detached-reader checks; enum226 fixture identical; no ACL2run"
   },
   "qualification": {
     "prior135": "/tmp/served-d55-qualified135-receipt.json; all135 source/key payloads audited; RAW excluded",
@@ -1080,6 +1093,12 @@
         "steps": 90413
       },
       "record_claim": "NONE; prior135 and root reader34 stay exact separately"
+    },
+    "RAWd797": {
+      "status": "UNQUALIFIED; root-granted fresh-state pilot only",
+      "changes": "Canonical optional supplied-p frame hint API; four RAW frame hints plus explicit HASH3/BLOCK-COMMITMENT opacity; no runtime, stored guard or original H/C change",
+      "prospective_parent_record": "current136119genuine+17READY, followed whole RAW;137 record only after actual authorPASS in same budget",
+      "resident_world_policy": "No old135 state/macro redefinition"
     }
   },
   "enum_fragment_evidence": {
@@ -1124,5 +1143,5 @@
       "BOOT_consumer": "Not connected by this source join; root metadata/reader owners supply actual guarded BOOT consumer separately."
     }
   },
-  "pending_source_join": "95354027c optional supplied-p frame hints API in source-state; root review/source plan required, not yet joined; no resident redefinition"
+  "pending_source_join": "None from reviewed d797; failed shared-helper0abc remains excluded"
 }

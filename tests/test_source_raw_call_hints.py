@@ -37,6 +37,10 @@ def check(before,after):
         xargs=fn.items[3].items[1].items
         assert xargs[-2].low==':guard-hints'
         xargs[-2:]=[]
+    for n in new:
+        if isinstance(n,Lst) and canon(n)[0]=='fn2-cns-source-frames':
+            assert len(n.items)==6
+            n.items.pop()
     assert [canon(n) for n in old]==[canon(n) for n in new]
 class SourceRawCallHints(unittest.TestCase):
     def setUp(self):
