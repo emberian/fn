@@ -48,12 +48,14 @@
  (nfix (fn2-b-capacity :checkpoint-candidates 4 profile)))
 ; Dedicated regions: six commit I/O edges, two roots per extent, one pin per
 ; operation, six direct references per candidate, then one source-retention
-; edge per extent per active candidate. These are dedicated resident resources.
+; edge per extent per active candidate, then a disjoint per-CNS/per-extent
+; promised-read region. Its profile capacity bounds active queries, not stored data.
 (defun fn2-b-alloc-edge-floor (profile)
  (declare (xargs :guard t))
  (+ 6 (* 2 (nfix (fn2-b-capacity :extent-slots 16 profile)))
     (nfix (fn2-profile-o profile)) (* 6 (fn2-b-checkpoint-capacity profile))
-    (* (nfix (fn2-b-capacity :extent-slots 16 profile)) (fn2-b-checkpoint-capacity profile))))
+    (* (nfix (fn2-b-capacity :extent-slots 16 profile)) (fn2-b-checkpoint-capacity profile))
+    (* (nfix (fn2-b-capacity :extent-slots 16 profile)) (nfix (fn2-profile-get :cns profile)))))
 (defcorechild fn2-core-alloc-edges fn2-alloc-edges
  :init (fn2-alloc-edges-init (fn2-b-capacity :alloc-edge-slots (fn2-b-alloc-edge-floor profile) profile) fn2-alloc-edges)
  :profilep (and
