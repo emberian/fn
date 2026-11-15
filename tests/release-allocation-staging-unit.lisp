@@ -135,6 +135,10 @@
       (bound (and (eq staged :staged) (fn2-release-staged-current-p fn2-checkpoint-publication fn2-checkpoint-lifecycle fn2-checkpoints fn2-checkpoint-refs fn2-checkpoint-bytes fn2-extents fn2-alloc-edges fn2-ops fn2-allocation-release)
        (fn2-allocation-release-candidate-held-p 0 9 fn2-allocation-release)))
       (fn2-checkpoint-bytes (if (eq mode :hash) (fn2-checkpoint-bytes-set-value 0 189 fn2-checkpoint-bytes) fn2-checkpoint-bytes))
+      (fn2-allocation-release (cond
+       ((eq mode :installation-commit) (fn2-allocation-release-set-installation-commit 0 2 fn2-allocation-release))
+       ((eq mode :installation-event) (fn2-allocation-release-set-installation-event 0 7 fn2-allocation-release))
+       (t fn2-allocation-release)))
       ((mv packed len fn2-allocation-release fn2-fields fn2-pool)
        (fn2-allocation-release-pack-staged 0 slot (if (eq mode :generation) (+ 1 gen) gen) 1 2 3 fn2-checkpoint-publication fn2-checkpoint-lifecycle fn2-checkpoints fn2-checkpoint-refs fn2-checkpoint-bytes fn2-extents fn2-alloc-edges fn2-ops fn2-allocation-release fn2-fields fn2-pool))
       ((mv header next fn2-fields) (if mode (mv :unused 0 fn2-fields)
@@ -148,6 +152,8 @@
        (= (fn2-fields-value (+ 64 *fn2-format-release-allocation-field-allocation*) fn2-fields) allocation)
        (= (fn2-fields-value (+ 64 *fn2-format-release-allocation-field-retirement-commit*) fn2-fields) 1)
        (= (fn2-fields-value (+ 64 *fn2-format-release-allocation-field-promoted-checkpoint*) fn2-fields) 9)
+       (= (fn2-fields-value (+ 64 *fn2-format-release-allocation-field-installation-commit*) fn2-fields) 3)
+       (= (fn2-fields-value (+ 64 *fn2-format-release-allocation-field-installation-event*) fn2-fields) 8)
        (let ((f (+ 64 *fn2-format-release-allocation-field-release-evidence-storage-domain*)))
         (and
 (= (fn2-fields-value (+ f 0) fn2-fields)
@@ -169,7 +175,7 @@
       ((mv discarded fn2-allocation-release) (fn2-allocation-release-discard-stage 1 2 3 fn2-allocation-release)))
   (mv (and (eq workspace :ok) (eq epoch :ok) (eq roots :ok) (eq reserve :ok) (eq committed :ok) (eq retired :ok)
        (eq captured :ok) (eq fenced :ok) (eq thawed :complete) bound same
-       (eq packed (cond ((eq mode :hash) :source) ((eq mode :generation) :bounds) (t :packed)))
+       (eq packed (cond ((member-eq mode '(:hash :installation-commit :installation-event)) :source) ((eq mode :generation) :bounds) (t :packed)))
        (eq wrong :state) (eq discarded :discarded)
        (not (fn2-allocation-release-candidate-held-p 0 9 fn2-allocation-release))
        (= (fn2-extents-state e fn2-extents) *fn2-extent-state-retire-pending*)
@@ -182,3 +188,5 @@
 (assert-event (fn2-ras-run nil))
 (assert-event (fn2-ras-run :hash))
 (assert-event (fn2-ras-run :generation))
+(assert-event (fn2-ras-run :installation-commit))
+(assert-event (fn2-ras-run :installation-event))

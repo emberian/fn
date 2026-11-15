@@ -93,3 +93,21 @@ edge region follows all four physical anchor regions. Literal include traversal
 of machines-b/release-evidence covers95 books with no cycle. Readiness extraction
 retains exact whole-file equality through explicit release registration exports;
 8 extraction controls and4 registration refusal controls pass (source only).
+
+Root decision2026-11-14: RELEASE now serializes installation-commit and
+installation-event between promoted-checkpoint and RELEASE-EVIDENCE Ref. The
+generated maximum body grows124→142 bytes; buffer capacity remains derived from
+the real generated maximum. D68 removes the old layout. Producer capture derives
+both values from actual bank evidence and checks the candidate's persisted
+installation stamp plus strict cut-before-installation ordering. Staged packing
+rechecks the captured event as well as commit; roundtrip controls assert both
+actual decoded values and refuse substituted commit/event. These ACL2 controls
+remain UNRUN; the three source controls pass.
+
+Third-obligation and archive boundary: retain exact installation journal ownership
+alongside descriptor and source-journal self ownership until authenticated archive
+or summary transfer. The archive owner reports no actual archived absolute-J
+lookup yet. Historical replay must explicitly refuse that missing producer; it
+must never infer a Ref or publication witness from the selected cut. The existing
+member matcher supplies the canonical cp+Ref6+hash/C<J check once actual exact J
+bytes and chained provenance are available.

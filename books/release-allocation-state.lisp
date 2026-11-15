@@ -7,7 +7,7 @@
  ((phase (:enum fn2-allocation-release-phase (:idle :staged :prepared :waiting :persisted :blocked :complete :uncertain)))
   (owner-kind :u8) (owner-slot :u32) (owner-gen :u60)
   (bank :bool) (candidate :u32) (checkpoint :u60) (cut-commit :u60) (cut-event :u60)
-  (installation-commit :u60) (history :u60) (incarnation :u60)
+  (installation-commit :u60) (installation-event :u60) (history :u60) (incarnation :u60)
   (extent :u32) (epoch :u60) (allocation :u60) (retirement :u60) (next :u32)
   (storage-domain :u60) (physical-unit :u60) (descriptor-epoch :u60) (descriptor-allocation :u60)
   (page-kind :u60) (encoded-length :u60)
