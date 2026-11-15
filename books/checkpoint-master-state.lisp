@@ -24,7 +24,8 @@
           :barrier-begin :barrier-source :allocation-begin :allocation-source :allocation-submit :allocation-wait :allocation-empty
           :installation-begin :installation-source :installation-submit :installation-wait
           :retention-begin :retention-source :publish-start :publish-wait :release :release-complete :thaw :event-rearm :rearm :snapshot-release :teardown-begin :teardown-source :teardown-submit :teardown-wait :teardown-drop :teardown-holding-uncertain :teardown-uncertain :teardown-retained :done
-          :admission-refused :refused :uncertain :loan-uncertain)
+          :admission-refused :refused :uncertain :loan-uncertain
+          :summary-authority-begin :summary-authority-copy)
  :fields ((pending :u32) (stopped :bool) (token :u60)
           (scan :u32) (highest :u60) (candidate :u32) (candidate-found :bool) (checkpoint :u60)
           (page-slot :u32) (page-gen :u60) (scratch-slot :u32) (scratch-gen :u60) (read-slot :u32) (read-gen :u60)
@@ -45,7 +46,8 @@
          (:allocation-source :storage-window :storage-window) (:allocation-submit :storage-window :storage-window) (:allocation-wait :storage-window :storage-window) (:allocation-empty :storage-window :storage-window)
          (:installation-begin :storage-window :storage-window) (:installation-source :storage-window :storage-window) (:installation-submit :storage-window :storage-window) (:installation-wait :storage-window :storage-window)
          (:retention-begin :storage-window :storage-window) (:retention-source :storage-window :storage-window) (:publish-start :storage-window :storage-window)
-         (:publish-wait :storage-window :storage-window) (:release :storage-window :storage-window) (:release-complete :storage-window :storage-window) (:refused :storage-window :storage-window) (:uncertain :storage-window :storage-window) (:loan-uncertain :storage-window))
+         (:publish-wait :storage-window :storage-window) (:release :storage-window :storage-window) (:release-complete :storage-window :storage-window) (:refused :storage-window :storage-window) (:uncertain :storage-window :storage-window) (:loan-uncertain :storage-window)
+          (:summary-authority-begin :storage-window :storage-window) (:summary-authority-copy :storage-window :storage-window))
  :budget (:bytes 16384 :steps 32 :descriptors 4)
  :stops (:checkpoint :pool :bounds)
  :capacity (if (posp (fn2-b-checkpoint-capacity profile)) 1 0)
@@ -60,5 +62,6 @@
         (:barrier-begin) (:barrier-source) (:allocation-begin) (:allocation-source) (:allocation-submit) (:allocation-wait) (:allocation-empty)
         (:installation-begin) (:installation-source) (:installation-submit) (:installation-wait)
         (:retention-begin) (:retention-source) (:publish-start) (:publish-wait) (:release) (:release-complete) (:thaw) (:event-rearm) (:rearm) (:snapshot-release) (:teardown-begin) (:teardown-source) (:teardown-submit) (:teardown-wait) (:teardown-drop) (:teardown-holding-uncertain) (:teardown-uncertain) (:teardown-retained) (:done)
-        (:admission-refused) (:refused) (:uncertain) (:loan-uncertain))
+        (:admission-refused) (:refused) (:uncertain) (:loan-uncertain)
+          (:summary-authority-begin) (:summary-authority-copy))
  :observes ((:read-result)))
