@@ -5,7 +5,8 @@
 (include-book "commit-format")
 (include-book "commit-directory")
 (include-book "checkpoint-commit-leases")
-(include-book "pool-credit")
+(include-book "pool-credit-contracts")
+(include-book "allocation-release-coordinator")
 (fn2-book-layer :b)
 ; Named stops (review ruling 3): a commit helper that finds a state its callers
 ; rule out stops the core with a named reason instead of absorbing it
@@ -954,6 +955,7 @@
 (fn2-checkpoint-retirement-coordinator-events)
 (fn2-checkpoint-allocation-coordinator-events)
 (fn2-checkpoint-installation-coordinator-events)
+(fn2-allocation-release-coordinator-events)
 ; B-S2 S9: the article's source reference from an admitted workspace's first
 ; :article-acceptance record, for the transaction to bind into fn2-article's
 ; location: (mv code physical-unit writer-epoch allocation encoded-length).
