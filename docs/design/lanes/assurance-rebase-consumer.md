@@ -101,3 +101,27 @@ or a second checkpoint's successful native execution; all ACL2 assertions remain
 unrun. Full-prefix canonical journal retention is still an intermediate format.
 Physical reclamation still needs the parent-owned bank/archive contract and
 actual live C adoption, plus the decisive two-checkpoint reclaim/reuse control.
+
+The original retained-event seal path had a source-inferred semantic-boundary
+blocker: commit-pack's physical frame payload is 3900 bytes, while the writer
+hashes only the generated sealed-batch body's exact encoded span. Event-read
+passed the padded payload length to the semantic checker, whose decoded header
+length must equal that argument. Recovery discovery already derives end minus
+offset with the same generated decoder. This is a source trace, not an executed
+failure witness. The repaired path preserves full physical verification, then
+visits SEAL-SPAN separately to decode the exact span and check the remaining
+authenticated payload with the shared zero-tail checker. Decode plus tail
+traverse at most the one 3900-byte payload under the existing 4096-byte step
+charge. Only phase/body-len change; source identity and continuation ownership
+remain exact. Both native and cold zero-budget dispatch yield before format
+work through one parsed classifier class.
+
+The new zero-tail requirement is stronger than the old recovery discovery
+contract: it relies on the actual commit ZERO stages followed by bounded
+header/body writes. No durable format changed. Six source controls replay the
+state/dispatcher class, preserve physical verification and source fields, and
+check both real yield gates. A runnable boundary fixture uses actual commit-pack
+then the shared decoder/tail checker for positive, truncated and nonzero-tail
+cases; the existing full actual event-reader/simulator fixture is migrated too.
+All ACL2 fixtures and the new bounds lemma remain unexecuted and uncertified;
+this source-only milestone does not establish the trusted archive receipt.

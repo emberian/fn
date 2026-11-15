@@ -33,6 +33,32 @@
       (fn2-event-read (fn2-event-read-put 0 (journal-history history) (journal-incarnation incarnation))))
   (mv :ok fn2-event-read fn2-fields)))
 
+; Physical frames carry a padded payload. The semantic seal commitment uses
+; only the actual generated sealed-batch span, as recovery discovery does.
+; The writer ZERO stage makes the remaining authenticated payload canonical
+; zero padding. Decode and tail together traverse at most this one sector.
+(defun fn2-event-read-seal-span (base slot gen off payload kind owner generation fn2-fields fn2-pool)
+ (declare (xargs :stobjs (fn2-fields fn2-pool)
+ :guard (and (fn2-fields-wfp fn2-fields) (fn2-pool-wfp fn2-pool))))
+ (b* (((unless (and (natp base) (<= (+ base *fn2-format-sealed-batch-num-fields*) (fn2-fields-rows fn2-fields))
+                    (unsigned-byte-p 32 off) (posp payload) (<= (+ off payload) *fn2-commit-unit-bytes*)))
+       (mv :bounds 0 fn2-fields))
+      ((mv code next fn2-fields) (fn2-format-sealed-batch-decode base slot gen off (+ off payload)
+        kind owner generation fn2-fields fn2-pool))
+      ((unless (and (eq code :ok) (natp next) (< off next) (<= next (+ off payload))
+                    (<= (- next off) *fn2-format-sealed-batch-max-size*)))
+       (mv :format 0 fn2-fields))
+      (padding (fn2-journal-zero-tail (- (+ off payload) next) next slot gen kind owner generation fn2-pool)))
+  (mv (if (eq padding :ok) :ok :padding) (if (eq padding :ok) (- next off) 0) fn2-fields)))
+(fn2-fields-preserves fn2-event-read-seal-span
+ (base slot gen off payload kind owner generation fn2-fields fn2-pool) :position 2 :raw-rows t)
+(defthm fn2-event-read-seal-span-bounds-by-definition
+ (implies (eq (mv-nth 0 (fn2-event-read-seal-span base slot gen off payload kind owner generation fn2-fields fn2-pool)) :ok)
+  (and (posp (mv-nth 1 (fn2-event-read-seal-span base slot gen off payload kind owner generation fn2-fields fn2-pool)))
+       (<= (mv-nth 1 (fn2-event-read-seal-span base slot gen off payload kind owner generation fn2-fields fn2-pool)) payload)
+       (<= (mv-nth 1 (fn2-event-read-seal-span base slot gen off payload kind owner generation fn2-fields fn2-pool)) *fn2-format-sealed-batch-max-size*)))
+ :hints (("Goal" :in-theory (enable fn2-event-read-seal-span))))
+
 (defun fn2-event-read-format-core (budget expected previous fn2-event-read
                                   fn2-journal-members fn2-fc fn2-fc-context fn2-b3 fn2-fields fn2-pool fn2-digests)
  (declare (xargs :stobjs (fn2-event-read fn2-journal-members
@@ -52,7 +78,7 @@
       (generation (fn2-event-read-owner-gen 0 fn2-event-read))
       (commit (fn2-event-read-commit 0 fn2-event-read))
       (hash (fn2-digest-slot row *fn2-fc-hash*)) (geometry (fn2-digest-slot row *fn2-fc-geometry*))
-      ((unless (and (or semantic sealframe (equal phase *fn2-event-read-phase-frame-records*))
+      ((unless (and (fn2-event-read-format-phase-p phase)
                      (equal (fn2-event-read-pending 0 fn2-event-read) 0)
                      (equal row (fn2-b-event-row (fn2-fc-rows fn2-fc)))
                      (< row (fn2-fc-rows fn2-fc)) (< row (fn2-fc-context-rows fn2-fc-context))
@@ -67,6 +93,14 @@
                      (<= (+ base *fn2-format-sealed-batch-num-fields*) (fn2-fields-rows fn2-fields))
                      (posp budget) (<= budget 4096)))
        (mv :state fn2-event-read fn2-journal-members fn2-fc fn2-fc-context fn2-b3 fn2-fields fn2-pool fn2-digests))
+      ((when (equal phase *fn2-event-read-phase-seal-span*))
+       (mv-let (code length fn2-fields)
+        (fn2-event-read-seal-span base slot gen (fn2-event-read-body-off 0 fn2-event-read)
+         (fn2-event-read-body-len 0 fn2-event-read) kind owner generation fn2-fields fn2-pool)
+        (let ((fn2-event-read (fn2-event-read-put 0
+               (phase (if (eq code :ok) *fn2-event-read-phase-semantic-seal* *fn2-event-read-phase-uncertain*))
+               (body-len (if (eq code :ok) length (fn2-event-read-body-len 0 fn2-event-read))))))
+         (mv (if (eq code :ok) :more code) fn2-event-read fn2-journal-members fn2-fc fn2-fc-context fn2-b3 fn2-fields fn2-pool fn2-digests))))
       ((mv namespace fn2-event-read fn2-fields)
        (if (and sealframe (equal (fn2-event-read-journal-history 0 fn2-event-read) 0)
                 (equal (fn2-event-read-journal-incarnation 0 fn2-event-read) 0)
@@ -123,7 +157,7 @@
              off (+ off payload) slot gen kind owner generation fn2-journal-members)
          (mv (if valid :ok :frame) fn2-journal-members)))
       (fn2-event-read (fn2-event-read-put 0 (body-off off) (body-len payload)
-       (phase (if (eq begun :ok) (if sealframe *fn2-event-read-phase-semantic-seal* *fn2-event-read-phase-members*)
+       (phase (if (eq begun :ok) (if sealframe *fn2-event-read-phase-seal-span* *fn2-event-read-phase-members*)
                 *fn2-event-read-phase-uncertain*)))))
   (mv begun fn2-event-read fn2-journal-members fn2-fc fn2-fc-context fn2-b3 fn2-fields fn2-pool fn2-digests)))
 
