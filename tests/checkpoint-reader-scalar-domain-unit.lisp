@@ -6,7 +6,11 @@
 (include-book "../books/commit-geometry")
 
 (defun-nx fn2-checkpoint-reader-scalar-domain-check (which)
- (let* ((row (if (eq which :checker) 2 1))
+ (let* ((row (if (member-eq which '(:checker :positive)) 2 1))
+        (base (if (eq which :positive) 256 0))
+        (hash (if (eq which :positive) (fn2-digest-slot row *fn2-fc-hash*) 0))
+        (geometry (if (eq which :positive) (fn2-digest-slot row *fn2-fc-geometry*) 0))
+        (previous (if (eq which :positive) (fn2-digest-slot row *fn2-fc-previous-seal*) 0))
         (fc-n (if (eq which :checker) 1 (+ 1 row)))
         (b3-n (if (eq which :hasher) 0 (+ 1 row)))
         (digest-n (if (eq which :digests) 1 (* *fn2-digest-stride* (+ 1 row))))
@@ -23,9 +27,9 @@
                           (history 1) (incarnation 1) (writer-epoch 1)
                           (page-kind *page-kind-checkpoint-descriptor*)
                           (encoded-length *fn2-commit-unit-bytes*)
-                          (hash 0) (geometry 0) (previous-seal 0)))
+                          (hash hash) (geometry geometry) (previous-seal previous)))
         (fn2-b3 (fn2-b3-table-init b3-n (create-fn2-b3)))
-        (fn2-fields (fn2-fields-init *fn2-format-sealed-batch-num-fields* (create-fn2-fields)))
+        (fn2-fields (fn2-fields-init (+ base *fn2-format-sealed-batch-num-fields*) (create-fn2-fields)))
         (fn2-pool (fn2-pool-columns-init 1 (create-fn2-pool)))
         (fn2-pool (resize-fn2-pool-data *fn2-commit-unit-bytes* fn2-pool))
         ; The resized octets are zero-initialized. This is a logical typed
@@ -44,7 +48,7 @@
               (fn2-digestsp fn2-digests) (fn2-digests-wfp fn2-digests)))
         (typed-readonly (and (fn2-fc-contextp fn2-fc-context)
                              (fn2-fc-context-wfp fn2-fc-context)))
-        (base 0) (off 0) (len *fn2-commit-unit-bytes*)
+        (off 0) (len *fn2-commit-unit-bytes*)
         (whole-guard (and (fn2-fc-guard) (fn2-checkpoints-wfp fn2-checkpoints)
                           (fn2-checkpoint-refs-wfp fn2-checkpoint-refs)
                           (fn2-checkpoint-bytes-wfp fn2-checkpoint-bytes)))
@@ -53,7 +57,7 @@
                   fn2-fc fn2-fc-context fn2-b3 fn2-fields fn2-pool fn2-digests)))
   (and whole-h typed-readonly
    (fn2-checkpoint-slotp 0 fn2-checkpoints fn2-checkpoint-refs fn2-checkpoint-bytes)
-   (fn2-checkpoint-hash-matchesp 0 0 0 fn2-digests fn2-checkpoint-bytes)
+   (fn2-checkpoint-hash-matchesp 0 0 hash fn2-digests fn2-checkpoint-bytes)
    (case which
     (:checker
      (and (not (< row (fn2-fc-rows fn2-fc))) (not whole-guard)
