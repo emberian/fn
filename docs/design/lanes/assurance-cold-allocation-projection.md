@@ -98,3 +98,21 @@ actual persisted newer epoch/backend exclusion evidence. This lane owns the
 subsequent bounded classification/cancel consumer, requiring that exact evidence
 and absence of real durable source obligations. Unknown retained reservations
 stay quarantined meanwhile; no disposal/open/FREE activation is enabled here.
+
+checkpoint-suffix-settlement adds private fixed-recovery-stripe consumers for
+existing projected allocation identities and RETIREMENT. Both derive C from the
+actual selected/projected source and require containing commit>C. A projected
+RESERVED row additionally matches the actual retained RESERVED map identity and
+its exact selected-tag quarantine at6+2e. Successful recorded allocation commits
+the owner and drops only that quarantine via ordinary exact edge-drop; selected
+recovery-base and unrelated protections remain. Already ALLOCATED/RETIRE_PENDING
+allocation replay accepts only exact identity AND owner. Retirement matches its
+encoded containing commit, uses the shared ordinary retirement transition, and
+accepts an existing retirement only at the same commit. Different retirement,
+wrong identity/owner, release marker and source drift refuse. These primitives
+still require actual chained-reader admission; none is a served caller-proof API.
+
+Additional source controls classify a selected reserved extent while retaining
+its recovery-base and another reservation's quarantine, reject a different owner,
+and exercise allocation/retirement replay and wrong/different retirement commits.
+The actual lifecycle transition assertions remain UNRUN without compute authority.
