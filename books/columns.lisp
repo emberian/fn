@@ -867,6 +867,39 @@
              (declare (xargs :guard t)) (nth ,index (true-list-fix record)))
           (fn2-columns-record-readers name (cdr cols) (+ 1 (nfix index))))))
 
+; Inspect the events actually emitted, including local facts and wrapper
+; progns. Separate naming recipes drift when a new generated fact is added.
+; Implicit defstobj function names remain subject to ACL2 admission checks.
+(mutual-recursion
+ (defun fn2-columns-event-names (event)
+  (declare (xargs :verify-guards nil))
+  (case (car event)
+    (local (fn2-columns-event-names (cadr event)))
+    (encapsulate (fn2-columns-event-list-names (cddr event)))
+    (progn (fn2-columns-event-list-names (cdr event)))
+    ((defun defun-nx defmacro defconst defthm defthmd defstobj)
+     (list (cadr event)))
+    (otherwise nil)))
+ (defun fn2-columns-event-list-names (events)
+  (declare (xargs :verify-guards nil))
+  (if (atom events) nil
+    (append (fn2-columns-event-names (car events))
+            (fn2-columns-event-list-names (cdr events))))))
+
+(defun fn2-columns-duplicate-name (names)
+  (declare (xargs :verify-guards nil))
+  (if (atom names) nil
+    (if (member-eq (car names) (cdr names)) (car names)
+      (fn2-columns-duplicate-name (cdr names)))))
+
+(defun fn2-columns-declare (id payload requires events)
+  (declare (xargs :verify-guards nil))
+  (let ((names (fn2-columns-event-list-names events)))
+    (if (no-duplicatesp-eq names)
+        (fn2-declare id payload requires events)
+      (er hard 'defcolumns "Duplicate emitted name in ~x0: ~x1."
+          id (fn2-columns-duplicate-name names)))))
+
 (defun fn2-columns-events (name cols bound extras init-name put-policy)
   (declare (xargs :guard t :verify-guards nil))
   (let* ((rows (fn2-columns-sym name "-ROWS"))
@@ -879,7 +912,7 @@
          (fields (append (fn2-columns-fields name cols)
                          `((,rows :type (integer 0 ,(- bound 1)) :initially 0))
                          (fn2-columns-extra-specs extras))))
-    (fn2-declare (list :columns name)
+    (fn2-columns-declare (list :columns name)
       (list :columns (fn2-columns-specs cols)
             :column-reasons (fn2-columns-extra-reasons cols) :rows-bound bound
             :extra-fields (fn2-columns-extra-specs extras)
