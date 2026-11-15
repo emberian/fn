@@ -12,6 +12,28 @@ codec fixtures, failed-Send classification, consumed-input accounting and farm
 Git metadata protection. No current whole-system image, full host gate,
 canonical served certificate, or completed assurance claim exists.
 
+The public matcher now has unconditional correspondence to the independent
+language predicate, including original-input domain checks before reversal,
+malformed-input rejection and adequacy of the unchanged runtime budget.
+Record `certify-20261115T041313Z-839288` passes its exact fifteen-book closure
+(nine reused, six new; 3.305 seconds). Root matched all fifteen before/after
+source digests against integration. Concrete controls cover linear and DP paths,
+malformed inputs and removal of the original-domain conjunct. The first clean
+record exposed a missing declared row prerequisite; the corrected include is
+part of this qualified source. Native delivery/refinement remains separate.
+
+The device-effect recorder now captures returned Read bytes, and the pure
+checker enforces submit FIFO, raw count bounds, exact completed Write prefixes,
+and consistent Read observations. Missing/error Writes admit arbitrary bytes
+only inside their requested span and retain an uncertain verdict. Review controls
+reject out-of-order begin, contradictory Reads and inconsistent final bytes.
+Exact two-book record `certify-20261115T041522Z-841581` passes in 0.296 seconds;
+root matched both current source hashes/keys and the renewed raw-recorder hashes.
+The raw gate substitutes the performer and proves only recorder behavior.
+The selected single-submitter/initial direct-setup premise, actual Take/Post
+binding, whole-image driver execution and crash recovery correspondence remain
+open. A successful Fence observation does not prove power-loss persistence.
+
 The shared columns diagnostic and opt-in guard-hint API are qualified by
 `certify-20261115T034623Z-812141`: six books, two reused and four new,
 3.918 seconds. Root matched all six before/after source hashes. Actual declarations
@@ -23,6 +45,18 @@ keys from earlier pool, codec and core records; those historical records do not
 qualify the current dependent closures. The next shared freeze combines the
 stable pool implementation with focused pool controls before format/core checks.
 Credit-book contract proofs and actual host-path qualification remain open.
+
+The pool implementation is now integrated at the frozen source digest
+`3ef26f41207ee64f6121621cc24d7100936e364b5224a4be8ae28292aa4d7fa7`.
+Its seven-book closure matches qualified cache key
+`079b4ac98a0b3d945869386f9e8d2ebecf0a00d8715e247ba18202d4d7fbfc24`;
+root independently checked source, closure and certificate/FASL/port digests.
+This adds credit provenance and protected ordinary reservations; credit
+configuration and consumers remain unqualified. The larger twelve-book run
+stopped at pool-ranges preservation: its interactive pass did not reproduce in
+clean certification. That repair remains open. The independent format-check
+closure does not include pool-ranges, so its existing scoped gate can proceed.
+
 
 Allocator refinement `8595723fc` is qualified by twelve-book record
 `certify-20261115T011246Z-662045`: six reused, six newly certified. Root matched

@@ -452,8 +452,17 @@ ACL2_BOOKS = \
   sim/envelope-output-dp-loop \
   tests/envelope-output-dispatch-unit \
   tests/envelope-output-dp-loop-unit \
+  sim/envelope-output-dp-entry \
+  tests/envelope-output-dp-entry-unit \
+  sim/envelope-output-validation \
+  tests/envelope-output-validation-unit \
+  sim/envelope-output-linear \
+  tests/envelope-output-linear-unit \
+  sim/envelope-output-complete \
+  tests/envelope-output-complete-unit \
   tests/envelope-input-unit \
   tests/envelope-prefix-unit \
+  tests/native-device-effects-unit \
   tests/native-unit \
   tests/network-backpressure-unit \
   tests/ops-semantic-steps-unit \
