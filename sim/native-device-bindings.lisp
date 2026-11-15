@@ -57,6 +57,7 @@
 ; Unknown/non-device takes return T here, not a standalone trace verdict.
 (defun fn2-nde-post-p (post trace records backend)
  (declare (xargs :verify-guards nil))
+ (and (true-listp post) (equal (len post) 13)
  (let* ((take (fn2-nde-take (nth 2 post) (nth 3 post) trace))
         (kind (fn2-nde-kind (nth 3 take))))
   (if (not kind) t
@@ -70,7 +71,7 @@
       ; failed ordinary Write as an excuse for missing physical evidence.
       (and (member-eq backend '(:fdatasync :fullfsync))
            (eq (fn2-device-request kind (nth 11 take) backend) :unsupported)
-           (fn2-nde-post-normalized-p take post :unsupported 0 nil)))))))
+           (fn2-nde-post-normalized-p take post :unsupported 0 nil))))))))
 
 
 ; The actual consumer supplies these values from fn2-host-op-span, never from

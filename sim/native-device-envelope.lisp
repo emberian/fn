@@ -55,6 +55,8 @@
  (if (atom rest)
      (mv (if (or rest unbound) :unbound-physical-job :pass) caps fn2-core)
   (let ((e (car rest)))
+   (if (and (eq (car e) :post) (not (and (true-listp e) (equal (len e) 13))))
+       (mv :malformed-post caps fn2-core)
    (mv-let (failure taken caps fn2-core) (fn2-envelope-step e t taken caps fn2-core)
     (if failure (mv failure caps fn2-core)
      (mv-let (binding unbound unposted)
@@ -69,7 +71,7 @@
                  (if (fn2-nde-job (nth 2 e) (nth 3 e) records) (cdr unposted) unposted)))
             (t (mv nil unbound unposted)))
       (if binding (mv binding caps fn2-core)
-       (fn2-native-device-envelope-steps (cdr rest) trace records taken caps unbound unposted backend fn2-core))))))))
+       (fn2-native-device-envelope-steps (cdr rest) trace records taken caps unbound unposted backend fn2-core)))))))))
 
 (defun fn2-native-device-control-replay (profile boot trace records fd backend)
  (declare (xargs :verify-guards nil))
