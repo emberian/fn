@@ -21,7 +21,9 @@
         fn2-checkpoint-restore-map fn2-checkpoint-restore-map-control fn2-checkpoint-restore-semantic fn2-fc fn2-fc-context fn2-b3 fn2-fields fn2-pool fn2-digests))
       ((mv claimed fn2-checkpoint-restore-reach)
        (if (eq code :entries)
-        (fn2-checkpoint-restore-reach-claim *fn2-checkpoint-restore-reach-role-semantic*
+        (fn2-checkpoint-restore-reach-claim
+         (if (equal (fn2-checkpoint-restore-semantic-source 0 fn2-checkpoint-restore-semantic) 1)
+             *fn2-checkpoint-restore-reach-role-semantic-source* *fn2-checkpoint-restore-reach-role-semantic*)
          (fn2-checkpoint-restore-semantic-unit 0 fn2-checkpoint-restore-semantic)
          (fn2-checkpoint-restore-semantic-epoch 0 fn2-checkpoint-restore-semantic)
          (fn2-checkpoint-restore-semantic-allocation 0 fn2-checkpoint-restore-semantic)

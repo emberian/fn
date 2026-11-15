@@ -4,7 +4,7 @@
 (fn2-book-layer :b)
 (defcolumns fn2-checkpoint-restore-semantic
  ((phase (:enum fn2-checkpoint-restore-semantic-phase (:idle :read :verify :header :entries :uncertain :find :complete :payload)))
-  (tag :u60) (pending-head :u32) (pending-tail :u32) (pending-count :u32) (expected-known :bool) (expected-count :u60) (seen :u60) (page-kind :u8)
+  (tag :u60) (active :u32) (next :u32) (depth :u32) (resume :bool) (directory :bool) (source :bool) (filter :bool) (entry-stage :bool) (expected-known :bool) (expected-count :u60) (seen :u60) (page-kind :u8)
   (candidate :u32) (source-checkpoint :u60) (source-cut-commit :u60) (source-cut-event :u60)
   (source-history :u60) (source-incarnation :u60) (source-generation :u60) (unit :u60) (epoch :u60) (allocation :u60)
   (cursor :u32) (checker-row :u32) (field-base :u32) (checker-phase :u8) (checker-pos :u32)
@@ -16,12 +16,15 @@
    :why "Root1 expected hash and exact source descriptor hash retained across physical reads.")))
 
 
-; One pending/done physical page per actual allocator extent. Tags separate
-; candidate investigations without an unbounded clear at begin.
+; Extent-indexed DFS stack and closure memo. GRAY is an active ancestor;
+; CLOSED is reusable only at the exact full identity and interpretation.
+; Tags separate candidate investigations without a whole-table clear.
 (defcolumns fn2-checkpoint-restore-semantic-work
- ((tag :u60) (state (:enum fn2-checkpoint-restore-semantic-work-state (:empty :pending :done)))
+ ((tag :u60) (state (:enum fn2-checkpoint-restore-semantic-work-state (:empty :gray :closed)))
   (unit :u60) (epoch :u60) (allocation :u60) (page-kind :u8)
-  (schema :u60) (run :u60) (level :u8) (expected-count :u60) (next :u32)
+  (schema :u60) (run :u60) (level :u8) (expected-count :u60) (expected-known :bool) (parent :u32)
+  (directory :bool) (source :bool) (filter :bool) (entry-stage :bool) (cursor :u32) (seen :u60) (entries :u32)
+  (waiting :bool) (child :u32)
   (hash-0 :u32)
   (hash-1 :u32)
   (hash-2 :u32)

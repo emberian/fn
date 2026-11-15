@@ -757,3 +757,21 @@ These connected source arms and primitive controls remain unadmitted and
 activation stays disabled. Repeated identical planning refusal also needs an
 actual resource-change retry policy; cancellation does not mark retirement debt
 seen or establish a maintenance liveness guarantee.
+
+Cold semantic closure uses an extent-indexed DFS stack, replacing the pending
+FIFO. A GRAY page is an active ancestor, and encountering it again refuses a
+cycle. Only a CLOSED page at the exact physical handle, hash, schema, run,
+level, expected count and directory/source/filter interpretation can be reused.
+A parent remains GRAY while its child or article payload is outstanding.
+Its successor cursor becomes active only after that child closes. The single
+64KiB lease is then reset, the exact parent is read again, and the existing
+physical verifier and typed decoder reauthenticate its hash and header before
+restoring the cursor and count. Directory entries visit their run and optional
+filter separately; payload completion stays with the shared physical engine.
+Constructor pages require RESERVED map rows; authenticated borrowed semantic
+sources require ALLOCATED or RETIRE-PENDING through the common reach role.
+Depth is bounded by the actual extent table, with one constant-work transition
+per call and no chronology assumption. The source fixtures keep their explicit
+synthetic authentication premise and are not evidence of a persisted boot.
+The generated codec maximum supplies the charged bound for restart-based entry
+decoding; it does not impose a new limit on stored entries or nesting depth.
