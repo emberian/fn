@@ -10,6 +10,7 @@
 (include-book "checkpoint-summary-authority-live")
 (include-book "checkpoint-live-catalog")
 (include-book "checkpoint-live-cbase")
+(include-book "checkpoint-live-install")
 (include-book "checkpoint-directory-consume")
 (fn2-book-layer :c)
 
