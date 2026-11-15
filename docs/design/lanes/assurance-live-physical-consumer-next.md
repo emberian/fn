@@ -59,8 +59,8 @@ Remaining connected work:
   for source reads and destination writes. Direct snapshot POLL additionally
   requires all recipe bits and canonical cursor jobs quiescent. Actual bound
   STEP progress controls are being connected; VERIFY/CONTEXT accounting is open.
-- Canonical rebase consume accesses at least 4352 payload bytes against its
-  old 4096 declaration. The rejected Lisp-expression envelope is not modeled
+- Canonical rebase consume accesses at least 4288 payload bytes after
+  sharing, against its old 4096 declaration. The rejected Lisp-expression envelope is not modeled
   byte/structural work; its large constants must not enter actor admission.
 - Master activation remains literal NIL. Existing post-Fence fixtures explicitly
   enter CATALOG for downstream testing; they do not establish actual admission.
