@@ -74,7 +74,14 @@
             (steps (+ *fn2-directory-rebase-consume-steps* controller)))
       (mv-let (charged terminals) (fn2-master-work-terminals body 'fn2-checkpoint-directory-rebase-consume-op nil
        *fn2-directory-rebase-consume-bytes* steps (w state) 10000)
-      (if (and (equal (caddr definition) '(id budget fn2-core))
+      (if (and
+               ; SAME emitter must parse every repaired literal CASE and emit
+               ; the four real callbacks. Prepared only, not executed here.
+               (fn2-master-work-definition 'fn2-checkpoint-master-run-root1-source events)
+               (fn2-master-work-definition 'fn2-checkpoint-master-run-events-source events)
+               (fn2-master-work-definition 'fn2-checkpoint-master-run-map-source events)
+               (fn2-master-work-definition 'fn2-checkpoint-master-run-descriptor-source events)
+               (equal (caddr definition) '(id budget fn2-core))
                (eq (car body) 'if) (equal (cadr body) outer-test)
                (not (fn2-master-work-has-call 'fn2-checkpoint-directory-rebase-consume-op (cadddr body)))
                charged (equal terminals 2) known (equal controller *fn2-master-consume-controller-steps*)

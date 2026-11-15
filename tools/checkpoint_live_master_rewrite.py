@@ -140,12 +140,24 @@ def pure_result_charges(text):
   matches=lr.match('('+phase+' ?*body)',lr.parse(text).forms,deep=True)
   if len(matches)!=1:raise ValueError('one audited pure source arm required '+phase)
   node=matches[0].node
+  # CASE first elements are literal selectors, never executable actions.
+  selectors=[]
+  for dm in lr.match('(:do ?*body)',[node],deep=True):
+   xs=dm.captures['body']
+   for i,x in enumerate(xs[:-1]):
+    if getattr(x,'low','')==':case':
+     for branch in xs[i+1].items:
+      if isinstance(branch,lr.Lst) and branch.items:
+       selectors.append(branch.items[0])
+  def action(n):return not any(q.start<=n.start and n.end<=q.end for q in selectors)
   for m in lr.match('(:charge ?*body)',[node],deep=True):
+   if not action(m.node):continue
    runnable='nil' if ':runnable nil' in text[m.node.start:m.node.end] else 't'
    charge='(:charge :bytes '+byte+' :steps *fn2-work-stage* :runnable '+runnable+')'
    if text[m.node.start:m.node.end]!=charge:edits.append((m.node.start,m.node.end,charge))
   for head,runnable in ((':yield','t'),(':idle','nil')):
    for m in lr.match('('+head+')',[node],deep=True):
+    if not action(m.node):continue
     edits.append((m.node.start,m.node.end,'(:charge :bytes '+byte+' :steps *fn2-work-stage* :runnable '+runnable+')'))
  return lr.write(text,edits),len(edits)
 

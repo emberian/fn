@@ -84,7 +84,7 @@
    (:do (code) (fn2-checkpoint-root1-begin-op row-token *fn2-checkpoint-master-kind* id row-generation) :accept (:more)) (:next :root1-source) (:charge :steps *fn2-work-small* :runnable t))
   (:root1-source :on-refusal ((:next :uncertain) (:charge :bytes *fn2-checkpoint-root1-turn-bytes* :steps *fn2-work-stage* :runnable t))
    (:do (code) (fn2-checkpoint-root1-step-op *fn2-checkpoint-master-pure-byte-quantum* *fn2-checkpoint-master-kind* id row-generation) :accept () :case
-    (((:more) (:charge :bytes *fn2-checkpoint-root1-turn-bytes* :steps *fn2-work-stage* :runnable t)) ((:charge :bytes *fn2-checkpoint-root1-turn-bytes* :steps *fn2-work-stage* :runnable t) (:charge :bytes *fn2-checkpoint-root1-turn-bytes* :steps *fn2-work-stage* :runnable t)) ((:wait) (:charge :bytes *fn2-checkpoint-root1-turn-bytes* :steps *fn2-work-stage* :runnable nil))
+    (((:more) (:charge :bytes *fn2-checkpoint-root1-turn-bytes* :steps *fn2-work-stage* :runnable t)) ((:yield) (:charge :bytes *fn2-checkpoint-root1-turn-bytes* :steps *fn2-work-stage* :runnable t)) ((:wait) (:charge :bytes *fn2-checkpoint-root1-turn-bytes* :steps *fn2-work-stage* :runnable nil))
      ((:page) (:set (source 1)) (:next :page-bind) (:charge :bytes *fn2-checkpoint-root1-turn-bytes* :steps *fn2-work-stage* :runnable t))
      ((:need-read) (:next :root1-read) (:charge :bytes *fn2-checkpoint-root1-turn-bytes* :steps *fn2-work-stage* :runnable t))
      ((:done) (:next :events-begin) (:charge :bytes *fn2-checkpoint-root1-turn-bytes* :steps *fn2-work-stage* :runnable t))
@@ -97,7 +97,7 @@
    (:do (code) (fn2-checkpoint-events-begin row-token *fn2-checkpoint-master-kind* id row-generation row-page-slot row-page-gen row-scratch-slot row-scratch-gen row-read-slot row-read-gen)) (:next :events-source) (:charge :steps *fn2-work-small* :runnable t))
   (:events-source :on-refusal ((:next :uncertain) (:charge :bytes 4096 :steps *fn2-work-stage* :runnable t))
    (:do (code) (fn2-checkpoint-events-step *fn2-checkpoint-master-pure-byte-quantum*) :accept () :case
-    (((:more) (:charge :bytes 4096 :steps *fn2-work-stage* :runnable t)) ((:charge :bytes 4096 :steps *fn2-work-stage* :runnable t) (:charge :bytes 4096 :steps *fn2-work-stage* :runnable t)) ((:wait) (:charge :bytes 4096 :steps *fn2-work-stage* :runnable nil))
+    (((:more) (:charge :bytes 4096 :steps *fn2-work-stage* :runnable t)) ((:yield) (:charge :bytes 4096 :steps *fn2-work-stage* :runnable t)) ((:wait) (:charge :bytes 4096 :steps *fn2-work-stage* :runnable nil))
      ((:page) (:set (source 3)) (:next :page-bind) (:charge :bytes 4096 :steps *fn2-work-stage* :runnable t))
      ((:need-read) (:next :events-read) (:charge :bytes 4096 :steps *fn2-work-stage* :runnable t))
      ((:done) (:next :plan-begin) (:charge :bytes 4096 :steps *fn2-work-stage* :runnable t))
@@ -184,7 +184,7 @@
   (:map-source :on-refusal ((:next :uncertain) (:charge :bytes 4096 :steps *fn2-work-stage* :runnable t))
    (:do (code) (fn2-checkpoint-map-source-step-op *fn2-checkpoint-master-pure-byte-quantum* row-field-base) :accept () :case
     (((:more) (:charge :bytes 4096 :steps *fn2-work-stage* :runnable t))
-     ((:charge :bytes 4096 :steps *fn2-work-stage* :runnable t) (:charge :bytes 4096 :steps *fn2-work-stage* :runnable t))
+     ((:yield) (:charge :bytes 4096 :steps *fn2-work-stage* :runnable t))
      ((:page) (:set (source 2)) (:next :page-bind) (:charge :bytes 4096 :steps *fn2-work-stage* :runnable t))
      ((:done) (:if (equal row-map-role 2)
        ((:set (map-role 5)) (:next :map-begin) (:charge :bytes 4096 :steps *fn2-work-stage* :runnable t))
@@ -192,7 +192,7 @@
      (:otherwise (:next :uncertain) (:charge :bytes 4096 :steps *fn2-work-stage* :runnable t)))))
   (:descriptor-source :on-refusal ((:next :uncertain) (:charge :bytes 4096 :steps *fn2-work-stage* :runnable t))
    (:do (code) (fn2-checkpoint-build-source-op *fn2-checkpoint-master-pure-byte-quantum*) :accept () :case
-    (((:more) (:charge :bytes 4096 :steps *fn2-work-stage* :runnable t)) ((:charge :bytes 4096 :steps *fn2-work-stage* :runnable t) (:charge :bytes 4096 :steps *fn2-work-stage* :runnable t))
+    (((:more) (:charge :bytes 4096 :steps *fn2-work-stage* :runnable t)) ((:yield) (:charge :bytes 4096 :steps *fn2-work-stage* :runnable t))
      ((:page) (:set (source 0)) (:next :page-bind) (:charge :bytes 4096 :steps *fn2-work-stage* :runnable t))
      (:otherwise (:next :uncertain) (:charge :bytes 4096 :steps *fn2-work-stage* :runnable t)))))
   ; B owns the only phase1→2 boundary, every descendant/source protection
