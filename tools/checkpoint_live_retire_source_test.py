@@ -27,4 +27,10 @@ class Retire(unittest.TestCase):
   fixture=(ROOT/'tests/checkpoint-live-catalog-unit.lisp').read_text()
   self.assertIn('(fn2-clc-retire-drain 100000 0 fn2-core)',fixture)
   self.assertIn('(eq retired :resources) (posp retire-progress) retained',fixture)
+ def test_canonical_credited_arena_return_uses_actual_B_geometry(self):
+  s=(ROOT/'books/checkpoint-live-retire.lisp').read_text()
+  self.assertIn('(fn2-seal-retire (fn2-commit-rows fn2-commit) r fn2-overlays fn2-pool)',s)
+  self.assertIn('fn2-core-commit)',s)
+  self.assertNotIn('(fn2-idc-arena-return',s)
+  self.assertNotIn('(fn2-pool-release ',s)
 if __name__=='__main__':unittest.main()

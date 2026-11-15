@@ -11,7 +11,7 @@ start=src.index('(defun fn2-checkpoint-live-replace-install-step ')
 header=src[start:src.index('\n (declare',start)]
 args=header.split(' ',2)[2].rsplit(')',1)[0].split()
 base=args[1:]
-extra=['fn2-overlays','fn2-run-cache','fn2-pool']
+extra=['fn2-overlays','fn2-run-cache','fn2-pool','fn2-commit']
 allargs=base+extra
 outs=['fn2-checkpoint-summary','fn2-checkpoint-metadata-manifest','fn2-run-installed','fn2-overlays','fn2-run-cache','fn2-pool','fn2-checkpoint-cbase-holds','fn2-extents','fn2-alloc-edges']
 def mv(code):return '(mv '+code+' '+' '.join(outs)+')'
@@ -85,7 +85,7 @@ s+='''  (i (fn2-checkpoint-summary-cursor 1 fn2-checkpoint-summary))
        (if (= kind 0)
         (if (= (fn2-overlays-phase r fn2-overlays) *fn2-overlay-phase-active*)
          (mv-let (code fn2-overlays) (fn2-ov-freeze r fn2-overlays) '''+mv('(if (eq code :ok) :more code)')+''')
-         (b* (((mv code fn2-overlays fn2-pool) (fn2-seal-retire r fn2-overlays fn2-pool))
+         (b* (((mv code fn2-overlays fn2-pool) (fn2-seal-retire (fn2-commit-rows fn2-commit) r fn2-overlays fn2-pool))
               ((unless (member-eq code '(:ok :retired))) '''+mv('code')+''')
               (fn2-checkpoint-metadata-manifest (fn2-checkpoint-metadata-manifest-set-catalog-old-stage i 2 fn2-checkpoint-metadata-manifest)))
           '''+mv(':more')+'''))
