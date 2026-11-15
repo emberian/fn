@@ -13,6 +13,7 @@
              (fn2-run-installed-wfp fn2-run-installed) (fn2-id-engine-wfp fn2-id-engine) (fn2-seals-wfp fn2-seals))))
  (b* (((unless (and (< 0 (fn2-checkpoint-summary-rows fn2-checkpoint-summary))
                     (= (fn2-checkpoint-summary-phase 0 fn2-checkpoint-summary) *fn2-checkpoint-summary-phase-applying*)
+                    (= (fn2-checkpoint-summary-application-stage 0 fn2-checkpoint-summary) 2)
                     (= (fn2-checkpoint-summary-lease-count 0 fn2-checkpoint-summary) 0)
                     (< 0 (fn2-id-engine-rows fn2-id-engine))
                     (< 0 (fn2-seals-rows fn2-seals))

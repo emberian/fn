@@ -21,7 +21,7 @@
       (fn2-checkpoint-summary-leases (fn2-checkpoint-summary-leases-init 2 fn2-checkpoint-summary-leases))
       (fn2-run-installed (fn2-run-installed-init 4 fn2-run-installed))
       (fn2-id-engine (fn2-id-engine-init 1 fn2-id-engine)) (fn2-seals (fn2-seals-init 1 fn2-seals))
-      (fn2-checkpoint-summary (fn2-checkpoint-summary-put 0 (phase *fn2-checkpoint-summary-phase-applying*)
+      (fn2-checkpoint-summary (fn2-checkpoint-summary-put 0 (phase *fn2-checkpoint-summary-phase-applying*) (application-stage 2)
        (tag 7) (count 1) (cut-event 21) (cursor 0) (installed 0)))
       (fn2-checkpoint-summary-sources (fn2-checkpoint-summary-sources-put 1
        (tag 7) (schema 8) (rank 1) (top 0) (entries 1) (unit *fn2-storage-extent-units*) (epoch 4) (allocation 35)))
