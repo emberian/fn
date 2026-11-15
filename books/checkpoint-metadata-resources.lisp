@@ -66,8 +66,8 @@
  "The held source's actual entry and run assembly continuation.")
 (fn2-sealer-child fn2-core-checkpoint-source fn2-checkpoint-source (fn2-checkpoint-source-init 1 fn2-checkpoint-source)
  "Ordered selection exhausts the actual held overlays and resident runs.")
-(fn2-sealer-child fn2-core-checkpoint-metadata-manifest fn2-checkpoint-metadata-manifest (fn2-checkpoint-metadata-manifest-init 1 fn2-checkpoint-metadata-manifest)
- "The directory's actual writer and full role1 completion scan.")
+(fn2-sealer-child fn2-core-checkpoint-metadata-manifest fn2-checkpoint-metadata-manifest (fn2-checkpoint-metadata-manifest-init (fn2-b-capacity :extent-slots 16 profile) fn2-checkpoint-metadata-manifest)
+ "Directory control and one pending typed source root per actual physical extent; capture grants no publication authority.")
 (fn2-sealer-child fn2-core-checkpoint-retained-entry fn2-checkpoint-retained-entry (fn2-checkpoint-retained-entry-init 1 fn2-checkpoint-retained-entry)
  "One protected authenticated entry passes between semantic and payload walkers.")
 ; The canonical payload carrier/physical completion hook is registered by boot-kind.

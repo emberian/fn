@@ -138,6 +138,12 @@
        (fn2-checkpoint-metadata-manifest-emit-mv :source))
       (w (fn2-run-level-writer b (- height 1)))
       (extent (floor (fn2-run-writers-unit w fn2-run-writers) *fn2-storage-extent-units*))
+      ; Preflight the private capture cell before changing the directory writer.
+      ; Existing rows from older producer tokens convey no current authority.
+      ((unless (and (posp token)
+                    (< extent (fn2-checkpoint-metadata-manifest-rows fn2-checkpoint-metadata-manifest))
+                    (not (equal (fn2-checkpoint-metadata-manifest-catalog-token extent fn2-checkpoint-metadata-manifest) token))))
+       (fn2-checkpoint-metadata-manifest-emit-mv :catalog))
       ((mv code fn2-pool) (fn2-pool-reset slot gen kind owner generation fn2-pool))
       ((unless (eq code :ok)) (fn2-checkpoint-metadata-manifest-emit-mv code))
       ((mv code fn2-pool) (fn2-checkpoint-metadata-manifest-hash 0 extent slot gen kind owner generation fn2-checkpoint-page-verified fn2-pool))
@@ -159,6 +165,27 @@
       ((mv code fn2-run-builds fn2-run-writers fn2-run-restarts fn2-fields fn2-pool)
        (fn2-run-build-add mb base fn2-run-builds fn2-run-writers fn2-run-restarts fn2-fields fn2-pool))
       ((unless (eq code :ok)) (fn2-checkpoint-metadata-manifest-emit-mv code))
+      ; The actual accepted directory entry and this private retained tuple are
+      ; committed in one call, before the source selector can advance. No new
+      ; refusal follows this capture. A later exact covering Fence is still owed.
+      (fn2-checkpoint-metadata-manifest
+       (fn2-checkpoint-metadata-manifest-put extent
+        (catalog-token token) (catalog-rank (fn2-checkpoint-metadata-run-rank 0 fn2-checkpoint-metadata))
+        (catalog-source-kind (fn2-checkpoint-source-kind 0 fn2-checkpoint-source))
+        (catalog-source-row (fn2-checkpoint-source-row 0 fn2-checkpoint-source))
+        (catalog-source-order (fn2-checkpoint-source-order 0 fn2-checkpoint-source))
+        (catalog-schema (fn2-checkpoint-source-schema 0 fn2-checkpoint-source))
+        (catalog-top (- height 1)) (catalog-entries (fn2-run-builds-entries b fn2-run-builds))
+        (catalog-epoch (fn2-run-writers-epoch w fn2-run-writers))
+        (catalog-allocation (fn2-run-writers-counter w fn2-run-writers))
+        (catalog-hash-0 (fn2-checkpoint-page-verified-word extent 0 fn2-checkpoint-page-verified))
+        (catalog-hash-1 (fn2-checkpoint-page-verified-word extent 1 fn2-checkpoint-page-verified))
+        (catalog-hash-2 (fn2-checkpoint-page-verified-word extent 2 fn2-checkpoint-page-verified))
+        (catalog-hash-3 (fn2-checkpoint-page-verified-word extent 3 fn2-checkpoint-page-verified))
+        (catalog-hash-4 (fn2-checkpoint-page-verified-word extent 4 fn2-checkpoint-page-verified))
+        (catalog-hash-5 (fn2-checkpoint-page-verified-word extent 5 fn2-checkpoint-page-verified))
+        (catalog-hash-6 (fn2-checkpoint-page-verified-word extent 6 fn2-checkpoint-page-verified))
+        (catalog-hash-7 (fn2-checkpoint-page-verified-word extent 7 fn2-checkpoint-page-verified))))
       (fn2-checkpoint-metadata-manifest (fn2-checkpoint-metadata-manifest-set-entries 0
        (+ 1 (fn2-checkpoint-metadata-manifest-entries 0 fn2-checkpoint-metadata-manifest)) fn2-checkpoint-metadata-manifest))
       (fn2-checkpoint-source (fn2-checkpoint-source-put 0
