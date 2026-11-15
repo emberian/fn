@@ -52,7 +52,8 @@ class EventBootSourceTests(unittest.TestCase):
             ':checkpoint-authority-copy': ':checkpoint-catalog-begin',
             ':checkpoint-catalog-copy': ':checkpoint-directory-install',
             ':checkpoint-directory-install': ':checkpoint-bank-bind',
-            ':checkpoint-bank-bind': ':recover',
+            ':checkpoint-bank-bind': ':checkpoint-bank-protect',
+            ':checkpoint-bank-protect': ':recover',
             ':recover': ':recover-wait',
             ':recover-wait': ':epoch',
         }
@@ -103,6 +104,8 @@ class EventBootSourceTests(unittest.TestCase):
         route(':checkpoint-adopt-copy', 'applied', ':checkpoint-authority-begin', 'fn2-checkpoint-summary-apply-step-op')
         route(':checkpoint-authority-copy', 'complete', ':checkpoint-catalog-begin', 'fn2-checkpoint-summary-authority-cold-step-op')
         route(':checkpoint-catalog-copy', 'complete', ':checkpoint-directory-install', 'fn2-event-catalog-cold-step-op')
+        route(':checkpoint-bank-bind', 'bound', ':checkpoint-bank-protect', 'fn2-checkpoint-bank-bind-op')
+        route(':checkpoint-bank-protect', 'protected', ':recover', 'fn2-checkpoint-bank-protection-op')
         self.assertTrue(lr.match('(:do (code) (fn2-directory-cold-install-op) :accept (:installed))', [arm(':checkpoint-directory-install')], deep=True))
         # The cold splice can still stop at its explicit integration frontier.
         # Generic recovery MUST have a nonvacuous path to READY, with final
@@ -123,18 +126,23 @@ class EventBootSourceTests(unittest.TestCase):
         self.assertTrue(reaches(':recover', set()))
         self.assertTrue(reaches(':checkpoint-events-finish', set()))
         self.assertFalse(reaches(':checkpoint-project-begin', {':checkpoint-loader-step'}))
+        self.assertFalse(reaches(':checkpoint-project-begin', {':checkpoint-bank-protect'}))
         self.assertFalse(reaches(':recover', {':epoch-result'}))
         self.assertFalse(reaches(':checkpoint-events-finish', {':epoch-result'}))
         self.assertTrue(lr.match('(:issue (fn2-issue-fence :principal 0) ?*rest)', [arm(':epoch-fence')], deep=True))
         self.assertTrue(lr.match('(:cond ((equal row-event-ready 0) (:idle)) ((not (equal row-outcome *fn2-outcome-done*)) (:stop :io)) (t ?*success))', [arm(':epoch-result')], deep=True))
-        self.assertTrue(lr.match('(fn2-boot-adopt-epoch row-next-epoch)', [arm(':epoch-result')], deep=True))
+        self.assertTrue(lr.match('(fn2-boot-finalize-recovery id row-generation)', [arm(':epoch-result')], deep=True))
+        root_release = lr.match('(fn2-boot-release-root-window id row-generation)', [arm(':epoch-result')], deep=True)[0].node
+        final = lr.match('(fn2-boot-finalize-recovery id row-generation)', [arm(':epoch-result')], deep=True)[0].node
+        self.assertLess(root_release.start, final.start)
         # Listeners are woken only in post-Fence release/ready arms.
-        for phase in (':checkpoint-events-finish', ':checkpoint-project-begin', ':checkpoint-project-step', ':checkpoint-project-protect', ':checkpoint-cbase-acquire', ':checkpoint-loader-begin', ':checkpoint-loader-step', ':checkpoint-adopt-begin', ':checkpoint-adopt-copy', ':checkpoint-authority-copy', ':checkpoint-directory-install', ':checkpoint-bank-bind', ':recover-wait', ':epoch', ':epoch-fence'):
+        for phase in (':checkpoint-events-finish', ':checkpoint-project-begin', ':checkpoint-project-step', ':checkpoint-project-protect', ':checkpoint-cbase-acquire', ':checkpoint-loader-begin', ':checkpoint-loader-step', ':checkpoint-adopt-begin', ':checkpoint-adopt-copy', ':checkpoint-authority-copy', ':checkpoint-directory-install', ':checkpoint-bank-bind', ':checkpoint-bank-protect', ':recover-wait', ':epoch', ':epoch-fence'):
             self.assertFalse(lr.match('(:wake-row ?target)', [arm(phase)], deep=True), phase)
 
     def test_real_forward_gates_reject_bypasses(self):
         src = (Path(__file__).resolve().parents[1] / 'books/boot.lisp').read_text()
         mutations = (
+            ('((:bound) (:next :checkpoint-bank-protect)', '((:bound) (:next :recover)'),
             ('((:complete) (:next :checkpoint-adopt-begin)', '((:complete) (:next :checkpoint-authority-begin)'),
             ('((:more :yield) (:next :checkpoint-loader-step)', '((:more :yield :row) (:next :checkpoint-loader-step)'),
             ('((:validated) (:next :checkpoint-project-begin)', '((:validated) (:next :ready)'),

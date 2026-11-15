@@ -156,7 +156,7 @@
 (defmachine fn2-boot
  :states (:free :prepare :write :write-result :read :read-result :verify :advance
           :anchor :bootstrap :bootstrap-verify :checkpoint-anchor :checkpoint-check :checkpoint-descriptor :checkpoint-verify :checkpoint-root-candidate :checkpoint-root-reserve :checkpoint-root-begin :checkpoint-root-load :checkpoint-root-copy :checkpoint-root-verify :checkpoint-root-dispatch :checkpoint-root-padding :checkpoint-root-next :checkpoint-root-finish :checkpoint-root-fifo :checkpoint-evidence-begin :checkpoint-evidence-target :checkpoint-evidence-load :checkpoint-evidence-copy :checkpoint-evidence-check :checkpoint-evidence-record :checkpoint-evidence-next :checkpoint-semantic-begin :checkpoint-semantic-load :checkpoint-semantic-copy :checkpoint-semantic-check :checkpoint-summary-capture :checkpoint-semantic-entries :checkpoint-semantic-find :checkpoint-summary-close :checkpoint-payload-begin :checkpoint-payload-load :checkpoint-payload-copy :checkpoint-payload-step :checkpoint-census :recover :recover-wait :epoch :epoch-fence :epoch-result :release :ready :failed
-         :checkpoint-events-begin :checkpoint-events-journal-bind :checkpoint-events-journal-load :checkpoint-events-journal-received :checkpoint-events-journal-check :checkpoint-events-frontier-begin :checkpoint-events-frontier-check :checkpoint-events-frontier-peaks :checkpoint-events-frontier-padding :checkpoint-events-frontier-finish :checkpoint-events-finish :checkpoint-events-seed :checkpoint-project-begin :checkpoint-project-step :checkpoint-project-protect :checkpoint-cbase-acquire :checkpoint-adopt-begin :checkpoint-adopt-preflight :checkpoint-adopt-copy :checkpoint-authority-begin :checkpoint-authority-copy :checkpoint-directory-install :checkpoint-bank-bind :checkpoint-catalog-begin :checkpoint-catalog-copy :genesis-begin :genesis-step :checkpoint-loader-begin :checkpoint-loader-step)
+         :checkpoint-events-begin :checkpoint-events-journal-bind :checkpoint-events-journal-load :checkpoint-events-journal-received :checkpoint-events-journal-check :checkpoint-events-frontier-begin :checkpoint-events-frontier-check :checkpoint-events-frontier-peaks :checkpoint-events-frontier-padding :checkpoint-events-frontier-finish :checkpoint-events-finish :checkpoint-events-seed :checkpoint-project-begin :checkpoint-project-step :checkpoint-project-protect :checkpoint-cbase-acquire :checkpoint-adopt-begin :checkpoint-adopt-preflight :checkpoint-adopt-copy :checkpoint-authority-begin :checkpoint-authority-copy :checkpoint-directory-install :checkpoint-bank-bind :checkpoint-catalog-begin :checkpoint-catalog-copy :genesis-begin :genesis-step :checkpoint-loader-begin :checkpoint-loader-step :checkpoint-bank-protect)
  :fields ((pending :u32) (stopped :bool) (pool-slot :u32) (pool-gen :u60)
           (rx-slot :u32) (rx-gen :u60) (create :bool) (image-size :u60)
           (base :u60) (total :u32) (index :u32) (stage :u8) (offset :u60)
@@ -215,6 +215,7 @@
          (:checkpoint-authority-copy :storage-window)
          (:checkpoint-directory-install :storage-window)
          (:checkpoint-bank-bind :storage-window)
+         (:checkpoint-bank-protect :storage-window)
          (:checkpoint-catalog-begin :storage-window)
          (:checkpoint-catalog-copy :storage-window)
          (:genesis-begin :storage-window)
@@ -268,7 +269,7 @@
          (:checkpoint-adopt-copy)
          (:checkpoint-authority-begin)
          (:checkpoint-authority-copy)
-         (:checkpoint-directory-install) (:checkpoint-bank-bind)
+         (:checkpoint-directory-install) (:checkpoint-bank-bind) (:checkpoint-bank-protect)
          (:checkpoint-catalog-begin)
          (:checkpoint-catalog-copy)
          (:genesis-begin)

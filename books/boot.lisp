@@ -22,6 +22,7 @@
 (include-book "checkpoint-bank-bind")
 (include-book "checkpoint-bank-empty")
 (include-book "checkpoint-bank-boot")
+(include-book "boot-root-release")
 (include-book "event-catalog-cold")
 (include-book "checkpoint-bank-cold")
 (include-book "machines-a-access")
@@ -1007,7 +1008,7 @@
   (:checkpoint-bank-bind :on-refusal ((:stop :checkpoint))
    (:do (code) (fn2-checkpoint-bank-bind-op budget) :accept ()
     :case (((:more) (:charge :steps *fn2-work-stage* :runnable t))
-           ((:bound) (:next :recover) (:charge :steps *fn2-work-stage* :runnable t))
+           ((:bound) (:next :checkpoint-bank-protect) (:charge :steps *fn2-work-stage* :runnable t))
            ((:yield) (:yield))
            (:otherwise (:stop :checkpoint)))))
 
@@ -1053,6 +1054,14 @@
     :case (((:more) (:next :genesis-step) (:charge :bytes 4096 :steps *fn2-work-stage* :runnable t))
            ((:complete) (:next :recover) (:charge :bytes 4096 :steps *fn2-work-stage* :runnable t))
            (:otherwise (:stop :configuration)))))
+  ; Each step installs one independent retained physical-anchor claim.
+  ; Completion is required before any ordered suffix can change ownership.
+  (:checkpoint-bank-protect
+   (:do (code) (fn2-checkpoint-bank-protection-op) :accept ()
+    :case (((:more) (:next :checkpoint-bank-protect) (:charge :bytes 256 :steps *fn2-work-stage* :runnable t))
+           ((:protected) (:next :recover) (:charge :steps *fn2-work-stage* :runnable t))
+           (:otherwise (:stop :checkpoint)))))
+
   (:recover :on-refusal ((:stop :recovery))
    (:do (code target) (fn2-boot-recover))
    (:wake-row target)
@@ -1077,9 +1086,11 @@
   (:epoch-result :on-refusal ((:stop :epoch))
    (:cond ((equal row-event-ready 0) (:idle))
           ((not (equal row-outcome *fn2-outcome-done*)) (:stop :io))
-          (t (:do (code) (fn2-boot-adopt-epoch row-next-epoch))
-             (:do (code) (fn2-boot-bind-checkpoint-layout id))
+          (t (:do (code) (fn2-boot-bind-checkpoint-layout id))
              (:do (code) (fn2-boot-finish-bank-obligations id row-generation) :accept (:ok))
+             (:do (rcode) (fn2-boot-release-root-window id row-generation) :accept (:ok :retired)
+              :why ":retired: terminal root workspace reached its generation limit and is no longer reusable")
+             (:do (code) (fn2-boot-finalize-recovery id row-generation) :accept (:ok))
              (:do (rcode) (fn2-boot-release-windows row-pool-slot row-pool-gen row-rx-slot row-rx-gen id row-generation))
              (:set (release-index 0)) (:next :release) (:charge :steps *fn2-work-stage* :runnable t))))
   (:release :on-refusal ((:stop :bounds))
@@ -1098,4 +1109,4 @@
   (:fence-result (:set (event-ready 1) (outcome outcome) (count count)) (:wake))))
 
 (defmacro fn2-boot-events ()
- '(progn (fn2-boot-operations) (fn2-checkpoint-bank-empty-core-events) (fn2-boot-bank-finish-events) (defmachine-arms fn2-boot) (defmachine-run fn2-boot)))
+ '(progn (fn2-boot-operations) (fn2-boot-root-release-events) (fn2-checkpoint-bank-empty-core-events) (fn2-boot-bank-finish-events) (defmachine-arms fn2-boot) (defmachine-run fn2-boot)))

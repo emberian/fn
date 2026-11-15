@@ -60,6 +60,7 @@
   (len0 :u32) (len1 :u32) (stage0 :u8) (stage1 :u8)
   (checker-live :bool) (checker-row :u32) (checker-base :u32) (checker-packet :bool)
   (offset0 :u60) (offset1 :u60) (op-slot :u32) (op-gen :u60))
+ :init-name fn2-checkpoint-publication-columns-init
  :extra-fields
  ((fn2-checkpoint-publication-evidence-meta :type (array (unsigned-byte 60) (36)) :initially 0
    :why "Four fixed physical roles: two banks, one in-flight attempt and one displaced debt; nine exact identity scalars each.")
@@ -71,6 +72,37 @@
    :why "Each of four physical anchors retains six hashes, including the actual anchor hash, before shared cold scratch is reused.")
   (fn2-checkpoint-publication-cold-catalog :type (array (unsigned-byte 32) (4)) :initially 0
    :why "Actual census duplicate identities may share one catalog representative while all four physical anchor obligations and hashes remain distinct.")))
+
+
+; Fixed array contents survive the generic columns initializer. Clear their
+; ownership/READY metadata explicitly before a new process incarnation can read
+; them; hashes remain untrusted until the actual producer repopulates metadata.
+(defun fn2-checkpoint-publication-reset-metadata (i fn2-checkpoint-publication)
+ (declare (xargs :stobjs fn2-checkpoint-publication :measure (nfix (- 88 (nfix i)))
+ :guard (and (fn2-checkpoint-publicationp fn2-checkpoint-publication) (fn2-checkpoint-publication-wfp fn2-checkpoint-publication)
+             (natp i) (<= i 88))))
+ (if (>= (nfix i) 88) fn2-checkpoint-publication
+  (let ((fn2-checkpoint-publication
+         (cond ((< i 36) (update-fn2-checkpoint-publication-evidence-metai i 0 fn2-checkpoint-publication))
+               ((< i 84) (update-fn2-checkpoint-publication-cold-metai (- i 36) 0 fn2-checkpoint-publication))
+               (t (update-fn2-checkpoint-publication-cold-catalogi (- i 84) 0 fn2-checkpoint-publication)))))
+   (fn2-checkpoint-publication-reset-metadata (+ 1 (nfix i)) fn2-checkpoint-publication))))
+(fn2-checkpoint-publication-preserves fn2-checkpoint-publication-reset-metadata
+ (i fn2-checkpoint-publication) :hyps ((fn2-checkpoint-publicationp fn2-checkpoint-publication)
+  (fn2-checkpoint-publication-wfp fn2-checkpoint-publication) (natp i) (<= i 88)))
+(defun fn2-checkpoint-publication-init (n fn2-checkpoint-publication)
+ (declare (xargs :stobjs fn2-checkpoint-publication :guard (and (fn2-checkpoint-publicationp fn2-checkpoint-publication) (unsigned-byte-p 32 n))))
+ (let ((fn2-checkpoint-publication (fn2-checkpoint-publication-columns-init n fn2-checkpoint-publication)))
+  (fn2-checkpoint-publication-reset-metadata 0 fn2-checkpoint-publication)))
+(defthm fn2-checkpoint-publication-init-preserves-type
+ (implies (and (fn2-checkpoint-publicationp fn2-checkpoint-publication) (unsigned-byte-p 32 n))
+          (fn2-checkpoint-publicationp (fn2-checkpoint-publication-init n fn2-checkpoint-publication))))
+(defthm fn2-checkpoint-publication-init-wfp
+ (implies (and (fn2-checkpoint-publicationp fn2-checkpoint-publication) (unsigned-byte-p 32 n))
+          (fn2-checkpoint-publication-wfp (fn2-checkpoint-publication-init n fn2-checkpoint-publication))))
+(defthm fn2-checkpoint-publication-init-rows
+ (implies (and (fn2-checkpoint-publicationp fn2-checkpoint-publication) (unsigned-byte-p 32 n))
+          (equal (fn2-checkpoint-publication-rows (fn2-checkpoint-publication-init n fn2-checkpoint-publication)) n)))
 
 (defun fn2-checkpoint-descriptor-identity-word (c i fn2-checkpoint-bytes)
  (declare (xargs :stobjs fn2-checkpoint-bytes
