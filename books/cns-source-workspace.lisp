@@ -19,4 +19,5 @@
       (<= (+ *fn2-cns-source-original-offset* 32) *fn2-cns-source-stored-offset*)
       (<= (+ *fn2-cns-source-stored-offset* 32) *fn2-cns-source-manifest-offset*)
       (<= (+ *fn2-cns-source-manifest-offset* *fn2-commit-unit-bytes*) *fn2-cns-source-data-offset*)
-      (<= *fn2-cns-source-workspace-bytes* *fn2-cns-item-workspace-bytes*)))
+      (<= *fn2-cns-source-workspace-bytes* *fn2-cns-item-workspace-bytes*))
+ :rule-classes nil)
