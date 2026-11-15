@@ -188,3 +188,32 @@
 (defun fn2-idc-shape-outs (outs pos)
  (declare (xargs :verify-guards nil))
  (if (atom outs) nil (cons (list (car outs) pos) (fn2-idc-shape-outs (cdr outs) (+ 1 pos)))))
+
+(include-book "run-physical-step")
+(include-book "run-physical-release")
+
+; Included after machines-c registers the actual cursor, catalog lease and
+; loader children. Every issue is explicit in a machine :issue arm.
+(defcost fn2-run-page-reserve :child fn2-run-load-reserve :answers t
+ :tables (fn2-core-run-loads fn2-core-pool) :effects :per-use
+ :doc "Acquire both private cursor windows atomically or refuse without parking.")
+(defcost fn2-run-page-bind :child fn2-run-load-bind :answers t
+ :tables (fn2-core-run-loads fn2-core-run-cursors fn2-core-checkpoint-summary fn2-core-checkpoint-summary-sources fn2-core-checkpoint-summary-leases fn2-core-run-installed fn2-core-pool)
+ :bytes 64
+ :doc "Bind a current physical MISS Ref and exact catalog lease to the request-owned page.")
+(defcost fn2-run-page-step :child fn2-run-load-step :answers t
+ :tables (fn2-core-run-loads fn2-core-run-cursors fn2-core-checkpoint-summary fn2-core-checkpoint-summary-sources fn2-core-checkpoint-summary-leases fn2-core-run-installed fn2-core-boot-config fn2-core-fc fn2-core-fc-context fn2-core-b3 fn2-core-fields fn2-core-pool fn2-core-digests)
+ :bytes 4096
+ :doc "Copy or authenticate one bounded page fragment; expose only after full Ref and typed header verification.")
+(make-event
+ (value (cons 'progn
+  (append (fn2-issue-wrapper-effect-events '(fn2-run-load-issue) (w state))
+          (fn2-issued-wrapper-events '(fn2-run-load-issue) (w state))))))
+(defcost fn2-run-page-read :child fn2-run-load-issue :answers t :descriptors 1
+ :tables (fn2-core-run-loads fn2-core-run-load-ops fn2-core-run-cursors fn2-core-checkpoint-summary fn2-core-checkpoint-summary-sources fn2-core-checkpoint-summary-leases fn2-core-run-installed fn2-core-extents fn2-core-alloc-edges fn2-core-pool fn2-core-ops fn2-core-control)
+ :effects ((:acquire (:operation)))
+ :doc "Pin and issue exactly one 4KiB read, returning its actual operation slot/generation.")
+(defcost fn2-run-page-release :child fn2-run-load-release :answers t
+ :tables (fn2-core-run-loads fn2-core-run-cursors fn2-core-checkpoint-summary fn2-core-checkpoint-summary-leases fn2-core-pool)
+ :effects :per-use
+ :doc "Release request-owned pages only after pending0 and workspace return, then release the catalog lease.")
