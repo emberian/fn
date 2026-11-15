@@ -33,8 +33,8 @@
       (equal gen (fn2-checkpoint-future-owner-gen 0 fn2-checkpoint-future))))
 
 (defun fn2-checkpoint-future-class-demand (i class fn2-pool)
- (declare (xargs :stobjs fn2-pool :guard (and (natp i) (<= i 8)) :measure (nfix (- 8 i))))
- (if (>= i 8) 0
+ (declare (xargs :stobjs fn2-pool :guard (and (natp i) (<= i 8)) :measure (nfix (- 8 (nfix i)))))
+ (if (not (and (natp i) (< i 8))) 0
   (+ (if (equal class (fn2-pool-class-for (fn2-checkpoint-future-window-length i) fn2-pool)) 1 0)
      (fn2-checkpoint-future-class-demand (+ i 1) class fn2-pool))))
 
