@@ -863,6 +863,51 @@
       "path": "tests/test_columns_observation_frames.py",
       "source": "cc73111c5f326fbc0cd5938670fa040b9c87ddad",
       "sha256": "964dc7c2311e8f475606e1cb49033ecc72cc996ea182b10f333c4d50c6397056"
+    },
+    {
+      "path": "books/checkpoint-descriptor-read.lisp",
+      "source": "5a3c9089341e196e51b80725b97225110f569c05",
+      "sha256": "1d1191c887a3e0387fb457a887cd11f1afd9bd969d41156a72414e96202cd02b"
+    },
+    {
+      "path": "books/checkpoint-reader-interfaces.lisp",
+      "source": "5a3c9089341e196e51b80725b97225110f569c05",
+      "sha256": "e17f89b9081a6c94ed9fc9027ac032bceec07cd83228f37acf1626864272f601"
+    },
+    {
+      "path": "tests/checkpoint-reader-refutation-unit.lisp",
+      "source": "5a3c9089341e196e51b80725b97225110f569c05",
+      "sha256": "cfa60ce1df298c111ac2ce4760160f23707afeb42ddca2f72d2101f9e09cdae2"
+    },
+    {
+      "path": "tests/checkpoint-reader-scalar-domain-unit.lisp",
+      "source": "5a3c9089341e196e51b80725b97225110f569c05",
+      "sha256": "4421d1a69bf03b1aa39192ba43e18874114f1c1ffed5490c0168bca40f1ab333"
+    },
+    {
+      "path": "tests/test_checkpoint_reader_root_projection.py",
+      "source": "5a3c9089341e196e51b80725b97225110f569c05",
+      "sha256": "6d720ee3325082e3aa2ba57d0064c40c5f7896c3d67d40bda8e63e30217e3721"
+    },
+    {
+      "path": "tools/checkpoint_reader_root_projection.py",
+      "source": "5a3c9089341e196e51b80725b97225110f569c05",
+      "sha256": "3bc7504b2be8814e9f451ca7bb76c559b79e02a400493f8d3ce332f436a63d8d"
+    },
+    {
+      "path": "tools/fixtures/checkpoint-reader-root-before.lisp",
+      "source": "5a3c9089341e196e51b80725b97225110f569c05",
+      "sha256": "1b157d15201eca0021fe8120b188fb0fc39418c1ee1182d77f3c837f35c41988"
+    },
+    {
+      "path": "docs/design/checkpoint-reader-root-projection.md",
+      "source": "5a3c9089341e196e51b80725b97225110f569c05",
+      "sha256": "e33f75669440f7095f652e46719681b8a666593ebb2593270e73a07874f6a5ff"
+    },
+    {
+      "path": "docs/design/receipts/checkpoint-reader-current-thirty-four-record.json",
+      "source": "5a3c9089341e196e51b80725b97225110f569c05",
+      "sha256": "b282ffc37a862b49b9041fa65945fdbc4999ef54a9b3fb478fee901a4f8527ac"
     }
   ],
   "preserve_current_root_exact": [
@@ -920,7 +965,9 @@
     "tests/upload-uncertainty-served-unit",
     "tests/ctl-stripe-map-unit",
     "tests/checkpoint-installation-domain-unit",
-    "books/columns-observation-frames"
+    "books/columns-observation-frames",
+    "tests/checkpoint-reader-scalar-domain-unit",
+    "tests/checkpoint-reader-refutation-unit"
   ],
   "scope": "Concrete source composition only; no active candidate changes, prover run or new qualification. RAW remains UNPROVED; prior135 qualified closure excludes RAW.",
   "held": [
@@ -1025,5 +1072,27 @@
     "prior135_current_key_matches": 119,
     "prior135_rekeyed_by_storage_append": 16,
     "scope": "Metadata only; helper and whole RAW unproved under pilot, no new qualification."
+  },
+  "root_reader_projection": {
+    "root": "5a3c9089341e196e51b80725b97225110f569c05",
+    "files": [
+      "books/checkpoint-descriptor-read.lisp",
+      "books/checkpoint-reader-interfaces.lisp",
+      "tests/checkpoint-reader-refutation-unit.lisp",
+      "tests/checkpoint-reader-scalar-domain-unit.lisp",
+      "tests/test_checkpoint_reader_root_projection.py",
+      "tools/checkpoint_reader_root_projection.py",
+      "tools/fixtures/checkpoint-reader-root-before.lisp",
+      "docs/design/checkpoint-reader-root-projection.md",
+      "docs/design/receipts/checkpoint-reader-current-thirty-four-record.json"
+    ],
+    "status": "Exact qualified root reader source, kept detached; no BOOT caller/activation join or active-candidate mutation",
+    "qualified_receipt": "docs/design/receipts/checkpoint-reader-current-thirty-four-record.json",
+    "verification": {
+      "source_controls": 6,
+      "qualified34_current_raw_and_keys": "all34 match root audited receipt, zero mismatch",
+      "FETCH_and_BT_key_change": "NONE; reader remains detached; FETCH243+BT2 unchanged245",
+      "BOOT_consumer": "Not connected by this source join; root metadata/reader owners supply actual guarded BOOT consumer separately."
+    }
   }
 }
