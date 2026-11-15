@@ -695,3 +695,17 @@ consumer and candidate-held predicate remain byte-identical. Source projection
 controls pass; runnable original-writer/budget1/zero/interleaving controls and
 actual seal-copy/shared-verifier/frame reconstruction dispatch follow next.
 No current boot state, buffer count, wire format, source hold or FREE changed.
+
+The original-header fixture now encodes real records headers and semantic
+seal bodies through fn2-commit-pack, embeds both through the actual schema20
+entry encoder/decoder, and invokes the new source-bound constructor and STEP.
+Its synthetic authenticated-page/common-reach premise is unchanged and explicit;
+this control does not establish physical archive or seal authority. New runnable
+assertions require quantum1 completion with no cursor overrun, complete archive
+and fields snapshots at quantum0, and unchanged refusals after the first byte
+when decoder NEXT/header Ref offset/seal Ref offset is substituted. Restoring
+the exact value resumes the same actual decoder. Original physical pair17/19
+remains distinct from the archive key123/456. Wrong J and one extra header-tail
+byte must reach uncertain instead of SEAL-COPY. All three new assertions remain
+UNRUN. Constructor endpoint bounds and private decoder-NEXT rebinding now close
+those direct-table source gaps; no runtime route or terminal authority is added.

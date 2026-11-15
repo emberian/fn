@@ -69,7 +69,12 @@ def source_body():
       (page (fn2-run-loads-page c fn2-run-loads)) (pgen (fn2-run-loads-page-gen c fn2-run-loads))
       (event (fn2-event-archive-next-event 1 fn2-event-archive))
 '''+refs+'''
-      ((unless (and (equal event 1) (equal (fn2-event-archive-member-seen 1 fn2-event-archive) 0)
+      ((unless (and (equal event 1) (posp (fn2-event-archive-cut-commit 1 fn2-event-archive))
+                    (<= event (fn2-event-archive-cut-event 1 fn2-event-archive))
+                    (equal event (fn2-event-archive-member-first-event 1 fn2-event-archive))
+                    (<= event (fn2-event-archive-member-last-event 1 fn2-event-archive))
+                    (posp (fn2-event-archive-member-entries 1 fn2-event-archive))
+                    (equal (fn2-event-archive-member-seen 1 fn2-event-archive) 0)
                     (equal (fn2-fields-value (+ eb *fn2-event-archive-member-entry-field-history*) fn2-fields) (fn2-event-archive-history 1 fn2-event-archive))
                     (equal (fn2-fields-value (+ eb *fn2-event-archive-member-entry-field-incarnation*) fn2-fields) (fn2-event-archive-incarnation 1 fn2-event-archive))
                     (equal (fn2-fields-value (+ eb *fn2-event-archive-member-entry-field-event*) fn2-fields) event)
@@ -93,11 +98,14 @@ def source_body():
   (fn2-event-archive-cold-batch-fields-p fn2-run-loads fn2-run-cursors fn2-fc fn2-fields)
   (equal (fn2-event-archive-batch-phase 1 fn2-event-archive) *fn2-event-archive-batch-phase-header*)
   (let* ((c (fn2-b-event-archive-cursor-from-rows (fn2-run-loads-rows fn2-run-loads)))
+         (work (* 128 (fn2-b-event-row (fn2-fc-rows fn2-fc))))
          (eb (+ (fn2-run-cursors-rb c fn2-run-cursors) *fn2-run-reader-entry*))
          (page (fn2-run-loads-page c fn2-run-loads)) (pgen (fn2-run-loads-page-gen c fn2-run-loads))
          (header (+ eb *fn2-event-archive-member-entry-field-original-records-header*))
          (seal (+ eb *fn2-event-archive-member-entry-field-original-sealed-batch*)))
-   (and (equal (fn2-event-archive-next-event 1 fn2-event-archive) (fn2-event-archive-batch-first 1 fn2-event-archive))
+   (and (or (equal (fn2-event-archive-batch-decode-started 1 fn2-event-archive) 0)
+                 (equal (fn2-fields-decode-next work fn2-fields) (fn2-event-archive-batch-cursor 1 fn2-event-archive)))
+        (equal (fn2-event-archive-next-event 1 fn2-event-archive) (fn2-event-archive-batch-first 1 fn2-event-archive))
         (equal (fn2-fields-value (+ eb *fn2-event-archive-member-entry-field-event*) fn2-fields) (fn2-event-archive-batch-first 1 fn2-event-archive))
         (equal (fn2-fields-value (+ eb *fn2-event-archive-member-entry-field-batch-first*) fn2-fields) (fn2-event-archive-batch-first 1 fn2-event-archive))
 '''+matches+'''))))
@@ -151,3 +159,132 @@ if __name__=='__main__':
  root=Path(__file__).resolve().parents[1]
  for name,fun in [('event-archive-state',state),('event-archive-cold-members',members)]:
   p=root/'books'/(name+'.lisp');p.write_text(fun(p.read_text()))
+
+def fixture(s):
+ if '(defun fn2-eabh-run ' in s:return s
+ children=CHILDREN
+ snapshot='(list (fn2-event-archive-copy fn2-event-archive) (fn2-fields-copy fn2-fields))'
+ helper='''; Writer-produced original header -> selected-source substep. This unit
+; retains its explicitly synthetic page/reach premise, not physical authority.
+(defun fn2-eabh-drive (fuel budget '''+children+''')
+ (declare (xargs :stobjs ('''+children+''') :verify-guards nil :measure (nfix fuel)))
+ (if (zp fuel) (mv :fuel fn2-event-archive fn2-fields)
+  (b* ((cursor (fn2-event-archive-batch-cursor 1 fn2-event-archive))
+       ((mv code fn2-event-archive fn2-fields) (fn2-event-archive-cold-batch-header-step budget '''+children+'''))
+       (after (fn2-event-archive-batch-cursor 1 fn2-event-archive))
+       ((unless (and (<= cursor after) (<= (- after cursor) budget))) (mv :overrun fn2-event-archive fn2-fields))
+       ((unless (eq code :more)) (mv code fn2-event-archive fn2-fields)))
+   (fn2-eabh-drive (- fuel 1) budget '''+children+'''))))
+(defun fn2-eabh-substitutions (faults '''+children+''')
+ (declare (xargs :stobjs ('''+children+''') :verify-guards nil))
+ (if (endp faults) (mv t fn2-event-archive fn2-fields)
+  (b* ((c (fn2-b-event-archive-cursor-from-rows (fn2-run-loads-rows fn2-run-loads)))
+       (base (* 128 (fn2-b-event-row (fn2-fc-rows fn2-fc))))
+       (entry (+ (fn2-run-cursors-rb c fn2-run-cursors) *fn2-run-reader-entry*))
+       (decoder (eq (car faults) :decoder-next))
+       (field (+ entry (if (eq (car faults) :header-off)
+                        *fn2-event-archive-member-entry-field-original-records-header*
+                        *fn2-event-archive-member-entry-field-original-sealed-batch*)))
+       (saved (if decoder (fn2-fields-decode-next base fn2-fields) (fn2-fields-ref-off field fn2-fields)))
+       (original '''+snapshot+''')
+       (fn2-fields (if decoder (fn2-fields-set-decode-next base (+ saved 1) fn2-fields)
+                     (fn2-fields-set-ref-off field (+ saved 1) fn2-fields)))
+       (before '''+snapshot+''')
+       ((mv code fn2-event-archive fn2-fields) (fn2-event-archive-cold-batch-header-step 1 '''+children+'''))
+       (untouched (equal before '''+snapshot+'''))
+       (fn2-fields (if decoder (fn2-fields-set-decode-next base saved fn2-fields)
+                     (fn2-fields-set-ref-off field saved fn2-fields)))
+       ((unless (and (eq code :source) untouched (equal original '''+snapshot+'''))) (mv nil fn2-event-archive fn2-fields)))
+   (fn2-eabh-substitutions (cdr faults) '''+children+'''))))
+(defun fn2-eabh-run ('''+children+''')
+ (declare (xargs :stobjs ('''+children+''') :verify-guards nil))
+ (b* (((mv code fn2-event-archive) (fn2-event-archive-cold-batch-begin '''+children+'''))
+      ((unless (and (eq code :more) (fn2-event-archive-cold-batch-header-current-p '''+children+'''))) (mv :premise fn2-event-archive fn2-fields))
+      (before '''+snapshot+''')
+      ((mv zero fn2-event-archive fn2-fields) (fn2-event-archive-cold-batch-header-step 0 '''+children+'''))
+      ((unless (and (eq zero :more) (equal before '''+snapshot+'''))) (mv :zero fn2-event-archive fn2-fields))
+      (off (fn2-event-archive-batch-header-off 1 fn2-event-archive))
+      ((mv first fn2-event-archive fn2-fields) (fn2-event-archive-cold-batch-header-step 1 '''+children+'''))
+      ((unless (and (eq first :more) (= (fn2-event-archive-batch-cursor 1 fn2-event-archive) (+ off 1)))) (mv :first fn2-event-archive fn2-fields))
+      ((mv controls fn2-event-archive fn2-fields) (fn2-eabh-substitutions '(:decoder-next :header-off :seal-off) '''+children+'''))
+      ((unless controls) (mv :interleaving fn2-event-archive fn2-fields)))
+  (fn2-eabh-drive (+ *fn2-format-frame-header-max-size* *fn2-format-frame-header-num-fields* 2) 1 '''+children+''')))
+
+'''
+ n=node(s,'(defun fn2-eamcu-body ?*body)');s=lr.write(s,[(n.start,n.start,helper)])
+ n=node(s,'(defun fn2-eamcu-body ?*body)');text=s[n.start:n.end]
+ anchor='      (canonical (fn2-pool-logical-octets'
+ insert='''      (batch-mode (member-eq fault '(:batch-header :batch-commit :batch-tail)))
+      ((mv fh fend fn2-fields fn2-pool)
+       (if batch-mode (fn2-commit-pack :frame 1 0 scratch sg 256 scratch sg 1 2 3
+                       (if (eq fault :batch-commit) 2 1) 1 1 1 2 3 1 2 3 17 19 fn2-fields fn2-pool)
+        (mv :ok 256 fn2-fields fn2-pool)))
+      ((mv fs send fn2-fields fn2-pool)
+       (if batch-mode (fn2-commit-pack :seal 2 0 scratch sg 512 scratch sg 1 2 3 1 1 1 1 2 3 1 2 3 17 19 fn2-fields fn2-pool)
+        (mv :ok 512 fn2-fields fn2-pool)))
+'''
+ if text.count(anchor)!=1:raise ValueError('member fixture producer anchor drift')
+ text=text.replace(anchor,insert+anchor)
+ old='(value 1) (ref-slot scratch) (ref-gen sg) (ref-off 0) (ref-len 0)'
+ refs=lr.match('(fn2-fields-put (+ eb ?field) ?*bindings)',lr.parse(text).forms)
+ edits=[]
+ for m in refs:
+  field=getattr(m.captures['field'],'low','')
+  if field.endswith('field-original-records-header*'):
+   replacement='(value 1) (ref-slot scratch) (ref-gen sg) (ref-off (if batch-mode 256 0)) (ref-len (if batch-mode (+ (- fend 256) (if (eq fault :batch-tail) 1 0)) 0))'
+  elif field.endswith('field-original-sealed-batch*'):
+   replacement='(value 1) (ref-slot scratch) (ref-gen sg) (ref-off (if batch-mode 512 0)) (ref-len (if batch-mode (- send 512) 0))'
+  else:continue
+  actual=text[m.node.start:m.node.end]
+  if actual.count(old)!=1:raise ValueError('member fixture witness span drift')
+  edits.append((m.node.start,m.node.end,actual.replace(old,replacement)))
+ if len(edits)!=2:raise ValueError('member witness Ref class drift')
+ text=lr.write(text,edits)
+ old=node(text,'(fn2-eamcu-drive 30 ?*args)')
+ actual=text[old.start:old.end]
+ dispatch='''(if batch-mode
+       (mv-let (code fn2-event-archive fn2-fields) (fn2-eabh-run '''+children+''')
+        (mv code fn2-event-archive fn2-journal-members fn2-mk fn2-b3 fn2-fields fn2-pool fn2-digests))
+       '''+actual+')'
+ text=lr.write(text,[(old.start,old.end,dispatch)])
+ anchor="(cond ((member-eq fault '(:event :generation"
+ replacement='''(cond ((member-eq fault '(:batch-header :batch-commit :batch-tail))
+                  (and (eq fh :ok) (eq fs :ok) (= (fn2-mk-size row fn2-mk) 0)
+                       (= (fn2-event-archive-next-event 1 fn2-event-archive) 1)
+                       (= (fn2-event-archive-phase 1 fn2-event-archive) *fn2-event-archive-phase-cold-members*)
+                       (= (fn2-event-archive-entry-pending 1 fn2-event-archive) 1)
+                       (if (eq fault :batch-header)
+                        (and (eq code :header-checked)
+                             (= (fn2-event-archive-batch-phase 1 fn2-event-archive) *fn2-event-archive-batch-phase-seal-copy*)
+                             (= (fn2-event-archive-batch-history 1 fn2-event-archive) 17)
+                             (= (fn2-event-archive-batch-incarnation 1 fn2-event-archive) 19)
+                             (= (fn2-event-archive-history 1 fn2-event-archive) 123)
+                             (= (fn2-event-archive-incarnation 1 fn2-event-archive) 456)
+                             (= (fn2-event-archive-batch-commit 1 fn2-event-archive) 1))
+                        (and (eq code :header)
+                             (= (fn2-event-archive-batch-phase 1 fn2-event-archive) *fn2-event-archive-batch-phase-uncertain*)))))
+                 ((member-eq fault '(:event :generation'''
+ if text.count(anchor)!=1:raise ValueError('member fixture conclusion drift')
+ text=text.replace(anchor,replacement)
+ s=lr.write(s,[(n.start,n.end,text)])
+ return s+'''\n(assert-event (fn2-eamcu-test :batch-header))
+(assert-event (fn2-eamcu-test :batch-commit))
+(assert-event (fn2-eamcu-test :batch-tail))
+'''
+
+
+def arity_test(s):
+ count="  self.assertEqual(len(calls(s,'(assert-event (fn2-eamcu-test ?fault))')),7)"
+ expected="  self.assertCountEqual([lr.flat(m.captures['fault']) for m in calls(s,'(assert-event (fn2-eamcu-test ?fault))')], ['nil',':event',':generation',':owner',':leaf',':accumulator-alias',':accumulator-generation',':batch-header',':batch-commit',':batch-tail'])"
+ if count in s:s=s.replace(count,expected)
+ elif expected not in s:raise ValueError('actual fixture assertion class drift')
+ old="    definitions[m.captures['name'].low]=(len(m.captures['children'].items),1+len(m.captures['outputs'].items))"
+ new="""    decl=m.captures['name']
+   name=decl.items[0].low if isinstance(decl,lr.Lst) else decl.low
+   scalars=len(decl.items)-1 if isinstance(decl,lr.Lst) else 0
+   definitions[name]=(scalars+len(m.captures['children'].items),1+len(m.captures['outputs'].items))"""
+ if old not in s:
+  if new in s:return s
+  raise ValueError('source arity test drift')
+ if s.count(old)!=1:raise ValueError('ambiguous source arity test')
+ return s.replace(old,new)

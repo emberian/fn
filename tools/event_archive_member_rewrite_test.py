@@ -83,7 +83,7 @@ class Member(unittest.TestCase):
             '(fn2-event-archive-cold-member-page-p ?*args)','(fn2-event-archive-cold-member-step ?*args)',
             '(equal before (fn2-eamcu-snapshot ?*args))']:
    self.assertTrue(calls(s,p),p)
-  self.assertEqual(len(calls(s,'(assert-event (fn2-eamcu-test ?fault))')),7)
+  self.assertCountEqual([lr.flat(m.captures['fault']) for m in calls(s,'(assert-event (fn2-eamcu-test ?fault))')], ['nil',':event',':generation',':owner',':leaf',':accumulator-alias',':accumulator-generation',':batch-header',':batch-commit',':batch-tail'])
   for n in calls(s,'(fn2-commit-pack ?*args)'):
    decl=calls(read('books/commit-format.lisp'),'(defun fn2-commit-pack ?args ?*body)')[0]
    self.assertEqual(len(n.node.items)-1,len(decl.captures['args'].items))
