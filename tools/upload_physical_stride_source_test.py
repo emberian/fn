@@ -3,10 +3,20 @@
 from pathlib import Path
 import subprocess
 import unittest
+import tempfile
 import lisp_rewrite as lr
 from upload_physical_stride_rewrite import RULES, transform
 from upload_payload_group_rewrite import transform as payload_group
 ROOT=Path(__file__).resolve().parents[1]
+def paired_consumer(text,name,reverse=False):
+ # Replay the reviewed minimal consumer donor, not a replacement baseline.
+ patch=subprocess.check_output(['git','diff','0506c97c96^','0506c97c96','--',name],cwd=ROOT)
+ if not patch:return text
+ with tempfile.TemporaryDirectory(prefix='fn-paired-consumer-') as directory:
+  root=Path(directory);target=root/name;target.parent.mkdir(parents=True);target.write_text(text)
+  args=['git','apply','--whitespace=nowarn']+(['--reverse'] if reverse else [])+['-']
+  subprocess.run(args,cwd=root,input=patch,check=True,capture_output=True)
+  return target.read_text()
 class PhysicalStride(unittest.TestCase):
  def test_exact_authorized_transform(self):
   for name,rules in RULES.items():
@@ -15,6 +25,9 @@ class PhysicalStride(unittest.TestCase):
    # Separate raw-threshold semantic commit updates only this operation doc.
    expected=expected.replace('Whether stored octets of a length are longer than one extent (named through a manifest).',
                              'Whether stored octets exceed the raw commitment span (named through a manifest).')
+   paired=paired_consumer(expected,name)
+   self.assertEqual(paired_consumer(paired,name,reverse=True),expected)
+   expected=paired
    if name=='books/assembly-callbacks-d-upload.lisp':
     # Explicit second semantic change, with an inverse receipt to the old
     # three-block grouping. Do not silently rebaseline the physical rewrite.
