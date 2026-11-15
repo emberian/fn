@@ -500,7 +500,7 @@
       ((unless (and (member (fn2-succ-txns-phase tx fn2-succ-txns) (list *fn2-succ-phase-open* *fn2-succ-phase-staged*))
                     (<= *fn2-succ-slots* (nfix (fn2-succ-txns-ri tx fn2-succ-txns)))))
        (mv :state 0 fn2-succ-txns fn2-succ-slots fn2-id-engine fn2-overlays fn2-fields fn2-pool))
-      (fn2-succ-txns (fn2-succ-txns-set-phase tx *fn2-succ-phase-open* fn2-succ-txns))
+      (fn2-succ-txns (fn2-succ-txns-put tx (phase *fn2-succ-phase-open*) (emit-valid 0) (emit-origin *fn2-succ-emit-origin-none*)))
       ((mv code i fn2-succ-slots fn2-fields)
        (fn2-succ-stage-slots *fn2-succ-slots* 0 tx b0 fn2-succ-slots fn2-run-installed fn2-id-engine
                              fn2-overlays fn2-overlay-index fn2-fields fn2-pool))
@@ -630,3 +630,16 @@
  (fn2-succ-slots fn2-fields) (fn2-succ-txns fn2-succ-slots fn2-fields) t
  (fn2-succ-txns-phase fn2-succ-slots-phase fn2-succ-slots-kind fn2-succ-slots-late fn2-succ-slots-filled fn2-succ-slots-oset
   fn2-succ-slots-sk fn2-succ-slots-ss fn2-succ-slots-sg fn2-fields-ref-len))
+
+; The public mutation face invalidates any earlier successful emission.
+(defun fn2-succ-fill-octets-recorded (tx i j slot gen off len okind oslot ogen b0 fn2-succ-txns fn2-succ-slots fn2-fields)
+ (declare (xargs :stobjs (fn2-succ-txns fn2-succ-slots fn2-fields) :guard t))
+ (mv-let (code fn2-succ-slots fn2-fields)
+  (fn2-succ-fill-octets tx i j slot gen off len okind oslot ogen b0 fn2-succ-txns fn2-succ-slots fn2-fields)
+  (let ((fn2-succ-txns (if (and (eq code :ok) (natp tx) (< tx (fn2-succ-txns-rows fn2-succ-txns)))
+                          (fn2-succ-txns-put tx (emit-valid 0) (emit-origin *fn2-succ-emit-origin-none*))
+                        fn2-succ-txns)))
+   (mv code fn2-succ-txns fn2-succ-slots fn2-fields))))
+(fn2-idc-fn-shape fn2-succ-fill-octets-recorded
+ (tx i j slot gen off len okind oslot ogen b0 fn2-succ-txns fn2-succ-slots fn2-fields)
+ (fn2-succ-txns fn2-succ-slots fn2-fields) (fn2-succ-txns fn2-succ-slots fn2-fields) t (fn2-succ-fill-octets))
