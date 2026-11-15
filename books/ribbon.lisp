@@ -103,6 +103,7 @@
 ; The two FNV-1a streams over N octets at OFF, read under the owner.
 (defun fn2-ribbon-hash-loop (n slot gen off h1 h2 okind oslot ogen fn2-pool)
  (declare (xargs :stobjs fn2-pool :measure (nfix n)
+  :guard-hints (("Goal" :in-theory (disable fn2-pool-read-byte-type)))
   :guard (and (fn2-pool-wfp fn2-pool) (natp n) (natp off) (unsigned-byte-p 32 h1) (unsigned-byte-p 32 h2))))
  (if (zp n) (mv :ok h1 h2)
   (mv-let (code byte) (fn2-pool-read slot gen off okind oslot ogen fn2-pool)
