@@ -401,6 +401,17 @@
  :hints (("Goal" :induct (fn2-checkpoint-capture-roots role c base slot gen okind oslot ogen fn2-fields fn2-pool fn2-checkpoint-refs fn2-checkpoint-bytes)
                 :in-theory (e/d (fn2-checkpoint-capture-roots) (fn2-checkpoint-capture-root)))))
 
+; Only the generated START/DECODE dispatchers change the field carrier.
+; Their existing codec preservation facts require no readonly context guard.
+; Export this smaller producer boundary without opening byte/hash workers.
+(local (fn2-fields-preserves fn2-format-run
+ (kind sealp row slot gen off len base okind oslot ogen budget fn2-fc fn2-fc-context fn2-b3 fn2-fields fn2-pool fn2-digests)
+ :position 3 :prefix "-FIELDS-ONLY" :raw-rows t
+ :hints ((fn2-columns-guard-hint
+          '(fn2-fc fn2-fc-context fn2-b3 fn2-fields fn2-pool fn2-digests)
+          '(fn2-fc-run-bytes fn2-fc-decoded fn2-b3-init fn2-layout-range-code)
+          '(fn2-format-run fn2-fc-step fn2-fc-start fn2-fc-decode-step) world))))
+
 ; The successful page checker and descriptor decode are in ONE transition.
 ; A caller cannot supply a verification flag. Buffer ownership and checker
 ; continuation ownership must persist across :more, as for other B readers.
