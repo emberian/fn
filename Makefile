@@ -68,6 +68,7 @@ ACL2_BOOKS = \
   books/borrow-faces \
   books/claims \
   books/cns \
+  books/cns-read-work-bounds \
   books/cns-accounting-entry \
   books/cns-core-projections \
   books/cns-draining-composition \
@@ -92,6 +93,8 @@ ACL2_BOOKS = \
   tests/cns-draining-credit-unit \
   tests/cns-draining-teeth-unit \
   tests/cns-range-continuation-unit \
+  tests/cns-article-slice-unit \
+  tests/cns-fetch-cancel-unit \
   tests/cns-tall-runs-support \
   tests/cns-tall-runs-unit \
   tests/cns-draining-direct-events-unit \

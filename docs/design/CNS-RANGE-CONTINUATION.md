@@ -79,3 +79,17 @@ and phase transitions, and the existing `tests/cns-stream-fetch-unit` for
 actual APPEND/FETCH composition. New controls remain unexecuted until admitted
 in the coordinated current application world. No network, deployment or
 authorization activation follows from these source changes.
+
+`tests/cns-fetch-cancel-unit` additionally pauses the real APPEND/FETCH executor
+at post-capture ITEM, fails its first actual Send, withholds BorrowReleased
+while checking root retention, then delivers handback and checks cleanup.
+It does not fabricate a source job or claim that transport cancellation can
+arrive at an idle ITEM boundary. This assertion is also unexecuted.
+
+Changed-path review found no further composed ownership defect after checking
+the dedicated READ/XL partition, generation, fixed key, retry and cancellation
+paths. The actual phase registry now includes ARTICLE and ITEM; structural
+controls compare it with kind/body arms and holds, including removal mutants.
+All phase consumers reviewed in the draining/lifetime models use generated
+state constants. Source review and these structural checks do not substitute
+for actual generated-world admission.
