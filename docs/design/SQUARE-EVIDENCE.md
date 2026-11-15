@@ -99,7 +99,7 @@ tests/square-evidence-export.lsp` writes and reads the actual report, checking
 that redirected display metadata cannot replace its statement. File output
 runs outside book events; no trust tag is needed.
 
-## Direct predicate conclusions (source candidate)
+## Direct predicate conclusions
 
 `:conclusion-kind :predicate` accepts the exact live conclusion as an admitted
 predicate call, including predicates of `mv-nth` results. It does not invent
@@ -128,5 +128,9 @@ universal proof status unchanged.
 
 `tests/square-evidence-predicate-unit.lisp` contains positive, composite-guard,
 wrong-formula, vacuity, open-binding, remaining-premise and unsupported-mutation
-controls. These new events are source-parsed only; ACL2 qualification and the
-six actual guarded checkpoint-reader consumer instances remain pending.
+controls. The exact five-book predicate/correspondence fixture union is qualified
+at source `eb137e8f0`: provider author 0.24 seconds, predicate fixture 0.23 seconds,
+and existing correspondence fixture 0.21 seconds. The record reused three qualified
+parents and certified both test leaves under toolchain `8aeb`; see
+[the receipt](receipts/predicate-evidence-five-record.json). The six actual guarded
+checkpoint-reader consumer instances remain pending their separate gate.

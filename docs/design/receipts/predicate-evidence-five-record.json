@@ -1,0 +1,67 @@
+{
+  "result": "PASS",
+  "source_commit": "eb137e8f05f33c3a6605781756a99fea422d5e5f",
+  "toolchain": "8aeb1bea18968c6cd33ac633a80ebf67e4924504db112fd27eb11f16a27b2a8c",
+  "scope": "Five-book predicate/equality evidence closure; two qualified reused parents, three new records; actual source controls and replay passed. No reader/application qualification.",
+  "records": {
+    "books/declare": {
+      "key": "299f7489bcfaeeb7c1a8f777c4a3b4886c5be174761a2f63f69a39599466aba1",
+      "source_sha256": "54e850788ee821dd90a4d9715e93d319f94846039592c4420fef1bdc5d959569",
+      "prior_exact": true,
+      "entry": "/home/fn/.cache/fn-certs/299f7489bcfaeeb7c1a8f777c4a3b4886c5be174761a2f63f69a39599466aba1/63be0e8165ae7b38",
+      "cert_sha256": "f3a1e4a58cac32474074b9d3ca6a558099a86d2fe66a28ee0670b5c5001bf9dc",
+      "fasl_sha256": "02ceab2d38f5864c70d16e1bfdf77e4450e12aab47bd3d9e3e16ec1319e5c64d",
+      "port_sha256": "f4cb7e8160cfa6f41cddb04be508f922aa8e87c4ff126bfaad3379aa92e647e0",
+      "metadata_sha256": "0d3dcda73a2bed7fa61a083e1b647a1219e55f369a0a55f8d1d1f28cc6eb870a"
+    },
+    "books/owed": {
+      "key": "0025566d809fffa0fb7533fa29b1fb7a9932c97d1510818153a1c1fe3d6bbf08",
+      "source_sha256": "171950b91e40f4e7d0e94902ce00009adc62d8104e0eecd5db6a59b93bbffb15",
+      "prior_exact": true,
+      "entry": "/home/fn/.cache/fn-certs/0025566d809fffa0fb7533fa29b1fb7a9932c97d1510818153a1c1fe3d6bbf08/63be0e8165ae7b38",
+      "cert_sha256": "dfd94cb9c2ead45891e01b806f507e2b16ae85cd37570c89fd531bab7d7982fa",
+      "fasl_sha256": "97c17b9a3c61860b138d779461086ccc41487cd250f03509af2c8c6eac0738bd",
+      "port_sha256": "f4cb7e8160cfa6f41cddb04be508f922aa8e87c4ff126bfaad3379aa92e647e0",
+      "metadata_sha256": "7661d8780a3dc991bb591efcd73e17278fd2049c20ea9557656a4e92da5ce13b"
+    },
+    "books/square-evidence": {
+      "key": "ad8c4f2283d738bfba0eed5863a3a4112dd52ac22764fec91717e92d6d349a7d",
+      "source_sha256": "51c67cc2baf1e95d8bcce29a2e235e3dd7bd42602a8bede73d6bba01d66e08d8",
+      "prior_exact": false,
+      "entry": "/home/fn/.cache/fn-certs/ad8c4f2283d738bfba0eed5863a3a4112dd52ac22764fec91717e92d6d349a7d/401824834c036743",
+      "cert_sha256": "b5d12ad4b6fdcebf9d4f741518369d26d67696950ae413397f7bc24f72e39106",
+      "fasl_sha256": "51d94b834a333b0f8f1f0cca957f5884434cc459ab45d5466f2f036fea439ca4",
+      "port_sha256": "f4cb7e8160cfa6f41cddb04be508f922aa8e87c4ff126bfaad3379aa92e647e0",
+      "metadata_sha256": "fcc9e4cc8921bda6923ca68ee6fad6bf80693e500a9f98fbd692ae0a8df9bbe7"
+    },
+    "tests/square-evidence-correspondence-unit": {
+      "key": "24a696f7836396efdd9038f7359f2923b01965e24bf7b07afbbc0ddcf6e75fb6",
+      "source_sha256": "65a85c965d3eaa2bab04018bf2ecc48ada080c3330b41042e0d83cf87524bd9d",
+      "prior_exact": false,
+      "entry": "/home/fn/.cache/fn-certs/24a696f7836396efdd9038f7359f2923b01965e24bf7b07afbbc0ddcf6e75fb6/d4c273df83f20148",
+      "cert_sha256": "47d67696b30a8f487072bb1d35821ceb22ef5d9d35f877c1c66015ed33ce4901",
+      "fasl_sha256": "1c127f111f7cf6a4dd790992401479655541d7d4d2cbf3defab2e1a475eb02b5",
+      "port_sha256": "f4cb7e8160cfa6f41cddb04be508f922aa8e87c4ff126bfaad3379aa92e647e0",
+      "metadata_sha256": "d66dea69c24966ceb9b6ca77bd11ed601e2e1cc6368a9ff17ac0818e0a035392"
+    },
+    "tests/square-evidence-predicate-unit": {
+      "key": "497cba55838df40b66ebd0f91a8da71fe258a0568605aff670be865f74ec8ea3",
+      "source_sha256": "24da235c6004b2572433c85a5a262ab506fa99ddd0283253634bc9080270c0b8",
+      "prior_exact": false,
+      "entry": "/home/fn/.cache/fn-certs/497cba55838df40b66ebd0f91a8da71fe258a0568605aff670be865f74ec8ea3/d4c273df83f20148",
+      "cert_sha256": "1d9cf7788c8509bd4ecc9fe34df0d8759c79ab08b58c7d4662ea34fb8a1e71ca",
+      "fasl_sha256": "22874aa67c899c4f902883f28acbf3c90d9bcaa2dc026bd5e72732921dbb53d0",
+      "port_sha256": "f4cb7e8160cfa6f41cddb04be508f922aa8e87c4ff126bfaad3379aa92e647e0",
+      "metadata_sha256": "bd458ae218ae382723707ae3b5430dd3a5c11ece52318d10800a9f0722befedf"
+    }
+  },
+  "roots": [
+    "tests/square-evidence-predicate-unit",
+    "tests/square-evidence-correspondence-unit"
+  ],
+  "provider_record": "certify-20261115T201843Z-1779091",
+  "fixture_record": "certify-20261115T202021Z-1780818",
+  "cleanup": "Own PID1780744, server1780778, record1780818 absent; exact scope gone; stop_holder0; peak273170432; OOM0.",
+  "log_sha256": "ff2831d4d24a978f8cf8c9418736417c5b7adef69032524e592fdea9e0487ba3",
+  "prior_refusals": "Startup-only missing provider; then fixture missing required teeth; then raw MV signature in fixture positive wrapper. All preserved in prior logs. Final logical wrappers leave H/C unchanged."
+}
