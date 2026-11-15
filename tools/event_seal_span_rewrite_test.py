@@ -4,6 +4,7 @@ import unittest
 import lisp_rewrite as lr
 import event_seal_span_rewrite as rw
 import event_archive_witness_rewrite as witness
+import event_record_digest_rewrite as fetch
 ROOT=Path(__file__).resolve().parents[1]
 def read(p): return (ROOT/p).read_text()
 def matches(s,p): return lr.match(p,lr.parse(s).forms)
@@ -14,14 +15,15 @@ class SealSpan(unittest.TestCase):
    before=read('tools/fixtures/seal-span-before-'+name+'.lisp')
    after=rw.dispatch(before,count)
    after=witness.producer_gate(after) if name=='event-producer' else after
+   after=fetch.fixture(after) if name=='event-read-verified-unit' else after
    path=('tests/' if name.endswith('-unit') else 'books/')+name+'.lisp'
    self.assertEqual(after,read(path));self.assertEqual(rw.dispatch(after,count),after)
    with self.assertRaises(ValueError):rw.dispatch(before,count+1)
  def test_state_class_replay_and_all_format_phases(self):
-  after=witness.state(rw.state(read('tools/fixtures/seal-span-before-event-read-state.lisp')))
+  after=fetch.state(witness.state(rw.state(read('tools/fixtures/seal-span-before-event-read-state.lisp'))))
   self.assertEqual(after,read('books/event-read-state.lisp'));self.assertEqual(rw.state(after),after)
   f=node(after,'(defun fn2-event-read-format-phase-p ?*body)')
-  for phase in ['frame-seal','seal-span','seal-tail','semantic-seal','frame-records']:
+  for phase in ['frame-seal','seal-span','seal-tail','semantic-seal','record-digest','frame-records']:
    self.assertIn('*fn2-event-read-phase-'+phase+'*',after[f.start:f.end])
  def test_shared_decoder_and_zero_tail_bound(self):
   s=read('books/event-read-verify.lisp');f=node(s,'(defun fn2-event-read-seal-span ?*body)')

@@ -3,6 +3,7 @@ from pathlib import Path
 import unittest
 import lisp_rewrite as lr
 import event_archive_witness_rewrite as rw
+import event_record_digest_rewrite as fetch
 ROOT=Path(__file__).resolve().parents[1]
 def read(p):return (ROOT/p).read_text()
 def calls(s,p):return lr.match(p,lr.parse(s).forms)
@@ -20,7 +21,7 @@ class Witness(unittest.TestCase):
   self.assertNotIn('942',g);self.assertNotIn('95',g)
   self.assertTrue(calls(g,'(assert-event (<= *fn2-event-witness-work-bytes* *fn2-commit-unit-bytes*))'))
  def test_reader_state_and_native_stage_gate_replay(self):
-  before=read('tools/fixtures/archive-witness-before-reader-state.lisp');after=rw.state(before)
+  before=read('tools/fixtures/archive-witness-before-reader-state.lisp');after=fetch.state(rw.state(before))
   self.assertEqual(after,read('books/event-read-state.lisp'));self.assertEqual(rw.state(after),after)
   before=read('tools/fixtures/archive-witness-before-event-producer.lisp');after=rw.producer_gate(before)
   self.assertEqual(after,read('books/event-producer.lisp'));self.assertEqual(rw.producer_gate(after),after)
@@ -42,11 +43,17 @@ class Witness(unittest.TestCase):
   s=form(read('books/event-read-verify.lisp'),'(defun fn2-event-read-format-core ?*body)')
   gate=calls(s,'((when semantic) ?*body)')[0].node
   self.assertTrue(lr.match('(fn2-digest-equal (fn2-digest-slot row *fn2-fc-result*) expected fn2-digests)',[gate]))
-  self.assertTrue(lr.match('(fn2-rec-fetch 0 hash slot gen (fn2-fields-ref-off field fn2-fields) kind owner generation fn2-pool fn2-digests)',[gate]))
-  self.assertTrue(lr.match('(capture (and (eq fetched :ok) (equal (fn2-event-read-witness-enabled 0 fn2-event-read) 1)))',[gate]))
-  self.assertTrue(lr.match('(witness-seal-length (if capture (fn2-event-read-body-len 0 fn2-event-read) ?else))',[gate]))
-  self.assertTrue(lr.match('(witness-commit (if capture commit ?else))',[gate]))
-  self.assertIn('*fn2-event-read-phase-witness-seal*',s[gate.start:gate.end])
+  self.assertFalse(lr.match('(fn2-rec-fetch ?*args)',[gate]))
+  self.assertTrue(lr.match('(phase *fn2-event-read-phase-record-digest*)',[gate]))
+  current=form(read('books/event-read-verify.lisp'),'(defun fn2-event-read-record-digest-current-p ?*body)')
+  self.assertTrue(calls(current,'(fn2-digest-equal (fn2-digest-slot row *fn2-fc-result*) expected fn2-digests)'))
+  step=form(read('books/event-read-verify.lisp'),'(defun fn2-event-read-record-digest-step ?*body)')
+  self.assertTrue(calls(step,'(fn2-rec-fetch-step budget ?*args)'))
+  self.assertTrue(calls(step,'(capture (and complete (equal (fn2-event-read-witness-enabled 0 fn2-event-read) 1)))'))
+  self.assertTrue(calls(step,'(complete (and (eq code :ok) (equal next 32) (equal acc 0)))'))
+  self.assertTrue(calls(step,'(witness-seal-length (if capture (fn2-event-read-body-len 0 fn2-event-read) ?else))'))
+  self.assertTrue(calls(step,'(witness-commit (if capture (fn2-event-read-commit 0 fn2-event-read) ?else))'))
+  self.assertTrue(calls(step,'(phase (cond (complete (if capture *fn2-event-read-phase-witness-seal* *fn2-event-read-phase-read-records*)) ?*rest))'))
   self.assertTrue(calls(s,'(equal (fn2-event-read-witness-phase 0 fn2-event-read) *fn2-event-witness-phase-records*)'))
   self.assertTrue(calls(s,'(or sealframe (fn2-digest-equal (fn2-digest-slot row *fn2-fc-result*) hash fn2-digests))'))
  def test_every_copy_is_bounded_and_source_bound(self):

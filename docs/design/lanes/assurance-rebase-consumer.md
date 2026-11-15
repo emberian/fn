@@ -629,3 +629,30 @@ projection controls and the existing35 related source controls pass; five Lisp
 books/fixtures have0structural findings. Candidate-holder ABI stays byte-identical.
 Frame reconstruction, original seal/records verification and prefix transfer
 still follow; this binding grants no archive terminal, source drop or FREE.
+
+The actual event reader now separates semantic-seal success from its32-byte
+record-stream digest fetch. New record-digest visits call the shared budgeted
+owned fetch with the actual quantum. Twenty source scalars, the decoded Ref,
+body bounds, private checker idle state and still-matching semantic seal result
+are rebound on every visit; only complete32-byte fetch grants read-records or
+the existing witness-seal capture. No fresh verification flag is accepted.
+The existing producer and cold-journal callers reach it through their one
+format-phase classifier, preserving their zero-budget yield and error handling.
+
+The actual admitted-commit/read-completion reader fixture now spends one byte
+per digest visit, checks the complete mutable-carrier snapshot at quantum0, and
+substitutes token/slot/generation/commit/decoded-offset/seal-result between
+visits both before fetch and after its first byte. Each substitution must
+refuse without mutation; restoration then resumes the actual reader to the
+existing member/Merkle assertion. Per-visit controls check exact cursor+1,
+partial-word bounds, unchanged readonly carriers and complete-word-only writes.
+These ACL2 assertions, guards and the shared fetch output/effect refinement
+remain UNRUN. The parsed source transformations and selected structural
+controls pass; source checks are not qualification or archive terminal proof.
+
+The old fetch API retains its exact original recursive logical body; its new
+executable projection uses the same bounded worker and existing canonical U32
+byte transition. The source-keyed baseline and whole digest-carrier equality
+statement are retained. Original-frame reconstruction, selected root4 terminal,
+durable unfinished-prefix transfer and two-checkpoint physical reuse remain
+unfinished. This change releases no historical/source hold and activates noFREE.

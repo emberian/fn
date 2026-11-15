@@ -75,6 +75,8 @@
        (witness-commit 0) (witness-first 0) (witness-members 0) (witness-seal-length 0) (witness-header-length 0)
        (witness-cursor 0) (witness-staged-event 0)
        (journal-history 0) (journal-incarnation 0)
+       (record-fetch-next 0) (record-fetch-acc 0) (record-fetch-off 0)
+       (fetch-token 0) (fetch-commit 0) (fetch-slot 0) (fetch-gen 0) (fetch-owner-kind 0) (fetch-owner-slot 0) (fetch-owner-gen 0) (fetch-checker 0) (fetch-field-base 0) (fetch-body-off 0) (fetch-body-len 0) (fetch-extent 0) (fetch-epoch 0) (fetch-allocation 0) (fetch-first 0) (fetch-members 0) (fetch-journal-history 0) (fetch-journal-incarnation 0) (fetch-cut-commit 0) (fetch-cut-event 0)
         (cut-commit (fn2-csnapshot-cut-commit 0 fn2-csnapshot)) (cut-event (fn2-csnapshot-cut-event 0 fn2-csnapshot))
        (commit (+ ordinal 1)) (next-event first)
        (extent (fn2-fields-value (+ base *fn2-event-proof-entry-field-extent*) fn2-fields))
