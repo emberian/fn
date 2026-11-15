@@ -83,7 +83,7 @@
   (:root1-begin :on-refusal ((:next :uncertain) (:charge :steps *fn2-work-small* :runnable t))
    (:do (code) (fn2-checkpoint-root1-begin-op row-token *fn2-checkpoint-master-kind* id row-generation) :accept (:more)) (:next :root1-source) (:charge :steps *fn2-work-small* :runnable t))
   (:root1-source :on-refusal ((:next :uncertain) (:charge :steps *fn2-work-small* :runnable t))
-   (:do (code) (fn2-checkpoint-root1-step-op budget *fn2-checkpoint-master-kind* id row-generation) :accept () :case
+   (:do (code) (fn2-checkpoint-root1-step-op *fn2-checkpoint-master-pure-byte-quantum* *fn2-checkpoint-master-kind* id row-generation) :accept () :case
     (((:more) (:charge :bytes *fn2-checkpoint-root1-turn-bytes* :steps *fn2-work-stage* :runnable t)) ((:yield) (:yield)) ((:wait) (:idle))
      ((:page) (:set (source 1)) (:next :page-bind) (:charge :bytes *fn2-checkpoint-root1-turn-bytes* :steps *fn2-work-stage* :runnable t))
      ((:need-read) (:next :root1-read) (:charge :bytes *fn2-checkpoint-root1-turn-bytes* :steps *fn2-work-stage* :runnable t))
@@ -96,7 +96,7 @@
   (:events-begin :on-refusal ((:next :uncertain) (:charge :steps *fn2-work-small* :runnable t))
    (:do (code) (fn2-checkpoint-events-begin row-token *fn2-checkpoint-master-kind* id row-generation row-page-slot row-page-gen row-scratch-slot row-scratch-gen row-read-slot row-read-gen)) (:next :events-source) (:charge :steps *fn2-work-small* :runnable t))
   (:events-source :on-refusal ((:next :uncertain) (:charge :steps *fn2-work-small* :runnable t))
-   (:do (code) (fn2-checkpoint-events-step budget) :accept () :case
+   (:do (code) (fn2-checkpoint-events-step *fn2-checkpoint-master-pure-byte-quantum*) :accept () :case
     (((:more) (:charge :bytes 4096 :steps *fn2-work-stage* :runnable t)) ((:yield) (:yield)) ((:wait) (:idle))
      ((:page) (:set (source 3)) (:next :page-bind) (:charge :bytes 4096 :steps *fn2-work-stage* :runnable t))
      ((:need-read) (:next :events-read) (:charge :bytes 4096 :steps *fn2-work-stage* :runnable t))
@@ -182,7 +182,7 @@
    (:do (code) (fn2-checkpoint-map-begin row-map-role row-page-slot row-page-gen row-scratch-slot row-scratch-gen))
    (:next :map-source) (:charge :steps *fn2-work-small* :runnable t))
   (:map-source :on-refusal ((:next :uncertain) (:charge :steps *fn2-work-small* :runnable t))
-   (:do (code) (fn2-checkpoint-map-source-step-op budget row-field-base) :accept () :case
+   (:do (code) (fn2-checkpoint-map-source-step-op *fn2-checkpoint-master-pure-byte-quantum* row-field-base) :accept () :case
     (((:more) (:charge :bytes 4096 :steps *fn2-work-stage* :runnable t))
      ((:yield) (:yield))
      ((:page) (:set (source 2)) (:next :page-bind) (:charge :steps *fn2-work-small* :runnable t))
@@ -191,7 +191,7 @@
        ((:next :descriptor-source) (:charge :steps *fn2-work-small* :runnable t))))
      (:otherwise (:next :uncertain) (:charge :steps *fn2-work-small* :runnable t)))))
   (:descriptor-source :on-refusal ((:next :uncertain) (:charge :steps *fn2-work-small* :runnable t))
-   (:do (code) (fn2-checkpoint-build-source-op budget) :accept () :case
+   (:do (code) (fn2-checkpoint-build-source-op *fn2-checkpoint-master-pure-byte-quantum*) :accept () :case
     (((:more) (:charge :bytes 4096 :steps *fn2-work-stage* :runnable t)) ((:yield) (:yield))
      ((:page) (:set (source 0)) (:next :page-bind) (:charge :steps *fn2-work-small* :runnable t))
      (:otherwise (:next :uncertain) (:charge :steps *fn2-work-small* :runnable t)))))
@@ -368,7 +368,7 @@
   (:summary-authority-copy :on-refusal ((:next :uncertain) (:charge :steps *fn2-work-small* :runnable t))
    (:do (code) (fn2-checkpoint-summary-authority-live-step-op) :accept () :case
     (((:more) (:charge :steps *fn2-work-stage* :runnable t))
-     ((:complete) (:next :rebase-begin) (:charge :steps *fn2-work-stage* :runnable t))
+     ((:complete) (:next :live-catalog-begin) (:charge :steps *fn2-work-stage* :runnable t))
      (:otherwise (:next :uncertain) (:charge :steps *fn2-work-small* :runnable t)))))
   (:rebase-begin :on-refusal ((:next :uncertain) (:charge :steps *fn2-work-small* :runnable t))
    (:do (code) (fn2-checkpoint-directory-rebase-begin-op row-token *fn2-checkpoint-master-kind* id row-generation))
@@ -378,9 +378,9 @@
     (((:more) (:charge :steps *fn2-work-stage* :runnable t))
      ((:await-evidence) (:next :rebase-archive) (:charge :steps *fn2-work-small* :runnable t))
      (:otherwise (:next :uncertain) (:charge :steps *fn2-work-small* :runnable t)))))
-  (:rebase-consume :on-refusal ((:next :uncertain) (:charge :steps *fn2-work-small* :runnable t))
+  (:rebase-consume :on-refusal ((:next :uncertain) (:charge :bytes *fn2-directory-rebase-consume-bytes* :steps *fn2-master-consume-turn-steps* :runnable t))
    (:do (code) (fn2-checkpoint-directory-rebase-consume-op row-token *fn2-checkpoint-master-kind* id row-generation) :accept (:committed))
-   (:next :release) (:charge :bytes 4096 :steps *fn2-work-stage* :runnable t))
+   (:next :live-reopen) (:charge :bytes *fn2-directory-rebase-consume-bytes* :steps *fn2-master-consume-turn-steps* :runnable t))
   (:rebase-archive :on-refusal ((:next :uncertain) (:charge :steps *fn2-work-small* :runnable t))
    (:do (code) (fn2-event-catalog-live-step-op) :accept () :case
     (((:more) (:charge :steps *fn2-work-stage* :runnable t))
@@ -429,5 +429,60 @@
      (:otherwise (:next :teardown-uncertain) (:charge :steps *fn2-work-small* :runnable t)))))
   (:teardown-cold-ack :on-refusal ((:next :teardown-uncertain) (:charge :steps *fn2-work-small* :runnable t))
    (:do (code) (fn2-checkpoint-teardown-cold-ack-op row-source) :accept (:transferred))
-   (:next :teardown-cold-next) (:charge :bytes 192 :steps *fn2-work-stage* :runnable t)))
+   (:next :teardown-cold-next) (:charge :bytes 192 :steps *fn2-work-stage* :runnable t))
+
+  (:live-catalog-begin :on-refusal ((:next :uncertain) (:charge :bytes 64 :steps *fn2-master-live-one-turn-steps* :runnable t))
+   (:do (code) (fn2-checkpoint-live-catalog-begin-op) :accept () :case
+    (((:more) (:next :live-catalog-copy) (:charge :bytes 64 :steps *fn2-master-live-one-turn-steps* :runnable t))
+     (:otherwise (:next :uncertain) (:charge :bytes 64 :steps *fn2-master-live-one-turn-steps* :runnable t)))))
+  (:live-catalog-copy :on-refusal ((:next :uncertain) (:charge :bytes 64 :steps *fn2-master-live-two-turn-steps* :runnable t))
+   (:do (code) (fn2-checkpoint-live-catalog-step-op) :accept () :case
+    (((:more) (:charge :bytes 64 :steps *fn2-master-live-two-turn-steps* :runnable t))
+     ((:captured) (:next :live-cbase) (:charge :bytes 64 :steps *fn2-master-live-two-turn-steps* :runnable t))
+     (:otherwise (:next :uncertain) (:charge :bytes 64 :steps *fn2-master-live-two-turn-steps* :runnable t)))))
+  (:live-cbase :on-refusal ((:next :uncertain) (:charge :bytes 32 :steps *fn2-master-live-two-turn-steps* :runnable t))
+   (:do (code) (fn2-checkpoint-live-cbase-step-op) :accept () :case
+    (((:more) (:charge :bytes 32 :steps *fn2-master-live-two-turn-steps* :runnable t))
+     ((:held) (:next :live-exclusive) (:charge :bytes 32 :steps *fn2-master-live-two-turn-steps* :runnable t))
+     (:otherwise (:next :uncertain) (:charge :bytes 32 :steps *fn2-master-live-two-turn-steps* :runnable t)))))
+  (:live-exclusive :on-refusal ((:next :uncertain) (:charge :bytes 64 :steps *fn2-master-live-two-turn-steps* :runnable t))
+   (:do (code) (fn2-checkpoint-live-replace-begin-op) :accept () :case
+    (((:more) (:next :live-install) (:charge :bytes 64 :steps *fn2-master-live-two-turn-steps* :runnable t))
+     ((:waiting) (:charge :bytes 64 :steps *fn2-master-live-two-turn-steps* :runnable t))
+     (:otherwise (:next :uncertain) (:charge :bytes 64 :steps *fn2-master-live-two-turn-steps* :runnable t)))))
+  (:live-install :on-refusal ((:next :uncertain) (:charge :bytes 64 :steps *fn2-master-live-three-turn-steps* :runnable t))
+   (:if (< budget 1) ((:charge :steps *fn2-master-three-case-controller-steps* :runnable t))
+    ((:do (code) (fn2-checkpoint-live-replace-install-step-op budget) :accept () :case
+      (((:more) (:charge :bytes 64 :steps *fn2-master-live-three-turn-steps* :runnable t))
+       ((:installed) (:next :live-retire) (:charge :bytes 64 :steps *fn2-master-live-three-turn-steps* :runnable t))
+       ((:yield) (:charge :bytes 64 :steps *fn2-master-live-three-turn-steps* :runnable t))
+       (:otherwise (:next :uncertain) (:charge :bytes 64 :steps *fn2-master-live-three-turn-steps* :runnable t)))))))
+  (:live-retire :on-refusal ((:next :uncertain) (:charge :bytes 64 :steps *fn2-master-live-three-turn-steps* :runnable t))
+   (:if (< budget 1) ((:charge :steps *fn2-master-three-case-controller-steps* :runnable t))
+    ((:do (code) (fn2-checkpoint-live-replace-retire-step-op budget) :accept () :case
+      (((:more) (:charge :bytes 64 :steps *fn2-master-live-three-turn-steps* :runnable t))
+       ((:resources) (:next :live-readiness-begin) (:charge :bytes 64 :steps *fn2-master-live-three-turn-steps* :runnable t))
+       ((:yield) (:charge :bytes 64 :steps *fn2-master-live-three-turn-steps* :runnable t))
+       (:otherwise (:next :uncertain) (:charge :bytes 64 :steps *fn2-master-live-three-turn-steps* :runnable t)))))))
+  (:live-readiness-begin :on-refusal ((:next :uncertain) (:charge :bytes 0 :steps *fn2-master-live-one-turn-steps* :runnable t))
+   (:do (code) (fn2-run-load-readiness-live-begin-op) :accept () :case
+    (((:more) (:next :live-readiness-scan) (:charge :bytes 0 :steps *fn2-master-live-one-turn-steps* :runnable t))
+     (:otherwise (:next :uncertain) (:charge :bytes 0 :steps *fn2-master-live-one-turn-steps* :runnable t)))))
+  (:live-readiness-scan :on-refusal ((:next :uncertain) (:charge :bytes 0 :steps *fn2-master-live-three-turn-steps* :runnable t))
+   (:if (< budget 1) ((:charge :steps *fn2-master-three-case-controller-steps* :runnable t))
+    ((:do (code) (fn2-run-load-readiness-owned-step budget) :accept () :case
+      (((:more) (:charge :bytes 0 :steps *fn2-master-live-three-turn-steps* :runnable t))
+       ((:complete) (:next :live-promote) (:charge :bytes 0 :steps *fn2-master-live-three-turn-steps* :runnable t))
+       ((:yield) (:charge :bytes 0 :steps *fn2-master-live-three-turn-steps* :runnable t))
+       (:otherwise (:next :uncertain) (:charge :bytes 0 :steps *fn2-master-live-three-turn-steps* :runnable t)))))))
+  (:live-promote :on-refusal ((:next :uncertain) (:charge :bytes *fn2-checkpoint-live-promotion-bytes* :steps *fn2-master-promote-turn-steps* :runnable t))
+   (:do (code) (fn2-checkpoint-live-replace-finish-op) :accept () :case
+    (((:more) (:charge :bytes *fn2-checkpoint-live-promotion-bytes* :steps *fn2-master-promote-turn-steps* :runnable t))
+     ((:promoted) (:next :rebase-begin) (:charge :bytes *fn2-checkpoint-live-promotion-bytes* :steps *fn2-master-promote-turn-steps* :runnable t))
+     (:otherwise (:next :uncertain) (:charge :bytes *fn2-checkpoint-live-promotion-bytes* :steps *fn2-master-promote-turn-steps* :runnable t)))))
+  (:live-reopen :on-refusal ((:next :uncertain) (:charge :bytes *fn2-checkpoint-live-reopen-bytes* :steps *fn2-master-reopen-turn-steps* :runnable t))
+   (:do (code) (fn2-checkpoint-live-replace-reopen-op) :accept () :case
+    (((:applied) (:next :release) (:charge :bytes *fn2-checkpoint-live-reopen-bytes* :steps *fn2-master-reopen-turn-steps* :runnable t))
+     (:otherwise (:next :uncertain) (:charge :bytes *fn2-checkpoint-live-reopen-bytes* :steps *fn2-master-reopen-turn-steps* :runnable t)))))
+)
  :observes ((:read-result (:wake))))

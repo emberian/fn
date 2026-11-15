@@ -7,6 +7,7 @@
 ; publication/adoption ancestry, not automatic maintenance/recovery admission.
 (in-package "ACL2")
 (include-book "checkpoint-live-network-prefix-support")
+(include-book "core-snapshot-support")
 (defconst *fn2-sad-article*
  (append (fn2-fc-string-bytes "From: test@example.invalid" 0) '(13 10)
          (fn2-fc-string-bytes "Subject: actual adoption" 0) '(13 10)
@@ -37,16 +38,42 @@
        (t (mv-let (taken fn2-core fn2-sim fn2-own) (fn2-sim-take-prefix 1 0 fn2-core fn2-sim fn2-own)
            (if (equal taken 1) (fn2-sad-register-flight (1- fuel) op gen fn2-core fn2-sim fn2-own)
             (mv :queue fn2-core fn2-sim fn2-own))))))
+; Real CTX after sixteen completed BREADs: descriptor residuals are NOT
+; byte quanta. Refuse0/1/ordinary-node32 without any core change, then prove
+; progress with the same named byte quantum now passed by actual MASTER.
+(defun fn2-sad-context-progress (c fn2-core)
+ (declare (xargs :stobjs fn2-core :verify-guards nil))
+ (b* ((before (fn2-test-core-snapshot fn2-core))
+      (ordinary (fn2-exec-aturn fn2-core))
+      ((mv zero fn2-core) (fn2-run-page-step c 0 fn2-core))
+      (zero-kept (equal before (fn2-test-core-snapshot fn2-core)))
+      ((mv one fn2-core) (fn2-run-page-step c 1 fn2-core))
+      (one-kept (equal before (fn2-test-core-snapshot fn2-core)))
+      ((mv residual fn2-core) (fn2-run-page-step c ordinary fn2-core))
+      (residual-kept (equal before (fn2-test-core-snapshot fn2-core)))
+      (ops-before (fn2-test-snapshot-fn2-ops fn2-core))
+      ((mv advanced fn2-core) (fn2-run-page-step c *fn2-checkpoint-master-pure-byte-quantum* fn2-core))
+      (progressed (stobj-let ((fn2-run-loads (fn2-core-run-loads fn2-core))) (yes)
+       (and (equal (fn2-run-loads-phase c fn2-run-loads) *fn2-run-load-phase-verify*)
+            (equal (fn2-run-loads-pending c fn2-run-loads) 0)) yes)))
+  (mv (if (and (equal ordinary 32) (eq zero :yield) zero-kept (eq one :yield) one-kept
+               (eq residual :yield) residual-kept (eq advanced :more) progressed
+               (not (equal before (fn2-test-core-snapshot fn2-core)))
+               (equal ops-before (fn2-test-snapshot-fn2-ops fn2-core))) :more :context)
+      fn2-core)))
 (defun fn2-sad-load (fuel owner generation fn2-core fn2-sim fn2-own)
  (declare (xargs :stobjs (fn2-core fn2-sim fn2-own) :verify-guards nil :measure (nfix fuel)))
  (b* (((when (zp fuel)) (mv :fuel 0 fn2-core fn2-sim fn2-own))
-      ((mv phase c & fn2-core) (fn2-c-actor-loader-state owner generation fn2-core)))
+      ((mv phase c loadphase fn2-core) (fn2-c-actor-loader-state owner generation fn2-core)))
   (case phase
    (:clear (mv :loaded 0 fn2-core fn2-sim fn2-own))
    (:bind (mv-let (code fn2-core) (fn2-run-page-bind c *fn2-cns-kind* owner generation fn2-core)
            (if (eq code :need-read) (fn2-sad-load (1- fuel) owner generation fn2-core fn2-sim fn2-own)
             (mv code 0 fn2-core fn2-sim fn2-own))))
-   (:step (mv-let (code fn2-core) (fn2-run-page-step c 4096 fn2-core)
+   (:step (mv-let (code fn2-core)
+           (if (equal loadphase *fn2-run-load-phase-context*)
+            (fn2-sad-context-progress c fn2-core)
+            (fn2-run-page-step c *fn2-checkpoint-master-pure-byte-quantum* fn2-core))
            (if (member-eq code '(:more :ready :need-read)) (fn2-sad-load (1- fuel) owner generation fn2-core fn2-sim fn2-own)
             (mv code 0 fn2-core fn2-sim fn2-own))))
    (:read

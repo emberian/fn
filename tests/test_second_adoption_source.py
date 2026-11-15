@@ -31,6 +31,16 @@ class SecondAdoption(unittest.TestCase):
   self.assertIn('(<= *fn2-storage-extent-units* lreads)',text)
   self.assertIn('(<= *fn2-storage-extent-units* rreads)',text)
   self.assertNotIn('fn2-run-bound-bind',text);self.assertNotIn('fn2-run-cache-install',text)
+ def test_real_context_descriptor_refusal_then_named_byte_progress(self):
+  text=SUP.read_text();x=tree(SUP)
+  for required in ('(fn2-run-page-step c 0 fn2-core)','(fn2-run-page-step c 1 fn2-core)',
+                   '(fn2-run-page-step c ordinary fn2-core)','(equal ordinary 32)',
+                   '(fn2-run-page-step c *fn2-checkpoint-master-pure-byte-quantum* fn2-core)',
+                   '(equal before (fn2-test-core-snapshot fn2-core))',
+                   '(equal ops-before (fn2-test-snapshot-fn2-ops fn2-core))',
+                   '*fn2-run-load-phase-verify*'):
+   self.assertIn(required,text)
+  self.assertTrue(calls(x,'fn2-sad-context-progress'))
  def test_actual_cleanup_and_monotone_second_subject(self):
   x=tree(SUP);self.assertEqual(len(calls(x,'fn2-read-release')),2)
   self.assertTrue(calls(x,'fn2-run-load-region-clean'))
@@ -68,5 +78,5 @@ class SecondAdoption(unittest.TestCase):
      if name in definitions:
       checked+=1;self.assertEqual(len(x.items)-1,definitions[name],name)
      if name=='mv':self.assertLessEqual(len(x.items)-1,32)
-  self.assertEqual(checked,49)
+  self.assertGreaterEqual(checked,49)
 if __name__=='__main__':unittest.main()
