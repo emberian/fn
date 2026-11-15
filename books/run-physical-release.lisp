@@ -52,18 +52,27 @@
 ; but must drop old catalog obligations before waiting for a base writer.
 ; The actual caller proves its resolve/version boundary; this leaf grants
 ; no permission to stage stale RES fields and never releases pool windows.
-(defun fn2-run-load-park-source (c kind owner generation fn2-run-loads fn2-run-cursors
- fn2-checkpoint-summary fn2-checkpoint-summary-leases fn2-pool)
- (declare (xargs :stobjs (fn2-run-loads fn2-run-cursors fn2-checkpoint-summary fn2-checkpoint-summary-leases fn2-pool)
+; Exact precondition of the canonical park operation. Region CLOSE may
+; preflight all jobs before releasing any lease; this predicate confers no
+; actual-machine authority and is not a readiness certificate.
+(defun fn2-run-load-parkable-p (c kind owner generation fn2-run-loads fn2-run-cursors fn2-checkpoint-summary-leases fn2-pool)
+ (declare (xargs :stobjs (fn2-run-loads fn2-run-cursors fn2-checkpoint-summary-leases fn2-pool)
  :guard (and (fn2-run-loads-wfp fn2-run-loads) (fn2-run-cursors-wfp fn2-run-cursors)
-  (fn2-checkpoint-summary-wfp fn2-checkpoint-summary) (fn2-checkpoint-summary-leases-wfp fn2-checkpoint-summary-leases) (fn2-pool-wfp fn2-pool))))
- (b* (((unless (and (fn2-run-load-ownerp c kind owner generation fn2-run-loads)
+  (fn2-checkpoint-summary-leases-wfp fn2-checkpoint-summary-leases) (fn2-pool-wfp fn2-pool))))
+ (and (fn2-run-load-ownerp c kind owner generation fn2-run-loads)
                     (< c (fn2-run-cursors-rows fn2-run-cursors)) (< c (fn2-checkpoint-summary-leases-rows fn2-checkpoint-summary-leases))
                     (equal (fn2-run-loads-lease-mode c fn2-run-loads) *fn2-run-load-lease-mode-owned*)
                     (member (fn2-run-loads-phase c fn2-run-loads) (list *fn2-run-load-phase-reserved* *fn2-run-load-phase-ready*))
                     (equal (fn2-run-loads-windows c fn2-run-loads) 2) (equal (fn2-run-loads-pending c fn2-run-loads) 0)
                     (eq (fn2-pool-workspace-code (fn2-run-loads-page c fn2-run-loads) (fn2-run-loads-page-gen c fn2-run-loads) kind owner generation fn2-pool) :ok)
                     (eq (fn2-pool-workspace-code (fn2-run-loads-scratch c fn2-run-loads) (fn2-run-loads-scratch-gen c fn2-run-loads) kind owner generation fn2-pool) :ok)))
+
+(defun fn2-run-load-park-source (c kind owner generation fn2-run-loads fn2-run-cursors
+ fn2-checkpoint-summary fn2-checkpoint-summary-leases fn2-pool)
+ (declare (xargs :stobjs (fn2-run-loads fn2-run-cursors fn2-checkpoint-summary fn2-checkpoint-summary-leases fn2-pool)
+ :guard (and (fn2-run-loads-wfp fn2-run-loads) (fn2-run-cursors-wfp fn2-run-cursors)
+  (fn2-checkpoint-summary-wfp fn2-checkpoint-summary) (fn2-checkpoint-summary-leases-wfp fn2-checkpoint-summary-leases) (fn2-pool-wfp fn2-pool))))
+ (b* (((unless (fn2-run-load-parkable-p c kind owner generation fn2-run-loads fn2-run-cursors fn2-checkpoint-summary-leases fn2-pool))
        (mv :source fn2-run-loads fn2-run-cursors fn2-checkpoint-summary fn2-checkpoint-summary-leases))
       ((mv code fn2-checkpoint-summary fn2-checkpoint-summary-leases)
        (if (equal (fn2-checkpoint-summary-leases-live c fn2-checkpoint-summary-leases) 1)
