@@ -806,8 +806,8 @@
           (location-hashes sslot sgen hoff hlen)
           (bytes bytes) (lines lines)
           (location-unit lunit) (location-epoch lepoch) (location-allocation lalloc)
-          ;; one extent's octets are its raw source; longer ones are named
-          ;; through their source manifest (article-manifest.lisp)
+          ;; Raw commitment span's octets are direct; longer sources use
+          ;; their source manifest (article-manifest.lisp).
           (location-kind (if (fn2-am-manifestp bytes) *fn2-txn-location-source-manifest* *fn2-txn-location-raw-source*))
           :owner (okind oslot ogen) fn2-core))
        ((unless (eq c :ok)) (mv c fn2-core)))
