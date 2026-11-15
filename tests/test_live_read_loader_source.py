@@ -51,4 +51,24 @@ class Controls(unittest.TestCase):
   s=lr.emit(d['fn2-run-load-region-reserve'],drop_comments=True)
   self.assertIn('fn2-run-load-region-freep',s);self.assertIn('fn2-run-load-roomp',s)
   self.assertIn('fn2-run-load-region-clean',s);self.assertIn('fn2-run-load-region-retainedp',s)
+ def test_prepared_fixture_mv_bound(self):
+  p=lr.parse(source('tests/live-read-loader-unit.lisp'))
+  n=next(n for n in p.forms if isinstance(n,lr.Lst) and len(n.items)>2 and sym(n.items[0])=='defconst' and sym(n.items[1])=='*fn2-lrl-stobjs*')
+  self.assertIsInstance(n.items[2],lr.Pre)
+  self.assertEqual(len(n.items[2].node.items),8)
+  self.assertLessEqual(1+len(n.items[2].node.items),32)
+ def test_literal_dependency_graph_has_no_cycle_or_missing_book(self):
+  active=[];done=set()
+  def visit(path):
+   path=path.resolve()
+   self.assertNotIn(path,active,'literal include cycle: '+str(active+[path]))
+   if path in done:return
+   self.assertTrue(path.exists(),'missing local include '+str(path))
+   active.append(path)
+   for n in lr.parse(path.read_text()).forms:
+    if isinstance(n,lr.Lst) and len(n.items)>1 and sym(n.items[0])=='include-book' and isinstance(n.items[1],lr.Str):
+     if not any(sym(a)==':dir' for a in n.items[2:]):visit(path.parent/(n.items[1].text[1:-1]+'.lisp'))
+   active.pop();done.add(path)
+  for name in ('run-physical-region','run-physical-range','machines-c-read-loader'):visit(ROOT/'books'/(name+'.lisp'))
+  self.assertGreater(len(done),3)
 if __name__=='__main__':unittest.main()
