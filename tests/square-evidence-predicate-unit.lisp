@@ -6,9 +6,12 @@
 (defun fn2-ep-resultp (x) (natp x))
 (defun fn2-ep-input (x) x)
 (defun fn2-ep-domainp (x) (<= 0 x))
+(defun fn2-ep-claim-runtime-positive ()
+ (let ((x 2)) (and (and (integerp x) (fn2-ep-domainp x)) (fn2-ep-resultp (mv-nth 1 (fn2-ep-producer x))))))
 (defthm-owed fn2-ep-claim (x)
  (implies (and (integerp x) (fn2-ep-domainp x))
-          (fn2-ep-resultp (mv-nth 1 (fn2-ep-producer x)))))
+          (fn2-ep-resultp (mv-nth 1 (fn2-ep-producer x))))
+ :teeth (fn2-ep-claim-runtime-positive))
 ; The actual original C must hold, not merely the remaining integer premise.
 (must-fail
  (defsquare-evidence fn2-ep-claim :conclusion-kind :predicate
@@ -52,8 +55,11 @@
   (fn2-assert-square-evidence fn2-ep-claim)))
 ; A vacuously true conclusion cannot have a false-C removal witness.
 (defun fn2-ep-always (x) (declare (ignore x)) t)
+(defun fn2-ep-vacuous-runtime-positive ()
+ (let ((x 2)) (and (integerp x) (fn2-ep-always x))))
 (defthm-owed fn2-ep-vacuous (x)
- (implies (integerp x) (fn2-ep-always x)))
+ (implies (integerp x) (fn2-ep-always x))
+ :teeth (fn2-ep-vacuous-runtime-positive))
 (must-fail
  (defsquare-evidence fn2-ep-vacuous :conclusion-kind :predicate
   :positive ((x '2))
@@ -61,9 +67,12 @@
 
 ; A stored logical guard can itself be a conjunction. Preserve its exact
 ; subtree and every carrier hypothesis outside it when removing that domain.
+(defun fn2-ep-composite-runtime-positive ()
+ (let ((x 2)) (and (and (rationalp x) (and (integerp x) (fn2-ep-domainp x))) (fn2-ep-resultp (mv-nth 1 (fn2-ep-producer x))))))
 (defthm-owed fn2-ep-composite (x)
  (implies (and (rationalp x) (and (integerp x) (fn2-ep-domainp x)))
-          (fn2-ep-resultp (mv-nth 1 (fn2-ep-producer x)))))
+          (fn2-ep-resultp (mv-nth 1 (fn2-ep-producer x))))
+ :teeth (fn2-ep-composite-runtime-positive))
 (defsquare-evidence fn2-ep-composite :conclusion-kind :predicate
  :positive ((x '2))
  :negative (:kind :hypothesis-removal
@@ -71,9 +80,12 @@
             :bindings ((x '-1))))
 (fn2-assert-square-evidence fn2-ep-composite)
 ; Removing the composite does not excuse a false remaining carrier premise.
+(defun fn2-ep-remaining-runtime-positive ()
+ (let ((x 2)) (and (and (rationalp x) (and (integerp x) (fn2-ep-domainp x))) (fn2-ep-resultp (mv-nth 1 (fn2-ep-producer x))))))
 (defthm-owed fn2-ep-remaining (x)
  (implies (and (rationalp x) (and (integerp x) (fn2-ep-domainp x)))
-          (fn2-ep-resultp (mv-nth 1 (fn2-ep-producer x)))))
+          (fn2-ep-resultp (mv-nth 1 (fn2-ep-producer x))))
+ :teeth (fn2-ep-remaining-runtime-positive))
 (must-fail
  (defsquare-evidence fn2-ep-remaining :conclusion-kind :predicate
   :positive ((x '2))
@@ -83,16 +95,22 @@
 
 ; True C alone is insufficient: the complete positive H must also hold.
 (defun fn2-ep-smallp (x) (and (natp x) (< x 10)))
+(defun fn2-ep-false-h-runtime-positive ()
+ (let ((x 2)) (and (fn2-ep-smallp x) (fn2-ep-resultp x))))
 (defthm-owed fn2-ep-false-h (x)
- (implies (fn2-ep-smallp x) (fn2-ep-resultp x)))
+ (implies (fn2-ep-smallp x) (fn2-ep-resultp x))
+ :teeth (fn2-ep-false-h-runtime-positive))
 (must-fail
  (defsquare-evidence fn2-ep-false-h :conclusion-kind :predicate
   :positive ((x '20))
   :negative (:kind :hypothesis-removal :remove (fn2-ep-smallp x)
              :bindings ((x '-1)))))
+(defun fn2-ep-duplicate-runtime-positive ()
+ (let ((x 2)) (and (and (integerp x) (fn2-ep-domainp x) (fn2-ep-domainp x)) (fn2-ep-resultp x))))
 (defthm-owed fn2-ep-duplicate (x)
  (implies (and (integerp x) (fn2-ep-domainp x) (fn2-ep-domainp x))
-          (fn2-ep-resultp x)))
+          (fn2-ep-resultp x))
+ :teeth (fn2-ep-duplicate-runtime-positive))
 (must-fail
  (defsquare-evidence fn2-ep-duplicate :conclusion-kind :predicate
   :positive ((x '2))
