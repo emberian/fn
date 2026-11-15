@@ -165,7 +165,7 @@
 (defmachine fn2-boot
  :states (:free :prepare :write :write-result :read :read-result :verify :advance
           :anchor :bootstrap :bootstrap-verify :checkpoint-anchor :checkpoint-check :checkpoint-descriptor :checkpoint-verify :checkpoint-root-candidate :checkpoint-root-reserve :checkpoint-root-begin :checkpoint-root-load :checkpoint-root-copy :checkpoint-root-verify :checkpoint-root-dispatch :checkpoint-root-padding :checkpoint-root-next :checkpoint-root-finish :checkpoint-root-fifo :checkpoint-evidence-begin :checkpoint-evidence-target :checkpoint-evidence-load :checkpoint-evidence-copy :checkpoint-evidence-check :checkpoint-evidence-record :checkpoint-evidence-next :checkpoint-semantic-begin :checkpoint-semantic-load :checkpoint-semantic-copy :checkpoint-semantic-check :checkpoint-summary-capture :checkpoint-semantic-entries :checkpoint-semantic-find :checkpoint-summary-close :checkpoint-payload-begin :checkpoint-payload-load :checkpoint-payload-copy :checkpoint-payload-step :checkpoint-census :recover :recover-wait :epoch :epoch-fence :epoch-result :release :ready :failed
-         :checkpoint-events-begin :checkpoint-events-journal-bind :checkpoint-events-journal-load :checkpoint-events-journal-received :checkpoint-events-journal-check :checkpoint-events-frontier-begin :checkpoint-events-frontier-check :checkpoint-events-frontier-peaks :checkpoint-events-frontier-padding :checkpoint-events-frontier-finish :checkpoint-events-finish)
+         :checkpoint-events-begin :checkpoint-events-journal-bind :checkpoint-events-journal-load :checkpoint-events-journal-received :checkpoint-events-journal-check :checkpoint-events-frontier-begin :checkpoint-events-frontier-check :checkpoint-events-frontier-peaks :checkpoint-events-frontier-padding :checkpoint-events-frontier-finish :checkpoint-events-finish :genesis-begin :genesis-step)
  :fields ((pending :u32) (stopped :bool) (pool-slot :u32) (pool-gen :u60)
           (rx-slot :u32) (rx-gen :u60) (create :bool) (image-size :u60)
           (base :u60) (total :u32) (index :u32) (stage :u8) (offset :u60)
@@ -209,7 +209,9 @@
          (:checkpoint-events-frontier-peaks :storage-window)
          (:checkpoint-events-frontier-padding :storage-window)
          (:checkpoint-events-frontier-finish :storage-window)
-         (:checkpoint-events-finish :storage-window))
+         (:checkpoint-events-finish :storage-window)
+          (:genesis-begin :storage-window)
+          (:genesis-step :storage-window))
  :budget (:bytes 32768 :steps 32 :descriptors 4)
  :stops (:geometry :configuration :io :anchor :checkpoint :recovery :epoch :bounds)
  :capacity (if (fn2-profile-get :image-boot profile) 1 0)
@@ -246,7 +248,9 @@
          (:checkpoint-events-frontier-peaks)
          (:checkpoint-events-frontier-padding)
          (:checkpoint-events-frontier-finish)
-         (:checkpoint-events-finish))
+         (:checkpoint-events-finish)
+         (:genesis-begin)
+         (:genesis-step))
  :observes ((:read-result) (:write-result) (:fence-result)))
 
 (include-book "checkpoint-restore-boot")
