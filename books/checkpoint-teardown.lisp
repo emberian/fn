@@ -174,7 +174,7 @@
  (cond
   ((not (< 0 (fn2-checkpoint-publication-rows fn2-checkpoint-publication))) (mv :state cursor 0 0 0))
   ((not (and (unsigned-byte-p 32 cursor)
-             (fn2-checkpoint-teardown-retained-ownerp c token kind slot gen fn2-checkpoint-teardown-debt fn2-checkpoints fn2-checkpoint-bytes)))
+             (fn2-checkpoint-teardown-admission-ownerp c token kind slot gen fn2-checkpoint-teardown-debt fn2-checkpoints fn2-checkpoint-bytes)))
    (mv :state cursor 0 0 0))
   ((not (fn2-checkpoint-teardown-retained-bank-excludedp c fn2-checkpoint-teardown-debt fn2-checkpoint-publication)) (mv :retained cursor 0 0 0))
   ((>= cursor (fn2-extents-rows fn2-extents)) (mv :retained cursor 0 0 0))
@@ -249,7 +249,7 @@
                 (fn2-checkpoints (fn2-core-checkpoints fn2-core)) (fn2-checkpoint-bytes (fn2-core-checkpoint-bytes fn2-core))
                 (fn2-checkpoint-construction (fn2-core-checkpoint-construction fn2-core))
                 (fn2-extents (fn2-core-extents fn2-core)) (fn2-ops (fn2-core-ops fn2-core)) (fn2-alloc-edges (fn2-core-alloc-edges fn2-core))) (eligible)
-     (and (fn2-checkpoint-teardown-retained-ownerp c token kind slot gen fn2-checkpoint-teardown-debt fn2-checkpoints fn2-checkpoint-bytes)
+     (and (fn2-checkpoint-teardown-admission-ownerp c token kind slot gen fn2-checkpoint-teardown-debt fn2-checkpoints fn2-checkpoint-bytes)
           (equal (fn2-checkpoint-teardown-debt-phase c fn2-checkpoint-teardown-debt) *fn2-checkpoint-teardown-debt-phase-held*)
           (fn2-checkpoint-teardown-retained-bank-excludedp c fn2-checkpoint-teardown-debt fn2-checkpoint-publication)
           (fn2-checkpoint-teardown-eligiblep c cursor fn2-checkpoints fn2-checkpoint-construction fn2-extents fn2-ops fn2-alloc-edges)

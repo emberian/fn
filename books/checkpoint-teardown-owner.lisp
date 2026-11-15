@@ -47,3 +47,12 @@
        (fn2-checkpoint-teardown-debt-checkpoint c fn2-checkpoint-teardown-debt)
        (fn2-checkpoint-teardown-debt-history c fn2-checkpoint-teardown-debt)
        (fn2-checkpoint-teardown-debt-incarnation c fn2-checkpoint-teardown-debt) fn2-checkpoint-publication)))
+
+; Identity recognition remains available to terminal disposal and already
+; submitted exact settlement. Fresh source/admission requires an open victim.
+(defun fn2-checkpoint-teardown-admission-ownerp (c token kind slot gen fn2-checkpoint-teardown-debt fn2-checkpoints fn2-checkpoint-bytes)
+ (declare (xargs :stobjs (fn2-checkpoint-teardown-debt fn2-checkpoints fn2-checkpoint-bytes) :verify-guards nil
+  :guard (and (fn2-checkpoint-teardown-debt-wfp fn2-checkpoint-teardown-debt) (fn2-checkpoints-wfp fn2-checkpoints) (fn2-checkpoint-bytes-wfp fn2-checkpoint-bytes))))
+ (and (fn2-checkpoint-teardown-retained-ownerp c token kind slot gen fn2-checkpoint-teardown-debt fn2-checkpoints fn2-checkpoint-bytes)
+      (not (= (fn2-checkpoints-state c fn2-checkpoints) *fn2-checkpoint-state-disposing*))
+      (= (fn2-checkpoint-teardown-debt-dispose-phase c fn2-checkpoint-teardown-debt) *fn2-checkpoint-dispose-phase-idle*)))

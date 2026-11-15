@@ -49,7 +49,7 @@
               (list *fn2-checkpoint-teardown-debt-phase-held* *fn2-checkpoint-teardown-debt-phase-drop*)))
         ; A WAITING/ambiguous member is never a new source scan or resubmission.
         (mv :state scan 0 0 0 0 0 0 0))
-       ((not (fn2-checkpoint-teardown-retained-ownerp scan (fn2-checkpoint-teardown-debt-token scan fn2-checkpoint-teardown-debt) kind owner gen fn2-checkpoint-teardown-debt fn2-checkpoints fn2-checkpoint-bytes))
+       ((not (fn2-checkpoint-teardown-admission-ownerp scan (fn2-checkpoint-teardown-debt-token scan fn2-checkpoint-teardown-debt) kind owner gen fn2-checkpoint-teardown-debt fn2-checkpoints fn2-checkpoint-bytes))
         (mv :state scan 0 0 0 0 0 0 0))
        (t (mv (if (equal (fn2-checkpoint-teardown-debt-phase scan fn2-checkpoint-teardown-debt) *fn2-checkpoint-teardown-debt-phase-drop*) :drop :source)
               scan (fn2-checkpoint-teardown-debt-token scan fn2-checkpoint-teardown-debt)
