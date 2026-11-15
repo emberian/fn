@@ -241,8 +241,8 @@
    (:let blk (floor row-pdone *fn2-commit-unit-bytes*))
    (:cond ((equal row-sready 0) (:charge :steps *fn2-work-poll*))
           ((not (and (equal row-sevent *fn2-event-write-result*) (equal row-soutcome *fn2-outcome-done*)))
-           ;; nothing durable is claimed for this source: the article is refused
-           (:set (word *fn2-upload-word-not-stored*) (sready 0)) (:next :sealed)
+           ;; Issued I/O has no safe rollback: retain bytes and reservations for recovery.
+           (:set (word *fn2-upload-word-uncertain*) (sready 0)) (:next :uncertain)
            (:charge :steps *fn2-work-transition* :runnable t))
           ((and (not (fn2-am-manifestp total)) (< 0 row-scount) (<= (+ row-pdone row-scount) total))
            (:let done2 (+ row-pdone row-scount))
@@ -276,7 +276,7 @@
            (:set (munit u2) (sready 0) (mstep 0))
            (:next (:if (< (* *fn2-commit-unit-bytes* u2) row-mfill) :store-write :store-fence))
            (:charge :steps *fn2-work-transition* :runnable t))
-          (t (:set (word *fn2-upload-word-not-stored*) (sready 0)) (:next :sealed)
+          (t (:set (word *fn2-upload-word-uncertain*) (sready 0)) (:next :uncertain)
              (:charge :steps *fn2-work-transition* :runnable t))))
   (:store-fence :on-refusal ((:stop :machine-phase))
    (:if (not (and (natp budget) (< 0 budget))) ((:yield))
@@ -289,7 +289,7 @@
   (:store-fenced :on-refusal ((:stop :machine-phase))
    (:cond ((equal row-sready 0) (:charge :steps *fn2-work-poll*))
           ((not (and (equal row-sevent *fn2-event-fence-result*) (equal row-soutcome *fn2-outcome-done*)))
-           (:set (word *fn2-upload-word-not-stored*) (sready 0)) (:next :sealed)
+           (:set (word *fn2-upload-word-uncertain*) (sready 0)) (:next :uncertain)
            (:charge :steps *fn2-work-transition* :runnable t))
           ((equal row-ilen 0)
            (:set (sready 0)) (:next :sealed) (:charge :steps *fn2-work-transition* :runnable t))
@@ -357,7 +357,10 @@
          (:next (:if retire :retired :free))
          (:do () (fn2-machine-reclaim-fn2-upload id retire))
          (:charge :steps *fn2-work-release*))))
-  (:retired (:idle)))
+  (:retired (:idle))
+  ;; An issued storage operation was ambiguous or malformed. No settlement,
+  ;; cancellation, workspace release or transaction hand-over can follow.
+  (:uncertain (:stop :upload-uncertain)))
  :observes
  ((:write-result (:set (sevent event) (soutcome outcome) (scount count) (sready 1)) (:wake))
   (:fence-result (:set (sevent event) (soutcome outcome) (scount count) (sready 1)) (:wake))
