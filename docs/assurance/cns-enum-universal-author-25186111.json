@@ -100,7 +100,13 @@
     "outer_summary_scope": "Excludes child proof work; individual theorem summaries above are authoritative",
     "raw_log": "/tmp/enum-universal-251-success-raw.txt on forge",
     "raw_log_sha256": "5e8f6d1e8b66d2b9d970b4f65970e37547bfde630401a25e4e9595793fa0fd9f",
-    "success_marker": "ENUM_UNIVERSAL_3_SUCCESS_25186111"
+    "success_marker": "ENUM_UNIVERSAL_3_SUCCESS_25186111",
+    "success_marker_artifact": "/tmp/enum-universal-251-campaign.log on forge (driver stdout, not ACL2 transcript)",
+    "success_marker_artifact_sha256": "49da40bbe7774f5a55ec34c868d59532beb94a6fce426b8c5d5a1ca8a539e202",
+    "driver_sha256": "6e894b7f894d26aec11444f494333e1787600834840f4011b0a166a02c249d2b",
+    "campaign_script": "/tmp/enum-universal-251-campaign.sh",
+    "campaign_script_sha256": "7bf58af694f1e4d833e0beac7488f152cd3621d93eb95367f8417bd9ed033f39",
+    "raw_acl2_terminal_marker": "FN-REPL-DONE 7"
   },
   "cleanup": {
     "owned_absent_pids": [
