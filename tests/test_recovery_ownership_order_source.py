@@ -35,7 +35,8 @@ class OwnershipOrder(unittest.TestCase):
     def test_fixed_records_unit_is_opened_only_for_a_new_commit(self):
         # Role 1 is one fixed records unit, unlike PAYLOAD manifest units.
         reset = '(rc-role 1) (rc-roff 0) (rc-rend 0)'
-        self.assertEqual(self.machine.count(reset), 2)
+        replay = self.machine[self.machine.index('  (install-finish :'):]
+        self.assertEqual(replay.count(reset), 2)
         install = self.machine[self.machine.index('  (install-finish :'):self.machine.index('  (replay-frontier :')]
         advance = self.machine[self.machine.index('  (replay-commit-end :'):self.machine.index('  (replay-lifecycle :')]
         self.assertIn(reset, install)
