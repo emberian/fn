@@ -1,0 +1,36 @@
+{
+  "status": "source-only; not admitted or certified",
+  "baseline_source_commit": "adacd9e71d75ce32dfc0b3b8210b87851066d05c",
+  "baseline_source_sha256": "78fbd3ff1fe8ff1b9283e2e08680db5fa50b4103beab76f4586fdb6a24262c25",
+  "candidate_source_sha256": "8f6a27be341e673f18bfd1b8abeeeb0c5fa1e404d7197251c6490b636146d67b",
+  "existing_top_level_forms": 108,
+  "new_form": "fn2-alloc-handle-code-ok-slotp",
+  "changed_existing_forms": [
+    "fn2-alloc-edge-drop-requires-matching-holder",
+    "fn2-alloc-relocate"
+  ],
+  "control": "Structural comparison confirms every preexisting top-level form unchanged except one theorem hint and one guard-hints addition. The theorem formula, function arguments/body, and exact declared guard remain identical.",
+  "remote_log": "forge:/build/lanes/reclamation-alloc-record-58b/build/acl2/certify-20261115T004941Z-639322/books--alloc.certify.log",
+  "log_sha256": "dfac0aae7262ce3d0e1483a85962abaf03da4b549d0d3b6852f38b092ace5498",
+  "baseline_record": {
+    "book_wall_seconds": 11.213,
+    "acl2_total_seconds": 11.11,
+    "acl2_prove_seconds": 6.48,
+    "acl2_other_seconds": 4.55,
+    "steps": 1463790,
+    "relocate": {
+      "seconds": 1.52,
+      "steps": 238944
+    },
+    "edge_drop_requires_matching_holder": {
+      "seconds": 0.19,
+      "steps": 117888
+    }
+  },
+  "probe_needed": [
+    "Admit the new checked-slot contract.",
+    "Replay exact unchanged relocate and edge-drop-requires-matching-holder events with candidate hints against qualified dependencies; compare steps with baseline.",
+    "If these events improve, qualify only changed allocator and existing exact allocator controls."
+  ],
+  "scope_limit": "No timing improvement or D26 closure is claimed without an author probe and current-key record."
+}
