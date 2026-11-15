@@ -592,7 +592,7 @@
  (declare (xargs :stobjs fn2-core :guard (fn2-core-wfp fn2-core)))
  (stobj-let ((fn2-commit-root (fn2-core-commit-root fn2-core)) (fn2-extents (fn2-core-extents fn2-core)))
   (code fn2-commit-root fn2-extents)
-  (if (not (and (natp chain) (natp epoch) (< chain (fn2-commit-root-rows fn2-commit-root)) (unsigned-byte-p 60 chain)
+  (if (not (and (natp epoch) (fn2-commit-directory-recovery-terminal-p chain fn2-commit-root)
                 (unsigned-byte-p 60 (+ 1 epoch))))
       (mv :bounds fn2-commit-root fn2-extents)
    (let* ((fn2-commit-root (fn2-commit-root-set-installed 0 chain fn2-commit-root))
