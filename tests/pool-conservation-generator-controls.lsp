@@ -1,0 +1,84 @@
+; Source/generator controls only; no ACL2 admission or conservation proof.
+; sbcl --script tests/pool-conservation-generator-controls.lsp BASELINE-POOL
+(defpackage "ACL2" (:use "CL"))
+(in-package "ACL2")
+(declaim (declaration xargs))
+(defun member-eq (x xs) (member x xs :test #'eq))
+(defun intern-in-package-of-symbol (name symbol) (intern name (symbol-package symbol)))
+(defun read-source (path)
+  (with-open-file (in path)
+    (loop for form = (read in nil :end) until (eq form :end) collect form)))
+(defun collect-forms (tree pred)
+  (if (atom tree) nil
+    (append (and (funcall pred tree) (list tree))
+            (loop for rest = tree then (cdr rest) while (consp rest)
+                  append (collect-forms (car rest) pred)))))
+(defun named (source name)
+  (or (car (collect-forms source
+             (lambda (f) (and (member (car f) '(defun defconst)) (eq (cadr f) name)))))
+      (error "Missing source ~s" name)))
+(defun without-hints (tree)
+  (cond ((atom tree) tree)
+        ((eq (car tree) :hints) (without-hints (cddr tree)))
+        (t (cons (without-hints (car tree)) (without-hints (cdr tree))))))
+(defun contains-symbol (symbol tree)
+  (if (atom tree) (eq symbol tree)
+    (or (contains-symbol symbol (car tree)) (contains-symbol symbol (cdr tree)))))
+(defun ignored-disjoint-p (writers key)
+  (every (lambda (w)
+           (let ((reader (intern (concatenate 'string "FN2-POOL-"
+                                  (subseq (symbol-name w) (length "FN2-POOL-SET-"))))))
+             (not (contains-symbol reader key)))) writers))
+(let* ((baseline (read-source (or (second sb-ext:*posix-argv*) (error "Supply baseline pool source"))))
+       (current (read-source "books/pool.lisp"))
+       (writers (eval (third (named current '*fn2-pool-frame-writers*))))
+       (calls (collect-forms current (lambda (f) (eq (car f) 'fn2-pool-op-conservation))))
+       (pure '(fn2-pool-adapter-write fn2-pool-query-acquire fn2-pool-query-release)))
+  ;; Read/evaluate only pure generators, never the ACL2 book or its operations.
+  (dolist (name '(fn2-pool-frame-name fn2-pool-key-frame-events fn2-pool-op-sym fn2-pool-op-conservation-events))
+    (eval (named baseline name)))
+  (let ((old-frames (fn2-pool-key-frame-events writers))
+        (old-events (mapcar (lambda (call) (apply #'fn2-pool-op-conservation-events
+                                            (append (cdr call) (list 'slot)))) calls)))
+    (eval (named current 'fn2-pool-ignored-key-frame-events))
+    (eval (named current 'fn2-pool-op-conservation-events))
+    (assert (= (length calls) 11))
+    (assert (equal old-frames (fn2-pool-key-frame-events writers)))
+    (loop for call in calls for old in old-events do
+      (let* ((op (cadr call))
+             (new (apply #'fn2-pool-op-conservation-events (append (cdr call) (list 'slot))))
+             (row (second (first new)))
+             (hint (car (getf (cdddr row) :hints)))
+             (theory (getf (cdr hint) :in-theory)))
+        (assert (equal (without-hints old) (without-hints new)))
+        (if (member op pure)
+            (progn
+              (assert (equal (cadr theory) (list op)))
+              (dolist (predicate '(fn2-pool-row-okp fn2-pool-input-code fn2-pool-handle-code fn2-pool-readable-code))
+                (assert (member predicate (caddr theory)))))
+          (assert (equal old new)))))
+    (let* ((extra (fn2-pool-ignored-key-frame-events writers))
+           (ignored (mapcar (lambda (event) (car (third (second (third event))))) extra)))
+      (assert (= (length extra) 10))
+      (assert (= (length (remove-duplicates (mapcar #'cadr extra))) 10))
+      (assert (null (intersection (mapcar #'cadr extra) (mapcar #'cadr old-frames))))
+      (assert (every (lambda (e) (eq (car (third e)) 'equal)) extra))
+      (assert (ignored-disjoint-p ignored (named current 'fn2-pool-row-key)))
+      ;; If the row key starts observing query references, the dependency
+      ;; control must reject this stronger frame classification.
+      (assert (not (ignored-disjoint-p ignored
+                     (list (named current 'fn2-pool-row-key) '(fn2-pool-query-ref-count i fn2-pool)))))
+      (assert (null (fn2-pool-ignored-key-frame-events
+                     '(fn2-pool-set-state fn2-pool-set-fill fn2-pool-set-gen
+                       fn2-pool-set-out-count fn2-pool-set-lease-off fn2-pool-set-lease-len
+                       update-fn2-pool-datai))))))
+  ;; Every existing named runtime/proof form stays exact except the generator
+  ;; whose emitted theorem statements were compared above.
+  (dolist (form (collect-forms baseline
+                  (lambda (f) (and (member (car f) '(defun defun-nx defmacro defthm defconst))
+                                   (symbolp (cadr f))
+                                   (not (eq (cadr f) 'fn2-pool-op-conservation-events))))))
+    (assert (member form (collect-forms current (lambda (f) (and (eq (car f) (car form))
+                                                              (eq (cadr f) (cadr form)))))
+                    :test (lambda (a b) (equal (write-to-string a) (write-to-string b)))))))
+(format t "POOL SOURCE CONTROLS PASS: original formulas/runtime, ignored-key frames, opaque adapter/query paths~%")
