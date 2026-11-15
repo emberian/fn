@@ -188,7 +188,7 @@ def closed_member_source(src, roots, *, snapshot=None):
             raise ValueError('missing canonical body/guard callees for ' + f.name + ': ' + ', '.join(sorted(absent)))
         if decode(d[':ATTACHMENT']) != Atom('NIL'):
             raise ValueError('attached canonical body/guard callee ' + f.name)
-    lines = ['module', 'public import Fn2.ACL2.MemberExecEvaluation',
+    lines = ['module', 'public import Fn2.ACL2.MemberBodyCorrect',
              '@[expose] public section', 'namespace Fn2.Instances.CoreCanonical',
              'open Fn2.ACL2 Fn2.ACL2.Translation',
              'def program : CanonicalProgram']
@@ -216,7 +216,13 @@ def closed_member_source(src, roots, *, snapshot=None):
               '      [.sym key, Val.ofList xs]',
               '      (LayerAWorld.«MEMBER-EQ-EXEC» (.sym key) (Val.ofList xs)) :=',
               '  MemberExecEvaluation.closed_in_program member_records calls primitives key xs',
-              '#print axioms member_records', '#print axioms member_closed',
+              'theorem member_body_correct (domain primitiveDomain : CallDomain)',
+              '    (calls : ∀ name values, MemberExecEvaluation.domain name values → domain name values)',
+              '    (primitives : ∀ name values, MemberExecEvaluation.primitiveDomain name values → primitiveDomain name values)',
+              '    (memberInputs : ∀ values, domain "MEMBER-EQ-EXEC" values → MemberExecEvaluation.domain "MEMBER-EQ-EXEC" values) :',
+              '    CanonicalBodyCorrect program domain primitiveDomain LayerAWorld.fns "MEMBER-EQ-EXEC" MemberBodyCorrect.result :=',
+              '  MemberBodyCorrect.body_correct_in_program member_records calls primitives memberInputs',
+              '#print axioms member_records', '#print axioms member_closed', '#print axioms member_body_correct',
               'end Fn2.Instances.CoreCanonical', 'end', '']
     return '\n'.join(lines)
 

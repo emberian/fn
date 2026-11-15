@@ -59,6 +59,10 @@ class ClosedMember(unittest.TestCase):
         self.assertEqual(source.count('  · rfl'), 5)
         self.assertIn('MemberExecEvaluation.domain name values → domain name values', source)
         self.assertIn('MemberExecEvaluation.primitiveDomain name values → primitiveDomain name values', source)
+        self.assertIn('public import Fn2.ACL2.MemberBodyCorrect', source)
+        self.assertIn('CanonicalBodyCorrect program domain primitiveDomain LayerAWorld.fns', source)
+        self.assertIn('MemberBodyCorrect.body_correct_in_program member_records calls primitives memberInputs', source)
+        self.assertIn('domain "MEMBER-EQ-EXEC" values → MemberExecEvaluation.domain "MEMBER-EQ-EXEC" values', source)
         self.assertNotIn('axiom ', source)
         self.assertNotIn('sorry', source)
 
