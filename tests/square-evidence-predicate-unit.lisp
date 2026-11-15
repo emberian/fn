@@ -30,6 +30,8 @@
   :positive ((x '2)) :negative (:kind :mutation :bindings ((x '-1)))))
 (defsquare-evidence fn2-ep-claim :conclusion-kind :predicate
  :positive ((x (fn2-ep-input '2)))
+ :positive-hints (("Goal" :in-theory (enable fn2-ep-input fn2-ep-resultp)))
+ :negative-hints (("Goal" :in-theory (enable fn2-ep-input fn2-ep-resultp)))
  :negative (:kind :hypothesis-removal :remove (fn2-ep-domainp x)
             :bindings ((x (fn2-ep-input '-1)))))
 (fn2-assert-square-evidence fn2-ep-claim)

@@ -271,7 +271,8 @@
           (mv (+ left-count right-count) (append left right)))))
        (t (mv 0 (list hyp)))))
 
-(defun fn2-square-predicate-evidence-events (name positive negative recheck world)
+(defun fn2-square-predicate-evidence-events-with-hints
+ (name positive negative positive-hints negative-hints recheck world)
  (declare (xargs :verify-guards nil))
  (let* ((row (fn2-decl-row (list :square name) world))
         (vars (fn2-decl-get :vars row))
@@ -307,10 +308,11 @@
     (if problem
         `(make-event (er soft 'defsquare-evidence "Cannot bind predicate ~x0: ~x1."
                          ',name ',problem))
-     (if recheck `(progn (thm ,pos-body) (thm ,neg-body))
+     (if recheck `(progn (thm ,pos-body :hints ,positive-hints)
+                       (thm ,neg-body :hints ,negative-hints))
       `(progn
-        (defthm ,pos-name ,pos-body :rule-classes nil)
-        (defthm ,neg-name ,neg-body :rule-classes nil)
+        (defthm ,pos-name ,pos-body :rule-classes nil :hints ,positive-hints)
+        (defthm ,neg-name ,neg-body :rule-classes nil :hints ,negative-hints)
         (make-event
          (value
           (list 'table 'fn2-squares (list 'quote ',name)
@@ -322,20 +324,29 @@
                  :formula ,formula :translated ,(fn2-decl-get :translated row)
                  :positive ,pos-name :negative ,neg-name
                  :positive-body ,pos-body :negative-body ,neg-body
-                 :positive-bindings ,positive :negative-control ,negative)))
+                 :positive-bindings ,positive :negative-control ,negative
+                 :positive-hints ,positive-hints :negative-hints ,negative-hints)))
              (fn2-decl-row '(:square ,name) (w state)))))))))))))))
+
+; Existing programmatic consumers retain the five-argument entry point.
+(defun fn2-square-predicate-evidence-events (name positive negative recheck world)
+ (declare (xargs :verify-guards nil))
+ (fn2-square-predicate-evidence-events-with-hints
+  name positive negative nil nil recheck world))
 
 ; Preserve the five-argument API used by constructor/snapshot consumers.
 (defun fn2-square-evidence-events (name positive negative recheck world)
  (declare (xargs :verify-guards nil))
  (fn2-square-evidence-events-with-correspondence name positive negative nil recheck world))
 
-(defmacro defsquare-evidence (name &key positive negative correspondence conclusion-kind)
+(defmacro defsquare-evidence
+ (name &key positive negative correspondence conclusion-kind positive-hints negative-hints)
  `(make-event
    (value
     (if (and (eq ',conclusion-kind :predicate) (not ',correspondence))
-        (fn2-square-predicate-evidence-events ',name ',positive ',negative nil (w state))
-      (if ',conclusion-kind
+        (fn2-square-predicate-evidence-events-with-hints
+         ',name ',positive ',negative ',positive-hints ',negative-hints nil (w state))
+      (if (or ',conclusion-kind ',positive-hints ',negative-hints)
           '(make-event (er soft 'defsquare-evidence "Unsupported conclusion mode."))
         (fn2-square-evidence-events-with-correspondence
          ',name ',positive ',negative ',correspondence nil (w state)))))))
@@ -398,8 +409,9 @@
      ; Re-derive and prove both complete assertions.  Stored names, bodies or
      ; a claimed PASS flag are never evidence by themselves.
      (value (if (eq (fn2-decl-get :conclusion-kind e) :predicate)
-                (fn2-square-predicate-evidence-events
-                 ',name (fn2-decl-get :positive-bindings e) negative t (w state))
+                (fn2-square-predicate-evidence-events-with-hints
+                 ',name (fn2-decl-get :positive-bindings e) negative
+                 (fn2-decl-get :positive-hints e) (fn2-decl-get :negative-hints e) t (w state))
               (fn2-square-evidence-events-with-correspondence
               ',name (fn2-decl-get :positive-bindings e)
               (fn2-decl-get :negative-control e) correspondence t (w state))))))))
