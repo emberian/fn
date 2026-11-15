@@ -21,11 +21,20 @@
 (defcost fn2-boot-checkpoint-events-frontier-begin :child fn2-checkpoint-restore-events-frontier-begin :answers t :bytes 128
  :tables (fn2-core-checkpoint-restore-reader fn2-core-checkpoint-restore-events fn2-core-fc fn2-core-pool))
 (defcost fn2-boot-checkpoint-events-frontier-step :child fn2-checkpoint-restore-events-frontier-step :answers t :bytes 4096
- :tables (fn2-core-checkpoint-restore-reader fn2-core-checkpoint-restore-events fn2-core-checkpoint-restore-reach fn2-core-fc fn2-core-fc-context fn2-core-b3 fn2-core-fields fn2-core-pool fn2-core-digests))
+ :tables (fn2-core-checkpoint-restore-reader fn2-core-checkpoint-restore-events fn2-core-checkpoint-restore-reach fn2-core-fc fn2-core-fc-context fn2-core-b3 fn2-core-fields fn2-core-pool fn2-core-digests fn2-core-checkpoint-restore-release-inventory))
 (defcost fn2-boot-checkpoint-events-peak-step :child fn2-checkpoint-restore-events-peak-step :answers t :bytes 32
  :tables (fn2-core-checkpoint-restore-reader fn2-core-checkpoint-restore-events))
 (defcost fn2-boot-checkpoint-events-frontier-finish :child fn2-checkpoint-restore-events-frontier-finish :answers t
  :tables (fn2-core-checkpoint-restore-reader fn2-core-checkpoint-restore-events fn2-core-pool))
+
+(defcost fn2-boot-checkpoint-release-inventory-begin :child fn2-checkpoint-restore-release-inventory-begin :answers t :bytes 256
+ :tables (fn2-core-checkpoint-restore-reader fn2-core-checkpoint-restore-release-inventory fn2-core-pool))
+(defcost fn2-boot-checkpoint-release-inventory-page :child fn2-checkpoint-restore-release-inventory-page-step :answers t :bytes 4096
+ :tables (fn2-core-checkpoint-restore-reader fn2-core-checkpoint-restore-reach fn2-core-fc fn2-core-fc-context fn2-core-b3 fn2-core-fields fn2-core-pool fn2-core-digests))
+(defcost fn2-boot-checkpoint-release-inventory-entry :child fn2-checkpoint-restore-release-inventory-entry :answers t :bytes *fn2-release-inventory-entry-width*
+ :tables (fn2-core-checkpoint-restore-reader fn2-core-checkpoint-restore-release-inventory fn2-core-checkpoint-restore-release-entries fn2-core-checkpoint-restore-reach fn2-core-fields))
+(defcost fn2-boot-checkpoint-release-inventory-finish :child fn2-checkpoint-restore-events-inventory-finish :answers t
+ :tables (fn2-core-checkpoint-restore-events fn2-core-checkpoint-restore-release-inventory))
 
 (defmacro fn2-boot-checkpoint-events-operations ()
  '(progn
@@ -39,6 +48,10 @@
     (fn2-arms-op-face-events 'fn2-boot-checkpoint-events-frontier-begin 'fn2-checkpoint-restore-events-frontier-begin (w state))
     (fn2-arms-op-face-events 'fn2-boot-checkpoint-events-frontier-step 'fn2-checkpoint-restore-events-frontier-step (w state))
     (fn2-arms-op-face-events 'fn2-boot-checkpoint-events-peak-step 'fn2-checkpoint-restore-events-peak-step (w state))
+    (fn2-arms-op-face-events 'fn2-boot-checkpoint-release-inventory-begin 'fn2-checkpoint-restore-release-inventory-begin (w state))
+    (fn2-arms-op-face-events 'fn2-boot-checkpoint-release-inventory-page 'fn2-checkpoint-restore-release-inventory-page-step (w state))
+    (fn2-arms-op-face-events 'fn2-boot-checkpoint-release-inventory-entry 'fn2-checkpoint-restore-release-inventory-entry (w state))
+    (fn2-arms-op-face-events 'fn2-boot-checkpoint-release-inventory-finish 'fn2-checkpoint-restore-events-inventory-finish (w state))
     (fn2-arms-op-face-events 'fn2-boot-checkpoint-events-frontier-finish 'fn2-checkpoint-restore-events-frontier-finish (w state))))))
 
   (defun fn2-boot-checkpoint-events-begin (id ogen fn2-core)

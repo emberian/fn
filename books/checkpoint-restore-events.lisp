@@ -2,6 +2,7 @@
 ; the same descriptor/map generation used by every other cold root consumer.
 (in-package "ACL2")
 (include-book "checkpoint-restore-events-source")
+(include-book "checkpoint-restore-release-inventory-reader")
 (include-book "event-read-verify")
 (fn2-book-layer :c)
 
@@ -390,19 +391,19 @@
        (equal (fn2-fields-value (+ f 6) fn2-fields) 1) (equal (fn2-fields-ref-len (+ f 6) fn2-fields) 32)
        (fn2-checkpoint-restore-events-ref-hash-p 0 r (fn2-fields-ref-off (+ f 6) fn2-fields) slot gen kind owner generation fn2-checkpoint-bytes fn2-pool))))
 
-(defun fn2-checkpoint-restore-events-frontier-step (budget fn2-checkpoints fn2-checkpoint-refs fn2-checkpoint-bytes fn2-extents fn2-checkpoint-restore-map fn2-checkpoint-restore-map-control fn2-checkpoint-restore-reach fn2-checkpoint-restore-reach-control fn2-checkpoint-restore-reader fn2-checkpoint-restore-events fn2-mk fn2-fc fn2-fc-context fn2-b3 fn2-fields fn2-pool fn2-digests)
- (declare (xargs :stobjs (fn2-checkpoints fn2-checkpoint-refs fn2-checkpoint-bytes fn2-extents fn2-checkpoint-restore-map fn2-checkpoint-restore-map-control fn2-checkpoint-restore-reach fn2-checkpoint-restore-reach-control fn2-checkpoint-restore-reader fn2-checkpoint-restore-events fn2-mk fn2-fc fn2-fc-context fn2-b3 fn2-fields fn2-pool fn2-digests) :verify-guards nil
-  :guard (and (fn2-checkpoints-wfp fn2-checkpoints) (fn2-checkpoint-refs-wfp fn2-checkpoint-refs) (fn2-checkpoint-bytes-wfp fn2-checkpoint-bytes) (fn2-extents-wfp fn2-extents) (fn2-checkpoint-restore-map-wfp fn2-checkpoint-restore-map) (fn2-checkpoint-restore-map-control-wfp fn2-checkpoint-restore-map-control) (fn2-checkpoint-restore-reach-wfp fn2-checkpoint-restore-reach) (fn2-checkpoint-restore-reach-control-wfp fn2-checkpoint-restore-reach-control) (fn2-checkpoint-restore-reader-wfp fn2-checkpoint-restore-reader) (fn2-checkpoint-restore-events-wfp fn2-checkpoint-restore-events) (fn2-mk-wfp fn2-mk) (fn2-fc-wfp fn2-fc) (fn2-fc-context-wfp fn2-fc-context) (fn2-b3-wfp fn2-b3) (fn2-fields-wfp fn2-fields) (fn2-pool-wfp fn2-pool) (fn2-digests-wfp fn2-digests))))
+(defun fn2-checkpoint-restore-events-frontier-step (budget fn2-checkpoints fn2-checkpoint-refs fn2-checkpoint-bytes fn2-extents fn2-checkpoint-restore-map fn2-checkpoint-restore-map-control fn2-checkpoint-restore-reach fn2-checkpoint-restore-reach-control fn2-checkpoint-restore-reader fn2-checkpoint-restore-events fn2-mk fn2-fc fn2-fc-context fn2-b3 fn2-fields fn2-pool fn2-digests fn2-checkpoint-restore-release-inventory)
+ (declare (xargs :stobjs (fn2-checkpoints fn2-checkpoint-refs fn2-checkpoint-bytes fn2-extents fn2-checkpoint-restore-map fn2-checkpoint-restore-map-control fn2-checkpoint-restore-reach fn2-checkpoint-restore-reach-control fn2-checkpoint-restore-reader fn2-checkpoint-restore-events fn2-mk fn2-fc fn2-fc-context fn2-b3 fn2-fields fn2-pool fn2-digests fn2-checkpoint-restore-release-inventory) :verify-guards nil
+  :guard (and (fn2-checkpoints-wfp fn2-checkpoints) (fn2-checkpoint-refs-wfp fn2-checkpoint-refs) (fn2-checkpoint-bytes-wfp fn2-checkpoint-bytes) (fn2-extents-wfp fn2-extents) (fn2-checkpoint-restore-map-wfp fn2-checkpoint-restore-map) (fn2-checkpoint-restore-map-control-wfp fn2-checkpoint-restore-map-control) (fn2-checkpoint-restore-reach-wfp fn2-checkpoint-restore-reach) (fn2-checkpoint-restore-reach-control-wfp fn2-checkpoint-restore-reach-control) (fn2-checkpoint-restore-reader-wfp fn2-checkpoint-restore-reader) (fn2-checkpoint-restore-events-wfp fn2-checkpoint-restore-events) (fn2-mk-wfp fn2-mk) (fn2-fc-wfp fn2-fc) (fn2-fc-context-wfp fn2-fc-context) (fn2-b3-wfp fn2-b3) (fn2-fields-wfp fn2-fields) (fn2-pool-wfp fn2-pool) (fn2-digests-wfp fn2-digests) (fn2-checkpoint-restore-release-inventoryp fn2-checkpoint-restore-release-inventory) (fn2-checkpoint-restore-release-inventory-wfp fn2-checkpoint-restore-release-inventory))))
  (b* (((unless (and (fn2-checkpoint-restore-events-current-p fn2-checkpoints fn2-checkpoint-refs fn2-checkpoint-bytes fn2-checkpoint-restore-map fn2-checkpoint-restore-map-control fn2-checkpoint-restore-reach-control fn2-checkpoint-restore-events)
                      (fn2-checkpoint-restore-events-reader-p fn2-checkpoint-restore-reader fn2-checkpoint-restore-events)
                      (fn2-checkpoint-restore-reach-reader-p fn2-checkpoint-restore-reader fn2-checkpoint-restore-reach-control)
                      (equal (fn2-checkpoint-restore-reader-role 0 fn2-checkpoint-restore-reader) 4)
                      (equal (fn2-checkpoint-restore-events-phase 0 fn2-checkpoint-restore-events) *fn2-checkpoint-restore-events-phase-frontier*)))
-       (mv :source fn2-checkpoint-restore-reader fn2-checkpoint-restore-events fn2-checkpoint-restore-reach fn2-fc fn2-fc-context fn2-b3 fn2-fields fn2-pool fn2-digests))
+       (mv :source fn2-checkpoint-restore-reader fn2-checkpoint-restore-events fn2-checkpoint-restore-reach fn2-fc fn2-fc-context fn2-b3 fn2-fields fn2-pool fn2-digests fn2-checkpoint-restore-release-inventory))
       ((mv physical fn2-checkpoint-restore-reader fn2-fc fn2-fc-context fn2-b3 fn2-fields fn2-pool fn2-digests)
        (fn2-checkpoint-restore-reader-format-step budget fn2-checkpoints fn2-extents fn2-checkpoint-restore-reader fn2-fc fn2-fc-context fn2-b3 fn2-fields fn2-pool fn2-digests))
       ((unless (eq physical :ok))
-       (mv physical fn2-checkpoint-restore-reader fn2-checkpoint-restore-events fn2-checkpoint-restore-reach fn2-fc fn2-fc-context fn2-b3 fn2-fields fn2-pool fn2-digests))
+       (mv physical fn2-checkpoint-restore-reader fn2-checkpoint-restore-events fn2-checkpoint-restore-reach fn2-fc fn2-fc-context fn2-b3 fn2-fields fn2-pool fn2-digests fn2-checkpoint-restore-release-inventory))
       (base (fn2-checkpoint-restore-reader-field-base 0 fn2-checkpoint-restore-reader))
       (slot (fn2-checkpoint-restore-reader-slot 0 fn2-checkpoint-restore-reader)) (gen (fn2-checkpoint-restore-reader-gen 0 fn2-checkpoint-restore-reader))
       (kind (fn2-checkpoint-restore-reader-owner-kind 0 fn2-checkpoint-restore-reader))
@@ -411,7 +412,7 @@
                      (equal (fn2-fields-value (+ base *fn2-format-page-header-field-payload-length*) fn2-fields)
                             (- (+ *fn2-event-frontier-peaks-start* *fn2-event-frontier-bytes*) *fn2-checkpoint-map-body-start*))
                      (<= (+ base *fn2-event-frontier-header-num-fields*) (fn2-fields-rows fn2-fields))))
-       (mv :framing fn2-checkpoint-restore-reader fn2-checkpoint-restore-events fn2-checkpoint-restore-reach fn2-fc fn2-fc-context fn2-b3 fn2-fields fn2-pool fn2-digests))
+       (mv :framing fn2-checkpoint-restore-reader fn2-checkpoint-restore-events fn2-checkpoint-restore-reach fn2-fc fn2-fc-context fn2-b3 fn2-fields fn2-pool fn2-digests fn2-checkpoint-restore-release-inventory))
       ((mv decoded end fn2-fields) (fn2-event-frontier-header-decode base slot gen *fn2-checkpoint-map-body-start* *fn2-event-frontier-peaks-start* kind owner generation fn2-fields fn2-pool))
       ((unless (and (eq decoded :ok) (natp end) (<= *fn2-checkpoint-map-body-start* end) (<= end *fn2-event-frontier-peaks-start*)
                      (<= (- *fn2-event-frontier-peaks-start* end) 4096)
@@ -422,22 +423,31 @@
                      (equal (fn2-fields-value (+ base *fn2-event-frontier-header-field-cut-event*) fn2-fields) (fn2-checkpoint-restore-events-cut-event 0 fn2-checkpoint-restore-events))
                      (equal (fn2-fields-value (+ base *fn2-event-frontier-header-field-leaf-count*) fn2-fields) (fn2-checkpoint-restore-events-cut-event 0 fn2-checkpoint-restore-events))
                      (fn2-checkpoint-restore-events-frontier-ref-p (fn2-checkpoint-restore-events-candidate 0 fn2-checkpoint-restore-events) base slot gen kind owner generation fn2-checkpoint-refs fn2-checkpoint-bytes fn2-fields fn2-pool)))
-       (mv :frontier fn2-checkpoint-restore-reader fn2-checkpoint-restore-events fn2-checkpoint-restore-reach fn2-fc fn2-fc-context fn2-b3 fn2-fields fn2-pool fn2-digests))
+       (mv :frontier fn2-checkpoint-restore-reader fn2-checkpoint-restore-events fn2-checkpoint-restore-reach fn2-fc fn2-fc-context fn2-b3 fn2-fields fn2-pool fn2-digests fn2-checkpoint-restore-release-inventory))
+      ((mv captured fn2-checkpoint-restore-release-inventory)
+       (fn2-checkpoint-restore-release-inventory-capture fn2-checkpoints fn2-checkpoint-refs fn2-checkpoint-bytes
+        fn2-checkpoint-restore-map fn2-checkpoint-restore-map-control fn2-checkpoint-restore-reach-control
+        fn2-checkpoint-restore-reader fn2-checkpoint-restore-events fn2-fc fn2-fields fn2-pool
+        fn2-checkpoint-restore-release-inventory))
+      ((unless (eq captured :captured))
+       (mv captured fn2-checkpoint-restore-reader fn2-checkpoint-restore-events fn2-checkpoint-restore-reach
+        fn2-fc fn2-fc-context fn2-b3 fn2-fields fn2-pool fn2-digests fn2-checkpoint-restore-release-inventory))
       (row (fn2-b-event-row (fn2-fc-rows fn2-fc)))
       ((unless (and (fn2-mk-ready row fn2-mk fn2-digests)
                      (equal (fn2-mk-size row fn2-mk) (fn2-checkpoint-restore-events-cut-event 0 fn2-checkpoint-restore-events))))
-       (mv :coverage fn2-checkpoint-restore-reader fn2-checkpoint-restore-events fn2-checkpoint-restore-reach fn2-fc fn2-fc-context fn2-b3 fn2-fields fn2-pool fn2-digests))
+       (mv :coverage fn2-checkpoint-restore-reader fn2-checkpoint-restore-events fn2-checkpoint-restore-reach fn2-fc fn2-fc-context fn2-b3 fn2-fields fn2-pool fn2-digests fn2-checkpoint-restore-release-inventory))
       ((mv claimed fn2-checkpoint-restore-reach)
        (fn2-checkpoint-restore-reach-claim-once *fn2-checkpoint-restore-reach-role-frontier* (fn2-checkpoint-restore-reader-unit 0 fn2-checkpoint-restore-reader)
         (fn2-checkpoint-restore-reader-epoch 0 fn2-checkpoint-restore-reader) (fn2-checkpoint-restore-reader-allocation 0 fn2-checkpoint-restore-reader)
         fn2-checkpoints fn2-checkpoint-refs fn2-checkpoint-bytes fn2-checkpoint-restore-map fn2-checkpoint-restore-map-control fn2-checkpoint-restore-reach fn2-checkpoint-restore-reach-control))
       ((unless (eq claimed :ok))
-       (mv claimed fn2-checkpoint-restore-reader fn2-checkpoint-restore-events fn2-checkpoint-restore-reach fn2-fc fn2-fc-context fn2-b3 fn2-fields fn2-pool fn2-digests))
+       (mv claimed fn2-checkpoint-restore-reader fn2-checkpoint-restore-events fn2-checkpoint-restore-reach fn2-fc fn2-fc-context fn2-b3 fn2-fields fn2-pool fn2-digests fn2-checkpoint-restore-release-inventory))
       (fn2-checkpoint-restore-reader (fn2-checkpoint-restore-reader-put 0
        (phase *fn2-checkpoint-restore-reader-phase-entries*) (started 0) (total 60) (total-known 1) (first 0) (count 60)
        (entry-ordinal 0) (has-next 0) (padding (+ *fn2-event-frontier-peaks-start* *fn2-event-frontier-bytes*))))
-      (fn2-checkpoint-restore-events (fn2-checkpoint-restore-events-put 0 (phase *fn2-checkpoint-restore-events-phase-peaks*) (peak 0))))
-  (mv :peaks fn2-checkpoint-restore-reader fn2-checkpoint-restore-events fn2-checkpoint-restore-reach fn2-fc fn2-fc-context fn2-b3 fn2-fields fn2-pool fn2-digests)))
+      (fn2-checkpoint-restore-events (fn2-checkpoint-restore-events-put 0 (phase *fn2-checkpoint-restore-events-phase-peaks*) (peak 0)
+       (inventory-count (fn2-fields-value (+ base *fn2-event-frontier-header-field-inventory-count*) fn2-fields)))))
+  (mv :peaks fn2-checkpoint-restore-reader fn2-checkpoint-restore-events fn2-checkpoint-restore-reach fn2-fc fn2-fc-context fn2-b3 fn2-fields fn2-pool fn2-digests fn2-checkpoint-restore-release-inventory)))
 
 ; Compare one fixed 32-byte peak and retain the ACTUAL authenticated bytes.
 ; Occupancy comes only from the recomputed event count, never a wire flag.
@@ -510,10 +520,38 @@
        (mv :source fn2-checkpoint-restore-reader fn2-checkpoint-restore-events fn2-pool))
       ((mv terminal fn2-checkpoint-restore-reader fn2-pool) (fn2-checkpoint-restore-reader-next-page fn2-checkpoint-restore-reader fn2-pool))
       (fn2-checkpoint-restore-events (if (eq terminal :done)
-       (fn2-checkpoint-restore-events-set-phase 0 *fn2-checkpoint-restore-events-phase-complete* fn2-checkpoint-restore-events) fn2-checkpoint-restore-events)))
-  (mv (if (eq terminal :done) :events-complete terminal) fn2-checkpoint-restore-reader fn2-checkpoint-restore-events fn2-pool)))
+       (fn2-checkpoint-restore-events-set-phase 0 *fn2-checkpoint-restore-events-phase-inventory* fn2-checkpoint-restore-events) fn2-checkpoint-restore-events)))
+  (mv (if (eq terminal :done) :inventory-ready terminal) fn2-checkpoint-restore-reader fn2-checkpoint-restore-events fn2-pool)))
 
 
+
+; Inventory is part of this same cold investigation. Frontier EOF cannot
+; publish COMPLETE: only the authenticated child-chain terminal can do so.
+(fn2-checkpoint-release-reader-operation fn2-checkpoint-restore-events-inventory-finish ()
+ (fn2-checkpoints fn2-checkpoint-refs fn2-checkpoint-bytes fn2-checkpoint-restore-map fn2-checkpoint-restore-map-control
+  fn2-checkpoint-restore-reach-control fn2-checkpoint-restore-reader fn2-checkpoint-restore-events
+  fn2-checkpoint-restore-events-work fn2-checkpoint-restore-release-inventory fn2-checkpoint-restore-release-entries)
+ (fn2-checkpoint-restore-events fn2-checkpoint-restore-release-inventory)
+ (b* (((unless (and (fn2-checkpoint-restore-events-history-terminal-p fn2-checkpoints fn2-checkpoint-refs fn2-checkpoint-bytes
+                      fn2-checkpoint-restore-map fn2-checkpoint-restore-map-control fn2-checkpoint-restore-reach-control
+                      fn2-checkpoint-restore-reader fn2-checkpoint-restore-events fn2-checkpoint-restore-events-work)
+       (= (fn2-checkpoint-restore-events-phase 0 fn2-checkpoint-restore-events) *fn2-checkpoint-restore-events-phase-inventory*)
+       (= (fn2-checkpoint-restore-reader-role 0 fn2-checkpoint-restore-reader) 6)
+       (= (fn2-checkpoint-restore-reader-total 0 fn2-checkpoint-restore-reader) (fn2-checkpoint-restore-events-inventory-count 0 fn2-checkpoint-restore-events))
+       (= (fn2-checkpoint-restore-reader-entry-ordinal 0 fn2-checkpoint-restore-reader) (fn2-checkpoint-restore-reader-total 0 fn2-checkpoint-restore-reader))
+       (= (fn2-checkpoint-restore-reader-has-next 0 fn2-checkpoint-restore-reader) 0)))
+       (mv :source fn2-checkpoint-restore-events fn2-checkpoint-restore-release-inventory))
+      ((mv code fn2-checkpoint-restore-release-inventory)
+       (fn2-checkpoint-restore-release-inventory-finish fn2-checkpoints fn2-checkpoint-refs fn2-checkpoint-bytes
+        fn2-checkpoint-restore-map fn2-checkpoint-restore-map-control fn2-checkpoint-restore-reach-control
+        fn2-checkpoint-restore-reader fn2-checkpoint-restore-release-inventory fn2-checkpoint-restore-release-entries))
+      ((unless (and (eq code :inventory-complete)
+        (fn2-checkpoint-restore-release-inventory-complete-p fn2-checkpoints fn2-checkpoint-refs fn2-checkpoint-bytes
+         fn2-checkpoint-restore-map fn2-checkpoint-restore-map-control fn2-checkpoint-restore-reach-control
+         fn2-checkpoint-restore-reader fn2-checkpoint-restore-release-inventory fn2-checkpoint-restore-release-entries)))
+       (mv :source fn2-checkpoint-restore-events fn2-checkpoint-restore-release-inventory))
+      (fn2-checkpoint-restore-events (fn2-checkpoint-restore-events-set-phase 0 *fn2-checkpoint-restore-events-phase-complete* fn2-checkpoint-restore-events)))
+  (mv :events-complete fn2-checkpoint-restore-events fn2-checkpoint-restore-release-inventory)))
 
 ; These bounded getters expose retained, authenticated source bytes only after
 ; the real terminal. Neither accepts a cut, a ready flag, or a digest from a caller.
@@ -647,8 +685,8 @@
          ("-POOL-DOMAIN-ROWS" fn2-pool-rows 4 :frame fn2-pool)))
 
 (fn2-checkpoint-restore-events-preserves fn2-checkpoint-restore-events-frontier-step
- (budget fn2-checkpoints fn2-checkpoint-refs fn2-checkpoint-bytes fn2-extents fn2-checkpoint-restore-map fn2-checkpoint-restore-map-control fn2-checkpoint-restore-reach fn2-checkpoint-restore-reach-control fn2-checkpoint-restore-reader fn2-checkpoint-restore-events fn2-mk fn2-fc fn2-fc-context fn2-b3 fn2-fields fn2-pool fn2-digests)
- :hyps ((fn2-checkpointsp fn2-checkpoints) (fn2-checkpoints-wfp fn2-checkpoints) (fn2-checkpoint-refsp fn2-checkpoint-refs) (fn2-checkpoint-refs-wfp fn2-checkpoint-refs) (fn2-checkpoint-bytesp fn2-checkpoint-bytes) (fn2-checkpoint-bytes-wfp fn2-checkpoint-bytes) (fn2-extentsp fn2-extents) (fn2-extents-wfp fn2-extents) (fn2-checkpoint-restore-mapp fn2-checkpoint-restore-map) (fn2-checkpoint-restore-map-wfp fn2-checkpoint-restore-map) (fn2-checkpoint-restore-map-controlp fn2-checkpoint-restore-map-control) (fn2-checkpoint-restore-map-control-wfp fn2-checkpoint-restore-map-control) (fn2-checkpoint-restore-reachp fn2-checkpoint-restore-reach) (fn2-checkpoint-restore-reach-wfp fn2-checkpoint-restore-reach) (fn2-checkpoint-restore-reach-controlp fn2-checkpoint-restore-reach-control) (fn2-checkpoint-restore-reach-control-wfp fn2-checkpoint-restore-reach-control) (fn2-checkpoint-restore-readerp fn2-checkpoint-restore-reader) (fn2-checkpoint-restore-reader-wfp fn2-checkpoint-restore-reader) (fn2-checkpoint-restore-eventsp fn2-checkpoint-restore-events) (fn2-checkpoint-restore-events-wfp fn2-checkpoint-restore-events) (fn2-mkp fn2-mk) (fn2-mk-wfp fn2-mk) (fn2-fcp fn2-fc) (fn2-fc-wfp fn2-fc) (fn2-fc-contextp fn2-fc-context) (fn2-fc-context-wfp fn2-fc-context) (fn2-b3p fn2-b3) (fn2-b3-wfp fn2-b3) (fn2-fieldsp fn2-fields) (fn2-fields-wfp fn2-fields) (fn2-poolp fn2-pool) (fn2-pool-wfp fn2-pool) (fn2-digestsp fn2-digests) (fn2-digests-wfp fn2-digests))
+ (budget fn2-checkpoints fn2-checkpoint-refs fn2-checkpoint-bytes fn2-extents fn2-checkpoint-restore-map fn2-checkpoint-restore-map-control fn2-checkpoint-restore-reach fn2-checkpoint-restore-reach-control fn2-checkpoint-restore-reader fn2-checkpoint-restore-events fn2-mk fn2-fc fn2-fc-context fn2-b3 fn2-fields fn2-pool fn2-digests fn2-checkpoint-restore-release-inventory)
+ :hyps ((fn2-checkpointsp fn2-checkpoints) (fn2-checkpoints-wfp fn2-checkpoints) (fn2-checkpoint-refsp fn2-checkpoint-refs) (fn2-checkpoint-refs-wfp fn2-checkpoint-refs) (fn2-checkpoint-bytesp fn2-checkpoint-bytes) (fn2-checkpoint-bytes-wfp fn2-checkpoint-bytes) (fn2-extentsp fn2-extents) (fn2-extents-wfp fn2-extents) (fn2-checkpoint-restore-mapp fn2-checkpoint-restore-map) (fn2-checkpoint-restore-map-wfp fn2-checkpoint-restore-map) (fn2-checkpoint-restore-map-controlp fn2-checkpoint-restore-map-control) (fn2-checkpoint-restore-map-control-wfp fn2-checkpoint-restore-map-control) (fn2-checkpoint-restore-reachp fn2-checkpoint-restore-reach) (fn2-checkpoint-restore-reach-wfp fn2-checkpoint-restore-reach) (fn2-checkpoint-restore-reach-controlp fn2-checkpoint-restore-reach-control) (fn2-checkpoint-restore-reach-control-wfp fn2-checkpoint-restore-reach-control) (fn2-checkpoint-restore-readerp fn2-checkpoint-restore-reader) (fn2-checkpoint-restore-reader-wfp fn2-checkpoint-restore-reader) (fn2-checkpoint-restore-eventsp fn2-checkpoint-restore-events) (fn2-checkpoint-restore-events-wfp fn2-checkpoint-restore-events) (fn2-mkp fn2-mk) (fn2-mk-wfp fn2-mk) (fn2-fcp fn2-fc) (fn2-fc-wfp fn2-fc) (fn2-fc-contextp fn2-fc-context) (fn2-fc-context-wfp fn2-fc-context) (fn2-b3p fn2-b3) (fn2-b3-wfp fn2-b3) (fn2-fieldsp fn2-fields) (fn2-fields-wfp fn2-fields) (fn2-poolp fn2-pool) (fn2-pool-wfp fn2-pool) (fn2-digestsp fn2-digests) (fn2-digests-wfp fn2-digests) (fn2-checkpoint-restore-release-inventoryp fn2-checkpoint-restore-release-inventory) (fn2-checkpoint-restore-release-inventory-wfp fn2-checkpoint-restore-release-inventory))
  :specs (("-CHECKPOINT-RESTORE-READER-DOMAIN-TYPE" fn2-checkpoint-restore-readerp 1)
          ("-CHECKPOINT-RESTORE-READER-DOMAIN-WFP" fn2-checkpoint-restore-reader-wfp 1)
          ("-CHECKPOINT-RESTORE-READER-DOMAIN-ROWS" fn2-checkpoint-restore-reader-rows 1 :frame fn2-checkpoint-restore-reader)
@@ -675,7 +713,7 @@
          ("-POOL-DOMAIN-ROWS" fn2-pool-rows 8 :frame fn2-pool)
          ("-DIGESTS-DOMAIN-TYPE" fn2-digestsp 9)
          ("-DIGESTS-DOMAIN-WFP" fn2-digests-wfp 9)
-         ("-DIGESTS-DOMAIN-ROWS" fn2-digests-rows 9 :frame fn2-digests)))
+         ("-DIGESTS-DOMAIN-ROWS" fn2-digests-rows 9 :frame fn2-digests) ("-RELEASE-INVENTORY-TYPE" fn2-checkpoint-restore-release-inventoryp 10) ("-RELEASE-INVENTORY-WFP" fn2-checkpoint-restore-release-inventory-wfp 10) ("-RELEASE-INVENTORY-ROWS" fn2-checkpoint-restore-release-inventory-rows 10 :frame fn2-checkpoint-restore-release-inventory)))
 
 (fn2-checkpoint-restore-events-preserves fn2-checkpoint-restore-events-check-peak
  (i peak fn2-checkpoint-restore-events fn2-mk fn2-fc fn2-digests fn2-pool)

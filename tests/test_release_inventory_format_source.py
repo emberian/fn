@@ -6,6 +6,7 @@ ROOT=Path(__file__).resolve().parents[1]
 sys.path.insert(0,str(ROOT/'tools'))
 from lisp_source import forms,read_sexp
 from checkpoint_master_source_check import walk
+import rewrite_release_inventory_frontier as frontier
 
 def definition(text,name):
     return next(n for raw in forms(text) for n in walk(read_sexp(raw)) if n[:2]==['defun',name])
@@ -42,6 +43,21 @@ class InventoryWire(unittest.TestCase):
         self.assertIn('(unsigned-byte-p 32 (+ off i left))',linked)
         build=(ROOT/'books/event-build.lisp').read_text()
         self.assertIn('(fn2-event-frontier-put-ref "DIRECTORY-" base child 0 scratch sgen)',build)
+    def test_structural_frontier_carrier_threading_is_bounded_and_idempotent(self):
+        original='(defun '+frontier.NAME+' (budget a) (declare (xargs :stobjs (a) :guard (and (ap a)))) (mv :ok '+' '.join(frontier.OUTPUTS)+'))'
+        out,count=frontier.rewrite(original)
+        self.assertEqual(count,4)
+        self.assertEqual(frontier.rewrite(out),(out,0))
+        self.assertIn(frontier.TABLE+'p '+frontier.TABLE,out)
+        self.assertEqual(out.count(frontier.TABLE+'-wfp'),1)
+        actual=(ROOT/'books/checkpoint-restore-events.lisp').read_text()
+        self.assertEqual(frontier.rewrite(actual),(actual,0))
+        f=definition(actual,frontier.NAME)
+        self.assertIn('fn2-checkpoint-restore-release-inventory-capture',str(f))
+        # Field capture follows actual root format/header/ref authentication;
+        # no consumer-provided count/Ref/ready scalar is accepted.
+        body=actual[actual.index('(defun '+frontier.NAME):]
+        self.assertLess(body.index('(fn2-event-frontier-header-decode'),body.index('(fn2-checkpoint-restore-release-inventory-capture'))
     def test_existing_linked_tags_and_root_convention_are_preserved(self):
         text=(ROOT/'books/checkpoint-map-format.lisp').read_text()
         self.assertIn('(:allocation-map :recovery-arena :event-proof-directory :release-inventory)',text)
