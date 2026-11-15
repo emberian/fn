@@ -31,16 +31,26 @@
   :ready :redundant :retired :schema :sealed :stale :state :truncated :unknown-tag :value :version
   :sources :miss :wide :wrong-allocation :wrong-commit :wrong-epoch :wrong-extent :wrong-geometry :wrong-history
   :wrong-incarnation :wrong-kind :wrong-length :wrong-location :wrong-previous-commit
-  :wrong-previous-seal :wrong-slot :drain :need-loader :range :yield)
+  :wrong-previous-seal :wrong-slot :drain :need-loader :range :yield :checkpoint-required)
  :bytes *fn2-sealer-turn-bytes*
  :tables (fn2-core-seals fn2-core-overlays fn2-core-overlay-index fn2-core-run-installed fn2-core-run-builds
           fn2-core-run-writers fn2-core-run-restarts fn2-core-run-cache fn2-core-ribbon-builds fn2-core-ribbon-band
           fn2-core-fields fn2-core-pool fn2-core-fc fn2-core-fc-context fn2-core-b3 fn2-core-digests
-          fn2-core-ranges fn2-core-range-sources fn2-core-run-cursors fn2-core-run-paths fn2-core-csnapshot fn2-core-c-source-control fn2-core-c-source-readers fn2-core-reads fn2-core-succ-txns)
+          fn2-core-ranges fn2-core-range-sources fn2-core-run-cursors fn2-core-run-paths fn2-core-csnapshot fn2-core-c-source-control fn2-core-c-source-readers fn2-core-reads fn2-core-succ-txns fn2-core-run-loads fn2-core-checkpoint-summary-leases)
  :doc "One bounded seal step: at most 4,096 bytes of page or filter work, one entry merged and added, one install, or one page released.")
 (defcost fn2-sealer-source-release :answers (:ok :absent :owner :busy :bounds :stale :invariant)
  :tables (fn2-core-seals fn2-core-c-source-control fn2-core-c-source-readers fn2-core-reads fn2-core-succ-txns fn2-core-run-loads fn2-core-checkpoint-summary-leases)
  :doc "Release the exact observer only after actual publication and retired input drain reach lower IDLE.")
+(defcost fn2-sealer-checkpoint-request :answers (:ok :busy :owner)
+ :tables (fn2-core-machines fn2-core-sealer fn2-core-checkpoint-master fn2-core-seals fn2-core-overlays fn2-core-run-installed fn2-core-pool
+          fn2-core-run-loads fn2-core-checkpoint-summary-leases fn2-core-checkpoint-summary
+          fn2-core-csnapshot fn2-core-c-source-control)
+ :doc "Capture actual quiescent sealer request and validated maintenance target before any prefix allocation.")
+(defcost fn2-sealer-checkpoint-resume :answers (:ok :wait :owner)
+ :tables (fn2-core-machines fn2-core-sealer fn2-core-seals fn2-core-run-loads
+          fn2-core-checkpoint-summary-leases fn2-core-checkpoint-summary fn2-core-checkpoint-predecessor-control
+          fn2-core-csnapshot fn2-core-c-source-control)
+ :doc "Resume only after actual new catalog adoption, original retirement and cut/observer release.")
 (defcost fn2-sealer-refuse :tables (fn2-core-control)
  :doc "Stop the core by name: a seal step refused for want of a pool slot (:sealer-full), a cache row (:sealer-cache), or as an invariant (:sealer).")
 
@@ -49,13 +59,13 @@
 (defwait :sealable :ready fn2-sealable-ready-p :grant fn2-sealable-grant-one :tables (fn2-core-machines)
   :doc "The parked sealer, woken once a published overlay is sealable.")
 (defmachine fn2-sealer
- :states (:sealing :binding :loading :reading :draining :stopped)
+ :states (:sealing :binding :loading :reading :draining :stopped :checkpointing)
  ;; stopped: 1 once the row is :stopped. The budget's descriptor cap is the
  ;; other kinds' (4), though the sealer issues nothing: the run's charge
  ;; check (fn2-machine-charge) is proved over every kind's caps, and a kind
  ;; whose cap is below another's charge breaks A's callers' guard proofs,
  ;; which cannot show a row's kind is kept across an issue.
- :fields ((stopped :bool) (bundle (:enum fn2-sealer-bundle (:none :held))) (load-cursor :u32) (drain :u8) (copy-drained :bool) (retry-pool :bool))
+ :fields ((stopped :bool) (bundle (:enum fn2-sealer-bundle (:none :held))) (load-cursor :u32) (drain :u8) (copy-drained :bool) (retry-pool :bool) (checkpoint-tag :u60))
  :holds ((:sealing (:storage-window :while (bundle :held)))
          (:binding (:storage-window :while (bundle :held)))
          (:loading (:storage-window :while (bundle :held)))
@@ -67,5 +77,5 @@
  :initial ((generation 1) (ready-prev *fn2-none*) (ready-next *fn2-none*))
  ;; The arms are in the arm language (machines-c-sealer-events.lisp), their
  ;; contracts derived where the core exists (assembly-callbacks-c.lisp).
- :arms ((:sealing) (:binding) (:loading) (:reading) (:draining) (:stopped))
+ :arms ((:sealing) (:binding) (:loading) (:reading) (:draining) (:stopped) (:checkpointing))
  :observes ((:read-result (:wake))))
