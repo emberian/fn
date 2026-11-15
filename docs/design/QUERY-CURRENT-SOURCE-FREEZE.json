@@ -3,7 +3,7 @@
   "source_donor": "deccde219",
   "model_donor": "ec3f382137d0833f30ff74483a41890f3729cba7",
   "files": {
-    "Makefile": "2b58ffef6b701b450694c77a95450aa610df6545b5b7d261ceefd2756cd37837",
+    "Makefile": "310998289514d12ea2d5be6d1c757ed73de6bbbb639d033cc3194682548d9356",
     "books/identity.lisp": "98df8c4eef639327c12e822f70da1737df1cdced574a728bd8d43cc23c0669a8",
     "books/machines-c-bind.lisp": "37c980059538a9e8d4875acd72a0817ee5ccf588a10a8ad8b654815396520056",
     "books/machines-c-groups.lisp": "17761d8197a5b20a56326df3175dbaedddc659dc3794ab9af58926c646775689",
@@ -45,7 +45,9 @@
     "tests/cns-release-refinement-unit.lisp": "4aa3a3f9a7e840562050c2f9c5da9cf4dcae9d34305685df7a0056c46e2b3710",
     "books/cns-query-lifetime-model.lisp": "3d602fb5629e7818eb4b9ecd35f5d5ec7c2bb894972b6aa0193e40704e7e85c1",
     "tests/cns-query-lifetime-unit.lisp": "7000663a078a77a0a08a256f1298108f94bf930d202ebeb10e5f1061b7bcf50a",
-    "tests/cns-query-support.lisp": "e968a4702b3ab4c11648c55ba9fa170ff195c8911d8031ef145f542ddff12382"
+    "tests/cns-query-support.lisp": "2bd26656ed0545022490abed41deb3241643e4da63912045e7d883f49fe5c32a",
+    "books/query-reference-predicates.lisp": "44c87b79a38e99eda95204265b6ba1e3b852ebc797db1eb4694e071199d8ab2e",
+    "books/query-reference-core-predicate.lisp": "4b3e43e64ff673d6f37145b247aa5dc159515694f6ac1135daf17ee46b2c84cb"
   },
   "protected_byte_identical": [
     "books/pool.lisp",
@@ -58,5 +60,6 @@
   ],
   "authority_non_defcost_forms_identical": true,
   "execution": "UNRUN",
-  "scope_note": "Source-only; current credit-provenance model correction pending with Q1; no ACL2 execution."
+  "scope_note": "Source-only; current credit-provenance model correction pending with Q1; no ACL2 execution.",
+  "predicate_provider_donor": "b5477b08d"
 }

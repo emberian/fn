@@ -264,6 +264,8 @@ ACL2_BOOKS = \
   books/terminal-values \
   books/core-scheduler-wake \
   books/enqueue-trace \
+  books/query-reference-predicates \
+  books/query-reference-core-predicate \
   books/query-ref-wake \
   books/queue-model \
   books/trace-events \

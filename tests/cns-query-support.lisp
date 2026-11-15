@@ -1,8 +1,7 @@
 ; Shared actual CNS/query setup operations; assertions belong to consumers.
 (in-package "ACL2")
 (include-book "../books/cns-query-lifetime-model")
-; Descriptor-count preservation is a separate gate; this fixture uses the
-; independent CNS whole-result model and actual callback providers below.
+(include-book "../books/query-reference-core-predicate")
 (include-book "cns-draining-count-counterexample")
 
 (defun fn2-cns-query-write (bytes slot gen off owner ogen fn2-core)
