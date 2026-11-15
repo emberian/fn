@@ -3,6 +3,7 @@
 (include-book "checkpoint-recovery-census")
 (include-book "checkpoint-selected-source-state")
 (include-book "std/util/bstar" :dir :system)
+(include-book "checkpoint-selected-source-identity")
 (fn2-book-layer :b)
 
 (defun fn2-checkpoint-selected-source-copy-descriptor (i at fn2-checkpoint-bytes fn2-checkpoint-selected-source)
@@ -18,54 +19,11 @@
           (fn2-checkpoint-bytes-value (+ at i) fn2-checkpoint-bytes) fn2-checkpoint-selected-source)))
    (fn2-checkpoint-selected-source-copy-descriptor (+ 1 i) at fn2-checkpoint-bytes fn2-checkpoint-selected-source))))
 
-(defun fn2-checkpoint-selected-source-descriptor-p (i at fn2-checkpoint-bytes fn2-checkpoint-selected-source)
- (declare (xargs :stobjs (fn2-checkpoint-bytes fn2-checkpoint-selected-source)
-  :measure (nfix (- 32 (nfix i)))
-  :guard (and (fn2-checkpoint-bytes-wfp fn2-checkpoint-bytes)
-              (fn2-checkpoint-selected-source-wfp fn2-checkpoint-selected-source)
-              (natp i) (<= i 32) (natp at)
-              (<= (+ at 32) (fn2-checkpoint-bytes-rows fn2-checkpoint-bytes)))))
- (or (>= (nfix i) 32)
-     (and (= (fn2-checkpoint-selected-source-descriptori i fn2-checkpoint-selected-source)
-             (fn2-checkpoint-bytes-value (+ at i) fn2-checkpoint-bytes))
-          (fn2-checkpoint-selected-source-descriptor-p (+ 1 i) at fn2-checkpoint-bytes fn2-checkpoint-selected-source))))
 
-(defun fn2-checkpoint-selected-head-p (fn2-boot-config fn2-checkpoints fn2-checkpoint-refs fn2-checkpoint-bytes fn2-origin fn2-checkpoint-recovery-evidence fn2-checkpoint-recovery-census)
- (declare (xargs :stobjs (fn2-boot-config fn2-checkpoints fn2-checkpoint-refs fn2-checkpoint-bytes fn2-origin fn2-checkpoint-recovery-evidence fn2-checkpoint-recovery-census)
- :guard (and (fn2-boot-config-wfp fn2-boot-config) (fn2-checkpoints-wfp fn2-checkpoints)
- (fn2-checkpoint-refs-wfp fn2-checkpoint-refs) (fn2-checkpoint-bytes-wfp fn2-checkpoint-bytes)
- (fn2-origin-wfp fn2-origin) (fn2-checkpoint-recovery-evidence-wfp fn2-checkpoint-recovery-evidence)
- (fn2-checkpoint-recovery-census-wfp fn2-checkpoint-recovery-census))))
- (and (< 0 (fn2-checkpoint-recovery-census-rows fn2-checkpoint-recovery-census))
-      (= (fn2-checkpoint-recovery-census-phase 0 fn2-checkpoint-recovery-census) *fn2-checkpoint-recovery-census-phase-complete*)
-      (= (fn2-checkpoint-recovery-census-topology 0 fn2-checkpoint-recovery-census) *fn2-checkpoint-recovery-census-topology-single-head*)
-      (fn2-checkpoint-recovery-census-bound-p
-       (fn2-checkpoint-recovery-census-head 0 fn2-checkpoint-recovery-census)
-       fn2-boot-config fn2-checkpoints fn2-checkpoint-refs fn2-checkpoint-bytes fn2-origin fn2-checkpoint-recovery-evidence)))
 
-(defun fn2-checkpoint-selected-source-current-p (fn2-checkpoint-selected-source fn2-boot-config fn2-checkpoints fn2-checkpoint-refs fn2-checkpoint-bytes fn2-origin fn2-checkpoint-recovery-evidence fn2-checkpoint-recovery-census)
- (declare (xargs :stobjs (fn2-checkpoint-selected-source fn2-boot-config fn2-checkpoints fn2-checkpoint-refs fn2-checkpoint-bytes fn2-origin fn2-checkpoint-recovery-evidence fn2-checkpoint-recovery-census)
- :guard (and (fn2-checkpoint-selected-source-wfp fn2-checkpoint-selected-source)
- (fn2-boot-config-wfp fn2-boot-config) (fn2-checkpoints-wfp fn2-checkpoints)
- (fn2-checkpoint-refs-wfp fn2-checkpoint-refs) (fn2-checkpoint-bytes-wfp fn2-checkpoint-bytes)
- (fn2-origin-wfp fn2-origin) (fn2-checkpoint-recovery-evidence-wfp fn2-checkpoint-recovery-evidence)
- (fn2-checkpoint-recovery-census-wfp fn2-checkpoint-recovery-census))))
- (and (< 0 (fn2-checkpoint-selected-source-rows fn2-checkpoint-selected-source))
-      (posp (fn2-checkpoint-selected-source-tag 0 fn2-checkpoint-selected-source))
-      (member-equal (fn2-checkpoint-selected-source-phase 0 fn2-checkpoint-selected-source)
-       (list *fn2-checkpoint-selected-source-phase-investigating* *fn2-checkpoint-selected-source-phase-validated*
-             *fn2-checkpoint-selected-source-phase-projecting* *fn2-checkpoint-selected-source-phase-projected*))
-      (fn2-checkpoint-selected-head-p fn2-boot-config fn2-checkpoints fn2-checkpoint-refs fn2-checkpoint-bytes fn2-origin fn2-checkpoint-recovery-evidence fn2-checkpoint-recovery-census)
-      (let* ((c (fn2-checkpoint-recovery-census-head 0 fn2-checkpoint-recovery-census)) (at (* 32 (* 6 c))))
-       (and (= (fn2-checkpoint-selected-source-candidate 0 fn2-checkpoint-selected-source) c)
-            (< c (fn2-checkpoints-rows fn2-checkpoints))
-            (<= (+ at 32) (fn2-checkpoint-bytes-rows fn2-checkpoint-bytes))
-            (= (fn2-checkpoint-selected-source-checkpoint 0 fn2-checkpoint-selected-source) (fn2-checkpoints-checkpoint c fn2-checkpoints))
-            (= (fn2-checkpoint-selected-source-cut-commit 0 fn2-checkpoint-selected-source) (fn2-checkpoints-cut-commit c fn2-checkpoints))
-            (= (fn2-checkpoint-selected-source-cut-event 0 fn2-checkpoint-selected-source) (fn2-checkpoints-cut-event c fn2-checkpoints))
-            (= (fn2-checkpoint-selected-source-history 0 fn2-checkpoint-selected-source) (fn2-checkpoints-history c fn2-checkpoints))
-            (= (fn2-checkpoint-selected-source-incarnation 0 fn2-checkpoint-selected-source) (fn2-checkpoints-incarnation c fn2-checkpoints))
-            (fn2-checkpoint-selected-source-descriptor-p 0 at fn2-checkpoint-bytes fn2-checkpoint-selected-source)))))
+
+
+
 
 ; KIND/OWNER/GENERATION are supplied only by the actual boot wrapper below;
 ; there is deliberately no candidate, cut, descriptor or ready argument.
