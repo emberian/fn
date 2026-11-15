@@ -39,7 +39,8 @@
         (mv :ok fn2-checkpoint-summary fn2-checkpoint-summary-leases)))
       ((unless (eq code :ok)) (mv :recovery-required fn2-run-loads fn2-run-cursors fn2-checkpoint-summary fn2-checkpoint-summary-leases fn2-pool))
       (fn2-run-cursors (fn2-run-cursors-put c (phase *fn2-run-cursor-phase-idle*) (physical 0)))
-      (fn2-run-loads (fn2-run-loads-put c (phase *fn2-run-load-phase-idle*) (tag 0) (windows 0))))
+      (fn2-run-loads (fn2-run-loads-put c (phase *fn2-run-load-phase-idle*) (tag 0) (windows 0)
+       (kind 0) (owner 0) (generation 0))))
   (mv :ok fn2-run-loads fn2-run-cursors fn2-checkpoint-summary fn2-checkpoint-summary-leases fn2-pool)))
 
 (fn2-run-load-frames fn2-run-load-release
