@@ -74,5 +74,5 @@ for suffix,extra,pre in [('issue','', '(include-book "run-physical-bound")'),('s
  (B/('run-physical-bound-'+('io' if suffix=='issue' else suffix)+'.lisp')).write_text(prefix+macros+'\n'+engine+'\n\n'+ef+'\n'+observer)
  s=lr.write(s,[(n.start,n.end,wrapper),(macro.start,macro.end,'')])
  if suffix=='issue':s=s.replace('(include-book "run-physical-source")','(include-book "run-physical-source")\n(include-book "run-physical-bound-io")')
- else:s=s.replace('(include-book "boot-geometry-state")\n(include-book "checkpoint-semantic-page")','(include-book "run-physical-bound-step")')
+ else:s=s.replace('(include-book "checkpoint-boot")\n(include-book "checkpoint-semantic-page")','(include-book "run-physical-bound-step")')
  path.write_text(s.rstrip()+'\n')
