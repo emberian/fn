@@ -212,6 +212,19 @@
           (fn2-columns-projection-readers 'fn2-compress-operation
            (fn2-decl-get :columns (fn2-decl-row '(:columns fn2-compress-operation) world)))))
         (hints `(("Goal" :in-theory (disable ,@readers))))
+        (observe-hints
+         `(("Goal" :in-theory
+             (disable ,@readers fn2-compress-operation-observe-preserves-type
+                      fn2-compress-operation-observe-wfp fn2-compress-operation-observe-rows)
+             :use ((:instance fn2-compress-operation-observe-preserves-type
+                      (used (if (= (fn2-compress-transport-pending 0 fn2-compress-transport) 11) used 0))
+                      (made (if (= (fn2-compress-transport-pending 0 fn2-compress-transport) 10) made 0)))
+                   (:instance fn2-compress-operation-observe-wfp
+                      (used (if (= (fn2-compress-transport-pending 0 fn2-compress-transport) 11) used 0))
+                      (made (if (= (fn2-compress-transport-pending 0 fn2-compress-transport) 10) made 0)))
+                   (:instance fn2-compress-operation-observe-rows
+                      (used (if (= (fn2-compress-transport-pending 0 fn2-compress-transport) 11) used 0))
+                      (made (if (= (fn2-compress-transport-pending 0 fn2-compress-transport) 10) made 0)))))))
         (next-hints `(("Goal" :in-theory
                         (disable ,@readers fn2-compress-operation-bind-preserves-type
                          fn2-compress-operation-bind-ok-inputs fn2-compress-operation-bind-wfp
@@ -221,7 +234,7 @@
                              fn2-compress-operation-bind-rows-ok)))))
   (value `(progn
    (verify-guards fn2-compress-record-next :hints ,next-hints)
-   (verify-guards fn2-compress-record-observe :hints ,hints)
+   (verify-guards fn2-compress-record-observe :hints ,observe-hints)
    (verify-guards fn2-compress-record-carrier-observe :hints ,hints)
    (verify-guards fn2-compress-record-socket-observe :hints ,hints)
    (verify-guards fn2-compress-record-wait :hints ,hints)))))

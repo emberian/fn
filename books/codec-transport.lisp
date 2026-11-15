@@ -188,6 +188,13 @@
       (let ((,name (,put 0 (raw-negative (if (< raw-code 0) 1 0)) (raw-code (abs raw-code))
                       (raw-used used) (raw-made made) (raw-errno errno))))
        (,advance cap nonce slot generation serial used made ,name))))
+; Callers may keep the physical observer opaque while using its accepted
+; scalar packet. The widths are the observer's existing admission checks.
+(defthm ,(fn2-columns-sym name "-OBSERVE-SPANS-OK-INPUTS")
+ (implies (equal (mv-nth 0 (,observe cap nonce slot generation serial raw-code used made errno ,name)) :ok)
+  (and (integerp raw-code) (unsigned-byte-p 64 (abs raw-code))
+       (unsigned-byte-p 32 used) (unsigned-byte-p 32 made) (unsigned-byte-p 32 errno)))
+ :hints (("Goal" :in-theory (disable ,@readers ,advance))))
 (verify-guards ,select :hints (("Goal" :in-theory (disable ,@readers))))
 (verify-guards ,advance :hints (("Goal" :in-theory (disable ,@readers))))
 (verify-guards ,observe :hints (("Goal" :in-theory (disable ,@readers))))
