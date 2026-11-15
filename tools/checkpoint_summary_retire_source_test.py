@@ -4,8 +4,12 @@ import unittest
 import lisp_rewrite as lr
 ROOT = Path(__file__).resolve().parents[1]
 def check_fence(text):
-    fn = lr.match('(defun fn2-seal-release ?*body)', lr.parse(text).forms)[0].node
-    checks = lr.match('((when (= (fn2-run-installed-physical r fn2-run-installed) 1)) (mv :cache fn2-seals fn2-run-installed fn2-run-cache fn2-pool))', [fn])
+    forms = lr.parse(text).forms
+    wrapper = lr.match('(defun fn2-seal-release ?*body)', forms)[0].node
+    fn = lr.match('(defun fn2-seal-release-row ?*body)', forms)[0].node
+    if not lr.match('(fn2-seal-release-row r fn2-run-installed fn2-run-cache fn2-pool)', [wrapper]):
+        raise ValueError('sealer must delegate to fenced row operation')
+    checks = lr.match('((when (= (fn2-run-installed-physical r fn2-run-installed) 1)) (mv :cache fn2-run-installed fn2-run-cache fn2-pool))', [fn])
     drops = lr.match('(fn2-run-cache-drop ?*args)', [fn])
     if len(checks) != 1 or not drops or checks[0].start >= drops[0].start:
         raise ValueError('physical fence must precede every resident cache drop')
