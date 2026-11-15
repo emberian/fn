@@ -46,17 +46,26 @@ Remaining connected work:
   Preserve retained payload E*N holds, captured MID, SOURCE/STORED identities,
   SEND handback and current cancellation/refresh behavior.
 - Typed catalog, Cbase, install and retirement providers are composed with their
-  actual assembly event invocations. Restore is replacing the old atomic
-  520-cell promotion with bounded PROMOTING continuation; the old 2016-byte
-  declaration counts destination footprint, not complete work. No typed finish
-  activation is justified before that repair.
+  actual assembly event invocations. Query promotion copies one of 32 descriptor
+  cells per turn and retains
+  pending SUMMARY1 through canonical archive/rebase consume. Canonical consume
+  alone transfers AUTHORITY1 to AUTHORITY0; a distinct exact reopen follows.
+  The actual master pipeline and complete critical evidence remain unfinished.
 - Sealer source commits e34bd0eea and 0399c6004 are composed: eight actual
   input cursor pairs, entry scratch, prefix hash and first output page are
   admitted before physical merge. Exact source receipt stays through I/O and
   drains before pool wait. Later resident output growth remains unfinished.
-- Shared run-page-step declares 4096 bytes although COPY can read and write
-  4096 bytes each. VERIFY delegates format-run; the complete phase accounting
-  must be derived rather than assuming a doubled constant closes the callback.
+- Shared COPY now chooses at most floor(budget/2) payload bytes, accounting
+  for source reads and destination writes. Direct snapshot POLL additionally
+  requires all recipe bits and canonical cursor jobs quiescent. Actual bound
+  STEP progress controls are being connected; VERIFY/CONTEXT accounting is open.
+- Canonical rebase consume accesses at least 4352 payload bytes against its
+  old 4096 declaration. The rejected Lisp-expression envelope is not modeled
+  byte/structural work; its large constants must not enter actor admission.
+- Master activation remains literal NIL. Existing post-Fence fixtures explicitly
+  enter CATALOG for downstream testing; they do not establish actual admission.
+  Recovery RELEASE stage8/prefix settlement and all current observer joins must
+  be connected before a nonseeded production-to-publication witness is claimed.
 - After those joins, exercise real REGISTER/APPEND, publication, adoption and
   before/after served lookup. Current prepared units remain unexecuted.
 
