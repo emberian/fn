@@ -7,7 +7,7 @@ must be derived from that store and the actual served call/attachment graph.
 
 ## Current integration frontier — 2026-11-15 UTC
 
-Current integration source is `4d7e9cb`, including retirement dispatch, actual-type
+Current integration source is `5bbcb1b66`, including retirement dispatch, actual-type
 codec fixtures, failed-Send classification, consumed-input accounting and farm
 Git metadata protection. No current whole-system image, full host gate,
 canonical served certificate, or completed assurance claim exists.
@@ -56,7 +56,13 @@ connections) preserve the current pool and layout source. Root independently
 compared 31 runtime function/guard ASTs across five consumer books, allowing only
 proof-hint differences. `defcodec-size-bounds` replaces the retirement-local
 prototype. Current-pool qualification remains pending; the two outstanding
-guards are assigned to proof-cost repair before canonical composition. The 32
+guards are assigned to proof-cost repair before canonical composition.
+The checked-reader contract is separately integrated at `5bbcb1b66`: exact
+eight-book record `certify-20261115T025521Z-761431` passed with seven reused and
+one new book in 0.276 seconds. Root matched all eight current source digests;
+the manifest lacks a Git revision, so provenance is bound by those exact bytes.
+The remaining size/interface foundation record waits for the required pool-credit
+layout below, avoiding an immediately obsolete dependent build. The 32
 canonical runtime assertions and full application composition remain unexecuted.
 
 Codec fixture record `certify-20261115T020143Z-708421` passed all 24 books of
@@ -96,6 +102,10 @@ ordinary wake. Complete callback effects, reference correspondence and trace
 replay still need qualification before integration. Protected checkpoint
 capacity must also guarantee ordinary staged journal drain capacity per class;
 aggregate totals or double-counted reservations cannot establish progress.
+Capacity owns the next pool edit. Explicit reservation credits require row
+provenance and per-class/per-group state, with independent working and actual
+B-row STAGED-drain groups. This changes pool layout; source freeze and primitive
+qualification must precede the next dependent foundation/canonical record.
 
 Cold recovery remains unfinished. It needs bounded physical page loading,
 allocator reconstruction, retained C-source ownership through query drain, and
