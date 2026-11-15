@@ -18,6 +18,13 @@ def check(before,after):
     helper=[i for i,n in enumerate(new) if canon(n)==['include-book','"columns-call-guards"']]
     assert len(helper)==1
     new.pop(helper[0])
+    observer_include=[i for i,n in enumerate(new) if canon(n)==['include-book','"columns-observation-frames"']]
+    assert len(observer_include)==1
+    new.pop(observer_include[0])
+    frame=['defcolumns-observation-frame','fn2-cns-sources-hash-offset-after-unit-hashed','fn2-cns-sources','hash-offset','unit-hashed']
+    frame_events=[i for i,n in enumerate(new) if canon(n)==frame]
+    assert len(frame_events)==1
+    new.pop(frame_events[0])
     subjects={'fn2-cns-source-issue-children','fn2-cns-source-raw-step-children'}
     fns=[n for n in new if isinstance(n,Lst) and canon(n)[0]=='defun' and n.items[1].low in subjects]
     assert len(fns)==2
@@ -34,4 +41,5 @@ class SourceRawCallHints(unittest.TestCase):
     def test_guard_and_return_mutation_rejected(self):
         with self.assertRaises(AssertionError):check(self.before,self.after.replace('(fn2-cns-sources-wfp fn2-cns-sources)','t',1))
         with self.assertRaises(AssertionError):check(self.before,self.after.replace('(mv :bad 0 0','(mv :bounds 0 0',1))
+        with self.assertRaises(AssertionError):check(self.before,self.after.replace('hash-offset unit-hashed)','hash-offset phase)',1))
 if __name__=='__main__':unittest.main()

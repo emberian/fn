@@ -116,6 +116,7 @@ ACL2_BOOKS = \
   books/columns \
   books/columns-guard-hints \
   books/columns-call-guards \
+  books/columns-observation-frames \
   books/columns-carrier-contracts \
   books/compress-policy \
   books/compress-kind \

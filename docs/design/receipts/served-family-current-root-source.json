@@ -1,6 +1,6 @@
 {
   "root": "cadd5bb3b6751fcc96cbe41aea199029de7b0838",
-  "application_source": "50bb1d772e16886db3bb1d32d611aeba46e3e930",
+  "application_source": "157965aef17c6322fe2eee5ae7adc5bc9b41b58a",
   "domain_fixture_source": "d6fed39d3",
   "files": [
     {
@@ -137,8 +137,8 @@
     },
     {
       "path": "books/cns-source-raw.lisp",
-      "source": "50bb1d772e16886db3bb1d32d611aeba46e3e930",
-      "sha256": "7c146d6ba459a4fc09416e0affbab7e097c22beca53810075c50754cc3b37bb2"
+      "source": "157965aef17c6322fe2eee5ae7adc5bc9b41b58a",
+      "sha256": "5d954b663273321a40726259325675969f3764fed7753f4c285498a75c227ad6"
     },
     {
       "path": "books/cns-source-retention.lisp",
@@ -586,9 +586,8 @@
     },
     {
       "path": "tests/test_cns_enum_noop.py",
-      "source": "2015b9ed65eec4ebde0036a51bda35726a85be1e",
-      "sha256": "1160ea4ba3ab49b0cf66fbff85d179675c5e693b9577da7b80a20e1f19eb7173",
-      "root_sha256": null
+      "source": "157965aef17c6322fe2eee5ae7adc5bc9b41b58a",
+      "sha256": "f2cdf373b60b450bd4bdf93470e4a37c0b87e28b50fe39f2c84dfd66aee20a64"
     },
     {
       "path": "tests/test_cns_phase_source.py",
@@ -640,9 +639,8 @@
     },
     {
       "path": "tests/test_source_raw_call_hints.py",
-      "source": "2015b9ed65eec4ebde0036a51bda35726a85be1e",
-      "sha256": "0a604f83a13344607dbe29c4f2599e578b6d79edc13009eb9a269c1a5f02ca9c",
-      "root_sha256": null
+      "source": "157965aef17c6322fe2eee5ae7adc5bc9b41b58a",
+      "sha256": "6da8c24eaa0ac4dfe7bbfa1e0a1d26df8d81808d8d639644f75c216217c9f904"
     },
     {
       "path": "tests/test_source_retention_call_hints.py",
@@ -850,6 +848,21 @@
       "path": "docs/assurance/cns-enum-fragment-author-61bbea7a.json",
       "source": "2ebbb5164",
       "sha256": "d8615ce14e0e834515b5fd897d07dba93d7e926c0ac04cda4c85a2a8577353bf"
+    },
+    {
+      "path": "books/columns-observation-frames.lisp",
+      "source": "cc73111c5f326fbc0cd5938670fa040b9c87ddad",
+      "sha256": "235b8aa4d956ac989e1126767bfde1c6b03528399944f56eb9f90f5cffdd6b92"
+    },
+    {
+      "path": "tests/columns-observation-frames-controls.lsp",
+      "source": "cc73111c5f326fbc0cd5938670fa040b9c87ddad",
+      "sha256": "1e0b415d8880d39ee731b6bb66282aee46e5ab67c0a02c4d8a968a71c481f231"
+    },
+    {
+      "path": "tests/test_columns_observation_frames.py",
+      "source": "cc73111c5f326fbc0cd5938670fa040b9c87ddad",
+      "sha256": "964dc7c2311e8f475606e1cb49033ecc72cc996ea182b10f333c4d50c6397056"
     }
   ],
   "preserve_current_root_exact": [
@@ -906,7 +919,8 @@
     "tests/upload-group16-served-unit",
     "tests/upload-uncertainty-served-unit",
     "tests/ctl-stripe-map-unit",
-    "tests/checkpoint-installation-domain-unit"
+    "tests/checkpoint-installation-domain-unit",
+    "books/columns-observation-frames"
   ],
   "scope": "Concrete source composition only; no active candidate changes, prover run or new qualification. RAW remains UNPROVED; prior135 qualified closure excludes RAW.",
   "held": [
@@ -958,7 +972,9 @@
       "fixture_sha256": "61bbea7a3030a9a7abe49ec13cb6cb1326b19d0bd2cfec532d10e9d26bcbbf21",
       "matches_scoped_author_receipt": true,
       "new_ACL2_run": "NONE"
-    }
+    },
+    "observation_frame_join_controls": 10,
+    "enum_fixture_unchanged_after_observation_join": true
   },
   "qualification": {
     "prior135": "/tmp/served-d55-qualified135-receipt.json; all135 source/key payloads audited; RAW excluded",
@@ -966,11 +982,27 @@
     "RAW1518": "UNPROVED; sole owner pilot active",
     "actual_BT_domain_fixture": "UNRUN; queued after actual BT + current predicate provider",
     "full_FETCH_cancel_and_native": "UNRUN",
-    "RAW50bb": "UNPROVED; adds selected SOURCES-ROWS getter to actual guard hint; original runtime969 unchanged"
+    "RAW50bb": "UNPROVED; adds selected SOURCES-ROWS getter to actual guard hint; original runtime969 unchanged",
+    "RAW157": "UNPROVED; exact canonical requested observation frame before RAW-STEP, original2015 opaque hint restored; owner pilot active"
   },
   "enum_fragment_evidence": {
     "donor": "2ebbb5164",
     "receipt": "docs/assurance/cns-enum-fragment-author-61bbea7a.json",
     "scope": "226 exact closed fragment whole-carrier witnesses under explicit P/WFP/valid-row antecedents and missing-row negative; author admission only, no universal/composed runtime equivalence or RAW record claim"
+  },
+  "observation_frame_join": {
+    "source": "cc73111c5f326fbc0cd5938670fa040b9c87ddad",
+    "book": "books/columns-observation-frames.lisp",
+    "scope": "One requested distinct-field unconditional getter-over-setter equality; no global observation matrix or guard premise change",
+    "status": "SOURCE ONLY until actual pilot; previous135 closure remains exact and excludes new RAW/helper."
+  },
+  "closure_plan": {
+    "RAW": 137,
+    "FETCH": 243,
+    "FETCH_plus_actual_BT_fixture": 245,
+    "native_tail_after_combined": 17,
+    "prior135_current_key_matches": 119,
+    "prior135_rekeyed_by_storage_append": 16,
+    "scope": "Metadata only; helper and whole RAW unproved under pilot, no new qualification."
   }
 }
