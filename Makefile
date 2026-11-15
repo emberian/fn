@@ -302,6 +302,7 @@ ACL2_BOOKS = \
   tests/columns-cost-unit-10 \
   tests/columns-cost-unit-20 \
   tests/columns-unit \
+  tests/columns-name-unit \
   tests/codec-profile-unit \
   tests/codec-transport-unit \
   tests/host-codec-unit \

@@ -16,6 +16,13 @@
   :init-name fn2-name-control-init-value)
  :expected :hard :with-output-off nil :check-expansion t)
 
+(defcolumns fn2-name-control-valid ((credit-nonce :u60)) :rows-bound 8
+ :extra-fields
+ ((fn2-name-control-valid-credit-group-nonce
+   :type (array (unsigned-byte 60) (0)) :initially 0 :resizable t
+   :why "Control-only group storage with a distinct emitted namespace.")))
+(assert-event (fn2-decl-row '(:columns fn2-name-control-valid) (w state)))
+
 (assert-event
  (equal (fn2-columns-event-list-names
           '((local (defthm a '(defun ignored)))
