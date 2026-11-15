@@ -18,7 +18,7 @@
      (append (fn2-cw-crlf-octets '("QUIT")) (make-list 33 :initial-element 88))
   (fn2-cw-crlf-octets
    (append '("POST" "From: owner@example.invalid" "Subject: query owner" "Newsgroups: local.test")
-           (if (eq mode :page) nil '("Message-ID: <owner-drain@example.invalid>"))
+           (if (member-eq mode '(:page :page-loss)) nil '("Message-ID: <owner-drain@example.invalid>"))
            '("" "body long enough for an independent name and digest query window")
            (if (eq mode :c0) nil '("." "QUIT"))))))
 (defun fn2-qod-client (mode)
@@ -31,6 +31,34 @@
   (and (natp slot) (< slot (fn2-pool-rows fn2-pool))
        (eq (fn2-pool-handle-code slot gen fn2-pool) :ok)
        (<= need (fn2-pool-fill slot fn2-pool))) yes))
+; A real TxnOffer has started from the sealed generated-ID upload.
+; Do not synthesize a query row or an upload phase to reach this cut.
+(defun fn2-qod-offered-page-p (upload fn2-core)
+ (declare (xargs :stobjs fn2-core :verify-guards nil))
+ (let* ((tx (fn2-upload-row-txn upload fn2-core))
+        (slot (fn2-machine-slot tx fn2-core))
+        (page (fn2-upload-row-lslot upload fn2-core))
+        (gen (fn2-upload-row-lgen upload fn2-core))
+        (mo (fn2-upload-row-mo upload fn2-core))
+        (ml (fn2-upload-row-ml upload fn2-core))
+        (c0 (fn2-upload-row-c0-slot upload fn2-core))
+        (c1 (fn2-upload-row-c1-slot upload fn2-core))
+        (owner-gen (fn2-machine-generation upload fn2-core)))
+  (and (fn2-machine-idp tx fn2-core)
+       (equal (fn2-machine-phase tx fn2-core) *fn2-txn-state-lookup*)
+       (equal (fn2-txn-row-offered tx fn2-core) 1)
+       (stobj-let ((fn2-id-decides (fn2-core-id-decides fn2-core))) (active)
+        (and (natp slot) (< slot (fn2-id-decides-rows fn2-id-decides))
+             (equal (fn2-id-decides-qmask slot fn2-id-decides) 3)
+             (equal (fn2-id-decides-qk slot fn2-id-decides) *fn2-upload-kind*)
+             (equal (fn2-id-decides-qs slot fn2-id-decides) upload)
+             (equal (fn2-id-decides-qg slot fn2-id-decides) owner-gen)
+             (equal (fn2-id-decides-q1slot slot fn2-id-decides) page)
+             (equal (fn2-id-decides-q1gen slot fn2-id-decides) gen)
+             (equal (fn2-id-decides-q1off slot fn2-id-decides) mo)
+             (equal (fn2-id-decides-q1len slot fn2-id-decides) ml)
+             (member (fn2-id-decides-q2slot slot fn2-id-decides) (list c0 c1))
+             (equal (fn2-id-decides-q2len slot fn2-id-decides) 32)) active))))
 (defun fn2-qod-source-ready (mode conn upload fn2-core)
  (declare (xargs :stobjs fn2-core :verify-guards nil))
  (if (eq mode :conn)
@@ -50,8 +78,9 @@
            (equal (fn2-machine-phase tx fn2-core) *fn2-txn-state-ready*))))
     (t
      (and (equal phase *fn2-upload-state-sealed*)
-          (if (eq mode :page)
-              (and (equal (fn2-upload-row-lease upload fn2-core) *fn2-upload-lease-held*)
+          (if (member-eq mode '(:page :page-loss))
+              (and (or (not (eq mode :page-loss)) (fn2-qod-offered-page-p upload fn2-core))
+                   (equal (fn2-upload-row-lease upload fn2-core) *fn2-upload-lease-held*)
                    (fn2-qod-filled (fn2-upload-row-lslot upload fn2-core)
                                    (fn2-upload-row-lgen upload fn2-core) 33 fn2-core))
             (fn2-qod-filled (fn2-upload-row-c0-slot upload fn2-core)
@@ -66,6 +95,12 @@
                (equal (fn2-conn-row-borrows conn fn2-core) 0)))
          ((eq mode :prepare) (equal phase *fn2-txn-state-prepare*))
          ((eq mode :ready) (equal phase *fn2-txn-state-ready*))
+         ((eq mode :page-loss)
+          (and (equal phase *fn2-upload-state-draining*)
+               ; QUIT must really reclaim the feeding connection while the
+               ; extra query still retains the upload's page and chunks.
+               (not (equal (fn2-machine-generation conn fn2-core)
+                           (fn2-upload-row-conn-gen upload fn2-core)))))
          (t (equal phase *fn2-upload-state-draining*))))))
 (defun fn2-qod-until (fuel mode stage conn upload target accepted clients store fn2-core)
  (declare (xargs :stobjs fn2-core :verify-guards nil :measure (nfix fuel)))
@@ -82,7 +117,7 @@
   ((eq mode :conn)
    (mv (fn2-conn-row-rx-slot conn fn2-core) (fn2-conn-row-rx-gen conn fn2-core) 6 7
        *fn2-conn-kind* conn (fn2-machine-generation conn fn2-core)))
-  ((eq mode :page)
+  ((member-eq mode '(:page :page-loss))
    (mv (fn2-upload-row-lslot upload fn2-core) (fn2-upload-row-lgen upload fn2-core) 0 1
        *fn2-upload-kind* upload (fn2-machine-generation upload fn2-core)))
   (t (mv (fn2-upload-row-c0-slot upload fn2-core) (fn2-upload-row-c0-gen upload fn2-core) 0 1
@@ -141,6 +176,9 @@
       (held-phase (fn2-machine-phase target fn2-core))
       (life (fn2-qod-life slot gen kind owner generation fn2-core))
       (other-life (fn2-qod-life other othergen kind owner generation fn2-core))
+      (c0 (fn2-upload-row-c0-slot upload fn2-core))
+      (g0 (fn2-upload-row-c0-gen upload fn2-core))
+      (c0-life (if (eq mode :page-loss) (fn2-qod-life c0 g0 kind owner generation fn2-core) nil))
       (before (fn2-test-core-snapshot fn2-core))
       ((mv bytes steps actions runnable fn2-core) (fn2-qod-run mode target fn2-core))
       (unchanged (equal before (fn2-test-core-snapshot fn2-core)))
@@ -159,6 +197,8 @@
                         (equal (fn2-machine-generation target fn2-core) targetgen)
                         (equal (fn2-machine-phase target fn2-core) held-phase)
                         (equal query (fn2-qru-image 3 fn2-core))
+                        (or (not (eq mode :page-loss))
+                            (equal c0-life (fn2-qod-life c0 g0 kind owner generation fn2-core)))
                         (equal life (fn2-qod-life slot gen kind owner generation fn2-core))
                         (equal other-life (fn2-qod-life other othergen kind owner generation fn2-core)))
                  t))
@@ -205,3 +245,11 @@
 (assert-event (equal (fn2-qod-test :page nil nil) t))
 (assert-event (equal (fn2-qod-test :prepare t nil) t))
 (assert-event (equal (fn2-qod-test :ready t t) t))
+
+; Proposed reachable owner-loss control (execution pending): actual TxnOffer first pins the generated name page;
+; an independent actual query then keeps it alive through QUIT and normal
+; SEALED -> DRAINING. Both DONE and cancellation must wake/reclaim it.
+; Page-held ABORTING is not claimed reachable: its only incoming edges are
+; pre-store work/identity, before acquisition of the storage lease.
+(assert-event (equal (fn2-qod-test :page-loss t nil) t))
+(assert-event (equal (fn2-qod-test :page-loss t t) t))
