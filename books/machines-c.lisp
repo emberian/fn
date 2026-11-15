@@ -100,7 +100,7 @@
       (unsigned-byte-p 32 (fn2-c-source-endpoint-rows profile))
       (unsigned-byte-p 32 (fn2-b-run-cursor-rows profile))
       (unsigned-byte-p 32 (* *fn2-run-max-levels* (fn2-b-run-cursor-rows profile)))
-      (unsigned-byte-p 32 (+ (fn2-b-capacity :identity-runs 64 profile) (fn2-b-capacity :extent-slots 16 profile)))))
+      (and (posp (fn2-b-capacity :extent-slots 16 profile)) (unsigned-byte-p 32 (fn2-b-capacity :extent-slots 16 profile)) (unsigned-byte-p 32 (+ (fn2-b-capacity :identity-runs 64 profile) (* 2 (fn2-b-capacity :extent-slots 16 profile)))))))
 
 ;; Each child's init is a function whose guard is proved here once, so the
 ;; core init's guard (assembly-init) meets only the opaque profile predicate.
@@ -129,7 +129,7 @@
  (fn2-overlay-index-init (* (nfix (fn2-b-capacity :identity-overlays *fn2-idc-overlays-default* profile))
                             (nfix (fn2-b-capacity :identity-overlay-entries 256 profile))) fn2-overlay-index)
  "Each overlay's key-ordered index of its arena's entries.")
-(fn2-idc-child fn2-core-run-installed fn2-run-installed (fn2-run-installed-init (+ (fn2-b-capacity :identity-runs 64 profile) (fn2-b-capacity :extent-slots 16 profile)) fn2-run-installed)
+(fn2-idc-child fn2-core-run-installed fn2-run-installed (fn2-run-installed-init-configured (fn2-b-capacity :identity-runs 64 profile) (fn2-b-capacity :extent-slots 16 profile) fn2-run-installed)
  "The resident view of each schema's sealed runs.")
 (fn2-idc-child fn2-core-run-cursors fn2-run-cursors
  (fn2-run-cursors-init (fn2-b-run-cursor-rows profile) fn2-run-cursors)

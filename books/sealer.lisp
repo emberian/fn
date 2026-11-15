@@ -171,7 +171,7 @@
      (fn2-seal-live-runs (- k 1) (+ 1 r) sid fn2-run-installed))))
 (defun fn2-seal-free-rows (k r fn2-run-installed)
  (declare (xargs :stobjs fn2-run-installed :measure (nfix k) :guard (and (fn2-run-installed-wfp fn2-run-installed) (natp r))))
- (if (not (and (posp k) (natp r) (< r (fn2-run-installed-rows fn2-run-installed)))) 0
+ (if (not (and (posp k) (natp r) (and (< r (fn2-run-installed-rows fn2-run-installed)) (< r (fn2-run-installed-resident-limit fn2-run-installed))))) 0
   (+ (if (equal (fn2-run-installed-state r fn2-run-installed) *fn2-run-installed-state-free*) 1 0)
      (fn2-seal-free-rows (- k 1) (+ 1 r) fn2-run-installed))))
 (defthm fn2-seal-live-runs-natp (natp (fn2-seal-live-runs k r sid fn2-run-installed)) :rule-classes :type-prescription)
@@ -958,7 +958,7 @@
 ; arena and the build's hash workspace released, in this one step.
 (defun fn2-seal-free-row (k r fn2-run-installed)
  (declare (xargs :stobjs fn2-run-installed :measure (nfix k) :guard (and (fn2-run-installed-wfp fn2-run-installed) (natp r))))
- (cond ((not (and (posp k) (natp r) (< r (fn2-run-installed-rows fn2-run-installed)))) (nfix (fn2-run-installed-rows fn2-run-installed)))
+ (cond ((not (and (posp k) (natp r) (and (< r (fn2-run-installed-rows fn2-run-installed)) (< r (fn2-run-installed-resident-limit fn2-run-installed))))) (nfix (fn2-run-installed-rows fn2-run-installed)))
        ((equal (fn2-run-installed-state r fn2-run-installed) *fn2-run-installed-state-free*) r)
        (t (fn2-seal-free-row (- k 1) (+ 1 r) fn2-run-installed))))
 (defthm fn2-seal-free-row-natp (natp (fn2-seal-free-row k r fn2-run-installed)) :rule-classes :type-prescription)
@@ -972,7 +972,7 @@
                                             fn2-seals-okind fn2-seals-oslot fn2-seals-ogen fn2-seals-sid fn2-seals-run fn2-seals-top
                                             fn2-seals-rslot fn2-seals-rgen fn2-seals-runit fn2-seals-rcounter fn2-seals-entries)))))
  (b* (((unless (< 0 (fn2-seals-rows fn2-seals))) (mv :bounds fn2-run-installed))
-      (rows (fn2-run-installed-rows fn2-run-installed))
+      (rows (fn2-run-installed-resident-limit fn2-run-installed))
       (r (fn2-seal-free-row rows 0 fn2-run-installed))
       ((unless (< r rows)) (mv :full fn2-run-installed))
       ((mv code fn2-run-installed)
@@ -1072,7 +1072,7 @@
 ; fn2-succ-resolve-step). With no retired row left the seal row is idle.
 (defun fn2-seal-retired-row (k r fn2-run-installed)
  (declare (xargs :stobjs fn2-run-installed :measure (nfix k) :guard (and (fn2-run-installed-wfp fn2-run-installed) (natp r))))
- (cond ((not (and (posp k) (natp r) (< r (fn2-run-installed-rows fn2-run-installed)))) (nfix (fn2-run-installed-rows fn2-run-installed)))
+ (cond ((not (and (posp k) (natp r) (and (< r (fn2-run-installed-rows fn2-run-installed)) (< r (fn2-run-installed-resident-limit fn2-run-installed))))) (nfix (fn2-run-installed-rows fn2-run-installed)))
        ((equal (fn2-run-installed-state r fn2-run-installed) *fn2-run-installed-state-retired*) r)
        (t (fn2-seal-retired-row (- k 1) (+ 1 r) fn2-run-installed))))
 (defthm fn2-seal-retired-row-natp (natp (fn2-seal-retired-row k r fn2-run-installed)) :rule-classes :type-prescription)
