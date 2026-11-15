@@ -134,6 +134,13 @@
      (let ((fn2-event-build (if (member-eq code '(:more :ok)) fn2-event-build
                                 (fn2-event-build-set-phase 0 *fn2-event-build-phase-uncertain* fn2-event-build))))
       (mv (if (member-eq code '(:more :ok)) :more :uncertain) fn2-event-build fn2-event-read fn2-journal-members fn2-mk fn2-fc fn2-fc-context fn2-b3 fn2-fields fn2-pool fn2-digests))))
+   ((and (equal read-phase *fn2-event-read-phase-members*)
+         (equal (fn2-event-read-witness-enabled 0 fn2-event-read) 1)
+         (equal (fn2-journal-members-phase 0 fn2-journal-members) *fn2-journal-members-phase-leaf*)
+         (equal (fn2-journal-members-hash-phase 0 fn2-journal-members) 3)
+         (not (equal (fn2-event-read-witness-staged-event 0 fn2-event-read)
+                     (fn2-journal-members-event 0 fn2-journal-members))))
+    (mv :archive-stage fn2-event-build fn2-event-read fn2-journal-members fn2-mk fn2-fc fn2-fc-context fn2-b3 fn2-fields fn2-pool fn2-digests))
    ((equal read-phase *fn2-event-read-phase-members*)
     (if (not (and (natp budget) (<= 4096 budget)))
         (mv :yield fn2-event-build fn2-event-read fn2-journal-members fn2-mk fn2-fc fn2-fc-context fn2-b3 fn2-fields fn2-pool fn2-digests)

@@ -12,7 +12,7 @@ def has(n,name):return bool(calls(n,name))
 def text(file,n):return source(file)[n.start:n.end]
 class ArchiveProducerSource(unittest.TestCase):
  def test_schema_is_internal_inline_and_uses_one_assembly(self):
-  n=form('event-archive-schema.lisp','defrunschema','fn2-event-archive-member')
+  n=lr.match('(defrunschema fn2-event-archive-member ?*body)',lr.parse(source('event-archive-schema.lisp')).forms)[0].node
   s=text('event-archive-schema.lisp',n)
   self.assertIn(':id 20 :internal t',s)
   self.assertIn('(canonical (:octets 4096))',s)

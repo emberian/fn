@@ -2,6 +2,7 @@
 ; their own concrete provenance and expected-seal derivation.
 (in-package "ACL2")
 (include-book "event-read-source")
+(include-book "event-read-witness")
 (fn2-book-layer :c)
 
 ; Decode only a bounded namespace hint from the retained seal-frame header.
@@ -144,6 +145,9 @@
                      (<= (+ base *fn2-format-sealed-batch-num-fields*) (fn2-fields-rows fn2-fields))
                      (posp budget) (<= budget 4096)))
        (mv :state fn2-event-read fn2-journal-members fn2-fc fn2-fc-context fn2-b3 fn2-fields fn2-pool fn2-digests))
+      ((when (member-equal phase (list *fn2-event-read-phase-witness-seal* *fn2-event-read-phase-witness-header*)))
+       (mv-let (code fn2-event-read fn2-pool) (fn2-event-read-witness-copy-step budget fn2-event-read fn2-pool)
+        (mv code fn2-event-read fn2-journal-members fn2-fc fn2-fc-context fn2-b3 fn2-fields fn2-pool fn2-digests)))
       ((when (member-equal phase (list *fn2-event-read-phase-seal-span* *fn2-event-read-phase-seal-tail*)))
        (mv-let (code fn2-event-read fn2-fields)
         (fn2-event-read-seal-span-step budget fn2-event-read fn2-fields fn2-pool)
@@ -185,8 +189,16 @@
             ((mv fetched fn2-digests)
              (if valid (fn2-rec-fetch 0 hash slot gen (fn2-fields-ref-off field fn2-fields) kind owner generation fn2-pool fn2-digests)
               (mv :seal fn2-digests)))
-            (fn2-event-read (fn2-event-read-set-phase 0
-              (if (eq fetched :ok) *fn2-event-read-phase-read-records* *fn2-event-read-phase-uncertain*) fn2-event-read)))
+            (capture (and (eq fetched :ok) (equal (fn2-event-read-witness-enabled 0 fn2-event-read) 1)))
+            (fn2-event-read (fn2-event-read-put 0
+             (phase (if (eq fetched :ok) (if capture *fn2-event-read-phase-witness-seal* *fn2-event-read-phase-read-records*)
+                       *fn2-event-read-phase-uncertain*))
+             (witness-phase (if capture *fn2-event-witness-phase-seal* (fn2-event-read-witness-phase 0 fn2-event-read)))
+             (witness-commit (if capture commit (fn2-event-read-witness-commit 0 fn2-event-read)))
+             (witness-first (if capture first (fn2-event-read-witness-first 0 fn2-event-read)))
+             (witness-members (if capture members (fn2-event-read-witness-members 0 fn2-event-read)))
+             (witness-seal-length (if capture (fn2-event-read-body-len 0 fn2-event-read) (fn2-event-read-witness-seal-length 0 fn2-event-read)))
+             (witness-cursor 0))))
         (mv fetched fn2-event-read fn2-journal-members fn2-fc fn2-fc-context fn2-b3 fn2-fields fn2-pool fn2-digests)))
       ; The physical verifier resets its own continuation at success. Decode
       ; the already authenticated header to recover exact body boundaries.
@@ -197,7 +209,14 @@
                          (if sealframe *frame-kind-seal* *frame-kind-records*))
                   (equal (fn2-fields-value (+ base *fn2-format-frame-header-field-ordinal*) fn2-fields) (if sealframe 1 0))
                   (equal (fn2-fields-value (+ base *fn2-format-frame-header-field-fragment-offset*) fn2-fields) 0)
-                  (or sealframe (fn2-digest-equal (fn2-digest-slot row *fn2-fc-result*) hash fn2-digests))))
+                  (or sealframe (fn2-digest-equal (fn2-digest-slot row *fn2-fc-result*) hash fn2-digests))
+                  (or sealframe (equal (fn2-event-read-witness-enabled 0 fn2-event-read) 0)
+                   (and (equal (fn2-event-read-witness-phase 0 fn2-event-read) *fn2-event-witness-phase-records*)
+                        (equal (fn2-event-read-witness-token 0 fn2-event-read) (fn2-event-read-token 0 fn2-event-read))
+                        (equal (fn2-event-read-witness-commit 0 fn2-event-read) commit)
+                        (equal (fn2-event-read-witness-first 0 fn2-event-read) (fn2-event-read-first 0 fn2-event-read))
+                        (equal (fn2-event-read-witness-members 0 fn2-event-read) (fn2-event-read-members 0 fn2-event-read))
+                        (posp (fn2-event-read-witness-seal-length 0 fn2-event-read))))))
       ((mv begun fn2-journal-members)
        (if (and valid (not sealframe))
            (fn2-journal-members-begin (fn2-event-read-first 0 fn2-event-read) (fn2-event-read-members 0 fn2-event-read)
@@ -205,7 +224,11 @@
          (mv (if valid :ok :frame) fn2-journal-members)))
       (fn2-event-read (fn2-event-read-put 0 (body-off off) (body-len payload)
        (seal-span-started 0) (seal-span-next 0) (seal-span-length 0)
-       (phase (if (eq begun :ok) (if sealframe *fn2-event-read-phase-seal-span* *fn2-event-read-phase-members*)
+       (witness-header-length (if (and (not sealframe) (equal (fn2-event-read-witness-enabled 0 fn2-event-read) 1)) off
+                               (fn2-event-read-witness-header-length 0 fn2-event-read)))
+       (witness-cursor 0)
+       (phase (if (eq begun :ok) (if sealframe *fn2-event-read-phase-seal-span*
+                 (if (equal (fn2-event-read-witness-enabled 0 fn2-event-read) 1) *fn2-event-read-phase-witness-header* *fn2-event-read-phase-members*))
                 *fn2-event-read-phase-uncertain*)))))
   (mv begun fn2-event-read fn2-journal-members fn2-fc fn2-fc-context fn2-b3 fn2-fields fn2-pool fn2-digests)))
 

@@ -57,6 +57,13 @@
        (value 1) (ref-slot page) (ref-gen pg) (ref-off 4096) (ref-len (- rend 4096))))
       (fn2-fields (fn2-fields-put (+ eb *fn2-event-archive-member-entry-field-leaf*)
        (value 1) (ref-slot scratch) (ref-gen sg) (ref-off 0) (ref-len 32)))
+      ; This boundary fixture exercises canonical leaf intake only. Empty
+      ; batch evidence is not an archive-prefix completion witness.
+      (fn2-fields (fn2-fields-set-value (+ eb *fn2-event-archive-member-entry-field-batch-first*) 1 fn2-fields))
+      (fn2-fields (fn2-fields-put (+ eb *fn2-event-archive-member-entry-field-original-records-header*)
+       (value 1) (ref-slot scratch) (ref-gen sg) (ref-off 0) (ref-len 0)))
+      (fn2-fields (fn2-fields-put (+ eb *fn2-event-archive-member-entry-field-original-sealed-batch*)
+       (value 1) (ref-slot scratch) (ref-gen sg) (ref-off 0) (ref-len 0)))
       ((mv encoded end fn2-pool) (fn2-event-archive-member-entry-encode eb page pg 8192 1 2 3 fn2-fields fn2-pool))
       ((mv decoded next fn2-fields) (fn2-event-archive-member-entry-decode eb page pg 8192 end 1 2 3 fn2-fields fn2-pool))
       (fn2-checkpoints (fn2-checkpoints-put 0 (state *fn2-checkpoint-state-checked*) (anchor-mask 1)

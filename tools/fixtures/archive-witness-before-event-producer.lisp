@@ -1,0 +1,260 @@
+; Unified bounded source operations for the actual checkpoint master.
+; STEP never issues physical I/O; READ is a separate :issue operation.
+(in-package "ACL2")
+(include-book "event-build")
+(include-book "checkpoint-lifecycle")
+(fn2-book-layer :c)
+
+(defun fn2-event-producer-ownerp (fn2-event-build fn2-csnapshot fn2-checkpoints)
+ (declare (xargs :stobjs (fn2-event-build fn2-csnapshot fn2-checkpoints) :verify-guards nil
+  :guard (and (fn2-event-build-wfp fn2-event-build) (fn2-csnapshot-wfp fn2-csnapshot) (fn2-checkpoints-wfp fn2-checkpoints))))
+ (and (< 0 (fn2-event-build-rows fn2-event-build))
+      (fn2-csnapshot-ownerp (fn2-event-build-token 0 fn2-event-build)
+       (fn2-event-build-owner-kind 0 fn2-event-build) (fn2-event-build-owner-slot 0 fn2-event-build)
+       (fn2-event-build-owner-gen 0 fn2-event-build) fn2-csnapshot)
+      (equal (fn2-csnapshot-phase 0 fn2-csnapshot) *fn2-csnapshot-phase-held*)
+      (equal (fn2-event-build-cut-commit 0 fn2-event-build) (fn2-csnapshot-cut-commit 0 fn2-csnapshot))
+      (equal (fn2-event-build-cut-event 0 fn2-event-build) (fn2-csnapshot-cut-event 0 fn2-csnapshot))
+      (fn2-checkpoint-builder-claimp (fn2-event-build-candidate 0 fn2-event-build) (fn2-event-build-token 0 fn2-event-build)
+       (fn2-event-build-owner-kind 0 fn2-event-build) (fn2-event-build-owner-slot 0 fn2-event-build)
+       (fn2-event-build-owner-gen 0 fn2-event-build) fn2-checkpoints)
+      (equal (fn2-event-build-history 0 fn2-event-build) (fn2-checkpoints-history (fn2-event-build-candidate 0 fn2-event-build) fn2-checkpoints))
+      (equal (fn2-event-build-history-incarnation 0 fn2-event-build) (fn2-checkpoints-incarnation (fn2-event-build-candidate 0 fn2-event-build) fn2-checkpoints))))
+
+(defun fn2-event-producer-begin (token okind oslot ogen slot gen scratch sgen read-slot read-gen
+                                fn2-event-build fn2-event-read fn2-checkpoint-build fn2-csnapshot fn2-checkpoints
+                                fn2-mk fn2-fc fn2-digests fn2-pool)
+ (declare (xargs :stobjs (fn2-event-build fn2-event-read fn2-checkpoint-build fn2-csnapshot fn2-checkpoints
+                          fn2-mk fn2-fc fn2-digests fn2-pool) :verify-guards nil
+  :guard (and (fn2-event-build-wfp fn2-event-build) (fn2-event-read-wfp fn2-event-read) (fn2-checkpoint-build-wfp fn2-checkpoint-build) (fn2-csnapshot-wfp fn2-csnapshot) (fn2-checkpoints-wfp fn2-checkpoints) (fn2-mk-wfp fn2-mk) (fn2-fc-wfp fn2-fc) (fn2-digests-wfp fn2-digests) (fn2-pool-wfp fn2-pool))))
+ (b* (((unless (and (< 0 (fn2-event-build-rows fn2-event-build)) (< 0 (fn2-event-read-rows fn2-event-read))
+                     (< 0 (fn2-checkpoint-build-rows fn2-checkpoint-build))
+                     (equal (fn2-event-build-phase 0 fn2-event-build) *fn2-event-build-phase-idle*)
+                     (equal (fn2-event-read-phase 0 fn2-event-read) *fn2-event-read-phase-idle*)
+                     (equal (fn2-event-read-pending 0 fn2-event-read) 0)
+                     (if (< 0 (fn2-csnapshot-cut-commit 0 fn2-csnapshot))
+                         (< 0 (fn2-csnapshot-cut-event 0 fn2-csnapshot))
+                       (equal (fn2-csnapshot-cut-event 0 fn2-csnapshot) 0))
+                     (equal (fn2-checkpoint-build-phase 0 fn2-checkpoint-build) *fn2-checkpoint-build-phase-await-roots*)
+                     (fn2-checkpoint-build-ownerp token okind oslot ogen fn2-checkpoint-build fn2-csnapshot)))
+       (mv :source fn2-event-build fn2-mk))
+      (c (fn2-checkpoint-build-candidate 0 fn2-checkpoint-build))
+      (row (fn2-b-event-row (fn2-fc-rows fn2-fc))))
+  (if (not (and (fn2-checkpoint-builder-ownerp c token okind oslot ogen fn2-checkpoints)
+                     (fn2-origin-physicalp (fn2-checkpoints-history c fn2-checkpoints) (fn2-checkpoints-incarnation c fn2-checkpoints))
+                 (fn2-mk-ready row fn2-mk fn2-digests) (< row (fn2-fc-rows fn2-fc))
+                 (equal (fn2-fc-phase row fn2-fc) *fn2-fc-phase-idle*)
+                 (unsigned-byte-p 32 slot) (unsigned-byte-p 60 gen) (unsigned-byte-p 32 scratch) (unsigned-byte-p 60 sgen)
+                 (unsigned-byte-p 32 read-slot) (unsigned-byte-p 60 read-gen)
+                 (not (equal slot scratch)) (not (equal slot read-slot)) (not (equal scratch read-slot))
+                 (eq (fn2-pool-workspace-code slot gen okind oslot ogen fn2-pool) :ok)
+                 (eq (fn2-pool-workspace-code scratch sgen okind oslot ogen fn2-pool) :ok)
+                 (eq (fn2-pool-workspace-code read-slot read-gen okind oslot ogen fn2-pool) :ok)
+                 (<= *fn2-format-page-size* (fn2-pool-cap slot fn2-pool)) (<= 160 (fn2-pool-cap scratch fn2-pool))
+                 (<= 4096 (fn2-pool-cap read-slot fn2-pool))))
+      (mv :bounds fn2-event-build fn2-mk)
+   (let* ((cut (fn2-csnapshot-cut-commit 0 fn2-csnapshot))
+          (fn2-mk (fn2-mk-init row fn2-mk))
+          (fn2-event-build (fn2-event-build-put 0
+           (phase (if (equal cut 0) *fn2-event-build-phase-auth-ready* *fn2-event-build-phase-auth-zero*))
+           (token token) (owner-kind okind) (owner-slot oslot) (owner-gen ogen) (candidate c)
+           (cut-commit cut) (cut-event (fn2-csnapshot-cut-event 0 fn2-csnapshot))
+           (slot slot) (gen gen) (scratch scratch) (scratch-gen sgen) (read-slot read-slot) (read-gen read-gen) (zero 0) (ordinal 0) (history (fn2-checkpoints-history c fn2-checkpoints)) (history-incarnation (fn2-checkpoints-incarnation c fn2-checkpoints)))))
+    (mv :ok fn2-event-build fn2-mk)))))
+
+(defun fn2-event-producer-read-boundp (fn2-event-build fn2-event-read)
+ (declare (xargs :stobjs (fn2-event-build fn2-event-read) :verify-guards nil
+  :guard (and (fn2-event-build-wfp fn2-event-build) (fn2-event-read-wfp fn2-event-read))))
+ (and (< 0 (fn2-event-build-rows fn2-event-build)) (< 0 (fn2-event-read-rows fn2-event-read))
+      (equal (fn2-event-read-token 0 fn2-event-read) (fn2-event-build-token 0 fn2-event-build))
+      (equal (fn2-event-read-owner-kind 0 fn2-event-read) (fn2-event-build-owner-kind 0 fn2-event-build))
+      (equal (fn2-event-read-owner-slot 0 fn2-event-read) (fn2-event-build-owner-slot 0 fn2-event-build))
+      (equal (fn2-event-read-owner-gen 0 fn2-event-read) (fn2-event-build-owner-gen 0 fn2-event-build))
+      (equal (fn2-event-read-history 0 fn2-event-read) (fn2-event-build-history 0 fn2-event-build))
+      (equal (fn2-event-read-history-incarnation 0 fn2-event-read) (fn2-event-build-history-incarnation 0 fn2-event-build))
+      (equal (fn2-event-read-cut-commit 0 fn2-event-read) (fn2-event-build-cut-commit 0 fn2-event-build))
+      (equal (fn2-event-read-cut-event 0 fn2-event-read) (fn2-event-build-cut-event 0 fn2-event-build))
+      (equal (fn2-event-read-slot 0 fn2-event-read) (fn2-event-build-read-slot 0 fn2-event-build))
+      (equal (fn2-event-read-gen 0 fn2-event-read) (fn2-event-build-read-gen 0 fn2-event-build))
+      (equal (fn2-event-read-commit 0 fn2-event-read) (+ 1 (fn2-event-build-ordinal 0 fn2-event-build)))))
+
+(defun fn2-event-producer-auth-step (budget fn2-event-build fn2-event-read fn2-csnapshot fn2-commit-root fn2-extents fn2-alloc-edges fn2-journal-members
+                                    fn2-mk fn2-fc fn2-fc-context fn2-b3 fn2-fields fn2-pool fn2-checkpoint-build fn2-digests fn2-checkpoint-summary-authority fn2-checkpoints fn2-checkpoint-refs fn2-checkpoint-bytes fn2-checkpoint-restore-events fn2-checkpoint-restore-events-work fn2-ops)
+ (declare (xargs :stobjs (fn2-event-build fn2-event-read fn2-csnapshot fn2-commit-root fn2-extents fn2-alloc-edges fn2-journal-members
+                          fn2-mk fn2-fc fn2-fc-context fn2-b3 fn2-fields fn2-pool fn2-checkpoint-build fn2-digests fn2-checkpoint-summary-authority fn2-checkpoints fn2-checkpoint-refs fn2-checkpoint-bytes fn2-checkpoint-restore-events fn2-checkpoint-restore-events-work fn2-ops) :verify-guards nil
+  :guard (and (fn2-event-build-wfp fn2-event-build) (fn2-event-read-wfp fn2-event-read) (fn2-csnapshot-wfp fn2-csnapshot) (fn2-commit-root-wfp fn2-commit-root) (fn2-extents-wfp fn2-extents) (fn2-alloc-edges-wfp fn2-alloc-edges) (fn2-journal-members-wfp fn2-journal-members) (fn2-mk-wfp fn2-mk) (fn2-fc-wfp fn2-fc) (fn2-fc-context-wfp fn2-fc-context) (fn2-b3-wfp fn2-b3) (fn2-fields-wfp fn2-fields) (fn2-pool-wfp fn2-pool) (fn2-digests-wfp fn2-digests) (fn2-checkpoint-build-wfp fn2-checkpoint-build) (fn2-checkpoint-summary-authority-wfp fn2-checkpoint-summary-authority) (fn2-checkpoints-wfp fn2-checkpoints) (fn2-checkpoint-refs-wfp fn2-checkpoint-refs) (fn2-checkpoint-bytes-wfp fn2-checkpoint-bytes) (fn2-checkpoint-restore-events-wfp fn2-checkpoint-restore-events) (fn2-checkpoint-restore-events-work-wfp fn2-checkpoint-restore-events-work) (fn2-ops-wfp fn2-ops))))
+ (b* (((unless (and (< 0 (fn2-event-build-rows fn2-event-build)) (< 0 (fn2-event-read-rows fn2-event-read))))
+       (mv :uncertain fn2-event-build fn2-event-read fn2-journal-members fn2-mk fn2-fc fn2-fc-context fn2-b3 fn2-fields fn2-pool fn2-digests))
+      (phase (fn2-event-build-phase 0 fn2-event-build))
+      ((when (equal phase *fn2-event-build-phase-auth-zero*))
+       (b* ((at (fn2-event-build-zero 0 fn2-event-build))
+            ((unless (posp budget))
+             (mv :yield fn2-event-build fn2-event-read fn2-journal-members fn2-mk fn2-fc fn2-fc-context fn2-b3 fn2-fields fn2-pool fn2-digests))
+            ((unless (< at *fn2-format-page-size*))
+             (let ((fn2-event-build (fn2-event-build-set-phase 0 *fn2-event-build-phase-uncertain* fn2-event-build)))
+              (mv :uncertain fn2-event-build fn2-event-read fn2-journal-members fn2-mk fn2-fc fn2-fc-context fn2-b3 fn2-fields fn2-pool fn2-digests)))
+            (n (min 4096 (min budget (- *fn2-format-page-size* at))))
+            ((mv code fn2-pool) (fn2-run-zero n (fn2-event-build-slot 0 fn2-event-build) (fn2-event-build-gen 0 fn2-event-build) at
+               (fn2-event-build-owner-kind 0 fn2-event-build) (fn2-event-build-owner-slot 0 fn2-event-build)
+               (fn2-event-build-owner-gen 0 fn2-event-build) fn2-pool))
+            (fn2-event-build (fn2-event-build-put 0 (zero (if (eq code :ok) (+ at n) at))
+              (phase (if (eq code :ok) (if (equal (+ at n) *fn2-format-page-size*) *fn2-event-build-phase-auth-open* phase)
+                       *fn2-event-build-phase-uncertain*)))))
+        (mv (if (eq code :ok) :more :uncertain) fn2-event-build fn2-event-read fn2-journal-members fn2-mk fn2-fc fn2-fc-context fn2-b3 fn2-fields fn2-pool fn2-digests)))
+      ((when (equal phase *fn2-event-build-phase-auth-open*))
+       (b* (((unless (and (natp budget) (<= (+ 32 *fn2-event-proof-entry-max-size*) budget)))
+             (mv :yield fn2-event-build fn2-event-read fn2-journal-members fn2-mk fn2-fc fn2-fc-context fn2-b3 fn2-fields fn2-pool fn2-digests))
+            (ordinal (fn2-event-build-ordinal 0 fn2-event-build))
+            ((mv code fn2-event-read fn2-mk fn2-fields fn2-pool)
+             (fn2-event-read-open (fn2-event-build-token 0 fn2-event-build) ordinal
+              (fn2-event-build-read-slot 0 fn2-event-build) (fn2-event-build-read-gen 0 fn2-event-build)
+              (fn2-event-build-slot 0 fn2-event-build) (fn2-event-build-gen 0 fn2-event-build)
+              (+ *fn2-checkpoint-map-entries-start* (* (mod ordinal *fn2-event-proof-slots*) *fn2-event-proof-entry-width*))
+              (fn2-event-build-scratch 0 fn2-event-build) (fn2-event-build-scratch-gen 0 fn2-event-build)
+              (fn2-event-build-owner-kind 0 fn2-event-build) (fn2-event-build-owner-slot 0 fn2-event-build)
+              (fn2-event-build-owner-gen 0 fn2-event-build) fn2-event-read fn2-csnapshot fn2-commit-root
+              fn2-extents fn2-alloc-edges fn2-fc fn2-digests fn2-mk fn2-fields fn2-checkpoint-build fn2-pool fn2-checkpoint-summary-authority fn2-checkpoints fn2-checkpoint-refs fn2-checkpoint-bytes fn2-checkpoint-restore-events fn2-checkpoint-restore-events-work fn2-ops))
+            (fn2-event-build (fn2-event-build-set-phase 0
+               (if (eq code :ok) *fn2-event-build-phase-auth* *fn2-event-build-phase-uncertain*) fn2-event-build)))
+        (mv (if (eq code :ok) :need-read :uncertain) fn2-event-build fn2-event-read fn2-journal-members fn2-mk fn2-fc fn2-fc-context fn2-b3 fn2-fields fn2-pool fn2-digests)))
+      ((unless (and (equal phase *fn2-event-build-phase-auth*) (fn2-event-producer-read-boundp fn2-event-build fn2-event-read)))
+       (let ((fn2-event-build (fn2-event-build-set-phase 0 *fn2-event-build-phase-uncertain* fn2-event-build)))
+        (mv :uncertain fn2-event-build fn2-event-read fn2-journal-members fn2-mk fn2-fc fn2-fc-context fn2-b3 fn2-fields fn2-pool fn2-digests)))
+      (read-phase (fn2-event-read-phase 0 fn2-event-read)))
+  (cond
+   ((member-equal read-phase (list *fn2-event-read-phase-read-seal* *fn2-event-read-phase-read-records*))
+    (mv :need-read fn2-event-build fn2-event-read fn2-journal-members fn2-mk fn2-fc fn2-fc-context fn2-b3 fn2-fields fn2-pool fn2-digests))
+   ((member-equal read-phase (list *fn2-event-read-phase-wait-seal* *fn2-event-read-phase-wait-records*))
+    (mv :wait fn2-event-build fn2-event-read fn2-journal-members fn2-mk fn2-fc fn2-fc-context fn2-b3 fn2-fields fn2-pool fn2-digests))
+   ((and (not (posp budget)) (fn2-event-read-format-phase-p read-phase))
+    (mv :yield fn2-event-build fn2-event-read fn2-journal-members fn2-mk fn2-fc fn2-fc-context fn2-b3 fn2-fields fn2-pool fn2-digests))
+   ((fn2-event-read-format-phase-p read-phase)
+    (mv-let (code fn2-event-read fn2-journal-members fn2-fc fn2-fc-context fn2-b3 fn2-fields fn2-pool fn2-digests)
+     (fn2-event-read-format-step budget fn2-event-read fn2-csnapshot fn2-commit-root fn2-journal-members fn2-fc fn2-fc-context fn2-b3 fn2-fields fn2-pool fn2-digests fn2-checkpoint-summary-authority fn2-checkpoints fn2-checkpoint-refs fn2-checkpoint-bytes fn2-checkpoint-restore-events fn2-checkpoint-restore-events-work fn2-ops fn2-extents fn2-alloc-edges)
+     (let ((fn2-event-build (if (member-eq code '(:more :ok)) fn2-event-build
+                                (fn2-event-build-set-phase 0 *fn2-event-build-phase-uncertain* fn2-event-build))))
+      (mv (if (member-eq code '(:more :ok)) :more :uncertain) fn2-event-build fn2-event-read fn2-journal-members fn2-mk fn2-fc fn2-fc-context fn2-b3 fn2-fields fn2-pool fn2-digests))))
+   ((equal read-phase *fn2-event-read-phase-members*)
+    (if (not (and (natp budget) (<= 4096 budget)))
+        (mv :yield fn2-event-build fn2-event-read fn2-journal-members fn2-mk fn2-fc fn2-fc-context fn2-b3 fn2-fields fn2-pool fn2-digests)
+     (mv-let (code fn2-event-read fn2-journal-members fn2-mk fn2-b3 fn2-fields fn2-digests)
+      (fn2-event-read-member-step fn2-event-read fn2-csnapshot fn2-journal-members fn2-mk fn2-b3 fn2-fields fn2-pool fn2-digests)
+      (let ((fn2-event-build
+             (cond ((eq code :more) fn2-event-build)
+                   ((eq code :next) (fn2-event-build-put 0 (phase *fn2-event-build-phase-auth-open*)
+                                     (ordinal (fn2-event-read-commit 0 fn2-event-read))))
+                   ((eq code :complete) (fn2-event-build-set-phase 0 *fn2-event-build-phase-auth-ready* fn2-event-build))
+                   (t (fn2-event-build-set-phase 0 *fn2-event-build-phase-uncertain* fn2-event-build)))))
+       (mv (if (member-eq code '(:more :next :complete)) :more :uncertain) fn2-event-build fn2-event-read fn2-journal-members fn2-mk fn2-fc fn2-fc-context fn2-b3 fn2-fields fn2-pool fn2-digests)))))
+   (t (let ((fn2-event-build (fn2-event-build-set-phase 0 *fn2-event-build-phase-uncertain* fn2-event-build)))
+       (mv :uncertain fn2-event-build fn2-event-read fn2-journal-members fn2-mk fn2-fc fn2-fc-context fn2-b3 fn2-fields fn2-pool fn2-digests))))))
+
+(defun fn2-event-producer-roots-p (role c token pages fn2-checkpoint-refs)
+ (declare (xargs :stobjs fn2-checkpoint-refs :verify-guards nil :measure (nfix (- 5 (nfix role)))
+  :guard (and (fn2-checkpoint-refs-wfp fn2-checkpoint-refs))))
+ (if (not (member-equal role '(3 4))) (equal role 5)
+  (let ((r (+ (* 6 c) role)) (bytes (if (equal role 3) (* pages *fn2-format-page-size*) *fn2-format-page-size*)))
+   (and (natp c) (natp r) (< r (fn2-checkpoint-refs-rows fn2-checkpoint-refs))
+        (posp bytes) (unsigned-byte-p 60 bytes)
+        (equal (fn2-checkpoint-refs-root-build-token r fn2-checkpoint-refs) token)
+        (equal (fn2-checkpoint-refs-root-source-complete r fn2-checkpoint-refs) 1)
+        (equal (fn2-checkpoint-refs-storage-domain r fn2-checkpoint-refs) *fn2-checkpoint-served-storage-domain*)
+        (equal (mod (fn2-checkpoint-refs-physical-unit r fn2-checkpoint-refs) *fn2-storage-extent-units*) 0)
+        (equal (fn2-checkpoint-refs-page-kind r fn2-checkpoint-refs) (if (equal role 3) *page-kind-manifest* *page-kind-merkle-node*))
+        (equal (fn2-checkpoint-refs-encoded-length r fn2-checkpoint-refs) *fn2-format-page-size*)
+        (equal (fn2-checkpoint-refs-root-intended-bytes r fn2-checkpoint-refs) bytes)
+        (equal (fn2-checkpoint-refs-root-completed-bytes r fn2-checkpoint-refs) bytes)
+        (fn2-event-producer-roots-p (+ role 1) c token pages fn2-checkpoint-refs)))))
+
+(defun fn2-event-producer-issue (fn2-event-build fn2-event-read fn2-csnapshot fn2-checkpoints fn2-extents fn2-alloc-edges fn2-pool fn2-ops fn2-control fn2-checkpoint-summary-authority fn2-checkpoint-refs fn2-checkpoint-bytes fn2-checkpoint-restore-events fn2-checkpoint-restore-events-work fn2-commit-root)
+ (declare (xargs :stobjs (fn2-event-build fn2-event-read fn2-csnapshot fn2-checkpoints fn2-extents fn2-alloc-edges fn2-pool fn2-ops fn2-control fn2-checkpoint-summary-authority fn2-checkpoint-refs fn2-checkpoint-bytes fn2-checkpoint-restore-events fn2-checkpoint-restore-events-work fn2-commit-root) :verify-guards nil
+  :guard (and (fn2-event-build-wfp fn2-event-build) (fn2-event-read-wfp fn2-event-read) (fn2-csnapshot-wfp fn2-csnapshot) (fn2-checkpoints-wfp fn2-checkpoints) (fn2-extents-wfp fn2-extents) (fn2-alloc-edges-wfp fn2-alloc-edges) (fn2-pool-wfp fn2-pool) (fn2-ops-wfp fn2-ops) (fn2-control-wfp fn2-control) (fn2-checkpoint-summary-authority-wfp fn2-checkpoint-summary-authority) (fn2-checkpoint-refs-wfp fn2-checkpoint-refs) (fn2-checkpoint-bytes-wfp fn2-checkpoint-bytes) (fn2-checkpoint-restore-events-wfp fn2-checkpoint-restore-events) (fn2-checkpoint-restore-events-work-wfp fn2-checkpoint-restore-events-work) (fn2-commit-root-wfp fn2-commit-root))))
+ (b* (((unless (and (fn2-event-producer-ownerp fn2-event-build fn2-csnapshot fn2-checkpoints)
+                     (equal (fn2-event-build-phase 0 fn2-event-build) *fn2-event-build-phase-auth*)
+                     (fn2-event-producer-read-boundp fn2-event-build fn2-event-read)
+                     (fn2-checkpoint-builder-ownerp (fn2-event-build-candidate 0 fn2-event-build) (fn2-event-build-token 0 fn2-event-build)
+                       (fn2-event-build-owner-kind 0 fn2-event-build) (fn2-event-build-owner-slot 0 fn2-event-build)
+                       (fn2-event-build-owner-gen 0 fn2-event-build) fn2-checkpoints)))
+       (mv :uncertain 0 0 fn2-event-build fn2-event-read fn2-extents fn2-alloc-edges fn2-pool fn2-ops fn2-control))
+      ((mv code fn2-event-read fn2-extents fn2-alloc-edges fn2-pool fn2-ops fn2-control)
+       (fn2-event-read-issue fn2-event-read fn2-csnapshot fn2-extents fn2-alloc-edges fn2-pool fn2-ops fn2-control fn2-checkpoint-summary-authority fn2-checkpoints fn2-checkpoint-refs fn2-checkpoint-bytes fn2-checkpoint-restore-events fn2-checkpoint-restore-events-work fn2-commit-root))
+      (fn2-event-build (if (member-eq code '(:ok :exhausted)) fn2-event-build
+                           (fn2-event-build-set-phase 0 *fn2-event-build-phase-uncertain* fn2-event-build))))
+  (mv (if (member-eq code '(:ok :exhausted)) code :uncertain)
+      (if (eq code :ok) (fn2-event-read-op-slot 0 fn2-event-read) 0)
+      (if (eq code :ok) (fn2-event-read-op-gen 0 fn2-event-read) 0)
+      fn2-event-build fn2-event-read fn2-extents fn2-alloc-edges fn2-pool fn2-ops fn2-control)))
+
+(defun fn2-event-producer-donep (fn2-event-build fn2-event-read fn2-csnapshot fn2-checkpoints fn2-checkpoint-refs fn2-mk fn2-fc fn2-digests)
+ (declare (xargs :stobjs (fn2-event-build fn2-event-read fn2-csnapshot fn2-checkpoints fn2-checkpoint-refs fn2-mk fn2-fc fn2-digests) :verify-guards nil
+  :guard (and (fn2-event-build-wfp fn2-event-build) (fn2-event-read-wfp fn2-event-read) (fn2-csnapshot-wfp fn2-csnapshot) (fn2-checkpoints-wfp fn2-checkpoints) (fn2-checkpoint-refs-wfp fn2-checkpoint-refs) (fn2-mk-wfp fn2-mk) (fn2-fc-wfp fn2-fc) (fn2-digests-wfp fn2-digests))))
+ (and (fn2-event-producer-ownerp fn2-event-build fn2-csnapshot fn2-checkpoints)
+      (equal (fn2-event-build-phase 0 fn2-event-build) *fn2-event-build-phase-done*)
+      (equal (fn2-event-build-claimed 0 fn2-event-build) (fn2-event-build-cut-commit 0 fn2-event-build))
+      (equal (fn2-event-build-pages 0 fn2-event-build) (fn2-checkpoint-map-page-count (fn2-event-build-cut-commit 0 fn2-event-build) *fn2-event-proof-slots*))
+      (equal (fn2-event-build-directory-completed 0 fn2-event-build) (* (fn2-event-build-pages 0 fn2-event-build) *fn2-format-page-size*))
+      (equal (fn2-event-build-frontier-completed 0 fn2-event-build) *fn2-format-page-size*)
+      (fn2-event-frontier-source-p (fn2-event-build-token 0 fn2-event-build)
+       (fn2-event-build-owner-kind 0 fn2-event-build) (fn2-event-build-owner-slot 0 fn2-event-build)
+       (fn2-event-build-owner-gen 0 fn2-event-build) fn2-event-read fn2-csnapshot fn2-mk fn2-fc fn2-digests)
+      (fn2-event-producer-roots-p 3 (fn2-event-build-candidate 0 fn2-event-build)
+       (fn2-event-build-token 0 fn2-event-build) (fn2-event-build-pages 0 fn2-event-build) fn2-checkpoint-refs)))
+
+(defun fn2-event-producer-step (budget fn2-event-build fn2-event-read fn2-csnapshot fn2-checkpoints fn2-commit-root
+ fn2-checkpoint-refs fn2-checkpoint-bytes fn2-checkpoint-construction fn2-extents fn2-alloc-edges fn2-ops
+ fn2-checkpoint-page-verified fn2-journal-members fn2-mk fn2-fc fn2-fc-context fn2-b3 fn2-fields fn2-pool fn2-digests fn2-checkpoint-build fn2-control fn2-checkpoint-summary-authority fn2-checkpoint-restore-events fn2-checkpoint-restore-events-work)
+ (declare (xargs :stobjs (fn2-event-build fn2-event-read fn2-csnapshot fn2-checkpoints fn2-commit-root fn2-checkpoint-refs fn2-checkpoint-bytes fn2-checkpoint-construction fn2-extents fn2-alloc-edges fn2-ops fn2-checkpoint-page-verified fn2-journal-members fn2-mk fn2-fc fn2-fc-context fn2-b3 fn2-fields fn2-pool fn2-digests fn2-checkpoint-build fn2-control fn2-checkpoint-summary-authority fn2-checkpoint-restore-events fn2-checkpoint-restore-events-work) :verify-guards nil
+  :guard (and (fn2-event-build-wfp fn2-event-build) (fn2-event-read-wfp fn2-event-read) (fn2-csnapshot-wfp fn2-csnapshot) (fn2-checkpoints-wfp fn2-checkpoints) (fn2-commit-root-wfp fn2-commit-root) (fn2-checkpoint-refs-wfp fn2-checkpoint-refs) (fn2-checkpoint-bytes-wfp fn2-checkpoint-bytes) (fn2-checkpoint-construction-wfp fn2-checkpoint-construction) (fn2-extents-wfp fn2-extents) (fn2-alloc-edges-wfp fn2-alloc-edges) (fn2-ops-wfp fn2-ops) (fn2-checkpoint-page-verified-wfp fn2-checkpoint-page-verified) (fn2-journal-members-wfp fn2-journal-members) (fn2-mk-wfp fn2-mk) (fn2-fc-wfp fn2-fc) (fn2-fc-context-wfp fn2-fc-context) (fn2-b3-wfp fn2-b3) (fn2-fields-wfp fn2-fields) (fn2-pool-wfp fn2-pool) (fn2-digests-wfp fn2-digests) (fn2-control-wfp fn2-control) (fn2-checkpoint-build-wfp fn2-checkpoint-build) (fn2-checkpoint-summary-authority-wfp fn2-checkpoint-summary-authority) (fn2-checkpoint-restore-events-wfp fn2-checkpoint-restore-events) (fn2-checkpoint-restore-events-work-wfp fn2-checkpoint-restore-events-work))))
+ (b* (((unless (and (fn2-event-producer-ownerp fn2-event-build fn2-csnapshot fn2-checkpoints)
+                     (equal (fn2-control-stop fn2-control) 0)))
+       (mv :uncertain fn2-event-build fn2-event-read fn2-journal-members fn2-mk fn2-fc fn2-fc-context fn2-b3 fn2-checkpoint-construction fn2-extents fn2-alloc-edges fn2-fields fn2-pool fn2-digests fn2-control))
+      (phase (fn2-event-build-phase 0 fn2-event-build))
+      (budget (min 4096 (nfix budget)))
+      ((when (equal phase *fn2-event-build-phase-done*))
+       (mv (if (fn2-event-producer-donep fn2-event-build fn2-event-read fn2-csnapshot fn2-checkpoints fn2-checkpoint-refs fn2-mk fn2-fc fn2-digests) :done :uncertain) fn2-event-build fn2-event-read fn2-journal-members fn2-mk fn2-fc fn2-fc-context fn2-b3 fn2-checkpoint-construction fn2-extents fn2-alloc-edges fn2-fields fn2-pool fn2-digests fn2-control))
+      ((unless (fn2-event-build-ownerp fn2-event-build fn2-csnapshot fn2-checkpoints))
+       (mv :uncertain fn2-event-build fn2-event-read fn2-journal-members fn2-mk fn2-fc fn2-fc-context fn2-b3 fn2-checkpoint-construction fn2-extents fn2-alloc-edges fn2-fields fn2-pool fn2-digests fn2-control)))
+  (cond
+   ((member-equal phase (list *fn2-event-build-phase-auth-zero* *fn2-event-build-phase-auth-open* *fn2-event-build-phase-auth*))
+    (mv-let (code fn2-event-build fn2-event-read fn2-journal-members fn2-mk fn2-fc fn2-fc-context fn2-b3 fn2-fields fn2-pool fn2-digests)
+     (fn2-event-producer-auth-step budget fn2-event-build fn2-event-read fn2-csnapshot fn2-commit-root fn2-extents fn2-alloc-edges fn2-journal-members
+      fn2-mk fn2-fc fn2-fc-context fn2-b3 fn2-fields fn2-pool fn2-checkpoint-build fn2-digests fn2-checkpoint-summary-authority fn2-checkpoints fn2-checkpoint-refs fn2-checkpoint-bytes fn2-checkpoint-restore-events fn2-checkpoint-restore-events-work fn2-ops)
+     (mv code fn2-event-build fn2-event-read fn2-journal-members fn2-mk fn2-fc fn2-fc-context fn2-b3 fn2-checkpoint-construction fn2-extents fn2-alloc-edges fn2-fields fn2-pool fn2-digests fn2-control)))
+   ((equal phase *fn2-event-build-phase-auth-ready*)
+    (mv-let (code fn2-event-build)
+     (fn2-event-build-begin (fn2-event-build-candidate 0 fn2-event-build) (fn2-event-build-token 0 fn2-event-build)
+      (fn2-event-build-slot 0 fn2-event-build) (fn2-event-build-gen 0 fn2-event-build)
+      (fn2-event-build-scratch 0 fn2-event-build) (fn2-event-build-scratch-gen 0 fn2-event-build)
+      (fn2-event-build-owner-kind 0 fn2-event-build) (fn2-event-build-owner-slot 0 fn2-event-build)
+      (fn2-event-build-owner-gen 0 fn2-event-build) fn2-event-build fn2-event-read fn2-csnapshot fn2-checkpoints
+      fn2-checkpoint-refs fn2-checkpoint-bytes fn2-mk fn2-fc fn2-digests fn2-pool)
+     (let ((fn2-event-build (if (eq code :ok) fn2-event-build
+                              (fn2-event-build-set-phase 0 *fn2-event-build-phase-uncertain* fn2-event-build))))
+      (mv (if (eq code :ok) :more :uncertain) fn2-event-build fn2-event-read fn2-journal-members fn2-mk fn2-fc fn2-fc-context fn2-b3 fn2-checkpoint-construction fn2-extents fn2-alloc-edges fn2-fields fn2-pool fn2-digests fn2-control))))
+   (t (mv-let (code fn2-event-build fn2-checkpoint-construction fn2-extents fn2-alloc-edges fn2-fields fn2-pool fn2-control)
+       (fn2-event-build-source-step budget fn2-event-build fn2-event-read fn2-csnapshot fn2-checkpoints fn2-commit-root fn2-checkpoint-refs
+        fn2-checkpoint-construction fn2-extents fn2-alloc-edges fn2-ops fn2-checkpoint-page-verified fn2-mk fn2-fc fn2-digests fn2-fields fn2-pool fn2-control fn2-checkpoint-summary-authority fn2-checkpoint-bytes fn2-checkpoint-restore-events fn2-checkpoint-restore-events-work)
+       (mv (if (eq code :done) (if (fn2-event-producer-donep fn2-event-build fn2-event-read fn2-csnapshot fn2-checkpoints fn2-checkpoint-refs fn2-mk fn2-fc fn2-digests) :done :uncertain) code) fn2-event-build fn2-event-read fn2-journal-members fn2-mk fn2-fc fn2-fc-context fn2-b3 fn2-checkpoint-construction fn2-extents fn2-alloc-edges fn2-fields fn2-pool fn2-digests fn2-control))))))
+
+(fn2-event-build-preserves fn2-event-producer-begin
+ (token okind oslot ogen slot gen scratch sgen read-slot read-gen
+                                fn2-event-build fn2-event-read fn2-checkpoint-build fn2-csnapshot fn2-checkpoints
+                                fn2-mk fn2-fc fn2-digests fn2-pool)
+ :carriers ((fn2-event-build 1 :prefix "-EVENT-BUILD") (fn2-mk 2 :prefix "-MK")))
+
+(fn2-event-build-preserves fn2-event-producer-auth-step
+ (budget fn2-event-build fn2-event-read fn2-csnapshot fn2-commit-root fn2-extents fn2-alloc-edges fn2-journal-members
+                                    fn2-mk fn2-fc fn2-fc-context fn2-b3 fn2-fields fn2-pool fn2-checkpoint-build fn2-digests fn2-checkpoint-summary-authority fn2-checkpoints fn2-checkpoint-refs fn2-checkpoint-bytes fn2-checkpoint-restore-events fn2-checkpoint-restore-events-work fn2-ops)
+ :carriers ((fn2-event-build 1 :prefix "-EVENT-BUILD") (fn2-event-read 2 :prefix "-EVENT-READ") (fn2-journal-members 3 :prefix "-JOURNAL-MEMBERS") (fn2-mk 4 :prefix "-MK") (fn2-fc 5 :prefix "-FC") (fn2-fc-context 6 :prefix "-FC-CONTEXT") (fn2-b3 7 :prefix "-B3") (fn2-fields 8 :prefix "-FIELDS") (fn2-pool 9 :prefix "-POOL") (fn2-digests 10 :prefix "-DIGESTS"))
+ :hyps ((fn2-event-buildp fn2-event-build) (fn2-event-build-wfp fn2-event-build) (fn2-event-readp fn2-event-read) (fn2-event-read-wfp fn2-event-read) (fn2-journal-membersp fn2-journal-members) (fn2-journal-members-wfp fn2-journal-members) (fn2-mkp fn2-mk) (fn2-mk-wfp fn2-mk) (fn2-fcp fn2-fc) (fn2-fc-wfp fn2-fc) (fn2-fc-contextp fn2-fc-context) (fn2-fc-context-wfp fn2-fc-context) (fn2-b3p fn2-b3) (fn2-b3-wfp fn2-b3) (fn2-fieldsp fn2-fields) (fn2-fields-wfp fn2-fields) (fn2-poolp fn2-pool) (fn2-pool-wfp fn2-pool) (fn2-digestsp fn2-digests) (fn2-digests-wfp fn2-digests) (fn2-checkpoint-buildp fn2-checkpoint-build) (fn2-checkpoint-build-wfp fn2-checkpoint-build) (fn2-checkpoint-summary-authorityp fn2-checkpoint-summary-authority) (fn2-checkpoint-summary-authority-wfp fn2-checkpoint-summary-authority) (fn2-checkpointsp fn2-checkpoints) (fn2-checkpoints-wfp fn2-checkpoints) (fn2-checkpoint-refsp fn2-checkpoint-refs) (fn2-checkpoint-refs-wfp fn2-checkpoint-refs) (fn2-checkpoint-bytesp fn2-checkpoint-bytes) (fn2-checkpoint-bytes-wfp fn2-checkpoint-bytes) (fn2-checkpoint-restore-eventsp fn2-checkpoint-restore-events) (fn2-checkpoint-restore-events-wfp fn2-checkpoint-restore-events) (fn2-checkpoint-restore-events-workp fn2-checkpoint-restore-events-work) (fn2-checkpoint-restore-events-work-wfp fn2-checkpoint-restore-events-work) (fn2-opsp fn2-ops) (fn2-ops-wfp fn2-ops)))
+
+(fn2-event-build-preserves fn2-event-producer-issue
+ (fn2-event-build fn2-event-read fn2-csnapshot fn2-checkpoints fn2-extents fn2-alloc-edges fn2-pool fn2-ops fn2-control fn2-checkpoint-summary-authority fn2-checkpoint-refs fn2-checkpoint-bytes fn2-checkpoint-restore-events fn2-checkpoint-restore-events-work fn2-commit-root)
+ :carriers ((fn2-event-build 3 :prefix "-EVENT-BUILD") (fn2-event-read 4 :prefix "-EVENT-READ") (fn2-extents 5 :prefix "-EXTENTS") (fn2-alloc-edges 6 :prefix "-ALLOC-EDGES") (fn2-pool 7 :prefix "-POOL") (fn2-ops 8 :prefix "-OPS") (fn2-control 9 :prefix "-CONTROL")))
+
+(fn2-event-build-preserves fn2-event-producer-step
+ (budget fn2-event-build fn2-event-read fn2-csnapshot fn2-checkpoints fn2-commit-root
+ fn2-checkpoint-refs fn2-checkpoint-bytes fn2-checkpoint-construction fn2-extents fn2-alloc-edges fn2-ops
+ fn2-checkpoint-page-verified fn2-journal-members fn2-mk fn2-fc fn2-fc-context fn2-b3 fn2-fields fn2-pool fn2-digests fn2-checkpoint-build fn2-control fn2-checkpoint-summary-authority fn2-checkpoint-restore-events fn2-checkpoint-restore-events-work)
+ :carriers ((fn2-event-build 1 :prefix "-EVENT-BUILD") (fn2-event-read 2 :prefix "-EVENT-READ") (fn2-journal-members 3 :prefix "-JOURNAL-MEMBERS") (fn2-mk 4 :prefix "-MK") (fn2-fc 5 :prefix "-FC") (fn2-fc-context 6 :prefix "-FC-CONTEXT") (fn2-b3 7 :prefix "-B3") (fn2-checkpoint-construction 8 :prefix "-CHECKPOINT-CONSTRUCTION") (fn2-extents 9 :prefix "-EXTENTS") (fn2-alloc-edges 10 :prefix "-ALLOC-EDGES") (fn2-fields 11 :prefix "-FIELDS") (fn2-pool 12 :prefix "-POOL") (fn2-digests 13 :prefix "-DIGESTS") (fn2-control 14 :prefix "-CONTROL"))
+ :hyps ((fn2-event-buildp fn2-event-build) (fn2-event-build-wfp fn2-event-build) (fn2-event-readp fn2-event-read) (fn2-event-read-wfp fn2-event-read) (fn2-journal-membersp fn2-journal-members) (fn2-journal-members-wfp fn2-journal-members) (fn2-mkp fn2-mk) (fn2-mk-wfp fn2-mk) (fn2-fcp fn2-fc) (fn2-fc-wfp fn2-fc) (fn2-fc-contextp fn2-fc-context) (fn2-fc-context-wfp fn2-fc-context) (fn2-b3p fn2-b3) (fn2-b3-wfp fn2-b3) (fn2-checkpoint-constructionp fn2-checkpoint-construction) (fn2-checkpoint-construction-wfp fn2-checkpoint-construction) (fn2-extentsp fn2-extents) (fn2-extents-wfp fn2-extents) (fn2-alloc-edgesp fn2-alloc-edges) (fn2-alloc-edges-wfp fn2-alloc-edges) (fn2-fieldsp fn2-fields) (fn2-fields-wfp fn2-fields) (fn2-poolp fn2-pool) (fn2-pool-wfp fn2-pool) (fn2-digestsp fn2-digests) (fn2-digests-wfp fn2-digests) (fn2-controlp fn2-control) (fn2-control-wfp fn2-control) (fn2-checkpoint-buildp fn2-checkpoint-build) (fn2-checkpoint-build-wfp fn2-checkpoint-build) (fn2-checkpoint-summary-authorityp fn2-checkpoint-summary-authority) (fn2-checkpoint-summary-authority-wfp fn2-checkpoint-summary-authority) (fn2-checkpoint-restore-eventsp fn2-checkpoint-restore-events) (fn2-checkpoint-restore-events-wfp fn2-checkpoint-restore-events) (fn2-checkpoint-restore-events-workp fn2-checkpoint-restore-events-work) (fn2-checkpoint-restore-events-work-wfp fn2-checkpoint-restore-events-work)))

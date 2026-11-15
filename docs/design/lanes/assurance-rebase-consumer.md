@@ -481,3 +481,40 @@ prefix RELEASE three-edge restoration before selected-suffix authority, active
 old-manifest append/cold0/live1 transfer and actual bank/query/peer protections.
 The full physical producer-to-cold composition fixture and two-checkpoint
 physical reclaim/reuse control remain outstanding. FREE stays off.
+
+Root approved v2 witness implementation. Schema20 now declares batch-first and
+exact original records-header/sealed-batch byte strings through the existing
+generators, with maxima taken from the actual codec constants. Namespace stays
+archive-physical, original journal physical pair stays inside original bytes,
+and semantic lineage/domain stays in canonical members. No flattened seal or
+second hash is introduced. Shared entry/restart cost derives the expanded MAX.
+
+Actual archive BEGIN now binds the same event reader to root1's complete held
+source and its real owned window14 scratch, filling one fixed1197-byte geometry
+(current derived bound) before reuse. This is a workspace charge, not retained
+data capacity. Event-read captures the exact semantic body only after expected
+Jseal/event interval and original record-stream fetch succeed, before issuing
+READ-RECORDS. After actual records-frame digest/context verification it captures
+the exact header before entering MEMBERS. Copies use min(budget, remaining),
+preserve the source and resume at budget1; constructor token/handle/source and
+verifier-only phase are checked each visit. A next source cannot overwrite an
+unemitted receipt. Shared classifier includes both capture phases for yielding.
+
+STAGE requires the same current real source and closed receipt; only the first
+member serializes its original header/body while every entry gets derived F.
+Its old RESET is removed: only digest-prefix bytes are written while receipt
+slices remain owned across run-builder refusal/yield. Actual successful
+run-build-add alone records this event as staged, and the native event producer
+parks before phase3 append until that actual emission occurs. Fresh-start/BEGIN
+now thread reader input/output; STAGE returns the changed reader. This remains
+unactivated in the master while the complete archive terminal is unfinished.
+
+Seven new source controls cover generated maxima, state/gate replay, actual MV
+threading, both verifier joins, bounded copies, scratch lifetime and real writer
+ack ordering. A registered runnable copy-boundary fixture uses actual original
+header/body encoders, budget1/4096, zero-budget full snapshots and token/handle
+refusal; its verified-source premise is synthetic and it is UNRUN. Existing
+span7/producer26/member7/visit3/budget4/domain2 source controls pass; twelve Lisp
+structural checks are0. This does not establish reconstructed-frame byte equality,
+original-batch verification in the cold reader, prefix RELEASE closure, root4
+terminal or physical reclamation. Those remain the next owned implementation.

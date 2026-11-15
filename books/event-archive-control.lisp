@@ -22,18 +22,18 @@
 
 (fn2-event-archive-operation fn2-event-archive-fresh-start
  (fn2-event-archive fn2-checkpoint-root1 fn2-checkpoint-windows fn2-csnapshot fn2-checkpoint-build fn2-checkpoint-source
-  fn2-checkpoint-metadata-manifest fn2-checkpoints fn2-checkpoint-metadata fn2-run-builds fn2-run-writers fn2-fc fn2-fields fn2-pool fn2-commit-root)
- (fn2-event-archive fn2-checkpoint-metadata fn2-run-builds fn2-run-writers fn2-pool)
+  fn2-checkpoint-metadata-manifest fn2-checkpoints fn2-checkpoint-metadata fn2-run-builds fn2-run-writers fn2-fc fn2-fields fn2-pool fn2-commit-root fn2-event-read)
+ (fn2-event-archive fn2-checkpoint-metadata fn2-run-builds fn2-run-writers fn2-pool fn2-event-read)
  (b* (((unless (and (< 1 (fn2-event-archive-rows fn2-event-archive))
                     (equal (fn2-event-archive-phase 1 fn2-event-archive) *fn2-event-archive-phase-idle*)
                     (< 0 (fn2-commit-root-rows fn2-commit-root))
                     (equal (fn2-commit-root-base-batch 0 fn2-commit-root) 0)
                     (equal (fn2-commit-root-base-event 0 fn2-commit-root) 0)))
-       (mv :base fn2-event-archive fn2-checkpoint-metadata fn2-run-builds fn2-run-writers fn2-pool))
-      ((mv code fn2-checkpoint-metadata fn2-run-builds fn2-run-writers fn2-pool)
+       (mv :base fn2-event-archive fn2-checkpoint-metadata fn2-run-builds fn2-run-writers fn2-pool fn2-event-read))
+      ((mv code fn2-checkpoint-metadata fn2-run-builds fn2-run-writers fn2-pool fn2-event-read)
        (fn2-event-archive-begin fn2-checkpoint-root1 fn2-checkpoint-windows fn2-csnapshot fn2-checkpoint-build fn2-checkpoint-source
-        fn2-checkpoint-metadata-manifest fn2-checkpoints fn2-checkpoint-metadata fn2-run-builds fn2-run-writers fn2-fc fn2-fields fn2-pool))
-      ((unless (eq code :ok)) (mv code fn2-event-archive fn2-checkpoint-metadata fn2-run-builds fn2-run-writers fn2-pool))
+        fn2-checkpoint-metadata-manifest fn2-checkpoints fn2-checkpoint-metadata fn2-run-builds fn2-run-writers fn2-fc fn2-fields fn2-pool fn2-event-read))
+      ((unless (eq code :ok)) (mv code fn2-event-archive fn2-checkpoint-metadata fn2-run-builds fn2-run-writers fn2-pool fn2-event-read))
       (cut (fn2-csnapshot-cut-event 0 fn2-csnapshot))
       (fn2-event-archive (fn2-event-archive-put 1 (phase *fn2-event-archive-phase-members*) (origin *fn2-event-archive-origin-fresh*)
        (token (fn2-checkpoint-root1-token 0 fn2-checkpoint-root1))
@@ -46,7 +46,7 @@
        (manifest-entries 0) (member-unit 0) (member-epoch 0) (member-allocation 0) (member-height 0) (member-entries 0)
        (manifest-unit 0) (manifest-epoch 0) (manifest-allocation 0) (manifest-height 0)
        (header-unit 0) (header-epoch 0) (header-allocation 0) (source-tag 0) (source-generation 0) (scan 0) (next-event 1))))
-  (mv :ok fn2-event-archive fn2-checkpoint-metadata fn2-run-builds fn2-run-writers fn2-pool)))
+  (mv :ok fn2-event-archive fn2-checkpoint-metadata fn2-run-builds fn2-run-writers fn2-pool fn2-event-read)))
 
 ; The source Ref comes only from the actual completed writer/page verification.
 ; Capture before resetting build1 for schema10; there is no supplied Ref or hash.

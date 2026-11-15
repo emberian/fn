@@ -3,7 +3,7 @@
 (include-book "../books/event-archive-producer")
 (include-book "../books/machines-c-bind")
 (assert-event (and (fn2-run-layout-internal-p 20) (not (fn2-run-layout-internal-p 14))
-                  (= (fn2-run-layout-fields 20 0) 5)
+                  (= (fn2-run-layout-fields 20 0) 8)
                   (not (fn2-run-layout-physical-ref-p 20))))
 (make-event
  (value `(assert-event
