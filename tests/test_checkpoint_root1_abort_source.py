@@ -88,6 +88,26 @@ class Root1AbortSource(unittest.TestCase):
         self.assertIn("fn2-checkpoint-root1-abort-row", names(terminal))
         self.assertIn("*fn2-checkpoint-root1-abort-phase-complete*", str(terminal))
 
+    def test_prepared_interleaving_uses_actual_io_and_cancel_methods(self):
+        fixture = BOOK.parent.parent / "tests/checkpoint-root1-abort-unit.lisp"
+        defs = definitions(fixture.read_text())
+        body = defs["fn2-cra-body"]
+        calls = names(body)
+        self.assertIn("fn2-block-read", calls)
+        self.assertIn("fn2-cra-clean-loop", calls)
+        self.assertEqual(calls.count("fn2-harvest-one"), 2)
+        self.assertEqual(calls.count("fn2-cra-reset-step"), 2)
+        self.assertLess(calls.index("fn2-cra-clean-loop"), calls.index("fn2-cra-reset-step"))
+        self.assertLess(calls.index("fn2-harvest-one"), calls.index("fn2-cra-reset-loop"))
+        self.assertIn("fn2-checkpoint-planning-cancel-step", names(defs["fn2-cra-cancel-step"]))
+        self.assertIn("fn2-checkpoint-build-abort-step", names(defs["fn2-cra-clean-step"]))
+        self.assertIn("fn2-post-result", names(defs["fn2-cra-post"]))
+        self.assertIn("fn2-outbox-ack", names(defs["fn2-cra-ack"]))
+        observe = defs["fn2-cra-observe"]
+        for field in ("fn2-extents-outstanding-io", "fn2-checkpoint-semantic-pending", "fn2-checkpoint-payload-pending",
+                      "fn2-alloc-freeze-phase", "fn2-csnapshot-complete"):
+            self.assertIn(field, names(observe))
+
 
 if __name__ == "__main__":
     unittest.main()
