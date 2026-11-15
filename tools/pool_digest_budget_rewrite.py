@@ -104,6 +104,14 @@ def fixture_totalize(source):
     """Apply the authentic fixed-index recipe; keep natural controls unchanged."""
     from checkpoint_summary_recursion_rewrite import rewrite as fixed
     source, _ = fixed(source, {'fn2-rdb-seed': 8, 'fn2-rdb-words': 8})
+    if '(defconst *fn2-rdb-boundary-words* ' not in source:
+        seed = lr.match('(fn2-fields-set-value i (+ 12345 (* 101 i)) fn2-fields)',lr.parse(source).forms)
+        if len(seed) != 1:
+            raise ValueError('fixture input-word class drift')
+        n = seed[0].node
+        source = lr.write(source, [(n.start,n.end,'(fn2-fields-set-value i (nth (nfix i) *fn2-rdb-boundary-words*) fn2-fields)')])
+        n = lr.match('(defun fn2-rdb-seed ?*body)',lr.parse(source).forms,deep=False)[0].node
+        source = lr.write(source, [(n.start,n.start,'; Independent U32 boundaries exercise all four byte positions.\n(defconst *fn2-rdb-boundary-words* \'(0 255 256 65535 65536 2147483647 2147483648 4294967295))\n')])
     forms = lr.parse(source).forms
     fn = lr.match('(defun fn2-rdb-full ?*body)', forms, deep=False)[0].node
     calls = lr.match('(fn2-rdb-full ?k ?*rest)', [fn.items[-1]])

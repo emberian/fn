@@ -665,3 +665,13 @@ readonly carriers, and enter UNCERTAIN with no member exposure. This fourth
 actual reader assertion remains UNRUN. The primitive fixture's three fixed
 loops now use the existing nfix-successor totalization recipe, preserving
 natural-index effects while making their stated logical measures decrease.
+
+Identity_codec_assurance reviewed the shared fetch source against its exact
+original byte loader. No guarded code/digest-effect mismatch was found: reads
+are pure, first-error priority agrees, and the canonical U32 transition commits
+only at byte4. This is source review, not guard/refinement admission. The same
+review identified the still-owed local aligned-word correspondence and worker
+composition proof needed before the general full-carrier equality can admit;
+its current opaque-worker proof hint is insufficient. No certificate claim
+is made. The runnable input oracle now includes0/255/256/65535/65536 and signed
+boundaries0x7fffffff/0x80000000/0xffffffff, exercising all four byte positions.

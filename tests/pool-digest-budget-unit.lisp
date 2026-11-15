@@ -5,10 +5,12 @@
 (deflayout fn2-rec-budget-words
  '((w0 :u32) (w1 :u32) (w2 :u32) (w3 :u32) (w4 :u32) (w5 :u32) (w6 :u32) (w7 :u32)))
 (defconst *fn2-rdb-sentinel* 2863311530)
+; Independent U32 boundaries exercise all four byte positions.
+(defconst *fn2-rdb-boundary-words* '(0 255 256 65535 65536 2147483647 2147483648 4294967295))
 (defun fn2-rdb-seed (i fn2-fields fn2-digests)
  (declare (xargs :stobjs (fn2-fields fn2-digests) :verify-guards nil :measure (nfix (- 8 (nfix i)))))
  (if (>= (nfix i) 8) (mv fn2-fields fn2-digests)
-  (let* ((fn2-fields (fn2-fields-set-value i (+ 12345 (* 101 i)) fn2-fields))
+  (let* ((fn2-fields (fn2-fields-set-value i (nth (nfix i) *fn2-rdb-boundary-words*) fn2-fields))
          (fn2-digests (fn2-digest-set-word 0 i *fn2-rdb-sentinel* fn2-digests))
          (fn2-digests (fn2-digest-set-word 1 i 1431655765 fn2-digests)))
    (fn2-rdb-seed (+ 1 (nfix i)) fn2-fields fn2-digests))))

@@ -52,6 +52,7 @@ class Fetch(unittest.TestCase):
         after=rw.fixture_totalize(before)
         self.assertEqual(after,(ROOT/'tests/pool-digest-budget-unit.lisp').read_text())
         self.assertEqual(after,rw.fixture_totalize(after))
+        self.assertIn("'(0 255 256 65535 65536 2147483647 2147483648 4294967295)",after)
         for name,index in [('fn2-rdb-seed','i'),('fn2-rdb-words','i'),('fn2-rdb-full','k')]:
             function=form(after,'defun',name)
             n=lr.match('('+name+' ?index ?*rest)',lr.parse(function).forms[0].items[-1:])[0].captures['index']
