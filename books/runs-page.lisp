@@ -62,7 +62,8 @@
   (mv-let (code fn2-pool) (fn2-pool-write slot gen pos 0 okind oslot ogen fn2-pool)
    (if (eq code :ok) (fn2-run-zero (- n 1) slot gen (+ 1 pos) okind oslot ogen fn2-pool)
     (mv code fn2-pool)))))
-(fn2-pool-preserves fn2-run-zero (n slot gen pos okind oslot ogen fn2-pool) :position 1)
+(fn2-pool-preserves fn2-run-zero (n slot gen pos okind oslot ogen fn2-pool) :position 1
+ :hints (("Goal" :in-theory (disable fn2-pool-rows))))
 
 ; Open a page in a fresh C-owned workspace: reset it, zero the header area and
 ; the reserved C header region. Entries start at *fn2-run-entries-base*.
@@ -166,9 +167,11 @@
        ((unless (eq code :ok)) (mv code fn2-fields fn2-pool)))
    (fn2-run-write-restarts (- k 1) (+ 1 j) w cursor scratch slot gen okind oslot ogen fn2-run-restarts fn2-fields fn2-pool))))
 (fn2-fields-preserves fn2-run-write-restarts (k j w cursor scratch slot gen okind oslot ogen fn2-run-restarts fn2-fields fn2-pool)
- :position 1 :disable nil :hyps ((fn2-fieldsp fn2-fields) (fn2-fields-wfp fn2-fields) (fn2-run-restartsp fn2-run-restarts) (fn2-run-restarts-wfp fn2-run-restarts) (natp scratch) (< scratch (fn2-fields-rows fn2-fields))))
+ :position 1 :disable nil :hyps ((fn2-fieldsp fn2-fields) (fn2-fields-wfp fn2-fields) (fn2-run-restartsp fn2-run-restarts) (fn2-run-restarts-wfp fn2-run-restarts) (natp scratch) (< scratch (fn2-fields-rows fn2-fields)))
+ :hints (("Goal" :in-theory (disable fn2-fields-rows))))
 (fn2-pool-preserves fn2-run-write-restarts (k j w cursor scratch slot gen okind oslot ogen fn2-run-restarts fn2-fields fn2-pool)
- :position 2 :prefix "-POOL-PRESERVES")
+ :position 2 :prefix "-POOL-PRESERVES"
+ :hints (("Goal" :in-theory (disable fn2-pool-rows))))
 
 ; Closing: the restart directory, then zeros to the page end, at most BUDGET
 ; bytes per call. POS counts bytes written after the last entry.
@@ -231,7 +234,8 @@
  :hyps ((fn2-run-writersp fn2-run-writers) (fn2-run-writers-wfp fn2-run-writers) (natp w) (< w (fn2-run-writers-rows fn2-run-writers))))
 (fn2-run-writers-preserves fn2-run-open (w slot gen schema version level run ordinal page-kind unit epoch counter history incarnation okind oslot ogen fields limit fn2-run-writers fn2-pool) :position 1 :raw-rows t :disable nil
  :hyps ((fn2-run-writersp fn2-run-writers) (fn2-run-writers-wfp fn2-run-writers) (natp w) (< w (fn2-run-writers-rows fn2-run-writers))))
-(fn2-pool-preserves fn2-run-open (w slot gen schema version level run ordinal page-kind unit epoch counter history incarnation okind oslot ogen fields limit fn2-run-writers fn2-pool) :position 2 :prefix "-POOL-PRESERVES")
+(fn2-pool-preserves fn2-run-open (w slot gen schema version level run ordinal page-kind unit epoch counter history incarnation okind oslot ogen fields limit fn2-run-writers fn2-pool) :position 2 :prefix "-POOL-PRESERVES"
+ :hints (("Goal" :in-theory (disable fn2-pool-rows))))
 (fn2-run-writers-preserves fn2-run-note-restart (w fn2-run-writers fn2-run-restarts) :position 1 :raw-rows t :disable nil
  :hyps ((fn2-run-writersp fn2-run-writers) (fn2-run-writers-wfp fn2-run-writers) (natp w) (< w (fn2-run-writers-rows fn2-run-writers))))
 (fn2-run-restarts-preserves fn2-run-note-restart (w fn2-run-writers fn2-run-restarts) :position 2 :prefix "-RESTARTS-PRESERVES" :raw-rows t
@@ -240,8 +244,10 @@
 (fn2-run-writers-preserves fn2-run-close-step (w budget fn2-run-writers fn2-run-restarts fn2-fields fn2-pool) :position 1 :raw-rows t :disable nil
  :hyps ((fn2-run-writersp fn2-run-writers) (fn2-run-restartsp fn2-run-restarts) (fn2-run-writerp w fn2-run-writers fn2-run-restarts fn2-fields)))
 (fn2-fields-preserves fn2-run-close-step (w budget fn2-run-writers fn2-run-restarts fn2-fields fn2-pool) :position 2 :prefix "-FIELDS-PRESERVES" :disable nil
- :hyps ((fn2-fieldsp fn2-fields) (fn2-run-writersp fn2-run-writers) (fn2-run-restartsp fn2-run-restarts) (fn2-run-writerp w fn2-run-writers fn2-run-restarts fn2-fields)))
-(fn2-pool-preserves fn2-run-close-step (w budget fn2-run-writers fn2-run-restarts fn2-fields fn2-pool) :position 3 :prefix "-POOL-PRESERVES")
+ :hyps ((fn2-fieldsp fn2-fields) (fn2-run-writersp fn2-run-writers) (fn2-run-restartsp fn2-run-restarts) (fn2-run-writerp w fn2-run-writers fn2-run-restarts fn2-fields))
+ :hints (("Goal" :in-theory (disable fn2-fields-rows))))
+(fn2-pool-preserves fn2-run-close-step (w budget fn2-run-writers fn2-run-restarts fn2-fields fn2-pool) :position 3 :prefix "-POOL-PRESERVES"
+ :hints (("Goal" :in-theory (disable fn2-pool-rows))))
 
 ; Heading: B's page header at 0 and C's run-page header at the header area,
 ; both through the generated encoders. Field rows: B's at BASE, C's after.
@@ -281,13 +287,16 @@
   (mv :ok fn2-fields fn2-pool)))
 (fn2-fields-preserves fn2-run-head-b (w b fn2-run-writers fn2-fields fn2-pool) :position 1 :disable nil
  :hyps ((fn2-fieldsp fn2-fields) (fn2-fields-wfp fn2-fields) (fn2-run-writersp fn2-run-writers) (fn2-run-writers-wfp fn2-run-writers)
-        (natp w) (< w (fn2-run-writers-rows fn2-run-writers))))
-(fn2-pool-preserves fn2-run-head-b (w b fn2-run-writers fn2-fields fn2-pool) :position 2 :prefix "-POOL-PRESERVES")
+        (natp w) (< w (fn2-run-writers-rows fn2-run-writers)))
+ :hints (("Goal" :in-theory (disable fn2-fields-rows))))
+(fn2-pool-preserves fn2-run-head-b (w b fn2-run-writers fn2-fields fn2-pool) :position 2 :prefix "-POOL-PRESERVES"
+ :hints (("Goal" :in-theory (disable fn2-pool-rows))))
 (in-theory (disable fn2-run-head-b))
 (defun fn2-run-head (w fn2-run-writers fn2-run-restarts fn2-fields fn2-pool)
  (declare (ignore fn2-run-restarts))
  (declare (xargs :stobjs (fn2-run-writers fn2-run-restarts fn2-fields fn2-pool)
-  :guard (and (fn2-run-writerp w fn2-run-writers fn2-run-restarts fn2-fields) (fn2-pool-wfp fn2-pool))))
+  :guard (and (fn2-run-writerp w fn2-run-writers fn2-run-restarts fn2-fields) (fn2-pool-wfp fn2-pool))
+  :guard-hints (("Goal" :in-theory (disable fn2-fields-rows)))))
  (b* (((unless (equal (fn2-run-writers-phase w fn2-run-writers) *fn2-run-writer-phase-heading*))
        (mv :state fn2-run-writers fn2-fields fn2-pool))
       (slot (fn2-run-writers-slot w fn2-run-writers)) (gen (fn2-run-writers-gen w fn2-run-writers))
@@ -312,8 +321,10 @@
 (fn2-run-writers-preserves fn2-run-head (w fn2-run-writers fn2-run-restarts fn2-fields fn2-pool) :position 1 :raw-rows t :disable nil
  :hyps ((fn2-run-writersp fn2-run-writers) (fn2-run-writerp w fn2-run-writers fn2-run-restarts fn2-fields)))
 (fn2-fields-preserves fn2-run-head (w fn2-run-writers fn2-run-restarts fn2-fields fn2-pool) :position 2 :prefix "-FIELDS-PRESERVES" :disable nil
- :hyps ((fn2-fieldsp fn2-fields) (fn2-run-writersp fn2-run-writers) (fn2-run-writerp w fn2-run-writers fn2-run-restarts fn2-fields)))
-(fn2-pool-preserves fn2-run-head (w fn2-run-writers fn2-run-restarts fn2-fields fn2-pool) :position 3 :prefix "-POOL-PRESERVES")
+ :hyps ((fn2-fieldsp fn2-fields) (fn2-run-writersp fn2-run-writers) (fn2-run-writerp w fn2-run-writers fn2-run-restarts fn2-fields))
+ :hints (("Goal" :in-theory (disable fn2-fields-rows))))
+(fn2-pool-preserves fn2-run-head (w fn2-run-writers fn2-run-restarts fn2-fields fn2-pool) :position 3 :prefix "-POOL-PRESERVES"
+ :hints (("Goal" :in-theory (disable fn2-pool-rows))))
 
 ; Sealing: B's page sealer writes the parent-held hash into digest row HROW.
 ; The expected context is the writer's own identity, set once when the
@@ -342,7 +353,7 @@
         (< (fn2-digest-slot row *fn2-fc-previous-seal*) 4294967296) (unsigned-byte-p 32 hrow)))
 
 ; B's shape lemmas are stated over the rows accessors; keep them folded.
-(local (in-theory (disable fn2-digests-rows fn2-fc-rows fn2-fc-context-rows fn2-b3-rows fn2-fields-rows)))
+(local (in-theory (disable fn2-digests-rows fn2-fc-rows fn2-fc-context-rows fn2-b3-rows fn2-fields-rows fn2-pool-rows)))
 ; The caller sets the context with fn2-run-seal-context once, when ROW is
 ; idle; every step then checks that the context still names this writer's hash.
 (defun fn2-run-seal-step (w row hrow budget fn2-run-writers fn2-fc fn2-fc-context fn2-b3 fn2-fields fn2-pool fn2-digests)
@@ -397,7 +408,8 @@
   (fn2-layout-store to v rs rg ro rl st fn2-fields)))
 (fn2-fields-preserves fn2-run-copy-row (from to fn2-fields)
  :hyps ((fn2-fieldsp fn2-fields) (fn2-fields-wfp fn2-fields) (natp from) (natp to)
-        (< from (fn2-fields-rows fn2-fields)) (< to (fn2-fields-rows fn2-fields))))
+        (< from (fn2-fields-rows fn2-fields)) (< to (fn2-fields-rows fn2-fields)))
+ :hints (("Goal" :in-theory (disable fn2-fields-rows))))
 
 ; Reader. A page is read only after B's checker accepted it under its
 ; parent-held hash; these checks name malformed internal structure anyway.
@@ -430,7 +442,8 @@
          (mv :format fn2-fields))
         (t (mv :ok fn2-fields)))))
 (fn2-fields-preserves fn2-run-read-header (slot gen base okind oslot ogen fn2-fields fn2-pool) :position 1
- :hyps ((fn2-fieldsp fn2-fields) (fn2-run-readerp base fn2-fields)))
+ :hyps ((fn2-fieldsp fn2-fields) (fn2-run-readerp base fn2-fields))
+ :hints (("Goal" :in-theory (disable fn2-fields-rows))))
 (defun fn2-run-header-value (base field fn2-fields)
  (declare (xargs :stobjs fn2-fields :guard (and (fn2-run-readerp base fn2-fields) (natp field) (< field *fn2-run-reader-restart*))))
  (nfix (fn2-fields-value (+ base field) fn2-fields)))
@@ -454,7 +467,8 @@
       (off (nfix (fn2-fields-value r fn2-fields))))
   (if (and (<= *fn2-run-entries-base* off) (< off dir)) (mv :ok off fn2-fields) (mv :format 0 fn2-fields))))
 (fn2-fields-preserves fn2-run-restart-offset (j slot gen base okind oslot ogen fn2-fields fn2-pool) :position 2
- :hyps ((fn2-fieldsp fn2-fields) (fn2-run-readerp base fn2-fields)))
+ :hyps ((fn2-fieldsp fn2-fields) (fn2-run-readerp base fn2-fields))
+ :hints (("Goal" :in-theory (disable fn2-fields-rows))))
 
 ; A key's octet fields are at most this long, so one key comparison stays
 ; inside a run's 4096-byte quantum.

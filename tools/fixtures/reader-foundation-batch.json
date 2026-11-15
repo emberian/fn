@@ -1,0 +1,34 @@
+{
+  "before": "65cb67fe7ca8ea4fc934ddc5d17e48928e595f59",
+  "provider": "9c2eabc4c9b94de947c4705f8c7d684eeb61d136",
+  "safe": [
+    "runs-page",
+    "checkpoint-allocation",
+    "block-integrity",
+    "ribbon",
+    "checkpoint-allocation-coordinator",
+    "runs-schema"
+  ],
+  "helpers": [
+    "columns-call-guards",
+    "layout-size-bounds",
+    "blake3-row-frames",
+    "columns-carrier-contracts"
+  ],
+  "scope": "Source structural projection only; guarded member is an explicit contract migration, not hint-only.",
+  "files": {
+    "books/runs-page.lisp": "3c05d886f028eeb7ed874de5a2d6463c64f6853ac6499de30a4f7e91bde0df16",
+    "books/checkpoint-allocation.lisp": "e6031a68634856edc5d4e04b66efe0992e06a2271059656bb6832c23bbc4209b",
+    "books/block-integrity.lisp": "f1ea96d8fce0b9228e3a4feb331d9c88732c2f839369d24203b4a275f5112721",
+    "books/ribbon.lisp": "cb705e9bf4cab4284f31846f8cbf0d8efdb1d86e4e11a13076ad490b6843d43a",
+    "books/checkpoint-allocation-coordinator.lisp": "d2c42d0b2f85dc86e4d99b8f9ce10e4680181c04efb82d64d86ed833c50026ec",
+    "books/runs-schema.lisp": "bb34fee128ac49657d77e6fc46ee4a85e602695eccf067f1e7f89d17cc32ab4f",
+    "books/columns-call-guards.lisp": "fd7c2588e6d90338288b484078525799ac261c66013ebe112c3f369870db5a4a",
+    "books/layout-size-bounds.lisp": "242f55370eff42c596962722a3404058a48dae5215bbf9d39b82f198b07e45b7",
+    "books/blake3-row-frames.lisp": "2e2386ed36d8d7869186f83f0ce698faf56f3e02de8f30585d817f231e16f9d7",
+    "books/columns-carrier-contracts.lisp": "36cf411d1119704be488c119243d0aff8006e9babe38bb128f5d627353373c5a",
+    "books/checkpoint-member.lisp": "e9e2afdf00aad2dcc1719b617df7884e87a2729e80b4706111546be9a0ede37b",
+    "books/checkpoint-tickets.lisp": "1ffa2bda61c91b8f31a762227238becfdf074fafd99624a54a4378d6907af0e7",
+    "books/checkpoint-installation-coordinator.lisp": "41e83a193d97c894b35d636892d13a4606e22cc3434847ea100119e5f42e8fa1"
+  }
+}

@@ -18,9 +18,11 @@
 ; (back substitution from the top slot, the bytes, the close, the header,
 ; the seal) until :sealed. Every call is bounded; :more resumes.
 (in-package "ACL2")
+(local (include-book "pool-read-contracts"))
 (include-book "runs-page")
 (include-book "fnv")
 (include-book "words")
+(include-book "columns-call-guards")
 (fn2-book-layer :c)
 (local (in-theory (disable fn2-pool-rows fn2-fields-rows fn2-digests-rows fn2-fc-rows fn2-fc-context-rows fn2-b3-rows)))
 
@@ -103,6 +105,7 @@
 ; The two FNV-1a streams over N octets at OFF, read under the owner.
 (defun fn2-ribbon-hash-loop (n slot gen off h1 h2 okind oslot ogen fn2-pool)
  (declare (xargs :stobjs fn2-pool :measure (nfix n)
+  :guard-hints ((fn2-columns-call-guard-hint 'fn2-ribbon-hash-loop '(fn2-pool-read-byte-type) nil world))
   :guard (and (fn2-pool-wfp fn2-pool) (natp n) (natp off) (unsigned-byte-p 32 h1) (unsigned-byte-p 32 h2))))
  (if (zp n) (mv :ok h1 h2)
   (mv-let (code byte) (fn2-pool-read slot gen off okind oslot ogen fn2-pool)
@@ -225,7 +228,8 @@
 (defun fn2-ribbon-emit-bytes (n i base slot gen off okind oslot ogen fn2-ribbon-band fn2-pool)
  (declare (xargs :stobjs (fn2-ribbon-band fn2-pool) :measure (nfix n)
   :guard (and (fn2-ribbon-band-wfp fn2-ribbon-band) (fn2-pool-wfp fn2-pool) (natp n) (natp i)
-              (natp base) (natp off))))
+              (natp base) (natp off))
+  :guard-hints ((fn2-columns-call-guard-hint 'fn2-ribbon-emit-bytes nil nil world))))
  (b* (((when (zp n)) (mv :ok fn2-pool))
       (r (+ base i))
       ((unless (< r (fn2-ribbon-band-rows fn2-ribbon-band))) (mv :bounds fn2-pool))
@@ -281,7 +285,8 @@
 (defun fn2-ribbon-add (f row okind oslot ogen fn2-ribbon-builds fn2-ribbon-band fn2-fields fn2-pool)
  (declare (xargs :stobjs (fn2-ribbon-builds fn2-ribbon-band fn2-fields fn2-pool)
   :guard (and (fn2-ribbon-builds-wfp fn2-ribbon-builds) (fn2-ribbon-band-wfp fn2-ribbon-band)
-              (fn2-fields-wfp fn2-fields) (fn2-pool-wfp fn2-pool))))
+              (fn2-fields-wfp fn2-fields) (fn2-pool-wfp fn2-pool))
+  :guard-hints ((fn2-columns-call-guard-hint 'fn2-ribbon-add nil nil world))))
  (b* (((unless (and (natp f) (< f (fn2-ribbon-builds-rows fn2-ribbon-builds))
                     (natp row) (< row (fn2-fields-rows fn2-fields))))
        (mv :bounds fn2-ribbon-builds fn2-ribbon-band))

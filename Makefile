@@ -417,6 +417,7 @@ ACL2_BOOKS = \
   tests/retirement-intent-unit \
   tests/run-packing-unit \
   tests/checkpoint-member-unit \
+  tests/checkpoint-member-interface-unit \
   tests/checkpoint-tickets-unit \
   tests/checkpoint-provenance-unit \
   tests/checkpoint-build-budget-unit \

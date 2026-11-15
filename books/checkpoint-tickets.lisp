@@ -65,6 +65,20 @@
 ; call is atomic: the normal allocator primitive is reused with its generic
 ; gate locally open, and the retained gate is restored on every result. There
 ; are no callbacks or issue/yield boundaries inside the operation.
+(local
+ (defthm fn2-checkpoint-ticket-account-raw-rows
+  (equal (nth *fn2-extents-rows*
+              (fn2-alloc-account i old-state old-reason fn2-extents))
+         (nth *fn2-extents-rows* fn2-extents))
+  :hints (("Goal" :in-theory (enable fn2-alloc-account)))))
+(local
+ (defthm fn2-checkpoint-ticket-commit-allocation-raw-rows
+  (equal (nth *fn2-extents-rows*
+              (mv-nth 1 (fn2-alloc-commit-allocation
+                         i epoch counter owner-kind owner-id fn2-extents)))
+         (nth *fn2-extents-rows* fn2-extents))
+  :hints (("Goal" :in-theory (enable fn2-alloc-commit-allocation)))))
+
 (defun fn2-checkpoint-ticket-install (e epoch counter batch owner-kind fn2-checkpoint-construction fn2-extents)
  (declare (xargs :stobjs (fn2-checkpoint-construction fn2-extents)
   :guard (and (fn2-checkpoint-construction-wfp fn2-checkpoint-construction)
