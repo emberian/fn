@@ -30,7 +30,7 @@ def transform(source, exports):
     edits.append((old.end, old.end, '\n' + '\n'.join(additions)))
     source = lr.write(source, edits)
     return source.replace('; of the same derived size. These are dedicated resident resources.',
-        '; of the same derived size, then two release-evidence obligations per journal\n; extent. The shared layout checks profile overflow. These are resident resources.')
+        '; of the same derived size, then three release-evidence obligations per journal\n; extent. The shared layout checks profile overflow. These are resident resources.')
 
 if __name__ == '__main__':
     root = Path(__file__).resolve().parents[1]

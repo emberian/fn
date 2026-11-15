@@ -23,7 +23,7 @@
 (defcorechild fn2-core-release-evidence fn2-release-evidence
  :init (fn2-release-evidence-init (fn2-b-capacity :extent-slots 16 profile) fn2-release-evidence)
  :profilep (unsigned-byte-p 32 (fn2-b-capacity :extent-slots 16 profile))
- :why "One exact journal allocation stamp owns its descriptor and self evidence obligations until authenticated substitution.")
+ :why "One exact journal allocation stamp owns its descriptor, installation and self evidence obligations until authenticated substitution.")
 
 (defcorechild fn2-core-release-evidence-candidates fn2-release-evidence-candidates
  :init (fn2-release-evidence-candidates-init (fn2-b-checkpoint-capacity profile) fn2-release-evidence-candidates)

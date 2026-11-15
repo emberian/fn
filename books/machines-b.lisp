@@ -58,7 +58,7 @@
 ; Dedicated regions: six commit I/O edges, two roots per extent, one pin per
 ; operation, six direct references per candidate, then one source-retention
 ; edge per extent per active candidate, then a disjoint C-base promise region
-; of the same derived size, then two release-evidence obligations per journal
+; of the same derived size, then three release-evidence obligations per journal
 ; extent. The shared layout checks profile overflow. These are resident resources.
 (defun fn2-b-alloc-edge-floor (profile)
  (declare (xargs :guard t))
@@ -81,7 +81,7 @@
 (defcorechild fn2-core-release-evidence fn2-release-evidence
  :init (fn2-release-evidence-init (fn2-b-capacity :extent-slots 16 profile) fn2-release-evidence)
  :profilep (unsigned-byte-p 32 (fn2-b-capacity :extent-slots 16 profile))
- :why "One exact journal allocation stamp owns its descriptor and self evidence obligations until authenticated substitution.")
+ :why "One exact journal allocation stamp owns its descriptor, installation and self evidence obligations until authenticated substitution.")
 (defcorechild fn2-core-release-evidence-candidates fn2-release-evidence-candidates
  :init (fn2-release-evidence-candidates-init (fn2-b-checkpoint-capacity profile) fn2-release-evidence-candidates)
  :profilep (unsigned-byte-p 32 (fn2-b-checkpoint-capacity profile))

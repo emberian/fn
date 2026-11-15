@@ -6,7 +6,8 @@
 (defcolumns fn2-release-evidence
  ((live :bool) (journal-epoch :u60) (journal-allocation :u60) (batch :u60)
   (candidate :u32) (checkpoint :u60) (history :u60) (incarnation :u60)
-  (cut-commit :u60) (cut-event :u60) (installation-commit :u60)
+  (cut-commit :u60) (cut-event :u60) (installation-commit :u60) (installation-event :u60)
+  (installation-extent :u32) (installation-epoch :u60) (installation-allocation :u60)
   (storage-domain :u60) (physical-unit :u60) (descriptor-epoch :u60) (descriptor-allocation :u60)
   (page-kind :u60) (encoded-length :u60)
 (h0 :u32)
