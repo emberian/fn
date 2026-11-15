@@ -122,7 +122,7 @@ correspondence. Actual theorem/rune support extraction remains a separate next s
 the new report deliberately does not relabel call reachability as that evidence.
 
 
-## Live proof-support projection (source; not yet qualified)
+## Live proof-support projection (qualified four-book scope)
 
 `books/assurance-proof-support.lisp` reads ACL2 8.7's actual
 `proof-supporters-alist`, unions all entries for an event (including grouped
@@ -158,5 +158,14 @@ The narrow actual fixtures use the project's `fn2-a-native-span` encapsulate:
 a freshly admitted `:use` consumer must retain its constraint theorem as a
 supporter; a tautology merely mentioning the constrained function must not.
 A second fixture imports the certified first fixture in a fresh world and
-requires the missing supporter state to remain unknown. These ACL2 fixtures
-are source-only until their scoped admission/certification gate runs.
+requires the missing supporter state to remain unknown. The exact four-book scope passed on code `b1916bc3f` with the record
+toolchain `8aeb`: one qualified assumption reused and three new books recorded.
+Actual source admission retained the `:use` edge and exact live constraint
+match; the separate fresh certified-import world retained the theorem but
+reported its support as unknown. Both actual snapshots were exported and read
+back. The receipt is `docs/design/receipts/proof-support-four-record.json`.
+No application or complete proof-dependency closure is covered.
+
+The first export attempt exposed ACL2 `prin1$`'s atom-only guard. The qualified
+exporter uses the actual `print-object$` object-channel API; theorem, domain,
+and incomplete-report semantics were unchanged.
