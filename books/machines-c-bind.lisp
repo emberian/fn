@@ -1086,7 +1086,7 @@
     (fn2-succ-txns fn2-succ-slots fn2-id-engine fn2-overlays fn2-fields fn2-pool)
     (if (and (< 0 (fn2-csnapshot-rows fn2-csnapshot))
              (not (= (fn2-csnapshot-phase 0 fn2-csnapshot) *fn2-csnapshot-phase-idle*))
-             (or (= (fn2-csnapshot-phase 0 fn2-csnapshot) *fn2-csnapshot-phase-held*)
+             (or (fn2-csnapshot-source-closed-p fn2-csnapshot)
                  (not (and (natp tx) (< tx (fn2-succ-txns-rows fn2-succ-txns))
                            (= (fn2-succ-txns-phase tx fn2-succ-txns) *fn2-succ-phase-staged*)))))
         (mv :full 0 fn2-succ-txns fn2-succ-slots fn2-id-engine fn2-overlays fn2-fields fn2-pool)

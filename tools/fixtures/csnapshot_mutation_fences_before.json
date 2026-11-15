@@ -1,0 +1,18 @@
+{
+  "books/machines-c-bind.lisp": {
+    "before_sha256": "d7b2b09e1915eb1deda3e8a6392faf6276d0bbd6ca84c71afc3482ebb7539af4",
+    "after_sha256": "a6782d74c73d8bc2ea279603dde6728169d4427323e413683bf72c04ad47ee26"
+  },
+  "books/machines-c-groups.lisp": {
+    "before_sha256": "74745bb5cc92669efa147a54bf846666d4aac7ebba24daa783e2fd23349c08f5",
+    "after_sha256": "6e215f473ab8463755270f57c0b6a7c000ee50fd6513230830c2ac8676a66d8b"
+  },
+  "books/machines-c-sealer-events.lisp": {
+    "before_sha256": "7c001e99f903c8649cf1f6edadffd88c59679b6e99c87059dc5ae1ebe10ad1ca",
+    "after_sha256": "af92edb8e3b2235c5d5b9de705c01d0e061650eec6e645506b9735e82efb4521"
+  },
+  "books/startup-genesis.lisp": {
+    "before_sha256": "3a1ae666704417bee3bf68a475feaebadf7426bac70ef95c8c779e74e0c0f1d1",
+    "after_sha256": "0557509d85d4fc610682ae13ef6b69582226cd8bcc3d4249d0ebff3cf9bfa93b"
+  }
+}
