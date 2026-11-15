@@ -1,7 +1,7 @@
 ; Concrete checkpoint candidates. Preparation never grants allocator coverage.
 (in-package "ACL2")
 (include-book "std/util/bstar" :dir :system)
-(include-book "format-check")
+(include-book "format-check-read-contracts")
 (include-book "commit-alloc")
 (include-book "vocab")
 (include-book "pool-read-contracts")
@@ -296,6 +296,14 @@
         (fn2-poolp fn2-pool) (fn2-pool-wfp fn2-pool))
  :hints (("Goal" :in-theory (disable fn2-fields-rows fn2-fields-value
                                     fn2-format-checkpoint-descriptor-decode))))
+
+; The successful decoder establishes the destination room it checks itself.
+(defthm fn2-checkpoint-decode-ok-room-by-definition
+ (implies
+  (equal (car (fn2-checkpoint-decode base slot gen off len okind oslot ogen fn2-fields fn2-pool)) :ok)
+  (and (natp base)
+       (<= (+ base *fn2-format-checkpoint-descriptor-num-fields*) (fn2-fields-rows fn2-fields))))
+ :hints (("Goal" :in-theory (enable fn2-checkpoint-decode))))
 
 (defthm fn2-checkpoint-decode-value-integer
  (implies

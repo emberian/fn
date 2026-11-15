@@ -169,6 +169,7 @@ ACL2_BOOKS = \
   books/format \
   books/format-base \
   books/format-check \
+  books/format-check-read-contracts \
   books/format-context \
   books/format-events \
   books/format-physical \
