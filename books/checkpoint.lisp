@@ -578,20 +578,47 @@
 (fn2-checkpoints-preserves fn2-checkpoint-install
  (c install-commit base slot gen okind oslot ogen fn2-checkpoints fn2-checkpoint-refs fn2-checkpoint-bytes
     fn2-fields fn2-pool fn2-alloc-edges fn2-extents fn2-ops) :position 1)
-(defcolumns-carrier-contracts fn2-checkpoint-check-step
- :carriers ((fn2-checkpoints 1 :prefix "-CANDIDATES" )
+; The old CHECKER TYPE/WFP claims are refuted by the full-input witness.
+; Restrict exactly those two facets to the actual stored entry guard; every
+; other carrier statement retains the complete original hypothesis.
+(make-event
+ (let* ((world (w state)) (name 'fn2-checkpoint-check-step)
+        (args (getpropc name 'formals :missing world))
+        (inputs (getpropc name 'stobjs-in nil world))
+        (outputs (getpropc name 'stobjs-out nil world))
+        (guard (getpropc name 'guard :missing world))
+        (carriers '((fn2-checkpoints 1 :prefix "-CANDIDATES" )
             (fn2-checkpoint-refs 2 :prefix "-REFS" ) (fn2-checkpoint-bytes 3 :prefix "-BYTES" )
             (fn2-fc 4 :prefix "-CHECKER" ) (fn2-b3 5 :prefix "-HASHER" )
-            (fn2-fields 6 :prefix "-FIELDS" ) (fn2-pool 7 :prefix "-POOL" ) (fn2-digests 8 :prefix "-DIGESTS" ))
- :hints ((append (fn2-columns-guard-hint
+            (fn2-fields 6 :prefix "-FIELDS" ) (fn2-pool 7 :prefix "-POOL" ) (fn2-digests 8 :prefix "-DIGESTS" )))
+        (hints '((append (fn2-columns-guard-hint
                  '(fn2-checkpoints fn2-checkpoint-refs fn2-checkpoint-bytes
                    fn2-fc fn2-fc-context fn2-b3 fn2-fields fn2-pool fn2-digests)
                  '(fn2-checkpoint-decode fn2-checkpoint-hash-matchesp
                    fn2-checkpoint-capture-roots fn2-b3-ready fn2-digest-rowp)
-                 nil world)
+                 '(fn2-checkpoint-check-step) world)
           '(:use ((:instance fn2-checkpoint-decode-ok-room-by-definition)
                   (:instance fn2-checkpoint-decode-value-type (i (+ base 1)))
                   (:instance fn2-checkpoint-decode-value-type (i (+ base 2))))))))
+        (hyps (fn2-columns-carrier-hyps carriers))
+        (specs (fn2-columns-carrier-specs
+                 (fn2-columns-inherit-carrier-hints carriers hints)))
+        (domain (remove-duplicates-equal
+                 (append hyps
+                  (fn2-columns-readonly-type-hyps args inputs nil world)
+                  (list guard))))
+        (checker (fn2-columns-guard-domain-specs (take 2 (nthcdr 6 specs))))
+        (guarded (list (append (car checker) (list :hyps domain))
+                       (append (cadr checker) (list :hyps domain)))))
+  (if (or (eq args :missing) (eq guard :missing)
+          (eq (getpropc name 'symbol-class nil world) :program)
+          (not (fn2-columns-contract-carriersp carriers args inputs outputs world))
+          (not (equal (nth 3 carriers) '(fn2-fc 4 :prefix "-CHECKER"))))
+      (er soft 'checkpoint-carrier-domain "Actual CHECK-STEP carrier metadata changed.")
+    (value
+     (fn2-columns-preserves (caar carriers) name args nil hyps
+      (append (take 6 specs) guarded (nthcdr 8 specs))
+      "-PRESERVES" t t hints t nil nil nil nil)))))
 
 (fn2-checkpoints-preserves fn2-checkpoint-prepare-body
  (c checkpoint history incarnation domain unit epoch allocation kind len hash fn2-checkpoints fn2-checkpoint-refs fn2-checkpoint-bytes fn2-digests)

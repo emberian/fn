@@ -12,7 +12,7 @@
   "source_files": [
     {
       "file": "books/checkpoint.lisp",
-      "sha256": "fae2fa74d9d3da4e18d47a8cfe12ecf32689c74508afb89de85bf5d8600d2a9d"
+      "sha256": "9a82b57d53bd2589b04c6fc319e4d9611c0d8f8a31d725190051437dd5a05c6a"
     },
     {
       "file": "books/checkpoint-member.lisp",
@@ -32,7 +32,7 @@
     },
     {
       "file": "tests/checkpoint-carrier-unit.lisp",
-      "sha256": "0bfab15fcddf607adb519fdfdc3c64c1e857b769a55b0dc56531146e1f324da6"
+      "sha256": "d05be94561eef92f5fa667a8d52220f6ae9312db161aa23e36550adbc79dfc8c"
     },
     {
       "file": "tests/layout-size-bound-unit.lisp",
@@ -201,15 +201,23 @@
     "checkpoint_and_member_guards": "Earlier actual unchanged guard PASS; not a whole-book result.",
     "allocator_output_contracts": "25fa actual shared-world producer chain PASS; ACCOUNT reused COMMIT-ALLOC facts, now explicit dependency.",
     "page_frame_eight": "Actual shared-world corrected CAR events PASS .41s/463 steps (reported by executing owner). Source-backed proofbook then redundant .00s.",
-    "latest_checkpoint_verdict": "25fa CANDIDATES-TYPE refused .40s/14505 steps before page frames.",
+    "latest_checkpoint_verdict": "ed1 source whole checkpoint24.93s: CANDIDATES, REFS, BYTES facets pass; original CHECKER TYPE/WFP refuted separately.",
     "corrected_checkpoint_fae2": "Staged, NEVER admitted before shared-world hard deadline.",
-    "counter_controls": "Full old RETAIN antecedent refutation + typed whole-H positive already proved; final coherent fixture admission pending."
+    "counter_controls": "Full old RETAIN antecedent refutation + typed whole-H positive already proved; final coherent fixture admission pending.",
+    "decoded_u60_projection": "PASS0.04s/959steps in actual shared-app2 retained world, source c823.",
+    "capture_root": "All six guarded TYPE/WFP/ROWS facets PASS0.32s/8155steps.",
+    "capture_roots": "All six guarded facets PASS1.72s/16602steps after removing repeated computed induction.",
+    "checker_row_counter": "Whole old H/actual CHECK-STEP negative PASS0.43s/147552steps; same-input all8 classification PASS0.43s/147799steps. Only CHECKER P/WFP false at this witness.",
+    "checker_row_positive": "Old H +valid FC row positive PASS0.29s/130197steps. Not the full new guard.",
+    "checker_guarded_two": "Actual stored-guard replacement TYPE/WFP PASS0.38s/11596steps; helper source untouched.",
+    "latest_selective_family": "After explicit CHECKSTEP body enable, original first6 and newguardedchecker2 pass; original HASHER-TYPE refuses2.01s/158696. Falseness not yet established.",
+    "whole_new_guard_positive": "Exact metadata storedguard +actual constructor source prepared; not executed yet."
   },
   "next_gate": {
     "resource_owner": "Parent must allocate; no private reservation or job.",
     "parents": "Use current-key certified prefix once owner receipt is ready. Strict compare every required parent; stop on missing/source mismatch.",
     "order": "Admit actual new proof libraries (skip only exact already-certified libraries), checkpoint full source, checkpoint-member full source, both complete fixtures; preserve per-event limits.",
-    "first_question": "Does corrected original CHECK-STEP-CANDIDATES-TYPE discharge through successful FIELDS and unconditional POOL frame +DECODE room?",
+    "first_question": "Establish original HASHER-TYPE through actual callee API or a genuine full-H counterexample; do not generalize the FC row witness.",
     "record_only_after": "Both complete source books and controls pass; no partial-book claim.",
     "pending_hint": "If arithmetic context lacks decoder room, same exact statement may need forward-chaining class; not applied without actual residual."
   },
@@ -222,5 +230,5 @@
       "books/checkpoint-member.lisp": 3
     }
   },
-  "controls": "Retire only demonstrated false RETAIN EDGES-TYPE, explicitly named readonly-typed replacement. All other old carrier statements retained."
+  "controls": "Retire only demonstrably false RETAIN EDGES-TYPE and CHECKSTEP CHECKER TYPE/WFP, under explicit readonly-typed/actual-guard names. All other original statements retained pending proofs or actual refutations."
 }
