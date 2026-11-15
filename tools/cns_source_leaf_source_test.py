@@ -29,11 +29,44 @@ def keep(x):
 def digest(x):
     return hashlib.sha256(json.dumps(x, sort_keys=True).encode()).hexdigest()
 
+READ_DIMENSIONS = [
+    ['fn2-pool-dimensions', 'fn2-rd-octets', ':observations', [':data'],
+     ':opaque', ['fn2-rd-copy', 'fn2-rd-entry-row']],
+    ['fn2-pool-dimensions', 'fn2-read-octets-children', ':observations',
+     [':rows', ':data'], ':opaque', ['fn2-rd-octets']],
+]
+
+def original_consumer_forms(path, forms):
+    if path == 'books/machines-c-read.lisp':
+        # Only these two reviewed interface requests postdate the extraction.
+        # Check their complete inventory before comparing every original AST.
+        additions = [x for x in forms if x[:1] == ['fn2-pool-dimensions']]
+        if additions != READ_DIMENSIONS:
+            raise ValueError('actual READ dimension request inventory changed')
+        forms = [x for x in forms if x not in READ_DIMENSIONS]
+    return [x for x in forms if keep(x)]
+
 class SourceLeaves(unittest.TestCase):
     def test_existing_runtime_guards_and_claims_exact(self):
         for path, expected in BASE.items():
             if path != 'moved_forms':
-                self.assertEqual([digest(x) for x in parsed(path) if keep(x)], expected, path)
+                self.assertEqual([digest(x) for x in original_consumer_forms(path, parsed(path))], expected, path)
+
+    def test_reviewed_read_additions_do_not_hide_request_mutations(self):
+        import copy
+        forms = parsed('books/machines-c-read.lisp')
+        for mode in ['missing', 'observation', 'callee']:
+            mutated = copy.deepcopy(forms)
+            addition = next(x for x in mutated if x[:2] ==
+                            ['fn2-pool-dimensions', 'fn2-read-octets-children'])
+            if mode == 'missing':
+                mutated.remove(addition)
+            elif mode == 'observation':
+                addition[3] = [':rows']
+            else:
+                addition[1] = 'fn2-read-value-children'
+            with self.assertRaisesRegex(ValueError, 'inventory changed'):
+                original_consumer_forms('books/machines-c-read.lisp', mutated)
 
     def test_copy_guard_mutation_breaks_exact_source_contract(self):
         import copy
