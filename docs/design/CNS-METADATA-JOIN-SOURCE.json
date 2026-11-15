@@ -1,0 +1,128 @@
+{
+  "status": "source-reviewed; ACL2 admission and executable assertion unrun",
+  "componentSource": "452b1adc8477677d8165d27c3a4a425117cd0cb2",
+  "consumerRoot": "tests/cns-metadata-pending-unit",
+  "logicalWorldBoundary": {
+    "priorApplicationSource": "30e44c6955ae09affb0acfb436c9904b9094ad1f",
+    "compatibleWithAlreadyAssembledPriorCore": false,
+    "reason": "Prior source has no C-source observer tables/registry or CNS observer continuation fields. The successor core must be assembled from one coherent schema before loading this consumer.",
+    "currentApplicationSource": "db0b44e5ed996e8b42678c29fddd4eab9699d0e3",
+    "currentApplicationClassification": "Authoritative current shared application also lacks observer schema; preserve its campaign."
+  },
+  "sourceOverlay": {
+    "method": "Project current books/cns.lisp and books/cns-kind.lisp with the named structural transformer. Do not overwrite current CTL, allocator, loader or core sources with old donor files.",
+    "payload": [
+      {
+        "path": "books/cns-request-observer.lisp",
+        "sha256": "5b672180efd0dec1a876083a6e4518b144d7c750bbfc394a0a18f99543c708ba"
+      },
+      {
+        "path": "tools/cns_read_observer_rewrite.py",
+        "sha256": "b6af302f2b4bcbc38e9cf0e2d0bc49d20112275ca05afdd6abb9d3e0d94301a2"
+      },
+      {
+        "path": "tools/cns_read_observer_mid.lisp",
+        "sha256": "ab0473f5b4c919532d893bd01ea527e36140b83244a69f78f95925345c8bca76"
+      },
+      {
+        "path": "tools/cns_read_observer_refresh.lisp",
+        "sha256": "aaba48a66136c2828b2cb37f9c21475005265236ed39dc8657f8ed0b4ef4a7de"
+      },
+      {
+        "path": "tools/test_cns_read_observer_rewrite.py",
+        "sha256": "f701c1e933bc25ce87d08c93640333834f87b6054b7cf86aa0ea2134abe91e5b"
+      },
+      {
+        "path": "tests/fixtures/cns_read_observer_targets.json",
+        "sha256": "15225121b9c857b8e85caa21c3209c610ac6ad21abfe6af3314c7125ffe78026"
+      },
+      {
+        "path": "tests/cns-metadata-pending-unit.lisp",
+        "sha256": "38ab6d344d7ecd41bacf763424b89508ffccb996bbe8d1f34ba5a2970493d2f5"
+      }
+    ],
+    "projectedSchema": {
+      "fields": [
+        "observer-serial:u60",
+        "mid-checked:bool",
+        "refresh:enum(none,unchanged,duplicate,accepted)"
+      ],
+      "phase": "refresh appended after existing retired; prior phase values retained",
+      "initialization": "all new fields cleared by actual take"
+    },
+    "projectedCallbacks": [
+      "metadata acquire in decode/check/lookup/read/page/refresh",
+      "metadata release before Send, safe lease-capacity reselection, successor/commit/upload waits",
+      "actual FETCH MID check before source physical work; retained fact replaces later C read",
+      "commit result consumed once; fresh metadata read in refresh"
+    ],
+    "preservedByProjection": [
+      "all CTL arms",
+      "original CNS draining body",
+      "physical retention/BREAD/manifest providers",
+      "existing page MORE meaning",
+      "existing resource/budget declarations except explicitly added metadata tables and bounded MID call"
+    ]
+  },
+  "sharedProviderBoundary": {
+    "source": "3b0bc58abf5ab519495f9000597f930179561945",
+    "owner": "shared C-source observer provider",
+    "requiredActualChanges": [
+      "C-source control/readers stobj declarations, core registration and initialization",
+      "central 1+T+2R+X+N endpoint/profile geometry with CNS endpoint 1+R+S+X+s",
+      "READ observation admission under exact retained parent, child release preserving parent",
+      "READ bind-one/clear-one and binding-current predicate",
+      "coherent successor, cursor, sealer, group and writer observer joins"
+    ],
+    "namedInterfaces": [
+      "fn2-c-source-cns-endpoint",
+      "fn2-c-source-reader-acquire",
+      "fn2-c-source-reader-release",
+      "fn2-read-parent-bind-one",
+      "fn2-read-parent-clear-one",
+      "fn2-read-parent-binding-current-p"
+    ],
+    "integrationRequirement": "Reconcile these schema/provider differences with the current rolling source before freezing closure keys; this manifest does not assert a complete current application overlay."
+  },
+  "actualProducerBoundary": {
+    "source": "5a516ec771141e8b6362d4bf71b468d6716249ae",
+    "payload": [
+      {
+        "path": "tests/checkpoint-live-network-prefix-support.lisp",
+        "sha256": "e3deeb4fe7316dfcf79557f865257ba8c5462d56910984bc50942ca71286786e"
+      },
+      {
+        "path": "tests/checkpoint-live-publication-support.lisp",
+        "sha256": "df703772225999993a011355e56450b3569409d12532aa46e9ab8bd5ddea237e"
+      },
+      {
+        "path": "tests/checkpoint-cold-path-producer-support.lisp",
+        "sha256": "b1d0133855236eaf1fc9d880fa4f81636241d32d07d311ce844a8dc9ca65a1a5"
+      },
+      {
+        "path": "tests/checkpoint-cold-path-drive.lisp",
+        "sha256": "e5c7a1016df2fd8e83fbbda16b3406491f78c20ffd0f67f2a6913ab29aecbff2"
+      }
+    ],
+    "producer": "real same-SIM REGISTER/APPEND -> real Write/Fence publication -> complete 20-child live-source predicate",
+    "schedulingScope": "Test-only maintenance entry and explicit paused-master controlled schedule; no automatic scheduler reachability claim."
+  },
+  "assertionContract": [
+    "actual PAGE READ identity, owned lease range, physical offset, outstanding-IO pin and generation under actual B freeze phase2",
+    "writer PENDING receipt derives from real master/snapshot token and cuts",
+    "second actual network request cannot acquire new metadata while the first is retained",
+    "actual simulator READ completion leads to exact original CNS/CTL/request/TX/cursor tuple and exact independent decoded RECORD article/MID/APPEND position",
+    "metadata drops before Send; only then actual writer poll becomes EXCLUSIVE",
+    "changed generation, cursor, position or article bytes fail the output predicate"
+  ],
+  "localSourceChecks": {
+    "transformControls": 3,
+    "strictFixtureForms": 25,
+    "knownActualDefinitionCallAritiesChecked": 84,
+    "arityFindings": 0,
+    "secretsFindings": 0,
+    "diffCheck": "pass",
+    "runtimeOrCertificationClaim": false
+  },
+  "nextGate": "One source-matched successor prefix reusing qualified unaffected artifacts, then admit this root and execute its unchanged assertion. No live core redefinition or duplicate cold application world."
+}
