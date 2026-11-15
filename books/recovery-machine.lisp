@@ -1042,6 +1042,25 @@
            ((:settled) (:set (rc-roff row-rc-lifecycle-next) (rc-lifecycle-next 0) (rc-stage 0))
             (:charge :steps *fn2-work-stage* :runnable t))
            (:otherwise (:stop :recovery-replay)))))
+  ;; RELEASE keeps the original authenticated journal window intact while a
+  ;; separate workspace reads descriptor and installation evidence.
+  (replay-release-begin :on-refusal ((:stop :recovery-replay))
+   (:do (code) (fn2-recovery-release-begin id row-generation) :accept ()
+    :case (((:need-read) (:set (rc-stage 11)) (:charge :bytes 4096 :steps *fn2-work-stage* :runnable t))
+           (:otherwise (:stop :recovery-replay)))))
+  (replay-release-issue :on-refusal ((:stop :recovery-replay))
+   (:do (code op opgen) (fn2-recovery-release-issue id row-generation) :accept ()
+    :case (((:issued) (:set (pending (+ 1 row-pending)) (rc-stage 12))
+            (:charge :bytes 4096 :steps *fn2-work-stage* :descriptors 1))
+           ((:exhausted) (:yield))
+           (:otherwise (:stop :recovery-replay)))))
+  (replay-release-check :on-refusal ((:stop :recovery-replay))
+   (:do (code next) (fn2-recovery-release-step id row-generation) :accept ()
+    :case (((:more) (:charge :bytes 4096 :steps *fn2-work-stage* :runnable t))
+           ((:need-read) (:set (rc-stage 11)) (:charge :bytes 4096 :steps *fn2-work-stage* :runnable t))
+           ;; Complete-prefix release authority is not yet available. In
+           ;; particular :blocked never skips the original journal record.
+           (:otherwise (:stop :recovery-replay)))))
   (replay-record :on-refusal ((:stop :recovery-bounds))
    (:do (code next wlen ev)
         (fn2-recovery-replay-record row-rc-commit row-rc-roff row-rc-rend row-rc-wslot row-rc-wgen row-rc-wlen row-rc-wevent
@@ -1049,6 +1068,7 @@
     :accept ()
     :case (((:end) (:set (rc-stage 2)) (:charge :steps *fn2-work-stage* :runnable t))
            ((:appended) (:set (rc-roff next) (rc-wlen wlen) (rc-wevent ev)) (:charge :bytes 4096 :steps *fn2-work-stage* :runnable t))
+           ((:release) (:goto replay-release-begin))
            ((:lifecycle) (:set (rc-lifecycle-next next) (rc-stage 3)) (:charge :steps *fn2-work-stage* :runnable t))
            ((:skip) (:set (rc-roff next)) (:charge :bytes 4096 :steps *fn2-work-stage* :runnable t))
            ((:boundary) (:set (rc-stage 1)) (:charge :steps *fn2-work-stage* :runnable t))
@@ -1105,6 +1125,9 @@
           ((and (equal row-rc-mode *fn2-rec-mode-replay*) (equal row-rc-stage 3)) (:goto replay-lifecycle))
           ((and (equal row-rc-mode *fn2-rec-mode-replay*) (equal row-rc-stage 4)) (:goto replay-frontier))
           ((and (equal row-rc-mode *fn2-rec-mode-replay*) (member-equal row-rc-stage '(5 6 7 8))) (:goto replay-adopt))
+          ((and (equal row-rc-mode *fn2-rec-mode-replay*) (equal row-rc-stage 11)) (:goto replay-release-issue))
+          ((and (equal row-rc-mode *fn2-rec-mode-replay*) (equal row-rc-stage 12)) (:charge :steps *fn2-work-poll*))
+          ((and (equal row-rc-mode *fn2-rec-mode-replay*) (equal row-rc-stage 13)) (:goto replay-release-check))
           ((equal row-rc-mode *fn2-rec-mode-replay*) (:goto replay-record))
           (t
    (:if (equal row-rc-mode *fn2-rec-mode-discover*)
@@ -1161,5 +1184,11 @@
           (t (:stop :recovery-bounds))))
   (:done (:idle)))
  :observes
- ((:read-result :from (:read-result)
-   (:set (rc-outcome outcome) (rc-count count) (rc-ready 1)) (:wake))))
+ ((:read-result :from (:read-result :verify)
+   (:cond ((equal row-phase *fn2-recovery-machine-state-read-result*)
+           (:set (rc-outcome outcome) (rc-count count) (rc-ready 1)) (:wake))
+          ((and (equal row-rc-mode *fn2-rec-mode-replay*) (equal row-rc-stage 12)
+                (equal outcome *fn2-outcome-done*) (equal count 4096))
+           (:do (code) (fn2-recovery-release-read-state id row-generation) :accept (:ready))
+           (:set (rc-stage 13)) (:wake))
+          (t (:stop :recovery-replay))))))

@@ -207,3 +207,13 @@ read yields uncertain. Parent kind handler additionally checks DONE/count4096
 and routes ready to stage13; generic observe-terminal decrements pending only
 after that handler returns. Stage13 then performs full current-unit authorization.
 This is I/O readiness only, never descriptor/J authentication or FREE authority.
+
+The cold recovery dispatcher now routes an authenticated RELEASE boundary through
+BEGIN and VERIFY stages 11 (issue), 12 (physical completion), and 13 (check).
+The observer invokes the read-only exact completion binding while machine pending
+is still one; generic terminal observation decrements it afterward. Descriptor/J
+reads use the separate release workspace and preserve the original journal window
+and record offset. The shared checker may continue or request another read; its
+blocked terminal refuses without skipping the record. Complete-prefix authority,
+archive installation lookup, settlement and FREE remain unfinished. Five source
+wiring controls pass; generated callback admission and actual execution are unrun.

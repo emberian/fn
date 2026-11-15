@@ -589,9 +589,11 @@
        ((mv code bnext fn2-core) (fn2-rp-body kind next rend slot gen id ogen fn2-core))
        ((unless (and (eq code :ok) (<= next bnext) (<= bnext rend))) (mv :invalid 0 0 0 fn2-core))
        ((when (and (< 0 wlen) (or (equal kind *record-kind-keyed-mutation*)
-                                 (equal kind *record-kind-retirement*) (equal kind *record-kind-allocation*) (not (equal event wevent)))))
+                                 (equal kind *record-kind-retirement*) (equal kind *record-kind-allocation*)
+                                 (equal kind *record-kind-release-allocation*) (not (equal event wevent)))))
         (mv :boundary roff wlen wevent fn2-core))
        ((when (equal kind *record-kind-keyed-mutation*)) (mv :skip bnext 0 0 fn2-core))
+       ((when (equal kind *record-kind-release-allocation*)) (mv :release roff 0 0 fn2-core))
        ; Actual authenticated lifecycle evidence never becomes a C member.
        ((when (member-equal kind (list *record-kind-retirement* *record-kind-allocation*)))
         (mv-let (installed fn2-core) (fn2-rp-lifecycle kind id ogen fn2-core)
@@ -617,7 +619,7 @@
 (defcost fn2-recovery-manifest-unit :answers (:more :done :conflict :invalid :bounds) :bytes 4096
   :tables (fn2-core-pool fn2-core-fields fn2-core-rec-cand)
   :doc "Recovery's payload pass: claim the block extents one source manifest unit names.")
-(defcost fn2-recovery-replay-record :answers (:end :appended :boundary :skip :lifecycle :invalid :bounds) :bytes 4096
+(defcost fn2-recovery-replay-record :answers (:end :appended :boundary :skip :lifecycle :release :invalid :bounds) :bytes 4096
   :tables (fn2-core-pool fn2-core-fields fn2-core-extents fn2-core-alloc-edges fn2-core-checkpoint-suffix-allocation)
   :doc "One ordered record: rebuild a C member workspace or install a B retirement bound to the containing commit, after allocator adoption.")
 
