@@ -63,6 +63,16 @@ class HarvestGuard(unittest.TestCase):
         self.assertIn('fn2-columns-scalar-frame-hint', s)
         self.assertIn('fn2-ops-latch-peer-posted-frame', s)
 
+    def test_only_fifo_length_observation_opted_in_and_bounds_explicitly_used(self):
+        parsed = ledger.read_forms(Path('books/vocab.lisp').read_text())
+        harvest = next(x for x in nodes(parsed) if x[:2] == ['defun', 'fn2-harvest-next'])
+        calls = [x for x in nodes(harvest[3]) if x[:1] == ['fn2-columns-scalar-frame-hint']]
+        self.assertEqual(len(calls), 1)
+        self.assertEqual(calls[0][2], ['quote', ['fn2-ops-posted-fifo-length']])
+        self.assertEqual(calls[0][3], ['quote', ['fn2-ops-peek-posted', 'fn2-ops-latch-peer']])
+        self.assertIn(':use', str(harvest[3]))
+        self.assertIn('fn2-ops-peek-posted-post-bounds', str(harvest[3]))
+
     def test_no_invented_ring_invariant_and_all_posted_metadata_framed(self):
         _, t, _ = inventory({'books/vocab.lisp': Path('books/vocab.lisp').read_text()})
         fact = str(t['fn2-ops-peek-posted-post-bounds'][0])

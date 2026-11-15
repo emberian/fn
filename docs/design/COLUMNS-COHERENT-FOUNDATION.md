@@ -131,3 +131,23 @@ fake tables are needed. On success record whole VOCAB, then continue the
 remaining two-fixture37 books using the qualified prefix. Borrow accounting's
 unchanged downstream contract is source-checked; its whole book is outside
 this narrow gate.
+
+### FIFO length observation follow-up
+
+The2545 minimal seven-parent pilot passed the relocated peek-slot theorem and
+its post-bounds helper, then stopped at the new latch frame's FIFO-length
+projection (two C0/non-C0 checkpoints). Head/count were discharged; the existing
+scalar-frame helper intentionally kept array length opaque. This was not a
+counterexample or a step-limit refusal: the attempted book took17.36s/2,272
+steps. HARVEST's new guard was not reached. No book record was granted/run;
+all four owned PIDs/scope were verified gone and its2Gi reservation released.
+
+The follow-up opts in only `fn2-ops-posted-fifo-length` at that proof boundary
+and HARVEST's guard, using the existing helper's observation list. Other array
+readers and ROWS remain closed; peek/latch remain opaque in the guard. Its
+post-bounds fact is explicitly supplied via :USE, so the selected length
+observation normalizes the fact and the goal together. Predicate, guards,
+statements, frame fields and runtime bodies are unchanged. The added control
+checks that exact single-reader/opaque-producer configuration. This follow-up
+remains UNRUN, with the same minimal pilot plan and all seven qualified
+parents unchanged. The prior27 qualified prefix is untouched.

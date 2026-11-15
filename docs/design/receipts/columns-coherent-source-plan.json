@@ -28,7 +28,7 @@
       "sha256": "253babac6e5d9e9df00a655ba6b6595c9e6d85315c9294f05e3d939f19ad5770"
     },
     "books/checkpoint": {
-      "key": "5c504f5f13db64202282cacb1ea0f95d567924a97eeb3ca7fc0e8dde53f0d508",
+      "key": "70127fecd5e9dd282d084c07d8b4a5206b6a09197ad9cbab01d54a067f2945b5",
       "sha256": "ef8e12b3449c471a750dab489efe2bd2293a69429da6cef873b56f2c2b63eed7"
     },
     "books/columns": {
@@ -144,11 +144,11 @@
       "sha256": "c6b895fd566be6b91ba68fb040826b689a5ad4891a65e040773bfb28b90e1978"
     },
     "books/vocab": {
-      "key": "914946ae36afe7d1c993b745f86e7d1ae4653f6ae304821e86b21da52357dea0",
-      "sha256": "e35ee89bcaec7cf40eec722ad9087141b873bd3ef3fba5a0e1ef5534a81e9ceb"
+      "key": "c304e1852f72ddb04539e442419d29ec4110a6c97b323648017ffe508286fb4a",
+      "sha256": "4a1e68ce02b5611dc8187ea7a5e467a52b7a0e9d51289e6275fe37bc6678f378"
     },
     "tests/columns-carried-unit": {
-      "key": "c6e022d59ed0925883bd1a768e158e2677cb3aac407724ba6b92940791a091a2",
+      "key": "9f841a1ff3f6228b6e24ae261735f43d70fdf7298e864dfd13cb9b592ec4934f",
       "sha256": "d626533d08e5ed81cdd26705c90a035484c01607aa3cb9de46289e47021fab6c"
     },
     "tests/columns-carrier-hints-unit": {
@@ -156,5 +156,5 @@
       "sha256": "aa490db15be9f725d2b9729b7dd09e71765c0b95e19413f56366129e1ea8b3b3"
     }
   },
-  "source_parent": "87f7d4045"
+  "source_parent": "2545a6c10"
 }

@@ -829,13 +829,14 @@
         (equal (fn2-ops-post-count next) (fn2-ops-post-count fn2-ops))
         (equal (fn2-ops-posted-fifo-length next) (fn2-ops-posted-fifo-length fn2-ops)))))
  :hints ((fn2-columns-scalar-frame-hint '(fn2-ops)
-           '(fn2-ops-latch-peer) nil world)))
+           '(fn2-ops-latch-peer fn2-ops-posted-fifo-length) nil world)))
 
 (defun fn2-harvest-next (fn2-ops)
   (declare (xargs :stobjs fn2-ops :guard (fn2-ops-wfp fn2-ops)
    :guard-hints
    ((append
-     (fn2-columns-scalar-frame-hint '(fn2-ops) nil
+     (fn2-columns-scalar-frame-hint '(fn2-ops)
+       '(fn2-ops-posted-fifo-length)
        '(fn2-ops-peek-posted fn2-ops-latch-peer) world)
      '(:use ((:instance fn2-ops-peek-posted-slot (ops fn2-ops))
              fn2-ops-peek-posted-post-bounds))))))
