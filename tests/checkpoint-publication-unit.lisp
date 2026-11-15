@@ -1,4 +1,5 @@
 (in-package "ACL2")
+(include-book "checkpoint-bank-fixture")
 (include-book "std/util/bstar" :dir :system)
 (include-book "../books/checkpoint-publication")
 
@@ -7,7 +8,7 @@
 ; booleans or claim a real issued-operation/fence witness.
 (defun fn2-checkpoint-publication-harvest-test-body (fn2-checkpoint-publication)
  (declare (xargs :stobjs fn2-checkpoint-publication :verify-guards nil))
- (b* ((fn2-checkpoint-publication (fn2-checkpoint-publication-init 1 fn2-checkpoint-publication))
+ (b* ((fn2-checkpoint-publication (fn2-checkpoint-test-empty-publication fn2-checkpoint-publication))
       (fn2-checkpoint-publication (fn2-checkpoint-publication-put 0
         (phase *fn2-checkpoint-publication-phase-wait-first*) (op-slot 5) (op-gen 7)))
       ((mv stale fn2-checkpoint-publication)

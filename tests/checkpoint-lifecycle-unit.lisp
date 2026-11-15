@@ -5,6 +5,7 @@
 ; Actual allocator reservations provide the physical identities. Lifecycle
 ; cursors advance only through begin/step; no completion cursor is seeded.
 (in-package "ACL2")
+(include-book "checkpoint-bank-fixture")
 (include-book "std/util/bstar" :dir :system)
 (include-book "../books/checkpoint-lifecycle")
 
@@ -64,7 +65,7 @@
       (fn2-extents (fn2-alloc-init 8 fn2-extents))
       (fn2-ops (fn2-ops-columns-init 0 fn2-ops))
       (fn2-alloc-edges (fn2-alloc-edges-init (+ 6 (* 2 8) (* 6 1) 8) fn2-alloc-edges))
-      (fn2-checkpoint-publication (fn2-checkpoint-publication-init 1 fn2-checkpoint-publication))
+      (fn2-checkpoint-publication (fn2-checkpoint-test-empty-publication fn2-checkpoint-publication))
       ((mv epoch-code fn2-extents) (fn2-alloc-begin-epoch 1 fn2-extents))
       ((mv reserved fn2-checkpoint-refs fn2-checkpoint-construction fn2-checkpoint-page-verified fn2-extents)
        (fn2-clu-reservations 0 fn2-checkpoint-refs fn2-checkpoint-construction fn2-checkpoint-page-verified fn2-extents))

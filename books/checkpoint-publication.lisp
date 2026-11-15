@@ -2,7 +2,7 @@
 ; Completion consumes exact issued operation identities through defcorechild's
 ; harvest extension. No caller-provided durability flag is accepted.
 (in-package "ACL2")
-(include-book "checkpoint-bank-evidence")
+(include-book "checkpoint-bank-obligations-state")
 (include-book "checkpoint-geometry")
 (include-book "arm-children")
 (fn2-book-layer :b)
@@ -33,6 +33,8 @@
                      (equal (fn2-checkpoint-publication-phase 0 fn2-checkpoint-publication)
                             *fn2-checkpoint-publication-phase-idle*)
                      (equal (fn2-checkpoint-publication-debt-valid 0 fn2-checkpoint-publication) 0)
+                     (fn2-checkpoint-bank-obligations-complete-p fn2-checkpoint-publication)
+                     (equal (fn2-checkpoint-publication-cold-pending-mask 0 fn2-checkpoint-publication) 0)
                      (natp c) (< c (fn2-checkpoints-rows fn2-checkpoints))
                      (equal (fn2-checkpoints-state c fn2-checkpoints) *fn2-checkpoint-state-installed*)
                      (posp (fn2-checkpoints-checkpoint c fn2-checkpoints))
@@ -167,8 +169,14 @@
                      (equal evkind (if fence *fn2-event-fence-result* *fn2-event-write-result*))))
        (mv :ok fn2-checkpoint-publication))
       (success (and (or (not fence)
-                        (equal (fn2-checkpoint-publication-debt-valid 0 fn2-checkpoint-publication) 0))
+                        (and (equal (fn2-checkpoint-publication-debt-valid 0 fn2-checkpoint-publication) 0)
+                             (fn2-checkpoint-bank-obligations-complete-p fn2-checkpoint-publication)
+                             (equal (fn2-checkpoint-publication-cold-pending-mask 0 fn2-checkpoint-publication) 0)))
                     (equal outcome *fn2-outcome-done*) (equal count (if fence 0 4096))))
+      ; Both target-bank cold slots retain their independent obligations until
+      ; actual candidate debt owns every common and slot-specific evidence word.
+      (fn2-checkpoint-publication (if (and fence success)
+        (fn2-checkpoint-bank-obligations-record-fence fn2-checkpoint-publication) fn2-checkpoint-publication))
       ; Snapshot displaced evidence before replacing its bank identity. Both
       ; transfers are inside the same exact validated covering-Fence callback.
       (fn2-checkpoint-publication (if (and fence success)

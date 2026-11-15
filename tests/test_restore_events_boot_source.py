@@ -38,8 +38,38 @@ class EventBootSourceTests(unittest.TestCase):
         for phase in PHASES:
             self.assertTrue(lr.match('(' + phase + ' ?*body)', lr.parse(src).forms, deep=True), phase)
         self.assertIn('(fn2-boot-checkpoint-investigation-finish id row-generation)', src)
-        self.assert_selected_recovery_gates(src)
+        # The former stop was an unfinished implementation boundary. Check
+        # the real forward path and its guarded final release, not that gap.
+        forms = lr.parse(src).forms
+        self.assertTrue(lr.match('((:validated) (:next :checkpoint-project-begin) ?*rest)', forms))
+        path = {
+            ':checkpoint-project-begin': ':checkpoint-project-step',
+            ':checkpoint-project-step': ':checkpoint-project-protect',
+            ':checkpoint-project-protect': ':checkpoint-cbase-acquire',
+            ':checkpoint-cbase-acquire': ':checkpoint-adopt-begin',
+            ':checkpoint-authority-copy': ':checkpoint-catalog-begin',
+            ':checkpoint-catalog-copy': ':checkpoint-directory-install',
+            ':checkpoint-directory-install': ':checkpoint-bank-bind',
+            ':checkpoint-bank-bind': ':recover',
+            ':recover': ':recover-wait',
+            ':recover-wait': ':epoch',
+        }
+        for phase, target in path.items():
+            body = lr.match('(' + phase + ' ?*body)', forms)[0].node
+            self.assertTrue(lr.match('(:next ' + target + ')', [body]), (phase, target))
+            self.assertFalse(lr.match('(:next :release)', [body]), phase)
+        fence = lr.match('(:epoch-fence ?*body)', forms)[0].node
+        self.assertTrue(lr.match('(fn2-issue-fence :principal 0)', [fence]))
+        result = lr.match('(:epoch-result ?*body)', forms)[0].node
+        self.assertTrue(lr.match('((not (equal row-outcome *fn2-outcome-done*)) (:stop :io))', [result]))
+        self.assertTrue(lr.match('(fn2-boot-finish-bank-obligations id row-generation)', [result]))
+        self.assertEqual(len(lr.match('(:next :release)', forms)), 1)
+        self.assertTrue(lr.match('(:next :release)', [result]))
         self.assertIn('(if (equal row-stage 10) row-read-length 4096)', src)
+
+    def test_actual_selected_path_has_a_final_fence_dominator(self):
+        src = (Path(__file__).resolve().parents[1] / 'books/boot.lisp').read_text()
+        self.assert_selected_recovery_gates(src)
 
     def assert_selected_recovery_gates(self, src):
         """Refute source routing bypasses; this does not execute ACL2 or claim boot success."""
@@ -83,13 +113,14 @@ class EventBootSourceTests(unittest.TestCase):
                 pending.extend(graph.get(current, ()))
             return False
         self.assertTrue(reaches(':recover', set()))
+        self.assertTrue(reaches(':checkpoint-events-finish', set()))
         self.assertFalse(reaches(':recover', {':epoch-result'}))
         self.assertFalse(reaches(':checkpoint-events-finish', {':epoch-result'}))
         self.assertTrue(lr.match('(:issue (fn2-issue-fence :principal 0) ?*rest)', [arm(':epoch-fence')], deep=True))
         self.assertTrue(lr.match('(:cond ((equal row-event-ready 0) (:idle)) ((not (equal row-outcome *fn2-outcome-done*)) (:stop :io)) (t ?*success))', [arm(':epoch-result')], deep=True))
         self.assertTrue(lr.match('(fn2-boot-adopt-epoch row-next-epoch)', [arm(':epoch-result')], deep=True))
         # Listeners are woken only in post-Fence release/ready arms.
-        for phase in (':checkpoint-events-finish', ':checkpoint-project-begin', ':checkpoint-project-step', ':checkpoint-project-protect', ':checkpoint-cbase-acquire', ':checkpoint-adopt-begin', ':checkpoint-adopt-copy', ':checkpoint-authority-copy', ':checkpoint-directory-install', ':recover-wait', ':epoch', ':epoch-fence'):
+        for phase in (':checkpoint-events-finish', ':checkpoint-project-begin', ':checkpoint-project-step', ':checkpoint-project-protect', ':checkpoint-cbase-acquire', ':checkpoint-adopt-begin', ':checkpoint-adopt-copy', ':checkpoint-authority-copy', ':checkpoint-directory-install', ':checkpoint-bank-bind', ':recover-wait', ':epoch', ':epoch-fence'):
             self.assertFalse(lr.match('(:wake-row ?target)', [arm(phase)], deep=True), phase)
 
     def test_real_forward_gates_reject_bypasses(self):

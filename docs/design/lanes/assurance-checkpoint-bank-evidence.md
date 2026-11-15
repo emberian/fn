@@ -54,3 +54,37 @@ seed to completion before investigation-finish/scratch reuse, then bind these
 records through authenticated census topology before operational bank placement.
 The new negative constructor fixture does not fabricate a positive investigation;
 the full boot success witness and qualification remain pending.
+
+## Operational obligations and boot binding
+
+`fn2-checkpoint-bank-bind-op(budget)` validates the actual complete census and
+selected-source identity, then binds one physical anchor per step. Canonical
+catalog representatives require actual census duplicate equality and equal
+common evidence. Distinct parent/child anchors in one torn bank stay distinct.
+The verified census head supplies only the publication predecessor; both runtime
+bank publications and all four cold obligations remain visible to exclusion.
+
+The matching covering Fence moves both replaced cold slots to PENDING, keeping
+them blocking. Reclamation uses `bank-obligations-excludedp` over six roles and
+an exact32-field observation. Candidate debt must retain all48 common/anchor
+words before `bank-obligations-transfer` changes only that pending bit to
+TRANSFERRED. Actual source/archive/query/base edges are not released by this ACK.
+
+Empty startup has a distinct core operation, materialized with
+`fn2-checkpoint-bank-empty-core-events`: `fn2-boot-bind-checkpoint-obligations`
+checks the real boot actor generation, epoch-result/stage3 and successful Fence.
+It accepts the actual all-empty scan or that actor's completed create progression,
+refuses existing obligations and binds the existing checked geometry. It is not
+a default true result or another layout initializer.
+
+`fn2-checkpoint-bank-promote-selected` is a private source primitive deriving J
+and its event from retained authenticated evidence. The boot owner must call it
+only after actual ordered suffix recovery and the newer epoch Fence. It changes
+CHECKED to INSTALLED, never invokes the live builder/pool installation path. Stable
+owned bank readers survive that promotion; mutable census-current predicates are
+construction gates and intentionally need not remain true afterward.
+
+These identity bindings do not replace physical protection of every selectable
+anchor's complete typed closure. Capture before scratch reuse and independently
+owned phase4 edge restoration remain in progress; no FREE or cold construction
+ownership is inferred from identity records or an absent live construction ledger.
