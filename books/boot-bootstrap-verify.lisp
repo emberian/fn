@@ -5,6 +5,17 @@
 (include-book "origin")
 (fn2-book-layer :b)
 
+; This is the exact two-extent separation relation in POOL-EXTENTS-APART.
+; Check the two concrete windows before construction, without rescanning the
+; pool semantic invariant or relying on distinct slot numbers alone.
+(defun fn2-boot-bootstrap-windows-apart-p (page rx fn2-pool)
+ (declare (xargs :stobjs fn2-pool :guard (fn2-pool-wfp fn2-pool)))
+ (and (natp page) (natp rx) (< page (fn2-pool-rows fn2-pool)) (< rx (fn2-pool-rows fn2-pool))
+      (or (<= (+ (fn2-pool-base page fn2-pool) (fn2-pool-cap page fn2-pool))
+              (fn2-pool-base rx fn2-pool))
+          (<= (+ (fn2-pool-base rx fn2-pool) (fn2-pool-cap rx fn2-pool))
+              (fn2-pool-base page fn2-pool)))))
+
 ; PAGE is the existing 64KiB BOOT window. Its second sector begins with the
 ; generated geometry digest; its first sector is the canonical bootstrap.
 ; No retained receipt or geometry is written by this construction function.
@@ -58,6 +69,8 @@
       (readable (fn2-layout-range-code rx rgen 0 *fn2-format-sector-size* nil kind id ogen fn2-pool))
       ((unless (eq readable :ok))
        (mv readable fn2-boot-config fn2-fields fn2-digests fn2-b3 fn2-pool))
+      ((unless (fn2-boot-bootstrap-windows-apart-p page rx fn2-pool))
+       (mv :alias fn2-boot-config fn2-fields fn2-digests fn2-b3 fn2-pool))
       ((mv code fn2-fields fn2-digests fn2-b3 fn2-pool)
        (fn2-boot-bootstrap-pack-pool size page pgen kind id ogen fn2-boot-config
         fn2-fields fn2-digests fn2-b3 fn2-pool))
