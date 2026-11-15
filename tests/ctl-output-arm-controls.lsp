@@ -118,3 +118,13 @@
  (declare (ignore vars))
  (assert (member '(:wake-row row-cns) effects :test #'equal)))
 (format t "CTL ACTUAL CANCEL STATUS CONTROLS PASS: pending/borrow/query holds, closed quiescence, stale request, final re-notify~%")
+
+;; Issued Send spans are nonempty; a zero-count terminal cannot cause an
+;; endless retry of the same loan or authorize source handback.
+(multiple-value-bind (effects vars)
+ (run (cdddr (assoc :send-result (getf (cdddr *ctl*) :observes)))
+      '((row-rx-slot . 1) (row-tx-off . 0) (row-tx-len . 32)
+        (outcome . 1) (count . 0) (*fn2-outcome-done* . 1) (*fn2-outcome-short* . 2)))
+ (declare (ignore vars))
+ (assert (member '(:next :closing) effects :test #'equal)))
+(format t "CTL SEND SOURCE CONTROL PASS: zero-progress terminal closes~%")
