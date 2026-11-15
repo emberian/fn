@@ -128,7 +128,7 @@
          (fn2-reads-observer-parent-serial x fn2-reads) fn2-c-source-control fn2-c-source-readers)
         (fn2-c-source-reader-acquire x expected fn2-c-source-control fn2-c-source-readers)))
       ((unless (eq code :ok))
-       (mv (if (member-eq code '(:busy :exhausted)) :more :state)
+       (mv (if (eq code :busy) :more :state)
            fn2-reads fn2-c-source-control fn2-c-source-readers))
       (fn2-reads (fn2-reads-set-observer-serial x receipt fn2-reads)))
   (mv :ok fn2-reads fn2-c-source-control fn2-c-source-readers)))

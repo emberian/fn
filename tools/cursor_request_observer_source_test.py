@@ -36,6 +36,11 @@ class CursorRequest(unittest.TestCase):
   self.assertLess(release.index('fn2-read-parent-clear-pair'),release.index('(fn2-c-source-reader-release'))
   draining=SRC.split('(:draining :on-refusal',1)[1].split('(:retired',1)[0]
   self.assertLess(draining.index('fn2-cursor-request-release'),draining.index('(generation (if retire'))
+ def test_only_busy_is_resumable_admission(self):
+  read=(ROOT/'books/machines-c-read.lisp').read_text()
+  self.assertIn('(if (eq code :busy) :more :fault)', LEAF)
+  self.assertIn('(if (eq code :busy) :more :state)', read)
+  self.assertNotIn("(member-eq code '(:busy :exhausted))", LEAF+read)
  def test_receipt_cleared_at_admission_and_recycle(self):
   self.assertIn('(observer-serial :u60)',KIND)
   self.assertIn('cursor observer-serial))',KIND)

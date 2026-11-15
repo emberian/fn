@@ -18,7 +18,7 @@
       ((mv code receipt fn2-c-source-control fn2-c-source-readers)
        (fn2-c-source-reader-acquire endpoint expected fn2-c-source-control fn2-c-source-readers))
       ((unless (eq code :ok))
-       (mv (if (member-eq code '(:busy :exhausted)) :more :fault) 0 fn2-reads fn2-c-source-control fn2-c-source-readers))
+       (mv (if (eq code :busy) :more :fault) 0 fn2-reads fn2-c-source-control fn2-c-source-readers))
       ((mv bound fn2-reads)
        (fn2-read-parent-bind-pair (* 2 slot) (+ 1 (* 2 slot)) endpoint receipt fn2-reads fn2-c-source-readers))
       ((when (eq bound :ok)) (mv :ok receipt fn2-reads fn2-c-source-control fn2-c-source-readers))
