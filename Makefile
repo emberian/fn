@@ -303,6 +303,7 @@ ACL2_BOOKS = \
   tests/codec-profile-unit \
   tests/codec-transport-unit \
   tests/host-codec-unit \
+  tests/host-codec-cancel-unit \
   tests/tls-record-policy-unit \
   tests/tls-record-unit \
   tests/tls-stack-unit \
