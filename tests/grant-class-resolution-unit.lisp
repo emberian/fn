@@ -37,3 +37,35 @@
              (fn2-core-wfp fn2-core)) fn2-core))
    ok)))
 (assert-event (fn2-gcr-control))
+
+
+; Actual registered header/body declarations collide in the same physical
+; class under this admitted pool geometry. This is a TAKE-grant control,
+; not a claim that this tiny pool admits the full foreground transaction.
+(defun fn2-gcr-actual-window-alias (available)
+ (declare (xargs :verify-guards nil))
+ (with-local-stobj fn2-core
+  (mv-let (ok fn2-core)
+   (b* ((profile (put-assoc-equal :pool-classes '((2 . 32768) (1 . 65536)) *fn2-profile-concrete*))
+        (fn2-core (fn2-core-init profile fn2-core))
+        (declared (fn2-machine-partition-classes *fn2-upload-admission-ordinal*))
+        ((mv configured header-class body-class fn2-core)
+         (stobj-let ((fn2-pool (fn2-core-pool fn2-core)))
+          (code hc bc fn2-pool)
+          (let ((hc (fn2-pool-class-for *fn2-upload-header-workspace-bytes* fn2-pool))
+                (bc (fn2-pool-class-for *fn2-upload-body-window-bytes* fn2-pool)))
+           (mv-let (code fn2-pool)
+            (fn2-pool-credit-configure (list (list *fn2-pool-credit-working* (- 2 available) 1)) fn2-pool)
+            (mv code hc bc fn2-pool)))
+          (mv code hc bc fn2-core)))
+        (has (fn2-machine-pool-has-p declared fn2-core)))
+     (mv (and (member-equal available '(1 2)) (fn2-core-profilep profile)
+              (eq configured :ok) (equal header-class 0) (equal body-class 0)
+              (equal declared (list (cons (list :bytes *fn2-upload-header-workspace-bytes*) 1)
+                                    (cons (list :bytes *fn2-upload-body-window-bytes*) 1)))
+              (equal has (equal available 2))
+              (not (fn2-machine-pool-has-p '(malformed) fn2-core))
+              (equal (fn2-machine-pool-class-need 0 '(malformed (0 . 2))) 2)
+              (fn2-core-wfp fn2-core)) fn2-core)) ok)))
+(assert-event (fn2-gcr-actual-window-alias 1))
+(assert-event (fn2-gcr-actual-window-alias 2))
