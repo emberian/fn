@@ -26,6 +26,8 @@ class RollingSource(unittest.TestCase):
   expected=expected.replace(':budget (:bytes 6144',':budget (:bytes 4096')
   expected=expected.replace(';; and *fn2-upload-scan-bytes* of header scanned per run; each hashed span\n;; is also counted once for LF octets before its source window can roll.',
     ';; and *fn2-upload-scan-bytes* of header scanned per run. LF octets are\n;; counted at confirmed source emission, with no second pool traversal.')
+  from upload_page_take_schema import transform as atomic_page_take
+  expected=atomic_page_take(expected)
   self.assertEqual(expected,(ROOT/'books/upload-kind.lisp').read_text())
  def test_actual_identity_routes_to_controller(self):
   s=(ROOT/'books/assembly-callbacks-d-upload.lisp').read_text()

@@ -25,7 +25,7 @@ class RootCreditInit(unittest.TestCase):
         init = Path('books/checkpoint-working-credit-init.lisp').read_text()
         self.assertIn('profile (fn2-commit-rows fn2-commit) (fn2-commit-io-rows fn2-commit-io)', init)
         self.assertIn('(fn2-checkpoint-service-protocol-classes fn2-pool)', init)
-        self.assertIn('(fn2-checkpoint-service-upload-classes fn2-pool) fn2-pool', init)
+        self.assertIn('(fn2-checkpoint-service-upload-classes fn2-input-config fn2-pool) fn2-pool', init)
 
     def test_one_actual_p_formula_and_capacity(self):
         s = Path('books/checkpoint-working-credit.lisp').read_text()

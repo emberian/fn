@@ -7,6 +7,12 @@
 (make-event
  (value `(defconst *fn2-rwciu-b-rows*
            ,(fn2-machine-property 'fn2-commit :capacity (w state)))))
+(defun fn2-rwciu-upload-classes (fn2-pool)
+ (declare (xargs :stobjs fn2-pool :verify-guards nil))
+ (with-local-stobj fn2-input-config
+  (mv-let (classes fn2-input-config)
+   (let ((fn2-input-config (fn2-input-config-from *fn2-node-profile* fn2-input-config)))
+    (mv (fn2-checkpoint-service-upload-classes fn2-input-config fn2-pool) fn2-input-config)) classes)))
 (defun fn2-rwciu-protected-classes (i fn2-pool)
  (declare (xargs :stobjs fn2-pool :verify-guards nil
   :measure (nfix (- (fn2-pool-nclasses fn2-pool) (nfix i)))))
@@ -23,7 +29,7 @@
         ((mv code fn2-pool) (fn2-checkpoint-working-credit-configure *fn2-node-profile*
           *fn2-rwciu-b-rows* (* *fn2-commit-write-resources* *fn2-rwciu-b-rows*)
           (fn2-checkpoint-service-protocol-classes fn2-pool)
-          (fn2-checkpoint-service-upload-classes fn2-pool) fn2-pool)))
+          (fn2-rwciu-upload-classes fn2-pool) fn2-pool)))
     (mv (if (eq code :ok) (put-assoc-equal :pool-classes (fn2-rwciu-protected-classes 0 fn2-pool) *fn2-node-profile*) nil) fn2-pool)) profile)))
 (defun fn2-rwciu-node-body (image fn2-core)
  (declare (xargs :stobjs fn2-core :verify-guards nil))
@@ -80,16 +86,16 @@
         (fn2-profile-generation-start *fn2-node-profile*)
         (fn2-profile-generation-limit *fn2-node-profile*) fn2-pool))
       (paths (fn2-checkpoint-service-protocol-classes fn2-pool))
-      (uploads (fn2-checkpoint-service-upload-classes fn2-pool))
+      (uploads (fn2-rwciu-upload-classes fn2-pool))
       (antecedent (and (fn2-pool-wfp fn2-pool)
         (fn2-checkpoint-service-paths-fitp paths fn2-pool)
         (fn2-checkpoint-service-classes-fitp uploads fn2-pool)
-        (equal paths '((0 0) (0 0 0))) (equal uploads '(0 0))))
+        (equal paths '((0 0) (0 0 0))) (equal uploads '(0 0 0))))
       ((mv code fn2-pool) (fn2-checkpoint-working-credit-configure *fn2-node-profile*
         *fn2-rwciu-b-rows* (* *fn2-commit-write-resources* *fn2-rwciu-b-rows*) paths uploads fn2-pool)))
   (mv (and antecedent (eq code :ok) (fn2-pool-credit-shapep fn2-pool)
            (= (fn2-checkpoint-service-path-demand 0 paths) 3)
-           (= (fn2-checkpoint-service-class-count 0 uploads) 2)
+           (= (fn2-checkpoint-service-class-count 0 uploads) 3)
            (fn2-pool-credit-fullp 0 0 fn2-pool)) fn2-pool)))
 (defun fn2-rwciu-alias-run ()
  (declare (xargs :verify-guards nil))
@@ -114,7 +120,7 @@
                    (fn2-profile-generation-start *fn2-node-profile*)
                    (fn2-profile-generation-limit *fn2-node-profile*) fn2-pool))
         (paths (fn2-checkpoint-service-protocol-classes fn2-pool))
-        (uploads (fn2-checkpoint-service-upload-classes fn2-pool))
+        (uploads (fn2-rwciu-upload-classes fn2-pool))
         ((mv sc service) (fn2-checkpoint-service-demand-vector *fn2-node-profile* (list nil nil) uploads fn2-pool))
         ((mv code fn2-pool) (fn2-checkpoint-working-credit-configure *fn2-node-profile*
           *fn2-rwciu-b-rows* (* *fn2-commit-write-resources* *fn2-rwciu-b-rows*) paths uploads fn2-pool)))

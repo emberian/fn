@@ -161,6 +161,16 @@
 ;; address family; tests set :peering-interim; E4's grant replaces it) and
 ;; the article bound.
 (defcolumns fn2-input-config ((posting :bool) (peering :bool) (article-max :u32)))
+; The profile-dependent third taken range reads the SAME initialized input row.
+(defun fn2-upload-stream-request-bytes (fn2-input-config)
+ (declare (xargs :stobjs fn2-input-config :guard (fn2-input-config-wfp fn2-input-config)))
+ (fn2-upload-stream-page-bytes
+  (+ (if (< 0 (fn2-input-config-rows fn2-input-config))
+         (fn2-input-config-article-max 0 fn2-input-config) 0)
+     *fn2-upload-mid-line-max*)))
+(defthm fn2-upload-stream-request-bytes-natural
+ (natp (fn2-upload-stream-request-bytes fn2-input-config))
+ :rule-classes :type-prescription)
 (defun fn2-input-config-profilep (profile)
   (declare (xargs :guard t))
   (and (booleanp (fn2-profile-get :posting-interim profile))
@@ -250,9 +260,9 @@
               :reads (fed feed-mode feed-discard))
          (child-txn :kind fn2-txn :slot txn :gen txn-gen :back (upload upload-gen)))
  :stops (:upload-uncertain)
- :holds ((:head :upload-row :chunk-window) (:identity :upload-row :chunk-window)
-         (:receiving :upload-row :chunk-window) (:validating :upload-row :chunk-window)
-         (:discard :upload-row :chunk-window)
+ :holds ((:head :upload-row :chunk-window (:storage-window :while (lease :held))) (:identity :upload-row :chunk-window (:storage-window :while (lease :held)))
+         (:receiving :upload-row :chunk-window (:storage-window :while (lease :held))) (:validating :upload-row :chunk-window (:storage-window :while (lease :held)))
+         (:discard :upload-row :chunk-window (:storage-window :while (lease :held)))
          (:store :upload-row :chunk-window (:storage-window :while (lease :held)))
          (:stored-hash :upload-row :chunk-window (:storage-window :while (lease :held)))
          (:location-hash :upload-row :chunk-window (:storage-window :while (lease :held)))
@@ -283,14 +293,17 @@
          (:stream-refuse-fenced :upload-row :chunk-window (:storage-window :while (lease :held))))
  :budget (:bytes 4096 :steps 32 :descriptors 4)
  :capacity (fn2-upload-capacity profile)
- ;; A connection takes the row with its two chunks (A-S7).
+ ;; A connection takes all three windows atomically, including its profile-sized page.
  :taken (:phase :head :rows :upload-row
          :ranges ((:chunk-window :slot c0-slot :gen c0-gen :class (:bytes *fn2-upload-header-workspace-bytes*))
-                  (:chunk-window :slot c1-slot :gen c1-gen :class (:bytes *fn2-upload-body-window-bytes*)))
+                  (:chunk-window :slot c1-slot :gen c1-gen :class (:bytes *fn2-upload-body-window-bytes*))
+                  (:storage-window :slot lslot :gen lgen
+                   :class (:bytes (:from fn2-input-config fn2-upload-stream-request-bytes))))
+         :set ((lease *fn2-upload-lease-held*))
          :copy (conn conn-gen request rule principal-slot op)
          :clear (filled hashed source-lines scan-off visible nfields nlines seen mo ml no nl po pl
                  head-status word inj txn-gen stopped pepoch palloc pdone sevent soutcome scount sready
-                 lgen lease ilen cepoch calloc cfree mfill munit mstep mdrain stored-hashed location-hashed rootepoch rootalloc stream-active stream-end stream-resets stream-stage-used stream-eof stream-stored-finalized stream-provisional stream-repack))
+                 ilen cepoch calloc cfree mfill munit mstep mdrain stored-hashed location-hashed rootepoch rootalloc stream-active stream-end stream-resets stream-stage-used stream-eof stream-stored-finalized stream-provisional stream-repack))
  :initial ((generation fn2-machine-initial-generation) (ready-prev *fn2-none*) (ready-next *fn2-none*)
            (c0-slot *fn2-none*) (c1-slot *fn2-none*) (conn *fn2-none*) (txn *fn2-none*) (account-ref *fn2-none*)
            (pext *fn2-none*) (lslot *fn2-none*) (cext *fn2-none*) (rootext *fn2-none*)

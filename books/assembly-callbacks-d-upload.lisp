@@ -39,12 +39,10 @@
 
 (defmachine-arms fn2-upload :declare
  :subarms
- ;; The store page (lease :held) is taken in :store and returned in
- ;; :draining; a row before :store or aborting holding it is an invariant
- ;; failure, and the test fixes lease at entry for the moves into :store and
- ;; :draining (their storage window is held while lease is :held).
+ ;; TAKE owns header, body and page together. The early-cancel drain
+ ;; returns an uninitialized page without reading manifest or extent state.
  ((work
-   (:cond ((equal row-lease *fn2-upload-lease-held*) (:stop :machine-phase))
+   (:cond ((not (equal row-lease *fn2-upload-lease-held*)) (:stop :machine-phase))
           (t
    ;; the owner feeding the source: a connection, or a consumer request
    ;; whose append frame is the article (e-surface.md 3.3)
@@ -140,9 +138,10 @@
   ;; holds its octets: wake it (it finishes without a word) and wait for it to
   ;; let go; then drain.
   (:aborting
-   (:cond ((and (equal row-lease *fn2-upload-lease-held*) (equal row-stream-active 0)) (:stop :machine-phase))
-          ((not (equal row-pending 0)) (:charge :steps *fn2-work-poll*))
+   (:cond ((not (equal row-pending 0)) (:charge :steps *fn2-work-poll*))
           ((:live child-txn) (:do () (fn2-upload-wake row-txn)) (:charge :steps *fn2-work-transition*))
+          ((and (equal row-lease *fn2-upload-lease-held*) (equal row-stream-active 0))
+           (:next :draining) (:charge :steps *fn2-work-transition* :runnable t))
           ((equal row-lease *fn2-upload-lease-held*)
            (:set (stream-repack 0) (mstep 0)) (:next :stream-drain)
            (:charge :steps *fn2-work-transition* :runnable t))
@@ -158,6 +157,12 @@
           ((and (equal row-lease *fn2-upload-lease-held*)
                 (fn2-core-query-heldp row-lslot row-lgen))
            (:charge :steps *fn2-work-state*))
+          ((and (equal row-lease *fn2-upload-lease-held*)
+                (equal row-stream-active 0))
+           (:do (lc) (fn2-upload-page-release row-lslot row-lgen)
+            :effects ((:release (:storage-window))) :accept (:ok :retired))
+           (:set (lease *fn2-upload-lease-none*) (lslot *fn2-none*) (lgen 0))
+           (:charge :steps *fn2-work-transition* :runnable t))
           ((and (equal row-lease *fn2-upload-lease-held*)
                 (< row-mdrain (fn2-upload-manifest-units (+ row-ilen row-hashed) row-mfill)))
            (:let hrow (fn2-upload-hasher id))
@@ -214,16 +219,12 @@
           (:next :discard) (:charge :bytes *fn2-upload-verdict-work-bytes* :steps *fn2-work-transition* :runnable t))
          ((:set (inj inj) (mstep 1) (rootext *fn2-none*) (rootepoch 0) (rootalloc 0) (stream-active 1)) (:charge :bytes *fn2-upload-verdict-work-bytes* :steps *fn2-work-transition* :runnable t))))))
     ((equal row-mstep 1)
-     (:let class (fn2-upload-stream-class))
-     (:if (null class)
-      ((:set (word *fn2-upload-word-unaffordable*))
-       (:do (dcode) (fn2-upload-start-discard id row-generation) :accept (:ok))
-       (:next :discard) (:charge :steps *fn2-work-transition* :runnable t))
-      ((:do (code ls lg) (fn2-core-reserve class) :effects ((:acquire (:storage-window)))
-        :case (((:exhausted) (:park :pool class :steps *fn2-work-transition*))
-               (:otherwise (:stop :machine-phase))))
-       (:set (lslot ls) (lgen lg) (lease *fn2-upload-lease-held*) (mstep 2))
-       (:charge :steps *fn2-work-transition* :runnable t))))
+     ; TAKE already owns all three ranges; never wait for a page while
+     ; retaining only header/body windows.
+     (:if (and (equal row-lease *fn2-upload-lease-held*)
+               (fn2-upload-stream-page-ready-p id row-generation))
+      ((:set (mstep 2)) (:charge :steps *fn2-work-transition* :runnable t))
+      ((:stop :machine-phase))))
     ((equal row-mstep 2)
      (:do (code e ep al) (fn2-upload-payload-reserve) :accept ()
       :case (((:ok) (:set (pext e) (pepoch ep) (palloc al) (cext e) (cepoch ep) (calloc al) (cfree 1)
