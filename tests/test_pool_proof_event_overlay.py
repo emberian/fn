@@ -32,6 +32,15 @@ class OverlayTests(unittest.TestCase):
     def test_budget_increase_rejected(self):
         with self.assertRaises(overlay.OverlayError):
             overlay.make_overlay('(encapsulate () (defthm x (equal a a)))', form_index=1, expected_sha=None, steps=2_000_001)
+    def test_lower_time_budget_preserves_event(self):
+        text = '(encapsulate () (defthm x (equal a a)))'
+        out, manifest = overlay.make_overlay(text, form_index=1, expected_sha=None, seconds=20)
+        self.assertEqual(manifest['seconds'], 20)
+        self.assertIn("with-prover-time-limit '(20)", out)
+        self.assertEqual(overlay.strip_overlay(out), text)
+        for seconds in (0, 61, True, 20.5):
+            with self.assertRaises(overlay.OverlayError):
+                overlay.make_overlay(text, form_index=1, expected_sha=None, seconds=seconds)
     def test_nested_existing_budget_rejected(self):
         with self.assertRaises(overlay.OverlayError):
             self.build('(encapsulate () (with-prover-step-limit 9 (defthm x (equal a a))))')

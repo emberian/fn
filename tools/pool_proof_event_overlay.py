@@ -84,8 +84,8 @@ def make_overlay(text, *, form_index=None, generator=None, steps=2_000_000, seco
     digest = hashlib.sha256(text.encode()).hexdigest()
     if expected_sha is not None and digest != expected_sha:
         raise OverlayError(f'frozen source mismatch: {digest}')
-    if steps != 2_000_000 or seconds != 60:
-        raise OverlayError('this author retry is authorized only at 2000000 steps / 60 seconds per event')
+    if steps != 2_000_000 or type(seconds) is not int or not 1 <= seconds <= 60:
+        raise OverlayError('author overlay requires 2000000 steps and 1..60 seconds per event')
     forms = lr.parse(text).forms
     if form_index is not None and generator is not None:
         raise OverlayError('choose a form index or generator selector, not both')
@@ -177,6 +177,8 @@ def main():
     parser.add_argument('source', type=Path)
     parser.add_argument('--output', type=Path, required=True)
     parser.add_argument('--manifest', type=Path)
+    parser.add_argument('--seconds', type=int, default=60,
+                        help='per-event deadline, 1..60 seconds; match the authorized run budget')
     parser.add_argument('--expected-sha', required=True,
                         help='reviewed SHA256 of the complete source file (mandatory; no CLI bypass)')
     selector = parser.add_mutually_exclusive_group(required=True)
@@ -185,7 +187,8 @@ def main():
                           help='select the unique encapsulate defining this reviewed pool emitter')
     args = parser.parse_args()
     overlay, manifest = make_overlay(args.source.read_text(), form_index=args.form_index,
-                                     generator=args.contains_generator, expected_sha=args.expected_sha.lower())
+                                     generator=args.contains_generator, expected_sha=args.expected_sha.lower(),
+                                     seconds=args.seconds)
     args.output.write_text(overlay)
     if args.manifest:
         args.manifest.write_text(json.dumps(manifest, indent=2) + '\n')
