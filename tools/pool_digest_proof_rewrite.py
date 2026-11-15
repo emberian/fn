@@ -40,6 +40,13 @@ SUPPORT='''; Local proof support: a backend pool read never uses the continuatio
  :hints (("Goal" :induct (fn2-rec-fetch-bytes left next acc dst slot gen off okind oslot ogen fn2-pool fn2-digests)
                  :in-theory (e/d (fn2-rec-fetch-bytes fn2-digest-rowp)
                                  (fn2-rec-fetch-state-p unsigned-byte-p))))))
+(local (defthm fn2-rec-fetch-state-next-natp
+ (implies (fn2-rec-fetch-state-p next acc) (natp next))
+ :hints (("Goal" :in-theory (e/d (fn2-rec-fetch-state-p) (unsigned-byte-p))))))
+(local (defthm fn2-rec-fetch-state-next-bound
+ (implies (fn2-rec-fetch-state-p next acc) (<= next 32))
+ :hints (("Goal" :in-theory (e/d (fn2-rec-fetch-state-p) (unsigned-byte-p))))
+ :rule-classes :linear))
 (local (defthm fn2-rec-fetch-bytes-bound
  (implies (and (natp left) (fn2-rec-fetch-state-p next acc))
   (and (fn2-rec-fetch-state-p
@@ -49,7 +56,8 @@ SUPPORT='''; Local proof support: a backend pool read never uses the continuatio
        (<= (mv-nth 1 (fn2-rec-fetch-bytes left next acc dst slot gen off okind oslot ogen fn2-pool fn2-digests)) 32)
        (<= (- (mv-nth 1 (fn2-rec-fetch-bytes left next acc dst slot gen off okind oslot ogen fn2-pool fn2-digests)) next) left)))
  :hints (("Goal" :induct (fn2-rec-fetch-bytes left next acc dst slot gen off okind oslot ogen fn2-pool fn2-digests)
-                 :in-theory (enable fn2-rec-fetch-bytes fn2-rec-fetch-state-p)))))
+                 :in-theory (e/d (fn2-rec-fetch-bytes)
+                                 (fn2-rec-fetch-state-p unsigned-byte-p fn2-layout-byte fn2-rec-byte-at))))))
 (local (defthm fn2-rec-fetch-bytes-compose
  (implies (and (natp n) (natp m) (fn2-rec-fetch-state-p next acc)
                (fn2-poolp fn2-pool) (fn2-pool-wfp fn2-pool)
