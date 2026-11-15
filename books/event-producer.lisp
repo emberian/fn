@@ -126,9 +126,9 @@
     (mv :need-read fn2-event-build fn2-event-read fn2-journal-members fn2-mk fn2-fc fn2-fc-context fn2-b3 fn2-fields fn2-pool fn2-digests))
    ((member-equal read-phase (list *fn2-event-read-phase-wait-seal* *fn2-event-read-phase-wait-records*))
     (mv :wait fn2-event-build fn2-event-read fn2-journal-members fn2-mk fn2-fc fn2-fc-context fn2-b3 fn2-fields fn2-pool fn2-digests))
-   ((and (not (posp budget)) (member-equal read-phase (list *fn2-event-read-phase-frame-seal* *fn2-event-read-phase-semantic-seal* *fn2-event-read-phase-frame-records*)))
+   ((and (not (posp budget)) (fn2-event-read-format-phase-p read-phase))
     (mv :yield fn2-event-build fn2-event-read fn2-journal-members fn2-mk fn2-fc fn2-fc-context fn2-b3 fn2-fields fn2-pool fn2-digests))
-   ((member-equal read-phase (list *fn2-event-read-phase-frame-seal* *fn2-event-read-phase-semantic-seal* *fn2-event-read-phase-frame-records*))
+   ((fn2-event-read-format-phase-p read-phase)
     (mv-let (code fn2-event-read fn2-journal-members fn2-fc fn2-fc-context fn2-b3 fn2-fields fn2-pool fn2-digests)
      (fn2-event-read-format-step budget fn2-event-read fn2-csnapshot fn2-commit-root fn2-journal-members fn2-fc fn2-fc-context fn2-b3 fn2-fields fn2-pool fn2-digests fn2-checkpoint-summary-authority fn2-checkpoints fn2-checkpoint-refs fn2-checkpoint-bytes fn2-checkpoint-restore-events fn2-checkpoint-restore-events-work fn2-ops fn2-extents fn2-alloc-edges)
      (let ((fn2-event-build (if (member-eq code '(:more :ok)) fn2-event-build

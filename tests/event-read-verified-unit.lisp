@@ -98,7 +98,7 @@
           records) new))
       ((mv & fn2-core)
        (cond ((member-equal phase (list *fn2-event-read-phase-read-seal* *fn2-event-read-phase-read-records*)) (fn2-epv-issue fn2-core))
-             ((member-equal phase (list *fn2-event-read-phase-frame-seal* *fn2-event-read-phase-semantic-seal* *fn2-event-read-phase-frame-records*))
+             ((fn2-event-read-format-phase-p phase)
               (fn2-epv-format fn2-core))
              ((= phase *fn2-event-read-phase-members*) (fn2-epv-members fn2-core)) (t (mv :wait fn2-core))))
       ((mv fn2-core fn2-sim fn2-own) (fn2-epv-physical fn2-core fn2-sim fn2-own)))
