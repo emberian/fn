@@ -63,4 +63,10 @@ class ParkSource(unittest.TestCase):
   self.assertNotIn('(fn2-checkpoint-summary-release ',text)
   self.assertNotIn('fn2-c-source-reader-release',text)
   self.assertNotIn('fn2-pool-release',text)
+ def test_empty_jobs_invalidate_latent_physical_cursor(self):
+  text=(ROOT/'books/run-physical-park-region.lisp').read_text()
+  apply=lr.match('(defun fn2-run-load-region-park-apply ?*body)',lr.parse(text).forms)[0]
+  t=text[apply.start:apply.end]
+  self.assertIn('(fn2-run-cursors-put c (phase *fn2-run-cursor-phase-idle*) (physical 0))',t)
+  self.assertLess(t.index('(< c (fn2-run-cursors-rows'),t.index('(fn2-run-cursors-put'))
 if __name__=='__main__':unittest.main()
