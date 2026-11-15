@@ -1,6 +1,9 @@
 ; Independent ROUND2 C.1-C.3 scheduler and bounded reference transition system.
 (in-package "ACL2")
+(include-book "executor")
+(include-book "assembly-attach")
 (include-book "reference-state-model")
+(include-book "reference-selected-effects")
 
 ; The reference expires rows independently and enqueues into its literal
 ; FIFOs. It never reads the concrete intrusive queue or calls its insertion.
@@ -143,7 +146,11 @@
        ((when (atom queue)) (mv 0 1 0 0 *fn2-work-empty* lists fn2-ref-core))
        (id (car queue))
        (lists (update-nth 2 (fn2-ref-set-queue principal (cdr queue) (nth 2 lists)) lists))
-       ((mv bytes steps actions runnable fn2-ref-core) (fn2-machine-run id budget fn2-ref-core))
+       ; The selected body is generated from the live dispatcher, sealed
+       ; against its attachment sources, and carries semantic enqueue effects.
+       ; No diagnostic ring or native queue is read back into LISTS.
+       ((mv bytes steps actions runnable fn2-ref-core lists)
+        (fn2-selected-machine-run-ref-effect id budget fn2-ref-core lists))
        (fn2-ref-core (fn2-exec-charge-run principal bytes steps fn2-ref-core))
        ((mv wake fn2-ref-core) (fn2-machine-take-wake fn2-ref-core))
        ((mv lists fn2-ref-core) (fn2-ref-wake wake lists fn2-ref-core))
@@ -222,4 +229,4 @@
   :boundary :turn :case-source :composition :claim :representation
   :shared ((:machine fn2-listener) (:machine fn2-echo) (:machine fn2-scribe))
   :teeth (fn2-reference-teeth)
-  :doc "Owed refinement to independent list selection, observation ordering and budget accounting; shared bounded machine semantics, no fusion.")
+  :doc "Owed refinement to independent list selection, observation ordering and budget accounting, with source-bound selected callback effects; no logical stub/attachment equality is assumed.")

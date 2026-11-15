@@ -2,9 +2,8 @@
 ; Definitions are extracted unchanged so effect lifting can use R before
 ; the reference transition is defined; trace is never its semantic input.
 (in-package "ACL2")
-(include-book "executor")
 (include-book "assembly-reference")
-(include-book "assembly-attach")
+(include-book "core-scheduler-wake")
 (include-book "queue-model")
 
 ; A literal weighted calendar and independent FIFO state. Selection history

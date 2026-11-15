@@ -3,6 +3,7 @@
 (in-package "ACL2")
 (include-book "reference-effect-semantics")
 (include-book "reference-effect-lowering")
+(include-book "enqueue-trace")
 
 ; A single writer needs only O(number of children) read-over-write laws.
 ; No scheduler queue accessor is authorized by these trace frame facts.

@@ -84,7 +84,15 @@ ACL2_BOOKS = \
   books/reference-effect-semantics \
   books/reference-effect-leaves \
   books/reference-effect-lowering \
+  books/reference-effect-timer-leaves \
+  books/reference-effect-query \
+  books/reference-selected-dispatcher \
+  books/reference-selected-effects \
   tests/reference-effect-lowering-unit \
+  tests/reference-effect-query-unit \
+  tests/reference-effect-query-last-unit \
+  tests/reference-effect-partition-control \
+  tests/cns-query-support \
   books/cns-release-refinement \
   books/core-init-projections \
   books/machine-reservations-entry \
