@@ -3,6 +3,7 @@
 (in-package "ACL2")
 (include-book "vocab")
 (include-book "arms")
+(include-book "columns-call-guards")
 
 ; A wait reason names what the row waits for: nothing, an operation's
 ; completion (not a resource: its result cells were reserved at issue), or
@@ -70,7 +71,8 @@
         (declare (xargs :stobjs ,name :measure (nfix left)
                         :guard (and (,wfp ,name) (natp left) (natp n) (natp base)
                                     (<= left n) (<= n (,rows ,name))
-                                    (< (+ base n) 4294967296) (unsigned-byte-p 60 gen))))
+                                    (< (+ base n) 4294967296) (unsigned-byte-p 60 gen))
+                        :guard-hints ((fn2-columns-call-guard-hint ',fill-fn nil nil world))))
         (if (zp left) ,name
           (let* ((slot (- left 1))
                  ,@(fn2-columns-put-bindings (fn2-columns-sym name "-SET") name 'slot
@@ -79,25 +81,31 @@
       (defthm ,(fn2-columns-sym fill-fn "-TYPE")
         (implies (and (,pred ,name) (,wfp ,name) (natp left) (natp n) (natp base)
                       (<= left n) (<= n (,rows ,name)) (< (+ base n) 4294967296)
-                      (unsigned-byte-p 60 gen)) (,pred (,fill-fn left n base gen ,name))))
+                      (unsigned-byte-p 60 gen)) (,pred (,fill-fn left n base gen ,name)))
+        :hints ((fn2-columns-call-guard-hint ',fill-fn nil '(,fill-fn) world)))
       (defthm ,(fn2-columns-sym fill-fn "-WFP")
         (implies (and (,wfp ,name) (natp left) (natp n) (<= left n) (<= n (,rows ,name)))
-                 (,wfp (,fill-fn left n base gen ,name))))
+                 (,wfp (,fill-fn left n base gen ,name)))
+        :hints ((fn2-columns-call-guard-hint ',fill-fn nil '(,fill-fn) world)))
       (defthm ,(fn2-columns-sym fill-fn "-ROWS")
-        (equal (,rows (,fill-fn left n base gen ,name)) (,rows ,name)))
+        (equal (,rows (,fill-fn left n base gen ,name)) (,rows ,name))
+        :hints ((fn2-columns-call-guard-hint ',fill-fn nil '(,fill-fn) world)))
       (in-theory (disable ,fill-fn))
       (defun ,prepare (n base gen ,name)
         (declare (xargs :stobjs ,name
                         :guard (and (natp n) (natp base) (< (+ base n) 4294967296)
-                                    (unsigned-byte-p 60 gen))))
+                                    (unsigned-byte-p 60 gen))
+                        :guard-hints ((fn2-columns-call-guard-hint ',prepare nil nil world))))
         (let ((,name (,(fn2-columns-sym name "-INIT") n ,name)))
           (,fill-fn n n base gen ,name)))
       (defthm ,(fn2-columns-sym prepare "-TYPE")
         (implies (and (,pred ,name) (natp n) (natp base) (< (+ base n) 4294967296)
-                      (unsigned-byte-p 60 gen)) (,pred (,prepare n base gen ,name))))
+                      (unsigned-byte-p 60 gen)) (,pred (,prepare n base gen ,name)))
+        :hints ((fn2-columns-call-guard-hint ',prepare nil '(,prepare) world)))
       (defthm ,(fn2-columns-sym prepare "-WFP")
         (implies (and (natp n) (natp base) (< (+ base n) 4294967296))
-                 (,wfp (,prepare n base gen ,name))))
+                 (,wfp (,prepare n base gen ,name)))
+        :hints ((fn2-columns-call-guard-hint ',prepare nil '(,prepare) world)))
       (in-theory (disable ,prepare)))))
 
 ; Dispatch is emitted after the containing core and named callbacks exist.
