@@ -15,16 +15,22 @@
  (with-local-stobj fn2-pool
   (mv-let (answer fn2-pool) (fn2-csg-body profile classes fn2-pool) answer)))
 ; The 4K arena profile: retained NAME and one POST overlap in fresh service;
-; retained cold root + POST is the independent 64K peak. No completion claim.
+; cold root ends before READY; upload chunks/store page set the 64K peak.
+; No completion claim.
 (assert-event (equal (fn2-csg-run *fn2-csg-profile* '((1 . 4096) (1 . 65536)))
-                     '(:ok (13 4) t)))
+                     '(:ok (13 3) t)))
 ; Remove the fresh NAME antecedent: the two arenas are no longer charged.
 (assert-event
  (equal (fn2-csg-run (put-assoc-equal :groups nil (put-assoc-equal :authority 0 *fn2-csg-profile*))
-                    '((1 . 4096) (1 . 65536))) '(:ok (11 4) t)))
+                    '((1 . 4096) (1 . 65536))) '(:ok (11 3) t)))
 ; Actual initializer default remains 64K; it changes arena class, not IDs.
 (assert-event
  (equal (fn2-csg-run (remove-assoc-equal :identity-arena-bytes *fn2-csg-profile*)
                     '((1 . 4096) (1 . 65536))) '(:ok (5 15) t)))
 (assert-event (equal (fn2-csg-run *fn2-csg-profile* '((1 . 4096))) '(:profile nil t)))
 (assert-event (equal (fn2-csg-run *fn2-csg-profile* '((1 . 4096) (1 . 8192))) '(:capacity nil t)))
+
+; The actual cold startup root remains charged before READY even when POST
+; classes are elsewhere. Removing its class antecedent removes exactly one.
+(assert-event (equal (fn2-checkpoint-service-class-demand 9 nil 0 1 2 3 9) 1))
+(assert-event (equal (fn2-checkpoint-service-class-demand 9 nil 0 1 2 3 8) 0))

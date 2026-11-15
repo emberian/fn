@@ -21,25 +21,30 @@ For each class, the vector takes the maximum of these source-derived overlaps:
 | Fresh startup through prefix recovery | Boot pack/rx + recovery window/workspace (four journal-sized slots), one persistent bind scratch if NAME is nonempty, one arena per nonempty group/principal NAME role |
 | Cold startup through recovery | The same four journal-sized slots and one checkpoint root page |
 | Fresh ready plus one POST | Retained NAME arenas, one bind scratch total, one arena per distinct POST writer schema, two upload chunks, one actual maximum store page |
-| Cold ready plus one POST | One bind scratch, POST arenas/chunks/store page, and the currently retained cold root page |
+| Cold ready plus one POST | One bind scratch, POST arenas/chunks/store page, after the cold root page has been released |
 
-The current cold source releases recovery's two slots and boot's pack/rx, but
-no root-slot release was found at READY. That retained page is explicit in this
-vector until the owning boot path releases it. Query references pin their
+The actual `:epoch-result` DONE branch releases the exact root workspace after
+bank-obligation completion and before recovery finalization, pack/rx release,
+and listener release. Only accepted `:ok`/`:retired` proceeds; the root helper
+clears its retained handle after accepted shared pool release, and recovery
+finalization requires root generation zero. Both transitions into READY occur
+in listener release. The root page therefore overlaps cold startup, while the
+cold ready POST phase has no retained root lease. Query references pin their
 underlying physical slot and source debt protects extents; neither is a new
 pool slot. Actual free counts exclude held physical buffers, so adding their
 reference counts again would double charge capacity.
 
 For the node's two-class layout and 4 KiB arena, bare POST demand is eleven
 4 KiB slots plus three 64 KiB slots. With both fresh NAME roles retained, fresh
-ready demand is thirteen plus three; current cold ready demand is eleven plus
-four. The component maximum is thirteen plus four. These are source-prepared
+ready demand is thirteen plus three; cold ready demand is eleven plus three.
+The component maximum is thirteen plus three. These are source-prepared
 sizing witnesses, not executed assertions or a liveness theorem.
 
 Actual new upload claims begin at TAKE in NNTP and CNS. TAKE reserves two
 chunks; the store page and C scratch/spares are acquired later. C stage first
-checks schema room, then acquires scratch/spares sequentially and can retain
-partials on `:full`. A read-only free-count check at TAKE is not a claim across
+checks schema room. The separate atomic stage preflight prevents partial new
+scratch/spare claims within its nonyielding call; it does not fund the earlier
+NEW/upload lifetime. A read-only free-count check at TAKE is not a claim across
 interleavings. Late stage happens after payload IO and cannot use an empty
 no-IO abort rule. A protected service floor without a redemption path would
 also block the existing generic consumers.
@@ -54,7 +59,7 @@ owner; no policy or pool schema change is made here.
 
 `tools/upload_page_geometry_source_test.py` preserves the original 22 production
 forms once; `tools/checkpoint_service_geometry_source_test.py` connects writer
-families and the C initializer to this geometry. ACL2 sizing assertions,
-aggregate exact-fit refusal/sufficient profile controls and composed runtime
-qualification are pending. The pure service book/unit closures are 41/42 local
-books; no compute was allocated for this source work.
+families, the C initializer and the actual pre-READY root-release join to this
+geometry. ACL2 sizing assertions, aggregate exact-fit refusal/sufficient profile
+controls and composed runtime qualification remain pending. No compute was
+allocated for this source correction.

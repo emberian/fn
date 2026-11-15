@@ -53,10 +53,10 @@
         (post (+ scratch (* (len *fn2-checkpoint-post-schema-ids*) arenas)
                  (if (equal class *fn2-upload-chunk-class*) 2 0)
                  (if (equal class page-class) 1 0)))
-        ; Current cold boot retains its root page after pack/rx release.
-        ; This is explicit occupancy, not free or newly claimable capacity.
+        ; The accepted epoch-result root release precedes recovery finalization
+        ; and every listener/READY transition. The root overlaps startup only.
         (fresh-post (+ post (* names arenas)))
-        (cold-post (+ post root)))
+        (cold-post post))
   (max (max fresh cold) (max fresh-post cold-post))))
 (defun fn2-checkpoint-service-vector-loop (class profile sector-class scratch-class arena-class page-class root-class fn2-pool)
  (declare (xargs :stobjs fn2-pool
