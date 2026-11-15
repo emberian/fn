@@ -4,9 +4,9 @@
 (fn2-book-layer :b)
 (defcolumns fn2-checkpoint-restore-semantic
  ((phase (:enum fn2-checkpoint-restore-semantic-phase (:idle :read :verify :header :entries :uncertain :find :complete :payload)))
-  (tag :u60) (scan :u32) (expected-known :bool) (expected-count :u60) (seen :u60) (page-kind :u8)
+  (tag :u60) (pending-head :u32) (pending-tail :u32) (pending-count :u32) (expected-known :bool) (expected-count :u60) (seen :u60) (page-kind :u8)
   (candidate :u32) (source-checkpoint :u60) (source-cut-commit :u60) (source-cut-event :u60)
-  (source-history :u60) (source-incarnation :u60) (unit :u60) (epoch :u60) (allocation :u60)
+  (source-history :u60) (source-incarnation :u60) (source-generation :u60) (unit :u60) (epoch :u60) (allocation :u60)
   (cursor :u32) (checker-row :u32) (field-base :u32) (checker-phase :u8) (checker-pos :u32)
   (checker-zero :u32) (checker-pad :u32) (checker-pad-end :u32) (checker-geom :u32) (checker-previous-seal-offset :u32)
   (slot :u32) (gen :u60) (owner-kind :u8) (owner-slot :u32) (owner-gen :u60)
@@ -21,7 +21,7 @@
 (defcolumns fn2-checkpoint-restore-semantic-work
  ((tag :u60) (state (:enum fn2-checkpoint-restore-semantic-work-state (:empty :pending :done)))
   (unit :u60) (epoch :u60) (allocation :u60) (page-kind :u8)
-  (schema :u60) (run :u60) (level :u8) (expected-count :u60)
+  (schema :u60) (run :u60) (level :u8) (expected-count :u60) (next :u32)
   (hash-0 :u32)
   (hash-1 :u32)
   (hash-2 :u32)

@@ -225,6 +225,43 @@ ACL2_BOOKS = \
   tests/alloc-unit \
   tests/alloc-freeze-unit \
   tests/checkpoint-unit \
+  tests/alloc-planning-unit \
+  tests/alloc-lifecycle-unit \
+  tests/retirement-intent-allocator-unit \
+  tests/retirement-intent-leaf-unit \
+  tests/block-workspace-interleaving-unit \
+  tests/checkpoint-aggregate-unit \
+  tests/checkpoint-allocation-coordinator-unit \
+  tests/checkpoint-allocation-unit \
+  tests/checkpoint-anchor-future-unit \
+  tests/checkpoint-bank-unit \
+  tests/checkpoint-builder-claim-unit \
+  tests/checkpoint-clear-build-unit \
+  tests/checkpoint-directory-budget-unit \
+  tests/checkpoint-directory-headroom-unit \
+  tests/checkpoint-future-resources-unit \
+  tests/checkpoint-installation-coordinator-unit \
+  tests/checkpoint-lifecycle-unit \
+  tests/checkpoint-maintenance-leases-unit \
+  tests/checkpoint-map-format-unit \
+  tests/checkpoint-map-roundtrip-unit \
+  tests/checkpoint-master-catalog-unit \
+  tests/checkpoint-page-handoff-unit \
+  tests/checkpoint-payload-physical-unit \
+  tests/checkpoint-plan-unit \
+  tests/checkpoint-publication-repeat-unit \
+  tests/checkpoint-recovery-census-unit \
+  tests/checkpoint-recovery-evidence-unit \
+  tests/checkpoint-restore-arena-unit \
+  tests/checkpoint-restore-semantic-unit \
+  tests/checkpoint-restore-semantic-work-unit \
+  tests/checkpoint-restore-unit \
+  tests/checkpoint-retention-profile-unit \
+  tests/checkpoint-semantic-unit \
+  tests/checkpoint-teardown-unit \
+  tests/checkpoint-working-release-unit \
+  tests/retirement-intent-unit \
+  tests/run-packing-unit \
   tests/checkpoint-member-unit \
   tests/checkpoint-tickets-unit \
   tests/checkpoint-provenance-unit \

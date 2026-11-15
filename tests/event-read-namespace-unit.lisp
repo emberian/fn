@@ -22,8 +22,8 @@
   (mv (and (eq reserved :ok) (eq zeroed :ok) (eq packed :ok) (< end 4096)
            (= (fn2-event-read-phase 0 fn2-event-read) *fn2-event-read-phase-frame-seal*)
            (if records
-               (and (eq code :frame) (= (fn2-event-read-history 0 fn2-event-read) 0) (= (fn2-event-read-incarnation 0 fn2-event-read) 0))
-             (and (eq code :ok) (= (fn2-event-read-history 0 fn2-event-read) 29) (= (fn2-event-read-incarnation 0 fn2-event-read) 31))))
+               (and (eq code :frame) (= (fn2-event-read-journal-history 0 fn2-event-read) 0) (= (fn2-event-read-journal-incarnation 0 fn2-event-read) 0))
+             (and (eq code :ok) (= (fn2-event-read-journal-history 0 fn2-event-read) 29) (= (fn2-event-read-journal-incarnation 0 fn2-event-read) 31))))
       fn2-event-read fn2-fields fn2-pool)))
 (defun fn2-ern-test (records)
  (declare (xargs :verify-guards nil))
