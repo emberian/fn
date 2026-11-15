@@ -83,3 +83,48 @@
  `(make-event
    (value (fn2-columns-carrier-contract-events
            ',name ',carriers ',typed-readonly ',hints (w state)))))
+
+; Guarded producer interfaces use the stored logical guard (including its
+; implicit input stobj predicates). Every emitted fact still requires proof.
+; Optional row frames are unconditional, as in the underlying constructor.
+(defun fn2-columns-guard-domain-specs (specs)
+ (declare (xargs :verify-guards nil))
+ (if (atom specs) nil
+  (cons (cons (concatenate 'string (caar specs) "-UNDER-GUARD")
+              (cdar specs))
+        (fn2-columns-guard-domain-specs (cdr specs)))))
+(defun fn2-columns-carrier-row-specs (carriers)
+ (declare (xargs :verify-guards nil))
+ (if (atom carriers) nil
+  (cons (list (concatenate 'string
+                (or (fn2-decl-get :prefix (cddar carriers)) "") "-ROWS")
+              (fn2-columns-sym (caar carriers) "-ROWS") (cadar carriers)
+              :frame (caar carriers))
+        (fn2-columns-carrier-row-specs (cdr carriers)))))
+(defun fn2-columns-guarded-contract-events (name carriers hints rows world)
+ (declare (xargs :verify-guards nil))
+ (let* ((args (getpropc name 'formals :missing world))
+        (inputs (getpropc name 'stobjs-in nil world))
+        (outputs (getpropc name 'stobjs-out nil world))
+        (guard (getpropc name 'guard :missing world)))
+  (if (or (eq args :missing) (eq guard :missing)
+          (eq (getpropc name 'symbol-class nil world) :program)
+          (not carriers)
+          (not (fn2-columns-contract-carriersp carriers args inputs outputs world)))
+      (er hard 'defcolumns-guarded-contracts
+          "No logical guarded carrier projection for ~x0." name)
+   (let* ((hyps (remove-duplicates-equal
+                  (append (fn2-columns-carrier-hyps carriers)
+                    (fn2-columns-readonly-type-hyps args inputs nil world)
+                    (list guard))))
+          (specs (fn2-columns-guard-domain-specs
+                   (fn2-columns-carrier-specs
+                    (fn2-columns-inherit-carrier-hints carriers hints)))))
+    (fn2-columns-preserves
+     (caar carriers) name args nil hyps
+     (append specs (and rows (fn2-columns-carrier-row-specs carriers)))
+     "-PRESERVES" t t hints t nil nil nil nil)))))
+(defmacro defcolumns-guarded-contracts (name &key carriers hints rows)
+ `(make-event
+   (value (fn2-columns-guarded-contract-events
+           ',name ',carriers ',hints ',rows (w state)))))
