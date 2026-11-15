@@ -529,7 +529,13 @@
                  '(fn2-alloc-edge-add fn2-alloc-edge-matchesp) nil world)))
 (fn2-checkpoints-preserves fn2-checkpoint-install
  (c install-commit base slot gen okind oslot ogen fn2-checkpoints fn2-checkpoint-refs fn2-checkpoint-bytes
-    fn2-fields fn2-pool fn2-alloc-edges fn2-extents fn2-ops) :position 1)
+    fn2-fields fn2-pool fn2-alloc-edges fn2-extents fn2-ops) :position 1
+ :hints ((fn2-columns-guard-hint
+          '(fn2-checkpoints fn2-checkpoint-refs fn2-checkpoint-bytes
+            fn2-fields fn2-pool fn2-alloc-edges fn2-extents fn2-ops)
+          '(fn2-checkpoint-retainedp fn2-checkpoint-pool-hash-matchesp
+            fn2-alloc-edge-matchesp fn2-alloc-handle-code)
+          '(fn2-checkpoint-install) world)))
 ; Descriptor-reader carrier obligations remain in checkpoint-descriptor-read.
 
 
