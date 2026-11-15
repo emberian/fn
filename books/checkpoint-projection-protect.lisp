@@ -70,3 +70,8 @@
          ("-ALLOC-EDGES-GUARD-DOMAIN-TYPE" fn2-alloc-edgesp 3)
          ("-ALLOC-EDGES-GUARD-DOMAIN-WFP" fn2-alloc-edges-wfp 3)
          ("-ALLOC-EDGES-ROWS" fn2-alloc-edges-rows 3 :frame fn2-alloc-edges)))
+
+(defcost fn2-checkpoint-projection-protect-op :child fn2-checkpoint-projection-protect-step
+ :answers (:more :protected :source :capacity :reach :identity :edge-holder)
+ :tables (fn2-core-checkpoint-projection fn2-core-extents fn2-core-alloc-edges)
+ :doc "One actual selected typed reach row, fixed recovery-base restoration; scalar code, no IO.")

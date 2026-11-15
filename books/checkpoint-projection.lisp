@@ -211,3 +211,13 @@
  :specs (("-CHECKPOINT-PROJECTION-GUARD-DOMAIN-TYPE" fn2-checkpoint-projectionp nil)
          ("-CHECKPOINT-PROJECTION-GUARD-DOMAIN-WFP" fn2-checkpoint-projection-wfp nil)
          ("-CHECKPOINT-PROJECTION-ROWS" fn2-checkpoint-projection-rows nil :frame fn2-checkpoint-projection)))
+
+; Actual child faces: no wrapper decision or caller-selected identity.
+(defcost fn2-checkpoint-projection-begin-op :child fn2-checkpoint-projection-begin
+ :answers (:more :state :source :capacity)
+ :tables (fn2-core-checkpoint-projection fn2-core-checkpoint-selected-source fn2-core-extents)
+ :doc "Enter exact selected cold projection and phase4; scalar code, no IO.")
+(defcost fn2-checkpoint-projection-step-op :child fn2-checkpoint-projection-step
+ :answers (:more :projected :source :capacity :cursor :totals :row :fifo :state)
+ :tables (fn2-core-checkpoint-projection fn2-core-checkpoint-selected-source fn2-core-extents fn2-core-alloc-edges)
+ :doc "One selected map row or FIFO link; keep phase4 and issuance closed.")
