@@ -34,8 +34,13 @@ The fix must derive the shared entry/argument/result regions and B transaction
 stripe from the assembled schema requirements, preserving disjoint write
 footprints and allocation bounds. Raising only the article limit would overlap
 the adjacent workspace. Reclamation owns this repair before APPEND execution.
-The existing 4096-byte bind scratch has not been shown insufficient for the
-current schema inventory; its derivation is part of preventing future drift.
+The reviewed repair candidate `ddc7e3111` derives 13-field entry/argument regions,
+12-value result space and a 52-row slot from the assembled schema inventory.
+The complete footprint still fits the existing 2048-row transaction stripe;
+no allocation expansion is needed. Scratch derives to the existing 4096 bytes.
+Actual argument-12 admission and decoder/neighbor-sentinel execution remain
+owed before integration. Whole-bind work accounting remains a separate open
+obligation: per-entry copying alone does not bound search, decoding and encoding.
 
 The public client now provides exact-byte FETCH (`099a7a2c8`) and a native
 APPEND/restart/FETCH fixture. Four focused codec/socket-client and exact-byte
@@ -45,6 +50,15 @@ FNCT schema declarations (`c2d28dd96`) preserve all 1666 generated events and
 pass completeness/refusal controls; consumer-codec admits in 41.04 seconds in
 the retained application world. Its whole-book proof cost remains above the
 D26 target. These author loads are not record-toolchain certification.
+
+The retained application world has admitted 19 source books beyond its 60
+qualified compiled parents, plus three checkpoint proof prerequisites. It is
+currently at the checkpoint EDGE-ADD producer contract; the application fixtures
+have not executed. Accounts (`3f7b07618`) and answer preservation (`00e04f000`)
+repair only hints. The layout interface candidate disables an overly broad
+structural rewrite and explicitly supplies it to SCAN/EMIT guards; all 136 forms
+admit, with exact eight-book certification pending. These results do not certify
+the application or establish accepted-data recovery.
 
 Raw APPEND EOF controls from85c0114a3 are integrated as unexecuted regressions:
 seven real wire sessions require a trailing-CR refusal, empty STATUS, successful
