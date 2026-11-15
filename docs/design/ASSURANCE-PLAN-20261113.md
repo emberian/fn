@@ -7,10 +7,56 @@ must be derived from that store and the actual served call/attachment graph.
 
 ## Current integration frontier — 2026-11-15 UTC
 
-Current integration source is `9e35f6916`, including retirement dispatch, actual-type
+Current integration includes matcher DP traversal `b88e96190`, retirement dispatch, actual-type
 codec fixtures, failed-Send classification, consumed-input accounting and farm
 Git metadata protection. No current whole-system image, full host gate,
 canonical served certificate, or completed assurance claim exists.
+
+The public matcher now has unconditional correspondence to the independent
+language predicate, including original-input domain checks before reversal,
+malformed-input rejection and adequacy of the unchanged runtime budget.
+Record `certify-20261115T041313Z-839288` passes its exact fifteen-book closure
+(nine reused, six new; 3.305 seconds). Root matched all fifteen before/after
+source digests against integration. Concrete controls cover linear and DP paths,
+malformed inputs and removal of the original-domain conjunct. The first clean
+record exposed a missing declared row prerequisite; the corrected include is
+part of this qualified source. Native delivery/refinement remains separate.
+
+The device-effect recorder now captures returned Read bytes, and the pure
+checker enforces submit FIFO, raw count bounds, exact completed Write prefixes,
+and consistent Read observations. Missing/error Writes admit arbitrary bytes
+only inside their requested span and retain an uncertain verdict. Review controls
+reject out-of-order begin, contradictory Reads and inconsistent final bytes.
+Exact two-book record `certify-20261115T041522Z-841581` passes in 0.296 seconds;
+root matched both current source hashes/keys and the renewed raw-recorder hashes.
+The raw gate substitutes the performer and proves only recorder behavior.
+The selected single-submitter/initial direct-setup premise, actual Take/Post
+binding, whole-image driver execution and crash recovery correspondence remain
+open. A successful Fence observation does not prove power-loss persistence.
+
+The shared columns diagnostic and opt-in guard-hint API are qualified by
+`certify-20261115T034623Z-812141`: six books, two reused and four new,
+3.918 seconds. Root matched all six before/after source hashes. Actual declarations
+reject conflicting definitions while admitting identical redundant enums and
+disjoint local scopes. The helper preserves public bounds and supports read-only
+inputs and extra fields; its actual guard fixture passes. The direct source
+control also passes. This columns source change invalidates dependent closure
+keys from earlier pool, codec and core records; those historical records do not
+qualify the current dependent closures. The next shared freeze combines the
+stable pool implementation with focused pool controls before format/core checks.
+Credit-book contract proofs and actual host-path qualification remain open.
+
+The pool implementation is now integrated at the frozen source digest
+`3ef26f41207ee64f6121621cc24d7100936e364b5224a4be8ae28292aa4d7fa7`.
+Its seven-book closure matches qualified cache key
+`079b4ac98a0b3d945869386f9e8d2ebecf0a00d8715e247ba18202d4d7fbfc24`;
+root independently checked source, closure and certificate/FASL/port digests.
+This adds credit provenance and protected ordinary reservations; credit
+configuration and consumers remain unqualified. The larger twelve-book run
+stopped at pool-ranges preservation: its interactive pass did not reproduce in
+clean certification. That repair remains open. The independent format-check
+closure does not include pool-ranges, so its existing scoped gate can proceed.
+
 
 Allocator refinement `8595723fc` is qualified by twelve-book record
 `certify-20261115T011246Z-662045`: six reused, six newly certified. Root matched
@@ -149,8 +195,13 @@ whole composition antecedent and exercise insufficient fuel. The actual source-b
 `9e35f6916`. Seven-book record `certify-20261115T032116Z-787638` passed
 in 1.041 seconds (three reused, four new); root matched all seven before/after
 source hashes. Controls assert the whole antecedent and falsify the result when
-the fixed-suffix hypothesis is removed. Segment dispatch/reversal, initial-row
-alignment, validation/linear-path refinement and global fuel adequacy remain open.
+the fixed-suffix hypothesis is removed. Segment dispatch/reversal, initial-row construction and complete DP traversal
+are integrated at `b88e96190`. Nine-book record
+`certify-20261115T034008Z-805948` passed in 0.948 seconds (five reused, four new);
+root matched all nine before/after hashes to the composed tree. The exact fuel
+theorem starts from the specified phase-4 state and has whole-antecedent controls
+plus a corrupted-base-row falsifier. Phase-3 ordering, initial validation, linear
+paths and full-wrapper fuel adequacy remain open.
 
 Farm transport repair `0dda1d6ac` protects both Git pointer files and directories
 during source sync. Five transport and three budget controls pass.

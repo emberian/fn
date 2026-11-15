@@ -112,6 +112,7 @@ ACL2_BOOKS = \
   books/host-codec-close \
   books/host-compress \
   books/columns \
+  books/columns-guard-hints \
   books/compress-policy \
   books/compress-kind \
   books/compress-operation \
@@ -303,6 +304,7 @@ ACL2_BOOKS = \
   tests/columns-cost-unit-10 \
   tests/columns-cost-unit-20 \
   tests/columns-unit \
+  tests/columns-name-unit \
   tests/codec-profile-unit \
   tests/codec-transport-unit \
   tests/host-codec-unit \
@@ -385,6 +387,7 @@ ACL2_BOOKS = \
   tests/layout-roundtrip \
   tests/layout-teeth-unit \
   tests/layout-unit \
+  tests/columns-guard-hints-unit \
   tests/layout-proof-scope-unit \
   tests/log-model-unit \
   tests/m2-cuts \
@@ -430,6 +433,19 @@ ACL2_BOOKS = \
   tests/envelope-prefix-unit \
   tests/input-prefix-unit \
   tests/tls-input-prefix-unit \
+  sim/envelope-output-dispatch \
+  sim/envelope-output-dp-loop \
+  tests/envelope-output-dispatch-unit \
+  tests/envelope-output-dp-loop-unit \
+  sim/envelope-output-dp-entry \
+  tests/envelope-output-dp-entry-unit \
+  sim/envelope-output-validation \
+  tests/envelope-output-validation-unit \
+  sim/envelope-output-linear \
+  tests/envelope-output-linear-unit \
+  sim/envelope-output-complete \
+  tests/envelope-output-complete-unit \
+  tests/native-device-effects-unit \
   tests/native-unit \
   tests/network-backpressure-unit \
   tests/ops-semantic-steps-unit \

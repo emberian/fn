@@ -1,0 +1,27 @@
+{
+  "scope": "Mocked perform recorder interface/concurrency only; no disk or served evidence",
+  "host_source_revision": "c1c86625e2b215ba1b937f470ece845513e46264",
+  "sha256": {
+    "host/device.lisp": "d2f0e0b118fd863ab32926da4053152846bcad1c9584700721895cfe63335c89",
+    "tests/native-device-effects-capture.lsp": "c8e84b37df7a42e7149df462540a3bb6e6dbdae4fccb5dc843765b137fe31775",
+    "tests/native-device-effects-capture-unit.lsp": "7427576390b93318deadcd720d6a4fb0e3387686d724fa57c13e42015ff54236"
+  },
+  "result": "DEVICE EFFECT RECORDER CONTROLS PASS",
+  "evidence": "forge:/tmp/stride-device-recorder.5fry9N/run2.log",
+  "packets": "forge:/tmp/stride-device-recorder.5fry9N/evidence2.lsp",
+  "execution": {
+    "user": "fn",
+    "memory_max": "256M",
+    "swap_max": 0,
+    "sbcl_dynamic_space_mib": 128,
+    "timeout_seconds": 30
+  },
+  "controls": [
+    "raw short count retained",
+    "original multiple values retained",
+    "evidence mutex not held during original perform",
+    "submitted Write span mutation refused",
+    "unmatched submission remains recorded"
+  ],
+  "prior_failure": "run.log: missing close in unit fixture; corrected before passing run2"
+}

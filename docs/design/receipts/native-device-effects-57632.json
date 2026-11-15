@@ -1,0 +1,73 @@
+{
+  "scope": "Finite device evidence decoder and complete process-visible image/Read checker; not a host refinement or power-loss durability theorem",
+  "revision_base": "f0f8b7c26",
+  "sha256": {
+    "sim/native-device-effects.lisp": "15035a4826a19e708177367bcde9c0a5a20f73b9f0158a66c47c536f9e79d932",
+    "tests/native-device-effects-unit.lisp": "c1a9553802e029a76dc2a3b748d0a2f2e6df1dfaeb8a2b9d391000e30aebf168",
+    "tests/native-device-effects-capture.lsp": "08502a894b61dc78cda99fec33f4fc50698a6ae365da82923a10c91bde199686",
+    "tests/native-device-effects-capture-unit.lsp": "0a5f6bb7171890b3a237afc9e960516a1cdb3a10009dc602a046e016922523c8"
+  },
+  "acl2": {
+    "manifest": "forge:/build/lanes/stride-owed-integrated/build/acl2/certify-20261115T041522Z-841581/manifest.json",
+    "status": "passed",
+    "roots": [
+      "sim/native-device-effects.lisp",
+      "tests/native-device-effects-unit.lisp"
+    ],
+    "local_book_ancestors": 0,
+    "wall_seconds": 0.296,
+    "published_pairs": 2,
+    "triage_failures": 0,
+    "memory_max": "2G",
+    "swap_max": 0
+  },
+  "raw_recorder": {
+    "scope": "mocked perform interface/concurrency only",
+    "log": "forge:/tmp/stride-device-recorder.5fry9N/run3.log",
+    "host_revision": "c1c86625e2b215ba1b937f470ece845513e46264",
+    "host_sha256": "d2f0e0b118fd863ab32926da4053152846bcad1c9584700721895cfe63335c89",
+    "memory_max": "256M",
+    "swap_max": 0,
+    "sbcl_dynamic_space_mib": 128,
+    "status": "passed"
+  },
+  "retained_author_refusal": "forge:/tmp/stride-device-effects-author.log: default measure chose increasing address; explicit acl2-count(before) fixes termination",
+  "limits": [
+    "pending/error writes admit arbitrary in-span bytes, retain source and cause, and finish as uncertain-effect-bound",
+    "successful Fence is an observation, not proof of physical persistence",
+    "actual Take/Post binding and complete selected-host snapshot driver remain pending"
+  ],
+  "prior_record": "certify-20261115T041130Z-837418: historical pre-review source",
+  "review_controls": [
+    "out-of-submit-order begin rejected",
+    "Read fixes unknown byte until next effect",
+    "contradictory Reads and final bytes rejected"
+  ],
+  "cache_audit": {
+    "manifest": "build/acl2/certify-20261115T041522Z-841581/manifest.json",
+    "status": "passed",
+    "seconds": 0.296,
+    "books": {
+      "sim/native-device-effects": {
+        "key": "a0e8d19e4ffb1274a76e297824b3082c4ed074e8c636f00be4b31f4322c0617b",
+        "entries": [
+          {
+            "path": "/home/fn/.cache/fn-certs/a0e8d19e4ffb1274a76e297824b3082c4ed074e8c636f00be4b31f4322c0617b/24812bb86804db98",
+            "compiled": true,
+            "qualified": "qualified"
+          }
+        ]
+      },
+      "tests/native-device-effects-unit": {
+        "key": "7b417cc18e00b2df42436b016111271491ad2aecf4fafe56704ffcfefcf9bdf1",
+        "entries": [
+          {
+            "path": "/home/fn/.cache/fn-certs/7b417cc18e00b2df42436b016111271491ad2aecf4fafe56704ffcfefcf9bdf1/24812bb86804db98",
+            "compiled": true,
+            "qualified": "qualified"
+          }
+        ]
+      }
+    }
+  }
+}

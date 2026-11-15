@@ -815,7 +815,9 @@ def prepare_native_deflate(root: Path, selected: Path) -> dict[str, str]:
               "recipe_sha256": hashlib.sha256(recipe_bytes).hexdigest()}
     selected.parent.mkdir(parents=True, exist_ok=True)
     with tempfile.TemporaryDirectory(prefix=".fn2-deflate-", dir=selected.parent) as scratch:
-        candidate = Path(scratch) / selected.name
+        artifacts = Path(scratch) / "artifacts"
+        artifacts.mkdir()
+        candidate = artifacts / selected.name
         # The recipe resolves its source beside itself. Compile immutable
         # captured inputs, not live files which could change between hashes.
         snapshot = Path(scratch) / "inputs"
