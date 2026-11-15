@@ -20,6 +20,12 @@ class PhysicalFixture(unittest.TestCase):
   self.assertNotIn('fn2-run-cache-install',s)
   for call in ('fn2-rpl-complete-read op ogen','fn2-rsr-step 0','fn2-rsr-attached token 1','fn2-rsr-attached token 0','*fn2-storage-extent-units*','fn2-rpl-cache-emptyp'):
    self.assertIn(call,s)
+ def test_terminal_uses_real_page_worker_and_requires_full_detach(self):
+  s=(ROOT/'tests/checkpoint-source-reader-physical-unit.lisp').read_text()
+  for call in ('fn2-checkpoint-page-worker-run target 4096','fn2-checkpoint-page-take fn2-core','fn2-checkpoint-page-accept-return kind owner gen','fn2-rsr-consume 4096','fn2-rsr-complete-write','fn2-harvest-one','fn2-checkpoint-source-reader-detachedp','*fn2-checkpoint-metadata-manifest-phase-complete*','*fn2-checkpoint-source-phase-done*','(equal writes (* 2 *fn2-storage-extent-units*))'):
+   self.assertIn(call,s)
+  for fake in ('(phase *fn2-checkpoint-root1-phase-complete*)','(phase *fn2-checkpoint-page-phase-complete*)','(handoff *fn2-checkpoint-page-handoff-to-source*)','(phase *fn2-run-load-phase-ready*)'):
+   self.assertNotIn(fake,s)
  def test_wrapper_projects_actual_declared_mutations(self):
   s=(ROOT/'tests/checkpoint-source-reader-physical-unit.lisp').read_text()
   self.assertIn('(cdr (assoc-eq target *fn2-checkpoint-root1-outputs*))',s)
