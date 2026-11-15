@@ -402,6 +402,7 @@ ACL2_BOOKS = \
   tests/layout-teeth-unit \
   tests/layout-unit \
   tests/columns-guard-hints-unit \
+  tests/columns-carrier-hints-unit \
   tests/layout-proof-scope-unit \
   tests/log-model-unit \
   tests/m2-cuts \
