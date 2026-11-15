@@ -100,6 +100,27 @@
            (eq ended :ok) (= (fn2-alloc-identity-count fn2-extents) 1)
            (= (fn2-extents-state 0 fn2-extents) *fn2-extent-state-reserved*)
            (= (fn2-alloc-identity-active fn2-extents) 0) (fn2-alloc-invp fn2-extents)) fn2-extents)))
+(defun fn2-aiu-insert (fn2-extents)
+ (declare (xargs :stobjs fn2-extents :verify-guards nil))
+ (b* (((mv start fn2-extents) (fn2-aiu-start 1 fn2-extents))
+      ((mv prepared fn2-extents) (fn2-alloc-identity-prepare-insert 7 2 3 4 0 *fn2-extent-state-allocated* 1 1 fn2-extents))
+      ((mv probed fn2-extents) (fn2-aiu-probe 2 7 2 3 4 fn2-extents))
+      (receipt (and (fn2-alloc-identity-insert-ready-p 7 2 3 4 0 *fn2-extent-state-allocated* 1 1 fn2-extents)
+                    (not (fn2-alloc-identity-insert-ready-p 7 2 3 4 0 *fn2-extent-state-reserved* 1 1 fn2-extents))))
+      ; Existing transitions establish the exact injected row for this isolated
+      ; publication seam. Actual selected projection owns its original row put.
+      ((mv adopted fn2-extents) (fn2-alloc-adopt-transition 0 *fn2-alloc-none* 1 1 fn2-extents))
+      ((mv committed fn2-extents) (fn2-alloc-commit-allocation-transition 0 1 1 6 11 fn2-extents))
+      (publishable (fn2-alloc-identity-publishable-p 7 2 3 4 fn2-extents))
+      (fn2-extents (fn2-alloc-identity-publish-existing-row 7 2 3 4 fn2-extents)))
+  (mv (and start (eq prepared :more) (eq probed :ready) receipt
+           (eq adopted :ok) (eq committed :ok) publishable
+           (fn2-alloc-identity-refines-p fn2-extents) (fn2-alloc-invp fn2-extents)) fn2-extents)))
+(defun fn2-aiu-insert-run ()
+ (declare (xargs :verify-guards nil))
+ (with-local-stobj fn2-extents
+  (mv-let (answer fn2-extents) (fn2-aiu-insert fn2-extents) answer)))
+(assert-event (fn2-aiu-insert-run))
 (defun fn2-aiu-progress-run ()
  (declare (xargs :verify-guards nil))
  (with-local-stobj fn2-extents
