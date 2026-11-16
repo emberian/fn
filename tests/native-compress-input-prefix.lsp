@@ -15,7 +15,7 @@
    (multiple-value-call #'fn2-native-required (fn2-native-configure-socket writer) :compress-fixture-writer)
    (values reader writer))))
 
-(defun fn2-native-compress-input-prefix-control (library &optional socketp)
+(defun fn2-native-compress-input-prefix-control (library &optional socketp after-input)
  (sb-alien:load-shared-object library)
  (multiple-value-bind (ready slot generation taken caps core)
      (fn2-input-prefix-fixture (fn2-n-live-core))
@@ -33,7 +33,7 @@
           (native-cap (make-fn2-ncap :fd -1 :nonce nonce :compress compression))
           (host (make-fn2-nhost :core core
                  :bytes (svref (svref core *fn2-core-pool*) *fn2-pool-datai*)
-                 :ops ops :trace (make-array 8 :initial-element nil)
+                 :ops ops :trace (make-array 128 :initial-element nil)
                  :completions (make-array 16 :initial-element 0)))
           (before (copy-seq (fn2-nhost-bytes host)))
           (peer -1))
@@ -131,6 +131,7 @@
                       (list :post 0 slot generation *fn2-event-receive-result*
                         *fn2-outcome-done* *fn2-reason-none* 2 0 0
                         *fn2-peer-family-none* '(0 0 0 0 0) '(70 71))))))
+      (when after-input (funcall after-input host native-cap peer))
       t)
      (unwind-protect
        (fn2-native-compress-close host compression nil cap nonce)
