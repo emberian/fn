@@ -978,7 +978,7 @@
  (cond ((atom event) nil)
        ((member-eq (car event) '(in-theory in-theory! deftheory deftheory-static
                                  make-event encapsulate table)) t)
-       ((eq (car event) 'local) (fn2-columns-theory-barrierp (cadr event)))
+       ((eq (car event) 'local) t)
        ((member-eq (car event) '(progn progn!))
         (fn2-columns-theory-barrierp (cdr event)))
        ((consp (car event))

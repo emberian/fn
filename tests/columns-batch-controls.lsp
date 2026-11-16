@@ -18,7 +18,7 @@
  (assert (equal (non-theory a) (non-theory b)))
  (assert (equal (disabled a) (disabled b)))
  (assert (= (count-if #'fn2-columns-simple-disablep b) 1))
- (dolist (barrier '((in-theory (enable a)) (local (in-theory (enable a)))
+ (dolist (barrier '((local (defthm local-fact (equal x x))) (in-theory (enable a)) (local (in-theory (enable a)))
                     (encapsulate () (local (in-theory (enable a))))
                     (progn (in-theory (enable a))) (make-event (value nil))))
   (let* ((events (append a (list barrier) a)) (out (fn2-columns-batch-phase events))
