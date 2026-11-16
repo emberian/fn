@@ -45,13 +45,25 @@ def reset_evidence(path, operations):
     return result
 
 
+
+def selected_launchers():
+    real = Path(os.environ['FN_ACL2']).resolve(strict=True)
+    observer = (ROOT / 'tests/native-rolling-launcher.py').resolve(strict=True)
+    for path in (real, observer):
+        if not path.is_file() or not os.access(path, os.X_OK):
+            raise PermissionError(f'Native test launcher is not executable: {path}')
+    if real == observer:
+        raise ValueError('FN_ACL2 must select the qualified real launcher, not the observer')
+    return real, observer
+
+
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--directory', type=Path, required=True)
     args = parser.parse_args()
+    real_launcher, observer_launcher = selected_launchers()
     directory = args.directory.resolve()
     directory.mkdir(parents=True, exist_ok=False)
-    real_launcher = Path(os.environ['FN_ACL2']).resolve(strict=True)
     startup = ('--article-max', '100000')
     image = directory / 'node.img'
     control = Path(f'/tmp/fn2-large-accepted-{os.getpid()}-{time.time_ns()}.sock')
@@ -66,7 +78,7 @@ def main():
     base.initialize(directory, image, startup_args=startup)
     evidence = directory / 'upload-resets.jsonl'
     env = base.environment()
-    env.update(FN_ACL2=str(ROOT / 'tests/native-rolling-launcher.py'),
+    env.update(FN_ACL2=str(observer_launcher),
                FN2_TEST_REAL_ACL2=str(real_launcher), FN2_TEST_UPLOAD_RESETS=str(evidence))
     node = base.restart.Node(directory, image, 'serve', 'append', control_sock=control,
                              env=env, startup_args=startup)
