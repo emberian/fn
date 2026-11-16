@@ -71,8 +71,8 @@
        (case mode
         (:corrupt (fn2-pool-write 1 1 0 255 1 0 1 fn2-pool))
         (:tail (fn2-pool-write 1 1 (- *fn2-format-sector-size* 1) 1 1 0 1 fn2-pool))
-        (:alias (mv :ok (fn2-pool-set-base 1 0 fn2-pool)))
-        (:short (mv :ok (fn2-pool-set-fill 1 12 fn2-pool)))
+        (:alias (let ((fn2-pool (fn2-pool-set-base 1 0 fn2-pool))) (mv :ok fn2-pool)))
+        (:short (let ((fn2-pool (fn2-pool-set-fill 1 12 fn2-pool))) (mv :ok fn2-pool)))
         (otherwise (mv :ok fn2-pool))))
       (whole-h (and (fn2-boot-configp fn2-boot-config) (fn2-boot-config-wfp fn2-boot-config)
                     (fn2-originp fn2-origin) (fn2-origin-wfp fn2-origin)
