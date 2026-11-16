@@ -614,3 +614,17 @@ The separate `MemberSymbolListBodyCorrect` wrapper still requires the current
 global dispatcher and its body equation; evaluating the small closure does not
 qualify that wrapper or the emitted served consumer. Unrelated generated functions,
 including the stale LENGTH symbol literal in S34, are outside this proof scope.
+
+**Current-foundation six-module kernel gate passed** at `eccdfd0bc`, receipt
+`docs/design/receipts/member-symbol-current-six.json`. Forty-four warm artifacts
+were checked against the qualified symbol-foundation receipt; Countdown, S34,
+S25, MemberExecEvaluation, MemberSymbolListEvaluation and its controls were
+compiled in that coherent environment. Total compiler time was 8.059 seconds;
+peak memory 265,519,104 bytes under 2 GiB with swap disabled and no memory events.
+All 22 axiom censuses contain only propext, Classical.choice and Quot.sound.
+The controls bind actual canonical KEYWORD SIZE/FULL objects to their current
+encodings, check a matching suffix and non-symbol keys, and reject non-symbol
+elements and improper lists. The gate qualifies the scoped Lean evaluation
+proofs, not unrelated generated definitions, the global BodyCorrect wrapper,
+its dispatch mutant, the generated served consumer or a current attached CNS
+packet. The job and scope ended; its allocation was released.

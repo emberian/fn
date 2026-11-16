@@ -1,0 +1,206 @@
+{
+  "result": "PASS",
+  "source_commit": "eccdfd0bcdb69ce6aec5ec93b8d8848f79f04a90",
+  "scope": "Current-Val five-definition MEMBER closed evaluation and actual emitted result; excludes global dispatch wrapper, current CNS packet, unrelated generated definitions and whole application",
+  "compiler_sha256": "3e0d0d3d801675359f2d4cf9815bfdb417b20b92fdd9d48b3b14c95bbae28bbf",
+  "warm_root": "/tmp/symbol-projection-33c2c1ded/overlay",
+  "foundation_receipt_sha256": "1b3ba2d4aefc083696f9f894535d0e261c110e2e447b33f5adf69e55d94a173a",
+  "verified_foundation_artifacts": 44,
+  "memory_max": 2147483648,
+  "memory_swap_max": 0,
+  "memory_peak": 265519104,
+  "memory_events": {
+    "low": 0,
+    "high": 0,
+    "max": 0,
+    "oom": 0,
+    "oom_kill": 0,
+    "oom_group_kill": 0
+  },
+  "outer_pid": 1996291,
+  "scope_state": "not-found/inactive",
+  "log": "/tmp/audit-member-symbol-ecc.log",
+  "log_sha256": "b46dd35ebe8b2629d5da955f4248efdf2b67135eaade368518e94d9dda7d3635",
+  "records": [
+    {
+      "module": "Fn2.ACL2.Countdown",
+      "source": "Fn2/ACL2/Countdown.lean",
+      "source_sha256": "9f2bf83b4b20a3274d287d58f9669eda41e4f1e3d49fb732885487e791240c9a",
+      "artifacts": {
+        "Countdown.ir": "b858633156c0cec5a7d45f0c4477937ae0c66cdb13228b2f610ae47764b0ef88",
+        "Countdown.olean": "98ca77b0d3a341ba13fa1ccacd48e8fdb085cbdf633b368ea4d2420c8f3cb966",
+        "Countdown.olean.private": "e0e031c1748cc522fef1a588d73db4a1c28df6c530edc6701e8d9d186c1e0e6a",
+        "Countdown.olean.server": "033bcea9f87b64c99073be0caaf6ea337c03ca7a8fb234af91cb3fa63339e8a8"
+      },
+      "seconds": 0.485
+    },
+    {
+      "module": "Fn2.Instances.LayerAWorld.S34_d0to6",
+      "source": "Fn2/Instances/LayerAWorld/S34_d0to6.lean",
+      "source_sha256": "f36d9ddce8451fe11d2a05b4537055b0e24e5c83aff27acd6a28266d513035ae",
+      "artifacts": {
+        "S34_d0to6.ir": "63da93a1766252e6346c108fd551d17d986789ae3b59e5404d5e61b71eb1cc9b",
+        "S34_d0to6.olean": "4a5775cd0692129e5f88e04dfbb94bc56271db8b0034977d72ce535a7882a64e",
+        "S34_d0to6.olean.private": "0026cc2c4df08ad834bd51839fa9735c629516cf4e024b36cf78b206ddda81e9",
+        "S34_d0to6.olean.server": "7715bf42f047a8305066756c649001c367e01189ca95934a48fb830988e289bb"
+      },
+      "seconds": 0.864
+    },
+    {
+      "module": "Fn2.Instances.LayerAWorld.S25_d2to3",
+      "source": "Fn2/Instances/LayerAWorld/S25_d2to3.lean",
+      "source_sha256": "2351957d87e247ab402e96798d555a647f7fe84c5df46a1c7bb882a9518ee822",
+      "artifacts": {
+        "S25_d2to3.ir": "4836ecef68aa9b756125367c7775d158fe22689648e35b44d082a6e174b1536a",
+        "S25_d2to3.olean": "958860aa902137d85c99ee74d14e922d63d95365fcf61d864d0d87bdec519853",
+        "S25_d2to3.olean.private": "4b9935ce69ed7987e5d379cfed292ac8cf102044cf85b8d1b636737fd9f7cb2b",
+        "S25_d2to3.olean.server": "a737ea13bbdd72eb13283e2ecda214b33a098098b06f59f72ba84a1ea73b9970"
+      },
+      "seconds": 0.352
+    },
+    {
+      "module": "Fn2.ACL2.MemberExecEvaluation",
+      "source": "Fn2/ACL2/MemberExecEvaluation.lean",
+      "source_sha256": "3f38492fd237761cccfc20ab6a26ef5a569a91143d4a47a0947bd8a2322e9a2b",
+      "artifacts": {
+        "MemberExecEvaluation.ir": "bc7b89b367a5ecfe10d397239ca294e9caa02f569a31df2b49aa47e086105d7c",
+        "MemberExecEvaluation.olean": "0e25deabf371c06060ac25ed19c171e7c18587b8f5c3a87ee9eac872e5e37c88",
+        "MemberExecEvaluation.olean.private": "acf7ce4f390584a216cf945b2d22e95b8be502eb79844b6e7ddea63bfc4d7fee",
+        "MemberExecEvaluation.olean.server": "469fdbff7b7afa7ba082e1bc0e3219ccb307d8e6c2db825344a936cf2df5d7e2"
+      },
+      "seconds": 4.458
+    },
+    {
+      "module": "Fn2.ACL2.MemberSymbolListEvaluation",
+      "source": "Fn2/ACL2/MemberSymbolListEvaluation.lean",
+      "source_sha256": "9144e1a68e2d2223c5385a7ca91836d5fa20869f1e76e6883e26cedb56b0792d",
+      "artifacts": {
+        "MemberSymbolListEvaluation.ir": "1c827ac007c5a02d61f37d0500efac52f3e4b9fd40a2fdf45efc447993d94460",
+        "MemberSymbolListEvaluation.olean": "a6b35651debc23f3e11f5137e1dc3e67d229a9b7a6f269a6e387001692bc54ce",
+        "MemberSymbolListEvaluation.olean.private": "406d0ddb57b25c0c76ff21907af207aeb6e7b65f354f72b198064ef6c082f992",
+        "MemberSymbolListEvaluation.olean.server": "a4a5105c23b4af2c74779d79bec4685ae2328f7f3921da56c9f8bf7a0423598e"
+      },
+      "seconds": 1.381
+    },
+    {
+      "module": "Fn2.ACL2.MemberSymbolListEvaluationControls",
+      "source": "Fn2/ACL2/MemberSymbolListEvaluationControls.lean",
+      "source_sha256": "18cdcd72ef7efe86cec2e49d5cf40839a7da2612e95b6a7b7ac3114f38a40de1",
+      "artifacts": {
+        "MemberSymbolListEvaluationControls.ir": "95e4dace5e5c3ffe6985fe83681168cabd41bb652636785ec09e83297af153cb",
+        "MemberSymbolListEvaluationControls.olean": "b467634693cf84d88ebe4cc59af9af40163f4c487b3911d948ac209f07a85272",
+        "MemberSymbolListEvaluationControls.olean.private": "171d86258327fd560cc2722f5de69fe6270d651fc65d6a2c0bda0a5612c2b4d8",
+        "MemberSymbolListEvaluationControls.olean.server": "58e67fc866e51950393a75baecdc5484505fce9e92199951e03e5954abf3ba36"
+      },
+      "seconds": 0.519
+    }
+  ],
+  "axiom_censuses": {
+    "Fn2.ACL2.MemberExecEvaluation.closed_in_program": [
+      "propext",
+      "Classical.choice",
+      "Quot.sound"
+    ],
+    "Fn2.ACL2.MemberExecEvaluation.extended_program_positive": [
+      "propext",
+      "Classical.choice",
+      "Quot.sound"
+    ],
+    "Fn2.ACL2.MemberExecEvaluation.changed_body_refused": [
+      "propext",
+      "Classical.choice",
+      "Quot.sound"
+    ],
+    "Fn2.ACL2.MemberExecEvaluation.missing_domain_refused": [
+      "propext"
+    ],
+    "Fn2.ACL2.MemberExecEvaluation.closed_evaluation": [
+      "propext",
+      "Classical.choice",
+      "Quot.sound"
+    ],
+    "Fn2.ACL2.MemberExecEvaluation.decreases": [
+      "propext",
+      "Classical.choice",
+      "Quot.sound"
+    ],
+    "Fn2.ACL2.MemberExecEvaluation.domain_preserved": [
+      "propext",
+      "Classical.choice",
+      "Quot.sound"
+    ],
+    "Fn2.ACL2.MemberExecEvaluation.adequate_emitted": [
+      "propext",
+      "Classical.choice",
+      "Quot.sound"
+    ],
+    "Fn2.ACL2.MemberExecEvaluation.closed_adequate_emitted": [
+      "propext",
+      "Classical.choice",
+      "Quot.sound"
+    ],
+    "Fn2.ACL2.MemberExecEvaluation.positive": [
+      "propext",
+      "Classical.choice",
+      "Quot.sound"
+    ],
+    "Fn2.ACL2.MemberExecEvaluation.too_small_fuel": [
+      "propext",
+      "Classical.choice",
+      "Quot.sound"
+    ],
+    "Fn2.ACL2.MemberExecEvaluation.broken_decrease": [
+      "propext",
+      "Classical.choice",
+      "Quot.sound"
+    ],
+    "Fn2.ACL2.MemberExecEvaluation.broken_recursion_never_succeeds": [
+      "propext",
+      "Classical.choice",
+      "Quot.sound"
+    ],
+    "Fn2.ACL2.MemberSymbolListEvaluation.closed_evaluation": [
+      "propext",
+      "Classical.choice",
+      "Quot.sound"
+    ],
+    "Fn2.ACL2.MemberSymbolListEvaluation.emitted_eq_native": [
+      "propext",
+      "Classical.choice",
+      "Quot.sound"
+    ],
+    "Fn2.ACL2.MemberSymbolListEvaluation.closed_adequate_emitted": [
+      "propext",
+      "Classical.choice",
+      "Quot.sound"
+    ],
+    "Fn2.ACL2.MemberSymbolListEvaluationControls.keyword_literals_represented": [
+      "propext",
+      "Classical.choice",
+      "Quot.sound"
+    ],
+    "Fn2.ACL2.MemberSymbolListEvaluationControls.matching_keyword_positive": [
+      "propext",
+      "Classical.choice",
+      "Quot.sound"
+    ],
+    "Fn2.ACL2.MemberSymbolListEvaluationControls.nonsymbol_positive": [
+      "propext",
+      "Classical.choice",
+      "Quot.sound"
+    ],
+    "Fn2.ACL2.MemberSymbolListEvaluationControls.cons_key_positive": [
+      "propext",
+      "Classical.choice",
+      "Quot.sound"
+    ],
+    "Fn2.ACL2.MemberSymbolListEvaluationControls.nonsymbol_element_refused": [
+      "propext"
+    ],
+    "Fn2.ACL2.MemberSymbolListEvaluationControls.improper_list_refused": [
+      "propext"
+    ]
+  },
+  "global_dispatch_bodycorrect": "unqualified",
+  "current_attached_cns_packet": "unavailable"
+}
