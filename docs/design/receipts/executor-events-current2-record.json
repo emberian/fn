@@ -1,0 +1,30 @@
+{
+  "source": "fa5711d5c7297be298f6d8bbb5e20068e9faf8a3",
+  "toolchain": "8aeb1bea18968c6cd33ac633a80ebf67e4924504db112fd27eb11f16a27b2a8c",
+  "result": "PASS",
+  "scope": "Two original production macro-definition books; no emitted application event qualification",
+  "author_limits": {
+    "steps_per_original_event": 2000000,
+    "seconds_per_original_event": 20
+  },
+  "record_run": "certify-20261116T005104Z-2040982",
+  "records": [
+    {
+      "book": "books/executor-access-events",
+      "key": "6753c925c87ac5306df89cc055a978510bc703feef3fcd5b676570afda1bf0cd",
+      "source_sha256": "94c5bcdecbdfcb44ce46ce159479e26c5744274017c7bca2e686f3e26fdbbbb9",
+      "entry": "/home/fn/.cache/fn-certs/6753c925c87ac5306df89cc055a978510bc703feef3fcd5b676570afda1bf0cd/7096065c205b00ba",
+      "cert_sha256": "02f84a7cfa7a37d01a407a453e041d8b893c78b694d94b8e836872d4ffd772ab",
+      "fasl_sha256": "87b936b9e4e92e6fbcfe44c7a4a4a011e8c4ebdb720eace7b7123a298fca208a"
+    },
+    {
+      "book": "books/executor-loop-events",
+      "key": "7c6b7e82e773292261126b9cc0b27fc16aa073fd6da8362f7cba62346eb89e5f",
+      "source_sha256": "4c02a741e61b1ecae2ce6a52aac4bc37f11a5468d00d08f096bb7c403426e094",
+      "entry": "/home/fn/.cache/fn-certs/7c6b7e82e773292261126b9cc0b27fc16aa073fd6da8362f7cba62346eb89e5f/7096065c205b00ba",
+      "cert_sha256": "0e12600b93fe163a4effd4d53780b7f79d9db8c6d32ce17d6865b46f970ce10d",
+      "fasl_sha256": "a3b3e28e499012f71e838da1d612f29f4b2de625b51ead3c331b974bb62f1724"
+    }
+  ],
+  "cleanup": "wrapper/server/ACL2/record PIDs and cgroup gone"
+}
