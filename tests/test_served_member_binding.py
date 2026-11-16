@@ -79,6 +79,41 @@ class ServedSelection(unittest.TestCase):
         self.assertIn('(.cons memberLiteral0_represented (.cons memberLiteral1_represented .nil))', theorem)
         self.assertNotIn('Val.ofBool', theorem)
 
+    def test_whole_helper_body_has_acl2_and_lean_interpretation_links(self):
+        book = s.qualification_book(packet(), Path('/tmp/served-binding.lisp'))
+        self.assertIn('(defevaluator FN2-CNS-SELECTED-EXPORT-EVAL', book)
+        self.assertIn('FN2-CNS-PUT-ANSWER-EXPORT-BODY-BY-DEFINITION', book)
+        self.assertIn('(FN2-CNS-PUT-ANSWER LIVE OK0 RC CODE FITS CC)', book)
+        source = s.member_context_source(packet())
+        self.assertIn('theorem answer_eval_export ', source)
+        self.assertIn('evalExport 512 canonicalAnswer fns', source)
+        self.assertIn('apply evalExport_of_decoded_by_definition answer_decoded', source)
+        self.assertIn('.ok («FN2-CNS-PUT-ANSWER» «LIVE» «OK0» «RC» «CODE» «FITS» «CC»)', source)
+        self.assertIn('congrArg Except.ok (member_context ', source)
+
+    def test_whole_body_retains_outer_branches_and_translated_lambda(self):
+        before = ['MEMBER-EQUAL', 'RC', ['COMMON-LISP::QUOTE', ['KEYWORD::SIZE', 'KEYWORD::FULL']]]
+        after = ['COMMON-LISP::IF', 'LIVE',
+                 [['COMMON-LISP::LAMBDA', ['X', 'L'], ['MEMBER-EQUAL', 'X', 'L']],
+                  'RC', ['COMMON-LISP::QUOTE', ['KEYWORD::SIZE', 'KEYWORD::FULL']]],
+                 ['COMMON-LISP::QUOTE', 'KEYWORD::DROPPED']]
+        changed = packet().replace(obj(before), obj(after))
+        source = s.member_context_source(changed)
+        self.assertIn('Translation.eval_if', source)
+        self.assertIn('Translation.eval_lam', source)
+        self.assertIn('Val.sym ":DROPPED"', source)
+        self.assertNotEqual(source, s.member_context_source(packet()))
+        book = s.qualification_book(changed, Path('/tmp/served-binding.lisp'))
+        self.assertIn('DROPPED', book)
+        self.assertIn('FN2-CNS-PUT-ANSWER-EXPORT-BODY-BY-DEFINITION', book)
+
+    def test_missing_non_native_helper_callee_refuses(self):
+        before = ['MEMBER-EQUAL', 'RC', ['COMMON-LISP::QUOTE', ['KEYWORD::SIZE', 'KEYWORD::FULL']]]
+        after = ['COMMON-LISP::IF', ['UNEXPORTED-HELPER', 'LIVE'], before,
+                 ['COMMON-LISP::QUOTE', 'KEYWORD::DROPPED']]
+        with self.assertRaisesRegex(ValueError, 'missing helper dispatch record'):
+            s.member_context_source(packet().replace(obj(before), obj(after)))
+
     def test_missing_member_site_does_not_generate_context(self):
         text = packet().replace(obj('MEMBER-EQUAL'), obj('EQUAL'))
         with self.assertRaisesRegex(ValueError, 'exactly one logical MEMBER'):

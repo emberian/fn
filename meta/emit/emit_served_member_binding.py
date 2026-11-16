@@ -10,7 +10,9 @@ from pathlib import Path
 import argparse
 import os
 from emit_certificate import (Atom, List, fields, read_canonical, canonical_text,
-                              decode, fn_of, calls_of, show, as_list, shallow, ident, lean_object, term, canonical_nil, is_lambda, val, canonical_list)
+                              decode, fn_of, calls_of, show, as_list, shallow, ident, lean_object, term, canonical_nil, is_lambda, val, canonical_list,
+                              NATIVE, SPECIAL, lean_str, expression_value, expression_proof,
+                              evaluator_certificate, body_certificate)
 
 STUB = 'FN2-CNS-RUN-STUB'
 RUN = 'FN2-CNS-RUN'
@@ -108,6 +110,15 @@ def qualification_book(snapshot, output):
      (value '(value-triple :cns-selected-records-bound))
    (er soft 'cns-selected-records "Selector or canonical closure differs.")))""" %
                  (natives, canonical_text(canonical_list(p[':NATIVES'])), natives, natives, names, names, natives))
+    # An actual ACL2 evaluator equation for the whole helper, checked after
+    # exact live-record validation. This is a by-definition interpretation
+    # theorem, not primitive correspondence or an attachment substitution.
+    answer, answer_row = rows[ANSWER]
+    evaluator = 'FN2-CNS-SELECTED-EXPORT-EVAL'
+    lines.append(evaluator_certificate([(answer, answer_row)], rows).replace('FN2-EXPORT-EVAL', evaluator))
+    for event in body_certificate(answer, answer_row, rows)[1:]:
+        lines.append(event.replace('FN2-EXPORT-EVAL', evaluator).replace(
+            ANSWER + '-EXPORT-BODY', ANSWER + '-EXPORT-BODY-BY-DEFINITION'))
     return '\n\n'.join(lines) + '\n'
 
 
@@ -227,8 +238,45 @@ def member_context_source(snapshot):
         '      some («MEMBER-EQ-EXEC» rc (Val.ofList ' + literals + ')) := by',
         '  exact PrimitiveMemberSymbols.canonical_member_emitted rcRepresented ' + represented_literals,
         '#print axioms reached_member_suffix']
+    # Only direct calls in this exact helper need dispatch equations. A
+    # missing non-native canonical callee must refuse rather than inherit an ABI.
+    callees = calls_of(function.body, set()) - set(NATIVE) - set(SPECIAL)
+    dispatch_lines = []
+    for name in sorted(callees):
+        if name not in rows:
+            raise ValueError('missing helper dispatch record ' + name)
+        callee = rows[name][0]
+        bs = ' '.join('(' + ident(x) + ' : Val)' for x in callee.formals)
+        av = ', '.join(ident(x) for x in callee.formals)
+        args = ' '.join(ident(x) for x in callee.formals)
+        dispatch_lines.extend([
+            'private theorem ' + ident(name) + '.dispatched {err : String} ' + bs + ' :',
+            '    (match nativeCall ' + lean_str(name) + ' [' + av + '] with',
+            '     | some x => Except.ok x',
+            '     | none => match fns ' + lean_str(name) + ' [' + av + '] with',
+            '       | some x => Except.ok x | none => Except.error err) =',
+            '      .ok (' + ident(name) + ' ' + args + ') := by',
+            '  simp only [nativeCall_none ' + lean_str(name) + ' [' + av + '] (by decide +kernel),',
+            '    Fn2.Instances.LayerAWorld.' + ident(name) + '.fns_eq]'])
     binders = ' '.join('(' + ident(x) + ' : Val)' for x in function.formals)
     arguments = ' '.join(ident(x) for x in function.formals)
+    env = '[' + ', '.join('(' + lean_str(x) + ', ' + ident(x) + ')' for x in function.formals) + ']'
+    evaluated = expression_value(function.body, set(rows), {x: ident(x) for x in function.formals})
+    body_lines = [
+        'theorem answer_eval_export ' + binders + ' :',
+        '    evalExport 512 canonicalAnswer fns ' + env + ' =',
+        '      .ok (' + ident(ANSWER) + ' ' + arguments + ') := by',
+        '  apply evalExport_of_decoded_by_definition answer_decoded',
+        '  change eval fns ' + env + ' ' + term(function.body) + ' 512 = .ok ' + evaluated,
+        *expression_proof(function.body, set(rows), {x: ident(x) for x in function.formals}, dispatch=callees),
+        '#print axioms answer_eval_export']
+    composed_lines = [
+        'theorem answer_eval_export_member_context ' + binders + ' :',
+        '    evalExport 512 canonicalAnswer fns ' + env + ' =',
+        '      .ok ' + shallow(executed, set(rows) | {'MEMBER-EQ-EXEC'}) + ' := by',
+        '  exact (answer_eval_export ' + arguments + ').trans',
+        '    (congrArg Except.ok (member_context ' + arguments + '))',
+        '#print axioms answer_eval_export_member_context']
     return '\n'.join([
         'module',
         'public import Fn2.ACL2.MemberBodyCorrect',
@@ -249,12 +297,15 @@ def member_context_source(snapshot):
         'def canonicalAnswer : Object := ' + lean_object(row[':LOGICAL-BODY']),
         'theorem answer_decoded : readTerm 512 canonicalAnswer = some ' +
             term(function.body) + ' := by rfl',
+        *dispatch_lines,
+        *body_lines,
         'theorem member_context ' + binders + ' :',
         '    ' + ident(ANSWER) + ' ' + arguments + ' =',
         '    ' + shallow(executed, set(rows) | {'MEMBER-EQ-EXEC'}) + ' := by',
         '  simp only [MemberBodyCorrect.emitted_eq_native]',
         '  rfl',
         '#print axioms member_context',
+        *composed_lines,
         *domain_lines,
         *pair_lines,
         *suffix_lines,

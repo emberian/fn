@@ -635,3 +635,26 @@ allocation was released. This gate does not qualify a current attached CNS packe
 the full emitted helper/global dispatcher, or whole caller/domain/attachment
 composition. Its checked fragment is a consumer-template control, not a claim
 that the current served world has already supplied those literals and bindings.
+
+### Retained-world export and whole-helper interpretation proposals
+
+`meta/emit/print-cns-selected-member-retained.lsp` exports from the sole retained
+application world after assembly-attach and translation-validation are admitted.
+It uses scoped raw diagnostic execution, explicitly refreshes the printer's world,
+checks the selected CNS pair and required subjects, and returns to an ordinary
+ACL2 sentinel. It includes no book and does not leave the ACL2 event loop.
+The output remains a proposal until canonical inspection and live-record replay.
+
+The selected-member emitter now proposes the whole actual PUT-ANSWER interpreter
+chain: an ACL2 `FN2-CNS-SELECTED-EXPORT-EVAL` equation named
+`FN2-CNS-PUT-ANSWER-EXPORT-BODY-BY-DEFINITION`, a Lean `answer_eval_export` equation
+from the exact canonical body at fuel512 to the actual emitted helper, and
+`answer_eval_export_member_context` composing that equation with the executable
+MEMBER substitution. All branches and lexical lambdas come from the immutable
+packet; missing non-native callee records refuse generation. Neither attachment
+selection nor per-site correspondence substitutes for these whole-body equations.
+
+Fourteen emitter source controls and one retained-export structure control pass.
+No application export or these generated ACL2/Lean helper theorems has been run.
+Full canonical closed evaluation, input/result representation and guard propagation,
+selected attachment constraints, and actual caller composition remain required.
