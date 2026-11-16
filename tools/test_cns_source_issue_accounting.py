@@ -64,7 +64,7 @@ class SourceIssueAccounting(unittest.TestCase):
   self.assertFalse(any(x.startswith('fn2-') and not x.startswith('fn2-csi-') for x in calls))
   body=defs['fn2-csi-unit-body'];used=[rw.head(n) for n in rw.walk(body)]
   self.assertEqual(used.count('fn2-cns-source-issue-children'),3)
-  for fn in ('fn2-cns-source-root-hold-children','fn2-pool-query-acquire','fn2-pool-query-release','fn2-op-reserve'):
+  for fn in ('fn2-cns-source-root-hold-children','fn2-pool-query-acquire','fn2-pool-query-release','fn2-op-reserve','fn2-op-enqueue'):
    self.assertIn(fn,used)
   self.assertEqual(used.count('fn2-csi-domainp'),4)
   for exact in ('(equal after expected)','(equal before positive-before)',
@@ -88,7 +88,7 @@ class SourceIssueAccounting(unittest.TestCase):
    for n in rw.walk(f.items[-1]):
     if isinstance(n,lr.Lst) and rw.head(n) and rw.head(n) in definitions:
      self.assertIn(len(n.items)-1,definitions[rw.head(n)],rw.head(n));checked+=1
-  self.assertEqual(checked,22)
+  self.assertEqual(checked,23)
   # Every independent row update addresses an actual declared schema column.
   for f in p.forms:
    for n in rw.walk(f):

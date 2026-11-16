@@ -41,7 +41,7 @@
   (fn2-csi-row row (cdr updates) fields
    (fn2-csi-set (caar updates)
     (update-nth row (cdar updates) (nth (position-eq (caar updates) fields) image)) fields image))))
-; Fresh FREE descriptor row, with a nonempty reserved sibling, is the oracle
+; Fresh FREE descriptor row, with a nonempty queued sibling, is the oracle
 ; domain. Existing sibling cells, queue prefix and all other state are framed.
 (defun fn2-csi-positive-model (before lease lgen op opgen extent edge epoch allocation unit)
  (declare (xargs :verify-guards nil))
@@ -132,7 +132,8 @@
       ((mv write-code fn2-pool) (fn2-pool-write sibling sgen 0 37 7 11 13 fn2-pool))
       ((mv lease-code lease lgen fn2-pool) (fn2-pool-reserve 0 9 17 19 fn2-pool))
       ((mv zero-code fn2-pool) (fn2-run-zero *fn2-cns-source-prefix* lease lgen 0 9 17 19 fn2-pool))
-      ((mv sibling-op-code & & fn2-ops) (fn2-op-reserve *fn2-action-close* 7 11 13 0 0 fn2-ops))
+      ((mv sibling-op-code sibling-op sibling-opgen fn2-ops) (fn2-op-reserve *fn2-action-close* 7 11 13 0 0 fn2-ops))
+      ((mv sibling-enqueue-code fn2-ops) (fn2-op-enqueue sibling-op sibling-opgen fn2-ops))
       (unit (* extent *fn2-storage-extent-units*))
       ; Explicit descriptor premise only; root readiness/edge is derived below.
       (fn2-cns-sources (fn2-cns-sources-put 0
@@ -145,7 +146,7 @@
        (fn2-cns-source-root-hold-children 0 17 19 23 29 31 fn2-cns-sources fn2-checkpoints fn2-extents fn2-alloc-edges fn2-ops))
       (setup (and (eq epoch-code :ok) (eq reserve-code :ok) (eq commit-code :ok)
         (eq sibling-code :ok) (eq write-code :ok) (eq lease-code :ok) (eq zero-code :ok)
-        (eq sibling-op-code :ok) (eq hold-code :ok) (not (equal sibling lease))
+        (eq sibling-op-code :ok) (eq sibling-enqueue-code :ok) (eq hold-code :ok) (not (equal sibling lease))
         (fn2-cns-source-heldp 0 17 19 23 29 31 unit epoch allocation fn2-cns-sources fn2-checkpoints fn2-extents fn2-alloc-edges fn2-ops)))
       (before (fn2-csi-snapshot fn2-cns-sources fn2-cns-source-operations fn2-extents fn2-alloc-edges fn2-pool fn2-ops fn2-control fn2-checkpoints))
       (bad-h (fn2-csi-domainp fn2-cns-sources fn2-cns-source-operations fn2-extents fn2-alloc-edges fn2-pool fn2-ops fn2-control fn2-checkpoints))
