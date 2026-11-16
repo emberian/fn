@@ -122,7 +122,13 @@ def project_late(current):
   if raw not in current:emitted.append(raw)
  index=addition.index('(fn2-checkpoint-live-finish-events)')
  addition[index:index]=['(include-book "checkpoint-live-retire")']+emitted
- return once(current,'(fn2-auth-read-events)','\n'.join(addition)+'\n(fn2-auth-read-events)')
+ # Load canonical providers before the MASTER declaration/cost source. Then
+ # emit their existing core functions before emitting actual MASTER arms.
+ includes=[x for x in addition if x.startswith('(include-book ')]
+ events=[x for x in addition if not x.startswith('(include-book ')]
+ master='(include-book "checkpoint-master-events")'
+ includes=[x for x in includes if x!=master]+[master]
+ return once(current,'(fn2-auth-read-events)','\n'.join(includes+events)+'\n(fn2-auth-read-events)')
 
 CONTROL=(FIX/'checkpoint-master-control-before.lisp').read_text()
 EXPECTED={
