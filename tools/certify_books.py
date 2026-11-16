@@ -655,6 +655,11 @@ def install_from_cache(roots: list[str], toolchain_identity: str,
                                  toolchain_identity, acl2, recertify=recertify)
 
 
+def uncached_parent_books(pending: list[str], roots: list[str]) -> list[str]:
+    """A root-only record must not silently author its missing dependencies."""
+    return sorted(set(pending) - set(roots))
+
+
 def with_dependencies(books: list[str]) -> list[str]:
     """`books` and everything they locally include, dependencies first.
 
@@ -1033,6 +1038,8 @@ def main() -> int:
             "certified"
         ),
     )
+    parser.add_argument("--cached-parents", action="store_true",
+                        help="with --incremental, refuse any non-root cache miss before ACL2 starts")
     parser.add_argument(
         "--recertify",
         action="append",
@@ -1109,6 +1116,8 @@ def main() -> int:
         ),
     )
     args = parser.parse_args()
+    if args.cached_parents and not args.incremental:
+        parser.error("--cached-parents requires --incremental")
     box = acl2_slots.apply_box_defaults()
     if box:
         print(f"certify_books: on {box}: FN_ACL2={os.environ['FN_ACL2']} "
@@ -1328,6 +1337,11 @@ def main() -> int:
             return 2
         closure_books = args.books
         args.books = [book for book in closure_books if book not in installed.installed_from]
+        if args.cached_parents and uncached_parent_books(args.books, roots):
+            manifest["failure"] = "Unqualified parents (cold replay refused): " + ", ".join(uncached_parent_books(args.books, roots))
+            record(run_dir, manifest)
+            print(manifest["failure"], file=sys.stderr)
+            return 2
         schedule = dependency_graph(args.books)
         manifest["requested_books"] = args.books
         manifest["cache_install"] = {
