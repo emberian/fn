@@ -16,6 +16,7 @@
 ; than every run, which is what the readers' newest-wins rules assume.
 (in-package "ACL2")
 (include-book "machines-c-groups")
+(local (include-book "columns-call-guards"))
 (fn2-book-layer :c)
 (local (in-theory (disable fn2-run-layout-fields fn2-run-layout-keys fn2-run-layout-merge fn2-run-layout-size
                            fn2-fold-key-arg fn2-fold-arity fn2-fold-assigned-p fn2-run-layout-octets-max
@@ -56,8 +57,11 @@
  '(fn2-seals-rows fn2-run-cache-rows fn2-run-installed-rows fn2-run-builds-rows fn2-run-writers-rows fn2-run-restarts-rows
    fn2-ribbon-builds-rows fn2-ribbon-band-rows fn2-digests-rows fn2-fc-rows fn2-fc-context-rows fn2-b3-rows
    fn2-ranges-rows fn2-range-sources-rows fn2-run-cursors-rows fn2-run-paths-rows))
+; Shape proofs use the explicit scalar checks and public result contracts.
+; Keep readonly selection arithmetic folded; alternate caller modes stay exact.
 (defmacro fn2-seal-shape (fn args outs stobjs &optional (mode 't) reads)
- `(fn2-idc-fn-shape ,fn ,args ,outs ,stobjs ,mode ,(append reads *fn2-seal-rows-folded*)))
+ `(fn2-idc-fn-shape ,fn ,args ,outs ,stobjs ,mode ,(append reads *fn2-seal-rows-folded*
+            (and (eq mode t) '(min nfix unsigned-byte-p)))))
 
 ; Set the seal row's resources: idle, no run or unit handed out yet.
 (defun fn2-seal-init (wbase fbase crow pagefill okind oslot ogen history history-incarnation fn2-seals)
@@ -211,7 +215,8 @@
  (and (natp (mv-nth 0 (fn2-seal-most-runs k r best best-n fn2-run-installed)))
       (natp (mv-nth 1 (fn2-seal-most-runs k r best best-n fn2-run-installed))))
  :rule-classes ((:type-prescription :corollary (natp (mv-nth 0 (fn2-seal-most-runs k r best best-n fn2-run-installed))))
-                (:type-prescription :corollary (natp (mv-nth 1 (fn2-seal-most-runs k r best best-n fn2-run-installed))))))
+                (:type-prescription :corollary (natp (mv-nth 1 (fn2-seal-most-runs k r best best-n fn2-run-installed)))))
+ :hints ((fn2-columns-call-guard-hint 'fn2-seal-most-runs '(fn2-seal-live-runs) '(fn2-seal-most-runs) world)))
 ; Pressure on the shared installed-run rows or 64 KiB page pool: proactive
 ; (merge the sealing schema's runs regardless of size ratio, and compact idle
 ; multi-run schemas once overlays drain) vs urgent (preemptively compact a
@@ -245,7 +250,8 @@
                 (:linear :corollary (<= (mv-nth 0 (fn2-seal-plan sid e fn2-run-installed fn2-pool)) *fn2-seal-merge-runs*))
                 (:linear :corollary (<= 0 (mv-nth 1 (fn2-seal-plan sid e fn2-run-installed fn2-pool))))
                 (:type-prescription :corollary (natp (mv-nth 0 (fn2-seal-plan sid e fn2-run-installed fn2-pool))))
-                (:type-prescription :corollary (natp (mv-nth 1 (fn2-seal-plan sid e fn2-run-installed fn2-pool))))))
+                (:type-prescription :corollary (natp (mv-nth 1 (fn2-seal-plan sid e fn2-run-installed fn2-pool)))))
+ :hints ((fn2-columns-call-guard-hint 'fn2-seal-plan '(fn2-seal-pressured-p fn2-seal-live-runs fn2-seal-select) '(fn2-seal-plan) world)))
 ; Run-only compaction target when no overlay is merged in (O = overlays-rows):
 ; if a schema exceeds *fn2-seal-run-budget* live runs, or row/page pressure is
 ; active and some schema holds >= 2 live runs, compact up to *fn2-seal-merge-runs*
@@ -273,7 +279,8 @@
                 (:linear :corollary (<= 0 (mv-nth 2 (fn2-seal-compact-target fn2-run-installed fn2-pool))))
                 (:type-prescription :corollary (natp (mv-nth 0 (fn2-seal-compact-target fn2-run-installed fn2-pool))))
                 (:type-prescription :corollary (natp (mv-nth 1 (fn2-seal-compact-target fn2-run-installed fn2-pool))))
-                (:type-prescription :corollary (natp (mv-nth 2 (fn2-seal-compact-target fn2-run-installed fn2-pool))))))
+                (:type-prescription :corollary (natp (mv-nth 2 (fn2-seal-compact-target fn2-run-installed fn2-pool)))))
+ :hints ((fn2-columns-call-guard-hint 'fn2-seal-compact-target '(fn2-seal-most-runs fn2-seal-pressured-p fn2-seal-select) '(fn2-seal-compact-target) world)))
 (defun fn2-seal-compact-pending-p (fn2-seals fn2-run-installed fn2-pool)
  (declare (xargs :stobjs (fn2-seals fn2-run-installed fn2-pool)
   :guard (and (fn2-seals-wfp fn2-seals) (fn2-run-installed-wfp fn2-run-installed) (fn2-pool-wfp fn2-pool))))
@@ -294,11 +301,13 @@
  (declare (xargs :stobjs (fn2-seals fn2-overlays fn2-run-installed fn2-run-builds fn2-run-writers fn2-pool)
   :guard (and (fn2-seals-wfp fn2-seals) (fn2-overlays-wfp fn2-overlays) (fn2-run-installed-wfp fn2-run-installed)
               (fn2-run-builds-wfp fn2-run-builds) (fn2-run-writers-wfp fn2-run-writers) (fn2-pool-wfp fn2-pool))
-  :guard-hints (("Goal" :in-theory (disable fn2-seal-pick fn2-seal-retire fn2-pool-reserve fn2-pool-class-for fn2-run-build-start
-                                            fn2-seal-plan fn2-seal-compact-target fn2-seal-urgent-p
-                                            fn2-overlays-rows fn2-seals-rows fn2-run-builds-rows fn2-run-writers-rows fn2-pool-rows
-                                            fn2-seals-okind fn2-seals-oslot fn2-seals-ogen fn2-seals-crow fn2-seals-runs
-                                            fn2-seals-wbase fn2-seals-fbase fn2-seals-fill fn2-overlays-count fn2-seals-units)))))
+  :guard-hints ((fn2-columns-call-guard-hint 'fn2-seal-start
+    '(fn2-seal-pick fn2-seal-retire fn2-pool-reserve fn2-pool-class-for fn2-run-build-start
+      fn2-seal-plan fn2-seal-compact-target fn2-seal-urgent-p
+      fn2-overlays-rows fn2-seals-rows fn2-run-builds-rows fn2-run-writers-rows fn2-pool-rows
+      fn2-seals-okind fn2-seals-oslot fn2-seals-ogen fn2-seals-crow fn2-seals-runs
+      fn2-seals-wbase fn2-seals-fbase fn2-seals-fill fn2-overlays-count fn2-seals-units min nfix)
+    nil world))))
  (b* (((unless (< 0 (fn2-seals-rows fn2-seals))) (mv :bounds fn2-seals fn2-overlays fn2-run-builds fn2-run-writers fn2-pool))
       (rows (fn2-overlays-rows fn2-overlays))
       (o (fn2-seal-pick rows 0 rows fn2-overlays))
@@ -403,7 +412,7 @@
  (and (natp (mv-nth 1 (fn2-seal-take-page fn2-seals fn2-run-cache fn2-pool)))
       (natp (mv-nth 2 (fn2-seal-take-page fn2-seals fn2-run-cache fn2-pool)))
       (natp (mv-nth 3 (fn2-seal-take-page fn2-seals fn2-run-cache fn2-pool))))
- :hints (("Goal" :in-theory (enable fn2-seal-take-page))))
+ :hints ((fn2-columns-call-guard-hint 'fn2-seal-take-page '(fn2-seal-unit fn2-pool-reserve fn2-pool-class-for) '(fn2-seal-take-page) world)))
 
 ; A fresh page for level LEVEL of the build. (mv code seals builds writers pool)
 (defun fn2-seal-page (level fn2-seals fn2-run-builds fn2-run-writers fn2-run-cache fn2-pool)
