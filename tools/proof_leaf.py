@@ -91,11 +91,29 @@ def session_handles(state, cgroup):
     return handles
 
 
-def require_stopped(handles):
-    for handle in handles:
-        stat = Path('/proc') / str(handle['pid']) / 'stat'
-        if stat.exists() and stat.read_text().rsplit(')', 1)[1].split()[19] == handle['start_ticks']:
-            raise ValueError('owned session still live after stop: ' + str(handle['pid']))
+def process_identity(pid):
+    try:
+        fields = (Path('/proc') / str(pid) / 'stat').read_text().rsplit(')', 1)[1].split()
+    except FileNotFoundError:
+        return None
+    return fields[19], fields[0]  # start ticks, state; Z is exited but not reaped
+
+
+def require_stopped(handles, deadline):
+    # stop's return is not proof that its asynchronous children have exited.
+    # Bound this wait both by the original campaign and a short cleanup grace.
+    end = min(deadline, time.time() + 15)
+    while True:
+        remaining = []
+        for handle in handles:
+            identity = process_identity(handle['pid'])
+            if identity is not None and identity[0] == handle['start_ticks']:
+                remaining.append((handle['pid'], identity[1]))
+        if not remaining:
+            return
+        if time.time() >= end:
+            raise ValueError('owned session not fully reaped after stop (PID,state): ' + str(remaining))
+        time.sleep(min(0.05, max(0, end - time.time())))
 
 
 def verify_record(root, output, book, toolchain):
@@ -207,7 +225,7 @@ def qualify(args, repl):
             '--ld-local', '--per-event-steps', str(args.event_steps),
             '--limit', str(args.event_seconds)])
         commands.run('stop', ['tools/proof_repl.py', 'stop', name], cleanup=True)
-        require_stopped(receipt['session_handles'])
+        require_stopped(receipt['session_handles'], args.deadline)
         stopped = True
         check_sources(root, plan, book)
         check_cache(root, plan, parents, cache, expected)
