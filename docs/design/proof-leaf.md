@@ -21,13 +21,21 @@ The plan has `source` (source revision label), `toolchain` (qualified fingerprin
 and `books`, mapping each closure book to its exact raw `sha256` and closure `key`.
 `toolchain_identity` is also accepted for existing group/sealer plans. Exact
 book bytes/keys, rather than a Git HEAD claim, bind an archived build tree.
-The canonical `acl2-projects` must already be staged. This tool never infers a
+The event limits are explicit per-run CLI inputs; 2M steps/20 seconds are defaults,
+not a new project-wide policy. The canonical `acl2-projects` must already be staged. This tool never infers a
 new resource grant or extends the caller's absolute deadline.
 
-Each parent must have a compatible compiled cache entry with verified payloads.
-Existing `warm_entry_books` determines the definition-free minimal ENTRY. The
-command runs `start --cached-only`, whole-book `send-range --skip-includes
---ld-local` with original event limits, then stops and checks its recorded
+Each parent must have a compatible compiled cache entry with verified payloads
+and matching book, closure-key, and exact raw source metadata. A comment-only
+source mismatch is refused by this explicit raw-byte plan rather than silently
+claimed as an exact match.
+Existing `warm_entry_books` determines the definition-free minimal ENTRY from
+only the target's **global direct imports**. LOCAL ancestors are required in
+the cache but never forced into global scope. Strict `certs install-set
+--dependencies-only` installs all parent artifacts without importing them.
+The command runs `start --cached-only`, whole-book `send-range --ld-local`
+(preserving direct LOCAL include events) with the caller's event limits,
+then stops and checks its recorded
 session handles before certification. `certify_books --incremental
 --cached-parents` refuses any non-root miss after installation, before starting
 ACL2; no parent source replay is allowed. Images are disabled. Actual record

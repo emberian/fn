@@ -36,14 +36,20 @@ def check_sources(root, plan, book):
 def check_cache(root, plan, names, cache, toolchain):
     found = {}
     for name in sorted(names):
-        key = plan['books'][name]['key']
+        source = plan['books'][name]
+        key = source['key']
         entries = certs.cached_entries(cache, key, lambda meta:
+            meta.get('book') == name and meta.get('closure_key') == key and
+            meta.get('source_sha256') == source['sha256'] and
             meta.get('toolchain_identity') == toolchain and
             bool(meta.get('fasl_sha256')) and certs.usable_origin(meta, str(root)))
         chosen = certs.choose_entry(entries, str(root))
         if not chosen:
             raise ValueError('unqualified parent/root (no cold replay): ' + name)
         directory, meta = chosen
+        if (meta.get('book') != name or meta.get('closure_key') != key or
+                meta.get('source_sha256') != source['sha256']):
+            raise ValueError('cache metadata identity changed: ' + name)
         for kind in ('cert', 'fasl', 'port'):
             expected = meta.get(kind + '_sha256')
             if kind != 'port' or expected:
@@ -51,6 +57,16 @@ def check_cache(root, plan, names, cache, toolchain):
                     raise ValueError('cache payload changed: ' + name + ':' + kind)
         found[name] = {'entry': str(directory), 'key': key}
     return found
+
+
+def entry_for_leaf(root, book, parents, repl):
+    # Only the target's global direct imports belong in the ENTRY world.
+    # A parent's LOCAL dependencies still need artifacts, but are not exports.
+    intended = repl.exported_include_graph(root, book)[book]
+    imports, exports = repl.warm_entry_books(root, intended)
+    if not set(intended) <= set(exports) or not set(exports) <= parents:
+        raise ValueError('ENTRY exports do not cover intended global imports')
+    return imports, exports
 
 
 def checked_scope(memory_bytes):
@@ -166,9 +182,13 @@ def qualify(args, repl):
         closure = check_sources(root, plan, book)
         parents = closure - {book}
         receipt['parents'] = check_cache(root, plan, parents, cache, expected)
-        imports, exports = repl.warm_entry_books(root, sorted(parents))
-        if set(exports) != parents:
-            raise ValueError('ENTRY exports differ from actual qualified parents')
+        imports, exports = entry_for_leaf(root, book, parents, repl)
+        # Install all parents without importing their private declarations.
+        # Direct LOCAL includes remain in the author's encapsulated source.
+        if parents:
+            commands.run('install', ['tools/certs.py', 'install-set', book,
+                '--dependencies-only', '--root', str(root), '--cache', str(cache),
+                '--toolchain-identity', expected, '--acl2', os.environ['FN_ACL2']])
         entry = root / 'build' / (name + '.lisp')
         entry.parent.mkdir(exist_ok=True)
         entry.write_text('(in-package "ACL2")\n' + ''.join(
@@ -184,7 +204,7 @@ def qualify(args, repl):
         receipt['session_handles'] = session_handles(repl.read_state(name), receipt['cgroup'])
         save()
         commands.run('author', ['tools/proof_repl.py', 'send-range', name, book,
-            '--skip-includes', '--ld-local', '--per-event-steps', str(args.event_steps),
+            '--ld-local', '--per-event-steps', str(args.event_steps),
             '--limit', str(args.event_seconds)])
         commands.run('stop', ['tools/proof_repl.py', 'stop', name], cleanup=True)
         require_stopped(receipt['session_handles'])
