@@ -22,4 +22,15 @@ fifteen parents. [The receipt](receipts/upload-scan-qualified16.json) binds
 current raw sources, keys, certificate/FASL hashes, author and manifest to the
 record toolchain. Effective memory was 2 GiB, swap disabled; recorded owned
 processes, scope and holder are gone. Complete served POST remains outside this
-claim; actual caller and scan-unit execution are the next frontier.
+claim; actual caller composition remains the next frontier.
+
+The unchanged actual `tests/upload-scan-unit` now passes whole-event author
+limits and record certification over its exact 17-book closure: sixteen genuine
+parents reused and one new test certified in 1.577 seconds, run
+`certify-20261116T002706Z-2017609`. Its fixtures exercise header syntax and exact
+limits, required/duplicate fields, verdict precedence, Message-ID validation,
+case-insensitive POSTED path rejection, and transit identity matching.
+[The unit receipt](receipts/upload-scan-unit-qualified17.json) binds all current
+sources/keys and qualified payloads, exported ENTRY16 and cleanup. No test or
+runtime source changed. This remains the actual pool-level scanner/verdict;
+complete served upload composition is still unclaimed.
