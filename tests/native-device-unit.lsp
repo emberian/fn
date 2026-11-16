@@ -30,7 +30,7 @@
                      (assert (sb-thread:wait-on-semaphore release :timeout 10)))
                    (funcall perform d j)))
            (setf device (fn2-device-start fd size backend 4 (lambda () (sb-thread:signal-semaphore wake))
-                         (lambda (label) (push label boundaries))))
+                         (lambda (label job) (declare (ignore job)) (push label boundaries))))
            (fn2-device-submit device (make-fn2-device-job :slot 0 :gen 1 :kind :write :bytes bytes
                                                         :address 0 :length 4096 :offset 16384))
            (assert (sb-thread:wait-on-semaphore entered :timeout 5))

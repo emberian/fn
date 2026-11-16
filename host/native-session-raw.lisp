@@ -25,7 +25,8 @@ restart fixture separately exercises persisted genesis and the boot machine."
             (setf (fn2-nhost-storage host)
                   (fn2-device-start fd size backend (length (fn2-nhost-ops host))
                     (lambda () (fn2-native-mux-signal (fn2-nhost-mux host)))
-                    (lambda (label) (fn2-n-boundary host label))))
+                    (lambda (label job)
+                      (fn2-n-boundary host label (fn2-device-job-slot job) (fn2-device-job-gen job)))))
             (setf transferred t))
         (unless transferred (fn2-native-close fd))))))
 

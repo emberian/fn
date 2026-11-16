@@ -16,10 +16,15 @@ from served_host_check import inspect, walk
 ROOT = Path(__file__).resolve().parents[1]
 MODEL_PATHS = ['sim/sim.lisp', 'sim/sim-adapter-base.lisp', 'sim/check-own.lisp',
                'books/host-boundary.lisp', 'books/host-result.lisp', 'books/host-ops.lisp', 'books/host-codec.lisp',
-               'books/tls-record.lisp', 'books/tls-record-policy.lisp']
+               'books/tls-record.lisp', 'books/tls-record-policy.lisp',
+               'sim/native-device-envelope.lisp', 'sim/native-device-cut.lisp']
 # Every literal injection site, including the two distinct network syscall sites.
 # Values name the surrounding model transition, not a native syscall guarantee.
 CUTS = {
+    ('fn2-native-compress-record-step', 'compress-transform'): 'fn2-sim-physical',
+    ('fn2-native-compress-record-step', 'compress-carrier'): 'fn2-sim-physical',
+    ('fn2-native-compress-upgrade-step', 'compress-upgrade'): 'fn2-sim-physical',
+    ('fn2-native-compress-close', 'compress-free'): 'fn2-sim-physical',
     ('fn2-native-tls-perform', 'tls-start'): 'fn2-sim-physical',
     ('fn2-native-tls-perform', 'tls-free'): 'fn2-sim-physical',
     ('fn2-native-tls-perform', 'tls-handshake'): 'fn2-sim-physical',
@@ -60,6 +65,16 @@ ORDERS = {
 # These source contracts inspect arguments and result threading, not just names.
 # They deliberately do not substitute for a host/simulator state relation proof.
 CONTRACTS = {
+    'fn2-n-boundary': [
+        '(funcall *fn2-n-boundary-observer* host (fn2-nhost-boundaries host) label slot generation (= (fn2-nhost-boundaries host) (fn2-nhost-kill-at host)))'],
+    'fn2-device-worker': [
+        '(funcall (fn2-device-boundary device) "device-syscall" job)',
+        '(funcall (fn2-device-boundary device) "device-syscall-return" job)'],
+    'fn2-native-device-cut-replay': [
+        '(fn2-nde-cut-prefix (cddr capture) 0 nil nil)',
+        '(fn2-nde-cut-position cut trace records backend)',
+        '(fn2-native-device-control-replay (cadar capture) (cadr capture) trace records fd backend)'],
+
     'fn2-native-tls-record-step': [
         '(fn2-host-tls-record-next slot (fn2-nop-gen op) (fn2-tls-%input-room handle) (fn2-tls-%output-pending handle) (fn2-native-tls-transport tls) (fn2-nop-tls-record op) (fn2-nhost-core host))',
         '(fn2-native-tls-record-perform host tls fd action bytes address offset count)',
@@ -126,6 +141,7 @@ CONTRACTS = {
         '(make-fn2-nop :state +fn2-n-waiting+ :gen gen :kind kind :cap cap :nonce nonce '
         ':address address :len span-len :target cslot :target-gen cgen :offset storage-offset :fua fua)'],
     'fn2-n-storage-submit': [
+        '(fn2-n-boundary host "device-submit" slot (fn2-nop-gen op))',
         '(fn2-device-request (fn2-n-storage-kind (fn2-nop-kind op)) (fn2-nop-fua op) '
         '(fn2-device-backend (fn2-nhost-storage host)))',
         '(make-fn2-device-job :slot slot :gen (fn2-nop-gen op) '
@@ -140,6 +156,7 @@ CONTRACTS = {
         '(fn2-device-job-errno job) (if (minusp n) (fn2-native-errno) 0))',
         '(sb-sys:sap+ (sb-sys:vector-sap bytes) (fn2-device-job-address job))'],
     'fn2-n-storage-completions': [
+        '(fn2-n-boundary host "device-return" (fn2-device-job-slot job) (fn2-device-job-gen job))',
         '(fn2-device-io-observation (fn2-device-job-result job) (fn2-device-job-errno job))',
         '(fn2-n-complete host (fn2-device-job-slot job) code count 0 nil '
         '(and (eq (fn2-device-job-kind job) :read) '
@@ -177,7 +194,7 @@ def boundary(call):
     h = ledger.head(call)
     if h == 'fn2-n-boundary' or (h == 'funcall' and len(call) > 1
                                 and ledger.head(call[1]) == 'fn2-device-boundary'):
-        if len(call) != 3:
+        if len(call) not in (3, 4, 5):
             return '<malformed>'
         label = call[2]
         return label if isinstance(label, str) and not isinstance(label, ledger.Sym) else '<dynamic>'
@@ -211,7 +228,7 @@ def check(root=ROOT):
     for site in sorted(actual.keys() | expected.keys()):
         if actual[site] != expected[site]:
             findings.append(f'cut inventory {site}: expected {expected[site]}, found {actual[site]}')
-    bridge = ledger.read_forms('(fn2-n-boundary host label)')[0]
+    bridge = ledger.read_forms('(fn2-n-boundary host label (fn2-device-job-slot job) (fn2-device-job-gen job))')[0]
     if bridges != [('fn2-n-open-host', bridge)]:
         findings.append('device callback must have exactly one known host-boundary bridge')
     for name in set(CUTS.values()) | {'fn2-sim-crash'}:
@@ -291,4 +308,12 @@ def check(root=ROOT):
     return {'scope': 'served source cut inventory, ABI contracts and AST order; not control-flow/refinement proof',
             'cuts': len(sites), 'model_crash': 'fn2-sim-crash', 'findings': findings,
             'audit_ok': not findings, 'cut_mapping_status': 'incomplete',
+            'physical_cut_replay': {
+                'entry': 'fn2-native-device-cut-replay',
+                'labels': ['device-submit', 'device-syscall', 'device-syscall-return', 'device-return'],
+                'scope': 'observed ordinal/incarnation and actual-core replay plus complete process-visible file effects; not OS power-loss refinement',
+                'qualification': 'requires current model certification and selected-image cut campaign',
+            },
+            'unmapped_sites': [list(site) for site in CUTS
+                               if site[1] not in {'device-submit', 'device-syscall', 'device-syscall-return', 'device-return'}],
             'host_refinement': 'not_checked'}

@@ -32,9 +32,39 @@ class ServedNativeProgramTests(unittest.TestCase):
     def test_actual_graph(self):
         report = checker.check(self.root)
         self.assertTrue(report['audit_ok'], report)
-        self.assertEqual(report['cuts'], 15)
+        self.assertEqual(report['cuts'], 19)
         self.assertEqual(report['cut_mapping_status'], 'incomplete')
         self.assertEqual(report['host_refinement'], 'not_checked')
+
+    def test_storage_cut_context_cannot_lose_incarnation(self):
+        self.change('host/adapter.lisp',
+                    '(fn2-n-boundary host "device-submit" slot (fn2-nop-gen op))',
+                    '(fn2-n-boundary host "device-submit" slot 0)')
+        self.assertFalse(checker.check(self.root)['audit_ok'])
+
+    def test_worker_cut_cannot_drop_actual_job(self):
+        self.change('host/device.lisp',
+                    '(funcall (fn2-device-boundary device) "device-syscall-return" job)',
+                    '(funcall (fn2-device-boundary device) "device-syscall-return")')
+        self.assertFalse(checker.check(self.root)['audit_ok'])
+
+    def test_selected_ordinal_cannot_be_fabricated(self):
+        self.change('host/adapter.lisp',
+                    '(funcall *fn2-n-boundary-observer* host (fn2-nhost-boundaries host)',
+                    '(funcall *fn2-n-boundary-observer* host 1')
+        self.assertFalse(checker.check(self.root)['audit_ok'])
+
+    def test_correspondence_must_replay_actual_core(self):
+        self.change('sim/native-device-cut.lisp',
+                    '(fn2-native-device-control-replay', '(pretend-control-replay')
+        self.assertFalse(checker.check(self.root)['audit_ok'])
+
+    def test_partial_storage_path_cannot_claim_tls_or_compress(self):
+        report = checker.check(self.root)
+        self.assertEqual(len(report['physical_cut_replay']['labels']), 4)
+        self.assertEqual(len(report['unmapped_sites']), 15)
+        self.assertIn(['fn2-native-compress-record-step', 'compress-transform'], report['unmapped_sites'])
+        self.assertEqual(report['cut_mapping_status'], 'incomplete')
 
     def test_native_digest_word_offset_cannot_change(self):
         self.change('host/b3-native.lisp', '(sb-sys:sap-ref-32 sap 28) dg)',

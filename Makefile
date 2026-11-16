@@ -1,6 +1,10 @@
 # Certification roots for the promoted fn tree. Keep every book and test
 # visible to --affected-by; lane mode selects immediate affected consumers.
 ACL2_BOOKS = \
+  sim/native-device-envelope \
+  sim/native-device-cut \
+  tests/native-device-envelope-unit \
+  tests/native-device-cut-unit \
   books/checkpoint-geometry \
   books/boot-config-state \
   books/boot-bootstrap-pack \
