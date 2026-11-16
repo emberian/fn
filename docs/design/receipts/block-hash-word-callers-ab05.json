@@ -1,0 +1,325 @@
+{
+  "scope": "Actual block-integrity and CNS source-hash production callers qualified on exact ab05 foundation; whole RAW/application composition not claimed.",
+  "source_commit": "ab05c79b16846071fddb2213630a22e33d7ad33b",
+  "resource": {
+    "memory_max": 2147483648,
+    "swap_max": 0,
+    "start_epoch": 1794787735,
+    "internal_deadline_epoch": 1794787975,
+    "outer_deadline_epoch": 1794788035,
+    "whole_event_steps": 2000000,
+    "whole_event_seconds": 20
+  },
+  "author": {
+    "block": "Whole source36 forms PASS; log forge:/tmp/block-word-callers-author.log; STOP0",
+    "hash": "Whole actual source PASS; log forge:/tmp/cns-hash-callers-author.log; STOP0"
+  },
+  "records": [
+    {
+      "book": "books/block-integrity",
+      "closure_key": "aa7706163151393bd9b4b89d13c03db3ec0206ea2a106af063131f51fee72ec1",
+      "closure_count": 20,
+      "manifest": "/Users/ember/dev/fn/build/lanes/finish-block-word-callers/build/acl2/certify-20261116T000935Z-1998172/manifest.json",
+      "remote_manifest": "/build/lanes/block-word-callers-ab05/build/acl2/certify-20261116T000935Z-1998172/manifest.json",
+      "manifest_sha256": "75ecf31431fff0e511d0f38567dee5ae5498642a3f23d2cff399f8f19d45ee47",
+      "cache_entry": "/Users/ember/.cache/fn-certs/aa7706163151393bd9b4b89d13c03db3ec0206ea2a106af063131f51fee72ec1/1bb79eab981410d7",
+      "cache_metadata": {
+        "book": "books/block-integrity",
+        "cert_sha256": "36c0b42c01db4afbf798daf3c2d316f489294dc73c4586afa88382f3b59ee864",
+        "certification_provenance": {
+          "acl2_executable_sha256": "30583c3d9988ea23cf5edfac828b4ddea984a9a7db9c3b44aaa9c399cf4fdbc5",
+          "acl2_toolchain": {
+            "compatibility": {
+              "core_sha256": "3f5b101bb9437d66366dc2a299b7f9cb98fdaf40d1add5caf8baef9e451dd07d",
+              "launcher_chain_sha256": [
+                "30583c3d9988ea23cf5edfac828b4ddea984a9a7db9c3b44aaa9c399cf4fdbc5"
+              ],
+              "launcher_environment": [
+                {
+                  "SBCL_HOME": "/tank/fn/sbcl/lib/sbcl/"
+                }
+              ],
+              "project_directories": {
+                ":FN": "."
+              },
+              "proof_environment": {
+                "ACL2_BOOK_HASH_ALISTP": "NIL",
+                "ACL2_CUSTOMIZATION": "NONE",
+                "ACL2_SYSTEM_BOOKS": null
+              },
+              "runtime_sha256": "b115fe956aadee603459fac401e1ff2cc39321e14848544a0fe438788a2fc6d5",
+              "schema": "fn-acl2-toolchain-v1"
+            },
+            "core": {
+              "path": "/tank/fn/acl2-8.7/saved_acl2.core",
+              "sha256": "3f5b101bb9437d66366dc2a299b7f9cb98fdaf40d1add5caf8baef9e451dd07d",
+              "size": 233686912
+            },
+            "launchers": [
+              {
+                "path": "/tank/fn/toolchains/w28/acl2-literal-4g-tls64k",
+                "sha256": "30583c3d9988ea23cf5edfac828b4ddea984a9a7db9c3b44aaa9c399cf4fdbc5",
+                "size": 279
+              }
+            ],
+            "runtime": {
+              "path": "/tank/fn/sbcl/bin/sbcl",
+              "sha256": "b115fe956aadee603459fac401e1ff2cc39321e14848544a0fe438788a2fc6d5",
+              "size": 2149704
+            },
+            "schema": "fn-acl2-toolchain-v1",
+            "status": "qualified"
+          },
+          "acl2_toolchain_identity": "8aeb1bea18968c6cd33ac633a80ebf67e4924504db112fd27eb11f16a27b2a8c",
+          "acl2_version": "ACL2 Version 8.7",
+          "environment": {
+            "ACL2_BOOK_HASH_ALISTP": "NIL",
+            "ACL2_CUSTOMIZATION": "NONE",
+            "ACL2_PROJECTS": "/build/lanes/block-word-callers-ab05/acl2-projects",
+            "ACL2_SYSTEM_BOOKS": null,
+            "SBCL_USER_ARGS": null
+          },
+          "reader_sha256": "3a25bad1a53f07d48101c88fbf7e5fca81575735bfdbe48a168cab81141940cd",
+          "runner_sha256": "0c92c676ec1d176a554a63d7106e4bfbd8cc4d6a5293b3daa0c301cb4650f5d5"
+        },
+        "closure": [
+          "books/blake3-pool-spec.lisp:7537417a2c775cd00ebd3e09066d39e1087730f4f48b8d205fcfa99a8e487213",
+          "books/blake3-row-frames.lisp:cde865a9786e001cda308c101c06b2449f17d965c040b91733f22a7b8923fe48",
+          "books/blake3-spec.lisp:cec4003f835117b49a0eca195be944956a123acf646f742cd491b4e1468e588b",
+          "books/blake3-word-frames.lisp:53011afe8bc8a810785f7b28ec7840c5d0a4db5fef8170d9049c21060b8d6fc4",
+          "books/blake3.lisp:9e9e4429485cf0967fac6a9f8e46755c2675c0a64c6fbc185f1d8df2557653bc",
+          "books/block-integrity.lisp:fbd9b55074913a7adc979c22a41a999de72a348b76a2d7dd6c50b1518606ba57",
+          "books/columns-guard-hints.lisp:61d8b4033b76e4207e82d281b535a81c7da52c9e554f35a8f82f4286aada3951",
+          "books/columns-observation-frames.lisp:a55fd61b2e13e69926336e3c749c1d71914e69c728fd106cc9a02819bea3c7ea",
+          "books/columns.lisp:207ac331ff6397765ce1bfb9e6d665ad55ea44ae99e8b5602a554cd8ab5d4760",
+          "books/commit-geometry.lisp:835186fa84e471e1cb0f83a6b5616aea20e5962fde38a2cf464da4d4bf66c2b8",
+          "books/declare.lisp:21614abfc91ec57e0d97e77ef29b0ba68a0ba3ca49888131646d986f09dc6aef",
+          "books/digests.lisp:c714613dbafab9516c12b729390cea059ff0a0e2070e51798e4783b661ad3f64",
+          "books/format-base.lisp:e0e67a9aec16407b006dfba2939fb30ee8572904c77661301168a7190a72acc9",
+          "books/layout.lisp:e6fed7dc718526f5a216a939f87e570ee7a8ca25ab0ce8f58e92fb12a6404dfd",
+          "books/operations.lisp:b7e7cab3f61033f1055f0ef3be5c0a8f3920a44c934c7b524fdba209c5ded826",
+          "books/owed-discharge.lisp:dd1c8c3a0f05ae5ee19497b8f0506b2bace8f8dd9a264c57b2234f7658a581ce",
+          "books/owed.lisp:e3f24658d27261c871fa9927c5b075807e62921b37da358046a0090561b5a79f",
+          "books/pool-digest.lisp:753658ccbfc146a524843bc07293361b867fad0d6771b61e20e68aec6ae2803a",
+          "books/pool.lisp:77c43f42b6328258547341e19d0dce3186a7d214f8ba180daca8e7e44e4905b1",
+          "books/profile.lisp:b19d044118c5a1ec4b4166198a7dc07c607ee5773d0c128133a3121cbb070184"
+        ],
+        "closure_key": "aa7706163151393bd9b4b89d13c03db3ec0206ea2a106af063131f51fee72ec1",
+        "evidence": "/Users/ember/dev/fn/build/lanes/finish-block-word-callers/build/acl2/certify-20261116T000935Z-1998172/manifest.json",
+        "fasl_sha256": "36295d17833df730244c4e8135c03fa4f84005602448957dc9a11d2915dc52ba",
+        "has_port": true,
+        "host": "nextop.local",
+        "key_version": "fn-cert-key-v4 forms+world+project-fn",
+        "origin_host": "forge",
+        "origin_kind": "run",
+        "origin_root": "/build/lanes/block-word-callers-ab05",
+        "port_sha256": "f4cb7e8160cfa6f41cddb04be508f922aa8e87c4ff126bfaad3379aa92e647e0",
+        "published_at": "2026-11-16T00:11:17.743589+00:00",
+        "published_from": "/Users/ember/dev/fn/build/lanes/finish-block-word-callers/books",
+        "source_sha256": "70a4f3a8999decdb7d515a49f086ccb5aab52d7cb33a77c90961f3415398d0ca",
+        "toolchain": {
+          "core_sha256": "3f5b101bb9437d66366dc2a299b7f9cb98fdaf40d1add5caf8baef9e451dd07d",
+          "launcher_chain_sha256": [
+            "30583c3d9988ea23cf5edfac828b4ddea984a9a7db9c3b44aaa9c399cf4fdbc5"
+          ],
+          "launcher_environment": [
+            {
+              "SBCL_HOME": "/tank/fn/sbcl/lib/sbcl/"
+            }
+          ],
+          "project_directories": {
+            ":FN": "."
+          },
+          "proof_environment": {
+            "ACL2_BOOK_HASH_ALISTP": "NIL",
+            "ACL2_CUSTOMIZATION": "NONE",
+            "ACL2_SYSTEM_BOOKS": null
+          },
+          "runtime_sha256": "b115fe956aadee603459fac401e1ff2cc39321e14848544a0fe438788a2fc6d5",
+          "schema": "fn-acl2-toolchain-v1"
+        },
+        "toolchain_identity": "8aeb1bea18968c6cd33ac633a80ebf67e4924504db112fd27eb11f16a27b2a8c",
+        "world": "plain"
+      },
+      "source_hashes_verified": {
+        "books/blake3-pool-spec.lisp": "2775bf744b6ed52fd098fe329b0b183d62c0857a5a2a989cf80e968f5a366e2b",
+        "books/blake3-row-frames.lisp": "2e2386ed36d8d7869186f83f0ce698faf56f3e02de8f30585d817f231e16f9d7",
+        "books/blake3-spec.lisp": "253babac6e5d9e9df00a655ba6b6595c9e6d85315c9294f05e3d939f19ad5770",
+        "books/blake3-word-frames.lisp": "593689f6c975c85df9a3d08ddf14e8a4fbb85456a67e04502d9abd9e935196a0",
+        "books/blake3.lisp": "e228c1eb31f2f764e925e86fa4f0a7b7682810d64a27f7c39b9f416f93bdc1a1",
+        "books/block-integrity.lisp": "70a4f3a8999decdb7d515a49f086ccb5aab52d7cb33a77c90961f3415398d0ca",
+        "books/columns-guard-hints.lisp": "e0a20c5669df681bf75fa5eeae426adc4053010915b3c7657d56e247d5c8440b",
+        "books/columns-observation-frames.lisp": "68a893b2f9c431a8cad67ef995cbbb3379ea25f6df2ab1e84da77b48389a0a76",
+        "books/columns.lisp": "8b694caf782c2ce3a29fa109b055c181b54beda214276493f6d9acb9456a881b",
+        "books/commit-geometry.lisp": "e06315c94bcd0d247214377fb33186f14ca1aa2ee6afe1499d69d053ff0134e2",
+        "books/declare.lisp": "54e850788ee821dd90a4d9715e93d319f94846039592c4420fef1bdc5d959569",
+        "books/digests.lisp": "e821bfe1ffee392c8019fad513db8a83aaf2448251087f26c9576a3af333a524",
+        "books/format-base.lisp": "ead88cb8e7ab67db0c6a06ac400c813f753121c77082825b16016835eb462699",
+        "books/layout.lisp": "2bc995f6bb70ec17862c5b535a4734e90a7a5dfd6312ebdee7d06877b0fbb4d8",
+        "books/operations.lisp": "419120e7ae100f400d18cdee2d080d6133523673cac22fae1b05c7201ff97dd8",
+        "books/owed-discharge.lisp": "53903322be1b79ed081ecfcbfcb9f60649d3fdbf8aa6853b772abf8e6fc69f01",
+        "books/owed.lisp": "171950b91e40f4e7d0e94902ce00009adc62d8104e0eecd5db6a59b93bbffb15",
+        "books/pool-digest.lisp": "f466162c376f983c3fedacf17dd4c7f89529153caf27aaca30d81a411dd14197",
+        "books/pool.lisp": "9a31c8d38d309862369091a2c8019ccc3da16920742ff01040899b8f395f2fe9",
+        "books/profile.lisp": "1f216ed6c0505dc1b01ada0f7d3d9482af6da7b7dff8736b5100ef3e3fbc1038"
+      },
+      "seconds": 1.921,
+      "finished_utc": "2026-11-16T00:09:38+00:00"
+    },
+    {
+      "book": "books/cns-source-hash",
+      "closure_key": "1607af2853ed701b8d00f052f6acfc06e5149c45d38249ea705263637e780fdf",
+      "closure_count": 21,
+      "manifest": "/Users/ember/dev/fn/build/lanes/finish-block-word-callers/build/acl2/certify-20261116T001026Z-1999265/manifest.json",
+      "remote_manifest": "/build/lanes/block-word-callers-ab05/build/acl2/certify-20261116T001026Z-1999265/manifest.json",
+      "manifest_sha256": "45f42b59bbe9ff64044177f2c2e1e1e4aa4811f749c80cdb2d0d465fab52bf12",
+      "cache_entry": "/Users/ember/.cache/fn-certs/1607af2853ed701b8d00f052f6acfc06e5149c45d38249ea705263637e780fdf/1bb79eab981410d7",
+      "cache_metadata": {
+        "book": "books/cns-source-hash",
+        "cert_sha256": "f189789066f4ad35ef17213c3fd31af247eeac9377bb8da6f330abee5462d444",
+        "certification_provenance": {
+          "acl2_executable_sha256": "30583c3d9988ea23cf5edfac828b4ddea984a9a7db9c3b44aaa9c399cf4fdbc5",
+          "acl2_toolchain": {
+            "compatibility": {
+              "core_sha256": "3f5b101bb9437d66366dc2a299b7f9cb98fdaf40d1add5caf8baef9e451dd07d",
+              "launcher_chain_sha256": [
+                "30583c3d9988ea23cf5edfac828b4ddea984a9a7db9c3b44aaa9c399cf4fdbc5"
+              ],
+              "launcher_environment": [
+                {
+                  "SBCL_HOME": "/tank/fn/sbcl/lib/sbcl/"
+                }
+              ],
+              "project_directories": {
+                ":FN": "."
+              },
+              "proof_environment": {
+                "ACL2_BOOK_HASH_ALISTP": "NIL",
+                "ACL2_CUSTOMIZATION": "NONE",
+                "ACL2_SYSTEM_BOOKS": null
+              },
+              "runtime_sha256": "b115fe956aadee603459fac401e1ff2cc39321e14848544a0fe438788a2fc6d5",
+              "schema": "fn-acl2-toolchain-v1"
+            },
+            "core": {
+              "path": "/tank/fn/acl2-8.7/saved_acl2.core",
+              "sha256": "3f5b101bb9437d66366dc2a299b7f9cb98fdaf40d1add5caf8baef9e451dd07d",
+              "size": 233686912
+            },
+            "launchers": [
+              {
+                "path": "/tank/fn/toolchains/w28/acl2-literal-4g-tls64k",
+                "sha256": "30583c3d9988ea23cf5edfac828b4ddea984a9a7db9c3b44aaa9c399cf4fdbc5",
+                "size": 279
+              }
+            ],
+            "runtime": {
+              "path": "/tank/fn/sbcl/bin/sbcl",
+              "sha256": "b115fe956aadee603459fac401e1ff2cc39321e14848544a0fe438788a2fc6d5",
+              "size": 2149704
+            },
+            "schema": "fn-acl2-toolchain-v1",
+            "status": "qualified"
+          },
+          "acl2_toolchain_identity": "8aeb1bea18968c6cd33ac633a80ebf67e4924504db112fd27eb11f16a27b2a8c",
+          "acl2_version": "ACL2 Version 8.7",
+          "environment": {
+            "ACL2_BOOK_HASH_ALISTP": "NIL",
+            "ACL2_CUSTOMIZATION": "NONE",
+            "ACL2_PROJECTS": "/build/lanes/block-word-callers-ab05/acl2-projects",
+            "ACL2_SYSTEM_BOOKS": null,
+            "SBCL_USER_ARGS": null
+          },
+          "reader_sha256": "3a25bad1a53f07d48101c88fbf7e5fca81575735bfdbe48a168cab81141940cd",
+          "runner_sha256": "0c92c676ec1d176a554a63d7106e4bfbd8cc4d6a5293b3daa0c301cb4650f5d5"
+        },
+        "closure": [
+          "books/blake3-pool-spec.lisp:7537417a2c775cd00ebd3e09066d39e1087730f4f48b8d205fcfa99a8e487213",
+          "books/blake3-row-frames.lisp:cde865a9786e001cda308c101c06b2449f17d965c040b91733f22a7b8923fe48",
+          "books/blake3-spec.lisp:cec4003f835117b49a0eca195be944956a123acf646f742cd491b4e1468e588b",
+          "books/blake3-word-frames.lisp:53011afe8bc8a810785f7b28ec7840c5d0a4db5fef8170d9049c21060b8d6fc4",
+          "books/blake3.lisp:9e9e4429485cf0967fac6a9f8e46755c2675c0a64c6fbc185f1d8df2557653bc",
+          "books/block-integrity.lisp:fbd9b55074913a7adc979c22a41a999de72a348b76a2d7dd6c50b1518606ba57",
+          "books/cns-source-hash.lisp:13f2c8fab30f0fa09aea43348825228a877cd3d8ee8c3c40532abb9456fab9f1",
+          "books/columns-guard-hints.lisp:61d8b4033b76e4207e82d281b535a81c7da52c9e554f35a8f82f4286aada3951",
+          "books/columns-observation-frames.lisp:a55fd61b2e13e69926336e3c749c1d71914e69c728fd106cc9a02819bea3c7ea",
+          "books/columns.lisp:207ac331ff6397765ce1bfb9e6d665ad55ea44ae99e8b5602a554cd8ab5d4760",
+          "books/commit-geometry.lisp:835186fa84e471e1cb0f83a6b5616aea20e5962fde38a2cf464da4d4bf66c2b8",
+          "books/declare.lisp:21614abfc91ec57e0d97e77ef29b0ba68a0ba3ca49888131646d986f09dc6aef",
+          "books/digests.lisp:c714613dbafab9516c12b729390cea059ff0a0e2070e51798e4783b661ad3f64",
+          "books/format-base.lisp:e0e67a9aec16407b006dfba2939fb30ee8572904c77661301168a7190a72acc9",
+          "books/layout.lisp:e6fed7dc718526f5a216a939f87e570ee7a8ca25ab0ce8f58e92fb12a6404dfd",
+          "books/operations.lisp:b7e7cab3f61033f1055f0ef3be5c0a8f3920a44c934c7b524fdba209c5ded826",
+          "books/owed-discharge.lisp:dd1c8c3a0f05ae5ee19497b8f0506b2bace8f8dd9a264c57b2234f7658a581ce",
+          "books/owed.lisp:e3f24658d27261c871fa9927c5b075807e62921b37da358046a0090561b5a79f",
+          "books/pool-digest.lisp:753658ccbfc146a524843bc07293361b867fad0d6771b61e20e68aec6ae2803a",
+          "books/pool.lisp:77c43f42b6328258547341e19d0dce3186a7d214f8ba180daca8e7e44e4905b1",
+          "books/profile.lisp:b19d044118c5a1ec4b4166198a7dc07c607ee5773d0c128133a3121cbb070184"
+        ],
+        "closure_key": "1607af2853ed701b8d00f052f6acfc06e5149c45d38249ea705263637e780fdf",
+        "evidence": "/Users/ember/dev/fn/build/lanes/finish-block-word-callers/build/acl2/certify-20261116T001026Z-1999265/manifest.json",
+        "fasl_sha256": "4b20e12f9f0f94eca2efb7036daea40a3c1c72d81d5a0a8235fe09d6dc5e3f9a",
+        "has_port": true,
+        "host": "nextop.local",
+        "key_version": "fn-cert-key-v4 forms+world+project-fn",
+        "origin_host": "forge",
+        "origin_kind": "run",
+        "origin_root": "/build/lanes/block-word-callers-ab05",
+        "port_sha256": "f4cb7e8160cfa6f41cddb04be508f922aa8e87c4ff126bfaad3379aa92e647e0",
+        "published_at": "2026-11-16T00:11:11.218829+00:00",
+        "published_from": "/Users/ember/dev/fn/build/lanes/finish-block-word-callers/books",
+        "source_sha256": "7a31fd062972a0f53719143cb362d803c4235d2c05e5d37fe9624a592ebb6c3b",
+        "toolchain": {
+          "core_sha256": "3f5b101bb9437d66366dc2a299b7f9cb98fdaf40d1add5caf8baef9e451dd07d",
+          "launcher_chain_sha256": [
+            "30583c3d9988ea23cf5edfac828b4ddea984a9a7db9c3b44aaa9c399cf4fdbc5"
+          ],
+          "launcher_environment": [
+            {
+              "SBCL_HOME": "/tank/fn/sbcl/lib/sbcl/"
+            }
+          ],
+          "project_directories": {
+            ":FN": "."
+          },
+          "proof_environment": {
+            "ACL2_BOOK_HASH_ALISTP": "NIL",
+            "ACL2_CUSTOMIZATION": "NONE",
+            "ACL2_SYSTEM_BOOKS": null
+          },
+          "runtime_sha256": "b115fe956aadee603459fac401e1ff2cc39321e14848544a0fe438788a2fc6d5",
+          "schema": "fn-acl2-toolchain-v1"
+        },
+        "toolchain_identity": "8aeb1bea18968c6cd33ac633a80ebf67e4924504db112fd27eb11f16a27b2a8c",
+        "world": "plain"
+      },
+      "source_hashes_verified": {
+        "books/blake3-pool-spec.lisp": "2775bf744b6ed52fd098fe329b0b183d62c0857a5a2a989cf80e968f5a366e2b",
+        "books/blake3-row-frames.lisp": "2e2386ed36d8d7869186f83f0ce698faf56f3e02de8f30585d817f231e16f9d7",
+        "books/blake3-spec.lisp": "253babac6e5d9e9df00a655ba6b6595c9e6d85315c9294f05e3d939f19ad5770",
+        "books/blake3-word-frames.lisp": "593689f6c975c85df9a3d08ddf14e8a4fbb85456a67e04502d9abd9e935196a0",
+        "books/blake3.lisp": "e228c1eb31f2f764e925e86fa4f0a7b7682810d64a27f7c39b9f416f93bdc1a1",
+        "books/block-integrity.lisp": "70a4f3a8999decdb7d515a49f086ccb5aab52d7cb33a77c90961f3415398d0ca",
+        "books/cns-source-hash.lisp": "7a31fd062972a0f53719143cb362d803c4235d2c05e5d37fe9624a592ebb6c3b",
+        "books/columns-guard-hints.lisp": "e0a20c5669df681bf75fa5eeae426adc4053010915b3c7657d56e247d5c8440b",
+        "books/columns-observation-frames.lisp": "68a893b2f9c431a8cad67ef995cbbb3379ea25f6df2ab1e84da77b48389a0a76",
+        "books/columns.lisp": "8b694caf782c2ce3a29fa109b055c181b54beda214276493f6d9acb9456a881b",
+        "books/commit-geometry.lisp": "e06315c94bcd0d247214377fb33186f14ca1aa2ee6afe1499d69d053ff0134e2",
+        "books/declare.lisp": "54e850788ee821dd90a4d9715e93d319f94846039592c4420fef1bdc5d959569",
+        "books/digests.lisp": "e821bfe1ffee392c8019fad513db8a83aaf2448251087f26c9576a3af333a524",
+        "books/format-base.lisp": "ead88cb8e7ab67db0c6a06ac400c813f753121c77082825b16016835eb462699",
+        "books/layout.lisp": "2bc995f6bb70ec17862c5b535a4734e90a7a5dfd6312ebdee7d06877b0fbb4d8",
+        "books/operations.lisp": "419120e7ae100f400d18cdee2d080d6133523673cac22fae1b05c7201ff97dd8",
+        "books/owed-discharge.lisp": "53903322be1b79ed081ecfcbfcb9f60649d3fdbf8aa6853b772abf8e6fc69f01",
+        "books/owed.lisp": "171950b91e40f4e7d0e94902ce00009adc62d8104e0eecd5db6a59b93bbffb15",
+        "books/pool-digest.lisp": "f466162c376f983c3fedacf17dd4c7f89529153caf27aaca30d81a411dd14197",
+        "books/pool.lisp": "9a31c8d38d309862369091a2c8019ccc3da16920742ff01040899b8f395f2fe9",
+        "books/profile.lisp": "1f216ed6c0505dc1b01ada0f7d3d9482af6da7b7dff8736b5100ef3e3fbc1038"
+      },
+      "seconds": 1.471,
+      "finished_utc": "2026-11-16T00:10:28+00:00"
+    }
+  ],
+  "collection": "First block collection rsync23 due absent empty tests/acl2 output directory. Created that directory and recollected without proof rerun. Both final collections completed.",
+  "cleanup": "Recorded PIDs1997431/1997432/1997450/1998172/1998494/1998495/1998534/1999265 absent; exact author scope not-found/inactive; children slot0 under locked ledger."
+}
