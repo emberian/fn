@@ -248,6 +248,8 @@ def qualify(args, repl):
         if attempted and not stopped:
             try:
                 commands.run('cleanup', ['tools/proof_repl.py', 'stop', name], cleanup=True)
+                receipt['cleanup_grace_seconds'] = 15
+                require_stopped(receipt.get('session_handles', []), time.time() + 15)
             except (OSError, RuntimeError, subprocess.TimeoutExpired) as error:
                 receipt['cleanup_error'] = str(error)
         save()
