@@ -1,0 +1,35 @@
+{
+  "checked_utc": "2026-11-16T00:41:11.234546+00:00",
+  "pids_absent": {
+    "2022278": true,
+    "2022280": true,
+    "2022349": true,
+    "2022350": true,
+    "2022671": true,
+    "2022693": true,
+    "2023031": true,
+    "2023118": true,
+    "2023140": true,
+    "2023250": true,
+    "2023383": true,
+    "2023405": true,
+    "2023573": true,
+    "2030383": true,
+    "2030388": true,
+    "2030509": true
+  },
+  "scope_units": {
+    "2022278": "",
+    "2030383": ""
+  },
+  "holders": {
+    "sol_rolling_caller_phase0": {},
+    "sol_rolling_caller_phase1": {},
+    "sol_rolling_caller_phase2": {},
+    "sol_rolling_caller_phase3": {},
+    "sol_upload_compile_probe": {}
+  },
+  "qualified_receipt": "/tmp/sol-rolling-caller-qualified46.json",
+  "upload_kind": "original wholemacro refused20s750968steps; no record; no sourcechange",
+  "compiler_metadata": "(NIL :BOOKS); nilpolicyalreadyset; no repeat"
+}

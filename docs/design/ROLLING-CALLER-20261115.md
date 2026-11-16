@@ -23,3 +23,14 @@ receive a fresh quota. No upload-kind certificate was claimed or published.
 Consumer-local theory performance is under investigation, with statements,
 runtime and guards preserved. Full actual rolling served upload remains the
 destination; this receipt establishes only the three qualified caller leaves.
+
+A fresh minimal105-parent metadata session found compile defaults already
+`(NIL :BOOKS)`: `:compile-fns` is NIL and `compiler-enabled` is :BOOKS.
+Adding a local NIL compile policy would therefore change no relevant behavior;
+no such source edit or repeated upload macro attempt was made. Stock SBCL
+EVAL also compiles DEFUN bodies independently of this ACL2 table flag.
+[The release receipt](receipts/rolling-caller-release.json) confirms all sixteen
+recorded campaign/probe PIDs absent, both owned transient-unit patterns gone,
+and all five session holders empty. The named 2 GiB reservation was released
+under a fresh ledger lock. The upload-kind whole-macro performance obstruction
+remains open for a real generator or consumer-theory improvement.
