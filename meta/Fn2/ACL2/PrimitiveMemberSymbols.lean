@@ -38,7 +38,8 @@ theorem literal_list_represented {literals : List Object} {names : List String}
   | nil => rfl
   | @cons head name tail names headRep tailRep ih =>
     simp only [MemberExecEvaluation.objects, Object.value?, headRep, ih, List.map,
-      Val.ofList, Option.bind_some]
+      Val.ofList]
+    rfl
 
 /-- Whole canonical suffix correspondence on the actual literal-list domain.
 The key is arbitrary but must retain its caller's representation premise. -/
