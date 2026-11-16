@@ -1,0 +1,26 @@
+; SAME actual pressure implementation, extracted to keep late kind tags out
+; of the lower resource leaf. A requested hint bypasses only the debt trigger.
+(in-package "ACL2")
+(include-book "checkpoint-master-abort")
+(fn2-book-layer :c)
+(defun fn2-checkpoint-master-pressure-children (seen requested fn2-checkpoint-root1 fn2-csnapshot fn2-extents fn2-pool fn2-commit-root fn2-boot-config)
+ (declare (xargs :stobjs (fn2-checkpoint-root1 fn2-csnapshot fn2-extents fn2-pool fn2-commit-root fn2-boot-config)
+  :guard (and (fn2-checkpoint-root1-wfp fn2-checkpoint-root1) (fn2-csnapshot-wfp fn2-csnapshot)
+              (fn2-extents-wfp fn2-extents) (fn2-pool-wfp fn2-pool) (fn2-commit-root-wfp fn2-commit-root) (fn2-boot-config-wfp fn2-boot-config) (unsigned-byte-p 60 seen) (booleanp requested))))
+ (mv :ok
+  (and (equal (fn2-boot-config-checkpoint-layout-ready fn2-boot-config) 1)
+       (< 0 (fn2-checkpoint-root1-rows fn2-checkpoint-root1))
+       (< 0 (fn2-csnapshot-rows fn2-csnapshot))
+       (equal (fn2-checkpoint-root1-phase 0 fn2-checkpoint-root1) *fn2-checkpoint-root1-phase-idle*)
+       (equal (fn2-csnapshot-phase 0 fn2-csnapshot) *fn2-csnapshot-phase-idle*)
+       (equal (fn2-alloc-freeze-phase fn2-extents) 0)
+       (equal (fn2-alloc-freeze-token fn2-extents) 0)
+       ; REQUESTED is only a validated scheduling hint, never HELD authority.
+       (or (and (< 0 (fn2-alloc-blocked fn2-extents))
+                (< seen (fn2-alloc-last-retirement fn2-extents))) requested)
+       (fn2-checkpoint-directory-roomp fn2-extents fn2-commit-root)
+       (fn2-checkpoint-admission-roomp 0 fn2-pool))
+  (fn2-alloc-last-retirement fn2-extents)))
+(defcost fn2-checkpoint-master-pressure-op :child fn2-checkpoint-master-pressure-children :answers (:ok)
+ :tables (fn2-core-checkpoint-root1 fn2-core-csnapshot fn2-core-extents fn2-core-pool fn2-core-commit-root fn2-core-boot-config)
+ :doc "Report actual retirement debt or internal source-compaction request under common resource gates; permission is rechecked only at the held cut.")

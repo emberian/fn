@@ -1,0 +1,37 @@
+{
+  "scope": "literal local includes only; no macroexpansion/admission/runtime claim",
+  "base": "0abe4398c",
+  "master_events_and_pressure_donor": "864f4dcac",
+  "roots": [
+    "checkpoint-master-state",
+    "checkpoint-master-events",
+    "assembly-callbacks-e-cns"
+  ],
+  "local_books": 224,
+  "cycles": [],
+  "missing": [
+    "books/c-actor-loader.lisp",
+    "books/checkpoint-bank-master-work.lisp",
+    "books/checkpoint-bank-transfer.lisp",
+    "books/checkpoint-directory-consume.lisp",
+    "books/checkpoint-kind.lisp",
+    "books/checkpoint-live-finish.lisp",
+    "books/checkpoint-live-retire.lisp",
+    "books/checkpoint-master-abort.lisp",
+    "books/checkpoint-master-rearm.lisp",
+    "books/checkpoint-metadata-driver.lisp",
+    "books/checkpoint-summary-authority-live.lisp",
+    "books/checkpoint-teardown-cold-transfer.lisp",
+    "books/checkpoint-teardown-sweep.lisp",
+    "books/event-build-kind.lisp",
+    "books/run-physical-readiness-core.lisp"
+  ],
+  "prepared_fixture_dependency": "tests/checkpoint-second-adoption-support.lisp and its canonical SIM/actual-producer closure are not imported by this slice",
+  "additional_registration_frontier": [
+    "Actual MASTER kind/corechild declaration must enter the current pre-index/core profile assembly.",
+    "Actual MASTER row must be created by current executor startup/genesis.",
+    "Canonical page/writer/event/summary/live owner macro providers must match current guarded coordinator ABI.",
+    "New inventory/request/wake/controller charges require exact cost binding before qualification.",
+    "Activation remains NIL; prepared downstream fixture uses explicit existing test-only CATALOG entry."
+  ]
+}
