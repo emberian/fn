@@ -10,9 +10,33 @@ from unittest.mock import patch, Mock
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / 'tools'))
 import proof_leaf as leaf
 import certify_books
+import proof_repl
 
 
 class Lifecycle(unittest.TestCase):
+    def test_local_include_requires_cache_without_global_import(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root=Path(directory);(root/'books').mkdir()
+            for name,body in {'private':'', 'parent':'(local (include-book "private"))',
+                              'direct-private':'', 'target':'(include-book "parent")\n(local (include-book "direct-private"))'}.items():
+                (root/('books/'+name+'.lisp')).write_text('(in-package "ACL2")\n'+body+'\n')
+            parents=set(leaf.certs.closure(root,'books/target'))-{'books/target'}
+            self.assertEqual(parents,{'books/parent','books/private','books/direct-private'})
+            imports,exports=leaf.entry_for_leaf(root,'books/target',parents,proof_repl)
+            self.assertEqual(imports,['books/parent'])
+            self.assertEqual(exports,{'books/parent'})
+            self.assertTrue(exports < parents)
+
+    def test_selected_metadata_identity_is_checked(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root=Path(directory);plan={'books':{'books/p':{'key':'k','sha256':'s'}}}
+            good={'book':'books/p','closure_key':'k','source_sha256':'s'}
+            for field in good:
+                with self.subTest(field=field), patch.object(leaf.certs,'cached_entries',return_value=[]), \
+                     patch.object(leaf.certs,'choose_entry',return_value=(root,dict(good,**{field:'wrong'}))), \
+                     self.assertRaisesRegex(ValueError,'metadata identity'):
+                    leaf.check_cache(root,plan,{'books/p'},root,'t')
+
     def test_record_miss_filter_distinguishes_root_from_parent(self):
         self.assertEqual(certify_books.uncached_parent_books(['books/root'], ['books/root']), [])
         self.assertEqual(certify_books.uncached_parent_books(['books/root', 'books/parent'], ['books/root']), ['books/parent'])
@@ -26,6 +50,7 @@ class Lifecycle(unittest.TestCase):
                                    deadline=time.time()+60, memory_bytes=1024,
                                    event_steps=2000000, event_seconds=20)
             repl = SimpleNamespace(ROOT=root, normalize_book=lambda x:x,
+                exported_include_graph=lambda r,b: {b:['books/parent']},
                 warm_entry_books=lambda r,p: (['books/parent'], {'books/parent'}),
                 read_state=lambda n: {}, lock_holder=lambda n: {})
             calls=[]
@@ -47,11 +72,12 @@ class Lifecycle(unittest.TestCase):
     def test_success_orders_whole_author_stop_then_strict_record(self):
         rc,calls,receipt,cache=self.run_case()
         self.assertEqual(rc,0)
-        self.assertEqual([c[0] for c in calls],['start','author','stop','record'])
-        self.assertIn('--cached-only',calls[0][1])
-        self.assertIn('--per-event-steps',calls[1][1])
-        self.assertNotIn('--from',calls[1][1])
-        self.assertIn('--cached-parents',calls[3][1])
+        self.assertEqual([c[0] for c in calls],['install','start','author','stop','record'])
+        self.assertIn('--cached-only',calls[1][1])
+        self.assertIn('--per-event-steps',calls[2][1])
+        self.assertNotIn('--from',calls[2][1])
+        self.assertIn('--cached-parents',calls[4][1])
+        self.assertNotIn('--skip-includes',calls[2][1])
         self.assertEqual(receipt['status'],'qualified')
         self.assertEqual(cache[0].args[2],{'books/parent'})
         self.assertEqual(cache[-1].args[2],{'books/parent','books/target'})
@@ -68,7 +94,7 @@ class Lifecycle(unittest.TestCase):
     def test_record_refusal_does_not_restart_author(self):
         rc,calls,_,_=self.run_case('record')
         self.assertEqual(rc,1)
-        self.assertEqual([c[0] for c in calls],['start','author','stop','record'])
+        self.assertEqual([c[0] for c in calls],['install','start','author','stop','record'])
 
     def test_deadline_reaps_only_its_actual_child(self):
         with tempfile.TemporaryDirectory() as directory:
@@ -88,12 +114,12 @@ class Lifecycle(unittest.TestCase):
 
     def test_missing_or_corrupt_parent_refuses(self):
         with tempfile.TemporaryDirectory() as directory:
-            root=Path(directory);plan={'books':{'books/p':{'key':'k'}}}
+            root=Path(directory);plan={'books':{'books/p':{'key':'k','sha256':'source'}}}
             with patch.object(leaf.certs,'cached_entries',return_value=[]), \
                  patch.object(leaf.certs,'choose_entry',return_value=None),self.assertRaisesRegex(ValueError,'no cold replay'):
                 leaf.check_cache(root,plan,{'books/p'},root,'toolchain')
             (root/'book.cert').write_bytes(b'wrong')
-            meta={'cert_sha256':'bad','fasl_sha256':'bad'}
+            meta={'book':'books/p','closure_key':'k','source_sha256':'source','cert_sha256':'bad','fasl_sha256':'bad'}
             with patch.object(leaf.certs,'cached_entries',return_value=[]), \
                  patch.object(leaf.certs,'choose_entry',return_value=(root,meta)),self.assertRaisesRegex(ValueError,'payload changed'):
                 leaf.check_cache(root,plan,{'books/p'},root,'toolchain')
