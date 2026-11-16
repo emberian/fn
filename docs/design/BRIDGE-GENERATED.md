@@ -628,3 +628,20 @@ elements and improper lists. The gate qualifies the scoped Lean evaluation
 proofs, not unrelated generated definitions, the global BodyCorrect wrapper,
 its dispatch mutant, the generated served consumer or a current attached CNS
 packet. The job and scope ended; its allocation was released.
+
+### Whole MEMBER suffix correspondence (source candidate)
+
+`PrimitiveMemberSymbols` defines canonical MEMBER by structural object equality
+and returns the original canonical suffix. Its proposed correspondence takes an
+arbitrary represented RC and an elementwise represented symbol literal list,
+and connects that suffix to both logical native `MEMBER-EQUAL` and the actual
+emitted `MEMBER-EQ-EXEC`. It does not implement canonical equality by decoding
+objects. The served emitter's new `reached_member_suffix` consumes each exact
+packet literal's representation proof and the caller's unchanged RC premise;
+it complements the existing per-comparison and closed-call proofs.
+
+Controls check the second-element suffix (not merely truth), integer RC,
+same-looking wrong-package symbols, and rejection of a Boolean result or
+unrepresented rational key. Thirteen emitter source tests pass. The new Lean
+modules and generated consumer fragment are not yet kernel checked; the actual
+CNS packet and full caller/domain/attachment composition remain pending.

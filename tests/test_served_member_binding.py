@@ -88,6 +88,17 @@ class ServedSelection(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, 'not canonical symbols'):
             s.member_context_source(text)
 
+    def test_whole_suffix_consumer_binds_actual_objects_and_logic_exec(self):
+        source = s.member_context_source(packet())
+        theorem = source[source.index('theorem reached_member_suffix'):]
+        self.assertIn('(rcRepresented : rcObject.value? = some rc)', theorem)
+        self.assertIn('MemberExecEvaluation.objects [memberLiteral0, memberLiteral1]', theorem)
+        self.assertIn('nativeCall "MEMBER-EQUAL" [rc,', theorem)
+        self.assertIn('some («MEMBER-EQ-EXEC» rc', theorem)
+        self.assertIn('PrimitiveMemberSymbols.canonical_member_emitted rcRepresented', theorem)
+        self.assertIn('(.cons memberLiteral0_represented (.cons memberLiteral1_represented .nil))', theorem)
+        self.assertNotIn('Val.ofBool', theorem)
+
     def test_missing_member_site_does_not_generate_context(self):
         text = packet().replace(obj('MEMBER-EQUAL'), obj('EQUAL'))
         with self.assertRaisesRegex(ValueError, 'exactly one logical MEMBER'):
