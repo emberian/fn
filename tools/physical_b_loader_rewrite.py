@@ -7,8 +7,21 @@ def named(text,name):
     found=[x for x in lr.parse(text).forms if isinstance(x,lr.Lst) and len(x.items)>1 and getattr(x.items[1],'low','')==name]
     if len(found)!=1:raise ValueError('one actual B event '+name)
     return found[0]
+def project_loader_prefix(text):
+    """Consume the target's actual sealer map, including canonical paired2W."""
+    helper=lr.match('(defun fn2-b-sealer-hash-row ?*args)',lr.parse(text).forms,deep=False)
+    if len(helper)>1:raise ValueError('duplicate actual sealer row provider')
+    sealer='(fn2-b-sealer-hash-row profile)' if helper else '(+ 3 (fn2-b-upload-windows profile))'
+    n=named(text,'fn2-b-run-loader-row');body=n.items[-1]
+    expected='(+ 1 '+sealer+' (nfix cursor))'
+    if helper and n.start<helper[0].node.start:
+        # Canonical paired2W defines its sealer map after upload contexts.
+        # Move only this generated consumer beyond that actual provider.
+        replacement=text[n.start:body.start]+expected+text[body.end:n.end]
+        return lr.write(text,[(n.start,n.end,''),(helper[0].node.end,helper[0].node.end,'\n'+replacement)])
+    return lr.write(text,[(body.start,body.end,expected)])
 def project(text):
-    if '(defun fn2-b-run-loader-row ' in text:return text
+    if '(defun fn2-b-run-loader-row ' in text:return project_loader_prefix(text)
     # Existing read geometry is needed by the new format floor. Move exactly
     # these original events ahead of format allocation, not a later forward
     # reference copied from a historical B file.
@@ -32,7 +45,7 @@ def project(text):
     text=lr.write(text,edits)
     old='(include-book "profile")'
     if text.count(old)!=1:raise ValueError('one actual profile dependency')
-    return text.replace(old,old+'\n(include-book "run-active-geometry")',1)
+    return project_loader_prefix(text.replace(old,old+'\n(include-book "run-active-geometry")',1))
 
 if __name__=='__main__':
     import argparse

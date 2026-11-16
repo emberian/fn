@@ -138,7 +138,7 @@
  (nfix (fn2-b-capacity :large-upload-windows 16 profile)))
 (defun fn2-b-run-loader-row (cursor profile)
  (declare (xargs :guard t))
- (+ 4 (fn2-b-upload-windows profile) (nfix cursor)))
+ (+ 1 (+ 3 (fn2-b-upload-windows profile)) (nfix cursor)))
 
 (defun fn2-b-ctl-rows (profile)
  (declare (xargs :guard t))

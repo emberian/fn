@@ -1,0 +1,7 @@
+{
+  "books/checkpoint-allocation-coordinator.lisp": "d2c42d0b2f85dc86e4d99b8f9ce10e4680181c04efb82d64d86ed833c50026ec",
+  "books/checkpoint-installation-coordinator.lisp": "ea668d001176625373c3a4982233235324fb52b3710c58cd984125b03b308e34",
+  "books/checkpoint-lifecycle-coordinator.lisp": "1f01943a0bc300d6d5891a3188024b44b314a312c91a997ea5111097897b5b0f",
+  "books/retirement-coordinator.lisp": "9495cceb023c5144f7f4d9b87f9953b7245ebb623e0d6b2d00b321aadbf9d20e",
+  "books/commit.lisp": "f3bc27add4028c6da04a241706f5ab61fddfca0f03230211ec2387597e22a205"
+}
