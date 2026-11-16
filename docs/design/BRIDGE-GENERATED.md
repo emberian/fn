@@ -607,3 +607,31 @@ BodyCorrect join, current served consumer and attached CNS packet. The separate
 consumer proposal is retained on `lane/audit-served-bridge-followthrough`; it
 needs current global dispatch and packet qualification before semantic discharge.
 The checked evaluation is a component of that join, not its replacement.
+
+
+### Canonical MEMBER suffix and logical/exec seam
+
+`PrimitiveMemberSymbols.canonical_member_emitted` connects an independently
+computed canonical-object MEMBER suffix to both native logical MEMBER-EQUAL
+and actual emitted MEMBER-EQ-EXEC. It compares canonical object identity and
+returns the original suffix; arbitrary RC retains its Object-to-Val premise.
+Each literal must have its exact represented symbolic value. The served emitter
+now consumes those actual packet-literal proofs in `reached_member_suffix`.
+
+The current-foundation three-module gate passed at `e66375a7d`, receipt
+`docs/design/receipts/member-suffix-current-three.json`: correspondence, concrete
+controls, and a fragment extracted verbatim from the actual emitter output on
+a synthetic packet. Sixty-eight warm artifacts were hash-verified, including
+PrimitiveSymbols and the checked MEMBER evaluation. Total compiler time was
+2.445 seconds; peak memory 149,581,824 bytes under 2 GiB/swap zero with no memory
+events. All 12 axiom censuses contain only propext, Classical.choice and Quot.sound.
+Controls retain the second-element suffix, allow integer RC, reject a wrong-package
+alias, distinguish Boolean truth from the suffix, and refuse an unrepresented key.
+
+The first gate exposed only a missing final definitional reduction in the literal
+representation proof. The corrected retry used the original absolute deadline
+and a fresh overlay; failed artifacts were not reused. Both scopes ended and the
+allocation was released. This gate does not qualify a current attached CNS packet,
+the full emitted helper/global dispatcher, or whole caller/domain/attachment
+composition. Its checked fragment is a consumer-template control, not a claim
+that the current served world has already supplied those literals and bindings.
