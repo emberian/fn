@@ -51,5 +51,8 @@ cleanup is reported, never called a resource release. A later leaf invocation
 uses a new output directory and the **same** campaign deadline.
 
 Source controls: `python3 tests/test_proof_leaf.py`. These exercise orchestration
-and refusal boundaries with fake proof APIs; an actual capped pilot is still
-required before replacing prepared live campaign scripts.
+and refusal boundaries with fake proof APIs and real bounded Python children.
+The actual cost20 pilot completed authoring and a new record publication under
+a 2 GiB/swap0 scope; see [its receipt](receipts/native-leaf-cost20-pilot.json).
+This validates the single-leaf lifecycle, not application or native runtime
+behavior. Existing live campaigns are not changed by installing this command.
