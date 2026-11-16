@@ -2,6 +2,7 @@
 ; Runtime APIs touch bounded scalar fields; only init resizes storage.
 (in-package "ACL2")
 (include-book "columns")
+(include-book "columns-carrier-contracts")
 (include-book "owed")
 (include-book "profile")
 
@@ -775,6 +776,29 @@
                        (and (= (fn2-ops-c0-posted slot fn2-ops) 1) (= (fn2-ops-c0-harvested slot fn2-ops) 0))
                      (and (= (fn2-ops-c1-posted slot fn2-ops) 1) (= (fn2-ops-c1-harvested slot fn2-ops) 0))))
               (mv t slot cell) (mv :corrupt 0 0)))))))
+; The callee owns this existing public success interface. Higher borrow
+; accounting consumes it rather than redeclaring it after the guard caller.
+(defthm fn2-ops-peek-posted-slot
+  (implies (equal (car (fn2-ops-peek-posted ops)) t)
+           (and (natp (mv-nth 1 (fn2-ops-peek-posted ops)))
+                (< (mv-nth 1 (fn2-ops-peek-posted ops)) (fn2-ops-rows ops))
+                (or (equal (mv-nth 2 (fn2-ops-peek-posted ops)) 0)
+                    (equal (mv-nth 2 (fn2-ops-peek-posted ops)) 1))))
+  :rule-classes ((:rewrite) (:forward-chaining :trigger-terms ((fn2-ops-peek-posted ops))))
+  :hints (("Goal" :in-theory (enable fn2-ops-peek-posted fn2-op-slotp unsigned-byte-p))))
+
+(defthm fn2-ops-peek-posted-post-bounds
+ (implies (and (fn2-opsp fn2-ops) (fn2-ops-wfp fn2-ops)
+               (equal (mv-nth 0 (fn2-ops-peek-posted fn2-ops)) t))
+          (and (posp (fn2-ops-post-count fn2-ops))
+               (natp (fn2-ops-post-head fn2-ops))
+               (< (fn2-ops-post-head fn2-ops) (fn2-ops-posted-fifo-length fn2-ops))
+               (posp (fn2-ops-posted-fifo-length fn2-ops))
+               (< (fn2-ops-posted-fifo-length fn2-ops) 1152921504606846976)))
+ :rule-classes nil
+ :hints (("Goal" :in-theory (e/d (fn2-ops-peek-posted)
+                                (fn2-op-slotp fn2-completion-phasep)))))
+
 (defun fn2-ops-next-owner (fn2-ops)
   (declare (xargs :stobjs fn2-ops :guard (fn2-ops-wfp fn2-ops)))
   (mv-let (found slot cell) (fn2-ops-peek-posted fn2-ops)
@@ -795,8 +819,39 @@
          (fn2-ops (update-fn2-ops-seen-peer-w2 (if c0 (fn2-ops-peer-w2 slot fn2-ops) 0) fn2-ops)))
     (update-fn2-ops-seen-peer-w3 (if c0 (fn2-ops-peer-w3 slot fn2-ops) 0) fn2-ops)))
 (fn2-ops-preserves fn2-ops-latch-peer (cell slot fn2-ops) :position nil :disable nil :raw-rows t)
+; The observation latch changes only seen-peer scalar fields. Harvest also
+; consumes these posted-ring fields; WFP/ROWS alone does not express them.
+(defthm fn2-ops-latch-peer-posted-frame
+ (implies (and (fn2-opsp fn2-ops) (fn2-ops-wfp fn2-ops)
+               (natp slot) (< slot (fn2-ops-rows fn2-ops)))
+  (let ((next (fn2-ops-latch-peer cell slot fn2-ops)))
+   (and (equal (fn2-ops-post-head next) (fn2-ops-post-head fn2-ops))
+        (equal (fn2-ops-post-count next) (fn2-ops-post-count fn2-ops))
+        (equal (fn2-ops-posted-fifo-length next) (fn2-ops-posted-fifo-length fn2-ops)))))
+ :hints ((fn2-columns-scalar-frame-hint '(fn2-ops)
+           '(fn2-ops-latch-peer fn2-ops-posted-fifo-length) nil world)))
+
 (defun fn2-harvest-next (fn2-ops)
-  (declare (xargs :stobjs fn2-ops :guard (fn2-ops-wfp fn2-ops)))
+  (declare (xargs :stobjs fn2-ops :guard (fn2-ops-wfp fn2-ops)
+   :guard-hints
+   ((append
+     (fn2-columns-scalar-frame-hint '(fn2-ops)
+       '(fn2-ops-posted-fifo-length)
+       '(fn2-ops-peek-posted fn2-ops-latch-peer) world)
+     '(:use ((:instance fn2-ops-peek-posted-slot (ops fn2-ops))
+             fn2-ops-peek-posted-post-bounds
+             ; Normalize the frame fact with the actual marked-cell state,
+             ; just as the guard normalizes its raw scalar observations.
+             (:instance fn2-ops-latch-peer-posted-frame
+              (cell 0) (slot (mv-nth 1 (fn2-ops-peek-posted fn2-ops)))
+              (fn2-ops
+               (fn2-ops-set-c0-harvested
+                (mv-nth 1 (fn2-ops-peek-posted fn2-ops)) 1 fn2-ops)))
+             (:instance fn2-ops-latch-peer-posted-frame
+              (cell 1) (slot (mv-nth 1 (fn2-ops-peek-posted fn2-ops)))
+              (fn2-ops
+               (fn2-ops-set-c1-harvested
+                (mv-nth 1 (fn2-ops-peek-posted fn2-ops)) 1 fn2-ops)))))))))
   (mv-let (found slot cell) (fn2-ops-peek-posted fn2-ops)
     (if (not (eq found t)) (mv found 0 0 0 fn2-ops)
       (let* ((gen (fn2-ops-gen slot fn2-ops))

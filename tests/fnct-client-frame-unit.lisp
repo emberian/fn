@@ -1,0 +1,60 @@
+; The fixture client must accept a complete declared reply beyond 4096 while
+; retaining its independent model decoder and exact-byte article oracle.
+; These controls do not invoke the production decoder or source actor.
+(in-package "ACL2")
+(include-book "fnct-client")
+(defun fnc-test-fetch-result (article)
+ (declare (xargs :verify-guards nil))
+ (fn2-layout-octets (cadr (assoc-eq 'fetch *fn2-fnct-results*)) (list article)))
+(defun fnc-test-fetch-payload (article)
+ (declare (xargs :verify-guards nil))
+ (fn2-layout-octets *fn2-fnct-port-reply-layout*
+                    (list 0 nil (fnc-test-fetch-result article))))
+(defun fnc-test-fetch-frame (article)
+ (declare (xargs :verify-guards nil))
+ (fn2-fnct-seal *fn2-fnct-port-reply-kind* (fnc-test-fetch-payload article)))
+(defun fnc-test-frame-declared-length (frame length)
+ (declare (xargs :verify-guards nil))
+ (let ((header (fn2-layout-octets *fn2-fnct-header-layout*
+                (list *fn2-fnct-magic* *fn2-fnct-version* *fn2-fnct-port-reply-kind* length))))
+  (append header (nthcdr (len header) frame))))
+(defun fnc-test-large-reply (n)
+ (declare (xargs :verify-guards nil))
+ (let* ((article (repeat (nfix n) 120))
+        (frame (fnc-test-fetch-frame article))
+        (posture (fn2-fnct-seal *fn2-fnct-control-reply-kind* '(0)))
+        (wire (append frame posture))
+        (truncated (take (- (len frame) 1) frame))
+        (short-body (take (- (len frame) 64) frame))
+        (declared-more (fnc-test-frame-declared-length frame (+ 1 (len (fnc-test-fetch-payload article)))))
+        (declared-less (fnc-test-frame-declared-length frame (- (len (fnc-test-fetch-payload article)) 1)))
+        (bad-trailer (update-nth (- (len frame) 1)
+                       (mod (+ 1 (nth (- (len frame) 1) frame)) 256) frame)))
+  (and (< 4096 (len frame))
+       ; Explicit old-bound control: the prior fixture rejects this valid
+       ; payload, so the following positive is sensitive to that regression.
+       (equal (fn2-fnct-open frame 4096) '(:refused :size))
+       (equal (fnc-frame-extent wire) frame)
+       (equal (fnc-k28-result wire) (fnc-test-fetch-result article))
+       (equal (fnc-reply 'fetch wire) (list :accepted "" article))
+       (equal (fnc-replies '(fetch status) wire)
+              (list (list :accepted "" article) '(:posture 0)))
+       ; No TAKE padding completes an absent trailer. Both kinds of
+       ; truncation remain explicit malformed replies.
+       (equal (fnc-frame-extent truncated) truncated)
+       (equal (fnc-frame-extent short-body) short-body)
+       (equal (fnc-frame-extent declared-more) declared-more)
+       (null (fnc-k28-result truncated))
+       (eq (car (fnc-reply 'fetch truncated)) :malformed)
+       (null (fnc-k28-result short-body))
+       (eq (car (fnc-reply 'fetch short-body)) :malformed)
+       (null (fnc-k28-result declared-more))
+       (eq (car (fnc-reply 'fetch declared-more)) :malformed)
+       (null (fnc-k28-result declared-less))
+       (eq (car (fnc-reply 'fetch declared-less)) :malformed)
+       (null (fnc-k28-result bad-trailer))
+       (eq (car (fnc-reply 'fetch bad-trailer)) :malformed))))
+; Article 4096 already exceeds the old payload bound through its generated
+; result/envelope fields; 6144 is the real streamed/recovered FETCH milestone.
+(assert-event (fnc-test-large-reply 4096))
+(assert-event (fnc-test-large-reply 6144))

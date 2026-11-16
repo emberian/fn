@@ -1,0 +1,72 @@
+{
+  "status": "stopped-first-kernel-setup-refusal",
+  "fixture_sha256": "24c655ac0a970bfe175f8ae7197e499cbe9ad02a7347287ec99ab5105c1f00a0",
+  "setup_staging_failure": "Initial relative scp path missed local fixture; first preflight exited2 before ACL2. Corrected absolute copy, frozen SHA verified; no proof retry. Log /tmp/enum-universal-staging-failure.log on forge.",
+  "actual_campaign_exit": 1,
+  "state_only_compiled_books": 131,
+  "state_load_acl2_seconds": 9.66,
+  "successful_local_support_before_encapsulate_failure": [
+    {
+      "event_kind": "DEFUN",
+      "name": "FN2-CNS-ENUM-STOBJ-EXECS"
+    },
+    {
+      "event_kind": "DEFUN",
+      "name": "FN2-CNS-ENUM-DEFINITION-CLOSURE"
+    },
+    {
+      "event_kind": "DEFUN",
+      "name": "FN2-CNS-ENUM-SELECT-RUNES"
+    },
+    {
+      "event_kind": "DEFTHEORY",
+      "name": "FN2-CNS-ENUM-LOGICAL-THEORY"
+    },
+    {
+      "event_kind": "DEFTHM",
+      "name": "FN2-CNS-ENUM-BOUNDED-UPDATE-SELF"
+    }
+  ],
+  "bounded_self_law": {
+    "name": "FN2-CNS-ENUM-BOUNDED-UPDATE-SELF",
+    "proof_acl2_seconds": 0.13,
+    "proof_steps": 1371,
+    "status": "proved before enclosing encapsulate failed; no persistent world or record claim"
+  },
+  "first_refusal": {
+    "form": "local MAKE-EVENT constructing FN2-CNS-ENUM-SHAPE-THEORY",
+    "class": "translation/setup",
+    "message": "Global variables, such as WORLD, are not allowed",
+    "cause": "THEORY macro requires lexical WORLD; shape MAKE-EVENT omitted binding",
+    "shape_theorem": "not reached",
+    "universal_admitted_count": 0,
+    "universal_requested_count": 3,
+    "negative": "not reached"
+  },
+  "raw_log": "/tmp/enum-universal-first-refusal.txt on forge",
+  "raw_log_sha256": "5156e10f6682e6e417cba8d5f87af5f0245045bd71254cd2a5dac6a48eec7b83",
+  "resource_limits": {
+    "memory_max_bytes": 2147483648,
+    "swap_max_bytes": 0,
+    "outer_wall_seconds": 180,
+    "internal_wall_seconds": 120,
+    "per_original_event_steps": 2000000,
+    "per_original_event_seconds": 20
+  },
+  "cleanup": {
+    "owned_pids_absent": [
+      1865877,
+      1865881,
+      1865930,
+      1865934
+    ],
+    "scope_absent": "run-p1865877-i31222566.scope",
+    "ledger_owner": "enum_universal",
+    "ledger_gib_after": 0,
+    "ledger_update": "Fresh exclusive lock and recalculated both unassigned fields; no live job"
+  },
+  "source_only_successor": {
+    "fixture_sha256": "79040a36f2811a6d9bfbba9b4d5429af3a2d29997099c327591a1035db0368da",
+    "change": "Add lexical (world (w state)) to shape MAKE-EVENT. All3 universal formulas and negative unchanged. No successor ACL2 run."
+  }
+}

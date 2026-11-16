@@ -1,0 +1,44 @@
+{
+  "result": "PASS",
+  "source_commit": "05cb2fa790e5479b75d3713e0eb3eecac50a52c7",
+  "run": "certify-20261115T180152Z-1647029",
+  "toolchain": "8aeb1bea18968c6cd33ac633a80ebf67e4924504db112fd27eb11f16a27b2a8c",
+  "scope": "4 registry/export books only,35 author forms plus actual readback. No square-evidence31 or member34 bridge execution.",
+  "records": {
+    "tests/owed-refutation-unit": {
+      "key": "e0899b5c1e379fbd1149d54d549c4ba7171d43e9f9710ab95169d76d9eaa91b3",
+      "entry": "/home/fn/.cache/fn-certs/e0899b5c1e379fbd1149d54d549c4ba7171d43e9f9710ab95169d76d9eaa91b3/63be0e8165ae7b38",
+      "source_sha256": "e6c72ebe159a93ff49d71d68520762e2843f01c34cfa8d8770cb15982e0cc4f7",
+      "cert_sha256": "9e09b2c925458da7f1b219efcdb51bdc236651b06c96672d824a4f6a7e8f594a",
+      "fasl_sha256": "96009d0f67f45a9d724f6e3f995d095bdf928b4ecae0b5f21491dc76643548c8",
+      "port_sha256": "f4cb7e8160cfa6f41cddb04be508f922aa8e87c4ff126bfaad3379aa92e647e0"
+    },
+    "books/owed-report": {
+      "key": "4e853efbf8a37d41e9161ff8c844c69502ee6d11bd3bae4f5760fcaa5a10d33e",
+      "entry": "/home/fn/.cache/fn-certs/4e853efbf8a37d41e9161ff8c844c69502ee6d11bd3bae4f5760fcaa5a10d33e/63be0e8165ae7b38",
+      "source_sha256": "c4bbb3a7fb5ea2c33439427774af970daae87bf6358b1d30c859edde43684c77",
+      "cert_sha256": "afb3a8a7fe5fa8d1d5e49d8b2ef5a41a8a3433d243d86ff15ac5303998c5a1ad",
+      "fasl_sha256": "9fb9bd83fcb022d65c687ac91671fd313f2220167ff87ff1aaff8497645d8b0c",
+      "port_sha256": "f4cb7e8160cfa6f41cddb04be508f922aa8e87c4ff126bfaad3379aa92e647e0"
+    },
+    "books/owed": {
+      "key": "0025566d809fffa0fb7533fa29b1fb7a9932c97d1510818153a1c1fe3d6bbf08",
+      "entry": "/home/fn/.cache/fn-certs/0025566d809fffa0fb7533fa29b1fb7a9932c97d1510818153a1c1fe3d6bbf08/63be0e8165ae7b38",
+      "source_sha256": "171950b91e40f4e7d0e94902ce00009adc62d8104e0eecd5db6a59b93bbffb15",
+      "cert_sha256": "dfd94cb9c2ead45891e01b806f507e2b16ae85cd37570c89fd531bab7d7982fa",
+      "fasl_sha256": "97c17b9a3c61860b138d779461086ccc41487cd250f03509af2c8c6eac0738bd",
+      "port_sha256": "f4cb7e8160cfa6f41cddb04be508f922aa8e87c4ff126bfaad3379aa92e647e0"
+    },
+    "books/declare": {
+      "key": "299f7489bcfaeeb7c1a8f777c4a3b4886c5be174761a2f63f69a39599466aba1",
+      "entry": "/home/fn/.cache/fn-certs/299f7489bcfaeeb7c1a8f777c4a3b4886c5be174761a2f63f69a39599466aba1/63be0e8165ae7b38",
+      "source_sha256": "54e850788ee821dd90a4d9715e93d319f94846039592c4420fef1bdc5d959569",
+      "cert_sha256": "f3a1e4a58cac32474074b9d3ca6a558099a86d2fe66a28ee0670b5c5001bf9dc",
+      "fasl_sha256": "02ceab2d38f5864c70d16e1bfdf77e4450e12aab47bd3d9e3e16ec1319e5c64d",
+      "port_sha256": "f4cb7e8160cfa6f41cddb04be508f922aa8e87c4ff126bfaad3379aa92e647e0"
+    }
+  },
+  "export_sha256": "6439d99c61097387f0d1513bcb863173e7ef717e0a0face455416ce6860fcc4d",
+  "cleanup": "PIDs1646743,1646993,1648521,1648925 absent; author stop_holder0; OOM0. Export corrected via ACL2_PROJECTS, no proof replay.",
+  "export_script_sha256": "c5e0d1072bd6c36fe6ed3a17ff5b114c518f0580a769bce1e249d809e4f5bef6"
+}

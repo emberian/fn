@@ -103,12 +103,10 @@
 (fn2-checkpoint-refs-preserves fn2-checkpoint-ref-clear-build (r fn2-checkpoint-refs))
 (in-theory (disable fn2-checkpoint-ref-clear-build))
 
-(defun fn2-checkpoint-slotp (c fn2-checkpoints fn2-checkpoint-refs fn2-checkpoint-bytes)
- (declare (xargs :stobjs (fn2-checkpoints fn2-checkpoint-refs fn2-checkpoint-bytes) :guard t))
- (and (fn2-checkpoints-wfp fn2-checkpoints)
-      (fn2-checkpoint-refs-wfp fn2-checkpoint-refs)
-      (fn2-checkpoint-bytes-wfp fn2-checkpoint-bytes)
-      (natp c) (< c (fn2-checkpoints-rows fn2-checkpoints))
+(defcolumns-predicate fn2-checkpoint-slotp (c fn2-checkpoints fn2-checkpoint-refs fn2-checkpoint-bytes)
+ :stobjs (fn2-checkpoints fn2-checkpoint-refs fn2-checkpoint-bytes)
+ :shape ((fn2-checkpoints-wfp fn2-checkpoints) (fn2-checkpoint-refs-wfp fn2-checkpoint-refs) (fn2-checkpoint-bytes-wfp fn2-checkpoint-bytes))
+ :tests ((natp c) (< c (fn2-checkpoints-rows fn2-checkpoints))
       (<= (* 6 (+ 1 c)) (fn2-checkpoint-refs-rows fn2-checkpoint-refs))
       (<= (* 192 (+ 1 c)) (fn2-checkpoint-bytes-rows fn2-checkpoint-bytes))))
 

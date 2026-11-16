@@ -98,3 +98,66 @@ After fixture certification, `tools/acl2 --timeout 60 <
 tests/square-evidence-export.lsp` writes and reads the actual report, checking
 that redirected display metadata cannot replace its statement. File output
 runs outside book events; no trust tag is needed.
+
+## Direct predicate conclusions
+
+`:conclusion-kind :predicate` accepts the exact live conclusion as an admitted
+predicate call, including predicates of `mv-nth` results. It does not invent
+an equality endpoint or claim producer equivalence. Its only negative kind is
+`:hypothesis-removal`: the positive theorem asserts `H and C`; the negative
+asserts every remaining conjunct, `not removed`, and `not C`. The selected
+hypothesis must occur exactly once by default in the translated conjunction tree. A
+composite stored guard can be removed as a whole; all outside carrier premises
+remain. A constant-true predicate cannot pass the required false-C theorem.
+
+Predicate bindings may be quoted values or closed ACL2 pseudo-terms, in exact
+statement-variable order. Constructor calls therefore remain logical terms
+whose complete ground assertions ACL2 must prove, not host-computed state or
+raw execution of malformed stobjs. Indices and other constants in this
+translated-term interface must be quoted. Optional `:positive-hints` and
+`:negative-hints` permit reuse of admitted ground facts with the actual raw
+producer disabled. Replay regenerates the original assertions and uses those
+same proof hints; hints never replace H or C.
+
+Programmatic consumers use
+`fn2-square-predicate-evidence-events-with-hints(name, positive, negative,
+positive-hints, negative-hints, recheck, world)`; the five-argument variant
+supplies empty hints. Existing equality/correspondence APIs and their quoted
+binding restriction are unchanged. Predicate evidence leaves the row's
+universal proof status unchanged.
+
+`tests/square-evidence-predicate-unit.lisp` contains positive, composite-guard,
+wrong-formula, vacuity, open-binding, remaining-premise and unsupported-mutation
+controls. The exact five-book predicate/correspondence fixture union is qualified
+at source `eb137e8f0`: provider author 0.24 seconds, predicate fixture 0.23 seconds,
+and existing correspondence fixture 0.21 seconds. The record reused three qualified
+parents and certified both test leaves under toolchain `8aeb`; see
+[the receipt](receipts/predicate-evidence-five-record.json). The six actual guarded
+checkpoint-reader consumer instances remain pending their separate gate.
+
+## Repeated hypotheses and actual member
+
+Predicate removal defaults to exactly one structural occurrence. An explicit
+`:occurrences 2` removes two identical copies of the selected predicate, while
+proving every other conjunct, the predicate's negation, and the exact false C.
+A changed count or a failed remaining premise refuses admission. This is needed
+when a readonly recognizer occurs both explicitly and inside the stored guard;
+it does not remove the whole guard or weaken the universal statement.
+
+`tests/checkpoint-member-guarded-evidence-unit.lisp` binds the actual member
+consumer. It checks exact ABI, same original conclusion, retained original
+premises and actual stored guard before registering the distinct admitted
+guarded theorem. It also emits the domain-containment theorem. The positive
+uses the existing actual constructor with only its checkpoint value repaired;
+the negative reuses the admitted readonly-type counterexample. Both bind all
+12 actual arguments. Raw stobj executable counterparts are disabled by live
+signature metadata during proof. The original remains refuted and unfinished.
+
+The exact 41-book member/predicate/correspondence/report union is qualified at
+source `3bbbca421`; see [the receipt](receipts/member-predicate-forty-one-record.json).
+The member leaf admitted in 7.51 seconds under the original per-event 2M-step/20-second
+budget. The actual export replay preserves the original refutation and prints
+one proved guarded row. The generic refutation status still labels candidate
+replacement links unverified: this leaf's checked domain relationship is not a
+global replacement-status upgrade, proof of the original, or proof of served
+caller reachability. No production member body, guard or theorem changed.

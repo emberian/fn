@@ -48,12 +48,14 @@
  (nfix (fn2-b-capacity :checkpoint-candidates 4 profile)))
 ; Dedicated regions: six commit I/O edges, two roots per extent, one pin per
 ; operation, six direct references per candidate, then one source-retention
-; edge per extent per active candidate. These are dedicated resident resources.
+; edge per extent per active candidate, then a disjoint per-CNS/per-extent
+; promised-read region. Its profile capacity bounds active queries, not stored data.
 (defun fn2-b-alloc-edge-floor (profile)
  (declare (xargs :guard t))
  (+ 6 (* 2 (nfix (fn2-b-capacity :extent-slots 16 profile)))
     (nfix (fn2-profile-o profile)) (* 6 (fn2-b-checkpoint-capacity profile))
-    (* (nfix (fn2-b-capacity :extent-slots 16 profile)) (fn2-b-checkpoint-capacity profile))))
+    (* (nfix (fn2-b-capacity :extent-slots 16 profile)) (fn2-b-checkpoint-capacity profile))
+    (* (nfix (fn2-b-capacity :extent-slots 16 profile)) (nfix (fn2-profile-get :cns profile)))))
 (defcorechild fn2-core-alloc-edges fn2-alloc-edges
  :init (fn2-alloc-edges-init (fn2-b-capacity :alloc-edge-slots (fn2-b-alloc-edge-floor profile) profile) fn2-alloc-edges)
  :profilep (and
@@ -63,31 +65,39 @@
  :harvest (fn2-b-read-pin-harvest
            ((fn2-core-extents fn2-extents) (fn2-core-alloc-edges fn2-alloc-edges)))
  :why "Disjoint commit, root, operation-pin and checkpoint-reference edges survive yields.")
-; Format checker rows (b-durability.md §11): 0-1 the commit kind's, 2
-; recovery's, 3 .. 2+w D's large-upload windows, 3+w C's sealer, then
-; 4+w .. 3+w+c E's control connections (fn2-ctl row S decodes FNCT into its
-; slot's 128-row field stripe and hashes the BLAKE3 trailer in its b3 row,
-; both at fn2-b-ctl-slot when the profile is at its floor), then
-; source-retention rows 4+w+c and 5+w+c, event row 6+w+c,
-; block-read row 7+w+c and final checkpoint row 8+w+c. The block read's check
-; (fn2-block-read-done-children hashes a block read through a source
-; manifest there, within one call, so one row serves every cursor row;
-; b-durability.md S9a); the count is derived, so every profile has every
-; row (main's ruling, 2026-10-30); w's default is resources.lisp's round-2
-; bound (16), c's the tiny profile's 2; D's upload capacity, C's sealer row
-; and E's control capacity read these functions.
+; Format checker rows: commit0/1, recovery2, H=2*upload-windows
+; original/stored contexts starting at3, then the sealer at3+H. C control
+; frame rows start at4+H, followed by N retained CNS source rows. The final
+; five rows remain semantic/payload/event/block/checkpoint jobs. All context,
+; digest and field capacities derive from this same complete profile floor.
 (defun fn2-b-upload-windows (profile)
  (declare (xargs :guard t))
  (nfix (fn2-b-capacity :large-upload-windows 16 profile)))
+ ; Each admitted upload window keeps original and stored stream contexts.
+(defun fn2-b-upload-hash-rows (profile)
+ (declare (xargs :guard t))
+ (* 2 (fn2-b-upload-windows profile)))
+(defun fn2-b-upload-source-hash-row (slot)
+ (declare (xargs :guard t))
+ (+ 3 (* 2 (nfix slot))))
+(defun fn2-b-upload-stored-hash-row (slot)
+ (declare (xargs :guard t))
+ (+ 1 (fn2-b-upload-source-hash-row slot)))
+(defun fn2-b-sealer-hash-row (profile)
+ (declare (xargs :guard t))
+ (+ 3 (fn2-b-upload-hash-rows profile)))
 (defun fn2-b-ctl-rows (profile)
  (declare (xargs :guard t))
  (nfix (fn2-b-capacity :control-connections 2 profile)))
 (defun fn2-b-ctl-slot (s profile)
  (declare (xargs :guard t))
- (+ 4 (fn2-b-upload-windows profile) (nfix s)))
+ (+ 4 (fn2-b-upload-hash-rows profile) (nfix s)))
+(defun fn2-b-cns-source-rows (profile)
+ (declare (xargs :guard t))
+ (nfix (fn2-profile-get :cns profile)))
 (defun fn2-b-format-floor (profile)
  (declare (xargs :guard t))
- (+ 9 (fn2-b-upload-windows profile) (fn2-b-ctl-rows profile)))
+ (+ 9 (fn2-b-upload-hash-rows profile) (fn2-b-ctl-rows profile) (fn2-b-cns-source-rows profile)))
 (defun fn2-b-format-slots (profile)
  (declare (xargs :guard t))
  (fn2-b-capacity :format-slots (fn2-b-format-floor profile) profile))
@@ -104,9 +114,32 @@
 (defun fn2-b-event-row (rows)
  (declare (xargs :guard t))
  (nfix (- (nfix rows) 3)))
-(defun fn2-b-ctl-runtime-row (s connections rows)
+;; Source stream hashers follow all control frame hashers; the final five
+;; rows remain semantic/payload/event/block/checkpoint jobs.
+(defun fn2-b-ctl-runtime-row (s connections sources rows)
  (declare (xargs :guard t))
- (+ (nfix (- (nfix rows) (nfix connections) 5)) (nfix s)))
+ (+ (nfix (- (- (- (nfix rows) (nfix sources)) (nfix connections)) 5)) (nfix s)))
+(defun fn2-b-cns-source-row (s sources rows)
+ (declare (xargs :guard t))
+ (+ (nfix (- (- (nfix rows) (nfix sources)) 5)) (nfix s)))
+; This generic tail-layout predicate preserves its existing domain. Its
+; pairwise source/control/tail theorems need only C+N+5 rows; the supported
+; profile separately requires the full9+H+C+N floor, including leading jobs.
+(defun fn2-b-cns-source-geometry-p (sources connections rows)
+ (declare (xargs :guard t))
+ (and (natp sources) (natp connections) (natp rows)
+      (<= (+ sources connections 5) rows)))
+(defthm fn2-b-cns-source-row-disjoint-from-control
+ (implies (and (fn2-b-cns-source-geometry-p sources connections rows)
+               (natp c) (< c connections) (natp s) (< s sources))
+  (< (fn2-b-ctl-runtime-row c connections sources rows)
+     (fn2-b-cns-source-row s sources rows)))
+ :hints (("Goal" :in-theory (enable fn2-b-cns-source-geometry-p fn2-b-ctl-runtime-row fn2-b-cns-source-row))))
+(defthm fn2-b-cns-source-row-before-tail
+ (implies (and (natp sources) (natp rows) (<= (+ sources 5) rows)
+               (natp s) (< s sources))
+  (< (fn2-b-cns-source-row s sources rows) (- rows 5)))
+ :hints (("Goal" :in-theory (enable fn2-b-cns-source-row))))
 (defun fn2-b-checkpoint-row (rows)
  (declare (xargs :guard t))
  (nfix (- (nfix rows) 1)))

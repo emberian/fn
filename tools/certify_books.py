@@ -925,7 +925,7 @@ def pcert_waves(books: list[str], graph: dict[str, set[str]], jobs: int,
 
 
 def write_json(path: Path, payload: dict[str, Any]) -> None:
-    path.write_text(json.dumps(payload, indent=2, sort_keys=True) + "\n", encoding="utf-8")
+    certs.write_text_atomic(path, json.dumps(payload, indent=2, sort_keys=True) + "\n")
 
 
 def record(run_dir: Path, manifest: dict[str, Any]) -> None:
@@ -1374,7 +1374,7 @@ def main() -> int:
         print(f"Certification evidence: {run_dir.relative_to(ROOT)}", file=sys.stderr)
         return 1
     version_log = version_result.stdout.decode("utf-8", errors="replace")
-    (run_dir / "version.log").write_text(version_log, encoding="utf-8")
+    certs.write_text_atomic(run_dir / "version.log", version_log)
     version_lines = [
         line.split("FN_ACL2_VERSION ", 1)[1]
         for line in version_log.splitlines()
@@ -1479,7 +1479,9 @@ def main() -> int:
                 code = f"timed out after {args.timeout_seconds} seconds"
             elapsed = time.monotonic() - started
             load_ended = load_average()
-        log_path.write_text(output, encoding="utf-8")
+        # run_acl2 has already published terminal activity for a complete raw
+        # log. Never truncate that visible file while normalizing UTF-8.
+        certs.write_text_atomic(log_path, output)
         with record_lock:
             outputs[book] = output
             exit_codes[book] = code
@@ -1535,7 +1537,9 @@ def main() -> int:
                 code = f"timed out after {budget} seconds"
             elapsed = time.monotonic() - started
             load_ended = load_average()
-        log_path.write_text(output, encoding="utf-8")
+        # run_acl2 has already published terminal activity for a complete raw
+        # log. Never truncate that visible file while normalizing UTF-8.
+        certs.write_text_atomic(log_path, output)
         with record_lock:
             book_load_average[f"{book} {wave}"] = [load_started, load_ended]
             wave_outputs[book][wave] = output
@@ -1561,8 +1565,8 @@ def main() -> int:
         # The same file name a closure run writes, so every reader of a run
         # directory -- `tools/triage.py` included -- finds one log per book
         # whichever mode produced it.  The per-wave logs stay beside it.
-        (run_dir / (book.replace("/", "--") + ".certify.log")).write_text(
-            output, encoding="utf-8")
+        certs.write_text_atomic(
+            run_dir / (book.replace("/", "--") + ".certify.log"), output)
         codes = [wave_codes[book].get(wave) for wave in PCERT_ORDER]
         bad = next((code for code in codes if code not in (0, None)), None)
         outputs[book] = output
@@ -1645,7 +1649,7 @@ def main() -> int:
         markers.extend(success_markers(outputs[book], nonce))
     exit_codes = {book: exit_codes[book] for book in args.books}
     combined_log = "\n".join(outputs[book] for book in args.books)
-    (run_dir / "certify.log").write_text(combined_log, encoding="utf-8")
+    certs.write_text_atomic(run_dir / "certify.log", combined_log)
     expected_markers = [success_token(book, nonce) for book in args.books]
     marker_ok = markers == expected_markers
     certificates = {

@@ -180,13 +180,14 @@
            (prefix (or (fn2-decl-get :prefix options) ""))
            (inv (or (fn2-decl-get :invariant options) (fn2-columns-sym table "-WFP")))
            (suffix (or (fn2-decl-get :suffix options) "-WFP")))
-      ; TYPE keeps the outer fallback unless explicitly overridden. An explicit
-      ; NIL suppresses that fallback; :hints continues to select WFP hints.
+      ; Omitted TYPE/WFP options inherit the outer hint. An explicit NIL
+      ; remains an opt-out, so preserve option presence as well as its value.
       (append `((,(concatenate 'string prefix "-TYPE") ,(fn2-columns-sym table "P") ,pos
                  ,@(and (member-eq :type-hints options)
                         `(:hints ,(fn2-decl-get :type-hints options))))
                 (,(concatenate 'string prefix suffix) ,inv ,pos
-                 :hints ,(fn2-decl-get :hints options)))
+                 ,@(and (member-eq :hints options)
+                        `(:hints ,(fn2-decl-get :hints options)))))
               (fn2-columns-carrier-specs (cdr carriers))))))
 (defun fn2-columns-forward-facts (facts call)
   (declare (xargs :verify-guards nil))
@@ -633,6 +634,25 @@
         :hints (("Goal" :in-theory (disable ,wfp))))
       (local (in-theory (disable ,bridge)))
       (in-theory (disable ,wfp)))))
+
+; A compound row/span predicate can carry the same generated column WFP
+; invariant as its caller. Keep the checked public face and derive its fast
+; guarded face from ONE declaration; bounds and semantic tests stay intact.
+(defun fn2-columns-predicate-events (name formals stobjs shape tests)
+ (declare (xargs :verify-guards nil))
+ (let ((carried (fn2-columns-sym name "-CARRIED")))
+  `((defun ,name ,formals
+      (declare (xargs :stobjs ,stobjs :guard t))
+      (and ,@shape ,@tests))
+    (defun ,carried ,formals
+      (declare (xargs :stobjs ,stobjs :guard (and ,@shape)))
+      (and ,@tests))
+    (defthm ,(fn2-columns-sym name "-CARRIED-EQUIVALENCE")
+      (implies (and ,@shape) (equal (,name ,@formals) (,carried ,@formals)))
+      :rule-classes nil
+      :hints (("Goal" :in-theory (enable ,name ,carried)))))))
+(defmacro defcolumns-predicate (name formals &key stobjs shape tests)
+ (cons 'progn (fn2-columns-predicate-events name formals stobjs shape tests)))
 
 (defun fn2-columns-wfp-write-facts (name fields column-fields)
   (declare (xargs :guard t :verify-guards nil))

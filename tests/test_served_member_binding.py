@@ -56,6 +56,18 @@ class ServedSelection(unittest.TestCase):
         self.assertNotIn('sorry', source)
         self.assertNotIn('axiom ', source)
 
+    def test_canonical_pairs_preserve_actual_operand_order_and_packages(self):
+        source = s.member_context_source(packet())
+        self.assertIn('(rcRepresented : rcObject.value? = some rc)', source)
+        self.assertIn('"EQUAL" [rcObject, memberLiteral0]', source)
+        self.assertIn('symbol_equal_correspondence', source)
+        self.assertIn('(.cons rcRepresented (.cons memberLiteral0_represented .nil))', source)
+        # Same decoded-looking name in ACL2 cannot borrow KEYWORD's identity.
+        changed = s.member_context_source(packet().replace(obj('KEYWORD::SIZE'), obj('ACL2:::SIZE')))
+        self.assertNotEqual(source, changed)
+        self.assertIn('Val.sym "ACL2:::SIZE"', changed)
+        self.assertIn('memberLiteral0 : Object := (.symbol [65, 67, 76, 50]', changed)
+
     def test_missing_member_site_does_not_generate_context(self):
         text = packet().replace(obj('MEMBER-EQUAL'), obj('EQUAL'))
         with self.assertRaisesRegex(ValueError, 'exactly one logical MEMBER'):

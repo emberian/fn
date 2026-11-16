@@ -148,14 +148,9 @@
 (defthm fn2-bc-nth-of-update-nth-array
   (equal (nth j (update-nth-array k i v l))
          (if (equal (nfix j) (nfix k)) (update-nth i v (nth k l)) (nth j l))))
-(defthm fn2-ops-peek-posted-slot
-  (implies (equal (car (fn2-ops-peek-posted ops)) t)
-           (and (natp (mv-nth 1 (fn2-ops-peek-posted ops)))
-                (< (mv-nth 1 (fn2-ops-peek-posted ops)) (fn2-ops-rows ops))
-                (or (equal (mv-nth 2 (fn2-ops-peek-posted ops)) 0)
-                    (equal (mv-nth 2 (fn2-ops-peek-posted ops)) 1))))
-  :rule-classes ((:rewrite) (:forward-chaining :trigger-terms ((fn2-ops-peek-posted ops))))
-  :hints (("Goal" :in-theory (enable fn2-ops-peek-posted fn2-op-slotp fn2-borrow-readers))))
+; FN2-OPS-PEEK-POSTED-SLOT is owned by VOCAB next to its producer.
+; Its original statement and rule classes are unchanged.
+
 (defthm fn2-ops-peek-posted-cell
   (implies (equal (car (fn2-ops-peek-posted ops)) t)
            (let ((j (mv-nth 1 (fn2-ops-peek-posted ops))))

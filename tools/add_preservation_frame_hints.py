@@ -2,7 +2,7 @@
 """Add observer opacity to unhinted top-level column preservation calls."""
 from pathlib import Path
 import argparse
-from lisp_rewrite import Atom, match, parse, write
+from lisp_rewrite import Atom, Lst, match, parse, write
 
 
 def add_preservation_frame_hints(text, table="pool"):
@@ -15,6 +15,35 @@ def add_preservation_frame_hints(text, table="pool"):
             continue  # Explicit hints, including NIL, are authoritative.
         edits.append((found.end - 1, found.end - 1,
                       f'\n :hints (("Goal" :in-theory (disable fn2-{table}-rows)))'))
+    return write(text, edits)
+
+
+def add_preservation_spec_frame_hints(text, table, observers):
+    """Prove explicit unconditional frame specs from the actual producer.
+
+    Common hints and every explicit per-spec hint (including NIL) remain
+    authoritative; TYPE/WFP specs have no :frame and are untouched.
+    """
+    parsed = parse(text)
+    edits = []
+    for found in match(None, parsed, deep=False, head=f"fn2-{table}-preserves"):
+        subject = found.node.items[1]
+        options = found.node.items[3:]
+        for i, option in enumerate(options[:-1]):
+            if not isinstance(option, Atom) or option.low != ":specs":
+                continue
+            specs = options[i + 1]
+            if not isinstance(specs, Lst):
+                continue
+            for spec in specs.items:
+                if not isinstance(spec, Lst):
+                    continue
+                keys = {x.low for x in spec.items[3:] if isinstance(x, Atom)}
+                if ":frame" not in keys or ":hints" in keys:
+                    continue
+                hint = ('\n          :hints (("Goal" :in-theory (e/d (' + subject.text + ') ('
+                        + ' '.join(observers) + '))))')
+                edits.append((spec.end - 1, spec.end - 1, hint))
     return write(text, edits)
 
 

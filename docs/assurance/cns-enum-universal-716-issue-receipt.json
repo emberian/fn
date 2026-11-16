@@ -1,0 +1,56 @@
+{
+  "status": "stopped-first-universal-proof-refusal",
+  "fixture_sha256": "716f4ced7b54cde1e4fc7fc5107e526006c7e550a09f425d2ea59e662321bb07",
+  "campaign_exit": 1,
+  "state_only_compiled_books": 131,
+  "state_load_acl2_seconds": 9.8,
+  "support": {
+    "bounded_update_self": {
+      "status": "proved before enclosing failure",
+      "acl2_seconds": 0.11,
+      "steps": 1371
+    },
+    "actual_record_length": {
+      "status": "proved before enclosing failure",
+      "acl2_seconds": 0.16,
+      "steps": 10899
+    },
+    "actual_target_shape": {
+      "status": "proved before enclosing failure",
+      "acl2_seconds": 0.09,
+      "steps": 882
+    },
+    "logical_and_universal_named_theories": "constructed"
+  },
+  "first_refusal": {
+    "name": "FN2-CNS-SOURCE-ISSUE-CHILDREN-ENUM-FRAGMENT-WHOLE-CARRIER-EQUALITY",
+    "acl2_seconds": 0.4,
+    "steps": 51248,
+    "checkpoint": "Spurious equalities (EQUAL (NFIX 30) (NFIX 0)), (EQUAL (NFIX 31) (NFIX 0)), etc remain. NTH-UPDATE-NTH introduces NFIX, absent from actual-definition dependency closure; no NFIX executable normalization in active theory. Search reaches induction fallback with no scheme.",
+    "classification": "proof search refusal, not a counterexample or budget increase request"
+  },
+  "universal_admitted": 0,
+  "universal_requested": 3,
+  "harvest_and_next_and_negative": "not reached",
+  "raw_log": "/tmp/enum-universal-716-first-refusal.txt on forge",
+  "raw_log_sha256": "7d0ecb017fe75a3cfaed742237223a5c12bc210d38afbc70823e60a1e7a41dfa",
+  "cleanup": {
+    "owned_absent_pids": [
+      1881419,
+      1881426,
+      1881469,
+      1881473
+    ],
+    "owned_absent_scope": "run-p1881419-i31238108.scope",
+    "ledger_owner": "enum_universal",
+    "ledger_gib_after": 0,
+    "both_unassigned_fields_recomputed_under_fresh_lock": true
+  },
+  "source_only_successor": {
+    "fixture_sha256": "f3228cd68cf39786b1f2f95d399bfc54aca9ee4bb0fd5c056234a62d291a9f36",
+    "emitter_sha256": "236627959be151c471679f3443c327eb2239c1ffc4df0b7c50669684e00b291c",
+    "scope": "Hint-only: add NFIX/NATP/MAX, LEN type and pure executable comparison normalization matching existing pool frame proofs; preserve actual raw stobj exclusions",
+    "all7_theorem_names_and_formulas_unchanged": true,
+    "kernel_status": "unrun"
+  }
+}

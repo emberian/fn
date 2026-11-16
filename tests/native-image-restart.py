@@ -1,7 +1,8 @@
 #!/usr/bin/env python3
 """A real image, fresh SBCL processes, and SIGKILL immediately after POST's 240.
 
-Run after certifying books/node-profile.lisp. Keeps image and logs under build/.
+Run after qualifying current books/node-profile and books/native-b3-evidence.
+Keeps image and logs under build/.
 The control is exact GROUP, ARTICLE and HEAD wire bytes on two fresh opens,
 including dot transparency and an article longer than one payload extent.
 """
@@ -18,7 +19,7 @@ ROOT = Path(__file__).resolve().parents[1]
 
 
 class Node:
-    def __init__(self, directory, image, mode, label, control_sock=None, env=None):
+    def __init__(self, directory, image, mode, label, control_sock=None, env=None, startup_args=()):
         self.log = (directory / f"{label}.log").open("wb")
         self.pidfile = directory / f"{label}.node.pid"
         self.node_pid = None
@@ -26,6 +27,7 @@ class Node:
         cmd = ["timeout", "600", str(ROOT / "fn"), mode, str(image)]
         if control_sock is not None:
             cmd.extend(["--control-sock", str(control_sock)])
+        cmd.extend(startup_args)
         self.proc = subprocess.Popen(
             cmd, cwd=ROOT,
             stdout=subprocess.PIPE, stderr=subprocess.STDOUT, start_new_session=True,
@@ -188,7 +190,7 @@ def main():
             grant_rc = subprocess.call(
                 [str(ROOT / "fn"), "grant", "set", "anonymous", "append", "local.test",
                  "--control-sock", str(ctl_sock)],
-                cwd=ROOT,
+                cwd=ROOT, timeout=90,
             )
             assert grant_rc == 0, grant_rc
             for mid, _, whole in articles:

@@ -7,10 +7,82 @@ must be derived from that store and the actual served call/attachment graph.
 
 ## Current integration frontier — 2026-11-15 UTC
 
+Upstream `ba773befc` changes the shared declaration foundation to bind claim
+identity and retain refuted claims as unfinished. The six-book union of the
+[registry](receipts/refuted-obligations-four-record.json) and
+[correspondence](receipts/refuted-correspondence-four-record.json) records matches
+that integration's current sources and closure keys. The current-layout
+[member/completion record](receipts/member-refutation-current-thirty-seven-record.json)
+adds its 37-book closure; their union is 39 distinct current qualified books. The initializer/CONN
+record below expands this union to 61, with each record retaining its scope.
+Earlier records below
+remain evidence for their named frozen sources; dependent closures changed by
+this declaration update require qualification at their new keys. The active
+application and reader campaigns keep their explicit frozen sources rather
+than silently switching foundations mid-proof.
+
 The next completion milestone is actual APPEND → STATUS → query, followed by
 recovery of accepted data. Integrated work now goes directly to upstream dev;
 component records alone do not establish this milestone. The shared application
 build owns the coherent current callback/runtime prefix and executable controls.
+
+A dependency-complete part of that application foundation is integrated:
+identity rows carry the query incarnation, mask/wake, retained handles and
+namespace/profile/algorithm fields; decode uses the named unchanged 4,096-byte
+quantum; checkpoint binding helpers explicitly refuse out-of-domain indices.
+The [53-book source union](receipts/query-identity-foundation53-record.json)
+exactly matches qualified source hashes and closure keys after these three
+files land. The new fields prepare query retention but do not establish its
+served behavior. Checkpoint core functions emitted by macros, downstream
+application composition and native execution remain outside this record.
+The remaining machine geometry/ABI changes stay with their actual consumers.
+
+The coherent application candidate is `98fd4fd28`. Its
+[108-book BIND record](receipts/coherent-bind108-record.json) reuses the 107
+qualified prerequisites and certifies the completed BIND book. Root independently
+matched all 108 candidate source hashes and closure keys, actual cert/FASL
+hashes and toolchain metadata. Query release uses two local read/write frame
+facts and checked-mask facts; its caller uses the shared call-derived guard
+hint. Runtime bodies, guards and the original shape statement are unchanged.
+The complete BIND author pass took 46.13 seconds under the original per-event
+limits, leaving proof-cost work open. Six source/mutation controls pass.
+GROUPS, sealer and machines-c-sealer subsequently passed their whole-book
+author checks, separately from this record. READ also passes its complete author check at candidate `04aadad8f`: the existing
+single-walk shape constructor preserves the public statement and runtime,
+with four independent source/mutation controls passing. Its 60.30-second
+whole-book pass leaves proof-cost work open. The subsequent [112-book READ record](receipts/coherent-read112-record.json)
+qualifies that frozen candidate: 108 exact entries reused and GROUPS, sealer,
+machines-c-sealer and READ newly certified. Root matched all 112 source hashes,
+closure keys, actual certificate/FASL hashes and toolchain metadata. This is
+candidate `04aadad8f`, with its original declaration foundation, not a claim
+that all 112 match upstream's later registry changes. Application author work
+then reached `conn-schema`, whose original rich defmachine event exhausted its
+20-second limit. The shared initializer proof-hint repair now passes that
+unchanged event: the pilot's complete CONN book took 16.32 seconds under the
+original limits. Runtime, guards, rich connection fields and public theorem
+formulas remain unchanged; four actual-generator/source controls pass.
+The [current-root CONN33 record](receipts/machine-initializer-current-conn33-record.json)
+qualifies the integrated repair with 12 reused entries and 21 newly certified
+books. Root independently checked every current source/key and actual
+certificate/FASL/toolchain identity. Its
+[pilot record](receipts/machine-initializer-pilot-conn33-record.json) remains scoped
+to the earlier frozen candidate. This generator change rekeys dependent
+application closures; the old READ112 record does not qualify those new keys.
+Actual application and native execution remain pending. Actual FETCH cancellation remains
+unexecuted. Its fixture binds the failed Send to the captured connection,
+request, operation generation and range and rejects stale generations before
+acknowledging the queue head.
+
+The native acceptance sequence uses both existing real-socket tests after
+current `node-profile` and `native-b3-evidence` qualification and host/interface
+checks. `tests/native-append-fetch-restart.py` requires two committed FNCT replies,
+process death, exact retrieval of both distinct 6,144-byte articles and refusal
+of a real Message-ID paired with the other article's position.
+`tests/native-image-restart.py` requires pre-grant POST refusal, two observed
+NNTP `240` replies, process death, and exact GROUP/ARTICLE/HEAD across two fresh
+opens. Its 6,297- and 15,745-byte articles cross an extent boundary; they do not
+establish 64 KiB upload-window recycling. Both gates use separate disposable
+images and remain unrun. These are process-death tests, not power-loss proofs.
 
 Run-page source `f3a8f5668` is now qualified by the
 [26-book record](receipts/runs-page26-record.json): 25 reused and one new book.
@@ -27,8 +99,131 @@ closure keys. The proof adapter delegates complete statements to the existing
 columns generator and changes only unconditional row-frame hints. TYPE, WFP,
 RAW-ROWS and explicit hints retain their original behavior. Actual generated-form
 controls and the complete source book pass, including ACL2's second pass.
-The composed consumer build has advanced beyond CNS edges into the format and
-hashing dependencies; APPEND/FETCH and native restart remain unexecuted.
+The composed consumer author build advanced through format, hashing, runs,
+overlay and run assembly. Ribbon's earlier standalone certification exposed
+an incidental author-world dependency; it now explicitly includes the byte-contract
+book locally. The composed author run advanced through identity, commit
+geometry/format, ordered runs, authority schema, folds and run manifests. Its
+original generated `runs-served` assembly now passes after call-derived guard
+and shape hints, with runtime bodies and theorem statements preserved. Range
+assembly passes in 14.43 seconds; checkpoint and resource books also pass their
+author checks. The application build continues downstream. The current
+integration tree's nine changed run/range books passed author checks, followed
+by the [44-book record](receipts/root-run-range44-record.json): 35 reused and
+nine newly certified. Root matched all current source hashes and closure keys
+and all 44 actual cert/FASL payload hashes. The record covers `runs-served` and
+`range`, not `range-served` or application composition. Identity at 39.466 seconds,
+ordered at 34.285, runs at 23.594 and runs-served at 20.284 leave proof-cost work
+open. APPEND/FETCH and native restart remain unexecuted.
+
+The shared call-derived proof helper now replaces repeated fold and Ribbon
+hints, including the temporary local fold observer exclusion. It derives column
+inputs from the admitted signature and uses admitted preservation contracts to
+keep stateful callees opaque. The generated guard and preservation hints retain
+all runtime bodies, guards and theorem formulas. The
+[33-book record](receipts/columns-call-guards33-record.json) covers 28 reused
+parents and five new books; root independently matched all 33 current source
+hashes and closure keys and ran five focused controls. Both complete folds and
+Ribbon passed under the original per-event limits. Their record times of
+19.248 and 20.994 seconds leave proof-cost work open. This package is integrated
+separately from the running application source; it does not qualify composition.
+
+The bounded digest fetch operation and its critical fixtures are integrated.
+Its byte-budget worker retains partial words across visits, writes only complete
+words, and refines the existing fetch result including the entire digest carrier.
+The progress theorem bounds cursor advance, not physical read cost. The
+[12-book record](receipts/digest-fetch12-record.json) covers nine reused parents
+and three new books, including budget and hypothesis-removal witnesses. Both
+fixtures are active certification roots. Root matched all 12 source hashes and
+the complete fixture closure key; two source controls pass. Actual event-reader
+adoption remains pending: semantic verification must yield before digest work
+uses the next visit's budget, and record reads must await all 32 digest bytes.
+This leaf record does not qualify the caller or recovery behavior.
+
+Metadata and physical-reader composition remains a product blocker. The source
+lane has connected FullRef reader starts and transaction/auth dispatch, but
+CLOSE must park catalog resources before releasing its observer receipt, readiness
+must distinguish an owned parked reader from an idle one, and typed catalog
+completion must lead to an actual served lookup. The NNTP ARTICLE path also
+needs its scratch storage reserved with the loader windows before emitting a
+reply prefix; retaining loader windows while waiting for scratch is not a
+completed capacity design. Q1's reviewed PAGE fixture requires these newer
+schemas and cannot be loaded into the older assembled application world.
+These source changes and fixtures remain unqualified; no productive served
+lookup or checkpoint reclamation activation is established by their presence.
+
+The metadata source lane has corrected the live readiness predicates: drained
+operation history no longer has to resemble a fresh row, and capacity checks
+use the pool's canonical reservable count. Its parked-query pressure fixture
+now requires an actual reserved and parked CNS region; six source checks pass.
+This is a constructor/allocator control, not signed-client ancestry or a
+productive second catalog adoption. Both runtime cases remain required.
+
+Independent review of typed catalog completion found an undercharge in
+`checkpoint-live-finish.lisp`: the declared 2,016 bytes count the promoted
+payload once. Copying reads and writes 4,032 bytes, and the identified preflight
+payload comparisons add 256, for a lower bound of 4,288 bytes. This excludes
+scalar checks, setters and shape validation; it is not the final charge. The
+review also identifies 608 recursive cells including root provenance. The
+metadata owner must derive complete bounded work or split the transition,
+while preserving publication, writer exclusion and old-source drain checks.
+No additional release-order defect was found in that scoped source review.
+
+The subsequent actual-master trace found a composition blocker: the master
+still takes its summary-authority/rebase route without invoking the typed live
+catalog install/retire/finish path. Directory rebase supplies required journal
+prefix and event archive evidence; it cannot simply be skipped. Both rebase
+consumption and the proposed typed finish transfer pending authority into the
+active row. Current typed finish also clears the pending summary row, so merely
+calling both operations in sequence does not compose their prerequisites.
+The metadata owner is joining them around one authority transfer, retaining
+writer exclusion through archive consumption and reopening only at the final
+terminal. Partial promotion and archive progress need explicit recovery cuts.
+An actual first-to-second adoption followed by served lookup remains required.
+
+The activation audit at metadata source `c62b3e0bd` identifies a concrete
+remaining runtime gap. Master admission is locked by the literal
+`*fn2-checkpoint-activation-qualified* = NIL`; no runtime or admitted
+qualification predicate discharges it. Authenticated RELEASE recovery reaches
+stage 8 and returns `:blocked`, and its dispatcher stops without chronological
+settlement from reconstructed prefix obligations. Existing publication fixtures
+start the master at CATALOG explicitly, so their downstream Write/Fence evidence
+does not establish ordinary activation. The release owner is joining existing
+selected-base, suffix and obligation providers into that recovery path. The
+required witness starts through real initialization and ordinary pressure or
+request, reaches packing/submission/persistence without phase writes, and
+restores accepted data before a subsequent append. The lock remains intact
+until the actual recovery and composed-machine requirements are established.
+
+The same source audit found another cost gap: `run-bound-step` can copy a
+4,096-byte page, requiring 8,192 payload bytes of reads and writes, while
+`fn2-run-page-step` declares 4,096. Its VERIFY phase also delegates format work;
+a COPY-only correction will not establish the complete phase budget. The
+sealer owner is connecting phase costs and actual engine progress controls.
+
+The counted upload feeder is integrated through the same six-result slice used
+by the actual core callback and public feeder. Its
+[15-book record](receipts/feed15-record-20261115.json) covers 11 reused parents
+and four certified source/control books; root matched every current source hash
+and closure key. Controls execute explicit input bounds, no header cut on this
+face, one-byte continuation and complete-pool preservation on stale generation.
+Four structural controls preserve the callback ABI and establish a single owner
+for the shared transaction counter. Actual core/callback admission and the full
+rolling upload remain pending; the leaf record does not qualify either.
+
+The same consumer needed `RUN-BUILD-PAGE` to use `(zp (nfix level))` before
+its checked page-kind call. This preserves logical ZP behavior on arbitrary
+inputs and is qualified by the [exact 28-book record](receipts/runs28-record.json):
+26 reused parents and two newly certified books. Root matched all current source
+hashes and closure keys. Runs took 21.75 seconds, leaving proof-cost work open.
+The callee still receives the original level and rejects invalid input.
+
+SOURCE routing now has a reviewed structural repair for sixteen findings in the
+frozen consumer: finite returned statuses reach their explicit continuation or
+cleanup branches, and operation acquisition remains conditional on successful
+issue. Six source controls cover both frozen implementations, status closure,
+idempotence and preservation of injected ownership effects. This is not executed
+actor evidence. The approved consumer overlay still awaits composed admission.
 
 Stable connection/TLS schema providers are integrated at `bf2fc57e7` with
 [qualified 39-book evidence](receipts/kind-schema39-record.json): 35 reused,
@@ -147,21 +342,79 @@ output recognizers/invariants. Runtime definitions and guards are unchanged.
 The original stronger off-guard FIELDS-TYPE formula is now refuted by an actual
 logical counterexample. Its complete original antecedent holds, while a readonly
 checkpoint value of -1 makes the actual packer's output fail FIELDSP. The guarded
-replacement retains the missing readonly recognizer. Production formula/registry
-bytes remain unchanged: the registry has no refuted state, and this claim must
-not be treated as proved. Exact 34-book record `certify-20261115T124759Z-1337739`
+replacement retains the missing readonly recognizer. The production formula remains unchanged. That historical registry lacked a
+refuted state; the explicit registry connection below now preserves the failure
+without treating the original claim as proved. Exact 34-book record `certify-20261115T124759Z-1337739`
 reuses 32 production books and certifies the connected positive/negative test
 leaves. Root matched all 34 source hashes and keys against the qualified entries.
 Receipt: [readonly counterexample](receipts/member-readonly-counterexample34-record.json).
 Receipt: [member and actual positive](receipts/checkpoint-member-thirty-three-record.json).
+
+Registry follow-on (`assurance-refuted-claims`) adds status
+`(:refuted counterexample-theorem candidate-replacement-theorem)`. The
+table guard accepts only an admitted negation of a closed instance of the exact
+live `$OWED` statement; raw author formula or a diagnostic predicate name cannot
+bind it. Refuted originals remain in the unfinished export and completion gate,
+with zero admitted proof credit. The replacement locator is explicitly unverified
+as a semantic link; existence of another theorem does not repair the original.
+The new member bridge uses the admitted readonly-removal witness to prove that
+exact negated instance and points to the distinct FIELDS-TYPE-UNDER-GUARD theorem.
+Existing production member and positive/negative witness bytes are unchanged.
+Each bound declaration now also emits an immutable logical claim-identity
+constant (statement, variables, source formula, translated body). Every table
+status must match it; direct retargeting, unbinding, display-formula mutation and
+clear/re-add cannot redirect the established key. Initial unbound requirements
+and custom statement names remain supported. Status/evidence/check/doc updates
+remain separate. Exact four-book record `certify-20261115T180152Z-1647029`
+at `05cb2fa790e5479b75d3713e0eb3eecac50a52c7` qualifies declare/owed/report and
+35-form actual registry controls, including retarget, unbind, clear/re-add,
+wrong/open counterexamples and redundant author/identity replay. Actual report
+readback verifies the target row is REFUTED, unfinished, replacement link
+unverified, with zero proved claims. Four generic structural source tests pass; member-specific controls stay with the separate member packet.
+[Four-book receipt](receipts/refuted-obligations-four-record.json) records exact
+source, cert/FASL/port hashes and toolchain. The larger core square-evidence
+regression remains unqualified by this record.
+
+The actual member bridge subsequently passed its original source events and
+[37-book frozen record](receipts/member-refutation-thirty-seven-record.json),
+including completion assertions and actual export readback. Its named theorem
+negates a closed instance of the original `$OWED` statement. The completion
+consumer reports both `:unproved` and `:refuted-original`, with zero proof credit.
+Root checked all 37 certificate/FASL/port payload hashes. This record uses the
+frozen layout source at `64ee0f859`; upstream's named decode constant changes
+14 dependent keys. The [current-layout 37-book record](receipts/member-refutation-current-thirty-seven-record.json)
+now passes: 23 exact qualified keys reused and 14 layout-dependent books newly
+certified, without replaying unchanged author proofs. Root independently matched
+all 37 current source hashes and closure keys, certificate/FASL/port hashes,
+and toolchain metadata. Actual member-row export readback passes at these keys.
+This qualifies the member, completion and selected-row export closure; it does
+not qualify the full application or the larger core regression.
+
+The existing small correspondence consumer subsequently passed all 49 actual
+forms (0.27 seconds, 32,957 steps), then exact four-book record
+`certify-20261115T180639Z-1652106`: two qualified declaration/owed parents reused,
+square-evidence and its unchanged correspondence fixture newly certified.
+[Correspondence receipt](receipts/refuted-correspondence-four-record.json) binds
+those sources and payloads. Together the two records cover six distinct local
+books, including the original-conclusion mutation/domain controls. They do not
+qualify the larger core-lowering regression or the member registry bridge.
+The member packet connects the admitted bridge to the global export include
+and registers its actual completion fixture as a certification root. The current-layout record above qualifies that connection.
+
+
 
 The shared `:type-hints` fix replaces member-specific event surgery. Its original
 six-book record is preserved in the [carrier receipt](receipts/carrier-type-hints-six-record.json).
 The actual installation caller's source consumes the four guarded contracts,
 but that proof is emitted later in `assembly-callbacks-bt`; certification of its
 macro declaration alone would not prove composition. That consumer remains in
-the application candidate pending its actual gate. Member qualification does
-not establish checkpoint activation, application correctness or native restart.
+the application candidate pending its actual gate. The root source alone has
+no actor route through installation BEGIN/STEP/SUBMIT; the physical metadata
+lane's real master now supplies that route. Its final join must retain these
+four guarded contracts and the STEP proof hints, then admit the generated
+caller in the actual assembly. The replacement theorem's existence alone is
+not evidence that the served path consumes it. Member qualification does not
+establish checkpoint activation, application correctness or native restart.
 
 Checkpoint-ticket installation is also qualified: exact 27-book record
 `certify-20261115T123506Z-1324806` reused 26 parents and certified tickets.

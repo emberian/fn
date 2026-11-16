@@ -2,6 +2,7 @@
 ; Registration/costs remain in machines-b; there is one runtime implementation.
 (in-package "ACL2")
 (include-book "arm-issue-effects")
+(include-book "pool-dimensions")
 (include-book "read-pins")
 (include-book "commit-geometry")
 (include-book "std/util/bstar" :dir :system)
@@ -115,6 +116,8 @@
                                              fn2-extents fn2-alloc-edges fn2-pool fn2-ops fn2-control)
   :carriers ((fn2-pool 3 :prefix "-POOL") (fn2-ops 4 :prefix "-OPS") (fn2-control 5 :prefix "-CONTROL")
              (fn2-extents 6 :prefix "-EXTENTS") (fn2-alloc-edges 7 :prefix "-EDGES")))
+
+(fn2-pool-dimensions fn2-pinned-block-io-children :opaque (fn2-issue-read-children fn2-issue-write-children fn2-alloc-handle-code fn2-alloc-edge-add fn2-b-read-pin-drop fn2-control-record-stop fn2-control-stop fn2-op-slotp fn2-ops-free-head fn2-ops-gen fn2-extents-state))
 (assert-event
  (equal (getpropc 'fn2-pinned-block-io-children 'stobjs-out nil (w state))
         '(nil nil nil fn2-pool fn2-ops fn2-control fn2-extents fn2-alloc-edges)))
@@ -144,6 +147,8 @@
   :carriers ((fn2-pool 3 :prefix "-POOL") (fn2-ops 4 :prefix "-OPS") (fn2-control 5 :prefix "-CONTROL")
              (fn2-extents 6 :prefix "-EXTENTS") (fn2-alloc-edges 7 :prefix "-EDGES")))
 
+(fn2-pool-dimensions fn2-block-read-children :opaque (fn2-pinned-block-io-children))
+
 (defun fn2-block-write-children (pu epoch alloc off len lslot lgen boff okind oslot ogen principal
                                    fn2-extents fn2-alloc-edges fn2-pool fn2-ops fn2-control)
  (declare (xargs :stobjs (fn2-extents fn2-alloc-edges fn2-pool fn2-ops fn2-control)
@@ -158,7 +163,16 @@
   :carriers ((fn2-pool 3 :prefix "-POOL") (fn2-ops 4 :prefix "-OPS") (fn2-control 5 :prefix "-CONTROL")
              (fn2-extents 6 :prefix "-EXTENTS") (fn2-alloc-edges 7 :prefix "-EDGES")))
 
+(fn2-pool-dimensions fn2-block-write-children :opaque (fn2-pinned-block-io-children))
+
 (make-event
  (value (cons 'progn
    (append (fn2-issue-wrapper-effect-events '(fn2-block-read-children fn2-block-write-children) (w state))
            (fn2-issued-wrapper-events '(fn2-block-read-children fn2-block-write-children) (w state))))))
+
+; The public read/write wrappers preserve the same successful reservation
+; identity as their actual pinned producer; no second implementation.
+(make-event
+ (value (cons 'progn
+   (fn2-block-issue-identity-events
+    '(fn2-block-read-children fn2-block-write-children) (w state)))))

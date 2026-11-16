@@ -46,6 +46,8 @@
 ; fn2-read-core-events, materialized in assembly-callbacks-c.lisp.
 (in-package "ACL2")
 (include-book "machines-c-sealer")
+(include-book "pool-copy")
+(include-book "pool-dimensions")
 (fn2-book-layer :c)
 (local (in-theory (disable fn2-run-layout-fields fn2-run-layout-keys fn2-run-layout-merge fn2-run-layout-size
                            fn2-fold-key-arg fn2-fold-arity fn2-fold-assigned-p fn2-run-layout-octets-max
@@ -62,7 +64,7 @@
                    (equal (fn2-b-read-rows '((:x . 4))) 0) (equal (fn2-b-read-rows '((:x . 4) (:reading . t))) 8)
                    (equal (fn2-b-read-rows '((:x . 4) (:reading . t) (:cns . 3))) 11)
                    (equal (fn2-b-field-rows '((:t . 3) (:x . 2) (:reading . t) (:format-slots . 3)))
-                          (+ (* 3 *fn2-idc-b-stripe*) (* 3 *fn2-idc-stride*) *fn2-b-seal-field-rows* (* 4 *fn2-b-read-stride*)))))
+                          (+ (* 3 *fn2-idc-b-stripe*) (* 3 *fn2-idc-stride*) *fn2-b-seal-field-rows* *fn2-b-checkpoint-field-rows* (* 4 *fn2-b-read-stride*)))))
 
 ; A read row: the operation it holds (one at a time), the schema, the
 ; owner its octet key fields are read under (QSET once given), and the
@@ -143,14 +145,22 @@
 ;; stated over it), the fields and pool recognizers folded (C-ASSEMBLY-THEORY),
 ;; and READS: the callees and the row reads whose values only feed checks
 ;; and arguments (C-SHAPE-READS).
-(defmacro fn2-rd-shape (fn args outs stobjs &optional reads (disable 't))
- `(progn
+(defmacro fn2-rd-shape (fn args outs stobjs &optional reads (disable 't) (one 'nil))
+ (if one
+   `(progn
+     (fn2-shape-one ,(fn2-columns-sym fn "-RD-SHAPE") ,fn ,args
+      ,(fn2-idc-hyp-list stobjs) ,(fn2-fc-shape-claims outs 'fn2-shape-r)
+      ,(strip-cars outs) (,fn ,@(strip-cadrs (fn2-rd-keeps reads)))
+      (,@(set-difference-eq (fn2-rd-shape-disables stobjs) (strip-cadrs (fn2-rd-keeps reads)))
+       fn2-fieldsp fn2-fields-wfp fn2-poolp fn2-pool-wfp ,@(fn2-rd-folds reads)))
+     ,@(and disable `((in-theory (disable ,fn)))))
+   `(progn
    (defthm ,(fn2-columns-sym fn "-RD-SHAPE")
     (implies (and ,@(fn2-idc-hyp-list stobjs)) (and ,@(fn2-fc-shape-claims outs (cons fn args))))
     :hints (("Goal" :in-theory (e/d (,fn ,@(strip-cadrs (fn2-rd-keeps reads)))
                                    (,@(set-difference-eq (fn2-rd-shape-disables stobjs) (strip-cadrs (fn2-rd-keeps reads)))
                                     fn2-fieldsp fn2-fields-wfp fn2-poolp fn2-pool-wfp ,@(fn2-rd-folds reads))))))
-   ,@(and disable `((in-theory (disable ,fn))))))
+   ,@(and disable `((in-theory (disable ,fn)))))))
 
 ;; The range engine's entry points, whose shapes range.lisp's adapters do
 ;; not need (they use local stobjs).
@@ -492,17 +502,6 @@
 ; Copy at most N octets of the entry's octet field F, from octet FROM, to
 ; DSLOT/DGEN at DOFF (written under DK DS DG): (mv code copied left), LEFT
 ; the field's octets after the copied ones.
-(defun fn2-rd-copy (n sslot sgen soff sk ss sg dslot dgen doff dk ds dg fn2-pool)
- (declare (xargs :stobjs fn2-pool :measure (nfix n) :guard (and (fn2-pool-wfp fn2-pool) (natp n) (natp soff) (natp doff))
-  :guard-hints (("Goal" :in-theory (disable fn2-pool-read fn2-pool-write)))))
- (if (zp n) (mv :ok fn2-pool)
-  (b* (((mv code byte) (fn2-pool-read sslot sgen soff sk ss sg fn2-pool))
-       ((unless (eq code :ok)) (mv code fn2-pool))
-       ((mv code fn2-pool) (fn2-pool-write dslot dgen doff byte dk ds dg fn2-pool))
-       ((unless (eq code :ok)) (mv code fn2-pool)))
-   (fn2-rd-copy (- n 1) sslot sgen (+ 1 soff) sk ss sg dslot dgen (+ 1 doff) dk ds dg fn2-pool))))
-(fn2-pool-preserves fn2-rd-copy (n sslot sgen soff sk ss sg dslot dgen doff dk ds dg fn2-pool) :position 1
- :hints (("Goal" :in-theory (disable fn2-pool-read fn2-pool-write fn2-pool-rows))))
 (defun fn2-rd-octets (x f from n dslot dgen doff dk ds dg fn2-reads fn2-run-installed fn2-fields fn2-pool)
  (declare (xargs :stobjs (fn2-reads fn2-run-installed fn2-fields fn2-pool) :guard t
   :guard-hints (("Goal" :in-theory (disable fn2-rd-copy fn2-rd-entry-row fn2-fields-ref-len fn2-fields-ref-slot fn2-fields-ref-gen
@@ -523,7 +522,9 @@
   (mv :ok k (- len (+ from k)) fn2-pool)))
 (fn2-pool-preserves fn2-rd-octets (x f from n dslot dgen doff dk ds dg fn2-reads fn2-run-installed fn2-fields fn2-pool) :position 3
  :hints (("Goal" :in-theory (disable fn2-rd-copy fn2-rd-entry-row fn2-pool-rows))))
-(in-theory (disable fn2-rd-copy fn2-rd-octets fn2-rd-value))
+(fn2-pool-dimensions fn2-rd-octets :observations (:data)
+ :opaque (fn2-rd-copy fn2-rd-entry-row))
+(in-theory (disable fn2-rd-octets fn2-rd-value))
 
 ; ---------------------------------------------------------------------------
 ; Release read row X: its range, seek and lookup idle, its query owner and
@@ -872,7 +873,7 @@
  ((fn2-reads 3) (fn2-succ-txns 4) (fn2-run-cursors 5) (fn2-run-paths 6) (fn2-fields 7))
  (fn2-reads fn2-succ-txns fn2-overlays fn2-overlay-index fn2-run-installed fn2-run-cursors fn2-run-paths
   fn2-run-cache fn2-fields fn2-pool)
- (fn2-xl-step fn2-xl-done fn2-reads-op fn2-reads-sid fn2-reads-qk fn2-reads-qs fn2-reads-qg fn2-reads-found fn2-reads-selected fn2-id-field fn2-rd-identity-begin))
+ (fn2-xl-step fn2-xl-done fn2-reads-op fn2-reads-sid fn2-reads-qk fn2-reads-qs fn2-reads-qg fn2-reads-found fn2-reads-selected fn2-id-field fn2-rd-identity-begin) t t)
 (defthm fn2-rd-identity-natp
  (and (natp (mv-nth 1 (fn2-rd-identity x mslot mgen moff mlen okind oslot ogen budget b0 tn fn2-reads fn2-succ-txns fn2-overlays
                                        fn2-overlay-index fn2-run-installed fn2-run-cursors fn2-run-paths fn2-run-cache
@@ -1019,6 +1020,8 @@
   :guard (and (fn2-reads-wfp fn2-reads) (fn2-run-installed-wfp fn2-run-installed) (fn2-fields-wfp fn2-fields)
    (fn2-pool-wfp fn2-pool))))
  (fn2-rd-octets x f from n dslot dgen doff dk ds dg fn2-reads fn2-run-installed fn2-fields fn2-pool))
+(fn2-pool-dimensions fn2-read-octets-children :observations (:rows :data)
+ :opaque (fn2-rd-octets))
 (defun fn2-read-release-children (x fn2-reads fn2-id-decides fn2-ranges fn2-seeks fn2-succ-txns)
  (declare (xargs :stobjs (fn2-reads fn2-id-decides fn2-ranges fn2-seeks fn2-succ-txns)
   :guard (and (fn2-reads-wfp fn2-reads) (fn2-id-decides-wfp fn2-id-decides) (fn2-ranges-wfp fn2-ranges) (fn2-seeks-wfp

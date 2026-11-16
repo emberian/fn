@@ -2844,8 +2844,9 @@
          (copies (fn2-arm-get :copy spec))
          (phase (fn2-arms-phase-constant kind (fn2-arm-get :phase spec)))
          (tuple (cons kind *fn2-arms-registry-children*))
+         (inputs (fn2-machine-range-inputs specs))
          (name (fn2-arms-child-name (fn2-columns-sym (if adm 'fn2-machine-admit- 'fn2-machine-take-) (symbol-name kind))))
-         (formals (append (if adm '(index nonce) '(waiter)) copies '(ordinal kind) tuple))
+         (formals (append (if adm '(index nonce) '(waiter)) copies '(ordinal kind) tuple inputs))
          (rowkind (fn2-arm-get :rows tk))
          (reason (and tk (fn2-columns-pre "*" (fn2-columns-sym 'fn2-wait- (concatenate 'string (symbol-name rowkind) "*")))))
          (park `(fn2-machines-park-taken waiter ordinal ,reason fn2-machines fn2-control))
@@ -2854,6 +2855,7 @@
                 ,@(fn2-machine-range-puts specs 0)
                 ,@(fn2-machine-copy-puts copies)
                 ,@(fn2-machine-zero-puts (fn2-arm-get :clear spec))
+                ,@(fn2-arm-get :set spec)
                 (wait-reason *fn2-wait-none*)))
          (install
           `(mv-let (fn2-machines fn2-control)
@@ -2887,10 +2889,13 @@
                  (declare (ignorable gen))
                  ,(fn2-arms-registry-reserves specs 0 install fail)))))))
     (if (not spec) (er hard 'defmachine-registry "~x0 is neither admitted nor taken." kind)
+      (if (fn2-machine-range-provider-problem specs world)
+          (er hard 'defmachine-registry "~@0" (fn2-machine-range-provider-problem specs world))
       `((defun ,name ,formals
-          (declare (xargs :stobjs ,tuple
+          (declare (xargs :stobjs ,(append tuple inputs)
                           :guard (and (,(fn2-arms-sym kind "-WFP") ,kind) (fn2-machines-wfp fn2-machines)
                                       (fn2-pool-wfp fn2-pool) (fn2-control-wfp fn2-control)
+                                      ,@(fn2-arms-child-shape-hyps inputs)
                                       ,@(and adm '((unsigned-byte-p 32 index) (unsigned-byte-p 32 nonce)))
                                       ,@(fn2-machine-copy-guards copies kind world))
                           :guard-hints (("Goal" :in-theory (disable (:executable-counterpart tau-system)
@@ -2905,10 +2910,10 @@
         (in-theory (disable ,name))
         ;; the directory it threads keeps every id's kind, slot and rows
         (fn2-machines-keeps-directory ,name ,formals ,(if adm 2 4) nil ,(fn2-machines-keeps-directory-hints name world))
-        ,@(fn2-arms-ok-shape-events name (cons name formals) (if adm 1 3) tuple tuple
+        ,@(fn2-arms-ok-shape-events name (cons name formals) (if adm 1 3) tuple (append tuple inputs)
             (append (list 'fn2-machines-slot 'fn2-machines-kind (fn2-arms-sym kind "-ROWS"))
                     (fn2-arms-column-readers kind (fn2-machine-property kind :table world))
                     (fn2-arms-column-readers 'fn2-machines *fn2-machine-directory-fields*))
-            *fn2-arms-registry-callees* t world)))))
+            *fn2-arms-registry-callees* t world))))))
 (defmacro defmachine-registry (kind)
   `(make-event (value (cons 'progn (fn2-arms-registry-events ',kind (w state))))))

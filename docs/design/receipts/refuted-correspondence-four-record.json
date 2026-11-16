@@ -1,0 +1,43 @@
+{
+  "result": "PASS",
+  "source_commit": "05cb2fa790e5479b75d3713e0eb3eecac50a52c7",
+  "run": "certify-20261115T180639Z-1652106",
+  "toolchain": "8aeb1bea18968c6cd33ac633a80ebf67e4924504db112fd27eb11f16a27b2a8c",
+  "scope": "Actual existing square-evidence-correspondence-unit four-book closure; two exact qualified parents plus two newly certified books. 49 author forms passed,0.27s/32957steps. Full core31/member34 remain unrun.",
+  "records": {
+    "tests/square-evidence-correspondence-unit": {
+      "key": "89f9f128ba16604be6745752705940ea8f8ba5f6f44ad6af4c6d2c4f9039a202",
+      "entry": "/home/fn/.cache/fn-certs/89f9f128ba16604be6745752705940ea8f8ba5f6f44ad6af4c6d2c4f9039a202/63be0e8165ae7b38",
+      "source_sha256": "65a85c965d3eaa2bab04018bf2ecc48ada080c3330b41042e0d83cf87524bd9d",
+      "cert_sha256": "14f65bfcd81dc1139915fd6a03b98248d0e239d37e83da76b502e097e9fd1c69",
+      "fasl_sha256": "5e9ba633ad2eee8b1c17644d688a877ecf6cbd9dd01b1f69675276218066403e",
+      "port_sha256": "f4cb7e8160cfa6f41cddb04be508f922aa8e87c4ff126bfaad3379aa92e647e0"
+    },
+    "books/square-evidence": {
+      "key": "5c29b3f4af090f728dc2f85fb94d1f461eb65d5ea0a3a6287a19afdeedf8dd23",
+      "entry": "/home/fn/.cache/fn-certs/5c29b3f4af090f728dc2f85fb94d1f461eb65d5ea0a3a6287a19afdeedf8dd23/63be0e8165ae7b38",
+      "source_sha256": "d75c3475f5001de44136e47c37c3509ee92606020be2aebfc2025c5ac84751c4",
+      "cert_sha256": "8417bc22ea230dcde72be9eb50b894e996b89f80b3186f92a58c24ef6edccb11",
+      "fasl_sha256": "def892780f72017745f3a12bb0db45be488c399063ffe6c18e610fe1deecc051",
+      "port_sha256": "f4cb7e8160cfa6f41cddb04be508f922aa8e87c4ff126bfaad3379aa92e647e0"
+    },
+    "books/owed": {
+      "key": "0025566d809fffa0fb7533fa29b1fb7a9932c97d1510818153a1c1fe3d6bbf08",
+      "entry": "/home/fn/.cache/fn-certs/0025566d809fffa0fb7533fa29b1fb7a9932c97d1510818153a1c1fe3d6bbf08/63be0e8165ae7b38",
+      "source_sha256": "171950b91e40f4e7d0e94902ce00009adc62d8104e0eecd5db6a59b93bbffb15",
+      "cert_sha256": "dfd94cb9c2ead45891e01b806f507e2b16ae85cd37570c89fd531bab7d7982fa",
+      "fasl_sha256": "97c17b9a3c61860b138d779461086ccc41487cd250f03509af2c8c6eac0738bd",
+      "port_sha256": "f4cb7e8160cfa6f41cddb04be508f922aa8e87c4ff126bfaad3379aa92e647e0"
+    },
+    "books/declare": {
+      "key": "299f7489bcfaeeb7c1a8f777c4a3b4886c5be174761a2f63f69a39599466aba1",
+      "entry": "/home/fn/.cache/fn-certs/299f7489bcfaeeb7c1a8f777c4a3b4886c5be174761a2f63f69a39599466aba1/63be0e8165ae7b38",
+      "source_sha256": "54e850788ee821dd90a4d9715e93d319f94846039592c4420fef1bdc5d959569",
+      "cert_sha256": "f3a1e4a58cac32474074b9d3ca6a558099a86d2fe66a28ee0670b5c5001bf9dc",
+      "fasl_sha256": "02ceab2d38f5864c70d16e1bfdf77e4450e12aab47bd3d9e3e16ec1319e5c64d",
+      "port_sha256": "f4cb7e8160cfa6f41cddb04be508f922aa8e87c4ff126bfaad3379aa92e647e0"
+    }
+  },
+  "log_sha256": "5b0eb07948ece93e35c974372b2b9de83a79a071544c95f18b9d9370d60589cd",
+  "cleanup": "PID1652051 and holder1652077 absent; stop_holder0; peak246640640,OOM0."
+}

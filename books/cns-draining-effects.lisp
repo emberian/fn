@@ -5,6 +5,20 @@
 (include-book "cns-draining-contract")
 (include-book "machine-reservations")
 
+; This is the actual read-only preflight called before any relevant release.
+(defthm fn2-cns-query-held-independent
+  (implies (and (fn2-corep core) (fn2-core-wfp core))
+           (equal (fn2-cns-query-heldp slot gen core)
+                  (fn2-cns-drain-query-heldp slot gen (fn2-core-pool core))))
+  :rule-classes nil
+  :hints (("Goal" :in-theory
+           (union-theories
+            (theory 'fn2-cns-pool-readers)
+            (e/d (fn2-cns-query-heldp fn2-core-query-heldp fn2-pool-query-heldp
+                  fn2-cns-drain-query-heldp
+                  fn2-pool-rows fn2-cns-drain-cell fn2-cns-drain-get fn2-cns-drain-index)
+                 (fn2-core-pool fn2-corep fn2-core-wfp))))))
+
 (defthm fn2-cns-reservation-native-by-definition
   (equal (fn2-cns-draining-reservedp core)
          (fn2-machines-partition-reservedp *fn2-cns-admission-ordinal*
