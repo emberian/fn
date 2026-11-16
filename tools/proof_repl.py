@@ -4506,6 +4506,18 @@ def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description=__doc__,
                                      formatter_class=argparse.RawDescriptionHelpFormatter)
     sub = parser.add_subparsers(dest="command", required=True)
+    p = sub.add_parser("qualify-leaf", help="author and record one pinned leaf; requires granted external scope")
+    p.add_argument("book")
+    p.add_argument("--plan", type=Path, required=True)
+    p.add_argument("--output", type=Path, required=True, help="new logs and receipt directory")
+    p.add_argument("--deadline", type=float, required=True, help="existing absolute epoch deadline")
+    p.add_argument("--memory-bytes", type=int, required=True, help="exact external memory.max; swap must be zero")
+    p.add_argument("--event-steps", type=int, default=2000000)
+    p.add_argument("--event-seconds", type=float, default=20)
+    def qualify_leaf(args):
+        import proof_leaf
+        return proof_leaf.qualify(args, sys.modules[__name__])
+    p.set_defaults(run=qualify_leaf)
     p = sub.add_parser("warm-entry", help="plan exported warm imports; no ACL2 or cache installation")
     p.add_argument("books", nargs="+", help="intended global books, without .lisp; qualify artifacts separately")
     p.add_argument("--output", required=True, help="definition-free entry .lisp to write")

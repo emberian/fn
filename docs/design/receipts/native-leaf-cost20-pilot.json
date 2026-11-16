@@ -1,0 +1,250 @@
+{
+  "book": "tests/columns-cost-unit-20",
+  "source": "1d91a0169427cf5a84000cc3c48b8350a54d06ad",
+  "session": "leaf_2100244_5b28c0eacdab",
+  "deadline": 1794794270.0,
+  "commands": [
+    {
+      "label": "install",
+      "pid": 2100254,
+      "argv": [
+        "tools/certs.py",
+        "install-set",
+        "tests/columns-cost-unit-20",
+        "--dependencies-only",
+        "--root",
+        "/build/lanes/native-leaf-cost20-pilot",
+        "--cache",
+        "/home/fn/.cache/fn-certs",
+        "--toolchain-identity",
+        "8aeb1bea18968c6cd33ac633a80ebf67e4924504db112fd27eb11f16a27b2a8c",
+        "--acl2",
+        "/tank/fn/toolchains/w28/acl2-literal-4g-tls64k"
+      ],
+      "returncode": 0
+    },
+    {
+      "label": "start",
+      "pid": 2100258,
+      "argv": [
+        "tools/proof_repl.py",
+        "start",
+        "leaf_2100244_5b28c0eacdab",
+        "build/leaf_2100244_5b28c0eacdab",
+        "--cached-only",
+        "--load-limit",
+        "20.0",
+        "--limit",
+        "20.0",
+        "--load-timeout",
+        "120",
+        "--idle-timeout",
+        "5"
+      ],
+      "returncode": 0
+    },
+    {
+      "label": "author",
+      "pid": 2100297,
+      "argv": [
+        "tools/proof_repl.py",
+        "send-range",
+        "leaf_2100244_5b28c0eacdab",
+        "tests/columns-cost-unit-20",
+        "--ld-local",
+        "--per-event-steps",
+        "2000000",
+        "--limit",
+        "20.0"
+      ],
+      "returncode": 0
+    },
+    {
+      "label": "stop",
+      "pid": 2100416,
+      "argv": [
+        "tools/proof_repl.py",
+        "stop",
+        "leaf_2100244_5b28c0eacdab"
+      ],
+      "returncode": 0
+    },
+    {
+      "label": "record",
+      "pid": 2100424,
+      "argv": [
+        "tools/certify_books.py",
+        "tests/columns-cost-unit-20",
+        "--incremental",
+        "--cached-parents",
+        "--jobs",
+        "1",
+        "--origin-kind",
+        "run",
+        "--timeout-seconds",
+        "232"
+      ],
+      "returncode": 0
+    }
+  ],
+  "status": "qualified",
+  "cgroup": "/sys/fs/cgroup/user.slice/user-1000.slice/user@1000.service/app.slice/native-leaf-cost20-pilot.service",
+  "parents": {
+    "books/arms": {
+      "entry": "/home/fn/.cache/fn-certs/f511ffc007efe93fae85998cae2b52b8ef787c988b937ce6ee01c07f0415ef30/fdb3559979173240",
+      "key": "f511ffc007efe93fae85998cae2b52b8ef787c988b937ce6ee01c07f0415ef30"
+    },
+    "books/columns": {
+      "entry": "/home/fn/.cache/fn-certs/9c33a2ce478ff6a3286073f4d3636ef4e109bf1008f4bf21aa079c885aa3ccc7/fdb3559979173240",
+      "key": "9c33a2ce478ff6a3286073f4d3636ef4e109bf1008f4bf21aa079c885aa3ccc7"
+    },
+    "books/columns-call-guards": {
+      "entry": "/home/fn/.cache/fn-certs/6a7a27e64022bd6b6cca734685e875ca8d4837db2d26db5e4c7f287b4540e685/fdb3559979173240",
+      "key": "6a7a27e64022bd6b6cca734685e875ca8d4837db2d26db5e4c7f287b4540e685"
+    },
+    "books/columns-carrier-contracts": {
+      "entry": "/home/fn/.cache/fn-certs/3aefd2ee129efc3ad3f85c66b5e8e2dd13172a70e0d29dab003e88cddeda76af/fdb3559979173240",
+      "key": "3aefd2ee129efc3ad3f85c66b5e8e2dd13172a70e0d29dab003e88cddeda76af"
+    },
+    "books/columns-guard-hints": {
+      "entry": "/home/fn/.cache/fn-certs/b6ec6b2c339c1f1bd5298c27c8492c7ce1e64c659b87180f24ad962e88f14b6a/fdb3559979173240",
+      "key": "b6ec6b2c339c1f1bd5298c27c8492c7ce1e64c659b87180f24ad962e88f14b6a"
+    },
+    "books/declare": {
+      "entry": "/home/fn/.cache/fn-certs/299f7489bcfaeeb7c1a8f777c4a3b4886c5be174761a2f63f69a39599466aba1/63be0e8165ae7b38",
+      "key": "299f7489bcfaeeb7c1a8f777c4a3b4886c5be174761a2f63f69a39599466aba1"
+    },
+    "books/machines": {
+      "entry": "/home/fn/.cache/fn-certs/567982f5d836b61c8bb56a3bd6ef850ee5cff8ffb63d4ea63de77cf2bb283210/fdb3559979173240",
+      "key": "567982f5d836b61c8bb56a3bd6ef850ee5cff8ffb63d4ea63de77cf2bb283210"
+    },
+    "books/operations": {
+      "entry": "/home/fn/.cache/fn-certs/ffaf93d705d08918400704d108e7bffa6a3da8ae5ae2917128974f7d53c9e71b/99fac8c12877bc14",
+      "key": "ffaf93d705d08918400704d108e7bffa6a3da8ae5ae2917128974f7d53c9e71b"
+    },
+    "books/owed": {
+      "entry": "/home/fn/.cache/fn-certs/0025566d809fffa0fb7533fa29b1fb7a9932c97d1510818153a1c1fe3d6bbf08/63be0e8165ae7b38",
+      "key": "0025566d809fffa0fb7533fa29b1fb7a9932c97d1510818153a1c1fe3d6bbf08"
+    },
+    "books/profile": {
+      "entry": "/home/fn/.cache/fn-certs/cdaddbd4628aebebc2dea718832e44dfbe07014033d6a8904f137808c9c34744/99fac8c12877bc14",
+      "key": "cdaddbd4628aebebc2dea718832e44dfbe07014033d6a8904f137808c9c34744"
+    },
+    "books/resources": {
+      "entry": "/home/fn/.cache/fn-certs/57890f1c24088db3b37deccce1fe7ae6fa22cc8d9050e853eefd0d3c8b66ee74/25a82fd4fdfa3025",
+      "key": "57890f1c24088db3b37deccce1fe7ae6fa22cc8d9050e853eefd0d3c8b66ee74"
+    },
+    "books/run-budget": {
+      "entry": "/home/fn/.cache/fn-certs/3a840b886d62c892a01f216d5afb084db051700e001a2d55560749153590833f/a3c8c884f122d50c",
+      "key": "3a840b886d62c892a01f216d5afb084db051700e001a2d55560749153590833f"
+    },
+    "books/vocab": {
+      "entry": "/home/fn/.cache/fn-certs/45147bfa13d3d5e1884c7176a76ac15d62ab2b1fc4e5bd184e7543c351a1701f/fdb3559979173240",
+      "key": "45147bfa13d3d5e1884c7176a76ac15d62ab2b1fc4e5bd184e7543c351a1701f"
+    }
+  },
+  "entry": {
+    "path": "/build/lanes/native-leaf-cost20-pilot/build/leaf_2100244_5b28c0eacdab.lisp",
+    "imports": [
+      "books/machines"
+    ],
+    "exports": [
+      "books/arms",
+      "books/columns",
+      "books/columns-call-guards",
+      "books/columns-carrier-contracts",
+      "books/columns-guard-hints",
+      "books/declare",
+      "books/machines",
+      "books/operations",
+      "books/owed",
+      "books/profile",
+      "books/resources",
+      "books/run-budget",
+      "books/vocab"
+    ]
+  },
+  "session_handles": [
+    {
+      "pid": 2100265,
+      "start_ticks": "145699604"
+    },
+    {
+      "pid": 2100271,
+      "start_ticks": "145699620"
+    }
+  ],
+  "manifest": "/build/lanes/native-leaf-cost20-pilot/build/acl2/certify-20261116T015357Z-2100424/manifest.json",
+  "qualified": {
+    "books/arms": {
+      "entry": "/home/fn/.cache/fn-certs/f511ffc007efe93fae85998cae2b52b8ef787c988b937ce6ee01c07f0415ef30/fdb3559979173240",
+      "key": "f511ffc007efe93fae85998cae2b52b8ef787c988b937ce6ee01c07f0415ef30"
+    },
+    "books/columns": {
+      "entry": "/home/fn/.cache/fn-certs/9c33a2ce478ff6a3286073f4d3636ef4e109bf1008f4bf21aa079c885aa3ccc7/fdb3559979173240",
+      "key": "9c33a2ce478ff6a3286073f4d3636ef4e109bf1008f4bf21aa079c885aa3ccc7"
+    },
+    "books/columns-call-guards": {
+      "entry": "/home/fn/.cache/fn-certs/6a7a27e64022bd6b6cca734685e875ca8d4837db2d26db5e4c7f287b4540e685/fdb3559979173240",
+      "key": "6a7a27e64022bd6b6cca734685e875ca8d4837db2d26db5e4c7f287b4540e685"
+    },
+    "books/columns-carrier-contracts": {
+      "entry": "/home/fn/.cache/fn-certs/3aefd2ee129efc3ad3f85c66b5e8e2dd13172a70e0d29dab003e88cddeda76af/fdb3559979173240",
+      "key": "3aefd2ee129efc3ad3f85c66b5e8e2dd13172a70e0d29dab003e88cddeda76af"
+    },
+    "books/columns-guard-hints": {
+      "entry": "/home/fn/.cache/fn-certs/b6ec6b2c339c1f1bd5298c27c8492c7ce1e64c659b87180f24ad962e88f14b6a/fdb3559979173240",
+      "key": "b6ec6b2c339c1f1bd5298c27c8492c7ce1e64c659b87180f24ad962e88f14b6a"
+    },
+    "books/declare": {
+      "entry": "/home/fn/.cache/fn-certs/299f7489bcfaeeb7c1a8f777c4a3b4886c5be174761a2f63f69a39599466aba1/63be0e8165ae7b38",
+      "key": "299f7489bcfaeeb7c1a8f777c4a3b4886c5be174761a2f63f69a39599466aba1"
+    },
+    "books/machines": {
+      "entry": "/home/fn/.cache/fn-certs/567982f5d836b61c8bb56a3bd6ef850ee5cff8ffb63d4ea63de77cf2bb283210/fdb3559979173240",
+      "key": "567982f5d836b61c8bb56a3bd6ef850ee5cff8ffb63d4ea63de77cf2bb283210"
+    },
+    "books/operations": {
+      "entry": "/home/fn/.cache/fn-certs/ffaf93d705d08918400704d108e7bffa6a3da8ae5ae2917128974f7d53c9e71b/99fac8c12877bc14",
+      "key": "ffaf93d705d08918400704d108e7bffa6a3da8ae5ae2917128974f7d53c9e71b"
+    },
+    "books/owed": {
+      "entry": "/home/fn/.cache/fn-certs/0025566d809fffa0fb7533fa29b1fb7a9932c97d1510818153a1c1fe3d6bbf08/63be0e8165ae7b38",
+      "key": "0025566d809fffa0fb7533fa29b1fb7a9932c97d1510818153a1c1fe3d6bbf08"
+    },
+    "books/profile": {
+      "entry": "/home/fn/.cache/fn-certs/cdaddbd4628aebebc2dea718832e44dfbe07014033d6a8904f137808c9c34744/99fac8c12877bc14",
+      "key": "cdaddbd4628aebebc2dea718832e44dfbe07014033d6a8904f137808c9c34744"
+    },
+    "books/resources": {
+      "entry": "/home/fn/.cache/fn-certs/57890f1c24088db3b37deccce1fe7ae6fa22cc8d9050e853eefd0d3c8b66ee74/25a82fd4fdfa3025",
+      "key": "57890f1c24088db3b37deccce1fe7ae6fa22cc8d9050e853eefd0d3c8b66ee74"
+    },
+    "books/run-budget": {
+      "entry": "/home/fn/.cache/fn-certs/3a840b886d62c892a01f216d5afb084db051700e001a2d55560749153590833f/a3c8c884f122d50c",
+      "key": "3a840b886d62c892a01f216d5afb084db051700e001a2d55560749153590833f"
+    },
+    "books/vocab": {
+      "entry": "/home/fn/.cache/fn-certs/45147bfa13d3d5e1884c7176a76ac15d62ab2b1fc4e5bd184e7543c351a1701f/fdb3559979173240",
+      "key": "45147bfa13d3d5e1884c7176a76ac15d62ab2b1fc4e5bd184e7543c351a1701f"
+    },
+    "tests/columns-cost-unit-20": {
+      "entry": "/home/fn/.cache/fn-certs/2df7ea66c738d943bd761109434cdd4d7d5203282786ddb74dfcea1642451475/f74e9951c85dee45",
+      "key": "2df7ea66c738d943bd761109434cdd4d7d5203282786ddb74dfcea1642451475"
+    }
+  },
+  "absent_pids": [
+    2100232,
+    2100234,
+    2100244,
+    2100254,
+    2100258,
+    2100265,
+    2100271,
+    2100297,
+    2100416,
+    2100424
+  ],
+  "canonical_books": "515ea5feff10076d4a33ea2cadcf71dbf6879387",
+  "record_wall_seconds": 5.033
+}
