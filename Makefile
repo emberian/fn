@@ -152,6 +152,7 @@ ACL2_BOOKS = \
   books/tls-record \
   books/tls-stack \
   books/host-loan \
+  books/host-codec-close \
   books/host-codec \
   books/host-compress \
   books/columns \
@@ -510,6 +511,7 @@ ACL2_BOOKS = \
   tests/envelope-output-complete-unit \
   tests/envelope-input-unit \
   tests/envelope-prefix-unit \
+  tests/input-prefix-unit \
   tests/native-device-effects-unit \
   tests/native-device-bindings-unit \
   tests/native-unit \
