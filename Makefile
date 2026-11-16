@@ -1,6 +1,13 @@
 # Certification roots for the promoted fn tree. Keep every book and test
 # visible to --affected-by; lane mode selects immediate affected consumers.
 ACL2_BOOKS = \
+  books/checkpoint-geometry \
+  books/boot-config-state \
+  books/boot-bootstrap-pack \
+  books/boot-bootstrap-pack-contracts \
+  books/boot-bootstrap-verify \
+  books/boot-bootstrap-receipt \
+  tests/boot-bootstrap-producer-unit \
   books/article-limit-text \
   tests/article-limit-text-unit \
   books/allocation-release-geometry \
