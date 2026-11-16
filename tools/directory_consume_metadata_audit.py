@@ -12,6 +12,8 @@ sys.path.insert(0,'tools')
 from pathlib import Path
 from collections import Counter
 from lisp_source import forms,read_sexp,generated_definition_expansion
+from machine_reader_costs import machine_reader_costs
+MACHINE_READERS=machine_reader_costs()
 D={};COL={};GET=set();PUT={};LITERAL_PROVIDERS={};PAYLOAD_MODE=False
 
 def literal_definitions(form):
@@ -114,6 +116,7 @@ def ex(x,current=None):
   return Counter({'spine':length+1})+ex(x[1],current)+ex(seq,current)
  c=Counter()
  for a in x[1:]:c+=ex(a,current)
+ if n in MACHINE_READERS:return c+Counter(metadata=MACHINE_READERS[n])
  if n in PRIM or n in ('list','endp','car','cdr'):return c
  if n in GET:
   data=(n in {'fn2-checkpoint-bytes-value','fn2-checkpoint-bytes-set-value'} or
