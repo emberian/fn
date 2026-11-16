@@ -1,6 +1,7 @@
 ; Extend the actual core's pre-index registration with the canonical semantic
 ; singleton and extent-indexed DFS work. No alternate CORE or actor is declared.
 (in-package "ACL2")
+(include-book "machines-b")
 (include-book "checkpoint-restore-semantic-work")
 (fn2-book-layer :c)
 (defcorechild fn2-core-checkpoint-restore-semantic fn2-checkpoint-restore-semantic

@@ -65,4 +65,33 @@ class Controls(unittest.TestCase):
      if not any(sym(a)==':dir' for a in n.items[2:]):visit(p.parent/(n.items[1].text[1:-1]+'.lisp'))
    active.pop();done.add(p)
   for name in BOOKS+('boot-semantic-kind',):visit(ROOT/'books'/(name+'.lisp'))
+ def test_transport_derives_cursor_from_owned_page_fill(self):
+  s=src('boot-semantic-consumer');f=funcs(s)
+  n=f['fn2-boot-semantic-target-children'];body=lr.emit(n,drop_comments=True)
+  self.assertNotIn('cursor',lr.emit(n.items[2]))
+  self.assertIn('(fn2-pool-fill slot fn2-pool)',body)
+  self.assertIn('fn2-boot-config-image-size',body)
+  self.assertIn('fn2-boot-semantic-transport-current-p',body)
+ def test_copy_never_exposes_entries_or_ready(self):
+  f=funcs(src('boot-semantic-consumer'));s=lr.emit(f['fn2-boot-semantic-copy-children'],drop_comments=True)
+  self.assertIn('fn2-pool-copy-range',s)
+  self.assertIn('(not (equal slot rxslot))',s)
+  self.assertNotIn('set-phase',s)
+  for status in (':entries',':ready',':applied'):self.assertNotIn(status,s)
+  self.assertNotIn('verified',lr.emit(f['fn2-boot-semantic-copy-children'].items[2]))
+ def test_constructor_and_frames_are_actual_mutable_subset(self):
+  s=src('boot-semantic-consumer');f=funcs(s)
+  b=lr.emit(f['fn2-boot-semantic-start-children'],drop_comments=True)
+  self.assertIn('fn2-checkpoint-restore-semantic-begin',b)
+  self.assertIn('fn2-checkpoint-summary-begin',b)
+  self.assertIn('fn2-checkpoint-restore-reach-current-p',b)
+  self.assertNotIn('*fn2-checkpoint-summary-phase-applied*',s)
+  self.assertIn('"-ROWS"',s);self.assertIn('fn2-pool-data-length',s)
+  for name,n in f.items():
+   if name.endswith('-children'):
+    for x in nodes(n.items[-1]):
+     if isinstance(x,lr.Lst) and x.items and sym(x.items[0])=='mv':self.assertLessEqual(len(x.items)-1,9)
+ def test_kind_declares_its_provider_before_registration(self):
+  s=src('boot-semantic-kind')
+  self.assertLess(s.index('(include-book "machines-b")'),s.index('(defcorechild'))
 if __name__=='__main__':unittest.main()
