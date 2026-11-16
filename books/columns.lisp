@@ -1004,6 +1004,28 @@
  (declare (xargs :verify-guards nil))
  (fn2-columns-batch-phase-aux events nil nil))
 
+; Bound generated compiler units, never the table's supported row count.
+(defun fn2-columns-init-chunk-name (init index)
+ (declare (xargs :verify-guards nil))
+ (fn2-columns-sym init (concatenate 'string "-CHUNK-" (coerce (explode-nonnegative-integer index 10 nil) 'string))))
+(defun fn2-columns-init-chunk-names (init cols index)
+ (declare (xargs :verify-guards nil :measure (acl2-count cols)))
+ (if (atom cols) nil
+  (cons (fn2-columns-init-chunk-name init index)
+        (fn2-columns-init-chunk-names init (cddddr (cddddr cols)) (+ 1 (nfix index))))))
+(defun fn2-columns-init-chunk-events (name init cols bound index)
+ (declare (xargs :verify-guards nil :measure (acl2-count cols)))
+ (if (atom cols) nil
+  (cons `(defun ,(fn2-columns-init-chunk-name init index) (n ,name)
+           (declare (xargs :stobjs ,name :guard (and (natp n) (< n ,bound))))
+           (let* ,(fn2-columns-resize-bindings name (take (min 8 (len cols)) cols)) ,name))
+        (fn2-columns-init-chunk-events name init (cddddr (cddddr cols)) bound (+ 1 (nfix index))))))
+(defun fn2-columns-init-chunk-bindings (name names)
+ (declare (xargs :verify-guards nil))
+ (if (atom names) nil
+  (cons `(,name (,(car names) n ,name))
+        (fn2-columns-init-chunk-bindings name (cdr names)))))
+
 (defun fn2-columns-events (name cols bound extras init-name put-policy)
   (declare (xargs :guard t :verify-guards nil))
   (let* ((rows (fn2-columns-sym name "-ROWS"))
@@ -1050,12 +1072,22 @@
        (defthm ,(fn2-columns-sym create "-WFP") (,wfp (,create))
          :hints (("Goal" :in-theory (enable ,create))))
        ,@(fn2-columns-shape-events name cols bound)
+       ,@(fn2-columns-init-chunk-events name init cols bound 0)
        (defun ,init (n ,name)
          (declare (xargs :stobjs ,name :guard (and (natp n) (< n ,bound))))
-         (let* (,@(fn2-columns-resize-bindings name cols)
+         (let* (,@(fn2-columns-init-chunk-bindings name (fn2-columns-init-chunk-names init cols 0))
                 ,@(fn2-columns-extra-clears name extras)
                 (,name (,(fn2-columns-pre "UPDATE-" rows) n ,name)))
            ,name))
+       (local (defthm ,(fn2-columns-sym init "-CHUNKS-BY-DEFINITION")
+         (equal (,init n ,name)
+                (let* (,@(fn2-columns-resize-bindings name cols)
+                       ,@(fn2-columns-extra-clears name extras)
+                       (,name (,(fn2-columns-pre "UPDATE-" rows) n ,name))) ,name))
+         :rule-classes nil
+         :hints (("Goal" :in-theory
+                  (union-theories '(,init ,@(fn2-columns-init-chunk-names init cols 0))
+                                  (theory 'minimal-theory))))))
        (defthm ,(fn2-columns-sym init "-PRESERVES-TYPE")
          (implies (and (,p ,name) (natp n) (< n ,bound)) (,p (,init n ,name))))
        (defthm ,(fn2-columns-sym init "-WFP")
