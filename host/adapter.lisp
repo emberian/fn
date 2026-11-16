@@ -73,10 +73,17 @@
   (let ((trace (fn2-nhost-trace host)))
     (and trace (coerce (subseq trace 0 (fn2-nhost-trace-count host)) 'list))))
 
-(defun fn2-n-boundary (host label)
+(defvar *fn2-n-boundary-observer* nil) ; Test-only diagnostic, never a decision input.
+(defun fn2-n-boundary (host label &optional slot generation)
   "Death cuts at every take, ack, syscall and post: FN2_KILL_AT=N exits at the Nth."
   (sb-thread:with-mutex ((fn2-nhost-boundary-lock host))
     (incf (fn2-nhost-boundaries host))
+    ;; Observe the actual ordinal inside its serialization lock, before death.
+    ;; A recorder failure refuses the test rather than inventing a shorter cut.
+    (when *fn2-n-boundary-observer*
+      (funcall *fn2-n-boundary-observer* host (fn2-nhost-boundaries host)
+               label slot generation
+               (= (fn2-nhost-boundaries host) (fn2-nhost-kill-at host))))
     (when (= (fn2-nhost-boundaries host) (fn2-nhost-kill-at host))
       (format t "FN2 KILL boundary=~d label=~a~%" (fn2-nhost-boundaries host) label)
       (finish-output)
@@ -302,7 +309,7 @@
                                     (fn2-device-backend (fn2-nhost-storage host))) :perform)
       (fn2-n-complete host slot :unsupported 0)
       (return-from fn2-n-storage-submit nil))
-    (fn2-n-boundary host "device-submit")
+    (fn2-n-boundary host "device-submit" slot (fn2-nop-gen op))
     (fn2-device-submit
      (fn2-nhost-storage host)
      (make-fn2-device-job :slot slot :gen (fn2-nop-gen op)
@@ -318,7 +325,7 @@
         (unless job (return))
         (let ((op (aref (fn2-nhost-ops host) (fn2-device-job-slot job))))
           (assert (= (fn2-nop-gen op) (fn2-device-job-gen job)))
-          (fn2-n-boundary host "device-return")
+          (fn2-n-boundary host "device-return" (fn2-device-job-slot job) (fn2-device-job-gen job))
           (multiple-value-bind (code count)
               (fn2-device-io-observation (fn2-device-job-result job) (fn2-device-job-errno job))
             (fn2-n-complete host (fn2-device-job-slot job) code count 0 nil
@@ -707,7 +714,8 @@ the image launcher always opens its persisted device instead."
               (setf (fn2-nhost-storage host)
                     (fn2-device-start cap observed-size observed-backend n
                       (lambda () (fn2-native-mux-signal (fn2-nhost-mux host)))
-                      (lambda (label) (fn2-n-boundary host label)))))))
+                      (lambda (label job)
+                        (fn2-n-boundary host label (fn2-device-job-slot job) (fn2-device-job-gen job))))))))
         (when path
           (setf (fn2-nhost-local-fd host) (fn2-native-listen-local path)
                 (fn2-nhost-local-path host) path))
