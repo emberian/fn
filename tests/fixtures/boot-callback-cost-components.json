@@ -1,0 +1,736 @@
+{
+  "scope": "SOURCE category components; no ACL2/emission/runtime execution. CORE273+lower17f. Conditional PAGE fence and fresh descriptor BEGIN/controller composition remain pending.",
+  "primitive_boundary": "Pool octet read/write/copy/hash and per-octet codec validation remain payload primitives; metadata outside is expanded.",
+  "providers": [
+    {
+      "provider": "fn2-boot-checkpoint-owner-p",
+      "source": "books/boot-checkpoint-core.lisp",
+      "component": {
+        "metadata": 132
+      },
+      "expanded": {
+        "metadata": 132
+      }
+    },
+    {
+      "provider": "fn2-boot-checkpoint-read-complete-p",
+      "source": "books/boot-checkpoint-core.lisp",
+      "component": {
+        "metadata": 126
+      },
+      "expanded": {
+        "metadata": 126
+      }
+    },
+    {
+      "provider": "fn2-checkpoint-bootstrap-unit",
+      "source": "books/checkpoint-geometry.lisp",
+      "component": {},
+      "expanded": {}
+    },
+    {
+      "provider": "fn2-checkpoint-image-sizep",
+      "source": "books/checkpoint-geometry.lisp",
+      "component": {},
+      "expanded": {}
+    },
+    {
+      "provider": "fn2-boot-bootstrap-offset",
+      "source": "books/boot-checkpoint-core.lisp",
+      "component": {
+        "fn2-boot-checkpoint-owner-p": 1,
+        "metadata": 49,
+        "fn2-checkpoint-bootstrap-unit": 1,
+        "fn2-checkpoint-image-sizep": 1
+      },
+      "expanded": {
+        "metadata": 181
+      }
+    },
+    {
+      "provider": "fn2-pool-handle-code",
+      "source": "books/pool.lisp",
+      "component": {
+        "metadata": 2
+      },
+      "expanded": {
+        "metadata": 2
+      }
+    },
+    {
+      "provider": "fn2-pool-ownerp",
+      "source": "books/pool.lisp",
+      "component": {
+        "metadata": 3
+      },
+      "expanded": {
+        "metadata": 3
+      }
+    },
+    {
+      "provider": "fn2-pool-workspace-code",
+      "source": "books/pool.lisp",
+      "component": {
+        "fn2-pool-handle-code": 1,
+        "metadata": 3,
+        "fn2-pool-ownerp": 2
+      },
+      "expanded": {
+        "metadata": 11
+      }
+    },
+    {
+      "provider": "fn2-pool-reset",
+      "source": "books/pool.lisp",
+      "component": {
+        "fn2-pool-workspace-code": 1,
+        "metadata": 1
+      },
+      "expanded": {
+        "metadata": 12
+      }
+    },
+    {
+      "provider": "fn2-pool-readable-code",
+      "source": "books/pool.lisp",
+      "component": {
+        "fn2-pool-handle-code": 1,
+        "metadata": 2,
+        "fn2-pool-ownerp": 1
+      },
+      "expanded": {
+        "metadata": 7
+      }
+    },
+    {
+      "provider": "fn2-pool-slot-fill",
+      "source": "books/pool.lisp",
+      "component": {
+        "metadata": 1
+      },
+      "expanded": {
+        "metadata": 1
+      }
+    },
+    {
+      "provider": "fn2-pool-slot-cap",
+      "source": "books/pool.lisp",
+      "component": {
+        "metadata": 1
+      },
+      "expanded": {
+        "metadata": 1
+      }
+    },
+    {
+      "provider": "fn2-pool-slot-base",
+      "source": "books/pool.lisp",
+      "component": {
+        "metadata": 1
+      },
+      "expanded": {
+        "metadata": 1
+      }
+    },
+    {
+      "provider": "fn2-pool-capacity-bytes",
+      "source": "books/pool.lisp",
+      "component": {
+        "metadata": 1
+      },
+      "expanded": {
+        "metadata": 1
+      }
+    },
+    {
+      "provider": "fn2-layout-range-code",
+      "source": "books/layout.lisp",
+      "component": {
+        "fn2-pool-workspace-code": 1,
+        "fn2-pool-readable-code": 1,
+        "fn2-pool-slot-fill": 2,
+        "fn2-pool-slot-cap": 1,
+        "fn2-pool-slot-base": 1,
+        "fn2-pool-capacity-bytes": 1
+      },
+      "expanded": {
+        "metadata": 23
+      }
+    },
+    {
+      "provider": "fn2-digest-slot",
+      "source": "books/digests.lisp",
+      "component": {},
+      "expanded": {}
+    },
+    {
+      "provider": "fn2-digest-workspacep",
+      "source": "books/digests.lisp",
+      "component": {
+        "metadata": 19
+      },
+      "expanded": {
+        "metadata": 19
+      }
+    },
+    {
+      "provider": "fn2-b3-ready",
+      "source": "books/blake3.lisp",
+      "component": {
+        "metadata": 29,
+        "fn2-digest-workspacep": 1
+      },
+      "expanded": {
+        "metadata": 48
+      }
+    },
+    {
+      "provider": "fn2-digest-rowp",
+      "source": "books/digests.lisp",
+      "component": {
+        "metadata": 19
+      },
+      "expanded": {
+        "metadata": 19
+      }
+    },
+    {
+      "provider": "fn2-pool-block-hash",
+      "source": "books/pool-block.lisp",
+      "component": {
+        "fn2-digest-slot": 2,
+        "fn2-b3-ready": 6,
+        "fn2-digest-rowp": 2,
+        "spine": 12
+      },
+      "expanded": {
+        "metadata": 326,
+        "spine": 12
+      }
+    },
+    {
+      "provider": "fn2-boot-pack-geometry",
+      "source": "books/boot-bootstrap-pack.lisp",
+      "component": {
+        "metadata": 46,
+        "fn2-checkpoint-image-sizep": 1,
+        "fn2-pool-reset": 1,
+        "fn2-layout-range-code": 1,
+        "fn2-pool-block-hash": 1,
+        "fn2-digest-slot": 1,
+        "fn2-digest-rowp": 1
+      },
+      "expanded": {
+        "metadata": 426,
+        "spine": 12
+      }
+    },
+    {
+      "provider": "fn2-checkpoint-anchor-unit",
+      "source": "books/checkpoint-geometry.lisp",
+      "component": {
+        "fn2-checkpoint-bootstrap-unit": 1
+      },
+      "expanded": {}
+    },
+    {
+      "provider": "fn2-boot-bootstrap-encode-pool",
+      "source": "books/boot-bootstrap-pack.lisp",
+      "component": {
+        "fn2-checkpoint-image-sizep": 1,
+        "metadata": 43,
+        "fn2-checkpoint-anchor-unit": 4,
+        "fn2-layout-range-code": 4
+      },
+      "expanded": {
+        "metadata": 135
+      }
+    },
+    {
+      "provider": "fn2-boot-bootstrap-pack-pool",
+      "source": "books/boot-bootstrap-verify.lisp",
+      "component": {
+        "metadata": 6,
+        "fn2-boot-pack-geometry": 1,
+        "fn2-digest-slot": 1,
+        "fn2-boot-bootstrap-encode-pool": 1
+      },
+      "expanded": {
+        "metadata": 567,
+        "spine": 12
+      }
+    },
+    {
+      "provider": "fn2-boot-bootstrap-pack",
+      "source": "books/boot-checkpoint-core.lisp",
+      "component": {
+        "metadata": 113,
+        "fn2-boot-checkpoint-owner-p": 1,
+        "fn2-boot-bootstrap-pack-pool": 1
+      },
+      "expanded": {
+        "metadata": 812,
+        "spine": 12
+      }
+    },
+    {
+      "provider": "fn2-origin-tuplep",
+      "source": "books/origin.lisp",
+      "component": {},
+      "expanded": {}
+    },
+    {
+      "provider": "fn2-origin-physicalp",
+      "source": "books/origin.lisp",
+      "component": {},
+      "expanded": {}
+    },
+    {
+      "provider": "fn2-boot-bootstrap-windows-apart-p",
+      "source": "books/boot-bootstrap-verify.lisp",
+      "component": {
+        "metadata": 8
+      },
+      "expanded": {
+        "metadata": 8
+      }
+    },
+    {
+      "provider": "fn2-boot-save-geometry",
+      "source": "books/boot-bootstrap-pack.lisp",
+      "component": {},
+      "expanded": {}
+    },
+    {
+      "provider": "fn2-boot-bootstrap-verify-pool",
+      "source": "books/boot-bootstrap-verify.lisp",
+      "component": {
+        "metadata": 20,
+        "fn2-origin-tuplep": 1,
+        "fn2-origin-physicalp": 1,
+        "fn2-layout-range-code": 1,
+        "fn2-boot-bootstrap-windows-apart-p": 1,
+        "fn2-boot-bootstrap-pack-pool": 1,
+        "fn2-boot-save-geometry": 1
+      },
+      "expanded": {
+        "metadata": 618,
+        "spine": 12
+      }
+    },
+    {
+      "provider": "fn2-boot-bootstrap-verify",
+      "source": "books/boot-checkpoint-core.lisp",
+      "component": {
+        "metadata": 183,
+        "fn2-boot-checkpoint-read-complete-p": 1,
+        "fn2-boot-checkpoint-owner-p": 1,
+        "fn2-checkpoint-bootstrap-unit": 1,
+        "fn2-boot-bootstrap-verify-pool": 1
+      },
+      "expanded": {
+        "metadata": 1059,
+        "spine": 12
+      }
+    },
+    {
+      "provider": "fn2-boot-bootstrap-receipt-p",
+      "source": "books/boot-bootstrap-receipt.lisp",
+      "component": {
+        "metadata": 19,
+        "fn2-origin-tuplep": 1,
+        "fn2-origin-physicalp": 1
+      },
+      "expanded": {
+        "metadata": 19
+      }
+    },
+    {
+      "provider": "fn2-checkpoint-anchor-offset",
+      "source": "books/checkpoint-geometry.lisp",
+      "component": {
+        "fn2-checkpoint-image-sizep": 1,
+        "fn2-checkpoint-anchor-unit": 1
+      },
+      "expanded": {}
+    },
+    {
+      "provider": "fn2-checkpoint-slotp",
+      "source": "books/checkpoint.lisp",
+      "component": {
+        "metadata": 63
+      },
+      "expanded": {
+        "metadata": 63
+      }
+    },
+    {
+      "provider": "fn2-boot-descriptor-source-p",
+      "source": "books/checkpoint-boot-descriptor.lisp",
+      "component": {
+        "fn2-boot-bootstrap-receipt-p": 1,
+        "fn2-checkpoint-slotp": 1,
+        "metadata": 13
+      },
+      "expanded": {
+        "metadata": 95
+      }
+    },
+    {
+      "provider": "fn2-checkpoint-restore-read-target",
+      "source": "books/checkpoint-restore.lisp",
+      "component": {
+        "metadata": 5,
+        "fn2-checkpoint-slotp": 1
+      },
+      "expanded": {
+        "metadata": 68
+      }
+    },
+    {
+      "provider": "fn2-boot-checkpoint-descriptor-target-pool",
+      "source": "books/checkpoint-boot-descriptor.lisp",
+      "component": {
+        "fn2-boot-descriptor-source-p": 1,
+        "metadata": 2,
+        "fn2-checkpoint-restore-read-target": 1
+      },
+      "expanded": {
+        "metadata": 165
+      }
+    },
+    {
+      "provider": "fn2-boot-bootstrap-current-p",
+      "source": "books/boot-checkpoint-core.lisp",
+      "component": {
+        "metadata": 112,
+        "fn2-boot-checkpoint-read-complete-p": 1,
+        "fn2-boot-checkpoint-owner-p": 1,
+        "fn2-boot-bootstrap-receipt-p": 1,
+        "fn2-checkpoint-anchor-offset": 1,
+        "fn2-boot-checkpoint-descriptor-target-pool": 1
+      },
+      "expanded": {
+        "metadata": 554
+      }
+    },
+    {
+      "provider": "fn2-boot-checkpoint-anchor-zero",
+      "source": "books/boot-checkpoint-core.lisp",
+      "component": {
+        "metadata": 106,
+        "fn2-boot-bootstrap-current-p": 1,
+        "fn2-pool-reset": 1
+      },
+      "expanded": {
+        "metadata": 672
+      }
+    },
+    {
+      "provider": "fn-b3-w32",
+      "source": "books/blake3-spec.lisp",
+      "component": {},
+      "expanded": {}
+    },
+    {
+      "provider": "fn-b3-word",
+      "source": "books/blake3-spec.lisp",
+      "component": {
+        "fn-b3-w32": 1
+      },
+      "expanded": {}
+    },
+    {
+      "provider": "fn2-checkpoint-boot-geometry-word",
+      "source": "books/boot-geometry-state.lisp",
+      "component": {
+        "fn-b3-word": 1
+      },
+      "expanded": {}
+    },
+    {
+      "provider": "fn2-digest-set-word",
+      "source": "books/digests.lisp",
+      "component": {},
+      "expanded": {}
+    },
+    {
+      "provider": "fn2-checkpoint-boot-geometry-copy",
+      "source": "books/boot-geometry-state.lisp",
+      "component": {
+        "fn2-checkpoint-boot-geometry-word": 8,
+        "fn2-digest-set-word": 8
+      },
+      "expanded": {}
+    },
+    {
+      "provider": "fn2-fc-reset",
+      "source": "books/format-check.lisp",
+      "component": {
+        "metadata": 1
+      },
+      "expanded": {
+        "metadata": 1
+      }
+    },
+    {
+      "provider": "fn2-digest-word",
+      "source": "books/digests.lisp",
+      "component": {},
+      "expanded": {}
+    },
+    {
+      "provider": "fn2-boot-descriptor-geometry-matches-p",
+      "source": "books/checkpoint-boot-descriptor.lisp",
+      "component": {
+        "fn2-digest-word": 8,
+        "fn2-checkpoint-boot-geometry-word": 8
+      },
+      "expanded": {}
+    },
+    {
+      "provider": "fn2-checkpoint-copy-hash",
+      "source": "books/checkpoint.lisp",
+      "component": {},
+      "expanded": {}
+    },
+    {
+      "provider": "fn2-checkpoint-ref-clear-build",
+      "source": "books/checkpoint.lisp",
+      "component": {
+        "metadata": 5
+      },
+      "expanded": {
+        "metadata": 5
+      }
+    },
+    {
+      "provider": "fn2-checkpoint-restore-capture-ref",
+      "source": "books/checkpoint-anchor-input.lisp",
+      "component": {
+        "metadata": 17,
+        "fn2-checkpoint-copy-hash": 1,
+        "fn2-checkpoint-ref-clear-build": 1
+      },
+      "expanded": {
+        "metadata": 22
+      }
+    },
+    {
+      "provider": "fn2-checkpoint-restore-anchor-step",
+      "source": "books/checkpoint-anchor-input.lisp",
+      "component": {
+        "metadata": 20,
+        "fn2-checkpoint-slotp": 1,
+        "@format-run": 1,
+        "fn2-checkpoint-restore-capture-ref": 1
+      },
+      "expanded": {
+        "metadata": 105,
+        "@format-run": 1
+      }
+    },
+    {
+      "provider": "fn2-boot-save-anchor-digest",
+      "source": "books/boot-bootstrap-pack.lisp",
+      "component": {},
+      "expanded": {}
+    },
+    {
+      "provider": "fn2-boot-save-anchor-evidence",
+      "source": "books/boot-anchor-admission.lisp",
+      "component": {
+        "metadata": 4,
+        "fn2-boot-save-anchor-digest": 3
+      },
+      "expanded": {
+        "metadata": 4
+      }
+    },
+    {
+      "provider": "fn2-boot-anchor-admit-pool",
+      "source": "books/boot-anchor-admission.lisp",
+      "component": {
+        "fn2-boot-bootstrap-receipt-p": 1,
+        "fn2-digest-slot": 1,
+        "metadata": 357,
+        "fn2-checkpoint-slotp": 1,
+        "fn2-b3-ready": 1,
+        "fn2-digest-rowp": 1,
+        "fn2-layout-range-code": 2,
+        "fn2-checkpoint-boot-geometry-copy": 1,
+        "fn2-fc-reset": 1,
+        "fn2-boot-descriptor-geometry-matches-p": 1,
+        "fn2-checkpoint-restore-anchor-step": 1,
+        "fn2-boot-save-anchor-evidence": 1
+      },
+      "expanded": {
+        "metadata": 662,
+        "@format-run": 1
+      }
+    },
+    {
+      "provider": "fn2-boot-checkpoint-anchor-step",
+      "source": "books/boot-checkpoint-core.lisp",
+      "component": {
+        "metadata": 147,
+        "fn2-boot-bootstrap-current-p": 1,
+        "fn2-boot-anchor-admit-pool": 1
+      },
+      "expanded": {
+        "metadata": 1363,
+        "@format-run": 1
+      }
+    },
+    {
+      "provider": "fn2-boot-checkpoint-descriptor-target",
+      "source": "books/checkpoint-boot-descriptor.lisp",
+      "component": {
+        "fn2-boot-bootstrap-current-p": 1,
+        "metadata": 71,
+        "fn2-boot-checkpoint-descriptor-target-pool": 1
+      },
+      "expanded": {
+        "metadata": 790
+      }
+    },
+    {
+      "provider": "fn2-checkpoint-restore-load-hash",
+      "source": "books/checkpoint-restore.lisp",
+      "component": {
+        "fn2-digest-set-word": 8
+      },
+      "expanded": {}
+    },
+    {
+      "provider": "fn2-fc-word-byte",
+      "source": "books/format-check.lisp",
+      "component": {},
+      "expanded": {}
+    },
+    {
+      "provider": "fn2-checkpoint-hash-matchesp",
+      "source": "books/checkpoint.lisp",
+      "component": {
+        "fn2-digest-word": 32,
+        "fn2-fc-word-byte": 32
+      },
+      "expanded": {}
+    },
+    {
+      "provider": "fn2-checkpoint-decode",
+      "source": "books/checkpoint.lisp",
+      "component": {
+        "metadata": 790,
+        "fn2-layout-range-code": 1
+      },
+      "expanded": {
+        "metadata": 813
+      }
+    },
+    {
+      "provider": "fn2-checkpoint-capture-root",
+      "source": "books/checkpoint.lisp",
+      "component": {
+        "metadata": 17,
+        "fn2-checkpoint-copy-hash": 1,
+        "fn2-checkpoint-ref-clear-build": 1
+      },
+      "expanded": {
+        "metadata": 22
+      }
+    },
+    {
+      "provider": "fn2-checkpoint-capture-roots",
+      "source": "books/checkpoint.lisp",
+      "component": {
+        "fn2-checkpoint-capture-root": 5
+      },
+      "expanded": {
+        "metadata": 110
+      }
+    },
+    {
+      "provider": "fn2-checkpoint-check-step",
+      "source": "books/checkpoint-descriptor-read.lisp",
+      "component": {
+        "metadata": 22,
+        "fn2-checkpoint-slotp": 1,
+        "fn2-checkpoint-hash-matchesp": 1,
+        "@format-run": 1,
+        "fn2-checkpoint-decode": 1,
+        "fn2-checkpoint-capture-roots": 1
+      },
+      "expanded": {
+        "metadata": 1008,
+        "@format-run": 1
+      }
+    },
+    {
+      "provider": "fn2-boot-checkpoint-descriptor-pool",
+      "source": "books/checkpoint-boot-descriptor.lisp",
+      "component": {
+        "fn2-boot-descriptor-source-p": 1,
+        "fn2-digest-slot": 3,
+        "metadata": 22,
+        "fn2-b3-ready": 1,
+        "fn2-digest-rowp": 3,
+        "fn2-layout-range-code": 1,
+        "fn2-boot-descriptor-geometry-matches-p": 1,
+        "fn2-checkpoint-restore-load-hash": 1,
+        "fn2-checkpoint-boot-geometry-copy": 1,
+        "fn2-checkpoint-check-step": 1
+      },
+      "expanded": {
+        "metadata": 1253,
+        "@format-run": 1
+      }
+    },
+    {
+      "provider": "fn2-boot-checkpoint-descriptor-check",
+      "source": "books/checkpoint-boot-descriptor.lisp",
+      "component": {
+        "fn2-boot-bootstrap-current-p": 1,
+        "metadata": 130,
+        "fn2-boot-checkpoint-descriptor-pool": 1
+      },
+      "expanded": {
+        "metadata": 1937,
+        "@format-run": 1
+      }
+    }
+  ],
+  "roots": {
+    "fn2-boot-checkpoint-owner-p": {
+      "metadata": 132
+    },
+    "fn2-boot-checkpoint-read-complete-p": {
+      "metadata": 126
+    },
+    "fn2-boot-bootstrap-offset": {
+      "metadata": 181
+    },
+    "fn2-boot-bootstrap-pack": {
+      "metadata": 812,
+      "spine": 12
+    },
+    "fn2-boot-bootstrap-verify": {
+      "metadata": 1059,
+      "spine": 12
+    },
+    "fn2-boot-checkpoint-anchor-zero": {
+      "metadata": 672
+    },
+    "fn2-boot-checkpoint-anchor-step": {
+      "metadata": 1363,
+      "@format-run": 1
+    },
+    "fn2-boot-checkpoint-descriptor-target": {
+      "metadata": 790
+    },
+    "fn2-boot-checkpoint-descriptor-check": {
+      "metadata": 1937,
+      "@format-run": 1
+    }
+  }
+}

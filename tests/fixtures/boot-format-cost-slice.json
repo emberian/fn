@@ -1,0 +1,52 @@
+{
+  "scope": "SOURCE-ONLY at coherent17f802d44 +273becee1. No ACL2 evaluation, execution, emitted-face observation or physical theorem. No runtime edits.",
+  "primitive_boundary": "Pool octet read/write, hashing and codec per-octet validation are byte primitives; do not repeat their per-octet ownership checks as metadata. Count phase/continuation metadata and field completion writes separately.",
+  "source_anchors": {
+    "format-run": "books/format-check.lisp:422 (FC-STEP then FC-RESET only on non-MORE)",
+    "fc-step": "books/format-check.lisp:402 (one phase GET, kind literal member probe5, mutually exclusive idle/decode/runbytes)",
+    "fc-advance": "books/format-check.lisp:351 (kind member probe3; PAGE phase GET; PAGE-span or FC-byte fallback)",
+    "fc-run-bytes": "books/format-check.lisp:365 (strict positive used decreases fuel; PAGE-span YIELD returns immediately)",
+    "fc-byte": "books/format-check.lisp:233 (phase/position and prefix/hash/digest progression)",
+    "page-span": "books/format-check.lisp:329 (pos/pad bounds, pad-end=len, range, zero scan, hash update)",
+    "decoded": "books/format-check.lisp:375 (identity +payload/header fields +7 continuation setters)",
+    "codec": "books/layout.lisp:1025,1071,1082 (6 old field GETs, layout-store7 twice on SUM success/rollback, resume8, terminal-save9; START-save9 excluded from STEP)",
+    "identity": "books/format-check.lisp:130 (ANCHOR6 reads; PAGE15 reads)",
+    "range": "parent shared source walker derives R=23 from actual layout-range-code and workspace/readable SUM branches"
+  },
+  "shared": {"range_R":23,"outer_steps":7,"outer_formula":"phase GET1 +kind literal probes5 +non-MORE reset1","codec_step_formula":"R +8 resume GET +9 terminal save +20*F field-completion SUM","anchor_fields":15,"page_header_fields":10},
+  "anchor": {
+    "antecedent": "actual kind :anchor, sealp NIL, positive budget<=4096, len<=actual layoutmax247, typed FC position. No canonical pad-end premise needed.",
+    "domain":13,
+    "max_advance_calls":294,
+    "advance_formula":"domain13 +hash octets247 +digest32 +phase-transition visits2",
+    "byte_path_metadata_formula":"13*3 +2*4 +247*11 +32*4 =2892",
+    "byte_path_spine_formula":"3*294=882",
+    "byte_path_plus_outer":3781,
+    "idle_steps":40,
+    "decode_steps":361,
+    "decode_formula":"outer7 +R23 +17+20*15 +decoded14",
+    "format_steps_max":3781,
+    "byte_work_sum_upper":548,
+    "byte_formula":"domain13 +hashinput247 +geometryexpected32*4 +digestcomputed32*4 +digestobserved32"
+  },
+  "page_canonical": {
+    "antecedent": "actual :page/NIL plus canonical FORMAT-owned HASH continuation pad-end=len and held readable input; source continuation proof not yet inspected/named",
+    "domain":20,
+    "fc_byte_calls_sum_upper":54,
+    "page_span_calls_upper":1,
+    "advance_calls_sum_upper":55,
+    "fc_byte_native_metadata_source_SUM":15,
+    "page_span_native_metadata":32,
+    "page_span_formula":"9 direct native GET/SET +R23; zero scan and hash update are byte primitives",
+    "conservative_byte_path_steps_formula":"15*54 +32 +55 advance phaseGET +3*55 member probes +outer7",
+    "conservative_byte_path_steps":1069,
+    "phase_specific_byte_path_formula":"prefix20*3 +two transitions2*4 +digest32*4 +span32 +advance55 +spine165 +outer7",
+    "phase_specific_byte_path_steps":455,
+    "decode_steps":272,
+    "decode_formula":"outer7 +R23 +17+20*10 +decoded25",
+    "byte_work_formula":"max(2*budget,32*4+32*4); zero scan and hash may each consume budget octets, digest compares reread u32 peroctet",
+    "byte_work_at_4096":8192,
+    "guard_gap": "Raw FC guard has WFP/row/digest bounds only, not pad-end=len. PAGE-span returns :byte on pad-end mismatch, so FC-byte fallback can recur up to4096 and exceed this fixed-call bound. Actual descriptor wrapper does not check pad-end. Do not advertise455/1069 as unconditional public FORMAT bound. Need actual callback gate or named preserved canonical continuation invariant."
+  },
+  "admission": "ANCHOR3781 and conditional PAGE1069 are source-category envelopes, not runtimecost declarations. Parent must compose lower wrapper/provider costs +actual controller +bytes/steps/combined run quantities; BOOT current32 structural steps does not cover these. Physical/extraction/critical proofs remain owed."
+}
