@@ -2,6 +2,7 @@
 (in-package "ACL2")
 (include-book "boot-kind")
 (include-book "boot-pack")
+(include-book "boot-checkpoint-core")
 (include-book "machines-a-access")
 (fn2-book-layer :b)
 
@@ -315,4 +316,4 @@
   (:fence-result (:set (event-ready 1) (outcome outcome) (count count)) (:wake))))
 
 (defmacro fn2-boot-events ()
- '(progn (fn2-boot-operations) (defmachine-arms fn2-boot) (defmachine-run fn2-boot)))
+ '(progn (fn2-boot-operations) (fn2-boot-checkpoint-core-operations) (defmachine-arms fn2-boot) (defmachine-run fn2-boot)))

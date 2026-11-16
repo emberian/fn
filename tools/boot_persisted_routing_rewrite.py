@@ -30,6 +30,8 @@ def kind(s):
  return s
 def arms(s):
  advance='((:set (stage 1) (anchor-slot 0)) (:next :anchor) (:charge :steps *fn2-work-small* :runnable t))'
+ s=once(s,'(include-book "boot-pack")','(include-book "boot-pack")\n(include-book "boot-checkpoint-core")')
+ s=once(s,'(fn2-boot-operations) (defmachine-arms fn2-boot)','(fn2-boot-operations) (fn2-boot-checkpoint-core-operations) (defmachine-arms fn2-boot)')
  s=once(s,advance,'((:next :bootstrap) (:charge :steps *fn2-work-small* :runnable t))')
  # Prefix exactly one saved bootstrap address before packing or reading.
  # The callback derives it from actual config and writes it through CORE.
