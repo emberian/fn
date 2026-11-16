@@ -110,12 +110,15 @@
     "whole_book_capsules": true,
     "pool_credit_seconds": 6.7,
     "pool_credit_contracts_seconds": 15.26,
-    "pool_credit_steps": 256425,
-    "pool_credit_contracts_steps": 1478687,
     "raw_logs": [
       "/tmp/pool-credit-current-books--pool-credit.log",
       "/tmp/pool-credit-current-books--pool-credit-contracts.log"
-    ]
+    ],
+    "reported_capsule_steps": {
+      "books/pool-credit": 256425,
+      "books/pool-credit-contracts": 1478687
+    },
+    "reported_capsule_steps_scope": "not a whole-book total: original-event budgets are isolated; use record.book_prover_steps for certification totals"
   },
   "record": {
     "jobs": 1,
@@ -152,7 +155,11 @@
     },
     "record_wall_seconds": 13.154,
     "source_hashes_before_equal_after": true,
-    "runner_unchanged": true
+    "runner_unchanged": true,
+    "book_prover_steps": {
+      "books/pool-credit": 727431,
+      "books/pool-credit-contracts": 1529269
+    }
   },
   "resource": {
     "cap_bytes": 2147483648,
