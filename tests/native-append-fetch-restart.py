@@ -45,6 +45,18 @@ def exact_fetch(reply, expected):
     return actual
 
 
+def checked_status(reply, accepted_articles, registered_position, previous=None):
+    """Check observed consumer state against actual committed APPEND receipts."""
+    assert reply["outcome"] == "accepted", reply
+    fields = {key: reply[key] for key in ("domain", "position", "frontier", "gap")}
+    assert fields["position"] == registered_position, reply
+    assert all(fields["domain"] == article["domain"] and
+               fields["frontier"] >= article["position"] for article in accepted_articles), reply
+    if previous is not None:
+        assert fields == previous, (fields, previous)
+    return fields
+
+
 def crossing_article(mid, body_variant=0):
     """A valid, exact 6 KiB article crossing the transport's 4 KiB window."""
     _, lines = restart.article(mid.encode("ascii"), 100)
@@ -115,6 +127,12 @@ def main():
             grant = run_fn(directory, f"grant-{right}", "grant", "set", principal, right,
                            "local.test", "--control-sock", control)
             assert grant["outcome"] == "accepted", grant
+        consume = run_fn(directory, "grant-consume", "grant", "set", principal, "consume",
+                         "--control-sock", control)
+        assert consume["outcome"] == "accepted", consume
+        registered = run_fn(directory, "register", "stream", "register", "--as", principal,
+                            "--consumer", "inbox1", "--start", "history", "--control-sock", control)
+        assert registered["outcome"] == "accepted", registered
         accepted_articles = []
         for index, (mid, article, article_path) in enumerate(submissions):
             accepted = run_fn(directory, f"accepted-{index}", "stream", "append", "--as", principal,
@@ -123,6 +141,10 @@ def main():
             assert accepted["message_id"] == mid and accepted["position"] > 0, accepted
             accepted_articles.append(accepted)
         assert len({(a["domain"], a["position"]) for a in accepted_articles}) == len(submissions)
+        status_before = checked_status(
+            run_fn(directory, "status-before", "stream", "status", "--as", principal,
+                   "--consumer", "inbox1", "--control-sock", control),
+            accepted_articles, registered["position"])
         # Both actual socket replies have reached this parent before SIGKILL.
         node.kill()
         receipts.append(dict(phase="accepted", node_pid=node.node_pid, exit=node.proc.returncode,
@@ -135,6 +157,10 @@ def main():
                         env=environment())
     try:
         node.marker(b"LISTENING-LOCAL ")
+        checked_status(
+            run_fn(directory, "status-after", "stream", "status", "--as", principal,
+                   "--consumer", "inbox1", "--control-sock", control),
+            accepted_articles, registered["position"], status_before)
         for index, ((mid, article, _), accepted) in enumerate(zip(submissions, accepted_articles)):
             fetched = run_fn(directory, f"fetched-{index}", "stream", "fetch", mid, "--as", principal,
                              "--domain", accepted["domain"], "--position", accepted["position"],
