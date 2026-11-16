@@ -15,8 +15,11 @@ payload, port and metadata hashes. Its six component assertions cover full
 canonical comparison, corrupt bytes, nonzero padding, backing alias, owner
 refusal and short input. Both lower verifier guard proofs are included.
 
-The changed `boot-kind` has a 90-book dependency closure and still needs its own
-current-key author and record gate. This projection preserves its existing
+The changed `boot-kind` passed its whole-book author and current-key record gate
+at source `51931d8944821303bd0d587ec2ff8c5695a63081`: 89 genuine cached
+parents and one newly certified book. The [90-book receipt](receipts/boot-schema-current-ninety-record.json)
+binds every raw source, closure key and actual 8aeb cert/FASL/port/meta payload;
+all owned handles and the bounded scope are gone. This projection preserves its existing
 machine states, arms, budget and runtime bodies. It does not route BOOT through
 the lower verifier or mint authority from expected bytes. The physical-family
 owner must connect actual persisted read completion and prior genesis
@@ -26,4 +29,4 @@ bounded anchor and descriptor readers. That composed path remains unfinished.
 `tools/boot_config_root_rewrite.py` is the extraction of record.
 `tests/test_boot_config_projection_source.py` checks exact transformation,
 idempotence, original fields, all 40 recorded inputs, and active component
-assertion registration. These source controls do not certify `boot-kind`.
+assertion registration. The source controls are separate from the actual record gate above.
