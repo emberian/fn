@@ -435,11 +435,26 @@
   :hints (("Goal" :cases ((equal prefix 0) (equal prefix 1) (equal prefix 2)
                           (equal prefix 3) (equal prefix 4) (equal prefix 5))
                   :use fn2-upload-posted-naive-step-completion
-                  :expand ((fn2-upload-posted-completion left i prefix slot gen okind oslot ogen fn2-pool)
-                           (fn2-upload-posted-completion left i 0 slot gen okind oslot ogen fn2-pool))
+                  :expand ((:free (left i) (fn2-upload-posted-completion left i 6 slot gen okind oslot ogen fn2-pool))
+                           (fn2-upload-posted-completion left i 0 slot gen okind oslot ogen fn2-pool)
+                           (fn2-upload-posted-completion left i 1 slot gen okind oslot ogen fn2-pool)
+                           (fn2-upload-posted-completion left i 2 slot gen okind oslot ogen fn2-pool)
+                           (fn2-upload-posted-completion left i 3 slot gen okind oslot ogen fn2-pool)
+                           (fn2-upload-posted-completion left i 4 slot gen okind oslot ogen fn2-pool)
+                           (fn2-upload-posted-completion left i 5 slot gen okind oslot ogen fn2-pool))
                   :in-theory (e/d (fn2-upload-posted-next)
                                   (fn2-upload-posted-completion fn2-upload-posted-completion-zero
                                    fn2-upload-posted-naive-spec fn2-gram-match fn2-gram-read))))))
+(local
+ (defthm fn2-upload-posted-next-natp
+  (natp (fn2-upload-posted-next prefix byte))
+  :rule-classes :type-prescription
+  :hints (("Goal" :in-theory (enable fn2-upload-posted-next)))))
+(local
+ (defthm fn2-upload-posted-next-bound
+  (<= (fn2-upload-posted-next prefix byte) 6)
+  :rule-classes :linear
+  :hints (("Goal" :in-theory (enable fn2-upload-posted-next)))))
 (local
  (defthm fn2-upload-posted-prefix-invariant
   (implies (and (natp left) (natp i) (natp prefix) (< prefix 6))
@@ -449,7 +464,9 @@
   :hints (("Goal" :induct (fn2-upload-posted-run left i prefix slot gen okind oslot ogen fn2-pool)
                   :in-theory (e/d (fn2-upload-posted-run)
                                   (fn2-upload-posted-completion fn2-upload-posted-naive-spec
-                                   fn2-upload-posted-next fn2-gram-match fn2-gram-read)))
+                                   fn2-upload-posted-next fn2-gram-match fn2-gram-read
+                                   fn2-upload-posted-completion-zero)))
+          ("Subgoal *1/3" :use fn2-upload-posted-prefix-step)
           ("Subgoal *1/2" :use fn2-upload-posted-prefix-step)
           ("Subgoal *1/1" :in-theory (enable fn2-upload-posted-completion
                                             fn2-upload-posted-naive-spec)))))
