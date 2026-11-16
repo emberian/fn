@@ -730,7 +730,7 @@
                     (natp (nth i ,(fn2-columns-field-term index name))))
            :rule-classes :type-prescription
            :hints (("Goal"
-                    :in-theory (union-theories '(,read ,raw ,rows)
+                    :in-theory (union-theories '(,read ,raw ,rows nth zp)
                                                (theory 'minimal-theory))
                     :use ((:instance ,(fn2-columns-sym read "-NATP"))))))
          (defthm ,(fn2-columns-sym read "-RAW-NTH-BOUND")
@@ -739,7 +739,7 @@
                     (< (nth i ,(fn2-columns-field-term index name)) ,(expt 2 width)))
            :rule-classes :linear
            :hints (("Goal"
-                    :in-theory (union-theories '(,read ,raw ,rows)
+                    :in-theory (union-theories '(,read ,raw ,rows nth zp)
                                                (theory 'minimal-theory))
                     :use ((:instance ,(fn2-columns-sym read "-BOUND"))))))
          (defthm ,(fn2-columns-sym write "-PRESERVES-WFP")
