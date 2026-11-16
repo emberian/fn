@@ -1,0 +1,50 @@
+{
+  "root": "tests/columns-unit",
+  "count": 4,
+  "toolchain_identity": "8aeb1bea18968c6cd33ac633a80ebf67e4924504db112fd27eb11f16a27b2a8c",
+  "production_source": "557182bf174bc22423e55ba8ee3a81e9792e5c59",
+  "integration_base": "3594cd26d",
+  "scope": "Exact staged upstream generator and existing mixed-type/extra-field fixture closure; no application or native qualification.",
+  "records": [
+    {
+      "book": "tests/columns-unit",
+      "key": "1daffad99ddbc18ab5e4e984cb5cd877e0e95465a2c0fe14717b7557e4a646fb",
+      "source_sha256": "3590745c275672fa165cbcc8e13f70daf120dfd9ae23cc94cd47ad777338901e",
+      "entry": "/home/fn/.cache/fn-certs/1daffad99ddbc18ab5e4e984cb5cd877e0e95465a2c0fe14717b7557e4a646fb/fdb3559979173240",
+      "cert_sha256": "afdfeb065099ebc55c4158702f47fbfc49f78cbc327fa1e2eb6c3bf87ca9c839",
+      "port_sha256": "f4cb7e8160cfa6f41cddb04be508f922aa8e87c4ff126bfaad3379aa92e647e0",
+      "fasl_sha256": "57e5265bc3481eae44b3b1c9bb0f2171771ad7afd35615d32661caa2751ad6c9",
+      "evidence": "/build/lanes/columns-production-557/build/acl2/certify-20261116T013159Z-2079481"
+    },
+    {
+      "book": "books/columns",
+      "key": "9c33a2ce478ff6a3286073f4d3636ef4e109bf1008f4bf21aa079c885aa3ccc7",
+      "source_sha256": "0272080a2b4db57d1028c22c24a20ba89bfc5b5caf0f8ff01bbea6c247cf4d24",
+      "entry": "/home/fn/.cache/fn-certs/9c33a2ce478ff6a3286073f4d3636ef4e109bf1008f4bf21aa079c885aa3ccc7/fdb3559979173240",
+      "cert_sha256": "1331a03d2604037b4f486babc2744c2643799cdbbaa3b0c3f359974382c3a5e0",
+      "port_sha256": "f4cb7e8160cfa6f41cddb04be508f922aa8e87c4ff126bfaad3379aa92e647e0",
+      "fasl_sha256": "9086c12e3458d9cc7bf6b1ed332ae72bc671e4daf6c762bc2dba3ae5bd1d9ba5",
+      "evidence": "/build/lanes/columns-production-557/build/acl2/certify-20261116T013152Z-2079349"
+    },
+    {
+      "book": "books/operations",
+      "key": "ffaf93d705d08918400704d108e7bffa6a3da8ae5ae2917128974f7d53c9e71b",
+      "source_sha256": "419120e7ae100f400d18cdee2d080d6133523673cac22fae1b05c7201ff97dd8",
+      "entry": "/home/fn/.cache/fn-certs/ffaf93d705d08918400704d108e7bffa6a3da8ae5ae2917128974f7d53c9e71b/99fac8c12877bc14",
+      "cert_sha256": "7697d577086d16974a9762298d8c6b389b601afac5988a9114458b5e7b78bfa7",
+      "port_sha256": "f4cb7e8160cfa6f41cddb04be508f922aa8e87c4ff126bfaad3379aa92e647e0",
+      "fasl_sha256": "d3221354ac4e5d685fa3147823f21a2fa4b25045259159d7ec8765ae537f9868",
+      "evidence": "/build/lanes/member-refutation-64ee/build/acl2/certify-20261115T181918Z-1665410"
+    },
+    {
+      "book": "books/declare",
+      "key": "299f7489bcfaeeb7c1a8f777c4a3b4886c5be174761a2f63f69a39599466aba1",
+      "source_sha256": "54e850788ee821dd90a4d9715e93d319f94846039592c4420fef1bdc5d959569",
+      "entry": "/home/fn/.cache/fn-certs/299f7489bcfaeeb7c1a8f777c4a3b4886c5be174761a2f63f69a39599466aba1/63be0e8165ae7b38",
+      "cert_sha256": "f3a1e4a58cac32474074b9d3ca6a558099a86d2fe66a28ee0670b5c5001bf9dc",
+      "port_sha256": "f4cb7e8160cfa6f41cddb04be508f922aa8e87c4ff126bfaad3379aa92e647e0",
+      "fasl_sha256": "02ceab2d38f5864c70d16e1bfdf77e4450e12aab47bd3d9e3e16ec1319e5c64d",
+      "evidence": "/build/lanes/refuted-05cb/build/acl2/certify-20261115T180152Z-1647029"
+    }
+  ]
+}
