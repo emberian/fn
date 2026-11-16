@@ -5,7 +5,18 @@ Owner: integration. Commissioned by ember on 2026-11-13, following the
 `fn2-squares` remains the obligation store. Reports and public-claim coverage
 must be derived from that store and the actual served call/attachment graph.
 
-## Current integration frontier — 2026-11-16 01:17 UTC
+## Current integration frontier — 2026-11-16 01:35 UTC
+
+Upstream `6a83d2220` integrates the column-generator compilation/proof repair.
+Its exact generator/mixed-field fixture closure is record-qualified at four
+current keys; see [the record](receipts/columns-initial-four-record.json).
+The served candidate `515ea5feff10076d4a33ea2cadcf71dbf6879387` contains the same
+generator and has a separately qualified 15-book initial fixture union.
+This changes downstream closure keys: the earlier qualification records below
+retain their stated source scopes and do not certify the new candidate.
+Convergence owns one affected, ancestor-closed certification batch before
+returning to actual UPLOAD/RAW/application admission. Existing artifacts are
+retained and reused only where their exact keys still match.
 
 The descriptor reader is qualified on the shared foundation at `6e7a1a9c1`;
 its [current 34-book record](receipts/checkpoint-reader-foundation-thirty-four-record.json)
@@ -14,7 +25,7 @@ The six original unrestricted reader claims remain refuted and unfinished;
 the six distinct guarded replacements are qualified. BOOT still needs to consume
 this bounded reader with verified persisted geometry and retained ownership.
 
-The served-family candidate is `9d3edbe27`, built on `80cbba4a3` and the
+The pre-generator served-family candidate was `9d3edbe27`, built on `80cbba4a3` and the
 qualified paired BOOT schema at `fa5711d5c`.
 It joins the qualified manifest arithmetic and upload scanner repairs, restores
 the native test launcher's executable mode, and corrects SOURCE's refused-issue
