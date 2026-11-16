@@ -8,6 +8,7 @@
 ; path reaches a function that is not guard-verified.
 (in-package "ACL2")
 (include-book "overlay")
+(include-book "run-active-geometry")
 (include-book "columns-call-guards")
 (fn2-book-layer :c)
 ; Exact existing lower-bound probe budget, shared with source work bounds.
@@ -197,11 +198,43 @@
 
 ; The dispatcher. Every function is total over schema ids: an id no schema
 ; registered is refused :schema by the codec dispatch and has no fields.
+(defun fn2-ra-layout-max-sizes (rows)
+ (declare (xargs :verify-guards nil))
+ (if (atom rows) nil
+  (let ((layouts (fn2-decl-get :layouts (cdar rows))))
+   (cons (fn2-codec-constant (car layouts) "-MAX-SIZE")
+    (cons (fn2-codec-constant (cadr layouts) "-MAX-SIZE")
+          (fn2-ra-layout-max-sizes (cdr rows)))))))
+(defun fn2-ra-layout-max-expression (sizes)
+ (declare (xargs :verify-guards nil))
+ (if (atom sizes) 0 `(max ,(car sizes) ,(fn2-ra-layout-max-expression (cdr sizes)))))
+(defun fn2-ra-key-octet-bound (fields)
+ (declare (xargs :verify-guards nil))
+ (if (atom fields) 0
+  (let ((kind (cadar fields)))
+   `(+ ,(cond ((eq kind :digest) 32)
+              ((and (consp kind) (eq (car kind) :octets)) (cadr kind))
+              (t 0))
+       ,(fn2-ra-key-octet-bound (cdr fields))))))
+(defun fn2-ra-key-octet-bounds (rows)
+ (declare (xargs :verify-guards nil))
+ (if (atom rows) nil
+  (cons (fn2-ra-key-octet-bound (fn2-decl-get :key (cdar rows)))
+        (fn2-ra-key-octet-bounds (cdr rows)))))
+(defconst *fn2-run-overlay-search-steps* *fn2-ov-search-steps*)
 (defun fn2-ra-dispatch-events (rows)
  (declare (xargs :verify-guards nil))
  (let ((room '(and (fn2-fields-wfp fn2-fields) (natp base)
                    (<= (+ base *fn2-run-entry-rows*) (fn2-fields-rows fn2-fields)))))
- `((defun fn2-run-layout-physical-ref-p (sid)
+ `((defconst *fn2-run-layout-max-entry-bytes* ,(fn2-ra-layout-max-expression (fn2-ra-layout-max-sizes rows)))
+   (defconst *fn2-run-layout-max-key-octets* ,(fn2-ra-layout-max-expression (fn2-ra-key-octet-bounds rows)))
+   (defconst *fn2-c-read-step-bytes*
+    (+ (* 2 *fn2-run-entries-base*) *fn2-run-restart-bytes* 32
+       (* (+ 2 *fn2-run-overlay-search-steps* *fn2-run-restart-interval*) *fn2-run-layout-max-entry-bytes*)
+       (* (+ 8 (* 2 *fn2-run-overlay-search-steps*) (* 4 *fn2-run-active-source-cursors*)) *fn2-run-layout-max-key-octets*)))
+   (defconst *fn2-c-read-callback-bytes*
+    (+ *fn2-c-read-step-bytes* (* 2 *fn2-run-layout-max-entry-bytes*) (* 2 *fn2-format-sector-size*)))
+   (defun fn2-run-layout-physical-ref-p (sid)
     (declare (xargs :guard t))
     (case sid ,@(fn2-ra-physical-ref-arms rows) (otherwise t)))
    (defun fn2-run-layout-page-kind (sid lv)

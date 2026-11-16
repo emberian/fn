@@ -1,0 +1,2765 @@
+{
+ "base": "b37d2df9d39b65644cfefa00fcfbfa85df5b6f77",
+ "canonical-comparison": "fa5711d5c",
+ "new-declaration-ref": "864f4dcac",
+ "semantic-kind-ref": "a1b10bcb5",
+ "closure": {
+  "books/assembly-index": {
+   "sha256": "137480d6e9cb00a13ee637f752d228c96ef2ff13cc472518848380b39fef9a5f",
+   "origin": "owned-or-immutable-base",
+   "includes": [
+    "books/machines-all",
+    "books/machine-dispatch",
+    "books/reference-state",
+    "books/machines-b",
+    "books/checkpoint-catalog-kind",
+    "books/machines-c-read",
+    "books/conn-kind",
+    "books/upload-kind",
+    "books/txn-kind",
+    "books/cursor-kind",
+    "books/cns-kind",
+    "books/authority-kind",
+    "books/boot-kind",
+    "books/checkpoint-cbase-kind",
+    "books/boot-reader-kind",
+    "books/boot-semantic-kind",
+    "books/checkpoint-master-kind"
+   ]
+  },
+  "books/machines-all": {
+   "sha256": "abaaa049106a9d37b90d041d3ff7162fb7d8ceb6749bc05bf58da89f59fe4a74",
+   "origin": "owned-or-immutable-base",
+   "includes": [
+    "books/machines-a"
+   ]
+  },
+  "books/machines-a": {
+   "sha256": "6b27d9f04b788ed2730f2e520770c40f7dd9c06828a15a14dc79db50960adeec",
+   "origin": "owned-or-immutable-base",
+   "includes": [
+    "books/machines",
+    "books/profile"
+   ]
+  },
+  "books/machines": {
+   "sha256": "a6013533da9758adab81d87f14b4011d9e761ea181154837760552f0f1935b09",
+   "origin": "owned-or-immutable-base",
+   "includes": [
+    "books/vocab",
+    "books/arms",
+    "books/columns-call-guards"
+   ]
+  },
+  "books/vocab": {
+   "sha256": "4099736dd0ecb84952f05cfe2065db89e11432ebb9e65e67d2584ca5f4c2255f",
+   "origin": "owned-or-immutable-base",
+   "includes": [
+    "books/columns",
+    "books/owed",
+    "books/profile"
+   ]
+  },
+  "books/columns": {
+   "sha256": "8b694caf782c2ce3a29fa109b055c181b54beda214276493f6d9acb9456a881b",
+   "origin": "owned-or-immutable-base",
+   "includes": [
+    "books/operations"
+   ]
+  },
+  "books/operations": {
+   "sha256": "419120e7ae100f400d18cdee2d080d6133523673cac22fae1b05c7201ff97dd8",
+   "origin": "owned-or-immutable-base",
+   "includes": [
+    "books/declare"
+   ]
+  },
+  "books/declare": {
+   "sha256": "54e850788ee821dd90a4d9715e93d319f94846039592c4420fef1bdc5d959569",
+   "origin": "owned-or-immutable-base",
+   "includes": []
+  },
+  "books/owed": {
+   "sha256": "171950b91e40f4e7d0e94902ce00009adc62d8104e0eecd5db6a59b93bbffb15",
+   "origin": "owned-or-immutable-base",
+   "includes": [
+    "books/declare"
+   ]
+  },
+  "books/profile": {
+   "sha256": "1f216ed6c0505dc1b01ada0f7d3d9482af6da7b7dff8736b5100ef3e3fbc1038",
+   "origin": "owned-or-immutable-base",
+   "includes": [
+    "books/operations"
+   ]
+  },
+  "books/arms": {
+   "sha256": "83825a47c141b16393debcb6dfc98aa7fb54b375e7c12296fa4f25a491c29455",
+   "origin": "owned-or-immutable-base",
+   "includes": [
+    "books/run-budget",
+    "books/resources",
+    "books/operations",
+    "books/columns"
+   ]
+  },
+  "books/run-budget": {
+   "sha256": "6c340901483627a433e4de6b7699b684b9949f233ee52ce4c5840774df59a7d0",
+   "origin": "owned-or-immutable-base",
+   "includes": []
+  },
+  "books/resources": {
+   "sha256": "019bb017e54237a5304f30598b8842de8f0651b5f92c523ff174f24994fe43c6",
+   "origin": "owned-or-immutable-base",
+   "includes": [
+    "books/owed"
+   ]
+  },
+  "books/columns-call-guards": {
+   "sha256": "fd7c2588e6d90338288b484078525799ac261c66013ebe112c3f369870db5a4a",
+   "origin": "owned-or-immutable-base",
+   "includes": [
+    "books/columns-guard-hints"
+   ]
+  },
+  "books/columns-guard-hints": {
+   "sha256": "e0a20c5669df681bf75fa5eeae426adc4053010915b3c7657d56e247d5c8440b",
+   "origin": "owned-or-immutable-base",
+   "includes": [
+    "books/columns"
+   ]
+  },
+  "books/machine-dispatch": {
+   "sha256": "c8d485e71f3db1ec1210d0c348e5d3fddb432e476435e801ab9b3592728aebfe",
+   "origin": "owned-or-immutable-base",
+   "includes": [
+    "books/machines-a-run"
+   ]
+  },
+  "books/machines-a-run": {
+   "sha256": "12bd825457fa98bb47fab9d77b536be2a57a3dd480f31909e7c106c891a754bd",
+   "origin": "owned-or-immutable-base",
+   "includes": [
+    "books/machines-a-access",
+    "books/machines-a-scribe",
+    "books/machines-a",
+    "books/machine-arms"
+   ]
+  },
+  "books/machines-a-access": {
+   "sha256": "f08c1a652fe7fbf06072d136e544a77e7cc27d53e98b2006c553fbdda7603adc",
+   "origin": "owned-or-immutable-base",
+   "includes": [
+    "books/core"
+   ]
+  },
+  "books/core": {
+   "sha256": "6fd705fc6db1d0058f3eb17e6450ebc80a3611c84bc9fa5d0b4b3f07844175a8",
+   "origin": "owned-or-immutable-base",
+   "includes": [
+    "books/pool-ranges",
+    "books/vocab",
+    "books/borrow-release",
+    "books/sched",
+    "books/trace",
+    "books/exec-state",
+    "books/arm-issue-effects",
+    "books/core-children-a",
+    "books/core-harvest"
+   ]
+  },
+  "books/pool-ranges": {
+   "sha256": "2f9e1f0c898ea4f6747f4e8f4942bc7f73be512ed1b90feb2d9cad7a58e3f959",
+   "origin": "owned-or-immutable-base",
+   "includes": [
+    "books/pool",
+    "books/fnv",
+    "books/columns-guard-hints"
+   ]
+  },
+  "books/pool": {
+   "sha256": "32dce8695606e5faa78dbd1d4de70f7ace78436501ad8390a24fe301c2cf07db",
+   "origin": "owned-or-immutable-base",
+   "includes": [
+    "books/columns",
+    "books/owed-discharge",
+    "books/profile"
+   ]
+  },
+  "books/owed-discharge": {
+   "sha256": "53903322be1b79ed081ecfcbfcb9f60649d3fdbf8aa6853b772abf8e6fc69f01",
+   "origin": "owned-or-immutable-base",
+   "includes": [
+    "books/owed"
+   ]
+  },
+  "books/fnv": {
+   "sha256": "73d15afc6e1325f03d19ad4b39eeb3adc677ce2b07e9eddbc14141ca8843edde",
+   "origin": "owned-or-immutable-base",
+   "includes": [
+    "books/operations"
+   ]
+  },
+  "books/borrow-release": {
+   "sha256": "08d68878eaf8c50f39552a34ab9cfce8c070b2bd21a71f4f452256f1cd2559cf",
+   "origin": "owned-or-immutable-base",
+   "includes": [
+    "books/vocab"
+   ]
+  },
+  "books/sched": {
+   "sha256": "aa485faf89a7a51334cad497e8db98043c5678dd9a32ed597bdd0ec4a41dd59f",
+   "origin": "owned-or-immutable-base",
+   "includes": [
+    "books/columns",
+    "books/machines",
+    "books/profile",
+    "books/exec-state",
+    "books/owed"
+   ]
+  },
+  "books/exec-state": {
+   "sha256": "56eb8a81a3cc049c27c1e23dd1930f8184f2c892207169532315184ca141ea3d",
+   "origin": "owned-or-immutable-base",
+   "includes": [
+    "books/columns",
+    "books/profile"
+   ]
+  },
+  "books/trace": {
+   "sha256": "8659e943d080aa3af080893f5027b2fa752f3803c3471620a5d946646df8065f",
+   "origin": "owned-or-immutable-base",
+   "includes": [
+    "books/columns",
+    "books/profile"
+   ]
+  },
+  "books/arm-issue-effects": {
+   "sha256": "a9460bbc8e085b404804d7b82328c1f7a249faeee25380af6586b389d3d5d9fd",
+   "origin": "owned-or-immutable-base",
+   "includes": [
+    "books/ops-issued-effects"
+   ]
+  },
+  "books/ops-issued-effects": {
+   "sha256": "0d8ca86349858405807ff2cdccffccd71d1c8cef2065186b28aa31aafd35a709",
+   "origin": "owned-or-immutable-base",
+   "includes": [
+    "books/ops-issued-count"
+   ]
+  },
+  "books/ops-issued-count": {
+   "sha256": "2238a6e61e7075984f5cd95519a7dd71bc2d1e6f4da6d0b411e639f27ce7a426",
+   "origin": "owned-or-immutable-base",
+   "includes": [
+    "books/ops-heads"
+   ]
+  },
+  "books/ops-heads": {
+   "sha256": "17af3696d3ad68f638d8301906cb1ce67152e6fa685a8d7697b5521018359366",
+   "origin": "owned-or-immutable-base",
+   "includes": [
+    "books/arm-children"
+   ]
+  },
+  "books/arm-children": {
+   "sha256": "102693b7b871c8da5b31649f60ee70f832b5726a9f98caa910d25ca1e3177d07",
+   "origin": "owned-or-immutable-base",
+   "includes": [
+    "books/pool-ranges",
+    "books/vocab",
+    "books/exec-state",
+    "books/machines-directory"
+   ]
+  },
+  "books/machines-directory": {
+   "sha256": "d87c6d169aae1a5c06fd1f31d9047645c8ecae0c444e10ad205958a37e2c83fa",
+   "origin": "owned-or-immutable-base",
+   "includes": [
+    "books/machines",
+    "books/profile"
+   ]
+  },
+  "books/core-children-a": {
+   "sha256": "53d4a6b40b03165e5f80fb04105aa8a9731c38423cd83abed97e75a6bafbf2ab",
+   "origin": "owned-or-immutable-base",
+   "includes": [
+    "books/core-children",
+    "books/pool",
+    "books/sched",
+    "books/trace",
+    "books/exec-state",
+    "books/machines-directory"
+   ]
+  },
+  "books/core-children": {
+   "sha256": "24a985caf082ff74f72c96638034eba619ce114d611a804d0b4a239721d37e4b",
+   "origin": "owned-or-immutable-base",
+   "includes": [
+    "books/machines"
+   ]
+  },
+  "books/core-harvest": {
+   "sha256": "d5289962939c724844ffefec1085a92263329fd2ccb8d8dfbe4538ee96f0ff14",
+   "origin": "owned-or-immutable-base",
+   "includes": [
+    "books/core-children"
+   ]
+  },
+  "books/machines-a-scribe": {
+   "sha256": "284cd6a8eef1fde803d7a1c2e3c6b53fa06efeeed7ebcda842a39d8cc0d0ad3e",
+   "origin": "owned-or-immutable-base",
+   "includes": [
+    "books/machines-a-costs",
+    "books/fnv"
+   ]
+  },
+  "books/machines-a-costs": {
+   "sha256": "046fa8ae47a0feb5bffc728a5fb47b963ae8e1f2a9fdbc6726ff47ee134a266c",
+   "origin": "owned-or-immutable-base",
+   "includes": [
+    "books/machines-a-access"
+   ]
+  },
+  "books/machine-arms": {
+   "sha256": "c31788bd91bb81a1e78eb99b1299166caad9c4c89e3a1b9659a78eb63213efee",
+   "origin": "owned-or-immutable-base",
+   "includes": [
+    "books/core-children",
+    "books/arm-issue-effects"
+   ]
+  },
+  "books/reference-state": {
+   "sha256": "8de80a132ebdbca187e0173e4c9713200f4a9a76af4bab363536ca851a6b2e1a",
+   "origin": "owned-or-immutable-base",
+   "includes": [
+    "books/core"
+   ]
+  },
+  "books/machines-b": {
+   "sha256": "6778a5aa6c5eaa634a6f1e70a96b9823c12e9d347764ec5162048c996a1f0978",
+   "origin": "owned-or-immutable-base",
+   "includes": [
+    "books/machines",
+    "books/core-children",
+    "books/profile",
+    "books/run-active-geometry",
+    "books/origin",
+    "books/sched",
+    "books/commit-alloc",
+    "books/read-pins",
+    "books/checkpoint-lifecycle-coordinator",
+    "books/checkpoint-tickets",
+    "books/format-check",
+    "books/payload-workspace",
+    "books/recovery",
+    "books/block-integrity",
+    "books/commit-members",
+    "books/merkle",
+    "books/event-read-state",
+    "books/journal-members-state",
+    "books/commit",
+    "books/storage-block-io"
+   ]
+  },
+  "books/run-active-geometry": {
+   "sha256": "09fb355b58e5a380c954b89a824e8b9b6e0b59ba139e145cdea64ad7a42a6021",
+   "origin": "owned-or-immutable-base",
+   "includes": [
+    "books/declare"
+   ]
+  },
+  "books/origin": {
+   "sha256": "7f63d5f31b061c0b9206b82394d70e31fce57ceafc9ec7cd8477a54d538d9c19",
+   "origin": "owned-or-immutable-base",
+   "includes": [
+    "books/profile",
+    "books/columns"
+   ]
+  },
+  "books/commit-alloc": {
+   "sha256": "ae683093a38107790d4e17ca1c10a5532905eaffa00d9ed96f483f3cf8e63072",
+   "origin": "owned-or-immutable-base",
+   "includes": [
+    "books/alloc",
+    "books/blake3"
+   ]
+  },
+  "books/alloc": {
+   "sha256": "886dd5c4550a43b78fafa99c02db28edbdc70c7bb1cbe806ce5e40403477a11e",
+   "origin": "owned-or-immutable-base",
+   "includes": [
+    "books/columns",
+    "books/owed",
+    "books/tuple"
+   ]
+  },
+  "books/tuple": {
+   "sha256": "c6b895fd566be6b91ba68fb040826b689a5ad4891a65e040773bfb28b90e1978",
+   "origin": "owned-or-immutable-base",
+   "includes": []
+  },
+  "books/blake3": {
+   "sha256": "e228c1eb31f2f764e925e86fa4f0a7b7682810d64a27f7c39b9f416f93bdc1a1",
+   "origin": "owned-or-immutable-base",
+   "includes": [
+    "books/digests",
+    "books/layout",
+    "books/blake3-spec",
+    "books/blake3-pool-spec"
+   ]
+  },
+  "books/digests": {
+   "sha256": "e821bfe1ffee392c8019fad513db8a83aaf2448251087f26c9576a3af333a524",
+   "origin": "owned-or-immutable-base",
+   "includes": [
+    "books/columns"
+   ]
+  },
+  "books/layout": {
+   "sha256": "2bc995f6bb70ec17862c5b535a4734e90a7a5dfd6312ebdee7d06877b0fbb4d8",
+   "origin": "owned-or-immutable-base",
+   "includes": [
+    "books/pool"
+   ]
+  },
+  "books/blake3-spec": {
+   "sha256": "253babac6e5d9e9df00a655ba6b6595c9e6d85315c9294f05e3d939f19ad5770",
+   "origin": "owned-or-immutable-base",
+   "includes": []
+  },
+  "books/blake3-pool-spec": {
+   "sha256": "2775bf744b6ed52fd098fe329b0b183d62c0857a5a2a989cf80e968f5a366e2b",
+   "origin": "owned-or-immutable-base",
+   "includes": [
+    "books/pool",
+    "books/digests",
+    "books/blake3-spec"
+   ]
+  },
+  "books/read-pins": {
+   "sha256": "9c4a95db6c8188791929f924636c615a6408a6a02d2be9777e16009fad2811b6",
+   "origin": "owned-or-immutable-base",
+   "includes": [
+    "books/commit-alloc",
+    "books/vocab"
+   ]
+  },
+  "books/checkpoint-lifecycle-coordinator": {
+   "sha256": "1f01943a0bc300d6d5891a3188024b44b314a312c91a997ea5111097897b5b0f",
+   "origin": "owned-or-immutable-base",
+   "includes": [
+    "books/retirement-coordinator",
+    "books/checkpoint-allocation-coordinator",
+    "books/checkpoint-installation-coordinator",
+    "books/checkpoint-maintenance-staging"
+   ]
+  },
+  "books/retirement-coordinator": {
+   "sha256": "9495cceb023c5144f7f4d9b87f9953b7245ebb623e0d6b2d00b321aadbf9d20e",
+   "origin": "owned-or-immutable-base",
+   "includes": [
+    "books/retirement"
+   ]
+  },
+  "books/retirement": {
+   "sha256": "1f8ebb638aacdbda36c336663fc6d6321896aba570b95d5a3eef02360fcb6caf",
+   "origin": "owned-or-immutable-base",
+   "includes": [
+    "books/commit-alloc",
+    "books/format-events"
+   ]
+  },
+  "books/format-events": {
+   "sha256": "10be8e61d3746b6094d4b1ac5a2d6006c4d8901a3744b6ca1b4959836812a62b",
+   "origin": "owned-or-immutable-base",
+   "includes": [
+    "books/format-base"
+   ]
+  },
+  "books/format-base": {
+   "sha256": "ead88cb8e7ab67db0c6a06ac400c813f753121c77082825b16016835eb462699",
+   "origin": "owned-or-immutable-base",
+   "includes": [
+    "books/layout"
+   ]
+  },
+  "books/checkpoint-allocation-coordinator": {
+   "sha256": "d2c42d0b2f85dc86e4d99b8f9ce10e4680181c04efb82d64d86ed833c50026ec",
+   "origin": "owned-or-immutable-base",
+   "includes": [
+    "books/retirement",
+    "books/checkpoint-allocation",
+    "books/arms"
+   ]
+  },
+  "books/checkpoint-allocation": {
+   "sha256": "e6031a68634856edc5d4e04b66efe0992e06a2271059656bb6832c23bbc4209b",
+   "origin": "owned-or-immutable-base",
+   "includes": [
+    "books/checkpoint-tickets",
+    "books/format-events",
+    "books/layout-size-bounds"
+   ]
+  },
+  "books/checkpoint-tickets": {
+   "sha256": "5a844a9730bd57a1e5f07d0890aeb708e158c74b08d1ea9723c54ba412890e4b",
+   "origin": "owned-or-immutable-base",
+   "includes": [
+    "books/checkpoint-construction",
+    "books/commit-format"
+   ]
+  },
+  "books/checkpoint-construction": {
+   "sha256": "adc6c1bd23046033b2e8e4214586ee51447c32c34d859124557321aa4e97f338",
+   "origin": "owned-or-immutable-base",
+   "includes": [
+    "books/alloc"
+   ]
+  },
+  "books/commit-format": {
+   "sha256": "c263a0e0300ab9ec84351d46dce15b40d71c5d5abcb99d769bb098a15f5fae7e",
+   "origin": "owned-or-immutable-base",
+   "includes": [
+    "books/format-check",
+    "books/origin",
+    "books/commit-geometry"
+   ]
+  },
+  "books/format-check": {
+   "sha256": "c98f35c7c74d009ab24dbd5b87b1859dbba46be77b31a3585e252d3084ca4951",
+   "origin": "owned-or-immutable-base",
+   "includes": [
+    "books/format",
+    "books/blake3",
+    "books/format-context",
+    "books/assumptions-native-span"
+   ]
+  },
+  "books/format": {
+   "sha256": "01bd400412d667e203d105b8dd7d69563c174c02f5b23d58f9d57bdb4ae5ab1a",
+   "origin": "owned-or-immutable-base",
+   "includes": [
+    "books/format-physical",
+    "books/format-events",
+    "books/format-storage"
+   ]
+  },
+  "books/format-physical": {
+   "sha256": "818642d11e9638333f30fa6f60e3ee8db1ce39d1d040c76ed7ab58df781c1d19",
+   "origin": "owned-or-immutable-base",
+   "includes": [
+    "books/format-base"
+   ]
+  },
+  "books/format-storage": {
+   "sha256": "ddb445f4a77de9462de3b4df0dc5111f381c7b73f94812cb2fa2096852adc68f",
+   "origin": "owned-or-immutable-base",
+   "includes": [
+    "books/format-base"
+   ]
+  },
+  "books/format-context": {
+   "sha256": "16c2a00f17df2e53d055137f80eedcbb8c87b673ab7ae13e7a31246222ad008f",
+   "origin": "owned-or-immutable-base",
+   "includes": [
+    "books/columns",
+    "books/tuple"
+   ]
+  },
+  "books/assumptions-native-span": {
+   "sha256": "3fd43c5b3c3d0ea553afb41fa99f6f7136918ecbf22921eac878cde96439def8",
+   "origin": "owned-or-immutable-base",
+   "includes": []
+  },
+  "books/commit-geometry": {
+   "sha256": "e06315c94bcd0d247214377fb33186f14ca1aa2ee6afe1499d69d053ff0134e2",
+   "origin": "owned-or-immutable-base",
+   "includes": [
+    "books/format-base"
+   ]
+  },
+  "books/layout-size-bounds": {
+   "sha256": "242f55370eff42c596962722a3404058a48dae5215bbf9d39b82f198b07e45b7",
+   "origin": "owned-or-immutable-base",
+   "includes": [
+    "books/layout"
+   ]
+  },
+  "books/checkpoint-installation-coordinator": {
+   "sha256": "ea668d001176625373c3a4982233235324fb52b3710c58cd984125b03b308e34",
+   "origin": "owned-or-immutable-base",
+   "includes": [
+    "books/checkpoint-member",
+    "books/checkpoint-production",
+    "books/arms"
+   ]
+  },
+  "books/checkpoint-member": {
+   "sha256": "8b76cf4210628fed16261fceaedc00623f4d864e22779d9714db0bcbef486d31",
+   "origin": "owned-or-immutable-base",
+   "includes": [
+    "books/checkpoint",
+    "books/pool-ranges",
+    "books/layout-size-bounds",
+    "books/columns-guard-hints",
+    "books/owed"
+   ]
+  },
+  "books/checkpoint": {
+   "sha256": "ef8e12b3449c471a750dab489efe2bd2293a69429da6cef873b56f2c2b63eed7",
+   "origin": "owned-or-immutable-base",
+   "includes": [
+    "books/format-check",
+    "books/commit-alloc",
+    "books/vocab",
+    "books/pool-read-contracts",
+    "books/columns-guard-hints",
+    "books/columns-carrier-contracts"
+   ]
+  },
+  "books/pool-read-contracts": {
+   "sha256": "f51f92ce9bfcd7af93e6ba47bb5a4c43fbb5ac79424ef34ecf489b8f92e9e852",
+   "origin": "owned-or-immutable-base",
+   "includes": [
+    "books/pool"
+   ]
+  },
+  "books/columns-carrier-contracts": {
+   "sha256": "36cf411d1119704be488c119243d0aff8006e9babe38bb128f5d627353373c5a",
+   "origin": "owned-or-immutable-base",
+   "includes": [
+    "books/columns-guard-hints"
+   ]
+  },
+  "books/checkpoint-production": {
+   "sha256": "83d37ac624dce625c62c7d973038ec4cb7f075dc6996301d717c5a66cc9b89af",
+   "origin": "owned-or-immutable-base",
+   "includes": [
+    "books/checkpoint"
+   ]
+  },
+  "books/checkpoint-maintenance-staging": {
+   "sha256": "2ce7e09bac537046a441ba1866f9bfaf324c07293086da4462da84887101a806",
+   "origin": "owned-or-immutable-base",
+   "includes": [
+    "books/checkpoint-future-resources"
+   ]
+  },
+  "books/checkpoint-future-resources": {
+   "sha256": "3936d5295ae9808b3f494ada9693dbff161bff0dbb0c2a69749444619f2c2d06",
+   "origin": "owned-or-immutable-base",
+   "includes": [
+    "books/checkpoint-future-working",
+    "books/core-children"
+   ]
+  },
+  "books/checkpoint-future-working": {
+   "sha256": "94d0fbaf5f9012f42b96fd24a022b1422a22d32919c2c25bd5403fa69a2e8296",
+   "origin": "owned-or-immutable-base",
+   "includes": [
+    "books/checkpoint-member",
+    "books/commit-format"
+   ]
+  },
+  "books/payload-workspace": {
+   "sha256": "4892fc375123f9544d1e4d69f6782eb79f4f528427090bf0b688ef40b06355b9",
+   "origin": "owned-or-immutable-base",
+   "includes": [
+    "books/declare"
+   ]
+  },
+  "books/recovery": {
+   "sha256": "30ae12c976c2e1f78bbc069348ec70e2ceea2e347b46330eecfa9c2a86ed9ad5",
+   "origin": "owned-or-immutable-base",
+   "includes": [
+    "books/commit-format",
+    "books/alloc",
+    "books/pool-digest"
+   ]
+  },
+  "books/pool-digest": {
+   "sha256": "f466162c376f983c3fedacf17dd4c7f89529153caf27aaca30d81a411dd14197",
+   "origin": "owned-or-immutable-base",
+   "includes": [
+    "books/digests",
+    "books/pool",
+    "books/layout"
+   ]
+  },
+  "books/block-integrity": {
+   "sha256": "f1ea96d8fce0b9228e3a4feb331d9c88732c2f839369d24203b4a275f5112721",
+   "origin": "owned-or-immutable-base",
+   "includes": [
+    "books/blake3-row-frames",
+    "books/pool-digest",
+    "books/commit-geometry"
+   ]
+  },
+  "books/blake3-row-frames": {
+   "sha256": "2e2386ed36d8d7869186f83f0ce698faf56f3e02de8f30585d817f231e16f9d7",
+   "origin": "owned-or-immutable-base",
+   "includes": [
+    "books/blake3",
+    "books/pool-digest"
+   ]
+  },
+  "books/commit-members": {
+   "sha256": "3fafe717b7f9c51d7bffd04a5a3b58467329eb80e7d1b0af8c5b05ea984ffb8b",
+   "origin": "owned-or-immutable-base",
+   "includes": [
+    "books/columns"
+   ]
+  },
+  "books/merkle": {
+   "sha256": "893f300d6b6ce46640a604ecd6a71ea2195b38cc818f795eae3d96c525eba7f6",
+   "origin": "owned-or-immutable-base",
+   "includes": [
+    "books/blake3",
+    "books/digest-store",
+    "books/assumptions-integrity"
+   ]
+  },
+  "books/digest-store": {
+   "sha256": "de25fd767c4ad8352ac76153b72b04d7c9246ddb826daf233290aa5e59be8816",
+   "origin": "owned-or-immutable-base",
+   "includes": [
+    "books/digests"
+   ]
+  },
+  "books/assumptions-integrity": {
+   "sha256": "3e1131f6b5a9c47bf9b21bec4dffae3ef46940453e4df9f768899c9d0814d06f",
+   "origin": "owned-or-immutable-base",
+   "includes": []
+  },
+  "books/event-read-state": {
+   "sha256": "55405e0eddcb169465aa18fd0dfa89b06978915786b1a933028728d6644b6862",
+   "origin": "owned-or-immutable-base",
+   "includes": [
+    "books/arm-children"
+   ]
+  },
+  "books/journal-members-state": {
+   "sha256": "8b705c5a96e393d5460f210f49343a6967c56c526ce97d3cd636972b1fc9b414",
+   "origin": "owned-or-immutable-base",
+   "includes": [
+    "books/columns"
+   ]
+  },
+  "books/commit": {
+   "sha256": "f3bc27add4028c6da04a241706f5ab61fddfca0f03230211ec2387597e22a205",
+   "origin": "owned-or-immutable-base",
+   "includes": [
+    "books/machines-a-access",
+    "books/commit-format",
+    "books/checkpoint-commit-leases"
+   ]
+  },
+  "books/checkpoint-commit-leases": {
+   "sha256": "bb1c2e299d594b6a32e5106ee795dec8ce5cbd8f3f40ee954b7e66b1fafd2ecb",
+   "origin": "owned-or-immutable-base",
+   "includes": [
+    "books/checkpoint-future-resources"
+   ]
+  },
+  "books/storage-block-io": {
+   "sha256": "4886fb553552d6155691068f5e9a351eebbb1f3583c113e47ada2701692116f7",
+   "origin": "owned-or-immutable-base",
+   "includes": [
+    "books/arm-issue-effects",
+    "books/read-pins",
+    "books/commit-geometry"
+   ]
+  },
+  "books/checkpoint-catalog-kind": {
+   "sha256": "2c8bf406978936e7fc2af9e8ca3bd149e639fb9212b1a632af42e33c3284fda0",
+   "origin": "owned-or-immutable-base",
+   "includes": [
+    "books/machines-b",
+    "books/checkpoint"
+   ]
+  },
+  "books/machines-c-read": {
+   "sha256": "0b809780be2098e6821de5cbd2788b0d793e3174ec73637b973bf46dce00aab8",
+   "origin": "owned-or-immutable-base",
+   "includes": [
+    "books/machines-c-sealer",
+    "books/run-physical-park-region",
+    "books/c-source-observer"
+   ]
+  },
+  "books/machines-c-sealer": {
+   "sha256": "448f31fe2f8ac4b067f3cb1c36402b1088fd16b4376e94796ef1b4e8775109a1",
+   "origin": "owned-or-immutable-base",
+   "includes": [
+    "books/sealer"
+   ]
+  },
+  "books/sealer": {
+   "sha256": "e838d81d368a37944cf53a514be3ad144f97b78297a5167fa5bde150c74533d8",
+   "origin": "owned-or-immutable-base",
+   "includes": [
+    "books/machines-c-groups"
+   ]
+  },
+  "books/machines-c-groups": {
+   "sha256": "819a21819283ad1c7f0933a677ad683ab50cb459bdaf7b638610730c7bdc9e97",
+   "origin": "owned-or-immutable-base",
+   "includes": [
+    "books/machines-c-bind"
+   ]
+  },
+  "books/machines-c-bind": {
+   "sha256": "15be2a90e9d83a76632d0ad6c550e13a4cd255d53ff173fe99999ebb2ec4f0a9",
+   "origin": "owned-or-immutable-base",
+   "includes": [
+    "books/machines-c-stage"
+   ]
+  },
+  "books/machines-c-stage": {
+   "sha256": "b16364d3bb5eddbf72e4e60eba7b4d1ea359d14583d7addaed7112e15e743629",
+   "origin": "owned-or-immutable-base",
+   "includes": [
+    "books/machines-c-successor"
+   ]
+  },
+  "books/machines-c-successor": {
+   "sha256": "97fd79d6dac8df0198cbd0c8140cdeda804f31affb895c676b1fedec13c51e21",
+   "origin": "owned-or-immutable-base",
+   "includes": [
+    "books/machines-c-sealer-kind",
+    "books/run-physical-park-region"
+   ]
+  },
+  "books/machines-c-sealer-kind": {
+   "sha256": "43579e2fe85ba62d63d9b4ac26c534654d65707b47c9e458ba4d71dd1bc56984",
+   "origin": "owned-or-immutable-base",
+   "includes": [
+    "books/machines-all",
+    "books/machines-c"
+   ]
+  },
+  "books/machines-c": {
+   "sha256": "74cdc7876430a5597a2fc3f675d0c038daebeb9908c5ec01fbca76c37017c6b1",
+   "origin": "owned-or-immutable-base",
+   "includes": [
+    "books/range-served",
+    "books/machines-b",
+    "books/successor-schema-geometry",
+    "books/c-snapshot",
+    "books/checkpoint-summary-state",
+    "books/checkpoint-bank-admission",
+    "books/run-physical-geometry",
+    "books/run-physical-harvest",
+    "books/c-source-observer",
+    "books/run-physical-step",
+    "books/run-physical-release"
+   ]
+  },
+  "books/range-served": {
+   "sha256": "46eeca4e8e04792a8d8df877d8504574392cd13898beacef4a0add088b3bde07",
+   "origin": "owned-or-immutable-base",
+   "includes": [
+    "books/runs-served",
+    "books/range"
+   ]
+  },
+  "books/runs-served": {
+   "sha256": "3b1f9d144f1a4b34c0ff7b4660b79ee86871d15a89a0290878586369edd23318",
+   "origin": "owned-or-immutable-base",
+   "includes": [
+    "books/identity",
+    "books/ordered",
+    "books/authority-schema",
+    "books/folds",
+    "books/runs-manifest"
+   ]
+  },
+  "books/identity": {
+   "sha256": "98df8c4eef639327c12e822f70da1737df1cdced574a728bd8d43cc23c0669a8",
+   "origin": "owned-or-immutable-base",
+   "includes": [
+    "books/runs-assemble",
+    "books/ribbon"
+   ]
+  },
+  "books/runs-assemble": {
+   "sha256": "baa16e20a92b6953a483f476a30e93e733a71c3782d2f97fc362f5d3ad8e311e",
+   "origin": "owned-or-immutable-base",
+   "includes": [
+    "books/overlay",
+    "books/run-active-geometry",
+    "books/columns-call-guards"
+   ]
+  },
+  "books/overlay": {
+   "sha256": "e1e96a46efd6d5a7951d1782b9ce0c340b9a0425ed21b8b0752a8cb892bbdcb3",
+   "origin": "owned-or-immutable-base",
+   "includes": [
+    "books/runs"
+   ]
+  },
+  "books/runs": {
+   "sha256": "dcb87655b7979c29f7d76c45c18d805768a05e63acf5a72b4fcec23a2df56677",
+   "origin": "owned-or-immutable-base",
+   "includes": [
+    "books/run-geometry",
+    "books/runs-schema"
+   ]
+  },
+  "books/run-geometry": {
+   "sha256": "b0d0fa1c783d6c5c26ee1c47124121f33b0beef4ed3d0bfa3e6b596036dbaeb5",
+   "origin": "owned-or-immutable-base",
+   "includes": [
+    "books/format-base",
+    "books/run-installed-geometry"
+   ]
+  },
+  "books/run-installed-geometry": {
+   "sha256": "a09c014cecf66ce661ae0ef9ec98b1c7ad0d324bb5f136e3ba69df8d3cb7121b",
+   "origin": "owned-or-immutable-base",
+   "includes": [
+    "books/format-base"
+   ]
+  },
+  "books/runs-schema": {
+   "sha256": "bb34fee128ac49657d77e6fc46ee4a85e602695eccf067f1e7f89d17cc32ab4f",
+   "origin": "owned-or-immutable-base",
+   "includes": [
+    "books/runs-page",
+    "books/columns-call-guards"
+   ]
+  },
+  "books/runs-page": {
+   "sha256": "3c05d886f028eeb7ed874de5a2d6463c64f6853ac6499de30a4f7e91bde0df16",
+   "origin": "owned-or-immutable-base",
+   "includes": [
+    "books/run-geometry",
+    "books/format-check",
+    "books/pool-ranges"
+   ]
+  },
+  "books/ribbon": {
+   "sha256": "cb705e9bf4cab4284f31846f8cbf0d8efdb1d86e4e11a13076ad490b6843d43a",
+   "origin": "owned-or-immutable-base",
+   "includes": [
+    "books/runs-page",
+    "books/fnv",
+    "books/words",
+    "books/columns-call-guards"
+   ]
+  },
+  "books/words": {
+   "sha256": "6ca5cf3204ca8e87136b8f2e25f1f04baf45c6c86cf7908b1993dc7d6325226c",
+   "origin": "owned-or-immutable-base",
+   "includes": []
+  },
+  "books/ordered": {
+   "sha256": "67803ac18222ac6a6d684ac8205f9c55b4ad94a2bafd8d46d5bb8dfdb22968cb",
+   "origin": "owned-or-immutable-base",
+   "includes": [
+    "books/runs-schema",
+    "books/commit-format"
+   ]
+  },
+  "books/authority-schema": {
+   "sha256": "a235d1833dcc10fa12fca819b80a4473e25c98ebd74c19f4c877daa36c3be304",
+   "origin": "owned-or-immutable-base",
+   "includes": [
+    "books/runs-schema"
+   ]
+  },
+  "books/folds": {
+   "sha256": "ee68191d177c203c6622092f4a9f8f7c137da211d5e019137622173bdceae956",
+   "origin": "owned-or-immutable-base",
+   "includes": [
+    "books/runs-schema"
+   ]
+  },
+  "books/runs-manifest": {
+   "sha256": "3dde08bf022887610e3763fc8c7dea1243b8c5657114926d5ef3b62efcac6a37",
+   "origin": "owned-or-immutable-base",
+   "includes": [
+    "books/runs-schema"
+   ]
+  },
+  "books/range": {
+   "sha256": "ed2477bbb9b582c49cc4a043eb549c7d212fe66eac3659e7629ae642d1e2be1f",
+   "origin": "owned-or-immutable-base",
+   "includes": [
+    "books/runs-assemble"
+   ]
+  },
+  "books/successor-schema-geometry": {
+   "sha256": "99ce2bd6d103be821a896ecff5c0faeb79cbecda0e407f5c0ab1fb9ced69ceaa",
+   "origin": "owned-or-immutable-base",
+   "includes": [
+    "books/runs-served",
+    "books/successor-workspace-geometry"
+   ]
+  },
+  "books/successor-workspace-geometry": {
+   "sha256": "a94c86448e9a52a2abc76a8b8d4437311b5044e00c2edb61c0c0e49aec1e841f",
+   "origin": "owned-or-immutable-base",
+   "includes": [
+    "books/format-base"
+   ]
+  },
+  "books/c-snapshot": {
+   "sha256": "262e52caeb7800b7b4fcfe9fac496238ac2ab265b5a25a5238a0c68cf408d6d8",
+   "origin": "owned-or-immutable-base",
+   "includes": [
+    "books/c-snapshot-state",
+    "books/overlay",
+    "books/run-physical-region"
+   ]
+  },
+  "books/c-snapshot-state": {
+   "sha256": "2ef86d103dea6fe1b515bf35c72fb15d77252725eb89c83ca9e73c9c15799731",
+   "origin": "owned-or-immutable-base",
+   "includes": [
+    "books/columns"
+   ]
+  },
+  "books/run-physical-region": {
+   "sha256": "e16a7c61436e56a85fbe8653f03d8e1801c7352d5f8a93a8f3e9745092c94c4c",
+   "origin": "owned-or-immutable-base",
+   "includes": [
+    "books/run-physical-release"
+   ]
+  },
+  "books/run-physical-release": {
+   "sha256": "6c7923b75826c8d4cc5d38e608307b93deaea687b582a1147e4f081bb57403dd",
+   "origin": "owned-or-immutable-base",
+   "includes": [
+    "books/run-physical-source"
+   ]
+  },
+  "books/run-physical-source": {
+   "sha256": "102241d2d215d03b85f05a100359c5e5308164af4f870cdd00334768d357239d",
+   "origin": "owned-or-immutable-base",
+   "includes": [
+    "books/run-physical-bound-bind",
+    "books/checkpoint-summary-leases"
+   ]
+  },
+  "books/run-physical-bound-bind": {
+   "sha256": "6b318587cba7533d15b9631e33721418ca7cc1579d1052bae6e1bcf07753f477",
+   "origin": "owned-or-immutable-base",
+   "includes": [
+    "books/run-physical-bound"
+   ]
+  },
+  "books/run-physical-bound": {
+   "sha256": "86750a64cfd1201ccaf0e317442690d4ed72e90eb1efde76a66f8440e7184a0b",
+   "origin": "owned-or-immutable-base",
+   "includes": [
+    "books/run-physical-resources"
+   ]
+  },
+  "books/run-physical-resources": {
+   "sha256": "f2dddc7f305f42dd2b180ced0bdf29b2a444f9de09cf35b864adcc267ebd25d8",
+   "origin": "owned-or-immutable-base",
+   "includes": [
+    "books/run-physical-state",
+    "books/machines-b"
+   ]
+  },
+  "books/run-physical-state": {
+   "sha256": "85bc4aff9c84e5c60c1709a04d32fca19e239627e22e9b94aed8dc2548921d2d",
+   "origin": "owned-or-immutable-base",
+   "includes": [
+    "books/runs"
+   ]
+  },
+  "books/checkpoint-summary-leases": {
+   "sha256": "70f4d4fd48d91f647dc55b461dd1071820da5ec1deed2139241eeaee4f714d0a",
+   "origin": "owned-or-immutable-base",
+   "includes": [
+    "books/checkpoint-summary-state",
+    "books/runs"
+   ]
+  },
+  "books/checkpoint-summary-state": {
+   "sha256": "35c19da2528251cc0c63a5bd863f0170755699cdc7ce2be88126d4eb2fe48272",
+   "origin": "owned-or-immutable-base",
+   "includes": [
+    "books/checkpoint-restore-semantic-state"
+   ]
+  },
+  "books/checkpoint-restore-semantic-state": {
+   "sha256": "02d34dfe5f2112a68889cb3fe613fde043966717a179e43c48daea4fbf71bc8f",
+   "origin": "owned-or-immutable-base",
+   "includes": [
+    "books/checkpoint-restore-provenance"
+   ]
+  },
+  "books/checkpoint-restore-provenance": {
+   "sha256": "ab757067c2bb6b9aa332d73ed5e0a6b096a58e15a1f95bf5f33db3ad56628938",
+   "origin": "owned-or-immutable-base",
+   "includes": [
+    "books/checkpoint-restore-map"
+   ]
+  },
+  "books/checkpoint-restore-map": {
+   "sha256": "5e95575a2865cd7b461378daa93f5277354ed27a36dfc8bdd465d13a690df31a",
+   "origin": "owned-or-immutable-base",
+   "includes": [
+    "books/checkpoint-restore-reader",
+    "books/checkpoint-restore-reach-state"
+   ]
+  },
+  "books/checkpoint-restore-reader": {
+   "sha256": "59530c60f64c61aae858c59ae8e3b1ba1059fecd50abb62061e6f4fbcffeab81",
+   "origin": "owned-or-immutable-base",
+   "includes": [
+    "books/checkpoint-restore"
+   ]
+  },
+  "books/checkpoint-restore": {
+   "sha256": "2b31b2d276cb08caf740bbcc5f150926fb6b14bec805a4132b688140b81eb8e6",
+   "origin": "owned-or-immutable-base",
+   "includes": [
+    "books/checkpoint",
+    "books/checkpoint-restore-read",
+    "books/checkpoint-geometry"
+   ]
+  },
+  "books/checkpoint-restore-read": {
+   "sha256": "e81cee2ff3a71d94986661c346391113407e8865f876f0801d3a98a7f1cec96b",
+   "origin": "owned-or-immutable-base",
+   "includes": [
+    "books/event-proof-format",
+    "books/alloc"
+   ]
+  },
+  "books/event-proof-format": {
+   "sha256": "519be9b00f0719a7b9b8728574635960b8d9243c5db03e2ca790a5e958a35c2c",
+   "origin": "owned-or-immutable-base",
+   "includes": [
+    "books/checkpoint-map-format"
+   ]
+  },
+  "books/checkpoint-map-format": {
+   "sha256": "86cf2a13eb3e45d83a08cf1101bf6124e7638a78c98f849985779ec890b397ba",
+   "origin": "owned-or-immutable-base",
+   "includes": [
+    "books/format"
+   ]
+  },
+  "books/checkpoint-geometry": {
+   "sha256": "47aac52fae2a05b63f099027cf14a109751f821bf41faa1f4b5bca769058b488",
+   "origin": "owned-or-immutable-base",
+   "includes": [
+    "books/format-physical"
+   ]
+  },
+  "books/checkpoint-restore-reach-state": {
+   "sha256": "10e8b5b963d7271cc2534c3b40e887e43e6b44988a87a3918434943ec7477044",
+   "origin": "owned-or-immutable-base",
+   "includes": [
+    "books/columns"
+   ]
+  },
+  "books/checkpoint-bank-admission": {
+   "sha256": "4737f645cfdf293cf15719d38c3af9efdb407d6d14643f3b651a3f617bd6559b",
+   "origin": "owned-or-immutable-base",
+   "includes": [
+    "books/checkpoint-summary-state",
+    "books/c-snapshot",
+    "books/runs"
+   ]
+  },
+  "books/run-physical-geometry": {
+   "sha256": "381bfaec6964c1aba882ddcc556e0cadaccbdf2ff25b57eb4abe42af853e3857",
+   "origin": "owned-or-immutable-base",
+   "includes": [
+    "books/run-physical-resources"
+   ]
+  },
+  "books/run-physical-harvest": {
+   "sha256": "2b6431f4f29ba5bade253c1320406902f58059c968777608e4f2b94ef7de2487",
+   "origin": "owned-or-immutable-base",
+   "includes": [
+    "books/run-physical-resources"
+   ]
+  },
+  "books/c-source-observer": {
+   "sha256": "f9b7630b5c433d79f71c90948743fa89fddbfdaf2b7dfb1a90e8e5086e277619",
+   "origin": "owned-or-immutable-base",
+   "includes": [
+    "books/c-source-observer-state"
+   ]
+  },
+  "books/c-source-observer-state": {
+   "sha256": "c655a2252f53df95d9eb329414d7a131ecdbbd834786a2b68db61d8c87803efd",
+   "origin": "owned-or-immutable-base",
+   "includes": [
+    "books/columns"
+   ]
+  },
+  "books/run-physical-step": {
+   "sha256": "a8ddde305fd9570f59d0202a6ba1297f8cb59743c34d06ac78fe5882655b86ee",
+   "origin": "owned-or-immutable-base",
+   "includes": [
+    "books/run-physical-io",
+    "books/run-physical-bound-step"
+   ]
+  },
+  "books/run-physical-io": {
+   "sha256": "aa2c2986687f8ebda5869f400f04edc718e30503a6d238612f6f1a9e998e06df",
+   "origin": "owned-or-immutable-base",
+   "includes": [
+    "books/run-physical-source",
+    "books/run-physical-bound-io"
+   ]
+  },
+  "books/run-physical-bound-io": {
+   "sha256": "de22818b77a630635f9b36eebab4590031b3d9c8bb09e3e5fb44a5aac51d2c6d",
+   "origin": "owned-or-immutable-base",
+   "includes": [
+    "books/run-physical-bound",
+    "books/run-physical-harvest"
+   ]
+  },
+  "books/run-physical-bound-step": {
+   "sha256": "fff76ce56b8a1edc0451509a423c156713ecadc840cf2dfa8cef9fe4bfab12c7",
+   "origin": "owned-or-immutable-base",
+   "includes": [
+    "books/run-physical-bound-io",
+    "books/runs-served",
+    "books/boot-geometry-state",
+    "books/checkpoint-semantic-page"
+   ]
+  },
+  "books/boot-geometry-state": {
+   "sha256": "1e9c8e2ae031715296de226431e460f8f2f955e62ecc1f7d42102ff1678b801e",
+   "origin": "owned-or-immutable-base",
+   "includes": [
+    "books/boot-config-state",
+    "books/format-check"
+   ]
+  },
+  "books/boot-config-state": {
+   "sha256": "9fb97cf4095154cc1cfe9fe2fdf499c2c88a3d36410f76b96b7177932d05b703",
+   "origin": "owned-or-immutable-base",
+   "includes": [
+    "books/columns",
+    "books/profile"
+   ]
+  },
+  "books/checkpoint-semantic-page": {
+   "sha256": "548241bb40835f731218d26cff190dbed7febc42965c3ba542a096b3beb19ccf",
+   "origin": "owned-or-immutable-base",
+   "includes": [
+    "books/runs-page"
+   ]
+  },
+  "books/run-physical-park-region": {
+   "sha256": "a6a4a72f76057ec1196586e70255a4914f9aa1eb759921ecf553f89616dcc069",
+   "origin": "owned-or-immutable-base",
+   "includes": [
+    "books/run-physical-region"
+   ]
+  },
+  "books/conn-kind": {
+   "sha256": "a50e72520fa6ead2540b308775dd435914317887a4b5afe77b938317e23f0502",
+   "origin": "owned-or-immutable-base",
+   "includes": [
+    "books/machines-a",
+    "books/profile",
+    "books/conn-answer",
+    "books/tls-kind",
+    "books/compress-kind",
+    "books/accounts-core",
+    "books/upload-scan",
+    "books/upload-feed",
+    "books/machine-arms",
+    "books/conn-schema"
+   ]
+  },
+  "books/conn-answer": {
+   "sha256": "2c099d9ad4cd0a5cb905f79fbd3ccecbcc7f09b9dad053c3caf180a9d00b044d",
+   "origin": "owned-or-immutable-base",
+   "includes": [
+    "books/nntp-grammar",
+    "books/compress-policy"
+   ]
+  },
+  "books/nntp-grammar": {
+   "sha256": "089c0cb3ea1dd851407e42ec0a165696c7db1e85618479dd8c98501f78ea127b",
+   "origin": "owned-or-immutable-base",
+   "includes": [
+    "books/grammar"
+   ]
+  },
+  "books/grammar": {
+   "sha256": "420739fd67e1f21e86668b986d3f2c81f3d2e6f11de96bd02f20a04d80860a0b",
+   "origin": "owned-or-immutable-base",
+   "includes": [
+    "books/pool-ranges"
+   ]
+  },
+  "books/compress-policy": {
+   "sha256": "bacea68680cb1cad303023723f5fd524cbae06b7dd81bf2cb5ada0fb2973270f",
+   "origin": "owned-or-immutable-base",
+   "includes": [
+    "books/profile",
+    "books/owed-discharge"
+   ]
+  },
+  "books/tls-kind": {
+   "sha256": "86c5e4fe10ed4e0043c71cd2d09d96ca6af898bb447365db28913a3d7a4ab0df",
+   "origin": "owned-or-immutable-base",
+   "includes": [
+    "books/machines-a",
+    "books/codec-profile",
+    "books/core-children",
+    "books/machine-arms",
+    "books/tls-schema"
+   ]
+  },
+  "books/codec-profile": {
+   "sha256": "adb045c7393523346124a11a8959238a94be529354084bb23f9a5ae76cc63213",
+   "origin": "owned-or-immutable-base",
+   "includes": [
+    "books/profile"
+   ]
+  },
+  "books/tls-schema": {
+   "sha256": "e0779c15ffe1ceab4133301a8f68e5b8f2a6080ce17ad4a2033e0c81b800d6f8",
+   "origin": "owned-or-immutable-base",
+   "includes": [
+    "books/machines-a",
+    "books/codec-profile",
+    "books/core-children",
+    "books/owed-discharge"
+   ]
+  },
+  "books/compress-kind": {
+   "sha256": "05eefc48dbf24297a972c122f3c3dd2b7145f64a43b48bd3f6d8f6d898e8e0ff",
+   "origin": "owned-or-immutable-base",
+   "includes": [
+    "books/compress-policy",
+    "books/columns",
+    "books/core-children"
+   ]
+  },
+  "books/accounts-core": {
+   "sha256": "1ca8a1ab641bff91757f0fe7febfd94af47f06b86a51034961bd5cfd5accd772",
+   "origin": "owned-or-immutable-base",
+   "includes": [
+    "books/accounts",
+    "books/machines-a",
+    "books/arm-children"
+   ]
+  },
+  "books/accounts": {
+   "sha256": "5dd1a927dccb3d24fa31645bcd3b73a0acc0e42a83bac57c45c9d3a7e37f448b",
+   "origin": "owned-or-immutable-base",
+   "includes": [
+    "books/core-children",
+    "books/profile",
+    "books/resources"
+   ]
+  },
+  "books/upload-scan": {
+   "sha256": "5f55444397869d0742e26b699e9aaf3de83bba3f12d22ec59d3d7e2ca78b71e7",
+   "origin": "owned-or-immutable-base",
+   "includes": [
+    "books/grammar"
+   ]
+  },
+  "books/upload-feed": {
+   "sha256": "01ee2316f12c05b2627f0a8153a4a11a94d4ece16e9dd384668004f67c36cdad",
+   "origin": "owned-or-immutable-base",
+   "includes": [
+    "books/grammar"
+   ]
+  },
+  "books/conn-schema": {
+   "sha256": "e1ff16f42f038d3492271bf618cb80988947125e86af72e5ce79518573ded26f",
+   "origin": "owned-or-immutable-base",
+   "includes": [
+    "books/machines-a",
+    "books/profile",
+    "books/conn-answer",
+    "books/tls-schema",
+    "books/compress-kind",
+    "books/accounts-core",
+    "books/upload-scan",
+    "books/upload-feed"
+   ]
+  },
+  "books/upload-kind": {
+   "sha256": "a6300c4761e615b8e046072c9fe6b3c1f0911d39e24c5edc424d8035ecb1737f",
+   "origin": "owned-or-immutable-base",
+   "includes": [
+    "books/machines-a",
+    "books/machines-b",
+    "books/conn-kind",
+    "books/profile",
+    "books/upload-scan",
+    "books/upload-feed",
+    "books/blake3",
+    "books/machine-arms"
+   ]
+  },
+  "books/txn-kind": {
+   "sha256": "854830ce6ee9b41c621ae8692de6601f296ea19d8548d1d28fe3ce07dba2b1ee",
+   "origin": "owned-or-immutable-base",
+   "includes": [
+    "books/upload-kind",
+    "books/claims",
+    "books/machines-c-bind",
+    "books/machine-arms"
+   ]
+  },
+  "books/claims": {
+   "sha256": "492a1272a9b0bfa63598517d3e087a352fb02b5b921691a7d4b758a1fc1bc006",
+   "origin": "owned-or-immutable-base",
+   "includes": [
+    "books/pool-ranges"
+   ]
+  },
+  "books/cursor-kind": {
+   "sha256": "bb66d01412cb37d6d4c575133ed3e38ff4206297c5a402b5abbbc22cd003b204",
+   "origin": "owned-or-immutable-base",
+   "includes": [
+    "books/txn-kind",
+    "books/machines-c-read",
+    "books/machine-arms",
+    "books/machines-a-costs"
+   ]
+  },
+  "books/cns-kind": {
+   "sha256": "4be1d32895fedcedea3442aeb79a4cd96e2b3c627071063bf92798d9ab8aea83",
+   "origin": "owned-or-immutable-base",
+   "includes": [
+    "books/cns-edges",
+    "books/accounts",
+    "books/machines-a",
+    "books/machines-a-costs",
+    "books/machine-arms"
+   ]
+  },
+  "books/cns-edges": {
+   "sha256": "e22d92508c4edb6e2036527d9b7cea7e01681edd0344482067eddfc053150379",
+   "origin": "owned-or-immutable-base",
+   "includes": [
+    "books/columns",
+    "books/columns-guard-hints",
+    "books/arm-children"
+   ]
+  },
+  "books/authority-kind": {
+   "sha256": "67fdf3004f68e0aae680f4484be056d39d03dec5c54c337bc891bde9028156a1",
+   "origin": "owned-or-immutable-base",
+   "includes": [
+    "books/txn-kind",
+    "books/authority-codec",
+    "books/machine-arms"
+   ]
+  },
+  "books/authority-codec": {
+   "sha256": "1a021e4262a21701bcbfa270c01de72934add13f879f3ba613b6482fce345ee5",
+   "origin": "owned-or-immutable-base",
+   "includes": [
+    "books/consumer-codec",
+    "books/authority-port"
+   ]
+  },
+  "books/consumer-codec": {
+   "sha256": "e1d164dfca000a50b99ce4ccb6924309d50382c70b00e9780998ff710703e56f",
+   "origin": "owned-or-immutable-base",
+   "includes": [
+    "books/layout",
+    "books/blake3-spec",
+    "books/consumer-port"
+   ]
+  },
+  "books/consumer-port": {
+   "sha256": "746f88adc0db457c66b79738b5461b8ba6a87024ff563ea490e0b78de95c9b69",
+   "origin": "owned-or-immutable-base",
+   "includes": [
+    "books/port",
+    "books/nntp-grammar"
+   ]
+  },
+  "books/port": {
+   "sha256": "8603d78841cc7e8a96404dcd22d81bfa91f47ab1bd356d8a4172d463d95b7b91",
+   "origin": "owned-or-immutable-base",
+   "includes": [
+    "books/grammar"
+   ]
+  },
+  "books/authority-port": {
+   "sha256": "aba543403619076c6c47da93e6b358fae69227d81c01e2c23a24831c5a69ee67",
+   "origin": "owned-or-immutable-base",
+   "includes": [
+    "books/port"
+   ]
+  },
+  "books/boot-kind": {
+   "sha256": "df4ec1952a97e25625e3ac3e10d9c2413888b8a9a82ea669693faefece2a8029",
+   "origin": "owned-or-immutable-base",
+   "includes": [
+    "books/machines-b",
+    "books/machine-arms",
+    "books/boot-format",
+    "books/boot-config-state"
+   ]
+  },
+  "books/boot-format": {
+   "sha256": "eb83cae95d86cba85f6125a9f9a5b64ef097544c46a77d7f7bcbc91bead0c814",
+   "origin": "owned-or-immutable-base",
+   "includes": [
+    "books/layout"
+   ]
+  },
+  "books/checkpoint-cbase-kind": {
+   "sha256": "e467ed7939669a23aaa2ce556699a9e97d1adcf8ca612694a6694e8ae4e437b2",
+   "origin": "owned-or-immutable-base",
+   "includes": [
+    "books/machines-b",
+    "books/checkpoint-cbase-state"
+   ]
+  },
+  "books/checkpoint-cbase-state": {
+   "sha256": "b8efa507ea6b2cdeba516003571a343b3b3e6b721e133f7fbf56c3e7440bf39b",
+   "origin": "staged-current-root-dependency",
+   "includes": [
+    "books/checkpoint-source-retention"
+   ]
+  },
+  "books/checkpoint-source-retention": {
+   "sha256": "2e023c45b352b15e390dc44b2f804935c20a1f5dd599dd546793f1dbf0a67d4e",
+   "origin": "staged-current-root-dependency",
+   "includes": [
+    "books/checkpoint"
+   ]
+  },
+  "books/boot-reader-kind": {
+   "sha256": "27c7e89994dfd20fb6daaeeaf082510a69830c20fc3d8bf7fe0868146c64de07",
+   "origin": "owned-or-immutable-base",
+   "includes": [
+    "books/machines-b",
+    "books/checkpoint-restore-map",
+    "books/checkpoint-restore-reach-core"
+   ]
+  },
+  "books/checkpoint-restore-reach-core": {
+   "sha256": "7ff770f667ac09f13e701ce537b1138523719290f45bc0f74b5afd2ba518e400",
+   "origin": "owned-or-immutable-base",
+   "includes": [
+    "books/checkpoint-restore-provenance"
+   ]
+  },
+  "books/boot-semantic-kind": {
+   "sha256": "a1665a65d2cdbd174916ada18ce36eacf4044878206166ae02ed30fc0007d8fd",
+   "origin": "owned-or-immutable-base",
+   "includes": [
+    "books/checkpoint-restore-semantic-work"
+   ]
+  },
+  "books/checkpoint-restore-semantic-work": {
+   "sha256": "5b321b93cfc7ac85cee1d85ecea065a64fc90356203467a12795929bfd054372",
+   "origin": "owned-or-immutable-base",
+   "includes": [
+    "books/checkpoint-restore-semantic",
+    "books/runs-served"
+   ]
+  },
+  "books/checkpoint-restore-semantic": {
+   "sha256": "892ba8b4b586b56391017340919fc11ed47840cefd412faec24a4b27716d1af6",
+   "origin": "owned-or-immutable-base",
+   "includes": [
+    "books/checkpoint-restore-semantic-source",
+    "books/checkpoint-semantic-page",
+    "books/ribbon",
+    "books/runs-served"
+   ]
+  },
+  "books/checkpoint-restore-semantic-source": {
+   "sha256": "553e3de85ed7aa6a36a73d6eec72b52c3fd2e884741064fc3a6451836e8bf48f",
+   "origin": "owned-or-immutable-base",
+   "includes": [
+    "books/checkpoint-restore-semantic-state",
+    "books/checkpoint-restore-map"
+   ]
+  },
+  "books/checkpoint-master-kind": {
+   "sha256": "88de7362e046d0cb888b44a08d3bf6e43029aeb839518320a88ca94e09f4fd56",
+   "origin": "owned-or-immutable-base",
+   "includes": [
+    "books/checkpoint-master-state",
+    "books/event-build-kind"
+   ]
+  },
+  "books/checkpoint-master-state": {
+   "sha256": "626d12dcedb8f03ea939fbd099490934f5c3cb1f513ea54704fb04c109e358bf",
+   "origin": "owned-or-immutable-base",
+   "includes": [
+    "books/checkpoint-kind",
+    "books/machine-arms",
+    "books/checkpoint-bank-master-work"
+   ]
+  },
+  "books/checkpoint-kind": {
+   "sha256": "4d69166070ab06493bf92d9bef2a1441b625702902bee272505eddd72978168c",
+   "origin": "owned-or-immutable-base",
+   "includes": [
+    "books/checkpoint-kind-b",
+    "books/checkpoint-teardown-state",
+    "books/checkpoint-page-kind",
+    "books/checkpoint-build",
+    "books/checkpoint-plan",
+    "books/checkpoint-map-build",
+    "books/checkpoint-metadata-driver",
+    "books/checkpoint-metadata-release"
+   ]
+  },
+  "books/checkpoint-kind-b": {
+   "sha256": "dd206e33bcdeb23288a4edf78bfc1b90375ce964e4b2db1564105604bfe761e3",
+   "origin": "owned-or-immutable-base",
+   "includes": [
+    "books/checkpoint-catalog-kind",
+    "books/checkpoint-installed",
+    "books/checkpoint-construction",
+    "books/checkpoint-lifecycle",
+    "books/checkpoint-summary-authority-state",
+    "books/checkpoint-directory-rebase-state",
+    "books/checkpoint-writer"
+   ]
+  },
+  "books/checkpoint-installed": {
+   "sha256": "15fb5e4225bdfaf9f3ac9fdbf18dcbae980b2cb455b8f91c946ab3ae23f25228",
+   "origin": "staged-current-root-dependency",
+   "includes": [
+    "books/commit-directory",
+    "books/checkpoint-boot"
+   ]
+  },
+  "books/commit-directory": {
+   "sha256": "f80a426981c8582ec6c72996e8de3ad001d2b4dda087250e5b236ad30a7ea003",
+   "origin": "staged-current-root-dependency",
+   "includes": [
+    "books/commit-root-state"
+   ]
+  },
+  "books/commit-root-state": {
+   "sha256": "4e2d0ee1943c75db8ae534942d9d6ca60dd3658781361265c1befae0be26e60e",
+   "origin": "staged-current-root-dependency",
+   "includes": [
+    "books/columns"
+   ]
+  },
+  "books/checkpoint-boot": {
+   "sha256": "2a7bb7c201198d7ac1791596dc1b3560fd799baa6d8f89e51082a1b09a22a996",
+   "origin": "staged-current-root-dependency",
+   "includes": [
+    "books/boot-kind",
+    "books/checkpoint-publication",
+    "books/boot-geometry-state"
+   ]
+  },
+  "books/checkpoint-publication": {
+   "sha256": "030d0115b0eeeb9ea309ec7becfd65522d94ad866b9c140363fae7f732b836de",
+   "origin": "staged-current-root-dependency",
+   "includes": [
+    "books/checkpoint-bank-obligations-state",
+    "books/checkpoint-geometry",
+    "books/arm-children"
+   ]
+  },
+  "books/checkpoint-bank-obligations-state": {
+   "sha256": "7bec19414f52b575c3dcb0cae10d12339a863f148d94ee3e9f95aaa4e98c025e",
+   "origin": "staged-current-root-dependency",
+   "includes": [
+    "books/checkpoint-bank-evidence"
+   ]
+  },
+  "books/checkpoint-bank-evidence": {
+   "sha256": "a18f810b7d78337cfe9626e93a22f01db420911579b02c9d9efc62237a9d7d9a",
+   "origin": "staged-current-root-dependency",
+   "includes": [
+    "books/checkpoint-publication-state",
+    "books/commit-directory"
+   ]
+  },
+  "books/checkpoint-publication-state": {
+   "sha256": "1038cf5b4cf723df35617c2b849d49c3a1181d2166fa4fd8628a91a900cbea80",
+   "origin": "staged-current-root-dependency",
+   "includes": [
+    "books/checkpoint"
+   ]
+  },
+  "books/checkpoint-lifecycle": {
+   "sha256": "5b44ebf7bcde2fa7b2befeadd772959c5a9f4d43fa59d6f8bd96810724920516",
+   "origin": "staged-current-root-dependency",
+   "includes": [
+    "books/checkpoint-lifecycle-state",
+    "books/checkpoint-page-state",
+    "books/checkpoint-source-retention",
+    "books/checkpoint-production",
+    "books/checkpoint-publication",
+    "books/commit-format"
+   ]
+  },
+  "books/checkpoint-lifecycle-state": {
+   "sha256": "42d1cbb0c42a9299dabe035c0a36eaea08f0944a90faa959d9f27c5ed4516872",
+   "origin": "staged-current-root-dependency",
+   "includes": [
+    "books/columns"
+   ]
+  },
+  "books/checkpoint-page-state": {
+   "sha256": "062000c7eb986554c8901e3c6878237b3141eaa9a043baa7d912f7febb278a47",
+   "origin": "staged-current-root-dependency",
+   "includes": [
+    "books/checkpoint-construction",
+    "books/format-context"
+   ]
+  },
+  "books/checkpoint-summary-authority-state": {
+   "sha256": "17d59aca80b129b945a6b8be2c989af203a087337e7def28f59e721baa668f5d",
+   "origin": "staged-current-root-dependency",
+   "includes": [
+    "books/checkpoint"
+   ]
+  },
+  "books/checkpoint-directory-rebase-state": {
+   "sha256": "89488f19489275499b8c60d28d5f6662f4532d3e815277ff4c2ad995e2fc115b",
+   "origin": "staged-current-root-dependency",
+   "includes": [
+    "books/columns"
+   ]
+  },
+  "books/checkpoint-writer": {
+   "sha256": "3623c48f7f71f5c1fa6839c1a525a4f2b2f0e8c36eb0def41b1a2c8785b1d36b",
+   "origin": "staged-current-root-dependency",
+   "includes": [
+    "books/checkpoint-writer-ops",
+    "books/checkpoint-lifecycle-state",
+    "books/machine-arms"
+   ]
+  },
+  "books/checkpoint-writer-ops": {
+   "sha256": "944911acbee79bb6fca9215c47cdeb09138c4670a80f3f33841d2b000fd3b288",
+   "origin": "staged-current-root-dependency",
+   "includes": [
+    "books/checkpoint-installed",
+    "books/checkpoint-production",
+    "books/checkpoint-future-resources"
+   ]
+  },
+  "books/checkpoint-teardown-state": {
+   "sha256": "a1b15fd1abd06987caeddb01dfdf8708b4f37a578a1d4f94225dd11ca2da997a",
+   "origin": "owned-or-immutable-base",
+   "includes": [
+    "books/columns"
+   ]
+  },
+  "books/checkpoint-page-kind": {
+   "sha256": "1fabe3100c1a1231ccdd114ee7bf8c197a666769545c2cfe2f7108b77b682aba",
+   "origin": "owned-or-immutable-base",
+   "includes": [
+    "books/checkpoint-page-worker"
+   ]
+  },
+  "books/checkpoint-page-worker": {
+   "sha256": "0bb2544efae845f454fffab5b471e70873db59340964bd4aeb9cb26f005db5db",
+   "origin": "owned-or-immutable-base",
+   "includes": [
+    "books/checkpoint-page-io",
+    "books/machine-arms"
+   ]
+  },
+  "books/checkpoint-page-io": {
+   "sha256": "3215257b1c8117d120c4c4a974f57d126506ebc2b7fb3ca37a87733b0449761d",
+   "origin": "staged-current-root-dependency",
+   "includes": [
+    "books/checkpoint-page-state",
+    "books/checkpoint-construction-owner",
+    "books/checkpoint-writer-ops"
+   ]
+  },
+  "books/checkpoint-construction-owner": {
+   "sha256": "530e8f29fc7dbe60f9379cde12626ad54718fc903857a610c66f35654eab5d4b",
+   "origin": "staged-current-root-dependency",
+   "includes": [
+    "books/checkpoint-construction",
+    "books/machines-b",
+    "books/c-snapshot"
+   ]
+  },
+  "books/checkpoint-build": {
+   "sha256": "badab5bfbf872a6ee3045e453e1e2bd52408e75b082572a93081cad3b0439017",
+   "origin": "owned-or-immutable-base",
+   "includes": [
+    "books/checkpoint-descriptor",
+    "books/origin",
+    "books/checkpoint-teardown-state",
+    "books/checkpoint-construction-owner",
+    "books/checkpoint-page-io"
+   ]
+  },
+  "books/checkpoint-descriptor": {
+   "sha256": "d89f762ee1f26d0d7cfe3a15139fe47d302c7270d209d625d6cc1ab5deb01366",
+   "origin": "owned-or-immutable-base",
+   "includes": [
+    "books/checkpoint-build-state",
+    "books/checkpoint-publication",
+    "books/checkpoint-page-header"
+   ]
+  },
+  "books/checkpoint-build-state": {
+   "sha256": "38850a307d964ad76f583cd5aec5b33c17551754b70a02b87bf89ddcf138167a",
+   "origin": "staged-current-root-dependency",
+   "includes": [
+    "books/checkpoint-member",
+    "books/checkpoint-production",
+    "books/c-snapshot",
+    "books/origin"
+   ]
+  },
+  "books/checkpoint-page-header": {
+   "sha256": "d03e2fc581b23e312cf0e64f36ba65abe5e04b650f1bb8fde81940c7cfcc355e",
+   "origin": "staged-current-root-dependency",
+   "includes": [
+    "books/checkpoint-page-state",
+    "books/format"
+   ]
+  },
+  "books/checkpoint-plan": {
+   "sha256": "846089b3fc45981e1ed99ca776567d1260e471d6fea4294527866238560ce7b9",
+   "origin": "staged-current-root-dependency",
+   "includes": [
+    "books/checkpoint-build-state",
+    "books/checkpoint-construction-owner",
+    "books/checkpoint-capacity"
+   ]
+  },
+  "books/checkpoint-capacity": {
+   "sha256": "5f620aa217d05012eac26a0166b7e974331f8eb023e77f43dbd610df832d2b32",
+   "origin": "staged-current-root-dependency",
+   "includes": [
+    "books/checkpoint-map-format",
+    "books/commit-format"
+   ]
+  },
+  "books/checkpoint-map-build": {
+   "sha256": "5484b5695907e104ddb79f816e82f0c6d00e197f09b857fc434b46e6e2cbe8eb",
+   "origin": "staged-current-root-dependency",
+   "includes": [
+    "books/checkpoint-plan",
+    "books/checkpoint-map-pack",
+    "books/checkpoint-page-state",
+    "books/checkpoint-page-header",
+    "books/checkpoint-linked-header",
+    "books/checkpoint-page-io"
+   ]
+  },
+  "books/checkpoint-map-pack": {
+   "sha256": "2d2eac675e10d58bbd8c8fe8b8c68b51f498e034f3a79ca55555c0d66c3e6dbc",
+   "origin": "staged-current-root-dependency",
+   "includes": [
+    "books/checkpoint-map-read"
+   ]
+  },
+  "books/checkpoint-map-read": {
+   "sha256": "7c762a6c46876828c97607d16ec10bdaf8332cff505823c061dc51ea37efbc95",
+   "origin": "staged-current-root-dependency",
+   "includes": [
+    "books/checkpoint-map-format",
+    "books/checkpoint-construction"
+   ]
+  },
+  "books/checkpoint-linked-header": {
+   "sha256": "58b287a716c9304124a08d0363eeebc7dab2a53d176a8794c2727a5c4d349be1",
+   "origin": "staged-current-root-dependency",
+   "includes": [
+    "books/checkpoint-map-format",
+    "books/checkpoint-page-header"
+   ]
+  },
+  "books/checkpoint-metadata-driver": {
+   "sha256": "fff79e9447e3d78abd3b50cb9bad28f94b7ad5d967008a6932017bdc5e465757",
+   "origin": "owned-or-immutable-base",
+   "includes": [
+    "books/checkpoint-source-loader",
+    "books/checkpoint-compaction-schema",
+    "books/checkpoint-compaction-empty",
+    "books/checkpoint-compaction-park",
+    "books/checkpoint-compaction-reader-finish",
+    "books/checkpoint-bank-admission"
+   ]
+  },
+  "books/checkpoint-source-loader": {
+   "sha256": "704e34f196d35068abdab6f0b59bc4a32fcb7c5f36a5b747dddd66c8be54ba72",
+   "origin": "owned-or-immutable-base",
+   "includes": [
+    "books/checkpoint-metadata-resources",
+    "books/run-physical-step"
+   ]
+  },
+  "books/checkpoint-metadata-resources": {
+   "sha256": "68ebebe52f6bbfa1e2f6ff63d2dad325678d3288fa26bbfac1bb773cf9b6e52f",
+   "origin": "owned-or-immutable-base",
+   "includes": [
+    "books/run-installed-geometry",
+    "books/checkpoint-working-reserve",
+    "books/checkpoint-metadata-manifest",
+    "books/checkpoint-compaction-state",
+    "books/checkpoint-predecessors",
+    "books/checkpoint-payload",
+    "books/checkpoint-semantic-retention",
+    "books/machines-c-sealer",
+    "books/checkpoint-future-resources"
+   ]
+  },
+  "books/checkpoint-working-reserve": {
+   "sha256": "410b77f57f3f8dc27e9762585b7f3634be35721180af46d9d2723c03e9add926",
+   "origin": "owned-or-immutable-base",
+   "includes": [
+    "books/c-snapshot-state",
+    "books/checkpoint-working-geometry"
+   ]
+  },
+  "books/checkpoint-working-geometry": {
+   "sha256": "f106ee3f5b6252def8250c01390c14d2e0284db328c3bf2ec746d0ad4d4ddb43",
+   "origin": "owned-or-immutable-base",
+   "includes": [
+    "books/pool-credit",
+    "books/run-geometry",
+    "books/checkpoint-future-working"
+   ]
+  },
+  "books/pool-credit": {
+   "sha256": "609d174df4cf986d80463f929bc7145fff9e24e8828fdab3aa94fdddb6fc218f",
+   "origin": "owned-or-immutable-base",
+   "includes": [
+    "books/pool",
+    "books/columns-guard-hints"
+   ]
+  },
+  "books/checkpoint-metadata-manifest": {
+   "sha256": "0efcddc8ba77f700f2212d543409ff2d4089654e08374cfba1be0146c77ab45f",
+   "origin": "staged-current-root-dependency",
+   "includes": [
+    "books/checkpoint-metadata-manifest-state",
+    "books/checkpoint-metadata-page",
+    "books/checkpoint-build-state"
+   ]
+  },
+  "books/checkpoint-metadata-manifest-state": {
+   "sha256": "dc36595986728aed9fa7f86dd604fba3ba7b6227c00b9358c8b707699245a610",
+   "origin": "staged-current-root-dependency",
+   "includes": [
+    "books/columns"
+   ]
+  },
+  "books/checkpoint-metadata-page": {
+   "sha256": "baa7cd3a5393cfaea93238dd0d2f47e53a2b39044b8fade156572c3db71e6abd",
+   "origin": "staged-current-root-dependency",
+   "includes": [
+    "books/checkpoint-metadata",
+    "books/checkpoint-page-io"
+   ]
+  },
+  "books/checkpoint-metadata": {
+   "sha256": "fd372ccf3461799790b9c3c844eab96a1fbae33e6991c03a1d83a101b3830076",
+   "origin": "staged-current-root-dependency",
+   "includes": [
+    "books/checkpoint-metadata-retention"
+   ]
+  },
+  "books/checkpoint-metadata-retention": {
+   "sha256": "b2a994a3982c4fe6346de8c228700b07500f366dca291e978ff68d33f015cf7b",
+   "origin": "staged-current-root-dependency",
+   "includes": [
+    "books/checkpoint-metadata-state",
+    "books/checkpoint-source-retention",
+    "books/checkpoint-build-state",
+    "books/checkpoint-retained-entry",
+    "books/source-manifest-codec"
+   ]
+  },
+  "books/checkpoint-metadata-state": {
+   "sha256": "d152e91af3e6df00a11b3b38288c3a748a28d1b53536508cedee1f7f33d4f182",
+   "origin": "staged-current-root-dependency",
+   "includes": [
+    "books/checkpoint-construction-owner",
+    "books/run-entry-rehome",
+    "books/checkpoint-metadata-source"
+   ]
+  },
+  "books/run-entry-rehome": {
+   "sha256": "ea9e6d939fae34537f5eed93eed00881bc1ffa67ae1f238e11815009911247d4",
+   "origin": "staged-current-root-dependency",
+   "includes": [
+    "books/runs-served"
+   ]
+  },
+  "books/checkpoint-metadata-source": {
+   "sha256": "27abd201cbe6bdf6bae2fd85d504de1f9c3571c34f675d8ed7e434c7d5353b2b",
+   "origin": "staged-current-root-dependency",
+   "includes": [
+    "books/checkpoint-construction-owner",
+    "books/runs-served"
+   ]
+  },
+  "books/checkpoint-retained-entry": {
+   "sha256": "815a46b1bf7e58f66e37d7417b53585a5e69c1d443437babcf5d72674e7ad347",
+   "origin": "staged-current-root-dependency",
+   "includes": [
+    "books/checkpoint",
+    "books/c-snapshot",
+    "books/runs-served"
+   ]
+  },
+  "books/source-manifest-codec": {
+   "sha256": "6f62efed15267360429da7e400d58b43675f734589651869e61ade58cbee167a",
+   "origin": "staged-current-root-dependency",
+   "includes": [
+    "books/commit-format"
+   ]
+  },
+  "books/checkpoint-compaction-state": {
+   "sha256": "a5b140085bc981e089a35d96ac2c3af6d9ca61b62c9d514a0d08e2e9d603a857",
+   "origin": "owned-or-immutable-base",
+   "includes": [
+    "books/checkpoint-metadata-source",
+    "books/checkpoint-build-state"
+   ]
+  },
+  "books/checkpoint-predecessors": {
+   "sha256": "678a3bff2d79a71ee9d3e5541deb4e2cc6a8914bb4c90b87e492fc170a92622f",
+   "origin": "owned-or-immutable-base",
+   "includes": [
+    "books/checkpoint-predecessors-state",
+    "books/checkpoint-compaction-source"
+   ]
+  },
+  "books/checkpoint-predecessors-state": {
+   "sha256": "157c29e4bc99f1ea87e58f590a8a041cc67a11fb050e8349241fbc862b4f2e91",
+   "origin": "owned-or-immutable-base",
+   "includes": [
+    "books/columns"
+   ]
+  },
+  "books/checkpoint-compaction-source": {
+   "sha256": "848dc098720974ecb7430e5594763200e2c73f01749653462486bd01c4fa3a26",
+   "origin": "owned-or-immutable-base",
+   "includes": [
+    "books/checkpoint-compaction-state"
+   ]
+  },
+  "books/checkpoint-payload": {
+   "sha256": "8fd56f94372e365e50d875dc3aa5ba2432fedf9cc345efdc755244cbd072915c",
+   "origin": "owned-or-immutable-base",
+   "includes": [
+    "books/checkpoint-payload-io",
+    "books/checkpoint-payload-format",
+    "books/checkpoint-payload-physical-step"
+   ]
+  },
+  "books/checkpoint-payload-io": {
+   "sha256": "ea525fbbbb64ff9e86a341123464c412fc50ed48d35b84161eed98029af2044a",
+   "origin": "owned-or-immutable-base",
+   "includes": [
+    "books/checkpoint-payload-state",
+    "books/checkpoint-payload-physical"
+   ]
+  },
+  "books/checkpoint-payload-state": {
+   "sha256": "4d44df9a50269cb964c96a0b384185c7e368687b0b647c3362076006d3543e60",
+   "origin": "owned-or-immutable-base",
+   "includes": [
+    "books/checkpoint-retained-entry",
+    "books/checkpoint-payload-carrier",
+    "books/checkpoint-source-retention",
+    "books/machines-b",
+    "books/source-manifest-codec"
+   ]
+  },
+  "books/checkpoint-payload-carrier": {
+   "sha256": "676f0e108d96f45094ffbb75e0e32d81b10bc4e52bfcc169035bc4acff1797aa",
+   "origin": "owned-or-immutable-base",
+   "includes": [
+    "books/payload-workspace",
+    "books/source-manifest-codec"
+   ]
+  },
+  "books/checkpoint-payload-physical": {
+   "sha256": "07c0782880e36bfcbf7ba661c5a209d9b4d2e89235cec9f74d3ac965b3cae64d",
+   "origin": "owned-or-immutable-base",
+   "includes": [
+    "books/checkpoint-payload-carrier",
+    "books/checkpoint-payload-format",
+    "books/block-integrity"
+   ]
+  },
+  "books/checkpoint-payload-format": {
+   "sha256": "9e8241b902a1e9f3ab4d7cb2611779ebabb907e554a5c1d68710ec709cd07d5e",
+   "origin": "owned-or-immutable-base",
+   "includes": [
+    "books/source-manifest-codec",
+    "books/pool-ranges"
+   ]
+  },
+  "books/checkpoint-payload-physical-step": {
+   "sha256": "084f1f716a1dd3dfe95bcc6b71268e232fe33982fadc78f799a447ee025a520a",
+   "origin": "owned-or-immutable-base",
+   "includes": [
+    "books/checkpoint-payload-physical"
+   ]
+  },
+  "books/checkpoint-semantic-retention": {
+   "sha256": "44bdb88a2fe656dc6bc6dfb0824d67844dce180189960e2763911d7d48c5e800",
+   "origin": "owned-or-immutable-base",
+   "includes": [
+    "books/checkpoint-metadata-retention",
+    "books/checkpoint-semantic-page",
+    "books/checkpoint-boot",
+    "books/recovery"
+   ]
+  },
+  "books/checkpoint-compaction-schema": {
+   "sha256": "8166f3bf6b219ce7161a7c75beb5673037a26257c03b38c5ceb4435bc150d894",
+   "origin": "owned-or-immutable-base",
+   "includes": [
+    "books/checkpoint-compaction-output",
+    "books/checkpoint-predecessors"
+   ]
+  },
+  "books/checkpoint-compaction-output": {
+   "sha256": "f0cadfa6a7c92b2ea0bad4caf4136d9b1413d3ab8beba248aa20b4fc1eabf22e",
+   "origin": "owned-or-immutable-base",
+   "includes": [
+    "books/checkpoint-compaction-workspaces",
+    "books/checkpoint-metadata",
+    "books/range-served"
+   ]
+  },
+  "books/checkpoint-compaction-workspaces": {
+   "sha256": "8f8ee14651032ee42d314064eaebd99bdd8bcade3b3f195afcd83032d11118aa",
+   "origin": "owned-or-immutable-base",
+   "includes": [
+    "books/checkpoint-compaction-source",
+    "books/checkpoint-source-loader"
+   ]
+  },
+  "books/checkpoint-compaction-empty": {
+   "sha256": "ea08828e519602c3c20f5223cec4aedcb6de1ddf8f118f63bfce4a2b1ef71362",
+   "origin": "owned-or-immutable-base",
+   "includes": [
+    "books/checkpoint-compaction-merge"
+   ]
+  },
+  "books/checkpoint-compaction-merge": {
+   "sha256": "791dbcffe7dc57f6b8c2d064e0310361408812179878a9e04884e2fd88788060",
+   "origin": "owned-or-immutable-base",
+   "includes": [
+    "books/checkpoint-compaction-workspaces",
+    "books/range-served"
+   ]
+  },
+  "books/checkpoint-compaction-park": {
+   "sha256": "bf6d40270d1bed1ba16211f9f49b7d26d64c94e7dc66f98d98efb1d120564b20",
+   "origin": "owned-or-immutable-base",
+   "includes": [
+    "books/checkpoint-compaction-workspaces",
+    "books/run-physical-release"
+   ]
+  },
+  "books/checkpoint-compaction-reader-finish": {
+   "sha256": "bd3d858ef7c8adaac593b55c4ed70839942c613805109f89a49f6b1a66136a63",
+   "origin": "owned-or-immutable-base",
+   "includes": [
+    "books/checkpoint-compaction-production",
+    "books/checkpoint-source-loader"
+   ]
+  },
+  "books/checkpoint-compaction-production": {
+   "sha256": "9c9e985ad34223793b093b382f54e929d26521d54b5f12276d8bc02361c00ba6",
+   "origin": "owned-or-immutable-base",
+   "includes": [
+    "books/checkpoint-predecessors"
+   ]
+  },
+  "books/checkpoint-metadata-release": {
+   "sha256": "837db7160097b505edc6fc6e937e5fa479a630ca48cf18f0f454e9e4d0d0eafc",
+   "origin": "owned-or-immutable-base",
+   "includes": [
+    "books/checkpoint-working-release",
+    "books/checkpoint-source-loader",
+    "books/checkpoint-publication"
+   ]
+  },
+  "books/checkpoint-working-release": {
+   "sha256": "2dbfb75c8da7fc4d6f6f19a6835ba28845183065a13731365bdf67073ff20dd8",
+   "origin": "owned-or-immutable-base",
+   "includes": [
+    "books/checkpoint-working-reserve",
+    "books/checkpoint-metadata-manifest-state",
+    "books/arm-children"
+   ]
+  },
+  "books/checkpoint-bank-master-work": {
+   "sha256": "074292db9f6347cf6f80afa2e3d83fc9d308e27c82079c626bedc52c1bf0785c",
+   "origin": "staged-current-root-dependency",
+   "includes": [
+    "books/checkpoint-master-work",
+    "books/checkpoint-bank-admission"
+   ]
+  },
+  "books/checkpoint-master-work": {
+   "sha256": "dae0a97f3ad6ef57590bfd386bc3093178626360ee34d45eefc2a828c9a6a05d",
+   "origin": "staged-current-root-dependency",
+   "includes": [
+    "books/checkpoint-directory-consume-work",
+    "books/checkpoint-live-finish",
+    "books/machine-arms"
+   ]
+  },
+  "books/checkpoint-directory-consume-work": {
+   "sha256": "703a29d759bca971ed79c97f00892a6bdf7645725f832912ca54410272e64470",
+   "origin": "staged-current-root-dependency",
+   "includes": [
+    "books/columns"
+   ]
+  },
+  "books/checkpoint-live-finish": {
+   "sha256": "27b0fea4e4a689943de3858b7a1df31d85de8f201f69427725b0a7b21ab9c8f5",
+   "origin": "staged-current-root-dependency",
+   "includes": [
+    "books/checkpoint-live-retire",
+    "books/checkpoint-directory-rebase-state",
+    "books/checkpoint-live-finish-work"
+   ]
+  },
+  "books/checkpoint-live-retire": {
+   "sha256": "11746d67e389992ba015f5adb2569789d5c932fa85bab58d01f42ea51378ad2c",
+   "origin": "staged-current-root-dependency",
+   "includes": [
+    "books/checkpoint-live-install",
+    "books/checkpoint-cbase-release"
+   ]
+  },
+  "books/checkpoint-live-install": {
+   "sha256": "33e0456452e051a542b62aead8d648d391e67b1c806787880a3410fbbc5ea0bd",
+   "origin": "staged-current-root-dependency",
+   "includes": [
+    "books/checkpoint-live-cbase",
+    "books/c-source-observer",
+    "books/checkpoint-bank-admission",
+    "books/sealer"
+   ]
+  },
+  "books/checkpoint-live-cbase": {
+   "sha256": "90010deb97727ed6a09999ce010bf032124bfbd386cd155a9561d443b9be4242",
+   "origin": "staged-current-root-dependency",
+   "includes": [
+    "books/checkpoint-live-catalog",
+    "books/checkpoint-cbase-identity"
+   ]
+  },
+  "books/checkpoint-live-catalog": {
+   "sha256": "f7265519e7109b6855b5e29933fe213de928ed2decea93a8ad6cc17ffab46f01",
+   "origin": "staged-current-root-dependency",
+   "includes": [
+    "books/checkpoint-summary-authority-live",
+    "books/checkpoint-summary-state"
+   ]
+  },
+  "books/checkpoint-summary-authority-live": {
+   "sha256": "4319fc4b2a39fbb8bb5c6c603a407575a2aa8d3baebf19d7f088828e31cde66f",
+   "origin": "staged-current-root-dependency",
+   "includes": [
+    "books/checkpoint-summary-authority-state",
+    "books/checkpoint-metadata-manifest",
+    "books/event-producer",
+    "books/event-rearm",
+    "books/checkpoint-publication",
+    "books/commit-directory"
+   ]
+  },
+  "books/event-producer": {
+   "sha256": "026e3d147ed5818ffc0b23f37789fbeb870b3670624f1c2d6b2612d37beb8f29",
+   "origin": "staged-current-root-dependency",
+   "includes": [
+    "books/event-build",
+    "books/checkpoint-lifecycle"
+   ]
+  },
+  "books/event-build": {
+   "sha256": "450ee61247ef2e5a175f3f06bd568fa97c8fbe532c014f88adf855847edf2fa2",
+   "origin": "staged-current-root-dependency",
+   "includes": [
+    "books/event-build-state",
+    "books/event-frontier-source",
+    "books/checkpoint-page-header",
+    "books/checkpoint-map-build",
+    "books/checkpoint-source-retention"
+   ]
+  },
+  "books/event-build-state": {
+   "sha256": "af8875ae605fb3623bde0ef4fab420d8e94ff3b5846ff3cf71516e36e8259047",
+   "origin": "staged-current-root-dependency",
+   "includes": [
+    "books/columns"
+   ]
+  },
+  "books/event-frontier-source": {
+   "sha256": "b6d1198f82e512ba8e14312aa1874b297e9e6cb409dce5b83a360e218c779778",
+   "origin": "staged-current-root-dependency",
+   "includes": [
+    "books/event-read-verify"
+   ]
+  },
+  "books/event-read-verify": {
+   "sha256": "2fbd8d786b0a60cad62f315e420bc5d631a594e5a839e390d1c8f9673996bf33",
+   "origin": "staged-current-root-dependency",
+   "includes": [
+    "books/event-read-source"
+   ]
+  },
+  "books/event-read-source": {
+   "sha256": "4ec99d1c5934782a1a9030e5d078c653a9f70a83b85167ad79d612b757477ca7",
+   "origin": "staged-current-root-dependency",
+   "includes": [
+    "books/event-proof-source",
+    "books/event-frontier",
+    "books/checkpoint-build-state"
+   ]
+  },
+  "books/event-proof-source": {
+   "sha256": "c496f5ed15295b22a622fc8f06145aae91c7a9799e48ca710387fb01613d9000",
+   "origin": "staged-current-root-dependency",
+   "includes": [
+    "books/event-proof-format",
+    "books/machines-b",
+    "books/event-catalog",
+    "books/c-snapshot"
+   ]
+  },
+  "books/event-catalog": {
+   "sha256": "f25c55459181d13d6cc25004261c7fa2b5446bab2ab12bf7c5ef80277a7b1354",
+   "origin": "staged-current-root-dependency",
+   "includes": [
+    "books/checkpoint-summary-authority-state",
+    "books/checkpoint-restore-events-state",
+    "books/checkpoint-source-retention",
+    "books/commit-directory",
+    "books/blake3-spec"
+   ]
+  },
+  "books/checkpoint-restore-events-state": {
+   "sha256": "319c7c679b33b6ca0d44911b3742d62feed31b4cc6753904fbbf66ed24c01f61",
+   "origin": "staged-current-root-dependency",
+   "includes": [
+    "books/checkpoint-restore-reach-state",
+    "books/event-read-state",
+    "books/event-proof-format"
+   ]
+  },
+  "books/event-frontier": {
+   "sha256": "2055c61ad8bcae3b30b669600a1ff87b0076d49ca0dfa7662937060f1378997e",
+   "origin": "staged-current-root-dependency",
+   "includes": [
+    "books/journal-members",
+    "books/merkle"
+   ]
+  },
+  "books/journal-members": {
+   "sha256": "a02be7006d10fe64a103055a9b7c63ed534ee37a36001efbe630a048e7a14112",
+   "origin": "staged-current-root-dependency",
+   "includes": [
+    "books/journal-record-body",
+    "books/journal-members-state"
+   ]
+  },
+  "books/journal-record-body": {
+   "sha256": "bb688a4489fe8b2809ab65d94d8804052ee62b6c613d2125dad550b0cb7cc000",
+   "origin": "staged-current-root-dependency",
+   "includes": [
+    "books/runs-served"
+   ]
+  },
+  "books/event-rearm": {
+   "sha256": "05a1d96de0cec02b3a43c0aa2214efe7445a93e5d6afe311f1578501a6a248e3",
+   "origin": "staged-current-root-dependency",
+   "includes": [
+    "books/event-producer",
+    "books/checkpoint-writer"
+   ]
+  },
+  "books/checkpoint-cbase-identity": {
+   "sha256": "b1e4d37e8ef17e9f465230d06debd35a9cb7ed94b9c9b7aadf0efb96c67fad8f",
+   "origin": "staged-current-root-dependency",
+   "includes": [
+    "books/checkpoint-cbase-state",
+    "books/checkpoint-summary-state"
+   ]
+  },
+  "books/checkpoint-cbase-release": {
+   "sha256": "f6a457f563a474c07d6c6fde5ad1ec31785c53976d09c3adfdd006792cd53d9c",
+   "origin": "staged-current-root-dependency",
+   "includes": [
+    "books/checkpoint-cbase-identity",
+    "books/checkpoint-summary-retire"
+   ]
+  },
+  "books/checkpoint-summary-retire": {
+   "sha256": "57392bb325311b7b08873112694275b9021b1d6306e76a83c50a6cbf5802a681",
+   "origin": "staged-current-root-dependency",
+   "includes": [
+    "books/checkpoint-summary-leases",
+    "books/checkpoint-cbase-identity"
+   ]
+  },
+  "books/checkpoint-live-finish-work": {
+   "sha256": "423b66ba7ebf103168cfa4b13d70766b6366508b46ab6fbd26daa9eca83cb3c2",
+   "origin": "staged-current-root-dependency",
+   "includes": [
+    "books/checkpoint-directory-consume-work"
+   ]
+  },
+  "books/event-build-kind": {
+   "sha256": "f1e76fbc023759b550dc994392f703c74f2298fd8cca0475208ac7ab4d2e8976",
+   "origin": "owned-or-immutable-base",
+   "includes": [
+    "books/checkpoint-kind",
+    "books/checkpoint-page-kind",
+    "books/event-rearm"
+   ]
+  }
+ },
+ "missing": [],
+ "cycles": [],
+ "registered-fields": {
+  "fn2-core-pool": [
+   "books/core-children-a"
+  ],
+  "fn2-core-ops": [
+   "books/core-children-a"
+  ],
+  "fn2-core-sched": [
+   "books/core-children-a"
+  ],
+  "fn2-core-machines": [
+   "books/core-children-a"
+  ],
+  "fn2-core-trace": [
+   "books/core-children-a"
+  ],
+  "fn2-core-control": [
+   "books/core-children-a"
+  ],
+  "fn2-core-origin": [
+   "books/machines-b"
+  ],
+  "fn2-core-extents": [
+   "books/machines-b"
+  ],
+  "fn2-core-checkpoint-construction": [
+   "books/machines-b"
+  ],
+  "fn2-core-retirement-control": [
+   "books/machines-b"
+  ],
+  "fn2-core-alloc-edges": [
+   "books/machines-b"
+  ],
+  "fn2-core-fc": [
+   "books/machines-b"
+  ],
+  "fn2-core-fc-context": [
+   "books/machines-b"
+  ],
+  "fn2-core-b3": [
+   "books/machines-b"
+  ],
+  "fn2-core-journal-members": [
+   "books/machines-b"
+  ],
+  "fn2-core-event-read": [
+   "books/machines-b"
+  ],
+  "fn2-core-mk": [
+   "books/machines-b"
+  ],
+  "fn2-core-digests": [
+   "books/machines-b"
+  ],
+  "fn2-core-fields": [
+   "books/machines-b"
+  ],
+  "fn2-core-rec-cand": [
+   "books/machines-b"
+  ],
+  "fn2-core-commit-members": [
+   "books/machines-b"
+  ],
+  "fn2-core-commit-settled": [
+   "books/machines-b"
+  ],
+  "fn2-core-commit-io": [
+   "books/machines-b"
+  ],
+  "fn2-core-commit-root": [
+   "books/machines-b"
+  ],
+  "fn2-core-checkpoint-future": [
+   "books/checkpoint-future-resources"
+  ],
+  "fn2-core-checkpoint-future-windows": [
+   "books/checkpoint-future-resources"
+  ],
+  "fn2-core-checkpoints": [
+   "books/checkpoint-catalog-kind"
+  ],
+  "fn2-core-checkpoint-refs": [
+   "books/checkpoint-catalog-kind"
+  ],
+  "fn2-core-checkpoint-bytes": [
+   "books/checkpoint-catalog-kind"
+  ],
+  "fn2-core-seals": [
+   "books/machines-c-sealer"
+  ],
+  "fn2-core-run-builds": [
+   "books/machines-c-sealer"
+  ],
+  "fn2-core-run-writers": [
+   "books/machines-c-sealer"
+  ],
+  "fn2-core-run-restarts": [
+   "books/machines-c-sealer"
+  ],
+  "fn2-core-ribbon-builds": [
+   "books/machines-c-sealer"
+  ],
+  "fn2-core-ribbon-band": [
+   "books/machines-c-sealer"
+  ],
+  "fn2-core-id-engine": [
+   "books/machines-c-successor"
+  ],
+  "fn2-core-succ-txns": [
+   "books/machines-c-successor"
+  ],
+  "fn2-core-succ-slots": [
+   "books/machines-c-successor"
+  ],
+  "fn2-core-run-load-ops": [
+   "books/machines-c"
+  ],
+  "fn2-core-run-load-geometry": [
+   "books/machines-c"
+  ],
+  "fn2-core-run-load-readiness": [
+   "books/machines-c"
+  ],
+  "fn2-core-id-decides": [
+   "books/machines-c"
+  ],
+  "fn2-core-overlays": [
+   "books/machines-c"
+  ],
+  "fn2-core-overlay-index": [
+   "books/machines-c"
+  ],
+  "fn2-core-run-installed": [
+   "books/machines-c"
+  ],
+  "fn2-core-run-cursors": [
+   "books/machines-c"
+  ],
+  "fn2-core-run-paths": [
+   "books/machines-c"
+  ],
+  "fn2-core-c-source-control": [
+   "books/machines-c"
+  ],
+  "fn2-core-c-source-readers": [
+   "books/machines-c"
+  ],
+  "fn2-core-csnapshot": [
+   "books/machines-c"
+  ],
+  "fn2-core-checkpoint-summary": [
+   "books/machines-c"
+  ],
+  "fn2-core-checkpoint-summary-sources": [
+   "books/machines-c"
+  ],
+  "fn2-core-checkpoint-bank-admission": [
+   "books/machines-c"
+  ],
+  "fn2-core-checkpoint-summary-leases": [
+   "books/machines-c"
+  ],
+  "fn2-core-run-loads": [
+   "books/machines-c"
+  ],
+  "fn2-core-run-cache": [
+   "books/machines-c"
+  ],
+  "fn2-core-tls-config": [
+   "books/tls-schema"
+  ],
+  "fn2-core-compress-config": [
+   "books/compress-kind"
+  ],
+  "fn2-core-accounts": [
+   "books/accounts-core"
+  ],
+  "fn2-core-input-config": [
+   "books/upload-kind"
+  ],
+  "fn2-core-txn-config": [
+   "books/txn-kind"
+  ],
+  "fn2-core-claims": [
+   "books/txn-kind"
+  ],
+  "fn2-core-cns-edges": [
+   "books/cns-kind"
+  ],
+  "fn2-core-boot-config": [
+   "books/boot-kind"
+  ],
+  "fn2-core-checkpoint-cbase-holds": [
+   "books/checkpoint-cbase-kind"
+  ],
+  "fn2-core-checkpoint-restore-reader": [
+   "books/boot-reader-kind"
+  ],
+  "fn2-core-checkpoint-restore-map": [
+   "books/boot-reader-kind"
+  ],
+  "fn2-core-checkpoint-restore-map-control": [
+   "books/boot-reader-kind"
+  ],
+  "fn2-core-checkpoint-restore-reach": [
+   "books/boot-reader-kind"
+  ],
+  "fn2-core-checkpoint-restore-reach-control": [
+   "books/boot-reader-kind"
+  ],
+  "fn2-core-checkpoint-restore-semantic": [
+   "books/boot-semantic-kind"
+  ],
+  "fn2-core-checkpoint-restore-semantic-work": [
+   "books/boot-semantic-kind"
+  ],
+  "fn2-core-checkpoint-build": [
+   "books/checkpoint-kind"
+  ],
+  "fn2-core-checkpoint-plan": [
+   "books/checkpoint-kind"
+  ],
+  "fn2-core-checkpoint-plan-marks": [
+   "books/checkpoint-kind"
+  ],
+  "fn2-core-checkpoint-map-build": [
+   "books/checkpoint-kind"
+  ],
+  "fn2-core-checkpoint-teardown-debt": [
+   "books/checkpoint-kind"
+  ],
+  "fn2-core-checkpoint-publication": [
+   "books/checkpoint-kind-b"
+  ],
+  "fn2-core-checkpoint-lifecycle": [
+   "books/checkpoint-kind-b"
+  ],
+  "fn2-core-checkpoint-summary-authority": [
+   "books/checkpoint-kind-b"
+  ],
+  "fn2-core-checkpoint-directory-rebase": [
+   "books/checkpoint-kind-b"
+  ],
+  "fn2-core-checkpoint-page": [
+   "books/checkpoint-page-kind"
+  ],
+  "fn2-core-checkpoint-page-verified": [
+   "books/checkpoint-page-kind"
+  ],
+  "fn2-core-checkpoint-predecessors": [
+   "books/checkpoint-metadata-resources"
+  ],
+  "fn2-core-checkpoint-root1": [
+   "books/checkpoint-metadata-resources"
+  ],
+  "fn2-core-checkpoint-windows": [
+   "books/checkpoint-metadata-resources"
+  ],
+  "fn2-core-checkpoint-metadata": [
+   "books/checkpoint-metadata-resources"
+  ],
+  "fn2-core-checkpoint-source": [
+   "books/checkpoint-metadata-resources"
+  ],
+  "fn2-core-checkpoint-metadata-manifest": [
+   "books/checkpoint-metadata-resources"
+  ],
+  "fn2-core-checkpoint-retained-entry": [
+   "books/checkpoint-metadata-resources"
+  ],
+  "fn2-core-checkpoint-semantic": [
+   "books/checkpoint-metadata-resources"
+  ],
+  "fn2-core-checkpoint-semantic-work": [
+   "books/checkpoint-metadata-resources"
+  ],
+  "fn2-core-checkpoint-predecessor-control": [
+   "books/checkpoint-metadata-resources"
+  ],
+  "fn2-core-checkpoint-compaction": [
+   "books/checkpoint-metadata-resources"
+  ],
+  "fn2-core-event-build": [
+   "books/event-build-kind"
+  ]
+ },
+ "declared-kinds": {
+  "fn2-listener": "books/machines-a",
+  "fn2-echo": "books/machines-a",
+  "fn2-scribe": "books/machines-a",
+  "fn2-commit": "books/machines-b",
+  "fn2-recovery-machine": "books/machines-b",
+  "fn2-sealer": "books/machines-c-sealer-kind",
+  "fn2-tls-admit": "books/tls-schema",
+  "fn2-conn": "books/conn-schema",
+  "fn2-upload": "books/upload-kind",
+  "fn2-txn": "books/txn-kind",
+  "fn2-cursor": "books/cursor-kind",
+  "fn2-ctl": "books/cns-kind",
+  "fn2-cns": "books/cns-kind",
+  "fn2-auth": "books/authority-kind",
+  "fn2-boot": "books/boot-kind",
+  "fn2-checkpoint-master": "books/checkpoint-master-state",
+  "fn2-checkpoint-writer": "books/checkpoint-writer",
+  "fn2-checkpoint-page-worker": "books/checkpoint-page-worker"
+ },
+ "checkpoint-literal-table-fields-without-registration": [
+  "fn2-core-checkpoint-restore-events",
+  "fn2-core-checkpoint-restore-events-work",
+  "fn2-core-checkpoint-writer"
+ ],
+ "generated-field-obligations": [
+  "fn2-core-checkpoint-payload (canonical shared BOOT registration; parent-owned)"
+ ],
+ "known-metadata-alias-resolution": {
+  "fn2-core-checkpoint-writer": "fn2-checkpoint-writer-table (actual indexed kind table; apply supplied metadata-only class)"
+ },
+ "scope": "Static preindex include/declaration provider map with explicit staged dependencies. Not complete generated-field or semantic/admission/runtime closure.",
+ "notes": [
+  "BOOT owner must register restore-events/work and canonical shared payload carrier/hook.",
+  "Apply metadata-only writer table alias class; actual machine table is fn2-checkpoint-writer-table.",
+  "Actual assembly semantic/API closure and current-fa571 C projection are next source joins; no runtime qualification."
+ ]
+}
