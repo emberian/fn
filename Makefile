@@ -609,6 +609,8 @@ ACL2_BOOKS = \
   tests/successor-geometry-unit \
   tests/ctl-hash-interleave-unit \
   books/cns-source-core \
+  books/cns-source-issue-accounting \
+  tests/cns-source-issue-unit \
   tests/cns-stream-fetch-unit \
   books/cns-read-work-bounds \
   tests/cns-article-slice-unit \

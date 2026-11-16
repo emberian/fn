@@ -1,0 +1,77 @@
+{
+  "base": "f775a2893a0c5c3c1a373517c65dc773da5e2298",
+  "classification": "source-only; no cache query, ACL2 admission or executable assertions",
+  "roots": {
+    "books/cns-source-raw": {
+      "closureCount": 140,
+      "key": "9e4b183b00c7fa488ccc9d51f7904711217db9118a4c6929a246cde29266726f",
+      "beyondRaw": []
+    },
+    "books/cns-source-issue-accounting": {
+      "closureCount": 141,
+      "key": "844ccc5e3a03e38410808f35f8e36993c1f345b194e9090a70d949e7e6ddb66f",
+      "beyondRaw": [
+        "books/cns-source-issue-accounting"
+      ]
+    },
+    "tests/cns-source-issue-unit": {
+      "closureCount": 143,
+      "key": "e9d8d27d4f74b106a41758cb4e91a25805b0ced3438cd434ed176fcde023b84f",
+      "beyondRaw": [
+        "books/cns-source-issue-accounting",
+        "tests/cns-source-issue-unit",
+        "tests/column-snapshot-support"
+      ]
+    },
+    "books/cns-source-core": {
+      "closureCount": 149,
+      "key": "0ff81d90bf3d9f60f22be13f1d15bccfba35deda369f6321de187eef211daf50",
+      "beyondRaw": [
+        "books/cns-source-capture",
+        "books/cns-source-core",
+        "books/cns-source-issue-accounting",
+        "books/cns-source-manifest",
+        "books/machines-c-groups",
+        "books/machines-c-read",
+        "books/machines-c-sealer",
+        "books/sealer",
+        "books/source-manifest-entry"
+      ]
+    }
+  },
+  "changedFiles": [
+    {
+      "path": "books/cns.lisp",
+      "sha256": "1a5ab001668872238565d473ba84ee67a72fc7d539822429f52d95d0a91d0774"
+    },
+    {
+      "path": "books/cns-source-core.lisp",
+      "sha256": "d83434e4882e11c49ac95edd3a0de4e527f055eccbfc870edf04b45381ba98bc"
+    },
+    {
+      "path": "books/cns-source-issue-accounting.lisp",
+      "sha256": "15d2cba1f04b3a95d7e719601d6c2dc55adeafa269f16700db22236fff44ebd2"
+    },
+    {
+      "path": "tests/cns-source-issue-unit.lisp",
+      "sha256": "2ac6df2a9a1255e1d86837b6bce8be570342a19451691a0549868b2e3698aa66"
+    },
+    {
+      "path": "tools/test_cns_source_issue_accounting.py",
+      "sha256": "b6eceb1c9172511b0f5ba7c684dac26f5075c0879fd1028e26dd97a59b0708b9"
+    },
+    {
+      "path": "tests/fixtures/cns_source_issue_descriptor_before.lisp",
+      "sha256": "bdf1e531fdc6044ab5f01a733597354c77a746f8caffb7ff97792f37db75141d"
+    },
+    {
+      "path": "docs/design/CNS-SOURCE-ISSUE-ACCOUNTING.md",
+      "sha256": "ebc3c26a97856f6cbe56bacd23d7273df70bcf4c656230b4c0f3ac48933d1da3"
+    }
+  ],
+  "donor": "lane/assurance-cns-c-source@ef89805d7",
+  "projection": "Add named accounting book, fixture, source controls and 2 Makefile roots; apply only accounting include/events to current cns-source-core. The two CNS refusal descriptor literal repairs overlap the separately approved runtime patch; skip those hunks if already present.",
+  "firstGate": "After exact RAW140 is qualified, admit accounting and run actual child control; column-snapshot-support is the only additional existing dependency. Do not load assembled core for this gate.",
+  "deferredGate": "Core149 contains generated face and actual wrapper proof events; source-only until coherent assembled core available.",
+  "runtimeIssuerReconciliation": "Current fn2-cns-source-issue-children ABI is unchanged. The only runtime term difference from reviewed old donor is existing current conditional manifest-stage setter lowering; retained verbatim, not transplanted."
+}
