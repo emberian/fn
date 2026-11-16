@@ -20,10 +20,25 @@ manifest, author receipt and cleanup to toolchain
 `8aeb1bea18968c6cd33ac633a80ebf67e4924504db112fd27eb11f16a27b2a8c`.
 No theorem, guard or runtime source changed.
 
-Actual component coverage remains unclaimed. Existing
-`tests/upload-rolling-feed-component-unit` checks separate header/body windows,
-terminator/tail preservation and both full-window controls. Its 18-book closure
-has fourteen qualified parents but lacks `books/grammar`, `books/upload-feed`,
-`tests/upload-feed-unit`, and the component unit. ENTRY books
-`upload-window-geometry` and `pool-ranges` export all fourteen parents.
-That additional proof family requires a separate compute allocation.
+The actual pool-only component is now qualified separately at the same frozen
+source. Its exact 18-book closure reused sixteen genuine qualified parents
+and newly authored/certified `tests/upload-feed-unit` and
+`tests/upload-rolling-feed-component-unit`. ENTRY books `upload-window-geometry`
+and `upload-feed` export all sixteen parents. Original whole test events
+passed at the same 2,000,000-step/20-second limits; no parents were replayed.
+
+The feed fixtures exercise whole input, every split, budget one, two output
+chunks, binary octets and malformed LF/CR/NUL/leading-dot discard. The negative
+control distinguishes dot unstuffing from verbatim copying. The rolling
+component exercises distinct header/body logical windows, terminator and
+pipelined tail preservation, and both full-window controls despite 64 KiB
+physical slots. This is pool-only feed/window evidence; complete served POST,
+controller reset and storage receipts remain outside this claim.
+
+Record run `certify-20261116T000219Z-1991230` certified the feed unit in 1.170
+seconds and rolling component in 0.918 seconds.
+[The component receipt](receipts/rolling-component-qualified18.json) binds all
+eighteen current source/key/payload identities, original-event author results,
+exported ENTRY coverage and manifest to the record toolchain. Effective memory
+was 2 GiB with swap disabled; all recorded owned PIDs, scope and session holder
+are absent. No source statements, guards or runtime code changed.
