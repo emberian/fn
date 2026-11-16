@@ -383,8 +383,41 @@
    (equal (fn2-upload-posted-completion left i 0 slot gen okind oslot ogen fn2-pool)
           (and (<= 6 left)
                (fn2-gram-match i 6 "POSTED" slot gen okind oslot ogen fn2-pool))))
-  :hints (("Goal" :in-theory (enable fn2-upload-posted-completion
+  :hints (("Goal"
+                  :expand ((:free (left i) (fn2-upload-posted-completion left i 0 slot gen okind oslot ogen fn2-pool))
+                           (:free (left i) (fn2-upload-posted-completion left i 1 slot gen okind oslot ogen fn2-pool))
+                           (:free (left i) (fn2-upload-posted-completion left i 2 slot gen okind oslot ogen fn2-pool))
+                           (:free (left i) (fn2-upload-posted-completion left i 3 slot gen okind oslot ogen fn2-pool))
+                           (:free (left i) (fn2-upload-posted-completion left i 4 slot gen okind oslot ogen fn2-pool))
+                           (:free (left i) (fn2-upload-posted-completion left i 5 slot gen okind oslot ogen fn2-pool))
+                           (:free (i) (fn2-gram-match-loop 0 i "POSTED" slot gen okind oslot ogen fn2-pool))
+                           (:free (i) (fn2-gram-match-loop 1 i "POSTED" slot gen okind oslot ogen fn2-pool))
+                           (:free (i) (fn2-gram-match-loop 2 i "POSTED" slot gen okind oslot ogen fn2-pool))
+                           (:free (i) (fn2-gram-match-loop 3 i "POSTED" slot gen okind oslot ogen fn2-pool))
+                           (:free (i) (fn2-gram-match-loop 4 i "POSTED" slot gen okind oslot ogen fn2-pool))
+                           (:free (i) (fn2-gram-match-loop 5 i "POSTED" slot gen okind oslot ogen fn2-pool)))
+                  :in-theory (enable fn2-upload-posted-completion
                                      fn2-gram-match fn2-gram-match-loop)))))
+(local
+ (defthm fn2-upload-posted-completion-implies-naive
+  (implies (and (natp left) (natp i)
+                (fn2-upload-posted-completion left i 0 slot gen okind oslot ogen fn2-pool))
+           (fn2-upload-posted-naive-spec left i slot gen okind oslot ogen fn2-pool))
+  :hints (("Goal" :in-theory (enable fn2-upload-posted-naive-spec)))))
+(local
+ (defthm fn2-upload-posted-naive-short
+  (implies (< (nfix left) 6)
+           (not (fn2-upload-posted-naive-spec left i slot gen okind oslot ogen fn2-pool)))
+  :hints (("Goal" :in-theory (enable fn2-upload-posted-naive-spec)))))
+(local
+ (defthm fn2-upload-posted-naive-step-completion
+  (implies (and (natp left) (natp i) (not (zp left)))
+   (equal (fn2-upload-posted-naive-spec left i slot gen okind oslot ogen fn2-pool)
+          (or (fn2-upload-posted-completion left i 0 slot gen okind oslot ogen fn2-pool)
+              (fn2-upload-posted-naive-spec (- left 1) (+ i 1) slot gen okind oslot ogen fn2-pool))))
+  :rule-classes nil
+  :hints (("Goal" :expand ((fn2-upload-posted-naive-spec left i slot gen okind oslot ogen fn2-pool))
+                  :in-theory (disable fn2-upload-posted-completion fn2-gram-match)))) )
 (local
  (defthm fn2-upload-posted-prefix-step
   (implies (and (natp left) (natp i) (natp prefix) (< prefix 6) (not (zp left)))
@@ -401,9 +434,12 @@
   :rule-classes nil
   :hints (("Goal" :cases ((equal prefix 0) (equal prefix 1) (equal prefix 2)
                           (equal prefix 3) (equal prefix 4) (equal prefix 5))
-                  :in-theory (enable fn2-upload-posted-completion
-                                     fn2-upload-posted-naive-spec fn2-upload-posted-next
-                                     fn2-gram-match fn2-gram-match-loop)))))
+                  :use fn2-upload-posted-naive-step-completion
+                  :expand ((fn2-upload-posted-completion left i prefix slot gen okind oslot ogen fn2-pool)
+                           (fn2-upload-posted-completion left i 0 slot gen okind oslot ogen fn2-pool))
+                  :in-theory (e/d (fn2-upload-posted-next)
+                                  (fn2-upload-posted-completion fn2-upload-posted-completion-zero
+                                   fn2-upload-posted-naive-spec fn2-gram-match fn2-gram-read))))))
 (local
  (defthm fn2-upload-posted-prefix-invariant
   (implies (and (natp left) (natp i) (natp prefix) (< prefix 6))
@@ -417,12 +453,6 @@
           ("Subgoal *1/2" :use fn2-upload-posted-prefix-step)
           ("Subgoal *1/1" :in-theory (enable fn2-upload-posted-completion
                                             fn2-upload-posted-naive-spec)))))
-(local
- (defthm fn2-upload-posted-completion-implies-naive
-  (implies (and (natp left) (natp i)
-                (fn2-upload-posted-completion left i 0 slot gen okind oslot ogen fn2-pool))
-           (fn2-upload-posted-naive-spec left i slot gen okind oslot ogen fn2-pool))
-  :hints (("Goal" :in-theory (enable fn2-upload-posted-naive-spec)))))
 (defthm fn2-upload-posted-refines-naive-spec
   (implies (and (fn2-pool-wfp fn2-pool) (natp left) (natp i))
            (equal (fn2-upload-posted left i slot gen okind oslot ogen fn2-pool)
