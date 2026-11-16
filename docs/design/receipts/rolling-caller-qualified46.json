@@ -1,0 +1,2369 @@
+{
+  "source": "6701dbac50678ced466358a13dc43c704bba03b4",
+  "roots": [
+    "books/conn-kind"
+  ],
+  "count": 46,
+  "reused": 43,
+  "new": 3,
+  "toolchain_identity": "8aeb1bea18968c6cd33ac633a80ebf67e4924504db112fd27eb11f16a27b2a8c",
+  "phases": [
+    {
+      "root": "books/conn-schema",
+      "count": 39,
+      "reused": 38,
+      "new": 1,
+      "entry_books": [
+        "books/upload-feed",
+        "books/upload-scan",
+        "books/accounts-core",
+        "books/compress-kind",
+        "books/tls-schema",
+        "books/conn-answer"
+      ],
+      "entry_exports": [
+        "books/accounts",
+        "books/accounts-core",
+        "books/arm-children",
+        "books/arms",
+        "books/codec-profile",
+        "books/columns",
+        "books/columns-call-guards",
+        "books/columns-carrier-contracts",
+        "books/columns-guard-hints",
+        "books/commit-geometry",
+        "books/compress-kind",
+        "books/compress-policy",
+        "books/conn-answer",
+        "books/core-children",
+        "books/declare",
+        "books/exec-state",
+        "books/fnv",
+        "books/format-base",
+        "books/grammar",
+        "books/layout",
+        "books/machines",
+        "books/machines-a",
+        "books/machines-directory",
+        "books/nntp-grammar",
+        "books/operations",
+        "books/owed",
+        "books/owed-discharge",
+        "books/pool",
+        "books/pool-dimensions",
+        "books/pool-ranges",
+        "books/profile",
+        "books/resources",
+        "books/run-budget",
+        "books/tls-schema",
+        "books/upload-feed",
+        "books/upload-scan",
+        "books/upload-window-geometry",
+        "books/vocab"
+      ],
+      "record": {
+        "source": "6701dbac50678ced466358a13dc43c704bba03b4",
+        "roots": [
+          "books/conn-schema"
+        ],
+        "keys": {
+          "books/conn-schema": "2042fa21046a4d032d802b5006b84ab719cd264268f0aa750a669a1b2853b223"
+        },
+        "count": 39,
+        "cgroup": "/sys/fs/cgroup/user.slice/user-1000.slice/user@1000.service/swarm.slice/run-p2022278-i31378967.scope",
+        "memory_max": 2147483648,
+        "swap_max": 0,
+        "source_hashes_before": {
+          "books/conn-schema": "e1ff16f42f038d3492271bf618cb80988947125e86af72e5ce79518573ded26f",
+          "books/upload-feed": "01ee2316f12c05b2627f0a8153a4a11a94d4ece16e9dd384668004f67c36cdad",
+          "books/grammar": "420739fd67e1f21e86668b986d3f2c81f3d2e6f11de96bd02f20a04d80860a0b",
+          "books/pool-ranges": "2f9e1f0c898ea4f6747f4e8f4942bc7f73be512ed1b90feb2d9cad7a58e3f959",
+          "books/columns-guard-hints": "e0a20c5669df681bf75fa5eeae426adc4053010915b3c7657d56e247d5c8440b",
+          "books/columns": "8b694caf782c2ce3a29fa109b055c181b54beda214276493f6d9acb9456a881b",
+          "books/operations": "419120e7ae100f400d18cdee2d080d6133523673cac22fae1b05c7201ff97dd8",
+          "books/declare": "54e850788ee821dd90a4d9715e93d319f94846039592c4420fef1bdc5d959569",
+          "books/fnv": "73d15afc6e1325f03d19ad4b39eeb3adc677ce2b07e9eddbc14141ca8843edde",
+          "books/pool": "9a31c8d38d309862369091a2c8019ccc3da16920742ff01040899b8f395f2fe9",
+          "books/profile": "1f216ed6c0505dc1b01ada0f7d3d9482af6da7b7dff8736b5100ef3e3fbc1038",
+          "books/owed-discharge": "53903322be1b79ed081ecfcbfcb9f60649d3fdbf8aa6853b772abf8e6fc69f01",
+          "books/owed": "171950b91e40f4e7d0e94902ce00009adc62d8104e0eecd5db6a59b93bbffb15",
+          "books/upload-scan": "6b3dd20f55b622a53d856e44f309a43209577993588f1ff364c10586afe4ea60",
+          "books/upload-window-geometry": "131a8659e5a9486afb9b3b774f31d873235aa740ba0b3e7b607b9ca39a36b2e2",
+          "books/commit-geometry": "e06315c94bcd0d247214377fb33186f14ca1aa2ee6afe1499d69d053ff0134e2",
+          "books/format-base": "ead88cb8e7ab67db0c6a06ac400c813f753121c77082825b16016835eb462699",
+          "books/layout": "2bc995f6bb70ec17862c5b535a4734e90a7a5dfd6312ebdee7d06877b0fbb4d8",
+          "books/accounts-core": "1ca8a1ab641bff91757f0fe7febfd94af47f06b86a51034961bd5cfd5accd772",
+          "books/arm-children": "1d444bdc958c877682a8bb75f688ecd191b741147ee853c646a8ec54e2fa343f",
+          "books/machines-directory": "d87c6d169aae1a5c06fd1f31d9047645c8ecae0c444e10ad205958a37e2c83fa",
+          "books/machines": "5c5a20c1f2ff695fcaa9b2ba2d7bf345781c8127c33af89984c14f516641932f",
+          "books/columns-call-guards": "fd7c2588e6d90338288b484078525799ac261c66013ebe112c3f369870db5a4a",
+          "books/arms": "83825a47c141b16393debcb6dfc98aa7fb54b375e7c12296fa4f25a491c29455",
+          "books/resources": "019bb017e54237a5304f30598b8842de8f0651b5f92c523ff174f24994fe43c6",
+          "books/run-budget": "6c340901483627a433e4de6b7699b684b9949f233ee52ce4c5840774df59a7d0",
+          "books/vocab": "96606555ca9b71fcc9d3e5b955deb5052300526347dbb5f5f8e74545813b1c53",
+          "books/columns-carrier-contracts": "36cf411d1119704be488c119243d0aff8006e9babe38bb128f5d627353373c5a",
+          "books/exec-state": "56eb8a81a3cc049c27c1e23dd1930f8184f2c892207169532315184ca141ea3d",
+          "books/pool-dimensions": "d39cf91254b2b5f062b468146361529d73a020e08b1f72d23c6c80a2c75eba6d",
+          "books/machines-a": "6b27d9f04b788ed2730f2e520770c40f7dd9c06828a15a14dc79db50960adeec",
+          "books/accounts": "5dd1a927dccb3d24fa31645bcd3b73a0acc0e42a83bac57c45c9d3a7e37f448b",
+          "books/core-children": "24a985caf082ff74f72c96638034eba619ce114d611a804d0b4a239721d37e4b",
+          "books/compress-kind": "05eefc48dbf24297a972c122f3c3dd2b7145f64a43b48bd3f6d8f6d898e8e0ff",
+          "books/compress-policy": "bacea68680cb1cad303023723f5fd524cbae06b7dd81bf2cb5ada0fb2973270f",
+          "books/tls-schema": "e0779c15ffe1ceab4133301a8f68e5b8f2a6080ce17ad4a2033e0c81b800d6f8",
+          "books/codec-profile": "adb045c7393523346124a11a8959238a94be529354084bb23f9a5ae76cc63213",
+          "books/conn-answer": "2c099d9ad4cd0a5cb905f79fbd3ccecbcc7f09b9dad053c3caf180a9d00b044d",
+          "books/nntp-grammar": "089c0cb3ea1dd851407e42ec0a165696c7db1e85618479dd8c98501f78ea127b"
+        },
+        "status": "passed",
+        "runner_pid": 2022671,
+        "command": [
+          "/usr/bin/python3",
+          "tools/certify_books.py",
+          "--jobs",
+          "1",
+          "--incremental",
+          "--images",
+          "off",
+          "--timeout-seconds",
+          "60",
+          "books/conn-schema"
+        ],
+        "run_dir": "/build/lanes/sol-rolling-caller-6701/build/acl2/certify-20261116T003215Z-2022671",
+        "runner_exit": 0,
+        "source_hashes_after": {
+          "books/conn-schema": "e1ff16f42f038d3492271bf618cb80988947125e86af72e5ce79518573ded26f",
+          "books/upload-feed": "01ee2316f12c05b2627f0a8153a4a11a94d4ece16e9dd384668004f67c36cdad",
+          "books/grammar": "420739fd67e1f21e86668b986d3f2c81f3d2e6f11de96bd02f20a04d80860a0b",
+          "books/pool-ranges": "2f9e1f0c898ea4f6747f4e8f4942bc7f73be512ed1b90feb2d9cad7a58e3f959",
+          "books/columns-guard-hints": "e0a20c5669df681bf75fa5eeae426adc4053010915b3c7657d56e247d5c8440b",
+          "books/columns": "8b694caf782c2ce3a29fa109b055c181b54beda214276493f6d9acb9456a881b",
+          "books/operations": "419120e7ae100f400d18cdee2d080d6133523673cac22fae1b05c7201ff97dd8",
+          "books/declare": "54e850788ee821dd90a4d9715e93d319f94846039592c4420fef1bdc5d959569",
+          "books/fnv": "73d15afc6e1325f03d19ad4b39eeb3adc677ce2b07e9eddbc14141ca8843edde",
+          "books/pool": "9a31c8d38d309862369091a2c8019ccc3da16920742ff01040899b8f395f2fe9",
+          "books/profile": "1f216ed6c0505dc1b01ada0f7d3d9482af6da7b7dff8736b5100ef3e3fbc1038",
+          "books/owed-discharge": "53903322be1b79ed081ecfcbfcb9f60649d3fdbf8aa6853b772abf8e6fc69f01",
+          "books/owed": "171950b91e40f4e7d0e94902ce00009adc62d8104e0eecd5db6a59b93bbffb15",
+          "books/upload-scan": "6b3dd20f55b622a53d856e44f309a43209577993588f1ff364c10586afe4ea60",
+          "books/upload-window-geometry": "131a8659e5a9486afb9b3b774f31d873235aa740ba0b3e7b607b9ca39a36b2e2",
+          "books/commit-geometry": "e06315c94bcd0d247214377fb33186f14ca1aa2ee6afe1499d69d053ff0134e2",
+          "books/format-base": "ead88cb8e7ab67db0c6a06ac400c813f753121c77082825b16016835eb462699",
+          "books/layout": "2bc995f6bb70ec17862c5b535a4734e90a7a5dfd6312ebdee7d06877b0fbb4d8",
+          "books/accounts-core": "1ca8a1ab641bff91757f0fe7febfd94af47f06b86a51034961bd5cfd5accd772",
+          "books/arm-children": "1d444bdc958c877682a8bb75f688ecd191b741147ee853c646a8ec54e2fa343f",
+          "books/machines-directory": "d87c6d169aae1a5c06fd1f31d9047645c8ecae0c444e10ad205958a37e2c83fa",
+          "books/machines": "5c5a20c1f2ff695fcaa9b2ba2d7bf345781c8127c33af89984c14f516641932f",
+          "books/columns-call-guards": "fd7c2588e6d90338288b484078525799ac261c66013ebe112c3f369870db5a4a",
+          "books/arms": "83825a47c141b16393debcb6dfc98aa7fb54b375e7c12296fa4f25a491c29455",
+          "books/resources": "019bb017e54237a5304f30598b8842de8f0651b5f92c523ff174f24994fe43c6",
+          "books/run-budget": "6c340901483627a433e4de6b7699b684b9949f233ee52ce4c5840774df59a7d0",
+          "books/vocab": "96606555ca9b71fcc9d3e5b955deb5052300526347dbb5f5f8e74545813b1c53",
+          "books/columns-carrier-contracts": "36cf411d1119704be488c119243d0aff8006e9babe38bb128f5d627353373c5a",
+          "books/exec-state": "56eb8a81a3cc049c27c1e23dd1930f8184f2c892207169532315184ca141ea3d",
+          "books/pool-dimensions": "d39cf91254b2b5f062b468146361529d73a020e08b1f72d23c6c80a2c75eba6d",
+          "books/machines-a": "6b27d9f04b788ed2730f2e520770c40f7dd9c06828a15a14dc79db50960adeec",
+          "books/accounts": "5dd1a927dccb3d24fa31645bcd3b73a0acc0e42a83bac57c45c9d3a7e37f448b",
+          "books/core-children": "24a985caf082ff74f72c96638034eba619ce114d611a804d0b4a239721d37e4b",
+          "books/compress-kind": "05eefc48dbf24297a972c122f3c3dd2b7145f64a43b48bd3f6d8f6d898e8e0ff",
+          "books/compress-policy": "bacea68680cb1cad303023723f5fd524cbae06b7dd81bf2cb5ada0fb2973270f",
+          "books/tls-schema": "e0779c15ffe1ceab4133301a8f68e5b8f2a6080ce17ad4a2033e0c81b800d6f8",
+          "books/codec-profile": "adb045c7393523346124a11a8959238a94be529354084bb23f9a5ae76cc63213",
+          "books/conn-answer": "2c099d9ad4cd0a5cb905f79fbd3ccecbcc7f09b9dad053c3caf180a9d00b044d",
+          "books/nntp-grammar": "089c0cb3ea1dd851407e42ec0a165696c7db1e85618479dd8c98501f78ea127b"
+        },
+        "source_unchanged": true
+      },
+      "author": {
+        "source": "6701dbac50678ced466358a13dc43c704bba03b4",
+        "warm": [
+          "books/upload-feed",
+          "books/grammar",
+          "books/pool-ranges",
+          "books/columns-guard-hints",
+          "books/columns",
+          "books/operations",
+          "books/declare",
+          "books/fnv",
+          "books/pool",
+          "books/profile",
+          "books/owed-discharge",
+          "books/owed",
+          "books/upload-scan",
+          "books/upload-window-geometry",
+          "books/commit-geometry",
+          "books/format-base",
+          "books/layout",
+          "books/accounts-core",
+          "books/arm-children",
+          "books/machines-directory",
+          "books/machines",
+          "books/columns-call-guards",
+          "books/arms",
+          "books/resources",
+          "books/run-budget",
+          "books/vocab",
+          "books/columns-carrier-contracts",
+          "books/exec-state",
+          "books/pool-dimensions",
+          "books/machines-a",
+          "books/accounts",
+          "books/core-children",
+          "books/compress-kind",
+          "books/compress-policy",
+          "books/tls-schema",
+          "books/codec-profile",
+          "books/conn-answer",
+          "books/nntp-grammar"
+        ],
+        "source_order": [
+          "books/conn-schema"
+        ],
+        "accepted": [
+          "books/conn-schema"
+        ],
+        "status": "passed",
+        "stop_holder_exit": 0
+      },
+      "manifest": {
+        "acl2_compatibility": {
+          "core_sha256": "3f5b101bb9437d66366dc2a299b7f9cb98fdaf40d1add5caf8baef9e451dd07d",
+          "launcher_chain_sha256": [
+            "30583c3d9988ea23cf5edfac828b4ddea984a9a7db9c3b44aaa9c399cf4fdbc5"
+          ],
+          "launcher_environment": [
+            {
+              "SBCL_HOME": "/tank/fn/sbcl/lib/sbcl/"
+            }
+          ],
+          "project_directories": {
+            ":FN": "."
+          },
+          "proof_environment": {
+            "ACL2_BOOK_HASH_ALISTP": "NIL",
+            "ACL2_CUSTOMIZATION": "NONE",
+            "ACL2_SYSTEM_BOOKS": null
+          },
+          "runtime_sha256": "b115fe956aadee603459fac401e1ff2cc39321e14848544a0fe438788a2fc6d5",
+          "schema": "fn-acl2-toolchain-v1"
+        },
+        "acl2_executable": "/tank/fn/toolchains/w28/acl2-literal-4g-tls64k",
+        "acl2_executable_sha256": "30583c3d9988ea23cf5edfac828b4ddea984a9a7db9c3b44aaa9c399cf4fdbc5",
+        "acl2_exit_codes": {
+          "books/conn-schema": 0
+        },
+        "acl2_slots": 16,
+        "acl2_toolchain": {
+          "compatibility": {
+            "core_sha256": "3f5b101bb9437d66366dc2a299b7f9cb98fdaf40d1add5caf8baef9e451dd07d",
+            "launcher_chain_sha256": [
+              "30583c3d9988ea23cf5edfac828b4ddea984a9a7db9c3b44aaa9c399cf4fdbc5"
+            ],
+            "launcher_environment": [
+              {
+                "SBCL_HOME": "/tank/fn/sbcl/lib/sbcl/"
+              }
+            ],
+            "project_directories": {
+              ":FN": "."
+            },
+            "proof_environment": {
+              "ACL2_BOOK_HASH_ALISTP": "NIL",
+              "ACL2_CUSTOMIZATION": "NONE",
+              "ACL2_SYSTEM_BOOKS": null
+            },
+            "runtime_sha256": "b115fe956aadee603459fac401e1ff2cc39321e14848544a0fe438788a2fc6d5",
+            "schema": "fn-acl2-toolchain-v1"
+          },
+          "core": {
+            "path": "/tank/fn/acl2-8.7/saved_acl2.core",
+            "sha256": "3f5b101bb9437d66366dc2a299b7f9cb98fdaf40d1add5caf8baef9e451dd07d",
+            "size": 233686912
+          },
+          "launchers": [
+            {
+              "path": "/tank/fn/toolchains/w28/acl2-literal-4g-tls64k",
+              "sha256": "30583c3d9988ea23cf5edfac828b4ddea984a9a7db9c3b44aaa9c399cf4fdbc5",
+              "size": 279
+            }
+          ],
+          "runtime": {
+            "path": "/tank/fn/sbcl/bin/sbcl",
+            "sha256": "b115fe956aadee603459fac401e1ff2cc39321e14848544a0fe438788a2fc6d5",
+            "size": 2149704
+          },
+          "schema": "fn-acl2-toolchain-v1",
+          "status": "qualified"
+        },
+        "acl2_toolchain_identity": "8aeb1bea18968c6cd33ac633a80ebf67e4924504db112fd27eb11f16a27b2a8c",
+        "acl2_version": "ACL2 Version 8.7",
+        "acl2_version_probe_exit_code": 0,
+        "affected_by": [],
+        "book_costliest_event": {
+          "books/conn-schema": {
+            "form": "( DEFTHM FN2-CONN-INITIALIZE-ROWS-TYPE ...)",
+            "seconds": 0.44,
+            "steps": 85553
+          }
+        },
+        "book_failures": {},
+        "book_load_average": {
+          "books/conn-schema": [
+            0.52,
+            0.66
+          ]
+        },
+        "book_provenance": {
+          "books/accounts": "installed",
+          "books/accounts-core": "installed",
+          "books/arm-children": "installed",
+          "books/arms": "installed",
+          "books/codec-profile": "installed",
+          "books/columns": "installed",
+          "books/columns-call-guards": "installed",
+          "books/columns-carrier-contracts": "installed",
+          "books/columns-guard-hints": "installed",
+          "books/commit-geometry": "installed",
+          "books/compress-kind": "installed",
+          "books/compress-policy": "installed",
+          "books/conn-answer": "installed",
+          "books/conn-schema": "certified",
+          "books/core-children": "installed",
+          "books/declare": "installed",
+          "books/exec-state": "installed",
+          "books/fnv": "installed",
+          "books/format-base": "installed",
+          "books/grammar": "installed",
+          "books/layout": "installed",
+          "books/machines": "installed",
+          "books/machines-a": "installed",
+          "books/machines-directory": "installed",
+          "books/nntp-grammar": "installed",
+          "books/operations": "installed",
+          "books/owed": "installed",
+          "books/owed-discharge": "installed",
+          "books/pool": "installed",
+          "books/pool-dimensions": "installed",
+          "books/pool-ranges": "installed",
+          "books/profile": "installed",
+          "books/resources": "installed",
+          "books/run-budget": "installed",
+          "books/tls-schema": "installed",
+          "books/upload-feed": "installed",
+          "books/upload-scan": "installed",
+          "books/upload-window-geometry": "installed",
+          "books/vocab": "installed"
+        },
+        "book_prover_steps": {
+          "books/conn-schema": 830820
+        },
+        "book_results": {
+          "books/conn-schema": "passed"
+        },
+        "book_slowest_event": {
+          "books/conn-schema": {
+            "form": "( DEFUN FN2-CONN-INIT ...)",
+            "seconds": 1.19,
+            "steps": 56
+          }
+        },
+        "book_wall_seconds": {
+          "books/conn-schema": 17.782
+        },
+        "book_wave_seconds": null,
+        "budget_seconds": 60,
+        "cache_install": {
+          "directory": "/home/fn/.cache/fn-certs",
+          "fasl_installed": 38,
+          "fasl_missing": 0,
+          "installed": 0,
+          "kept": 38,
+          "origins": {
+            "/build/lanes/arm-storage-dim-current": 2,
+            "/build/lanes/assurance-budget-history-record": 1,
+            "/build/lanes/assurance-cns-leaf-pilot": 1,
+            "/build/lanes/assurance-columns-coherent37-87f": 6,
+            "/build/lanes/assurance-vocab-harveste9": 3,
+            "/build/lanes/conn-root-59fe": 3,
+            "/build/lanes/convergence-ready74-ab05": 4,
+            "/build/lanes/convergence-ready79-ab05": 8,
+            "/build/lanes/current-machines-ab05": 1,
+            "/build/lanes/member-refutation-64ee": 4,
+            "/build/lanes/pool-dimensions-current-frozen": 1,
+            "/build/lanes/refuted-05cb": 2,
+            "/build/lanes/sol-rolling-geometry-ab05c79b1": 1,
+            "/build/lanes/sol-upload-scan-proof-c207": 1
+          },
+          "recertified": [],
+          "removed": 0,
+          "reused_from": null,
+          "roots_installed": [],
+          "toolchain_identity": "8aeb1bea18968c6cd33ac633a80ebf67e4924504db112fd27eb11f16a27b2a8c",
+          "uncompiled": []
+        },
+        "caught_error_text": {},
+        "cert_cache": {
+          "already_cached": 1,
+          "directory": "/home/fn/.cache/fn-certs",
+          "not_published": [],
+          "origin_kind": "run",
+          "per_book": [
+            {
+              "already_cached": false,
+              "book": "books/conn-schema",
+              "published": true,
+              "verdict": "passed"
+            }
+          ],
+          "per_book_published": 1,
+          "published": 0,
+          "uncompiled": []
+        },
+        "certificate_digests_sha256": {
+          "books/conn-schema": "31af163ec4155760adc9dcb0648be8472224cebe18164758c13e279a88c87b52"
+        },
+        "certify_wall_seconds": 17.994,
+        "closure": false,
+        "command": [
+          "/tank/fn/toolchains/w28/acl2-literal-4g-tls64k"
+        ],
+        "compiled_digests_sha256": {
+          "books/conn-schema": "047a7efa65c9b110fc9a2a88540c8a2a5754070d18934e23c7736b2ca48b60cb"
+        },
+        "cpu_count": 16,
+        "driver_digests_sha256": {
+          "books/conn-schema": "c5be9bf3674eeeebb3e0952d2546b620cbdb848c54780a0aadb2e81ed7b51c5f"
+        },
+        "environment": {
+          "ACL2_BOOK_HASH_ALISTP": "NIL",
+          "ACL2_CUSTOMIZATION": "NONE",
+          "ACL2_PROJECTS": "/build/lanes/sol-rolling-caller-6701/acl2-projects",
+          "ACL2_SYSTEM_BOOKS": null,
+          "SBCL_USER_ARGS": null
+        },
+        "expected_success_markers": [
+          "FN_CERTIFY_SUCCESS 30361d0a3ead407ab4dbb7ca72e6d3ab 5625ef6a1654"
+        ],
+        "failure_markers": [],
+        "finished_utc": "2026-11-16T00:32:33+00:00",
+        "git_branch": null,
+        "git_dirty": null,
+        "git_revision": null,
+        "host_lisp_banner": "This is SBCL 2.6.8, an implementation of ANSI Common Lisp.",
+        "hostname": "dregg-forge",
+        "incremental": true,
+        "installed_books": {
+          "books/accounts": "/build/lanes/convergence-ready79-ab05",
+          "books/accounts-core": "/build/lanes/convergence-ready79-ab05",
+          "books/arm-children": "/build/lanes/convergence-ready79-ab05",
+          "books/arms": "/build/lanes/arm-storage-dim-current",
+          "books/codec-profile": "/build/lanes/conn-root-59fe",
+          "books/columns": "/build/lanes/assurance-columns-coherent37-87f",
+          "books/columns-call-guards": "/build/lanes/assurance-vocab-harveste9",
+          "books/columns-carrier-contracts": "/build/lanes/assurance-columns-coherent37-87f",
+          "books/columns-guard-hints": "/build/lanes/assurance-columns-coherent37-87f",
+          "books/commit-geometry": "/build/lanes/assurance-cns-leaf-pilot",
+          "books/compress-kind": "/build/lanes/convergence-ready79-ab05",
+          "books/compress-policy": "/build/lanes/conn-root-59fe",
+          "books/conn-answer": "/build/lanes/convergence-ready74-ab05",
+          "books/core-children": "/build/lanes/convergence-ready79-ab05",
+          "books/declare": "/build/lanes/refuted-05cb",
+          "books/exec-state": "/build/lanes/arm-storage-dim-current",
+          "books/fnv": "/build/lanes/member-refutation-64ee",
+          "books/format-base": "/build/lanes/assurance-columns-coherent37-87f",
+          "books/grammar": "/build/lanes/convergence-ready74-ab05",
+          "books/layout": "/build/lanes/assurance-columns-coherent37-87f",
+          "books/machines": "/build/lanes/current-machines-ab05",
+          "books/machines-a": "/build/lanes/convergence-ready79-ab05",
+          "books/machines-directory": "/build/lanes/convergence-ready79-ab05",
+          "books/nntp-grammar": "/build/lanes/convergence-ready74-ab05",
+          "books/operations": "/build/lanes/member-refutation-64ee",
+          "books/owed": "/build/lanes/refuted-05cb",
+          "books/owed-discharge": "/build/lanes/member-refutation-64ee",
+          "books/pool": "/build/lanes/assurance-columns-coherent37-87f",
+          "books/pool-dimensions": "/build/lanes/pool-dimensions-current-frozen",
+          "books/pool-ranges": "/build/lanes/assurance-vocab-harveste9",
+          "books/profile": "/build/lanes/member-refutation-64ee",
+          "books/resources": "/build/lanes/conn-root-59fe",
+          "books/run-budget": "/build/lanes/assurance-budget-history-record",
+          "books/tls-schema": "/build/lanes/convergence-ready79-ab05",
+          "books/upload-feed": "/build/lanes/convergence-ready74-ab05",
+          "books/upload-scan": "/build/lanes/sol-upload-scan-proof-c207",
+          "books/upload-window-geometry": "/build/lanes/sol-rolling-geometry-ab05c79b1",
+          "books/vocab": "/build/lanes/assurance-vocab-harveste9"
+        },
+        "installed_over_failed": [],
+        "jobs": 1,
+        "jobs_effective": 1,
+        "local_source_audit": {
+          "findings": {},
+          "forbidden_facilities": [
+            "defaxiom",
+            "defttag",
+            "include-raw",
+            "set-raw-mode",
+            "skip-proofs"
+          ],
+          "method": "conservative lexical symbol scan plus human batch review; not macro expansion",
+          "scope": "local source closure only; installed ACL2/system books remain trusted"
+        },
+        "observed_success_markers": [
+          "FN_CERTIFY_SUCCESS 30361d0a3ead407ab4dbb7ca72e6d3ab 5625ef6a1654"
+        ],
+        "pcert": false,
+        "pcert_reached": null,
+        "pcert_wall_seconds": null,
+        "platform": "Linux-6.12.113+deb13-cloud-amd64-x86_64-with-glibc2.41",
+        "python": "3.13.5",
+        "reader_sha256": "3a25bad1a53f07d48101c88fbf7e5fca81575735bfdbe48a168cab81141940cd",
+        "recertify": [],
+        "requested_before_filter": [
+          "books/conn-schema"
+        ],
+        "requested_books": [
+          "books/conn-schema"
+        ],
+        "roots": [
+          "books/conn-schema"
+        ],
+        "run_id": "certify-20261116T003215Z-2022671",
+        "runner_sha256": "0c92c676ec1d176a554a63d7106e4bfbd8cc4d6a5293b3daa0c301cb4650f5d5",
+        "runner_unchanged": true,
+        "schedule": {
+          "policy": "requested-order"
+        },
+        "slot_wait_seconds": {
+          "books/conn-schema": 0.0,
+          "version-probe": 0.0
+        },
+        "source_digests_sha256": {
+          "books/accounts-core.lisp": "1ca8a1ab641bff91757f0fe7febfd94af47f06b86a51034961bd5cfd5accd772",
+          "books/accounts.lisp": "5dd1a927dccb3d24fa31645bcd3b73a0acc0e42a83bac57c45c9d3a7e37f448b",
+          "books/arm-children.lisp": "1d444bdc958c877682a8bb75f688ecd191b741147ee853c646a8ec54e2fa343f",
+          "books/arms.lisp": "83825a47c141b16393debcb6dfc98aa7fb54b375e7c12296fa4f25a491c29455",
+          "books/codec-profile.lisp": "adb045c7393523346124a11a8959238a94be529354084bb23f9a5ae76cc63213",
+          "books/columns-call-guards.lisp": "fd7c2588e6d90338288b484078525799ac261c66013ebe112c3f369870db5a4a",
+          "books/columns-carrier-contracts.lisp": "36cf411d1119704be488c119243d0aff8006e9babe38bb128f5d627353373c5a",
+          "books/columns-guard-hints.lisp": "e0a20c5669df681bf75fa5eeae426adc4053010915b3c7657d56e247d5c8440b",
+          "books/columns.lisp": "8b694caf782c2ce3a29fa109b055c181b54beda214276493f6d9acb9456a881b",
+          "books/commit-geometry.lisp": "e06315c94bcd0d247214377fb33186f14ca1aa2ee6afe1499d69d053ff0134e2",
+          "books/compress-kind.lisp": "05eefc48dbf24297a972c122f3c3dd2b7145f64a43b48bd3f6d8f6d898e8e0ff",
+          "books/compress-policy.lisp": "bacea68680cb1cad303023723f5fd524cbae06b7dd81bf2cb5ada0fb2973270f",
+          "books/conn-answer.lisp": "2c099d9ad4cd0a5cb905f79fbd3ccecbcc7f09b9dad053c3caf180a9d00b044d",
+          "books/conn-schema.lisp": "e1ff16f42f038d3492271bf618cb80988947125e86af72e5ce79518573ded26f",
+          "books/core-children.lisp": "24a985caf082ff74f72c96638034eba619ce114d611a804d0b4a239721d37e4b",
+          "books/declare.lisp": "54e850788ee821dd90a4d9715e93d319f94846039592c4420fef1bdc5d959569",
+          "books/exec-state.lisp": "56eb8a81a3cc049c27c1e23dd1930f8184f2c892207169532315184ca141ea3d",
+          "books/fnv.lisp": "73d15afc6e1325f03d19ad4b39eeb3adc677ce2b07e9eddbc14141ca8843edde",
+          "books/format-base.lisp": "ead88cb8e7ab67db0c6a06ac400c813f753121c77082825b16016835eb462699",
+          "books/grammar.lisp": "420739fd67e1f21e86668b986d3f2c81f3d2e6f11de96bd02f20a04d80860a0b",
+          "books/layout.lisp": "2bc995f6bb70ec17862c5b535a4734e90a7a5dfd6312ebdee7d06877b0fbb4d8",
+          "books/machines-a.lisp": "6b27d9f04b788ed2730f2e520770c40f7dd9c06828a15a14dc79db50960adeec",
+          "books/machines-directory.lisp": "d87c6d169aae1a5c06fd1f31d9047645c8ecae0c444e10ad205958a37e2c83fa",
+          "books/machines.lisp": "5c5a20c1f2ff695fcaa9b2ba2d7bf345781c8127c33af89984c14f516641932f",
+          "books/nntp-grammar.lisp": "089c0cb3ea1dd851407e42ec0a165696c7db1e85618479dd8c98501f78ea127b",
+          "books/operations.lisp": "419120e7ae100f400d18cdee2d080d6133523673cac22fae1b05c7201ff97dd8",
+          "books/owed-discharge.lisp": "53903322be1b79ed081ecfcbfcb9f60649d3fdbf8aa6853b772abf8e6fc69f01",
+          "books/owed.lisp": "171950b91e40f4e7d0e94902ce00009adc62d8104e0eecd5db6a59b93bbffb15",
+          "books/pool-dimensions.lisp": "d39cf91254b2b5f062b468146361529d73a020e08b1f72d23c6c80a2c75eba6d",
+          "books/pool-ranges.lisp": "2f9e1f0c898ea4f6747f4e8f4942bc7f73be512ed1b90feb2d9cad7a58e3f959",
+          "books/pool.lisp": "9a31c8d38d309862369091a2c8019ccc3da16920742ff01040899b8f395f2fe9",
+          "books/profile.lisp": "1f216ed6c0505dc1b01ada0f7d3d9482af6da7b7dff8736b5100ef3e3fbc1038",
+          "books/resources.lisp": "019bb017e54237a5304f30598b8842de8f0651b5f92c523ff174f24994fe43c6",
+          "books/run-budget.lisp": "6c340901483627a433e4de6b7699b684b9949f233ee52ce4c5840774df59a7d0",
+          "books/tls-schema.lisp": "e0779c15ffe1ceab4133301a8f68e5b8f2a6080ce17ad4a2033e0c81b800d6f8",
+          "books/upload-feed.lisp": "01ee2316f12c05b2627f0a8153a4a11a94d4ece16e9dd384668004f67c36cdad",
+          "books/upload-scan.lisp": "6b3dd20f55b622a53d856e44f309a43209577993588f1ff364c10586afe4ea60",
+          "books/upload-window-geometry.lisp": "131a8659e5a9486afb9b3b774f31d873235aa740ba0b3e7b607b9ca39a36b2e2",
+          "books/vocab.lisp": "96606555ca9b71fcc9d3e5b955deb5052300526347dbb5f5f8e74545813b1c53"
+        },
+        "source_digests_sha256_after": {
+          "books/accounts-core.lisp": "1ca8a1ab641bff91757f0fe7febfd94af47f06b86a51034961bd5cfd5accd772",
+          "books/accounts.lisp": "5dd1a927dccb3d24fa31645bcd3b73a0acc0e42a83bac57c45c9d3a7e37f448b",
+          "books/arm-children.lisp": "1d444bdc958c877682a8bb75f688ecd191b741147ee853c646a8ec54e2fa343f",
+          "books/arms.lisp": "83825a47c141b16393debcb6dfc98aa7fb54b375e7c12296fa4f25a491c29455",
+          "books/codec-profile.lisp": "adb045c7393523346124a11a8959238a94be529354084bb23f9a5ae76cc63213",
+          "books/columns-call-guards.lisp": "fd7c2588e6d90338288b484078525799ac261c66013ebe112c3f369870db5a4a",
+          "books/columns-carrier-contracts.lisp": "36cf411d1119704be488c119243d0aff8006e9babe38bb128f5d627353373c5a",
+          "books/columns-guard-hints.lisp": "e0a20c5669df681bf75fa5eeae426adc4053010915b3c7657d56e247d5c8440b",
+          "books/columns.lisp": "8b694caf782c2ce3a29fa109b055c181b54beda214276493f6d9acb9456a881b",
+          "books/commit-geometry.lisp": "e06315c94bcd0d247214377fb33186f14ca1aa2ee6afe1499d69d053ff0134e2",
+          "books/compress-kind.lisp": "05eefc48dbf24297a972c122f3c3dd2b7145f64a43b48bd3f6d8f6d898e8e0ff",
+          "books/compress-policy.lisp": "bacea68680cb1cad303023723f5fd524cbae06b7dd81bf2cb5ada0fb2973270f",
+          "books/conn-answer.lisp": "2c099d9ad4cd0a5cb905f79fbd3ccecbcc7f09b9dad053c3caf180a9d00b044d",
+          "books/conn-schema.lisp": "e1ff16f42f038d3492271bf618cb80988947125e86af72e5ce79518573ded26f",
+          "books/core-children.lisp": "24a985caf082ff74f72c96638034eba619ce114d611a804d0b4a239721d37e4b",
+          "books/declare.lisp": "54e850788ee821dd90a4d9715e93d319f94846039592c4420fef1bdc5d959569",
+          "books/exec-state.lisp": "56eb8a81a3cc049c27c1e23dd1930f8184f2c892207169532315184ca141ea3d",
+          "books/fnv.lisp": "73d15afc6e1325f03d19ad4b39eeb3adc677ce2b07e9eddbc14141ca8843edde",
+          "books/format-base.lisp": "ead88cb8e7ab67db0c6a06ac400c813f753121c77082825b16016835eb462699",
+          "books/grammar.lisp": "420739fd67e1f21e86668b986d3f2c81f3d2e6f11de96bd02f20a04d80860a0b",
+          "books/layout.lisp": "2bc995f6bb70ec17862c5b535a4734e90a7a5dfd6312ebdee7d06877b0fbb4d8",
+          "books/machines-a.lisp": "6b27d9f04b788ed2730f2e520770c40f7dd9c06828a15a14dc79db50960adeec",
+          "books/machines-directory.lisp": "d87c6d169aae1a5c06fd1f31d9047645c8ecae0c444e10ad205958a37e2c83fa",
+          "books/machines.lisp": "5c5a20c1f2ff695fcaa9b2ba2d7bf345781c8127c33af89984c14f516641932f",
+          "books/nntp-grammar.lisp": "089c0cb3ea1dd851407e42ec0a165696c7db1e85618479dd8c98501f78ea127b",
+          "books/operations.lisp": "419120e7ae100f400d18cdee2d080d6133523673cac22fae1b05c7201ff97dd8",
+          "books/owed-discharge.lisp": "53903322be1b79ed081ecfcbfcb9f60649d3fdbf8aa6853b772abf8e6fc69f01",
+          "books/owed.lisp": "171950b91e40f4e7d0e94902ce00009adc62d8104e0eecd5db6a59b93bbffb15",
+          "books/pool-dimensions.lisp": "d39cf91254b2b5f062b468146361529d73a020e08b1f72d23c6c80a2c75eba6d",
+          "books/pool-ranges.lisp": "2f9e1f0c898ea4f6747f4e8f4942bc7f73be512ed1b90feb2d9cad7a58e3f959",
+          "books/pool.lisp": "9a31c8d38d309862369091a2c8019ccc3da16920742ff01040899b8f395f2fe9",
+          "books/profile.lisp": "1f216ed6c0505dc1b01ada0f7d3d9482af6da7b7dff8736b5100ef3e3fbc1038",
+          "books/resources.lisp": "019bb017e54237a5304f30598b8842de8f0651b5f92c523ff174f24994fe43c6",
+          "books/run-budget.lisp": "6c340901483627a433e4de6b7699b684b9949f233ee52ce4c5840774df59a7d0",
+          "books/tls-schema.lisp": "e0779c15ffe1ceab4133301a8f68e5b8f2a6080ce17ad4a2033e0c81b800d6f8",
+          "books/upload-feed.lisp": "01ee2316f12c05b2627f0a8153a4a11a94d4ece16e9dd384668004f67c36cdad",
+          "books/upload-scan.lisp": "6b3dd20f55b622a53d856e44f309a43209577993588f1ff364c10586afe4ea60",
+          "books/upload-window-geometry.lisp": "131a8659e5a9486afb9b3b774f31d873235aa740ba0b3e7b607b9ca39a36b2e2",
+          "books/vocab.lisp": "96606555ca9b71fcc9d3e5b955deb5052300526347dbb5f5f8e74545813b1c53"
+        },
+        "source_form_digests_sha256": {
+          "books/accounts-core.lisp": "b4c69bfd2b85728c55fd10d33fc0e6fe81ae845e6c952cf2db03cac2497b2fcc",
+          "books/accounts.lisp": "1f853822db740ac54e21f8d351a0bc83ad2eda25ac22503336faa8069f8b51b6",
+          "books/arm-children.lisp": "8a2f83f5577f65b1d8c821288f432ee40bb459003be2c7f71132d2559b743c8b",
+          "books/arms.lisp": "b04d9648a152e744bebd0c3b03d9cd0de2a113d7671d8e264b8f11da67b34cf1",
+          "books/codec-profile.lisp": "9f74465ce515d2a68b90e71c50d90af36190aea34d1bd34d44279134c6eac4b5",
+          "books/columns-call-guards.lisp": "3065ab76b92f9a12df8e0adc9668029c575c8e36ae93b1af20979f5f8a903bc3",
+          "books/columns-carrier-contracts.lisp": "1744bd32762c8bf552be3e247ad633b80709a812d2d3ac44bdfc9d3f96561272",
+          "books/columns-guard-hints.lisp": "61d8b4033b76e4207e82d281b535a81c7da52c9e554f35a8f82f4286aada3951",
+          "books/columns.lisp": "207ac331ff6397765ce1bfb9e6d665ad55ea44ae99e8b5602a554cd8ab5d4760",
+          "books/commit-geometry.lisp": "835186fa84e471e1cb0f83a6b5616aea20e5962fde38a2cf464da4d4bf66c2b8",
+          "books/compress-kind.lisp": "6174d0e8d1353916928b91212bc17c4e755173ab00f077ccdeec1d3cd1c98b45",
+          "books/compress-policy.lisp": "0a2ddc9308a38e9fa1276b21c36af33259483e1d8abd9a9b02a7cc3e9b9f9d67",
+          "books/conn-answer.lisp": "f8bd85d39e2a54b6099d501ba880a7f5aa379f5cda936431a7064046c178f452",
+          "books/conn-schema.lisp": "3c9da1bbf3760bb6486d4f758ce6b2be28ec35d952adaeb65d389475ae062da0",
+          "books/core-children.lisp": "205344fd39ce1b2efffa940c52976c789d68c0af99a22b86a5f5cbb3c1935653",
+          "books/declare.lisp": "21614abfc91ec57e0d97e77ef29b0ba68a0ba3ca49888131646d986f09dc6aef",
+          "books/exec-state.lisp": "c483309fd7e2b59f709e369180bd677cb13772e9558a6b44d8d4be7a9dff6efe",
+          "books/fnv.lisp": "37032ad1a3edcaef25be5f25b72a6354b2a6c036b740fef1a631c17beddc31ce",
+          "books/format-base.lisp": "e0e67a9aec16407b006dfba2939fb30ee8572904c77661301168a7190a72acc9",
+          "books/grammar.lisp": "943c7e9818c7258aa5582c7aa0c76cea115b9e45f916f143ee2aeaeba7dbd5b3",
+          "books/layout.lisp": "e6fed7dc718526f5a216a939f87e570ee7a8ca25ab0ce8f58e92fb12a6404dfd",
+          "books/machines-a.lisp": "a45c354cea8a1e1dd9376754d381fa50a3f4d2e874c23cf501506bb050bb7f2c",
+          "books/machines-directory.lisp": "4e8d1cb487f2bb860702fe649bc6796c04f89e3af921293dbc2222c7526e30f0",
+          "books/machines.lisp": "cab59128acc05b35e9f16d5d59d77e21bbfb1b780bd2e85deac84321f6f7cc0d",
+          "books/nntp-grammar.lisp": "16c996d0c7f722b6f0e5baf0d04c137adaed8721bd11bcfa0cec1991bcb52d7d",
+          "books/operations.lisp": "b7e7cab3f61033f1055f0ef3be5c0a8f3920a44c934c7b524fdba209c5ded826",
+          "books/owed-discharge.lisp": "dd1c8c3a0f05ae5ee19497b8f0506b2bace8f8dd9a264c57b2234f7658a581ce",
+          "books/owed.lisp": "e3f24658d27261c871fa9927c5b075807e62921b37da358046a0090561b5a79f",
+          "books/pool-dimensions.lisp": "96233e43d41147ed692624cf0ef855bff5979c440cbc19610a73b76920958cc6",
+          "books/pool-ranges.lisp": "1a6de3844fd6363d5042ca6e22723798252f60f04a2f21e9892f93e20644f0f9",
+          "books/pool.lisp": "77c43f42b6328258547341e19d0dce3186a7d214f8ba180daca8e7e44e4905b1",
+          "books/profile.lisp": "b19d044118c5a1ec4b4166198a7dc07c607ee5773d0c128133a3121cbb070184",
+          "books/resources.lisp": "ea05f325056836f299193539e448ff8b79b4c9df8e2c903bf583bbd296f49fae",
+          "books/run-budget.lisp": "98d74bd69152473991e7471b77f2b2ecf16efab354585d2c093efe385cf242b2",
+          "books/tls-schema.lisp": "61b37da20a6c1c1f857be31772e855b19891a3d2d5f9f06bcd9fbaa30654dc81",
+          "books/upload-feed.lisp": "c3ab17f9e0a94fb87636ceba540e244437fb2f3237f539438a31c51ac63aa3ff",
+          "books/upload-scan.lisp": "60eb818efe94da0e0c799b802d4d5e5f90ba02e91760d65e032456bb2960059b",
+          "books/upload-window-geometry.lisp": "017edd2689d6725696e5552d9e30acedca3c6ea3b887a32e68a9c2634652b097",
+          "books/vocab.lisp": "8d384c907614383447f33c3a8c19892358efb686c01143b52d48f0506f234b28"
+        },
+        "start_order": [
+          "books/conn-schema"
+        ],
+        "started_utc": "2026-11-16T00:32:15+00:00",
+        "status": "passed",
+        "timeout_seconds": 60,
+        "tree": "/build/lanes/sol-rolling-caller-6701"
+      },
+      "manifest_sha256": "fbd4608daeca9b5ea0dcdbd02ce7883e7be3273a0b01d7a9ddc769a0f099dd76"
+    },
+    {
+      "root": "books/tls-kind",
+      "count": 31,
+      "reused": 30,
+      "new": 1,
+      "entry_books": [
+        "books/tls-schema",
+        "books/machine-arms"
+      ],
+      "entry_exports": [
+        "books/arm-children",
+        "books/arm-issue-effects",
+        "books/arms",
+        "books/codec-profile",
+        "books/columns",
+        "books/columns-call-guards",
+        "books/columns-carrier-contracts",
+        "books/columns-guard-hints",
+        "books/core-children",
+        "books/declare",
+        "books/exec-state",
+        "books/fnv",
+        "books/machine-arms",
+        "books/machines",
+        "books/machines-a",
+        "books/machines-directory",
+        "books/operations",
+        "books/ops-heads",
+        "books/ops-issued-count",
+        "books/ops-issued-effects",
+        "books/owed",
+        "books/owed-discharge",
+        "books/pool",
+        "books/pool-dimensions",
+        "books/pool-ranges",
+        "books/profile",
+        "books/resources",
+        "books/run-budget",
+        "books/tls-schema",
+        "books/vocab"
+      ],
+      "record": {
+        "source": "6701dbac50678ced466358a13dc43c704bba03b4",
+        "roots": [
+          "books/tls-kind"
+        ],
+        "keys": {
+          "books/tls-kind": "12a0f21f7d0758c0ff044c44b66b345c82b6073ab88f1b7b785a7b207cf340fe"
+        },
+        "count": 31,
+        "cgroup": "/sys/fs/cgroup/user.slice/user-1000.slice/user@1000.service/swarm.slice/run-p2022278-i31378967.scope",
+        "memory_max": 2147483648,
+        "swap_max": 0,
+        "source_hashes_before": {
+          "books/tls-kind": "86c5e4fe10ed4e0043c71cd2d09d96ca6af898bb447365db28913a3d7a4ab0df",
+          "books/tls-schema": "e0779c15ffe1ceab4133301a8f68e5b8f2a6080ce17ad4a2033e0c81b800d6f8",
+          "books/owed-discharge": "53903322be1b79ed081ecfcbfcb9f60649d3fdbf8aa6853b772abf8e6fc69f01",
+          "books/owed": "171950b91e40f4e7d0e94902ce00009adc62d8104e0eecd5db6a59b93bbffb15",
+          "books/declare": "54e850788ee821dd90a4d9715e93d319f94846039592c4420fef1bdc5d959569",
+          "books/core-children": "24a985caf082ff74f72c96638034eba619ce114d611a804d0b4a239721d37e4b",
+          "books/machines": "5c5a20c1f2ff695fcaa9b2ba2d7bf345781c8127c33af89984c14f516641932f",
+          "books/columns-call-guards": "fd7c2588e6d90338288b484078525799ac261c66013ebe112c3f369870db5a4a",
+          "books/columns-guard-hints": "e0a20c5669df681bf75fa5eeae426adc4053010915b3c7657d56e247d5c8440b",
+          "books/columns": "8b694caf782c2ce3a29fa109b055c181b54beda214276493f6d9acb9456a881b",
+          "books/operations": "419120e7ae100f400d18cdee2d080d6133523673cac22fae1b05c7201ff97dd8",
+          "books/arms": "83825a47c141b16393debcb6dfc98aa7fb54b375e7c12296fa4f25a491c29455",
+          "books/resources": "019bb017e54237a5304f30598b8842de8f0651b5f92c523ff174f24994fe43c6",
+          "books/run-budget": "6c340901483627a433e4de6b7699b684b9949f233ee52ce4c5840774df59a7d0",
+          "books/vocab": "96606555ca9b71fcc9d3e5b955deb5052300526347dbb5f5f8e74545813b1c53",
+          "books/profile": "1f216ed6c0505dc1b01ada0f7d3d9482af6da7b7dff8736b5100ef3e3fbc1038",
+          "books/columns-carrier-contracts": "36cf411d1119704be488c119243d0aff8006e9babe38bb128f5d627353373c5a",
+          "books/codec-profile": "adb045c7393523346124a11a8959238a94be529354084bb23f9a5ae76cc63213",
+          "books/machines-a": "6b27d9f04b788ed2730f2e520770c40f7dd9c06828a15a14dc79db50960adeec",
+          "books/machine-arms": "7843cd0794ae7e686db4ab9ee75286ffe6d2e3ef6eb8e91fd1c5cbb2364320ea",
+          "books/arm-issue-effects": "a9460bbc8e085b404804d7b82328c1f7a249faeee25380af6586b389d3d5d9fd",
+          "books/ops-issued-effects": "0d8ca86349858405807ff2cdccffccd71d1c8cef2065186b28aa31aafd35a709",
+          "books/ops-issued-count": "2238a6e61e7075984f5cd95519a7dd71bc2d1e6f4da6d0b411e639f27ce7a426",
+          "books/ops-heads": "17af3696d3ad68f638d8301906cb1ce67152e6fa685a8d7697b5521018359366",
+          "books/arm-children": "1d444bdc958c877682a8bb75f688ecd191b741147ee853c646a8ec54e2fa343f",
+          "books/machines-directory": "d87c6d169aae1a5c06fd1f31d9047645c8ecae0c444e10ad205958a37e2c83fa",
+          "books/exec-state": "56eb8a81a3cc049c27c1e23dd1930f8184f2c892207169532315184ca141ea3d",
+          "books/pool-dimensions": "d39cf91254b2b5f062b468146361529d73a020e08b1f72d23c6c80a2c75eba6d",
+          "books/pool-ranges": "2f9e1f0c898ea4f6747f4e8f4942bc7f73be512ed1b90feb2d9cad7a58e3f959",
+          "books/fnv": "73d15afc6e1325f03d19ad4b39eeb3adc677ce2b07e9eddbc14141ca8843edde",
+          "books/pool": "9a31c8d38d309862369091a2c8019ccc3da16920742ff01040899b8f395f2fe9"
+        },
+        "status": "passed",
+        "runner_pid": 2023118,
+        "command": [
+          "/usr/bin/python3",
+          "tools/certify_books.py",
+          "--jobs",
+          "1",
+          "--incremental",
+          "--images",
+          "off",
+          "--timeout-seconds",
+          "60",
+          "books/tls-kind"
+        ],
+        "run_dir": "/build/lanes/sol-rolling-caller-6701/build/acl2/certify-20261116T003241Z-2023118",
+        "runner_exit": 0,
+        "source_hashes_after": {
+          "books/tls-kind": "86c5e4fe10ed4e0043c71cd2d09d96ca6af898bb447365db28913a3d7a4ab0df",
+          "books/tls-schema": "e0779c15ffe1ceab4133301a8f68e5b8f2a6080ce17ad4a2033e0c81b800d6f8",
+          "books/owed-discharge": "53903322be1b79ed081ecfcbfcb9f60649d3fdbf8aa6853b772abf8e6fc69f01",
+          "books/owed": "171950b91e40f4e7d0e94902ce00009adc62d8104e0eecd5db6a59b93bbffb15",
+          "books/declare": "54e850788ee821dd90a4d9715e93d319f94846039592c4420fef1bdc5d959569",
+          "books/core-children": "24a985caf082ff74f72c96638034eba619ce114d611a804d0b4a239721d37e4b",
+          "books/machines": "5c5a20c1f2ff695fcaa9b2ba2d7bf345781c8127c33af89984c14f516641932f",
+          "books/columns-call-guards": "fd7c2588e6d90338288b484078525799ac261c66013ebe112c3f369870db5a4a",
+          "books/columns-guard-hints": "e0a20c5669df681bf75fa5eeae426adc4053010915b3c7657d56e247d5c8440b",
+          "books/columns": "8b694caf782c2ce3a29fa109b055c181b54beda214276493f6d9acb9456a881b",
+          "books/operations": "419120e7ae100f400d18cdee2d080d6133523673cac22fae1b05c7201ff97dd8",
+          "books/arms": "83825a47c141b16393debcb6dfc98aa7fb54b375e7c12296fa4f25a491c29455",
+          "books/resources": "019bb017e54237a5304f30598b8842de8f0651b5f92c523ff174f24994fe43c6",
+          "books/run-budget": "6c340901483627a433e4de6b7699b684b9949f233ee52ce4c5840774df59a7d0",
+          "books/vocab": "96606555ca9b71fcc9d3e5b955deb5052300526347dbb5f5f8e74545813b1c53",
+          "books/profile": "1f216ed6c0505dc1b01ada0f7d3d9482af6da7b7dff8736b5100ef3e3fbc1038",
+          "books/columns-carrier-contracts": "36cf411d1119704be488c119243d0aff8006e9babe38bb128f5d627353373c5a",
+          "books/codec-profile": "adb045c7393523346124a11a8959238a94be529354084bb23f9a5ae76cc63213",
+          "books/machines-a": "6b27d9f04b788ed2730f2e520770c40f7dd9c06828a15a14dc79db50960adeec",
+          "books/machine-arms": "7843cd0794ae7e686db4ab9ee75286ffe6d2e3ef6eb8e91fd1c5cbb2364320ea",
+          "books/arm-issue-effects": "a9460bbc8e085b404804d7b82328c1f7a249faeee25380af6586b389d3d5d9fd",
+          "books/ops-issued-effects": "0d8ca86349858405807ff2cdccffccd71d1c8cef2065186b28aa31aafd35a709",
+          "books/ops-issued-count": "2238a6e61e7075984f5cd95519a7dd71bc2d1e6f4da6d0b411e639f27ce7a426",
+          "books/ops-heads": "17af3696d3ad68f638d8301906cb1ce67152e6fa685a8d7697b5521018359366",
+          "books/arm-children": "1d444bdc958c877682a8bb75f688ecd191b741147ee853c646a8ec54e2fa343f",
+          "books/machines-directory": "d87c6d169aae1a5c06fd1f31d9047645c8ecae0c444e10ad205958a37e2c83fa",
+          "books/exec-state": "56eb8a81a3cc049c27c1e23dd1930f8184f2c892207169532315184ca141ea3d",
+          "books/pool-dimensions": "d39cf91254b2b5f062b468146361529d73a020e08b1f72d23c6c80a2c75eba6d",
+          "books/pool-ranges": "2f9e1f0c898ea4f6747f4e8f4942bc7f73be512ed1b90feb2d9cad7a58e3f959",
+          "books/fnv": "73d15afc6e1325f03d19ad4b39eeb3adc677ce2b07e9eddbc14141ca8843edde",
+          "books/pool": "9a31c8d38d309862369091a2c8019ccc3da16920742ff01040899b8f395f2fe9"
+        },
+        "source_unchanged": true
+      },
+      "author": {
+        "source": "6701dbac50678ced466358a13dc43c704bba03b4",
+        "warm": [
+          "books/tls-schema",
+          "books/owed-discharge",
+          "books/owed",
+          "books/declare",
+          "books/core-children",
+          "books/machines",
+          "books/columns-call-guards",
+          "books/columns-guard-hints",
+          "books/columns",
+          "books/operations",
+          "books/arms",
+          "books/resources",
+          "books/run-budget",
+          "books/vocab",
+          "books/profile",
+          "books/columns-carrier-contracts",
+          "books/codec-profile",
+          "books/machines-a",
+          "books/machine-arms",
+          "books/arm-issue-effects",
+          "books/ops-issued-effects",
+          "books/ops-issued-count",
+          "books/ops-heads",
+          "books/arm-children",
+          "books/machines-directory",
+          "books/exec-state",
+          "books/pool-dimensions",
+          "books/pool-ranges",
+          "books/fnv",
+          "books/pool"
+        ],
+        "source_order": [
+          "books/tls-kind"
+        ],
+        "accepted": [
+          "books/tls-kind"
+        ],
+        "status": "passed",
+        "stop_holder_exit": 0
+      },
+      "manifest": {
+        "acl2_compatibility": {
+          "core_sha256": "3f5b101bb9437d66366dc2a299b7f9cb98fdaf40d1add5caf8baef9e451dd07d",
+          "launcher_chain_sha256": [
+            "30583c3d9988ea23cf5edfac828b4ddea984a9a7db9c3b44aaa9c399cf4fdbc5"
+          ],
+          "launcher_environment": [
+            {
+              "SBCL_HOME": "/tank/fn/sbcl/lib/sbcl/"
+            }
+          ],
+          "project_directories": {
+            ":FN": "."
+          },
+          "proof_environment": {
+            "ACL2_BOOK_HASH_ALISTP": "NIL",
+            "ACL2_CUSTOMIZATION": "NONE",
+            "ACL2_SYSTEM_BOOKS": null
+          },
+          "runtime_sha256": "b115fe956aadee603459fac401e1ff2cc39321e14848544a0fe438788a2fc6d5",
+          "schema": "fn-acl2-toolchain-v1"
+        },
+        "acl2_executable": "/tank/fn/toolchains/w28/acl2-literal-4g-tls64k",
+        "acl2_executable_sha256": "30583c3d9988ea23cf5edfac828b4ddea984a9a7db9c3b44aaa9c399cf4fdbc5",
+        "acl2_exit_codes": {
+          "books/tls-kind": 0
+        },
+        "acl2_slots": 16,
+        "acl2_toolchain": {
+          "compatibility": {
+            "core_sha256": "3f5b101bb9437d66366dc2a299b7f9cb98fdaf40d1add5caf8baef9e451dd07d",
+            "launcher_chain_sha256": [
+              "30583c3d9988ea23cf5edfac828b4ddea984a9a7db9c3b44aaa9c399cf4fdbc5"
+            ],
+            "launcher_environment": [
+              {
+                "SBCL_HOME": "/tank/fn/sbcl/lib/sbcl/"
+              }
+            ],
+            "project_directories": {
+              ":FN": "."
+            },
+            "proof_environment": {
+              "ACL2_BOOK_HASH_ALISTP": "NIL",
+              "ACL2_CUSTOMIZATION": "NONE",
+              "ACL2_SYSTEM_BOOKS": null
+            },
+            "runtime_sha256": "b115fe956aadee603459fac401e1ff2cc39321e14848544a0fe438788a2fc6d5",
+            "schema": "fn-acl2-toolchain-v1"
+          },
+          "core": {
+            "path": "/tank/fn/acl2-8.7/saved_acl2.core",
+            "sha256": "3f5b101bb9437d66366dc2a299b7f9cb98fdaf40d1add5caf8baef9e451dd07d",
+            "size": 233686912
+          },
+          "launchers": [
+            {
+              "path": "/tank/fn/toolchains/w28/acl2-literal-4g-tls64k",
+              "sha256": "30583c3d9988ea23cf5edfac828b4ddea984a9a7db9c3b44aaa9c399cf4fdbc5",
+              "size": 279
+            }
+          ],
+          "runtime": {
+            "path": "/tank/fn/sbcl/bin/sbcl",
+            "sha256": "b115fe956aadee603459fac401e1ff2cc39321e14848544a0fe438788a2fc6d5",
+            "size": 2149704
+          },
+          "schema": "fn-acl2-toolchain-v1",
+          "status": "qualified"
+        },
+        "acl2_toolchain_identity": "8aeb1bea18968c6cd33ac633a80ebf67e4924504db112fd27eb11f16a27b2a8c",
+        "acl2_version": "ACL2 Version 8.7",
+        "acl2_version_probe_exit_code": 0,
+        "affected_by": [],
+        "book_costliest_event": {
+          "books/tls-kind": {
+            "form": "( DEFUN FN2-MACHINE-TAKE-FN2-TLS-ADMIT-CHILDREN ...)",
+            "seconds": 0.61,
+            "steps": 41202
+          }
+        },
+        "book_failures": {},
+        "book_load_average": {
+          "books/tls-kind": [
+            0.71,
+            0.71
+          ]
+        },
+        "book_provenance": {
+          "books/arm-children": "installed",
+          "books/arm-issue-effects": "installed",
+          "books/arms": "installed",
+          "books/codec-profile": "installed",
+          "books/columns": "installed",
+          "books/columns-call-guards": "installed",
+          "books/columns-carrier-contracts": "installed",
+          "books/columns-guard-hints": "installed",
+          "books/core-children": "installed",
+          "books/declare": "installed",
+          "books/exec-state": "installed",
+          "books/fnv": "installed",
+          "books/machine-arms": "installed",
+          "books/machines": "installed",
+          "books/machines-a": "installed",
+          "books/machines-directory": "installed",
+          "books/operations": "installed",
+          "books/ops-heads": "installed",
+          "books/ops-issued-count": "installed",
+          "books/ops-issued-effects": "installed",
+          "books/owed": "installed",
+          "books/owed-discharge": "installed",
+          "books/pool": "installed",
+          "books/pool-dimensions": "installed",
+          "books/pool-ranges": "installed",
+          "books/profile": "installed",
+          "books/resources": "installed",
+          "books/run-budget": "installed",
+          "books/tls-kind": "certified",
+          "books/tls-schema": "installed",
+          "books/vocab": "installed"
+        },
+        "book_prover_steps": {
+          "books/tls-kind": 80827
+        },
+        "book_results": {
+          "books/tls-kind": "passed"
+        },
+        "book_slowest_event": {
+          "books/tls-kind": {
+            "form": "( INCLUDE-BOOK \"machines-a\" ...)",
+            "seconds": 0.75,
+            "steps": null
+          }
+        },
+        "book_wall_seconds": {
+          "books/tls-kind": 2.976
+        },
+        "book_wave_seconds": null,
+        "budget_seconds": 60,
+        "cache_install": {
+          "directory": "/home/fn/.cache/fn-certs",
+          "fasl_installed": 30,
+          "fasl_missing": 0,
+          "installed": 0,
+          "kept": 30,
+          "origins": {
+            "/build/lanes/arm-storage-dim-current": 2,
+            "/build/lanes/assurance-budget-history-record": 1,
+            "/build/lanes/assurance-columns-coherent37-87f": 4,
+            "/build/lanes/assurance-enum-machine-arms": 1,
+            "/build/lanes/assurance-vocab-harveste9": 3,
+            "/build/lanes/conn-root-59fe": 2,
+            "/build/lanes/convergence-ready79-ab05": 9,
+            "/build/lanes/current-machines-ab05": 1,
+            "/build/lanes/member-refutation-64ee": 4,
+            "/build/lanes/pool-dimensions-current-frozen": 1,
+            "/build/lanes/refuted-05cb": 2
+          },
+          "recertified": [],
+          "removed": 0,
+          "reused_from": null,
+          "roots_installed": [],
+          "toolchain_identity": "8aeb1bea18968c6cd33ac633a80ebf67e4924504db112fd27eb11f16a27b2a8c",
+          "uncompiled": []
+        },
+        "caught_error_text": {},
+        "cert_cache": {
+          "already_cached": 1,
+          "directory": "/home/fn/.cache/fn-certs",
+          "not_published": [],
+          "origin_kind": "run",
+          "per_book": [
+            {
+              "already_cached": false,
+              "book": "books/tls-kind",
+              "published": true,
+              "verdict": "passed"
+            }
+          ],
+          "per_book_published": 1,
+          "published": 0,
+          "uncompiled": []
+        },
+        "certificate_digests_sha256": {
+          "books/tls-kind": "b971297a60753947340f02fe0d479738400b1bce88610b51b98de993e96a537b"
+        },
+        "certify_wall_seconds": 2.997,
+        "closure": false,
+        "command": [
+          "/tank/fn/toolchains/w28/acl2-literal-4g-tls64k"
+        ],
+        "compiled_digests_sha256": {
+          "books/tls-kind": "fdecc22a0496334d52166639857fb2f3ccaef10fcc3f2d3acea39fc86d255749"
+        },
+        "cpu_count": 16,
+        "driver_digests_sha256": {
+          "books/tls-kind": "6ebdd8867557c337d68c9695449384c1ed2bea0ec5853a91ef29992c681b8287"
+        },
+        "environment": {
+          "ACL2_BOOK_HASH_ALISTP": "NIL",
+          "ACL2_CUSTOMIZATION": "NONE",
+          "ACL2_PROJECTS": "/build/lanes/sol-rolling-caller-6701/acl2-projects",
+          "ACL2_SYSTEM_BOOKS": null,
+          "SBCL_USER_ARGS": null
+        },
+        "expected_success_markers": [
+          "FN_CERTIFY_SUCCESS 98a567d9dbd2dc7c71b0232e3faa26df 5bd4b5e2dde6"
+        ],
+        "failure_markers": [],
+        "finished_utc": "2026-11-16T00:32:45+00:00",
+        "git_branch": null,
+        "git_dirty": null,
+        "git_revision": null,
+        "host_lisp_banner": "This is SBCL 2.6.8, an implementation of ANSI Common Lisp.",
+        "hostname": "dregg-forge",
+        "incremental": true,
+        "installed_books": {
+          "books/arm-children": "/build/lanes/convergence-ready79-ab05",
+          "books/arm-issue-effects": "/build/lanes/convergence-ready79-ab05",
+          "books/arms": "/build/lanes/arm-storage-dim-current",
+          "books/codec-profile": "/build/lanes/conn-root-59fe",
+          "books/columns": "/build/lanes/assurance-columns-coherent37-87f",
+          "books/columns-call-guards": "/build/lanes/assurance-vocab-harveste9",
+          "books/columns-carrier-contracts": "/build/lanes/assurance-columns-coherent37-87f",
+          "books/columns-guard-hints": "/build/lanes/assurance-columns-coherent37-87f",
+          "books/core-children": "/build/lanes/convergence-ready79-ab05",
+          "books/declare": "/build/lanes/refuted-05cb",
+          "books/exec-state": "/build/lanes/arm-storage-dim-current",
+          "books/fnv": "/build/lanes/member-refutation-64ee",
+          "books/machine-arms": "/build/lanes/assurance-enum-machine-arms",
+          "books/machines": "/build/lanes/current-machines-ab05",
+          "books/machines-a": "/build/lanes/convergence-ready79-ab05",
+          "books/machines-directory": "/build/lanes/convergence-ready79-ab05",
+          "books/operations": "/build/lanes/member-refutation-64ee",
+          "books/ops-heads": "/build/lanes/convergence-ready79-ab05",
+          "books/ops-issued-count": "/build/lanes/convergence-ready79-ab05",
+          "books/ops-issued-effects": "/build/lanes/convergence-ready79-ab05",
+          "books/owed": "/build/lanes/refuted-05cb",
+          "books/owed-discharge": "/build/lanes/member-refutation-64ee",
+          "books/pool": "/build/lanes/assurance-columns-coherent37-87f",
+          "books/pool-dimensions": "/build/lanes/pool-dimensions-current-frozen",
+          "books/pool-ranges": "/build/lanes/assurance-vocab-harveste9",
+          "books/profile": "/build/lanes/member-refutation-64ee",
+          "books/resources": "/build/lanes/conn-root-59fe",
+          "books/run-budget": "/build/lanes/assurance-budget-history-record",
+          "books/tls-schema": "/build/lanes/convergence-ready79-ab05",
+          "books/vocab": "/build/lanes/assurance-vocab-harveste9"
+        },
+        "installed_over_failed": [],
+        "jobs": 1,
+        "jobs_effective": 1,
+        "local_source_audit": {
+          "findings": {},
+          "forbidden_facilities": [
+            "defaxiom",
+            "defttag",
+            "include-raw",
+            "set-raw-mode",
+            "skip-proofs"
+          ],
+          "method": "conservative lexical symbol scan plus human batch review; not macro expansion",
+          "scope": "local source closure only; installed ACL2/system books remain trusted"
+        },
+        "observed_success_markers": [
+          "FN_CERTIFY_SUCCESS 98a567d9dbd2dc7c71b0232e3faa26df 5bd4b5e2dde6"
+        ],
+        "pcert": false,
+        "pcert_reached": null,
+        "pcert_wall_seconds": null,
+        "platform": "Linux-6.12.113+deb13-cloud-amd64-x86_64-with-glibc2.41",
+        "python": "3.13.5",
+        "reader_sha256": "3a25bad1a53f07d48101c88fbf7e5fca81575735bfdbe48a168cab81141940cd",
+        "recertify": [],
+        "requested_before_filter": [
+          "books/tls-kind"
+        ],
+        "requested_books": [
+          "books/tls-kind"
+        ],
+        "roots": [
+          "books/tls-kind"
+        ],
+        "run_id": "certify-20261116T003241Z-2023118",
+        "runner_sha256": "0c92c676ec1d176a554a63d7106e4bfbd8cc4d6a5293b3daa0c301cb4650f5d5",
+        "runner_unchanged": true,
+        "schedule": {
+          "policy": "requested-order"
+        },
+        "slot_wait_seconds": {
+          "books/tls-kind": 0.0,
+          "version-probe": 0.0
+        },
+        "source_digests_sha256": {
+          "books/arm-children.lisp": "1d444bdc958c877682a8bb75f688ecd191b741147ee853c646a8ec54e2fa343f",
+          "books/arm-issue-effects.lisp": "a9460bbc8e085b404804d7b82328c1f7a249faeee25380af6586b389d3d5d9fd",
+          "books/arms.lisp": "83825a47c141b16393debcb6dfc98aa7fb54b375e7c12296fa4f25a491c29455",
+          "books/codec-profile.lisp": "adb045c7393523346124a11a8959238a94be529354084bb23f9a5ae76cc63213",
+          "books/columns-call-guards.lisp": "fd7c2588e6d90338288b484078525799ac261c66013ebe112c3f369870db5a4a",
+          "books/columns-carrier-contracts.lisp": "36cf411d1119704be488c119243d0aff8006e9babe38bb128f5d627353373c5a",
+          "books/columns-guard-hints.lisp": "e0a20c5669df681bf75fa5eeae426adc4053010915b3c7657d56e247d5c8440b",
+          "books/columns.lisp": "8b694caf782c2ce3a29fa109b055c181b54beda214276493f6d9acb9456a881b",
+          "books/core-children.lisp": "24a985caf082ff74f72c96638034eba619ce114d611a804d0b4a239721d37e4b",
+          "books/declare.lisp": "54e850788ee821dd90a4d9715e93d319f94846039592c4420fef1bdc5d959569",
+          "books/exec-state.lisp": "56eb8a81a3cc049c27c1e23dd1930f8184f2c892207169532315184ca141ea3d",
+          "books/fnv.lisp": "73d15afc6e1325f03d19ad4b39eeb3adc677ce2b07e9eddbc14141ca8843edde",
+          "books/machine-arms.lisp": "7843cd0794ae7e686db4ab9ee75286ffe6d2e3ef6eb8e91fd1c5cbb2364320ea",
+          "books/machines-a.lisp": "6b27d9f04b788ed2730f2e520770c40f7dd9c06828a15a14dc79db50960adeec",
+          "books/machines-directory.lisp": "d87c6d169aae1a5c06fd1f31d9047645c8ecae0c444e10ad205958a37e2c83fa",
+          "books/machines.lisp": "5c5a20c1f2ff695fcaa9b2ba2d7bf345781c8127c33af89984c14f516641932f",
+          "books/operations.lisp": "419120e7ae100f400d18cdee2d080d6133523673cac22fae1b05c7201ff97dd8",
+          "books/ops-heads.lisp": "17af3696d3ad68f638d8301906cb1ce67152e6fa685a8d7697b5521018359366",
+          "books/ops-issued-count.lisp": "2238a6e61e7075984f5cd95519a7dd71bc2d1e6f4da6d0b411e639f27ce7a426",
+          "books/ops-issued-effects.lisp": "0d8ca86349858405807ff2cdccffccd71d1c8cef2065186b28aa31aafd35a709",
+          "books/owed-discharge.lisp": "53903322be1b79ed081ecfcbfcb9f60649d3fdbf8aa6853b772abf8e6fc69f01",
+          "books/owed.lisp": "171950b91e40f4e7d0e94902ce00009adc62d8104e0eecd5db6a59b93bbffb15",
+          "books/pool-dimensions.lisp": "d39cf91254b2b5f062b468146361529d73a020e08b1f72d23c6c80a2c75eba6d",
+          "books/pool-ranges.lisp": "2f9e1f0c898ea4f6747f4e8f4942bc7f73be512ed1b90feb2d9cad7a58e3f959",
+          "books/pool.lisp": "9a31c8d38d309862369091a2c8019ccc3da16920742ff01040899b8f395f2fe9",
+          "books/profile.lisp": "1f216ed6c0505dc1b01ada0f7d3d9482af6da7b7dff8736b5100ef3e3fbc1038",
+          "books/resources.lisp": "019bb017e54237a5304f30598b8842de8f0651b5f92c523ff174f24994fe43c6",
+          "books/run-budget.lisp": "6c340901483627a433e4de6b7699b684b9949f233ee52ce4c5840774df59a7d0",
+          "books/tls-kind.lisp": "86c5e4fe10ed4e0043c71cd2d09d96ca6af898bb447365db28913a3d7a4ab0df",
+          "books/tls-schema.lisp": "e0779c15ffe1ceab4133301a8f68e5b8f2a6080ce17ad4a2033e0c81b800d6f8",
+          "books/vocab.lisp": "96606555ca9b71fcc9d3e5b955deb5052300526347dbb5f5f8e74545813b1c53"
+        },
+        "source_digests_sha256_after": {
+          "books/arm-children.lisp": "1d444bdc958c877682a8bb75f688ecd191b741147ee853c646a8ec54e2fa343f",
+          "books/arm-issue-effects.lisp": "a9460bbc8e085b404804d7b82328c1f7a249faeee25380af6586b389d3d5d9fd",
+          "books/arms.lisp": "83825a47c141b16393debcb6dfc98aa7fb54b375e7c12296fa4f25a491c29455",
+          "books/codec-profile.lisp": "adb045c7393523346124a11a8959238a94be529354084bb23f9a5ae76cc63213",
+          "books/columns-call-guards.lisp": "fd7c2588e6d90338288b484078525799ac261c66013ebe112c3f369870db5a4a",
+          "books/columns-carrier-contracts.lisp": "36cf411d1119704be488c119243d0aff8006e9babe38bb128f5d627353373c5a",
+          "books/columns-guard-hints.lisp": "e0a20c5669df681bf75fa5eeae426adc4053010915b3c7657d56e247d5c8440b",
+          "books/columns.lisp": "8b694caf782c2ce3a29fa109b055c181b54beda214276493f6d9acb9456a881b",
+          "books/core-children.lisp": "24a985caf082ff74f72c96638034eba619ce114d611a804d0b4a239721d37e4b",
+          "books/declare.lisp": "54e850788ee821dd90a4d9715e93d319f94846039592c4420fef1bdc5d959569",
+          "books/exec-state.lisp": "56eb8a81a3cc049c27c1e23dd1930f8184f2c892207169532315184ca141ea3d",
+          "books/fnv.lisp": "73d15afc6e1325f03d19ad4b39eeb3adc677ce2b07e9eddbc14141ca8843edde",
+          "books/machine-arms.lisp": "7843cd0794ae7e686db4ab9ee75286ffe6d2e3ef6eb8e91fd1c5cbb2364320ea",
+          "books/machines-a.lisp": "6b27d9f04b788ed2730f2e520770c40f7dd9c06828a15a14dc79db50960adeec",
+          "books/machines-directory.lisp": "d87c6d169aae1a5c06fd1f31d9047645c8ecae0c444e10ad205958a37e2c83fa",
+          "books/machines.lisp": "5c5a20c1f2ff695fcaa9b2ba2d7bf345781c8127c33af89984c14f516641932f",
+          "books/operations.lisp": "419120e7ae100f400d18cdee2d080d6133523673cac22fae1b05c7201ff97dd8",
+          "books/ops-heads.lisp": "17af3696d3ad68f638d8301906cb1ce67152e6fa685a8d7697b5521018359366",
+          "books/ops-issued-count.lisp": "2238a6e61e7075984f5cd95519a7dd71bc2d1e6f4da6d0b411e639f27ce7a426",
+          "books/ops-issued-effects.lisp": "0d8ca86349858405807ff2cdccffccd71d1c8cef2065186b28aa31aafd35a709",
+          "books/owed-discharge.lisp": "53903322be1b79ed081ecfcbfcb9f60649d3fdbf8aa6853b772abf8e6fc69f01",
+          "books/owed.lisp": "171950b91e40f4e7d0e94902ce00009adc62d8104e0eecd5db6a59b93bbffb15",
+          "books/pool-dimensions.lisp": "d39cf91254b2b5f062b468146361529d73a020e08b1f72d23c6c80a2c75eba6d",
+          "books/pool-ranges.lisp": "2f9e1f0c898ea4f6747f4e8f4942bc7f73be512ed1b90feb2d9cad7a58e3f959",
+          "books/pool.lisp": "9a31c8d38d309862369091a2c8019ccc3da16920742ff01040899b8f395f2fe9",
+          "books/profile.lisp": "1f216ed6c0505dc1b01ada0f7d3d9482af6da7b7dff8736b5100ef3e3fbc1038",
+          "books/resources.lisp": "019bb017e54237a5304f30598b8842de8f0651b5f92c523ff174f24994fe43c6",
+          "books/run-budget.lisp": "6c340901483627a433e4de6b7699b684b9949f233ee52ce4c5840774df59a7d0",
+          "books/tls-kind.lisp": "86c5e4fe10ed4e0043c71cd2d09d96ca6af898bb447365db28913a3d7a4ab0df",
+          "books/tls-schema.lisp": "e0779c15ffe1ceab4133301a8f68e5b8f2a6080ce17ad4a2033e0c81b800d6f8",
+          "books/vocab.lisp": "96606555ca9b71fcc9d3e5b955deb5052300526347dbb5f5f8e74545813b1c53"
+        },
+        "source_form_digests_sha256": {
+          "books/arm-children.lisp": "8a2f83f5577f65b1d8c821288f432ee40bb459003be2c7f71132d2559b743c8b",
+          "books/arm-issue-effects.lisp": "6a565cbf7ccdef49cdc620f191f748b518bcd7378a18c4578dc72ea7596f6770",
+          "books/arms.lisp": "b04d9648a152e744bebd0c3b03d9cd0de2a113d7671d8e264b8f11da67b34cf1",
+          "books/codec-profile.lisp": "9f74465ce515d2a68b90e71c50d90af36190aea34d1bd34d44279134c6eac4b5",
+          "books/columns-call-guards.lisp": "3065ab76b92f9a12df8e0adc9668029c575c8e36ae93b1af20979f5f8a903bc3",
+          "books/columns-carrier-contracts.lisp": "1744bd32762c8bf552be3e247ad633b80709a812d2d3ac44bdfc9d3f96561272",
+          "books/columns-guard-hints.lisp": "61d8b4033b76e4207e82d281b535a81c7da52c9e554f35a8f82f4286aada3951",
+          "books/columns.lisp": "207ac331ff6397765ce1bfb9e6d665ad55ea44ae99e8b5602a554cd8ab5d4760",
+          "books/core-children.lisp": "205344fd39ce1b2efffa940c52976c789d68c0af99a22b86a5f5cbb3c1935653",
+          "books/declare.lisp": "21614abfc91ec57e0d97e77ef29b0ba68a0ba3ca49888131646d986f09dc6aef",
+          "books/exec-state.lisp": "c483309fd7e2b59f709e369180bd677cb13772e9558a6b44d8d4be7a9dff6efe",
+          "books/fnv.lisp": "37032ad1a3edcaef25be5f25b72a6354b2a6c036b740fef1a631c17beddc31ce",
+          "books/machine-arms.lisp": "334abe1c8f8aec0ae5cda83891e7615fc91ad7d4e1f584e06033293ed2ad6240",
+          "books/machines-a.lisp": "a45c354cea8a1e1dd9376754d381fa50a3f4d2e874c23cf501506bb050bb7f2c",
+          "books/machines-directory.lisp": "4e8d1cb487f2bb860702fe649bc6796c04f89e3af921293dbc2222c7526e30f0",
+          "books/machines.lisp": "cab59128acc05b35e9f16d5d59d77e21bbfb1b780bd2e85deac84321f6f7cc0d",
+          "books/operations.lisp": "b7e7cab3f61033f1055f0ef3be5c0a8f3920a44c934c7b524fdba209c5ded826",
+          "books/ops-heads.lisp": "d03efef4d76770d2cf6117b1e84ec473863911da5d1102f759f606746564d223",
+          "books/ops-issued-count.lisp": "e68297dccd1c73c2a0ecdb96196ea87e340a04d636c4e14bb5864bed945f03b2",
+          "books/ops-issued-effects.lisp": "527af3ba4f22611514610dbe3c5bfd50893e8cdb4199d97b61d831f289b75d9c",
+          "books/owed-discharge.lisp": "dd1c8c3a0f05ae5ee19497b8f0506b2bace8f8dd9a264c57b2234f7658a581ce",
+          "books/owed.lisp": "e3f24658d27261c871fa9927c5b075807e62921b37da358046a0090561b5a79f",
+          "books/pool-dimensions.lisp": "96233e43d41147ed692624cf0ef855bff5979c440cbc19610a73b76920958cc6",
+          "books/pool-ranges.lisp": "1a6de3844fd6363d5042ca6e22723798252f60f04a2f21e9892f93e20644f0f9",
+          "books/pool.lisp": "77c43f42b6328258547341e19d0dce3186a7d214f8ba180daca8e7e44e4905b1",
+          "books/profile.lisp": "b19d044118c5a1ec4b4166198a7dc07c607ee5773d0c128133a3121cbb070184",
+          "books/resources.lisp": "ea05f325056836f299193539e448ff8b79b4c9df8e2c903bf583bbd296f49fae",
+          "books/run-budget.lisp": "98d74bd69152473991e7471b77f2b2ecf16efab354585d2c093efe385cf242b2",
+          "books/tls-kind.lisp": "b7d57a6805de26514b92fb3a7be53af874417bc2431c8deb69bac4aade2ffcad",
+          "books/tls-schema.lisp": "61b37da20a6c1c1f857be31772e855b19891a3d2d5f9f06bcd9fbaa30654dc81",
+          "books/vocab.lisp": "8d384c907614383447f33c3a8c19892358efb686c01143b52d48f0506f234b28"
+        },
+        "start_order": [
+          "books/tls-kind"
+        ],
+        "started_utc": "2026-11-16T00:32:41+00:00",
+        "status": "passed",
+        "timeout_seconds": 60,
+        "tree": "/build/lanes/sol-rolling-caller-6701"
+      },
+      "manifest_sha256": "d71c4397e17f450495fd6e130c1fa21720499e4023ba03131525fba45c305e70"
+    },
+    {
+      "root": "books/conn-kind",
+      "count": 46,
+      "reused": 45,
+      "new": 1,
+      "entry_books": [
+        "books/conn-schema",
+        "books/tls-kind"
+      ],
+      "entry_exports": [
+        "books/accounts",
+        "books/accounts-core",
+        "books/arm-children",
+        "books/arm-issue-effects",
+        "books/arms",
+        "books/codec-profile",
+        "books/columns",
+        "books/columns-call-guards",
+        "books/columns-carrier-contracts",
+        "books/columns-guard-hints",
+        "books/commit-geometry",
+        "books/compress-kind",
+        "books/compress-policy",
+        "books/conn-answer",
+        "books/conn-schema",
+        "books/core-children",
+        "books/declare",
+        "books/exec-state",
+        "books/fnv",
+        "books/format-base",
+        "books/grammar",
+        "books/layout",
+        "books/machine-arms",
+        "books/machines",
+        "books/machines-a",
+        "books/machines-directory",
+        "books/nntp-grammar",
+        "books/operations",
+        "books/ops-heads",
+        "books/ops-issued-count",
+        "books/ops-issued-effects",
+        "books/owed",
+        "books/owed-discharge",
+        "books/pool",
+        "books/pool-dimensions",
+        "books/pool-ranges",
+        "books/profile",
+        "books/resources",
+        "books/run-budget",
+        "books/tls-kind",
+        "books/tls-schema",
+        "books/upload-feed",
+        "books/upload-scan",
+        "books/upload-window-geometry",
+        "books/vocab"
+      ],
+      "record": {
+        "source": "6701dbac50678ced466358a13dc43c704bba03b4",
+        "roots": [
+          "books/conn-kind"
+        ],
+        "keys": {
+          "books/conn-kind": "1ab3b836d8c5f5e5bb2f860d8e6701ec5fe04d8c85f0eb9dbfc57171d9d455cf"
+        },
+        "count": 46,
+        "cgroup": "/sys/fs/cgroup/user.slice/user-1000.slice/user@1000.service/swarm.slice/run-p2022278-i31378967.scope",
+        "memory_max": 2147483648,
+        "swap_max": 0,
+        "source_hashes_before": {
+          "books/conn-kind": "a50e72520fa6ead2540b308775dd435914317887a4b5afe77b938317e23f0502",
+          "books/conn-schema": "e1ff16f42f038d3492271bf618cb80988947125e86af72e5ce79518573ded26f",
+          "books/upload-feed": "01ee2316f12c05b2627f0a8153a4a11a94d4ece16e9dd384668004f67c36cdad",
+          "books/grammar": "420739fd67e1f21e86668b986d3f2c81f3d2e6f11de96bd02f20a04d80860a0b",
+          "books/pool-ranges": "2f9e1f0c898ea4f6747f4e8f4942bc7f73be512ed1b90feb2d9cad7a58e3f959",
+          "books/columns-guard-hints": "e0a20c5669df681bf75fa5eeae426adc4053010915b3c7657d56e247d5c8440b",
+          "books/columns": "8b694caf782c2ce3a29fa109b055c181b54beda214276493f6d9acb9456a881b",
+          "books/operations": "419120e7ae100f400d18cdee2d080d6133523673cac22fae1b05c7201ff97dd8",
+          "books/declare": "54e850788ee821dd90a4d9715e93d319f94846039592c4420fef1bdc5d959569",
+          "books/fnv": "73d15afc6e1325f03d19ad4b39eeb3adc677ce2b07e9eddbc14141ca8843edde",
+          "books/pool": "9a31c8d38d309862369091a2c8019ccc3da16920742ff01040899b8f395f2fe9",
+          "books/profile": "1f216ed6c0505dc1b01ada0f7d3d9482af6da7b7dff8736b5100ef3e3fbc1038",
+          "books/owed-discharge": "53903322be1b79ed081ecfcbfcb9f60649d3fdbf8aa6853b772abf8e6fc69f01",
+          "books/owed": "171950b91e40f4e7d0e94902ce00009adc62d8104e0eecd5db6a59b93bbffb15",
+          "books/upload-scan": "6b3dd20f55b622a53d856e44f309a43209577993588f1ff364c10586afe4ea60",
+          "books/upload-window-geometry": "131a8659e5a9486afb9b3b774f31d873235aa740ba0b3e7b607b9ca39a36b2e2",
+          "books/commit-geometry": "e06315c94bcd0d247214377fb33186f14ca1aa2ee6afe1499d69d053ff0134e2",
+          "books/format-base": "ead88cb8e7ab67db0c6a06ac400c813f753121c77082825b16016835eb462699",
+          "books/layout": "2bc995f6bb70ec17862c5b535a4734e90a7a5dfd6312ebdee7d06877b0fbb4d8",
+          "books/accounts-core": "1ca8a1ab641bff91757f0fe7febfd94af47f06b86a51034961bd5cfd5accd772",
+          "books/arm-children": "1d444bdc958c877682a8bb75f688ecd191b741147ee853c646a8ec54e2fa343f",
+          "books/machines-directory": "d87c6d169aae1a5c06fd1f31d9047645c8ecae0c444e10ad205958a37e2c83fa",
+          "books/machines": "5c5a20c1f2ff695fcaa9b2ba2d7bf345781c8127c33af89984c14f516641932f",
+          "books/columns-call-guards": "fd7c2588e6d90338288b484078525799ac261c66013ebe112c3f369870db5a4a",
+          "books/arms": "83825a47c141b16393debcb6dfc98aa7fb54b375e7c12296fa4f25a491c29455",
+          "books/resources": "019bb017e54237a5304f30598b8842de8f0651b5f92c523ff174f24994fe43c6",
+          "books/run-budget": "6c340901483627a433e4de6b7699b684b9949f233ee52ce4c5840774df59a7d0",
+          "books/vocab": "96606555ca9b71fcc9d3e5b955deb5052300526347dbb5f5f8e74545813b1c53",
+          "books/columns-carrier-contracts": "36cf411d1119704be488c119243d0aff8006e9babe38bb128f5d627353373c5a",
+          "books/exec-state": "56eb8a81a3cc049c27c1e23dd1930f8184f2c892207169532315184ca141ea3d",
+          "books/pool-dimensions": "d39cf91254b2b5f062b468146361529d73a020e08b1f72d23c6c80a2c75eba6d",
+          "books/machines-a": "6b27d9f04b788ed2730f2e520770c40f7dd9c06828a15a14dc79db50960adeec",
+          "books/accounts": "5dd1a927dccb3d24fa31645bcd3b73a0acc0e42a83bac57c45c9d3a7e37f448b",
+          "books/core-children": "24a985caf082ff74f72c96638034eba619ce114d611a804d0b4a239721d37e4b",
+          "books/compress-kind": "05eefc48dbf24297a972c122f3c3dd2b7145f64a43b48bd3f6d8f6d898e8e0ff",
+          "books/compress-policy": "bacea68680cb1cad303023723f5fd524cbae06b7dd81bf2cb5ada0fb2973270f",
+          "books/tls-schema": "e0779c15ffe1ceab4133301a8f68e5b8f2a6080ce17ad4a2033e0c81b800d6f8",
+          "books/codec-profile": "adb045c7393523346124a11a8959238a94be529354084bb23f9a5ae76cc63213",
+          "books/conn-answer": "2c099d9ad4cd0a5cb905f79fbd3ccecbcc7f09b9dad053c3caf180a9d00b044d",
+          "books/nntp-grammar": "089c0cb3ea1dd851407e42ec0a165696c7db1e85618479dd8c98501f78ea127b",
+          "books/machine-arms": "7843cd0794ae7e686db4ab9ee75286ffe6d2e3ef6eb8e91fd1c5cbb2364320ea",
+          "books/arm-issue-effects": "a9460bbc8e085b404804d7b82328c1f7a249faeee25380af6586b389d3d5d9fd",
+          "books/ops-issued-effects": "0d8ca86349858405807ff2cdccffccd71d1c8cef2065186b28aa31aafd35a709",
+          "books/ops-issued-count": "2238a6e61e7075984f5cd95519a7dd71bc2d1e6f4da6d0b411e639f27ce7a426",
+          "books/ops-heads": "17af3696d3ad68f638d8301906cb1ce67152e6fa685a8d7697b5521018359366",
+          "books/tls-kind": "86c5e4fe10ed4e0043c71cd2d09d96ca6af898bb447365db28913a3d7a4ab0df"
+        },
+        "status": "passed",
+        "runner_pid": 2023383,
+        "command": [
+          "/usr/bin/python3",
+          "tools/certify_books.py",
+          "--jobs",
+          "1",
+          "--incremental",
+          "--images",
+          "off",
+          "--timeout-seconds",
+          "60",
+          "books/conn-kind"
+        ],
+        "run_dir": "/build/lanes/sol-rolling-caller-6701/build/acl2/certify-20261116T003256Z-2023383",
+        "runner_exit": 0,
+        "source_hashes_after": {
+          "books/conn-kind": "a50e72520fa6ead2540b308775dd435914317887a4b5afe77b938317e23f0502",
+          "books/conn-schema": "e1ff16f42f038d3492271bf618cb80988947125e86af72e5ce79518573ded26f",
+          "books/upload-feed": "01ee2316f12c05b2627f0a8153a4a11a94d4ece16e9dd384668004f67c36cdad",
+          "books/grammar": "420739fd67e1f21e86668b986d3f2c81f3d2e6f11de96bd02f20a04d80860a0b",
+          "books/pool-ranges": "2f9e1f0c898ea4f6747f4e8f4942bc7f73be512ed1b90feb2d9cad7a58e3f959",
+          "books/columns-guard-hints": "e0a20c5669df681bf75fa5eeae426adc4053010915b3c7657d56e247d5c8440b",
+          "books/columns": "8b694caf782c2ce3a29fa109b055c181b54beda214276493f6d9acb9456a881b",
+          "books/operations": "419120e7ae100f400d18cdee2d080d6133523673cac22fae1b05c7201ff97dd8",
+          "books/declare": "54e850788ee821dd90a4d9715e93d319f94846039592c4420fef1bdc5d959569",
+          "books/fnv": "73d15afc6e1325f03d19ad4b39eeb3adc677ce2b07e9eddbc14141ca8843edde",
+          "books/pool": "9a31c8d38d309862369091a2c8019ccc3da16920742ff01040899b8f395f2fe9",
+          "books/profile": "1f216ed6c0505dc1b01ada0f7d3d9482af6da7b7dff8736b5100ef3e3fbc1038",
+          "books/owed-discharge": "53903322be1b79ed081ecfcbfcb9f60649d3fdbf8aa6853b772abf8e6fc69f01",
+          "books/owed": "171950b91e40f4e7d0e94902ce00009adc62d8104e0eecd5db6a59b93bbffb15",
+          "books/upload-scan": "6b3dd20f55b622a53d856e44f309a43209577993588f1ff364c10586afe4ea60",
+          "books/upload-window-geometry": "131a8659e5a9486afb9b3b774f31d873235aa740ba0b3e7b607b9ca39a36b2e2",
+          "books/commit-geometry": "e06315c94bcd0d247214377fb33186f14ca1aa2ee6afe1499d69d053ff0134e2",
+          "books/format-base": "ead88cb8e7ab67db0c6a06ac400c813f753121c77082825b16016835eb462699",
+          "books/layout": "2bc995f6bb70ec17862c5b535a4734e90a7a5dfd6312ebdee7d06877b0fbb4d8",
+          "books/accounts-core": "1ca8a1ab641bff91757f0fe7febfd94af47f06b86a51034961bd5cfd5accd772",
+          "books/arm-children": "1d444bdc958c877682a8bb75f688ecd191b741147ee853c646a8ec54e2fa343f",
+          "books/machines-directory": "d87c6d169aae1a5c06fd1f31d9047645c8ecae0c444e10ad205958a37e2c83fa",
+          "books/machines": "5c5a20c1f2ff695fcaa9b2ba2d7bf345781c8127c33af89984c14f516641932f",
+          "books/columns-call-guards": "fd7c2588e6d90338288b484078525799ac261c66013ebe112c3f369870db5a4a",
+          "books/arms": "83825a47c141b16393debcb6dfc98aa7fb54b375e7c12296fa4f25a491c29455",
+          "books/resources": "019bb017e54237a5304f30598b8842de8f0651b5f92c523ff174f24994fe43c6",
+          "books/run-budget": "6c340901483627a433e4de6b7699b684b9949f233ee52ce4c5840774df59a7d0",
+          "books/vocab": "96606555ca9b71fcc9d3e5b955deb5052300526347dbb5f5f8e74545813b1c53",
+          "books/columns-carrier-contracts": "36cf411d1119704be488c119243d0aff8006e9babe38bb128f5d627353373c5a",
+          "books/exec-state": "56eb8a81a3cc049c27c1e23dd1930f8184f2c892207169532315184ca141ea3d",
+          "books/pool-dimensions": "d39cf91254b2b5f062b468146361529d73a020e08b1f72d23c6c80a2c75eba6d",
+          "books/machines-a": "6b27d9f04b788ed2730f2e520770c40f7dd9c06828a15a14dc79db50960adeec",
+          "books/accounts": "5dd1a927dccb3d24fa31645bcd3b73a0acc0e42a83bac57c45c9d3a7e37f448b",
+          "books/core-children": "24a985caf082ff74f72c96638034eba619ce114d611a804d0b4a239721d37e4b",
+          "books/compress-kind": "05eefc48dbf24297a972c122f3c3dd2b7145f64a43b48bd3f6d8f6d898e8e0ff",
+          "books/compress-policy": "bacea68680cb1cad303023723f5fd524cbae06b7dd81bf2cb5ada0fb2973270f",
+          "books/tls-schema": "e0779c15ffe1ceab4133301a8f68e5b8f2a6080ce17ad4a2033e0c81b800d6f8",
+          "books/codec-profile": "adb045c7393523346124a11a8959238a94be529354084bb23f9a5ae76cc63213",
+          "books/conn-answer": "2c099d9ad4cd0a5cb905f79fbd3ccecbcc7f09b9dad053c3caf180a9d00b044d",
+          "books/nntp-grammar": "089c0cb3ea1dd851407e42ec0a165696c7db1e85618479dd8c98501f78ea127b",
+          "books/machine-arms": "7843cd0794ae7e686db4ab9ee75286ffe6d2e3ef6eb8e91fd1c5cbb2364320ea",
+          "books/arm-issue-effects": "a9460bbc8e085b404804d7b82328c1f7a249faeee25380af6586b389d3d5d9fd",
+          "books/ops-issued-effects": "0d8ca86349858405807ff2cdccffccd71d1c8cef2065186b28aa31aafd35a709",
+          "books/ops-issued-count": "2238a6e61e7075984f5cd95519a7dd71bc2d1e6f4da6d0b411e639f27ce7a426",
+          "books/ops-heads": "17af3696d3ad68f638d8301906cb1ce67152e6fa685a8d7697b5521018359366",
+          "books/tls-kind": "86c5e4fe10ed4e0043c71cd2d09d96ca6af898bb447365db28913a3d7a4ab0df"
+        },
+        "source_unchanged": true
+      },
+      "author": {
+        "source": "6701dbac50678ced466358a13dc43c704bba03b4",
+        "warm": [
+          "books/conn-schema",
+          "books/upload-feed",
+          "books/grammar",
+          "books/pool-ranges",
+          "books/columns-guard-hints",
+          "books/columns",
+          "books/operations",
+          "books/declare",
+          "books/fnv",
+          "books/pool",
+          "books/profile",
+          "books/owed-discharge",
+          "books/owed",
+          "books/upload-scan",
+          "books/upload-window-geometry",
+          "books/commit-geometry",
+          "books/format-base",
+          "books/layout",
+          "books/accounts-core",
+          "books/arm-children",
+          "books/machines-directory",
+          "books/machines",
+          "books/columns-call-guards",
+          "books/arms",
+          "books/resources",
+          "books/run-budget",
+          "books/vocab",
+          "books/columns-carrier-contracts",
+          "books/exec-state",
+          "books/pool-dimensions",
+          "books/machines-a",
+          "books/accounts",
+          "books/core-children",
+          "books/compress-kind",
+          "books/compress-policy",
+          "books/tls-schema",
+          "books/codec-profile",
+          "books/conn-answer",
+          "books/nntp-grammar",
+          "books/machine-arms",
+          "books/arm-issue-effects",
+          "books/ops-issued-effects",
+          "books/ops-issued-count",
+          "books/ops-heads",
+          "books/tls-kind"
+        ],
+        "source_order": [
+          "books/conn-kind"
+        ],
+        "accepted": [
+          "books/conn-kind"
+        ],
+        "status": "passed",
+        "stop_holder_exit": 0
+      },
+      "manifest": {
+        "acl2_compatibility": {
+          "core_sha256": "3f5b101bb9437d66366dc2a299b7f9cb98fdaf40d1add5caf8baef9e451dd07d",
+          "launcher_chain_sha256": [
+            "30583c3d9988ea23cf5edfac828b4ddea984a9a7db9c3b44aaa9c399cf4fdbc5"
+          ],
+          "launcher_environment": [
+            {
+              "SBCL_HOME": "/tank/fn/sbcl/lib/sbcl/"
+            }
+          ],
+          "project_directories": {
+            ":FN": "."
+          },
+          "proof_environment": {
+            "ACL2_BOOK_HASH_ALISTP": "NIL",
+            "ACL2_CUSTOMIZATION": "NONE",
+            "ACL2_SYSTEM_BOOKS": null
+          },
+          "runtime_sha256": "b115fe956aadee603459fac401e1ff2cc39321e14848544a0fe438788a2fc6d5",
+          "schema": "fn-acl2-toolchain-v1"
+        },
+        "acl2_executable": "/tank/fn/toolchains/w28/acl2-literal-4g-tls64k",
+        "acl2_executable_sha256": "30583c3d9988ea23cf5edfac828b4ddea984a9a7db9c3b44aaa9c399cf4fdbc5",
+        "acl2_exit_codes": {
+          "books/conn-kind": 0
+        },
+        "acl2_slots": 16,
+        "acl2_toolchain": {
+          "compatibility": {
+            "core_sha256": "3f5b101bb9437d66366dc2a299b7f9cb98fdaf40d1add5caf8baef9e451dd07d",
+            "launcher_chain_sha256": [
+              "30583c3d9988ea23cf5edfac828b4ddea984a9a7db9c3b44aaa9c399cf4fdbc5"
+            ],
+            "launcher_environment": [
+              {
+                "SBCL_HOME": "/tank/fn/sbcl/lib/sbcl/"
+              }
+            ],
+            "project_directories": {
+              ":FN": "."
+            },
+            "proof_environment": {
+              "ACL2_BOOK_HASH_ALISTP": "NIL",
+              "ACL2_CUSTOMIZATION": "NONE",
+              "ACL2_SYSTEM_BOOKS": null
+            },
+            "runtime_sha256": "b115fe956aadee603459fac401e1ff2cc39321e14848544a0fe438788a2fc6d5",
+            "schema": "fn-acl2-toolchain-v1"
+          },
+          "core": {
+            "path": "/tank/fn/acl2-8.7/saved_acl2.core",
+            "sha256": "3f5b101bb9437d66366dc2a299b7f9cb98fdaf40d1add5caf8baef9e451dd07d",
+            "size": 233686912
+          },
+          "launchers": [
+            {
+              "path": "/tank/fn/toolchains/w28/acl2-literal-4g-tls64k",
+              "sha256": "30583c3d9988ea23cf5edfac828b4ddea984a9a7db9c3b44aaa9c399cf4fdbc5",
+              "size": 279
+            }
+          ],
+          "runtime": {
+            "path": "/tank/fn/sbcl/bin/sbcl",
+            "sha256": "b115fe956aadee603459fac401e1ff2cc39321e14848544a0fe438788a2fc6d5",
+            "size": 2149704
+          },
+          "schema": "fn-acl2-toolchain-v1",
+          "status": "qualified"
+        },
+        "acl2_toolchain_identity": "8aeb1bea18968c6cd33ac633a80ebf67e4924504db112fd27eb11f16a27b2a8c",
+        "acl2_version": "ACL2 Version 8.7",
+        "acl2_version_probe_exit_code": 0,
+        "affected_by": [],
+        "book_costliest_event": {
+          "books/conn-kind": {
+            "form": "( DEFTHM FN2-MACHINE-ADMIT-FN2-CONN-CHILDREN-SHAPE ...)",
+            "seconds": 1.23,
+            "steps": 112203
+          }
+        },
+        "book_failures": {},
+        "book_load_average": {
+          "books/conn-kind": [
+            0.77,
+            0.79
+          ]
+        },
+        "book_provenance": {
+          "books/accounts": "installed",
+          "books/accounts-core": "installed",
+          "books/arm-children": "installed",
+          "books/arm-issue-effects": "installed",
+          "books/arms": "installed",
+          "books/codec-profile": "installed",
+          "books/columns": "installed",
+          "books/columns-call-guards": "installed",
+          "books/columns-carrier-contracts": "installed",
+          "books/columns-guard-hints": "installed",
+          "books/commit-geometry": "installed",
+          "books/compress-kind": "installed",
+          "books/compress-policy": "installed",
+          "books/conn-answer": "installed",
+          "books/conn-kind": "certified",
+          "books/conn-schema": "installed",
+          "books/core-children": "installed",
+          "books/declare": "installed",
+          "books/exec-state": "installed",
+          "books/fnv": "installed",
+          "books/format-base": "installed",
+          "books/grammar": "installed",
+          "books/layout": "installed",
+          "books/machine-arms": "installed",
+          "books/machines": "installed",
+          "books/machines-a": "installed",
+          "books/machines-directory": "installed",
+          "books/nntp-grammar": "installed",
+          "books/operations": "installed",
+          "books/ops-heads": "installed",
+          "books/ops-issued-count": "installed",
+          "books/ops-issued-effects": "installed",
+          "books/owed": "installed",
+          "books/owed-discharge": "installed",
+          "books/pool": "installed",
+          "books/pool-dimensions": "installed",
+          "books/pool-ranges": "installed",
+          "books/profile": "installed",
+          "books/resources": "installed",
+          "books/run-budget": "installed",
+          "books/tls-kind": "installed",
+          "books/tls-schema": "installed",
+          "books/upload-feed": "installed",
+          "books/upload-scan": "installed",
+          "books/upload-window-geometry": "installed",
+          "books/vocab": "installed"
+        },
+        "book_prover_steps": {
+          "books/conn-kind": 281194
+        },
+        "book_results": {
+          "books/conn-kind": "passed"
+        },
+        "book_slowest_event": {
+          "books/conn-kind": {
+            "form": "( DEFUN FN2-MACHINE-ADMIT-FN2-CONN-CHILDREN ...)",
+            "seconds": 1.31,
+            "steps": 104595
+          }
+        },
+        "book_wall_seconds": {
+          "books/conn-kind": 5.136
+        },
+        "book_wave_seconds": null,
+        "budget_seconds": 60,
+        "cache_install": {
+          "directory": "/home/fn/.cache/fn-certs",
+          "fasl_installed": 45,
+          "fasl_missing": 0,
+          "installed": 0,
+          "kept": 45,
+          "origins": {
+            "/build/lanes/arm-storage-dim-current": 2,
+            "/build/lanes/assurance-budget-history-record": 1,
+            "/build/lanes/assurance-cns-leaf-pilot": 1,
+            "/build/lanes/assurance-columns-coherent37-87f": 6,
+            "/build/lanes/assurance-enum-machine-arms": 1,
+            "/build/lanes/assurance-vocab-harveste9": 3,
+            "/build/lanes/conn-root-59fe": 3,
+            "/build/lanes/convergence-ready74-ab05": 4,
+            "/build/lanes/convergence-ready79-ab05": 12,
+            "/build/lanes/current-machines-ab05": 1,
+            "/build/lanes/member-refutation-64ee": 4,
+            "/build/lanes/pool-dimensions-current-frozen": 1,
+            "/build/lanes/refuted-05cb": 2,
+            "/build/lanes/sol-rolling-caller-6701": 2,
+            "/build/lanes/sol-rolling-geometry-ab05c79b1": 1,
+            "/build/lanes/sol-upload-scan-proof-c207": 1
+          },
+          "recertified": [],
+          "removed": 0,
+          "reused_from": null,
+          "roots_installed": [],
+          "toolchain_identity": "8aeb1bea18968c6cd33ac633a80ebf67e4924504db112fd27eb11f16a27b2a8c",
+          "uncompiled": []
+        },
+        "caught_error_text": {},
+        "cert_cache": {
+          "already_cached": 1,
+          "directory": "/home/fn/.cache/fn-certs",
+          "not_published": [],
+          "origin_kind": "run",
+          "per_book": [
+            {
+              "already_cached": false,
+              "book": "books/conn-kind",
+              "published": true,
+              "verdict": "passed"
+            }
+          ],
+          "per_book_published": 1,
+          "published": 0,
+          "uncompiled": []
+        },
+        "certificate_digests_sha256": {
+          "books/conn-kind": "206969993c239cb305fb081186af03d2d9517fed6ac48d4a6edd2b3f72b966e3"
+        },
+        "certify_wall_seconds": 5.169,
+        "closure": false,
+        "command": [
+          "/tank/fn/toolchains/w28/acl2-literal-4g-tls64k"
+        ],
+        "compiled_digests_sha256": {
+          "books/conn-kind": "6b075c90a4fe60db71984b60975c788b48a683b6fda5cfba31329d2513894c33"
+        },
+        "cpu_count": 16,
+        "driver_digests_sha256": {
+          "books/conn-kind": "fc8af1c11d0291498242563e63b0e9a9a712bb9f12a0744f2d269fb869c2ddb6"
+        },
+        "environment": {
+          "ACL2_BOOK_HASH_ALISTP": "NIL",
+          "ACL2_CUSTOMIZATION": "NONE",
+          "ACL2_PROJECTS": "/build/lanes/sol-rolling-caller-6701/acl2-projects",
+          "ACL2_SYSTEM_BOOKS": null,
+          "SBCL_USER_ARGS": null
+        },
+        "expected_success_markers": [
+          "FN_CERTIFY_SUCCESS acbfcdc76d9f3cea9334f3955d82920b ada142f53fee"
+        ],
+        "failure_markers": [],
+        "finished_utc": "2026-11-16T00:33:02+00:00",
+        "git_branch": null,
+        "git_dirty": null,
+        "git_revision": null,
+        "host_lisp_banner": "This is SBCL 2.6.8, an implementation of ANSI Common Lisp.",
+        "hostname": "dregg-forge",
+        "incremental": true,
+        "installed_books": {
+          "books/accounts": "/build/lanes/convergence-ready79-ab05",
+          "books/accounts-core": "/build/lanes/convergence-ready79-ab05",
+          "books/arm-children": "/build/lanes/convergence-ready79-ab05",
+          "books/arm-issue-effects": "/build/lanes/convergence-ready79-ab05",
+          "books/arms": "/build/lanes/arm-storage-dim-current",
+          "books/codec-profile": "/build/lanes/conn-root-59fe",
+          "books/columns": "/build/lanes/assurance-columns-coherent37-87f",
+          "books/columns-call-guards": "/build/lanes/assurance-vocab-harveste9",
+          "books/columns-carrier-contracts": "/build/lanes/assurance-columns-coherent37-87f",
+          "books/columns-guard-hints": "/build/lanes/assurance-columns-coherent37-87f",
+          "books/commit-geometry": "/build/lanes/assurance-cns-leaf-pilot",
+          "books/compress-kind": "/build/lanes/convergence-ready79-ab05",
+          "books/compress-policy": "/build/lanes/conn-root-59fe",
+          "books/conn-answer": "/build/lanes/convergence-ready74-ab05",
+          "books/conn-schema": "/build/lanes/sol-rolling-caller-6701",
+          "books/core-children": "/build/lanes/convergence-ready79-ab05",
+          "books/declare": "/build/lanes/refuted-05cb",
+          "books/exec-state": "/build/lanes/arm-storage-dim-current",
+          "books/fnv": "/build/lanes/member-refutation-64ee",
+          "books/format-base": "/build/lanes/assurance-columns-coherent37-87f",
+          "books/grammar": "/build/lanes/convergence-ready74-ab05",
+          "books/layout": "/build/lanes/assurance-columns-coherent37-87f",
+          "books/machine-arms": "/build/lanes/assurance-enum-machine-arms",
+          "books/machines": "/build/lanes/current-machines-ab05",
+          "books/machines-a": "/build/lanes/convergence-ready79-ab05",
+          "books/machines-directory": "/build/lanes/convergence-ready79-ab05",
+          "books/nntp-grammar": "/build/lanes/convergence-ready74-ab05",
+          "books/operations": "/build/lanes/member-refutation-64ee",
+          "books/ops-heads": "/build/lanes/convergence-ready79-ab05",
+          "books/ops-issued-count": "/build/lanes/convergence-ready79-ab05",
+          "books/ops-issued-effects": "/build/lanes/convergence-ready79-ab05",
+          "books/owed": "/build/lanes/refuted-05cb",
+          "books/owed-discharge": "/build/lanes/member-refutation-64ee",
+          "books/pool": "/build/lanes/assurance-columns-coherent37-87f",
+          "books/pool-dimensions": "/build/lanes/pool-dimensions-current-frozen",
+          "books/pool-ranges": "/build/lanes/assurance-vocab-harveste9",
+          "books/profile": "/build/lanes/member-refutation-64ee",
+          "books/resources": "/build/lanes/conn-root-59fe",
+          "books/run-budget": "/build/lanes/assurance-budget-history-record",
+          "books/tls-kind": "/build/lanes/sol-rolling-caller-6701",
+          "books/tls-schema": "/build/lanes/convergence-ready79-ab05",
+          "books/upload-feed": "/build/lanes/convergence-ready74-ab05",
+          "books/upload-scan": "/build/lanes/sol-upload-scan-proof-c207",
+          "books/upload-window-geometry": "/build/lanes/sol-rolling-geometry-ab05c79b1",
+          "books/vocab": "/build/lanes/assurance-vocab-harveste9"
+        },
+        "installed_over_failed": [],
+        "jobs": 1,
+        "jobs_effective": 1,
+        "local_source_audit": {
+          "findings": {},
+          "forbidden_facilities": [
+            "defaxiom",
+            "defttag",
+            "include-raw",
+            "set-raw-mode",
+            "skip-proofs"
+          ],
+          "method": "conservative lexical symbol scan plus human batch review; not macro expansion",
+          "scope": "local source closure only; installed ACL2/system books remain trusted"
+        },
+        "observed_success_markers": [
+          "FN_CERTIFY_SUCCESS acbfcdc76d9f3cea9334f3955d82920b ada142f53fee"
+        ],
+        "pcert": false,
+        "pcert_reached": null,
+        "pcert_wall_seconds": null,
+        "platform": "Linux-6.12.113+deb13-cloud-amd64-x86_64-with-glibc2.41",
+        "python": "3.13.5",
+        "reader_sha256": "3a25bad1a53f07d48101c88fbf7e5fca81575735bfdbe48a168cab81141940cd",
+        "recertify": [],
+        "requested_before_filter": [
+          "books/conn-kind"
+        ],
+        "requested_books": [
+          "books/conn-kind"
+        ],
+        "roots": [
+          "books/conn-kind"
+        ],
+        "run_id": "certify-20261116T003256Z-2023383",
+        "runner_sha256": "0c92c676ec1d176a554a63d7106e4bfbd8cc4d6a5293b3daa0c301cb4650f5d5",
+        "runner_unchanged": true,
+        "schedule": {
+          "policy": "requested-order"
+        },
+        "slot_wait_seconds": {
+          "books/conn-kind": 0.0,
+          "version-probe": 0.0
+        },
+        "source_digests_sha256": {
+          "books/accounts-core.lisp": "1ca8a1ab641bff91757f0fe7febfd94af47f06b86a51034961bd5cfd5accd772",
+          "books/accounts.lisp": "5dd1a927dccb3d24fa31645bcd3b73a0acc0e42a83bac57c45c9d3a7e37f448b",
+          "books/arm-children.lisp": "1d444bdc958c877682a8bb75f688ecd191b741147ee853c646a8ec54e2fa343f",
+          "books/arm-issue-effects.lisp": "a9460bbc8e085b404804d7b82328c1f7a249faeee25380af6586b389d3d5d9fd",
+          "books/arms.lisp": "83825a47c141b16393debcb6dfc98aa7fb54b375e7c12296fa4f25a491c29455",
+          "books/codec-profile.lisp": "adb045c7393523346124a11a8959238a94be529354084bb23f9a5ae76cc63213",
+          "books/columns-call-guards.lisp": "fd7c2588e6d90338288b484078525799ac261c66013ebe112c3f369870db5a4a",
+          "books/columns-carrier-contracts.lisp": "36cf411d1119704be488c119243d0aff8006e9babe38bb128f5d627353373c5a",
+          "books/columns-guard-hints.lisp": "e0a20c5669df681bf75fa5eeae426adc4053010915b3c7657d56e247d5c8440b",
+          "books/columns.lisp": "8b694caf782c2ce3a29fa109b055c181b54beda214276493f6d9acb9456a881b",
+          "books/commit-geometry.lisp": "e06315c94bcd0d247214377fb33186f14ca1aa2ee6afe1499d69d053ff0134e2",
+          "books/compress-kind.lisp": "05eefc48dbf24297a972c122f3c3dd2b7145f64a43b48bd3f6d8f6d898e8e0ff",
+          "books/compress-policy.lisp": "bacea68680cb1cad303023723f5fd524cbae06b7dd81bf2cb5ada0fb2973270f",
+          "books/conn-answer.lisp": "2c099d9ad4cd0a5cb905f79fbd3ccecbcc7f09b9dad053c3caf180a9d00b044d",
+          "books/conn-kind.lisp": "a50e72520fa6ead2540b308775dd435914317887a4b5afe77b938317e23f0502",
+          "books/conn-schema.lisp": "e1ff16f42f038d3492271bf618cb80988947125e86af72e5ce79518573ded26f",
+          "books/core-children.lisp": "24a985caf082ff74f72c96638034eba619ce114d611a804d0b4a239721d37e4b",
+          "books/declare.lisp": "54e850788ee821dd90a4d9715e93d319f94846039592c4420fef1bdc5d959569",
+          "books/exec-state.lisp": "56eb8a81a3cc049c27c1e23dd1930f8184f2c892207169532315184ca141ea3d",
+          "books/fnv.lisp": "73d15afc6e1325f03d19ad4b39eeb3adc677ce2b07e9eddbc14141ca8843edde",
+          "books/format-base.lisp": "ead88cb8e7ab67db0c6a06ac400c813f753121c77082825b16016835eb462699",
+          "books/grammar.lisp": "420739fd67e1f21e86668b986d3f2c81f3d2e6f11de96bd02f20a04d80860a0b",
+          "books/layout.lisp": "2bc995f6bb70ec17862c5b535a4734e90a7a5dfd6312ebdee7d06877b0fbb4d8",
+          "books/machine-arms.lisp": "7843cd0794ae7e686db4ab9ee75286ffe6d2e3ef6eb8e91fd1c5cbb2364320ea",
+          "books/machines-a.lisp": "6b27d9f04b788ed2730f2e520770c40f7dd9c06828a15a14dc79db50960adeec",
+          "books/machines-directory.lisp": "d87c6d169aae1a5c06fd1f31d9047645c8ecae0c444e10ad205958a37e2c83fa",
+          "books/machines.lisp": "5c5a20c1f2ff695fcaa9b2ba2d7bf345781c8127c33af89984c14f516641932f",
+          "books/nntp-grammar.lisp": "089c0cb3ea1dd851407e42ec0a165696c7db1e85618479dd8c98501f78ea127b",
+          "books/operations.lisp": "419120e7ae100f400d18cdee2d080d6133523673cac22fae1b05c7201ff97dd8",
+          "books/ops-heads.lisp": "17af3696d3ad68f638d8301906cb1ce67152e6fa685a8d7697b5521018359366",
+          "books/ops-issued-count.lisp": "2238a6e61e7075984f5cd95519a7dd71bc2d1e6f4da6d0b411e639f27ce7a426",
+          "books/ops-issued-effects.lisp": "0d8ca86349858405807ff2cdccffccd71d1c8cef2065186b28aa31aafd35a709",
+          "books/owed-discharge.lisp": "53903322be1b79ed081ecfcbfcb9f60649d3fdbf8aa6853b772abf8e6fc69f01",
+          "books/owed.lisp": "171950b91e40f4e7d0e94902ce00009adc62d8104e0eecd5db6a59b93bbffb15",
+          "books/pool-dimensions.lisp": "d39cf91254b2b5f062b468146361529d73a020e08b1f72d23c6c80a2c75eba6d",
+          "books/pool-ranges.lisp": "2f9e1f0c898ea4f6747f4e8f4942bc7f73be512ed1b90feb2d9cad7a58e3f959",
+          "books/pool.lisp": "9a31c8d38d309862369091a2c8019ccc3da16920742ff01040899b8f395f2fe9",
+          "books/profile.lisp": "1f216ed6c0505dc1b01ada0f7d3d9482af6da7b7dff8736b5100ef3e3fbc1038",
+          "books/resources.lisp": "019bb017e54237a5304f30598b8842de8f0651b5f92c523ff174f24994fe43c6",
+          "books/run-budget.lisp": "6c340901483627a433e4de6b7699b684b9949f233ee52ce4c5840774df59a7d0",
+          "books/tls-kind.lisp": "86c5e4fe10ed4e0043c71cd2d09d96ca6af898bb447365db28913a3d7a4ab0df",
+          "books/tls-schema.lisp": "e0779c15ffe1ceab4133301a8f68e5b8f2a6080ce17ad4a2033e0c81b800d6f8",
+          "books/upload-feed.lisp": "01ee2316f12c05b2627f0a8153a4a11a94d4ece16e9dd384668004f67c36cdad",
+          "books/upload-scan.lisp": "6b3dd20f55b622a53d856e44f309a43209577993588f1ff364c10586afe4ea60",
+          "books/upload-window-geometry.lisp": "131a8659e5a9486afb9b3b774f31d873235aa740ba0b3e7b607b9ca39a36b2e2",
+          "books/vocab.lisp": "96606555ca9b71fcc9d3e5b955deb5052300526347dbb5f5f8e74545813b1c53"
+        },
+        "source_digests_sha256_after": {
+          "books/accounts-core.lisp": "1ca8a1ab641bff91757f0fe7febfd94af47f06b86a51034961bd5cfd5accd772",
+          "books/accounts.lisp": "5dd1a927dccb3d24fa31645bcd3b73a0acc0e42a83bac57c45c9d3a7e37f448b",
+          "books/arm-children.lisp": "1d444bdc958c877682a8bb75f688ecd191b741147ee853c646a8ec54e2fa343f",
+          "books/arm-issue-effects.lisp": "a9460bbc8e085b404804d7b82328c1f7a249faeee25380af6586b389d3d5d9fd",
+          "books/arms.lisp": "83825a47c141b16393debcb6dfc98aa7fb54b375e7c12296fa4f25a491c29455",
+          "books/codec-profile.lisp": "adb045c7393523346124a11a8959238a94be529354084bb23f9a5ae76cc63213",
+          "books/columns-call-guards.lisp": "fd7c2588e6d90338288b484078525799ac261c66013ebe112c3f369870db5a4a",
+          "books/columns-carrier-contracts.lisp": "36cf411d1119704be488c119243d0aff8006e9babe38bb128f5d627353373c5a",
+          "books/columns-guard-hints.lisp": "e0a20c5669df681bf75fa5eeae426adc4053010915b3c7657d56e247d5c8440b",
+          "books/columns.lisp": "8b694caf782c2ce3a29fa109b055c181b54beda214276493f6d9acb9456a881b",
+          "books/commit-geometry.lisp": "e06315c94bcd0d247214377fb33186f14ca1aa2ee6afe1499d69d053ff0134e2",
+          "books/compress-kind.lisp": "05eefc48dbf24297a972c122f3c3dd2b7145f64a43b48bd3f6d8f6d898e8e0ff",
+          "books/compress-policy.lisp": "bacea68680cb1cad303023723f5fd524cbae06b7dd81bf2cb5ada0fb2973270f",
+          "books/conn-answer.lisp": "2c099d9ad4cd0a5cb905f79fbd3ccecbcc7f09b9dad053c3caf180a9d00b044d",
+          "books/conn-kind.lisp": "a50e72520fa6ead2540b308775dd435914317887a4b5afe77b938317e23f0502",
+          "books/conn-schema.lisp": "e1ff16f42f038d3492271bf618cb80988947125e86af72e5ce79518573ded26f",
+          "books/core-children.lisp": "24a985caf082ff74f72c96638034eba619ce114d611a804d0b4a239721d37e4b",
+          "books/declare.lisp": "54e850788ee821dd90a4d9715e93d319f94846039592c4420fef1bdc5d959569",
+          "books/exec-state.lisp": "56eb8a81a3cc049c27c1e23dd1930f8184f2c892207169532315184ca141ea3d",
+          "books/fnv.lisp": "73d15afc6e1325f03d19ad4b39eeb3adc677ce2b07e9eddbc14141ca8843edde",
+          "books/format-base.lisp": "ead88cb8e7ab67db0c6a06ac400c813f753121c77082825b16016835eb462699",
+          "books/grammar.lisp": "420739fd67e1f21e86668b986d3f2c81f3d2e6f11de96bd02f20a04d80860a0b",
+          "books/layout.lisp": "2bc995f6bb70ec17862c5b535a4734e90a7a5dfd6312ebdee7d06877b0fbb4d8",
+          "books/machine-arms.lisp": "7843cd0794ae7e686db4ab9ee75286ffe6d2e3ef6eb8e91fd1c5cbb2364320ea",
+          "books/machines-a.lisp": "6b27d9f04b788ed2730f2e520770c40f7dd9c06828a15a14dc79db50960adeec",
+          "books/machines-directory.lisp": "d87c6d169aae1a5c06fd1f31d9047645c8ecae0c444e10ad205958a37e2c83fa",
+          "books/machines.lisp": "5c5a20c1f2ff695fcaa9b2ba2d7bf345781c8127c33af89984c14f516641932f",
+          "books/nntp-grammar.lisp": "089c0cb3ea1dd851407e42ec0a165696c7db1e85618479dd8c98501f78ea127b",
+          "books/operations.lisp": "419120e7ae100f400d18cdee2d080d6133523673cac22fae1b05c7201ff97dd8",
+          "books/ops-heads.lisp": "17af3696d3ad68f638d8301906cb1ce67152e6fa685a8d7697b5521018359366",
+          "books/ops-issued-count.lisp": "2238a6e61e7075984f5cd95519a7dd71bc2d1e6f4da6d0b411e639f27ce7a426",
+          "books/ops-issued-effects.lisp": "0d8ca86349858405807ff2cdccffccd71d1c8cef2065186b28aa31aafd35a709",
+          "books/owed-discharge.lisp": "53903322be1b79ed081ecfcbfcb9f60649d3fdbf8aa6853b772abf8e6fc69f01",
+          "books/owed.lisp": "171950b91e40f4e7d0e94902ce00009adc62d8104e0eecd5db6a59b93bbffb15",
+          "books/pool-dimensions.lisp": "d39cf91254b2b5f062b468146361529d73a020e08b1f72d23c6c80a2c75eba6d",
+          "books/pool-ranges.lisp": "2f9e1f0c898ea4f6747f4e8f4942bc7f73be512ed1b90feb2d9cad7a58e3f959",
+          "books/pool.lisp": "9a31c8d38d309862369091a2c8019ccc3da16920742ff01040899b8f395f2fe9",
+          "books/profile.lisp": "1f216ed6c0505dc1b01ada0f7d3d9482af6da7b7dff8736b5100ef3e3fbc1038",
+          "books/resources.lisp": "019bb017e54237a5304f30598b8842de8f0651b5f92c523ff174f24994fe43c6",
+          "books/run-budget.lisp": "6c340901483627a433e4de6b7699b684b9949f233ee52ce4c5840774df59a7d0",
+          "books/tls-kind.lisp": "86c5e4fe10ed4e0043c71cd2d09d96ca6af898bb447365db28913a3d7a4ab0df",
+          "books/tls-schema.lisp": "e0779c15ffe1ceab4133301a8f68e5b8f2a6080ce17ad4a2033e0c81b800d6f8",
+          "books/upload-feed.lisp": "01ee2316f12c05b2627f0a8153a4a11a94d4ece16e9dd384668004f67c36cdad",
+          "books/upload-scan.lisp": "6b3dd20f55b622a53d856e44f309a43209577993588f1ff364c10586afe4ea60",
+          "books/upload-window-geometry.lisp": "131a8659e5a9486afb9b3b774f31d873235aa740ba0b3e7b607b9ca39a36b2e2",
+          "books/vocab.lisp": "96606555ca9b71fcc9d3e5b955deb5052300526347dbb5f5f8e74545813b1c53"
+        },
+        "source_form_digests_sha256": {
+          "books/accounts-core.lisp": "b4c69bfd2b85728c55fd10d33fc0e6fe81ae845e6c952cf2db03cac2497b2fcc",
+          "books/accounts.lisp": "1f853822db740ac54e21f8d351a0bc83ad2eda25ac22503336faa8069f8b51b6",
+          "books/arm-children.lisp": "8a2f83f5577f65b1d8c821288f432ee40bb459003be2c7f71132d2559b743c8b",
+          "books/arm-issue-effects.lisp": "6a565cbf7ccdef49cdc620f191f748b518bcd7378a18c4578dc72ea7596f6770",
+          "books/arms.lisp": "b04d9648a152e744bebd0c3b03d9cd0de2a113d7671d8e264b8f11da67b34cf1",
+          "books/codec-profile.lisp": "9f74465ce515d2a68b90e71c50d90af36190aea34d1bd34d44279134c6eac4b5",
+          "books/columns-call-guards.lisp": "3065ab76b92f9a12df8e0adc9668029c575c8e36ae93b1af20979f5f8a903bc3",
+          "books/columns-carrier-contracts.lisp": "1744bd32762c8bf552be3e247ad633b80709a812d2d3ac44bdfc9d3f96561272",
+          "books/columns-guard-hints.lisp": "61d8b4033b76e4207e82d281b535a81c7da52c9e554f35a8f82f4286aada3951",
+          "books/columns.lisp": "207ac331ff6397765ce1bfb9e6d665ad55ea44ae99e8b5602a554cd8ab5d4760",
+          "books/commit-geometry.lisp": "835186fa84e471e1cb0f83a6b5616aea20e5962fde38a2cf464da4d4bf66c2b8",
+          "books/compress-kind.lisp": "6174d0e8d1353916928b91212bc17c4e755173ab00f077ccdeec1d3cd1c98b45",
+          "books/compress-policy.lisp": "0a2ddc9308a38e9fa1276b21c36af33259483e1d8abd9a9b02a7cc3e9b9f9d67",
+          "books/conn-answer.lisp": "f8bd85d39e2a54b6099d501ba880a7f5aa379f5cda936431a7064046c178f452",
+          "books/conn-kind.lisp": "95e8024608e35d55909320e3a72b36f83ccd2d99ee6c01c7a9ac0c8b79873ca4",
+          "books/conn-schema.lisp": "3c9da1bbf3760bb6486d4f758ce6b2be28ec35d952adaeb65d389475ae062da0",
+          "books/core-children.lisp": "205344fd39ce1b2efffa940c52976c789d68c0af99a22b86a5f5cbb3c1935653",
+          "books/declare.lisp": "21614abfc91ec57e0d97e77ef29b0ba68a0ba3ca49888131646d986f09dc6aef",
+          "books/exec-state.lisp": "c483309fd7e2b59f709e369180bd677cb13772e9558a6b44d8d4be7a9dff6efe",
+          "books/fnv.lisp": "37032ad1a3edcaef25be5f25b72a6354b2a6c036b740fef1a631c17beddc31ce",
+          "books/format-base.lisp": "e0e67a9aec16407b006dfba2939fb30ee8572904c77661301168a7190a72acc9",
+          "books/grammar.lisp": "943c7e9818c7258aa5582c7aa0c76cea115b9e45f916f143ee2aeaeba7dbd5b3",
+          "books/layout.lisp": "e6fed7dc718526f5a216a939f87e570ee7a8ca25ab0ce8f58e92fb12a6404dfd",
+          "books/machine-arms.lisp": "334abe1c8f8aec0ae5cda83891e7615fc91ad7d4e1f584e06033293ed2ad6240",
+          "books/machines-a.lisp": "a45c354cea8a1e1dd9376754d381fa50a3f4d2e874c23cf501506bb050bb7f2c",
+          "books/machines-directory.lisp": "4e8d1cb487f2bb860702fe649bc6796c04f89e3af921293dbc2222c7526e30f0",
+          "books/machines.lisp": "cab59128acc05b35e9f16d5d59d77e21bbfb1b780bd2e85deac84321f6f7cc0d",
+          "books/nntp-grammar.lisp": "16c996d0c7f722b6f0e5baf0d04c137adaed8721bd11bcfa0cec1991bcb52d7d",
+          "books/operations.lisp": "b7e7cab3f61033f1055f0ef3be5c0a8f3920a44c934c7b524fdba209c5ded826",
+          "books/ops-heads.lisp": "d03efef4d76770d2cf6117b1e84ec473863911da5d1102f759f606746564d223",
+          "books/ops-issued-count.lisp": "e68297dccd1c73c2a0ecdb96196ea87e340a04d636c4e14bb5864bed945f03b2",
+          "books/ops-issued-effects.lisp": "527af3ba4f22611514610dbe3c5bfd50893e8cdb4199d97b61d831f289b75d9c",
+          "books/owed-discharge.lisp": "dd1c8c3a0f05ae5ee19497b8f0506b2bace8f8dd9a264c57b2234f7658a581ce",
+          "books/owed.lisp": "e3f24658d27261c871fa9927c5b075807e62921b37da358046a0090561b5a79f",
+          "books/pool-dimensions.lisp": "96233e43d41147ed692624cf0ef855bff5979c440cbc19610a73b76920958cc6",
+          "books/pool-ranges.lisp": "1a6de3844fd6363d5042ca6e22723798252f60f04a2f21e9892f93e20644f0f9",
+          "books/pool.lisp": "77c43f42b6328258547341e19d0dce3186a7d214f8ba180daca8e7e44e4905b1",
+          "books/profile.lisp": "b19d044118c5a1ec4b4166198a7dc07c607ee5773d0c128133a3121cbb070184",
+          "books/resources.lisp": "ea05f325056836f299193539e448ff8b79b4c9df8e2c903bf583bbd296f49fae",
+          "books/run-budget.lisp": "98d74bd69152473991e7471b77f2b2ecf16efab354585d2c093efe385cf242b2",
+          "books/tls-kind.lisp": "b7d57a6805de26514b92fb3a7be53af874417bc2431c8deb69bac4aade2ffcad",
+          "books/tls-schema.lisp": "61b37da20a6c1c1f857be31772e855b19891a3d2d5f9f06bcd9fbaa30654dc81",
+          "books/upload-feed.lisp": "c3ab17f9e0a94fb87636ceba540e244437fb2f3237f539438a31c51ac63aa3ff",
+          "books/upload-scan.lisp": "60eb818efe94da0e0c799b802d4d5e5f90ba02e91760d65e032456bb2960059b",
+          "books/upload-window-geometry.lisp": "017edd2689d6725696e5552d9e30acedca3c6ea3b887a32e68a9c2634652b097",
+          "books/vocab.lisp": "8d384c907614383447f33c3a8c19892358efb686c01143b52d48f0506f234b28"
+        },
+        "start_order": [
+          "books/conn-kind"
+        ],
+        "started_utc": "2026-11-16T00:32:56+00:00",
+        "status": "passed",
+        "timeout_seconds": 60,
+        "tree": "/build/lanes/sol-rolling-caller-6701"
+      },
+      "manifest_sha256": "5793acb3de878a475e2be30461a751f92481064ced437a45c19ffd8f6e562f97"
+    }
+  ],
+  "cache_entries": [
+    {
+      "book": "books/conn-kind",
+      "key": "1ab3b836d8c5f5e5bb2f860d8e6701ec5fe04d8c85f0eb9dbfc57171d9d455cf",
+      "source_sha256": "a50e72520fa6ead2540b308775dd435914317887a4b5afe77b938317e23f0502",
+      "entry": "/home/fn/.cache/fn-certs/1ab3b836d8c5f5e5bb2f860d8e6701ec5fe04d8c85f0eb9dbfc57171d9d455cf/47ca2a8ebd3fef19",
+      "cert_sha256": "206969993c239cb305fb081186af03d2d9517fed6ac48d4a6edd2b3f72b966e3",
+      "fasl_sha256": "6b075c90a4fe60db71984b60975c788b48a683b6fda5cfba31329d2513894c33"
+    },
+    {
+      "book": "books/conn-schema",
+      "key": "2042fa21046a4d032d802b5006b84ab719cd264268f0aa750a669a1b2853b223",
+      "source_sha256": "e1ff16f42f038d3492271bf618cb80988947125e86af72e5ce79518573ded26f",
+      "entry": "/home/fn/.cache/fn-certs/2042fa21046a4d032d802b5006b84ab719cd264268f0aa750a669a1b2853b223/47ca2a8ebd3fef19",
+      "cert_sha256": "31af163ec4155760adc9dcb0648be8472224cebe18164758c13e279a88c87b52",
+      "fasl_sha256": "047a7efa65c9b110fc9a2a88540c8a2a5754070d18934e23c7736b2ca48b60cb"
+    },
+    {
+      "book": "books/upload-feed",
+      "key": "87cda9784c671b2c2c4b11b842e1d4e6a2186d3bbc393800234f3a66b5eebafe",
+      "source_sha256": "01ee2316f12c05b2627f0a8153a4a11a94d4ece16e9dd384668004f67c36cdad",
+      "entry": "/home/fn/.cache/fn-certs/87cda9784c671b2c2c4b11b842e1d4e6a2186d3bbc393800234f3a66b5eebafe/d63c0c1d620d1df1",
+      "cert_sha256": "9f1e0ee56d648a7de9e72c6ceec954a884c7c305c265236c2f1390851f6e6db8",
+      "fasl_sha256": "e35df454eca59f2fa4046046fd71d7e107e9192d876f7fe56329fe99596a132a"
+    },
+    {
+      "book": "books/grammar",
+      "key": "b70542ab104c06ecaa978d1ed3c32aae548833bb100af3c5eb55f211243205c7",
+      "source_sha256": "420739fd67e1f21e86668b986d3f2c81f3d2e6f11de96bd02f20a04d80860a0b",
+      "entry": "/home/fn/.cache/fn-certs/b70542ab104c06ecaa978d1ed3c32aae548833bb100af3c5eb55f211243205c7/d63c0c1d620d1df1",
+      "cert_sha256": "f1c53f1ae0994592fa4170505633eadf962c1a1202f17cb5061d518b8b9a6fcc",
+      "fasl_sha256": "5ec4748837c4cff6a11db638bd3f7ae3c0859ed7396cb6332e6a7bb35dd72035"
+    },
+    {
+      "book": "books/pool-ranges",
+      "key": "fdecdd51e2030aa983d403457a236f21b3ad5fc4d49ab72d3b5b04b125cefa0c",
+      "source_sha256": "2f9e1f0c898ea4f6747f4e8f4942bc7f73be512ed1b90feb2d9cad7a58e3f959",
+      "entry": "/home/fn/.cache/fn-certs/fdecdd51e2030aa983d403457a236f21b3ad5fc4d49ab72d3b5b04b125cefa0c/6a912e4353bf7e31",
+      "cert_sha256": "f726eafb23ad7f14f532c389c83d8109e676c01e039baa6c2598aeb1f0bb8a73",
+      "fasl_sha256": "9ccb7f26391a5cc2058b3fd3827b8b2248b861b88ae4d2cbe75e112af0705a5d"
+    },
+    {
+      "book": "books/columns-guard-hints",
+      "key": "bf3898263ea2cef72898280e78731227844bb1a3d6743342239c17372e5d8caf",
+      "source_sha256": "e0a20c5669df681bf75fa5eeae426adc4053010915b3c7657d56e247d5c8440b",
+      "entry": "/home/fn/.cache/fn-certs/bf3898263ea2cef72898280e78731227844bb1a3d6743342239c17372e5d8caf/27a248ede9606745",
+      "cert_sha256": "1cef6b0a6282faa9a0317a79d1424881804df9df2fd8905872a7471498c940c1",
+      "fasl_sha256": "ccc0a321bd5a718dbbfa3591f1d660af14083a54cb7ce4e4337c66f06051dc08"
+    },
+    {
+      "book": "books/columns",
+      "key": "240a44b23a63840a436ffbe6b12f9adc6fec80ba1056de0af7b5e666f518a510",
+      "source_sha256": "8b694caf782c2ce3a29fa109b055c181b54beda214276493f6d9acb9456a881b",
+      "entry": "/home/fn/.cache/fn-certs/240a44b23a63840a436ffbe6b12f9adc6fec80ba1056de0af7b5e666f518a510/27a248ede9606745",
+      "cert_sha256": "5d02ce7342836753399e5b41e490cb20aabd906f5e5e6fb8212446a055bd1662",
+      "fasl_sha256": "aa583190e0867f7f99dfb23de03a4569a7abd76be2cc0cc45ce500b267ef7d96"
+    },
+    {
+      "book": "books/operations",
+      "key": "ffaf93d705d08918400704d108e7bffa6a3da8ae5ae2917128974f7d53c9e71b",
+      "source_sha256": "419120e7ae100f400d18cdee2d080d6133523673cac22fae1b05c7201ff97dd8",
+      "entry": "/home/fn/.cache/fn-certs/ffaf93d705d08918400704d108e7bffa6a3da8ae5ae2917128974f7d53c9e71b/99fac8c12877bc14",
+      "cert_sha256": "7697d577086d16974a9762298d8c6b389b601afac5988a9114458b5e7b78bfa7",
+      "fasl_sha256": "d3221354ac4e5d685fa3147823f21a2fa4b25045259159d7ec8765ae537f9868"
+    },
+    {
+      "book": "books/declare",
+      "key": "299f7489bcfaeeb7c1a8f777c4a3b4886c5be174761a2f63f69a39599466aba1",
+      "source_sha256": "54e850788ee821dd90a4d9715e93d319f94846039592c4420fef1bdc5d959569",
+      "entry": "/home/fn/.cache/fn-certs/299f7489bcfaeeb7c1a8f777c4a3b4886c5be174761a2f63f69a39599466aba1/63be0e8165ae7b38",
+      "cert_sha256": "f3a1e4a58cac32474074b9d3ca6a558099a86d2fe66a28ee0670b5c5001bf9dc",
+      "fasl_sha256": "02ceab2d38f5864c70d16e1bfdf77e4450e12aab47bd3d9e3e16ec1319e5c64d"
+    },
+    {
+      "book": "books/fnv",
+      "key": "9766f6c79c4cdf5a16b932b031c696445c37e8b99d2928da34ea950c8f989321",
+      "source_sha256": "73d15afc6e1325f03d19ad4b39eeb3adc677ce2b07e9eddbc14141ca8843edde",
+      "entry": "/home/fn/.cache/fn-certs/9766f6c79c4cdf5a16b932b031c696445c37e8b99d2928da34ea950c8f989321/99fac8c12877bc14",
+      "cert_sha256": "73d8f784533a61e2f4a9f49da7469f050943f1aca78f72e4138b7775ec3b9870",
+      "fasl_sha256": "bbb54f117070b59fb24b93349c6822b215687929c8cca11cc1c78953bba202b8"
+    },
+    {
+      "book": "books/pool",
+      "key": "02c8ba50750b243b9b79bc6be0ff2339fad1531234575313c815e7d6fbfba72b",
+      "source_sha256": "9a31c8d38d309862369091a2c8019ccc3da16920742ff01040899b8f395f2fe9",
+      "entry": "/home/fn/.cache/fn-certs/02c8ba50750b243b9b79bc6be0ff2339fad1531234575313c815e7d6fbfba72b/27a248ede9606745",
+      "cert_sha256": "7a692bca99d526592db557699c9eb697f1bc54bc426d0171e96f76ffebaeeef2",
+      "fasl_sha256": "b63db5509ea1cdab56f07d460ec6a1f8e89f7f43257bef3ca61659f70449d409"
+    },
+    {
+      "book": "books/profile",
+      "key": "cdaddbd4628aebebc2dea718832e44dfbe07014033d6a8904f137808c9c34744",
+      "source_sha256": "1f216ed6c0505dc1b01ada0f7d3d9482af6da7b7dff8736b5100ef3e3fbc1038",
+      "entry": "/home/fn/.cache/fn-certs/cdaddbd4628aebebc2dea718832e44dfbe07014033d6a8904f137808c9c34744/99fac8c12877bc14",
+      "cert_sha256": "fd1e145834d5f72117d430eac3024d3245bd85195d7db2f4b7370195384af8da",
+      "fasl_sha256": "8b9c4cb04cfb916dcec8ad2554c069f97e5311fa8be758ec117e670f853ffcc7"
+    },
+    {
+      "book": "books/owed-discharge",
+      "key": "fa84e2e8a4d3eeeda9943ef433f68c9ba4d940ec437c889cdd0be032d29550e5",
+      "source_sha256": "53903322be1b79ed081ecfcbfcb9f60649d3fdbf8aa6853b772abf8e6fc69f01",
+      "entry": "/home/fn/.cache/fn-certs/fa84e2e8a4d3eeeda9943ef433f68c9ba4d940ec437c889cdd0be032d29550e5/99fac8c12877bc14",
+      "cert_sha256": "ca8b06e41e862222d681038d9d4df7122c9dca272ee35b0bb44c40f1269c82c4",
+      "fasl_sha256": "25999ed25f94b77a7b701afe86287c1707264f4e50f2f2e143d09f19b4aee454"
+    },
+    {
+      "book": "books/owed",
+      "key": "0025566d809fffa0fb7533fa29b1fb7a9932c97d1510818153a1c1fe3d6bbf08",
+      "source_sha256": "171950b91e40f4e7d0e94902ce00009adc62d8104e0eecd5db6a59b93bbffb15",
+      "entry": "/home/fn/.cache/fn-certs/0025566d809fffa0fb7533fa29b1fb7a9932c97d1510818153a1c1fe3d6bbf08/63be0e8165ae7b38",
+      "cert_sha256": "dfd94cb9c2ead45891e01b806f507e2b16ae85cd37570c89fd531bab7d7982fa",
+      "fasl_sha256": "97c17b9a3c61860b138d779461086ccc41487cd250f03509af2c8c6eac0738bd"
+    },
+    {
+      "book": "books/upload-scan",
+      "key": "a9ceefc25705d274caab64a7a6f6284ce5e5c58a3056b304fccd966b322c05b7",
+      "source_sha256": "6b3dd20f55b622a53d856e44f309a43209577993588f1ff364c10586afe4ea60",
+      "entry": "/home/fn/.cache/fn-certs/a9ceefc25705d274caab64a7a6f6284ce5e5c58a3056b304fccd966b322c05b7/d71a0192fa3cd872",
+      "cert_sha256": "b2e00d8216614d85cf6ad2baf06951372c0c14dd7e4c39e00ea6fc724d6095fa",
+      "fasl_sha256": "5bfcc6deccac9c3a6ff684db1ef9d60520ecd418ac450a508362c589c11b410f"
+    },
+    {
+      "book": "books/upload-window-geometry",
+      "key": "283246ab96d551f71b3627d75c3701c6a1f1d5bf389a1af015e5d162cd9516bb",
+      "source_sha256": "131a8659e5a9486afb9b3b774f31d873235aa740ba0b3e7b607b9ca39a36b2e2",
+      "entry": "/home/fn/.cache/fn-certs/283246ab96d551f71b3627d75c3701c6a1f1d5bf389a1af015e5d162cd9516bb/69309554cbb5e1e1",
+      "cert_sha256": "1328c831879834e23444c0fde3f586814a39ae7e71626eeba143cf1267964e32",
+      "fasl_sha256": "8fb6e3bc55842fb6ff8099ec87d48bfb532fa6c43ac72c47360a38e273de349a"
+    },
+    {
+      "book": "books/commit-geometry",
+      "key": "bb2c5941a31df81e1eba249e527cd8410443dcf62c4e4da94355133a64a8d5e6",
+      "source_sha256": "e06315c94bcd0d247214377fb33186f14ca1aa2ee6afe1499d69d053ff0134e2",
+      "entry": "/home/fn/.cache/fn-certs/bb2c5941a31df81e1eba249e527cd8410443dcf62c4e4da94355133a64a8d5e6/586fdc27c759ac35",
+      "cert_sha256": "832ad08a0cd8d97712e5c92366aa0294267e570813e5a59c5cd08283241c9f6f",
+      "fasl_sha256": "ea85afa32821f69b7d6f9e3f5c07870486fe909f9079384a13fe719c8fa371f3"
+    },
+    {
+      "book": "books/format-base",
+      "key": "9115f43e1c05b24a1afb21fb292fb5584831d496553a81380ce2d53891a2651b",
+      "source_sha256": "ead88cb8e7ab67db0c6a06ac400c813f753121c77082825b16016835eb462699",
+      "entry": "/home/fn/.cache/fn-certs/9115f43e1c05b24a1afb21fb292fb5584831d496553a81380ce2d53891a2651b/27a248ede9606745",
+      "cert_sha256": "6a288f3526a78988ca5078ddb85bdeb214b5ff92b740c7063d76163fcc3082d4",
+      "fasl_sha256": "8668d69ecf8f7a452e3edd55b2c0c51258a5f4e7304aa37639c3e364576696df"
+    },
+    {
+      "book": "books/layout",
+      "key": "92461e82c5228c9fee8e155ec9bb581b9da1b10d627da4d23cab22e6e3983263",
+      "source_sha256": "2bc995f6bb70ec17862c5b535a4734e90a7a5dfd6312ebdee7d06877b0fbb4d8",
+      "entry": "/home/fn/.cache/fn-certs/92461e82c5228c9fee8e155ec9bb581b9da1b10d627da4d23cab22e6e3983263/27a248ede9606745",
+      "cert_sha256": "f197b7bb569ea6928faeef336cacbe4c210735cd0769e3f8565ca388adb951a7",
+      "fasl_sha256": "f04d5fbd6c49af6af41aa02d0628d97ac8b694b153c570712b6d33ffef099a1a"
+    },
+    {
+      "book": "books/accounts-core",
+      "key": "37d7ad0edcf92c91ad80ff0e23f37c17697508b19d2ea0ab0dab086ddfc2e142",
+      "source_sha256": "1ca8a1ab641bff91757f0fe7febfd94af47f06b86a51034961bd5cfd5accd772",
+      "entry": "/home/fn/.cache/fn-certs/37d7ad0edcf92c91ad80ff0e23f37c17697508b19d2ea0ab0dab086ddfc2e142/8f01c8c756e9d6c8",
+      "cert_sha256": "170567ce02297f6f750c2d99b4ba148697e2582a7b0265dcae11f698de4ec783",
+      "fasl_sha256": "821a6fa2ddc17480fe9bf74f16a632c7e5c1b27cc863b1e191da9e4ec73cce47"
+    },
+    {
+      "book": "books/arm-children",
+      "key": "7785d94c8d1b20fd265fb549bc1127dc89bdc92786786efcfd4f7f60b798b99e",
+      "source_sha256": "1d444bdc958c877682a8bb75f688ecd191b741147ee853c646a8ec54e2fa343f",
+      "entry": "/home/fn/.cache/fn-certs/7785d94c8d1b20fd265fb549bc1127dc89bdc92786786efcfd4f7f60b798b99e/8f01c8c756e9d6c8",
+      "cert_sha256": "5c0a7a5b1e98dabefa6c3a1b82c22d645c3175efab9c565a6d53098fb607292e",
+      "fasl_sha256": "a0c231521e5fc3600fa0095b2c751ad2ebb0f1b38b063cecb28885e3d26e220e"
+    },
+    {
+      "book": "books/machines-directory",
+      "key": "e05203f40974047a302695a9f938a505cdddb8d3a0c1dc4041750ac21983032f",
+      "source_sha256": "d87c6d169aae1a5c06fd1f31d9047645c8ecae0c444e10ad205958a37e2c83fa",
+      "entry": "/home/fn/.cache/fn-certs/e05203f40974047a302695a9f938a505cdddb8d3a0c1dc4041750ac21983032f/8f01c8c756e9d6c8",
+      "cert_sha256": "537f1646e32f3cc2175afa177ef2e01d698a205a1449054d32d796faf4690ba8",
+      "fasl_sha256": "d8987a4e2a1dfda8e042b0e935da863818ab10e3517ee8a4a523a56aef83ae26"
+    },
+    {
+      "book": "books/machines",
+      "key": "4a0bf71884046a2945b7c6b49c558935c3c681534c48e7d94697efd904ff41c8",
+      "source_sha256": "5c5a20c1f2ff695fcaa9b2ba2d7bf345781c8127c33af89984c14f516641932f",
+      "entry": "/home/fn/.cache/fn-certs/4a0bf71884046a2945b7c6b49c558935c3c681534c48e7d94697efd904ff41c8/851e466605dba96f",
+      "cert_sha256": "5537f112e82094a62c360f70916f8f0831e2331fa8d5383bcf2c4c7a15033508",
+      "fasl_sha256": "4dbb2179a476259688327d583de3b3daff1b98d2134ce49993b8028ba675237f"
+    },
+    {
+      "book": "books/columns-call-guards",
+      "key": "e6f7e573b9fc9532c8fb4a5184d2c7967d5836db791268f1e82a9ea4518d2da6",
+      "source_sha256": "fd7c2588e6d90338288b484078525799ac261c66013ebe112c3f369870db5a4a",
+      "entry": "/home/fn/.cache/fn-certs/e6f7e573b9fc9532c8fb4a5184d2c7967d5836db791268f1e82a9ea4518d2da6/6a912e4353bf7e31",
+      "cert_sha256": "1605d74ec9489c1a1167940a0c19868a34913953677e8dae04f36b7197561fc7",
+      "fasl_sha256": "f647e2a79668cf3958b98357a9b78842b2841a35677a36d3531087bb436c1ec4"
+    },
+    {
+      "book": "books/arms",
+      "key": "423da3acc7ce4ba348f07066d4f1f0d7d1bc9ac921ed47498b43ed3165ae6648",
+      "source_sha256": "83825a47c141b16393debcb6dfc98aa7fb54b375e7c12296fa4f25a491c29455",
+      "entry": "/home/fn/.cache/fn-certs/423da3acc7ce4ba348f07066d4f1f0d7d1bc9ac921ed47498b43ed3165ae6648/fd72feee53da0bc4",
+      "cert_sha256": "8d3a0e8772a8860cadecbca721d4a66fa51568ca5f0c292f73df080ba0c07c1d",
+      "fasl_sha256": "63181931619c7acad9cdc707acbfee1fe0198bfdda6ecc69335faa1ca030f2e4"
+    },
+    {
+      "book": "books/resources",
+      "key": "57890f1c24088db3b37deccce1fe7ae6fa22cc8d9050e853eefd0d3c8b66ee74",
+      "source_sha256": "019bb017e54237a5304f30598b8842de8f0651b5f92c523ff174f24994fe43c6",
+      "entry": "/home/fn/.cache/fn-certs/57890f1c24088db3b37deccce1fe7ae6fa22cc8d9050e853eefd0d3c8b66ee74/25a82fd4fdfa3025",
+      "cert_sha256": "e50f7f273d8241f6eea3d3015c8ed1b94225bbb2dd3fb95b4e76e2c19b7fbcec",
+      "fasl_sha256": "a7248770adf76ab03d864dd2ead366828a7601dd4e6353a46f28a25e203bb70b"
+    },
+    {
+      "book": "books/run-budget",
+      "key": "3a840b886d62c892a01f216d5afb084db051700e001a2d55560749153590833f",
+      "source_sha256": "6c340901483627a433e4de6b7699b684b9949f233ee52ce4c5840774df59a7d0",
+      "entry": "/home/fn/.cache/fn-certs/3a840b886d62c892a01f216d5afb084db051700e001a2d55560749153590833f/a3c8c884f122d50c",
+      "cert_sha256": "8c3914341aafa0fa0a9703bb90fdbc7fbd9698bef3bd701c4c6d2927c38db6d8",
+      "fasl_sha256": "4e48481fd73ac5929f6c3e09663aff2f63612a06a57a1f8b63bb139118874b87"
+    },
+    {
+      "book": "books/vocab",
+      "key": "f25b0db226005357f44bbfcf8f986e2193b041da652b95420a3fc290e78099df",
+      "source_sha256": "96606555ca9b71fcc9d3e5b955deb5052300526347dbb5f5f8e74545813b1c53",
+      "entry": "/home/fn/.cache/fn-certs/f25b0db226005357f44bbfcf8f986e2193b041da652b95420a3fc290e78099df/6a912e4353bf7e31",
+      "cert_sha256": "d4ee461578b891000453253848e51e3aa9051716193388e2819cde43e639a3ee",
+      "fasl_sha256": "33cd0b98e9c6d9835419c21ddbb6d59ed3e0bbc5ab36342b62f76eaca8bf0a63"
+    },
+    {
+      "book": "books/columns-carrier-contracts",
+      "key": "3f3707eb6a8f0e2f8dd287e1511b79a10bd1384f705be921aa63f824ea9db2b6",
+      "source_sha256": "36cf411d1119704be488c119243d0aff8006e9babe38bb128f5d627353373c5a",
+      "entry": "/home/fn/.cache/fn-certs/3f3707eb6a8f0e2f8dd287e1511b79a10bd1384f705be921aa63f824ea9db2b6/27a248ede9606745",
+      "cert_sha256": "6f68297b050a3e21d6b9b400a14084c97d4ccadae91279df14bd340ae3c3eced",
+      "fasl_sha256": "d6207971d45e9f5e8377d2756c7e0b03c8813c103c1598bbf290ecfce6fdd38d"
+    },
+    {
+      "book": "books/exec-state",
+      "key": "47fc539d200845716f259fc639f73ab87b01cbde72b850783247b234e1b237aa",
+      "source_sha256": "56eb8a81a3cc049c27c1e23dd1930f8184f2c892207169532315184ca141ea3d",
+      "entry": "/home/fn/.cache/fn-certs/47fc539d200845716f259fc639f73ab87b01cbde72b850783247b234e1b237aa/fd72feee53da0bc4",
+      "cert_sha256": "f48408a44c7d1d060f12770e311cafa5cf4eb2efadc63a9a81341e19de33eafe",
+      "fasl_sha256": "03644cafbd6ebca1fe8a3c921259f3cafa123325499ac9e56c8d4537ed5bfa44"
+    },
+    {
+      "book": "books/pool-dimensions",
+      "key": "8d12052bc3bd212c5d4dd3f9958c0a646807c2e041e4de7b31973854c1a20309",
+      "source_sha256": "d39cf91254b2b5f062b468146361529d73a020e08b1f72d23c6c80a2c75eba6d",
+      "entry": "/home/fn/.cache/fn-certs/8d12052bc3bd212c5d4dd3f9958c0a646807c2e041e4de7b31973854c1a20309/0c8a7c1caed53f21",
+      "cert_sha256": "22af048e704ad18af03d3a46bef956d0f3ad712cc6a11cc4f37b1578bc3fc099",
+      "fasl_sha256": "3abfae80962ba51ebe495eaaa8d5c2cc0d02e765bc6d03f5c3bb6ff9601780a0"
+    },
+    {
+      "book": "books/machines-a",
+      "key": "121a75776e05d0a0e429dc8e6ca14e7a80207dfe5b86667a578d1eec927a6431",
+      "source_sha256": "6b27d9f04b788ed2730f2e520770c40f7dd9c06828a15a14dc79db50960adeec",
+      "entry": "/home/fn/.cache/fn-certs/121a75776e05d0a0e429dc8e6ca14e7a80207dfe5b86667a578d1eec927a6431/8f01c8c756e9d6c8",
+      "cert_sha256": "dd2f6f302ac91042531fbf1b5fbf8ecdab11201df65c991165283caba45d124a",
+      "fasl_sha256": "0fbcb52bbf9efc456a86ce520689dcaf931dd9d1c7b42d98e869353980319661"
+    },
+    {
+      "book": "books/accounts",
+      "key": "e65a5de0d51f1df6d0ee8c6a27a21d0378366afaf28291963316cd7a9818433a",
+      "source_sha256": "5dd1a927dccb3d24fa31645bcd3b73a0acc0e42a83bac57c45c9d3a7e37f448b",
+      "entry": "/home/fn/.cache/fn-certs/e65a5de0d51f1df6d0ee8c6a27a21d0378366afaf28291963316cd7a9818433a/8f01c8c756e9d6c8",
+      "cert_sha256": "71eb4dc1bd5f8ed9e588649b1b39044198324fb02a27032046854fc8fe1d09c2",
+      "fasl_sha256": "56278399e0ef0cf8528274a92441ac2bb569ac16042ce5b58e600e12bb8ecaf1"
+    },
+    {
+      "book": "books/core-children",
+      "key": "2cd8b05a5f1b5d3d16a0f05a1ea18438901a20687aefaf24f052f008bc393498",
+      "source_sha256": "24a985caf082ff74f72c96638034eba619ce114d611a804d0b4a239721d37e4b",
+      "entry": "/home/fn/.cache/fn-certs/2cd8b05a5f1b5d3d16a0f05a1ea18438901a20687aefaf24f052f008bc393498/8f01c8c756e9d6c8",
+      "cert_sha256": "56f482d0c5778f57963284b9da2d199c1e55073fb6733061455c15bc56082d3b",
+      "fasl_sha256": "510383b051eee3eef7f3588018ea1fb4f0170be61936d4334530ea3503cad132"
+    },
+    {
+      "book": "books/compress-kind",
+      "key": "2b68f35ecee023cc60a9dbafe6dfdc88f363e72ea39aa3447811ab0a5abd25f0",
+      "source_sha256": "05eefc48dbf24297a972c122f3c3dd2b7145f64a43b48bd3f6d8f6d898e8e0ff",
+      "entry": "/home/fn/.cache/fn-certs/2b68f35ecee023cc60a9dbafe6dfdc88f363e72ea39aa3447811ab0a5abd25f0/8f01c8c756e9d6c8",
+      "cert_sha256": "7836d427e8b935bb7cf34c4c46b6a5ab17c33da84f2d928c0c19415c15bd2f15",
+      "fasl_sha256": "bbd1b138844de2794b153d1aed1bf69fd810f5c922c45896edeb1eb933645c8e"
+    },
+    {
+      "book": "books/compress-policy",
+      "key": "5793dadd8f4b13c9b1958e221709b9bcf06c700295619cd6b6450617bcd6f362",
+      "source_sha256": "bacea68680cb1cad303023723f5fd524cbae06b7dd81bf2cb5ada0fb2973270f",
+      "entry": "/home/fn/.cache/fn-certs/5793dadd8f4b13c9b1958e221709b9bcf06c700295619cd6b6450617bcd6f362/25a82fd4fdfa3025",
+      "cert_sha256": "acb18a7319dcc0c33333d6d32b57d2481151b7b86186e600458a3cd111fa013a",
+      "fasl_sha256": "8883b2262899a94de1ceebef1de6af648a790b1c08cd0a78a293bdb882d97f77"
+    },
+    {
+      "book": "books/tls-schema",
+      "key": "d615e1c5df98ee5f675ddd4cda0fbc9ae86122fc3535e952964b5cc333203778",
+      "source_sha256": "e0779c15ffe1ceab4133301a8f68e5b8f2a6080ce17ad4a2033e0c81b800d6f8",
+      "entry": "/home/fn/.cache/fn-certs/d615e1c5df98ee5f675ddd4cda0fbc9ae86122fc3535e952964b5cc333203778/8f01c8c756e9d6c8",
+      "cert_sha256": "38603279fc79f28b964c2563d362422576025f75a703bc1f4a37c04d1f50cf5f",
+      "fasl_sha256": "aabe04a9faa0afecf367c88e14eef90bbeab80b43d630373703d8b06cd1b1946"
+    },
+    {
+      "book": "books/codec-profile",
+      "key": "620a63d12e3d05fb341493b6e9c5cafde8d6e37f0c8464925c2cd5284080d947",
+      "source_sha256": "adb045c7393523346124a11a8959238a94be529354084bb23f9a5ae76cc63213",
+      "entry": "/home/fn/.cache/fn-certs/620a63d12e3d05fb341493b6e9c5cafde8d6e37f0c8464925c2cd5284080d947/25a82fd4fdfa3025",
+      "cert_sha256": "60a3258bf36e555c5e092c87483b7afbc126ad89e380a086632de33cfc88dc79",
+      "fasl_sha256": "52a4663d33daedf00b79df4dfe16bbc58d049821c5f34267b2575d7e89bbbd53"
+    },
+    {
+      "book": "books/conn-answer",
+      "key": "945f2e37c41f8b73e31aab6f565f92f61a160293af2c979889b56f5ade62d9a2",
+      "source_sha256": "2c099d9ad4cd0a5cb905f79fbd3ccecbcc7f09b9dad053c3caf180a9d00b044d",
+      "entry": "/home/fn/.cache/fn-certs/945f2e37c41f8b73e31aab6f565f92f61a160293af2c979889b56f5ade62d9a2/d63c0c1d620d1df1",
+      "cert_sha256": "48cde85077d8f1aa6a7dfcf3bc79ffb7e2853606dd62f5c720974b6617c03c79",
+      "fasl_sha256": "d808bb5dd927d4276e253d2dfcfae631dc08c68b17e917423bd847d1b29abf49"
+    },
+    {
+      "book": "books/nntp-grammar",
+      "key": "709ed0465e738d9e32046aed98c664fd2bc4436fff1005bc49ce8958bbce39c8",
+      "source_sha256": "089c0cb3ea1dd851407e42ec0a165696c7db1e85618479dd8c98501f78ea127b",
+      "entry": "/home/fn/.cache/fn-certs/709ed0465e738d9e32046aed98c664fd2bc4436fff1005bc49ce8958bbce39c8/d63c0c1d620d1df1",
+      "cert_sha256": "926947110cade615eb466d0764d38528012d1c2e197a4e605d4f4e6cc45312ca",
+      "fasl_sha256": "745ed9b90109fdc3714ec23123cfb0316ace2494b2842b26c559faed512904b8"
+    },
+    {
+      "book": "books/machine-arms",
+      "key": "454300f29abe6ea5819dac1abadd80ef55cdc02d19ec7f31fbb4cd4e4dc36006",
+      "source_sha256": "7843cd0794ae7e686db4ab9ee75286ffe6d2e3ef6eb8e91fd1c5cbb2364320ea",
+      "entry": "/home/fn/.cache/fn-certs/454300f29abe6ea5819dac1abadd80ef55cdc02d19ec7f31fbb4cd4e4dc36006/00b7f7506dbcc476",
+      "cert_sha256": "7c97df44b7b0ff8ce39553673044549961bb0cd57c42a71e306fb134db5379d8",
+      "fasl_sha256": "6f34ee5b81ee002b791df4cfdd7a056daa8d7995d3bbfba022862cffb9489a59"
+    },
+    {
+      "book": "books/arm-issue-effects",
+      "key": "b77a727d2fe0a6aa2f7ceb2f9cdb0d3804eac13def085d9a748091eb823a17d2",
+      "source_sha256": "a9460bbc8e085b404804d7b82328c1f7a249faeee25380af6586b389d3d5d9fd",
+      "entry": "/home/fn/.cache/fn-certs/b77a727d2fe0a6aa2f7ceb2f9cdb0d3804eac13def085d9a748091eb823a17d2/8f01c8c756e9d6c8",
+      "cert_sha256": "d6d718cbc0468cc4e046dc319909a7c4edf71b9e9230b7b06581e21acba40c6c",
+      "fasl_sha256": "5d4002f30ab1d0cd72391c98f18a8a76b4ac98fafab1a9e610f9c1ef07ed9607"
+    },
+    {
+      "book": "books/ops-issued-effects",
+      "key": "48835d421af516b33d598ac3984065260d7dd0755e3c750c913f48a16c14b8cf",
+      "source_sha256": "0d8ca86349858405807ff2cdccffccd71d1c8cef2065186b28aa31aafd35a709",
+      "entry": "/home/fn/.cache/fn-certs/48835d421af516b33d598ac3984065260d7dd0755e3c750c913f48a16c14b8cf/8f01c8c756e9d6c8",
+      "cert_sha256": "29072c5d9aad8dc68ca852663a4dcbe196d687fbbfe78f95b16fd80b2fddb54a",
+      "fasl_sha256": "922ac6be861a65abe12fb154389e178a28089c3016eb180de759e44556afdb48"
+    },
+    {
+      "book": "books/ops-issued-count",
+      "key": "c24ee1b4036dfbafc4c4d72a63ae83274baa14b99f07842909e52c12169d35c3",
+      "source_sha256": "2238a6e61e7075984f5cd95519a7dd71bc2d1e6f4da6d0b411e639f27ce7a426",
+      "entry": "/home/fn/.cache/fn-certs/c24ee1b4036dfbafc4c4d72a63ae83274baa14b99f07842909e52c12169d35c3/8f01c8c756e9d6c8",
+      "cert_sha256": "7a55154ced0cacd40eeebac8bd9ad4004ded2cd6d45e6789232632b0219ed049",
+      "fasl_sha256": "db048451ad151f640a3cd2e4b07196a8fd61510dfaf5fbf097ee606ace072c04"
+    },
+    {
+      "book": "books/ops-heads",
+      "key": "bdbf02825b132e8dea60864f003bb0c2de52eda7b4bbfef06a159c489515a026",
+      "source_sha256": "17af3696d3ad68f638d8301906cb1ce67152e6fa685a8d7697b5521018359366",
+      "entry": "/home/fn/.cache/fn-certs/bdbf02825b132e8dea60864f003bb0c2de52eda7b4bbfef06a159c489515a026/8f01c8c756e9d6c8",
+      "cert_sha256": "1552b408b6a118b79af11240b9fe7f8c3906b80639d359da418cd1f043a3b196",
+      "fasl_sha256": "0f4c1e1dc588f915fce1597a68963ccd7027f98894e577230266a3d48233988c"
+    },
+    {
+      "book": "books/tls-kind",
+      "key": "12a0f21f7d0758c0ff044c44b66b345c82b6073ab88f1b7b785a7b207cf340fe",
+      "source_sha256": "86c5e4fe10ed4e0043c71cd2d09d96ca6af898bb447365db28913a3d7a4ab0df",
+      "entry": "/home/fn/.cache/fn-certs/12a0f21f7d0758c0ff044c44b66b345c82b6073ab88f1b7b785a7b207cf340fe/47ca2a8ebd3fef19",
+      "cert_sha256": "b971297a60753947340f02fe0d479738400b1bce88610b51b98de993e96a537b",
+      "fasl_sha256": "fdecc22a0496334d52166639857fb2f3ccaef10fcc3f2d3acea39fc86d255749"
+    }
+  ],
+  "cleanup": {
+    "pids_absent": {
+      "2022278": true,
+      "2022280": true,
+      "2022349": true,
+      "2022350": true,
+      "2022671": true,
+      "2022693": true,
+      "2023031": true,
+      "2023118": true,
+      "2023140": true,
+      "2023250": true,
+      "2023383": true,
+      "2023405": true,
+      "2023573": true
+    },
+    "scope_absent": true,
+    "holders": {
+      "0": {},
+      "1": {},
+      "2": {},
+      "3": {}
+    }
+  },
+  "scope": "Actual schema/TLS-kind/conn-kind only; upload-kind original whole macro still refused and unqualified"
+}
