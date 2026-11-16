@@ -17,6 +17,14 @@ class Readers(unittest.TestCase):
   self.assertIn('(if (eq (,code ,@call) :ok) ,value-body',source)
   self.assertIn('(if (eq (,code id fn2-core) :ok)',source)
   self.assertIn('(fn2-machine-directory-fieldp (caar columns))',source)
+ def test_prepared_gate_uses_actual_operation_rows(self):
+  gate=Path('tests/machine-reader-cost-face-source-unit.lisp').read_text()
+  self.assertIn('PREPARED UNEXECUTED',gate)
+  self.assertIn("(fn2-operation-row 'fn2-machine-generation world)",gate)
+  self.assertIn("(fn2-operation-row 'fn2-machine-generation-read-code world)",gate)
+  self.assertIn("(fn2-decl-get :definition generation)",gate)
+  self.assertIn("(eq (car tree) 'quote)",gate)
+  self.assertNotIn('(defun fn2-machine-generation ',gate)
  def test_unknown_access_cannot_be_zero_cost(self):
   import directory_consume_metadata_audit as a
   self.assertEqual(a.ex(['fn2-machine-generation','id','fn2-core'])['metadata'],22)
