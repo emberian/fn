@@ -5,7 +5,7 @@ Owner: integration. Commissioned by ember on 2026-11-13, following the
 `fn2-squares` remains the obligation store. Reports and public-claim coverage
 must be derived from that store and the actual served call/attachment graph.
 
-## Current integration frontier — 2026-11-15 23:15 UTC
+## Current integration frontier — 2026-11-16 00:06 UTC
 
 The descriptor reader is qualified on the shared foundation at `6e7a1a9c1`;
 its [current 34-book record](receipts/checkpoint-reader-foundation-thirty-four-record.json)
@@ -14,29 +14,32 @@ The six original unrestricted reader claims remain refuted and unfinished;
 the six distinct guarded replacements are qualified. BOOT still needs to consume
 this bounded reader with verified persisted geometry and retained ownership.
 
-The served-family candidate remains separate from upstream, currently
-`8897f790e840651bbfc402ec31ee35a434f8109b`. Its current ARM/storage closure has
-37 qualified books: 26 initial cache hits and 11 newly recorded dependencies.
-Root independently matched all 37 source hashes and closure keys to this family,
-and checked the actual record-toolchain metadata and certificate/port/FASL bytes.
-The family owns the scoped receipt; this does not qualify RAW or the application.
+The served-family candidate is `ab05c79b16846071fddb2213630a22e33d7ad33b`.
+Its ancestor-closed READY frontier has 74 qualified books, with 43 reused and
+31 newly recorded dependencies. Root independently checked current source hashes,
+closure keys and actual record-toolchain metadata/certificate/port/FASL hashes.
+This is dependency qualification, not qualification of RAW or the application.
+Current MACHINES has a separately qualified 13-book closure.
 
-The earlier unconditional ISSUE POOL-ROWS refusal is repaired and passed in the
-whole RAW author attempt at `31635689e`. Its next refusal was unconditional
-POOL-DATA preservation. Current metadata-only lease/truncate DATA contracts and
-ARM/storage wrappers are qualified. COPY's actual backing-length contract remains
-under repair; WFP alone does not establish element typing and cannot justify an
-unconditional WRITE preservation claim. The BLAKE3 word-frame pilot admitted
-STORE, INIT and PUSH; FLUSH needs the same public frame exposed through its raw
-observer projection. The generated projection retry hit a pseudo-term guard
-error before INIT, so that generator correction remains unqualified.
+COPY's actual backing-length contract now has a qualified eight-book closure.
+The proof distinguishes nonempty backing storage from element typing; WFP alone
+still does not imply element typing. BLAKE3 word-frame production has a qualified
+17-book closure and its whole-antecedent/domain-removal controls a qualified
+18-book closure. Those repairs must still qualify in the composed served caller.
 
-BOOT's lower persisted-bootstrap producer and component controls are entering
-whole-source admission, including explicit final guard verification. This does
-not yet connect the public BOOT/CORE path. The lifetime trace confirms that FETCH releases META after a root-only hold,
-before descendant preflight establishes coverage. The repair must retain META
-until actual coverage, preserve abort cleanup, and avoid a drain deadlock. The rolling upload and explicit article-profile packets are being joined
-on the current foundation; their accepted 96 KiB restart campaign remains unrun.
+The [rolling feed component](ROLLING-GEOMETRY-20261115.md) has a qualified
+18-book closure: sixteen reused parents and two newly certified test books.
+Its actual split-input, one-byte budget, malformed input, binary and rolling
+header/body controls passed. Root checked the current keys, raw sources and
+actual certificate/FASL payloads. The accepted 96 KiB upload, reset, restart and
+FETCH campaign remains unrun on the current complete application.
+
+BOOT's persisted-bootstrap constructor has a qualified 32-book closure.
+Its downstream carrier contracts exposed a missing unconditional hash-row frame;
+the canonical frame-provider correction is committed but not yet qualified.
+Public BOOT/CORE integration and physical checkpoint/reopen remain outstanding.
+The FETCH lifetime repair retains META until actual coverage and preserves
+terminal cleanup in source; its full composed constructor campaign remains owed.
 
 The enum repair has three admitted universal whole-carrier fragment equalities
 at `lane/assurance-enum-controls@8d4944ada`, with provenance clarified at
