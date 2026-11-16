@@ -37,6 +37,11 @@ candidate and no pending read. Its lower target uses the authenticated anchor's
 actual descriptor Ref and canonical restore target function. The resulting
 sector must lie within the retained image size. The actor owns read issue,
 saved address/count, completion validation and its retained receive lease.
+For an empty or invalid physical anchor, the target returns `:skip` only when
+the same full bootstrap receipt is current, the exact index's checked bit is
+clear, and exactly one of its empty/invalid scan bits is set. Absent candidates,
+unchecked indices and contradictory scan masks retain source refusal. The
+actor advances the physical index without inventing a dense candidate ordinal.
 
 `fn2-boot-checkpoint-descriptor-check` requires descriptor-step, matching
 candidate, receive slot/generation and no pending read. Before writing context,

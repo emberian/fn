@@ -40,6 +40,20 @@
               (fn2-checkpoint-boot-geometry-word i fn2-boot-config))
        (fn2-boot-descriptor-geometry-matches-p (+ 1 i) geometry fn2-boot-config fn2-digests))))
 
+; Only an actual terminal scan observation authorizes skipping this physical
+; index. A missing candidate or a contradictory census is not such evidence.
+(defun fn2-boot-descriptor-skipped-p (c kind id ogen fn2-boot-config fn2-origin)
+ (declare (xargs :stobjs (fn2-boot-config fn2-origin)
+  :guard (and (fn2-boot-config-wfp fn2-boot-config) (fn2-origin-wfp fn2-origin))))
+ (and (natp c) (< c 4)
+      (fn2-boot-bootstrap-receipt-p kind id ogen fn2-boot-config fn2-origin)
+      (equal (logand (ash 1 c) (fn2-boot-config-anchor-checked-mask fn2-boot-config)) 0)
+      (or
+       (and (not (equal (logand (ash 1 c) (fn2-boot-config-anchor-empty-mask fn2-boot-config)) 0))
+            (equal (logand (ash 1 c) (fn2-boot-config-anchor-invalid-mask fn2-boot-config)) 0))
+       (and (equal (logand (ash 1 c) (fn2-boot-config-anchor-empty-mask fn2-boot-config)) 0)
+            (not (equal (logand (ash 1 c) (fn2-boot-config-anchor-invalid-mask fn2-boot-config)) 0))))))
+
 (defun fn2-boot-checkpoint-descriptor-target-pool (c kind id ogen fn2-boot-config fn2-origin
                                                  fn2-checkpoints fn2-checkpoint-refs fn2-checkpoint-bytes)
  (declare (xargs :stobjs (fn2-boot-config fn2-origin fn2-checkpoints fn2-checkpoint-refs fn2-checkpoint-bytes)
@@ -47,7 +61,9 @@
   :guard (and (fn2-boot-config-wfp fn2-boot-config) (fn2-origin-wfp fn2-origin)
               (fn2-checkpoints-wfp fn2-checkpoints) (fn2-checkpoint-refs-wfp fn2-checkpoint-refs)
               (fn2-checkpoint-bytes-wfp fn2-checkpoint-bytes))))
- (if (not (fn2-boot-descriptor-source-p c kind id ogen fn2-boot-config fn2-origin
+ (if (fn2-boot-descriptor-skipped-p c kind id ogen fn2-boot-config fn2-origin)
+     (mv :skip 0 0)
+  (if (not (fn2-boot-descriptor-source-p c kind id ogen fn2-boot-config fn2-origin
              fn2-checkpoints fn2-checkpoint-refs fn2-checkpoint-bytes))
      (mv :source 0 0)
   (mv-let (code offset bytes next)
@@ -56,7 +72,7 @@
    (if (and (eq code :read) (equal bytes *fn2-format-sector-size*) (equal next bytes)
              (<= (+ offset bytes) (fn2-boot-config-image-size fn2-boot-config)))
        (mv :read offset bytes)
-     (mv :bounds 0 0)))))
+     (mv :bounds 0 0))))))
 
 ; The caller obtains KIND/ID/OGEN and the source window from the real BOOT row.
 ; A zero parser grant performs no seeding, reading or candidate mutation.

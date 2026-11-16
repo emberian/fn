@@ -73,6 +73,25 @@ class DescriptorSource(unittest.TestCase):
         self.assertIn('*fn2-checkpoint-state-preparing*', self.source)
         self.assertIn('fn2-boot-config-anchor-checked-mask', self.source)
 
+    def test_skip_requires_receipt_and_unambiguous_exact_physical_scan(self):
+        skip = extract.unique(self.source, 'fn2-boot-descriptor-skipped-p')
+        body = self.source[skip.start:skip.end]
+        self.assertIn('(and (natp c) (< c 4)', body)
+        self.assertIn('(fn2-boot-bootstrap-receipt-p kind id ogen fn2-boot-config fn2-origin)', body)
+        self.assertIn('(equal (logand (ash 1 c) (fn2-boot-config-anchor-checked-mask fn2-boot-config)) 0)', body)
+        for mask in ('empty', 'invalid'):
+            call = '(logand (ash 1 c) (fn2-boot-config-anchor-' + mask + '-mask fn2-boot-config))'
+            self.assertIn('(equal ' + call + ' 0)', body)
+            self.assertIn('(not (equal ' + call + ' 0))', body)
+        target = extract.unique(self.source, 'fn2-boot-checkpoint-descriptor-target-pool')
+        code = self.source[target.start:target.end]
+        self.assertIn('(mv :skip 0 0)', code)
+        self.assertLess(code.index('(fn2-boot-descriptor-skipped-p'),
+                        code.index('(fn2-boot-descriptor-source-p'))
+        # Source refusal remains the fallback; an absent candidate cannot skip.
+        self.assertIn('(mv :source 0 0)', code)
+        self.assertEqual(len(lr.match('(fn2-checkpoint-restore-read-target ?*args)', [target])), 1)
+
 
 if __name__ == '__main__':
     unittest.main()
