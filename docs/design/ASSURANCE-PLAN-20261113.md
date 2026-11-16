@@ -5,7 +5,7 @@ Owner: integration. Commissioned by ember on 2026-11-13, following the
 `fn2-squares` remains the obligation store. Reports and public-claim coverage
 must be derived from that store and the actual served call/attachment graph.
 
-## Current integration frontier — 2026-11-16 00:30 UTC
+## Current integration frontier — 2026-11-16 01:17 UTC
 
 The descriptor reader is qualified on the shared foundation at `6e7a1a9c1`;
 its [current 34-book record](receipts/checkpoint-reader-foundation-thirty-four-record.json)
@@ -14,7 +14,8 @@ The six original unrestricted reader claims remain refuted and unfinished;
 the six distinct guarded replacements are qualified. BOOT still needs to consume
 this bounded reader with verified persisted geometry and retained ownership.
 
-The served-family candidate is `6701dbac50678ced466358a13dc43c704bba03b4`.
+The served-family candidate is `9d3edbe27`, built on `80cbba4a3` and the
+qualified paired BOOT schema at `fa5711d5c`.
 It joins the qualified manifest arithmetic and upload scanner repairs, restores
 the native test launcher's executable mode, and corrects SOURCE's refused-issue
 descriptor reports. WAIT/BAD now report zero descriptors; successful issue still
@@ -46,16 +47,19 @@ The actual upload scanner is qualified in a 16-book closure, and its unit
 controls in a 17-book closure. A generalized partial-prefix invariant proves
 the original full refinement claim; runtime bodies, guards and the public
 formula are unchanged. Page geometry, ordering, workspace and served runs have
-a qualified 47-book union. Connection/upload-kind and range/machines-C
-composition remain the next caller dependencies.
+a qualified 47-book union. Connection/TLS/schema callers now have a qualified 46-book union, and the
+five-book machines-C chain a qualified 115-book closure. RAW still has five
+missing books, with upload-kind the prerequisite blocker.
 
 BOOT's lower bootstrap constructor, verifier, receipt and six component controls
 have a qualified 40-book closure at `17f802d449574e56ed28e2476cde42b119535e46`.
 This does not establish a persisted-read completion or public BOOT/CORE path.
-The upstream inline BOOT configuration declaration must be replaced by the
-owning extracted declaration as part of the coherent consumer join; adding the
-new declaration beside the old one would leave two schema definitions. Actual
-BOOT routing and physical checkpoint/reopen remain outstanding.
+The served-family candidate now replaces the inline BOOT configuration with
+the owning extracted declaration; its actual boot-kind closure is qualified
+(90 books, 89 reused). Actual BOOT routing and physical checkpoint/reopen remain
+outstanding. Source work has identified an old executor image/window geometry
+and insufficient callback cost declarations; both must be repaired in the real
+constructor and dispatch before the physical path can run.
 The FETCH lifetime repair retains META until actual coverage and preserves
 terminal cleanup in source; its full composed constructor campaign remains owed.
 
@@ -88,6 +92,28 @@ WITHDRAWN support and the parked consumer model do not establish that behavior.
 Authenticated submitter provenance, target membership and positioned reports must
 be connected through the actual transaction path. Payload reclamation after
 withdrawal is a separate obligation; a withdrawal report alone cannot free data.
+
+Native prerequisite qualification at `80cbba4a3` now covers the three new leaves
+`native-b3-evidence`, `authority-port`, and `fnct-pool` in a 39-book union.
+Root independently checked all current source keys and actual certificate/FASL
+payloads against the [record](receipts/native-leaves-qualified39.json).
+This does not qualify node-profile or the host image. Upstream `9b8c12408` adds
+STATUS checks before death and after reopen; five focused controls pass, while
+the actual socket campaign remains unrun.
+
+The candidate connects the compression performer and a real backend duplex
+socket fixture. Its independent inflater checks exact replies on one stream;
+the fixture also checks the actual C handle across turns. Source controls pass,
+but execution remains pending the shared image. Public COMPRESS negotiation
+remains unavailable because current AUTHINFO PASS cannot succeed; a backend
+fixture does not establish that public path.
+
+The unchanged whole UPLOAD declaration measured 25.70 seconds in a diagnostic
+profile. The corrected generator trial completed all 70 accessor families, up
+from 49 before, but still exceeded its original 20-second author limit at final
+initialization. No diagnostic generator change is qualified or integrated into
+this upstream tree. The next repair targets measured initializer/proof cost;
+unchanged repeated trials are not a completion step.
 
 Completion still requires composed FETCH/cancellation, the native APPEND/STATUS/
 query and NNTP consumers, process-death recovery of accepted data, productive
