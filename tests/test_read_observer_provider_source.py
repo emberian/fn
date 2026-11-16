@@ -9,6 +9,13 @@ def norm(x):
  if isinstance(x,lr.Lst):return [norm(y) for y in x.items]
  if isinstance(x,lr.Pre):return [x.prefix,norm(x.node)]
  return getattr(x,'low',getattr(x,'text',''))
+def b_source_current_or_prefix(actual,row):
+ if hashlib.sha256(actual).hexdigest()==row['sha256']:return True
+ from physical_b_loader_rewrite import project_loader_prefix
+ frozen=json.loads((ROOT/'tools/fixtures/physical-b-loader-prefix-source.json').read_text())
+ return (frozen['frozen-current-sha256']==row['sha256'] and
+         hashlib.sha256(frozen['frozen-current'].encode()).hexdigest()==row['sha256'] and
+         actual.decode()==project_loader_prefix(frozen['frozen-current']))
 class ReadProvider(unittest.TestCase):
  def test_current_read_body_and_abi_are_unchanged(self):
   text=(ROOT/'books/machines-c-read.lisp').read_text()
@@ -43,7 +50,17 @@ class ReadProvider(unittest.TestCase):
   self.assertIn('books/run-physical-release',graph['read-closure']['books/run-physical-region']['includes'])
   for book,row in graph['read-closure'].items():
    self.assertTrue((ROOT/(book+'.lisp')).exists(),book)
-   self.assertEqual(hashlib.sha256((ROOT/(book+'.lisp')).read_bytes()).hexdigest(),row['sha256'],book)
+   actual=(ROOT/(book+'.lisp')).read_bytes()
+   if book=='books/machines-b':self.assertTrue(b_source_current_or_prefix(actual,row))
+   else:self.assertEqual(hashlib.sha256(actual).hexdigest(),row['sha256'],book)
+ def test_frozen_b_accepts_only_exact_compositional_prefix(self):
+  from physical_b_loader_rewrite import project_loader_prefix
+  frozen=json.loads((ROOT/'tools/fixtures/physical-b-loader-prefix-source.json').read_text())
+  graph=json.loads((ROOT/'tools/fixtures/read-observer-provider-closure.json').read_text());row=graph['read-closure']['books/machines-b']
+  original=frozen['frozen-current'];projected=project_loader_prefix(original)
+  self.assertTrue(b_source_current_or_prefix(original.encode(),row))
+  self.assertTrue(b_source_current_or_prefix(projected.encode(),row))
+  self.assertFalse(b_source_current_or_prefix(projected.replace('(nfix cursor)','(nfix altered-cursor)').encode(),row))
  def test_prepared_gate_uses_actual_assembly_world(self):
   s=(ROOT/'tests/read-observer-provider-world-unit.lisp').read_text()
   self.assertIn('(include-book "../books/assembly-attach")',s)
