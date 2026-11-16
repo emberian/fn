@@ -4,7 +4,7 @@ from pathlib import Path
 import sealer_pressure_cost_audit as a
 class Cost(unittest.TestCase):
  def test_actual_callbacks(self):
-  self.assertEqual(a.report(),{'fn2-sealer-checkpoint-pending-op':74,'fn2-sealer-checkpoint-resumed-p':82,'fn2-sealer-checkpoint-resumable-p':160,'fn2-sealer-checkpoint-wake-target':236})
+  self.assertEqual(a.report(),{'fn2-sealer-checkpoint-pending-op':102,'fn2-sealer-checkpoint-resumed-p':82,'fn2-sealer-checkpoint-resumable-p':160,'fn2-sealer-checkpoint-wake-target':264})
  def test_unknown_callee_refuses(self):
   with self.assertRaises(ValueError):a.expr(['fn2-seals-invented-field','0','table'])
   with self.assertRaises(ValueError):a.expr(['fn2-invented-helper','table'])
@@ -21,6 +21,13 @@ class Cost(unittest.TestCase):
     if x and isinstance(x[0],str) and x[0].startswith(('fn2-run-loads-','fn2-checkpoint-summary-leases-')):calls.append(x[0])
     for y in x:walk(y)
   walk(actual);self.assertEqual(len(calls),6)
+ def test_generation_is_kind_local_not_directory(self):
+  source=Path('books/machines-a-access.lisp').read_text()
+  self.assertIn('(fn2-machine-index-access kind 8)',source)
+  self.assertIn('(fn2-machine-index-access slot 32)',source)
+  self.assertNotIn('(fn2-machine-index-access generation',source)
+  self.assertEqual(a.KNOWN['fn2-machine-generation'],a.FIELD)
+  self.assertEqual(a.KNOWN['fn2-machine-generation-read-code'],a.FIELD_CODE)
  def test_real_generated_access_contracts(self):
   s=Path('books/machines.lisp').read_text()
   self.assertIn('(if (eq (,code ,@call) :ok) ,value-body',s)

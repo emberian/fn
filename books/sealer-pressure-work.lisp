@@ -16,7 +16,7 @@
 (defconst *fn2-sealer-checkpoint-pending-steps*
  (+ 2 *fn2-sealer-pressure-id-steps* *fn2-sealer-pressure-snapshot-steps*
     *fn2-sealer-pressure-index-steps* *fn2-sealer-pressure-field-steps*
-    *fn2-sealer-pressure-id-steps* *fn2-sealer-pressure-index-steps*
+    *fn2-sealer-pressure-field-code-steps* *fn2-sealer-pressure-field-steps*
     *fn2-sealer-pressure-field-steps*))
 ; Lower resumed29 scalar cells +loader-free5 +six cells per actual source.
 (defconst *fn2-sealer-pressure-resumed-steps*
@@ -29,8 +29,8 @@
     8 1 1 *fn2-sealer-pressure-resumed-steps*))
 (defconst *fn2-sealer-checkpoint-wake-steps*
  (+ *fn2-sealer-checkpoint-pending-steps* *fn2-sealer-pressure-resumable-steps* 2))
-(assert-event (equal *fn2-sealer-checkpoint-pending-steps* 74))
+(assert-event (equal *fn2-sealer-checkpoint-pending-steps* 102))
 (assert-event (equal *fn2-sealer-checkpoint-wake-steps*
-                     (+ 188 (* 6 *fn2-run-active-source-cursors*))))
+                     (+ 216 (* 6 *fn2-run-active-source-cursors*))))
 ; Both callbacks read only scalar metadata: zero typed payload bytes, zero IO.
 ; MASTER sequential face+controller/charge admission is not established here.
