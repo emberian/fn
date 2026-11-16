@@ -48,7 +48,7 @@
                     (= (fn2-nop-count op) (length plain))
                     (= (fn2-ncap-tx cap) expected-tx)
                     (= handle (sb-sys:sap-int
-                               (fn2-native-compress-handle (fn2-ncap-compress cap)))))))
+                               (fn2-native-compress-handle (fn2-ncap-compress cap))))))
        (fn2-n-post-completions host)
        (let ((post (car (last (fn2-n-trace-list host)))))
         (assert (equal post
