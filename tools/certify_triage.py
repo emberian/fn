@@ -34,6 +34,8 @@ exactly one kind:
   killed     the book's ACL2 was killed (exit 143, 137, -9, -15): earlyoom or
              the cgroup, not a proof.
   other      failed with none of the above; read the log.
+  incomplete no terminal result or exit code yet. This does not establish that
+             the process is still alive; inspect its recorded handle separately.
 
 The verdict a book "passed" is the manifest's `book_results` when
 `manifest.json` is in the directory, else this book's own
@@ -43,7 +45,8 @@ the manifest's `acl2_exit_codes`, else the book's `*.active.json`.
 The classification of an individual error block is `tools/triage.py`'s
 `acl2_errors` (wrapped-line aware); this tool only decides what a *run* of
 logs adds up to.  Exit 0 when nothing is real, limit, killed or other; 1
-otherwise; 2 when the directory has no logs.
+otherwise; 2 when the directory has no logs; 3 when only incomplete results
+remain alongside non-failures.
 """
 
 from __future__ import annotations
@@ -59,7 +62,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parent))
 import triage  # noqa: E402
 
 KINDS = ("real", "cascade", "must-fail", "limit", "killed", "other")
-ALL_KINDS = KINDS + ("echo", "clean")
+ALL_KINDS = KINDS + ("echo", "clean", "incomplete")
 LOG_SUFFIX = ".certify.log"
 SUCCESS_LINE = re.compile(r"^FN_CERTIFY_SUCCESS [0-9a-f]{32} [0-9a-f]{12}\s*$", re.M)
 # A line ACL2 itself printed, as opposed to source echoed back to the log.
@@ -132,6 +135,9 @@ def classify(book: str, text: str, code, manifest: dict | None = None) -> dict:
         elif suspicious:
             row.update(kind="echo", detail="passed; failure words only in echoed source")
         return row
+    if code is None and book not in (manifest.get("book_results") or {}):
+        row.update(kind="incomplete", detail="no terminal result; process liveness not established")
+        return row
     if isinstance(code, str) and code.startswith("timed out"):
         row.update(kind="limit", detail=code)
         return row
@@ -184,6 +190,8 @@ def report(directory: Path, rows: list[dict]) -> list[str]:
     lines = [f"== certify triage {directory.name}: {len(rows)} book logs"]
     lines.append("   " + " / ".join(f"{kind} {counts[kind]}" for kind in KINDS))
     lines.append(f"   (not failures: echo {counts['echo']}, clean {counts['clean']})")
+    if counts["incomplete"]:
+        lines.append(f"   incomplete {counts['incomplete']} (no terminal result; check recorded handles)")
     for kind in ("real", "limit", "killed", "other"):
         for row in (r for r in rows if r["kind"] == kind):
             lines.append(f"-- {kind.upper()} {row['book']}: {row['detail']}")
@@ -210,7 +218,9 @@ def main(argv: list[str] | None = None) -> int:
         write_tsv(rows, arguments.tsv)
     print("\n".join(report(arguments.run_dir, rows)))
     counts = Counter(row["kind"] for row in rows)
-    return 1 if any(counts[kind] for kind in ("real", "limit", "killed", "other")) else 0
+    if any(counts[kind] for kind in ("real", "limit", "killed", "other")):
+        return 1
+    return 3 if counts["incomplete"] else 0
 
 
 if __name__ == "__main__":
