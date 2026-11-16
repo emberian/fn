@@ -722,22 +722,26 @@
                                            (xs ,(fn2-columns-field-term index name)))))))
          ; Guards simplify accessors to NTH before type inference.  These
          ; matching rules need no rewriting to relieve their hypotheses.
+         ; The public result already proves this domain and value. Only open
+         ; its accessors to expose the raw term; do not repeat array/shape proof.
          (defthm ,(fn2-columns-sym read "-RAW-NTH-NATP")
            (implies (and (,p ,name) (,wfp ,name) (natp i)
                          (< i (nth ,rows-index ,name)))
                     (natp (nth i ,(fn2-columns-field-term index name))))
            :rule-classes :type-prescription
-           :hints (("Goal" :in-theory (disable ,wfp ,p)
-                          :use ((:instance ,(fn2-columns-sym read "$AP-NTH-NATP")
-                                           (xs ,(fn2-columns-field-term index name)))))))
+           :hints (("Goal"
+                    :in-theory (union-theories '(,read ,raw ,rows)
+                                               (theory 'minimal-theory))
+                    :use ((:instance ,(fn2-columns-sym read "-NATP"))))))
          (defthm ,(fn2-columns-sym read "-RAW-NTH-BOUND")
            (implies (and (,p ,name) (,wfp ,name) (natp i)
                          (< i (nth ,rows-index ,name)))
                     (< (nth i ,(fn2-columns-field-term index name)) ,(expt 2 width)))
            :rule-classes :linear
-           :hints (("Goal" :in-theory (disable ,wfp ,p)
-                          :use ((:instance ,(fn2-columns-sym read "$AP-NTH-BOUND")
-                                           (xs ,(fn2-columns-field-term index name)))))))
+           :hints (("Goal"
+                    :in-theory (union-theories '(,read ,raw ,rows)
+                                               (theory 'minimal-theory))
+                    :use ((:instance ,(fn2-columns-sym read "-BOUND"))))))
          (defthm ,(fn2-columns-sym write "-PRESERVES-WFP")
            (implies ,guard (,wfp (,write i v ,name)))
            :hints (("Goal" :in-theory (disable ,wfp)
