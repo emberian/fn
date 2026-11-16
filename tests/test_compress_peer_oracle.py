@@ -18,7 +18,7 @@ class CompressPeerOracleTests(unittest.TestCase):
         with self.assertRaises(AssertionError):
             check(rows)
 
-    def test_reset_stream_rejected(self):
+    def test_terminated_stream_rejected(self):
         rows = self.rows()
         fresh = zlib.compressobj(wbits=-15)
         rows[1] = (rows[1][0], (fresh.compress(bytes.fromhex(rows[1][0])) + fresh.flush(zlib.Z_FINISH)).hex())

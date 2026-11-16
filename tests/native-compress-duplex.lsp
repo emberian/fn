@@ -9,9 +9,12 @@
 
 (defun fn2-native-compress-duplex-replies (host cap peer)
  (let ((rows nil) (expected-tx 0)
-       (transport (fn2-native-compress-transport (fn2-ncap-compress cap))))
-  ;; No codec reopen/rebind between replies. A repeated reply exercises the
-  ;; encoder dictionary retained by the peer's one persistent inflater.
+       (transport (fn2-native-compress-transport (fn2-ncap-compress cap)))
+       (handle (sb-sys:sap-int (fn2-native-compress-handle (fn2-ncap-compress cap)))))
+  (assert (plusp handle))
+  ;; Check the actual native handle across replies and each physical turn.
+  ;; The independent peer checks exact replies with one persistent inflater;
+  ;; wire bytes alone do not distinguish all possible encoder resets.
   (dolist (text '("201 backend ready" "201 backend ready" "205 closing"))
    (let* ((plain (concatenate '(simple-array (unsigned-byte 8) (*))
                    (map '(vector (unsigned-byte 8)) #'char-code text) #(13 10)))
@@ -35,13 +38,17 @@
        (dotimes (turn 256)
         (declare (ignore turn))
         (when (= (fn2-nop-state op) +fn2-n-completed+) (return))
-        (fn2-n-start-ready host slot cap))
+        (fn2-n-start-ready host slot cap)
+        (assert (= handle (sb-sys:sap-int
+                           (fn2-native-compress-handle (fn2-ncap-compress cap))))))
        (incf expected-tx (length plain))
        (assert (and (= (fn2-nop-state op) +fn2-n-completed+)
                     (= (fn2-nop-outcome op) *fn2-outcome-done*)
                     (= (fn2-nop-reason op) *fn2-reason-none*)
                     (= (fn2-nop-count op) (length plain))
-                    (= (fn2-ncap-tx cap) expected-tx)))
+                    (= (fn2-ncap-tx cap) expected-tx)
+                    (= handle (sb-sys:sap-int
+                               (fn2-native-compress-handle (fn2-ncap-compress cap)))))))
        (fn2-n-post-completions host)
        (let ((post (car (last (fn2-n-trace-list host)))))
         (assert (equal post
