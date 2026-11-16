@@ -37,6 +37,30 @@ class Lifecycle(unittest.TestCase):
                      self.assertRaisesRegex(ValueError,'metadata identity'):
                     leaf.check_cache(root,plan,{'books/p'},root,'t')
 
+    def test_stop_waits_for_actual_delayed_child(self):
+        child=leaf.subprocess.Popen([sys.executable,'-c','import time; time.sleep(0.15)'])
+        def identity(pid):
+            self.assertEqual(pid,child.pid)
+            return ('original','S') if child.poll() is None else None
+        began=time.monotonic()
+        try:
+            with patch.object(leaf,'process_identity',side_effect=identity):
+                leaf.require_stopped([{'pid':child.pid,'start_ticks':'original'}],time.time()+2)
+            self.assertGreaterEqual(time.monotonic()-began,0.1)
+            self.assertEqual(child.wait(timeout=1),0)
+        finally:
+            if child.poll() is None: child.kill(); child.wait()
+
+    def test_stop_does_not_confuse_reused_pid_or_zombie_with_absence(self):
+        handles=[{'pid':123,'start_ticks':'original'}]
+        with patch.object(leaf,'process_identity',return_value=('other','S')):
+            leaf.require_stopped(handles,time.time()+1)
+        with patch.object(leaf,'process_identity',return_value=('original','Z')), \
+             self.assertRaisesRegex(ValueError,"123, 'Z'"):
+            leaf.require_stopped(handles,time.time())
+        with patch.object(leaf,'process_identity',side_effect=[('original','Z'),None]):
+            leaf.require_stopped(handles,time.time()+1)
+
     def test_record_miss_filter_distinguishes_root_from_parent(self):
         self.assertEqual(certify_books.uncached_parent_books(['books/root'], ['books/root']), [])
         self.assertEqual(certify_books.uncached_parent_books(['books/root', 'books/parent'], ['books/root']), ['books/parent'])
