@@ -583,3 +583,27 @@ uniform error triples. Exact two-book record
 checks live fn2-tv-codes identity, body-only mutation and actual macro refusals;
 receipt `/tmp/translation-macro-qualified2-receipt.json`. This tooling gate has no
 application or served packet dependency and does not enlarge the scope above.
+
+
+### Arbitrary-RC MEMBER evaluation on the current foundation
+
+`MemberSymbolListEvaluation` proves finite canonical evaluation on arbitrary
+keys and proper symbol lists, with the same result as the actual emitted
+recursive MEMBER function. This complementary domain covers the shape used by
+`FN2-CNS-PUT-ANSWER` without imposing a symbol-key premise on RC; existing
+symbol-key certificates remain unchanged. The proof resolves the existing five
+canonical definitions, not an arbitrary function oracle.
+
+The six-module kernel gate passed at source `eccdfd0bc`, with receipt
+`docs/design/receipts/member-symbol-current-six.json`: 44 verified current
+foundation artifacts, 8.059 seconds total compiler time, 265,519,104-byte peak
+under 2 GiB and swap zero, no memory events. All 22 axiom censuses contain only
+propext, Classical.choice and Quot.sound. Controls bind canonical KEYWORD
+SIZE/FULL objects to their current encodings, check a matching suffix and
+non-symbol keys, and reject non-symbol elements and improper lists.
+
+This scope excludes unrelated generated definitions, the full global dispatcher
+BodyCorrect join, current served consumer and attached CNS packet. The separate
+consumer proposal is retained on `lane/audit-served-bridge-followthrough`; it
+needs current global dispatch and packet qualification before semantic discharge.
+The checked evaluation is a component of that join, not its replacement.
