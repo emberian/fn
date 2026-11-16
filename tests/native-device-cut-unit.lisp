@@ -41,3 +41,13 @@
  (not (eq (car (fn2-native-device-cut-replay
                 '((:profile nil) (:boot-start nil 1 :ok)
                   (:boundary 1 "device-return" 4 7 t)) 17 :fdatasync)) :pass)))
+
+; A concurrent enqueue after the selected physical return is not a second
+; physical operation. A later begin would contradict this worker coordinate.
+(assert-event
+ (let ((queued (append *fn2-nde-write-physical*
+                '((:submit 2 (17 5 8 :write 200 1 (9) 0 1 1))))))
+  (and (eq (fn2-nde-cut-position '(:boundary 4 "device-syscall-return" 4 7 t)
+             *fn2-cut-control* queued :fdatasync) :after-physical)
+       (eq (fn2-nde-cut-position '(:boundary 4 "device-syscall-return" 4 7 t)
+             *fn2-cut-control* (append queued '((:begin 2))) :fdatasync) :cut-return-position))))

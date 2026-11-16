@@ -33,6 +33,17 @@
  (if (atom records) nil
   (or (equal (car records) (list :begin id))
       (fn2-nde-cut-begunp id (cdr records)))))
+; The executor may submit more jobs after this worker records its return but
+; before the worker reaches the boundary. Those submissions are not another
+; physical effect. No later begin/return can occur on this single worker.
+(defun fn2-nde-cut-submit-tailp (records)
+ (if (atom records) (null records)
+  (and (eq (caar records) :submit) (fn2-nde-cut-submit-tailp (cdr records)))))
+(defun fn2-nde-cut-return-tailp (id records)
+ (if (atom records) nil
+  (if (and (eq (caar records) :return) (equal (nth 1 (car records)) id))
+      (fn2-nde-cut-submit-tailp (cdr records))
+    (fn2-nde-cut-return-tailp id (cdr records)))))
 (defun fn2-nde-cut-pending (records pending)
  (if (atom records) pending
   (let ((row (car records)))
@@ -64,7 +75,7 @@
              (not (fn2-nde-cut-begunp id records)))
         :before-physical :cut-begin-position))
    ((equal label "device-syscall-return")
-    (if (and job (equal (car (last records)) (fn2-nde-return id records)))
+    (if (and job (fn2-nde-cut-return-tailp id records))
         :after-physical :cut-return-position))
    ((equal label "device-return")
     (if (and job (fn2-nde-return id records)) :before-terminal-post :cut-return-position))
