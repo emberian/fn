@@ -37,7 +37,7 @@
           (hints (getf (cdddr event) :hints)))
     (assert (find public (subseq new 0 index) :key #'cadr))
     (assert (equal hints
-     `(("Goal" :in-theory (union-theories '(,read ,(intern (concatenate 'string prefix "$AI") "ACL2") fn2-control-rows)
+     `(("Goal" :in-theory (union-theories '(,read ,(intern (concatenate 'string prefix "$AI") "ACL2") fn2-control-rows ,(intern (concatenate 'string "*" prefix "$AI*") "ACL2") *fn2-control-rows*)
                                          (theory 'minimal-theory))
                :use ((:instance ,public))))))))
   new))
