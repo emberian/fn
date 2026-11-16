@@ -24,6 +24,25 @@ which has not begun cannot explain image changes. Short/error returns are not
 rewritten to successes. Trace overflow, malformed tails, or records following
 the selected boundary refuse the capture.
 
+## Lock order and concurrent completion
+
+The observer runs boundary-lock → evidence-lock. The physical recorder holds
+only evidence-lock while copying/recording a descriptor or result, and releases
+it before calling the original submit or performer. The original submit then
+takes the device lock. The worker releases the device lock before either
+boundary callback. The control recorder calls the original control record
+before taking evidence-lock; neither path takes boundary-lock under it. Thus
+there is no reverse evidence-lock → boundary-lock edge in these sources.
+
+On selected death only, evidence-lock stays held until the original aborting
+exit. A syscall already executing may finish physically while its return logger
+blocks; its recorded begin still makes that Write uncertain in the existing
+model. A performer blocked before begin cannot execute the syscall. If stdout
+or process termination fails, the campaign must reject the missing exact exit86;
+a marker alone is not a successful crash run. Concurrent submissions after a
+worker return are allowed before its return boundary; another begin/return is
+refused because the selected single worker has not left that boundary yet.
+
 ## Executed model path
 
 The consumer validates contiguous boundary ordinals, a final selected marker,

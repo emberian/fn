@@ -37,6 +37,31 @@ class CaptureSourceTests(unittest.TestCase):
         self.assertNotIn('fn2-device-perform', ledger.calls(observer))
         self.assertNotIn('fn2-host-post-result', ledger.calls(observer))
 
+    def test_every_literal_device_callback_accepts_job_context(self):
+        found = []
+        def walk(node):
+            if isinstance(node, list):
+                yield node
+                for child in node:
+                    yield from walk(child)
+        for directory in ('host', 'tests'):
+            for path in (ROOT / directory).rglob('*'):
+                if path.suffix not in ('.lisp', '.lsp'):
+                    continue
+                source = path.read_text()
+                if '(fn2-device-start ' not in source:
+                    continue
+                for form in ledger.read_forms(source):
+                    for call in walk(form):
+                        if ledger.head(call) != 'fn2-device-start' or len(call) < 7:
+                            continue
+                        callback = call[6]
+                        self.assertEqual(ledger.head(callback), 'lambda', str(path))
+                        self.assertEqual(len(callback[1]), 2, str(path))
+                        found.append(str(path.relative_to(ROOT)))
+        self.assertEqual(set(found), {'host/adapter.lisp', 'host/native-session-raw.lisp',
+                                      'tests/native-device-unit.lsp'})
+
     def test_raw_cut_consumer_requires_actual_replay_and_complete_image(self):
         source = (ROOT / 'tests/native-device-cut-raw.lsp').read_text()
         calls = set().union(*(ledger.calls(f) for f in ledger.read_forms(source)))
