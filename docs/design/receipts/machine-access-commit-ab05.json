@@ -1,0 +1,714 @@
+{
+  "scope": "Actual machine access33, commit60 and machines-b86 qualified unchanged on exact ab05; whole RAW/application not claimed.",
+  "source_commit": "ab05c79b16846071fddb2213630a22e33d7ad33b",
+  "resource": {
+    "memory_max": 2147483648,
+    "swap_max": 0,
+    "start_epoch": 1794788157,
+    "internal_deadline_epoch": 1794788397,
+    "outer_deadline_epoch": 1794788457,
+    "whole_event_steps": 2000000,
+    "whole_event_seconds": 20
+  },
+  "author": {
+    "access": "Whole source PASS, forge:/tmp/machine-access-current-author.log, STOP0",
+    "commit": "Whole source PASS, forge:/tmp/commit-current-author.log, STOP0",
+    "machines_b": "Whole source PASS28.71s/1038422steps, forge:/tmp/machines-b-current-author.log, STOP0; largest original macro recovery-machine11.38s/495740steps, retained D26 defect"
+  },
+  "records": [
+    {
+      "book": "books/machines-a-access",
+      "closure_key": "f8ea765042a938ea70d8a8dce877e6d6f8ec9e5bc46dbf28cbda2b59daf709e7",
+      "closure_count": 33,
+      "manifest": "/Users/ember/dev/fn/build/lanes/finish-block-word-callers/build/acl2/certify-20261116T001635Z-2005986/manifest.json",
+      "remote_manifest": "/build/lanes/block-word-callers-ab05/build/acl2/certify-20261116T001635Z-2005986/manifest.json",
+      "manifest_sha256": "2d0f17cbe425d599be8ba919261dd2858e75c5b0df91c6c35e3047e8349869ba",
+      "cache_entry": "/Users/ember/.cache/fn-certs/f8ea765042a938ea70d8a8dce877e6d6f8ec9e5bc46dbf28cbda2b59daf709e7/1bb79eab981410d7",
+      "cache_metadata": {
+        "book": "books/machines-a-access",
+        "cert_sha256": "b6c09b0ebc2ccf5d21d4c85e1e1a5ce14e6817f73afc90b3a5b3bc67e1a0c79d",
+        "certification_provenance": {
+          "acl2_executable_sha256": "30583c3d9988ea23cf5edfac828b4ddea984a9a7db9c3b44aaa9c399cf4fdbc5",
+          "acl2_toolchain": {
+            "compatibility": {
+              "core_sha256": "3f5b101bb9437d66366dc2a299b7f9cb98fdaf40d1add5caf8baef9e451dd07d",
+              "launcher_chain_sha256": [
+                "30583c3d9988ea23cf5edfac828b4ddea984a9a7db9c3b44aaa9c399cf4fdbc5"
+              ],
+              "launcher_environment": [
+                {
+                  "SBCL_HOME": "/tank/fn/sbcl/lib/sbcl/"
+                }
+              ],
+              "project_directories": {
+                ":FN": "."
+              },
+              "proof_environment": {
+                "ACL2_BOOK_HASH_ALISTP": "NIL",
+                "ACL2_CUSTOMIZATION": "NONE",
+                "ACL2_SYSTEM_BOOKS": null
+              },
+              "runtime_sha256": "b115fe956aadee603459fac401e1ff2cc39321e14848544a0fe438788a2fc6d5",
+              "schema": "fn-acl2-toolchain-v1"
+            },
+            "core": {
+              "path": "/tank/fn/acl2-8.7/saved_acl2.core",
+              "sha256": "3f5b101bb9437d66366dc2a299b7f9cb98fdaf40d1add5caf8baef9e451dd07d",
+              "size": 233686912
+            },
+            "launchers": [
+              {
+                "path": "/tank/fn/toolchains/w28/acl2-literal-4g-tls64k",
+                "sha256": "30583c3d9988ea23cf5edfac828b4ddea984a9a7db9c3b44aaa9c399cf4fdbc5",
+                "size": 279
+              }
+            ],
+            "runtime": {
+              "path": "/tank/fn/sbcl/bin/sbcl",
+              "sha256": "b115fe956aadee603459fac401e1ff2cc39321e14848544a0fe438788a2fc6d5",
+              "size": 2149704
+            },
+            "schema": "fn-acl2-toolchain-v1",
+            "status": "qualified"
+          },
+          "acl2_toolchain_identity": "8aeb1bea18968c6cd33ac633a80ebf67e4924504db112fd27eb11f16a27b2a8c",
+          "acl2_version": "ACL2 Version 8.7",
+          "environment": {
+            "ACL2_BOOK_HASH_ALISTP": "NIL",
+            "ACL2_CUSTOMIZATION": "NONE",
+            "ACL2_PROJECTS": "/build/lanes/block-word-callers-ab05/acl2-projects",
+            "ACL2_SYSTEM_BOOKS": null,
+            "SBCL_USER_ARGS": null
+          },
+          "reader_sha256": "3a25bad1a53f07d48101c88fbf7e5fca81575735bfdbe48a168cab81141940cd",
+          "runner_sha256": "0c92c676ec1d176a554a63d7106e4bfbd8cc4d6a5293b3daa0c301cb4650f5d5"
+        },
+        "closure": [
+          "books/arm-children.lisp:8a2f83f5577f65b1d8c821288f432ee40bb459003be2c7f71132d2559b743c8b",
+          "books/arm-issue-effects.lisp:6a565cbf7ccdef49cdc620f191f748b518bcd7378a18c4578dc72ea7596f6770",
+          "books/arms.lisp:b04d9648a152e744bebd0c3b03d9cd0de2a113d7671d8e264b8f11da67b34cf1",
+          "books/borrow-release.lisp:f0df3db9fc4f4a77dca98f5c61f2503739bff4582352e43c04413d038440d7b3",
+          "books/columns-call-guards.lisp:3065ab76b92f9a12df8e0adc9668029c575c8e36ae93b1af20979f5f8a903bc3",
+          "books/columns-carrier-contracts.lisp:1744bd32762c8bf552be3e247ad633b80709a812d2d3ac44bdfc9d3f96561272",
+          "books/columns-guard-hints.lisp:61d8b4033b76e4207e82d281b535a81c7da52c9e554f35a8f82f4286aada3951",
+          "books/columns.lisp:207ac331ff6397765ce1bfb9e6d665ad55ea44ae99e8b5602a554cd8ab5d4760",
+          "books/core-children-a.lisp:f3dd446528beddd73b0fb342c0d473ce81a444f41e6446505a5de4ba22cc6273",
+          "books/core-children.lisp:205344fd39ce1b2efffa940c52976c789d68c0af99a22b86a5f5cbb3c1935653",
+          "books/core-harvest.lisp:c50a2a03d993afb722767318764bf164c591faa01731083569c207bd96c32364",
+          "books/core.lisp:4075f69555d19453b575f57d6c38740be685e4bc57de7f5eb1e00edddd9da0af",
+          "books/declare.lisp:21614abfc91ec57e0d97e77ef29b0ba68a0ba3ca49888131646d986f09dc6aef",
+          "books/exec-state.lisp:c483309fd7e2b59f709e369180bd677cb13772e9558a6b44d8d4be7a9dff6efe",
+          "books/fnv.lisp:37032ad1a3edcaef25be5f25b72a6354b2a6c036b740fef1a631c17beddc31ce",
+          "books/machines-a-access.lisp:a11d07a3562dab82acfb40975704e43f5a12d3ec51b20b981009a8a47e2fe602",
+          "books/machines-directory.lisp:4e8d1cb487f2bb860702fe649bc6796c04f89e3af921293dbc2222c7526e30f0",
+          "books/machines.lisp:cab59128acc05b35e9f16d5d59d77e21bbfb1b780bd2e85deac84321f6f7cc0d",
+          "books/operations.lisp:b7e7cab3f61033f1055f0ef3be5c0a8f3920a44c934c7b524fdba209c5ded826",
+          "books/ops-heads.lisp:d03efef4d76770d2cf6117b1e84ec473863911da5d1102f759f606746564d223",
+          "books/ops-issued-count.lisp:e68297dccd1c73c2a0ecdb96196ea87e340a04d636c4e14bb5864bed945f03b2",
+          "books/ops-issued-effects.lisp:527af3ba4f22611514610dbe3c5bfd50893e8cdb4199d97b61d831f289b75d9c",
+          "books/owed-discharge.lisp:dd1c8c3a0f05ae5ee19497b8f0506b2bace8f8dd9a264c57b2234f7658a581ce",
+          "books/owed.lisp:e3f24658d27261c871fa9927c5b075807e62921b37da358046a0090561b5a79f",
+          "books/pool-dimensions.lisp:96233e43d41147ed692624cf0ef855bff5979c440cbc19610a73b76920958cc6",
+          "books/pool-ranges.lisp:1a6de3844fd6363d5042ca6e22723798252f60f04a2f21e9892f93e20644f0f9",
+          "books/pool.lisp:77c43f42b6328258547341e19d0dce3186a7d214f8ba180daca8e7e44e4905b1",
+          "books/profile.lisp:b19d044118c5a1ec4b4166198a7dc07c607ee5773d0c128133a3121cbb070184",
+          "books/resources.lisp:ea05f325056836f299193539e448ff8b79b4c9df8e2c903bf583bbd296f49fae",
+          "books/run-budget.lisp:98d74bd69152473991e7471b77f2b2ecf16efab354585d2c093efe385cf242b2",
+          "books/sched.lisp:ba68f927119fb16bb9819f6a20326c370340c00ed9fccd9966cd1b6c0d40572b",
+          "books/trace.lisp:04ad49bc794b35a7abf88ee1532f6375cd4f7d7fb099a849b7f88b1bab166905",
+          "books/vocab.lisp:8d384c907614383447f33c3a8c19892358efb686c01143b52d48f0506f234b28"
+        ],
+        "closure_key": "f8ea765042a938ea70d8a8dce877e6d6f8ec9e5bc46dbf28cbda2b59daf709e7",
+        "evidence": "/Users/ember/dev/fn/build/lanes/finish-block-word-callers/build/acl2/certify-20261116T001635Z-2005986/manifest.json",
+        "fasl_sha256": "82d6a2db1cf066ba7df16a4677314f8079c377ec853c1f5e0ac8d57465dbd787",
+        "has_port": true,
+        "host": "nextop.local",
+        "key_version": "fn-cert-key-v4 forms+world+project-fn",
+        "origin_host": "forge",
+        "origin_kind": "run",
+        "origin_root": "/build/lanes/block-word-callers-ab05",
+        "port_sha256": "f4cb7e8160cfa6f41cddb04be508f922aa8e87c4ff126bfaad3379aa92e647e0",
+        "published_at": "2026-11-16T00:17:27.301424+00:00",
+        "published_from": "/Users/ember/dev/fn/build/lanes/finish-block-word-callers/books",
+        "source_sha256": "446d765ecb3b7aa0ed2ab7c9d2f9964bd47aff03d80cd521a9c6b11e1264ae5b",
+        "toolchain": {
+          "core_sha256": "3f5b101bb9437d66366dc2a299b7f9cb98fdaf40d1add5caf8baef9e451dd07d",
+          "launcher_chain_sha256": [
+            "30583c3d9988ea23cf5edfac828b4ddea984a9a7db9c3b44aaa9c399cf4fdbc5"
+          ],
+          "launcher_environment": [
+            {
+              "SBCL_HOME": "/tank/fn/sbcl/lib/sbcl/"
+            }
+          ],
+          "project_directories": {
+            ":FN": "."
+          },
+          "proof_environment": {
+            "ACL2_BOOK_HASH_ALISTP": "NIL",
+            "ACL2_CUSTOMIZATION": "NONE",
+            "ACL2_SYSTEM_BOOKS": null
+          },
+          "runtime_sha256": "b115fe956aadee603459fac401e1ff2cc39321e14848544a0fe438788a2fc6d5",
+          "schema": "fn-acl2-toolchain-v1"
+        },
+        "toolchain_identity": "8aeb1bea18968c6cd33ac633a80ebf67e4924504db112fd27eb11f16a27b2a8c",
+        "world": "plain"
+      },
+      "source_hashes_verified": {
+        "books/arm-children.lisp": "1d444bdc958c877682a8bb75f688ecd191b741147ee853c646a8ec54e2fa343f",
+        "books/arm-issue-effects.lisp": "a9460bbc8e085b404804d7b82328c1f7a249faeee25380af6586b389d3d5d9fd",
+        "books/arms.lisp": "83825a47c141b16393debcb6dfc98aa7fb54b375e7c12296fa4f25a491c29455",
+        "books/borrow-release.lisp": "08d68878eaf8c50f39552a34ab9cfce8c070b2bd21a71f4f452256f1cd2559cf",
+        "books/columns-call-guards.lisp": "fd7c2588e6d90338288b484078525799ac261c66013ebe112c3f369870db5a4a",
+        "books/columns-carrier-contracts.lisp": "36cf411d1119704be488c119243d0aff8006e9babe38bb128f5d627353373c5a",
+        "books/columns-guard-hints.lisp": "e0a20c5669df681bf75fa5eeae426adc4053010915b3c7657d56e247d5c8440b",
+        "books/columns.lisp": "8b694caf782c2ce3a29fa109b055c181b54beda214276493f6d9acb9456a881b",
+        "books/core-children-a.lisp": "53d4a6b40b03165e5f80fb04105aa8a9731c38423cd83abed97e75a6bafbf2ab",
+        "books/core-children.lisp": "24a985caf082ff74f72c96638034eba619ce114d611a804d0b4a239721d37e4b",
+        "books/core-harvest.lisp": "d5289962939c724844ffefec1085a92263329fd2ccb8d8dfbe4538ee96f0ff14",
+        "books/core.lisp": "6fd705fc6db1d0058f3eb17e6450ebc80a3611c84bc9fa5d0b4b3f07844175a8",
+        "books/declare.lisp": "54e850788ee821dd90a4d9715e93d319f94846039592c4420fef1bdc5d959569",
+        "books/exec-state.lisp": "56eb8a81a3cc049c27c1e23dd1930f8184f2c892207169532315184ca141ea3d",
+        "books/fnv.lisp": "73d15afc6e1325f03d19ad4b39eeb3adc677ce2b07e9eddbc14141ca8843edde",
+        "books/machines-a-access.lisp": "446d765ecb3b7aa0ed2ab7c9d2f9964bd47aff03d80cd521a9c6b11e1264ae5b",
+        "books/machines-directory.lisp": "d87c6d169aae1a5c06fd1f31d9047645c8ecae0c444e10ad205958a37e2c83fa",
+        "books/machines.lisp": "5c5a20c1f2ff695fcaa9b2ba2d7bf345781c8127c33af89984c14f516641932f",
+        "books/operations.lisp": "419120e7ae100f400d18cdee2d080d6133523673cac22fae1b05c7201ff97dd8",
+        "books/ops-heads.lisp": "17af3696d3ad68f638d8301906cb1ce67152e6fa685a8d7697b5521018359366",
+        "books/ops-issued-count.lisp": "2238a6e61e7075984f5cd95519a7dd71bc2d1e6f4da6d0b411e639f27ce7a426",
+        "books/ops-issued-effects.lisp": "0d8ca86349858405807ff2cdccffccd71d1c8cef2065186b28aa31aafd35a709",
+        "books/owed-discharge.lisp": "53903322be1b79ed081ecfcbfcb9f60649d3fdbf8aa6853b772abf8e6fc69f01",
+        "books/owed.lisp": "171950b91e40f4e7d0e94902ce00009adc62d8104e0eecd5db6a59b93bbffb15",
+        "books/pool-dimensions.lisp": "d39cf91254b2b5f062b468146361529d73a020e08b1f72d23c6c80a2c75eba6d",
+        "books/pool-ranges.lisp": "2f9e1f0c898ea4f6747f4e8f4942bc7f73be512ed1b90feb2d9cad7a58e3f959",
+        "books/pool.lisp": "9a31c8d38d309862369091a2c8019ccc3da16920742ff01040899b8f395f2fe9",
+        "books/profile.lisp": "1f216ed6c0505dc1b01ada0f7d3d9482af6da7b7dff8736b5100ef3e3fbc1038",
+        "books/resources.lisp": "019bb017e54237a5304f30598b8842de8f0651b5f92c523ff174f24994fe43c6",
+        "books/run-budget.lisp": "6c340901483627a433e4de6b7699b684b9949f233ee52ce4c5840774df59a7d0",
+        "books/sched.lisp": "aa485faf89a7a51334cad497e8db98043c5678dd9a32ed597bdd0ec4a41dd59f",
+        "books/trace.lisp": "8659e943d080aa3af080893f5027b2fa752f3803c3471620a5d946646df8065f",
+        "books/vocab.lisp": "96606555ca9b71fcc9d3e5b955deb5052300526347dbb5f5f8e74545813b1c53"
+      },
+      "seconds": 1.672,
+      "finished_utc": "2026-11-16T00:16:38+00:00"
+    },
+    {
+      "book": "books/commit",
+      "closure_key": "6ed2c4ba8afc1ab155f02b05d86d50644af9690826c6a0b4edd922bac3734b70",
+      "closure_count": 60,
+      "manifest": "/Users/ember/dev/fn/build/lanes/finish-block-word-callers/build/acl2/certify-20261116T001736Z-2007310/manifest.json",
+      "remote_manifest": "/build/lanes/block-word-callers-ab05/build/acl2/certify-20261116T001736Z-2007310/manifest.json",
+      "manifest_sha256": "090a8ac8be2d5bb49c66107054361f28be511e5a938228bfc9ea04ab8fab0c41",
+      "cache_entry": "/Users/ember/.cache/fn-certs/6ed2c4ba8afc1ab155f02b05d86d50644af9690826c6a0b4edd922bac3734b70/1bb79eab981410d7",
+      "cache_metadata": {
+        "book": "books/commit",
+        "cert_sha256": "8798dccf7271d53c2c87eff33d0450b5fab294ccf30be2316191dd6ede29ea1e",
+        "certification_provenance": {
+          "acl2_executable_sha256": "30583c3d9988ea23cf5edfac828b4ddea984a9a7db9c3b44aaa9c399cf4fdbc5",
+          "acl2_toolchain": {
+            "compatibility": {
+              "core_sha256": "3f5b101bb9437d66366dc2a299b7f9cb98fdaf40d1add5caf8baef9e451dd07d",
+              "launcher_chain_sha256": [
+                "30583c3d9988ea23cf5edfac828b4ddea984a9a7db9c3b44aaa9c399cf4fdbc5"
+              ],
+              "launcher_environment": [
+                {
+                  "SBCL_HOME": "/tank/fn/sbcl/lib/sbcl/"
+                }
+              ],
+              "project_directories": {
+                ":FN": "."
+              },
+              "proof_environment": {
+                "ACL2_BOOK_HASH_ALISTP": "NIL",
+                "ACL2_CUSTOMIZATION": "NONE",
+                "ACL2_SYSTEM_BOOKS": null
+              },
+              "runtime_sha256": "b115fe956aadee603459fac401e1ff2cc39321e14848544a0fe438788a2fc6d5",
+              "schema": "fn-acl2-toolchain-v1"
+            },
+            "core": {
+              "path": "/tank/fn/acl2-8.7/saved_acl2.core",
+              "sha256": "3f5b101bb9437d66366dc2a299b7f9cb98fdaf40d1add5caf8baef9e451dd07d",
+              "size": 233686912
+            },
+            "launchers": [
+              {
+                "path": "/tank/fn/toolchains/w28/acl2-literal-4g-tls64k",
+                "sha256": "30583c3d9988ea23cf5edfac828b4ddea984a9a7db9c3b44aaa9c399cf4fdbc5",
+                "size": 279
+              }
+            ],
+            "runtime": {
+              "path": "/tank/fn/sbcl/bin/sbcl",
+              "sha256": "b115fe956aadee603459fac401e1ff2cc39321e14848544a0fe438788a2fc6d5",
+              "size": 2149704
+            },
+            "schema": "fn-acl2-toolchain-v1",
+            "status": "qualified"
+          },
+          "acl2_toolchain_identity": "8aeb1bea18968c6cd33ac633a80ebf67e4924504db112fd27eb11f16a27b2a8c",
+          "acl2_version": "ACL2 Version 8.7",
+          "environment": {
+            "ACL2_BOOK_HASH_ALISTP": "NIL",
+            "ACL2_CUSTOMIZATION": "NONE",
+            "ACL2_PROJECTS": "/build/lanes/block-word-callers-ab05/acl2-projects",
+            "ACL2_SYSTEM_BOOKS": null,
+            "SBCL_USER_ARGS": null
+          },
+          "reader_sha256": "3a25bad1a53f07d48101c88fbf7e5fca81575735bfdbe48a168cab81141940cd",
+          "runner_sha256": "0c92c676ec1d176a554a63d7106e4bfbd8cc4d6a5293b3daa0c301cb4650f5d5"
+        },
+        "closure": [
+          "books/alloc.lisp:43fad6aaa5211470374b9d753d7d2c6b0f2d1a6919cb6c6ec7955cea4b6fe650",
+          "books/arm-children.lisp:8a2f83f5577f65b1d8c821288f432ee40bb459003be2c7f71132d2559b743c8b",
+          "books/arm-issue-effects.lisp:6a565cbf7ccdef49cdc620f191f748b518bcd7378a18c4578dc72ea7596f6770",
+          "books/arms.lisp:b04d9648a152e744bebd0c3b03d9cd0de2a113d7671d8e264b8f11da67b34cf1",
+          "books/assumptions-native-span.lisp:d6a1b8b7aa1f918a9bdec3750f3cb9a6a490c1edf3034acef8e423205340002e",
+          "books/blake3-pool-spec.lisp:7537417a2c775cd00ebd3e09066d39e1087730f4f48b8d205fcfa99a8e487213",
+          "books/blake3-spec.lisp:cec4003f835117b49a0eca195be944956a123acf646f742cd491b4e1468e588b",
+          "books/blake3.lisp:9e9e4429485cf0967fac6a9f8e46755c2675c0a64c6fbc185f1d8df2557653bc",
+          "books/borrow-release.lisp:f0df3db9fc4f4a77dca98f5c61f2503739bff4582352e43c04413d038440d7b3",
+          "books/checkpoint-commit-leases.lisp:1692d06ca6fcf495c087343456ed9f0483e6172a2266194e0b4cf2c03444feb5",
+          "books/checkpoint-future-resources.lisp:f11e99349aa88b2be467e4183b506996ad819029b6af88c74d7eea198ea202ee",
+          "books/checkpoint-future-working.lisp:9c71ace7e6a3b0cc2bb3162781b9b827b14cafcf7c46ff0be105b2ac6af8813d",
+          "books/checkpoint-member.lisp:4caa5f5b6427bdd84732205c4758782fd436d70f3fb2518e9ece119d35224fec",
+          "books/checkpoint.lisp:5eadf97044edd33933c42990b93676dffa19980e6bcef25cbe825309811dfefe",
+          "books/columns-call-guards.lisp:3065ab76b92f9a12df8e0adc9668029c575c8e36ae93b1af20979f5f8a903bc3",
+          "books/columns-carrier-contracts.lisp:1744bd32762c8bf552be3e247ad633b80709a812d2d3ac44bdfc9d3f96561272",
+          "books/columns-guard-hints.lisp:61d8b4033b76e4207e82d281b535a81c7da52c9e554f35a8f82f4286aada3951",
+          "books/columns.lisp:207ac331ff6397765ce1bfb9e6d665ad55ea44ae99e8b5602a554cd8ab5d4760",
+          "books/commit-alloc.lisp:b06c02467ccd9a2f35803137e6e4a9b168ac8f7ccf73106f3b2af9e58394d978",
+          "books/commit-format.lisp:7383d44bcf442b40f8cf1fbcbcde9bd427aa5ff35882e222f5e35ddb6b65efc1",
+          "books/commit-geometry.lisp:835186fa84e471e1cb0f83a6b5616aea20e5962fde38a2cf464da4d4bf66c2b8",
+          "books/commit.lisp:ae256afda9151445fc1eb69e2271eb9aec4164dae0dab56a740295784b3b51c8",
+          "books/core-children-a.lisp:f3dd446528beddd73b0fb342c0d473ce81a444f41e6446505a5de4ba22cc6273",
+          "books/core-children.lisp:205344fd39ce1b2efffa940c52976c789d68c0af99a22b86a5f5cbb3c1935653",
+          "books/core-harvest.lisp:c50a2a03d993afb722767318764bf164c591faa01731083569c207bd96c32364",
+          "books/core.lisp:4075f69555d19453b575f57d6c38740be685e4bc57de7f5eb1e00edddd9da0af",
+          "books/declare.lisp:21614abfc91ec57e0d97e77ef29b0ba68a0ba3ca49888131646d986f09dc6aef",
+          "books/digests.lisp:c714613dbafab9516c12b729390cea059ff0a0e2070e51798e4783b661ad3f64",
+          "books/exec-state.lisp:c483309fd7e2b59f709e369180bd677cb13772e9558a6b44d8d4be7a9dff6efe",
+          "books/fnv.lisp:37032ad1a3edcaef25be5f25b72a6354b2a6c036b740fef1a631c17beddc31ce",
+          "books/format-base.lisp:e0e67a9aec16407b006dfba2939fb30ee8572904c77661301168a7190a72acc9",
+          "books/format-check.lisp:e46a637f03b3487f90238e87fd48612a1252236ac22f30ee56464a28e3bc4315",
+          "books/format-context.lisp:3903c848b93e1db82e133458efbc35f5155ac3fde49fe847f0d069cd507dbd03",
+          "books/format-events.lisp:f6d4486b234a1687582ed76554c3d506e96140abc81da30efa0e90a0b695a7a7",
+          "books/format-physical.lisp:4d0320025df2cada855a2ce44850e674c3020793fa668e64fca497e2f3d548da",
+          "books/format-storage.lisp:08c6a45b6e29d4c9acf8e3eb85917f2dd8e1ce11e03747daa5ed7f1a3104e161",
+          "books/format.lisp:edba00e49912fc6937b9cd8bda8ece5fbb132eaec95d308d7c03876c8d2685c8",
+          "books/layout-size-bounds.lisp:50dd11523f6765792b3d5c5a07687fe9489b6a27f6a770ad1719f19a5e16c2ae",
+          "books/layout.lisp:e6fed7dc718526f5a216a939f87e570ee7a8ca25ab0ce8f58e92fb12a6404dfd",
+          "books/machines-a-access.lisp:a11d07a3562dab82acfb40975704e43f5a12d3ec51b20b981009a8a47e2fe602",
+          "books/machines-directory.lisp:4e8d1cb487f2bb860702fe649bc6796c04f89e3af921293dbc2222c7526e30f0",
+          "books/machines.lisp:cab59128acc05b35e9f16d5d59d77e21bbfb1b780bd2e85deac84321f6f7cc0d",
+          "books/operations.lisp:b7e7cab3f61033f1055f0ef3be5c0a8f3920a44c934c7b524fdba209c5ded826",
+          "books/ops-heads.lisp:d03efef4d76770d2cf6117b1e84ec473863911da5d1102f759f606746564d223",
+          "books/ops-issued-count.lisp:e68297dccd1c73c2a0ecdb96196ea87e340a04d636c4e14bb5864bed945f03b2",
+          "books/ops-issued-effects.lisp:527af3ba4f22611514610dbe3c5bfd50893e8cdb4199d97b61d831f289b75d9c",
+          "books/origin.lisp:8c8c89bea0b6336a8c22a0fb3746ce9cf6303217378d438d24e2b35811627190",
+          "books/owed-discharge.lisp:dd1c8c3a0f05ae5ee19497b8f0506b2bace8f8dd9a264c57b2234f7658a581ce",
+          "books/owed.lisp:e3f24658d27261c871fa9927c5b075807e62921b37da358046a0090561b5a79f",
+          "books/pool-dimensions.lisp:96233e43d41147ed692624cf0ef855bff5979c440cbc19610a73b76920958cc6",
+          "books/pool-ranges.lisp:1a6de3844fd6363d5042ca6e22723798252f60f04a2f21e9892f93e20644f0f9",
+          "books/pool-read-contracts.lisp:1c139c24ee67766b9ddf3daabcbc814ede9e66784b21f095f20dada0d461f30d",
+          "books/pool.lisp:77c43f42b6328258547341e19d0dce3186a7d214f8ba180daca8e7e44e4905b1",
+          "books/profile.lisp:b19d044118c5a1ec4b4166198a7dc07c607ee5773d0c128133a3121cbb070184",
+          "books/resources.lisp:ea05f325056836f299193539e448ff8b79b4c9df8e2c903bf583bbd296f49fae",
+          "books/run-budget.lisp:98d74bd69152473991e7471b77f2b2ecf16efab354585d2c093efe385cf242b2",
+          "books/sched.lisp:ba68f927119fb16bb9819f6a20326c370340c00ed9fccd9966cd1b6c0d40572b",
+          "books/trace.lisp:04ad49bc794b35a7abf88ee1532f6375cd4f7d7fb099a849b7f88b1bab166905",
+          "books/tuple.lisp:b06ca90e2a7e67bb70e964ab12e2c3bfa780eb3fdad3c4c83dbcfea5015c19ea",
+          "books/vocab.lisp:8d384c907614383447f33c3a8c19892358efb686c01143b52d48f0506f234b28"
+        ],
+        "closure_key": "6ed2c4ba8afc1ab155f02b05d86d50644af9690826c6a0b4edd922bac3734b70",
+        "evidence": "/Users/ember/dev/fn/build/lanes/finish-block-word-callers/build/acl2/certify-20261116T001736Z-2007310/manifest.json",
+        "fasl_sha256": "4067d0e1f41728f64531d7ed8962c7a51c52ee5a28cf4ec7556cedfc7a32bcd5",
+        "has_port": true,
+        "host": "nextop.local",
+        "key_version": "fn-cert-key-v4 forms+world+project-fn",
+        "origin_host": "forge",
+        "origin_kind": "run",
+        "origin_root": "/build/lanes/block-word-callers-ab05",
+        "port_sha256": "f4cb7e8160cfa6f41cddb04be508f922aa8e87c4ff126bfaad3379aa92e647e0",
+        "published_at": "2026-11-16T00:18:13.006291+00:00",
+        "published_from": "/Users/ember/dev/fn/build/lanes/finish-block-word-callers/books",
+        "source_sha256": "f3bc27add4028c6da04a241706f5ab61fddfca0f03230211ec2387597e22a205",
+        "toolchain": {
+          "core_sha256": "3f5b101bb9437d66366dc2a299b7f9cb98fdaf40d1add5caf8baef9e451dd07d",
+          "launcher_chain_sha256": [
+            "30583c3d9988ea23cf5edfac828b4ddea984a9a7db9c3b44aaa9c399cf4fdbc5"
+          ],
+          "launcher_environment": [
+            {
+              "SBCL_HOME": "/tank/fn/sbcl/lib/sbcl/"
+            }
+          ],
+          "project_directories": {
+            ":FN": "."
+          },
+          "proof_environment": {
+            "ACL2_BOOK_HASH_ALISTP": "NIL",
+            "ACL2_CUSTOMIZATION": "NONE",
+            "ACL2_SYSTEM_BOOKS": null
+          },
+          "runtime_sha256": "b115fe956aadee603459fac401e1ff2cc39321e14848544a0fe438788a2fc6d5",
+          "schema": "fn-acl2-toolchain-v1"
+        },
+        "toolchain_identity": "8aeb1bea18968c6cd33ac633a80ebf67e4924504db112fd27eb11f16a27b2a8c",
+        "world": "plain"
+      },
+      "source_hashes_verified": {
+        "books/alloc.lisp": "886dd5c4550a43b78fafa99c02db28edbdc70c7bb1cbe806ce5e40403477a11e",
+        "books/arm-children.lisp": "1d444bdc958c877682a8bb75f688ecd191b741147ee853c646a8ec54e2fa343f",
+        "books/arm-issue-effects.lisp": "a9460bbc8e085b404804d7b82328c1f7a249faeee25380af6586b389d3d5d9fd",
+        "books/arms.lisp": "83825a47c141b16393debcb6dfc98aa7fb54b375e7c12296fa4f25a491c29455",
+        "books/assumptions-native-span.lisp": "3fd43c5b3c3d0ea553afb41fa99f6f7136918ecbf22921eac878cde96439def8",
+        "books/blake3-pool-spec.lisp": "2775bf744b6ed52fd098fe329b0b183d62c0857a5a2a989cf80e968f5a366e2b",
+        "books/blake3-spec.lisp": "253babac6e5d9e9df00a655ba6b6595c9e6d85315c9294f05e3d939f19ad5770",
+        "books/blake3.lisp": "e228c1eb31f2f764e925e86fa4f0a7b7682810d64a27f7c39b9f416f93bdc1a1",
+        "books/borrow-release.lisp": "08d68878eaf8c50f39552a34ab9cfce8c070b2bd21a71f4f452256f1cd2559cf",
+        "books/checkpoint-commit-leases.lisp": "bb1c2e299d594b6a32e5106ee795dec8ce5cbd8f3f40ee954b7e66b1fafd2ecb",
+        "books/checkpoint-future-resources.lisp": "3936d5295ae9808b3f494ada9693dbff161bff0dbb0c2a69749444619f2c2d06",
+        "books/checkpoint-future-working.lisp": "94d0fbaf5f9012f42b96fd24a022b1422a22d32919c2c25bd5403fa69a2e8296",
+        "books/checkpoint-member.lisp": "8b76cf4210628fed16261fceaedc00623f4d864e22779d9714db0bcbef486d31",
+        "books/checkpoint.lisp": "ef8e12b3449c471a750dab489efe2bd2293a69429da6cef873b56f2c2b63eed7",
+        "books/columns-call-guards.lisp": "fd7c2588e6d90338288b484078525799ac261c66013ebe112c3f369870db5a4a",
+        "books/columns-carrier-contracts.lisp": "36cf411d1119704be488c119243d0aff8006e9babe38bb128f5d627353373c5a",
+        "books/columns-guard-hints.lisp": "e0a20c5669df681bf75fa5eeae426adc4053010915b3c7657d56e247d5c8440b",
+        "books/columns.lisp": "8b694caf782c2ce3a29fa109b055c181b54beda214276493f6d9acb9456a881b",
+        "books/commit-alloc.lisp": "ae683093a38107790d4e17ca1c10a5532905eaffa00d9ed96f483f3cf8e63072",
+        "books/commit-format.lisp": "c263a0e0300ab9ec84351d46dce15b40d71c5d5abcb99d769bb098a15f5fae7e",
+        "books/commit-geometry.lisp": "e06315c94bcd0d247214377fb33186f14ca1aa2ee6afe1499d69d053ff0134e2",
+        "books/commit.lisp": "f3bc27add4028c6da04a241706f5ab61fddfca0f03230211ec2387597e22a205",
+        "books/core-children-a.lisp": "53d4a6b40b03165e5f80fb04105aa8a9731c38423cd83abed97e75a6bafbf2ab",
+        "books/core-children.lisp": "24a985caf082ff74f72c96638034eba619ce114d611a804d0b4a239721d37e4b",
+        "books/core-harvest.lisp": "d5289962939c724844ffefec1085a92263329fd2ccb8d8dfbe4538ee96f0ff14",
+        "books/core.lisp": "6fd705fc6db1d0058f3eb17e6450ebc80a3611c84bc9fa5d0b4b3f07844175a8",
+        "books/declare.lisp": "54e850788ee821dd90a4d9715e93d319f94846039592c4420fef1bdc5d959569",
+        "books/digests.lisp": "e821bfe1ffee392c8019fad513db8a83aaf2448251087f26c9576a3af333a524",
+        "books/exec-state.lisp": "56eb8a81a3cc049c27c1e23dd1930f8184f2c892207169532315184ca141ea3d",
+        "books/fnv.lisp": "73d15afc6e1325f03d19ad4b39eeb3adc677ce2b07e9eddbc14141ca8843edde",
+        "books/format-base.lisp": "ead88cb8e7ab67db0c6a06ac400c813f753121c77082825b16016835eb462699",
+        "books/format-check.lisp": "c98f35c7c74d009ab24dbd5b87b1859dbba46be77b31a3585e252d3084ca4951",
+        "books/format-context.lisp": "16c2a00f17df2e53d055137f80eedcbb8c87b673ab7ae13e7a31246222ad008f",
+        "books/format-events.lisp": "10be8e61d3746b6094d4b1ac5a2d6006c4d8901a3744b6ca1b4959836812a62b",
+        "books/format-physical.lisp": "818642d11e9638333f30fa6f60e3ee8db1ce39d1d040c76ed7ab58df781c1d19",
+        "books/format-storage.lisp": "ddb445f4a77de9462de3b4df0dc5111f381c7b73f94812cb2fa2096852adc68f",
+        "books/format.lisp": "01bd400412d667e203d105b8dd7d69563c174c02f5b23d58f9d57bdb4ae5ab1a",
+        "books/layout-size-bounds.lisp": "242f55370eff42c596962722a3404058a48dae5215bbf9d39b82f198b07e45b7",
+        "books/layout.lisp": "2bc995f6bb70ec17862c5b535a4734e90a7a5dfd6312ebdee7d06877b0fbb4d8",
+        "books/machines-a-access.lisp": "446d765ecb3b7aa0ed2ab7c9d2f9964bd47aff03d80cd521a9c6b11e1264ae5b",
+        "books/machines-directory.lisp": "d87c6d169aae1a5c06fd1f31d9047645c8ecae0c444e10ad205958a37e2c83fa",
+        "books/machines.lisp": "5c5a20c1f2ff695fcaa9b2ba2d7bf345781c8127c33af89984c14f516641932f",
+        "books/operations.lisp": "419120e7ae100f400d18cdee2d080d6133523673cac22fae1b05c7201ff97dd8",
+        "books/ops-heads.lisp": "17af3696d3ad68f638d8301906cb1ce67152e6fa685a8d7697b5521018359366",
+        "books/ops-issued-count.lisp": "2238a6e61e7075984f5cd95519a7dd71bc2d1e6f4da6d0b411e639f27ce7a426",
+        "books/ops-issued-effects.lisp": "0d8ca86349858405807ff2cdccffccd71d1c8cef2065186b28aa31aafd35a709",
+        "books/origin.lisp": "7f63d5f31b061c0b9206b82394d70e31fce57ceafc9ec7cd8477a54d538d9c19",
+        "books/owed-discharge.lisp": "53903322be1b79ed081ecfcbfcb9f60649d3fdbf8aa6853b772abf8e6fc69f01",
+        "books/owed.lisp": "171950b91e40f4e7d0e94902ce00009adc62d8104e0eecd5db6a59b93bbffb15",
+        "books/pool-dimensions.lisp": "d39cf91254b2b5f062b468146361529d73a020e08b1f72d23c6c80a2c75eba6d",
+        "books/pool-ranges.lisp": "2f9e1f0c898ea4f6747f4e8f4942bc7f73be512ed1b90feb2d9cad7a58e3f959",
+        "books/pool-read-contracts.lisp": "f51f92ce9bfcd7af93e6ba47bb5a4c43fbb5ac79424ef34ecf489b8f92e9e852",
+        "books/pool.lisp": "9a31c8d38d309862369091a2c8019ccc3da16920742ff01040899b8f395f2fe9",
+        "books/profile.lisp": "1f216ed6c0505dc1b01ada0f7d3d9482af6da7b7dff8736b5100ef3e3fbc1038",
+        "books/resources.lisp": "019bb017e54237a5304f30598b8842de8f0651b5f92c523ff174f24994fe43c6",
+        "books/run-budget.lisp": "6c340901483627a433e4de6b7699b684b9949f233ee52ce4c5840774df59a7d0",
+        "books/sched.lisp": "aa485faf89a7a51334cad497e8db98043c5678dd9a32ed597bdd0ec4a41dd59f",
+        "books/trace.lisp": "8659e943d080aa3af080893f5027b2fa752f3803c3471620a5d946646df8065f",
+        "books/tuple.lisp": "c6b895fd566be6b91ba68fb040826b689a5ad4891a65e040773bfb28b90e1978",
+        "books/vocab.lisp": "96606555ca9b71fcc9d3e5b955deb5052300526347dbb5f5f8e74545813b1c53"
+      },
+      "seconds": 3.627,
+      "finished_utc": "2026-11-16T00:17:41+00:00"
+    },
+    {
+      "book": "books/machines-b",
+      "closure_key": "a31decb2d558d2ca753a67492750bd75048362099a9ac882c9452aa6201beb4e",
+      "closure_count": 86,
+      "manifest": "/Users/ember/dev/fn/build/lanes/finish-block-word-callers/build/acl2/certify-20261116T001912Z-2009104/manifest.json",
+      "remote_manifest": "/build/lanes/block-word-callers-ab05/build/acl2/certify-20261116T001912Z-2009104/manifest.json",
+      "manifest_sha256": "1b96b75542e8218565825e76a1b486901a4e321bdc1e136a09caaceb22530caa",
+      "cache_entry": "/Users/ember/.cache/fn-certs/a31decb2d558d2ca753a67492750bd75048362099a9ac882c9452aa6201beb4e/1bb79eab981410d7",
+      "cache_metadata": {
+        "book": "books/machines-b",
+        "cert_sha256": "4a1317d8b3bd50be7aabf4e3b504161c6d048500559211ed7b29d3531d625c5d",
+        "certification_provenance": {
+          "acl2_executable_sha256": "30583c3d9988ea23cf5edfac828b4ddea984a9a7db9c3b44aaa9c399cf4fdbc5",
+          "acl2_toolchain": {
+            "compatibility": {
+              "core_sha256": "3f5b101bb9437d66366dc2a299b7f9cb98fdaf40d1add5caf8baef9e451dd07d",
+              "launcher_chain_sha256": [
+                "30583c3d9988ea23cf5edfac828b4ddea984a9a7db9c3b44aaa9c399cf4fdbc5"
+              ],
+              "launcher_environment": [
+                {
+                  "SBCL_HOME": "/tank/fn/sbcl/lib/sbcl/"
+                }
+              ],
+              "project_directories": {
+                ":FN": "."
+              },
+              "proof_environment": {
+                "ACL2_BOOK_HASH_ALISTP": "NIL",
+                "ACL2_CUSTOMIZATION": "NONE",
+                "ACL2_SYSTEM_BOOKS": null
+              },
+              "runtime_sha256": "b115fe956aadee603459fac401e1ff2cc39321e14848544a0fe438788a2fc6d5",
+              "schema": "fn-acl2-toolchain-v1"
+            },
+            "core": {
+              "path": "/tank/fn/acl2-8.7/saved_acl2.core",
+              "sha256": "3f5b101bb9437d66366dc2a299b7f9cb98fdaf40d1add5caf8baef9e451dd07d",
+              "size": 233686912
+            },
+            "launchers": [
+              {
+                "path": "/tank/fn/toolchains/w28/acl2-literal-4g-tls64k",
+                "sha256": "30583c3d9988ea23cf5edfac828b4ddea984a9a7db9c3b44aaa9c399cf4fdbc5",
+                "size": 279
+              }
+            ],
+            "runtime": {
+              "path": "/tank/fn/sbcl/bin/sbcl",
+              "sha256": "b115fe956aadee603459fac401e1ff2cc39321e14848544a0fe438788a2fc6d5",
+              "size": 2149704
+            },
+            "schema": "fn-acl2-toolchain-v1",
+            "status": "qualified"
+          },
+          "acl2_toolchain_identity": "8aeb1bea18968c6cd33ac633a80ebf67e4924504db112fd27eb11f16a27b2a8c",
+          "acl2_version": "ACL2 Version 8.7",
+          "environment": {
+            "ACL2_BOOK_HASH_ALISTP": "NIL",
+            "ACL2_CUSTOMIZATION": "NONE",
+            "ACL2_PROJECTS": "/build/lanes/block-word-callers-ab05/acl2-projects",
+            "ACL2_SYSTEM_BOOKS": null,
+            "SBCL_USER_ARGS": null
+          },
+          "reader_sha256": "3a25bad1a53f07d48101c88fbf7e5fca81575735bfdbe48a168cab81141940cd",
+          "runner_sha256": "0c92c676ec1d176a554a63d7106e4bfbd8cc4d6a5293b3daa0c301cb4650f5d5"
+        },
+        "closure": [
+          "books/alloc.lisp:43fad6aaa5211470374b9d753d7d2c6b0f2d1a6919cb6c6ec7955cea4b6fe650",
+          "books/arm-children.lisp:8a2f83f5577f65b1d8c821288f432ee40bb459003be2c7f71132d2559b743c8b",
+          "books/arm-issue-effects.lisp:6a565cbf7ccdef49cdc620f191f748b518bcd7378a18c4578dc72ea7596f6770",
+          "books/arms.lisp:b04d9648a152e744bebd0c3b03d9cd0de2a113d7671d8e264b8f11da67b34cf1",
+          "books/assumptions-integrity.lisp:afe9fe61620aaa6c5b9bad4f1c87b520a6a1ac02b2fc9bdd24012276662e1a93",
+          "books/assumptions-native-span.lisp:d6a1b8b7aa1f918a9bdec3750f3cb9a6a490c1edf3034acef8e423205340002e",
+          "books/blake3-pool-spec.lisp:7537417a2c775cd00ebd3e09066d39e1087730f4f48b8d205fcfa99a8e487213",
+          "books/blake3-row-frames.lisp:cde865a9786e001cda308c101c06b2449f17d965c040b91733f22a7b8923fe48",
+          "books/blake3-spec.lisp:cec4003f835117b49a0eca195be944956a123acf646f742cd491b4e1468e588b",
+          "books/blake3-word-frames.lisp:53011afe8bc8a810785f7b28ec7840c5d0a4db5fef8170d9049c21060b8d6fc4",
+          "books/blake3.lisp:9e9e4429485cf0967fac6a9f8e46755c2675c0a64c6fbc185f1d8df2557653bc",
+          "books/block-integrity.lisp:fbd9b55074913a7adc979c22a41a999de72a348b76a2d7dd6c50b1518606ba57",
+          "books/borrow-release.lisp:f0df3db9fc4f4a77dca98f5c61f2503739bff4582352e43c04413d038440d7b3",
+          "books/checkpoint-allocation-coordinator.lisp:8aafce93a8e3c04cbc738e4f3214b2f00788d03a883ff1777cdbae6001863b5a",
+          "books/checkpoint-allocation.lisp:19dd8eba15be518ea359e68a9754691dde49afdae417d458294b3c02b177951b",
+          "books/checkpoint-commit-leases.lisp:1692d06ca6fcf495c087343456ed9f0483e6172a2266194e0b4cf2c03444feb5",
+          "books/checkpoint-construction.lisp:4fcd227480bf3f8e666f19605a30a874b70b11b57671dac6995a7059d4453925",
+          "books/checkpoint-future-resources.lisp:f11e99349aa88b2be467e4183b506996ad819029b6af88c74d7eea198ea202ee",
+          "books/checkpoint-future-working.lisp:9c71ace7e6a3b0cc2bb3162781b9b827b14cafcf7c46ff0be105b2ac6af8813d",
+          "books/checkpoint-installation-coordinator.lisp:5db1fc81e66cbe196f62e8c3bc49a2fdde604eb5e76d8735acc7959112be31f8",
+          "books/checkpoint-lifecycle-coordinator.lisp:9039abd2a09abc5a5fc58ab93b17280b9de53a8c71290739c97981e17025c404",
+          "books/checkpoint-maintenance-staging.lisp:336f6527526639e05a7da04300b9df70f7029eae50fd8832f55183b757ac5a07",
+          "books/checkpoint-member.lisp:4caa5f5b6427bdd84732205c4758782fd436d70f3fb2518e9ece119d35224fec",
+          "books/checkpoint-production.lisp:81b3139e48d559a7e3fd2c5873981af6949ada3dbb816f2920677babab7cc8db",
+          "books/checkpoint-tickets.lisp:c1609d9e841ba8d72599ce46b905a31a3f6dc08b89d394b4d2946626bae8e137",
+          "books/checkpoint.lisp:5eadf97044edd33933c42990b93676dffa19980e6bcef25cbe825309811dfefe",
+          "books/columns-call-guards.lisp:3065ab76b92f9a12df8e0adc9668029c575c8e36ae93b1af20979f5f8a903bc3",
+          "books/columns-carrier-contracts.lisp:1744bd32762c8bf552be3e247ad633b80709a812d2d3ac44bdfc9d3f96561272",
+          "books/columns-guard-hints.lisp:61d8b4033b76e4207e82d281b535a81c7da52c9e554f35a8f82f4286aada3951",
+          "books/columns-observation-frames.lisp:a55fd61b2e13e69926336e3c749c1d71914e69c728fd106cc9a02819bea3c7ea",
+          "books/columns.lisp:207ac331ff6397765ce1bfb9e6d665ad55ea44ae99e8b5602a554cd8ab5d4760",
+          "books/commit-alloc.lisp:b06c02467ccd9a2f35803137e6e4a9b168ac8f7ccf73106f3b2af9e58394d978",
+          "books/commit-format.lisp:7383d44bcf442b40f8cf1fbcbcde9bd427aa5ff35882e222f5e35ddb6b65efc1",
+          "books/commit-geometry.lisp:835186fa84e471e1cb0f83a6b5616aea20e5962fde38a2cf464da4d4bf66c2b8",
+          "books/commit-members.lisp:045e5a9d344ab2353a8b279c4b0086d43193019b6f63824a894908e67faf02b1",
+          "books/commit.lisp:ae256afda9151445fc1eb69e2271eb9aec4164dae0dab56a740295784b3b51c8",
+          "books/core-children-a.lisp:f3dd446528beddd73b0fb342c0d473ce81a444f41e6446505a5de4ba22cc6273",
+          "books/core-children.lisp:205344fd39ce1b2efffa940c52976c789d68c0af99a22b86a5f5cbb3c1935653",
+          "books/core-harvest.lisp:c50a2a03d993afb722767318764bf164c591faa01731083569c207bd96c32364",
+          "books/core.lisp:4075f69555d19453b575f57d6c38740be685e4bc57de7f5eb1e00edddd9da0af",
+          "books/declare.lisp:21614abfc91ec57e0d97e77ef29b0ba68a0ba3ca49888131646d986f09dc6aef",
+          "books/digest-store.lisp:df2279b0a32936380ab0c01693626400a3c349685a7007caf98e2fcb29225489",
+          "books/digests.lisp:c714613dbafab9516c12b729390cea059ff0a0e2070e51798e4783b661ad3f64",
+          "books/event-read-state.lisp:ce5cd17104b71aad969e3ace16205aa7ac0994d85ec51c1461b7de687302961d",
+          "books/exec-state.lisp:c483309fd7e2b59f709e369180bd677cb13772e9558a6b44d8d4be7a9dff6efe",
+          "books/fnv.lisp:37032ad1a3edcaef25be5f25b72a6354b2a6c036b740fef1a631c17beddc31ce",
+          "books/format-base.lisp:e0e67a9aec16407b006dfba2939fb30ee8572904c77661301168a7190a72acc9",
+          "books/format-check.lisp:e46a637f03b3487f90238e87fd48612a1252236ac22f30ee56464a28e3bc4315",
+          "books/format-context.lisp:3903c848b93e1db82e133458efbc35f5155ac3fde49fe847f0d069cd507dbd03",
+          "books/format-events.lisp:f6d4486b234a1687582ed76554c3d506e96140abc81da30efa0e90a0b695a7a7",
+          "books/format-physical.lisp:4d0320025df2cada855a2ce44850e674c3020793fa668e64fca497e2f3d548da",
+          "books/format-storage.lisp:08c6a45b6e29d4c9acf8e3eb85917f2dd8e1ce11e03747daa5ed7f1a3104e161",
+          "books/format.lisp:edba00e49912fc6937b9cd8bda8ece5fbb132eaec95d308d7c03876c8d2685c8",
+          "books/journal-members-state.lisp:97088be312950bc7dc996881680a6a1c76726c96adffea78a951137c990af2d7",
+          "books/layout-size-bounds.lisp:50dd11523f6765792b3d5c5a07687fe9489b6a27f6a770ad1719f19a5e16c2ae",
+          "books/layout.lisp:e6fed7dc718526f5a216a939f87e570ee7a8ca25ab0ce8f58e92fb12a6404dfd",
+          "books/machines-a-access.lisp:a11d07a3562dab82acfb40975704e43f5a12d3ec51b20b981009a8a47e2fe602",
+          "books/machines-b.lisp:1bf245c32f056ff455295c3b8f34a81ab5b14a61138bc683732f676c8b96f731",
+          "books/machines-directory.lisp:4e8d1cb487f2bb860702fe649bc6796c04f89e3af921293dbc2222c7526e30f0",
+          "books/machines.lisp:cab59128acc05b35e9f16d5d59d77e21bbfb1b780bd2e85deac84321f6f7cc0d",
+          "books/merkle.lisp:59adf01dda792075d0b36dbb5550d562d3ca7073f9946d61cc2881b885f9b77c",
+          "books/operations.lisp:b7e7cab3f61033f1055f0ef3be5c0a8f3920a44c934c7b524fdba209c5ded826",
+          "books/ops-heads.lisp:d03efef4d76770d2cf6117b1e84ec473863911da5d1102f759f606746564d223",
+          "books/ops-issued-count.lisp:e68297dccd1c73c2a0ecdb96196ea87e340a04d636c4e14bb5864bed945f03b2",
+          "books/ops-issued-effects.lisp:527af3ba4f22611514610dbe3c5bfd50893e8cdb4199d97b61d831f289b75d9c",
+          "books/origin.lisp:8c8c89bea0b6336a8c22a0fb3746ce9cf6303217378d438d24e2b35811627190",
+          "books/owed-discharge.lisp:dd1c8c3a0f05ae5ee19497b8f0506b2bace8f8dd9a264c57b2234f7658a581ce",
+          "books/owed.lisp:e3f24658d27261c871fa9927c5b075807e62921b37da358046a0090561b5a79f",
+          "books/payload-workspace.lisp:b06e1903e904a9db530276c03e172bb689d3ac3d9e89b4e0d64ac29cc1d42e4c",
+          "books/pool-digest.lisp:753658ccbfc146a524843bc07293361b867fad0d6771b61e20e68aec6ae2803a",
+          "books/pool-dimensions.lisp:96233e43d41147ed692624cf0ef855bff5979c440cbc19610a73b76920958cc6",
+          "books/pool-ranges.lisp:1a6de3844fd6363d5042ca6e22723798252f60f04a2f21e9892f93e20644f0f9",
+          "books/pool-read-contracts.lisp:1c139c24ee67766b9ddf3daabcbc814ede9e66784b21f095f20dada0d461f30d",
+          "books/pool.lisp:77c43f42b6328258547341e19d0dce3186a7d214f8ba180daca8e7e44e4905b1",
+          "books/profile.lisp:b19d044118c5a1ec4b4166198a7dc07c607ee5773d0c128133a3121cbb070184",
+          "books/read-pins.lisp:3622f0d95bbc1cf82fa2ffe3c8c549d694bc7fa49c487323f93e70c943dc0169",
+          "books/recovery.lisp:030e32e0732a35226598257f24c8782ac20c234669ac8e1bc67637dabfae58f6",
+          "books/resources.lisp:ea05f325056836f299193539e448ff8b79b4c9df8e2c903bf583bbd296f49fae",
+          "books/retirement-coordinator.lisp:de243ef32fa5e3a04e9609ea607af218e8e71f493e69c4f3558ce87833f32b18",
+          "books/retirement.lisp:1a6f01a744f14a8800d63b73430f86589e22a717b8fc6b10e347fca3eb78da9d",
+          "books/run-budget.lisp:98d74bd69152473991e7471b77f2b2ecf16efab354585d2c093efe385cf242b2",
+          "books/sched.lisp:ba68f927119fb16bb9819f6a20326c370340c00ed9fccd9966cd1b6c0d40572b",
+          "books/storage-block-io.lisp:9215687fa5e2714f48052e7765843b9397228ccb7f2c3687f4d0c3880f2c157d",
+          "books/trace.lisp:04ad49bc794b35a7abf88ee1532f6375cd4f7d7fb099a849b7f88b1bab166905",
+          "books/tuple.lisp:b06ca90e2a7e67bb70e964ab12e2c3bfa780eb3fdad3c4c83dbcfea5015c19ea",
+          "books/vocab.lisp:8d384c907614383447f33c3a8c19892358efb686c01143b52d48f0506f234b28"
+        ],
+        "closure_key": "a31decb2d558d2ca753a67492750bd75048362099a9ac882c9452aa6201beb4e",
+        "evidence": "/Users/ember/dev/fn/build/lanes/finish-block-word-callers/build/acl2/certify-20261116T001912Z-2009104/manifest.json",
+        "fasl_sha256": "d510d4ab8bdd5dc6dc3974d1dea5958dfca2ffdbf86df4715aa5127608913e66",
+        "has_port": true,
+        "host": "nextop.local",
+        "key_version": "fn-cert-key-v4 forms+world+project-fn",
+        "origin_host": "forge",
+        "origin_kind": "run",
+        "origin_root": "/build/lanes/block-word-callers-ab05",
+        "port_sha256": "f4cb7e8160cfa6f41cddb04be508f922aa8e87c4ff126bfaad3379aa92e647e0",
+        "published_at": "2026-11-16T00:20:21.279464+00:00",
+        "published_from": "/Users/ember/dev/fn/build/lanes/finish-block-word-callers/books",
+        "source_sha256": "35f0c7c7fc7824682c87e4787ca3bb696d7d745c99855324b3ff6eff827ec8b1",
+        "toolchain": {
+          "core_sha256": "3f5b101bb9437d66366dc2a299b7f9cb98fdaf40d1add5caf8baef9e451dd07d",
+          "launcher_chain_sha256": [
+            "30583c3d9988ea23cf5edfac828b4ddea984a9a7db9c3b44aaa9c399cf4fdbc5"
+          ],
+          "launcher_environment": [
+            {
+              "SBCL_HOME": "/tank/fn/sbcl/lib/sbcl/"
+            }
+          ],
+          "project_directories": {
+            ":FN": "."
+          },
+          "proof_environment": {
+            "ACL2_BOOK_HASH_ALISTP": "NIL",
+            "ACL2_CUSTOMIZATION": "NONE",
+            "ACL2_SYSTEM_BOOKS": null
+          },
+          "runtime_sha256": "b115fe956aadee603459fac401e1ff2cc39321e14848544a0fe438788a2fc6d5",
+          "schema": "fn-acl2-toolchain-v1"
+        },
+        "toolchain_identity": "8aeb1bea18968c6cd33ac633a80ebf67e4924504db112fd27eb11f16a27b2a8c",
+        "world": "plain"
+      },
+      "source_hashes_verified": {
+        "books/alloc.lisp": "886dd5c4550a43b78fafa99c02db28edbdc70c7bb1cbe806ce5e40403477a11e",
+        "books/arm-children.lisp": "1d444bdc958c877682a8bb75f688ecd191b741147ee853c646a8ec54e2fa343f",
+        "books/arm-issue-effects.lisp": "a9460bbc8e085b404804d7b82328c1f7a249faeee25380af6586b389d3d5d9fd",
+        "books/arms.lisp": "83825a47c141b16393debcb6dfc98aa7fb54b375e7c12296fa4f25a491c29455",
+        "books/assumptions-integrity.lisp": "3e1131f6b5a9c47bf9b21bec4dffae3ef46940453e4df9f768899c9d0814d06f",
+        "books/assumptions-native-span.lisp": "3fd43c5b3c3d0ea553afb41fa99f6f7136918ecbf22921eac878cde96439def8",
+        "books/blake3-pool-spec.lisp": "2775bf744b6ed52fd098fe329b0b183d62c0857a5a2a989cf80e968f5a366e2b",
+        "books/blake3-row-frames.lisp": "2e2386ed36d8d7869186f83f0ce698faf56f3e02de8f30585d817f231e16f9d7",
+        "books/blake3-spec.lisp": "253babac6e5d9e9df00a655ba6b6595c9e6d85315c9294f05e3d939f19ad5770",
+        "books/blake3-word-frames.lisp": "593689f6c975c85df9a3d08ddf14e8a4fbb85456a67e04502d9abd9e935196a0",
+        "books/blake3.lisp": "e228c1eb31f2f764e925e86fa4f0a7b7682810d64a27f7c39b9f416f93bdc1a1",
+        "books/block-integrity.lisp": "70a4f3a8999decdb7d515a49f086ccb5aab52d7cb33a77c90961f3415398d0ca",
+        "books/borrow-release.lisp": "08d68878eaf8c50f39552a34ab9cfce8c070b2bd21a71f4f452256f1cd2559cf",
+        "books/checkpoint-allocation-coordinator.lisp": "d2c42d0b2f85dc86e4d99b8f9ce10e4680181c04efb82d64d86ed833c50026ec",
+        "books/checkpoint-allocation.lisp": "e6031a68634856edc5d4e04b66efe0992e06a2271059656bb6832c23bbc4209b",
+        "books/checkpoint-commit-leases.lisp": "bb1c2e299d594b6a32e5106ee795dec8ce5cbd8f3f40ee954b7e66b1fafd2ecb",
+        "books/checkpoint-construction.lisp": "adc6c1bd23046033b2e8e4214586ee51447c32c34d859124557321aa4e97f338",
+        "books/checkpoint-future-resources.lisp": "3936d5295ae9808b3f494ada9693dbff161bff0dbb0c2a69749444619f2c2d06",
+        "books/checkpoint-future-working.lisp": "94d0fbaf5f9012f42b96fd24a022b1422a22d32919c2c25bd5403fa69a2e8296",
+        "books/checkpoint-installation-coordinator.lisp": "ea668d001176625373c3a4982233235324fb52b3710c58cd984125b03b308e34",
+        "books/checkpoint-lifecycle-coordinator.lisp": "1f01943a0bc300d6d5891a3188024b44b314a312c91a997ea5111097897b5b0f",
+        "books/checkpoint-maintenance-staging.lisp": "2ce7e09bac537046a441ba1866f9bfaf324c07293086da4462da84887101a806",
+        "books/checkpoint-member.lisp": "8b76cf4210628fed16261fceaedc00623f4d864e22779d9714db0bcbef486d31",
+        "books/checkpoint-production.lisp": "83d37ac624dce625c62c7d973038ec4cb7f075dc6996301d717c5a66cc9b89af",
+        "books/checkpoint-tickets.lisp": "5a844a9730bd57a1e5f07d0890aeb708e158c74b08d1ea9723c54ba412890e4b",
+        "books/checkpoint.lisp": "ef8e12b3449c471a750dab489efe2bd2293a69429da6cef873b56f2c2b63eed7",
+        "books/columns-call-guards.lisp": "fd7c2588e6d90338288b484078525799ac261c66013ebe112c3f369870db5a4a",
+        "books/columns-carrier-contracts.lisp": "36cf411d1119704be488c119243d0aff8006e9babe38bb128f5d627353373c5a",
+        "books/columns-guard-hints.lisp": "e0a20c5669df681bf75fa5eeae426adc4053010915b3c7657d56e247d5c8440b",
+        "books/columns-observation-frames.lisp": "68a893b2f9c431a8cad67ef995cbbb3379ea25f6df2ab1e84da77b48389a0a76",
+        "books/columns.lisp": "8b694caf782c2ce3a29fa109b055c181b54beda214276493f6d9acb9456a881b",
+        "books/commit-alloc.lisp": "ae683093a38107790d4e17ca1c10a5532905eaffa00d9ed96f483f3cf8e63072",
+        "books/commit-format.lisp": "c263a0e0300ab9ec84351d46dce15b40d71c5d5abcb99d769bb098a15f5fae7e",
+        "books/commit-geometry.lisp": "e06315c94bcd0d247214377fb33186f14ca1aa2ee6afe1499d69d053ff0134e2",
+        "books/commit-members.lisp": "3fafe717b7f9c51d7bffd04a5a3b58467329eb80e7d1b0af8c5b05ea984ffb8b",
+        "books/commit.lisp": "f3bc27add4028c6da04a241706f5ab61fddfca0f03230211ec2387597e22a205",
+        "books/core-children-a.lisp": "53d4a6b40b03165e5f80fb04105aa8a9731c38423cd83abed97e75a6bafbf2ab",
+        "books/core-children.lisp": "24a985caf082ff74f72c96638034eba619ce114d611a804d0b4a239721d37e4b",
+        "books/core-harvest.lisp": "d5289962939c724844ffefec1085a92263329fd2ccb8d8dfbe4538ee96f0ff14",
+        "books/core.lisp": "6fd705fc6db1d0058f3eb17e6450ebc80a3611c84bc9fa5d0b4b3f07844175a8",
+        "books/declare.lisp": "54e850788ee821dd90a4d9715e93d319f94846039592c4420fef1bdc5d959569",
+        "books/digest-store.lisp": "de25fd767c4ad8352ac76153b72b04d7c9246ddb826daf233290aa5e59be8816",
+        "books/digests.lisp": "e821bfe1ffee392c8019fad513db8a83aaf2448251087f26c9576a3af333a524",
+        "books/event-read-state.lisp": "55405e0eddcb169465aa18fd0dfa89b06978915786b1a933028728d6644b6862",
+        "books/exec-state.lisp": "56eb8a81a3cc049c27c1e23dd1930f8184f2c892207169532315184ca141ea3d",
+        "books/fnv.lisp": "73d15afc6e1325f03d19ad4b39eeb3adc677ce2b07e9eddbc14141ca8843edde",
+        "books/format-base.lisp": "ead88cb8e7ab67db0c6a06ac400c813f753121c77082825b16016835eb462699",
+        "books/format-check.lisp": "c98f35c7c74d009ab24dbd5b87b1859dbba46be77b31a3585e252d3084ca4951",
+        "books/format-context.lisp": "16c2a00f17df2e53d055137f80eedcbb8c87b673ab7ae13e7a31246222ad008f",
+        "books/format-events.lisp": "10be8e61d3746b6094d4b1ac5a2d6006c4d8901a3744b6ca1b4959836812a62b",
+        "books/format-physical.lisp": "818642d11e9638333f30fa6f60e3ee8db1ce39d1d040c76ed7ab58df781c1d19",
+        "books/format-storage.lisp": "ddb445f4a77de9462de3b4df0dc5111f381c7b73f94812cb2fa2096852adc68f",
+        "books/format.lisp": "01bd400412d667e203d105b8dd7d69563c174c02f5b23d58f9d57bdb4ae5ab1a",
+        "books/journal-members-state.lisp": "8b705c5a96e393d5460f210f49343a6967c56c526ce97d3cd636972b1fc9b414",
+        "books/layout-size-bounds.lisp": "242f55370eff42c596962722a3404058a48dae5215bbf9d39b82f198b07e45b7",
+        "books/layout.lisp": "2bc995f6bb70ec17862c5b535a4734e90a7a5dfd6312ebdee7d06877b0fbb4d8",
+        "books/machines-a-access.lisp": "446d765ecb3b7aa0ed2ab7c9d2f9964bd47aff03d80cd521a9c6b11e1264ae5b",
+        "books/machines-b.lisp": "35f0c7c7fc7824682c87e4787ca3bb696d7d745c99855324b3ff6eff827ec8b1",
+        "books/machines-directory.lisp": "d87c6d169aae1a5c06fd1f31d9047645c8ecae0c444e10ad205958a37e2c83fa",
+        "books/machines.lisp": "5c5a20c1f2ff695fcaa9b2ba2d7bf345781c8127c33af89984c14f516641932f",
+        "books/merkle.lisp": "893f300d6b6ce46640a604ecd6a71ea2195b38cc818f795eae3d96c525eba7f6",
+        "books/operations.lisp": "419120e7ae100f400d18cdee2d080d6133523673cac22fae1b05c7201ff97dd8",
+        "books/ops-heads.lisp": "17af3696d3ad68f638d8301906cb1ce67152e6fa685a8d7697b5521018359366",
+        "books/ops-issued-count.lisp": "2238a6e61e7075984f5cd95519a7dd71bc2d1e6f4da6d0b411e639f27ce7a426",
+        "books/ops-issued-effects.lisp": "0d8ca86349858405807ff2cdccffccd71d1c8cef2065186b28aa31aafd35a709",
+        "books/origin.lisp": "7f63d5f31b061c0b9206b82394d70e31fce57ceafc9ec7cd8477a54d538d9c19",
+        "books/owed-discharge.lisp": "53903322be1b79ed081ecfcbfcb9f60649d3fdbf8aa6853b772abf8e6fc69f01",
+        "books/owed.lisp": "171950b91e40f4e7d0e94902ce00009adc62d8104e0eecd5db6a59b93bbffb15",
+        "books/payload-workspace.lisp": "4892fc375123f9544d1e4d69f6782eb79f4f528427090bf0b688ef40b06355b9",
+        "books/pool-digest.lisp": "f466162c376f983c3fedacf17dd4c7f89529153caf27aaca30d81a411dd14197",
+        "books/pool-dimensions.lisp": "d39cf91254b2b5f062b468146361529d73a020e08b1f72d23c6c80a2c75eba6d",
+        "books/pool-ranges.lisp": "2f9e1f0c898ea4f6747f4e8f4942bc7f73be512ed1b90feb2d9cad7a58e3f959",
+        "books/pool-read-contracts.lisp": "f51f92ce9bfcd7af93e6ba47bb5a4c43fbb5ac79424ef34ecf489b8f92e9e852",
+        "books/pool.lisp": "9a31c8d38d309862369091a2c8019ccc3da16920742ff01040899b8f395f2fe9",
+        "books/profile.lisp": "1f216ed6c0505dc1b01ada0f7d3d9482af6da7b7dff8736b5100ef3e3fbc1038",
+        "books/read-pins.lisp": "9c4a95db6c8188791929f924636c615a6408a6a02d2be9777e16009fad2811b6",
+        "books/recovery.lisp": "30ae12c976c2e1f78bbc069348ec70e2ceea2e347b46330eecfa9c2a86ed9ad5",
+        "books/resources.lisp": "019bb017e54237a5304f30598b8842de8f0651b5f92c523ff174f24994fe43c6",
+        "books/retirement-coordinator.lisp": "9495cceb023c5144f7f4d9b87f9953b7245ebb623e0d6b2d00b321aadbf9d20e",
+        "books/retirement.lisp": "1f8ebb638aacdbda36c336663fc6d6321896aba570b95d5a3eef02360fcb6caf",
+        "books/run-budget.lisp": "6c340901483627a433e4de6b7699b684b9949f233ee52ce4c5840774df59a7d0",
+        "books/sched.lisp": "aa485faf89a7a51334cad497e8db98043c5678dd9a32ed597bdd0ec4a41dd59f",
+        "books/storage-block-io.lisp": "ecd56a67afd5efc4acf9a7d57d7e24f1b68692707cec3dbc79b188f703c5bdd2",
+        "books/trace.lisp": "8659e943d080aa3af080893f5027b2fa752f3803c3471620a5d946646df8065f",
+        "books/tuple.lisp": "c6b895fd566be6b91ba68fb040826b689a5ad4891a65e040773bfb28b90e1978",
+        "books/vocab.lisp": "96606555ca9b71fcc9d3e5b955deb5052300526347dbb5f5f8e74545813b1c53"
+      },
+      "seconds": 32.185,
+      "finished_utc": "2026-11-16T00:19:45+00:00"
+    }
+  ],
+  "collection": "All three records collected and root cert/port/FASL payloads and all before/after source hashes independently verified.",
+  "cleanup": "All11 recorded author/record handles absent, lastscope not-found/inactive, each author STOP0. Children slot0 reconciled underlock; total8/26 at release.",
+  "performance": "machines-b record32.185s at one job; actual author recovery-machine originalmacro11.38s/495740steps. D26 cost defect retained, no cap or event splitting."
+}
