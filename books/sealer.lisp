@@ -59,6 +59,13 @@
    fn2-ranges-rows fn2-range-sources-rows fn2-run-cursors-rows fn2-run-paths-rows))
 ; Shape proofs use the explicit scalar checks and public result contracts.
 ; Keep readonly selection arithmetic folded; alternate caller modes stay exact.
+; Numeric caller domains also discharge folded width predicates (for
+; example a checked level L<6 stored in a u8 TOP). Export the bridge with
+; the wrapper, which machines-c-sealer also consumes after this book.
+(defthm fn2-seal-width-from-range-by-definition
+ (implies (and (natp bits) (integerp v) (<= 0 v) (< v (expt 2 bits)))
+          (unsigned-byte-p bits v))
+ :hints (("Goal" :in-theory (enable unsigned-byte-p integer-range-p))))
 (defmacro fn2-seal-shape (fn args outs stobjs &optional (mode 't) reads)
  `(fn2-idc-fn-shape ,fn ,args ,outs ,stobjs ,mode ,(append reads *fn2-seal-rows-folded*
             (and (eq mode t) '(min nfix unsigned-byte-p)))))

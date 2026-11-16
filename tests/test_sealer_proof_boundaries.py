@@ -37,6 +37,7 @@ class SealerProofBoundaries(unittest.TestCase):
             return [tree(f) for f in forms if not (
                 isinstance(f, lisp.Lst) and (
                     lisp.flat(f) == '(local (include-book "columns-call-guards"))' or
+                    (isinstance(f, lisp.Lst) and len(f.items) > 1 and lisp.flat(f.items[1]) == 'fn2-seal-width-from-range-by-definition') or
                     (lisp.flat(f.items[0]) == 'defmacro' and lisp.flat(f.items[1]) == 'fn2-seal-shape')))]
         self.assertEqual(selected(old), selected(new))
         changed = {'fn2-seal-start', 'fn2-seal-most-runs-types', 'fn2-seal-plan-types',
@@ -44,6 +45,7 @@ class SealerProofBoundaries(unittest.TestCase):
         def untouched(forms):
             return [lisp.flat(f) for f in forms if not (
                 lisp.flat(f) == '(local (include-book "columns-call-guards"))' or
+                    (isinstance(f, lisp.Lst) and len(f.items) > 1 and lisp.flat(f.items[1]) == 'fn2-seal-width-from-range-by-definition') or
                 (isinstance(f, lisp.Lst) and len(f.items) > 1 and lisp.flat(f.items[1]) in changed))]
         self.assertEqual(untouched(old), untouched(new))
 
@@ -69,6 +71,15 @@ class SealerProofBoundaries(unittest.TestCase):
         self.assertEqual([lisp.flat(n) for n in hint.items[2].node.items],
                          [lisp.flat(n) for n in old_disable.items[1:]] + ['min', 'nfix'])
         self.assertEqual(lisp.flat(hint.items[3]), 'nil')
+
+    def test_width_bridge_retains_all_actual_numeric_premises(self):
+        forms = lisp.parse(ROOT / 'books/sealer.lisp').forms
+        bridge = lisp.match(None, forms, deep=False, head='defthm',
+                            name='fn2-seal-width-from-range-by-definition')
+        self.assertEqual(len(bridge), 1)  # Exported with the wrapper, not LOCAL.
+        self.assertEqual(lisp.flat(bridge[0].node.items[2]),
+            '(implies (and (natp bits) (integerp v) (<= 0 v) (< v (expt 2 bits))) (unsigned-byte-p bits v))')
+        self.assertTrue(lisp.match(None, [bridge[0].node], head='enable'))
 
     def test_helper_has_explicit_owner_and_no_parent_expansion(self):
         a = lisp.parse(ROOT / 'books/sealer.lisp')
