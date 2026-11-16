@@ -14,7 +14,7 @@
 ; yield. No unconditional WFP-only theorem or generic FORMAT cost is claimed.
 (defconst *fn2-boot-work-format-page-conditional*
  (+ (* 15 (+ (length (fn2-fc-domain :page)) 32 2)) 32 (+ (length (fn2-fc-domain :page)) 32 2 1) (* 3 (+ (length (fn2-fc-domain :page)) 32 2 1)) 7))
-(defconst *fn2-boot-work-boot-checkpoint-owner-p* (+ 0 132))
+(defconst *fn2-boot-work-boot-checkpoint-owner-p* (+ 0 150))
 (defconst *fn2-boot-work-boot-checkpoint-read-complete-p* (+ 0 126))
 (defconst *fn2-boot-work-checkpoint-bootstrap-unit* (+ 0 ))
 (defconst *fn2-boot-work-checkpoint-image-sizep* (+ 0 ))

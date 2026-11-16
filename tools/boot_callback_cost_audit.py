@@ -17,7 +17,7 @@ for path in Path('books').glob('*.lisp'):
     if isinstance(d,list) and d[:1]==['defun']:a.D[d[1]]=(path,d)
 OLD=a.ex
 INDEX=4;FIELD=22;SNAPSHOT=16
-COST={'fn2-machine-kind':INDEX,'fn2-machine-generation':INDEX,'fn2-boot-snapshot-read-code':SNAPSHOT}
+COST={'fn2-machine-kind':INDEX,'fn2-machine-generation':FIELD,'fn2-boot-snapshot-read-code':SNAPSHOT}
 BYTE_PRIMITIVES={'fn2-pool-read','fn2-pool-write','fn2-pool-compare','fn2-layout-copy','fn2-boot-pad','fn2-pool-append-text','fn2-b3-init','fn2-b3-update','fn2-b3-finalize','fn2-codec-emit-fixed','fn2-codec-emit-varint','fn2-codec-emit-be','fn2-checkpoint-restore-zero-range','fn2-digest-store'}
 # Only actual machine fields reached by these provider bodies.
 FIELDS='pending stage index total phase image-size checkpoint-index offset pool-slot pool-gen rx-slot rx-gen event-ready outcome count create checkpoint-length'.split()

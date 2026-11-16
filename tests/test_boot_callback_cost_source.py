@@ -12,7 +12,7 @@ class Cost(unittest.TestCase):
    self.assertEqual(row['expanded'],dict(b.full(row['provider'])))
   for name,row in artifact['roots'].items():self.assertEqual(row,dict(b.full(name)))
  def test_callback_components_and_no_zero_unknown_fallback(self):
-  expected={'fn2-boot-bootstrap-pack':(812,12,0),'fn2-boot-bootstrap-verify':(1059,12,0),'fn2-boot-checkpoint-anchor-zero':(672,0,0),'fn2-boot-checkpoint-anchor-step':(1363,0,1),'fn2-boot-checkpoint-descriptor-check':(1937,0,1)}
+  expected={'fn2-boot-bootstrap-pack':(830,12,0),'fn2-boot-bootstrap-verify':(1077,12,0),'fn2-boot-checkpoint-anchor-zero':(690,0,0),'fn2-boot-checkpoint-anchor-step':(1381,0,1),'fn2-boot-checkpoint-descriptor-check':(1955,0,1)}
   for n,(m,s,f) in expected.items():
    got=b.full(n);self.assertEqual((got['metadata'],got['spine'],got['@format-run']),(m,s,f))
   with self.assertRaises(ValueError):b.ex(['fn2-unaccounted-helper','row'])
@@ -33,7 +33,7 @@ class Cost(unittest.TestCase):
   for raw in forms((ROOT/'books/boot-callback-work.lisp').read_text()):
    f=read_sexp(raw)
    if isinstance(f,list) and f and f[0]=='defconst':constants[f[1]]=value(f[2])
-  expected={'format-anchor':6181,'format-page-conditional':1069,'boot-bootstrap-pack':824,'boot-bootstrap-verify':1071,'boot-checkpoint-anchor-zero':672,'boot-checkpoint-anchor-step':7544,'boot-checkpoint-descriptor-check':3006,'pack-bytes':8468,'verify-bytes':16724,'anchor-step-bytes':8256,'descriptor-check-conditional-bytes':8480}
+  expected={'format-anchor':6181,'format-page-conditional':1069,'boot-bootstrap-pack':842,'boot-bootstrap-verify':1089,'boot-checkpoint-anchor-zero':690,'boot-checkpoint-anchor-step':7562,'boot-checkpoint-descriptor-check':3024,'pack-bytes':8468,'verify-bytes':16724,'anchor-step-bytes':8256,'descriptor-check-conditional-bytes':8480}
   for name,n in expected.items():self.assertEqual(constants['*fn2-boot-work-'+name+'*'],n)
  def test_actual_generated_not_fixture_reader_template(self):
   source=(ROOT/'books/machines.lisp').read_text()
@@ -41,7 +41,13 @@ class Cost(unittest.TestCase):
   self.assertIn('(let ((code (fn2-machine-phase-read-code id fn2-core)))',source)
   self.assertEqual((b.INDEX,b.FIELD,b.SNAPSHOT),(4,22,16))
   actual=b.a.D['fn2-boot-checkpoint-owner-p'][1]
-  self.assertNotIn('fixture',str(actual));self.assertEqual(b.full(actual[1])['metadata'],132)
+  self.assertNotIn('fixture',str(actual));self.assertEqual(b.full(actual[1])['metadata'],150)
+ def test_generation_dispatch_is_actual_kind_field(self):
+  actual=(ROOT/'books/machines-a-access.lisp').read_text()
+  self.assertIn('(fn2-machine-index-access kind 8)',actual)
+  self.assertIn('(fn2-machine-index-access slot 32)',actual)
+  self.assertNotIn('(fn2-machine-index-access generation',actual)
+  self.assertEqual(b.COST['fn2-machine-generation'],22)
  def test_codec_completion_storage_class(self):
   source=(ROOT/'books/layout.lisp').read_text()
   self.assertIn('(old-v (fn2-fields-value i fn2-fields))',source)

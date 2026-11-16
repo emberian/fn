@@ -7,11 +7,11 @@ components; the JSON inventory records every expanded source callee.
 
 | Callback | Structural steps | Typed payload bytes |
 | --- | ---: | ---: |
-| bootstrap pack | 824 | 8468 |
-| bootstrap verify | 1071 | 16724 |
-| anchor zero | 672 | 4096 |
-| anchor step | 7544 | 8256 |
-| descriptor check, conditional | 3006 | 8480 |
+| bootstrap pack | 842 | 8468 |
+| bootstrap verify | 1089 | 16724 |
+| anchor zero | 690 | 4096 |
+| anchor step | 7562 | 8256 |
+| descriptor check, conditional | 3024 | 8480 |
 
 Descriptor values exclude the forthcoming checked fresh-BEGIN callback and
 its controller. They require the real PAGE continuation gate below. They

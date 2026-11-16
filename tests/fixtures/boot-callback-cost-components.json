@@ -6,10 +6,10 @@
       "provider": "fn2-boot-checkpoint-owner-p",
       "source": "books/boot-checkpoint-core.lisp",
       "component": {
-        "metadata": 132
+        "metadata": 150
       },
       "expanded": {
-        "metadata": 132
+        "metadata": 150
       }
     },
     {
@@ -44,7 +44,7 @@
         "fn2-checkpoint-image-sizep": 1
       },
       "expanded": {
-        "metadata": 181
+        "metadata": 199
       }
     },
     {
@@ -269,7 +269,7 @@
         "fn2-boot-bootstrap-pack-pool": 1
       },
       "expanded": {
-        "metadata": 812,
+        "metadata": 830,
         "spine": 12
       }
     },
@@ -329,7 +329,7 @@
         "fn2-boot-bootstrap-verify-pool": 1
       },
       "expanded": {
-        "metadata": 1059,
+        "metadata": 1077,
         "spine": 12
       }
     },
@@ -411,7 +411,7 @@
         "fn2-boot-checkpoint-descriptor-target-pool": 1
       },
       "expanded": {
-        "metadata": 554
+        "metadata": 572
       }
     },
     {
@@ -423,7 +423,7 @@
         "fn2-pool-reset": 1
       },
       "expanded": {
-        "metadata": 672
+        "metadata": 690
       }
     },
     {
@@ -578,7 +578,7 @@
         "fn2-boot-anchor-admit-pool": 1
       },
       "expanded": {
-        "metadata": 1363,
+        "metadata": 1381,
         "@format-run": 1
       }
     },
@@ -591,7 +591,7 @@
         "fn2-boot-checkpoint-descriptor-target-pool": 1
       },
       "expanded": {
-        "metadata": 790
+        "metadata": 808
       }
     },
     {
@@ -695,41 +695,41 @@
         "fn2-boot-checkpoint-descriptor-pool": 1
       },
       "expanded": {
-        "metadata": 1937,
+        "metadata": 1955,
         "@format-run": 1
       }
     }
   ],
   "roots": {
     "fn2-boot-checkpoint-owner-p": {
-      "metadata": 132
+      "metadata": 150
     },
     "fn2-boot-checkpoint-read-complete-p": {
       "metadata": 126
     },
     "fn2-boot-bootstrap-offset": {
-      "metadata": 181
+      "metadata": 199
     },
     "fn2-boot-bootstrap-pack": {
-      "metadata": 812,
+      "metadata": 830,
       "spine": 12
     },
     "fn2-boot-bootstrap-verify": {
-      "metadata": 1059,
+      "metadata": 1077,
       "spine": 12
     },
     "fn2-boot-checkpoint-anchor-zero": {
-      "metadata": 672
+      "metadata": 690
     },
     "fn2-boot-checkpoint-anchor-step": {
-      "metadata": 1363,
+      "metadata": 1381,
       "@format-run": 1
     },
     "fn2-boot-checkpoint-descriptor-target": {
-      "metadata": 790
+      "metadata": 808
     },
     "fn2-boot-checkpoint-descriptor-check": {
-      "metadata": 1937,
+      "metadata": 1955,
       "@format-run": 1
     }
   }
