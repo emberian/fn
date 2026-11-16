@@ -56,7 +56,11 @@
 
 (defthm fn2-am-entry-at-natp (natp (fn2-am-entry-at off)) :rule-classes :type-prescription)
 
-(defthm fn2-am-entry-at-bound (<= (nfix off) (fn2-am-entry-at off)) :rule-classes :linear)
+(local (include-book "arithmetic-3/floor-mod/floor-mod" :dir :system))
+(defthm fn2-am-entry-at-bound (<= (nfix off) (fn2-am-entry-at off))
+ :hints (("Goal" :use ((:instance mod-bounds-1 (x (nfix off)) (y *fn2-commit-unit-bytes*)))
+          :in-theory (e/d (fn2-am-entry-at) (mod floor))))
+ :rule-classes :linear)
 
 (in-theory (disable fn2-am-blocks fn2-am-units fn2-am-manifestp fn2-am-fits fn2-am-entry-at))
 

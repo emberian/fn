@@ -4,6 +4,7 @@ import json
 from pathlib import Path
 import tempfile
 import unittest
+from unittest import mock
 
 
 def load(name, filename):
@@ -45,6 +46,27 @@ class ResetEvidence(unittest.TestCase):
         changed[1]['after'][-1] += 1
         with self.assertRaises(AssertionError):
             self.check(changed)
+
+    def test_launchers_must_be_executable_before_image_creation(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            (root / 'tests').mkdir()
+            real = root / 'qualified-acl2'
+            observer = root / 'tests/native-rolling-launcher.py'
+            for path in (real, observer):
+                path.write_text('#!/bin/sh\nexit 0\n')
+                path.chmod(0o700)
+            with mock.patch.object(campaign, 'ROOT', root), \
+                 mock.patch.dict(campaign.os.environ, {'FN_ACL2': str(real)}):
+                self.assertEqual(campaign.selected_launchers(), (real.resolve(), observer.resolve()))
+                for path in (observer, real):
+                    path.chmod(0o600)
+                    with self.assertRaises(PermissionError):
+                        campaign.selected_launchers()
+                    path.chmod(0o700)
+                with mock.patch.dict(campaign.os.environ, {'FN_ACL2': str(observer)}):
+                    with self.assertRaises(ValueError):
+                        campaign.selected_launchers()
 
     def test_loader_inserts_only_observer_before_actual_entry(self):
         source = (campaign.ROOT / 'tools/image-node.lsp').read_bytes()

@@ -1224,7 +1224,9 @@
       "first_refusal": "ISSUE-POOL-DATA0.20s23134steps",
       "scope": "Separate prior foundation/source scope; no current wholeRAW/FETCH record",
       "cleanup": "Executor reports allownedhandles/scopegone and2Gi released"
-    }
+    },
+    "READY74": "/tmp/current-rolling-ready74-qualified-receipt.json actual74 current ab05 source/key/payload audit;43reuse31new",
+    "READY79": "/tmp/current-rolling-ready79-qualified-receipt.json actual79 current ab05 source/key/payload audit;56reuse23new; all25ownPIDs/scopegone8Gi released"
   },
   "enum_fragment_evidence": {
     "donor": "2ebbb5164",
@@ -1295,7 +1297,7 @@
     "current_foundation_raw_keys_match": 34,
     "old_receipt_scope": "Original prefoundation reader34 remains historical; only10oldkeys unchanged"
   },
-  "pending_source_join": "No lowerproducerblocker; currentrollingclosure/cache/READYplan next. Metadata2Wphysicalactivation remains separate; no core/RAW/native qualification.",
+  "pending_source_join": "No requiredproducerjoin pending; newcurrentcodecproof+native mode source committed. Active independent authorowners preserve their frozen old-compatibleparent scopes; broadRAW/application stillunqualified.",
   "foundation_join": {
     "source": "6e7a1a9c105f2ccfeb0b06f32c0c566378cf62d9",
     "rows_source": "31635689e152fa20aa3e9eb18ae456ebe2397b64",
@@ -1395,6 +1397,12 @@
     "preservation": "All98 donor paths matched exact889 baseline before application; later COPY/READ/B3 interface overlays retained. No source conflicts.",
     "current_red_source_controls": [],
     "native_parser_qualification": "docs/design/receipts/native-article-text-qualified2.json",
-    "control_repair": "FulloriginalREADAST comparison retained moduloexactreviewedinclude+twoDIMrequests. Originaldistinctcolumngenerator mutation scoped byASTfunction. OriginalstorageextractorFULLAST retained moduloexact3canonicalDIMrequests/import, withmissing/duplicate/wrongobservationmutants. No baselinesreplaced."
+    "control_repair": "FulloriginalREADAST comparison retained moduloexactreviewedinclude+twoDIMrequests. Originaldistinctcolumngenerator mutation scoped byASTfunction. OriginalstorageextractorFULLAST retained moduloexact3canonicalDIMrequests/import, withmissing/duplicate/wrongobservationmutants. No baselinesreplaced.",
+    "native_mode_repair": "099112160 restores100755observerlauncher and preflights before image creation; no ACL2 keychange",
+    "codec_proof_repair": {
+      "source": "5e227644304633ac058934738e34e188c7bc9b57",
+      "receipt": "/tmp/current-source-manifest-codec-qualified25-receipt.json",
+      "scope": "Whole25actualqualified, localMOD/floorhint only; downstreamclosurekeys change, runtime/H+C unchanged"
+    }
   }
 }
