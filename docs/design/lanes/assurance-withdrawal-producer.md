@@ -57,10 +57,15 @@ world/model operation, not an authenticated served decision.
 The parent owns integration; this lane owns the source audit/producer plan.
 The authority owner must first supply the **existing authorized receiver-local
 cancel decision**, bound to the actual authenticated caller, exact resolved
-accepted target and immutable authorization evidence. The root's restriction
-reports automatic review blocked new authorization-policy work. No new policy,
-new public authority verb, or synthetic acceptance is authorized by this audit.
-This is a tracked implementation blocker, not a deferred user decision.
+accepted target and immutable authorization evidence. The adopted authority
+ruling already selects the authenticated original submitter or node administrator;
+there is no outstanding user policy choice here. The prior authorization worker
+stopped after a cybersecurity safeguard error. Its exact rejected task payload is
+not recoverable, so this is not evidence of a command-specific approval denial or
+a prohibition on a particular policy change. The blocked task is not being retried
+or rerouted. Resolving that safeguard restriction and implementing the existing
+principal-bound decision remain separate obligations. No synthetic acceptance
+is supplied by this audit.
 
 Once that real decision exists, connect its result to a bounded txn continuation:
 retain and parse the actual Control value through generated pool codecs; resolve

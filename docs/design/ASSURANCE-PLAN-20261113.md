@@ -1407,10 +1407,13 @@ The device-syscall-return cut occurs after physical effects and before completio
 a simulator step that combines effects and posting is not by itself its mapping.
 
 Authorization remains release-blocking: original B delivered exact article bytes
-with required grants disabled. The defensive repair worker was stopped twice by
-automatic content review for possible cybersecurity risk; source changes remain
-preserved, but its fixed-callback qualification is incomplete. Do not relabel the
-passing baseline native recovery tests as permission correctness or release approval.
+with required grants disabled. Recovered evidence confirms that an authorization
+worker stopped after a cybersecurity safeguard error; its exact task payload is
+unavailable. Later command-specific or policy-specific descriptions exceed that
+evidence. Preserved source changes do not complete fixed-callback qualification.
+The safeguard restriction remains to be resolved before retrying that blocked
+work. Do not relabel passing baseline native recovery tests as permission
+correctness or release approval.
 
 ## Active implementation priorities — 2026-11-14
 
