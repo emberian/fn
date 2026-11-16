@@ -335,6 +335,8 @@ ACL2_BOOKS = \
   tests/cns-raw-eof-unit \
   tests/cns-stream-append-unit \
   books/cns-source-core \
+  books/cns-source-issue-accounting \
+  tests/cns-source-issue-unit \
   books/cns-request-observer \
   tests/cns-metadata-pending-unit \
   tests/cns-fetch-meta-emitted-support \

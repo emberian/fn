@@ -1,7 +1,7 @@
 ; The source actor uses generated core faces for the same child operations.
 ; No transport callback performs physical I/O or hashing inside NEXT.
 (in-package "ACL2")
-(include-book "cns-source-raw")
+(include-book "cns-source-issue-accounting")
 (include-book "cns-source-capture")
 (include-book "cns-source-manifest")
 (include-book "machine-arms")
@@ -26,6 +26,12 @@
  '(progn
    (make-event (value (cons 'progn
                      (fn2-cns-source-face-events *fn2-cns-source-core-faces* (w state)))))
+   (make-event
+    (value (cons 'progn
+     (list (fn2-issue-core-effect-event 'fn2-cns-source-issue-core
+             (getpropc 'fn2-cns-source-issue-core 'formals nil (w state)))
+           (fn2-issue-core-issued-event 'fn2-cns-source-issue-core
+             (getpropc 'fn2-cns-source-issue-core 'formals nil (w state)))))))
    ; Shape/WFP does not establish equal dimensions across distinct children.
    ; This bounded geometry check is retained by capture, not a core scan.
    (defun fn2-cns-source-contextp (cns cgen ctl ctlgen request fn2-core)
@@ -160,6 +166,12 @@
                               *fn2-cns-kind* principal fn2-core)))
    (fn2-core-preserves fn2-cns-stream-source-issue
     (cns cgen ctl ctlgen request principal fn2-core) :position 3 :rows nil)
+   (make-event
+    (value (cons 'progn
+     (list (fn2-issue-core-effect-event 'fn2-cns-stream-source-issue
+             '(cns cgen ctl ctlgen request principal fn2-core))
+           (fn2-issue-core-issued-event 'fn2-cns-stream-source-issue
+             '(cns cgen ctl ctlgen request principal fn2-core))))))
    (defun fn2-cns-stream-source-step (cns cgen ctl ctlgen request started fn2-core)
     (declare (xargs :stobjs fn2-core :guard (fn2-core-wfp fn2-core)))
     (b* (((unless (fn2-cns-source-boundp cns cgen ctl ctlgen request fn2-core)) (mv :stale fn2-core))
