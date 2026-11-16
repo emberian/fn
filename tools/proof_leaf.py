@@ -250,7 +250,7 @@ def qualify(args, repl):
                 commands.run('cleanup', ['tools/proof_repl.py', 'stop', name], cleanup=True)
                 receipt['cleanup_grace_seconds'] = 15
                 require_stopped(receipt.get('session_handles', []), time.time() + 15)
-            except (OSError, RuntimeError, subprocess.TimeoutExpired) as error:
+            except (OSError, ValueError, RuntimeError, subprocess.TimeoutExpired) as error:
                 receipt['cleanup_error'] = str(error)
         save()
         for signum, handler in previous_handlers.items():
