@@ -1297,7 +1297,7 @@
     "current_foundation_raw_keys_match": 34,
     "old_receipt_scope": "Original prefoundation reader34 remains historical; only10oldkeys unchanged"
   },
-  "pending_source_join": "No requiredproducerjoin pending; newcurrentcodecproof+native mode source committed. Active independent authorowners preserve their frozen old-compatibleparent scopes; broadRAW/application stillunqualified.",
+  "pending_source_join": "No known requiredsourcejoinpending; currentRAW frontier recompute next with actualproducer records. Metadataphysicalactivation remainsheld.",
   "foundation_join": {
     "source": "6e7a1a9c105f2ccfeb0b06f32c0c566378cf62d9",
     "rows_source": "31635689e152fa20aa3e9eb18ae456ebe2397b64",
@@ -1404,5 +1404,15 @@
       "receipt": "/tmp/current-source-manifest-codec-qualified25-receipt.json",
       "scope": "Whole25actualqualified, localMOD/floorhint only; downstreamclosurekeys change, runtime/H+C unchanged"
     }
+  },
+  "scan_refinement_join": {
+    "source": "f1c91c9db",
+    "receipt": "/tmp/sol-rolling-upload-scan-qualified16.json",
+    "scope": "Actualwhole16qualified, runtime/guards/originalformulaASTunchanged,9LOCALprefixsupportevents+finalhints; newdependentkeysrequireexactmatch"
+  },
+  "source_issue_accounting_join": {
+    "source": "37fd4c242",
+    "scope": "Source-only currentf775 projection. Two runtime descriptor literals WAIT/BAD0 OK1; conservativebyte/stepcredits unchanged. ActualRAW accounting/unit gate onlyafterqualifiedRAW; core149 not yetclaimed.",
+    "manifest": "docs/design/CNS-SOURCE-ISSUE-CURRENT.json"
   }
 }
