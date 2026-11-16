@@ -1,0 +1,59 @@
+{
+  "scope": "Source-only impact audit. BOOT CORE273 +lower17f +aa2b declared schema; canonical roots checked on immutable93b6a92d6 with SAME updated walker. No ACL2 emission/execution or physical qualification.",
+  "classification": {
+    "directory_kind_slot": {
+      "getter": 4,
+      "read_code": 2
+    },
+    "generic_kind_fields_including_generation": {
+      "getter": 22,
+      "read_code": 12
+    },
+    "kind_snapshot": 16,
+    "kind_row_generation": 22,
+    "kind_row_directory": 19
+  },
+  "affected": {
+    "sealer_pending": {
+      "before": 74,
+      "after": 102,
+      "why": "generic generation GET +18 and READ-CODE +10"
+    },
+    "sealer_wake": {
+      "before": 236,
+      "after": 264,
+      "why": "one pending helper; resumable unchanged"
+    },
+    "boot_each_callback_with_actual_owner": {
+      "delta": 18,
+      "why": "one executed generic machine-generation; snapshot calls are not deduplicated"
+    }
+  },
+  "unaffected": {
+    "master_controller_row_generation": {
+      "steps": 22,
+      "why": "actual kind-row reader already snapshot16+slot4+native2"
+    },
+    "directory_consume": {
+      "raw_metadata": 182,
+      "spine": 12,
+      "core_get_store": 17,
+      "total": 211,
+      "generic_machine_calls": {}
+    },
+    "promotion": {
+      "raw_metadata": 601,
+      "spine": 17,
+      "core_get_store": 44,
+      "total": 662,
+      "generic_machine_calls": {}
+    },
+    "reopen": {
+      "raw_metadata": 660,
+      "spine": 17,
+      "core_get_store": 47,
+      "total": 724,
+      "generic_machine_calls": {}
+    }
+  }
+}

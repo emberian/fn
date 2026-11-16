@@ -17,11 +17,8 @@ for path in Path('books').glob('*.lisp'):
     if isinstance(d,list) and d[:1]==['defun']:a.D[d[1]]=(path,d)
 OLD=a.ex
 INDEX=4;FIELD=22;SNAPSHOT=16
-COST={'fn2-machine-kind':INDEX,'fn2-machine-generation':FIELD,'fn2-boot-snapshot-read-code':SNAPSHOT}
+COST=a.MACHINE_READERS
 BYTE_PRIMITIVES={'fn2-pool-read','fn2-pool-write','fn2-pool-compare','fn2-layout-copy','fn2-boot-pad','fn2-pool-append-text','fn2-b3-init','fn2-b3-update','fn2-b3-finalize','fn2-codec-emit-fixed','fn2-codec-emit-varint','fn2-codec-emit-be','fn2-checkpoint-restore-zero-range','fn2-digest-store'}
-# Only actual machine fields reached by these provider bodies.
-FIELDS='pending stage index total phase image-size checkpoint-index offset pool-slot pool-gen rx-slot rx-gen event-ready outcome count create checkpoint-length'.split()
-COST.update({'fn2-machine-'+f:FIELD for f in FIELDS})
 WRAPPERS=('fn2-boot-checkpoint-owner-p','fn2-boot-checkpoint-read-complete-p','fn2-boot-bootstrap-offset','fn2-boot-bootstrap-pack','fn2-boot-bootstrap-verify','fn2-boot-checkpoint-anchor-zero','fn2-boot-checkpoint-anchor-step','fn2-boot-checkpoint-descriptor-target','fn2-boot-checkpoint-descriptor-check')
 # Callback leaves are summarized separately, never silently zeroed.
 LOWER={'fn2-boot-bootstrap-pack-pool','fn2-boot-bootstrap-verify-pool','fn2-boot-anchor-admit-pool','fn2-boot-checkpoint-descriptor-pool','fn2-boot-checkpoint-descriptor-target-pool','fn2-boot-bootstrap-current-p'}
@@ -68,3 +65,17 @@ def full(n):
    else:out.update({k:z*v for k,z in expand(key,active+(name,)).items()})
   return out
  return expand(n)
+
+def machine_call_inventory(root):
+ """Same walker/recurrence, projected onto actual machine reader symbols.
+
+ No deduplication: nested production snapshot calls remain separate counts.
+ """
+ saved=(a.ex,a.BODIES,a.ACTIVE,a.SEEN)
+ def trace(x,current=None):
+  if isinstance(x,list) and x and x[0] in COST:
+   return Counter({'@machine:'+x[0]:1})+sum((trace(v,current) for v in x[1:]),Counter())
+  return ex(x,current)
+ a.ex=trace;a.BODIES={};a.ACTIVE=set();a.SEEN=set()
+ try:return {k.removeprefix('@machine:'):v for k,v in full(root).items() if k.startswith('@machine:')}
+ finally:a.ex,a.BODIES,a.ACTIVE,a.SEEN=saved

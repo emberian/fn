@@ -35,6 +35,14 @@ class Cost(unittest.TestCase):
    if isinstance(f,list) and f and f[0]=='defconst':constants[f[1]]=value(f[2])
   expected={'format-anchor':6181,'format-page-conditional':1069,'boot-bootstrap-pack':842,'boot-bootstrap-verify':1089,'boot-checkpoint-anchor-zero':690,'boot-checkpoint-anchor-step':7562,'boot-checkpoint-descriptor-check':3024,'pack-bytes':8468,'verify-bytes':16724,'anchor-step-bytes':8256,'descriptor-check-conditional-bytes':8480}
   for name,n in expected.items():self.assertEqual(constants['*fn2-boot-work-'+name+'*'],n)
+ def test_nested_production_snapshots_are_not_deduplicated(self):
+  expected={'fn2-boot-bootstrap-pack':3,'fn2-boot-bootstrap-verify':4,'fn2-boot-checkpoint-anchor-zero':5,'fn2-boot-checkpoint-anchor-step':5,'fn2-boot-checkpoint-descriptor-target':4,'fn2-boot-checkpoint-descriptor-check':4}
+  report=json.loads((ROOT/'tests/fixtures/boot-callback-cost-components.json').read_text())
+  for name,count in expected.items():
+   calls=b.machine_call_inventory(name)
+   self.assertEqual(calls['fn2-boot-snapshot-read-code'],count)
+   self.assertEqual(calls['fn2-machine-generation'],1)
+   self.assertEqual(report['machine_reader_uses'][name]['fn2-machine-generation']['steps'],22)
  def test_actual_generated_not_fixture_reader_template(self):
   source=(ROOT/'books/machines.lisp').read_text()
   self.assertIn('(if (eq (,code ,@call) :ok) ,value-body',source)

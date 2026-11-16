@@ -2,6 +2,7 @@
 No runtime authorizer, parser, codec or ACL2-world evaluator is implemented here.
 """
 from pathlib import Path
+from machine_reader_costs import machine_reader_inventory
 import sys,json
 sys.path.insert(0,'tools');import boot_callback_cost_audit as b
 roots=list(b.WRAPPERS)
@@ -41,6 +42,8 @@ for n in ordered:
  book+='(defconst '+symbol(n)+' (+ 0 '+' '.join(terms)+'))\n'
  report['providers'].append({'provider':n,'source':str(b.a.D[n][0]),'component':dict(c),'expanded':dict(b.full(n))})
 for n in roots:report['roots'][n]=dict(b.full(n))
+classification=machine_reader_inventory()
+report['machine_reader_uses']={n:{call:dict(classification[call],calls=count) for call,count in b.machine_call_inventory(n).items()} for n in roots}
 book+='''; Payload work uses actual encoded-layout maximum, not arbitrary data caps.
 (defconst *fn2-boot-work-geometry-max* *fn2-checkpoint-geometry-record-max-size*)
 (defconst *fn2-boot-work-pack-bytes*

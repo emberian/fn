@@ -732,5 +732,595 @@
       "metadata": 1955,
       "@format-run": 1
     }
+  },
+  "machine_reader_uses": {
+    "fn2-boot-checkpoint-owner-p": {
+      "fn2-boot-snapshot-read-code": {
+        "class": "kind-snapshot",
+        "steps": 16,
+        "calls": 2
+      },
+      "fn2-machine-kind": {
+        "class": "directory-index",
+        "steps": 4,
+        "calls": 1
+      },
+      "fn2-machine-generation": {
+        "class": "kind-field",
+        "steps": 22,
+        "calls": 1
+      },
+      "fn2-machine-pending": {
+        "class": "kind-field",
+        "steps": 22,
+        "calls": 1
+      },
+      "fn2-machine-stage": {
+        "class": "kind-field",
+        "steps": 22,
+        "calls": 1
+      },
+      "fn2-machine-index": {
+        "class": "kind-field",
+        "steps": 22,
+        "calls": 1
+      },
+      "fn2-machine-total": {
+        "class": "kind-field",
+        "steps": 22,
+        "calls": 1
+      }
+    },
+    "fn2-boot-checkpoint-read-complete-p": {
+      "fn2-boot-snapshot-read-code": {
+        "class": "kind-snapshot",
+        "steps": 16,
+        "calls": 1
+      },
+      "fn2-machine-offset": {
+        "class": "kind-field",
+        "steps": 22,
+        "calls": 1
+      },
+      "fn2-machine-pending": {
+        "class": "kind-field",
+        "steps": 22,
+        "calls": 1
+      },
+      "fn2-machine-event-ready": {
+        "class": "kind-field",
+        "steps": 22,
+        "calls": 1
+      },
+      "fn2-machine-outcome": {
+        "class": "kind-field",
+        "steps": 22,
+        "calls": 1
+      },
+      "fn2-machine-count": {
+        "class": "kind-field",
+        "steps": 22,
+        "calls": 1
+      }
+    },
+    "fn2-boot-bootstrap-offset": {
+      "fn2-boot-snapshot-read-code": {
+        "class": "kind-snapshot",
+        "steps": 16,
+        "calls": 2
+      },
+      "fn2-machine-kind": {
+        "class": "directory-index",
+        "steps": 4,
+        "calls": 1
+      },
+      "fn2-machine-generation": {
+        "class": "kind-field",
+        "steps": 22,
+        "calls": 1
+      },
+      "fn2-machine-pending": {
+        "class": "kind-field",
+        "steps": 22,
+        "calls": 1
+      },
+      "fn2-machine-stage": {
+        "class": "kind-field",
+        "steps": 22,
+        "calls": 1
+      },
+      "fn2-machine-index": {
+        "class": "kind-field",
+        "steps": 22,
+        "calls": 1
+      },
+      "fn2-machine-total": {
+        "class": "kind-field",
+        "steps": 22,
+        "calls": 1
+      },
+      "fn2-machine-phase": {
+        "class": "kind-field",
+        "steps": 22,
+        "calls": 1
+      },
+      "fn2-machine-image-size": {
+        "class": "kind-field",
+        "steps": 22,
+        "calls": 1
+      }
+    },
+    "fn2-boot-bootstrap-pack": {
+      "fn2-boot-snapshot-read-code": {
+        "class": "kind-snapshot",
+        "steps": 16,
+        "calls": 3
+      },
+      "fn2-machine-phase": {
+        "class": "kind-field",
+        "steps": 22,
+        "calls": 1
+      },
+      "fn2-machine-image-size": {
+        "class": "kind-field",
+        "steps": 22,
+        "calls": 1
+      },
+      "fn2-machine-pool-slot": {
+        "class": "kind-field",
+        "steps": 22,
+        "calls": 1
+      },
+      "fn2-machine-pool-gen": {
+        "class": "kind-field",
+        "steps": 22,
+        "calls": 1
+      },
+      "fn2-machine-kind": {
+        "class": "directory-index",
+        "steps": 4,
+        "calls": 1
+      },
+      "fn2-machine-generation": {
+        "class": "kind-field",
+        "steps": 22,
+        "calls": 1
+      },
+      "fn2-machine-pending": {
+        "class": "kind-field",
+        "steps": 22,
+        "calls": 1
+      },
+      "fn2-machine-stage": {
+        "class": "kind-field",
+        "steps": 22,
+        "calls": 1
+      },
+      "fn2-machine-index": {
+        "class": "kind-field",
+        "steps": 22,
+        "calls": 1
+      },
+      "fn2-machine-total": {
+        "class": "kind-field",
+        "steps": 22,
+        "calls": 1
+      }
+    },
+    "fn2-boot-bootstrap-verify": {
+      "fn2-boot-snapshot-read-code": {
+        "class": "kind-snapshot",
+        "steps": 16,
+        "calls": 4
+      },
+      "fn2-machine-phase": {
+        "class": "kind-field",
+        "steps": 22,
+        "calls": 1
+      },
+      "fn2-machine-image-size": {
+        "class": "kind-field",
+        "steps": 22,
+        "calls": 1
+      },
+      "fn2-machine-pool-slot": {
+        "class": "kind-field",
+        "steps": 22,
+        "calls": 1
+      },
+      "fn2-machine-pool-gen": {
+        "class": "kind-field",
+        "steps": 22,
+        "calls": 1
+      },
+      "fn2-machine-rx-slot": {
+        "class": "kind-field",
+        "steps": 22,
+        "calls": 1
+      },
+      "fn2-machine-rx-gen": {
+        "class": "kind-field",
+        "steps": 22,
+        "calls": 1
+      },
+      "fn2-machine-offset": {
+        "class": "kind-field",
+        "steps": 22,
+        "calls": 2
+      },
+      "fn2-machine-pending": {
+        "class": "kind-field",
+        "steps": 22,
+        "calls": 2
+      },
+      "fn2-machine-event-ready": {
+        "class": "kind-field",
+        "steps": 22,
+        "calls": 1
+      },
+      "fn2-machine-outcome": {
+        "class": "kind-field",
+        "steps": 22,
+        "calls": 1
+      },
+      "fn2-machine-count": {
+        "class": "kind-field",
+        "steps": 22,
+        "calls": 1
+      },
+      "fn2-machine-kind": {
+        "class": "directory-index",
+        "steps": 4,
+        "calls": 1
+      },
+      "fn2-machine-generation": {
+        "class": "kind-field",
+        "steps": 22,
+        "calls": 1
+      },
+      "fn2-machine-stage": {
+        "class": "kind-field",
+        "steps": 22,
+        "calls": 1
+      },
+      "fn2-machine-index": {
+        "class": "kind-field",
+        "steps": 22,
+        "calls": 1
+      },
+      "fn2-machine-total": {
+        "class": "kind-field",
+        "steps": 22,
+        "calls": 1
+      }
+    },
+    "fn2-boot-checkpoint-anchor-zero": {
+      "fn2-boot-snapshot-read-code": {
+        "class": "kind-snapshot",
+        "steps": 16,
+        "calls": 5
+      },
+      "fn2-machine-phase": {
+        "class": "kind-field",
+        "steps": 22,
+        "calls": 2
+      },
+      "fn2-machine-create": {
+        "class": "kind-field",
+        "steps": 22,
+        "calls": 1
+      },
+      "fn2-machine-pool-slot": {
+        "class": "kind-field",
+        "steps": 22,
+        "calls": 1
+      },
+      "fn2-machine-pool-gen": {
+        "class": "kind-field",
+        "steps": 22,
+        "calls": 1
+      },
+      "fn2-machine-image-size": {
+        "class": "kind-field",
+        "steps": 22,
+        "calls": 1
+      },
+      "fn2-machine-checkpoint-index": {
+        "class": "kind-field",
+        "steps": 22,
+        "calls": 1
+      },
+      "fn2-machine-offset": {
+        "class": "kind-field",
+        "steps": 22,
+        "calls": 2
+      },
+      "fn2-machine-pending": {
+        "class": "kind-field",
+        "steps": 22,
+        "calls": 2
+      },
+      "fn2-machine-event-ready": {
+        "class": "kind-field",
+        "steps": 22,
+        "calls": 1
+      },
+      "fn2-machine-outcome": {
+        "class": "kind-field",
+        "steps": 22,
+        "calls": 1
+      },
+      "fn2-machine-count": {
+        "class": "kind-field",
+        "steps": 22,
+        "calls": 1
+      },
+      "fn2-machine-kind": {
+        "class": "directory-index",
+        "steps": 4,
+        "calls": 1
+      },
+      "fn2-machine-generation": {
+        "class": "kind-field",
+        "steps": 22,
+        "calls": 1
+      },
+      "fn2-machine-stage": {
+        "class": "kind-field",
+        "steps": 22,
+        "calls": 1
+      },
+      "fn2-machine-index": {
+        "class": "kind-field",
+        "steps": 22,
+        "calls": 1
+      },
+      "fn2-machine-total": {
+        "class": "kind-field",
+        "steps": 22,
+        "calls": 1
+      }
+    },
+    "fn2-boot-checkpoint-anchor-step": {
+      "fn2-boot-snapshot-read-code": {
+        "class": "kind-snapshot",
+        "steps": 16,
+        "calls": 5
+      },
+      "fn2-machine-phase": {
+        "class": "kind-field",
+        "steps": 22,
+        "calls": 2
+      },
+      "fn2-machine-checkpoint-index": {
+        "class": "kind-field",
+        "steps": 22,
+        "calls": 2
+      },
+      "fn2-machine-checkpoint-length": {
+        "class": "kind-field",
+        "steps": 22,
+        "calls": 1
+      },
+      "fn2-machine-rx-slot": {
+        "class": "kind-field",
+        "steps": 22,
+        "calls": 1
+      },
+      "fn2-machine-rx-gen": {
+        "class": "kind-field",
+        "steps": 22,
+        "calls": 1
+      },
+      "fn2-machine-image-size": {
+        "class": "kind-field",
+        "steps": 22,
+        "calls": 1
+      },
+      "fn2-machine-offset": {
+        "class": "kind-field",
+        "steps": 22,
+        "calls": 2
+      },
+      "fn2-machine-pending": {
+        "class": "kind-field",
+        "steps": 22,
+        "calls": 2
+      },
+      "fn2-machine-event-ready": {
+        "class": "kind-field",
+        "steps": 22,
+        "calls": 1
+      },
+      "fn2-machine-outcome": {
+        "class": "kind-field",
+        "steps": 22,
+        "calls": 1
+      },
+      "fn2-machine-count": {
+        "class": "kind-field",
+        "steps": 22,
+        "calls": 1
+      },
+      "fn2-machine-kind": {
+        "class": "directory-index",
+        "steps": 4,
+        "calls": 1
+      },
+      "fn2-machine-generation": {
+        "class": "kind-field",
+        "steps": 22,
+        "calls": 1
+      },
+      "fn2-machine-stage": {
+        "class": "kind-field",
+        "steps": 22,
+        "calls": 1
+      },
+      "fn2-machine-index": {
+        "class": "kind-field",
+        "steps": 22,
+        "calls": 1
+      },
+      "fn2-machine-total": {
+        "class": "kind-field",
+        "steps": 22,
+        "calls": 1
+      }
+    },
+    "fn2-boot-checkpoint-descriptor-target": {
+      "fn2-boot-snapshot-read-code": {
+        "class": "kind-snapshot",
+        "steps": 16,
+        "calls": 4
+      },
+      "fn2-machine-image-size": {
+        "class": "kind-field",
+        "steps": 22,
+        "calls": 1
+      },
+      "fn2-machine-phase": {
+        "class": "kind-field",
+        "steps": 22,
+        "calls": 2
+      },
+      "fn2-machine-checkpoint-index": {
+        "class": "kind-field",
+        "steps": 22,
+        "calls": 2
+      },
+      "fn2-machine-offset": {
+        "class": "kind-field",
+        "steps": 22,
+        "calls": 2
+      },
+      "fn2-machine-pending": {
+        "class": "kind-field",
+        "steps": 22,
+        "calls": 3
+      },
+      "fn2-machine-event-ready": {
+        "class": "kind-field",
+        "steps": 22,
+        "calls": 1
+      },
+      "fn2-machine-outcome": {
+        "class": "kind-field",
+        "steps": 22,
+        "calls": 1
+      },
+      "fn2-machine-count": {
+        "class": "kind-field",
+        "steps": 22,
+        "calls": 1
+      },
+      "fn2-machine-kind": {
+        "class": "directory-index",
+        "steps": 4,
+        "calls": 1
+      },
+      "fn2-machine-generation": {
+        "class": "kind-field",
+        "steps": 22,
+        "calls": 1
+      },
+      "fn2-machine-stage": {
+        "class": "kind-field",
+        "steps": 22,
+        "calls": 1
+      },
+      "fn2-machine-index": {
+        "class": "kind-field",
+        "steps": 22,
+        "calls": 1
+      },
+      "fn2-machine-total": {
+        "class": "kind-field",
+        "steps": 22,
+        "calls": 1
+      }
+    },
+    "fn2-boot-checkpoint-descriptor-check": {
+      "fn2-boot-snapshot-read-code": {
+        "class": "kind-snapshot",
+        "steps": 16,
+        "calls": 4
+      },
+      "fn2-machine-image-size": {
+        "class": "kind-field",
+        "steps": 22,
+        "calls": 1
+      },
+      "fn2-machine-phase": {
+        "class": "kind-field",
+        "steps": 22,
+        "calls": 2
+      },
+      "fn2-machine-checkpoint-index": {
+        "class": "kind-field",
+        "steps": 22,
+        "calls": 2
+      },
+      "fn2-machine-offset": {
+        "class": "kind-field",
+        "steps": 22,
+        "calls": 2
+      },
+      "fn2-machine-pending": {
+        "class": "kind-field",
+        "steps": 22,
+        "calls": 3
+      },
+      "fn2-machine-event-ready": {
+        "class": "kind-field",
+        "steps": 22,
+        "calls": 1
+      },
+      "fn2-machine-outcome": {
+        "class": "kind-field",
+        "steps": 22,
+        "calls": 1
+      },
+      "fn2-machine-count": {
+        "class": "kind-field",
+        "steps": 22,
+        "calls": 1
+      },
+      "fn2-machine-kind": {
+        "class": "directory-index",
+        "steps": 4,
+        "calls": 1
+      },
+      "fn2-machine-generation": {
+        "class": "kind-field",
+        "steps": 22,
+        "calls": 1
+      },
+      "fn2-machine-stage": {
+        "class": "kind-field",
+        "steps": 22,
+        "calls": 1
+      },
+      "fn2-machine-index": {
+        "class": "kind-field",
+        "steps": 22,
+        "calls": 1
+      },
+      "fn2-machine-total": {
+        "class": "kind-field",
+        "steps": 22,
+        "calls": 1
+      },
+      "fn2-machine-rx-slot": {
+        "class": "kind-field",
+        "steps": 22,
+        "calls": 1
+      },
+      "fn2-machine-rx-gen": {
+        "class": "kind-field",
+        "steps": 22,
+        "calls": 1
+      }
+    }
   }
 }
