@@ -5,7 +5,7 @@ Owner: integration. Commissioned by ember on 2026-11-13, following the
 `fn2-squares` remains the obligation store. Reports and public-claim coverage
 must be derived from that store and the actual served call/attachment graph.
 
-## Current integration frontier — 2026-11-16 00:06 UTC
+## Current integration frontier — 2026-11-16 00:30 UTC
 
 The descriptor reader is qualified on the shared foundation at `6e7a1a9c1`;
 its [current 34-book record](receipts/checkpoint-reader-foundation-thirty-four-record.json)
@@ -14,18 +14,26 @@ The six original unrestricted reader claims remain refuted and unfinished;
 the six distinct guarded replacements are qualified. BOOT still needs to consume
 this bounded reader with verified persisted geometry and retained ownership.
 
-The served-family candidate is `ab05c79b16846071fddb2213630a22e33d7ad33b`.
-Its ancestor-closed READY frontier has 74 qualified books, with 43 reused and
-31 newly recorded dependencies. Root independently checked current source hashes,
-closure keys and actual record-toolchain metadata/certificate/port/FASL hashes.
-This is dependency qualification, not qualification of RAW or the application.
-Current MACHINES has a separately qualified 13-book closure.
+The served-family candidate is `6701dbac50678ced466358a13dc43c704bba03b4`.
+It joins the qualified manifest arithmetic and upload scanner repairs, restores
+the native test launcher's executable mode, and corrects SOURCE's refused-issue
+descriptor reports. WAIT/BAD now report zero descriptors; successful issue still
+reports one. The corresponding new exact-effect proofs and whole-state fixture
+remain unqualified until RAW is admitted.
+
+The dependency batches of 74 and 79 books are qualified on their named current
+closures, with 31 and 23 newly recorded books respectively. Root independently
+checked their source hashes, closure keys and actual certificate/port/FASL bytes.
+Access, COMMIT and machines-B now have qualified 33-, 60- and 86-book closures;
+the machine-arm generator has a qualified 27-book closure. These results do not
+qualify the composed RAW or application entry point.
 
 COPY's actual backing-length contract now has a qualified eight-book closure.
 The proof distinguishes nonempty backing storage from element typing; WFP alone
 still does not imply element typing. BLAKE3 word-frame production has a qualified
 17-book closure and its whole-antecedent/domain-removal controls a qualified
-18-book closure. Those repairs must still qualify in the composed served caller.
+18-book closure. The actual block-integrity and CNS source-hash callers are now qualified in a
+21-book union. The complete RAW/CNS caller remains unqualified.
 
 The [rolling feed component](ROLLING-GEOMETRY-20261115.md) has a qualified
 18-book closure: sixteen reused parents and two newly certified test books.
@@ -34,10 +42,20 @@ header/body controls passed. Root checked the current keys, raw sources and
 actual certificate/FASL payloads. The accepted 96 KiB upload, reset, restart and
 FETCH campaign remains unrun on the current complete application.
 
-BOOT's persisted-bootstrap constructor has a qualified 32-book closure.
-Its downstream carrier contracts exposed a missing unconditional hash-row frame;
-the canonical frame-provider correction is committed but not yet qualified.
-Public BOOT/CORE integration and physical checkpoint/reopen remain outstanding.
+The actual upload scanner is qualified in a 16-book closure, and its unit
+controls in a 17-book closure. A generalized partial-prefix invariant proves
+the original full refinement claim; runtime bodies, guards and the public
+formula are unchanged. Page geometry, ordering, workspace and served runs have
+a qualified 47-book union. Connection/upload-kind and range/machines-C
+composition remain the next caller dependencies.
+
+BOOT's lower bootstrap constructor, verifier, receipt and six component controls
+have a qualified 40-book closure at `17f802d449574e56ed28e2476cde42b119535e46`.
+This does not establish a persisted-read completion or public BOOT/CORE path.
+The upstream inline BOOT configuration declaration must be replaced by the
+owning extracted declaration as part of the coherent consumer join; adding the
+new declaration beside the old one would leave two schema definitions. Actual
+BOOT routing and physical checkpoint/reopen remain outstanding.
 The FETCH lifetime repair retains META until actual coverage and preserves
 terminal cleanup in source; its full composed constructor campaign remains owed.
 
