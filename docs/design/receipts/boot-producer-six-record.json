@@ -1,0 +1,80 @@
+{
+  "source_subject": "8ee4963368720fc4f2d4b0a79ee7c1f11720209b",
+  "run_dir": "/build/lanes/boot-producers-8ee-current/build/acl2/certify-20261115T233321Z-1963770",
+  "status": "six actual current-key compiled cache records; constructor and complete31 not qualified",
+  "count": 6,
+  "genuine_union_count": 30,
+  "missing": [
+    "books/boot-bootstrap-pack"
+  ],
+  "books": {
+    "books/boot-config-state": {
+      "key": "feae9c33f82f36029de1c92cfe9bc4f045679a8750e2008c5421c589d7dadc5a",
+      "raw_sha256": "9fb97cf4095154cc1cfe9fe2fdf499c2c88a3d36410f76b96b7177932d05b703",
+      "entry": "/home/fn/.cache/fn-certs/feae9c33f82f36029de1c92cfe9bc4f045679a8750e2008c5421c589d7dadc5a/080069825a4536c1",
+      "cert_sha256": "ac86da948c8ab9c1c3dc0b50b85451c5c9aae3a38bec7b86c533b93eab54ff51",
+      "fasl_sha256": "cd8035cbbf9b774a754adecbbe0e53e160f115b2bf7ff9e912bedce9956b1a56",
+      "port_sha256": "f4cb7e8160cfa6f41cddb04be508f922aa8e87c4ff126bfaad3379aa92e647e0",
+      "meta_sha256": "ab87584c4756cfcba0976859014a8ef08acb23d9e1169bd7a43ac010c0cee9b5",
+      "toolchain_identity": "8aeb1bea18968c6cd33ac633a80ebf67e4924504db112fd27eb11f16a27b2a8c",
+      "previous_status": "whole_author_pass"
+    },
+    "books/checkpoint-geometry": {
+      "key": "2bac3328573ad6ea15676caf7a65c48a833eced8d7925e49d5d8dc5b71412ced",
+      "raw_sha256": "47aac52fae2a05b63f099027cf14a109751f821bf41faa1f4b5bca769058b488",
+      "entry": "/home/fn/.cache/fn-certs/2bac3328573ad6ea15676caf7a65c48a833eced8d7925e49d5d8dc5b71412ced/080069825a4536c1",
+      "cert_sha256": "9dca31d78e1bf773aae31f25cbd2e5b1a81d7d32c636f93eda5641bb34fb0c0a",
+      "fasl_sha256": "fccb9983f0b941f560dbb7aed9a66ba7aea09057ed260a7e5d3bc8831c36045c",
+      "port_sha256": "f4cb7e8160cfa6f41cddb04be508f922aa8e87c4ff126bfaad3379aa92e647e0",
+      "meta_sha256": "b8664717f1dad5e0da40c24f7e02fbec4db08ea25e71a299ae9d88b263326e7a",
+      "toolchain_identity": "8aeb1bea18968c6cd33ac633a80ebf67e4924504db112fd27eb11f16a27b2a8c",
+      "previous_status": "whole_author_pass"
+    },
+    "books/boot-pack": {
+      "key": "43cc66aadad0d168898d66ca3a02cba2f76b5555683f7ca397b4cc97ef8c3db7",
+      "raw_sha256": "240efacab694e040428b2eb7d6684a924f72c381cfaebd40040340a69e977fc6",
+      "entry": "/home/fn/.cache/fn-certs/43cc66aadad0d168898d66ca3a02cba2f76b5555683f7ca397b4cc97ef8c3db7/080069825a4536c1",
+      "cert_sha256": "7b138a3f5cfc66ea74a03148b52c5c32f39aa4198473cb85866c7a794fd2e948",
+      "fasl_sha256": "c9255cbb94cf55069ae7be961244cc54f0d1f59612fc47b4217e5951d355c758",
+      "port_sha256": "f4cb7e8160cfa6f41cddb04be508f922aa8e87c4ff126bfaad3379aa92e647e0",
+      "meta_sha256": "796324fc28ad6aab46d8b9d492f14dc94fc12c74d2cdd8fc2ff84ad79e1e1c6d",
+      "toolchain_identity": "8aeb1bea18968c6cd33ac633a80ebf67e4924504db112fd27eb11f16a27b2a8c",
+      "previous_status": "whole_author_pass"
+    },
+    "books/pool-block": {
+      "key": "ce7125c6420ed81725750a56c519e9df95dd86353387dcdc34114cb9fcc721ad",
+      "raw_sha256": "94c3775a130dd827fec065aff2310f2f7f70e378917ac7d245e17befa1c7edaf",
+      "entry": "/home/fn/.cache/fn-certs/ce7125c6420ed81725750a56c519e9df95dd86353387dcdc34114cb9fcc721ad/080069825a4536c1",
+      "cert_sha256": "6a7347557ddb4af180ce6d2b8df1349d944e3475d190b45f662c26450eb2b093",
+      "fasl_sha256": "81b28b3c1ad4768bb106cfc11590cc1241c6ea326cc75e10ae895a09a570e6f1",
+      "port_sha256": "f4cb7e8160cfa6f41cddb04be508f922aa8e87c4ff126bfaad3379aa92e647e0",
+      "meta_sha256": "66f99f2158b6a48c204be81d80fcae6871d23c1e30fbdf7a8161bfa7926074f9",
+      "toolchain_identity": "8aeb1bea18968c6cd33ac633a80ebf67e4924504db112fd27eb11f16a27b2a8c",
+      "previous_status": "whole_author_pass"
+    },
+    "books/origin": {
+      "key": "858f4c4184f7c3a13479c1bfa373d8f31dae35ade46ae6ccc18f00ee726c7d9f",
+      "raw_sha256": "7f63d5f31b061c0b9206b82394d70e31fce57ceafc9ec7cd8477a54d538d9c19",
+      "entry": "/home/fn/.cache/fn-certs/858f4c4184f7c3a13479c1bfa373d8f31dae35ade46ae6ccc18f00ee726c7d9f/080069825a4536c1",
+      "cert_sha256": "872f1aaafb65e22e2a88ad00e70bf8c6ad23187d83152b958a9028784a22bd22",
+      "fasl_sha256": "70e9f6d15b29e382f6277489d841cc73f3ed066082a2487b7e58c07a67f126c4",
+      "port_sha256": "f4cb7e8160cfa6f41cddb04be508f922aa8e87c4ff126bfaad3379aa92e647e0",
+      "meta_sha256": "fe3b4c6e2d78c91c197d72fd7d7c7e970e7db4ac89ea42c6233b299b92fa11b7",
+      "toolchain_identity": "8aeb1bea18968c6cd33ac633a80ebf67e4924504db112fd27eb11f16a27b2a8c",
+      "previous_status": "whole_author_pass"
+    },
+    "books/boot-format": {
+      "key": "80ad82c6739f93f46b8534682a2edd534c63fcd4442c8a8baa271d892825fa9d",
+      "raw_sha256": "eb83cae95d86cba85f6125a9f9a5b64ef097544c46a77d7f7bcbc91bead0c814",
+      "entry": "/home/fn/.cache/fn-certs/80ad82c6739f93f46b8534682a2edd534c63fcd4442c8a8baa271d892825fa9d/080069825a4536c1",
+      "cert_sha256": "9d1bd0a474e3e300cc2fadd3cb30dc7b6d9e2a0ec22eeabab9b9fef56ac5ff8e",
+      "fasl_sha256": "0cd6b3ba10568421baf9fd4fc89f9da10d595f5cd583ed46d9e84bdaec1c2d39",
+      "port_sha256": "f4cb7e8160cfa6f41cddb04be508f922aa8e87c4ff126bfaad3379aa92e647e0",
+      "meta_sha256": "3c32bd7605dc854316bfa1c82ac4c5b238a28117962e732e5587748a340cfa4e",
+      "toolchain_identity": "8aeb1bea18968c6cd33ac633a80ebf67e4924504db112fd27eb11f16a27b2a8c",
+      "previous_status": "whole_author_pass"
+    }
+  },
+  "first_refusal": "standalone FN2-BOOT-SAVE-GEOMETRY guard, missing owning pool-read-contracts; previous broad author imported it via reader",
+  "cleanup": "all owned handles and cgroup absent, ledger slot0"
+}
