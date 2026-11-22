@@ -17,6 +17,7 @@
 (include-book "txn-kind")
 (include-book "upload")
 (include-book "upload-stream")
+(include-book "pool-copy")
 (fn2-book-layer :d)
 
 ;; The claim walk's chain steps per run: each step compares at most one
@@ -240,6 +241,9 @@
 (defcost fn2-claim-begin-core :child fn2-claim-begin :answers (:ok :bounds :state) :tables (fn2-core-claims)
   :doc "Start a claim on a Message-ID's exact octets.")
 (defcost fn2-claim-state-core :child fn2-claim-state :effects :per-use :doc "Read a transaction's claim state.")
+(defcost fn2-txn-post-accepted :answers (:ok :dropped :fault) :faults (:fault) :bytes 512
+  :tables (fn2-core-claims fn2-core-pool fn2-core-machines fn2-conn-table fn2-cns-table)
+  :doc "Post a committed position with its held Message-ID before releasing the claim.")
 (defcost fn2-claim-walk-core :child fn2-claim-walk :answers (:claimed :wait :more :bounds :state :fault) :faults (:bounds :state :fault) :bytes 4096
   :tables (fn2-core-claims)
   :effects ((:acquire (:identity-reservation)))
@@ -342,12 +346,15 @@
   (reply :on-refusal ((:stop :machine-phase))
    (:let rslot row-slot)
    (:if (not (equal row-word 0))
-        ((:do (pcode) (fn2-upload-post-owner row-conn row-conn-gen row-request row-word
-                                             (if (equal row-word *fn2-upload-word-accepted*) row-bevent 0))
-          :accept (:ok :dropped) :why "the owner may have moved on: the word is then dropped (section 14.4)")
+        ((:if (equal row-word *fn2-upload-word-accepted*)
+          ((:do (pcode) (fn2-txn-post-accepted rslot row-upload row-upload-gen
+                                              row-conn row-conn-gen row-request row-bevent)
+            :accept (:ok :dropped) :why "the owner may have moved on: the word is then dropped (section 14.4)"))
+          ((:do (pcode) (fn2-upload-post-owner row-conn row-conn-gen row-request row-word 0)
+            :accept (:ok :dropped) :why "the owner may have moved on: the word is then dropped (section 14.4)")))
          (:do (rcode) (fn2-successor-release rslot)
           :accept (:ok :state) :why "a committed or bound transaction's successor is already closed")
-         (:next :releasing) (:charge :steps *fn2-work-transition* :runnable t))
+         (:next :releasing) (:charge :bytes 512 :steps *fn2-work-transition* :runnable t))
         ((:do (rcode) (fn2-successor-release rslot)
           :accept (:ok :state) :why "a committed or bound transaction's successor is already closed")
          (:next :releasing) (:charge :steps *fn2-work-transition* :runnable t)))))
@@ -658,6 +665,48 @@
 (fn2-core-preserves fn2-txn-group-of (tx xstep xgroup slot gen off len okind oslot ogen budget fn2-core) :position 2 :rows nil
   :hints (("Goal" :in-theory (enable fn2-txn-group-of))))
 (in-theory (disable fn2-txn-group-of))
+;; Copy before either the claim or the upload can drain. The destination
+;; belongs to the CNS request and remains reserved until its reply is posted.
+;; A fault after commit stops serving without sending a refusal or retrying.
+(defun fn2-txn-post-accepted (claim upload ugen owner ogen request position fn2-core)
+  (declare (xargs :stobjs fn2-core :guard (fn2-core-wfp fn2-core)
+                  :guard-hints (("Goal" :in-theory (enable fn2-core-wfp fn2-claim-rowp)))))
+  (cond
+   ((not (eq (fn2-cns-snapshot-read-code owner fn2-core) :ok))
+    (fn2-conn-post-word owner ogen request *fn2-upload-word-accepted* fn2-core))
+   ((not (and (equal (fn2-machine-generation owner fn2-core) ogen)
+              (equal (fn2-cns-row-request owner fn2-core) request)
+              (equal (fn2-cns-row-phase owner fn2-core) *fn2-cns-state-append*)
+              (equal (fn2-cns-row-posted owner fn2-core) *fn2-cns-posted-none*)))
+    (mv :dropped fn2-core))
+   (t
+    (b* (((mv valid slot gen off len)
+          (stobj-let ((fn2-claims (fn2-core-claims fn2-core)))
+           (valid slot gen off len)
+           (if (and (fn2-claim-rowp claim fn2-claims)
+                    (equal (fn2-claims-state claim fn2-claims) *fn2-claim-state-held*)
+                    (equal (fn2-claims-ok claim fn2-claims) *fn2-upload-kind*)
+                    (equal (fn2-claims-os claim fn2-claims) upload)
+                    (equal (fn2-claims-og claim fn2-claims) ugen))
+               (mv t (fn2-claims-slot claim fn2-claims) (fn2-claims-gen claim fn2-claims)
+                   (nfix (fn2-claims-off claim fn2-claims)) (nfix (fn2-claims-len claim fn2-claims)))
+             (mv nil 0 0 0 0))
+           (mv valid slot gen off len)))
+         ((unless (and valid (posp len) (<= len *fn2-format-message-id-max*))) (mv :fault fn2-core))
+         (ns (fn2-cns-row-ns-slot owner fn2-core))
+         (ng (fn2-cns-row-ns-gen owner fn2-core))
+         ((mv code fn2-core)
+          (stobj-let ((fn2-pool (fn2-core-pool fn2-core))) (code fn2-pool)
+           (fn2-rd-copy len slot gen off *fn2-upload-kind* upload ugen
+                        ns ng 0 *fn2-cns-kind* owner ogen fn2-pool)
+           (mv code fn2-core)))
+         ((unless (eq code :ok)) (mv :fault fn2-core))
+         (fn2-core (fn2-machine-write-name-len owner len fn2-core)))
+     (fn2-cns-post-outcome owner ogen request *fn2-upload-word-accepted* position fn2-core)))))
+(fn2-core-preserves fn2-txn-post-accepted (claim upload ugen owner ogen request position fn2-core)
+  :position 1 :rows nil :hints (("Goal" :in-theory (enable fn2-core-wfp fn2-claim-rowp))))
+(in-theory (disable fn2-txn-post-accepted))
+
 ;; Release C's claim; the FIFO's head W (a claim row = a transaction slot)
 ;; takes it in the same step and is woken.
 (defun fn2-claim-release-core (c fn2-core)

@@ -193,9 +193,9 @@
 (defcost fn2-cns-lease-reset :child fn2-pool-reset :answers t :tables (fn2-core-pool)
  :doc "Empty the page's read lease before the next item is read into it.")
 
-(defcost fn2-cns-post-reply :answers (:ok :dropped :fault) :bytes 512
+(defcost fn2-cns-post-reply :answers (:ok :dropped :fault) :faults (:fault) :bytes 2048
  :tables (fn2-ctl-table fn2-core-machines fn2-core-fields fn2-core-digests fn2-core-b3 fn2-core-pool)
- :doc "Encode the kind 28 reply after the request in the control range and post its extent to the waiting control connection.")
+ :doc "Encode the kind 28 reply in the control range and post its extent to the waiting control connection.")
 (defcost fn2-cns-decode-port :answers (:ok :refused) :bytes 2048
  :tables (fn2-core-reads fn2-core-ranges fn2-core-range-sources fn2-core-seeks fn2-core-run-cursors fn2-core-run-paths
           fn2-core-fields)
@@ -633,10 +633,10 @@
                  (:type-prescription :corollary (natp (mv-nth 2 (fn2-cns-put-cursor base cid principal version epoch position slot gen okind oslot ogen fn2-fields fn2-pool)))))
   :hints (("Goal" :in-theory (enable fn2-cns-put-cursor))))
 (in-theory (disable fn2-cns-put-cursor))
-; Append's result: the Message-ID, numbers and receipt owed (empty), the
-; commit position and the evidence (1, committed).
-(fn2-fnct-def-result fn2-cns-put-append fn2-fnct-result-append (position evidence)
-  ((message-id :ref 0 0) (domain 0) (position position) (numbers :ref 0 0) (receipt :ref 0 0) (evidence evidence)))
+; Append's committed identity and position. The numbers and receipt are
+; still owed.
+(fn2-fnct-def-result fn2-cns-put-append fn2-fnct-result-append (moff mlen position evidence)
+  ((message-id :ref moff mlen) (domain 0) (position position) (numbers :ref 0 0) (receipt :ref 0 0) (evidence evidence)))
 ;; A page item (consumer-codec.lisp *fn2-fnct-item-layout*) at the fill of
 ;; the request's read lease, its Message-ID [MOFF, MOFF+MLEN) and body
 ;; [BOFF, BOFF+BLEN) octets of the same lease; a reference's body is its
@@ -762,7 +762,9 @@
   (let ((v (nfix verb)) (cpos (nfix cpos)) (pfront (nfix pfront)) (inext (nfix inext)))
     (cond ((not (equal class 0)) (mv :ok (fn2-pool-fill-value slot fn2-pool) 0 fn2-fields fn2-pool))
           ((equal v *fn2-cns-verb-append*)
-           (fn2-cns-put-append base cpos 1 slot gen okind oslot ogen fn2-fields fn2-pool))
+           (if (and (posp ilen) (<= ilen *fn2-format-message-id-max*))
+               (fn2-cns-put-append base ioff ilen cpos 1 slot gen okind oslot ogen fn2-fields fn2-pool)
+             (mv :bounds 0 0 fn2-fields fn2-pool)))
           ((equal v *fn2-cns-verb-ack*)
            (fn2-fnct-put-ack base 0 cpos slot gen okind oslot ogen fn2-fields fn2-pool))
           ((equal v *fn2-cns-verb-fetch*)
@@ -1272,10 +1274,11 @@
    (:do (pcode) (fn2-cns-post-reply row-ctl row-ctl-gen row-request row-verb row-outcome row-reason
                                     row-consumer row-epoch row-version row-cpos row-pub-frontier row-count row-more
                                     row-ioff row-ilen (if (equal row-more 0) row-pub-frontier row-ipos)
-                                    row-principal-slot row-tx-slot row-tx-gen)
+                                    row-principal-slot row-tx-slot row-tx-gen
+                                    id row-generation row-ns-slot row-ns-gen row-name-len)
     :accept (:ok :dropped) :why "the control connection may have closed while the consumer request ran")
    (:wake-row row-ctl)
-   (:next :draining) (:charge :bytes 512 :steps *fn2-work-transition* :runnable t))))
+   (:next :draining) (:charge :bytes 2048 :steps *fn2-work-transition* :runnable t))))
   (wait-timeout :on-refusal ((:stop :machine-phase))
    (:set (edge *fn2-none*) (count 0) (more 0) (outcome *fn2-cns-outcome-accepted*))
    (:goto answer))
@@ -2702,9 +2705,26 @@ t) ready)
        (position art bytes stream pf moff mlen lslot lgen lk ls lg tx-slot tx-gen ctl ctl-gen x fn2-core)
        :position 3 :rows nil :hints (("Goal" :in-theory (disable nfix))))
      (in-theory (disable fn2-cns-put-article))
+     ;; A waiting CTL has finished receiving the request. Reuse its entire
+     ;; range for an accepted APPEND, including when the input filled it.
+     ;; Hold the source in CNS's separate range until the frame is sealed.
+     (defun fn2-cns-stage-append-result (ctl ctl-gen tx-slot tx-gen cns cgen ns ngen mlen fn2-core)
+       (declare (xargs :stobjs fn2-core :guard (fn2-core-wfp fn2-core)
+                       :guard-hints (("Goal" :in-theory (enable fn2-core-wfp)))))
+       (if (not (and (posp mlen) (<= mlen *fn2-format-message-id-max*)))
+           (mv :fault fn2-core)
+         (stobj-let ((fn2-pool (fn2-core-pool fn2-core))) (code fn2-pool)
+           (b* (((mv code fn2-pool) (fn2-pool-reset tx-slot tx-gen *fn2-ctl-kind* ctl ctl-gen fn2-pool))
+                ((unless (eq code :ok)) (mv :fault fn2-pool)))
+             (fn2-rd-copy mlen ns ngen 0 *fn2-cns-kind* cns cgen
+                          tx-slot tx-gen 0 *fn2-ctl-kind* ctl ctl-gen fn2-pool))
+           (mv code fn2-core))))
+     (fn2-core-preserves fn2-cns-stage-append-result (ctl ctl-gen tx-slot tx-gen cns cgen ns ngen mlen fn2-core)
+       :position 1 :rows nil :hints (("Goal" :in-theory (enable fn2-core-wfp))))
+     (in-theory (disable fn2-cns-stage-append-result))
      (defun fn2-cns-post-reply (ctl ctl-gen request verb outcome reason consumer epoch version cpos pfront count more
-                                    ioff ilen inext principal tx-slot tx-gen fn2-core)
-       ; Encode the kind 28 reply after the request in the control range and
+                                    ioff ilen inext principal tx-slot tx-gen cns cgen ns ngen mlen fn2-core)
+       ; Encode the kind 28 reply in the control range and
        ; post its extent to the waiting control connection (it sends from K).
        (declare (xargs :stobjs fn2-core :guard (fn2-core-wfp fn2-core)
                        :guard-hints (("Goal" :in-theory (enable fn2-core-wfp)))))
@@ -2713,23 +2733,37 @@ t) ready)
                      (equal (fn2-ctl-row-request ctl fn2-core) request)
                      (equal (fn2-ctl-row-phase ctl fn2-core) *fn2-ctl-state-waiting*)))
            (mv :dropped fn2-core)
-         (mv-let (rc row) (fn2-ctl-fc-row ctl fn2-core)
-           (if (not (eq rc :ok)) (mv :fault fn2-core)
+         (b* (((mv rc row) (fn2-ctl-fc-row ctl fn2-core))
+              ((unless (eq rc :ok)) (mv :fault fn2-core))
+              (appendp (and (equal verb *fn2-cns-verb-append*)
+                            (equal outcome *fn2-cns-outcome-accepted*)))
+              ((when (and appendp
+                          (not (and (equal (fn2-ctl-row-cns ctl fn2-core) cns)
+                                    (equal (fn2-ctl-row-cns-gen ctl fn2-core) cgen)
+                                    (equal (fn2-ctl-row-rx-slot ctl fn2-core) tx-slot)
+                                    (equal (fn2-ctl-row-rx-gen ctl fn2-core) tx-gen)))))
+               (mv :fault fn2-core))
+              ((mv ac fn2-core)
+               (if appendp (fn2-cns-stage-append-result ctl ctl-gen tx-slot tx-gen cns cgen ns ngen mlen fn2-core)
+                 (mv :ok fn2-core)))
+              ((unless (eq ac :ok)) (mv :fault fn2-core)))
              (mv-let (code k total fn2-core)
                (stobj-let ((fn2-fields (fn2-core-fields fn2-core)) (fn2-digests (fn2-core-digests fn2-core))
                            (fn2-b3 (fn2-core-b3 fn2-core)) (fn2-pool (fn2-core-pool fn2-core)))
                  (code k total fn2-fields fn2-digests fn2-b3 fn2-pool)
                  (fn2-cns-reply-pool (* 128 row) row verb outcome reason consumer epoch version cpos pfront count more
-                                     ioff ilen inext principal tx-slot tx-gen *fn2-ctl-kind* ctl ctl-gen
+                                     (if appendp 0 ioff) (if appendp mlen ilen)
+                                     inext principal tx-slot tx-gen *fn2-ctl-kind* ctl ctl-gen
                                      fn2-fields fn2-digests fn2-b3 fn2-pool)
                  (mv code k total fn2-core))
                (if (not (and (eq code :ok) (unsigned-byte-p 32 k) (unsigned-byte-p 32 (+ k total)) (< 0 total)))
                    (mv :fault fn2-core)
                  (let* ((fn2-core (fn2-machine-write-tx-off ctl k fn2-core))
                         (fn2-core (fn2-machine-write-tx-len ctl (+ k total) fn2-core)))
-                   (mv :ok fn2-core))))))))
+                   (mv :ok fn2-core)))))))
      (fn2-core-preserves fn2-cns-post-reply
-       (ctl ctl-gen request verb outcome reason consumer epoch version cpos pfront count more ioff ilen inext principal tx-slot tx-gen fn2-core)
+       (ctl ctl-gen request verb outcome reason consumer epoch version cpos pfront count more ioff ilen inext principal
+        tx-slot tx-gen cns cgen ns ngen mlen fn2-core)
        :position 1 :rows nil :hints (("Goal" :in-theory (enable fn2-core-wfp))))
      (in-theory (disable fn2-cns-post-reply))
      (defun fn2-cns-core-stream-wake (batch fn2-core)
