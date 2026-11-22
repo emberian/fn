@@ -2,7 +2,7 @@
 ; handoffs are callers' concerns; this primitive validates the actual principal
 ; and performs the existing bounded scheduler insertion, idempotently.
 (in-package "ACL2")
-(include-book "assembly-callbacks-b2")
+(include-book "assembly-access")
 
 (defun fn2-core-scheduler-wake (id fn2-core)
   (declare (xargs :stobjs fn2-core :guard (fn2-core-wfp fn2-core)
