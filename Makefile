@@ -285,6 +285,7 @@ ACL2_BOOKS = \
   books/peer-import \
   books/xfnc-view \
   books/xfnc-read-page \
+  books/xfnc-render-page \
   books/xfnc-view-chain \
   books/xfnc-reader \
   books/event-read-verify \

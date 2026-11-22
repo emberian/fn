@@ -735,7 +735,10 @@
        ((mv c3 fn2-pool) (fn2-fnct-put-be 0 query ql slot gen okind oslot ogen fn2-pool))
        ((unless (and (eq ch :ok) (eq ci :ok) (eq c1 :ok) (eq c2 :ok) (eq c3 :ok)))
         (mv :size 0 0 fn2-fields fn2-pool)))
-    (fn2-fnct-put-cursor base start hl il cl pl ql version view epoch position slot gen okind oslot ogen fn2-fields fn2-pool)))
+    (if (and (unsigned-byte-p 32 version) (unsigned-byte-p 32 view)
+             (unsigned-byte-p 32 epoch) (unsigned-byte-p 32 position))
+        (fn2-fnct-put-cursor base start hl il cl pl ql version view epoch position slot gen okind oslot ogen fn2-fields fn2-pool)
+      (fn2-fnct-put-cursor-v2 base start hl il cl pl ql version view epoch position slot gen okind oslot ogen fn2-fields fn2-pool))))
 (fn2-pool-block-shape fn2-cns-put-query-cursor-shape
   (fn2-cns-put-query-cursor base cid principal history incarnation query version view epoch position slot gen okind oslot ogen fn2-fields fn2-pool)
   (and (fn2-fieldsp fn2-fields) (fn2-fields-wfp fn2-fields) (fn2-poolp fn2-pool) (fn2-pool-wfp fn2-pool))
