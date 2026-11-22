@@ -557,6 +557,8 @@
     :position 2 :rows nil :hints (("Goal" :in-theory (enable fn2-core-wfp))))
    (defun fn2-groups-genesis (profile fn2-core)
     (declare (xargs :stobjs fn2-core :guard (fn2-core-wfp fn2-core)))
+    (if (not (= (fn2-csnapshot-state fn2-core) *fn2-csnapshot-phase-idle*))
+        (mv :full fn2-core)
     (stobj-let ((fn2-id-engine (fn2-core-id-engine fn2-core)) (fn2-id-decides (fn2-core-id-decides fn2-core))
                 (fn2-overlays (fn2-core-overlays fn2-core)) (fn2-overlay-index (fn2-core-overlay-index fn2-core))
                 (fn2-fields (fn2-core-fields fn2-core)) (fn2-pool (fn2-core-pool fn2-core)) (fn2-fc (fn2-core-fc fn2-core)))
@@ -565,7 +567,7 @@
       (if (eq c :ok)
           (fn2-grp-genesis *fn2-groups-sid* *fn2-groups-name-max* (fn2-profile-get :groups profile) b0 fn2-id-engine fn2-overlays fn2-overlay-index fn2-fields fn2-pool)
         (mv c fn2-id-engine fn2-overlays fn2-overlay-index fn2-fields fn2-pool)))
-     (mv code fn2-core)))
+     (mv code fn2-core))))
    (fn2-core-preserves fn2-groups-genesis (profile fn2-core)
     :position 1 :rows nil :hints (("Goal" :in-theory (enable fn2-core-wfp))))
    ;; The principal directory's exact lookup (principal-create's repeat,
@@ -594,6 +596,8 @@
    ;; Both ids are functions of the profile, so every boot names them alike.
    (defun fn2-principals-bind-genesis (profile fn2-core)
     (declare (xargs :stobjs fn2-core :guard (fn2-core-wfp fn2-core)))
+    (if (not (= (fn2-csnapshot-state fn2-core) *fn2-csnapshot-phase-idle*))
+        (mv :full nil fn2-core)
     (stobj-let ((fn2-accounts (fn2-core-accounts fn2-core)))
      (code ids fn2-accounts)
      (if (and (fn2-accountsp fn2-accounts) (fn2-accounts-wfp fn2-accounts) (fn2-accounts-shapep fn2-accounts)
@@ -607,7 +611,7 @@
                         (and owner (list (cons "owner" (fn2-account-principal-id o fn2-accounts)))))
               fn2-accounts))
        (mv :state nil fn2-accounts))
-     (mv code ids fn2-core)))
+     (mv code ids fn2-core))))
    (fn2-core-preserves fn2-principals-bind-genesis (profile fn2-core)
     :position 2 :rows nil :hints (("Goal" :in-theory (enable fn2-core-wfp))))
    ;; The accounts are bound under every profile (the ids are functions of

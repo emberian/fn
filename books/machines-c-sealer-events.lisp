@@ -34,8 +34,18 @@
 (defmacro fn2-sealer-core-events ()
  '(progn
    (assert-event (equal *fn2-sealer-kind* *fn2-idc-owner-kind*))
+   ;; An active seal may finish while closing; an idle sealer parks
+   ;; without choosing a new input until the cut is released.
    (defun fn2-sealer-step (budget fn2-core)
     (declare (xargs :stobjs fn2-core :guard (fn2-core-wfp fn2-core)))
+    (let ((phase (fn2-csnapshot-state fn2-core)))
+     (if (or (= phase *fn2-csnapshot-phase-held*)
+             (and (= phase *fn2-csnapshot-phase-closing*)
+                  (stobj-let ((fn2-seals (fn2-core-seals fn2-core))) (idle)
+                   (or (zp (fn2-seals-rows fn2-seals))
+                       (= (fn2-seals-phase 0 fn2-seals) *fn2-seal-phase-idle*))
+                   idle)))
+         (mv :idle fn2-core)
     (stobj-let ((fn2-seals (fn2-core-seals fn2-core)) (fn2-overlays (fn2-core-overlays fn2-core))
                 (fn2-overlay-index (fn2-core-overlay-index fn2-core)) (fn2-run-installed (fn2-core-run-installed fn2-core))
                 (fn2-run-builds (fn2-core-run-builds fn2-core)) (fn2-run-writers (fn2-core-run-writers fn2-core))
@@ -51,7 +61,7 @@
      (fn2-seal-step budget fn2-seals fn2-overlays fn2-overlay-index fn2-run-installed fn2-run-builds fn2-run-writers
                     fn2-run-restarts fn2-run-cache fn2-ribbon-builds fn2-ribbon-band fn2-fields fn2-pool
                     fn2-fc fn2-fc-context fn2-b3 fn2-digests fn2-ranges fn2-range-sources fn2-run-cursors fn2-run-paths)
-     (mv code fn2-core)))
+     (mv code fn2-core)))))
    (fn2-core-preserves fn2-sealer-step (budget fn2-core) :position 1 :rows nil :hints (("Goal" :in-theory (enable fn2-core-wfp))))
    ;; Genesis: the seal row's resources, owned by the sealer's row. With no
    ;; checker row 3 + windows in the profile (C-SEAL-NO-ROW, interim until
@@ -85,6 +95,7 @@
           (equal (fn2-machine-phase id fn2-core) *fn2-sealer-state-sealing*)
           (eq (fn2-machine-wait-reason-read-code id fn2-core) :ok)
           (equal (fn2-machine-wait-reason id fn2-core) *fn2-wait-sealable*)
+          (= (fn2-csnapshot-state fn2-core) *fn2-csnapshot-phase-idle*)
           (fn2-sealer-pending-p fn2-core))))
    (defun fn2-sealer-grant (fn2-core)
     (declare (xargs :stobjs fn2-core :guard (fn2-core-wfp fn2-core)))

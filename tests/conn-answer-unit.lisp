@@ -194,6 +194,21 @@
     ; RFC 4644: transit commands on a reader connection.
     (ihave-reader "IHAVE <a@b.example>" ,*fn2-cau-reader* :none (nil 0 0) :command :none ("502 transit is not permitted on this connection") nil)
     (takethis-reader "TAKETHIS <a@b.example>" ,*fn2-cau-reader* :none (nil 0 0) :command :none ("502 transit is not permitted on this connection") nil)
+    ; docs/e-surface.md section 5: the body starts immediately, so refusal closes.
+    (xfnc-clear "XFNC 412" ,*fn2-cau-reader* :none (nil 0 0) :closing :none
+     ("483 a protected channel is required; use STARTTLS") nil)
+    (xfnc-tls-anonymous "xFnC 412" ,*fn2-cau-reader-tls* :none (nil 0 0) :closing :none
+     ("480 authentication required") nil)
+    (xfnc-clear-authenticated "XFNC 412" ,*fn2-cau-authed* :none (nil 0 0) :closing :none
+     ("483 a protected channel is required; use STARTTLS") nil)
+    (xfnc-bad-length "XFNC +412" ,(logior *fn2-cau-authed* *fn2-nntp-state-tls*) :none
+     (nil 0 0) :closing :none (,*fn2-cau-s501*) nil)
+    (xfnc-args-overflow ,(concatenate 'string "XFNC " (make-string 498 :initial-element #\1))
+     ,*fn2-cau-reader-tls* :none (nil 0 0) :closing :none ("480 authentication required") nil)
+    (xfnc-awaits-body-framer "XFNC 412" ,(logior *fn2-cau-authed* *fn2-nntp-state-tls*) :none
+     (nil 0 0) :closing :none ("403 internal fault; this connection is closed and the server continues") nil)
+    (xfncatchup-reader "XFNCATCHUP * 0 x 1" ,*fn2-cau-reader* :none (nil 0 0) :command :none
+     ("502 transit is not permitted on this connection") nil)
     (unknown "FROB" ,*fn2-cau-reader* :none (nil 0 0) :command :none ("500 command not recognized") nil)
     ; H pin P-UTF8-WS: whitespace on valid UTF-8 is 501 and the connection stays.
     (whitespace " HELP" ,*fn2-cau-reader* :none (nil 0 0) :command :none (,*fn2-cau-s501*) nil)

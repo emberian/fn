@@ -4,6 +4,7 @@
 (include-book "assembly-callbacks-d")
 (include-book "conn")
 (include-book "conn-authinfo-read")
+(include-book "xfnc-reader")
 (fn2-tls-events)
 
 (defconst *fn2-upload-word-framing* (fn2-upload-word-code :framing))
@@ -442,10 +443,15 @@
         ((:charge :steps *fn2-work-empty*))
         ((:issue (fn2-issue-close row-cap-index row-cap-nonce :principal row-principal-slot)
                  :ok ((:wait :completion :bytes 0))))))
-  ;; :draining releases TX, then RX, then the row (the connection partition's
-  ;; reclaim), once nothing is pending or lent.
+  ;; Drain any retained journal first. Then return TX and RX and reclaim
+  ;; the connection once nothing is pending or lent.
   (:draining
    (:cond ((not (equal row-pending 0)) (:charge :steps *fn2-work-empty*))
+          ((fn2-xfnc-reader-owned-p id row-generation)
+           (:do (read-close) (fn2-xfnc-reader-close id row-generation)
+            :case (((:more :done) (:charge :steps *fn2-work-transition* :runnable t))
+                   ((:drain) (:charge :steps *fn2-work-state*))
+                   (:otherwise (:stop :machine-phase :steps *fn2-work-state*)))))
           ((not (equal row-borrows 0)) (:charge :steps *fn2-work-poll*))
           ;; Preserve both ranges and all cleanup state while a query holds
           ;; either one. Last-reference release wakes this exact live owner.

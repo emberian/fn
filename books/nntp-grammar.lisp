@@ -488,4 +488,12 @@
      (:no-framing :code 503 :class :refused :layer :reader :text "503 stored article framing unavailable")
      (:no-identifier :code 503 :class :refused :layer :reader :text "503 stored article identifier unavailable")
      (:no-projection :code 503 :class :refused :layer :reader :text "503 archive projection unavailable")
-     (:auth-required :code 480 :class :refused :layer :auth :text "480 authentication required")))))
+     (:auth-required :code 480 :class :refused :layer :auth :text "480 authentication required")))
+  (xfnc :keyword "XFNC"
+   :spec "docs/e-surface.md sections 5 and 11"
+   :args (:digits) :states (:authenticated) :state-refusal :auth-required
+   :block (:counted :max-consumer-request-octets) :hand-off nil :help nil
+   :replies (
+     (:auth-required :code 480 :class :refused :layer :auth :text "480 authentication required")
+     (:protect :code 483 :class :refused :layer :auth :text "483 a protected channel is required; use STARTTLS")
+     (:syntax :code 501 :class :refused :layer :auth :text "501 syntax error")))))

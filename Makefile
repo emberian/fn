@@ -35,6 +35,9 @@ ACL2_BOOKS = \
   tests/machine-taken-byte-class-unit \
   tests/root-upload-geometry-unit \
   tests/root-working-credit-init-unit \
+  tests/c-snapshot-unit \
+  tests/journal-retention-served-unit \
+  tests/event-read-format-unit \
   tests/txn-retained-source-served-unit \
   tests/upload-block-private-unit \
   tests/upload-dual-hash-unit \
@@ -227,6 +230,7 @@ ACL2_BOOKS = \
   books/executor-services \
   books/executor-wake \
   books/fnct-pool \
+  books/xfnc-rx \
   books/fnv \
   books/folds \
   books/folds-served \
@@ -257,6 +261,17 @@ ACL2_BOOKS = \
   books/storage-block-io \
   books/machines-b \
   books/machines-c \
+  books/journal-retention-state \
+  books/journal-retention \
+  books/journal-retention-core \
+  books/peer-view-member \
+  books/peer-view-read \
+  books/xfnc-view \
+  books/xfnc-reader \
+  books/event-read-verify \
+  books/event-read-verify-domain \
+  books/c-snapshot-state \
+  books/c-snapshot \
   books/machines-c-bind \
   books/machines-c-groups \
   books/pool-copy \
@@ -403,9 +418,13 @@ ACL2_BOOKS = \
   tests/commit-resource-unit \
   tests/commit-stop-unit \
   tests/commit-turn-frame-unit \
+  tests/peer-view-read-unit \
+  tests/peer-history-member-unit \
+  tests/journal-members-unit \
   tests/commit-txn-unit \
   tests/commit-view-compatibility-unit \
   tests/conn-answer-unit \
+  tests/xfnc-rx-unit \
   tests/conn-unit \
   tests/consumer-codec-unit \
   tests/fnct-append-boundary-unit \

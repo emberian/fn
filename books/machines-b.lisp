@@ -16,6 +16,7 @@
 (include-book "commit-members")
 (include-book "merkle")
 (include-book "event-read-state")
+(include-book "journal-retention-state")
 (include-book "journal-members-state")
 (fn2-book-layer :b)
 (defun fn2-b-capacity (key default profile)
@@ -49,10 +50,11 @@
 ; Dedicated regions: six commit I/O edges, two roots per extent, one pin per
 ; operation, six direct references per candidate, then one source-retention
 ; edge per extent per active candidate, then a disjoint per-CNS/per-extent
-; promised-read region. Its profile capacity bounds active queries, not stored data.
+; promised-read region. The final extent-sized region is the journal
+; reader's promised-read lease, at the end of the actual edge capacity.
 (defun fn2-b-alloc-edge-floor (profile)
  (declare (xargs :guard t))
- (+ 6 (* 2 (nfix (fn2-b-capacity :extent-slots 16 profile)))
+ (+ 6 (* 3 (nfix (fn2-b-capacity :extent-slots 16 profile)))
     (nfix (fn2-profile-o profile)) (* 6 (fn2-b-checkpoint-capacity profile))
     (* (nfix (fn2-b-capacity :extent-slots 16 profile)) (fn2-b-checkpoint-capacity profile))
     (* (nfix (fn2-b-capacity :extent-slots 16 profile)) (nfix (fn2-profile-get :cns profile)))))
@@ -111,9 +113,6 @@
  (declare (xargs :guard t))
  (* 128 (fn2-b-semantic-retention-row rows)))
 
-(defun fn2-b-event-row (rows)
- (declare (xargs :guard t))
- (nfix (- (nfix rows) 3)))
 ;; Source stream hashers follow all control frame hashers; the final five
 ;; rows remain semantic/payload/event/block/checkpoint jobs.
 (defun fn2-b-ctl-runtime-row (s connections sources rows)
@@ -167,6 +166,9 @@
 (defcorechild fn2-core-journal-members fn2-journal-members
  :init (fn2-journal-members-init 1 fn2-journal-members) :profilep t
  :why "Verified immutable journal member range remains retained across incremental frontier steps.")
+(defcorechild fn2-core-journal-lease fn2-journal-lease
+ :init (fn2-journal-lease-init 1 fn2-journal-lease) :profilep t
+ :why "Exact journal reader owns promised-read extent edges after C reopens.")
 (defcorechild fn2-core-event-read fn2-event-read
  :init (fn2-event-read-init 1 fn2-event-read) :profilep t
  :harvest (fn2-event-read-harvest ((fn2-core-event-read fn2-event-read)))

@@ -29,7 +29,7 @@
   :wrong-incarnation :wrong-kind :wrong-length :wrong-location :wrong-previous-commit
   :wrong-previous-seal :wrong-slot)
  :bytes 4096
- :tables (fn2-core-seals fn2-core-overlays fn2-core-overlay-index fn2-core-run-installed fn2-core-run-builds
+ :tables (fn2-core-csnapshot fn2-core-seals fn2-core-overlays fn2-core-overlay-index fn2-core-run-installed fn2-core-run-builds
           fn2-core-run-writers fn2-core-run-restarts fn2-core-run-cache fn2-core-ribbon-builds fn2-core-ribbon-band
           fn2-core-fields fn2-core-pool fn2-core-fc fn2-core-fc-context fn2-core-b3 fn2-core-digests
           fn2-core-ranges fn2-core-range-sources fn2-core-run-cursors fn2-core-run-paths)

@@ -48,6 +48,10 @@
     (unknown-then-quit ,(fn2-cu-text '("FROB" "GROUP misc.test" "NEXT" "QUIT"))
      (,*fn2-cu-greeting* "500 command not recognized" "503 archive projection unavailable"
       "412 no newsgroup selected" "205 closing connection") t)
+    ; A counted body can contain a complete-looking command. The actual
+    ; connection closes after 483 without answering that body as a line.
+    (xfnc-clear-with-body ,(fn2-cu-text '("XFNC 6" "QUIT"))
+     (,*fn2-cu-greeting* "483 a protected channel is required; use STARTTLS") t)
     ; A NUL makes the line malformed: 501, then close; the next line is never answered.
     (malformed ,(append (fn2-cu-octets (coerce "HE" 'list)) (list 0) (fn2-cu-text '("LP" "HELP")))
      (,*fn2-cu-greeting* "501 syntax error") t)
