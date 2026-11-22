@@ -37,7 +37,7 @@
 (fn2-journal-lease-preserves fn2-journal-lease-begin
  (token kind owner generation fn2-csnapshot fn2-journal-lease) :position 1)
 
-(defun fn2-journal-directory-entry (commit cut event fn2-commit-root fn2-extents)
+(defun fn2-journal-directory-entry (commit cut event commit-kind fn2-commit-root fn2-extents)
  (declare (xargs :stobjs (fn2-commit-root fn2-extents)
   :guard (and (fn2-commit-root-wfp fn2-commit-root) (fn2-extents-wfp fn2-extents))))
  (b* (((unless (and (posp commit) (natp cut) (<= commit cut) (natp event)
@@ -52,7 +52,7 @@
                      (equal (fn2-commit-root-parent commit fn2-commit-root) (- commit 1))
                      (equal (fn2-commit-root-seal-ready commit fn2-commit-root) 1)
                      (fn2-alloc-slotp extent fn2-extents)
-                     (equal (fn2-extents-owner-kind extent fn2-extents) *fn2-commit-kind*)
+                     (equal (fn2-extents-owner-kind extent fn2-extents) commit-kind)
                      (equal (fn2-extents-owner-id extent fn2-extents) commit)
                      (equal (fn2-extents-release-pending extent fn2-extents) 0)))
        (mv :source 0 0 0 0 0))
@@ -65,7 +65,7 @@
 ; While collecting, the C owner is still required. Failure retains the
 ; collected prefix so the same owner can close it before reopening C.
 (defun fn2-journal-lease-claim
- (token kind owner generation fn2-csnapshot fn2-journal-lease fn2-commit-root fn2-extents fn2-alloc-edges)
+ (token kind owner generation commit-kind fn2-csnapshot fn2-journal-lease fn2-commit-root fn2-extents fn2-alloc-edges)
  (declare (xargs :stobjs (fn2-csnapshot fn2-journal-lease fn2-commit-root fn2-extents fn2-alloc-edges)
   :guard (and (fn2-csnapshot-wfp fn2-csnapshot) (fn2-journal-lease-wfp fn2-journal-lease)
               (fn2-commit-root-wfp fn2-commit-root) (fn2-extents-wfp fn2-extents) (fn2-alloc-edges-wfp fn2-alloc-edges))))
@@ -87,7 +87,7 @@
          (mv :sequence fn2-journal-lease fn2-extents fn2-alloc-edges)))
       (commit (+ 1 scan))
       ((mv code extent epoch allocation first members)
-       (fn2-journal-directory-entry commit cut event fn2-commit-root fn2-extents))
+       (fn2-journal-directory-entry commit cut event commit-kind fn2-commit-root fn2-extents))
       ((unless (eq code :ok)) (mv code fn2-journal-lease fn2-extents fn2-alloc-edges))
       ((unless (and (natp extent) (posp first) (posp members)
                      (equal next first) (unsigned-byte-p 32 commit)
@@ -107,12 +107,12 @@
       (fn2-journal-lease (fn2-journal-lease-put 0 (scan commit) (next-event (+ first members)))))
    (mv :more fn2-journal-lease fn2-extents fn2-alloc-edges)))
 (fn2-journal-lease-preserves fn2-journal-lease-claim
- (token kind owner generation fn2-csnapshot fn2-journal-lease fn2-commit-root fn2-extents fn2-alloc-edges)
+ (token kind owner generation commit-kind fn2-csnapshot fn2-journal-lease fn2-commit-root fn2-extents fn2-alloc-edges)
  :carriers ((fn2-journal-lease 1 :prefix "-LEASE")
             (fn2-extents 2 :prefix "-EXTENTS") (fn2-alloc-edges 3 :prefix "-EDGES")))
 
 (defun fn2-journal-lease-source
- (token kind owner generation commit fn2-journal-lease fn2-commit-root fn2-extents fn2-alloc-edges fn2-fc fn2-digests)
+ (token kind owner generation commit commit-kind fn2-journal-lease fn2-commit-root fn2-extents fn2-alloc-edges fn2-fc fn2-digests)
  (declare (xargs :stobjs (fn2-journal-lease fn2-commit-root fn2-extents fn2-alloc-edges fn2-fc fn2-digests)
   :guard (and (fn2-journal-lease-wfp fn2-journal-lease) (fn2-commit-root-wfp fn2-commit-root)
               (fn2-extents-wfp fn2-extents) (fn2-alloc-edges-wfp fn2-alloc-edges)
@@ -123,7 +123,7 @@
        (mv :owner 0 0 0 0 0 0 0))
       ((mv code extent epoch allocation first members)
        (fn2-journal-directory-entry commit (fn2-journal-lease-cut-commit 0 fn2-journal-lease)
-        (fn2-journal-lease-cut-event 0 fn2-journal-lease) fn2-commit-root fn2-extents))
+        (fn2-journal-lease-cut-event 0 fn2-journal-lease) commit-kind fn2-commit-root fn2-extents))
       ((unless (and (eq code :ok) (posp commit))) (mv code 0 0 0 0 0 0 0))
       (edge (fn2-journal-lease-edge extent fn2-extents fn2-alloc-edges))
       (seal (+ (* *fn2-digest-stride* (fn2-fc-rows fn2-fc)) commit))

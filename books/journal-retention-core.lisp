@@ -25,7 +25,7 @@
                      (fn2-extents (fn2-core-extents fn2-core))
                      (fn2-alloc-edges (fn2-core-alloc-edges fn2-core)))
           (code fn2-journal-lease fn2-extents fn2-alloc-edges)
-          (fn2-journal-lease-claim token kind owner generation fn2-csnapshot fn2-journal-lease
+          (fn2-journal-lease-claim token kind owner generation *fn2-commit-kind* fn2-csnapshot fn2-journal-lease
            fn2-commit-root fn2-extents fn2-alloc-edges)
           (mv code fn2-core)))
         ((unless (eq code :ready)) (mv code fn2-core))
@@ -66,7 +66,7 @@
         ((when (and start (= cut 0))) (mv :complete fn2-event-read fn2-mk))
         (commit (if start 1 (+ 1 (fn2-event-read-commit 0 fn2-event-read))))
         ((mv code extent epoch allocation first members & &)
-         (fn2-journal-lease-source token kind owner generation commit
+         (fn2-journal-lease-source token kind owner generation commit *fn2-commit-kind*
           fn2-journal-lease fn2-commit-root fn2-extents fn2-alloc-edges fn2-fc fn2-digests))
         ((unless (eq code :ok)) (mv code fn2-event-read fn2-mk))
         (checker (fn2-b-event-row (fn2-fc-rows fn2-fc)))
@@ -161,7 +161,7 @@
                       (not (= (fn2-event-read-phase 0 fn2-event-read) *fn2-event-read-phase-idle*))))
          (mv :owner 0 0))
         ((mv code extent epoch allocation first members seal previous)
-         (fn2-journal-lease-source token kind owner generation (fn2-event-read-commit 0 fn2-event-read)
+         (fn2-journal-lease-source token kind owner generation (fn2-event-read-commit 0 fn2-event-read) *fn2-commit-kind*
           fn2-journal-lease fn2-commit-root fn2-extents fn2-alloc-edges fn2-fc fn2-digests))
         ((unless (eq code :ok)) (mv code 0 0))
         ((unless (and (equal extent (fn2-event-read-extent 0 fn2-event-read))
