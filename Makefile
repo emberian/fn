@@ -281,6 +281,8 @@ ACL2_BOOKS = \
   books/journal-retention-core \
   books/peer-view-member \
   books/peer-view-read \
+  books/peer-import-state \
+  books/peer-import \
   books/xfnc-view \
   books/xfnc-reader \
   books/event-read-verify \
@@ -440,6 +442,7 @@ ACL2_BOOKS = \
   tests/commit-view-compatibility-unit \
   tests/conn-answer-unit \
   tests/xfnc-rx-unit \
+  tests/peer-import-unit \
   tests/conn-unit \
   tests/consumer-codec-unit \
   tests/fnct-append-boundary-unit \
