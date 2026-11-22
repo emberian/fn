@@ -68,8 +68,12 @@
   (declare (xargs :stobjs fn2-core :guard (fn2-core-wfp fn2-core)))
   (stobj-let ((fn2-fields (fn2-core-fields fn2-core)) (fn2-pool (fn2-core-pool fn2-core)))
     (code next fn2-fields)
-    (fn2-journal-body-decode kind *fn2-rec-field-base* slot gen off rend
-                             *fn2-recovery-machine-kind* id ogen fn2-fields fn2-pool)
+    ;; This recovery pass can only adopt B's keyed records and C's transaction members.
+    ;; Decoding a checkpoint maintenance body alone cannot establish its physical effects.
+    (if (or (equal kind *record-kind-keyed-mutation*) (member-equal kind *fn2-commit-txn-record-kinds*))
+        (fn2-journal-body-decode kind *fn2-rec-field-base* slot gen off rend
+                                 *fn2-recovery-machine-kind* id ogen fn2-fields fn2-pool)
+      (mv :kind 0 fn2-fields))
     (mv (if (eq code :ok) :ok :invalid) (nfix next) fn2-core)))
 (fn2-core-preserves fn2-rp-body (kind off rend slot gen id ogen fn2-core) :position 2 :rows nil)
 (defthm fn2-rp-body-natp (natp (mv-nth 1 (fn2-rp-body kind off rend slot gen id ogen fn2-core)))

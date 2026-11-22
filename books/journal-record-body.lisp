@@ -8,12 +8,14 @@
 
 (local (in-theory (disable fn2-fieldsp fn2-fields-wfp fn2-fields-rows
                            fn2-format-keyed-mutation-decode fn2-format-article-acceptance-decode
-                           fn2-format-record-header-decode fn2-run-layout-decode)))
+                           fn2-format-record-header-decode fn2-format-allocation-decode fn2-format-retirement-decode
+                           fn2-format-checkpoint-installation-decode fn2-run-layout-decode)))
 
 (defconst *fn2-journal-record-fields*
- (max *fn2-run-entry-rows*
-      (max *fn2-format-record-header-num-fields*
-           (max *fn2-format-keyed-mutation-num-fields* *fn2-format-article-acceptance-num-fields*))))
+ (max (max *fn2-format-allocation-num-fields*
+           (max *fn2-format-retirement-num-fields* *fn2-format-checkpoint-installation-num-fields*))
+      (max *fn2-run-entry-rows* (max *fn2-format-record-header-num-fields*
+           (max *fn2-format-keyed-mutation-num-fields* *fn2-format-article-acceptance-num-fields*)))))
 
 (defun fn2-journal-body-decode (kind base slot gen off end okind oslot ogen fn2-fields fn2-pool)
  (declare (xargs :stobjs (fn2-fields fn2-pool)
@@ -27,6 +29,13 @@
         (fn2-format-keyed-mutation-decode base slot gen off end okind oslot ogen fn2-fields fn2-pool))
        ((equal kind *record-kind-article-acceptance*)
         (fn2-format-article-acceptance-decode base slot gen off end okind oslot ogen fn2-fields fn2-pool))
+       ;; Lifecycle coordinators admit these records through their private packed-member path.
+       ((equal kind *record-kind-allocation*)
+        (fn2-format-allocation-decode base slot gen off end okind oslot ogen fn2-fields fn2-pool))
+       ((equal kind *record-kind-retirement*)
+        (fn2-format-retirement-decode base slot gen off end okind oslot ogen fn2-fields fn2-pool))
+       ((equal kind *record-kind-checkpoint-installation*)
+        (fn2-format-checkpoint-installation-decode base slot gen off end okind oslot ogen fn2-fields fn2-pool))
        ((and (natp kind) (<= *record-kind-identity-evidence* kind)
              (<= kind *fn2-commit-txn-schema-record-kind-last*))
         (fn2-run-layout-decode (- kind *fn2-commit-txn-schema-record-kind-base*) 0 base slot gen off end
