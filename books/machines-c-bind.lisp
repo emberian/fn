@@ -861,7 +861,7 @@
  :tables (fn2-core-fields fn2-core-pool)
  :doc "Emit a staged transaction's write slots as B's transaction records into a workspace.")
 (defcost fn2-successor-stream-member :child fn2-succ-stream-member-children :answers (:ok :done :state :bounds)
- :doc "One applied address, authority or consumer-epoch write of a published batch: (mv code principal position next).")
+ :doc "One applied address, authority, consumer-epoch or withdrawal write of a published batch: (mv code principal position next).")
 (defcost fn2-successor-published :answers (:ok :state)
  :doc "Read the greatest published commit position (D's read frontier, C-S4 (c)).")
 (defcost fn2-successor-publish :answers (:bounds :ok :state)
