@@ -1502,9 +1502,6 @@
            (:if (posp row-address-principal)
                 ((:next :append) (:charge :steps *fn2-work-transition* :runnable t))
                 ((:set (reason *fn2-upload-word-refused*)) (:goto append-refuse))))
-          ;; fetch carries no cursor: the frontier, then the walk to its position
-          ((equal row-verb *fn2-cns-verb-fetch*)
-           (:next :read) (:charge :steps *fn2-work-transition* :runnable t))
           ((or (equal row-verb *fn2-cns-verb-rebase*)
                (equal row-verb *fn2-cns-verb-unregister*))
            (:set (reason *fn2-cns-reason-unavailable*)) (:goto refuse))

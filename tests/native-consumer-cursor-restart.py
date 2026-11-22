@@ -199,6 +199,12 @@ def main():
         grant("restore-other-read", other, "read", "local.other")
         restored = stream("fetch-with-restored-read-grant", "fetch", *occurrence, actor=other)
         fixture.exact_fetch(restored, other_article)
+        grant("revoke-other-consume", other, "consume", "--revoke")
+        refused = stream("fetch-after-consume-revocation", "fetch", *occurrence, actor=other, expected=1)
+        assert refused == {"outcome": "refused", "reason": "access"}, refused
+        grant("restore-other-consume", other, "consume")
+        restored = stream("fetch-with-restored-consume-grant", "fetch", *occurrence, actor=other)
+        fixture.exact_fetch(restored, other_article)
         node.kill()
         processes.append(dict(phase="redelivery", pid=node.node_pid, exit=node.proc.returncode,
                               position=status["position"], redelivered=redelivery["next"]))
