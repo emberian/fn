@@ -283,7 +283,9 @@
 ;; fn2-cns-authority-allows at :check; the authority rows' continuations
 ;; (fn2-auth-events, after) use the same reads.
 (assert-event (and (equal *fn2-cns-right-consume* *fn2-authority-right-consume*)
-                   (equal *fn2-cns-scope-own-consumers* *fn2-authority-scope-own-consumers*)))
+                   (equal *fn2-cns-scope-own-consumers* *fn2-authority-scope-own-consumers*)
+                   (equal *fn2-cns-right-read* *fn2-authority-right-read*)
+                   (equal *fn2-cns-scope-stream* *fn2-authority-scope-stream*)))
 (defmacro fn2-auth-read-events ()
  '(progn
    ;; Whether the core serves authority (the profile gives fn2-auth rows):

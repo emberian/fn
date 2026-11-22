@@ -189,6 +189,16 @@ def main():
             assert receipt["message_id"] == message_id and receipt["position"] > second["next"], receipt
             woken = waiting.result(timeout=20)
             check_page(woken, receipt, article, more=False)
+        occurrence = (other_receipt["message_id"], "--domain", other_receipt["domain"],
+                      "--position", other_receipt["position"])
+        readable = stream("fetch-with-read-grant", "fetch", *occurrence, actor=other)
+        fixture.exact_fetch(readable, other_article)
+        grant("revoke-other-read", other, "read", "local.other", "--revoke")
+        revoked = stream("fetch-after-read-revocation", "fetch", *occurrence, actor=other, expected=1)
+        assert revoked == denied_fetch, (revoked, denied_fetch)
+        grant("restore-other-read", other, "read", "local.other")
+        restored = stream("fetch-with-restored-read-grant", "fetch", *occurrence, actor=other)
+        fixture.exact_fetch(restored, other_article)
         node.kill()
         processes.append(dict(phase="redelivery", pid=node.node_pid, exit=node.proc.returncode,
                               position=status["position"], redelivered=redelivery["next"]))

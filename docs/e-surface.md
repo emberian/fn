@@ -750,6 +750,31 @@ Outbound feeding and catchup coverage remain the implementation frontier in
    one frame per receive window (octets past a frame's extent close the connection; owed: a separate tx range
    for pipelining); control commands ride kind 1 with the posture as the kind 2 reply (fn1's native-control kinds).
 
+### Authority at the addressed frontier
+
+FETCH checks consume admission before its cursorless walk and the current read grant on the selected
+address row's stream before article lookup. Streamed FETCH checks that grant again immediately before
+opening the reply prefix. Denials use the same `unavailable` result as a missing occurrence. The first
+check also covers raw FETCH through a non-streamed reply. A full handoff check for that path, and a
+second consume check at reply freeze, are still needed.
+
+The txn currently emits one address row per event and retains only the first group's stream. Its
+overview rows record each group's article number but cannot enumerate all groups by article. General
+per-item access through any authorized group requires a bounded article-to-stream membership lookup,
+or a retained set published in the transaction that creates the address row. A cursor view must carry
+the authority-head revision separately from its query version. REGISTER and REBASE must persist it;
+READ, WAIT and ACK must compare it against current authority before access or mutation, and ACK staging
+must keep the authority dependency through publication. POSITION must return the recorded revision.
+
+STATUS and frontier-relative operations must use the highest authorized addressed position under the
+same authority revision as the page walk. The current positioned seek cannot filter memberships. A
+bounded reverse address walk with resumable membership/grant reads is one direct implementation.
+A retained projection keyed by principal, authority revision and position would instead need a
+readiness boundary and an ordered replay rule before exposing a new revision. Neither path can use the
+unfiltered address tip as an answer. A parked WAIT also needs a principal authority dependency so a
+grant update resumes its view check without waiting for a new article. Recheck the revision at reply
+freeze so an in-flight page cannot mix visibility decisions from different revisions.
+
 ## 15. Astra's read (`lanes/e-quests/astra-1.md`): what it changed
 Taken: losses as a product, not a chain (§2.3); grammar bindings name terminal replies (§2.2); fn1's
 codes keep fn1's payloads and L translates (§4.2); a changed register answers `rebase-required` and a

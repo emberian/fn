@@ -155,6 +155,8 @@
 ;; *fn2-authority-right-consume* and -scope-own-consumers, asserted equal there)
 (defconst *fn2-cns-right-consume* 0)
 (defconst *fn2-cns-scope-own-consumers* 0)
+(defconst *fn2-cns-right-read* 1)
+(defconst *fn2-cns-scope-stream* 1)
 
 (defcost fn2-cns-lookup-cursor :answers (:ok :absent :unavailable) :bytes 2048
  :tables (fn2-core-id-engine fn2-core-reads fn2-core-ranges fn2-core-range-sources fn2-core-seeks
@@ -1517,9 +1519,11 @@
                               (:charge :bytes 4096 :steps *fn2-work-transition* :runnable t))
                      ((:access) (:set (reason *fn2-cns-reason-access*)) (:goto refuse))
                      ((:state) (:goto cancel))))
-             (:if (equal row-verb *fn2-cns-verb-register*)
-                  ((:next :commit) (:charge :bytes 4096 :steps *fn2-work-transition* :runnable t))
-                  ((:next :lookup) (:charge :bytes 4096 :steps *fn2-work-transition* :runnable t))))))
+             (:cond ((equal row-verb *fn2-cns-verb-register*)
+                     (:next :commit) (:charge :bytes 4096 :steps *fn2-work-transition* :runnable t))
+                    ((equal row-verb *fn2-cns-verb-fetch*)
+                     (:next :read) (:charge :bytes 4096 :steps *fn2-work-transition* :runnable t))
+                    (t (:next :lookup) (:charge :bytes 4096 :steps *fn2-work-transition* :runnable t))))))
   (:lookup :on-refusal ((:stop :machine-phase))
    (:if (equal row-lease *fn2-cns-lease-held*)
         ((:do (lc) (fn2-cns-lease-release row-lslot row-lgen) :effects ((:release (:storage-window))) :accept (:ok :retired)
@@ -1578,13 +1582,29 @@
             :accept (:selected :end :yield :fault))
            (:case icode
             ((:yield) (:charge :bytes *fn2-cns-addr-next-1-pool-read-bound* :steps *fn2-work-transition* :runnable t))
-            ((:selected) (:set (npos np) (art a) (istream st)) (:next :article)
+            ((:selected) (:set (npos np) (art a) (istream st))
+             (:if (equal row-verb *fn2-cns-verb-fetch*)
+                  ((:set (xstep 0)) (:next :fetch-authorize))
+                  ((:next :article)))
              (:charge :bytes *fn2-cns-addr-next-1-pool-read-bound* :steps *fn2-work-transition* :runnable t))
             ((:end) (:set (ipos row-pub-frontier)) (:goto page-end))
             (:otherwise (:set (reason *fn2-cns-reason-unavailable*) (outcome *fn2-cns-outcome-refused*))
              (:goto page-fail))))
           ((< row-ipos row-pub-frontier) (:set (more 1)) (:goto page-end))
           (t (:goto page-end))))
+  ;; A FETCH occurrence must be readable before article lookup reveals
+  ;; its state or takes a storage lease. Hide access denial as absence.
+  (:fetch-authorize :on-refusal ((:stop :machine-phase))
+   (:do (acode astep ahead agrant)
+        (fn2-cns-authority-allows id row-generation *fn2-cns-right-read* *fn2-cns-scope-stream*
+                                  row-istream row-xstep row-xhead row-xgrant 4096)
+    :case (((:more) (:set (xstep astep) (xhead ahead) (xgrant agrant))
+            (:charge :bytes 4096 :steps *fn2-work-transition* :runnable t))
+           ((:access) (:set (reason *fn2-cns-reason-unavailable*)) (:goto refuse))
+           ((:state) (:goto cancel))))
+   (:set (xstep 0))
+   (:next :article)
+   (:charge :bytes 4096 :steps *fn2-work-transition* :runnable t))
   (:article :on-refusal ((:stop :machine-phase))
    (:cond ((equal row-ctl *fn2-none*) (:goto article-cancel))
           ((equal row-outcome *fn2-cns-outcome-refused*) (:goto article-fail))
@@ -1647,13 +1667,24 @@
        (:do () (fn2-cns-stream-source-abort id row-generation row-ctl row-ctl-gen row-request))
        (:charge :bytes *fn2-cns-source-unit-work-bytes* :descriptors 0 :steps *fn2-work-transition* :runnable t)))))
     ((:covered)
+     ;; Re-evaluate the read grant before opening the first reply prefix.
+     ;; Publish during a suspended check restarts the authority-head read.
+     (:do (acode astep ahead agrant)
+          (fn2-cns-authority-allows id row-generation *fn2-cns-right-read* *fn2-cns-scope-stream*
+                                    row-istream row-xstep row-xhead row-xgrant 4096)
+      :case (((:more) (:set (xstep astep) (xhead ahead) (xgrant agrant))
+              (:charge :bytes (+ *fn2-cns-source-unit-work-bytes* 4096) :steps *fn2-work-transition* :runnable t))
+             ((:access :state)
+              (:do () (fn2-cns-stream-source-abort id row-generation row-ctl row-ctl-gen row-request))
+              (:charge :bytes (+ *fn2-cns-source-unit-work-bytes* 4096) :steps *fn2-work-transition* :runnable t))))
+     (:set (xstep 0))
      (:do (oc) (fn2-cns-stream-source-open id row-generation) :accept (:ok :bad :wait) :why "the following dispatch starts output only when ready, waits for transport, or cleans the retained source on refusal")
      (:case oc
-      ((:ok) (:set (stream 1)) (:charge :bytes (+ *fn2-cns-source-unit-work-bytes* 4096) :steps *fn2-work-transition* :runnable t))
-      ((:wait) (:charge :bytes (+ *fn2-cns-source-unit-work-bytes* 4096) :steps *fn2-work-poll*))
+      ((:ok) (:set (stream 1)) (:charge :bytes (+ *fn2-cns-source-unit-work-bytes* 8192) :steps *fn2-work-transition* :runnable t))
+      ((:wait) (:charge :bytes (+ *fn2-cns-source-unit-work-bytes* 8192) :steps *fn2-work-poll*))
       (:otherwise
        (:do () (fn2-cns-stream-source-abort id row-generation row-ctl row-ctl-gen row-request))
-       (:charge :bytes (+ *fn2-cns-source-unit-work-bytes* 4096) :steps *fn2-work-transition* :runnable t))))
+       (:charge :bytes (+ *fn2-cns-source-unit-work-bytes* 8192) :steps *fn2-work-transition* :runnable t))))
     ((:ready :complete)
      (:wake-row row-ctl) (:charge :bytes *fn2-cns-source-unit-work-bytes* :steps *fn2-work-transition*))
     ((:released)
