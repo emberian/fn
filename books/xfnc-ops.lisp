@@ -3,6 +3,23 @@
 (include-book "assembly-callbacks-d")
 (include-book "sched-timers")
 
+; BOOT reaches :ready only after the immutable configuration record
+; has been written and fenced, or matched on reopen, and epoch adoption
+; has completed. The profile scalar alone cannot enable peer READ.
+(defun fn2-core-ready-history-revision (fn2-core)
+ (declare (xargs :stobjs fn2-core :guard (fn2-core-wfp fn2-core)
+  :guard-hints (("Goal" :in-theory (enable fn2-core-wfp)))))
+ (let ((boot (fn2-machine-kind-base *fn2-boot-kind* fn2-core)))
+  (if (and (fn2-core-success-p fn2-core)
+           (eq (fn2-boot-snapshot-read-code boot fn2-core) :ok)
+           (equal (fn2-machine-phase boot fn2-core) *fn2-boot-state-ready*))
+      (stobj-let ((fn2-origin (fn2-core-origin fn2-core))) (code revision)
+       (let ((revision (fn2-origin-history-revision fn2-origin)))
+        (if (posp revision) (mv :ok revision) (mv :unavailable 0)))
+       (mv code revision))
+    (mv :unavailable 0))))
+(in-theory (disable fn2-core-ready-history-revision))
+
 (defcost fn2-xfnc-policy
  :doc "Read the pinned request/discard bounds and body timeout; all zero when XFNC is off.")
 (defcost fn2-xfnc-fc-row :answers (:ok :bounds)

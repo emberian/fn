@@ -45,7 +45,7 @@
           ;; The durable grant lookup continuation for the protected peer view.
           (view-principal :u60) (view-stream :u60) (view-anchor :u60) (view-right :u8)
           (view-step :u8) (view-head :u60) (view-grant :u60) (view-version :u60) (view-publish :bool)
-          (view-end (:enum fn2-xfnc-end (:none :empty :complete :access :dependency :uncertain :invalid :absent)))
+          (view-end (:enum fn2-xfnc-end (:none :empty :complete :access :dependency :uncertain :invalid :absent :rebase-required)))
           ;; An exact, generation-bound FNCT request and any CNS registration
           ;; it is waiting on. The stream in a READ is checked against the
           ;; published registration before the journal reader opens.
@@ -56,7 +56,7 @@
           ;; Scoped peer page progress and one pair's hash continuation.
           (peer-page-phase (:enum fn2-xfnc-page-phase (:start :scan :history :evidence :append :finish :close :confirm :ready)))
           (peer-page-stop (:enum fn2-xfnc-page-stop (:none :item-limit :octet-limit)))
-          (peer-page-fault (:enum fn2-xfnc-page-fault (:none :state :scope :beyond-frontier :access :absent :dependency :uncertain)))
+          (peer-page-fault (:enum fn2-xfnc-page-fault (:none :state :scope :beyond-frontier :access :absent :dependency :uncertain :rebase-required :meter)))
           (peer-page-end :u60) (peer-page-next :u60) (peer-page-revision :u60)
           (peer-wire-phase (:enum fn2-xfnc-wire-phase (:start :pairs :hash :seal :shift :confirm :failed)))
           (peer-wire-start :u32) (peer-wire-frame :u32) (peer-wire-done :u32)

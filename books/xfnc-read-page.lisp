@@ -1,6 +1,7 @@
 ; Policy for one selected pair from a frozen XFNC view. END records every
 ; selected event. NEXT and its chain stop at the last pair in the page.
 (in-package "ACL2")
+(include-book "arms")
 (include-book "xfnc-view-chain")
 (fn2-book-layer :e)
 
@@ -20,7 +21,8 @@
   ((< next requested) (mv :scope stopped))
   ((not (eq stopped :none)) (mv :frontier stopped))
   ((>= items max-items) (mv :frontier :item-limit))
-  ((or (> (+ bytes pair) max-bytes) (not room)) (mv :frontier :octet-limit))
+  ((or (> (+ bytes pair) max-bytes) (not room))
+   (if (zp items) (mv :meter stopped) (mv :frontier :octet-limit)))
   (t (mv :include stopped))))
 
 (defun fn2-xfnc-page-scan-verdict (requested end next)
@@ -55,6 +57,8 @@
     (:scope *fn2-xfnc-page-fault-scope*)
     (:beyond-frontier *fn2-xfnc-page-fault-beyond-frontier*)
     (:access *fn2-xfnc-page-fault-access*)
+    (:meter *fn2-xfnc-page-fault-meter*)
+    (:rebase-required *fn2-xfnc-page-fault-rebase-required*)
     (:absent *fn2-xfnc-page-fault-absent*)
     (:dependency *fn2-xfnc-page-fault-dependency*)
     (:uncertain *fn2-xfnc-page-fault-uncertain*)
@@ -184,6 +188,8 @@
    (mv (cond ((equal fault *fn2-xfnc-page-fault-scope*) :scope)
              ((equal fault *fn2-xfnc-page-fault-beyond-frontier*) :beyond-frontier)
              ((equal fault *fn2-xfnc-page-fault-access*) :access)
+             ((equal fault *fn2-xfnc-page-fault-meter*) :meter)
+             ((equal fault *fn2-xfnc-page-fault-rebase-required*) :rebase-required)
              ((equal fault *fn2-xfnc-page-fault-absent*) :absent)
              ((equal fault *fn2-xfnc-page-fault-dependency*) :dependency)
              ((equal fault *fn2-xfnc-page-fault-uncertain*) :uncertain)
@@ -248,7 +254,8 @@
               (fn2-xfnc-read-rights cursor generation (fn2-cursor-row-peer-stream cursor fn2-core) budget fn2-core))
              ((when (eq rights :more)) (mv :more fn2-core))
              ((unless (and (eq rights :ok) (equal current pid) (equal head (fn2-cursor-row-peer-head cursor fn2-core))))
-              (fn2-xfnc-page-fail cursor (if (eq rights :ok) :access rights) fn2-core))
+              (fn2-xfnc-page-fail cursor
+               (cond ((not (eq rights :ok)) rights) ((equal current pid) :rebase-required) (t :access)) fn2-core))
              (fn2-core (fn2-cursor-put-core cursor (peer-page-phase *fn2-xfnc-page-phase-ready*))))
          (mv :ready fn2-core)))
        ((when (equal phase *fn2-xfnc-page-phase-scan*))

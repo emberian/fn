@@ -31,3 +31,11 @@
  (with-local-stobj fn2-origin
   (mv-let (ok fn2-origin) (fn2-origin-unit-run fn2-origin) ok)))
 (assert-event (fn2-origin-unit-check))
+
+(assert-event
+ (let ((profile (fn2-history-revision-profile-from-text *fn2-profile-tiny* "3")))
+  (and (equal (fn2-history-revision-profile-from-text *fn2-profile-tiny* nil) *fn2-profile-tiny*)
+       (equal (fn2-profile-get :history-revision profile) 3)
+       (fn2-origin-profilep profile)
+       (not (fn2-origin-profilep (fn2-history-revision-profile-from-text profile "0")))
+       (not (fn2-origin-profilep (fn2-history-revision-profile-from-text profile "+3"))))))
