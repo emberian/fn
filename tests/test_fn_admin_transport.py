@@ -128,6 +128,11 @@ class DisconnectAfterRequest(unittest.TestCase):
         self.assert_uncertain(proc)
         self.assertEqual(json.loads(proc.stdout)["op"], 1)
 
+    def test_stream_append_without_op_does_not_offer_a_retry_key(self) -> None:
+        proc = self.run_command("stream", "append", "--group", "local.test", "--body", "hello")
+        self.assert_uncertain(proc)
+        self.assertNotIn("op", json.loads(proc.stdout))
+
 
 if __name__ == "__main__":
     unittest.main()
