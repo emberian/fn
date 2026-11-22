@@ -2,13 +2,8 @@
 ; The carrier retains the authenticated connection's exact, opened frame.
 (in-package "ACL2")
 (include-book "cns")
+(include-book "xfnc-request-layout")
 (fn2-book-layer :e)
-
-; A peer registers one stream. The canonical stream list encodes each
-; name as (:octets 64), inside REGISTER's length-prefixed streams field.
-(deflayout fn2-xfnc-stream-name '((name (:octets 64))))
-(defconst *fn2-xfnc-register-body-max* (+ 1 1 8 2 1 64 1))
-(defconst *fn2-xfnc-read-body-max* (+ 1 2 366 4 4))
 
 (defun fn2-xfnc-decode-register (base start end slot gen kind owner generation fn2-fields fn2-pool)
   (declare (xargs :stobjs (fn2-fields fn2-pool)
