@@ -185,6 +185,7 @@
                    (:otherwise (:next :closing) (:charge :bytes 2048 :steps *fn2-work-transition* :runnable t)))))
           (t
            (:do (result reason) (fn2-conn-xfnc-query row-query row-query-gen row-xfnc-verb)
+            :accept ()
             :case (((:more) (:charge :bytes 4096 :steps *fn2-work-transition* :runnable t))
                    ((:wait) (:charge :bytes 4096 :steps *fn2-work-transition*))
                    ((:state) (:next :closing) (:charge :bytes 4096 :steps *fn2-work-transition* :runnable t))
@@ -582,6 +583,7 @@
      (:do (request-max discard-max body-ms) (fn2-xfnc-policy))
      (:do (code next left verb) (fn2-conn-xfnc-input-stage id row-generation row-xfnc-phase row-xfnc-discard row-start
                                                     row-xfnc-left request-max discard-max)
+      :accept ()
       :case (((:hash) (:set (xfnc-phase *fn2-xfnc-rx-hash-phase*))
               (:charge :bytes *fn2-fnct-header-octets* :steps *fn2-work-transition* :runnable t))
              ((:trailer) (:set (xfnc-phase *fn2-xfnc-rx-trailer-phase*))
@@ -649,6 +651,7 @@
            (:charge :steps *fn2-work-transition* :runnable t))
           ((fn2-xfnc-reader-owned-p id row-generation)
            (:do (read-close) (fn2-xfnc-reader-close id row-generation)
+            :accept ()
             :case (((:more :done) (:charge :steps *fn2-work-transition* :runnable t))
                    ((:drain) (:charge :steps *fn2-work-state*))
                    (:otherwise (:stop :machine-phase :steps *fn2-work-state*)))))
