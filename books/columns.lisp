@@ -602,12 +602,6 @@
     `(if (equal (nfix k) ,index) (resize-list nil n ,(if (eq (cadar cols) :link) *fn2-none* 0))
        ,(fn2-columns-init-nth name (cdr cols) (+ 1 (nfix index)) extras))))
 
-(defun fn2-columns-shape-expansions (n)
-  (declare (xargs :verify-guards nil))
-  (if (zp n) nil
-    (cons `(:free (rows xs) (fn2-columns-shapep ,n rows xs))
-          (fn2-columns-shape-expansions (- n 1)))))
-
 (defun fn2-columns-length-names (name cols)
   (declare (xargs :verify-guards nil))
   (if (atom cols) nil
@@ -626,7 +620,10 @@
         :hints (("Goal" :in-theory (union-theories
                           '(,wfp ,rows fn2-columns-shapep zp ,@(fn2-columns-length-names name cols))
                           (theory 'minimal-theory))
-                        :expand ,(fn2-columns-shape-expansions count)))))
+                        ; The closed count and all of its recursive prefixes
+                        ; match this one pattern.
+                        :expand ((:free (n rows xs)
+                                        (fn2-columns-shapep n rows xs)))))))
       (defthm ,(fn2-columns-sym name "-UPDATE-FIELD-WFP")
         (implies (and (,wfp ,name) (natp i) (not (equal i ,count))
                       (or (<= ,count i) (equal (len v) (,rows ,name))))

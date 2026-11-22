@@ -55,3 +55,23 @@ certification. Root independently checked their four current source keys and
 certificate/port/FASL payloads. This does not qualify affected consumers or the
 served application. Those require new current-key records and execution; existing
 certificates must never be relabeled for changed sources or dependencies.
+
+## CURSOR shape bridge
+
+The local WFP-AS-SHAPE proof matches its closed column count and its recursive
+prefixes with one free-variable expansion pattern. Its statement, theory,
+locality and following events are identical. The generated executable forms,
+guards and exported facts are unchanged.
+
+Against the same certified CURSOR world on Forge, the actual 89-column theorem
+went from 111,882 prover steps and 3.22 seconds to 3,747 steps and 0.14 seconds.
+The source-derived constructor also proved the zero- and single-column cases.
+The changed generator source and a mixed-width/link/boolean/enum table passed
+author admission against warm parents.
+
+A separate whole-declaration comparison retained the 2M-step and 20-second
+limits with one ACL2 process, 2 GiB and no swap. Both the original and the
+source-derived candidate timed out after 20.01 seconds. Their incomplete runs
+used 1,083,633 and 1,079,052 steps, respectively, and ended at different
+events. The candidate's shape bridge took 0.11 seconds in that run. This
+measurement qualifies neither the whole declaration nor its registry.
