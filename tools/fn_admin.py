@@ -114,6 +114,7 @@ AUTH_OPCODES = {
     "grant-get": 3,
     "stream-resolve": 4,
     "principal-set-password": 5,
+    "peer-pull": 6,
 }
 AUTH_RIGHTS = {"consume": 0, "read": 1, "append": 2, "peer": 3, "peer-feed": 4, "peer-accept": 5}
 CNS_CODES = {
@@ -300,6 +301,27 @@ def build_auth_request(verb: str, **kw) -> bytes:
     elif verb == "principal-set-password":
         body = (bytes([code]) + octets16(kw["name"].encode("utf-8"))
                 + octets16(kw["salt"]) + octets16(kw["secret"]))
+    elif verb == "peer-pull":
+        ids = [kw[field] for field in ("principal", "stream", "consumer", "history", "incarnation", "view")]
+        if any(not 0 <= value < 1 << 60 for value in ids):
+            raise ValueError("peer pull identity fields must fit 60 bits")
+        if kw["consumer"] == 0:
+            raise ValueError("peer pull requires a positive consumer id")
+        stream = kw["remote_stream"].encode("utf-8")
+        username = kw["remote_user"].encode("utf-8")
+        secret = kw["secret"]
+        if not (0 < len(stream) <= 250 and 0 < len(username) <= 64 and 0 < len(secret) <= 496):
+            raise ValueError("peer pull stream, username, or password has invalid length")
+        port, timeout = kw["remote_port"], kw["timeout_ms"]
+        if not (0 < port < (1 << 16) and 0 < timeout < (1 << 32)):
+            raise ValueError("peer pull requires a u16 port and a positive u32 timeout")
+        try:
+            address = socket.inet_pton(socket.AF_INET, kw["remote_address"])
+        except OSError as exc:
+            raise ValueError("peer pull requires a numeric IPv4 address") from exc
+        body = (bytes([code]) + b"".join(leb_encode(value) for value in ids)
+                + octets16(stream) + address + port.to_bytes(2, "big")
+                + timeout.to_bytes(4, "big") + octets16(username) + octets16(secret))
     elif verb == "grant-set":
         op_bytes = be_pos(kw["op"])
         body = (
@@ -354,6 +376,12 @@ def decode_auth_reply(verb: str, frame: bytes) -> dict:
         pid, i = leb_decode(p, i)
         head, i = leb_decode(p, i)
         out.update(id=pid, authority_head=head)
+    elif verb == "peer-pull":
+        attempt, i = leb_decode(p, i)
+        generation, i = leb_decode(p, i)
+        if attempt >= 1 << 32 or generation == 0:
+            raise WireError("invalid peer pull attempt handle")
+        out.update(attempt=attempt, generation=generation)
     elif verb == "grant-set":
         grant_id, i = leb_decode(p, i)
         head, i = leb_decode(p, i)
@@ -611,7 +639,7 @@ class ControlSession:
     def auth(self, verb: str, **kw) -> dict:
         frame = build_auth_request(verb, **kw)
         return self._exchange(frame, verb, decode_auth_reply,
-                              mutating=verb in ("principal-create", "principal-set-password", "grant-set"))
+                              mutating=verb in ("principal-create", "principal-set-password", "grant-set", "peer-pull"))
 
     def cns(self, verb: str, **kw) -> dict:
         if verb == "wait":
@@ -1013,7 +1041,8 @@ def cmd_serve(args: argparse.Namespace, root: Path) -> int:
                              (args.tls_handshake_ms, "FN2_TLS_HANDSHAKE_MS"),
                              (args.max_consumer_request_octets, "FN2_MAX_CONSUMER_REQUEST_OCTETS"),
                              (args.max_consumer_discard_octets, "FN2_MAX_CONSUMER_DISCARD_OCTETS"),
-                             (args.consumer_body_timeout_ms, "FN2_CONSUMER_BODY_TIMEOUT_MS")):
+                             (args.consumer_body_timeout_ms, "FN2_CONSUMER_BODY_TIMEOUT_MS"),
+                             (args.peer_pull_slots, "FN2_PEER_PULL_SLOTS")):
         if option is not None:
             env[variable] = str(option)
     prepare_native_tls(root, env)
@@ -1151,6 +1180,42 @@ def cmd_grant_get(args: argparse.Namespace) -> int:
         res = sess.auth("grant-get", grantee=pid, right=right, scope=scope, target=target)
     res.update(principal=args.principal, principal_id=pid, right=args.right, target=target)
     return emit(res, args.json)
+
+
+def read_peer_pull_password() -> bytes:
+    if sys.stdin.isatty():
+        try:
+            with warnings.catch_warnings():
+                warnings.simplefilter("error", GetPassWarning)
+                secret = getpass("Remote password: ").encode("utf-8")
+        except (GetPassWarning, EOFError) as exc:
+            raise ValueError("cannot read remote password without terminal echo") from exc
+    else:
+        line = sys.stdin.buffer.readline(499)
+        if not line.endswith(b"\n"):
+            raise ValueError("expected one bounded remote password line on standard input")
+        secret = line.removesuffix(b"\n").removesuffix(b"\r")
+    if not 0 < len(secret) <= 496:
+        raise ValueError("remote password must contain 1..496 octets")
+    return secret
+
+
+def cmd_peer_pull(args: argparse.Namespace) -> int:
+    sock_path = require_control_sock(args)
+    principal, _, err = resolve_principal_on_node(sock_path, args.local_principal)
+    if err is not None:
+        return emit(err, args.json)
+    stream, err = resolve_stream_id(args.local_group, sock_path)
+    if err is not None:
+        return emit(err, args.json)
+    secret = read_peer_pull_password()
+    with ControlSession(sock_path) as sess:
+        result = sess.auth("peer-pull", principal=principal, stream=stream, consumer=args.consumer,
+                           history=args.expected_history, incarnation=args.expected_incarnation,
+                           view=args.expected_view, remote_stream=args.remote_stream,
+                           remote_address=args.remote_address, remote_port=args.remote_port,
+                           timeout_ms=args.timeout_ms, remote_user=args.remote_user, secret=secret)
+    return emit(result, args.json)
 
 
 # --- Stream / Consumer Subcommands ---
@@ -1587,6 +1652,7 @@ def build_parser() -> argparse.ArgumentParser:
     p_serve.add_argument("--max-consumer-request-octets", help="maximum counted XFNC request size")
     p_serve.add_argument("--max-consumer-discard-octets", help="maximum counted XFNC body size to discard")
     p_serve.add_argument("--consumer-body-timeout-ms", help="counted XFNC body deadline in milliseconds")
+    p_serve.add_argument("--peer-pull-slots", help="number of outbound peer pull actors (default 0)")
     p_serve.add_argument("--group", action="append", help="expected genesis group list (default: loaded from <image>.groups)")
     p_serve.add_argument("--storage-fault-model", metavar="MODEL",
                          help="recovery contract: broad (default) or crash-only")
@@ -1631,6 +1697,22 @@ def build_parser() -> argparse.ArgumentParser:
     p_gget.add_argument("right", choices=AUTH_RIGHTS)
     p_gget.add_argument("stream", nargs="?", help="stream/group name or numeric stream id (required for read, append, peer-feed, peer-accept)")
     _add_control_args(p_gget)
+
+    p_peer = sub.add_parser("peer", help="activate outbound owner-provisioned peer work")
+    peer_sub = p_peer.add_subparsers(dest="peer_cmd", required=True)
+    p_pull = peer_sub.add_parser("pull", help="activate one pull attempt over the owner control socket")
+    p_pull.add_argument("--local-principal", required=True, help="local principal name or id")
+    p_pull.add_argument("--local-group", required=True, help="local group name or stream id")
+    p_pull.add_argument("--consumer", required=True, type=int, help="durable consumer id for the pull")
+    p_pull.add_argument("--expected-history", required=True, type=int, help="expected sender history id")
+    p_pull.add_argument("--expected-incarnation", required=True, type=int, help="expected sender incarnation id")
+    p_pull.add_argument("--expected-view", required=True, type=int, help="expected sender view version")
+    p_pull.add_argument("--remote-stream", required=True, help="sender stream name")
+    p_pull.add_argument("--remote-address", required=True, help="numeric IPv4 address")
+    p_pull.add_argument("--remote-port", required=True, type=int, help="sender NNTP port")
+    p_pull.add_argument("--timeout-ms", required=True, type=int, help="pull attempt timeout in milliseconds")
+    p_pull.add_argument("--remote-user", required=True, help="sender login name (password read from stdin)")
+    _add_control_args(p_pull, allow_as=False)
 
     p_stream = sub.add_parser("stream", help="consumer & stream operations over --control-sock")
     stream_sub = p_stream.add_subparsers(dest="stream_cmd", required=True)
@@ -1749,6 +1831,8 @@ def main(argv: list[str] | None = None, root: Path | None = None) -> int:
             return cmd_grant_set(args)
         if args.command == "grant" and args.grant_cmd == "get":
             return cmd_grant_get(args)
+        if args.command == "peer" and args.peer_cmd == "pull":
+            return cmd_peer_pull(args)
         if args.command == "stream":
             dispatch = {
                 "register": cmd_stream_register,
