@@ -20,7 +20,7 @@ def check_page(page, receipt, article, more):
     for key in ("message_id", "domain", "position"):
         assert item[key] == receipt[key], (item, receipt)
     assert item["type"] == "record" and item["octets"] == len(article), item
-    assert item["text"].encode("ascii") == article, item
+    assert bytes.fromhex(item["article_hex"]) == article, item
 
 
 def main():
@@ -64,6 +64,7 @@ def main():
         for index in range(2):
             message_id = f"<native-cursor-{index}@example.invalid>"
             _, lines = fixture.restart.article(message_id.encode("ascii"), 3 + index)
+            lines.append(b"8-bit body " + bytes([0xfe + index]))
             article = fixture.restart.wire(lines)
             path = directory / f"submitted-{index}.article"
             path.write_bytes(article)
