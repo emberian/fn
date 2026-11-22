@@ -2,21 +2,49 @@
 """Focused FNCT client transport/outcome tests (no node or ACL2 required)."""
 from __future__ import annotations
 
+from contextlib import redirect_stdout
+import io
 import json
 import os
 from pathlib import Path
 import socket
 import subprocess
+import sys
 import tempfile
 import threading
 import unittest
+from unittest.mock import patch
 
 ROOT = Path(__file__).resolve().parents[1]
 FN = str(ROOT / "fn")
+sys.path.insert(0, str(ROOT / "tools"))
+import fn_admin
+
 CURSOR = (ROOT / "tests/fixtures/consumer-position/five-field-v1.fncu").read_bytes().hex()
 
 
 class DisconnectAfterRequest(unittest.TestCase):
+    def test_transport_failure_boundary(self) -> None:
+        append = ["stream", "append", "--group", "local.test", "--body", "hello", "--op", "17"]
+        cases = [
+            (append, "sendall", BrokenPipeError(), 3),
+            (append, "recv", OSError("connection lost"), 3),
+            (["principal", "create", "alice"], "sendall", TimeoutError(), 3),
+            (["stream", "status"], "sendall", BrokenPipeError(), 2),
+            (append, "connect", ConnectionRefusedError(), 2),
+        ]
+        for args, method, failure, expected in cases:
+            with self.subTest(args=args, method=method), patch.object(fn_admin.socket, "socket") as socket_cls:
+                getattr(socket_cls.return_value, method).side_effect = failure
+                output = io.StringIO()
+                with redirect_stdout(output):
+                    rc = fn_admin.main([*args, "--control-sock", "unused.sock", "--json"], root=ROOT)
+                self.assertEqual(rc, expected)
+                answer = json.loads(output.getvalue())
+                self.assertEqual(answer["outcome"], "uncertain" if expected == 3 else "error")
+                if args == append and expected == 3:
+                    self.assertEqual(answer["op"], 17)
+
     def run_command(self, *args: str) -> subprocess.CompletedProcess:
         with tempfile.TemporaryDirectory() as directory:
             path = str(Path(directory) / "ctl.sock")
