@@ -842,6 +842,10 @@
 ; The kind. A cursor row in slot S reads through read row 2S, and LIST's
 ; per-group counts through 2S+1 beside the scan (machines-b.lisp's layout:
 ; :capacity is (fn2-b-cursor-rows profile)).
+; Both classifier outcomes meet the arm's resource bound. Keep the command
+; dispatch closed in its generated quantity proof.
+(local (table fn2-arms-quantity-opaque 'fn2-cursor-sub-seek-identity-children
+              '(fn2-cursor-hdr-p fn2-cursor-overview-p)))
 (defmachine-arms fn2-cursor :children
  :subarms
  (;; the page is ready: TX is the connection's move; wake it and wait

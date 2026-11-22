@@ -2371,6 +2371,7 @@
   (let* ((ins (car (fn2-arms-sig name world)))
          (formals (getpropc name 'formals nil world))
          (call (cons name formals))
+         (opaque (cdr (assoc-eq name (table-alist 'fn2-arms-quantity-opaque world))))
          (hyps (append (fn2-arms-child-shape-hyps ins)
                        (list (getpropc name 'guard t world))))
          (terms (fn2-run-quantity-terms call residual work-limit
@@ -2390,7 +2391,7 @@
                        (nfix nth ,@(fn2-arms-shape-fns ins)
                         ,@(fn2-arms-rows-fns ins)
                         ,@(fn2-arms-quantity-readers ins world)
-                        ,@(fn2-arms-resource-callees name world))))))))
+                        ,@(fn2-arms-resource-callees name world) ,@opaque))))))))
 ; Public arms account against the caller budget. Internal chain suffixes
 ; account against their static descriptor bound; the outer admission relates
 ; that bound to the budget before any effects run.
