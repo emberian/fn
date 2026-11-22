@@ -50,6 +50,40 @@
       (or (<= (+ base 11) b0) (<= (+ b0 *fn2-idc-stride*) base))))
 (in-theory (disable fn2-peer-import-room))
 
+;; The batch decoder supplies two exact body spans in authenticated RX.
+;; Decode the published C layouts into distinct format rows. Source-view
+;; position belongs to the batch, not to either exported origin identity.
+(defun fn2-peer-import-decode-item (ebase hbase slot gen hs he es ee kind owner generation fn2-fields fn2-pool)
+ (declare (xargs :stobjs (fn2-fields fn2-pool)
+                 :guard (and (fn2-fields-wfp fn2-fields) (fn2-pool-wfp fn2-pool))))
+ (b* (((unless (and (natp ebase) (natp hbase)
+                    (<= (+ ebase *fn2-identity-evidence-entry-num-fields*) (fn2-fields-rows fn2-fields))
+                    (<= (+ hbase *fn2-identity-history-entry-num-fields*) (fn2-fields-rows fn2-fields))
+                    (or (<= (+ ebase *fn2-identity-evidence-entry-num-fields*) hbase)
+                        (<= (+ hbase *fn2-identity-history-entry-num-fields*) ebase))
+                    (natp hs) (natp he) (natp es) (natp ee) (< hs he) (< es ee)
+                    (or (<= he es) (<= ee hs))
+                    (<= (- he hs) (fn2-layout-max-size *fn2-identity-history-entry*))
+                    (<= (- ee es) (fn2-layout-max-size *fn2-identity-evidence-entry*))))
+       (mv :bounds fn2-fields))
+      ((mv hc hn fn2-fields)
+       (fn2-identity-history-entry-decode hbase slot gen hs he kind owner generation fn2-fields fn2-pool))
+      ((unless (and (eq hc :ok) (equal hn he))) (mv :history-format fn2-fields))
+      ((mv ec en fn2-fields)
+       (fn2-identity-evidence-entry-decode ebase slot gen es ee kind owner generation fn2-fields fn2-pool))
+      ((unless (and (eq ec :ok) (equal en ee))) (mv :evidence-format fn2-fields))
+      ((unless (and (equal (fn2-fields-value (+ ebase *fn2-identity-evidence-entry-field-namespace*) fn2-fields)
+                           *fn2-identity-namespace-netnews*)
+                    (equal (fn2-fields-value (+ ebase *fn2-identity-evidence-entry-field-profile*) fn2-fields)
+                           *fn2-identity-profile-source*)
+                    (equal (fn2-fields-value (+ ebase *fn2-identity-evidence-entry-field-algorithm*) fn2-fields)
+                           *fn2-identity-algorithm-blake3*)))
+       (mv :interpretation fn2-fields)))
+  (mv :ok fn2-fields)))
+(fn2-fields-preserves fn2-peer-import-decode-item
+ (ebase hbase slot gen hs he es ee kind owner generation fn2-fields fn2-pool) :position 1)
+(in-theory (disable fn2-peer-import-decode-item))
+
 ; Validate all logical scalar fields and both concrete octet tags.
 (defun fn2-peer-import-typed (n j sid base fn2-fields)
  (declare (xargs :stobjs fn2-fields :measure (nfix n)
@@ -376,6 +410,24 @@
        (mv (if (eq cleanup :ok) code :cleanup) fn2-core))))))
    (fn2-core-preserves fn2-peer-import-start (tx base hb receipt ok os og fn2-core) :position 1 :rows nil
     :hints (("Goal" :in-theory (enable fn2-core-wfp))))
+   (defun fn2-peer-import-start-item (tx ebase hbase slot gen hs he es ee kind owner generation fn2-core)
+    (declare (xargs :stobjs fn2-core :guard (fn2-core-wfp fn2-core)))
+    (if (not (fn2-peer-import-idle-p tx fn2-core)) (mv :state fn2-core)
+      (mv-let (code fn2-core)
+        (stobj-let ((fn2-fields (fn2-core-fields fn2-core)) (fn2-pool (fn2-core-pool fn2-core))
+                    (fn2-id-decides (fn2-core-id-decides fn2-core)) (fn2-fc (fn2-core-fc fn2-core)))
+          (code fn2-fields)
+          (mv-let (rc b0) (fn2-idc-stripe tx (fn2-fc-rows fn2-fc) fn2-id-decides fn2-fields)
+            (if (and (eq rc :ok) (fn2-peer-import-room ebase b0 fn2-fields) (fn2-peer-import-room hbase b0 fn2-fields))
+                (fn2-peer-import-decode-item ebase hbase slot gen hs he es ee kind owner generation fn2-fields fn2-pool)
+              (mv :bounds fn2-fields)))
+          (mv code fn2-core))
+        (if (eq code :ok)
+            (fn2-peer-import-start tx ebase hbase t kind owner generation fn2-core)
+          (mv code fn2-core)))))
+   (fn2-core-preserves fn2-peer-import-start-item
+    (tx ebase hbase slot gen hs he es ee kind owner generation fn2-core) :position 1 :rows nil
+    :hints (("Goal" :in-theory (enable fn2-core-wfp))))
    ; Read one source arg, then release the child borrow before writing the successor.
    (defun fn2-peer-import-copy-arg (tx slot j base src ok os og fn2-core)
     (declare (xargs :stobjs fn2-core :guard (fn2-core-wfp fn2-core)))
@@ -557,4 +609,4 @@
    (fn2-core-preserves fn2-peer-checkpoint-read (read-row budget fn2-core) :position 14 :rows nil)
    (in-theory (disable fn2-peer-import-start fn2-peer-import-copy-arg fn2-peer-import-copy-args
                        fn2-peer-import-build fn2-peer-import-declare fn2-peer-import-abort fn2-peer-import-release
-                       fn2-peer-checkpoint-declare fn2-peer-checkpoint-key fn2-peer-checkpoint-read))))
+                       fn2-peer-import-start-item fn2-peer-checkpoint-declare fn2-peer-checkpoint-key fn2-peer-checkpoint-read))))
