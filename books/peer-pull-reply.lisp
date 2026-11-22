@@ -5,6 +5,8 @@
 (include-book "peer-pull-stage")
 (include-book "peer-pull-reply-pool")
 (include-book "peer-pull-request-encode")
+
+(defconst *fn2-peer-pull-max-page-items* 1)
 (include-book "fncu-pool")
 (include-book "xfnc-ops")
 
@@ -93,7 +95,7 @@
             ((equal dialog *fn2-pull-dialog-read*)
              ;; One item per page bounds the reciprocal import transaction.
              ;; A subsequent READ continues from its settled checkpoint.
-             (fn2-peer-pull-encode-read base row private pg cursor-off cursor-len 1
+             (fn2-peer-pull-encode-read base row private pg cursor-off cursor-len *fn2-peer-pull-max-page-items*
                (nfix (- (min (nfix (fn2-fnct-cap rx fn2-pool)) (+ *fn2-pool-block-bytes* *fn2-fnct-trailer-octets*))
                         *fn2-fnct-overhead*))
                tx tg kind id generation fn2-fields fn2-digests fn2-b3 fn2-pool))
