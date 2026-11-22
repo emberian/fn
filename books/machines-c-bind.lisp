@@ -647,7 +647,16 @@
 ;; an epoch-changing cursor row. The watermark is the member's commit
 ;; position, independent of any position inside an updated registration.
 ;; Cursor I = TX * W + SLOT. Returns (mv code principal position next).
-(defconst *fn2-succ-addr-sid* 4)
+(make-event
+ (b* ((world (w state))
+      (addr (fn2-decl-get :id (fn2-decl-row '(:schema fn2-addr) world)))
+      (authority (fn2-decl-get :id (fn2-decl-row '(:schema fn2-authority-head) world)))
+      (cursor (fn2-decl-get :id (fn2-decl-row '(:schema fn2-consumer-cursor) world))))
+  (if (and (posp addr) (posp authority) (posp cursor))
+      (value `(progn (defconst *fn2-succ-addr-sid* ,addr)
+                     (defconst *fn2-succ-authority-head-sid* ,authority)
+                     (defconst *fn2-succ-consumer-cursor-sid* ,cursor)))
+    (er soft 'fn2-succ-stream-scan "A wake source is missing its registered schema."))))
 (defun fn2-succ-stream-scan (k i b fcrows fn2-succ-txns fn2-succ-slots fn2-id-decides fn2-fields)
  (declare (xargs :stobjs (fn2-succ-txns fn2-succ-slots fn2-id-decides fn2-fields) :measure (nfix k)
   :guard (and (fn2-succ-txns-wfp fn2-succ-txns) (fn2-succ-slots-wfp fn2-succ-slots) (fn2-fields-wfp fn2-fields) (natp i))))
@@ -657,8 +666,8 @@
       (kind (fn2-succ-slots-kind i fn2-succ-slots))
       (principal-field
        (cond ((equal sid *fn2-succ-addr-sid*) *fn2-addr-entry-field-principal*)
-             ((equal sid *fn2-authority-head-sid*) *fn2-authority-head-entry-field-principal*)
-             ((and (equal sid *fn2-consumer-cursor-sid*)
+             ((equal sid *fn2-succ-authority-head-sid*) *fn2-authority-head-entry-field-principal*)
+             ((and (equal sid *fn2-succ-consumer-cursor-sid*)
                    (or (equal kind *fn2-succ-kind-register*) (equal kind *fn2-succ-kind-rebase*)
                        (equal kind *fn2-succ-kind-unregister*)))
               *fn2-consumer-cursor-entry-field-principal*)
