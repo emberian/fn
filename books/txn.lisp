@@ -305,6 +305,9 @@
   :bytes 4096
   :tables (fn2-core-succ-txns fn2-core-succ-slots fn2-core-id-decides fn2-core-fc fn2-core-run-cursors fn2-core-run-paths fn2-core-fields)
   :doc "The group at the scan's name: the one the append check in progress holds (XSTEP > 0), else one source of its name lookup.")
+(defcost fn2-txn-cancel-authorization :answers (:ok :more :access :unavailable)
+  :bytes 4096 :tables (fn2-core-succ-txns fn2-core-run-cursors fn2-core-run-paths fn2-core-fields)
+  :doc "Bind the exact live transfer to the receiver-local administrator or the accepted target's original submitter.")
 (defcost fn2-txn-wake-upload :tables (fn2-core-machines)
   :doc "Wake the upload this transaction held, if it still names it, so it drains.")
 (defcost fn2-txn-groups-limit
@@ -542,6 +545,40 @@
                             ((:set (counted hashed) (lines (- all-lines header-lines)))
                              (:charge :bytes 8192 :steps *fn2-work-transition* :runnable t))
                             ((:stop :machine-phase))))
+                      ((and (posp (:read upload cancel-len)) (equal row-cancel-resolved 0))
+                       (:do (tc target)
+                            (fn2-withdrawal-target-lookup row-slot c0 g0
+                                                          (:read upload cancel-off) (:read upload cancel-len)
+                                                          :budget 4096 :owner upload)
+                        :accept ()
+                        :case (((:more) (:charge :bytes 8192 :steps *fn2-work-transition* :runnable t))
+                               ((:miss)
+                                (:set (word *fn2-upload-word-not-stored*))
+                                (:next :refused)
+                                (:charge :bytes 8192 :steps *fn2-work-transition* :runnable t))
+                               ((:ok :absent)
+                                (:if (unsigned-byte-p 60 target)
+                                     ((:set (cancel-resolved 1) (cancel-target target))
+                                      (:charge :bytes 8192 :steps *fn2-work-transition* :runnable t))
+                                     ((:stop :machine-phase)))))))
+                      ((posp (:read upload cancel-len))
+                       (:do (permit)
+                            (fn2-txn-cancel-authorization row-slot row-cancel-target row-conn row-conn-gen
+                                                          row-upload row-upload-gen row-request row-rule
+                                                          (:read upload request-principal) :budget 4096)
+                        :accept ()
+                        :case (((:more) (:charge :bytes 8192 :steps *fn2-work-transition* :runnable t))
+                               ((:access)
+                                (:set (word *fn2-upload-word-refused*))
+                                (:next :refused)
+                                (:charge :bytes 8192 :steps *fn2-work-transition* :runnable t))
+                               ;; Acceptance requires the target mutation and reports to be staged
+                               ;; in this same successor. Until that continuation exists, return
+                               ;; the existing storage refusal even after authorization succeeds.
+                               ((:ok :unavailable)
+                                (:set (word *fn2-upload-word-not-stored*))
+                                (:next :refused)
+                                (:charge :bytes 8192 :steps *fn2-work-transition* :runnable t)))))
                       ;; the article's slots and its overview line's first
                       ;; seven fields, then its groups (chunk 1 keeps their names)
                       ((equal row-filed 0)
