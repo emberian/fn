@@ -346,11 +346,6 @@
       (if (not entry) (er hard 'defmachine "Range input ~x0 lacks an actual core child." (car inputs))
         (cons (list (car inputs) (list (car entry) 'fn2-core))
               (fn2-machine-range-input-bindings (cdr inputs) world))))))
-(defun fn2-machine-range-input-tables (inputs world)
-  (declare (xargs :verify-guards nil :measure (len inputs)))
-  (if (atom inputs) nil
-    (cons (list :read (caadar (fn2-machine-range-input-bindings (list (car inputs)) world)))
-          (fn2-machine-range-input-tables (cdr inputs) world))))
 (defun fn2-machine-range-provider-problem (specs world)
   (declare (xargs :verify-guards nil :measure (len specs)))
   (if (atom specs) nil
@@ -4622,6 +4617,8 @@
     (and (function-symbolp name world) name)))
 (defun fn2-machine-registry-face (kind child args o kconst results inputs world)
   (declare (xargs :verify-guards nil))
+  ;; Range providers are read through their child bindings. Those children
+  ;; are never returned by the operation or included in its defcost write set.
   `(stobj-let ((,kind (,(fn2-columns-sym kind "-TABLE") fn2-core))
                (fn2-machines (fn2-core-machines fn2-core))
                (fn2-pool (fn2-core-pool fn2-core))
@@ -4675,8 +4672,7 @@
          ;; The partition's reclaim (fn2-machines-reclaim, arm-children.lisp).
          (fn2-machine-reclaim id ,o retire fn2-core)))
       (fn2-core-preserves ,reclaim (id retire fn2-core) :rows nil :prefix "")
-      (defcost ,admit :tables (fn2-core-machines fn2-core-pool ,(fn2-columns-sym kind "-TABLE")
-                 ,@(fn2-machine-range-input-tables (fn2-machine-range-inputs specs) world))
+      (defcost ,admit :tables (fn2-core-machines fn2-core-pool ,(fn2-columns-sym kind "-TABLE"))
         :effects ((:transfer (:connection-row) :to ,kind)
                   (:acquire ,(strip-cars specs) :for ,kind))
         :target (,kind :free ,(fn2-arm-get :phase adm))
@@ -4811,8 +4807,7 @@
       ;; :none when the profile gives the kind no rows (never a park: every
       ;; take site routes :none in its own :case, checked at expansion)
       (defcost ,take :answers (:ok :no-row :pool :none) :must-route (:none)
-        :tables (fn2-core-machines fn2-core-pool ,(fn2-columns-sym kind "-TABLE") fn2-core-machine-tables
-                 ,@(fn2-machine-range-input-tables (fn2-machine-range-inputs specs) world))
+        :tables (fn2-core-machines fn2-core-pool ,(fn2-columns-sym kind "-TABLE") fn2-core-machine-tables)
         :effects ((:acquire (,rowkind) :for ,kind)
                   ,@(and specs `((:acquire ,(remove-duplicates-eq (strip-cars specs)) :for ,kind))))
         :target (,kind :free ,(fn2-arm-get :phase tk))
