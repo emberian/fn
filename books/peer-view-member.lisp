@@ -76,6 +76,25 @@
          (fn2-fields-value (+ e ,(intern-in-package-of-symbol
              (concatenate 'string "*FN2-IDENTITY-EVIDENCE-ENTRY-FIELD-" (symbol-name field) "*") 'fn2)) fn2-fields)))
 
+; An exported pair must name one content and stable evidence occurrence.
+(defun fn2-peer-view-pair-identity-p (h e slot gen kind owner generation fn2-fields fn2-pool)
+ (declare (xargs :stobjs (fn2-fields fn2-pool) :guard
+                 (and (fn2-fields-wfp fn2-fields) (fn2-pool-wfp fn2-pool))))
+ (and (natp h) (natp e)
+      (<= (+ h *fn2-identity-history-entry-num-fields*) (fn2-fields-rows fn2-fields))
+      (<= (+ e *fn2-identity-evidence-entry-num-fields*) (fn2-fields-rows fn2-fields))
+      (fn2-peer-view-same namespace) (fn2-peer-view-same profile) (fn2-peer-view-same algorithm)
+      (fn2-peer-view-same lineage) (fn2-peer-view-same domain) (fn2-peer-view-same incarnation)
+      (equal (fn2-fields-value (+ h *fn2-identity-history-entry-field-evidence*) fn2-fields)
+             (fn2-fields-value (+ e *fn2-identity-evidence-entry-field-occurrence*) fn2-fields))
+      (equal *fn2-identity-evidence-kind-binding*
+             (fn2-fields-value (+ e *fn2-identity-evidence-entry-field-kind*) fn2-fields))
+      (fn2-peer-view-same-ref (+ h *fn2-identity-history-entry-field-name*)
+       (+ e *fn2-identity-evidence-entry-field-name*) slot gen kind owner generation fn2-fields fn2-pool)
+      (fn2-peer-view-same-ref (+ h *fn2-identity-history-entry-field-digest*)
+       (+ e *fn2-identity-evidence-entry-field-digest*) slot gen kind owner generation fn2-fields fn2-pool)))
+(in-theory (disable fn2-peer-view-pair-identity-p))
+
 (defun fn2-peer-view-pair (event hs he es ee slot gen base kind owner generation fn2-fields fn2-pool)
  (declare (xargs :stobjs (fn2-fields fn2-pool) :guard
                  (and (fn2-fields-wfp fn2-fields) (fn2-pool-wfp fn2-pool))))
@@ -94,18 +113,10 @@
       ((mv ec en fn2-fields)
        (fn2-identity-evidence-entry-decode e slot gen es ee kind owner generation fn2-fields fn2-pool))
       ((unless (and (eq ec :ok) (equal en ee))) (mv :evidence-format fn2-fields))
-      (match (and (fn2-peer-view-same namespace) (fn2-peer-view-same profile) (fn2-peer-view-same algorithm)
-                  (fn2-peer-view-same lineage) (fn2-peer-view-same domain) (fn2-peer-view-same incarnation)
+      (match (and (fn2-peer-view-pair-identity-p h e slot gen kind owner generation fn2-fields fn2-pool)
                   (equal event (fn2-fields-value (+ h *fn2-identity-history-entry-field-position*) fn2-fields))
                   (equal event (fn2-fields-value (+ h *fn2-identity-history-entry-field-evidence*) fn2-fields))
-                  (equal event (fn2-fields-value (+ h *fn2-identity-history-entry-field-article*) fn2-fields))
-                  (equal event (fn2-fields-value (+ e *fn2-identity-evidence-entry-field-occurrence*) fn2-fields))
-                  (equal *fn2-identity-evidence-kind-binding*
-                         (fn2-fields-value (+ e *fn2-identity-evidence-entry-field-kind*) fn2-fields))
-                  (fn2-peer-view-same-ref (+ h *fn2-identity-history-entry-field-name*)
-                   (+ e *fn2-identity-evidence-entry-field-name*) slot gen kind owner generation fn2-fields fn2-pool)
-                  (fn2-peer-view-same-ref (+ h *fn2-identity-history-entry-field-digest*)
-                   (+ e *fn2-identity-evidence-entry-field-digest*) slot gen kind owner generation fn2-fields fn2-pool))))
+                  (equal event (fn2-fields-value (+ h *fn2-identity-history-entry-field-article*) fn2-fields)))))
   (mv (if match :ok :identity) fn2-fields)))
 (fn2-fields-preserves fn2-peer-view-pair
  (event hs he es ee slot gen base kind owner generation fn2-fields fn2-pool) :position 1)
