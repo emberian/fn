@@ -11,10 +11,10 @@
 (fn2-authority-allows-events)
 ;; The upload binding checks generation, request, live account incarnation
 ;; and the owning socket. Only that socket can carry administrator authority.
-(defun fn2-txn-cancel-authorization (tx article conn gen upload ugen request rule principal budget fn2-core)
+(defun fn2-txn-cancel-authorization (tx article conn gen upload ugen request principal budget fn2-core)
   (declare (xargs :stobjs fn2-core :guard (fn2-core-wfp fn2-core)))
   (b* (((unless (and (posp article) (unsigned-byte-p 60 article))) (mv :access fn2-core))
-       ((mv code actor) (fn2-upload-authenticated-submitter conn gen upload ugen request rule principal fn2-core))
+       ((mv code actor) (fn2-upload-transfer-principal conn gen upload ugen request principal fn2-core))
        ((unless (eq code :ok)) (mv :access fn2-core))
        ((when (and (eq (fn2-cns-snapshot-read-code conn fn2-core) :ok)
                    (let ((ctl (fn2-cns-row-ctl conn fn2-core)))
@@ -30,7 +30,7 @@
           (:absent :access)
           (otherwise :unavailable))
         fn2-core)))
-(fn2-core-preserves fn2-txn-cancel-authorization (tx article conn gen upload ugen request rule principal budget fn2-core)
+(fn2-core-preserves fn2-txn-cancel-authorization (tx article conn gen upload ugen request principal budget fn2-core)
   :position 1 :rows nil)
 (in-theory (disable fn2-txn-cancel-authorization))
 (assert-event (equal *fn2-auth-depend-slot* *fn2-txn-slot-depend*))

@@ -564,7 +564,7 @@
                       ((posp (:read upload cancel-len))
                        (:do (permit)
                             (fn2-txn-cancel-authorization row-slot row-cancel-target row-conn row-conn-gen
-                                                          row-upload row-upload-gen row-request row-rule
+                                                          row-upload row-upload-gen row-request
                                                           (:read upload request-principal) :budget 4096)
                         :accept ()
                         :case (((:more) (:charge :bytes 8192 :steps *fn2-work-transition* :runnable t))

@@ -128,10 +128,9 @@
     (mv code pid)))
 (in-theory (disable fn2-conn-authenticated-principal))
 
-(defun fn2-upload-authenticated-submitter (conn gen upload ugen request rule principal fn2-core)
+(defun fn2-upload-transfer-principal (conn gen upload ugen request principal fn2-core)
   (declare (xargs :stobjs fn2-core :guard (fn2-core-wfp fn2-core)))
-  (if (not (and (posp principal) (unsigned-byte-p 60 principal)
-                (equal rule *fn2-upload-rule-post*)))
+  (if (not (and (posp principal) (unsigned-byte-p 60 principal)))
       (mv :unattributed 0)
     (if (eq (fn2-cns-snapshot-read-code conn fn2-core) :ok)
         (let ((ctl (fn2-cns-row-ctl conn fn2-core)))
@@ -155,6 +154,13 @@
                 (mv :ok principal)
               (mv :unattributed 0)))
         (mv :unattributed 0)))))
+(in-theory (disable fn2-upload-transfer-principal))
+
+(defun fn2-upload-authenticated-submitter (conn gen upload ugen request rule principal fn2-core)
+  (declare (xargs :stobjs fn2-core :guard (fn2-core-wfp fn2-core)))
+  (if (equal rule *fn2-upload-rule-post*)
+      (fn2-upload-transfer-principal conn gen upload ugen request principal fn2-core)
+    (mv :unattributed 0)))
 (in-theory (disable fn2-upload-authenticated-submitter))
 
 (defun fn2-conn-run-answer (s e mask pending posting reading rslot rgen tslot tgen oslot ogen fn2-core)
