@@ -94,9 +94,12 @@
        (equal snapshot (list (fn2-test-table-snapshot-fn2-fields fn2-fields)
                              (fn2-test-table-snapshot-fn2-pool fn2-pool)))) fn2-fields fn2-pool)))
 
-(assert-event
+(defun fn2-usm-run ()
+ (declare (xargs :verify-guards nil))
  (with-local-stobj fn2-fields
   (mv-let (answer fn2-fields)
    (with-local-stobj fn2-pool
     (mv-let (answer fn2-fields fn2-pool) (fn2-usm-body fn2-fields fn2-pool)
      (mv answer fn2-fields))) answer)))
+
+(assert-event (fn2-usm-run))
