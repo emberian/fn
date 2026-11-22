@@ -49,7 +49,7 @@
           ;; An exact, generation-bound FNCT request and any CNS registration
           ;; it is waiting on. The stream in a READ is checked against the
           ;; published registration before the journal reader opens.
-          (peer-stage (:enum fn2-xfnc-request-stage (:decode :name-key :name :rights :record-key :record :waiting :confirm)))
+          (peer-stage (:enum fn2-xfnc-request-stage (:decode :name-key :name :rights :record-key :record :waiting :confirm :ready)))
           (peer-name-off :u32) (peer-name-len :u8) (peer-stream :u60) (peer-consumer :u60)
           (peer-epoch :u32) (peer-version :u60) (peer-view :u60) (peer-position :u60) (peer-head :u60)
           (peer-items :u32) (peer-octets :u32) (peer-cns :link) (peer-cns-gen :u60) (peer-readback :bool)
