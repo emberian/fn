@@ -29,8 +29,8 @@
        *fn2-cut-control* *fn2-nde-write-physical* :fdatasync) :unmapped-cut)))
 (assert-event
  (and
-  (equal (fn2-nde-cut-prefix '((:boundary 1 "take" nil nil nil)
-                             (:boundary 2 "device-submit" 4 7 t)) 0 nil nil)
+  (equal (mv-list 4 (fn2-nde-cut-prefix '((:boundary 1 "take" nil nil nil)
+                                         (:boundary 2 "device-submit" 4 7 t)) 0 nil nil))
          '( :ok nil nil (:boundary 2 "device-submit" 4 7 t)))
   (eq (mv-nth 0 (fn2-nde-cut-prefix '((:boundary 2 "device-submit" 4 7 t)) 0 nil nil)) :malformed-cut-capture)
   (eq (mv-nth 0 (fn2-nde-cut-prefix '((:boundary 1 "device-submit" 4 7 t) (:begin 1)) 0 nil nil)) :after-cut)
