@@ -60,8 +60,13 @@ def main():
         for right in ("append", "read"):
             grant(f"grant-{right}", principal, right, "local.test")
 
+        for verb, options in (("status", ()), ("read", ()), ("wait", ()), ("ack", (0,))):
+            missing = stream(f"missing-{verb}", verb, *options, "--consumer", consumer, expected=1)
+            assert missing == {"outcome": "refused", "reason": "unknown-consumer"}, missing
         registered = stream("register", "register", "--consumer", consumer, "--start", "history")
         assert registered["outcome"] == "accepted", registered
+        position = stream("status-registered", "status", "--consumer", consumer)
+        assert position["outcome"] == "accepted" and position["position"] == registered["position"], position
         for index in range(2):
             message_id = f"<native-cursor-{index}@example.invalid>"
             _, lines = fixture.restart.article(message_id.encode("ascii"), 3 + index)

@@ -726,8 +726,11 @@ Outbound feeding and catchup coverage remain the implementation frontier in
    history and incarnation are the immutable physical IDs that BOOT matches against persisted genesis.
    It encodes both as minimal big-endian fields and binds the live control connection's durable principal,
    with zero reserved for an unbound owner. READ, WAIT and ACK check these fields before entering consumer
-   work. The interim zero history and incarnation fail `scope`. The per-principal ledger namespace,
-   current query/view-version checks, and v2 cursor issuance remain owed. Other interim rules are
+   work. The interim zero history and incarnation fail `scope`. The served epoch-1 cursor requires
+   a record in the published cursor ledger. An absent row answers `unknown-consumer`, and an
+   unavailable lookup yields no cursor. If a durably settled mutation cannot be read back, the reply
+   is uncertain. The per-principal ledger namespace, current query/view-version checks, and v2 cursor
+   issuance remain owed. Other interim rules are
    the served consumer id is the consumer octets read big-endian (at most 7; owed: the (principal, name) row);
    register takes only the empty stream list (the principal's inbox, the one served query; otherwise `query`);
    an append's stream field is empty (the article's Newsgroups names its groups, as POST; otherwise `frame`);
