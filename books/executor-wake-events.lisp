@@ -108,6 +108,9 @@
        (fn2-core (fn2-exec-record (if clockp *fn2-trace-kind-clock* *fn2-trace-kind-signal*) *fn2-none* 0 0 0 *fn2-work-mailbox* 0
                                  nil *fn2-none* start fn2-core)))
     (mv 1 0 0 0 *fn2-work-mailbox* fn2-core)))
-(fn2-core-preserves fn2-exec-mailbox (fn2-core) :position 5 :rows nil :prefix "" :hints (("Goal" :in-theory (enable fn2-core-wfp))))
+; Compose the ops update, clock/stop and recording preservation rules.
+; Opening core WFP expands all children before those rules can apply.
+(fn2-core-preserves fn2-exec-mailbox (fn2-core) :position 5 :rows nil :prefix ""
+ :hints (("Goal" :in-theory (disable fn2-core-wfp))))
 
 ))
