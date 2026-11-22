@@ -47,20 +47,23 @@ READ and WAIT honor the position in an issued token and that a fresh process
 redelivers the unacknowledged article after a durable ACK. That scenario
 still needs native execution. Consumer positions use domain 0 in this profile.
 
-Two state transitions still need independent recovery evidence.
+Application candidate `402f95c15` combines the BOOT geometry, manifest and
+capture repairs with both durable schemas and their actor callers. Two
+recovery scenarios remain open on that source.
 
-- **Consumer registration.** In candidate `41e577530`,
-  `fn2-cns-lookup-cursor` keys stored positions by consumer and epoch.
-  The principal selects the frontier, but two principals using the same
-  consumer and epoch address the same stored position. An absent lookup
-  also returns the caller's fallback position with `:ok`. The cursor lane
-  owns the key change, absent-registration refusal, and two-principal
-  restart control.
-- **APPEND retries.** The schema-9 key codec distinguishes caller-assigned
-  operation IDs from generated ones. Recovering a committed reply still
-  requires the durable principal, the original request identity and the
-  original Message-ID. The retry lane owns returning that result on a
-  fresh open and refusing a changed request under the same key.
+- **Consumer registration.** Stored positions now use the durable principal,
+  consumer ID and epoch. The real fold, overlay and run fixture exercises
+  independent positions for two principals sharing a consumer ID and epoch.
+  Its 50-book closure passed in `certify-20261122T200927Z-2476362`. The
+  `cursor` native gate still has to show independent frontiers and redelivery
+  after process death.
+- **APPEND retries.** The request path looks up the supplied operation ID
+  under the bound durable principal and checks the request digest. Schema 9
+  stores the original Message-ID, verb, event and outcome. The
+  `durable-retry` native gate uses a separate image to check concurrent
+  submissions, refusal on a changed request and recovery of the original
+  receipt after revocation. The ordinary `fnct` gate keeps the earlier
+  process-death cut before any revocation. Both executions are outstanding.
 
 ## Integration frontier — 2026-11-16 01:35 UTC
 
