@@ -223,6 +223,7 @@ ACL2_BOOKS = \
   books/executor-services \
   books/executor-wake \
   books/fnct-pool \
+  books/xfnc-rx \
   books/fnv \
   books/folds \
   books/folds-served \
@@ -410,6 +411,7 @@ ACL2_BOOKS = \
   tests/commit-txn-unit \
   tests/commit-view-compatibility-unit \
   tests/conn-answer-unit \
+  tests/xfnc-rx-unit \
   tests/conn-unit \
   tests/consumer-codec-unit \
   tests/fnct-append-boundary-unit \
