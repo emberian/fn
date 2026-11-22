@@ -156,8 +156,7 @@
             (stobj-let ((fn2-ops (fn2-core-ops fn2-core))) (fn2-ops)
               (fn2-post-result 0 op opgen *fn2-event-tls-result* outcome reason
                                count aux0 aux1 fn2-ops)
-              fn2-core))
-           (fn2-core (fn2-cw-post 1 op opgen *fn2-event-borrow-released* *fn2-outcome-done* 0 0 0 fn2-core)))
+              fn2-core)))
         (mv t accepted (fn2-cw-set cap (list input (cdr sizes) wire (nth 3 c) peer) clients) store fn2-core)))
      ((equal kind *fn2-action-send*)
       (b* ((octets (stobj-let ((fn2-pool (fn2-core-pool fn2-core))) (octets)
