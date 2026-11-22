@@ -208,6 +208,7 @@ ACL2_BOOKS = \
   books/peer-pull-profile \
   books/peer-pull-kind \
   tests/peer-pull-admission-unit \
+  tests/peer-pull-fold-unit \
   books/pool-zero \
   books/peer-pull-line \
   books/peer-pull-owner \
