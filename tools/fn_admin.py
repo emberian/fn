@@ -1105,7 +1105,7 @@ def cmd_stream_append(args: argparse.Namespace) -> int:
                 return emit(bind_res, args.json)
             res = sess.cns("append", op=op_id, article=article_bytes)
     except UncertainOutcome as unc:
-        return emit({"outcome": "uncertain", "reason": str(unc), "op": op_id}, args.json)
+        res = {"outcome": "uncertain", "reason": str(unc)}
     if op_id:
         res["op"] = op_id
     return emit(res, args.json)

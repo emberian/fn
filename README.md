@@ -193,7 +193,11 @@ The `principal`, `grant`, `stream`, `groups`, `post`, and `article` client comma
 - `0` — `accepted`
 - `1` — `refused` (protocol, grammar, CAS head, or authorization refusal decided by ACL2)
 - `2` — local CLI usage, transport connect, or startup bind refusal
-- `3` — `uncertain` (post-send disconnect or ambiguous commit boundary; retry with `--op`)
+- `3` — `uncertain` (post-send disconnect or ambiguous commit boundary)
+
+To make an APPEND retryable by operation ID, choose `--op` before the first
+submission. After an uncertain result, reuse that ID with the same principal
+and article bytes. An APPEND sent without an operation ID has no such retry key.
 
 Live end-to-end black-box suites (`python3 tests/native-image-restart.py` and `python3 tests/test_fn2_user_surface.py`) exercise real TCP + `0600` Unix sockets through immediate `SIGKILL` crash and restart recovery.
 
