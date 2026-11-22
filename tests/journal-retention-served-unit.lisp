@@ -119,13 +119,17 @@
       ((mv closed fn2-core) (fn2-jrs-close 200 token kind owner gen fn2-core))
       (unpinned (fn2-jrs-promised fn2-core))
       ((mv unavailable & &) (fn2-retained-journal-seals token kind owner gen fn2-core))
-      ((mv returned fn2-core) (fn2-core-release slot sgen kind owner gen fn2-core)))
+      ((mv returned fn2-core) (fn2-core-release slot sgen kind owner gen fn2-core))
+      ((mv restarted next-token fn2-core) (fn2-retained-journal-acquire kind owner gen fn2-core))
+      ((mv aborted fn2-core) (fn2-retained-journal-close next-token kind owner gen fn2-core)))
    (mv (and (eq epoch :ok) (eq bound :ok) (eq begin :ok) (eq settled :ok)
             (eq held :held) (= cut 1) (= event 1) (eq began :ok) (eq ready :ready)
             (eq competing :busy) reopened (= published 2) (eq buffer :ok) (eq opened :ok)
             (= retained 1) (= unpinned 0)
             (eq source :ok) (= seal (+ previous 1)) (eq issued :ok) checked
             (eq closed :done) (eq unavailable :owner) (eq returned :ok)
+            (eq restarted :ok) (< token next-token) (eq aborted :done)
+            (not (fn2-storage-checkpoint-active fn2-core))
             (not (fn2-core-stopped-p fn2-core)))
        fn2-core)))
 
