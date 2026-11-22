@@ -46,7 +46,11 @@
           (gs (fn2-boot-config-groups fn2-boot-config))
           (text (cond ((equal kind 0) (fn2-boot-config-path fn2-boot-config))
                       ((and (equal kind 1) (consp gs) (consp (car gs))) (caar gs)) (t "")))
-          (value (if (and (equal kind 1) (consp gs) (consp (car gs))) (cdar gs) 0)))
+          ; The immutable configuration record's VALUE binds the sender's
+          ; history revision. Group records keep their own numeric value.
+          (value (cond ((equal kind 0) (fn2-origin-history-revision fn2-origin))
+                       ((and (equal kind 1) (consp gs) (consp (car gs))) (cdar gs))
+                       (t 0))))
     (fn2-boot-pack-pool kind index size (fn2-boot-config-extents fn2-boot-config)
       (fn2-boot-config-count fn2-boot-config) (fn2-boot-config-owner fn2-boot-config)
       (fn2-boot-config-authority fn2-boot-config) text value epoch lineage domain incarnation history history-incarnation slot gen scratch sgen *fn2-boot-kind* id ogen
