@@ -479,8 +479,8 @@
 ;; Mini replays a committed APPEND before and after its grant is revoked.
 ;; Each connection checks the whole accepted result, a changed body with the
 ;; same Message-ID, and a changed Message-ID, all under the same operation.
-;; A fresh operation after revocation and a different principal's attempt to
-;; replay Mini's operation are refused. The owner can still append.
+;; A fresh operation after revocation and a different principal's use of
+;; Mini's operation with an unrecorded Message-ID are refused. The owner can still append.
 (defconst *fn2-as-append-profile* (put-assoc-equal :cns 2 *fn2-as-grant-profile*))
 (defun fn2-as-append (op mid body)
  (declare (xargs :verify-guards nil))
@@ -534,7 +534,7 @@
         ((mv & w4 cl fn2-core)
          (fn2-as-round 4 (list (fn2-as-bind "mini") original changed-body changed-mid
                                (fn2-as-append 12 "<fresh@authority.invalid>" ".body")) cl fn2-core))
-        ((mv status w5 & fn2-core) (fn2-as-round 5 (list (fn2-as-bind "origin") original) cl fn2-core))
+        ((mv status w5 & fn2-core) (fn2-as-round 5 (list (fn2-as-bind "origin") changed-mid) cl fn2-core))
         ((mv before first-result before-result) (fn2-as-after-bind-appends w2 4))
         ((mv after after-result &) (fn2-as-after-bind-appends w4 4))
         ((mv origin & &) (fn2-as-after-bind-appends w5 1))
