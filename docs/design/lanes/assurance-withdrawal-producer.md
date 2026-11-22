@@ -20,6 +20,49 @@ not independently establish that authority. `fn2-cns-withdraw` in
 `books/consumer-model.lisp:446` checks the model's recorded author but is a
 world/model operation, not an authenticated served decision.
 
+## Delivered-target lane checkpoint, 2026-11-22
+
+The current source donor is `lane/delivered-withdrawal`, based on
+`e22d29575`. The original article write carries the exact live authenticated
+submitter separately from the placement principal. The address occurrence and
+each additional membership carry the NNTP number assigned by the group fold.
+Ordinal zero's count and overview stage before the address occurrence so its
+`:out` argument can read the assigned number. The seven-group slot inventory
+still fits.
+
+The real upload continuation validates the retained Control span and carries
+its exact target Message-ID. TXN looks that name up in the existing local
+accepted-article index. It rechecks the live generation, request and owning
+transfer, then checks the target's original submitter or the unbound
+owner-socket administrator. Forwarded articles do not acquire local
+authorship from their headers or peer account. Authorized cancels currently
+return the existing storage refusal. The target writer has no published
+mutation yet.
+
+The Forge author replay admitted the revised schema declarations, the
+folded/duplicate Control fixture, and the bounded C lookup body on its warm
+parent prefix. The generated group fold for a cancel filed in a target group
+assigned the next number and preserved the count in the focused stobj control.
+A target number above the predecessor watermark and an empty count both
+refused. The composed D transaction, native TLS/peer/owner checks, and the
+GROUP assertions after reopen remain unexecuted. The native control is
+`tests/native-delivered-withdrawal.py`.
+
+The next transactional slice needs a copy of the target ARTICLE's scalar
+fields and its three reference spans in an owned workspace. A current-target
+check must survive staging against the unpublished predecessor as well as
+the published cut so racing cancels cannot apply two count decrements.
+The existing integer-only fold and whole-integer dependency cannot carry
+the ARTICLE's octet fields. Placement reads can use the accepted birth and
+placement principal to find the original address occurrence, then use its
+additional count to enumerate the immutable ordinal rows. The count changes,
+positioned reports, target version and cancel outcome must share that
+successor and B's publication barrier. The 29-slot geometry currently fits
+the ordinary seven-group article. A maximum-width cancel plus target-group
+work needs additional staging capacity and a checked ready budget. CNS's
+existing address/member selection must merge the positioned reports for the
+target streams and wake readers past the original occurrence.
+
 ## Actual caller and representation gaps
 
 - `upload-scan.lisp:39..52` recognizes CONTROL's name/presence. Its retained
