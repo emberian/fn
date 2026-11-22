@@ -131,20 +131,39 @@
                ((equal reason *fn2-xfnc-end-invalid*) :invalid)
                (t :done)) fn2-core)))
 
-   ; The reader has already proved this current leaf belongs to the active
-   ; connection lease and completed its hash. Return its event coordinate.
-   (defun fn2-xfnc-verified-event (token conn generation fn2-core)
+   ; Resolve only the still-current verified leaf; the projected span
+   ; coordinates from the preceding turn refer to this exact range.
+   (defun fn2-xfnc-projected-window (token conn generation fn2-core)
     (declare (xargs :stobjs fn2-core :guard (fn2-core-wfp fn2-core)))
-    (if (not (and (posp token) (equal token (fn2-xfnc-reader-project-token conn generation fn2-core)))) 0
-      (stobj-let ((fn2-journal-members (fn2-core-journal-members fn2-core))) (event)
-        (if (< 0 (fn2-journal-members-rows fn2-journal-members))
-            (nfix (fn2-journal-members-event 0 fn2-journal-members)) 0)
-        event)))
-   (in-theory (disable fn2-xfnc-verified-event))
+    (if (not (and (posp token) (equal token (fn2-xfnc-reader-project-token conn generation fn2-core))))
+        (mv :source 0 0 0 0 0 0 0)
+      (stobj-let ((fn2-journal-members (fn2-core-journal-members fn2-core))
+                  (fn2-event-read (fn2-core-event-read fn2-core))) (code slot gen event hs he es ee)
+       (if (and (< 0 (fn2-journal-members-rows fn2-journal-members))
+                (< 0 (fn2-event-read-rows fn2-event-read))
+                (equal token (fn2-event-read-view-token 0 fn2-event-read))
+                (equal (fn2-journal-members-event 0 fn2-journal-members) (fn2-event-read-view-event 0 fn2-event-read))
+                (equal (fn2-event-read-view-off 0 fn2-event-read) (fn2-event-read-view-end 0 fn2-event-read))
+                (equal (fn2-event-read-view-member 0 fn2-event-read) 1)
+                (equal (fn2-event-read-view-other 0 fn2-event-read) 0)
+                (equal (fn2-journal-members-slot 0 fn2-journal-members) (fn2-event-read-view-slot 0 fn2-event-read))
+                (equal (fn2-journal-members-gen 0 fn2-journal-members) (fn2-event-read-view-gen 0 fn2-event-read)))
+           (mv :ok (fn2-journal-members-slot 0 fn2-journal-members)
+                   (fn2-journal-members-gen 0 fn2-journal-members)
+                   (fn2-journal-members-event 0 fn2-journal-members)
+                   (fn2-event-read-view-hs 0 fn2-event-read)
+                   (fn2-event-read-view-he 0 fn2-event-read)
+                   (fn2-event-read-view-es 0 fn2-event-read)
+                   (fn2-event-read-view-ee 0 fn2-event-read))
+         (mv :source 0 0 0 0 0 0 0))
+       (mv code slot gen event hs he es ee))))
+   (in-theory (disable fn2-xfnc-projected-window))
 
    ; One turn of a protected request. The caller retains :ITEM on pressure;
    ; the reader leaf stays current until the page sink consumes that item.
    ; A hidden event advances only after the same-head visibility check.
+   ; Successful exhaustion leaves the cut held until the page sink captures
+   ; its result and explicitly calls FN2-XFNC-CLOSE-VIEW.
    (fn2-csnapshot-op fn2-xfnc-peer-read-turn (cursor generation stream budget) 5
     (b* (((unless (fn2-xfnc-linked-request-p cursor generation fn2-core))
           (mv :state 0 0 0 0 fn2-core))
@@ -180,25 +199,19 @@
          ((when (member-eq state '(:empty :complete)))
           (b* (((mv rights principal head fn2-core) (fn2-xfnc-read-rights cursor generation stream budget fn2-core))
                ((when (eq rights :more)) (mv :more 0 0 0 0 fn2-core))
-               (allowed (and (eq rights :ok) (equal pid principal)
-                             (equal head (fn2-cursor-row-view-version cursor fn2-core))))
-               (fn2-core (fn2-cursor-put-core cursor
-                          (view-end (cond ((eq rights :absent) *fn2-xfnc-end-absent*)
-                                          ((and (not allowed) (not (member-eq rights '(:access :ok))))
-                                           *fn2-xfnc-end-uncertain*)
-                                          ((not allowed) *fn2-xfnc-end-access*)
-                                          ((eq state :empty) *fn2-xfnc-end-empty*)
-                                          (t *fn2-xfnc-end-complete*))))))
+               ((when (and (eq rights :ok) (equal pid principal)
+                           (equal head (fn2-cursor-row-view-version cursor fn2-core))))
+                (mv state 0 0 0 0 fn2-core))
+               (reason (cond ((eq rights :absent) *fn2-xfnc-end-absent*)
+                             ((member-eq rights '(:access :ok)) *fn2-xfnc-end-access*)
+                             (t *fn2-xfnc-end-uncertain*)))
+               (fn2-core (fn2-cursor-put-core cursor (view-end reason))))
            (mv :more 0 0 0 0 fn2-core)))
          ((unless (eq state :project))
           (let ((fn2-core (fn2-cursor-put-core cursor (view-end (if (eq state :uncertain)
                           *fn2-xfnc-end-uncertain* *fn2-xfnc-end-invalid*)))))
            (mv :more 0 0 0 0 fn2-core)))
          (token (fn2-xfnc-reader-project-token conn cgen fn2-core))
-         (event (fn2-xfnc-verified-event token conn cgen fn2-core))
-         ((when (and (posp event) (<= event from)))
-          (mv-let (advance fn2-core) (fn2-xfnc-reader-advance conn cgen fn2-core)
-           (mv (if (member-eq advance '(:ok :next :complete)) :more advance) 0 0 0 0 fn2-core)))
          ((mv code hs he es ee fn2-core)
           (fn2-xfnc-read-projection cursor generation token stream budget fn2-core))
          ((when (eq code :hidden))
