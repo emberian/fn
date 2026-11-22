@@ -12,9 +12,13 @@ import socket
 import ssl
 import stat
 import subprocess
+import sys
 import time
 
 from test_fn2_user_surface import FN, LiveNode, ROOT, run_fn
+
+sys.path.insert(0, str(ROOT / "tools"))
+from fn_admin import decode_cns_reply
 
 
 class Peer:
@@ -28,23 +32,32 @@ class Peer:
     def close(self):
         self.sock.close()
 
+    def receive(self):
+        while self.tls:
+            try:
+                data = self.tls.read(4096)
+                break
+            except ssl.SSLWantReadError:
+                self.flush()
+                record = self.sock.recv(4096)
+                assert record, 'EOF during encrypted response'
+                self.incoming.write(record)
+        else:
+            data = self.sock.recv(4096)
+        assert data, 'EOF during response'
+        self.pending += data
+
     def line(self):
         while b'\r\n' not in self.pending:
-            if self.tls:
-                try:
-                    data = self.tls.read(4096)
-                except ssl.SSLWantReadError:
-                    self.flush()
-                    data = self.sock.recv(4096)
-                    assert data, 'EOF during encrypted response'
-                    self.incoming.write(data)
-                    continue
-            else:
-                data = self.sock.recv(4096)
-            assert data, 'EOF during response'
-            self.pending += data
+            self.receive()
         line, self.pending = self.pending.split(b'\r\n', 1)
         return line
+
+    def take(self, count):
+        while len(self.pending) < count:
+            self.receive()
+        result, self.pending = self.pending[:count], self.pending[count:]
+        return result
 
     def flush(self):
         while self.outgoing.pending:
@@ -148,6 +161,20 @@ def exercise_peer_replay(peer, grant):
     assert peer.command(b"GROUP local.test") == b"211 4 1 4 local.test"
 
 
+def exercise_peer_frame_boundary(peer):
+    # The final write includes the next NNTP line. Each rejected extent
+    # must consume exactly its own bytes on the authenticated TLS socket.
+    for declared, parts in ((8, (b"bad", b"frame")),
+                            (129, (b"x" * 64, b"x" * 65))):
+        header = f"XFNC {declared}\r\n".encode("ascii")
+        for chunk in (header + parts[0], parts[1] + b"DATE\r\n"):
+            assert peer.tls.write(chunk) == len(chunk)
+            peer.flush()
+        assert peer.line() == b"490 54"
+        assert decode_cns_reply("register", peer.take(54)) == {"outcome": "refused", "reason": "frame"}
+        assert peer.line().startswith(b"111 ")
+
+
 def exercise_peer_provision(port, cert, control_socket):
     control = ("--control-sock", str(control_socket))
     principal = "test-peer"
@@ -203,6 +230,7 @@ def exercise_peer_provision(port, cert, control_socket):
     try:
         login(promoted)
         assert promoted.command(b"MODE STREAM").startswith(b"203 ")
+        exercise_peer_frame_boundary(promoted)
         exercise_peer_replay(promoted, grant)
         revoked = grant("set", "peer", "--revoke")
         found = grant("get", "peer")
@@ -245,6 +273,8 @@ def main():
     control_socket = Path(f"/tmp/fn2-pr-{os.getpid()}-{time.time_ns()}.sock")
     node = LiveNode(directory, image, 'tls', [
         '--host', '127.0.0.1', '--port', '0', '--peering', '--control-sock', str(control_socket),
+        '--max-consumer-request-octets', '128', '--max-consumer-discard-octets', '256',
+        '--consumer-body-timeout-ms', '5000',
         '--tls-certificate', str(cert),
         '--tls-key', str(key), '--tls-window', '512', '--tls-handshakes', '1', '--tls-handshake-ms', '1000'])
     try:

@@ -50,10 +50,12 @@
 (defconst *fn2-cursor-update-close* 4)
 
 (defmachine fn2-conn
- :states (:free :greeting :command :article-input :reply :upgrading :closing :draining :retired :query :dispatch :authenticate :login-reply :peer-role :peer-bind)
+ :states (:free :greeting :command :article-input :reply :upgrading :closing :draining :retired :query :dispatch :authenticate :login-reply :peer-role :peer-bind :xfnc-input :xfnc-request)
  :fields ((cap-index :u32) (cap-nonce :u32)
           (rx-slot :link) (rx-gen :u60) (tx-slot :link) (tx-gen :u60)
           (start :u32) (pos :u32) (overflow :bool) (compacting :bool) (cursor :u32)
+          (xfnc-left :u32) (xfnc-discard :bool) (xfnc-timer :bool) (xfnc-verb :u8)
+          (xfnc-op :u32) (xfnc-op-gen :u60)
           (tx-off :u32) (after (:enum fn2-conn-after (:command :article-input :upgrading :closing :query :compress-upgrading)))
           (pending :u32) (borrows :u32) (mask :u8) (ordinal :u32) (access-ref :u32)
           (auth-pending (:enum fn2-conn-auth (:none :user :sasl :redeem)))
@@ -96,21 +98,23 @@
          (:dispatch :connection-row :rx-range :tx-range)
          (:authenticate :connection-row :rx-range :tx-range)
          (:login-reply :connection-row :rx-range :tx-range) (:peer-role :connection-row :rx-range :tx-range)
-         (:peer-bind :connection-row :rx-range :tx-range))
+         (:peer-bind :connection-row :rx-range :tx-range)
+         (:xfnc-input :connection-row :rx-range :tx-range) (:xfnc-request :connection-row :rx-range :tx-range))
  :budget (:bytes 4096 :steps 32 :descriptors 4)
  :capacity (fn2-profile-c profile)
  ;; The listener admits a connection into :greeting with its RX and TX
  ;; ranges reserved whole (A's generated fn2-machine-admit-fn2-conn).
  :admission (:phase :greeting :ranges (:rx-range :tx-range)
              :copy (principal-slot account-ref peer-family peer-port peer-w0 peer-w1 peer-w2 peer-w3)
-             :clear (start pos overflow compacting cursor tx-off pending borrows ordinal refused
+             :clear (start pos overflow compacting cursor xfnc-left xfnc-discard xfnc-timer xfnc-verb xfnc-op xfnc-op-gen
+                     tx-off pending borrows ordinal refused
                      auth-pending login-principal peer-role-grant peer-step peer-head peer-grant peer-login login-candidate login-off login-len login-loaded login-mode login-failures
                      upgrade-target tls-token-gen tls-op-gen upgrade-stage tls-ok access-ref upload-gen rule request feed-mode feed-discard fed word
                      outcome-ready posting query-gen line-s line-e group current pin))
  :initial ((generation fn2-machine-initial-generation) (ready-prev *fn2-none*) (ready-next *fn2-none*)
            (rx-slot *fn2-none*) (tx-slot *fn2-none*) (account-ref *fn2-none*) (next-free fn2-machine-initial-next-free)
            (upload *fn2-none*) (query *fn2-none*) (tls-token *fn2-none*) (tls-op *fn2-none*))
- :arms ((:free) (:greeting) (:command) (:article-input) (:reply) (:upgrading) (:closing) (:draining) (:retired) (:query) (:dispatch) (:authenticate) (:login-reply) (:peer-role) (:peer-bind))
+ :arms ((:free) (:greeting) (:command) (:article-input) (:reply) (:upgrading) (:closing) (:draining) (:retired) (:query) (:dispatch) (:authenticate) (:login-reply) (:peer-role) (:peer-bind) (:xfnc-input) (:xfnc-request))
  :observes ((:receive-result) (:send-result) (:borrow-released) (:close-result) (:tls-result) (:compress-result) (:cancel-result)))
 
 ; MACHINE-FORM 6.5 P4: the kind's admission in child form, proved here;
