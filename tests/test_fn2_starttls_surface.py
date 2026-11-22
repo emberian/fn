@@ -1,17 +1,18 @@
 #!/usr/bin/env python3
-"""Real fn2 socket STARTTLS controls; local ephemeral credentials only.
+"""Real fn2 STARTTLS and owner-provisioned peer role checks.
 
 Requires the composed native image, including configured TLS admission/timers.
 No test passes by inspecting CLI request construction or the standalone C shim.
 """
 import argparse
 from pathlib import Path
+import secrets
 import socket
 import ssl
 import subprocess
 import time
 
-from test_fn2_user_surface import LiveNode, ROOT, run_fn
+from test_fn2_user_surface import FN, LiveNode, ROOT, run_fn
 
 
 class Peer:
@@ -99,6 +100,68 @@ class Peer:
         raise AssertionError('handshake did not finish within bounded exchanges')
 
 
+def exercise_peer_provision(port, cert, control_socket):
+    control = ("--control-sock", str(control_socket))
+    principal = "test-peer"
+    password = secrets.token_hex(24).encode("ascii")
+    assert run_fn("principal", "create", principal, *control, as_json=True)["outcome"] == "accepted"
+    result = subprocess.run(
+        [FN, "principal", "set-password", principal, *control],
+        input=password + b"\n" + password + b"\n",
+        cwd=ROOT, capture_output=True, timeout=15,
+    )
+    assert result.returncode == 0, result.stdout
+
+    def grant(action, right, *extra, expect_rc=0):
+        return run_fn("grant", action, principal, right, *extra, *control, as_json=True, expect_rc=expect_rc)
+
+    scoped = [grant("set", right, "local.test") for right in ("peer-feed", "peer-accept", "read")]
+    for right, written in zip(("peer-feed", "peer-accept", "read"), scoped):
+        found = grant("get", right, "local.test")
+        assert found["found"] and found["enabled"] and found["grant"] == written["grant"], found
+    assert len({written["grant"] for written in scoped}) == len(scoped)
+    assert not grant("get", "peer")["found"]
+    denied = grant("set", "peer", "--as", principal, expect_rc=1)
+    assert denied["outcome"] == "refused" and denied["reason"] == "access", denied
+
+    def login(peer):
+        peer.upgrade(cert, False)
+        assert peer.command(b"AUTHINFO USER " + principal.encode("ascii")).startswith(b"381 ")
+        assert peer.command(b"AUTHINFO PASS " + password).startswith(b"281 ")
+
+    ordinary = Peer(port)
+    try:
+        login(ordinary)
+        assert ordinary.command(b"MODE STREAM").startswith(b"501 ")
+        written = grant("set", "peer")
+        found = grant("get", "peer")
+        assert found["found"] and found["enabled"] and found["grant"] == written["grant"], found
+        # The admission role is fixed at authentication. A grant on the
+        # control connection cannot add a role to an already open session.
+        assert ordinary.command(b"MODE STREAM").startswith(b"501 ")
+    finally:
+        ordinary.close()
+
+    promoted = Peer(port)
+    try:
+        login(promoted)
+        assert promoted.command(b"MODE STREAM").startswith(b"203 ")
+        revoked = grant("set", "peer", "--revoke")
+        found = grant("get", "peer")
+        assert found["found"] and not found["enabled"] and found["grant"] == revoked["grant"], found
+        assert promoted.command(b"MODE STREAM").startswith(b"501 ")
+    finally:
+        promoted.close()
+
+    after_revoke = Peer(port)
+    try:
+        login(after_revoke)
+        assert after_revoke.command(b"MODE STREAM").startswith(b"501 ")
+    finally:
+        after_revoke.close()
+
+
+
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--directory', type=Path)
@@ -113,11 +176,14 @@ def main():
                    check=True, capture_output=True, timeout=15)
     image = directory / 'node.img'
     run_fn('init', str(image), '--size-mb', '8', '--group', 'local.test')
+    control_socket = Path(f"/tmp/fn2-pr-{time.time_ns()}.sock")
     node = LiveNode(directory, image, 'tls', [
-        '--host', '127.0.0.1', '--port', '0', '--tls-certificate', str(cert),
+        '--host', '127.0.0.1', '--port', '0', '--peering', '--control-sock', str(control_socket),
+        '--tls-certificate', str(cert),
         '--tls-key', str(key), '--tls-window', '512', '--tls-handshakes', '1', '--tls-handshake-ms', '1000'])
     try:
         port = int(node.wait_marker(b'LISTENING ').split()[1])
+        node.wait_marker(b'LISTENING-LOCAL ')
         for pipeline in (False, True):
             peer = Peer(port)
             try:
@@ -145,9 +211,11 @@ def main():
         finally:
             stalled.close()
             other.close()
+        exercise_peer_provision(port, cert, control_socket)
     finally:
         node.close()
-    print('PASS real STARTTLS socket: verified certificate, pipelined input, reset, budget and timeout reuse')
+        control_socket.unlink(missing_ok=True)
+    print('PASS STARTTLS and owner-provisioned peer login, grant isolation, and revocation')
     return 0
 
 
