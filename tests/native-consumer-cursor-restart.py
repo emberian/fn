@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 """Exercise public FNCT paging, durable ACK and redelivery across SIGKILL."""
 import argparse
+from concurrent.futures import ThreadPoolExecutor, TimeoutError
 import importlib.util
 import json
 import os
@@ -122,6 +123,26 @@ def main():
                        registered["cursor"], expected=1)
         assert stale["outcome"] == "refused" and stale["reason"] == "behind", stale
         assert stream("status-after-controls", "status", "--consumer", consumer) == status
+
+        message_id = "<native-cursor-wake@example.invalid>"
+        _, lines = fixture.restart.article(message_id.encode("ascii"), 5)
+        article = fixture.restart.wire(lines)
+        path = directory / "submitted-wake.article"
+        path.write_bytes(article)
+        with ThreadPoolExecutor(max_workers=1) as clients:
+            waiting = clients.submit(stream, "wait-for-append", "wait", "--cursor",
+                                     second["cursor"], "--seconds", 30)
+            try:
+                early = waiting.result(timeout=0.75)
+            except TimeoutError:
+                pass
+            else:
+                raise AssertionError(("WAIT returned before APPEND", early))
+            receipt = stream("append-wake", "append", "--file", path, "--op", 83)
+            assert receipt["outcome"] == "accepted" and receipt["evidence"] == "committed", receipt
+            assert receipt["message_id"] == message_id and receipt["position"] > second["next"], receipt
+            woken = waiting.result(timeout=20)
+            check_page(woken, receipt, article, more=False)
         node.kill()
         processes.append(dict(phase="redelivery", pid=node.node_pid, exit=node.proc.returncode,
                               position=status["position"], redelivered=redelivery["next"]))
