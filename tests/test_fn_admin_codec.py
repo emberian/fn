@@ -28,6 +28,16 @@ def auth_reply(verb: str, result: bytes) -> bytes:
     return fn_admin.fnct_seal(fn_admin.KIND_AUTH_REPLY, payload)
 
 
+class PeerRegisterEncoding(unittest.TestCase):
+    def test_single_stream_history_and_empty_inbox_have_distinct_requests(self):
+        inputs = {"consumer": b"\x07", "start": "history"}
+        peer = fn_admin.build_cns_request("register", streams=[b"local.test"], **inputs)
+        inbox = fn_admin.build_cns_request("register", **inputs)
+        prefix = bytes([fn_admin.CNS_CODES["register"], 1, 7])
+        self.assertEqual(fn_admin.fnct_open(peer), (fn_admin.KIND_CNS_REQ, prefix + b"\x00\x0b\x0alocal.test\x01"))
+        self.assertEqual(fn_admin.fnct_open(inbox), (fn_admin.KIND_CNS_REQ, prefix + b"\x00\x00\x01"))
+
+
 class PeerGrantEncoding(unittest.TestCase):
     def test_role_and_group_grants_use_distinct_authority_keys(self) -> None:
         for right, stream, expected in (

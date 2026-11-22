@@ -18,7 +18,7 @@ import time
 from test_fn2_user_surface import FN, LiveNode, ROOT, run_fn
 
 sys.path.insert(0, str(ROOT / "tools"))
-from fn_admin import build_cns_request, decode_cns_reply
+from fn_admin import build_cns_request, cursor_propose, decode_cns_reply
 
 
 class Peer:
@@ -178,12 +178,12 @@ def exercise_peer_frame_boundary(peer):
     for declared, parts in ((8, (b"bad", b"frame")),
                             (513, (b"x" * 256, b"x" * 257))):
         header = f"XFNC {declared}\r\n".encode("ascii")
-        for chunk in (header + parts[0], parts[1] + b"DATE\r\n"):
+        for chunk in (header + parts[0], parts[1] + b"MODE STREAM\r\n"):
             assert peer.tls.write(chunk) == len(chunk)
             peer.flush()
         assert peer.line() == b"490 54"
         assert decode_cns_reply("register", peer.take(54)) == {"outcome": "refused", "reason": "frame"}
-        assert peer.line().startswith(b"111 ")
+        assert peer.line().startswith(b"203 ")
 
 
 def exercise_peer_provision(port, cert, control_socket):
@@ -275,8 +275,11 @@ def exercise_peer_provision(port, cert, control_socket):
         cursor = bytes.fromhex(registered["cursor"])
         result = after_regrant.xfnc("read", cursor=cursor, max_items=1, max_octets=256)
         assert result == {"outcome": "refused", "reason": "rebase-required"}, result
+        fresh = after_regrant.xfnc("register", consumer=b"\x08", streams=[b"local.test"], start="history")
+        assert fresh["outcome"] == "accepted" and fresh["position"] == 0, fresh
     finally:
         after_regrant.close()
+    return login, bytes.fromhex(fresh["cursor"])
 
 
 def main():
@@ -294,12 +297,13 @@ def main():
     image = directory / 'node.img'
     run_fn('init', str(image), '--size-mb', '8', '--group', 'local.test')
     control_socket = Path(f"/tmp/fn2-pr-{os.getpid()}-{time.time_ns()}.sock")
-    node = LiveNode(directory, image, 'tls', [
+    serve = [
         '--host', '127.0.0.1', '--port', '0', '--peering', '--control-sock', str(control_socket),
         '--max-consumer-request-octets', '512', '--max-consumer-discard-octets', '1024',
         '--consumer-body-timeout-ms', '5000',
         '--tls-certificate', str(cert),
-        '--tls-key', str(key), '--tls-window', '512', '--tls-handshakes', '1', '--tls-handshake-ms', '1000'])
+        '--tls-key', str(key), '--tls-window', '512', '--tls-handshakes', '1', '--tls-handshake-ms', '1000']
+    node = LiveNode(directory, image, 'tls', serve)
     try:
         port = int(node.wait_marker(b'LISTENING ').split()[1])
         assert node.wait_marker(b"LISTENING-LOCAL ") == f"LISTENING-LOCAL {control_socket}".encode()
@@ -334,7 +338,24 @@ def main():
         finally:
             stalled.close()
             other.close()
-        exercise_peer_provision(port, cert, control_socket)
+        login, cursor = exercise_peer_provision(port, cert, control_socket)
+        node.sigkill()
+        recovered = LiveNode(directory, image, 'peer-recovery', serve)
+        try:
+            port = int(recovered.wait_marker(b"LISTENING ").split()[1])
+            recovered.wait_marker(b"LISTENING-LOCAL ")
+            peer = Peer(port)
+            try:
+                login(peer)
+                # This must be the first consumer request after restart.
+                # Only a recovered exact registration reaches the frontier check.
+                ahead = cursor_propose(cursor, 2**31)
+                result = peer.xfnc("read", cursor=ahead, max_items=1, max_octets=256)
+                assert result == {"outcome": "refused", "reason": "beyond-frontier"}, result
+            finally:
+                peer.close()
+        finally:
+            recovered.close()
     finally:
         node.close()
         for path in (control_socket, Path(f"{control_socket}.groups")):
