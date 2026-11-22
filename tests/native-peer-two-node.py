@@ -85,12 +85,12 @@ def provision(control, principal, rights):
 
 
 @contextmanager
-def logged_in(port, cert, credential, peer_role=False):
+def logged_in(port, cert, auth, peer_role=False):
     peer = Peer(port)
     try:
         peer.sock.settimeout(30)
         peer.upgrade(cert, False)
-        principal, password = credential
+        principal, password = auth
         assert peer.command(b"AUTHINFO USER " + principal).startswith(b"381 ")
         assert peer.command(b"AUTHINFO PASS " + password).startswith(b"281 ")
         if peer_role:
