@@ -58,6 +58,8 @@
           (peer-page-stop (:enum fn2-xfnc-page-stop (:none :item-limit :octet-limit)))
           (peer-page-fault (:enum fn2-xfnc-page-fault (:none :state :scope :beyond-frontier :access :absent :dependency :uncertain)))
           (peer-page-end :u60) (peer-page-next :u60) (peer-page-revision :u60)
+          (peer-wire-phase (:enum fn2-xfnc-wire-phase (:start :pairs :hash :seal :shift :confirm :failed)))
+          (peer-wire-start :u32) (peer-wire-frame :u32) (peer-wire-done :u32)
           (peer-page-count :u32) (peer-page-bytes :u32) (peer-page-hashed :u32) (peer-page-output :bool)
           ;; block reads in flight (the terminal of each completion consumes one)
           (pending :u32)
@@ -75,6 +77,7 @@
          :copy (conn conn-gen conn-kind mask rx-slot rx-gen line-s line-e tx-slot tx-gen group current pin posting)
          :clear (view-principal view-stream view-anchor view-right view-step view-head view-grant view-version view-publish view-end tag k0 a0 b0 k1 a1 b1 a2 b2 lat step lo hi next found count low high sel ncurrent spin update reply roff
                  peer-stage peer-name-off peer-name-len peer-stream peer-consumer peer-epoch peer-version peer-view peer-position peer-head peer-items peer-octets peer-cns peer-cns-gen peer-readback
+                 peer-wire-phase peer-wire-start peer-wire-frame peer-wire-done
                  peer-page-phase peer-page-stop peer-page-fault peer-page-end peer-page-next peer-page-revision
                  peer-page-count peer-page-bytes peer-page-hashed peer-page-output
                  lpos seen have turn done cancel stopped lgroup klen

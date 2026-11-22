@@ -305,3 +305,8 @@
    (history :ref start hl) (incarnation :ref (+ start hl) il) (consumer :ref (+ start hl il) cl)
    (principal :ref (+ start hl il cl) pl) (query :ref (+ start hl il cl pl) ql)
    (query-version qver) (view-version vver) (epoch epoch) (position position)))
+(fn2-fnct-def-result fn2-fnct-put-cursor-v2 fn2-fncu-v2 (start hl il cl pl ql qver vver epoch position)
+  ((magic *fn2-fncu-magic*) (version 2)
+   (history :ref start hl) (incarnation :ref (+ start hl) il) (consumer :ref (+ start hl il) cl)
+   (principal :ref (+ start hl il cl) pl) (query :ref (+ start hl il cl pl) ql)
+   (domain 0) (query-version qver) (view-version vver) (epoch epoch) (position position)))
