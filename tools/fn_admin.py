@@ -209,10 +209,14 @@ def fnct_seal(kind: int, payload: bytes) -> bytes:
     return prefix + blake3(prefix)
 
 
-def fnct_open(frame: bytes) -> tuple[int, bytes]:
-    if len(frame) < 42 or frame[:5] != FNCT_MAGIC + b"\x01":
+def fnct_payload_length(header: bytes) -> int:
+    if len(header) != 10 or header[:5] != FNCT_MAGIC + b"\x01":
         raise WireError("invalid FNCT header")
-    n = int.from_bytes(frame[6:10], "big")
+    return int.from_bytes(header[6:10], "big")
+
+
+def fnct_open(frame: bytes) -> tuple[int, bytes]:
+    n = fnct_payload_length(frame[:10])
     if len(frame) != 42 + n or blake3(frame[:10 + n]) != frame[10 + n:]:
         raise WireError("FNCT length or BLAKE3 trailer mismatch")
     return frame[5], frame[10:10 + n]
@@ -531,7 +535,7 @@ class ControlSession:
     def _read_exact(self, n: int) -> bytes:
         buf = bytearray()
         while len(buf) < n:
-            chunk = self.sock.recv(n - len(buf))
+            chunk = self.sock.recv(min(64 * 1024, n - len(buf)))
             if not chunk:
                 break
             buf.extend(chunk)
@@ -543,7 +547,7 @@ class ControlSession:
             raise WireError("socket closed before reply header")
         if len(head) < 10:
             raise WireError("truncated reply header")
-        n = int.from_bytes(head[6:10], "big")
+        n = fnct_payload_length(head)
         tail = self._read_exact(n + 32)
         if len(tail) < n + 32:
             raise WireError("truncated reply frame")
