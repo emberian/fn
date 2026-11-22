@@ -106,10 +106,22 @@
                 (equal digest-left 0) (eq released :ok)) :ok :state) fn2-core)))
 (fn2-core-preserves fn2-conn-authinfo-load (x pid conn gen tx tgen fn2-core) :position 1 :rows nil)
 
+(defconst *fn2-conn-authinfo-capabilities* 3)
+(defconst *fn2-conn-authinfo-capability-lines*
+ (fn2-answer-crlf-lines '("AUTHINFO USER")))
+(defconst *fn2-conn-authinfo-capabilities-text*
+ (concatenate 'string *fn2-answer-capabilities-text* *fn2-conn-authinfo-capability-lines*))
+(defconst *fn2-conn-authinfo-capabilities-posting-text*
+ (concatenate 'string *fn2-answer-capabilities-posting-text* *fn2-conn-authinfo-capability-lines*))
+(assert-event (and (<= (length *fn2-conn-authinfo-capabilities-text*) *fn2-answer-body-bytes*)
+                   (<= (length *fn2-conn-authinfo-capabilities-posting-text*) *fn2-answer-body-bytes*)))
+
 (defun fn2-conn-authinfo-form (s e mask pending rx rgen conn gen fn2-core)
  (declare (xargs :stobjs fn2-core :guard (fn2-core-wfp fn2-core)
                  :guard-hints (("Goal" :in-theory (enable fn2-core-wfp)))))
  (if (not (and (integerp mask) (logtest mask *fn2-nntp-state-tls*)
+               (logtest mask *fn2-nntp-state-anonymous*)
+               (not (logtest mask *fn2-nntp-state-authenticated*))
                (fn2-auth-served fn2-core)))
      (mv 0 0 0)
    (stobj-let ((fn2-pool (fn2-core-pool fn2-core)))
@@ -117,18 +129,36 @@
      (mv-let (code tag nargs f0 a0 b0 f1 a1 b1 f2 a2 b2 f3 a3 b3)
        (fn2-nntp-parse-line (nfix s) (nfix e) mask rx rgen *fn2-conn-kind* conn gen fn2-pool)
        (declare (ignore b0 f2 a2 b2 f3 a3 b3))
-       (if (and (eq code :ok) (equal tag *fn2-nntp-command-authinfo*) (equal nargs 2)
-                (eq f0 :keyword) (eq f1 :span) (unsigned-byte-p 32 a1)
-                (unsigned-byte-p 32 b1) (posp b1))
-           (cond ((equal a0 0) (mv *fn2-conn-login-user* a1 b1))
-                 ((and (equal a0 1) (equal pending *fn2-conn-auth-user*))
-                  (mv *fn2-conn-login-pass* a1 b1))
-                 (t (mv 0 0 0)))
-         (mv 0 0 0)))
+       (cond ((and (eq code :ok) (equal tag *fn2-nntp-command-capabilities*))
+              (mv *fn2-conn-authinfo-capabilities* 0 0))
+             ((and (eq code :ok) (equal tag *fn2-nntp-command-authinfo*) (equal nargs 2)
+                   (eq f0 :keyword) (eq f1 :span) (unsigned-byte-p 32 a1)
+                   (unsigned-byte-p 32 b1) (posp b1))
+              (cond ((equal a0 0) (mv *fn2-conn-login-user* a1 b1))
+                    ((and (equal a0 1) (equal pending *fn2-conn-auth-user*))
+                     (mv *fn2-conn-login-pass* a1 b1))
+                    (t (mv 0 0 0))))
+             (t (mv 0 0 0))))
      (mv mode offset len))))
 (defthm fn2-conn-authinfo-form-widths
  (and (unsigned-byte-p 32 (mv-nth 1 (fn2-conn-authinfo-form s e mask pending rx rgen conn gen fn2-core)))
       (unsigned-byte-p 32 (mv-nth 2 (fn2-conn-authinfo-form s e mask pending rx rgen conn gen fn2-core)))))
+
+(defun fn2-conn-authinfo-capability-reply (posting mask tx tgen conn gen fn2-core)
+ (declare (xargs :stobjs fn2-core :guard (fn2-core-wfp fn2-core)
+                 :guard-hints (("Goal" :in-theory (enable fn2-core-wfp)))))
+ (stobj-let ((fn2-pool (fn2-core-pool fn2-core)))
+   (code fn2-pool)
+   (fn2-answer-say-body *fn2-nntp-command-capabilities* *fn2-nntp-reply-capabilities-list*
+     mask (if (equal posting 1) *fn2-conn-authinfo-capabilities-posting-text*
+            *fn2-conn-authinfo-capabilities-text*)
+     tx tgen *fn2-conn-kind* conn gen fn2-pool)
+   (mv code fn2-core)))
+(fn2-core-preserves fn2-conn-authinfo-capability-reply (posting mask tx tgen conn gen fn2-core)
+ :position 1 :rows nil)
+(defcost fn2-conn-authinfo-capability-reply :answers (:ok :bounds) :bytes 1536
+ :tables (fn2-core-pool)
+ :doc "Render the typed CAPABILITIES body on a TLS connection accepting AUTHINFO USER.")
 
 (defun fn2-conn-authinfo-clear-tx (conn gen tx tgen fn2-core)
  (declare (xargs :stobjs fn2-core :guard (fn2-core-wfp fn2-core)
@@ -220,7 +250,7 @@
  (unsigned-byte-p 16 (mv-nth 1 (fn2-conn-authinfo-transfer source pid fn2-core))))
 
 (defcost fn2-conn-authinfo-form :bytes 512
- :doc "Classify a protected AUTHINFO argument on a held command span.")
+ :doc "Classify protected AUTHINFO and discovery on a held command span.")
 (defcost fn2-conn-authinfo-step :answers (:ok :absent :more :state) :bytes 4096
  :tables (fn2-core-reads fn2-core-id-decides fn2-core-fields fn2-core-succ-txns
           fn2-core-ranges fn2-core-seeks fn2-core-run-cursors fn2-core-run-paths fn2-core-pool)
