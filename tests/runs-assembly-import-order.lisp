@@ -8,7 +8,7 @@
 (must-fail
  (encapsulate ()
    (local (table fn2-schemas 'fn2-extra-schema '(:id 999)))
-   (include-book "../books/runs-served")))
+   (local (include-book "../books/runs-served"))))
 
 (include-book "../books/runs-served")
 (make-event
