@@ -23,12 +23,13 @@ ARTICLE_MAX = 96 * 1024
 
 
 class Node:
-    def __init__(self, directory, image, mode, label, control_sock=None, env=None, startup_args=()):
+    def __init__(self, directory, image, mode, label, control_sock=None, env=None, startup_args=(),
+                 launcher=None):
         self.log = (directory / f"{label}.log").open("wb")
         self.pidfile = directory / f"{label}.node.pid"
         self.node_pid = None
         self.pending = b""
-        cmd = ["timeout", "600", str(ROOT / "fn"), mode, str(image)]
+        cmd = ["timeout", "600", *(launcher or [str(ROOT / "fn")]), mode, str(image)]
         if control_sock is not None:
             cmd.extend(["--control-sock", str(control_sock)])
         cmd.extend(startup_args)

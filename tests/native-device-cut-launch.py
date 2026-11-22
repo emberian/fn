@@ -13,12 +13,12 @@ sys.path.insert(0, str(ROOT / 'tools'))
 import proof_repl
 
 
-def instrument(source):
+def instrument(source, capture_path="tests/native-device-cut-capture.lsp"):
     spans = proof_repl.spans(source)
     final = source[slice(*spans[-1])]
     if final != '(sb-ext:exit :code (fn2-nserve-main))':
         raise ValueError('Current startup does not end at the actual native main')
-    capture = '(load "tests/native-device-cut-capture.lsp")\n'
+    capture = f'(load "{capture_path}")\n'
     return source[:spans[-1][0]] + capture + source[spans[-1][0]:]
 
 
