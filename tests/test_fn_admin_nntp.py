@@ -32,12 +32,18 @@ class PostOutcome(unittest.TestCase):
                         self.assertTrue(chunk)
                         data += chunk
                     conn.sendall(opening)
-                    if opening.startswith(b"340 "):
+                    if not opening.endswith(b"\r\n"):
+                        conn.shutdown(socket.SHUT_WR)
+                        self.assertEqual(conn.recv(4096), b"")
+                    elif opening.startswith(b"340 "):
                         while b"\r\n.\r\n" not in data:
                             chunk = conn.recv(4096)
                             self.assertTrue(chunk)
                             data += chunk
                         conn.sendall(reply)
+                        if not reply.endswith(b"\r\n"):
+                            conn.shutdown(socket.SHUT_WR)
+                            self.assertEqual(conn.recv(4096), b"")
             except BaseException as exc:
                 errors.append(exc)
             finally:
@@ -90,6 +96,27 @@ class PostOutcome(unittest.TestCase):
         )
         self.assertEqual(proc.returncode, 3, (proc.stdout, proc.stderr))
         self.assertEqual(json.loads(proc.stdout)["outcome"], "uncertain")
+
+    def test_incomplete_invitation_is_an_error_before_sending_any_body(self) -> None:
+        for opening in (b"", b"340 send article"):
+            with self.subTest(opening=opening):
+                proc = self.post_with_reply(b"", opening=opening)
+                self.assertEqual(proc.returncode, 2, (proc.stdout, proc.stderr))
+                self.assertEqual(json.loads(proc.stdout)["outcome"], "error")
+
+    def test_incomplete_final_reply_cannot_settle_post(self) -> None:
+        for reply in (b"", b"240 received", b"240 received\n", b"441 posting failed"):
+            with self.subTest(reply=reply):
+                proc = self.post_with_reply(reply)
+                self.assertEqual(proc.returncode, 3, (proc.stdout, proc.stderr))
+                self.assertEqual(json.loads(proc.stdout)["outcome"], "uncertain")
+
+    def test_unexpected_complete_reply_cannot_settle_post(self) -> None:
+        for reply in (b"340 send another article\r\n", b"205 closing connection\r\n"):
+            with self.subTest(reply=reply):
+                proc = self.post_with_reply(reply)
+                self.assertEqual(proc.returncode, 3, (proc.stdout, proc.stderr))
+                self.assertEqual(json.loads(proc.stdout)["outcome"], "uncertain")
 
 
 class EndpointValidation(unittest.TestCase):

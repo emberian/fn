@@ -1240,10 +1240,11 @@ def nntp_read_multiline(reader) -> list[bytes]:
         out.append(raw)
 
 
-def nntp_quit(sock: socket.socket, reader) -> None:
+def nntp_quit(sock: socket.socket, reader, *, send_quit: bool = True) -> None:
     try:
-        sock.sendall(b"QUIT\r\n")
-        reader.readline()
+        if send_quit:
+            sock.sendall(b"QUIT\r\n")
+            reader.readline()
     except OSError:
         pass
     finally:
@@ -1287,6 +1288,19 @@ def cmd_groups(args: argparse.Namespace) -> int:
         nntp_quit(sock, reader)
 
 
+def nntp_post_status(reader, phase: str) -> tuple[int, str]:
+    line = reader.readline()
+    if not line:
+        raise WireError(f"eof-{phase}")
+    if not line.endswith(b"\r\n"):
+        raise WireError(f"incomplete NNTP reply {phase}")
+    status = line[:-2]
+    code = status.partition(b" ")[0]
+    if len(code) != 3 or not code.isdigit() or b"\r" in status:
+        raise WireError(f"malformed NNTP reply {phase}")
+    return int(code), status.decode("latin-1")
+
+
 def cmd_post(args: argparse.Namespace) -> int:
     host, port = nntp_endpoint(args)
     lines = read_article_source(args.group, args.subject, args.sender, args.msgid, args.body, args.file)
@@ -1294,33 +1308,37 @@ def cmd_post(args: argparse.Namespace) -> int:
     wire_body = b"".join(ln + b"\r\n" for ln in stuffed)
 
     sock, reader, _ = nntp_connect(host, port)
-    sent_body = False
+    body_attempted = False
+    command_mode = False
     try:
         sock.sendall(b"POST\r\n")
-        stage = reader.readline()
-        if not stage:
-            return emit({"outcome": "refused", "reason": "eof-before-340"}, args.json)
-        stage_s = stage.decode("latin-1").rstrip("\r\n")
-        if not stage_s.startswith("340 "):
-            outcome = "uncertain" if stage_s.startswith("403 ") else "refused"
-            return emit({"outcome": outcome, "status": stage_s}, args.json)
-        sent_body = True
-        sock.sendall(wire_body)
-        reply = reader.readline()
-        if not reply:
-            return emit({"outcome": "uncertain", "reason": "eof-after-post-send"}, args.json)
-        reply_s = reply.decode("latin-1").rstrip("\r\n")
-        if reply_s.startswith("240 "):
-            return emit({"outcome": "accepted", "status": reply_s}, args.json)
-        if reply_s.startswith("403 ") or reply_s.startswith("441 ") and "outcome is uncertain" in reply_s:
-            return emit({"outcome": "uncertain", "status": reply_s}, args.json)
-        return emit({"outcome": "refused", "status": reply_s}, args.json)
-    except (TimeoutError, socket.timeout, ConnectionResetError, BrokenPipeError) as exc:
-        if sent_body:
-            return emit({"outcome": "uncertain", "reason": str(exc)}, args.json)
-        raise
+        code, status = nntp_post_status(reader, "before-340")
+        if code != 340:
+            if not 400 <= code < 600:
+                raise WireError(f"unexpected NNTP POST reply: {status}")
+            command_mode = True
+            outcome = "uncertain" if code == 403 else "refused"
+        else:
+            body_attempted = True
+            sock.sendall(wire_body)
+            code, status = nntp_post_status(reader, "after-post-send")
+            if code not in (240, 403, 440, 441):
+                raise WireError(f"unexpected NNTP POST completion: {status}")
+            command_mode = True
+            if code == 240:
+                outcome = "accepted"
+            elif code == 403 or (code == 441 and "outcome is uncertain" in status):
+                outcome = "uncertain"
+            else:
+                outcome = "refused"
+        result = {"outcome": outcome, "status": status}
+    except (WireError, OSError) as exc:
+        if not body_attempted:
+            raise
+        result = {"outcome": "uncertain", "reason": str(exc)}
     finally:
-        nntp_quit(sock, reader)
+        nntp_quit(sock, reader, send_quit=command_mode)
+    return emit(result, args.json)
 
 
 def cmd_article(args: argparse.Namespace) -> int:
