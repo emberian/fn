@@ -7,12 +7,16 @@
 ; A peer registers one stream. The canonical stream list encodes each
 ; name as (:octets 64), inside REGISTER's length-prefixed streams field.
 (deflayout fn2-xfnc-stream-name '((name (:octets 64))))
+(defconst *fn2-xfnc-register-body-max* (+ 1 1 8 2 1 64 1))
+(defconst *fn2-xfnc-read-body-max* (+ 1 2 366 4 4))
 
 (defun fn2-xfnc-decode-register (base start end slot gen kind owner generation fn2-fields fn2-pool)
   (declare (xargs :stobjs (fn2-fields fn2-pool)
                   :guard (and (fn2-fields-wfp fn2-fields) (fn2-pool-wfp fn2-pool)
                               (natp base) (<= (+ base 128) (fn2-fields-rows fn2-fields)))))
-  (b* (((mv code next fn2-fields)
+  (b* (((unless (and (natp start) (natp end) (< start end) (<= (- end start) *fn2-xfnc-register-body-max*)))
+        (mv :query 0 0 0 fn2-fields))
+       ((mv code next fn2-fields)
         (fn2-fnct-k4-register-query-decode base slot gen start end kind owner generation fn2-fields fn2-pool))
        ((unless (and (eq code :ok) (equal next end)
                      (equal (fn2-fields-value (+ base *fn2-fnct-k4-register-query-field-code*) fn2-fields)
@@ -113,7 +117,9 @@
   (declare (xargs :stobjs (fn2-fields fn2-pool)
                   :guard (and (fn2-fields-wfp fn2-fields) (fn2-pool-wfp fn2-pool)
                               (natp base) (<= (+ base 128) (fn2-fields-rows fn2-fields)))))
-  (b* (((mv code next fn2-fields)
+  (b* (((unless (and (natp start) (natp end) (< start end) (<= (- end start) *fn2-xfnc-read-body-max*)))
+        (mv :frame 0 0 0 0 0 0 0 0 fn2-fields))
+       ((mv code next fn2-fields)
         (fn2-fnct-k4-read-decode base slot gen start end kind owner generation fn2-fields fn2-pool))
        ((unless (and (eq code :ok) (equal next end)
                      (equal (fn2-fields-value (+ base *fn2-fnct-k4-read-field-code*) fn2-fields)
@@ -141,7 +147,13 @@
                            (fn2-fieldsp fn2-fields-wfp fn2-poolp fn2-pool-wfp fn2-fields-rows)))))
 (in-theory (disable fn2-xfnc-decode-read))
 
-(defcost fn2-xfnc-peer-request :answers t :bytes 8192
+;; The generated decoders consume at most one byte per input octet. A
+;; REGISTER reads at most 78 body bytes, 8 consumer octets and 65 name
+;; bytes. A READ reads at most 377 body bytes, 366 cursor bytes, its
+;; version byte and five 8-byte cursor IDs. All other stages either touch
+;; scalar rows only or perform one exact lookup (run budget <= 2048,
+;; one overlay source through the existing 4096-byte lookup contract).
+(defcost fn2-xfnc-peer-request :answers t :bytes 4096
  :tables (fn2-core-reads fn2-core-ranges fn2-core-seeks fn2-core-succ-txns fn2-core-run-cursors fn2-core-run-paths
           fn2-core-fields fn2-core-machines fn2-core-control fn2-cursor-table fn2-cns-table fn2-core-pool)
  :doc "Decode, authorize and settle one step of the linked protected REGISTER or READ.")
@@ -310,6 +322,7 @@
     (b* (((mv login pid conn cgen) (fn2-xfnc-live-login cursor generation fn2-core))
          ((unless (and (eq login :ok) (member-equal verb '(1 2)) (posp budget)))
           (fn2-xfnc-request-status :access))
+         (budget (min budget 2048))
          (x (+ 1 (* 2 (nfix (fn2-machine-slot cursor fn2-core)))))
          (stage (fn2-cursor-row-peer-stage cursor fn2-core))
          (stream (fn2-cursor-row-peer-stream cursor fn2-core)))
@@ -360,7 +373,8 @@
         (b* (((mv code principal head fn2-core) (fn2-xfnc-read-rights cursor generation stream budget fn2-core))
              ((unless (eq code :ok)) (fn2-xfnc-request-status code))
              ((unless (and (equal principal pid) (equal head (fn2-cursor-row-peer-head cursor fn2-core))))
-              (fn2-xfnc-request-status :rebase-required)))
+              (fn2-xfnc-request-status :rebase-required))
+             (fn2-core (fn2-cursor-put-core cursor (peer-stage *fn2-xfnc-request-stage-ready*))))
           (mv (if (equal verb 1) :register :read) stream (fn2-cursor-row-peer-consumer cursor fn2-core)
               (fn2-cursor-row-peer-epoch cursor fn2-core) (fn2-cursor-row-peer-version cursor fn2-core)
               (fn2-cursor-row-peer-view cursor fn2-core) (fn2-cursor-row-peer-position cursor fn2-core)
