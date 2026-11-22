@@ -476,29 +476,17 @@
 (assert-event (fn2-authority-commit-race-positive))
 
 ;; ---------------------------------------------------------------------------
-;; fn2-authority-append-retry-after-revoke-positive (served): appends are
-;; governed by the bound principal's current append grant, read at the
-;; transaction's :prepare and held as its read dependency. The administrator
-;; creates "mini" and "origin" and grants mini append on dregg.fn.e1; mini's
-;; connection (bound) appends A: accepted. The administrator revokes the grant
-;; (an enabled-0 grant-set at mini's head). Mini, bound again, retries A and
-;; appends B: A's retry answers A's recorded identity (never the authority
-;; refusal: a revocation ordered after A does not undo it), and B is refused.
-;; Controls: origin, holding no append grant, is refused; an unbound
-;; administrator connection appends under the owner's bootstrap authority.
-;; A's retry is answered "duplicate" (its Message-ID is recorded; observed at
-;; c6, the authority refusal never reaches it). The owner's append rides the
-;; revoking connection: in this profile (:control-connections 8) a seventh
-;; admitted connection's append was never answered, authority aside (an
-;; owner-only probe at cap 6 answered nothing; open, named in the lane dump).
+;; Mini replays a committed APPEND before and after its grant is revoked.
+;; Each connection checks the whole accepted result, a changed body with the
+;; same Message-ID, and a changed Message-ID, all under the same operation.
+;; A fresh operation after revocation and a different principal's attempt to
+;; replay Mini's operation are refused. The owner can still append.
 (defconst *fn2-as-append-profile* (put-assoc-equal :cns 2 *fn2-as-grant-profile*))
-(defun fn2-as-article (mid subject)
+(defun fn2-as-append (op mid body)
  (declare (xargs :verify-guards nil))
- (fn2-cw-crlf-octets (list "From: mini@example.invalid" (concatenate 'string "Subject: " subject)
-                           "Newsgroups: dregg.fn.e1" (concatenate 'string "Message-ID: " mid) "" "body")))
-(defun fn2-as-append (op mid subject)
- (declare (xargs :verify-guards nil))
- (fnc-append op (fn2-as-article mid subject)))
+ (fnc-append op
+  (fn2-cw-crlf-octets (list "From: mini@example.invalid" "Subject: Retry control"
+                           "Newsgroups: dregg.fn.e1" (concatenate 'string "Message-ID: " mid) "" body))))
 (defun fn2-as-bind (name) (declare (xargs :verify-guards nil)) (fn2-as-frame 'principal-bind (list (fn2-as-o name))))
 ;; (CLASS WORD) of each reply in RS (fnc-replies')
 (defun fn2-as-class-words (rs)
@@ -508,9 +496,13 @@
 (defun fn2-as-append-replies (xs n)
  (declare (xargs :verify-guards nil))
  (fn2-as-class-words (fnc-replies (make-list (nfix n) :initial-element 'append) xs)))
-(defun fn2-as-after-bind (xs n)
+(defun fn2-as-after-bind-appends (xs n)
  (declare (xargs :verify-guards nil))
- (mv-let (pl rest) (fnca-unseal xs) (declare (ignore pl)) (fn2-as-append-replies rest n)))
+ (mv-let (pl rest) (fnca-unseal xs)
+  (declare (ignore pl))
+  (mv (fnc-replies (make-list (nfix n) :initial-element 'append) rest)
+      (fnc-k28-result rest)
+      (fnc-k28-result (nthcdr (len (fnc-frame-extent rest)) rest)))))
 (defun fn2-authority-append-run ()
  (declare (xargs :verify-guards nil))
  (with-local-stobj fn2-core
@@ -528,33 +520,45 @@
         ((mv & w1 cl fn2-core) (fn2-as-round 1 (list (fn2-as-set m *fn2-as-a* *fn2-as-st* e1 1 0 1)) cl fn2-core))
         (g1 (car (fn2-as-set-grants w1 1)))
         ((unless (natp g1)) (mv (list :grant w0 w1) fn2-core))
-        ((mv & w2 cl fn2-core) (fn2-as-round 2 (list (fn2-as-bind "mini") (fn2-as-append 11 "<a@authority.invalid>" "A")) cl fn2-core))
-        ;; the revoking (unbound administrator) connection then appends D
-        ;; under the owner's bootstrap authority
+        (original (fn2-as-append 11 "<a@authority.invalid>" ".body"))
+        (changed-body (fn2-as-append 11 "<a@authority.invalid>" ".edit"))
+        (changed-mid (fn2-as-append 11 "<b@authority.invalid>" ".body"))
+        ((mv & w2 cl fn2-core)
+         (fn2-as-round 2 (list (fn2-as-bind "mini") original original changed-body changed-mid) cl fn2-core))
+        ;; The revoking administrator also appends under the owner's grant.
         ((mv & w3 cl fn2-core)
-         (fn2-as-round 3 (list (fn2-as-set m *fn2-as-a* *fn2-as-st* e1 0 g1 2) (fn2-as-append 14 "<d@authority.invalid>" "D"))
+         (fn2-as-round 3 (list (fn2-as-set m *fn2-as-a* *fn2-as-st* e1 0 g1 2)
+                               (fn2-as-append 14 "<d@authority.invalid>" ".body"))
                        cl fn2-core))
         (g2 (car (fn2-as-set-grants w3 1)))
         ((mv & w4 cl fn2-core)
-         (fn2-as-round 4 (list (fn2-as-bind "mini") (fn2-as-append 11 "<a@authority.invalid>" "A")
-                               (fn2-as-append 12 "<b@authority.invalid>" "B")) cl fn2-core))
-        ((mv s5 w5 & fn2-core) (fn2-as-round 5 (list (fn2-as-bind "origin") (fn2-as-append 13 "<c@authority.invalid>" "C")) cl fn2-core)))
-    (mv (list :revoked (and (natp g2) (< g1 g2))
-              :a (fn2-as-after-bind w2 1) :retry-and-b (fn2-as-after-bind w4 2) :origin (fn2-as-after-bind w5 1)
-              :owner (mv-let (g h rest) (fnca-set-reply w3) (declare (ignore g h)) (fn2-as-append-replies rest 1))
-              :end s5 (fn2-core-stop-reason fn2-core))
+         (fn2-as-round 4 (list (fn2-as-bind "mini") original changed-body changed-mid
+                               (fn2-as-append 12 "<fresh@authority.invalid>" ".body")) cl fn2-core))
+        ((mv status w5 & fn2-core) (fn2-as-round 5 (list (fn2-as-bind "origin") original) cl fn2-core))
+        ((mv before first-result before-result) (fn2-as-after-bind-appends w2 4))
+        ((mv after after-result &) (fn2-as-after-bind-appends w4 4))
+        ((mv origin & &) (fn2-as-after-bind-appends w5 1))
+        (owner (mv-let (g h rest) (fnca-set-reply w3) (declare (ignore g h)) (fn2-as-append-replies rest 1))))
+    (mv (list (and (natp g2) (< g1 g2)) before after origin owner
+              first-result before-result after-result status (fn2-core-stop-reason fn2-core))
         fn2-core))
    r)))
 (defun fn2-authority-append-retry-after-revoke-positive ()
  (declare (xargs :verify-guards nil))
- (let ((r (fn2-authority-append-run)))
-  (and (equal (nth 1 r) t)
-       (equal (nth 3 r) '((:accepted "")))
-       (equal (car (nth 5 r)) '(:refused "duplicate"))
-       (equal (cadr (nth 5 r)) '(:refused "refused"))
-       (equal (nth 7 r) '((:refused "refused")))
-       (equal (nth 9 r) '((:accepted "")))
-       (equal (nth 11 r) :quiet) (equal (nth 12 r) 0))))
+ (b* (((list revoked before after origin owner first-result before-result after-result status stop)
+       (fn2-authority-append-run))
+      (first (car before))
+      (changed '(:refused "operation-reused" nil))
+      (denied '(:refused "refused" nil))
+      (semantic (fnc-parse (cadr (assoc-eq 'append *fn2-fnct-results*)) first-result)))
+   (and revoked (eq (car first) :accepted) (equal (cadr first) "")
+        (posp (car (caddr first))) (equal (cadr (caddr first)) 1)
+        (equal (fnc-chars-string (car (cadr semantic))) "<a@authority.invalid>")
+        (equal before (list first first changed changed))
+        (equal after (list first changed changed denied))
+        (equal first-result before-result) (equal first-result after-result)
+        (equal origin (list denied)) (equal owner '((:accepted "")))
+        (eq status :quiet) (equal stop 0))))
 (assert-event (fn2-authority-append-retry-after-revoke-positive))
 
 ;; ---------------------------------------------------------------------------
