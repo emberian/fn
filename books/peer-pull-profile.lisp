@@ -5,8 +5,7 @@
 
 (defun fn2-peer-pull-capacity (profile)
  (declare (xargs :guard t))
- (let ((n (fn2-profile-get :peer-pull-slots profile)))
-   (if (unsigned-byte-p 32 n) n 0)))
+ (fn2-profile-pull-rows profile))
 
 (defun fn2-peer-pull-profile-from-text (profile slots)
  (declare (xargs :guard t))

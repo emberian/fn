@@ -190,4 +190,3 @@
                               (fn2-digests-wfp fn2-digests) (fn2-b3-wfp fn2-b3))))
   (fn2-peer-pull-encode-request nil base row 0 private pgen cursor-off cursor-len max-items max-octets
                                tx tgen kind owner generation fn2-fields fn2-digests fn2-b3 fn2-pool))
-

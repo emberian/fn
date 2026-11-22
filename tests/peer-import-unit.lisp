@@ -615,7 +615,7 @@
       ((mv start fn2-core) (fn2-peer-import-start 0 0 16 t 5 1 1 fn2-core))
       ((mv decide fn2-core) (fn2-piu-drive 100 0 fn2-core))
       ((mv declared fn2-core) (fn2-peer-import-declare 0 0 16 t 5 1 1 fn2-core))
-      ((mv checkpoint fn2-core) (fn2-peer-checkpoint-declare 0 2 7 3 4 5 6 7 8 1 0 10 1
+      ((mv checkpoint fn2-core) (fn2-peer-checkpoint-declare 0 2 7 3 4 5 6 7 8 9 1 1 1 0 10 1
                                     17 18 19 20 21 11 12 13 14 15 fn2-core))
       ((mv resolve fn2-core) (fn2-piu-resolve 100 0 fn2-core))
       ((mv stage & fn2-core) (fn2-successor-stage 0 fn2-core))
@@ -626,7 +626,7 @@
       ((mv release fn2-core) (fn2-peer-import-release 0 5 1 1 fn2-core))
       ((mv after fn2-core) (fn2-piu-checkpoint-observe fn2-core))
       ;; The predecessor position matches, but one chain limb differs.
-      ((mv stale fn2-core) (fn2-peer-checkpoint-declare 0 2 7 3 4 5 6 7 8 1 10 11 0
+      ((mv stale fn2-core) (fn2-peer-checkpoint-declare 0 2 7 3 4 5 6 7 8 9 1 1 1 10 11 0
                                11 12 13 14 99 21 22 23 24 25 fn2-core))
       ((mv stale-resolve fn2-core) (fn2-piu-resolve 100 0 fn2-core))
       ((mv stale-stage stale-slot fn2-core) (fn2-successor-stage 0 fn2-core))

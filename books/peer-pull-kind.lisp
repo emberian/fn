@@ -8,7 +8,7 @@
 
 (defmachine fn2-peer-pull
  :phases (:free :stage :connect :connecting :line :write-command :send
-          :upgrade :upgrading :authenticated :request :reply-line :compact :frame-input :frame-header :frame-hash :frame-trailer :frame-result :resume :import :closing :close-wait :draining :retired)
+          :upgrade :upgrading :authenticated :request :reply-line :compact :frame-input :frame-header :frame-hash :frame-trailer :frame-result :resume :import :item-ready :item-settled :checkpoint :checkpoint-settled :closing :close-wait :draining :retired)
  :fields ((ctl :link) (ctl-gen :u60) (local-principal :u60) (stream :u60) (consumer :u60)
           (remote-history :u60) (remote-incarnation :u60) (remote-view :u60) (trust-ref :u60)
           (family :u8) (port :u16) (w0 :u32) (w1 :u32) (w2 :u32) (w3 :u32) (timeout-ms :u32)
@@ -20,6 +20,14 @@
           (cursor-off :u32) (cursor-len :u32) (source-principal :u60) (source-stream :u60)
           (source-epoch :u32) (source-version :u60) (source-position :u60) (resume-position :u60)
           (result-off :u32) (result-end :u32)
+          ;; The protected frame stays owned until all item settlements and
+          ;; the separate receiver checkpoint settle.
+          (import-step :u8) (import-tx :u32) (import-ticket :u60) (import-keyed :bool) (import-absent :bool)
+          (import-prev-a :u60) (import-prev-b :u60) (import-prev-c :u60) (import-prev-d :u60) (import-prev-e :u60)
+          (import-revision :u60) (import-chain-off :u32) (import-next :u60) (import-more :bool)
+          (import-first :u32) (import-count :u32) (import-off :u32) (import-left :u32) (import-last :u60)
+          (import-right :u8) (import-own-step :u8) (import-head :u60) (import-grant :u60)
+          (import-anchor :u60) (import-depend :u60)
           (pos :u32) (start :u32) (tx-off :u32) (op :link) (op-gen :u60)
           (timer :bool) (cancel-issued :bool) (pending :u32) (stopped :bool) (next-free :link))
  :holds ((:stage :connection-row :rx-range :tx-range)
@@ -32,9 +40,13 @@
          (:frame-header :connection-row :rx-range :tx-range) (:frame-hash :connection-row :rx-range :tx-range)
          (:frame-trailer :connection-row :rx-range :tx-range) (:frame-result :connection-row :rx-range :tx-range)
          (:resume :connection-row :rx-range :tx-range) (:import :connection-row :rx-range :tx-range)
+         (:item-ready :connection-row :rx-range :tx-range)
+         (:item-settled :connection-row :rx-range :tx-range :batch-membership)
+         (:checkpoint :connection-row :rx-range :tx-range)
+         (:checkpoint-settled :connection-row :rx-range :tx-range :batch-membership)
          (:closing :connection-row :rx-range :tx-range) (:close-wait :connection-row :rx-range :tx-range)
          (:draining :connection-row :rx-range :tx-range))
- :budget (:bytes 4096 :steps 32 :descriptors 4)
+ :budget (:bytes 32768 :steps 32 :descriptors 4)
  :capacity (fn2-peer-pull-capacity profile)
  :taken (:phase :stage :rows :connection-row
          :ranges ((:rx-range :slot rx-slot :gen rx-gen :class 0)
@@ -44,11 +56,14 @@
                 remote-view trust-ref family port w0 w1 w2 w3 timeout-ms)
          :clear (stream-len user-len pass-len cap-index cap-nonce connected protected dialog pos start tx-off op-gen
                  reply-status frame-len copied cursor-off cursor-len source-principal source-stream source-epoch source-version source-position
+                 import-step import-tx import-ticket import-keyed import-absent import-prev-a import-prev-b import-prev-c import-prev-d import-prev-e
+                 import-revision import-chain-off import-next import-more import-first import-count import-off import-left import-last
+                 import-right import-own-step import-head import-grant import-anchor import-depend
                  resume-position result-off result-end timer cancel-issued pending stopped))
  :initial ((generation fn2-machine-initial-generation) (ready-prev *fn2-none*) (ready-next *fn2-none*)
            (rx-slot *fn2-none*) (tx-slot *fn2-none*) (secret-slot *fn2-none*) (account-ref *fn2-none*)
            (op *fn2-none*) (ctl *fn2-none*) (next-free fn2-machine-initial-next-free))
  :arms ((:free) (:stage) (:connect) (:connecting) (:line) (:write-command) (:send) (:upgrade)
-        (:upgrading) (:authenticated) (:request) (:reply-line) (:compact) (:frame-input) (:frame-header) (:frame-hash) (:frame-trailer) (:frame-result) (:resume) (:import) (:closing) (:close-wait) (:draining) (:retired))
+        (:upgrading) (:authenticated) (:request) (:reply-line) (:compact) (:frame-input) (:frame-header) (:frame-hash) (:frame-trailer) (:frame-result) (:resume) (:import) (:item-ready) (:item-settled) (:checkpoint) (:checkpoint-settled) (:closing) (:close-wait) (:draining) (:retired))
  :observes ((:connect-result) (:receive-result) (:send-result) (:tls-result) (:cancel-result) (:close-result)))
 (defmachine-registry fn2-peer-pull)

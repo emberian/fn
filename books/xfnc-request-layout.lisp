@@ -8,4 +8,3 @@
 (deflayout fn2-xfnc-stream-name '((name (:octets 64))))
 (defconst *fn2-xfnc-register-body-max* (+ 1 1 8 2 1 64 1))
 (defconst *fn2-xfnc-read-body-max* (+ 1 2 366 4 4))
-

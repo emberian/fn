@@ -132,10 +132,11 @@
 ;; :authority rows (A, at most T) go to E's control transactions (fn2-auth,
 ;; authority-kind.lisp), its :cns rows (K, at most T - A) to the consumer
 ;; requests' durable mutations (fn2-cns, cns-kind.lisp), and fn2-txn's C rows
-;; (T - A - K under :posting-interim, else none) take successor indices
+;; (T - A - K - pull under :posting-interim, else none) take successor indices
 ;; 0 .. C - 1; fn2-auth's row S takes C + S, fn2-cns's row S takes C + A + S,
 ;; each below T. No kind's row ever names another's successor transaction; a
 ;; consumer request row past the share (S >= K) refuses a mutation unavailable.
+;; Peer pull rows take the remaining reserved indices after C, A and K.
 (defun fn2-txn-authority-share (profile)
   (declare (xargs :guard t))
   (min (nfix (fn2-profile-get :authority profile)) (nfix (fn2-profile-t profile))))
@@ -146,7 +147,8 @@
 (defun fn2-txn-capacity (profile)
   (declare (xargs :guard t))
   (if (fn2-profile-get :posting-interim profile)
-      (nfix (- (- (nfix (fn2-profile-t profile)) (fn2-txn-authority-share profile)) (fn2-txn-consumer-share profile)))
+      (nfix (- (nfix (fn2-profile-t profile)) (fn2-txn-authority-share profile)
+               (fn2-txn-consumer-share profile) (fn2-profile-pull-rows profile)))
     0))
 (defthm fn2-txn-authority-share-natp (natp (fn2-txn-authority-share profile)) :rule-classes :type-prescription)
 (defthm fn2-txn-consumer-share-natp (natp (fn2-txn-consumer-share profile)) :rule-classes :type-prescription)
