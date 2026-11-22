@@ -1,0 +1,72 @@
+;;; Test-only observation of the post-turn world. Never changes a core decision.
+(in-package "ACL2")
+
+;; The production Darwin adapter uses getpeereid, which omits the PID.
+#+darwin
+(sb-alien:define-alien-routine ("getsockopt" %fn2-test-wait-getsockopt) sb-alien:int
+  (fd sb-alien:int) (level sb-alien:int) (option sb-alien:int)
+  (value sb-sys:system-area-pointer) (length sb-sys:system-area-pointer))
+
+(defun fn2-test-wait-peer-pid (fd)
+  ;; These diagnostic fields never reach admission or authentication.
+  (sb-alien:with-alien ((cred (array sb-alien:int 3))
+                        (length sb-alien:unsigned-int #+linux 12 #+darwin 4))
+    (multiple-value-bind (result errno)
+        (fn2-native-syscall
+         (#+linux %fn2-native-getsockopt #+darwin %fn2-test-wait-getsockopt
+          fd #+linux 1 #+darwin 0 #+linux 17 #+darwin 2
+          (sb-alien:alien-sap cred)
+          (sb-alien:alien-sap (sb-alien:addr length))))
+      (declare (ignore errno))
+      (let ((pid (and (zerop result)
+                      (= length #+linux 12 #+darwin 4)
+                      (sb-alien:deref cred 0))))
+        (and pid (plusp pid) pid)))))
+
+(defun fn2-test-parked-wait (id core host)
+  (when (and (= (fn2-machine-kind id core) *fn2-cns-kind*)
+             (= (fn2-machine-phase id core) *fn2-cns-state-park*)
+             (= (fn2-machine-wait-reason id core) *fn2-wait-wait-row*)
+             (= (fn2-cns-row-verb id core) *fn2-cns-verb-wait*))
+    (let* ((ctl (fn2-cns-row-ctl id core))
+           (ctlgen (fn2-cns-row-ctl-gen id core))
+           (request (fn2-cns-row-request id core))
+           (gen (fn2-machine-generation id core))
+           (edge (fn2-cns-row-edge id core))
+           (edges (fn2-core-cns-edges core)))
+      (when (and (< ctl (fn2-machines-rows (fn2-core-machines core)))
+                 (= (fn2-machine-kind ctl core) *fn2-ctl-kind*)
+                 (= (fn2-machine-generation ctl core) ctlgen)
+                 (= (fn2-machine-phase ctl core) *fn2-ctl-state-waiting*)
+                 (= (fn2-ctl-row-cns ctl core) id)
+                 (= (fn2-ctl-row-cns-gen ctl core) gen)
+                 (= (fn2-ctl-row-request ctl core) request)
+                 (< edge (fn2-cns-edges-rows edges))
+                 (= (fn2-cns-edges-used edge edges) 1)
+                 (= (fn2-cns-edges-waiter edge edges) id)
+                 (= (fn2-cns-edges-gen edge edges) gen))
+        (let* ((caps (fn2-nhost-caps host))
+               (index (fn2-ctl-row-cap-index ctl core))
+               (cap (and (< index (length caps)) (aref caps index)))
+               (pid (and cap
+                         (eq (fn2-ncap-family cap) :local)
+                         (= (fn2-ncap-nonce cap) (fn2-ctl-row-cap-nonce ctl core))
+                         (>= (fn2-ncap-fd cap) 0)
+                         (fn2-test-wait-peer-pid (fn2-ncap-fd cap)))))
+          (when pid (list pid request ctl ctlgen id gen edge)))))))
+
+(let ((record (symbol-function 'fn2-n-record))
+      (parked nil))
+  (setf (symbol-function 'fn2-n-record)
+        (lambda (host entry)
+          (multiple-value-prog1 (funcall record host entry)
+            (when (eq (car entry) :turn)
+              (let* ((core (fn2-nhost-core host))
+                     (current (loop for id below (fn2-machines-rows (fn2-core-machines core))
+                                    for observation = (fn2-test-parked-wait id core host)
+                                    when observation collect observation)))
+                (dolist (row current)
+                  (unless (member row parked :test #'equal)
+                    (format t "~&WAIT-PARKED~{ ~d~}~%" row)
+                    (finish-output)))
+                (setf parked current)))))))

@@ -1,12 +1,15 @@
 #!/usr/bin/env python3
 """Exercise public FNCT paging, durable ACK and redelivery across SIGKILL."""
 import argparse
-from concurrent.futures import ThreadPoolExecutor, TimeoutError
 import importlib.util
 import json
 import os
 from pathlib import Path
+import subprocess
+import sys
+import tempfile
 import time
+from unittest.mock import patch
 
 SPEC = importlib.util.spec_from_file_location(
     "append_restart", Path(__file__).with_name("native-append-fetch-restart.py"))
@@ -22,6 +25,58 @@ def check_page(page, receipt, article, more):
         assert item[key] == receipt[key], (item, receipt)
     assert item["type"] == "record" and item["octets"] == len(article), item
     assert bytes.fromhex(item["article_hex"]) == article, item
+
+
+def serve_wait_observer(argv):
+    """Run the normal serve setup with one test observer in its ACL2 input."""
+    root = fixture.ROOT
+    spec = importlib.util.spec_from_file_location(
+        "cut_launch", Path(__file__).with_name("native-device-cut-launch.py"))
+    launch = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(launch)
+    source = (root / "tools/image-node.lsp").read_text()
+    execve = os.execve
+    with tempfile.TemporaryFile() as script:
+        script.write(launch.instrument(source, "tests/native-wait-park-observer.lsp").encode())
+        script.seek(0)
+
+        def exec_observed(path, args, env):
+            assert Path(path) == root / "tools/acl2", path
+            os.dup2(script.fileno(), 0)
+            execve(path, args, env)
+
+        with patch.object(os, "execve", exec_observed):
+            return fixture.client.main(argv, root=root)
+
+
+def append_after_parked_wait(node, waiting, append, *, park_timeout=12):
+    # The CLI's explicit cursor avoids POSITION. The new connection frames
+    # PRINCIPAL-BIND first and WAIT second.
+    expected = f"WAIT-PARKED {waiting.pid} 2 ".encode()
+    line = node.marker(expected, seconds=park_timeout)
+    fields = line.split()
+    assert line.startswith(expected) and len(fields) == 8, line
+    assert all(field.isdigit() for field in fields[1:]), line
+    assert waiting.poll() is None, ("WAIT ended before APPEND", waiting.returncode)
+    return append()
+
+
+def wait_for_append(directory, node, control, principal, cursor, append):
+    output = directory / "wait-for-append.stdout"
+    errors = directory / "wait-for-append.stderr"
+    command = [str(fixture.ROOT / "fn"), "stream", "wait", "--as", principal,
+               "--cursor", cursor, "--seconds", "30", "--control-sock", str(control), "--json"]
+    with output.open("wb") as stdout, errors.open("wb") as stderr:
+        waiting = subprocess.Popen(command, cwd=fixture.ROOT, env=fixture.environment(),
+                                   stdout=stdout, stderr=stderr)
+        try:
+            receipt = append_after_parked_wait(node, waiting, append)
+            assert waiting.wait(timeout=20) == 0, errors.read_bytes()
+        finally:
+            if waiting.poll() is None:
+                waiting.kill()
+                waiting.wait(timeout=5)
+    return receipt, json.loads(output.read_bytes())
 
 
 def main():
@@ -141,7 +196,9 @@ def main():
     report.write_text(json.dumps(processes, indent=2) + "\n")
 
     node = fixture.restart.Node(directory, image, "serve", "after-ack", control_sock=control,
-                                env=fixture.environment())
+                                env=fixture.environment(),
+                                launcher=[sys.executable, str(Path(__file__).resolve()),
+                                          "--serve-wait-observer"])
     try:
         node.marker(b"LISTENING-LOCAL ")
         assert node.node_pid != processes[0]["pid"], node.node_pid
@@ -214,22 +271,12 @@ def main():
         article = fixture.restart.wire(lines)
         path = directory / "submitted-wake.article"
         path.write_bytes(article)
-        # This public check observes a pending client and a later item reply.
-        # sim-layer-e checks the internal parked phase and linked edge.
-        with ThreadPoolExecutor(max_workers=1) as clients:
-            waiting = clients.submit(stream, "wait-for-append", "wait", "--cursor",
-                                     second["cursor"], "--seconds", 30)
-            try:
-                early = waiting.result(timeout=0.75)
-            except TimeoutError:
-                pass
-            else:
-                raise AssertionError(("WAIT returned before APPEND", early))
-            receipt = stream("append-wake", "append", "--file", path, "--op", 83)
-            assert receipt["outcome"] == "accepted" and receipt["evidence"] == "committed", receipt
-            assert receipt["message_id"] == message_id and receipt["position"] > second["next"], receipt
-            woken = waiting.result(timeout=20)
-            check_page(woken, receipt, article, more=False)
+        receipt, woken = wait_for_append(
+            directory, node, control, principal, second["cursor"],
+            lambda: stream("append-wake", "append", "--file", path, "--op", 83))
+        assert receipt["outcome"] == "accepted" and receipt["evidence"] == "committed", receipt
+        assert receipt["message_id"] == message_id and receipt["position"] > second["next"], receipt
+        check_page(woken, receipt, article, more=False)
         occurrence = (other_receipt["message_id"], "--domain", other_receipt["domain"],
                       "--position", other_receipt["position"])
         readable = stream("fetch-with-read-grant", "fetch", *occurrence, actor=other)
@@ -318,4 +365,6 @@ def main():
 
 
 if __name__ == "__main__":
+    if sys.argv[1:2] == ["--serve-wait-observer"]:
+        sys.exit(serve_wait_observer(sys.argv[2:]))
     main()
