@@ -49,7 +49,7 @@ def main():
     articles = []
     appended = []
     processes = []
-    fixture.initialize(directory, image)
+    fixture.initialize(directory, image, startup_args=("--group", "local.other"))
     node = fixture.restart.Node(directory, image, "serve", "before-ack", control_sock=control,
                                 env=fixture.environment())
     try:
@@ -60,6 +60,7 @@ def main():
             grant(f"consume-{actor}", actor, "consume")
         for right in ("append", "read"):
             grant(f"grant-{right}", principal, right, "local.test")
+            grant(f"grant-other-{right}", other, right, "local.other")
 
         for verb, options in (("status", ()), ("read", ()), ("wait", ()), ("ack", (0,))):
             missing = stream(f"missing-{verb}", verb, *options, "--consumer", consumer, expected=1)
@@ -88,6 +89,28 @@ def main():
             articles.append(article)
             appended.append(receipt)
         assert registered["position"] < appended[0]["position"] < appended[1]["position"], appended
+        other_status = stream("other-status-after-reader-appends", "status", "--consumer", consumer,
+                              actor=other)
+        assert other_status["outcome"] == "accepted" and other_status["frontier"] == 0, other_status
+        other_empty = stream("other-read-after-reader-appends", "read", "--cursor",
+                             other_registered["cursor"], actor=other)
+        assert other_empty["outcome"] == "accepted" and other_empty["items"] == [], other_empty
+        other_message_id = "<native-cursor-other@example.invalid>"
+        _, lines = fixture.restart.article(other_message_id.encode("ascii"), 4)
+        other_article = fixture.restart.wire(lines).replace(b"Newsgroups: local.test\r\n",
+                                                          b"Newsgroups: local.other\r\n", 1)
+        other_path = directory / "submitted-other.article"
+        other_path.write_bytes(other_article)
+        other_receipt = stream("other-append", "append", "--file", other_path, "--op", 84, actor=other)
+        assert other_receipt["outcome"] == "accepted" and other_receipt["evidence"] == "committed", other_receipt
+        assert other_receipt["message_id"] == other_message_id, other_receipt
+        assert appended[1]["position"] < other_receipt["position"], other_receipt
+        other_page = stream("other-read", "read", "--cursor", other_registered["cursor"], actor=other)
+        check_page(other_page, other_receipt, other_article, more=False)
+        denied_fetch = stream("cross-principal-fetch", "fetch", appended[0]["message_id"],
+                              "--domain", appended[0]["domain"], "--position", appended[0]["position"],
+                              actor=other, expected=1)
+        assert denied_fetch == {"outcome": "refused", "reason": "unavailable"}, denied_fetch
         first = stream("read-first", "read", "--cursor", registered["cursor"], "--max-items", 1)
         check_page(first, appended[0], articles[0], more=True)
         second = stream("read-continuation", "read", "--cursor", first["cursor"], "--max-items", 1)
@@ -129,6 +152,10 @@ def main():
         other_status = stream("other-status-after-restart", "status", "--consumer", consumer, actor=other)
         assert other_status["outcome"] == "accepted", other_status
         assert other_status["position"] == other_registered["position"] < status["position"], other_status
+        assert other_status["frontier"] == other_receipt["position"], other_status
+        other_redelivery = stream("other-read-from-persisted", "read", "--consumer", consumer, actor=other)
+        check_page(other_redelivery, other_receipt, other_article, more=False)
+        assert other_redelivery == other_page, (other_redelivery, other_page)
 
         # Omitting --cursor makes the public CLI ask the fresh node for POSITION.
         redelivery = stream("read-from-persisted", "read", "--consumer", consumer, "--max-items", 1)

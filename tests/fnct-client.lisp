@@ -148,6 +148,9 @@
     (let ((n (len (fnc-frame-extent octets))))
       (cons (fnc-reply (car verbs) octets)
             (if (< 0 n) (fnc-replies (cdr verbs) (nthcdr n octets)) nil)))))
+; Default control owner is account slot 1, incarnation 1 after genesis.
+(defconst *fnc-fixture-owner-pid* 4294967297)
+
 ; Fixture cursor for the standard small profile's history and incarnation.
 ; End-to-end clients instead carry the exact bytes returned by the node.
 (defun fnc-issued (cid principal version epoch position)

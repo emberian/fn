@@ -62,7 +62,7 @@
       ;; MID uses octets without CRLF; the independent protocol encoder
       ;; receives the same named occurrence for both device worlds.
       (frames (list (fnc-fetch (take (length *fn2-cfi-mid*) (fn2-cw-crlf-octets (list *fn2-cfi-mid*))) 1)
-                    (fnc-register 1 1) (fnc-read (fnc-issued 1 0 1 1 0) 1) (fnc-control 5)))
+                    (fnc-register 1 1) (fnc-read (fnc-issued 1 *fnc-fixture-owner-pid* 1 1 0) 1) (fnc-control 5)))
       (fn2-core (fn2-listener-take-credit *fn2-ctl-admission-ordinal* fn2-core))
       ((mv admitted fn2-core) (fn2-machine-admit-fn2-ctl 1 78 3 0 fn2-core))
       ((unless (eq admitted :ok)) (mv (list :admit admitted) fn2-core))

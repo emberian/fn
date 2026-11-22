@@ -17,7 +17,7 @@
 (defun fn2-cet-link-many (stream n waiter fn2-cns-edges)
   (declare (xargs :stobjs fn2-cns-edges :guard (and (fn2-cns-edges-wfp fn2-cns-edges) (natp n)) :verify-guards nil))
   (if (zp n) (mv nil nil fn2-cns-edges)
-    (mv-let (code e fn2-cns-edges) (fn2-cns-edge-link stream waiter 1 1 fn2-cns-edges)
+    (mv-let (code e fn2-cns-edges) (fn2-cns-edge-link stream waiter 1 1 0 fn2-cns-edges)
       (mv-let (codes es fn2-cns-edges) (fn2-cet-link-many stream (- n 1) (+ 1 waiter) fn2-cns-edges)
         (mv (cons code codes) (cons e es) fn2-cns-edges)))))
 
@@ -27,9 +27,9 @@
     (mv-let (result fn2-cns-edges)
       (b* ((fn2-cns-edges (fn2-cns-edges-init 16 fn2-cns-edges))
            ;; stream 5: waiters 10 and 11 from 3; stream 21 shares bucket 5: waiter 12 from 1
-           ((mv c1 e10 fn2-cns-edges) (fn2-cns-edge-link 5 10 1 3 fn2-cns-edges))
-           ((mv c2 & fn2-cns-edges) (fn2-cns-edge-link 5 11 1 3 fn2-cns-edges))
-           ((mv c3 & fn2-cns-edges) (fn2-cns-edge-link 21 12 1 1 fn2-cns-edges))
+           ((mv c1 e10 fn2-cns-edges) (fn2-cns-edge-link 5 10 1 3 2 fn2-cns-edges))
+           ((mv c2 & fn2-cns-edges) (fn2-cns-edge-link 5 11 1 3 2 fn2-cns-edges))
+           ((mv c3 & fn2-cns-edges) (fn2-cns-edge-link 21 12 1 1 0 fn2-cns-edges))
            (quiet (not (fn2-cns-ready-p fn2-cns-edges)))
            ;; a publish of 3 on stream 5; a second publish while the bucket is pending adds nothing
            (fn2-cns-edges (fn2-cns-wake-stream 5 3 fn2-cns-edges))
@@ -37,12 +37,12 @@
            ;; waiter 10 leaves before its turn: the cursor moves past its edge
            (fn2-cns-edges (fn2-cns-edge-unlink e10 fn2-cns-edges))
            ((mv woken fn2-cns-edges) (fn2-cet-take-all 8 fn2-cns-edges))
-           ;; the link race: the waiter read through 3 (from 4 would be right; from 3 is behind
-           ;; the bucket's last publish of 4) and through 4
-           ((mv behind & fn2-cns-edges) (fn2-cns-edge-link 5 13 1 4 fn2-cns-edges))
-           ((mv c4 & fn2-cns-edges) (fn2-cns-edge-link 5 13 1 5 fn2-cns-edges))
+           ;; Stream 21 still has no unread item. Its snapshot through 3
+           ;; must retry, but after observing commit 4 it can park at FROM 1.
+           ((mv behind & fn2-cns-edges) (fn2-cns-edge-link 21 13 1 1 3 fn2-cns-edges))
+           ((mv c4 & fn2-cns-edges) (fn2-cns-edge-link 21 13 1 1 4 fn2-cns-edges))
            ;; bucket 6 pending under bucket 5; its only edge leaves: it leaves the stack
-           ((mv c5 e20 fn2-cns-edges) (fn2-cns-edge-link 6 20 1 1 fn2-cns-edges))
+           ((mv c5 e20 fn2-cns-edges) (fn2-cns-edge-link 6 20 1 1 0 fn2-cns-edges))
            (fn2-cns-edges (fn2-cns-wake-stream 6 1 fn2-cns-edges))
            (fn2-cns-edges (fn2-cns-wake-stream 5 5 fn2-cns-edges))
            (fn2-cns-edges (fn2-cns-edge-unlink e20 fn2-cns-edges))
@@ -59,7 +59,7 @@
            ;; four edges on one stream fill every row; a fifth is refused; a release is reused
            ((mv codes es fn2-cns-edges) (fn2-cet-link-many 7 5 100 fn2-cns-edges))
            (fn2-cns-edges (fn2-cns-edge-unlink (cadr es) fn2-cns-edges))
-           ((mv again e fn2-cns-edges) (fn2-cns-edge-link 3 200 1 1 fn2-cns-edges)))
+           ((mv again e fn2-cns-edges) (fn2-cns-edge-link 3 200 1 1 0 fn2-cns-edges)))
         (mv (list :codes codes :again again :reused (equal e (cadr es))) fn2-cns-edges))
       result)))
 

@@ -46,7 +46,7 @@
        (mv nil fn2-core))
       ; Direct API request metadata; not an authentication or client witness.
       (fn2-core (fn2-cns-put-core id (phase (if (eq mode :early-cancel) *fn2-cns-state-decode* *fn2-cns-state-page*)) (xrow x)
-                  (principal-slot 7) (ipos (if (eq mode :end) 100 99)) (pub-frontier 101) (page-limit 1)
+                  (address-principal 7) (ipos (if (eq mode :end) 100 99)) (pub-frontier 101) (page-limit 1)
                   (verb *fn2-cns-verb-read*) (outcome *fn2-cns-outcome-accepted*)
                   (tx-slot slot) (tx-gen slotgen) (ctl 0))))
   (cond

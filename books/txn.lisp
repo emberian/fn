@@ -334,7 +334,7 @@
                                         ((:access) (:set (word *fn2-upload-word-refused*) (xstep 0)) (:next :refused)
                                          (:charge :bytes 8192 :steps *fn2-work-transition* :runnable t))))
                                 (:do (dcode) (fn2-authority-depend gslot pid agrant ahead) :accept (:ok))
-                                (:do (pcode) (fn2-txn-add-group gslot row-ngroups group row-principal-slot c0 g0 c1 g1
+                                (:do (pcode) (fn2-txn-add-group gslot row-ngroups group pid c0 g0 c1 g1
                                                                  (+ no start) len :owner upload))
                                 (:if (eq pcode :ok)
                                      ((:set (ngroups (+ 1 row-ngroups)) (gcur next) (xstep 0))
