@@ -2,9 +2,8 @@
 ; inside the existing kind 28 envelope. This codec owns its byte layout;
 ; the source owns the authority, frontier, revision and chain.
 (in-package "ACL2")
-(include-book "fnct-pool")
-(include-book "peer-view-member")
-(include-book "xfnc-request")
+(include-book "fncu-pool")
+(include-book "peer-view-pair")
 (fn2-book-layer :e)
 
 (defconst *fn2-xfnc-batch-version* 1)
