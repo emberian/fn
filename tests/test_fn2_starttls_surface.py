@@ -5,10 +5,12 @@ Requires the composed native image, including configured TLS admission/timers.
 No test passes by inspecting CLI request construction or the standalone C shim.
 """
 import argparse
+import os
 from pathlib import Path
 import secrets
 import socket
 import ssl
+import stat
 import subprocess
 import time
 
@@ -100,6 +102,41 @@ class Peer:
         raise AssertionError('handshake did not finish within bounded exchanges')
 
 
+def exercise_peer_replay(peer):
+    old = b"<replay@example.invalid>"
+    fresh = b"<fresh@example.invalid>"
+
+    def article(mid, body):
+        return b"\r\n".join([
+            b"Path: peer!not-for-mail", b"From: peer@example.invalid",
+            b"Subject: peer replay", b"Date: Fri, 30 Oct 2026 12:00:00 +0000",
+            b"Newsgroups: local.test", b"Message-ID: " + mid, b"", body, b".",
+        ])
+
+    def transfer(mid, body):
+        return peer.command(b"TAKETHIS " + mid + b"\r\n" + article(mid, body))
+
+    assert peer.command(b"CHECK " + old) == b"238 " + old
+    assert transfer(old, b"original body") == b"239 " + old
+    assert transfer(old, b"original body") == b"439 " + old
+    assert transfer(old, b"conflicting body") == b"439 " + old
+    assert peer.command(b"CHECK " + old) == b"438 " + old
+    assert peer.command(b"IHAVE " + old) == b"435 duplicate"
+    assert peer.command(b"GROUP local.test") == b"211 1 1 1 local.test"
+    assert peer.command(b"BODY 1") == b"222 1 " + old + b" body follows"
+    assert [peer.line(), peer.line()] == [b"original body", b"."]
+    assert transfer(fresh, b"conflicting body") == b"239 " + fresh
+    assert peer.command(b"GROUP local.test") == b"211 2 1 2 local.test"
+
+    ihave = b"<ihave@example.invalid>"
+    assert peer.command(b"IHAVE " + ihave).startswith(b"335 ")
+    assert peer.command(article(ihave, b"IHAVE body")).startswith(b"235 ")
+    rejected = b"<mismatch@example.invalid>"
+    assert peer.command(b"IHAVE " + rejected).startswith(b"335 ")
+    assert peer.command(article(b"<different@example.invalid>", b"mismatched body")).startswith(b"437 ")
+    assert peer.command(b"GROUP local.test") == b"211 3 1 3 local.test"
+
+
 def exercise_peer_provision(port, cert, control_socket):
     control = ("--control-sock", str(control_socket))
     principal = "test-peer"
@@ -115,8 +152,9 @@ def exercise_peer_provision(port, cert, control_socket):
     def grant(action, right, *extra, expect_rc=0):
         return run_fn("grant", action, principal, right, *extra, *control, as_json=True, expect_rc=expect_rc)
 
-    scoped = [grant("set", right, "local.test") for right in ("peer-feed", "peer-accept", "read")]
-    for right, written in zip(("peer-feed", "peer-accept", "read"), scoped):
+    rights = ("peer-feed", "peer-accept", "read", "append")
+    scoped = [grant("set", right, "local.test") for right in rights]
+    for right, written in zip(rights, scoped):
         found = grant("get", right, "local.test")
         assert found["found"] and found["enabled"] and found["grant"] == written["grant"], found
     assert len({written["grant"] for written in scoped}) == len(scoped)
@@ -128,6 +166,14 @@ def exercise_peer_provision(port, cert, control_socket):
         peer.upgrade(cert, False)
         assert peer.command(b"AUTHINFO USER " + principal.encode("ascii")).startswith(b"381 ")
         assert peer.command(b"AUTHINFO PASS " + password).startswith(b"281 ")
+
+    plaintext = Peer(port)
+    try:
+        assert plaintext.command(b"MODE STREAM").startswith(b"501 ")
+        for verb in (b"CHECK", b"IHAVE", b"TAKETHIS"):
+            assert plaintext.command(verb + b" <ungranted@example.invalid>").startswith(b"502 ")
+    finally:
+        plaintext.close()
 
     ordinary = Peer(port)
     try:
@@ -146,6 +192,7 @@ def exercise_peer_provision(port, cert, control_socket):
     try:
         login(promoted)
         assert promoted.command(b"MODE STREAM").startswith(b"203 ")
+        exercise_peer_replay(promoted)
         revoked = grant("set", "peer", "--revoke")
         found = grant("get", "peer")
         assert found["found"] and not found["enabled"] and found["grant"] == revoked["grant"], found
@@ -159,7 +206,6 @@ def exercise_peer_provision(port, cert, control_socket):
         assert after_revoke.command(b"MODE STREAM").startswith(b"501 ")
     finally:
         after_revoke.close()
-
 
 
 def main():
@@ -176,14 +222,18 @@ def main():
                    check=True, capture_output=True, timeout=15)
     image = directory / 'node.img'
     run_fn('init', str(image), '--size-mb', '8', '--group', 'local.test')
-    control_socket = Path(f"/tmp/fn2-pr-{time.time_ns()}.sock")
+    control_socket = Path(f"/tmp/fn2-pr-{os.getpid()}-{time.time_ns()}.sock")
     node = LiveNode(directory, image, 'tls', [
         '--host', '127.0.0.1', '--port', '0', '--peering', '--control-sock', str(control_socket),
         '--tls-certificate', str(cert),
         '--tls-key', str(key), '--tls-window', '512', '--tls-handshakes', '1', '--tls-handshake-ms', '1000'])
     try:
         port = int(node.wait_marker(b'LISTENING ').split()[1])
-        node.wait_marker(b'LISTENING-LOCAL ')
+        assert node.wait_marker(b"LISTENING-LOCAL ") == f"LISTENING-LOCAL {control_socket}".encode()
+        assert stat.S_IMODE(control_socket.stat().st_mode) == 0o600
+        grant = run_fn("grant", "set", "anonymous", "read", "local.test",
+                       "--control-sock", str(control_socket), as_json=True)
+        assert grant["outcome"] == "accepted", grant
         for pipeline in (False, True):
             peer = Peer(port)
             try:
@@ -214,7 +264,8 @@ def main():
         exercise_peer_provision(port, cert, control_socket)
     finally:
         node.close()
-        control_socket.unlink(missing_ok=True)
+        for path in (control_socket, Path(f"{control_socket}.groups")):
+            path.unlink(missing_ok=True)
     print('PASS STARTTLS and owner-provisioned peer login, grant isolation, and revocation')
     return 0
 
