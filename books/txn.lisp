@@ -883,11 +883,11 @@
     ;; names one, else the member's own event
     (if (equal op 0)
         (fn2-outcome-put tx *fn2-txn-slot-outcome*
-          (principal principal) (operation :event 0) (request dslot dgen doff)
+          (principal principal) (operation :event 0) (id-source *fn2-outcome-id-source-assigned*) (request dslot dgen doff)
           (outcome *fn2-txn-outcome-accepted*) (event :event 0)
           :owner (okind oslot ogen) fn2-core)
       (fn2-outcome-put tx *fn2-txn-slot-outcome*
-        (principal principal) (operation op) (request dslot dgen doff)
+        (principal principal) (operation op) (id-source *fn2-outcome-id-source-supplied*) (request dslot dgen doff)
         (outcome *fn2-txn-outcome-accepted*) (event :event 0)
         :owner (okind oslot ogen) fn2-core))))
 (fn2-core-preserves fn2-txn-put-article (tx dslot dgen doff sslot sgen soff hoff hlen bytes lines lunit lepoch lalloc principal op okind oslot ogen fn2-core)

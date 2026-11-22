@@ -70,9 +70,10 @@
 ; of (principal, operation), a record of the batch that carried it. A retry
 ; with the same operation identity reads the original outcome; the request
 ; digest refuses a contradictory reuse. OUTCOME is the operation's reply code,
-; EVENT the member's commit position.
+; EVENT the member's commit position. A caller can choose a number that
+; is also a server-assigned event. Keep both records independently addressable.
 (defrunschema fn2-outcome :id 9
- :key ((principal (:id principal)) (operation (:id operation)))
+ :key ((principal (:id principal)) (operation (:id operation)) (id-source (:enum fn2-outcome-id-source (:assigned :supplied))))
  :value ((request :digest) (outcome :u16) (event (:id event)))
  :merge :unique)
 
