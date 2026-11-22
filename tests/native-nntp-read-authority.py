@@ -54,8 +54,8 @@ def login_attempt(port, cert, principal, password, expected=b"281"):
         assert peer.command(b"AUTHINFO USER " + principal.encode("ascii")).startswith(b"381 ")
         answer = peer.command(b"AUTHINFO PASS " + password.encode("ascii"))
         assert answer.startswith(expected + b" "), ("AUTHINFO PASS", answer[:3])
-        if expected == b"281":
-            assert b"AUTHINFO USER" not in peer.capabilities()
+        can_log_in = b"AUTHINFO USER" in peer.capabilities()
+        assert can_log_in == (expected != b"281")
         yield peer
     finally:
         peer.close()
@@ -212,6 +212,10 @@ def main():
                 reply = peer.command(command)
                 assert reply.startswith(b"412 "), (command, reply)
             denied(peer)
+            admin("restore-secondary", "grant", "set", "fixture-reader", "read", VISIBLE.decode("ascii"))
+            assert peer.command(b"GROUP " + VISIBLE) == b"211 2 1 2 " + VISIBLE
+            overview(peer, CROSSPOST, b"1")
+            assert peer.command(b"STAT " + CROSSPOST) == b"223 0 " + CROSSPOST + b" retrieved"
     finally:
         node.close()
         for path in (control, Path(f"{control}.groups")):

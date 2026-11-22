@@ -8,7 +8,7 @@
 (fn2-book-layer :e)
 
 (defconst *fn2-authinfo-pass-max*
-  (- *fn2-nntp-line-cap* (length "AUTHINFO PASS ") 2))
+  (- *fn2-nntp-line-cap* (+ (length "AUTHINFO PASS ") 2)))
 
 (defun fn2-authinfo-token-span-p (slot gen off len kind id ogen fn2-pool)
  (declare (xargs :stobjs fn2-pool :guard (fn2-pool-wfp fn2-pool)))
@@ -44,7 +44,9 @@
  (sslot sgen soff sk si sg rslot rgen roff len rk ri rg tslot tgen start kind id gen fn2-pool) :position 2 :rows nil)
 (defthm fn2-authinfo-stage-preimage-natp
  (natp (mv-nth 1 (fn2-authinfo-stage-preimage
-                  sslot sgen soff sk si sg rslot rgen roff len rk ri rg tslot tgen start kind id gen fn2-pool))))
+                  sslot sgen soff sk si sg rslot rgen roff len rk ri rg tslot tgen start kind id gen fn2-pool)))
+ :rule-classes :type-prescription
+ :hints (("Goal" :in-theory (enable fn2-authinfo-stage-preimage))))
 (in-theory (disable fn2-authinfo-stage-preimage))
 
 ;; Visit all 32 digest octets, including on a mismatch. This is an ACL2

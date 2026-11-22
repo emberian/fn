@@ -18,6 +18,8 @@
           (lpos :u32) (seen :bool) (have :u8) (turn :bool) (done :bool) (cancel :bool)
           (posting :bool) (lgroup :u60) (klen :u16)
           (group-check (:enum fn2-cursor-group-check (:none :selection :range :member :list :news)))
+          (read-subject (:enum fn2-cursor-read-subject (:unbound :ledger :public)))
+          (read-principal :u60)
           (check-group :u60) (check-step :u8) (check-head :u60) (check-grant :u60) (group-checked :bool)
           (stopped :bool) (next-free :link)
           ;; ARTICLE/HEAD/BODY (D6 3/n): the article, its location (unit,
@@ -60,7 +62,7 @@
          :copy (conn conn-gen conn-kind mask rx-slot rx-gen line-s line-e tx-slot tx-gen group current pin posting)
          :clear (view-principal view-stream view-anchor view-right view-step view-head view-grant view-version view-publish view-end tag k0 a0 b0 k1 a1 b1 a2 b2 lat step lo hi next found count low high sel ncurrent spin update reply roff
                  lpos seen have turn done cancel stopped lgroup klen
-                 group-check check-group check-step check-head check-grant group-checked
+                 read-subject read-principal group-check check-group check-step check-head check-grant group-checked
                  art lunit lepoch lalloc alen apos plen loff ast lease oat mso mln said revent routcome rcount rready
                  mkind mpos bunit bepoch balloc blen bready mread bhash bcv lhashlen hmode hk hstep cursor))
  :initial ((generation fn2-machine-initial-generation) (ready-prev *fn2-none*) (ready-next *fn2-none*)
