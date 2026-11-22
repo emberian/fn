@@ -29,6 +29,7 @@ client_spec.loader.exec_module(client)
 def environment():
     """One explicit origin for this isolated image and both fresh processes."""
     env = boundary.environment()
+    env.pop("FN2_GROUPS", None)
     env.update(FN2_ORIGIN_LINEAGE="711", FN2_ORIGIN_DOMAIN="712",
                FN2_ORIGIN_INCARNATION="1", FN2_HISTORY_ID="713",
                FN2_HISTORY_INCARNATION="1")
@@ -205,7 +206,7 @@ def crossing_article(mid, body_variant=0, crosspost=False):
 
 def initialize(directory, image, seconds=600, startup_args=(), env=None):
     """Bound initialization and clean up only this recorded launch session."""
-    command = [str(ROOT / "fn"), "init", str(image), "--size-mb", "32", "--group", "local.test", *startup_args]
+    command = [str(ROOT / "fn"), "init", str(image), "--size-mb", "32", *startup_args]
     with (directory / "init.log").open("wb") as log:
         process = subprocess.Popen(command, cwd=ROOT, env=env if env is not None else environment(), stdout=log,
                                    stderr=subprocess.STDOUT, start_new_session=True)
@@ -245,8 +246,10 @@ def main():
         article_path = directory / f"submitted-{index}.article"
         article_path.write_bytes(article)
         submissions.append((mid, article, article_path))
-    initialize(directory, image, startup_args=("--group", "local.other"))
     genesis_groups = (b"local.test", b"local.other")
+    # Only init supplies the group configuration. Both independent serve
+    # processes must recover it before the NNTP crosspost checks can pass.
+    initialize(directory, image, env=dict(environment(), FN2_GROUPS="local.test,local.other"))
     genesis = read_genesis(image, genesis_groups)
     receipts = []
     node = restart.Node(directory, image, "serve", "append", control_sock=control,

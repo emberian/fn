@@ -49,7 +49,7 @@ def main():
     articles = []
     appended = []
     processes = []
-    fixture.initialize(directory, image, startup_args=("--group", "local.other"))
+    fixture.initialize(directory, image, startup_args=("--group", "local.test", "--group", "local.other"))
     node = fixture.restart.Node(directory, image, "serve", "before-ack", control_sock=control,
                                 env=fixture.environment())
     try:
