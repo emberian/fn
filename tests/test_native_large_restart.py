@@ -68,6 +68,38 @@ class ResetEvidence(unittest.TestCase):
                     with self.assertRaises(ValueError):
                         campaign.selected_launchers()
 
+    def test_both_fixtures_grant_fetch_authority_before_appending(self):
+        class ReachedAppend(Exception):
+            pass
+
+        for fixture in (campaign, campaign.large):
+            with self.subTest(fixture=fixture.__name__), tempfile.TemporaryDirectory() as tmp:
+                directory = Path(tmp) / 'case'
+                grants = []
+
+                def run_fn(_directory, _label, *args, **_options):
+                    if args[:2] == ('stream', 'append'):
+                        principal = args[args.index('--as') + 1]
+                        self.assertCountEqual(grants, [
+                            (principal, 'append', 'local.test'),
+                            (principal, 'read', 'local.test'),
+                            (principal, 'consume'),
+                        ])
+                        raise ReachedAppend
+                    if args[:2] == ('grant', 'set'):
+                        self.assertEqual(args[-2], '--control-sock')
+                        grants.append(args[2:-2])
+                    return {'outcome': 'accepted'}
+
+                with mock.patch('sys.argv', ['fixture', '--directory', str(directory)]), \
+                     mock.patch.object(campaign, 'selected_launchers', return_value=('real', 'observer')), \
+                     mock.patch.object(fixture.base, 'initialize'), \
+                     mock.patch.object(fixture.base.restart, 'Node') as node, \
+                     mock.patch.object(fixture.base, 'run_fn', side_effect=run_fn):
+                    with self.assertRaises(ReachedAppend):
+                        fixture.main()
+                node.return_value.close.assert_called_once()
+
     def test_loader_inserts_only_observer_before_actual_entry(self):
         source = (campaign.ROOT / 'tools/image-node.lsp').read_bytes()
         observed = launcher.observed_script(source)
