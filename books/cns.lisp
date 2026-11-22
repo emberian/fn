@@ -488,7 +488,7 @@
         (fn2-cns-decode-cursor (+ base 16) next (- end next) principal slot gen okind oslot ogen fn2-fields fn2-pool))
        ((unless (equal reason 0)) (fn2-cns-dec-refuse reason)))
     (mv 0 *fn2-cns-verb-ack* cid 0 position 0 epoch 0 0 0 0 0 fn2-fields)))
-;; The cursor in field CI's octets: (mv reason cid epoch fn2-fields).
+;; The cursor in field CI's octets: (mv reason cid epoch position fn2-fields).
 (defun fn2-cns-dec-cursor-field (base ci principal slot gen okind oslot ogen fn2-fields fn2-pool)
   (declare (xargs :stobjs (fn2-fields fn2-pool)
                   :guard (and (fn2-fields-wfp fn2-fields) (fn2-pool-wfp fn2-pool) (natp base) (natp ci)
@@ -496,15 +496,16 @@
   (mv-let (reason cid epoch position fn2-fields)
     (fn2-cns-decode-cursor (+ base 16) (fn2-fields-ref-off ci fn2-fields) (fn2-fields-ref-len ci fn2-fields)
                            principal slot gen okind oslot ogen fn2-fields fn2-pool)
-    (declare (ignore position))
-    (mv reason cid epoch fn2-fields)))
+    (mv reason cid epoch position fn2-fields)))
 (defthm fn2-cns-dec-cursor-field-types
   (and (natp (mv-nth 0 (fn2-cns-dec-cursor-field base ci principal slot gen okind oslot ogen fn2-fields fn2-pool)))
        (natp (mv-nth 1 (fn2-cns-dec-cursor-field base ci principal slot gen okind oslot ogen fn2-fields fn2-pool)))
-       (natp (mv-nth 2 (fn2-cns-dec-cursor-field base ci principal slot gen okind oslot ogen fn2-fields fn2-pool))))
+       (natp (mv-nth 2 (fn2-cns-dec-cursor-field base ci principal slot gen okind oslot ogen fn2-fields fn2-pool)))
+       (natp (mv-nth 3 (fn2-cns-dec-cursor-field base ci principal slot gen okind oslot ogen fn2-fields fn2-pool))))
   :rule-classes ((:type-prescription :corollary (natp (mv-nth 0 (fn2-cns-dec-cursor-field base ci principal slot gen okind oslot ogen fn2-fields fn2-pool))))
                  (:type-prescription :corollary (natp (mv-nth 1 (fn2-cns-dec-cursor-field base ci principal slot gen okind oslot ogen fn2-fields fn2-pool))))
-                 (:type-prescription :corollary (natp (mv-nth 2 (fn2-cns-dec-cursor-field base ci principal slot gen okind oslot ogen fn2-fields fn2-pool)))))
+                 (:type-prescription :corollary (natp (mv-nth 2 (fn2-cns-dec-cursor-field base ci principal slot gen okind oslot ogen fn2-fields fn2-pool))))
+                 (:type-prescription :corollary (natp (mv-nth 3 (fn2-cns-dec-cursor-field base ci principal slot gen okind oslot ogen fn2-fields fn2-pool)))))
   :hints (("Goal" :in-theory (e/d (fn2-cns-dec-cursor-field) (fn2-cns-decode-cursor-types))
            :use ((:instance fn2-cns-decode-cursor-types (cbase (+ 16 base)) (off (fn2-fields-ref-off ci fn2-fields))
                             (len (fn2-fields-ref-len ci fn2-fields)))))))
@@ -512,7 +513,7 @@
   (fn2-cns-dec-cursor-field base ci principal slot gen okind oslot ogen fn2-fields fn2-pool)
   (and (fn2-fieldsp fn2-fields) (fn2-fields-wfp fn2-fields) (fn2-poolp fn2-pool) (fn2-pool-wfp fn2-pool) (natp base)
        (<= (+ base 128) (fn2-fields-rows fn2-fields)))
-  ((fn2-fields 3))
+  ((fn2-fields 4))
   (("Goal" :in-theory (e/d (fn2-cns-dec-cursor-field) (fn2-fieldsp fn2-fields-wfp fn2-poolp fn2-pool-wfp fn2-fields-rows fn2-pool-rows)))))
 (in-theory (disable fn2-cns-dec-cursor-field))
 (defun fn2-cns-dec-read (base pos flen principal slot gen okind oslot ogen fn2-fields fn2-pool)
@@ -523,11 +524,11 @@
        ((mv dc next fn2-fields) (fn2-fnct-k4-read-decode base slot gen pos end okind oslot ogen fn2-fields fn2-pool))
        ((unless (and (eq dc :ok) (equal next end))) (fn2-cns-dec-refuse *fn2-cns-reason-frame*))
        (lim (nfix (fn2-fields-value (+ base *fn2-fnct-k4-read-field-max-items*) fn2-fields)))
-       ((mv reason cid epoch fn2-fields)
+       ((mv reason cid epoch position fn2-fields)
         (fn2-cns-dec-cursor-field base (+ base *fn2-fnct-k4-read-field-cursor*) principal slot gen okind oslot ogen fn2-fields fn2-pool))
        ((unless (equal reason 0)) (fn2-cns-dec-refuse reason))
        ((unless (and (posp lim) (<= lim 65535))) (fn2-cns-dec-refuse *fn2-cns-reason-meter*)))
-    (mv 0 *fn2-cns-verb-read* cid 0 0 lim epoch 0 0 0 0 0 fn2-fields)))
+    (mv 0 *fn2-cns-verb-read* cid 0 position lim epoch 0 0 0 0 0 fn2-fields)))
 (defun fn2-cns-dec-wait (base pos flen principal slot gen okind oslot ogen fn2-fields fn2-pool)
   ; wait-cursor (16): read's fields and the seconds it may park (at most 3600).
   (declare (xargs :stobjs (fn2-fields fn2-pool) :guard (fn2-cns-dec-guard)))
@@ -537,11 +538,11 @@
        (lim (nfix (fn2-fields-value (+ base *fn2-fnct-k4-wait-cursor-field-max-items*) fn2-fields)))
        (seconds (nfix (fn2-fields-value (+ base *fn2-fnct-k4-wait-cursor-field-seconds*) fn2-fields)))
        ((unless (<= seconds *fn2-fnct-max-wait-seconds*)) (fn2-cns-dec-refuse *fn2-cns-reason-frame*))
-       ((mv reason cid epoch fn2-fields)
+       ((mv reason cid epoch position fn2-fields)
         (fn2-cns-dec-cursor-field base (+ base *fn2-fnct-k4-wait-cursor-field-cursor*) principal slot gen okind oslot ogen fn2-fields fn2-pool))
        ((unless (equal reason 0)) (fn2-cns-dec-refuse reason))
        ((unless (and (posp lim) (<= lim 65535))) (fn2-cns-dec-refuse *fn2-cns-reason-meter*)))
-    (mv 0 *fn2-cns-verb-wait* cid 0 0 lim epoch (* 1000 seconds) 0 0 0 0 fn2-fields)))
+    (mv 0 *fn2-cns-verb-wait* cid 0 position lim epoch (* 1000 seconds) 0 0 0 0 fn2-fields)))
 (defun fn2-cns-dec-append (base pos flen slot gen okind oslot ogen fn2-fields fn2-pool)
   ; append (11): the stream (empty: the article's Newsgroups names its
   ; groups, as POST's), the operation identity (at most eight octets, below
@@ -1273,7 +1274,7 @@
     (t
    (:do (pcode) (fn2-cns-post-reply row-ctl row-ctl-gen row-request row-verb row-outcome row-reason
                                     row-consumer row-epoch row-version row-cpos row-pub-frontier row-count row-more
-                                    row-ioff row-ilen (if (equal row-more 0) row-pub-frontier row-ipos)
+                                    row-ioff row-ilen row-ipos
                                     row-principal-slot row-tx-slot row-tx-gen
                                     id row-generation row-ns-slot row-ns-gen row-name-len)
     :accept (:ok :dropped) :why "the control connection may have closed while the consumer request ran")
@@ -1461,11 +1462,13 @@
            (:goto answer))
           (t (:set (cpos ncpos) (version nver) (pub-frontier pfront))
              (:next :read) (:charge :bytes 4096 :steps *fn2-work-transition* :runnable t))))))
+  ;; READ and WAIT walk from the offered page cursor. Only POSITION and
+  ;; STATUS report where acknowledgement has durably advanced.
   (:read :on-refusal ((:stop :machine-phase))
    (:do (fcode ncpos nver pfront)
         (fn2-cns-lookup-cursor row-consumer row-epoch row-principal-slot row-cpos row-version row-pub-frontier row-xrow))
    (:set (cpos ncpos) (version nver) (pub-frontier pfront) (count 0) (more 0) (ioff 0) (ilen 0)
-         (ipos (if (equal row-verb *fn2-cns-verb-fetch*) (- row-to 1) ncpos)))
+         (ipos (if (equal row-verb *fn2-cns-verb-fetch*) (- row-to 1) row-to)))
    (:next :page)
    (:charge :bytes 4096 :steps *fn2-work-transition* :runnable t))
   ;; :page walks the principal's addr entries past IPOS, one item a step
@@ -1613,7 +1616,7 @@
                 ((:goto wait-timeout))
                 ((:do () (fn2-cns-edge-unlink-core row-edge)) (:goto wait-timeout))))
           ((equal row-edge *fn2-none*)
-           (:do (code e) (fn2-cns-edge-link-core row-principal-slot id row-generation (+ 1 row-cpos))
+           (:do (code e) (fn2-cns-edge-link-core row-principal-slot id row-generation (+ 1 row-ipos))
             :case (((:behind) (:next :read) (:charge :steps *fn2-work-transition* :runnable t))
                    ((:exhausted) (:set (reason *fn2-cns-reason-meter*)) (:goto refuse))
                    ((:ok) (:set (edge e)) (:park :wait-row :steps *fn2-work-transition*)))))
