@@ -12,11 +12,12 @@
   :carriers ((fn2-boot-config 1 :prefix "-CONFIG") (fn2-fields 2 :prefix "-FIELDS")
              (fn2-digests 3 :prefix "-DIGESTS") (fn2-b3 4 :prefix "-HASHER")
              (fn2-pool 5 :prefix "-POOL"))
-  :hints ((fn2-columns-guard-hint
+  :hints ((append (fn2-columns-guard-hint
    '(fn2-boot-config fn2-origin fn2-fields fn2-digests fn2-b3 fn2-pool)
    '(fn2-boot-bootstrap-pack-pool fn2-boot-save-geometry fn2-pool-compare
      fn2-layout-range-code fn2-boot-bootstrap-windows-apart-p)
-   '(fn2-boot-bootstrap-verify-pool) world)))
+   '(fn2-boot-bootstrap-verify-pool fn2-checkpoint-image-sizep) world)
+   '(:use ((:instance fn2-boot-bootstrap-pack-ok-inputs-by-definition))))))
 
 (defcost fn2-boot-pack :answers t :bytes 12288
  :tables (fn2-core-pool fn2-core-fields fn2-core-digests fn2-core-b3)
