@@ -736,6 +736,11 @@
 ; Whether an item of LEN octets fits after the control range's fill AT: the
 ; reply copies the page's items twice more (the page result, then the kind
 ; 28 payload), so the range must hold three copies of them all and the reserve.
+) ; request decoding and cursor encoding
+
+(encapsulate ()
+(local (in-theory (disable fn2-fields-rows fn2-fieldsp fn2-fields-wfp fn2-poolp fn2-pool-wfp fn2-pool-rows
+                           fn2-pool-read fn2-pool-write)))
 (defun fn2-cns-item-fits (at cap ilen len)
   (declare (xargs :guard t))
   (<= (+ (nfix at) (nfix len) (* 2 (+ (nfix ilen) (nfix len))) *fn2-cns-reply-reserve*) (nfix cap)))
@@ -779,7 +784,8 @@
  (implies (and (equal type *fn2-fnct-item-record*)
                (equal (fn2-cns-item-binding-answer code type held reset copied-code copied left) :found))
           (and held (equal reset :ok) (equal copied-code :ok)
-               (equal copied 32) (equal left 0))))
+               (equal copied 32) (equal left 0)))
+ :rule-classes nil)
 (defun fn2-cns-item-answer (walk code found pos art strm ac st bytes kind u e al at cap ilen fetch)
   (declare (xargs :guard t))
   (let ((pos (nfix pos)) (art (nfix art)) (strm (nfix strm)) (bytes (nfix bytes)))
@@ -803,7 +809,8 @@
        (natp (mv-nth 5 (fn2-cns-item-answer walk code found pos art strm ac st bytes kind u e al at cap ilen fetch)))
        (natp (mv-nth 6 (fn2-cns-item-answer walk code found pos art strm ac st bytes kind u e al at cap ilen fetch)))
        (natp (mv-nth 7 (fn2-cns-item-answer walk code found pos art strm ac st bytes kind u e al at cap ilen fetch)))
-       (natp (mv-nth 8 (fn2-cns-item-answer walk code found pos art strm ac st bytes kind u e al at cap ilen fetch)))))
+       (natp (mv-nth 8 (fn2-cns-item-answer walk code found pos art strm ac st bytes kind u e al at cap ilen fetch))))
+  :hints (("Goal" :in-theory (disable fn2-cns-item-fits nfix))))
 (in-theory (disable fn2-cns-item-answer))
 (defun fn2-cns-put-answer (live ok0 rc code fits cc)
   (declare (xargs :guard t))
@@ -855,13 +862,13 @@
   (fn2-cns-put-result base verb class evidence cid epoch version cpos pfront count more ioff ilen inext principal history incarnation slot gen okind oslot ogen fn2-fields fn2-pool)
   (and (fn2-fieldsp fn2-fields) (fn2-fields-wfp fn2-fields) (fn2-poolp fn2-pool) (fn2-pool-wfp fn2-pool))
   ((fn2-fields 3) (fn2-pool 4))
-  (("Goal" :in-theory (e/d (fn2-cns-put-result) (fn2-fieldsp fn2-fields-wfp fn2-poolp fn2-pool-wfp fn2-fields-rows fn2-pool-rows)))))
+  (("Goal" :in-theory (e/d (fn2-cns-put-result) (nfix posp fn2-fieldsp fn2-fields-wfp fn2-poolp fn2-pool-wfp fn2-fields-rows fn2-pool-rows)))))
 (defthm fn2-cns-put-result-natp
   (and (natp (mv-nth 1 (fn2-cns-put-result base verb class evidence cid epoch version cpos pfront count more ioff ilen inext principal history incarnation slot gen okind oslot ogen fn2-fields fn2-pool)))
        (natp (mv-nth 2 (fn2-cns-put-result base verb class evidence cid epoch version cpos pfront count more ioff ilen inext principal history incarnation slot gen okind oslot ogen fn2-fields fn2-pool))))
   :rule-classes ((:type-prescription :corollary (natp (mv-nth 1 (fn2-cns-put-result base verb class evidence cid epoch version cpos pfront count more ioff ilen inext principal history incarnation slot gen okind oslot ogen fn2-fields fn2-pool))))
                  (:type-prescription :corollary (natp (mv-nth 2 (fn2-cns-put-result base verb class evidence cid epoch version cpos pfront count more ioff ilen inext principal history incarnation slot gen okind oslot ogen fn2-fields fn2-pool)))))
-  :hints (("Goal" :in-theory (enable fn2-cns-put-result))))
+  :hints (("Goal" :in-theory (e/d (fn2-cns-put-result) (nfix posp)))))
 (in-theory (disable fn2-cns-put-result))
 ; The whole reply at the fill: (mv code k total fn2-fields fn2-digests fn2-b3 fn2-pool), the frame [K, K+TOTAL).
 (defun fn2-cns-reply-pool (base row verb outcome reason evidence cid epoch version cpos pfront count more ioff ilen inext principal history incarnation
