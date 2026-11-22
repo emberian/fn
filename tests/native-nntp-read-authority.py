@@ -43,14 +43,14 @@ def overview(peer, message_id, number):
 
 
 @contextmanager
-def logged_in(port, cert, principal, password):
+def login_attempt(port, cert, principal, password, expected=b"281"):
     peer = Peer(port)
     try:
         peer.sock.settimeout(30)
         peer.upgrade(cert, False)
         assert peer.command(b"AUTHINFO USER " + principal.encode("ascii")).startswith(b"381 ")
         answer = peer.command(b"AUTHINFO PASS " + password.encode("ascii"))
-        assert answer.startswith(b"281 "), ("AUTHINFO PASS", answer[:3])
+        assert answer.startswith(expected + b" "), ("AUTHINFO PASS", answer[:3])
         yield peer
     finally:
         peer.close()
@@ -148,9 +148,15 @@ def main():
     try:
         port = int(node.marker(b"LISTENING ").split()[1])
         node.marker(b"LISTENING-LOCAL ")
-        with logged_in(port, cert, "fixture-denied", credentials["fixture-denied"]) as peer:
+        # Change one byte of the recovered reader's password. The principal,
+        # TLS state, stored group grants and password length are identical.
+        issued = credentials["fixture-reader"]
+        wrong = ("0" if issued[0] != "0" else "1") + issued[1:]
+        with login_attempt(port, cert, "fixture-reader", wrong, expected=b"481") as peer:
             denied(peer)
-        with logged_in(port, cert, "fixture-reader", credentials["fixture-reader"]) as peer:
+        with login_attempt(port, cert, "fixture-denied", credentials["fixture-denied"]) as peer:
+            denied(peer)
+        with login_attempt(port, cert, "fixture-reader", credentials["fixture-reader"]) as peer:
             readable(peer)
             admin("revoke-secondary", "grant", "set", "fixture-reader", "read",
                   VISIBLE.decode("ascii"), "--revoke")
