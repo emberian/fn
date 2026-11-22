@@ -1,0 +1,78 @@
+; Count, open and interpret one exact protected NNTP reply frame.
+(in-package "ACL2")
+(include-book "fnct-pool")
+(include-book "peer-pull-line")
+(fn2-book-layer :e)
+
+(local (in-theory (disable fn2-fields-rows fn2-fieldsp fn2-fields-wfp
+                           fn2-digests-rows fn2-digestsp fn2-digests-wfp
+                           fn2-b3-rows fn2-b3p fn2-b3-wfp
+                           fn2-pool-workspace-code fn2-pool-rows fn2-poolp fn2-pool-wfp
+                           fn2-peer-pull-line-widths)))
+
+(defun fn2-peer-pull-reply-count (start pos slot gen kind id generation fn2-pool)
+ (declare (xargs :stobjs fn2-pool :guard (fn2-pool-wfp fn2-pool)))
+ (b* (((mv code next status) (fn2-peer-pull-line start pos slot gen kind id generation fn2-pool))
+      ((unless (unsigned-byte-p 32 next)) (mv :frame 0 0 0))
+      ((unless (eq code :ok)) (mv code next 0 0))
+      (first (+ 4 (nfix start)))
+      ((unless (and (member-equal status '(290 490 491)) (< (+ first 2) next))) (mv :frame 0 0 0))
+      ((mv digits & length &) (fn2-gram-arg-digits first (- next (+ 2 first)) slot gen kind id generation fn2-pool)))
+   (if (and digits (unsigned-byte-p 32 length) (< *fn2-fnct-overhead* length)
+            (<= length (fn2-fnct-cap slot fn2-pool)) (<= length (+ *fn2-pool-block-bytes* *fn2-fnct-trailer-octets*)))
+       (mv :ok next status length)
+     (mv :frame 0 0 0))))
+(defthm fn2-peer-pull-reply-count-widths
+ (let ((a (fn2-peer-pull-reply-count start pos slot gen kind id generation fn2-pool)))
+   (and (unsigned-byte-p 32 (mv-nth 1 a)) (unsigned-byte-p 16 (mv-nth 2 a)) (unsigned-byte-p 32 (mv-nth 3 a)))))
+(in-theory (disable fn2-peer-pull-reply-count))
+
+(defun fn2-peer-pull-open-reply-pool (phase status base row len slot gen kind id generation
+                                       fn2-fields fn2-digests fn2-b3 fn2-pool)
+ (declare (xargs :stobjs (fn2-fields fn2-digests fn2-b3 fn2-pool)
+                 :guard (and (fn2-fields-wfp fn2-fields) (fn2-pool-wfp fn2-pool))))
+  (b* (((unless (and (natp base) (natp len) (< *fn2-fnct-overhead* len) (equal len (fn2-pool-fill-value slot fn2-pool))
+                    (<= len (+ *fn2-pool-block-bytes* *fn2-fnct-trailer-octets*))
+                    (<= (+ base 128) (fn2-fields-rows fn2-fields))
+                    (eq (fn2-pool-workspace-code slot gen kind id generation fn2-pool) :ok)))
+         (mv :frame 0 0 fn2-fields fn2-digests fn2-b3))
+       (tail (- len *fn2-fnct-trailer-octets*))
+       ((when (equal phase :header))
+        (mv-let (code tag payload-len fn2-fields)
+          (fn2-fnct-open-pool-header base slot gen 0 len kind id generation fn2-fields fn2-pool)
+          (declare (ignore payload-len))
+          (mv (if (and (eq code :ok) (equal tag *fn2-fnct-port-reply-kind*)) :ok :frame) 0 0 fn2-fields fn2-digests fn2-b3)))
+       ((when (equal phase :hash))
+        (mv-let (code fn2-digests fn2-b3) (fn2-pool-block-hash row slot gen 0 tail kind id generation fn2-digests fn2-b3 fn2-pool)
+          (mv code 0 0 fn2-fields fn2-digests fn2-b3)))
+       ((when (equal phase :trailer))
+        (mv (fn2-fnct-open-pool-trailer row slot gen tail kind id generation fn2-digests fn2-pool)
+            0 0 fn2-fields fn2-digests fn2-b3))
+       ((unless (equal phase :result)) (mv :state 0 0 fn2-fields fn2-digests fn2-b3))
+       ((mv code next fn2-fields)
+        (fn2-fnct-k28-reply-decode base slot gen *fn2-fnct-header-octets* tail kind id generation fn2-fields fn2-pool))
+       ((unless (and (eq code :ok) (equal next tail))) (mv :frame 0 0 fn2-fields fn2-digests fn2-b3))
+       (class (fn2-fields-value (+ base *fn2-fnct-k28-reply-field-class*) fn2-fields))
+       (rl (fn2-fields-ref-len (+ base *fn2-fnct-k28-reply-field-reason*) fn2-fields))
+       (i (+ base *fn2-fnct-k28-reply-field-result*))
+       (off (fn2-fields-ref-off i fn2-fields)) (n (fn2-fields-ref-len i fn2-fields)))
+    (cond ((and (equal status 290) (equal class 0) (equal rl 0) (posp n) (unsigned-byte-p 32 off)
+                (unsigned-byte-p 32 (+ off n)) (equal (+ off n) tail))
+           (mv :ok off (+ off n) fn2-fields fn2-digests fn2-b3))
+          ((and (equal status 490) (equal class 1) (posp rl) (equal n 0))
+           (mv :refused 0 0 fn2-fields fn2-digests fn2-b3))
+          ((and (equal status 491) (equal class 2) (equal n 0))
+           (mv :uncertain 0 0 fn2-fields fn2-digests fn2-b3))
+          (t (mv :frame 0 0 fn2-fields fn2-digests fn2-b3)))))
+(defthm fn2-peer-pull-open-reply-pool-widths
+ (let ((a (fn2-peer-pull-open-reply-pool phase status base row len slot gen kind id generation
+                                       fn2-fields fn2-digests fn2-b3 fn2-pool)))
+   (and (unsigned-byte-p 32 (mv-nth 1 a)) (unsigned-byte-p 32 (mv-nth 2 a)))))
+(fn2-pool-block-shape fn2-peer-pull-open-reply-pool-shape
+  (fn2-peer-pull-open-reply-pool phase status base row len slot gen kind id generation
+                               fn2-fields fn2-digests fn2-b3 fn2-pool)
+  (and (fn2-fieldsp fn2-fields) (fn2-fields-wfp fn2-fields) (fn2-poolp fn2-pool) (fn2-pool-wfp fn2-pool)
+       (fn2-digestsp fn2-digests) (fn2-digests-wfp fn2-digests) (fn2-b3p fn2-b3) (fn2-b3-wfp fn2-b3))
+  ((fn2-fields 3) (fn2-digests 4) (fn2-b3 5))
+  (("Goal" :in-theory (enable fn2-peer-pull-open-reply-pool))))
+(in-theory (disable fn2-peer-pull-open-reply-pool))
