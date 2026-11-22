@@ -601,6 +601,39 @@ observation and evidence does not circulate as new around a ring (B: yes).
   entries say; served choices agree when policy agrees; eventual coverage is a separate claim under
   connectivity, authority and funding.
 
+The v1 accepted XFNC read result uses kind 28, class 0 and an empty reason. Its result
+starts with the following fields in order (books/xfnc-batch-codec.lisp). All fixed-width
+integers are unsigned big-endian. Identity counters in u64 fields carry at most 60 bits.
+
+| Field | Encoding |
+|---|---|
+| Result version | u8, value 1 |
+| Sender history domain, incarnation, revision | Three u64 values |
+| Scoped chain at NEXT | Digest algorithm octet 1 (BLAKE3-256), followed by 32 digest octets |
+| Authorized stream ID and view version | Two u64 values |
+| Evidence interpretation | u16, value 1 |
+| NEXT and END | Two u64 values |
+| Stop | u8, 0 end, 1 item limit, 2 octet limit, 3 work budget |
+| Item count | u32 |
+| Next cursor | u16 octet count, then that many fncu v1 or v2 octets |
+
+Each item is a sender-view u64 position, a u16 history size, a u16 evidence size,
+then the exact C identity-history and identity-evidence bodies in order. Both sizes are
+positive and bounded by the corresponding generated C layouts. The bodies preserve
+the origin identifiers when a node re-exports an observation. The sender-view position
+is independent of the C history position or evidence occurrence.
+
+NEXT names the last included position in the authorized view, or the request position
+for an empty page. It uses the inclusive fncu position convention. END is the frontier
+of that authorized view at the held cut. The stop code is 0 exactly when NEXT equals
+END. Positions rise strictly within a batch. The last item ends at the last octet of
+the kind 28 result and carries position NEXT. The cursor must carry the request's sender
+history, incarnation, principal, consumer, query, query version, view version and epoch,
+and have position NEXT. The sender supplies the revision and chain for the view that
+binds that principal, stream, view version and evidence interpretation. The chain
+resumes from this batch's NEXT. A rejected or unavailable item remains outside the
+accepted extent.
+
 ### 13.5 Control across peers (RFC 5537 §5)
 Control articles relay as articles; every receiver decides again under its own authority (ruling 10).
 - **The withdrawal** (C's `fn2-withdrawals`, id 15, answered): written by the cancel's acceptance on NNTP
