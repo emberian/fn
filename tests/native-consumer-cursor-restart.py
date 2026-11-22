@@ -234,7 +234,20 @@ def main():
                       "--position", other_receipt["position"])
         readable = stream("fetch-with-read-grant", "fetch", *occurrence, actor=other)
         fixture.exact_fetch(readable, other_article)
-        grant("revoke-other-read", other, "read", "local.other", "--revoke")
+        # Observe a pending public client and a grant-induced refusal without APPEND.
+        # The assembled test separately observes exact park state and suppresses the callback.
+        with ThreadPoolExecutor(max_workers=1) as clients:
+            waiting = clients.submit(stream, "wait-for-grant-revision", "wait", "--consumer",
+                                     consumer, "--seconds", 30, actor=other, expected=1)
+            try:
+                early = waiting.result(timeout=0.75)
+            except TimeoutError:
+                pass
+            else:
+                raise AssertionError(("WAIT returned before grant change", early))
+            grant("revoke-other-read", other, "read", "local.other", "--revoke")
+            changed = waiting.result(timeout=10)
+            assert changed == {"outcome": "refused", "reason": "rebase-required"}, changed
         revoked = stream("fetch-after-read-revocation", "fetch", *occurrence, actor=other, expected=1)
         assert revoked == denied_fetch, (revoked, denied_fetch)
         grant("restore-other-read", other, "read", "local.other")

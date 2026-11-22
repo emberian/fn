@@ -133,8 +133,9 @@
           (verb (:enum fn2-cns-verb (:none :register :read :wait :ack :position :status :append :fetch
                                      :rebase :unregister)))
           (consumer :u60) (epoch :u32) (op :u60) (to :u60) (cstart :u60) (page-limit :u16) (wait-ms :u32)
-          ;; The durable address key and the page read's internal publish
-          ;; snapshot. Neither takes the place of the scheduler's principal slot.
+          ;; The durable address key and an internal published watermark.
+          ;; WAIT takes the watermark before consulting the active registration.
+          ;; Neither takes the place of the scheduler's principal slot.
           (address-principal :u60) (address-tip :u60)
           (page-head :u60) (page-head-bound :bool) (stored-view :u60) (visible-ipos :u60)
           (cpos :u60) (version :u60) (pub-frontier :u60) (count :u32) (more :bool)

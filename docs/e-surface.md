@@ -802,8 +802,8 @@ starts at zero. The fold checks the old epoch and durable position, so a concurr
 cannot rewind the position. Requests bearing a superseded epoch receive scope refusal. REBASE NOW
 uses the same authorized frontier as STATUS. UNREGISTER clears the active position and view in a
 durable tombstone that retains the last epoch. Reusing the name advances the retained epoch.
-A parked WAIT discovers the retired epoch when it next resumes. Prompt wake on retirement and
-using inactive registrations to release reclamation holds remain separate work.
+Publication of a retired epoch wakes the principal's parked WAIT so it can refuse unknown-consumer.
+Using inactive registrations to release reclamation holds remains separate work.
 
 STATUS, REBASE NOW, REGISTER NOW and advancing ACK walk addressed rows in bounded steps, using
 the same stream read check as READ. They pin the authority revision before the walk and recheck it
@@ -811,9 +811,11 @@ before replying or staging a mutation. The raw addressed tip only bounds their p
 address walk could stop at the first visible row.
 A retained projection keyed by principal, authority revision and position would instead need a
 readiness boundary and an ordered replay rule before exposing a new revision. Neither path can use the
-unfiltered address tip as an answer. A parked WAIT also needs a principal authority dependency so a
-grant update resumes its view check without waiting for a new article. Recheck the revision at reply
-freeze so an in-flight page cannot mix visibility decisions from different revisions.
+unfiltered address tip as an answer. A published grant-head update schedules the principal's parked
+WAIT through the same bucket as an address publication. WAIT captures the published watermark before
+registration lookup and compares it when linking, so an update before parking also forces a reread.
+A WAIT with a stale view refuses rebase-required if consume authority remains. At reply handoff the
+node rechecks the revision and epoch.
 
 ## 15. Astra's read (`lanes/e-quests/astra-1.md`): what it changed
 Taken: losses as a product, not a chain (§2.3); grammar bindings name terminal replies (§2.2); fn1's
