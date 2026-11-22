@@ -7,7 +7,8 @@
 (local (in-theory (enable fn2-core-wfp)))
 (local
  (in-theory
-  (disable fn2-ops-rows fn2-ops-gen fn2-ops-phase fn2-ops-kind
+  (disable fn2-host-op-span
+           fn2-ops-rows fn2-ops-gen fn2-ops-phase fn2-ops-kind
            fn2-ops-range-slot fn2-ops-range-gen fn2-ops-range-off fn2-ops-range-len
            fn2-ops-owner-kind fn2-ops-owner-slot fn2-ops-owner-gen
            fn2-pool-rows fn2-pool-gen fn2-pool-cap fn2-pool-base
@@ -126,10 +127,18 @@
            (fn2-decl-get :columns (fn2-decl-row '(:columns fn2-tls-transport) world)))
           (fn2-columns-projection-readers 'fn2-compress-transport
            (fn2-decl-get :columns (fn2-decl-row '(:columns fn2-compress-transport) world)))))
-        (hints `(("Goal" :in-theory (disable ,@readers)))))
+        (hints `(("Goal" :in-theory (disable ,@readers))))
+        (child-hints
+         `(("Goal" :in-theory (disable ,@readers)
+            :use ((:instance fn2-compress-tls-parent-channel
+                   (cap (mv-nth 2 (fn2-host-codec-op op gen fn2-core)))
+                   (nonce (mv-nth 3 (fn2-host-codec-op op gen fn2-core)))
+                   (slot op) (generation gen)))))))
   (value `(progn
    (verify-guards fn2-host-codec-cancel-target)
    (verify-guards fn2-host-tls-record-next :hints ,hints)
-   (verify-guards fn2-host-tls-child-next :hints ,hints)))))
+   (verify-guards fn2-host-tls-child-next :hints ,child-hints)))))
 
+; The generated handlers need the guards of the host producers, not their bodies.
+(local (in-theory (disable fn2-host-codec-op fn2-host-codec-cancel-target fn2-core-wfp)))
 (defcodec-host-closure fn2-host-tls fn2-tls-transport fn2-tls-record)
