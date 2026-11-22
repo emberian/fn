@@ -35,7 +35,9 @@
  (b* ((fn2-core (fn2-core-init *fn2-txn-posting-profile* fn2-core))
       (source (fn2-b-upload-source-hash-row 0)) (stored (fn2-b-upload-stored-hash-row 0))
       (scratch (fn2-b-block-read-row (fn2-b-format-slots *fn2-txn-posting-profile*)))
-      (original (repeat 700 65)) (wire (repeat 800 66)) (block (repeat 4096 67))
+      ; Three chunks force SOURCE through a full-chunk boundary and a
+      ; frontier carry while the buffered CV must remain available.
+      (original (repeat 3072 65)) (wire (repeat 800 66)) (block (repeat 4096 67))
       ((mv a os og fn2-core) (fn2-core-reserve 2 *fn2-upload-kind* 0 1 fn2-core))
       ((mv b ss sg fn2-core) (fn2-core-reserve 2 *fn2-upload-kind* 0 1 fn2-core))
       ((mv c ls lg fn2-core) (fn2-core-reserve 2 *fn2-upload-kind* 0 1 fn2-core))
@@ -80,9 +82,10 @@
       (cv-ok (equal (fn2-udh-read 32 ls lg (+ 32 *fn2-upload-page-hash*) fn2-core)
                     (fn-b3-words-octets (fn-b3-output-cv (fn-b3-node *fn2-b3-iv* block 4 0)))))
       (contexts-kept (equal before (fn2-ubp-context source scratch fn2-core)))
-      ((mv resumed used2 fn2-core) (fn2-upload-hash-step source os og 111 589 0 1 fn2-core))
+      ((mv resumed used2 fn2-core) (fn2-upload-hash-step source os og 111 2961 0 1 fn2-core))
       (private-update-kept (equal cvkept (fn2-ubp-private source fn2-core)))
       ((mv ended fn2-core) (fn2-upload-hash-end source fn2-core))
+      (private-end-kept (equal cvkept (fn2-ubp-private source fn2-core)))
       ((mv savedsource fn2-core) (fn2-upload-digest-store source ls lg 0 0 1 fn2-core))
       ((mv storedend fn2-core) (fn2-upload-stored-hash stored ss sg 173 173 627 t ls lg *fn2-upload-kind* 0 1 fn2-core))
       (streams-ok (and (equal (fn2-udh-read 32 ls lg 0 fn2-core) (fn-blake3 original))
@@ -91,11 +94,15 @@
       ((mv rootkeep fn2-core) (fn2-ubp-keep source source ls lg *fn2-upload-page-manifest* 4096 fn2-core))
       ((mv overwrite3 fn2-core) (fn2-ubp-overwrite scratch os og 700 fn2-core))
       ((mv rootsave fn2-core) (fn2-ubp-store source ls lg *fn2-upload-page-location-hashes* fn2-core)))
-  (mv (and whole private-kept hash-ok old-lost cv-ok contexts-kept private-update-kept streams-ok
-       (= used 111) (= used2 589)
+  (mv (and whole private-kept hash-ok old-lost cv-ok contexts-kept private-update-kept private-end-kept streams-ok
+       (= used 111) (= used2 2961)
        (equal (list start prefix storedprefix keep overwrite save old cv overwrite2 savecv resumed ended
                     savedsource storedend rootkeep overwrite3 rootsave) (repeat 17 :ok))
        (equal (fn2-udh-read 32 ls lg *fn2-upload-page-location-hashes* fn2-core) (fn-blake3 (repeat 4096 0)))
        (fn2-core-wfp fn2-core) (not (fn2-core-stopped-p fn2-core))) fn2-core)))
-(assert-event (with-local-stobj fn2-core
- (mv-let (ok fn2-core) (fn2-ubp-body fn2-core) ok)))
+(defun fn2-ubp-run ()
+ (declare (xargs :verify-guards nil))
+ (with-local-stobj fn2-core
+  (mv-let (ok fn2-core) (fn2-ubp-body fn2-core) ok)))
+
+(assert-event (fn2-ubp-run))
