@@ -2,7 +2,7 @@
 ; admitted publication and materialization drain before the cut is held.
 (in-package "ACL2")
 (include-book "c-snapshot-state")
-(include-book "declare")
+(include-book "arms")
 (fn2-book-layer :c)
 
 (defun fn2-csnapshot-current-phase (fn2-csnapshot)
