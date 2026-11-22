@@ -46,5 +46,52 @@
     "proved_through": "FN2-CURSOR-SUB-REFUSE-CHILDREN-ISSUED-EFFECT",
     "seconds": 6.34,
     "prover_steps": 83649
+  },
+  "corrected_cursor": {
+    "production_source": "51350b849f7a6f3bf865734df65511484ce42731",
+    "book": "books/cursor",
+    "source_sha256": "a3792248d5f10094dd1c2429220247fe87289b4158b5fadcb2dac096dad668b9",
+    "key": "6a6c77383c695093ec62017f16d548bf9eae15689ad27ae5205f1b003cf55d97",
+    "qualified_parents": 143,
+    "author_20s_2m": {
+      "seconds": 20.0,
+      "prover_steps": 625320,
+      "last_event": "FN2-CURSOR-SUB-SEEK-GROUP-CHILDREN-SHAPE",
+      "ending": "cumulative arm declaration time limit",
+      "evidence": "/home/fn/build/arm-quantities-cursor-facd/build/proof-repl/leaf_2471112_b9757d9d513f/log"
+    },
+    "diagnostic_90s_2m": {
+      "seconds": 46.65,
+      "prover_steps_exceeded": 2000000,
+      "last_event": "FN2-CURSOR-SUB-SEEK-SELECTED-CHILDREN-QUANTITIES",
+      "ending": "cumulative arm declaration step limit",
+      "evidence": "/home/fn/build/arm-quantities-cursor-facd/build/proof-repl/leaf_2473218_dc84e883bba0/log"
+    },
+    "ordinary_record": {
+      "wall_limit_seconds": 335,
+      "last_event": "FN2-CURSOR-RUN-SELECT-CHILDREN-QUANTITIES",
+      "ending": "wall timeout after complete subarm proofs including ART-BIND and ART-COPY",
+      "triage_real_failures": 0,
+      "evidence": "/home/fn/build/arm-quantities-cursor-facd/build/acl2/certify-20261122T201053Z-2478104"
+    },
+    "d26_hotspots": [
+      {
+        "event": "FN2-CURSOR-SUB-SEEK-IDENTITY-CHILDREN-QUANTITIES",
+        "seconds": 18.41,
+        "prover_steps": 1955996
+      },
+      {
+        "event": "FN2-CURSOR-SUB-SEEK-IDENTITY-CHILDREN-SHAPE",
+        "seconds": 14.34,
+        "prover_steps": 829924
+      },
+      {
+        "event": "FN2-CURSOR-SUB-SEEK-SELECTED-CHILDREN-SHAPE",
+        "seconds": 7.82,
+        "prover_steps": 377948
+      }
+    ],
+    "d26_next_investigation": "Prove the aggregate shape and quantity propositions once with each body open, then derive projections from the aggregate with each body closed. Preserve public statements and rule classes.",
+    "qualified": false
   }
 }
