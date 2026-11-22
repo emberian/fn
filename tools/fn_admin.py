@@ -1007,7 +1007,10 @@ def cmd_serve(args: argparse.Namespace, root: Path) -> int:
                              (args.tls_handshakes, "FN2_TLS_HANDSHAKES"),
                              (args.tls_window, "FN2_TLS_WINDOW"),
                              (args.tls_handshake_turns, "FN2_TLS_HANDSHAKE_TURNS"),
-                             (args.tls_handshake_ms, "FN2_TLS_HANDSHAKE_MS")):
+                             (args.tls_handshake_ms, "FN2_TLS_HANDSHAKE_MS"),
+                             (args.max_consumer_request_octets, "FN2_MAX_CONSUMER_REQUEST_OCTETS"),
+                             (args.max_consumer_discard_octets, "FN2_MAX_CONSUMER_DISCARD_OCTETS"),
+                             (args.consumer_body_timeout_ms, "FN2_CONSUMER_BODY_TIMEOUT_MS")):
         if option is not None:
             env[variable] = str(option)
     prepare_native_tls(root, env)
@@ -1576,6 +1579,9 @@ def build_parser() -> argparse.ArgumentParser:
     p_serve.add_argument("--tls-window", help="TLS transport BIO capacity in bytes (default: 16384)")
     p_serve.add_argument("--tls-handshakes", help="maximum concurrent STARTTLS handshakes (default: 16)")
     p_serve.add_argument("--tls-handshake-ms", help="STARTTLS admission/handshake deadline in milliseconds (default: 10000)")
+    p_serve.add_argument("--max-consumer-request-octets", help="maximum counted XFNC request size")
+    p_serve.add_argument("--max-consumer-discard-octets", help="maximum counted XFNC body size to discard")
+    p_serve.add_argument("--consumer-body-timeout-ms", help="counted XFNC body deadline in milliseconds")
     p_serve.add_argument("--group", action="append", help="expected genesis group list (default: loaded from <image>.groups)")
     p_serve.add_argument("--storage-fault-model", metavar="MODEL",
                          help="recovery contract: broad (default) or crash-only")

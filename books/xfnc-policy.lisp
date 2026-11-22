@@ -1,0 +1,37 @@
+; Startup bounds for the protected counted consumer carrier.
+(in-package "ACL2")
+(include-book "profile")
+(include-book "pool-block")
+(include-book "fnct-limits")
+(include-book "article-limit-text")
+
+(defun fn2-xfnc-configured-p (profile)
+  (declare (xargs :guard t))
+  (and (alistp profile)
+       (or (consp (assoc-equal :max-consumer-request-octets profile))
+           (consp (assoc-equal :max-consumer-discard-octets profile))
+           (consp (assoc-equal :consumer-body-timeout-ms profile)))))
+
+(defun fn2-xfnc-profilep (profile)
+  (declare (xargs :guard t))
+  (if (not (fn2-xfnc-configured-p profile)) t
+    (let ((request (fn2-profile-get :max-consumer-request-octets profile))
+          (discard (fn2-profile-get :max-consumer-discard-octets profile))
+          (timeout (fn2-profile-get :consumer-body-timeout-ms profile))
+          (classes (fn2-profile-pool-classes profile)))
+      (and (consp classes) (consp (car classes)) (unsigned-byte-p 32 request)
+           (< *fn2-fnct-overhead* request)
+           (<= request (nfix (cdar classes)))
+           (<= request (+ *fn2-pool-block-bytes* *fn2-fnct-trailer-octets*))
+           (unsigned-byte-p 32 discard)
+           (<= request discard)
+           (unsigned-byte-p 32 timeout)
+           (< 0 timeout)))))
+
+(defun fn2-xfnc-policy-from-text (profile request discard timeout)
+  (declare (xargs :guard t))
+  (if (not (or request discard timeout)) profile
+    (let ((base (if (alistp profile) profile nil)))
+      (put-assoc-equal :max-consumer-request-octets (fn2-article-limit-decimal request)
+       (put-assoc-equal :max-consumer-discard-octets (fn2-article-limit-decimal discard)
+        (put-assoc-equal :consumer-body-timeout-ms (fn2-article-limit-decimal timeout) base))))))
