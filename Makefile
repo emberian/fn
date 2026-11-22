@@ -227,6 +227,8 @@ ACL2_BOOKS = \
   books/peer-pull-reply \
   books/peer-pull-import \
   books/peer-pull-stage \
+  books/peer-pull-operations \
+  tests/peer-pull-emission-unit \
   books/assembly-callbacks-peer-pull \
   books/conn-kind \
   books/consumer-codec \
