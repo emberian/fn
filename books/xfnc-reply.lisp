@@ -5,6 +5,7 @@
 (in-package "ACL2")
 (include-book "cns")
 (include-book "xfnc-view")
+(include-book "xfnc-ops")
 (fn2-book-layer :e)
 
 (defun fn2-xfnc-refusal-word (reason)
@@ -46,13 +47,12 @@
  :position 1 :rows nil)
 (in-theory (disable fn2-xfnc-assemble-reply))
 
-(defun fn2-xfnc-stage-reply (class word principal history incarnation stream cid epoch version view position
+(defun fn2-xfnc-stage-reply (row class word principal history incarnation stream cid epoch version view position
                              mask slot gen conn cgen fn2-fields fn2-digests fn2-b3 fn2-pool)
   (declare (xargs :stobjs (fn2-fields fn2-digests fn2-b3 fn2-pool)
                   :guard (and (fn2-fields-wfp fn2-fields) (fn2-pool-wfp fn2-pool) (stringp word))))
   (b* ((kind *fn2-conn-kind*)
-       (row (fn2-b-block-read-row (fn2-b3-rows fn2-b3)))
-       (base (* 128 row))
+       (base (* 128 (nfix row)))
        ((mv code fn2-pool)
         (fn2-fnct-put-be 0 0 *fn2-xfnc-reply-line-room* slot gen kind conn cgen fn2-pool))
        ((unless (eq code :ok)) (mv code fn2-fields fn2-digests fn2-b3 fn2-pool))
@@ -77,7 +77,7 @@
        ((mv code fn2-pool) (fn2-xfnc-assemble-reply reply mask frame-at frame-count slot gen conn cgen fn2-pool)))
     (mv code fn2-fields fn2-digests fn2-b3 fn2-pool)))
 (fn2-pool-block-shape fn2-xfnc-stage-reply-shape
-  (fn2-xfnc-stage-reply class word principal history incarnation stream cid epoch version view position
+  (fn2-xfnc-stage-reply row class word principal history incarnation stream cid epoch version view position
                         mask slot gen conn cgen fn2-fields fn2-digests fn2-b3 fn2-pool)
   (and (fn2-fieldsp fn2-fields) (fn2-fields-wfp fn2-fields)
        (fn2-digestsp fn2-digests) (fn2-digests-wfp fn2-digests)
@@ -97,6 +97,8 @@
       ((unless (and (eq auth :ok) (stringp word)
                     (<= (length word) 64) (member-equal class '(0 1 2))))
        (mv :state fn2-core))
+      ((mv workspace row) (fn2-xfnc-fc-row conn fn2-core))
+      ((unless (eq workspace :ok)) (mv workspace fn2-core))
       (slot (fn2-conn-row-tx-slot conn fn2-core))
       (gen (fn2-conn-row-tx-gen conn fn2-core))
       (mask (fn2-conn-row-mask conn fn2-core))
@@ -111,7 +113,7 @@
          ((unless (zp (fn2-pool-fill-value slot fn2-pool)))
           (mv :state fn2-fields fn2-digests fn2-b3 fn2-pool))
          ((mv code fn2-fields fn2-digests fn2-b3 fn2-pool)
-          (fn2-xfnc-stage-reply class word principal history incarnation stream cid epoch version view position
+          (fn2-xfnc-stage-reply row class word principal history incarnation stream cid epoch version view position
                                 mask slot gen conn cgen fn2-fields fn2-digests fn2-b3 fn2-pool))
          ((when (eq code :ok)) (mv :ok fn2-fields fn2-digests fn2-b3 fn2-pool))
          ((mv reset fn2-pool) (fn2-pool-reset slot gen *fn2-conn-kind* conn cgen fn2-pool)))
