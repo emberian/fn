@@ -276,6 +276,7 @@ ACL2_BOOKS = \
   books/peer-view-member \
   books/peer-view-read \
   books/xfnc-view \
+  books/xfnc-read-page \
   books/xfnc-reader \
   books/event-read-verify \
   books/event-read-verify-domain \
