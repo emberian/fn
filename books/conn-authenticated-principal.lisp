@@ -1,5 +1,5 @@
 (in-package "ACL2")
-(include-book "conn-schema")
+(include-book "conn-kind")
 (include-book "accounts")
 
 (defun fn2-account-live-id (slot fn2-accounts)
