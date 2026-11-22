@@ -33,13 +33,13 @@
 ; start position. D8's wait machine reads it; E3's ack writes it.
 (defrunschema fn2-consumer-cursor :id 6
  :key ((principal (:id principal)) (consumer (:id consumer)) (epoch :u32))
- :value ((position (:id position)) (version (:id version)))
+ :value ((position (:id position)) (version (:id version)) (view (:id version)))
  :merge :latest
  :fold (:events ((:ack (principal consumer epoch to) :when (< position to) :unless-when :unchanged :set ((position to)))
-                 (:rebase (principal consumer epoch query start) :when (< version query)
-                  :set ((version query) (position start))))
+                 (:rebase (principal consumer epoch query start new-view) :when (< version query)
+                  :set ((version query) (position start) (view new-view))))
         :init :empty :coverage :history-start
-        :observe (position version)))
+        :observe (position version view)))
 
 ; Principal accounts, the durable half: what each principal has been charged
 ; per dimension (D0's accounting holds the resident half: reservations in

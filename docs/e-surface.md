@@ -762,18 +762,22 @@ READ and WAIT pin an authority head for that request and recheck consume authori
 sealing each page, including empty WAIT replies. They check the recorded address stream's current read
 grant before materializing an item. A hidden row advances only the private scan. An issued cursor
 advances only through visible items, and a full page's MORE bit needs a readable next item. Resuming a
-parked request repeats consume admission and refuses a superseded head. The recorded cursor version
-does not yet bind this request's authority head across separate requests.
+parked request repeats consume admission and refuses a superseded head. REGISTER records the
+authorized head separately from the query version. READ, WAIT and ACK require the issued view to
+match both the persisted registration and the current head. ACK and REGISTER stage against the
+checked head; an equal ACK rechecks it before replying. Restoring a grant creates a new head and
+does not revive old cursor bytes. Repeat REGISTER returns the existing recorded view. A new consumer
+registration is available while the served REBASE verb remains owed. REGISTER refuses a view that
+cannot be represented by the current v1 issuer before staging a transaction.
 
 The txn currently emits one address row per event and retains only the first group's stream. Its
 overview rows record each group's article number but cannot enumerate all groups by article. General
 per-item access through any authorized group requires a bounded article-to-stream membership lookup,
-or a retained set published in the transaction that creates the address row. A cursor view must carry
-the authority-head revision separately from its query version. REGISTER and REBASE must persist it;
-READ, WAIT and ACK must compare it against current authority before access or mutation, and ACK staging
-must keep the authority dependency through publication. POSITION must return the recorded revision.
+or a retained set published in the transaction that creates the address row. The served cursor carries the recorded authority-head revision. The future REBASE path must publish
+a new epoch and revision without changing the old cursor's scope. POSITION returns the recorded
+revision even after authority changes.
 
-STATUS and frontier-relative operations must use the highest authorized addressed position under the
+STATUS, REGISTER from now and ACK's frontier limit must use the highest authorized addressed position under the
 same authority revision as the page walk. The current positioned seek cannot filter memberships. A
 bounded reverse address walk with resumable membership/grant reads is one direct implementation.
 A retained projection keyed by principal, authority revision and position would instead need a

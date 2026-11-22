@@ -107,18 +107,6 @@ def main():
         assert appended[1]["position"] < other_receipt["position"], other_receipt
         other_page = stream("other-read", "read", "--cursor", other_registered["cursor"], actor=other)
         check_page(other_page, other_receipt, other_article, more=False)
-        grant("revoke-other-page-read", other, "read", "local.other", "--revoke")
-        for verb, extra in (("read", ()), ("wait", ("--seconds", 0))):
-            filtered = stream(f"{verb}-after-read-revocation", verb, "--cursor",
-                              other_registered["cursor"], "--max-items", 1, *extra, actor=other)
-            assert filtered["outcome"] == "accepted" and filtered["items"] == [], filtered
-            assert filtered["count"] == 0 and not filtered["more"], filtered
-            assert filtered["cursor"] == other_registered["cursor"], filtered
-            assert filtered["next"] == other_registered["position"], filtered
-        grant("restore-other-page-read", other, "read", "local.other")
-        visible_again = stream("read-after-grant-restoration", "read", "--cursor",
-                               other_registered["cursor"], actor=other)
-        assert visible_again == other_page, (visible_again, other_page)
         denied_fetch = stream("cross-principal-fetch", "fetch", appended[0]["message_id"],
                               "--domain", appended[0]["domain"], "--position", appended[0]["position"],
                               actor=other, expected=1)
@@ -168,6 +156,42 @@ def main():
         other_redelivery = stream("other-read-from-persisted", "read", "--consumer", consumer, actor=other)
         check_page(other_redelivery, other_receipt, other_article, more=False)
         assert other_redelivery == other_page, (other_redelivery, other_page)
+
+        def check_stale(label, old):
+            for verb, extra in (("read", ()), ("wait", ("--seconds", 0)), ("ack", (old["position"],))):
+                denied = stream(f"{label}-{verb}", verb, *extra, "--cursor",
+                                old["cursor"], actor=other, expected=1)
+                assert denied == {"outcome": "refused", "reason": "rebase-required"}, denied
+            advance = stream(f"{label}-advancing-ack", "ack", other_receipt["position"],
+                             "--cursor", old["cursor"], actor=other, expected=1)
+            assert advance == {"outcome": "refused", "reason": "rebase-required"}, advance
+
+        grant("revoke-other-page-read", other, "read", "local.other", "--revoke")
+        check_stale("stale-after-revoke", other_registered)
+        denied_view = stream("register-view-without-read", "register", "--consumer", "2",
+                             "--start", "history", actor=other)
+        assert denied_view["outcome"] == "accepted", denied_view
+        for verb, extra in (("read", ()), ("wait", ("--seconds", 0))):
+            filtered = stream(f"{verb}-new-view-without-read", verb, "--cursor",
+                              denied_view["cursor"], "--max-items", 1, *extra, actor=other)
+            assert filtered["outcome"] == "accepted" and filtered["items"] == [], filtered
+            assert filtered["count"] == 0 and not filtered["more"], filtered
+            assert filtered["cursor"] == denied_view["cursor"], filtered
+            assert filtered["next"] == denied_view["position"], filtered
+        grant("restore-other-page-read", other, "read", "local.other")
+        check_stale("stale-after-restore", other_registered)
+        check_stale("revoked-view-after-restore", denied_view)
+        repeated_registration = stream("register-stale-id-again", "register", "--consumer", consumer,
+                                       "--start", "history", actor=other)
+        assert repeated_registration == other_registered, repeated_registration
+        retained = stream("status-after-stale-ack-proposals", "status", "--consumer", consumer, actor=other)
+        assert retained["outcome"] == "accepted" and retained["position"] == other_registered["position"], retained
+        restored_view = stream("register-restored-read-view", "register", "--consumer", "3",
+                               "--start", "history", actor=other)
+        assert restored_view["outcome"] == "accepted", restored_view
+        visible = stream("read-with-current-restored-view", "read", "--cursor",
+                         restored_view["cursor"], actor=other)
+        check_page(visible, other_receipt, other_article, more=False)
 
         # Omitting --cursor makes the public CLI ask the fresh node for POSITION.
         redelivery = stream("read-from-persisted", "read", "--consumer", consumer, "--max-items", 1)

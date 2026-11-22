@@ -4,7 +4,7 @@
 (include-book "layout-unit")
 
 (defconst *fn2-cdu-cursor*
-  (fn2-fncu-encode '(:cursor 0 (1 14) (2 15) (1) (2) (1) 1 1 1 5)))
+  (fn2-fncu-encode '(:cursor 0 (1 14) (2 15) (1) (2) (1) 1 17 1 5)))
 
 (defun fn2-cdu-check-with-cursor (word max-items cursor)
   (declare (xargs :verify-guards nil))
@@ -19,11 +19,11 @@
                ((mv fn2-fields fn2-pool) (fn2-layout-test-init fn2-fields fn2-pool))
                (fn2-fields (fn2-fields-init 128 fn2-fields))
                (fn2-pool (fn2-layout-test-write payload 0 0 fn2-pool))
-               ((mv reason verb & & & lim & wait-ms & & & & fn2-fields)
+               ((mv reason verb & view & lim & wait-ms & & & & fn2-fields)
                 (if (eq word :wait)
                     (fn2-cns-dec-wait 0 0 (len payload) 2 270 527 0 1 1 0 1 fn2-fields fn2-pool)
                   (fn2-cns-dec-read 0 0 (len payload) 2 270 527 0 1 1 0 1 fn2-fields fn2-pool))))
-            (mv (list reason lim wait-ms verb) fn2-fields fn2-pool))
+            (mv (list reason lim wait-ms verb view) fn2-fields fn2-pool))
           (mv ok fn2-fields)))
       ok)))
 
@@ -34,9 +34,9 @@
 (assert-event
  (let ((old-placeholder (fn2-fncu-encode '(:cursor 0 (0) (0) (1) (2) (1) 1 1 1 5))))
    (and (equal (fn2-cdu-check-with-cursor :read 1 old-placeholder)
-               (list *fn2-cns-reason-scope* 0 0 0))
+               (list *fn2-cns-reason-scope* 0 0 0 0))
         (equal (fn2-cdu-check-with-cursor :wait 1 old-placeholder)
-               (list *fn2-cns-reason-scope* 0 0 0)))))
+               (list *fn2-cns-reason-scope* 0 0 0 0)))))
 
 (value-triple
  (cw "CDU-OBSERVED ~x0~%"
@@ -46,23 +46,23 @@
 
 (assert-event
  (and (equal (fn2-cdu-check :read 1)
-             (list 0 1 0 *fn2-cns-verb-read*))
+             (list 0 1 0 *fn2-cns-verb-read* 17))
       (equal (fn2-cdu-check :wait 1)
-             (list 0 1 30000 *fn2-cns-verb-wait*))
+             (list 0 1 30000 *fn2-cns-verb-wait* 17))
       (equal (fn2-cdu-check :read 65535)
-             (list 0 65535 0 *fn2-cns-verb-read*))
+             (list 0 65535 0 *fn2-cns-verb-read* 17))
       (equal (fn2-cdu-check :wait 65535)
-             (list 0 65535 30000 *fn2-cns-verb-wait*))
+             (list 0 65535 30000 *fn2-cns-verb-wait* 17))
       (equal (fn2-cdu-check :read 0)
-             (list *fn2-cns-reason-meter* 0 0 0))
+             (list *fn2-cns-reason-meter* 0 0 0 0))
       (equal (fn2-cdu-check :wait 0)
-             (list *fn2-cns-reason-meter* 0 0 0))
+             (list *fn2-cns-reason-meter* 0 0 0 0))
       (equal (fn2-cdu-check :read 65536)
-             (list *fn2-cns-reason-meter* 0 0 0))
+             (list *fn2-cns-reason-meter* 0 0 0 0))
       (equal (fn2-cdu-check :wait 65536)
-             (list *fn2-cns-reason-meter* 0 0 0))
+             (list *fn2-cns-reason-meter* 0 0 0 0))
       (equal (fn2-cdu-check :read 4294967295)
-             (list *fn2-cns-reason-meter* 0 0 0))))
+             (list *fn2-cns-reason-meter* 0 0 0 0))))
 
 ; Exercise the encoder and concrete decoder over a real range. The list
 ; codec independently checks which identity bytes the encoder emitted.
@@ -75,7 +75,7 @@
           (b* (((mv fn2-fields fn2-pool) (fn2-layout-test-init fn2-fields fn2-pool))
                (fn2-fields (fn2-fields-init 128 fn2-fields))
                ((mv code offset length fn2-fields fn2-pool)
-                (fn2-cns-put-cursor 0 1 4294967297 270 527 1 1 5 0 1 1 0 1 fn2-fields fn2-pool))
+                (fn2-cns-put-cursor 0 1 4294967297 270 527 1 1 1 5 0 1 1 0 1 fn2-fields fn2-pool))
                ((unless (eq code :ok)) (mv (list code) fn2-fields fn2-pool))
                (octets (fn2-layout-test-read length 0 offset fn2-pool))
                ((mv reason cid epoch position fn2-fields)
@@ -95,7 +95,7 @@
 ; Remove the decoder theorem's success hypothesis by changing one expected
 ; component at a time. The actual range still carries the original bytes.
 (assert-event
- (let ((refusal (list :ok *fn2-cdu-scope-encoded* *fn2-cns-reason-scope* 0 0 0)))
+ (let ((refusal (list :ok *fn2-cdu-scope-encoded* *fn2-cns-reason-scope* 0 0 0 0)))
    (and (equal (fn2-cdu-scope 1 270 527) refusal)
         (equal (fn2-cdu-scope 4294967297 271 527) refusal)
         (equal (fn2-cdu-scope 4294967297 270 528) refusal)

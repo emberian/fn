@@ -62,7 +62,7 @@
    (defun fn2-sle-seed-registration (fn2-core)
      (declare (xargs :stobjs fn2-core :verify-guards nil))
      (b* (((mv & fn2-core) (fn2-successor-release 0 fn2-core))
-          ((mv put fn2-core) (fn2-consumer-cursor-rebase 0 0 (principal *fnc-fixture-owner-pid*) (consumer 1) (epoch 1) (query 1) (start 0) fn2-core))
+          ((mv put fn2-core) (fn2-consumer-cursor-rebase 0 0 (principal *fnc-fixture-owner-pid*) (consumer 1) (epoch 1) (query 1) (start 0) (new-view 0) fn2-core))
           ((unless (eq put :ok)) fn2-core)
           ((mv resolve fn2-core) (fn2-cns-resolve-loop 32 0 fn2-core))
           ((unless (eq resolve :ok)) fn2-core)
