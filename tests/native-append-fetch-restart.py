@@ -51,6 +51,20 @@ def exact_fetch(reply, expected):
     return actual
 
 
+def read_genesis(image):
+    """The two immutable units on this 128-extent, single-group image."""
+    with image.open("rb") as store:
+        # The native profile reserves the first 8 MiB for allocation. Read
+        # the physical file independently of the offsets reported by BOOT.
+        store.seek(8 * 1024 * 1024)
+        header = store.read(4096)
+        group = store.read(4096)
+    assert len(header) == len(group) == 4096, "short genesis read"
+    assert header.startswith(b"F2BT\x02\x00\x00"), "missing genesis header after the arena"
+    assert group.startswith(b"F2BT\x02\x01\x01") and b"local.test" in group, "missing genesis group"
+    return header, group
+
+
 def checked_status(reply, accepted_articles, registered_position, previous=None):
     """Check observed consumer state against actual committed APPEND receipts."""
     assert reply["outcome"] == "accepted", reply
@@ -198,6 +212,7 @@ def main():
         article_path.write_bytes(article)
         submissions.append((mid, article, article_path))
     initialize(directory, image)
+    genesis = read_genesis(image)
     receipts = []
     node = restart.Node(directory, image, "serve", "append", control_sock=control,
                         env=environment())
@@ -271,6 +286,7 @@ def main():
                              append_receipts=accepted_articles, cut=cut))
     finally:
         node.close()
+    assert read_genesis(image) == genesis, "APPEND changed immutable genesis bytes"
     (directory / "processes.json").write_text(json.dumps(receipts, indent=2) + "\n")
     node = restart.Node(directory, image, "serve", "fetch", control_sock=control,
                         env=environment())
@@ -330,6 +346,7 @@ def main():
                              cut="SIGKILL after exact FETCH, wrong-identity refusal and NNTP readback"))
     finally:
         node.close()
+    assert read_genesis(image) == genesis, "reopen changed immutable genesis bytes"
     (directory / "processes.json").write_text(json.dumps(receipts, indent=2) + "\n")
     if args.durable_retry:
         print("NATIVE DURABLE APPEND RETRY PASS: same-key races had one occurrence each; original receipts replayed after restart and revocation")

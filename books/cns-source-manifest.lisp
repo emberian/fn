@@ -6,7 +6,7 @@
 (include-book "cns-source-state")
 (include-book "source-manifest-entry")
 (include-book "block-integrity")
-(include-book "cns-source-retention")
+(include-book "cns-source-retention-rows")
 (fn2-book-layer :d)
 ;; One callback performs one phase, never both a manifest-unit check and a
 ;; data-unit check. Charge the shared two-pass data verifier plus both expected
@@ -16,9 +16,46 @@
 (assert-event (<= (+ *fn2-commit-unit-bytes* (* 2 *fn2-am-header-max*) 96) *fn2-cns-source-unit-work-bytes*))
 (assert-event (<= (* 2 *fn2-am-entry-max*) *fn2-cns-source-unit-work-bytes*))
 
+(local
+ (defthm fn2-cns-manifest-fields-rows-natural
+  (implies (fn2-fieldsp fn2-fields)
+   (natp (fn2-fields-rows fn2-fields)))
+  :rule-classes :type-prescription
+  :hints (("Goal" :in-theory (enable fn2-fieldsp fn2-fields-rows)))))
+
+(local
+ (defthm fn2-cns-manifest-header-preserves-rows
+  (equal (fn2-fields-rows
+          (mv-nth 2 (fn2-am-get-header base total slot gen off end kind owner owner-gen
+                                     fn2-fields fn2-pool)))
+         (fn2-fields-rows fn2-fields))
+  :hints (("Goal" :in-theory (e/d (fn2-am-get-header)
+                                  (fn2-fields-rows fn2-fieldsp fn2-fields-wfp
+                                   fn2-fields-value fn2-format-source-manifest-header-decode))))))
+(local
+ (defthm fn2-cns-manifest-decoded-entry-preserves-rows
+  (equal (fn2-fields-rows
+          (mv-nth 7 (fn2-am-get-entry base slot gen off end kind owner owner-gen
+                                    fn2-fields fn2-pool)))
+         (fn2-fields-rows fn2-fields))
+  :hints (("Goal" :in-theory (e/d (fn2-am-get-entry)
+                                  (fn2-fields-rows fn2-fields-value
+                                   fn2-format-source-manifest-entry-decode))))))
+(local
+ (defthm fn2-cns-manifest-entry-preserves-rows
+  (equal (fn2-fields-rows
+          (mv-nth 9 (fn2-source-manifest-entry base prefix slot gen pos total kind owner owner-gen
+                                              fn2-fields fn2-pool)))
+         (fn2-fields-rows fn2-fields))
+  :hints (("Goal" :in-theory (e/d (fn2-source-manifest-entry)
+                                  (fn2-fields-rows fn2-am-get-entry fn2-am-get-header
+                                   fn2-am-entry-at floor fn2-fields-ref-slot fn2-fields-ref-len))))))
+
 (defun fn2-cns-source-manifest-check (s cns cnsgen ctl ctlgen request kind base fn2-cns-sources fn2-fields fn2-b3 fn2-digests fn2-pool)
  (declare (xargs :stobjs (fn2-cns-sources fn2-fields fn2-b3 fn2-digests fn2-pool)
-  :guard (and (fn2-cns-sources-wfp fn2-cns-sources) (fn2-fields-wfp fn2-fields) (fn2-pool-wfp fn2-pool))))
+  :guard (and (fn2-cns-sources-wfp fn2-cns-sources) (fn2-fields-wfp fn2-fields) (fn2-pool-wfp fn2-pool))
+  :guard-hints (("Goal" :in-theory (disable fn2-fields-rows fn2-fieldsp fn2-fields-wfp
+                                           fn2-b-block-read-row fn2-b3-rows)))))
  (b* (((unless (and (fn2-cns-source-ownerp s cns cnsgen ctl ctlgen request fn2-cns-sources)
                     (equal (fn2-cns-sources-phase s fn2-cns-sources) *fn2-cns-source-phase-manifest*)
                     (equal (fn2-cns-sources-manifest-stage s fn2-cns-sources) *fn2-cns-source-manifest-stage-check*)
@@ -190,17 +227,53 @@
         (fn2-cns-sources-set-phase s *fn2-cns-source-phase-bad* fn2-cns-sources))))
   (mv (if (eq code :ok) :more :bad) fn2-cns-sources fn2-b3 fn2-digests)))
 
+(local
+ (defthm fn2-cns-source-manifest-owner-bound
+  (implies (fn2-cns-source-ownerp s cns cnsgen ctl ctlgen request fn2-cns-sources)
+   (and (natp s) (< s (fn2-cns-sources-rows fn2-cns-sources))))
+  :rule-classes :forward-chaining
+  :hints (("Goal" :in-theory (enable fn2-cns-source-ownerp)))))
+
+(local (fn2-hash-row-frames fn2-block-read-commitment-children fn2-b3 fn2-digests))
+(local (fn2-b3-word-frame fn2-block-read-done-from-children))
+
+(local
+ (defthm fn2-cns-manifest-entry-hash-offset-natural
+  (natp (mv-nth 7 (fn2-source-manifest-entry base prefix lslot lgen mpos total okind oslot ogen
+                                            fn2-fields fn2-pool)))
+  :rule-classes :type-prescription
+  :hints (("Goal" :use fn2-source-manifest-entry-naturals))))
+(local
+ (defthm fn2-cns-manifest-entry-cv-offset-natural
+  (natp (mv-nth 8 (fn2-source-manifest-entry base prefix lslot lgen mpos total okind oslot ogen
+                                            fn2-fields fn2-pool)))
+  :rule-classes :type-prescription
+  :hints (("Goal" :use fn2-source-manifest-entry-naturals))))
+
 (fn2-cns-source-frames fn2-cns-source-manifest-check
  (s cns cnsgen ctl ctlgen request kind base fn2-cns-sources fn2-fields fn2-b3 fn2-digests fn2-pool)
  (fn2-cns-sources fn2-fields fn2-b3 fn2-digests fn2-pool)
- ((fn2-cns-sources 1) (fn2-fields 2) (fn2-b3 3) (fn2-digests 4)))
+ ((fn2-cns-sources 1) (fn2-fields 2) (fn2-b3 3) (fn2-digests 4))
+ ((fn2-columns-call-guard-hint 'fn2-cns-source-manifest-check
+   '(fn2-cns-source-ownerp fn2-am-get-header fn2-block-read-commitment-children
+     fn2-block-digest-at fn2-rec-fetch fn2-b-block-read-row fn2-digest-rowp)
+   '(fn2-cns-source-manifest-check) world)))
 (fn2-cns-source-frames fn2-cns-source-manifest-entry
  (s cns cnsgen ctl ctlgen request kind base fn2-cns-sources fn2-fields fn2-pool)
- (fn2-cns-sources fn2-fields fn2-pool) ((fn2-cns-sources 1) (fn2-fields 2)))
+ (fn2-cns-sources fn2-fields fn2-pool) ((fn2-cns-sources 1) (fn2-fields 2))
+ ((fn2-columns-call-guard-hint 'fn2-cns-source-manifest-entry
+   '(fn2-cns-source-ownerp fn2-source-manifest-entry floor)
+   '(fn2-cns-source-manifest-entry) world)))
 (fn2-cns-source-frames fn2-cns-source-manifest-claim-step
  (s cns cnsgen ctl ctlgen request fn2-cns-sources fn2-checkpoints fn2-extents fn2-alloc-edges fn2-ops)
  (fn2-cns-sources fn2-checkpoints fn2-extents fn2-alloc-edges fn2-ops)
- ((fn2-cns-sources 1) (fn2-extents 2) (fn2-alloc-edges 3)))
+ ((fn2-cns-sources 1) (fn2-extents 2) (fn2-alloc-edges 3))
+ ((fn2-columns-call-guard-hint 'fn2-cns-source-manifest-claim-step
+   '(fn2-cns-source-ownerp fn2-cns-source-claim-identity)
+   '(fn2-cns-source-manifest-claim-step) world)))
 (fn2-cns-source-frames fn2-cns-source-manifest-data-check
  (s cns cnsgen ctl ctlgen request kind fn2-cns-sources fn2-b3 fn2-digests fn2-pool)
- (fn2-cns-sources fn2-b3 fn2-digests fn2-pool) ((fn2-cns-sources 1) (fn2-b3 2) (fn2-digests 3)))
+ (fn2-cns-sources fn2-b3 fn2-digests fn2-pool) ((fn2-cns-sources 1) (fn2-b3 2) (fn2-digests 3))
+ ((fn2-columns-call-guard-hint 'fn2-cns-source-manifest-data-check
+   '(fn2-cns-source-ownerp fn2-cns-source-data-position-p fn2-block-read-done-from-children)
+   '(fn2-cns-source-manifest-data-check) world)))

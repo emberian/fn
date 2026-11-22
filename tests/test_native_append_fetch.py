@@ -15,6 +15,22 @@ spec.loader.exec_module(campaign)
 
 
 class ExactFetch(unittest.TestCase):
+    def test_genesis_must_follow_the_entire_native_arena(self):
+        header = b"F2BT\x02\x00\x00".ljust(4096, b"\x00")
+        group = b"F2BT\x02\x01\x01local.test".ljust(4096, b"\x00")
+        with tempfile.TemporaryDirectory() as tmp:
+            image = Path(tmp) / "node.img"
+            with image.open("wb") as store:
+                store.truncate(32 * 1024 * 1024)
+                store.seek(1_572_864)  # old BOOT address, inside extent 24
+                store.write(header + group)
+            with self.assertRaisesRegex(AssertionError, "missing genesis header"):
+                campaign.read_genesis(image)
+            with image.open("r+b") as store:
+                store.seek(8_388_608)
+                store.write(header + group)
+            self.assertEqual(campaign.read_genesis(image), (header, group))
+
     def test_status_binds_committed_occurrences_and_survives_restart(self):
         articles = [dict(domain=0, position=41), dict(domain=0, position=42)]
         reply = dict(outcome="accepted", domain=0, position=0, frontier=42, gap=42)
