@@ -382,8 +382,9 @@
   (:checkpoint-empty-verify
    (:do (code) (fn2-boot-checkpoint-empty row-rx-slot row-rx-gen id row-generation) :accept ()
     :case (((:ok)
-      (:set (checkpoint-index (+ 1 row-checkpoint-index)))
-      (:if (< row-checkpoint-index 3)
+      (:let scanned row-checkpoint-index)
+      (:set (checkpoint-index (+ 1 scanned)))
+      (:if (< scanned (- *fn2-checkpoint-anchor-slots* 1))
        ((:next :checkpoint-empty) (:charge :bytes 4096 :steps *fn2-work-stage* :runnable t))
        ((:set (stage 1) (anchor-slot 0)) (:next :anchor)
         (:charge :bytes 4096 :steps *fn2-work-stage* :runnable t))))
