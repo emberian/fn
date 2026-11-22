@@ -131,6 +131,9 @@ class ReaderOutcome(unittest.TestCase):
             (article, b"ARTICLE <one@example.invalid>", b"221 1 <one@example.invalid>\r\n.\r\n", "error", 2),
             (head, b"HEAD <one@example.invalid>", b"220 1 <one@example.invalid>\r\n.\r\n", "error", 2),
             (head, b"HEAD <one@example.invalid>", b"221 1 <one@example.invalid>\r\n.\r\n", "accepted", 0),
+            (article, b"ARTICLE <one@example.invalid>", b"220 0 <other@example.invalid>\r\nwrong\r\n.\r\n", "error", 2),
+            (head, b"HEAD <one@example.invalid>", b"221 headers follow\r\n.\r\n", "error", 2),
+            (article, b"ARTICLE <one@example.invalid>", b"220 0 <one@example.invalid> article follows\r\nbody\r\n.\r\n", "accepted", 0),
             (article, b"ARTICLE <one@example.invalid>", b"220 1 <one@example.invalid>\r\npartial\n.\r\n", "error", 2),
         ):
             with self.subTest(command=command, response=response), socket.create_server(("127.0.0.1", 0)) as listener:
@@ -147,6 +150,34 @@ class ReaderOutcome(unittest.TestCase):
                         conn.shutdown(socket.SHUT_WR)
                         stdout, stderr = proc.communicate(timeout=5)
                     self.assertEqual((proc.returncode, json.loads(stdout)["outcome"]), (code, outcome), stderr)
+
+    def test_number_is_bound_to_the_selected_group(self):
+        for selected, number, expected in (("other.group", 1, 2), ("local.test", 2, 2),
+                                           ("local.test", 1, 0)):
+            with self.subTest(selected=selected, number=number), socket.create_server(("127.0.0.1", 0)) as listener:
+                listener.settimeout(5)
+                with subprocess.Popen(
+                    [str(ROOT / "fn"), "article", "local.test", "1", "--port",
+                     str(listener.getsockname()[1]), "--json"], stdout=subprocess.PIPE, stderr=subprocess.PIPE,
+                ) as proc:
+                    conn, _ = listener.accept()
+                    with conn, conn.makefile("rb") as reader:
+                        conn.settimeout(5)
+                        conn.sendall(b"200 fn ready\r\n")
+                        self.assertEqual(reader.readline(), b"GROUP local.test\r\n")
+                        conn.sendall(f"211 2 1 2 {selected}\r\n".encode())
+                        if selected == "local.test":
+                            self.assertEqual(reader.readline(), b"ARTICLE 1\r\n")
+                            conn.sendall(f"220 {number} <returned@example.invalid>\r\nbody\r\n.\r\n".encode())
+                        conn.shutdown(socket.SHUT_WR)
+                        if selected != "local.test":
+                            self.assertIn(reader.readline(), (b"QUIT\r\n", b""))
+                        output, err = proc.communicate(timeout=5)
+                    reply = json.loads(output)
+                    self.assertEqual(proc.returncode, expected, (reply, err))
+                    if expected:
+                        self.assertNotIn("text", reply)
+
 
 
 class EndpointValidation(unittest.TestCase):

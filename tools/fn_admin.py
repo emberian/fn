@@ -1425,15 +1425,28 @@ def cmd_article(args: argparse.Namespace) -> int:
             ok, g_status = nntp_reader_status(reader, "GROUP", 211)
             if not ok:
                 return emit({"outcome": "refused", "status": g_status}, args.json)
+            selection = g_status.encode("latin-1").split()
+            if (len(selection) < 5 or not all(field.isdigit() for field in selection[1:4])
+                    or selection[4] != group.encode("utf-8")):
+                raise WireError("GROUP reply does not identify the selected group")
         sock.sendall(f"{verb} {target}\r\n".encode("utf-8"))
         ok, status = nntp_reader_status(reader, verb, 221 if args.head else 220)
         if not ok:
             return emit({"outcome": "refused", "status": status}, args.json)
+        fields = status.encode("latin-1").split()
+        if (len(fields) < 3 or not fields[1].isdigit() or len(fields[2]) < 3
+                or not fields[2].startswith(b"<") or not fields[2].endswith(b">")):
+            raise WireError(f"incomplete article identity in {verb} reply")
+        num = int(fields[1])
+        mid_bytes = fields[2]
+        if target.startswith("<"):
+            if mid_bytes != target.encode("utf-8"):
+                raise WireError(f"{verb} returned a different Message-ID")
+        elif not (target.isascii() and target.isdecimal() and num == int(target)):
+            raise WireError(f"{verb} returned a different article number")
+        mid = mid_bytes.decode("latin-1")
         lines = nntp_read_multiline(reader)
         text = "\n".join(ln.decode("utf-8", errors="replace") for ln in lines)
-        parts = status.split(" ", 3)
-        mid = parts[2] if len(parts) >= 3 else ""
-        num = int(parts[1]) if len(parts) >= 2 and parts[1].isdigit() else 0
         if args.json:
             return emit(
                 {
