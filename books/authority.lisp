@@ -66,18 +66,9 @@
 (defconst *fn2-auth-reason-scope* (fn2-auth-reason-code scope))
 (defconst *fn2-auth-reason-stale-revision* (fn2-auth-reason-code stale-revision))
 (defconst *fn2-auth-reason-operation-reused* (fn2-auth-reason-code operation-reused))
-;; The grant schemas (authority-schema.lisp) and the port's right and scope
-;; codes (their enums' order; fn2-grant-current keys them as octets).
-(defconst *fn2-grants-sid* 17)
 ;; fn2-outcome's accepted code, as D's transaction writes it (txn.lisp's
 ;; *fn2-txn-outcome-accepted*, a later book)
 (defconst *fn2-auth-outcome-code-accepted* *fn2-txn-outcome-accepted*)
-(defconst *fn2-grant-current-sid* 18)
-(defconst *fn2-authority-head-sid* 19)
-(defconst *fn2-authority-right-consume* 0)
-(defconst *fn2-authority-right-read* 1)
-(defconst *fn2-authority-scope-own-consumers* 0)
-(defconst *fn2-authority-scope-stream* 1)
 (assert-event (and (equal (caddr *fn2-authority-right-layout*) '(:consume :read :append))
                    (equal (caddr *fn2-authority-scope-layout*) '(:own-consumers :stream))
                    (equal *fn2-authority-right-append* 2)))

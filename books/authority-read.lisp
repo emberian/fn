@@ -2,6 +2,15 @@
 (include-book "machines-c-read")
 (include-book "ordered")
 
+;; Published ledger schema IDs and right/scope wire enum codes.
+(defconst *fn2-grants-sid* 17)
+(defconst *fn2-grant-current-sid* 18)
+(defconst *fn2-authority-head-sid* 19)
+(defconst *fn2-authority-right-consume* 0)
+(defconst *fn2-authority-right-read* 1)
+(defconst *fn2-authority-scope-own-consumers* 0)
+(defconst *fn2-authority-scope-stream* 1)
+
 (defcost fn2-authority-principal-allows :child fn2-authority-principal-allows-children
  :answers (:ok :more :access :state) :bytes 4096
  :tables (fn2-core-reads fn2-core-ranges fn2-core-seeks fn2-core-succ-txns fn2-core-run-cursors fn2-core-run-paths fn2-core-fields)
