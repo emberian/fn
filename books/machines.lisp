@@ -3714,9 +3714,9 @@
 (defun fn2-machine-class-tally (classes acc)
   (declare (xargs :verify-guards nil))
   (if (atom classes) acc
-    (let ((hit (assoc (car classes) acc)))
+    (let ((hit (assoc-equal (car classes) acc)))
       (fn2-machine-class-tally (cdr classes)
-                               (put-assoc (car classes) (+ 1 (if hit (cdr hit) 0)) acc)))))
+                               (put-assoc-equal (car classes) (+ 1 (if hit (cdr hit) 0)) acc)))))
 (defun fn2-machine-class-pair-forms (classes)
   (declare (xargs :verify-guards nil))
   (if (atom classes) (mv nil nil)
