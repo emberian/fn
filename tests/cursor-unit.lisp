@@ -212,10 +212,10 @@
                        (fn2-cru-tab) (fn2-cru-tab) (fn2-csp-str (len (fn2-cs-source remote-text)))
                        (fn2-cru-tab) "4" (fn2-cru-tab) "Xref: fn2.invalid local.remote:1")))
          (seeds (append *fn2-cru-seeds* (list (list 9 remote-mid remote-line remote-text))))
-         (lines '("OVER <remote@example.invalid>" "ARTICLE <remote@example.invalid>"
+         (lines '("STAT <remote@example.invalid>" "OVER <remote@example.invalid>" "ARTICLE <remote@example.invalid>"
                   "GROUP local.test" "OVER <remote@example.invalid>" "HEAD <remote@example.invalid>"
                   "STAT" "GROUP local.remote" "OVER <remote@example.invalid>" "BODY <remote@example.invalid>"
-                  "OVER <missing@example.invalid>" "STAT" "QUIT"))
+                  "OVER <missing@example.invalid>" "STAT <missing@example.invalid>" "STAT" "QUIT"))
          (headers '("HDR Subject <remote@example.invalid>"
                     "XHDR Newsgroups <remote@example.invalid>"
                     "XPAT Subject <remote@example.invalid> rem*"
