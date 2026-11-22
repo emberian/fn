@@ -462,40 +462,13 @@ def local_closure(roots: list[str]) -> dict[str, list[str]]:
             continue
         closure[book] = local_include_books(book, book_source(book))
         pending.extend(closure[book])
+    certs.require_acyclic(closure)
     return closure
 
 
 def collect_book_sources(roots: list[str]) -> dict[str, str]:
     closure = local_closure(roots)
     return {f"{book}.lisp": digest(book_source(book)) for book in sorted(closure)}
-
-
-def cycle_through(closure: dict[str, list[str]]) -> list[str] | None:
-    """A local include-book cycle as a path, or None.  ACL2 cannot certify one."""
-    state: dict[str, int] = {}
-    for start in sorted(closure):
-        if state.get(start):
-            continue
-        # Iterative depth-first search: 1 marks a book on the current path.
-        stack: list[tuple[str, list[str]]] = [(start, list(closure[start]))]
-        state[start] = 1
-        path = [start]
-        while stack:
-            book, rest = stack[-1]
-            if not rest:
-                state[book] = 2
-                stack.pop()
-                path.pop()
-                continue
-            dependency = rest.pop()
-            if state.get(dependency) == 1:
-                return path[path.index(dependency):] + [dependency]
-            if state.get(dependency) == 2:
-                continue
-            state[dependency] = 1
-            path.append(dependency)
-            stack.append((dependency, list(closure[dependency])))
-    return None
 
 
 def dependency_graph(books: list[str]) -> dict[str, set[str]]:
@@ -508,9 +481,6 @@ def dependency_graph(books: list[str]) -> dict[str, set[str]]:
     requested book ends that search: whatever is below it is ordered before it.
     """
     closure = local_closure(books)
-    cycle = cycle_through(closure)
-    if cycle is not None:
-        raise ValueError("local include-book cycle: " + " -> ".join(cycle))
     requested = set(books)
     graph: dict[str, set[str]] = {}
     for book in books:
@@ -670,9 +640,6 @@ def with_dependencies(books: list[str]) -> list[str]:
     certificate would have covered.
     """
     closure = local_closure(books)
-    cycle = cycle_through(closure)
-    if cycle is not None:
-        raise ValueError("local include-book cycle: " + " -> ".join(cycle))
     ordered: list[str] = []
     placed: set[str] = set()
     for root in books:
@@ -1221,6 +1188,11 @@ def main() -> int:
                       "checks host files", file=sys.stderr)
             return 2
     if args.dry_run:
+        if not (args.closure or args.incremental):
+            try:
+                local_closure(args.books)
+            except ValueError as error:
+                parser.error(str(error))
         for book in args.books:
             print(book)
         return 0

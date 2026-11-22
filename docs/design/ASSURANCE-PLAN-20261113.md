@@ -79,8 +79,7 @@ committed event position. The native retry fixture requires the exact conflict
 receipt after restart and revocation and checks that FETCH at the evidence
 position returns no article. Forge certified the 140-book transaction
 declaration in `certify-20261122T203833Z-2508994`. The emitted callback and
-the native retry still await qualification. Accepted APPENDs also still owe
-their per-group numbers and receipt.
+the native retry still await qualification.
 
 On the same candidate, handing a withdrawn FETCH reply to the control
 connection rechecks read authority on the selected stream. The branch uses
@@ -94,6 +93,27 @@ for a byte-window descriptor. The structural lookup and update on foundation
 `efec77080` passed the 13-book `books/machines` record
 `certify-20261122T204135Z-2512179`. The joint index and its dependent
 callbacks need records on that foundation before the native gates can run.
+
+Candidate `e3239dd5c` carries each accepted APPEND's assigned group numbers
+and a 33-byte local receipt through the stored outcome into the reply. The
+client requires the receipt to name the returned committed event. The native
+crosspost fixture compares those numbers against the recovered article's Xref.
+The socket run and the generated callbacks' records are outstanding. The
+receipt identifies a local event. Checkpoint inclusion and power-loss recovery
+require separate evidence.
+
+The partitioned cursor facade passed its 150-book closure on isolated
+`f0da5ee89`. The combined candidate still needs a matching record. Its
+consumer fold and fixture have matching records through `tests/folds-unit`
+(key prefix `5c3beb2b`), covering stale CAS and sealed and overlay views.
+These fixtures do not open a server or restart a process.
+
+In the prior combined source the CNS and transaction callback books included
+each other. On `e3239dd5c` CNS acquires the shared grant-dependency definitions
+before the transaction callback loads. All eleven original generated events
+are preserved and the 296-book union of the two native roots is acyclic.
+The cache planner rejects the earlier circular source before looking up any
+certificates.
 
 ## Integration frontier — 2026-11-16 01:35 UTC
 
