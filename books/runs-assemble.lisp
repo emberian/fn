@@ -1313,7 +1313,10 @@
    (make-event
     (if (fn2-rs-assembled (w state))
         (er soft 'fn2-run-assemble "The runs are already assembled: ~x0." (fn2-rs-assembled (w state)))
-      (value `(table fn2-run-assembly :schemas ',(strip-cars (fn2-decl-rows :schema (w state))))))
+      ;; An including book can bring the same schemas into the world in a
+      ;; different order. Check membership on replay; dispatch uses schema IDs.
+      (value `(table fn2-run-assembly :schemas
+                     ',(merge-sort-lexorder (strip-cars (fn2-decl-rows :schema (w state)))))))
     :check-expansion t)
    (make-event (value (cons 'progn (fn2-ra-dispatch-events (fn2-decl-rows :schema (w state))))))
    (fn2-ra-shape-events)
