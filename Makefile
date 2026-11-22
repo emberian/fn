@@ -292,6 +292,11 @@ ACL2_BOOKS = \
   books/storage-block-io \
   books/machines-b \
   books/machines-c \
+  books/journal-record-body \
+  books/journal-members \
+  books/event-read-members \
+  books/event-frontier \
+  books/peer-history-member \
   books/journal-retention-state \
   books/journal-retention \
   books/journal-retention-core \
@@ -457,6 +462,7 @@ ACL2_BOOKS = \
   tests/commit-turn-frame-unit \
   tests/peer-view-read-unit \
   tests/peer-history-member-unit \
+  tests/protected-peer-fixture \
   tests/journal-members-unit \
   tests/commit-txn-unit \
   tests/commit-view-compatibility-unit \
