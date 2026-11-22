@@ -21,7 +21,7 @@
         (fn2-checkpoint-drain-credit-vector (+ class 1) journal-class windows fn2-pool))))
 (defun fn2-checkpoint-drain-credit-groups (rows vector)
  (declare (xargs :guard t :measure (nfix rows)))
- (if (zp rows) nil
+ (if (not (posp rows)) nil
   (cons (cons *fn2-pool-credit-drain* vector)
         (fn2-checkpoint-drain-credit-groups (- rows 1) vector))))
 ; Static startup overlap: protected working/drain quotas plus the actual
