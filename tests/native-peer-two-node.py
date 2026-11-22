@@ -6,6 +6,7 @@ control drives B's actual actor and checks its durable position after restart.
 """
 import argparse
 import json
+import os
 from contextlib import contextmanager, ExitStack
 from pathlib import Path
 import secrets
@@ -16,6 +17,7 @@ import tempfile
 import time
 from typing import NamedTuple
 
+from harness.launcher import require_launcher_sigkill
 from test_fn2_starttls_surface import Peer
 from test_fn2_user_surface import FN, LiveNode, ROOT, run_fn
 
@@ -47,8 +49,8 @@ class RunningNode(NamedTuple):
 
 
 @contextmanager
-def listen(directory, image, control, serve, label):
-    running = LiveNode(directory, image, label, serve)
+def listen(directory, image, control, serve, label, *, env=None):
+    running = LiveNode(directory, image, label, serve, env=env)
     try:
         port = int(running.wait_marker(b"LISTENING ").split()[1])
         assert running.wait_marker(b"LISTENING-LOCAL ") == f"LISTENING-LOCAL {control}".encode()
@@ -59,7 +61,7 @@ def listen(directory, image, control, serve, label):
 
 
 @contextmanager
-def node(directory, control, identity, *, counted=False, pull_ca=None):
+def node(directory, control, identity, *, counted=False, pull_ca=None, cut_env=None):
     directory.mkdir()
     cert, key = directory / "cert.pem", directory / "key.pem"
     subprocess.run(
@@ -77,10 +79,11 @@ def node(directory, control, identity, *, counted=False, pull_ca=None):
         "--history-revision", str(identity + 3),
     )
     image = directory / "node.img"
-    run_fn("init", str(image), "--size-mb", "8", "--group", GROUP, *origin)
+    fault_model = ("--storage-fault-model", "crash-only") if cut_env is not None else ()
+    run_fn("init", str(image), "--size-mb", "8", "--group", GROUP, *origin, *fault_model)
     serve = [
         "--host", "127.0.0.1", "--port", "0", "--control-sock", str(control),
-        "--tls-certificate", str(cert), "--tls-key", str(key), "--peering", *origin,
+        "--tls-certificate", str(cert), "--tls-key", str(key), "--peering", *origin, *fault_model,
     ]
     if counted:
         serve.extend([
@@ -90,7 +93,7 @@ def node(directory, control, identity, *, counted=False, pull_ca=None):
     if pull_ca is not None:
         serve.extend(["--peer-pull-slots", "1", "--peer-pull-ca-file", str(pull_ca),
                       "--peer-pull-tls-name", "localhost"])
-    with listen(directory, image, control, serve, "peer") as (port, running):
+    with listen(directory, image, control, serve, "peer", env=cut_env) as (port, running):
         yield RunningNode(port, cert, image, running, serve)
 
 
@@ -230,7 +233,8 @@ def catch_up(source, target, directory):
     print("PASS A counted READ carried the posted article's evidence", flush=True)
 
 
-def activate_receiver(control, target, remote_port, sender_auth, view, directory):
+def activate_receiver(control, target, remote_port, sender_auth, view, directory, *,
+                      allow_interrupted=False, marker="pull-activation.json"):
     assert target.command(b"ARTICLE " + MID).startswith(b"430 ")
     username, secret = sender_auth
     result = subprocess.run(
@@ -242,14 +246,20 @@ def activate_receiver(control, target, remote_port, sender_auth, view, directory
         input=secret + b"\n", cwd=ROOT, capture_output=True, timeout=90,
     )
     assert secret not in result.stdout + result.stderr
+    if allow_interrupted and result.returncode == 3:
+        activation = json.loads(result.stdout)
+        assert activation["outcome"] == "uncertain"
+        (directory / marker).write_text(json.dumps({"outcome": "uncertain"}) + "\n")
+        return None
     if result.returncode:
         raise BoundaryBlocked(f"B owner pull activation exited {result.returncode}")
     activation = json.loads(result.stdout)
     assert set(activation) == {"outcome", "reason", "attempt", "generation"}, activation
     assert activation["outcome"] == "accepted", activation
     assert 0 <= activation["attempt"] < 1 << 32 and 0 < activation["generation"] < 1 << 60, activation
-    (directory / "pull-activation.json").write_text(json.dumps(activation, sort_keys=True) + "\n")
+    (directory / marker).write_text(json.dumps(activation, sort_keys=True) + "\n")
     print("PASS B owner pull activation", flush=True)
+    return activation
 
 
 def peer_position(control, timeout=10):
@@ -297,13 +307,77 @@ def pull_and_reopen(directory, a, b, a_socket, b_socket, a_auth, b_auth):
         assert peer_position(b_socket) == position, "ordinary transit changed the peer checkpoint"
 
 
+def observer_environment(mode):
+    real = Path(os.environ["FN_ACL2"]).resolve(strict=True)
+    observer = ROOT / "tests/native-peer-cut-launcher.py"
+    if real.resolve() == observer.resolve() or not os.access(real, os.X_OK):
+        raise ValueError("FN_ACL2 must select a qualified real launcher")
+    return dict(os.environ, FN_ACL2=str(observer), FN2_TEST_REAL_ACL2=str(real),
+                FN2_TEST_PEER_CUT_MODE=mode)
+
+
+def observe_cut(process, activation, expected):
+    marker = process.wait_marker(b"PEER-POSITION-CUT ", seconds=40)
+    keys = ("attempt", "generation", "baseline", "published", "consumer",
+            "history", "incarnation", "view", "prior", "next")
+    fields = marker.split()[1:]
+    assert len(fields) == len(keys), marker
+    cut = dict(zip(keys, map(int, fields)))
+    if activation is not None:
+        assert (cut["attempt"], cut["generation"]) == (activation["attempt"], activation["generation"]), cut
+    assert cut["consumer"] == CONSUMER and cut["prior"] == 0, cut
+    assert (cut["history"], cut["incarnation"], cut["view"], cut["next"]) == (
+        expected["source_domain"], expected["source_incarnation"],
+        expected["source_view_version"], expected["position"],
+    ), cut
+    return cut
+
+
+def pull_with_death_cut(directory, a, b, b_socket, a_auth, b_auth, replay_env):
+    with logged_in(a.port, a.cert, a_auth, peer_role=True) as source:
+        cursor, view = register_at_sender(source, directory)
+        sender_page = read_sender_page(source, cursor, directory)
+    before = peer_position(b_socket)
+    assert before == {"outcome": "accepted", "reason": "none", "found": False}, before
+    with logged_in(b.port, b.cert, b_auth, peer_role=True) as target:
+        activation = activate_receiver(b_socket, target, a.port, a_auth, view, directory,
+                                       allow_interrupted=True, marker="cut-activation.json")
+    cut = observe_cut(b.process, activation, sender_page)
+    require_launcher_sigkill(b.process.proc)
+    assert cut["published"] > cut["baseline"], cut
+    (directory / "receipt-before-checkpoint-cut.json").write_text(json.dumps(cut, sort_keys=True) + "\n")
+
+    with listen(b.image.parent, b.image, b_socket, b.serve, "receipt-cut-replay", env=replay_env) as (port, running):
+        assert peer_position(b_socket) == before, "B recovered a checkpoint that had never been published"
+        with logged_in(port, b.cert, b_auth, peer_role=True) as target:
+            activation = activate_receiver(b_socket, target, a.port, a_auth, view, directory,
+                                           marker="replay-activation.json")
+        replay = observe_cut(running, activation, sender_page)
+        assert replay["baseline"] == replay["published"] == cut["published"], (cut, replay)
+        (directory / "receipt-retry-cut.json").write_text(json.dumps(replay, sort_keys=True) + "\n")
+
+        position = wait_for_progress(b_socket)
+        assert {field: position[field] for field in sender_page} == sender_page, position
+        (directory / "replayed-position.json").write_text(json.dumps(position, sort_keys=True) + "\n")
+        with logged_in(a.port, a.cert, a_auth, peer_role=True) as source:
+            with logged_in(port, b.cert, b_auth, peer_role=True) as target:
+                article_transit(source, target, directory)
+        assert peer_position(b_socket) == position, "ordinary transit changed the peer checkpoint"
+    print("PASS receipt-only process death, exact idempotent retry and checkpoint advance", flush=True)
+
+
 def main():
     args = argparse.ArgumentParser(description=__doc__)
     args.add_argument("--directory", type=Path, required=True)
     modes = args.add_mutually_exclusive_group()
     modes.add_argument("--article-only", action="store_true", help="run the ordinary transit control")
     modes.add_argument("--activate-pull", action="store_true", help="run B's actor and verify its durable position")
+    modes.add_argument("--cut-before-checkpoint", action="store_true",
+                       help="kill B after one item settles and before its checkpoint arm")
     options = args.parse_args()
+    cut_env = observer_environment("kill") if options.cut_before_checkpoint else None
+    replay_env = observer_environment("observe") if options.cut_before_checkpoint else None
+    pull = options.activate_pull or options.cut_before_checkpoint
     directory = options.directory.resolve()
     directory.mkdir(parents=True, exist_ok=False)
     try:
@@ -313,7 +387,7 @@ def main():
             a = cleanup.enter_context(node(directory / "a", a_socket, SENDER_ORIGIN,
                                            counted=not options.article_only))
             b = cleanup.enter_context(node(directory / "b", b_socket, 821,
-                                           pull_ca=a.cert if options.activate_pull else None))
+                                           pull_ca=a.cert if pull else None, cut_env=cut_env))
             assert a.port != b.port, (a.port, b.port)
             a_poster = provision(a_socket, "local-poster", [("append", GROUP)])
             a_reader = provision(a_socket, "from-b", [
@@ -325,7 +399,9 @@ def main():
             with logged_in(a.port, a.cert, a_poster) as poster:
                 post_one(poster)
             print("PASS durable NNTP POST on A", flush=True)
-            if options.activate_pull:
+            if options.cut_before_checkpoint:
+                pull_with_death_cut(directory, a, b, b_socket, a_reader, b_target, replay_env)
+            elif options.activate_pull:
                 pull_and_reopen(directory, a, b, a_socket, b_socket, a_reader, b_target)
             else:
                 with logged_in(b.port, b.cert, b_target, peer_role=True) as target:

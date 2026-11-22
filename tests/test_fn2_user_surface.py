@@ -30,7 +30,7 @@ FN = str(ROOT / "fn")
 
 
 class LiveNode:
-    def __init__(self, directory: Path, image: Path, label: str, extra_args: list[str]):
+    def __init__(self, directory: Path, image: Path, label: str, extra_args: list[str], *, env=None):
         self.log_path = directory / f"{label}.log"
         self.log = self.log_path.open("wb")
         self.pidfile = directory / f"{label}.node.pid"
@@ -40,6 +40,7 @@ class LiveNode:
         self.proc = subprocess.Popen(
             cmd,
             cwd=ROOT,
+            env=env,
             stdout=subprocess.PIPE,
             stderr=subprocess.STDOUT,
             start_new_session=True,
