@@ -624,7 +624,6 @@
       (declare (ignore principal epoch query-version))
       (mv code stream domain incarnation revision view version interpretation position a b c d e fn2-core)))
    (fn2-core-preserves fn2-peer-checkpoint-read (read-row budget fn2-core) :position 14 :rows nil)
-   (fn2-core-preserves fn2-peer-checkpoint-read (read-row budget fn2-core) :position 14 :rows nil)
    (in-theory (disable fn2-peer-import-start fn2-peer-import-copy-arg fn2-peer-import-copy-args
                        fn2-peer-import-build fn2-peer-import-declare fn2-peer-import-abort fn2-peer-import-release
                        fn2-peer-import-start-item fn2-peer-checkpoint-declare fn2-peer-checkpoint-key

@@ -22,7 +22,7 @@
           (result-off :u32) (result-end :u32)
           ;; The protected frame stays owned until all item settlements and
           ;; the separate receiver checkpoint settle.
-          (import-step :u8) (import-tx :u32) (import-ticket :u60) (import-keyed :bool) (import-absent :bool)
+          (import-step :u8) (import-tx :u32) (import-ticket :u60) (import-keyed :bool) (import-absent :bool) (import-clean :bool)
           (import-prev-a :u60) (import-prev-b :u60) (import-prev-c :u60) (import-prev-d :u60) (import-prev-e :u60)
           (import-revision :u60) (import-chain-off :u32) (import-next :u60) (import-more :bool)
           (import-first :u32) (import-count :u32) (import-off :u32) (import-left :u32) (import-last :u60)
@@ -47,6 +47,7 @@
          (:closing :connection-row :rx-range :tx-range) (:close-wait :connection-row :rx-range :tx-range)
          (:draining :connection-row :rx-range :tx-range))
  :budget (:bytes 32768 :steps 32 :descriptors 4)
+ :stops (:peer-import-uncertain)
  :capacity (fn2-peer-pull-capacity profile)
  :taken (:phase :stage :rows :connection-row
          :ranges ((:rx-range :slot rx-slot :gen rx-gen :class 0)
@@ -56,7 +57,7 @@
                 remote-view trust-ref family port w0 w1 w2 w3 timeout-ms)
          :clear (stream-len user-len pass-len cap-index cap-nonce connected protected dialog pos start tx-off op-gen
                  reply-status frame-len copied cursor-off cursor-len source-principal source-stream source-epoch source-version source-position
-                 import-step import-tx import-ticket import-keyed import-absent import-prev-a import-prev-b import-prev-c import-prev-d import-prev-e
+                 import-step import-tx import-ticket import-keyed import-absent import-clean import-prev-a import-prev-b import-prev-c import-prev-d import-prev-e
                  import-revision import-chain-off import-next import-more import-first import-count import-off import-left import-last
                  import-right import-own-step import-head import-grant import-anchor import-depend
                  resume-position result-off result-end timer cancel-issued pending stopped))
