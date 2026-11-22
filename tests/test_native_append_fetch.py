@@ -16,14 +16,20 @@ spec.loader.exec_module(campaign)
 
 class ExactFetch(unittest.TestCase):
     def test_status_binds_committed_occurrences_and_survives_restart(self):
-        articles = [dict(domain=712, position=41), dict(domain=712, position=42)]
-        reply = dict(outcome="accepted", domain=712, position=0, frontier=42, gap=0)
+        articles = [dict(domain=0, position=41), dict(domain=0, position=42)]
+        reply = dict(outcome="accepted", domain=0, position=0, frontier=42, gap=42)
         before = campaign.checked_status(reply, articles, 0)
         self.assertEqual(campaign.checked_status(dict(reply), articles, 0, before), before)
-        for field, value in (("outcome", "refused"), ("domain", 713),
-                             ("position", 1), ("frontier", 41), ("gap", 1)):
+        for field, value in (("outcome", "refused"), ("domain", 712),
+                             ("position", 1), ("frontier", 41), ("gap", 0)):
             with self.subTest(field=field), self.assertRaises(AssertionError):
                 campaign.checked_status(dict(reply, **{field: value}), articles, 0, before)
+        # Stable across a restart can still be wrong. The later commit has
+        # no addr entry, and a zero gap contradicts the unchanged position.
+        for wrong in (dict(reply, frontier=43, gap=43), dict(reply, gap=0)):
+            stable = {key: wrong[key] for key in before}
+            with self.subTest(wrong=wrong), self.assertRaises(AssertionError):
+                campaign.checked_status(wrong, articles, 0, stable)
 
     def test_init_timeout_stops_owned_child_and_grandchild(self):
         real_popen = subprocess.Popen
