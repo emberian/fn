@@ -204,9 +204,14 @@ ACL2_BOOKS = \
   books/xfnc-reply \
   books/conn-authinfo-read \
   books/conn-read-principal \
+  books/peer-pull-profile \
   books/peer-pull-kind \
   books/peer-pull-line \
   books/peer-pull-owner \
+  books/xfnc-request-layout \
+  books/peer-pull-request-encode \
+  tests/peer-pull-request-encode-unit \
+  books/peer-pull-reply \
   books/peer-pull-stage \
   books/assembly-callbacks-peer-pull \
   books/conn-kind \

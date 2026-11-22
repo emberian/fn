@@ -59,16 +59,17 @@
      (mv 0 0 0))
    (mv request discard timeout)))
 
-(defun fn2-xfnc-fc-row (conn fn2-core)
+(defun fn2-xfnc-private-fc-row (pull conn fn2-core)
  (declare (xargs :stobjs fn2-core :guard (fn2-core-wfp fn2-core)
                  :guard-hints (("Goal" :in-theory (enable fn2-core-wfp)))))
- (b* (((unless (eq (fn2-conn-snapshot-read-code conn fn2-core) :ok)) (mv :bounds 0))
+ (b* (((unless (eq (if pull (fn2-peer-pull-snapshot-read-code conn fn2-core)
+                            (fn2-conn-snapshot-read-code conn fn2-core)) :ok)) (mv :bounds 0))
       (slot (fn2-machine-slot conn fn2-core))
       ((mv first count)
        (stobj-let ((fn2-xfnc-config (fn2-core-xfnc-config fn2-core))) (first count)
          (if (< 0 (fn2-xfnc-config-rows fn2-xfnc-config))
-             (mv (nfix (fn2-xfnc-config-first-row 0 fn2-xfnc-config))
-                 (nfix (fn2-xfnc-config-row-count 0 fn2-xfnc-config)))
+             (mv (nfix (if pull (fn2-xfnc-config-pull-first 0 fn2-xfnc-config) (fn2-xfnc-config-first-row 0 fn2-xfnc-config)))
+                 (nfix (if pull (fn2-xfnc-config-pull-count 0 fn2-xfnc-config) (fn2-xfnc-config-row-count 0 fn2-xfnc-config))))
            (mv 0 0))
          (mv first count)))
       ((unless (and (natp slot) (< slot count))) (mv :bounds 0))
@@ -78,6 +79,21 @@
                          (fn2-digests (fn2-core-digests fn2-core))) (ok)
                (fn2-b3-ready row fn2-b3 fn2-digests) ok)))
    (if (and ready (<= (* 128 (+ 1 row)) (nfix field-rows))) (mv :ok row) (mv :bounds 0))))
+
+(defun fn2-xfnc-fc-row (conn fn2-core)
+ (declare (xargs :stobjs fn2-core :guard (fn2-core-wfp fn2-core)))
+ (fn2-xfnc-private-fc-row nil conn fn2-core))
+(defun fn2-peer-pull-fc-row (id fn2-core)
+ (declare (xargs :stobjs fn2-core :guard (fn2-core-wfp fn2-core)))
+ (fn2-xfnc-private-fc-row t id fn2-core))
+(defthm fn2-peer-pull-fc-row-natp
+ (natp (mv-nth 1 (fn2-peer-pull-fc-row id fn2-core))) :rule-classes :type-prescription)
+(defthm fn2-peer-pull-fc-row-ok-room
+ (implies (eq (mv-nth 0 (fn2-peer-pull-fc-row id fn2-core)) :ok)
+          (<= (+ (* 128 (mv-nth 1 (fn2-peer-pull-fc-row id fn2-core))) 128)
+              (nfix (fn2-fields-rows (fn2-core-fields fn2-core)))))
+ :rule-classes nil)
+(in-theory (disable fn2-peer-pull-fc-row))
 
 (defthm fn2-xfnc-fc-row-natp
  (natp (mv-nth 1 (fn2-xfnc-fc-row conn fn2-core))) :rule-classes :type-prescription)
