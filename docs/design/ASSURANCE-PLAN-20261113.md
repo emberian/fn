@@ -9,8 +9,9 @@ must be derived from that store and the actual served call/attachment graph.
 
 The next client milestone is two committed socket APPENDs, a STATUS before
 process death, the same STATUS after restart, and two byte-exact FETCHes.
-The application fixture requests the first Message-ID at the second
-position and requires a refusal. An NNTP reader opens the recovered group
+The application fixture requests each Message-ID at the other article's
+position and requires an `unavailable` refusal with no result bytes. Each matching pair
+must return the original bytes. An NNTP reader opens the recovered group
 and checks ARTICLE and HEAD against the same two FNCT submissions. The
 native run remains outstanding.
 
@@ -35,6 +36,21 @@ required to establish delivery. The separate cursor scenario checks that
 READ and WAIT honor the position in an issued token and that a fresh process
 redelivers the unacknowledged article after a durable ACK. That scenario
 still needs native execution. Consumer positions use domain 0 in this profile.
+
+Two state transitions still need independent recovery evidence.
+
+- **Consumer registration.** In candidate `41e577530`,
+  `fn2-cns-lookup-cursor` keys stored positions by consumer and epoch.
+  The principal selects the frontier, but two principals using the same
+  consumer and epoch address the same stored position. An absent lookup
+  also returns the caller's fallback position with `:ok`. The cursor lane
+  owns the key change, absent-registration refusal, and two-principal
+  restart control.
+- **APPEND retries.** The schema-9 key codec distinguishes caller-assigned
+  operation IDs from generated ones. Recovering a committed reply still
+  requires the durable principal, the original request identity and the
+  original Message-ID. The retry lane owns returning that result on a
+  fresh open and refusing a changed request under the same key.
 
 ## Integration frontier — 2026-11-16 01:35 UTC
 
