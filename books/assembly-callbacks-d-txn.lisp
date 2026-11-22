@@ -140,7 +140,7 @@
                     (natp ngroups) (<= ngroups *fn2-txn-groups-max*)))
        (mv :state 0 fn2-core))
       ((mv code row fn2-core)
-       (fn2-auth-xl-core tx (if first 4 *fn2-article-stream-sid*) 2
+       (fn2-auth-xl-core tx (if first *fn2-succ-addr-sid* *fn2-article-stream-sid*) 2
                          (if first principal article) (if first birth ordinal) 0 0 nil budget fn2-core))
       ((unless (eq code :ok)) (mv code 0 fn2-core))
       ((mv rc count stream number own)

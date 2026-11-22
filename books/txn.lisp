@@ -317,10 +317,14 @@
 (defcost fn2-txn-cancel-authorization :answers (:ok :more :access :unavailable)
   :bytes 4096 :tables (fn2-core-succ-txns fn2-core-run-cursors fn2-core-run-paths fn2-core-fields)
   :doc "Bind the exact live transfer to the receiver-local administrator or the accepted target's original submitter.")
-(defcost fn2-txn-cancel-snapshot :answers t :bytes 4608
+(defconst *fn2-txn-cancel-lookup-bytes* 4096)
+(defconst *fn2-txn-cancel-snapshot-bytes*
+  (+ *fn2-txn-cancel-lookup-bytes*
+     (* 2 (+ (* 2 *fn2-upload-digest-octets*) *fn2-article-location-hashes-max*))))
+(defcost fn2-txn-cancel-snapshot :answers t :bytes *fn2-txn-cancel-snapshot-bytes*
   :tables (fn2-core-succ-txns fn2-core-succ-slots fn2-core-run-cursors fn2-core-run-paths fn2-core-fields fn2-core-pool)
   :doc "Read the exact ARTICLE and retain the conditional replacement under its current version.")
-(defcost fn2-txn-cancel-placement :answers t :bytes 4096
+(defcost fn2-txn-cancel-placement :answers t :bytes *fn2-txn-cancel-lookup-bytes*
   :tables (fn2-core-succ-txns fn2-core-succ-slots fn2-core-run-cursors fn2-core-run-paths fn2-core-fields)
   :doc "Resolve one accepted target placement and declare its report and count change.")
 (defcost fn2-txn-wake-upload :tables (fn2-core-machines)
@@ -623,7 +627,7 @@
                        (:do (code birth placement)
                             (fn2-txn-cancel-snapshot row-slot row-cancel-target
                                                      (:read upload lslot) (:read upload lgen)
-                                                     :budget 4096 :owner upload))
+                                                     :budget *fn2-txn-cancel-lookup-bytes* :owner upload))
                        (:cond ((eq code :more) (:charge :bytes 8192 :steps *fn2-work-transition* :runnable t))
                               ((and (eq code :ok) (unsigned-byte-p 60 birth) (posp birth)
                                     (unsigned-byte-p 60 placement) (posp placement))
@@ -634,7 +638,7 @@
                       ((equal row-cancel-progress 2)
                        (:do (code count)
                             (fn2-txn-cancel-placement row-slot row-cancel-target row-cancel-placement
-                                                      row-cancel-birth row-cancel-index row-ngroups :budget 4096))
+                                                      row-cancel-birth row-cancel-index row-ngroups :budget *fn2-txn-cancel-lookup-bytes*))
                        (:cond ((eq code :more) (:charge :bytes 8192 :steps *fn2-work-transition* :runnable t))
                               ((and (eq code :ok)
                                     (unsigned-byte-p 8 count) (< count *fn2-txn-groups-max*)
