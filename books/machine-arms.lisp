@@ -1420,6 +1420,9 @@
                 :rule-classes (:rewrite ,@(fn2-arms-ok-rule-classes call outs k (+ k (len outs)) hyps))
                 :hints (("Goal" :in-theory (e/d (,name ,(fn2-columns-sym ok "-OF-TUPLE"))
                                                 (,ok ,(fn2-columns-sym ok "-OPEN") (:executable-counterpart tau-system)
+                                                 ;; The recognizer still reasons about natural indices
+                                                 ;; without splitting every path on NATP's definition.
+                                                 (:definition natp)
                                                  ,@(if ubp-open nil '(unsigned-byte-p)) min nfix nth ,@(fn2-arms-shape-fns ins) ,@readers
                                                  ,@(remove-duplicates-eq callees)))
                          :do-not '(generalize fertilize eliminate-destructors))))))))
