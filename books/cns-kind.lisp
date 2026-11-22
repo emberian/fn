@@ -155,6 +155,11 @@
           ;; the consume check in progress at :check (AUTHORITY-20261105
           ;; section 4; fn2-cns-authority-allows' step, head and grant)
           (xstep :u8) (xhead :u60) (xgrant :u60)
+          ;; Retained from one exact address entry. MEMBER-STREAM is the
+          ;; active ordinal, independent of the overview stream in ISTREAM.
+          (member-first :u60) (member-count :u60) (member-ordinal :u60)
+          (member-stream :u60) (member-head :u60)
+          (member-phase (:enum fn2-cns-member (:read :lookup :consume :consume-denied)))
           ;; a page's items (e-surface.md 4.1): IPOS the position through
           ;; which the walk is complete, the items' octets [IOFF, IOFF+ILEN)
           ;; of the control range; the entry in hand (its position, article,
@@ -208,6 +213,7 @@
          :clear (verb consumer epoch op to cstart page-limit wait-ms deadline address-principal address-tip page-head page-view-bound stored-view visible-ipos cpos version pub-frontier count more outcome
                  reason posted posted-word txn-gen upload-gen fstart fed feed-mode feed-discard stream outcome-checked name-off name-len append-numbers-len
                  ipos ioff ilen npos art istream itype alen lunit lepoch lalloc lgen lease revent routcome rcount rready cursor xrow xstep xhead xgrant
+                 member-first member-count member-ordinal member-stream member-head member-phase
                  sx wstep ticket stopped))
  :initial ((generation fn2-machine-initial-generation) (ready-prev *fn2-none*) (ready-next *fn2-none*)
            (ctl *fn2-none*) (edge *fn2-none*) (txn *fn2-none*) (tx-slot *fn2-none*) (upload *fn2-none*)

@@ -22,13 +22,13 @@
 (defun fn2-cns-range-test-drive (fuel calls endp id gen x fn2-core)
  (declare (xargs :stobjs fn2-core :verify-guards nil :measure (nfix fuel)))
  (if (zp fuel) (mv nil calls fn2-core)
-  (mv-let (code pos art stream fn2-core)
+  (mv-let (code pos art stream members fn2-core)
    (fn2-cns-range-test-next id gen x 7 101 fn2-core)
    (if (eq code :yield)
        (fn2-cns-range-test-drive (1- fuel) (1+ calls) endp id gen x fn2-core)
     (mv (and (if endp (and (eq code :end) (< 64 (1+ calls)) (<= (1+ calls) 300))
                (and (eq code :selected) (equal pos 100) (equal art 1000)
-                    (equal stream 3) (< 64 (1+ calls)) (<= (1+ calls) 300)))
+                    (equal stream 3) (equal members 0) (< 64 (1+ calls)) (<= (1+ calls) 300)))
              (fn2-cns-range-test-idle x fn2-core))
         (1+ calls) fn2-core)))))
 
@@ -86,9 +86,9 @@
       (mv-let (released fn2-core) (fn2-cns-range-release id gen x fn2-core)
        (mv (and (eq code :ok) (eq released :ok) (fn2-cns-range-test-idle x fn2-core)) fn2-core)))))
    (t
-    (mv-let (first pos art stream fn2-core)
+    (mv-let (first pos art stream members fn2-core)
      (fn2-cns-range-test-next id gen x 7 101 fn2-core)
-     (declare (ignore pos art stream))
+     (declare (ignore pos art stream members))
      (if (not (eq first :yield)) (mv nil fn2-core)
       (cond
        ((member-eq mode '(:complete :end))
