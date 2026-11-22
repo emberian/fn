@@ -49,9 +49,12 @@ def checked_status(reply, accepted_articles, registered_position, previous=None)
     """Check observed consumer state against actual committed APPEND receipts."""
     assert reply["outcome"] == "accepted", reply
     fields = {key: reply[key] for key in ("domain", "position", "frontier", "gap")}
+    assert accepted_articles, "STATUS requires a committed APPEND receipt"
+    frontier = max(article["position"] for article in accepted_articles)
     assert fields["position"] == registered_position, reply
-    assert all(fields["domain"] == article["domain"] and
-               fields["frontier"] >= article["position"] for article in accepted_articles), reply
+    assert all(fields["domain"] == article["domain"] for article in accepted_articles), reply
+    assert fields["frontier"] == frontier, reply
+    assert fields["gap"] == max(0, frontier - registered_position), reply
     if previous is not None:
         assert fields == previous, (fields, previous)
     return fields
@@ -144,6 +147,11 @@ def main():
             assert accepted["message_id"] == mid and accepted["position"] > 0, accepted
             accepted_articles.append(accepted)
         assert len({(a["domain"], a["position"]) for a in accepted_articles}) == len(submissions)
+        # A new registration commits consumer state without adding an addr
+        # entry. STATUS for inbox1 still ends at the latest APPEND receipt.
+        later = run_fn(directory, "register-later", "stream", "register", "--as", principal,
+                       "--consumer", "inbox2", "--start", "history", "--control-sock", control)
+        assert later["outcome"] == "accepted" and later["position"] == 0, later
         status_before = checked_status(
             run_fn(directory, "status-before", "stream", "status", "--as", principal,
                    "--consumer", "inbox1", "--control-sock", control),
