@@ -5,7 +5,27 @@ Owner: integration. Commissioned by ember on 2026-11-13, following the
 `fn2-squares` remains the obligation store. Reports and public-claim coverage
 must be derived from that store and the actual served call/attachment graph.
 
-## Current integration frontier — 2026-11-16 01:35 UTC
+## Native APPEND and restart — 2026-11-22
+
+The next client milestone is two committed socket APPENDs, a STATUS before
+process death, the same STATUS after restart, and two byte-exact FETCHes.
+The application fixture also requests the first Message-ID at the second
+position and requires a refusal. The native run remains outstanding.
+
+Upstream `f1050d7f1` fixes the schema check that stopped application loading.
+The production assembly and its reversed-import fixture passed on Forge.
+Adding a schema produced a checked expansion mismatch at the assembly table.
+The fixture's 44-book closure reused 43 parents in the final record
+`certify-20261122T032527Z-1553111`. Application source `50c6ea6bd` has a
+different served assembly and needs its own downstream certificates.
+
+On that application source, the accepted APPEND reply in `books/cns.lisp`
+encodes a zero-length Message-ID. The client decodes that field and the
+fixture requires the committed article's ID. The reply path must carry the
+accepted ID from the transaction through encoding. Consumer positions use
+domain 0 in this profile.
+
+## Integration frontier — 2026-11-16 01:35 UTC
 
 Upstream `6a83d2220` integrates the column-generator compilation/proof repair.
 Its exact generator/mixed-field fixture closure is record-qualified at four
