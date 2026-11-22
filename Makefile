@@ -270,6 +270,7 @@ ACL2_BOOKS = \
   books/ops-heads \
   books/ops-semantic-steps \
   books/ordered \
+  books/overview-mid-span \
   books/outcome-class \
   books/overlay \
   books/origin \
