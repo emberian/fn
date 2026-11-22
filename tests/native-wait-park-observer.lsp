@@ -1,16 +1,22 @@
 ;;; Test-only observation of the post-turn world. Never changes a core decision.
 (in-package "ACL2")
 
+;; The production Darwin adapter uses getpeereid, which omits the PID.
+#+darwin
+(sb-alien:define-alien-routine ("getsockopt" %fn2-test-wait-getsockopt) sb-alien:int
+  (fd sb-alien:int) (level sb-alien:int) (option sb-alien:int)
+  (value sb-sys:system-area-pointer) (length sb-sys:system-area-pointer))
+
 (defun fn2-test-wait-peer-pid (fd)
-  ;; Existing native getsockopt binding. These diagnostic fields are not
-  ;; supplied to admission or used for authentication.
+  ;; These diagnostic fields never reach admission or authentication.
   (sb-alien:with-alien ((cred (array sb-alien:int 3))
                         (length sb-alien:unsigned-int #+linux 12 #+darwin 4))
     (multiple-value-bind (result errno)
         (fn2-native-syscall
-         (%fn2-native-getsockopt fd #+linux 1 #+darwin 0 #+linux 17 #+darwin 2
-                                (sb-alien:alien-sap cred)
-                                (sb-alien:alien-sap (sb-alien:addr length))))
+         (#+linux %fn2-native-getsockopt #+darwin %fn2-test-wait-getsockopt
+          fd #+linux 1 #+darwin 0 #+linux 17 #+darwin 2
+          (sb-alien:alien-sap cred)
+          (sb-alien:alien-sap (sb-alien:addr length))))
       (declare (ignore errno))
       (let ((pid (and (zerop result)
                       (= length #+linux 12 #+darwin 4)
