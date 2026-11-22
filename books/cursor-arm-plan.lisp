@@ -22,6 +22,8 @@
 (include-book "cursor-kind")
 (include-book "source-manifest-entry")
 (include-book "overview-mid-span")
+(include-book "authority-read")
+(include-book "conn-read-principal")
 (fn2-book-layer :d)
 
 (defconst *fn2-cursor-overview-sid* 3)
@@ -853,6 +855,67 @@
     :accept (:ok))
    (:set (done 1) (roff 0) (update *fn2-cursor-update-none*))
    (:goto hand))
+  ;; The primary row can retain a directory/overview entry while the grant
+  ;; decision resumes on the secondary row. A denied candidate is never sent.
+  (group-authorize :on-refusal ((:stop :machine-phase))
+   (:let x (+ 1 (* 2 row-slot)))
+   (:do (pc principal)
+        (fn2-conn-read-principal row-conn row-conn-gen id row-generation)
+    :accept (:ok :public :access :state)
+    :why ":public is the no-authority profile; invalid or denied connection binding is invisible")
+   (:do (rc) (fn2-read-release x)
+    :when (and (not (eq pc :ok)) (< 0 row-check-step)) :else (:ok) :accept (:ok))
+   (:do (ac step head grant)
+        (fn2-authority-principal-allows x principal *fn2-authority-right-read* *fn2-authority-scope-stream*
+                                       row-check-group row-check-step row-check-head row-check-grant
+                                       *fn2-cursor-step-budget*)
+    :when (eq pc :ok) :else ((if (eq pc :public) :ok :access) 0 0 0)
+    :accept (:ok :access :state :more)
+    :why ":more carries exact reader progress; other non-ok results hide the candidate")
+   (:if (eq ac :more)
+        ((:set (check-step step) (check-head head) (check-grant grant))
+         (:charge :bytes 4096 :steps *fn2-work-transition* :runnable t))
+        ((:let check row-group-check)
+         (:set (group-check *fn2-cursor-group-check-none*) (check-step 0) (check-head 0) (check-grant 0))
+         (:cond
+          ((equal check *fn2-cursor-group-check-member*)
+           (:if (eq ac :ok)
+                ((:do (vc a) (fn2-read-value (* 2 row-slot) *fn2-overview-entry-field-article*)
+                  :accept (:ok :stale) :why ":stale: retry the membership after a concurrent range update")
+                 (:if (eq vc :stale)
+                      ((:set (lo row-next)) (:goto range))
+                      ((:set (have (if (equal a row-spin) 2 0)))
+                       (:charge :bytes 4096 :steps *fn2-work-transition* :runnable t))))
+                ((:set (have 0)) (:charge :bytes 4096 :steps *fn2-work-transition* :runnable t))))
+          ((equal check *fn2-cursor-group-check-list*)
+           (:let variant (fn2-cursor-list-variant row-k0 row-a0))
+           (:if (not (eq ac :ok))
+                ((:do (tc) (fn2-cursor-keep-prefix row-lat row-tx-slot row-tx-gen
+                                  :okind row-conn-kind :oslot row-conn :ogen row-conn-gen)
+                  :accept (:ok))
+                 (:charge :bytes 4096 :steps *fn2-work-transition* :runnable t))
+                ((:if (or (equal variant *fn2-cursor-list-newsgroups*)
+                          (equal variant *fn2-cursor-list-subscriptions*))
+                      ((:do (tc) (fn2-cursor-tail variant 0 0 0 0 row-tx-slot row-tx-gen
+                                       :okind row-conn-kind :oslot row-conn :ogen row-conn-gen)
+                        :accept (:ok))
+                       (:set (seen 1)) (:charge :bytes 6144 :steps *fn2-work-transition* :runnable t))
+                      ((:set (have 1) (seen 1))
+                       (:charge :bytes 4096 :steps *fn2-work-transition* :runnable t))))))
+          ((equal check *fn2-cursor-group-check-news*)
+           (:if (eq ac :ok) ((:set (have 1))) ())
+           (:charge :bytes 4096 :steps *fn2-work-transition* :runnable t))
+          ((eq ac :ok)
+           (:set (group-checked 1))
+           (:charge :bytes 4096 :steps *fn2-work-transition* :runnable t))
+          (t (:do (rc) (fn2-cursor-reset row-tx-slot row-tx-gen
+                                        :okind row-conn-kind :oslot row-conn :ogen row-conn-gen)
+               :accept (:ok))
+             (:set (reply (fn2-cursor-reply-of row-tag
+                            (if (and (equal check *fn2-cursor-group-check-selection*)
+                                     (equal row-k0 *fn2-cursor-arg-span*))
+                                :no-group :no-group-selected))))
+             (:goto refuse))))))
   ;; The overview range at the pinned view. The Message-ID fallback
   ;; uses the full composite key range after checking the selected group.
   (range :on-refusal ((:stop :machine-phase))
@@ -890,7 +953,8 @@
       :case (((:ok) (:do (vc g) (fn2-read-value (* 2 row-slot) *fn2-groups-entry-field-group*) :accept (:ok))
                     (:do (fc v) (fn2-read-frontier) :accept (:ok))
                     (:do (rc) (fn2-read-release (* 2 row-slot)) :accept (:ok))
-                    (:set (sel g) (spin v) (step 2))
+                    (:set (sel g) (spin v) (step 2)
+                          (group-check *fn2-cursor-group-check-selection*) (check-group g))
                     (:charge :bytes 4096 :steps *fn2-work-transition* :runnable t))
              ((:more) (:charge :bytes 4096 :steps *fn2-work-transition* :runnable t))
              ((:absent) (:do (rc) (fn2-read-release (* 2 row-slot)) :accept (:ok))
@@ -1047,7 +1111,8 @@
   (lg-found :on-refusal ((:stop :machine-phase))
      (:do (fc v) (fn2-read-frontier) :accept (:ok))
      (:do (rc) (fn2-read-release (* 2 row-slot)) :accept (:ok))
-     (:set (sel row-group) (spin v) (step 2))
+     (:set (sel row-group) (spin v) (step 2)
+           (group-check *fn2-cursor-group-check-selection*) (check-group row-group))
      (:charge :bytes 256 :steps *fn2-work-transition* :runnable t))
   ;; LIST ACTIVE, ACTIVE.TIMES, COUNTS, NEWSGROUPS, SUBSCRIPTIONS: the 215
   ;; line after TX's key area, then the group directory scanned in name order
@@ -1081,16 +1146,10 @@
                                                      row-rx-slot row-rx-gen row-tx-slot row-tx-gen
                                                      :okind row-conn-kind :oslot row-conn :ogen row-conn-gen)
                :accept (:ok))
-              (:if (not keep)
-                   ((:charge :bytes 4096 :steps *fn2-work-transition* :runnable t))
-                   ((:if (or (equal v *fn2-cursor-list-newsgroups*)
-                             (equal v *fn2-cursor-list-subscriptions*))
-                         ((:do (tc) (fn2-cursor-tail v 0 0 0 0 row-tx-slot row-tx-gen
-                                                     :okind row-conn-kind :oslot row-conn :ogen row-conn-gen)
-                           :accept (:ok))
-                          (:set (seen 1)) (:charge :bytes 4096 :steps *fn2-work-transition* :runnable t))
-                         ((:set (lgroup g) (have 1) (seen 1))
-                          (:charge :bytes 4096 :steps *fn2-work-transition* :runnable t))))))
+              (:if keep
+                   ((:set (group-check *fn2-cursor-group-check-list*) (check-group g) (lgroup g) (lat at)))
+                   ())
+              (:charge :bytes 4096 :steps *fn2-work-transition* :runnable t))
              ((:end) (:goto end-list))
              (:otherwise (:stop :machine-phase)))))
   ;; the group's counts through the second read row: its key, then the lookup
@@ -1167,7 +1226,8 @@
                                                         :okind row-conn-kind :oslot row-conn :ogen row-conn-gen)
                :accept (:ok))
               (:if keep
-                   ((:set (lgroup g) (lo 1) (hi *fn2-none*) (have 1))
+                   ((:set (lgroup g) (lo 1) (hi *fn2-none*)
+                          (group-check *fn2-cursor-group-check-news*) (check-group g))
                     (:charge :bytes 4096 :steps *fn2-work-transition* :runnable t))
                    ((:charge :bytes 4096 :steps *fn2-work-transition* :runnable t))))
              ((:end) (:goto end-list))
@@ -1244,13 +1304,20 @@
              :why ":stale: restart the range if its matching row changed")
            (:cond ((eq pc :stale) (:set (lo row-next)) (:goto range))
                   ((and (equal a row-spin) (or (equal row-pin 0) (<= (nfix pos) row-pin)))
-                   (:set (have 2)) (:charge :steps *fn2-work-transition* :runnable t))
+                   (:do (gc g) (fn2-read-value (* 2 row-slot) *fn2-overview-entry-field-group*)
+                    :accept (:ok :stale) :why ":stale: retry before choosing a membership")
+                   (:if (eq gc :ok)
+                        ((:set (group-check *fn2-cursor-group-check-member*) (check-group g))
+                         (:charge :steps *fn2-work-transition* :runnable t))
+                        ((:set (lo row-next)) (:goto range))))
                   (t (:set (have 0)) (:charge :steps *fn2-work-transition* :runnable t))))))
   ;; the line copied into TX with room left for the 220/221/222/223 line, then
   ;; its Message-ID found and the reply rendered (5-step :do chain auto-split)
   (render-single :on-refusal ((:stop :machine-phase))
      (:let at (nfix (fn2-cursor-tx-fill row-tx-slot)))
-     (:do (vc n) (fn2-read-value (* 2 row-slot) *fn2-overview-entry-field-number*) :accept (:ok))
+     (:do (vc n) (fn2-read-value (* 2 row-slot) *fn2-overview-entry-field-number*)
+      :accept (:ok)
+      :case (((:stale) (:set (lo row-next)) (:goto range))))
      (:do (oc copied left) (fn2-read-octets (* 2 row-slot) *fn2-overview-entry-field-line* 0
                                             (min 4096 (nfix (- (nfix (fn2-cursor-tx-cap row-tx-slot))
                                                                (+ at *fn2-cursor-single-room*))))
@@ -1575,6 +1642,7 @@
    (:next :seek) (:charge :bytes 512 :steps *fn2-work-transition* :runnable t))
   (:seek :on-refusal ((:stop :machine-phase))
    (:cond
+    ((not (equal row-group-check *fn2-cursor-group-check-none*)) (:goto group-authorize))
     ;; LIST ACTIVE, ACTIVE.TIMES, COUNTS, NEWSGROUPS, SUBSCRIPTIONS: the group directory
     ((equal row-tag *fn2-nntp-command-list*) (:goto list-start))
     ((equal row-tag *fn2-nntp-command-newgroups*) (:goto newgroups-done))
@@ -1602,6 +1670,9 @@
      (:goto seek-identity))
     ;; every other command reads the selected group
     ((equal row-group 0) (:set (reply (fn2-cursor-reply-of row-tag :no-group-selected))) (:goto refuse))
+    ((equal row-group-checked 0)
+     (:set (group-check *fn2-cursor-group-check-range*) (check-group row-group))
+     (:charge :steps *fn2-work-transition* :runnable t))
     ;; HDR/XHDR [range]: the current article when no second argument
     ((fn2-cursor-hdr-p row-tag)
      (:if (not (equal row-k1 *fn2-cursor-arg-range*))
@@ -1628,6 +1699,7 @@
   ;; row TX has no room for)
   (:render :on-refusal ((:stop :machine-phase))
    (:cond
+    ((not (equal row-group-check *fn2-cursor-group-check-none*)) (:goto group-authorize))
     ((equal row-step 20) (:goto art-key))
     ((equal row-step 21) (:goto art-lookup))
     ((equal row-step 22) (:goto art-lease))
