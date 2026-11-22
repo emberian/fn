@@ -49,7 +49,7 @@
       (assert (fn2-b-control-pass r))))
 ;; B5 scenarios 15 (damage vs tail) and 16 (independent witness), tiny profile,
   ;; both barrier modes; every case runs the real recovery and RECOVERY.
-  (labels ((post (kind frontier budget faults) (list (fn2-cm-profile kind t t frontier 0 budget) faults 16))
+  (labels ((post (kind frontier budget faults) (list (fn2-cm-profile kind t t frontier 0 budget) faults (* 5 *fn2-storage-extent-units*)))
            (run15 (mode cut faults)
              (let ((r (fn2-b-one *fn2-profile-tiny* 20261028 cut :none mode 2 (post :broad nil 1 faults))))
                (unless (eq (fn2-b-result-status r) :pass)

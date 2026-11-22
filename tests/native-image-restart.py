@@ -16,6 +16,8 @@ import subprocess
 import time
 
 ROOT = Path(__file__).resolve().parents[1]
+PAYLOAD_EXTENT_BYTES = 64 * 1024
+ARTICLE_MAX = 96 * 1024
 
 
 class Node:
@@ -163,19 +165,21 @@ def main():
     directory = args.directory or ROOT / "build" / f"image-restart-{time.time_ns()}"
     directory.mkdir(parents=True, exist_ok=False)
     image = directory / "node.img"
-    node = Node(directory, image, "init", "init")
+    env = dict(os.environ, FN2_ARTICLE_MAX=str(ARTICLE_MAX))
+    node = Node(directory, image, "init", "init", env=env)
     try:
         node.marker(b"INITIALIZED")
         assert node.proc.wait(timeout=30) == 0
     finally:
         node.close()
     articles = []
-    for mid, n in ((b"<small@example.invalid>", 100), (b"<big@example.invalid>", 250)):
+    for mid, n in ((b"<small@example.invalid>", 100), (b"<big@example.invalid>", 1100)):
         head, whole = article(mid, n)
         articles.append((mid, head, whole))
-    assert len(wire(articles[0][2])) < 12288 < len(wire(articles[1][2]))
+    assert len(wire(articles[0][2])) < PAYLOAD_EXTENT_BYTES
+    assert PAYLOAD_EXTENT_BYTES < len(wire(articles[1][2])) <= ARTICLE_MAX
     ctl_sock = Path(f"/tmp/fn2-nir-{os.getpid()}-{time.time_ns()}.sock")
-    node = Node(directory, image, "serve", "post", control_sock=ctl_sock)
+    node = Node(directory, image, "serve", "post", control_sock=ctl_sock, env=env)
     try:
         port = int(node.marker(b"LISTENING ").split()[1])
         node.marker(b"LISTENING-LOCAL ")
@@ -210,7 +214,7 @@ def main():
                 p.unlink()
     previous = None
     for label in ("restart-1", "restart-2"):
-        node = Node(directory, image, "serve", label)
+        node = Node(directory, image, "serve", label, env=env)
         try:
             port = int(node.marker(b"LISTENING ").split()[1])
             actual = read_back(port, articles)
