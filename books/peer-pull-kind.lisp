@@ -2,7 +2,7 @@
 ; taken together. Only the private range holds the two remote login tokens.
 (in-package "ACL2")
 (include-book "machine-arms")
-(include-book "machines-a-costs")
+(include-book "machines-a")
 (include-book "peer-pull-profile")
 (fn2-book-layer :e)
 

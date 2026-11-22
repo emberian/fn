@@ -5,6 +5,7 @@
 (include-book "run-geometry")
 (include-book "format-check")
 (include-book "pool-ranges")
+(include-book "pool-zero")
 (fn2-book-layer :c)
 
 
@@ -51,19 +52,6 @@
       (<= (* (+ 1 w) *fn2-run-restart-capacity*) (fn2-run-restarts-rows fn2-run-restarts))
       (<= (+ (fn2-run-writers-fields w fn2-run-writers) *fn2-run-writer-fields*)
           (fn2-fields-rows fn2-fields))))
-
-; Zero bytes [pos, end) of the writer's page, at most BUDGET of them. The
-; pool's append discipline (write at or below fill) holds because the page
-; is filled in order from zero.
-(defun fn2-run-zero (n slot gen pos okind oslot ogen fn2-pool)
- (declare (xargs :stobjs fn2-pool :measure (nfix n)
-  :guard (and (fn2-pool-wfp fn2-pool) (natp n) (natp pos))))
- (if (zp n) (mv :ok fn2-pool)
-  (mv-let (code fn2-pool) (fn2-pool-write slot gen pos 0 okind oslot ogen fn2-pool)
-   (if (eq code :ok) (fn2-run-zero (- n 1) slot gen (+ 1 pos) okind oslot ogen fn2-pool)
-    (mv code fn2-pool)))))
-(fn2-pool-preserves fn2-run-zero (n slot gen pos okind oslot ogen fn2-pool) :position 1
- :hints (("Goal" :in-theory (disable fn2-pool-rows))))
 
 ; Open a page in a fresh C-owned workspace: reset it, zero the header area and
 ; the reserved C header region. Entries start at *fn2-run-entries-base*.

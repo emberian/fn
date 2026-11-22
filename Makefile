@@ -206,7 +206,10 @@ ACL2_BOOKS = \
   books/conn-read-principal \
   books/peer-pull-profile \
   books/peer-pull-kind \
+  tests/peer-pull-admission-unit \
+  books/pool-zero \
   books/peer-pull-line \
+  tests/peer-pull-line-unit \
   books/peer-pull-owner \
   books/xfnc-request-layout \
   books/peer-pull-request-encode \
