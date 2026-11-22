@@ -4,6 +4,7 @@
 (in-package "ACL2")
 (include-book "peer-pull-stage")
 (include-book "peer-pull-reply-pool")
+(include-book "xfnc-batch-codec")
 (include-book "peer-pull-request-encode")
 (include-book "xfnc-request")
 (include-book "xfnc-ops")
@@ -94,8 +95,7 @@
              ;; One item per page bounds the reciprocal import transaction.
              ;; A subsequent READ continues from its settled checkpoint.
              (fn2-peer-pull-encode-read base row private pg cursor-off cursor-len 1
-               (nfix (- (min (nfix (fn2-fnct-cap rx fn2-pool)) (+ *fn2-pool-block-bytes* *fn2-fnct-trailer-octets*))
-                        *fn2-fnct-overhead*))
+               (fn2-xfnc-batch-read-budget cursor-len (fn2-fnct-cap rx fn2-pool))
                tx tg kind id generation fn2-fields fn2-digests fn2-b3 fn2-pool))
             (t (mv :state fn2-fields fn2-digests fn2-b3 fn2-pool)))
       (mv code fn2-core))))

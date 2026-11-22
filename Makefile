@@ -207,6 +207,8 @@ ACL2_BOOKS = \
   books/peer-pull-profile \
   books/peer-pull-kind \
   tests/peer-pull-admission-unit \
+  books/peer-pull-plan \
+  tests/peer-pull-cancel-unit \
   books/pool-zero \
   books/peer-pull-line \
   tests/peer-pull-line-unit \
@@ -214,6 +216,9 @@ ACL2_BOOKS = \
   books/xfnc-request-layout \
   books/peer-pull-request-encode \
   tests/peer-pull-request-encode-unit \
+  tests/peer-pull-budget-unit \
+  books/peer-pull-reply-pool \
+  tests/peer-pull-reply-pool-unit \
   books/peer-pull-reply \
   books/peer-pull-import \
   books/peer-pull-stage \
