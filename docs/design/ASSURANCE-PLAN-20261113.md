@@ -65,6 +65,21 @@ recovery scenarios remain open on that source.
   receipt after revocation. The ordinary `fnct` gate keeps the earlier
   process-death cut before any revocation. Both executions are outstanding.
 
+Candidate `041a4890c` corrects two branches that those campaigns exercise.
+FETCH previously jumped from `:check` to `:read` before checking the bound
+principal’s consume grant. It now passes through the shared consume decision
+before checking read authority on the selected stream. The cursor fixture
+holds the article, principal and stream read grant fixed while revoking and
+restoring consume. The source control distinguished the old and new branches.
+The assembled callback and native cursor campaign remain outstanding.
+
+On the conflict APPEND branch the schema-9 writer now passes the required
+operation-key source. The transaction declaration has a current 140-book
+Forge record, `certify-20261122T202141Z-2490157`. Its emitted write operation
+still needs the assembled TXN callback. The native retry fixture checks both
+the stored conflict and the effect of reusing its operation ID with changed
+input after revocation and restart.
+
 ## Integration frontier — 2026-11-16 01:35 UTC
 
 Upstream `6a83d2220` integrates the column-generator compilation/proof repair.
