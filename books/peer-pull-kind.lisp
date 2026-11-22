@@ -1,0 +1,56 @@
+; A bounded, operator-activated outbound connection. Its three ranges are
+; taken together. Only the private range holds the two remote login tokens.
+(in-package "ACL2")
+(include-book "machine-arms")
+(include-book "machines-a-costs")
+(include-book "profile")
+(include-book "article-limit-text")
+(fn2-book-layer :e)
+
+(defun fn2-peer-pull-capacity (profile)
+ (declare (xargs :guard t))
+ (let ((n (fn2-profile-get :peer-pull-slots profile)))
+   (if (unsigned-byte-p 32 n) n 0)))
+
+(defun fn2-peer-pull-profile-from-text (profile slots)
+ (declare (xargs :guard t))
+ (if slots (put-assoc-equal :peer-pull-slots (fn2-article-limit-decimal slots)
+                            (if (alistp profile) profile nil))
+   profile))
+
+(defmachine fn2-peer-pull
+ :phases (:free :stage :connect :connecting :line :write-command :send
+          :upgrade :upgrading :authenticated :closing :close-wait :draining :retired)
+ :fields ((ctl :link) (ctl-gen :u60) (local-principal :u60) (stream :u60)
+          (remote-history :u60) (remote-incarnation :u60) (remote-view :u60) (trust-ref :u60)
+          (family :u8) (port :u16) (w0 :u32) (w1 :u32) (w2 :u32) (w3 :u32) (timeout-ms :u32)
+          (rx-slot :link) (rx-gen :u60) (tx-slot :link) (tx-gen :u60)
+          (secret-slot :link) (secret-gen :u60) (stream-len :u16) (user-len :u16) (pass-len :u16)
+          (cap-index :u32) (cap-nonce :u32) (connected :bool) (protected :bool)
+          (dialog (:enum fn2-pull-dialog (:greeting :starttls :user :pass)))
+          (pos :u32) (start :u32) (tx-off :u32) (op :link) (op-gen :u60)
+          (timer :bool) (cancel-issued :bool) (pending :u32) (stopped :bool) (next-free :link))
+ :holds ((:stage :connection-row :rx-range :tx-range)
+         (:connect :connection-row :rx-range :tx-range) (:connecting :connection-row :rx-range :tx-range)
+         (:line :connection-row :rx-range :tx-range) (:write-command :connection-row :rx-range :tx-range)
+         (:send :connection-row :rx-range :tx-range) (:upgrade :connection-row :rx-range :tx-range)
+         (:upgrading :connection-row :rx-range :tx-range) (:authenticated :connection-row :rx-range :tx-range)
+         (:closing :connection-row :rx-range :tx-range) (:close-wait :connection-row :rx-range :tx-range)
+         (:draining :connection-row :rx-range :tx-range))
+ :budget (:bytes 4096 :steps 32 :descriptors 4)
+ :capacity (fn2-peer-pull-capacity profile)
+ :taken (:phase :stage :rows :connection-row
+         :ranges ((:rx-range :slot rx-slot :gen rx-gen :class 0)
+                  (:tx-range :slot tx-slot :gen tx-gen :class 0)
+                  (:tx-range :slot secret-slot :gen secret-gen :class 0))
+         :copy (ctl ctl-gen principal-slot account-ref local-principal stream remote-history remote-incarnation
+                remote-view trust-ref family port w0 w1 w2 w3 timeout-ms)
+         :clear (stream-len user-len pass-len cap-index cap-nonce connected protected dialog pos start tx-off op-gen
+                 timer cancel-issued pending stopped))
+ :initial ((generation fn2-machine-initial-generation) (ready-prev *fn2-none*) (ready-next *fn2-none*)
+           (rx-slot *fn2-none*) (tx-slot *fn2-none*) (secret-slot *fn2-none*) (account-ref *fn2-none*)
+           (op *fn2-none*) (ctl *fn2-none*) (next-free fn2-machine-initial-next-free))
+ :arms ((:free) (:stage) (:connect) (:connecting) (:line) (:write-command) (:send) (:upgrade)
+        (:upgrading) (:authenticated) (:closing) (:close-wait) (:draining) (:retired))
+ :observes ((:connect-result) (:receive-result) (:send-result) (:tls-result) (:cancel-result) (:close-result)))
+(defmachine-registry fn2-peer-pull)

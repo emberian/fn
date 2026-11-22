@@ -14,6 +14,7 @@
 (include-book "cns-kind")
 (include-book "authority-kind")
 (include-book "boot-kind")
+(include-book "peer-pull-kind")
 (fn2-machine-index-events)
 (in-theory (disable fn2-machine-local-id))
 (fn2-machine-directory-events)
