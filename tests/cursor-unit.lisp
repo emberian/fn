@@ -151,9 +151,7 @@
   (not (equal (fn2-cursor-spec-wire *fn2-cru-groups* *fn2-cru-seeds* *fn2-cru-pinned-lines*)
               (fn2-cursor-spec-wire *fn2-cru-groups* (append *fn2-cru-seeds* *fn2-cru-later*) *fn2-cru-pinned-lines*))))
 
-;; Served = reference (D6 1/n-b) over the transcript less OVER <id> (the
-;; article's number in the group comes with the transaction's address
-;; entries), whole and in small chunks.
+;; Served = reference over the full transcript, whole and in small chunks.
 (defconst *fn2-cru-served-lines* *fn2-cru-lines*)
 (defun fn2-cursor-test-served (sizes)
   (declare (xargs :verify-guards nil))
@@ -200,6 +198,44 @@
 (assert-event (fn2-cursor-test-pinned-served))
 (assert-event (fn2-cursor-test-list-pages))
 (assert-event (fn2-cursor-test-list-pages-negative))
+
+;; A readable group ID outside the old 1..8 fallback, including another
+;; selected group and no group. The selected number is used only in its group.
+(defun fn2-cursor-test-reader-id-fallback ()
+  (declare (xargs :verify-guards nil))
+  (let* ((groups (append *fn2-cru-groups* '(("local.remote" . 9))))
+         (profile (put-assoc-equal :groups groups *fn2-cursor-profile*))
+         (remote-mid "<remote@example.invalid>")
+         (remote-text (update-nth 4 "Newsgroups: local.remote" (fn2-cru-text "remote" remote-mid)))
+         (remote-line (fn2-csp-cat (list "remote" (fn2-cru-tab) "a@example.invalid"
+                       (fn2-cru-tab) "Fri, 30 Oct 2026 12:00:00 +0000" (fn2-cru-tab) remote-mid
+                       (fn2-cru-tab) (fn2-cru-tab) (fn2-csp-str (len (fn2-cs-source remote-text)))
+                       (fn2-cru-tab) "4" (fn2-cru-tab) "Xref: fn2.invalid local.remote:1")))
+         (seeds (append *fn2-cru-seeds* (list (list 9 remote-mid remote-line remote-text))))
+         (lines '("OVER <remote@example.invalid>" "ARTICLE <remote@example.invalid>"
+                  "GROUP local.test" "OVER <remote@example.invalid>" "HEAD <remote@example.invalid>"
+                  "STAT" "GROUP local.remote" "OVER <remote@example.invalid>" "BODY <remote@example.invalid>"
+                  "OVER <missing@example.invalid>" "STAT" "QUIT"))
+         (headers '("HDR Subject <remote@example.invalid>"
+                    "XHDR Newsgroups <remote@example.invalid>"
+                    "XPAT Subject <remote@example.invalid> rem*"
+                    "XPAT Subject <remote@example.invalid> nope*"
+                    "HDR Subject <missing@example.invalid>" "QUIT"))
+         (header-wire (fn2-cw-crlf-octets
+                       '("200 fn-nntp experimental server ready"
+                         "225 headers follow" "0 remote" "."
+                         "221 header follows" "<remote@example.invalid> local.remote" "."
+                         "221 header follows" "<remote@example.invalid> remote" "."
+                         "221 header follows" "."
+                         "430 no article with that message-id" "205 closing connection")))
+         (got (fn2-cursor-serve-run profile seeds nil
+                (list (list (fn2-cw-crlf-octets lines) '(7 3 1))
+                      (list (fn2-cw-crlf-octets headers) '(2 5)))))
+         (want (list (fn2-cursor-spec-wire groups seeds lines) header-wire)))
+    (and (eq (nth 0 got) :ok) (equal (nth 3 got) 0)
+         (or (equal (nth 2 got) want)
+             (cw "reader id served ~x0~%want ~x1~%" (nth 2 got) want)))))
+(assert-event (fn2-cursor-test-reader-id-fallback))
 
 ;; End-to-end POST -> GROUP / OVER / OVER <id> / ARTICLE / HEAD / BODY without
 ;; seeding: the posted source is stored and read back through B's block read,

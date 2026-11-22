@@ -853,15 +853,22 @@
     :accept (:ok))
    (:set (done 1) (roff 0) (update *fn2-cursor-update-none*))
    (:goto hand))
-  ;; the overview range of the selected group over numbers [LO, HI], at the view
+  ;; The overview range at the pinned view. The Message-ID fallback
+  ;; uses the full composite key range after checking the selected group.
   (range :on-refusal ((:stop :machine-phase))
    (:let g (if (equal row-step 8) row-lgroup row-group))
-   (:do (c1) (fn2-read-key (* 2 row-slot) ':lo 0 g) :accept (:ok))
+   (:let all-groups (and (equal row-step 8) (equal g 0)))
+   (:do (c1) (fn2-read-key (* 2 row-slot) ':lo 0 (if all-groups 1 g)) :accept (:ok))
    (:do (c2) (fn2-read-key (* 2 row-slot) ':lo 1 row-lo) :accept (:ok))
-   (:do (c3) (fn2-read-key (* 2 row-slot) ':hi 0 g) :accept (:ok))
-   (:do (c4) (fn2-read-key (* 2 row-slot) ':hi 1 row-hi) :accept (:ok))
+   (:do (c3) (fn2-read-key (* 2 row-slot) ':hi 0 (if all-groups *fn2-u60-max* g)) :accept (:ok))
+   (:do (c4) (fn2-read-key (* 2 row-slot) ':hi 1
+                           (if (equal row-step 8) *fn2-u60-max* row-hi))
+    :accept (:ok))
+   ;; Positions increase within each group only. The global fallback checks
+   ;; the matching row against the pin instead of stopping on a newer row.
    (:do (c5) (fn2-read-range (* 2 row-slot) *fn2-cursor-overview-sid*
-                             *fn2-overview-entry-field-position* (if (equal row-pin 0) *fn2-none* row-pin))
+                             *fn2-overview-entry-field-position*
+                             (if all-groups *fn2-u60-max* (if (equal row-pin 0) *fn2-none* row-pin)))
     :accept (:ok))
    (:set (have 0) (next row-lo))
    (:next :render) (:charge :bytes 256 :steps *fn2-work-transition* :runnable t))
@@ -952,7 +959,7 @@
                                                                 :okind row-conn-kind :oslot row-conn :ogen row-conn-gen)
                                       :accept (:ok))
                                      (:set (done 1) (roff 0) (update *fn2-cursor-update-none*)) (:goto hand))
-                                    ((:set (spin article) (found 0) (lgroup (if (< 0 row-group) row-group 1))
+                                    ((:set (spin article) (found 0) (lgroup row-group)
                                            (lo 1) (hi *fn2-none*) (step 8))
                                      (:if (or (fn2-cursor-overview-p row-tag) (fn2-cursor-hdr-p row-tag))
                                           ((:goto over-head))
@@ -981,12 +988,12 @@
      (:set (lo row-found) (hi row-found) (step 7)) (:goto range))
   (end-match :on-refusal ((:stop :machine-phase))
      (:do (rc) (fn2-read-release (* 2 row-slot)) :accept (:ok))
-     (:if (< row-found 8)
-          ((:set (lgroup (+ 1 row-found)) (found (+ 1 row-found)) (lo 1) (hi *fn2-none*)) (:goto range))
-          ((:do (xc) (fn2-cursor-reset row-tx-slot row-tx-gen :okind row-conn-kind :oslot row-conn :ogen row-conn-gen)
+     (:if (equal row-lgroup 0)
+          ((:do (xc) (fn2-cursor-reset row-tx-slot row-tx-gen
+                                        :okind row-conn-kind :oslot row-conn :ogen row-conn-gen)
             :accept (:ok))
-           (:set (reply (fn2-cursor-reply-of row-tag :no-msgid)))
-           (:goto refuse))))
+           (:set (reply (fn2-cursor-reply-of row-tag :no-msgid))) (:goto refuse))
+          ((:set (lgroup 0) (lo 1) (hi *fn2-none*)) (:goto range))))
   (end-single :on-refusal ((:stop :machine-phase))
      ;; NEXT/LAST: no next or previous article; STAT n: no such number;
      ;; STAT: the current article is gone
@@ -1237,9 +1244,14 @@
       :why ":stale: the range restarts at the next number")
      (:if (not (eq vc :ok))
           ((:set (lo row-next)) (:goto range))
-          ((:if (equal a row-spin)
-                ((:set (have 2)) (:charge :steps *fn2-work-transition* :runnable t))
-                ((:set (have 0)) (:charge :steps *fn2-work-transition* :runnable t))))))
+          ((:do (pc pos) (fn2-read-value (* 2 row-slot) *fn2-overview-entry-field-position*)
+             :when (and (equal a row-spin) (equal row-lgroup 0))
+             :else (:ok 0) :accept (:ok :stale)
+             :why ":stale: restart the range if its matching row changed")
+           (:cond ((eq pc :stale) (:set (lo row-next)) (:goto range))
+                  ((and (equal a row-spin) (or (equal row-pin 0) (<= (nfix pos) row-pin)))
+                   (:set (have 2)) (:charge :steps *fn2-work-transition* :runnable t))
+                  (t (:set (have 0)) (:charge :steps *fn2-work-transition* :runnable t))))))
   ;; the line copied into TX with room left for the 220/221/222/223 line, then
   ;; its Message-ID found and the reply rendered (5-step :do chain auto-split)
   (render-single :on-refusal ((:stop :machine-phase))
@@ -1507,7 +1519,7 @@
       :why ":stale: the range restarts at the next number")
      (:if (eq vc :ok)
           ((:if (equal row-lpos 0)
-                ((:do (c1) (fn2-cursor-put-line 0 (if (and (equal row-step 8) (not (equal row-lgroup row-group)))
+                ((:do (c1) (fn2-cursor-put-line 0 (if (and (equal row-step 8) (equal row-lgroup 0))
                                                       0 (nfix n))
                                                 row-tx-slot row-tx-gen
                                                 :okind row-conn-kind :oslot row-conn :ogen row-conn-gen)
@@ -1632,6 +1644,12 @@
     ((equal row-step 27) (:goto art-bind))
     ((equal row-tag *fn2-nntp-command-list*) (:goto list-render))
     ((equal row-tag *fn2-nntp-command-newnews*) (:goto newnews-render))
+    ;; An identified overview/header reply contains one matching row.
+    ((and (equal row-step 8) (equal row-seen 1) (equal row-have 0))
+     (:if (< (nfix (fn2-cursor-tx-cap row-tx-slot))
+             (+ 3 (nfix (fn2-cursor-tx-fill row-tx-slot))))
+          ((:set (roff 0)) (:goto hand))
+          ((:goto end-list))))
     ((equal row-have 0) (:goto render-step))
     ;; LAST's walk: remember the number, step on
     ((equal row-step 6) (:goto render-walk))
