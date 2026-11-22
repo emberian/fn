@@ -514,6 +514,7 @@ ACL2_BOOKS = \
   tests/resources-unit \
   tests/ribbon-unit \
   tests/runs-assembly \
+  tests/runs-assembly-import-order \
   tests/runs-unit \
   tests/sched-unit \
   tests/scribe-scenario \
