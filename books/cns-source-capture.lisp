@@ -152,7 +152,17 @@
 (fn2-cns-source-frames fn2-cns-source-capture-read-children
  (s cns cnsgen ctl ctlgen request x lslot lgen kind fn2-cns-sources fn2-reads fn2-run-installed fn2-fields fn2-pool)
  (fn2-cns-sources fn2-reads fn2-run-installed fn2-fields fn2-pool)
- ((fn2-cns-sources 2) (fn2-pool 3))
+ ((fn2-cns-sources 2))
+ ((fn2-columns-call-guard-hint 'fn2-cns-source-capture-read-children
+   '(fn2-pool-workspace-code fn2-rd-entry-row fn2-read-value-children
+     fn2-read-octets-children fn2-run-zero fn2-pool-reset fn2-pool-data-length
+     fn2-cns-capture-descriptor-p fn2-pool-mrefp unsigned-byte-p posp
+     ceiling nfix (:rewrite ceiling-to-floor))
+   '(fn2-cns-source-capture-read-children) world)))
+(fn2-cns-source-frames fn2-cns-source-capture-read-children
+ (s cns cnsgen ctl ctlgen request x lslot lgen kind fn2-cns-sources fn2-reads fn2-run-installed fn2-fields fn2-pool)
+ (fn2-cns-sources fn2-reads fn2-run-installed fn2-fields fn2-pool)
+ ((fn2-pool 3))
  ((fn2-columns-call-guard-hint 'fn2-cns-source-capture-read-children
    '(fn2-pool-workspace-code fn2-rd-entry-row fn2-read-value-children
      fn2-read-octets-children fn2-run-zero fn2-pool-reset fn2-pool-data-length
