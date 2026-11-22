@@ -36,8 +36,8 @@ exec env -i HOME="$HOME" USER="${USER:-fn}" PATH="$PATH" LANG=C \
  case "$2" in
  host)
    sh host/build-blake3.sh build/lib
-   python3 tools/host_check.py --load
-   python3 tools/interface_emit.py --check
+   # Both public check commands dispatch to this same guarded host load.
+   python3 tools/served_host_check.py --load
    ;;
  fnct)
    python3 tests/native-append-fetch-restart.py --directory "$run_directory"
