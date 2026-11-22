@@ -96,7 +96,7 @@ def retry_controls(directory, phase, control, principal, submission, original):
         candidate.write_bytes(changed)
         refused = append_file(directory, f"{phase}-{name}", control, principal, 71,
                               candidate, expected=1)
-        assert (refused["outcome"], refused["reason"]) == ("refused", "operation-reused"), refused
+        assert refused == {"outcome": "refused", "reason": "operation-reused", "op": 71}, refused
 
 
 def race_appends(directory, label, control, principal, operation, candidates):
@@ -253,7 +253,7 @@ def main():
                 assert len(winners) == 1, replies
                 winner = winners[0]
                 accepted, loser = replies[winner], replies[1 - winner]
-                assert (loser["outcome"], loser["reason"]) == ("refused", "operation-reused"), replies
+                assert loser == {"outcome": "refused", "reason": "operation-reused", "op": operation}, replies
                 submissions[index] = candidates[winner]
                 mid = submissions[index][0]
                 losing_submission = candidates[1 - winner]
@@ -275,7 +275,11 @@ def main():
             conflict_path = directory / "conflicting-body.article"
             conflict_path.write_bytes(crossing_article(submissions[0][0], body_variant=1))
             conflict = append_file(directory, "record-conflict", control, principal, 73, conflict_path, expected=1)
-            assert (conflict["outcome"], conflict["reason"]) == ("refused", "conflict"), conflict
+            assert (conflict["outcome"], conflict["reason"], conflict["evidence"]) == (
+                "refused", "conflict", "committed"), conflict
+            assert conflict["message_id"] == submissions[0][0], conflict
+            assert conflict["domain"] == accepted_articles[0]["domain"], conflict
+            assert conflict["position"] > max(article["position"] for article in accepted_articles), conflict
             checked_status(run_fn(directory, "status-after-retries", "stream", "status", "--as", principal,
                                   "--consumer", "inbox1", "--control-sock", control),
                            accepted_articles, registered["position"], status_before)
@@ -287,10 +291,12 @@ def main():
         node.kill()
         cut = "SIGKILL after both committed APPEND receipts"
         if args.durable_retry:
-            cut += " and the accepted APPEND revocation"
+            cut += ", the committed conflict receipt, and the accepted APPEND revocation"
         receipts.append(dict(phase="accepted", node_pid=node.node_pid, exit=node.proc.returncode,
                              article_octets=[len(article) for _, article, _ in submissions],
                              append_receipts=accepted_articles, cut=cut))
+        if args.durable_retry:
+            receipts[-1]["conflict_receipt"] = conflict
     finally:
         node.close()
     assert read_genesis(image) == genesis, "APPEND changed immutable genesis bytes"
@@ -310,16 +316,21 @@ def main():
             assert replayed == conflict, (replayed, conflict)
             reused = append_file(directory, "reopened-conflict-changed", control, principal, 73,
                                  submissions[0][2], expected=1)
-            assert (reused["outcome"], reused["reason"]) == ("refused", "operation-reused"), reused
+            assert reused == {"outcome": "refused", "reason": "operation-reused", "op": 73}, reused
             winner = append_file(directory, "reopened-different-mid-winner", control, principal, 72,
                                  submissions[1][2])
             assert winner == accepted_articles[1], (winner, accepted_articles[1])
             loser = append_file(directory, "reopened-different-mid-loser", control, principal, 72,
                                 losing_submission[2], expected=1)
-            assert (loser["outcome"], loser["reason"]) == ("refused", "operation-reused"), loser
+            assert loser == {"outcome": "refused", "reason": "operation-reused", "op": 72}, loser
             fresh_path = directory / "reopened-identity.article"
             denied = append_file(directory, "reopened-new-operation", control, principal, 74, fresh_path, expected=1)
-            assert (denied["outcome"], denied["reason"]) == ("refused", "refused"), denied
+            assert denied == {"outcome": "refused", "reason": "refused", "op": 74}, denied
+            evidence_only = run_fn(directory, "reopened-fetch-conflict", "stream", "fetch",
+                                   conflict["message_id"], "--as", principal,
+                                   "--domain", conflict["domain"], "--position", conflict["position"],
+                                   "--control-sock", control, expected=1)
+            assert evidence_only == {"outcome": "refused", "reason": "unavailable"}, evidence_only
             check_retry_occurrences(directory, "reopened", control, principal, registered, accepted_articles)
             checked_status(run_fn(directory, "status-after-reopened-retries", "stream", "status", "--as",
                                   principal, "--consumer", "inbox1", "--control-sock", control),
