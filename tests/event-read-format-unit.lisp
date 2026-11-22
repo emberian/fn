@@ -1,0 +1,120 @@
+; The writer's frames, copied into the reader's single owned I/O buffer.
+; Completion delivery is modeled here. No disk or allocator lease is exercised.
+(in-package "ACL2")
+(include-book "../books/event-read-verify")
+(include-book "../books/pool-ranges")
+(local (in-theory (disable fn2-event-read-format-core fn2-event-read-format-phase-p
+                           fn2-event-read-phase fn2-event-read-rows)))
+
+(defmacro fn2-erfu-pack (kind role slot gen off)
+ `(fn2-commit-pack ,kind ,role 0 ,slot ,gen ,off scratch sg 1 2 3 1 1 1
+                   7 0 1 1 2 3 4 5 fn2-fields fn2-pool))
+
+(defmacro fn2-erfu-format (kind slot gen off len)
+ `(fn2-format-drive 100 0 ,kind t ,slot ,gen ,off ,len 0 7 0 1 512
+       fn2-fc fn2-fc-context fn2-b3 fn2-fields fn2-pool fn2-digests))
+
+(defun fn2-erfu-drive (fuel budget fn2-event-read fn2-journal-members fn2-fc fn2-fc-context
+                       fn2-b3 fn2-fields fn2-pool fn2-digests)
+ (declare (xargs :stobjs (fn2-event-read fn2-journal-members fn2-fc fn2-fc-context
+                          fn2-b3 fn2-fields fn2-pool fn2-digests)
+                 :verify-guards nil :measure (nfix fuel)))
+ (b* (((unless (and (posp fuel) (fn2-event-read-format-phase-p (fn2-event-read-phase 0 fn2-event-read))))
+       (mv :stop fn2-event-read fn2-journal-members fn2-fc fn2-fc-context fn2-b3 fn2-fields fn2-pool fn2-digests))
+      ((mv code fn2-event-read fn2-journal-members fn2-fc fn2-fc-context fn2-b3 fn2-fields fn2-pool fn2-digests)
+       (fn2-event-read-format-core budget 137 136 fn2-event-read fn2-journal-members fn2-fc fn2-fc-context
+        fn2-b3 fn2-fields fn2-pool fn2-digests)))
+  (if (and (member-eq code '(:ok :more))
+           (fn2-event-read-format-phase-p (fn2-event-read-phase 0 fn2-event-read)))
+      (fn2-erfu-drive (- fuel 1) budget fn2-event-read fn2-journal-members fn2-fc fn2-fc-context
+                      fn2-b3 fn2-fields fn2-pool fn2-digests)
+    (mv code fn2-event-read fn2-journal-members fn2-fc fn2-fc-context fn2-b3 fn2-fields fn2-pool fn2-digests))))
+
+(defun fn2-erfu-run (replacep fn2-event-read fn2-journal-members fn2-fc fn2-fc-context
+                     fn2-b3 fn2-fields fn2-pool fn2-digests)
+ (declare (xargs :stobjs (fn2-event-read fn2-journal-members fn2-fc fn2-fc-context
+                          fn2-b3 fn2-fields fn2-pool fn2-digests) :verify-guards nil))
+ (b* ((fn2-event-read (fn2-event-read-init 1 fn2-event-read))
+      (fn2-journal-members (fn2-journal-members-init 1 fn2-journal-members))
+      (fn2-fc (fn2-fc-init 1 fn2-fc)) (fn2-fc-context (fn2-fc-context-init 1 fn2-fc-context))
+      (fn2-b3 (fn2-b3-table-init 1 fn2-b3)) (fn2-fields (fn2-fields-init 128 fn2-fields))
+      (fn2-digests (fn2-digests-init 138 fn2-digests))
+      (fn2-pool (fn2-pool-init '((4 . 4096)) 1 100 fn2-pool))
+      ((mv a records rg fn2-pool) (fn2-pool-reserve 0 7 0 1 fn2-pool))
+      ((mv b seal sg1 fn2-pool) (fn2-pool-reserve 0 7 0 1 fn2-pool))
+      ((mv c scratch sg fn2-pool) (fn2-pool-reserve 0 7 0 1 fn2-pool))
+      ((mv d buf bg fn2-pool) (fn2-pool-reserve 0 7 0 1 fn2-pool))
+      ((mv zr fn2-pool) (fn2-run-zero 4096 records rg 0 7 0 1 fn2-pool))
+      ((mv zs fn2-pool) (fn2-run-zero 4096 seal sg1 0 7 0 1 fn2-pool))
+      ((mv zw fn2-pool) (fn2-run-zero 128 scratch sg 0 7 0 1 fn2-pool))
+      ((mv rtag fn2-pool) (fn2-pool-write records rg *fn2-commit-frame-trailer* 1 7 0 1 fn2-pool))
+      ((mv stag fn2-pool) (fn2-pool-write seal sg1 *fn2-commit-frame-trailer* 1 7 0 1 fn2-pool))
+      ((mv rh roff fn2-fields fn2-pool) (fn2-erfu-pack :frame 1 records rg 0))
+      ((mv mh body fn2-fields fn2-pool) (fn2-erfu-pack :record-header 0 records rg roff))
+      ((mv mb mend fn2-fields fn2-pool) (fn2-erfu-pack :record 0 records rg body))
+      (fn2-fc-context (fn2-rec-context 0 1 1 2 3 1 126 136 127 4 5 fn2-fc-context))
+      ((mv rf fn2-fc fn2-b3 fn2-fields fn2-pool fn2-digests) (fn2-erfu-format :frame records rg 0 4096))
+      ((mv saved fn2-pool) (fn2-digest-store 32 125 scratch sg *fn2-commit-scratch-records* 7 0 1 fn2-digests fn2-pool))
+      ((mv sh soff fn2-fields fn2-pool) (fn2-erfu-pack :frame 2 seal sg1 0))
+      ((mv sb send fn2-fields fn2-pool) (fn2-erfu-pack :seal 2 seal sg1 soff))
+      (fn2-fc-context (fn2-rec-context 0 1 2 2 3 1 126 136 127 4 5 fn2-fc-context))
+      ((mv sem fn2-fc fn2-b3 fn2-fields fn2-pool fn2-digests) (fn2-erfu-format :seal seal sg1 soff (- send soff)))
+      (fn2-digests (fn2-digest-copy 137 125 fn2-digests))
+      ((mv sf fn2-fc fn2-b3 fn2-fields fn2-pool fn2-digests) (fn2-erfu-format :frame seal sg1 0 4096))
+      ; Retain a newly sealed physical frame with different payload under the same extent identity.
+      ((mv edit end2 fn2-fields fn2-pool)
+       (if replacep
+           (fn2-commit-pack :record-header 0 0 records rg roff scratch sg 1 2 3 1 1 1
+                            7 0 1 2 2 3 4 5 fn2-fields fn2-pool)
+         (mv :ok body fn2-fields fn2-pool)))
+      (fn2-fc-context (fn2-rec-context 0 1 1 2 3 1 126 136 127 4 5 fn2-fc-context))
+      ((mv resealed fn2-fc fn2-b3 fn2-fields fn2-pool fn2-digests)
+       (if replacep (fn2-erfu-format :frame records rg 0 4096)
+         (mv :ok fn2-fc fn2-b3 fn2-fields fn2-pool fn2-digests)))
+      ((mv scopy fn2-pool) (fn2-pool-copy-range seal sg1 0 buf bg 0 4096 7 0 1 fn2-pool))
+      (fn2-event-read (fn2-event-read-put 0 (phase *fn2-event-read-phase-wait-seal*) (token 1)
+        (owner-kind 7) (owner-slot 0) (owner-gen 1) (cut-commit 1) (cut-event 1)
+        (commit 1) (next-event 1) (extent 1) (epoch 2) (allocation 3) (first 1) (members 1)
+        (slot buf) (gen bg) (checker 0) (field-base 0) (pending 1) (op-slot 1) (op-gen 1)))
+      ((mv hseal fn2-event-read) (fn2-event-read-harvest 1 1 0 *fn2-event-read-result* *fn2-outcome-done* 0 4096 0 0 fn2-event-read))
+      ((mv v1 fn2-event-read fn2-journal-members fn2-fc fn2-fc-context fn2-b3 fn2-fields fn2-pool fn2-digests)
+       (fn2-erfu-drive 1400 17 fn2-event-read fn2-journal-members fn2-fc fn2-fc-context fn2-b3 fn2-fields fn2-pool fn2-digests))
+      (need-records (equal (fn2-event-read-phase 0 fn2-event-read) *fn2-event-read-phase-read-records*))
+      ((mv rcopy fn2-pool) (fn2-pool-copy-range records rg 0 buf bg 0 4096 7 0 1 fn2-pool))
+      (fn2-event-read (if need-records (fn2-event-read-put 0 (phase *fn2-event-read-phase-wait-records*)
+                      (pending 1) (op-slot 2) (op-gen 1)) fn2-event-read))
+      ((mv hrecords fn2-event-read) (fn2-event-read-harvest 2 1 0 *fn2-event-read-result* *fn2-outcome-done* 0 4096 0 0 fn2-event-read))
+      ((mv v2 fn2-event-read fn2-journal-members fn2-fc fn2-fc-context fn2-b3 fn2-fields fn2-pool fn2-digests)
+       (fn2-erfu-drive 1200 17 fn2-event-read fn2-journal-members fn2-fc fn2-fc-context fn2-b3 fn2-fields fn2-pool fn2-digests))
+      (phase (fn2-event-read-phase 0 fn2-event-read))
+      (checked (if replacep
+         (and (eq v2 :record-stream) (equal phase *fn2-event-read-phase-uncertain*)
+              (equal (fn2-journal-members-phase 0 fn2-journal-members) *fn2-journal-members-phase-idle*))
+         (and (eq v2 :ok) (equal phase *fn2-event-read-phase-members*)
+              (equal (fn2-journal-members-off 0 fn2-journal-members) roff)
+              (equal (fn2-journal-members-end 0 fn2-journal-members) (+ roff 3900))
+              (equal (fn2-journal-members-slot 0 fn2-journal-members) buf)
+              (equal (fn2-journal-members-gen 0 fn2-journal-members) bg))))
+      ((mv visit fn2-journal-members fn2-fields)
+       (fn2-journal-members-step 0 fn2-journal-members fn2-fields fn2-pool))
+      ((mv finish fn2-journal-members fn2-fields)
+       (fn2-journal-members-step 0 fn2-journal-members fn2-fields fn2-pool))
+      (leaf (if replacep (and (eq visit :state) (eq finish :state))
+              (and (eq visit :more) (eq finish :leaf)
+                   (equal (fn2-journal-members-start 0 fn2-journal-members) roff)
+                   (equal (fn2-journal-members-leaf-end 0 fn2-journal-members) mend)
+                   (equal (fn2-journal-members-event 0 fn2-journal-members) 1)))))
+  (mv (let ((outcomes (list a b c d zr zs zw rtag stag rh mh mb rf saved sh sb sem sf edit resealed scopy
+                              hseal v1 rcopy hrecords)))
+        (or (and (subsetp-eq outcomes '(:ok)) (equal body end2) need-records checked leaf)
+            (cw "Frame case ~x0 returned ~x1; reader ~x2, scanner ~x3.~%"
+                replacep outcomes (list v1 need-records v2 phase) (list visit finish leaf))))
+   fn2-event-read fn2-journal-members fn2-fc fn2-fc-context fn2-b3 fn2-fields fn2-pool fn2-digests)))
+
+(defun fn2-erfu-test (replacep)
+ (declare (xargs :verify-guards nil))
+ (fn2-run-with-local (fn2-event-read fn2-journal-members fn2-fc fn2-fc-context fn2-b3 fn2-fields fn2-pool fn2-digests)
+  (fn2-erfu-run replacep fn2-event-read fn2-journal-members fn2-fc fn2-fc-context fn2-b3 fn2-fields fn2-pool fn2-digests)))
+
+(assert-event (fn2-erfu-test nil))
+(assert-event (fn2-erfu-test t))
