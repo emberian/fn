@@ -136,14 +136,19 @@ def multiline(stream):
             return b"".join(lines)
 
 
-def read_back(port, articles):
+def read_back(port, articles, group="local.test", xrefs=None):
+    group = group.encode("ascii")
     sock, stream = connect(port)
     try:
-        sock.sendall(b"GROUP local.test\r\n")
-        assert stream.readline() == b"211 2 1 2 local.test\r\n"
+        sock.sendall(b"GROUP " + group + b"\r\n")
+        count = str(len(articles)).encode()
+        expected_group = b"211 " + count + b" 1 " + count + b" " + group + b"\r\n"
+        assert stream.readline() == expected_group
         transcript = bytearray()
         for number, (mid, head, whole) in enumerate(articles, 1):
-            xref = f"Xref: fn2.invalid local.test:{number}".encode()
+            pairs = xrefs[mid] if xrefs is not None else b" " + group + b":" + str(number).encode()
+            assert group + b":" + str(number).encode() in pairs.split(), (group, number, pairs)
+            xref = b"Xref: fn2.invalid" + pairs
             for verb, code, suffix, lines in ((b"ARTICLE", b"220", b"article follows", whole),
                                               (b"HEAD", b"221", b"headers follow", head)):
                 sock.sendall(verb + f" {number}\r\n".encode())
