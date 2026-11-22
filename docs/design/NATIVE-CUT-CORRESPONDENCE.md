@@ -47,7 +47,10 @@ refused because the selected single worker has not left that boundary yet.
 
 The consumer validates contiguous boundary ordinals, a final selected marker,
 and its slot/generation. It distinguishes before-submit, before-physical,
-after-physical, and before-terminal-post. It then calls the recovered existing
+after-physical, before-terminal-post, and after-terminal-post. For the last
+position, the final control record must be the first terminal for the exact
+slot and generation. The captured device return must account for its outcome,
+count and READ bytes. A native terminal post precedes executor harvest. It then calls the recovered existing
 `fn2-native-device-control-replay`, which runs the actual envelope transitions
 from the captured initialization/boot state, binds every submitted device job
 to the selected logical loan and Write bytes, and checks physical return/Post
@@ -85,8 +88,8 @@ capture, `FN2_TEST_DEVICE_BACKEND`, `FN2_TEST_DEVICE_BEFORE`, and
   ordinal, generation, missing-return, changed-image and partial-image controls.
 - Bind the exact run/image/source and immutable snapshots in the shared campaign.
 - Current inventory has 19 sites. The other 15 remain unmapped here, including
-  network, take/ack/post, TLS and COMPRESS. Their labels are not mapped to a
-  storage cut by default. Existing simulator take/post programs are separate.
+  network, take/ack, TLS and COMPRESS. The shared post site maps only for a
+  performed file READ, WRITE or FENCE with a matching physical return. Existing simulator take/post programs are separate.
 - The older envelope consumer refuses COMPRESS `:input-prefix` events. It must
   consume the actual corresponding core effect before a compressed run can pass;
   dropping the event or treating it as a no-op is not a repair.
