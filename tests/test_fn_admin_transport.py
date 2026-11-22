@@ -24,6 +24,26 @@ CURSOR = (ROOT / "tests/fixtures/consumer-position/five-field-v1.fncu").read_byt
 
 
 class DisconnectAfterRequest(unittest.TestCase):
+    def test_large_reply_is_read_in_bounded_blocks(self) -> None:
+        payload = bytes(range(256)) * 769
+        frame = fn_admin.fnct_seal(fn_admin.KIND_CNS_REPLY, payload)
+        source = io.BytesIO(frame)
+        with patch.object(fn_admin.socket, "socket") as sockets:
+            recv = sockets.return_value.recv
+            recv.side_effect = source.read
+            with fn_admin.ControlSession("unused.sock") as session:
+                self.assertEqual(session._recv_frame(), frame)
+            self.assertGreater(len(recv.call_args_list), 3)
+            self.assertLessEqual(max(call.args[0] for call in recv.call_args_list), 64 * 1024)
+
+    def test_unsupported_frame_version_stops_at_header(self) -> None:
+        with patch.object(fn_admin.socket, "socket") as sockets:
+            recv = sockets.return_value.recv
+            recv.return_value = b"FNCT\x02\x1c" + (1024).to_bytes(4, "big")
+            with fn_admin.ControlSession("unused.sock") as session, self.assertRaises(fn_admin.WireError):
+                session._recv_frame()
+            recv.assert_called_once_with(10)
+
     def test_transport_failure_boundary(self) -> None:
         append = ["stream", "append", "--group", "local.test", "--body", "hello", "--op", "17"]
         cases = [
