@@ -57,6 +57,9 @@
           (tx-off :u32) (after (:enum fn2-conn-after (:command :article-input :upgrading :closing :query :compress-upgrading)))
           (pending :u32) (borrows :u32) (mask :u8) (ordinal :u32) (access-ref :u32)
           (auth-pending (:enum fn2-conn-auth (:none :user :sasl :redeem)))
+          ;; Durable principal of a successful protected login. Positional
+          ;; accounting and the transport mask are distinct observations.
+          (login-principal :u60)
           (upgrade-target (:enum fn2-conn-upgrade-target (:none :tls :compress)))
           (tls-token :link) (tls-token-gen :u60) (tls-op :u32) (tls-op-gen :u60)
           (upgrade-stage (:enum fn2-conn-upgrade-stage (:none :admitted :running :finished))) (tls-ok :bool)
@@ -92,7 +95,7 @@
  :admission (:phase :greeting :ranges (:rx-range :tx-range)
              :copy (principal-slot account-ref peer-family peer-port peer-w0 peer-w1 peer-w2 peer-w3)
              :clear (start pos overflow compacting cursor tx-off pending borrows ordinal refused
-                     auth-pending upgrade-target tls-token-gen tls-op-gen upgrade-stage tls-ok access-ref upload-gen rule request feed-mode feed-discard fed word
+                     auth-pending login-principal upgrade-target tls-token-gen tls-op-gen upgrade-stage tls-ok access-ref upload-gen rule request feed-mode feed-discard fed word
                      outcome-ready posting query-gen line-s line-e group current pin))
  :initial ((generation fn2-machine-initial-generation) (ready-prev *fn2-none*) (ready-next *fn2-none*)
            (rx-slot *fn2-none*) (tx-slot *fn2-none*) (account-ref *fn2-none*) (next-free fn2-machine-initial-next-free)
