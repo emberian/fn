@@ -76,6 +76,42 @@
  (declare (xargs :guard t))
  (or (not (null (fn2-profile-get :tls-certificate profile)))
      (not (null (fn2-profile-get :tls-key profile)))))
+(defun fn2-peer-tls-requested-p (profile)
+ (declare (xargs :guard t))
+ (or (not (null (fn2-profile-get :peer-pull-ca-file profile)))
+     (not (null (fn2-profile-get :peer-pull-tls-name profile)))))
+(defun fn2-tls-reference-chars-p (chars)
+ (declare (xargs :guard (character-listp chars)))
+ (if (endp chars) t
+   (let ((c (char-code (car chars))))
+     (and (or (and (<= 48 c) (<= c 57)) (and (<= 65 c) (<= c 90)) (and (<= 97 c) (<= c 122)) (member-eql c '(45 46 58)))
+          (fn2-tls-reference-chars-p (cdr chars))))))
+(defun fn2-tls-reference-namep (name)
+ (declare (xargs :guard t))
+ (and (stringp name) (< 0 (length name)) (<= (length name) 253)
+      (fn2-tls-reference-chars-p (coerce name 'list))))
+;; Cap zero is a listener. Only the physical producer of the live capability
+;; supplies outboundp, after Connect has returned its descriptor successfully.
+(defun fn2-host-tls-role (kind cap nonce live-cap live-nonce outboundp)
+ (declare (xargs :guard t))
+ (if (and (equal kind *fn2-action-tls-start*)
+          (posp cap) (unsigned-byte-p 32 cap) (equal cap live-cap)
+          (posp nonce) (unsigned-byte-p 32 nonce) (equal nonce live-nonce) (booleanp outboundp))
+     (if outboundp :client :server)
+   :refused))
+
+(defthm-owed fn2-host-tls-client-binds-live-connect (kind cap nonce live-cap live-nonce outboundp)
+ (implies (equal (fn2-host-tls-role kind cap nonce live-cap live-nonce outboundp) :client)
+          (and (equal kind *fn2-action-tls-start*) (posp cap) (posp nonce)
+               (equal cap live-cap) (equal nonce live-nonce) (equal outboundp t)))
+ :teeth (fn2-peer-tls-live-connect-positive fn2-peer-tls-live-connect-negative)
+ :doc "Client TLS allocation uses the live outbound capability index and nonce named by TlsStart.")
+(defthm fn2-host-tls-client-binds-live-connect
+ (implies (equal (fn2-host-tls-role kind cap nonce live-cap live-nonce outboundp) :client)
+          (and (equal kind *fn2-action-tls-start*) (posp cap) (posp nonce)
+               (equal cap live-cap) (equal nonce live-nonce) (equal outboundp t))))
+(fn2-owed-discharge fn2-host-tls-client-binds-live-connect fn2-host-tls-client-binds-live-connect)
+
 (defun fn2-tls-profilep (profile)
   (declare (xargs :guard t))
   (let ((slots (fn2-tls-setting :tls-handshakes 16 profile))
@@ -85,6 +121,9 @@
     (and (or (not (fn2-tls-requested-p profile))
              (and (fn2-tls-pathp (fn2-profile-get :tls-certificate profile))
                   (fn2-tls-pathp (fn2-profile-get :tls-key profile))))
+         (or (not (fn2-peer-tls-requested-p profile))
+             (and (fn2-tls-pathp (fn2-profile-get :peer-pull-ca-file profile))
+                  (fn2-tls-reference-namep (fn2-profile-get :peer-pull-tls-name profile))))
          (posp slots) (unsigned-byte-p 16 slots)
          ;; BIO APIs take signed C int lengths; no implicit narrowing.
          (posp window) (unsigned-byte-p 31 window)
@@ -92,12 +131,13 @@
          (posp turns) (unsigned-byte-p 32 turns))))
 (defun fn2-tls-admission-capacity (profile)
   (declare (xargs :guard t))
-  (if (and (fn2-tls-profilep profile) (fn2-tls-requested-p profile))
+  (if (and (fn2-tls-profilep profile)
+           (or (fn2-tls-requested-p profile) (fn2-peer-tls-requested-p profile)))
       (nfix (fn2-tls-setting :tls-handshakes 16 profile)) 0))
 (defthm fn2-tls-admission-capacity-natp
   (natp (fn2-tls-admission-capacity profile)) :rule-classes :type-prescription)
 
-(defcolumns fn2-tls-config ((enabled :bool) (window :u32) (timeout-ms :u32)))
+(defcolumns fn2-tls-config ((enabled :bool) (peer-trust :bool) (window :u32) (timeout-ms :u32)))
 (defun fn2-tls-config-from (profile fn2-tls-config)
   (declare (xargs :stobjs fn2-tls-config :guard (fn2-tls-profilep profile)))
   (let* ((fn2-tls-config (fn2-tls-config-init 1 fn2-tls-config))
@@ -105,6 +145,7 @@
          (timeout (fn2-tls-setting :tls-handshake-ms 10000 profile)))
     (fn2-tls-config-put 0
       (enabled (if (fn2-tls-requested-p profile) 1 0))
+      (peer-trust (if (fn2-peer-tls-requested-p profile) 1 0))
       (window (if (unsigned-byte-p 32 window) window 16384))
       (timeout-ms (if (unsigned-byte-p 32 timeout) timeout 10000)))))
 (defthm fn2-tls-config-from-type

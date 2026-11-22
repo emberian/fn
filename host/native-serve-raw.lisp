@@ -27,6 +27,8 @@ core rejects a present value that is not a u32; it never falls back to uid 0."
          (storage-fault-model (sb-ext:posix-getenv "FN2_STORAGE_FAULT_MODEL"))
          (peering (sb-ext:posix-getenv "FN2_PEERING"))
          (tls-cert (sb-ext:posix-getenv "FN2_TLS_CERTIFICATE"))
+         (peer-ca (sb-ext:posix-getenv "FN2_PEER_PULL_CA_FILE"))
+         (peer-name (sb-ext:posix-getenv "FN2_PEER_PULL_TLS_NAME"))
          (tls-key (sb-ext:posix-getenv "FN2_TLS_KEY"))
          (tls-slots (sb-ext:posix-getenv "FN2_TLS_HANDSHAKES"))
          (tls-window (sb-ext:posix-getenv "FN2_TLS_WINDOW"))
@@ -47,6 +49,8 @@ core rejects a present value that is not a u32; it never falls back to uid 0."
                     (sb-ext:posix-getenv "FN2_MAX_CONSUMER_DISCARD_OCTETS")
                     (sb-ext:posix-getenv "FN2_CONSUMER_BODY_TIMEOUT_MS")))
     (when tls-cert (setf profile (put-assoc-equal :tls-certificate tls-cert profile)))
+    (when peer-ca (setf profile (put-assoc-equal :peer-pull-ca-file peer-ca profile)))
+    (when peer-name (setf profile (put-assoc-equal :peer-pull-tls-name peer-name profile)))
     (when tls-key (setf profile (put-assoc-equal :tls-key tls-key profile)))
     (when tls-slots
       (setf profile (put-assoc-equal :tls-handshakes (or (ignore-errors (parse-integer tls-slots)) -1) profile)))

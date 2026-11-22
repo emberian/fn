@@ -4,6 +4,8 @@
 
 (sb-alien:define-alien-routine ("fn2_tls_config" fn2-tls-%config) sb-sys:system-area-pointer
  (certificate sb-alien:c-string) (key sb-alien:c-string) (minimum sb-alien:int))
+(sb-alien:define-alien-routine ("fn2_tls_client_config" fn2-tls-%client-config) sb-sys:system-area-pointer
+ (trust-file sb-alien:c-string) (peer sb-alien:c-string) (minimum sb-alien:int))
 (sb-alien:define-alien-routine ("fn2_tls_config_free" fn2-tls-%config-free) sb-alien:void
  (config sb-sys:system-area-pointer))
 (sb-alien:define-alien-routine ("fn2_tls_new" fn2-tls-%new) sb-sys:system-area-pointer
@@ -28,14 +30,14 @@
  (length sb-alien:unsigned-long) (count (* sb-alien:unsigned-long)))
 
 (defstruct fn2-native-tls
- input output seed transport
+ input output seed transport config
  ;; The external library's requested readiness; KICK schedules a bounded
  ;; first call or a call that can consume already-buffered transport data.
  (interest 1) (kick t))
 
-(defun fn2-native-tls-open (quantum seed-capacity)
+(defun fn2-native-tls-open (config quantum seed-capacity)
  ;; No SSL allocation here: the logical controller selects that action.
- (make-fn2-native-tls :transport (create-fn2-tls-transport)
+ (make-fn2-native-tls :config config :transport (create-fn2-tls-transport)
    :seed (make-array seed-capacity :element-type '(unsigned-byte 8) :initial-element 0)
    :input (make-array quantum :element-type '(unsigned-byte 8) :initial-element 0)
    :output (make-array quantum :element-type '(unsigned-byte 8) :initial-element 0)))
@@ -112,7 +114,7 @@
     (7 (fn2-n-boundary host "tls-handshake")
        (values (fn2-tls-%handshake handle) 0))
     (8 (fn2-n-boundary host "tls-start")
-       (let ((allocated (fn2-tls-%new (fn2-nhost-tls-config host) offset)))
+       (let ((allocated (fn2-tls-%new (fn2-native-tls-config tls) offset)))
         (values (sb-sys:sap-int allocated) 0)))
     (9 (fn2-n-boundary host "tls-free")
        (fn2-tls-%free handle)

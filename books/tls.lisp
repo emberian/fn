@@ -7,6 +7,7 @@
 (defcost fn2-tls-render-handoff :bytes 512 :answers (:ok :bounds) :tables (fn2-core-pool)
  :doc "Render the admitted382 or refused580 through the NNTP grammar.")
 (defcost fn2-tls-enabled-p :doc "Whether the supported profile enables configured TLS.")
+(defcost fn2-peer-tls-trust-ref :doc "The enabled outbound peer trust configuration reference.")
 (defcost fn2-tls-timeout-ms :doc "The admitted handshake's profile deadline in milliseconds.")
 (defcost fn2-tls-arm-timer :child fn2-sched-arm-delay-ms
  :answers (:ok :bounds :state) :tables (fn2-core-sched fn2-core-control)
@@ -37,6 +38,11 @@
  (stobj-let ((fn2-tls-config (fn2-core-tls-config fn2-core))) (enabled)
   (and (< 0 (fn2-tls-config-rows fn2-tls-config))
        (equal (fn2-tls-config-enabled 0 fn2-tls-config) 1)) enabled))
+(defun fn2-peer-tls-trust-ref (fn2-core)
+ (declare (xargs :stobjs fn2-core :guard (fn2-core-wfp fn2-core)))
+ (stobj-let ((fn2-tls-config (fn2-core-tls-config fn2-core))) (ref)
+  (if (< 0 (fn2-tls-config-rows fn2-tls-config))
+      (fn2-tls-config-peer-trust 0 fn2-tls-config) 0) ref))
 (defun fn2-tls-timeout-ms (fn2-core)
  (declare (xargs :stobjs fn2-core :guard (fn2-core-wfp fn2-core)))
  (stobj-let ((fn2-tls-config (fn2-core-tls-config fn2-core))) (milliseconds)
@@ -55,7 +61,7 @@
     (mv :ok fn2-core))
    (mv :stale fn2-core))))
 (fn2-core-preserves fn2-tls-release-token (token gen conn conn-gen fn2-core) :position 1 :rows nil)
-(in-theory (disable fn2-tls-enabled-p fn2-tls-timeout-ms fn2-tls-release-token))))
+(in-theory (disable fn2-tls-enabled-p fn2-peer-tls-trust-ref fn2-tls-timeout-ms fn2-tls-release-token))))
 
 (defmachine-arms fn2-tls-admit :declare
  :arms

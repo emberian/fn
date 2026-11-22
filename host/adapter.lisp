@@ -34,7 +34,7 @@
 (defstruct fn2-nhost
   core bytes ops caps mux (listen-port 0)
   compress-settings
-  tls-config (tls-window 0) (tls-quantum 0) (tls-seed-capacity 0) (tls-turns 0)
+  tls-config peer-tls-config (tls-window 0) (tls-quantum 0) (tls-seed-capacity 0) (tls-turns 0)
   ;; Memory device for existing seeded sessions. An image session uses
   ;; STORAGE's FIFO worker instead; the memory table makes no durability claim.
   (device (make-hash-table))
@@ -212,15 +212,15 @@
  (let* ((op (aref (fn2-nhost-ops host) slot)) (kind (fn2-nop-kind op))
         (handshake (= kind *fn2-action-tls-start*)))
   (unless (fn2-ncap-tls cap)
-   (unless (and handshake (fn2-nhost-tls-config host))
-    (fn2-n-complete host slot :failed 0)
-    (return-from fn2-n-tls-ready nil))
-
-   (setf (fn2-ncap-tls cap)
-         (fn2-native-tls-open (fn2-nhost-tls-quantum host) (fn2-nhost-tls-seed-capacity host)))
-   (unless (fn2-ncap-tls cap)
-    (fn2-n-complete host slot :failed 0)
-    (return-from fn2-n-tls-ready nil)))
+   (let* ((role (fn2-host-tls-role kind (fn2-nop-cap op) (fn2-nop-nonce op)
+                                   (fn2-ncap-index cap) (fn2-ncap-nonce cap) (fn2-ncap-outbound-p cap)))
+          (config (case role (:server (fn2-nhost-tls-config host))
+                             (:client (fn2-nhost-peer-tls-config host)))))
+     (unless config
+       (fn2-n-complete host slot :failed 0)
+       (return-from fn2-n-tls-ready nil))
+     (setf (fn2-ncap-tls cap)
+           (fn2-native-tls-open config (fn2-nhost-tls-quantum host) (fn2-nhost-tls-seed-capacity host)))))
   (when handshake
    (return-from fn2-n-tls-ready (fn2-n-tls-handshake-ready host slot cap)))
   (let ((tls (fn2-ncap-tls cap)))
@@ -663,7 +663,7 @@ the image launcher always opens its persisted device instead."
   ;; Full envelope traces retain receive bytes, including decrypted NNTP
   ;; and local control requests. Reserve them for authority-free fixtures.
   (unless (eq (fn2-conn-envelope-capture-admission trace-capacity core) :ok)
-    (error "fn2 native: envelope byte capture requires an authority-free profile"))
+    (error "fn2 native: envelope byte capture requires an authority-free profile without outbound peer credentials"))
   (when (and device-path memory-store)
     (error "fn2 native: image startup cannot use a memory fixture"))
   (when (and create-size (not (eq (fn2-image-create-request create-size profile) :ok)))
@@ -689,18 +689,24 @@ the image launcher always opens its persisted device instead."
         (setf (fn2-ncap-fd (aref (fn2-nhost-caps host) 0)) lfd)
         (handler-case
           (progn
-        (multiple-value-bind (code certificate key window quantum minimum seed-capacity turns) (fn2-host-tls-settings profile)
+        (multiple-value-bind (code certificate key window quantum minimum seed-capacity turns trust-file peer-name)
+            (fn2-host-tls-settings profile)
           (case code
             (:off nil)
             (:ok
              (sb-alien:load-shared-object
                (or (sb-ext:posix-getenv "FN2_TLS_LIBRARY")
                    #+darwin "build/lib/libfn2-tls.dylib" #-darwin "build/lib/libfn2-tls.so"))
-             (let ((config (fn2-tls-%config certificate key minimum)))
-               (when (zerop (sb-sys:sap-int config)) (error "fn2 native: TLS configuration refused"))
-               (setf (fn2-nhost-tls-config host) config
-                     (fn2-nhost-tls-window host) window (fn2-nhost-tls-quantum host) quantum
-                     (fn2-nhost-tls-seed-capacity host) seed-capacity (fn2-nhost-tls-turns host) turns)))
+             (when certificate
+               (let ((config (fn2-tls-%config certificate key minimum)))
+                 (when (zerop (sb-sys:sap-int config)) (error "fn2 native: TLS configuration refused"))
+                 (setf (fn2-nhost-tls-config host) config)))
+             (when trust-file
+               (let ((config (fn2-tls-%client-config trust-file peer-name minimum)))
+                 (when (zerop (sb-sys:sap-int config)) (error "fn2 native: peer TLS trust configuration refused"))
+                 (setf (fn2-nhost-peer-tls-config host) config)))
+             (setf (fn2-nhost-tls-window host) window (fn2-nhost-tls-quantum host) quantum
+                   (fn2-nhost-tls-seed-capacity host) seed-capacity (fn2-nhost-tls-turns host) turns))
             (otherwise (error "fn2 native: TLS profile refused"))))
         (multiple-value-bind (code iq oq ratio burst capacity) (fn2-native-compress-settings profile)
           (case code
@@ -771,6 +777,9 @@ the image launcher always opens its persisted device instead."
             cap-index (fn2-ncap-nonce cap))
 
         when (>= (fn2-ncap-fd cap) 0) do (fn2-native-close (fn2-ncap-fd cap)))
+  (when (fn2-nhost-peer-tls-config host)
+    (fn2-tls-%config-free (fn2-nhost-peer-tls-config host))
+    (setf (fn2-nhost-peer-tls-config host) nil))
   (when (fn2-nhost-tls-config host)
     (fn2-tls-%config-free (fn2-nhost-tls-config host))
     (setf (fn2-nhost-tls-config host) nil))

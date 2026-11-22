@@ -6,6 +6,7 @@
 #include <openssl/bio.h>
 #include <openssl/err.h>
 #include <openssl/ssl.h>
+#include <openssl/x509v3.h>
 
 #if !defined(OPENSSL_VERSION_MAJOR) || OPENSSL_VERSION_MAJOR != 3
 #error "fn2 TLS primitive requires OpenSSL 3"
@@ -45,6 +46,45 @@ void *fn2_tls_config(const char *certificate, const char *key, int minimum_versi
     return ctx;
 }
 
+/* SSL_new inherits this immutable reference identity and trust store. */
+void *fn2_tls_client_config(const char *trust_file, const char *peer, int minimum_version)
+{
+    SSL_CTX *ctx;
+    X509_VERIFY_PARAM *verify;
+    ASN1_OCTET_STRING *ip;
+    int configured;
+    if (!trust_file || !*trust_file || !peer || !*peer) return NULL;
+    ERR_clear_error();
+    ctx = SSL_CTX_new(TLS_client_method());
+    if (!ctx) return NULL;
+    if (!SSL_CTX_set_min_proto_version(ctx, minimum_version) ||
+        SSL_CTX_load_verify_file(ctx, trust_file) != 1) {
+        SSL_CTX_free(ctx);
+        return NULL;
+    }
+    SSL_CTX_set_verify(ctx, SSL_VERIFY_PEER, NULL);
+    verify = SSL_CTX_get0_param(ctx);
+    X509_VERIFY_PARAM_set_hostflags(verify, X509_CHECK_FLAG_NEVER_CHECK_SUBJECT |
+                                           X509_CHECK_FLAG_NO_PARTIAL_WILDCARDS);
+    ip = a2i_IPADDRESS(peer);
+    if (ip) {
+        configured = X509_VERIFY_PARAM_set1_ip(verify, ASN1_STRING_get0_data(ip),
+                                              ASN1_STRING_length(ip));
+        ASN1_OCTET_STRING_free(ip);
+    } else {
+        ERR_clear_error();
+        configured = X509_VERIFY_PARAM_set1_host(verify, peer, 0);
+    }
+    if (configured != 1) {
+        SSL_CTX_free(ctx);
+        return NULL;
+    }
+    SSL_CTX_set_options(ctx, SSL_OP_NO_RENEGOTIATION);
+    SSL_CTX_set_max_early_data(ctx, 0);
+    SSL_CTX_set_session_cache_mode(ctx, SSL_SESS_CACHE_OFF);
+    return ctx;
+}
+
 void fn2_tls_config_free(void *ctx) { SSL_CTX_free(ctx); }
 
 void *fn2_tls_new(void *config, size_t capacity)
@@ -62,7 +102,18 @@ void *fn2_tls_new(void *config, size_t capacity)
         return NULL;
     }
     SSL_set_bio(tls->ssl, inner, inner); /* SSL owns inner; tls owns wire. */
-    SSL_set_accept_state(tls->ssl);
+    if (SSL_is_server(tls->ssl)) {
+        SSL_set_accept_state(tls->ssl);
+    } else {
+        const char *dns = X509_VERIFY_PARAM_get0_host(SSL_get0_param(tls->ssl), 0);
+        if (dns && !SSL_set_tlsext_host_name(tls->ssl, dns)) {
+            SSL_free(tls->ssl);
+            BIO_free(wire);
+            free(tls);
+            return NULL;
+        }
+        SSL_set_connect_state(tls->ssl);
+    }
     /* The immutable pool loan may move between pinned SBCL calls. */
     SSL_set_mode(tls->ssl, SSL_MODE_ACCEPT_MOVING_WRITE_BUFFER);
     tls->wire = wire;

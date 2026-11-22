@@ -19,6 +19,8 @@ class OriginStartup(unittest.TestCase):
             args=argparse.Namespace(image=root/'node.img', size_mb=None, size=1048576,
                 group=[], storage_fault_model=None, port='0', host=None,
                 tls_certificate=None, tls_key=None, tls_handshakes=None,
+                peer_pull_ca_file=None, peer_pull_tls_name=None,
+                max_consumer_request_octets=None, max_consumer_discard_octets=None, consumer_body_timeout_ms=None,
                 tls_window=None, tls_handshake_turns=None, tls_handshake_ms=None,
                 peering=False, control_sock=None,
                 origin_lineage='00017', origin_domain=None,
