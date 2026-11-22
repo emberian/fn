@@ -28,6 +28,35 @@ def auth_reply(verb: str, result: bytes) -> bytes:
     return fn_admin.fnct_seal(fn_admin.KIND_AUTH_REPLY, payload)
 
 
+class PeerGrantEncoding(unittest.TestCase):
+    def test_role_and_group_grants_use_distinct_authority_keys(self) -> None:
+        for right, stream, expected in (
+            ("peer", None, b"\x03\x02\x00"),
+            ("peer-feed", "12", b"\x04\x01\x0c"),
+            ("peer-accept", "12", b"\x05\x01\x0c"),
+            ("read", "12", b"\x01\x01\x0c"),
+        ):
+            with self.subTest(right=right):
+                scope, target, error = fn_admin.resolve_grant_scope(right, stream, "")
+                self.assertIsNone(error)
+                fields = dict(grantee=7, right=fn_admin.AUTH_RIGHTS[right], scope=scope, target=target)
+                self.assertEqual(
+                    fn_admin.fnct_open(fn_admin.build_auth_request("grant-get", **fields)),
+                    (fn_admin.KIND_AUTH_REQ, b"\x03\x07" + expected),
+                )
+                self.assertEqual(
+                    fn_admin.fnct_open(fn_admin.build_auth_request(
+                        "grant-set", **fields, enabled=True, expected_head=0, op=1,
+                    )),
+                    (fn_admin.KIND_AUTH_REQ, b"\x02\x07" + expected + b"\x01\x00\x00\x01\x01"),
+                )
+
+    def test_peer_scope_arguments(self) -> None:
+        for right, stream in (("peer", "12"), ("peer-feed", None), ("peer-accept", None)):
+            with self.subTest(right=right), self.assertRaises(ValueError):
+                fn_admin.resolve_grant_scope(right, stream, "")
+
+
 class ReplyDecoding(unittest.TestCase):
     def test_cursor_layout_preserves_consumer_octets_and_version_width(self) -> None:
         ids = b"".join(fn_admin.octets_var(value) for value in

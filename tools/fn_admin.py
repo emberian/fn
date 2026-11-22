@@ -115,7 +115,7 @@ AUTH_OPCODES = {
     "stream-resolve": 4,
     "principal-set-password": 5,
 }
-AUTH_RIGHTS = {"consume": 0, "read": 1, "append": 2}
+AUTH_RIGHTS = {"consume": 0, "read": 1, "append": 2, "peer": 3, "peer-feed": 4, "peer-accept": 5}
 CNS_CODES = {
     "ack": 1,
     "position": 2,
@@ -685,7 +685,7 @@ def read_genesis_groups(path: Path) -> str | None:
 def resolve_stream_id(raw: str | None, sock_path: str) -> tuple[int, dict | None]:
     """Resolve names using the served ACL2 directory."""
     if raw is None:
-        raise ValueError("stream name or numeric stream id is required for read/append grants")
+        raise ValueError("stream name or numeric stream id is required for read, append, peer-feed, and peer-accept grants")
     try:
         return int(raw, 10), None
     except ValueError:
@@ -1078,18 +1078,25 @@ def cmd_principal_set_password(args: argparse.Namespace) -> int:
     return emit(response, args.json)
 
 
+def resolve_grant_scope(right: str, stream: str | None, sock_path: str) -> tuple[int, int, dict | None]:
+    if right == "consume":
+        if stream not in (None, "0"):
+            raise ValueError("consume right applies to own-consumers scope; omit [stream]")
+        return 0, 0, None
+    if right == "peer":
+        if stream is not None:
+            raise ValueError("peer right applies to the principal; omit [stream]")
+        return 2, 0, None
+    target, err = resolve_stream_id(stream, sock_path)
+    return 1, target, err
+
+
 def cmd_grant_set(args: argparse.Namespace) -> int:
     sock_path = require_control_sock(args)
     right = AUTH_RIGHTS[args.right]
-    if args.right == "consume":
-        if args.stream not in (None, "0"):
-            raise ValueError("consume right applies to own-consumers scope; omit [stream]")
-        scope, target = 0, 0
-    else:
-        scope = 1
-        target, err = resolve_stream_id(args.stream, sock_path)
-        if err is not None:
-            return emit(err, args.json)
+    scope, target, err = resolve_grant_scope(args.right, args.stream, sock_path)
+    if err is not None:
+        return emit(err, args.json)
 
     pid, head, err = resolve_principal_on_node(sock_path, args.principal)
     if err is not None:
@@ -1123,15 +1130,9 @@ def cmd_grant_set(args: argparse.Namespace) -> int:
 def cmd_grant_get(args: argparse.Namespace) -> int:
     sock_path = require_control_sock(args)
     right = AUTH_RIGHTS[args.right]
-    if args.right == "consume":
-        if args.stream not in (None, "0"):
-            raise ValueError("consume right applies to own-consumers scope; omit [stream]")
-        scope, target = 0, 0
-    else:
-        scope = 1
-        target, err = resolve_stream_id(args.stream, sock_path)
-        if err is not None:
-            return emit(err, args.json)
+    scope, target, err = resolve_grant_scope(args.right, args.stream, sock_path)
+    if err is not None:
+        return emit(err, args.json)
 
     pid, _, err = resolve_principal_on_node(sock_path, args.principal)
     if err is not None:
@@ -1599,10 +1600,10 @@ def build_parser() -> argparse.ArgumentParser:
     p_grant = sub.add_parser("grant", help="manage durable authority grants over --control-sock")
     grant_sub = p_grant.add_subparsers(dest="grant_cmd", required=True)
 
-    p_gset = grant_sub.add_parser("set", help="grant or revoke consume/read/append authority")
+    p_gset = grant_sub.add_parser("set", help="grant or revoke principal, consumer, or stream authority")
     p_gset.add_argument("principal", help="grantee principal name or numeric principal id")
-    p_gset.add_argument("right", choices=("consume", "read", "append"))
-    p_gset.add_argument("stream", nargs="?", help="stream/group name or numeric stream id (omit for consume)")
+    p_gset.add_argument("right", choices=AUTH_RIGHTS)
+    p_gset.add_argument("stream", nargs="?", help="stream/group name or numeric stream id (required for read, append, peer-feed, peer-accept)")
     p_gset.add_argument("--revoke", action="store_true", help="disable (revoke) the grant")
     p_gset.add_argument("--expected-head", type=int, help="explicit expected authority head for CAS")
     p_gset.add_argument("--op", help="idempotent operation id (1..2^60-1; auto-generated if omitted)")
@@ -1610,8 +1611,8 @@ def build_parser() -> argparse.ArgumentParser:
 
     p_gget = grant_sub.add_parser("get", help="inspect current grant state for a principal")
     p_gget.add_argument("principal", help="grantee principal name or numeric principal id")
-    p_gget.add_argument("right", choices=("consume", "read", "append"))
-    p_gget.add_argument("stream", nargs="?", help="stream/group name or numeric stream id (omit for consume)")
+    p_gget.add_argument("right", choices=AUTH_RIGHTS)
+    p_gget.add_argument("stream", nargs="?", help="stream/group name or numeric stream id (required for read, append, peer-feed, peer-accept)")
     _add_control_args(p_gget)
 
     p_stream = sub.add_parser("stream", help="consumer & stream operations over --control-sock")
