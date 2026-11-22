@@ -195,8 +195,12 @@ The outcome row retains the exact group-number octets from the published Xref fi
 reclaimed can still use the outcome row. The 33-octet receipt identifies the local acceptance in the
 durable origin: version octet 1, then lineage, commit domain, incarnation and committed event as four
 unsigned 64-bit big-endian integers. It references the settled local record and carries no checkpoint
-inclusion proof. Live and replay replies use the same receipt encoder. Conflict results keep both fields
-empty. Retry expiration remains open.
+inclusion proof. Live replies use the event returned by the settled member. Retry replies use the event
+in the authenticated principal's published APPEND outcome. Both encode the immutable local origin
+used by the original commit header. BOOT compares the configured origin with the persisted genesis
+before serving, and recovery rejects a transaction record whose origin differs. This receipt applies
+to the local APPEND outcome table. An imported receipt keeps its own origin and does not supply a local
+APPEND outcome. Conflict results keep both fields empty. Retry expiration remains open.
 An append is POST: D's upload and D5's transaction, the same path, the same refusal words, the same group
 numbers. So an NNTP reader sees the appended article by GROUP and ARTICLE with the exact octets: no second
 write path exists to diverge.
