@@ -127,6 +127,10 @@ class ReaderOutcome(unittest.TestCase):
             (("groups",), b"LIST ACTIVE", b"", "error", 2),
             (("groups",), b"LIST ACTIVE", b"502 denied\r\n", "refused", 1),
             (("groups",), b"LIST ACTIVE", b"215 list\r\nlocal.test 1 1 y\r\n.\r\n", "accepted", 0),
+            (("groups",), b"LIST ACTIVE", b"215 list\r\nlocal.ok 1 1 y\r\npartial.group\r\n.\r\n", "error", 2),
+            (("groups",), b"LIST ACTIVE", b"215 list\r\nlocal.test -1 1 y\r\n.\r\n", "error", 2),
+            (("groups",), b"LIST ACTIVE", b"215 list\r\nlocal.test 1 1 y extra\r\n.\r\n", "error", 2),
+            (("groups",), b"LIST ACTIVE", b"215 list\r\nlocal.\xc3\xa9  0 1 private\r\n.\r\n", "accepted", 0),
             (("article", "local.test", "1"), b"GROUP local.test", b"411 no group", "error", 2),
             (article, b"ARTICLE <one@example.invalid>", b"221 1 <one@example.invalid>\r\n.\r\n", "error", 2),
             (head, b"HEAD <one@example.invalid>", b"220 1 <one@example.invalid>\r\n.\r\n", "error", 2),
@@ -149,7 +153,14 @@ class ReaderOutcome(unittest.TestCase):
                         conn.sendall(response)
                         conn.shutdown(socket.SHUT_WR)
                         stdout, stderr = proc.communicate(timeout=5)
-                    self.assertEqual((proc.returncode, json.loads(stdout)["outcome"]), (code, outcome), stderr)
+                    result = json.loads(stdout)
+                    self.assertEqual((proc.returncode, result["outcome"]), (code, outcome), stderr)
+                    if b"private" in response:
+                        self.assertEqual(result["groups"], [
+                            {"name": "local.é", "low": 1, "high": 0, "status": "private"},
+                        ])
+                    if outcome == "error":
+                        self.assertNotIn("groups", result)
 
     def test_number_is_bound_to_the_selected_group(self):
         for selected, number, expected in (("other.group", 1, 2), ("local.test", 2, 2),

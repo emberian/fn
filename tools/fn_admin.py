@@ -17,6 +17,7 @@ import hashlib
 import json
 import os
 from pathlib import Path
+import re
 import socket
 import stat
 import subprocess
@@ -1299,6 +1300,13 @@ def nntp_quit(sock: socket.socket, reader, *, send_quit: bool = True) -> None:
             pass
 
 
+# RFC 3977, LIST ACTIVE: group and private status are UTF-8 tokens,
+# and each water mark contains one to sixteen ASCII digits.
+_ACTIVE_GROUP_ROW = re.compile(
+    rb"([^\x00-\x20\x7f]+) +([0-9]{1,16}) +([0-9]{1,16}) +([^\x00-\x20\x7f]+)"
+)
+
+
 def cmd_groups(args: argparse.Namespace) -> int:
     host, port = nntp_endpoint(args)
     sock, reader, _ = nntp_connect(host, port)
@@ -1307,23 +1315,20 @@ def cmd_groups(args: argparse.Namespace) -> int:
         ok, status = nntp_reader_status(reader, "LIST ACTIVE", 215)
         if not ok:
             return emit({"outcome": "refused", "status": status}, args.json)
-        raw_lines = nntp_read_multiline(reader)
         groups = []
-        for raw in raw_lines:
-            parts = raw.decode("latin-1").split()
-            if len(parts) >= 4:
-                groups.append(
-                    {"name": parts[0], "high": int(parts[1]), "low": int(parts[2]), "status": parts[3]}
-                )
-            elif parts:
-                groups.append({"name": parts[0], "raw": raw.decode("latin-1")})
+        for raw in nntp_read_multiline(reader):
+            match = _ACTIVE_GROUP_ROW.fullmatch(raw)
+            if match is None:
+                raise WireError("malformed NNTP LIST ACTIVE row")
+            name, high, low, flag = match.groups()
+            if any(ch in name for ch in b"!*,?[\\]"):
+                raise WireError("invalid newsgroup name in LIST ACTIVE")
+            groups.append({"name": name.decode("utf-8"), "high": int(high),
+                           "low": int(low), "status": flag.decode("utf-8")})
         if args.json:
             return emit({"outcome": "accepted", "groups": groups}, True)
-        for g in groups:
-            if "high" in g:
-                print(f"{g['name']} {g['high']} {g['low']} {g['status']}")
-            else:
-                print(g["raw"])
+        for group in groups:
+            print(f"{group['name']} {group['high']} {group['low']} {group['status']}")
         return EXIT_ACCEPTED
     finally:
         nntp_quit(sock, reader)
