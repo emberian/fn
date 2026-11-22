@@ -629,8 +629,11 @@ of that authorized view at the held cut. The stop code is 0 exactly when NEXT eq
 END. Positions rise strictly within a batch. The last item ends at the last octet of
 the kind 28 result and carries position NEXT. The cursor must carry the request's sender
 history, incarnation, principal, consumer, query, query version, view version and epoch,
-and have position NEXT. The sender supplies the revision and chain for the view that
-binds that principal, stream, view version and evidence interpretation. The chain
+and have position NEXT. The receiver reserves space for the v2 encoding of that cursor
+when it computes the item-octet limit. A v1 request can return a cursor 20 octets longer
+when NEXT crosses the 32-bit limit, even on a one-item page. The sender supplies the
+revision and chain for the view that binds that principal, stream, view version and
+evidence interpretation. The chain
 resumes from this batch's NEXT. A rejected or unavailable item remains outside the
 accepted extent.
 

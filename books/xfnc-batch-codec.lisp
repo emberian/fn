@@ -118,25 +118,57 @@
  (("Goal" :in-theory (enable fn2-xfnc-put-batch-header))))
 (in-theory (disable fn2-xfnc-put-batch-header))
 
-; An accepted page has one empty reason and a four-octet result length
-; in its kind 28 envelope (seven octets in all). Both peers use
-; fn2-cns-put-query-cursor on the same scope. NEXT is a fixed-width field,
-; so replacing POSITION preserves the cursor's encoded extent.
-(defun fn2-xfnc-batch-read-budget (cursor-size capacity)
+; Both fncu versions encode the same five variable-width scope identifiers.
+; NEXT can cross 2^32 even on a single-item READ. V2 adds its domain and
+; widens four counters, so its extent grows by the fixed layout difference.
+(defun fn2-xfnc-next-cursor-bound (wire-version cursor-size)
   (declare (xargs :guard t))
-  (if (and (posp cursor-size) (<= cursor-size 366) (natp capacity))
-      (let ((header (+ (- *fn2-xfnc-batch-header-max-size* 366) cursor-size))
-            (frame (min capacity (+ *fn2-pool-block-bytes* *fn2-fnct-trailer-octets*))))
-        (nfix (- frame (+ *fn2-fnct-overhead* 7 header))))
-    0))
+  (cond ((and (equal wire-version 1) (posp cursor-size) (<= cursor-size *fn2-fncu-v1-max-size*))
+         (+ cursor-size (- *fn2-fncu-v2-max-size* *fn2-fncu-v1-max-size*)))
+        ((and (equal wire-version 2) (posp cursor-size) (<= cursor-size *fn2-fncu-v2-max-size*)) cursor-size)
+        (t 0)))
+
+(local
+ (defun fn2-xfnc-scope-sizers (name layout)
+   (declare (xargs :verify-guards nil))
+   (if (atom layout) nil
+     (cons (fn2-codec-sizer-name name (caar layout))
+           (fn2-xfnc-scope-sizers name (cdr layout))))))
+(local
+ (deftheory fn2-xfnc-cursor-sizers
+   (append '(fn2-fncu-v1-size fn2-fncu-v2-size)
+           (fn2-xfnc-scope-sizers 'fn2-fncu-v1 *fn2-fncu-v1-layout*)
+           (fn2-xfnc-scope-sizers 'fn2-fncu-v2 *fn2-fncu-v2-layout*))))
+
+; On the same five scope fields, the bound equals the generated V2 encoder's
+; size for every admissible V1 extent. The counters' values do not affect
+; either sizer in a fixed layout.
+(defthm fn2-xfnc-next-cursor-bound-is-v2-size
+  (let ((v1-size (fn2-fncu-v1-size base fn2-fields)))
+    (implies (and (posp v1-size) (<= v1-size *fn2-fncu-v1-max-size*))
+             (equal (fn2-xfnc-next-cursor-bound 1 v1-size)
+                    (fn2-fncu-v2-size base fn2-fields))))
+  :rule-classes nil
+  :hints (("Goal" :in-theory (union-theories (theory 'fn2-xfnc-cursor-sizers)
+                                             (disable fn2-fields-ref-len fn2-layout-varsize)))))
+
+; The accepted kind 28 prefix contains the class, empty reason and result length.
+(defun fn2-xfnc-batch-read-budget (wire-version cursor-size capacity)
+  (declare (xargs :guard t))
+  (let ((next-size (fn2-xfnc-next-cursor-bound wire-version cursor-size)))
+    (if (and (posp next-size) (natp capacity))
+        (let ((header (+ (- *fn2-xfnc-batch-header-max-size* *fn2-fncu-v2-max-size*) next-size))
+              (frame (min capacity (+ *fn2-pool-block-bytes* *fn2-fnct-trailer-octets*))))
+          (nfix (- frame (+ *fn2-fnct-overhead* 7 header))))
+      0)))
 
 (defthm fn2-xfnc-batch-read-budget-fits
-  (let ((amount (fn2-xfnc-batch-read-budget cursor-size capacity)))
-    (implies (posp amount)
-             (and (<= (+ amount *fn2-fnct-overhead* 7 (- *fn2-xfnc-batch-header-max-size* 366) cursor-size)
-                      capacity)
-                  (<= (+ amount *fn2-fnct-header-octets* 7 (- *fn2-xfnc-batch-header-max-size* 366) cursor-size)
-                      *fn2-pool-block-bytes*))))
+  (let ((amount (fn2-xfnc-batch-read-budget wire-version cursor-size capacity)))
+    (implies (and (posp amount) (natp reply-cursor-size)
+                  (<= reply-cursor-size (fn2-xfnc-next-cursor-bound wire-version cursor-size)))
+             (let ((header (+ (- *fn2-xfnc-batch-header-max-size* *fn2-fncu-v2-max-size*) reply-cursor-size)))
+               (and (<= (+ amount *fn2-fnct-overhead* 7 header) capacity)
+                    (<= (+ amount *fn2-fnct-header-octets* 7 header) *fn2-pool-block-bytes*)))))
   :rule-classes nil)
 (in-theory (disable fn2-xfnc-batch-read-budget))
 
