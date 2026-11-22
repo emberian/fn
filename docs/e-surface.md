@@ -174,12 +174,19 @@ row over those octets (fn2-upload-feed-run, raw), the upload and fn2-txn run exa
 the transaction posts its word and commit position back to the request (fn2-cns-post-outcome); the
 six-octet reply is (outcome, the D word as reason, position, 0, 0, 0). For a supplied nonzero operation ID, an article without a Message-ID gets
 `<op-PRINCIPAL-OP@node>`. PRINCIPAL is the durable control connection identity captured before storage.
-The transaction records the source digest, outcome code and event under that principal and operation;
-server-assigned operations occupy a separate key namespace. The per-group grant check verifies the
-live binding against the captured identity and adds a dependency on the authority head at stage.
-The durable outcome read before the grant is still owed. A same-request retry currently reaches the
-Message-ID duplicate verdict. The distinct-request `operation-reused` verdict, cross-request
-serialization, and replay of the original reply are also owed.
+The transaction records the source digest, outcome code, event, verb and original Message-ID under that
+principal and operation. Server-assigned operations occupy their own key namespace. The per-group
+grant check verifies the live binding against the captured identity and adds an authority-head
+dependency at stage.
+
+The APPEND retry candidate reads the authenticated principal's published operation before upload
+allocation. A hit consumes the incoming article into a bounded source hash before using the stored
+Message-ID, event and outcome. A live competing insert can pass that first lookup before publication.
+D5 repeats the lookup after sealing and before the Message-ID decision; C stages the unique supplied
+operation key against active, frozen and private batch overlays, and a losing operation-slot insert
+releases its successor and re-reads. A committed conflict records an outcome in its evidence batch.
+The candidate requires composed certification and the native `--durable-retry` process-death campaign.
+Retry expiration, populated numbers and receipt, and conflict detail in a refusal remain open.
 An append is POST: D's upload and D5's transaction, the same path, the same refusal words, the same group
 numbers. So an NNTP reader sees the appended article by GROUP and ARTICLE with the exact octets: no second
 write path exists to diverge.

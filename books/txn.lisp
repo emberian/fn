@@ -54,8 +54,6 @@
 ;; batch that accepts it).
 (defconst *fn2-txn-article-live* 0)
 (defconst *fn2-txn-article-version* 1)
-(defconst *fn2-txn-outcome-accepted* 1)
-(defconst *fn2-txn-outcome-conflict* 2)
 ;; Newsgroups is scanned at most this many octets per :prepare run.
 (defconst *fn2-txn-scan-bytes* 1024)
 
@@ -69,9 +67,7 @@
 (defconst *fn2-txn-ready-bytes* (+ 4096 8192 8192 *fn2-txn-xref-bytes* *fn2-txn-admit-bytes*))
 (assert-event (equal *fn2-txn-ready-bytes* 26624))  ; the kind's :budget (txn-kind.lisp)
 
-(defconst *fn2-upload-word-accepted* (fn2-upload-word-code :accepted))
 (defconst *fn2-upload-word-duplicate* (fn2-upload-word-code :duplicate))
-(defconst *fn2-upload-word-conflict* (fn2-upload-word-code :conflict))
 (defconst *fn2-upload-word-group* (fn2-upload-word-code :group))
 (defconst *fn2-upload-word-refused* (fn2-upload-word-code :refused))
 

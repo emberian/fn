@@ -18,6 +18,8 @@
 (defconst *fn2-txn-location-source-manifest* 1)
 (defconst *fn2-txn-counts-sid* 5)
 (defconst *fn2-txn-outcome-sid* 9)
+(defconst *fn2-txn-outcome-accepted* 1)
+(defconst *fn2-txn-outcome-conflict* 2)
 
 ;; Successor write-slot geometry in C-S3 (*fn2-succ-slots*):
 ;; 0..7 are fixed per-POST slots, *fn2-txn-slot-depend* (20) holds the authority

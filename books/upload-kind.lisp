@@ -93,7 +93,8 @@
     ;; the verdict's :missing, :duplicate-field and :injected by field (the catalogue's rows)
     :from-missing :subject-missing :newsgroups-missing :from-duplicate :subject-duplicate
     :newsgroups-duplicate :message-id-duplicate :date-duplicate :path-duplicate :xref :injection-info
-    :injection-date))
+    :injection-date :operation-reused :unavailable))
+
 ;; The verdict's word refined by field, in the order the model checks them.
 (defun fn2-upload-word-by-field (word seen)
   (declare (xargs :guard (natp seen)))
@@ -118,6 +119,10 @@
   (declare (xargs :guard t))
   (let ((tail (member-eq word *fn2-upload-words*)))
     (if tail (- (len *fn2-upload-words*) (len tail)) 0)))
+(defconst *fn2-upload-word-accepted* (fn2-upload-word-code :accepted))
+(defconst *fn2-upload-word-conflict* (fn2-upload-word-code :conflict))
+(defconst *fn2-upload-word-operation-reused* (fn2-upload-word-code :operation-reused))
+(defconst *fn2-upload-word-unavailable* (fn2-upload-word-code :unavailable))
 (defun fn2-upload-word-of (code)
   (declare (xargs :guard (natp code)))
   (if (< code (len *fn2-upload-words*)) (nth code *fn2-upload-words*) :none))

@@ -137,6 +137,17 @@
 (defcost fn2-cns-stream-ctl-live-p :doc "The current generation of the original control owner; final reclaim wakes it before dropping the tuple.")
 (defcost fn2-ctl-stream-metadata :answers (:none :ok :bad :stale)
  :doc "Generation/request-bound APPEND operation and declared article length.")
+(defcost fn2-cns-append-ctl-live-p
+ :doc "This APPEND still belongs to a receiving or waiting control connection, with the same request and child generation.")
+(defcost fn2-cns-principal :answers (:ok :state)
+ :doc "The live control connection's durable principal for this request generation.")
+(defcost fn2-cns-read-append-outcome :answers (:found :more :absent :reused :dropped :state) :bytes 4096
+ :tables (fn2-core-reads fn2-core-ranges fn2-core-seeks fn2-core-succ-txns fn2-core-run-cursors
+          fn2-core-run-paths fn2-core-fields fn2-core-pool)
+ :doc "One exact published operation lookup; a hit copies the persisted digest and Message-ID to this request.")
+(defcost fn2-cns-release-append-outcome :answers (:ok :state)
+ :tables (fn2-core-reads fn2-core-ranges fn2-core-seeks fn2-core-succ-txns)
+ :doc "Release an interrupted scalar-key lookup belonging to this exact APPEND request before freeing the row.")
 (defcost fn2-cns-authority-allows :answers (:ok :access :more :state) :bytes 4096
  :tables (fn2-core-reads fn2-core-ranges fn2-core-seeks fn2-core-succ-txns fn2-core-run-cursors fn2-core-run-paths fn2-core-fields)
  :doc "One bounded step of the consumer surface's check (books/authority.lisp, AUTHORITY-20261105 section 4) on the request's own read row: (fn2-cns-authority-allows cns gen right scope target xstep head grant budget) -> (mv code xstep head grant).")
@@ -1244,6 +1255,16 @@
                (wait-ms nwait) (op nop) (fstart nfstart) (name-off nnoff) (name-len nnlen))
          (:next :check) (:charge :bytes 4096 :steps *fn2-work-transition* :runnable t))
         ((:set (reason dreason)) (:goto refuse))))
+  (replay-match :on-refusal ((:stop :machine-phase))
+   (:cond ((equal row-posted-word *fn2-upload-word-accepted*)
+           (:set (outcome *fn2-cns-outcome-accepted*)) (:goto answer))
+          ((equal row-posted-word *fn2-upload-word-conflict*)
+           (:set (reason *fn2-upload-word-conflict*)) (:goto refuse))
+          (t (:stop :machine-phase))))
+  (replay-changed :on-refusal ((:stop :machine-phase))
+   (:set (reason *fn2-upload-word-operation-reused*)) (:goto refuse))
+  (append-refuse :on-refusal ((:stop :machine-phase))
+   (:if (equal row-stream 1) ((:set (feed-discard 1)) (:goto stream-feed)) ((:goto refuse))))
   (replay-input :on-refusal ((:stop :machine-phase))
    (:do (code) (fn2-cns-replay-begin id) :accept (:ok :unavailable)
     :why "a failed hasher initialization still drains a streaming frame before refusing")
@@ -1307,6 +1328,11 @@
    (:set (outcome *fn2-cns-outcome-refused*))
    (:goto answer))
   (cancel :on-refusal ((:stop :machine-phase))
+   ;; APPEND owns its exact-read row until either lookup finishes or the
+   ;; request generation leaves. A disconnected/reused CTL cannot strand it.
+   (:if (and (equal row-phase *fn2-cns-state-append*) (posp row-op) (posp row-retry-principal))
+        ((:do (rc) (fn2-cns-release-append-outcome id row-generation row-request row-retry-principal row-op)
+          :accept (:ok))) ())
    (:cond
     ((fn2-cns-source-boundp id row-generation row-ctl row-ctl-gen row-request)
      (:do () (fn2-cns-stream-source-abort id row-generation row-ctl row-ctl-gen row-request))
@@ -1429,7 +1455,12 @@
            (:set (lease *fn2-cns-lease-none*) (lslot *fn2-none*) (lgen 0))
            (:charge :steps *fn2-work-transition* :runnable t))
           ((equal row-verb *fn2-cns-verb-append*)
-           (:next :append) (:charge :steps *fn2-work-transition* :runnable t))
+           (:do (pc pid) (fn2-cns-principal id row-generation)
+            :accept (:ok) :case (((:state) (:goto cancel))))
+           (:if (and (posp pid) (unsigned-byte-p 60 pid))
+                ((:set (retry-principal pid)) (:next :append)
+                 (:charge :steps *fn2-work-transition* :runnable t))
+                ((:set (reason *fn2-upload-word-refused*)) (:goto append-refuse))))
           ;; fetch carries no cursor: the frontier, then the walk to its position
           ((equal row-verb *fn2-cns-verb-fetch*)
            (:next :read) (:charge :steps *fn2-work-transition* :runnable t))
@@ -1733,7 +1764,26 @@
             :why ":retired: the lease's slot reached its generation limit and leaves the pool")
            (:set (lease *fn2-cns-lease-none*) (lslot *fn2-none*) (lgen 0))
            (:charge :steps *fn2-work-transition* :runnable t))
-          ((equal row-ctl *fn2-none*) (:goto cancel))
+          ((not (fn2-cns-append-ctl-live-p id row-generation row-request)) (:goto cancel))
+          ;; A supplied operation is the principal's own record. Look before
+          ;; posting availability, upload allocation and every destination grant.
+          ((and (not (equal row-op 0)) (equal row-outcome-checked 0))
+           (:do (rc event result midlen)
+                (fn2-cns-read-append-outcome id row-generation row-request row-retry-principal row-op 3072)
+            :accept ()
+            :case (((:more) (:charge :bytes 4096 :steps *fn2-work-transition* :runnable t))
+                   ((:absent) (:set (outcome-checked 1)) (:charge :bytes 4096 :steps *fn2-work-transition* :runnable t))
+                   ((:found)
+                    (:if (and (posp event) (unsigned-byte-p 60 event) (posp midlen) (unsigned-byte-p 8 midlen)
+                              (or (equal result *fn2-txn-outcome-accepted*) (equal result *fn2-txn-outcome-conflict*)))
+                         ((:set (name-len midlen) (cpos event)
+                                (posted-word (if (equal result *fn2-txn-outcome-accepted*)
+                                                 *fn2-upload-word-accepted* *fn2-upload-word-conflict*)))
+                          (:goto replay-input))
+                         ((:stop :machine-phase))))
+                   ((:reused) (:set (reason *fn2-upload-word-operation-reused*)) (:goto append-refuse))
+                   ((:dropped) (:goto cancel))
+                   (:otherwise (:stop :machine-phase)))))
           ;; no POST can succeed (posting not served: no fn2-txn row in the
           ;; profile's share): refused, never parked on an upload or a
           ;; transaction that never comes; the reason is D's word
