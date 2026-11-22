@@ -199,6 +199,7 @@ ACL2_BOOKS = \
   books/conn-schema \
   books/conn-xfnc-query \
   books/conn-xfnc-input \
+  books/fncu-pool \
   books/xfnc-request \
   books/xfnc-batch-codec \
   books/xfnc-reply \
@@ -284,6 +285,7 @@ ACL2_BOOKS = \
   books/journal-retention-state \
   books/journal-retention \
   books/journal-retention-core \
+  books/peer-view-pair \
   books/peer-view-member \
   books/peer-view-read \
   books/peer-import-state \
@@ -450,6 +452,7 @@ ACL2_BOOKS = \
   tests/commit-view-compatibility-unit \
   tests/conn-answer-unit \
   tests/xfnc-rx-unit \
+  tests/xfnc-batch-cursor-unit \
   tests/peer-import-unit \
   tests/conn-unit \
   tests/consumer-codec-unit \

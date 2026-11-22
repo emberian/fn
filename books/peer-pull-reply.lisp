@@ -4,7 +4,7 @@
 (in-package "ACL2")
 (include-book "peer-pull-stage")
 (include-book "peer-pull-request-encode")
-(include-book "xfnc-request")
+(include-book "fncu-pool")
 (include-book "xfnc-ops")
 
 (defun fn2-peer-pull-reply-count (start pos slot gen kind id generation fn2-pool)

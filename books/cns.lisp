@@ -14,7 +14,7 @@
 (include-book "authority-kind")
 (include-book "machines-c-bind")
 (include-book "machines-c-read")
-(include-book "fnct-pool")
+(include-book "fncu-pool")
 (include-book "ctl-stream-events")
 (include-book "ctl-output-events")
 (include-book "cns-append-prefix-codec")
@@ -370,33 +370,6 @@
 (encapsulate ()
 (local (in-theory (disable fn2-fields-rows fn2-fieldsp fn2-fields-wfp fn2-poolp fn2-pool-wfp fn2-pool-rows
                            fn2-pool-read fn2-pool-write)))
-;; Reading a decoded octet field: the big-endian number its octets spell.
-(defun fn2-cns-read-be (k n off acc slot gen okind oslot ogen fn2-pool)
-  (declare (xargs :stobjs fn2-pool :guard (and (fn2-pool-wfp fn2-pool) (natp k) (natp n) (natp off) (natp acc))
-                  :measure (nfix (- (nfix n) (nfix k)))))
-  (if (>= (nfix k) (nfix n)) (mv t (nfix acc))
-    (mv-let (c b) (fn2-pool-read slot gen (+ (nfix off) (nfix k)) okind oslot ogen fn2-pool)
-      (if (not (and (eq c :ok) (natp b) (< b 256))) (mv nil 0)
-        (fn2-cns-read-be (+ 1 (nfix k)) n off (+ (* 256 (nfix acc)) b) slot gen okind oslot ogen fn2-pool)))))
-(defthm fn2-cns-read-be-natp
-  (natp (mv-nth 1 (fn2-cns-read-be k n off acc slot gen okind oslot ogen fn2-pool)))
-  :rule-classes :type-prescription)
-(in-theory (disable fn2-cns-read-be))
-; Field I's octets as a number below 2^60 from at most MAXLEN octets
-; (none: 0). (mv ok n).
-(defun fn2-cns-field-be (i maxlen slot gen okind oslot ogen fn2-fields fn2-pool)
-  (declare (xargs :stobjs (fn2-fields fn2-pool)
-                  :guard (and (fn2-fields-wfp fn2-fields) (fn2-pool-wfp fn2-pool) (natp i) (< i (fn2-fields-rows fn2-fields)))))
-  (let ((off (nfix (fn2-fields-ref-off i fn2-fields))) (len (nfix (fn2-fields-ref-len i fn2-fields))))
-    (if (> len (nfix maxlen)) (mv nil 0 len)
-      (mv-let (ok n) (fn2-cns-read-be 0 len off 0 slot gen okind oslot ogen fn2-pool)
-        (if (and ok (unsigned-byte-p 60 n)) (mv t n len) (mv nil 0 len))))))
-(defthm fn2-cns-field-be-types
-  (and (natp (mv-nth 1 (fn2-cns-field-be i maxlen slot gen okind oslot ogen fn2-fields fn2-pool)))
-       (natp (mv-nth 2 (fn2-cns-field-be i maxlen slot gen okind oslot ogen fn2-fields fn2-pool))))
-  :rule-classes ((:type-prescription :corollary (natp (mv-nth 1 (fn2-cns-field-be i maxlen slot gen okind oslot ogen fn2-fields fn2-pool))))
-                 (:type-prescription :corollary (natp (mv-nth 2 (fn2-cns-field-be i maxlen slot gen okind oslot ogen fn2-fields fn2-pool))))))
-(in-theory (disable fn2-cns-field-be))
 ; Parse only the bounded APPEND metadata. :need-more retains this first
 ; loan; no article bytes or operation publication are consumed here.
 (defun fn2-cns-append-prefix (base slot gen off end okind owner owner-gen fn2-fields fn2-pool)
@@ -719,31 +692,6 @@
 ;; v1) carries BOOT's persisted history and incarnation, the consumer id,
 ;; the bound durable principal and query 1, in minimal big-endian form.
 ;; The wire carries the registration's query version and durable view separately.
-(defun fn2-cns-put-query-cursor (base cid principal history incarnation query version view epoch position slot gen okind oslot ogen fn2-fields fn2-pool)
-  (declare (xargs :stobjs (fn2-fields fn2-pool) :guard (and (fn2-fields-wfp fn2-fields) (fn2-pool-wfp fn2-pool))))
-  (b* (((unless (fn2-origin-physicalp history incarnation))
-        (mv :size 0 0 fn2-fields fn2-pool))
-       (start (fn2-pool-fill-value slot fn2-pool))
-       (cid (nfix cid)) (principal (nfix principal)) (query (nfix query))
-       (hl (fn2-fnct-be-width history)) (il (fn2-fnct-be-width incarnation))
-       (cl (fn2-fnct-be-width cid)) (pl (fn2-fnct-be-width principal))
-       (ql (fn2-fnct-be-width query))
-       ((mv ch fn2-pool) (fn2-fnct-put-be 0 history hl slot gen okind oslot ogen fn2-pool))
-       ((mv ci fn2-pool) (fn2-fnct-put-be 0 incarnation il slot gen okind oslot ogen fn2-pool))
-       ((mv c1 fn2-pool) (fn2-fnct-put-be 0 cid cl slot gen okind oslot ogen fn2-pool))
-       ((mv c2 fn2-pool) (fn2-fnct-put-be 0 principal pl slot gen okind oslot ogen fn2-pool))
-       ((mv c3 fn2-pool) (fn2-fnct-put-be 0 query ql slot gen okind oslot ogen fn2-pool))
-       ((unless (and (eq ch :ok) (eq ci :ok) (eq c1 :ok) (eq c2 :ok) (eq c3 :ok)))
-        (mv :size 0 0 fn2-fields fn2-pool)))
-    (if (and (unsigned-byte-p 32 version) (unsigned-byte-p 32 view)
-             (unsigned-byte-p 32 epoch) (unsigned-byte-p 32 position))
-        (fn2-fnct-put-cursor base start hl il cl pl ql version view epoch position slot gen okind oslot ogen fn2-fields fn2-pool)
-      (fn2-fnct-put-cursor-v2 base start hl il cl pl ql version view epoch position slot gen okind oslot ogen fn2-fields fn2-pool))))
-(fn2-pool-block-shape fn2-cns-put-query-cursor-shape
-  (fn2-cns-put-query-cursor base cid principal history incarnation query version view epoch position slot gen okind oslot ogen fn2-fields fn2-pool)
-  (and (fn2-fieldsp fn2-fields) (fn2-fields-wfp fn2-fields) (fn2-poolp fn2-pool) (fn2-pool-wfp fn2-pool))
-  ((fn2-fields 3) (fn2-pool 4))
-  (("Goal" :in-theory (e/d (fn2-cns-put-query-cursor) (fn2-fieldsp fn2-fields-wfp fn2-poolp fn2-pool-wfp fn2-fields-rows fn2-pool-rows)))))
 (defun fn2-cns-put-cursor (base cid principal history incarnation version view epoch position slot gen okind oslot ogen fn2-fields fn2-pool)
   (declare (xargs :stobjs (fn2-fields fn2-pool) :guard (and (fn2-fields-wfp fn2-fields) (fn2-pool-wfp fn2-pool))))
   (fn2-cns-put-query-cursor base cid principal history incarnation 1 version view epoch position
