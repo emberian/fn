@@ -51,7 +51,7 @@ class ReplyDecoding(unittest.TestCase):
                 fn_admin.decode_cns_reply(verb, cns_reply(b""))
 
     def test_rebase_sends_issued_cursor_and_decodes_replacement(self) -> None:
-        for start, tag in (("keep", b"\x00"), ("history", b"\x02")):
+        for start, tag in (("keep", b"\x00"), ("now", b"\x01"), ("history", b"\x02")):
             with self.subTest(start=start):
                 request = fn_admin.build_cns_request("rebase", cursor=CURSOR, start=start)
                 kind, body = fn_admin.fnct_open(request)

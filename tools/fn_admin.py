@@ -376,7 +376,7 @@ def build_cns_request(verb: str, **kw) -> bytes:
         start_byte = 0 if kw.get("start") == "now" else 1
         body = bytes([code]) + octets_var(kw["consumer"]) + octets16(b"") + bytes([start_byte])
     elif verb == "rebase":
-        start_byte = {"keep": 0, "history": 2}[kw["start"]]
+        start_byte = {"keep": 0, "now": 1, "history": 2}[kw["start"]]
         body = bytes([code]) + octets16(kw["cursor"]) + octets16(b"") + bytes([start_byte])
     elif verb in ("position", "status"):
         body = bytes([code]) + octets_var(kw["consumer"])
@@ -1543,7 +1543,7 @@ def build_parser() -> argparse.ArgumentParser:
 
     p_sreb = stream_sub.add_parser("rebase", help="adopt current authority in a new durable epoch")
     p_sreb.add_argument("--consumer", default="1", help="consumer id when querying committed position")
-    p_sreb.add_argument("--start", choices=("keep", "history"), default="keep")
+    p_sreb.add_argument("--start", choices=("keep", "now", "history"), default="keep")
     p_sreb.add_argument("--cursor", help="issued fncu cursor hex")
     p_sreb.add_argument("--cursor-file", type=Path, help="read and update the issued cursor in this file")
     _add_control_args(p_sreb)

@@ -128,7 +128,7 @@
 (defmachine-registry fn2-ctl)
 
 (defmachine fn2-cns
- :phases (:free :decode :check :lookup :read :page :article :item :fetch :source :park :commit :committed :append :draining :retired :replay :fetch-authorize :item-authorize :page-authorize)
+ :phases (:free :decode :check :lookup :read :page :article :item :fetch :source :park :commit :committed :append :draining :retired :replay :fetch-authorize :item-authorize :page-authorize :view-frontier :view-frontier-item :view-frontier-check)
  :fields ((ctl :link) (ctl-gen :u60) (request :u32) (fpos :u32) (flen :u32) (fkind :u8)
           (verb (:enum fn2-cns-verb (:none :register :read :wait :ack :position :status :append :fetch
                                      :rebase :unregister)))
@@ -189,6 +189,9 @@
          (:fetch-authorize :tx-range :wait-row (:storage-window :while (lease :held)))
          (:item-authorize :tx-range :wait-row (:storage-window :while (lease :held)))
          (:page-authorize :tx-range :wait-row (:storage-window :while (lease :held)))
+         (:view-frontier :tx-range :wait-row)
+         (:view-frontier-item :tx-range :wait-row)
+         (:view-frontier-check :tx-range :wait-row)
          (:article :tx-range :wait-row (:storage-window :while (lease :held)))
          (:item :tx-range :wait-row (:storage-window :while (lease :held)))
          (:fetch :tx-range :wait-row (:storage-window :while (lease :held)))
@@ -208,7 +211,7 @@
  :initial ((generation fn2-machine-initial-generation) (ready-prev *fn2-none*) (ready-next *fn2-none*)
            (ctl *fn2-none*) (edge *fn2-none*) (txn *fn2-none*) (tx-slot *fn2-none*) (upload *fn2-none*)
            (lslot *fn2-none*) (ws-slot *fn2-none*) (ns-slot *fn2-none*) (next-free fn2-machine-initial-next-free))
- :arms ((:free) (:decode) (:check) (:lookup) (:read) (:page) (:article) (:item) (:fetch) (:source) (:park) (:commit) (:committed) (:append) (:draining) (:retired) (:replay) (:fetch-authorize) (:item-authorize) (:page-authorize))
+ :arms ((:free) (:decode) (:check) (:lookup) (:read) (:page) (:article) (:item) (:fetch) (:source) (:park) (:commit) (:committed) (:append) (:draining) (:retired) (:replay) (:fetch-authorize) (:item-authorize) (:page-authorize) (:view-frontier) (:view-frontier-item) (:view-frontier-check))
  :observes ((:read-result)))
 
 (defmachine-registry fn2-cns)

@@ -800,12 +800,13 @@ changes. REBASE compares the issued cursor's epoch and recorded revision, then a
 the next epoch with the current revision. KEEP preserves the durable ACK position, and HISTORY
 starts at zero. The fold checks the old epoch and durable position, so a concurrent ACK and KEEP
 cannot rewind the position. Requests bearing a superseded epoch receive scope refusal. REBASE NOW
-requires an authorized frontier. Serving UNREGISTER will require retaining the last epoch in a
+uses the same authorized frontier as STATUS. Serving UNREGISTER will require retaining the last epoch in a
 tombstone so registration after reclamation cannot reuse it.
 
-STATUS, REGISTER from now and ACK's frontier limit must use the highest authorized addressed position under the
-same authority revision as the page walk. The current positioned seek cannot filter memberships. A
-bounded reverse address walk with resumable membership/grant reads is one direct implementation.
+STATUS and REBASE NOW walk addressed rows in bounded steps, using the same stream read check as
+READ. They pin the authority revision before the walk and recheck it before replying or staging the new
+epoch. The raw addressed tip only bounds their private scan. REGISTER from now and ACK's frontier
+limit still need this authorized position. A reverse address walk could stop at the first visible row.
 A retained projection keyed by principal, authority revision and position would instead need a
 readiness boundary and an ordered replay rule before exposing a new revision. Neither path can use the
 unfiltered address tip as an answer. A parked WAIT also needs a principal authority dependency so a

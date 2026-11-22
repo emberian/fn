@@ -274,6 +274,28 @@ def main():
         assert historical["outcome"] == "accepted" and historical["position"] == 0, historical
         history_page = stream("read-after-history-rebase", "read", "--consumer", consumer, actor=other)
         check_page(history_page, other_receipt, other_article, more=False)
+        grant("append-grant-without-read", other, "append", "local.test")
+        mid = "<native-cursor-hidden-tail@example.invalid>"
+        _, hidden_lines = fixture.restart.article(mid.encode("ascii"), 3)
+        hidden_path = directory / "submitted-hidden-tail.article"
+        hidden_path.write_bytes(fixture.restart.wire(hidden_lines))
+        hidden = stream("append-hidden-tail", "append", "--file", hidden_path, "--op", 85, actor=other)
+        assert hidden["outcome"] == "accepted" and hidden["position"] > other_receipt["position"], hidden
+        latest_history = stream("history-under-hidden-tail-view", "rebase", "--start", "history",
+                                "--cursor", historical["cursor"], actor=other)
+        assert latest_history["outcome"] == "accepted" and latest_history["position"] == 0, latest_history
+        limited = stream("read-window-before-hidden-tail", "read", "--cursor", latest_history["cursor"],
+                         "--max-items", 1, actor=other)
+        check_page(limited, other_receipt, other_article, more=False)
+        status = stream("status-with-hidden-tail", "status", "--consumer", consumer, actor=other)
+        assert status["outcome"] == "accepted" and status["position"] == 0, status
+        assert status["frontier"] == limited["next"] and status["gap"] == limited["next"], status
+        now = stream("rebase-now-stops-before-hidden-tail", "rebase", "--start", "now",
+                     "--cursor", latest_history["cursor"], actor=other)
+        assert now["outcome"] == "accepted" and now["position"] == limited["next"], now
+        empty = stream("read-after-authorized-now", "read", "--cursor", now["cursor"], actor=other)
+        assert empty["outcome"] == "accepted" and empty["count"] == 0 and not empty["more"], empty
+        assert empty["next"] == now["position"] and empty["items"] == [], empty
         node.kill()
         processes.append(dict(phase="rebase-recovered", pid=node.node_pid, exit=node.proc.returncode,
                               position=rebased["position"]))
