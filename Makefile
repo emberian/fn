@@ -568,6 +568,7 @@ ACL2_BOOKS = \
   tests/runs-assembly \
   tests/runs-assembly-import-order \
   tests/runs-unit \
+  tests/run-put-macro-unit \
   tests/sched-unit \
   tests/scribe-scenario \
   tests/sealer-capacity-unit \
