@@ -722,8 +722,12 @@ Outbound feeding and catchup coverage remain the implementation frontier in
    successor write transaction (`fn2-cns-successor`, the profile's `fn2-txn-consumer-share`) and a class-0
    workspace, and answers the cursor the published ledger records after B settled it. Interim rulings (deputy, 2026-11-05), each owed its full form:
    the ctl's stripe and hasher row are the format table's top rows, `fc-rows - ctl-rows + S` (equal to B's
-   `fn2-b-ctl-slot` when `:format-slots` is the floor; owed: B's runtime accessor); the fncu cursor's history
-   and incarnation are one 0 octet each until B serves the store's octets (cross-store `scope` unchecked);
+   `fn2-b-ctl-slot` when `:format-slots` is the floor; owed: B's runtime accessor). The FNCT cursor's
+   history and incarnation are the immutable physical IDs that BOOT matches against persisted genesis.
+   It encodes both as minimal big-endian fields and binds the live control connection's durable principal,
+   with zero reserved for an unbound owner. READ, WAIT and ACK check these fields before entering consumer
+   work. The interim zero history and incarnation fail `scope`. The per-principal ledger namespace,
+   current query/view-version checks, and v2 cursor issuance remain owed. Other interim rules are
    the served consumer id is the consumer octets read big-endian (at most 7; owed: the (principal, name) row);
    register takes only the empty stream list (the principal's inbox, the one served query; otherwise `query`);
    an append's stream field is empty (the article's Newsgroups names its groups, as POST; otherwise `frame`);

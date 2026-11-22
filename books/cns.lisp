@@ -397,10 +397,11 @@
 (in-theory (disable fn2-cns-field-cid))
 
 ;; A fncu v1 cursor at [OFF, OFF+LEN), decoded at fields CBASE and checked
-;; against what the node issues (interim, 14 item 8): history and
-;; incarnation one 0 octet each, the consumer id, the principal's slot and
-;; query 1. (mv reason cid epoch position fn2-fields), reason 0 when it holds.
-(defun fn2-cns-decode-cursor (cbase off len principal slot gen okind oslot ogen fn2-fields fn2-pool)
+;; against the physical history checked by BOOT and the live connection's
+;; durable principal (0 on an unbound owner connection). Query 1 remains
+;; the sole served query; grant/view-version binding is deferred.
+;; (mv reason cid epoch position fn2-fields), reason 0 when scope matches.
+(defun fn2-cns-decode-cursor (cbase off len principal history incarnation slot gen okind oslot ogen fn2-fields fn2-pool)
   (declare (xargs :stobjs (fn2-fields fn2-pool)
                   :guard (and (fn2-fields-wfp fn2-fields) (fn2-pool-wfp fn2-pool) (natp cbase)
                               (<= (+ cbase *fn2-fncu-v1-num-fields*) (fn2-fields-rows fn2-fields)))))
@@ -413,28 +414,54 @@
        ((unless (and (eq dc :ok) (equal next (+ off len))
                      (equal (fn2-fields-value (+ cbase *fn2-fncu-v1-field-magic*) fn2-fields) *fn2-fncu-magic*)))
         (mv *fn2-cns-reason-frame* 0 0 0 fn2-fields))
-       ((mv hok h hl) (fn2-cns-field-be (+ cbase *fn2-fncu-v1-field-history*) 1 slot gen okind oslot ogen fn2-fields fn2-pool))
-       ((mv iok in il) (fn2-cns-field-be (+ cbase *fn2-fncu-v1-field-incarnation*) 1 slot gen okind oslot ogen fn2-fields fn2-pool))
+       ((mv hok h hl) (fn2-cns-field-be (+ cbase *fn2-fncu-v1-field-history*) 8 slot gen okind oslot ogen fn2-fields fn2-pool))
+       ((mv iok in il) (fn2-cns-field-be (+ cbase *fn2-fncu-v1-field-incarnation*) 8 slot gen okind oslot ogen fn2-fields fn2-pool))
        ((mv cok cid) (fn2-cns-field-cid (+ cbase *fn2-fncu-v1-field-consumer*) slot gen okind oslot ogen fn2-fields fn2-pool))
        ((mv pok p pl) (fn2-cns-field-be (+ cbase *fn2-fncu-v1-field-principal*) 8 slot gen okind oslot ogen fn2-fields fn2-pool))
        ((mv qok q ql) (fn2-cns-field-be (+ cbase *fn2-fncu-v1-field-query*) 8 slot gen okind oslot ogen fn2-fields fn2-pool))
-       ((unless (and hok (equal hl 1) (equal h 0) iok (equal il 1) (equal in 0) cok
-                     pok (< 0 pl) (equal p (nfix principal)) qok (< 0 ql) (equal q 1)))
+       ((unless (and (fn2-origin-physicalp history incarnation)
+                     hok (equal h history) (equal hl (fn2-fnct-be-width history))
+                     iok (equal in incarnation) (equal il (fn2-fnct-be-width incarnation))
+                     cok pok (equal p (nfix principal)) (equal pl (fn2-fnct-be-width principal))
+                     qok (< 0 ql) (equal q 1)))
         (mv *fn2-cns-reason-scope* 0 0 0 fn2-fields)))
     (mv 0 cid (nfix (fn2-fields-value (+ cbase *fn2-fncu-v1-field-epoch*) fn2-fields))
         (nfix (fn2-fields-value (+ cbase *fn2-fncu-v1-field-position*) fn2-fields)) fn2-fields)))
 (defthm fn2-cns-decode-cursor-types
-  (and (natp (mv-nth 0 (fn2-cns-decode-cursor cbase off len principal slot gen okind oslot ogen fn2-fields fn2-pool)))
-       (natp (mv-nth 1 (fn2-cns-decode-cursor cbase off len principal slot gen okind oslot ogen fn2-fields fn2-pool)))
-       (natp (mv-nth 2 (fn2-cns-decode-cursor cbase off len principal slot gen okind oslot ogen fn2-fields fn2-pool)))
-       (natp (mv-nth 3 (fn2-cns-decode-cursor cbase off len principal slot gen okind oslot ogen fn2-fields fn2-pool))))
-  :rule-classes ((:type-prescription :corollary (natp (mv-nth 0 (fn2-cns-decode-cursor cbase off len principal slot gen okind oslot ogen fn2-fields fn2-pool))))
-                 (:type-prescription :corollary (natp (mv-nth 1 (fn2-cns-decode-cursor cbase off len principal slot gen okind oslot ogen fn2-fields fn2-pool))))
-                 (:type-prescription :corollary (natp (mv-nth 2 (fn2-cns-decode-cursor cbase off len principal slot gen okind oslot ogen fn2-fields fn2-pool))))
-                 (:type-prescription :corollary (natp (mv-nth 3 (fn2-cns-decode-cursor cbase off len principal slot gen okind oslot ogen fn2-fields fn2-pool)))))
+  (and (natp (mv-nth 0 (fn2-cns-decode-cursor cbase off len principal history incarnation slot gen okind oslot ogen fn2-fields fn2-pool)))
+       (natp (mv-nth 1 (fn2-cns-decode-cursor cbase off len principal history incarnation slot gen okind oslot ogen fn2-fields fn2-pool)))
+       (natp (mv-nth 2 (fn2-cns-decode-cursor cbase off len principal history incarnation slot gen okind oslot ogen fn2-fields fn2-pool)))
+       (natp (mv-nth 3 (fn2-cns-decode-cursor cbase off len principal history incarnation slot gen okind oslot ogen fn2-fields fn2-pool))))
+  :rule-classes ((:type-prescription :corollary (natp (mv-nth 0 (fn2-cns-decode-cursor cbase off len principal history incarnation slot gen okind oslot ogen fn2-fields fn2-pool))))
+                 (:type-prescription :corollary (natp (mv-nth 1 (fn2-cns-decode-cursor cbase off len principal history incarnation slot gen okind oslot ogen fn2-fields fn2-pool))))
+                 (:type-prescription :corollary (natp (mv-nth 2 (fn2-cns-decode-cursor cbase off len principal history incarnation slot gen okind oslot ogen fn2-fields fn2-pool))))
+                 (:type-prescription :corollary (natp (mv-nth 3 (fn2-cns-decode-cursor cbase off len principal history incarnation slot gen okind oslot ogen fn2-fields fn2-pool)))))
   :hints (("Goal" :in-theory (e/d (fn2-cns-decode-cursor) (fn2-pool-read)))))
+;; Accepted scope comes from the bytes in the actual decoded range.
+(defthm fn2-cns-decode-cursor-binds-scope
+  (mv-let (reason cid epoch position fn2-fields)
+    (fn2-cns-decode-cursor cbase off len principal history incarnation
+                           slot gen okind oslot ogen fn2-fields fn2-pool)
+    (declare (ignore cid epoch position))
+    (implies
+     (equal reason 0)
+     (and (fn2-origin-physicalp history incarnation)
+          (mv-let (ok value width)
+            (fn2-cns-field-be (+ cbase *fn2-fncu-v1-field-history*) 8
+                              slot gen okind oslot ogen fn2-fields fn2-pool)
+            (and ok (equal value history) (equal width (fn2-fnct-be-width history))))
+          (mv-let (ok value width)
+            (fn2-cns-field-be (+ cbase *fn2-fncu-v1-field-incarnation*) 8
+                              slot gen okind oslot ogen fn2-fields fn2-pool)
+            (and ok (equal value incarnation) (equal width (fn2-fnct-be-width incarnation))))
+          (mv-let (ok value width)
+            (fn2-cns-field-be (+ cbase *fn2-fncu-v1-field-principal*) 8
+                              slot gen okind oslot ogen fn2-fields fn2-pool)
+            (and ok (equal value (nfix principal)) (equal width (fn2-fnct-be-width principal)))))))
+  :rule-classes nil
+  :hints (("Goal" :in-theory (e/d (fn2-cns-decode-cursor) (fn2-pool-read fn2-origin-physicalp)))))
 (fn2-pool-block-shape fn2-cns-decode-cursor-shape
-  (fn2-cns-decode-cursor cbase off len principal slot gen okind oslot ogen fn2-fields fn2-pool)
+  (fn2-cns-decode-cursor cbase off len principal history incarnation slot gen okind oslot ogen fn2-fields fn2-pool)
   (and (fn2-fieldsp fn2-fields) (fn2-fields-wfp fn2-fields) (fn2-poolp fn2-pool) (fn2-pool-wfp fn2-pool)
        (natp cbase) (<= (+ cbase *fn2-fncu-v1-num-fields*) (fn2-fields-rows fn2-fields)))
   ((fn2-fields 4))
@@ -477,7 +504,7 @@
        (now (equal (fn2-fields-value (+ base *fn2-fnct-k4-register-query-field-start*) fn2-fields) 0)))
     (mv 0 *fn2-cns-verb-register* cid (if now (nfix pfront) 0) 0 0 1 0 0 0
         (nfix (fn2-fields-ref-off ci fn2-fields)) (nfix (fn2-fields-ref-len ci fn2-fields)) fn2-fields)))
-(defun fn2-cns-dec-ack (base pos flen principal slot gen okind oslot ogen fn2-fields fn2-pool)
+(defun fn2-cns-dec-ack (base pos flen principal history incarnation slot gen okind oslot ogen fn2-fields fn2-pool)
   ; ack (1): the code, then the cursor's octets to the payload's end; the
   ; proposal is the cursor's position.
   (declare (xargs :stobjs (fn2-fields fn2-pool) :guard (fn2-cns-dec-guard)))
@@ -485,38 +512,38 @@
        ((mv dc next fn2-fields) (fn2-fnct-k4-ack-decode base slot gen pos (min end (+ 1 (nfix pos))) okind oslot ogen fn2-fields fn2-pool))
        ((unless (and (eq dc :ok) (equal next (+ 1 (nfix pos))) (< next end))) (fn2-cns-dec-refuse *fn2-cns-reason-frame*))
        ((mv reason cid epoch position fn2-fields)
-        (fn2-cns-decode-cursor (+ base 16) next (- end next) principal slot gen okind oslot ogen fn2-fields fn2-pool))
+        (fn2-cns-decode-cursor (+ base 16) next (- end next) principal history incarnation slot gen okind oslot ogen fn2-fields fn2-pool))
        ((unless (equal reason 0)) (fn2-cns-dec-refuse reason)))
     (mv 0 *fn2-cns-verb-ack* cid 0 position 0 epoch 0 0 0 0 0 fn2-fields)))
 ;; The cursor in field CI's octets: (mv reason cid epoch position fn2-fields).
-(defun fn2-cns-dec-cursor-field (base ci principal slot gen okind oslot ogen fn2-fields fn2-pool)
+(defun fn2-cns-dec-cursor-field (base ci principal history incarnation slot gen okind oslot ogen fn2-fields fn2-pool)
   (declare (xargs :stobjs (fn2-fields fn2-pool)
                   :guard (and (fn2-fields-wfp fn2-fields) (fn2-pool-wfp fn2-pool) (natp base) (natp ci)
                               (< ci (fn2-fields-rows fn2-fields)) (<= (+ base 128) (fn2-fields-rows fn2-fields)))))
   (mv-let (reason cid epoch position fn2-fields)
     (fn2-cns-decode-cursor (+ base 16) (fn2-fields-ref-off ci fn2-fields) (fn2-fields-ref-len ci fn2-fields)
-                           principal slot gen okind oslot ogen fn2-fields fn2-pool)
+                           principal history incarnation slot gen okind oslot ogen fn2-fields fn2-pool)
     (mv reason cid epoch position fn2-fields)))
 (defthm fn2-cns-dec-cursor-field-types
-  (and (natp (mv-nth 0 (fn2-cns-dec-cursor-field base ci principal slot gen okind oslot ogen fn2-fields fn2-pool)))
-       (natp (mv-nth 1 (fn2-cns-dec-cursor-field base ci principal slot gen okind oslot ogen fn2-fields fn2-pool)))
-       (natp (mv-nth 2 (fn2-cns-dec-cursor-field base ci principal slot gen okind oslot ogen fn2-fields fn2-pool)))
-       (natp (mv-nth 3 (fn2-cns-dec-cursor-field base ci principal slot gen okind oslot ogen fn2-fields fn2-pool))))
-  :rule-classes ((:type-prescription :corollary (natp (mv-nth 0 (fn2-cns-dec-cursor-field base ci principal slot gen okind oslot ogen fn2-fields fn2-pool))))
-                 (:type-prescription :corollary (natp (mv-nth 1 (fn2-cns-dec-cursor-field base ci principal slot gen okind oslot ogen fn2-fields fn2-pool))))
-                 (:type-prescription :corollary (natp (mv-nth 2 (fn2-cns-dec-cursor-field base ci principal slot gen okind oslot ogen fn2-fields fn2-pool))))
-                 (:type-prescription :corollary (natp (mv-nth 3 (fn2-cns-dec-cursor-field base ci principal slot gen okind oslot ogen fn2-fields fn2-pool)))))
+  (and (natp (mv-nth 0 (fn2-cns-dec-cursor-field base ci principal history incarnation slot gen okind oslot ogen fn2-fields fn2-pool)))
+       (natp (mv-nth 1 (fn2-cns-dec-cursor-field base ci principal history incarnation slot gen okind oslot ogen fn2-fields fn2-pool)))
+       (natp (mv-nth 2 (fn2-cns-dec-cursor-field base ci principal history incarnation slot gen okind oslot ogen fn2-fields fn2-pool)))
+       (natp (mv-nth 3 (fn2-cns-dec-cursor-field base ci principal history incarnation slot gen okind oslot ogen fn2-fields fn2-pool))))
+  :rule-classes ((:type-prescription :corollary (natp (mv-nth 0 (fn2-cns-dec-cursor-field base ci principal history incarnation slot gen okind oslot ogen fn2-fields fn2-pool))))
+                 (:type-prescription :corollary (natp (mv-nth 1 (fn2-cns-dec-cursor-field base ci principal history incarnation slot gen okind oslot ogen fn2-fields fn2-pool))))
+                 (:type-prescription :corollary (natp (mv-nth 2 (fn2-cns-dec-cursor-field base ci principal history incarnation slot gen okind oslot ogen fn2-fields fn2-pool))))
+                 (:type-prescription :corollary (natp (mv-nth 3 (fn2-cns-dec-cursor-field base ci principal history incarnation slot gen okind oslot ogen fn2-fields fn2-pool)))))
   :hints (("Goal" :in-theory (e/d (fn2-cns-dec-cursor-field) (fn2-cns-decode-cursor-types))
            :use ((:instance fn2-cns-decode-cursor-types (cbase (+ 16 base)) (off (fn2-fields-ref-off ci fn2-fields))
                             (len (fn2-fields-ref-len ci fn2-fields)))))))
 (fn2-pool-block-shape fn2-cns-dec-cursor-field-shape
-  (fn2-cns-dec-cursor-field base ci principal slot gen okind oslot ogen fn2-fields fn2-pool)
+  (fn2-cns-dec-cursor-field base ci principal history incarnation slot gen okind oslot ogen fn2-fields fn2-pool)
   (and (fn2-fieldsp fn2-fields) (fn2-fields-wfp fn2-fields) (fn2-poolp fn2-pool) (fn2-pool-wfp fn2-pool) (natp base)
        (<= (+ base 128) (fn2-fields-rows fn2-fields)))
   ((fn2-fields 4))
   (("Goal" :in-theory (e/d (fn2-cns-dec-cursor-field) (fn2-fieldsp fn2-fields-wfp fn2-poolp fn2-pool-wfp fn2-fields-rows fn2-pool-rows)))))
 (in-theory (disable fn2-cns-dec-cursor-field))
-(defun fn2-cns-dec-read (base pos flen principal slot gen okind oslot ogen fn2-fields fn2-pool)
+(defun fn2-cns-dec-read (base pos flen principal history incarnation slot gen okind oslot ogen fn2-fields fn2-pool)
   ; read (15): the cursor, max items (a page row's limit, at most 65535)
   ; and max octets (owed: the page's octet bound, with its items).
   (declare (xargs :stobjs (fn2-fields fn2-pool) :guard (fn2-cns-dec-guard)))
@@ -525,11 +552,11 @@
        ((unless (and (eq dc :ok) (equal next end))) (fn2-cns-dec-refuse *fn2-cns-reason-frame*))
        (lim (nfix (fn2-fields-value (+ base *fn2-fnct-k4-read-field-max-items*) fn2-fields)))
        ((mv reason cid epoch position fn2-fields)
-        (fn2-cns-dec-cursor-field base (+ base *fn2-fnct-k4-read-field-cursor*) principal slot gen okind oslot ogen fn2-fields fn2-pool))
+        (fn2-cns-dec-cursor-field base (+ base *fn2-fnct-k4-read-field-cursor*) principal history incarnation slot gen okind oslot ogen fn2-fields fn2-pool))
        ((unless (equal reason 0)) (fn2-cns-dec-refuse reason))
        ((unless (and (posp lim) (<= lim 65535))) (fn2-cns-dec-refuse *fn2-cns-reason-meter*)))
     (mv 0 *fn2-cns-verb-read* cid 0 position lim epoch 0 0 0 0 0 fn2-fields)))
-(defun fn2-cns-dec-wait (base pos flen principal slot gen okind oslot ogen fn2-fields fn2-pool)
+(defun fn2-cns-dec-wait (base pos flen principal history incarnation slot gen okind oslot ogen fn2-fields fn2-pool)
   ; wait-cursor (16): read's fields and the seconds it may park (at most 3600).
   (declare (xargs :stobjs (fn2-fields fn2-pool) :guard (fn2-cns-dec-guard)))
   (b* ((end (+ (nfix pos) (nfix flen)))
@@ -539,7 +566,7 @@
        (seconds (nfix (fn2-fields-value (+ base *fn2-fnct-k4-wait-cursor-field-seconds*) fn2-fields)))
        ((unless (<= seconds *fn2-fnct-max-wait-seconds*)) (fn2-cns-dec-refuse *fn2-cns-reason-frame*))
        ((mv reason cid epoch position fn2-fields)
-        (fn2-cns-dec-cursor-field base (+ base *fn2-fnct-k4-wait-cursor-field-cursor*) principal slot gen okind oslot ogen fn2-fields fn2-pool))
+        (fn2-cns-dec-cursor-field base (+ base *fn2-fnct-k4-wait-cursor-field-cursor*) principal history incarnation slot gen okind oslot ogen fn2-fields fn2-pool))
        ((unless (equal reason 0)) (fn2-cns-dec-refuse reason))
        ((unless (and (posp lim) (<= lim 65535))) (fn2-cns-dec-refuse *fn2-cns-reason-meter*)))
     (mv 0 *fn2-cns-verb-wait* cid 0 position lim epoch (* 1000 seconds) 0 0 0 0 fn2-fields)))
@@ -573,13 +600,13 @@
        ((unless (and (posp position) (unsigned-byte-p 60 position) (unsigned-byte-p 32 moff) (posp mlen) (<= mlen 250)))
         (fn2-cns-dec-refuse *fn2-cns-reason-frame*)))
     (mv 0 *fn2-cns-verb-fetch* 0 0 position 1 0 0 0 0 moff mlen fn2-fields)))
-(defun fn2-cns-decode-port-pool (base pos flen code principal pfront slot gen okind oslot ogen fn2-fields fn2-pool)
+(defun fn2-cns-decode-port-pool (base pos flen code principal history incarnation pfront slot gen okind oslot ogen fn2-fields fn2-pool)
   (declare (xargs :stobjs (fn2-fields fn2-pool) :guard (fn2-cns-dec-guard)))
   (case code
     (14 (fn2-cns-dec-register base pos flen pfront slot gen okind oslot ogen fn2-fields fn2-pool))
-    (15 (fn2-cns-dec-read base pos flen principal slot gen okind oslot ogen fn2-fields fn2-pool))
-    (16 (fn2-cns-dec-wait base pos flen principal slot gen okind oslot ogen fn2-fields fn2-pool))
-    (1 (fn2-cns-dec-ack base pos flen principal slot gen okind oslot ogen fn2-fields fn2-pool))
+    (15 (fn2-cns-dec-read base pos flen principal history incarnation slot gen okind oslot ogen fn2-fields fn2-pool))
+    (16 (fn2-cns-dec-wait base pos flen principal history incarnation slot gen okind oslot ogen fn2-fields fn2-pool))
+    (1 (fn2-cns-dec-ack base pos flen principal history incarnation slot gen okind oslot ogen fn2-fields fn2-pool))
     (2 (fn2-cns-dec-consumer base pos flen *fn2-cns-verb-position* slot gen okind oslot ogen fn2-fields fn2-pool))
     (18 (fn2-cns-dec-consumer base pos flen *fn2-cns-verb-status* slot gen okind oslot ogen fn2-fields fn2-pool))
     (11 (fn2-cns-dec-append base pos flen slot gen okind oslot ogen fn2-fields fn2-pool))
@@ -595,43 +622,48 @@
      (("Goal" :in-theory (e/d (,name) (fn2-fieldsp fn2-fields-wfp fn2-poolp fn2-pool-wfp fn2-fields-rows fn2-pool-rows))))))
 (fn2-cns-dec-shape fn2-cns-dec-consumer (base pos flen verb slot gen okind oslot ogen fn2-fields fn2-pool))
 (fn2-cns-dec-shape fn2-cns-dec-register (base pos flen pfront slot gen okind oslot ogen fn2-fields fn2-pool))
-(fn2-cns-dec-shape fn2-cns-dec-ack (base pos flen principal slot gen okind oslot ogen fn2-fields fn2-pool))
-(fn2-cns-dec-shape fn2-cns-dec-read (base pos flen principal slot gen okind oslot ogen fn2-fields fn2-pool))
-(fn2-cns-dec-shape fn2-cns-dec-wait (base pos flen principal slot gen okind oslot ogen fn2-fields fn2-pool))
+(fn2-cns-dec-shape fn2-cns-dec-ack (base pos flen principal history incarnation slot gen okind oslot ogen fn2-fields fn2-pool))
+(fn2-cns-dec-shape fn2-cns-dec-read (base pos flen principal history incarnation slot gen okind oslot ogen fn2-fields fn2-pool))
+(fn2-cns-dec-shape fn2-cns-dec-wait (base pos flen principal history incarnation slot gen okind oslot ogen fn2-fields fn2-pool))
 (fn2-cns-dec-shape fn2-cns-dec-append (base pos flen slot gen okind oslot ogen fn2-fields fn2-pool))
 (fn2-cns-dec-shape fn2-cns-dec-fetch (base pos flen slot gen okind oslot ogen fn2-fields fn2-pool))
 (in-theory (disable fn2-cns-dec-consumer fn2-cns-dec-register fn2-cns-dec-ack fn2-cns-dec-read
                     fn2-cns-dec-wait fn2-cns-dec-append))
-(fn2-cns-dec-shape fn2-cns-decode-port-pool (base pos flen code principal pfront slot gen okind oslot ogen fn2-fields fn2-pool))
+(fn2-cns-dec-shape fn2-cns-decode-port-pool (base pos flen code principal history incarnation pfront slot gen okind oslot ogen fn2-fields fn2-pool))
 (in-theory (disable fn2-cns-decode-port-pool))
 
 ;; The reply (kind 28): the class from the row's outcome, the reason word,
 ;; and the verb's result (consumer-codec.lisp *fn2-fnct-results*), its
 ;; octet fields written first as scratch. The cursor the node issues (fncu
-;; v1, interim 14 item 8): history and incarnation one 0 octet each, the
-;; consumer id, the principal's slot and query 1, each big-endian in its
-;; fewest octets; query and view version the row's version.
-(defun fn2-cns-put-cursor (base cid principal version epoch position slot gen okind oslot ogen fn2-fields fn2-pool)
+;; v1) carries BOOT's persisted history and incarnation, the consumer id,
+;; the bound durable principal and query 1, in minimal big-endian form.
+;; Query and view version remain the row's registration version.
+(defun fn2-cns-put-cursor (base cid principal history incarnation version epoch position slot gen okind oslot ogen fn2-fields fn2-pool)
   (declare (xargs :stobjs (fn2-fields fn2-pool) :guard (and (fn2-fields-wfp fn2-fields) (fn2-pool-wfp fn2-pool))))
-  (b* ((start (fn2-pool-fill-value slot fn2-pool))
+  (b* (((unless (fn2-origin-physicalp history incarnation))
+        (mv :size 0 0 fn2-fields fn2-pool))
+       (start (fn2-pool-fill-value slot fn2-pool))
        (cid (nfix cid)) (principal (nfix principal))
+       (hl (fn2-fnct-be-width history)) (il (fn2-fnct-be-width incarnation))
        (cl (fn2-fnct-be-width cid)) (pl (fn2-fnct-be-width principal))
-       ((mv c0 fn2-pool) (fn2-fnct-put-be 0 0 2 slot gen okind oslot ogen fn2-pool))
+       ((mv ch fn2-pool) (fn2-fnct-put-be 0 history hl slot gen okind oslot ogen fn2-pool))
+       ((mv ci fn2-pool) (fn2-fnct-put-be 0 incarnation il slot gen okind oslot ogen fn2-pool))
        ((mv c1 fn2-pool) (fn2-fnct-put-be 0 cid cl slot gen okind oslot ogen fn2-pool))
        ((mv c2 fn2-pool) (fn2-fnct-put-be 0 principal pl slot gen okind oslot ogen fn2-pool))
        ((mv c3 fn2-pool) (fn2-fnct-put-be 0 1 1 slot gen okind oslot ogen fn2-pool))
-       ((unless (and (eq c0 :ok) (eq c1 :ok) (eq c2 :ok) (eq c3 :ok))) (mv :size 0 0 fn2-fields fn2-pool)))
-    (fn2-fnct-put-cursor base start 1 1 cl pl 1 version version epoch position slot gen okind oslot ogen fn2-fields fn2-pool)))
+       ((unless (and (eq ch :ok) (eq ci :ok) (eq c1 :ok) (eq c2 :ok) (eq c3 :ok)))
+        (mv :size 0 0 fn2-fields fn2-pool)))
+    (fn2-fnct-put-cursor base start hl il cl pl 1 version version epoch position slot gen okind oslot ogen fn2-fields fn2-pool)))
 (fn2-pool-block-shape fn2-cns-put-cursor-shape
-  (fn2-cns-put-cursor base cid principal version epoch position slot gen okind oslot ogen fn2-fields fn2-pool)
+  (fn2-cns-put-cursor base cid principal history incarnation version epoch position slot gen okind oslot ogen fn2-fields fn2-pool)
   (and (fn2-fieldsp fn2-fields) (fn2-fields-wfp fn2-fields) (fn2-poolp fn2-pool) (fn2-pool-wfp fn2-pool))
   ((fn2-fields 3) (fn2-pool 4))
   (("Goal" :in-theory (e/d (fn2-cns-put-cursor) (fn2-fieldsp fn2-fields-wfp fn2-poolp fn2-pool-wfp fn2-fields-rows fn2-pool-rows)))))
 (defthm fn2-cns-put-cursor-natp
-  (and (natp (mv-nth 1 (fn2-cns-put-cursor base cid principal version epoch position slot gen okind oslot ogen fn2-fields fn2-pool)))
-       (natp (mv-nth 2 (fn2-cns-put-cursor base cid principal version epoch position slot gen okind oslot ogen fn2-fields fn2-pool))))
-  :rule-classes ((:type-prescription :corollary (natp (mv-nth 1 (fn2-cns-put-cursor base cid principal version epoch position slot gen okind oslot ogen fn2-fields fn2-pool))))
-                 (:type-prescription :corollary (natp (mv-nth 2 (fn2-cns-put-cursor base cid principal version epoch position slot gen okind oslot ogen fn2-fields fn2-pool)))))
+  (and (natp (mv-nth 1 (fn2-cns-put-cursor base cid principal history incarnation version epoch position slot gen okind oslot ogen fn2-fields fn2-pool)))
+       (natp (mv-nth 2 (fn2-cns-put-cursor base cid principal history incarnation version epoch position slot gen okind oslot ogen fn2-fields fn2-pool))))
+  :rule-classes ((:type-prescription :corollary (natp (mv-nth 1 (fn2-cns-put-cursor base cid principal history incarnation version epoch position slot gen okind oslot ogen fn2-fields fn2-pool))))
+                 (:type-prescription :corollary (natp (mv-nth 2 (fn2-cns-put-cursor base cid principal history incarnation version epoch position slot gen okind oslot ogen fn2-fields fn2-pool)))))
   :hints (("Goal" :in-theory (enable fn2-cns-put-cursor))))
 (in-theory (disable fn2-cns-put-cursor))
 ; Append's committed identity and position. The numbers and receipt are
@@ -757,7 +789,7 @@
           ((equal o *fn2-cns-outcome-uncertain*) 2) (t 3))))
 ; The verb's result at the fill: (mv code off len fn2-fields fn2-pool); a
 ; refusal or an uncertainty carries none (its word is the answer).
-(defun fn2-cns-put-result (base verb class cid epoch version cpos pfront count more ioff ilen inext principal
+(defun fn2-cns-put-result (base verb class cid epoch version cpos pfront count more ioff ilen inext principal history incarnation
                                 slot gen okind oslot ogen fn2-fields fn2-pool)
   (declare (xargs :stobjs (fn2-fields fn2-pool) :guard (and (fn2-fields-wfp fn2-fields) (fn2-pool-wfp fn2-pool))))
   (let ((v (nfix verb)) (cpos (nfix cpos)) (pfront (nfix pfront)) (inext (nfix inext)))
@@ -771,7 +803,7 @@
           ((equal v *fn2-cns-verb-fetch*)
            (fn2-cns-put-fetch base ioff ilen slot gen okind oslot ogen fn2-fields fn2-pool))
           ((or (equal v *fn2-cns-verb-register*) (equal v *fn2-cns-verb-position*))
-           (fn2-cns-put-cursor base cid principal version epoch cpos slot gen okind oslot ogen fn2-fields fn2-pool))
+           (fn2-cns-put-cursor base cid principal history incarnation version epoch cpos slot gen okind oslot ogen fn2-fields fn2-pool))
           ((equal v *fn2-cns-verb-status*)
            (fn2-fnct-put-status base 0 cpos pfront (nfix (- pfront cpos)) slot gen okind oslot ogen fn2-fields fn2-pool))
           ((or (equal v *fn2-cns-verb-read*) (equal v *fn2-cns-verb-wait*))
@@ -779,7 +811,7 @@
            ; is complete (the frontier when nothing stopped it); the items
            ; are [IOFF, IOFF+ILEN) of the range, put while the page was read.
            (b* (((mv code noff nlen fn2-fields fn2-pool)
-                 (fn2-cns-put-cursor base cid principal version epoch inext
+                 (fn2-cns-put-cursor base cid principal history incarnation version epoch inext
                                      slot gen okind oslot ogen fn2-fields fn2-pool))
                 ((unless (eq code :ok)) (mv code 0 0 fn2-fields fn2-pool)))
              (fn2-fnct-put-page base (if (equal more 0) 0 1) noff nlen count
@@ -787,19 +819,19 @@
                                 slot gen okind oslot ogen fn2-fields fn2-pool)))
           (t (mv :ok (fn2-pool-fill-value slot fn2-pool) 0 fn2-fields fn2-pool)))))
 (fn2-pool-block-shape fn2-cns-put-result-shape
-  (fn2-cns-put-result base verb class cid epoch version cpos pfront count more ioff ilen inext principal slot gen okind oslot ogen fn2-fields fn2-pool)
+  (fn2-cns-put-result base verb class cid epoch version cpos pfront count more ioff ilen inext principal history incarnation slot gen okind oslot ogen fn2-fields fn2-pool)
   (and (fn2-fieldsp fn2-fields) (fn2-fields-wfp fn2-fields) (fn2-poolp fn2-pool) (fn2-pool-wfp fn2-pool))
   ((fn2-fields 3) (fn2-pool 4))
   (("Goal" :in-theory (e/d (fn2-cns-put-result) (fn2-fieldsp fn2-fields-wfp fn2-poolp fn2-pool-wfp fn2-fields-rows fn2-pool-rows)))))
 (defthm fn2-cns-put-result-natp
-  (and (natp (mv-nth 1 (fn2-cns-put-result base verb class cid epoch version cpos pfront count more ioff ilen inext principal slot gen okind oslot ogen fn2-fields fn2-pool)))
-       (natp (mv-nth 2 (fn2-cns-put-result base verb class cid epoch version cpos pfront count more ioff ilen inext principal slot gen okind oslot ogen fn2-fields fn2-pool))))
-  :rule-classes ((:type-prescription :corollary (natp (mv-nth 1 (fn2-cns-put-result base verb class cid epoch version cpos pfront count more ioff ilen inext principal slot gen okind oslot ogen fn2-fields fn2-pool))))
-                 (:type-prescription :corollary (natp (mv-nth 2 (fn2-cns-put-result base verb class cid epoch version cpos pfront count more ioff ilen inext principal slot gen okind oslot ogen fn2-fields fn2-pool)))))
+  (and (natp (mv-nth 1 (fn2-cns-put-result base verb class cid epoch version cpos pfront count more ioff ilen inext principal history incarnation slot gen okind oslot ogen fn2-fields fn2-pool)))
+       (natp (mv-nth 2 (fn2-cns-put-result base verb class cid epoch version cpos pfront count more ioff ilen inext principal history incarnation slot gen okind oslot ogen fn2-fields fn2-pool))))
+  :rule-classes ((:type-prescription :corollary (natp (mv-nth 1 (fn2-cns-put-result base verb class cid epoch version cpos pfront count more ioff ilen inext principal history incarnation slot gen okind oslot ogen fn2-fields fn2-pool))))
+                 (:type-prescription :corollary (natp (mv-nth 2 (fn2-cns-put-result base verb class cid epoch version cpos pfront count more ioff ilen inext principal history incarnation slot gen okind oslot ogen fn2-fields fn2-pool)))))
   :hints (("Goal" :in-theory (enable fn2-cns-put-result))))
 (in-theory (disable fn2-cns-put-result))
 ; The whole reply at the fill: (mv code k total fn2-fields fn2-digests fn2-b3 fn2-pool), the frame [K, K+TOTAL).
-(defun fn2-cns-reply-pool (base row verb outcome reason cid epoch version cpos pfront count more ioff ilen inext principal
+(defun fn2-cns-reply-pool (base row verb outcome reason cid epoch version cpos pfront count more ioff ilen inext principal history incarnation
                                 slot gen okind oslot ogen fn2-fields fn2-digests fn2-b3 fn2-pool)
   (declare (xargs :stobjs (fn2-fields fn2-digests fn2-b3 fn2-pool)
                   :guard (and (fn2-fields-wfp fn2-fields) (fn2-pool-wfp fn2-pool))))
@@ -811,22 +843,22 @@
        (rlen (nfix (- (fn2-pool-fill-value slot fn2-pool) roff)))
        ((unless (eq wc :ok)) (mv :size 0 0 fn2-fields fn2-digests fn2-b3 fn2-pool))
        ((mv qc qoff qlen fn2-fields fn2-pool)
-        (fn2-cns-put-result base verb class cid epoch version cpos pfront count more ioff ilen inext principal
+        (fn2-cns-put-result base verb class cid epoch version cpos pfront count more ioff ilen inext principal history incarnation
                             slot gen okind oslot ogen fn2-fields fn2-pool))
        ((unless (eq qc :ok)) (mv qc 0 0 fn2-fields fn2-digests fn2-b3 fn2-pool))
        ((mv code k total fn2-fields fn2-digests fn2-b3 fn2-pool)
         (fn2-fnct-put-k28 base row class roff rlen qoff qlen slot gen okind oslot ogen fn2-fields fn2-digests fn2-b3 fn2-pool)))
     (mv code (nfix k) (nfix total) fn2-fields fn2-digests fn2-b3 fn2-pool)))
 (fn2-pool-block-shape fn2-cns-reply-pool-shape
-  (fn2-cns-reply-pool base row verb outcome reason cid epoch version cpos pfront count more ioff ilen inext principal slot gen okind oslot ogen fn2-fields fn2-digests fn2-b3 fn2-pool)
+  (fn2-cns-reply-pool base row verb outcome reason cid epoch version cpos pfront count more ioff ilen inext principal history incarnation slot gen okind oslot ogen fn2-fields fn2-digests fn2-b3 fn2-pool)
   (and (fn2-fieldsp fn2-fields) (fn2-fields-wfp fn2-fields) (fn2-digestsp fn2-digests) (fn2-digests-wfp fn2-digests) (fn2-b3p fn2-b3) (fn2-b3-wfp fn2-b3) (fn2-poolp fn2-pool) (fn2-pool-wfp fn2-pool))
   ((fn2-fields 3) (fn2-digests 4) (fn2-b3 5) (fn2-pool 6))
   (("Goal" :in-theory (e/d (fn2-cns-reply-pool) (fn2-fieldsp fn2-fields-wfp fn2-digestsp fn2-digests-wfp fn2-b3p fn2-b3-wfp fn2-poolp fn2-pool-wfp fn2-digests-rows fn2-b3-rows fn2-fields-rows fn2-pool-rows)))))
 (defthm fn2-cns-reply-pool-natp
-  (and (natp (mv-nth 1 (fn2-cns-reply-pool base row verb outcome reason cid epoch version cpos pfront count more ioff ilen inext principal slot gen okind oslot ogen fn2-fields fn2-digests fn2-b3 fn2-pool)))
-       (natp (mv-nth 2 (fn2-cns-reply-pool base row verb outcome reason cid epoch version cpos pfront count more ioff ilen inext principal slot gen okind oslot ogen fn2-fields fn2-digests fn2-b3 fn2-pool))))
-  :rule-classes ((:type-prescription :corollary (natp (mv-nth 1 (fn2-cns-reply-pool base row verb outcome reason cid epoch version cpos pfront count more ioff ilen inext principal slot gen okind oslot ogen fn2-fields fn2-digests fn2-b3 fn2-pool))))
-                 (:type-prescription :corollary (natp (mv-nth 2 (fn2-cns-reply-pool base row verb outcome reason cid epoch version cpos pfront count more ioff ilen inext principal slot gen okind oslot ogen fn2-fields fn2-digests fn2-b3 fn2-pool)))))
+  (and (natp (mv-nth 1 (fn2-cns-reply-pool base row verb outcome reason cid epoch version cpos pfront count more ioff ilen inext principal history incarnation slot gen okind oslot ogen fn2-fields fn2-digests fn2-b3 fn2-pool)))
+       (natp (mv-nth 2 (fn2-cns-reply-pool base row verb outcome reason cid epoch version cpos pfront count more ioff ilen inext principal history incarnation slot gen okind oslot ogen fn2-fields fn2-digests fn2-b3 fn2-pool))))
+  :rule-classes ((:type-prescription :corollary (natp (mv-nth 1 (fn2-cns-reply-pool base row verb outcome reason cid epoch version cpos pfront count more ioff ilen inext principal history incarnation slot gen okind oslot ogen fn2-fields fn2-digests fn2-b3 fn2-pool))))
+                 (:type-prescription :corollary (natp (mv-nth 2 (fn2-cns-reply-pool base row verb outcome reason cid epoch version cpos pfront count more ioff ilen inext principal history incarnation slot gen okind oslot ogen fn2-fields fn2-digests fn2-b3 fn2-pool)))))
   :hints (("Goal" :in-theory (enable fn2-cns-reply-pool))))
 (in-theory (disable fn2-cns-reply-pool))
 
@@ -1275,7 +1307,7 @@
    (:do (pcode) (fn2-cns-post-reply row-ctl row-ctl-gen row-request row-verb row-outcome row-reason
                                     row-consumer row-epoch row-version row-cpos row-pub-frontier row-count row-more
                                     row-ioff row-ilen row-ipos
-                                    row-principal-slot row-tx-slot row-tx-gen
+                                    row-tx-slot row-tx-gen
                                     id row-generation row-ns-slot row-ns-gen row-name-len)
     :accept (:ok :dropped) :why "the control connection may have closed while the consumer request ran")
    (:wake-row row-ctl)
@@ -2575,16 +2607,21 @@ t) ready)
        :hints (("Goal" :in-theory (enable fn2-ctl-post-posture))))
      (in-theory (disable fn2-ctl-post-posture))
      ;; The decode at frontier PF, the principal's stream frontier.
-     (defun fn2-cns-decode-port-at (pos flen code principal pf ctl ctl-gen tx-slot tx-gen fn2-core)
+     (defun fn2-cns-decode-port-at (pos flen code pf ctl ctl-gen tx-slot tx-gen fn2-core)
        ; (mv answer reason verb cid cstart to lim epoch wait-ms op fstart noff nlen fn2-core)
        (declare (xargs :stobjs fn2-core :guard (fn2-core-wfp fn2-core)
                        :guard-hints (("Goal" :in-theory (enable fn2-core-wfp)))))
-       (mv-let (rc row) (fn2-ctl-fc-row ctl fn2-core)
-         (if (not (eq rc :ok)) (mv :refused *fn2-cns-reason-frame* 0 0 0 0 0 0 0 0 0 0 0 fn2-core)
+       (b* (((mv rc row) (fn2-ctl-fc-row ctl fn2-core))
+            ((unless (and (eq rc :ok)
+                          (eq (fn2-ctl-snapshot-read-code ctl fn2-core) :ok)
+                          (equal (fn2-machine-generation ctl fn2-core) ctl-gen)))
+             (mv :refused *fn2-cns-reason-frame* 0 0 0 0 0 0 0 0 0 0 0 fn2-core))
+            (principal (fn2-ctl-row-principal ctl fn2-core))
+            ((mv history incarnation) (fn2-core-history-values fn2-core)))
            (stobj-let ((fn2-fields (fn2-core-fields fn2-core)) (fn2-pool (fn2-core-pool fn2-core)))
              (reason verb cid cstart to lim epoch wait-ms op fstart noff nlen fn2-fields)
              (if (<= (+ (* 128 row) 128) (fn2-fields-rows fn2-fields))
-                 (fn2-cns-decode-port-pool (* 128 row) (nfix pos) (nfix flen) code principal (nfix pf)
+                 (fn2-cns-decode-port-pool (* 128 row) (nfix pos) (nfix flen) code principal history incarnation (nfix pf)
                                            tx-slot tx-gen *fn2-ctl-kind* ctl ctl-gen fn2-fields fn2-pool)
                (fn2-cns-dec-refuse *fn2-cns-reason-frame*))
              (if (and (equal reason 0) (unsigned-byte-p 60 cid) (unsigned-byte-p 60 cstart) (unsigned-byte-p 60 to)
@@ -2593,11 +2630,11 @@ t) ready)
                       (unsigned-byte-p 8 nlen))
                  (mv :ok 0 (nfix verb) cid cstart to lim epoch wait-ms op fstart noff nlen fn2-core)
                (mv :refused (if (and (natp reason) (< 0 reason) (< reason 256)) reason *fn2-cns-reason-frame*)
-                   0 0 0 0 0 0 0 0 0 0 0 fn2-core))))))
-     (fn2-core-preserves fn2-cns-decode-port-at (pos flen code principal pf ctl ctl-gen tx-slot tx-gen fn2-core)
+                   0 0 0 0 0 0 0 0 0 0 0 fn2-core)))))
+     (fn2-core-preserves fn2-cns-decode-port-at (pos flen code pf ctl ctl-gen tx-slot tx-gen fn2-core)
        :position 13 :rows nil :hints (("Goal" :in-theory (enable fn2-core-wfp))))
      (defthm fn2-cns-decode-port-at-types
-       (let ((r (fn2-cns-decode-port-at pos flen code principal pf ctl ctl-gen tx-slot tx-gen fn2-core)))
+       (let ((r (fn2-cns-decode-port-at pos flen code pf ctl ctl-gen tx-slot tx-gen fn2-core)))
          (and (natp (mv-nth 1 r)) (natp (mv-nth 2 r)) (natp (mv-nth 3 r)) (natp (mv-nth 4 r)) (natp (mv-nth 5 r))
               (natp (mv-nth 6 r)) (natp (mv-nth 7 r)) (natp (mv-nth 8 r)) (natp (mv-nth 9 r)) (natp (mv-nth 10 r))
               (natp (mv-nth 11 r)) (natp (mv-nth 12 r))))
@@ -2611,7 +2648,7 @@ t) ready)
        (declare (xargs :stobjs fn2-core :guard (fn2-core-wfp fn2-core)))
        (mv-let (pcode pf fn2-core) (fn2-cns-stream-frontier principal x fn2-core)
          (if (not (eq pcode :ok)) (mv :refused *fn2-cns-reason-unavailable* 0 0 0 0 0 0 0 0 0 0 0 fn2-core)
-           (fn2-cns-decode-port-at pos flen code principal pf ctl ctl-gen tx-slot tx-gen fn2-core))))
+           (fn2-cns-decode-port-at pos flen code pf ctl ctl-gen tx-slot tx-gen fn2-core))))
      (fn2-core-preserves fn2-cns-decode-port (pos flen code principal ctl ctl-gen tx-slot tx-gen x fn2-core)
        :position 13 :rows nil)
      (defthm fn2-cns-decode-port-types
@@ -2726,7 +2763,7 @@ t) ready)
        :position 1 :rows nil :hints (("Goal" :in-theory (enable fn2-core-wfp))))
      (in-theory (disable fn2-cns-stage-append-result))
      (defun fn2-cns-post-reply (ctl ctl-gen request verb outcome reason consumer epoch version cpos pfront count more
-                                    ioff ilen inext principal tx-slot tx-gen cns cgen ns ngen mlen fn2-core)
+                                    ioff ilen inext tx-slot tx-gen cns cgen ns ngen mlen fn2-core)
        ; Encode the kind 28 reply in the control range and
        ; post its extent to the waiting control connection (it sends from K).
        (declare (xargs :stobjs fn2-core :guard (fn2-core-wfp fn2-core)
@@ -2749,14 +2786,16 @@ t) ready)
               ((mv ac fn2-core)
                (if appendp (fn2-cns-stage-append-result ctl ctl-gen tx-slot tx-gen cns cgen ns ngen mlen fn2-core)
                  (mv :ok fn2-core)))
-              ((unless (eq ac :ok)) (mv :fault fn2-core)))
+              ((unless (eq ac :ok)) (mv :fault fn2-core))
+              (cursor-principal (fn2-ctl-row-principal ctl fn2-core))
+              ((mv history incarnation) (fn2-core-history-values fn2-core)))
              (mv-let (code k total fn2-core)
                (stobj-let ((fn2-fields (fn2-core-fields fn2-core)) (fn2-digests (fn2-core-digests fn2-core))
                            (fn2-b3 (fn2-core-b3 fn2-core)) (fn2-pool (fn2-core-pool fn2-core)))
                  (code k total fn2-fields fn2-digests fn2-b3 fn2-pool)
                  (fn2-cns-reply-pool (* 128 row) row verb outcome reason consumer epoch version cpos pfront count more
                                      (if appendp 0 ioff) (if appendp mlen ilen)
-                                     inext principal tx-slot tx-gen *fn2-ctl-kind* ctl ctl-gen
+                                     inext cursor-principal history incarnation tx-slot tx-gen *fn2-ctl-kind* ctl ctl-gen
                                      fn2-fields fn2-digests fn2-b3 fn2-pool)
                  (mv code k total fn2-core))
                (if (not (and (eq code :ok) (unsigned-byte-p 32 k) (unsigned-byte-p 32 (+ k total)) (< 0 total)))
@@ -2765,7 +2804,7 @@ t) ready)
                         (fn2-core (fn2-machine-write-tx-len ctl (+ k total) fn2-core)))
                    (mv :ok fn2-core)))))))
      (fn2-core-preserves fn2-cns-post-reply
-       (ctl ctl-gen request verb outcome reason consumer epoch version cpos pfront count more ioff ilen inext principal
+       (ctl ctl-gen request verb outcome reason consumer epoch version cpos pfront count more ioff ilen inext
         tx-slot tx-gen cns cgen ns ngen mlen fn2-core)
        :position 1 :rows nil :hints (("Goal" :in-theory (enable fn2-core-wfp))))
      (in-theory (disable fn2-cns-post-reply))

@@ -128,7 +128,41 @@ def main():
     finally:
         node.close()
     report.write_text(json.dumps(processes, indent=2) + "\n")
-    print("NATIVE CONSUMER CURSOR RESTART PASS: first ACK recovered and only the unacknowledged item was redelivered")
+
+    # A second persisted image with the same credentials and consumer exposes
+    # only the physical history difference. Try the exact cursor from image 1.
+    foreign_image = directory / "foreign.img"
+    foreign_dir = directory / "foreign"
+    foreign_dir.mkdir()
+    foreign_env = dict(fixture.environment(), FN2_HISTORY_ID="714")
+    fixture.initialize(foreign_dir, foreign_image, env=foreign_env)
+    node = fixture.restart.Node(foreign_dir, foreign_image, "serve", "foreign", control_sock=control,
+                                env=foreign_env)
+    try:
+        node.marker(b"LISTENING-LOCAL ")
+        for actor in (principal, "cursor-other"):
+            created = run(f"foreign-create-{actor}", "principal", "create", actor)
+            assert created["outcome"] == "accepted", created
+            grant(f"foreign-consume-{actor}", actor, "consume")
+        foreign_reg = stream("foreign-register", "register", "--consumer", consumer, "--start", "history")
+        assert foreign_reg["outcome"] == "accepted", foreign_reg
+        assert foreign_reg["position"] == registered["position"], foreign_reg
+        before = stream("foreign-status-before", "status", "--consumer", consumer)
+        for verb in ("read", "wait", "ack"):
+            options = ["--cursor", registered["cursor"]]
+            if verb == "ack":
+                # Equal in both stores: only scope can cause this ACK refusal.
+                options.insert(0, registered["position"])
+            denied = stream(f"foreign-history-{verb}", verb, *options, expected=1)
+            assert denied["outcome"] == "refused" and denied["reason"] == "scope", denied
+        local_page = stream("foreign-local-read", "read", "--cursor", foreign_reg["cursor"])
+        assert local_page["outcome"] == "accepted" and local_page["items"] == [], local_page
+        assert stream("foreign-status-after", "status", "--consumer", consumer) == before
+        node.kill()
+    finally:
+        node.close()
+
+    print("NATIVE CONSUMER CURSOR RESTART PASS: durable ACK, redelivery, and foreign scope")
 
 
 if __name__ == "__main__":
