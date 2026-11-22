@@ -2358,6 +2358,14 @@
     (remove-eq name
       (fn2-arms-resource-stobj-callees
         (all-fnnames (getpropc name 'unnormalized-body nil world)) world))))
+(defun fn2-arms-quantity-projection-rules (hyps projections)
+  (declare (xargs :verify-guards nil))
+  (if (atom projections) nil
+    (let ((q (car projections)))
+      (append (fn2-run-quantity-rewrites hyps
+                `((acl2-numberp ,q) (integerp ,q) (<= 0 ,q)))
+              `((:linear :corollary (implies (and ,@hyps) (<= 0 ,q))))
+              (fn2-arms-quantity-projection-rules hyps (cdr projections))))))
 (defun fn2-arms-child-quantities-event-with-residual (name work-limit residual world)
   (declare (xargs :verify-guards nil))
   (let* ((ins (car (fn2-arms-sig name world)))
@@ -2372,7 +2380,12 @@
                 (and (fn2-run-quantitiesp (car ,call) (mv-nth 1 ,call)
                                      (mv-nth 2 ,call) ,residual ,work-limit)
                      ,(nth 5 terms)))
-       :rule-classes ,(fn2-run-quantity-rules hyps terms)
+       ; Enclosing arms consume natural projections in addition guards and
+       ; bounds. Direct rules let ACL2 establish the callee's hypotheses
+       ; through the setters that led to the call.
+       :rule-classes ,(append (fn2-run-quantity-rules hyps terms)
+                              (fn2-arms-quantity-projection-rules
+                                hyps (strip-cadrs (take 3 terms))))
        :hints (("Goal" :in-theory (e/d (,name fn2-run-quantitiesp)
                        (nfix nth ,@(fn2-arms-shape-fns ins)
                         ,@(fn2-arms-rows-fns ins)
