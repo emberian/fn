@@ -169,7 +169,7 @@
           (assert (= (cdr (assoc 'row-outcome vars)) 2))))))))
 (let ((hand (cdddr (assoc 'hand (getf (cdddr *cns*) :subarms))))
       (authorize (cdddr (assoc :fetch-authorize (getf (cdddr *cns*) :arms))))
-      (vars (append '((row-reason . 11) (row-lease . 0)) *handoff-vars*)))
+      (vars (append '((row-outcome . 2) (row-reason . 11) (row-lease . 0)) *handoff-vars*)))
  (assert hand)
  (dolist (status '(:ok :more :access :state))
   (let ((*results* `((fn2-cns-authority-allows ,status 4 8 9) (fn2-cns-post-reply :ok))))
@@ -180,6 +180,9 @@
     (if (eq status :more)
         (progn
           (assert (not (assoc :posted-reason effects)))
+          (assert (= (cdr (assoc 'row-reason result)) 11))
+          (assert (= (cdr (assoc 'row-verb result)) 13))
+          (assert (= (cdr (assoc 'row-outcome result)) 2))
           (assert (= (cdr (assoc 'row-xstep result)) 4))
           (assert (member '(:next :fetch-authorize) effects :test #'equal))
           (assert (member '(:goto hand) (run-source authorize result) :test #'equal)))
@@ -189,6 +192,11 @@
           (assert (member '(:next :draining) effects :test #'equal)))))))
  ;; An existing access refusal posts directly without rechecking read rights.
  (let ((*results* '((fn2-cns-post-reply :ok))))
-  (assert (equal (source-calls (run-source hand (acons 'row-reason 8 vars)))
-                 '(fn2-cns-post-reply)))))
+  (dolist (ordinary (list (acons 'row-reason 8 vars)
+                          ;; APPEND's header-octets reason has the same code.
+                          (acons 'row-verb 11 vars)))
+   (let ((effects (run-source hand ordinary)))
+    (assert (equal (source-calls effects) '(fn2-cns-post-reply)))
+    (assert (equal (assoc :posted-reason effects)
+                   (list :posted-reason (cdr (assoc 'row-reason ordinary)))))))))
 (format t "CNS FETCH HANDOFF SOURCE CONTROLS PASS: source binding required, withdrawn checked before reply~%")

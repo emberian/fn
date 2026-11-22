@@ -1352,7 +1352,9 @@
     (t
    ;; WITHDRAWN exposes the state of the addressed article. A revocation
    ;; during article lookup must turn it into the same refusal as absence.
-   (:let withdrawn (equal row-reason *fn2-cns-reason-withdrawn*))
+   (:let withdrawn (and (equal row-verb *fn2-cns-verb-fetch*)
+                         (equal row-outcome *fn2-cns-outcome-refused*)
+                         (equal row-reason *fn2-cns-reason-withdrawn*)))
    (:do (acode astep ahead agrant)
         (fn2-cns-authority-allows id row-generation *fn2-cns-right-read* *fn2-cns-scope-stream*
                                   row-istream row-xstep row-xhead row-xgrant 4096)
@@ -1604,7 +1606,10 @@
   ;; A FETCH occurrence must be readable before article lookup reveals
   ;; its state or takes a storage lease. Hide access denial as absence.
   (:fetch-authorize :on-refusal ((:stop :machine-phase))
-   (:if (equal row-reason *fn2-cns-reason-withdrawn*) ((:goto hand)) ())
+   (:if (and (equal row-verb *fn2-cns-verb-fetch*)
+             (equal row-outcome *fn2-cns-outcome-refused*)
+             (equal row-reason *fn2-cns-reason-withdrawn*))
+        ((:goto hand)) ())
    (:do (acode astep ahead agrant)
         (fn2-cns-authority-allows id row-generation *fn2-cns-right-read* *fn2-cns-scope-stream*
                                   row-istream row-xstep row-xhead row-xgrant 4096)
