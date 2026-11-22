@@ -736,6 +736,11 @@
 ; Whether an item of LEN octets fits after the control range's fill AT: the
 ; reply copies the page's items twice more (the page result, then the kind
 ; 28 payload), so the range must hold three copies of them all and the reserve.
+) ; request decoding and cursor encoding
+
+(encapsulate ()
+(local (in-theory (disable fn2-fields-rows fn2-fieldsp fn2-fields-wfp fn2-poolp fn2-pool-wfp fn2-pool-rows
+                           fn2-pool-read fn2-pool-write)))
 (defun fn2-cns-item-fits (at cap ilen len)
   (declare (xargs :guard t))
   (<= (+ (nfix at) (nfix len) (* 2 (+ (nfix ilen) (nfix len))) *fn2-cns-reply-reserve*) (nfix cap)))
