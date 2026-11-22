@@ -11,6 +11,8 @@ distinct at every boundary.
 from __future__ import annotations
 
 import argparse
+from collections.abc import Callable
+from contextlib import suppress
 import hashlib
 import json
 import os
@@ -533,54 +535,44 @@ class ControlSession:
             buf.extend(chunk)
         return bytes(buf)
 
-    def _recv_frame(self, mutating: bool) -> bytes:
+    def _recv_frame(self) -> bytes:
+        head = self._read_exact(10)
+        if not head:
+            raise WireError("socket closed before reply header")
+        if len(head) < 10:
+            raise WireError("truncated reply header")
+        n = int.from_bytes(head[6:10], "big")
+        tail = self._read_exact(n + 32)
+        if len(tail) < n + 32:
+            raise WireError("truncated reply frame")
+        return head + tail
+
+    def _exchange(self, frame: bytes, verb: str, decode_reply: Callable[[str, bytes], dict],
+                  *, mutating: bool) -> dict:
+        # sendall does not report how much the peer received when it raises.
+        # Only a decoded reply can settle a mutation once sending has begun.
         try:
-            head = self._read_exact(10)
-            if not head:
-                if mutating:
-                    raise UncertainOutcome("socket closed before reply header")
-                raise WireError("socket closed before reply header")
-            if len(head) < 10:
-                if mutating:
-                    raise UncertainOutcome("truncated reply header on disconnect")
-                raise WireError("truncated reply header")
-            n = int.from_bytes(head[6:10], "big")
-            tail = self._read_exact(n + 32)
-            if len(tail) < n + 32:
-                if mutating:
-                    raise UncertainOutcome("truncated reply frame on disconnect")
-                raise WireError("truncated reply frame")
-            return head + tail
-        except (TimeoutError, socket.timeout, ConnectionResetError, BrokenPipeError) as exc:
+            self.sock.sendall(frame)
+            return decode_reply(verb, self._recv_frame())
+        except (OSError, WireError) as exc:
+            # An interrupted frame leaves the stream unusable, including for STOP.
+            with suppress(OSError):
+                self.sock.close()
             if mutating:
-                raise UncertainOutcome(f"transport interrupted after request send: {exc}") from exc
+                raise UncertainOutcome(f"{verb} outcome unknown after send attempt: {exc}") from exc
             raise
 
     def auth(self, verb: str, **kw) -> dict:
-        mutating = verb in ("principal-create", "grant-set")
         frame = build_auth_request(verb, **kw)
-        try:
-            self.sock.sendall(frame)
-            reply = self._recv_frame(mutating=mutating)
-            return decode_auth_reply(verb, reply)
-        except WireError as exc:
-            if mutating:
-                raise UncertainOutcome(f"invalid reply after request send: {exc}") from exc
-            raise
+        return self._exchange(frame, verb, decode_auth_reply,
+                              mutating=verb in ("principal-create", "grant-set"))
 
     def cns(self, verb: str, **kw) -> dict:
-        mutating = verb in ("register", "ack", "append")
         if verb == "wait":
             self.sock.settimeout(float(kw.get("seconds", 30)) + 30.0)
         frame = build_cns_request(verb, **kw)
-        try:
-            self.sock.sendall(frame)
-            reply = self._recv_frame(mutating=mutating)
-            return decode_cns_reply(verb, reply)
-        except WireError as exc:
-            if mutating:
-                raise UncertainOutcome(f"invalid reply after request send: {exc}") from exc
-            raise
+        return self._exchange(frame, verb, decode_cns_reply,
+                              mutating=verb in ("register", "ack", "append"))
 
     def bind_as(self, principal: str | None) -> dict | None:
         if not principal:
