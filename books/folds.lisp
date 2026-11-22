@@ -35,6 +35,7 @@
          (peer-stream (:id stream))
          (pull-mode :bool) (pull-stream (:id stream)) (pull-domain (:id domain)) (pull-incarnation (:id incarnation))
          (pull-revision :u60) (pull-view (:id stream)) (pull-view-version (:id version))
+         (pull-principal (:id principal)) (pull-cursor-epoch :u32) (pull-query-version (:id version))
          (pull-interpretation :u16)
          (pull-chain-a :u60) (pull-chain-b :u60) (pull-chain-c :u60) (pull-chain-d :u60) (pull-chain-e :u60))
  :merge :latest
@@ -67,7 +68,7 @@
          ;; A stale CAS refuses the containing transaction, including any
          ;; evidence or receipt the caller declared in its other slots.
          (:pull-advance (principal consumer target-stream source-domain source-incarnation source-revision source-view
-                         source-view-version interpretation from to expect-absent
+                         source-view-version source-principal source-epoch query-version interpretation from to expect-absent
                          old-a old-b old-c old-d old-e new-a new-b new-c new-d new-e)
           :when (and (and (< from to) (= position from))
                      (or (and (and (= expect-absent 1) (= pull-mode 0))
@@ -78,9 +79,11 @@
                                    (and (and (= pull-stream target-stream) (= pull-domain source-domain))
                                         (and (and (= pull-incarnation source-incarnation) (= pull-revision source-revision))
                                              (and (and (= pull-view source-view) (= pull-view-version source-view-version))
-                                                  (= pull-interpretation interpretation))))))))
+                                                  (and (and (= pull-principal source-principal) (= pull-cursor-epoch source-epoch))
+                                                       (and (= pull-query-version query-version) (= pull-interpretation interpretation))))))))))
           :set ((pull-mode 1) (position to) (pull-stream target-stream) (pull-domain source-domain) (pull-incarnation source-incarnation)
                 (pull-revision source-revision) (pull-view source-view) (pull-view-version source-view-version)
+                (pull-principal source-principal) (pull-cursor-epoch source-epoch) (pull-query-version query-version)
                 (pull-interpretation interpretation) (pull-chain-a new-a) (pull-chain-b new-b)
                 (pull-chain-c new-c) (pull-chain-d new-d) (pull-chain-e new-e))))
         :init :empty :coverage :history-start
