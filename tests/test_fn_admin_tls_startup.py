@@ -23,11 +23,13 @@ class TlsStartup(unittest.TestCase):
             image=self.root / "node.img", size_mb=None, size=1048576,
             group=[], storage_fault_model=None, port=119, host=None,
             tls_certificate=None, tls_key=None, tls_handshakes=None,
+            peer_pull_ca_file=None, peer_pull_tls_name=None,
+            max_consumer_request_octets=None, max_consumer_discard_octets=None, consumer_body_timeout_ms=None,
             tls_window=None, tls_handshake_turns=None, tls_handshake_ms=None,
             peering=False, control_sock=None)
 
     def test_init_builds_inherited_tls_before_startup(self):
-        for variable in ("FN2_TLS_CERTIFICATE", "FN2_TLS_KEY"):
+        for variable in ("FN2_TLS_CERTIFICATE", "FN2_TLS_KEY", "FN2_PEER_PULL_CA_FILE", "FN2_PEER_PULL_TLS_NAME"):
             with self.subTest(variable=variable), mock.patch.dict(os.environ, {variable: "local.pem"}, clear=True), \
                  mock.patch.object(admin, "prepare_native_crypto"), \
                  mock.patch.object(admin.subprocess, "run") as build, \

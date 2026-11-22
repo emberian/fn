@@ -79,11 +79,13 @@
 
 (defun fn2-host-tls-settings (profile)
  (declare (xargs :guard t))
- (cond ((not (fn2-tls-profilep profile)) (mv :tls-profile nil nil 0 0 0 0 0))
-       ((not (fn2-tls-requested-p profile)) (mv :off nil nil 0 0 0 0 0))
+ (cond ((not (fn2-tls-profilep profile)) (mv :tls-profile nil nil 0 0 0 0 0 nil nil))
+       ((not (or (fn2-tls-requested-p profile) (fn2-peer-tls-requested-p profile)))
+        (mv :off nil nil 0 0 0 0 0 nil nil))
        (t (mv :ok (fn2-profile-get :tls-certificate profile) (fn2-profile-get :tls-key profile)
               (fn2-tls-setting :tls-window 16384 profile) *fn2-tls-io-bytes* *fn2-tls-minimum-version* (fn2-codec-seed-capacity profile)
-              (fn2-tls-setting :tls-handshake-turns 65536 profile)))))
+              (fn2-tls-setting :tls-handshake-turns 65536 profile)
+              (fn2-profile-get :peer-pull-ca-file profile) (fn2-profile-get :peer-pull-tls-name profile)))))
 
 (defun fn2-host-compress-settings (profile)
  (declare (xargs :guard t))
@@ -158,4 +160,4 @@
     fn2-host-tls-mark-closed fn2-host-tls-cancel-result
     fn2-host-compress-start-op fn2-host-compress-record-next fn2-host-compress-close-owner
     fn2-host-compress-close-child fn2-host-compress-input-prefix
-    fn2-host-compress-mark-closed fn2-host-compress-cancel-result fn2-host-result fn2-host-listener-pathp fn2-host-listener-bind fn2-host-tls-settings fn2-host-compress-settings fn2-host-tls-span fn2-host-tls-stage-span fn2-host-tls-next-turn fn2-host-stopped-p fn2-host-stop-reason fn2-host-stop-details fn2-host-boot-refusal-class fn2-host-boot-refusal fn2-host-idle-deadline) (w state)))
+    fn2-host-compress-mark-closed fn2-host-compress-cancel-result fn2-host-result fn2-host-listener-pathp fn2-host-listener-bind fn2-host-tls-settings fn2-host-tls-role fn2-host-compress-settings fn2-host-tls-span fn2-host-tls-stage-span fn2-host-tls-next-turn fn2-host-stopped-p fn2-host-stop-reason fn2-host-stop-details fn2-host-boot-refusal-class fn2-host-boot-refusal fn2-host-idle-deadline) (w state)))
