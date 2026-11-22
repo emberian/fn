@@ -716,7 +716,7 @@
 ;; The reply (kind 28): the class from the row's outcome, the reason word,
 ;; and the verb's result (consumer-codec.lisp *fn2-fnct-results*), its
 ;; octet fields written first as scratch. The cursor the node issues (fncu
-;; v1) carries BOOT's persisted history and incarnation, the consumer id,
+;; v1 or v2) carries BOOT's persisted history and incarnation, the consumer id,
 ;; the bound durable principal and query 1, in minimal big-endian form.
 ;; The wire carries the registration's query version and durable view separately.
 (defun fn2-cns-put-query-cursor (base cid principal history incarnation query version view epoch position slot gen okind oslot ogen fn2-fields fn2-pool)

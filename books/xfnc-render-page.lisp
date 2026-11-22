@@ -204,7 +204,8 @@
              ((unless (and (eq status :ok) (equal principal pid)
                            (equal head (fn2-cursor-row-peer-head cursor fn2-core))
                            (equal head (fn2-cursor-row-peer-view cursor fn2-core))))
-              (fn2-xfnc-wire-reject cursor conn cgen (if (eq status :ok) :scope :access) fn2-core)))
+              (fn2-xfnc-wire-reject cursor conn cgen
+                (case status (:ok :scope) (:absent :absent) (:access :access) (otherwise :state)) fn2-core)))
           (mv :ready fn2-core)))
        ((mv code fn2-core)
         (cond ((equal phase *fn2-xfnc-wire-phase-start*) (fn2-xfnc-wire-start cursor conn cgen pid row fn2-core))
