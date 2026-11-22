@@ -13,7 +13,23 @@ must be derived from that store and the actual served call/attachment graph.
 | Message-ID lookup | The reader candidate removes the eight-group search bound for article and overview forms. At `3b6ffd44d` STAT also searches for a membership. The grant decision and the staged native TCP fixture still need to meet at the served caller. | Use the authenticated reader and the ordinary wire commands to check visibility when only a secondary group is readable, then revoke that grant. |
 | Peer catch-up | The Forge-qualified `books/peer-view-member` at `2793bac02` checks the candidate history/evidence pair. The higher reader receives a principal, stream and authority from its caller. | Carry an authenticated peer and its current stream grant through the serving actor, send the selected item and resume from the receiver's verified position. |
 | Consumer restart | The successor fixture at `5bdd74d14` reopens the same image and checks every retired cursor, including the first epoch, after same-name registration. It reads the recovered position before subsequent mutations. | Execute that fixture against the qualified native successor. The exercised store-fold controls supply rows directly. |
-| Native APPEND | Forge certified `assembly-core` in `certify-20261122T211811Z-2555392`, `assembly-init` in `certify-20261122T212222Z-2560534`, and the corrected dispatch owner initialization in `certify-20261122T212619Z-2564904`. The TLS record-start contract discharges the actual external record-next guard. | Complete the child codec and callback assembly, then observe durable acceptance, process death and byte-exact FETCH through the socket. |
+| Native APPEND | Forge certified `assembly-core` in `certify-20261122T211811Z-2555392`, `assembly-init` in `certify-20261122T212222Z-2560534`, and the corrected dispatch owner initialization in `certify-20261122T212619Z-2564904`. The TLS record-start contract discharges the actual external record-next guard. | Complete callback assembly, then observe durable acceptance, process death and byte-exact FETCH through the socket. |
+
+The native candidate at `8c37b5042` includes the actual TLS entry and its
+child, close and cancel guards (Forge `certify-20261122T213807Z-2577694`)
+and all four compression host guards (`certify-20261122T213918Z-2579059`).
+Five assembled row-access books also certified. The first failure compiling
+callback layer A is the generated UPLOAD take cost declaration. It places a
+read-only input configuration in the set of tables the operation may write.
+The provider reads that configuration through the generated core binding.
+Its configuration child must remain covered by the unchanged-state theorem.
+The full native host load and the socket restart scenario are still outstanding.
+
+The CLI now rejects two noncanonical cursor/identity encodings and an
+identity outside the served 60-bit profile before settling a mutating reply
+(`f96e414cd`). Those observations used the actual CLI and a controlled FNCT
+socket peer. Each repeated native gate run allocates its own image directory
+after certificate installation, preserving the previous attempt's image and logs.
 
 ## Native APPEND and restart — 2026-11-22
 
