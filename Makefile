@@ -36,6 +36,7 @@ ACL2_BOOKS = \
   tests/root-upload-geometry-unit \
   tests/root-working-credit-init-unit \
   tests/c-snapshot-unit \
+  tests/journal-retention-served-unit \
 
   tests/txn-retained-source-served-unit \
   tests/upload-block-private-unit \
@@ -254,6 +255,7 @@ ACL2_BOOKS = \
   books/machines-c \
   books/journal-retention-state \
   books/journal-retention \
+  books/journal-retention-core \
   books/c-snapshot-state \
   books/c-snapshot \
   books/machines-c-bind \
