@@ -296,7 +296,8 @@
         (fn2-commit-io (fn2-commit-io-put (+ r 2) (extent e) (epoch epoch) (counter counter))))
   fn2-commit-io))
 (fn2-commit-io-preserves fn2-commit-bind-extent (r e epoch counter fn2-commit-io)
- :hyps ((natp r) (< (+ r 2) (fn2-commit-io-rows fn2-commit-io))
+ :hyps ((fn2-commit-iop fn2-commit-io) (fn2-commit-io-wfp fn2-commit-io)
+        (natp r) (< (+ r 2) (fn2-commit-io-rows fn2-commit-io))
         (unsigned-byte-p 32 e) (unsigned-byte-p 60 epoch) (unsigned-byte-p 60 counter)))
 ; Reserve the extent before preparing any effects; all three writes share it.
 (defun fn2-commit-reserve-extent (id fn2-core)
