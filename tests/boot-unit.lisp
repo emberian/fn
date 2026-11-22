@@ -28,6 +28,12 @@
        ((mv & & & store fn2-core) (fn2-cw-adapter-one 0 nil store fn2-core)))
    (fn2-bu-to-fence (- fuel 1) phase store fn2-core))))
 
+(defun fn2-bu-layout-ready (fn2-core)
+ (declare (xargs :stobjs fn2-core :verify-guards nil))
+ (stobj-let ((fn2-boot-config (fn2-core-boot-config fn2-core))) (ready)
+  (fn2-boot-config-checkpoint-layout-ready fn2-boot-config)
+  ready))
+
 (defun fn2-bu-start (create store)
  (declare (xargs :verify-guards nil))
  (with-local-stobj fn2-core
@@ -48,13 +54,15 @@
            (mv nil 0 nil store fn2-core)))
         ((mv held store fn2-core) (fn2-bu-to-fence 100000 *fn2-boot-state-epoch-result* store fn2-core))
         (pre (list start held (fn2-boot-status fn2-core) (fn2-bu-accept-count 32 0 fn2-core)))
+        (before-epoch-fence (fn2-bu-layout-ready fn2-core))
         ((mv & & & store fn2-core) (if (eq held :held) (fn2-cw-adapter-one 0 nil store fn2-core)
                                    (mv nil 0 nil store fn2-core)))
         ((mv quiet & store fn2-core) (fn2-cw-loop 100000 0 0 nil store fn2-core))
         (epoch (stobj-let ((fn2-extents (fn2-core-extents fn2-core))) (e)
                  (fn2-alloc-current-epoch fn2-extents) e)))
     (mv (list pre quiet (fn2-boot-status fn2-core) epoch store (fn2-core-stop-reason fn2-core) (fn2-bu-accept-count 32 0 fn2-core)
-              bootstrap-before-fence (fn2-core-stop-kind fn2-core) (fn2-core-stop-detail fn2-core)) fn2-core))
+              bootstrap-before-fence (fn2-core-stop-kind fn2-core) (fn2-core-stop-detail fn2-core)
+              before-epoch-fence (fn2-bu-layout-ready fn2-core)) fn2-core))
    result)))
 
 (assert-event (eq (fn2-image-create-request 1 *fn2-node-profile*) :geometry))
@@ -124,7 +132,11 @@
            (equal (nth 2 nonempty) :failed) (equal (nth 3 (car nonempty)) 0)
            (equal (nth 8 nonempty) *fn2-boot-kind*)
            (equal (nth 9 nonempty) 7) ; :restore-required, appended to BOOT's stop reasons
-           (equal (nth 4 nonempty) nonempty-store))
+           (equal (nth 4 nonempty) nonempty-store)
+           (equal (nth 10 created) 0) (equal (nth 10 opened) 0)
+           (equal (nth 11 created) 1) (equal (nth 11 opened) 1)
+           (equal (nth 11 empty) 0) (equal (nth 11 bad-anchor) 0)
+           (equal (nth 11 bad-bootstrap) 0) (equal (nth 11 nonempty) 0))
       (cw "boot-unit created/opened/reopened/empty/bad-anchor ~x0~%"
           (list (append (take 4 created) (nthcdr 5 created))
                 (append (take 4 opened) (nthcdr 5 opened))
