@@ -2,7 +2,7 @@
 ; taken together. Only the private range holds the two remote login tokens.
 (in-package "ACL2")
 (include-book "machine-arms")
-(include-book "machines-a-costs")
+(include-book "machines-a")
 (include-book "peer-pull-profile")
 (fn2-book-layer :e)
 
@@ -34,7 +34,7 @@
          (:resume :connection-row :rx-range :tx-range) (:import :connection-row :rx-range :tx-range)
          (:closing :connection-row :rx-range :tx-range) (:close-wait :connection-row :rx-range :tx-range)
          (:draining :connection-row :rx-range :tx-range))
- :budget (:bytes 4096 :steps 32 :descriptors 4)
+ :budget (:bytes 8192 :steps 32 :descriptors 4)
  :capacity (fn2-peer-pull-capacity profile)
  :taken (:phase :stage :rows :connection-row
          :ranges ((:rx-range :slot rx-slot :gen rx-gen :class 0)
