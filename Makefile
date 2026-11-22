@@ -213,6 +213,7 @@ ACL2_BOOKS = \
   books/peer-pull-plan \
   tests/peer-pull-cancel-unit \
   tests/peer-pull-fold-unit \
+  tests/xfnc-first-send-pressure-unit \
   books/pool-zero \
   books/peer-pull-line \
   books/peer-pull-owner \
