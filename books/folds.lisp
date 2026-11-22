@@ -26,20 +26,25 @@
         :init :empty :coverage :history-start
         :observe (count low high)))
 
-; The consumer cursor, per (consumer, registration epoch): the acknowledged
-; commit position and the registration's query version (INBOX §4.3, §4.8).
-; An ack moves the position forward only (an ack behind it is refused, the
-; wire's "behind" outcome); a rebase installs a new query version and its
-; start position. D8's wait machine reads it; E3's ack writes it.
+;; The active consumer row, keyed by durable principal and consumer.
+;; Epoch 0 is the empty fold. A future unregister must retain the last
+;; epoch as a tombstone; neither registration nor reclamation can reset it.
 (defrunschema fn2-consumer-cursor :id 6
- :key ((principal (:id principal)) (consumer (:id consumer)) (epoch :u32))
- :value ((position (:id position)) (version (:id version)) (view (:id version)))
+ :key ((principal (:id principal)) (consumer (:id consumer)))
+ :value ((position (:id position)) (version (:id version)) (view (:id version)) (epoch :u32))
  :merge :latest
- :fold (:events ((:ack (principal consumer epoch to) :when (< position to) :unless-when :unchanged :set ((position to)))
-                 (:rebase (principal consumer epoch query start new-view) :when (< version query)
-                  :set ((version query) (position start) (view new-view))))
+ :fold (:events
+        ((:ack (principal consumer expected-epoch to)
+          :when (and (< 0 epoch) (and (= epoch expected-epoch) (< position to)))
+          :unless-when :unchanged :set ((position to)))
+         (:rebase (principal consumer expected-epoch expected-position next-epoch query start new-view)
+          :when (and (= epoch expected-epoch)
+                     (and (= position expected-position)
+                          (and (= next-epoch (+ 1 epoch)) (< 0 query))))
+          :unless-when :unchanged
+          :set ((epoch next-epoch) (version query) (position start) (view new-view))))
         :init :empty :coverage :history-start
-        :observe (position version view)))
+        :observe (position version view epoch)))
 
 ; Principal accounts, the durable half: what each principal has been charged
 ; per dimension (D0's accounting holds the resident half: reservations in

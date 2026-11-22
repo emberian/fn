@@ -50,7 +50,7 @@
 (defun fn2-ccu-bypass-ack (to fn2-core)
   (declare (xargs :stobjs fn2-core :verify-guards nil))
   (b* (((mv & fn2-core) (fn2-successor-release 0 fn2-core))
-       ((mv c0 fn2-core) (fn2-consumer-cursor-ack 0 0 (principal *fnc-fixture-owner-pid*) (consumer 1) (epoch 1) (to to) fn2-core))
+       ((mv c0 fn2-core) (fn2-consumer-cursor-ack 0 0 (principal *fnc-fixture-owner-pid*) (consumer 1) (expected-epoch 1) (to to) fn2-core))
        ((unless (eq c0 :ok)) (mv (list :put c0) fn2-core))
        ((mv rc fn2-core) (fn2-cns-resolve-loop 32 0 fn2-core))
        ((unless (eq rc :ok)) (mv (list :resolve rc) fn2-core))

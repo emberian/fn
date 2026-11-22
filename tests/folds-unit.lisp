@@ -118,18 +118,22 @@
  ((:accept 1 1) (:withdraw 2 1) (:accept 2 4) (:accept 1 2) (:withdraw 1 1) (:accept 1 6)) ((1) (2) (3)) 4 t
  (((1) 0 9 9)) (((1) 1 9 9)) (:accept 1 12) (1) second)
 
-;; Two principals use consumer 7 and epoch 1 independently.
-(fn2-ft-adequate fn2-consumer-cursor :ack 6 ((principal (:id principal)) (consumer (:id consumer)) (epoch :u32))
- (((2 7 1) 10 2 7) ((3 7 1) 4 2 8))
- ((:ack 2 7 1 15) (:ack 3 7 1 7) (:ack 2 7 1 5)) ((2 7 1) (3 7 1) (2 7 2)) (:ack 2 7 1 15))
-(fn2-ft-adequate fn2-consumer-cursor :rebase 6 ((principal (:id principal)) (consumer (:id consumer)) (epoch :u32))
- (((2 7 1) 10 2 7))
- ((:rebase 2 7 1 3 0 9) (:rebase 3 7 1 1 5 10) (:rebase 2 7 1 1 9 11)) ((2 7 1) (3 7 1)) (:rebase 2 7 1 3 0 9))
-;; The weakened observation drops the version.
-(fn2-ft-cut fn2-consumer-cursor 6 ((principal (:id principal)) (consumer (:id consumer)) (epoch :u32))
- ((:ack 2 7 1 4) (:rebase 2 7 1 1 2 8) (:ack 2 7 1 3) (:ack 3 7 1 6)
-  (:ack 2 7 1 2) (:rebase 3 7 1 4 1 13)) ((2 7 1) (3 7 1)) 2 nil
- (((2 7 1) 5 1 5)) (((2 7 1) 5 3 8)) (:rebase 2 7 1 2 0 10) (2 7 1) car)
+;; Two principals share consumer 7. Epoch 1 ACKs never affect epoch 2.
+(fn2-ft-adequate fn2-consumer-cursor :ack 6 ((principal (:id principal)) (consumer (:id consumer)))
+ (((2 7) 10 2 7 1) ((3 7) 4 2 8 2))
+ ((:ack 2 7 1 15) (:ack 3 7 2 7) (:ack 2 7 1 5) (:ack 3 7 1 15)) ((2 7) (3 7))
+ (:ack 2 7 1 15))
+(fn2-ft-adequate fn2-consumer-cursor :rebase 6 ((principal (:id principal)) (consumer (:id consumer)))
+ (((2 7) 10 2 7 1))
+ ((:rebase 2 7 1 10 2 2 10 9) (:rebase 3 7 0 0 1 1 5 10)
+  (:rebase 2 7 1 9 2 2 9 11) (:rebase 2 7 1 10 3 2 10 12))
+ ((2 7) (3 7)) (:rebase 2 7 1 10 2 2 10 9))
+;; A position-only projection cannot distinguish two epochs before an ACK.
+(fn2-ft-cut fn2-consumer-cursor 6 ((principal (:id principal)) (consumer (:id consumer)))
+ ((:rebase 2 7 0 0 1 1 2 8) (:ack 2 7 1 3) (:rebase 2 7 1 2 2 1 2 9)
+  (:rebase 3 7 0 0 1 1 4 10) (:rebase 2 7 1 3 2 1 3 12) (:ack 2 7 1 8))
+ ((2 7) (3 7)) 2 nil
+ (((2 7) 5 1 5 1)) (((2 7) 5 1 8 2)) (:ack 2 7 1 8) (2 7) car)
 
 ;; Principal charges: principal 1 charged 10 in dimension 0.
 (fn2-ft-adequate fn2-principal-charges :charge 7 ((principal (:id principal)) (dimension :u8)) (((1 0) 10))

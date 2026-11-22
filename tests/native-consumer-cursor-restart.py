@@ -157,20 +157,21 @@ def main():
         check_page(other_redelivery, other_receipt, other_article, more=False)
         assert other_redelivery == other_page, (other_redelivery, other_page)
 
-        def check_stale(label, old):
+        def check_stale(label, old, reason="rebase-required"):
             for verb, extra in (("read", ()), ("wait", ("--seconds", 0)), ("ack", (old["position"],))):
                 denied = stream(f"{label}-{verb}", verb, *extra, "--cursor",
                                 old["cursor"], actor=other, expected=1)
-                assert denied == {"outcome": "refused", "reason": "rebase-required"}, denied
+                assert denied == {"outcome": "refused", "reason": reason}, denied
             advance = stream(f"{label}-advancing-ack", "ack", other_receipt["position"],
                              "--cursor", old["cursor"], actor=other, expected=1)
-            assert advance == {"outcome": "refused", "reason": "rebase-required"}, advance
+            assert advance == {"outcome": "refused", "reason": reason}, advance
 
         grant("revoke-other-page-read", other, "read", "local.other", "--revoke")
         check_stale("stale-after-revoke", other_registered)
-        denied_view = stream("register-view-without-read", "register", "--consumer", "2",
-                             "--start", "history", actor=other)
-        assert denied_view["outcome"] == "accepted", denied_view
+        denied_view = stream("rebase-view-without-read", "rebase", "--cursor",
+                             other_registered["cursor"], actor=other)
+        assert denied_view["outcome"] == "accepted" and denied_view["position"] == other_registered["position"], denied_view
+        assert denied_view["cursor"] != other_registered["cursor"], denied_view
         for verb, extra in (("read", ()), ("wait", ("--seconds", 0))):
             filtered = stream(f"{verb}-new-view-without-read", verb, "--cursor",
                               denied_view["cursor"], "--max-items", 1, *extra, actor=other)
@@ -179,19 +180,23 @@ def main():
             assert filtered["cursor"] == denied_view["cursor"], filtered
             assert filtered["next"] == denied_view["position"], filtered
         grant("restore-other-page-read", other, "read", "local.other")
-        check_stale("stale-after-restore", other_registered)
+        check_stale("old-epoch-after-restore", other_registered, reason="scope")
         check_stale("revoked-view-after-restore", denied_view)
         repeated_registration = stream("register-stale-id-again", "register", "--consumer", consumer,
                                        "--start", "history", actor=other)
-        assert repeated_registration == other_registered, repeated_registration
+        assert repeated_registration == denied_view, repeated_registration
         retained = stream("status-after-stale-ack-proposals", "status", "--consumer", consumer, actor=other)
         assert retained["outcome"] == "accepted" and retained["position"] == other_registered["position"], retained
-        restored_view = stream("register-restored-read-view", "register", "--consumer", "3",
-                               "--start", "history", actor=other)
-        assert restored_view["outcome"] == "accepted", restored_view
+        restored_view = stream("rebase-restored-read-view", "rebase", "--consumer", consumer, actor=other)
+        assert restored_view["outcome"] == "accepted" and restored_view["position"] == denied_view["position"], restored_view
+        old_rebase = stream("rebase-old-epoch", "rebase", "--cursor", denied_view["cursor"],
+                            actor=other, expected=1)
+        assert old_rebase == {"outcome": "refused", "reason": "scope"}, old_rebase
         visible = stream("read-with-current-restored-view", "read", "--cursor",
                          restored_view["cursor"], actor=other)
         check_page(visible, other_receipt, other_article, more=False)
+        consumed = stream("ack-under-restored-view", "ack", visible["next"], "--cursor", visible["cursor"], actor=other)
+        assert consumed["outcome"] == "accepted" and consumed["position"] == visible["next"], consumed
 
         # Omitting --cursor makes the public CLI ask the fresh node for POSITION.
         redelivery = stream("read-from-persisted", "read", "--consumer", consumer, "--max-items", 1)
@@ -235,9 +240,37 @@ def main():
         grant("restore-other-read", other, "read", "local.other")
         restored = stream("fetch-with-restored-read-grant", "fetch", *occurrence, actor=other)
         fixture.exact_fetch(restored, other_article)
+        rebased = stream("keep-nonzero-ack-after-grant-change", "rebase", "--consumer", consumer, actor=other)
+        assert rebased["outcome"] == "accepted" and rebased["position"] == consumed["position"], rebased
         node.kill()
         processes.append(dict(phase="redelivery", pid=node.node_pid, exit=node.proc.returncode,
                               position=status["position"], redelivered=redelivery["next"]))
+    finally:
+        node.close()
+    report.write_text(json.dumps(processes, indent=2) + "\n")
+
+    node = fixture.restart.Node(directory, image, "serve", "after-rebase", control_sock=control,
+                                env=fixture.environment())
+    try:
+        node.marker(b"LISTENING-LOCAL ")
+        assert node.node_pid != processes[-1]["pid"], node.node_pid
+        retained_epoch = stream("register-rebased-id-after-restart", "register", "--consumer", consumer,
+                                "--start", "history", actor=other)
+        assert retained_epoch == rebased, (retained_epoch, rebased)
+        empty = stream("read-rebased-position-after-restart", "read", "--consumer", consumer, actor=other)
+        assert empty["outcome"] == "accepted" and empty["items"] == [] and not empty["more"], empty
+        assert empty["cursor"] == rebased["cursor"] and empty["next"] == rebased["position"], empty
+        stale_epoch = stream("ack-pre-rebase-epoch-after-restart", "ack", consumed["position"],
+                             "--cursor", restored_view["cursor"], actor=other, expected=1)
+        assert stale_epoch == {"outcome": "refused", "reason": "scope"}, stale_epoch
+        historical = stream("rebase-history-after-restart", "rebase", "--start", "history",
+                            "--cursor", rebased["cursor"], actor=other)
+        assert historical["outcome"] == "accepted" and historical["position"] == 0, historical
+        history_page = stream("read-after-history-rebase", "read", "--consumer", consumer, actor=other)
+        check_page(history_page, other_receipt, other_article, more=False)
+        node.kill()
+        processes.append(dict(phase="rebase-recovered", pid=node.node_pid, exit=node.proc.returncode,
+                              position=rebased["position"]))
     finally:
         node.close()
     report.write_text(json.dumps(processes, indent=2) + "\n")
@@ -261,7 +294,7 @@ def main():
         assert foreign_reg["outcome"] == "accepted", foreign_reg
         assert foreign_reg["position"] == registered["position"], foreign_reg
         before = stream("foreign-status-before", "status", "--consumer", consumer)
-        for verb in ("read", "wait", "ack"):
+        for verb in ("read", "wait", "ack", "rebase"):
             options = ["--cursor", registered["cursor"]]
             if verb == "ack":
                 # Equal in both stores: only scope can cause this ACK refusal.

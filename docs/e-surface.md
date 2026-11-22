@@ -766,16 +766,22 @@ parked request repeats consume admission and refuses a superseded head. REGISTER
 authorized head separately from the query version. READ, WAIT and ACK require the issued view to
 match both the persisted registration and the current head. ACK and REGISTER stage against the
 checked head; an equal ACK rechecks it before replying. Restoring a grant creates a new head and
-does not revive old cursor bytes. Repeat REGISTER returns the existing recorded view. A new consumer
-registration is available while the served REBASE verb remains owed. REGISTER refuses a view that
-cannot be represented by the current v1 issuer before staging a transaction.
+does not revive old cursor bytes. Repeat REGISTER returns the existing recorded view. REGISTER and
+REBASE refuse a view that cannot be represented by the current v1 issuer before staging a transaction.
 
 The txn currently emits one address row per event and retains only the first group's stream. Its
 overview rows record each group's article number but cannot enumerate all groups by article. General
 per-item access through any authorized group requires a bounded article-to-stream membership lookup,
-or a retained set published in the transaction that creates the address row. The served cursor carries the recorded authority-head revision. The future REBASE path must publish
-a new epoch and revision without changing the old cursor's scope. POSITION returns the recorded
-revision even after authority changes.
+or a retained set published in the transaction that creates the address row.
+
+The active registration is keyed by durable principal and consumer. Its value holds the epoch,
+position, query version and authority revision. POSITION returns that revision even after authority
+changes. REBASE compares the issued cursor's epoch and recorded revision, then atomically publishes
+the next epoch with the current revision. KEEP preserves the durable ACK position, and HISTORY
+starts at zero. The fold checks the old epoch and durable position, so a concurrent ACK and KEEP
+cannot rewind the position. Requests bearing a superseded epoch receive scope refusal. REBASE NOW
+requires an authorized frontier. Serving UNREGISTER will require retaining the last epoch in a
+tombstone so registration after reclamation cannot reuse it.
 
 STATUS, REGISTER from now and ACK's frontier limit must use the highest authorized addressed position under the
 same authority revision as the page walk. The current positioned seek cannot filter memberships. A
