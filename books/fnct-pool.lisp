@@ -14,14 +14,12 @@
 (in-package "ACL2")
 (include-book "consumer-codec")
 (include-book "pool-block")
+(include-book "fnct-limits")
 (fn2-book-layer :e)
 (local (include-book "arithmetic-3/floor-mod/floor-mod" :dir :system))
 (local (in-theory (disable fn2-fields-rows fn2-fieldsp fn2-fields-wfp fn2-poolp fn2-pool-wfp fn2-pool-rows
                            fn2-pool-read fn2-pool-write)))
 
-(defconst *fn2-fnct-header-octets* 10)
-(defconst *fn2-fnct-trailer-octets* 32)
-(defconst *fn2-fnct-overhead* 42)
 ; One hasher call covers a frame's protected prefix: the control range is at
 ; most *fn2-ctl-io-bytes* (4096) octets, so the prefix is at most 4064.
 

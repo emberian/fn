@@ -231,7 +231,10 @@ ACL2_BOOKS = \
   books/executor-contracts \
   books/executor-services \
   books/executor-wake \
+  books/fnct-limits \
   books/fnct-pool \
+  books/xfnc-policy \
+  books/xfnc-ops \
   books/xfnc-rx \
   books/fnv \
   books/folds \

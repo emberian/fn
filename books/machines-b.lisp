@@ -3,6 +3,7 @@
 (include-book "machines")
 (include-book "core-children")
 (include-book "profile")
+(include-book "xfnc-policy")
 (include-book "origin")
 (include-book "sched")
 (include-book "commit-alloc")
@@ -68,8 +69,9 @@
            ((fn2-core-extents fn2-extents) (fn2-core-alloc-edges fn2-alloc-edges)))
  :why "Disjoint commit, root, operation-pin and checkpoint-reference edges survive yields.")
 ; Format checker rows: commit0/1, recovery2, H=2*upload-windows
-; original/stored contexts starting at3, then the sealer at3+H. C control
-; frame rows start at4+H, followed by N retained CNS source rows. The final
+; original/stored contexts starting at3, then the sealer at3+H. An enabled
+; XFNC carrier has one row per NNTP connection starting at4+H. Control
+; frame rows follow those, then N retained CNS source rows. The final
 ; five rows remain semantic/payload/event/block/checkpoint jobs. All context,
 ; digest and field capacities derive from this same complete profile floor.
 (defun fn2-b-upload-windows (profile)
@@ -88,18 +90,52 @@
 (defun fn2-b-sealer-hash-row (profile)
  (declare (xargs :guard t))
  (+ 3 (fn2-b-upload-hash-rows profile)))
+(defun fn2-b-xfnc-rows (profile)
+ (declare (xargs :guard t))
+ (if (fn2-xfnc-configured-p profile) (nfix (fn2-profile-c profile)) 0))
+(defun fn2-b-xfnc-first (profile)
+ (declare (xargs :guard t))
+ (+ 4 (fn2-b-upload-hash-rows profile)))
+
+(defcolumns fn2-xfnc-config
+ ((request-max :u32) (discard-max :u32) (body-ms :u32) (first-row :u32) (row-count :u32)))
+(defun fn2-xfnc-config-from (profile fn2-xfnc-config)
+ (declare (xargs :stobjs fn2-xfnc-config))
+ (let* ((fn2-xfnc-config (fn2-xfnc-config-init 1 fn2-xfnc-config))
+        (enabled (and (fn2-xfnc-configured-p profile) (fn2-xfnc-profilep profile)
+                      (unsigned-byte-p 32 (fn2-b-xfnc-first profile))
+                      (unsigned-byte-p 32 (fn2-b-xfnc-rows profile)))))
+   (fn2-xfnc-config-put 0
+    (request-max (if enabled (loghead 32 (nfix (fn2-profile-get :max-consumer-request-octets profile))) 0))
+    (discard-max (if enabled (loghead 32 (nfix (fn2-profile-get :max-consumer-discard-octets profile))) 0))
+    (body-ms (if enabled (loghead 32 (nfix (fn2-profile-get :consumer-body-timeout-ms profile))) 0))
+    (first-row (if enabled (loghead 32 (fn2-b-xfnc-first profile)) 0))
+    (row-count (if enabled (loghead 32 (fn2-b-xfnc-rows profile)) 0)))))
+
+(defthm fn2-xfnc-config-from-type
+ (implies (fn2-xfnc-configp fn2-xfnc-config)
+          (fn2-xfnc-configp (fn2-xfnc-config-from profile fn2-xfnc-config))))
+(defthm fn2-xfnc-config-from-wfp
+ (fn2-xfnc-config-wfp (fn2-xfnc-config-from profile fn2-xfnc-config)))
+(in-theory (disable fn2-xfnc-config-from))
+(defcorechild fn2-core-xfnc-config fn2-xfnc-config
+ :init (fn2-xfnc-config-from profile fn2-xfnc-config)
+ :profilep (fn2-xfnc-profilep profile)
+ :why "Pinned counted-carrier bounds, watchdog duration and private format row partition.")
+
 (defun fn2-b-ctl-rows (profile)
  (declare (xargs :guard t))
  (nfix (fn2-b-capacity :control-connections 2 profile)))
 (defun fn2-b-ctl-slot (s profile)
  (declare (xargs :guard t))
- (+ 4 (fn2-b-upload-hash-rows profile) (nfix s)))
+ (+ (fn2-b-xfnc-first profile) (fn2-b-xfnc-rows profile) (nfix s)))
 (defun fn2-b-cns-source-rows (profile)
  (declare (xargs :guard t))
  (nfix (fn2-profile-get :cns profile)))
 (defun fn2-b-format-floor (profile)
  (declare (xargs :guard t))
- (+ 9 (fn2-b-upload-hash-rows profile) (fn2-b-ctl-rows profile) (fn2-b-cns-source-rows profile)))
+ (+ (fn2-b-xfnc-first profile) (fn2-b-xfnc-rows profile) (fn2-b-ctl-rows profile)
+    (fn2-b-cns-source-rows profile) 5))
 (defun fn2-b-format-slots (profile)
  (declare (xargs :guard t))
  (fn2-b-capacity :format-slots (fn2-b-format-floor profile) profile))
@@ -147,6 +183,12 @@
  (fn2-b-checkpoint-row (fn2-b-format-slots profile)))
 (defthm fn2-b-ctl-slot-below-floor
  (implies (< (nfix s) (fn2-b-ctl-rows profile)) (< (fn2-b-ctl-slot s profile) (fn2-b-format-floor profile))))
+(defthm fn2-b-xfnc-row-before-control
+ (implies (and (< (nfix slot) (fn2-b-xfnc-rows profile))
+               (natp rows) (<= (fn2-b-format-floor profile) rows))
+          (< (+ (fn2-b-xfnc-first profile) (nfix slot))
+             (fn2-b-ctl-runtime-row 0 (fn2-b-ctl-rows profile) (fn2-b-cns-source-rows profile) rows)))
+ :hints (("Goal" :in-theory (enable fn2-b-ctl-runtime-row))))
 (in-theory (disable fn2-b-upload-windows fn2-b-ctl-rows fn2-b-ctl-slot fn2-b-format-floor fn2-b-format-slots))
 (defcorechild fn2-core-fc fn2-fc
  :init (fn2-fc-init (fn2-b-format-slots profile) fn2-fc)
