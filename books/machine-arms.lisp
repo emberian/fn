@@ -2391,7 +2391,7 @@
                        (nfix nth ,@(fn2-arms-shape-fns ins)
                         ,@(fn2-arms-rows-fns ins)
                         ,@(fn2-arms-quantity-readers ins world)
-                        ,@(fn2-arms-resource-callees name world) ,@opaque))))))))
+                        ,@(fn2-arms-resource-callees name world) ,@opaque)))))))
 ; Public arms account against the caller budget. Internal chain suffixes
 ; account against their static descriptor bound; the outer admission relates
 ; that bound to the budget before any effects run.
