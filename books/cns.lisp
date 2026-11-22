@@ -1359,6 +1359,7 @@
         (fn2-cns-authority-allows id row-generation *fn2-cns-right-read* *fn2-cns-scope-stream*
                                   row-istream row-xstep row-xhead row-xgrant 4096)
     :when withdrawn :else (:ok 0 0 0)
+    :accept (:ok :access :state) :why "a denied or stale read check hides the withdrawal as unavailable"
     :case (((:more) (:set (xstep astep) (xhead ahead) (xgrant agrant))
             (:next :fetch-authorize)
             (:charge :bytes 4096 :steps *fn2-work-transition* :runnable t))))
