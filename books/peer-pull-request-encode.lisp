@@ -18,10 +18,8 @@
 (defun fn2-peer-pull-request-roomp (base fn2-fields)
   (declare (xargs :stobjs fn2-fields :guard (fn2-fields-wfp fn2-fields)))
   (and (natp base)
-       (<= (+ base (max *fn2-fnct-header-num-fields*
-                        *fn2-xfnc-stream-name-num-fields*
-                        *fn2-fnct-k4-register-query-num-fields*
-                        *fn2-fnct-k4-read-num-fields*))
+       (<= (+ base (max (max *fn2-fnct-header-num-fields* *fn2-xfnc-stream-name-num-fields*)
+                        (max *fn2-fnct-k4-register-query-num-fields* *fn2-fnct-k4-read-num-fields*)))
            (fn2-fields-rows fn2-fields))))
 
 (defun fn2-peer-pull-stage-register (base consumer secret sgen stream-len tx tgen kind owner generation fn2-fields fn2-pool)
@@ -83,6 +81,11 @@
   (("Goal" :in-theory (enable fn2-peer-pull-stage-read))))
 (in-theory (disable fn2-peer-pull-stage-read))
 
+(local
+ (defthm fn2-pull-decimal-character-listp
+   (implies (character-listp acc)
+            (character-listp (explode-nonnegative-integer count 10 acc)))))
+
 (defun fn2-peer-pull-put-count (count tx tgen kind owner generation fn2-pool)
   (declare (xargs :stobjs fn2-pool :guard (and (fn2-pool-wfp fn2-pool) (natp count))))
   (b* (((mv code fn2-pool) (fn2-pool-append-text 0 "XFNC " tx tgen kind owner generation fn2-pool))
@@ -99,6 +102,7 @@
 (defun fn2-peer-pull-seal-request (registerp base row tx tgen kind owner generation fn2-fields fn2-digests fn2-b3 fn2-pool)
   (declare (xargs :stobjs (fn2-fields fn2-digests fn2-b3 fn2-pool)
                   :guard (and (fn2-fields-wfp fn2-fields) (fn2-pool-wfp fn2-pool)
+                              (fn2-digests-wfp fn2-digests) (fn2-b3-wfp fn2-b3)
                               (fn2-peer-pull-request-roomp base fn2-fields))))
   (b* ((start (fn2-pool-fill-value tx fn2-pool))
        (size (if registerp (fn2-fnct-k4-register-query-size base fn2-fields)
@@ -135,7 +139,7 @@
        (fn2-digestsp fn2-digests) (fn2-digests-wfp fn2-digests) (fn2-b3p fn2-b3) (fn2-b3-wfp fn2-b3)
        (fn2-peer-pull-request-roomp base fn2-fields))
   ((fn2-fields 1) (fn2-digests 2) (fn2-b3 3) (fn2-pool 4))
-  (("Goal" :in-theory (e/d (fn2-peer-pull-seal-request) (fn2-peer-pull-request-roomp)))))
+  (("Goal" :in-theory (e/d (fn2-peer-pull-seal-request) (fn2-peer-pull-request-roomp fn2-pool-drop-prefix)))))
 (in-theory (disable fn2-peer-pull-seal-request))
 
 ; Caller owns the authenticated actor and checkpoints its source handles.
@@ -143,7 +147,8 @@
 (defun fn2-peer-pull-encode-request (registerp base row consumer source sgen off len max-items max-octets
                                      tx tgen kind owner generation fn2-fields fn2-digests fn2-b3 fn2-pool)
   (declare (xargs :stobjs (fn2-fields fn2-digests fn2-b3 fn2-pool)
-                  :guard (and (fn2-fields-wfp fn2-fields) (fn2-pool-wfp fn2-pool))))
+                  :guard (and (fn2-fields-wfp fn2-fields) (fn2-pool-wfp fn2-pool)
+                              (fn2-digests-wfp fn2-digests) (fn2-b3-wfp fn2-b3))))
   (b* (((unless (and (fn2-peer-pull-request-roomp base fn2-fields)
                     (eq :ok (fn2-pool-workspace-code tx tgen kind owner generation fn2-pool))
                     (zp (fn2-pool-fill-value tx fn2-pool))))
@@ -167,20 +172,22 @@
   (and (fn2-fieldsp fn2-fields) (fn2-fields-wfp fn2-fields) (fn2-poolp fn2-pool) (fn2-pool-wfp fn2-pool)
        (fn2-digestsp fn2-digests) (fn2-digests-wfp fn2-digests) (fn2-b3p fn2-b3) (fn2-b3-wfp fn2-b3))
   ((fn2-fields 1) (fn2-digests 2) (fn2-b3 3) (fn2-pool 4))
-  (("Goal" :in-theory (e/d (fn2-peer-pull-encode-request) (fn2-peer-pull-request-roomp)))))
+  (("Goal" :in-theory (e/d (fn2-peer-pull-encode-request fn2-peer-pull-request-roomp) (fn2-pool-workspace-code fn2-pool-reset)))))
 (in-theory (disable fn2-peer-pull-encode-request))
 
 (defun fn2-peer-pull-encode-register (base row consumer secret sgen stream-len tx tgen kind owner generation
                                       fn2-fields fn2-digests fn2-b3 fn2-pool)
   (declare (xargs :stobjs (fn2-fields fn2-digests fn2-b3 fn2-pool)
-                  :guard (and (fn2-fields-wfp fn2-fields) (fn2-pool-wfp fn2-pool))))
+                  :guard (and (fn2-fields-wfp fn2-fields) (fn2-pool-wfp fn2-pool)
+                              (fn2-digests-wfp fn2-digests) (fn2-b3-wfp fn2-b3))))
   (fn2-peer-pull-encode-request t base row consumer secret sgen 0 stream-len 0 0
                                tx tgen kind owner generation fn2-fields fn2-digests fn2-b3 fn2-pool))
 
 (defun fn2-peer-pull-encode-read (base row private pgen cursor-off cursor-len max-items max-octets
                                  tx tgen kind owner generation fn2-fields fn2-digests fn2-b3 fn2-pool)
   (declare (xargs :stobjs (fn2-fields fn2-digests fn2-b3 fn2-pool)
-                  :guard (and (fn2-fields-wfp fn2-fields) (fn2-pool-wfp fn2-pool))))
+                  :guard (and (fn2-fields-wfp fn2-fields) (fn2-pool-wfp fn2-pool)
+                              (fn2-digests-wfp fn2-digests) (fn2-b3-wfp fn2-b3))))
   (fn2-peer-pull-encode-request nil base row 0 private pgen cursor-off cursor-len max-items max-octets
                                tx tgen kind owner generation fn2-fields fn2-digests fn2-b3 fn2-pool))
 

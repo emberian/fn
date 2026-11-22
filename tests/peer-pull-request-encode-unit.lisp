@@ -29,16 +29,17 @@
        (fn2-pool (fn2-pool-init '((2 . 1024)) 1 100 fn2-pool))
        ((mv source-code src sg fn2-pool) (fn2-pool-reserve 0 1 1 1 fn2-pool))
        ((mv tx-code tx tg fn2-pool) (fn2-pool-reserve 0 1 1 1 fn2-pool))
-       (name '(112 101 101 114))
+       (name (if (eq case :register-wide) (make-list 64 :initial-element 112) '(112 101 101 114)))
        (cursor '(102 110 99 117 2 0 18 41))
        ((mv put-code fn2-pool)
         (fn2-ppre-put (append name '(255 254 253) cursor '(252)) 0 src sg fn2-pool))
        ((unless (and (eq source-code :ok) (eq tx-code :ok) (eq put-code :ok)))
         (mv nil fn2-fields fn2-digests fn2-b3 fn2-pool))
-       (registerp (eq case :register))
+       (registerp (member-eq case '(:register :register-wide)))
+       (consumer (if (eq case :register-wide) (- (expt 2 60) 1) 256))
        ((mv code fn2-fields fn2-digests fn2-b3 fn2-pool)
         (if registerp
-            (fn2-peer-pull-encode-register 0 0 256 src sg 4 tx tg 1 1 1
+            (fn2-peer-pull-encode-register 0 0 consumer src sg (len name) tx tg 1 1 1
                                            fn2-fields fn2-digests fn2-b3 fn2-pool)
           (fn2-peer-pull-encode-read 0 0 src (if (eq case :stale-source) (+ sg 1) sg)
                                      7 8 17 65536 tx tg 1 1 1
@@ -46,7 +47,8 @@
        (frame (fn2-fnct-seal 4
                 (if registerp
                     (fn2-fnct-request-encode :register-query
-                      (list '(consumer 1 0) (cons 'streams (cons 4 name)) '(start . :history)))
+                      (list (cons 'consumer (if (eq case :register-wide) '(15 255 255 255 255 255 255 255) '(1 0)))
+                            (cons 'streams (cons (len name) name)) '(start . 1)))
                   (fn2-fnct-request-encode :read
                     (list (cons 'cursor cursor) '(max-items . 17) '(max-octets . 65536))))))
        (digits (explode-nonnegative-integer (len frame) 10 nil))
@@ -73,5 +75,6 @@
       answer)))
 
 (assert-event (fn2-ppre-test :register))
+(assert-event (fn2-ppre-test :register-wide))
 (assert-event (fn2-ppre-test :read))
 (assert-event (fn2-ppre-test :stale-source))
