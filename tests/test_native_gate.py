@@ -2,6 +2,7 @@
 from pathlib import Path
 import os
 import subprocess
+import sys
 import tempfile
 import unittest
 
@@ -14,6 +15,35 @@ class NativeGate(unittest.TestCase):
         result = subprocess.run(['/bin/sh', str(GATE), '/absent', 'short', 'fnct'], capture_output=True)
         self.assertEqual(result.returncode, 2)
         self.assertIn(b'full 40-character SHA', result.stderr)
+
+    def test_retry_after_failure_retains_first_image(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            for name in ("bin", "tests", "tools"):
+                (root / name).mkdir()
+            git = root / "bin" / "git"
+            git.write_text('#!/bin/sh\ncase "$*" in *rev-parse*) echo '+SHA+';; esac\n')
+            git.chmod(0o755)
+            (root / "bin" / "python3").symlink_to(sys.executable)
+            (root / "tools" / "certs.py").write_text("raise SystemExit(0)\n")
+            (root / "tests" / "native-append-fetch-restart.py").write_text(
+                "from pathlib import Path\nimport sys\n"
+                "run = Path(sys.argv[2])\nrun.mkdir(parents=True, exist_ok=False)\n"
+                "retry = Path('first-attempt').exists()\n"
+                "(run / 'node.img').write_bytes(b'retry' if retry else b'first')\n"
+                "if not retry: Path('first-attempt').write_text(str(run))\n"
+                "raise SystemExit(0 if retry else 17)\n")
+            env = dict(os.environ, PATH=str(root / "bin") + ":/usr/bin:/bin")
+            def attempt():
+                return subprocess.run(["/bin/sh", str(GATE), str(root), SHA, "fnct"],
+                                      env=env, capture_output=True)
+            self.assertEqual(attempt().returncode, 17)
+            first_image = root / (root / "first-attempt").read_text() / "node.img"
+            retry = attempt()
+            self.assertEqual(retry.returncode, 0, retry.stderr)
+            self.assertEqual(first_image.read_bytes(), b"first")
+            self.assertCountEqual((p.read_bytes() for p in (root / "build").rglob("node.img")),
+                                  [b"first", b"retry"])
 
     def test_missing_current_certificates_refuse_before_build_or_socket(self):
         with tempfile.TemporaryDirectory() as directory:
