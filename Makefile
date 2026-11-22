@@ -564,6 +564,7 @@ ACL2_BOOKS = \
   tests/request-unit \
   tests/resources-unit \
   tests/ribbon-unit \
+  tests/outcome-key-origin-unit \
   tests/runs-assembly \
   tests/runs-assembly-import-order \
   tests/runs-unit \

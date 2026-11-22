@@ -93,7 +93,8 @@
     ;; the verdict's :missing, :duplicate-field and :injected by field (the catalogue's rows)
     :from-missing :subject-missing :newsgroups-missing :from-duplicate :subject-duplicate
     :newsgroups-duplicate :message-id-duplicate :date-duplicate :path-duplicate :xref :injection-info
-    :injection-date))
+    :injection-date :operation-reused :unavailable))
+
 ;; The verdict's word refined by field, in the order the model checks them.
 (defun fn2-upload-word-by-field (word seen)
   (declare (xargs :guard (natp seen)))
@@ -118,6 +119,10 @@
   (declare (xargs :guard t))
   (let ((tail (member-eq word *fn2-upload-words*)))
     (if tail (- (len *fn2-upload-words*) (len tail)) 0)))
+(defconst *fn2-upload-word-accepted* (fn2-upload-word-code :accepted))
+(defconst *fn2-upload-word-conflict* (fn2-upload-word-code :conflict))
+(defconst *fn2-upload-word-operation-reused* (fn2-upload-word-code :operation-reused))
+(defconst *fn2-upload-word-unavailable* (fn2-upload-word-code :unavailable))
 (defun fn2-upload-word-of (code)
   (declare (xargs :guard (natp code)))
   (if (< code (len *fn2-upload-words*)) (nth code *fn2-upload-words*) :none))
@@ -225,9 +230,10 @@
  ;; CONN is the owner the source comes from and the word goes to: a
  ;; connection (POST, IHAVE, TAKETHIS) or a consumer request (an append,
  ;; e-surface.md 3.3: the same upload and transaction as a POST). OP is the
- ;; append's operation identity (0: none).
+ ;; append's operation identity (0: none). REQUEST-PRINCIPAL captures the
+ ;; durable owner before storage and Message-ID injection.
  :fields ((conn :link) (conn-gen :u60) (request :u32)
-          (rule (:enum fn2-upload-rule (:post :ihave :takethis))) (op :u60)
+          (rule (:enum fn2-upload-rule (:post :ihave :takethis))) (op :u60) (request-principal :u60)
           (c0-slot :link) (c0-gen :u60) (c1-slot :link) (c1-gen :u60)
           (filled :u60) (hashed :u60) (source-lines :u32)
           (scan-off :u32) (ofield :u8) (visible :bool) (nfields :u16) (nlines :u16) (seen :u32)
@@ -307,7 +313,7 @@
                    :class (:bytes (:from fn2-input-config fn2-upload-stream-request-bytes))))
          :set ((lease *fn2-upload-lease-held*))
          :copy (conn conn-gen request rule principal-slot op)
-         :clear (filled hashed source-lines scan-off visible nfields nlines seen mo ml no nl po pl
+         :clear (request-principal filled hashed source-lines scan-off visible nfields nlines seen mo ml no nl po pl
                  head-status word inj txn-gen stopped pepoch palloc pdone sevent soutcome scount sready
                  ilen cepoch calloc cfree mfill munit mstep mdrain stored-hashed location-hashed rootepoch rootalloc stream-active stream-end stream-resets stream-stage-used stream-eof stream-stored-finalized stream-provisional stream-repack))
  :initial ((generation fn2-machine-initial-generation) (ready-prev *fn2-none*) (ready-next *fn2-none*)

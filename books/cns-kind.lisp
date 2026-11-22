@@ -128,7 +128,7 @@
 (defmachine-registry fn2-ctl)
 
 (defmachine fn2-cns
- :phases (:free :decode :check :lookup :read :page :article :item :fetch :source :park :commit :committed :append :draining :retired)
+ :phases (:free :decode :check :lookup :read :page :article :item :fetch :source :park :commit :committed :append :draining :retired :replay)
  :fields ((ctl :link) (ctl-gen :u60) (request :u32) (fpos :u32) (flen :u32) (fkind :u8)
           (verb (:enum fn2-cns-verb (:none :register :read :wait :ack :position :status :append :fetch
                                      :rebase :unregister)))
@@ -143,7 +143,7 @@
           ;; done; FEED-DISCARD 1 framing, 2 too large), as a connection feeds it
           (upload :link) (upload-gen :u60) (fstart :u32) (fed :u60) (feed-mode :u8) (feed-discard :u8)
           ;; Streaming frame metadata is scalar; RX loans remain owned by CTL.
-          (stream :bool)
+          (stream :bool) (retry-principal :u60) (outcome-checked :bool)
           ;; a register's consumer name, the octets of its request's consumer
           ;; field in the control range (the names row it writes)
           (name-off :u32) (name-len :u8)
@@ -187,6 +187,7 @@
          (:fetch :tx-range :wait-row (:storage-window :while (lease :held)))
          (:source :tx-range :wait-row (:storage-window :while (lease :held))) (:park :tx-range :wait-row (:storage-window :while (lease :held)))
          (:commit :tx-range :wait-row (:storage-window :while (lease :held)))
+         (:replay :tx-range :wait-row (:storage-window :while (lease :held)))
          (:committed :tx-range :wait-row :batch-membership (:storage-window :while (lease :held))) (:append :tx-range :wait-row (:storage-window :while (lease :held))) (:draining :tx-range :wait-row (:storage-window :while (lease :held))))
  ;; :commit's submitting run stages, emits, admits and binds (24,576 bytes, as fn2-txn's :ready)
  :budget (:bytes 32768 :steps 32 :descriptors 4)
@@ -194,13 +195,13 @@
  :taken (:phase :decode :rows :wait-row :ranges ((:tx-range :slot ws-slot :gen ws-gen :class 0) (:tx-range :slot ns-slot :gen ns-gen :class 0))
          :copy (ctl ctl-gen request fpos flen fkind tx-slot tx-gen)
          :clear (verb consumer epoch op to cstart page-limit wait-ms deadline cpos version pub-frontier count more outcome
-                 reason posted posted-word txn-gen upload-gen fstart fed feed-mode feed-discard stream name-off name-len
+                 reason posted posted-word txn-gen upload-gen fstart fed feed-mode feed-discard stream retry-principal outcome-checked name-off name-len
                  ipos ioff ilen npos art istream itype alen lunit lepoch lalloc lgen lease revent routcome rcount rready cursor xrow xstep xhead xgrant
                  sx wstep ticket stopped))
  :initial ((generation fn2-machine-initial-generation) (ready-prev *fn2-none*) (ready-next *fn2-none*)
            (ctl *fn2-none*) (edge *fn2-none*) (txn *fn2-none*) (tx-slot *fn2-none*) (upload *fn2-none*)
            (lslot *fn2-none*) (ws-slot *fn2-none*) (ns-slot *fn2-none*) (next-free fn2-machine-initial-next-free))
- :arms ((:free) (:decode) (:check) (:lookup) (:read) (:page) (:article) (:item) (:fetch) (:source) (:park) (:commit) (:committed) (:append) (:draining) (:retired))
+ :arms ((:free) (:decode) (:check) (:lookup) (:read) (:page) (:article) (:item) (:fetch) (:source) (:park) (:commit) (:committed) (:append) (:draining) (:retired) (:replay))
  :observes ((:read-result)))
 
 (defmachine-registry fn2-cns)

@@ -31,6 +31,26 @@ class ExactFetch(unittest.TestCase):
             with self.subTest(wrong=wrong), self.assertRaises(AssertionError):
                 campaign.checked_status(wrong, articles, 0, stable)
 
+    def test_occurrence_enumeration_follows_cursor_and_checks_terminal_page(self):
+        registered = dict(cursor="origin", position=0)
+        articles = [dict(message_id="<one>", position=20), dict(message_id="<two>", position=21)]
+        first = dict(outcome="accepted", more=True, cursor="first", next=20, items=articles[:1])
+        second = dict(outcome="accepted", more=True, cursor="second", next=21, items=articles[1:])
+        terminal = dict(outcome="accepted", more=False, items=[])
+        with mock.patch.object(campaign, "run_fn", side_effect=[first, second, terminal]) as run:
+            campaign.check_retry_occurrences(None, "test", None, None, registered, articles)
+            self.assertEqual([c.args[c.args.index("--cursor") + 1] for c in run.call_args_list],
+                             ["origin", "first", "second"])
+        for invalid in (
+            [dict(first, more=False)],
+            [dict(first, cursor="origin")],
+            [dict(first, next=0)],
+            [first, second, dict(terminal, items=[dict(message_id="<loser>", position=22)])],
+        ):
+            with self.subTest(invalid=invalid), mock.patch.object(campaign, "run_fn", side_effect=invalid):
+                with self.assertRaises(AssertionError):
+                    campaign.check_retry_occurrences(None, "test", None, None, registered, articles)
+
     def test_init_timeout_stops_owned_child_and_grandchild(self):
         real_popen = subprocess.Popen
         children = []

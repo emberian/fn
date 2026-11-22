@@ -5,12 +5,15 @@ Requires the current qualified node-profile/native-b3-evidence and a named
 runtime allocation. This is process-death visibility, not power-loss proof.
 """
 import argparse
+from concurrent.futures import ThreadPoolExecutor
+from contextlib import ExitStack
 import importlib.util
 import json
 import os
 import signal
 from pathlib import Path
 import subprocess
+import threading
 import time
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -18,6 +21,9 @@ spec = importlib.util.spec_from_file_location("boundaries", ROOT / "tests/native
 boundary = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(boundary)
 restart = boundary.restart
+client_spec = importlib.util.spec_from_file_location("fn_admin", ROOT / "tools/fn_admin.py")
+client = importlib.util.module_from_spec(client_spec)
+client_spec.loader.exec_module(client)
 
 
 def environment():
@@ -58,6 +64,77 @@ def checked_status(reply, accepted_articles, registered_position, previous=None)
     if previous is not None:
         assert fields == previous, (fields, previous)
     return fields
+
+
+def append_file(directory, label, control, principal, operation, path, expected=0):
+    return run_fn(directory, label, "stream", "append", "--as", principal, "--file", path,
+                  "--op", str(operation), "--control-sock", control, expected=expected)
+
+
+def retry_controls(directory, phase, control, principal, submission, original):
+    mid, article, path = submission
+    assert append_file(directory, f"{phase}-same", control, principal, 71, path) == original
+    # Change body octets alone, then name a different, previously unseen MID.
+    for name, changed in (("body", crossing_article(mid, body_variant=1)),
+                          ("identity", crossing_article("<retry-other@example.invalid>"))):
+        assert changed != article
+        candidate = directory / f"{phase}-{name}.article"
+        candidate.write_bytes(changed)
+        refused = append_file(directory, f"{phase}-{name}", control, principal, 71,
+                              candidate, expected=1)
+        assert (refused["outcome"], refused["reason"]) == ("refused", "operation-reused"), refused
+
+
+def race_appends(directory, label, control, principal, operation, candidates):
+    """Overlap two bound, real FNCT requests without assuming server step order."""
+    with ExitStack() as stack:
+        sessions = [stack.enter_context(client.ControlSession(str(control), timeout=90))
+                    for _ in candidates]
+        for session in sessions:
+            bound = session.bind_as(principal)
+            assert bound and bound["outcome"] == "accepted", bound
+        frames = [client.build_cns_request("append", op=operation, article=article)
+                  for _, article, _ in candidates]
+        # Both requests have entered their sockets before either can complete
+        # the frame. This forces wire overlap, not an ACL2 scheduler cut.
+        for session, frame in zip(sessions, frames):
+            session.sock.sendall(frame[:-32])
+        start = threading.Barrier(len(sessions))
+
+        def finish(side, session, frame):
+            start.wait(timeout=30)
+            session.sock.sendall(frame[-32:])
+            reply = client.decode_cns_reply("append", session._recv_frame(mutating=True))
+            reply["op"] = operation
+            (directory / f"{label}-{side}.stdout").write_text(json.dumps(reply) + "\n")
+            return reply
+
+        with ThreadPoolExecutor(max_workers=len(sessions)) as callers:
+            futures = [callers.submit(finish, side, session, frame)
+                       for side, (session, frame) in enumerate(zip(sessions, frames))]
+            return [future.result() for future in futures]
+
+
+def check_retry_occurrences(directory, phase, control, principal, registered, accepted):
+    expected = [(item["message_id"], item["position"]) for item in accepted]
+    actual = []
+    cursor, position = registered["cursor"], registered["position"]
+    # Every continuation must advance. The accepted frontier also bounds a
+    # stalled or spurious pagination result even when a page has no items.
+    page = 0
+    while True:
+        reply = run_fn(directory, f"{phase}-items-{page}", "stream", "read", "--as", principal,
+                       "--consumer", "inbox1", "--cursor", cursor,
+                       "--max-items", 3, "--max-octets", 4096, "--control-sock", control)
+        assert reply["outcome"] == "accepted", reply
+        actual.extend((item["message_id"], item["position"]) for item in reply["items"])
+        assert actual == expected[:len(actual)], (actual, expected, reply)
+        if not reply["more"]:
+            assert actual == expected, (actual, expected, reply)
+            return
+        assert cursor != reply["cursor"] and position < reply["next"] <= expected[-1][1], reply
+        cursor, position = reply["cursor"], reply["next"]
+        page += 1
 
 
 def crossing_article(mid, body_variant=0):
@@ -105,6 +182,8 @@ def initialize(directory, image, seconds=600, startup_args=()):
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--directory", type=Path, required=True)
+    parser.add_argument("--durable-retry", action="store_true",
+                        help="also require same-key races, changed-request refusal, and replay after revoking append")
     args = parser.parse_args()
     directory = args.directory.resolve()
     directory.mkdir(parents=True, exist_ok=False)
@@ -140,9 +219,31 @@ def main():
                             "--consumer", "inbox1", "--start", "history", "--control-sock", control)
         assert registered["outcome"] == "accepted", registered
         accepted_articles = []
-        for index, (mid, article, article_path) in enumerate(submissions):
-            accepted = run_fn(directory, f"accepted-{index}", "stream", "append", "--as", principal,
-                              "--file", article_path, "--op", str(71 + index), "--control-sock", control)
+        for index, submission in enumerate(submissions):
+            mid, article, article_path = submission
+            operation = 71 + index
+            if args.durable_retry and index == 0:
+                accepted, other = race_appends(directory, "same-key", control, principal, operation,
+                                               [submission, submission])
+                assert accepted == other, (accepted, other)
+            elif args.durable_retry:
+                alternate_mid = "<native-append-fetch-alternate@example.invalid>"
+                alternate = crossing_article(alternate_mid)
+                alternate_path = directory / "submitted-alternate.article"
+                alternate_path.write_bytes(alternate)
+                candidates = [submission, (alternate_mid, alternate, alternate_path)]
+                replies = race_appends(directory, "different-mid", control, principal, operation, candidates)
+                winners = [side for side, reply in enumerate(replies) if reply["outcome"] == "accepted"]
+                assert len(winners) == 1, replies
+                winner = winners[0]
+                accepted, loser = replies[winner], replies[1 - winner]
+                assert (loser["outcome"], loser["reason"]) == ("refused", "operation-reused"), replies
+                submissions[index] = candidates[winner]
+                mid = submissions[index][0]
+                losing_submission = candidates[1 - winner]
+            else:
+                accepted = append_file(directory, f"accepted-{index}", control, principal,
+                                       operation, article_path)
             assert accepted["outcome"] == "accepted" and accepted["evidence"] == "committed", accepted
             assert accepted["message_id"] == mid and accepted["position"] > 0, accepted
             accepted_articles.append(accepted)
@@ -151,11 +252,23 @@ def main():
             run_fn(directory, "status-before", "stream", "status", "--as", principal,
                    "--consumer", "inbox1", "--control-sock", control),
             accepted_articles, registered["position"])
+        if args.durable_retry:
+            retry_controls(directory, "before-restart", control, principal, submissions[0], accepted_articles[0])
+            checked_status(run_fn(directory, "status-after-retries", "stream", "status", "--as", principal,
+                                  "--consumer", "inbox1", "--control-sock", control),
+                           accepted_articles, registered["position"], status_before)
+            check_retry_occurrences(directory, "before-restart", control, principal, registered, accepted_articles)
+            revoked = run_fn(directory, "revoke-append", "grant", "set", principal, "append",
+                             "local.test", "--revoke", "--control-sock", control)
+            assert revoked["outcome"] == "accepted" and not revoked["enabled"], revoked
         # Both actual socket replies have reached this parent before SIGKILL.
         node.kill()
+        cut = "SIGKILL after both committed APPEND receipts"
+        if args.durable_retry:
+            cut += " and the accepted APPEND revocation"
         receipts.append(dict(phase="accepted", node_pid=node.node_pid, exit=node.proc.returncode,
                              article_octets=[len(article) for _, article, _ in submissions],
-                             cut="SIGKILL after parent received both accepted committed APPEND replies"))
+                             append_receipts=accepted_articles, cut=cut))
     finally:
         node.close()
     (directory / "processes.json").write_text(json.dumps(receipts, indent=2) + "\n")
@@ -168,6 +281,21 @@ def main():
             run_fn(directory, "status-after", "stream", "status", "--as", principal,
                    "--consumer", "inbox1", "--control-sock", control),
             accepted_articles, registered["position"], status_before)
+        if args.durable_retry:
+            retry_controls(directory, "reopened", control, principal, submissions[0], accepted_articles[0])
+            winner = append_file(directory, "reopened-different-mid-winner", control, principal, 72,
+                                 submissions[1][2])
+            assert winner == accepted_articles[1], (winner, accepted_articles[1])
+            loser = append_file(directory, "reopened-different-mid-loser", control, principal, 72,
+                                losing_submission[2], expected=1)
+            assert (loser["outcome"], loser["reason"]) == ("refused", "operation-reused"), loser
+            fresh_path = directory / "reopened-identity.article"
+            denied = append_file(directory, "reopened-new-operation", control, principal, 74, fresh_path, expected=1)
+            assert (denied["outcome"], denied["reason"]) == ("refused", "refused"), denied
+            check_retry_occurrences(directory, "reopened", control, principal, registered, accepted_articles)
+            checked_status(run_fn(directory, "status-after-reopened-retries", "stream", "status", "--as",
+                                  principal, "--consumer", "inbox1", "--control-sock", control),
+                           accepted_articles, registered["position"], status_before)
         for index, ((mid, article, _), accepted) in enumerate(zip(submissions, accepted_articles)):
             # Cross each position with the other real Message-ID, then change
             # only the ID and require this same position to yield its bytes.
@@ -203,6 +331,8 @@ def main():
     finally:
         node.close()
     (directory / "processes.json").write_text(json.dumps(receipts, indent=2) + "\n")
+    if args.durable_retry:
+        print("NATIVE DURABLE APPEND RETRY PASS: same-key races had one occurrence each; original receipts replayed after restart and revocation")
     print("NATIVE APPEND/FETCH RESTART PASS: two 6144-byte articles recovered by FNCT and NNTP")
 
 

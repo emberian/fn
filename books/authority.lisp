@@ -26,6 +26,7 @@
 (in-package "ACL2")
 (include-book "pool-copy")
 (include-book "cns")
+(include-book "append-outcome-read-events")
 (fn2-book-layer :e)
 
 (defconst *fn2-auth-op-create* 0)
@@ -67,7 +68,7 @@
 (defconst *fn2-grants-sid* 17)
 ;; fn2-outcome's accepted code, as D's transaction writes it (txn.lisp's
 ;; *fn2-txn-outcome-accepted*, a later book)
-(defconst *fn2-auth-outcome-code-accepted* 1)
+(defconst *fn2-auth-outcome-code-accepted* *fn2-txn-outcome-accepted*)
 (defconst *fn2-grant-current-sid* 18)
 (defconst *fn2-authority-head-sid* 19)
 (defconst *fn2-authority-right-consume* 0)
@@ -333,8 +334,7 @@
        (mv-let (c2 v2) (if (natp f2) (fn2-read-value x f2 fn2-core) (mv :ok 0))
          (mv-let (c3 v3) (if (natp f3) (fn2-read-value x f3 fn2-core) (mv :ok 0))
            (mv-let (rc fn2-core) (fn2-read-release x fn2-core)
-             (declare (ignore rc))
-             (if (and (eq c1 :ok) (eq c2 :ok) (eq c3 :ok))
+             (if (and (eq c1 :ok) (eq c2 :ok) (eq c3 :ok) (eq rc :ok))
                  (mv :ok (nfix v1) (nfix v2) (nfix v3) fn2-core)
                (mv :state 0 0 0 fn2-core)))))))
    (fn2-core-preserves fn2-auth-take-values (x f1 f2 f3 fn2-core) :position 4 :rows nil)
@@ -401,22 +401,7 @@
              (mv :ok (+ (- r (+ a c)) s))
            (mv :bounds 0)))))
    (in-theory (disable fn2-cns-read-row))
-   ;; The effective durable principal of consumer request CNS of generation
-   ;; GEN (section 1): its control connection's, the owner's or the one it
-   ;; bound (0 when the profile has no owner principal); :state when the
-   ;; request or its connection has moved on.
-   (defun fn2-cns-principal (cns gen fn2-core)
-     (declare (xargs :stobjs fn2-core :guard (fn2-core-wfp fn2-core)))
-     (if (not (and (eq (fn2-cns-snapshot-read-code cns fn2-core) :ok)
-                   (equal (fn2-machine-generation cns fn2-core) gen)))
-         (mv :state 0)
-       (let ((ctl (fn2-cns-row-ctl cns fn2-core)))
-         (if (and (eq (fn2-ctl-snapshot-read-code ctl fn2-core) :ok)
-                  (equal (fn2-machine-generation ctl fn2-core) (fn2-cns-row-ctl-gen cns fn2-core)))
-             (mv :ok (nfix (fn2-ctl-row-principal ctl fn2-core)))
-           (mv :state 0)))))
-   (defthm fn2-cns-principal-natp (natp (mv-nth 1 (fn2-cns-principal cns gen fn2-core))) :rule-classes :type-prescription)
-   (in-theory (disable fn2-cns-principal))
+   (fn2-append-outcome-read-events)
    ;; Whether CNS's control connection administers (an owner connection not
    ;; yet bound acts under the owner's bootstrap authority, section 1).
    (defun fn2-cns-admin-p (cns fn2-core)
@@ -615,37 +600,30 @@
    (fn2-core-preserves fn2-auth-decode-grant (op sx slot gen off end okind oslot ogen fn2-core)
      :position 8 :rows nil :hints (("Goal" :in-theory (enable fn2-core-wfp))))
    (in-theory (disable fn2-auth-decode-grant))
-   ;; operation OP's recorded outcome for PRINCIPAL: (mv code event same),
-   ;; SAME whether its request identity equals the one at the key range's
-   ;; [0, 32) (the recorded one is copied to [32, 64) and compared).
-   (defun fn2-auth-same-octets (n i j slot gen okind oslot ogen fn2-pool)
-     (declare (xargs :stobjs fn2-pool :guard (and (fn2-pool-wfp fn2-pool) (natp n) (natp i) (natp j)) :measure (nfix n)))
-     (if (zp n) t
-       (mv-let (c1 a) (fn2-pool-read slot gen i okind oslot ogen fn2-pool)
-         (mv-let (c2 b) (fn2-pool-read slot gen j okind oslot ogen fn2-pool)
-           (and (eq c1 :ok) (eq c2 :ok) (equal a b)
-                (fn2-auth-same-octets (- n 1) (+ 1 (nfix i)) (+ 1 (nfix j)) slot gen okind oslot ogen fn2-pool))))))
+   ;; Grant replay checks the stored verb and compares all 32 original
+   ;; request bytes. A failed read never becomes a definite mismatch.
    (defun fn2-auth-find-outcome (x principal op kslot kgen budget okind oslot ogen fn2-core)
      (declare (xargs :stobjs fn2-core :guard (fn2-core-wfp fn2-core)
                      :guard-hints (("Goal" :in-theory (enable fn2-core-wfp)))))
-     (mv-let (k0 k1 fn2-core)
-       (if (fn2-auth-lookup-live x *fn2-txn-outcome-sid* fn2-core) (mv :ok :ok fn2-core)
-         (mv-let (k0 fn2-core) (fn2-read-key x :lo *fn2-outcome-entry-field-principal* (nfix principal) fn2-core)
-           (mv-let (k1 fn2-core) (fn2-read-key x :lo *fn2-outcome-entry-field-operation* (nfix op) fn2-core)
-             (mv k0 k1 fn2-core))))
-         (if (not (and (eq k0 :ok) (eq k1 :ok))) (mv :state 0 nil fn2-core)
-           (mv-let (lc fn2-core) (fn2-auth-lookup-step x *fn2-txn-outcome-sid* budget fn2-core)
-             (if (not (eq lc :ok))
-                 (mv lc 0 nil fn2-core)
-               (mv-let (oc copied left fn2-core)
-                 (fn2-read-octets x *fn2-outcome-entry-field-request* 0 32 kslot kgen 32 okind oslot ogen fn2-core)
-                 (declare (ignore left))
-                 (mv-let (vc ev a b fn2-core) (fn2-auth-take-values x *fn2-outcome-entry-field-event* nil nil fn2-core)
-                   (declare (ignore a b))
-                   (let ((same (and (eq oc :ok) (equal copied 32)
-                                    (stobj-let ((fn2-pool (fn2-core-pool fn2-core))) (s)
-                                      (and (fn2-pool-wfp fn2-pool) (fn2-auth-same-octets 32 0 32 kslot kgen okind oslot ogen fn2-pool)) s))))
-                     (mv (if (eq vc :ok) :ok :state) ev same fn2-core)))))))))
+     (b* (((mv lc fn2-core) (fn2-outcome-lookup-step x principal op budget fn2-core))
+          ((unless (eq lc :ok)) (mv lc 0 nil fn2-core))
+          ((mv oc copied left fn2-core)
+           (fn2-read-octets x *fn2-outcome-entry-field-request* 0 32 kslot kgen 32 okind oslot ogen fn2-core))
+          ((mv vc event verb outcome fn2-core)
+           (fn2-auth-take-values x *fn2-outcome-entry-field-event* *fn2-outcome-entry-field-verb*
+                                 *fn2-outcome-entry-field-outcome* fn2-core))
+          ((unless (and (eq oc :ok) (equal copied 32) (equal left 0) (eq vc :ok)
+                        (posp event) (unsigned-byte-p 60 event))) (mv :state 0 nil fn2-core))
+          ((when (equal verb *fn2-outcome-verb-append*)) (mv :ok event nil fn2-core))
+          ((unless (and (equal verb *fn2-outcome-verb-grant-set*)
+                        (equal outcome *fn2-auth-outcome-code-accepted*))) (mv :state 0 nil fn2-core))
+          ((mv cmp order)
+           (stobj-let ((fn2-pool (fn2-core-pool fn2-core))) (code order)
+             (mv-let (code order at)
+               (fn2-pool-compare kslot kgen 0 okind oslot ogen kslot kgen 32 okind oslot ogen 32 fn2-pool)
+               (declare (ignore at)) (mv code order))
+             (mv code order))))
+       (if (eq cmp :ok) (mv :ok event (eq order :equal) fn2-core) (mv :state 0 nil fn2-core))))
    (fn2-core-preserves fn2-auth-find-outcome (x principal op kslot kgen budget okind oslot ogen fn2-core) :position 3 :rows nil)
    (in-theory (disable fn2-auth-find-outcome))
    ;; grant-set's request identity: 32 octets at the key range's [0, 32), the
@@ -710,8 +688,9 @@
           ((mv c fn2-core) (fn2-authority-head-grant sx 2 (principal ge) (g :event 0) fn2-core))
           ((unless (eq c :ok)) (mv :state fn2-core))
           ((mv c fn2-core)
-           (fn2-outcome-put sx 3 (principal grantor) (operation op) (request kslot kgen 0)
+           (fn2-outcome-put sx 3 (principal grantor) (operation op) (id-source *fn2-outcome-id-source-supplied*) (request kslot kgen 0)
                             (outcome *fn2-auth-outcome-code-accepted*) (event :event 0)
+                            (verb *fn2-outcome-verb-grant-set*) (mid kslot kgen 0 0)
                             :owner (okind oslot ogen) fn2-core))
           ((unless (eq c :ok)) (mv :state fn2-core)))
        (mv :ok fn2-core)))
@@ -1119,20 +1098,6 @@
    (fn2-core-preserves fn2-auth-xl-core (tx sid nk k0 k1 k2 k3 vfield budget fn2-core)
     :position 2 :rows nil :hints (("Goal" :in-theory (enable fn2-core-wfp))))
    (in-theory (disable fn2-auth-xl-core))
-   ;; The effective durable principal of a transaction (section 1): a
-   ;; consumer request's (CONN a fn2-cns row of generation CONN-GEN) is its
-   ;; control connection's, the owner's or the one it bound; a connection's
-   ;; is its account slot PSLOT's (D7's id; an NNTP reader's the anonymous
-   ;; principal). :state when the request or its connection has moved on.
-   (defun fn2-txn-principal (conn conn-gen pslot fn2-core)
-    (declare (xargs :stobjs fn2-core :guard (fn2-core-wfp fn2-core)))
-    (if (eq (fn2-cns-snapshot-read-code conn fn2-core) :ok)
-        (mv-let (c pid) (fn2-cns-principal conn conn-gen fn2-core)
-          (if (and (eq c :ok) (posp pid)) (mv :ok pid) (mv :state 0)))
-      (fn2-principal-of-slot pslot fn2-core)))
-   (defthm fn2-txn-principal-natp (natp (mv-nth 1 (fn2-txn-principal conn conn-gen pslot fn2-core)))
-    :hints (("Goal" :in-theory (enable fn2-principal-of-slot))) :rule-classes :type-prescription)
-   (in-theory (disable fn2-txn-principal))
    ;; (fn2-authority-allows tx pid right target step head grant budget):
    ;; whether durable principal PID holds RIGHT on stream TARGET
    ;; for transaction TX, in bounded steps: STEP 0 reads the principal's
