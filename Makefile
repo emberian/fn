@@ -215,6 +215,8 @@ ACL2_BOOKS = \
   books/xfnc-request-layout \
   books/peer-pull-request-encode \
   tests/peer-pull-request-encode-unit \
+  books/peer-pull-reply-pool \
+  tests/peer-pull-reply-pool-unit \
   books/peer-pull-reply \
   books/peer-pull-import \
   books/peer-pull-stage \
