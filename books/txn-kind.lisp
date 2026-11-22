@@ -107,6 +107,8 @@
           (ecommit (:enum fn2-txn-ecommit (:none :committed :uncertain :refused)))
           (batch :u60) (bevent :u60)
           (word :u8) (outcome-checked :bool) (offered :bool) (prepared :bool) (filed :bool) (counted :u60) (lines :u32)
+          ;; NGROUPS counts filed groups in article mode. In peer evidence
+          ;; mode it records whether any resolved destination was authorized.
           (gcur :u32) (gskip :bool) (ngroups :u8) (numbers-off :u32) (numbers-len :u32)
           ;; The group at GCUR is XGROUP during its authority checks. XSTEP
           ;; 0 looks up the name, 1..3 checks peer role, 4..6 checks peer
