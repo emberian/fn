@@ -33,6 +33,8 @@ CUTS = {
     ('fn2-native-tls-record-perform', 'tls-record'): 'fn2-sim-physical',
     ('fn2-n-start-ready', 'syscall'): 'fn2-sim-physical',
     ('fn2-n-start-now', 'syscall'): 'fn2-sim-physical',
+    ('fn2-n-start-now', 'connect-start'): 'fn2-sim-physical',
+    ('fn2-n-ready', 'connect-ready'): 'fn2-sim-physical',
     ('fn2-n-storage-submit', 'device-submit'): 'fn2-sim-take-one',
     ('fn2-n-storage-completions', 'device-return'): 'fn2-sim-complete-result',
     ('fn2-n-take', 'take'): 'fn2-sim-take-one',

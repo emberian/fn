@@ -19,6 +19,11 @@
   (value sb-sys:system-area-pointer) (length sb-alien:unsigned-int))
 (sb-alien:define-alien-routine ("bind" %fn2-native-bind) sb-alien:int
   (fd sb-alien:int) (address sb-sys:system-area-pointer) (length sb-alien:unsigned-int))
+(sb-alien:define-alien-routine ("connect" %fn2-native-connect) sb-alien:int
+  (fd sb-alien:int) (address sb-sys:system-area-pointer) (length sb-alien:unsigned-int))
+(sb-alien:define-alien-routine ("getsockopt" %fn2-native-getsockopt) sb-alien:int
+  (fd sb-alien:int) (level sb-alien:int) (option sb-alien:int)
+  (value sb-sys:system-area-pointer) (length sb-sys:system-area-pointer))
 (sb-alien:define-alien-routine ("listen" %fn2-native-listen) sb-alien:int
   (fd sb-alien:int) (backlog sb-alien:int))
 (sb-alien:define-alien-routine ("getsockname" %fn2-native-getsockname) sb-alien:int
@@ -113,6 +118,51 @@
   #+darwin (fn2-native-socket-option fd #x1022 1)
   #+linux (values 0 0))
 
+(defun fn2-native-inet-address (sap family port w0 w1 w2 w3)
+  (let ((size (if (= family 2) 16 28)))
+    (dotimes (i size) (setf (sb-sys:sap-ref-8 sap i) 0))
+    #+linux (setf (sb-sys:sap-ref-16 sap 0) family)
+    #+darwin (setf (sb-sys:sap-ref-8 sap 0) size (sb-sys:sap-ref-8 sap 1) family)
+    (setf (sb-sys:sap-ref-8 sap 2) (ldb (byte 8 8) port)
+          (sb-sys:sap-ref-8 sap 3) (ldb (byte 8 0) port))
+    (loop for start from (if (= family 2) 4 8) by 4
+          for word in (if (= family 2) (list w0) (list w0 w1 w2 w3))
+          do (dotimes (i 4)
+               (setf (sb-sys:sap-ref-8 sap (+ start i)) (ldb (byte 8 (* 8 (- 3 i))) word))))
+    size))
+
+(defun fn2-native-connect-start (family port w0 w1 w2 w3)
+  "Return :connected or :waiting and an owned nonblocking fd, or :failed and -1."
+  (let ((af (case family (:inet 2) (:inet6 #+linux 10 #+darwin 30))))
+    (unless af (return-from fn2-native-connect-start (values :failed -1)))
+    (let ((fd (fn2-native-syscall (%fn2-native-socket af 1 0))) (keep nil))
+      (when (minusp fd) (return-from fn2-native-connect-start (values :failed -1)))
+      (unwind-protect
+          (sb-alien:with-alien ((bytes (array sb-alien:unsigned-char 28)))
+            (when (minusp (fn2-native-configure-socket fd))
+              (return-from fn2-native-connect-start (values :failed -1)))
+            (let* ((sap (sb-alien:alien-sap bytes))
+                   (size (fn2-native-inet-address sap af port w0 w1 w2 w3))
+                   (result (%fn2-native-connect fd sap size))
+                   (err (if (minusp result) (fn2-native-errno) 0)))
+              ;; EINTR can leave connection establishment in progress. Wait
+              ;; for writability and SO_ERROR; never call connect twice.
+              (cond ((zerop result) (setf keep t) (values :connected fd))
+                    ((or (= err 4) (= err #+linux 115 #+darwin 36))
+                     (setf keep t) (values :waiting fd))
+                    (t (values :failed -1)))))
+        (unless keep (fn2-native-close fd))))))
+
+(defun fn2-native-connect-finish (fd)
+  "Called only after the fd has reported completion readiness."
+  (sb-alien:with-alien ((err sb-alien:int 0) (length sb-alien:unsigned-int 4))
+    (multiple-value-bind (status errno)
+        (fn2-native-syscall (%fn2-native-getsockopt fd #+linux 1 #+darwin #xffff #+linux 4 #+darwin #x1007
+                              (sb-alien:alien-sap (sb-alien:addr err)) (sb-alien:alien-sap (sb-alien:addr length))))
+      (cond ((minusp status) (if (= errno 4) :waiting :failed))
+            ((and (= length 4) (zerop err)) :connected)
+            (t :failed)))))
+
 (defun fn2-native-listen (port &optional (address #x7f000001) (backlog 128))
   "Startup IPv4 TCP listener (PORT 0: the kernel chooses). Values: fd and the bound port."
   (let ((fd (fn2-native-require-call :socket (%fn2-native-socket 2 1 0))) (ok nil))
@@ -122,12 +172,7 @@
            (multiple-value-call #'fn2-native-required (fn2-native-configure-socket fd) :socket-options)
            (multiple-value-call #'fn2-native-required (fn2-native-socket-option fd #+linux 2 #+darwin 4 1) :reuseaddr)
            (let ((sap (sb-alien:alien-sap address-bytes)))
-             (dotimes (i 16) (setf (sb-sys:sap-ref-8 sap i) 0))
-             #+linux (setf (sb-sys:sap-ref-16 sap 0) 2)
-             #+darwin (setf (sb-sys:sap-ref-8 sap 0) 16 (sb-sys:sap-ref-8 sap 1) 2)
-             (setf (sb-sys:sap-ref-8 sap 2) (ldb (byte 8 8) port)
-                   (sb-sys:sap-ref-8 sap 3) (ldb (byte 8 0) port))
-             (dotimes (i 4) (setf (sb-sys:sap-ref-8 sap (+ 4 i)) (ldb (byte 8 (* 8 (- 3 i))) address)))
+             (fn2-native-inet-address sap 2 port address 0 0 0)
              (fn2-native-require-call :bind (%fn2-native-bind fd sap 16))
              (fn2-native-require-call :listen (%fn2-native-listen fd backlog))
              (fn2-native-require-call :getsockname

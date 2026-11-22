@@ -32,7 +32,7 @@ class ServedNativeProgramTests(unittest.TestCase):
     def test_actual_graph(self):
         report = checker.check(self.root)
         self.assertTrue(report['audit_ok'], report)
-        self.assertEqual(report['cuts'], 19)
+        self.assertEqual(report['cuts'], 21)
         self.assertEqual(report['cut_mapping_status'], 'incomplete')
         self.assertEqual(report['host_refinement'], 'not_checked')
 
@@ -70,7 +70,9 @@ class ServedNativeProgramTests(unittest.TestCase):
         self.assertEqual(len(report['physical_cut_replay']['labels']), 4)
         self.assertIn('post', report['physical_cut_replay']['conditional_labels'])
         self.assertIn(['fn2-n-post-completions', 'post'], report['unmapped_sites'])
-        self.assertEqual(len(report['unmapped_sites']), 15)
+        self.assertEqual(len(report['unmapped_sites']), 17)
+        self.assertIn(['fn2-n-start-now', 'connect-start'], report['unmapped_sites'])
+        self.assertIn(['fn2-n-ready', 'connect-ready'], report['unmapped_sites'])
         self.assertIn(['fn2-native-compress-record-step', 'compress-transform'], report['unmapped_sites'])
         self.assertEqual(report['cut_mapping_status'], 'incomplete')
 
