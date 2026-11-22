@@ -6,6 +6,7 @@
 ; Run: sh tools/certify.sh tests/cursor-unit.lisp
 (in-package "ACL2")
 (include-book "../books/owed-cursor")
+(include-book "protected-peer-fixture")
 (include-book "../sim/check-wire")
 (include-book "std/util/bstar" :dir :system)
 
@@ -494,35 +495,36 @@
 (defun fn2-cru-h5-expected-wire ()
   (declare (xargs :verify-guards nil))
   (list (fn2-cw-crlf-octets
-         (list "200 fn-nntp experimental server ready"
-               "203 streaming permitted"
-               "438 <b@example.invalid>"
-               "238 <ihave1@example.invalid>"
-               "435 duplicate"
-               "335 send it; end with <CR-LF>.<CR-LF>"
-               "235 article transferred OK"
-               "438 <ihave1@example.invalid>"
-               "239 <take1@example.invalid>"
-               "439 <take1@example.invalid>"
-               "211 5 1 5 local.test"
-               "205 closing connection"))
+         (append (list "200 fn-nntp experimental server ready")
+                 *fn2-ppf-login-lines*
+                 (list "203 streaming permitted"
+                       "438 <b@example.invalid>"
+                       "238 <ihave1@example.invalid>"
+                       "435 duplicate"
+                       "335 send it; end with <CR-LF>.<CR-LF>"
+                       "235 article transferred OK"
+                       "438 <ihave1@example.invalid>"
+                       "239 <take1@example.invalid>"
+                       "439 <take1@example.invalid>"
+                       "211 5 1 5 local.test"
+                       "205 closing connection")))
         t))
-(defconst *fn2-cru-h5-profile* (put-assoc-equal :peering-interim t *fn2-cursor-profile*))
 (defun fn2-cursor-test-h5 (sizes)
   (declare (xargs :verify-guards nil))
-  (let* ((r (fn2-cursor-wire-run *fn2-cru-h5-profile* *fn2-cru-seeds*
-                                 (list (list (fn2-cw-crlf-octets *fn2-cru-h5-lines*) sizes t))))
-         (got (car (nth 2 r)))
-         (want (fn2-cru-h5-expected-wire)))
-    (and (eq (nth 0 r) :ok)
-         (equal (nth 3 r) 0)
-         (or (equal got want) (cw "h5 ~x0~%want ~x1~%" got want)))))
+  (let ((got (fn2-ppf-wire *fn2-cursor-profile* *fn2-cru-seeds* *fn2-cru-h5-lines* sizes t))
+        (want (list :quiet 0 (fn2-cru-h5-expected-wire))))
+    (or (equal got want) (cw "h5 ~x0~%want ~x1~%" got want))))
 (defun fn2-cursor-test-h5-negative ()
   (declare (xargs :verify-guards nil))
-  (not (equal (fn2-cursor-wire-run *fn2-cru-h5-profile* *fn2-cru-seeds*
-                                   (list (list (fn2-cw-crlf-octets '("CHECK <b@example.invalid>" "QUIT")) nil t)))
-              (fn2-cursor-wire-run *fn2-cru-h5-profile* *fn2-cru-seeds*
-                                   (list (list (fn2-cw-crlf-octets '("CHECK <ihave1@example.invalid>" "QUIT")) nil t))))))
+  (let ((got (fn2-ppf-wire *fn2-cursor-profile* *fn2-cru-seeds*
+                           '("CHECK <b@example.invalid>" "QUIT") nil nil))
+        (want (list :quiet 0
+                    (list (fn2-cw-crlf-octets
+                           (append (list "200 fn-nntp experimental server ready") *fn2-ppf-login-lines*
+                                   '("502 transit is not permitted on this connection"
+                                     "205 closing connection")))
+                          t))))
+    (or (equal got want) (cw "ungranted h5 ~x0~%want ~x1~%" got want))))
 (assert-event (fn2-cursor-test-h5 nil))
 (assert-event (fn2-cursor-test-h5 '(11 3 1)))
 (assert-event (fn2-cursor-test-h5-negative))

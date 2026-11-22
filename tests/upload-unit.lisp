@@ -9,6 +9,7 @@
 ; 14.5): the same POST under the plain wire profile is the 440 interim.
 ; Run: sh tools/certify.sh tests/upload-unit.lisp
 (in-package "ACL2")
+(include-book "protected-peer-fixture")
 (include-book "../books/owed-conn")
 (include-book "../sim/check-wire")
 
@@ -142,23 +143,22 @@
     ""
     "body"
     "..stuffed"))
-(defconst *fn2-uu-peer-profile* (put-assoc-equal :peering-interim t *fn2-uu-profile*))
-(defun fn2-uu-peer-wire (profile lines k)
+(defun fn2-uu-peer-wire (lines k)
   (declare (xargs :verify-guards nil))
-  (let* ((octets (fn2-cw-crlf-octets lines))
-         (r (fn2-conn-wire-run-in profile (list (list octets (fn2-uu-sizes (len octets) k) t)))))
-    (list (car r) (nth 2 r) (car (car (nth 1 r))) (cadr (car (nth 1 r))))))
+  (fn2-ppf-wire *fn2-uu-profile* nil lines (fn2-uu-sizes (len (fn2-cw-crlf-octets lines)) k) t))
 (defun fn2-uu-peer-check (lines expect closed)
   (declare (xargs :verify-guards nil))
-  (let ((want (list :quiet 0 (fn2-uu-text expect) closed)))
+  (let ((want (list :quiet 0
+                    (list (fn2-uu-text (append (list (car expect)) *fn2-ppf-login-lines* (cdr expect)))
+                          closed))))
     (and (or (fn2-wire-pass-p (fn2-uu-text lines) (fn2-uu-text expect) closed)
              (cw "PEER WIRE ~x0~%" (fn2-wire-check (fn2-uu-text lines) (fn2-uu-text expect) closed)))
-         (or (equal (fn2-uu-peer-wire *fn2-uu-peer-profile* lines 4096) want)
-             (cw "peer whole ~x0~%" (fn2-uu-peer-wire *fn2-uu-peer-profile* lines 4096)))
-         (or (equal (fn2-uu-peer-wire *fn2-uu-peer-profile* lines 7) want)
-             (cw "peer by 7 ~x0~%" (fn2-uu-peer-wire *fn2-uu-peer-profile* lines 7)))
-         (or (equal (fn2-uu-peer-wire *fn2-uu-peer-profile* lines 1) want)
-             (cw "peer by 1 ~x0~%" (fn2-uu-peer-wire *fn2-uu-peer-profile* lines 1))))))
+         (or (equal (fn2-uu-peer-wire lines 4096) want)
+             (cw "peer whole ~x0~%" (fn2-uu-peer-wire lines 4096)))
+         (or (equal (fn2-uu-peer-wire lines 7) want)
+             (cw "peer by 7 ~x0~%" (fn2-uu-peer-wire lines 7)))
+         (or (equal (fn2-uu-peer-wire lines 1) want)
+             (cw "peer by 1 ~x0~%" (fn2-uu-peer-wire lines 1))))))
 (defun fn2-uu-peer-fixtures ()
   (declare (xargs :verify-guards nil))
   (and
@@ -173,7 +173,7 @@
                             "205 closing connection") t)
    ;; IHAVE missing Path header: 335, then 437
    (fn2-uu-peer-check '("IHAVE <one@example.invalid>" "From: a@example.invalid" "Subject: s"
-                        "Date: Fri, 30 Oct 2026 12:00:00 +0000" "Newsgroups: g"
+                        "Date: Fri, 30 Oct 2026 12:00:00 +0000" "Newsgroups: local.test"
                         "Message-ID: <one@example.invalid>" "" "x" "." "QUIT")
                       (list *fn2-uu-greeting* "335 send it; end with <CR-LF>.<CR-LF>"
                             "437 transfer rejected; "
@@ -193,7 +193,7 @@
    ;; TAKETHIS oversize block: drained, answered 439 <id>, then closed
    (fn2-uu-peer-check (append '("TAKETHIS <big@example.invalid>" "Path: peer!not-for-mail"
                                 "From: a" "Subject: s" "Date: Fri, 30 Oct 2026 12:00:00 +0000"
-                                "Newsgroups: g" "Message-ID: <big@example.invalid>" "")
+                                "Newsgroups: local.test" "Message-ID: <big@example.invalid>" "")
                               (fn2-uu-big 100) '("." "QUIT"))
                       (list *fn2-uu-greeting* "439 <big@example.invalid>") t)))
 (assert-event (fn2-uu-peer-fixtures))

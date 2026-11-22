@@ -1,9 +1,9 @@
 ; Concrete inbound peer replay contract. Runs the composed served core through
-; fn2-cursor-wire-run (adapter simulator), not fn2-pm-* or the wire reference.
+; fn2-ppf-wire (adapter simulator with served owner provisioning and AUTHINFO).
 ; Same-node, one live connection, successful simulated durable I/O; no claim
 ; about reconnect/lost replies, real disk, peer honesty, catchup or custody.
 (in-package "ACL2")
-(include-book "../books/owed-cursor")
+(include-book "protected-peer-fixture")
 (include-book "../sim/check-wire")
 
 (defun fn2-peer-replay-block (mid body)
@@ -27,8 +27,8 @@
 (defun fn2-peer-replay-expected (fresh)
   (declare (xargs :verify-guards nil))
   (list (fn2-cw-crlf-octets
-         (append '("200 fn-nntp experimental server ready" "203 streaming permitted"
-                   "238 <replay@example.invalid>" "239 <replay@example.invalid>"
+         (append '("200 fn-nntp experimental server ready") *fn2-ppf-login-lines*
+                 '("203 streaming permitted" "238 <replay@example.invalid>" "239 <replay@example.invalid>"
                    "439 <replay@example.invalid>")
                  (list (if fresh "239 <fresh@example.invalid>" "439 <replay@example.invalid>"))
                  '("438 <replay@example.invalid>" "435 duplicate")
@@ -42,15 +42,10 @@
   (let* ((bytes (fn2-cw-crlf-octets (fn2-peer-replay-lines fresh)))
          (sizes (and (posp chunk)
                      (make-list (+ 1 (floor (len bytes) chunk)) :initial-element chunk)))
-         (r (fn2-cursor-wire-run
-              (put-assoc-equal :peering-interim t *fn2-cursor-profile*) nil
-              (list (list bytes sizes t))))
-         (want (fn2-peer-replay-expected fresh)))
-    (and (equal (nth 0 r) :ok)
-         (equal (nth 1 r) :quiet)
-         (equal (nth 3 r) 0)
-         (or (equal (car (nth 2 r)) want)
-             (cw "peer replay fresh=~x0 got ~x1 expected ~x2~%" fresh (car (nth 2 r)) want)))))
+         (got (fn2-ppf-wire *fn2-cursor-profile* nil (fn2-peer-replay-lines fresh) sizes t))
+         (want (list :quiet 0 (fn2-peer-replay-expected fresh))))
+    (or (equal got want)
+        (cw "peer replay fresh=~x0 got ~x1 expected ~x2~%" fresh got want))))
 
 ; Positive: both duplicate and conflicting identity leave body/count/high intact.
 (assert-event (fn2-peer-replay-check nil nil))
