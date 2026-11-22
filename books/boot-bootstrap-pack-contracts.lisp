@@ -9,8 +9,8 @@
 
 ; The public shape theorem is typed; the ROWS facets below are unconditional.
 ; Derive their actual wrapper boundary with the canonical ABI-driven form.
-(fn2-hash-row-frames fn2-pool-block-hash-loop fn2-digests fn2-b3)
-(fn2-hash-row-frames fn2-pool-block-hash fn2-digests fn2-b3)
+(local (fn2-hash-row-frames fn2-pool-block-hash-loop fn2-digests fn2-b3))
+(local (fn2-hash-row-frames fn2-pool-block-hash fn2-digests fn2-b3))
 
 (defcolumns-guarded-contracts fn2-boot-pack-geometry
  :carriers ((fn2-fields 2 :prefix "-FIELDS") (fn2-digests 3 :prefix "-DIGESTS")
