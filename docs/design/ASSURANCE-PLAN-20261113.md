@@ -125,8 +125,15 @@ position and group number, enumerates the stream and checks NNTP group
 counts. The fixture controls passed. Execution against the assembled node
 remains outstanding.
 
-That candidate also fixes the generated CNS flag accessor that collided
-with the width theorem for `page-head`. Its image init and serve call the
+On that source the repaired CNS declaration passed its 151-book record
+`certify-20261122T211416Z-2550719`. The previous Boolean accessor name
+collided with the generated width theorem for `page-head`. The combined
+machine index then passed `certify-20261122T211629Z-2553473` with 166 warm
+parents. ACL2 expanded both the index and machine directory over the actual
+declarations. The assembled core, callbacks, host load and socket scenarios
+are downstream gates.
+
+Image init and serve call the
 same guarded ACL2 group parser. The parser and its unit book passed Forge
 record `certify-20261122T210620Z-2541691`. The CLI preserves the original
 init text for a fresh serve, including an empty input and the profile default.
