@@ -118,6 +118,28 @@
  (("Goal" :in-theory (enable fn2-xfnc-put-batch-header))))
 (in-theory (disable fn2-xfnc-put-batch-header))
 
+; An accepted page has one empty reason and a four-octet result length
+; in its kind 28 envelope (seven octets in all). Both peers use
+; fn2-cns-put-query-cursor on the same scope. NEXT is a fixed-width field,
+; so replacing POSITION preserves the cursor's encoded extent.
+(defun fn2-xfnc-batch-read-budget (cursor-size capacity)
+  (declare (xargs :guard t))
+  (if (and (posp cursor-size) (<= cursor-size 366) (natp capacity))
+      (let ((header (+ (- *fn2-xfnc-batch-header-max-size* 366) cursor-size))
+            (frame (min capacity (+ *fn2-pool-block-bytes* *fn2-fnct-trailer-octets*))))
+        (nfix (- frame (+ *fn2-fnct-overhead* 7 header))))
+    0))
+
+(defthm fn2-xfnc-batch-read-budget-fits
+  (let ((amount (fn2-xfnc-batch-read-budget cursor-size capacity)))
+    (implies (posp amount)
+             (and (<= (+ amount *fn2-fnct-overhead* 7 (- *fn2-xfnc-batch-header-max-size* 366) cursor-size)
+                      capacity)
+                  (<= (+ amount *fn2-fnct-header-octets* 7 (- *fn2-xfnc-batch-header-max-size* 366) cursor-size)
+                      *fn2-pool-block-bytes*))))
+  :rule-classes nil)
+(in-theory (disable fn2-xfnc-batch-read-budget))
+
 ; This plan first gathers item bytes, stages the chain/cursor and result,
 ; then assembles the counted FNCT in the same range.
 (defun fn2-xfnc-batch-items-fit-p (items capacity)
