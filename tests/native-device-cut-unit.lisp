@@ -29,12 +29,12 @@
        *fn2-cut-control* *fn2-nde-write-physical* :fdatasync) :unmapped-cut)))
 (assert-event
  (and
-  (equal (fn2-nde-cut-prefix '((:boundary 1 "take" nil nil nil)
-                             (:boundary 2 "device-submit" 4 7 t)) 0 nil nil)
+  (equal (mv-list 4 (fn2-nde-cut-prefix '((:boundary 1 "take" nil nil nil)
+                                         (:boundary 2 "device-submit" 4 7 t)) 0 nil nil))
          '( :ok nil nil (:boundary 2 "device-submit" 4 7 t)))
-  (eq (mv-nth 0 (fn2-nde-cut-prefix '((:boundary 2 "device-submit" 4 7 t)) 0 nil nil)) :malformed-cut-capture)
-  (eq (mv-nth 0 (fn2-nde-cut-prefix '((:boundary 1 "device-submit" 4 7 t) (:begin 1)) 0 nil nil)) :after-cut)
-  (eq (mv-nth 0 (fn2-nde-cut-prefix '((:boundary 1 "device-submit" 4 7 nil)) 0 nil nil)) :missing-cut)))
+  (eq (car (mv-list 4 (fn2-nde-cut-prefix '((:boundary 2 "device-submit" 4 7 t)) 0 nil nil))) :malformed-cut-capture)
+  (eq (car (mv-list 4 (fn2-nde-cut-prefix '((:boundary 1 "device-submit" 4 7 t) (:begin 1)) 0 nil nil))) :after-cut)
+  (eq (car (mv-list 4 (fn2-nde-cut-prefix '((:boundary 1 "device-submit" 4 7 nil)) 0 nil nil))) :missing-cut)))
 ; Shape/coordinate controls alone cannot produce a successful replay: this
 ; forged empty control prefix fails before any core transition is attempted.
 (assert-event
@@ -51,3 +51,22 @@
              *fn2-cut-control* queued :fdatasync) :after-physical)
        (eq (fn2-nde-cut-position '(:boundary 4 "device-syscall-return" 4 7 t)
              *fn2-cut-control* (append queued '((:begin 2))) :fdatasync) :cut-return-position))))
+
+; The selected post follows the matching terminal in the control stream.
+; An earlier post, a recycled slot, or a different read payload cannot witness it.
+(assert-event
+ (let* ((cut '(:boundary 8 "post" 5 7 t))
+        (records '((:submit 2 (17 5 7 :read 100 3 nil 0 1 1))
+                   (:begin 2) (:return 2 2 0 (8 9))))
+        (prefix (list *fn2-nde-read-take* '(:ack 1)))
+        (trace (append prefix (list *fn2-nde-read-post*))))
+  (and (eq (fn2-nde-cut-position cut trace records :fdatasync) :after-terminal-post)
+       (eq (fn2-nde-cut-position cut prefix records :fdatasync) :cut-post-position)
+       (eq (fn2-nde-cut-position (update-nth 4 8 cut) trace records :fdatasync) :cut-identity)
+       (eq (fn2-nde-cut-position cut (append trace (list *fn2-nde-write-post*)) records :fdatasync)
+           :cut-post-position)
+       (eq (fn2-nde-cut-position cut (append trace (list *fn2-nde-read-post*)) records :fdatasync)
+           :cut-post-position)
+       (eq (fn2-nde-cut-position cut trace (butlast records 1) :fdatasync) :cut-post-position)
+       (eq (fn2-nde-cut-position cut (append prefix (list (update-nth 12 '(8 10) *fn2-nde-read-post*)))
+                                 records :fdatasync) :cut-post-position))))

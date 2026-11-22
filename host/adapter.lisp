@@ -479,7 +479,7 @@
         (setf (aref (fn2-nhost-ops host) slot) (make-fn2-nop)
               (fn2-nhost-chead host) (mod (1+ (fn2-nhost-chead host)) (length queue)))
         (decf (fn2-nhost-pending host))
-        (fn2-n-boundary host "post")))))
+        (fn2-n-boundary host "post" slot (fn2-nop-gen op))))))
 
 ;;; Interests: a waiting Accept or Receive wants readable, a Send writable.
 (defun fn2-n-interests (host)
