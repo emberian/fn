@@ -496,4 +496,7 @@
    :replies (
      (:auth-required :code 480 :class :refused :layer :auth :text "480 authentication required")
      (:protect :code 483 :class :refused :layer :auth :text "483 a protected channel is required; use STARTTLS")
-     (:syntax :code 501 :class :refused :layer :auth :text "501 syntax error")))))
+     (:syntax :code 501 :class :refused :layer :auth :text "501 syntax error")
+     (:accepted :code 290 :class :accepted :layer :auth :text "290 COUNT")
+     (:refused :code 490 :class :refused :layer :auth :text "490 COUNT")
+     (:uncertain :code 491 :class :uncertain :layer :auth :text "491 COUNT")))))

@@ -714,22 +714,32 @@
 ;; v1) carries BOOT's persisted history and incarnation, the consumer id,
 ;; the bound durable principal and query 1, in minimal big-endian form.
 ;; The wire carries the registration's query version and durable view separately.
-(defun fn2-cns-put-cursor (base cid principal history incarnation version view epoch position slot gen okind oslot ogen fn2-fields fn2-pool)
+(defun fn2-cns-put-query-cursor (base cid principal history incarnation query version view epoch position slot gen okind oslot ogen fn2-fields fn2-pool)
   (declare (xargs :stobjs (fn2-fields fn2-pool) :guard (and (fn2-fields-wfp fn2-fields) (fn2-pool-wfp fn2-pool))))
   (b* (((unless (fn2-origin-physicalp history incarnation))
         (mv :size 0 0 fn2-fields fn2-pool))
        (start (fn2-pool-fill-value slot fn2-pool))
-       (cid (nfix cid)) (principal (nfix principal))
+       (cid (nfix cid)) (principal (nfix principal)) (query (nfix query))
        (hl (fn2-fnct-be-width history)) (il (fn2-fnct-be-width incarnation))
        (cl (fn2-fnct-be-width cid)) (pl (fn2-fnct-be-width principal))
+       (ql (fn2-fnct-be-width query))
        ((mv ch fn2-pool) (fn2-fnct-put-be 0 history hl slot gen okind oslot ogen fn2-pool))
        ((mv ci fn2-pool) (fn2-fnct-put-be 0 incarnation il slot gen okind oslot ogen fn2-pool))
        ((mv c1 fn2-pool) (fn2-fnct-put-be 0 cid cl slot gen okind oslot ogen fn2-pool))
        ((mv c2 fn2-pool) (fn2-fnct-put-be 0 principal pl slot gen okind oslot ogen fn2-pool))
-       ((mv c3 fn2-pool) (fn2-fnct-put-be 0 1 1 slot gen okind oslot ogen fn2-pool))
+       ((mv c3 fn2-pool) (fn2-fnct-put-be 0 query ql slot gen okind oslot ogen fn2-pool))
        ((unless (and (eq ch :ok) (eq ci :ok) (eq c1 :ok) (eq c2 :ok) (eq c3 :ok)))
         (mv :size 0 0 fn2-fields fn2-pool)))
-    (fn2-fnct-put-cursor base start hl il cl pl 1 version view epoch position slot gen okind oslot ogen fn2-fields fn2-pool)))
+    (fn2-fnct-put-cursor base start hl il cl pl ql version view epoch position slot gen okind oslot ogen fn2-fields fn2-pool)))
+(fn2-pool-block-shape fn2-cns-put-query-cursor-shape
+  (fn2-cns-put-query-cursor base cid principal history incarnation query version view epoch position slot gen okind oslot ogen fn2-fields fn2-pool)
+  (and (fn2-fieldsp fn2-fields) (fn2-fields-wfp fn2-fields) (fn2-poolp fn2-pool) (fn2-pool-wfp fn2-pool))
+  ((fn2-fields 3) (fn2-pool 4))
+  (("Goal" :in-theory (e/d (fn2-cns-put-query-cursor) (fn2-fieldsp fn2-fields-wfp fn2-poolp fn2-pool-wfp fn2-fields-rows fn2-pool-rows)))))
+(defun fn2-cns-put-cursor (base cid principal history incarnation version view epoch position slot gen okind oslot ogen fn2-fields fn2-pool)
+  (declare (xargs :stobjs (fn2-fields fn2-pool) :guard (and (fn2-fields-wfp fn2-fields) (fn2-pool-wfp fn2-pool))))
+  (fn2-cns-put-query-cursor base cid principal history incarnation 1 version view epoch position
+                           slot gen okind oslot ogen fn2-fields fn2-pool))
 (fn2-pool-block-shape fn2-cns-put-cursor-shape
   (fn2-cns-put-cursor base cid principal history incarnation version view epoch position slot gen okind oslot ogen fn2-fields fn2-pool)
   (and (fn2-fieldsp fn2-fields) (fn2-fields-wfp fn2-fields) (fn2-poolp fn2-pool) (fn2-pool-wfp fn2-pool))
