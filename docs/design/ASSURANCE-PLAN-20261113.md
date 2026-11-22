@@ -5,6 +5,16 @@ Owner: integration. Commissioned by ember on 2026-11-13, following the
 `fn2-squares` remains the obligation store. Reports and public-claim coverage
 must be derived from that store and the actual served call/attachment graph.
 
+## What the running client can establish — 2026-11-22
+
+| Path | Evidence in hand | First missing observation |
+| --- | --- | --- |
+| Protected NNTP reader | The current connection dispatcher records USER and returns 481 for the following PASS. The earlier native AUTHINFO suite launches the donor host with a TOML credential store. | Provision a credential through the current owner socket, reopen the image, authenticate over TLS and observe one allowed group and one denied group on that connection. |
+| Message-ID lookup | The candidate at `5f05efc79` removes the eight-group search bound for article and overview forms. Its STAT arm still replies before checking membership. | Use the authenticated reader and the ordinary wire commands to check visibility when only a secondary group is readable, then revoke that grant. |
+| Peer catch-up | The Forge-qualified `books/peer-view-member` at `2793bac02` checks the candidate history/evidence pair. The higher reader receives a principal, stream and authority from its caller. | Carry an authenticated peer and its current stream grant through the serving actor, send the selected item and resume from the receiver's verified position. |
+| Consumer restart | The successor fixture at `5bdd74d14` reopens the same image and checks every retired cursor, including the first epoch, after same-name registration. It reads the recovered position before subsequent mutations. | Execute that fixture against the qualified native successor. The exercised store-fold controls supply rows directly. |
+| Native APPEND | Forge certified `assembly-core` in `certify-20261122T211811Z-2555392`, `assembly-init` in `certify-20261122T212222Z-2560534`, and the corrected dispatch owner initialization in `certify-20261122T212619Z-2564904`. The TLS record-start contract discharges the actual external record-next guard. | Complete the child codec and callback assembly, then observe durable acceptance, process death and byte-exact FETCH through the socket. |
+
 ## Native APPEND and restart — 2026-11-22
 
 The next client milestone is two committed socket APPENDs, a STATUS before
