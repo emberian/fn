@@ -16,9 +16,10 @@
  :arms
  ((:free (:idle))
   (:work
+   (:let saved row-count)
    (:if (posp row-count)
         ((:if (equal row-count 1) ((:set (count 0))) ())
-         (:do (observed) (fn2-if-unit-work row-count))
+         (:do (observed) (fn2-if-unit-work saved))
          (:next :left))
         ((:next :right)))
    (:do (charged) (fn2-if-unit-work 0))
@@ -30,19 +31,21 @@
 
 (make-event
  (b* ((env (fn2-arms-env 'fn2-if-unit :work nil nil nil t (w state)))
-      (shared '((:if (posp row-count)
+      (shared '((:let saved row-count)
+                (:if (posp row-count)
                      ((:if (equal row-count 1) ((:set (count 0))) ())
-                      (:do (observed) (fn2-if-unit-work row-count)) (:next :left))
+                      (:do (observed) (fn2-if-unit-work saved)) (:next :left))
                      ((:next :right)))
                 (:do (charged) (fn2-if-unit-work 0))
                 (:charge :bytes 128 :steps *fn2-work-small*)))
-      (explicit '((:if (posp row-count)
+      (explicit '((:let saved row-count)
+                  (:if (posp row-count)
                        ((:if (equal row-count 1)
                              ((:set (count 0))
-                              (:do (observed) (fn2-if-unit-work row-count)) (:next :left)
+                              (:do (observed) (fn2-if-unit-work saved)) (:next :left)
                               (:do (charged) (fn2-if-unit-work 0))
                               (:charge :bytes 128 :steps *fn2-work-small*))
-                             ((:do (observed) (fn2-if-unit-work row-count)) (:next :left)
+                             ((:do (observed) (fn2-if-unit-work saved)) (:next :left)
                               (:do (charged) (fn2-if-unit-work 0))
                               (:charge :bytes 128 :steps *fn2-work-small*))))
                        ((:next :right)
@@ -52,15 +55,19 @@
       ((mv explicit-error explicit-code explicit-acc) (fn2-arms-steps explicit env nil 100))
       ((mv terminal-error & &)
        (fn2-arms-steps '((:if (posp row-count) ((:idle)) ()) (:idle)) env nil 100))
+      ((mv stale-error & &)
+       (fn2-arms-steps '((:if (posp row-count) ((:set (count 0))) ())
+                         (:do (observed) (fn2-if-unit-work row-count)) (:idle)) env nil 100))
       ((mv malformed-error & &)
        (fn2-arms-steps '((:if (posp row-count) ((:set (count 0)) . malformed) ()) (:idle))
                        env nil 100)))
    (if (and (not shared-error) (not explicit-error)
             (equal shared-code explicit-code) (equal shared-acc explicit-acc)
+            stale-error
             (equal terminal-error (msg "steps follow the terminal ~x0." '(:idle)))
             (equal malformed-error
                    (msg "~x0 is (:if E (STEP ...) (STEP ...))."
                         '(:if (posp row-count) ((:set (count 0)) . malformed) ()))))
        '(value-triple :conditional-continuations-checked)
-     (er soft 'machine-if-continuation-unit "Shared ~x0, explicit ~x1, terminal ~x2, malformed ~x3."
-         shared-error explicit-error terminal-error malformed-error))))
+     (er soft 'machine-if-continuation-unit "Shared ~x0, explicit ~x1, terminal ~x2, malformed ~x3, stale read ~x4."
+         shared-error explicit-error terminal-error malformed-error stale-error))))
