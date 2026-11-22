@@ -1,0 +1,128 @@
+{
+  "result": "PASS",
+  "source_commit": "e66375a7d",
+  "scope": "canonicalObject MEMBER suffix/actual emitted primitive seam; synthetic packet generated consumer fragment, not current CNS packet",
+  "compiler_sha256": "3e0d0d3d801675359f2d4cf9815bfdb417b20b92fdd9d48b3b14c95bbae28bbf",
+  "warm_root": "/tmp/audit-member-symbol-ecc/overlay",
+  "foundation_receipt_sha256": "1b3ba2d4aefc083696f9f894535d0e261c110e2e447b33f5adf69e55d94a173a",
+  "member_receipt_sha256": "3c6642661471376caf2e21d42e505837e3a20e411b2fb7fc310026da8d475835",
+  "verified_warm_artifacts": 68,
+  "memory_max": 2147483648,
+  "memory_swap_max": 0,
+  "memory_peak": 149581824,
+  "memory_events": {
+    "low": 0,
+    "high": 0,
+    "max": 0,
+    "oom": 0,
+    "oom_kill": 0,
+    "oom_group_kill": 0
+  },
+  "outer_pid": 2005302,
+  "original_deadline_epoch": 1794788217,
+  "retry_outer_seconds": 56,
+  "retry_internal_seconds": 51,
+  "scope_state": "not-found/inactive",
+  "failed_first_log": "/tmp/audit-member-suffix-916.log",
+  "log": "/tmp/audit-member-suffix-e663.log",
+  "log_sha256": "a351efda6a223cd44bfaad5e2838caadc50d69ea50fab04d5c02c2a1d57e8cb2",
+  "records": [
+    {
+      "source": "Fn2/ACL2/PrimitiveMemberSymbols.lean",
+      "source_sha256": "a7a797fd1fdab48706d6bb1a85cb88ce581e273ec8417c08ca60ea6f2604c011",
+      "artifacts": {
+        "PrimitiveMemberSymbols.ir": "d2d475b1c96b809708c167cc3d16958ad7d5ffff073025bb27cb27d741105285",
+        "PrimitiveMemberSymbols.olean": "1f35c7e72a05e7ea22ce332ff48c04605c35fda142143d17cce0d2d9bb235412",
+        "PrimitiveMemberSymbols.olean.private": "48bcf2b8f2da3fa6bcb1b0c8de5cb8f23d208450b811e0091a8d207b832ac8db",
+        "PrimitiveMemberSymbols.olean.server": "80931de565e98d7efc5cb1c37976bf2c4da9e2b4ff886ff76481e321903a1f02"
+      },
+      "seconds": 0.961
+    },
+    {
+      "source": "Fn2/ACL2/PrimitiveMemberSymbolsControls.lean",
+      "source_sha256": "82b359a0127256bceb3260336336af3bac7cf18fbfaec21e7fb88adaa4777309",
+      "artifacts": {
+        "PrimitiveMemberSymbolsControls.ir": "f3b2e2f6037551f267f3f1c6e15a6e04c3ccf752beef02da3defae42e3a68d1b",
+        "PrimitiveMemberSymbolsControls.olean": "ff2998264b6af8fda3cf4dff83605c7334ccbe3fa826bd8c608c4799474d16d3",
+        "PrimitiveMemberSymbolsControls.olean.private": "cbb2aaa08eb2cf9071ebf588219a0a4435d73011c9b5038b36fdc35ff7499bff",
+        "PrimitiveMemberSymbolsControls.olean.server": "2ea4538d0b3cb6aeedceaa6c955c031db51f96c13f60e4629509ea6fd720425c"
+      },
+      "seconds": 0.986
+    },
+    {
+      "source": "GeneratedMemberSuffixFixture.lean",
+      "source_sha256": "90a6926d5ad772403d03be944d9c8198daad77aae26c0826f1a98711fb651640",
+      "artifacts": {
+        "GeneratedMemberSuffixFixture.ir": "40bd5b3df4e233a3e31a14ac43d89794d7e6c03b636e45028fc0685d3d18e34f",
+        "GeneratedMemberSuffixFixture.olean": "3de3dd8f4333095f9847716d445f178ace87d96903e285785e27992760af5761",
+        "GeneratedMemberSuffixFixture.olean.private": "40ed79a043d5a55104b3e36717f6b68e1874e6158ac59c27d141381210d6cc79",
+        "GeneratedMemberSuffixFixture.olean.server": "1d15cb74975212f30f6905816dda5e905ef5734aefbdbb3532847e99ab353fe9"
+      },
+      "seconds": 0.498
+    }
+  ],
+  "axiom_censuses": {
+    "Fn2.ACL2.Translation.PrimitiveMemberSymbols.literal_list_represented": [
+      "propext",
+      "Classical.choice",
+      "Quot.sound"
+    ],
+    "Fn2.ACL2.Translation.PrimitiveMemberSymbols.canonical_member": [
+      "propext",
+      "Classical.choice",
+      "Quot.sound"
+    ],
+    "Fn2.ACL2.Translation.PrimitiveMemberSymbols.canonical_member_emitted": [
+      "propext",
+      "Classical.choice",
+      "Quot.sound"
+    ],
+    "Fn2.ACL2.Translation.PrimitiveMemberSymbolsControls.actual_suffix": [
+      "propext",
+      "Classical.choice",
+      "Quot.sound"
+    ],
+    "Fn2.ACL2.Translation.PrimitiveMemberSymbolsControls.arbitrary_integer_key": [
+      "propext",
+      "Classical.choice",
+      "Quot.sound"
+    ],
+    "Fn2.ACL2.Translation.PrimitiveMemberSymbolsControls.wrong_package_refused": [
+      "propext",
+      "Classical.choice",
+      "Quot.sound"
+    ],
+    "Fn2.ACL2.Translation.PrimitiveMemberSymbolsControls.boolean_instead_of_suffix_refused": [
+      "propext",
+      "Classical.choice",
+      "Quot.sound"
+    ],
+    "Fn2.ACL2.Translation.PrimitiveMemberSymbolsControls.unrepresented_key_refused": [
+      "propext",
+      "Classical.choice",
+      "Quot.sound"
+    ],
+    "Fn2.ACL2.Translation.PrimitiveMemberSymbolsControls.actual_logic_exec_suffix": [
+      "propext",
+      "Classical.choice",
+      "Quot.sound"
+    ],
+    "Fn2.ACL2.GeneratedMemberSuffixFixture.reached_pair_0": [
+      "propext",
+      "Classical.choice",
+      "Quot.sound"
+    ],
+    "Fn2.ACL2.GeneratedMemberSuffixFixture.reached_pair_1": [
+      "propext",
+      "Classical.choice",
+      "Quot.sound"
+    ],
+    "Fn2.ACL2.GeneratedMemberSuffixFixture.reached_member_suffix": [
+      "propext",
+      "Classical.choice",
+      "Quot.sound"
+    ]
+  },
+  "current_attached_cns_packet": "unavailable",
+  "global_dispatch_bodycorrect": "unqualified"
+}

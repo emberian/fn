@@ -212,12 +212,28 @@ def member_context_source(snapshot):
             '    ⟨rfl, rc, ' + val(item) + ', rfl, Or.inr ⟨_, rfl⟩⟩',
             '    (Prim.equal rc ' + val(item) + ') rfl',
             '#print axioms reached_pair_' + str(index)])
+    literals = '[' + ', '.join(val(item) for item in elements) + ']'
+    literal_objects = '[' + ', '.join('memberLiteral' + str(i) for i in range(len(elements))) + ']'
+    represented_literals = '.nil'
+    for i in reversed(range(len(elements))):
+        represented_literals = '(.cons memberLiteral' + str(i) + '_represented ' + represented_literals + ')'
+    suffix_lines = [
+        'theorem reached_member_suffix (rcObject : Object) (rc : Val)',
+        '    (rcRepresented : rcObject.value? = some rc) :',
+        '    (PrimitiveMemberSymbols.memberObject rcObject',
+        '      (MemberExecEvaluation.objects ' + literal_objects + ')).value? =',
+        '      some («MEMBER-EQ-EXEC» rc (Val.ofList ' + literals + ')) ∧',
+        '    nativeCall "MEMBER-EQUAL" [rc, Val.ofList ' + literals + '] =',
+        '      some («MEMBER-EQ-EXEC» rc (Val.ofList ' + literals + ')) := by',
+        '  exact PrimitiveMemberSymbols.canonical_member_emitted rcRepresented ' + represented_literals,
+        '#print axioms reached_member_suffix']
     binders = ' '.join('(' + ident(x) + ' : Val)' for x in function.formals)
     arguments = ' '.join(ident(x) for x in function.formals)
     return '\n'.join([
         'module',
         'public import Fn2.ACL2.MemberBodyCorrect',
         'public import Fn2.ACL2.PrimitiveSymbols',
+        'public import Fn2.ACL2.PrimitiveMemberSymbols',
         'public import Fn2.Instances.LayerAEqns4',
         'import all Fn2.Instances.LayerAWorld.KCns_d0to12',
         'import all Init.Data.String.Basic',
@@ -241,6 +257,7 @@ def member_context_source(snapshot):
         '#print axioms member_context',
         *domain_lines,
         *pair_lines,
+        *suffix_lines,
         'end Fn2.ACL2.CnsSelectedMember', ''])
 
 

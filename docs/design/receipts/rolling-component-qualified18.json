@@ -1,0 +1,593 @@
+{
+  "source": "ab05c79b16846071fddb2213630a22e33d7ad33b",
+  "roots": [
+    "tests/upload-rolling-feed-component-unit"
+  ],
+  "count": 18,
+  "reused": 16,
+  "new": 2,
+  "toolchain_identity": "8aeb1bea18968c6cd33ac633a80ebf67e4924504db112fd27eb11f16a27b2a8c",
+  "run_dir": "/build/lanes/sol-rolling-geometry-ab05c79b1/build/acl2/certify-20261116T000219Z-1991230",
+  "manifest_sha256": "c09d43338cea85faf6302d17032be67d96d78f804743e2c9209c157d5f3b4082",
+  "author": {
+    "source": "ab05c79b16846071fddb2213630a22e33d7ad33b",
+    "warm": [
+      "books/upload-window-geometry",
+      "books/profile",
+      "books/operations",
+      "books/declare",
+      "books/commit-geometry",
+      "books/format-base",
+      "books/layout",
+      "books/pool",
+      "books/owed-discharge",
+      "books/owed",
+      "books/columns",
+      "books/upload-feed",
+      "books/grammar",
+      "books/pool-ranges",
+      "books/columns-guard-hints",
+      "books/fnv"
+    ],
+    "source_order": [
+      "tests/upload-feed-unit",
+      "tests/upload-rolling-feed-component-unit"
+    ],
+    "accepted": [
+      "tests/upload-feed-unit",
+      "tests/upload-rolling-feed-component-unit"
+    ],
+    "status": "passed",
+    "stop_holder_exit": 0
+  },
+  "resources": {
+    "memory_max": 2147483648,
+    "swap_max": 0,
+    "cgroup": "/sys/fs/cgroup/user.slice/user-1000.slice/user@1000.service/swarm.slice/run-p1991133-i31347822.scope"
+  },
+  "source_unchanged": true,
+  "entry_books": [
+    "books/upload-window-geometry",
+    "books/upload-feed"
+  ],
+  "entry_exports": [
+    "books/columns",
+    "books/columns-guard-hints",
+    "books/commit-geometry",
+    "books/declare",
+    "books/fnv",
+    "books/format-base",
+    "books/grammar",
+    "books/layout",
+    "books/operations",
+    "books/owed",
+    "books/owed-discharge",
+    "books/pool",
+    "books/pool-ranges",
+    "books/profile",
+    "books/upload-feed",
+    "books/upload-window-geometry"
+  ],
+  "cache_entries": [
+    {
+      "book": "tests/upload-rolling-feed-component-unit",
+      "key": "172d5ab67f6a11791c6b107b123f1dc1c8b22b2fdc138629344d433aac996f15",
+      "source_sha256": "353eef1af3a907672123361fa93d1ae8834f36c934f8954edde6e37ba0dc20b2",
+      "entry": "/home/fn/.cache/fn-certs/172d5ab67f6a11791c6b107b123f1dc1c8b22b2fdc138629344d433aac996f15/69309554cbb5e1e1",
+      "cert_sha256": "73b9a6c20d7a362a684861249a656da4b7e94245fa6687ac5e44e31b6bc75967",
+      "fasl_sha256": "5da03ff66610dde8c260df5d1c8a802ec6eaf7aaa9484c344c9fceb9e205da79",
+      "origin_root": "/build/lanes/sol-rolling-geometry-ab05c79b1"
+    },
+    {
+      "book": "books/upload-window-geometry",
+      "key": "283246ab96d551f71b3627d75c3701c6a1f1d5bf389a1af015e5d162cd9516bb",
+      "source_sha256": "131a8659e5a9486afb9b3b774f31d873235aa740ba0b3e7b607b9ca39a36b2e2",
+      "entry": "/home/fn/.cache/fn-certs/283246ab96d551f71b3627d75c3701c6a1f1d5bf389a1af015e5d162cd9516bb/69309554cbb5e1e1",
+      "cert_sha256": "1328c831879834e23444c0fde3f586814a39ae7e71626eeba143cf1267964e32",
+      "fasl_sha256": "8fb6e3bc55842fb6ff8099ec87d48bfb532fa6c43ac72c47360a38e273de349a",
+      "origin_root": "/build/lanes/sol-rolling-geometry-ab05c79b1"
+    },
+    {
+      "book": "books/profile",
+      "key": "cdaddbd4628aebebc2dea718832e44dfbe07014033d6a8904f137808c9c34744",
+      "source_sha256": "1f216ed6c0505dc1b01ada0f7d3d9482af6da7b7dff8736b5100ef3e3fbc1038",
+      "entry": "/home/fn/.cache/fn-certs/cdaddbd4628aebebc2dea718832e44dfbe07014033d6a8904f137808c9c34744/99fac8c12877bc14",
+      "cert_sha256": "fd1e145834d5f72117d430eac3024d3245bd85195d7db2f4b7370195384af8da",
+      "fasl_sha256": "8b9c4cb04cfb916dcec8ad2554c069f97e5311fa8be758ec117e670f853ffcc7",
+      "origin_root": "/build/lanes/member-refutation-64ee"
+    },
+    {
+      "book": "books/operations",
+      "key": "ffaf93d705d08918400704d108e7bffa6a3da8ae5ae2917128974f7d53c9e71b",
+      "source_sha256": "419120e7ae100f400d18cdee2d080d6133523673cac22fae1b05c7201ff97dd8",
+      "entry": "/home/fn/.cache/fn-certs/ffaf93d705d08918400704d108e7bffa6a3da8ae5ae2917128974f7d53c9e71b/99fac8c12877bc14",
+      "cert_sha256": "7697d577086d16974a9762298d8c6b389b601afac5988a9114458b5e7b78bfa7",
+      "fasl_sha256": "d3221354ac4e5d685fa3147823f21a2fa4b25045259159d7ec8765ae537f9868",
+      "origin_root": "/build/lanes/member-refutation-64ee"
+    },
+    {
+      "book": "books/declare",
+      "key": "299f7489bcfaeeb7c1a8f777c4a3b4886c5be174761a2f63f69a39599466aba1",
+      "source_sha256": "54e850788ee821dd90a4d9715e93d319f94846039592c4420fef1bdc5d959569",
+      "entry": "/home/fn/.cache/fn-certs/299f7489bcfaeeb7c1a8f777c4a3b4886c5be174761a2f63f69a39599466aba1/63be0e8165ae7b38",
+      "cert_sha256": "f3a1e4a58cac32474074b9d3ca6a558099a86d2fe66a28ee0670b5c5001bf9dc",
+      "fasl_sha256": "02ceab2d38f5864c70d16e1bfdf77e4450e12aab47bd3d9e3e16ec1319e5c64d",
+      "origin_root": "/build/lanes/refuted-05cb"
+    },
+    {
+      "book": "books/commit-geometry",
+      "key": "bb2c5941a31df81e1eba249e527cd8410443dcf62c4e4da94355133a64a8d5e6",
+      "source_sha256": "e06315c94bcd0d247214377fb33186f14ca1aa2ee6afe1499d69d053ff0134e2",
+      "entry": "/home/fn/.cache/fn-certs/bb2c5941a31df81e1eba249e527cd8410443dcf62c4e4da94355133a64a8d5e6/586fdc27c759ac35",
+      "cert_sha256": "832ad08a0cd8d97712e5c92366aa0294267e570813e5a59c5cd08283241c9f6f",
+      "fasl_sha256": "ea85afa32821f69b7d6f9e3f5c07870486fe909f9079384a13fe719c8fa371f3",
+      "origin_root": "/build/lanes/assurance-cns-leaf-pilot"
+    },
+    {
+      "book": "books/format-base",
+      "key": "9115f43e1c05b24a1afb21fb292fb5584831d496553a81380ce2d53891a2651b",
+      "source_sha256": "ead88cb8e7ab67db0c6a06ac400c813f753121c77082825b16016835eb462699",
+      "entry": "/home/fn/.cache/fn-certs/9115f43e1c05b24a1afb21fb292fb5584831d496553a81380ce2d53891a2651b/27a248ede9606745",
+      "cert_sha256": "6a288f3526a78988ca5078ddb85bdeb214b5ff92b740c7063d76163fcc3082d4",
+      "fasl_sha256": "8668d69ecf8f7a452e3edd55b2c0c51258a5f4e7304aa37639c3e364576696df",
+      "origin_root": "/build/lanes/assurance-columns-coherent37-87f"
+    },
+    {
+      "book": "books/layout",
+      "key": "92461e82c5228c9fee8e155ec9bb581b9da1b10d627da4d23cab22e6e3983263",
+      "source_sha256": "2bc995f6bb70ec17862c5b535a4734e90a7a5dfd6312ebdee7d06877b0fbb4d8",
+      "entry": "/home/fn/.cache/fn-certs/92461e82c5228c9fee8e155ec9bb581b9da1b10d627da4d23cab22e6e3983263/27a248ede9606745",
+      "cert_sha256": "f197b7bb569ea6928faeef336cacbe4c210735cd0769e3f8565ca388adb951a7",
+      "fasl_sha256": "f04d5fbd6c49af6af41aa02d0628d97ac8b694b153c570712b6d33ffef099a1a",
+      "origin_root": "/build/lanes/assurance-columns-coherent37-87f"
+    },
+    {
+      "book": "books/pool",
+      "key": "02c8ba50750b243b9b79bc6be0ff2339fad1531234575313c815e7d6fbfba72b",
+      "source_sha256": "9a31c8d38d309862369091a2c8019ccc3da16920742ff01040899b8f395f2fe9",
+      "entry": "/home/fn/.cache/fn-certs/02c8ba50750b243b9b79bc6be0ff2339fad1531234575313c815e7d6fbfba72b/27a248ede9606745",
+      "cert_sha256": "7a692bca99d526592db557699c9eb697f1bc54bc426d0171e96f76ffebaeeef2",
+      "fasl_sha256": "b63db5509ea1cdab56f07d460ec6a1f8e89f7f43257bef3ca61659f70449d409",
+      "origin_root": "/build/lanes/assurance-columns-coherent37-87f"
+    },
+    {
+      "book": "books/owed-discharge",
+      "key": "fa84e2e8a4d3eeeda9943ef433f68c9ba4d940ec437c889cdd0be032d29550e5",
+      "source_sha256": "53903322be1b79ed081ecfcbfcb9f60649d3fdbf8aa6853b772abf8e6fc69f01",
+      "entry": "/home/fn/.cache/fn-certs/fa84e2e8a4d3eeeda9943ef433f68c9ba4d940ec437c889cdd0be032d29550e5/99fac8c12877bc14",
+      "cert_sha256": "ca8b06e41e862222d681038d9d4df7122c9dca272ee35b0bb44c40f1269c82c4",
+      "fasl_sha256": "25999ed25f94b77a7b701afe86287c1707264f4e50f2f2e143d09f19b4aee454",
+      "origin_root": "/build/lanes/member-refutation-64ee"
+    },
+    {
+      "book": "books/owed",
+      "key": "0025566d809fffa0fb7533fa29b1fb7a9932c97d1510818153a1c1fe3d6bbf08",
+      "source_sha256": "171950b91e40f4e7d0e94902ce00009adc62d8104e0eecd5db6a59b93bbffb15",
+      "entry": "/home/fn/.cache/fn-certs/0025566d809fffa0fb7533fa29b1fb7a9932c97d1510818153a1c1fe3d6bbf08/63be0e8165ae7b38",
+      "cert_sha256": "dfd94cb9c2ead45891e01b806f507e2b16ae85cd37570c89fd531bab7d7982fa",
+      "fasl_sha256": "97c17b9a3c61860b138d779461086ccc41487cd250f03509af2c8c6eac0738bd",
+      "origin_root": "/build/lanes/refuted-05cb"
+    },
+    {
+      "book": "books/columns",
+      "key": "240a44b23a63840a436ffbe6b12f9adc6fec80ba1056de0af7b5e666f518a510",
+      "source_sha256": "8b694caf782c2ce3a29fa109b055c181b54beda214276493f6d9acb9456a881b",
+      "entry": "/home/fn/.cache/fn-certs/240a44b23a63840a436ffbe6b12f9adc6fec80ba1056de0af7b5e666f518a510/27a248ede9606745",
+      "cert_sha256": "5d02ce7342836753399e5b41e490cb20aabd906f5e5e6fb8212446a055bd1662",
+      "fasl_sha256": "aa583190e0867f7f99dfb23de03a4569a7abd76be2cc0cc45ce500b267ef7d96",
+      "origin_root": "/build/lanes/assurance-columns-coherent37-87f"
+    },
+    {
+      "book": "tests/upload-feed-unit",
+      "key": "1665887bb3c54f32561bbd1f8caed11295cc01b1f7a3ac22952f2079f34b0293",
+      "source_sha256": "99ea86a0041909fa288babeeaaf0d989503e4bd282987ec8b2c0592d041991b5",
+      "entry": "/home/fn/.cache/fn-certs/1665887bb3c54f32561bbd1f8caed11295cc01b1f7a3ac22952f2079f34b0293/69309554cbb5e1e1",
+      "cert_sha256": "4462ed791adcc35fcde3707d085ede42e1fe88ec41b22fda233ffb2a0ccd91d7",
+      "fasl_sha256": "d76832b53f8f632913b60ebb7484d049c15a869450c01fa93853a5a9eb61314e",
+      "origin_root": "/build/lanes/sol-rolling-geometry-ab05c79b1"
+    },
+    {
+      "book": "books/upload-feed",
+      "key": "87cda9784c671b2c2c4b11b842e1d4e6a2186d3bbc393800234f3a66b5eebafe",
+      "source_sha256": "01ee2316f12c05b2627f0a8153a4a11a94d4ece16e9dd384668004f67c36cdad",
+      "entry": "/home/fn/.cache/fn-certs/87cda9784c671b2c2c4b11b842e1d4e6a2186d3bbc393800234f3a66b5eebafe/d63c0c1d620d1df1",
+      "cert_sha256": "9f1e0ee56d648a7de9e72c6ceec954a884c7c305c265236c2f1390851f6e6db8",
+      "fasl_sha256": "e35df454eca59f2fa4046046fd71d7e107e9192d876f7fe56329fe99596a132a",
+      "origin_root": "/build/lanes/convergence-ready74-ab05"
+    },
+    {
+      "book": "books/grammar",
+      "key": "b70542ab104c06ecaa978d1ed3c32aae548833bb100af3c5eb55f211243205c7",
+      "source_sha256": "420739fd67e1f21e86668b986d3f2c81f3d2e6f11de96bd02f20a04d80860a0b",
+      "entry": "/home/fn/.cache/fn-certs/b70542ab104c06ecaa978d1ed3c32aae548833bb100af3c5eb55f211243205c7/d63c0c1d620d1df1",
+      "cert_sha256": "f1c53f1ae0994592fa4170505633eadf962c1a1202f17cb5061d518b8b9a6fcc",
+      "fasl_sha256": "5ec4748837c4cff6a11db638bd3f7ae3c0859ed7396cb6332e6a7bb35dd72035",
+      "origin_root": "/build/lanes/convergence-ready74-ab05"
+    },
+    {
+      "book": "books/pool-ranges",
+      "key": "fdecdd51e2030aa983d403457a236f21b3ad5fc4d49ab72d3b5b04b125cefa0c",
+      "source_sha256": "2f9e1f0c898ea4f6747f4e8f4942bc7f73be512ed1b90feb2d9cad7a58e3f959",
+      "entry": "/home/fn/.cache/fn-certs/fdecdd51e2030aa983d403457a236f21b3ad5fc4d49ab72d3b5b04b125cefa0c/6a912e4353bf7e31",
+      "cert_sha256": "f726eafb23ad7f14f532c389c83d8109e676c01e039baa6c2598aeb1f0bb8a73",
+      "fasl_sha256": "9ccb7f26391a5cc2058b3fd3827b8b2248b861b88ae4d2cbe75e112af0705a5d",
+      "origin_root": "/build/lanes/assurance-vocab-harveste9"
+    },
+    {
+      "book": "books/columns-guard-hints",
+      "key": "bf3898263ea2cef72898280e78731227844bb1a3d6743342239c17372e5d8caf",
+      "source_sha256": "e0a20c5669df681bf75fa5eeae426adc4053010915b3c7657d56e247d5c8440b",
+      "entry": "/home/fn/.cache/fn-certs/bf3898263ea2cef72898280e78731227844bb1a3d6743342239c17372e5d8caf/27a248ede9606745",
+      "cert_sha256": "1cef6b0a6282faa9a0317a79d1424881804df9df2fd8905872a7471498c940c1",
+      "fasl_sha256": "ccc0a321bd5a718dbbfa3591f1d660af14083a54cb7ce4e4337c66f06051dc08",
+      "origin_root": "/build/lanes/assurance-columns-coherent37-87f"
+    },
+    {
+      "book": "books/fnv",
+      "key": "9766f6c79c4cdf5a16b932b031c696445c37e8b99d2928da34ea950c8f989321",
+      "source_sha256": "73d15afc6e1325f03d19ad4b39eeb3adc677ce2b07e9eddbc14141ca8843edde",
+      "entry": "/home/fn/.cache/fn-certs/9766f6c79c4cdf5a16b932b031c696445c37e8b99d2928da34ea950c8f989321/99fac8c12877bc14",
+      "cert_sha256": "73d8f784533a61e2f4a9f49da7469f050943f1aca78f72e4138b7775ec3b9870",
+      "fasl_sha256": "bbb54f117070b59fb24b93349c6822b215687929c8cca11cc1c78953bba202b8",
+      "origin_root": "/build/lanes/member-refutation-64ee"
+    }
+  ],
+  "cleanup": "owned launch/server/runner PIDs absent; scope absent; no holder",
+  "scope": "Actual pool-only upload feed and rolling window component controls; no complete served POST/controller-reset/storage-receipt claim",
+  "manifest": {
+    "acl2_compatibility": {
+      "core_sha256": "3f5b101bb9437d66366dc2a299b7f9cb98fdaf40d1add5caf8baef9e451dd07d",
+      "launcher_chain_sha256": [
+        "30583c3d9988ea23cf5edfac828b4ddea984a9a7db9c3b44aaa9c399cf4fdbc5"
+      ],
+      "launcher_environment": [
+        {
+          "SBCL_HOME": "/tank/fn/sbcl/lib/sbcl/"
+        }
+      ],
+      "project_directories": {
+        ":FN": "."
+      },
+      "proof_environment": {
+        "ACL2_BOOK_HASH_ALISTP": "NIL",
+        "ACL2_CUSTOMIZATION": "NONE",
+        "ACL2_SYSTEM_BOOKS": null
+      },
+      "runtime_sha256": "b115fe956aadee603459fac401e1ff2cc39321e14848544a0fe438788a2fc6d5",
+      "schema": "fn-acl2-toolchain-v1"
+    },
+    "acl2_executable": "/tank/fn/toolchains/w28/acl2-literal-4g-tls64k",
+    "acl2_executable_sha256": "30583c3d9988ea23cf5edfac828b4ddea984a9a7db9c3b44aaa9c399cf4fdbc5",
+    "acl2_exit_codes": {
+      "tests/upload-feed-unit": 0,
+      "tests/upload-rolling-feed-component-unit": 0
+    },
+    "acl2_slots": 16,
+    "acl2_toolchain": {
+      "compatibility": {
+        "core_sha256": "3f5b101bb9437d66366dc2a299b7f9cb98fdaf40d1add5caf8baef9e451dd07d",
+        "launcher_chain_sha256": [
+          "30583c3d9988ea23cf5edfac828b4ddea984a9a7db9c3b44aaa9c399cf4fdbc5"
+        ],
+        "launcher_environment": [
+          {
+            "SBCL_HOME": "/tank/fn/sbcl/lib/sbcl/"
+          }
+        ],
+        "project_directories": {
+          ":FN": "."
+        },
+        "proof_environment": {
+          "ACL2_BOOK_HASH_ALISTP": "NIL",
+          "ACL2_CUSTOMIZATION": "NONE",
+          "ACL2_SYSTEM_BOOKS": null
+        },
+        "runtime_sha256": "b115fe956aadee603459fac401e1ff2cc39321e14848544a0fe438788a2fc6d5",
+        "schema": "fn-acl2-toolchain-v1"
+      },
+      "core": {
+        "path": "/tank/fn/acl2-8.7/saved_acl2.core",
+        "sha256": "3f5b101bb9437d66366dc2a299b7f9cb98fdaf40d1add5caf8baef9e451dd07d",
+        "size": 233686912
+      },
+      "launchers": [
+        {
+          "path": "/tank/fn/toolchains/w28/acl2-literal-4g-tls64k",
+          "sha256": "30583c3d9988ea23cf5edfac828b4ddea984a9a7db9c3b44aaa9c399cf4fdbc5",
+          "size": 279
+        }
+      ],
+      "runtime": {
+        "path": "/tank/fn/sbcl/bin/sbcl",
+        "sha256": "b115fe956aadee603459fac401e1ff2cc39321e14848544a0fe438788a2fc6d5",
+        "size": 2149704
+      },
+      "schema": "fn-acl2-toolchain-v1",
+      "status": "qualified"
+    },
+    "acl2_toolchain_identity": "8aeb1bea18968c6cd33ac633a80ebf67e4924504db112fd27eb11f16a27b2a8c",
+    "acl2_version": "ACL2 Version 8.7",
+    "acl2_version_probe_exit_code": 0,
+    "affected_by": [],
+    "book_costliest_event": {
+      "tests/upload-feed-unit": {
+        "form": "( DEFUN FN2-UFU-SPLITS ...)",
+        "seconds": 0.01,
+        "steps": 2140
+      }
+    },
+    "book_failures": {},
+    "book_load_average": {
+      "tests/upload-feed-unit": [
+        0.35,
+        0.35
+      ],
+      "tests/upload-rolling-feed-component-unit": [
+        0.35,
+        0.35
+      ]
+    },
+    "book_provenance": {
+      "books/columns": "installed",
+      "books/columns-guard-hints": "installed",
+      "books/commit-geometry": "installed",
+      "books/declare": "installed",
+      "books/fnv": "installed",
+      "books/format-base": "installed",
+      "books/grammar": "installed",
+      "books/layout": "installed",
+      "books/operations": "installed",
+      "books/owed": "installed",
+      "books/owed-discharge": "installed",
+      "books/pool": "installed",
+      "books/pool-ranges": "installed",
+      "books/profile": "installed",
+      "books/upload-feed": "installed",
+      "books/upload-window-geometry": "installed",
+      "tests/upload-feed-unit": "certified",
+      "tests/upload-rolling-feed-component-unit": "certified"
+    },
+    "book_prover_steps": {
+      "tests/upload-feed-unit": 5683,
+      "tests/upload-rolling-feed-component-unit": 0
+    },
+    "book_results": {
+      "tests/upload-feed-unit": "passed",
+      "tests/upload-rolling-feed-component-unit": "passed"
+    },
+    "book_slowest_event": {
+      "tests/upload-feed-unit": {
+        "form": "( INCLUDE-BOOK \"../books/upload-feed\" ...)",
+        "seconds": 0.35,
+        "steps": null
+      },
+      "tests/upload-rolling-feed-component-unit": {
+        "form": "( INCLUDE-BOOK \"upload-feed-unit\" ...)",
+        "seconds": 0.31,
+        "steps": null
+      }
+    },
+    "book_wall_seconds": {
+      "tests/upload-feed-unit": 1.17,
+      "tests/upload-rolling-feed-component-unit": 0.918
+    },
+    "book_wave_seconds": null,
+    "budget_seconds": 60,
+    "cache_install": {
+      "directory": "/home/fn/.cache/fn-certs",
+      "fasl_installed": 16,
+      "fasl_missing": 0,
+      "installed": 0,
+      "kept": 16,
+      "origins": {
+        "/build/lanes/assurance-cns-leaf-pilot": 1,
+        "/build/lanes/assurance-columns-coherent37-87f": 5,
+        "/build/lanes/assurance-vocab-harveste9": 1,
+        "/build/lanes/convergence-ready74-ab05": 2,
+        "/build/lanes/member-refutation-64ee": 4,
+        "/build/lanes/refuted-05cb": 2,
+        "/build/lanes/sol-rolling-geometry-ab05c79b1": 1
+      },
+      "recertified": [],
+      "removed": 0,
+      "reused_from": null,
+      "roots_installed": [],
+      "toolchain_identity": "8aeb1bea18968c6cd33ac633a80ebf67e4924504db112fd27eb11f16a27b2a8c",
+      "uncompiled": []
+    },
+    "caught_error_text": {},
+    "cert_cache": {
+      "already_cached": 2,
+      "directory": "/home/fn/.cache/fn-certs",
+      "not_published": [],
+      "origin_kind": "run",
+      "per_book": [
+        {
+          "already_cached": false,
+          "book": "tests/upload-feed-unit",
+          "published": true,
+          "verdict": "passed"
+        },
+        {
+          "already_cached": false,
+          "book": "tests/upload-rolling-feed-component-unit",
+          "published": true,
+          "verdict": "passed"
+        }
+      ],
+      "per_book_published": 2,
+      "published": 0,
+      "uncompiled": []
+    },
+    "certificate_digests_sha256": {
+      "tests/upload-feed-unit": "4462ed791adcc35fcde3707d085ede42e1fe88ec41b22fda233ffb2a0ccd91d7",
+      "tests/upload-rolling-feed-component-unit": "73b9a6c20d7a362a684861249a656da4b7e94245fa6687ac5e44e31b6bc75967"
+    },
+    "certify_wall_seconds": 2.104,
+    "closure": false,
+    "command": [
+      "/tank/fn/toolchains/w28/acl2-literal-4g-tls64k"
+    ],
+    "compiled_digests_sha256": {
+      "tests/upload-feed-unit": "d76832b53f8f632913b60ebb7484d049c15a869450c01fa93853a5a9eb61314e",
+      "tests/upload-rolling-feed-component-unit": "5da03ff66610dde8c260df5d1c8a802ec6eaf7aaa9484c344c9fceb9e205da79"
+    },
+    "cpu_count": 16,
+    "driver_digests_sha256": {
+      "tests/upload-feed-unit": "afef16597fc762536163da2d91cc78ca967e81414ece258f6485b83fa2557761",
+      "tests/upload-rolling-feed-component-unit": "6753ccbbcfe4e70adf7333061ad34c17651899434c6113e2d6b7c9018c22db17"
+    },
+    "environment": {
+      "ACL2_BOOK_HASH_ALISTP": "NIL",
+      "ACL2_CUSTOMIZATION": "NONE",
+      "ACL2_PROJECTS": "/build/lanes/sol-rolling-geometry-ab05c79b1/acl2-projects",
+      "ACL2_SYSTEM_BOOKS": null,
+      "SBCL_USER_ARGS": null
+    },
+    "expected_success_markers": [
+      "FN_CERTIFY_SUCCESS 5cbd1b4678eed9d85f2b52abd7b3b284 69bb5a4d36f5",
+      "FN_CERTIFY_SUCCESS 5cbd1b4678eed9d85f2b52abd7b3b284 fc47e3b722ac"
+    ],
+    "failure_markers": [],
+    "finished_utc": "2026-11-16T00:02:22+00:00",
+    "git_branch": null,
+    "git_dirty": null,
+    "git_revision": null,
+    "host_lisp_banner": "This is SBCL 2.6.8, an implementation of ANSI Common Lisp.",
+    "hostname": "dregg-forge",
+    "incremental": true,
+    "installed_books": {
+      "books/columns": "/build/lanes/assurance-columns-coherent37-87f",
+      "books/columns-guard-hints": "/build/lanes/assurance-columns-coherent37-87f",
+      "books/commit-geometry": "/build/lanes/assurance-cns-leaf-pilot",
+      "books/declare": "/build/lanes/refuted-05cb",
+      "books/fnv": "/build/lanes/member-refutation-64ee",
+      "books/format-base": "/build/lanes/assurance-columns-coherent37-87f",
+      "books/grammar": "/build/lanes/convergence-ready74-ab05",
+      "books/layout": "/build/lanes/assurance-columns-coherent37-87f",
+      "books/operations": "/build/lanes/member-refutation-64ee",
+      "books/owed": "/build/lanes/refuted-05cb",
+      "books/owed-discharge": "/build/lanes/member-refutation-64ee",
+      "books/pool": "/build/lanes/assurance-columns-coherent37-87f",
+      "books/pool-ranges": "/build/lanes/assurance-vocab-harveste9",
+      "books/profile": "/build/lanes/member-refutation-64ee",
+      "books/upload-feed": "/build/lanes/convergence-ready74-ab05",
+      "books/upload-window-geometry": "/build/lanes/sol-rolling-geometry-ab05c79b1"
+    },
+    "installed_over_failed": [],
+    "jobs": 1,
+    "jobs_effective": 1,
+    "local_source_audit": {
+      "findings": {},
+      "forbidden_facilities": [
+        "defaxiom",
+        "defttag",
+        "include-raw",
+        "set-raw-mode",
+        "skip-proofs"
+      ],
+      "method": "conservative lexical symbol scan plus human batch review; not macro expansion",
+      "scope": "local source closure only; installed ACL2/system books remain trusted"
+    },
+    "observed_success_markers": [
+      "FN_CERTIFY_SUCCESS 5cbd1b4678eed9d85f2b52abd7b3b284 69bb5a4d36f5",
+      "FN_CERTIFY_SUCCESS 5cbd1b4678eed9d85f2b52abd7b3b284 fc47e3b722ac"
+    ],
+    "pcert": false,
+    "pcert_reached": null,
+    "pcert_wall_seconds": null,
+    "platform": "Linux-6.12.113+deb13-cloud-amd64-x86_64-with-glibc2.41",
+    "python": "3.13.5",
+    "reader_sha256": "3a25bad1a53f07d48101c88fbf7e5fca81575735bfdbe48a168cab81141940cd",
+    "recertify": [],
+    "requested_before_filter": [
+      "tests/upload-rolling-feed-component-unit"
+    ],
+    "requested_books": [
+      "tests/upload-feed-unit",
+      "tests/upload-rolling-feed-component-unit"
+    ],
+    "roots": [
+      "tests/upload-rolling-feed-component-unit"
+    ],
+    "run_id": "certify-20261116T000219Z-1991230",
+    "runner_sha256": "0c92c676ec1d176a554a63d7106e4bfbd8cc4d6a5293b3daa0c301cb4650f5d5",
+    "runner_unchanged": true,
+    "schedule": {
+      "policy": "requested-order"
+    },
+    "slot_wait_seconds": {
+      "tests/upload-feed-unit": 0.0,
+      "tests/upload-rolling-feed-component-unit": 0.0,
+      "version-probe": 0.0
+    },
+    "source_digests_sha256": {
+      "books/columns-guard-hints.lisp": "e0a20c5669df681bf75fa5eeae426adc4053010915b3c7657d56e247d5c8440b",
+      "books/columns.lisp": "8b694caf782c2ce3a29fa109b055c181b54beda214276493f6d9acb9456a881b",
+      "books/commit-geometry.lisp": "e06315c94bcd0d247214377fb33186f14ca1aa2ee6afe1499d69d053ff0134e2",
+      "books/declare.lisp": "54e850788ee821dd90a4d9715e93d319f94846039592c4420fef1bdc5d959569",
+      "books/fnv.lisp": "73d15afc6e1325f03d19ad4b39eeb3adc677ce2b07e9eddbc14141ca8843edde",
+      "books/format-base.lisp": "ead88cb8e7ab67db0c6a06ac400c813f753121c77082825b16016835eb462699",
+      "books/grammar.lisp": "420739fd67e1f21e86668b986d3f2c81f3d2e6f11de96bd02f20a04d80860a0b",
+      "books/layout.lisp": "2bc995f6bb70ec17862c5b535a4734e90a7a5dfd6312ebdee7d06877b0fbb4d8",
+      "books/operations.lisp": "419120e7ae100f400d18cdee2d080d6133523673cac22fae1b05c7201ff97dd8",
+      "books/owed-discharge.lisp": "53903322be1b79ed081ecfcbfcb9f60649d3fdbf8aa6853b772abf8e6fc69f01",
+      "books/owed.lisp": "171950b91e40f4e7d0e94902ce00009adc62d8104e0eecd5db6a59b93bbffb15",
+      "books/pool-ranges.lisp": "2f9e1f0c898ea4f6747f4e8f4942bc7f73be512ed1b90feb2d9cad7a58e3f959",
+      "books/pool.lisp": "9a31c8d38d309862369091a2c8019ccc3da16920742ff01040899b8f395f2fe9",
+      "books/profile.lisp": "1f216ed6c0505dc1b01ada0f7d3d9482af6da7b7dff8736b5100ef3e3fbc1038",
+      "books/upload-feed.lisp": "01ee2316f12c05b2627f0a8153a4a11a94d4ece16e9dd384668004f67c36cdad",
+      "books/upload-window-geometry.lisp": "131a8659e5a9486afb9b3b774f31d873235aa740ba0b3e7b607b9ca39a36b2e2",
+      "tests/upload-feed-unit.lisp": "99ea86a0041909fa288babeeaaf0d989503e4bd282987ec8b2c0592d041991b5",
+      "tests/upload-rolling-feed-component-unit.lisp": "353eef1af3a907672123361fa93d1ae8834f36c934f8954edde6e37ba0dc20b2"
+    },
+    "source_digests_sha256_after": {
+      "books/columns-guard-hints.lisp": "e0a20c5669df681bf75fa5eeae426adc4053010915b3c7657d56e247d5c8440b",
+      "books/columns.lisp": "8b694caf782c2ce3a29fa109b055c181b54beda214276493f6d9acb9456a881b",
+      "books/commit-geometry.lisp": "e06315c94bcd0d247214377fb33186f14ca1aa2ee6afe1499d69d053ff0134e2",
+      "books/declare.lisp": "54e850788ee821dd90a4d9715e93d319f94846039592c4420fef1bdc5d959569",
+      "books/fnv.lisp": "73d15afc6e1325f03d19ad4b39eeb3adc677ce2b07e9eddbc14141ca8843edde",
+      "books/format-base.lisp": "ead88cb8e7ab67db0c6a06ac400c813f753121c77082825b16016835eb462699",
+      "books/grammar.lisp": "420739fd67e1f21e86668b986d3f2c81f3d2e6f11de96bd02f20a04d80860a0b",
+      "books/layout.lisp": "2bc995f6bb70ec17862c5b535a4734e90a7a5dfd6312ebdee7d06877b0fbb4d8",
+      "books/operations.lisp": "419120e7ae100f400d18cdee2d080d6133523673cac22fae1b05c7201ff97dd8",
+      "books/owed-discharge.lisp": "53903322be1b79ed081ecfcbfcb9f60649d3fdbf8aa6853b772abf8e6fc69f01",
+      "books/owed.lisp": "171950b91e40f4e7d0e94902ce00009adc62d8104e0eecd5db6a59b93bbffb15",
+      "books/pool-ranges.lisp": "2f9e1f0c898ea4f6747f4e8f4942bc7f73be512ed1b90feb2d9cad7a58e3f959",
+      "books/pool.lisp": "9a31c8d38d309862369091a2c8019ccc3da16920742ff01040899b8f395f2fe9",
+      "books/profile.lisp": "1f216ed6c0505dc1b01ada0f7d3d9482af6da7b7dff8736b5100ef3e3fbc1038",
+      "books/upload-feed.lisp": "01ee2316f12c05b2627f0a8153a4a11a94d4ece16e9dd384668004f67c36cdad",
+      "books/upload-window-geometry.lisp": "131a8659e5a9486afb9b3b774f31d873235aa740ba0b3e7b607b9ca39a36b2e2",
+      "tests/upload-feed-unit.lisp": "99ea86a0041909fa288babeeaaf0d989503e4bd282987ec8b2c0592d041991b5",
+      "tests/upload-rolling-feed-component-unit.lisp": "353eef1af3a907672123361fa93d1ae8834f36c934f8954edde6e37ba0dc20b2"
+    },
+    "source_form_digests_sha256": {
+      "books/columns-guard-hints.lisp": "61d8b4033b76e4207e82d281b535a81c7da52c9e554f35a8f82f4286aada3951",
+      "books/columns.lisp": "207ac331ff6397765ce1bfb9e6d665ad55ea44ae99e8b5602a554cd8ab5d4760",
+      "books/commit-geometry.lisp": "835186fa84e471e1cb0f83a6b5616aea20e5962fde38a2cf464da4d4bf66c2b8",
+      "books/declare.lisp": "21614abfc91ec57e0d97e77ef29b0ba68a0ba3ca49888131646d986f09dc6aef",
+      "books/fnv.lisp": "37032ad1a3edcaef25be5f25b72a6354b2a6c036b740fef1a631c17beddc31ce",
+      "books/format-base.lisp": "e0e67a9aec16407b006dfba2939fb30ee8572904c77661301168a7190a72acc9",
+      "books/grammar.lisp": "943c7e9818c7258aa5582c7aa0c76cea115b9e45f916f143ee2aeaeba7dbd5b3",
+      "books/layout.lisp": "e6fed7dc718526f5a216a939f87e570ee7a8ca25ab0ce8f58e92fb12a6404dfd",
+      "books/operations.lisp": "b7e7cab3f61033f1055f0ef3be5c0a8f3920a44c934c7b524fdba209c5ded826",
+      "books/owed-discharge.lisp": "dd1c8c3a0f05ae5ee19497b8f0506b2bace8f8dd9a264c57b2234f7658a581ce",
+      "books/owed.lisp": "e3f24658d27261c871fa9927c5b075807e62921b37da358046a0090561b5a79f",
+      "books/pool-ranges.lisp": "1a6de3844fd6363d5042ca6e22723798252f60f04a2f21e9892f93e20644f0f9",
+      "books/pool.lisp": "77c43f42b6328258547341e19d0dce3186a7d214f8ba180daca8e7e44e4905b1",
+      "books/profile.lisp": "b19d044118c5a1ec4b4166198a7dc07c607ee5773d0c128133a3121cbb070184",
+      "books/upload-feed.lisp": "c3ab17f9e0a94fb87636ceba540e244437fb2f3237f539438a31c51ac63aa3ff",
+      "books/upload-window-geometry.lisp": "017edd2689d6725696e5552d9e30acedca3c6ea3b887a32e68a9c2634652b097",
+      "tests/upload-feed-unit.lisp": "9b5b4cf6b978a2727d8281a57ddddc42f1a250b4ba5a402ed445b204c396d482",
+      "tests/upload-rolling-feed-component-unit.lisp": "4aab21d134272f9e681c0e7228ffbb9bdc0d3a1bc48cd4bc3d8da07c9bbd8320"
+    },
+    "start_order": [
+      "tests/upload-feed-unit",
+      "tests/upload-rolling-feed-component-unit"
+    ],
+    "started_utc": "2026-11-16T00:02:19+00:00",
+    "status": "passed",
+    "timeout_seconds": 60,
+    "tree": "/build/lanes/sol-rolling-geometry-ab05c79b1"
+  }
+}

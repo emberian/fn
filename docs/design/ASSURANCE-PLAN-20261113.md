@@ -5,7 +5,159 @@ Owner: integration. Commissioned by ember on 2026-11-13, following the
 `fn2-squares` remains the obligation store. Reports and public-claim coverage
 must be derived from that store and the actual served call/attachment graph.
 
-## Current integration frontier — 2026-11-15 UTC
+## Native APPEND and restart — 2026-11-22
+
+The next client milestone is two committed socket APPENDs, a STATUS before
+process death, the same STATUS after restart, and two byte-exact FETCHes.
+The application fixture also requests the first Message-ID at the second
+position and requires a refusal. The native run remains outstanding.
+
+Upstream `f1050d7f1` fixes the schema check that stopped application loading.
+The production assembly and its reversed-import fixture passed on Forge.
+Adding a schema produced a checked expansion mismatch at the assembly table.
+The fixture's 44-book closure reused 43 parents in the final record
+`certify-20261122T032527Z-1553111`. On application source `50c6ea6bd`, all
+139 parents of `books/cns-source-raw` now load together. ACL2 reaches
+`fn2-cns-source-issue-children-fn2-control-rows` and leaves the row count
+of the control table returned by `fn2-block-read-children` unproved.
+
+On that application source, the accepted APPEND reply in `books/cns.lisp`
+encodes a zero-length Message-ID. The client decodes that field and the
+fixture requires the committed article's ID. Candidate `da4336965` carries
+the ID from the transaction through reply encoding. The actor and native
+socket tests still need to exercise that path. Consumer positions use domain
+0 in this profile.
+
+## Integration frontier — 2026-11-16 01:35 UTC
+
+Upstream `6a83d2220` integrates the column-generator compilation/proof repair.
+Its exact generator/mixed-field fixture closure is record-qualified at four
+current keys; see [the record](receipts/columns-initial-four-record.json).
+The served candidate `515ea5feff10076d4a33ea2cadcf71dbf6879387` contains the same
+generator and has a separately qualified 15-book initial fixture union.
+This changes downstream closure keys: the earlier qualification records below
+retain their stated source scopes and do not certify the new candidate.
+Convergence owns one affected, ancestor-closed certification batch before
+returning to actual UPLOAD/RAW/application admission. Existing artifacts are
+retained and reused only where their exact keys still match.
+
+The descriptor reader is qualified on the shared foundation at `6e7a1a9c1`;
+its [current 34-book record](receipts/checkpoint-reader-foundation-thirty-four-record.json)
+reuses 30 certificates and records four unchanged reader/interface/witness books.
+The six original unrestricted reader claims remain refuted and unfinished;
+the six distinct guarded replacements are qualified. BOOT still needs to consume
+this bounded reader with verified persisted geometry and retained ownership.
+
+The pre-generator served-family candidate was `9d3edbe27`, built on `80cbba4a3` and the
+qualified paired BOOT schema at `fa5711d5c`.
+It joins the qualified manifest arithmetic and upload scanner repairs, restores
+the native test launcher's executable mode, and corrects SOURCE's refused-issue
+descriptor reports. WAIT/BAD now report zero descriptors; successful issue still
+reports one. The corresponding new exact-effect proofs and whole-state fixture
+remain unqualified until RAW is admitted.
+
+The dependency batches of 74 and 79 books are qualified on their named current
+closures, with 31 and 23 newly recorded books respectively. Root independently
+checked their source hashes, closure keys and actual certificate/port/FASL bytes.
+Access, COMMIT and machines-B now have qualified 33-, 60- and 86-book closures;
+the machine-arm generator has a qualified 27-book closure. These results do not
+qualify the composed RAW or application entry point.
+
+COPY's actual backing-length contract now has a qualified eight-book closure.
+The proof distinguishes nonempty backing storage from element typing; WFP alone
+still does not imply element typing. BLAKE3 word-frame production has a qualified
+17-book closure and its whole-antecedent/domain-removal controls a qualified
+18-book closure. The actual block-integrity and CNS source-hash callers are now qualified in a
+21-book union. The complete RAW/CNS caller remains unqualified.
+
+The [rolling feed component](ROLLING-GEOMETRY-20261115.md) has a qualified
+18-book closure: sixteen reused parents and two newly certified test books.
+Its actual split-input, one-byte budget, malformed input, binary and rolling
+header/body controls passed. Root checked the current keys, raw sources and
+actual certificate/FASL payloads. The accepted 96 KiB upload, reset, restart and
+FETCH campaign remains unrun on the current complete application.
+
+The actual upload scanner is qualified in a 16-book closure, and its unit
+controls in a 17-book closure. A generalized partial-prefix invariant proves
+the original full refinement claim; runtime bodies, guards and the public
+formula are unchanged. Page geometry, ordering, workspace and served runs have
+a qualified 47-book union. Connection/TLS/schema callers now have a qualified 46-book union, and the
+five-book machines-C chain a qualified 115-book closure. RAW still has five
+missing books, with upload-kind the prerequisite blocker.
+
+BOOT's lower bootstrap constructor, verifier, receipt and six component controls
+have a qualified 40-book closure at `17f802d449574e56ed28e2476cde42b119535e46`.
+This does not establish a persisted-read completion or public BOOT/CORE path.
+The served-family candidate now replaces the inline BOOT configuration with
+the owning extracted declaration; its actual boot-kind closure is qualified
+(90 books, 89 reused). Actual BOOT routing and physical checkpoint/reopen remain
+outstanding. Source work has identified an old executor image/window geometry
+and insufficient callback cost declarations; both must be repaired in the real
+constructor and dispatch before the physical path can run.
+The FETCH lifetime repair retains META until actual coverage and preserves
+terminal cleanup in source; its full composed constructor campaign remains owed.
+
+The enum repair has three admitted universal whole-carrier fragment equalities
+at `lane/assurance-enum-controls@8d4944ada`, with provenance clarified at
+`6dce9f270`. Root checked all eight actual theorem summaries, timings and steps
+against the raw transcript. These are not whole-function/effect equivalence or
+record certification; the owner is lifting through the actual unchanged calling
+contexts. The family integrator owns bringing this evidence and tooling into
+the coherent application candidate.
+
+The carried-predicate foundation now has a qualified 37-book union at
+`b549c158d`. All 37 closure keys match this integration; root independently
+verified the actual certificate payloads and the final fixture's source hash.
+The shared generator preserves the checked predicates and derives guarded
+carried variants from the same declarations. VOCAB owns its posted-slot contract
+and exposes the latch fields needed by HARVEST's unchanged guard. The final
+production-constructor fixture passed after repairing its local-state binding
+syntax; its assertions were retained.
+
+This foundation changes downstream closure keys. Reader requalification is
+complete at the current 34-book record above. The served-family records retain
+their named earlier sources; application requalification and actual use of the
+carried predicates by physical metadata callers remain outstanding.
+
+The [served withdrawal audit](lanes/assurance-withdrawal-producer.md) identifies
+another required implementation gap: the specified NNTP cancel acceptance has no
+current concrete withdrawal writer or receiver-local target decision. Read-side
+WITHDRAWN support and the parked consumer model do not establish that behavior.
+Authenticated submitter provenance, target membership and positioned reports must
+be connected through the actual transaction path. Payload reclamation after
+withdrawal is a separate obligation; a withdrawal report alone cannot free data.
+
+Native prerequisite qualification at `80cbba4a3` now covers the three new leaves
+`native-b3-evidence`, `authority-port`, and `fnct-pool` in a 39-book union.
+Root independently checked all current source keys and actual certificate/FASL
+payloads against the [record](receipts/native-leaves-qualified39.json).
+This does not qualify node-profile or the host image. Upstream `9b8c12408` adds
+STATUS checks before death and after reopen; five focused controls pass, while
+the actual socket campaign remains unrun.
+
+The candidate connects the compression performer and a real backend duplex
+socket fixture. Its independent inflater checks exact replies on one stream;
+the fixture also checks the actual C handle across turns. Source controls pass,
+but execution remains pending the shared image. Public COMPRESS negotiation
+remains unavailable because current AUTHINFO PASS cannot succeed; a backend
+fixture does not establish that public path.
+
+The unchanged whole UPLOAD declaration measured 25.70 seconds in a diagnostic
+profile. The corrected generator trial completed all 70 accessor families, up
+from 49 before, but still exceeded its original 20-second author limit at final
+initialization. No diagnostic generator change is qualified or integrated into
+this upstream tree. The next repair targets measured initializer/proof cost;
+unchanged repeated trials are not a completion step.
+
+Completion still requires composed FETCH/cancellation, the native APPEND/STATUS/
+query and NNTP consumers, process-death recovery of accepted data, productive
+physical checkpoint publication and reopen, and the remaining assurance/Lean
+obligations. Physical storage owns the resident-plus-two-bank capacity repair,
+real sealer/MASTER connection and full-resident two-publication fixture; BOOT owns
+the descriptor callback and persisted-bootstrap admission. Checkpoint activation
+remains disabled. No component proof or source integration closes these gates.
+
+## Earlier integration checkpoint — 2026-11-15 UTC
 
 Upstream `ba773befc` changes the shared declaration foundation to bind claim
 identity and retain refuted claims as unfinished. The six-book union of the
@@ -1278,10 +1430,13 @@ The device-syscall-return cut occurs after physical effects and before completio
 a simulator step that combines effects and posting is not by itself its mapping.
 
 Authorization remains release-blocking: original B delivered exact article bytes
-with required grants disabled. The defensive repair worker was stopped twice by
-automatic content review for possible cybersecurity risk; source changes remain
-preserved, but its fixed-callback qualification is incomplete. Do not relabel the
-passing baseline native recovery tests as permission correctness or release approval.
+with required grants disabled. Recovered evidence confirms that an authorization
+worker stopped after a cybersecurity safeguard error; its exact task payload is
+unavailable. Later command-specific or policy-specific descriptions exceed that
+evidence. Preserved source changes do not complete fixed-callback qualification.
+The safeguard restriction remains to be resolved before retrying that blocked
+work. Do not relabel passing baseline native recovery tests as permission
+correctness or release approval.
 
 ## Active implementation priorities — 2026-11-14
 
