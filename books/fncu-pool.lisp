@@ -86,7 +86,10 @@
                                slot gen kind owner generation fn2-fields fn2-pool)
   (declare (xargs :stobjs (fn2-fields fn2-pool)
                   :guard (and (fn2-fields-wfp fn2-fields) (fn2-pool-wfp fn2-pool)
-                              (natp base) (<= (+ base 128) (fn2-fields-rows fn2-fields)))))
+                              (natp base) (<= (+ base 128) (fn2-fields-rows fn2-fields)))
+                  :guard-hints (("Goal" :in-theory
+                                 (disable fn2-fieldsp fn2-fields-wfp fn2-fields-rows
+                                          fn2-fields-value fn2-pool-wfp)))))
   (b* (((unless (< (+ 4 (nfix start)) (nfix end))) (mv :frame 0 0 0 0 0 0 0 fn2-fields))
        ((mv vc version) (fn2-pool-read slot gen (+ 4 (nfix start)) kind owner generation fn2-pool))
        ((unless (and (eq vc :ok) (member-equal version '(1 2))))
