@@ -19,7 +19,7 @@
 (include-book "ctl-output-events")
 (include-book "cns-append-prefix-codec")
 (include-book "upload-kind")
-(include-book "cursor")
+(include-book "overview-mid-span")
 (fn2-book-layer :e)
 
 ;; The operations the request kind's arms call (child form).
