@@ -339,9 +339,10 @@
 (defconst *fn2-cns-reason-cursor-version* 10)
 (defconst *fn2-cns-reason-withdrawn* 11)
 (defconst *fn2-cns-reason-unknown-consumer* 12)
+(defconst *fn2-cns-reason-rebase-required* 13)
 ; Reason words by code; an append's reason is D's posted word (upload-kind.lisp).
 (defconst *fn2-cns-reason-words*
-  '("" "unavailable" "access" "meter" "scope" "equal" "behind" "beyond-frontier" "frame" "query" "cursor-version" "withdrawn" "unknown-consumer"))
+  '("" "unavailable" "access" "meter" "scope" "equal" "behind" "beyond-frontier" "frame" "query" "cursor-version" "withdrawn" "unknown-consumer" "rebase-required"))
 (defun fn2-cns-word-strings (words)
   (declare (xargs :verify-guards nil))
   (if (atom words) nil
@@ -1352,16 +1353,24 @@
     (t
    (:do (pcode) (fn2-cns-post-reply row-ctl row-ctl-gen row-request row-verb row-outcome row-reason
                                     row-consumer row-epoch row-version row-cpos row-pub-frontier row-count row-more
-                                    row-ioff row-ilen row-ipos
+                                    row-ioff row-ilen row-visible-ipos
                                     row-tx-slot row-tx-gen
                                     id row-generation row-ns-slot row-ns-gen row-name-len)
     :accept (:ok :dropped) :why "the control connection may have closed while the consumer request ran")
    (:wake-row row-ctl)
-   (:next :draining) (:charge :bytes 2048 :steps *fn2-work-transition* :runnable t))))
+   (:next :draining)
+   (:charge :bytes (if (equal row-phase *fn2-cns-state-page-authorize*) 6144 2048)
+            :steps *fn2-work-transition* :runnable t))))
   (wait-timeout :on-refusal ((:stop :machine-phase))
    (:set (edge *fn2-none*) (count 0) (more 0) (outcome *fn2-cns-outcome-accepted*))
    (:goto answer))
   (answer :on-refusal ((:stop :machine-phase))
+   (:if (and (equal row-outcome *fn2-cns-outcome-accepted*)
+             (or (equal row-verb *fn2-cns-verb-read*) (equal row-verb *fn2-cns-verb-wait*)))
+        ((:set (xstep 0)) (:next :page-authorize)
+         (:charge :steps *fn2-work-transition* :runnable t))
+        ((:goto finalize))))
+  (finalize :on-refusal ((:stop :machine-phase))
    (:do (timer-clear) (fn2-cns-clear-wait-timer id) :accept (:ok))
    (:set (deadline 0) (wait-reason *fn2-wait-none*))
    (:goto hand))
@@ -1410,7 +1419,7 @@
     :accept (:ok :full :dropped :fault)
     :why ":dropped: the control connection closed while the page was read; :fault: the store contradicts its own rows")
    (:case pc
-    ((:ok) (:set (ipos row-npos) (count (+ 1 row-count)) (ilen (+ row-ilen nl))
+    ((:ok) (:set (ipos row-npos) (visible-ipos row-npos) (count (+ 1 row-count)) (ilen (+ row-ilen nl))
                  (ioff (if (equal row-count 0) at row-ioff)))
            (:next :page) (:charge :bytes 4096 :steps *fn2-work-transition* :runnable t))
     ((:full) (:set (more 1)) (:next :page) (:charge :steps *fn2-work-transition* :runnable t))
@@ -1523,6 +1532,11 @@
                      (:next :commit) (:charge :bytes 4096 :steps *fn2-work-transition* :runnable t))
                     ((equal row-verb *fn2-cns-verb-fetch*)
                      (:next :read) (:charge :bytes 4096 :steps *fn2-work-transition* :runnable t))
+                    ((or (equal row-verb *fn2-cns-verb-read*) (equal row-verb *fn2-cns-verb-wait*))
+                     (:if (and (equal row-page-head-bound 1) (not (equal ahead row-page-head)))
+                          ((:set (reason *fn2-cns-reason-rebase-required*)) (:goto refuse))
+                          ((:set (page-head-bound 1) (page-head ahead))
+                           (:next :lookup) (:charge :bytes 4096 :steps *fn2-work-transition* :runnable t))))
                     (t (:next :lookup) (:charge :bytes 4096 :steps *fn2-work-transition* :runnable t))))))
   (:lookup :on-refusal ((:stop :machine-phase))
    (:if (equal row-lease *fn2-cns-lease-held*)
@@ -1559,7 +1573,7 @@
    (:do (fcode pfront observed-tip) (fn2-cns-page-frontier row-address-principal row-xrow)
     :case (((:unavailable) (:set (reason *fn2-cns-reason-unavailable*)) (:goto refuse))))
    (:set (pub-frontier pfront) (address-tip observed-tip) (count 0) (more 0) (ioff 0) (ilen 0)
-         (ipos (if (equal row-verb *fn2-cns-verb-fetch*) (- row-to 1) row-to)))
+         (visible-ipos row-to) (ipos (if (equal row-verb *fn2-cns-verb-fetch*) (- row-to 1) row-to)))
    (:next :page)
    (:charge :bytes 4096 :steps *fn2-work-transition* :runnable t))
   ;; :page walks the principal's addr entries past IPOS, one item a step
@@ -1574,7 +1588,8 @@
    (:cond ((equal row-ctl *fn2-none*) (:goto page-cancel))
           ((equal row-outcome *fn2-cns-outcome-refused*) (:goto page-fail))
           ((equal row-more 1) (:goto page-end))
-          ((and (< row-ipos row-pub-frontier) (< row-count row-page-limit))
+          ((and (< row-ipos row-pub-frontier)
+                (or (not (equal row-verb *fn2-cns-verb-fetch*)) (< row-count row-page-limit)))
            (:do (icode np a st)
                 (fn2-cns-address-next row-address-principal row-ipos
                   (if (equal row-verb *fn2-cns-verb-fetch*) (min row-to row-pub-frontier) row-pub-frontier)
@@ -1583,15 +1598,53 @@
            (:case icode
             ((:yield) (:charge :bytes *fn2-cns-addr-next-1-pool-read-bound* :steps *fn2-work-transition* :runnable t))
             ((:selected) (:set (npos np) (art a) (istream st))
+             (:set (xstep 0))
              (:if (equal row-verb *fn2-cns-verb-fetch*)
-                  ((:set (xstep 0)) (:next :fetch-authorize))
-                  ((:next :article)))
+                  ((:next :fetch-authorize))
+                  ((:next :item-authorize)))
              (:charge :bytes *fn2-cns-addr-next-1-pool-read-bound* :steps *fn2-work-transition* :runnable t))
             ((:end) (:set (ipos row-pub-frontier)) (:goto page-end))
             (:otherwise (:set (reason *fn2-cns-reason-unavailable*) (outcome *fn2-cns-outcome-refused*))
              (:goto page-fail))))
           ((< row-ipos row-pub-frontier) (:set (more 1)) (:goto page-end))
           (t (:goto page-end))))
+  ;; Skip inaccessible address rows before materializing any item fields.
+  ;; The private scan may advance; cursor issuance and MORE require a
+  ;; readable row, including the lookahead after a full result page.
+  (:item-authorize :on-refusal ((:stop :machine-phase))
+   (:do (acode astep ahead agrant)
+        (fn2-cns-authority-allows id row-generation *fn2-cns-right-read* *fn2-cns-scope-stream*
+                                  row-istream row-xstep row-xhead row-xgrant 4096)
+    :case (((:more) (:set (xstep astep) (xhead ahead) (xgrant agrant))
+            (:charge :bytes 4096 :steps *fn2-work-transition* :runnable t))
+           ((:access) (:set (ipos row-npos)) (:next :page)
+            (:charge :bytes 4096 :steps *fn2-work-transition* :runnable t))
+           ((:state)
+            (:do (rc) (fn2-read-release row-xrow) :accept (:ok))
+            (:set (reason *fn2-cns-reason-unavailable*) (outcome *fn2-cns-outcome-refused*))
+            (:next :page) (:charge :bytes 4096 :steps *fn2-work-transition* :runnable t))))
+   (:cond ((not (equal ahead row-page-head))
+           (:set (reason *fn2-cns-reason-rebase-required*) (outcome *fn2-cns-outcome-refused*))
+           (:next :page) (:charge :bytes 4096 :steps *fn2-work-transition* :runnable t))
+          ((>= row-count row-page-limit)
+           (:set (more 1)) (:next :page)
+           (:charge :bytes 4096 :steps *fn2-work-transition* :runnable t))
+          (t (:next :article) (:charge :bytes 4096 :steps *fn2-work-transition* :runnable t))))
+  ;; One authority head covers the whole page. Seal it only after checking
+  ;; that head again, including for an empty WAIT answer.
+  (:page-authorize :on-refusal ((:stop :machine-phase))
+   (:do (acode astep ahead agrant)
+        (fn2-cns-authority-allows id row-generation *fn2-cns-right-consume* *fn2-cns-scope-own-consumers*
+                                  0 row-xstep row-xhead row-xgrant 4096)
+    :case (((:more) (:set (xstep astep) (xhead ahead) (xgrant agrant))
+            (:charge :bytes 4096 :steps *fn2-work-transition* :runnable t))
+           ((:access) (:set (reason *fn2-cns-reason-access*)) (:goto refuse))
+           ((:state)
+            (:do (rc) (fn2-read-release row-xrow) :accept (:ok))
+            (:set (reason *fn2-cns-reason-unavailable*)) (:goto refuse))))
+   (:if (and (equal row-page-head-bound 1) (equal ahead row-page-head))
+        ((:goto finalize))
+        ((:set (reason *fn2-cns-reason-rebase-required*)) (:goto refuse))))
   ;; A FETCH occurrence must be readable before article lookup reveals
   ;; its state or takes a storage lease. Hide access denial as absence.
   (:fetch-authorize :on-refusal ((:stop :machine-phase))
@@ -1735,11 +1788,11 @@
                 ((:do () (fn2-cns-edge-unlink-core row-edge)) (:goto wait-timeout))))
           ((equal row-edge *fn2-none*)
            (:do (code e) (fn2-cns-edge-link-core row-address-principal id row-generation (+ 1 row-ipos) row-address-tip)
-            :case (((:behind) (:next :lookup) (:charge :steps *fn2-work-transition* :runnable t))
+            :case (((:behind) (:set (xstep 0)) (:next :check) (:charge :steps *fn2-work-transition* :runnable t))
                    ((:exhausted) (:set (reason *fn2-cns-reason-meter*)) (:goto refuse))
                    ((:ok) (:set (edge e)) (:park :wait-row :steps *fn2-work-transition*)))))
           (t (:do () (fn2-cns-edge-unlink-core row-edge))
-             (:set (edge *fn2-none*)) (:next :lookup)
+             (:set (edge *fn2-none*) (xstep 0)) (:next :check)
              (:charge :steps *fn2-work-transition* :runnable t))))
   ;; :commit: a register or an advancing ack, a durable mutation through B
   ;; (the :commit word, machine-arms.lisp). WSTEP 0 declares the writes on

@@ -107,6 +107,18 @@ def main():
         assert appended[1]["position"] < other_receipt["position"], other_receipt
         other_page = stream("other-read", "read", "--cursor", other_registered["cursor"], actor=other)
         check_page(other_page, other_receipt, other_article, more=False)
+        grant("revoke-other-page-read", other, "read", "local.other", "--revoke")
+        for verb, extra in (("read", ()), ("wait", ("--seconds", 0))):
+            filtered = stream(f"{verb}-after-read-revocation", verb, "--cursor",
+                              other_registered["cursor"], "--max-items", 1, *extra, actor=other)
+            assert filtered["outcome"] == "accepted" and filtered["items"] == [], filtered
+            assert filtered["count"] == 0 and not filtered["more"], filtered
+            assert filtered["cursor"] == other_registered["cursor"], filtered
+            assert filtered["next"] == other_registered["position"], filtered
+        grant("restore-other-page-read", other, "read", "local.other")
+        visible_again = stream("read-after-grant-restoration", "read", "--cursor",
+                               other_registered["cursor"], actor=other)
+        assert visible_again == other_page, (visible_again, other_page)
         denied_fetch = stream("cross-principal-fetch", "fetch", appended[0]["message_id"],
                               "--domain", appended[0]["domain"], "--position", appended[0]["position"],
                               actor=other, expected=1)

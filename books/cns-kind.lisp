@@ -128,7 +128,7 @@
 (defmachine-registry fn2-ctl)
 
 (defmachine fn2-cns
- :phases (:free :decode :check :lookup :read :page :article :item :fetch :source :park :commit :committed :append :draining :retired :replay :fetch-authorize)
+ :phases (:free :decode :check :lookup :read :page :article :item :fetch :source :park :commit :committed :append :draining :retired :replay :fetch-authorize :item-authorize :page-authorize)
  :fields ((ctl :link) (ctl-gen :u60) (request :u32) (fpos :u32) (flen :u32) (fkind :u8)
           (verb (:enum fn2-cns-verb (:none :register :read :wait :ack :position :status :append :fetch
                                      :rebase :unregister)))
@@ -136,6 +136,7 @@
           ;; The durable address key and the page read's internal publish
           ;; snapshot. Neither takes the place of the scheduler's principal slot.
           (address-principal :u60) (address-tip :u60)
+          (page-head :u60) (page-head-bound :bool) (visible-ipos :u60)
           (cpos :u60) (version :u60) (pub-frontier :u60) (count :u32) (more :bool)
           (outcome (:enum fn2-cns-outcome (:none :accepted :refused :uncertain))) (reason :u8)
           (posted (:enum fn2-cns-posted (:none :accepted :unchanged :refused :uncertain))) (posted-word :u8)
@@ -186,6 +187,8 @@
  :holds ((:decode :tx-range :wait-row (:storage-window :while (lease :held))) (:check :tx-range :wait-row (:storage-window :while (lease :held))) (:lookup :tx-range :wait-row (:storage-window :while (lease :held)))
          (:read :tx-range :wait-row (:storage-window :while (lease :held))) (:page :tx-range :wait-row (:storage-window :while (lease :held)))
          (:fetch-authorize :tx-range :wait-row (:storage-window :while (lease :held)))
+         (:item-authorize :tx-range :wait-row (:storage-window :while (lease :held)))
+         (:page-authorize :tx-range :wait-row (:storage-window :while (lease :held)))
          (:article :tx-range :wait-row (:storage-window :while (lease :held)))
          (:item :tx-range :wait-row (:storage-window :while (lease :held)))
          (:fetch :tx-range :wait-row (:storage-window :while (lease :held)))
@@ -198,14 +201,14 @@
  :capacity (fn2-cns-capacity profile)
  :taken (:phase :decode :rows :wait-row :ranges ((:tx-range :slot ws-slot :gen ws-gen :class 0) (:tx-range :slot ns-slot :gen ns-gen :class 0))
          :copy (ctl ctl-gen request fpos flen fkind tx-slot tx-gen)
-         :clear (verb consumer epoch op to cstart page-limit wait-ms deadline address-principal address-tip cpos version pub-frontier count more outcome
+         :clear (verb consumer epoch op to cstart page-limit wait-ms deadline address-principal address-tip page-head page-head-bound visible-ipos cpos version pub-frontier count more outcome
                  reason posted posted-word txn-gen upload-gen fstart fed feed-mode feed-discard stream outcome-checked name-off name-len
                  ipos ioff ilen npos art istream itype alen lunit lepoch lalloc lgen lease revent routcome rcount rready cursor xrow xstep xhead xgrant
                  sx wstep ticket stopped))
  :initial ((generation fn2-machine-initial-generation) (ready-prev *fn2-none*) (ready-next *fn2-none*)
            (ctl *fn2-none*) (edge *fn2-none*) (txn *fn2-none*) (tx-slot *fn2-none*) (upload *fn2-none*)
            (lslot *fn2-none*) (ws-slot *fn2-none*) (ns-slot *fn2-none*) (next-free fn2-machine-initial-next-free))
- :arms ((:free) (:decode) (:check) (:lookup) (:read) (:page) (:article) (:item) (:fetch) (:source) (:park) (:commit) (:committed) (:append) (:draining) (:retired) (:replay) (:fetch-authorize))
+ :arms ((:free) (:decode) (:check) (:lookup) (:read) (:page) (:article) (:item) (:fetch) (:source) (:park) (:commit) (:committed) (:append) (:draining) (:retired) (:replay) (:fetch-authorize) (:item-authorize) (:page-authorize))
  :observes ((:read-result)))
 
 (defmachine-registry fn2-cns)

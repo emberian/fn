@@ -758,6 +758,13 @@ opening the reply prefix. Denials use the same `unavailable` result as a missing
 check also covers raw FETCH through a non-streamed reply. A full handoff check for that path, and a
 second consume check at reply freeze, are still needed.
 
+READ and WAIT pin an authority head for that request and recheck consume authority and the head before
+sealing each page, including empty WAIT replies. They check the recorded address stream's current read
+grant before materializing an item. A hidden row advances only the private scan. An issued cursor
+advances only through visible items, and a full page's MORE bit needs a readable next item. Resuming a
+parked request repeats consume admission and refuses a superseded head. The recorded cursor version
+does not yet bind this request's authority head across separate requests.
+
 The txn currently emits one address row per event and retains only the first group's stream. Its
 overview rows record each group's article number but cannot enumerate all groups by article. General
 per-item access through any authorized group requires a bounded article-to-stream membership lookup,
