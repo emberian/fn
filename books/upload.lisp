@@ -266,34 +266,34 @@
       (mv :ok fn2-core))))
 (fn2-core-preserves fn2-conn-post-word (conn conn-gen request word fn2-core) :position 1 :rows nil)
 ;; A consumer request's append (e-surface.md 3.3) awaits its outcome in
-;; :append: the word (accepted, uncertain, or the refusal's word) and, for
-;; an accepted article, its commit position, recorded once on the row,
-;; which is woken to answer. A request that moved on drops it, as a
-;; connection's does.
-(defun fn2-cns-post-outcome (cns cns-gen request word position fn2-core)
+;; :append. WORD is the article disposition. POSTED is the article's
+;; commit disposition on success, or the evidence commit disposition
+;; for a conflict. Only a committed result carries a position.
+(defun fn2-cns-post-outcome (cns cns-gen request word position posted fn2-core)
   (declare (xargs :stobjs fn2-core :guard (fn2-core-wfp fn2-core)))
   (if (not (and (eq (fn2-cns-snapshot-read-code cns fn2-core) :ok) (unsigned-byte-p 8 word)
                 (unsigned-byte-p 60 position)
+                (member-equal posted (list *fn2-cns-posted-accepted* *fn2-cns-posted-uncertain* *fn2-cns-posted-refused*))
                 (equal (fn2-machine-generation cns fn2-core) cns-gen)
                 (equal (fn2-cns-row-request cns fn2-core) request)
                 (equal (fn2-cns-row-phase cns fn2-core) *fn2-cns-state-append*)
                 (equal (fn2-cns-row-posted cns fn2-core) *fn2-cns-posted-none*)))
       (mv :dropped fn2-core)
-    (let* ((fn2-core (fn2-machine-write-posted
-                      cns (cond ((equal word (fn2-upload-word-code :accepted)) *fn2-cns-posted-accepted*)
-                                ((equal word (fn2-upload-word-code :uncertain)) *fn2-cns-posted-uncertain*)
-                                (t *fn2-cns-posted-refused*))
-                      fn2-core))
+    (let* ((fn2-core (fn2-machine-write-posted cns posted fn2-core))
            (fn2-core (fn2-machine-write-posted-word cns word fn2-core))
            (fn2-core (fn2-machine-write-cpos cns position fn2-core))
            (fn2-core (fn2-machine-set-wake-id cns fn2-core)))
       (mv :ok fn2-core))))
-(fn2-core-preserves fn2-cns-post-outcome (cns cns-gen request word position fn2-core) :position 1 :rows nil)
+(fn2-core-preserves fn2-cns-post-outcome (cns cns-gen request word position posted fn2-core) :position 1 :rows nil)
 ;; The owner's post: a consumer request's outcome, else a connection's word.
 (defun fn2-upload-post-owner (conn conn-gen request word position fn2-core)
   (declare (xargs :stobjs fn2-core :guard (fn2-core-wfp fn2-core)))
   (if (eq (fn2-cns-snapshot-read-code conn fn2-core) :ok)
-      (fn2-cns-post-outcome conn conn-gen request word position fn2-core)
+      (fn2-cns-post-outcome conn conn-gen request word position
+        (cond ((equal word (fn2-upload-word-code :accepted)) *fn2-cns-posted-accepted*)
+              ((equal word (fn2-upload-word-code :uncertain)) *fn2-cns-posted-uncertain*)
+              (t *fn2-cns-posted-refused*))
+        fn2-core)
     (fn2-conn-post-word conn conn-gen request word fn2-core)))
 (fn2-core-preserves fn2-upload-post-owner (conn conn-gen request word position fn2-core) :position 1 :rows nil)
 (in-theory (disable fn2-cns-post-outcome))
