@@ -39,6 +39,8 @@
 ; slots 0..3 are declared. They precede the separate identity query/run area.
 (defconst *fn2-peer-import-e* (* 20 *fn2-succ-block*))
 (defconst *fn2-peer-import-h* (* 21 *fn2-succ-block*))
+(defconst *fn2-peer-import-checkpoint-slot* 4)
+(defconst *fn2-peer-import-checkpoint-sid* 6)
 (assert-event (and (< 3 20) (<= (+ *fn2-peer-import-e* 11) *fn2-peer-import-h*)
                    (<= (+ *fn2-peer-import-h* 11) *fn2-idc-ident*)))
 
@@ -318,6 +320,9 @@
   fn2-id-decides-qk fn2-id-decides-qs fn2-id-decides-qg fn2-id-decides-query-incarnation
   fn2-peer-imports-query-incarnation fn2-peer-imports-query-held))
 
+(defmacro fn2-peer-checkpoint-empty (code)
+ `(mv ,code 0 0 0 0 0 0 0 0 0 0 0 0 0 fn2-core))
+
 (defmacro fn2-peer-import-core-events ()
  '(progn
    (defun fn2-peer-import-abort (tx ok os og fn2-core)
@@ -327,7 +332,7 @@
                 (fn2-pool (fn2-core-pool fn2-core)))
      (code fn2-peer-imports fn2-succ-txns fn2-succ-slots fn2-id-decides fn2-pool)
      (fn2-peer-import-clean-child tx ok os og nil fn2-peer-imports fn2-succ-txns fn2-succ-slots fn2-id-decides fn2-pool)
-     (let ((fn2-core (fn2-query-ref-flush tx fn2-core))) (mv code fn2-core))))
+     (let ((fn2-core (if (eq code :ok) (fn2-query-ref-flush tx fn2-core) fn2-core))) (mv code fn2-core))))
    (fn2-core-preserves fn2-peer-import-abort (tx ok os og fn2-core) :position 1 :rows nil
     :hints (("Goal" :in-theory (enable fn2-core-wfp))))
    (defun fn2-peer-import-release (tx ok os og fn2-core)
@@ -337,7 +342,7 @@
                 (fn2-pool (fn2-core-pool fn2-core)))
      (code fn2-peer-imports fn2-succ-txns fn2-succ-slots fn2-id-decides fn2-pool)
      (fn2-peer-import-clean-child tx ok os og t fn2-peer-imports fn2-succ-txns fn2-succ-slots fn2-id-decides fn2-pool)
-     (let ((fn2-core (fn2-query-ref-flush tx fn2-core))) (mv code fn2-core))))
+     (let ((fn2-core (if (eq code :ok) (fn2-query-ref-flush tx fn2-core) fn2-core))) (mv code fn2-core))))
    (fn2-core-preserves fn2-peer-import-release (tx ok os og fn2-core) :position 1 :rows nil
     :hints (("Goal" :in-theory (enable fn2-core-wfp))))
    (defun fn2-peer-import-idle-p (tx fn2-core)
@@ -471,5 +476,85 @@
                          ((member-eq cleanup '(:ok :state)) code) (t :cleanup)) fn2-core))))))
    (fn2-core-preserves fn2-peer-import-declare (tx base hb receipt ok os og fn2-core) :position 1 :rows nil
     :hints (("Goal" :in-theory (enable fn2-core-wfp))))
+   ;; This is a C declaration, invoked after the protected pull actor has
+   ;; checked the ordered page and its end chain. It may be the same successor
+   ;; as the final evidence/receipt pair. Earlier pairs must have settled
+   ;; durably. When replayed after an uncertain result, read the published
+   ;; scope/position/chain first. Never rebase a stale source in this fold.
+   (defun fn2-peer-checkpoint-declare (tx principal consumer target-stream source-domain source-incarnation
+                                     source-revision source-view source-view-version interpretation from to expect-absent
+                                     old-a old-b old-c old-d old-e new-a new-b new-c new-d new-e fn2-core)
+    (declare (xargs :stobjs fn2-core :guard (fn2-core-wfp fn2-core)))
+    (b* (((unless (and (posp principal) (unsigned-byte-p 60 principal)
+                       (posp consumer) (unsigned-byte-p 60 consumer)
+                       (posp target-stream) (unsigned-byte-p 60 target-stream)
+                       (posp source-domain) (unsigned-byte-p 60 source-domain)
+                       (posp source-incarnation) (unsigned-byte-p 60 source-incarnation)
+                       (posp source-revision) (unsigned-byte-p 60 source-revision)
+                       (posp source-view) (unsigned-byte-p 60 source-view)
+                       (posp source-view-version) (unsigned-byte-p 60 source-view-version)
+                       (equal interpretation 1) (unsigned-byte-p 60 from) (unsigned-byte-p 60 to) (< from to)
+                       (unsigned-byte-p 1 expect-absent) (or (equal expect-absent 0) (equal from 0))
+                       (unsigned-byte-p 56 old-a) (unsigned-byte-p 56 old-b)
+                       (unsigned-byte-p 48 old-c) (unsigned-byte-p 48 old-d) (unsigned-byte-p 48 old-e)
+                       (unsigned-byte-p 56 new-a) (unsigned-byte-p 56 new-b)
+                       (unsigned-byte-p 48 new-c) (unsigned-byte-p 48 new-d) (unsigned-byte-p 48 new-e)))
+          (mv :scope fn2-core))
+         (empty (stobj-let ((fn2-succ-slots (fn2-core-succ-slots fn2-core))) (empty)
+                  (and (natp tx)
+                       (fn2-peer-import-empty 1 (+ (* tx *fn2-succ-slots*) *fn2-peer-import-checkpoint-slot*)
+                                              fn2-succ-slots))
+                  empty))
+         ((unless empty) (mv :state fn2-core)))
+      (fn2-consumer-cursor-pull-advance tx *fn2-peer-import-checkpoint-slot*
+       (principal principal) (consumer consumer) (target-stream target-stream) (source-domain source-domain)
+       (source-incarnation source-incarnation) (source-revision source-revision) (source-view source-view)
+       (source-view-version source-view-version) (interpretation interpretation) (from from) (to to)
+       (expect-absent expect-absent) (old-a old-a) (old-b old-b) (old-c old-c) (old-d old-d) (old-e old-e)
+       (new-a new-a) (new-b new-b) (new-c new-c) (new-d new-d) (new-e new-e) fn2-core)))
+   (fn2-core-preserves fn2-peer-checkpoint-declare
+    (tx principal consumer target-stream source-domain source-incarnation source-revision source-view source-view-version
+     interpretation from to expect-absent old-a old-b old-c old-d old-e new-a new-b new-c new-d new-e fn2-core)
+    :position 1 :rows nil :hints (("Goal" :in-theory (enable fn2-core-wfp))))
+   (defun fn2-peer-checkpoint-key (read-row principal consumer fn2-core)
+    (declare (xargs :stobjs fn2-core :guard (fn2-core-wfp fn2-core)))
+    (b* (((unless (and (posp principal) (unsigned-byte-p 60 principal) (posp consumer) (unsigned-byte-p 60 consumer)))
+          (mv :scope fn2-core))
+         ((mv code fn2-core) (fn2-read-key read-row :lo *fn2-consumer-cursor-entry-field-principal* principal fn2-core))
+         ((unless (eq code :ok)) (mv code fn2-core)))
+      (fn2-read-key read-row :lo *fn2-consumer-cursor-entry-field-consumer* consumer fn2-core)))
+   (fn2-core-preserves fn2-peer-checkpoint-key (read-row principal consumer fn2-core) :position 1 :rows nil)
+   ;; The actor pins the scope and reads one source in each turn on its
+   ;; owned C reader. :miss keeps the continuation for its read adapter.
+   (defun fn2-peer-checkpoint-read (read-row budget fn2-core)
+    (declare (xargs :stobjs fn2-core :guard (fn2-core-wfp fn2-core)))
+    (b* (((mv code fn2-core) (fn2-read-lookup read-row *fn2-peer-import-checkpoint-sid* budget fn2-core))
+         ((when (member-eq code '(:more :miss))) (fn2-peer-checkpoint-empty code))
+         ((unless (eq code :ok))
+          (mv-let (released fn2-core) (fn2-read-release read-row fn2-core)
+           (fn2-peer-checkpoint-empty (if (and (eq released :ok) (eq code :absent)) :absent :state))))
+         ((mv mc mode) (fn2-read-value read-row *fn2-consumer-cursor-entry-field-pull-mode* fn2-core))
+         ((mv tc stream) (fn2-read-value read-row *fn2-consumer-cursor-entry-field-pull-stream* fn2-core))
+         ((mv dc dom) (fn2-read-value read-row *fn2-consumer-cursor-entry-field-pull-domain* fn2-core))
+         ((mv ic inc) (fn2-read-value read-row *fn2-consumer-cursor-entry-field-pull-incarnation* fn2-core))
+         ((mv rc rev) (fn2-read-value read-row *fn2-consumer-cursor-entry-field-pull-revision* fn2-core))
+         ((mv vc view) (fn2-read-value read-row *fn2-consumer-cursor-entry-field-pull-view* fn2-core))
+         ((mv qc version) (fn2-read-value read-row *fn2-consumer-cursor-entry-field-pull-view-version* fn2-core))
+         ((mv nc interpretation) (fn2-read-value read-row *fn2-consumer-cursor-entry-field-pull-interpretation* fn2-core))
+         ((mv pc position) (fn2-read-value read-row *fn2-consumer-cursor-entry-field-position* fn2-core))
+         ((mv ca a) (fn2-read-value read-row *fn2-consumer-cursor-entry-field-pull-chain-a* fn2-core))
+         ((mv cb b) (fn2-read-value read-row *fn2-consumer-cursor-entry-field-pull-chain-b* fn2-core))
+         ((mv cc c) (fn2-read-value read-row *fn2-consumer-cursor-entry-field-pull-chain-c* fn2-core))
+         ((mv cd d) (fn2-read-value read-row *fn2-consumer-cursor-entry-field-pull-chain-d* fn2-core))
+         ((mv ce e) (fn2-read-value read-row *fn2-consumer-cursor-entry-field-pull-chain-e* fn2-core))
+         ((mv released fn2-core) (fn2-read-release read-row fn2-core))
+         ((unless (and (eq released :ok) (eq mc :ok))) (fn2-peer-checkpoint-empty :state))
+         ((unless (equal mode 1)) (fn2-peer-checkpoint-empty :occupied))
+         ((unless (and (eq tc :ok) (eq dc :ok) (eq ic :ok) (eq rc :ok) (eq vc :ok) (eq qc :ok) (eq nc :ok)
+                       (eq pc :ok) (eq ca :ok) (eq cb :ok) (eq cc :ok) (eq cd :ok) (eq ce :ok)))
+          (fn2-peer-checkpoint-empty :state)))
+      (mv :ok stream dom inc rev view version interpretation position a b c d e fn2-core)))
+   (fn2-core-preserves fn2-peer-checkpoint-read (read-row budget fn2-core) :position 14 :rows nil)
    (in-theory (disable fn2-peer-import-start fn2-peer-import-copy-arg fn2-peer-import-copy-args
-                       fn2-peer-import-build fn2-peer-import-declare fn2-peer-import-abort fn2-peer-import-release))))
+                       fn2-peer-import-build fn2-peer-import-declare fn2-peer-import-abort fn2-peer-import-release
+                       fn2-peer-checkpoint-declare fn2-peer-checkpoint-key fn2-peer-checkpoint-read))))

@@ -8,6 +8,6 @@
 (include-book "peer-import")
 (fn2-groups-core-events)
 (fn2-identity-core-events)
-(fn2-peer-import-core-events)
 (fn2-sealer-core-events)
 (fn2-read-core-events)
+(fn2-peer-import-core-events)
