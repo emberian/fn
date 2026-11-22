@@ -11,7 +11,11 @@
                            fn2-event-read-checker fn2-csnapshotp fn2-csnapshot-wfp fn2-csnapshot-rows
                            fn2-mkp fn2-mk-wfp fn2-mk-rows fn2-mk-size fn2-poolp fn2-pool-wfp
                            fn2-b3p fn2-b3-wfp fn2-fieldsp fn2-fields-wfp fn2-digestsp fn2-digests-wfp
-                           fn2-pool-copy-range fn2-event-read-ownerp fn2-event-read-member-step)))
+                           fn2-pool-copy-range fn2-event-read-ownerp fn2-event-read-member-step
+                           fn2-csnapshot-ownerp fn2-pool-readable-code fn2-pool-workspace-code
+                           fn2-event-read-token fn2-event-read-slot fn2-event-read-gen fn2-event-read-phase
+                           fn2-journal-members-slot fn2-journal-members-gen fn2-journal-members-owner-kind
+                           fn2-journal-members-owner-slot fn2-journal-members-owner-gen)))
 
 (defun fn2-peer-history-member (token dslot dgen doff okind oslot ogen
                                fn2-event-read fn2-csnapshot fn2-journal-members fn2-mk
