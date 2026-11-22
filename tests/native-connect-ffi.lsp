@@ -23,6 +23,12 @@
          (multiple-value-bind (status fd) (check-connect port mux)
            (setf client fd)
            (assert (eq status :connected)))
+         ;; The client handshake may finish before the listener queues the
+         ;; accepted socket. Observe the independent listener readiness.
+         (fn2-native-mux-interest mux 0 listener 1)
+         (fn2-native-mux-wait mux 1000)
+         (assert (fn2-native-mux-ready-p mux 0 1))
+         (fn2-native-mux-interest mux 0 listener 0)
          (setf accepted (fn2-native-accept listener))
          (assert (>= accepted 0))
          (sb-alien:with-alien ((byte sb-alien:unsigned-char 42))
