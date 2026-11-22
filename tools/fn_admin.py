@@ -460,7 +460,8 @@ def decode_cns_reply(verb: str, frame: bytes) -> dict:
     if i != len(p):
         raise WireError("kind 28 payload length mismatch")
     out: dict = {"outcome": cls, "reason": word or "none"}
-    if cls != "accepted":
+    conflict = verb == "append" and cls == "refused" and word == "conflict"
+    if cls != "accepted" and not conflict:
         if q:
             raise WireError(f"non-accepted {cls} reply carries result bytes")
         return out
@@ -518,13 +519,18 @@ def decode_cns_reply(verb: str, frame: bytes) -> dict:
             raise WireError("trailing bytes in append result")
         if evidence_raw[0] >= len(EVIDENCE_TYPES):
             raise WireError("invalid append evidence")
+        evidence = EVIDENCE_TYPES[evidence_raw[0]]
+        position = int.from_bytes(pos_raw, "big")
+        if conflict and (not mid_raw or evidence == "none" or numbers or receipt
+                         or (evidence == "committed") != (position != 0)):
+            raise WireError("inconsistent conflict evidence result")
         out.update(
             message_id=mid_raw.decode("latin-1"),
             domain=int.from_bytes(dom_raw, "big"),
-            position=int.from_bytes(pos_raw, "big"),
+            position=position,
             numbers=numbers.hex(),
             receipt=receipt.hex(),
-            evidence=EVIDENCE_TYPES[evidence_raw[0]],
+            evidence=evidence,
         )
     else:
         raise WireError(f"unknown consumer reply verb {verb}")

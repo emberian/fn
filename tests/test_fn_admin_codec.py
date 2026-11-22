@@ -18,8 +18,8 @@ import fn_admin  # noqa: E402
 CURSOR = (ROOT / "tests/fixtures/consumer-position/five-field-v1.fncu").read_bytes()
 
 
-def cns_reply(result: bytes) -> bytes:
-    payload = b"\x00" + fn_admin.octets16(b"") + fn_admin.octets32(result)
+def cns_reply(result: bytes, outcome: str = "accepted", reason: bytes = b"") -> bytes:
+    payload = bytes([fn_admin.CLASSES.index(outcome)]) + fn_admin.octets16(reason) + fn_admin.octets32(result)
     return fn_admin.fnct_seal(fn_admin.KIND_CNS_REPLY, payload)
 
 
@@ -224,6 +224,34 @@ class InvalidReplyOutcome(unittest.TestCase):
         )
         self.assertEqual(proc.returncode, 2, (proc.stdout, proc.stderr))
         self.assertEqual(json.loads(proc.stdout)["outcome"], "error")
+
+    def test_conflict_reports_evidence_separately_from_article_refusal(self) -> None:
+        args = ("stream", "append", "--group", "local.test", "--body", "hello", "--op", "71")
+        mid = b"<conflict@example.invalid>"
+        def result(evidence, event, identity=mid, numbers=b"", receipt=b""):
+            return (fn_admin.octets16(identity) + bytes(4) + event.to_bytes(8, "big")
+                    + fn_admin.octets16(numbers) + fn_admin.octets16(receipt)
+                    + bytes([fn_admin.EVIDENCE_TYPES.index(evidence)]))
+
+        for evidence, event in (("committed", 4294967297), ("uncertain", 0), ("refused", 0)):
+            with self.subTest(evidence=evidence):
+                detail = result(evidence, event)
+                proc = self.run_command(cns_reply(detail, "refused", b"conflict"), *args)
+                self.assertEqual(proc.returncode, 1, proc.stdout)
+                self.assertEqual(json.loads(proc.stdout), dict(outcome="refused", reason="conflict",
+                                 message_id=mid.decode(), domain=0, position=event, numbers="",
+                                 receipt="", evidence=evidence, op=71))
+        detail = result("committed", 71)
+        for invalid, reason in ((b"", b"conflict"), (detail[:-1], b"conflict"),
+                                (result("none", 0), b"conflict"), (result("committed", 0), b"conflict"),
+                                (result("refused", 71), b"conflict"), (result("committed", 71, b""), b"conflict"),
+                                (result("committed", 71, numbers=b"x"), b"conflict"),
+                                (result("committed", 71, receipt=b"x"), b"conflict"),
+                                (detail, b"operation-reused")):
+            with self.subTest(detail=invalid, reason=reason):
+                proc = self.run_command(cns_reply(invalid, "refused", reason), *args)
+                self.assertEqual(proc.returncode, 3, proc.stdout)
+                self.assertEqual(json.loads(proc.stdout)["op"], 71)
 
     def test_invalid_principal_create_reply_is_uncertain(self) -> None:
         proc = self.run_command(
