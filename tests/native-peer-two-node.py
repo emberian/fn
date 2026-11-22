@@ -141,6 +141,8 @@ def post_one(peer):
 def article_transit(source, target, directory):
     assert target.command(b"ARTICLE " + MID).startswith(b"430 ")
     assert target.command(b"BODY " + MID).startswith(b"430 ")
+    assert target.command(b"ARTICLE " + MID).startswith(b"430 ")
+    assert target.command(b"BODY " + MID).startswith(b"430 ")
     assert target.command(b"CHECK " + MID) == b"238 " + MID
     assert source.command(b"ARTICLE " + MID).startswith(b"220 ")
     article = []
@@ -183,6 +185,21 @@ def register_at_sender(source, directory):
     return cursor, view
 
 
+def cursor_peer_scope(cursor):
+    consumer, width = cursor_consumer_and_position_width(cursor)
+    assert consumer == bytes([CONSUMER])
+    offset = 5
+    for _ in range(3):  # history, incarnation, consumer
+        size, offset = leb_decode(cursor, offset)
+        offset += size
+    size, offset = leb_decode(cursor, offset)
+    principal = int.from_bytes(cursor[offset:offset + size], "big")
+    query_version = int.from_bytes(cursor[-4 * width:-3 * width], "big")
+    cursor_epoch = int.from_bytes(cursor[-2 * width:-width], "big")
+    assert principal > 0 and query_version > 0 and cursor_epoch > 0
+    return dict(source_principal=principal, query_version=query_version, cursor_epoch=cursor_epoch)
+
+
 # kind 28 holds the generated peer batch layout, including its digest tag.
 PEER_BATCH_HEADER = struct.Struct(">BQQQB32sQQHQQBI")
 PEER_BATCH_PAIR = struct.Struct(">QHH")
@@ -214,8 +231,11 @@ def read_sender_page(source, cursor, directory):
     assert 0 < next_position <= end and stop in (0, 1, 2, 3)
     pos = PEER_BATCH_HEADER.size
     cursor_size = int.from_bytes(result[pos:pos + 2], "big")
+    successor = result[pos + 2:pos + 2 + cursor_size]
     pos += 2 + cursor_size
     assert 0 < cursor_size <= 366 and pos + PEER_BATCH_PAIR.size <= len(result)
+    scope = cursor_peer_scope(cursor)
+    assert cursor_peer_scope(successor) == scope
     item_position, history_size, evidence_size = PEER_BATCH_PAIR.unpack_from(result, pos)
     pos += PEER_BATCH_PAIR.size
     assert item_position == next_position and history_size > 0 and evidence_size > 0
@@ -223,7 +243,7 @@ def read_sender_page(source, cursor, directory):
     assert MID in result[pos + history_size:]
     return dict(source_domain=history, source_incarnation=incarnation, source_revision=revision,
                 source_view=view, source_view_version=view_version, interpretation=interpretation,
-                position=next_position, chain=chain.hex())
+                position=next_position, chain=chain.hex(), **scope)
 
 
 def catch_up(source, target, directory):
@@ -319,7 +339,7 @@ def observer_environment(mode):
 def observe_cut(process, activation, expected):
     marker = process.wait_marker(b"PEER-POSITION-CUT ", seconds=40)
     keys = ("attempt", "generation", "baseline", "published", "consumer",
-            "history", "incarnation", "view", "prior", "next")
+            "history", "incarnation", "view", "prior", "next", "receipt_changed", "receipt_event")
     fields = marker.split()[1:]
     assert len(fields) == len(keys), marker
     cut = dict(zip(keys, map(int, fields)))
@@ -344,7 +364,7 @@ def pull_with_death_cut(directory, a, b, b_socket, a_auth, b_auth, replay_env):
                                        allow_interrupted=True, marker="cut-activation.json")
     cut = observe_cut(b.process, activation, sender_page)
     require_launcher_sigkill(b.process.proc)
-    assert cut["published"] > cut["baseline"], cut
+    assert cut["published"] > cut["baseline"] and cut["receipt_changed"] == 1 and cut["receipt_event"] > 0, cut
     (directory / "receipt-before-checkpoint-cut.json").write_text(json.dumps(cut, sort_keys=True) + "\n")
 
     with listen(b.image.parent, b.image, b_socket, b.serve, "receipt-cut-replay", env=replay_env) as (port, running):
@@ -354,6 +374,7 @@ def pull_with_death_cut(directory, a, b, b_socket, a_auth, b_auth, replay_env):
                                            marker="replay-activation.json")
         replay = observe_cut(running, activation, sender_page)
         assert replay["baseline"] == replay["published"] == cut["published"], (cut, replay)
+        assert replay["receipt_changed"] == replay["receipt_event"] == 0, replay
         (directory / "receipt-retry-cut.json").write_text(json.dumps(replay, sort_keys=True) + "\n")
 
         position = wait_for_progress(b_socket)
