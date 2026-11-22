@@ -843,7 +843,7 @@ def prepare_native_crypto(root: Path) -> None:
 
 def prepare_native_tls(root: Path, env: dict[str, str]) -> None:
     """Build and select the same native dependency for CLI TLS startup."""
-    if "FN2_TLS_CERTIFICATE" not in env and "FN2_TLS_KEY" not in env:
+    if not any(key in env for key in ("FN2_TLS_CERTIFICATE", "FN2_TLS_KEY", "FN2_PEER_PULL_CA_FILE", "FN2_PEER_PULL_TLS_NAME")):
         return
     try:
         subprocess.run(
@@ -1005,6 +1005,8 @@ def cmd_serve(args: argparse.Namespace, root: Path) -> int:
             env["FN2_GROUPS"] = saved_groups
     for option, variable in ((args.tls_certificate, "FN2_TLS_CERTIFICATE"),
                              (args.tls_key, "FN2_TLS_KEY"),
+                             (args.peer_pull_ca_file, "FN2_PEER_PULL_CA_FILE"),
+                             (args.peer_pull_tls_name, "FN2_PEER_PULL_TLS_NAME"),
                              (args.tls_handshakes, "FN2_TLS_HANDSHAKES"),
                              (args.tls_window, "FN2_TLS_WINDOW"),
                              (args.tls_handshake_turns, "FN2_TLS_HANDSHAKE_TURNS"),
@@ -1575,6 +1577,8 @@ def build_parser() -> argparse.ArgumentParser:
     p_serve.add_argument("--control-sock", help="owner-only (0600) FNCT Unix control/consumer/authority socket")
     p_serve.add_argument("--peering", action="store_true", help="enable interim NNTP transit peering verbs")
     p_serve.add_argument("--tls-certificate", type=lambda p: Path(p).resolve(), help="PEM certificate chain for STARTTLS")
+    p_serve.add_argument("--peer-pull-ca-file", type=lambda p: Path(p).resolve(), help="PEM trust anchors for the outbound peer")
+    p_serve.add_argument("--peer-pull-tls-name", help="expected DNS name or IP from the outbound peer certificate")
     p_serve.add_argument("--tls-key", type=lambda p: Path(p).resolve(), help="unencrypted PEM private key for STARTTLS")
     p_serve.add_argument("--tls-handshake-turns", help="maximum transport turns per handshake (default: 65536)")
     p_serve.add_argument("--tls-window", help="TLS transport BIO capacity in bytes (default: 16384)")

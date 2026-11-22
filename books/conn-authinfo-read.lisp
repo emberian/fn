@@ -5,10 +5,11 @@
 
 ;; Full envelope evidence can contain every application octet. The host
 ;; requests its capacity before I/O; the initialized authority partition
-;; decides whether any byte capture can be admitted.
+;; and outbound trust partition decide whether byte capture can be admitted.
 (defun fn2-conn-envelope-capture-admission (capacity fn2-core)
  (declare (xargs :stobjs fn2-core :guard (fn2-core-wfp fn2-core)))
- (if (and (posp capacity) (fn2-auth-served fn2-core)) :protected :ok))
+ (if (and (posp capacity) (or (fn2-auth-served fn2-core)
+                             (equal 1 (fn2-peer-tls-trust-ref fn2-core)))) :protected :ok))
 
 ;; The connection's lookup row is outside the cursor, CNS and authority
 ;; blocks. Only the protected login continuation can use it.

@@ -101,7 +101,9 @@ CONTRACTS = {
         '(and cap (fn2-ncap-tls cap) (fn2-tls-transport-selected-p (fn2-nop-cap op) (fn2-ncap-nonce cap) (fn2-native-tls-transport (fn2-ncap-tls cap))) (or (= (fn2-nop-kind op) *fn2-action-receive*) (= (fn2-nop-kind op) *fn2-action-send*)))'],
     'fn2-n-tls-ready': [
         '(return-from fn2-n-tls-ready (fn2-n-tls-handshake-ready host slot cap))',
-        '(fn2-native-tls-open (fn2-nhost-tls-quantum host) (fn2-nhost-tls-seed-capacity host))',
+        '(fn2-host-tls-role kind (fn2-nop-cap op) (fn2-nop-nonce op) (fn2-ncap-index cap) (fn2-ncap-nonce cap) (fn2-ncap-outbound-p cap))',
+        '(case role (:server (fn2-nhost-tls-config host)) (:client (fn2-nhost-peer-tls-config host)))',
+        '(fn2-native-tls-open config (fn2-nhost-tls-quantum host) (fn2-nhost-tls-seed-capacity host))',
         '(fn2-native-tls-record-step host slot tls (fn2-ncap-fd cap))',
         '(fn2-n-complete host slot :failed count 0 nil (fn2-n-octets host address count))',
         '(fn2-n-complete host slot :eof count 0 nil (fn2-n-octets host address count))'],
@@ -128,7 +130,7 @@ CONTRACTS = {
         '(replace seed bytes :start1 offset :end1 (+ offset count) :start2 (+ address offset) :end2 (+ address offset count))',
         '(fn2-native-send fd (sb-sys:sap+ (sb-sys:vector-sap output) offset) count)',
         '(fn2-native-recv fd (sb-sys:vector-sap input) count)',
-        '(fn2-tls-%new (fn2-nhost-tls-config host) offset)',
+        '(fn2-tls-%new (fn2-native-tls-config tls) offset)',
         '(values (sb-sys:sap-int allocated) 0)',
         '(fn2-tls-%free handle)'],
     'fn2-n-tls-handshake-ready': [

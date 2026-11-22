@@ -22,12 +22,13 @@ class TlsPrimitive(unittest.TestCase):
         cert, key = directory / "cert.pem", directory / "key.pem"
         subprocess.run(["openssl", "req", "-x509", "-newkey", "ec", "-pkeyopt",
                         "ec_paramgen_curve:prime256v1", "-nodes", "-days", "1",
-                        "-subj", "/CN=localhost", "-keyout", str(key), "-out", str(cert)],
+                        "-subj", "/CN=localhost", "-addext", "subjectAltName=DNS:localhost,IP:127.0.0.1", "-keyout", str(key), "-out", str(cert)],
                        check=True, capture_output=True, timeout=15)
         cls.certificate, cls.key = cert, key
         cls.lib = c.CDLL(os.environ["FN2_TLS_LIBRARY"])
         declarations = {
             "config": ([c.c_char_p, c.c_char_p, c.c_int], c.c_void_p),
+            "client_config": ([c.c_char_p, c.c_char_p, c.c_int], c.c_void_p),
             "config_free": ([c.c_void_p], None),
             "new": ([c.c_void_p, c.c_size_t], c.c_void_p),
             "free": ([c.c_void_p], None),
@@ -95,6 +96,55 @@ class TlsPrimitive(unittest.TestCase):
             if client_done and server_done and not self.pending and not self.lib.fn2_tls_output_pending(self.server):
                 return
         self.fail("bounded fixture exhausted handshake steps")
+
+    def native_client_connect(self, trust_file, reference):
+        config = self.lib.fn2_tls_client_config(os.fsencode(trust_file), reference, 0x0303)
+        self.assertTrue(config)
+        self.addCleanup(self.lib.fn2_tls_config_free, config)
+        outbound = self.lib.fn2_tls_new(config, self.capacity)
+        self.assertTrue(outbound)
+        self.addCleanup(self.lib.fn2_tls_free, outbound)
+        pending = [b"", b""]
+        states = [outbound, self.server]
+        complete = [False, False]
+        for _ in range(10000):
+            for i, state in enumerate(states):
+                if not complete[i]:
+                    code = self.lib.fn2_tls_handshake(state)
+                    if code == 4:
+                        return False
+                    self.assertIn(code, (0, 1, 2))
+                    complete[i] = code == 0
+                if not pending[i]:
+                    buf = c.create_string_buffer(71)
+                    n = self.lib.fn2_tls_drain(state, buf, len(buf))
+                    self.assertGreaterEqual(n, 0)
+                    pending[i] = buf.raw[:n]
+                if pending[i]:
+                    n = self.lib.fn2_tls_feed(states[1-i], pending[i], len(pending[i]))
+                    self.assertGreaterEqual(n, 0)
+                    pending[i] = pending[i][n:]
+            if all(complete):
+                return True
+        self.fail("bounded native client fixture exhausted handshake steps")
+
+    def test_outbound_client_verifies_configured_anchor_and_dns_san(self):
+        self.assertTrue(self.native_client_connect(self.certificate, b"localhost"))
+
+    def test_outbound_client_verifies_configured_anchor_and_ip_san(self):
+        self.assertTrue(self.native_client_connect(self.certificate, b"127.0.0.1"))
+
+    def test_outbound_client_refuses_wrong_reference(self):
+        self.assertFalse(self.native_client_connect(self.certificate, b"wrong.invalid"))
+
+    def test_outbound_client_refuses_unrelated_trust_anchor(self):
+        root = Path(self.tmp.name)
+        other = root / "other.pem"
+        subprocess.run(["openssl", "req", "-x509", "-newkey", "ec", "-pkeyopt",
+                        "ec_paramgen_curve:prime256v1", "-nodes", "-days", "1",
+                        "-subj", "/CN=other", "-keyout", str(root / "other.key"), "-out", str(other)],
+                       check=True, capture_output=True, timeout=15)
+        self.assertFalse(self.native_client_connect(other, b"localhost"))
 
     def test_fragmented_handshake_and_encrypted_application_roundtrip(self):
         self.handshake()
