@@ -220,6 +220,7 @@ ACL2_BOOKS = \
   books/peer-pull-request-encode \
   tests/peer-pull-request-encode-unit \
   tests/peer-pull-budget-unit \
+  tests/peer-pull-budget-pool-unit \
   books/peer-pull-reply-pool \
   tests/peer-pull-reply-pool-unit \
   books/peer-pull-reply \

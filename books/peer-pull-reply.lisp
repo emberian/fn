@@ -96,9 +96,13 @@
             ((equal dialog *fn2-pull-dialog-read*)
              ;; One item per page bounds the reciprocal import transaction.
              ;; A subsequent READ continues from its settled checkpoint.
-             (fn2-peer-pull-encode-read base row private pg cursor-off cursor-len *fn2-peer-pull-max-page-items*
-               (fn2-xfnc-batch-read-budget cursor-len (fn2-fnct-cap rx fn2-pool))
-               tx tg kind id generation fn2-fields fn2-digests fn2-b3 fn2-pool))
+             (mv-let (rc wire-version)
+               (fn2-pool-read private pg (+ 4 (nfix cursor-off)) kind id generation fn2-pool)
+               (if (eq rc :ok)
+                   (fn2-peer-pull-encode-read base row private pg cursor-off cursor-len *fn2-peer-pull-max-page-items*
+                     (fn2-xfnc-batch-read-budget wire-version cursor-len (fn2-fnct-cap rx fn2-pool))
+                     tx tg kind id generation fn2-fields fn2-digests fn2-b3 fn2-pool)
+                 (mv rc fn2-fields fn2-digests fn2-b3 fn2-pool))))
             (t (mv :state fn2-fields fn2-digests fn2-b3 fn2-pool)))
       (mv code fn2-core))))
 (in-theory (disable fn2-peer-pull-request))
