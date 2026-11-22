@@ -186,7 +186,10 @@ D5 repeats the lookup after sealing and before the Message-ID decision; C stages
 operation key against active, frozen and private batch overlays, and a losing operation-slot insert
 releases its successor and re-reads. A committed conflict records an outcome in its evidence batch.
 The candidate requires composed certification and the native `--durable-retry` process-death campaign.
-Retry expiration, populated numbers and receipt, and conflict detail in a refusal remain open.
+A conflict uses the ordinary APPEND result inside a refused kind 28 frame. Its reason is `conflict`.
+The Message-ID identifies the disputed article. A committed evidence result carries its event, while
+uncertain or refused evidence carries position zero. A lost reply leaves the evidence outcome unknown.
+Retry expiration and populated group numbers and receipt remain open.
 An append is POST: D's upload and D5's transaction, the same path, the same refusal words, the same group
 numbers. So an NNTP reader sees the appended article by GROUP and ARTICLE with the exact octets: no second
 write path exists to diverge.
@@ -713,7 +716,8 @@ Outbound feeding and catchup coverage remain the implementation frontier in
    and kind 28 codecs over a fields stripe, B's hasher for the trailer; replies built forward, scratch first,
    sent from the frame's offset): `fn2-ctl`'s :frame opens the frame (kind 1 command, answered in kind 2; kind 4
    dispatched with its code), `fn2-cns-decode-port` decodes codes 1 2 11 14 15 16 18 by the generated K4 codecs
-   and `fn2-cns-post-reply` answers in kind 28 (a refusal or uncertainty carries no result). The clients are
+   and `fn2-cns-post-reply` answers in kind 28. A conflict refusal carries the APPEND evidence result
+   described in §3.3. Other refusals and ordinary uncertain replies have empty result octets. The clients are
    `tests/fnct-client.lisp` (sim-layer-e, m2-cuts) and `tests/surface/fn2_consumer_socket.py`. A read or wait
    page carries its items: `fn2-cns`'s :page walks the principal's addr entries past the cursor one a step
    (`fn2-cns-item-next`: the entry, its article row, the type: `gap` when the row is gone, `withdrawn`, a
