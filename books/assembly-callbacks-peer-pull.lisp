@@ -1,7 +1,7 @@
 ; One-shot client of a protected remote NNTP node. The owner activates a
 ; :taken row after recovery and transfers its booked account to this actor.
 (in-package "ACL2")
-(include-book "peer-pull-stage")
+(include-book "peer-pull-reply")
 (include-book "xfnc-ops")
 
 (defcost fn2-pull-connect :child fn2-issue-connect :descriptors 1 :answers t
@@ -9,6 +9,8 @@
  :doc "Connect to the operator-authorized concrete remote IP and port.")
 (defcost fn2-pull-read-line :child fn2-peer-pull-line :bytes 2048
  :doc "Classify one externally framed NNTP status line in the held RX workspace.")
+(defcost fn2-pull-reply-count :child fn2-peer-pull-reply-count :bytes 2048
+ :doc "Classify the protected counted status and determine the exact allowed FNCT reply span.")
 (defcost fn2-pull-command :child fn2-peer-pull-format-command :answers t :bytes 1024
  :tables (fn2-core-pool) :doc "Write STARTTLS or one protected authentication command into exclusive TX.")
 (defcost fn2-pull-wipe :child fn2-peer-pull-wipe :answers t :bytes 1280
@@ -17,6 +19,7 @@
  (value (cons 'progn
   (append (fn2-arms-op-face-events 'fn2-pull-connect 'fn2-issue-connect (w state))
           (fn2-arms-op-face-events 'fn2-pull-read-line 'fn2-peer-pull-line (w state))
+          (fn2-arms-op-face-events 'fn2-pull-reply-count 'fn2-peer-pull-reply-count (w state))
           (fn2-arms-op-face-events 'fn2-pull-command 'fn2-peer-pull-format-command (w state))
           (fn2-arms-op-face-events 'fn2-pull-wipe 'fn2-peer-pull-wipe (w state))))))
 
@@ -98,6 +101,9 @@
                                    :principal row-principal-slot)
             :bind (issued sg)
             :ok ((:set (op issued) (op-gen sg)) (:wait :completion :bytes len))))
+          ((member-equal row-dialog (list *fn2-pull-dialog-register* *fn2-pull-dialog-read*))
+           (:do (tc) (fn2-core-reset row-tx-slot row-tx-gen) :case ((:otherwise (:stop :machine-phase))))
+           (:set (start 0) (pos 0)) (:next :reply-line) (:charge :steps *fn2-work-transition* :runnable t))
           (t
            (:do (tc) (fn2-pull-wipe row-tx-slot row-tx-gen 0 *fn2-nntp-line-cap* *fn2-peer-pull-kind* id row-generation)
             :case ((:otherwise (:stop :machine-phase))))
@@ -121,9 +127,74 @@
           ((equal row-protected 1)
            (:set (dialog *fn2-pull-dialog-user*)) (:goto next-command))
           (t (:goto terminate))))
-  ;; A checked remote login cannot import any row by itself. REGISTER and
-  ;; READ attach here with their scoped cursor and immutable page decoder.
-  (:authenticated (:goto terminate))
+  (:authenticated
+   (:set (dialog *fn2-pull-dialog-register*)) (:next :request)
+   (:charge :steps *fn2-work-transition* :runnable t))
+  (:request
+   (:if (fn2-xfnc-expired-p id) ((:goto terminate))
+        ((:do (code) (fn2-peer-pull-request id row-generation)
+          :case (((:ok) (:set (tx-off 0)) (:next :send) (:charge :bytes 4096 :steps *fn2-work-transition* :runnable t))
+                 (:otherwise (:goto terminate)))))))
+  (:reply-line
+   (:cond ((fn2-xfnc-expired-p id) (:goto terminate))
+          ((posp row-pending) (:charge :steps *fn2-work-empty*))
+          (t (:do (code after status length) (fn2-pull-reply-count row-start row-pos row-rx-slot row-rx-gen
+                                                                   *fn2-peer-pull-kind* id row-generation))
+             (:cond ((eq code :need-more) (:set (pos after)) (:goto receive))
+                    ((eq code :budget) (:set (pos after)) (:charge :bytes 2048 :steps *fn2-work-transition* :runnable t))
+                    ((and (eq code :ok) (<= (fn2-conn-fill row-rx-slot) (+ after length)))
+                     (:set (start after) (pos after) (copied 0) (reply-status status) (frame-len length))
+                     (:next :compact) (:charge :bytes 2048 :steps *fn2-work-transition* :runnable t))
+                    (t (:goto terminate))))))
+  (:compact
+   (:if (fn2-xfnc-expired-p id) ((:goto terminate))
+        ((:do (code copied) (fn2-core-drop-prefix row-rx-slot row-rx-gen row-start row-copied *fn2-conn-compact-bytes*)
+          :case (((:more) (:set (copied copied)) (:charge :bytes *fn2-conn-compact-bytes* :steps *fn2-work-transition* :runnable t))
+                 ((:ok) (:set (start 0) (pos 0) (copied 0)) (:next :frame-input)
+                  (:charge :bytes *fn2-conn-compact-bytes* :steps *fn2-work-transition* :runnable t))
+                 (:otherwise (:goto terminate)))))))
+  (:frame-input
+   (:cond ((fn2-xfnc-expired-p id) (:goto terminate))
+          ((posp row-pending) (:charge :steps *fn2-work-empty*))
+          ((equal row-frame-len (fn2-conn-fill row-rx-slot))
+           (:next :frame-header) (:charge :steps *fn2-work-transition* :runnable t))
+          ((< (fn2-conn-fill row-rx-slot) row-frame-len)
+           (:let len (min *fn2-conn-receive-bytes* (nfix (- row-frame-len (fn2-conn-fill row-rx-slot)))))
+           (:issue (fn2-issue-receive row-cap-index row-cap-nonce row-rx-slot row-rx-gen len :principal row-principal-slot)
+            :bind (issued sg) :ok ((:set (op issued) (op-gen sg)) (:wait :completion :bytes len))))
+          (t (:goto terminate))))
+  (:frame-header
+   (:do (code off end) (fn2-peer-pull-open-reply id row-generation)
+    :case (((:ok) (:next :frame-hash) (:charge :bytes 32 :steps *fn2-work-transition* :runnable t))
+           (:otherwise (:goto terminate)))))
+  (:frame-hash
+   (:do (code off end) (fn2-peer-pull-open-reply id row-generation)
+    :case (((:ok) (:next :frame-trailer) (:charge :bytes 4096 :steps *fn2-work-transition* :runnable t))
+           (:otherwise (:goto terminate)))))
+  (:frame-trailer
+   (:do (code off end) (fn2-peer-pull-open-reply id row-generation)
+    :case (((:ok) (:next :frame-result) (:charge :bytes 32 :steps *fn2-work-transition* :runnable t))
+           (:otherwise (:goto terminate)))))
+  (:frame-result
+   (:cond ((fn2-xfnc-expired-p id) (:goto terminate))
+          (t (:do (code off end) (fn2-peer-pull-open-reply id row-generation)
+              :case (((:ok) (:cond
+                       ((equal row-dialog *fn2-pull-dialog-register*)
+                        (:do (rc) (fn2-peer-pull-accept-registration id row-generation off end)
+                         :case (((:ok) (:do (tc) (fn2-core-reset row-rx-slot row-rx-gen)
+                                        :case ((:otherwise (:stop :machine-phase))))
+                                (:set (dialog *fn2-pull-dialog-read*)) (:next :resume)
+                                (:charge :bytes 4096 :steps *fn2-work-transition* :runnable t))
+                               (:otherwise (:goto terminate)))))
+                       ((equal row-dialog *fn2-pull-dialog-read*)
+                        (:set (result-off off) (result-end end)) (:next :import)
+                        (:charge :bytes 4096 :steps *fn2-work-transition* :runnable t))
+                       (t (:goto terminate))))
+                     (:otherwise (:goto terminate)))))))
+  ;; The receiving checkpoint and C's item settlement own these turns. A
+  ;; successful registration alone cannot select a receiver resume position.
+  (:resume (:goto terminate))
+  (:import (:goto terminate))
   (:closing
    (:cond ((and (posp row-pending) (equal row-cancel-issued 0))
            (:issue (fn2-issue-cancel row-op row-op-gen :principal row-principal-slot)
@@ -173,7 +244,7 @@
           :case ((:otherwise (:stop :account))))
          (:set (tx-off (+ row-tx-off count))) (:wake))
         ((:next :closing) (:wake))))
-  (:receive-result :from (:line :closing)
+  (:receive-result :from (:line :reply-line :frame-input :closing)
    (:if (and (member-equal outcome (list *fn2-outcome-done* *fn2-outcome-short*)) (natp count) (< 0 count))
         ((:do (qc) (fn2-account-charge-core row-principal-slot *fn2-account-charge-rx* count)
           :case ((:otherwise (:stop :account))))

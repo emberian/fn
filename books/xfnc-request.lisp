@@ -2,13 +2,8 @@
 ; The carrier retains the authenticated connection's exact, opened frame.
 (in-package "ACL2")
 (include-book "cns")
+(include-book "xfnc-request-layout")
 (fn2-book-layer :e)
-
-; A peer registers one stream. The canonical stream list encodes each
-; name as (:octets 64), inside REGISTER's length-prefixed streams field.
-(deflayout fn2-xfnc-stream-name '((name (:octets 64))))
-(defconst *fn2-xfnc-register-body-max* (+ 1 1 8 2 1 64 1))
-(defconst *fn2-xfnc-read-body-max* (+ 1 2 366 4 4))
 
 (defun fn2-xfnc-decode-register (base start end slot gen kind owner generation fn2-fields fn2-pool)
   (declare (xargs :stobjs (fn2-fields fn2-pool)
@@ -65,15 +60,15 @@
     (if (and ok (posp id) (equal width (fn2-fnct-be-width id))) id 0)))
 (in-theory (disable fn2-xfnc-cursor-id))
 
-(defun fn2-xfnc-decode-cursor (base start end principal history incarnation
+(defun fn2-xfnc-unpack-cursor (base start end expected-principal history incarnation
                                slot gen kind owner generation fn2-fields fn2-pool)
   (declare (xargs :stobjs (fn2-fields fn2-pool)
                   :guard (and (fn2-fields-wfp fn2-fields) (fn2-pool-wfp fn2-pool)
                               (natp base) (<= (+ base 128) (fn2-fields-rows fn2-fields)))))
-  (b* (((unless (< (+ 4 (nfix start)) (nfix end))) (mv :frame 0 0 0 0 0 0 fn2-fields))
+  (b* (((unless (< (+ 4 (nfix start)) (nfix end))) (mv :frame 0 0 0 0 0 0 0 fn2-fields))
        ((mv vc version) (fn2-pool-read slot gen (+ 4 (nfix start)) kind owner generation fn2-pool))
        ((unless (and (eq vc :ok) (member-equal version '(1 2))))
-        (mv :cursor-version 0 0 0 0 0 0 fn2-fields))
+        (mv :cursor-version 0 0 0 0 0 0 0 fn2-fields))
        (v1 (equal version 1))
        ((mv code next fn2-fields)
         (if v1
@@ -81,16 +76,16 @@
           (fn2-fncu-v2-decode base slot gen start end kind owner generation fn2-fields fn2-pool)))
        ((unless (and (eq code :ok) (equal next end)
                      (equal *fn2-fncu-magic* (fn2-fields-value (+ base *fn2-fncu-v1-field-magic*) fn2-fields))))
-        (mv :frame 0 0 0 0 0 0 fn2-fields))
+        (mv :frame 0 0 0 0 0 0 0 fn2-fields))
        (h (fn2-xfnc-cursor-id (+ base *fn2-fncu-v1-field-history*) slot gen kind owner generation fn2-fields fn2-pool))
        (inc (fn2-xfnc-cursor-id (+ base *fn2-fncu-v1-field-incarnation*) slot gen kind owner generation fn2-fields fn2-pool))
        (pid (fn2-xfnc-cursor-id (+ base *fn2-fncu-v1-field-principal*) slot gen kind owner generation fn2-fields fn2-pool))
        (consumer (fn2-xfnc-cursor-id (+ base *fn2-fncu-v1-field-consumer*) slot gen kind owner generation fn2-fields fn2-pool))
        (query (fn2-xfnc-cursor-id (+ base *fn2-fncu-v1-field-query*) slot gen kind owner generation fn2-fields fn2-pool))
        ((unless (and (fn2-origin-physicalp history incarnation) (equal h history) (equal inc incarnation)
-                     (posp pid) (equal pid principal) (posp consumer) (posp query)
+                     (posp pid) (if expected-principal (equal pid expected-principal) (unsigned-byte-p 60 pid)) (posp consumer) (posp query)
                      (or v1 (equal 0 (fn2-fields-value (+ base *fn2-fncu-v2-field-domain*) fn2-fields)))))
-        (mv :scope 0 0 0 0 0 0 fn2-fields))
+        (mv :scope 0 0 0 0 0 0 0 fn2-fields))
        (query-version (fn2-fields-value (+ base (if v1 *fn2-fncu-v1-field-query-version*
                                                  *fn2-fncu-v2-field-query-version*)) fn2-fields))
        (view (fn2-fields-value (+ base (if v1 *fn2-fncu-v1-field-view-version*
@@ -101,8 +96,26 @@
     (if (and (posp query-version) (unsigned-byte-p 60 query-version)
              (posp view) (unsigned-byte-p 60 view) (posp epoch) (unsigned-byte-p 32 epoch)
              (unsigned-byte-p 60 position))
-        (mv :ok query consumer epoch query-version view position fn2-fields)
-      (mv :scope 0 0 0 0 0 0 fn2-fields))))
+        (mv :ok pid query consumer epoch query-version view position fn2-fields)
+      (mv :scope 0 0 0 0 0 0 0 fn2-fields))))
+(fn2-pool-block-shape fn2-xfnc-unpack-cursor-shape
+  (fn2-xfnc-unpack-cursor base start end expected-principal history incarnation slot gen kind owner generation fn2-fields fn2-pool)
+  (and (fn2-fieldsp fn2-fields) (fn2-fields-wfp fn2-fields) (fn2-poolp fn2-pool) (fn2-pool-wfp fn2-pool)
+       (natp base) (<= (+ base 128) (fn2-fields-rows fn2-fields)))
+  ((fn2-fields 8))
+  (("Goal" :in-theory (e/d (fn2-xfnc-unpack-cursor)
+                           (fn2-fieldsp fn2-fields-wfp fn2-poolp fn2-pool-wfp fn2-fields-rows)))))
+(in-theory (disable fn2-xfnc-unpack-cursor))
+
+(defun fn2-xfnc-decode-cursor (base start end principal history incarnation
+                               slot gen kind owner generation fn2-fields fn2-pool)
+  (declare (xargs :stobjs (fn2-fields fn2-pool)
+                  :guard (and (fn2-fields-wfp fn2-fields) (fn2-pool-wfp fn2-pool)
+                              (natp base) (<= (+ base 128) (fn2-fields-rows fn2-fields)))))
+  (mv-let (code pid query consumer epoch version view position fn2-fields)
+    (fn2-xfnc-unpack-cursor base start end (or principal 0) history incarnation slot gen kind owner generation fn2-fields fn2-pool)
+    (declare (ignore pid))
+    (mv code query consumer epoch version view position fn2-fields)))
 (fn2-pool-block-shape fn2-xfnc-decode-cursor-shape
   (fn2-xfnc-decode-cursor base start end principal history incarnation slot gen kind owner generation fn2-fields fn2-pool)
   (and (fn2-fieldsp fn2-fields) (fn2-fields-wfp fn2-fields) (fn2-poolp fn2-pool) (fn2-pool-wfp fn2-pool)

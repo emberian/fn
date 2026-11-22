@@ -4,6 +4,7 @@
 (include-book "core-children")
 (include-book "profile")
 (include-book "xfnc-policy")
+(include-book "peer-pull-profile")
 (include-book "origin")
 (include-book "sched")
 (include-book "commit-alloc")
@@ -97,8 +98,15 @@
  (declare (xargs :guard t))
  (+ 4 (fn2-b-upload-hash-rows profile)))
 
+(defun fn2-b-pull-first (profile)
+ (declare (xargs :guard t))
+ (+ (fn2-b-xfnc-first profile) (fn2-b-xfnc-rows profile)))
+(defun fn2-b-ctl-first (profile)
+ (declare (xargs :guard t))
+ (+ (fn2-b-pull-first profile) (fn2-peer-pull-capacity profile)))
+
 (defcolumns fn2-xfnc-config
- ((request-max :u32) (discard-max :u32) (body-ms :u32) (first-row :u32) (row-count :u32)))
+ ((request-max :u32) (discard-max :u32) (body-ms :u32) (first-row :u32) (row-count :u32) (pull-first :u32) (pull-count :u32)))
 (defun fn2-xfnc-config-from (profile fn2-xfnc-config)
  (declare (xargs :stobjs fn2-xfnc-config))
  (let* ((fn2-xfnc-config (fn2-xfnc-config-init 1 fn2-xfnc-config))
@@ -110,7 +118,8 @@
     (discard-max (if enabled (loghead 32 (nfix (fn2-profile-get :max-consumer-discard-octets profile))) 0))
     (body-ms (if enabled (loghead 32 (nfix (fn2-profile-get :consumer-body-timeout-ms profile))) 0))
     (first-row (if enabled (loghead 32 (fn2-b-xfnc-first profile)) 0))
-    (row-count (if enabled (loghead 32 (fn2-b-xfnc-rows profile)) 0)))))
+    (row-count (if enabled (loghead 32 (fn2-b-xfnc-rows profile)) 0))
+    (pull-first (loghead 32 (fn2-b-pull-first profile))) (pull-count (fn2-peer-pull-capacity profile)))))
 
 (defthm fn2-xfnc-config-from-type
  (implies (fn2-xfnc-configp fn2-xfnc-config)
@@ -120,7 +129,8 @@
 (in-theory (disable fn2-xfnc-config-from))
 (defcorechild fn2-core-xfnc-config fn2-xfnc-config
  :init (fn2-xfnc-config-from profile fn2-xfnc-config)
- :profilep (fn2-xfnc-profilep profile)
+ :profilep (and (fn2-xfnc-profilep profile) (fn2-peer-pull-profilep profile)
+                (unsigned-byte-p 32 (fn2-b-ctl-first profile)))
  :why "Pinned counted-carrier bounds, watchdog duration and private format row partition.")
 
 (defun fn2-b-ctl-rows (profile)
@@ -128,13 +138,13 @@
  (nfix (fn2-b-capacity :control-connections 2 profile)))
 (defun fn2-b-ctl-slot (s profile)
  (declare (xargs :guard t))
- (+ (fn2-b-xfnc-first profile) (fn2-b-xfnc-rows profile) (nfix s)))
+ (+ (fn2-b-ctl-first profile) (nfix s)))
 (defun fn2-b-cns-source-rows (profile)
  (declare (xargs :guard t))
  (nfix (fn2-profile-get :cns profile)))
 (defun fn2-b-format-floor (profile)
  (declare (xargs :guard t))
- (+ (fn2-b-xfnc-first profile) (fn2-b-xfnc-rows profile) (fn2-b-ctl-rows profile)
+ (+ (fn2-b-ctl-first profile) (fn2-b-ctl-rows profile)
     (fn2-b-cns-source-rows profile) 5))
 (defun fn2-b-format-slots (profile)
  (declare (xargs :guard t))
