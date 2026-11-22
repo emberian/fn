@@ -19,6 +19,7 @@
 ;; answers frame for an empty one).
 (defconst *fn2-authority-requests*
   `((4 stream-resolve ((stream-name (:octets16 250))))
+    (7 peer-position ((principal (:id principal)) (consumer (:id consumer))))
     (6 peer-pull ((principal (:id principal)) (target (:id stream)) (consumer (:id consumer)) (history (:id history))
                   (incarnation (:id incarnation)) (view (:id grant)) (remote-stream (:octets16 64))
                   (address :u32be) (port :u16be) (timeout-ms :u32be) (user (:octets16 64)) (secret (:octets16 496))))
@@ -37,6 +38,10 @@
 (defconst *fn2-authority-results*
   '((stream-resolve ((target (:id stream))))
     (peer-pull ((attempt (:id attempt)) (generation (:id generation))))
+    (peer-position ((found :bool)))
+    (peer-position-found ((target-stream (:id stream)) (source-domain (:id domain)) (source-incarnation (:id incarnation))
+                          (source-revision (:id version)) (source-view (:id stream)) (source-view-version (:id version))
+                          (interpretation :u16be) (position :u64be) (chain :digest)))
     (principal-create ((principal (:id principal))))
     (principal-set-password ((principal (:id principal))))
     (principal-bind ((principal (:id principal)) (authority-head (:id grant))))
@@ -92,6 +97,7 @@
                                     (list (car row) (fn2-fnct-status-octet class) reason))
                  (and (eq class :accepted)
                       (append (fn2-layout-octets (cadr (assoc-eq verb *fn2-authority-results*)) values)
-                              (and (eq verb 'grant-get) (equal (car values) 1)
-                                   (fn2-layout-octets (cadr (assoc-eq 'grant-get-found *fn2-authority-results*))
-                                                      found-values))))))))
+                              (and (equal (car values) 1)
+                                   (let ((tail (case verb (grant-get 'grant-get-found) (peer-position 'peer-position-found))))
+                                     (and tail (fn2-layout-octets (cadr (assoc-eq tail *fn2-authority-results*))
+                                                                 found-values))))))))))
