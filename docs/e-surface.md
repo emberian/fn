@@ -583,6 +583,10 @@ and `fn2-identity-receipts` (id 1, 11; on dev), the identity summary their fold.
 ### 13.4 Catch-up between fn2 nodes (the successor of XFNCATCHUP)
 fn1 peers keep XFNCATCHUP with its declared loss (a view reshape skips undetected; ruling 11), unextended.
 An fn2 peer catches up over XFNC with the port: `register :history` on the peer grant's view, then `read`.
+The sender publishes a READ frame when the first SEND descriptor acquires its connection-owned TX
+range. Until that point, the request cursor retains the authenticated principal and view. If descriptor
+pressure parks the connection, it checks current grants again after waking. Revocation before the
+first loan suppresses the staged frame. Subsequent partial writes finish that already published frame.
 A **catch-up batch** is a read page whose items are the view's entries in commit order, each with its
 history entry and its identity evidence (namespace, Message-ID, subject identity, evidence identity, issuer,
 dependencies), and whose header carries what XFNCATCHUP's `291` line carried and more: the sender's
