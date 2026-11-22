@@ -211,6 +211,7 @@ ACL2_BOOKS = \
   tests/peer-pull-admission-unit \
   books/peer-pull-plan \
   tests/peer-pull-cancel-unit \
+  tests/peer-pull-fold-unit \
   books/pool-zero \
   books/peer-pull-line \
   books/peer-pull-owner \
