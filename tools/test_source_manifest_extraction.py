@@ -12,7 +12,7 @@ class Extraction(unittest.TestCase):
   new=(ROOT/"books/source-manifest-entry.lisp").read_text()
   self.assertIn(tail,new)
  def test_old_wrapper_uses_shared_tail(self):
-  s=(ROOT/"books/cursor.lisp").read_text()
+  s=(ROOT/"books/cursor-arm-plan.lisp").read_text()
   body=s[s.index("(defun fn2-cursor-manifest-entry-of "):s.index("\n(defthm fn2-cursor-manifest-entry-of-shape")]
   self.assertIn("fn2-source-manifest-entry base *fn2-article-location-hashes-max*",body)
   self.assertNotIn("fn2-am-get-entry",body)
