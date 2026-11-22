@@ -8,7 +8,12 @@
 (defmacro fn2-checkpoint-maintenance-staging-events ()
  '(progn
  (defun fn2-checkpoint-staging-claim (expected-c okind oslot ogen need fn2-core)
-  (declare (xargs :stobjs fn2-core :guard (fn2-core-wfp fn2-core)))
+  (declare (xargs :stobjs fn2-core :guard (fn2-core-wfp fn2-core)
+   :guard-hints (("Goal" :in-theory (disable fn2-core-wfp
+     fn2-checkpoint-future-rows fn2-checkpoint-future-windows-rows
+     fn2-checkpoint-future-windows-borrowed fn2-checkpoint-future-candidate
+     fn2-checkpoint-future-bind fn2-checkpoint-future-lease
+     fn2-pool-reset fn2-pool-cap)))))
   (stobj-let ((fn2-checkpoint-future (fn2-core-checkpoint-future fn2-core))
               (fn2-checkpoint-future-windows (fn2-core-checkpoint-future-windows fn2-core))
               (fn2-extents (fn2-core-extents fn2-core)) (fn2-pool (fn2-core-pool fn2-core)))
@@ -36,7 +41,12 @@
         (fn2-checkpoint-future-windows (fn2-checkpoint-future-windows-put 0
          (borrowed 1) (borrower-kind okind) (borrower-slot oslot) (borrower-gen ogen))))
     (mv :ok c token slot gen fn2-checkpoint-future fn2-checkpoint-future-windows fn2-pool)) (mv code c token slot gen fn2-core)))
- (fn2-core-preserves fn2-checkpoint-staging-claim (expected-c okind oslot ogen need fn2-core) :position 5 :rows nil)
+ (fn2-core-preserves fn2-checkpoint-staging-claim (expected-c okind oslot ogen need fn2-core) :position 5 :rows nil
+  :hints (("Goal" :in-theory (disable fn2-core-wfp
+    fn2-checkpoint-future-rows fn2-checkpoint-future-windows-rows
+    fn2-checkpoint-future-windows-borrowed fn2-checkpoint-future-candidate
+    fn2-checkpoint-future-bind fn2-checkpoint-future-lease
+    fn2-pool-reset fn2-pool-cap))))
  (defun fn2-checkpoint-staging-current (okind oslot ogen need fn2-core)
   (declare (xargs :stobjs fn2-core :guard (fn2-core-wfp fn2-core)))
   (let ((c (stobj-let ((fn2-checkpoint-future (fn2-core-checkpoint-future fn2-core))) (c)
