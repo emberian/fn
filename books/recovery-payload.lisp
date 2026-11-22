@@ -9,6 +9,7 @@
 (in-package "ACL2")
 (include-book "assembly-callbacks-s")
 (include-book "assembly-callbacks-d")
+(include-book "journal-record-body")
 (fn2-book-layer :d)
 ; B's recovery theory (recovery-machine.lisp): the core's child type and WFP rules.
 (make-event (value (fn2-recovery-local-theory)))
@@ -16,9 +17,7 @@
 ; The record's fields are decoded at the recovery row's fields (unused once
 ; the chain is verified), room for the largest layout the stream holds.
 (defconst *fn2-rp-room*
-  (max (max *fn2-format-record-header-num-fields* *fn2-format-keyed-mutation-num-fields*)
-       (max (max *fn2-format-article-acceptance-num-fields* *fn2-run-entry-rows*)
-            (max *fn2-am-header-fields* *fn2-am-entry-fields*))))
+  (max *fn2-journal-record-fields* (max *fn2-am-header-fields* *fn2-am-entry-fields*)))
 (defmacro fn2-rp-roomp ()
   '(<= (+ *fn2-rec-field-base* *fn2-rp-room*) (fn2-fields-rows fn2-fields)))
 (defconst *fn2-rp-article-kind* (+ *fn2-commit-txn-schema-record-kind-base* *fn2-txn-article-sid*))
@@ -66,27 +65,17 @@
 ;; commit seals: a keyed mutation, an article acceptance, C's run schemas),
 ;; the stream ending at REND: (mv code next fn2-core).
 (defun fn2-rp-body (kind off rend slot gen id ogen fn2-core)
-  (declare (xargs :stobjs fn2-core :guard (fn2-core-wfp fn2-core)
-                  :guard-hints (("Goal" :in-theory (disable fn2-format-article-acceptance-decode
-                                                            fn2-format-keyed-mutation-decode fn2-run-layout-decode)))))
+  (declare (xargs :stobjs fn2-core :guard (fn2-core-wfp fn2-core)))
   (stobj-let ((fn2-fields (fn2-core-fields fn2-core)) (fn2-pool (fn2-core-pool fn2-core)))
     (code next fn2-fields)
-    (let ((base *fn2-rec-field-base*) (okind *fn2-recovery-machine-kind*))
-      (cond ((not (and (fn2-rp-roomp) (unsigned-byte-p 32 off) (unsigned-byte-p 32 rend)
-                       (unsigned-byte-p 32 id) (unsigned-byte-p 60 ogen)))
-             (mv :bounds 0 fn2-fields))
-            ((equal kind *record-kind-keyed-mutation*)
-             (fn2-format-keyed-mutation-decode base slot gen off rend okind id ogen fn2-fields fn2-pool))
-            ((equal kind *record-kind-article-acceptance*)
-             (fn2-format-article-acceptance-decode base slot gen off rend okind id ogen fn2-fields fn2-pool))
-            ((and (natp kind) (<= *record-kind-identity-evidence* kind) (<= kind *fn2-commit-txn-schema-record-kind-last*))
-             (fn2-run-layout-decode (- kind *fn2-commit-txn-schema-record-kind-base*) 0 base slot gen off rend
-                                    okind id ogen fn2-fields fn2-pool))
-            (t (mv :kind 0 fn2-fields))))
+    ;; This recovery pass can only adopt B's keyed records and C's transaction members.
+    ;; Decoding a checkpoint maintenance body alone cannot establish its physical effects.
+    (if (or (equal kind *record-kind-keyed-mutation*) (member-equal kind *fn2-commit-txn-record-kinds*))
+        (fn2-journal-body-decode kind *fn2-rec-field-base* slot gen off rend
+                                 *fn2-recovery-machine-kind* id ogen fn2-fields fn2-pool)
+      (mv :kind 0 fn2-fields))
     (mv (if (eq code :ok) :ok :invalid) (nfix next) fn2-core)))
-(fn2-core-preserves fn2-rp-body (kind off rend slot gen id ogen fn2-core) :position 2 :rows nil
-  :hints (("Goal" :in-theory (disable fn2-format-article-acceptance-decode fn2-format-keyed-mutation-decode
-                                      fn2-run-layout-decode))))
+(fn2-core-preserves fn2-rp-body (kind off rend slot gen id ogen fn2-core) :position 2 :rows nil)
 (defthm fn2-rp-body-natp (natp (mv-nth 1 (fn2-rp-body kind off rend slot gen id ogen fn2-core)))
   :rule-classes :type-prescription :hints (("Goal" :in-theory (enable fn2-rp-body))))
 (in-theory (disable fn2-rp-body))
@@ -195,13 +184,11 @@
   (declare (xargs :stobjs fn2-core :guard (fn2-core-wfp fn2-core)))
   (b* (((unless (fn2-rp-room-ok fn2-core)) (mv :bounds 0 0 0 0 0 0 fn2-core))
        ((unless (and (natp roff) (natp rend) (<= rend *fn2-commit-unit-bytes*))) (mv :invalid 0 0 0 0 0 0 fn2-core))
-       ((when (<= rend roff)) (mv :end roff 0 0 0 0 0 fn2-core))
-       ((mv vcode version)
-        (stobj-let ((fn2-pool (fn2-core-pool fn2-core))) (vcode version)
-          (fn2-rec-byte-at slot gen (if (< (+ 1 roff) rend) (+ 1 roff) roff) *fn2-recovery-machine-kind* id ogen fn2-pool)
-          (mv vcode version)))
-       ((unless (eq vcode :ok)) (mv :invalid 0 0 0 0 0 0 fn2-core))
-       ((when (equal version 0)) (mv :end roff 0 0 0 0 0 fn2-core))
+       (marker (stobj-let ((fn2-pool (fn2-core-pool fn2-core))) (marker)
+                (fn2-journal-record-marker slot gen roff rend *fn2-recovery-machine-kind* id ogen fn2-pool)
+                marker))
+       ((when (eq marker :end)) (mv :end roff 0 0 0 0 0 fn2-core))
+       ((unless (eq marker :record)) (mv :invalid 0 0 0 0 0 0 fn2-core))
        ((mv code next kind event fn2-core) (fn2-rp-header roff rend slot gen id ogen fn2-core))
        ((unless (and (eq code :ok) (< roff next) (<= next rend))) (mv :invalid 0 0 0 0 0 0 fn2-core))
        ((mv code bnext fn2-core) (fn2-rp-body kind next rend slot gen id ogen fn2-core))
@@ -353,13 +340,11 @@
        ((unless (and (natp roff) (natp rend) (<= rend *fn2-commit-unit-bytes*) (natp wlen) (<= wlen *fn2-commit-unit-bytes*)
                      (unsigned-byte-p 32 id) (unsigned-byte-p 60 ogen)))
         (mv :invalid 0 0 0 fn2-core))
-       ((when (<= rend roff)) (mv :end roff wlen wevent fn2-core))
-       ((mv vcode version)
-        (stobj-let ((fn2-pool (fn2-core-pool fn2-core))) (vcode version)
-          (fn2-rec-byte-at slot gen (if (< (+ 1 roff) rend) (+ 1 roff) roff) *fn2-recovery-machine-kind* id ogen fn2-pool)
-          (mv vcode version)))
-       ((unless (eq vcode :ok)) (mv :invalid 0 0 0 fn2-core))
-       ((when (equal version 0)) (mv :end roff wlen wevent fn2-core))
+       (marker (stobj-let ((fn2-pool (fn2-core-pool fn2-core))) (marker)
+                (fn2-journal-record-marker slot gen roff rend *fn2-recovery-machine-kind* id ogen fn2-pool)
+                marker))
+       ((when (eq marker :end)) (mv :end roff wlen wevent fn2-core))
+       ((unless (eq marker :record)) (mv :invalid 0 0 0 fn2-core))
        ((mv code next kind event fn2-core) (fn2-rp-header roff rend slot gen id ogen fn2-core))
        ((unless (and (eq code :ok) (< roff next) (<= next rend))) (mv :invalid 0 0 0 fn2-core))
        ((mv code bnext fn2-core) (fn2-rp-body kind next rend slot gen id ogen fn2-core))

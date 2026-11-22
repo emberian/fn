@@ -113,9 +113,6 @@
  (declare (xargs :guard t))
  (* 128 (fn2-b-semantic-retention-row rows)))
 
-(defun fn2-b-event-row (rows)
- (declare (xargs :guard t))
- (nfix (- (nfix rows) 3)))
 ;; Source stream hashers follow all control frame hashers; the final five
 ;; rows remain semantic/payload/event/block/checkpoint jobs.
 (defun fn2-b-ctl-runtime-row (s connections sources rows)
