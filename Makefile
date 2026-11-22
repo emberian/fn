@@ -264,6 +264,7 @@ ACL2_BOOKS = \
   books/native-b3-correspondence \
   books/native-b3-evidence \
   books/nntp-grammar \
+  books/startup-groups \
   books/node-profile \
   books/operations \
   books/ops-conservation \
@@ -525,6 +526,7 @@ ACL2_BOOKS = \
   tests/ops-semantic-steps-unit \
   tests/origin-unit \
   tests/article-limit-config-unit \
+  tests/startup-groups-unit \
   tests/origin-format-unit \
   tests/origin-boot-unit \
   tests/owed-authority-unit \
