@@ -8,7 +8,7 @@
 (fn2-book-layer :d)
 
 (defmachine fn2-cursor
- :phases (:free :select :seek :render :send :fetch :finish :draining :retired)
+ :phases (:free :select :seek :render :send :fetch :finish :draining :retired :peer)
  :fields ((conn :link) (conn-gen :u60) (conn-kind :u8) (mask :u8)
           (rx-slot :link) (rx-gen :u60) (line-s :u32) (line-e :u32) (tx-slot :link) (tx-gen :u60)
           (group :u60) (current :u60) (pin :u60)
@@ -55,7 +55,7 @@
          (:render :cursor-row (:storage-window :while (lease :held)))
          (:send :cursor-row (:storage-window :while (lease :held)))
          (:fetch :cursor-row (:storage-window :while (lease :held)))
-         (:finish :cursor-row (:storage-window :while (lease :held))) (:draining :cursor-row))
+         (:finish :cursor-row (:storage-window :while (lease :held))) (:draining :cursor-row) (:peer :cursor-row))
  :budget (:bytes 16384 :steps 32 :descriptors 4)
  :capacity (fn2-b-cursor-rows profile)
  :taken (:phase :select :rows :cursor-row :ranges ()
@@ -68,7 +68,7 @@
  :initial ((generation fn2-machine-initial-generation) (ready-prev *fn2-none*) (ready-next *fn2-none*)
            (conn *fn2-none*) (rx-slot *fn2-none*) (tx-slot *fn2-none*) (lslot *fn2-none*)
            (next-free fn2-machine-initial-next-free))
- :arms ((:free) (:select) (:seek) (:render) (:send) (:fetch) (:finish) (:draining) (:retired))
+ :arms ((:free) (:select) (:seek) (:render) (:send) (:fetch) (:finish) (:draining) (:retired) (:peer))
  :observes ((:read-result)))
 
 (defmachine-registry fn2-cursor)

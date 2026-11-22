@@ -52,7 +52,8 @@
                             (list *fn2-cursor-state-free* *fn2-cursor-state-draining*
                                   *fn2-cursor-state-retired*)))))
         *fn2-none*))
-    cursor))
+    (if (equal (fn2-cursor-row-phase cursor fn2-core) *fn2-cursor-state-peer*)
+        conn cursor)))
 
 (in-theory (disable fn2-exec-xfnc-read-wake))
 

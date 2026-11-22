@@ -1797,6 +1797,12 @@
             :why ":io: fewer octets than asked; :hash: a block its manifest entry does not name (S9a)")
            (:set (rready 0) (step (if (eq dc :ok) 24 25))) (:next :render)
            (:charge :bytes 8192 :steps *fn2-work-transition* :runnable t))))
+  ;; The protected connection steps the peer worker while holding its RX
+  ;; and TX. The normal cursor finish releases both private C read rows.
+  (:peer
+   (:if (equal row-cancel 1)
+        ((:next :finish) (:charge :steps *fn2-work-transition* :runnable t))
+        ((:charge :steps *fn2-work-empty*))))
   (:finish :on-refusal ((:stop :machine-phase))
    (:do (rc1) (fn2-read-release (* 2 row-slot)) :accept (:ok))
    (:do (rc2) (fn2-read-release (+ 1 (* 2 row-slot))) :accept (:ok))
