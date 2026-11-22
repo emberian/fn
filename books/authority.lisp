@@ -697,6 +697,7 @@
           ((mv c fn2-core)
            (fn2-outcome-put sx 3 (principal grantor) (operation op) (id-source *fn2-outcome-id-source-supplied*) (request kslot kgen 0)
                             (outcome *fn2-auth-outcome-code-accepted*) (event :event 0)
+                            (verb *fn2-outcome-verb-grant-set*) (mid kslot kgen 0 0)
                             :owner (okind oslot ogen) fn2-core))
           ((unless (eq c :ok)) (mv :state fn2-core)))
        (mv :ok fn2-core)))

@@ -26,7 +26,7 @@
       (n (* 32 (if manifest (fn2-am-units total) (ceiling total *fn2-commit-unit-bytes*))))
       ((mv write fn2-core) (fn2-uss-write (make-list (+ 64 n) :initial-element 7) ls lg 0 fn2-core))
       ((mv put fn2-core)
-       (fn2-txn-put-article 0 ls lg 0 ls lg 32 64 n total 0 *fn2-storage-extent-units* 1 1 1 0
+       (fn2-txn-put-article 0 ls lg 0 1 ls lg 0 ls lg 32 64 n total 0 *fn2-storage-extent-units* 1 1 1 0
                             *fn2-upload-kind* 0 1 fn2-core))
       ((mv kind-code kind & & & &) (fn2-tupl-arg *fn2-article-entry-field-location-kind* fn2-core))
       ((mv hash-code & slot gen off len) (fn2-tupl-arg *fn2-article-entry-field-location-hashes* fn2-core)))

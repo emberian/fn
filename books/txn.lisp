@@ -866,7 +866,7 @@
 (fn2-core-preserves fn2-txn-put-identity
   (tx mslot mgen moff mlen dslot dgen doff okind oslot ogen h principal local fn2-core) :position 1 :rows nil)
 
-(defun fn2-txn-put-article (tx dslot dgen doff sslot sgen soff hoff hlen bytes lines lunit lepoch lalloc principal op okind oslot ogen fn2-core)
+(defun fn2-txn-put-article (tx mslot mgen moff mlen dslot dgen doff sslot sgen soff hoff hlen bytes lines lunit lepoch lalloc principal op okind oslot ogen fn2-core)
   (declare (xargs :stobjs fn2-core :guard (fn2-core-wfp fn2-core)))
   (b* (((mv c fn2-core)
         (fn2-article-put tx *fn2-txn-slot-article*
@@ -887,12 +887,14 @@
         (fn2-outcome-put tx *fn2-txn-slot-outcome*
           (principal principal) (operation :event 0) (id-source *fn2-outcome-id-source-assigned*) (request dslot dgen doff)
           (outcome *fn2-txn-outcome-accepted*) (event :event 0)
+          (verb *fn2-outcome-verb-append*) (mid mslot mgen moff mlen)
           :owner (okind oslot ogen) fn2-core)
       (fn2-outcome-put tx *fn2-txn-slot-outcome*
         (principal principal) (operation op) (id-source *fn2-outcome-id-source-supplied*) (request dslot dgen doff)
         (outcome *fn2-txn-outcome-accepted*) (event :event 0)
+        (verb *fn2-outcome-verb-append*) (mid mslot mgen moff mlen)
         :owner (okind oslot ogen) fn2-core))))
-(fn2-core-preserves fn2-txn-put-article (tx dslot dgen doff sslot sgen soff hoff hlen bytes lines lunit lepoch lalloc principal op okind oslot ogen fn2-core)
+(fn2-core-preserves fn2-txn-put-article (tx mslot mgen moff mlen dslot dgen doff sslot sgen soff hoff hlen bytes lines lunit lepoch lalloc principal op okind oslot ogen fn2-core)
   :position 1 :rows nil)
 (in-theory (disable fn2-txn-put-identity fn2-txn-put-article))
 
@@ -903,7 +905,7 @@
   (b* (((mv c fn2-core)
         (fn2-txn-put-identity tx mslot mgen moff mlen dslot dgen doff okind oslot ogen h principal 1 fn2-core))
        ((unless (eq c :ok)) (mv c fn2-core)))
-    (fn2-txn-put-article tx dslot dgen doff sslot sgen soff hoff hlen bytes lines lunit lepoch lalloc principal op okind oslot ogen fn2-core)))
+    (fn2-txn-put-article tx mslot mgen moff mlen dslot dgen doff sslot sgen soff hoff hlen bytes lines lunit lepoch lalloc principal op okind oslot ogen fn2-core)))
 (fn2-core-preserves fn2-txn-put-post (tx mslot mgen moff mlen dslot dgen doff sslot sgen soff hoff hlen bytes lines lunit lepoch lalloc okind oslot ogen h principal op fn2-core)
   :position 1 :rows nil)
 (in-theory (disable fn2-txn-put-post))
