@@ -62,6 +62,15 @@ class ReplyDecoding(unittest.TestCase):
         self.assertEqual((result["outcome"], result["position"], result["cursor"]),
                          ("accepted", 0, replacement.hex()))
 
+    def test_unregister_carries_cursor_and_has_no_result_octets(self) -> None:
+        kind, body = fn_admin.fnct_open(fn_admin.build_cns_request("unregister", cursor=CURSOR))
+        self.assertEqual(kind, fn_admin.KIND_CNS_REQ)
+        self.assertEqual(body, b"\x11" + fn_admin.octets16(CURSOR))
+        self.assertEqual(fn_admin.decode_cns_reply("unregister", cns_reply(b"")),
+                         {"outcome": "accepted", "reason": "none"})
+        with self.assertRaises(fn_admin.WireError):
+            fn_admin.decode_cns_reply("unregister", cns_reply(CURSOR))
+
     def test_fetch_canonical_widths_and_exact_binary_reply(self) -> None:
         mid = b"<fetch@example.invalid>"
         position = 0x123456789ABCDEF0

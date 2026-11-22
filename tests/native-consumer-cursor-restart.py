@@ -331,12 +331,37 @@ def main():
         assert (status["position"], status["frontier"], status["gap"]) == (0, 0, 0), status
         empty = stream("read-with-only-hidden-events", "read", "--cursor", only_hidden["cursor"], actor=other)
         assert empty["outcome"] == "accepted" and empty["count"] == 0 and not empty["more"], empty
+        removed = stream("retire-active-registration", "unregister", "--consumer", consumer, actor=other)
+        assert removed == {"outcome": "accepted", "reason": "none"}, removed
+        missing = stream("retired-registration-status", "status", "--consumer", consumer, actor=other, expected=1)
+        assert missing == {"outcome": "refused", "reason": "unknown-consumer"}, missing
         node.kill()
         processes.append(dict(phase="rebase-recovered", pid=node.node_pid, exit=node.proc.returncode,
                               position=rebased["position"]))
     finally:
         node.close()
     report.write_text(json.dumps(processes, indent=2) + "\n")
+
+    node = fixture.restart.Node(directory, image, "serve", "after-unregister", control_sock=control,
+                                env=fixture.environment())
+    try:
+        node.marker(b"LISTENING-LOCAL ")
+        missing = stream("retired-after-recovery", "status", "--consumer", consumer, actor=other, expected=1)
+        assert missing == {"outcome": "refused", "reason": "unknown-consumer"}, missing
+        replacement = stream("register-after-tombstone-recovery", "register", "--consumer", consumer,
+                             "--start", "history", actor=other)
+        assert replacement["outcome"] == "accepted" and replacement["position"] == 0, replacement
+        for label, verb in (("read", "read"), ("unregister", "unregister"), ("rebase", "rebase")):
+            stale = stream(f"{label}-retired-epoch", verb, "--cursor", now["cursor"], actor=other, expected=1)
+            assert stale == {"outcome": "refused", "reason": "scope"}, stale
+        stale_ack = stream("ack-retired-epoch", "ack", now["position"],
+                           "--cursor", now["cursor"], actor=other, expected=1)
+        assert stale_ack == {"outcome": "refused", "reason": "scope"}, stale_ack
+        assert stream("register-new-epoch-still-active", "register", "--consumer", consumer,
+                      "--start", "history", actor=other) == replacement
+        node.kill()
+    finally:
+        node.close()
 
     # A second persisted image with the same credentials and consumer exposes
     # only the physical history difference. Try the exact cursor from image 1.
@@ -357,7 +382,7 @@ def main():
         assert foreign_reg["outcome"] == "accepted", foreign_reg
         assert foreign_reg["position"] == registered["position"], foreign_reg
         before = stream("foreign-status-before", "status", "--consumer", consumer)
-        for verb in ("read", "wait", "ack", "rebase"):
+        for verb in ("read", "wait", "ack", "rebase", "unregister"):
             options = ["--cursor", registered["cursor"]]
             if verb == "ack":
                 # Equal in both stores: only scope can cause this ACK refusal.

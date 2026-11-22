@@ -800,8 +800,10 @@ changes. REBASE compares the issued cursor's epoch and recorded revision, then a
 the next epoch with the current revision. KEEP preserves the durable ACK position, and HISTORY
 starts at zero. The fold checks the old epoch and durable position, so a concurrent ACK and KEEP
 cannot rewind the position. Requests bearing a superseded epoch receive scope refusal. REBASE NOW
-uses the same authorized frontier as STATUS. Serving UNREGISTER will require retaining the last epoch in a
-tombstone so registration after reclamation cannot reuse it.
+uses the same authorized frontier as STATUS. UNREGISTER clears the active position and view in a
+durable tombstone that retains the last epoch. Reusing the name advances the retained epoch.
+A parked WAIT discovers the retired epoch when it next resumes. Prompt wake on retirement and
+using inactive registrations to release reclamation holds remain separate work.
 
 STATUS, REBASE NOW, REGISTER NOW and advancing ACK walk addressed rows in bounded steps, using
 the same stream read check as READ. They pin the authority revision before the walk and recheck it
