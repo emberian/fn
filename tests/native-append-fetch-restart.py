@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Real owner-local FNCT APPEND, owned process death, fresh-process exact FETCH.
+"""Recover FNCT APPENDs through FETCH and NNTP ARTICLE/HEAD after process death.
 
 Requires the current qualified node-profile/native-b3-evidence and a named
 runtime allocation. This is process-death visibility, not power-loss proof.
@@ -127,6 +127,9 @@ def main():
             grant = run_fn(directory, f"grant-{right}", "grant", "set", principal, right,
                            "local.test", "--control-sock", control)
             assert grant["outcome"] == "accepted", grant
+        reader = run_fn(directory, "grant-nntp-reader", "grant", "set", "anonymous", "read",
+                        "local.test", "--control-sock", control)
+        assert reader["outcome"] == "accepted", reader
         consume = run_fn(directory, "grant-consume", "grant", "set", principal, "consume",
                          "--control-sock", control)
         assert consume["outcome"] == "accepted", consume
@@ -156,6 +159,7 @@ def main():
     node = restart.Node(directory, image, "serve", "fetch", control_sock=control,
                         env=environment())
     try:
+        port = int(node.marker(b"LISTENING ").split()[1])
         node.marker(b"LISTENING-LOCAL ")
         checked_status(
             run_fn(directory, "status-after", "stream", "status", "--as", principal,
@@ -173,13 +177,20 @@ def main():
                         "--as", principal, "--domain", accepted["domain"],
                         "--position", accepted["position"], "--control-sock", control, expected=1)
         assert denied["outcome"] == "refused" and "article_hex" not in denied, denied
+        # Use the original FNCT submissions as the NNTP wire expectations.
+        # read_back checks GROUP, ARTICLE and HEAD, including Xref and dot stuffing.
+        articles = []
+        for mid, article, _ in submissions:
+            lines = article.removesuffix(b"\r\n").split(b"\r\n")
+            articles.append((mid.encode("ascii"), lines[:lines.index(b"")], lines))
+        (directory / "nntp-after.wire").write_bytes(restart.read_back(port, articles))
         node.kill()
         receipts.append(dict(phase="fetched", node_pid=node.node_pid, exit=node.proc.returncode,
-                             cut="SIGKILL after exact FETCH and wrong-identity refusal"))
+                             cut="SIGKILL after exact FETCH, wrong-identity refusal and NNTP readback"))
     finally:
         node.close()
     (directory / "processes.json").write_text(json.dumps(receipts, indent=2) + "\n")
-    print("NATIVE APPEND/FETCH RESTART PASS: actual local socket, independent fresh process, two exact 6144-byte articles")
+    print("NATIVE APPEND/FETCH RESTART PASS: two 6144-byte articles recovered by FNCT and NNTP")
 
 
 if __name__ == "__main__":
