@@ -28,7 +28,7 @@
       (unsigned-byte-p 16 *fn2-identity-evidence-entry-max-size*)
       (<= (* 2 *fn2-xfnc-batch-item-max*) *fn2-pool-block-bytes*)))
 
-(defun fn2-xfnc-batch-pair-size (hs he es ee)
+(defun fn2-xfnc-item-span-size (hs he es ee)
   (declare (xargs :guard t))
   (if (and (unsigned-byte-p 32 hs) (unsigned-byte-p 32 he) (< hs he)
            (unsigned-byte-p 32 es) (unsigned-byte-p 32 ee) (< es ee)
@@ -44,7 +44,7 @@
                                okind oslot ogen fn2-fields fn2-pool)
   (declare (xargs :stobjs (fn2-fields fn2-pool)
                   :guard (and (fn2-fields-wfp fn2-fields) (fn2-pool-wfp fn2-pool))))
-  (b* ((size (fn2-xfnc-batch-pair-size hs he es ee))
+  (b* ((size (fn2-xfnc-item-span-size hs he es ee))
        ((unless (and (posp size) (posp position) (unsigned-byte-p 60 position) (natp base)
                      (<= (+ base *fn2-xfnc-batch-pair-num-fields*) (fn2-fields-rows fn2-fields))
                      (natp at) (equal at (fn2-pool-fill-value tx fn2-pool))
@@ -78,7 +78,7 @@
  (and (fn2-fieldsp fn2-fields) (fn2-fields-wfp fn2-fields) (fn2-poolp fn2-pool) (fn2-pool-wfp fn2-pool))
  ((fn2-fields 2) (fn2-pool 3))
  (("Goal" :in-theory (e/d (fn2-xfnc-put-batch-item)
-                          (fn2-xfnc-batch-pair-size fn2-fieldsp fn2-fields-wfp fn2-fields-rows
+                          (fn2-xfnc-item-span-size fn2-fieldsp fn2-fields-wfp fn2-fields-rows
                            fn2-poolp fn2-pool-wfp fn2-pool-rows)))))
 (in-theory (disable fn2-xfnc-put-batch-item))
 
