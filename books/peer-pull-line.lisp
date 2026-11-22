@@ -1,13 +1,15 @@
 ; Input and private command buffers for a TLS NNTP client.
 (in-package "ACL2")
 (include-book "authinfo-secret-pool")
-(include-book "runs-page")
+(include-book "pool-ranges")
+(include-book "pool-zero")
 (fn2-book-layer :e)
 
 ; The framing primitive verified LF and capped the line. Check the exact
 ; status separator and the complete UTF-8/CRLF line before trusting its code.
 (defun fn2-peer-pull-line (start pos slot gen kind owner generation fn2-pool)
- (declare (xargs :stobjs fn2-pool :guard (fn2-pool-wfp fn2-pool)))
+ (declare (xargs :stobjs fn2-pool :guard (fn2-pool-wfp fn2-pool)
+                 :guard-hints (("Goal" :in-theory (disable fn2-gram-frame)))))
  (b* (((mv status begin next &)
        (fn2-gram-frame *fn2-nntp-line-cap* (nfix start) (max (nfix start) (nfix pos)) 0
                        *fn2-nntp-line-cap* slot gen kind owner generation fn2-pool))
@@ -16,7 +18,7 @@
       ((unless (and (natp begin) (<= (+ begin 5) next)))
        (mv :frame next 0))
       ((mv cr-ok cr) (fn2-gram-read slot gen (- next 2) kind owner generation fn2-pool))
-      ((mv bad ctl need) (fn2-gram-line-scan (- next 2 begin) begin 0 #x80 #xbf nil nil slot gen kind owner generation fn2-pool))
+      ((mv bad ctl need) (fn2-gram-line-scan (- next (+ 2 begin)) begin 0 #x80 #xbf nil nil slot gen kind owner generation fn2-pool))
       ((unless (and cr-ok (equal cr 13) (not bad) (not ctl) (equal need 0))) (mv :frame next 0))
       ((mv valid code) (fn2-gram-digits 3 begin 0 slot gen kind owner generation fn2-pool))
       ((mv ok separator) (fn2-gram-read slot gen (+ 3 begin) kind owner generation fn2-pool)))
@@ -26,7 +28,8 @@
      (mv :frame next 0))))
 (defthm fn2-peer-pull-line-widths
  (and (unsigned-byte-p 32 (mv-nth 1 (fn2-peer-pull-line start pos slot gen kind owner generation fn2-pool)))
-      (unsigned-byte-p 16 (mv-nth 2 (fn2-peer-pull-line start pos slot gen kind owner generation fn2-pool)))))
+      (unsigned-byte-p 16 (mv-nth 2 (fn2-peer-pull-line start pos slot gen kind owner generation fn2-pool))))
+ :hints (("Goal" :in-theory (disable fn2-gram-frame))))
 (in-theory (disable fn2-peer-pull-line))
 
 (defun fn2-peer-pull-copy-credentials (src sgen source-kind source source-gen stream-off stream-len user-off user-len pass-off pass-len
@@ -56,7 +59,8 @@
 (in-theory (disable fn2-peer-pull-copy-credentials))
 
 (defun fn2-peer-pull-format-command (command protected secret sgen stream-len user-len pass-len tx tgen kind owner generation fn2-pool)
- (declare (xargs :stobjs fn2-pool :guard (fn2-pool-wfp fn2-pool)))
+ (declare (xargs :stobjs fn2-pool :guard (fn2-pool-wfp fn2-pool)
+                 :guard-hints (("Goal" :in-theory (disable fn2-pool-write fn2-pool-workspace-code)))))
  (b* (((unless (or (eq command :starttls) (and (equal protected 1) (member-eq command '(:user :pass)))))
        (mv :access fn2-pool))
       ((unless (and (not (equal secret tx))
@@ -77,7 +81,8 @@
       ((unless (eq code :ok)) (mv code fn2-pool)))
    (fn2-pool-write tx tgen (+ 1 end) 10 kind owner generation fn2-pool)))
 (fn2-pool-preserves fn2-peer-pull-format-command
- (command protected secret sgen stream-len user-len pass-len tx tgen kind owner generation fn2-pool) :position 1 :rows nil)
+ (command protected secret sgen stream-len user-len pass-len tx tgen kind owner generation fn2-pool) :position 1 :rows nil
+ :hints (("Goal" :in-theory (disable fn2-pool-write fn2-pool-workspace-code))))
 (in-theory (disable fn2-peer-pull-format-command))
 
 ; Executed after the terminal returned the loan. Truncation alone leaves
