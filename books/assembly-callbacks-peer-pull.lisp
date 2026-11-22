@@ -23,17 +23,25 @@
           (fn2-arms-op-face-events 'fn2-pull-command 'fn2-peer-pull-format-command (w state))
           (fn2-arms-op-face-events 'fn2-pull-wipe 'fn2-peer-pull-wipe (w state))))))
 
+(defun fn2-pull-release-private (slot gen okind oslot ogen fn2-core)
+ (declare (xargs :stobjs fn2-core :guard (fn2-core-wfp fn2-core)))
+ (fn2-core-release slot gen okind oslot ogen fn2-core))
+(fn2-core-preserves fn2-pull-release-private (slot gen okind oslot ogen fn2-core) :position 1 :rows nil)
+(in-theory (disable fn2-pull-release-private))
+(defcost fn2-pull-release-private :answers t :tables (fn2-core-pool)
+ :doc "Return the auxiliary range in the actor's TX bundle after clearing its private bytes.")
+
 (defmachine-arms fn2-peer-pull :declare
  :subarms
  ((terminate
    (:next :closing) (:charge :steps *fn2-work-transition* :runnable t))
   (wait-io
    (:if (fn2-xfnc-expired-p id) ((:goto terminate)) ((:charge :steps *fn2-work-empty*))))
-  (receive
-   (:let fill (fn2-conn-fill row-rx-slot))
+  (receive :on-refusal ((:goto terminate))
+   (:let nfill (fn2-conn-fill row-rx-slot))
    (:let cap (fn2-conn-cap row-rx-slot))
-   (:if (<= cap fill) ((:goto terminate))
-        ((:let len (min *fn2-conn-receive-bytes* (nfix (- cap fill))))
+   (:if (<= cap nfill) ((:goto terminate))
+        ((:let len (min *fn2-conn-receive-bytes* (nfix (- cap nfill))))
          (:issue (fn2-issue-receive row-cap-index row-cap-nonce row-rx-slot row-rx-gen len :principal row-principal-slot)
           :bind (issued sg)
           :ok ((:set (op issued) (op-gen sg)) (:wait :completion :bytes (+ 2048 len)))))))
@@ -46,7 +54,7 @@
   ;; The activating control op stages all credential spans on its take turn.
   ;; If it relinquishes the row before doing so there is no network authority.
   (:stage (:next :draining) (:charge :steps *fn2-work-transition* :runnable t))
-  (:connect
+  (:connect :on-refusal ((:goto terminate))
    (:cond ((equal row-timer 0)
            (:do (tc deadline) (fn2-xfnc-arm-timer id row-timeout-ms)
             :case (((:ok) (:set (timer 1)) (:charge :steps *fn2-work-transition* :runnable t))
@@ -92,7 +100,7 @@
                                     row-tx-slot row-tx-gen *fn2-peer-pull-kind* id row-generation)
           :case (((:ok) (:set (tx-off 0)) (:next :send) (:charge :bytes 1024 :steps *fn2-work-transition* :runnable t))
                  (:otherwise (:goto terminate)))))))
-  (:send
+  (:send :on-refusal ((:goto terminate))
    (:cond ((fn2-xfnc-expired-p id) (:goto terminate))
           ((posp row-pending) (:charge :steps *fn2-work-empty*))
           ((< row-tx-off (fn2-conn-fill row-tx-slot))
@@ -101,7 +109,7 @@
                                    :principal row-principal-slot)
             :bind (issued sg)
             :ok ((:set (op issued) (op-gen sg)) (:wait :completion :bytes len))))
-          ((member-equal row-dialog (list *fn2-pull-dialog-register* *fn2-pull-dialog-read*))
+          ((or (equal row-dialog *fn2-pull-dialog-register*) (equal row-dialog *fn2-pull-dialog-read*))
            (:do (tc) (fn2-core-reset row-tx-slot row-tx-gen) :case ((:otherwise (:stop :machine-phase))))
            (:set (start 0) (pos 0)) (:next :reply-line) (:charge :steps *fn2-work-transition* :runnable t))
           (t
@@ -114,7 +122,7 @@
                  (:set (user-len 0) (pass-len 0)) (:next :line)
                  (:charge :bytes 2048 :steps *fn2-work-transition* :runnable t))
                 ((:next :line) (:charge :bytes 512 :steps *fn2-work-transition* :runnable t))))))
-  (:upgrade
+  (:upgrade :on-refusal ((:goto terminate))
    (:if (fn2-xfnc-expired-p id) ((:goto terminate))
         ((:let retained (nfix (- (fn2-conn-fill row-rx-slot) row-start)))
          (:issue (fn2-issue-tls-start row-cap-index row-cap-nonce row-rx-slot row-rx-gen row-start retained
@@ -138,12 +146,12 @@
   (:reply-line
    (:cond ((fn2-xfnc-expired-p id) (:goto terminate))
           ((posp row-pending) (:charge :steps *fn2-work-empty*))
-          (t (:do (code after status length) (fn2-pull-reply-count row-start row-pos row-rx-slot row-rx-gen
+          (t (:do (code after status frame-size) (fn2-pull-reply-count row-start row-pos row-rx-slot row-rx-gen
                                                                    *fn2-peer-pull-kind* id row-generation))
              (:cond ((eq code :need-more) (:set (pos after)) (:goto receive))
                     ((eq code :budget) (:set (pos after)) (:charge :bytes 2048 :steps *fn2-work-transition* :runnable t))
-                    ((and (eq code :ok) (<= (fn2-conn-fill row-rx-slot) (+ after length)))
-                     (:set (start after) (pos after) (copied 0) (reply-status status) (frame-len length))
+                    ((and (eq code :ok) (<= (fn2-conn-fill row-rx-slot) (+ after frame-size)))
+                     (:set (start after) (pos after) (copied 0) (reply-status status) (frame-len frame-size))
                      (:next :compact) (:charge :bytes 2048 :steps *fn2-work-transition* :runnable t))
                     (t (:goto terminate))))))
   (:compact
@@ -153,7 +161,7 @@
                  ((:ok) (:set (start 0) (pos 0) (copied 0)) (:next :frame-input)
                   (:charge :bytes *fn2-conn-compact-bytes* :steps *fn2-work-transition* :runnable t))
                  (:otherwise (:goto terminate)))))))
-  (:frame-input
+  (:frame-input :on-refusal ((:goto terminate))
    (:cond ((fn2-xfnc-expired-p id) (:goto terminate))
           ((posp row-pending) (:charge :steps *fn2-work-empty*))
           ((equal row-frame-len (fn2-conn-fill row-rx-slot))
@@ -198,7 +206,9 @@
   (:closing
    (:cond ((and (posp row-pending) (equal row-cancel-issued 0))
            (:issue (fn2-issue-cancel row-op row-op-gen :principal row-principal-slot)
-            :ok ((:set (cancel-issued 1)) (:wait :completion :bytes 0))))
+            ;; The original operation and its CANCEL each deliver a terminal.
+            :ok ((:set (cancel-issued 1) (pending 2) (wait-reason *fn2-wait-completion*))
+                 (:charge :steps *fn2-work-mailbox* :descriptors 1))))
           ((posp row-pending) (:charge :steps *fn2-work-empty*))
           ((equal row-connected 1)
            (:issue (fn2-issue-close row-cap-index row-cap-nonce :principal row-principal-slot)
@@ -214,13 +224,15 @@
          (:do (wc) (fn2-pull-wipe row-secret-slot row-secret-gen 0 (+ 250 (* 2 *fn2-nntp-line-cap*))
                                   *fn2-peer-pull-kind* id row-generation) :case ((:otherwise (:stop :machine-phase))))
          (:do (tc) (fn2-pull-wipe row-tx-slot row-tx-gen 0 *fn2-nntp-line-cap*
-                                  *fn2-peer-pull-kind* id row-generation) :case ((:otherwise (:stop :machine-phase))))
-         (:do (sc) (fn2-core-release row-secret-slot row-secret-gen) :effects ((:release (:tx-range))) :accept (:ok :retired)
-          :why "generation exhaustion retires the released private range")
+                                  *fn2-peer-pull-kind* id row-generation)
+          :when (not (or (equal row-dialog *fn2-pull-dialog-register*) (equal row-dialog *fn2-pull-dialog-read*)))
+          :else (:ok) :case ((:otherwise (:stop :machine-phase))))
+         (:do (sc) (fn2-pull-release-private row-secret-slot row-secret-gen) :accept (:ok :retired)
+          :why "generation exhaustion retires the released private range" :case ((:otherwise (:stop :pool-release))))
          (:do (xc) (fn2-core-release row-tx-slot row-tx-gen) :effects ((:release (:tx-range))) :accept (:ok :retired)
-          :why "generation exhaustion retires the released TX range")
+          :why "generation exhaustion retires the released TX range" :case ((:otherwise (:stop :pool-release))))
          (:do (rc) (fn2-core-release row-rx-slot row-rx-gen) :effects ((:release (:rx-range))) :accept (:ok :retired)
-          :why "generation exhaustion retires the released RX range")
+          :why "generation exhaustion retires the released RX range" :case ((:otherwise (:stop :pool-release))))
          (:do (ac) (fn2-account-unbook-ref row-account-ref) :case ((:otherwise (:stop :account))))
          (:let head (fn2-machine-free-head *fn2-peer-pull-admission-ordinal*))
          (:let retire (>= row-generation (fn2-machine-gen-limit)))
@@ -238,14 +250,14 @@
            (:if (equal row-phase *fn2-peer-pull-state-connecting*) ((:next :line) (:wake)) ((:wake))))
           (t (:next :closing) (:wake))))
   (:send-result :from (:send :closing)
-   (:if (and (member-equal outcome (list *fn2-outcome-done* *fn2-outcome-short*))
+   (:if (and (or (equal outcome *fn2-outcome-done*) (equal outcome *fn2-outcome-short*))
              (natp count) (< 0 count) (equal aux0 0) (unsigned-byte-p 32 (+ row-tx-off count)))
         ((:do (qc) (fn2-account-charge-core row-principal-slot *fn2-account-charge-tx* count)
           :case ((:otherwise (:stop :account))))
          (:set (tx-off (+ row-tx-off count))) (:wake))
         ((:next :closing) (:wake))))
   (:receive-result :from (:line :reply-line :frame-input :closing)
-   (:if (and (member-equal outcome (list *fn2-outcome-done* *fn2-outcome-short*)) (natp count) (< 0 count))
+   (:if (and (or (equal outcome *fn2-outcome-done*) (equal outcome *fn2-outcome-short*)) (natp count) (< 0 count))
         ((:do (qc) (fn2-account-charge-core row-principal-slot *fn2-account-charge-rx* count)
           :case ((:otherwise (:stop :account))))
          (:wake))
