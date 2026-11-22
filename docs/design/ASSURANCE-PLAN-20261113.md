@@ -15,6 +15,16 @@ must return the original bytes. An NNTP reader opens the recovered group
 and checks ARTICLE and HEAD against the same two FNCT submissions. The
 native run remains outstanding.
 
+The image geometry also affects this run. At `6f1301978`, BOOT places genesis
+at byte 1,572,864 with the native 128-extent profile. The allocator owns that
+byte as part of extent 24. The candidate repair `7d2887fb6` places genesis at
+byte 8,388,608, just past the 128 physical extents. Its canonical geometry
+book passed the 11-book Forge record `certify-20261122T195916Z-2465124`.
+The executor and BOOT simulation still need their own current records.
+The native test reads the header and the single group record at their
+physical offsets after initialization, after the APPEND process dies and
+after the recovered process exits. The assembled image run is outstanding.
+
 Upstream `f1050d7f1` fixes the schema check that stopped application loading.
 The production assembly and its reversed-import fixture passed on Forge.
 Adding a schema produced a checked expansion mismatch at the assembly table.
