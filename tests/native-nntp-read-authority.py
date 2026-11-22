@@ -56,6 +56,7 @@ def with_login(port, cert, principal, password, observe):
 
 def readable(peer):
     assert peer.command(b"GROUP " + PRIMARY).startswith(b"411 ")
+    assert peer.command(b"LISTGROUP " + PRIMARY).startswith(b"411 ")
     assert [line.split()[0] for line in lines(peer, b"LIST ACTIVE", b"215")] == [VISIBLE]
     overview(peer, CROSSPOST, b"0")
     overview(peer, NINTH_ONLY, b"0")
@@ -65,12 +66,17 @@ def readable(peer):
     assert peer.command(b"GROUP " + VISIBLE) == b"211 2 1 2 " + VISIBLE
     overview(peer, CROSSPOST, b"1")
     overview(peer, NINTH_ONLY, b"2")
+    assert lines(peer, b"LISTGROUP", b"211") == [b"1", b"2"]
+    numbered = lines(peer, b"OVER 1-2", b"224")
+    fields = [line.split(b"\t") for line in numbered]
+    assert [(row[0], row[4]) for row in fields] == [(b"1", CROSSPOST), (b"2", NINTH_ONLY)], numbered
     assert peer.command(b"STAT") == b"223 1 " + CROSSPOST + b" retrieved"
 
 
 def denied(peer):
     for name in (PRIMARY, VISIBLE):
         assert peer.command(b"GROUP " + name).startswith(b"411 ")
+        assert peer.command(b"LISTGROUP " + name).startswith(b"411 ")
     assert lines(peer, b"LIST ACTIVE", b"215") == []
     for message_id in (CROSSPOST, NINTH_ONLY):
         for verb in (b"OVER ", b"STAT ", b"HEAD ", b"HDR Subject "):
