@@ -395,6 +395,7 @@ ACL2_BOOKS = \
   tests/commit-resource-unit \
   tests/commit-stop-unit \
   tests/commit-turn-frame-unit \
+  tests/journal-members-unit \
   tests/commit-txn-unit \
   tests/commit-view-compatibility-unit \
   tests/conn-answer-unit \
