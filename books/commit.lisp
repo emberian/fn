@@ -386,7 +386,9 @@
            (fn2-commit-io (fn2-commit-io-set-pool-slot r *fn2-none* fn2-commit-io)))
      (let ((fn2-commit-io (fn2-commit-io-set-pool-gen r 0 fn2-commit-io))) (mv t fn2-commit-io))) (mv nil fn2-commit-io))
    (let ((fn2-core (fn2-commit-require ok *fn2-stop-reason-commit-pool*))) (mv code fn2-core))))))
-(fn2-core-preserves fn2-commit-release-pool (id role owner-gen fn2-core) :position 1 :rows nil)
+(fn2-core-preserves fn2-commit-release-pool (id role owner-gen fn2-core) :position 1 :rows nil
+ :hints (("Goal" :in-theory (disable fn2-core-wfp fn2-checkpoint-commit-loan-state
+                                    fn2-commit-resource))))
 ; The reserve loop's two steps as their own functions, so the loop's shape
 ; proof sees two preserved calls instead of their case splits (30 s -> 2 s).
 (defun fn2-commit-keep-pool (id role slot gen fn2-core)

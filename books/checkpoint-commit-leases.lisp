@@ -5,6 +5,35 @@
 (include-book "std/util/bstar" :dir :system)
 (include-book "checkpoint-future-resources")
 (fn2-book-layer :b)
+
+(fn2-checkpoint-future-windows-preserves fn2-checkpoint-future-transfer-loop
+ (i end returning kind owner gen bkind borrower bgen fn2-checkpoint-future-windows fn2-pool)
+ :carriers ((fn2-checkpoint-future-windows 1 :prefix "-WINDOWS")
+            (fn2-pool 2 :prefix "-POOL"))
+ :hyps ((fn2-checkpoint-future-windowsp fn2-checkpoint-future-windows)
+        (fn2-checkpoint-future-windows-wfp fn2-checkpoint-future-windows)
+        (fn2-poolp fn2-pool) (fn2-pool-wfp fn2-pool)
+        (fn2-pool-mrefp kind owner gen) (fn2-pool-mrefp bkind borrower bgen))
+ :disable nil
+ :hints (("Goal" :in-theory (e/d (fn2-pool-mrefp)
+   (fn2-pool-hand fn2-pool-accept-hand)))))
+
+(defmacro fn2-checkpoint-journal-preserves (name)
+ `(fn2-checkpoint-future-windows-preserves ,name
+   (token kind owner gen bkind borrower bgen fn2-checkpoint-future fn2-checkpoint-future-windows fn2-pool)
+   :carriers ((fn2-checkpoint-future-windows 1 :prefix "-WINDOWS")
+              (fn2-pool 2 :prefix "-POOL"))
+   :disable nil
+   :hints (("Goal" :in-theory (disable fn2-checkpoint-future-transfer-loop
+                                      fn2-checkpoint-future-transfer-readyp)))))
+
+(fn2-checkpoint-journal-preserves fn2-checkpoint-future-borrow-journal)
+(fn2-checkpoint-journal-preserves fn2-checkpoint-future-return-journal)
+
+(fn2-checkpoint-future-preserves fn2-checkpoint-future-bind
+ (c token kind owner gen fn2-checkpoint-future fn2-extents)
+ :position 1 :rows nil :disable nil)
+
 (defun fn2-checkpoint-journal-borrower-seen-p (i kind id gen fn2-checkpoint-future-windows)
  (declare (xargs :stobjs fn2-checkpoint-future-windows :measure (nfix (- 5 (nfix i)))
   :guard (and (fn2-checkpoint-future-windows-wfp fn2-checkpoint-future-windows) (natp i) (<= i 5))))
@@ -34,7 +63,9 @@
 
  (defun fn2-checkpoint-commit-bindings-p (role id gen token fn2-core)
   (declare (xargs :stobjs fn2-core :measure (nfix (- 4 (nfix role)))
-   :guard (and (fn2-core-wfp fn2-core) (natp role) (<= role 4))))
+   :guard (and (fn2-core-wfp fn2-core) (natp role) (<= role 4))
+   :guard-hints (("Goal" :in-theory (disable fn2-core-wfp
+     fn2-checkpoint-future-lease fn2-commit-resource)))))
   (if (and (natp role) (<= role 4))
    (if (>= role 4) t
    (and (fn2-commit-idp id fn2-core)
@@ -70,7 +101,12 @@
  ; FREE machine deliberately still has its previous generation; commit-start
  ; assigns the new generation only after reserve-ticket succeeds.
  (defun fn2-checkpoint-commit-return-pools (id gen fn2-core)
-  (declare (xargs :stobjs fn2-core :guard (fn2-core-wfp fn2-core)))
+  (declare (xargs :stobjs fn2-core :guard (fn2-core-wfp fn2-core)
+   :guard-hints (("Goal" :in-theory (disable fn2-core-wfp
+     fn2-checkpoint-commit-loan-state fn2-checkpoint-commit-bindings-p
+     fn2-checkpoint-future-return-journal fn2-checkpoint-future-rows
+     fn2-checkpoint-future-token fn2-checkpoint-future-owner-kind
+     fn2-checkpoint-future-owner-slot fn2-checkpoint-future-owner-gen)))))
   (b* (((unless (and (fn2-commit-idp id fn2-core)
                      (member-equal (fn2-machine-phase id fn2-core) (list *fn2-commit-state-free* *fn2-commit-state-draining*))
                      (= (fn2-machine-pending id fn2-core) 0) (= (fn2-machine-cb-fence-live id fn2-core) 0)
@@ -98,7 +134,12 @@
         (let ((fn2-core (fn2-core-stop *fn2-stop-reason-commit-pool* fn2-core))) (mv :uncertain fn2-core)))
        (fn2-core (fn2-checkpoint-commit-clear-pools 3 id fn2-core)))
    (mv (if (fn2-core-stopped-p fn2-core) :uncertain :ok) fn2-core)))
- (fn2-core-preserves fn2-checkpoint-commit-return-pools (id gen fn2-core) :position 1 :rows nil)
+ (fn2-core-preserves fn2-checkpoint-commit-return-pools (id gen fn2-core) :position 1 :rows nil
+  :hints (("Goal" :in-theory (disable fn2-core-wfp
+    fn2-checkpoint-commit-loan-state fn2-checkpoint-commit-bindings-p
+    fn2-checkpoint-future-return-journal fn2-checkpoint-future-rows
+    fn2-checkpoint-future-token fn2-checkpoint-future-owner-kind
+    fn2-checkpoint-future-owner-slot fn2-checkpoint-future-owner-gen))))
  ))
 
 ; Materialized after commit-keep-pool, before commit-start.
@@ -121,10 +162,14 @@
         ((when (fn2-core-stopped-p fn2-core)) (mv :uncertain fn2-core)))
     (fn2-checkpoint-commit-bind-pools (+ 1 role) id gen token fn2-core)))
    (mv :bounds fn2-core)))
- (fn2-core-preserves fn2-checkpoint-commit-bind-pools (role id gen token fn2-core) :position 1 :rows nil)
+ (fn2-core-preserves fn2-checkpoint-commit-bind-pools (role id gen token fn2-core) :position 1 :rows nil
+  :hints (("Goal" :in-theory (disable fn2-core-wfp fn2-checkpoint-future-lease
+                                     fn2-commit-keep-pool fn2-core-stopped-p))))
 
  (defun fn2-checkpoint-commit-reserve-pools (id gen fn2-core)
-  (declare (xargs :stobjs fn2-core :guard (fn2-core-wfp fn2-core)))
+  (declare (xargs :stobjs fn2-core :guard (fn2-core-wfp fn2-core)
+   :guard-hints (("Goal" :in-theory (disable fn2-core-wfp
+     fn2-checkpoint-future-bind fn2-checkpoint-future-borrow-journal)))))
   (b* (((unless (and (fn2-commit-idp id fn2-core) (unsigned-byte-p 60 gen)
                      (= (fn2-machine-phase id fn2-core) *fn2-commit-state-free*)
                      (= (fn2-machine-pending id fn2-core) 0) (= (fn2-machine-cb-fence-live id fn2-core) 0))) (mv :bounds fn2-core))
@@ -148,5 +193,7 @@
         (let ((fn2-core (fn2-core-stop *fn2-stop-reason-commit-pool* fn2-core))) (mv :uncertain fn2-core)))
        ((unless (eq code :ok)) (mv :exhausted fn2-core)))
    (fn2-checkpoint-commit-bind-pools 0 id gen token fn2-core)))
- (fn2-core-preserves fn2-checkpoint-commit-reserve-pools (id gen fn2-core) :position 1 :rows nil)
+ (fn2-core-preserves fn2-checkpoint-commit-reserve-pools (id gen fn2-core) :position 1 :rows nil
+  :hints (("Goal" :in-theory (disable fn2-core-wfp
+    fn2-checkpoint-future-bind fn2-checkpoint-future-borrow-journal))))
  ))
