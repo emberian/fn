@@ -15,6 +15,8 @@ import socket
 import subprocess
 import time
 
+from harness.launcher import require_launcher_sigkill
+
 ROOT = Path(__file__).resolve().parents[1]
 PAYLOAD_EXTENT_BYTES = 64 * 1024
 ARTICLE_MAX = 96 * 1024
@@ -67,11 +69,7 @@ class Node:
         # The tools/acl2 launcher is a different process.
         assert self.node_pid and int(self.pidfile.read_text()) == self.node_pid
         os.kill(self.node_pid, signal.SIGKILL)
-        rc = self.proc.wait(timeout=30)
-        # tools/acl2 exits with the child's negative wait status, which is
-        # encoded as an 8-bit exit code by the OS and propagated by timeout.
-        expected = (-signal.SIGKILL) & 0xff
-        assert rc == expected, f"expected SIGKILL exit {expected}, got {rc}"
+        require_launcher_sigkill(self.proc)
 
     def close(self):
         if self.proc.poll() is None:
