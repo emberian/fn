@@ -222,31 +222,39 @@ def fnct_open(frame: bytes) -> tuple[int, bytes]:
     return frame[5], frame[10:10 + n]
 
 
-def cursor_position(cursor: bytes) -> int:
-    if len(cursor) < 21 or cursor[:4] != b"fncu":
+def cursor_consumer_and_position_width(cursor: bytes) -> tuple[bytes, int]:
+    """Read the consumer octets and the position width from the public fncu layout."""
+    if len(cursor) < 5 or cursor[:4] != b"fncu":
         raise WireError("invalid fncu cursor")
     ver = cursor[4]
-    if ver == 1:
-        return int.from_bytes(cursor[-4:], "big")
-    if ver == 2:
-        return int.from_bytes(cursor[-8:], "big")
-    raise WireError(f"unsupported cursor version {ver}")
+    if ver not in (1, 2):
+        raise WireError(f"unsupported cursor version {ver}")
+    pos = 5
+    fields = []
+    for name in ("history", "incarnation", "consumer", "principal", "query"):
+        size, pos = leb_decode(cursor, pos)
+        if size > 64:
+            raise WireError(f"oversized fncu {name}")
+        field, pos = _take(cursor, pos, size, f"fncu {name}")
+        fields.append(field)
+    # v2 adds a u32 domain before four u64 values. v1 has four u32s.
+    width = 4 if ver == 1 else 8
+    if len(cursor) - pos != (0 if ver == 1 else 4) + 4 * width:
+        raise WireError("invalid fncu numeric fields")
+    return fields[2], width
+
+
+def cursor_position(cursor: bytes) -> int:
+    _, width = cursor_consumer_and_position_width(cursor)
+    return int.from_bytes(cursor[-width:], "big")
 
 
 def cursor_propose(cursor: bytes, position: int) -> bytes:
     """Re-send the node's issued cursor proposing POSITION (books/consumer-codec.lisp)."""
-    if len(cursor) < 21 or cursor[:4] != b"fncu":
-        raise WireError("invalid fncu cursor")
-    ver = cursor[4]
-    if ver == 1:
-        if not (0 <= position < (1 << 32)):
-            raise ValueError(f"v1 cursor position out of range: {position}")
-        return cursor[:-4] + position.to_bytes(4, "big")
-    if ver == 2:
-        if not (0 <= position < (1 << 64)):
-            raise ValueError(f"v2 cursor position out of range: {position}")
-        return cursor[:-8] + position.to_bytes(8, "big")
-    raise WireError(f"unsupported cursor version {ver}")
+    _, width = cursor_consumer_and_position_width(cursor)
+    if not (0 <= position < (1 << (8 * width))):
+        raise ValueError(f"v{cursor[4]} cursor position out of range: {position}")
+    return cursor[:-width] + position.to_bytes(width, "big")
 
 
 def encode_consumer_id(raw: str) -> bytes:
@@ -1181,7 +1189,8 @@ def cmd_stream_ack(args: argparse.Namespace) -> int:
         res = sess.cns("ack", cursor=cur, position=args.position)
         if res["outcome"] == "accepted" and args.cursor_file:
             try:
-                pos_res = sess.cns("position", consumer=cbytes)
+                consumer, _ = cursor_consumer_and_position_width(cur)
+                pos_res = sess.cns("position", consumer=consumer)
             except (WireError, OSError) as exc:
                 # The accepted durable ack is already known; only its optional
                 # cursor-file refresh failed.

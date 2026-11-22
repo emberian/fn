@@ -29,6 +29,22 @@ def auth_reply(verb: str, result: bytes) -> bytes:
 
 
 class ReplyDecoding(unittest.TestCase):
+    def test_cursor_layout_preserves_consumer_octets_and_version_width(self) -> None:
+        ids = b"".join(fn_admin.octets_var(value) for value in
+                       (b"history", b"inc", b"consumer", b"principal", b"query"))
+        for version, tail_size, width in ((1, 16, 4), (2, 36, 8)):
+            with self.subTest(version=version):
+                prefix = b"fncu" + bytes([version]) + ids + bytes(tail_size - width)
+                position = (1 << (8 * width)) - 1
+                cursor = prefix + bytes(width)
+                self.assertEqual(fn_admin.cursor_consumer_and_position_width(cursor), (b"consumer", width))
+                changed = fn_admin.cursor_propose(cursor, position)
+                self.assertEqual(changed, prefix + position.to_bytes(width, "big"))
+                self.assertEqual(fn_admin.cursor_position(changed), position)
+                for malformed in (cursor[:-1], cursor + b"\x00", cursor[:5] + b"\x41" + cursor[6:]):
+                    with self.assertRaises(fn_admin.WireError):
+                        fn_admin.cursor_position(malformed)
+
     def test_truncated_accepted_results_never_decode_as_accepted(self) -> None:
         for verb in ("register", "position", "ack", "status", "read", "wait", "append", "fetch"):
             with self.subTest(verb=verb), self.assertRaises(fn_admin.WireError):
@@ -128,10 +144,12 @@ class ReplyDecoding(unittest.TestCase):
 
 class InvalidReplyOutcome(unittest.TestCase):
     def run_command(self, reply: bytes, *args: str, cursor_file: bool = False,
-                    json_output: bool = True, position_reply: bytes | None = None) -> subprocess.CompletedProcess:
+                    json_output: bool = True, position_reply: bytes | None = None,
+                    position_consumer: bytes | None = None) -> subprocess.CompletedProcess:
         with tempfile.TemporaryDirectory() as directory:
             path = str(Path(directory) / "ctl.sock")
             ready = threading.Event()
+            refresh_requests = []
 
             def serve() -> None:
                 listener = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
@@ -146,8 +164,12 @@ class InvalidReplyOutcome(unittest.TestCase):
                             conn.sendall(reply)
                             if position_reply is not None:
                                 conn.settimeout(5)
-                                if conn.recv(65536):
-                                    conn.sendall(position_reply)
+                                with conn.makefile("rb") as stream:
+                                    header = stream.read(10)
+                                    if header:
+                                        length = fn_admin.fnct_payload_length(header)
+                                        refresh_requests.append(header + stream.read(length + 32))
+                                        conn.sendall(position_reply)
                         except BrokenPipeError:
                             # A local usage error closes without waiting for a reply.
                             pass
@@ -168,6 +190,9 @@ class InvalidReplyOutcome(unittest.TestCase):
             )
             thread.join(5)
             self.assertFalse(thread.is_alive())
+            if position_consumer is not None:
+                self.assertEqual(refresh_requests, [fn_admin.build_cns_request(
+                    "position", consumer=position_consumer)])
             return proc
 
     def test_fetch_cli_preserves_binary_and_rejects_truncation(self) -> None:
@@ -229,7 +254,8 @@ class InvalidReplyOutcome(unittest.TestCase):
                                          (("ack", "6", "--cursor", CURSOR.hex()), ack, position)):
                 with self.subTest(command=args[0]):
                     proc = self.run_command(reply, "stream", *args, "--cursor-file", str(target),
-                                            position_reply=refresh)
+                                            position_reply=refresh,
+                                            position_consumer=b"\x03" if refresh else None)
                     self.assertEqual(proc.returncode, 0, (proc.stdout, proc.stderr))
                     receipt = json.loads(proc.stdout)
                     self.assertEqual(receipt["outcome"], "accepted")
