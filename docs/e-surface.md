@@ -757,10 +757,15 @@ Outbound feeding and catchup coverage remain the implementation frontier in
 ### Authority at the addressed frontier
 
 FETCH checks consume admission before its cursorless walk and the current read grant on the selected
-address row's stream before article lookup. Streamed FETCH checks that grant again immediately before
-opening the reply prefix. Denials use the same `unavailable` result as a missing occurrence. The first
-check also covers raw FETCH through a non-streamed reply. A full handoff check for that path, and a
-second consume check at reply freeze, are still needed.
+address row's stream before article lookup. Every live article eligible for a successful FETCH has
+positive length. `fn2-cns-article-next` requires an exact retained source capture for those articles,
+including raw-source articles that fit a single reply. The `:item` arm sends FETCH through that source
+or returns `unavailable` if the binding is missing. Successful single-reply FETCH is
+`unreachable-in-composition`. The source checks the read grant again before opening the reply prefix.
+Read denials use the same `unavailable` result as a missing occurrence. Single-frame replies still carry
+refusals. A `withdrawn` reply checks the read grant again in the same step as the reply handoff and
+uses `unavailable` if the grant no longer allows reading. A consume admission failure remains
+`access`. A second consume check at reply freeze remains owed.
 
 The txn currently emits one address row per event and retains only the first group's stream. Its
 overview rows record each group's article number but cannot enumerate all groups by article. General

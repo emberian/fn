@@ -1354,14 +1354,27 @@
              (:set (lease *fn2-cns-lease-none*) (lslot *fn2-none*) (lgen 0))
              (:charge :steps *fn2-work-transition* :runnable t))
     (t
-   (:do (pcode) (fn2-cns-post-reply row-ctl row-ctl-gen row-request row-verb row-outcome row-reason
+   ;; WITHDRAWN exposes the state of the addressed article. A revocation
+   ;; during article lookup must turn it into the same refusal as absence.
+   (:let withdrawn (and (equal row-verb *fn2-cns-verb-fetch*)
+                         (equal row-outcome *fn2-cns-outcome-refused*)
+                         (equal row-reason *fn2-cns-reason-withdrawn*)))
+   (:do (acode astep ahead agrant)
+        (fn2-cns-authority-allows id row-generation *fn2-cns-right-read* *fn2-cns-scope-stream*
+                                  row-istream row-xstep row-xhead row-xgrant 4096)
+    :when withdrawn :else (:ok 0 0 0)
+    :case (((:more) (:set (xstep astep) (xhead ahead) (xgrant agrant))
+            (:next :fetch-authorize)
+            (:charge :bytes 4096 :steps *fn2-work-transition* :runnable t))))
+   (:let reply-reason (if (eq acode :ok) row-reason *fn2-cns-reason-unavailable*))
+   (:do (pcode) (fn2-cns-post-reply row-ctl row-ctl-gen row-request row-verb row-outcome reply-reason
                                     row-consumer row-epoch row-version row-cpos row-pub-frontier row-count row-more
                                     row-ioff row-ilen row-ipos
                                     row-tx-slot row-tx-gen
                                     id row-generation row-ns-slot row-ns-gen row-name-len)
     :accept (:ok :dropped) :why "the control connection may have closed while the consumer request ran")
    (:wake-row row-ctl)
-   (:next :draining) (:charge :bytes 2048 :steps *fn2-work-transition* :runnable t))))
+   (:next :draining) (:charge :bytes (if withdrawn 6144 2048) :steps *fn2-work-transition* :runnable t))))
   (wait-timeout :on-refusal ((:stop :machine-phase))
    (:set (edge *fn2-none*) (count 0) (more 0) (outcome *fn2-cns-outcome-accepted*))
    (:goto answer))
@@ -1388,7 +1401,8 @@
            (:set (lease *fn2-cns-lease-none*) (lslot *fn2-none*) (lgen 0))
            (:charge :steps *fn2-work-transition* :runnable t))
     (t (:next :draining) (:charge :steps *fn2-work-transition* :runnable t))))
-  ;; fetch's article: its Message-ID the request's, its octets after the
+  ;; Successful single-reply FETCH is unreachable-in-composition.
+  ;; The legacy helper checks the request's Message-ID and puts octets after the
   ;; request (the reply's scratch); otherwise unavailable
   (put-article :on-refusal ((:stop :machine-phase))
    (:do (pc at nl) (fn2-cns-put-article row-npos row-art row-alen row-istream row-pub-frontier row-name-off row-name-len
@@ -1596,6 +1610,10 @@
   ;; A FETCH occurrence must be readable before article lookup reveals
   ;; its state or takes a storage lease. Hide access denial as absence.
   (:fetch-authorize :on-refusal ((:stop :machine-phase))
+   (:if (and (equal row-verb *fn2-cns-verb-fetch*)
+             (equal row-outcome *fn2-cns-outcome-refused*)
+             (equal row-reason *fn2-cns-reason-withdrawn*))
+        ((:goto hand)) ())
    (:do (acode astep ahead agrant)
         (fn2-cns-authority-allows id row-generation *fn2-cns-right-read* *fn2-cns-scope-stream*
                                   row-istream row-xstep row-xhead row-xgrant 4096)
@@ -1645,9 +1663,13 @@
    (:cond
     ((equal row-ctl *fn2-none*) (:goto page-cancel))
     ((equal row-outcome *fn2-cns-outcome-refused*) (:goto page-fail))
-    ((and (equal row-verb *fn2-cns-verb-fetch*)
-          (fn2-cns-source-boundp id row-generation row-ctl row-ctl-gen row-request))
-     (:set (stream 0)) (:next :source) (:charge :bytes 8192 :steps *fn2-work-transition* :runnable t))
+    ;; A present FETCH record reaches ITEM only after exact source capture
+    ;; in fn2-cns-article-next. A missing binding fails closed even here.
+    ((equal row-verb *fn2-cns-verb-fetch*)
+     (:if (fn2-cns-source-boundp id row-generation row-ctl row-ctl-gen row-request)
+          ((:set (stream 0)) (:next :source) (:charge :bytes 8192 :steps *fn2-work-transition* :runnable t))
+          ((:set (reason *fn2-cns-reason-unavailable*) (outcome *fn2-cns-outcome-refused*))
+           (:goto page-fail))))
     ((equal row-itype *fn2-fnct-item-record*)
          (:issue (fn2-block-read row-lunit row-lepoch row-lalloc 0 row-alen row-lslot row-lgen
                                  :principal row-principal-slot)
