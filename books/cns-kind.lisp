@@ -128,7 +128,7 @@
 (defmachine-registry fn2-ctl)
 
 (defmachine fn2-cns
- :phases (:free :decode :check :lookup :read :page :article :item :fetch :source :park :commit :committed :append :draining :retired)
+ :phases (:free :decode :check :lookup :read :page :article :item :fetch :source :park :commit :committed :append :draining :retired :replay)
  :fields ((ctl :link) (ctl-gen :u60) (request :u32) (fpos :u32) (flen :u32) (fkind :u8)
           (verb (:enum fn2-cns-verb (:none :register :read :wait :ack :position :status :append :fetch
                                      :rebase :unregister)))
@@ -187,6 +187,7 @@
          (:fetch :tx-range :wait-row (:storage-window :while (lease :held)))
          (:source :tx-range :wait-row (:storage-window :while (lease :held))) (:park :tx-range :wait-row (:storage-window :while (lease :held)))
          (:commit :tx-range :wait-row (:storage-window :while (lease :held)))
+         (:replay :tx-range :wait-row (:storage-window :while (lease :held)))
          (:committed :tx-range :wait-row :batch-membership (:storage-window :while (lease :held))) (:append :tx-range :wait-row (:storage-window :while (lease :held))) (:draining :tx-range :wait-row (:storage-window :while (lease :held))))
  ;; :commit's submitting run stages, emits, admits and binds (24,576 bytes, as fn2-txn's :ready)
  :budget (:bytes 32768 :steps 32 :descriptors 4)
@@ -200,7 +201,7 @@
  :initial ((generation fn2-machine-initial-generation) (ready-prev *fn2-none*) (ready-next *fn2-none*)
            (ctl *fn2-none*) (edge *fn2-none*) (txn *fn2-none*) (tx-slot *fn2-none*) (upload *fn2-none*)
            (lslot *fn2-none*) (ws-slot *fn2-none*) (ns-slot *fn2-none*) (next-free fn2-machine-initial-next-free))
- :arms ((:free) (:decode) (:check) (:lookup) (:read) (:page) (:article) (:item) (:fetch) (:source) (:park) (:commit) (:committed) (:append) (:draining) (:retired))
+ :arms ((:free) (:decode) (:check) (:lookup) (:read) (:page) (:article) (:item) (:fetch) (:source) (:park) (:commit) (:committed) (:append) (:draining) (:retired) (:replay))
  :observes ((:read-result)))
 
 (defmachine-registry fn2-cns)

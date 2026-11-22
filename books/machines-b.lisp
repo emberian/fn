@@ -67,8 +67,8 @@
  :why "Disjoint commit, root, operation-pin and checkpoint-reference edges survive yields.")
 ; Format checker rows: commit0/1, recovery2, H=2*upload-windows
 ; original/stored contexts starting at3, then the sealer at3+H. C control
-; frame rows start at4+H, followed by N retained CNS source rows. The final
-; five rows remain semantic/payload/event/block/checkpoint jobs. All context,
+; frame rows start at4+H, followed by N replay and N retained CNS source
+; rows. The final five rows remain semantic/payload/event/block/checkpoint jobs. All context,
 ; digest and field capacities derive from this same complete profile floor.
 (defun fn2-b-upload-windows (profile)
  (declare (xargs :guard t))
@@ -97,7 +97,7 @@
  (nfix (fn2-profile-get :cns profile)))
 (defun fn2-b-format-floor (profile)
  (declare (xargs :guard t))
- (+ 9 (fn2-b-upload-hash-rows profile) (fn2-b-ctl-rows profile) (fn2-b-cns-source-rows profile)))
+ (+ 9 (fn2-b-upload-hash-rows profile) (fn2-b-ctl-rows profile) (* 2 (fn2-b-cns-source-rows profile))))
 (defun fn2-b-format-slots (profile)
  (declare (xargs :guard t))
  (fn2-b-capacity :format-slots (fn2-b-format-floor profile) profile))
@@ -114,21 +114,38 @@
 (defun fn2-b-event-row (rows)
  (declare (xargs :guard t))
  (nfix (- (nfix rows) 3)))
-;; Source stream hashers follow all control frame hashers; the final five
-;; rows remain semantic/payload/event/block/checkpoint jobs.
+;; Replay hashers follow CTL frame hashers and precede retained CNS source
+;; hashers. The final five rows remain semantic/payload/event/block/checkpoint jobs.
 (defun fn2-b-ctl-runtime-row (s connections sources rows)
  (declare (xargs :guard t))
- (+ (nfix (- (- (- (nfix rows) (nfix sources)) (nfix connections)) 5)) (nfix s)))
+ (+ (nfix (- (- (- (nfix rows) (* 2 (nfix sources))) (nfix connections)) 5)) (nfix s)))
+(defun fn2-b-cns-replay-row (s sources rows)
+ (declare (xargs :guard t))
+ (+ (nfix (- (- (nfix rows) (* 2 (nfix sources))) 5)) (nfix s)))
 (defun fn2-b-cns-source-row (s sources rows)
  (declare (xargs :guard t))
  (+ (nfix (- (- (nfix rows) (nfix sources)) 5)) (nfix s)))
-; This generic tail-layout predicate preserves its existing domain. Its
-; pairwise source/control/tail theorems need only C+N+5 rows; the supported
-; profile separately requires the full9+H+C+N floor, including leading jobs.
+; The tail-only geometry has no leading format jobs. The supported profile
+; separately reserves those jobs in the full floor.
 (defun fn2-b-cns-source-geometry-p (sources connections rows)
  (declare (xargs :guard t))
  (and (natp sources) (natp connections) (natp rows)
-      (<= (+ sources connections 5) rows)))
+      (<= (+ (* 2 sources) connections 5) rows)))
+(defthm fn2-b-cns-replay-row-between-control-and-source
+ (implies (and (fn2-b-cns-source-geometry-p sources connections rows)
+               (natp c) (< c connections) (natp s) (< s sources)
+               (natp r) (< r sources))
+  (and (< (fn2-b-ctl-runtime-row c connections sources rows)
+          (fn2-b-cns-replay-row r sources rows))
+       (< (fn2-b-cns-replay-row r sources rows)
+          (fn2-b-cns-source-row s sources rows))))
+ :hints (("Goal" :in-theory (enable fn2-b-cns-source-geometry-p fn2-b-ctl-runtime-row
+                                    fn2-b-cns-replay-row fn2-b-cns-source-row))))
+(defthm fn2-b-cns-replay-rows-injective
+ (implies (and (natp r) (natp s) (not (equal r s)))
+          (not (equal (fn2-b-cns-replay-row r sources rows)
+                      (fn2-b-cns-replay-row s sources rows))))
+ :hints (("Goal" :in-theory (enable fn2-b-cns-replay-row))))
 (defthm fn2-b-cns-source-row-disjoint-from-control
  (implies (and (fn2-b-cns-source-geometry-p sources connections rows)
                (natp c) (< c connections) (natp s) (< s sources))
