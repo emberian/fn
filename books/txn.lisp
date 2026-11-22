@@ -311,9 +311,11 @@
 
 (defmachine-arms fn2-txn :declare
  :subarms
- (;; one Newsgroups name: look it up, declare its group-count accept, overview and addr
+ (;; Authorize one resolved Newsgroups destination. Only article mode
+  ;; declares membership, its count and its overview row.
   (group :on-refusal ((:stop :machine-phase))
    (:let gslot row-slot)
+   (:let evidence (equal row-tmode *fn2-txn-mode-evidence*))
    (:let no (:read upload no)) (:let nl (:read upload nl))
    (:let c0 (:read upload c0-slot)) (:let g0 (:read upload c0-gen))
    (:let c1 (:read upload c1-slot)) (:let g1 (:read upload c1-gen))
@@ -324,12 +326,12 @@
           ((eq status :run) (:set (gcur next) (gskip (if skip2 1 0)))
                             (:charge :bytes 8192 :steps *fn2-work-transition* :runnable t))
           ((eq status :end) (:set (gcur next)) (:charge :bytes 8192 :steps *fn2-work-transition* :runnable t))
-          (t (:do (code group) (fn2-txn-group-of gslot row-ngroups row-xstep row-xgroup c0 g0 (+ no start) len :budget 4096 :owner upload)
+          (t (:do (code group) (fn2-txn-group-of gslot (if evidence 0 row-ngroups) row-xstep row-xgroup c0 g0 (+ no start) len :budget 4096 :owner upload)
               :accept ()
               :case (((:more) (:charge :bytes 8192 :steps *fn2-work-transition* :runnable t))
                      ((:absent :repeated) (:set (gcur next)) (:charge :bytes 8192 :steps *fn2-work-transition* :runnable t))
                      ((:ok)
-                      (:cond ((>= row-ngroups (fn2-txn-groups-limit))
+                      (:cond ((and (not evidence) (>= row-ngroups (fn2-txn-groups-limit)))
                               (:set (word *fn2-upload-word-unaffordable*)) (:next :refused)
                               (:charge :bytes 8192 :steps *fn2-work-transition* :runnable t))
                              (t (:let pid (:read upload request-principal))
@@ -377,6 +379,10 @@
                                               (:set (xstep *fn2-txn-append-check*) (xgroup group) (xhead 0) (xgrant 0))
                                               (:charge :bytes 8192 :steps *fn2-work-transition* :runnable t))
                                              ((:goto group-access))))
+                                       (evidence
+                                        (:do (dcode) (fn2-authority-depend gslot pid agrant ahead) :accept (:ok))
+                                        (:set (ngroups 1) (gcur next) (xstep 0))
+                                        (:charge :bytes 8192 :steps *fn2-work-transition* :runnable t))
                                        (t
                                         (:do (dcode) (fn2-authority-depend gslot pid agrant ahead) :accept (:ok))
                                         (:do (pcode) (fn2-txn-add-group gslot row-ngroups group pid c0 g0 c1 g1
@@ -391,6 +397,19 @@
   (group-access
    (:set (word *fn2-upload-word-refused*) (xstep 0)) (:next :refused)
    (:charge :bytes 8192 :steps *fn2-work-transition* :runnable t))
+  (put-evidence :on-refusal ((:stop :machine-phase))
+   (:do (fcode verdict selection h evidence coverage) (fn2-identity-facts row-slot))
+   (:do (dcode ds dg doff) (fn2-txn-source-digest-ref row-slot) :accept (:ok))
+   (:do (pcode) (fn2-txn-put-evidence-for row-slot
+                                          (if (equal (:read upload ilen) 0) (:read upload c0-slot) (:read upload lslot))
+                                          (if (equal (:read upload ilen) 0) (:read upload c0-gen) (:read upload lgen))
+                                          (:read upload mo) (:read upload ml)
+                                          ds dg doff h (:read upload request-principal)
+                                          (:read upload op) :owner upload))
+   (:if (eq pcode :ok)
+        ((:set (prepared 1)) (:charge :bytes 8192 :steps *fn2-work-transition* :runnable t))
+        ((:set (ecommit *fn2-txn-ecommit-refused*)) (:next :refused)
+         (:charge :bytes 8192 :steps *fn2-work-transition* :runnable t))))
   ;; :ready stages and admits in one scheduler turn. Only article
   ;; submissions need an overview or Xref. Evidence uses the same emit/bind.
   (ready-capacity :on-refusal ((:stop :machine-phase))
@@ -521,6 +540,8 @@
                         :case (((:more) (:charge :bytes 4096 :steps *fn2-work-transition* :runnable t))
                                ((:stored :duplicate :conflict :evidence)
                                 (:do (fcode verdict selection h evidence coverage) (fn2-identity-facts lslot))
+                                ;; A same-subject duplicate only returns its status.
+                                ;; Both persistent outcomes are decided in :prepare.
                                 (:cond ((eq selection :same)
                                         (:set (word *fn2-upload-word-duplicate*)) (:next :refused)
                                         (:charge :bytes 4096 :steps *fn2-work-transition* :runnable t))
@@ -543,18 +564,10 @@
           :case (((:ok) (:next :ready) (:charge :bytes 8192 :steps *fn2-work-transition* :runnable t))
                  ((:more) (:charge :bytes 8192 :steps *fn2-work-transition* :runnable t)))))
         ((:if (equal row-tmode *fn2-txn-mode-evidence*)
-              ((:do (fcode verdict selection h evidence coverage) (fn2-identity-facts row-slot))
-               (:do (dcode ds dg doff) (fn2-txn-source-digest-ref row-slot) :accept (:ok))
-               (:do (pcode) (fn2-txn-put-evidence-for row-slot
-                                                      (if (equal (:read upload ilen) 0) (:read upload c0-slot) (:read upload lslot))
-                                                      (if (equal (:read upload ilen) 0) (:read upload c0-gen) (:read upload lgen))
-                                                      (:read upload mo) (:read upload ml)
-                                                      ds dg doff h (:read upload request-principal)
-                                                      (:read upload op) :owner upload))
-               (:if (eq pcode :ok)
-                    ((:set (prepared 1)) (:charge :bytes 8192 :steps *fn2-work-transition* :runnable t))
-                    ((:set (ecommit *fn2-txn-ecommit-refused*)) (:next :refused)
-                     (:charge :bytes 8192 :steps *fn2-work-transition* :runnable t))))
+              ((:cond ((equal row-rule *fn2-txn-rule-post*) (:goto put-evidence))
+                      ((< row-gcur (:read upload nl)) (:goto group))
+                      ((equal row-ngroups 0) (:goto group-access))
+                      (t (:goto put-evidence))))
               ((:let c0 (:read upload c0-slot)) (:let g0 (:read upload c0-gen))
                (:let c1 (:read upload c1-slot)) (:let g1 (:read upload c1-gen))
                (:let hashed (:read upload hashed)) (:let scanned (:read upload scan-off))
