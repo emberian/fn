@@ -575,7 +575,7 @@
    (and (equal *fn2-txn-slot-depend* *fn2-auth-depend-slot*)
         (no-duplicatesp-equal slots)
         (fn2-tu-slots-in-stripe-p slots)
-        (equal (len slots) *fn2-succ-slots*))))
+        (equal (len slots) *fn2-successor-post-slots*))))
 (defconst *fn2-tu-seven-groups*
   '(("local.g1" . 1) ("local.g2" . 2) ("local.g3" . 3) ("local.g4" . 4)
     ("local.g5" . 5) ("local.g6" . 6) ("local.g7" . 7)))

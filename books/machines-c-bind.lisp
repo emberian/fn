@@ -490,6 +490,7 @@
   (18 (ash 1 *fn2-grant-current-entry-field-grant*))
   (19 (ash 1 *fn2-authority-head-entry-field-grant*))
   (21 (ash 1 *fn2-authinfo-credential-entry-field-revision*))
+  (22 (ash 1 *fn2-withdrawals-entry-field-position*))
   (otherwise 0)))
 (defthm fn2-succ-replay-event-mask-natp
  (natp (fn2-succ-replay-event-mask sid)) :rule-classes :type-prescription)
@@ -668,6 +669,7 @@
       (kind (fn2-succ-slots-kind i fn2-succ-slots))
       (principal-field
        (cond ((equal sid *fn2-succ-addr-sid*) *fn2-addr-entry-field-principal*)
+             ((equal sid *fn2-withdrawals-sid*) *fn2-withdrawals-entry-field-stream*)
              ((equal sid *fn2-succ-authority-head-sid*) *fn2-authority-head-entry-field-principal*)
              ((and (equal sid *fn2-succ-consumer-cursor-sid*)
                    (or (equal kind *fn2-succ-kind-register*) (equal kind *fn2-succ-kind-rebase*)

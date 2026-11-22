@@ -28,10 +28,10 @@
 ;; each group uses two slots (counts, overview). Each group after the first
 ;; also uses a membership slot from the far end of the stripe. Therefore G
 ;; accepted groups require 8 fixed slots + 1 dependency + 2G + (G - 1).
-(defconst *fn2-txn-slot-accepts* 8)
+(defconst *fn2-txn-slot-accepts* *fn2-successor-post-fixed-slots*)
 (defconst *fn2-txn-slot-depend* 20)
 (defconst *fn2-txn-groups-max*
-  (floor (- *fn2-succ-slots* *fn2-txn-slot-accepts*) 3))
+  *fn2-successor-post-groups*)
 (assert-event (and (posp *fn2-txn-groups-max*)
                    (< *fn2-txn-slot-depend* *fn2-succ-slots*)))
 
@@ -108,7 +108,8 @@
           (ecommit (:enum fn2-txn-ecommit (:none :committed :uncertain :refused)))
           (batch :u60) (bevent :u60)
           (word :u8) (outcome-checked :bool) (offered :bool) (prepared :bool) (filed :bool) (counted :u60) (lines :u32)
-          (cancel-resolved :bool) (cancel-target :u60)
+          (cancel-resolved :bool) (cancel-target :u60) (cancel-progress :u8)
+          (cancel-placement :u60) (cancel-birth :u60) (cancel-count :u8) (cancel-index :u8)
           (gcur :u32) (gskip :bool) (ngroups :u8) (numbers-off :u32) (numbers-len :u32)
           ;; the append check in progress for the group at GCUR (its group
           ;; XGROUP; XSTEP 0 the name lookup, K > 0 fn2-authority-allows'
@@ -129,7 +130,7 @@
  :capacity (fn2-txn-capacity profile)
  :taken (:phase :admit :rows :transaction-row :ranges ()
          :copy (upload upload-gen conn conn-gen request rule principal-slot)
-         :clear (tmode ecommit batch bevent word outcome-checked offered prepared filed counted lines cancel-resolved cancel-target gcur gskip ngroups
+         :clear (tmode ecommit batch bevent word outcome-checked offered prepared filed counted lines cancel-resolved cancel-target cancel-progress cancel-placement cancel-birth cancel-count cancel-index gcur gskip ngroups
                 numbers-off numbers-len xstep xgroup xhead xgrant stopped))
  :initial ((generation fn2-machine-initial-generation) (ready-prev *fn2-none*) (ready-next *fn2-none*)
            (upload *fn2-none*) (conn *fn2-none*) (account-ref *fn2-none*) (next-free fn2-machine-initial-next-free))

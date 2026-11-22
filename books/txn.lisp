@@ -59,13 +59,22 @@
 ;; these private slot numbers.
 (defun fn2-txn-stream-slot (ordinal)
   (declare (xargs :guard (and (posp ordinal) (< ordinal *fn2-succ-slots*))))
-  (- *fn2-succ-slots* ordinal))
+  (- *fn2-successor-post-slots* ordinal))
 (assert-event
  (and (<= 7 *fn2-txn-groups-max*)
       (< (+ 1 (fn2-txn-group-slot 0)) *fn2-txn-slot-addr*)
       (< *fn2-txn-slot-addr* (fn2-txn-group-slot 1))
       (< (+ 1 (fn2-txn-group-slot (- *fn2-txn-groups-max* 1)))
          (fn2-txn-stream-slot (- *fn2-txn-groups-max* 1)))))
+;; Withdrawal slots append to the complete ordinary placement stripe.
+(defconst *fn2-txn-slot-withdraw-depend* *fn2-successor-post-slots*)
+(defconst *fn2-txn-slot-withdraw-article* (+ 1 *fn2-txn-slot-withdraw-depend*))
+(defun fn2-txn-withdraw-count-slot (ordinal)
+  (declare (xargs :guard (natp ordinal)))
+  (+ 1 *fn2-txn-slot-withdraw-article* (* 2 (nfix ordinal))))
+(assert-event
+ (equal (+ 2 (fn2-txn-withdraw-count-slot (- *fn2-txn-groups-max* 1))) *fn2-succ-slots*))
+
 ;; The article row's values: a born article is live, version 1; the
 ;; operation outcome recorded with it is accepted (it is bound only into the
 ;; batch that accepts it).
@@ -308,6 +317,12 @@
 (defcost fn2-txn-cancel-authorization :answers (:ok :more :access :unavailable)
   :bytes 4096 :tables (fn2-core-succ-txns fn2-core-run-cursors fn2-core-run-paths fn2-core-fields)
   :doc "Bind the exact live transfer to the receiver-local administrator or the accepted target's original submitter.")
+(defcost fn2-txn-cancel-snapshot :answers t :bytes 4608
+  :tables (fn2-core-succ-txns fn2-core-succ-slots fn2-core-run-cursors fn2-core-run-paths fn2-core-fields fn2-core-pool)
+  :doc "Read the exact ARTICLE and retain the conditional replacement under its current version.")
+(defcost fn2-txn-cancel-placement :answers t :bytes 4096
+  :tables (fn2-core-succ-txns fn2-core-succ-slots fn2-core-run-cursors fn2-core-run-paths fn2-core-fields)
+  :doc "Resolve one accepted target placement and declare its report and count change.")
 (defcost fn2-txn-wake-upload :tables (fn2-core-machines)
   :doc "Wake the upload this transaction held, if it still names it, so it drains.")
 (defcost fn2-txn-groups-limit
@@ -561,7 +576,7 @@
                                      ((:set (cancel-resolved 1) (cancel-target target))
                                       (:charge :bytes 8192 :steps *fn2-work-transition* :runnable t))
                                      ((:stop :machine-phase)))))))
-                      ((posp (:read upload cancel-len))
+                      ((and (posp (:read upload cancel-len)) (equal row-cancel-progress 0))
                        (:do (permit)
                             (fn2-txn-cancel-authorization row-slot row-cancel-target row-conn row-conn-gen
                                                           row-upload row-upload-gen row-request
@@ -572,10 +587,9 @@
                                 (:set (word *fn2-upload-word-refused*))
                                 (:next :refused)
                                 (:charge :bytes 8192 :steps *fn2-work-transition* :runnable t))
-                               ;; Acceptance requires the target mutation and reports to be staged
-                               ;; in this same successor. Until that continuation exists, return
-                               ;; the existing storage refusal even after authorization succeeds.
-                               ((:ok :unavailable)
+                               ((:ok) (:set (cancel-progress 1))
+                                (:charge :bytes 8192 :steps *fn2-work-transition* :runnable t))
+                               ((:unavailable)
                                 (:set (word *fn2-upload-word-not-stored*))
                                 (:next :refused)
                                 (:charge :bytes 8192 :steps *fn2-work-transition* :runnable t)))))
@@ -605,6 +619,34 @@
                       ((equal row-ngroups 0)
                        (:set (word *fn2-upload-word-group*)) (:next :refused)
                        (:charge :bytes 8192 :steps *fn2-work-transition* :runnable t))
+                      ((equal row-cancel-progress 1)
+                       (:do (code birth placement)
+                            (fn2-txn-cancel-snapshot row-slot row-cancel-target
+                                                     (:read upload lslot) (:read upload lgen)
+                                                     :budget 4096 :owner upload))
+                       (:cond ((eq code :more) (:charge :bytes 8192 :steps *fn2-work-transition* :runnable t))
+                              ((and (eq code :ok) (unsigned-byte-p 60 birth) (posp birth)
+                                    (unsigned-byte-p 60 placement) (posp placement))
+                               (:set (cancel-progress 2) (cancel-birth birth) (cancel-placement placement))
+                               (:charge :bytes 8192 :steps *fn2-work-transition* :runnable t))
+                              (t (:set (word *fn2-upload-word-not-stored*)) (:next :refused)
+                                 (:charge :bytes 8192 :steps *fn2-work-transition* :runnable t))))
+                      ((equal row-cancel-progress 2)
+                       (:do (code count)
+                            (fn2-txn-cancel-placement row-slot row-cancel-target row-cancel-placement
+                                                      row-cancel-birth row-cancel-index row-ngroups :budget 4096))
+                       (:cond ((eq code :more) (:charge :bytes 8192 :steps *fn2-work-transition* :runnable t))
+                              ((and (eq code :ok)
+                                    (unsigned-byte-p 8 count) (< count *fn2-txn-groups-max*)
+                                    (< row-cancel-index *fn2-txn-groups-max*)
+                                    (<= row-cancel-index (if (equal row-cancel-index 0) count row-cancel-count)))
+                               (:set (cancel-count (if (equal row-cancel-index 0) count row-cancel-count))
+                                     (cancel-progress (if (equal row-cancel-index
+                                                              (if (equal row-cancel-index 0) count row-cancel-count)) 3 2))
+                                     (cancel-index (+ 1 row-cancel-index)))
+                               (:charge :bytes 8192 :steps *fn2-work-transition* :runnable t))
+                              (t (:set (word *fn2-upload-word-not-stored*)) (:next :refused)
+                                 (:charge :bytes 8192 :steps *fn2-work-transition* :runnable t))))
                       (t (:let inj (:read upload inj))
                          (:if (not (equal inj 0))
                               ((:set (word inj)) (:next :refused)
@@ -640,13 +682,15 @@
                  ((:stale :changed)
                   (:do (rcode) (fn2-successor-release sslot))
                   (:set (outcome-checked 0) (offered 0) (prepared 0) (filed 0)
-                        (gcur 0) (gskip 0) (ngroups 0) (xstep 0))
+                        (gcur 0) (gskip 0) (ngroups 0) (xstep 0)
+                        (cancel-resolved 0) (cancel-target 0) (cancel-progress 0) (cancel-index 0) (cancel-count 0))
                   (:next :lookup) (:charge :bytes *fn2-txn-ready-bytes* :steps *fn2-work-transition* :runnable t))
                  ((:refused :evidence)
                   (:do (rcode) (fn2-successor-release sslot))
                   (:set (tmode *fn2-txn-mode-evidence*) (word *fn2-upload-word-conflict*)
                         (outcome-checked 0) (offered 0) (prepared 0) (filed 0)
-                        (gcur 0) (gskip 0) (ngroups 0) (xstep 0))
+                        (gcur 0) (gskip 0) (ngroups 0) (xstep 0)
+                        (cancel-resolved 0) (cancel-target 0) (cancel-progress 0) (cancel-index 0) (cancel-count 0))
                   (:next :lookup) (:charge :bytes *fn2-txn-ready-bytes* :steps *fn2-work-transition* :runnable t))
                  ((:duplicate)
                   (:if (and (equal i *fn2-txn-slot-outcome*) (not (equal (:read upload op) 0)))
@@ -655,7 +699,8 @@
                        ((:do (rcode) (fn2-successor-release sslot))
                         (:set (tmode *fn2-txn-mode-article*) (word 0) (outcome-checked 0)
                               (offered 0) (prepared 0) (filed 0)
-                              (gcur 0) (gskip 0) (ngroups 0) (xstep 0))
+                              (gcur 0) (gskip 0) (ngroups 0) (xstep 0)
+                        (cancel-resolved 0) (cancel-target 0) (cancel-progress 0) (cancel-index 0) (cancel-count 0))
                         (:next :lookup)
                         (:charge :bytes *fn2-txn-ready-bytes* :steps *fn2-work-transition* :runnable t))
                        ((:if (equal row-tmode *fn2-txn-mode-evidence*)
@@ -773,18 +818,18 @@
   (declare (xargs :stobjs (fn2-succ-txns fn2-succ-slots fn2-fields) :measure (nfix k)
                   :guard (and (fn2-succ-txns-wfp fn2-succ-txns) (fn2-succ-slots-wfp fn2-succ-slots)
                               (fn2-fields-wfp fn2-fields) (natp b0))))
-  (if (zp k) :ok
+  (if (zp k) (mv :ok nil)
     (b* ((i (fn2-txn-group-slot (1- k)))
          ((mv code s sid kind arity) (fn2-succ-declared tx i fn2-succ-txns fn2-succ-slots))
-         (j (fn2-fold-key-arg *fn2-txn-counts-sid* :accept *fn2-group-counts-entry-field-group*))
+         (j (fn2-fold-key-arg *fn2-txn-counts-sid* (fn2-succ-kindkw kind) *fn2-group-counts-entry-field-group*))
          ((unless (and (eq code :ok) (equal sid *fn2-txn-counts-sid*)
-                       (eq (fn2-succ-kindkw kind) :accept) (natp j) (< j arity)
+                       (member-eq (fn2-succ-kindkw kind) '(:accept :accept-and-withdraw)) (natp j) (< j arity)
                        (natp s) (< s (fn2-succ-slots-rows fn2-succ-slots))
                        (fn2-succ-has (fn2-succ-slots-set s fn2-succ-slots) j)))
-          :state)
+          (mv :state nil))
          (raw (+ b0 (* *fn2-succ-block* i) *fn2-succ-raw* j))
-         ((unless (< raw (fn2-fields-rows fn2-fields))) :state))
-      (if (equal (fn2-fields-value raw fn2-fields) group) :repeated
+         ((unless (< raw (fn2-fields-rows fn2-fields))) (mv :state nil)))
+      (if (equal (fn2-fields-value raw fn2-fields) group) (mv :repeated (1- k))
         (fn2-txn-prior-group tx (1- k) group b0 fn2-succ-txns fn2-succ-slots fn2-fields)))))
 (in-theory (disable fn2-txn-prior-group))
 ;; The group at the Newsgroups scan's current name: while the append check
@@ -804,7 +849,10 @@
             (status)
             (mv-let (sc base) (fn2-idc-stripe tx (fn2-fc-rows fn2-fc) fn2-id-decides fn2-fields)
               (if (and (eq sc :ok) (natp base))
-                  (fn2-txn-prior-group tx k group base fn2-succ-txns fn2-succ-slots fn2-fields)
+                  (mv-let (answer ordinal)
+                    (fn2-txn-prior-group tx k group base fn2-succ-txns fn2-succ-slots fn2-fields)
+                    (declare (ignore ordinal))
+                    answer)
                 :state))
             status)))
       (mv status group fn2-core))))
@@ -1140,6 +1188,30 @@
   (min *fn2-overview-octets-max*
        (+ base-length 1 (length "Xref: ") path-length names-length
           (* (+ 2 20) *fn2-txn-groups-max*))))
+
+;; Both declarations are private. Their status controls whether the
+;; parent can resolve, stage and submit the successor.
+(defun fn2-txn-put-withdrawal-group (tx ordinal article stream number filing-ordinal fn2-core)
+  (declare (xargs :stobjs fn2-core :guard (fn2-core-wfp fn2-core)))
+  (b* (((unless (and (natp ordinal) (< ordinal *fn2-txn-groups-max*)
+                    (posp article) (unsigned-byte-p 60 article)
+                    (posp stream) (unsigned-byte-p 60 stream)
+                    (posp number) (unsigned-byte-p 60 number)
+                    (or (null filing-ordinal)
+                        (and (natp filing-ordinal) (< filing-ordinal *fn2-txn-groups-max*)))))
+        (mv :bounds fn2-core))
+       (slot (fn2-txn-withdraw-count-slot ordinal))
+       ((mv code fn2-core)
+        (if filing-ordinal
+            (fn2-group-counts-put-accept-and-withdraw tx (fn2-txn-group-slot filing-ordinal)
+              ':value stream ':value number fn2-core)
+          (fn2-group-counts-put-withdraw tx slot ':value stream ':value number fn2-core)))
+       ((unless (eq code :ok)) (mv code fn2-core)))
+    (fn2-withdrawals-put tx (+ 1 slot)
+      (stream stream) (position :event 0) (article article) (number number) fn2-core)))
+(fn2-core-preserves fn2-txn-put-withdrawal-group (tx ordinal article stream number filing-ordinal fn2-core)
+  :position 1 :rows nil)
+(in-theory (disable fn2-txn-put-withdrawal-group))
 
 (defun fn2-txn-add-group (tx k group principal c0 g0 c1 g1 noff nlen names-len ov-off okind oslot ogen fn2-core)
   ;; Group K's count accept, overview row (its line given late, after stage,

@@ -17,6 +17,7 @@
 (include-book "merkle")
 (include-book "event-read-state")
 (include-book "journal-members-state")
+(include-book "successor-workspace-geometry")
 (fn2-book-layer :b)
 (defun fn2-b-capacity (key default profile)
  (declare (xargs :guard t))
@@ -201,7 +202,10 @@
 ; (the private successor's write slots and the exact lookup's area, C-S3,
 ; machines-c.lisp) per transaction at the table's end: a format constant (C
 ; asserts its slots fit).
-(defconst *fn2-b-txn-field-rows* 2048)
+(defconst *fn2-b-txn-field-rows*
+ (+ 2048 (* *fn2-successor-withdrawal-slots*
+            (fn2-successor-block-fields *fn2-successor-scalar-mask-width*
+                                         *fn2-successor-scalar-mask-width*))))
 (defconst *fn2-b-read-stride-rows* 1024)
 ;; Layer C's sealer stripe (C1c) below the transactions' stripes: a format
 ;; constant (C asserts its *fn2-seal-field-rows* fits): the build's 1,280

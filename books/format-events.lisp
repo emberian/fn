@@ -34,8 +34,8 @@
 (assert-event (fn2-layoutp *fn2-format-txn-record*))
 (assert-event (equal (fn2-layout-max-size *fn2-format-txn-record*) 10))
 ; B-S2 S12 (Argon §9.6): the record kinds a transaction member's workspace may
-; carry: :article-acceptance (0) and the run schemas (sid 1..21 at
-; *fn2-commit-txn-schema-record-kind-base* + sid = 16..36); the last schema
+; carry: :article-acceptance (0) and the run schemas (sid 1..22 at
+; *fn2-commit-txn-schema-record-kind-base* + sid = 16..37); the last schema
 ; record kind bounds the commit's decode dispatch (commit.lisp).
 (defconst *fn2-commit-txn-schema-record-kind-base* 15)
 (defconst *fn2-commit-txn-record-kinds*
@@ -45,8 +45,8 @@
         *record-kind-outcome* *record-kind-manifest* *record-kind-identity-history* *record-kind-identity-candidates*
         *record-kind-identity-summary* *record-kind-identity-article* *record-kind-consumer-names*
         *record-kind-principals* *record-kind-grants* *record-kind-grant-current* *record-kind-authority-head*
-        *record-kind-article-stream* *record-kind-authinfo-credential*))
-(defconst *fn2-commit-txn-schema-record-kind-last* *record-kind-authinfo-credential*)
+        *record-kind-article-stream* *record-kind-authinfo-credential* *record-kind-withdrawal-report*))
+(defconst *fn2-commit-txn-schema-record-kind-last* *record-kind-withdrawal-report*)
 
 (deflayout fn2-format-operation-header
   `((principal (:id principal)) (operation (:id operation))))

@@ -21,7 +21,7 @@
 ; at *fn2-idc-ident*: its query begins at +4, then the shared run reader.
 (defconst *fn2-idc-stride* *fn2-b-txn-field-rows*)
 (defconst *fn2-idc-b-stripe* 128)
-(defconst *fn2-succ-slots* 29)
+(defconst *fn2-succ-slots* (+ *fn2-successor-post-slots* *fn2-successor-withdrawal-slots*))
 
 (defconst *fn2-idc-ident* (* *fn2-succ-slots* *fn2-succ-block*))
 (defconst *fn2-idc-eb* (+ *fn2-idc-ident* 4))

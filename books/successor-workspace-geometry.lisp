@@ -6,6 +6,16 @@
 (defun fn2-successor-block-fields (fields values)
  (declare (xargs :guard (and (natp fields) (natp values))))
  (+ (* 3 (nfix fields)) (nfix values) 1))
+(defconst *fn2-successor-post-fixed-slots* 8)
+(defconst *fn2-successor-post-slots* 29)
+(defconst *fn2-successor-post-groups*
+ (floor (- *fn2-successor-post-slots* *fn2-successor-post-fixed-slots*) 3))
+;; One current ARTICLE version comparison and replacement, plus the report
+;; and count change for each accepted placement. The shared-group case
+;; consumes one of its existing filing slots for the combined count fold.
+(defconst *fn2-successor-withdrawal-slots* (+ 2 (* 2 *fn2-successor-post-groups*)))
+(defconst *fn2-successor-scalar-mask-width* 32)
+
 (defun fn2-successor-required-fields (fields values slots entry-guard reader-fields)
  (declare (xargs :guard (and (natp fields) (natp values) (natp slots) (natp entry-guard) (natp reader-fields))))
  (let ((block (fn2-successor-block-fields fields values)))

@@ -16,7 +16,7 @@
 (defconst *fn2-checkpoint-post-schema-families*
  '(fn2-identity-history fn2-identity-evidence fn2-identity-candidates
    fn2-identity-summary fn2-identity-article fn2-article fn2-outcome
-   fn2-addr fn2-group-counts fn2-overview fn2-article-stream))
+   fn2-addr fn2-group-counts fn2-overview fn2-article-stream fn2-withdrawals))
 (defun fn2-checkpoint-service-schema-ids (families world)
  (declare (xargs :verify-guards nil :measure (len families)))
  (if (atom families) nil

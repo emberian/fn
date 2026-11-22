@@ -90,7 +90,7 @@
 (make-event
  `(defcolumns fn2-succ-slots
    ((phase (:enum fn2-succ-slot-phase (:empty :put :resolved)))
-    (sid :u60) (kind (:enum fn2-succ-kind ,(append (cons :insert *fn2-run-fold-kinds*) '(:depend))))
+    (sid :u60) (kind (:enum fn2-succ-kind ,(append (cons :insert *fn2-run-fold-kinds*) '(:depend :depend-scalars))))
     (set :u32) (events :u32) (outs :u32) (found :bool) (vrun :u60) (size :u32)
     (oset :bool) (sk :u8) (ss :u32) (sg :u60) (late :u32) (filled :u32) (unchanged :bool))))
 (fn2-idc-child fn2-core-succ-txns fn2-succ-txns
@@ -201,9 +201,14 @@
  (if (unsigned-byte-p 8 code) (fn2-succ-kind-code->keyword code) nil))
 ; The number of args slot kind CODE of schema SID takes: an insert's or a
 ; dependency's entry fields, a fold event's args.
+(defun fn2-succ-depend-kindp (code)
+ (declare (xargs :guard t))
+ (or (equal code *fn2-succ-kind-depend*)
+     (equal code *fn2-succ-kind-depend-scalars*)))
+
 (defun fn2-succ-arity (sid code)
  (declare (xargs :guard t))
- (cond ((member code (list *fn2-succ-kind-insert* *fn2-succ-kind-depend*)) (nfix (fn2-run-layout-fields sid 0)))
+ (cond ((or (equal code *fn2-succ-kind-insert*) (fn2-succ-depend-kindp code)) (nfix (fn2-run-layout-fields sid 0)))
        (t (nfix (fn2-fold-arity sid (fn2-succ-kindkw code))))))
 (defthm fn2-succ-arity-natp (natp (fn2-succ-arity sid code)) :rule-classes :type-prescription)
 (in-theory (disable fn2-succ-kindkw fn2-succ-arity))
@@ -225,7 +230,7 @@
 (defun fn2-succ-octet-field (sid kcode j)
  (declare (xargs :guard (natp j)))
  (let ((f (cond ((equal kcode *fn2-succ-kind-insert*) j)
-                ((equal kcode *fn2-succ-kind-depend*) nil)
+                ((fn2-succ-depend-kindp kcode) nil)
                 (t (fn2-succ-key-field-of (nfix (fn2-run-layout-keys sid)) 0 sid (fn2-succ-kindkw kcode) j)))))
   (and (natp f) (fn2-run-layout-octets-max sid f) f)))
 (defthm fn2-succ-octet-field-type
@@ -261,7 +266,7 @@
       ((unless (< 0 (fn2-run-layout-fields sid 0))) (mv :schema fn2-succ-txns fn2-succ-slots))
       ((unless (cond ((equal code *fn2-succ-kind-insert*)
                       (and (not (fn2-run-layout-fold-p sid)) (member-eq (fn2-run-layout-merge sid) '(:unique :latest :union))))
-                     ((equal code *fn2-succ-kind-depend*)
+                     ((fn2-succ-depend-kindp code)
                       (or (fn2-run-layout-fold-p sid) (member-eq (fn2-run-layout-merge sid) '(:unique :latest))))
                      (t (natp (fn2-fold-arity sid kind)))))
        (mv :kind fn2-succ-txns fn2-succ-slots))
@@ -327,7 +332,7 @@
                     (<= (+ b0 *fn2-idc-stride*) (fn2-fields-rows fn2-fields)) (unsigned-byte-p 60 value)))
        (mv :bounds fn2-succ-txns fn2-succ-slots fn2-fields))
       (kw (fn2-succ-kindkw kcode))
-      (insert (equal kcode *fn2-succ-kind-insert*)) (depend (equal kcode *fn2-succ-kind-depend*))
+      (insert (equal kcode *fn2-succ-kind-insert*)) (depend (fn2-succ-depend-kindp kcode))
       (fold (not (or insert depend)))
       ((when (or (and (or insert depend) (fn2-run-layout-octets-max sid j)) (and depend (not (eq src :value))) (and fold (fn2-fold-assigned-p sid kw j))
                  (and fold (fn2-succ-octet-field sid kcode j))))
@@ -575,7 +580,7 @@
            (mv c fn2-succ-txns fn2-succ-slots fn2-run-cursors fn2-run-paths fn2-fields)))
          (nk (nfix (fn2-run-layout-keys sid)))
          (fn2-fields (fn2-succ-key-rows nk 0 nk sid (fn2-succ-kindkw code)
-                                        (member code (list *fn2-succ-kind-insert* *fn2-succ-kind-depend*))
+                                        (or (equal code *fn2-succ-kind-insert*) (fn2-succ-depend-kindp code))
                                         (+ entry *fn2-succ-raw*) entry fn2-fields))
          (fn2-succ-txns (fn2-succ-txns-put tx (rstate *fn2-succ-resolve-next*) (rbound *fn2-u60-max*))))
      (mv :more fn2-succ-txns fn2-succ-slots fn2-run-cursors fn2-run-paths fn2-fields)))

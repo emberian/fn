@@ -71,6 +71,14 @@
 (assert-event (equal (+ *fn2-commit-txn-schema-record-kind-base* *fn2-article-stream-sid*)
                      *record-kind-article-stream*))
 
+(defconst *fn2-withdrawals-sid* 22)
+(defrunschema fn2-withdrawals :id 22
+ :key ((stream (:id stream)) (position (:id position)))
+ :value ((article (:id article)) (number (:id group-number)))
+ :merge :unique)
+(assert-event (equal (+ *fn2-commit-txn-schema-record-kind-base* *fn2-withdrawals-sid*)
+                     *record-kind-withdrawal-report*))
+
 ; The group directory (seam S-GROUP): a newsgroup's exact name octets to its
 ; group identifier, the (:id group) key of fn2-group-counts and fn2-overview.
 ; Latest-only: a renumbering or a later configuration replaces the row. The
