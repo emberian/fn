@@ -626,8 +626,9 @@
                 (mv (or err2 err3) (list 'if (list 'member-eq key (list 'quote (caar arms))) a b) acc)))))))
 
 ; ----------------------------------------------------------------------
-; The step walker. (mv err code acc). A branch step (:if :cond :case) or a
-; terminal ends its step list; every path ends in exactly one terminal.
+; The step walker. (mv err code acc). Each path ends in exactly one
+; terminal. An :if can share a continuation, checked in each branch's
+; own narrowed path. :cond and :case remain at the end of a step list.
 (defconst *fn2-arms-terminals* '(:charge :wait :park :stop :halt :goto :idle :yield :wake :nowake :repeat-next))
 ; Writes are batched: a path's :set fields (and the row-control fields its
 ; terminal writes) are written by one checked PUT before the next operation
@@ -2045,11 +2046,15 @@
                              `(let ((fn2-core (fn2-machine-wake-row ,e fn2-core))) ,body))
                            (fn2-arms-add :uses '(fn2-machine-wake-row) acc)))))))
          (:if
-          (if (or rest (not (equal (len step) 4)))
-              (mv (msg "~x0 is (:if E (STEP ...) (STEP ...)) and ends its path." step) nil acc)
+          (if (not (and (equal (len step) 4) (true-listp (caddr step)) (true-listp (cadddr step))))
+              (mv (msg "~x0 is (:if E (STEP ...) (STEP ...))." step) nil acc)
             (mv-let (err test acc) (fn2-arms-expr (cadr step) env acc fuel)
-              (mv-let (err2 a acc) (fn2-arms-steps (caddr step) (fn2-arms-path-narrow (list (cadr step)) t env 64) acc (1- fuel))
-                (mv-let (err3 b acc) (fn2-arms-steps (cadddr step) (fn2-arms-path-narrow (list (cadr step)) nil env 64) acc (1- fuel))
+              (mv-let (err2 a acc)
+                (fn2-arms-steps (append (caddr step) rest)
+                                (fn2-arms-path-narrow (list (cadr step)) t env 64) acc (1- fuel))
+                (mv-let (err3 b acc)
+                  (fn2-arms-steps (append (cadddr step) rest)
+                                  (fn2-arms-path-narrow (list (cadr step)) nil env 64) acc (1- fuel))
                   (mv (or err err2 err3) `(if ,test ,a ,b) acc))))))
          (:cond
           (if rest (mv (msg "~x0 ends its path." step) nil acc)

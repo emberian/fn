@@ -1,0 +1,66 @@
+; Shared tails enter the ordinary compiler with each path's knowledge,
+; pending writes, effects and operation cost.
+(in-package "ACL2")
+(include-book "../books/machine-arms")
+
+(defun fn2-if-unit-work (value)
+  (declare (xargs :guard t))
+  (nfix value))
+(defcost fn2-if-unit-work :bytes 64 :child fn2-if-unit-work :doc "Charge one conditional operation.")
+
+(defmachine fn2-if-unit
+ :phases (:free :work :left :right)
+ :fields ((count :u32))
+ :budget (:bytes 256 :steps 32 :descriptors 0)
+ :initial ((generation 1) (ready-prev *fn2-none*) (ready-next *fn2-none*))
+ :arms
+ ((:free (:idle))
+  (:work
+   (:if (posp row-count)
+        ((:if (equal row-count 1) ((:set (count 0))) ())
+         (:do (observed) (fn2-if-unit-work row-count))
+         (:next :left))
+        ((:next :right)))
+   (:do (charged) (fn2-if-unit-work 0))
+   (:charge :bytes 128 :steps *fn2-work-small*))
+  (:left (:idle))
+  (:right (:idle)))
+ :observes ())
+(defmachine-arms fn2-if-unit :children)
+
+(make-event
+ (b* ((env (fn2-arms-env 'fn2-if-unit :work nil nil nil t (w state)))
+      (shared '((:if (posp row-count)
+                     ((:if (equal row-count 1) ((:set (count 0))) ())
+                      (:do (observed) (fn2-if-unit-work row-count)) (:next :left))
+                     ((:next :right)))
+                (:do (charged) (fn2-if-unit-work 0))
+                (:charge :bytes 128 :steps *fn2-work-small*)))
+      (explicit '((:if (posp row-count)
+                       ((:if (equal row-count 1)
+                             ((:set (count 0))
+                              (:do (observed) (fn2-if-unit-work row-count)) (:next :left)
+                              (:do (charged) (fn2-if-unit-work 0))
+                              (:charge :bytes 128 :steps *fn2-work-small*))
+                             ((:do (observed) (fn2-if-unit-work row-count)) (:next :left)
+                              (:do (charged) (fn2-if-unit-work 0))
+                              (:charge :bytes 128 :steps *fn2-work-small*))))
+                       ((:next :right)
+                        (:do (charged) (fn2-if-unit-work 0))
+                        (:charge :bytes 128 :steps *fn2-work-small*)))))
+      ((mv shared-error shared-code shared-acc) (fn2-arms-steps shared env nil 100))
+      ((mv explicit-error explicit-code explicit-acc) (fn2-arms-steps explicit env nil 100))
+      ((mv terminal-error & &)
+       (fn2-arms-steps '((:if (posp row-count) ((:idle)) ()) (:idle)) env nil 100))
+      ((mv malformed-error & &)
+       (fn2-arms-steps '((:if (posp row-count) ((:set (count 0)) . malformed) ()) (:idle))
+                       env nil 100)))
+   (if (and (not shared-error) (not explicit-error)
+            (equal shared-code explicit-code) (equal shared-acc explicit-acc)
+            (equal terminal-error (msg "steps follow the terminal ~x0." '(:idle)))
+            (equal malformed-error
+                   (msg "~x0 is (:if E (STEP ...) (STEP ...))."
+                        '(:if (posp row-count) ((:set (count 0)) . malformed) ()))))
+       '(value-triple :conditional-continuations-checked)
+     (er soft 'machine-if-continuation-unit "Shared ~x0, explicit ~x1, terminal ~x2, malformed ~x3."
+         shared-error explicit-error terminal-error malformed-error))))

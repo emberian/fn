@@ -73,7 +73,7 @@ The step language (everything an arm may say; nothing else is accepted):
 | `(:do (V ...) (OP ARG ...) [:accept (CODE ...)] [:case ((CODE ...) STEP ...) ... ])` | call a declared operation (a `defcost` row; rule 2) and bind its non-stobj results | `mv-let`; stobj formals and results appended from the world (`stobjs-in`/`stobjs-out`), owner formals `okind oslot ogen principal` filled from the row |
 | `(:set (F E) ...)` | write own fields | `K-PUT-CORE` (one checked write) |
 | `(:next N)` | the row's next phase: `P`, `(:if E N N)` or `(:case V ((CODE ...) N) ... (:otherwise N))` | `(phase ...)` in the path's last write |
-| `(:cond (E STEP ...) ... (t STEP ...))`, `(:if E (STEP ...) (STEP ...))`, `(:case V ((CODE ...) STEP ...) ... (:otherwise STEP ...))` | branch | `cond`/`if`/`case` |
+| `(:cond (E STEP ...) ... (t STEP ...))`, `(:if E (STEP ...) (STEP ...))`, `(:case V ((CODE ...) STEP ...) ... (:otherwise STEP ...))` | branch. An `:if` may be followed by steps shared by both branches | `cond`/`if`/`case` |
 | `(:issue (OP ARG ...) :bytes E [:ok (STEP ...)] [:refused (STEP ...)])` | issue one descriptor | `:ok` steps, then pending 1 / wait :completion / charge (E, mailbox, 1); `:exhausted`: `:refused` steps, then park on :operation; any other answer: `:refused` steps, then the arm's `:on-refusal` |
 | `(:park WAIT [ARG])` | park on a D0 wait kind; the waker is the wait kind's (operation FIFO, admission FIFO of ARG, pool class ARG; an attached kind such as :sealable names its ready/grant pair where it is declared) | the kind's park op, then the parked charge |
 | `(:charge [:bytes E] [:steps E] [:descriptors E] [:runnable E])` | end the run, reporting work | `K-FINISH` (no kind dispatch) |
