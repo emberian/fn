@@ -1,5 +1,5 @@
 (in-package "ACL2")
-(include-book "conn-kind")
+(include-book "conn-schema")
 (include-book "accounts")
 
 (defun fn2-account-live-id (slot fn2-accounts)
@@ -15,11 +15,11 @@
  (and (posp pid) (unsigned-byte-p 60 pid)
       (equal pid (fn2-account-live-id (floor (nfix pid) 4294967296) fn2-accounts))))
 
-(defun fn2-conn-live-slot (conn gen fn2-machines fn2-conn)
+(defun fn2-conn-live-slot (conn gen kind fn2-machines fn2-conn)
  (declare (xargs :stobjs (fn2-machines fn2-conn)
                  :guard (and (fn2-machines-wfp fn2-machines) (fn2-conn-wfp fn2-conn))))
  (b* (((unless (and (natp conn) (< conn (fn2-machines-rows fn2-machines))
-                    (equal (fn2-machines-kind conn fn2-machines) *fn2-conn-kind*)))
+                    (equal (fn2-machines-kind conn fn2-machines) kind)))
        (mv :state 0))
       (slot (fn2-machines-slot conn fn2-machines))
       ((unless (and (natp slot) (< slot (fn2-conn-rows fn2-conn)) (posp gen)
@@ -31,9 +31,9 @@
        (mv :state 0)
      (mv :ok slot))))
 (defthm fn2-conn-live-slot-bounds
- (implies (eq (mv-nth 0 (fn2-conn-live-slot conn gen fn2-machines fn2-conn)) :ok)
-          (and (natp (mv-nth 1 (fn2-conn-live-slot conn gen fn2-machines fn2-conn)))
-               (< (mv-nth 1 (fn2-conn-live-slot conn gen fn2-machines fn2-conn))
+ (implies (eq (mv-nth 0 (fn2-conn-live-slot conn gen kind fn2-machines fn2-conn)) :ok)
+          (and (natp (mv-nth 1 (fn2-conn-live-slot conn gen kind fn2-machines fn2-conn)))
+               (< (mv-nth 1 (fn2-conn-live-slot conn gen kind fn2-machines fn2-conn))
                   (fn2-conn-rows fn2-conn))))
  :hints (("Goal" :in-theory (enable fn2-conn-live-slot))))
 (in-theory (disable fn2-conn-live-slot))
@@ -53,14 +53,3 @@
          (mv :ok pid)
        (mv :access 0)))))
 (in-theory (disable fn2-conn-protected-account-at))
-
-(defcost fn2-conn-authenticated-principal :child fn2-conn-authenticated-principal-children
- :answers (:ok :access :state)
- :doc "Require a live NNTP incarnation and the current account bound by protected authentication.")
-(defun fn2-conn-authenticated-principal-children (conn gen fn2-machines fn2-conn fn2-accounts)
- (declare (xargs :stobjs (fn2-machines fn2-conn fn2-accounts)
-                 :guard (and (fn2-machines-wfp fn2-machines) (fn2-conn-wfp fn2-conn)
-                             (fn2-accounts-wfp fn2-accounts))))
- (mv-let (code slot) (fn2-conn-live-slot conn gen fn2-machines fn2-conn)
-   (if (eq code :ok) (fn2-conn-protected-account-at slot fn2-conn fn2-accounts)
-     (mv :state 0))))
