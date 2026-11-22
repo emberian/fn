@@ -32,7 +32,7 @@
 (defun fn2-peer-pull-copy-credentials (src sgen source-kind source source-gen stream-off stream-len user-off user-len pass-off pass-len
                                        dest dgen kind owner generation fn2-pool)
  (declare (xargs :stobjs fn2-pool :guard (fn2-pool-wfp fn2-pool)))
- (b* (((unless (and (not (equal src dest)) (natp stream-off) (posp stream-len) (<= stream-len 250)
+ (b* (((unless (and (not (equal src dest)) (natp stream-off) (posp stream-len) (<= stream-len 64)
                     (fn2-authinfo-token-span-p src sgen stream-off stream-len source-kind source source-gen fn2-pool)
                     (fn2-authinfo-token-span-p src sgen user-off user-len source-kind source source-gen fn2-pool)
                     (fn2-authinfo-token-span-p src sgen pass-off pass-len source-kind source source-gen fn2-pool)

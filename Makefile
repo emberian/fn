@@ -203,6 +203,7 @@ ACL2_BOOKS = \
   books/xfnc-reply \
   books/conn-authinfo-read \
   books/conn-read-principal \
+  books/peer-pull-profile \
   books/peer-pull-kind \
   books/peer-pull-line \
   books/peer-pull-stage \
