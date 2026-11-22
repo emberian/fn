@@ -221,6 +221,11 @@ def qualify(args, repl):
             '--load-timeout', '120', '--idle-timeout', '5'])
         receipt['session_handles'] = session_handles(repl.read_state(name), receipt['cgroup'])
         save()
+        # Startup loaded ENTRY under build/. Replay the original book with its
+        # own connected directory, including LOCAL and nested relative imports.
+        source_dir = (root / book).parent.as_posix().replace('\\', '\\\\').replace('"', '\\"')
+        commands.run('source-directory', ['tools/proof_repl.py', 'send', name,
+            f'(set-cbd "{source_dir}/")'])
         commands.run('author', ['tools/proof_repl.py', 'send-range', name, book,
             '--ld-local', '--per-event-steps', str(args.event_steps),
             '--limit', str(args.event_seconds)])

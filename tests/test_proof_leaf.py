@@ -96,18 +96,20 @@ class Lifecycle(unittest.TestCase):
     def test_success_orders_whole_author_stop_then_strict_record(self):
         rc,calls,receipt,cache=self.run_case()
         self.assertEqual(rc,0)
-        self.assertEqual([c[0] for c in calls],['install','start','author','stop','record'])
+        self.assertEqual([c[0] for c in calls],['install','start','source-directory','author','stop','record'])
         self.assertIn('--cached-only',calls[1][1])
-        self.assertIn('--per-event-steps',calls[2][1])
-        self.assertNotIn('--from',calls[2][1])
-        self.assertIn('--cached-parents',calls[4][1])
-        self.assertNotIn('--skip-includes',calls[2][1])
+        root = Path(receipt['entry']['path']).parent.parent
+        self.assertEqual(calls[2][1][3], f'(set-cbd "{root}/books/")')
+        self.assertIn('--per-event-steps',calls[3][1])
+        self.assertNotIn('--from',calls[3][1])
+        self.assertIn('--cached-parents',calls[5][1])
+        self.assertNotIn('--skip-includes',calls[3][1])
         self.assertEqual(receipt['status'],'qualified')
         self.assertEqual(cache[0].args[2],{'books/parent'})
         self.assertEqual(cache[-1].args[2],{'books/parent','books/target'})
 
     def test_first_refusal_cleans_session_without_record(self):
-        for stage in ('start','author'):
+        for stage in ('start','source-directory','author'):
             with self.subTest(stage=stage):
                 rc,calls,receipt,_=self.run_case(stage)
                 self.assertEqual(rc,1)
@@ -118,7 +120,7 @@ class Lifecycle(unittest.TestCase):
     def test_record_refusal_does_not_restart_author(self):
         rc,calls,_,_=self.run_case('record')
         self.assertEqual(rc,1)
-        self.assertEqual([c[0] for c in calls],['install','start','author','stop','record'])
+        self.assertEqual([c[0] for c in calls],['install','start','source-directory','author','stop','record'])
 
     def test_deadline_reaps_only_its_actual_child(self):
         with tempfile.TemporaryDirectory() as directory:
