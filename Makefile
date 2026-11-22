@@ -252,6 +252,8 @@ ACL2_BOOKS = \
   books/storage-block-io \
   books/machines-b \
   books/machines-c \
+  books/journal-retention-state \
+  books/journal-retention \
   books/c-snapshot-state \
   books/c-snapshot \
   books/machines-c-bind \
