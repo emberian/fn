@@ -113,7 +113,7 @@
                   :guard (and (fn2-fields-wfp fn2-fields) (fn2-pool-wfp fn2-pool)
                               (natp base) (<= (+ base 128) (fn2-fields-rows fn2-fields)))))
   (mv-let (code pid query consumer epoch version view position fn2-fields)
-    (fn2-xfnc-unpack-cursor base start end principal history incarnation slot gen kind owner generation fn2-fields fn2-pool)
+    (fn2-xfnc-unpack-cursor base start end (or principal 0) history incarnation slot gen kind owner generation fn2-fields fn2-pool)
     (declare (ignore pid))
     (mv code query consumer epoch version view position fn2-fields)))
 (fn2-pool-block-shape fn2-xfnc-decode-cursor-shape

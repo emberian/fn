@@ -3,6 +3,7 @@
 ; is accepted as the reply to a subsequent request.
 (in-package "ACL2")
 (include-book "peer-pull-stage")
+(include-book "peer-pull-request-encode")
 (include-book "xfnc-request")
 (include-book "xfnc-ops")
 
@@ -110,3 +111,66 @@
 (in-theory (disable fn2-peer-pull-accept-registration))
 (defcost fn2-peer-pull-accept-registration :answers t :bytes 2048 :tables (fn2-core-fields fn2-core-pool fn2-peer-pull-table)
  :doc "Bind the received fncu's exact identity and retain its bytes in the original peer actor's range.")
+
+(fn2-csnapshot-op fn2-peer-pull-request (id generation) 1
+ (b* (((mv fc row) (fn2-peer-pull-fc-row id fn2-core))
+      ((unless (and (eq fc :ok) (equal generation (fn2-machine-generation id fn2-core))
+                    (equal (fn2-peer-pull-row-phase id fn2-core) *fn2-peer-pull-state-request*)
+                    (equal 1 (fn2-peer-pull-row-protected id fn2-core)))) (mv :access fn2-core))
+      (kind *fn2-peer-pull-kind*) (base (* 128 (nfix row))) (tx (fn2-peer-pull-row-tx-slot id fn2-core))
+      (tg (fn2-peer-pull-row-tx-gen id fn2-core)) (private (fn2-peer-pull-row-secret-slot id fn2-core))
+      (pg (fn2-peer-pull-row-secret-gen id fn2-core)) (namesize (fn2-peer-pull-row-stream-len id fn2-core))
+      (cursor-off (fn2-peer-pull-row-cursor-off id fn2-core)) (cursor-len (fn2-peer-pull-row-cursor-len id fn2-core))
+      (consumer (fn2-peer-pull-row-consumer id fn2-core)) (dialog (fn2-peer-pull-row-dialog id fn2-core))
+      (rx (fn2-peer-pull-row-rx-slot id fn2-core)))
+   (stobj-let ((fn2-fields (fn2-core-fields fn2-core)) (fn2-digests (fn2-core-digests fn2-core))
+               (fn2-b3 (fn2-core-b3 fn2-core)) (fn2-pool (fn2-core-pool fn2-core)))
+      (code fn2-fields fn2-digests fn2-b3 fn2-pool)
+      (cond ((equal dialog *fn2-pull-dialog-register*)
+             (fn2-peer-pull-encode-register base row consumer private pg namesize tx tg kind id generation
+                                           fn2-fields fn2-digests fn2-b3 fn2-pool))
+            ((equal dialog *fn2-pull-dialog-read*)
+             ;; One item per page bounds the reciprocal import transaction.
+             ;; A subsequent READ continues from its settled checkpoint.
+             (fn2-peer-pull-encode-read base row private pg cursor-off cursor-len 1
+               (nfix (- (min (nfix (fn2-fnct-cap rx fn2-pool)) (+ *fn2-pool-block-bytes* *fn2-fnct-trailer-octets*))
+                        *fn2-fnct-overhead*))
+               tx tg kind id generation fn2-fields fn2-digests fn2-b3 fn2-pool))
+            (t (mv :state fn2-fields fn2-digests fn2-b3 fn2-pool)))
+      (mv code fn2-core))))
+(in-theory (disable fn2-peer-pull-request))
+(defcost fn2-peer-pull-request :answers t :bytes 4096
+ :tables (fn2-core-fields fn2-core-digests fn2-core-b3 fn2-core-pool)
+ :doc "Encode and seal the authenticated peer's typed REGISTER or single-item READ into its held TX.")
+
+; A resumed request regenerates the canonical cursor with the receiver's
+; confirmed new position. The immutable identities came from the verified
+; REGISTER. A lower receiver position cannot jump the sender's recorded one.
+(fn2-csnapshot-op fn2-peer-pull-propose (id generation position) 1
+ (b* (((mv fc row) (fn2-peer-pull-fc-row id fn2-core))
+      ((unless (and (eq fc :ok) (equal generation (fn2-machine-generation id fn2-core))
+                    (equal (fn2-peer-pull-row-phase id fn2-core) *fn2-peer-pull-state-resume*)
+                    (equal (fn2-peer-pull-row-protected id fn2-core) 1)
+                    (unsigned-byte-p 60 position)
+                    (<= (nfix (fn2-peer-pull-row-source-position id fn2-core)) position)))
+       (mv :scope fn2-core))
+      (base (* 128 (nfix row))) (slot (fn2-peer-pull-row-secret-slot id fn2-core))
+      (sg (fn2-peer-pull-row-secret-gen id fn2-core)) (kind *fn2-peer-pull-kind*)
+      (at (fn2-peer-pull-row-stream-len id fn2-core)) (cid (fn2-peer-pull-row-consumer id fn2-core))
+      (pid (fn2-peer-pull-row-source-principal id fn2-core)) (h (fn2-peer-pull-row-remote-history id fn2-core))
+      (inc (fn2-peer-pull-row-remote-incarnation id fn2-core)) (q (fn2-peer-pull-row-source-stream id fn2-core))
+      (v (fn2-peer-pull-row-source-version id fn2-core)) (view (fn2-peer-pull-row-remote-view id fn2-core))
+      (ep (fn2-peer-pull-row-source-epoch id fn2-core))
+      ((mv rc off count fn2-core)
+       (stobj-let ((fn2-fields (fn2-core-fields fn2-core)) (fn2-pool (fn2-core-pool fn2-core)))
+         (rc off count fn2-fields fn2-pool)
+         (b* (((mv tc fn2-pool) (fn2-pool-truncate slot sg at kind id generation fn2-pool))
+              ((unless (eq tc :ok)) (mv tc 0 0 fn2-fields fn2-pool)))
+           (fn2-cns-put-query-cursor base cid pid h inc q v view ep position slot sg kind id generation fn2-fields fn2-pool))
+         (mv rc off count fn2-core))))
+   (if (and (eq rc :ok) (unsigned-byte-p 32 off) (unsigned-byte-p 32 count) (posp count))
+       (mv :ok (fn2-peer-pull-put-core id (cursor-off off) (cursor-len count) (resume-position position)))
+     (mv (if (eq rc :ok) :state rc) fn2-core))))
+(in-theory (disable fn2-peer-pull-propose))
+(defcost fn2-peer-pull-propose :answers t :bytes 2048 :tables (fn2-core-fields fn2-core-pool fn2-peer-pull-table)
+ :doc "Encode the receiver's confirmed frontier in its scope-bound FNCT cursor.")

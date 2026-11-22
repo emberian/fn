@@ -206,6 +206,10 @@ ACL2_BOOKS = \
   books/peer-pull-profile \
   books/peer-pull-kind \
   books/peer-pull-line \
+  books/xfnc-request-layout \
+  books/peer-pull-request-encode \
+  tests/peer-pull-request-encode-unit \
+  books/peer-pull-reply \
   books/peer-pull-stage \
   books/assembly-callbacks-peer-pull \
   books/conn-kind \
