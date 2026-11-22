@@ -68,7 +68,10 @@ class Node:
         assert self.node_pid and int(self.pidfile.read_text()) == self.node_pid
         os.kill(self.node_pid, signal.SIGKILL)
         rc = self.proc.wait(timeout=30)
-        assert rc != 0, rc
+        # tools/acl2 exits with the child's negative wait status, which is
+        # encoded as an 8-bit exit code by the OS and propagated by timeout.
+        expected = (-signal.SIGKILL) & 0xff
+        assert rc == expected, f"expected SIGKILL exit {expected}, got {rc}"
 
     def close(self):
         if self.proc.poll() is None:
