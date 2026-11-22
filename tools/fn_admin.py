@@ -116,6 +116,7 @@ CNS_CODES = {
     "ack": 1,
     "position": 2,
     "append": 11,
+    "rebase": 12,
     "fetch": 13,
     "register": 14,
     "read": 15,
@@ -374,6 +375,9 @@ def build_cns_request(verb: str, **kw) -> bytes:
     if verb == "register":
         start_byte = 0 if kw.get("start") == "now" else 1
         body = bytes([code]) + octets_var(kw["consumer"]) + octets16(b"") + bytes([start_byte])
+    elif verb == "rebase":
+        start_byte = {"keep": 0, "history": 2}[kw["start"]]
+        body = bytes([code]) + octets16(kw["cursor"]) + octets16(b"") + bytes([start_byte])
     elif verb in ("position", "status"):
         body = bytes([code]) + octets_var(kw["consumer"])
     elif verb == "read":
@@ -465,7 +469,7 @@ def decode_cns_reply(verb: str, frame: bytes) -> dict:
         if q:
             raise WireError(f"non-accepted {cls} reply carries result bytes")
         return out
-    if verb in ("register", "position"):
+    if verb in ("register", "rebase", "position"):
         out.update(cursor=q.hex(), position=cursor_position(q))
     elif verb == "ack":
         if len(q) != 12:
@@ -592,7 +596,7 @@ class ControlSession:
             self.sock.settimeout(float(kw.get("seconds", 30)) + 30.0)
         frame = build_cns_request(verb, **kw)
         return self._exchange(frame, verb, decode_cns_reply,
-                              mutating=verb in ("register", "ack", "append"))
+                              mutating=verb in ("register", "rebase", "ack", "append"))
 
     def bind_as(self, principal: str | None) -> dict | None:
         if not principal:
@@ -1103,6 +1107,22 @@ def cmd_stream_register(args: argparse.Namespace) -> int:
     return emit(res, args.json)
 
 
+def cmd_stream_rebase(args: argparse.Namespace) -> int:
+    sock_path = require_control_sock(args)
+    consumer = encode_consumer_id(args.consumer)
+    with ControlSession(sock_path) as sess:
+        bound = sess.bind_as(args.as_principal)
+        if bound and bound["outcome"] != "accepted":
+            return emit(bound, args.json)
+        cursor, error = load_cursor_bytes(sess, args.cursor, args.cursor_file, consumer)
+        if error is not None:
+            return emit(error, args.json)
+        result = sess.cns("rebase", cursor=cursor, start=args.start)
+    if result["outcome"] == "accepted" and args.cursor_file:
+        save_cursor_file(args.cursor_file, result)
+    return emit(result, args.json)
+
+
 def cmd_stream_append(args: argparse.Namespace) -> int:
     sock_path = require_control_sock(args)
     lines = read_article_source(args.group, args.subject, args.sender, args.msgid, args.body, args.file)
@@ -1515,6 +1535,13 @@ def build_parser() -> argparse.ArgumentParser:
     p_sreg.add_argument("--cursor-file", type=Path, help="save issued cursor hex to file")
     _add_control_args(p_sreg)
 
+    p_sreb = stream_sub.add_parser("rebase", help="adopt current authority in a new durable epoch")
+    p_sreb.add_argument("--consumer", default="1", help="consumer id when querying committed position")
+    p_sreb.add_argument("--start", choices=("keep", "history"), default="keep")
+    p_sreb.add_argument("--cursor", help="issued fncu cursor hex")
+    p_sreb.add_argument("--cursor-file", type=Path, help="read and update the issued cursor in this file")
+    _add_control_args(p_sreb)
+
     p_sapp = stream_sub.add_parser("append", help="append an article over the local FNCT carrier")
     p_sapp.add_argument("--group", help="target newsgroup(s) for Newsgroups header")
     p_sapp.add_argument("--subject", help="Subject header")
@@ -1610,6 +1637,7 @@ def main(argv: list[str] | None = None, root: Path | None = None) -> int:
         if args.command == "stream":
             dispatch = {
                 "register": cmd_stream_register,
+                "rebase": cmd_stream_rebase,
                 "append": cmd_stream_append,
                 "fetch": cmd_stream_fetch,
                 "read": cmd_stream_read,

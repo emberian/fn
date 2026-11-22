@@ -767,15 +767,32 @@ refusals. A `withdrawn` reply checks the read grant again in the same step as th
 uses `unavailable` if the grant no longer allows reading. A consume admission failure remains
 `access`. A second consume check at reply freeze remains owed.
 
+READ and WAIT pin an authority head for that request and recheck consume authority and the head before
+sealing each page, including empty WAIT replies. They check the recorded address stream's current read
+grant before materializing an item. A hidden row advances only the private scan. An issued cursor
+advances only through visible items, and a full page's MORE bit needs a readable next item. Resuming a
+parked request repeats consume admission and refuses a superseded head. REGISTER records the
+authorized head separately from the query version. READ, WAIT and ACK require the issued view to
+match both the persisted registration and the current head. ACK and REGISTER stage against the
+checked head; an equal ACK rechecks it before replying. Restoring a grant creates a new head and
+does not revive old cursor bytes. Repeat REGISTER returns the existing recorded view. REGISTER and
+REBASE refuse a view that cannot be represented by the current v1 issuer before staging a transaction.
+
 The txn currently emits one address row per event and retains only the first group's stream. Its
 overview rows record each group's article number but cannot enumerate all groups by article. General
 per-item access through any authorized group requires a bounded article-to-stream membership lookup,
-or a retained set published in the transaction that creates the address row. A cursor view must carry
-the authority-head revision separately from its query version. REGISTER and REBASE must persist it;
-READ, WAIT and ACK must compare it against current authority before access or mutation, and ACK staging
-must keep the authority dependency through publication. POSITION must return the recorded revision.
+or a retained set published in the transaction that creates the address row.
 
-STATUS and frontier-relative operations must use the highest authorized addressed position under the
+The active registration is keyed by durable principal and consumer. Its value holds the epoch,
+position, query version and authority revision. POSITION returns that revision even after authority
+changes. REBASE compares the issued cursor's epoch and recorded revision, then atomically publishes
+the next epoch with the current revision. KEEP preserves the durable ACK position, and HISTORY
+starts at zero. The fold checks the old epoch and durable position, so a concurrent ACK and KEEP
+cannot rewind the position. Requests bearing a superseded epoch receive scope refusal. REBASE NOW
+requires an authorized frontier. Serving UNREGISTER will require retaining the last epoch in a
+tombstone so registration after reclamation cannot reuse it.
+
+STATUS, REGISTER from now and ACK's frontier limit must use the highest authorized addressed position under the
 same authority revision as the page walk. The current positioned seek cannot filter memberships. A
 bounded reverse address walk with resumable membership/grant reads is one direct implementation.
 A retained projection keyed by principal, authority revision and position would instead need a

@@ -3,7 +3,7 @@
 (in-package "ACL2")
 (include-book "cns-article-slice-unit")
 
-(defun fn2-cta-drive (fuel id held bound fn2-core)
+(defun fn2-cta-drive (fuel id held terminal-bytes fn2-core)
  (declare (xargs :stobjs fn2-core :verify-guards nil :measure (nfix fuel)))
  (if (zp fuel) (mv nil fn2-core)
   (b* (((mv bytes steps descriptors & fn2-core) (fn2-cns-run id 4 fn2-core))
@@ -11,10 +11,10 @@
                      (equal (fn2-cns-row-lease id fn2-core) *fn2-cns-lease-none*)
                    (equal (fn2-cns-row-phase id fn2-core) *fn2-cns-state-draining*))))
    (if terminal
-       (mv (and (equal bytes (+ bound (if held 0 512)))
+       (mv (and (equal bytes terminal-bytes)
                 (natp steps) (<= steps 32) (equal descriptors 0)
                 (not (fn2-core-stopped-p fn2-core))) fn2-core)
-    (fn2-cta-drive (1- fuel) id held bound fn2-core)))))
+    (fn2-cta-drive (1- fuel) id held terminal-bytes fn2-core)))))
 (defun fn2-cta-body (mode held fn2-core)
  (declare (xargs :stobjs fn2-core :verify-guards nil))
  (b* (((mv setup id gen x fn2-core) (fn2-cas-setup fn2-core))
@@ -48,7 +48,9 @@
                   fn2-core))
       (bound (if (eq mode :missing-fetch) *fn2-cns-article-next-pool-work-bound*
                *fn2-cns-addr-next-1-pool-read-bound*))
-      ((mv charged fn2-core) (fn2-cta-drive 300 id held bound fn2-core))
+      (terminal-bytes (if (and (eq mode :end) (not held)) 6144
+                        (+ bound (if held 0 512))))
+      ((mv charged fn2-core) (fn2-cta-drive 300 id held terminal-bytes fn2-core))
       (idle (fn2-cas-read-idlep x fn2-core))
       ((mv old-slot fn2-core)
        (if held (fn2-core-write slot slotgen 0 1 *fn2-cns-kind* id gen fn2-core)

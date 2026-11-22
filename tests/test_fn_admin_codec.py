@@ -46,9 +46,21 @@ class ReplyDecoding(unittest.TestCase):
                         fn_admin.cursor_position(malformed)
 
     def test_truncated_accepted_results_never_decode_as_accepted(self) -> None:
-        for verb in ("register", "position", "ack", "status", "read", "wait", "append", "fetch"):
+        for verb in ("register", "rebase", "position", "ack", "status", "read", "wait", "append", "fetch"):
             with self.subTest(verb=verb), self.assertRaises(fn_admin.WireError):
                 fn_admin.decode_cns_reply(verb, cns_reply(b""))
+
+    def test_rebase_sends_issued_cursor_and_decodes_replacement(self) -> None:
+        for start, tag in (("keep", b"\x00"), ("history", b"\x02")):
+            with self.subTest(start=start):
+                request = fn_admin.build_cns_request("rebase", cursor=CURSOR, start=start)
+                kind, body = fn_admin.fnct_open(request)
+                self.assertEqual(kind, fn_admin.KIND_CNS_REQ)
+                self.assertEqual(body, b"\x0c" + fn_admin.octets16(CURSOR) + bytes(2) + tag)
+        replacement = fn_admin.cursor_propose(CURSOR, 0)
+        result = fn_admin.decode_cns_reply("rebase", cns_reply(replacement))
+        self.assertEqual((result["outcome"], result["position"], result["cursor"]),
+                         ("accepted", 0, replacement.hex()))
 
     def test_fetch_canonical_widths_and_exact_binary_reply(self) -> None:
         mid = b"<fetch@example.invalid>"

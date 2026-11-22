@@ -110,7 +110,7 @@
 (defun projection (posted position &optional (reason *fn2-upload-word-conflict*))
  (let ((*codec-input* nil) (*append-result* nil))
   (let ((code (fn2-cns-post-reply 1 3 5 *fn2-cns-verb-append* *fn2-cns-outcome-refused* reason
-                 0 0 0 position 0 0 0 0 0 0 12 6 2 4 13 8 3 (list :posted posted :pool ""))))
+                 0 0 0 0 position 0 0 0 0 0 0 12 6 2 4 13 8 3 (list :posted posted :pool ""))))
    (list code *codec-input*))))
 
 (assert (equal (list *fn2-fnct-evidence-committed* *fn2-fnct-evidence-uncertain*

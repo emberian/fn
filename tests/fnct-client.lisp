@@ -155,4 +155,4 @@
 ; End-to-end clients instead carry the exact bytes returned by the node.
 (defun fnc-issued (cid principal version epoch position)
   (declare (xargs :verify-guards nil))
-  (fn2-fncu-encode (list :cursor 0 '(1) '(1) (fnc-be cid) (fnc-be principal) '(1) version version epoch position)))
+  (fn2-fncu-encode (list :cursor 0 '(1) '(1) (fnc-be cid) (fnc-be principal) '(1) version 0 epoch position)))
