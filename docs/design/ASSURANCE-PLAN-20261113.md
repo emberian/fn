@@ -16,14 +16,17 @@ Upstream `f1050d7f1` fixes the schema check that stopped application loading.
 The production assembly and its reversed-import fixture passed on Forge.
 Adding a schema produced a checked expansion mismatch at the assembly table.
 The fixture's 44-book closure reused 43 parents in the final record
-`certify-20261122T032527Z-1553111`. Application source `50c6ea6bd` has a
-different served assembly and needs its own downstream certificates.
+`certify-20261122T032527Z-1553111`. On application source `50c6ea6bd`, all
+139 parents of `books/cns-source-raw` now load together. ACL2 reaches
+`fn2-cns-source-issue-children-fn2-control-rows` and leaves the row count
+of the control table returned by `fn2-block-read-children` unproved.
 
 On that application source, the accepted APPEND reply in `books/cns.lisp`
 encodes a zero-length Message-ID. The client decodes that field and the
-fixture requires the committed article's ID. The reply path must carry the
-accepted ID from the transaction through encoding. Consumer positions use
-domain 0 in this profile.
+fixture requires the committed article's ID. Candidate `da4336965` carries
+the ID from the transaction through reply encoding. The actor and native
+socket tests still need to exercise that path. Consumer positions use domain
+0 in this profile.
 
 ## Integration frontier — 2026-11-16 01:35 UTC
 
