@@ -666,7 +666,7 @@
                   (fn2-cursor-spec-wire (fn2-profile-get :groups *fn2-cursor-profile*) seeds lines)))
   :schema :invariant :from (:operation-set fn2-conn-wire)
   :teeth (fn2-cursor-test-spec fn2-cursor-test-spec-negative fn2-cursor-test-seeded)
-  :doc "D6 (section 15.7): after a published state seeded through C-S3, a reader's replies to GROUP, LISTGROUP, NEXT, LAST, STAT, OVER, XOVER and LIST ACTIVE/COUNTS/NEWSGROUPS, in every chunking, are the bytes RFC 3977 and H's model give over the list view of that state (an empty group answers 0 high+1 high; numbers follow commit order within a group; by Message-ID the number is 0, which RFC 3977 and H's model admit; LIST's rows in name order). D6 1/n-b serves all but OVER <id> (it waits on the transaction's article-to-number address entries), and tests/cursor-unit.lisp checks served = reference over the transcript less that one, whole and chunked, and over a directory whose LIST spans pages; the row stays owed until OVER <id> serves.")
+  :doc "D6 (section 15.7): after a published state seeded through C-S3, a reader's replies to GROUP, LISTGROUP, NEXT, LAST, STAT, OVER, XOVER and LIST ACTIVE/COUNTS/NEWSGROUPS, in every chunking, are the bytes RFC 3977 and H's model give over the list view of that state (an empty group answers 0 high+1 high; numbers follow commit order within a group; LIST's rows are in name order). OVER by Message-ID can reuse the selected group's number and emits 0 otherwise. tests/cursor-unit.lisp exercises the served transcript whole and chunked, a sparse group ID for the Message-ID fallback, and a directory whose LIST spans pages. General proof remains owed.")
 
 ; OVER over [LO, HI] after GROUP local.test (group 1).
 (defun fn2-cursor-over-lines (lo hi)
