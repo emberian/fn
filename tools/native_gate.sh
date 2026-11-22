@@ -27,6 +27,12 @@ exec env -i HOME="$HOME" USER="${USER:-fn}" PATH="$PATH" LANG=C \
  python3 tools/certs.py install-set books/node-profile books/native-b3-evidence \
    --root "$PWD" --cache "$FN_CERT_CACHE" --acl2 "$FN_ACL2" \
    --toolchain-identity 8aeb1bea18968c6cd33ac633a80ebf67e4924504db112fd27eb11f16a27b2a8c
+ if [ "$2" != host ]; then
+   mkdir -p build
+   attempt=$(mktemp -d "build/native-$3-$2.XXXXXXXX")
+   run_directory="$attempt/run"
+   echo "Native $2 run artifacts in $PWD/$run_directory" >&2
+ fi
  case "$2" in
  host)
    sh host/build-blake3.sh build/lib
@@ -34,25 +40,25 @@ exec env -i HOME="$HOME" USER="${USER:-fn}" PATH="$PATH" LANG=C \
    python3 tools/interface_emit.py --check
    ;;
  fnct)
-   python3 tests/native-append-fetch-restart.py --directory "build/native-$3-fnct"
+   python3 tests/native-append-fetch-restart.py --directory "$run_directory"
    ;;
  durable-retry)
-   python3 tests/native-append-fetch-restart.py --directory "build/native-$3-durable-retry" --durable-retry
+   python3 tests/native-append-fetch-restart.py --directory "$run_directory" --durable-retry
    ;;
  membership)
-   python3 tests/native-consumer-membership.py --directory "build/native-$3-membership"
+   python3 tests/native-consumer-membership.py --directory "$run_directory"
    ;;
  fanout)
-   python3 tests/native-crosspost-fanout.py --directory "build/native-$3-fanout"
+   python3 tests/native-crosspost-fanout.py --directory "$run_directory"
    ;;
  cursor)
-   python3 tests/native-consumer-cursor-restart.py --directory "build/native-$3-cursor"
+   python3 tests/native-consumer-cursor-restart.py --directory "$run_directory"
    ;;
  nntp)
-   python3 tests/native-image-restart.py --directory "build/native-$3-nntp"
+   python3 tests/native-image-restart.py --directory "$run_directory"
    ;;
  large)
-   python3 tests/native-large-article-restart.py --directory "build/native-$3-large"
+   python3 tests/native-large-article-restart.py --directory "$run_directory"
    ;;
  *) echo "unknown mode: $2" >&2; exit 2 ;;
  esac

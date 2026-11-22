@@ -156,6 +156,7 @@ ACL2_BOOKS = \
   books/tls-record-state \
   books/tls-record \
   books/tls-stack \
+  books/tls-record-effects \
   books/host-loan \
   books/host-codec-close \
   books/host-codec \
