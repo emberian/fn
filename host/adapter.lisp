@@ -747,6 +747,8 @@ the image launcher always opens its persisted device instead."
   (when device-path (setf profile (fn2-image-profile profile)))
   (let ((core (fn2-n-live-core)))
     (fn2-init-executor profile :echo nil core)
+    (when (fn2-host-stopped-p core)
+      (error "fn2 executor initialization stopped: ~d" (fn2-host-stop-reason core)))
     (fn2-n-open-host profile core :control-fd control-fd :trace-capacity trace-capacity
                      :kill-at kill-at :device-path device-path :create-size create-size)))
 
