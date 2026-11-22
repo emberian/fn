@@ -43,7 +43,8 @@
 
 (local (in-theory (disable fn2-b3-ready fn2-b3-rows fn2-digests-rows
                            fn2-digest-rowp fn2-digest-workspacep fn2-digest-slot
-                           fn2-pool-workspace-code fn2-layout-range-code)))
+                           fn2-pool-workspace-code fn2-layout-range-code
+                           fn2-b3-subtree-cv-into-by-definition)))
 
 (fn2-fc-shape fn2-upload-hash-private-children-shape
  (fn2-upload-hash-private-children row source ls lg off len kind id gen fn2-b3 fn2-digests fn2-pool)
