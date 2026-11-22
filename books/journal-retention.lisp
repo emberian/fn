@@ -3,6 +3,7 @@
 (in-package "ACL2")
 (include-book "machines-b")
 (include-book "c-snapshot-state")
+(include-book "columns-call-guards")
 (fn2-book-layer :c)
 (local (in-theory (disable fn2-csnapshot-ownerp fn2-csnapshot-cut-commit
                            fn2-csnapshot-cut-event fn2-journal-lease-ownerp)))
@@ -68,7 +69,9 @@
  (token kind owner generation commit-kind fn2-csnapshot fn2-journal-lease fn2-commit-root fn2-extents fn2-alloc-edges)
  (declare (xargs :stobjs (fn2-csnapshot fn2-journal-lease fn2-commit-root fn2-extents fn2-alloc-edges)
   :guard (and (fn2-csnapshot-wfp fn2-csnapshot) (fn2-journal-lease-wfp fn2-journal-lease)
-              (fn2-commit-root-wfp fn2-commit-root) (fn2-extents-wfp fn2-extents) (fn2-alloc-edges-wfp fn2-alloc-edges))))
+              (fn2-commit-root-wfp fn2-commit-root) (fn2-extents-wfp fn2-extents) (fn2-alloc-edges-wfp fn2-alloc-edges)
+  :guard-hints ((fn2-columns-call-guard-hint 'fn2-journal-lease-claim
+                 '(fn2-journal-directory-entry fn2-alloc-edge-add fn2-alloc-edge-matchesp) nil world))))
  (b* (((unless (and (< 0 (fn2-journal-lease-rows fn2-journal-lease))
                      (fn2-journal-lease-ownerp token kind owner generation fn2-journal-lease)
                      (equal (fn2-journal-lease-phase 0 fn2-journal-lease) *fn2-journal-lease-phase-collecting*)
@@ -116,7 +119,9 @@
  (declare (xargs :stobjs (fn2-journal-lease fn2-commit-root fn2-extents fn2-alloc-edges fn2-fc fn2-digests)
   :guard (and (fn2-journal-lease-wfp fn2-journal-lease) (fn2-commit-root-wfp fn2-commit-root)
               (fn2-extents-wfp fn2-extents) (fn2-alloc-edges-wfp fn2-alloc-edges)
-              (fn2-fc-wfp fn2-fc) (fn2-digests-wfp fn2-digests))))
+              (fn2-fc-wfp fn2-fc) (fn2-digests-wfp fn2-digests)
+  :guard-hints ((fn2-columns-call-guard-hint 'fn2-journal-lease-source
+                 '(fn2-journal-directory-entry fn2-alloc-edge-matchesp fn2-digest-rowp) nil world))))
  (b* (((unless (and (< 0 (fn2-journal-lease-rows fn2-journal-lease))
                      (fn2-journal-lease-ownerp token kind owner generation fn2-journal-lease)
                      (equal (fn2-journal-lease-phase 0 fn2-journal-lease) *fn2-journal-lease-phase-ready*)))
@@ -150,7 +155,9 @@
 ; handoff, a journal row can be superseded without redirecting this cleanup.
 (defun fn2-journal-lease-close-step (token kind owner generation fn2-journal-lease fn2-extents fn2-alloc-edges)
  (declare (xargs :stobjs (fn2-journal-lease fn2-extents fn2-alloc-edges)
-  :guard (and (fn2-journal-lease-wfp fn2-journal-lease) (fn2-extents-wfp fn2-extents) (fn2-alloc-edges-wfp fn2-alloc-edges))))
+  :guard (and (fn2-journal-lease-wfp fn2-journal-lease) (fn2-extents-wfp fn2-extents) (fn2-alloc-edges-wfp fn2-alloc-edges)
+  :guard-hints ((fn2-columns-call-guard-hint 'fn2-journal-lease-close-step
+                 '(fn2-alloc-edge-drop) nil world))))
  (b* (((unless (and (< 0 (fn2-journal-lease-rows fn2-journal-lease))
                      (fn2-journal-lease-ownerp token kind owner generation fn2-journal-lease)
                      (equal (fn2-journal-lease-phase 0 fn2-journal-lease) *fn2-journal-lease-phase-closing*)
