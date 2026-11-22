@@ -303,6 +303,29 @@ class InvalidReplyOutcome(unittest.TestCase):
         self.assertEqual(proc.returncode, 3, (proc.stdout, proc.stderr))
         self.assertEqual(json.loads(proc.stdout)["outcome"], "uncertain")
 
+    def test_principal_create_requires_canonical_profile_identifier(self) -> None:
+        maximum = (1 << 60) - 1
+        for field, expected in ((fn_admin.leb_encode(maximum), 0),
+                                (b"\x81\x00", 3),
+                                (fn_admin.leb_encode(maximum + 1), 3)):
+            with self.subTest(field=field):
+                proc = self.run_command(auth_reply("principal-create", field),
+                                        "principal", "create", "alice")
+                self.assertEqual(proc.returncode, expected, proc.stdout)
+                result = json.loads(proc.stdout)
+                if expected == 0:
+                    self.assertEqual(result["id"], maximum)
+                else:
+                    self.assertEqual(result["outcome"], "uncertain")
+                    self.assertNotIn("id", result)
+
+    def test_register_requires_canonical_length_in_returned_cursor(self) -> None:
+        self.assertLess(CURSOR[5], 128)
+        overlong = CURSOR[:5] + bytes([CURSOR[5] | 128, 0]) + CURSOR[6:]
+        proc = self.run_command(cns_reply(overlong), "stream", "register")
+        self.assertEqual(proc.returncode, 3, proc.stdout)
+        self.assertEqual(json.loads(proc.stdout)["outcome"], "uncertain")
+
     def test_accepted_ack_survives_lost_cursor_refresh(self) -> None:
         receipt = bytes(4) + (6).to_bytes(8, "big")
         proc = self.run_command(
