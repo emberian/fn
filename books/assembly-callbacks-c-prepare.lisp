@@ -7,4 +7,5 @@
 (in-package "ACL2")
 (include-book "query-ref-wake")
 (include-book "machines-c-bind")
+(fn2-csnapshot-core-events)
 (fn2-successor-prepare-events)

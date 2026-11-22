@@ -35,6 +35,8 @@ ACL2_BOOKS = \
   tests/machine-taken-byte-class-unit \
   tests/root-upload-geometry-unit \
   tests/root-working-credit-init-unit \
+  tests/c-snapshot-unit \
+
   tests/txn-retained-source-served-unit \
   tests/upload-block-private-unit \
   tests/upload-dual-hash-unit \
@@ -250,6 +252,8 @@ ACL2_BOOKS = \
   books/storage-block-io \
   books/machines-b \
   books/machines-c \
+  books/c-snapshot-state \
+  books/c-snapshot \
   books/machines-c-bind \
   books/machines-c-groups \
   books/pool-copy \
