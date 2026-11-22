@@ -87,8 +87,8 @@ capture, `FN2_TEST_DEVICE_BACKEND`, `FN2_TEST_DEVICE_BEFORE`, and
 - Certify the new consumer and execute a real initialized positive run plus
   ordinal, generation, missing-return, changed-image and partial-image controls.
 - Bind the exact run/image/source and immutable snapshots in the shared campaign.
-- Current inventory has 19 sites. The other 15 remain unmapped here, including
-  network, take/ack, TLS and COMPRESS. The shared post site maps only for a
+- Current inventory has 21 sites. The other 17 remain unmapped here, including
+  outbound Connect submission and readiness, other network operations, take/ack, TLS and COMPRESS. The shared post site maps only for a
   performed file READ, WRITE or FENCE with a matching physical return. Existing simulator take/post programs are separate.
 - The older envelope consumer refuses COMPRESS `:input-prefix` events. It must
   consume the actual corresponding core effect before a compressed run can pass;

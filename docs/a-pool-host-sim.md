@@ -286,7 +286,7 @@ function (4.1.3), so every native completion is one the simulator could post. A 
 posted, and harvested, before its terminal (vocab.lisp's release-first rule); only the whole op's
 history must agree (a release only where the terminal says release-pending).
 
-Capabilities: a connection capability is `(index, nonce)` issued by the adapter at Accept; an
+Capabilities: the adapter issues a connection capability `(index, nonce)` after a successful Accept or Connect. An
 index is reused only with a strictly larger nonce, and a nonce never wraps (an index at
 `2^32 - 1` retires). Unsolicited inputs are unchanged: the clock mailbox, the sticky signal word.
 
@@ -315,8 +315,10 @@ invented), `completed`; per capability index an fd, nonce, the physical peer (ca
    every non-socket kind is started now (Close: unregister, `close(2)`, then retire every other
    waiting op on that capability *without* inventing a syscall result: the core cancels and
    harvests them; storage kinds submit to the file worker when attached, otherwise use the
-   seeded session's memory device; Connect and TlsStart complete
-   `failed`/`refused` and `failed`/`handshake`: no facility, explicit, never simulated; Cancel
+   seeded session's memory device. A submitted IPv4 or IPv6 Connect owns a nonblocking fd.
+   Its readiness slot belongs to the operation until writability and SO_ERROR settle it. Success
+   moves the fd into a fresh outbound capability from the profile's peer-pull slots. Refusal and
+   cancellation close the unpublished fd. STARTTLS uses the configured TLS backend. Cancel
    checks its target's generation and state: a waiting or closed-waiting target gets its
    terminal `cancelled` result, then the Cancel `done`; a file-device operation keeps its loan
    until the physical result and Cancel reports `not-found`, as does an already completed target);

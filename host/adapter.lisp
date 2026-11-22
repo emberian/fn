@@ -20,6 +20,7 @@
   (state 0 :type fixnum) (gen 0) (kind 0 :type fixnum) (cap 0) (nonce 0)
   (address 0 :type fixnum) (len 0 :type fixnum) (target 0) (target-gen 0)
   (outcome 0) (reason 0) (count 0) (aux0 0) (aux1 0)
+  (connect-fd -1 :type fixnum)
   (tls-started nil) (tls-record (create-fn2-tls-record))
   (compress-record nil)
   (family :none) (port 0) (w0 0) (w1 0) (w2 0) (w3 0) (octets nil) (offset 0) (fua 0))
@@ -28,11 +29,11 @@
 ;; Unix-domain socket beside it when the profile names :listener-path: one
 ;; capability, so the listener machine is the same for both); connections from 1.
 (defstruct fn2-ncap
-  (fd -1 :type fixnum) (nonce 0) (family :none) (port 0) (w0 0) (w1 0) (w2 0) (w3 0)
+  (fd -1 :type fixnum) (index 0) (nonce 0) (outbound-p nil) (family :none) (port 0) (w0 0) (w1 0) (w2 0) (w3 0)
   (rx 0) (eof nil) (tx 0) (closed nil) (seq 0) tls compress)
 
 (defstruct fn2-nhost
-  core bytes ops caps mux (listen-port 0)
+  core bytes ops caps mux (outbound-first 1) (listen-port 0)
   compress-settings
   tls-config peer-tls-config (tls-window 0) (tls-quantum 0) (tls-seed-capacity 0) (tls-turns 0)
   ;; Memory device for existing seeded sessions. An image session uses
@@ -117,19 +118,20 @@
          (let ((cap (aref caps index)))
            (and (>= (fn2-ncap-fd cap) 0) (= (fn2-ncap-nonce cap) (fn2-nop-nonce op)) cap)))))
 
-(defun fn2-n-new-cap (host fd family port w0 w1 w2 w3)
+(defun fn2-n-new-cap (host fd family port w0 w1 w2 w3 &key outbound-p)
   "A fresh (index, nonce): an index is reused only with a larger nonce; one at 2^32-1 retires."
   (let ((caps (fn2-nhost-caps host)))
-    (loop for i from 1 below (length caps)
+    (loop for i from (if outbound-p (fn2-nhost-outbound-first host) 1)
+          below (if outbound-p (length caps) (fn2-nhost-outbound-first host))
           for cap = (aref caps i)
           when (and (= (fn2-ncap-fd cap) -1) (< (fn2-ncap-nonce cap) #xffffffff))
             do (setf (aref caps i)
-                     (make-fn2-ncap :fd fd :nonce (1+ (fn2-ncap-nonce cap)) :family family :port port
-                                    :w0 w0 :w1 w1 :w2 w2 :w3 w3 :seq (incf (fn2-nhost-accepts host))))
+                     (make-fn2-ncap :fd fd :index i :outbound-p outbound-p :nonce (1+ (fn2-ncap-nonce cap)) :family family :port port
+                                    :w0 w0 :w1 w1 :w2 w2 :w3 w3 :seq (if outbound-p 0 (incf (fn2-nhost-accepts host)))))
                (return-from fn2-n-new-cap (values i (1+ (fn2-ncap-nonce cap)))))
     ;; Capacity covers every accept credit, so this is a host defect: stop by name.
     (fn2-native-close fd)
-    (error "fn2 native: capability table exhausted")))
+    (if outbound-p (values nil nil) (error "fn2 native: capability table exhausted"))))
 
 (defun fn2-n-sap (host address)
   (sb-sys:sap+ (sb-sys:vector-sap (fn2-nhost-bytes host)) address))
@@ -334,6 +336,31 @@
           (decf (fn2-nhost-storage-pending host)))))))
 
 ;;; Ops started at take: Close, Cancel, Read, Write, Fence, and the kinds with no facility.
+(defun fn2-n-connect-index (host slot)
+  ;; Each pending Connect owns a readiness slot until its terminal. Only a
+  ;; successful completion installs the fd in the externally named cap table.
+  (+ (length (fn2-nhost-caps host)) slot))
+
+(defun fn2-n-connect-detach (host slot)
+  (let* ((op (aref (fn2-nhost-ops host) slot)) (fd (fn2-nop-connect-fd op)))
+    (when (>= fd 0)
+      (fn2-native-mux-interest (fn2-nhost-mux host) (fn2-n-connect-index host slot) fd 0)
+      (setf (fn2-nop-connect-fd op) -1))
+    fd))
+
+(defun fn2-n-connect-result (host slot result)
+  (unless (eq result :waiting)
+    (let* ((op (aref (fn2-nhost-ops host) slot)) (fd (fn2-n-connect-detach host slot)))
+      (if (eq result :connected)
+          (multiple-value-bind (index nonce)
+              (fn2-n-new-cap host fd (fn2-nop-family op) (fn2-nop-port op)
+                             (fn2-nop-w0 op) (fn2-nop-w1 op) (fn2-nop-w2 op) (fn2-nop-w3 op)
+                             :outbound-p t)
+            (if index (fn2-n-complete host slot :ok index nonce)
+              (fn2-n-complete host slot :failed 0)))
+        (progn (when (>= fd 0) (fn2-native-close fd))
+               (fn2-n-complete host slot result 0))))))
+
 (defun fn2-n-start-now (host slot)
   (let* ((op (aref (fn2-nhost-ops host) slot)) (kind (fn2-nop-kind op)))
     (cond
@@ -349,11 +376,12 @@
             (fn2-nop-cap op) (fn2-ncap-nonce cap))
 
            (fn2-native-close (fn2-ncap-fd cap))
-           (setf (fn2-ncap-fd cap) -1 (fn2-ncap-closed cap) t)
+           (setf (fn2-ncap-fd cap) -1 (fn2-ncap-closed cap) t (fn2-ncap-outbound-p cap) nil)
            ;; Other waiting uses keep their loans until the core cancels them;
            ;; no syscall ran for them, so no result is invented.
            (loop for other across (fn2-nhost-ops host) for other-slot from 0
-                 when (and (not (eq other op)) (= (fn2-nop-state other) +fn2-n-waiting+)
+                 when (and (not (eq other op)) (/= (fn2-nop-kind other) *fn2-action-connect*)
+                           (= (fn2-nop-state other) +fn2-n-waiting+)
                            (eql (fn2-nop-cap other) (fn2-nop-cap op)) (eql (fn2-nop-nonce other) (fn2-nop-nonce op)))
                    do (cond ((fn2-ncap-compress cap)
                              (fn2-native-compress-mark-closed host other-slot (fn2-ncap-compress cap)))
@@ -371,6 +399,9 @@
                   (not (and (fn2-nhost-storage host) (fn2-n-storage-kind (fn2-nop-kind other))))
                   (eql (fn2-nop-gen other) (fn2-nop-target-gen op))
                   (or (= (fn2-nop-state other) +fn2-n-waiting+) (= (fn2-nop-state other) +fn2-n-closed-waiting+)))
+             (if (= (fn2-nop-kind other) *fn2-action-connect*)
+                 (progn (fn2-n-connect-result host target :cancelled)
+                        (fn2-n-complete host slot :ok 0 0 t))
              (progn
                     ;; A cancelled SSL read/write may retain library retry
                     ;; state. The logical retirement keeps TLS selection sticky
@@ -387,7 +418,7 @@
                     (unless (or (fn2-native-compress-cancel-result host slot other)
                                 (fn2-native-tls-cancel-result host slot other))
                      (fn2-n-complete host target :cancelled 0)
-                     (fn2-n-complete host slot :ok 0 0 t)))
+                     (fn2-n-complete host slot :ok 0 0 t))))
            (fn2-n-complete host slot :ok 0 0 nil))))
       ((= kind *fn2-action-write*)
        ;; the loaned octets onto the device at the storage offset
@@ -403,8 +434,14 @@
        ;; every write completed at take: the fence has nothing outstanding
        (fn2-n-complete host slot :ok 0))
       ((= kind *fn2-action-connect*)
-       ;; No facility in layer A: explicit failure, never a simulated success.
-       (fn2-n-complete host slot :failed 0))
+       (fn2-n-boundary host "connect-start" slot (fn2-nop-gen op))
+       (multiple-value-bind (result fd)
+           (fn2-native-connect-start (fn2-nop-family op) (fn2-nop-port op)
+                                     (fn2-nop-w0 op) (fn2-nop-w1 op) (fn2-nop-w2 op) (fn2-nop-w3 op))
+         (setf (fn2-nop-connect-fd op) fd)
+         (when (eq result :waiting)
+           (fn2-native-mux-interest (fn2-nhost-mux host) (fn2-n-connect-index host slot) fd 4))
+         (fn2-n-connect-result host slot result)))
       (t (error "fn2 native: op kind ~d has no backend" kind)))))
 
 (defun fn2-n-resultless-p (kind)
@@ -432,6 +469,15 @@
               (setf op (make-fn2-nop :state +fn2-n-waiting+ :gen gen :kind kind :cap cap :nonce nonce
                                      :address address :len span-len :target cslot :target-gen cgen
                                      :offset storage-offset :fua fua))
+              (when (= kind *fn2-action-connect*)
+                (multiple-value-bind (status family port w0 w1 w2 w3)
+                    (fn2-host-connect-target slot gen core)
+                  (assert (eq status :ok))
+                  (setf (fn2-nop-family op) (cond ((= family *fn2-peer-family-inet*) :inet)
+                                                  ((= family *fn2-peer-family-inet6*) :inet6)
+                                                  (t :none))
+                        (fn2-nop-port op) port (fn2-nop-w0 op) w0 (fn2-nop-w1 op) w1
+                        (fn2-nop-w2 op) w2 (fn2-nop-w3 op) w3)))
               (setf (aref (fn2-nhost-ops host) slot) op))
             (fn2-n-record host (list :take slot gen kind cap nonce rslot rgen off len storage-offset fua
                                      may-release cslot cgen deadline observation-gen))
@@ -508,6 +554,11 @@
   (let ((used (make-array (length (fn2-nhost-caps host)) :initial-element nil)) (any nil))
     (dotimes (slot (length (fn2-nhost-ops host)))
       (let ((op (aref (fn2-nhost-ops host) slot)))
+        (when (and (= (fn2-nop-state op) +fn2-n-waiting+) (>= (fn2-nop-connect-fd op) 0)
+                   (fn2-native-mux-ready-p (fn2-nhost-mux host) (fn2-n-connect-index host slot) 4))
+          (fn2-n-boundary host "connect-ready" slot (fn2-nop-gen op))
+          (setf any t)
+          (fn2-n-connect-result host slot (fn2-native-connect-finish (fn2-nop-connect-fd op))))
         (when (and (= (fn2-nop-state op) +fn2-n-waiting+) (fn2-n-readiness-p (fn2-nop-kind op)))
           (let ((cap (fn2-n-cap host op)) (index (fn2-nop-cap op)))
             (when (and cap (not (aref used index))
@@ -671,7 +722,8 @@ the image launcher always opens its persisted device instead."
   (multiple-value-bind (bind address port path) (fn2-host-listener-bind profile)
    (unless (eq bind :ok) (error "fn2 native: refused to start: the profile's ~(~a~) is out of range" bind))
   (let* ((n (fn2-profile-o profile))
-         (ncaps (+ 1 (fn2-profile-c profile) (fn2-profile-accept-credits profile) n)))
+         (outbound-first (+ 1 (fn2-profile-c profile) (fn2-profile-accept-credits profile) n))
+         (ncaps (+ outbound-first (nfix (fn2-profile-get :peer-pull-slots profile)))))
     (multiple-value-bind (lfd lport) (fn2-native-listen port address)
       (let ((host (make-fn2-nhost
                    :core core
@@ -679,7 +731,7 @@ the image launcher always opens its persisted device instead."
                    :bytes (svref (svref core *fn2-core-pool*) *fn2-pool-datai*)
                    :ops (let ((v (make-array n))) (dotimes (i n v) (setf (aref v i) (make-fn2-nop))))
                    :caps (let ((v (make-array ncaps))) (dotimes (i ncaps v) (setf (aref v i) (make-fn2-ncap))))
-                   :mux (make-fn2-native-mux ncaps) :listen-port lport
+                   :mux (make-fn2-native-mux (+ ncaps n)) :outbound-first outbound-first :listen-port lport
                    :completions (make-array (* 2 n) :initial-element 0)
                    :harvest-limit (fn2-profile-h profile) :action-limit (fn2-profile-aturn profile)
                    :trace (and (plusp trace-capacity) (make-array trace-capacity :initial-element nil))
@@ -771,6 +823,8 @@ the image launcher always opens its persisted device instead."
   ;; No completion claims at teardown; socket operations die with the descriptors.
   (setf *fn2-n-signal-mux* nil)
   (when (fn2-nhost-storage host) (fn2-device-stop (fn2-nhost-storage host)))
+  (loop for op across (fn2-nhost-ops host) when (>= (fn2-nop-connect-fd op) 0)
+        do (fn2-native-close (fn2-nop-connect-fd op)))
   (loop for cap across (fn2-nhost-caps host) for cap-index from 0
         do (fn2-native-tls-close (fn2-ncap-tls cap) cap-index (fn2-ncap-nonce cap) host)
            (fn2-native-compress-close host (fn2-ncap-compress cap) (fn2-ncap-tls cap)
