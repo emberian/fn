@@ -7,7 +7,7 @@
 ; ROW is the derived hash executor (F-2 for data, SOURCE for final root).
 ; PRIVATE is always SOURCE's declared FC result region, not B3 result57.
 (defun fn2-upload-hash-private-children
- (row source ls lg off len id gen fn2-b3 fn2-digests fn2-pool)
+ (row source ls lg off len kind id gen fn2-b3 fn2-digests fn2-pool)
  (declare (xargs :stobjs (fn2-b3 fn2-digests fn2-pool) :guard (fn2-pool-wfp fn2-pool)))
  (b* ((private (fn2-digest-slot (nfix source) *fn2-fc-result*))
       (result (fn2-digest-slot (nfix row) *fn2-b3-result*))
@@ -15,17 +15,17 @@
         (fn2-b3-ready row fn2-b3 fn2-digests) (fn2-digest-rowp private fn2-digests)
         (fn2-digest-rowp result fn2-digests) (posp len) (<= len *fn2-commit-unit-bytes*)
         (unsigned-byte-p 32 off) (unsigned-byte-p 32 (+ off len))
-        (eq (fn2-pool-workspace-code ls lg *fn2-upload-kind* id gen fn2-pool) :ok)
-        (eq (fn2-layout-range-code ls lg off (+ off len) nil *fn2-upload-kind* id gen fn2-pool) :ok)))
+        (eq (fn2-pool-workspace-code ls lg kind id gen fn2-pool) :ok)
+        (eq (fn2-layout-range-code ls lg off (+ off len) nil kind id gen fn2-pool) :ok)))
        (mv :fault fn2-b3 fn2-digests))
       ((mv code fn2-b3 fn2-digests)
-       (fn2-block-hash-into row ls lg off len *fn2-upload-kind* id gen fn2-b3 fn2-digests fn2-pool))
+       (fn2-block-hash-into row ls lg off len kind id gen fn2-b3 fn2-digests fn2-pool))
       ((unless (and (eq code :ok) (fn2-digest-rowp private fn2-digests)
                     (fn2-digest-rowp result fn2-digests))) (mv :fault fn2-b3 fn2-digests))
       (fn2-digests (fn2-digest-copy private result fn2-digests)))
   (mv :ok fn2-b3 fn2-digests)))
 
-(defun fn2-upload-cv-private-children (source ls lg block id gen fn2-digests fn2-pool)
+(defun fn2-upload-cv-private-children (source ls lg block kind id gen fn2-digests fn2-pool)
  (declare (xargs :stobjs (fn2-digests fn2-pool) :guard (fn2-pool-wfp fn2-pool)))
  (let* ((private (fn2-digest-slot (nfix source) *fn2-fc-result*))
         (counter (* 4 (nfix block)))
@@ -33,21 +33,21 @@
                      (fn2-pool-slot-base ls fn2-pool) 0) *fn2-upload-page-stage*)))
   (if (not (and (natp source) (natp block) (fn2-digest-rowp private fn2-digests)
        (unsigned-byte-p 54 counter) (<= (+ counter 4) (expt 2 54))
-       (eq (fn2-pool-workspace-code ls lg *fn2-upload-kind* id gen fn2-pool) :ok)
+       (eq (fn2-pool-workspace-code ls lg kind id gen fn2-pool) :ok)
        (eq (fn2-layout-range-code ls lg *fn2-upload-page-stage*
-             (+ *fn2-upload-page-stage* *fn2-commit-unit-bytes*) nil *fn2-upload-kind* id gen fn2-pool) :ok)
+             (+ *fn2-upload-page-stage* *fn2-commit-unit-bytes*) nil kind id gen fn2-pool) :ok)
        (natp off) (<= (+ off *fn2-commit-unit-bytes*) (fn2-pool-data-length fn2-pool))))
       (mv :fault fn2-digests)
    (let ((fn2-digests (fn2-b3-subtree-cv-into private off *fn2-commit-unit-bytes* counter fn2-digests fn2-pool)))
     (mv :ok fn2-digests)))))
 
 (fn2-fc-shape fn2-upload-hash-private-children-shape
- (fn2-upload-hash-private-children row source ls lg off len id gen fn2-b3 fn2-digests fn2-pool)
+ (fn2-upload-hash-private-children row source ls lg off len kind id gen fn2-b3 fn2-digests fn2-pool)
  (and (fn2-b3p fn2-b3) (fn2-b3-wfp fn2-b3) (fn2-digestsp fn2-digests)
       (fn2-digests-wfp fn2-digests) (fn2-poolp fn2-pool) (fn2-pool-wfp fn2-pool))
  ((fn2-b3 1) (fn2-digests 2)))
 (fn2-fc-shape fn2-upload-cv-private-children-shape
- (fn2-upload-cv-private-children source ls lg block id gen fn2-digests fn2-pool)
+ (fn2-upload-cv-private-children source ls lg block kind id gen fn2-digests fn2-pool)
  (and (fn2-digestsp fn2-digests) (fn2-digests-wfp fn2-digests)
       (fn2-poolp fn2-pool) (fn2-pool-wfp fn2-pool)) ((fn2-digests 1)))
 
@@ -57,7 +57,7 @@
   (fn2-digestsp fn2-digests) (fn2-poolp fn2-pool) (fn2-pool-wfp fn2-pool)
   (unsigned-byte-p 32 off) (unsigned-byte-p 32 len) (natp i) (< i 8))
   (equal (fn2-digest-word (fn2-digest-slot source *fn2-fc-result*) i
-           (mv-nth 2 (fn2-b3-update source ls lg off len *fn2-upload-kind* id gen fn2-digests fn2-b3 fn2-pool)))
+           (mv-nth 2 (fn2-b3-update source ls lg off len kind id gen fn2-digests fn2-b3 fn2-pool)))
          (fn2-digest-word (fn2-digest-slot source *fn2-fc-result*) i fn2-digests)))
  :hints (("Goal" :in-theory (enable fn2-b3-update))))
 (defthm fn2-upload-hash-private-preserves-source-digest-context
@@ -66,7 +66,7 @@
   (fn2-b3p fn2-b3) (fn2-b3-wfp fn2-b3) (fn2-digestsp fn2-digests)
   (fn2-digests-wfp fn2-digests) (fn2-poolp fn2-pool) (fn2-pool-wfp fn2-pool))
   (equal (fn2-digest-word (fn2-digest-slot source region) i
-           (mv-nth 2 (fn2-upload-hash-private-children row source ls lg off len id gen fn2-b3 fn2-digests fn2-pool)))
+           (mv-nth 2 (fn2-upload-hash-private-children row source ls lg off len kind id gen fn2-b3 fn2-digests fn2-pool)))
          (fn2-digest-word (fn2-digest-slot source region) i fn2-digests)))
  :hints (("Goal" :in-theory (enable fn2-upload-hash-private-children fn2-block-hash-into))))
 
@@ -76,7 +76,7 @@
   (fn2-b3p fn2-b3) (fn2-b3-wfp fn2-b3) (fn2-digestsp fn2-digests)
   (fn2-digests-wfp fn2-digests) (fn2-poolp fn2-pool) (fn2-pool-wfp fn2-pool))
   (equal (fn2-digest-word (fn2-digest-slot source region) i
-           (mv-nth 2 (fn2-block-hash-into row ls lg off len *fn2-upload-kind* id gen fn2-b3 fn2-digests fn2-pool)))
+           (mv-nth 2 (fn2-block-hash-into row ls lg off len kind id gen fn2-b3 fn2-digests fn2-pool)))
          (fn2-digest-word (fn2-digest-slot source region) i fn2-digests)))
  :hints (("Goal" :in-theory (enable fn2-block-hash-into))))
 (defthm fn2-upload-hash-private-preserves-source-b3-columns
@@ -85,7 +85,7 @@
   (fn2-b3p fn2-b3) (fn2-b3-wfp fn2-b3) (fn2-digestsp fn2-digests)
   (fn2-digests-wfp fn2-digests) (fn2-poolp fn2-pool) (fn2-pool-wfp fn2-pool))
   (equal (nth source (nth column
-           (mv-nth 1 (fn2-upload-hash-private-children row source ls lg off len id gen fn2-b3 fn2-digests fn2-pool))))
+           (mv-nth 1 (fn2-upload-hash-private-children row source ls lg off len kind id gen fn2-b3 fn2-digests fn2-pool))))
          (nth source (nth column fn2-b3))))
  :hints (("Goal" :in-theory (enable fn2-upload-hash-private-children fn2-block-hash-into))))
 (defthm fn2-upload-hash-private-preserves-source-b3-words
@@ -93,7 +93,7 @@
   (fn2-b3p fn2-b3) (fn2-b3-wfp fn2-b3) (fn2-digestsp fn2-digests)
   (fn2-digests-wfp fn2-digests) (fn2-poolp fn2-pool) (fn2-pool-wfp fn2-pool))
   (equal (nth (+ (* 16 source) i) (nth *fn2-b3-wordsi*
-           (mv-nth 1 (fn2-upload-hash-private-children row source ls lg off len id gen fn2-b3 fn2-digests fn2-pool))))
+           (mv-nth 1 (fn2-upload-hash-private-children row source ls lg off len kind id gen fn2-b3 fn2-digests fn2-pool))))
          (nth (+ (* 16 source) i) (nth *fn2-b3-wordsi* fn2-b3))))
  :hints (("Goal" :in-theory (enable fn2-upload-hash-private-children fn2-block-hash-into))))
 
@@ -119,7 +119,8 @@
                  (fn2-pool (fn2-core-pool fn2-core))) (code fn2-b3 fn2-digests)
       (let ((row (fn2-b-block-read-row (fn2-b3-rows fn2-b3))))
        (if (< source row)
-        (fn2-upload-hash-private-children row source ls lg *fn2-upload-page-stage* len id gen fn2-b3 fn2-digests fn2-pool)
+        (fn2-upload-hash-private-children row source ls lg *fn2-upload-page-stage* len *fn2-upload-kind* id gen
+                                          fn2-b3 fn2-digests fn2-pool)
         (mv :fault fn2-b3 fn2-digests))) (mv code fn2-core))))
    (defun fn2-upload-block-cv-keep (id gen fn2-core)
     (declare (xargs :stobjs fn2-core :guard (fn2-core-wfp fn2-core)))
@@ -132,7 +133,7 @@
      (stobj-let ((fn2-digests (fn2-core-digests fn2-core)) (fn2-pool (fn2-core-pool fn2-core)))
       (code fn2-digests)
       (fn2-upload-cv-private-children source ls lg
-       block id gen fn2-digests fn2-pool)
+       block *fn2-upload-kind* id gen fn2-digests fn2-pool)
       (mv code fn2-core))))
    (defun fn2-upload-root-hash-keep (id gen fn2-core)
     (declare (xargs :stobjs fn2-core :guard (fn2-core-wfp fn2-core)))
@@ -146,7 +147,7 @@
                  (fn2-pool (fn2-core-pool fn2-core))) (code fn2-b3 fn2-digests)
       (fn2-upload-hash-private-children source source ls lg
        (+ *fn2-upload-page-manifest* (* unit *fn2-commit-unit-bytes*)) *fn2-commit-unit-bytes*
-       id gen fn2-b3 fn2-digests fn2-pool) (mv code fn2-core))))
+       *fn2-upload-kind* id gen fn2-b3 fn2-digests fn2-pool) (mv code fn2-core))))
    (defun fn2-upload-private-result-store (id gen fn2-core)
     (declare (xargs :stobjs fn2-core :guard (fn2-core-wfp fn2-core)))
     (b* (((mv code source ls lg) (fn2-upload-private-source id gen fn2-core))
