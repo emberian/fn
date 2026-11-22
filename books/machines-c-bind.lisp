@@ -471,7 +471,8 @@
       (equal *fn2-identity-article-entry-field-article* 3)
       (equal *fn2-grants-entry-field-grant* 0)
       (equal *fn2-grant-current-entry-field-grant* 4)
-      (equal *fn2-authority-head-entry-field-grant* 1)))
+      (equal *fn2-authority-head-entry-field-grant* 1)
+      (equal *fn2-authinfo-credential-entry-field-revision* 1)))
 
 (defun fn2-succ-replay-event-mask (sid)
  (declare (xargs :guard t))
@@ -488,6 +489,7 @@
   (17 (ash 1 *fn2-grants-entry-field-grant*))
   (18 (ash 1 *fn2-grant-current-entry-field-grant*))
   (19 (ash 1 *fn2-authority-head-entry-field-grant*))
+  (21 (ash 1 *fn2-authinfo-credential-entry-field-revision*))
   (otherwise 0)))
 (defthm fn2-succ-replay-event-mask-natp
  (natp (fn2-succ-replay-event-mask sid)) :rule-classes :type-prescription)

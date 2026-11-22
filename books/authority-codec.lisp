@@ -19,6 +19,7 @@
 ;; answers frame for an empty one).
 (defconst *fn2-authority-requests*
   `((4 stream-resolve ((stream-name (:octets16 250))))
+    (5 principal-set-password ((name (:octets16 64)) (salt (:octets16 16)) (secret (:octets16 512))))
     (0 principal-create ((name (:octets16 64))))
     (1 principal-bind ((name (:octets16 64))))
     (2 grant-set ((grantee (:id principal)) (right ,*fn2-authority-right-layout*)
@@ -33,6 +34,7 @@
 (defconst *fn2-authority-results*
   '((stream-resolve ((target (:id stream))))
     (principal-create ((principal (:id principal))))
+    (principal-set-password ((principal (:id principal))))
     (principal-bind ((principal (:id principal)) (authority-head (:id grant))))
     (grant-set ((grant (:id grant)) (authority-head (:id grant)) (receipt (:octets16 1024))))
     (grant-get ((found :bool) (authority-head (:id grant))))
@@ -43,7 +45,7 @@
 
 ;; Which verbs may answer uncertain (the ruling: principal-bind and grant-get
 ;; never do), as data the arms and the fixtures read.
-(defconst *fn2-authority-uncertain-verbs* '(principal-create grant-set))
+(defconst *fn2-authority-uncertain-verbs* '(principal-create principal-set-password grant-set))
 
 (defun fn2-authority-codes-ok (rows seen)
   (declare (xargs :verify-guards nil))

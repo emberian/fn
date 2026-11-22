@@ -10,7 +10,7 @@
 (defconst *fn2-authinfo-tag-size* (length *fn2-authinfo-tag-octets*))
 (defconst *fn2-authinfo-prefix-size* (+ *fn2-authinfo-tag-size* *fn2-authinfo-salt-octets*))
 
-(defun fn2-authinfo-stage-preimage (sslot sgen soff sk si sg rslot rgen roff len tslot tgen kind id gen fn2-pool)
+(defun fn2-authinfo-stage-preimage (sslot sgen soff sk si sg rslot rgen roff len rk ri rg tslot tgen kind id gen fn2-pool)
   (declare (xargs :stobjs fn2-pool :guard (fn2-pool-wfp fn2-pool)))
   (b* (((unless (and (natp soff) (natp roff) (posp len) (<= len *fn2-authinfo-pass-max*)
                      (not (equal tslot sslot)) (not (equal tslot rslot))))
@@ -24,14 +24,14 @@
        ((mv code fn2-pool) (fn2-rd-copy *fn2-authinfo-salt-octets* sslot sgen soff sk si sg
                                       tslot tgen *fn2-authinfo-tag-size* kind id gen fn2-pool))
        ((unless (eq code :ok)) (mv :bounds 0 fn2-pool))
-       ((mv code fn2-pool) (fn2-rd-copy len rslot rgen roff kind id gen
+       ((mv code fn2-pool) (fn2-rd-copy len rslot rgen roff rk ri rg
                                       tslot tgen *fn2-authinfo-prefix-size* kind id gen fn2-pool)))
     (mv (if (eq code :ok) :ok :bounds) (+ *fn2-authinfo-prefix-size* len) fn2-pool)))
 (fn2-pool-preserves fn2-authinfo-stage-preimage
- (sslot sgen soff sk si sg rslot rgen roff len tslot tgen kind id gen fn2-pool) :position 2 :rows nil)
+ (sslot sgen soff sk si sg rslot rgen roff len rk ri rg tslot tgen kind id gen fn2-pool) :position 2 :rows nil)
 (defthm fn2-authinfo-stage-preimage-natp
  (natp (mv-nth 1 (fn2-authinfo-stage-preimage
-                  sslot sgen soff sk si sg rslot rgen roff len tslot tgen kind id gen fn2-pool))))
+                  sslot sgen soff sk si sg rslot rgen roff len rk ri rg tslot tgen kind id gen fn2-pool))))
 (in-theory (disable fn2-authinfo-stage-preimage))
 
 ;; Visit all 32 digest octets, including on a mismatch. This is an ACL2

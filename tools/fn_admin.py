@@ -13,6 +13,7 @@ from __future__ import annotations
 import argparse
 from collections.abc import Callable
 from contextlib import suppress
+from getpass import getpass, GetPassWarning
 import hashlib
 import json
 import os
@@ -23,6 +24,7 @@ import stat
 import subprocess
 import sys
 import tempfile
+import warnings
 
 EXIT_ACCEPTED = 0
 EXIT_REFUSED = 1
@@ -111,6 +113,7 @@ AUTH_OPCODES = {
     "grant-set": 2,
     "grant-get": 3,
     "stream-resolve": 4,
+    "principal-set-password": 5,
 }
 AUTH_RIGHTS = {"consume": 0, "read": 1, "append": 2}
 CNS_CODES = {
@@ -294,6 +297,9 @@ def build_auth_request(verb: str, **kw) -> bytes:
     code = AUTH_OPCODES[verb]
     if verb in ("principal-create", "principal-bind", "stream-resolve"):
         body = bytes([code]) + octets16(kw["name"].encode("utf-8"))
+    elif verb == "principal-set-password":
+        body = (bytes([code]) + octets16(kw["name"].encode("utf-8"))
+                + octets16(kw["salt"]) + octets16(kw["secret"]))
     elif verb == "grant-set":
         op_bytes = be_pos(kw["op"])
         body = (
@@ -341,7 +347,7 @@ def decode_auth_reply(verb: str, frame: bytes) -> dict:
     if verb == "stream-resolve":
         target, i = leb_decode(p, i)
         out["target"] = target
-    elif verb == "principal-create":
+    elif verb in ("principal-create", "principal-set-password"):
         pid, i = leb_decode(p, i)
         out["id"] = pid
     elif verb == "principal-bind":
@@ -604,7 +610,7 @@ class ControlSession:
     def auth(self, verb: str, **kw) -> dict:
         frame = build_auth_request(verb, **kw)
         return self._exchange(frame, verb, decode_auth_reply,
-                              mutating=verb in ("principal-create", "grant-set"))
+                              mutating=verb in ("principal-create", "principal-set-password", "grant-set"))
 
     def cns(self, verb: str, **kw) -> dict:
         if verb == "wait":
@@ -1040,6 +1046,36 @@ def cmd_principal_create(args: argparse.Namespace) -> int:
         res = sess.auth("principal-create", name=args.name)
     res["principal"] = args.name
     return emit(res, args.json)
+
+
+def read_password_confirmation() -> bytes:
+    if sys.stdin.isatty():
+        try:
+            with warnings.catch_warnings():
+                warnings.simplefilter("error", GetPassWarning)
+                secret = getpass("Password: ").encode("utf-8")
+                confirmation = getpass("Confirm password: ").encode("utf-8")
+        except (GetPassWarning, EOFError) as exc:
+            raise ValueError("cannot read password without terminal echo") from exc
+    else:
+        first = sys.stdin.buffer.readline(514)
+        second = sys.stdin.buffer.readline(514)
+        if not first.endswith(b"\n") or not second.endswith(b"\n"):
+            raise ValueError("expected two bounded password lines on standard input")
+        secret = first.removesuffix(b"\n").removesuffix(b"\r")
+        confirmation = second.removesuffix(b"\n").removesuffix(b"\r")
+    if not (0 < len(secret) <= 512 and secret == confirmation):
+        raise ValueError("password and confirmation must match and be 1..512 octets")
+    return secret
+
+
+def cmd_principal_set_password(args: argparse.Namespace) -> int:
+    sock_path = require_control_sock(args)
+    secret = read_password_confirmation()
+    with ControlSession(sock_path) as sess:
+        response = sess.auth("principal-set-password", name=args.name, salt=os.urandom(16), secret=secret)
+    response["principal"] = args.name
+    return emit(response, args.json)
 
 
 def cmd_grant_set(args: argparse.Namespace) -> int:
@@ -1555,6 +1591,10 @@ def build_parser() -> argparse.ArgumentParser:
     p_pcreate = princ_sub.add_parser("create", help="create a durable principal")
     p_pcreate.add_argument("name", help="principal name (1..64 UTF-8 octets)")
     _add_control_args(p_pcreate)
+    p_ppassword = princ_sub.add_parser("set-password", help="set a protected NNTP password over the owner socket")
+    p_ppassword.add_argument("name", help="existing durable principal name")
+    p_ppassword.add_argument("--control-sock", help="owner-only FNCT Unix control socket")
+    p_ppassword.add_argument("--json", action="store_true")
 
     p_grant = sub.add_parser("grant", help="manage durable authority grants over --control-sock")
     grant_sub = p_grant.add_subparsers(dest="grant_cmd", required=True)
@@ -1685,6 +1725,8 @@ def main(argv: list[str] | None = None, root: Path | None = None) -> int:
             return cmd_serve(args, repo_root)
         if args.command == "principal" and args.principal_cmd == "create":
             return cmd_principal_create(args)
+        if args.command == "principal" and args.principal_cmd == "set-password":
+            return cmd_principal_set_password(args)
         if args.command == "grant" and args.grant_cmd == "set":
             return cmd_grant_set(args)
         if args.command == "grant" and args.grant_cmd == "get":

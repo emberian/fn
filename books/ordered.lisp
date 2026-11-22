@@ -106,3 +106,14 @@
  :key ((principal (:id principal)) (name (:octets 64)))
  :value ((consumer (:id consumer)))
  :merge :unique)
+
+; Password provisioning writes only the 16-octet salt and the 32-octet
+; tagged verifier. The verifier has its own latest revision and carries
+; no read, consume, posting or peer grant.
+(defconst *fn2-authinfo-credential-sid* 21)
+(defrunschema fn2-authinfo-credential :id 21
+ :key ((principal (:id principal)))
+ :value ((revision (:id event)) (salt (:octets 16)) (verifier :digest))
+ :merge :latest)
+(assert-event (equal (+ *fn2-commit-txn-schema-record-kind-base* *fn2-authinfo-credential-sid*)
+                     *record-kind-authinfo-credential*))
