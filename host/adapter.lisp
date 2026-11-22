@@ -663,7 +663,7 @@ the image launcher always opens its persisted device instead."
   ;; Full envelope traces retain receive bytes, including decrypted NNTP
   ;; and local control requests. Reserve them for authority-free fixtures.
   (unless (eq (fn2-conn-envelope-capture-admission trace-capacity core) :ok)
-    (error "fn2 native: envelope byte capture requires an authority-free profile"))
+    (error "fn2 native: envelope byte capture requires an authority-free profile without outbound peer credentials"))
   (when (and device-path memory-store)
     (error "fn2 native: image startup cannot use a memory fixture"))
   (when (and create-size (not (eq (fn2-image-create-request create-size profile) :ok)))

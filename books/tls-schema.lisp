@@ -137,7 +137,7 @@
 (defthm fn2-tls-admission-capacity-natp
   (natp (fn2-tls-admission-capacity profile)) :rule-classes :type-prescription)
 
-(defcolumns fn2-tls-config ((enabled :bool) (window :u32) (timeout-ms :u32)))
+(defcolumns fn2-tls-config ((enabled :bool) (peer-trust :bool) (window :u32) (timeout-ms :u32)))
 (defun fn2-tls-config-from (profile fn2-tls-config)
   (declare (xargs :stobjs fn2-tls-config :guard (fn2-tls-profilep profile)))
   (let* ((fn2-tls-config (fn2-tls-config-init 1 fn2-tls-config))
@@ -145,6 +145,7 @@
          (timeout (fn2-tls-setting :tls-handshake-ms 10000 profile)))
     (fn2-tls-config-put 0
       (enabled (if (fn2-tls-requested-p profile) 1 0))
+      (peer-trust (if (fn2-peer-tls-requested-p profile) 1 0))
       (window (if (unsigned-byte-p 32 window) window 16384))
       (timeout-ms (if (unsigned-byte-p 32 timeout) timeout 10000)))))
 (defthm fn2-tls-config-from-type
