@@ -1,0 +1,53 @@
+; Component check over the real pool and Blake3 actor. Exercises restoration
+; of the persisted verifier layout [salt, digest] and bounded overlay of the
+; tagged password preimage. No node, transport or durable-state claim.
+(in-package "ACL2")
+(include-book "../books/authinfo-secret-pool")
+(defun fn2-ac-test-write (bytes slot gen off fn2-pool)
+ (declare (xargs :stobjs fn2-pool :verify-guards nil :measure (len bytes)))
+ (if (atom bytes) (mv :ok fn2-pool)
+  (mv-let (status fn2-pool) (fn2-pool-write slot gen off (car bytes) 1 0 1 fn2-pool)
+   (if (eq status :ok) (fn2-ac-test-write (cdr bytes) slot gen (+ 1 off) fn2-pool)
+      (mv status fn2-pool)))))
+
+(defun fn2-ac-test-body (fn2-pool fn2-digests fn2-b3)
+ (declare (xargs :stobjs (fn2-pool fn2-digests fn2-b3) :verify-guards nil))
+ (b* ((fn2-pool (fn2-pool-init '((2 . 1024)) 1 100 fn2-pool))
+      (fn2-digests (fn2-digests-init 144 fn2-digests))
+      (fn2-b3 (fn2-b3-table-init 1 fn2-b3))
+      ((mv res-rx rx rg fn2-pool) (fn2-pool-reserve 0 1 0 1 fn2-pool))
+      ((mv res-tx tx tg fn2-pool) (fn2-pool-reserve 0 1 0 1 fn2-pool))
+      (salt '(0 1 2 3 4 5 6 7 8 9 10 11 12 13 14 15))
+      (sample '(65 43 50 95 57))
+      (verifier (fn2-authinfo-secret-model salt sample))
+      ((mv wrx fn2-pool) (fn2-ac-test-write sample rx rg 0 fn2-pool))
+      ((mv wtx fn2-pool) (fn2-ac-test-write (append salt verifier) tx tg 0 fn2-pool))
+      ((mv staged n fn2-pool)
+       (fn2-authinfo-stage-preimage tx tg 0 1 0 1 rx rg 0 (len sample) 1 0 1
+                                   tx tg 48 1 0 1 fn2-pool))
+      ((mv hashed fn2-digests fn2-b3)
+       (fn2-pool-block-hash 0 tx tg 48 n 1 0 1 fn2-digests fn2-b3 fn2-pool))
+      (result (fn2-digest-slot 0 *fn2-b3-result*))
+      (same (fn2-authinfo-verifier-mismatch 0 0 result tx tg 16 1 0 1 fn2-digests fn2-pool))
+      ((mv bad-byte fn2-pool)
+       (fn2-pool-write tx tg 47 (mod (+ 1 (nth 31 verifier)) 256) 1 0 1 fn2-pool))
+      (changed (fn2-authinfo-verifier-mismatch 0 0 result tx tg 16 1 0 1 fn2-digests fn2-pool))
+      ((mv cleared fn2-pool) (fn2-pool-reset tx tg 1 0 1 fn2-pool))
+      (empty (fn2-authinfo-verifier-mismatch 0 0 result tx tg 16 1 0 1 fn2-digests fn2-pool))
+      ((mv read-clear &) (fn2-pool-read tx tg 48 1 0 1 fn2-pool)))
+  (mv (list res-rx res-tx wrx wtx staged hashed n same bad-byte changed cleared empty read-clear)
+      fn2-pool fn2-digests fn2-b3)))
+
+(defun fn2-ac-test ()
+ (declare (xargs :verify-guards nil))
+ (with-local-stobj fn2-pool
+  (mv-let (answer fn2-pool)
+    (with-local-stobj fn2-digests
+     (mv-let (answer fn2-pool fn2-digests)
+       (with-local-stobj fn2-b3
+        (mv-let (answer fn2-pool fn2-digests fn2-b3)
+          (fn2-ac-test-body fn2-pool fn2-digests fn2-b3)
+          (mv answer fn2-pool fn2-digests)))
+       (mv answer fn2-pool)))
+    answer)))
+(assert-event (equal (fn2-ac-test) '(:ok :ok :ok :ok :ok :ok 36 0 :ok 1 :ok 32 :bounds)))

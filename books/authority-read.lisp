@@ -25,14 +25,28 @@
          (fn2-authority-read-key-children x (cdr keys) fn2-reads fn2-id-decides fn2-fields fn2-fc)
        (mv :state fn2-reads fn2-fields))))))
 
+;; Step 0 starts a fresh owner-held decision, even when the actor is
+;; discarding old tokens. A pending lookup's tokens come only from :more
+;; on the same read row, principal, right, scope and target.
+(defun fn2-authority-read-continuation-p (step head grant)
+ (declare (xargs :guard t))
+ (and (unsigned-byte-p 60 head) (unsigned-byte-p 60 grant)
+      (case step
+        (0 t)
+        (1 (and (equal head 0) (equal grant 0)))
+        (2 (and (posp head) (equal grant 0)))
+        ((3 4) (and (posp head) (posp grant)))
+        (otherwise nil))))
+
 (defun fn2-authority-principal-allows-children
     (x pid right scope target xstep head grant budget fn2-reads fn2-id-decides fn2-ranges fn2-seeks fn2-succ-txns fn2-overlays fn2-overlay-index fn2-run-installed fn2-run-cursors fn2-run-paths fn2-run-cache fn2-fields fn2-pool fn2-fc)
  (declare (xargs :stobjs (fn2-reads fn2-id-decides fn2-ranges fn2-seeks fn2-succ-txns fn2-overlays fn2-overlay-index fn2-run-installed fn2-run-cursors fn2-run-paths fn2-run-cache fn2-fields fn2-pool fn2-fc)
                  :guard (and (fn2-reads-wfp fn2-reads) (fn2-id-decides-wfp fn2-id-decides) (fn2-ranges-wfp fn2-ranges) (fn2-seeks-wfp fn2-seeks) (fn2-succ-txns-wfp fn2-succ-txns) (fn2-overlays-wfp fn2-overlays) (fn2-overlay-index-wfp fn2-overlay-index) (fn2-run-installed-wfp fn2-run-installed) (fn2-run-cursors-wfp fn2-run-cursors) (fn2-run-paths-wfp fn2-run-paths) (fn2-run-cache-wfp fn2-run-cache) (fn2-fields-wfp fn2-fields) (fn2-pool-wfp fn2-pool) (fn2-fc-wfp fn2-fc))))
  (b* (((unless (and (posp pid) (unsigned-byte-p 60 pid)
                     (unsigned-byte-p 60 right) (unsigned-byte-p 60 scope)
-                    (unsigned-byte-p 60 target) (unsigned-byte-p 60 head)
-                    (unsigned-byte-p 60 grant) (unsigned-byte-p 32 x)
+                    (unsigned-byte-p 60 target)
+                    (fn2-authority-read-continuation-p xstep head grant)
+                    (unsigned-byte-p 32 x)
                     (< x (fn2-reads-rows fn2-reads))))
        (mv :state 0 0 0 fn2-reads fn2-ranges fn2-seeks fn2-succ-txns fn2-run-cursors fn2-run-paths fn2-fields))
       ((mv rc fn2-reads fn2-ranges fn2-seeks fn2-succ-txns)
@@ -40,7 +54,7 @@
          (fn2-read-release-children x fn2-reads fn2-id-decides fn2-ranges fn2-seeks fn2-succ-txns)))
       ((unless (eq rc :ok))
        (mv :state 0 0 0 fn2-reads fn2-ranges fn2-seeks fn2-succ-txns fn2-run-cursors fn2-run-paths fn2-fields))
-      (step (if (and (posp xstep) (<= xstep 4)) xstep 1))
+      (step (if (equal xstep 0) 1 xstep))
       (sid (case step (2 *fn2-grant-current-sid*) (3 *fn2-grants-sid*) (otherwise *fn2-authority-head-sid*)))
       (field (case step (2 *fn2-grant-current-entry-field-grant*)
                         (3 *fn2-grants-entry-field-enabled*)
@@ -66,7 +80,8 @@
              fn2-fields fn2-pool fn2-fc)
          (mv :state fn2-reads fn2-succ-txns fn2-run-cursors fn2-run-paths fn2-fields)))
       ((when (eq lc :more))
-       (mv :more step head grant fn2-reads fn2-ranges fn2-seeks fn2-succ-txns fn2-run-cursors fn2-run-paths fn2-fields))
+       (mv :more step (if (equal step 1) 0 head) (if (equal step 1) 0 grant)
+           fn2-reads fn2-ranges fn2-seeks fn2-succ-txns fn2-run-cursors fn2-run-paths fn2-fields))
       ((mv vc value)
        (if (eq lc :ok) (fn2-read-value-children x field fn2-reads fn2-run-installed fn2-fields)
          (if (and (eq lc :absent) (not (equal step 3))) (mv :ok 0) (mv :state 0))))

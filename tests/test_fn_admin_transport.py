@@ -44,6 +44,26 @@ class DisconnectAfterRequest(unittest.TestCase):
                 session._recv_frame()
             recv.assert_called_once_with(10)
 
+    def test_complete_append_input_reaches_the_frame_byte_for_byte(self) -> None:
+        article = b"Newsgroups: local.test\r\nSubject: test\r\n\r\n.dot\r\nbytes\xff\nlast"
+        reason = b"article"
+        refused = fn_admin.fnct_seal(28, b"\x01" + fn_admin.octets16(reason) + bytes(4))
+        with tempfile.TemporaryDirectory() as directory:
+            source = Path(directory) / "submitted.article"
+            source.write_bytes(article)
+            for args in (["--file", str(source)], []):
+                with self.subTest(args=args), patch.object(fn_admin.socket, "socket") as sockets:
+                    sockets.return_value.recv.side_effect = io.BytesIO(refused).read
+                    with io.TextIOWrapper(io.BytesIO(article)) as stdin, patch.object(sys, "stdin", stdin):
+                        with redirect_stdout(io.StringIO()):
+                            rc = fn_admin.main(["stream", "append", "--control-sock", "unused.sock",
+                                                "--json", "--op", "7", *args], root=ROOT)
+                    self.assertEqual(rc, 1)
+                    request = sockets.return_value.sendall.call_args_list[0].args[0]
+                    kind, payload = fn_admin.fnct_open(request)
+                    self.assertEqual(kind, fn_admin.KIND_CNS_REQ)
+                    self.assertEqual(payload, b"\x0b\x00\x00\x01\x07" + len(article).to_bytes(4, "big") + article)
+
     def test_transport_failure_boundary(self) -> None:
         append = ["stream", "append", "--group", "local.test", "--body", "hello", "--op", "17"]
         cases = [

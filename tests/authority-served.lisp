@@ -396,6 +396,49 @@
  (equal (car (fn2-authority-grant-roundtrip-run)) t))
 (assert-event (fn2-authority-grant-roundtrip-positive))
 
+;; Exercise the actual shared ledger read, using a committed grant
+;; provisioned through the normal FNCT actor and positive tokens returned
+;; by the earlier query steps. No fixture writes a saved authority token.
+(defun fn2-as-read-grant-drive (fuel principal stream step head grant fn2-core)
+ (declare (xargs :stobjs fn2-core :verify-guards nil :measure (nfix fuel)))
+ (if (zp fuel) (mv :fuel 0 0 0 fn2-core)
+  (mv-let (code next observed selected fn2-core)
+      (fn2-authority-principal-allows 0 principal *fn2-as-r* *fn2-as-st*
+                                      stream step head grant 4096 fn2-core)
+    (if (eq code :more)
+        (fn2-as-read-grant-drive (1- fuel) principal stream next observed selected fn2-core)
+      (mv code step observed selected fn2-core)))))
+
+(defun fn2-authority-read-continuation-positive ()
+ (declare (xargs :verify-guards nil))
+ (with-local-stobj fn2-core
+  (mv-let (passed fn2-core)
+   (b* ((fn2-core (fn2-init-executor *fn2-as-grant-profile* :echo nil fn2-core))
+        ((mv epoch fn2-core)
+         (stobj-let ((fn2-extents (fn2-core-extents fn2-core))) (code fn2-extents)
+           (fn2-alloc-begin-epoch 1 fn2-extents) (mv code fn2-core)))
+        ((mv stream fn2-core) (fn2-as-group "dregg.fn.e1" fn2-core))
+        (principal *fn2-as-anonymous-id*)
+        ((unless (and (eq epoch :ok) (posp stream))) (mv nil fn2-core))
+        ((mv forged & & & fn2-core)
+         (fn2-as-read-grant-drive 64 principal stream 4 0 0 fn2-core))
+        ((mv absent early & & fn2-core)
+         (fn2-as-read-grant-drive 64 principal stream 0 0 0 fn2-core))
+        ((mv status wire & fn2-core)
+         (fn2-as-round 0 (list (fn2-as-set principal *fn2-as-r* *fn2-as-st* stream 1 0 1))
+                         nil fn2-core))
+        (revision (car (fn2-as-set-grants wire 1)))
+        ((mv accepted final head grant fn2-core)
+         (fn2-as-read-grant-drive 64 principal stream 0 0 0 fn2-core)))
+     (mv (and (eq forged :state) (eq absent :access) (member-equal early (list 0 1))
+              (eq status :quiet) (posp revision)
+              (eq accepted :ok) (equal final 4)
+              (equal head revision) (equal grant revision)
+              (equal (fn2-core-stop-reason fn2-core) 0))
+         fn2-core))
+   passed)))
+(assert-event (fn2-authority-read-continuation-positive))
+
 ;; ---------------------------------------------------------------------------
 ;; fn2-authority-commit-race-positive (C's successor, the read dependency of
 ;; step 3a, over the assembled core): a member that decided under authority
