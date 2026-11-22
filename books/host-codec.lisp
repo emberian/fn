@@ -2,7 +2,7 @@
 (in-package "ACL2")
 (include-book "host-loan")
 (include-book "host-codec-close")
-(include-book "tls-stack")
+(include-book "tls-record-effects")
 (include-book "codec-close")
 (local (in-theory (enable fn2-core-wfp)))
 (local
@@ -118,7 +118,8 @@
         (readers
          (append
           '(fn2-tls-record-rows fn2-tls-transport-rows fn2-compress-transport-rows
-            fn2-tls-record-start fn2-tls-record-next)
+            fn2-tls-record-start fn2-tls-record-next fn2-host-codec-op fn2-core-wfp
+            fn2-compress-tls-parent)
           (fn2-columns-projection-readers 'fn2-tls-record
            (fn2-decl-get :columns (fn2-decl-row '(:columns fn2-tls-record) world)))
           (fn2-columns-projection-readers 'fn2-tls-transport
