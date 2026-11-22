@@ -615,39 +615,40 @@ def groups_sidecar_for_image(image: Path) -> Path:
     return Path(f"{image}.groups")
 
 
-def groups_sidecar_for_sock(sock_path: str) -> Path:
-    return Path(f"{sock_path}.groups")
-
-
 def ctl_sock_marker_for_image(image: Path) -> Path:
     return Path(f"{image}.ctl-sock")
 
 
-def write_groups_sidecar(path: Path, groups: list[str], mode: int = 0o600) -> None:
-    tmp = Path(f"{path}.tmp.{os.getpid()}")
-    content = "".join(f"{idx}\t{name}\n" for idx, name in enumerate(groups, 1))
-    fd = os.open(str(tmp), os.O_WRONLY | os.O_CREAT | os.O_TRUNC, mode)
-    try:
-        os.write(fd, content.encode("utf-8"))
-    finally:
-        os.close(fd)
-    os.replace(tmp, path)
+def write_genesis_groups(path: Path, text: str | None) -> None:
+    """Save the exact startup input, including selection of the profile default."""
+    with tempfile.TemporaryDirectory(dir=path.parent) as directory:
+        staged = Path(directory) / "groups"
+        fd = os.open(staged, os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o644)
+        with os.fdopen(fd, "w", encoding="utf-8") as out:
+            json.dump({"FN2_GROUPS": text}, out)
+            out.write("\n")
+        os.replace(staged, path)
 
 
-def read_groups_sidecar(path: Path) -> list[tuple[int, str]]:
-    if not path.is_file():
-        return []
-    rows: list[tuple[int, str]] = []
-    for raw in path.read_text(encoding="utf-8").splitlines():
-        line = raw.strip()
-        if not line:
-            continue
-        if "\t" in line:
-            idx_s, name = line.split("\t", 1)
-            rows.append((int(idx_s), name.strip()))
-        else:
-            rows.append((len(rows) + 1, line))
-    return rows
+def read_genesis_groups(path: Path) -> str | None:
+    text = path.read_text(encoding="utf-8")
+    if text.startswith("{"):
+        saved = json.loads(text)
+        if (not isinstance(saved, dict) or "FN2_GROUPS" not in saved
+                or not isinstance(saved["FN2_GROUPS"], (str, type(None)))):
+            raise ValueError(f"invalid genesis group configuration in {path}")
+        return saved["FN2_GROUPS"]
+    # Earlier image hints held one optionally numbered group per line.
+    names = []
+    for row in text.splitlines():
+        name = row.strip()
+        if "\t" in name:
+            number, name = name.split("\t", 1)
+            int(number)  # The numbered format requires a decimal first column.
+            name = name.strip()
+        if name:
+            names.append(name)
+    return "\n".join(names) if names else None
 
 
 def resolve_stream_id(raw: str | None, sock_path: str) -> tuple[int, dict | None]:
@@ -909,8 +910,7 @@ def cmd_init(args: argparse.Namespace, root: Path) -> int:
     with open(root / "tools" / "image-node.lsp", "rb") as script:
         rc = subprocess.call([str(root / "tools" / "acl2")], cwd=root, stdin=script, env=env)
     if rc == 0:
-        effective_groups = groups or ["local.test"]
-        write_groups_sidecar(groups_sidecar_for_image(image), effective_groups, mode=0o644)
+        write_genesis_groups(groups_sidecar_for_image(image), env.get("FN2_GROUPS"))
     return rc
 
 
@@ -946,9 +946,6 @@ def cmd_serve(args: argparse.Namespace, root: Path) -> int:
 
     prepare_native_crypto(root)
     groups = normalize_groups(args.group)
-    if not groups:
-        sidecar_rows = read_groups_sidecar(groups_sidecar_for_image(image))
-        groups = [name for _, name in sidecar_rows]
 
     env = os.environ.copy()
     env.update(
@@ -964,6 +961,12 @@ def cmd_serve(args: argparse.Namespace, root: Path) -> int:
         env["FN2_LISTENER_ADDRESS"] = args.host
     if groups:
         env["FN2_GROUPS"] = "\n".join(groups)
+    elif groups_sidecar_for_image(image).is_file():
+        saved_groups = read_genesis_groups(groups_sidecar_for_image(image))
+        if saved_groups is None:
+            env.pop("FN2_GROUPS", None)
+        else:
+            env["FN2_GROUPS"] = saved_groups
     for option, variable in ((args.tls_certificate, "FN2_TLS_CERTIFICATE"),
                              (args.tls_key, "FN2_TLS_KEY"),
                              (args.tls_handshakes, "FN2_TLS_HANDSHAKES"),
@@ -984,7 +987,6 @@ def cmd_serve(args: argparse.Namespace, root: Path) -> int:
             return EXIT_ERROR
         env["FN2_LISTENER_PATH"] = sock_str
         ctl_sock_marker_for_image(image).write_text(sock_str + "\n", encoding="utf-8")
-        write_groups_sidecar(groups_sidecar_for_sock(sock_str), groups or ["local.test"], mode=0o600)
 
     os.chdir(root)
     with open(root / "tools" / "image-node.lsp", "rb") as script:

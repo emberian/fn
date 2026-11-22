@@ -229,7 +229,6 @@ def main() -> int:
             alerts_id, audit_id = before_alerts["target"], before_audit["target"]
             assert alerts_id > 0 and audit_id > 0 and alerts_id != audit_id, (alerts_id, audit_id)
             sidecar = Path(f"{ctl_sock}.groups")
-            original_sidecar = sidecar.read_bytes()
             try:
                 sidecar.write_text(f"{audit_id}\tops.alerts\n{alerts_id}\tops.audit\n", encoding="utf-8")
                 g_read = run_fn("grant", "set", "watcher", "read", "ops.alerts", "--control-sock", str(ctl_sock), as_json=True)
@@ -240,7 +239,7 @@ def main() -> int:
                 assert served_alerts["grant"] == g_read["grant"], (served_alerts, g_read)
                 assert served_audit["outcome"] == "accepted" and served_audit["found"] == before_audit["found"] and served_audit["enabled"] == before_audit["enabled"], (before_audit, served_audit)
             finally:
-                sidecar.write_bytes(original_sidecar)
+                sidecar.unlink(missing_ok=True)
             g_append = run_fn("grant", "set", "watcher", "append", "ops.alerts", "--control-sock", str(ctl_sock), as_json=True)
             g_anon = run_fn("grant", "set", "anonymous", "append", "ops.alerts", "--control-sock", str(ctl_sock), as_json=True)
             assert all(r["outcome"] == "accepted" for r in (g_consume, g_read, g_append, g_anon))
