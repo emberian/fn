@@ -584,7 +584,7 @@
 
 (defun fn2-txn-test-profile-groups-max ()
   (declare (xargs :verify-guards nil))
-  (let* ((base (put-assoc-equal :identity-arena-bytes 8192
+  (let* ((base (put-assoc-equal :identity-arena-bytes 4096
                  (put-assoc-equal :groups *fn2-tu-seven-groups* *fn2-tu-big-profile*)))
          (prof7 (put-assoc-equal :max-groups-per-article 7 base))
          (prof2 (put-assoc-equal :max-groups-per-article 2 base))
