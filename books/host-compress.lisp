@@ -2,7 +2,45 @@
 (in-package "ACL2")
 (include-book "host-codec")
 (include-book "compress-close")
+(include-book "compress-record-shape")
 (fn2-book-layer :d)
+
+; The loan address is a sum of the carved pool base and the operation offset.
+(local
+ (defthm fn2-host-op-span-address-natp
+  (implies (and (fn2-corep fn2-core) (fn2-core-wfp fn2-core))
+           (natp (mv-nth 1 (fn2-host-op-span op gen fn2-core))))
+  :rule-classes :type-prescription
+  :hints (("Goal"
+           :use (fn2-core-pool-type fn2-core-ops-type
+                 (:instance fn2-ops-range-slot-natp (i op) (fn2-ops (fn2-core-ops fn2-core)))
+                 (:instance fn2-ops-range-off-natp (i op) (fn2-ops (fn2-core-ops fn2-core)))
+                 (:instance fn2-pool-base-natp
+                  (i (fn2-ops-range-slot op (fn2-core-ops fn2-core)))
+                  (fn2-pool (fn2-core-pool fn2-core))))
+           :in-theory
+           (e/d (fn2-host-op-span)
+                (fn2-core-wfp fn2-core-ops-type fn2-core-pool-type
+                 fn2-ops-rows fn2-ops-gen fn2-ops-phase fn2-ops-kind
+                 fn2-ops-range-slot fn2-ops-range-gen fn2-ops-range-off fn2-ops-range-len
+                 fn2-ops-owner-kind fn2-ops-owner-slot fn2-ops-owner-gen
+                 fn2-pool-rows fn2-pool-gen fn2-pool-cap fn2-pool-base
+                 fn2-pool-data-length fn2-pool-lease-off fn2-pool-lease-len
+                 fn2-pool-state fn2-pool-out-count fn2-pool-fill
+                 fn2-pool-ownerp fn2-pool-input-code
+                 fn2-op-output-kindp))))))
+
+(local
+ (defthm fn2-host-codec-op-address-natp
+  (implies (and (fn2-corep fn2-core) (fn2-core-wfp fn2-core))
+           (natp (mv-nth 4 (fn2-host-codec-op op gen fn2-core))))
+  :rule-classes :type-prescription
+  :hints (("Goal" :in-theory
+           (e/d (fn2-host-codec-op fn2-host-active-op)
+                (fn2-host-op-span fn2-core-wfp fn2-ops-rows fn2-ops-gen
+                 fn2-ops-phase fn2-ops-kind fn2-ops-c0-posted fn2-op-capability))))))
+
+(local (in-theory (disable fn2-host-codec-op fn2-host-codec-cancel-target fn2-core-wfp)))
 
 (defun fn2-host-compress-start-op (op gen fn2-core)
  (declare (xargs :stobjs fn2-core :guard (fn2-core-wfp fn2-core)))
