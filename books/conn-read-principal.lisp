@@ -28,7 +28,7 @@
       (principal (fn2-conn-login-principal slot fn2-conn))
       (account (fn2-conn-principal-slot slot fn2-conn))
       (live-principal
-       (if (and (fn2-accountsp fn2-accounts) (fn2-accounts-shapep fn2-accounts)
+       (if (and (fn2-accounts-shapep fn2-accounts)
                 (natp account) (< account (fn2-accounts-rows fn2-accounts))
                 (not (equal (fn2-accounts-state account fn2-accounts) *fn2-account-state-free*)))
            (fn2-account-principal-id account fn2-accounts)
