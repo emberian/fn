@@ -79,22 +79,23 @@
 
 (in-theory (disable fn2-fnct-trailer-matchp))
 ;; ---------------------------------------------------------------------------
-;; Opening a received frame at the range's start (the fields at BASE, the
+;; Opening a received frame in [START, END) (the fields at BASE, the
 ;; hasher ROW). (mv code kind plen fn2-fields fn2-digests fn2-b3), code :ok,
 ;; :need-more (a prefix of a frame that fits), :size (it cannot fit the range
 ;; or one hasher call), :frame (bad magic, version, extent or trailer) or :bounds.
-(defun fn2-fnct-open-pool (base row slot gen okind oslot ogen fn2-fields fn2-digests fn2-b3 fn2-pool)
+(defun fn2-fnct-open-pool-span (base row slot gen start end okind oslot ogen fn2-fields fn2-digests fn2-b3 fn2-pool)
   (declare (xargs :stobjs (fn2-fields fn2-digests fn2-b3 fn2-pool)
                   :guard (and (fn2-fields-wfp fn2-fields) (fn2-pool-wfp fn2-pool))))
-  (b* ((nfill (fn2-pool-fill-value slot fn2-pool))
-       (cap (fn2-fnct-cap slot fn2-pool))
-       ((unless (and (natp base) (<= (+ base *fn2-fnct-header-num-fields*) (fn2-fields-rows fn2-fields))
-                     (natp nfill) (natp cap)))
+  (b* (((unless (and (natp base) (<= (+ base *fn2-fnct-header-num-fields*) (fn2-fields-rows fn2-fields))
+                     (natp start) (natp end) (<= start end)
+                     (<= end (fn2-pool-fill-value slot fn2-pool))))
         (mv :bounds 0 0 fn2-fields fn2-digests fn2-b3))
+       (nfill (nfix (- end start)))
+       (cap (nfix (- (fn2-fnct-cap slot fn2-pool) start)))
        ((when (< nfill *fn2-fnct-header-octets*))
         (mv (if (<= cap nfill) :size :need-more) 0 0 fn2-fields fn2-digests fn2-b3))
        ((mv code & fn2-fields)
-        (fn2-fnct-header-decode base slot gen 0 *fn2-fnct-header-octets* okind oslot ogen fn2-fields fn2-pool))
+        (fn2-fnct-header-decode base slot gen start (+ start *fn2-fnct-header-octets*) okind oslot ogen fn2-fields fn2-pool))
        ((unless (eq code :ok)) (mv :frame 0 0 fn2-fields fn2-digests fn2-b3))
        (magic (fn2-fields-value (+ base *fn2-fnct-header-field-magic*) fn2-fields))
        (version (fn2-fields-value (+ base *fn2-fnct-header-field-version*) fn2-fields))
@@ -109,13 +110,24 @@
         (mv :size 0 0 fn2-fields fn2-digests fn2-b3))
        ((when (< nfill total)) (mv :need-more 0 0 fn2-fields fn2-digests fn2-b3))
        ((when (< total nfill)) (mv :frame 0 0 fn2-fields fn2-digests fn2-b3))
-       ((mv hcode fn2-digests fn2-b3) (fn2-pool-block-hash row slot gen 0 prefix okind oslot ogen fn2-digests fn2-b3 fn2-pool))
+       ((mv hcode fn2-digests fn2-b3) (fn2-pool-block-hash row slot gen start prefix okind oslot ogen fn2-digests fn2-b3 fn2-pool))
        (dst (fn2-digest-slot (nfix row) *fn2-b3-result*))
        ((unless (and (eq hcode :ok) (fn2-digest-rowp dst fn2-digests))) (mv :bounds 0 0 fn2-fields fn2-digests fn2-b3))
-       ((unless (fn2-fnct-trailer-matchp 0 dst slot gen prefix okind oslot ogen fn2-digests fn2-pool))
+       ((unless (fn2-fnct-trailer-matchp 0 dst slot gen (+ start prefix) okind oslot ogen fn2-digests fn2-pool))
         (mv :frame 0 0 fn2-fields fn2-digests fn2-b3)))
     (mv :ok kind plen fn2-fields fn2-digests fn2-b3)))
 
+(fn2-pool-block-shape fn2-fnct-open-pool-span-shape
+  (fn2-fnct-open-pool-span base row slot gen start end okind oslot ogen fn2-fields fn2-digests fn2-b3 fn2-pool)
+  (and (fn2-fieldsp fn2-fields) (fn2-fields-wfp fn2-fields) (fn2-digestsp fn2-digests) (fn2-digests-wfp fn2-digests) (fn2-b3p fn2-b3) (fn2-b3-wfp fn2-b3) (fn2-poolp fn2-pool) (fn2-pool-wfp fn2-pool)) ((fn2-fields 3) (fn2-digests 4) (fn2-b3 5))
+  (("Goal" :in-theory (e/d (fn2-fnct-open-pool-span) (fn2-fieldsp fn2-fields-wfp fn2-digestsp fn2-digests-wfp fn2-b3p fn2-b3-wfp fn2-poolp fn2-pool-wfp fn2-digests-rows fn2-b3-rows fn2-fields-rows fn2-pool-rows)))))
+(in-theory (disable fn2-fnct-open-pool-span))
+;; The local control carrier frames the entire filled range.
+(defun fn2-fnct-open-pool (base row slot gen okind oslot ogen fn2-fields fn2-digests fn2-b3 fn2-pool)
+  (declare (xargs :stobjs (fn2-fields fn2-digests fn2-b3 fn2-pool)
+                  :guard (and (fn2-fields-wfp fn2-fields) (fn2-pool-wfp fn2-pool))))
+  (fn2-fnct-open-pool-span base row slot gen 0 (fn2-pool-fill-value slot fn2-pool)
+                         okind oslot ogen fn2-fields fn2-digests fn2-b3 fn2-pool))
 (fn2-pool-block-shape fn2-fnct-open-pool-shape
   (fn2-fnct-open-pool base row slot gen okind oslot ogen fn2-fields fn2-digests fn2-b3 fn2-pool)
   (and (fn2-fieldsp fn2-fields) (fn2-fields-wfp fn2-fields) (fn2-digestsp fn2-digests) (fn2-digests-wfp fn2-digests) (fn2-b3p fn2-b3) (fn2-b3-wfp fn2-b3) (fn2-poolp fn2-pool) (fn2-pool-wfp fn2-pool)) ((fn2-fields 3) (fn2-digests 4) (fn2-b3 5))
