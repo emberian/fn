@@ -155,11 +155,11 @@ def crossing_article(mid, body_variant=0):
 
 
 
-def initialize(directory, image, seconds=600, startup_args=()):
+def initialize(directory, image, seconds=600, startup_args=(), env=None):
     """Bound initialization and clean up only this recorded launch session."""
     command = [str(ROOT / "fn"), "init", str(image), "--size-mb", "32", "--group", "local.test", *startup_args]
     with (directory / "init.log").open("wb") as log:
-        process = subprocess.Popen(command, cwd=ROOT, env=environment(), stdout=log,
+        process = subprocess.Popen(command, cwd=ROOT, env=env if env is not None else environment(), stdout=log,
                                    stderr=subprocess.STDOUT, start_new_session=True)
         pidfile = directory / "init.launcher.pid"
         pidfile.write_text(f"{process.pid}\n")

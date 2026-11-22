@@ -133,6 +133,9 @@
           (verb (:enum fn2-cns-verb (:none :register :read :wait :ack :position :status :append :fetch
                                      :rebase :unregister)))
           (consumer :u60) (epoch :u32) (op :u60) (to :u60) (cstart :u60) (page-limit :u16) (wait-ms :u32)
+          ;; The durable address key and the page read's internal publish
+          ;; snapshot. Neither takes the place of the scheduler's principal slot.
+          (address-principal :u60) (address-tip :u60)
           (cpos :u60) (version :u60) (pub-frontier :u60) (count :u32) (more :bool)
           (outcome (:enum fn2-cns-outcome (:none :accepted :refused :uncertain))) (reason :u8)
           (posted (:enum fn2-cns-posted (:none :accepted :unchanged :refused :uncertain))) (posted-word :u8)
@@ -143,7 +146,7 @@
           ;; done; FEED-DISCARD 1 framing, 2 too large), as a connection feeds it
           (upload :link) (upload-gen :u60) (fstart :u32) (fed :u60) (feed-mode :u8) (feed-discard :u8)
           ;; Streaming frame metadata is scalar; RX loans remain owned by CTL.
-          (stream :bool) (retry-principal :u60) (outcome-checked :bool)
+          (stream :bool) (outcome-checked :bool)
           ;; a register's consumer name, the octets of its request's consumer
           ;; field in the control range (the names row it writes)
           (name-off :u32) (name-len :u8)
@@ -194,8 +197,8 @@
  :capacity (fn2-cns-capacity profile)
  :taken (:phase :decode :rows :wait-row :ranges ((:tx-range :slot ws-slot :gen ws-gen :class 0) (:tx-range :slot ns-slot :gen ns-gen :class 0))
          :copy (ctl ctl-gen request fpos flen fkind tx-slot tx-gen)
-         :clear (verb consumer epoch op to cstart page-limit wait-ms deadline cpos version pub-frontier count more outcome
-                 reason posted posted-word txn-gen upload-gen fstart fed feed-mode feed-discard stream retry-principal outcome-checked name-off name-len
+         :clear (verb consumer epoch op to cstart page-limit wait-ms deadline address-principal address-tip cpos version pub-frontier count more outcome
+                 reason posted posted-word txn-gen upload-gen fstart fed feed-mode feed-discard stream outcome-checked name-off name-len
                  ipos ioff ilen npos art istream itype alen lunit lepoch lalloc lgen lease revent routcome rcount rready cursor xrow xstep xhead xgrant
                  sx wstep ticket stopped))
  :initial ((generation fn2-machine-initial-generation) (ready-prev *fn2-none*) (ready-next *fn2-none*)

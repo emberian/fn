@@ -117,7 +117,7 @@
    (defun fn2-cns-read-append-outcome (cns gen request principal op budget fn2-core)
      (declare (xargs :stobjs fn2-core :guard (fn2-core-wfp fn2-core)))
      (b* (((unless (fn2-cns-append-read-contextp cns gen request op fn2-core)) (mv :dropped 0 0 0 fn2-core))
-          ((unless (equal principal (fn2-cns-row-retry-principal cns fn2-core))) (mv :dropped 0 0 0 fn2-core))
+          ((unless (equal principal (fn2-cns-row-address-principal cns fn2-core))) (mv :dropped 0 0 0 fn2-core))
           ((mv pc current) (fn2-cns-principal cns gen fn2-core))
           ((unless (and (eq pc :ok) (equal principal current)
                         (fn2-cns-append-ctl-live-p cns gen request fn2-core)))

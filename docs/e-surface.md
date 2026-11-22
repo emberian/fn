@@ -731,8 +731,19 @@ Outbound feeding and catchup coverage remain the implementation frontier in
    successor write transaction (`fn2-cns-successor`, the profile's `fn2-txn-consumer-share`) and a class-0
    workspace, and answers the cursor the published ledger records after B settled it. Interim rulings (deputy, 2026-11-05), each owed its full form:
    the ctl's stripe and hasher row are the format table's top rows, `fc-rows - ctl-rows + S` (equal to B's
-   `fn2-b-ctl-slot` when `:format-slots` is the floor; owed: B's runtime accessor); the fncu cursor's history
-   and incarnation are one 0 octet each until B serves the store's octets (cross-store `scope` unchecked);
+   `fn2-b-ctl-slot` when `:format-slots` is the floor; owed: B's runtime accessor). The FNCT cursor's
+   history and incarnation are the immutable physical IDs that BOOT matches against persisted genesis.
+   It encodes both as minimal big-endian fields and binds the live control connection's durable principal,
+   with zero reserved for an unbound owner. READ, WAIT and ACK check these fields before entering consumer
+   work. The interim zero history and incarnation fail `scope`. The served epoch-1 cursor requires
+   a record in the published cursor ledger. An absent row answers `unknown-consumer`, and an
+   unavailable lookup yields no cursor. If a durably settled mutation cannot be read back, the reply
+   is uncertain. The cursor ledger keys records by durable principal, consumer ID and epoch. Register
+   writes the same durable principal into the name table. APPEND writes that durable principal into
+   the address index, and frontier, selection and wake use the same key. A wait uses the global commit
+   tip only internally to close the race between reading and linking a parked edge. Colliding wait
+   buckets can cause a private rescan, which still walks only the waiting principal's address rows. Current query/view
+   checks, per-item read grants, and v2 cursor issuance remain owed. Other interim rules are
    the served consumer id is the consumer octets read big-endian (at most 7; owed: the (principal, name) row);
    register takes only the empty stream list (the principal's inbox, the one served query; otherwise `query`);
    an append's stream field is empty (the article's Newsgroups names its groups, as POST; otherwise `frame`);

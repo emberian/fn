@@ -227,7 +227,7 @@
 ;; A bind after consumer work (a consumer read frame, kind 4, first) is refused access.
 (assert-event
  (let ((r (fn2-as-served-run *fn2-as-served-profile*
-                             (list (fn2-as-client (list (fnc-read (fnc-issued 1 0 0 1 0) 8) (fn2-as-frame 'principal-bind (list (fn2-as-o "owner"))))))
+                             (list (fn2-as-client (list (fnc-read (fnc-issued 1 *fn2-as-owner-id* 1 1 0) 8) (fn2-as-frame 'principal-bind (list (fn2-as-o "owner"))))))
                              nil)))
   (and (equal (nth 1 r) 0)
        (equal (nthcdr (- (len (car (nth 2 r))) (len (fn2-as-refused 'principal-bind "access"))) (car (nth 2 r)))
