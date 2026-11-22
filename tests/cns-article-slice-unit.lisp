@@ -21,7 +21,7 @@
       (slot (fn2-cns-row-ws-slot id fn2-core)) (sgen (fn2-cns-row-ws-gen id fn2-core))
       (fn2-core (fn2-cns-put-core id (phase *fn2-cns-state-page*) (xrow x)
                   (address-principal 7) (ipos 99) (visible-ipos 99) (pub-frontier 101) (page-limit 1)
-                  (page-head-bound 1)
+                  (page-view-bound 1)
                   (verb *fn2-cns-verb-read*) (outcome *fn2-cns-outcome-accepted*)
                   (tx-slot slot) (tx-gen sgen) (ctl 0))))
   (mv t id gen x fn2-core)))
