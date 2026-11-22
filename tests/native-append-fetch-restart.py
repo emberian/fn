@@ -169,17 +169,17 @@ def main():
                    "--consumer", "inbox1", "--control-sock", control),
             accepted_articles, registered["position"], status_before)
         for index, ((mid, article, _), accepted) in enumerate(zip(submissions, accepted_articles)):
+            # Cross each position with the other real Message-ID, then change
+            # only the ID and require this same position to yield its bytes.
+            other_mid = submissions[1 - index][0]
+            denied = run_fn(directory, f"wrong-mid-{index}", "stream", "fetch", other_mid,
+                            "--as", principal, "--domain", accepted["domain"],
+                            "--position", accepted["position"], "--control-sock", control, expected=1)
+            assert denied == {"outcome": "refused", "reason": "unavailable"}, denied
             fetched = run_fn(directory, f"fetched-{index}", "stream", "fetch", mid, "--as", principal,
                              "--domain", accepted["domain"], "--position", accepted["position"],
                              "--control-sock", control)
             (directory / f"fetched-{index}.article").write_bytes(exact_fetch(fetched, article))
-        # Same occurrence with a different Message-ID must not disclose bytes.
-        # Use the other real committed identity, not merely an unknown name.
-        accepted = accepted_articles[1]
-        denied = run_fn(directory, "wrong-mid", "stream", "fetch", submissions[0][0],
-                        "--as", principal, "--domain", accepted["domain"],
-                        "--position", accepted["position"], "--control-sock", control, expected=1)
-        assert denied["outcome"] == "refused" and "article_hex" not in denied, denied
         # Use the original FNCT submissions as the NNTP wire expectations.
         # read_back checks GROUP, ARTICLE and HEAD, including Xref and dot stuffing.
         articles = []
