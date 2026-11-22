@@ -120,6 +120,7 @@
         ((:goto xfnc-page-work))))
   (xfnc-first-send :on-refusal ((:next :closing) (:charge :steps *fn2-work-transition* :runnable t))
    (:do (permit) (fn2-conn-xfnc-first-send-check row-query row-query-gen)
+    :accept ()
     :case (((:more) (:charge :bytes 2048 :steps *fn2-work-transition* :runnable t))
            ((:ready)
             (:let len (min 2048 (nfix (fn2-conn-fill row-tx-slot))))
@@ -144,6 +145,7 @@
            (:otherwise (:next :closing) (:charge :bytes 2048 :steps *fn2-work-transition* :runnable t)))))
   (xfnc-page-work
    (:do (status) (fn2-conn-xfnc-page-step row-query row-query-gen row-xfnc-answer)
+    :accept ()
     :case (((:more) (:charge :bytes 4096 :steps *fn2-work-transition* :runnable t))
            ((:wait :drain) (:charge :bytes 4096 :steps *fn2-work-transition*))
            ((:collected) (:set (xfnc-answer *fn2-conn-xfnc-answer-seal*))
