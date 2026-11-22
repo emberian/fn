@@ -37,6 +37,7 @@ ACL2_BOOKS = \
   tests/root-working-credit-init-unit \
   tests/c-snapshot-unit \
   tests/journal-retention-served-unit \
+  tests/peer-retained-drain-unit \
   tests/event-read-format-unit \
   tests/txn-retained-source-served-unit \
   tests/upload-block-private-unit \
@@ -256,6 +257,7 @@ ACL2_BOOKS = \
   books/journal-retention-state \
   books/journal-retention \
   books/journal-retention-core \
+  books/peer-retained-drain \
   books/event-read-verify \
   books/event-read-verify-domain \
   books/c-snapshot-state \

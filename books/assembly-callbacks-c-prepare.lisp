@@ -8,6 +8,8 @@
 (include-book "query-ref-wake")
 (include-book "machines-c-bind")
 (include-book "journal-retention-core")
+(include-book "peer-retained-drain")
 (fn2-csnapshot-core-events)
 (fn2-journal-retention-core-events)
+(fn2-peer-retained-drain-events)
 (fn2-successor-prepare-events)

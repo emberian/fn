@@ -1,0 +1,63 @@
+; An actual SEND owns a loan across a blocked transport, its CANCEL
+; completion and its deferred terminal. Only the borrow release permits
+; the saved output workspace to be used again.
+(in-package "ACL2")
+(include-book "../books/peer-retained-drain")
+(include-book "../books/borrow-release")
+
+(defun fn2-prd-body (fn2-ops fn2-pool fn2-control)
+ (declare (xargs :stobjs (fn2-ops fn2-pool fn2-control) :verify-guards nil))
+ (b* ((fn2-ops (fn2-ops-init *fn2-profile-tiny* fn2-ops))
+      (fn2-pool (fn2-pool-init '((4 . 64)) 1 *fn2-u60-max* fn2-pool))
+      (fn2-control (fn2-control-init *fn2-profile-tiny* fn2-control))
+      ((mv reserved slot gen fn2-pool) (fn2-pool-reserve 0 9 0 1 fn2-pool))
+      ((mv filled fn2-pool) (fn2-pool-write slot gen 0 65 9 0 1 fn2-pool))
+      ((mv issued op og fn2-pool fn2-ops fn2-control)
+       (fn2-issue-send-children 0 77 slot gen 0 1 1 9 0 1 0 fn2-pool fn2-ops fn2-control))
+      ((mv taken fn2-ops) (fn2-outbox-ack 1 fn2-ops))
+      (blocked (fn2-peer-retained-send-state op og slot gen 9 0 1 fn2-ops fn2-pool))
+      (wrong (fn2-peer-retained-send-state op og slot gen 9 0 2 fn2-ops fn2-pool))
+      ((mv cancel co cg fn2-pool fn2-ops fn2-control)
+       (fn2-issue-cancel-children op og 9 0 1 0 fn2-pool fn2-ops fn2-control))
+      ((mv ctaken fn2-ops) (fn2-outbox-ack 1 fn2-ops))
+      (fn2-ops (fn2-post-result 0 co cg *fn2-event-cancel-result* *fn2-outcome-done*
+                               *fn2-reason-none* 0 0 0 fn2-ops))
+      ((mv cf cs cgen cc fn2-ops) (fn2-harvest-next fn2-ops))
+      ((mv cfinished fn2-ops) (fn2-op-finish cs cgen fn2-ops))
+      (after-cancel (fn2-peer-retained-send-state op og slot gen 9 0 1 fn2-ops fn2-pool))
+      (fn2-ops (fn2-post-result 0 op og *fn2-event-send-result* *fn2-outcome-cancelled*
+                               *fn2-reason-none* 0 1 0 fn2-ops))
+      ((mv sf ss sgen sc fn2-ops) (fn2-harvest-next fn2-ops))
+      (held (fn2-peer-retained-send-state op og slot gen 9 0 1 fn2-ops fn2-pool))
+      ((mv refused fn2-pool) (fn2-pool-release slot gen 9 0 1 fn2-pool))
+      (fn2-ops (fn2-post-result 1 op og *fn2-event-borrow-released* *fn2-outcome-done*
+                               *fn2-reason-none* 0 0 0 fn2-ops))
+      ((mv bf bs bgen bc fn2-ops) (fn2-harvest-next fn2-ops))
+      ((mv dropped fn2-pool)
+       (if (fn2-terminal-releases-borrow-p *fn2-action-send* *fn2-event-borrow-released* 0 1 1)
+           (fn2-pool-release-out slot gen fn2-pool)
+         (mv :unexpected fn2-pool)))
+      ((mv finished fn2-ops) (fn2-op-finish bs bgen fn2-ops))
+      (ready (fn2-peer-retained-send-state op og slot gen 9 0 1 fn2-ops fn2-pool))
+      ((mv returned fn2-pool) (fn2-pool-release slot gen 9 0 1 fn2-pool)))
+   (mv (and (eq reserved :ok) (eq filled :ok) (eq issued :ok) (eq taken :ok)
+            (eq blocked :cancel) (eq wrong :owner) (eq cancel :ok) (eq ctaken :ok)
+            (eq cf t) (= cs co) (= cgen cg) (= cc 0) (eq cfinished :ok)
+            (eq after-cancel :cancel) (eq sf t) (= ss op) (= sgen og) (= sc 0)
+            (eq held :drain) (eq refused :state)
+            (eq bf t) (= bs op) (= bgen og) (= bc 1) (eq dropped :ok)
+            (eq finished :ok) (eq ready :done) (eq returned :ok))
+       fn2-ops fn2-pool fn2-control)))
+
+(defun fn2-prd-test ()
+ (declare (xargs :verify-guards nil))
+ (with-local-stobj fn2-ops
+  (mv-let (ok fn2-ops)
+   (with-local-stobj fn2-pool
+    (mv-let (ok fn2-ops fn2-pool)
+     (with-local-stobj fn2-control
+      (mv-let (ok fn2-ops fn2-pool fn2-control) (fn2-prd-body fn2-ops fn2-pool fn2-control)
+       (mv ok fn2-ops fn2-pool)))
+     (mv ok fn2-ops)))
+   ok)))
+(assert-event (fn2-prd-test))
