@@ -385,7 +385,7 @@
   ;; :ready stages and admits in one scheduler turn. Only article
   ;; submissions need an overview or Xref. Evidence uses the same emit/bind.
   (ready-capacity :on-refusal ((:stop :machine-phase))
-   (:let ready-charge
+   (:let capacity-charge
      (+ *fn2-txn-ready-bytes*
         (if (equal row-cancel-progress 3)
             (+ *fn2-txn-ready-withdrawal-fixed-bytes*
@@ -394,9 +394,9 @@
    (:if (equal row-tmode *fn2-txn-mode-evidence*)
         ((:set (word *fn2-upload-word-conflict*) (ecommit *fn2-txn-ecommit-refused*)))
         ((:set (word *fn2-upload-word-unaffordable*))))
-   (:next :refused) (:charge :bytes ready-charge :steps *fn2-work-transition* :runnable t))
+   (:next :refused) (:charge :bytes capacity-charge :steps *fn2-work-transition* :runnable t))
   (submit :on-refusal ((:stop :machine-phase))
-   (:let ready-charge
+   (:let submit-charge
      (+ *fn2-txn-ready-bytes*
         (if (equal row-cancel-progress 3)
             (+ *fn2-txn-ready-withdrawal-fixed-bytes*
@@ -415,15 +415,15 @@
                      (:if (and (unsigned-byte-p 60 b) (unsigned-byte-p 60 ev))
                           ((:do (bcode) (fn2-successor-bind sslot b ev))
                            (:set (batch b) (bevent ev))
-                           (:next :batched) (:charge :bytes ready-charge :steps *fn2-work-transition* :runnable t))
+                           (:next :batched) (:charge :bytes submit-charge :steps *fn2-work-transition* :runnable t))
                           ((:stop :machine-phase))))
                     ((:exhausted) (:park :batch-membership :steps *fn2-work-transition*))
                     ((:admission)
                      (:if (equal row-tmode *fn2-txn-mode-evidence*)
                           ((:set (ecommit *fn2-txn-ecommit-refused*) (word *fn2-upload-word-conflict*))
-                           (:next :refused) (:charge :bytes ready-charge :steps *fn2-work-transition* :runnable t))
+                           (:next :refused) (:charge :bytes submit-charge :steps *fn2-work-transition* :runnable t))
                           ((:set (word *fn2-upload-word-not-stored*))
-                           (:next :refused) (:charge :bytes ready-charge :steps *fn2-work-transition* :runnable t)))))))
+                           (:next :refused) (:charge :bytes submit-charge :steps *fn2-work-transition* :runnable t)))))))
            ((:room) (:goto ready-capacity)))))
   ;; the outcome: the word to the owner (waking it; a consumer request also
   ;; gets an accepted article's commit position), the successor released

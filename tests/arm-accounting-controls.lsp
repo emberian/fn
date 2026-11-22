@@ -77,4 +77,11 @@
 (assert (null (fn2-arms-bound '(* members 8192) nil nil 64)))
 (assert (null (fn2-arms-bound '(* -8192 members) nil nil 64)))
 (assert (null (fn2-arms-bound '(* 8192 7 2) nil nil 64)))
+(mv-let (err form acc)
+  (fn2-arms-charge-form '(+ 26624 (* 8192 (min 7 members))) 1 0 t '(:kind probe) nil 64)
+  (assert (null err))
+  (assert (equal (getf acc :charges) '((83968 1 0))))
+  (assert (equal (multiple-value-list
+                 (eval `(let ((members 2) (fn2-core 'state)) ,form)))
+                 '(43008 1 0 t state))))
 (format t "ARM ACCOUNTING COMPOSED CONTROLS PASS~%")
