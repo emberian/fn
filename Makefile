@@ -259,7 +259,6 @@ ACL2_BOOKS = \
   books/journal-retention-core \
   books/event-read-verify \
   books/event-read-verify-domain \
-
   books/c-snapshot-state \
   books/c-snapshot \
   books/machines-c-bind \
