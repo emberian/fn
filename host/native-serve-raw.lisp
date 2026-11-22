@@ -40,6 +40,8 @@ core rejects a present value that is not a u32; it never falls back to uid 0."
                     (sb-ext:posix-getenv "FN2_ORIGIN_INCARNATION")
                     (sb-ext:posix-getenv "FN2_HISTORY_ID")
                     (sb-ext:posix-getenv "FN2_HISTORY_INCARNATION")))
+    (setf profile (fn2-history-revision-profile-from-text profile
+                    (sb-ext:posix-getenv "FN2_HISTORY_REVISION")))
     (setf profile (fn2-article-limit-profile-from-text profile
                     (sb-ext:posix-getenv "FN2_ARTICLE_MAX")))
     (setf profile (fn2-xfnc-policy-from-text profile

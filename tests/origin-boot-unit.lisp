@@ -3,7 +3,8 @@
 (in-package "ACL2")
 (include-book "boot-unit")
 (defconst *fn2-obu-profile*
- (fn2-origin-profile-from-text *fn2-node-profile* "17" "23" "5" "101" "7"))
+ (fn2-history-revision-profile-from-text
+  (fn2-origin-profile-from-text *fn2-node-profile* "17" "23" "5" "101" "7") "3"))
 (defun fn2-obu-run (profile create store finish)
  (declare (xargs :verify-guards nil))
  (with-local-stobj fn2-core
@@ -20,11 +21,12 @@
            (mv :held nil store fn2-core)))
         ((mv lineage domain incarnation) (fn2-core-origin-values fn2-core))
         ((mv history history-incarnation) (fn2-core-history-values fn2-core))
+        (revision (mv-list 2 (fn2-core-ready-history-revision fn2-core)))
         (epoch (stobj-let ((fn2-extents (fn2-core-extents fn2-core))) (e)
                  (fn2-alloc-current-epoch fn2-extents) e)))
     (mv (list pre quiet (fn2-boot-status fn2-core) epoch store
               (fn2-core-stop-reason fn2-core) (fn2-bu-accept-count 32 0 fn2-core)
-              (list lineage domain incarnation history history-incarnation)) fn2-core))
+              (list lineage domain incarnation history history-incarnation) revision) fn2-core))
    result)))
 (assert-event
  (let* ((created (fn2-obu-run *fn2-obu-profile* t nil t))
@@ -33,11 +35,18 @@
                               nil (nth 4 created) t))
         (physical (fn2-obu-run (put-assoc-equal :history-id 102 *fn2-obu-profile*)
                               nil (nth 4 created) t))
+        (revision (fn2-obu-run (put-assoc-equal :history-revision 4 *fn2-obu-profile*)
+                             nil (nth 4 created) t))
         (held (fn2-obu-run *fn2-obu-profile* t nil nil)))
   (and (equal (take 4 created) '((:ok :held :booting 0) :quiet :ready 1))
        (equal (take 4 restarted) '((:ok :held :booting 0) :quiet :ready 2))
        (equal (nth 7 created) '(17 23 5 101 7))
        (equal (nth 7 restarted) '(17 23 5 101 7))
+       (equal (nth 8 created) '(:ok 3))
+       (equal (nth 8 restarted) '(:ok 3))
+       (equal (nth 2 revision) :failed) (equal (nth 6 revision) 0)
+       (equal (nth 8 revision) '(:unavailable 0))
+       (equal (nth 8 held) '(:unavailable 0))
        (posp (nth 6 created)) (posp (nth 6 restarted))
        (equal (nth 2 semantic) :failed) (equal (nth 6 semantic) 0)
        (equal (nth 2 physical) :failed) (equal (nth 6 physical) 0)
