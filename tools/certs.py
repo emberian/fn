@@ -635,23 +635,6 @@ def closure(root: Path, name: str) -> dict[str, str]:
     return dict(found)
 
 
-def _closure(root: Path, name: str) -> dict[str, str]:
-    pending = [name]
-    found: dict[str, str] = {}
-    base = root.resolve()
-    while pending:
-        book = pending.pop()
-        if book in found:
-            continue
-        source = base / f"{book}.lisp"
-        if not source.is_file():
-            raise UnreadableBook(f"{book}.lisp: missing")
-        digest, references = book_facts(source)
-        found[book] = digest
-        pending.extend(_include_targets(base, book, source, digest, references))
-    return found
-
-
 # The resolved include targets of one book's bytes under one root.  Resolving
 # every edge again on every closure was the cost of `make check`'s
 # proof_cost (1,772 closures, 246,535 `realpath` calls and 2.2 million
@@ -676,11 +659,41 @@ def _include_targets(base: Path, book: str, source: Path, digest: str,
     return remembered
 
 
-def include_graph(root: Path, roots: Iterable[str]) -> dict[str, list[str]]:
-    """Discover each rooted local include edge once, using closure's facts."""
+def require_acyclic(graph: dict[str, list[str]]) -> None:
+    """Reject a local include-book cycle with its closed path."""
+    state: dict[str, int] = {}
+    for start in graph:
+        if state.get(start):
+            continue
+        # Iterative depth-first search: 1 marks a book on the current path.
+        stack: list[tuple[str, list[str]]] = [(start, list(graph[start]))]
+        state[start] = 1
+        path = [start]
+        while stack:
+            book, rest = stack[-1]
+            if not rest:
+                state[book] = 2
+                stack.pop()
+                path.pop()
+                continue
+            dependency = rest.pop()
+            if state.get(dependency) == 1:
+                cycle = path[path.index(dependency):] + [dependency]
+                raise UnreadableBook("local include-book cycle: " + " -> ".join(cycle))
+            if state.get(dependency) == 2:
+                continue
+            state[dependency] = 1
+            path.append(dependency)
+            stack.append((dependency, list(graph[dependency])))
+
+
+def _local_include_closure(
+    root: Path, roots: Iterable[str]
+) -> tuple[dict[str, str], dict[str, list[str]]]:
     base = root.resolve()
     pending = list(roots)
-    graph = {}
+    digests: dict[str, str] = {}
+    graph: dict[str, list[str]] = {}
     while pending:
         name = pending.pop()
         if name in graph:
@@ -689,8 +702,21 @@ def include_graph(root: Path, roots: Iterable[str]) -> dict[str, list[str]]:
         if not source.is_file():
             raise UnreadableBook(f"{name}.lisp: missing")
         digest, references = book_facts(source)
+        digests[name] = digest
         graph[name] = _include_targets(base, name, source, digest, references)
         pending.extend(graph[name])
+    require_acyclic(graph)
+    return digests, graph
+
+
+def _closure(root: Path, name: str) -> dict[str, str]:
+    digests, _ = _local_include_closure(root, (name,))
+    return digests
+
+
+def include_graph(root: Path, roots: Iterable[str]) -> dict[str, list[str]]:
+    """Discover each rooted local include edge once, using closure's facts."""
+    _, graph = _local_include_closure(root, roots)
     return graph
 
 
@@ -3384,12 +3410,15 @@ def main(argv: list[str] | None = None) -> int:
             parser.error("install-set needs one or more root books")
         if not arguments.acl2:
             parser.error("install-set needs --acl2 to check certificate alists")
-        report = install_artifact_set(
-            root, cache, names, toolchain_identity=arguments.toolchain_identity,
-            require_origin=arguments.require_origin,
-            purge_on_miss=arguments.purge_on_miss,
-            dependencies_only=arguments.dependencies_only,
-            acl2=Path(arguments.acl2).resolve())
+        try:
+            report = install_artifact_set(
+                root, cache, names, toolchain_identity=arguments.toolchain_identity,
+                require_origin=arguments.require_origin,
+                purge_on_miss=arguments.purge_on_miss,
+                dependencies_only=arguments.dependencies_only,
+                acl2=Path(arguments.acl2).resolve())
+        except UnreadableBook as error:
+            parser.error(str(error))
     elif arguments.action == "install-umbrellas":
         if not arguments.acl2:
             parser.error("install-umbrellas needs --acl2 (or FN_ACL2)")
@@ -3438,7 +3467,10 @@ def main(argv: list[str] | None = None) -> int:
     elif arguments.action == "resolve":
         if not names or not arguments.toolchain_identity:
             parser.error("resolve needs root books and --toolchain-identity")
-        held = resolve_plan(root, cache, names, arguments.toolchain_identity)
+        try:
+            held = resolve_plan(root, cache, names, arguments.toolchain_identity)
+        except UnreadableBook as error:
+            parser.error(str(error))
         print(f"resolve: {held} books of the roots' union closure have a usable "
               f"entry; plan {_plan_file() or 'not kept (FN_RESOLUTION_PLAN unset)'}")
         return 0
