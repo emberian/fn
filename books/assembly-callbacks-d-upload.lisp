@@ -229,7 +229,12 @@
              (:next :discard) (:charge :steps *fn2-work-transition* :runnable t))
             ((and (equal row-lease *fn2-upload-lease-held*)
                   (fn2-upload-stream-page-ready-p id row-generation))
-             (:set (request-principal pid) (mstep 2))
+             (:do (ac submitter) (fn2-upload-authenticated-submitter row-conn row-conn-gen id row-generation
+                                                          row-request row-rule pid)
+              :accept (:ok :unattributed))
+             (:if (unsigned-byte-p 60 submitter)
+               ((:set (request-principal pid) (submitter submitter) (mstep 2)))
+               ((:stop :machine-phase)))
              (:charge :steps *fn2-work-transition* :runnable t))
             (t (:stop :machine-phase))))
     ((equal row-mstep 2)

@@ -54,7 +54,7 @@
       (slot (nth 0 snapshot)) (gen (nth 1 snapshot))
       ((mv c1 fn2-core)
        (fn2-article-put 0 0 (article article) (birth birth) (state *fn2-txn-article-live*)
-         (version batch) (source slot gen 0) (stored-source slot gen 32)
+         (version batch) (source slot gen 0) (stored-source slot gen 32) (submitter 0) (placement-principal 0)
          (bytes (nth 7 snapshot)) (lines (nth 3 snapshot))
          (location-unit (nth 4 snapshot)) (location-epoch (nth 5 snapshot))
          (location-allocation (nth 6 snapshot)) (location-kind *fn2-txn-location-source-manifest*)

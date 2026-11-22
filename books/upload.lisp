@@ -88,6 +88,9 @@
 (defcost fn2-upload-owner-principal :answers (:ok :state)
   :doc "The generation-checked control connection's bound principal, or the NNTP connection's durable account identity.")
 
+(defcost fn2-upload-authenticated-submitter :answers (:ok :unattributed)
+  :doc "Capture receiver-local authenticated attribution from the generation-checked owner, independent of the payer.")
+
 (defcost fn2-upload-post-owner :answers (:ok :dropped) :tables (fn2-conn-table fn2-cns-table fn2-core-machines)
   :doc "Post an outcome to the upload's owner: a consumer request (fn2-cns-post-outcome) or a connection (fn2-conn-post-word).")
 (defcost fn2-upload-advance :bytes *fn2-upload-run-bytes* :steps *fn2-work-transition*

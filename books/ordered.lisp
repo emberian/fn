@@ -36,7 +36,12 @@
          (location-kind (:enum fn2-article-location-kind (:raw-source :source-manifest)))
          ;; BLAKE3 of actual stored bytes, including an injected Message-ID.
          (stored-source :digest)
-         (location-hashes (:octets ,*fn2-article-location-hashes-max*)))
+         (location-hashes (:octets ,*fn2-article-location-hashes-max*))
+         ;; Receiver-local authenticated principal at original admission.
+         ;; Zero marks an acceptance without authenticated attribution.
+         (submitter (:id principal))
+         ;; Address occurrence key component, including for unattributed posts.
+         (placement-principal (:id principal)))
  :merge :latest))
 
 ; Overview, keyed (group, number) from first materialization; the stored
@@ -51,16 +56,17 @@
 ; The addressing index: one entry per addressed principal per event.
 (defrunschema fn2-addr :id 4
  :key ((principal (:id principal)) (position (:id position)))
- :value ((article (:id article)) (stream (:id stream)) (reasons :u8) (additional-count :u60))
+ :value ((article (:id article)) (stream (:id stream)) (reasons :u8) (additional-count :u60) (number (:id group-number)))
  :merge :unique)
 
 ; Ordinal zero lives in the address row. Each additional accepted group has one
-; row keyed by the same article event and a positive ordinal, independent of
-; the group's local NNTP number. Only the address row is a stream occurrence.
+; row keyed by the same article event and a positive ordinal. Each retains
+; the exact number assigned when the original member staged. Only the address
+; row is a stream occurrence.
 (defconst *fn2-article-stream-sid* 20)
 (defrunschema fn2-article-stream :id 20
  :key ((article (:id article)) (ordinal :u60))
- :value ((stream (:id stream)))
+ :value ((stream (:id stream)) (number (:id group-number)))
  :merge :unique)
 (assert-event (equal (+ *fn2-commit-txn-schema-record-kind-base* *fn2-article-stream-sid*)
                      *record-kind-article-stream*))

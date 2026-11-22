@@ -231,9 +231,10 @@
  ;; connection (POST, IHAVE, TAKETHIS) or a consumer request (an append,
  ;; e-surface.md 3.3: the same upload and transaction as a POST). OP is the
  ;; append's operation identity (0: none). REQUEST-PRINCIPAL captures the
- ;; durable owner before storage and Message-ID injection.
+ ;; durable owner before storage and Message-ID injection. SUBMITTER
+ ;; separately captures authenticated receiver-local attribution.
  :fields ((conn :link) (conn-gen :u60) (request :u32)
-          (rule (:enum fn2-upload-rule (:post :ihave :takethis))) (op :u60) (request-principal :u60)
+          (rule (:enum fn2-upload-rule (:post :ihave :takethis))) (op :u60) (request-principal :u60) (submitter :u60)
           (c0-slot :link) (c0-gen :u60) (c1-slot :link) (c1-gen :u60)
           (filled :u60) (hashed :u60) (source-lines :u32)
           (scan-off :u32) (ofield :u8) (visible :bool) (nfields :u16) (nlines :u16) (seen :u32)
@@ -315,7 +316,7 @@
                    :class (:bytes (:from fn2-input-config fn2-upload-stream-request-bytes))))
          :set ((lease *fn2-upload-lease-held*))
          :copy (conn conn-gen request rule principal-slot op)
-         :clear (request-principal filled hashed source-lines scan-off visible nfields nlines seen mo ml no nl po pl
+         :clear (request-principal submitter filled hashed source-lines scan-off visible nfields nlines seen mo ml no nl po pl
                  head-status word inj txn-gen stopped pepoch palloc pdone sevent soutcome scount sready
                  ilen cepoch calloc cfree mfill munit mstep mdrain stored-hashed location-hashed rootepoch rootalloc stream-active stream-end stream-resets stream-stage-used stream-eof stream-stored-finalized stream-provisional stream-repack))
  :initial ((generation fn2-machine-initial-generation) (ready-prev *fn2-none*) (ready-next *fn2-none*)
