@@ -59,10 +59,10 @@
 ; successful-decode bounds. These do not claim composed callback traces.
 (assert-event (equal (fn2-layout-max-size *fn2-article-entry*) 237))
 (assert-event (equal (fn2-layout-max-size *fn2-article-index*) 97))
-(assert-event (equal (fn2-layout-max-size *fn2-addr-entry*) 37))
+(assert-event (equal (fn2-layout-max-size *fn2-addr-entry*) 46))
 (assert-event (equal (fn2-layout-max-size *fn2-addr-index*) 106))
 (assert-event (equal *fn2-cns-article-lookup-1-pool-read-bound* 13813))
-(assert-event (equal *fn2-cns-addr-next-1-pool-read-bound* 16568))
+(assert-event (equal *fn2-cns-addr-next-1-pool-read-bound* 19506))
 (assert-event (equal *fn2-cns-article-capture-pool-work-bound* 480))
 (assert-event (> *fn2-cns-article-lookup-1-pool-read-bound*
                  (* (+ *fn2-ov-search-steps* 2) (fn2-layout-max-size *fn2-article-entry*))))

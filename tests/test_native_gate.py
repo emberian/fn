@@ -45,12 +45,12 @@ class NativeGate(unittest.TestCase):
             (binaries/'python3').write_text('#!/bin/sh\nprintf "%s\\n" "$*" >> "'+str(log)+'"\nexit 31\n')
             for command in binaries.iterdir(): command.chmod(0o755)
             env = dict(os.environ, PATH=str(binaries)+':/usr/bin:/bin')
-            for mode in ('host','fnct','durable-retry','nntp','large','cursor'):
+            for mode in ('host','fnct','durable-retry','nntp','large','cursor','fanout'):
                 with self.subTest(mode=mode):
                     result = subprocess.run(['/bin/sh',str(GATE),str(root),SHA,mode],env=env,capture_output=True)
                     self.assertEqual(result.returncode,31,result.stderr)
             calls=log.read_text().splitlines()
-            self.assertEqual(len(calls),6)
+            self.assertEqual(len(calls),7)
             self.assertTrue(all(line.startswith('tools/certs.py install-set books/node-profile books/native-b3-evidence ') for line in calls))
             self.assertTrue(all('--toolchain-identity 8aeb1bea' in line for line in calls))
             self.assertFalse((root/'build').exists())

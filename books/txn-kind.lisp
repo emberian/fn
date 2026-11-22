@@ -24,11 +24,13 @@
 ;; Successor write-slot geometry in C-S3 (*fn2-succ-slots*):
 ;; 0..7 are fixed per-POST slots, *fn2-txn-slot-depend* (20) holds the authority
 ;; head read dependency (matching authority.lisp's *fn2-auth-depend-slot*), and
-;; every remaining pair of slots carries one group's count accept + overview entry.
+;; each group uses two slots (counts, overview). Each group after the first
+;; also uses a membership slot from the far end of the stripe. Therefore G
+;; accepted groups require 8 fixed slots + 1 dependency + 2G + (G - 1).
 (defconst *fn2-txn-slot-accepts* 8)
 (defconst *fn2-txn-slot-depend* 20)
 (defconst *fn2-txn-groups-max*
-  (floor (- *fn2-succ-slots* (+ 1 *fn2-txn-slot-accepts*)) 2))
+  (floor (- *fn2-succ-slots* *fn2-txn-slot-accepts*) 3))
 (assert-event (and (posp *fn2-txn-groups-max*)
                    (< *fn2-txn-slot-depend* *fn2-succ-slots*)))
 

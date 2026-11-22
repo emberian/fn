@@ -556,6 +556,26 @@
 ;    is accepted (240) and filed in all 7 groups with a 7-pair Xref header.
 ; 2. At :max-groups-per-article 2 on the same 7-group store, a 2-group post
 ;    is accepted (240) and a 3-group cross-post is refused 441 unaffordable.
+(defun fn2-tu-post-slots (groups)
+  (declare (xargs :verify-guards nil :measure (nfix groups)))
+  (if (zp groups)
+      (list *fn2-txn-slot-evidence* *fn2-txn-slot-history* *fn2-txn-slot-summary*
+            *fn2-txn-slot-candidate* *fn2-txn-slot-index* *fn2-txn-slot-article*
+            *fn2-txn-slot-outcome* *fn2-txn-slot-addr* *fn2-auth-depend-slot*)
+    (let* ((k (1- groups)) (ac (fn2-txn-group-slot k))
+           (rest (fn2-tu-post-slots k)))
+      (list* ac (1+ ac) (if (zp k) rest (cons (fn2-txn-stream-slot k) rest))))))
+(defun fn2-tu-slots-in-stripe-p (slots)
+  (declare (xargs :verify-guards nil))
+  (if (atom slots) (null slots)
+    (and (natp (car slots)) (< (car slots) *fn2-succ-slots*)
+         (fn2-tu-slots-in-stripe-p (cdr slots)))))
+(assert-event
+ (let ((slots (fn2-tu-post-slots *fn2-txn-groups-max*)))
+   (and (equal *fn2-txn-slot-depend* *fn2-auth-depend-slot*)
+        (no-duplicatesp-equal slots)
+        (fn2-tu-slots-in-stripe-p slots)
+        (equal (len slots) *fn2-succ-slots*))))
 (defconst *fn2-tu-seven-groups*
   '(("local.g1" . 1) ("local.g2" . 2) ("local.g3" . 3) ("local.g4" . 4)
     ("local.g5" . 5) ("local.g6" . 6) ("local.g7" . 7)))
@@ -564,7 +584,7 @@
 
 (defun fn2-txn-test-profile-groups-max ()
   (declare (xargs :verify-guards nil))
-  (let* ((base (put-assoc-equal :identity-arena-bytes 8192
+  (let* ((base (put-assoc-equal :identity-arena-bytes 4096
                  (put-assoc-equal :groups *fn2-tu-seven-groups* *fn2-tu-big-profile*)))
          (prof7 (put-assoc-equal :max-groups-per-article 7 base))
          (prof2 (put-assoc-equal :max-groups-per-article 2 base))

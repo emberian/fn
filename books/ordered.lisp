@@ -51,8 +51,19 @@
 ; The addressing index: one entry per addressed principal per event.
 (defrunschema fn2-addr :id 4
  :key ((principal (:id principal)) (position (:id position)))
- :value ((article (:id article)) (stream (:id stream)) (reasons :u8))
+ :value ((article (:id article)) (stream (:id stream)) (reasons :u8) (additional-count :u60))
  :merge :unique)
+
+; Ordinal zero lives in the address row. Each additional accepted group has one
+; row keyed by the same article event and a positive ordinal, independent of
+; the group's local NNTP number. Only the address row is a stream occurrence.
+(defconst *fn2-article-stream-sid* 20)
+(defrunschema fn2-article-stream :id 20
+ :key ((article (:id article)) (ordinal :u60))
+ :value ((stream (:id stream)))
+ :merge :unique)
+(assert-event (equal (+ *fn2-commit-txn-schema-record-kind-base* *fn2-article-stream-sid*)
+                     *record-kind-article-stream*))
 
 ; The group directory (seam S-GROUP): a newsgroup's exact name octets to its
 ; group identifier, the (:id group) key of fn2-group-counts and fn2-overview.

@@ -148,7 +148,7 @@
   (declare (xargs :stobjs fn2-core :verify-guards nil))
   (b* (((mv & fn2-core) (fn2-successor-release 0 fn2-core))
        ((mv c0 fn2-core)
-        (fn2-addr-put 0 0 (principal principal) (position pos) (article 7) (stream 1) (reasons 1) fn2-core))
+        (fn2-addr-put 0 0 (principal principal) (position pos) (article 7) (stream 1) (reasons 1) (additional-count 0) fn2-core))
        ((unless (eq c0 :ok)) (mv (list :put c0) fn2-core))
        ((mv rc fn2-core) (fn2-cns-resolve-loop 32 0 fn2-core))
        ((unless (eq rc :ok)) (mv (list :resolve rc) fn2-core))

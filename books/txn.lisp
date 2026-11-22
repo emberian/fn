@@ -30,7 +30,8 @@
 ;; slots (C-S3): the identity admission (C §4a: the evidence, the history
 ;; entry, the summary's and the candidate's :admit, the article index), the
 ;; article row, the operation outcome, then one group-count accept and
-;; overview row per carried group up to the profile's :max-groups-per-article
+;; overview row per carried group, plus one membership per additional group,
+;; up to the profile's :max-groups-per-article
 ;; (fn2-txn-groups-limit, bounded by *fn2-txn-groups-max* in txn-kind.lisp),
 ;; skipping *fn2-txn-slot-depend* (authority.lisp's read-dependency slot).
 (defconst *fn2-txn-slot-evidence* 0)
@@ -49,6 +50,16 @@
 (defthm fn2-txn-group-slot-natp
   (natp (fn2-txn-group-slot k))
   :rule-classes :type-prescription)
+;; Additional memberships grow down from the last slot. The group pairs
+;; grow up and skip the authority dependency. No persisted ordinal uses
+;; these private slot numbers.
+(defun fn2-txn-stream-slot (ordinal)
+  (declare (xargs :guard (and (posp ordinal) (< ordinal *fn2-succ-slots*))))
+  (- *fn2-succ-slots* ordinal))
+(assert-event
+ (and (<= 7 *fn2-txn-groups-max*)
+      (< (+ 1 (fn2-txn-group-slot (- *fn2-txn-groups-max* 1)))
+         (fn2-txn-stream-slot (- *fn2-txn-groups-max* 1)))))
 ;; The article row's values: a born article is live, version 1; the
 ;; operation outcome recorded with it is accepted (it is bound only into the
 ;; batch that accepts it).
@@ -265,8 +276,8 @@
   :doc "Count LF octets in up to 2,048 octets of the upload's body.")
 (defcost fn2-txn-next-name :child fn2-txn-next-name-pool :answers (:name :end :run :fault) :faults (:fault) :bytes *fn2-txn-scan-bytes*
   :doc "Scan chunk 0 for the next group name of Newsgroups.")
-(defcost fn2-txn-add-group :answers t :tables (fn2-core-succ-txns fn2-core-succ-slots fn2-core-fields fn2-core-pool) :bytes 512
-  :doc "Declare the group's count accept, overview row (its line late), and addressing entry; keep its name for the Xref field.")
+(defcost fn2-txn-add-group :answers t :tables (fn2-core-succ-txns fn2-core-succ-slots fn2-core-fields fn2-core-pool fn2-core-control) :bytes 512
+  :doc "Declare the group's count, overview and stream membership; reserve the late line and keep the group name for Xref.")
 (defcost fn2-txn-xref :answers t :tables (fn2-core-succ-txns fn2-core-succ-slots fn2-core-fields fn2-core-pool fn2-core-control)
   :bytes *fn2-txn-xref-bytes*
   :doc "Append the Xref field (the path identity, each group's name and staged number) to the overview line and give it to every overview slot.")
@@ -339,7 +350,9 @@
                                                (:charge :bytes 8192 :steps *fn2-work-transition* :runnable t))))
                                       (:do (dcode) (fn2-authority-depend gslot pid agrant ahead) :accept (:ok))
                                       (:do (pcode) (fn2-txn-add-group gslot row-ngroups group pid c0 g0 c1 g1
-                                                                       (+ no start) len :owner upload))
+                                                                       (+ no start) len nl
+                                                                       (+ (:read upload scan-off) *fn2-upload-digest-octets*)
+                                                                       :owner upload))
                                       (:if (eq pcode :ok)
                                            ((:set (ngroups (+ 1 row-ngroups)) (gcur next) (xstep 0))
                                             (:charge :bytes 8192 :steps *fn2-work-transition* :runnable t))
@@ -1039,17 +1052,36 @@
   :position 1 :rows nil)
 (in-theory (disable fn2-txn-put-post))
 
-(defun fn2-txn-add-group (tx k group principal c0 g0 c1 g1 noff nlen okind oslot ogen fn2-core)
+;; The renderer writes a tab and "Xref: ", the configured path, and for
+;; each accepted group a space, the name, a colon and up to 20 digits
+;; (fn2-gram-put-number's fuel). Each name occupies a disjoint span of
+;; the original Newsgroups field. This reservation uses actual header and
+;; path lengths before group numbers exist. The final fill rechecks LEN.
+(defun fn2-txn-overview-reservation (base-length path-length names-length)
+  (declare (xargs :guard (and (natp base-length) (natp path-length) (natp names-length))))
+  (min *fn2-overview-octets-max*
+       (+ base-length 1 (length "Xref: ") path-length names-length
+          (* (+ 2 20) *fn2-txn-groups-max*))))
+
+(defun fn2-txn-add-group (tx k group principal c0 g0 c1 g1 noff nlen names-len ov-off okind oslot ogen fn2-core)
   ;; Group K's count accept, overview row (its line given late, after stage,
-  ;; when the Xref field's numbers exist) and, for the first, the addressing
-  ;; entry; its name (NLEN octets at NOFF of chunk 0's Newsgroups field) is
+  ;; when the Xref field's numbers exist) and one stream membership. The first
+  ;; lives in the address row and later ordinals in article-stream. Its name (NLEN octets at NOFF of chunk 0's Newsgroups field) is
   ;; appended to chunk 1 as one length octet and the name, for the Xref field.
   ;; Chunk 1 is scratch here: the source is durable and counted and its
   ;; retained SOURCE digest already copied into chunk 0 (fn2-txn-put-post-for).
   (declare (xargs :stobjs fn2-core :guard (and (fn2-core-wfp fn2-core) (natp k))))
   (b* ((ac (fn2-txn-group-slot k))
        (ov (+ 1 ac))
-       ((unless (and (natp noff) (posp nlen) (unsigned-byte-p 8 nlen))) (mv :bounds fn2-core))
+       ((mv end path-length)
+        (stobj-let ((fn2-pool (fn2-core-pool fn2-core)) (fn2-control (fn2-core-control fn2-core)))
+          (end path-length)
+          (mv (fn2-gram-fill c0 fn2-pool) (fn2-control-path-identity-length fn2-control))
+          (mv end path-length)))
+       ((unless (and (natp k) (< k *fn2-txn-groups-max*) (natp noff) (posp nlen) (unsigned-byte-p 8 nlen)
+                     (natp names-len) (<= nlen names-len) (natp ov-off) (<= ov-off end)))
+        (mv :bounds fn2-core))
+       (line-bound (fn2-txn-overview-reservation (- end ov-off) path-length names-len))
        ((mv c fn2-core)
         (stobj-let ((fn2-pool (fn2-core-pool fn2-core)))
           (c fn2-pool)
@@ -1068,14 +1100,20 @@
           :owner (okind oslot ogen) fn2-core))
        ((unless (eq c :ok)) (mv c fn2-core))
        ((mv c fn2-core)
-        (fn2-successor-arg-octets-late tx ov *fn2-overview-entry-field-line* *fn2-overview-octets-max* fn2-core))
+        (fn2-successor-arg-octets-late tx ov *fn2-overview-entry-field-line* line-bound fn2-core))
        ((unless (eq c :ok)) (mv c fn2-core)))
     (if (equal (nfix k) 0)
         (fn2-addr-put tx *fn2-txn-slot-addr*
           (principal principal) (position :event 0) (article :event 0)
-          (stream group) (reasons 1) fn2-core)
-      (mv :ok fn2-core))))
-(fn2-core-preserves fn2-txn-add-group (tx k group principal c0 g0 c1 g1 noff nlen okind oslot ogen fn2-core) :position 1 :rows nil
+          (stream group) (reasons 1) (additional-count 0) fn2-core)
+      (mv-let (code fn2-core)
+        (fn2-article-stream-put tx (fn2-txn-stream-slot k)
+          (article :event 0) (ordinal k) (stream group) fn2-core)
+        (if (eq code :ok)
+            (fn2-successor-arg tx *fn2-txn-slot-addr* *fn2-addr-entry-field-additional-count*
+                               :value k fn2-core)
+          (mv code fn2-core))))))
+(fn2-core-preserves fn2-txn-add-group (tx k group principal c0 g0 c1 g1 noff nlen names-len ov-off okind oslot ogen fn2-core) :position 1 :rows nil
   :hints (("Goal" :in-theory (disable nfix))))
 (in-theory (disable fn2-txn-add-group))
 
