@@ -1,5 +1,6 @@
 """Exact-byte acceptance controls for the native APPEND/FETCH restart fixture."""
 import importlib.util
+import io
 from pathlib import Path
 import unittest
 import os
@@ -30,6 +31,31 @@ class ExactFetch(unittest.TestCase):
                 store.seek(8_388_608)
                 store.write(header + group)
             self.assertEqual(campaign.read_genesis(image), (header, group))
+
+    def test_reopened_crosspost_numbers_use_each_groups_actual_nntp_number(self):
+        mid = b"<crosspost@example.invalid>"
+        headers = (b"Newsgroups: local.test,local.other",)
+        whole = headers + (b"", b"body")
+        xref = b"Xref: fn2.invalid local.test:2 local.other:1"
+        response = (b"211 1 1 1 local.other\r\n"
+                    + b"220 1 " + mid + b" article follows\r\n"
+                    + campaign.restart.wire([xref, *whole, b"."])
+                    + b"221 1 " + mid + b" headers follow\r\n"
+                    + campaign.restart.wire([xref, *headers, b"."]))
+        article = [(mid, headers, whole)]
+        for claimed in (b" local.test:2 local.other:1",
+                        b" local.test:2 local.other:2", b" local.test:7 local.other:1", b""):
+            with self.subTest(claimed=claimed):
+                peer = mock.Mock()
+                with mock.patch.object(campaign.restart, "connect", return_value=(peer, io.BytesIO(response))):
+                    if b"Xref: fn2.invalid" + claimed == xref:
+                        campaign.restart.read_back(1, article, group="local.other", xrefs={mid: claimed})
+                        self.assertEqual(peer.sendall.call_args_list,
+                                         [mock.call(b"GROUP local.other\r\n"),
+                                          mock.call(b"ARTICLE 1\r\n"), mock.call(b"HEAD 1\r\n")])
+                    else:
+                        with self.assertRaises(AssertionError):
+                            campaign.restart.read_back(1, article, group="local.other", xrefs={mid: claimed})
 
     def test_status_binds_committed_occurrences_and_survives_restart(self):
         articles = [dict(domain=0, position=41), dict(domain=0, position=42)]

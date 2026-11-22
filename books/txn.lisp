@@ -877,6 +877,7 @@
        ((unless (eq code :found)) (mv code fn2-core))
        ((unless (and (unsigned-byte-p 60 event) (posp event)
                      (posp midlen) (<= midlen *fn2-format-message-id-max*)
+                     (unsigned-byte-p 32 numbers-len)
                      (or (equal outcome *fn2-txn-outcome-accepted*)
                          (equal outcome *fn2-txn-outcome-conflict*))))
         (mv :state fn2-core))
