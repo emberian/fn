@@ -7,6 +7,12 @@
 
 (include-book "journal-members-state")
 
+(local (in-theory (disable fn2-journal-membersp fn2-journal-members-wfp fn2-journal-members-rows
+                           fn2-journal-members-phase fn2-journal-members-next-event fn2-journal-members-end-event
+                           fn2-journal-members-event fn2-journal-members-off fn2-journal-members-end
+                           fn2-journal-members-start fn2-journal-members-leaf-end
+                           fn2-fieldsp fn2-fields-wfp fn2-fields-rows fn2-poolp fn2-pool-wfp)))
+
 (defun fn2-journal-members-begin (first members off end slot gen okind oslot ogen fn2-journal-members)
  (declare (xargs :stobjs fn2-journal-members :guard (fn2-journal-members-wfp fn2-journal-members)))
  (if (not (and (< 0 (fn2-journal-members-rows fn2-journal-members))
@@ -45,7 +51,7 @@
          (fn2-journal-members-owner-slot 0 fn2-journal-members)
          (fn2-journal-members-owner-gen 0 fn2-journal-members) fn2-fields fn2-pool))
       (valid (or (and (eq code :end) (or (< 0 event) (= expected limit)))
-                 (and (eq code :record) (unsigned-byte-p 32 next) (< off next)
+                 (and (eq code :record) (natp found) (unsigned-byte-p 32 next) (< off next)
                       (< found limit)
                       (if (= event 0) (= found expected)
                         (or (= found event) (= found (+ event 1)))))))
@@ -80,9 +86,10 @@
                (= (fn2-journal-members-event 0 fn2-journal-members) (fn2-journal-members-next-event 0 fn2-journal-members))
                (unsigned-byte-p 60 (+ 1 (fn2-journal-members-event 0 fn2-journal-members)))))
      (mv :state fn2-journal-members)
-   (let ((fn2-journal-members (fn2-journal-members-put 0
+   (let* ((next (+ 1 (fn2-journal-members-event 0 fn2-journal-members)))
+          (off (fn2-journal-members-off 0 fn2-journal-members))
+          (fn2-journal-members (fn2-journal-members-put 0
             (phase *fn2-journal-members-phase-scanning*)
-            (next-event (+ 1 (fn2-journal-members-event 0 fn2-journal-members))) (event 0) (hash-phase 0)
-            (start (fn2-journal-members-off 0 fn2-journal-members)))))
+            (next-event next) (event 0) (hash-phase 0) (start off))))
     (mv :ok fn2-journal-members))))
 (fn2-journal-members-preserves fn2-journal-members-consumed (fn2-journal-members) :position 1)

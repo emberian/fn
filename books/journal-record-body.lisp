@@ -6,6 +6,10 @@
 (include-book "format-check")
 (fn2-book-layer :c)
 
+(local (in-theory (disable fn2-fieldsp fn2-fields-wfp fn2-fields-rows
+                           fn2-format-keyed-mutation-decode fn2-format-article-acceptance-decode
+                           fn2-format-record-header-decode fn2-run-layout-decode)))
+
 (defconst *fn2-journal-record-fields*
  (max *fn2-run-entry-rows*
       (max *fn2-format-record-header-num-fields*
@@ -14,7 +18,8 @@
 (defun fn2-journal-body-decode (kind base slot gen off end okind oslot ogen fn2-fields fn2-pool)
  (declare (xargs :stobjs (fn2-fields fn2-pool)
                  :guard (and (fn2-fields-wfp fn2-fields) (fn2-pool-wfp fn2-pool))))
- (cond ((not (and (natp base) (<= (+ base *fn2-journal-record-fields*) (fn2-fields-rows fn2-fields))
+ (cond ((not (and (mbt (and (fn2-fieldsp fn2-fields) (fn2-fields-wfp fn2-fields)))
+                  (natp base) (<= (+ base *fn2-journal-record-fields*) (fn2-fields-rows fn2-fields))
                   (unsigned-byte-p 32 off) (unsigned-byte-p 32 end)
                   (unsigned-byte-p 8 okind) (unsigned-byte-p 32 oslot) (unsigned-byte-p 60 ogen)))
         (mv :bounds 0 fn2-fields))
@@ -39,7 +44,7 @@
       ((mv code version)
        (fn2-pool-read slot gen (if (< (+ off 1) end) (+ off 1) off) okind oslot ogen fn2-pool))
       ((unless (eq code :ok)) :invalid)
-      ((unless (= version 0)) :record)
+      ((unless (equal version 0)) :record)
       ((unless (and (natp slot) (< slot (fn2-pool-rows fn2-pool))
                     (eq (fn2-layout-range-code slot gen off end nil okind oslot ogen fn2-pool) :ok)))
        :invalid)
@@ -57,7 +62,8 @@
 (defun fn2-journal-record-next (base slot gen off end okind oslot ogen fn2-fields fn2-pool)
  (declare (xargs :stobjs (fn2-fields fn2-pool)
                  :guard (and (fn2-fields-wfp fn2-fields) (fn2-pool-wfp fn2-pool))))
- (b* (((unless (and (natp base) (<= (+ base *fn2-journal-record-fields*) (fn2-fields-rows fn2-fields))
+ (b* (((unless (and (mbt (and (fn2-fieldsp fn2-fields) (fn2-fields-wfp fn2-fields)))
+                    (natp base) (<= (+ base *fn2-journal-record-fields*) (fn2-fields-rows fn2-fields))
                     (unsigned-byte-p 32 off) (unsigned-byte-p 32 end) (<= off end) (<= end 4096)
                     (unsigned-byte-p 8 okind) (unsigned-byte-p 32 oslot) (unsigned-byte-p 60 ogen)))
        (mv :bounds 0 0 0 fn2-fields))
@@ -67,7 +73,7 @@
       ((mv code body fn2-fields)
        (fn2-format-record-header-decode base slot gen off end okind oslot ogen fn2-fields fn2-pool))
       ((unless (and (eq code :ok) (natp body) (< off body) (<= body end)
-                    (= (fn2-fields-value (+ base *fn2-format-record-header-field-schema-version*) fn2-fields) 1)))
+                    (equal (fn2-fields-value (+ base *fn2-format-record-header-field-schema-version*) fn2-fields) 1)))
        (mv :invalid 0 0 0 fn2-fields))
       (kind (fn2-fields-value (+ base *fn2-format-record-header-field-record-kind*) fn2-fields))
       (event (fn2-fields-value (+ base *fn2-format-record-header-field-event*) fn2-fields))
