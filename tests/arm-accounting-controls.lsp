@@ -73,4 +73,8 @@
 (assert (equal (multiple-value-list
   (eval (fn2-arms-prefix-report '(mv 100 2 2 t 'state) 8192 3 nil)))
   '(8292 5 2 t state)))
+(assert (equal (fn2-arms-bound '(* 8192 (min 7 (+ 1 members))) nil nil 64) 57344))
+(assert (null (fn2-arms-bound '(* members 8192) nil nil 64)))
+(assert (null (fn2-arms-bound '(* -8192 members) nil nil 64)))
+(assert (null (fn2-arms-bound '(* 8192 7 2) nil nil 64)))
 (format t "ARM ACCOUNTING COMPOSED CONTROLS PASS~%")

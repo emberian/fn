@@ -88,11 +88,7 @@
 ;; in one run (nothing may stage or bind between a transaction's stage and
 ;; its bind), so the run's bound is their sum, above ROUND2 B.3's 4 KiB (a
 ;; departure recorded in the layer doc, 14.4).
-(defconst *fn2-txn-admit-bytes* 4096)
-(defconst *fn2-txn-xref-bytes* 2048)
 (defconst *fn2-txn-result-copy-bytes* (+ 512 (* 2 *fn2-overview-octets-max*)))
-(defconst *fn2-txn-ready-bytes* (+ 4096 8192 8192 *fn2-txn-xref-bytes* *fn2-txn-admit-bytes*))
-(assert-event (equal *fn2-txn-ready-bytes* 26624))  ; the kind's :budget (txn-kind.lisp)
 
 (defconst *fn2-upload-word-duplicate* (fn2-upload-word-code :duplicate))
 (defconst *fn2-upload-word-group* (fn2-upload-word-code :group))
@@ -389,11 +385,23 @@
   ;; :ready stages and admits in one scheduler turn. Only article
   ;; submissions need an overview or Xref. Evidence uses the same emit/bind.
   (ready-capacity :on-refusal ((:stop :machine-phase))
+   (:let ready-charge
+     (+ *fn2-txn-ready-bytes*
+        (if (equal row-cancel-progress 3)
+            (+ *fn2-txn-ready-withdrawal-fixed-bytes*
+               (* *fn2-txn-ready-per-target-bytes* (min *fn2-txn-groups-max* (+ 1 row-cancel-count))))
+          0)))
    (:if (equal row-tmode *fn2-txn-mode-evidence*)
         ((:set (word *fn2-upload-word-conflict*) (ecommit *fn2-txn-ecommit-refused*)))
         ((:set (word *fn2-upload-word-unaffordable*))))
-   (:next :refused) (:charge :bytes *fn2-txn-ready-bytes* :steps *fn2-work-transition* :runnable t))
+   (:next :refused) (:charge :bytes ready-charge :steps *fn2-work-transition* :runnable t))
   (submit :on-refusal ((:stop :machine-phase))
+   (:let ready-charge
+     (+ *fn2-txn-ready-bytes*
+        (if (equal row-cancel-progress 3)
+            (+ *fn2-txn-ready-withdrawal-fixed-bytes*
+               (* *fn2-txn-ready-per-target-bytes* (min *fn2-txn-groups-max* (+ 1 row-cancel-count))))
+          0)))
    (:let sslot row-slot) (:let c1 (:read upload c1-slot)) (:let g1 (:read upload c1-gen))
    (:do (ecode elen)
         (fn2-successor-emit sslot c1 g1 0 (fn2-upload-chunk-cap c1) :owner upload)
@@ -407,15 +415,15 @@
                      (:if (and (unsigned-byte-p 60 b) (unsigned-byte-p 60 ev))
                           ((:do (bcode) (fn2-successor-bind sslot b ev))
                            (:set (batch b) (bevent ev))
-                           (:next :batched) (:charge :bytes *fn2-txn-ready-bytes* :steps *fn2-work-transition* :runnable t))
+                           (:next :batched) (:charge :bytes ready-charge :steps *fn2-work-transition* :runnable t))
                           ((:stop :machine-phase))))
                     ((:exhausted) (:park :batch-membership :steps *fn2-work-transition*))
                     ((:admission)
                      (:if (equal row-tmode *fn2-txn-mode-evidence*)
                           ((:set (ecommit *fn2-txn-ecommit-refused*) (word *fn2-upload-word-conflict*))
-                           (:next :refused) (:charge :bytes *fn2-txn-ready-bytes* :steps *fn2-work-transition* :runnable t))
+                           (:next :refused) (:charge :bytes ready-charge :steps *fn2-work-transition* :runnable t))
                           ((:set (word *fn2-upload-word-not-stored*))
-                           (:next :refused) (:charge :bytes *fn2-txn-ready-bytes* :steps *fn2-work-transition* :runnable t)))))))
+                           (:next :refused) (:charge :bytes ready-charge :steps *fn2-work-transition* :runnable t)))))))
            ((:room) (:goto ready-capacity)))))
   ;; the outcome: the word to the owner (waking it; a consumer request also
   ;; gets an accepted article's commit position), the successor released
@@ -659,6 +667,14 @@
                                (:charge :bytes 8192 :steps *fn2-work-transition* :runnable t))))))))))))
   ;; stage every slot against the tip, emit into chunk 1, admit the member, bind on :ok (one run)
   (:ready :on-refusal ((:stop :machine-phase))
+   (:let ready-charge
+     (+ *fn2-txn-ready-bytes*
+        (if (equal row-cancel-progress 3)
+            (+ *fn2-txn-ready-withdrawal-fixed-bytes*
+               (* *fn2-txn-ready-per-target-bytes* (min *fn2-txn-groups-max* (+ 1 row-cancel-count))))
+          0)))
+   (:if (and (equal row-cancel-progress 3) (>= row-cancel-count *fn2-txn-groups-max*))
+        ((:stop :machine-phase)) ())
    (:if (or (fn2-core-query-heldp (:read upload c0-slot) (:read upload c0-gen))
             (fn2-core-query-heldp (:read upload c1-slot) (:read upload c1-gen)))
         ((:charge :steps *fn2-work-state*))
@@ -680,7 +696,7 @@
                      (:if (and (eq xcode :ok) (unsigned-byte-p 32 noff) (unsigned-byte-p 32 nlen))
                           ((:set (numbers-off noff) (numbers-len nlen)) (:goto submit))
                           ((:goto ready-capacity))))))
-                 ((:full) (:charge :bytes *fn2-txn-ready-bytes* :steps *fn2-work-transition* :runnable t))
+                 ((:full) (:charge :bytes ready-charge :steps *fn2-work-transition* :runnable t))
                  ;; A stale version or changed grant dependency requires a
                  ;; fresh outcome lookup and decision before anything is submitted.
                  ((:stale :changed)
@@ -688,14 +704,14 @@
                   (:set (outcome-checked 0) (offered 0) (prepared 0) (filed 0)
                         (gcur 0) (gskip 0) (ngroups 0) (xstep 0)
                         (cancel-resolved 0) (cancel-target 0) (cancel-progress 0) (cancel-index 0) (cancel-count 0))
-                  (:next :lookup) (:charge :bytes *fn2-txn-ready-bytes* :steps *fn2-work-transition* :runnable t))
+                  (:next :lookup) (:charge :bytes ready-charge :steps *fn2-work-transition* :runnable t))
                  ((:refused :evidence)
                   (:do (rcode) (fn2-successor-release sslot))
                   (:set (tmode *fn2-txn-mode-evidence*) (word *fn2-upload-word-conflict*)
                         (outcome-checked 0) (offered 0) (prepared 0) (filed 0)
                         (gcur 0) (gskip 0) (ngroups 0) (xstep 0)
                         (cancel-resolved 0) (cancel-target 0) (cancel-progress 0) (cancel-index 0) (cancel-count 0))
-                  (:next :lookup) (:charge :bytes *fn2-txn-ready-bytes* :steps *fn2-work-transition* :runnable t))
+                  (:next :lookup) (:charge :bytes ready-charge :steps *fn2-work-transition* :runnable t))
                  ((:duplicate)
                   (:if (and (equal i *fn2-txn-slot-outcome*) (not (equal (:read upload op) 0)))
                        ;; The tip includes unpublished members. Re-read the committed
@@ -706,12 +722,12 @@
                               (gcur 0) (gskip 0) (ngroups 0) (xstep 0)
                         (cancel-resolved 0) (cancel-target 0) (cancel-progress 0) (cancel-index 0) (cancel-count 0))
                         (:next :lookup)
-                        (:charge :bytes *fn2-txn-ready-bytes* :steps *fn2-work-transition* :runnable t))
+                        (:charge :bytes ready-charge :steps *fn2-work-transition* :runnable t))
                        ((:if (equal row-tmode *fn2-txn-mode-evidence*)
                              ((:set (word *fn2-upload-word-conflict*) (ecommit *fn2-txn-ecommit-refused*)))
                              ((:set (word *fn2-upload-word-duplicate*))))
                         (:next :refused)
-                        (:charge :bytes *fn2-txn-ready-bytes* :steps *fn2-work-transition* :runnable t))))
+                        (:charge :bytes ready-charge :steps *fn2-work-transition* :runnable t))))
                  ((:capacity) (:goto ready-capacity)))))))))
   (:batched :on-refusal ((:stop :machine-phase))
    (:do (tcode tbatch tevent tout)

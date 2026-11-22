@@ -98,7 +98,26 @@
 ;; The T-row shares (fn2-txn-authority-share, -consumer-share, -capacity)
 ;; are in upload-kind.lisp: posting is served only when fn2-txn has a row.
 
-(defmachine fn2-txn
+(defconst *fn2-txn-stage-quantum* 4096)
+(defconst *fn2-txn-xref-bytes* 2048)
+(defconst *fn2-txn-admit-bytes* 4096)
+(defconst *fn2-txn-ready-bytes*
+  (+ *fn2-txn-stage-quantum* 8192 8192 *fn2-txn-xref-bytes* *fn2-txn-admit-bytes*))
+
+;; Reserve a stage quantum for each additional active slot: target version
+;; dependency and replacement, and one report plus fold per membership.
+;; Shared-group filing uses a single fold, so this prices its upper bound.
+(defconst *fn2-txn-ready-withdrawal-fixed-bytes* (* 2 *fn2-txn-stage-quantum*))
+(defconst *fn2-txn-ready-per-target-bytes* (* 2 *fn2-txn-stage-quantum*))
+(defun fn2-txn-ready-work-bytes (targets)
+  (declare (xargs :guard t))
+  (+ *fn2-txn-ready-bytes*
+     (if (zp targets) 0
+       (+ *fn2-txn-ready-withdrawal-fixed-bytes* (* *fn2-txn-ready-per-target-bytes* (nfix targets))))))
+(defconst *fn2-txn-run-bytes-max* (fn2-txn-ready-work-bytes *fn2-txn-groups-max*))
+
+(make-event
+ (value `(defmachine fn2-txn
  :phases (:free :admit :reserve :lookup :prepare :ready :batched :accepted :refused :uncertain :releasing :draining :retired)
  ;; CONN is the upload's owner the outcome goes to: a connection, or a
  ;; consumer request whose append this is (e-surface.md 3.3).
@@ -126,7 +145,7 @@
          (:accepted :transaction-row :identity-reservation) (:refused :transaction-row :identity-reservation)
          (:uncertain :transaction-row :identity-reservation) (:releasing :transaction-row :identity-reservation)
          (:draining :transaction-row))
- :budget (:bytes 26624 :steps 32 :descriptors 4)
+ :budget (:bytes ,*fn2-txn-run-bytes-max* :steps 32 :descriptors 4)
  :capacity (fn2-txn-capacity profile)
  :taken (:phase :admit :rows :transaction-row :ranges ()
          :copy (upload upload-gen conn conn-gen request rule principal-slot)
@@ -135,6 +154,6 @@
  :initial ((generation fn2-machine-initial-generation) (ready-prev *fn2-none*) (ready-next *fn2-none*)
            (upload *fn2-none*) (conn *fn2-none*) (account-ref *fn2-none*) (next-free fn2-machine-initial-next-free))
  :arms ((:free) (:admit) (:reserve) (:lookup) (:prepare) (:ready) (:batched)
-        (:accepted) (:refused) (:uncertain) (:releasing) (:draining) (:retired)))
+        (:accepted) (:refused) (:uncertain) (:releasing) (:draining) (:retired)))))
 
 (defmachine-registry fn2-txn)

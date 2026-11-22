@@ -373,7 +373,8 @@
 
 ; ----------------------------------------------------------------------
 ; Bounds of charge expressions, for the derived cost: nat, a constant, a
-; :let variable by its expression, min/max/+/-/if/nfix. NIL is unbounded.
+; :let variable by its expression, min/max/+/-/if/nfix, or a nonnegative
+; constant times a bounded expression. NIL is unbounded.
 (defun fn2-arms-bound (x lets world fuel)
   (declare (xargs :verify-guards nil :measure (nfix fuel)))
   (cond ((zp fuel) nil)
@@ -385,6 +386,11 @@
         ((member-eq (car x) '(nfix))
          (fn2-arms-bound (cadr x) lets world (1- fuel)))
         ((eq (car x) '-) (fn2-arms-bound (cadr x) lets world (1- fuel)))
+        ((eq (car x) '*)
+         (let ((factor (if (natp (cadr x)) (cadr x)
+                         (and (symbolp (cadr x)) (fn2-cost-constant (cadr x) world))))
+               (bound (fn2-arms-bound (caddr x) lets world (1- fuel))))
+           (and (consp (cddr x)) (null (cdddr x)) (natp factor) bound (* factor bound))))
         ((eq (car x) 'if)
          (let ((a (fn2-arms-bound (caddr x) lets world (1- fuel)))
                (b (fn2-arms-bound (cadddr x) lets world (1- fuel))))
