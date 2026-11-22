@@ -270,6 +270,12 @@ def main():
             accepted_articles, registered["position"])
         if args.durable_retry:
             retry_controls(directory, "before-restart", control, principal, submissions[0], accepted_articles[0])
+            # A fresh operation for a different body under an accepted MID
+            # commits conflict evidence without adding an occurrence.
+            conflict_path = directory / "conflicting-body.article"
+            conflict_path.write_bytes(crossing_article(submissions[0][0], body_variant=1))
+            conflict = append_file(directory, "record-conflict", control, principal, 73, conflict_path, expected=1)
+            assert (conflict["outcome"], conflict["reason"]) == ("refused", "conflict"), conflict
             checked_status(run_fn(directory, "status-after-retries", "stream", "status", "--as", principal,
                                   "--consumer", "inbox1", "--control-sock", control),
                            accepted_articles, registered["position"], status_before)
@@ -300,6 +306,11 @@ def main():
             accepted_articles, registered["position"], status_before)
         if args.durable_retry:
             retry_controls(directory, "reopened", control, principal, submissions[0], accepted_articles[0])
+            replayed = append_file(directory, "reopened-conflict", control, principal, 73, conflict_path, expected=1)
+            assert replayed == conflict, (replayed, conflict)
+            reused = append_file(directory, "reopened-conflict-changed", control, principal, 73,
+                                 submissions[0][2], expected=1)
+            assert (reused["outcome"], reused["reason"]) == ("refused", "operation-reused"), reused
             winner = append_file(directory, "reopened-different-mid-winner", control, principal, 72,
                                  submissions[1][2])
             assert winner == accepted_articles[1], (winner, accepted_articles[1])
