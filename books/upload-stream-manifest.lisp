@@ -6,6 +6,30 @@
 (include-book "upload")
 (fn2-book-layer :d)
 
+(local
+ (defthm fn2-upload-fields-rows-natural
+   (implies (fn2-fieldsp fn2-fields)
+            (natp (fn2-fields-rows fn2-fields)))
+   :rule-classes :type-prescription
+   :hints (("Goal" :in-theory (enable fn2-fieldsp fn2-fields-rows)))))
+
+(local
+ (defthm fn2-upload-pool-slot-base-natural
+   (implies (and (fn2-poolp fn2-pool) (fn2-pool-wfp fn2-pool)
+                 (natp slot) (< slot (fn2-pool-rows fn2-pool)))
+            (natp (fn2-pool-slot-base slot fn2-pool)))
+   :rule-classes :type-prescription
+   :hints (("Goal" :use ((:instance fn2-pool-base-natp (i slot)))
+            :in-theory (e/d (fn2-pool-slot-base)
+                            (fn2-pool-base fn2-pool-base-natp fn2-poolp
+                             fn2-pool-wfp fn2-pool-rows))))))
+
+(local
+ (in-theory (disable fn2-fieldsp fn2-fields-wfp fn2-fields-rows
+                     fn2-poolp fn2-pool-wfp fn2-pool-rows
+                     fn2-pool-readable-code fn2-pool-workspace-code
+                     fn2-pool-slot-base fn2-layout-range-code)))
+
 (defun fn2-upload-repack-entry-children
  (base ss sg so se ds dg do kind owner ogen fn2-fields fn2-pool)
  (declare (xargs :stobjs (fn2-fields fn2-pool)
