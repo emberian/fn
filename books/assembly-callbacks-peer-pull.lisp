@@ -3,6 +3,7 @@
 (in-package "ACL2")
 (include-book "peer-pull-reply")
 (include-book "xfnc-ops")
+(include-book "peer-pull-import")
 
 (defcost fn2-pull-connect :child fn2-issue-connect :descriptors 1 :answers t
  :tables (fn2-core-ops) :effects ((:acquire (:operation)))
@@ -25,7 +26,18 @@
 
 (defmachine-arms fn2-peer-pull :declare
  :subarms
- ((terminate
+ ((item-finished
+   (:do (code) (fn2-peer-pull-import-settled id row-generation)
+    :case (((:last) (:next :checkpoint) (:charge :bytes 512 :steps *fn2-work-transition* :runnable t))
+           ((:more) (:next :import) (:charge :bytes 512 :steps *fn2-work-transition* :runnable t))
+           (:otherwise (:stop :machine-phase)))))
+  (checkpoint-finished
+   (:if (equal row-import-more 0)
+        ((:goto terminate))
+        ((:do (code) (fn2-core-reset row-rx-slot row-rx-gen) :case ((:otherwise (:stop :machine-phase))))
+         (:set (pos 0) (start 0) (import-step 0) (import-keyed 0))
+         (:next :resume) (:charge :bytes 512 :steps *fn2-work-transition* :runnable t))))
+  (terminate
    (:next :closing) (:charge :steps *fn2-work-transition* :runnable t))
   (wait-io
    (:if (fn2-xfnc-expired-p id) ((:goto terminate)) ((:charge :steps *fn2-work-empty*))))
@@ -191,10 +203,53 @@
                         (:charge :bytes 4096 :steps *fn2-work-transition* :runnable t))
                        (t (:goto terminate))))
                      (:otherwise (:goto terminate)))))))
-  ;; The receiving checkpoint and C's item settlement own these turns. A
-  ;; successful registration alone cannot select a receiver resume position.
-  (:resume (:goto terminate))
-  (:import (:goto terminate))
+  (:resume
+   (:cond ((fn2-xfnc-expired-p id) (:goto terminate))
+          ((equal row-import-step 2)
+           (:do (code) (fn2-peer-pull-authority-turn id)
+            :case (((:more) (:charge :bytes 4096 :steps *fn2-work-transition* :runnable t))
+                   (:otherwise (:goto terminate)))))
+          ((equal row-import-step 3)
+           (:do (built) (fn2-peer-pull-propose id row-generation row-resume-position)
+            :case ((:otherwise (:goto terminate))))
+           (:set (import-step 0))
+           (:next :request) (:charge :bytes 4096 :steps *fn2-work-transition* :runnable t))
+          (t (:do (code position) (fn2-peer-pull-resume-turn id row-generation 2048)
+              :case (((:more) (:charge :bytes 4096 :steps *fn2-work-transition* :runnable t))
+                     ((:ready)
+                      (:if (unsigned-byte-p 60 position)
+                           ((:set (resume-position position) (import-step 2) (import-right 0)
+                                  (import-own-step 0) (import-head 0) (import-grant 0) (import-anchor 0) (import-depend 0))
+                            (:charge :bytes 4096 :steps *fn2-work-transition* :runnable t))
+                           ((:goto terminate))))
+                     (:otherwise (:goto terminate)))))))
+  (:import
+   (:if (fn2-xfnc-expired-p id) ((:goto terminate))
+        ((:do (code) (fn2-peer-pull-import-turn id row-generation row-result-off row-result-end 2048)
+         :case (((:more) (:charge :bytes 8192 :steps *fn2-work-transition* :runnable t))
+                ((:ready) (:next :item-ready) (:charge :bytes 8192 :steps *fn2-work-transition* :runnable t))
+                (:otherwise (:goto terminate)))))))
+  (:item-ready
+   (:if (fn2-xfnc-expired-p id) ((:goto terminate))
+        ((:commit row-import-tx :workspace (row-tx-slot row-tx-gen) :ticket import-ticket :wait :item-settled
+          :dependencies ((:goto terminate)) :unchanged ((:goto item-finished)) :refused ((:goto terminate))))))
+  (:item-settled
+   (:commit row-import-tx :workspace (row-tx-slot row-tx-gen) :ticket import-ticket :wait :item-settled
+    :accepted ((:goto item-finished)) :refused ((:goto terminate)) :uncertain ((:stop :peer-import-uncertain))))
+  ;; Every item has durably settled here. The receiver's published progress
+  ;; still names the previous page until the separate transaction settles.
+  (:checkpoint
+   (:cond ((fn2-xfnc-expired-p id) (:goto terminate))
+          ((equal row-import-step 2)
+           (:commit row-import-tx :workspace (row-tx-slot row-tx-gen) :ticket import-ticket :wait :checkpoint-settled
+            :dependencies ((:goto terminate)) :unchanged ((:goto terminate)) :refused ((:goto terminate))))
+          (t (:do (code) (fn2-peer-pull-checkpoint-turn id row-generation 2048)
+              :case (((:more) (:charge :bytes 4096 :steps *fn2-work-transition* :runnable t))
+                     ((:ready) (:set (import-step 2)) (:charge :bytes 4096 :steps *fn2-work-transition* :runnable t))
+                     (:otherwise (:goto terminate)))))))
+  (:checkpoint-settled
+   (:commit row-import-tx :workspace (row-tx-slot row-tx-gen) :ticket import-ticket :wait :checkpoint-settled
+    :accepted ((:goto checkpoint-finished)) :refused ((:goto terminate)) :uncertain ((:stop :peer-import-uncertain))))
   (:closing
    (:cond ((and (posp row-pending) (equal row-cancel-issued 0))
            (:issue (fn2-issue-cancel row-op row-op-gen :principal row-principal-slot)
@@ -207,6 +262,10 @@
   (:close-wait (:charge :steps *fn2-work-empty*))
   (:draining
    (:cond ((posp row-pending) (:charge :steps *fn2-work-empty*))
+          ((equal row-import-clean 0)
+           (:do (code) (fn2-peer-pull-import-drain id row-generation)
+            :case ((:otherwise (:stop :machine-phase))))
+           (:set (import-clean 1)) (:charge :bytes 512 :steps *fn2-work-transition* :runnable t))
           ((equal row-timer 1)
            (:do (rc) (fn2-xfnc-clear-timer id) :case ((:otherwise (:stop :machine-phase))))
            (:set (timer 0)) (:charge :steps *fn2-work-transition* :runnable t))

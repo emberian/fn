@@ -212,6 +212,7 @@ ACL2_BOOKS = \
   books/peer-pull-request-encode \
   tests/peer-pull-request-encode-unit \
   books/peer-pull-reply \
+  books/peer-pull-import \
   books/peer-pull-stage \
   books/assembly-callbacks-peer-pull \
   books/conn-kind \
